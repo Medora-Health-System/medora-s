@@ -194,4 +194,76 @@ describe("FacilityBedBoardService bed-board view (K.10B.10D)", () => {
     expect(first?.storageKey).toBe(first?.bedKey);
     expect(first?.displayKey).toBe(first?.display);
   });
+
+  it("excludes physically-departed ED encounters from occupancy (incomplete chart reconciliation)", async () => {
+    const { service } = buildBedBoardMocks({
+      encounters: [
+        {
+          id: "enc-active",
+          facilityId,
+          roomLabel: "1",
+          status: "OPEN",
+          type: "EMERGENCY",
+          workflowState: "IN_TREATMENT",
+          disposition: null,
+          admissionSummaryJson: null,
+          dischargeSummaryJson: null,
+          nursingAssessment: null,
+          patient: { firstName: "Active", lastName: "Patient", mrn: "M1" },
+        },
+        {
+          id: "enc-departed",
+          facilityId,
+          roomLabel: "2",
+          status: "OPEN",
+          type: "EMERGENCY",
+          workflowState: "IN_TREATMENT",
+          disposition: null,
+          admissionSummaryJson: null,
+          dischargeSummaryJson: { dischargeMode: "Domicile" },
+          nursingAssessment: {
+            erDispositionExecutionV1: {
+              dischargeSortieCompletedAt: "2026-07-03T12:00:00.000Z",
+              dischargeSortieCompletedByDisplayName: "Marie Nurse",
+            },
+          },
+          patient: { firstName: "Departed", lastName: "Patient", mrn: "M2" },
+        },
+      ],
+    });
+    const board = await service.getBedBoard(facilityId, "ED");
+    const unit = board.units[0];
+    expect(unit?.summary.occupied).toBe(1);
+    const bed1 = unit?.beds.find((b) => b.storageKey === "ED:1");
+    const bed2 = unit?.beds.find((b) => b.storageKey === "ED:2");
+    expect(bed1?.status).toBe("OCCUPIED");
+    expect(bed2?.status).toBe("AVAILABLE");
+  });
+
+  it("does not exclude non-EMERGENCY departed encounters from occupancy", async () => {
+    const { service } = buildBedBoardMocks({
+      encounters: [
+        {
+          id: "enc-inpatient",
+          facilityId,
+          roomLabel: "MS-1",
+          status: "OPEN",
+          type: "INPATIENT",
+          workflowState: "DISCHARGE_READY",
+          disposition: null,
+          admissionSummaryJson: { serviceUnit: "Med/Surg" },
+          dischargeSummaryJson: { dischargeMode: "Domicile" },
+          nursingAssessment: {
+            erDispositionExecutionV1: {
+              dischargeSortieCompletedAt: "2026-07-03T12:00:00.000Z",
+              dischargeSortieCompletedByDisplayName: "Marie Nurse",
+            },
+          },
+          patient: { firstName: "Inpatient", lastName: "Disch", mrn: "M3" },
+        },
+      ],
+    });
+    const board = await service.getBedBoard(facilityId, "MS");
+    expect(board.units[0]?.summary.dischargePending).toBe(1);
+  });
 });

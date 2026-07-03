@@ -15,6 +15,17 @@ const encounterId = "enc-1";
 const patientId = "pat-1";
 const userId = "user-1";
 
+const SORTIE_EXECUTION = {
+  erDispositionExecutionV1: {
+    dischargeSortieCompletedAt: "2026-07-03T12:00:00.000Z",
+    dischargeSortieCompletedByDisplayName: "Marie Nurse",
+  },
+};
+
+const HANDOFF_TRANSFER_CONFIRMED = {
+  erHandoffV1: { reportGiven: true },
+};
+
 function baseEncounter(overrides?: Record<string, unknown>) {
   return {
     id: encounterId,
@@ -49,16 +60,6 @@ function buildUpdateMocks(encounter: Record<string, unknown>) {
     .mockResolvedValue(updatedRow);
   const auditLog = jest.fn().mockResolvedValue(undefined);
 
-  const findFirstForRole = jest.fn().mockResolvedValue({
-    userId,
-    role: { code: "RN" },
-  });
-  const userFindFirst = jest.fn().mockResolvedValue({
-    id: userId,
-    firstName: "Marie",
-    lastName: "Nurse",
-  });
-
   const prisma = {
     encounter: {
       findFirst: encounterFindFirst,
@@ -66,11 +67,11 @@ function buildUpdateMocks(encounter: Record<string, unknown>) {
       updateMany: encounterUpdateMany,
     },
     userRole: {
-      findFirst: findFirstForRole,
+      findFirst: jest.fn().mockResolvedValue({ userId, role: { code: "RN" } }),
       findMany: jest.fn().mockResolvedValue([{ role: { code: "RN" } }]),
     },
     user: {
-      findFirst: userFindFirst,
+      findFirst: jest.fn().mockResolvedValue({ id: userId, firstName: "Marie", lastName: "Nurse" }),
     },
     encounterClinicalEvent: {
       findFirst: jest.fn().mockResolvedValue(null),
@@ -83,9 +84,7 @@ function buildUpdateMocks(encounter: Record<string, unknown>) {
       findMany: jest.fn().mockResolvedValue([]),
       create: jest.fn().mockResolvedValue({}),
     },
-    $transaction: jest.fn().mockImplementation(async (fn: (tx: unknown) => unknown) => {
-      return fn(prisma);
-    }),
+    $transaction: jest.fn().mockImplementation(async (fn: (tx: unknown) => unknown) => fn(prisma)),
   };
   return { prisma, auditLog, encounterUpdateMany, encounterFindFirst };
 }
@@ -99,56 +98,29 @@ function createService(prisma: unknown, auditLog: jest.Mock, bedBoardService?: u
   );
 }
 
-describe("EncountersService — ED bed release on disposition", () => {
-  it("discharge disposition releases ED bed and marks Dirty", async () => {
-    const encounter = baseEncounter();
-    const { prisma, auditLog, encounterUpdateMany } = buildUpdateMocks(encounter);
-    const bedBoard = createMockBedBoardService();
-    bedBoard.getEffectiveBedRow.mockResolvedValue({
-      bedKey: "ED:ed-2",
-      status: "OCCUPIED",
-      display: "ED-2",
-    });
-    const svc = createService(prisma, auditLog, bedBoard);
-
-    await svc.update(
-      facilityId,
-      encounterId,
-      { dischargeSummaryJson: { dischargeMode: ED_DISCHARGE_MODE_HOME } },
-      userId
-    );
-
-    await new Promise((r) => setTimeout(r, 50));
-
-    expect(encounterUpdateMany).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: expect.objectContaining({ id: encounterId, roomLabel: "ed-2" }),
-        data: expect.objectContaining({ roomLabel: null }),
-      })
-    );
-    expect(bedBoard.updateBedStatus).toHaveBeenCalledWith(
-      facilityId,
-      "ED:ed-2",
-      { status: "DIRTY" },
-      userId
-    );
+function occupiedBedBoard() {
+  const bedBoard = createMockBedBoardService();
+  bedBoard.getEffectiveBedRow.mockResolvedValue({
+    bedKey: "ED:ed-2",
+    status: "OCCUPIED",
+    display: "ED-2",
   });
+  return bedBoard;
+}
 
-  it("transfer disposition releases ED bed and marks Dirty", async () => {
-    const encounter = baseEncounter();
-    const { prisma, auditLog, encounterUpdateMany } = buildUpdateMocks(encounter);
-    const bedBoard = createMockBedBoardService();
-    bedBoard.getEffectiveBedRow.mockResolvedValue({
-      bedKey: "ED:ed-2",
-      status: "OCCUPIED",
-      display: "ED-2",
+describe("EncountersService — ED bed release after physical departure", () => {
+  it("discharge HOME + sortie execution releases bed and marks Dirty", async () => {
+    const encounter = baseEncounter({
+      dischargeSummaryJson: { dischargeMode: ED_DISCHARGE_MODE_HOME },
     });
+    const { prisma, auditLog, encounterUpdateMany } = buildUpdateMocks(encounter);
+    const bedBoard = occupiedBedBoard();
     const svc = createService(prisma, auditLog, bedBoard);
 
     await svc.update(
       facilityId,
       encounterId,
-      { dischargeSummaryJson: { dischargeMode: ED_DISCHARGE_MODE_TRANSFER } },
+      { nursingAssessment: { ...SORTIE_EXECUTION } },
       userId
     );
     await new Promise((r) => setTimeout(r, 50));
@@ -167,21 +139,88 @@ describe("EncountersService — ED bed release on disposition", () => {
     );
   });
 
-  it("observation/admission disposition releases ED bed", async () => {
-    const encounter = baseEncounter();
-    const { prisma, auditLog, encounterUpdateMany } = buildUpdateMocks(encounter);
-    const bedBoard = createMockBedBoardService();
-    bedBoard.getEffectiveBedRow.mockResolvedValue({
-      bedKey: "ED:ed-2",
-      status: "OCCUPIED",
-      display: "ED-2",
+  it("transfer disposition + handoff confirmation releases bed", async () => {
+    const encounter = baseEncounter({
+      dischargeSummaryJson: { dischargeMode: ED_DISCHARGE_MODE_TRANSFER },
     });
+    const { prisma, auditLog } = buildUpdateMocks(encounter);
+    const bedBoard = occupiedBedBoard();
     const svc = createService(prisma, auditLog, bedBoard);
 
     await svc.update(
       facilityId,
       encounterId,
-      { dischargeSummaryJson: { dischargeMode: ED_DISCHARGE_MODE_ADMISSION } },
+      { nursingAssessment: { ...HANDOFF_TRANSFER_CONFIRMED } },
+      userId
+    );
+    await new Promise((r) => setTimeout(r, 50));
+
+    expect(bedBoard.updateBedStatus).toHaveBeenCalledWith(
+      facilityId,
+      "ED:ed-2",
+      { status: "DIRTY" },
+      userId
+    );
+  });
+
+  it("admission disposition + handoff confirmation releases bed", async () => {
+    const encounter = baseEncounter({
+      dischargeSummaryJson: { dischargeMode: ED_DISCHARGE_MODE_ADMISSION },
+    });
+    const { prisma, auditLog } = buildUpdateMocks(encounter);
+    const bedBoard = occupiedBedBoard();
+    const svc = createService(prisma, auditLog, bedBoard);
+
+    await svc.update(
+      facilityId,
+      encounterId,
+      { nursingAssessment: { ...HANDOFF_TRANSFER_CONFIRMED } },
+      userId
+    );
+    await new Promise((r) => setTimeout(r, 50));
+
+    expect(bedBoard.updateBedStatus).toHaveBeenCalledWith(
+      facilityId,
+      "ED:ed-2",
+      { status: "DIRTY" },
+      userId
+    );
+  });
+
+  it("deceased disposition releases bed immediately", async () => {
+    const encounter = baseEncounter();
+    const { prisma, auditLog } = buildUpdateMocks(encounter);
+    const bedBoard = occupiedBedBoard();
+    const svc = createService(prisma, auditLog, bedBoard);
+
+    await svc.update(
+      facilityId,
+      encounterId,
+      { dischargeSummaryJson: { dischargeMode: ED_DISCHARGE_MODE_DECEASED } },
+      userId
+    );
+    await new Promise((r) => setTimeout(r, 50));
+
+    expect(bedBoard.updateBedStatus).toHaveBeenCalledWith(
+      facilityId,
+      "ED:ed-2",
+      { status: "DIRTY" },
+      userId
+    );
+  });
+
+  it("AMA disposition + sortie execution releases bed", async () => {
+    const encounter = baseEncounter({
+      dischargeSummaryJson: { dischargeMode: ED_DISCHARGE_MODE_AMA },
+    });
+    const { prisma, auditLog } = buildUpdateMocks(encounter);
+    const bedBoard = occupiedBedBoard();
+    const svc = createService(prisma, auditLog, bedBoard);
+
+    await svc.update(
+      facilityId,
+      encounterId,
+      { nursingAssessment: { ...SORTIE_EXECUTION } },
       userId
     );
     await new Promise((r) => setTimeout(r, 50));
@@ -195,8 +234,10 @@ describe("EncountersService — ED bed release on disposition", () => {
   });
 
   it("bed is not double-released if already Dirty", async () => {
-    const encounter = baseEncounter();
-    const { prisma, auditLog, encounterUpdateMany } = buildUpdateMocks(encounter);
+    const encounter = baseEncounter({
+      dischargeSummaryJson: { dischargeMode: ED_DISCHARGE_MODE_DECEASED },
+    });
+    const { prisma, auditLog } = buildUpdateMocks(encounter);
     const bedBoard = createMockBedBoardService();
     bedBoard.getEffectiveBedRow.mockResolvedValue({
       bedKey: "ED:ed-2",
@@ -208,7 +249,7 @@ describe("EncountersService — ED bed release on disposition", () => {
     await svc.update(
       facilityId,
       encounterId,
-      { dischargeSummaryJson: { dischargeMode: ED_DISCHARGE_MODE_HOME } },
+      { dischargeSummaryJson: { dischargeMode: ED_DISCHARGE_MODE_DECEASED } },
       userId
     );
     await new Promise((r) => setTimeout(r, 50));
@@ -240,90 +281,9 @@ describe("EncountersService — ED bed release on disposition", () => {
     expect(bedBoard.updateBedStatus).not.toHaveBeenCalled();
   });
 
-  it("AMA disposition releases bed", async () => {
-    const encounter = baseEncounter();
-    const { prisma, auditLog, encounterUpdateMany } = buildUpdateMocks(encounter);
-    const bedBoard = createMockBedBoardService();
-    bedBoard.getEffectiveBedRow.mockResolvedValue({
-      bedKey: "ED:ed-2",
-      status: "OCCUPIED",
-      display: "ED-2",
-    });
-    const svc = createService(prisma, auditLog, bedBoard);
-
-    await svc.update(
-      facilityId,
-      encounterId,
-      { dischargeSummaryJson: { dischargeMode: ED_DISCHARGE_MODE_AMA } },
-      userId
-    );
-    await new Promise((r) => setTimeout(r, 50));
-
-    expect(bedBoard.updateBedStatus).toHaveBeenCalledWith(
-      facilityId,
-      "ED:ed-2",
-      { status: "DIRTY" },
-      userId
-    );
-  });
-
-  it("deceased disposition releases bed", async () => {
+  it("disposition without nursing execution does not release bed", async () => {
     const encounter = baseEncounter();
     const { prisma, auditLog } = buildUpdateMocks(encounter);
-    const bedBoard = createMockBedBoardService();
-    bedBoard.getEffectiveBedRow.mockResolvedValue({
-      bedKey: "ED:ed-2",
-      status: "OCCUPIED",
-      display: "ED-2",
-    });
-    const svc = createService(prisma, auditLog, bedBoard);
-
-    await svc.update(
-      facilityId,
-      encounterId,
-      { dischargeSummaryJson: { dischargeMode: ED_DISCHARGE_MODE_DECEASED } },
-      userId
-    );
-    await new Promise((r) => setTimeout(r, 50));
-
-    expect(bedBoard.updateBedStatus).toHaveBeenCalledWith(
-      facilityId,
-      "ED:ed-2",
-      { status: "DIRTY" },
-      userId
-    );
-  });
-
-  it("LWBS/other disposition releases bed", async () => {
-    const encounter = baseEncounter();
-    const { prisma, auditLog } = buildUpdateMocks(encounter);
-    const bedBoard = createMockBedBoardService();
-    bedBoard.getEffectiveBedRow.mockResolvedValue({
-      bedKey: "ED:ed-2",
-      status: "OCCUPIED",
-      display: "ED-2",
-    });
-    const svc = createService(prisma, auditLog, bedBoard);
-
-    await svc.update(
-      facilityId,
-      encounterId,
-      { dischargeSummaryJson: { dischargeMode: ED_DISCHARGE_MODE_OTHER } },
-      userId
-    );
-    await new Promise((r) => setTimeout(r, 50));
-
-    expect(bedBoard.updateBedStatus).toHaveBeenCalledWith(
-      facilityId,
-      "ED:ed-2",
-      { status: "DIRTY" },
-      userId
-    );
-  });
-
-  it("encounter without room does not attempt bed release", async () => {
-    const encounter = baseEncounter({ roomLabel: null });
-    const { prisma, auditLog, encounterUpdateMany } = buildUpdateMocks(encounter);
     const bedBoard = createMockBedBoardService();
     const svc = createService(prisma, auditLog, bedBoard);
 
@@ -331,6 +291,26 @@ describe("EncountersService — ED bed release on disposition", () => {
       facilityId,
       encounterId,
       { dischargeSummaryJson: { dischargeMode: ED_DISCHARGE_MODE_HOME } },
+      userId
+    );
+    await new Promise((r) => setTimeout(r, 50));
+
+    expect(bedBoard.updateBedStatus).not.toHaveBeenCalled();
+  });
+
+  it("encounter without room does not attempt bed release", async () => {
+    const encounter = baseEncounter({ roomLabel: null });
+    const { prisma, auditLog } = buildUpdateMocks(encounter);
+    const bedBoard = createMockBedBoardService();
+    const svc = createService(prisma, auditLog, bedBoard);
+
+    await svc.update(
+      facilityId,
+      encounterId,
+      {
+        dischargeSummaryJson: { dischargeMode: ED_DISCHARGE_MODE_HOME },
+        nursingAssessment: { ...SORTIE_EXECUTION },
+      },
       userId
     );
     await new Promise((r) => setTimeout(r, 50));

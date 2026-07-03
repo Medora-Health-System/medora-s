@@ -17,6 +17,7 @@ import {
   enrichComposedBedBoardRow,
   findComposedBedBoardRow,
   formatCanonicalBedDisplay,
+  isEdPhysicalDepartureCompleted,
   isManualBedOperationalStatusWritable,
   manualStatusBlockedByOccupancy,
   normalizeBedBoardUnitFilter,
@@ -283,23 +284,34 @@ export class FacilityBedBoardService {
         workflowState: true,
         disposition: true,
         admissionSummaryJson: true,
+        dischargeSummaryJson: true,
+        nursingAssessment: true,
         patient: { select: { firstName: true, lastName: true, mrn: true } },
       },
     });
 
-    return rows.map((row) => ({
-      id: row.id,
-      facilityId: row.facilityId,
-      roomLabel: row.roomLabel,
-      status: row.status,
-      type: row.type,
-      workflowState: row.workflowState,
-      disposition: row.disposition,
-      admissionSummaryJson: row.admissionSummaryJson,
-      patientFirstName: row.patient?.firstName ?? null,
-      patientLastName: row.patient?.lastName ?? null,
-      patientMrn: row.patient?.mrn ?? null,
-    }));
+    return rows
+      .filter((row) => {
+        if (row.type !== "EMERGENCY") return true;
+        return !isEdPhysicalDepartureCompleted({
+          dischargeSummaryJson: row.dischargeSummaryJson,
+          admissionSummaryJson: row.admissionSummaryJson,
+          nursingAssessment: row.nursingAssessment,
+        });
+      })
+      .map((row) => ({
+        id: row.id,
+        facilityId: row.facilityId,
+        roomLabel: row.roomLabel,
+        status: row.status,
+        type: row.type,
+        workflowState: row.workflowState,
+        disposition: row.disposition,
+        admissionSummaryJson: row.admissionSummaryJson,
+        patientFirstName: row.patient?.firstName ?? null,
+        patientLastName: row.patient?.lastName ?? null,
+        patientMrn: row.patient?.mrn ?? null,
+      }));
   }
 
   buildBedKeyForAssignment(unit: EncounterBedUnitCode, room: string): string {

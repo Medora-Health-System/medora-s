@@ -105,12 +105,7 @@ import {
   type ProcedureDocumentationRole,
   type ObservationReassessmentV1Body,
   dischargeSnapshotIsObservationAdmissionRoutingOnly,
-  ED_DISCHARGE_MODE_HOME,
-  ED_DISCHARGE_MODE_TRANSFER,
-  ED_DISCHARGE_MODE_ADMISSION,
-  ED_DISCHARGE_MODE_AMA,
-  ED_DISCHARGE_MODE_DECEASED,
-  ED_DISCHARGE_MODE_OTHER,
+  isEdPhysicalDepartureCompleted,
   legacyErNotesV1DisplayEntries,
   mapEncounterNoteForLegalChart,
   mapClinicalDocumentationEntryForLegalChart,
@@ -1715,14 +1710,32 @@ export class EncountersService {
       });
     }
 
-    if (dischargeChanged && encounter.roomLabel) {
-      void this.releaseEdBedOnDisposition(
-        facilityId,
-        encounter.id,
-        encounter.roomLabel,
-        data.dischargeSummaryJson,
-        userId
-      );
+    if (encounter.roomLabel && encounter.type === "EMERGENCY") {
+      const effectiveDischargeSummary =
+        data.dischargeSummaryJson !== undefined
+          ? data.dischargeSummaryJson
+          : encounter.dischargeSummaryJson;
+      const effectiveAdmission =
+        data.admissionSummaryJson !== undefined
+          ? data.admissionSummaryJson
+          : encounter.admissionSummaryJson;
+      const effectiveNursingAssessment =
+        data.nursingAssessment !== undefined
+          ? data.nursingAssessment
+          : encounter.nursingAssessment;
+      const physicallyDeparted = isEdPhysicalDepartureCompleted({
+        dischargeSummaryJson: effectiveDischargeSummary,
+        admissionSummaryJson: effectiveAdmission,
+        nursingAssessment: effectiveNursingAssessment,
+      });
+      if (physicallyDeparted) {
+        void this.releaseEdBedAfterDeparture(
+          facilityId,
+          encounter.id,
+          encounter.roomLabel,
+          userId
+        );
+      }
     }
 
     return toEncounterClinicResponse(updated);
@@ -3896,6 +3909,7 @@ export class EncountersService {
       status: "CLOSED",
       workflowState: EncounterWorkflowState.CLOSED,
       dischargedAt: new Date(),
+      roomLabel: null,
     };
     const mergedDischarge = mergeDischargeSummaryJson(encounter.dischargeSummaryJson, data?.discharge);
     if (mergedDischarge) {
@@ -4051,6 +4065,11 @@ export class EncountersService {
       documentationGapOverride: docCheck.hasDeficiencies && data?.acknowledgeDeficiencies === true,
       dispositionSafetyOverride: !safetyReadiness.canClose && data?.acknowledgeDispositionSafety === true,
     });
+
+    if (encounter.roomLabel) {
+      void this.markBedDirtyOnRelease(facilityId, encounter.roomLabel, userId);
+    }
+
     return toEncounterClinicResponse(updated);
   }
 
@@ -4454,65 +4473,34 @@ export class EncountersService {
   }
 
   /**
-   * Non-fatal bed release: when a definitive ED disposition is recorded and the encounter
-   * still has a room, clear the room assignment and write a DIRTY overlay. Runs fire-and-forget
-   * so the disposition save is never blocked by bed-board issues.
+   * Non-fatal bed release: when physical departure is confirmed (nursing sortie execution,
+   * inpatient transfer handoff, or definitive disposition), clear room assignment and write
+   * a DIRTY overlay. Runs fire-and-forget so the clinical save is never blocked.
    */
-  private async releaseEdBedOnDisposition(
+  private async releaseEdBedAfterDeparture(
     facilityId: string,
     encounterId: string,
     roomLabel: string,
-    dischargeSummaryJson: unknown,
     userId?: string
   ): Promise<void> {
     try {
-      const dischargeMode = this.extractDischargeModeFromJson(dischargeSummaryJson);
-      if (!dischargeMode) return;
-      const definitiveDispositionModes = [
-        ED_DISCHARGE_MODE_HOME,
-        ED_DISCHARGE_MODE_TRANSFER,
-        ED_DISCHARGE_MODE_ADMISSION,
-        ED_DISCHARGE_MODE_AMA,
-        ED_DISCHARGE_MODE_DECEASED,
-        ED_DISCHARGE_MODE_OTHER,
-      ];
-      if (!definitiveDispositionModes.includes(dischargeMode)) return;
-
-      if (isEdWaitingRoomLabel(roomLabel)) {
-        await this.prisma.encounter.updateMany({
-          where: { id: encounterId, facilityId, roomLabel },
-          data: { roomLabel: null },
-        });
-        return;
-      }
-
       await this.prisma.encounter.updateMany({
         where: { id: encounterId, facilityId, roomLabel },
         data: { roomLabel: null },
       });
 
-      const bedUnit = normalizeBedUnitCode("ED");
-      if (bedUnit) {
-        const bedKey = this.bedBoardService.buildBedKeyForAssignment(bedUnit, roomLabel);
-        const currentRow = await this.bedBoardService.getEffectiveBedRow(facilityId, bedKey);
-        if (currentRow && currentRow.status !== "DIRTY" && currentRow.status !== "CLEANING") {
-          await this.bedBoardService.updateBedStatus(
-            facilityId,
-            bedKey,
-            { status: "DIRTY" },
-            userId
-          );
-        }
+      if (!isEdWaitingRoomLabel(roomLabel)) {
+        await this.markBedDirtyOnRelease(facilityId, roomLabel, userId);
       }
-      logInfo("ed_bed_released_on_disposition", {
+
+      logInfo("ed_bed_released_on_departure", {
         encounterId,
         facilityId,
         roomLabel,
-        dischargeMode,
-        action: "bed.release.disposition",
+        action: "bed.release.departure",
       });
     } catch (err) {
-      logError("ed_bed_release_disposition_failed", {
+      logError("ed_bed_release_departure_failed", {
         encounterId,
         facilityId,
         roomLabel,
@@ -4521,12 +4509,31 @@ export class EncountersService {
     }
   }
 
-  private extractDischargeModeFromJson(dischargeSummaryJson: unknown): string | null {
-    if (!dischargeSummaryJson || typeof dischargeSummaryJson !== "object" || Array.isArray(dischargeSummaryJson)) {
-      return null;
+  private async markBedDirtyOnRelease(
+    facilityId: string,
+    roomLabel: string,
+    userId?: string
+  ): Promise<void> {
+    try {
+      const bedUnit = normalizeBedUnitCode("ED");
+      if (!bedUnit) return;
+      const bedKey = this.bedBoardService.buildBedKeyForAssignment(bedUnit, roomLabel);
+      const currentRow = await this.bedBoardService.getEffectiveBedRow(facilityId, bedKey);
+      if (currentRow && currentRow.status !== "DIRTY" && currentRow.status !== "CLEANING") {
+        await this.bedBoardService.updateBedStatus(
+          facilityId,
+          bedKey,
+          { status: "DIRTY" },
+          userId
+        );
+      }
+    } catch (err) {
+      logError("ed_bed_dirty_mark_failed", {
+        facilityId,
+        roomLabel,
+        errorName: err instanceof Error ? err.name : typeof err,
+      });
     }
-    const mode = (dischargeSummaryJson as Record<string, unknown>).dischargeMode;
-    return typeof mode === "string" ? mode.trim() : null;
   }
 }
 
