@@ -1,6 +1,5 @@
 import {
   Controller,
-  Delete,
   Get,
   Post,
   Patch,
@@ -9,16 +8,10 @@ import {
   Body,
   Query,
   Req,
-  Res,
   UseGuards,
-  UseInterceptors,
-  UploadedFile,
   BadRequestException,
 } from "@nestjs/common";
 import { AuthGuard } from "@nestjs/passport";
-import { FileInterceptor } from "@nestjs/platform-express";
-import { memoryStorage } from "multer";
-import type { Response } from "express";
 import {
   RolesGuard,
   RequireClinicalOrMspp,
@@ -27,7 +20,6 @@ import {
 } from "../common/guards/roles.guard";
 import { PatientsService } from "./patients.service";
 import { PatientInsuranceService } from "./patient-insurance.service";
-import { PatientDocumentsService } from "./patient-documents.service";
 import { PatientClinicalHistoryService } from "./patient-clinical-history.service";
 import { ChartSummaryService } from "./chart-summary.service";
 import { PatientVitalsService } from "./patient-vitals.service";
@@ -57,7 +49,6 @@ export class PatientsController {
     private readonly encountersService: EncountersService,
     private readonly publicHealthService: PublicHealthService,
     private readonly diagnosesService: DiagnosesService,
-    private readonly patientDocumentsService: PatientDocumentsService,
   ) {}
 
   @Get("search")
@@ -384,82 +375,5 @@ export class PatientsController {
     );
   }
 
-  /* ── Patient Documents (My Media) ─────────────────────────── */
-
-  @Get(":id/documents")
-  @RequireRoles(
-    RoleCode.RN,
-    RoleCode.PROVIDER,
-    RoleCode.ADMIN,
-    RoleCode.FRONT_DESK,
-    RoleCode.BILLING
-  )
-  async listDocuments(@Param("id") id: string, @Req() req: any) {
-    const facilityId = req.user?.facilityId || req.headers["x-facility-id"];
-    if (!facilityId) throw new BadRequestException("Établissement requis");
-    return this.patientDocumentsService.list(id, facilityId);
-  }
-
-  @Post(":id/documents")
-  @RequireRoles(
-    RoleCode.RN,
-    RoleCode.PROVIDER,
-    RoleCode.ADMIN,
-    RoleCode.FRONT_DESK,
-    RoleCode.BILLING
-  )
-  @UseInterceptors(FileInterceptor("file", { storage: memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } }))
-  async uploadDocument(
-    @Param("id") id: string,
-    @Body() body: { documentType?: string; notes?: string },
-    @UploadedFile() file: Express.Multer.File | undefined,
-    @Req() req: any,
-  ) {
-    const facilityId = req.user?.facilityId || req.headers["x-facility-id"];
-    if (!facilityId) throw new BadRequestException("Établissement requis");
-    if (!file) throw new BadRequestException("File is required");
-    if (!body.documentType) throw new BadRequestException("documentType is required");
-    return this.patientDocumentsService.upload(
-      id,
-      facilityId,
-      req.user?.userId,
-      body.documentType,
-      file,
-      body.notes,
-    );
-  }
-
-  @Get("documents/:docId/download")
-  @RequireRoles(
-    RoleCode.RN,
-    RoleCode.PROVIDER,
-    RoleCode.ADMIN,
-    RoleCode.FRONT_DESK,
-    RoleCode.BILLING
-  )
-  async downloadDocument(
-    @Param("docId") docId: string,
-    @Req() req: any,
-    @Res() res: Response,
-  ) {
-    const facilityId = req.user?.facilityId || req.headers["x-facility-id"];
-    if (!facilityId) throw new BadRequestException("Établissement requis");
-    const { storagePath, fileName, mimeType } =
-      await this.patientDocumentsService.getFilePath(docId, facilityId);
-    res.setHeader("Content-Disposition", `attachment; filename="${encodeURIComponent(fileName)}"`);
-    if (mimeType) res.setHeader("Content-Type", mimeType);
-    res.sendFile(storagePath);
-  }
-
-  @Delete(":id/documents/:docId")
-  @RequireRoles(RoleCode.ADMIN, RoleCode.FRONT_DESK)
-  async deleteDocument(
-    @Param("docId") docId: string,
-    @Req() req: any,
-  ) {
-    const facilityId = req.user?.facilityId || req.headers["x-facility-id"];
-    if (!facilityId) throw new BadRequestException("Établissement requis");
-    return this.patientDocumentsService.remove(docId, facilityId);
-  }
 }
 

@@ -10,4 +10,3 @@ export {
   PatientPrimaryInsurancePanel,
   PatientSecondaryInsurancePanel,
 } from "./PatientInsuranceCoveragePanel";
-export { PatientMyMediaSection } from "./PatientMyMediaSection";

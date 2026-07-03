@@ -3,7 +3,6 @@ import { PatientsController } from "./patients.controller";
 import { BreakGlassController } from "./break-glass.controller";
 import { PatientsService } from "./patients.service";
 import { PatientInsuranceService } from "./patient-insurance.service";
-import { PatientDocumentsService } from "./patient-documents.service";
 import { BreakGlassService } from "./break-glass.service";
 import { ChartSummaryService } from "./chart-summary.service";
 import { PatientVitalsService } from "./patient-vitals.service";
@@ -23,7 +22,6 @@ import { TrackboardModule } from "../trackboard/trackboard.module";
   providers: [
     PatientsService,
     PatientInsuranceService,
-    PatientDocumentsService,
     BreakGlassService,
     ChartSummaryService,
     PatientVitalsService,
