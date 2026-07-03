@@ -196,7 +196,8 @@ describe("summaryLayoutEnterprise (Phase 4)", () => {
     const layout = buildEnterpriseClinicalChartLayout(buildRichRecord());
     const dup = validateEnterpriseLayoutNoDuplicates(layout);
     expect(dup.nursingAssessmentCount).toBe(1);
-    expect(layout.nursingAssessmentHistory).toHaveLength(1);
+    expect(layout.nursingAssessmentHistory).toHaveLength(2);
+    expect(layout.nursingAssessmentHistory.map((e) => e.id)).toEqual(["reassess-1", "nurse-initial"]);
   });
 
   it("deduplicates orders and groups by category", () => {

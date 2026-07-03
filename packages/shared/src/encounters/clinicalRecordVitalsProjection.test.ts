@@ -15,10 +15,14 @@ describe("clinicalRecordVitalsProjection", () => {
       spo2: 98,
       tempC: 37.1,
       painScore: 3,
+      weightKg: 72,
+      heightCm: 175,
     });
     expect(columns.bloodPressure).toBe("120/80");
     expect(columns.heartRate).toBe("88");
     expect(columns.pain).toBe("3");
+    expect(columns.weight).toBe("72");
+    expect(columns.height).toBe("175");
   });
 
   it("projects triage vitals with attribution and pain", () => {
@@ -58,6 +62,8 @@ describe("clinicalRecordVitalsProjection", () => {
         respiratoryRate: null,
         spo2: null,
         temperatureCelsius: null,
+        weight: null,
+        height: null,
         pain: null,
         documentedBy: { name: "RN", role: null, at: "2026-07-02T18:00:00.000Z", initials: null },
       },
@@ -71,6 +77,8 @@ describe("clinicalRecordVitalsProjection", () => {
         respiratoryRate: null,
         spo2: null,
         temperatureCelsius: null,
+        weight: null,
+        height: null,
         pain: null,
         documentedBy: { name: "RN", role: null, at: "2026-07-02T18:00:00.000Z", initials: null },
       },

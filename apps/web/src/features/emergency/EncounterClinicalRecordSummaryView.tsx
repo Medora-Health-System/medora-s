@@ -140,6 +140,10 @@ const TRIAGE_FIELD_I18N: Record<EnterpriseTriageFieldKey, string> = {
   isolation: "encounterClinicalRecordSummary.triageIsolation",
   fallRisk: "encounterClinicalRecordSummary.triageFallRisk",
   acuityAlerts: "encounterClinicalRecordSummary.triageAcuityAlerts",
+  airway: "encounterClinicalRecordSummary.triageAirway",
+  breathing: "encounterClinicalRecordSummary.triageBreathing",
+  circulation: "encounterClinicalRecordSummary.triageCirculation",
+  gcs: "encounterClinicalRecordSummary.triageGcs",
 };
 
 const TRIAGE_FIELD_ORDER: EnterpriseTriageFieldKey[] = [
@@ -149,12 +153,22 @@ const TRIAGE_FIELD_ORDER: EnterpriseTriageFieldKey[] = [
   "chiefComplaint",
   "narrative",
   "pain",
+  "airway",
+  "breathing",
+  "circulation",
+  "gcs",
   "allergies",
   "isolation",
   "fallRisk",
   "acuityAlerts",
   "vitalSigns",
 ];
+
+const SIGNATURE_DOMAIN_I18N: Record<string, string> = {
+  provider_documentation: "encounterClinicalRecordSummary.signatureDomainProvider",
+  nursing_assessment: "encounterClinicalRecordSummary.signatureDomainNursing",
+  disposition: "encounterClinicalRecordSummary.signatureDomainDisposition",
+};
 
 function formatVitalCell(value: string | null): string {
   return value?.trim() || "—";
@@ -324,7 +338,8 @@ export function EncounterClinicalRecordSummaryView({
   const hasDiagnoses =
     layout.groupedDiagnoses.primary.length > 0 ||
     layout.groupedDiagnoses.secondary.length > 0 ||
-    layout.groupedDiagnoses.chronic.length > 0;
+    layout.groupedDiagnoses.chronic.length > 0 ||
+    layout.groupedDiagnoses.resolved.length > 0;
 
   const overviewHasContent = Boolean(
     layout.overview.patientDisplayName ||
@@ -515,6 +530,8 @@ export function EncounterClinicalRecordSummaryView({
                   <th style={thStyle}>{t("encounterClinicalRecordSummary.vitalsColRr")}</th>
                   <th style={thStyle}>{t("encounterClinicalRecordSummary.vitalsColSpo2")}</th>
                   <th style={thStyle}>{t("encounterClinicalRecordSummary.vitalsColTemp")}</th>
+                  <th style={thStyle}>{t("encounterClinicalRecordSummary.vitalsColWeight")}</th>
+                  <th style={thStyle}>{t("encounterClinicalRecordSummary.vitalsColHeight")}</th>
                   <th style={thStyle}>{t("encounterClinicalRecordSummary.vitalsColPain")}</th>
                   <th style={thStyle}>{t("encounterClinicalRecordSummary.vitalsColDocumentedBy")}</th>
                 </tr>
@@ -528,6 +545,8 @@ export function EncounterClinicalRecordSummaryView({
                     <td style={tdStyle}>{formatVitalCell(row.respiratoryRate)}</td>
                     <td style={tdStyle}>{formatVitalCell(row.spo2)}</td>
                     <td style={tdStyle}>{formatVitalTemp(row.temperatureCelsius, language)}</td>
+                    <td style={tdStyle}>{formatVitalCell(row.weight)}</td>
+                    <td style={tdStyle}>{formatVitalCell(row.height)}</td>
                     <td style={tdStyle}>{formatVitalCell(row.pain)}</td>
                     <td style={tdStyle}>
                       <AttributionLine
@@ -1013,6 +1032,24 @@ export function EncounterClinicalRecordSummaryView({
                 </ul>
               </div>
             ) : null}
+            {layout.groupedDiagnoses.resolved.length > 0 ? (
+              <div>
+                <p style={{ ...sectionTitle, marginBottom: 4 }}>
+                  {t("encounterClinicalRecordSummary.diagnosesResolvedTitle")}
+                </p>
+                <ul style={{ margin: 0, paddingLeft: 18 }}>
+                  {layout.groupedDiagnoses.resolved.map((dx) => (
+                    <li key={dx.id} style={lineStyle}>
+                      {dx.displayLabel}
+                      {dx.code ? ` (${dx.code})` : ""}
+                      <AttributionLine
+                        text={formatClinicalRecordAttributionPart("documentedBy", dx.documentedBy, t, language)}
+                      />
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
           </div>
         ) : null}
       </SummarySectionCard>
@@ -1125,7 +1162,9 @@ export function EncounterClinicalRecordSummaryView({
                 {layout.signatures.map((sig, i) => (
                   <tr key={`${sig.domain}-${i}`}>
                     <td style={tdStyle}>
-                      {sig.domain}
+                      {SIGNATURE_DOMAIN_I18N[sig.domain]
+                        ? t(SIGNATURE_DOMAIN_I18N[sig.domain])
+                        : sig.domain}
                       {sig.meaning ? ` — ${sig.meaning}` : ""}
                     </td>
                     <td style={tdStyle}>

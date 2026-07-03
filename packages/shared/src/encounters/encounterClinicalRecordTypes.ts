@@ -42,6 +42,8 @@ export type EncounterClinicalRecordVitalPoint = {
   respiratoryRate: string | null;
   spo2: string | null;
   temperatureCelsius: string | null;
+  weight: string | null;
+  height: string | null;
   pain: string | null;
   documentedBy: ClinicalRecordAttribution;
 };
@@ -57,7 +59,11 @@ export type EncounterClinicalRecordTriageFieldKey =
   | "allergies"
   | "isolation"
   | "fallRisk"
-  | "acuityAlerts";
+  | "acuityAlerts"
+  | "airway"
+  | "breathing"
+  | "circulation"
+  | "gcs";
 
 export type EncounterClinicalRecordProviderAssessment = {
   status: EncounterClinicalRecordProviderStatus;
@@ -181,6 +187,7 @@ export type EncounterClinicalRecordDiagnosis = {
   code: string | null;
   displayLabel: string;
   diagnosisType: string | null;
+  status: string | null;
   isPrimary: boolean;
   documentedAt: string | null;
   documentedByDisplayName: string | null;
@@ -305,6 +312,7 @@ export type BuildEncounterClinicalRecordInput = {
       displayLabel?: string | null;
       label?: string | null;
       diagnosisType?: string | null;
+      status?: string | null;
       isPrimary?: boolean;
       documentedAt?: string | null;
       createdAt?: string | null;

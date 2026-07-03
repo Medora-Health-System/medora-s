@@ -368,6 +368,8 @@ function buildVitals(input: BuildEncounterClinicalRecordInput): EncounterClinica
       respiratoryRate: row.respiratoryRate,
       spo2: row.spo2,
       temperatureCelsius: row.temperatureCelsius,
+      weight: row.weight,
+      height: row.height,
       pain: row.pain,
       documentedBy: row.documentedBy,
     }));
@@ -421,8 +423,31 @@ function pushClinicalMilestone(
   out.push(entry);
 }
 
+function defaultMilestoneSummary(
+  milestone: EncounterClinicalRecordClinicalTimelineEntry["milestone"],
+  locale: EncounterClinicalRecordLocale
+): string {
+  const labels: Record<
+    EncounterClinicalRecordClinicalTimelineEntry["milestone"],
+    { en: string; fr: string }
+  > = {
+    ARRIVAL: { en: "Arrival", fr: "Arrivée" },
+    TRIAGE_COMPLETE: { en: "Triage complete", fr: "Triage terminé" },
+    PROVIDER_ASSESSMENT_SIGNED: { en: "Provider assessment signed", fr: "Évaluation médicale signée" },
+    LABORATORY_COLLECTED: { en: "Laboratory collected", fr: "Prélèvement laboratoire" },
+    LABORATORY_RESULTED: { en: "Laboratory resulted", fr: "Résultat laboratoire" },
+    IMAGING_RESULTED: { en: "Imaging resulted", fr: "Résultat imagerie" },
+    MEDICATION_ADMINISTERED: { en: "Medication administered", fr: "Médicament administré" },
+    PROCEDURE_COMPLETED: { en: "Procedure completed", fr: "Procédure réalisée" },
+    DISPOSITION: { en: "Disposition documented", fr: "Disposition documentée" },
+    DISCHARGED: { en: "Encounter closed", fr: "Consultation clôturée" },
+  };
+  return labels[milestone][locale];
+}
+
 function buildClinicalTimeline(input: BuildEncounterClinicalRecordInput): EncounterClinicalRecordClinicalTimelineEntry[] {
   const enc = input.encounter;
+  const locale = input.locale ?? "fr";
   const candidates: EncounterClinicalRecordClinicalTimelineEntry[] = [];
 
   if (enc.createdAt) {
@@ -432,7 +457,7 @@ function buildClinicalTimeline(input: BuildEncounterClinicalRecordInput): Encoun
       timestampIso: enc.createdAt,
       actorDisplayName: null,
       actorRoleTitle: null,
-      summary: "Arrival",
+      summary: defaultMilestoneSummary("ARRIVAL", locale),
       sourceType: "ENCOUNTER",
       sourceId: enc.id,
     });
@@ -446,7 +471,7 @@ function buildClinicalTimeline(input: BuildEncounterClinicalRecordInput): Encoun
       timestampIso: triageCompleteAt,
       actorDisplayName: null,
       actorRoleTitle: null,
-      summary: "Triage complete",
+      summary: defaultMilestoneSummary("TRIAGE_COMPLETE", locale),
       sourceType: "TRIAGE",
       sourceId: "triage-complete",
     });
@@ -460,13 +485,13 @@ function buildClinicalTimeline(input: BuildEncounterClinicalRecordInput): Encoun
       timestampIso: provider.signedAt,
       actorDisplayName: provider.signedByDisplayName,
       actorRoleTitle: provider.performerRoleTitle,
-      summary: "Provider assessment signed",
+      summary: defaultMilestoneSummary("PROVIDER_ASSESSMENT_SIGNED", locale),
       sourceType: "PROVIDER_DOCUMENTATION",
       sourceId: "provider-signed",
     });
   }
 
-  for (const lab of buildLaboratoryResults(input, "en")) {
+  for (const lab of buildLaboratoryResults(input, locale)) {
     pushClinicalMilestone(candidates, {
       id: `lab-result:${lab.orderItemId}`,
       milestone: "LABORATORY_RESULTED",
@@ -525,7 +550,7 @@ function buildClinicalTimeline(input: BuildEncounterClinicalRecordInput): Encoun
       timestampIso: input.disposition.dispositionAt,
       actorDisplayName: null,
       actorRoleTitle: null,
-      summary: "Disposition recorded",
+      summary: defaultMilestoneSummary("DISPOSITION", locale),
       sourceType: "DISPOSITION",
       sourceId: "disposition",
     });
@@ -538,7 +563,7 @@ function buildClinicalTimeline(input: BuildEncounterClinicalRecordInput): Encoun
       timestampIso: enc.closedAt,
       actorDisplayName: null,
       actorRoleTitle: null,
-      summary: "Encounter closed",
+      summary: defaultMilestoneSummary("DISCHARGED", locale),
       sourceType: "ENCOUNTER",
       sourceId: `${enc.id}:closed`,
     });
@@ -581,6 +606,7 @@ function buildDiagnoses(input: BuildEncounterClinicalRecordInput) {
         code: asTrimmed(dx.code),
         displayLabel,
         diagnosisType: asTrimmed(dx.diagnosisType),
+        status: asTrimmed(dx.status),
         isPrimary: Boolean(dx.isPrimary),
         documentedAt: asTrimmed(dx.documentedAt) ?? asTrimmed(dx.createdAt),
         documentedByDisplayName: asTrimmed(dx.documentedByDisplayName),

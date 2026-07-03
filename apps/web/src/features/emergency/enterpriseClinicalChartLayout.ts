@@ -50,7 +50,11 @@ export type EnterpriseTriageFieldKey =
   | "allergies"
   | "isolation"
   | "fallRisk"
-  | "acuityAlerts";
+  | "acuityAlerts"
+  | "airway"
+  | "breathing"
+  | "circulation"
+  | "gcs";
 
 export type EnterpriseTriageSummary = Partial<Record<EnterpriseTriageFieldKey, string>>;
 
@@ -72,6 +76,7 @@ export type EnterpriseGroupedDiagnoses = {
   primary: EncounterClinicalRecordDiagnosis[];
   secondary: EncounterClinicalRecordDiagnosis[];
   chronic: EncounterClinicalRecordDiagnosis[];
+  resolved: EncounterClinicalRecordDiagnosis[];
 };
 
 export type EnterpriseClinicalChartLayout = {
@@ -161,8 +166,12 @@ const TRIAGE_LINE_PATTERNS: Array<{ key: EnterpriseTriageFieldKey; patterns: Reg
   },
   {
     key: "acuityAlerts",
-    patterns: [/alerte/i, /alert/i, /sepsis/i, /stroke/i, /avc/i],
+    patterns: [/alerte/i, /alert/i, /sepsis/i, /stroke/i, /avc/i, /trauma/i],
   },
+  { key: "airway", patterns: [/voie aérienne/i, /airway/i] },
+  { key: "breathing", patterns: [/ventilation/i, /breathing/i, /respiration/i] },
+  { key: "circulation", patterns: [/circulation/i] },
+  { key: "gcs", patterns: [/gcs/i, /glasgow/i] },
 ];
 
 function asTrimmed(value: string | null | undefined): string | null {
@@ -328,8 +337,14 @@ export function groupDiagnoses(
   const primary: EncounterClinicalRecordDiagnosis[] = [];
   const secondary: EncounterClinicalRecordDiagnosis[] = [];
   const chronic: EncounterClinicalRecordDiagnosis[] = [];
+  const resolved: EncounterClinicalRecordDiagnosis[] = [];
 
   for (const dx of deduped) {
+    const status = (dx.status ?? "").toUpperCase();
+    if (status === "RESOLVED") {
+      resolved.push(dx);
+      continue;
+    }
     const type = (dx.diagnosisType ?? "").toUpperCase();
     if (type.includes("CHRONIC") || type.includes("PROBLEM")) {
       chronic.push(dx);
@@ -340,7 +355,7 @@ export function groupDiagnoses(
     }
   }
 
-  return { primary, secondary, chronic };
+  return { primary, secondary, chronic, resolved };
 }
 
 export function filterPhysicianClinicalTimeline(

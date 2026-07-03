@@ -25,6 +25,8 @@ export type ClinicalRecordVitalRowProjection = {
   respiratoryRate: string | null;
   spo2: string | null;
   temperatureCelsius: string | null;
+  weight: string | null;
+  height: string | null;
   pain: string | null;
   documentedBy: ClinicalRecordAttribution;
 };
@@ -68,6 +70,8 @@ export function parseVitalsJsonColumns(vitals: Record<string, unknown>): {
   respiratoryRate: string | null;
   spo2: string | null;
   temperatureCelsius: string | null;
+  weight: string | null;
+  height: string | null;
   pain: string | null;
 } {
   const sys = numOrNull(vitals.bpSys);
@@ -78,8 +82,10 @@ export function parseVitalsJsonColumns(vitals: Record<string, unknown>): {
   const spo2 = asTrimmed(vitals.spo2);
   const temp = numOrNull(vitals.tempC);
   const temperatureCelsius = temp != null ? String(temp) : null;
+  const weight = asTrimmed(vitals.weightKg ?? vitals.weight);
+  const height = asTrimmed(vitals.heightCm ?? vitals.height);
   const pain = resolveVitalsPainScore(vitals);
-  return { bloodPressure, heartRate, respiratoryRate, spo2, temperatureCelsius, pain };
+  return { bloodPressure, heartRate, respiratoryRate, spo2, temperatureCelsius, weight, height, pain };
 }
 
 export function buildVitalSummaryFromColumns(columns: {
@@ -88,6 +94,8 @@ export function buildVitalSummaryFromColumns(columns: {
   respiratoryRate: string | null;
   spo2: string | null;
   temperatureCelsius: string | null;
+  weight: string | null;
+  height: string | null;
   pain: string | null;
 }): string {
   const parts: string[] = [];
@@ -96,6 +104,8 @@ export function buildVitalSummaryFromColumns(columns: {
   if (columns.respiratoryRate) parts.push(`RR ${columns.respiratoryRate}`);
   if (columns.spo2) parts.push(`SpO2 ${columns.spo2}%`);
   if (columns.temperatureCelsius) parts.push(`Temp ${columns.temperatureCelsius}°C`);
+  if (columns.weight) parts.push(`Weight ${columns.weight}`);
+  if (columns.height) parts.push(`Height ${columns.height}`);
   if (columns.pain) parts.push(`Pain ${columns.pain}`);
   return parts.join(" · ");
 }

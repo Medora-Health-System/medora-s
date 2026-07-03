@@ -156,8 +156,9 @@ describe("encounterClinicalRecord", () => {
 
     expect(record.nursingAssessment?.id).toBe("reassess-2");
     expect(record.nursingAssessment?.structuredLines[0]).toBe("Latest reassessment");
-    expect(record.nursingAssessmentHistory).toHaveLength(1);
+    expect(record.nursingAssessmentHistory).toHaveLength(2);
     expect(record.nursingAssessmentHistory[0]?.id).toBe("reassess-1");
+    expect(record.nursingAssessmentHistory[1]?.id).toBe("initial");
   });
 
   it("dedupes order lifecycle to one row per order item", () => {

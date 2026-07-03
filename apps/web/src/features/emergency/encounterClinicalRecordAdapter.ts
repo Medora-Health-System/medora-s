@@ -21,8 +21,11 @@ import {
 import { readDispositionSignatureFromEncounter } from "./emergencyDispositionV1";
 import {
   buildTriageDocumentationPreviewModel,
+  gcsEvmTriadForTriagePreview,
   triagePreviewSliceFromTriageGet,
 } from "./emergencyTriageDocPreview";
+import { erTriageT } from "./erTriageI18nLookup";
+import type { ErTriageV1Form } from "./medoraErTriageV1";
 import {
   ER_NURSING_REASSESSMENT_V1_KEY,
   buildErNursingReassessmentPreviewModel,
@@ -241,6 +244,70 @@ function setTriageField(
   if (trimmed) fields[key] = trimmed;
 }
 
+function formatAbcValue(locale: SupportedLanguage, v: string): string {
+  if (v === "wnl") return erTriageT(locale, "erTriage.preview.abcWnl");
+  if (v === "yes") return erTriageT(locale, "erTriage.preview.ynuYes");
+  if (v === "no") return erTriageT(locale, "erTriage.preview.ynuNo");
+  if (v === "unknown") return erTriageT(locale, "erTriage.preview.ynuUnknown");
+  return v.trim();
+}
+
+function formatGcsValue(locale: SupportedLanguage, er: ErTriageV1Form): string | null {
+  const triad = gcsEvmTriadForTriagePreview(er);
+  if (triad) {
+    return erTriageT(locale, "erTriage.preview.lineGcsComponents")
+      .replace("{total}", String(triad.total))
+      .replace("{e}", triad.e)
+      .replace("{v}", triad.v)
+      .replace("{m}", triad.m);
+  }
+  if (er.gcs15) {
+    const label = formatAbcValue(locale, er.gcs15);
+    return label ? erTriageT(locale, "erTriage.preview.lineGcs").replace("{value}", label) : null;
+  }
+  return null;
+}
+
+function buildSignaturesInput(
+  encounter: EmergencySummaryClinicalRecordAdapterEncounter,
+  disposition: BuildEncounterClinicalRecordInput["disposition"]
+): BuildEncounterClinicalRecordInput["signatures"] {
+  const sigs: NonNullable<BuildEncounterClinicalRecordInput["signatures"]> = [];
+  const providerSignedAt = asTrimmed(encounter.providerDocumentationSignedAt);
+  const providerSignedBy = asTrimmed(encounter.providerDocumentationSignedByDisplayFr);
+  if (providerSignedAt && providerSignedBy) {
+    sigs.push({
+      domain: "provider_documentation",
+      signerDisplayName: providerSignedBy,
+      signedAt: providerSignedAt,
+    });
+  }
+  const nursingSig = readInitialNursingEvalSignature(encounter.nursingAssessment);
+  if (nursingSig) {
+    sigs.push({
+      domain: "nursing_assessment",
+      signerDisplayName: nursingSig.documentedBy,
+      signerRoleTitle: nursingSig.roleTitle,
+      signedAt: nursingSig.documentedAtIso,
+    });
+  }
+  const dispSig = readDispositionSignatureFromEncounter(encounter.nursingAssessment);
+  if (dispSig?.savedAt && dispSig.savedByDisplayName?.trim()) {
+    sigs.push({
+      domain: "disposition",
+      signerDisplayName: dispSig.savedByDisplayName.trim(),
+      signedAt: dispSig.savedAt,
+    });
+  } else if (disposition?.signedByDisplayName && disposition.signedAt) {
+    sigs.push({
+      domain: "disposition",
+      signerDisplayName: disposition.signedByDisplayName,
+      signedAt: disposition.signedAt,
+    });
+  }
+  return sigs;
+}
+
 function buildTriageFieldsFromSources(
   triageSnapshot: Record<string, unknown> | null | undefined,
   summaryModel: EmergencyVisitSummaryModel,
@@ -264,6 +331,11 @@ function buildTriageFieldsFromSources(
     setTriageField(fields, "allergies", slice.allergyNote);
     setTriageField(fields, "isolation", er.ppeNote || er.edCoursePpeNote);
     setTriageField(fields, "arrivalMode", er.referralSource);
+    if (er.airway) setTriageField(fields, "airway", formatAbcValue(locale, er.airway));
+    if (er.breathing) setTriageField(fields, "breathing", formatAbcValue(locale, er.breathing));
+    if (er.circulation) setTriageField(fields, "circulation", formatAbcValue(locale, er.circulation));
+    const gcsValue = formatGcsValue(locale, er);
+    if (gcsValue) setTriageField(fields, "gcs", gcsValue);
 
     const preview = buildTriageDocumentationPreviewModel(slice, {
       strokeScreen: triageSnapshot.strokeScreen,
@@ -668,6 +740,7 @@ export function buildEncounterClinicalRecordInputFromEmergencySummary(
     (input.nursingReassessmentEvents?.length ?? 0) > 0
       ? mapNursingReassessmentFromEvents(input.nursingReassessmentEvents!, input.locale)
       : model.nursingReassessmentHistory.map(mapNursingHistoryEntry);
+  const disposition = buildDispositionInput(model, encounter);
 
   return {
     locale,
@@ -723,8 +796,8 @@ export function buildEncounterClinicalRecordInputFromEmergencySummary(
     orders: mapOrders(input.orders ?? []),
     medicationAdministrations: mapMedicationAdministrations(input.medicationAdministrations ?? []),
     procedures: mapProcedures(input.procedures ?? [], locale),
-    disposition: buildDispositionInput(model, encounter),
-    signatures: [],
+    disposition,
+    signatures: buildSignaturesInput(encounter, disposition),
     auditSourceRows,
   };
 }

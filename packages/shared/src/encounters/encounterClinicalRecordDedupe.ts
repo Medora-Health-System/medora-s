@@ -230,6 +230,21 @@ export function resolveNursingAssessmentPrimary(
       structuredLines: (entry.structuredLines ?? []).map((l) => l.trim()).filter(Boolean),
       narrativeSummary: (entry.narrativeSummary ?? "").trim() || null,
     }));
+    if (initial?.savedAt) {
+      const initialLines = (initial.structuredLines ?? []).map((l) => l.trim()).filter(Boolean);
+      const initialNarrative = (initial.narrativeSummary ?? "").trim();
+      if (initialLines.length > 0 || initialNarrative) {
+        history.push({
+          id: initial.id?.trim() || "initial-nursing-assessment",
+          documentedAt: initial.documentedAt?.trim() || null,
+          savedAt: initial.savedAt,
+          performerDisplayName: initial.performerDisplayName?.trim() || null,
+          performerRoleTitle: initial.performerRoleTitle?.trim() || null,
+          structuredLines: initialLines,
+          narrativeSummary: initialNarrative || null,
+        });
+      }
+    }
     return { primary, history };
   }
 

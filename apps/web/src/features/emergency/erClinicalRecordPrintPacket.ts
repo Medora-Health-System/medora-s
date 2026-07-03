@@ -13,6 +13,7 @@ import type { DischargePrintEncounter, DischargePrintPatient } from "@/component
 import {
   buildEnterpriseClinicalChartLayout,
   extractProviderAssessmentSectionsExcludingHpi,
+  type EnterpriseOrderGroupKey,
 } from "./enterpriseClinicalChartLayout";
 import {
   formatClinicalRecordAttributionPart,
@@ -42,6 +43,44 @@ function section(title: string, body: string): string {
   return `<h2 style="font-size:15px;margin:20px 0 10px 0;font-weight:700;border-bottom:1px solid #000;padding-bottom:4px;">${esc(
     title
   )}</h2>${body}`;
+}
+
+const ORDER_GROUP_I18N: Record<EnterpriseOrderGroupKey, string> = {
+  laboratory: "encounterClinicalRecordSummary.orderGroupLaboratory",
+  imaging: "encounterClinicalRecordSummary.orderGroupImaging",
+  medications: "encounterClinicalRecordSummary.orderGroupMedications",
+  treatments: "encounterClinicalRecordSummary.orderGroupTreatments",
+  procedures: "encounterClinicalRecordSummary.orderGroupProcedures",
+};
+
+const TRIAGE_FIELD_I18N: Record<string, string> = {
+  esi: "encounterClinicalRecordSummary.triageEsi",
+  arrivalMode: "encounterClinicalRecordSummary.triageArrivalMode",
+  symptomOnset: "encounterClinicalRecordSummary.triageSymptomOnset",
+  chiefComplaint: "encounterClinicalRecordSummary.triageChiefComplaint",
+  narrative: "encounterClinicalRecordSummary.triageNarrative",
+  vitalSigns: "encounterClinicalRecordSummary.triageVitalSigns",
+  pain: "encounterClinicalRecordSummary.triagePain",
+  allergies: "encounterClinicalRecordSummary.triageAllergies",
+  isolation: "encounterClinicalRecordSummary.triageIsolation",
+  fallRisk: "encounterClinicalRecordSummary.triageFallRisk",
+  acuityAlerts: "encounterClinicalRecordSummary.triageAcuityAlerts",
+  airway: "encounterClinicalRecordSummary.triageAirway",
+  breathing: "encounterClinicalRecordSummary.triageBreathing",
+  circulation: "encounterClinicalRecordSummary.triageCirculation",
+  gcs: "encounterClinicalRecordSummary.triageGcs",
+};
+
+const SIGNATURE_DOMAIN_I18N: Record<string, string> = {
+  provider_documentation: "encounterClinicalRecordSummary.signatureDomainProvider",
+  nursing_assessment: "encounterClinicalRecordSummary.signatureDomainNursing",
+  disposition: "encounterClinicalRecordSummary.signatureDomainDisposition",
+};
+
+function clinicalMilestoneLabel(milestone: string, t: (key: string) => string): string {
+  const key = `encounterClinicalRecordSummary.milestone.${milestone}`;
+  const v = t(key);
+  return v === key ? milestone : v;
 }
 
 function providerStatusLabel(
@@ -127,7 +166,11 @@ export function getErClinicalRecordPrintPacketHtml(input: {
     const triageBody = [
       ...Object.entries(layout.triageSummary)
         .filter(([key]) => !(key === "chiefComplaint" && layout.chiefComplaintLines.length > 0))
-        .map(([, value]) => p(value)),
+        .map(([key, value]) => {
+          const labelKey = TRIAGE_FIELD_I18N[key];
+          const label = labelKey ? t(labelKey) : key;
+          return p(`${label}: ${value}`);
+        }),
       attr(
         formatClinicalRecordAttributionPart("documentedBy", layout.triageDocumentation, t, language)
       ),
@@ -144,12 +187,14 @@ export function getErClinicalRecordPrintPacketHtml(input: {
             : row.temperatureCelsius || "—";
         const line = [
           formatEncounterChromeDateTime(row.recordedAt, language),
-          `BP ${row.bloodPressure || "—"}`,
-          `HR ${row.heartRate || "—"}`,
-          `RR ${row.respiratoryRate || "—"}`,
-          `SpO2 ${row.spo2 || "—"}`,
-          `Temp ${temp}`,
-          `Pain ${row.pain || "—"}`,
+          `${t("encounterClinicalRecordSummary.vitalsColBp")} ${row.bloodPressure || "—"}`,
+          `${t("encounterClinicalRecordSummary.vitalsColHr")} ${row.heartRate || "—"}`,
+          `${t("encounterClinicalRecordSummary.vitalsColRr")} ${row.respiratoryRate || "—"}`,
+          `${t("encounterClinicalRecordSummary.vitalsColSpo2")} ${row.spo2 || "—"}`,
+          `${t("encounterClinicalRecordSummary.vitalsColTemp")} ${temp}`,
+          `${t("encounterClinicalRecordSummary.vitalsColWeight")} ${row.weight || "—"}`,
+          `${t("encounterClinicalRecordSummary.vitalsColHeight")} ${row.height || "—"}`,
+          `${t("encounterClinicalRecordSummary.vitalsColPain")} ${row.pain || "—"}`,
         ].join(" · ");
         return (
           p(line) +
@@ -300,6 +345,79 @@ export function getErClinicalRecordPrintPacketHtml(input: {
       ),
     ].join("");
     sections.push(section(t("encounterClinicalRecordSummary.dispositionTitle"), body));
+  }
+
+  const ordersCount = Object.values(layout.groupedOrders).reduce((n, g) => n + g.length, 0);
+  if (ordersCount > 0) {
+    const body = (Object.keys(layout.groupedOrders) as EnterpriseOrderGroupKey[])
+      .filter((key) => layout.groupedOrders[key].length > 0)
+      .map((key) => {
+        const groupTitle = t(ORDER_GROUP_I18N[key]);
+        const rows = layout.groupedOrders[key]
+          .map(
+            (order) =>
+              p(`${order.label} — ${order.status}`) +
+              attr(formatClinicalRecordAttributionPart("orderedBy", {
+                name: order.orderedByDisplayName,
+                at: order.orderedAt,
+                role: null,
+                initials: null,
+              }, t, language))
+          )
+          .join("");
+        return p(groupTitle) + rows;
+      })
+      .join("");
+    sections.push(section(t("encounterClinicalRecordSummary.activeOrdersTitle"), body));
+  }
+
+  const hasDiagnoses =
+    layout.groupedDiagnoses.primary.length > 0 ||
+    layout.groupedDiagnoses.secondary.length > 0 ||
+    layout.groupedDiagnoses.chronic.length > 0 ||
+    layout.groupedDiagnoses.resolved.length > 0;
+  if (hasDiagnoses) {
+    const dxSections: string[] = [];
+    const pushDxGroup = (titleKey: string, items: typeof layout.groupedDiagnoses.primary) => {
+      if (items.length === 0) return;
+      dxSections.push(p(t(titleKey)));
+      for (const dx of items) {
+        dxSections.push(
+          p(`${dx.displayLabel}${dx.code ? ` (${dx.code})` : ""}`) +
+            attr(formatClinicalRecordAttributionPart("documentedBy", dx.documentedBy, t, language))
+        );
+      }
+    };
+    pushDxGroup("encounterClinicalRecordSummary.diagnosesPrimaryTitle", layout.groupedDiagnoses.primary);
+    pushDxGroup("encounterClinicalRecordSummary.diagnosesSecondaryTitle", layout.groupedDiagnoses.secondary);
+    pushDxGroup("encounterClinicalRecordSummary.diagnosesChronicTitle", layout.groupedDiagnoses.chronic);
+    pushDxGroup("encounterClinicalRecordSummary.diagnosesResolvedTitle", layout.groupedDiagnoses.resolved);
+    sections.push(section(t("encounterClinicalRecordSummary.diagnosesTitle"), dxSections.join("")));
+  }
+
+  if (layout.clinicalTimeline.length > 0) {
+    const body = layout.clinicalTimeline
+      .map(
+        (entry) =>
+          p(
+            `${formatEncounterChromeDateTime(entry.timestampIso ?? "", language)} — ${clinicalMilestoneLabel(entry.milestone, t)}`
+          ) + (entry.summary ? p(entry.summary) : "")
+      )
+      .join("");
+    sections.push(section(t("encounterClinicalRecordSummary.clinicalTimelineTitle"), body));
+  }
+
+  if (layout.signatures.length > 0) {
+    const body = layout.signatures
+      .map((sig) => {
+        const domain = SIGNATURE_DOMAIN_I18N[sig.domain] ? t(SIGNATURE_DOMAIN_I18N[sig.domain]) : sig.domain;
+        return (
+          p(`${domain}: ${sig.signerDisplayName}`) +
+          attr(formatClinicalRecordAttributionPart("signedBy", sig.signedBy, t, language))
+        );
+      })
+      .join("");
+    sections.push(section(t("encounterClinicalRecordSummary.electronicSignaturesTitle"), body));
   }
 
   const printDate = new Date().toLocaleString(loc);
