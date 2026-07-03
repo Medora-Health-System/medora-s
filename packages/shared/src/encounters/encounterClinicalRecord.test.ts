@@ -902,4 +902,60 @@ describe("encounterClinicalRecord", () => {
     expect(deduped).toHaveLength(1);
     expect(deduped[0]?.id).toBe("dx-real");
   });
+
+  it("prefers diagnosis row with creator attribution over synthetic duplicate", () => {
+    const deduped = dedupeEncounterClinicalRecordDiagnoses([
+      {
+        id: "dx-synthetic",
+        code: "R07.9",
+        displayLabel: "R07.9 — Chest pain, unspecified",
+        diagnosisType: "ENCOUNTER",
+        status: "ACTIVE",
+        isPrimary: true,
+        documentedAt: "2026-06-23T09:00:00.000Z",
+        documentedByDisplayName: null,
+        documentedBy: { name: null, initials: null, role: null, at: "2026-06-23T09:00:00.000Z" },
+      },
+      {
+        id: "dx-real",
+        code: "R07.9",
+        displayLabel: "R07.9 — Chest pain, unspecified",
+        diagnosisType: "ENCOUNTER",
+        status: "ACTIVE",
+        isPrimary: true,
+        documentedAt: "2026-06-23T09:00:00.000Z",
+        documentedByDisplayName: "Dr Provider",
+        documentedBy: {
+          name: "Dr Provider",
+          initials: null,
+          role: "MD",
+          at: "2026-06-23T09:00:00.000Z",
+        },
+      },
+    ]);
+    expect(deduped).toHaveLength(1);
+    expect(deduped[0]?.id).toBe("dx-real");
+    expect(deduped[0]?.documentedBy.name).toBe("Dr Provider");
+  });
+
+  it("maps diagnosis createdByDisplay.name and role into documentedBy", () => {
+    const record = buildEncounterClinicalRecord({
+      ...baseInput(),
+      encounter: {
+        ...baseInput().encounter,
+        diagnoses: [
+          {
+            id: "dx-1",
+            code: "R07.9",
+            description: "Chest pain, unspecified",
+            isPrimary: true,
+            createdAt: "2026-06-23T09:00:00.000Z",
+            createdByDisplay: { name: "Dr Provider", role: "MD" },
+          },
+        ],
+      },
+    });
+    expect(record.diagnoses[0]?.documentedByDisplayName).toBe("Dr Provider");
+    expect(record.diagnoses[0]?.documentedBy.role).toBe("MD");
+  });
 });

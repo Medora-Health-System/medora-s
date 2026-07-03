@@ -85,4 +85,74 @@ describe("clinicalRecordVitalsProjection", () => {
     ]);
     expect(rows).toHaveLength(1);
   });
+
+  it("prefers vitals row with richer attribution on duplicate key", () => {
+    const rows = dedupeClinicalRecordVitalRows([
+      {
+        id: "without",
+        recordedAt: "2026-07-02T18:00:00.000Z",
+        source: "TRIAGE",
+        summary: "BP 147/86 · HR 87",
+        bloodPressure: "147/86",
+        heartRate: "87",
+        respiratoryRate: "19",
+        spo2: "100",
+        temperatureCelsius: "36.7",
+        weight: "71.67",
+        height: "170.2",
+        pain: "8",
+        documentedBy: { name: null, role: null, at: "2026-07-02T18:00:00.000Z", initials: null },
+      },
+      {
+        id: "with",
+        recordedAt: "2026-07-02T18:00:00.000Z",
+        source: "TRIAGE",
+        summary: "BP 147/86 · HR 87",
+        bloodPressure: "147/86",
+        heartRate: "87",
+        respiratoryRate: "19",
+        spo2: "100",
+        temperatureCelsius: "36.7",
+        weight: "71.67",
+        height: "170.2",
+        pain: "8",
+        documentedBy: {
+          name: "Martine Duval",
+          role: "RN",
+          at: "2026-07-02T18:00:00.000Z",
+          initials: null,
+        },
+      },
+    ]);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.documentedBy.name).toBe("Martine Duval");
+    expect(rows[0]?.documentedBy.role).toBe("RN");
+  });
+
+  it("maps recordedBy.displayName and createdByDisplay.name for projection", () => {
+    const fromRecordedBy = projectClinicalRecordVitalRow(
+      {
+        id: "v1",
+        recordedAt: "2026-07-02T18:00:00.000Z",
+        source: "ENCOUNTER_CHART",
+        vitalsJson: { bpSys: 120, bpDia: 80, hr: 88 },
+        recordedBy: { displayName: "Bedside RN", role: "RN" },
+      },
+      0
+    );
+    expect(fromRecordedBy?.documentedBy.name).toBe("Bedside RN");
+    expect(fromRecordedBy?.documentedBy.role).toBe("RN");
+
+    const fromCreatedBy = projectClinicalRecordVitalRow(
+      {
+        id: "v2",
+        recordedAt: "2026-07-02T19:00:00.000Z",
+        source: "ENCOUNTER_CHART",
+        vitalsJson: { bpSys: 118, bpDia: 76, hr: 90 },
+        createdByDisplay: { name: "Quick Entry RN", role: "RN" },
+      },
+      1
+    );
+    expect(fromCreatedBy?.documentedBy.name).toBe("Quick Entry RN");
+  });
 });

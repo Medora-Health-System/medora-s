@@ -3,8 +3,10 @@ import { buildEncounterClinicalRecord } from "@medora/shared";
 import {
   buildEncounterClinicalRecordInputFromEmergencySummary,
   mapEncounterDiagnosisApiRowsToClinicalRecordInput,
+  parseEncounterDiagnosisApiItems,
   summarizeEmergencySummaryAdapterSources,
 } from "./encounterClinicalRecordAdapter";
+import { parseVitalsHistoryEntries } from "@/lib/encounterClinicalSafetyUi";
 import type { EmergencyVisitSummaryModel } from "./emergencyVisitSummaryModel";
 
 const ENCOUNTER_ID = "550e8400-e29b-41d4-a716-446655440000";
@@ -565,6 +567,58 @@ describe("encounterClinicalRecordAdapter", () => {
     );
     expect(record.diagnoses[0]?.displayLabel).toBe("R07.9 — Chest pain, unspecified");
     expect(record.diagnoses[0]?.isPrimary).toBe(true);
+  });
+
+  it("maps vitals-history recordedBy.displayName and role into clinical record", () => {
+    const parsed = parseVitalsHistoryEntries({
+      entries: [
+        {
+          recordedAt: "2026-07-02T16:44:00.000Z",
+          source: "ENCOUNTER_CHART",
+          vitals: { bpSys: 147, bpDia: 86, hr: 87, rr: 19, spo2: 100, tempC: 36.7 },
+          recordedBy: { userId: "u1", displayName: "Martine Duval", role: "RN" },
+        },
+      ],
+    });
+    const input = buildEncounterClinicalRecordInputFromEmergencySummary({
+      locale: "en",
+      encounter: { id: ENCOUNTER_ID },
+      summaryModel: emptyModel(),
+      vitalsHistory: parsed,
+    });
+    const record = buildEncounterClinicalRecord(input);
+    expect(record.vitals[0]?.documentedBy.name).toBe("Martine Duval");
+    expect(record.vitals[0]?.documentedBy.role).toBe("RN");
+  });
+
+  it("maps diagnosis API createdByDisplay into documentedBy attribution", () => {
+    const parsed = parseEncounterDiagnosisApiItems(
+      {
+        items: [
+          {
+            id: "dx-1",
+            encounterId: ENCOUNTER_ID,
+            code: "R07.9",
+            description: "Chest pain, unspecified",
+            sortOrder: 0,
+            createdAt: "2026-06-23T15:07:00.000Z",
+            status: "ACTIVE",
+            createdByDisplay: { name: "Dr Provider", role: "MD" },
+          },
+        ],
+      },
+      ENCOUNTER_ID
+    );
+    const mapped = mapEncounterDiagnosisApiRowsToClinicalRecordInput(parsed, "en");
+    const record = buildEncounterClinicalRecord(
+      buildEncounterClinicalRecordInputFromEmergencySummary({
+        locale: "en",
+        encounter: { id: ENCOUNTER_ID, diagnoses: mapped },
+        summaryModel: emptyModel(),
+      })
+    );
+    expect(record.diagnoses[0]?.documentedBy.name).toBe("Dr Provider");
+    expect(record.diagnoses[0]?.documentedBy.role).toBe("MD");
   });
 });
 

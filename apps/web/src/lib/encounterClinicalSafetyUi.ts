@@ -15,7 +15,13 @@ export const ACTIVE_ORDER_ITEM_STATUSES_FOR_CATALOG_DEDUP = new Set([
 export type VitalsHistoryEntry = {
   recordedAt: string;
   vitals: Record<string, unknown>;
-  recordedBy?: { userId?: string | null; displayName?: string | null };
+  recordedBy?: {
+    userId?: string | null;
+    displayName?: string | null;
+    name?: string | null;
+    role?: string | null;
+    roleTitle?: string | null;
+  };
   source?: string;
 };
 
@@ -68,10 +74,27 @@ export function parseVitalsHistoryEntries(data: unknown): VitalsHistoryEntry[] {
     const recordedByRaw = row.recordedBy;
     let recordedBy: VitalsHistoryEntry["recordedBy"];
     if (recordedByRaw && typeof recordedByRaw === "object" && !Array.isArray(recordedByRaw)) {
-      const rb = recordedByRaw as { userId?: unknown; displayName?: unknown };
+      const rb = recordedByRaw as {
+        userId?: unknown;
+        displayName?: unknown;
+        name?: unknown;
+        role?: unknown;
+        roleTitle?: unknown;
+      };
+      const displayName =
+        typeof rb.displayName === "string"
+          ? rb.displayName
+          : typeof rb.name === "string"
+            ? rb.name
+            : null;
+      const role =
+        typeof rb.role === "string" ? rb.role : typeof rb.roleTitle === "string" ? rb.roleTitle : null;
       recordedBy = {
         userId: typeof rb.userId === "string" ? rb.userId : null,
-        displayName: typeof rb.displayName === "string" ? rb.displayName : null,
+        displayName,
+        name: displayName,
+        role,
+        roleTitle: role,
       };
     }
     out.push({

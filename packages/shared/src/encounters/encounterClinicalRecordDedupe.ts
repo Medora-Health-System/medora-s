@@ -334,6 +334,13 @@ export function dedupeEncounterClinicalRecordDiagnoses(
       byKey.set(key, row);
       continue;
     }
+    const existingScore = diagnosisAttributionRichnessScore(existing);
+    const rowScore = diagnosisAttributionRichnessScore(row);
+    if (rowScore > existingScore) {
+      byKey.set(key, row);
+      continue;
+    }
+    if (rowScore < existingScore) continue;
     const existingSynthetic = existing.id.startsWith("dx-");
     const rowSynthetic = row.id.startsWith("dx-");
     if (existingSynthetic && !rowSynthetic) {
@@ -349,6 +356,16 @@ export function dedupeEncounterClinicalRecordDiagnoses(
     if (a.isPrimary !== b.isPrimary) return a.isPrimary ? -1 : 1;
     return parseTime(a.documentedAt) - parseTime(b.documentedAt);
   });
+}
+
+function diagnosisAttributionRichnessScore(row: EncounterClinicalRecordDiagnosis): number {
+  let score = 0;
+  if (row.documentedByDisplayName?.trim()) score += 4;
+  if (row.documentedBy?.name?.trim()) score += 4;
+  if (row.documentedBy?.role?.trim()) score += 2;
+  if (row.documentedAt?.trim()) score += 1;
+  if (!row.id.startsWith("dx-")) score += 1;
+  return score;
 }
 
 export function dedupeProcedures(

@@ -165,6 +165,34 @@ describe("erClinicalRecordPrintPacket (Phase 5)", () => {
     expect(html).toContain("Improved after medication.");
   });
 
+  it("V2 print packet shows diagnosis documented-by attribution", () => {
+    const record = buildEncounterClinicalRecord({
+      locale: "en",
+      encounter: {
+        id: ENCOUNTER_ID,
+        createdAt: "2026-06-23T08:00:00.000Z",
+        diagnoses: [
+          {
+            id: "dx-1",
+            code: "R07.9",
+            description: "Chest pain, unspecified",
+            isPrimary: true,
+            createdAt: "2026-06-23T15:07:00.000Z",
+            createdByDisplay: { name: "Dr Provider", role: "MD" },
+          },
+        ],
+      },
+    });
+    const html = getErClinicalRecordPrintPacketHtml({
+      patient: basePatient,
+      encounter: baseEncounter,
+      language: "en",
+      record,
+    });
+    expect(html).toContain("R07.9");
+    expect(html).toContain("Documented by Dr Provider (MD)");
+  });
+
   it("V2 print packet excludes duplicate provider history narrative", () => {
     const record = buildPrintRecord();
     const html = getErClinicalRecordPrintPacketHtml({

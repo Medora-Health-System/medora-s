@@ -2453,6 +2453,9 @@ export class EncountersService {
     const readings = await this.prisma.triageVitalsReading.findMany({
       where: { encounterId, facilityId },
       orderBy: { recordedAt: "asc" },
+      include: {
+        triage: { select: { createdByUserId: true } },
+      },
     });
 
     const events = await this.prisma.encounterClinicalEvent.findMany({
@@ -2467,23 +2470,78 @@ export class EncountersService {
       },
     });
 
+    type VitalsAttribution = {
+      userId: string | null;
+      displayName: string | null;
+      role: string | null;
+    };
+
     type Entry = {
       recordedAt: string;
-      recordedBy: { userId: string | null; displayName: string | null };
+      recordedBy: VitalsAttribution;
       source: string;
       vitals: Record<string, unknown>;
     };
+
+    const performerCache = new Map<string, VitalsAttribution>();
+    const resolvePerformer = async (userId: string | null | undefined): Promise<VitalsAttribution> => {
+      if (!userId) return { userId: null, displayName: null, role: null };
+      const cached = performerCache.get(userId);
+      if (cached) return cached;
+      const performer = await this.resolveErNursingReassessmentPerformer(facilityId, userId);
+      const resolved: VitalsAttribution = {
+        userId,
+        displayName: performer.performerDisplayName || null,
+        role: performer.performerRoleTitle || null,
+      };
+      performerCache.set(userId, resolved);
+      return resolved;
+    };
+
+    const vitalsSignature = (vitals: Record<string, unknown>): string => JSON.stringify(vitals);
+    const triageAttributionByVitals = new Map<string, VitalsAttribution>();
+
+    for (const e of events) {
+      const raw = e.payloadJson;
+      const payload =
+        raw && typeof raw === "object" && !Array.isArray(raw) ? (raw as Record<string, unknown>) : {};
+      const vitalsRaw = payload.vitals;
+      const vitals =
+        vitalsRaw && typeof vitalsRaw === "object" && !Array.isArray(vitalsRaw)
+          ? (vitalsRaw as Record<string, unknown>)
+          : {};
+      if (!hasNonEmptyVitalsJson(vitals)) continue;
+      const src = typeof payload.source === "string" && payload.source.trim() ? payload.source.trim() : "ENCOUNTER_CHART";
+      if (src !== "TRIAGE") continue;
+      const performer = await resolvePerformer(e.createdByUserId);
+      const displayName =
+        performer.displayName || this.userDisplayName(e.createdBy) || null;
+      triageAttributionByVitals.set(vitalsSignature(vitals), {
+        userId: e.createdByUserId,
+        displayName,
+        role: performer.role || null,
+      });
+    }
 
     const entries: Entry[] = [];
 
     for (const r of readings) {
       const vj = r.vitalsJson;
       if (!hasNonEmptyVitalsJson(vj)) continue;
+      const vitals = vj as Record<string, unknown>;
+      let recordedBy = triageAttributionByVitals.get(vitalsSignature(vitals)) ?? {
+        userId: null,
+        displayName: null,
+        role: null,
+      };
+      if (!recordedBy.displayName && r.triage?.createdByUserId) {
+        recordedBy = await resolvePerformer(r.triage.createdByUserId);
+      }
       entries.push({
         recordedAt: r.recordedAt.toISOString(),
-        recordedBy: { userId: null, displayName: null },
+        recordedBy,
         source: "TRIAGE",
-        vitals: vj,
+        vitals,
       });
     }
 
@@ -2500,10 +2558,16 @@ export class EncountersService {
       const src = typeof payload.source === "string" && payload.source.trim() ? payload.source.trim() : "ENCOUNTER_CHART";
       /** Triage path persists `TriageVitalsReading` + duplicate `VITALS_RECORDED`; keep readings as canonical. */
       if (src === "TRIAGE") continue;
-      const displayName = `${e.createdBy.firstName} ${e.createdBy.lastName}`.trim();
+      const performer = await resolvePerformer(e.createdByUserId);
+      const displayName =
+        performer.displayName || this.userDisplayName(e.createdBy) || null;
       entries.push({
         recordedAt: e.createdAt.toISOString(),
-        recordedBy: { userId: e.createdByUserId, displayName: displayName || null },
+        recordedBy: {
+          userId: e.createdByUserId,
+          displayName,
+          role: performer.role || null,
+        },
         source: src,
         vitals,
       });

@@ -3,7 +3,7 @@ import {
   NotFoundException,
   BadRequestException,
 } from "@nestjs/common";
-import { DiagnosisCodeSource, Prisma } from "@prisma/client";
+import { DiagnosisCodeSource, Prisma, RoleCode } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
 import { logBreakGlassAccessIfApplicable } from "../common/break-glass/break-glass-audit.helper";
 import { AuditService } from "../common/services/audit.service";
@@ -267,7 +267,103 @@ export class DiagnosesService {
       metadata: { listByPatient: true },
     });
 
-    return { items, total };
+    const enriched = await this.attachDiagnosisCreatorDisplay(facilityId, items);
+    return { items: enriched, total };
+  }
+
+  private displayNameFromUser(u: { firstName: string | null; lastName: string | null }): string {
+    return `${u.firstName ?? ""} ${u.lastName ?? ""}`.trim();
+  }
+
+  private roleTitleFromCodes(codes: Set<RoleCode>): string {
+    const order: RoleCode[] = [RoleCode.PROVIDER, RoleCode.RN, RoleCode.ADMIN];
+    for (const rc of order) {
+      if (codes.has(rc)) {
+        return rc === RoleCode.RN ? "RN" : rc === RoleCode.PROVIDER ? "MD" : rc === RoleCode.ADMIN ? "ADMIN" : "";
+      }
+    }
+    return "";
+  }
+
+  private async attachDiagnosisCreatorDisplay<T extends { id: string; createdAt: Date }>(
+    facilityId: string,
+    rows: T[]
+  ): Promise<
+    Array<
+      T & {
+        createdByDisplay: {
+          userId: string;
+          name: string;
+          role: string | null;
+          at: string;
+        } | null;
+      }
+    >
+  > {
+    if (rows.length === 0) return [];
+
+    const ids = rows.map((row) => row.id);
+    const auditRows = await this.prisma.auditLog.findMany({
+      where: {
+        facilityId,
+        entityType: "DIAGNOSIS",
+        action: AuditAction.CREATE,
+        entityId: { in: ids },
+      },
+      orderBy: { createdAt: "asc" },
+      select: { entityId: true, userId: true, createdAt: true },
+    });
+
+    const creatorByDiagnosisId = new Map<string, { userId: string; at: Date }>();
+    for (const log of auditRows) {
+      if (!log.entityId || !log.userId) continue;
+      if (!creatorByDiagnosisId.has(log.entityId)) {
+        creatorByDiagnosisId.set(log.entityId, { userId: log.userId, at: log.createdAt });
+      }
+    }
+
+    const userIds = [...new Set([...creatorByDiagnosisId.values()].map((entry) => entry.userId))];
+    const [users, roleRows] = await Promise.all([
+      userIds.length
+        ? this.prisma.user.findMany({
+            where: { id: { in: userIds } },
+            select: { id: true, firstName: true, lastName: true },
+          })
+        : Promise.resolve([]),
+      userIds.length
+        ? this.prisma.userRole.findMany({
+            where: { userId: { in: userIds }, facilityId, isActive: true },
+            include: { role: { select: { code: true } } },
+          })
+        : Promise.resolve([]),
+    ]);
+
+    const nameByUserId = new Map(users.map((user) => [user.id, this.displayNameFromUser(user)]));
+    const roleByUserId = new Map<string, string>();
+    for (const userId of userIds) {
+      const codes = new Set(
+        roleRows.filter((row) => row.userId === userId).map((row) => row.role.code as RoleCode)
+      );
+      roleByUserId.set(userId, this.roleTitleFromCodes(codes));
+    }
+
+    return rows.map((row) => {
+      const creator = creatorByDiagnosisId.get(row.id);
+      if (!creator) return { ...row, createdByDisplay: null };
+      const name = nameByUserId.get(creator.userId) ?? "";
+      if (!name) return { ...row, createdByDisplay: null };
+      const at =
+        creator.at instanceof Date ? creator.at.toISOString() : new Date(creator.at).toISOString();
+      return {
+        ...row,
+        createdByDisplay: {
+          userId: creator.userId,
+          name,
+          role: roleByUserId.get(creator.userId) ?? null,
+          at,
+        },
+      };
+    });
   }
 
   async update(

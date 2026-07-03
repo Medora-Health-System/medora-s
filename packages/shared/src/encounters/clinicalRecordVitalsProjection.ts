@@ -5,6 +5,58 @@
 import { buildClinicalRecordAttribution, type ClinicalRecordAttribution } from "./clinicalRecordAttribution.js";
 import { MEDORA_ER_TRIAGE_V1_STORAGE_KEY } from "../encounter-allergy-safety.js";
 
+function asTrimmed(value: unknown): string | null {
+  if (typeof value !== "string" && typeof value !== "number") return null;
+  const trimmed = String(value).trim();
+  return trimmed || null;
+}
+
+function readNestedName(value: unknown): string | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const o = value as Record<string, unknown>;
+  return asTrimmed(o.name) ?? asTrimmed(o.displayName);
+}
+
+function readNestedRole(value: unknown): string | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const o = value as Record<string, unknown>;
+  return asTrimmed(o.role) ?? asTrimmed(o.roleTitle);
+}
+
+/** Prefer rows with documented-by name, then role, then timestamp. */
+export function clinicalRecordAttributionRichnessScore(
+  attr: ClinicalRecordAttribution | null | undefined
+): number {
+  if (!attr) return 0;
+  let score = 0;
+  if (attr.name?.trim()) score += 4;
+  if (attr.role?.trim()) score += 2;
+  if (attr.initials?.trim()) score += 1;
+  if (attr.at?.trim()) score += 1;
+  return score;
+}
+
+export function resolveClinicalRecordVitalAttribution(input: ClinicalRecordVitalRowInput): {
+  name: string | null;
+  role: string | null;
+} {
+  const name =
+    readNestedName(input.recordedBy) ??
+    asTrimmed(input.recordedByDisplayName) ??
+    asTrimmed(input.recordedByDisplay) ??
+    readNestedName(input.createdByDisplay) ??
+    asTrimmed(input.createdByDisplayName) ??
+    asTrimmed(input.documentedByDisplayName);
+  const role =
+    readNestedRole(input.recordedBy) ??
+    asTrimmed(input.recordedByRole) ??
+    asTrimmed(input.roleTitle) ??
+    readNestedRole(input.createdByDisplay) ??
+    asTrimmed(input.createdByRole) ??
+    asTrimmed(input.documentedByRole);
+  return { name, role };
+}
+
 export type ClinicalRecordVitalRowInput = {
   id?: string;
   recordedAt?: string;
@@ -13,6 +65,14 @@ export type ClinicalRecordVitalRowInput = {
   vitalsJson?: Record<string, unknown> | null;
   documentedByDisplayName?: string | null;
   documentedByRole?: string | null;
+  recordedByDisplayName?: string | null;
+  recordedByDisplay?: string | null;
+  recordedByRole?: string | null;
+  roleTitle?: string | null;
+  createdByDisplayName?: string | null;
+  createdByRole?: string | null;
+  createdByDisplay?: { name?: string | null; role?: string | null } | null;
+  recordedBy?: { displayName?: string | null; name?: string | null; role?: string | null; roleTitle?: string | null } | null;
 };
 
 export type ClinicalRecordVitalRowProjection = {
@@ -30,12 +90,6 @@ export type ClinicalRecordVitalRowProjection = {
   pain: string | null;
   documentedBy: ClinicalRecordAttribution;
 };
-
-function asTrimmed(value: unknown): string | null {
-  if (typeof value !== "string" && typeof value !== "number") return null;
-  const trimmed = String(value).trim();
-  return trimmed || null;
-}
 
 function numOrNull(value: unknown): number | null {
   if (value == null || value === "") return null;
@@ -125,6 +179,8 @@ export function projectClinicalRecordVitalRow(
   const summary = asTrimmed(input.summary) ?? buildVitalSummaryFromColumns(columns);
   if (!summary) return null;
 
+  const attribution = resolveClinicalRecordVitalAttribution(input);
+
   return {
     id: asTrimmed(input.id) ?? `vital-${index}`,
     recordedAt,
@@ -132,23 +188,43 @@ export function projectClinicalRecordVitalRow(
     summary,
     ...columns,
     documentedBy: buildClinicalRecordAttribution({
-      name: input.documentedByDisplayName,
-      role: input.documentedByRole,
+      name: attribution.name,
+      role: attribution.role,
       at: recordedAt,
     }),
   };
 }
 
+function mergeClinicalRecordVitalRows(
+  keep: ClinicalRecordVitalRowProjection,
+  candidate: ClinicalRecordVitalRowProjection
+): ClinicalRecordVitalRowProjection {
+  const keepScore = clinicalRecordAttributionRichnessScore(keep.documentedBy);
+  const candidateScore = clinicalRecordAttributionRichnessScore(candidate.documentedBy);
+  if (candidateScore > keepScore) return candidate;
+  if (candidateScore < keepScore) return keep;
+  if (parseTime(candidate.recordedAt) > parseTime(keep.recordedAt)) return candidate;
+  return keep;
+}
+
+function parseTime(iso: string | null | undefined): number {
+  if (!iso?.trim()) return 0;
+  const ms = Date.parse(iso);
+  return Number.isNaN(ms) ? 0 : ms;
+}
+
 export function dedupeClinicalRecordVitalRows(
   rows: ClinicalRecordVitalRowProjection[]
 ): ClinicalRecordVitalRowProjection[] {
-  const seen = new Set<string>();
-  const out: ClinicalRecordVitalRowProjection[] = [];
+  const byKey = new Map<string, ClinicalRecordVitalRowProjection>();
   for (const row of rows) {
     const key = `${row.recordedAt}:${row.summary}`;
-    if (seen.has(key)) continue;
-    seen.add(key);
-    out.push(row);
+    const existing = byKey.get(key);
+    if (!existing) {
+      byKey.set(key, row);
+      continue;
+    }
+    byKey.set(key, mergeClinicalRecordVitalRows(existing, row));
   }
-  return out.sort((a, b) => Date.parse(a.recordedAt) - Date.parse(b.recordedAt));
+  return [...byKey.values()].sort((a, b) => parseTime(a.recordedAt) - parseTime(b.recordedAt));
 }

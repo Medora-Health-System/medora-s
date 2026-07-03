@@ -319,6 +319,12 @@ export type BuildEncounterClinicalRecordInput = {
       documentedAt?: string | null;
       createdAt?: string | null;
       documentedByDisplayName?: string | null;
+      documentedByRole?: string | null;
+      createdByDisplayName?: string | null;
+      createdByRole?: string | null;
+      createdByName?: string | null;
+      createdByDisplay?: { name?: string | null; role?: string | null } | null;
+      updatedByDisplay?: { name?: string | null; role?: string | null } | null;
     }>;
   };
   patient?: {
@@ -346,6 +352,12 @@ export type BuildEncounterClinicalRecordInput = {
     vitalsJson?: Record<string, unknown> | null;
     documentedByDisplayName?: string | null;
     documentedByRole?: string | null;
+    recordedByDisplayName?: string | null;
+    recordedByRole?: string | null;
+    createdByDisplayName?: string | null;
+    createdByRole?: string | null;
+    createdByDisplay?: { name?: string | null; role?: string | null } | null;
+    recordedBy?: { displayName?: string | null; name?: string | null; role?: string | null; roleTitle?: string | null } | null;
   }>;
   providerAssessment?: {
     documentationStatus?: string | null;

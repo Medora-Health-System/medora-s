@@ -229,12 +229,19 @@ function buildVitalsFromAllSources(input: {
 
   for (const entry of input.vitalsHistory ?? []) {
     if (!entry.recordedAt || !entry.vitals || Object.keys(entry.vitals).length === 0) continue;
+    const recordedName =
+      asTrimmed(entry.recordedBy?.displayName) ?? asTrimmed(entry.recordedBy?.name);
+    const recordedRole =
+      asTrimmed(entry.recordedBy?.role) ?? asTrimmed(entry.recordedBy?.roleTitle);
     rows.push({
       id: `vitals-history-${entry.recordedAt}`,
       recordedAt: entry.recordedAt,
       source: asTrimmed(entry.source) ?? "ENCOUNTER_CHART",
       vitalsJson: entry.vitals,
-      documentedByDisplayName: asTrimmed(entry.recordedBy?.displayName),
+      documentedByDisplayName: recordedName,
+      documentedByRole: recordedRole,
+      recordedByDisplayName: recordedName,
+      recordedByRole: recordedRole,
     });
   }
 
@@ -260,6 +267,15 @@ function buildVitalsFromAllSources(input: {
           documentedByDisplayName: input.triageDocumentedByDisplayName,
           documentedByRole: input.triageDocumentedByRole,
         });
+      }
+    }
+  }
+
+  if (input.triageDocumentedByDisplayName) {
+    for (const row of rows) {
+      if (row.source === "TRIAGE" && !asTrimmed(row.documentedByDisplayName)) {
+        row.documentedByDisplayName = input.triageDocumentedByDisplayName;
+        row.documentedByRole = input.triageDocumentedByRole ?? row.documentedByRole;
       }
     }
   }
@@ -845,7 +861,43 @@ export type EncounterDiagnosisApiRow = {
   createdAt?: string | null;
   onsetDate?: string | null;
   diagnosisType?: string | null;
+  createdByDisplay?: { name?: string | null; role?: string | null } | null;
+  createdByDisplayName?: string | null;
+  documentedByDisplayName?: string | null;
+  createdByName?: string | null;
+  createdByRoleTitle?: string | null;
+  updatedByDisplay?: { name?: string | null; role?: string | null } | null;
 };
+
+function resolveDiagnosisAttributionFromApiRow(row: EncounterDiagnosisApiRow): {
+  documentedByDisplayName: string | null;
+  documentedByRole: string | null;
+  createdByDisplay: { name?: string | null; role?: string | null } | null;
+} {
+  const createdByDisplay =
+    row.createdByDisplay && typeof row.createdByDisplay === "object" ? row.createdByDisplay : null;
+  const updatedByDisplay =
+    row.updatedByDisplay && typeof row.updatedByDisplay === "object" ? row.updatedByDisplay : null;
+  const name =
+    asTrimmed(createdByDisplay?.name) ??
+    asTrimmed(row.createdByDisplayName) ??
+    asTrimmed(row.documentedByDisplayName) ??
+    asTrimmed(row.createdByName) ??
+    asTrimmed(updatedByDisplay?.name);
+  const role =
+    asTrimmed(createdByDisplay?.role) ??
+    asTrimmed(row.createdByRoleTitle) ??
+    asTrimmed(updatedByDisplay?.role);
+  return {
+    documentedByDisplayName: name,
+    documentedByRole: role,
+    createdByDisplay: name
+      ? { name, role }
+      : createdByDisplay
+        ? { name: asTrimmed(createdByDisplay.name), role: asTrimmed(createdByDisplay.role) }
+        : null,
+  };
+}
 
 export function formatEncounterDiagnosisDisplayLabel(
   code: string,
@@ -877,6 +929,7 @@ export function mapEncounterDiagnosisApiRowsToClinicalRecordInput(
     const code = row.code.trim();
     const description = row.description?.trim() || null;
     const displayLabel = formatEncounterDiagnosisDisplayLabel(code, description, locale);
+    const attribution = resolveDiagnosisAttributionFromApiRow(row);
     return {
       id: row.id,
       code,
@@ -888,7 +941,11 @@ export function mapEncounterDiagnosisApiRowsToClinicalRecordInput(
       isPrimary: index === 0,
       documentedAt: row.createdAt ?? null,
       createdAt: row.createdAt ?? null,
-      documentedByDisplayName: null,
+      documentedByDisplayName: attribution.documentedByDisplayName,
+      documentedByRole: attribution.documentedByRole,
+      createdByDisplay: attribution.createdByDisplay,
+      createdByDisplayName: attribution.documentedByDisplayName,
+      createdByRole: attribution.documentedByRole,
     };
   });
 }
@@ -902,16 +959,39 @@ export function parseEncounterDiagnosisApiItems(
     : [];
   return items
     .filter((d) => d.encounterId === encounterId)
-    .map((d) => ({
-      id: String(d.id),
-      code: String(d.code ?? ""),
-      description: (d.description as string | null) ?? null,
-      status: typeof d.status === "string" ? d.status : undefined,
-      sortOrder: typeof d.sortOrder === "number" ? d.sortOrder : 0,
-      createdAt: typeof d.createdAt === "string" ? d.createdAt : null,
-      onsetDate: typeof d.onsetDate === "string" ? d.onsetDate : null,
-      diagnosisType: typeof d.diagnosisType === "string" ? d.diagnosisType : undefined,
-    }))
+    .map((d) => {
+      const createdByDisplayRaw = d.createdByDisplay;
+      const createdByDisplay =
+        createdByDisplayRaw &&
+        typeof createdByDisplayRaw === "object" &&
+        !Array.isArray(createdByDisplayRaw)
+          ? {
+              name:
+                typeof (createdByDisplayRaw as { name?: unknown }).name === "string"
+                  ? (createdByDisplayRaw as { name: string }).name
+                  : null,
+              role:
+                typeof (createdByDisplayRaw as { role?: unknown }).role === "string"
+                  ? (createdByDisplayRaw as { role: string }).role
+                  : null,
+            }
+          : null;
+      return {
+        id: String(d.id),
+        code: String(d.code ?? ""),
+        description: (d.description as string | null) ?? null,
+        status: typeof d.status === "string" ? d.status : undefined,
+        sortOrder: typeof d.sortOrder === "number" ? d.sortOrder : 0,
+        createdAt: typeof d.createdAt === "string" ? d.createdAt : null,
+        onsetDate: typeof d.onsetDate === "string" ? d.onsetDate : null,
+        diagnosisType: typeof d.diagnosisType === "string" ? d.diagnosisType : undefined,
+        createdByDisplay,
+        createdByDisplayName:
+          typeof d.createdByDisplayName === "string" ? d.createdByDisplayName : createdByDisplay?.name ?? null,
+        createdByRoleTitle:
+          typeof d.createdByRoleTitle === "string" ? d.createdByRoleTitle : createdByDisplay?.role ?? null,
+      };
+    })
     .sort((a, b) => {
       const sa = a.sortOrder ?? 0;
       const sb = b.sortOrder ?? 0;

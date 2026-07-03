@@ -613,6 +613,40 @@ function formatDiagnosisDisplayLabel(dx: {
   return description ?? code;
 }
 
+function resolveDiagnosisAttributionName(dx: {
+  createdByDisplay?: { name?: string | null } | null;
+  createdByDisplayName?: string | null;
+  documentedByDisplayName?: string | null;
+  createdByName?: string | null;
+  updatedByDisplay?: { name?: string | null } | null;
+}): string | null {
+  const createdByDisplay =
+    dx.createdByDisplay && typeof dx.createdByDisplay === "object" ? dx.createdByDisplay : null;
+  return (
+    asTrimmed(createdByDisplay?.name) ??
+    asTrimmed(dx.createdByDisplayName) ??
+    asTrimmed(dx.documentedByDisplayName) ??
+    asTrimmed(dx.createdByName) ??
+    asTrimmed(dx.updatedByDisplay?.name)
+  );
+}
+
+function resolveDiagnosisAttributionRole(dx: {
+  createdByDisplay?: { role?: string | null } | null;
+  createdByRole?: string | null;
+  documentedByRole?: string | null;
+  updatedByDisplay?: { role?: string | null } | null;
+}): string | null {
+  const createdByDisplay =
+    dx.createdByDisplay && typeof dx.createdByDisplay === "object" ? dx.createdByDisplay : null;
+  return (
+    asTrimmed(createdByDisplay?.role) ??
+    asTrimmed(dx.createdByRole) ??
+    asTrimmed(dx.documentedByRole) ??
+    asTrimmed(dx.updatedByDisplay?.role)
+  );
+}
+
 function buildDiagnoses(input: BuildEncounterClinicalRecordInput) {
   const built = (input.encounter.diagnoses ?? [])
     .map((dx, index) => {
@@ -620,6 +654,8 @@ function buildDiagnoses(input: BuildEncounterClinicalRecordInput) {
       const displayLabel = formatDiagnosisDisplayLabel(dx);
       if (!displayLabel) return null;
       const documentedAt = asTrimmed(dx.documentedAt) ?? asTrimmed(dx.createdAt);
+      const documentedByDisplayName = resolveDiagnosisAttributionName(dx);
+      const documentedByRole = resolveDiagnosisAttributionRole(dx);
       return {
         id,
         code: asTrimmed(dx.code),
@@ -628,9 +664,10 @@ function buildDiagnoses(input: BuildEncounterClinicalRecordInput) {
         status: asTrimmed(dx.status),
         isPrimary: Boolean(dx.isPrimary),
         documentedAt,
-        documentedByDisplayName: asTrimmed(dx.documentedByDisplayName),
+        documentedByDisplayName,
         documentedBy: buildClinicalRecordAttribution({
-          name: dx.documentedByDisplayName,
+          name: documentedByDisplayName,
+          role: documentedByRole,
           at: documentedAt,
         }),
       };
