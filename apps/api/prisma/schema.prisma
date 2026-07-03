@@ -87,6 +87,7 @@ model Facility {
   pathwaySessions                        PathwaySession[]
   patients                               Patient[]                              @relation("PatientFacility")
   patientsRegistered                     Patient[]                              @relation("RegisteredAtFacility")
+  patientDocuments                       PatientDocument[]
   patientInsuranceCoverages              PatientInsuranceCoverage[]
   pharmacyVerifications                  PharmacyVerification[]
   protocolOrderSets                      ProtocolOrderSet[]
@@ -247,6 +248,7 @@ model User {
   pharmacyVerificationsAsPharmacist               PharmacyVerification[]                 @relation("PharmacyVerificationPharmacist")
   platformAnnouncementsCreated                    PlatformAnnouncement[]                 @relation("PlatformAnnouncementCreatedBy")
   platformAnnouncementAcknowledgements            PlatformAnnouncementAcknowledgement[]
+  patientDocumentsUploaded                        PatientDocument[]                      @relation("PatientDocumentUploadedBy")
   userRoles                                       UserRole[]
   vaccineAdministrations                          VaccineAdministration[]
 }
@@ -359,6 +361,7 @@ model Patient {
   facility                     Facility                              @relation("PatientFacility", fields: [facilityId], references: [id])
   registeredAtFacility         Facility                              @relation("RegisteredAtFacility", fields: [registeredAtFacilityId], references: [id])
   insuranceCoverages           PatientInsuranceCoverage[]
+  patientDocuments             PatientDocument[]
   triageVitalsReadings         TriageVitalsReading[]
   vaccineAdministrations       VaccineAdministration[]
 
@@ -3511,6 +3514,29 @@ enum MsppDiseaseReportFeedbackCategory {
   DUPLICATE_SUSPECTED
   DATA_INCONSISTENT
   OTHER
+}
+
+/// Patient registration documents (insurance cards, IDs, consent forms, referrals, etc.).
+model PatientDocument {
+  id           String   @id @default(uuid())
+  patientId    String
+  facilityId   String
+  documentType String
+  fileName     String
+  mimeType     String?
+  fileSize     Int?
+  storagePath  String
+  notes        String?
+  uploadedById String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  patient    Patient  @relation(fields: [patientId], references: [id], onDelete: Restrict)
+  facility   Facility @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  uploadedBy User?    @relation("PatientDocumentUploadedBy", fields: [uploadedById], references: [id], onDelete: SetNull)
+
+  @@index([patientId, facilityId])
+  @@index([facilityId])
 }
 
 enum MsppDiseaseReportFeedbackSeverity {

@@ -17,8 +17,6 @@ import {
   PatientConsultationsTab,
   PatientVaccinationsTab,
   CreateFollowUpModal,
-  PatientPrimaryInsurancePanel,
-  PatientSecondaryInsurancePanel,
   computeHeaderVitalsLine,
 } from "@/components/patient-chart";
 import {
@@ -384,19 +382,6 @@ export default function PatientDetailPage() {
       roles.includes("PROVIDER") ||
       roles.includes("ADMIN"));
 
-  const canEditInsurance =
-    rolesReady &&
-    (roles.includes("RN") ||
-      roles.includes("PROVIDER") ||
-      roles.includes("ADMIN") ||
-      roles.includes("FRONT_DESK") ||
-      roles.includes("BILLING"));
-
-  const [insuranceSyncVersion, setInsuranceSyncVersion] = useState(0);
-  const bumpInsurancePanels = useCallback(() => {
-    setInsuranceSyncVersion((v) => v + 1);
-  }, []);
-
   const tabs = useMemo(
     () => [
       { id: "summary", label: t("patientChartUi.tabsSummary") },
@@ -468,28 +453,7 @@ export default function PatientDetailPage() {
                 {t("facesheet.linkFromChart")}
               </Link>
             </div>
-            <div id="patient-registration-insurance" className="no-print" style={{ scrollMarginTop: 16 }}>
-            <PatientPrimaryInsurancePanel
-              patientId={patientId}
-              facilityId={facilityId}
-              canEdit={canEditInsurance}
-              syncVersion={insuranceSyncVersion}
-              onSaved={() => {
-                bumpInsurancePanels();
-                void loadPatient();
-              }}
-            />
-            <PatientSecondaryInsurancePanel
-              patientId={patientId}
-              facilityId={facilityId}
-              canEdit={canEditInsurance}
-              syncVersion={insuranceSyncVersion}
-              onSaved={() => {
-                bumpInsurancePanels();
-                void loadPatient();
-              }}
-            />
-            </div>
+            <ChartInsuranceReadOnlySummary patientId={patientId} facilityId={facilityId} />
           </>
         )}
       </div>
@@ -735,6 +699,90 @@ function FrontDeskSummaryTab({
   );
 }
 
+
+function ChartInsuranceReadOnlySummary({ patientId, facilityId }: { patientId: string; facilityId: string }) {
+  const { t, language } = useI18n();
+  const [rows, setRows] = React.useState<Array<{
+    rank: string;
+    payerId: string | null;
+    payerNameFreeText: string | null;
+    planName?: string | null;
+    memberId?: string | null;
+    payer?: { name?: string | null } | null;
+  }>>([]);
+  const [loaded, setLoaded] = React.useState(false);
+
+  React.useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const data = await apiFetch(`/patients/${patientId}/insurance`, { facilityId });
+        if (!cancelled) {
+          setRows(Array.isArray(data) ? data : []);
+          setLoaded(true);
+        }
+      } catch {
+        if (!cancelled) setLoaded(true);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [patientId, facilityId]);
+
+  if (!loaded) return null;
+
+  const primary = rows.find((r) => r.rank === "PRIMARY");
+  const secondary = rows.find((r) => r.rank === "SECONDARY");
+
+  const payerName = (r: typeof primary) => {
+    if (!r) return null;
+    return r.payer?.name || r.payerNameFreeText?.trim() || null;
+  };
+
+  const renderRow = (label: string, row: typeof primary) => {
+    const name = payerName(row);
+    return (
+      <div style={{ fontSize: 13, marginBottom: 4, color: name ? "#334155" : "#94a3b8" }}>
+        <strong>{label}: </strong>
+        {name ? (
+          <>
+            {name}
+            {row?.planName ? ` · ${row.planName}` : ""}
+            {row?.memberId ? ` · ${t("chartInsuranceSummary.memberIdLabel")}: ${row.memberId}` : ""}
+          </>
+        ) : (
+          t("chartInsuranceSummary.noneOnFile")
+        )}
+      </div>
+    );
+  };
+
+  return (
+    <div
+      id="patient-registration-insurance"
+      className="no-print"
+      style={{
+        scrollMarginTop: 16,
+        marginBottom: 16,
+        padding: "10px 14px",
+        borderRadius: 8,
+        border: "1px solid #e2e8f0",
+        background: "#fafafa",
+      }}
+    >
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+        <strong style={{ fontSize: 14, color: "#0f172a" }}>{t("chartInsuranceSummary.heading")}</strong>
+        <Link
+          href={`/app/registration?patient=${patientId}`}
+          style={{ fontSize: 12, fontWeight: 600, color: "#1565c0" }}
+        >
+          {t("chartInsuranceSummary.editInRegistration")}
+        </Link>
+      </div>
+      {renderRow(t("chartInsuranceSummary.primaryLabel"), primary)}
+      {renderRow(t("chartInsuranceSummary.secondaryLabel"), secondary)}
+    </div>
+  );
+}
 
 function AddDiagnosisModal({
   facilityId,

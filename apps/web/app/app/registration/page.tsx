@@ -8,6 +8,7 @@ import {
   CreateFollowUpModal,
   PatientPrimaryInsurancePanel,
   PatientSecondaryInsurancePanel,
+  PatientMyMediaSection,
 } from "@/components/patient-chart";
 import { encounterBcp47 } from "@/lib/encounterChromeI18n";
 import { useI18n } from "@/lib/i18n";
@@ -563,7 +564,7 @@ function RegistrationPageInner() {
                       borderTop: "1px solid #e2e8f0",
                     }}
                   >
-                    <h3 style={{ margin: "0 0 6px 0", fontSize: 16, fontWeight: 800, color: "#0f172a" }}>
+                    <h3 id="registration-insurance-section" style={{ margin: "0 0 6px 0", fontSize: 16, fontWeight: 800, color: "#0f172a", scrollMarginTop: 16 }}>
                       {t("registrationWorkspace.inlineInsuranceHeading")}
                     </h3>
                     <p style={{ margin: "0 0 14px 0", fontSize: 13, color: "#475569", lineHeight: 1.45, maxWidth: 720 }}>
@@ -592,6 +593,22 @@ function RegistrationPageInner() {
                   </div>
                 )}
 
+                {!workspaceLoading && workspacePatient && effectiveFacilityId && (
+                  <div style={{ marginTop: 20, paddingTop: 18, borderTop: "1px solid #e2e8f0" }}>
+                    <h3 id="registration-media-section" style={{ margin: "0 0 6px 0", fontSize: 16, fontWeight: 800, color: "#0f172a", scrollMarginTop: 16 }}>
+                      {t("myMedia.title")}
+                    </h3>
+                    <p style={{ margin: "0 0 14px 0", fontSize: 13, color: "#475569", lineHeight: 1.45, maxWidth: 720 }}>
+                      {t("myMedia.subtitle")}
+                    </p>
+                    <PatientMyMediaSection
+                      patientId={selectedRegPatient.id}
+                      facilityId={effectiveFacilityId}
+                      canEdit={canEditInsurance}
+                    />
+                  </div>
+                )}
+
                 {!workspaceLoading && (
                   <>
                     <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center" }}>
@@ -612,21 +629,6 @@ function RegistrationPageInner() {
                           {t("patientProfile.linkViewProfile")}
                         </Link>
                       )}
-                      <Link
-                        href={`/app/patients/${selectedRegPatient.id}#patient-registration-insurance`}
-                        style={{
-                          padding: "10px 16px",
-                          backgroundColor: "#fff",
-                          color: "#1565c0",
-                          border: "1px solid #1565c0",
-                          borderRadius: 8,
-                          textDecoration: "none",
-                          fontSize: 14,
-                          fontWeight: 600,
-                        }}
-                      >
-                        {t("registrationWorkspace.actionChartInsuranceAnchor")}
-                      </Link>
                       <Link
                         href={`/app/patients/${selectedRegPatient.id}/facesheet`}
                         style={{
@@ -726,17 +728,50 @@ function RegistrationPageInner() {
             <strong style={{ fontSize: 15 }}>{t("nav.billing")}</strong>
             <span style={{ fontSize: 13, color: "#546e7a" }}>{t("registrationHome.cardBillingHint")}</span>
           </Link>
-          <Link
-            href="/app/fracture"
+          <button
+            type="button"
+            onClick={() => {
+              if (selectedRegPatient) {
+                const el = document.getElementById("registration-insurance-section");
+                el?.scrollIntoView({ behavior: "smooth", block: "start" });
+              } else {
+                const el = document.querySelector<HTMLInputElement>('input[type="search"]');
+                el?.focus();
+              }
+            }}
             style={{
               ...cardBase,
-              borderLeft: "4px solid #ad1457",
-              background: "linear-gradient(145deg, #fce4ec 0%, #fff 55%)",
+              borderLeft: "4px solid #0277bd",
+              background: "linear-gradient(145deg, #e1f5fe 0%, #fff 55%)",
+              cursor: "pointer",
+              textAlign: "left",
             }}
           >
-            <strong style={{ fontSize: 15 }}>{t("nav.fracture")}</strong>
-            <span style={{ fontSize: 13, color: "#546e7a" }}>{t("registrationHome.cardFractureHint")}</span>
-          </Link>
+            <strong style={{ fontSize: 15 }}>{t("registrationHome.cardInsuranceTitle")}</strong>
+            <span style={{ fontSize: 13, color: "#546e7a" }}>{t("registrationHome.cardInsuranceHint")}</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              if (selectedRegPatient) {
+                const el = document.getElementById("registration-media-section");
+                el?.scrollIntoView({ behavior: "smooth", block: "start" });
+              } else {
+                const el = document.querySelector<HTMLInputElement>('input[type="search"]');
+                el?.focus();
+              }
+            }}
+            style={{
+              ...cardBase,
+              borderLeft: "4px solid #6a1b9a",
+              background: "linear-gradient(145deg, #f3e5f5 0%, #fff 55%)",
+              cursor: "pointer",
+              textAlign: "left",
+            }}
+          >
+            <strong style={{ fontSize: 15 }}>{t("registrationHome.cardMyMediaTitle")}</strong>
+            <span style={{ fontSize: 13, color: "#546e7a" }}>{t("registrationHome.cardMyMediaHint")}</span>
+          </button>
         </div>
       </section>
 
