@@ -18,23 +18,42 @@ type DocumentRow = {
   uploadedBy: { id: string; firstName: string; lastName: string } | null;
 };
 
-const REGISTRATION_DOC_TYPES = [
-  "INSURANCE_CARD_FRONT",
-  "INSURANCE_CARD_BACK",
-  "PATIENT_ID",
-  "CONSENT_FORM",
-  "REFERRAL",
-  "OTHER_REGISTRATION_DOCUMENT",
-] as const;
-
 const DOC_TYPE_I18N: Record<string, string> = {
   INSURANCE_CARD_FRONT: "documentCenter.typeInsuranceCardFront",
   INSURANCE_CARD_BACK: "documentCenter.typeInsuranceCardBack",
-  PATIENT_ID: "documentCenter.typePatientId",
+  PATIENT_ID_FRONT: "documentCenter.typePatientIdFront",
+  PATIENT_ID_BACK: "documentCenter.typePatientIdBack",
   CONSENT_FORM: "documentCenter.typeConsentForm",
   REFERRAL: "documentCenter.typeReferral",
   OTHER_REGISTRATION_DOCUMENT: "documentCenter.typeOtherRegistration",
+  REGISTRATION_PACKET: "documentCenter.typeRegistrationPacket",
 };
+
+const PACKET_TEMPLATES = [
+  "FREESTANDING_ER",
+  "URGENT_CARE",
+  "CLINIC",
+  "HOSPITAL",
+] as const;
+
+const FREESTANDING_ER_SECTIONS = [
+  "packetSectionAob",
+  "packetSectionCoordination",
+  "packetSectionDemographics",
+  "packetSectionDisclosure",
+  "packetSectionConsent",
+  "packetSectionPrivacy",
+  "packetSectionBillOfRights",
+  "packetSectionMedicareMedicaidNotice",
+] as const;
+
+const STANDARD_PACKET_SECTIONS = [
+  "packetSectionDemographics",
+  "packetSectionDisclosure",
+  "packetSectionConsent",
+  "packetSectionPrivacy",
+  "packetSectionBillOfRights",
+] as const;
 
 export function RegistrationDocumentCenter({
   patientId,
@@ -47,17 +66,26 @@ export function RegistrationDocumentCenter({
 }) {
   const { t, language } = useI18n();
   const dateLocale = encounterBcp47(language);
-  const fileRef = useRef<HTMLInputElement>(null);
+
+  const insuranceFrontRef = useRef<HTMLInputElement>(null);
+  const insuranceBackRef = useRef<HTMLInputElement>(null);
+  const idFrontRef = useRef<HTMLInputElement>(null);
+  const idBackRef = useRef<HTMLInputElement>(null);
+  const otherFileRef = useRef<HTMLInputElement>(null);
 
   const [docs, setDocs] = useState<DocumentRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
 
-  const [docType, setDocType] = useState<string>("");
-  const [notes, setNotes] = useState("");
-  const [uploading, setUploading] = useState(false);
+  const [uploading, setUploading] = useState<string | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
-  const [uploadSuccess, setUploadSuccess] = useState(false);
+  const [uploadSuccess, setUploadSuccess] = useState<string | null>(null);
+
+  const [otherTitle, setOtherTitle] = useState("");
+  const [otherNotes, setOtherNotes] = useState("");
+
+  const [generatingPacket, setGeneratingPacket] = useState(false);
+  const [packetPreview, setPacketPreview] = useState<string | null>(null);
 
   const loadDocs = useCallback(async () => {
     setLoading(true);
@@ -81,19 +109,25 @@ export function RegistrationDocumentCenter({
     void loadDocs();
   }, [loadDocs]);
 
-  const handleUpload = async () => {
-    const file = fileRef.current?.files?.[0];
-    if (!file || !docType) return;
-    setUploading(true);
+  const uploadFile = async (
+    ref: React.RefObject<HTMLInputElement | null>,
+    type: string,
+    title?: string,
+    notes?: string,
+  ) => {
+    const file = ref.current?.files?.[0];
+    if (!file) return;
+    setUploading(type);
     setUploadError(null);
-    setUploadSuccess(false);
+    setUploadSuccess(null);
     try {
       const form = new FormData();
       form.append("file", file);
       form.append("category", "REGISTRATION");
-      form.append("type", docType);
+      form.append("type", type);
       form.append("patientId", patientId);
-      if (notes.trim()) form.append("notes", notes.trim());
+      if (title?.trim()) form.append("title", title.trim());
+      if (notes?.trim()) form.append("notes", notes.trim());
 
       const resp = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL || ""}/documents/upload`,
@@ -105,16 +139,18 @@ export function RegistrationDocumentCenter({
         },
       );
       if (!resp.ok) throw new Error(await resp.text());
-      setUploadSuccess(true);
-      setDocType("");
-      setNotes("");
-      if (fileRef.current) fileRef.current.value = "";
-      window.setTimeout(() => setUploadSuccess(false), 3500);
+      setUploadSuccess(type);
+      if (ref.current) ref.current.value = "";
+      if (type === "OTHER_REGISTRATION_DOCUMENT") {
+        setOtherTitle("");
+        setOtherNotes("");
+      }
+      window.setTimeout(() => setUploadSuccess(null), 3500);
       await loadDocs();
     } catch {
       setUploadError(t("documentCenter.uploadError"));
     } finally {
-      setUploading(false);
+      setUploading(null);
     }
   };
 
@@ -136,6 +172,65 @@ export function RegistrationDocumentCenter({
     }
   };
 
+  const handleGeneratePacket = async (template: string) => {
+    setGeneratingPacket(true);
+    setUploadError(null);
+    try {
+      const sections =
+        template === "FREESTANDING_ER" ? FREESTANDING_ER_SECTIONS : STANDARD_PACKET_SECTIONS;
+
+      const sectionLabels = sections.map((s) => t(`documentCenter.${s}`)).join("\n• ");
+      const packetName = t(`documentCenter.packetTemplate${template.charAt(0)}${template.slice(1).toLowerCase().replace(/_([a-z])/g, (_, c: string) => c.toUpperCase())}`);
+
+      const blob = new Blob(
+        [
+          `${packetName}\n${"=".repeat(packetName.length)}\n\n`,
+          `${t("documentCenter.packetGeneratedFor")}: ${patientId}\n`,
+          `${t("documentCenter.packetDate")}: ${new Date().toLocaleDateString(dateLocale)}\n\n`,
+          `${t("documentCenter.packetSections")}:\n• ${sectionLabels}\n\n`,
+          template === "FREESTANDING_ER"
+            ? `⚠ ${t("documentCenter.packetMedicareMedicaidWarning")}\n\n`
+            : "",
+          `${t("documentCenter.packetSignatureLine")}\n\n`,
+          `__________________________          __________\n`,
+          `${t("documentCenter.packetSignatureLabel")}          ${t("documentCenter.packetDateLabel")}\n`,
+        ],
+        { type: "text/plain" },
+      );
+
+      const form = new FormData();
+      form.append("file", blob, `${template.toLowerCase()}_registration_packet.txt`);
+      form.append("category", "REGISTRATION");
+      form.append("type", "REGISTRATION_PACKET");
+      form.append("patientId", patientId);
+      form.append("title", packetName);
+      form.append("source", "SYSTEM");
+      form.append("notes", `${t("documentCenter.packetGeneratedNote")} — ${template}`);
+
+      const resp = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL || ""}/documents/upload`,
+        {
+          method: "POST",
+          body: form,
+          headers: { "x-facility-id": facilityId },
+          credentials: "include",
+        },
+      );
+      if (!resp.ok) throw new Error();
+      setUploadSuccess("REGISTRATION_PACKET");
+      window.setTimeout(() => setUploadSuccess(null), 3500);
+      await loadDocs();
+    } catch {
+      setUploadError(t("documentCenter.packetGenerateError"));
+    } finally {
+      setGeneratingPacket(false);
+    }
+  };
+
+  const handlePreview = (template: string) => {
+    setPacketPreview(packetPreview === template ? null : template);
+  };
+
   const formatDate = (d: string) =>
     new Date(d).toLocaleDateString(dateLocale, {
       year: "numeric",
@@ -145,116 +240,300 @@ export function RegistrationDocumentCenter({
       minute: "2-digit",
     });
 
+  const uploadSlot = (
+    label: string,
+    ref: React.RefObject<HTMLInputElement | null>,
+    type: string,
+    existingDoc?: DocumentRow,
+  ) => (
+    <div
+      style={{
+        padding: "10px 14px",
+        border: "1px solid #e2e8f0",
+        borderRadius: 8,
+        background: existingDoc ? "#f0fdf4" : "#fff",
+        display: "flex",
+        alignItems: "center",
+        gap: 10,
+        minHeight: 44,
+      }}
+    >
+      <div style={{ flex: 1 }}>
+        <div style={{ fontSize: 13, fontWeight: 600, color: "#0f172a" }}>{label}</div>
+        {existingDoc && (
+          <div style={{ fontSize: 12, color: "#16a34a", marginTop: 2 }}>
+            ✓ {existingDoc.fileName} — {formatDate(existingDoc.uploadedAt)}
+          </div>
+        )}
+      </div>
+      {canEdit && (
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <input
+            ref={ref}
+            type="file"
+            accept="image/*,.pdf"
+            style={{ fontSize: 12, maxWidth: 160 }}
+          />
+          <button
+            type="button"
+            onClick={() => void uploadFile(ref, type)}
+            disabled={uploading === type}
+            style={{
+              padding: "5px 12px",
+              fontSize: 12,
+              fontWeight: 600,
+              border: "none",
+              borderRadius: 5,
+              background: "#1a1a1a",
+              color: "#fff",
+              cursor: uploading === type ? "not-allowed" : "pointer",
+              opacity: uploading === type ? 0.6 : 1,
+              whiteSpace: "nowrap",
+            }}
+          >
+            {uploading === type ? t("documentCenter.uploading") : t("documentCenter.upload")}
+          </button>
+        </div>
+      )}
+      {uploadSuccess === type && (
+        <span style={{ fontSize: 12, color: "#16a34a", fontWeight: 600 }}>✓</span>
+      )}
+    </div>
+  );
+
+  const insuranceFrontDoc = docs.find((d) => d.type === "INSURANCE_CARD_FRONT");
+  const insuranceBackDoc = docs.find((d) => d.type === "INSURANCE_CARD_BACK");
+  const idFrontDoc = docs.find((d) => d.type === "PATIENT_ID_FRONT");
+  const idBackDoc = docs.find((d) => d.type === "PATIENT_ID_BACK");
+  const packets = docs.filter((d) => d.type === "REGISTRATION_PACKET");
+  const otherDocs = docs.filter(
+    (d) =>
+      !["INSURANCE_CARD_FRONT", "INSURANCE_CARD_BACK", "PATIENT_ID_FRONT", "PATIENT_ID_BACK", "REGISTRATION_PACKET"].includes(d.type),
+  );
+
   return (
     <div>
-      {canEdit && (
-        <div
-          style={{
-            marginBottom: 18,
-            padding: 14,
-            borderRadius: 8,
-            border: "1px solid #e2e8f0",
-            background: "#fafafa",
-          }}
-        >
-          <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 10, color: "#0f172a" }}>
-            {t("documentCenter.uploadHeading")}
-          </div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 10 }}>
-            <div>
-              <label style={{ display: "block", fontSize: 13, fontWeight: 500, marginBottom: 4 }}>
-                {t("documentCenter.documentTypeLabel")}
-              </label>
-              <select
-                value={docType}
-                onChange={(e) => setDocType(e.target.value)}
+      {uploadError && (
+        <div style={{ marginBottom: 12, padding: "8px 12px", background: "#ffebee", color: "#b71c1c", borderRadius: 6, fontSize: 13 }} role="alert">
+          {uploadError}
+        </div>
+      )}
+
+      {/* ── Insurance Card Section ─────────────────────────── */}
+      <div style={{ marginBottom: 16 }}>
+        <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 6, color: "#0f172a" }}>
+          {t("documentCenter.sectionInsuranceCard")}
+        </div>
+        <div style={{ display: "grid", gap: 8 }}>
+          {uploadSlot(t("documentCenter.slotFront"), insuranceFrontRef, "INSURANCE_CARD_FRONT", insuranceFrontDoc)}
+          {uploadSlot(t("documentCenter.slotBack"), insuranceBackRef, "INSURANCE_CARD_BACK", insuranceBackDoc)}
+        </div>
+      </div>
+
+      {/* ── ID Card Section ────────────────────────────────── */}
+      <div style={{ marginBottom: 16 }}>
+        <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 6, color: "#0f172a" }}>
+          {t("documentCenter.sectionIdCard")}
+        </div>
+        <div style={{ display: "grid", gap: 8 }}>
+          {uploadSlot(t("documentCenter.slotFront"), idFrontRef, "PATIENT_ID_FRONT", idFrontDoc)}
+          {uploadSlot(t("documentCenter.slotBack"), idBackRef, "PATIENT_ID_BACK", idBackDoc)}
+        </div>
+      </div>
+
+      {/* ── Storage Guidance ───────────────────────────────── */}
+      <div style={{ marginBottom: 16, padding: "8px 12px", background: "#fffde7", borderRadius: 6, border: "1px solid #fff9c4", fontSize: 12, color: "#6d4c00" }}>
+        {t("documentCenter.storageGuidance")}
+      </div>
+
+      {/* ── Electronic Registration Packets ────────────────── */}
+      <div style={{ marginBottom: 16 }}>
+        <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 4, color: "#0f172a" }}>
+          {t("documentCenter.sectionPackets")}
+        </div>
+        <p style={{ margin: "0 0 8px 0", fontSize: 12, color: "#475569" }}>
+          {t("documentCenter.packetsIntro")}
+        </p>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 8 }}>
+          {PACKET_TEMPLATES.map((tmpl) => {
+            const key = `packetTemplate${tmpl.charAt(0)}${tmpl.slice(1).toLowerCase().replace(/_([a-z])/g, (_, c: string) => c.toUpperCase())}`;
+            const label = t(`documentCenter.${key}`);
+            const existing = packets.find((d) => d.notes?.includes(tmpl));
+            const sections =
+              tmpl === "FREESTANDING_ER" ? FREESTANDING_ER_SECTIONS : STANDARD_PACKET_SECTIONS;
+
+            return (
+              <div
+                key={tmpl}
                 style={{
-                  width: "100%",
-                  padding: "8px 10px",
-                  border: "1px solid #ddd",
-                  borderRadius: 6,
-                  fontSize: 13,
-                  background: "#fff",
+                  padding: 12,
+                  border: "1px solid #e2e8f0",
+                  borderRadius: 8,
+                  background: existing ? "#f0fdf4" : "#fafafa",
                 }}
               >
-                <option value="">{t("documentCenter.documentTypePlaceholder")}</option>
-                {REGISTRATION_DOC_TYPES.map((dt) => (
-                  <option key={dt} value={dt}>
-                    {t(DOC_TYPE_I18N[dt])}
-                  </option>
-                ))}
-              </select>
-            </div>
+                <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 6, color: "#0f172a" }}>{label}</div>
+                {existing && (
+                  <div style={{ fontSize: 11, color: "#16a34a", marginBottom: 6 }}>
+                    ✓ {t("documentCenter.packetGenerated")} — {formatDate(existing.uploadedAt)}
+                  </div>
+                )}
+                <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+                  {canEdit && (
+                    <button
+                      type="button"
+                      onClick={() => void handleGeneratePacket(tmpl)}
+                      disabled={generatingPacket}
+                      style={{
+                        padding: "4px 10px",
+                        fontSize: 11,
+                        fontWeight: 600,
+                        border: "1px solid #cbd5e1",
+                        borderRadius: 4,
+                        background: "#fff",
+                        cursor: generatingPacket ? "not-allowed" : "pointer",
+                      }}
+                    >
+                      {t("documentCenter.generatePacket")}
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => handlePreview(tmpl)}
+                    style={{
+                      padding: "4px 10px",
+                      fontSize: 11,
+                      fontWeight: 600,
+                      border: "1px solid #cbd5e1",
+                      borderRadius: 4,
+                      background: packetPreview === tmpl ? "#e3f2fd" : "#fff",
+                      cursor: "pointer",
+                    }}
+                  >
+                    {t("documentCenter.previewPacket")}
+                  </button>
+                  {existing && (
+                    <a
+                      href={`${process.env.NEXT_PUBLIC_API_URL || ""}/documents/${existing.id}/download`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{ padding: "4px 10px", fontSize: 11, fontWeight: 600, color: "#1565c0" }}
+                    >
+                      {t("documentCenter.printPacket")}
+                    </a>
+                  )}
+                  {canEdit && existing && (
+                    <button
+                      type="button"
+                      onClick={() => void handleArchive(existing.id)}
+                      style={{
+                        padding: "4px 10px",
+                        fontSize: 11,
+                        fontWeight: 600,
+                        border: "none",
+                        borderRadius: 4,
+                        background: "transparent",
+                        color: "#b91c1c",
+                        cursor: "pointer",
+                      }}
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+                {packetPreview === tmpl && (
+                  <div style={{ marginTop: 8, padding: 8, background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 6, fontSize: 12 }}>
+                    <div style={{ fontWeight: 600, marginBottom: 4 }}>{t("documentCenter.packetSections")}:</div>
+                    <ul style={{ margin: 0, paddingLeft: 16 }}>
+                      {sections.map((s) => (
+                        <li key={s} style={{ marginBottom: 2 }}>{t(`documentCenter.${s}`)}</li>
+                      ))}
+                    </ul>
+                    {tmpl === "FREESTANDING_ER" && (
+                      <div style={{ marginTop: 6, padding: "4px 8px", background: "#fff3e0", borderRadius: 4, fontSize: 11, color: "#e65100" }}>
+                        ⚠ {t("documentCenter.packetMedicareMedicaidWarning")}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+        <div style={{ marginTop: 6, fontSize: 12, color: "#64748b" }}>
+          {t("documentCenter.packetEsignNote")}
+        </div>
+      </div>
+
+      {/* ── Other Document Upload ──────────────────────────── */}
+      {canEdit && (
+        <div style={{ marginBottom: 16, padding: 12, borderRadius: 8, border: "1px solid #e2e8f0", background: "#fafafa" }}>
+          <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 8, color: "#0f172a" }}>
+            {t("documentCenter.sectionOtherUpload")}
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 8 }}>
             <div>
-              <label style={{ display: "block", fontSize: 13, fontWeight: 500, marginBottom: 4 }}>
-                {t("documentCenter.fileLabel")}
+              <label style={{ display: "block", fontSize: 12, fontWeight: 500, marginBottom: 3 }}>
+                {t("documentCenter.otherTitleLabel")}
               </label>
               <input
-                ref={fileRef}
-                type="file"
-                accept="image/*,.pdf,.doc,.docx"
-                style={{ fontSize: 13 }}
+                type="text"
+                value={otherTitle}
+                onChange={(e) => setOtherTitle(e.target.value)}
+                placeholder={t("documentCenter.otherTitlePlaceholder")}
+                style={{ width: "100%", padding: "7px 10px", border: "1px solid #ddd", borderRadius: 6, fontSize: 13 }}
               />
             </div>
+            <div>
+              <label style={{ display: "block", fontSize: 12, fontWeight: 500, marginBottom: 3 }}>
+                {t("documentCenter.fileLabel")}
+              </label>
+              <input ref={otherFileRef} type="file" accept="image/*,.pdf,.doc,.docx" style={{ fontSize: 12 }} />
+            </div>
           </div>
-          <div style={{ marginBottom: 10 }}>
-            <label style={{ display: "block", fontSize: 13, fontWeight: 500, marginBottom: 4 }}>
+          <div style={{ marginBottom: 8 }}>
+            <label style={{ display: "block", fontSize: 12, fontWeight: 500, marginBottom: 3 }}>
               {t("documentCenter.notesLabel")}
             </label>
             <input
               type="text"
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
+              value={otherNotes}
+              onChange={(e) => setOtherNotes(e.target.value)}
               placeholder={t("documentCenter.notesPlaceholder")}
-              style={{
-                width: "100%",
-                padding: "8px 10px",
-                border: "1px solid #ddd",
-                borderRadius: 6,
-                fontSize: 13,
-              }}
+              style={{ width: "100%", padding: "7px 10px", border: "1px solid #ddd", borderRadius: 6, fontSize: 13 }}
             />
           </div>
-          {uploadError && (
-            <div style={{ marginBottom: 10, padding: "8px 10px", background: "#ffebee", color: "#b71c1c", borderRadius: 4, fontSize: 13 }} role="alert">
-              {uploadError}
-            </div>
-          )}
-          {uploadSuccess && (
-            <div style={{ marginBottom: 10, padding: "8px 10px", background: "#e8f5e9", color: "#1b5e20", borderRadius: 4, fontSize: 13 }} role="status">
-              {t("documentCenter.uploadSuccess")}
-            </div>
-          )}
           <button
             type="button"
-            onClick={() => void handleUpload()}
-            disabled={uploading || !docType || !fileRef.current?.files?.length}
+            onClick={() =>
+              void uploadFile(otherFileRef, "OTHER_REGISTRATION_DOCUMENT", otherTitle, otherNotes)
+            }
+            disabled={uploading === "OTHER_REGISTRATION_DOCUMENT" || !otherTitle.trim()}
             style={{
-              padding: "8px 16px",
+              padding: "7px 16px",
+              fontSize: 13,
+              fontWeight: 600,
               border: "none",
               borderRadius: 6,
               background: "#1a1a1a",
               color: "#fff",
-              fontWeight: 600,
-              fontSize: 13,
-              cursor: uploading || !docType ? "not-allowed" : "pointer",
-              opacity: uploading || !docType ? 0.65 : 1,
+              cursor: !otherTitle.trim() ? "not-allowed" : "pointer",
+              opacity: !otherTitle.trim() ? 0.6 : 1,
             }}
           >
-            {uploading ? t("documentCenter.uploading") : t("documentCenter.upload")}
+            {uploading === "OTHER_REGISTRATION_DOCUMENT" ? t("documentCenter.uploading") : t("documentCenter.upload")}
           </button>
         </div>
       )}
 
-      <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 8, color: "#0f172a" }}>
+      {/* ── Documents Table ────────────────────────────────── */}
+      <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 6, color: "#0f172a" }}>
         {t("documentCenter.listHeading")}
       </div>
 
       {loading && <div style={{ fontSize: 13, color: "#64748b" }}>{t("common.loading")}</div>}
       {loadError && (
-        <div style={{ fontSize: 13, color: "#b91c1c", marginBottom: 8 }} role="alert">
-          {loadError}
-        </div>
+        <div style={{ fontSize: 13, color: "#b91c1c", marginBottom: 8 }} role="alert">{loadError}</div>
       )}
       {!loading && docs.length === 0 && (
         <div style={{ fontSize: 13, color: "#64748b" }}>{t("documentCenter.emptyList")}</div>
@@ -274,6 +553,11 @@ export function RegistrationDocumentCenter({
             {docs.map((d) => (
               <tr key={d.id} style={{ borderBottom: "1px solid #f1f5f9" }}>
                 <td style={{ padding: "6px 8px" }}>
+                  {d.source === "SYSTEM" && (
+                    <span style={{ display: "inline-block", fontSize: 10, fontWeight: 700, color: "#6a1b9a", background: "#f3e5f5", padding: "1px 5px", borderRadius: 3, marginRight: 4 }}>
+                      {t("documentCenter.badgeGenerated")}
+                    </span>
+                  )}
                   {t(DOC_TYPE_I18N[d.type] || d.type)}
                 </td>
                 <td style={{ padding: "6px 8px", maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
@@ -283,24 +567,26 @@ export function RegistrationDocumentCenter({
                   {d.uploadedBy ? `${d.uploadedBy.firstName} ${d.uploadedBy.lastName}` : "—"}
                 </td>
                 <td style={{ padding: "6px 8px" }}>{formatDate(d.uploadedAt)}</td>
-                <td style={{ padding: "6px 8px", display: "flex", gap: 6 }}>
-                  <a
-                    href={`${process.env.NEXT_PUBLIC_API_URL || ""}/documents/${d.id}/download`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    style={{ color: "#1565c0", fontSize: 12, fontWeight: 600 }}
-                  >
-                    {t("documentCenter.download")}
-                  </a>
-                  {canEdit && (
-                    <button
-                      type="button"
-                      onClick={() => void handleArchive(d.id)}
-                      style={{ background: "transparent", border: "none", color: "#b91c1c", fontSize: 12, fontWeight: 600, cursor: "pointer" }}
+                <td style={{ padding: "6px 8px" }}>
+                  <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                    <a
+                      href={`${process.env.NEXT_PUBLIC_API_URL || ""}/documents/${d.id}/download`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{ color: "#1565c0", fontSize: 12, fontWeight: 600 }}
                     >
-                      ✕
-                    </button>
-                  )}
+                      {t("documentCenter.download")}
+                    </a>
+                    {canEdit && (
+                      <button
+                        type="button"
+                        onClick={() => void handleArchive(d.id)}
+                        style={{ background: "transparent", border: "none", color: "#b91c1c", fontSize: 12, fontWeight: 600, cursor: "pointer" }}
+                      >
+                        ✕
+                      </button>
+                    )}
+                  </div>
                 </td>
               </tr>
             ))}

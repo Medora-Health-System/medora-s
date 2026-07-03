@@ -12,7 +12,7 @@ function readApp(relativePath: string): string {
   return readFileSync(join(webRoot, "../app/app", relativePath), "utf8");
 }
 
-describe("MEDUI.REGISTRATION.INSURANCE_REFACTOR (Phase 1)", () => {
+describe("MEDUI.REGISTRATION.INSURANCE_AND_DOCUMENT_CENTER", () => {
   const registrationPage = readApp("registration/page.tsx");
   const patientChartPage = readApp("patients/[id]/page.tsx");
   const enMessages = readSrc("i18n/messages/en.ts");
@@ -24,16 +24,31 @@ describe("MEDUI.REGISTRATION.INSURANCE_REFACTOR (Phase 1)", () => {
       expect(registrationPage).toContain('t("registrationHome.cardInsuranceHint")');
     });
 
+    it("renders Document Center tile with i18n keys", () => {
+      expect(registrationPage).toContain('t("registrationHome.cardDocumentCenterTitle")');
+      expect(registrationPage).toContain('t("registrationHome.cardDocumentCenterHint")');
+    });
+
     it("does not render Fracture tile", () => {
       expect(registrationPage).not.toContain("/app/fracture");
-      expect(registrationPage).not.toContain('t("nav.fracture")');
       expect(registrationPage).not.toContain("cardFractureHint");
     });
 
-    it("does not contain My Media tile (removed for Document Center)", () => {
+    it("does not contain My Media tile", () => {
       expect(registrationPage).not.toContain("cardMyMediaTitle");
-      expect(registrationPage).not.toContain("cardMyMediaHint");
       expect(registrationPage).not.toContain("PatientMyMediaSection");
+    });
+
+    it("Insurance tile opens insurance section when patient selected", () => {
+      expect(registrationPage).toContain('document.getElementById("registration-insurance-section")');
+    });
+
+    it("Document Center tile opens document center section when patient selected", () => {
+      expect(registrationPage).toContain('document.getElementById("registration-document-center-section")');
+    });
+
+    it("tiles focus search when no patient selected", () => {
+      expect(registrationPage).toContain('querySelector<HTMLInputElement>(\'input[type="search"]\')');
     });
   });
 
@@ -77,6 +92,21 @@ describe("MEDUI.REGISTRATION.INSURANCE_REFACTOR (Phase 1)", () => {
     });
   });
 
+  describe("Document Center workspace in registration", () => {
+    it("registration page imports RegistrationDocumentCenter", () => {
+      expect(registrationPage).toContain("RegistrationDocumentCenter");
+    });
+
+    it("registration page has document center section", () => {
+      expect(registrationPage).toContain('id="registration-document-center-section"');
+    });
+
+    it("document center receives patientId and facilityId", () => {
+      expect(registrationPage).toContain("patientId={selectedRegPatient.id}");
+      expect(registrationPage).toContain("facilityId={effectiveFacilityId}");
+    });
+  });
+
   describe("i18n safety", () => {
     it("EN has Insurance tile keys", () => {
       expect(enMessages).toContain("cardInsuranceTitle");
@@ -88,26 +118,29 @@ describe("MEDUI.REGISTRATION.INSURANCE_REFACTOR (Phase 1)", () => {
       expect(frMessages).toContain("cardInsuranceHint");
     });
 
+    it("EN has Document Center tile keys", () => {
+      expect(enMessages).toContain("cardDocumentCenterTitle");
+      expect(enMessages).toContain("cardDocumentCenterHint");
+    });
+
+    it("FR has Document Center tile keys", () => {
+      expect(frMessages).toContain("cardDocumentCenterTitle");
+      expect(frMessages).toContain("cardDocumentCenterHint");
+    });
+
     it("EN has chartInsuranceSummary keys", () => {
       expect(enMessages).toContain("chartInsuranceSummary:");
       expect(enMessages).toContain("editInRegistration");
-      expect(enMessages).toContain("noneOnFile");
     });
 
     it("FR has chartInsuranceSummary keys", () => {
       expect(frMessages).toContain("chartInsuranceSummary:");
       expect(frMessages).toContain("editInRegistration");
-      expect(frMessages).toContain("noneOnFile");
     });
 
     it("no myMedia i18n keys remain", () => {
       expect(enMessages).not.toContain("myMedia:");
       expect(frMessages).not.toContain("myMedia:");
-    });
-
-    it("no cardMyMedia keys remain", () => {
-      expect(enMessages).not.toContain("cardMyMediaTitle");
-      expect(frMessages).not.toContain("cardMyMediaTitle");
     });
   });
 

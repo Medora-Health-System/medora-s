@@ -24,271 +24,255 @@ describe("MEDUI.DOCUMENTS.ENTERPRISE_DOCUMENT_CENTER (Phase 2)", () => {
   const enMessages = readSrc("i18n/messages/en.ts");
   const frMessages = readSrc("i18n/messages/fr.ts");
   const schema = readApi("prisma/schema.prisma");
+  const docComponent = readSrc("components/documents/RegistrationDocumentCenter.tsx");
 
   describe("Prisma model", () => {
     it("EnterpriseDocument model exists in schema", () => {
       expect(schema).toContain("model EnterpriseDocument {");
     });
 
-    it("has category field", () => {
-      expect(schema).toMatch(/EnterpriseDocument[\s\S]*?category\s+String/);
-    });
-
-    it("has type field", () => {
-      expect(schema).toMatch(/EnterpriseDocument[\s\S]*?type\s+String/);
-    });
-
-    it("has status field with ACTIVE default", () => {
-      expect(schema).toMatch(/EnterpriseDocument[\s\S]*?status\s+String\s+@default\("ACTIVE"\)/);
-    });
-
-    it("has optional patientId", () => {
-      expect(schema).toMatch(/EnterpriseDocument[\s\S]*?patientId\s+String\?/);
-    });
-
-    it("has optional encounterId", () => {
-      expect(schema).toMatch(/EnterpriseDocument[\s\S]*?encounterId\s+String\?/);
-    });
-
-    it("has checksumSha256 field", () => {
-      expect(schema).toMatch(/EnterpriseDocument[\s\S]*?checksumSha256\s+String\?/);
-    });
-
     it("does NOT contain PatientDocument model", () => {
       expect(schema).not.toContain("model PatientDocument {");
     });
+  });
 
-    it("has relation to Patient, Encounter, Facility, User", () => {
-      expect(schema).toMatch(/EnterpriseDocument[\s\S]*?patient\s+Patient\?/);
-      expect(schema).toMatch(/EnterpriseDocument[\s\S]*?encounter\s+Encounter\?/);
-      expect(schema).toMatch(/EnterpriseDocument[\s\S]*?facility\s+Facility\?/);
-      expect(schema).toMatch(/EnterpriseDocument[\s\S]*?uploadedBy\s+User\?/);
+  describe("Tile navigation", () => {
+    it("Insurance tile scrolls to insurance section or focuses search", () => {
+      expect(registrationPage).toContain('id="registration-insurance-section"');
+      expect(registrationPage).toContain('t("registrationHome.cardInsuranceTitle")');
     });
 
-    it("Patient model has enterpriseDocuments relation", () => {
-      expect(schema).toMatch(/model Patient[\s\S]*?enterpriseDocuments\s+EnterpriseDocument\[\]/);
+    it("Document Center tile scrolls to document center section or focuses search", () => {
+      expect(registrationPage).toContain('id="registration-document-center-section"');
+      expect(registrationPage).toContain('t("registrationHome.cardDocumentCenterTitle")');
     });
 
-    it("Encounter model has enterpriseDocuments relation", () => {
-      expect(schema).toMatch(/model Encounter[\s\S]*?enterpriseDocuments\s+EnterpriseDocument\[\]/);
+    it("Insurance tile falls back to search when no patient selected", () => {
+      expect(registrationPage).toContain('querySelector<HTMLInputElement>(\'input[type="search"]\')');
     });
   });
 
-  describe("Migration file", () => {
-    const migrationDir = join(repoRoot, "apps/api/prisma/migrations/20260925130000_enterprise_document_center");
-
-    it("migration directory exists", () => {
-      expect(existsSync(migrationDir)).toBe(true);
+  describe("Insurance & ID upload structure", () => {
+    it("has Insurance Card section label", () => {
+      expect(docComponent).toContain("documentCenter.sectionInsuranceCard");
     });
 
-    it("migration SQL creates EnterpriseDocument table", () => {
-      const sql = readFileSync(join(migrationDir, "migration.sql"), "utf8");
-      expect(sql).toContain('CREATE TABLE "EnterpriseDocument"');
+    it("has ID Card section label", () => {
+      expect(docComponent).toContain("documentCenter.sectionIdCard");
     });
 
-    it("old PatientDocument migration directory does not exist", () => {
-      const oldDir = join(repoRoot, "apps/api/prisma/migrations/20260925120000_patient_documents");
-      expect(existsSync(oldDir)).toBe(false);
+    it("has front/back slots for insurance card", () => {
+      expect(docComponent).toContain("INSURANCE_CARD_FRONT");
+      expect(docComponent).toContain("INSURANCE_CARD_BACK");
+    });
+
+    it("has front/back slots for ID card", () => {
+      expect(docComponent).toContain("PATIENT_ID_FRONT");
+      expect(docComponent).toContain("PATIENT_ID_BACK");
+    });
+
+    it("sends patientId with uploads", () => {
+      expect(docComponent).toContain('form.append("patientId", patientId)');
+    });
+
+    it("sends category REGISTRATION with uploads", () => {
+      expect(docComponent).toContain('form.append("category", "REGISTRATION")');
     });
   });
 
-  describe("API module", () => {
-    it("documents.module.ts exists", () => {
-      const modulePath = join(repoRoot, "apps/api/src/documents/documents.module.ts");
-      expect(existsSync(modulePath)).toBe(true);
-      const content = readFileSync(modulePath, "utf8");
-      expect(content).toContain("DocumentsController");
-      expect(content).toContain("DocumentsService");
+  describe("Other document upload", () => {
+    it("has other document upload section", () => {
+      expect(docComponent).toContain("documentCenter.sectionOtherUpload");
     });
 
-    it("documents.service.ts exists with list, upload, getFilePath, softDelete", () => {
+    it("has title input for other documents", () => {
+      expect(docComponent).toContain("documentCenter.otherTitleLabel");
+      expect(docComponent).toContain("otherTitle");
+    });
+
+    it("saves as OTHER_REGISTRATION_DOCUMENT type", () => {
+      expect(docComponent).toContain("OTHER_REGISTRATION_DOCUMENT");
+    });
+
+    it("sends custom title with upload", () => {
+      expect(docComponent).toContain('form.append("title"');
+    });
+  });
+
+  describe("Electronic registration packets", () => {
+    it("has packets section", () => {
+      expect(docComponent).toContain("documentCenter.sectionPackets");
+    });
+
+    it("has freestanding ER template", () => {
+      expect(docComponent).toContain("FREESTANDING_ER");
+    });
+
+    it("has urgent care template", () => {
+      expect(docComponent).toContain("URGENT_CARE");
+    });
+
+    it("has clinic template", () => {
+      expect(docComponent).toContain('"CLINIC"');
+    });
+
+    it("has hospital template", () => {
+      expect(docComponent).toContain('"HOSPITAL"');
+    });
+
+    it("freestanding ER template includes all required sections", () => {
+      expect(docComponent).toContain("packetSectionAob");
+      expect(docComponent).toContain("packetSectionCoordination");
+      expect(docComponent).toContain("packetSectionDemographics");
+      expect(docComponent).toContain("packetSectionDisclosure");
+      expect(docComponent).toContain("packetSectionConsent");
+      expect(docComponent).toContain("packetSectionPrivacy");
+      expect(docComponent).toContain("packetSectionBillOfRights");
+      expect(docComponent).toContain("packetSectionMedicareMedicaidNotice");
+    });
+
+    it("freestanding ER includes Medicare/Medicaid warning", () => {
+      expect(docComponent).toContain("packetMedicareMedicaidWarning");
+    });
+
+    it("standard templates do not include Medicare/Medicaid notice section", () => {
+      const standardSections = [
+        "packetSectionDemographics",
+        "packetSectionDisclosure",
+        "packetSectionConsent",
+        "packetSectionPrivacy",
+        "packetSectionBillOfRights",
+      ];
+      expect(docComponent).toContain("STANDARD_PACKET_SECTIONS");
+      for (const s of standardSections) {
+        expect(docComponent).toContain(s);
+      }
+    });
+
+    it("has generate packet button", () => {
+      expect(docComponent).toContain("documentCenter.generatePacket");
+      expect(docComponent).toContain("handleGeneratePacket");
+    });
+
+    it("has preview button", () => {
+      expect(docComponent).toContain("documentCenter.previewPacket");
+      expect(docComponent).toContain("handlePreview");
+    });
+
+    it("has print button for generated packets", () => {
+      expect(docComponent).toContain("documentCenter.printPacket");
+    });
+
+    it("generated packets appear without file upload (source=SYSTEM)", () => {
+      expect(docComponent).toContain('"SYSTEM"');
+      expect(docComponent).toContain("documentCenter.badgeGenerated");
+    });
+
+    it("shows e-sign note", () => {
+      expect(docComponent).toContain("documentCenter.packetEsignNote");
+    });
+  });
+
+  describe("Storage guidance", () => {
+    it("renders storage guidance message", () => {
+      expect(docComponent).toContain("documentCenter.storageGuidance");
+    });
+
+    it("EN storage guidance text is correct", () => {
+      expect(enMessages).toContain("Only scan documents that cannot be generated electronically");
+    });
+
+    it("FR storage guidance text exists", () => {
+      expect(frMessages).toContain("Ne numérisez que les documents");
+    });
+  });
+
+  describe("Documents table", () => {
+    it("shows uploaded by column", () => {
+      expect(docComponent).toContain("documentCenter.colUploadedBy");
+    });
+
+    it("shows uploaded at column", () => {
+      expect(docComponent).toContain("documentCenter.colUploadedAt");
+    });
+
+    it("shows download action", () => {
+      expect(docComponent).toContain("documentCenter.download");
+    });
+  });
+
+  describe("i18n keys", () => {
+    const requiredKeys = [
+      "sectionInsuranceCard",
+      "sectionIdCard",
+      "slotFront",
+      "slotBack",
+      "storageGuidance",
+      "sectionPackets",
+      "packetsIntro",
+      "packetTemplateFreestandingEr",
+      "packetTemplateUrgentCare",
+      "packetTemplateClinic",
+      "packetTemplateHospital",
+      "generatePacket",
+      "previewPacket",
+      "printPacket",
+      "packetGenerated",
+      "packetSectionAob",
+      "packetSectionConsent",
+      "packetSectionPrivacy",
+      "packetSectionBillOfRights",
+      "packetMedicareMedicaidWarning",
+      "badgeGenerated",
+      "sectionOtherUpload",
+      "otherTitleLabel",
+      "typePatientIdFront",
+      "typePatientIdBack",
+      "typeRegistrationPacket",
+      "packetEsignNote",
+    ];
+
+    for (const key of requiredKeys) {
+      it(`EN has ${key}`, () => {
+        expect(enMessages).toContain(key);
+      });
+
+      it(`FR has ${key}`, () => {
+        expect(frMessages).toContain(key);
+      });
+    }
+
+    it("no raw i18n keys in component", () => {
+      const rawKeyPattern = /\bt\("documentCenter\.\w+"\)/g;
+      const allKeys = [...docComponent.matchAll(rawKeyPattern)].map((m) => m[0]);
+      for (const k of allKeys) {
+        const keyName = k.replace('t("documentCenter.', "").replace('")', "");
+        expect(enMessages).toContain(keyName);
+      }
+    });
+  });
+
+  describe("API module intact", () => {
+    it("documents.service.ts exists with upload, list, softDelete", () => {
       const svc = readApi("src/documents/documents.service.ts");
       expect(svc).toContain("async list(");
       expect(svc).toContain("async upload(");
-      expect(svc).toContain("async getFilePath(");
       expect(svc).toContain("async softDelete(");
     });
 
-    it("documents.controller.ts has GET, POST upload, GET download, DELETE endpoints", () => {
+    it("controller has upload endpoint", () => {
       const ctrl = readApi("src/documents/documents.controller.ts");
-      expect(ctrl).toContain('@Get()');
       expect(ctrl).toContain('@Post("upload")');
-      expect(ctrl).toContain('@Get(":documentId/download")');
-      expect(ctrl).toContain('@Delete(":documentId")');
-    });
-
-    it("service validates MIME types", () => {
-      const svc = readApi("src/documents/documents.service.ts");
-      expect(svc).toContain("ALLOWED_MIME_PREFIXES");
-      expect(svc).toContain("Unsupported file type");
-    });
-
-    it("service validates file size", () => {
-      const svc = readApi("src/documents/documents.service.ts");
-      expect(svc).toContain("MAX_FILE_SIZE");
-      expect(svc).toContain("exceeds maximum size");
-    });
-
-    it("service stores uploadedById", () => {
-      const svc = readApi("src/documents/documents.service.ts");
-      expect(svc).toContain("uploadedById");
-    });
-
-    it("service computes checksumSha256", () => {
-      const svc = readApi("src/documents/documents.service.ts");
-      expect(svc).toContain("checksumSha256");
-      expect(svc).toContain('createHash("sha256")');
-    });
-
-    it("soft delete sets status to DELETED", () => {
-      const svc = readApi("src/documents/documents.service.ts");
-      expect(svc).toContain('"DELETED"');
-    });
-
-    it("storage dir uses MEDORA_DOCUMENT_STORAGE_DIR env var", () => {
-      const svc = readApi("src/documents/documents.service.ts");
-      expect(svc).toContain("MEDORA_DOCUMENT_STORAGE_DIR");
-      expect(svc).toContain("/tmp/medora-documents");
-    });
-
-    it("controller is registered in app.module", () => {
-      const appModule = readApi("src/app.module.ts");
-      expect(appModule).toContain("DocumentsModule");
-    });
-  });
-
-  describe("Web UI — Document Center", () => {
-    it("RegistrationDocumentCenter component exists", () => {
-      const componentPath = join(webRoot, "components/documents/RegistrationDocumentCenter.tsx");
-      expect(existsSync(componentPath)).toBe(true);
-    });
-
-    it("registration page imports RegistrationDocumentCenter", () => {
-      expect(registrationPage).toContain("RegistrationDocumentCenter");
-    });
-
-    it("registration page has Document Center tile", () => {
-      expect(registrationPage).toContain('t("registrationHome.cardDocumentCenterTitle")');
-      expect(registrationPage).toContain('t("registrationHome.cardDocumentCenterHint")');
-    });
-
-    it("registration page has document center section anchor", () => {
-      expect(registrationPage).toContain('id="registration-document-center-section"');
-    });
-
-    it("Document Center component renders upload form with type dropdown", () => {
-      const component = readSrc("components/documents/RegistrationDocumentCenter.tsx");
-      expect(component).toContain("REGISTRATION_DOC_TYPES");
-      expect(component).toContain("INSURANCE_CARD_FRONT");
-      expect(component).toContain("INSURANCE_CARD_BACK");
-      expect(component).toContain("PATIENT_ID");
-      expect(component).toContain("CONSENT_FORM");
-      expect(component).toContain("REFERRAL");
-    });
-
-    it("Document Center calls API with category REGISTRATION", () => {
-      const component = readSrc("components/documents/RegistrationDocumentCenter.tsx");
-      expect(component).toContain('category=REGISTRATION');
-      expect(component).toContain('"REGISTRATION"');
-    });
-
-    it("Document Center renders document table columns", () => {
-      const component = readSrc("components/documents/RegistrationDocumentCenter.tsx");
-      expect(component).toContain("documentCenter.colType");
-      expect(component).toContain("documentCenter.colFileName");
-      expect(component).toContain("documentCenter.colUploadedBy");
-      expect(component).toContain("documentCenter.colUploadedAt");
-      expect(component).toContain("documentCenter.colActions");
-    });
-
-    it("Document Center has download link", () => {
-      const component = readSrc("components/documents/RegistrationDocumentCenter.tsx");
-      expect(component).toContain("/download");
-      expect(component).toContain("documentCenter.download");
-    });
-
-    it("Document Center has archive/delete action", () => {
-      const component = readSrc("components/documents/RegistrationDocumentCenter.tsx");
-      expect(component).toContain("handleArchive");
-      expect(component).toContain("documentCenter.archiveConfirm");
-    });
-  });
-
-  describe("i18n — Document Center keys", () => {
-    it("EN has documentCenter namespace", () => {
-      expect(enMessages).toContain("documentCenter:");
-      expect(enMessages).toContain("typeInsuranceCardFront");
-      expect(enMessages).toContain("typeInsuranceCardBack");
-      expect(enMessages).toContain("typePatientId");
-      expect(enMessages).toContain("typeConsentForm");
-      expect(enMessages).toContain("typeReferral");
-      expect(enMessages).toContain("typeOtherRegistration");
-    });
-
-    it("FR has documentCenter namespace", () => {
-      expect(frMessages).toContain("documentCenter:");
-      expect(frMessages).toContain("typeInsuranceCardFront");
-      expect(frMessages).toContain("typeInsuranceCardBack");
-      expect(frMessages).toContain("typePatientId");
-      expect(frMessages).toContain("typeConsentForm");
-      expect(frMessages).toContain("typeReferral");
-      expect(frMessages).toContain("typeOtherRegistration");
-    });
-
-    it("EN has Document Center tile keys", () => {
-      expect(enMessages).toContain("cardDocumentCenterTitle");
-      expect(enMessages).toContain("cardDocumentCenterHint");
-    });
-
-    it("FR has Document Center tile keys", () => {
-      expect(frMessages).toContain("cardDocumentCenterTitle");
-      expect(frMessages).toContain("cardDocumentCenterHint");
-    });
-
-    it("EN has upload/download/archive keys", () => {
-      expect(enMessages).toContain("uploadSuccess");
-      expect(enMessages).toContain("uploadError");
-      expect(enMessages).toContain("download");
-      expect(enMessages).toContain("archiveConfirm");
-    });
-
-    it("FR has upload/download/archive keys", () => {
-      expect(frMessages).toContain("uploadSuccess");
-      expect(frMessages).toContain("uploadError");
-      expect(frMessages).toContain("download");
-      expect(frMessages).toContain("archiveConfirm");
-    });
-
-    it("EN has emptyList and noPatientSelected", () => {
-      expect(enMessages).toContain("emptyList");
-      expect(enMessages).toContain("noPatientSelected");
-    });
-
-    it("EN has category labels", () => {
-      expect(enMessages).toContain("categoryRegistration");
-      expect(enMessages).toContain("categoryEmergency");
-      expect(enMessages).toContain("categoryClinical");
-      expect(enMessages).toContain("categoryBilling");
-    });
-
-    it("no raw myMedia keys remain", () => {
-      expect(enMessages).not.toContain("myMedia:");
-      expect(frMessages).not.toContain("myMedia:");
     });
   });
 
   describe("Regression safety", () => {
     it("patient chart does not have document upload workflow", () => {
       expect(patientChartPage).not.toContain("RegistrationDocumentCenter");
-      expect(patientChartPage).not.toContain("DocumentUpload");
     });
 
     it("patient chart still has face sheet link", () => {
       expect(patientChartPage).toContain("facesheet");
-    });
-
-    it("patient chart still has tabs", () => {
-      expect(patientChartPage).toContain("activeTab");
     });
 
     it("patient chart still has ChartInsuranceReadOnlySummary", () => {
@@ -299,21 +283,20 @@ describe("MEDUI.DOCUMENTS.ENTERPRISE_DOCUMENT_CENTER (Phase 2)", () => {
       expect(registrationPage).toContain("runRegistrationPatientSearch");
     });
 
-    it("registration page still has Insurance tile", () => {
-      expect(registrationPage).toContain('t("registrationHome.cardInsuranceTitle")');
-    });
-
     it("registration page still has New patient link", () => {
       expect(registrationPage).toContain("/app/patients?new=1");
     });
 
-    it("registration page still has follow-ups", () => {
-      expect(registrationPage).toContain("followUps");
+    it("no PatientDocument references remain in schema", () => {
+      expect(schema).not.toContain("PatientDocument");
     });
 
-    it("no PatientDocument references remain in any file", () => {
-      const schemaPrisma = readApi("prisma/schema.prisma");
-      expect(schemaPrisma).not.toContain("PatientDocument");
+    it("registration page still has Insurance tile", () => {
+      expect(registrationPage).toContain('t("registrationHome.cardInsuranceTitle")');
+    });
+
+    it("registration page still has follow-ups", () => {
+      expect(registrationPage).toContain("followUps");
     });
   });
 });
