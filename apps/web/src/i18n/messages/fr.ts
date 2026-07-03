@@ -5401,7 +5401,9 @@ export default {
     arrivalLabel: "Arrivée :",
     printSummary: "Imprimer la synthèse",
     endEncounter: "Terminer la consultation",
-    encounterAlreadyClosed: "La consultation est déjà clôturée.",
+    encounterAlreadyClosed: "La consultation est clôturée. Imprimez le dossier clinique ci-dessous.",
+    encounterClosedPrintErPacket: "Imprimer le dossier ER",
+    encounterClosedPrintDischargeSummary: "Imprimer le résumé de sortie",
     modalTitle: "Terminer la consultation",
     modalBody:
       "La clôture utilise les mêmes contrôles que le dossier complet. Une documentation incomplète peut bloquer la clôture sauf si vous acceptez les lacunes.",
@@ -6514,8 +6516,8 @@ export default {
     linkActiveWorkspace: "Espace actif",
     pageTitle: "Charte urgence",
     pageSubtitle:
-      "Vue consolidée des zones urgences. Le dossier consultation Medora reste disponible en référence pour les onglets détaillés.",
-    linkMedoraEncounterRef: "Ouvrir le dossier consultation Medora (référence)",
+      "Charte consolidée — dossier clinique, documentation et historique opérationnel.",
+    linkMedoraEncounterRef: "Ouvrir le dossier consultation complet",
     sectionSummary: "Synthèse et clôture",
     sectionMarHeading: "MAR / médication",
     sectionOrders: "Ordres & interventions",

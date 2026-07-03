@@ -53,6 +53,7 @@ import {
   mergeDischargeForSave,
 } from "@/lib/encounterDischarge";
 import { parseDischargeSummaryForChart } from "@/components/patient-chart/patientChartHelpers";
+import { printDischarge } from "@/components/encounters/DischargePrintLayout";
 import {
   erDispositionSupplementFromEncounter,
   inferOutcomeUiFromForms,
@@ -496,6 +497,22 @@ export function EmergencyErSummaryClosureSurface({
     });
   }, [encounter, encounterId, facilityId, facilityName, language, triageSnapshot, t, mappedEncounterDiagnoses]);
 
+  const handlePrintDischargeSummary = useCallback(() => {
+    const p = encounter.patient;
+    if (!p || !encounter.createdAt) return;
+    printDischarge({
+      patient: p,
+      encounter: {
+        createdAt: encounter.createdAt,
+        dischargeSummaryJson: encounter.dischargeSummaryJson,
+        physicianAssigned: encounter.physicianAssigned ?? null,
+      },
+      facilityName: facilityName ?? null,
+      primaryDiagnosis: null,
+      language,
+    });
+  }, [encounter, facilityName, language]);
+
   const executeClose = useCallback(
     async (acknowledgeDeficiencies: boolean, acknowledgeDispositionSafetyOverride?: boolean) => {
       setClosing(true);
@@ -764,7 +781,58 @@ export function EmergencyErSummaryClosureSurface({
           </p>
         </div>
       ) : (
-        <p style={{ margin: 0, fontSize: 13, color: "#64748b" }}>{t("emergencyErClosure.encounterAlreadyClosed")}</p>
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          <p style={{ margin: 0, fontSize: 13, color: "#64748b" }}>
+            {t("emergencyErClosure.encounterAlreadyClosed")}
+          </p>
+          <div
+            style={{
+              display: "flex",
+              flexWrap: "wrap",
+              gap: 10,
+              alignItems: "center",
+              padding: "12px 14px",
+              borderRadius: 12,
+              border: "1px solid #e2e8f0",
+              backgroundColor: "#fff",
+            }}
+          >
+            <button
+              type="button"
+              onClick={() => { void handlePrint(); }}
+              disabled={!patient || !encounter.createdAt}
+              style={{
+                padding: "10px 16px",
+                borderRadius: 10,
+                border: "1px solid #cbd5e1",
+                backgroundColor: patient && encounter.createdAt ? "#fff" : "#f1f5f9",
+                color: patient && encounter.createdAt ? "#334155" : "#94a3b8",
+                fontSize: 13,
+                fontWeight: 600,
+                cursor: patient && encounter.createdAt ? "pointer" : "not-allowed",
+              }}
+            >
+              {t("emergencyErClosure.encounterClosedPrintErPacket")}
+            </button>
+            <button
+              type="button"
+              onClick={handlePrintDischargeSummary}
+              disabled={!patient || !encounter.createdAt}
+              style={{
+                padding: "10px 16px",
+                borderRadius: 10,
+                border: "1px solid #cbd5e1",
+                backgroundColor: patient && encounter.createdAt ? "#fff" : "#f1f5f9",
+                color: patient && encounter.createdAt ? "#334155" : "#94a3b8",
+                fontSize: 13,
+                fontWeight: 600,
+                cursor: patient && encounter.createdAt ? "pointer" : "not-allowed",
+              }}
+            >
+              {t("emergencyErClosure.encounterClosedPrintDischargeSummary")}
+            </button>
+          </div>
+        </div>
       )}
 
       {showCloseModal ? (

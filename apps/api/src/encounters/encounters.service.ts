@@ -105,6 +105,12 @@ import {
   type ProcedureDocumentationRole,
   type ObservationReassessmentV1Body,
   dischargeSnapshotIsObservationAdmissionRoutingOnly,
+  ED_DISCHARGE_MODE_HOME,
+  ED_DISCHARGE_MODE_TRANSFER,
+  ED_DISCHARGE_MODE_ADMISSION,
+  ED_DISCHARGE_MODE_AMA,
+  ED_DISCHARGE_MODE_DECEASED,
+  ED_DISCHARGE_MODE_OTHER,
   legacyErNotesV1DisplayEntries,
   mapEncounterNoteForLegalChart,
   mapClinicalDocumentationEntryForLegalChart,
@@ -1707,6 +1713,16 @@ export class EncountersService {
         facilityId,
         action: "encounter.discharge_summary.update",
       });
+    }
+
+    if (dischargeChanged && encounter.roomLabel) {
+      void this.releaseEdBedOnDisposition(
+        facilityId,
+        encounter.id,
+        encounter.roomLabel,
+        data.dischargeSummaryJson,
+        userId
+      );
     }
 
     return toEncounterClinicResponse(updated);
@@ -4435,6 +4451,82 @@ export class EncountersService {
     });
 
     return toEncounterClinicResponse(updated);
+  }
+
+  /**
+   * Non-fatal bed release: when a definitive ED disposition is recorded and the encounter
+   * still has a room, clear the room assignment and write a DIRTY overlay. Runs fire-and-forget
+   * so the disposition save is never blocked by bed-board issues.
+   */
+  private async releaseEdBedOnDisposition(
+    facilityId: string,
+    encounterId: string,
+    roomLabel: string,
+    dischargeSummaryJson: unknown,
+    userId?: string
+  ): Promise<void> {
+    try {
+      const dischargeMode = this.extractDischargeModeFromJson(dischargeSummaryJson);
+      if (!dischargeMode) return;
+      const definitiveDispositionModes = [
+        ED_DISCHARGE_MODE_HOME,
+        ED_DISCHARGE_MODE_TRANSFER,
+        ED_DISCHARGE_MODE_ADMISSION,
+        ED_DISCHARGE_MODE_AMA,
+        ED_DISCHARGE_MODE_DECEASED,
+        ED_DISCHARGE_MODE_OTHER,
+      ];
+      if (!definitiveDispositionModes.includes(dischargeMode)) return;
+
+      if (isEdWaitingRoomLabel(roomLabel)) {
+        await this.prisma.encounter.updateMany({
+          where: { id: encounterId, facilityId, roomLabel },
+          data: { roomLabel: null },
+        });
+        return;
+      }
+
+      await this.prisma.encounter.updateMany({
+        where: { id: encounterId, facilityId, roomLabel },
+        data: { roomLabel: null },
+      });
+
+      const bedUnit = normalizeBedUnitCode("ED");
+      if (bedUnit) {
+        const bedKey = this.bedBoardService.buildBedKeyForAssignment(bedUnit, roomLabel);
+        const currentRow = await this.bedBoardService.getEffectiveBedRow(facilityId, bedKey);
+        if (currentRow && currentRow.status !== "DIRTY" && currentRow.status !== "CLEANING") {
+          await this.bedBoardService.updateBedStatus(
+            facilityId,
+            bedKey,
+            { status: "DIRTY" },
+            userId
+          );
+        }
+      }
+      logInfo("ed_bed_released_on_disposition", {
+        encounterId,
+        facilityId,
+        roomLabel,
+        dischargeMode,
+        action: "bed.release.disposition",
+      });
+    } catch (err) {
+      logError("ed_bed_release_disposition_failed", {
+        encounterId,
+        facilityId,
+        roomLabel,
+        errorName: err instanceof Error ? err.name : typeof err,
+      });
+    }
+  }
+
+  private extractDischargeModeFromJson(dischargeSummaryJson: unknown): string | null {
+    if (!dischargeSummaryJson || typeof dischargeSummaryJson !== "object" || Array.isArray(dischargeSummaryJson)) {
+      return null;
+    }
+    const mode = (dischargeSummaryJson as Record<string, unknown>).dischargeMode;
+    return typeof mode === "string" ? mode.trim() : null;
   }
 }
 

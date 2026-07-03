@@ -5431,7 +5431,9 @@ export default {
     arrivalLabel: "Arrival:",
     printSummary: "Print summary",
     endEncounter: "End encounter",
-    encounterAlreadyClosed: "This encounter is already closed.",
+    encounterAlreadyClosed: "This encounter is closed. Print the clinical record below.",
+    encounterClosedPrintErPacket: "Print ER Packet",
+    encounterClosedPrintDischargeSummary: "Print Discharge Summary",
     modalTitle: "End encounter",
     modalBody:
       "This will close the emergency encounter using the same checks as the full chart. Incomplete documentation may block closure unless you acknowledge deficiencies.",
@@ -6544,8 +6546,8 @@ export default {
     linkActiveWorkspace: "Active workspace",
     pageTitle: "ED chart",
     pageSubtitle:
-      "Consolidated view of ED workflows. The full Medora encounter chart remains available for detailed tabs.",
-    linkMedoraEncounterRef: "Open Medora encounter chart (reference)",
+      "Consolidated ED chart — clinical record, documentation, and operational history.",
+    linkMedoraEncounterRef: "Open full encounter chart",
     sectionSummary: "Summary and closure",
     sectionMarHeading: "MAR / medications",
     sectionOrders: "Orders & procedures",

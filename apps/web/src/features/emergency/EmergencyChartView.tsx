@@ -551,11 +551,25 @@ export function EmergencyChartView() {
           >
             {t("emergencyChartView.pageTitle")}
           </h1>
-          <p style={{ margin: "8px 0 0 0", fontSize: 14, color: "#64748b", lineHeight: 1.5 }}>
+          <p style={{ margin: "6px 0 0 0", fontSize: 13, color: "#64748b", lineHeight: 1.5 }}>
             {t("emergencyChartView.pageSubtitle")}
           </p>
-          <p style={{ margin: "10px 0 0 0", fontSize: 13 }}>
-            <Link href={genericEncounterHref} style={{ color: "#64748b", fontWeight: 600 }}>
+          <p style={{ margin: "10px 0 0 0" }}>
+            <Link
+              href={genericEncounterHref}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                padding: "6px 12px",
+                borderRadius: 10,
+                border: "1px solid #e2e8f0",
+                backgroundColor: "#f8fafc",
+                color: "#475569",
+                fontSize: 12,
+                fontWeight: 600,
+                textDecoration: "none",
+              }}
+            >
               {t("emergencyChartView.linkMedoraEncounterRef")}
             </Link>
           </p>
@@ -621,10 +635,10 @@ export function EmergencyChartView() {
                     title={fullPatientName(patient ?? undefined, dash)}
                     subline={
                       <p style={{ margin: 0, fontSize: 13, color: "#64748b", lineHeight: 1.4 }}>
-                        <span style={{ fontWeight: 600, color: "#475569" }}>{t("encounterChrome.nir")}</span>{" "}
+                        <span style={{ fontWeight: 600, color: "#475569" }}>{t("printOutput.patientChart.nirMrn")}</span>{" "}
                         {(patient?.mrn ?? patient?.nationalId ?? "").trim() || dash}
                         {" · "}
-                        <span style={{ fontWeight: 600, color: "#475569" }}>{t("encounterChrome.ageSex")}</span>{" "}
+                        <span style={{ fontWeight: 600, color: "#475569" }}>{t("emergencyTrackboard.ageSexLabel")}</span>{" "}
                         {formatPatientAgeSexLine(
                           patient?.dob ?? null,
                           patient?.sexAtBirth ?? null,
@@ -636,18 +650,18 @@ export function EmergencyChartView() {
                   />
                   <p style={{ margin: "8px 0 0 0", fontSize: 14, color: "#334155", lineHeight: 1.45 }}>
                     <span style={{ fontWeight: 600, color: "#64748b", fontSize: 12 }}>
-                      {t("encounterChrome.chiefComplaintShort")}
+                      {t("emergencyTrackboard.chiefComplaintShort")}
                     </span>
                     {" — "}
                     {complaintLine}
                   </p>
                   <p style={{ margin: "6px 0 0 0", fontSize: 12, color: "#64748b" }}>
-                    <span style={{ fontWeight: 600, color: "#475569" }}>{t("encounterChrome.arrival")}</span>{" "}
+                    <span style={{ fontWeight: 600, color: "#475569" }}>{t("emergencyTrackboard.arrivalLabel")}</span>{" "}
                     {formatEncounterDt(encounter.createdAt ?? null)}
                     {encounter.admittedAt ? (
                       <>
                         {" · "}
-                        <span style={{ fontWeight: 600, color: "#475569" }}>{t("patientChartUi.admissionLabel")}</span>{" "}
+                        <span style={{ fontWeight: 600, color: "#475569" }}>{t("emergencyWorkspace.admissionLabel")}</span>{" "}
                         {formatEncounterDt(encounter.admittedAt)}
                       </>
                     ) : null}
@@ -784,7 +798,7 @@ export function EmergencyChartView() {
                     onClick={
                       canAssignRoom && fid ? () => setShowRoomAssignmentModal(true) : undefined
                     }
-                    labelKey="encounterChrome.room"
+                    labelKey="printOutput.patientChart.room"
                   />
                   <MedoraCardBadgeRow marginTop={0}>
                     <MedoraCardBadge soft={statusSoft(statusKey)}>{tEncounterStatus(t, statusKey)}</MedoraCardBadge>
