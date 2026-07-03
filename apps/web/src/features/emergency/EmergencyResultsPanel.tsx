@@ -11,6 +11,8 @@ import { clinicalResultFromOrderItemLike } from "@/lib/clinicalResultNormalize";
 import { getOrderItemDisplayLabelForLanguage } from "@/lib/orderItemDisplayFr";
 import { useI18n } from "@/lib/i18n";
 import type { SupportedLanguage } from "@/i18n/config";
+import type { PrintFacilityInfo } from "@/lib/printFacilityHeader";
+import type { ResultPrintEncounter, ResultPrintPatient } from "@/features/emergency/resultPrintPacket";
 import {
   MedoraCard,
   MedoraCardBadge,
@@ -145,12 +147,20 @@ export function EmergencyResultsPanel({
   facilityId,
   refreshToken,
   canAcknowledgeResults = false,
+  patient,
+  encounterMeta,
+  facilityName,
+  facility,
 }: {
   encounterId: string;
   facilityId: string;
   refreshToken: number;
   /** Si true : affiche un bouton « Accuser réception » par résultat non encore accusé (RN/PROVIDER/ADMIN). */
   canAcknowledgeResults?: boolean;
+  patient?: ResultPrintPatient | null;
+  encounterMeta?: ResultPrintEncounter | null;
+  facilityName?: string | null;
+  facility?: PrintFacilityInfo | null;
 }) {
   const { t, language } = useI18n();
   const [snap, setSnap] = useState<EncounterResultsLabRadSnapshot | null>(null);
@@ -256,6 +266,11 @@ export function EmergencyResultsPanel({
             compactResultViewer
             suppressEmptyDetailPlaceholder
             canAcknowledgeResults={canAcknowledgeResults}
+            patient={patient}
+            encounterMeta={encounterMeta}
+            facilityName={facilityName}
+            facility={facility}
+            enableResultPrint
           />
         </div>
       </MedoraCardInner>

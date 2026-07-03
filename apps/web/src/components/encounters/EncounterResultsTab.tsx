@@ -12,6 +12,16 @@ import {
 import { getCachedRecord } from "@/lib/offline/offlineCache";
 import { getPendingOrderItemResultsForEncounter } from "@/lib/offline/pendingOrderItemResults";
 import { MEDORA_CARD_SHELL } from "@/components/medora-card";
+import type { PrintFacilityInfo } from "@/lib/printFacilityHeader";
+import {
+  filterImagingResultRows,
+  filterLabResultRows,
+  printImagingResults,
+  printLabResults,
+  printSingleResult,
+  type ResultPrintEncounter,
+  type ResultPrintPatient,
+} from "@/features/emergency/resultPrintPacket";
 
 type PendingLocalResult = {
   pendingSync: boolean;
@@ -80,6 +90,11 @@ export function EncounterResultsTab({
   suppressEmptyDetailPlaceholder = false,
   /** Si true : affiche un bouton « Accuser réception » par résultat non encore accusé (RN/PROVIDER/ADMIN seulement). */
   canAcknowledgeResults = false,
+  patient,
+  encounterMeta,
+  facilityName,
+  facility,
+  enableResultPrint = false,
 }: {
   encounterId: string;
   facilityId: string;
@@ -93,6 +108,11 @@ export function EncounterResultsTab({
   compactResultViewer?: boolean;
   suppressEmptyDetailPlaceholder?: boolean;
   canAcknowledgeResults?: boolean;
+  patient?: ResultPrintPatient | null;
+  encounterMeta?: ResultPrintEncounter | null;
+  facilityName?: string | null;
+  facility?: PrintFacilityInfo | null;
+  enableResultPrint?: boolean;
 }) {
   const { t, language } = useI18n();
   const [orders, setOrders] = useState<any[]>([]);
@@ -211,6 +231,50 @@ export function EncounterResultsTab({
     boxShadow: MEDORA_CARD_SHELL.boxShadow,
   };
 
+  const printButtonStyle: React.CSSProperties = {
+    display: "inline-flex",
+    alignItems: "center",
+    padding: "8px 14px",
+    borderRadius: 10,
+    border: "1px solid #cbd5e1",
+    backgroundColor: "#f8fafc",
+    color: "#334155",
+    fontSize: 13,
+    fontWeight: 600,
+    cursor: "pointer",
+  };
+
+  const compactPrintButtonStyle: React.CSSProperties = {
+    display: "inline-flex",
+    alignItems: "center",
+    padding: "6px 12px",
+    borderRadius: 8,
+    border: "1px solid #cbd5e1",
+    backgroundColor: "#f8fafc",
+    color: "#334155",
+    fontSize: 12,
+    fontWeight: 600,
+    cursor: "pointer",
+  };
+
+  const labRows = useMemo(() => filterLabResultRows(rows), [rows]);
+  const imagingRows = useMemo(() => filterImagingResultRows(rows), [rows]);
+  const canPrint =
+    enableResultPrint && Boolean(patient && encounterMeta?.id && encounterMeta.createdAt);
+  const printCtx = useMemo(
+    () =>
+      canPrint && encounterMeta
+        ? {
+            patient: patient ?? null,
+            encounter: encounterMeta,
+            facility: facility ?? null,
+            facilityName: facilityName ?? null,
+            language,
+          }
+        : null,
+    [canPrint, encounterMeta, facility, facilityName, language, patient]
+  );
+
   if (!embeddedDetailList) {
     return null;
   }
@@ -261,6 +325,36 @@ export function EncounterResultsTab({
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      {canPrint && printCtx ? (
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
+          <button
+            type="button"
+            onClick={() => printLabResults(printCtx, rows)}
+            disabled={labRows.length === 0}
+            style={{
+              ...printButtonStyle,
+              backgroundColor: labRows.length > 0 ? "#f8fafc" : "#f1f5f9",
+              color: labRows.length > 0 ? "#334155" : "#94a3b8",
+              cursor: labRows.length > 0 ? "pointer" : "not-allowed",
+            }}
+          >
+            {t("emergencyResultsPanel.printAllLabResults")}
+          </button>
+          <button
+            type="button"
+            onClick={() => printImagingResults(printCtx, rows)}
+            disabled={imagingRows.length === 0}
+            style={{
+              ...printButtonStyle,
+              backgroundColor: imagingRows.length > 0 ? "#f8fafc" : "#f1f5f9",
+              color: imagingRows.length > 0 ? "#334155" : "#94a3b8",
+              cursor: imagingRows.length > 0 ? "pointer" : "not-allowed",
+            }}
+          >
+            {t("emergencyResultsPanel.printAllImagingResults")}
+          </button>
+        </div>
+      ) : null}
       {!hideIntroNote ? (
         <div style={{ ...resultCardShell, padding: "14px 16px" }}>
           <p style={{ margin: 0, fontSize: 13, color: "#64748b", lineHeight: 1.5 }}>{t("patientChartUi.encounterResultsIntro")}</p>
@@ -282,7 +376,7 @@ export function EncounterResultsTab({
           {ackError}
         </div>
       ) : null}
-      {rows.map(({ item, pendingSync }) => {
+      {rows.map(({ order, item, pendingSync }) => {
         const v = clinicalResultFromOrderItemLike({
           displayLabel: getOrderItemDisplayLabelForLanguage(item, language, t),
           status: item.status,
@@ -319,6 +413,17 @@ export function EncounterResultsTab({
               </div>
             ) : null}
             <div style={{ ...resultCardShell, padding: "16px 18px", overflow: "hidden" }}>
+              <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 8 }}>
+                {canPrint && printCtx ? (
+                  <button
+                    type="button"
+                    onClick={() => printSingleResult(printCtx, { order, item, pendingSync })}
+                    style={compactPrintButtonStyle}
+                  >
+                    {t("emergencyResultsPanel.printResult")}
+                  </button>
+                ) : null}
+              </div>
               <ClinicalResultViewer
                 title={v.title}
                 itemStatus={v.itemStatus}

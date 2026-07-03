@@ -919,6 +919,17 @@ export function EmergencyChartView() {
               facilityId={fid}
               refreshToken={resultsRefresh}
               canAcknowledgeResults={canAcknowledgeResults}
+              patient={encounter?.patient ?? null}
+              encounterMeta={
+                encounter?.id && encounter.createdAt
+                  ? {
+                      id: encounter.id,
+                      createdAt: encounter.createdAt,
+                      physicianAssigned: encounter.physicianAssigned ?? null,
+                    }
+                  : null
+              }
+              facilityName={facilityName}
             />
           </section>
 
