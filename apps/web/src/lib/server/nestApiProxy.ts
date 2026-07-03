@@ -253,12 +253,21 @@ export async function proxyNestRequest(req: NextRequest, nestPath: string): Prom
 
   const upstreamContentType = r.headers.get("content-type") || "";
   const isStreamingCsv = upstreamContentType.includes("text/csv") && r.body != null;
+  const isBinaryResponse =
+    (upstreamContentType.startsWith("image/") ||
+     upstreamContentType.includes("application/pdf") ||
+     upstreamContentType.includes("application/octet-stream") ||
+     upstreamContentType.includes("application/zip") ||
+     r.headers.get("content-disposition")?.includes("attachment")) &&
+    r.body != null;
 
-  if (isStreamingCsv) {
+  if (isStreamingCsv || isBinaryResponse) {
     const outHeaders = new Headers();
     outHeaders.set("Content-Type", upstreamContentType);
     const cd = r.headers.get("content-disposition");
     if (cd) outHeaders.set("Content-Disposition", cd);
+    const cl = r.headers.get("content-length");
+    if (cl) outHeaders.set("Content-Length", cl);
     const res = new NextResponse(r.body, { status: r.status, headers: outHeaders });
     if (requestId) res.headers.set("x-request-id", requestId);
     if (lastRefreshed) {

@@ -173,18 +173,12 @@ export function RegistrationPacketWizard({
         refusalReason: isRefused ? refusalReason.trim() : undefined,
       };
 
-      const packetContent = buildPacketHtml(
-        template,
-        templateLabel(template),
-        patient,
-        insurance,
-        sectionKeys,
-        signatures,
-        t,
-        dateLocale,
-      );
+      const pdfSections = sectionKeys.map((key) => ({
+        key,
+        label: t(SECTION_I18N[key] || key),
+        content: getSectionText(key, patient, insurance, t),
+      }));
 
-      const blob = new Blob([packetContent], { type: "text/html" });
       const packetMeta: PacketState = {
         template,
         sectionStatus,
@@ -192,34 +186,51 @@ export function RegistrationPacketWizard({
         completedAt: now,
       };
 
-      const form = new FormData();
-      form.append("file", blob, `${template.toLowerCase()}_signed_packet.html`);
-      form.append("category", "REGISTRATION");
-      form.append("type", "REGISTRATION_PACKET");
-      form.append("patientId", patientId);
-      form.append("title", `${templateLabel(template)} — ${isRefused ? t("packetWizard.refused") : t("packetWizard.signed")}`);
-      form.append("source", "SYSTEM");
-      form.append("notes", JSON.stringify(packetMeta));
-
-      const uploadResp = await fetch(
-        `${API_BASE}/documents/upload`,
+      const resp = await fetch(
+        `${API_BASE}/documents/generate-packet-pdf`,
         {
           method: "POST",
-          body: form,
-          headers: { "x-facility-id": facilityId },
+          headers: {
+            "Content-Type": "application/json",
+            "x-facility-id": facilityId,
+          },
           credentials: "include",
+          body: JSON.stringify({
+            patientId,
+            template,
+            templateLabel: templateLabel(template),
+            patient,
+            insurance: insurance.map((ins) => ({
+              rank: ins.rank,
+              payerName: ins.payer?.name || ins.payerNameFreeText || null,
+              memberId: ins.memberId || null,
+              groupNumber: ins.groupNumber || null,
+            })),
+            sections: pdfSections,
+            signatures: {
+              signerName: signatures.signerName,
+              signerRelationship: signatures.signerRelationship,
+              signedAt: signatures.signedAt,
+              staffName: signatures.staffName || "",
+              staffSignedAt: signatures.staffSignedAt || now,
+              refusalReason: signatures.refusalReason,
+            },
+            title: `${templateLabel(template)} — ${isRefused ? t("packetWizard.refused") : t("packetWizard.signed")}`,
+            notes: JSON.stringify(packetMeta),
+          }),
         },
       );
-      if (!uploadResp.ok) {
-        const errText = await uploadResp.text().catch(() => "");
-        let msg = `${uploadResp.status}`;
+
+      if (!resp.ok) {
+        const errText = await resp.text().catch(() => "");
+        let msg = `${resp.status}`;
         try {
           const j = JSON.parse(errText);
           if (j?.message) msg = typeof j.message === "string" ? j.message : JSON.stringify(j.message);
         } catch { if (errText) msg = errText.slice(0, 200); }
         throw new Error(msg);
       }
-      const uploadedDoc = await uploadResp.json() as { id: string };
+      const uploadedDoc = await resp.json() as { id: string };
       const documentId = uploadedDoc.id;
 
       await apiFetch(`/documents/${documentId}/signatures`, {
@@ -550,63 +561,33 @@ export function RegistrationPacketWizard({
   );
 }
 
-/* ── HTML builder ───────────────────────────────────────── */
+/* ── section text helper ─────────────────────────────── */
 
-function buildPacketHtml(
-  template: string,
-  templateLabel: string,
+function getSectionText(
+  key: string,
   patient: PatientData | null,
   insurance: InsuranceRow[],
-  sectionKeys: readonly string[],
-  signatures: SignatureData,
   t: (key: string) => string,
-  dateLocale: string,
 ): string {
-  const now = new Date();
-  const date = now.toLocaleDateString(dateLocale);
-  const time = now.toLocaleTimeString(dateLocale);
   const priIns = insurance.find((r) => r.rank === "PRIMARY");
   const secIns = insurance.find((r) => r.rank === "SECONDARY");
 
-  const rows = sectionKeys.map((key) => {
-    const label = t(SECTION_I18N[key] || key);
-    let content = "";
-    switch (key) {
-      case "demographics":
-        content = `${t("packetWizard.fieldName")}: ${patient?.firstName || ""} ${patient?.lastName || ""}<br/>` +
-          `${t("packetWizard.fieldDob")}: ${patient?.dob ? new Date(patient.dob).toLocaleDateString(dateLocale) : "—"}<br/>` +
-          `${t("packetWizard.fieldPhone")}: ${patient?.phone || "—"}<br/>` +
-          `${t("packetWizard.fieldAddress")}: ${[patient?.addressLine1, patient?.city, patient?.stateProvince, patient?.postalCode].filter(Boolean).join(", ") || "—"}`;
-        break;
-      case "insurance":
-        content = `${t("packetWizard.fieldPrimary")}: ${priIns?.payer?.name || priIns?.payerNameFreeText || "—"} ${priIns?.memberId ? `(${priIns.memberId})` : ""}<br/>` +
-          `${t("packetWizard.fieldSecondary")}: ${secIns?.payer?.name || secIns?.payerNameFreeText || "—"} ${secIns?.memberId ? `(${secIns.memberId})` : ""}`;
-        break;
-      case "medicareMedicaid":
-        content = t("documentCenter.packetMedicareMedicaidWarning");
-        break;
-      default:
-        content = t(`packetWizard.${key}Text`);
-    }
-    return `<tr><td style="padding:8px;border:1px solid #ddd;font-weight:600;vertical-align:top;width:30%">${label}</td><td style="padding:8px;border:1px solid #ddd">${content}</td></tr>`;
-  });
-
-  const sigLine = signatures.refusalReason
-    ? `<p><strong>${t("packetWizard.unableRefused")}:</strong> ${signatures.refusalReason}</p>`
-    : `<p><strong>${t("packetWizard.signerNameLabel")}:</strong> ${signatures.signerName}<br/>
-       <strong>${t("packetWizard.signerRelationshipLabel")}:</strong> ${signatures.signerRelationship}</p>`;
-
-  return `<!DOCTYPE html><html><head><meta charset="utf-8"/><title>${templateLabel}</title>
-<style>body{font-family:Arial,sans-serif;font-size:13px;padding:24px;max-width:700px;margin:0 auto}
-h1{font-size:18px;margin-bottom:4px}table{width:100%;border-collapse:collapse;margin:16px 0}
-.sig{margin-top:24px;padding-top:16px;border-top:2px solid #333}</style></head><body>
-<h1>${templateLabel}</h1>
-<p>${date} ${time}</p>
-<table>${rows.join("")}</table>
-<div class="sig">
-<h3>${t("packetWizard.signatureHeading")}</h3>
-${sigLine}
-<p><strong>${t("packetWizard.staffNameLabel")}:</strong> ${signatures.staffName || "—"}<br/>
-<strong>${t("packetWizard.signedAtLabel")}:</strong> ${new Date(signatures.signedAt).toLocaleString(dateLocale)}</p>
-</div></body></html>`;
+  switch (key) {
+    case "demographics":
+      return [
+        `${t("packetWizard.fieldName")}: ${patient?.firstName || ""} ${patient?.lastName || ""}`,
+        `${t("packetWizard.fieldDob")}: ${patient?.dob || "—"}`,
+        `${t("packetWizard.fieldPhone")}: ${patient?.phone || "—"}`,
+        `${t("packetWizard.fieldAddress")}: ${[patient?.addressLine1, patient?.city, patient?.stateProvince, patient?.postalCode].filter(Boolean).join(", ") || "—"}`,
+      ].join("\n");
+    case "insurance":
+      return [
+        `${t("packetWizard.fieldPrimary")}: ${priIns?.payer?.name || priIns?.payerNameFreeText || "—"} ${priIns?.memberId ? `(${priIns.memberId})` : ""}`,
+        `${t("packetWizard.fieldSecondary")}: ${secIns?.payer?.name || secIns?.payerNameFreeText || "—"} ${secIns?.memberId ? `(${secIns.memberId})` : ""}`,
+      ].join("\n");
+    case "medicareMedicaid":
+      return t("documentCenter.packetMedicareMedicaidWarning");
+    default:
+      return t(`packetWizard.${key}Text`);
+  }
 }

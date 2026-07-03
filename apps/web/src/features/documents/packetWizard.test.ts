@@ -150,32 +150,37 @@ describe("MEDUI.REGISTRATION.PHASE_3_ELECTRONIC_PACKET_E_SIGNATURE", () => {
   });
 
   describe("Signed packet storage", () => {
-    it("saves signed packet as EnterpriseDocument via proxy path", () => {
+    it("saves signed packet via generate-packet-pdf endpoint", () => {
       expect(wizardComponent).toContain("/api/backend");
-      expect(wizardComponent).toContain("/documents/upload");
-      expect(wizardComponent).toContain('"REGISTRATION"');
-      expect(wizardComponent).toContain('"REGISTRATION_PACKET"');
+      expect(wizardComponent).toContain("generate-packet-pdf");
     });
 
     it("does NOT use NEXT_PUBLIC_API_URL", () => {
       expect(wizardComponent).not.toContain("NEXT_PUBLIC_API_URL");
     });
 
-    it("sets source to SYSTEM", () => {
-      expect(wizardComponent).toContain('"SYSTEM"');
+    it("sends structured data for PDF generation", () => {
+      expect(wizardComponent).toContain("pdfSections");
+      expect(wizardComponent).toContain('"Content-Type": "application/json"');
     });
 
     it("stores signature metadata as JSON in notes", () => {
       expect(wizardComponent).toContain("JSON.stringify(packetMeta)");
     });
 
-    it("generates HTML content for the signed packet", () => {
-      expect(wizardComponent).toContain("buildPacketHtml");
-      expect(wizardComponent).toContain("text/html");
+    it("does NOT upload HTML as signed packet", () => {
+      expect(wizardComponent).not.toContain("buildPacketHtml");
+      expect(wizardComponent).not.toContain('type: "text/html"');
+      expect(wizardComponent).not.toContain("_signed_packet.html");
     });
 
-    it("includes patientId in upload", () => {
-      expect(wizardComponent).toContain('"patientId", patientId');
+    it("includes patientId in request body", () => {
+      expect(wizardComponent).toContain("patientId");
+    });
+
+    it("sends sections with key, label, content", () => {
+      expect(wizardComponent).toContain("getSectionText");
+      expect(wizardComponent).toContain("pdfSections");
     });
   });
 
@@ -191,8 +196,9 @@ describe("MEDUI.REGISTRATION.PHASE_3_ELECTRONIC_PACKET_E_SIGNATURE", () => {
       expect(docCenterComponent).toContain("newPacketVersion");
     });
 
-    it("shows e-Doc badge for system-generated packets", () => {
-      expect(docCenterComponent).toContain("badgeGenerated");
+    it("shows file type badges (PDF, JPG, e-Doc PDF)", () => {
+      expect(docCenterComponent).toContain("getFileTypeBadge");
+      expect(docCenterComponent).toContain("e-Doc PDF");
     });
   });
 
@@ -304,9 +310,18 @@ describe("MEDUI.REGISTRATION.PHASE_3_ELECTRONIC_PACKET_E_SIGNATURE", () => {
       expect(patientChartPage).toContain("ChartInsuranceReadOnlySummary");
     });
 
-    it("API allows text/ MIME types for generated docs", () => {
-      const svc = readApi("src/documents/documents.service.ts");
-      expect(svc).toContain('"text/"');
+    it("API has PacketPdfService for PDF generation", () => {
+      const pdfSvc = readApi("src/documents/packet-pdf.service.ts");
+      expect(pdfSvc).toContain("class PacketPdfService");
+      expect(pdfSvc).toContain("PDFDocument");
+      expect(pdfSvc).toContain("Promise<Buffer>");
+    });
+
+    it("API controller has generate-packet-pdf endpoint", () => {
+      const ctrl = readApi("src/documents/documents.controller.ts");
+      expect(ctrl).toContain("generate-packet-pdf");
+      expect(ctrl).toContain("packetPdfService.generate");
+      expect(ctrl).toContain("application/pdf");
     });
   });
 });

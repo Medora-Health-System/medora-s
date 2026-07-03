@@ -117,10 +117,18 @@ export function RegistrationDocumentCenter({
       }
       setMissingDocs((prev) => { const next = new Set(prev); next.delete(docId); return next; });
       const blob = await resp.blob();
+
+      let downloadName = fileName;
+      const cd = resp.headers.get("content-disposition");
+      if (cd) {
+        const match = /filename="?([^";\n]+)"?/i.exec(cd);
+        if (match?.[1]) downloadName = decodeURIComponent(match[1]);
+      }
+
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = fileName;
+      a.download = downloadName;
       document.body.appendChild(a);
       a.click();
       a.remove();
@@ -135,6 +143,18 @@ export function RegistrationDocumentCenter({
       return { label: t("documentCenter.storageMissing"), color: "#e65100" };
     }
     return null;
+  };
+
+  const getFileTypeBadge = (doc: DocumentRow): { label: string; bg: string; fg: string } => {
+    if (doc.source === "SYSTEM" && doc.mimeType === "application/pdf") {
+      return { label: "e-Doc PDF", bg: "#ede7f6", fg: "#4a148c" };
+    }
+    if (doc.mimeType === "application/pdf") return { label: "PDF", bg: "#ffebee", fg: "#b71c1c" };
+    if (doc.mimeType === "image/jpeg" || doc.mimeType === "image/jpg") return { label: "JPG", bg: "#e3f2fd", fg: "#0d47a1" };
+    if (doc.mimeType === "image/png") return { label: "PNG", bg: "#e8f5e9", fg: "#1b5e20" };
+    if (doc.mimeType?.startsWith("image/")) return { label: "IMG", bg: "#e3f2fd", fg: "#0d47a1" };
+    if (doc.mimeType?.startsWith("text/")) return { label: "TXT", bg: "#f5f5f5", fg: "#424242" };
+    return { label: "DOC", bg: "#f5f5f5", fg: "#424242" };
   };
 
   const loadDocs = useCallback(async () => {
@@ -615,11 +635,14 @@ export function RegistrationDocumentCenter({
             {docs.map((d) => (
               <tr key={d.id} style={{ borderBottom: "1px solid #f1f5f9" }}>
                 <td style={{ padding: "6px 8px" }}>
-                  {d.source === "SYSTEM" && (
-                    <span style={{ display: "inline-block", fontSize: 10, fontWeight: 700, color: "#6a1b9a", background: "#f3e5f5", padding: "1px 5px", borderRadius: 3, marginRight: 4 }}>
-                      {t("documentCenter.badgeGenerated")}
-                    </span>
-                  )}
+                  {(() => {
+                    const badge = getFileTypeBadge(d);
+                    return (
+                      <span style={{ display: "inline-block", fontSize: 9, fontWeight: 700, color: badge.fg, background: badge.bg, padding: "1px 5px", borderRadius: 3, marginRight: 4 }}>
+                        {badge.label}
+                      </span>
+                    );
+                  })()}
                   {t(DOC_TYPE_I18N[d.type] || d.type)}
                 </td>
                 <td style={{ padding: "6px 8px", maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>

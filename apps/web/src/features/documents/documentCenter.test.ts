@@ -165,7 +165,7 @@ describe("MEDUI.DOCUMENTS.ENTERPRISE_DOCUMENT_CENTER (Phase 2)", () => {
 
     it("generated packets appear without file upload (source=SYSTEM)", () => {
       expect(docComponent).toContain('"SYSTEM"');
-      expect(docComponent).toContain("documentCenter.badgeGenerated");
+      expect(docComponent).toContain("getFileTypeBadge");
     });
 
     it("shows packet wizard integration", () => {
@@ -224,7 +224,6 @@ describe("MEDUI.DOCUMENTS.ENTERPRISE_DOCUMENT_CENTER (Phase 2)", () => {
       "packetSectionPrivacy",
       "packetSectionBillOfRights",
       "packetMedicareMedicaidWarning",
-      "badgeGenerated",
       "sectionOtherUpload",
       "otherTitleLabel",
       "typePatientIdFront",
@@ -569,6 +568,145 @@ describe("MEDUI.DOCUMENTS.ENTERPRISE_DOCUMENT_CENTER (Phase 2)", () => {
 
     it("clears missing status on successful download", () => {
       expect(docComponent).toContain("next.delete(docId)");
+    });
+  });
+
+  describe("File format and download correctness", () => {
+    const ctrl = readApi("src/documents/documents.controller.ts");
+    const svc = readApi("src/documents/documents.service.ts");
+    const proxy = readSrc("lib/server/nestApiProxy.ts");
+
+    it("download controller sets Content-Type from mimeType", () => {
+      expect(ctrl).toContain("result.mimeType");
+      expect(ctrl).toContain('res.setHeader("Content-Type"');
+    });
+
+    it("download controller sets Content-Disposition with filename", () => {
+      expect(ctrl).toContain("Content-Disposition");
+      expect(ctrl).toContain("encodeURIComponent(result.fileName)");
+    });
+
+    it("download controller sets Content-Length for buffer response", () => {
+      expect(ctrl).toContain("Content-Length");
+      expect(ctrl).toContain("result.buffer.length");
+    });
+
+    it("BFF proxy streams binary responses (images, PDF) without text conversion", () => {
+      expect(proxy).toContain("isBinaryResponse");
+      expect(proxy).toContain("image/");
+      expect(proxy).toContain("application/pdf");
+      expect(proxy).toContain("content-disposition");
+    });
+
+    it("BFF proxy forwards Content-Disposition for binary responses", () => {
+      expect(proxy).toContain('r.headers.get("content-disposition")');
+    });
+
+    it("BFF proxy forwards Content-Length for binary responses", () => {
+      expect(proxy).toContain('r.headers.get("content-length")');
+    });
+
+    it("frontend parses Content-Disposition filename", () => {
+      expect(docComponent).toContain("content-disposition");
+      expect(docComponent).toContain("decodeURIComponent");
+    });
+
+    it("frontend uses response.blob() for downloads", () => {
+      expect(docComponent).toContain("resp.blob()");
+    });
+
+    it("ALLOWED_MIME_PREFIXES includes image/ for JPEG/PNG", () => {
+      expect(svc).toContain('"image/"');
+    });
+
+    it("service preserves original fileName on upload", () => {
+      expect(svc).toContain("fileName: file.originalname");
+    });
+
+    it("service stores checksumSha256 for integrity", () => {
+      expect(svc).toContain("checksumSha256");
+    });
+  });
+
+  describe("File type badges", () => {
+    it("has getFileTypeBadge helper", () => {
+      expect(docComponent).toContain("getFileTypeBadge");
+    });
+
+    it("shows PDF badge for application/pdf", () => {
+      expect(docComponent).toContain('"application/pdf"');
+      expect(docComponent).toContain('"PDF"');
+    });
+
+    it("shows JPG badge for image/jpeg", () => {
+      expect(docComponent).toContain('"image/jpeg"');
+      expect(docComponent).toContain('"JPG"');
+    });
+
+    it("shows PNG badge for image/png", () => {
+      expect(docComponent).toContain('"image/png"');
+      expect(docComponent).toContain('"PNG"');
+    });
+
+    it("shows e-Doc PDF badge for system-generated PDFs", () => {
+      expect(docComponent).toContain("e-Doc PDF");
+      expect(docComponent).toContain('doc.source === "SYSTEM"');
+    });
+  });
+
+  describe("Packet PDF output", () => {
+    const packetCtrl = readApi("src/documents/documents.controller.ts");
+
+    it("API has PacketPdfService", () => {
+      const pdfSvc = readApi("src/documents/packet-pdf.service.ts");
+      expect(pdfSvc).toContain("class PacketPdfService");
+      expect(pdfSvc).toContain("PDFDocument");
+    });
+
+    it("PacketPdfService generates Buffer from structured input", () => {
+      const pdfSvc = readApi("src/documents/packet-pdf.service.ts");
+      expect(pdfSvc).toContain("async generate");
+      expect(pdfSvc).toContain("Promise<Buffer>");
+      expect(pdfSvc).toContain("Buffer.concat(chunks)");
+    });
+
+    it("PacketPdfService includes patient info", () => {
+      const pdfSvc = readApi("src/documents/packet-pdf.service.ts");
+      expect(pdfSvc).toContain("Patient Information");
+      expect(pdfSvc).toContain("input.patient");
+    });
+
+    it("PacketPdfService includes insurance info", () => {
+      const pdfSvc = readApi("src/documents/packet-pdf.service.ts");
+      expect(pdfSvc).toContain("Insurance Information");
+    });
+
+    it("PacketPdfService includes signatures", () => {
+      const pdfSvc = readApi("src/documents/packet-pdf.service.ts");
+      expect(pdfSvc).toContain("Signatures");
+      expect(pdfSvc).toContain("input.signatures");
+    });
+
+    it("controller generate-packet-pdf sets mimetype to application/pdf", () => {
+      expect(packetCtrl).toContain("generate-packet-pdf");
+      expect(packetCtrl).toContain('"application/pdf"');
+    });
+
+    it("controller generate-packet-pdf creates .pdf filename", () => {
+      expect(packetCtrl).toContain(".pdf");
+      expect(packetCtrl).toContain("_Registration_Package_");
+    });
+
+    it("packet wizard uses generate-packet-pdf endpoint, not HTML upload", () => {
+      const wizard = readSrc("components/documents/RegistrationPacketWizard.tsx");
+      expect(wizard).toContain("generate-packet-pdf");
+      expect(wizard).not.toContain("buildPacketHtml");
+      expect(wizard).not.toContain("_signed_packet.html");
+    });
+
+    it("module registers PacketPdfService", () => {
+      const mod = readApi("src/documents/documents.module.ts");
+      expect(mod).toContain("PacketPdfService");
     });
   });
 });

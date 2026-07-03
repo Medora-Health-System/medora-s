@@ -20,6 +20,7 @@ import type { Response } from "express";
 import { RolesGuard, RequireRoles } from "../common/guards/roles.guard";
 import { DocumentsService } from "./documents.service";
 import { DocumentSignatureService } from "./document-signature.service";
+import { PacketPdfService } from "./packet-pdf.service";
 import { RoleCode } from "@prisma/client";
 
 @Controller("documents")
@@ -28,6 +29,7 @@ export class DocumentsController {
   constructor(
     private readonly documentsService: DocumentsService,
     private readonly signatureService: DocumentSignatureService,
+    private readonly packetPdfService: PacketPdfService,
   ) {}
 
   @Get()
@@ -51,6 +53,75 @@ export class DocumentsController {
   ) {
     const facilityId = req.user?.facilityId || req.headers["x-facility-id"];
     return this.documentsService.list({ ...query, facilityId });
+  }
+
+  @Post("generate-packet-pdf")
+  @RequireRoles(
+    RoleCode.RN,
+    RoleCode.PROVIDER,
+    RoleCode.ADMIN,
+    RoleCode.FRONT_DESK
+  )
+  async generatePacketPdf(
+    @Body()
+    body: {
+      patientId: string;
+      template: string;
+      templateLabel: string;
+      patient: any;
+      insurance: any[];
+      sections: { key: string; label: string; content: string }[];
+      signatures: {
+        signerName: string;
+        signerRelationship: string;
+        signedAt: string;
+        staffName: string;
+        staffSignedAt: string;
+        refusalReason?: string;
+      };
+      facilityName?: string;
+      title: string;
+      notes?: string;
+    },
+    @Req() req: any,
+  ) {
+    if (!body.patientId) throw new BadRequestException("patientId is required");
+    if (!body.template) throw new BadRequestException("template is required");
+
+    const facilityId = req.user?.facilityId || req.headers["x-facility-id"];
+    const generatedAt = new Date().toISOString();
+
+    const pdfBuffer = await this.packetPdfService.generate({
+      template: body.template,
+      templateLabel: body.templateLabel || body.template,
+      patient: body.patient || null,
+      insurance: body.insurance || [],
+      sections: body.sections || [],
+      signatures: body.signatures,
+      facilityName: body.facilityName,
+      generatedAt,
+    });
+
+    const patientName = [body.patient?.firstName, body.patient?.lastName].filter(Boolean).join("_") || "Patient";
+    const dateStr = generatedAt.slice(0, 10);
+    const fileName = `${body.template}_Registration_Package_${patientName}_${dateStr}.pdf`;
+
+    return this.documentsService.upload({
+      patientId: body.patientId,
+      facilityId,
+      category: "REGISTRATION",
+      type: "REGISTRATION_PACKET",
+      title: body.title,
+      notes: body.notes,
+      source: "SYSTEM",
+      uploadedById: req.user?.userId,
+      file: {
+        originalname: fileName,
+        mimetype: "application/pdf",
+        size: pdfBuffer.length,
+        buffer: pdfBuffer,
+      },
+    });
   }
 
   @Post("upload")
@@ -141,6 +212,7 @@ export class DocumentsController {
     if (result.storagePath) {
       res.sendFile(result.storagePath);
     } else if (result.buffer) {
+      res.setHeader("Content-Length", result.buffer.length);
       res.end(result.buffer);
     } else {
       res.status(404).json({ message: "Document file is unavailable." });
