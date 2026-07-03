@@ -102,6 +102,35 @@ const baseEncounter = {
 } as const;
 
 describe("erClinicalRecordPrintPacket (Phase 5)", () => {
+  const facilityFixture = {
+    name: "Wayne Urgent Care Emergency Room",
+    addressLine1: "123 Healthcare Blvd",
+    city: "Wayne",
+    stateProvince: "NJ",
+    postalCode: "07470",
+    phone: "(973) 555-0100",
+  };
+
+  it("V2 print packet centers facility header and omits raw ER packet title", () => {
+    const record = buildPrintRecord();
+    const html = getErClinicalRecordPrintPacketHtml({
+      patient: basePatient,
+      encounter: baseEncounter,
+      facility: facilityFixture,
+      language: "en",
+      record,
+    });
+    expect(html).toContain("text-align:center");
+    expect(html).toContain("Wayne Urgent Care Emergency Room");
+    expect(html).toContain("123 Healthcare Blvd, Wayne, NJ 07470");
+    expect(html).toContain("(973) 555-0100");
+    expect(html).toContain("Emergency Department Encounter Packet");
+    expect(html).not.toMatch(/<h1[^>]*>ER packet<\/h1>/i);
+    expect(html).not.toContain("printOutput.common.printedAt");
+    expect(html).toContain("Document generated on");
+    expect(html).toContain("@page");
+  });
+
   it("V2 print packet includes attribution lines", () => {
     const record = buildPrintRecord();
     const html = getErClinicalRecordPrintPacketHtml({
@@ -163,18 +192,23 @@ describe("erClinicalRecordPrintPacket (Phase 5)", () => {
     expect(html).not.toContain("Earlier draft — should not duplicate in V2 print.");
   });
 
-  it("legacy print packet still works when V2 flag is off", () => {
+  it("legacy print packet uses centered facility header instead of ER packet h1", () => {
     const record = buildPrintRecord();
     const html = getErPrintPacketHtml({
       patient: basePatient,
       encounter: baseEncounter,
+      facility: facilityFixture,
       triageSnapshot: null,
       language: "en",
       clinicalRecord: record,
       useClinicalRecordV2: false,
     });
-    expect(html).toContain("ER packet");
+    expect(html).toContain("Wayne Urgent Care Emergency Room");
+    expect(html).toContain("Emergency Department Encounter Packet");
+    expect(html).not.toMatch(/<h1[^>]*>ER packet<\/h1>/i);
+    expect(html).not.toContain("printOutput.common.printedAt");
     expect(html).not.toContain("Signed by Dr Provider");
+    expect(html).toContain("@page");
   });
 
   it("print modules do not import lifecycle engine", () => {

@@ -19,6 +19,12 @@ import {
   type DischargeSummaryFieldsFr,
 } from "@/components/patient-chart/patientChartHelpers";
 import { printDateLocale, printPatientSexLabel, printT } from "@/lib/printI18n";
+import {
+  buildPrintDocumentFooterHtml,
+  buildPrintFacilityHeaderHtml,
+  resolvePrintFacilityInfo,
+  type PrintFacilityInfo,
+} from "@/lib/printFacilityHeader";
 import type {
   ErEdSummaryMarEventRow,
   ErEdSummaryMedicationOrderRow,
@@ -233,10 +239,17 @@ function erPacketH1(lang: SupportedLanguage, outcome: ErDispositionOutcomeUi): s
   return printT(lang, "printOutput.erPacket.h1ErPacket");
 }
 
+function erPacketSubtitleKey(outcome: ErDispositionOutcomeUi): string {
+  if (outcome === "ADMISSION") return "printOutput.erPacket.subtitleAdmissionSummary";
+  if (outcome === "TRANSFER") return "printOutput.erPacket.subtitleTransferPacket";
+  return "printOutput.erPacket.subtitleErPacket";
+}
+
 /** Central assembly for ER print HTML — used by `printErPacket` / browser print. */
 export function getErPrintPacketHtml(params: {
   patient: DischargePrintPatient;
   encounter: ErPrintEncounter;
+  facility?: PrintFacilityInfo | null;
   facilityName?: string | null;
   primaryDiagnosis?: string | null;
   triageSnapshot: ErPrintTriageSnapshot;
@@ -270,6 +283,7 @@ export function getErPrintPacketHtml(params: {
   const {
     patient,
     encounter,
+    facility,
     facilityName,
     primaryDiagnosis,
     triageSnapshot,
@@ -299,12 +313,14 @@ export function getErPrintPacketHtml(params: {
     return getErClinicalRecordPrintPacketHtml({
       patient,
       encounter,
+      facility,
       facilityName,
       language,
       record: clinicalRecord,
     });
   }
 
+  const facilityInfo = resolvePrintFacilityInfo(facility, facilityName);
   const loc = printDateLocale(language);
   const name = [patient.firstName, patient.lastName].filter(Boolean).join(" ").trim() || "—";
   const ageYears =
@@ -377,7 +393,13 @@ export function getErPrintPacketHtml(params: {
 
   const body: string[] = [];
 
-  body.push(`<h1 style="font-size: 18px; margin: 0 0 16px 0; font-weight: 700;">${esc(erPacketH1(language, outcome))}</h1>`);
+  body.push(buildPrintFacilityHeaderHtml(facilityInfo, esc));
+  const subtitle = printT(language, erPacketSubtitleKey(outcome));
+  if (subtitle && subtitle !== erPacketSubtitleKey(outcome)) {
+    body.push(
+      `<p style="margin:0 0 20px 0;text-align:center;font-size:13px;font-weight:600;color:#334155;">${esc(subtitle)}</p>`
+    );
+  }
 
   body.push(`<div style="margin-bottom: 20px; padding-bottom: 12px; border-bottom: 1px solid #000;">`);
   body.push(line(printT(language, "printOutput.discharge.patientName"), name));
@@ -385,9 +407,6 @@ export function getErPrintPacketHtml(params: {
   body.push(line(printT(language, "encounterChrome.labelSex"), sex));
   body.push(line(printT(language, "encounterChrome.labelNirMrn"), ids));
   body.push(line(printT(language, "printOutput.discharge.encounterDate"), consultDate));
-  if (facilityName?.trim()) {
-    body.push(line(printT(language, "printOutput.patientChart.establishment"), facilityName.trim()));
-  }
   body.push(
     line(
       printT(language, "encounterChrome.labelAssignedPhysician"),
@@ -618,8 +637,8 @@ export function getErPrintPacketHtml(params: {
   body.push(h2(language, "printOutput.erPacket.sectionSignatures"));
   appendSignatureBlock(body, language, loc, encounter, emtalaDerived, disSig);
 
-  const footer = esc(printT(language, "printOutput.common.documentFooter").replace("{date}", printDate));
-  body.push(`<p style="margin-top: 20px; font-size: 11px;">${footer}</p>`);
+  const footer = buildPrintDocumentFooterHtml(language, printDate, esc, printT);
+  body.push(footer);
 
   const htmlLang = language === "en" ? "en" : "fr";
   const titleKey =
@@ -636,7 +655,7 @@ export function getErPrintPacketHtml(params: {
   <title>${esc(printT(language, titleKey))}</title>
   <style>
     body { font-family: Georgia, "Times New Roman", serif; color: #000; background: #fff; margin: 0; padding: 24px; font-size: 14px; }
-    @media print { body { padding: 16px; } }
+    @media print { body { padding: 16px; } @page { margin: 16mm 12mm; } }
   </style>
 </head>
 <body>

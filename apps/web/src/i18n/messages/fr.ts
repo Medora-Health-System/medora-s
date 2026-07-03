@@ -11170,6 +11170,9 @@ export default {
       h1ErPacket: "Dossier urgences",
       h1TransferPacket: "Dossier de transfert",
       h1AdmissionSummary: "Synthèse d'admission",
+      subtitleErPacket: "Dossier de consultation aux urgences",
+      subtitleTransferPacket: "Dossier de transfert aux urgences",
+      subtitleAdmissionSummary: "Synthèse d'admission aux urgences",
       dispositionOutcome: "Orientation (disposition)",
       finalDiagnosis: "Diagnostic final",
       sectionAdmissionClinical: "Admission (synthèse clinique)",
@@ -12318,6 +12321,7 @@ export default {
     cardSubline:
       "Décision médicale d'orientation — enregistrée dans le dossier partagé. L'exécution infirmière (sortie, impression, confirmation) se fait dans la section « Exécution équipe » sous cette disposition.",
     printChart: "Imprimer le dossier d'urgence",
+    printDischargeSummary: "Imprimer le résumé de sortie",
     printErPacketHint:
       "Ce dossier résume la visite aux urgences et la disposition. Ce n'est pas le dossier patient complet.",
     summaryClosureLink: "Résumé et clôture",

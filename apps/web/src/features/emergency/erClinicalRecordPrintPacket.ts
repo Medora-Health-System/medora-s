@@ -8,6 +8,12 @@ import { calculateAge } from "@/lib/patientDisplay";
 import { formatEncounterChromeDateTime } from "@/lib/encounterChromeI18n";
 import { formatTemperatureDualLine } from "@/lib/patientVitals";
 import { printDateLocale, printPatientSexLabel, printT } from "@/lib/printI18n";
+import {
+  buildPrintDocumentFooterHtml,
+  buildPrintFacilityHeaderHtml,
+  resolvePrintFacilityInfo,
+  type PrintFacilityInfo,
+} from "@/lib/printFacilityHeader";
 import { nirMrnDisplay } from "@/components/patient-chart/patientChartHelpers";
 import type { DischargePrintEncounter, DischargePrintPatient } from "@/components/encounters/DischargePrintLayout";
 import {
@@ -95,11 +101,13 @@ function providerStatusLabel(
 export function getErClinicalRecordPrintPacketHtml(input: {
   patient: DischargePrintPatient;
   encounter: DischargePrintEncounter;
+  facility?: PrintFacilityInfo | null;
   facilityName?: string | null;
   language: SupportedLanguage;
   record: EncounterClinicalRecord;
 }): string {
-  const { patient, encounter, facilityName, language, record } = input;
+  const { patient, encounter, facility, facilityName, language, record } = input;
+  const facilityInfo = resolvePrintFacilityInfo(facility, facilityName);
   const loc = printDateLocale(language);
   const t = (key: string) => {
     const v = printT(language, key);
@@ -421,12 +429,23 @@ export function getErClinicalRecordPrintPacketHtml(input: {
   }
 
   const printDate = new Date().toLocaleString(loc);
-  return `<!DOCTYPE html><html><head><meta charset="utf-8"/><title>${esc(
-    printT(language, "printOutput.erPacket.h1ErPacket")
-  )}</title></head><body style="font-family:system-ui,sans-serif;padding:24px;color:#0f172a;max-width:900px;margin:0 auto;">
-<h1 style="font-size:20px;margin:0 0 8px 0;">${esc(printT(language, "printOutput.erPacket.h1ErPacket"))}</h1>
-${facilityName ? p(facilityName) : ""}
-<p style="margin:0 0 16px 0;font-size:12px;color:#64748b;">${esc(printT(language, "printOutput.common.printedAt"))} ${esc(printDate)}</p>
+  const facilityHeader = buildPrintFacilityHeaderHtml(facilityInfo, esc);
+  const subtitle = t("printOutput.erPacket.subtitleErPacket");
+  const subtitleHtml =
+    subtitle && subtitle !== "printOutput.erPacket.subtitleErPacket"
+      ? `<p style="margin:0 0 20px 0;text-align:center;font-size:13px;font-weight:600;color:#475569;">${esc(subtitle)}</p>`
+      : "";
+  const footer = buildPrintDocumentFooterHtml(language, printDate, esc, printT);
+  const htmlTitle = printT(language, "printOutput.erPacket.htmlTitleErPacket");
+
+  return `<!DOCTYPE html><html lang="${language === "en" ? "en" : "fr"}"><head><meta charset="utf-8"/><title>${esc(
+    htmlTitle
+  )}</title><style>
+    body { font-family: system-ui, sans-serif; padding: 24px; color: #0f172a; max-width: 900px; margin: 0 auto; font-size: 14px; }
+    @media print { body { padding: 16px; } @page { margin: 16mm 12mm; } }
+  </style></head><body>
+${facilityHeader}${subtitleHtml}
 ${sections.filter(Boolean).join("")}
+${footer}
 </body></html>`;
 }

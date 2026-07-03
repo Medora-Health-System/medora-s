@@ -85,10 +85,13 @@ function basePrintParams(
 }
 
 describe("ERPACKET.1 — ER packet title and clinical documentation completeness", () => {
-  it("default ER packet h1 is not Discharge packet", () => {
-    const html = getErPrintPacketHtml(basePrintParams());
-    expect(html).toContain("<h1");
-    expect(html).toContain("ER packet");
+  it("default ER packet uses subtitle instead of plain ER packet h1", () => {
+    const html = getErPrintPacketHtml(
+      basePrintParams({ facilityName: "Wayne Urgent Care Emergency Room" })
+    );
+    expect(html).toContain("Wayne Urgent Care Emergency Room");
+    expect(html).toContain("Emergency Department Encounter Packet");
+    expect(html).not.toMatch(/<h1[^>]*>ER packet<\/h1>/);
     expect(html).not.toMatch(/<h1[^>]*>Discharge packet<\/h1>/);
   });
 
@@ -98,9 +101,11 @@ describe("ERPACKET.1 — ER packet title and clinical documentation completeness
     expect(html).not.toContain("<title>ED discharge packet</title>");
   });
 
-  it("French default ER packet uses Dossier urgences header", () => {
-    const html = getErPrintPacketHtml(basePrintParams({ language: "fr" }));
-    expect(html).toContain("Dossier urgences");
+  it("French default ER packet uses localized subtitle", () => {
+    const html = getErPrintPacketHtml(
+      basePrintParams({ language: "fr", facilityName: "Clinique Medora" })
+    );
+    expect(html).toContain("Dossier de consultation aux urgences");
     expect(html).not.toContain("Dossier de sortie</h1>");
   });
 

@@ -18,7 +18,8 @@ import {
   type AdmissionFormState,
 } from "@/lib/encounterAdmission";
 import { parseAdmissionSummaryForChart } from "@/components/patient-chart/patientChartHelpers";
-import { MedoraCard, MedoraCardIdentity, MedoraCardInner, MedoraCardTitle } from "@/components/medora-card";
+import { MedoraCard, MedoraCardActions, MedoraCardIdentity, MedoraCardInner, MedoraCardTitle } from "@/components/medora-card";
+import { printDischarge } from "@/components/encounters/DischargePrintLayout";
 import {
   buildErDispositionPreviewModel,
   emptyErDispositionSupplementForm,
@@ -66,11 +67,24 @@ import { erHandoffV1SatisfiesInpatientTransferConfirm } from "@medora/shared";
 
 type PhysicianLite = { id?: string; firstName?: string | null; lastName?: string | null } | null;
 
+type PatientLite = {
+  id?: string;
+  firstName?: string | null;
+  lastName?: string | null;
+  dob?: string | null;
+  mrn?: string | null;
+  nationalId?: string | null;
+  globalMrn?: string | null;
+  sex?: string | null;
+  sexAtBirth?: string | null;
+};
+
 type EncounterLite = {
   id: string;
   status?: string | null;
   type?: string | null;
-  patient?: { id?: string; dob?: string | null } | null;
+  createdAt?: string | null;
+  patient?: PatientLite | null;
   nursingAssessment?: unknown;
   dischargeSummaryJson?: unknown;
   admissionSummaryJson?: unknown;
@@ -129,6 +143,7 @@ export function EmergencyDispositionPanel({
   canEditMedicalDischarge,
   patientSpecificDischargeContext,
   dischargeMedicationSources,
+  facilityName,
 }: {
   encounterId: string;
   facilityId: string;
@@ -141,6 +156,7 @@ export function EmergencyDispositionPanel({
   patientSpecificDischargeContext?: PatientSpecificDischargeContext;
   /** Optional medication sources (orders, MAR, home meds) for discharge personalization. */
   dischargeMedicationSources?: DischargeMedicationSourceInput;
+  facilityName?: string | null;
 }) {
   const { t, language } = useI18n();
   const dateLocale = language === "en" ? "en-US" : "fr-FR";
@@ -360,6 +376,35 @@ export function EmergencyDispositionPanel({
     () => readDispositionSignatureFromEncounter(encounter.nursingAssessment),
     [encounter.nursingAssessment]
   );
+
+  const handlePrintDischargeSummary = useCallback(() => {
+    const p = encounter.patient;
+    if (!p || !encounter.createdAt) return;
+    printDischarge({
+      patient: p,
+      encounter: {
+        createdAt: encounter.createdAt,
+        dischargeSummaryJson: encounter.dischargeSummaryJson,
+        physicianAssigned: encounter.physicianAssigned ?? null,
+      },
+      facilityName: facilityName ?? null,
+      primaryDiagnosis: null,
+      language,
+      patientSpecificDischargeContext: resolvedPatientDischargeContext,
+      dischargeMedicationSources,
+    });
+  }, [
+    dischargeMedicationSources,
+    encounter.createdAt,
+    encounter.dischargeSummaryJson,
+    encounter.patient,
+    encounter.physicianAssigned,
+    facilityName,
+    language,
+    resolvedPatientDischargeContext,
+  ]);
+
+  const canPrintDischargeSummary = Boolean(encounter.patient && encounter.createdAt);
 
   const patchDischarge = useCallback((patch: Partial<DischargeFormState>) => {
     setDischargeForm((f) => ({ ...f, ...patch }));
@@ -1133,6 +1178,28 @@ export function EmergencyDispositionPanel({
                 <p style={{ margin: "6px 0 0 0", fontSize: 13, color: "#64748b" }}>{t("common.dash")}</p>
               )}
             </div>
+
+            <MedoraCardActions railBorderTopColor="#e2e8f0" gap={8} minWidth={0} alignItems="flex-start">
+              <button
+                type="button"
+                onClick={handlePrintDischargeSummary}
+                disabled={!canPrintDischargeSummary}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  padding: "8px 14px",
+                  borderRadius: 10,
+                  border: "1px solid #cbd5e1",
+                  backgroundColor: canPrintDischargeSummary ? "#f8fafc" : "#f1f5f9",
+                  color: canPrintDischargeSummary ? "#334155" : "#94a3b8",
+                  fontSize: 13,
+                  fontWeight: 600,
+                  cursor: canPrintDischargeSummary ? "pointer" : "not-allowed",
+                }}
+              >
+                {t("emergencyDisposition.printDischargeSummary")}
+              </button>
+            </MedoraCardActions>
           </EdDispositionPreviewPanel>
         </div>
       </MedoraCardInner>

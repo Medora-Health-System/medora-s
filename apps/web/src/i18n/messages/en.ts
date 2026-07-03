@@ -11165,6 +11165,9 @@ export default {
       h1ErPacket: "ER packet",
       h1TransferPacket: "Transfer packet",
       h1AdmissionSummary: "Admission summary",
+      subtitleErPacket: "Emergency Department Encounter Packet",
+      subtitleTransferPacket: "Emergency Department Transfer Packet",
+      subtitleAdmissionSummary: "Emergency Department Admission Summary",
       dispositionOutcome: "Disposition outcome",
       finalDiagnosis: "Final diagnosis",
       sectionAdmissionClinical: "Admission (clinical summary)",
@@ -12302,6 +12305,7 @@ export default {
     cardSubline:
       "",
     printChart: "Print ER packet",
+    printDischargeSummary: "Print Discharge Summary",
     printErPacketHint:
       "This packet summarizes the ER visit and disposition. It is not the complete patient record.",
     summaryClosureLink: "Summary & closure",

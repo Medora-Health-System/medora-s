@@ -1098,6 +1098,7 @@ export function EmergencyChartView() {
               canPrescribe={canPrescribe}
               canEditNursingDischarge={canEditNursingDischarge}
               canEditMedicalDischarge={canEditMedicalDischarge}
+              facilityName={facilityName}
             />
           </section>
 

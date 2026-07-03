@@ -1522,6 +1522,7 @@ export function EmergencyActiveWorkspaceView() {
                 canPrescribe={canPrescribe}
                 canEditNursingDischarge={canEditNursingDischarge}
                 canEditMedicalDischarge={canEditMedicalDischarge}
+                facilityName={facilityName}
               />
               {canRecordDischargeSortieExecution ?
                 <div style={{ marginTop: 10 }}>

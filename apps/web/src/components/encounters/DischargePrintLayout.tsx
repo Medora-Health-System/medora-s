@@ -17,6 +17,12 @@ import {
 } from "@/components/patient-chart/patientChartHelpers";
 import { printDateLocale, printPatientSexLabel, printT } from "@/lib/printI18n";
 import {
+  buildPrintDocumentFooterHtml,
+  buildPrintFacilityHeaderHtml,
+  resolvePrintFacilityInfo,
+  type PrintFacilityInfo,
+} from "@/lib/printFacilityHeader";
+import {
   buildProviderDischargeDocumentationSummaryBlock,
   type ProviderDischargeDocumentationRenderOptions,
 } from "@/features/emergency/providerDischargeDocumentationSummary";
@@ -155,6 +161,7 @@ function dischargeSummaryHasPatientInstructions(d: DischargeSummaryFieldsFr | nu
 export function getDischargePrintHtml(params: {
   patient: DischargePrintPatient;
   encounter: DischargePrintEncounter;
+  facility?: PrintFacilityInfo | null;
   facilityName?: string | null;
   /** Primary diagnosis for this encounter if known client-side */
   primaryDiagnosis?: string | null;
@@ -167,12 +174,14 @@ export function getDischargePrintHtml(params: {
   const {
     patient,
     encounter,
+    facility,
     facilityName,
     primaryDiagnosis,
     language,
     patientSpecificDischargeContext,
     dischargeMedicationSources,
   } = params;
+  const facilityInfo = resolvePrintFacilityInfo(facility, facilityName);
   const loc = printDateLocale(language);
   const name = [patient.firstName, patient.lastName].filter(Boolean).join(" ").trim() || "—";
   const ageYears =
@@ -205,8 +214,10 @@ export function getDischargePrintHtml(params: {
 
   const bodySections: string[] = [];
 
+  bodySections.push(buildPrintFacilityHeaderHtml(facilityInfo, esc));
+
   bodySections.push(
-    `<h1 style="font-size: 18px; margin: 0 0 16px 0; font-weight: 700;">${esc(
+    `<h1 style="font-size: 18px; margin: 0 0 16px 0; font-weight: 700; text-align: center;">${esc(
       printT(language, "printOutput.discharge.documentH1")
     )}</h1>`
   );
@@ -219,9 +230,6 @@ export function getDischargePrintHtml(params: {
   bodySections.push(line(printT(language, "encounterChrome.labelSex"), sex));
   bodySections.push(line(printT(language, "encounterChrome.labelNirMrn"), ids));
   bodySections.push(line(printT(language, "printOutput.discharge.encounterDate"), consultDate));
-  if (facilityName?.trim()) {
-    bodySections.push(line(printT(language, "printOutput.patientChart.establishment"), facilityName.trim()));
-  }
   bodySections.push(
     line(
       printT(language, "encounterChrome.labelAssignedPhysician"),
@@ -311,8 +319,8 @@ export function getDischargePrintHtml(params: {
   );
   bodySections.push(`</div>`);
 
-  const footer = esc(printT(language, "printOutput.common.documentFooter").replace("{date}", printDate));
-  bodySections.push(`<p style="margin-top: 20px; font-size: 11px;">${footer}</p>`);
+  const footer = buildPrintDocumentFooterHtml(language, printDate, esc, printT);
+  bodySections.push(footer);
 
   const htmlLang = language === "en" ? "en" : "fr";
 
@@ -323,7 +331,7 @@ export function getDischargePrintHtml(params: {
   <title>${esc(printT(language, "printOutput.discharge.htmlTitle"))}</title>
   <style>
     body { font-family: Georgia, "Times New Roman", serif; color: #000; background: #fff; margin: 0; padding: 24px; font-size: 14px; }
-    @media print { body { padding: 16px; } }
+    @media print { body { padding: 16px; } @page { margin: 16mm 12mm; } }
   </style>
 </head>
 <body>
@@ -332,13 +340,7 @@ ${bodySections.join("\n")}
 </html>`;
 }
 
-export function printDischarge(params: {
-  patient: DischargePrintPatient;
-  encounter: DischargePrintEncounter;
-  facilityName?: string | null;
-  primaryDiagnosis?: string | null;
-  language: SupportedLanguage;
-}): void {
+export function printDischarge(params: Parameters<typeof getDischargePrintHtml>[0]): void {
   const win = window.open("", "_blank");
   if (!win) {
     alert(printT(params.language, "printOutput.common.popupBlocked"));
