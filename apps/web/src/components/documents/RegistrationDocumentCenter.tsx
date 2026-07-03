@@ -17,6 +17,8 @@ type DocumentRow = {
   fileSize: number;
   source: string | null;
   notes: string | null;
+  signatureStatus: string | null;
+  lockedAt: string | null;
   uploadedAt: string;
   uploadedBy: { id: string; firstName: string; lastName: string } | null;
 };
@@ -203,6 +205,14 @@ export function RegistrationDocumentCenter({
   };
 
   const getPacketStatus = (doc: DocumentRow): string => {
+    if (doc.lockedAt && doc.signatureStatus === "SIGNED") return t("esignature.statusSignedLocked");
+    if (doc.lockedAt && doc.signatureStatus === "REFUSED") return t("esignature.statusRefused");
+    if (doc.signatureStatus === "COMPLETED") return t("esignature.statusCompleted");
+    if (doc.signatureStatus === "PATIENT_SIGNED") return t("esignature.statusNeedsStaff");
+    if (doc.signatureStatus === "STAFF_SIGNED") return t("esignature.statusNeedsPatient");
+    if (doc.signatureStatus === "IN_PROGRESS") return t("documentCenter.packetStatusInProgress");
+    if (doc.signatureStatus === "UNSIGNED") return t("esignature.statusUnsigned");
+    // Legacy fallback
     try {
       const meta = JSON.parse(doc.notes || "{}");
       if (meta.completedAt) {
@@ -216,6 +226,12 @@ export function RegistrationDocumentCenter({
   };
 
   const getPacketStatusColor = (doc: DocumentRow): string => {
+    if (doc.lockedAt && doc.signatureStatus === "SIGNED") return "#1b5e20";
+    if (doc.lockedAt && doc.signatureStatus === "REFUSED") return "#e65100";
+    if (doc.signatureStatus === "COMPLETED") return "#1b5e20";
+    if (doc.signatureStatus === "PATIENT_SIGNED" || doc.signatureStatus === "STAFF_SIGNED") return "#0277bd";
+    if (doc.signatureStatus === "UNSIGNED") return "#64748b";
+    // Legacy fallback
     try {
       const meta = JSON.parse(doc.notes || "{}");
       if (meta.completedAt) {

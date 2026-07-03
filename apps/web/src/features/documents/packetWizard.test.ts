@@ -142,8 +142,10 @@ describe("MEDUI.REGISTRATION.PHASE_3_ELECTRONIC_PACKET_E_SIGNATURE", () => {
       expect(wizardComponent).toContain("staffName.trim()");
     });
 
-    it("cannot sign without signer name unless refused", () => {
-      expect(wizardComponent).toContain("signerName.trim() || isRefused");
+    it("cannot finalize without valid patient signature or refusal", () => {
+      expect(wizardComponent).toContain("patientSigValid");
+      expect(wizardComponent).toContain("staffSigValid");
+      expect(wizardComponent).toContain("canFinalize");
     });
   });
 

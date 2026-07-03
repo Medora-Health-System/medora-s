@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import { useI18n } from "@/lib/i18n";
 import { encounterBcp47 } from "@/lib/encounterChromeI18n";
 import { apiFetch } from "@/lib/apiClient";
+import { SignatureCapturePad, type SignatureResult } from "./SignatureCapturePad";
 
 const API_BASE = "/api/backend";
 
@@ -116,6 +117,10 @@ export function RegistrationPacketWizard({
   const [staffName, setStaffName] = useState("");
   const [refusalReason, setRefusalReason] = useState("");
   const [isRefused, setIsRefused] = useState(false);
+  const [patientSigData, setPatientSigData] = useState<SignatureResult | null>(null);
+  const [staffSigData, setStaffSigData] = useState<SignatureResult | null>(null);
+  const [patientAttestation, setPatientAttestation] = useState(false);
+  const [staffAttestation, setStaffAttestation] = useState(false);
 
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -141,8 +146,9 @@ export function RegistrationPacketWizard({
   };
 
   const allReviewed = sectionKeys.every((k) => sectionStatus[k] === "reviewed");
-  const canSign = allReviewed && (signerName.trim() || isRefused);
-  const canFinalize = canSign && staffName.trim();
+  const patientSigValid = isRefused ? !!refusalReason.trim() : (!!signerName.trim() && !!patientSigData && patientAttestation);
+  const staffSigValid = !!staffName.trim() && !!staffSigData && staffAttestation;
+  const canFinalize = allReviewed && patientSigValid && staffSigValid;
 
   const templateLabel = useCallback(
     (tmpl: string) => {
@@ -195,7 +201,7 @@ export function RegistrationPacketWizard({
       form.append("source", "SYSTEM");
       form.append("notes", JSON.stringify(packetMeta));
 
-      const resp = await fetch(
+      const uploadResp = await fetch(
         `${API_BASE}/documents/upload`,
         {
           method: "POST",
@@ -204,15 +210,48 @@ export function RegistrationPacketWizard({
           credentials: "include",
         },
       );
-      if (!resp.ok) {
-        const errText = await resp.text().catch(() => "");
-        let msg = `${resp.status}`;
+      if (!uploadResp.ok) {
+        const errText = await uploadResp.text().catch(() => "");
+        let msg = `${uploadResp.status}`;
         try {
           const j = JSON.parse(errText);
           if (j?.message) msg = typeof j.message === "string" ? j.message : JSON.stringify(j.message);
         } catch { if (errText) msg = errText.slice(0, 200); }
         throw new Error(msg);
       }
+      const uploadedDoc = await uploadResp.json() as { id: string };
+      const documentId = uploadedDoc.id;
+
+      await apiFetch(`/documents/${documentId}/signatures`, {
+        method: "POST",
+        facilityId,
+        body: JSON.stringify({
+          signerType: isRefused ? "PATIENT" : (signerRelationship === "self" ? "PATIENT" : "REPRESENTATIVE"),
+          signerName: isRefused ? signerName.trim() || "Patient" : signerName.trim(),
+          relationship: signerRelationship,
+          signatureData: isRefused ? null : patientSigData,
+          attestation: t("esignature.patientAttestation"),
+          refusalReason: isRefused ? refusalReason.trim() : undefined,
+        }),
+      });
+
+      await apiFetch(`/documents/${documentId}/signatures`, {
+        method: "POST",
+        facilityId,
+        body: JSON.stringify({
+          signerType: "STAFF",
+          signerName: staffName.trim(),
+          signerRole: "WITNESS",
+          signatureData: staffSigData,
+          attestation: t("esignature.staffAttestation"),
+        }),
+      });
+
+      await apiFetch(`/documents/${documentId}/finalize-signature`, {
+        method: "POST",
+        facilityId,
+      });
+
       onComplete();
     } catch (err: unknown) {
       const detail = err instanceof Error ? err.message : "";
@@ -390,43 +429,55 @@ export function RegistrationPacketWizard({
 
           <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 8 }}>
             <label style={{ fontSize: 12, display: "flex", alignItems: "center", gap: 4, cursor: "pointer" }}>
-              <input type="checkbox" checked={isRefused} onChange={(e) => setIsRefused(e.target.checked)} />
+              <input type="checkbox" checked={isRefused} onChange={(e) => setIsRefused(e.target.checked)} disabled={!allReviewed} />
               {t("packetWizard.unableRefused")}
             </label>
           </div>
 
+          {/* Patient/Rep signature */}
           {!isRefused ? (
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 8 }}>
-              <div>
-                <label style={{ fontSize: 12, fontWeight: 500, display: "block", marginBottom: 3 }}>{t("packetWizard.signerNameLabel")}</label>
-                <input
-                  type="text"
-                  value={signerName}
-                  onChange={(e) => setSignerName(e.target.value)}
-                  placeholder={t("packetWizard.signerNamePlaceholder")}
-                  disabled={!allReviewed}
-                  style={{ width: "100%", padding: "7px 10px", border: "1px solid #ddd", borderRadius: 6, fontSize: 13 }}
-                />
+            <div style={{ marginBottom: 12 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 8 }}>
+                <div>
+                  <label style={{ fontSize: 12, fontWeight: 500, display: "block", marginBottom: 3 }}>{t("packetWizard.signerNameLabel")}</label>
+                  <input
+                    type="text"
+                    value={signerName}
+                    onChange={(e) => setSignerName(e.target.value)}
+                    placeholder={t("packetWizard.signerNamePlaceholder")}
+                    disabled={!allReviewed}
+                    style={{ width: "100%", padding: "7px 10px", border: "1px solid #ddd", borderRadius: 6, fontSize: 13 }}
+                  />
+                </div>
+                <div>
+                  <label style={{ fontSize: 12, fontWeight: 500, display: "block", marginBottom: 3 }}>{t("packetWizard.signerRelationshipLabel")}</label>
+                  <select
+                    value={signerRelationship}
+                    onChange={(e) => setSignerRelationship(e.target.value)}
+                    disabled={!allReviewed}
+                    style={{ width: "100%", padding: "7px 10px", border: "1px solid #ddd", borderRadius: 6, fontSize: 13 }}
+                  >
+                    <option value="self">{t("packetWizard.relationSelf")}</option>
+                    <option value="parent">{t("packetWizard.relationParent")}</option>
+                    <option value="guardian">{t("packetWizard.relationGuardian")}</option>
+                    <option value="spouse">{t("packetWizard.relationSpouse")}</option>
+                    <option value="poa">{t("packetWizard.relationPoa")}</option>
+                    <option value="other">{t("packetWizard.relationOther")}</option>
+                  </select>
+                </div>
               </div>
-              <div>
-                <label style={{ fontSize: 12, fontWeight: 500, display: "block", marginBottom: 3 }}>{t("packetWizard.signerRelationshipLabel")}</label>
-                <select
-                  value={signerRelationship}
-                  onChange={(e) => setSignerRelationship(e.target.value)}
-                  disabled={!allReviewed}
-                  style={{ width: "100%", padding: "7px 10px", border: "1px solid #ddd", borderRadius: 6, fontSize: 13 }}
-                >
-                  <option value="self">{t("packetWizard.relationSelf")}</option>
-                  <option value="parent">{t("packetWizard.relationParent")}</option>
-                  <option value="guardian">{t("packetWizard.relationGuardian")}</option>
-                  <option value="spouse">{t("packetWizard.relationSpouse")}</option>
-                  <option value="poa">{t("packetWizard.relationPoa")}</option>
-                  <option value="other">{t("packetWizard.relationOther")}</option>
-                </select>
-              </div>
+              <SignatureCapturePad
+                onCapture={setPatientSigData}
+                disabled={!allReviewed}
+                label={t("esignature.patientSignatureLabel")}
+              />
+              <label style={{ display: "flex", alignItems: "flex-start", gap: 6, marginTop: 6, fontSize: 12, color: "#334155", cursor: "pointer" }}>
+                <input type="checkbox" checked={patientAttestation} onChange={(e) => setPatientAttestation(e.target.checked)} disabled={!allReviewed} style={{ marginTop: 2 }} />
+                <span>{t("esignature.patientAttestation")}</span>
+              </label>
             </div>
           ) : (
-            <div style={{ marginBottom: 8 }}>
+            <div style={{ marginBottom: 12 }}>
               <label style={{ fontSize: 12, fontWeight: 500, display: "block", marginBottom: 3 }}>{t("packetWizard.refusalReasonLabel")}</label>
               <input
                 type="text"
@@ -439,6 +490,7 @@ export function RegistrationPacketWizard({
             </div>
           )}
 
+          {/* Staff/Witness signature */}
           <div style={{ marginBottom: 10 }}>
             <label style={{ fontSize: 12, fontWeight: 500, display: "block", marginBottom: 3 }}>{t("packetWizard.staffNameLabel")}</label>
             <input
@@ -450,6 +502,15 @@ export function RegistrationPacketWizard({
               style={{ width: "100%", padding: "7px 10px", border: "1px solid #ddd", borderRadius: 6, fontSize: 13 }}
             />
           </div>
+          <SignatureCapturePad
+            onCapture={setStaffSigData}
+            disabled={!allReviewed}
+            label={t("esignature.staffSignatureLabel")}
+          />
+          <label style={{ display: "flex", alignItems: "flex-start", gap: 6, marginTop: 6, fontSize: 12, color: "#334155", cursor: "pointer" }}>
+            <input type="checkbox" checked={staffAttestation} onChange={(e) => setStaffAttestation(e.target.checked)} disabled={!allReviewed} style={{ marginTop: 2 }} />
+            <span>{t("esignature.staffAttestation")}</span>
+          </label>
 
           {saveError && (
             <div style={{ marginBottom: 8, padding: "6px 10px", background: "#ffebee", color: "#b71c1c", borderRadius: 4, fontSize: 12 }} role="alert">

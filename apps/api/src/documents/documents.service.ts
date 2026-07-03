@@ -64,6 +64,8 @@ export class DocumentsService {
         pageCount: true,
         source: true,
         notes: true,
+        signatureStatus: true,
+        lockedAt: true,
         uploadedAt: true,
         uploadedBy: { select: { id: true, firstName: true, lastName: true } },
       },

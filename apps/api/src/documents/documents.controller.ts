@@ -19,12 +19,16 @@ import { memoryStorage } from "multer";
 import type { Response } from "express";
 import { RolesGuard, RequireRoles } from "../common/guards/roles.guard";
 import { DocumentsService } from "./documents.service";
+import { DocumentSignatureService } from "./document-signature.service";
 import { RoleCode } from "@prisma/client";
 
 @Controller("documents")
 @UseGuards(AuthGuard("jwt"), RolesGuard)
 export class DocumentsController {
-  constructor(private readonly documentsService: DocumentsService) {}
+  constructor(
+    private readonly documentsService: DocumentsService,
+    private readonly signatureService: DocumentSignatureService,
+  ) {}
 
   @Get()
   @RequireRoles(
@@ -129,5 +133,78 @@ export class DocumentsController {
   ) {
     const facilityId = req.user?.facilityId || req.headers["x-facility-id"];
     return this.documentsService.softDelete(documentId, facilityId);
+  }
+
+  @Post(":documentId/signatures")
+  @RequireRoles(
+    RoleCode.RN,
+    RoleCode.PROVIDER,
+    RoleCode.ADMIN,
+    RoleCode.FRONT_DESK
+  )
+  async addSignature(
+    @Param("documentId") documentId: string,
+    @Body()
+    body: {
+      signerType: string;
+      signerName: string;
+      signerRole?: string;
+      relationship?: string;
+      signatureData?: unknown;
+      attestation?: string;
+      refusalReason?: string;
+    },
+    @Req() req: any,
+  ) {
+    const facilityId = req.user?.facilityId || req.headers["x-facility-id"];
+    return this.signatureService.addSignature({
+      documentId,
+      facilityId,
+      signerType: body.signerType,
+      signerName: body.signerName,
+      signerRole: body.signerRole,
+      relationship: body.relationship,
+      signatureData: body.signatureData,
+      attestation: body.attestation,
+      refusalReason: body.refusalReason,
+      ipAddress: req.ip || req.headers["x-forwarded-for"],
+      userAgent: req.headers["user-agent"],
+      signedByUserId: req.user?.userId,
+    });
+  }
+
+  @Get(":documentId/signatures")
+  @RequireRoles(
+    RoleCode.RN,
+    RoleCode.PROVIDER,
+    RoleCode.ADMIN,
+    RoleCode.FRONT_DESK,
+    RoleCode.BILLING
+  )
+  async listSignatures(
+    @Param("documentId") documentId: string,
+    @Req() req: any,
+  ) {
+    const facilityId = req.user?.facilityId || req.headers["x-facility-id"];
+    return this.signatureService.listSignatures(documentId, facilityId);
+  }
+
+  @Post(":documentId/finalize-signature")
+  @RequireRoles(
+    RoleCode.RN,
+    RoleCode.PROVIDER,
+    RoleCode.ADMIN,
+    RoleCode.FRONT_DESK
+  )
+  async finalizeSignature(
+    @Param("documentId") documentId: string,
+    @Req() req: any,
+  ) {
+    const facilityId = req.user?.facilityId || req.headers["x-facility-id"];
+    return this.signatureService.finalizeSignature({
+      documentId,
+      facilityId,
+      lockedByUserId: req.user?.userId,
+    });
   }
 }

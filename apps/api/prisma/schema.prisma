@@ -249,6 +249,8 @@ model User {
   platformAnnouncementsCreated                    PlatformAnnouncement[]                 @relation("PlatformAnnouncementCreatedBy")
   platformAnnouncementAcknowledgements            PlatformAnnouncementAcknowledgement[]
   enterpriseDocumentsUploaded                      EnterpriseDocument[]                   @relation("EnterpriseDocumentUploadedBy")
+  enterpriseDocumentsLocked                        EnterpriseDocument[]                   @relation("EnterpriseDocumentLockedBy")
+  enterpriseDocSignatures                          EnterpriseDocumentSignature[]           @relation("EnterpriseDocSignatureUser")
   userRoles                                       UserRole[]
   vaccineAdministrations                          VaccineAdministration[]
 }
@@ -3540,10 +3542,16 @@ model EnterpriseDocument {
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 
+  signatureStatus String?
+  lockedAt        DateTime?
+  lockedById      String?
+
   patient    Patient?   @relation(fields: [patientId], references: [id], onDelete: Restrict)
   encounter  Encounter? @relation(fields: [encounterId], references: [id], onDelete: SetNull)
   facility   Facility?  @relation(fields: [facilityId], references: [id], onDelete: Restrict)
   uploadedBy User?      @relation("EnterpriseDocumentUploadedBy", fields: [uploadedById], references: [id], onDelete: SetNull)
+  lockedBy   User?      @relation("EnterpriseDocumentLockedBy", fields: [lockedById], references: [id], onDelete: SetNull)
+  signatures EnterpriseDocumentSignature[]
 
   @@index([patientId])
   @@index([encounterId])
@@ -3552,6 +3560,30 @@ model EnterpriseDocument {
   @@index([type])
   @@index([status])
   @@index([uploadedAt])
+  @@index([signatureStatus])
+}
+
+model EnterpriseDocumentSignature {
+  id             String   @id @default(uuid())
+  documentId     String
+  signerType     String
+  signerName     String
+  signerRole     String?
+  relationship   String?
+  signedAt       DateTime @default(now())
+  signatureData  Json
+  attestation    String?
+  ipAddress      String?
+  userAgent      String?
+  signedByUserId String?
+  createdAt      DateTime @default(now())
+
+  document     EnterpriseDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  signedByUser User?              @relation("EnterpriseDocSignatureUser", fields: [signedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([documentId])
+  @@index([signerType])
+  @@index([signedAt])
 }
 
 enum MsppDiseaseReportFeedbackSeverity {

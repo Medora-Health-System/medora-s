@@ -1831,6 +1831,21 @@ export default {
     facilityNoticeText: "I acknowledge that I have been informed of facility-specific policies, including visiting hours, advance directive information, and grievance procedures.",
     medicareMedicaidText: "I acknowledge that this facility is a freestanding emergency room and may not participate in Medicare or Medicaid programs. I understand that I am responsible for payment of all charges incurred during my visit. I have been informed that a hospital-based emergency room may accept these programs.",
   },
+  esignature: {
+    signHere: "Sign here",
+    locked: "Locked",
+    clear: "Clear",
+    patientSignatureLabel: "Patient / representative signature",
+    staffSignatureLabel: "Staff / witness signature",
+    patientAttestation: "I acknowledge that I have reviewed the registration packet and that the information provided is true and accurate to the best of my knowledge.",
+    staffAttestation: "I attest that the patient or representative signed this document electronically in my presence, or that refusal/unable-to-sign was documented.",
+    statusUnsigned: "Unsigned",
+    statusNeedsPatient: "Needs patient signature",
+    statusNeedsStaff: "Needs staff signature",
+    statusCompleted: "Signatures complete",
+    statusSignedLocked: "Signed & locked",
+    statusRefused: "Refused",
+  },
   createFollowUpModal: {
     title: "New follow-up",
     introSearchPatient:

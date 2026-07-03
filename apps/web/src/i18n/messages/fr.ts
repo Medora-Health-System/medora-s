@@ -1780,6 +1780,21 @@ export default {
     facilityNoticeText: "Je reconnais avoir été informé des politiques propres à l'établissement, y compris les heures de visite, les informations sur les directives anticipées et les procédures de réclamation.",
     medicareMedicaidText: "Je reconnais que cet établissement est une salle d'urgence autonome et peut ne pas participer aux programmes Medicare ou Medicaid. Je comprends que je suis responsable du paiement de tous les frais engagés lors de ma visite. J'ai été informé qu'une salle d'urgence hospitalière peut accepter ces programmes.",
   },
+  esignature: {
+    signHere: "Signez ici",
+    locked: "Verrouillé",
+    clear: "Effacer",
+    patientSignatureLabel: "Signature du patient / représentant",
+    staffSignatureLabel: "Signature du personnel / témoin",
+    patientAttestation: "Je reconnais avoir révisé le dossier d'inscription et que les informations fournies sont exactes au meilleur de ma connaissance.",
+    staffAttestation: "J'atteste que le patient ou le représentant a signé ce document électroniquement en ma présence, ou que le refus/l'incapacité de signer a été documenté.",
+    statusUnsigned: "Non signé",
+    statusNeedsPatient: "Signature patient requise",
+    statusNeedsStaff: "Signature personnel requise",
+    statusCompleted: "Signatures complètes",
+    statusSignedLocked: "Signé et verrouillé",
+    statusRefused: "Refusé",
+  },
   createFollowUpModal: {
     title: "Nouveau suivi",
     introSearchPatient:
