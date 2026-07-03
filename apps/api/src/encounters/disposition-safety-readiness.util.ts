@@ -2,6 +2,10 @@ import { EncounterStatus, EncounterType } from "@prisma/client";
 import {
   erHandoffV1SatisfiesInpatientTransferConfirm,
   resolveMedicationMarActionFromStorage,
+  hasClosureAdequateDischargeInstructions,
+  hasClosureFollowUpDocumented,
+  hasClosurePatientInstructionsExplained,
+  hasClosureReturnPrecautionsDocumented,
   type MarClinicalAction,
 } from "@medora/shared";
 
@@ -11,14 +15,6 @@ export const DISCHARGE_MODE_FR_TRANSFER = "Transfert vers un autre établissemen
 /** Aligné sur `ER_DISCHARGE_MODE_HOME` / `ER_DISCHARGE_MODE_AMA` (web `emergencyDispositionV1.ts`). */
 const DISCHARGE_MODE_FR_HOME = "Domicile";
 const DISCHARGE_MODE_FR_AMA = "Contre avis médical (LAMA)";
-
-/** S16B — champs structurés pour le contrôle « dossier vide » (sans plaies : optionnel). */
-const S16_DISCHARGE_INSTRUCTION_AGG_KEYS_BASE: readonly string[] = [
-  "dischargeDiagnosisSummary",
-  "returnPrecautions",
-  "followUpInstructions",
-  "activityInstructions",
-];
 
 const VITALS_RECENT_MS = 4 * 60 * 60 * 1000;
 
@@ -100,35 +96,12 @@ function dischargeModeFromEffectiveSummary(summary: Record<string, unknown> | un
   return typeof m === "string" ? m.trim() : "";
 }
 
-function summaryStrField(summary: Record<string, unknown> | undefined, key: string): string {
-  if (!summary) return "";
-  const v = summary[key];
-  return typeof v === "string" ? v.trim() : "";
-}
-
 function encounterHasMedicationOrders(orders: OrderForSafety[]): boolean {
   return orders.some((o) => o.type === "MEDICATION");
 }
 
-function dischargeInstructionKeysForMissingCheck(orders: OrderForSafety[]): string[] {
-  const keys: string[] = [...S16_DISCHARGE_INSTRUCTION_AGG_KEYS_BASE];
-  if (encounterHasMedicationOrders(orders)) keys.push("medicationInstructions");
-  return keys;
-}
-
-function countFilledDischargeInstructionFields(
-  summary: Record<string, unknown> | undefined,
-  keys: string[]
-): number {
-  let n = 0;
-  for (const k of keys) {
-    if (summaryStrField(summary, k)) n += 1;
-  }
-  return n;
-}
-
 function patientInstructionsMarkedGiven(summary: Record<string, unknown> | undefined): boolean {
-  return summary?.patientInstructionsGiven === true;
+  return hasClosurePatientInstructionsExplained(summary);
 }
 
 /** Sortie à domicile ou LAMA — pas admission/transfert/décès/autre. */
@@ -332,9 +305,8 @@ export function computeDispositionSafetyReadiness(input: {
   }
 
   if (isErUc && isDischargeHomeOrAmaDisposition(dischargeMode)) {
-    const keysForMissing = dischargeInstructionKeysForMissingCheck(input.orders);
-    const filledCore = countFilledDischargeInstructionFields(effectiveSummary, keysForMissing);
-    if (filledCore <= 1) {
+    const hasMeds = encounterHasMedicationOrders(input.orders);
+    if (!hasClosureAdequateDischargeInstructions(effectiveSummary, hasMeds)) {
       blockers.push({
         code: "DISCHARGE_INSTRUCTIONS_MISSING",
         severity: "error",
@@ -342,7 +314,7 @@ export function computeDispositionSafetyReadiness(input: {
           "La sortie à domicile / LAMA exige des instructions patient structurées (diagnostic de sortie, suivi, activité, etc.) — au moins deux sections doivent être renseignées.",
       });
     }
-    if (!summaryStrField(effectiveSummary, "returnPrecautions")) {
+    if (!hasClosureReturnPrecautionsDocumented(effectiveSummary)) {
       blockers.push({
         code: "DISCHARGE_RETURN_PRECAUTIONS_MISSING",
         severity: "error",
@@ -350,7 +322,7 @@ export function computeDispositionSafetyReadiness(input: {
           "Les précautions et signes d’alarme (retour aux urgences) doivent être documentés dans les instructions de sortie.",
       });
     }
-    if (!summaryStrField(effectiveSummary, "followUpInstructions")) {
+    if (!hasClosureFollowUpDocumented(effectiveSummary)) {
       blockers.push({
         code: "DISCHARGE_FOLLOW_UP_MISSING",
         severity: "error",

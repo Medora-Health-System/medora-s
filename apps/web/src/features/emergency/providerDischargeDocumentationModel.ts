@@ -100,6 +100,8 @@ export type ProviderDischargeDocumentationForm = {
   returnPrecautions: string;
   returnWorkSchool: string;
   followUps: ProviderDischargeFollowUpRow[];
+  /** Closure readiness — instructions explained to patient / representative. */
+  patientInstructionsGiven?: boolean;
 };
 
 export type ProviderDischargeCardFieldKey =
@@ -247,6 +249,7 @@ export function emptyProviderDischargeDocumentationForm(): ProviderDischargeDocu
     returnPrecautions: "",
     returnWorkSchool: "",
     followUps: [newDefaultFollowUpRow()],
+    patientInstructionsGiven: false,
   };
 }
 
@@ -521,6 +524,29 @@ export function sortProviderDischargeDiagnosisCards(
   });
 }
 
+function followUpInstructionsRollup(rows: ProviderDischargeFollowUpRow[]): string {
+  return rows
+    .map((row) => {
+      const provider = row.providerOrFacility?.trim() || row.specialty?.trim();
+      const timing = row.timing?.trim();
+      const phone = row.phone?.trim();
+      if (!provider) return "";
+      return [provider, timing, phone].filter(Boolean).join(" — ");
+    })
+    .filter(Boolean)
+    .join("\n");
+}
+
+function withPatientInstructionsGiven(
+  form: ProviderDischargeDocumentationForm,
+  parsed: ReturnType<typeof parseDischargeSummaryForChart>
+): ProviderDischargeDocumentationForm {
+  return {
+    ...form,
+    patientInstructionsGiven: parsed?.patientInstructionsGiven === true,
+  };
+}
+
 export function hydrateProviderDischargeDocumentationForm(raw: unknown): ProviderDischargeDocumentationForm {
   const base = emptyProviderDischargeDocumentationForm();
   const parsed = parseDischargeSummaryForChart(raw);
@@ -544,7 +570,8 @@ export function hydrateProviderDischargeDocumentationForm(raw: unknown): Provide
     const topLevelFollowUps = readStringArray(o.providerDischargeFollowUps)
       .map(readFollowUpRow)
       .filter((x): x is ProviderDischargeFollowUpRow => x != null);
-    return hydrateSharedFieldsIntoForm(normalizeProviderDischargeDiagnosisCards(base), {
+    return withPatientInstructionsGiven(
+      hydrateSharedFieldsIntoForm(normalizeProviderDischargeDiagnosisCards(base), {
       returnPrecautions:
         typeof o.providerDischargeReturnPrecautions === "string" ? o.providerDischargeReturnPrecautions
         : parsed?.returnPrecautions ?? "",
@@ -552,7 +579,9 @@ export function hydrateProviderDischargeDocumentationForm(raw: unknown): Provide
         typeof o.providerDischargeReturnWorkSchool === "string" ? o.providerDischargeReturnWorkSchool
         : parsed?.workSchoolNote ?? "",
       followUps: topLevelFollowUps.length ? topLevelFollowUps : undefined,
-    });
+    }),
+      parsed
+    );
   }
 
   const legacyFollowUps = readStringArray(o.providerDischargeFollowUps)
@@ -566,11 +595,14 @@ export function hydrateProviderDischargeDocumentationForm(raw: unknown): Provide
     base.diagnosisDocs = [legacyDoc];
   }
 
-  return hydrateSharedFieldsIntoForm(normalizeProviderDischargeDiagnosisCards(base), {
+  return withPatientInstructionsGiven(
+    hydrateSharedFieldsIntoForm(normalizeProviderDischargeDiagnosisCards(base), {
     returnPrecautions: parsed?.returnPrecautions ?? "",
     returnWorkSchool: parsed?.workSchoolNote ?? "",
     followUps: legacyFollowUps.length ? legacyFollowUps : undefined,
-  });
+  }),
+    parsed
+  );
 }
 
 export type ProviderDischargeDocumentationMeta = {
@@ -795,6 +827,16 @@ export function mergeProviderDischargeDocumentationIntoDischargeJson(
 
   setOrDelete("providerDischargeReturnPrecautions", form.returnPrecautions);
   setOrDelete("providerDischargeReturnWorkSchool", form.returnWorkSchool);
+
+  const followUpRollup = followUpInstructionsRollup(form.followUps);
+  setOrDelete("followUpInstructions", followUpRollup);
+  setOrDelete("followUp", followUpRollup);
+
+  if (form.patientInstructionsGiven === true) {
+    out.patientInstructionsGiven = true;
+  } else {
+    delete out.patientInstructionsGiven;
+  }
 
   delete out.providerDischargeMedicationLines;
 

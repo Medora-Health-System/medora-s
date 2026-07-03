@@ -259,6 +259,7 @@ const SharedDischargePlanningSection = React.memo(function SharedDischargePlanni
   returnPrecautions,
   returnWorkSchool,
   followUps,
+  patientInstructionsGiven,
   disabled,
   validationErrors,
   layoutMode = "desktopSplit",
@@ -267,10 +268,18 @@ const SharedDischargePlanningSection = React.memo(function SharedDischargePlanni
   returnPrecautions: string;
   returnWorkSchool: string;
   followUps: ProviderDischargeFollowUpRow[];
+  patientInstructionsGiven: boolean;
   disabled: boolean;
   validationErrors?: Partial<Record<string, string>>;
   layoutMode?: EdDispositionLayoutMode;
-  onPatchShared: (patch: Partial<Pick<ProviderDischargeDocumentationForm, "returnPrecautions" | "returnWorkSchool" | "followUps">>) => void;
+  onPatchShared: (
+    patch: Partial<
+      Pick<
+        ProviderDischargeDocumentationForm,
+        "returnPrecautions" | "returnWorkSchool" | "followUps" | "patientInstructionsGiven"
+      >
+    >
+  ) => void;
 }) {
   const { t } = useI18n();
   const dictationLabel = t("providerDocumentationWorkspace.dictationFocusField");
@@ -481,6 +490,27 @@ const SharedDischargePlanningSection = React.memo(function SharedDischargePlanni
             </div>
           ))}
         </div>
+
+        <label
+          style={{
+            display: "flex",
+            alignItems: "flex-start",
+            gap: 8,
+            marginTop: 4,
+            fontSize: 13,
+            color: "#0f172a",
+            cursor: disabled ? "default" : "pointer",
+          }}
+        >
+          <input
+            type="checkbox"
+            checked={patientInstructionsGiven}
+            disabled={disabled}
+            onChange={(e) => onPatchShared({ patientInstructionsGiven: e.target.checked })}
+            style={{ marginTop: 2 }}
+          />
+          <span>{t("patientDischargeInstructions.givenCheckbox")}</span>
+        </label>
       </div>
     </div>
   );
@@ -556,7 +586,14 @@ export function ProviderDischargeDocumentationSection({
   );
 
   const patchSharedPlanning = useCallback(
-    (patch: Partial<Pick<ProviderDischargeDocumentationForm, "returnPrecautions" | "returnWorkSchool" | "followUps">>) => {
+    (
+      patch: Partial<
+        Pick<
+          ProviderDischargeDocumentationForm,
+          "returnPrecautions" | "returnWorkSchool" | "followUps" | "patientInstructionsGiven"
+        >
+      >
+    ) => {
       patchProvider(patch);
     },
     [patchProvider]
@@ -772,6 +809,7 @@ export function ProviderDischargeDocumentationSection({
             returnPrecautions={providerForm.returnPrecautions}
             returnWorkSchool={providerForm.returnWorkSchool}
             followUps={providerForm.followUps}
+            patientInstructionsGiven={providerForm.patientInstructionsGiven ?? false}
             disabled={disabled}
             validationErrors={validationErrors?.shared}
             layoutMode={layoutMode}
