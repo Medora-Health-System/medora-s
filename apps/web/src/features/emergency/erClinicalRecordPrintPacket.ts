@@ -359,8 +359,8 @@ export function getErClinicalRecordPrintPacketHtml(input: {
               p(`${order.label} — ${order.status}`) +
               attr(formatClinicalRecordAttributionPart("orderedBy", {
                 name: order.orderedByDisplayName,
+                role: order.orderedByRoleTitle,
                 at: order.orderedAt,
-                role: null,
                 initials: null,
               }, t, language))
           )

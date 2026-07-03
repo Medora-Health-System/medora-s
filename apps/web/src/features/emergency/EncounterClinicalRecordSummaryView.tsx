@@ -755,9 +755,9 @@ export function EncounterClinicalRecordSummaryView({
                                     "orderedBy",
                                     {
                                       name: order.orderedByDisplayName,
+                                      role: order.orderedByRoleTitle,
                                       at: order.orderedAt,
                                       initials: null,
-                                      role: null,
                                     },
                                     t,
                                     language

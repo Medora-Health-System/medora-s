@@ -421,6 +421,122 @@ describe("encounterClinicalRecordAdapter", () => {
     expect(summary.documentationEventCount).toBe(1);
     expect(summary.labResultPreviewCount).toBe(1);
   });
+
+  it("maps lab order ordered-by from parent createdByDisplay when flat fields absent", () => {
+    const input = buildEncounterClinicalRecordInputFromEmergencySummary({
+      locale: "en",
+      encounter: { id: ENCOUNTER_ID },
+      summaryModel: emptyModel(),
+      orders: [
+        {
+          id: ORDER_ID,
+          type: "LAB",
+          createdAt: "2026-06-23T09:00:00.000Z",
+          createdByDisplay: { name: "Rajnil Shah", role: "PROVIDER", at: "2026-06-23T09:00:00.000Z" },
+          items: [
+            {
+              id: LAB_ITEM_ID,
+              catalogItemType: "LAB_TEST",
+              displayLabelEn: "CBC",
+              displayLabelFr: "NFS",
+              status: "ACTIVE",
+            },
+          ],
+        },
+      ],
+    });
+    const record = buildEncounterClinicalRecord(input);
+    expect(record.orders[0]?.orderedByDisplayName).toBe("Rajnil Shah");
+    expect(record.orders[0]?.orderedByRoleTitle).toBe("PROVIDER");
+    expect(record.orders[0]?.label).toBe("CBC");
+  });
+
+  it("maps imaging order ordered-by from orderedByDisplayFr fallback", () => {
+    const input = buildEncounterClinicalRecordInputFromEmergencySummary({
+      locale: "fr",
+      encounter: { id: ENCOUNTER_ID },
+      summaryModel: emptyModel(),
+      orders: [
+        {
+          id: "order-img",
+          type: "IMAGING",
+          createdAt: "2026-06-23T09:15:00.000Z",
+          orderedByDisplayFr: "Rajnil Shah",
+          items: [
+            {
+              id: IMG_ITEM_ID,
+              catalogItemType: "IMAGING_STUDY",
+              displayLabelEn: "Chest X-ray",
+              displayLabelFr: "Radiographie thorax",
+              status: "ACTIVE",
+            },
+          ],
+        },
+      ],
+    });
+    const record = buildEncounterClinicalRecord(input);
+    expect(record.orders[0]?.orderedByDisplayName).toBe("Rajnil Shah");
+    expect(record.orders[0]?.label).toBe("Radiographie thorax");
+  });
+
+  it("preserves medication prescriberName ordered-by attribution", () => {
+    const input = buildEncounterClinicalRecordInputFromEmergencySummary({
+      locale: "en",
+      encounter: { id: ENCOUNTER_ID },
+      summaryModel: emptyModel(),
+      orders: [
+        {
+          id: "order-med",
+          type: "MEDICATION",
+          prescriberName: "Rajnil Shah",
+          createdAt: "2026-06-23T09:30:00.000Z",
+          items: [
+            {
+              id: "med-item",
+              catalogItemType: "MEDICATION",
+              displayLabelEn: "Aspirin 81 mg",
+              status: "ACTIVE",
+            },
+          ],
+        },
+      ],
+    });
+    const record = buildEncounterClinicalRecord(input);
+    expect(record.orders[0]?.orderedByDisplayName).toBe("Rajnil Shah");
+  });
+
+  it("maps lab result ordered-by separately from resulted-by", () => {
+    const input = buildEncounterClinicalRecordInputFromEmergencySummary({
+      locale: "en",
+      encounter: { id: ENCOUNTER_ID },
+      summaryModel: emptyModel(),
+      orders: [
+        {
+          id: ORDER_ID,
+          type: "LAB",
+          createdAt: "2026-06-23T09:00:00.000Z",
+          createdByDisplay: { name: "Rajnil Shah", role: "PROVIDER" },
+          items: [
+            {
+              id: LAB_ITEM_ID,
+              displayLabelEn: "CMP",
+              result: {
+                resultText: "7.2",
+                verifiedAt: "2026-06-23T11:00:00.000Z",
+                enteredByDisplayFr: "Hamza Farid",
+                acknowledgedByDisplayFr: "Rajnil Shah",
+                acknowledgedByProviderAt: "2026-06-23T11:30:00.000Z",
+              },
+            },
+          ],
+        },
+      ],
+    });
+    const record = buildEncounterClinicalRecord(input);
+    expect(record.laboratoryResults[0]?.orderedBy?.name).toBe("Rajnil Shah");
+    expect(record.laboratoryResults[0]?.resultedBy?.name).toBe("Hamza Farid");
+    expect(record.laboratoryResults[0]?.reviewedBy?.name).toBe("Rajnil Shah");
+  });
 });
 
 describe("encounterClinicalRecordParity logging", () => {

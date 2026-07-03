@@ -589,12 +589,47 @@ describe("encounterClinicalRecord", () => {
           type: "LAB",
           createdAt: "2026-06-23T09:00:00.000Z",
           orderedByDisplayName: "Dr Orderer",
+          orderedByRoleTitle: "PROVIDER",
           items: [{ id: LAB_ITEM_ID, displayLabel: "CMP", status: "ACTIVE" }],
         },
       ],
     });
     expect(record.orders[0]?.orderedByDisplayName).toBe("Dr Orderer");
+    expect(record.orders[0]?.orderedByRoleTitle).toBe("PROVIDER");
     expect(record.orders[0]?.orderedAt).toBe("2026-06-23T09:00:00.000Z");
+  });
+
+  it("inherits parent ordered-by on lab and imaging order rows", () => {
+    const record = buildEncounterClinicalRecord({
+      ...baseInput(),
+      orders: [
+        {
+          id: ORDER_ID,
+          type: "LAB",
+          createdAt: "2026-06-23T09:00:00.000Z",
+          orderedByDisplayName: "Dr Lab",
+          orderedByRoleTitle: "MD",
+          items: [{ id: LAB_ITEM_ID, displayLabel: "CBC", status: "ACTIVE" }],
+        },
+        {
+          id: "order-img-2",
+          type: "IMAGING",
+          createdAt: "2026-06-23T09:15:00.000Z",
+          orderedByDisplayName: "Dr Rad",
+          items: [{ id: IMG_ITEM_ID, displayLabel: "CXR", status: "ACTIVE" }],
+        },
+        {
+          id: "order-care",
+          type: "CARE",
+          createdAt: "2026-06-23T09:20:00.000Z",
+          orderedByDisplayName: "RN Care",
+          items: [{ id: "care-1", displayLabel: "IV fluids", status: "ACTIVE" }],
+        },
+      ],
+    });
+    expect(record.orders.find((o) => o.orderType === "LAB")?.orderedByDisplayName).toBe("Dr Lab");
+    expect(record.orders.find((o) => o.orderType === "IMAGING")?.orderedByDisplayName).toBe("Dr Rad");
+    expect(record.orders.find((o) => o.orderType === "CARE")?.orderedByDisplayName).toBe("RN Care");
   });
 
   it("preserves lab and imaging result attribution", () => {

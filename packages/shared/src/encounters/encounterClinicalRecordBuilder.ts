@@ -127,6 +127,7 @@ function buildOrders(input: BuildEncounterClinicalRecordInput): EncounterClinica
         label: orderItemLabel(item),
         orderedAt: asTrimmed(order.createdAt),
         orderedByDisplayName: asTrimmed(order.orderedByDisplayName),
+        orderedByRoleTitle: asTrimmed(order.orderedByRoleTitle),
       });
     }
   }
@@ -167,6 +168,7 @@ function buildLaboratoryResults(
     if (!orderId || normalizeOrderType(order.type) !== "LAB") continue;
     const orderedBy = buildClinicalRecordAttribution({
       name: order.orderedByDisplayName,
+      role: order.orderedByRoleTitle,
       at: order.createdAt,
     });
     for (const item of order.items ?? []) {
@@ -212,6 +214,7 @@ function buildImagingResults(
     if (!orderId || normalizeOrderType(order.type) !== "IMAGING") continue;
     const orderedBy = buildClinicalRecordAttribution({
       name: order.orderedByDisplayName,
+      role: order.orderedByRoleTitle,
       at: order.createdAt,
     });
     for (const item of order.items ?? []) {

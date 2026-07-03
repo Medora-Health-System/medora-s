@@ -122,6 +122,7 @@ export type EncounterClinicalRecordOrderRow = {
   label: string;
   orderedAt: string | null;
   orderedByDisplayName: string | null;
+  orderedByRoleTitle: string | null;
 };
 
 export type EncounterClinicalRecordTriageDocumentation = {
@@ -390,6 +391,7 @@ export type BuildEncounterClinicalRecordInput = {
     status?: string | null;
     createdAt?: string | null;
     orderedByDisplayName?: string | null;
+    orderedByRoleTitle?: string | null;
     items?: Array<{
       id?: string;
       displayLabel?: string | null;

@@ -98,6 +98,37 @@ function asTrimmed(value: unknown): string | null {
   return trimmed || null;
 }
 
+/** Resolve order placement attribution from API order payload (parent order level). */
+export function resolveOrderOrderedByFields(order: Record<string, unknown>): {
+  orderedByDisplayName: string | null;
+  orderedByRoleTitle: string | null;
+} {
+  const createdByDisplay = asRecord(order.createdByDisplay);
+  const orderedByDisplayName =
+    asTrimmed(order.orderedByDisplayName) ??
+    asTrimmed(createdByDisplay?.name) ??
+    asTrimmed(order.prescriberName) ??
+    asTrimmed(order.orderedByDisplayFr) ??
+    asTrimmed(order.createdByDisplayName);
+  const orderedByRoleTitle = asTrimmed(createdByDisplay?.role);
+  return { orderedByDisplayName, orderedByRoleTitle };
+}
+
+/** Locale-aware catalog label for order items (lab/imaging/medication). */
+export function resolveOrderItemDisplayLabel(
+  item: Record<string, unknown>,
+  locale: EncounterClinicalRecordLocale
+): string | null {
+  const en = asTrimmed(item.displayLabelEn);
+  const fr = asTrimmed(item.displayLabelFr);
+  const legacy = asTrimmed(item.displayLabel);
+  const manual = asTrimmed(item.manualLabel);
+  if (locale === "en") {
+    return en ?? legacy ?? fr ?? manual;
+  }
+  return fr ?? legacy ?? en ?? manual;
+}
+
 function toClinicalRecordLocale(locale: SupportedLanguage): EncounterClinicalRecordLocale {
   return locale === "en" ? "en" : "fr";
 }
@@ -422,11 +453,15 @@ function mapNursingReassessmentFromEvents(
   return mapped;
 }
 
-function mapOrders(orders: unknown[]): BuildEncounterClinicalRecordInput["orders"] {
+function mapOrders(
+  orders: unknown[],
+  locale: EncounterClinicalRecordLocale
+): BuildEncounterClinicalRecordInput["orders"] {
   const mapped: NonNullable<BuildEncounterClinicalRecordInput["orders"]> = [];
   for (const raw of orders) {
     const order = asRecord(raw);
     if (!order) continue;
+    const { orderedByDisplayName, orderedByRoleTitle } = resolveOrderOrderedByFields(order);
     const itemsRaw = Array.isArray(order.items) ? order.items : [];
     const items = itemsRaw
       .map((itemRaw) => {
@@ -435,7 +470,7 @@ function mapOrders(orders: unknown[]): BuildEncounterClinicalRecordInput["orders
         const result = asRecord(item.result);
         return {
           id: asTrimmed(item.id) ?? undefined,
-          displayLabel: asTrimmed(item.displayLabel),
+          displayLabel: resolveOrderItemDisplayLabel(item, locale),
           manualLabel: asTrimmed(item.manualLabel),
           catalogItemType: asTrimmed(item.catalogItemType),
           status: asTrimmed(item.status),
@@ -462,10 +497,8 @@ function mapOrders(orders: unknown[]): BuildEncounterClinicalRecordInput["orders
       priority: asTrimmed(order.priority),
       status: asTrimmed(order.status),
       createdAt: asTrimmed(order.createdAt),
-      orderedByDisplayName:
-        asTrimmed(order.orderedByDisplayName) ??
-        asTrimmed(order.prescriberName) ??
-        asTrimmed(order.createdByDisplayName),
+      orderedByDisplayName,
+      orderedByRoleTitle,
       items,
     });
   }
@@ -793,7 +826,7 @@ export function buildEncounterClinicalRecordInputFromEmergencySummary(
     providerAssessmentSaveHistory: model.providerMseHistory.map(mapProviderHistoryEntry),
     nursingAssessmentInitial: buildInitialNursingAssessmentInput(encounter, model),
     nursingReassessmentHistory,
-    orders: mapOrders(input.orders ?? []),
+    orders: mapOrders(input.orders ?? [], locale),
     medicationAdministrations: mapMedicationAdministrations(input.medicationAdministrations ?? []),
     procedures: mapProcedures(input.procedures ?? [], locale),
     disposition,
