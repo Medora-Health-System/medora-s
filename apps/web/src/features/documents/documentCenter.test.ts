@@ -697,9 +697,9 @@ describe("MEDUI.DOCUMENTS.ENTERPRISE_DOCUMENT_CENTER (Phase 2)", () => {
       expect(packetCtrl).toContain("_Registration_Package_");
     });
 
-    it("packet wizard uses generate-packet-pdf endpoint, not HTML upload", () => {
+    it("packet wizard uses registration-packets endpoint (PDF lifecycle)", () => {
       const wizard = readSrc("components/documents/RegistrationPacketWizard.tsx");
-      expect(wizard).toContain("generate-packet-pdf");
+      expect(wizard).toContain("registration-packets");
       expect(wizard).not.toContain("buildPacketHtml");
       expect(wizard).not.toContain("_signed_packet.html");
     });

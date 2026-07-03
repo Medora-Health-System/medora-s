@@ -21,6 +21,15 @@ type DocumentRow = {
   lockedAt: string | null;
   uploadedAt: string;
   uploadedBy: { id: string; firstName: string; lastName: string } | null;
+  packetSource?: {
+    packetType: string;
+    packetVersion: string;
+    locale: string;
+    sourceHashSha256: string | null;
+    renderedHashSha256: string | null;
+    generatedAt: string;
+    finalizedAt: string | null;
+  } | null;
 };
 
 const DOC_TYPE_I18N: Record<string, string> = {
@@ -458,10 +467,28 @@ export function RegistrationDocumentCenter({
               >
                 <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 4, color: "#0f172a" }}>{label}</div>
                 {existing && (
-                  <div style={{ fontSize: 11, marginBottom: 6, display: "flex", alignItems: "center", gap: 4 }}>
-                    <span style={{ fontWeight: 700, color: getPacketStatusColor(existing) }}>{getPacketStatus(existing)}</span>
-                    <span style={{ color: "#64748b" }}>— {formatDate(existing.uploadedAt)}</span>
-                  </div>
+                  <>
+                    <div style={{ fontSize: 11, marginBottom: 4, display: "flex", alignItems: "center", gap: 4 }}>
+                      <span style={{ fontWeight: 700, color: getPacketStatusColor(existing) }}>{getPacketStatus(existing)}</span>
+                      <span style={{ color: "#64748b" }}>— {formatDate(existing.uploadedAt)}</span>
+                    </div>
+                    {existing.packetSource && (
+                      <div style={{ fontSize: 10, color: "#475569", marginBottom: 6, display: "flex", gap: 8, flexWrap: "wrap" }}>
+                        <span>v{existing.packetSource.packetVersion}</span>
+                        <span>{existing.packetSource.locale.toUpperCase()}</span>
+                        {existing.packetSource.sourceHashSha256 && (
+                          <span title={existing.packetSource.sourceHashSha256} style={{ color: "#16a34a" }}>
+                            {t("documentCenter.hashVerified")}
+                          </span>
+                        )}
+                        {existing.packetSource.finalizedAt && (
+                          <span style={{ color: "#1b5e20", fontWeight: 600 }}>
+                            {t("documentCenter.packetLocked")}
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </>
                 )}
                 <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
                   {canEdit && (

@@ -32,13 +32,42 @@ export interface PacketPdfInput {
   };
   facilityName?: string;
   generatedAt: string;
+  packetVersion?: string;
+  locale?: string;
+  patientMrn?: string;
+  encounterNumber?: string;
+  sourceHash?: string;
 }
 
 @Injectable()
 export class PacketPdfService {
   async generate(input: PacketPdfInput): Promise<Buffer> {
     return new Promise((resolve, reject) => {
-      const doc = new PDFDocument({ size: "LETTER", margin: 50 });
+      const patientName = [input.patient?.firstName, input.patient?.lastName].filter(Boolean).join(" ") || "Unknown";
+
+      const doc = new PDFDocument({
+        size: "LETTER",
+        margin: 50,
+        info: {
+          Title: `${input.templateLabel} — ${patientName}`,
+          Author: "Medora EMR",
+          Subject: `Registration Packet: ${input.template}`,
+          Creator: "Medora EMR v1.0",
+          Producer: "Medora PDFKit",
+          Keywords: [
+            `packetType:${input.template}`,
+            `packetVersion:${input.packetVersion || "1.0"}`,
+            `locale:${input.locale || "en"}`,
+            input.facilityName ? `facility:${input.facilityName}` : "",
+            input.patientMrn ? `mrn:${input.patientMrn}` : "",
+            input.encounterNumber ? `encounter:${input.encounterNumber}` : "",
+            `generated:${input.generatedAt}`,
+            input.sourceHash ? `sourceHash:${input.sourceHash}` : "",
+          ]
+            .filter(Boolean)
+            .join("; "),
+        },
+      });
       const chunks: Buffer[] = [];
 
       doc.on("data", (chunk: Buffer) => chunks.push(chunk));

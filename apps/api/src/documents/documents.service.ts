@@ -67,6 +67,17 @@ export class DocumentsService {
         lockedAt: true,
         uploadedAt: true,
         uploadedBy: { select: { id: true, firstName: true, lastName: true } },
+        packetSource: {
+          select: {
+            packetType: true,
+            packetVersion: true,
+            locale: true,
+            sourceHashSha256: true,
+            renderedHashSha256: true,
+            generatedAt: true,
+            finalizedAt: true,
+          },
+        },
       },
     });
   }

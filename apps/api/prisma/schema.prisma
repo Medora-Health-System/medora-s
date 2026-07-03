@@ -60,6 +60,7 @@ model Facility {
   departments                            Department[]
   diagnoses                              Diagnosis[]
   enterpriseDocuments                    EnterpriseDocument[]
+  enterpriseDocPacketSources             EnterpriseDocumentPacketSource[] @relation("PacketSourceFacility")
   diseaseCaseReports                     DiseaseCaseReport[]
   encounters                             Encounter[]
   encounterChartExports                  EncounterChartExport[]
@@ -251,6 +252,7 @@ model User {
   enterpriseDocumentsUploaded                      EnterpriseDocument[]                   @relation("EnterpriseDocumentUploadedBy")
   enterpriseDocumentsLocked                        EnterpriseDocument[]                   @relation("EnterpriseDocumentLockedBy")
   enterpriseDocSignatures                          EnterpriseDocumentSignature[]           @relation("EnterpriseDocSignatureUser")
+  enterpriseDocPacketSources                       EnterpriseDocumentPacketSource[]        @relation("PacketSourceCreatedBy")
   userRoles                                       UserRole[]
   vaccineAdministrations                          VaccineAdministration[]
 }
@@ -363,6 +365,7 @@ model Patient {
   facility                     Facility                              @relation("PatientFacility", fields: [facilityId], references: [id])
   registeredAtFacility         Facility                              @relation("RegisteredAtFacility", fields: [registeredAtFacilityId], references: [id])
   enterpriseDocuments          EnterpriseDocument[]
+  enterpriseDocPacketSources   EnterpriseDocumentPacketSource[] @relation("PacketSourcePatient")
   insuranceCoverages           PatientInsuranceCoverage[]
   triageVitalsReadings         TriageVitalsReading[]
   vaccineAdministrations       VaccineAdministration[]
@@ -588,6 +591,7 @@ model Encounter {
   triageVitalsReadings                      TriageVitalsReading[]
   vaccineAdministrations                    VaccineAdministration[]
   enterpriseDocuments                       EnterpriseDocument[]
+  enterpriseDocPacketSources                EnterpriseDocumentPacketSource[] @relation("PacketSourceEncounter")
 
   @@index([facilityId])
   @@index([patientId])
@@ -3553,6 +3557,7 @@ model EnterpriseDocument {
   lockedBy   User?      @relation("EnterpriseDocumentLockedBy", fields: [lockedById], references: [id], onDelete: SetNull)
   signatures EnterpriseDocumentSignature[]
   blob       EnterpriseDocumentBlob?
+  packetSource EnterpriseDocumentPacketSource?
 
   @@index([patientId])
   @@index([encounterId])
@@ -3594,6 +3599,34 @@ model EnterpriseDocumentBlob {
   createdAt  DateTime @default(now())
 
   document EnterpriseDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+}
+
+model EnterpriseDocumentPacketSource {
+  id                 String    @id @default(uuid())
+  documentId         String    @unique
+  packetType         String
+  packetVersion      String    @default("1.0")
+  locale             String    @default("en")
+  facilityId         String?
+  patientId          String?
+  encounterId        String?
+  sourceJson         Json
+  sourceHashSha256   String?
+  renderedHashSha256 String?
+  generatedAt        DateTime  @default(now())
+  finalizedAt        DateTime?
+  createdById        String?
+
+  document  EnterpriseDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  facility  Facility?          @relation("PacketSourceFacility", fields: [facilityId], references: [id], onDelete: SetNull)
+  patient   Patient?           @relation("PacketSourcePatient", fields: [patientId], references: [id], onDelete: SetNull)
+  encounter Encounter?         @relation("PacketSourceEncounter", fields: [encounterId], references: [id], onDelete: SetNull)
+  createdBy User?              @relation("PacketSourceCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([packetType])
+  @@index([patientId])
+  @@index([facilityId])
+  @@index([generatedAt])
 }
 
 enum MsppDiseaseReportFeedbackSeverity {

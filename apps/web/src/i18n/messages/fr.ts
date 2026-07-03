@@ -1675,6 +1675,8 @@ export default {
     download: "Télécharger",
     downloadUnavailable: "Le fichier du document est indisponible. Veuillez le téléverser à nouveau ou contacter l'administrateur.",
     storageMissing: "Fichier manquant · Téléverser à nouveau",
+    hashVerified: "Hash ✓",
+    packetLocked: "Verrouillé",
     archiveConfirm: "Archiver ce document ?",
     archiveSuccess: "Document archivé.",
     archiveError: "Impossible d'archiver le document.",

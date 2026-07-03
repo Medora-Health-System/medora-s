@@ -266,8 +266,8 @@ describe("MEDUI.DOCUMENTS.E_SIGNATURE_FOUNDATION_PHASE_1", () => {
       expect(wizard).toContain("/documents/${documentId}/signatures");
     });
 
-    it("calls finalize-signature API endpoint", () => {
-      expect(wizard).toContain("/documents/${documentId}/finalize-signature");
+    it("calls finalize-packet API endpoint", () => {
+      expect(wizard).toContain("/documents/${documentId}/finalize-packet");
     });
 
     it("requires attestation for patient signature", () => {

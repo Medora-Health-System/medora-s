@@ -150,22 +150,37 @@ describe("MEDUI.REGISTRATION.PHASE_3_ELECTRONIC_PACKET_E_SIGNATURE", () => {
   });
 
   describe("Signed packet storage", () => {
-    it("saves signed packet via generate-packet-pdf endpoint", () => {
+    it("saves signed packet via registration-packets endpoint (structured lifecycle)", () => {
       expect(wizardComponent).toContain("/api/backend");
-      expect(wizardComponent).toContain("generate-packet-pdf");
+      expect(wizardComponent).toContain("registration-packets");
     });
 
     it("does NOT use NEXT_PUBLIC_API_URL", () => {
       expect(wizardComponent).not.toContain("NEXT_PUBLIC_API_URL");
     });
 
-    it("sends structured data for PDF generation", () => {
-      expect(wizardComponent).toContain("pdfSections");
+    it("sends structured model with packetType, packetVersion, locale", () => {
+      expect(wizardComponent).toContain("structuredModel");
+      expect(wizardComponent).toContain("packetType");
+      expect(wizardComponent).toContain("packetVersion");
       expect(wizardComponent).toContain('"Content-Type": "application/json"');
     });
 
-    it("stores signature metadata as JSON in notes", () => {
-      expect(wizardComponent).toContain("JSON.stringify(packetMeta)");
+    it("structured model includes sections with id, title, body, reviewed", () => {
+      expect(wizardComponent).toContain("sections:");
+      expect(wizardComponent).toContain("title:");
+      expect(wizardComponent).toContain("body:");
+      expect(wizardComponent).toContain("reviewed:");
+    });
+
+    it("structured model includes signatures array", () => {
+      expect(wizardComponent).toContain("signatures:");
+      expect(wizardComponent).toContain("signerType:");
+      expect(wizardComponent).toContain("attestation:");
+    });
+
+    it("structured model includes attestations array", () => {
+      expect(wizardComponent).toContain("attestations:");
     });
 
     it("does NOT upload HTML as signed packet", () => {
@@ -178,9 +193,8 @@ describe("MEDUI.REGISTRATION.PHASE_3_ELECTRONIC_PACKET_E_SIGNATURE", () => {
       expect(wizardComponent).toContain("patientId");
     });
 
-    it("sends sections with key, label, content", () => {
-      expect(wizardComponent).toContain("getSectionText");
-      expect(wizardComponent).toContain("pdfSections");
+    it("calls finalize-packet endpoint after signatures", () => {
+      expect(wizardComponent).toContain("finalize-packet");
     });
   });
 
@@ -317,11 +331,123 @@ describe("MEDUI.REGISTRATION.PHASE_3_ELECTRONIC_PACKET_E_SIGNATURE", () => {
       expect(pdfSvc).toContain("Promise<Buffer>");
     });
 
-    it("API controller has generate-packet-pdf endpoint", () => {
+    it("API controller has generate-packet-pdf endpoint (legacy support)", () => {
       const ctrl = readApi("src/documents/documents.controller.ts");
       expect(ctrl).toContain("generate-packet-pdf");
       expect(ctrl).toContain("packetPdfService.generate");
-      expect(ctrl).toContain("application/pdf");
+    });
+
+    it("API controller has registration-packets endpoint (lifecycle)", () => {
+      const ctrl = readApi("src/documents/documents.controller.ts");
+      expect(ctrl).toContain("registration-packets");
+      expect(ctrl).toContain("packetSourceService.createPacketSource");
+    });
+  });
+
+  describe("PDF Lifecycle Foundation", () => {
+    it("EnterpriseDocumentPacketSource model exists in schema", () => {
+      expect(schema).toContain("model EnterpriseDocumentPacketSource {");
+    });
+
+    it("PacketSource has required fields", () => {
+      expect(schema).toContain("packetType");
+      expect(schema).toContain("packetVersion");
+      expect(schema).toContain("sourceJson");
+      expect(schema).toContain("sourceHashSha256");
+      expect(schema).toContain("renderedHashSha256");
+      expect(schema).toContain("finalizedAt");
+    });
+
+    it("PacketSource relates to EnterpriseDocument", () => {
+      expect(schema).toContain("packetSource EnterpriseDocumentPacketSource?");
+    });
+
+    it("migration file exists for PacketSource", () => {
+      expect(
+        existsSync(
+          join(
+            repoRoot,
+            "apps/api/prisma/migrations/20260927100000_enterprise_document_packet_source/migration.sql",
+          ),
+        ),
+      ).toBe(true);
+    });
+
+    it("PacketSourceService exists with lifecycle methods", () => {
+      const svc = readApi("src/documents/packet-source.service.ts");
+      expect(svc).toContain("class PacketSourceService");
+      expect(svc).toContain("createPacketSource");
+      expect(svc).toContain("getPacketSource");
+      expect(svc).toContain("renderPdfFromSource");
+      expect(svc).toContain("reRenderPdf");
+      expect(svc).toContain("finalizePacket");
+    });
+
+    it("PacketSourceService computes source hash (SHA-256)", () => {
+      const svc = readApi("src/documents/packet-source.service.ts");
+      expect(svc).toContain("hashSource");
+      expect(svc).toContain('createHash("sha256")');
+      expect(svc).toContain("sourceHashSha256");
+    });
+
+    it("PacketSourceService computes rendered PDF hash", () => {
+      const svc = readApi("src/documents/packet-source.service.ts");
+      expect(svc).toContain("hashPdfBytes");
+      expect(svc).toContain("renderedHashSha256");
+    });
+
+    it("PacketSourceService prevents mutation after finalization", () => {
+      const svc = readApi("src/documents/packet-source.service.ts");
+      expect(svc).toContain("Cannot re-render a finalized packet");
+      expect(svc).toContain("Packet already finalized");
+    });
+
+    it("PacketPdfService embeds PDF metadata (info block)", () => {
+      const pdfSvc = readApi("src/documents/packet-pdf.service.ts");
+      expect(pdfSvc).toContain("info:");
+      expect(pdfSvc).toContain("Title:");
+      expect(pdfSvc).toContain("Author:");
+      expect(pdfSvc).toContain("Creator:");
+      expect(pdfSvc).toContain("Keywords:");
+    });
+
+    it("PacketPdfService accepts metadata fields (version, locale, mrn, sourceHash)", () => {
+      const pdfSvc = readApi("src/documents/packet-pdf.service.ts");
+      expect(pdfSvc).toContain("packetVersion?:");
+      expect(pdfSvc).toContain("locale?:");
+      expect(pdfSvc).toContain("patientMrn?:");
+      expect(pdfSvc).toContain("sourceHash?:");
+    });
+
+    it("API has packet-source, render-pdf, finalize-packet endpoints", () => {
+      const ctrl = readApi("src/documents/documents.controller.ts");
+      expect(ctrl).toContain("packet-source");
+      expect(ctrl).toContain("render-pdf");
+      expect(ctrl).toContain("finalize-packet");
+    });
+
+    it("Document Center shows packetSource lifecycle metadata", () => {
+      expect(docCenterComponent).toContain("packetSource");
+      expect(docCenterComponent).toContain("packetVersion");
+      expect(docCenterComponent).toContain("hashVerified");
+      expect(docCenterComponent).toContain("packetLocked");
+    });
+
+    it("Wizard submits structuredModel (not raw PDF payload)", () => {
+      expect(wizardComponent).toContain("structuredModel");
+      expect(wizardComponent).toContain("registration-packets");
+      expect(wizardComponent).not.toContain("generate-packet-pdf");
+    });
+
+    it("i18n has hashVerified and packetLocked keys", () => {
+      expect(enMessages).toContain("hashVerified");
+      expect(enMessages).toContain("packetLocked");
+      expect(frMessages).toContain("hashVerified");
+      expect(frMessages).toContain("packetLocked");
+    });
+
+    it("No PatientDocument model (mandatory rule)", () => {
+      expect(schema).not.toContain("model PatientDocument {");
     });
   });
 });

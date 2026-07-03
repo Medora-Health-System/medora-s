@@ -21,6 +21,7 @@ import { RolesGuard, RequireRoles } from "../common/guards/roles.guard";
 import { DocumentsService } from "./documents.service";
 import { DocumentSignatureService } from "./document-signature.service";
 import { PacketPdfService } from "./packet-pdf.service";
+import { PacketSourceService } from "./packet-source.service";
 import { RoleCode } from "@prisma/client";
 
 @Controller("documents")
@@ -30,6 +31,7 @@ export class DocumentsController {
     private readonly documentsService: DocumentsService,
     private readonly signatureService: DocumentSignatureService,
     private readonly packetPdfService: PacketPdfService,
+    private readonly packetSourceService: PacketSourceService,
   ) {}
 
   @Get()
@@ -122,6 +124,89 @@ export class DocumentsController {
         buffer: pdfBuffer,
       },
     });
+  }
+
+  @Post("registration-packets")
+  @RequireRoles(
+    RoleCode.RN,
+    RoleCode.PROVIDER,
+    RoleCode.ADMIN,
+    RoleCode.FRONT_DESK
+  )
+  async createRegistrationPacket(
+    @Body()
+    body: {
+      patientId: string;
+      encounterId?: string;
+      title?: string;
+      structuredModel: any;
+    },
+    @Req() req: any,
+  ) {
+    if (!body.patientId) throw new BadRequestException("patientId is required");
+    if (!body.structuredModel) throw new BadRequestException("structuredModel is required");
+
+    const facilityId = req.user?.facilityId || req.headers["x-facility-id"];
+
+    return this.packetSourceService.createPacketSource({
+      structuredModel: body.structuredModel,
+      patientId: body.patientId,
+      facilityId,
+      encounterId: body.encounterId,
+      createdById: req.user?.userId,
+      title: body.title,
+    });
+  }
+
+  @Get(":documentId/packet-source")
+  @RequireRoles(
+    RoleCode.RN,
+    RoleCode.PROVIDER,
+    RoleCode.ADMIN,
+    RoleCode.FRONT_DESK,
+    RoleCode.BILLING
+  )
+  async getPacketSource(
+    @Param("documentId") documentId: string,
+    @Req() req: any,
+  ) {
+    const facilityId = req.user?.facilityId || req.headers["x-facility-id"];
+    return this.packetSourceService.getPacketSource(documentId, facilityId);
+  }
+
+  @Post(":documentId/render-pdf")
+  @RequireRoles(
+    RoleCode.RN,
+    RoleCode.PROVIDER,
+    RoleCode.ADMIN,
+    RoleCode.FRONT_DESK
+  )
+  async renderPdf(
+    @Param("documentId") documentId: string,
+    @Req() req: any,
+    @Res() res: Response,
+  ) {
+    const facilityId = req.user?.facilityId || req.headers["x-facility-id"];
+    const result = await this.packetSourceService.reRenderPdf(documentId, facilityId);
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Length", result.pdfBuffer.length);
+    res.setHeader("X-Rendered-Hash", result.renderedHashSha256);
+    res.end(result.pdfBuffer);
+  }
+
+  @Post(":documentId/finalize-packet")
+  @RequireRoles(
+    RoleCode.RN,
+    RoleCode.PROVIDER,
+    RoleCode.ADMIN,
+    RoleCode.FRONT_DESK
+  )
+  async finalizePacket(
+    @Param("documentId") documentId: string,
+    @Req() req: any,
+  ) {
+    const facilityId = req.user?.facilityId || req.headers["x-facility-id"];
+    return this.packetSourceService.finalizePacket(documentId, facilityId, req.user?.userId);
   }
 
   @Post("upload")

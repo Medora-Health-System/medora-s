@@ -42,13 +42,6 @@ type SignatureData = {
 
 type SectionStatus = "not_started" | "reviewed" | "signed";
 
-type PacketState = {
-  template: string;
-  sectionStatus: Record<string, SectionStatus>;
-  signatures: SignatureData | null;
-  completedAt: string | null;
-};
-
 /* ── section keys ───────────────────────────────────────── */
 
 const FREESTANDING_ER_SECTION_KEYS = [
@@ -173,21 +166,56 @@ export function RegistrationPacketWizard({
         refusalReason: isRefused ? refusalReason.trim() : undefined,
       };
 
-      const pdfSections = sectionKeys.map((key) => ({
-        key,
-        label: t(SECTION_I18N[key] || key),
-        content: getSectionText(key, patient, insurance, t),
-      }));
-
-      const packetMeta: PacketState = {
-        template,
-        sectionStatus,
-        signatures,
-        completedAt: now,
+      const structuredModel = {
+        packetType: template,
+        packetVersion: "1.0",
+        locale: language || "fr",
+        facility: { id: facilityId },
+        patient: patient ? { ...patient, id: patientId } : { id: patientId },
+        encounter: null,
+        insurance: insurance.map((ins) => ({
+          rank: ins.rank,
+          payerName: ins.payer?.name || ins.payerNameFreeText || null,
+          memberId: ins.memberId || null,
+          groupNumber: ins.groupNumber || null,
+        })),
+        sections: sectionKeys.map((key) => ({
+          id: key,
+          title: t(SECTION_I18N[key] || key),
+          body: getSectionText(key, patient, insurance, t),
+          reviewed: sectionStatus[key] === "reviewed",
+          reviewedAt: sectionStatus[key] === "reviewed" ? now : null,
+          reviewedBy: null,
+          required: true,
+        })),
+        signatures: [
+          {
+            signerType: isRefused ? "PATIENT" : (signerRelationship === "self" ? "PATIENT" : "REPRESENTATIVE"),
+            signerName: isRefused ? (signerName.trim() || "Patient") : signerName.trim(),
+            relationship: signerRelationship,
+            signedAt: now,
+            attestation: t("esignature.patientAttestation"),
+            signatureVectorHash: patientSigData ? undefined : undefined,
+            refusalReason: isRefused ? refusalReason.trim() : undefined,
+          },
+          {
+            signerType: "STAFF",
+            signerName: staffName.trim(),
+            relationship: "witness",
+            signedAt: now,
+            attestation: t("esignature.staffAttestation"),
+          },
+        ],
+        attestations: [
+          t("esignature.patientAttestation"),
+          t("esignature.staffAttestation"),
+        ],
+        generatedAt: now,
+        finalizedAt: null,
       };
 
       const resp = await fetch(
-        `${API_BASE}/documents/generate-packet-pdf`,
+        `${API_BASE}/documents/registration-packets`,
         {
           method: "POST",
           headers: {
@@ -197,26 +225,8 @@ export function RegistrationPacketWizard({
           credentials: "include",
           body: JSON.stringify({
             patientId,
-            template,
-            templateLabel: templateLabel(template),
-            patient,
-            insurance: insurance.map((ins) => ({
-              rank: ins.rank,
-              payerName: ins.payer?.name || ins.payerNameFreeText || null,
-              memberId: ins.memberId || null,
-              groupNumber: ins.groupNumber || null,
-            })),
-            sections: pdfSections,
-            signatures: {
-              signerName: signatures.signerName,
-              signerRelationship: signatures.signerRelationship,
-              signedAt: signatures.signedAt,
-              staffName: signatures.staffName || "",
-              staffSignedAt: signatures.staffSignedAt || now,
-              refusalReason: signatures.refusalReason,
-            },
             title: `${templateLabel(template)} — ${isRefused ? t("packetWizard.refused") : t("packetWizard.signed")}`,
-            notes: JSON.stringify(packetMeta),
+            structuredModel,
           }),
         },
       );
@@ -230,8 +240,8 @@ export function RegistrationPacketWizard({
         } catch { if (errText) msg = errText.slice(0, 200); }
         throw new Error(msg);
       }
-      const uploadedDoc = await resp.json() as { id: string };
-      const documentId = uploadedDoc.id;
+      const result = await resp.json() as { documentId: string };
+      const documentId = result.documentId;
 
       await apiFetch(`/documents/${documentId}/signatures`, {
         method: "POST",
@@ -258,7 +268,7 @@ export function RegistrationPacketWizard({
         }),
       });
 
-      await apiFetch(`/documents/${documentId}/finalize-signature`, {
+      await apiFetch(`/documents/${documentId}/finalize-packet`, {
         method: "POST",
         facilityId,
       });
