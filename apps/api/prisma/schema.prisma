@@ -59,6 +59,7 @@ model Facility {
   claimSubmissionBatches                 ClaimSubmissionBatch[]
   departments                            Department[]
   diagnoses                              Diagnosis[]
+  enterpriseDocuments                    EnterpriseDocument[]
   diseaseCaseReports                     DiseaseCaseReport[]
   encounters                             Encounter[]
   encounterChartExports                  EncounterChartExport[]
@@ -247,6 +248,7 @@ model User {
   pharmacyVerificationsAsPharmacist               PharmacyVerification[]                 @relation("PharmacyVerificationPharmacist")
   platformAnnouncementsCreated                    PlatformAnnouncement[]                 @relation("PlatformAnnouncementCreatedBy")
   platformAnnouncementAcknowledgements            PlatformAnnouncementAcknowledgement[]
+  enterpriseDocumentsUploaded                      EnterpriseDocument[]                   @relation("EnterpriseDocumentUploadedBy")
   userRoles                                       UserRole[]
   vaccineAdministrations                          VaccineAdministration[]
 }
@@ -358,6 +360,7 @@ model Patient {
   orders                       Order[]
   facility                     Facility                              @relation("PatientFacility", fields: [facilityId], references: [id])
   registeredAtFacility         Facility                              @relation("RegisteredAtFacility", fields: [registeredAtFacilityId], references: [id])
+  enterpriseDocuments          EnterpriseDocument[]
   insuranceCoverages           PatientInsuranceCoverage[]
   triageVitalsReadings         TriageVitalsReading[]
   vaccineAdministrations       VaccineAdministration[]
@@ -582,6 +585,7 @@ model Encounter {
   triage                                    Triage?
   triageVitalsReadings                      TriageVitalsReading[]
   vaccineAdministrations                    VaccineAdministration[]
+  enterpriseDocuments                       EnterpriseDocument[]
 
   @@index([facilityId])
   @@index([patientId])
@@ -3511,6 +3515,43 @@ enum MsppDiseaseReportFeedbackCategory {
   DUPLICATE_SUSPECTED
   DATA_INCONSISTENT
   OTHER
+}
+
+/// Enterprise-wide document storage for all Medora modules (registration, ED, billing, etc.).
+model EnterpriseDocument {
+  id             String    @id @default(uuid())
+  patientId      String?
+  encounterId    String?
+  facilityId     String?
+  category       String
+  type           String
+  status         String    @default("ACTIVE")
+  title          String?
+  fileName       String
+  mimeType       String
+  fileSize       Int
+  storagePath    String
+  checksumSha256 String?
+  pageCount      Int?
+  source         String?
+  notes          String?
+  uploadedById   String?
+  uploadedAt     DateTime  @default(now())
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  patient    Patient?   @relation(fields: [patientId], references: [id], onDelete: Restrict)
+  encounter  Encounter? @relation(fields: [encounterId], references: [id], onDelete: SetNull)
+  facility   Facility?  @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  uploadedBy User?      @relation("EnterpriseDocumentUploadedBy", fields: [uploadedById], references: [id], onDelete: SetNull)
+
+  @@index([patientId])
+  @@index([encounterId])
+  @@index([facilityId])
+  @@index([category])
+  @@index([type])
+  @@index([status])
+  @@index([uploadedAt])
 }
 
 enum MsppDiseaseReportFeedbackSeverity {

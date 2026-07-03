@@ -30,6 +30,7 @@ import { MedicationDoseModule } from "./medication-dose/medication-dose.module";
 import { MsppModule } from "./mspp/mspp.module";
 import { FhirModule } from "./fhir/fhir.module";
 import { InsuranceModule } from "./insurance/insurance.module";
+import { DocumentsModule } from "./documents/documents.module";
 import { BillingProcedureCodesModule } from "./billing-procedure-codes/billing-procedure-codes.module";
 import { ReportsModule } from "./reports/reports.module";
 import { RoiModule } from "./roi/roi.module";
@@ -78,6 +79,7 @@ const imports = [
   MsppModule,
   FhirModule,
   InsuranceModule,
+  DocumentsModule,
   BillingProcedureCodesModule,
   ReportsModule,
   RoiModule,
