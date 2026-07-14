@@ -1553,34 +1553,56 @@ model ProtocolOrderSetItem {
   @@map("ProtocolOrderSetItem")
 }
 
-/// ICD-10-CM reference rows (loaded from CMS-style files — not shipped as production-complete data).
+/// ICD-10-CM reference rows. Production loads official CDC/NCHS annual releases via `prisma/icd` importer.
+/// Demo seed may load `icd10-cm-sample-dev.csv` under releaseVersion FY2026-MEDORA-DEV-SAMPLE only.
 model Icd10DiagnosisCode {
   id               String      @id @default(uuid())
   /// Canonical display code (typically with dots, e.g. R50.9).
-  code             String      @unique
+  code             String
   /// Uppercase, dotless form for deterministic matching and search.
   normalizedCode   String
   shortDescription String
   longDescription  String?
   chapter          String?
   category         String?
+  /// HIPAA billable / valid for submission (CMS order flag = 1). Headers are false.
   isBillable       Boolean     @default(true)
+  /// Soft-active within its release. Historic rows stay readable when false.
   isActive         Boolean     @default(true)
+  /// Selectable for new encounter documentation (false for category headers).
+  isSelectable     Boolean     @default(true)
+  /// Code system identity (ICD-10-CM for U.S. clinical catalog).
+  codeSystem       String      @default("ICD-10-CM") @db.VarChar(32)
   /// Optional calendar year this row was introduced or last verified in Medora.
   effectiveYear    Int?
-  /// Optional CMS / vendor file label (e.g. FY2025).
+  /// Fiscal / Medora release label (e.g. FY2026). Synced with releaseVersion.
   codeSetVersion   String?     @db.VarChar(32)
+  /// Stable release key used with code for uniqueness (e.g. FY2026, FY2026-MEDORA-DEV-SAMPLE).
+  releaseVersion   String      @default("UNSPECIFIED") @db.VarChar(32)
+  releaseYear      Int?
+  effectiveFrom    DateTime?
+  effectiveTo      DateTime?
+  requiresSeventhCharacter Boolean @default(false)
+  /// Comma-separated valid 7th characters when applicable (e.g. A,D,S).
+  validSeventhCharacters String? @db.VarChar(32)
+  /// SHA-256 of the official source artifact used for this import batch (hex).
+  sourceChecksum   String?     @db.VarChar(64)
+  importedAt       DateTime?
   /// Denormalized lowercase text for simple contains search (code + descriptions).
   searchText       String?
   createdAt        DateTime    @default(now())
   updatedAt        DateTime    @updatedAt
   diagnoses        Diagnosis[]
 
+  @@unique([codeSystem, releaseVersion, code], map: "Icd10DiagnosisCode_release_code_key")
   @@index([code])
   @@index([normalizedCode])
   @@index([isActive])
+  @@index([isSelectable])
   @@index([shortDescription])
   @@index([normalizedCode, isActive])
+  @@index([releaseVersion, isActive, isSelectable])
+  @@index([effectiveFrom, effectiveTo])
   @@index([longDescription(ops: raw("gin_trgm_ops"))], map: "Icd10DiagnosisCode_longDescription_trgm_idx", type: Gin)
   @@index([searchText(ops: raw("gin_trgm_ops"))], map: "Icd10DiagnosisCode_searchText_trgm_idx", type: Gin)
   @@index([shortDescription(ops: raw("gin_trgm_ops"))], map: "Icd10DiagnosisCode_shortDescription_trgm_idx", type: Gin)

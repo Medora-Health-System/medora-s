@@ -14,7 +14,10 @@ import { normalizeIcd10CodeForLookup } from "@medora/shared";
 
 const prisma = new PrismaClient();
 
+/** Demo/sample readiness only. Production completeness uses `pnpm icd:coverage`. */
 const MIN_SAMPLE_ROWS = 20;
+/** Soft signal that a full FY catalog may be present (not a certification gate). */
+const PRODUCTION_HINT_ROWS = 50000;
 const REQUIRED_SMOKE_QUERIES = ["abd", "chest", "urin", "fever", "nausea"];
 
 function searchWhere(rawQuery: string): Prisma.Icd10DiagnosisCodeWhereInput {
@@ -52,10 +55,20 @@ async function main() {
     prisma.icd10DiagnosisCode.count({ where: { isActive: true } }),
   ]);
 
+  const productionReleaseRows = await prisma.icd10DiagnosisCode.count({
+    where: { isActive: true, releaseVersion: "FY2026" },
+  });
+
   console.log("=== ICD-10 catalog readiness ===");
   console.log(`Total rows:  ${totalRows}`);
   console.log(`Active rows: ${activeRows}`);
+  console.log(`FY2026 production-release rows: ${productionReleaseRows}`);
   console.log(`Minimum rows required for ER sample phase: ${MIN_SAMPLE_ROWS}`);
+  console.log(
+    productionReleaseRows >= PRODUCTION_HINT_ROWS
+      ? "Production hint: FY2026 release appears loaded. Run `pnpm --filter @medora/api icd:coverage` for certification."
+      : "Production hint: FY2026 full catalog not detected. Demo sample may be present — not production-complete.",
+  );
   console.log("");
 
   const failures: string[] = [];

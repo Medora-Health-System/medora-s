@@ -45,3 +45,11 @@ apps/api/prisma/helpers/seed-haiti-medication-catalog.d.ts
 
 # Local Prisma backups
 apps/api/prisma/backups/
+
+# Official ICD-10-CM release artifacts (operator-supplied; not committed)
+apps/api/prisma/data/icd10-releases/.cache/
+apps/api/prisma/data/icd10-releases/**/*.txt
+apps/api/prisma/data/icd10-releases/**/*.zip
+!apps/api/prisma/data/icd10-releases/**/.gitkeep
+reports/icd10/
+apps/api/reports/icd10/

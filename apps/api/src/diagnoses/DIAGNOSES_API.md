@@ -37,18 +37,26 @@ Returns `{ items, total }` ordered by encounter, then `sortOrder`, then `created
 
 ---
 
-## ICD-10 catalog import (ER-1)
+## ICD-10 catalog import (production)
 
-Official CMS (or jurisdiction) ICD-10-CM files are **not** bundled in the repo. Use:
+Official CDC/NCHS ICD-10-CM files are **not** bundled in the repo. Production loads use the versioned importer:
 
 ```bash
-pnpm --filter @medora/api run import:icd10-catalog -- --file=/absolute/path/to/icd10.csv
+pnpm --filter @medora/api icd:dry-run -- --file=/path/to/icd10cm-Code-Descriptions-2026.zip --release=2026
+pnpm --filter @medora/api icd:import -- --file=/path/to/icd10cm-Code-Descriptions-2026.zip --release=2026
+pnpm --filter @medora/api icd:coverage -- --file=/path/to/icd10cm-Code-Descriptions-2026.zip --release=2026
 ```
 
-Optional `--dry-run`.  
-CSV header (required columns **bold**): **code**, **short_description**, long_description, is_billable, is_active, effective_year, code_set_version, chapter, category.
+See `apps/api/prisma/icd/` and `apps/api/prisma/data/icd10-releases/README.md`.
 
-A **non-production** sample file for local dev only: `apps/api/prisma/data/icd10-cm-sample-dev.csv` (see file header comment).
+Demo seed (`MEDORA_SEED_MODE=clinical-content`) may still load the **development sample**
+`apps/api/prisma/data/icd10-cm-sample-dev.csv` as release `FY2026-MEDORA-DEV-SAMPLE`. That sample is **not** production-complete.
+
+Legacy helper (routes sample CSV into the versioned importer as DEV-SAMPLE only):
+
+```bash
+pnpm --filter @medora/api run import:icd10-catalog -- --file=./apps/api/prisma/data/icd10-cm-sample-dev.csv
+```
 
 ---
 

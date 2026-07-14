@@ -102,8 +102,8 @@ function parseOrderLine(line: string): ConvertedRow | null {
     long_description: longDescription,
     is_billable: headerFlag === "1",
     is_active: true,
-    effective_year: "",
-    code_set_version: "",
+    effective_year: getArg("effective-year") ?? "",
+    code_set_version: getArg("code-set-version") ?? "",
     chapter: "",
     category: codeRaw.slice(0, 3),
   };
@@ -122,8 +122,8 @@ function parseCodeLine(line: string): ConvertedRow | null {
     long_description: longDescription,
     is_billable: true,
     is_active: true,
-    effective_year: "",
-    code_set_version: "",
+    effective_year: getArg("effective-year") ?? "",
+    code_set_version: getArg("code-set-version") ?? "",
     chapter: "",
     category: codeRaw.slice(0, 3),
   };
