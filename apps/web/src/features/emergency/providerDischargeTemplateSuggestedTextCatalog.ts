@@ -2314,6 +2314,226 @@ export const TRAUMA_MSK_SPRAIN_GENERIC_SUGGESTED_TEXT: ProviderDischargeTemplate
     }
   );
 
+export const TRAUMA_MSK_TENDON_ACHILLES_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for an Achilles tendon injury. Symptoms may change after the visit.",
+      diagnosisInstructions:
+        "Use the boot, cast, or immobilization device only as directed. Do not bear weight unless cleared. Follow orthopedic or sports-medicine follow-up as directed.",
+      medicationTreatment: MSK_MED_EN,
+      returnPrecautions: MSK_LIMB_ESCALATION_EN,
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour une lésion du tendon d'Achille. Les symptômes peuvent évoluer après la visite.",
+      diagnosisInstructions:
+        "Utilisez la botte, le plâtre ou le dispositif d'immobilisation uniquement selon les directives. Ne portez pas de poids sauf autorisation. Suivez le suivi en orthopédie ou médecine du sport selon les directives.",
+      medicationTreatment: MSK_MED_FR,
+      returnPrecautions: MSK_LIMB_ESCALATION_FR,
+    }
+  );
+
+export const TRAUMA_MSK_TENDON_EXTENSOR_MECHANISM_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for a quadriceps or patellar tendon injury. Symptoms may change after the visit.",
+      diagnosisInstructions:
+        "Keep the knee immobilized as directed. Do not bear weight unless cleared. Follow orthopedic follow-up urgently as directed.",
+      medicationTreatment: MSK_MED_EN,
+      returnPrecautions: MSK_LIMB_ESCALATION_EN,
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour une lésion du tendon du quadriceps ou du tendon rotulien. Les symptômes peuvent évoluer après la visite.",
+      diagnosisInstructions:
+        "Gardez le genou immobilisé selon les directives. Ne portez pas de poids sauf autorisation. Suivez le suivi orthopédique en urgence selon les directives.",
+      medicationTreatment: MSK_MED_FR,
+      returnPrecautions: MSK_LIMB_ESCALATION_FR,
+    }
+  );
+
+export const TRAUMA_MSK_TENDON_SHOULDER_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for a shoulder tendon injury such as rotator cuff or biceps tendon injury. Symptoms may change after the visit.",
+      diagnosisInstructions:
+        "Use a sling only as directed. Limit lifting and overhead activity. Follow orthopedic or sports-medicine follow-up as directed.",
+      medicationTreatment: MSK_MED_EN,
+      returnPrecautions: MSK_LIMB_ESCALATION_EN,
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour une lésion tendineuse de l'épaule, comme une lésion de la coiffe ou du biceps. Les symptômes peuvent évoluer après la visite.",
+      diagnosisInstructions:
+        "Utilisez une écharpe uniquement selon les directives. Limitez le port de charges et les mouvements au-dessus de la tête. Suivez le suivi en orthopédie ou médecine du sport selon les directives.",
+      medicationTreatment: MSK_MED_FR,
+      returnPrecautions: MSK_LIMB_ESCALATION_FR,
+    }
+  );
+
+export const TRAUMA_MSK_TENDON_HAND_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for a hand or finger tendon injury. Symptoms may change after the visit.",
+      diagnosisInstructions:
+        "Keep the splint on as directed. Do not remove the tendon splint without clinician advice. Follow hand-surgery follow-up as directed.",
+      medicationTreatment: MSK_MED_EN,
+      returnPrecautions: MSK_LIMB_ESCALATION_EN,
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour une lésion tendineuse de la main ou du doigt. Les symptômes peuvent évoluer après la visite.",
+      diagnosisInstructions:
+        "Gardez l'attelle selon les directives. Ne retirez pas l'attelle tendineuse sans avis clinique. Suivez le suivi en chirurgie de la main selon les directives.",
+      medicationTreatment: MSK_MED_FR,
+      returnPrecautions: MSK_LIMB_ESCALATION_FR,
+    }
+  );
+
+export const TRAUMA_MSK_TENDON_GENERIC_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for a tendon injury. Symptoms may change after the visit.",
+      diagnosisInstructions:
+        "Use immobilization and activity limits only as directed. Protect the injured tendon and follow specialty follow-up as directed.",
+      medicationTreatment: MSK_MED_EN,
+      returnPrecautions: MSK_LIMB_ESCALATION_EN,
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour une lésion tendineuse. Les symptômes peuvent évoluer après la visite.",
+      diagnosisInstructions:
+        "Utilisez l'immobilisation et les limites d'activité uniquement selon les directives. Protégez le tendon blessé et suivez le suivi spécialisé selon les directives.",
+      medicationTreatment: MSK_MED_FR,
+      returnPrecautions: MSK_LIMB_ESCALATION_FR,
+    }
+  );
+
+export const TRAUMA_MSK_LIGAMENT_KNEE_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for a knee ligament injury. Symptoms may change after the visit.",
+      diagnosisInstructions:
+        "Use the brace as directed. Limit weight-bearing if instructed. Do not return to sport until cleared. Follow orthopedic or sports-medicine follow-up as directed.",
+      medicationTreatment: MSK_MED_EN,
+      returnPrecautions: MSK_LIMB_ESCALATION_EN,
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour une lésion ligamentaire du genou. Les symptômes peuvent évoluer après la visite.",
+      diagnosisInstructions:
+        "Utilisez l'orthèse selon les directives. Limitez l'appui si indiqué. Ne reprenez le sport que lorsqu'autorisé. Suivez le suivi en orthopédie ou médecine du sport selon les directives.",
+      medicationTreatment: MSK_MED_FR,
+      returnPrecautions: MSK_LIMB_ESCALATION_FR,
+    }
+  );
+
+export const TRAUMA_MSK_LIGAMENT_ANKLE_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for an ankle ligament injury, including high-ankle or syndesmotic injury when applicable. Symptoms may change after the visit.",
+      diagnosisInstructions:
+        "Use the brace or boot as directed. Protect weight-bearing as instructed. Follow orthopedic follow-up as directed.",
+      medicationTreatment: MSK_MED_EN,
+      returnPrecautions: MSK_LIMB_ESCALATION_EN,
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour une lésion ligamentaire de la cheville, y compris une entorse haute ou une lésion de la syndesmose le cas échéant. Les symptômes peuvent évoluer après la visite.",
+      diagnosisInstructions:
+        "Utilisez l'orthèse ou la botte selon les directives. Protégez l'appui selon les indications. Suivez le suivi orthopédique selon les directives.",
+      medicationTreatment: MSK_MED_FR,
+      returnPrecautions: MSK_LIMB_ESCALATION_FR,
+    }
+  );
+
+export const TRAUMA_MSK_LIGAMENT_HAND_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for a thumb or finger ligament injury. Symptoms may change after the visit.",
+      diagnosisInstructions:
+        "Keep the splint or thumb spica immobilization as directed. Follow hand-surgery follow-up as directed for stability assessment.",
+      medicationTreatment: MSK_MED_EN,
+      returnPrecautions: MSK_LIMB_ESCALATION_EN,
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour une lésion ligamentaire du pouce ou du doigt. Les symptômes peuvent évoluer après la visite.",
+      diagnosisInstructions:
+        "Gardez l'attelle ou l'immobilisation en spica du pouce selon les directives. Suivez le suivi en chirurgie de la main selon les directives pour évaluer la stabilité.",
+      medicationTreatment: MSK_MED_FR,
+      returnPrecautions: MSK_LIMB_ESCALATION_FR,
+    }
+  );
+
+export const TRAUMA_MSK_LIGAMENT_UPPER_EXTREMITY_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for a wrist or elbow ligament injury. Symptoms may change after the visit.",
+      diagnosisInstructions:
+        "Use the splint or brace as directed. Limit loading of the joint. Follow orthopedic or hand-surgery follow-up as directed.",
+      medicationTreatment: MSK_MED_EN,
+      returnPrecautions: MSK_LIMB_ESCALATION_EN,
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour une lésion ligamentaire du poignet ou du coude. Les symptômes peuvent évoluer après la visite.",
+      diagnosisInstructions:
+        "Utilisez l'attelle ou l'orthèse selon les directives. Limitez la charge sur l'articulation. Suivez le suivi en orthopédie ou chirurgie de la main selon les directives.",
+      medicationTreatment: MSK_MED_FR,
+      returnPrecautions: MSK_LIMB_ESCALATION_FR,
+    }
+  );
+
+export const TRAUMA_MSK_LIGAMENT_SHOULDER_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for a shoulder or acromioclavicular ligament injury. Symptoms may change after the visit.",
+      diagnosisInstructions:
+        "Use a sling as directed. Limit overhead activity. Follow orthopedic follow-up as directed.",
+      medicationTreatment: MSK_MED_EN,
+      returnPrecautions: MSK_LIMB_ESCALATION_EN,
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour une lésion ligamentaire de l'épaule ou acromio-claviculaire. Les symptômes peuvent évoluer après la visite.",
+      diagnosisInstructions:
+        "Utilisez une écharpe selon les directives. Limitez les mouvements au-dessus de la tête. Suivez le suivi orthopédique selon les directives.",
+      medicationTreatment: MSK_MED_FR,
+      returnPrecautions: MSK_LIMB_ESCALATION_FR,
+    }
+  );
+
+export const TRAUMA_MSK_LIGAMENT_GENERIC_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for a ligament injury. Symptoms may change after the visit.",
+      diagnosisInstructions:
+        "Use bracing and activity limits as directed. Protect the injured ligament and follow specialty follow-up as directed.",
+      medicationTreatment: MSK_MED_EN,
+      returnPrecautions: MSK_LIMB_ESCALATION_EN,
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour une lésion ligamentaire. Les symptômes peuvent évoluer après la visite.",
+      diagnosisInstructions:
+        "Utilisez l'orthèse et les limites d'activité selon les directives. Protégez le ligament blessé et suivez le suivi spécialisé selon les directives.",
+      medicationTreatment: MSK_MED_FR,
+      returnPrecautions: MSK_LIMB_ESCALATION_FR,
+    }
+  );
+
 const CARDIO_MED_EN = "Take medications only as prescribed or directed during this visit.";
 const CARDIO_MED_FR =
   "Prenez les médicaments uniquement selon la prescription ou les indications reçues pendant cette visite.";

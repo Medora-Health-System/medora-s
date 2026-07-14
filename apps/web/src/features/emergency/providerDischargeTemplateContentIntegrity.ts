@@ -485,6 +485,50 @@ export const PROVIDER_DISCHARGE_TEMPLATE_CONTENT_INTEGRITY: Record<
     mustIncludeAny: { en: ["sprain", "strain"], fr: ["entorse", "élongation"] },
     forbiddenCrossTemplateMarkers: { en: WOUND_FORBIDDEN_EN, fr: WOUND_FORBIDDEN_FR },
   },
+  trauma_msk_tendon_achilles_v1: {
+    mustIncludeAny: { en: ["achilles", "tendon"], fr: ["achille", "tendon"] },
+    forbiddenCrossTemplateMarkers: { en: WOUND_FORBIDDEN_EN, fr: WOUND_FORBIDDEN_FR },
+  },
+  trauma_msk_tendon_extensor_mechanism_v1: {
+    mustIncludeAny: { en: ["quadriceps", "patellar", "tendon"], fr: ["quadriceps", "rotulien", "tendon"] },
+    forbiddenCrossTemplateMarkers: { en: WOUND_FORBIDDEN_EN, fr: WOUND_FORBIDDEN_FR },
+  },
+  trauma_msk_tendon_shoulder_v1: {
+    mustIncludeAny: { en: ["shoulder", "tendon"], fr: ["épaule", "tendon"] },
+    forbiddenCrossTemplateMarkers: { en: WOUND_FORBIDDEN_EN, fr: WOUND_FORBIDDEN_FR },
+  },
+  trauma_msk_tendon_hand_v1: {
+    mustIncludeAny: { en: ["hand", "tendon", "finger"], fr: ["main", "tendon", "doigt"] },
+    forbiddenCrossTemplateMarkers: { en: WOUND_FORBIDDEN_EN, fr: WOUND_FORBIDDEN_FR },
+  },
+  trauma_msk_tendon_generic_v1: {
+    mustIncludeAny: { en: ["tendon"], fr: ["tendineuse", "tendon"] },
+    forbiddenCrossTemplateMarkers: { en: WOUND_FORBIDDEN_EN, fr: WOUND_FORBIDDEN_FR },
+  },
+  trauma_msk_ligament_knee_v1: {
+    mustIncludeAny: { en: ["knee", "ligament"], fr: ["genou", "ligamentaire"] },
+    forbiddenCrossTemplateMarkers: { en: WOUND_FORBIDDEN_EN, fr: WOUND_FORBIDDEN_FR },
+  },
+  trauma_msk_ligament_ankle_v1: {
+    mustIncludeAny: { en: ["ankle", "ligament"], fr: ["cheville", "ligamentaire"] },
+    forbiddenCrossTemplateMarkers: { en: WOUND_FORBIDDEN_EN, fr: WOUND_FORBIDDEN_FR },
+  },
+  trauma_msk_ligament_hand_v1: {
+    mustIncludeAny: { en: ["thumb", "finger", "ligament"], fr: ["pouce", "doigt", "ligamentaire"] },
+    forbiddenCrossTemplateMarkers: { en: WOUND_FORBIDDEN_EN, fr: WOUND_FORBIDDEN_FR },
+  },
+  trauma_msk_ligament_upper_extremity_v1: {
+    mustIncludeAny: { en: ["wrist", "elbow", "ligament"], fr: ["poignet", "coude", "ligamentaire"] },
+    forbiddenCrossTemplateMarkers: { en: WOUND_FORBIDDEN_EN, fr: WOUND_FORBIDDEN_FR },
+  },
+  trauma_msk_ligament_shoulder_v1: {
+    mustIncludeAny: { en: ["shoulder", "ligament"], fr: ["épaule", "ligamentaire"] },
+    forbiddenCrossTemplateMarkers: { en: WOUND_FORBIDDEN_EN, fr: WOUND_FORBIDDEN_FR },
+  },
+  trauma_msk_ligament_generic_v1: {
+    mustIncludeAny: { en: ["ligament"], fr: ["ligamentaire"] },
+    forbiddenCrossTemplateMarkers: { en: WOUND_FORBIDDEN_EN, fr: WOUND_FORBIDDEN_FR },
+  },
   trauma_msk_mvc_soreness_v1: {
     mustIncludeAny: { en: ["motor vehicle", "collision"], fr: ["véhicule", "collision"] },
     forbiddenCrossTemplateMarkers: { en: WOUND_FORBIDDEN_EN, fr: WOUND_FORBIDDEN_FR },

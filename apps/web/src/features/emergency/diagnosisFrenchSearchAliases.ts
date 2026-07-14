@@ -228,6 +228,42 @@ const FRENCH_DIAGNOSIS_SEARCH_ALIASES: readonly FrenchDiagnosisSearchAlias[] = [
     englishSearchTerms: ["hamstring strain", "pulled hamstring"],
   },
   {
+    frenchPhrases: ["rupture tendineuse", "lésion tendineuse", "lesion tendineuse"],
+    englishSearchTerms: ["tendon rupture", "tendon injury", "tendon tear"],
+  },
+  {
+    frenchPhrases: ["rupture d'Achille", "rupture d achille", "tendon d'Achille", "tendon d achille"],
+    englishSearchTerms: ["Achilles rupture", "Achilles tendon"],
+  },
+  {
+    frenchPhrases: ["coiffe des rotateurs", "rupture de la coiffe", "déchirure de la coiffe"],
+    englishSearchTerms: ["rotator cuff", "rotator cuff tear"],
+  },
+  {
+    frenchPhrases: ["doigt en maillet", "tendon extenseur", "tendon fléchisseur", "tendon flechisseur"],
+    englishSearchTerms: ["mallet finger", "extensor tendon", "flexor tendon"],
+  },
+  {
+    frenchPhrases: ["déchirure ligamentaire", "dechirure ligamentaire", "lésion ligamentaire", "lesion ligamentaire"],
+    englishSearchTerms: ["ligament tear", "ligament injury"],
+  },
+  {
+    frenchPhrases: ["lca", "croisé antérieur", "croise anterieur"],
+    englishSearchTerms: ["ACL", "anterior cruciate"],
+  },
+  {
+    frenchPhrases: ["lcp", "croisé postérieur", "croise posterieur"],
+    englishSearchTerms: ["PCL", "posterior cruciate"],
+  },
+  {
+    frenchPhrases: ["pouce du skieur", "lcu du pouce", "entorse du pouce"],
+    englishSearchTerms: ["skier thumb", "gamekeeper thumb", "thumb UCL"],
+  },
+  {
+    frenchPhrases: ["syndesmose", "entorse haute"],
+    englishSearchTerms: ["syndesmosis", "high ankle sprain"],
+  },
+  {
     frenchPhrases: ["douleur cheville"],
     englishSearchTerms: ["ankle pain"],
   },

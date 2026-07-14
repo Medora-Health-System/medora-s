@@ -35,7 +35,7 @@ describe("MEDUI.CLINICAL.INJURY_INTELLIGENCE_PHASE_2_SPRAINS_STRAINS", () => {
     expect(frMessages.providerDocumentationWorkspace.templateSprainStrainAdultComplaintV1).toMatch(/Entorse/);
   });
 
-  it.each(["sprain", "ankle sprain", "neck strain", "hamstring", "ligament injury"])(
+  it.each(["sprain", "ankle sprain", "neck strain", "hamstring", "twisted ankle"])(
     "template search finds Sprain / Strain for %s",
     (query) => {
       const matches = filterProviderDocumentationTemplates(query, (k) => resolveWorkspaceLabel(k, enMessages));
