@@ -8178,6 +8178,9 @@ export default {
     templateAnimalBiteAdultComplaintV1: "Morsure animale / mammifère (adulte)",
     templateAnimalBiteAdultComplaintV1Help:
       "Morsure animale, morsure de chien, morsure de chat, morsure humaine, plaie par morsure, plaie perforante — rage, tétanos, antibiotiques, soins de plaie.",
+    templateFractureAdultComplaintV1: "Fracture",
+    templateFractureAdultComplaintV1Help:
+      "Fracture, os cassé, bras cassé, poignet cassé, hanche cassée, jambe cassée, cheville cassée, doigt cassé, orteil cassé, clavicule, côte, mâchoire, nez, fracture ouverte, fracture fermée, fracture de stress, fracture pathologique — toutes régions du corps.",
     templateSubgroupInfectiousEnt: "Infectieux / ORL",
     templateFeverComplaintV1: "Fièvre (intelligence infectieuse)",
     templateFeverComplaintV1Help: "Inserts cliquables — fièvre, évaluation de la source et sortie.",

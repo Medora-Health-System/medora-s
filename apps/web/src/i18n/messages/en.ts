@@ -8200,6 +8200,9 @@ export default {
     templateAnimalBiteAdultComplaintV1: "Adult animal bite / mammal bite",
     templateAnimalBiteAdultComplaintV1Help:
       "Animal bite, dog bite, cat bite, human bite, mammal bite, bite wound, puncture wound — rabies, tetanus, antibiotics, wound care.",
+    templateFractureAdultComplaintV1: "Fracture",
+    templateFractureAdultComplaintV1Help:
+      "Fracture, broken bone, broken arm, broken wrist, broken hip, broken leg, broken ankle, broken finger, broken toe, clavicle, rib, jaw, nose, greenstick, buckle, avulsion, compression, stress, open, closed, pathologic fracture — all body regions.",
     templateSubgroupInfectiousEnt: "Infectious / ENT",
     templateFeverComplaintV1: "Fever (infectious intelligence)",
     templateFeverComplaintV1Help: "Click-to-insert prompts for fever, source evaluation, and disposition.",

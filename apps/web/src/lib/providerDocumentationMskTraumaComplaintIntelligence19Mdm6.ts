@@ -5,6 +5,7 @@ import {
   buildAnimalBiteAdultComplaintV1Intel,
   buildBackPainComplaintV1Intel,
   buildFallTraumaComplaintV1Intel,
+  buildFractureAdultComplaintV1Intel,
   buildHandWristInjuryComplaintV1Intel,
   buildHipPainInjuryComplaintV1Intel,
   buildKneeInjuryComplaintV1Intel,
@@ -25,6 +26,7 @@ const fallTrauma = (key: string) => `providerDocumentationComplaintIntel.fallTra
 const minorHeadInjury = (key: string) => `providerDocumentationComplaintIntel.minorHeadInjuryComplaintV1.${key}`;
 const lacerationSoftTissue = (key: string) => `providerDocumentationComplaintIntel.lacerationSoftTissueComplaintV1.${key}`;
 const animalBiteAdult = (key: string) => `providerDocumentationComplaintIntel.animalBiteAdultComplaintV1.${key}`;
+const fractureAdult = (key: string) => `providerDocumentationComplaintIntel.fractureAdultComplaintV1.${key}`;
 
 export const BACK_PAIN_COMPLAINT_V1_INTEL: ProviderDocumentationComplaintIntelligence =
   buildBackPainComplaintV1Intel(backPain);
@@ -48,6 +50,8 @@ export const LACERATION_SOFT_TISSUE_COMPLAINT_V1_INTEL: ProviderDocumentationCom
   buildLacerationSoftTissueComplaintV1Intel(lacerationSoftTissue);
 export const ANIMAL_BITE_ADULT_COMPLAINT_V1_INTEL: ProviderDocumentationComplaintIntelligence =
   buildAnimalBiteAdultComplaintV1Intel(animalBiteAdult);
+export const FRACTURE_ADULT_COMPLAINT_V1_INTEL: ProviderDocumentationComplaintIntelligence =
+  buildFractureAdultComplaintV1Intel(fractureAdult);
 
 export const MSK_TRAUMA_COMPLAINT_V1_TEMPLATE_IDS = [
   "back_pain_complaint_v1",
@@ -61,6 +65,7 @@ export const MSK_TRAUMA_COMPLAINT_V1_TEMPLATE_IDS = [
   "minor_head_injury_complaint_v1",
   "laceration_soft_tissue_complaint_v1",
   "animal_bite_adult_complaint_v1",
+  "fracture_adult_complaint_v1",
 ] as const;
 
 export const MSK_TRAUMA_COMPLAINT_V1_INTEL_BY_TEMPLATE_ID = {
@@ -75,4 +80,5 @@ export const MSK_TRAUMA_COMPLAINT_V1_INTEL_BY_TEMPLATE_ID = {
   minor_head_injury_complaint_v1: MINOR_HEAD_INJURY_COMPLAINT_V1_INTEL,
   laceration_soft_tissue_complaint_v1: LACERATION_SOFT_TISSUE_COMPLAINT_V1_INTEL,
   animal_bite_adult_complaint_v1: ANIMAL_BITE_ADULT_COMPLAINT_V1_INTEL,
+  fracture_adult_complaint_v1: FRACTURE_ADULT_COMPLAINT_V1_INTEL,
 } as const;
