@@ -131,6 +131,8 @@ export type ProviderDocumentationTemplateId =
   | "fracture_adult_complaint_v1"
   | "dislocation_adult_complaint_v1"
   | "sprain_strain_adult_complaint_v1"
+  | "tendon_injury_adult_complaint_v1"
+  | "ligament_injury_adult_complaint_v1"
   | "fever_complaint_v1"
   | "cellulitis_skin_infection_complaint_v1"
   | "abscess_soft_tissue_complaint_v1"

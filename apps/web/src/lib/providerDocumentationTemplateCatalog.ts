@@ -95,7 +95,9 @@ import {
   ANIMAL_BITE_ADULT_COMPLAINT_V1_INTEL,
   DISLOCATION_ADULT_COMPLAINT_V1_INTEL,
   FRACTURE_ADULT_COMPLAINT_V1_INTEL,
+  LIGAMENT_INJURY_ADULT_COMPLAINT_V1_INTEL,
   SPRAIN_STRAIN_ADULT_COMPLAINT_V1_INTEL,
+  TENDON_INJURY_ADULT_COMPLAINT_V1_INTEL,
   FEVER_COMPLAINT_V1_INTEL,
   CELLULITIS_SKIN_INFECTION_COMPLAINT_V1_INTEL,
   ABSCESS_SOFT_TISSUE_COMPLAINT_V1_INTEL,
@@ -1894,6 +1896,18 @@ export const PROVIDER_DOCUMENTATION_TEMPLATES: ProviderDocumentationTemplateDefi
     "providerDocumentationWorkspace.templateSprainStrainAdultComplaintV1",
     "providerDocumentationWorkspace.templateSprainStrainAdultComplaintV1Help",
     SPRAIN_STRAIN_ADULT_COMPLAINT_V1_INTEL
+  ),
+  mskTraumaComplaintV1Template(
+    "tendon_injury_adult_complaint_v1",
+    "providerDocumentationWorkspace.templateTendonInjuryAdultComplaintV1",
+    "providerDocumentationWorkspace.templateTendonInjuryAdultComplaintV1Help",
+    TENDON_INJURY_ADULT_COMPLAINT_V1_INTEL
+  ),
+  mskTraumaComplaintV1Template(
+    "ligament_injury_adult_complaint_v1",
+    "providerDocumentationWorkspace.templateLigamentInjuryAdultComplaintV1",
+    "providerDocumentationWorkspace.templateLigamentInjuryAdultComplaintV1Help",
+    LIGAMENT_INJURY_ADULT_COMPLAINT_V1_INTEL
   ),
   infectiousEntComplaintV1Template(
     "fever_complaint_v1",

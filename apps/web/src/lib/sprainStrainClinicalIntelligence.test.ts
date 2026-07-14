@@ -65,6 +65,19 @@ describe("sprainStrainClinicalIntelligence", () => {
     expect(ctx.dischargeFamilyId).toBeNull();
   });
 
+  it("does not claim dedicated tendon or ligament tear codes", () => {
+    const achilles = resolveSprainStrainContextFromDiagnosis({
+      code: "S86.011A",
+      displayName: "Achilles tendon rupture",
+    });
+    expect(achilles.regions).toEqual([]);
+    const acl = resolveSprainStrainContextFromDiagnosis({
+      code: "S83.511A",
+      displayName: "ACL tear",
+    });
+    expect(acl.regions).toEqual([]);
+  });
+
   it("adaptSprainStrainComplaintIntel prioritizes ankle chips", () => {
     const adapted = adaptSprainStrainComplaintIntel(SPRAIN_STRAIN_ADULT_COMPLAINT_V1_INTEL, {
       regions: ["ankle"],

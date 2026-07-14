@@ -8,7 +8,9 @@ import {
   buildDislocationAdultComplaintV1Intel,
   buildFractureAdultComplaintV1Intel,
   buildHandWristInjuryComplaintV1Intel,
+  buildLigamentInjuryAdultComplaintV1Intel,
   buildSprainStrainAdultComplaintV1Intel,
+  buildTendonInjuryAdultComplaintV1Intel,
   buildHipPainInjuryComplaintV1Intel,
   buildKneeInjuryComplaintV1Intel,
   buildLacerationSoftTissueComplaintV1Intel,
@@ -31,6 +33,8 @@ const animalBiteAdult = (key: string) => `providerDocumentationComplaintIntel.an
 const fractureAdult = (key: string) => `providerDocumentationComplaintIntel.fractureAdultComplaintV1.${key}`;
 const dislocationAdult = (key: string) => `providerDocumentationComplaintIntel.dislocationAdultComplaintV1.${key}`;
 const sprainStrainAdult = (key: string) => `providerDocumentationComplaintIntel.sprainStrainAdultComplaintV1.${key}`;
+const tendonInjuryAdult = (key: string) => `providerDocumentationComplaintIntel.tendonInjuryAdultComplaintV1.${key}`;
+const ligamentInjuryAdult = (key: string) => `providerDocumentationComplaintIntel.ligamentInjuryAdultComplaintV1.${key}`;
 
 export const BACK_PAIN_COMPLAINT_V1_INTEL: ProviderDocumentationComplaintIntelligence =
   buildBackPainComplaintV1Intel(backPain);
@@ -60,6 +64,10 @@ export const DISLOCATION_ADULT_COMPLAINT_V1_INTEL: ProviderDocumentationComplain
   buildDislocationAdultComplaintV1Intel(dislocationAdult);
 export const SPRAIN_STRAIN_ADULT_COMPLAINT_V1_INTEL: ProviderDocumentationComplaintIntelligence =
   buildSprainStrainAdultComplaintV1Intel(sprainStrainAdult);
+export const TENDON_INJURY_ADULT_COMPLAINT_V1_INTEL: ProviderDocumentationComplaintIntelligence =
+  buildTendonInjuryAdultComplaintV1Intel(tendonInjuryAdult);
+export const LIGAMENT_INJURY_ADULT_COMPLAINT_V1_INTEL: ProviderDocumentationComplaintIntelligence =
+  buildLigamentInjuryAdultComplaintV1Intel(ligamentInjuryAdult);
 
 export const MSK_TRAUMA_COMPLAINT_V1_TEMPLATE_IDS = [
   "back_pain_complaint_v1",
@@ -76,6 +84,8 @@ export const MSK_TRAUMA_COMPLAINT_V1_TEMPLATE_IDS = [
   "fracture_adult_complaint_v1",
   "dislocation_adult_complaint_v1",
   "sprain_strain_adult_complaint_v1",
+  "tendon_injury_adult_complaint_v1",
+  "ligament_injury_adult_complaint_v1",
 ] as const;
 
 export const MSK_TRAUMA_COMPLAINT_V1_INTEL_BY_TEMPLATE_ID = {
@@ -93,4 +103,6 @@ export const MSK_TRAUMA_COMPLAINT_V1_INTEL_BY_TEMPLATE_ID = {
   fracture_adult_complaint_v1: FRACTURE_ADULT_COMPLAINT_V1_INTEL,
   dislocation_adult_complaint_v1: DISLOCATION_ADULT_COMPLAINT_V1_INTEL,
   sprain_strain_adult_complaint_v1: SPRAIN_STRAIN_ADULT_COMPLAINT_V1_INTEL,
+  tendon_injury_adult_complaint_v1: TENDON_INJURY_ADULT_COMPLAINT_V1_INTEL,
+  ligament_injury_adult_complaint_v1: LIGAMENT_INJURY_ADULT_COMPLAINT_V1_INTEL,
 } as const;

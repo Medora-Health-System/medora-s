@@ -302,8 +302,30 @@ export function resolveSprainStrainContextFromDiagnosis(input: SprainStrainDiagn
   const textIsDislocationOnly =
     /disloc|sublux|luxation|nursemaid|poignet de bonne/.test(text) && !/sprain|strain|entorse|elongation|claquage|ligament/.test(text);
 
+  // Prefer dedicated tendon / ligament engines for specific tear/rupture families.
+  const pureTendonPrefixes = ["S46.0", "S46.1", "S46.2", "S46.3", "S66.1", "S66.2", "S66.3", "S66.5", "S86.0", "M66.2", "M66.3", "M75.1"];
+  const isPureTendonCode = pureTendonPrefixes.some((p) => code.startsWith(p));
+  const textIsTendonOnly =
+    /tendon|achilles|achille|rotator cuff tear|biceps rupture|triceps rupture|mallet finger|quadriceps tendon|patellar tendon|rupture tendineuse/.test(
+      text
+    ) && !/sprain|entorse|strain|elongation|claquage/.test(text);
+
+  const pureLigamentPrefixes = ["S83.51", "S83.52", "S83.41", "S83.42", "S93.43", "S63.64", "S63.51", "S13.1"];
+  const isPureLigamentCode = pureLigamentPrefixes.some((p) => code.startsWith(p));
+  const textIsLigamentTearOnly =
+    /\b(acl|pcl|mcl|lcl|ucl|syndesmosis|scapholunate|gamekeeper|skier.?s? thumb|ligament tear|dechirure ligamentaire)\b/.test(
+      text
+    ) && !/sprain|entorse|strain|elongation|claquage|tendon/.test(text);
+
   const regions = new Set<SprainStrainRegion>();
-  if (!isPureDislocationCode && !textIsDislocationOnly) {
+  if (
+    !isPureDislocationCode &&
+    !textIsDislocationOnly &&
+    !isPureTendonCode &&
+    !textIsTendonOnly &&
+    !isPureLigamentCode &&
+    !textIsLigamentTearOnly
+  ) {
     bestIcdRegionMatch(code).forEach((r) => regions.add(r));
     keywordRegionMatches(text).forEach((r) => regions.add(r));
   }

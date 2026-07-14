@@ -8186,7 +8186,13 @@ export default {
       "Luxation, subluxation, épaule luxée, hanche luxée, doigt luxé, luxation de la rotule, luxation du coude, poignet de bonne, luxation de la mâchoire, ATM, séparation acromio-claviculaire, réduction, luxation récidivante — toutes articulations.",
     templateSprainStrainAdultComplaintV1: "Entorse / Élongation",
     templateSprainStrainAdultComplaintV1Help:
-      "Entorse, élongation, entorse de cheville, entorse du poignet, entorse du genou, entorse cervicale, entorse lombaire, entorse de l'épaule, claquage des ischio-jambiers, lésion ligamentaire, cheville tordue, muscle tiré — toutes régions du corps.",
+      "Entorse, élongation, entorse de cheville, entorse du poignet, entorse du genou, entorse cervicale, entorse lombaire, entorse de l'épaule, claquage des ischio-jambiers, cheville tordue, muscle tiré — toutes régions du corps.",
+    templateTendonInjuryAdultComplaintV1: "Lésion / Rupture tendineuse",
+    templateTendonInjuryAdultComplaintV1Help:
+      "Lésion tendineuse, rupture tendineuse, rupture d'Achille, déchirure de la coiffe, rupture du biceps, rupture du triceps, tendon rotulien, tendon du quadriceps, tendon fléchisseur, tendon extenseur, doigt en maillet, tendon ischio, section tendineuse — toutes régions.",
+    templateLigamentInjuryAdultComplaintV1: "Lésion / Déchirure ligamentaire",
+    templateLigamentInjuryAdultComplaintV1Help:
+      "Lésion ligamentaire, déchirure ligamentaire, LCA, LCP, LCM, LCL, ligament de cheville, entorse haute, syndesmose, LCU du pouce, pouce du skieur, scapho-lunaire, ligament du poignet, ligament collatéral du coude — toutes régions.",
     templateSubgroupInfectiousEnt: "Infectieux / ORL",
     templateFeverComplaintV1: "Fièvre (intelligence infectieuse)",
     templateFeverComplaintV1Help: "Inserts cliquables — fièvre, évaluation de la source et sortie.",

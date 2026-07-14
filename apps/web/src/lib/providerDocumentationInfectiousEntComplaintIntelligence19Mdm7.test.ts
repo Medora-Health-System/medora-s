@@ -153,7 +153,7 @@ describe("provider documentation infectious / ENT complaint intelligence (19MDM.
     expect(RESPIRATORY_COMPLAINT_V1_TEMPLATE_IDS).toHaveLength(9);
     expect(CARDIAC_COMPLAINT_V1_TEMPLATE_IDS).toHaveLength(9);
     expect(GU_RENAL_COMPLAINT_V1_TEMPLATE_IDS).toHaveLength(9);
-    expect(MSK_TRAUMA_COMPLAINT_V1_TEMPLATE_IDS).toHaveLength(11);
+    expect(MSK_TRAUMA_COMPLAINT_V1_TEMPLATE_IDS).toHaveLength(16);
     expect(COMPLAINT_INTEL_BY_TEMPLATE_ID.dysuria_complaint_v1).toBe(DYSURIA_COMPLAINT_V1_INTEL);
     expect(COMPLAINT_INTEL_BY_TEMPLATE_ID.back_pain_complaint_v1).toBe(BACK_PAIN_COMPLAINT_V1_INTEL);
     expect(COMPLAINT_INTEL_BY_TEMPLATE_ID.sore_throat_complaint_v1).toBeDefined();

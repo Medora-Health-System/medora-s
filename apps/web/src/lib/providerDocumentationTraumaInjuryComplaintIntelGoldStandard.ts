@@ -1303,6 +1303,222 @@ export function buildSprainStrainAdultComplaintV1Intel(
   });
 }
 
+/**
+ * Tendon injury / rupture (adult) — single adaptive provider documentation template.
+ * Region emphasis via `adaptTendonComplaintIntel` (display ordering only).
+ */
+export function buildTendonInjuryAdultComplaintV1Intel(
+  d: (key: string) => string
+): ProviderDocumentationComplaintIntelligence {
+  return buildMskTraumaV1Intel(d, {
+    hpi: [
+      d("hpiMechanismSportsRelated"),
+      d("hpiMechanismDirectBlow"),
+      d("hpiMechanismFallFromStanding"),
+      d("hpiSuddenPopAtInjury"),
+      d("hpiPopHeardAtInjury"),
+      d("hpiWeaknessWithResistedMotion"),
+      d("hpiInabilityToPlantarflex"),
+      d("hpiInabilityToExtendKnee"),
+      d("hpiInabilityToFlexFinger"),
+      d("hpiInabilityToExtendFinger"),
+      d("hpiUnableToBearWeight"),
+      d("hpiSwellingNoted"),
+      d("hpiNumbnessDistalToInjury"),
+      d("hpiSiteRotatorCuff"),
+      d("hpiSiteBicepsTendon"),
+      d("hpiSiteTricepsTendon"),
+      d("hpiSiteExtensorTendon"),
+      d("hpiSiteFlexorTendon"),
+      d("hpiSiteMalletFinger"),
+      d("hpiSiteFinger"),
+      d("hpiSiteHand"),
+      d("hpiSiteAchilles"),
+      d("hpiSitePatellarTendon"),
+      d("hpiSiteQuadriceps"),
+      d("hpiSiteHamstring"),
+      d("hpiSiteAnkle"),
+      d("hpiSiteFoot"),
+      d("hpiSiteShoulder"),
+      d("hpiLateralityRight"),
+      d("hpiLateralityLeft"),
+    ],
+    physicalExam: {
+      general: [d("examAlertAndOriented"), d("examHemodynamicallyStable"), d("examNoAcuteDistress")],
+      musculoskeletal: [
+        d("examSwellingPresent"),
+        d("examEcchymosisPresent"),
+        d("examLocalizedTendernessPresent"),
+        d("examPalpableTendonGap"),
+        d("examThompsonTestPositive"),
+        d("examThompsonTestNegative"),
+        d("examWeakResistedPlantarflexion"),
+        d("examExtensorLagPresent"),
+        d("examFlexorTendonIntegrityIntact"),
+        d("examExtensorTendonIntegrityIntact"),
+        d("examRotatorCuffStrengthWeak"),
+        d("examPopeyeDeformityPresent"),
+        d("examDecreasedRangeOfMotion"),
+        d("examUnableToBearWeight"),
+        d("examBraceAppliedInEd"),
+      ],
+      neuroPsych: [
+        d("examDistalPulsesIntact"),
+        d("examSensationIntactDistally"),
+        d("examMotorFunctionIntactDistally"),
+        d("examNoFocalNeurologicDeficit"),
+      ],
+      skin: [d("examSkinIntactOverJoint"), d("examOpenWoundPresent")],
+    },
+    extraDifferential: [
+      d("diffTendonRupture"),
+      d("diffFracture"),
+      d("diffLigamentInjury"),
+      d("diffOccultFracture"),
+      d("diffCompartmentSyndrome"),
+    ],
+    mdmOverrides: {
+      mdmWorkingAssessment: [
+        d("waTendonInjury"),
+        d("waTendonRupture"),
+        d("waPartialTendonTear"),
+        d("waCompleteTendonRupture"),
+        d("waMalletFinger"),
+        d("waMusculoskeletalInjury"),
+      ],
+      clinicalImpression: [d("impTendonInjury"), d("impTendonRupture"), d("impMalletFinger")],
+      mdmPlanSummary: [
+        d("planTendonSplintProtocol"),
+        d("planBraceOrWrapApplied"),
+        d("planNonWeightBearingAsDirected"),
+        d("planWeightBearingInstructions"),
+        d("planActivityRestriction"),
+        d("planPainControlProvided"),
+        d("planOrthopedicFollowUp"),
+        d("planHandSurgeryConsultRequested"),
+        d("planSportsMedicineFollowUp"),
+        d("planReturnPrecautions"),
+        d("planEdReturnWorseningSymptoms"),
+      ],
+      mdmClinicalRationale: [
+        d("reasoningMechanismConsistentTendonInjury"),
+        d("reasoningFunctionalDeficitConsistentWithTear"),
+        d("reasoningNeurovascularExamReassuring"),
+        d("reasoningOutpatientManagementAppropriate"),
+      ],
+    },
+  });
+}
+
+/**
+ * Ligament injury / tear (adult) — single adaptive provider documentation template.
+ * Region emphasis via `adaptLigamentComplaintIntel` (display ordering only).
+ */
+export function buildLigamentInjuryAdultComplaintV1Intel(
+  d: (key: string) => string
+): ProviderDocumentationComplaintIntelligence {
+  return buildMskTraumaV1Intel(d, {
+    hpi: [
+      d("hpiMechanismTwistingInjury"),
+      d("hpiMechanismSportsRelated"),
+      d("hpiMechanismDirectBlow"),
+      d("hpiHearingPopAtInjury"),
+      d("hpiGivingWayInstability"),
+      d("hpiImmediateSwelling"),
+      d("hpiUnableToBearWeight"),
+      d("hpiPainWorsenedWithMovement"),
+      d("hpiNumbnessDistalToInjury"),
+      d("hpiSiteAcl"),
+      d("hpiSitePcl"),
+      d("hpiSiteMcl"),
+      d("hpiSiteLcl"),
+      d("hpiSiteKnee"),
+      d("hpiSiteAnkleLateralLigament"),
+      d("hpiSiteSyndesmosis"),
+      d("hpiSiteThumbUcl"),
+      d("hpiSiteScapholunate"),
+      d("hpiSiteWrist"),
+      d("hpiSiteFinger"),
+      d("hpiSiteElbow"),
+      d("hpiSiteShoulder"),
+      d("hpiSiteCervical"),
+      d("hpiSiteLumbar"),
+      d("hpiLateralityRight"),
+      d("hpiLateralityLeft"),
+    ],
+    physicalExam: {
+      general: [d("examAlertAndOriented"), d("examHemodynamicallyStable"), d("examNoAcuteDistress")],
+      musculoskeletal: [
+        d("examSwellingPresent"),
+        d("examJointEffusionPresent"),
+        d("examEcchymosisPresent"),
+        d("examLocalizedTendernessPresent"),
+        d("examJointStable"),
+        d("examJointUnstable"),
+        d("examLigamentLaxityPresent"),
+        d("examLachmanPositive"),
+        d("examAnteriorDrawerPositive"),
+        d("examPivotShiftPositive"),
+        d("examValgusStressPositive"),
+        d("examVarusStressPositive"),
+        d("examExternalRotationStressPositive"),
+        d("examThumbUclLaxityPresent"),
+        d("examAnkleAnteriorDrawerPositive"),
+        d("examDecreasedRangeOfMotion"),
+        d("examBraceAppliedInEd"),
+        d("examUnableToBearWeight"),
+        d("examWeightBearingAsTolerated"),
+      ],
+      neuroPsych: [
+        d("examDistalPulsesIntact"),
+        d("examSensationIntactDistally"),
+        d("examMotorFunctionIntactDistally"),
+        d("examNoFocalNeurologicDeficit"),
+      ],
+    },
+    extraDifferential: [
+      d("diffAclTear"),
+      d("diffSyndesmoticInjury"),
+      d("diffThumbUclInjury"),
+      d("diffFracture"),
+      d("diffDislocation"),
+      d("diffOccultFracture"),
+    ],
+    mdmOverrides: {
+      mdmWorkingAssessment: [
+        d("waLigamentTear"),
+        d("waAclInjury"),
+        d("waAnkleLigamentInjury"),
+        d("waThumbUclInjury"),
+        d("waSyndesmoticInjury"),
+        d("waLigamentInjury"),
+        d("waMusculoskeletalInjury"),
+      ],
+      clinicalImpression: [d("impLigamentTear"), d("impAclInjury"), d("impSyndesmoticInjury"), d("impLigamentInjury")],
+      mdmPlanSummary: [
+        d("planBraceImmobilization"),
+        d("planBraceOrWrapApplied"),
+        d("planProtectedWeightBearing"),
+        d("planWeightBearingInstructions"),
+        d("planRiceInstructions"),
+        d("planActivityRestriction"),
+        d("planPainControlProvided"),
+        d("planOrthopedicFollowUp"),
+        d("planSportsMedicineFollowUp"),
+        d("planHandSurgeryConsultRequested"),
+        d("planReturnPrecautions"),
+        d("planEdReturnWorseningSymptoms"),
+      ],
+      mdmClinicalRationale: [
+        d("reasoningMechanismConsistentLigamentInjury"),
+        d("reasoningInstabilityOnExam"),
+        d("reasoningNeurovascularExamReassuring"),
+        d("reasoningOutpatientManagementAppropriate"),
+      ],
+    },
+  });
+}
+
 export const TRAUMA_INJURY_GOLD_STANDARD_BUILDERS = {
   fall: buildFallComplaintIntel,
   head_injury: buildHeadInjuryComplaintIntel,
@@ -1330,5 +1546,7 @@ export const TRAUMA_INJURY_GOLD_STANDARD_BUILDERS = {
   fracture_adult_complaint_v1: buildFractureAdultComplaintV1Intel,
   dislocation_adult_complaint_v1: buildDislocationAdultComplaintV1Intel,
   sprain_strain_adult_complaint_v1: buildSprainStrainAdultComplaintV1Intel,
+  tendon_injury_adult_complaint_v1: buildTendonInjuryAdultComplaintV1Intel,
+  ligament_injury_adult_complaint_v1: buildLigamentInjuryAdultComplaintV1Intel,
   concussion_followup_complaint_v1: buildConcussionFollowupComplaintV1Intel,
 } as const;

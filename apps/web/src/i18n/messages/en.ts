@@ -8208,7 +8208,13 @@ export default {
       "Dislocation, subluxation, dislocated shoulder, dislocated hip, dislocated finger, patella dislocation, elbow dislocation, nursemaid elbow, jaw dislocation, TMJ, AC separation, reduction, recurrent dislocation — all joints.",
     templateSprainStrainAdultComplaintV1: "Sprain / Strain",
     templateSprainStrainAdultComplaintV1Help:
-      "Sprain, strain, ankle sprain, wrist sprain, knee sprain, neck strain, back strain, shoulder sprain, hamstring strain, ligament injury, twisted ankle, pulled muscle — all body regions.",
+      "Sprain, strain, ankle sprain, wrist sprain, knee sprain, neck strain, back strain, shoulder sprain, hamstring strain, twisted ankle, pulled muscle — all body regions.",
+    templateTendonInjuryAdultComplaintV1: "Tendon Injury / Rupture",
+    templateTendonInjuryAdultComplaintV1Help:
+      "Tendon injury, tendon rupture, Achilles rupture, rotator cuff tear, biceps rupture, triceps rupture, patellar tendon, quadriceps tendon, flexor tendon, extensor tendon, mallet finger, hamstring tendon, lacerated tendon — all regions.",
+    templateLigamentInjuryAdultComplaintV1: "Ligament Injury / Tear",
+    templateLigamentInjuryAdultComplaintV1Help:
+      "Ligament injury, ligament tear, ACL, PCL, MCL, LCL, ankle ligament, high ankle sprain, syndesmosis, thumb UCL, skier thumb, gamekeeper thumb, scapholunate, wrist ligament, elbow collateral — all regions.",
     templateSubgroupInfectiousEnt: "Infectious / ENT",
     templateFeverComplaintV1: "Fever (infectious intelligence)",
     templateFeverComplaintV1Help: "Click-to-insert prompts for fever, source evaluation, and disposition.",
