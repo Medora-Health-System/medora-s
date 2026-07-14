@@ -63,7 +63,7 @@ describe("MEDUI.CLINICAL.INJURY_INTELLIGENCE_PHASE_2_SPRAINS_STRAINS", () => {
     { code: "S16.1XXA", templateId: "trauma_msk_neck_strain_v1" },
     { code: "S39.012A", templateId: "trauma_msk_back_strain_v1" },
     { code: "S43.401A", templateId: "trauma_msk_shoulder_pain_v1" },
-    { code: "S76.311A", templateId: "trauma_msk_sprain_generic_v1" },
+    { code: "S76.311A", templateId: "trauma_msk_tendon_generic_v1" },
   ])("discharge resolves $code to $templateId", ({ code, templateId }) => {
     const resolved = resolveProviderDischargeTemplateForDiagnosis({ code, displayName: "sprain strain" });
     expect(resolved.template.id).toBe(templateId);

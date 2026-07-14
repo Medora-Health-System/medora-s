@@ -2935,7 +2935,7 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
     },
     diagnosisMappings: {
       icdExact: ["S39.012", "S39.012A"],
-      icdFamily: ["S33.5", "S39.01"],
+      icdFamily: ["S39.01"],
       keyword: [
         "msk back strain",
         "back strain msk",
@@ -3580,7 +3580,7 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
       requiresOrthopedicFollowUp: true,
     },
     diagnosisMappings: {
-      icdFamily: ["S53.3", "S63.4", "S73.1", "S76.3", "S93.5", "S93.6", "S23.3", "S29"],
+      icdFamily: ["S53.3", "S63.4", "S73.1", "S93.5", "S93.6", "S23.3", "S29"],
       keyword: [
         "sprain",
         "strain",
@@ -3732,7 +3732,7 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
       requiresReturnActivityRestrictions: true,
     },
     diagnosisMappings: {
-      icdFamily: ["S76.0", "S76.2", "S86.3", "S86.8"],
+      icdFamily: ["S76.0", "S76.2", "S76.3", "S86.3", "S86.8", "S56", "S96"],
       keyword: ["tendon injury", "tendon rupture", "tendon tear", "lésion tendineuse", "rupture tendineuse"],
     },
     sourceReferences: [
@@ -3887,7 +3887,7 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
       requiresReturnActivityRestrictions: true,
     },
     diagnosisMappings: {
-      icdFamily: ["S13.1", "S33.4"],
+      icdFamily: ["S13.1", "S33.4", "S33.5"],
       keyword: ["ligament tear", "ligament injury", "lésion ligamentaire", "déchirure ligamentaire"],
     },
     sourceReferences: [
