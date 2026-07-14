@@ -34,6 +34,13 @@ describe("MEDUI.REGISTRATION.PHASE_3_ELECTRONIC_PACKET_E_SIGNATURE", () => {
       expect(docCenterComponent).toContain("RegistrationPacketWizard");
       expect(docCenterComponent).toContain("activeWizard");
     });
+
+    it("modal title centers facility name and Registration Package", () => {
+      expect(wizardComponent).toContain("textAlign: \"center\"");
+      expect(wizardComponent).toContain("packetWizard.registrationPackage");
+      expect(wizardComponent).toContain("facilityName");
+      expect(wizardComponent).not.toMatch(/templateLabel\(template\)/);
+    });
   });
 
   describe("Packet templates", () => {
@@ -127,7 +134,7 @@ describe("MEDUI.REGISTRATION.PHASE_3_ELECTRONIC_PACKET_E_SIGNATURE", () => {
 
     it("stores signedAt timestamp", () => {
       expect(wizardComponent).toContain("signedAt");
-      expect(wizardComponent).toContain("staffSignedAt");
+      expect(wizardComponent).toContain("signerType: \"STAFF\"");
     });
 
     it("has unable/refused checkbox and reason field", () => {
@@ -164,6 +171,22 @@ describe("MEDUI.REGISTRATION.PHASE_3_ELECTRONIC_PACKET_E_SIGNATURE", () => {
       expect(wizardComponent).toContain("packetType");
       expect(wizardComponent).toContain("packetVersion");
       expect(wizardComponent).toContain('"Content-Type": "application/json"');
+    });
+
+    it("sends facility name in structured model facility object", () => {
+      expect(wizardComponent).toContain("facility: { id: facilityId, name: facilityName }");
+    });
+
+    it("document title uses facility name + Registration Package", () => {
+      expect(wizardComponent).toContain("packetWizard.registrationPackage");
+      expect(wizardComponent).toContain("facilityName");
+      expect(wizardComponent).not.toContain("Freestanding ER Registration Package");
+    });
+
+    it("shows API error with saveErrorWithMessage", () => {
+      expect(wizardComponent).toContain("packetWizard.saveErrorWithMessage");
+      expect(wizardComponent).toContain("{message}");
+      expect(wizardComponent).toContain("role=\"alert\"");
     });
 
     it("structured model includes sections with id, title, body, reviewed", () => {
@@ -266,6 +289,8 @@ describe("MEDUI.REGISTRATION.PHASE_3_ELECTRONIC_PACKET_E_SIGNATURE", () => {
       "finalizeRefused",
       "cancel",
       "saveError",
+      "registrationPackage",
+      "saveErrorWithMessage",
       "consentText",
       "aobText",
       "privacyText",
@@ -283,6 +308,11 @@ describe("MEDUI.REGISTRATION.PHASE_3_ELECTRONIC_PACKET_E_SIGNATURE", () => {
       });
     }
 
+    it("EN packet templates are subtype labels (not Freestanding ER Registration Package main title)", () => {
+      expect(enMessages).toContain('packetTemplateFreestandingEr: "Freestanding Emergency Room Packet"');
+      expect(enMessages).not.toContain("Freestanding ER Registration Package");
+    });
+
     it("EN has packet status keys", () => {
       expect(enMessages).toContain("packetStatusSigned");
       expect(enMessages).toContain("packetStatusInProgress");
@@ -293,6 +323,11 @@ describe("MEDUI.REGISTRATION.PHASE_3_ELECTRONIC_PACKET_E_SIGNATURE", () => {
       expect(frMessages).toContain("packetStatusSigned");
       expect(frMessages).toContain("packetStatusInProgress");
       expect(frMessages).toContain("packetStatusRefused");
+    });
+
+    it("FR has registrationPackage and saveErrorWithMessage", () => {
+      expect(frMessages).toContain("registrationPackage");
+      expect(frMessages).toContain("saveErrorWithMessage");
     });
   });
 
@@ -446,8 +481,26 @@ describe("MEDUI.REGISTRATION.PHASE_3_ELECTRONIC_PACKET_E_SIGNATURE", () => {
       expect(frMessages).toContain("packetLocked");
     });
 
-    it("No PatientDocument model (mandatory rule)", () => {
-      expect(schema).not.toContain("model PatientDocument {");
+    it("API PacketSourceService uses facility-based file name helper", () => {
+      const svc = readApi("src/documents/packet-source.service.ts");
+      expect(svc).toContain("registrationPacketFileName");
+      expect(svc).toContain("normalizeStructuredPacketModel");
+      expect(svc).toContain("BadRequestException");
+      expect(svc).not.toContain("generatedAt.slice");
+    });
+
+    it("API PacketPdfService centers facility name above Registration Package", () => {
+      const pdfSvc = readApi("src/documents/packet-pdf.service.ts");
+      expect(pdfSvc).toContain("packetTitle");
+      expect(pdfSvc).toContain("packetSubtypeLabel");
+      expect(pdfSvc).toContain('align: "center"');
+      expect(pdfSvc).toContain("REGISTRATION_PACKAGE_TITLE");
+    });
+
+    it("API validates registration-packets body with Zod", () => {
+      const ctrl = readApi("src/documents/documents.controller.ts");
+      expect(ctrl).toContain("createRegistrationPacketBodySchema");
+      expect(ctrl).toContain("assertZodBody");
     });
   });
 });

@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import { useI18n } from "@/lib/i18n";
 import { encounterBcp47 } from "@/lib/encounterChromeI18n";
 import { apiFetch } from "@/lib/apiClient";
+import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import { SignatureCapturePad, type SignatureResult } from "./SignatureCapturePad";
 
 const API_BASE = "/api/backend";
@@ -29,15 +30,6 @@ type InsuranceRow = {
   memberId?: string | null;
   groupNumber?: string | null;
   payer?: { name?: string | null } | null;
-};
-
-type SignatureData = {
-  signerName: string;
-  signerRelationship: string;
-  signedAt: string;
-  staffName?: string;
-  staffSignedAt?: string;
-  refusalReason?: string;
 };
 
 type SectionStatus = "not_started" | "reviewed" | "signed";
@@ -93,6 +85,9 @@ export function RegistrationPacketWizard({
 }) {
   const { t, language } = useI18n();
   const dateLocale = encounterBcp47(language);
+  const { facilities } = useFacilityAndRoles();
+  const facilityName =
+    facilities.find((f) => f.id === facilityId)?.name?.trim() || facilityId;
 
   const sectionKeys =
     template === "FREESTANDING_ER" ? FREESTANDING_ER_SECTION_KEYS : STANDARD_SECTION_KEYS;
@@ -143,7 +138,7 @@ export function RegistrationPacketWizard({
   const staffSigValid = !!staffName.trim() && !!staffSigData && staffAttestation;
   const canFinalize = allReviewed && patientSigValid && staffSigValid;
 
-  const templateLabel = useCallback(
+  const packetSubtypeLabel = useCallback(
     (tmpl: string) => {
       const key = `documentCenter.packetTemplate${tmpl.charAt(0)}${tmpl.slice(1).toLowerCase().replace(/_([a-z])/g, (_, c: string) => c.toUpperCase())}`;
       return t(key);
@@ -157,20 +152,14 @@ export function RegistrationPacketWizard({
     setSaveError(null);
     try {
       const now = new Date().toISOString();
-      const signatures: SignatureData = {
-        signerName: isRefused ? "" : signerName.trim(),
-        signerRelationship: isRefused ? "refused" : signerRelationship,
-        signedAt: now,
-        staffName: staffName.trim(),
-        staffSignedAt: now,
-        refusalReason: isRefused ? refusalReason.trim() : undefined,
-      };
+      const statusLabel = isRefused ? t("packetWizard.refused") : t("packetWizard.signed");
+      const documentTitle = `${facilityName} ${t("packetWizard.registrationPackage")} — ${statusLabel}`;
 
       const structuredModel = {
         packetType: template,
         packetVersion: "1.0",
         locale: language || "fr",
-        facility: { id: facilityId },
+        facility: { id: facilityId, name: facilityName },
         patient: patient ? { ...patient, id: patientId } : { id: patientId },
         encounter: null,
         insurance: insurance.map((ins) => ({
@@ -195,7 +184,6 @@ export function RegistrationPacketWizard({
             relationship: signerRelationship,
             signedAt: now,
             attestation: t("esignature.patientAttestation"),
-            signatureVectorHash: patientSigData ? undefined : undefined,
             refusalReason: isRefused ? refusalReason.trim() : undefined,
           },
           {
@@ -225,7 +213,7 @@ export function RegistrationPacketWizard({
           credentials: "include",
           body: JSON.stringify({
             patientId,
-            title: `${templateLabel(template)} — ${isRefused ? t("packetWizard.refused") : t("packetWizard.signed")}`,
+            title: documentTitle,
             structuredModel,
           }),
         },
@@ -276,7 +264,11 @@ export function RegistrationPacketWizard({
       onComplete();
     } catch (err: unknown) {
       const detail = err instanceof Error ? err.message : "";
-      setSaveError(detail ? `${t("packetWizard.saveError")} — ${detail}` : t("packetWizard.saveError"));
+      setSaveError(
+        detail
+          ? t("packetWizard.saveErrorWithMessage").replace("{message}", detail)
+          : t("packetWizard.saveError"),
+      );
       if (process.env.NODE_ENV !== "production") {
         console.error("[PacketWizard] finalize failed:", detail);
       }
@@ -374,15 +366,21 @@ export function RegistrationPacketWizard({
           boxShadow: "0 8px 30px rgba(0,0,0,0.2)",
         }}
       >
-        {/* Header */}
-        <div style={{ padding: "16px 20px", borderBottom: "1px solid #e2e8f0", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <div>
-            <h2 style={{ margin: 0, fontSize: 17, fontWeight: 800, color: "#0f172a" }}>{templateLabel(template)}</h2>
-            <div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>
+        {/* Header — facility name + Registration Package centered; subtype as small subtitle */}
+        <div style={{ padding: "16px 20px", borderBottom: "1px solid #e2e8f0", display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
+          <div style={{ flex: 1, textAlign: "center" }}>
+            <h2 style={{ margin: 0, fontSize: 17, fontWeight: 800, color: "#0f172a" }}>{facilityName}</h2>
+            <div style={{ margin: "4px 0 0", fontSize: 15, fontWeight: 700, color: "#0f172a" }}>
+              {t("packetWizard.registrationPackage")}
+            </div>
+            <div style={{ margin: "4px 0 0", fontSize: 11, fontWeight: 500, color: "#64748b" }}>
+              {packetSubtypeLabel(template)}
+            </div>
+            <div style={{ fontSize: 12, color: "#64748b", marginTop: 6 }}>
               {t("packetWizard.progress")}: {reviewedCount}/{sectionKeys.length} {t("packetWizard.sectionsReviewed")}
             </div>
           </div>
-          <button type="button" onClick={onClose} style={{ background: "transparent", border: "none", fontSize: 18, cursor: "pointer", color: "#64748b" }}>✕</button>
+          <button type="button" onClick={onClose} style={{ background: "transparent", border: "none", fontSize: 18, cursor: "pointer", color: "#64748b", flexShrink: 0 }} aria-label={t("packetWizard.cancel")}>✕</button>
         </div>
 
         {/* Accordion */}

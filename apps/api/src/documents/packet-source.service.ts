@@ -4,11 +4,21 @@ import {
   NotFoundException,
   ForbiddenException,
   Logger,
+  InternalServerErrorException,
 } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 import * as crypto from "crypto";
 import { PacketPdfService } from "./packet-pdf.service";
 import { DocumentsService } from "./documents.service";
+import type { StructuredPacketModelDto } from "./dto/create-registration-packet.dto";
+import {
+  REGISTRATION_PACKAGE_TITLE,
+  packetSubtypeLabel,
+  registrationPacketDocumentTitle,
+  registrationPacketFileName,
+  safeGeneratedAtDate,
+  safeGeneratedAtIso,
+} from "./packet-title.util";
 
 export interface StructuredPacketSection {
   id: string;
@@ -65,10 +75,6 @@ export interface StructuredPacketModel {
   finalizedAt?: string | null;
 }
 
-function canonicalJson(obj: unknown): string {
-  return JSON.stringify(obj, Object.keys(obj as Record<string, unknown>).sort());
-}
-
 function deepSortedJson(obj: unknown): string {
   if (obj === null || obj === undefined) return JSON.stringify(obj);
   if (Array.isArray(obj)) {
@@ -96,6 +102,31 @@ function hashPdfBytes(buffer: Buffer): string {
   return crypto.createHash("sha256").update(buffer).digest("hex");
 }
 
+/** Normalize optional fields so PDF/hash paths never hit raw TypeErrors. */
+export function normalizeStructuredPacketModel(
+  raw: StructuredPacketModelDto,
+  defaults: { facilityId?: string; facilityName?: string },
+): StructuredPacketModel {
+  const generatedAt = safeGeneratedAtIso(raw.generatedAt);
+  const facilityName = raw.facility?.name?.trim() || defaults.facilityName?.trim() || undefined;
+  const facilityId = raw.facility?.id || defaults.facilityId;
+
+  return {
+    packetType: raw.packetType,
+    packetVersion: raw.packetVersion || "1.0",
+    locale: raw.locale || "en",
+    facility: facilityId || facilityName ? { id: facilityId, name: facilityName } : null,
+    patient: raw.patient,
+    encounter: raw.encounter ?? null,
+    insurance: Array.isArray(raw.insurance) ? raw.insurance : [],
+    sections: Array.isArray(raw.sections) ? raw.sections : [],
+    signatures: Array.isArray(raw.signatures) ? raw.signatures : [],
+    attestations: Array.isArray(raw.attestations) ? raw.attestations : [],
+    generatedAt,
+    finalizedAt: raw.finalizedAt ?? null,
+  };
+}
+
 @Injectable()
 export class PacketSourceService {
   private readonly logger = new Logger(PacketSourceService.name);
@@ -106,86 +137,188 @@ export class PacketSourceService {
     private readonly documentsService: DocumentsService,
   ) {}
 
+  private logPacketSafe(
+    requestId: string | undefined,
+    event: string,
+    meta: {
+      packetType?: string;
+      template?: string;
+      hasPatientId?: boolean;
+      hasFacility?: boolean;
+      hasSections?: boolean;
+      hasSignatures?: boolean;
+      sectionCount?: number;
+    },
+  ) {
+    this.logger.log(
+      JSON.stringify({
+        route: "documents/registration-packets",
+        requestId: requestId || null,
+        event,
+        packetType: meta.packetType || null,
+        template: meta.template || null,
+        hasPatientId: !!meta.hasPatientId,
+        hasFacility: !!meta.hasFacility,
+        hasSections: !!meta.hasSections,
+        hasSignatures: !!meta.hasSignatures,
+        sectionCount: meta.sectionCount ?? null,
+      }),
+    );
+  }
+
   async createPacketSource(params: {
-    structuredModel: StructuredPacketModel;
+    structuredModel: StructuredPacketModelDto | StructuredPacketModel;
     patientId: string;
     facilityId: string;
     encounterId?: string;
     createdById?: string;
     title?: string;
+    requestId?: string;
   }) {
-    const { structuredModel, patientId, facilityId, encounterId, createdById, title } = params;
+    const { patientId, facilityId, encounterId, createdById, title, requestId } = params;
+
+    if (!patientId?.trim()) throw new BadRequestException("patientId is required");
+    if (!facilityId?.trim()) throw new BadRequestException("facility is required");
+
+    let facilityName = "";
+    try {
+      const facilityRow = await this.prisma.facility.findFirst({
+        where: { id: facilityId },
+        select: { id: true, name: true },
+      });
+      if (!facilityRow) throw new BadRequestException("facility not found");
+      facilityName = facilityRow.name?.trim() || facilityId;
+    } catch (err) {
+      if (err instanceof BadRequestException) throw err;
+      this.logger.error(
+        JSON.stringify({
+          route: "documents/registration-packets",
+          requestId: requestId || null,
+          event: "facility_lookup_failed",
+          message: err instanceof Error ? err.message : String(err),
+        }),
+      );
+      throw new InternalServerErrorException("Unable to resolve facility for registration packet");
+    }
+
+    const structuredModel = normalizeStructuredPacketModel(params.structuredModel as StructuredPacketModelDto, {
+      facilityId,
+      facilityName,
+    });
+
+    this.logPacketSafe(requestId, "create_start", {
+      packetType: structuredModel.packetType,
+      template: structuredModel.packetType,
+      hasPatientId: !!patientId,
+      hasFacility: !!structuredModel.facility,
+      hasSections: Array.isArray(structuredModel.sections) && structuredModel.sections.length > 0,
+      hasSignatures: Array.isArray(structuredModel.signatures) && structuredModel.signatures.length > 0,
+      sectionCount: structuredModel.sections?.length,
+    });
 
     if (!structuredModel.packetType) throw new BadRequestException("packetType is required");
     if (!structuredModel.patient) throw new BadRequestException("patient data is required");
+    if (!structuredModel.facility) throw new BadRequestException("facility is required");
+    if (!Array.isArray(structuredModel.sections) || structuredModel.sections.length === 0) {
+      throw new BadRequestException("sections are required");
+    }
 
-    const sourceHashSha256 = hashSource(structuredModel);
+    try {
+      const sourceHashSha256 = hashSource(structuredModel);
 
-    const pdfBuffer = await this.renderPdfFromSource(structuredModel);
-    const renderedHashSha256 = hashPdfBytes(pdfBuffer);
+      const pdfBuffer = await this.renderPdfFromSource(structuredModel);
+      const renderedHashSha256 = hashPdfBytes(pdfBuffer);
 
-    const patientName =
-      [structuredModel.patient?.firstName, structuredModel.patient?.lastName]
-        .filter(Boolean)
-        .join("_") || "Patient";
-    const dateStr = structuredModel.generatedAt.slice(0, 10);
-    const fileName = `${structuredModel.packetType}_Registration_Package_${patientName}_${dateStr}.pdf`;
+      const dateStr = safeGeneratedAtDate(structuredModel.generatedAt);
+      const fileName = registrationPacketFileName(facilityName, dateStr);
+      const docTitle =
+        title?.trim() || registrationPacketDocumentTitle(facilityName);
 
-    const doc = await this.documentsService.upload({
-      patientId,
-      encounterId,
-      facilityId,
-      category: "REGISTRATION",
-      type: "REGISTRATION_PACKET",
-      title: title || `${structuredModel.packetType} Registration Packet`,
-      notes: JSON.stringify({
-        packetType: structuredModel.packetType,
-        packetVersion: structuredModel.packetVersion,
-        locale: structuredModel.locale,
-        sourceHash: sourceHashSha256,
-        renderedHash: renderedHashSha256,
-      }),
-      source: "SYSTEM",
-      uploadedById: createdById,
-      file: {
-        originalname: fileName,
-        mimetype: "application/pdf",
-        size: pdfBuffer.length,
-        buffer: pdfBuffer,
-      },
-    });
-
-    const packetSource = await this.prisma.enterpriseDocumentPacketSource.create({
-      data: {
-        documentId: doc.id,
-        packetType: structuredModel.packetType,
-        packetVersion: structuredModel.packetVersion || "1.0",
-        locale: structuredModel.locale || "en",
-        facilityId,
+      const doc = await this.documentsService.upload({
         patientId,
-        encounterId: encounterId || null,
-        sourceJson: structuredModel as unknown as object,
-        sourceHashSha256,
-        renderedHashSha256,
-        createdById: createdById || null,
-      },
-    });
+        encounterId,
+        facilityId,
+        category: "REGISTRATION",
+        type: "REGISTRATION_PACKET",
+        title: docTitle,
+        notes: JSON.stringify({
+          packetType: structuredModel.packetType,
+          packetVersion: structuredModel.packetVersion,
+          locale: structuredModel.locale,
+          sourceHash: sourceHashSha256,
+          renderedHash: renderedHashSha256,
+        }),
+        source: "SYSTEM",
+        uploadedById: createdById,
+        file: {
+          originalname: fileName,
+          mimetype: "application/pdf",
+          size: pdfBuffer.length,
+          buffer: pdfBuffer,
+        },
+      });
 
-    this.logger.log(
-      `packet source created: docId=${doc.id} packetSourceId=${packetSource.id} type=${structuredModel.packetType}`,
-    );
+      const packetSource = await this.prisma.enterpriseDocumentPacketSource.create({
+        data: {
+          documentId: doc.id,
+          packetType: structuredModel.packetType,
+          packetVersion: structuredModel.packetVersion || "1.0",
+          locale: structuredModel.locale || "en",
+          facilityId,
+          patientId,
+          encounterId: encounterId || null,
+          sourceJson: structuredModel as unknown as object,
+          sourceHashSha256,
+          renderedHashSha256,
+          createdById: createdById || null,
+        },
+      });
 
-    return {
-      documentId: doc.id,
-      packetSourceId: packetSource.id,
-      packetType: packetSource.packetType,
-      packetVersion: packetSource.packetVersion,
-      locale: packetSource.locale,
-      sourceHashSha256: packetSource.sourceHashSha256,
-      renderedHashSha256: packetSource.renderedHashSha256,
-      generatedAt: packetSource.generatedAt,
-      finalizedAt: packetSource.finalizedAt,
-    };
+      this.logPacketSafe(requestId, "create_ok", {
+        packetType: structuredModel.packetType,
+        template: structuredModel.packetType,
+        hasPatientId: true,
+        hasFacility: true,
+        hasSections: true,
+        hasSignatures: structuredModel.signatures.length > 0,
+        sectionCount: structuredModel.sections.length,
+      });
+
+      return {
+        documentId: doc.id,
+        packetSourceId: packetSource.id,
+        packetType: packetSource.packetType,
+        packetVersion: packetSource.packetVersion,
+        locale: packetSource.locale,
+        sourceHashSha256: packetSource.sourceHashSha256,
+        renderedHashSha256: packetSource.renderedHashSha256,
+        generatedAt: packetSource.generatedAt,
+        finalizedAt: packetSource.finalizedAt,
+      };
+    } catch (err) {
+      if (
+        err instanceof BadRequestException ||
+        err instanceof NotFoundException ||
+        err instanceof ForbiddenException
+      ) {
+        throw err;
+      }
+      this.logger.error(
+        JSON.stringify({
+          route: "documents/registration-packets",
+          requestId: requestId || null,
+          event: "create_unexpected_error",
+          errorName: err instanceof Error ? err.name : "Error",
+          message: err instanceof Error ? err.message : String(err),
+          packetType: structuredModel.packetType,
+          hasPatientId: !!patientId,
+          hasFacility: !!structuredModel.facility,
+          hasSections: structuredModel.sections.length > 0,
+          hasSignatures: structuredModel.signatures.length > 0,
+        }),
+      );
+      throw new InternalServerErrorException("Unable to save registration packet");
+    }
   }
 
   async getPacketSource(documentId: string, facilityId?: string) {
@@ -216,10 +349,17 @@ export class PacketSourceService {
   }
 
   async renderPdfFromSource(sourceJson: StructuredPacketModel): Promise<Buffer> {
-    const sigData = sourceJson.signatures?.[0];
+    const signatures = Array.isArray(sourceJson.signatures) ? sourceJson.signatures : [];
+    const sections = Array.isArray(sourceJson.sections) ? sourceJson.sections : [];
+    const sigData = signatures[0];
+    const staffSig = signatures.find((s) => s.signerType === "STAFF");
+    const facilityName = sourceJson.facility?.name?.trim() || undefined;
+
     return this.packetPdfService.generate({
       template: sourceJson.packetType,
-      templateLabel: `${sourceJson.packetType} Registration Packet`,
+      templateLabel: REGISTRATION_PACKAGE_TITLE,
+      packetTitle: REGISTRATION_PACKAGE_TITLE,
+      packetSubtypeLabel: packetSubtypeLabel(sourceJson.packetType),
       patient: sourceJson.patient
         ? {
             firstName: sourceJson.patient.firstName,
@@ -233,8 +373,8 @@ export class PacketSourceService {
             postalCode: sourceJson.patient.postalCode || null,
           }
         : null,
-      insurance: sourceJson.insurance || [],
-      sections: sourceJson.sections.map((s) => ({
+      insurance: Array.isArray(sourceJson.insurance) ? sourceJson.insurance : [],
+      sections: sections.map((s) => ({
         key: s.id,
         label: s.title,
         content: s.body,
@@ -243,14 +383,16 @@ export class PacketSourceService {
         signerName: sigData?.signerName || "—",
         signerRelationship: sigData?.relationship || "—",
         signedAt: sigData?.signedAt || "—",
-        staffName:
-          sourceJson.signatures.find((s) => s.signerType === "STAFF")?.signerName || "—",
-        staffSignedAt:
-          sourceJson.signatures.find((s) => s.signerType === "STAFF")?.signedAt || "—",
+        staffName: staffSig?.signerName || "—",
+        staffSignedAt: staffSig?.signedAt || "—",
         refusalReason: sigData?.refusalReason,
       },
-      facilityName: sourceJson.facility?.name,
-      generatedAt: sourceJson.generatedAt,
+      facilityName,
+      generatedAt: safeGeneratedAtIso(sourceJson.generatedAt),
+      packetVersion: sourceJson.packetVersion || "1.0",
+      locale: sourceJson.locale || "en",
+      patientMrn: sourceJson.patient?.mrn || undefined,
+      encounterNumber: sourceJson.encounter?.number || undefined,
     });
   }
 

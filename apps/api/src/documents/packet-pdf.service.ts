@@ -1,5 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import PDFDocument from "pdfkit";
+import { REGISTRATION_PACKAGE_TITLE } from "./packet-title.util";
 
 export interface PacketPdfInput {
   template: string;
@@ -37,6 +38,10 @@ export interface PacketPdfInput {
   patientMrn?: string;
   encounterNumber?: string;
   sourceHash?: string;
+  /** Main title under facility name (defaults to "Registration Package"). */
+  packetTitle?: string;
+  /** Small subtype line, e.g. "Urgent Care Packet". */
+  packetSubtypeLabel?: string;
 }
 
 @Injectable()
@@ -44,12 +49,16 @@ export class PacketPdfService {
   async generate(input: PacketPdfInput): Promise<Buffer> {
     return new Promise((resolve, reject) => {
       const patientName = [input.patient?.firstName, input.patient?.lastName].filter(Boolean).join(" ") || "Unknown";
+      const packetTitle = input.packetTitle || REGISTRATION_PACKAGE_TITLE;
+      const facilityName = input.facilityName?.trim() || "";
 
       const doc = new PDFDocument({
         size: "LETTER",
         margin: 50,
         info: {
-          Title: `${input.templateLabel} — ${patientName}`,
+          Title: facilityName
+            ? `${facilityName} — ${packetTitle} — ${patientName}`
+            : `${packetTitle} — ${patientName}`,
           Author: "Medora EMR",
           Subject: `Registration Packet: ${input.template}`,
           Creator: "Medora EMR v1.0",
@@ -58,7 +67,7 @@ export class PacketPdfService {
             `packetType:${input.template}`,
             `packetVersion:${input.packetVersion || "1.0"}`,
             `locale:${input.locale || "en"}`,
-            input.facilityName ? `facility:${input.facilityName}` : "",
+            facilityName ? `facility:${facilityName}` : "",
             input.patientMrn ? `mrn:${input.patientMrn}` : "",
             input.encounterNumber ? `encounter:${input.encounterNumber}` : "",
             `generated:${input.generatedAt}`,
@@ -74,12 +83,18 @@ export class PacketPdfService {
       doc.on("end", () => resolve(Buffer.concat(chunks)));
       doc.on("error", reject);
 
-      doc.fontSize(16).font("Helvetica-Bold").text(input.templateLabel, { align: "center" });
+      // Centered header: Facility Name → Registration Package → optional subtype
+      if (facilityName) {
+        doc.fontSize(16).font("Helvetica-Bold").text(facilityName, { align: "center" });
+        doc.moveDown(0.25);
+      }
+      doc.fontSize(14).font("Helvetica-Bold").text(packetTitle, { align: "center" });
+      if (input.packetSubtypeLabel) {
+        doc.moveDown(0.2);
+        doc.fontSize(9).font("Helvetica").text(input.packetSubtypeLabel, { align: "center" });
+      }
       doc.moveDown(0.3);
 
-      if (input.facilityName) {
-        doc.fontSize(10).font("Helvetica").text(input.facilityName, { align: "center" });
-      }
       doc.fontSize(10).font("Helvetica").text(input.generatedAt, { align: "center" });
       doc.moveDown(1);
 
@@ -101,11 +116,12 @@ export class PacketPdfService {
         doc.moveDown(0.8);
       }
 
-      if (input.insurance.length > 0) {
+      const insurance = Array.isArray(input.insurance) ? input.insurance : [];
+      if (insurance.length > 0) {
         doc.fontSize(12).font("Helvetica-Bold").text("Insurance Information");
         doc.moveDown(0.3);
         doc.fontSize(10).font("Helvetica");
-        for (const ins of input.insurance) {
+        for (const ins of insurance) {
           const payer = ins.payerName || "—";
           const member = ins.memberId ? ` (ID: ${ins.memberId})` : "";
           const group = ins.groupNumber ? ` Group: ${ins.groupNumber}` : "";
@@ -114,11 +130,12 @@ export class PacketPdfService {
         doc.moveDown(0.8);
       }
 
-      for (const section of input.sections) {
+      const sections = Array.isArray(input.sections) ? input.sections : [];
+      for (const section of sections) {
         if (doc.y > 680) doc.addPage();
-        doc.fontSize(11).font("Helvetica-Bold").text(section.label);
+        doc.fontSize(11).font("Helvetica-Bold").text(section.label || "");
         doc.moveDown(0.2);
-        doc.fontSize(9).font("Helvetica").text(section.content, { lineGap: 2 });
+        doc.fontSize(9).font("Helvetica").text(section.content || "", { lineGap: 2 });
         doc.moveDown(0.6);
       }
 
@@ -130,16 +147,24 @@ export class PacketPdfService {
       doc.moveDown(0.4);
       doc.fontSize(10).font("Helvetica");
 
-      if (input.signatures.refusalReason) {
-        doc.text(`REFUSED: ${input.signatures.refusalReason}`);
+      const sigs = input.signatures || {
+        signerName: "—",
+        signerRelationship: "—",
+        signedAt: "—",
+        staffName: "—",
+        staffSignedAt: "—",
+      };
+
+      if (sigs.refusalReason) {
+        doc.text(`REFUSED: ${sigs.refusalReason}`);
       } else {
-        doc.text(`Patient/Representative: ${input.signatures.signerName}`);
-        doc.text(`Relationship: ${input.signatures.signerRelationship}`);
-        doc.text(`Signed: ${input.signatures.signedAt}`);
+        doc.text(`Patient/Representative: ${sigs.signerName}`);
+        doc.text(`Relationship: ${sigs.signerRelationship}`);
+        doc.text(`Signed: ${sigs.signedAt}`);
       }
       doc.moveDown(0.4);
-      doc.text(`Staff Witness: ${input.signatures.staffName}`);
-      doc.text(`Staff Signed: ${input.signatures.staffSignedAt}`);
+      doc.text(`Staff Witness: ${sigs.staffName}`);
+      doc.text(`Staff Signed: ${sigs.staffSignedAt}`);
 
       doc.moveDown(1);
       doc.fontSize(8).fillColor("#666666").text(

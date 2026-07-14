@@ -22,6 +22,8 @@ import { DocumentsService } from "./documents.service";
 import { DocumentSignatureService } from "./document-signature.service";
 import { PacketPdfService } from "./packet-pdf.service";
 import { PacketSourceService } from "./packet-source.service";
+import { createRegistrationPacketBodySchema } from "./dto/create-registration-packet.dto";
+import { assertZodBody } from "../common/http/zod-parse";
 import { RoleCode } from "@prisma/client";
 
 @Controller("documents")
@@ -95,7 +97,9 @@ export class DocumentsController {
 
     const pdfBuffer = await this.packetPdfService.generate({
       template: body.template,
-      templateLabel: body.templateLabel || body.template,
+      templateLabel: body.templateLabel || "Registration Package",
+      packetTitle: "Registration Package",
+      packetSubtypeLabel: body.templateLabel,
       patient: body.patient || null,
       insurance: body.insurance || [],
       sections: body.sections || [],
@@ -104,16 +108,16 @@ export class DocumentsController {
       generatedAt,
     });
 
-    const patientName = [body.patient?.firstName, body.patient?.lastName].filter(Boolean).join("_") || "Patient";
+    const facilitySlug = (body.facilityName || "Facility").trim().replace(/[^\w]+/g, "_").replace(/_+/g, "_").replace(/^_|_$/g, "") || "Facility";
     const dateStr = generatedAt.slice(0, 10);
-    const fileName = `${body.template}_Registration_Package_${patientName}_${dateStr}.pdf`;
+    const fileName = `${facilitySlug}_Registration_Package_${dateStr}.pdf`;
 
     return this.documentsService.upload({
       patientId: body.patientId,
       facilityId,
       category: "REGISTRATION",
       type: "REGISTRATION_PACKET",
-      title: body.title,
+      title: body.title || (body.facilityName ? `${body.facilityName} Registration Package` : body.templateLabel),
       notes: body.notes,
       source: "SYSTEM",
       uploadedById: req.user?.userId,
@@ -134,27 +138,21 @@ export class DocumentsController {
     RoleCode.FRONT_DESK
   )
   async createRegistrationPacket(
-    @Body()
-    body: {
-      patientId: string;
-      encounterId?: string;
-      title?: string;
-      structuredModel: any;
-    },
+    @Body() body: unknown,
     @Req() req: any,
   ) {
-    if (!body.patientId) throw new BadRequestException("patientId is required");
-    if (!body.structuredModel) throw new BadRequestException("structuredModel is required");
-
+    const parsed = assertZodBody(createRegistrationPacketBodySchema.safeParse(body));
     const facilityId = req.user?.facilityId || req.headers["x-facility-id"];
+    if (!facilityId) throw new BadRequestException("facility is required");
 
     return this.packetSourceService.createPacketSource({
-      structuredModel: body.structuredModel,
-      patientId: body.patientId,
+      structuredModel: parsed.structuredModel,
+      patientId: parsed.patientId,
       facilityId,
-      encounterId: body.encounterId,
+      encounterId: parsed.encounterId,
       createdById: req.user?.userId,
-      title: body.title,
+      title: parsed.title,
+      requestId: req.headers?.["x-request-id"],
     });
   }
 
