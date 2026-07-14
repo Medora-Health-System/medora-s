@@ -1,0 +1,13 @@
+{
+  "generatedAt": "2026-07-14T22:19:31.526Z",
+  "releaseVersion": "FY2026",
+  "tendonScoped": 1840,
+  "ligamentScoped": 576,
+  "tendonUnexplainedFallbacks": 0,
+  "ligamentUnexplainedFallbacks": 0,
+  "tendonStolenByGenericSprain": 0,
+  "ligamentStolenByGenericSprain": 0,
+  "tendonFallbackSample": [],
+  "ligamentFallbackSample": [],
+  "pass": true
+}
