@@ -8203,6 +8203,12 @@ export default {
     templateFractureAdultComplaintV1: "Fracture",
     templateFractureAdultComplaintV1Help:
       "Fracture, broken bone, broken arm, broken wrist, broken hip, broken leg, broken ankle, broken finger, broken toe, clavicle, rib, jaw, nose, greenstick, buckle, avulsion, compression, stress, open, closed, pathologic fracture — all body regions.",
+    templateDislocationAdultComplaintV1: "Dislocation",
+    templateDislocationAdultComplaintV1Help:
+      "Dislocation, subluxation, dislocated shoulder, dislocated hip, dislocated finger, patella dislocation, elbow dislocation, nursemaid elbow, jaw dislocation, TMJ, AC separation, reduction, recurrent dislocation — all joints.",
+    templateSprainStrainAdultComplaintV1: "Sprain / Strain",
+    templateSprainStrainAdultComplaintV1Help:
+      "Sprain, strain, ankle sprain, wrist sprain, knee sprain, neck strain, back strain, shoulder sprain, hamstring strain, ligament injury, twisted ankle, pulled muscle — all body regions.",
     templateSubgroupInfectiousEnt: "Infectious / ENT",
     templateFeverComplaintV1: "Fever (infectious intelligence)",
     templateFeverComplaintV1Help: "Click-to-insert prompts for fever, source evaluation, and disposition.",

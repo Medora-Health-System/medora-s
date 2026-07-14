@@ -129,6 +129,8 @@ export type ProviderDocumentationTemplateId =
   | "laceration_soft_tissue_complaint_v1"
   | "animal_bite_adult_complaint_v1"
   | "fracture_adult_complaint_v1"
+  | "dislocation_adult_complaint_v1"
+  | "sprain_strain_adult_complaint_v1"
   | "fever_complaint_v1"
   | "cellulitis_skin_infection_complaint_v1"
   | "abscess_soft_tissue_complaint_v1"

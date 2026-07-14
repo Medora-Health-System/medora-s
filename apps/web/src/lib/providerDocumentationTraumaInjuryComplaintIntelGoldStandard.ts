@@ -1075,6 +1075,234 @@ export function buildConcussionFollowupComplaintV1Intel(
   });
 }
 
+/**
+ * Dislocation (adult) — single provider documentation template covering all joints.
+ * Region emphasis via `adaptDislocationComplaintIntel` (display ordering only).
+ */
+export function buildDislocationAdultComplaintV1Intel(
+  d: (key: string) => string
+): ProviderDocumentationComplaintIntelligence {
+  return buildMskTraumaV1Intel(d, {
+    hpi: [
+      d("hpiMechanismDirectBlow"),
+      d("hpiMechanismFallFromStanding"),
+      d("hpiMechanismFallFromHeight"),
+      d("hpiMechanismSportsRelated"),
+      d("hpiMechanismTwistingInjury"),
+      d("hpiMechanismAssault"),
+      d("hpiDeformityNoted"),
+      d("hpiSwellingNoted"),
+      d("hpiUnableToBearWeight"),
+      d("hpiNumbnessDistalToInjury"),
+      d("hpiTinglingDistalToInjury"),
+      d("hpiColorChangeDistalToInjury"),
+      d("hpiHandDominanceRight"),
+      d("hpiHandDominanceLeft"),
+      d("hpiSelfReducedPriorToArrival"),
+      d("hpiReductionAttemptedPriorToArrival"),
+      d("hpiRecurrentDislocationHistory"),
+      d("hpiPriorDislocationSameJoint"),
+      d("hpiProstheticJointPresent"),
+      d("hpiSiteJawTmj"),
+      d("hpiSiteShoulder"),
+      d("hpiSiteAcromioclavicular"),
+      d("hpiSiteSternoclavicular"),
+      d("hpiSiteElbow"),
+      d("hpiSiteRadialHead"),
+      d("hpiSiteWrist"),
+      d("hpiSiteHand"),
+      d("hpiSiteFinger"),
+      d("hpiSiteThumb"),
+      d("hpiSiteHip"),
+      d("hpiSitePatella"),
+      d("hpiSiteKnee"),
+      d("hpiSiteAnkle"),
+      d("hpiSiteFoot"),
+      d("hpiSiteToe"),
+      d("hpiLateralityRight"),
+      d("hpiLateralityLeft"),
+      d("hpiMalocclusionNoted"),
+      d("hpiNursemaidElbowMechanism"),
+    ],
+    physicalExam: {
+      general: [d("examAlertAndOriented"), d("examHemodynamicallyStable"), d("examNoAcuteDistress")],
+      heent: [d("examMalocclusionPresent"), d("examJawDeviationPresent"), d("examNoCervicalTenderness")],
+      musculoskeletal: [
+        d("examDeformityPresent"),
+        d("examSwellingPresent"),
+        d("examEcchymosisPresent"),
+        d("examLocalizedTendernessPresent"),
+        d("examDecreasedRangeOfMotion"),
+        d("examJointUnstable"),
+        d("examJointReducedInEd"),
+        d("examImmobilizationAppliedInEd"),
+        d("examJointAboveBelowExamined"),
+      ],
+      neuroPsych: [
+        d("examDistalPulsesIntact"),
+        d("examCapillaryRefillNormal"),
+        d("examSensationIntactDistally"),
+        d("examMotorFunctionIntactDistally"),
+        d("examNeurovascularIntactAfterReduction"),
+        d("examNoFocalNeurologicDeficit"),
+      ],
+      skin: [d("examSkinIntactOverJoint"), d("examOpenWoundPresent")],
+    },
+    extraDifferential: [
+      d("diffFractureDislocation"),
+      d("diffFracture"),
+      d("diffNeurovascularInjury"),
+      d("diffLigamentInjury"),
+    ],
+    mdmOverrides: {
+      mdmWorkingAssessment: [
+        d("waJointDislocation"),
+        d("waReducedDislocation"),
+        d("waUnreducedDislocation"),
+        d("waRecurrentDislocation"),
+        d("waNursemaidElbow"),
+        d("waMusculoskeletalInjury"),
+      ],
+      clinicalImpression: [
+        d("impJointDislocation"),
+        d("impReducedDislocation"),
+        d("impFractureDislocationConcern"),
+      ],
+      mdmPlanSummary: [
+        d("planReductionPerformed"),
+        d("planReductionSuccessful"),
+        d("planReductionUnsuccessful"),
+        d("planNeurovascularReassessmentAfterReduction"),
+        d("planImmobilizationSplintSling"),
+        d("planPainControlProvided"),
+        d("planOrthopedicFollowUp"),
+        d("planOrthopedicConsultRequested"),
+        d("planHandSurgeryConsultRequested"),
+        d("planMaxillofacialConsultRequested"),
+        d("planReturnPrecautions"),
+        d("planEdReturnWorseningSymptoms"),
+      ],
+      mdmClinicalRationale: [
+        d("reasoningMechanismConsistentDislocation"),
+        d("reasoningNeurovascularExamReassuring"),
+        d("reasoningReductionSuccessfulStable"),
+        d("reasoningConcernAssociatedFracture"),
+        d("reasoningUrgentOrthopedicCareNeeded"),
+      ],
+    },
+  });
+}
+
+/**
+ * Sprain / strain (adult) — single provider documentation template covering all regions.
+ * Region emphasis via `adaptSprainStrainComplaintIntel` (display ordering only).
+ */
+export function buildSprainStrainAdultComplaintV1Intel(
+  d: (key: string) => string
+): ProviderDocumentationComplaintIntelligence {
+  return buildMskTraumaV1Intel(d, {
+    hpi: [
+      d("hpiMechanismTwistingInjury"),
+      d("hpiMechanismSportsRelated"),
+      d("hpiMechanismFallFromStanding"),
+      d("hpiMechanismDirectBlow"),
+      d("hpiMechanismWorkRelated"),
+      d("hpiPainWorsenedWithMovement"),
+      d("hpiUnableToBearWeight"),
+      d("hpiSwellingNoted"),
+      d("hpiGivingWaySensation"),
+      d("hpiPopHeardAtInjury"),
+      d("hpiNumbnessDistalToInjury"),
+      d("hpiSiteCervical"),
+      d("hpiSiteThoracic"),
+      d("hpiSiteLumbar"),
+      d("hpiSiteShoulder"),
+      d("hpiSiteRotatorCuff"),
+      d("hpiSiteElbow"),
+      d("hpiSiteWrist"),
+      d("hpiSiteHand"),
+      d("hpiSiteFinger"),
+      d("hpiSiteThumb"),
+      d("hpiSiteHip"),
+      d("hpiSiteGroin"),
+      d("hpiSiteThigh"),
+      d("hpiSiteHamstring"),
+      d("hpiSiteQuadriceps"),
+      d("hpiSiteKnee"),
+      d("hpiSiteAnkle"),
+      d("hpiSiteFoot"),
+      d("hpiSiteToe"),
+      d("hpiSiteChestWall"),
+      d("hpiSiteAbdominalWall"),
+      d("hpiLateralityRight"),
+      d("hpiLateralityLeft"),
+      d("hpiBowelBladderDysfunctionNoted"),
+      d("hpiSaddleAnesthesiaNoted"),
+    ],
+    physicalExam: {
+      general: [d("examAlertAndOriented"), d("examHemodynamicallyStable"), d("examNoAcuteDistress")],
+      heent: [d("examMidlineCervicalTenderness"), d("examNoCervicalTenderness")],
+      musculoskeletal: [
+        d("examSwellingPresent"),
+        d("examEcchymosisPresent"),
+        d("examLocalizedTendernessPresent"),
+        d("examDecreasedRangeOfMotion"),
+        d("examJointStable"),
+        d("examJointUnstable"),
+        d("examLigamentLaxityPresent"),
+        d("examBraceAppliedInEd"),
+        d("examWeightBearingAsTolerated"),
+        d("examUnableToBearWeight"),
+      ],
+      neuroPsych: [
+        d("examDistalPulsesIntact"),
+        d("examSensationIntactDistally"),
+        d("examMotorFunctionIntactDistally"),
+        d("examNoFocalNeurologicDeficit"),
+        d("examSaddleAnesthesiaAbsent"),
+      ],
+      respiratory: [d("examChestWallTendernessPresent"), d("examLungsClearBilaterally")],
+      abdomen: [d("examAbdomenSoft"), d("examAbdominalWallTendernessPresent")],
+    },
+    extraDifferential: [
+      d("diffFracture"),
+      d("diffDislocation"),
+      d("diffLigamentInjury"),
+      d("diffOccultFracture"),
+      d("diffCompartmentSyndrome"),
+    ],
+    mdmOverrides: {
+      mdmWorkingAssessment: [
+        d("waSprain"),
+        d("waStrain"),
+        d("waLigamentInjury"),
+        d("waMusculoskeletalInjury"),
+        d("waSoftTissueInjury"),
+      ],
+      clinicalImpression: [d("impSprain"), d("impStrain"), d("impLigamentInjury")],
+      mdmPlanSummary: [
+        d("planRiceInstructions"),
+        d("planBraceOrWrapApplied"),
+        d("planWeightBearingInstructions"),
+        d("planActivityRestriction"),
+        d("planPainControlProvided"),
+        d("planOrthopedicFollowUp"),
+        d("planPrimaryCareFollowUp"),
+        d("planHandSurgeryConsultRequested"),
+        d("planReturnPrecautions"),
+        d("planEdReturnWorseningSymptoms"),
+      ],
+      mdmClinicalRationale: [
+        d("reasoningMechanismConsistentSprainStrain"),
+        d("reasoningNeurovascularExamReassuring"),
+        d("reasoningJointStableOnExam"),
+        d("reasoningConcernOccultFracture"),
+        d("reasoningOutpatientManagementAppropriate"),
+      ],
+    },
+  });
+}
+
 export const TRAUMA_INJURY_GOLD_STANDARD_BUILDERS = {
   fall: buildFallComplaintIntel,
   head_injury: buildHeadInjuryComplaintIntel,
@@ -1100,5 +1328,7 @@ export const TRAUMA_INJURY_GOLD_STANDARD_BUILDERS = {
   laceration_soft_tissue_complaint_v1: buildLacerationSoftTissueComplaintV1Intel,
   animal_bite_adult_complaint_v1: buildAnimalBiteAdultComplaintV1Intel,
   fracture_adult_complaint_v1: buildFractureAdultComplaintV1Intel,
+  dislocation_adult_complaint_v1: buildDislocationAdultComplaintV1Intel,
+  sprain_strain_adult_complaint_v1: buildSprainStrainAdultComplaintV1Intel,
   concussion_followup_complaint_v1: buildConcussionFollowupComplaintV1Intel,
 } as const;

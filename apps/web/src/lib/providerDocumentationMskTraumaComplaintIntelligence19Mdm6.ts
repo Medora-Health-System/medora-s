@@ -5,8 +5,10 @@ import {
   buildAnimalBiteAdultComplaintV1Intel,
   buildBackPainComplaintV1Intel,
   buildFallTraumaComplaintV1Intel,
+  buildDislocationAdultComplaintV1Intel,
   buildFractureAdultComplaintV1Intel,
   buildHandWristInjuryComplaintV1Intel,
+  buildSprainStrainAdultComplaintV1Intel,
   buildHipPainInjuryComplaintV1Intel,
   buildKneeInjuryComplaintV1Intel,
   buildLacerationSoftTissueComplaintV1Intel,
@@ -27,6 +29,8 @@ const minorHeadInjury = (key: string) => `providerDocumentationComplaintIntel.mi
 const lacerationSoftTissue = (key: string) => `providerDocumentationComplaintIntel.lacerationSoftTissueComplaintV1.${key}`;
 const animalBiteAdult = (key: string) => `providerDocumentationComplaintIntel.animalBiteAdultComplaintV1.${key}`;
 const fractureAdult = (key: string) => `providerDocumentationComplaintIntel.fractureAdultComplaintV1.${key}`;
+const dislocationAdult = (key: string) => `providerDocumentationComplaintIntel.dislocationAdultComplaintV1.${key}`;
+const sprainStrainAdult = (key: string) => `providerDocumentationComplaintIntel.sprainStrainAdultComplaintV1.${key}`;
 
 export const BACK_PAIN_COMPLAINT_V1_INTEL: ProviderDocumentationComplaintIntelligence =
   buildBackPainComplaintV1Intel(backPain);
@@ -52,6 +56,10 @@ export const ANIMAL_BITE_ADULT_COMPLAINT_V1_INTEL: ProviderDocumentationComplain
   buildAnimalBiteAdultComplaintV1Intel(animalBiteAdult);
 export const FRACTURE_ADULT_COMPLAINT_V1_INTEL: ProviderDocumentationComplaintIntelligence =
   buildFractureAdultComplaintV1Intel(fractureAdult);
+export const DISLOCATION_ADULT_COMPLAINT_V1_INTEL: ProviderDocumentationComplaintIntelligence =
+  buildDislocationAdultComplaintV1Intel(dislocationAdult);
+export const SPRAIN_STRAIN_ADULT_COMPLAINT_V1_INTEL: ProviderDocumentationComplaintIntelligence =
+  buildSprainStrainAdultComplaintV1Intel(sprainStrainAdult);
 
 export const MSK_TRAUMA_COMPLAINT_V1_TEMPLATE_IDS = [
   "back_pain_complaint_v1",
@@ -66,6 +74,8 @@ export const MSK_TRAUMA_COMPLAINT_V1_TEMPLATE_IDS = [
   "laceration_soft_tissue_complaint_v1",
   "animal_bite_adult_complaint_v1",
   "fracture_adult_complaint_v1",
+  "dislocation_adult_complaint_v1",
+  "sprain_strain_adult_complaint_v1",
 ] as const;
 
 export const MSK_TRAUMA_COMPLAINT_V1_INTEL_BY_TEMPLATE_ID = {
@@ -81,4 +91,6 @@ export const MSK_TRAUMA_COMPLAINT_V1_INTEL_BY_TEMPLATE_ID = {
   laceration_soft_tissue_complaint_v1: LACERATION_SOFT_TISSUE_COMPLAINT_V1_INTEL,
   animal_bite_adult_complaint_v1: ANIMAL_BITE_ADULT_COMPLAINT_V1_INTEL,
   fracture_adult_complaint_v1: FRACTURE_ADULT_COMPLAINT_V1_INTEL,
+  dislocation_adult_complaint_v1: DISLOCATION_ADULT_COMPLAINT_V1_INTEL,
+  sprain_strain_adult_complaint_v1: SPRAIN_STRAIN_ADULT_COMPLAINT_V1_INTEL,
 } as const;

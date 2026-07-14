@@ -8181,6 +8181,12 @@ export default {
     templateFractureAdultComplaintV1: "Fracture",
     templateFractureAdultComplaintV1Help:
       "Fracture, os cassé, bras cassé, poignet cassé, hanche cassée, jambe cassée, cheville cassée, doigt cassé, orteil cassé, clavicule, côte, mâchoire, nez, fracture ouverte, fracture fermée, fracture de stress, fracture pathologique — toutes régions du corps.",
+    templateDislocationAdultComplaintV1: "Luxation",
+    templateDislocationAdultComplaintV1Help:
+      "Luxation, subluxation, épaule luxée, hanche luxée, doigt luxé, luxation de la rotule, luxation du coude, poignet de bonne, luxation de la mâchoire, ATM, séparation acromio-claviculaire, réduction, luxation récidivante — toutes articulations.",
+    templateSprainStrainAdultComplaintV1: "Entorse / Élongation",
+    templateSprainStrainAdultComplaintV1Help:
+      "Entorse, élongation, entorse de cheville, entorse du poignet, entorse du genou, entorse cervicale, entorse lombaire, entorse de l'épaule, claquage des ischio-jambiers, lésion ligamentaire, cheville tordue, muscle tiré — toutes régions du corps.",
     templateSubgroupInfectiousEnt: "Infectieux / ORL",
     templateFeverComplaintV1: "Fièvre (intelligence infectieuse)",
     templateFeverComplaintV1Help: "Inserts cliquables — fièvre, évaluation de la source et sortie.",
