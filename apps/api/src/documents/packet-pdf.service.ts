@@ -42,6 +42,14 @@ export interface PacketPdfInput {
   packetTitle?: string;
   /** Small subtype line, e.g. "Urgent Care Packet". */
   packetSubtypeLabel?: string;
+  /** Facility branding from RegistrationPacketTheme (optional). */
+  branding?: {
+    logoUrl?: string | null;
+    addressLine?: string | null;
+    phone?: string | null;
+    footer?: string | null;
+    legalNotice?: string | null;
+  };
 }
 
 @Injectable()
@@ -86,6 +94,17 @@ export class PacketPdfService {
       // Centered header: Facility Name → Registration Package → optional subtype
       if (facilityName) {
         doc.fontSize(16).font("Helvetica-Bold").text(facilityName, { align: "center" });
+        doc.moveDown(0.25);
+      }
+      if (input.branding?.addressLine || input.branding?.phone) {
+        doc.fontSize(8).font("Helvetica").fillColor("#555555");
+        if (input.branding.addressLine) {
+          doc.text(input.branding.addressLine, { align: "center" });
+        }
+        if (input.branding.phone) {
+          doc.text(input.branding.phone, { align: "center" });
+        }
+        doc.fillColor("#000000");
         doc.moveDown(0.25);
       }
       doc.fontSize(14).font("Helvetica-Bold").text(packetTitle, { align: "center" });
@@ -168,9 +187,16 @@ export class PacketPdfService {
 
       doc.moveDown(1);
       doc.fontSize(8).fillColor("#666666").text(
-        "This document was electronically generated and signed via Medora EMR.",
+        input.branding?.footer?.trim() ||
+          "This document was electronically generated and signed via Medora EMR.",
         { align: "center" },
       );
+      if (input.branding?.legalNotice?.trim()) {
+        doc.moveDown(0.3);
+        doc.fontSize(7).fillColor("#888888").text(input.branding.legalNotice.trim(), {
+          align: "center",
+        });
+      }
 
       doc.end();
     });

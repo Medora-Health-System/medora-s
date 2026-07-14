@@ -47,10 +47,11 @@ describe("registration packet save resilience", () => {
     });
     expect(parsed.success).toBe(true);
     if (parsed.success) {
-      expect(parsed.data.structuredModel.signatures).toEqual([]);
-      expect(parsed.data.structuredModel.attestations).toEqual([]);
-      expect(parsed.data.structuredModel.packetVersion).toBe("1.0");
-      expect(parsed.data.structuredModel.locale).toBe("en");
+      expect(parsed.data.structuredModel).toBeDefined();
+      expect(parsed.data.structuredModel!.signatures).toEqual([]);
+      expect(parsed.data.structuredModel!.attestations).toEqual([]);
+      expect(parsed.data.structuredModel!.packetVersion).toBe("1.0");
+      expect(parsed.data.structuredModel!.locale).toBe("en");
     }
   });
 
@@ -104,6 +105,19 @@ describe("PacketSourceService.createPacketSource", () => {
     facility?: { id: string; name: string } | null;
     upload?: jest.Mock;
   }) {
+    const packetPdfService = {
+      generate: jest.fn().mockResolvedValue(Buffer.from("%PDF-1.4")),
+    };
+    const documentsService = {
+      upload: overrides?.upload ?? jest.fn().mockResolvedValue({ id: "doc-1" }),
+    };
+    const templateEngine = {
+      resolveTemplateVersionId: jest.fn().mockResolvedValue("tv-1"),
+      resolveTheme: jest.fn().mockResolvedValue({
+        footer: "This document was electronically generated and signed via Medora EMR.",
+      }),
+      persistAnswers: jest.fn().mockResolvedValue(undefined),
+    };
     const prisma = {
       facility: {
         findFirst: jest.fn().mockResolvedValue(
@@ -118,25 +132,24 @@ describe("PacketSourceService.createPacketSource", () => {
           packetType: "FREESTANDING_ER",
           packetVersion: "1.0",
           locale: "en",
+          templateVersionId: "tv-1",
           sourceHashSha256: "abc",
           renderedHashSha256: "def",
           generatedAt: new Date("2026-07-14T12:00:00.000Z"),
           finalizedAt: null,
         }),
       },
-    };
-    const packetPdfService = {
-      generate: jest.fn().mockResolvedValue(Buffer.from("%PDF-1.4")),
-    };
-    const documentsService = {
-      upload: overrides?.upload ?? jest.fn().mockResolvedValue({ id: "doc-1" }),
+      registrationPacketTemplateVersion: {
+        findUnique: jest.fn().mockResolvedValue({ id: "tv-1", templateId: "tpl-1" }),
+      },
     };
     const svc = new PacketSourceService(
       prisma as any,
       packetPdfService as any,
       documentsService as any,
+      templateEngine as any,
     );
-    return { svc, prisma, packetPdfService, documentsService };
+    return { svc, prisma, packetPdfService, documentsService, templateEngine };
   }
 
   const baseModel = {

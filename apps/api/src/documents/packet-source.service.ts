@@ -19,6 +19,12 @@ import {
   safeGeneratedAtDate,
   safeGeneratedAtIso,
 } from "./packet-title.util";
+import {
+  RegistrationPacketTemplateEngine,
+  type PacketAnswerInput,
+  type PacketConditionContext,
+  type ResolvedPacketTheme,
+} from "./registration-packet-template.engine";
 
 export interface StructuredPacketSection {
   id: string;
@@ -135,6 +141,7 @@ export class PacketSourceService {
     private readonly prisma: PrismaService,
     private readonly packetPdfService: PacketPdfService,
     private readonly documentsService: DocumentsService,
+    private readonly templateEngine: RegistrationPacketTemplateEngine,
   ) {}
 
   private logPacketSafe(
@@ -174,6 +181,11 @@ export class PacketSourceService {
     createdById?: string;
     title?: string;
     requestId?: string;
+    /** Optional answers stored separately from template (never mutates template). */
+    answers?: PacketAnswerInput[];
+    /** Optional branding override from template theme. */
+    branding?: ResolvedPacketTheme;
+    templateVersionId?: string | null;
   }) {
     const { patientId, facilityId, encounterId, createdById, title, requestId } = params;
 
@@ -226,7 +238,31 @@ export class PacketSourceService {
     try {
       const sourceHashSha256 = hashSource(structuredModel);
 
-      const pdfBuffer = await this.renderPdfFromSource(structuredModel);
+      const templateVersionId =
+        params.templateVersionId !== undefined
+          ? params.templateVersionId
+          : await this.templateEngine.resolveTemplateVersionId(
+              structuredModel.packetType,
+              structuredModel.packetVersion || "1.0",
+            );
+
+      let branding = params.branding;
+      if (!branding && templateVersionId) {
+        const versionRow = await this.prisma.registrationPacketTemplateVersion.findUnique({
+          where: { id: templateVersionId },
+          select: { id: true, templateId: true },
+        });
+        if (versionRow) {
+          branding = await this.templateEngine.resolveTheme(
+            versionRow.id,
+            versionRow.templateId,
+            facilityId,
+            structuredModel.locale || "en",
+          );
+        }
+      }
+
+      const pdfBuffer = await this.renderPdfFromSource(structuredModel, branding);
       const renderedHashSha256 = hashPdfBytes(pdfBuffer);
 
       const dateStr = safeGeneratedAtDate(structuredModel.generatedAt);
@@ -247,6 +283,7 @@ export class PacketSourceService {
           locale: structuredModel.locale,
           sourceHash: sourceHashSha256,
           renderedHash: renderedHashSha256,
+          templateVersionId: templateVersionId || null,
         }),
         source: "SYSTEM",
         uploadedById: createdById,
@@ -267,12 +304,20 @@ export class PacketSourceService {
           facilityId,
           patientId,
           encounterId: encounterId || null,
+          templateVersionId: templateVersionId || null,
           sourceJson: structuredModel as unknown as object,
           sourceHashSha256,
           renderedHashSha256,
           createdById: createdById || null,
         },
       });
+
+      if (params.answers?.length) {
+        await this.templateEngine.persistAnswers({
+          packetSourceId: packetSource.id,
+          answers: params.answers,
+        });
+      }
 
       this.logPacketSafe(requestId, "create_ok", {
         packetType: structuredModel.packetType,
@@ -290,6 +335,7 @@ export class PacketSourceService {
         packetType: packetSource.packetType,
         packetVersion: packetSource.packetVersion,
         locale: packetSource.locale,
+        templateVersionId: packetSource.templateVersionId,
         sourceHashSha256: packetSource.sourceHashSha256,
         renderedHashSha256: packetSource.renderedHashSha256,
         generatedAt: packetSource.generatedAt,
@@ -348,12 +394,16 @@ export class PacketSourceService {
     };
   }
 
-  async renderPdfFromSource(sourceJson: StructuredPacketModel): Promise<Buffer> {
+  async renderPdfFromSource(
+    sourceJson: StructuredPacketModel,
+    branding?: ResolvedPacketTheme,
+  ): Promise<Buffer> {
     const signatures = Array.isArray(sourceJson.signatures) ? sourceJson.signatures : [];
     const sections = Array.isArray(sourceJson.sections) ? sourceJson.sections : [];
     const sigData = signatures[0];
     const staffSig = signatures.find((s) => s.signerType === "STAFF");
-    const facilityName = sourceJson.facility?.name?.trim() || undefined;
+    const facilityName =
+      sourceJson.facility?.name?.trim() || branding?.facilityName?.trim() || undefined;
 
     return this.packetPdfService.generate({
       template: sourceJson.packetType,
@@ -393,6 +443,73 @@ export class PacketSourceService {
       locale: sourceJson.locale || "en",
       patientMrn: sourceJson.patient?.mrn || undefined,
       encounterNumber: sourceJson.encounter?.number || undefined,
+      branding: branding
+        ? {
+            logoUrl: branding.logoUrl,
+            addressLine: branding.addressLine,
+            phone: branding.phone,
+            footer: branding.footer,
+            legalNotice: branding.legalNotice,
+          }
+        : undefined,
+    });
+  }
+
+  /**
+   * Template-driven create path: render from published template + answers,
+   * then reuse the existing packet lifecycle (PDF → EnterpriseDocument → PacketSource).
+   */
+  async createPacketFromTemplate(params: {
+    patientId: string;
+    facilityId: string;
+    encounterId?: string;
+    createdById?: string;
+    title?: string;
+    requestId?: string;
+    templateCode: string;
+    templateVersion?: string;
+    locale: string;
+    patient: StructuredPacketModel["patient"];
+    insurance?: StructuredPacketModel["insurance"];
+    answers?: PacketAnswerInput[];
+    contextFlags?: PacketConditionContext;
+    signatures?: StructuredPacketModel["signatures"];
+    attestations?: string[];
+    facility?: { id?: string; name?: string; addressLine?: string; phone?: string } | null;
+  }) {
+    const rendered = await this.templateEngine.renderStructuredModel({
+      templateCode: params.templateCode,
+      templateVersion: params.templateVersion || "1.0",
+      locale: params.locale,
+      facility: params.facility ?? { id: params.facilityId },
+      patient: params.patient,
+      encounter: params.encounterId ? { id: params.encounterId } : null,
+      insurance: params.insurance,
+      answers: params.answers,
+      contextFlags: params.contextFlags,
+      signatures: params.signatures,
+      attestations: params.attestations,
+    });
+
+    return this.createPacketSource({
+      structuredModel: rendered.model,
+      patientId: params.patientId,
+      facilityId: params.facilityId,
+      encounterId: params.encounterId,
+      createdById: params.createdById,
+      title: params.title,
+      requestId: params.requestId,
+      branding: rendered.theme,
+      templateVersionId: rendered.templateVersionId,
+    }).then(async (created) => {
+      if (params.answers?.length) {
+        await this.templateEngine.persistAnswers({
+          packetSourceId: created.packetSourceId,
+          answers: params.answers,
+          fieldIdByKey: rendered.fieldIdByKey,
+        });
+      }
+      return created;
     });
   }
 

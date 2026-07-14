@@ -22,6 +22,7 @@ import { DocumentsService } from "./documents.service";
 import { DocumentSignatureService } from "./document-signature.service";
 import { PacketPdfService } from "./packet-pdf.service";
 import { PacketSourceService } from "./packet-source.service";
+import { RegistrationPacketTemplateEngine } from "./registration-packet-template.engine";
 import { createRegistrationPacketBodySchema } from "./dto/create-registration-packet.dto";
 import { assertZodBody } from "../common/http/zod-parse";
 import { RoleCode } from "@prisma/client";
@@ -34,6 +35,7 @@ export class DocumentsController {
     private readonly signatureService: DocumentSignatureService,
     private readonly packetPdfService: PacketPdfService,
     private readonly packetSourceService: PacketSourceService,
+    private readonly templateEngine: RegistrationPacketTemplateEngine,
   ) {}
 
   @Get()
@@ -130,6 +132,33 @@ export class DocumentsController {
     });
   }
 
+  @Get("registration-packet-templates")
+  @RequireRoles(
+    RoleCode.RN,
+    RoleCode.PROVIDER,
+    RoleCode.ADMIN,
+    RoleCode.FRONT_DESK,
+    RoleCode.BILLING,
+  )
+  async listRegistrationPacketTemplates() {
+    return this.templateEngine.listPublishedTemplates();
+  }
+
+  @Get("registration-packet-templates/:code")
+  @RequireRoles(
+    RoleCode.RN,
+    RoleCode.PROVIDER,
+    RoleCode.ADMIN,
+    RoleCode.FRONT_DESK,
+    RoleCode.BILLING,
+  )
+  async getRegistrationPacketTemplate(
+    @Param("code") code: string,
+    @Query("version") version?: string,
+  ) {
+    return this.templateEngine.getPublishedTemplateDefinition(code, version || "1.0");
+  }
+
   @Post("registration-packets")
   @RequireRoles(
     RoleCode.RN,
@@ -145,8 +174,34 @@ export class DocumentsController {
     const facilityId = req.user?.facilityId || req.headers["x-facility-id"];
     if (!facilityId) throw new BadRequestException("facility is required");
 
+    if (parsed.templateRender && !parsed.structuredModel) {
+      const tr = parsed.templateRender;
+      return this.packetSourceService.createPacketFromTemplate({
+        patientId: parsed.patientId,
+        facilityId,
+        encounterId: parsed.encounterId,
+        createdById: req.user?.userId,
+        title: parsed.title,
+        requestId: req.headers?.["x-request-id"],
+        templateCode: tr.templateCode,
+        templateVersion: tr.templateVersion,
+        locale: tr.locale || "en",
+        patient: tr.patient,
+        insurance: tr.insurance,
+        answers: tr.answers?.map((a) => ({
+          fieldKey: a.fieldKey,
+          sectionKey: a.sectionKey,
+          value: a.value ?? null,
+        })),
+        contextFlags: tr.contextFlags,
+        signatures: tr.signatures,
+        attestations: tr.attestations,
+        facility: tr.facility ?? { id: facilityId },
+      });
+    }
+
     return this.packetSourceService.createPacketSource({
-      structuredModel: parsed.structuredModel,
+      structuredModel: parsed.structuredModel!,
       patientId: parsed.patientId,
       facilityId,
       encounterId: parsed.encounterId,

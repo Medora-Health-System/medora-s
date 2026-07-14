@@ -29,6 +29,7 @@ import { seedUsErLabCatalog } from "./helpers/seed-us-er-lab-catalog";
 import { seedBillingCatalogCommonMappings } from "./helpers/seed-billing-catalog";
 import { seedMedicationBillingMappingRemediation } from "./helpers/seed-medication-billing-mapping-remediation";
 import { seedUsInsurancePayers } from "./helpers/seed-us-insurance-payers";
+import { seedRegistrationPacketTemplates } from "./helpers/seed-registration-packet-templates";
 import { HAITI_MEDICATION_CATALOG_FULL } from "./data/haiti-medication-catalog-full";
 import { HAITI_DEFAULT_FAVORITE_CODES } from "./data/haiti-medications";
 import { HAITI_LAB_CATALOG } from "./data/haiti-lab-tests";
@@ -770,6 +771,8 @@ async function main() {
   if (icdImport.status !== 0) {
     throw new Error("ICD-10 dev catalog import failed (see logs above).");
   }
+
+  await seedRegistrationPacketTemplates(prisma);
 
   // --- Summary: Haiti MVP demo ---
   const encounterCount = await prisma.encounter.count({ where: { facilityId: facilityHT.id } });

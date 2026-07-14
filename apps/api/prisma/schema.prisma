@@ -61,6 +61,7 @@ model Facility {
   diagnoses                              Diagnosis[]
   enterpriseDocuments                    EnterpriseDocument[]
   enterpriseDocPacketSources             EnterpriseDocumentPacketSource[] @relation("PacketSourceFacility")
+  registrationPacketThemes               RegistrationPacketTheme[]        @relation("RegistrationPacketThemeFacility")
   diseaseCaseReports                     DiseaseCaseReport[]
   encounters                             Encounter[]
   encounterChartExports                  EncounterChartExport[]
@@ -3610,6 +3611,8 @@ model EnterpriseDocumentPacketSource {
   facilityId         String?
   patientId          String?
   encounterId        String?
+  /// Optional link to published enterprise template version (back-compat packets may be null).
+  templateVersionId  String?
   sourceJson         Json
   sourceHashSha256   String?
   renderedHashSha256 String?
@@ -3617,16 +3620,193 @@ model EnterpriseDocumentPacketSource {
   finalizedAt        DateTime?
   createdById        String?
 
-  document  EnterpriseDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
-  facility  Facility?          @relation("PacketSourceFacility", fields: [facilityId], references: [id], onDelete: SetNull)
-  patient   Patient?           @relation("PacketSourcePatient", fields: [patientId], references: [id], onDelete: SetNull)
-  encounter Encounter?         @relation("PacketSourceEncounter", fields: [encounterId], references: [id], onDelete: SetNull)
-  createdBy User?              @relation("PacketSourceCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  document         EnterpriseDocument               @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  facility         Facility?                        @relation("PacketSourceFacility", fields: [facilityId], references: [id], onDelete: SetNull)
+  patient          Patient?                         @relation("PacketSourcePatient", fields: [patientId], references: [id], onDelete: SetNull)
+  encounter        Encounter?                       @relation("PacketSourceEncounter", fields: [encounterId], references: [id], onDelete: SetNull)
+  createdBy        User?                            @relation("PacketSourceCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  templateVersion  RegistrationPacketTemplateVersion? @relation(fields: [templateVersionId], references: [id], onDelete: SetNull)
+  answers          RegistrationPacketAnswer[]
 
   @@index([packetType])
   @@index([patientId])
   @@index([facilityId])
   @@index([generatedAt])
+  @@index([templateVersionId])
+}
+
+/// Enterprise registration packet template catalog (configurable; not hard-coded React).
+model RegistrationPacketTemplate {
+  id                String   @id @default(uuid())
+  code              String   @unique
+  name              String
+  description       String?
+  /// FacilityType scope hint (e.g. FREESTANDING_ER); null = multi-type.
+  facilityTypeScope String?
+  isActive          Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  versions RegistrationPacketTemplateVersion[]
+  themes   RegistrationPacketTheme[]
+}
+
+model RegistrationPacketTemplateVersion {
+  id               String                            @id @default(uuid())
+  templateId       String
+  version          String
+  status           RegistrationPacketTemplateStatus  @default(DRAFT)
+  localeDefault    String                            @default("en")
+  /// JSON string array, e.g. ["en","fr","es"].
+  supportedLocales Json                              @default("[\"en\",\"fr\"]")
+  publishedAt      DateTime?
+  createdAt        DateTime                          @default(now())
+  updatedAt        DateTime                          @updatedAt
+
+  template     RegistrationPacketTemplate           @relation(fields: [templateId], references: [id], onDelete: Restrict)
+  sections     RegistrationPacketSection[]
+  rules        RegistrationPacketConditionalRule[]
+  themes       RegistrationPacketTheme[]
+  packetSources EnterpriseDocumentPacketSource[]
+
+  @@unique([templateId, version])
+  @@index([status])
+}
+
+model RegistrationPacketSection {
+  id                String   @id @default(uuid())
+  templateVersionId String
+  key               String
+  sortOrder         Int
+  /// Localized titles: { en, fr, es? }.
+  titleJson         Json
+  helpTextJson      Json?
+  isRequired        Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  templateVersion RegistrationPacketTemplateVersion  @relation(fields: [templateVersionId], references: [id], onDelete: Cascade)
+  fields          RegistrationPacketField[]
+  rules           RegistrationPacketConditionalRule[]
+
+  @@unique([templateVersionId, key])
+  @@index([templateVersionId, sortOrder])
+}
+
+model RegistrationPacketField {
+  id         String                       @id @default(uuid())
+  sectionId  String
+  key        String
+  fieldType  RegistrationPacketFieldType
+  sortOrder  Int
+  labelJson  Json?
+  helpTextJson Json?
+  /// Static localized content (legal text, etc.): { en, fr, es? }.
+  contentJson Json?
+  optionsJson Json?
+  isRequired Boolean                      @default(false)
+  createdAt  DateTime                     @default(now())
+  updatedAt  DateTime                     @updatedAt
+
+  section RegistrationPacketSection           @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  answers RegistrationPacketAnswer[]
+  rules   RegistrationPacketConditionalRule[]
+
+  @@unique([sectionId, key])
+  @@index([sectionId, sortOrder])
+}
+
+model RegistrationPacketConditionalRule {
+  id                String   @id @default(uuid())
+  templateVersionId String
+  sectionId         String?
+  fieldId           String?
+  name              String
+  /// SHOW_IF | HIDE_IF | REQUIRE_IF
+  action            String
+  /// MINOR | WORKERS_COMP | SELF_PAY | MEDICARE | MEDICAID | TRAUMA | PEDIATRIC | EMERGENCY | URGENT_CARE | FREESTANDING_ER | HOSPITAL | CLINIC
+  conditionKey      String
+  conditionEquals   Boolean  @default(true)
+  expressionJson    Json?
+  sortOrder         Int      @default(0)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  templateVersion RegistrationPacketTemplateVersion @relation(fields: [templateVersionId], references: [id], onDelete: Cascade)
+  section         RegistrationPacketSection?        @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  field           RegistrationPacketField?          @relation(fields: [fieldId], references: [id], onDelete: Cascade)
+
+  @@index([templateVersionId])
+  @@index([conditionKey])
+}
+
+model RegistrationPacketTheme {
+  id                   String   @id @default(uuid())
+  templateId           String?
+  templateVersionId    String?
+  facilityId           String?
+  name                 String   @default("default")
+  logoUrl              String?
+  facilityNameOverride String?
+  addressLine          String?
+  phone                String?
+  footerJson           Json?
+  legalNoticesJson     Json?
+  brandingJson         Json?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  template        RegistrationPacketTemplate?        @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  templateVersion RegistrationPacketTemplateVersion? @relation(fields: [templateVersionId], references: [id], onDelete: Cascade)
+  facility        Facility?                          @relation("RegistrationPacketThemeFacility", fields: [facilityId], references: [id], onDelete: Cascade)
+
+  @@index([templateId])
+  @@index([templateVersionId])
+  @@index([facilityId])
+}
+
+/// Patient/staff answers for a generated packet instance — never mutates the template.
+model RegistrationPacketAnswer {
+  id             String   @id @default(uuid())
+  packetSourceId String
+  fieldId        String?
+  fieldKey       String
+  sectionKey     String?
+  valueJson      Json
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  packetSource EnterpriseDocumentPacketSource @relation(fields: [packetSourceId], references: [id], onDelete: Cascade)
+  field        RegistrationPacketField?       @relation(fields: [fieldId], references: [id], onDelete: SetNull)
+
+  @@unique([packetSourceId, fieldKey])
+  @@index([packetSourceId])
+  @@index([fieldId])
+}
+
+enum RegistrationPacketTemplateStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum RegistrationPacketFieldType {
+  STATIC_TEXT
+  CHECKBOX
+  RADIO
+  TEXT
+  TEXTAREA
+  SIGNATURE
+  DATE
+  ADDRESS
+  PHONE
+  INSURANCE
+  RELATIONSHIP
+  EMERGENCY_CONTACT
+  WITNESS
+  LANGUAGE
+  DEMOGRAPHICS_BLOCK
+  ACKNOWLEDGEMENT
 }
 
 enum MsppDiseaseReportFeedbackSeverity {

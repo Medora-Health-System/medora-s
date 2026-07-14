@@ -391,6 +391,28 @@ describe("MEDUI.REGISTRATION.PHASE_3_ELECTRONIC_PACKET_E_SIGNATURE", () => {
       expect(schema).toContain("sourceHashSha256");
       expect(schema).toContain("renderedHashSha256");
       expect(schema).toContain("finalizedAt");
+      expect(schema).toContain("templateVersionId");
+    });
+
+    it("enterprise registration packet template engine models exist", () => {
+      expect(schema).toContain("model RegistrationPacketTemplate {");
+      expect(schema).toContain("model RegistrationPacketTemplateVersion {");
+      expect(schema).toContain("model RegistrationPacketSection {");
+      expect(schema).toContain("model RegistrationPacketField {");
+      expect(schema).toContain("model RegistrationPacketConditionalRule {");
+      expect(schema).toContain("model RegistrationPacketTheme {");
+      expect(schema).toContain("model RegistrationPacketAnswer {");
+    });
+
+    it("template engine migration exists", () => {
+      expect(
+        existsSync(
+          join(
+            repoRoot,
+            "apps/api/prisma/migrations/20260928100000_registration_packet_template_engine/migration.sql",
+          ),
+        ),
+      ).toBe(true);
     });
 
     it("PacketSource relates to EnterpriseDocument", () => {
@@ -412,10 +434,18 @@ describe("MEDUI.REGISTRATION.PHASE_3_ELECTRONIC_PACKET_E_SIGNATURE", () => {
       const svc = readApi("src/documents/packet-source.service.ts");
       expect(svc).toContain("class PacketSourceService");
       expect(svc).toContain("createPacketSource");
+      expect(svc).toContain("createPacketFromTemplate");
       expect(svc).toContain("getPacketSource");
       expect(svc).toContain("renderPdfFromSource");
       expect(svc).toContain("reRenderPdf");
       expect(svc).toContain("finalizePacket");
+    });
+
+    it("RegistrationPacketTemplateEngine exists", () => {
+      const engine = readApi("src/documents/registration-packet-template.engine.ts");
+      expect(engine).toContain("class RegistrationPacketTemplateEngine");
+      expect(engine).toContain("renderStructuredModel");
+      expect(engine).toContain("evaluateSectionVisible");
     });
 
     it("PacketSourceService computes source hash (SHA-256)", () => {

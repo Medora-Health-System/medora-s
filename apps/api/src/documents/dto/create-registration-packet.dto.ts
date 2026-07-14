@@ -79,7 +79,40 @@ export const createRegistrationPacketBodySchema = z.object({
   patientId: z.string().min(1, "patientId is required"),
   encounterId: z.string().optional(),
   title: z.string().optional(),
-  structuredModel: structuredPacketModelSchema,
+  /** Legacy / current wizard path — resolved structured snapshot. */
+  structuredModel: structuredPacketModelSchema.optional(),
+  /** Template-engine path — render from published template + answers. */
+  templateRender: z
+    .object({
+      templateCode: z.string().min(1),
+      templateVersion: z.string().optional().default("1.0"),
+      locale: z.string().optional().default("en"),
+      answers: z
+        .array(
+          z.object({
+            fieldKey: z.string().min(1),
+            sectionKey: z.string().optional(),
+            value: z.unknown(),
+          }),
+        )
+        .optional()
+        .default([]),
+      contextFlags: z.record(z.boolean()).optional(),
+      patient: patientSchema,
+      insurance: structuredPacketModelSchema.shape.insurance.optional(),
+      facility: facilitySchema,
+      signatures: z.array(signatureSchema).optional().default([]),
+      attestations: z.array(z.string()).optional().default([]),
+    })
+    .optional(),
+}).superRefine((val, ctx) => {
+  if (!val.structuredModel && !val.templateRender) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "structuredModel or templateRender is required",
+      path: ["structuredModel"],
+    });
+  }
 });
 
 export type CreateRegistrationPacketBody = z.infer<typeof createRegistrationPacketBodySchema>;
