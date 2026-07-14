@@ -211,16 +211,17 @@ describe("MEDUI.DOCUMENTS.E_SIGNATURE_FOUNDATION_PHASE_1", () => {
       expect(sigPad).toContain("esignature.clear");
     });
 
-    it("supports touch events (iPad)", () => {
-      expect(sigPad).toContain("onTouchStart");
-      expect(sigPad).toContain("onTouchMove");
-      expect(sigPad).toContain("onTouchEnd");
+    it("supports pointer events for mouse, touch, pen, and signature pads", () => {
+      expect(sigPad).toContain("onPointerDown");
+      expect(sigPad).toContain("onPointerMove");
+      expect(sigPad).toContain("onPointerUp");
+      expect(sigPad).toContain("onPointerCancel");
+      expect(sigPad).toContain("setPointerCapture");
+      expect(sigPad).toContain("pointerType");
     });
 
-    it("supports mouse events", () => {
-      expect(sigPad).toContain("onMouseDown");
-      expect(sigPad).toContain("onMouseMove");
-      expect(sigPad).toContain("onMouseUp");
+    it("records optional pen pressure", () => {
+      expect(sigPad).toContain("pressure");
     });
 
     it("has disabled/read-only state", () => {
@@ -234,6 +235,10 @@ describe("MEDUI.DOCUMENTS.E_SIGNATURE_FOUNDATION_PHASE_1", () => {
 
     it("has touchAction: none for iPad compatibility", () => {
       expect(sigPad).toContain('touchAction: "none"');
+    });
+
+    it("shows multi-input hint", () => {
+      expect(sigPad).toContain("esignature.inputHint");
     });
   });
 
@@ -306,6 +311,12 @@ describe("MEDUI.DOCUMENTS.E_SIGNATURE_FOUNDATION_PHASE_1", () => {
       "signHere",
       "locked",
       "clear",
+      "inputHint",
+      "inputDevice",
+      "deviceMouse",
+      "deviceTouch",
+      "devicePen",
+      "deviceUnknown",
       "patientSignatureLabel",
       "staffSignatureLabel",
       "patientAttestation",
