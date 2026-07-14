@@ -8,7 +8,6 @@
  */
 
 import { PrismaClient, AuditAction } from "@prisma/client";
-import { join } from "node:path";
 import {
   assertDemoSeedAllowed,
   resolveMedoraSeedMode,
@@ -44,7 +43,7 @@ async function main() {
   }
 
   if (seedStepEnabled(steps, "clinical-content")) {
-    seedIcd(join(__dirname, ".."));
+    seedIcd();
     catalogsResult = await seedMedications(prisma);
   }
 

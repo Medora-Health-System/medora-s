@@ -1,11 +1,11 @@
-import { join } from "node:path";
 import { spawnSync } from "node:child_process";
+import { resolveApiPackageRoot } from "./resolve-prisma-data-directory";
 
 /**
  * ICD-10-CM sample/dev catalog import (idempotent upserts via shared importer).
  * Not a full national code set — required for diagnosis search in MVP environments.
  */
-export function seedIcd10SampleCatalog(cwd = join(__dirname, "../..")): void {
+export function seedIcd10SampleCatalog(cwd = resolveApiPackageRoot()): void {
   const icdCsvRel = "prisma/data/icd10-cm-sample-dev.csv";
   const icdImport = spawnSync(
     "pnpm",

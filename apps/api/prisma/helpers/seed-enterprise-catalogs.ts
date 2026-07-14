@@ -1,4 +1,3 @@
-import { join } from "node:path";
 import { PrismaClient } from "@prisma/client";
 import { assertNoStaleHaitiCatalogArtifacts } from "./assert-no-stale-haiti-catalog-artifacts";
 import { seedHaitiMedicationCatalog } from "./seed-haiti-medication-catalog";
@@ -22,7 +21,7 @@ import { US_ER_LAB_CATALOG } from "../data/er-us-lab-tests";
  * Idempotent. Safe for production configuration seeding.
  */
 export async function seedEnterpriseCatalogs(prisma: PrismaClient) {
-  assertNoStaleHaitiCatalogArtifacts(join(__dirname, ".."));
+  assertNoStaleHaitiCatalogArtifacts();
   await seedHaitiLabImagingCatalog(prisma, HAITI_LAB_CATALOG, HAITI_IMAGING_CATALOG);
   await seedMrvClassifiers(prisma);
   await seedHaitiImagingWave1(prisma);
