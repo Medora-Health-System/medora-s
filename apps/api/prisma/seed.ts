@@ -1,70 +1,64 @@
 /**
  * Medora Prisma seed orchestrator (MEDUI.PLATFORM.SEED_MODULARIZATION).
  *
- * Default (`prisma db seed`): full profile = enterprise config + Haiti demo.
- * Production-safe: MEDORA_SEED_PROFILE=enterprise (no demo credentials/patients).
+ * MEDORA_SEED_MODE=core|templates|clinical-content|demo|all
+ * Defaults: production → core; development → all
  *
- * Modules: core | facilities | catalogs | icd10 | templates | demo
- * Override list: MEDORA_SEED_MODULES=core,catalogs,templates
+ * Demo in production requires MEDORA_ALLOW_DEMO_SEED_IN_PRODUCTION=true
  */
 
 import { PrismaClient, AuditAction } from "@prisma/client";
 import { join } from "node:path";
 import {
-  resolveMedoraSeedModules,
-  resolveMedoraSeedProfile,
-  seedModuleEnabled,
-} from "./helpers/seed-profiles";
+  assertDemoSeedAllowed,
+  resolveMedoraSeedMode,
+  resolveMedoraSeedSteps,
+  seedStepEnabled,
+} from "./helpers/seed-modes";
+import { seedCore } from "./helpers/seed-core";
+import { seedIcd } from "./helpers/seed-icd";
+import { seedMedications } from "./helpers/seed-medications";
+import { seedRegistrationTemplates } from "./helpers/seed-registration-templates";
+import { seedBootstrapFacilities } from "./helpers/seed-bootstrap-facilities";
+import { seedDemoHaiti } from "./helpers/seed-demo-haiti";
 import { seedCoreRoles } from "./helpers/seed-core-roles";
 import { seedCoreGeo } from "./helpers/seed-core-geo";
-import { seedBootstrapFacilities } from "./helpers/seed-bootstrap-facilities";
-import { seedEnterpriseCatalogs } from "./helpers/seed-enterprise-catalogs";
-import { seedIcd10SampleCatalog } from "./helpers/seed-icd10-sample";
-import { seedRegistrationPacketTemplates } from "./helpers/seed-registration-packet-templates";
-import { seedDemoHaiti } from "./helpers/seed-demo-haiti";
 
 const prisma = new PrismaClient();
 
 async function main() {
-  const profile = resolveMedoraSeedProfile();
-  const modules = resolveMedoraSeedModules();
-  console.log(`\n→ Medora seed profile=${profile} modules=${modules.join(",")}\n`);
+  const mode = resolveMedoraSeedMode();
+  const steps = resolveMedoraSeedSteps();
+  console.log(`\n→ Medora seed mode=${mode} steps=${steps.join(",")}\n`);
 
-  let rolesResult: Awaited<ReturnType<typeof seedCoreRoles>> | null = null;
+  if (seedStepEnabled(steps, "demo")) {
+    assertDemoSeedAllowed();
+  }
+
+  let rolesResult: Awaited<ReturnType<typeof seedCore>> | null = null;
+  let catalogsResult: Awaited<ReturnType<typeof seedMedications>> | null = null;
   let facilitiesResult: Awaited<ReturnType<typeof seedBootstrapFacilities>> | null = null;
-  let catalogsResult: Awaited<ReturnType<typeof seedEnterpriseCatalogs>> | null = null;
 
-  if (seedModuleEnabled(modules, "core")) {
-    rolesResult = await seedCoreRoles(prisma);
+  if (seedStepEnabled(steps, "core")) {
+    rolesResult = await seedCore(prisma);
+  }
+
+  if (seedStepEnabled(steps, "clinical-content")) {
+    seedIcd(join(__dirname, ".."));
+    catalogsResult = await seedMedications(prisma);
+  }
+
+  if (seedStepEnabled(steps, "templates")) {
+    await seedRegistrationTemplates(prisma);
+  }
+
+  if (seedStepEnabled(steps, "demo")) {
+    // Demo depends on roles, geo, facilities, and catalogs for inventory links.
+    rolesResult = rolesResult ?? (await seedCoreRoles(prisma));
     await seedCoreGeo(prisma);
-  }
-
-  if (seedModuleEnabled(modules, "facilities")) {
     facilitiesResult = await seedBootstrapFacilities(prisma);
-  }
+    catalogsResult = catalogsResult ?? (await seedMedications(prisma));
 
-  if (seedModuleEnabled(modules, "catalogs")) {
-    catalogsResult = await seedEnterpriseCatalogs(prisma);
-  }
-
-  if (seedModuleEnabled(modules, "icd10")) {
-    seedIcd10SampleCatalog(join(__dirname, ".."));
-  }
-
-  if (seedModuleEnabled(modules, "templates")) {
-    await seedRegistrationPacketTemplates(prisma);
-  }
-
-  if (seedModuleEnabled(modules, "demo")) {
-    if (!rolesResult || !facilitiesResult || !catalogsResult) {
-      // Demo depends on prior modules; ensure they ran even if caller used MEDORA_SEED_MODULES=demo alone.
-      rolesResult = rolesResult ?? (await seedCoreRoles(prisma));
-      if (!facilitiesResult) {
-        await seedCoreGeo(prisma);
-        facilitiesResult = await seedBootstrapFacilities(prisma);
-      }
-      catalogsResult = catalogsResult ?? (await seedEnterpriseCatalogs(prisma));
-    }
     await seedDemoHaiti({
       prisma,
       roles: rolesResult.roles,
@@ -75,7 +69,9 @@ async function main() {
       medCatalogIds: catalogsResult.medCatalogIds,
       vaccineCatalogIds: catalogsResult.vaccineCatalogIds,
     });
-  } else {
+  }
+
+  if (!seedStepEnabled(steps, "demo")) {
     await prisma.auditLog.createMany({
       data: [
         {
@@ -83,17 +79,17 @@ async function main() {
           entityType: "SYSTEM",
           entityId: "seed",
           metadata: {
-            note: "Enterprise configuration seed completed",
-            profile,
-            modules,
+            note: "Configuration seed completed",
+            mode,
+            steps,
           },
         },
       ],
       skipDuplicates: true,
     });
-    console.log("\n---------- Seed complete: enterprise configuration ----------");
-    console.log("Profile:", profile);
-    console.log("Modules:", modules.join(", "));
+    console.log("\n---------- Seed complete ----------");
+    console.log("Mode:", mode);
+    console.log("Steps:", steps.join(", "));
     console.log("Demo users/patients/clinical rows: skipped");
     console.log("----------------------------------------\n");
   }
@@ -104,7 +100,7 @@ main()
     await prisma.$disconnect();
   })
   .catch(async (e) => {
-    console.error(e);
+    console.error(e instanceof Error ? e.message : e);
     await prisma.$disconnect();
     process.exit(1);
   });
