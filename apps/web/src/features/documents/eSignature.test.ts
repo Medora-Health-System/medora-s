@@ -23,6 +23,9 @@ describe("MEDUI.DOCUMENTS.E_SIGNATURE_FOUNDATION_PHASE_1", () => {
   const controller = readApi("src/documents/documents.controller.ts");
   const docsModule = readApi("src/documents/documents.module.ts");
   const sigPad = readSrc("components/documents/SignatureCapturePad.tsx");
+  const sigModel = readSrc("components/documents/signatureVectorModel.ts");
+  const sigRenderer = readSrc("components/documents/SignatureVectorRenderer.tsx");
+  const adapters = readSrc("components/documents/externalSignatureAdapters.ts");
   const wizard = readSrc("components/documents/RegistrationPacketWizard.tsx");
   const docCenter = readSrc("components/documents/RegistrationDocumentCenter.tsx");
   const enMessages = readSrc("i18n/messages/en.ts");
@@ -201,10 +204,10 @@ describe("MEDUI.DOCUMENTS.E_SIGNATURE_FOUNDATION_PHASE_1", () => {
       expect(sigPad).toContain("<canvas");
     });
 
-    it("captures strokes as JSON (Point array)", () => {
-      expect(sigPad).toContain("Stroke");
-      expect(sigPad).toContain("Point");
-      expect(sigPad).toContain("strokes");
+    it("captures canonical vector strokes", () => {
+      expect(sigModel).toContain("SignatureStroke");
+      expect(sigModel).toContain("SignaturePoint");
+      expect(sigModel).toContain("normalizeSignatureValue");
     });
 
     it("has clear button", () => {
@@ -217,6 +220,7 @@ describe("MEDUI.DOCUMENTS.E_SIGNATURE_FOUNDATION_PHASE_1", () => {
       expect(sigPad).toContain("onPointerUp");
       expect(sigPad).toContain("onPointerCancel");
       expect(sigPad).toContain("setPointerCapture");
+      expect(sigPad).toContain("onLostPointerCapture");
       expect(sigPad).toContain("pointerType");
     });
 
@@ -239,6 +243,28 @@ describe("MEDUI.DOCUMENTS.E_SIGNATURE_FOUNDATION_PHASE_1", () => {
 
     it("shows multi-input hint", () => {
       expect(sigPad).toContain("esignature.inputHint");
+    });
+
+    it("rejects palms while a pen is active", () => {
+      expect(sigPad).toContain('activePointerType.current === "pen"');
+    });
+
+    it("provides a vector renderer and device adapters", () => {
+      expect(sigRenderer).toContain("SignatureVectorRenderer");
+      expect(adapters).toContain("BrowserPointerSignatureAdapter");
+      expect(adapters).toContain("TopazSignatureAdapter");
+      expect(adapters).toContain("WacomSignatureAdapter");
+      expect(adapters).toContain("listAvailableHardwareSignatureAdapters");
+    });
+
+    it("shows hardware pad option only via feature-detected adapters", () => {
+      expect(wizard).toContain("listAvailableHardwareSignatureAdapters");
+      expect(wizard).toContain("hardwareAdapters");
+    });
+
+    it("shows return-device confirmation after finalize", () => {
+      expect(wizard).toContain("esignature.returnDevice");
+      expect(wizard).toContain("returnDevice");
     });
   });
 
@@ -304,6 +330,31 @@ describe("MEDUI.DOCUMENTS.E_SIGNATURE_FOUNDATION_PHASE_1", () => {
     it("checks lockedAt for locked status", () => {
       expect(docCenter).toContain("doc.lockedAt");
     });
+
+    it("can replay stored signature vectors", () => {
+      expect(docCenter).toContain("SignatureVectorRenderer");
+      expect(docCenter).toContain("showStoredSignatures");
+      expect(docCenter).toContain("/signatures");
+    });
+  });
+
+  describe("API: finalize embeds signature vectors before hash", () => {
+    const packetSource = readApi("src/documents/packet-source.service.ts");
+    const packetPdf = readApi("src/documents/packet-pdf.service.ts");
+    const docsService = readApi("src/documents/documents.service.ts");
+
+    it("finalizePacket re-renders PDF and replaces stored file", () => {
+      expect(packetSource).toContain("replaceFileContent");
+      expect(packetSource).toContain("mergeStoredSignaturesIntoModel");
+      expect(packetSource).toContain("renderedHashSha256");
+      expect(docsService).toContain("async replaceFileContent");
+    });
+
+    it("PDF draws patient and staff signature strokes", () => {
+      expect(packetPdf).toContain("function drawSignature");
+      expect(packetPdf).toContain("patientStrokes");
+      expect(packetPdf).toContain("staffStrokes");
+    });
   });
 
   describe("i18n: esignature keys", () => {
@@ -327,6 +378,11 @@ describe("MEDUI.DOCUMENTS.E_SIGNATURE_FOUNDATION_PHASE_1", () => {
       "statusCompleted",
       "statusSignedLocked",
       "statusRefused",
+      "captured",
+      "resign",
+      "useTouchScreen",
+      "useConnectedPad",
+      "returnDevice",
     ];
 
     for (const key of requiredKeys) {

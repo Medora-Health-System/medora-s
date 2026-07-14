@@ -5,7 +5,13 @@ import { useI18n } from "@/lib/i18n";
 import { encounterBcp47 } from "@/lib/encounterChromeI18n";
 import { apiFetch } from "@/lib/apiClient";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
-import { SignatureCapturePad, type SignatureResult } from "./SignatureCapturePad";
+import { SignatureCapturePad } from "./SignatureCapturePad";
+import { SignatureVectorRenderer } from "./SignatureVectorRenderer";
+import { type SignatureValue } from "./signatureVectorModel";
+import {
+  listAvailableHardwareSignatureAdapters,
+  type ExternalSignatureDeviceAdapter,
+} from "./externalSignatureAdapters";
 
 const API_BASE = "/api/backend";
 
@@ -105,13 +111,26 @@ export function RegistrationPacketWizard({
   const [staffName, setStaffName] = useState("");
   const [refusalReason, setRefusalReason] = useState("");
   const [isRefused, setIsRefused] = useState(false);
-  const [patientSigData, setPatientSigData] = useState<SignatureResult | null>(null);
-  const [staffSigData, setStaffSigData] = useState<SignatureResult | null>(null);
+  const [patientSigData, setPatientSigData] = useState<SignatureValue | null>(null);
+  const [staffSigData, setStaffSigData] = useState<SignatureValue | null>(null);
   const [patientAttestation, setPatientAttestation] = useState(false);
   const [staffAttestation, setStaffAttestation] = useState(false);
 
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [returnDevice, setReturnDevice] = useState(false);
+  const [hardwareAdapters, setHardwareAdapters] = useState<ExternalSignatureDeviceAdapter[]>([]);
+  const [hardwareError, setHardwareError] = useState<string | null>(null);
+
+  useEffect(() => {
+    void (async () => {
+      try {
+        setHardwareAdapters(await listAvailableHardwareSignatureAdapters());
+      } catch {
+        setHardwareAdapters([]);
+      }
+    })();
+  }, []);
 
   useEffect(() => {
     void (async () => {
@@ -185,6 +204,7 @@ export function RegistrationPacketWizard({
             signedAt: now,
             attestation: t("esignature.patientAttestation"),
             refusalReason: isRefused ? refusalReason.trim() : undefined,
+            patientStrokes: isRefused ? undefined : patientSigData,
           },
           {
             signerType: "STAFF",
@@ -192,6 +212,7 @@ export function RegistrationPacketWizard({
             relationship: "witness",
             signedAt: now,
             attestation: t("esignature.staffAttestation"),
+            staffStrokes: staffSigData,
           },
         ],
         attestations: [
@@ -261,7 +282,8 @@ export function RegistrationPacketWizard({
         facilityId,
       });
 
-      onComplete();
+      setReturnDevice(true);
+      window.setTimeout(onComplete, 800);
     } catch (err: unknown) {
       const detail = err instanceof Error ? err.message : "";
       setSaveError(
@@ -456,6 +478,48 @@ export function RegistrationPacketWizard({
           {/* Patient/Rep signature */}
           {!isRefused ? (
             <div style={{ marginBottom: 12 }}>
+              {hardwareAdapters.length > 0 && (
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 8 }}>
+                  <span style={{ fontSize: 11, color: "#64748b", alignSelf: "center" }}>{t("esignature.useTouchScreen")}</span>
+                  {hardwareAdapters.map((adapter) => (
+                    <button
+                      key={adapter.id}
+                      type="button"
+                      disabled={!allReviewed}
+                      onClick={() => {
+                        void (async () => {
+                          setHardwareError(null);
+                          try {
+                            await adapter.connect();
+                            const captured = await adapter.capture();
+                            setPatientSigData(captured);
+                          } catch {
+                            setHardwareError(t("esignature.useConnectedPad"));
+                          } finally {
+                            try {
+                              await adapter.disconnect();
+                            } catch { /* ignore */ }
+                          }
+                        })();
+                      }}
+                      style={{
+                        padding: "4px 10px",
+                        fontSize: 11,
+                        fontWeight: 600,
+                        border: "1px solid #cbd5e1",
+                        borderRadius: 4,
+                        background: "#fff",
+                        cursor: allReviewed ? "pointer" : "not-allowed",
+                      }}
+                    >
+                      {t(adapter.labelKey)}
+                    </button>
+                  ))}
+                </div>
+              )}
+              {hardwareError && (
+                <p style={{ margin: "0 0 8px", fontSize: 11, color: "#b91c1c" }}>{hardwareError}</p>
+              )}
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 8 }}>
                 <div>
                   <label style={{ fontSize: 12, fontWeight: 500, display: "block", marginBottom: 3 }}>{t("packetWizard.signerNameLabel")}</label>
@@ -486,10 +550,13 @@ export function RegistrationPacketWizard({
                 </div>
               </div>
               <SignatureCapturePad
-                onCapture={setPatientSigData}
+                value={patientSigData}
+                onChange={setPatientSigData}
                 disabled={!allReviewed}
                 label={t("esignature.patientSignatureLabel")}
               />
+              {patientSigData && <SignatureVectorRenderer value={patientSigData} signerName={signerName} relationship={signerRelationship} />}
+              {patientSigData && <p style={{ margin: "4px 0", fontSize: 11, color: "#15803d" }}>{t("esignature.captured")}</p>}
               <label style={{ display: "flex", alignItems: "flex-start", gap: 6, marginTop: 6, fontSize: 12, color: "#334155", cursor: "pointer" }}>
                 <input type="checkbox" checked={patientAttestation} onChange={(e) => setPatientAttestation(e.target.checked)} disabled={!allReviewed} style={{ marginTop: 2 }} />
                 <span>{t("esignature.patientAttestation")}</span>
@@ -522,10 +589,13 @@ export function RegistrationPacketWizard({
             />
           </div>
           <SignatureCapturePad
-            onCapture={setStaffSigData}
+            value={staffSigData}
+            onChange={setStaffSigData}
             disabled={!allReviewed}
             label={t("esignature.staffSignatureLabel")}
           />
+          {staffSigData && <SignatureVectorRenderer value={staffSigData} signerName={staffName} relationship="witness" />}
+          {staffSigData && <p style={{ margin: "4px 0", fontSize: 11, color: "#15803d" }}>{t("esignature.captured")}</p>}
           <label style={{ display: "flex", alignItems: "flex-start", gap: 6, marginTop: 6, fontSize: 12, color: "#334155", cursor: "pointer" }}>
             <input type="checkbox" checked={staffAttestation} onChange={(e) => setStaffAttestation(e.target.checked)} disabled={!allReviewed} style={{ marginTop: 2 }} />
             <span>{t("esignature.staffAttestation")}</span>
@@ -536,6 +606,7 @@ export function RegistrationPacketWizard({
               {saveError}
             </div>
           )}
+          {returnDevice && <div style={{ marginBottom: 8, fontSize: 12, color: "#15803d" }}>{t("esignature.returnDevice")}</div>}
 
           <div style={{ display: "flex", gap: 8 }}>
             <button

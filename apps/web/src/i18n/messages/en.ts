@@ -1780,6 +1780,7 @@ export default {
     packetStatusInProgress: "In progress",
     packetStatusRefused: "Refused",
     newPacketVersion: "New version",
+    showStoredSignatures: "Show signatures",
   },
   packetWizard: {
     progress: "Progress",
@@ -1857,6 +1858,11 @@ export default {
     statusCompleted: "Signatures complete",
     statusSignedLocked: "Signed & locked",
     statusRefused: "Refused",
+    captured: "Signature captured",
+    resign: "Re-sign",
+    useTouchScreen: "Use touch screen",
+    useConnectedPad: "Use connected signature pad",
+    returnDevice: "Please return the signature device.",
   },
   createFollowUpModal: {
     title: "New follow-up",

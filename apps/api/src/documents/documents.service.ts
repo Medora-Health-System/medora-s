@@ -225,4 +225,47 @@ export class DocumentsService {
 
     return { deleted: true };
   }
+
+  /**
+   * Replace stored PDF bytes for an existing document (e.g. after embedding signatures).
+   * Updates checksum/size/path; does not change clinical metadata.
+   */
+  async replaceFileContent(params: {
+    documentId: string;
+    facilityId?: string;
+    fileName: string;
+    mimeType: string;
+    buffer: Buffer;
+  }) {
+    const where: Record<string, unknown> = { id: params.documentId, status: "ACTIVE" };
+    if (params.facilityId) where.facilityId = params.facilityId;
+
+    const doc = await this.prisma.enterpriseDocument.findFirst({
+      where,
+      select: { id: true, facilityId: true },
+    });
+    if (!doc) throw new NotFoundException("Document not found");
+
+    const checksumSha256 = crypto.createHash("sha256").update(params.buffer).digest("hex");
+    const saveResult = await this.storageService.save({
+      documentId: doc.id,
+      facilityId: doc.facilityId || params.facilityId || null,
+      fileName: params.fileName,
+      mimeType: params.mimeType,
+      buffer: params.buffer,
+    });
+
+    await this.prisma.enterpriseDocument.update({
+      where: { id: doc.id },
+      data: {
+        storagePath: saveResult.storagePath,
+        checksumSha256,
+        fileSize: params.buffer.length,
+        fileName: params.fileName,
+        mimeType: params.mimeType,
+      },
+    });
+
+    return { checksumSha256, storagePath: saveResult.storagePath, fileSize: params.buffer.length };
+  }
 }

@@ -8,131 +8,132 @@
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useI18n } from "@/lib/i18n";
+import {
+  cloneSignatureValue,
+  emptySignatureValue,
+  isSignatureEmpty,
+  normalizeSignatureValue,
+  type SignaturePoint,
+  type SignatureValue,
+} from "./signatureVectorModel";
 
-export type SignaturePointerType = "mouse" | "touch" | "pen" | "unknown";
-
-type Point = {
-  x: number;
-  y: number;
-  t: number;
-  /** 0–1 when the device reports pressure (pen / some pads). */
-  pressure?: number;
-  pointerType?: SignaturePointerType;
-};
-
-type Stroke = Point[];
-
-export type SignatureResult = {
-  strokes: Stroke[];
-  width: number;
-  height: number;
-  /** Last active input modality used while capturing. */
-  inputDevice?: SignaturePointerType;
-};
-
-function normalizePointerType(type: string | undefined): SignaturePointerType {
-  if (type === "mouse" || type === "touch" || type === "pen") return type;
-  return "unknown";
-}
+/** @deprecated Use SignatureValue. */
+export type SignatureResult = SignatureValue;
 
 export function SignatureCapturePad({
+  value,
+  onChange,
   onCapture,
   disabled = false,
   label,
 }: {
-  onCapture: (data: SignatureResult | null) => void;
+  value?: SignatureValue | null;
+  onChange?: (data: SignatureValue | null) => void;
+  /** @deprecated Use onChange. */
+  onCapture?: (data: SignatureValue | null) => void;
   disabled?: boolean;
   label?: string;
 }) {
   const { t } = useI18n();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
-  const [strokes, setStrokes] = useState<Stroke[]>([]);
-  const [activeInput, setActiveInput] = useState<SignaturePointerType>("unknown");
-  const currentStroke = useRef<Stroke>([]);
+  const valueRef = useRef<SignatureValue>(normalizeSignatureValue(value) || emptySignatureValue(400, 200));
+  const currentStroke = useRef<SignaturePoint[]>([]);
   const activePointerId = useRef<number | null>(null);
+  const activePointerType = useRef<string | null>(null);
   const isDrawingRef = useRef(false);
-
-  const PAD_WIDTH = 400;
-  const PAD_HEIGHT = 160;
+  const lastEmitAt = useRef(0);
+  const emit = useCallback((next: SignatureValue | null) => {
+    onChange?.(next);
+    onCapture?.(next);
+  }, [onCapture, onChange]);
 
   const redraw = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
-    ctx.clearRect(0, 0, PAD_WIDTH, PAD_HEIGHT);
+    const rect = canvas.getBoundingClientRect();
+    const dpr = window.devicePixelRatio || 1;
+    const width = Math.max(1, Math.round(rect.width * dpr));
+    const height = Math.max(1, Math.round(rect.height * dpr));
+    if (canvas.width !== width || canvas.height !== height) {
+      canvas.width = width;
+      canvas.height = height;
+    }
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, rect.width, rect.height);
     ctx.strokeStyle = "#0f172a";
-    ctx.lineWidth = 2;
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
-    for (const stroke of strokes) {
-      if (stroke.length < 2) continue;
+    const scaleX = rect.width / valueRef.current.width;
+    const scaleY = rect.height / valueRef.current.height;
+    for (const stroke of valueRef.current.strokes) {
+      if (stroke.points.length < 2) continue;
+      const points = stroke.points;
       ctx.beginPath();
-      ctx.moveTo(stroke[0].x, stroke[0].y);
-      for (let i = 1; i < stroke.length; i++) {
-        ctx.lineTo(stroke[i].x, stroke[i].y);
+      ctx.moveTo(points[0].x * scaleX, points[0].y * scaleY);
+      for (let i = 1; i < points.length; i++) {
+        const previous = points[i - 1];
+        const point = points[i];
+        const midpointX = ((previous.x + point.x) / 2) * scaleX;
+        const midpointY = ((previous.y + point.y) / 2) * scaleY;
+        ctx.lineWidth = 1.2 + (point.pressure ?? 0.5) * 2.4;
+        ctx.quadraticCurveTo(previous.x * scaleX, previous.y * scaleY, midpointX, midpointY);
       }
       ctx.stroke();
     }
-  }, [strokes]);
+  }, []);
 
   useEffect(() => {
     redraw();
   }, [redraw]);
 
   useEffect(() => {
-    if (strokes.length > 0) {
-      onCapture({
-        strokes,
-        width: PAD_WIDTH,
-        height: PAD_HEIGHT,
-        inputDevice: activeInput !== "unknown" ? activeInput : undefined,
-      });
-    } else {
-      onCapture(null);
-    }
-  }, [strokes, onCapture, activeInput]);
+    const next = normalizeSignatureValue(value);
+    valueRef.current = next || emptySignatureValue(valueRef.current.width, valueRef.current.height);
+    redraw();
+  }, [value, redraw]);
 
-  const getPos = (e: React.PointerEvent<HTMLCanvasElement>): Point => {
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const observer = new ResizeObserver(() => redraw());
+    observer.observe(canvas);
+    return () => observer.disconnect();
+  }, [redraw]);
+
+  const getPos = (e: React.PointerEvent<HTMLCanvasElement>): SignaturePoint => {
     const canvas = canvasRef.current!;
     const rect = canvas.getBoundingClientRect();
-    const scaleX = PAD_WIDTH / rect.width;
-    const scaleY = PAD_HEIGHT / rect.height;
-    const pointerType = normalizePointerType(e.pointerType);
+    const scaleX = valueRef.current.width / rect.width;
+    const scaleY = valueRef.current.height / rect.height;
+    const pointerType = e.pointerType === "mouse" || e.pointerType === "touch" || e.pointerType === "pen"
+      ? e.pointerType
+      : undefined;
     const pressure =
       typeof e.pressure === "number" && e.pressure > 0 ? Math.min(1, e.pressure) : undefined;
     return {
       x: (e.clientX - rect.left) * scaleX,
       y: (e.clientY - rect.top) * scaleY,
-      t: Date.now(),
+      timestamp: Date.now(),
       pressure,
       pointerType,
     };
   };
 
-  const paintSegment = (from: Point, to: Point) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-    const baseWidth = 2;
-    const width =
-      typeof to.pressure === "number" ? Math.max(1.2, baseWidth * (0.6 + to.pressure)) : baseWidth;
-    ctx.strokeStyle = "#0f172a";
-    ctx.lineWidth = width;
-    ctx.lineCap = "round";
-    ctx.lineJoin = "round";
-    ctx.beginPath();
-    ctx.moveTo(from.x, from.y);
-    ctx.lineTo(to.x, to.y);
-    ctx.stroke();
-  };
+  const emitCurrent = useCallback((force = false) => {
+    const now = Date.now();
+    if (!force && now - lastEmitAt.current < 32) return;
+    lastEmitAt.current = now;
+    emit(isSignatureEmpty(valueRef.current) ? null : cloneSignatureValue(valueRef.current));
+  }, [emit]);
 
   const startDraw = (e: React.PointerEvent<HTMLCanvasElement>) => {
     if (disabled) return;
-    // One active pointer only (ignore multi-touch palm / second finger).
     if (activePointerId.current !== null && activePointerId.current !== e.pointerId) return;
+    // Once a pen is active, reject touch events from a resting palm.
+    if (activePointerType.current === "pen" && e.pointerType === "touch") return;
     e.preventDefault();
     try {
       e.currentTarget.setPointerCapture(e.pointerId);
@@ -140,11 +141,15 @@ export function SignatureCapturePad({
       /* some browsers may throw if already captured */
     }
     activePointerId.current = e.pointerId;
+    activePointerType.current = e.pointerType;
     isDrawingRef.current = true;
     setIsDrawing(true);
     const pos = getPos(e);
-    setActiveInput(pos.pointerType || "unknown");
     currentStroke.current = [pos];
+    valueRef.current = {
+      ...valueRef.current,
+      strokes: [...valueRef.current.strokes, { id: crypto.randomUUID?.() ?? `stroke-${Date.now()}`, points: currentStroke.current }],
+    };
   };
 
   const moveDraw = (e: React.PointerEvent<HTMLCanvasElement>) => {
@@ -152,9 +157,11 @@ export function SignatureCapturePad({
     if (activePointerId.current !== null && e.pointerId !== activePointerId.current) return;
     e.preventDefault();
     const pos = getPos(e);
-    const prev = currentStroke.current[currentStroke.current.length - 1];
     currentStroke.current.push(pos);
-    if (prev) paintSegment(prev, pos);
+    const strokes = valueRef.current.strokes;
+    strokes[strokes.length - 1] = { ...strokes[strokes.length - 1], points: currentStroke.current };
+    redraw();
+    emitCurrent();
   };
 
   const endDraw = (e: React.PointerEvent<HTMLCanvasElement>) => {
@@ -171,24 +178,41 @@ export function SignatureCapturePad({
     isDrawingRef.current = false;
     setIsDrawing(false);
     activePointerId.current = null;
+    activePointerType.current = null;
     if (currentStroke.current.length > 1) {
-      setStrokes((prev) => [...prev, currentStroke.current]);
+      valueRef.current = {
+        ...valueRef.current,
+        capturedAt: new Date().toISOString(),
+        inputDevice: currentStroke.current[0].pointerType,
+        strokes: valueRef.current.strokes.map((stroke) => ({
+          ...stroke,
+          points: stroke.points.map((point) => ({ ...point })),
+        })),
+      };
+      redraw();
+      emitCurrent(true);
+    } else if (valueRef.current.strokes.length > 0) {
+      // Drop incomplete single-point stroke; keep prior completed strokes.
+      valueRef.current = {
+        ...valueRef.current,
+        strokes: valueRef.current.strokes.slice(0, -1),
+      };
+      redraw();
+      emitCurrent(true);
     }
     currentStroke.current = [];
   };
 
   const clear = () => {
-    setStrokes([]);
+    valueRef.current = emptySignatureValue(valueRef.current.width, valueRef.current.height);
     currentStroke.current = [];
     activePointerId.current = null;
+    activePointerType.current = null;
     isDrawingRef.current = false;
     setIsDrawing(false);
-    setActiveInput("unknown");
-    const canvas = canvasRef.current;
-    if (canvas) {
-      const ctx = canvas.getContext("2d");
-      if (ctx) ctx.clearRect(0, 0, PAD_WIDTH, PAD_HEIGHT);
-    }
+    activePointerType.current = null;
+    redraw();
+    emit(null);
   };
 
   return (
@@ -205,17 +229,17 @@ export function SignatureCapturePad({
           background: disabled ? "#f8fafc" : "#fff",
           position: "relative",
           touchAction: "none",
+          overscrollBehavior: "contain",
           WebkitUserSelect: "none",
           userSelect: "none",
         }}
       >
         <canvas
           ref={canvasRef}
-          width={PAD_WIDTH}
-          height={PAD_HEIGHT}
+          tabIndex={disabled ? -1 : 0}
           style={{
             width: "100%",
-            height: PAD_HEIGHT,
+            height: 200,
             cursor: disabled ? "not-allowed" : "crosshair",
             display: "block",
             touchAction: "none",
@@ -224,8 +248,9 @@ export function SignatureCapturePad({
           onPointerMove={moveDraw}
           onPointerUp={endDraw}
           onPointerCancel={endDraw}
+          onLostPointerCapture={endDraw}
         />
-        {strokes.length === 0 && !isDrawing && (
+        {isSignatureEmpty(valueRef.current) && !isDrawing && (
           <div
             style={{
               position: "absolute",
@@ -269,17 +294,27 @@ export function SignatureCapturePad({
           >
             {t("esignature.clear")}
           </button>
-          {activeInput !== "unknown" && strokes.length > 0 && (
-            <span style={{ fontSize: 10, color: "#94a3b8" }}>
-              {t("esignature.inputDevice")}:{" "}
-              {activeInput === "mouse"
-                ? t("esignature.deviceMouse")
-                : activeInput === "touch"
-                  ? t("esignature.deviceTouch")
-                  : activeInput === "pen"
-                    ? t("esignature.devicePen")
-                    : t("esignature.deviceUnknown")}
-            </span>
+          {!isSignatureEmpty(valueRef.current) && <span style={{ fontSize: 11, color: "#15803d" }}>{t("esignature.captured")}</span>}
+          {!isSignatureEmpty(valueRef.current) && (
+            <button
+              type="button"
+              onClick={() => {
+                clear();
+                canvasRef.current?.focus();
+              }}
+              style={{
+                padding: "3px 10px",
+                fontSize: 11,
+                fontWeight: 600,
+                border: "1px solid #cbd5e1",
+                borderRadius: 4,
+                background: "#fff",
+                cursor: "pointer",
+                color: "#64748b",
+              }}
+            >
+              {t("esignature.resign")}
+            </button>
           )}
         </div>
       )}

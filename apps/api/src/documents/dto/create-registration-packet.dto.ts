@@ -42,6 +42,8 @@ const signatureSchema = z.object({
   attestation: z.string().optional(),
   signatureVectorHash: z.string().optional(),
   refusalReason: z.string().optional(),
+  patientStrokes: z.unknown().optional(),
+  staffStrokes: z.unknown().optional(),
 });
 
 export const structuredPacketModelSchema = z.object({

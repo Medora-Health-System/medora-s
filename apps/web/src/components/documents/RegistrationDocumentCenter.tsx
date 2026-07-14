@@ -4,8 +4,19 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useI18n } from "@/lib/i18n";
 import { encounterBcp47 } from "@/lib/encounterChromeI18n";
 import { RegistrationPacketWizard } from "./RegistrationPacketWizard";
+import { SignatureVectorRenderer } from "./SignatureVectorRenderer";
+import { normalizeSignatureValue, type SignatureValue } from "./signatureVectorModel";
 
 const API_BASE = "/api/backend";
+
+type StoredPacketSignature = {
+  id: string;
+  signerType: string;
+  signerName: string;
+  relationship: string | null;
+  signedAt: string;
+  signatureData: unknown;
+};
 
 type DocumentRow = {
   id: string;
@@ -103,6 +114,21 @@ export function RegistrationDocumentCenter({
 
   const [downloadError, setDownloadError] = useState<string | null>(null);
   const [missingDocs, setMissingDocs] = useState<Set<string>>(new Set());
+  const [packetSignatures, setPacketSignatures] = useState<Record<string, StoredPacketSignature[]>>({});
+
+  const loadPacketSignatures = useCallback(async (documentId: string) => {
+    try {
+      const resp = await fetch(`${API_BASE}/documents/${documentId}/signatures`, {
+        headers: { "x-facility-id": facilityId },
+        credentials: "include",
+      });
+      if (!resp.ok) return;
+      const rows = (await resp.json()) as StoredPacketSignature[];
+      setPacketSignatures((prev) => ({ ...prev, [documentId]: Array.isArray(rows) ? rows : [] }));
+    } catch {
+      /* keep UI usable without signature preview */
+    }
+  }, [facilityId]);
 
   const handleDownload = async (docId: string, fileName: string) => {
     setDownloadError(null);
@@ -488,6 +514,36 @@ export function RegistrationDocumentCenter({
                         )}
                       </div>
                     )}
+                    <button
+                      type="button"
+                      onClick={() => void loadPacketSignatures(existing.id)}
+                      style={{
+                        padding: "2px 8px",
+                        fontSize: 10,
+                        fontWeight: 600,
+                        border: "1px solid #cbd5e1",
+                        borderRadius: 4,
+                        background: "#fff",
+                        cursor: "pointer",
+                        marginBottom: 6,
+                      }}
+                    >
+                      {t("documentCenter.showStoredSignatures")}
+                    </button>
+                    {(packetSignatures[existing.id] || []).map((sig) => {
+                      const vector = normalizeSignatureValue(sig.signatureData as SignatureValue);
+                      if (!vector) return null;
+                      return (
+                        <div key={sig.id} style={{ marginBottom: 6 }}>
+                          <SignatureVectorRenderer
+                            value={vector}
+                            signerName={sig.signerName}
+                            relationship={sig.relationship || sig.signerType}
+                            signedAt={formatDate(sig.signedAt)}
+                          />
+                        </div>
+                      );
+                    })}
                   </>
                 )}
                 <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>

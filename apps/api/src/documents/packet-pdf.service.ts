@@ -30,6 +30,10 @@ export interface PacketPdfInput {
     staffName: string;
     staffSignedAt: string;
     refusalReason?: string;
+    patientStrokes?: SignatureVectorLike | null;
+    staffStrokes?: SignatureVectorLike | null;
+    patientAttestation?: string;
+    staffAttestation?: string;
   };
   facilityName?: string;
   generatedAt: string;
@@ -50,6 +54,47 @@ export interface PacketPdfInput {
     footer?: string | null;
     legalNotice?: string | null;
   };
+}
+
+export type SignatureVectorLike = {
+  strokes?: Array<{ points?: Array<{ x?: number; y?: number; pressure?: number }> } | Array<{ x?: number; y?: number; pressure?: number }>>;
+  width?: number;
+  height?: number;
+  capturedAt?: string;
+};
+
+function drawSignature(doc: PDFKit.PDFDocument, value: SignatureVectorLike | null | undefined, x: number, y: number, width: number, height: number) {
+  if (!value || !Array.isArray(value.strokes) || !value.width || !value.height) return;
+  const scaleX = width / value.width;
+  const scaleY = height / value.height;
+  doc.save().lineCap("round").lineJoin("round").strokeColor("#0f172a");
+  for (const stroke of value.strokes) {
+    const points = Array.isArray(stroke) ? stroke : stroke?.points;
+    if (!Array.isArray(points) || points.length < 2) continue;
+    const first = points[0];
+    if (!Number.isFinite(first?.x) || !Number.isFinite(first?.y)) continue;
+    const firstX = first.x as number;
+    const firstY = first.y as number;
+    doc.lineWidth(1.5).moveTo(x + firstX * scaleX, y + firstY * scaleY);
+    for (let index = 1; index < points.length; index++) {
+      const previous = points[index - 1];
+      const point = points[index];
+      if (!Number.isFinite(previous?.x) || !Number.isFinite(previous?.y) || !Number.isFinite(point?.x) || !Number.isFinite(point?.y)) continue;
+      const previousX = previous.x as number;
+      const previousY = previous.y as number;
+      const pointX = point.x as number;
+      const pointY = point.y as number;
+      doc.lineWidth(1.2 + Math.max(0, Math.min(1, point.pressure ?? 0.5)) * 1.8);
+      doc.quadraticCurveTo(
+        x + previousX * scaleX,
+        y + previousY * scaleY,
+        x + ((previousX + pointX) / 2) * scaleX,
+        y + ((previousY + pointY) / 2) * scaleY,
+      );
+    }
+    doc.stroke();
+  }
+  doc.restore();
 }
 
 @Injectable()
@@ -180,10 +225,16 @@ export class PacketPdfService {
         doc.text(`Patient/Representative: ${sigs.signerName}`);
         doc.text(`Relationship: ${sigs.signerRelationship}`);
         doc.text(`Signed: ${sigs.signedAt}`);
+        drawSignature(doc, sigs.patientStrokes, 50, doc.y + 4, 220, 55);
+        doc.moveDown(3);
+        if (sigs.patientAttestation) doc.fontSize(8).text(sigs.patientAttestation).fontSize(10);
       }
       doc.moveDown(0.4);
       doc.text(`Staff Witness: ${sigs.staffName}`);
       doc.text(`Staff Signed: ${sigs.staffSignedAt}`);
+      drawSignature(doc, sigs.staffStrokes, 50, doc.y + 4, 220, 55);
+      doc.moveDown(3);
+      if (sigs.staffAttestation) doc.fontSize(8).text(sigs.staffAttestation).fontSize(10);
 
       doc.moveDown(1);
       doc.fontSize(8).fillColor("#666666").text(

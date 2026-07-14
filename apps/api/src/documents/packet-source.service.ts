@@ -8,7 +8,7 @@ import {
 } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 import * as crypto from "crypto";
-import { PacketPdfService } from "./packet-pdf.service";
+import { PacketPdfService, type SignatureVectorLike } from "./packet-pdf.service";
 import { DocumentsService } from "./documents.service";
 import type { StructuredPacketModelDto } from "./dto/create-registration-packet.dto";
 import {
@@ -44,6 +44,8 @@ export interface StructuredPacketSignature {
   attestation?: string;
   signatureVectorHash?: string;
   refusalReason?: string;
+  patientStrokes?: unknown;
+  staffStrokes?: unknown;
 }
 
 export interface StructuredPacketModel {
@@ -400,7 +402,7 @@ export class PacketSourceService {
   ): Promise<Buffer> {
     const signatures = Array.isArray(sourceJson.signatures) ? sourceJson.signatures : [];
     const sections = Array.isArray(sourceJson.sections) ? sourceJson.sections : [];
-    const sigData = signatures[0];
+    const sigData = signatures.find((s) => s.signerType === "PATIENT" || s.signerType === "REPRESENTATIVE") || signatures[0];
     const staffSig = signatures.find((s) => s.signerType === "STAFF");
     const facilityName =
       sourceJson.facility?.name?.trim() || branding?.facilityName?.trim() || undefined;
@@ -436,6 +438,10 @@ export class PacketSourceService {
         staffName: staffSig?.signerName || "—",
         staffSignedAt: staffSig?.signedAt || "—",
         refusalReason: sigData?.refusalReason,
+        patientStrokes: sigData?.patientStrokes as SignatureVectorLike | undefined,
+        staffStrokes: staffSig?.staffStrokes as SignatureVectorLike | undefined,
+        patientAttestation: sigData?.attestation,
+        staffAttestation: staffSig?.attestation,
       },
       facilityName,
       generatedAt: safeGeneratedAtIso(sourceJson.generatedAt),
@@ -535,7 +541,16 @@ export class PacketSourceService {
   async finalizePacket(documentId: string, facilityId?: string, userId?: string) {
     const source = await this.prisma.enterpriseDocumentPacketSource.findUnique({
       where: { documentId },
-      include: { document: { select: { facilityId: true, signatureStatus: true, lockedAt: true } } },
+      include: {
+        document: {
+          select: {
+            facilityId: true,
+            signatureStatus: true,
+            lockedAt: true,
+            fileName: true,
+          },
+        },
+      },
     });
     if (!source) throw new NotFoundException("Packet source not found");
 
@@ -548,27 +563,133 @@ export class PacketSourceService {
     }
 
     const now = new Date();
+    const dbSignatures = await this.prisma.enterpriseDocumentSignature.findMany({
+      where: { documentId },
+      orderBy: { signedAt: "asc" },
+    });
+
+    const structuredModel = mergeStoredSignaturesIntoModel(
+      source.sourceJson as unknown as StructuredPacketModel,
+      dbSignatures,
+      now.toISOString(),
+    );
+
+    let branding: ResolvedPacketTheme | undefined;
+    if (source.templateVersionId) {
+      const versionRow = await this.prisma.registrationPacketTemplateVersion.findUnique({
+        where: { id: source.templateVersionId },
+        select: { id: true, templateId: true },
+      });
+      if (versionRow) {
+        branding = await this.templateEngine.resolveTheme(
+          versionRow.id,
+          versionRow.templateId,
+          source.facilityId || facilityId,
+          structuredModel.locale || "en",
+        );
+      }
+    }
+
+    // Re-render PDF with canonical DB signature vectors, then hash after embedding.
+    const pdfBuffer = await this.renderPdfFromSource(structuredModel, branding);
+    const renderedHashSha256 = hashPdfBytes(pdfBuffer);
+
+    await this.documentsService.replaceFileContent({
+      documentId,
+      facilityId,
+      fileName: source.document.fileName || "registration-packet.pdf",
+      mimeType: "application/pdf",
+      buffer: pdfBuffer,
+    });
 
     await this.prisma.enterpriseDocumentPacketSource.update({
       where: { documentId },
-      data: { finalizedAt: now },
+      data: {
+        finalizedAt: now,
+        renderedHashSha256,
+        sourceJson: structuredModel as unknown as object,
+      },
     });
+
+    const isRefusal = dbSignatures.some(
+      (s) =>
+        (s.signerType === "PATIENT" || s.signerType === "REPRESENTATIVE") &&
+        (s.signatureData as { refusal?: boolean } | null)?.refusal === true,
+    );
 
     await this.prisma.enterpriseDocument.update({
       where: { id: documentId },
       data: {
-        signatureStatus: "COMPLETED",
+        signatureStatus: isRefusal ? "REFUSED" : "COMPLETED",
         lockedAt: now,
         lockedById: userId || null,
+        checksumSha256: renderedHashSha256,
       },
     });
 
-    this.logger.log(`packet finalized: docId=${documentId}`);
+    this.logger.log(`packet finalized: docId=${documentId} hash=${renderedHashSha256.slice(0, 12)}`);
 
     return {
       documentId,
       finalizedAt: now.toISOString(),
       locked: true,
+      renderedHashSha256,
     };
   }
+}
+
+function mergeStoredSignaturesIntoModel(
+  model: StructuredPacketModel,
+  dbSignatures: Array<{
+    signerType: string;
+    signerName: string;
+    relationship: string | null;
+    signedAt: Date;
+    attestation: string | null;
+    signatureData: unknown;
+  }>,
+  finalizedAt: string,
+): StructuredPacketModel {
+  const patient = dbSignatures.find(
+    (s) => s.signerType === "PATIENT" || s.signerType === "REPRESENTATIVE",
+  );
+  const staff = dbSignatures.find(
+    (s) => s.signerType === "STAFF" || s.signerType === "WITNESS",
+  );
+  const refusal =
+    patient &&
+    typeof patient.signatureData === "object" &&
+    patient.signatureData !== null &&
+    (patient.signatureData as { refusal?: boolean }).refusal === true
+      ? (patient.signatureData as { reason?: string }).reason
+      : undefined;
+
+  const nextSignatures: StructuredPacketSignature[] = [];
+  if (patient) {
+    nextSignatures.push({
+      signerType: patient.signerType,
+      signerName: patient.signerName,
+      relationship: patient.relationship || undefined,
+      signedAt: patient.signedAt.toISOString(),
+      attestation: patient.attestation || undefined,
+      refusalReason: refusal,
+      patientStrokes: refusal ? undefined : patient.signatureData,
+    });
+  }
+  if (staff) {
+    nextSignatures.push({
+      signerType: staff.signerType,
+      signerName: staff.signerName,
+      relationship: staff.relationship || undefined,
+      signedAt: staff.signedAt.toISOString(),
+      attestation: staff.attestation || undefined,
+      staffStrokes: staff.signatureData,
+    });
+  }
+
+  return {
+    ...model,
+    signatures: nextSignatures.length > 0 ? nextSignatures : model.signatures,
+    finalizedAt,
+  };
 }

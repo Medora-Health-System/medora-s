@@ -51,6 +51,9 @@ export class DocumentSignatureService {
     if (!isRefusal && (!params.signatureData || !hasStrokes(params.signatureData))) {
       throw new BadRequestException("Signature data (strokes) is required unless refusal");
     }
+    if (!isRefusal && !isValidSignatureValue(params.signatureData)) {
+      throw new BadRequestException("Invalid signature vector data");
+    }
 
     const signatureRecord = await this.prisma.enterpriseDocumentSignature.create({
       data: {
@@ -105,6 +108,7 @@ export class DocumentSignatureService {
         relationship: true,
         signedAt: true,
         attestation: true,
+        signatureData: true,
         signedByUser: { select: { id: true, firstName: true, lastName: true } },
       },
     });
@@ -192,11 +196,52 @@ export class DocumentSignatureService {
   }
 }
 
-function hasStrokes(data: unknown): boolean {
+export function hasStrokes(data: unknown): boolean {
   if (!data || typeof data !== "object") return false;
   const obj = data as Record<string, unknown>;
-  if (Array.isArray(obj.strokes) && obj.strokes.length > 0) return true;
-  if (Array.isArray(obj.points) && obj.points.length > 0) return true;
-  if (typeof obj.dataUrl === "string" && obj.dataUrl.length > 50) return true;
-  return false;
+  if (!Array.isArray(obj.strokes)) return false;
+  return obj.strokes.some((stroke) =>
+    Array.isArray(stroke)
+      ? stroke.length > 0
+      : !!stroke && typeof stroke === "object" && Array.isArray((stroke as Record<string, unknown>).points) && (stroke as { points: unknown[] }).points.length > 0,
+  );
+}
+
+/** Supports legacy Point[][] and the current `{ id, points }[]` signature vector shape. */
+export function isValidSignatureValue(data: unknown): boolean {
+  if (!data || typeof data !== "object") return false;
+  const value = data as Record<string, unknown>;
+  if (
+    typeof value.width !== "number" ||
+    !Number.isFinite(value.width) ||
+    value.width < 1 ||
+    value.width > 4000 ||
+    typeof value.height !== "number" ||
+    !Number.isFinite(value.height) ||
+    value.height < 1 ||
+    value.height > 4000 ||
+    !Array.isArray(value.strokes) ||
+    value.strokes.length === 0 ||
+    value.strokes.length > 50
+  ) return false;
+
+  return value.strokes.every((stroke) => {
+    const points = Array.isArray(stroke)
+      ? stroke
+      : stroke && typeof stroke === "object"
+        ? (stroke as Record<string, unknown>).points
+        : null;
+    if (!Array.isArray(points) || points.length === 0 || points.length > 5000) return false;
+    return points.every((point) => {
+      if (!point || typeof point !== "object") return false;
+      const p = point as Record<string, unknown>;
+      const timestamp = typeof p.timestamp === "number" ? p.timestamp : p.t;
+      return (
+        typeof p.x === "number" && Number.isFinite(p.x) &&
+        typeof p.y === "number" && Number.isFinite(p.y) &&
+        typeof timestamp === "number" && Number.isFinite(timestamp) &&
+        (p.pressure === undefined || (typeof p.pressure === "number" && Number.isFinite(p.pressure)))
+      );
+    });
+  });
 }
