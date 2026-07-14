@@ -8301,8 +8301,17 @@ export default {
     templateLacerationHelp: "Mechanism, bleeding, NV status, tetanus, wound care / reassessment.",
     templateNeckPainTrauma: "Neck pain (trauma)",
     templateNeckPainTraumaHelp: "Mechanism, stiffness, neuro deficit, C-spine clearance per protocol.",
-    templateCrushInjury: "Crush injury",
+    templateCrushInjury: "Crush injury (legacy)",
     templateCrushInjuryHelp: "Entrapment, compression duration, pain, distal perfusion, volume status.",
+    templateCrushInjuryAdultComplaintV1: "Crush Injury",
+    templateCrushInjuryAdultComplaintV1Help:
+      "Crush injury, crushing injury, crushed hand, crushed finger, crushed foot, compressed limb, industrial injury, degloving, prolonged compression — mechanism, neurovascular status, compartment and rhabdomyolysis risk.",
+    templateTraumaticAmputationAdultComplaintV1: "Traumatic Amputation",
+    templateTraumaticAmputationAdultComplaintV1Help:
+      "Amputation, partial amputation, complete amputation, severed finger, severed toe, digit amputation, avulsed finger — hemorrhage control, tissue preservation, and replantation urgency.",
+    templateForeignBodyAdultComplaintV1: "Foreign Body",
+    templateForeignBodyAdultComplaintV1Help:
+      "Foreign body, foreign body eye, foreign body ear, foreign body nose, foreign body hand, foreign body foot, retained fragment, splinter, glass, fishhook, needle fragment, foreign object — location, material, depth, removal completeness, and specialty risk.",
     templatePenetratingInjury: "Penetrating injury",
     templatePenetratingInjuryHelp: "Mechanism, weapon, bleeding, abdomen / chest exam, imaging as indicated.",
     templateBurn: "Burn",

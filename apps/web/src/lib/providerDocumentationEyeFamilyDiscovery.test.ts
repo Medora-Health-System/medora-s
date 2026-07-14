@@ -67,7 +67,10 @@ describe("providerDocumentationEyeFamilyDiscovery — MEDUI.ED.POSTCERT.4", () =
   );
 
   it("finds no dedicated Eye / Vision complaint template in the provider documentation catalog", () => {
+    /** Trauma Injury Intelligence adaptive FB (Phase 4) — not an Eye/Vision chief-complaint family. */
+    const TRAUMA_FOREIGN_BODY_TEMPLATE_ID = "foreign_body_adult_complaint_v1";
     const dedicatedMatches = PROVIDER_DOCUMENTATION_TEMPLATES.filter((template) => {
+      if (template.id === TRAUMA_FOREIGN_BODY_TEMPLATE_ID) return false;
       const label = resolveLabel(template.labelKey);
       const helper = resolveLabel(template.helperKey);
       const haystack = `${template.id} ${label} ${helper}`;
@@ -134,6 +137,7 @@ describe("providerDocumentationEyeFamilyDiscovery — MEDUI.ED.POSTCERT.4", () =
       const label = resolveLabel(template.labelKey);
       return matchesAnyTerm(`${template.id} ${label}`, [...EYE_DISCOVERY_TERMS]);
     });
-    expect(scanHits.map((template) => template.id)).toEqual([]);
+    // Injury Intelligence Phase 4 adaptive trauma template (not a dedicated Eye family).
+    expect(scanHits.map((template) => template.id)).toEqual(["foreign_body_adult_complaint_v1"]);
   });
 });

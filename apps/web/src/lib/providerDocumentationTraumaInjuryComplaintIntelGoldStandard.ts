@@ -1519,6 +1519,33 @@ export function buildLigamentInjuryAdultComplaintV1Intel(
   });
 }
 
+export function buildCrushInjuryAdultComplaintV1Intel(d: (key: string) => string): ProviderDocumentationComplaintIntelligence {
+  return buildMskTraumaV1Intel(d, {
+    hpi: [d("hpiMechanismCrushInjury"), d("hpiMechanismWorkRelated"), d("hpiExtremityPainAfterInjury"), d("hpiSwellingNoted"), d("hpiNumbnessDistalToInjury"), d("hpiColorChangeDistalToInjury")],
+    physicalExam: { general: [d("examHemodynamicallyStable")], musculoskeletal: [d("examSwellingPresent"), d("examEcchymosisPresent"), d("examLocalizedTendernessPresent"), d("examCompartmentSoftAndNonTender")], neuroPsych: [d("examDistalPulsesIntact"), d("examSensationIntactDistally"), d("examMotorFunctionIntactDistally")], skin: [d("examOpenWoundPresent"), d("examWoundContaminationEvaluated")] },
+    extraDifferential: [d("diffCompartmentSyndrome"), d("diffRhabdomyolysis"), d("diffFracture"), d("diffVascularInjury")],
+    mdmOverrides: { mdmWorkingAssessment: [d("waCrushInjury"), d("waSoftTissueInjury")], clinicalImpression: [d("impCrushInjury")], mdmPlanSummary: [d("planSerialCompartmentChecks"), d("planRhabdomyolysisMonitoring"), d("planOrthopedicConsultRequested"), d("planReturnPrecautions")], mdmClinicalRationale: [d("reasoningCompartmentSyndromeRisk"), d("reasoningRhabdomyolysisRisk"), d("reasoningNeurovascularExamReassuring")] },
+  });
+}
+
+export function buildTraumaticAmputationAdultComplaintV1Intel(d: (key: string) => string): ProviderDocumentationComplaintIntelligence {
+  return buildMskTraumaV1Intel(d, {
+    hpi: [d("hpiMechanismCrushInjury"), d("hpiMechanismDirectBlow"), d("hpiSiteFinger"), d("hpiSiteThumb"), d("hpiSiteToe"), d("hpiHandDominanceRight"), d("hpiHandDominanceLeft")],
+    physicalExam: { general: [d("examHemodynamicallyStable")], musculoskeletal: [d("examDeformityPresent"), d("examLocalizedTendernessPresent")], neuroPsych: [d("examDistalPulsesIntact"), d("examSensationIntactDistally")], skin: [d("examOpenWoundPresent"), d("examWoundContaminationEvaluated")] },
+    extraDifferential: [d("diffVascularInjury"), d("diffOpenFracture"), d("diffNerveInjury")],
+    mdmOverrides: { mdmWorkingAssessment: [d("waTraumaticAmputation"), d("waOpenFracture")], clinicalImpression: [d("impTraumaticAmputation")], mdmPlanSummary: [d("planHemorrhageControl"), d("planTetanusUpdate"), d("planReplantationPreservation"), d("planHandSurgeryConsultRequested")], mdmClinicalRationale: [d("reasoningReplantationTimeSensitive"), d("reasoningUrgentOrthopedicCareNeeded")] },
+  });
+}
+
+export function buildForeignBodyAdultComplaintV1Intel(d: (key: string) => string): ProviderDocumentationComplaintIntelligence {
+  return buildMskTraumaV1Intel(d, {
+    hpi: [d("hpiForeignBodyConcern"), d("hpiWoundPuncture"), d("hpiLacerationPresent"), d("hpiSiteHand"), d("hpiSiteFoot"), d("hpiSiteEye")],
+    physicalExam: { general: [d("examNoAcuteDistress")], heent: [d("examVisualAcuityGrosslyIntact")], musculoskeletal: [d("examLocalizedTendernessPresent")], skin: [d("examForeignBodyVisualized"), d("examWoundContaminationEvaluated")], neuroPsych: [d("examNeurovascularIntact")] },
+    extraDifferential: [d("diffRetainedForeignBody"), d("diffInfection"), d("diffTendonInjury")],
+    mdmOverrides: { mdmWorkingAssessment: [d("waForeignBody"), d("waRetainedForeignBody")], clinicalImpression: [d("impForeignBody")], mdmPlanSummary: [d("planForeignBodyRemovalComplete"), d("planImagingDecision"), d("planWoundCareInstructions"), d("planReturnPrecautions")], mdmClinicalRationale: [d("reasoningForeignBodyRemovalComplete"), d("reasoningNoRetainedFragmentOnImaging")] },
+  });
+}
+
 export const TRAUMA_INJURY_GOLD_STANDARD_BUILDERS = {
   fall: buildFallComplaintIntel,
   head_injury: buildHeadInjuryComplaintIntel,
@@ -1548,5 +1575,8 @@ export const TRAUMA_INJURY_GOLD_STANDARD_BUILDERS = {
   sprain_strain_adult_complaint_v1: buildSprainStrainAdultComplaintV1Intel,
   tendon_injury_adult_complaint_v1: buildTendonInjuryAdultComplaintV1Intel,
   ligament_injury_adult_complaint_v1: buildLigamentInjuryAdultComplaintV1Intel,
+  crush_injury_adult_complaint_v1: buildCrushInjuryAdultComplaintV1Intel,
+  traumatic_amputation_adult_complaint_v1: buildTraumaticAmputationAdultComplaintV1Intel,
+  foreign_body_adult_complaint_v1: buildForeignBodyAdultComplaintV1Intel,
   concussion_followup_complaint_v1: buildConcussionFollowupComplaintV1Intel,
 } as const;

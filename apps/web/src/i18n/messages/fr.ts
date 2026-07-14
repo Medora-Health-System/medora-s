@@ -8279,8 +8279,17 @@ export default {
     templateLacerationHelp: "Mécanisme, hémorragie, statut NV, tétanos, soins de plaie / réévaluation.",
     templateNeckPainTrauma: "Douleur cervicale (trauma)",
     templateNeckPainTraumaHelp: "Mécanisme, raideur, déficit neuro, dégagement rachis cervical selon protocole.",
-    templateCrushInjury: "Écrasement",
+    templateCrushInjury: "Écrasement (ancien modèle)",
     templateCrushInjuryHelp: "Piégeage, durée compression, douleur, perfusion distale, surveillance volémique.",
+    templateCrushInjuryAdultComplaintV1: "Écrasement",
+    templateCrushInjuryAdultComplaintV1Help:
+      "Écrasement, blessure par compression, membre compressé, blessure industrielle, dégantage, compression prolongée — mécanisme, état neurovasculaire, risque de syndrome des loges et de rhabdomyolyse.",
+    templateTraumaticAmputationAdultComplaintV1: "Amputation traumatique",
+    templateTraumaticAmputationAdultComplaintV1Help:
+      "Amputation, amputation partielle, amputation complète, doigt sectionné, orteil sectionné — contrôle de l'hémorragie, conservation du segment et urgence de replantation.",
+    templateForeignBodyAdultComplaintV1: "Corps étranger",
+    templateForeignBodyAdultComplaintV1Help:
+      "Corps étranger, fragment retenu, écharde, verre, hameçon, fragment d'aiguille — localisation, matériau, profondeur, retrait complet et risque nécessitant un spécialiste.",
     templatePenetratingInjury: "Plaie pénétrante",
     templatePenetratingInjuryHelp: "Mécanisme, arme, saignement, examen abdomen / thorax, imagerie selon indication.",
     templateBurn: "Brûlure",
