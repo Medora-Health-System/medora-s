@@ -112,6 +112,58 @@ const FRENCH_DIAGNOSIS_SEARCH_ALIASES: readonly FrenchDiagnosisSearchAlias[] = [
     englishSearchTerms: ["bite wound", "puncture wound", "open bite"],
   },
   {
+    frenchPhrases: ["fracture", "os cassé", "os casse"],
+    englishSearchTerms: ["fracture", "broken bone"],
+  },
+  {
+    frenchPhrases: ["bras cassé", "bras casse", "fracture du bras"],
+    englishSearchTerms: ["broken arm", "arm fracture", "fracture"],
+  },
+  {
+    frenchPhrases: ["poignet cassé", "poignet casse", "fracture du poignet"],
+    englishSearchTerms: ["broken wrist", "wrist fracture", "distal radius fracture", "colles fracture"],
+  },
+  {
+    frenchPhrases: ["hanche cassée", "hanche cassee", "fracture de la hanche", "fracture du col du fémur", "fracture du col du femur"],
+    englishSearchTerms: ["broken hip", "hip fracture", "femoral neck fracture"],
+  },
+  {
+    frenchPhrases: ["jambe cassée", "jambe cassee", "fracture de la jambe"],
+    englishSearchTerms: ["broken leg", "tibia fracture", "leg fracture"],
+  },
+  {
+    frenchPhrases: ["cheville cassée", "cheville cassee", "fracture de la cheville"],
+    englishSearchTerms: ["broken ankle", "ankle fracture"],
+  },
+  {
+    frenchPhrases: ["doigt cassé", "doigt casse", "fracture du doigt"],
+    englishSearchTerms: ["broken finger", "finger fracture", "phalanx fracture"],
+  },
+  {
+    frenchPhrases: ["orteil cassé", "orteil casse", "fracture de l'orteil"],
+    englishSearchTerms: ["broken toe", "toe fracture"],
+  },
+  {
+    frenchPhrases: ["fracture ouverte", "fracture composée", "fracture composee"],
+    englishSearchTerms: ["open fracture", "compound fracture"],
+  },
+  {
+    frenchPhrases: ["fracture de stress", "fracture pathologique"],
+    englishSearchTerms: ["stress fracture", "pathologic fracture", "pathological fracture"],
+  },
+  {
+    frenchPhrases: ["fracture en bois vert", "fracture en torus", "fracture pédiatrique", "fracture pediatrique"],
+    englishSearchTerms: ["greenstick fracture", "buckle fracture", "torus fracture", "pediatric fracture"],
+  },
+  {
+    frenchPhrases: ["côte cassée", "cote cassee", "fracture de côte", "fracture de cote"],
+    englishSearchTerms: ["broken rib", "rib fracture"],
+  },
+  {
+    frenchPhrases: ["mâchoire cassée", "machoire cassee", "nez cassé", "nez casse"],
+    englishSearchTerms: ["broken jaw", "mandible fracture", "broken nose", "nasal fracture"],
+  },
+  {
     frenchPhrases: ["entorse"],
     englishSearchTerms: ["sprain"],
   },

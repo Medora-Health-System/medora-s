@@ -2042,6 +2042,114 @@ export const TRAUMA_MSK_MVC_SORENESS_SUGGESTED_TEXT: ProviderDischargeTemplateSu
     }
   );
 
+export const TRAUMA_MSK_FRACTURE_HIP_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for a possible hip (proximal femur) fracture. Hip fractures often need orthopedic surgery, and many patients need a hospital stay; if you are going home today, follow the instructions below and keep your scheduled orthopedic follow-up.",
+      diagnosisInstructions:
+        "Keep weight off the injured leg and use a walker, wheelchair, or crutches only as directed. Use a brace, splint, or other support device only as directed. Ice and elevate the leg as directed to reduce swelling. Activity should follow provider guidance.",
+      medicationTreatment: MSK_MED_EN,
+      returnPrecautions:
+        "Return immediately or go to the nearest emergency department for worsening pain, numbness, weakness, inability to move the leg, swelling that worsens, discoloration of the foot or toes, chest pain, shortness of breath, or fever. Seek emergency care for worsening symptoms.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour une possible fracture de la hanche (fémur proximal). Les fractures de la hanche nécessitent souvent une chirurgie orthopédique, et de nombreux patients doivent être hospitalisés ; si vous rentrez à la maison aujourd'hui, suivez les instructions ci-dessous et respectez le suivi orthopédique prévu.",
+      diagnosisInstructions:
+        "Évitez de mettre du poids sur la jambe blessée et utilisez un déambulateur, un fauteuil roulant ou des béquilles uniquement selon les directives reçues. Utilisez une attelle, un plâtre ou une autre aide de support uniquement selon les directives. Glace et surélévation de la jambe selon les directives pour réduire l'enflure. L'activité doit suivre les indications du clinicien.",
+      medicationTreatment: MSK_MED_FR,
+      returnPrecautions:
+        "Retournez immédiatement ou allez à l'urgence la plus proche en cas d'aggravation de la douleur, d'engourdissement, de faiblesse, d'incapacité à bouger la jambe, d'enflure qui s'aggrave, de changement de couleur du pied ou des orteils, de douleur thoracique, de difficulté à respirer ou de fièvre. Consultez en urgence en cas d'aggravation.",
+    }
+  );
+
+export const TRAUMA_MSK_FRACTURE_HAND_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for a possible hand, finger, or wrist bone fracture. Symptoms may change after the visit; follow clinician instructions for splint, cast, or support devices.",
+      diagnosisInstructions:
+        "Use a splint, cast, or support device only as directed. Ice and elevate the hand above the level of the heart as directed to reduce swelling. Keep the hand elevated when resting. Follow up with orthopedics or hand surgery as directed.",
+      medicationTreatment: MSK_MED_EN,
+      returnPrecautions: MSK_LIMB_ESCALATION_EN,
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour une possible fracture osseuse de la main, du doigt ou du poignet. Les symptômes peuvent évoluer après la visite ; suivez les instructions du clinicien pour attelle, plâtre ou aide de support.",
+      diagnosisInstructions:
+        "Utilisez une attelle, un plâtre ou une aide de support uniquement selon les directives reçues. Glace et surélévation de la main au-dessus du niveau du cœur selon les directives pour réduire l'enflure. Gardez la main surélevée au repos. Suivez le suivi en orthopédie ou en chirurgie de la main selon les directives.",
+      medicationTreatment: MSK_MED_FR,
+      returnPrecautions: MSK_LIMB_ESCALATION_FR,
+    }
+  );
+
+export const TRAUMA_MSK_FRACTURE_FACIAL_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for a possible facial, nasal, orbital, or jaw (mandible) bone fracture. Symptoms may change after the visit.",
+      diagnosisInstructions:
+        "Ice and elevate the head (sleep with your head raised) as directed to reduce swelling. Eat a soft diet only as directed if you have a jaw injury. Activity should follow provider guidance. Follow up as directed for repeat facial or eye evaluation.",
+      medicationTreatment: MSK_MED_EN,
+      returnPrecautions:
+        "Return immediately for worsening pain, worsening swelling, vision changes, double vision, new numbness of the face, new difficulty opening the mouth or biting normally, fever, or worsening symptoms. Seek emergency care for worsening symptoms.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour une possible fracture osseuse du visage, du nez, de l'orbite ou de la mâchoire (mandibule). Les symptômes peuvent évoluer après la visite.",
+      diagnosisInstructions:
+        "Glace et surélévation de la tête (dormez la tête relevée) selon les directives pour réduire l'enflure. Alimentation molle uniquement selon les directives en cas de blessure à la mâchoire. L'activité doit suivre les indications du clinicien. Suivez le suivi selon les directives pour une nouvelle évaluation du visage ou des yeux.",
+      medicationTreatment: MSK_MED_FR,
+      returnPrecautions:
+        "Retournez immédiatement en cas d'aggravation de la douleur, d'aggravation de l'enflure, de changement de vision, de vision double, de nouvel engourdissement du visage, de nouvelle difficulté à ouvrir la bouche ou à mordre normalement, de fièvre ou d'aggravation des symptômes. Consultez en urgence en cas d'aggravation.",
+    }
+  );
+
+export const TRAUMA_MSK_FRACTURE_SPINE_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for a possible spinal (vertebral) fracture. Symptoms may change after the visit; follow clinician instructions for brace use and activity limits.",
+      diagnosisInstructions:
+        "Use a back or neck brace only as directed. Activity should follow provider guidance; avoid bending, lifting, or twisting unless directed otherwise. Take pain medicines only as prescribed. Follow up with orthopedics as directed.",
+      medicationTreatment: MSK_MED_EN,
+      returnPrecautions: MSK_SPINE_ESCALATION_EN,
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour une possible fracture vertébrale (colonne). Les symptômes peuvent évoluer après la visite ; suivez les instructions du clinicien pour l'utilisation d'un corset et les limites d'activité.",
+      diagnosisInstructions:
+        "Utilisez un corset dorsal ou cervical uniquement selon les directives reçues. L'activité doit suivre les indications du clinicien ; évitez de vous pencher, de soulever des objets ou de vous tordre sauf indication contraire. Prenez les antidouleurs uniquement selon la prescription reçue. Suivez le suivi en orthopédie selon les directives.",
+      medicationTreatment: MSK_MED_FR,
+      returnPrecautions: MSK_SPINE_ESCALATION_FR,
+    }
+  );
+
+export const TRAUMA_MSK_FRACTURE_OPEN_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for an open (compound) fracture, where the broken bone was associated with a break in the skin. Open fractures typically need surgery and intravenous antibiotics, and many patients need a hospital stay; if you are going home today, follow the instructions below closely.",
+      diagnosisInstructions:
+        "Keep the injured area elevated and use a splint or immobilization device only as directed. Keep the dressing clean and dry as directed. Take antibiotics exactly as prescribed and finish the full course. Follow up with orthopedic surgery as directed.",
+      medicationTreatment:
+        "Take pain medicines and antibiotics only as prescribed or directed during this visit. Finish the full antibiotic course even if you feel better.",
+      returnPrecautions:
+        "Return immediately or go to the nearest emergency department for severe pain, worsening swelling, numbness, discoloration, inability to move the limb, fever, chills, spreading redness, or worsening symptoms. Seek emergency care for worsening symptoms.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour une fracture ouverte (composée), où l'os cassé était associé à une ouverture de la peau. Les fractures ouvertes nécessitent généralement une chirurgie et des antibiotiques intraveineux, et de nombreux patients doivent être hospitalisés ; si vous rentrez à la maison aujourd'hui, suivez attentivement les instructions ci-dessous.",
+      diagnosisInstructions:
+        "Gardez la zone blessée surélevée et utilisez une attelle ou un dispositif d'immobilisation uniquement selon les directives reçues. Gardez le pansement propre et sec selon les directives. Prenez les antibiotiques exactement comme prescrit et terminez le traitement complet. Suivez le suivi en chirurgie orthopédique selon les directives.",
+      medicationTreatment:
+        "Prenez les antidouleurs et les antibiotiques uniquement selon la prescription ou les indications reçues pendant cette visite. Terminez le traitement antibiotique complet même si vous vous sentez mieux.",
+      returnPrecautions:
+        "Retournez immédiatement ou allez à l'urgence la plus proche en cas de douleur intense, d'enflure qui s'aggrave, d'engourdissement, de changement de couleur, d'incapacité à bouger le membre, de fièvre, de frissons, de rougeur qui s'étend ou d'aggravation des symptômes. Consultez en urgence en cas d'aggravation.",
+    }
+  );
+
 const CARDIO_MED_EN = "Take medications only as prescribed or directed during this visit.";
 const CARDIO_MED_FR =
   "Prenez les médicaments uniquement selon la prescription ou les indications reçues pendant cette visite.";

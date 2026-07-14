@@ -433,6 +433,26 @@ export const PROVIDER_DISCHARGE_TEMPLATE_CONTENT_INTEGRITY: Record<
     mustIncludeAny: { en: ["fracture", "splint"], fr: ["fracture", "attelle"] },
     forbiddenCrossTemplateMarkers: { en: WOUND_FORBIDDEN_EN, fr: WOUND_FORBIDDEN_FR },
   },
+  trauma_msk_fracture_hip_v1: {
+    mustIncludeAny: { en: ["hip"], fr: ["hanche"] },
+    forbiddenCrossTemplateMarkers: { en: WOUND_FORBIDDEN_EN, fr: WOUND_FORBIDDEN_FR },
+  },
+  trauma_msk_fracture_hand_v1: {
+    mustIncludeAny: { en: ["hand", "finger", "wrist"], fr: ["main", "doigt", "poignet"] },
+    forbiddenCrossTemplateMarkers: { en: WOUND_FORBIDDEN_EN, fr: WOUND_FORBIDDEN_FR },
+  },
+  trauma_msk_fracture_facial_v1: {
+    mustIncludeAny: { en: ["facial", "jaw", "nasal", "orbital"], fr: ["visage", "mâchoire", "nez", "orbite"] },
+    forbiddenCrossTemplateMarkers: { en: WOUND_FORBIDDEN_EN, fr: WOUND_FORBIDDEN_FR },
+  },
+  trauma_msk_fracture_spine_v1: {
+    mustIncludeAny: { en: ["spinal", "vertebral"], fr: ["vertébrale", "colonne"] },
+    forbiddenCrossTemplateMarkers: { en: WOUND_FORBIDDEN_EN, fr: WOUND_FORBIDDEN_FR },
+  },
+  trauma_msk_fracture_open_v1: {
+    mustIncludeAny: { en: ["open", "compound"], fr: ["ouverte", "composée"] },
+    forbiddenCrossTemplateMarkers: { en: ["laceration"], fr: ["lacération"] },
+  },
   trauma_msk_mvc_soreness_v1: {
     mustIncludeAny: { en: ["motor vehicle", "collision"], fr: ["véhicule", "collision"] },
     forbiddenCrossTemplateMarkers: { en: WOUND_FORBIDDEN_EN, fr: WOUND_FORBIDDEN_FR },

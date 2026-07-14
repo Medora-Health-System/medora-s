@@ -48,6 +48,14 @@ export const PROVIDER_DISCHARGE_FOLLOW_UP_TIMING_LOCALE: Record<string, Localize
     en: "within 24–72 hours or as directed",
     fr: "dans les 24 à 72 heures ou selon les directives",
   },
+  "within 24–48 hours or as directed": {
+    en: "within 24–48 hours or as directed",
+    fr: "dans les 24 à 48 heures ou selon les directives",
+  },
+  "within 3–5 days or as directed": {
+    en: "within 3–5 days or as directed",
+    fr: "dans 3 à 5 jours ou selon les directives",
+  },
   "within 3–7 days or as directed": {
     en: "within 3–7 days or as directed",
     fr: "dans 3 à 7 jours ou selon les directives",
