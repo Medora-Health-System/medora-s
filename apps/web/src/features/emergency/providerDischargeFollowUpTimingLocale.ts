@@ -34,6 +34,18 @@ export const PROVIDER_DISCHARGE_FOLLOW_UP_TIMING_LOCALE: Record<string, Localize
     fr: "dans 1 à 2 jours pour les plaies à haut risque",
   },
   "within 24 hours": { en: "within 24 hours", fr: "dans les 24 heures" },
+  "within 24 hours or as directed": {
+    en: "within 24 hours or as directed",
+    fr: "dans les 24 heures ou selon les directives",
+  },
+  "urgent / as directed": {
+    en: "urgent / as directed",
+    fr: "urgent / selon les directives",
+  },
+  "within 48–72 hours or as directed": {
+    en: "within 48–72 hours or as directed",
+    fr: "dans les 48 à 72 heures ou selon les directives",
+  },
   "within 1 week": { en: "within 1 week", fr: "dans 1 semaine" },
   "within 2 weeks": { en: "within 2 weeks", fr: "dans 2 semaines" },
   "within 1–3 days if fever persists": {

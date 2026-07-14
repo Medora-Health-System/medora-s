@@ -529,6 +529,115 @@ export const PROVIDER_DISCHARGE_TEMPLATE_CONTENT_INTEGRITY: Record<
     mustIncludeAny: { en: ["ligament"], fr: ["ligamentaire"] },
     forbiddenCrossTemplateMarkers: { en: WOUND_FORBIDDEN_EN, fr: WOUND_FORBIDDEN_FR },
   },
+
+  trauma_msk_crush_hand_finger_v1: {
+    mustIncludeAny: { en: ["crush"], fr: ["écrasement"] },
+    forbiddenCrossTemplateMarkers: { en: RESPIRATORY_FORBIDDEN_ON_WOUND_EN, fr: RESPIRATORY_FORBIDDEN_ON_WOUND_FR },
+  },
+  trauma_msk_crush_upper_extremity_v1: {
+    mustIncludeAny: { en: ["crush"], fr: ["écrasement"] },
+    forbiddenCrossTemplateMarkers: { en: RESPIRATORY_FORBIDDEN_ON_WOUND_EN, fr: RESPIRATORY_FORBIDDEN_ON_WOUND_FR },
+  },
+  trauma_msk_crush_lower_extremity_v1: {
+    mustIncludeAny: { en: ["crush"], fr: ["écrasement"] },
+    forbiddenCrossTemplateMarkers: { en: RESPIRATORY_FORBIDDEN_ON_WOUND_EN, fr: RESPIRATORY_FORBIDDEN_ON_WOUND_FR },
+  },
+  trauma_msk_crush_foot_toe_v1: {
+    mustIncludeAny: { en: ["crush"], fr: ["écrasement"] },
+    forbiddenCrossTemplateMarkers: { en: RESPIRATORY_FORBIDDEN_ON_WOUND_EN, fr: RESPIRATORY_FORBIDDEN_ON_WOUND_FR },
+  },
+  trauma_msk_crush_chest_abdomen_pelvis_v1: {
+    mustIncludeAny: { en: ["crush"], fr: ["écrasement"] },
+    forbiddenCrossTemplateMarkers: { en: RESPIRATORY_FORBIDDEN_ON_WOUND_EN, fr: RESPIRATORY_FORBIDDEN_ON_WOUND_FR },
+  },
+  trauma_msk_crush_prolonged_compression_v1: {
+    mustIncludeAny: { en: ["compression", "crush"], fr: ["compression", "écrasement"] },
+    forbiddenCrossTemplateMarkers: { en: RESPIRATORY_FORBIDDEN_ON_WOUND_EN, fr: RESPIRATORY_FORBIDDEN_ON_WOUND_FR },
+  },
+  trauma_msk_crush_degloving_v1: {
+    mustIncludeAny: { en: ["degloving"], fr: ["dégantage"] },
+    forbiddenCrossTemplateMarkers: { en: RESPIRATORY_FORBIDDEN_ON_WOUND_EN, fr: RESPIRATORY_FORBIDDEN_ON_WOUND_FR },
+  },
+  trauma_msk_crush_compartment_risk_v1: {
+    mustIncludeAny: { en: ["compartment"], fr: ["loges"] },
+    forbiddenCrossTemplateMarkers: { en: RESPIRATORY_FORBIDDEN_ON_WOUND_EN, fr: RESPIRATORY_FORBIDDEN_ON_WOUND_FR },
+  },
+  trauma_msk_crush_generic_v1: {
+    mustIncludeAny: { en: ["crush"], fr: ["écrasement"] },
+    forbiddenCrossTemplateMarkers: { en: RESPIRATORY_FORBIDDEN_ON_WOUND_EN, fr: RESPIRATORY_FORBIDDEN_ON_WOUND_FR },
+  },
+  trauma_msk_amputation_finger_thumb_v1: {
+    mustIncludeAny: { en: ["amputation"], fr: ["amputation"] },
+    forbiddenCrossTemplateMarkers: { en: RESPIRATORY_FORBIDDEN_ON_WOUND_EN, fr: RESPIRATORY_FORBIDDEN_ON_WOUND_FR },
+  },
+  trauma_msk_amputation_hand_upper_extremity_v1: {
+    mustIncludeAny: { en: ["amputation"], fr: ["amputation"] },
+    forbiddenCrossTemplateMarkers: { en: RESPIRATORY_FORBIDDEN_ON_WOUND_EN, fr: RESPIRATORY_FORBIDDEN_ON_WOUND_FR },
+  },
+  trauma_msk_amputation_toe_v1: {
+    mustIncludeAny: { en: ["amputation", "toe"], fr: ["amputation", "orteil"] },
+    forbiddenCrossTemplateMarkers: { en: RESPIRATORY_FORBIDDEN_ON_WOUND_EN, fr: RESPIRATORY_FORBIDDEN_ON_WOUND_FR },
+  },
+  trauma_msk_amputation_foot_lower_extremity_v1: {
+    mustIncludeAny: { en: ["amputation"], fr: ["amputation"] },
+    forbiddenCrossTemplateMarkers: { en: RESPIRATORY_FORBIDDEN_ON_WOUND_EN, fr: RESPIRATORY_FORBIDDEN_ON_WOUND_FR },
+  },
+  trauma_msk_amputation_partial_v1: {
+    mustIncludeAny: { en: ["partial", "amputation"], fr: ["partielle", "amputation"] },
+    forbiddenCrossTemplateMarkers: { en: RESPIRATORY_FORBIDDEN_ON_WOUND_EN, fr: RESPIRATORY_FORBIDDEN_ON_WOUND_FR },
+  },
+  trauma_msk_amputation_complete_v1: {
+    mustIncludeAny: { en: ["complete", "amputation"], fr: ["complète", "amputation"] },
+    forbiddenCrossTemplateMarkers: { en: RESPIRATORY_FORBIDDEN_ON_WOUND_EN, fr: RESPIRATORY_FORBIDDEN_ON_WOUND_FR },
+  },
+  trauma_msk_amputation_postoperative_or_followup_v1: {
+    mustIncludeAny: { en: ["stump", "amputation"], fr: ["moignon", "amputation"] },
+    forbiddenCrossTemplateMarkers: { en: RESPIRATORY_FORBIDDEN_ON_WOUND_EN, fr: RESPIRATORY_FORBIDDEN_ON_WOUND_FR },
+  },
+  trauma_msk_amputation_generic_v1: {
+    mustIncludeAny: { en: ["amputation"], fr: ["amputation"] },
+    forbiddenCrossTemplateMarkers: { en: RESPIRATORY_FORBIDDEN_ON_WOUND_EN, fr: RESPIRATORY_FORBIDDEN_ON_WOUND_FR },
+  },
+  trauma_msk_foreign_body_eye_v1: {
+    mustIncludeAny: { en: ["eye", "foreign body"], fr: ["œil", "oeil", "corps étranger"] },
+    forbiddenCrossTemplateMarkers: { en: RESPIRATORY_FORBIDDEN_ON_WOUND_EN, fr: RESPIRATORY_FORBIDDEN_ON_WOUND_FR },
+  },
+  trauma_msk_foreign_body_ear_nose_v1: {
+    mustIncludeAny: { en: ["ear", "nose", "foreign body"], fr: ["oreille", "nez", "corps étranger"] },
+    forbiddenCrossTemplateMarkers: { en: RESPIRATORY_FORBIDDEN_ON_WOUND_EN, fr: RESPIRATORY_FORBIDDEN_ON_WOUND_FR },
+  },
+  trauma_msk_foreign_body_skin_soft_tissue_v1: {
+    mustIncludeAny: { en: ["foreign body"], fr: ["corps étranger"] },
+    forbiddenCrossTemplateMarkers: { en: RESPIRATORY_FORBIDDEN_ON_WOUND_EN, fr: RESPIRATORY_FORBIDDEN_ON_WOUND_FR },
+  },
+  trauma_msk_foreign_body_hand_finger_v1: {
+    mustIncludeAny: { en: ["hand", "foreign body"], fr: ["main", "corps étranger"] },
+    forbiddenCrossTemplateMarkers: { en: RESPIRATORY_FORBIDDEN_ON_WOUND_EN, fr: RESPIRATORY_FORBIDDEN_ON_WOUND_FR },
+  },
+  trauma_msk_foreign_body_foot_toe_v1: {
+    mustIncludeAny: { en: ["foot", "foreign body"], fr: ["pied", "corps étranger"] },
+    forbiddenCrossTemplateMarkers: { en: RESPIRATORY_FORBIDDEN_ON_WOUND_EN, fr: RESPIRATORY_FORBIDDEN_ON_WOUND_FR },
+  },
+  trauma_msk_foreign_body_fishhook_v1: {
+    mustIncludeAny: { en: ["fishhook"], fr: ["hameçon"] },
+    forbiddenCrossTemplateMarkers: { en: RESPIRATORY_FORBIDDEN_ON_WOUND_EN, fr: RESPIRATORY_FORBIDDEN_ON_WOUND_FR },
+  },
+  trauma_msk_foreign_body_ingested_v1: {
+    mustIncludeAny: { en: ["swallowed", "foreign body"], fr: ["avalé", "corps étranger"] },
+    forbiddenCrossTemplateMarkers: { en: RESPIRATORY_FORBIDDEN_ON_WOUND_EN, fr: RESPIRATORY_FORBIDDEN_ON_WOUND_FR },
+  },
+  trauma_msk_foreign_body_aspirated_v1: {
+    mustIncludeAny: { en: ["aspirated", "airway"], fr: ["inhalé", "voies aériennes"] },
+    forbiddenCrossTemplateMarkers: { en: WOUND_FORBIDDEN_EN, fr: WOUND_FORBIDDEN_FR },
+  },
+  trauma_msk_foreign_body_retained_fragment_v1: {
+    mustIncludeAny: { en: ["retained", "fragment"], fr: ["retenu", "fragment"] },
+    forbiddenCrossTemplateMarkers: { en: RESPIRATORY_FORBIDDEN_ON_WOUND_EN, fr: RESPIRATORY_FORBIDDEN_ON_WOUND_FR },
+  },
+  trauma_msk_foreign_body_generic_v1: {
+    mustIncludeAny: { en: ["foreign body"], fr: ["corps étranger"] },
+    forbiddenCrossTemplateMarkers: { en: RESPIRATORY_FORBIDDEN_ON_WOUND_EN, fr: RESPIRATORY_FORBIDDEN_ON_WOUND_FR },
+  },
   trauma_msk_mvc_soreness_v1: {
     mustIncludeAny: { en: ["motor vehicle", "collision"], fr: ["véhicule", "collision"] },
     forbiddenCrossTemplateMarkers: { en: WOUND_FORBIDDEN_EN, fr: WOUND_FORBIDDEN_FR },

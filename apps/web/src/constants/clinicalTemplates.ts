@@ -75,6 +75,11 @@ export const COMMON_DIAGNOSES: Array<{ code: string; label: string }> = [
   { code: "S83.411A", label: "Entorse du LCM du genou droit, rencontre initiale" },
   { code: "S93.431A", label: "Entorse de la syndesmose (cheville droite), rencontre initiale" },
   { code: "S63.641A", label: "Entorse LCU du pouce droit (pouce du skieur), rencontre initiale" },
+  { code: "S67.21XA", label: "Écrasement de la main droite, rencontre initiale" },
+  { code: "S68.110A", label: "Amputation traumatique du doigt (index droit), rencontre initiale" },
+  { code: "S98.111A", label: "Amputation traumatique du gros orteil droit, rencontre initiale" },
+  { code: "T15.00XA", label: "Corps étranger de la cornée, rencontre initiale" },
+  { code: "S61.441A", label: "Plaie avec corps étranger de la main droite, rencontre initiale" },
   { code: "Z23", label: "Besoin de vaccination contre une maladie bactérienne" },
   { code: "Z00.0", label: "Examen médical général de suivi" },
 ];

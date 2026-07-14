@@ -2534,6 +2534,451 @@ export const TRAUMA_MSK_LIGAMENT_GENERIC_SUGGESTED_TEXT: ProviderDischargeTempla
     }
   );
 
+export const TRAUMA_MSK_CRUSH_HAND_FINGER_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description: "You were evaluated in the emergency department for a crush injury of the hand or finger. Symptoms may change after the visit.",
+      diagnosisInstructions: "Elevate the hand. Use ice if directed. Keep dressings clean and dry. Watch for increasing pain, numbness, pale or cold fingers, or pain with finger stretch. Follow specialty follow-up as directed.",
+      medicationTreatment: MSK_MED_EN,
+      returnPrecautions: MSK_LIMB_ESCALATION_EN + " Also return for dark urine, severe swelling, or pain out of proportion to the injury.",
+    },
+    {
+      description: "Vous avez été pris en charge aux urgences pour un écrasement de la main ou du doigt. Les symptômes peuvent évoluer après la visite.",
+      diagnosisInstructions: "Surélevez la main. Utilisez de la glace si indiqué. Gardez les pansements propres et secs. Surveillez une douleur croissante, un engourdissement, des doigts pâles ou froids, ou une douleur à l'étirement. Suivez le suivi spécialisé selon les directives.",
+      medicationTreatment: MSK_MED_FR,
+      returnPrecautions: MSK_LIMB_ESCALATION_FR + " Revenez aussi pour des urines foncées, un gonflement sévère ou une douleur disproportionnée.",
+    }
+  );
+
+export const TRAUMA_MSK_CRUSH_UPPER_EXTREMITY_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description: "You were evaluated for an upper-extremity crush injury. Symptoms may change after the visit.",
+      diagnosisInstructions: "Elevate the limb. Protect the injured area. Monitor swelling, sensation, color, and pain with passive stretch. Follow orthopedic follow-up as directed.",
+      medicationTreatment: MSK_MED_EN,
+      returnPrecautions: MSK_LIMB_ESCALATION_EN + " Return for dark urine or severe increasing pain.",
+    },
+    {
+      description: "Vous avez été pris en charge pour un écrasement du membre supérieur. Les symptômes peuvent évoluer après la visite.",
+      diagnosisInstructions: "Surélevez le membre. Protégez la zone blessée. Surveillez le gonflement, la sensibilité, la couleur et la douleur à l'étirement passif. Suivez le suivi orthopédique selon les directives.",
+      medicationTreatment: MSK_MED_FR,
+      returnPrecautions: MSK_LIMB_ESCALATION_FR + " Revenez pour des urines foncées ou une douleur sévère croissante.",
+    }
+  );
+
+export const TRAUMA_MSK_CRUSH_LOWER_EXTREMITY_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description: "You were evaluated for a lower-extremity crush injury. Symptoms may change after the visit.",
+      diagnosisInstructions: "Elevate the limb. Follow weight-bearing limits as directed. Monitor compartment and perfusion warning signs. Follow specialty follow-up as directed.",
+      medicationTreatment: MSK_MED_EN,
+      returnPrecautions: MSK_LIMB_ESCALATION_EN + " Return for inability to walk safely, dark urine, or severe pain.",
+    },
+    {
+      description: "Vous avez été pris en charge pour un écrasement du membre inférieur. Les symptômes peuvent évoluer après la visite.",
+      diagnosisInstructions: "Surélevez le membre. Respectez les consignes d'appui. Surveillez les signes de loges et de perfusion. Suivez le suivi spécialisé selon les directives.",
+      medicationTreatment: MSK_MED_FR,
+      returnPrecautions: MSK_LIMB_ESCALATION_FR + " Revenez si marche impossible, urines foncées ou douleur sévère.",
+    }
+  );
+
+export const TRAUMA_MSK_CRUSH_FOOT_TOE_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description: "You were evaluated for a crush injury of the foot or toe. Symptoms may change after the visit.",
+      diagnosisInstructions: "Elevate the foot. Keep dressings clean. Limit weight-bearing if instructed. Watch for worsening swelling, numbness, or color change.",
+      medicationTreatment: MSK_MED_EN,
+      returnPrecautions: MSK_LIMB_ESCALATION_EN,
+    },
+    {
+      description: "Vous avez été pris en charge pour un écrasement du pied ou de l'orteil. Les symptômes peuvent évoluer après la visite.",
+      diagnosisInstructions: "Surélevez le pied. Gardez les pansements propres. Limitez l'appui si indiqué. Surveillez un gonflement, un engourdissement ou un changement de couleur.",
+      medicationTreatment: MSK_MED_FR,
+      returnPrecautions: MSK_LIMB_ESCALATION_FR,
+    }
+  );
+
+export const TRAUMA_MSK_CRUSH_CHEST_ABDOMEN_PELVIS_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description: "You were evaluated for a torso crush injury. Many of these injuries require observation, admission, or transfer rather than routine home care alone.",
+      diagnosisInstructions: "Follow the disposition plan given by your clinician. Monitor breathing, abdominal pain, dizziness, and urine color. Do not ignore worsening chest or abdominal pain.",
+      medicationTreatment: MSK_MED_EN,
+      returnPrecautions: "Return immediately for shortness of breath, severe chest or abdominal pain, fainting, vomiting blood, dark urine, confusion, or any concerning symptom.",
+    },
+    {
+      description: "Vous avez été pris en charge pour un écrasement du tronc. Beaucoup de ces blessures nécessitent observation, hospitalisation ou transfert plutôt que des soins à domicile seuls.",
+      diagnosisInstructions: "Suivez le plan de disposition donné par votre clinicien. Surveillez la respiration, la douleur abdominale, les étourdissements et la couleur des urines.",
+      medicationTreatment: MSK_MED_FR,
+      returnPrecautions: "Retournez immédiatement pour essoufflement, douleur thoracique ou abdominale sévère, évanouissement, vomissements de sang, urines foncées, confusion ou tout signe préoccupant.",
+    }
+  );
+
+export const TRAUMA_MSK_CRUSH_PROLONGED_COMPRESSION_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description: "You were evaluated after prolonged compression or crush syndrome concern. Close monitoring of muscle injury and kidney risk may be required.",
+      diagnosisInstructions: "Follow hydration and lab follow-up instructions exactly. Watch for dark urine, severe pain, swelling, numbness, severe muscle pain, weakness, or confusion. Specialty or hospital follow-up may be required.",
+      medicationTreatment: MSK_MED_EN,
+      returnPrecautions: "Return immediately for dark urine, severe muscle pain, weakness, irregular heartbeat symptoms, confusion, or inability to urinate.",
+    },
+    {
+      description: "Vous avez été pris en charge après une compression prolongée ou une suspicion de crush syndrome. Une surveillance de la lésion musculaire et du risque rénal peut être nécessaire.",
+      diagnosisInstructions: "Suivez exactement les consignes d'hydratation et de bilans. Surveillez des urines foncées, une douleur intense, une enflure, un engourdissement, une douleur musculaire sévère, une faiblesse ou une confusion.",
+      medicationTreatment: MSK_MED_FR,
+      returnPrecautions: "Retournez immédiatement pour urines foncées, douleur musculaire sévère, faiblesse, symptômes de rythme cardiaque irrégulier, confusion ou impossibilité d'uriner.",
+    }
+  );
+
+export const TRAUMA_MSK_CRUSH_DEGLOVING_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description: "You were evaluated for a degloving or severe soft-tissue crush injury. Reconstructive specialty care is often required.",
+      diagnosisInstructions: "Keep dressings clean and dry. Do not remove specialty dressings unless directed. Elevate if instructed. Follow plastics or orthopedic follow-up urgently as directed.",
+      medicationTreatment: MSK_MED_EN,
+      returnPrecautions: MSK_LIMB_ESCALATION_EN + " Return for increasing foul drainage, fever, or tissue color change.",
+    },
+    {
+      description: "Vous avez été pris en charge pour un dégantage ou un écrasement sévère des tissus mous. Des soins reconstructeurs sont souvent nécessaires.",
+      diagnosisInstructions: "Gardez les pansements propres et secs. Ne retirez pas les pansements spécialisés sauf indication. Surélevez si indiqué. Suivez le suivi en chirurgie plastique ou orthopédie en urgence selon les directives.",
+      medicationTreatment: MSK_MED_FR,
+      returnPrecautions: MSK_LIMB_ESCALATION_FR + " Revenez pour écoulement malodorant, fièvre ou changement de couleur des tissus.",
+    }
+  );
+
+export const TRAUMA_MSK_CRUSH_COMPARTMENT_RISK_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description: "You were evaluated for a crush injury with compartment syndrome concern. Urgent return precautions are critical.",
+      diagnosisInstructions: "Elevate as directed. Do not ignore increasing pain, numbness, pale or cold limb, or pain with passive stretch. Follow urgent specialty instructions exactly.",
+      medicationTreatment: MSK_MED_EN,
+      returnPrecautions: "Return immediately for pain out of proportion, increasing numbness, pale or cold limb, severe swelling, or pain with stretch.",
+    },
+    {
+      description: "Vous avez été pris en charge pour un écrasement avec risque de syndrome des loges. Les consignes de retour urgent sont essentielles.",
+      diagnosisInstructions: "Surélevez selon les directives. N'ignorez pas une douleur croissante, un engourdissement, un membre pâle ou froid, ou une douleur à l'étirement passif.",
+      medicationTreatment: MSK_MED_FR,
+      returnPrecautions: "Retournez immédiatement pour douleur disproportionnée, engourdissement croissant, membre pâle ou froid, gonflement sévère ou douleur à l'étirement.",
+    }
+  );
+
+export const TRAUMA_MSK_CRUSH_GENERIC_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description: "You were evaluated for a crush injury. Symptoms may change after the visit.",
+      diagnosisInstructions: "Elevate and protect the injured area. Monitor swelling, sensation, color, and urine color if instructed. Follow specialty follow-up as directed.",
+      medicationTreatment: MSK_MED_EN,
+      returnPrecautions: MSK_LIMB_ESCALATION_EN + " Return for dark urine or severe increasing pain.",
+    },
+    {
+      description: "Vous avez été pris en charge pour un écrasement. Les symptômes peuvent évoluer après la visite.",
+      diagnosisInstructions: "Surélevez et protégez la zone blessée. Surveillez le gonflement, la sensibilité, la couleur et la couleur des urines si indiqué. Suivez le suivi spécialisé selon les directives.",
+      medicationTreatment: MSK_MED_FR,
+      returnPrecautions: MSK_LIMB_ESCALATION_FR + " Revenez pour urines foncées ou douleur sévère croissante.",
+    }
+  );
+
+export const TRAUMA_MSK_AMPUTATION_FINGER_THUMB_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description: "You were evaluated for a traumatic finger or thumb amputation. Specialty care is often time-sensitive.",
+      diagnosisInstructions: "Keep dressings clean and dry. Elevate the hand. Control bleeding as instructed. Take antibiotics if prescribed. Follow hand-surgery or transfer instructions exactly. Amputated-part storage instructions apply only if your clinician provided them.",
+      medicationTreatment: MSK_MED_EN,
+      returnPrecautions: "Return immediately for uncontrolled bleeding, increasing pain, fever, foul drainage, or dressing soaked through.",
+    },
+    {
+      description: "Vous avez été pris en charge pour une amputation traumatique du doigt ou du pouce. Les soins spécialisés sont souvent urgents.",
+      diagnosisInstructions: "Gardez les pansements propres et secs. Surélevez la main. Contrôlez le saignement selon les consignes. Prenez les antibiotiques si prescrits. Suivez exactement les consignes de chirurgie de la main ou de transfert.",
+      medicationTreatment: MSK_MED_FR,
+      returnPrecautions: "Retournez immédiatement pour saignement non contrôlé, douleur croissante, fièvre, écoulement malodorant ou pansement saturé.",
+    }
+  );
+
+export const TRAUMA_MSK_AMPUTATION_HAND_UPPER_EXTREMITY_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description: "You were evaluated for a traumatic hand or upper-extremity amputation. Admission or transfer is commonly required.",
+      diagnosisInstructions: "Follow hemorrhage-control and dressing care exactly. Keep the limb elevated if instructed. Follow operative or transfer center instructions without delay.",
+      medicationTreatment: MSK_MED_EN,
+      returnPrecautions: "Return immediately for uncontrolled bleeding, pale or cold remaining limb, severe pain, fever, or dressing failure.",
+    },
+    {
+      description: "Vous avez été pris en charge pour une amputation traumatique de la main ou du membre supérieur. L'hospitalisation ou le transfert est souvent nécessaire.",
+      diagnosisInstructions: "Suivez exactement le contrôle de l'hémorragie et les soins de pansement. Surélevez le membre si indiqué. Suivez sans délai les consignes opératoires ou de transfert.",
+      medicationTreatment: MSK_MED_FR,
+      returnPrecautions: "Retournez immédiatement pour saignement non contrôlé, membre restant pâle ou froid, douleur sévère, fièvre ou échec du pansement.",
+    }
+  );
+
+export const TRAUMA_MSK_AMPUTATION_TOE_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description: "You were evaluated for a traumatic toe amputation.",
+      diagnosisInstructions: "Keep stump dressings clean and dry. Elevate the foot. Limit weight-bearing if instructed. Follow orthopedic follow-up as directed.",
+      medicationTreatment: MSK_MED_EN,
+      returnPrecautions:
+        "Return immediately for uncontrolled bleeding, worsening pain, numbness, swelling, fever, foul drainage, or inability to walk safely.",
+    },
+    {
+      description: "Vous avez été pris en charge pour une amputation traumatique d'orteil.",
+      diagnosisInstructions: "Gardez les pansements de moignon propres et secs. Surélevez le pied. Limitez l'appui si indiqué. Suivez le suivi orthopédique selon les directives.",
+      medicationTreatment: MSK_MED_FR,
+      returnPrecautions:
+        "Retournez immédiatement pour saignement non contrôlé, aggravation de la douleur, engourdissement, enflure, fièvre, écoulement malodorant ou marche impossible.",
+    }
+  );
+
+export const TRAUMA_MSK_AMPUTATION_FOOT_LOWER_EXTREMITY_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description: "You were evaluated for a traumatic foot or lower-extremity amputation. Specialty or transfer care is commonly required.",
+      diagnosisInstructions: "Follow stump dressing and bleeding precautions exactly. Do not bear weight unless cleared. Follow orthopedic or transfer instructions urgently.",
+      medicationTreatment: MSK_MED_EN,
+      returnPrecautions: "Return immediately for uncontrolled bleeding, fever, foul drainage, severe pain, or dressing failure.",
+    },
+    {
+      description: "Vous avez été pris en charge pour une amputation traumatique du pied ou du membre inférieur. Des soins spécialisés ou un transfert sont souvent nécessaires.",
+      diagnosisInstructions: "Suivez exactement les soins de moignon et les précautions de saignement. N'appuyez pas sauf autorisation. Suivez en urgence les consignes orthopédiques ou de transfert.",
+      medicationTreatment: MSK_MED_FR,
+      returnPrecautions: "Retournez immédiatement pour saignement non contrôlé, fièvre, écoulement malodorant, douleur sévère ou échec du pansement.",
+    }
+  );
+
+export const TRAUMA_MSK_AMPUTATION_PARTIAL_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description: "You were evaluated for a partial traumatic amputation. This is not treated as a simple laceration.",
+      diagnosisInstructions: "Protect any remaining tissue bridge. Keep dressings clean. Elevate the part. Follow urgent specialty instructions for salvage versus revision.",
+      medicationTreatment: MSK_MED_EN,
+      returnPrecautions: "Return immediately for bleeding, color change of remaining tissue, severe pain, fever, or dressing failure.",
+    },
+    {
+      description: "Vous avez été pris en charge pour une amputation traumatique partielle. Ce n'est pas traité comme une simple lacération.",
+      diagnosisInstructions: "Protégez tout pont tissulaire restant. Gardez les pansements propres. Surélevez. Suivez les consignes spécialisées urgentes pour sauvetage ou révision.",
+      medicationTreatment: MSK_MED_FR,
+      returnPrecautions: "Retournez immédiatement pour saignement, changement de couleur des tissus restants, douleur sévère, fièvre ou échec du pansement.",
+    }
+  );
+
+export const TRAUMA_MSK_AMPUTATION_COMPLETE_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description: "You were evaluated for a complete traumatic amputation.",
+      diagnosisInstructions: "Follow stump care and bleeding precautions. Follow specialty or transfer instructions. Amputated-part preservation instructions apply only if your clinician provided them for this visit.",
+      medicationTreatment: MSK_MED_EN,
+      returnPrecautions: "Return immediately for uncontrolled bleeding, fever, foul drainage, or severe increasing pain.",
+    },
+    {
+      description: "Vous avez été pris en charge pour une amputation traumatique complète.",
+      diagnosisInstructions: "Suivez les soins de moignon et les précautions de saignement. Suivez les consignes spécialisées ou de transfert. Les consignes de préservation du segment amputé s'appliquent seulement si votre clinicien les a données.",
+      medicationTreatment: MSK_MED_FR,
+      returnPrecautions: "Retournez immédiatement pour saignement non contrôlé, fièvre, écoulement malodorant ou douleur sévère croissante.",
+    }
+  );
+
+export const TRAUMA_MSK_AMPUTATION_POSTOPERATIVE_OR_FOLLOWUP_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description: "You were evaluated for amputation stump care or postoperative follow-up.",
+      diagnosisInstructions: "Keep the stump clean and dry as directed. Watch for infection. Follow prosthetic or specialty follow-up as directed.",
+      medicationTreatment: MSK_MED_EN,
+      returnPrecautions:
+        "Return immediately for fever, spreading redness, foul drainage, stump breakdown, worsening pain, numbness, or swelling.",
+    },
+    {
+      description: "Vous avez été pris en charge pour des soins de moignon ou un suivi postopératoire d'amputation.",
+      diagnosisInstructions: "Gardez le moignon propre et sec selon les directives. Surveillez l'infection. Suivez le suivi prothétique ou spécialisé selon les directives.",
+      medicationTreatment: MSK_MED_FR,
+      returnPrecautions:
+        "Retournez immédiatement pour fièvre, rougeur extensive, écoulement malodorant, dégradation du moignon, aggravation de la douleur, engourdissement ou enflure.",
+    }
+  );
+
+export const TRAUMA_MSK_AMPUTATION_GENERIC_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description: "You were evaluated for a traumatic amputation.",
+      diagnosisInstructions: "Follow dressing, bleeding, and specialty or transfer instructions exactly. Elevate if directed.",
+      medicationTreatment: MSK_MED_EN,
+      returnPrecautions: "Return immediately for uncontrolled bleeding, fever, foul drainage, or severe pain.",
+    },
+    {
+      description: "Vous avez été pris en charge pour une amputation traumatique.",
+      diagnosisInstructions: "Suivez exactement les consignes de pansement, de saignement et de spécialité ou transfert. Surélevez si indiqué.",
+      medicationTreatment: MSK_MED_FR,
+      returnPrecautions: "Retournez immédiatement pour saignement non contrôlé, fièvre, écoulement malodorant ou douleur sévère.",
+    }
+  );
+
+export const TRAUMA_MSK_FOREIGN_BODY_EYE_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description: "You were evaluated for an eye foreign body.",
+      diagnosisInstructions: "Do not rub the eye. Use drops or ointment only if prescribed. Avoid contact lenses until cleared. Follow ophthalmology instructions urgently if given.",
+      medicationTreatment: MSK_MED_EN,
+      returnPrecautions: "Return immediately for vision loss, severe eye pain, light sensitivity, pus, or increasing redness.",
+    },
+    {
+      description: "Vous avez été pris en charge pour un corps étranger de l'œil.",
+      diagnosisInstructions: "Ne frottez pas l'œil. Utilisez gouttes ou pommade seulement si prescrites. Évitez les lentilles jusqu'à autorisation. Suivez en urgence les consignes d'ophtalmologie si données.",
+      medicationTreatment: MSK_MED_FR,
+      returnPrecautions: "Retournez immédiatement pour perte de vision, douleur oculaire sévère, photophobie, pus ou rougeur croissante.",
+    }
+  );
+
+export const TRAUMA_MSK_FOREIGN_BODY_EAR_NOSE_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description: "You were evaluated for an ear or nose foreign body.",
+      diagnosisInstructions: "Do not insert objects to remove remaining material. Keep the area clean and dry. Follow ENT follow-up if directed.",
+      medicationTreatment: MSK_MED_EN,
+      returnPrecautions:
+        "Return immediately for worsening pain, swelling, bleeding, fever, drainage, difficulty breathing, vomiting, or hearing change.",
+    },
+    {
+      description: "Vous avez été pris en charge pour un corps étranger de l'oreille ou du nez.",
+      diagnosisInstructions: "N'introduisez pas d'objets pour retirer un reste. Gardez la zone propre et sèche. Suivez le suivi ORL si indiqué.",
+      medicationTreatment: MSK_MED_FR,
+      returnPrecautions:
+        "Retournez immédiatement pour aggravation de la douleur, enflure, saignement, fièvre, écoulement, difficulté à respirer, vomissements ou changement d'audition.",
+    }
+  );
+
+export const TRAUMA_MSK_FOREIGN_BODY_SKIN_SOFT_TISSUE_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description: "You were evaluated for a soft-tissue foreign body.",
+      diagnosisInstructions: "Keep the wound clean and dry. Watch for retained-fragment symptoms. Update tetanus care if advised. Follow wound check as directed.",
+      medicationTreatment: MSK_MED_EN,
+      returnPrecautions: "Return for increasing redness, pus, fever, spreading swelling, numbness, or persistent foreign-body sensation.",
+    },
+    {
+      description: "Vous avez été pris en charge pour un corps étranger des tissus mous.",
+      diagnosisInstructions: "Gardez la plaie propre et sèche. Surveillez les symptômes de fragment retenu. Mettez à jour le tétanos si conseillé. Suivez le contrôle de plaie selon les directives.",
+      medicationTreatment: MSK_MED_FR,
+      returnPrecautions: "Revenez pour rougeur croissante, pus, fièvre, gonflement extensif, engourdissement ou sensation persistante de corps étranger.",
+    }
+  );
+
+export const TRAUMA_MSK_FOREIGN_BODY_HAND_FINGER_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description: "You were evaluated for a hand or finger foreign body.",
+      diagnosisInstructions: "Keep the wound clean. Elevate the hand. Watch for infection or residual fragment symptoms. Follow hand-surgery follow-up if directed.",
+      medicationTreatment: MSK_MED_EN,
+      returnPrecautions: "Return for increasing pain, redness, pus, fever, numbness, or inability to move the finger.",
+    },
+    {
+      description: "Vous avez été pris en charge pour un corps étranger de la main ou du doigt.",
+      diagnosisInstructions: "Gardez la plaie propre. Surélevez la main. Surveillez l'infection ou un fragment résiduel. Suivez le suivi en chirurgie de la main si indiqué.",
+      medicationTreatment: MSK_MED_FR,
+      returnPrecautions: "Revenez pour douleur croissante, rougeur, pus, fièvre, engourdissement ou impossibilité de bouger le doigt.",
+    }
+  );
+
+export const TRAUMA_MSK_FOREIGN_BODY_FOOT_TOE_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description: "You were evaluated for a foot or toe foreign body.",
+      diagnosisInstructions: "Keep the wound clean and dry. Limit weight-bearing if instructed. Watch for infection or residual fragment symptoms.",
+      medicationTreatment: MSK_MED_EN,
+      returnPrecautions:
+        "Return immediately for worsening pain, numbness, swelling, redness, pus, fever, or inability to walk safely.",
+    },
+    {
+      description: "Vous avez été pris en charge pour un corps étranger du pied ou de l'orteil.",
+      diagnosisInstructions: "Gardez la plaie propre et sèche. Limitez l'appui si indiqué. Surveillez l'infection ou un fragment résiduel.",
+      medicationTreatment: MSK_MED_FR,
+      returnPrecautions:
+        "Retournez immédiatement pour aggravation de la douleur, engourdissement, enflure, rougeur, pus, fièvre ou marche impossible.",
+    }
+  );
+
+export const TRAUMA_MSK_FOREIGN_BODY_FISHHOOK_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description: "You were evaluated for a fishhook injury.",
+      diagnosisInstructions: "Keep the wound clean after removal. Watch for infection. Complete tetanus care if advised. Follow wound check as directed.",
+      medicationTreatment: MSK_MED_EN,
+      returnPrecautions:
+        "Return immediately for worsening pain, numbness, swelling, redness, pus, fever, or retained-hook concern.",
+    },
+    {
+      description: "Vous avez été pris en charge pour une blessure par hameçon.",
+      diagnosisInstructions: "Gardez la plaie propre après retrait. Surveillez l'infection. Complétez le tétanos si conseillé. Suivez le contrôle de plaie selon les directives.",
+      medicationTreatment: MSK_MED_FR,
+      returnPrecautions:
+        "Retournez immédiatement pour aggravation de la douleur, engourdissement, enflure, rougeur, pus, fièvre ou suspicion d'hameçon retenu.",
+    }
+  );
+
+export const TRAUMA_MSK_FOREIGN_BODY_INGESTED_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description: "You were evaluated for a swallowed foreign body. Home care alone is not always appropriate.",
+      diagnosisInstructions: "Follow diet and observation instructions exactly. Seek care urgently for drooling, vomiting, chest pain, or inability to swallow. Specialty follow-up may be required.",
+      medicationTreatment: MSK_MED_EN,
+      returnPrecautions: "Return immediately for breathing difficulty, drooling, vomiting, severe chest or abdominal pain, or inability to swallow saliva.",
+    },
+    {
+      description: "Vous avez été pris en charge pour un corps étranger avalé. Les soins à domicile seuls ne sont pas toujours appropriés.",
+      diagnosisInstructions: "Suivez exactement les consignes alimentaires et d'observation. Consultez en urgence pour bave, vomissements, douleur thoracique ou impossibilité d'avaler.",
+      medicationTreatment: MSK_MED_FR,
+      returnPrecautions: "Retournez immédiatement pour difficulté respiratoire, bave, vomissements, douleur thoracique ou abdominale sévère, ou impossibilité d'avaler la salive.",
+    }
+  );
+
+export const TRAUMA_MSK_FOREIGN_BODY_ASPIRATED_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description: "You were evaluated for a possible aspirated airway foreign body. This can be an emergency.",
+      diagnosisInstructions: "Follow airway and specialty instructions exactly. Do not delay transfer or specialist care if recommended.",
+      medicationTreatment: MSK_MED_EN,
+      returnPrecautions: "Return immediately for breathing difficulty, wheezing, blue lips, choking, or sudden cough with distress.",
+    },
+    {
+      description: "Vous avez été pris en charge pour un possible corps étranger inhalé des voies aériennes. Cela peut être une urgence.",
+      diagnosisInstructions: "Suivez exactement les consignes respiratoires et spécialisées. Ne retardez pas le transfert ou les soins spécialisés si recommandés.",
+      medicationTreatment: MSK_MED_FR,
+      returnPrecautions: "Retournez immédiatement pour difficulté respiratoire, sifflement, lèvres bleues, étouffement ou toux soudaine avec détresse.",
+    }
+  );
+
+export const TRAUMA_MSK_FOREIGN_BODY_RETAINED_FRAGMENT_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description: "You were evaluated for a retained foreign-body fragment concern.",
+      diagnosisInstructions: "Keep the wound clean. Watch for infection. Follow imaging or specialty follow-up as directed. Residual fragment symptoms can appear later.",
+      medicationTreatment: MSK_MED_EN,
+      returnPrecautions: "Return for increasing redness, pus, fever, numbness, or persistent foreign-body sensation.",
+    },
+    {
+      description: "Vous avez été pris en charge pour un fragment de corps étranger retenu suspecté.",
+      diagnosisInstructions: "Gardez la plaie propre. Surveillez l'infection. Suivez l'imagerie ou le suivi spécialisé selon les directives. Les symptômes de fragment résiduel peuvent apparaître plus tard.",
+      medicationTreatment: MSK_MED_FR,
+      returnPrecautions: "Revenez pour rougeur croissante, pus, fièvre, engourdissement ou sensation persistante de corps étranger.",
+    }
+  );
+
+export const TRAUMA_MSK_FOREIGN_BODY_GENERIC_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description: "You were evaluated for a foreign body injury.",
+      diagnosisInstructions: "Keep the area clean. Watch for infection and residual fragment symptoms. Follow specialty follow-up as directed.",
+      medicationTreatment: MSK_MED_EN,
+      returnPrecautions:
+        "Return immediately for worsening pain, numbness, swelling, redness, pus, fever, or persistent foreign-body sensation.",
+    },
+    {
+      description: "Vous avez été pris en charge pour une blessure avec corps étranger.",
+      diagnosisInstructions: "Gardez la zone propre. Surveillez l'infection et les symptômes de fragment résiduel. Suivez le suivi spécialisé selon les directives.",
+      medicationTreatment: MSK_MED_FR,
+      returnPrecautions:
+        "Retournez immédiatement pour aggravation de la douleur, engourdissement, enflure, rougeur, pus, fièvre ou sensation persistante de corps étranger.",
+    }
+  );
+
+
 const CARDIO_MED_EN = "Take medications only as prescribed or directed during this visit.";
 const CARDIO_MED_FR =
   "Prenez les médicaments uniquement selon la prescription ou les indications reçues pendant cette visite.";

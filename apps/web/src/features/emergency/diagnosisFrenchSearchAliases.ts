@@ -12,6 +12,23 @@ export type FrenchDiagnosisSearchAlias = {
 
 const FRENCH_DIAGNOSIS_SEARCH_ALIASES: readonly FrenchDiagnosisSearchAlias[] = [
   {
+    frenchPhrases: ["écrasement", "ecrasement", "main écrasée", "doigt écrasé", "pied écrasé"],
+    englishSearchTerms: ["crush injury", "crushing injury", "crushed hand", "crushed finger", "crushed foot"],
+  },
+  {
+    frenchPhrases: ["amputation traumatique", "doigt coupé", "orteil coupé", "doigt sectionné"],
+    englishSearchTerms: ["traumatic amputation", "severed finger", "severed toe", "finger cut off", "toe cut off"],
+  },
+  {
+    frenchPhrases: ["corps étranger", "corps etranger", "écharde", "echarde", "hameçon", "hamecon", "éclat de verre"],
+    englishSearchTerms: ["foreign body", "splinter", "fishhook", "glass in skin", "retained foreign body"],
+  },
+  {
+    frenchPhrases: ["corps étranger oeil", "corps etranger oeil", "corps étranger oreille", "corps étranger nez"],
+    englishSearchTerms: ["foreign body eye", "foreign body ear", "foreign body nose"],
+  },
+
+  {
     frenchPhrases: ["douleur abdominale", "douleur au ventre", "mal au ventre", "douleur abdominal"],
     englishSearchTerms: ["abdominal pain"],
   },
