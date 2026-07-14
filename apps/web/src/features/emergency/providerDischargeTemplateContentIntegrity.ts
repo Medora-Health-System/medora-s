@@ -453,6 +453,38 @@ export const PROVIDER_DISCHARGE_TEMPLATE_CONTENT_INTEGRITY: Record<
     mustIncludeAny: { en: ["open", "compound"], fr: ["ouverte", "composée"] },
     forbiddenCrossTemplateMarkers: { en: ["laceration"], fr: ["lacération"] },
   },
+  trauma_msk_dislocation_shoulder_v1: {
+    mustIncludeAny: { en: ["shoulder", "dislocation"], fr: ["épaule", "luxation"] },
+    forbiddenCrossTemplateMarkers: { en: WOUND_FORBIDDEN_EN, fr: WOUND_FORBIDDEN_FR },
+  },
+  trauma_msk_dislocation_elbow_v1: {
+    mustIncludeAny: { en: ["elbow", "nursemaid"], fr: ["coude", "poignet de bonne"] },
+    forbiddenCrossTemplateMarkers: { en: WOUND_FORBIDDEN_EN, fr: WOUND_FORBIDDEN_FR },
+  },
+  trauma_msk_dislocation_hip_v1: {
+    mustIncludeAny: { en: ["hip", "dislocation"], fr: ["hanche", "luxation"] },
+    forbiddenCrossTemplateMarkers: { en: WOUND_FORBIDDEN_EN, fr: WOUND_FORBIDDEN_FR },
+  },
+  trauma_msk_dislocation_patella_v1: {
+    mustIncludeAny: { en: ["patella", "kneecap", "knee"], fr: ["rotule", "genou"] },
+    forbiddenCrossTemplateMarkers: { en: WOUND_FORBIDDEN_EN, fr: WOUND_FORBIDDEN_FR },
+  },
+  trauma_msk_dislocation_hand_v1: {
+    mustIncludeAny: { en: ["hand", "finger", "wrist"], fr: ["main", "doigt", "poignet"] },
+    forbiddenCrossTemplateMarkers: { en: WOUND_FORBIDDEN_EN, fr: WOUND_FORBIDDEN_FR },
+  },
+  trauma_msk_dislocation_jaw_v1: {
+    mustIncludeAny: { en: ["jaw", "tmj"], fr: ["mâchoire", "atm"] },
+    forbiddenCrossTemplateMarkers: { en: WOUND_FORBIDDEN_EN, fr: WOUND_FORBIDDEN_FR },
+  },
+  trauma_msk_dislocation_generic_v1: {
+    mustIncludeAny: { en: ["dislocation"], fr: ["luxation"] },
+    forbiddenCrossTemplateMarkers: { en: WOUND_FORBIDDEN_EN, fr: WOUND_FORBIDDEN_FR },
+  },
+  trauma_msk_sprain_generic_v1: {
+    mustIncludeAny: { en: ["sprain", "strain"], fr: ["entorse", "élongation"] },
+    forbiddenCrossTemplateMarkers: { en: WOUND_FORBIDDEN_EN, fr: WOUND_FORBIDDEN_FR },
+  },
   trauma_msk_mvc_soreness_v1: {
     mustIncludeAny: { en: ["motor vehicle", "collision"], fr: ["véhicule", "collision"] },
     forbiddenCrossTemplateMarkers: { en: WOUND_FORBIDDEN_EN, fr: WOUND_FORBIDDEN_FR },

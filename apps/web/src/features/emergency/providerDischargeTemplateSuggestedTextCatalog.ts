@@ -2150,6 +2150,170 @@ export const TRAUMA_MSK_FRACTURE_OPEN_SUGGESTED_TEXT: ProviderDischargeTemplateS
     }
   );
 
+export const TRAUMA_MSK_DISLOCATION_SHOULDER_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for a shoulder dislocation or acromioclavicular joint injury. Symptoms may change after the visit.",
+      diagnosisInstructions:
+        "Use a sling or immobilization device only as directed. Ice and elevate as directed to reduce swelling. Avoid overhead activity until cleared. Follow up with orthopedics as directed.",
+      medicationTreatment: MSK_MED_EN,
+      returnPrecautions: MSK_LIMB_ESCALATION_EN,
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour une luxation de l'épaule ou une blessure de l'articulation acromio-claviculaire. Les symptômes peuvent évoluer après la visite.",
+      diagnosisInstructions:
+        "Utilisez une écharpe ou un dispositif d'immobilisation uniquement selon les directives. Glace et surélévation selon les directives pour réduire l'enflure. Évitez les mouvements au-dessus de la tête jusqu'à autorisation. Suivez le suivi en orthopédie selon les directives.",
+      medicationTreatment: MSK_MED_FR,
+      returnPrecautions: MSK_LIMB_ESCALATION_FR,
+    }
+  );
+
+export const TRAUMA_MSK_DISLOCATION_ELBOW_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for an elbow dislocation or nursemaid elbow (radial head subluxation). Symptoms may change after the visit.",
+      diagnosisInstructions:
+        "Use a sling or splint only as directed. Limit lifting and forceful elbow use until follow-up. Watch hand color, warmth, and sensation. Follow up with orthopedics or your clinician as directed.",
+      medicationTreatment: MSK_MED_EN,
+      returnPrecautions: MSK_LIMB_ESCALATION_EN,
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour une luxation du coude ou un poignet de bonne (subluxation de la tête radiale). Les symptômes peuvent évoluer après la visite.",
+      diagnosisInstructions:
+        "Utilisez une écharpe ou une attelle uniquement selon les directives. Limitez le soulèvement et l'usage forcé du coude jusqu'au suivi. Surveillez la couleur, la chaleur et la sensibilité de la main. Suivez le suivi en orthopédie ou avec votre clinicien selon les directives.",
+      medicationTreatment: MSK_MED_FR,
+      returnPrecautions: MSK_LIMB_ESCALATION_FR,
+    }
+  );
+
+export const TRAUMA_MSK_DISLOCATION_HIP_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for a hip dislocation. Hip dislocations often need urgent reduction and orthopedic care; if you are going home today, follow the instructions below closely.",
+      diagnosisInstructions:
+        "Keep weight off the affected leg and use assistive devices only as directed. Use immobilization only as directed. Follow up with orthopedic surgery as directed.",
+      medicationTreatment: MSK_MED_EN,
+      returnPrecautions:
+        "Return immediately for worsening pain, numbness, weakness, inability to move the leg, foot discoloration, chest pain, shortness of breath, or fever. Seek emergency care for worsening symptoms.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour une luxation de la hanche. Les luxations de la hanche nécessitent souvent une réduction urgente et une prise en charge orthopédique ; si vous rentrez à la maison aujourd'hui, suivez attentivement les instructions ci-dessous.",
+      diagnosisInstructions:
+        "Évitez de mettre du poids sur la jambe atteinte et utilisez des aides à la marche uniquement selon les directives. Utilisez l'immobilisation uniquement selon les directives. Suivez le suivi en chirurgie orthopédique selon les directives.",
+      medicationTreatment: MSK_MED_FR,
+      returnPrecautions:
+        "Retournez immédiatement en cas d'aggravation de la douleur, d'engourdissement, de faiblesse, d'incapacité à bouger la jambe, de changement de couleur du pied, de douleur thoracique, de difficulté à respirer ou de fièvre. Consultez en urgence en cas d'aggravation.",
+    }
+  );
+
+export const TRAUMA_MSK_DISLOCATION_PATELLA_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for a kneecap (patella) dislocation or related knee joint dislocation. Symptoms may change after the visit.",
+      diagnosisInstructions:
+        "Use a knee immobilizer or brace only as directed. Ice and elevate the knee as directed. Limit weight-bearing as directed. Follow up with orthopedics as directed.",
+      medicationTreatment: MSK_MED_EN,
+      returnPrecautions: MSK_LIMB_ESCALATION_EN,
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour une luxation de la rotule ou une luxation articulaire du genou associée. Les symptômes peuvent évoluer après la visite.",
+      diagnosisInstructions:
+        "Utilisez une attelle ou une orthèse de genou uniquement selon les directives. Glace et surélévation du genou selon les directives. Limitez la mise en charge selon les directives. Suivez le suivi en orthopédie selon les directives.",
+      medicationTreatment: MSK_MED_FR,
+      returnPrecautions: MSK_LIMB_ESCALATION_FR,
+    }
+  );
+
+export const TRAUMA_MSK_DISLOCATION_HAND_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for a hand, finger, thumb, or wrist dislocation. Symptoms may change after the visit.",
+      diagnosisInstructions:
+        "Use a splint only as directed. Ice and elevate the hand above the heart as directed. Keep the splint clean and dry. Follow up with orthopedics or hand surgery as directed.",
+      medicationTreatment: MSK_MED_EN,
+      returnPrecautions: MSK_LIMB_ESCALATION_EN,
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour une luxation de la main, du doigt, du pouce ou du poignet. Les symptômes peuvent évoluer après la visite.",
+      diagnosisInstructions:
+        "Utilisez une attelle uniquement selon les directives. Glace et surélévation de la main au-dessus du cœur selon les directives. Gardez l'attelle propre et sèche. Suivez le suivi en orthopédie ou en chirurgie de la main selon les directives.",
+      medicationTreatment: MSK_MED_FR,
+      returnPrecautions: MSK_LIMB_ESCALATION_FR,
+    }
+  );
+
+export const TRAUMA_MSK_DISLOCATION_JAW_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for a jaw (TMJ) dislocation. Symptoms may change after the visit.",
+      diagnosisInstructions:
+        "Eat a soft diet only as directed. Avoid wide mouth opening, hard chewing, and yawning forcefully. Follow up as directed for maxillofacial or ENT evaluation.",
+      medicationTreatment: MSK_MED_EN,
+      returnPrecautions:
+        "Return immediately for inability to close the mouth, worsening pain, new facial numbness, difficulty breathing, or recurrent jaw locking. Seek emergency care for worsening symptoms.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour une luxation de la mâchoire (ATM). Les symptômes peuvent évoluer après la visite.",
+      diagnosisInstructions:
+        "Alimentation molle uniquement selon les directives. Évitez d'ouvrir largement la bouche, de mâcher des aliments durs et de bâiller avec force. Suivez le suivi maxillo-facial ou ORL selon les directives.",
+      medicationTreatment: MSK_MED_FR,
+      returnPrecautions:
+        "Retournez immédiatement en cas d'incapacité à fermer la bouche, d'aggravation de la douleur, de nouvel engourdissement du visage, de difficulté à respirer ou de blocage récidivant de la mâchoire. Consultez en urgence en cas d'aggravation.",
+    }
+  );
+
+export const TRAUMA_MSK_DISLOCATION_GENERIC_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for a joint dislocation. Symptoms may change after the visit.",
+      diagnosisInstructions:
+        "Use a splint, brace, or immobilization device only as directed. Ice and elevate as directed. Limit activity as directed. Follow up with orthopedics as directed.",
+      medicationTreatment: MSK_MED_EN,
+      returnPrecautions: MSK_LIMB_ESCALATION_EN,
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour une luxation articulaire. Les symptômes peuvent évoluer après la visite.",
+      diagnosisInstructions:
+        "Utilisez une attelle, une orthèse ou un dispositif d'immobilisation uniquement selon les directives. Glace et surélévation selon les directives. Limitez l'activité selon les directives. Suivez le suivi en orthopédie selon les directives.",
+      medicationTreatment: MSK_MED_FR,
+      returnPrecautions: MSK_LIMB_ESCALATION_FR,
+    }
+  );
+
+export const TRAUMA_MSK_SPRAIN_GENERIC_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for a sprain or strain. Symptoms may change after the visit.",
+      diagnosisInstructions:
+        "Rest, ice, compression, and elevation as directed. Use a brace or wrap only as directed. Limit activity and return to sport only when cleared. Follow up as directed.",
+      medicationTreatment: MSK_MED_EN,
+      returnPrecautions: MSK_LIMB_ESCALATION_EN,
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour une entorse ou une élongation. Les symptômes peuvent évoluer après la visite.",
+      diagnosisInstructions:
+        "Repos, glace, compression et surélévation selon les directives. Utilisez une orthèse ou un bandage uniquement selon les directives. Limitez l'activité et ne reprenez le sport que lorsqu'autorisé. Suivez le suivi selon les directives.",
+      medicationTreatment: MSK_MED_FR,
+      returnPrecautions: MSK_LIMB_ESCALATION_FR,
+    }
+  );
+
 const CARDIO_MED_EN = "Take medications only as prescribed or directed during this visit.";
 const CARDIO_MED_FR =
   "Prenez les médicaments uniquement selon la prescription ou les indications reçues pendant cette visite.";

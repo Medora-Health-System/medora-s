@@ -168,6 +168,66 @@ const FRENCH_DIAGNOSIS_SEARCH_ALIASES: readonly FrenchDiagnosisSearchAlias[] = [
     englishSearchTerms: ["sprain"],
   },
   {
+    frenchPhrases: ["élongation", "elongation", "claquage"],
+    englishSearchTerms: ["strain", "pulled muscle", "muscle strain"],
+  },
+  {
+    frenchPhrases: ["luxation", "subluxation"],
+    englishSearchTerms: ["dislocation", "subluxation"],
+  },
+  {
+    frenchPhrases: ["épaule luxée", "epaule luxee", "luxation de l'épaule", "luxation de l'epaule"],
+    englishSearchTerms: ["shoulder dislocation", "dislocated shoulder"],
+  },
+  {
+    frenchPhrases: ["hanche luxée", "hanche luxee", "luxation de la hanche"],
+    englishSearchTerms: ["hip dislocation", "dislocated hip"],
+  },
+  {
+    frenchPhrases: ["rotule luxée", "rotule luxee", "luxation de la rotule"],
+    englishSearchTerms: ["patella dislocation", "dislocated kneecap", "patellar dislocation"],
+  },
+  {
+    frenchPhrases: ["doigt luxé", "doigt luxe", "luxation du doigt"],
+    englishSearchTerms: ["finger dislocation", "dislocated finger"],
+  },
+  {
+    frenchPhrases: ["mâchoire luxée", "machoire luxee", "luxation de la mâchoire", "luxation de la machoire", "luxation atm"],
+    englishSearchTerms: ["jaw dislocation", "tmj dislocation", "dislocated jaw"],
+  },
+  {
+    frenchPhrases: ["poignet de bonne", "coude de nounou"],
+    englishSearchTerms: ["nursemaid elbow", "pulled elbow", "radial head subluxation"],
+  },
+  {
+    frenchPhrases: ["entorse de la cheville", "entorse cheville", "cheville tordue"],
+    englishSearchTerms: ["ankle sprain", "twisted ankle"],
+  },
+  {
+    frenchPhrases: ["entorse du poignet", "entorse poignet"],
+    englishSearchTerms: ["wrist sprain"],
+  },
+  {
+    frenchPhrases: ["entorse du genou", "entorse genou"],
+    englishSearchTerms: ["knee sprain", "ligament injury"],
+  },
+  {
+    frenchPhrases: ["entorse cervicale", "entorse du cou"],
+    englishSearchTerms: ["neck strain", "cervical strain"],
+  },
+  {
+    frenchPhrases: ["entorse lombaire", "entorse du dos"],
+    englishSearchTerms: ["back strain", "lumbar strain"],
+  },
+  {
+    frenchPhrases: ["entorse de l'épaule", "entorse de l'epaule", "entorse épaule"],
+    englishSearchTerms: ["shoulder sprain"],
+  },
+  {
+    frenchPhrases: ["claquage des ischio-jambiers", "claquage ischio", "élongation des ischio-jambiers"],
+    englishSearchTerms: ["hamstring strain", "pulled hamstring"],
+  },
+  {
     frenchPhrases: ["douleur cheville"],
     englishSearchTerms: ["ankle pain"],
   },

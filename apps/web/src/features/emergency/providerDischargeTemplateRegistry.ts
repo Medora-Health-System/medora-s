@@ -36,6 +36,13 @@ import {
   TRAUMA_MSK_ANKLE_SPRAIN_SUGGESTED_TEXT,
   TRAUMA_MSK_BACK_STRAIN_SUGGESTED_TEXT,
   TRAUMA_MSK_CONTUSION_SUGGESTED_TEXT,
+  TRAUMA_MSK_DISLOCATION_ELBOW_SUGGESTED_TEXT,
+  TRAUMA_MSK_DISLOCATION_GENERIC_SUGGESTED_TEXT,
+  TRAUMA_MSK_DISLOCATION_HAND_SUGGESTED_TEXT,
+  TRAUMA_MSK_DISLOCATION_HIP_SUGGESTED_TEXT,
+  TRAUMA_MSK_DISLOCATION_JAW_SUGGESTED_TEXT,
+  TRAUMA_MSK_DISLOCATION_PATELLA_SUGGESTED_TEXT,
+  TRAUMA_MSK_DISLOCATION_SHOULDER_SUGGESTED_TEXT,
   TRAUMA_MSK_FRACTURE_FACIAL_SUGGESTED_TEXT,
   TRAUMA_MSK_FRACTURE_HAND_SUGGESTED_TEXT,
   TRAUMA_MSK_FRACTURE_HIP_SUGGESTED_TEXT,
@@ -46,6 +53,7 @@ import {
   TRAUMA_MSK_MVC_SORENESS_SUGGESTED_TEXT,
   TRAUMA_MSK_NECK_STRAIN_SUGGESTED_TEXT,
   TRAUMA_MSK_RIB_INJURY_SUGGESTED_TEXT,
+  TRAUMA_MSK_SPRAIN_GENERIC_SUGGESTED_TEXT,
   CARDIO_HYPERTENSION_ELEVATED_BP_SUGGESTED_TEXT,
   HIGH_RISK_MEDICAL_FATIGUE_SUGGESTED_TEXT,
   HIGH_RISK_MEDICAL_GENERAL_WEAKNESS_SUGGESTED_TEXT,
@@ -2761,7 +2769,16 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
     },
     diagnosisMappings: {
       icdFamily: ["S93.4"],
-      keyword: ["msk ankle sprain", "ankle sprain msk", "entorse cheville msk"],
+      keyword: [
+        "msk ankle sprain",
+        "ankle sprain msk",
+        "entorse cheville msk",
+        "ankle sprain",
+        "twisted ankle",
+        "entorse de la cheville",
+        "entorse cheville",
+        "cheville tordue",
+      ],
     },
     sourceReferences: [
       {
@@ -2792,7 +2809,14 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
     },
     diagnosisMappings: {
       icdFamily: ["S63.5"],
-      keyword: ["msk wrist sprain", "wrist sprain msk", "entorse poignet msk"],
+      keyword: [
+        "msk wrist sprain",
+        "wrist sprain msk",
+        "entorse poignet msk",
+        "wrist sprain",
+        "entorse du poignet",
+        "entorse poignet",
+      ],
     },
     sourceReferences: [
       {
@@ -2822,8 +2846,18 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
       requiresOrthopedicFollowUp: true,
     },
     diagnosisMappings: {
-      icdFamily: ["S89"],
-      keyword: ["msk knee injury", "knee injury msk", "blessure genou msk"],
+      icdFamily: ["S83.2", "S83.3", "S83.4", "S83.5", "S83.6", "S83.9", "S89"],
+      keyword: [
+        "msk knee injury",
+        "knee injury msk",
+        "blessure genou msk",
+        "knee sprain",
+        "ligament injury",
+        "acl sprain",
+        "mcl sprain",
+        "entorse du genou",
+        "entorse genou",
+      ],
     },
     sourceReferences: [
       {
@@ -2853,8 +2887,17 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
       requiresOrthopedicFollowUp: true,
     },
     diagnosisMappings: {
-      icdFamily: ["M25.51"],
-      keyword: ["msk shoulder pain", "shoulder pain msk", "douleur épaule msk"],
+      icdFamily: ["M25.51", "S43.4", "S43.5", "S46"],
+      keyword: [
+        "msk shoulder pain",
+        "shoulder pain msk",
+        "douleur épaule msk",
+        "shoulder sprain",
+        "shoulder strain",
+        "rotator cuff",
+        "entorse de l'épaule",
+        "entorse épaule",
+      ],
     },
     sourceReferences: [
       {
@@ -2883,8 +2926,17 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
       requiresReturnActivityRestrictions: true,
     },
     diagnosisMappings: {
-      icdExact: ["S39.012"],
-      keyword: ["msk back strain", "back strain msk", "entorse dos msk"],
+      icdExact: ["S39.012", "S39.012A"],
+      icdFamily: ["S33.5", "S39.01"],
+      keyword: [
+        "msk back strain",
+        "back strain msk",
+        "entorse dos msk",
+        "back strain",
+        "lumbar strain",
+        "entorse lombaire",
+        "entorse du dos",
+      ],
     },
     sourceReferences: [
       {
@@ -2913,8 +2965,18 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
       requiresReturnActivityRestrictions: true,
     },
     diagnosisMappings: {
-      icdExact: ["S16.1"],
-      keyword: ["msk neck strain", "neck strain msk", "entorse cou msk"],
+      icdExact: ["S16.1", "S16.1XXA"],
+      icdFamily: ["S13.4", "S16"],
+      keyword: [
+        "msk neck strain",
+        "neck strain msk",
+        "entorse cou msk",
+        "neck strain",
+        "cervical strain",
+        "whiplash",
+        "entorse cervicale",
+        "entorse du cou",
+      ],
     },
     sourceReferences: [
       {
@@ -3289,6 +3351,249 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
     ],
     defaultFollowUps: [registryFollowUp("tmfo-ortho", "ORTHOPEDICS", "within 24–48 hours or as directed")],
     suggestedText: TRAUMA_MSK_FRACTURE_OPEN_SUGGESTED_TEXT,
+  },
+  {
+    id: "trauma_msk_dislocation_shoulder_v1",
+    version: "1.0.0",
+    title: "Trauma/MSK shoulder dislocation discharge documentation",
+    ...TRAUMA_MSK_TEMPLATE_GOVERNANCE,
+    traumaMskSafety: {
+      requiresNeurovascularPrecautions: true,
+      requiresOrthopedicFollowUp: true,
+      requiresReturnActivityRestrictions: true,
+    },
+    diagnosisMappings: {
+      icdFamily: ["S43.0", "S43.1", "S43.2"],
+      keyword: [
+        "shoulder dislocation",
+        "dislocated shoulder",
+        "ac separation",
+        "acromioclavicular",
+        "luxation de l'épaule",
+        "épaule luxée",
+      ],
+    },
+    sourceReferences: [
+      {
+        label: "OrthoInfo — Shoulder dislocation",
+        url: "https://orthoinfo.aaos.org/en/diseases--conditions/shoulder-dislocation/",
+        publisher: "American Academy of Orthopaedic Surgeons (OrthoInfo)",
+        accessedAt: ACCESSED_AT,
+      },
+    ],
+    defaultFollowUps: [registryFollowUp("tmds-ortho", "ORTHOPEDICS", "within 3–7 days or as directed")],
+    suggestedText: TRAUMA_MSK_DISLOCATION_SHOULDER_SUGGESTED_TEXT,
+  },
+  {
+    id: "trauma_msk_dislocation_elbow_v1",
+    version: "1.0.0",
+    title: "Trauma/MSK elbow / nursemaid dislocation discharge documentation",
+    ...TRAUMA_MSK_TEMPLATE_GOVERNANCE,
+    traumaMskSafety: {
+      requiresNeurovascularPrecautions: true,
+      requiresOrthopedicFollowUp: true,
+      requiresReturnActivityRestrictions: true,
+    },
+    diagnosisMappings: {
+      icdFamily: ["S53.0", "S53.1"],
+      keyword: [
+        "elbow dislocation",
+        "nursemaid elbow",
+        "pulled elbow",
+        "radial head subluxation",
+        "poignet de bonne",
+        "luxation du coude",
+      ],
+    },
+    sourceReferences: [
+      {
+        label: "OrthoInfo — Nursemaid's elbow",
+        url: "https://orthoinfo.aaos.org/en/diseases--conditions/nursemaids-elbow/",
+        publisher: "American Academy of Orthopaedic Surgeons (OrthoInfo)",
+        accessedAt: ACCESSED_AT,
+      },
+    ],
+    defaultFollowUps: [registryFollowUp("tmde-ortho", "ORTHOPEDICS", "within 3–7 days or as directed")],
+    suggestedText: TRAUMA_MSK_DISLOCATION_ELBOW_SUGGESTED_TEXT,
+  },
+  {
+    id: "trauma_msk_dislocation_hip_v1",
+    version: "1.0.0",
+    title: "Trauma/MSK hip dislocation discharge documentation",
+    ...TRAUMA_MSK_TEMPLATE_GOVERNANCE,
+    traumaMskSafety: {
+      requiresNeurovascularPrecautions: true,
+      requiresOrthopedicFollowUp: true,
+      requiresReturnActivityRestrictions: true,
+    },
+    diagnosisMappings: {
+      icdFamily: ["S73.0"],
+      keyword: ["hip dislocation", "dislocated hip", "luxation de la hanche", "hanche luxée"],
+    },
+    sourceReferences: [
+      {
+        label: "OrthoInfo — Hip dislocation",
+        url: "https://orthoinfo.aaos.org/en/diseases--conditions/hip-dislocation/",
+        publisher: "American Academy of Orthopaedic Surgeons (OrthoInfo)",
+        accessedAt: ACCESSED_AT,
+      },
+    ],
+    defaultFollowUps: [registryFollowUp("tmdh-ortho", "ORTHOPEDICS", "within 24–72 hours or as directed")],
+    suggestedText: TRAUMA_MSK_DISLOCATION_HIP_SUGGESTED_TEXT,
+  },
+  {
+    id: "trauma_msk_dislocation_patella_v1",
+    version: "1.0.0",
+    title: "Trauma/MSK patella / knee dislocation discharge documentation",
+    ...TRAUMA_MSK_TEMPLATE_GOVERNANCE,
+    traumaMskSafety: {
+      requiresNeurovascularPrecautions: true,
+      requiresOrthopedicFollowUp: true,
+      requiresReturnActivityRestrictions: true,
+    },
+    diagnosisMappings: {
+      icdFamily: ["S83.0", "S83.1"],
+      keyword: [
+        "patella dislocation",
+        "dislocated kneecap",
+        "patellar dislocation",
+        "knee dislocation",
+        "luxation de la rotule",
+        "rotule luxée",
+      ],
+    },
+    sourceReferences: [
+      {
+        label: "OrthoInfo — Patellar dislocation",
+        url: "https://orthoinfo.aaos.org/en/diseases--conditions/patellar-dislocation-and-instability-in-children/",
+        publisher: "American Academy of Orthopaedic Surgeons (OrthoInfo)",
+        accessedAt: ACCESSED_AT,
+      },
+    ],
+    defaultFollowUps: [registryFollowUp("tmdp-ortho", "ORTHOPEDICS", "within 3–7 days or as directed")],
+    suggestedText: TRAUMA_MSK_DISLOCATION_PATELLA_SUGGESTED_TEXT,
+  },
+  {
+    id: "trauma_msk_dislocation_hand_v1",
+    version: "1.0.0",
+    title: "Trauma/MSK hand/finger/wrist dislocation discharge documentation",
+    ...TRAUMA_MSK_TEMPLATE_GOVERNANCE,
+    traumaMskSafety: {
+      requiresNeurovascularPrecautions: true,
+      requiresSplintCastPrecautions: true,
+      requiresOrthopedicFollowUp: true,
+      requiresReturnActivityRestrictions: true,
+    },
+    diagnosisMappings: {
+      icdFamily: ["S63.0", "S63.1", "S63.2"],
+      keyword: [
+        "finger dislocation",
+        "thumb dislocation",
+        "wrist dislocation",
+        "dislocated finger",
+        "luxation du doigt",
+        "doigt luxé",
+      ],
+    },
+    sourceReferences: [
+      {
+        label: "OrthoInfo — Finger dislocation",
+        url: "https://orthoinfo.aaos.org/en/diseases--conditions/finger-fractures/",
+        publisher: "American Academy of Orthopaedic Surgeons (OrthoInfo)",
+        accessedAt: ACCESSED_AT,
+      },
+    ],
+    defaultFollowUps: [registryFollowUp("tmdha-ortho", "ORTHOPEDICS", "within 3–7 days or as directed")],
+    suggestedText: TRAUMA_MSK_DISLOCATION_HAND_SUGGESTED_TEXT,
+  },
+  {
+    id: "trauma_msk_dislocation_jaw_v1",
+    version: "1.0.0",
+    title: "Trauma/MSK jaw/TMJ dislocation discharge documentation",
+    ...TRAUMA_MSK_TEMPLATE_GOVERNANCE,
+    traumaMskSafety: {
+      requiresReturnActivityRestrictions: true,
+    },
+    diagnosisMappings: {
+      icdFamily: ["S03.0"],
+      keyword: ["jaw dislocation", "tmj dislocation", "dislocated jaw", "luxation de la mâchoire", "luxation atm"],
+    },
+    sourceReferences: [
+      {
+        label: "MedlinePlus — Jaw injuries",
+        url: "https://medlineplus.gov/jawinjuriesanddisorders.html",
+        publisher: "U.S. National Library of Medicine (MedlinePlus)",
+        accessedAt: ACCESSED_AT,
+      },
+    ],
+    defaultFollowUps: [registryFollowUp("tmdj-ent", "ENT", "within 3–5 days or as directed")],
+    suggestedText: TRAUMA_MSK_DISLOCATION_JAW_SUGGESTED_TEXT,
+  },
+  {
+    id: "trauma_msk_dislocation_generic_v1",
+    version: "1.0.0",
+    title: "Trauma/MSK joint dislocation discharge documentation",
+    ...TRAUMA_MSK_TEMPLATE_GOVERNANCE,
+    traumaMskSafety: {
+      requiresNeurovascularPrecautions: true,
+      requiresOrthopedicFollowUp: true,
+      requiresReturnActivityRestrictions: true,
+    },
+    diagnosisMappings: {
+      icdFamily: ["S93.0", "S93.1", "S93.3"],
+      keyword: [
+        "ankle dislocation",
+        "foot dislocation",
+        "toe dislocation",
+        "joint dislocation",
+        "dislocation",
+        "luxation",
+      ],
+    },
+    sourceReferences: [
+      {
+        label: "MedlinePlus — Dislocations",
+        url: "https://medlineplus.gov/dislocations.html",
+        publisher: "U.S. National Library of Medicine (MedlinePlus)",
+        accessedAt: ACCESSED_AT,
+      },
+    ],
+    defaultFollowUps: [registryFollowUp("tmdg-ortho", "ORTHOPEDICS", "within 3–7 days or as directed")],
+    suggestedText: TRAUMA_MSK_DISLOCATION_GENERIC_SUGGESTED_TEXT,
+  },
+  {
+    id: "trauma_msk_sprain_generic_v1",
+    version: "1.0.0",
+    title: "Trauma/MSK sprain or strain discharge documentation",
+    ...TRAUMA_MSK_TEMPLATE_GOVERNANCE,
+    traumaMskSafety: {
+      requiresNeurovascularPrecautions: true,
+      requiresReturnActivityRestrictions: true,
+      requiresOrthopedicFollowUp: true,
+    },
+    diagnosisMappings: {
+      icdFamily: ["S53.3", "S53.4", "S63.3", "S63.4", "S63.6", "S73.1", "S76", "S93.5", "S93.6", "S23.3", "S29"],
+      keyword: [
+        "sprain",
+        "strain",
+        "hamstring strain",
+        "groin strain",
+        "pulled muscle",
+        "entorse",
+        "élongation",
+        "claquage",
+      ],
+    },
+    sourceReferences: [
+      {
+        label: "MedlinePlus — Sprains and strains",
+        url: "https://medlineplus.gov/sprainsandstrains.html",
+        publisher: "U.S. National Library of Medicine (MedlinePlus)",
+        accessedAt: ACCESSED_AT,
+      },
+    ],
+    defaultFollowUps: [registryFollowUp("tmsg-ortho", "ORTHOPEDICS", "within 3–7 days or as directed")],
+    suggestedText: TRAUMA_MSK_SPRAIN_GENERIC_SUGGESTED_TEXT,
   },
   {
     id: "trauma_msk_mvc_soreness_v1",
