@@ -132,8 +132,8 @@ function flattenFragmentKeys(groups: Array<{ chips: Array<{ fragmentKey: string 
 describe("providerDocumentationTraumaGovernance — MEDUI.ED.ME.2N", () => {
   it("governs all trauma/injury template IDs discovered in catalog", () => {
     expect(TRAUMA_MAJOR_GROUP_TEMPLATE_IDS).toHaveLength(12);
-    expect(MSK_TRAUMA_COMPLAINT_V1_TEMPLATE_IDS).toHaveLength(10);
-    expect(TRAUMA_GOVERNED_TEMPLATE_IDS).toHaveLength(23);
+    expect(MSK_TRAUMA_COMPLAINT_V1_TEMPLATE_IDS).toHaveLength(11);
+    expect(TRAUMA_GOVERNED_TEMPLATE_IDS).toHaveLength(24);
     for (const templateId of TRAUMA_GOVERNED_TEMPLATE_IDS) {
       expect(templateUsesTraumaStickyNoteGovernance(templateId)).toBe(true);
       expect(PROVIDER_DOCUMENTATION_TEMPLATES.some((template) => template.id === templateId)).toBe(true);

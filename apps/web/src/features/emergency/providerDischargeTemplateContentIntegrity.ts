@@ -118,6 +118,13 @@ export const PROVIDER_DISCHARGE_TEMPLATE_CONTENT_INTEGRITY: Record<
       fr: RESPIRATORY_FORBIDDEN_ON_WOUND_FR,
     },
   },
+  animal_bite_v1: {
+    mustIncludeAny: { en: ["bite", "wound"], fr: ["morsure", "plaie"] },
+    forbiddenCrossTemplateMarkers: {
+      en: RESPIRATORY_FORBIDDEN_ON_WOUND_EN,
+      fr: RESPIRATORY_FORBIDDEN_ON_WOUND_FR,
+    },
+  },
   nausea_vomiting_v1: {
     mustIncludeAny: { en: ["nausea", "vomiting"], fr: ["nausées", "vomissements"] },
     forbiddenCrossTemplateMarkers: { en: WOUND_FORBIDDEN_EN, fr: WOUND_FORBIDDEN_FR },

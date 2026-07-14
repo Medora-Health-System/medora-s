@@ -2,6 +2,7 @@
 import type { ProviderDocumentationComplaintIntelligence } from "./providerDocumentationComplaintIntelligence";
 import {
   buildAnkleFootInjuryComplaintV1Intel,
+  buildAnimalBiteAdultComplaintV1Intel,
   buildBackPainComplaintV1Intel,
   buildFallTraumaComplaintV1Intel,
   buildHandWristInjuryComplaintV1Intel,
@@ -23,6 +24,7 @@ const handWristInjury = (key: string) => `providerDocumentationComplaintIntel.ha
 const fallTrauma = (key: string) => `providerDocumentationComplaintIntel.fallTraumaComplaintV1.${key}`;
 const minorHeadInjury = (key: string) => `providerDocumentationComplaintIntel.minorHeadInjuryComplaintV1.${key}`;
 const lacerationSoftTissue = (key: string) => `providerDocumentationComplaintIntel.lacerationSoftTissueComplaintV1.${key}`;
+const animalBiteAdult = (key: string) => `providerDocumentationComplaintIntel.animalBiteAdultComplaintV1.${key}`;
 
 export const BACK_PAIN_COMPLAINT_V1_INTEL: ProviderDocumentationComplaintIntelligence =
   buildBackPainComplaintV1Intel(backPain);
@@ -44,6 +46,8 @@ export const MINOR_HEAD_INJURY_COMPLAINT_V1_INTEL: ProviderDocumentationComplain
   buildMinorHeadInjuryComplaintV1Intel(minorHeadInjury);
 export const LACERATION_SOFT_TISSUE_COMPLAINT_V1_INTEL: ProviderDocumentationComplaintIntelligence =
   buildLacerationSoftTissueComplaintV1Intel(lacerationSoftTissue);
+export const ANIMAL_BITE_ADULT_COMPLAINT_V1_INTEL: ProviderDocumentationComplaintIntelligence =
+  buildAnimalBiteAdultComplaintV1Intel(animalBiteAdult);
 
 export const MSK_TRAUMA_COMPLAINT_V1_TEMPLATE_IDS = [
   "back_pain_complaint_v1",
@@ -56,6 +60,7 @@ export const MSK_TRAUMA_COMPLAINT_V1_TEMPLATE_IDS = [
   "fall_trauma_complaint_v1",
   "minor_head_injury_complaint_v1",
   "laceration_soft_tissue_complaint_v1",
+  "animal_bite_adult_complaint_v1",
 ] as const;
 
 export const MSK_TRAUMA_COMPLAINT_V1_INTEL_BY_TEMPLATE_ID = {
@@ -69,4 +74,5 @@ export const MSK_TRAUMA_COMPLAINT_V1_INTEL_BY_TEMPLATE_ID = {
   fall_trauma_complaint_v1: FALL_TRAUMA_COMPLAINT_V1_INTEL,
   minor_head_injury_complaint_v1: MINOR_HEAD_INJURY_COMPLAINT_V1_INTEL,
   laceration_soft_tissue_complaint_v1: LACERATION_SOFT_TISSUE_COMPLAINT_V1_INTEL,
+  animal_bite_adult_complaint_v1: ANIMAL_BITE_ADULT_COMPLAINT_V1_INTEL,
 } as const;

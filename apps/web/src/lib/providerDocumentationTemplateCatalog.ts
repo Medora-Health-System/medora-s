@@ -92,6 +92,7 @@ import {
   FALL_TRAUMA_COMPLAINT_V1_INTEL,
   MINOR_HEAD_INJURY_COMPLAINT_V1_INTEL,
   LACERATION_SOFT_TISSUE_COMPLAINT_V1_INTEL,
+  ANIMAL_BITE_ADULT_COMPLAINT_V1_INTEL,
   FEVER_COMPLAINT_V1_INTEL,
   CELLULITIS_SKIN_INFECTION_COMPLAINT_V1_INTEL,
   ABSCESS_SOFT_TISSUE_COMPLAINT_V1_INTEL,
@@ -1866,6 +1867,12 @@ export const PROVIDER_DOCUMENTATION_TEMPLATES: ProviderDocumentationTemplateDefi
     "providerDocumentationWorkspace.templateLacerationSoftTissueComplaintV1",
     "providerDocumentationWorkspace.templateLacerationSoftTissueComplaintV1Help",
     LACERATION_SOFT_TISSUE_COMPLAINT_V1_INTEL
+  ),
+  mskTraumaComplaintV1Template(
+    "animal_bite_adult_complaint_v1",
+    "providerDocumentationWorkspace.templateAnimalBiteAdultComplaintV1",
+    "providerDocumentationWorkspace.templateAnimalBiteAdultComplaintV1Help",
+    ANIMAL_BITE_ADULT_COMPLAINT_V1_INTEL
   ),
   infectiousEntComplaintV1Template(
     "fever_complaint_v1",

@@ -92,6 +92,26 @@ const FRENCH_DIAGNOSIS_SEARCH_ALIASES: readonly FrenchDiagnosisSearchAlias[] = [
     englishSearchTerms: ["laceration"],
   },
   {
+    frenchPhrases: ["morsure", "morsure animale"],
+    englishSearchTerms: ["animal bite", "bite"],
+  },
+  {
+    frenchPhrases: ["morsure de chien"],
+    englishSearchTerms: ["dog bite", "bitten by dog"],
+  },
+  {
+    frenchPhrases: ["morsure de chat"],
+    englishSearchTerms: ["cat bite", "bitten by cat"],
+  },
+  {
+    frenchPhrases: ["morsure humaine"],
+    englishSearchTerms: ["human bite"],
+  },
+  {
+    frenchPhrases: ["plaie par morsure", "plaie perforante"],
+    englishSearchTerms: ["bite wound", "puncture wound", "open bite"],
+  },
+  {
     frenchPhrases: ["entorse"],
     englishSearchTerms: ["sprain"],
   },

@@ -127,6 +127,7 @@ export type ProviderDocumentationTemplateId =
   | "fall_trauma_complaint_v1"
   | "minor_head_injury_complaint_v1"
   | "laceration_soft_tissue_complaint_v1"
+  | "animal_bite_adult_complaint_v1"
   | "fever_complaint_v1"
   | "cellulitis_skin_infection_complaint_v1"
   | "abscess_soft_tissue_complaint_v1"

@@ -29,6 +29,10 @@ export const PROVIDER_DISCHARGE_FOLLOW_UP_TIMING_LOCALE: Record<string, Localize
     en: ED_DEFAULT_PCP_FOLLOW_UP_TIMING_OR_DIRECTED,
     fr: "dans 1 à 2 jours ou selon les directives",
   },
+  "within 1–2 days for high-risk wounds": {
+    en: "within 1–2 days for high-risk wounds",
+    fr: "dans 1 à 2 jours pour les plaies à haut risque",
+  },
   "within 24 hours": { en: "within 24 hours", fr: "dans les 24 heures" },
   "within 1 week": { en: "within 1 week", fr: "dans 1 semaine" },
   "within 2 weeks": { en: "within 2 weeks", fr: "dans 2 semaines" },

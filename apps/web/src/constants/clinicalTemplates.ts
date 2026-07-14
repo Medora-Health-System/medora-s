@@ -39,6 +39,11 @@ export const COMMON_DIAGNOSES: Array<{ code: string; label: string }> = [
   { code: "B34.9", label: "Infection virale, sans précision" },
   { code: "L08.9", label: "Infection locale de la peau et du tissu sous-cutané, sans précision" },
   { code: "S01.9", label: "Plaie ouverte de la tête, partie non précisée" },
+  { code: "W54.0XXA", label: "Morsure de chien, rencontre initiale" },
+  { code: "W55.01XA", label: "Morsure de chat, rencontre initiale" },
+  { code: "W50.3XXA", label: "Morsure humaine accidentelle, rencontre initiale" },
+  { code: "W55.81XA", label: "Morsure par autre mammifère, rencontre initiale" },
+  { code: "S61.459A", label: "Morsure ouverte du doigt, non précisé, rencontre initiale" },
   { code: "Z23", label: "Besoin de vaccination contre une maladie bactérienne" },
   { code: "Z00.0", label: "Examen médical général de suivi" },
 ];

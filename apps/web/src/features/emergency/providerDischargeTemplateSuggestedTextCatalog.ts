@@ -160,6 +160,34 @@ export const WOUND_LACERATION_SUGGESTED_TEXT: ProviderDischargeTemplateSuggested
     }
   );
 
+export const ANIMAL_BITE_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "Your animal bite wound was evaluated in the emergency department. Bite wounds can become infected quickly; careful wound care and timely follow-up are important.",
+      diagnosisInstructions:
+        "Keep the wound clean and dry. Change dressings as instructed. Complete wound care exactly as directed. If antibiotics were prescribed, take every dose as scheduled. Follow tetanus or rabies instructions if given. Contact animal control or continue animal observation as directed for rabies risk. Follow up in 24–48 hours for high-risk wounds or sooner if advised.",
+      medicationTreatment:
+        "Take antibiotics, pain medicine, tetanus, or rabies-related treatments only as prescribed or directed during this visit. Do not start new medications without clinician guidance. Do not stop antibiotics early unless your clinician tells you to.",
+      returnPrecautions:
+        "Return immediately for worsening pain, swelling, redness, pus, fever, red streaking, numbness, weakness, decreased movement, spreading warmth, wound reopening, or any concern for rabies exposure. Also return if the animal becomes ill, dies, or cannot be observed as planned. Return to the emergency department immediately if symptoms worsen, new concerning symptoms develop, or you feel unsafe at home.",
+      returnWorkSchool:
+        "Protect the bite wound from strain or contamination; return to work or school as directed by your clinician.",
+    },
+    {
+      description:
+        "Votre plaie par morsure animale a été évaluée aux urgences. Les morsures peuvent s'infecter rapidement ; des soins de plaie rigoureux et un suivi rapide sont importants.",
+      diagnosisInstructions:
+        "Gardez la plaie propre et sèche. Changez les pansements selon les instructions. Suivez exactement les soins de plaie indiqués. Si des antibiotiques ont été prescrits, prenez chaque dose comme prévu. Suivez les consignes antitétaniques ou antirabiques si elles ont été données. Contactez le contrôle animalier ou poursuivez l'observation de l'animal selon les instructions pour le risque de rage. Prévoyez un suivi dans les 24 à 48 heures pour les plaies à haut risque, ou plus tôt si indiqué.",
+      medicationTreatment:
+        "Prenez les antibiotiques, antalgiques, traitements antitétaniques ou antirabiques uniquement selon la prescription ou les indications données pendant cette visite. N'introduisez pas de nouveaux médicaments sans avis médical. N'arrêtez pas les antibiotiques précocement sauf avis médical contraire.",
+      returnPrecautions:
+        "Reconsultez immédiatement en cas de douleur croissante, tuméfaction, rougeur, pus, fièvre, traînées rouges, engourdissement, faiblesse, diminution des mouvements, chaleur qui s'étend, réouverture de la plaie, ou toute préoccupation d'exposition à la rage. Reconsultez aussi si l'animal tombe malade, meurt, ou ne peut pas être observé comme prévu. Retournez aux urgences immédiatement si les symptômes s'aggravent, si de nouveaux signes inquiétants apparaissent ou si vous ne vous sentez pas en sécurité à domicile.",
+      returnWorkSchool:
+        "Protégez la plaie de morsure contre l'effort et la contamination ; reprenez le travail ou l'école selon les instructions de votre clinicien.",
+    }
+  );
+
 export const NAUSEA_VOMITING_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
   localizedSuggestedText(
     {

@@ -8185,6 +8185,9 @@ export default {
     templateMinorHeadInjuryComplaintV1Help: "Click-to-insert prompts for minor head injury, imaging review, and concussion follow-up.",
     templateLacerationSoftTissueComplaintV1: "Laceration / soft tissue (MSK intelligence)",
     templateLacerationSoftTissueComplaintV1Help: "Click-to-insert prompts for laceration, wound care, infection risk, and follow-up.",
+    templateAnimalBiteAdultComplaintV1: "Adult animal bite / mammal bite",
+    templateAnimalBiteAdultComplaintV1Help:
+      "Animal bite, dog bite, cat bite, human bite, mammal bite, bite wound, puncture wound — rabies, tetanus, antibiotics, wound care.",
     templateSubgroupInfectiousEnt: "Infectious / ENT",
     templateFeverComplaintV1: "Fever (infectious intelligence)",
     templateFeverComplaintV1Help: "Click-to-insert prompts for fever, source evaluation, and disposition.",

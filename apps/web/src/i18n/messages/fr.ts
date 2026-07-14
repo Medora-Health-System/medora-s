@@ -8163,6 +8163,9 @@ export default {
     templateMinorHeadInjuryComplaintV1Help: "Inserts cliquables — traumatisme crânien, imagerie et suivi commotion.",
     templateLacerationSoftTissueComplaintV1: "Lacération / tissus mous (intelligence MSK)",
     templateLacerationSoftTissueComplaintV1Help: "Inserts cliquables — lacération, soins de plaie, infection et suivi.",
+    templateAnimalBiteAdultComplaintV1: "Morsure animale / mammifère (adulte)",
+    templateAnimalBiteAdultComplaintV1Help:
+      "Morsure animale, morsure de chien, morsure de chat, morsure humaine, plaie par morsure, plaie perforante — rage, tétanos, antibiotiques, soins de plaie.",
     templateSubgroupInfectiousEnt: "Infectieux / ORL",
     templateFeverComplaintV1: "Fièvre (intelligence infectieuse)",
     templateFeverComplaintV1Help: "Inserts cliquables — fièvre, évaluation de la source et sortie.",
