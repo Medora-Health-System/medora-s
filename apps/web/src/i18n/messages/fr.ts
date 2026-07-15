@@ -7888,6 +7888,8 @@ export default {
       "Les signes vitaux sont enregistrés avec la date et l’heure de mesure. Ils peuvent être corrigés tant que le dossier n’est pas signé.",
     editVitals: "Modifier les signes vitaux",
     removeVitalEntry: "Retirer le relevé",
+    editVitalEntryAria: "Modifier le relevé de signes vitaux",
+    removeVitalEntryAria: "Retirer le relevé de signes vitaux",
     confirmVoid: "Marquer comme saisie erronée",
     voidHint:
       "Le relevé sera exclu des signes vitaux actifs, de l’aide à la décision et du résumé. L’historique d’audit est conservé.",

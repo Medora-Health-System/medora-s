@@ -327,42 +327,72 @@ export function VitalSummaryPanel({
                       </span>
                     </td>
                     {actionsEnabled ? (
-                      <td style={{ ...td, whiteSpace: "normal" }}>
-                        <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                      <td style={{ ...td, whiteSpace: "nowrap" }}>
+                        <div style={{ display: "inline-flex", gap: 4, alignItems: "center" }}>
                           {onEditReading && r.readingId ? (
                             <button
                               type="button"
                               onClick={() => onEditReading(r)}
+                              aria-label={t("vitalsContext.editVitalEntryAria")}
+                              title={t("vitalsContext.editVitalEntryAria")}
                               style={{
-                                padding: "4px 8px",
+                                display: "inline-flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                width: 30,
+                                height: 30,
+                                padding: 0,
                                 borderRadius: 6,
                                 border: "1px solid #cbd5e1",
                                 background: "#fff",
-                                fontSize: 11,
-                                fontWeight: 600,
                                 cursor: "pointer",
                                 color: "#0f172a",
                               }}
                             >
-                              {t("vitalsContext.editVitals")}
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                                <path
+                                  d="M4 20h4l10.5-10.5a2.1 2.1 0 0 0-3-3L5 17v3z"
+                                  stroke="currentColor"
+                                  strokeWidth="1.8"
+                                  strokeLinejoin="round"
+                                />
+                                <path
+                                  d="M13.5 6.5l3 3"
+                                  stroke="currentColor"
+                                  strokeWidth="1.8"
+                                  strokeLinecap="round"
+                                />
+                              </svg>
                             </button>
                           ) : null}
                           {onVoidReading && r.readingId ? (
                             <button
                               type="button"
                               onClick={() => onVoidReading(r)}
+                              aria-label={t("vitalsContext.removeVitalEntryAria")}
+                              title={t("vitalsContext.removeVitalEntryAria")}
                               style={{
-                                padding: "4px 8px",
+                                display: "inline-flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                width: 30,
+                                height: 30,
+                                padding: 0,
                                 borderRadius: 6,
                                 border: "1px solid #fecaca",
                                 background: "#fff",
-                                fontSize: 11,
-                                fontWeight: 600,
                                 cursor: "pointer",
                                 color: "#b91c1c",
                               }}
                             >
-                              {t("vitalsContext.removeVitalEntry")}
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                                <path
+                                  d="M6 6l12 12M18 6L6 18"
+                                  stroke="currentColor"
+                                  strokeWidth="2"
+                                  strokeLinecap="round"
+                                />
+                              </svg>
                             </button>
                           ) : null}
                         </div>

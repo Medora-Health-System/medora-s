@@ -7916,6 +7916,8 @@ export default {
     saveVitalsHint: "Vitals are saved with the measured date/time. They can be corrected until the chart is signed.",
     editVitals: "Edit vitals",
     removeVitalEntry: "Remove vital entry",
+    editVitalEntryAria: "Edit vital entry",
+    removeVitalEntryAria: "Remove vital entry",
     confirmVoid: "Mark entered in error",
     voidHint: "The entry will be excluded from active latest vitals, decision support, and summary. Audit history is kept.",
     voidReasonLabel: "Reason",
