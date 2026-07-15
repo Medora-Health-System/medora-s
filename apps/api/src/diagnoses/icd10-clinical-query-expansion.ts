@@ -236,6 +236,19 @@ export const ICD10_CLINICAL_QUERY_EXPANSIONS: Icd10QueryExpansion[] = [
   { query: "blessure abdominale pénétrante", anyOf: ["abd wall", "penet perit cav", "opn wnd abd"] },
   { query: "blessure cervicale pénétrante", anyOf: ["unsp part of neck", "pharynx and cervical esophagus", "Pnctr w/o foreign body of unsp part of neck"] },
   { query: "blessure oculaire pénétrante", anyOf: ["Penetrating wound w foreign body of", "Penetrating wound of eyeball", "eyeball"] },
+  // Blast injury / polytrauma (Phase 7): expansion text remains anchored to official descriptions.
+  { query: "unspecified multiple injuries", anyOf: ["Unspecified multiple injuries"] },
+  { query: "traumatic shock", anyOf: ["Traumatic shock"] },
+  { query: "traumatic rupture ear drum", anyOf: ["Traumatic rupture of unspecified ear drum", "Traumatic rupture of ear drum", "ear drum"] },
+  { query: "otitic barotrauma", anyOf: ["Otitic barotrauma"] },
+  { query: "explosion of blasting material", anyOf: ["Explosion of blasting material"] },
+  { query: "discharge of firework", anyOf: ["Discharge of firework"] },
+  { query: "asphyxiation due to cave-in", anyOf: ["Asphyxiation due to cave-in"] },
+  { query: "blessures multiples non précisées", anyOf: ["Unspecified multiple injuries"] },
+  { query: "choc traumatique", anyOf: ["Traumatic shock"] },
+  { query: "barotraumatisme otitique", anyOf: ["Otitic barotrauma"] },
+  { query: "explosion de matériau de dynamitage", anyOf: ["Explosion of blasting material"] },
+  { query: "décharge de feu d'artifice", anyOf: ["Discharge of firework"] },
 ];
 
 export function normalizeIcd10SearchQuery(q: string): string {

@@ -128,6 +128,20 @@ const REQUIRED_QUERIES: Array<{
   { q: "bullet", mustMatchCodePrefix: "S" },
   { q: "stab", mustMatchCodePrefix: "S" },
   { q: "knife", mustMatchCodePrefix: "S" },
+  // Blast injury / polytrauma (Phase 7). Terms mirror official ICD descriptions,
+  // avoiding unrelated behavioral-health matches such as "explosive personality".
+  { q: "unspecified multiple injuries", mustMatchCodePrefix: "T07" },
+  { q: "traumatic shock", mustMatchCodePrefix: "T79.4" },
+  { q: "traumatic rupture ear drum", mustMatchCodePrefix: "S09.2" },
+  { q: "otitic barotrauma", mustMatchCodePrefix: "T70.0" },
+  { q: "explosion of blasting material", mustMatchCodePrefix: "W40" },
+  { q: "discharge of firework", mustMatchCodePrefix: "W39" },
+  { q: "asphyxiation due to cave-in", mustMatchCodePrefix: "T71.21" },
+  { q: "blessures multiples non précisées", mustMatchCodePrefix: "T07" },
+  { q: "choc traumatique", mustMatchCodePrefix: "T79.4" },
+  { q: "barotraumatisme otitique", mustMatchCodePrefix: "T70.0" },
+  { q: "explosion de matériau de dynamitage", mustMatchCodePrefix: "W40" },
+  { q: "décharge de feu d'artifice", mustMatchCodePrefix: "W39" },
   // French aliases expand to English ICD search terms
   { q: "blessure par balle", mustMatchCodePrefix: "S" },
   { q: "plaie par balle", mustMatchCodePrefix: "S" },
@@ -292,6 +306,16 @@ async function main() {
     const releaseSummaryDir = join(summaryDir, "2026");
     mkdirSync(releaseSummaryDir, { recursive: true });
     writeFileSync(join(releaseSummaryDir, "fy2026-penetrating-trauma-search-summary.json"), penetratingSummary);
+    const blastQueryPattern = /multiple injuries|traumatic shock|rupture ear drum|otitic barotrauma|explosion of blasting material|discharge of firework|asphyxiation due to cave-in|blessures multiples|choc traumatique|barotraumatisme otitique|explosion de matériau|feu d'artifice/;
+    const blastFailures = failures.filter((failure) => blastQueryPattern.test(failure.toLowerCase()));
+    const blastSummary = JSON.stringify({
+      generatedAt: report.generatedAt,
+      queryCount: REQUIRED_QUERIES.filter((row) => blastQueryPattern.test(row.q)).length,
+      failures: blastFailures,
+      pass: blastFailures.length === 0,
+    }, null, 2);
+    writeFileSync(join(summaryDir, "fy2026-blast-polytrauma-search-summary.json"), blastSummary);
+    writeFileSync(join(releaseSummaryDir, "fy2026-blast-polytrauma-search-summary.json"), blastSummary);
     if (!report.pass) process.exit(1);
   } finally {
     await prisma.$disconnect();

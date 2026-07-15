@@ -1,0 +1,14 @@
+{
+  "generatedAt": "2026-07-15T16:20:17.538Z",
+  "releaseVersion": "FY2026",
+  "blastPolytraumaScoped": 394,
+  "blastPolytraumaUnexplainedFallbacks": 0,
+  "blastPolytraumaStolenByGenericTrauma": 0,
+  "blastPolytraumaStolenByGenericWound": 0,
+  "blastPolytraumaStolenBySymptoms": 0,
+  "fallbackSample": [],
+  "genericWoundStealSample": [],
+  "genericTraumaStealSample": [],
+  "symptomStealSample": [],
+  "pass": true
+}
