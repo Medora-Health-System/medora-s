@@ -27,6 +27,30 @@ const FRENCH_DIAGNOSIS_SEARCH_ALIASES: readonly FrenchDiagnosisSearchAlias[] = [
     frenchPhrases: ["corps étranger oeil", "corps etranger oeil", "corps étranger oreille", "corps étranger nez"],
     englishSearchTerms: ["foreign body eye", "foreign body ear", "foreign body nose"],
   },
+  {
+    frenchPhrases: ["brûlure", "brulure", "brûlure thermique", "ébouillantage", "ebouillantage"],
+    englishSearchTerms: ["burn", "thermal burn", "scald"],
+  },
+  {
+    frenchPhrases: ["brûlure chimique", "brulure chimique", "brûlure acide", "brulure acide", "produit alcalin"],
+    englishSearchTerms: ["chemical burn", "corrosion", "acid burn", "alkali"],
+  },
+  {
+    frenchPhrases: ["brûlure électrique", "brulure electrique", "électrocution", "electrocution", "foudre"],
+    englishSearchTerms: ["electrical burn", "electric shock", "lightning"],
+  },
+  {
+    frenchPhrases: ["inhalation de fumée", "inhalation de fumee", "brûlure des voies aériennes", "brulure des voies aeriennes"],
+    englishSearchTerms: ["smoke inhalation", "inhalation injury", "airway burn"],
+  },
+  {
+    frenchPhrases: ["gelure", "engelure", "blessure par le froid"],
+    englishSearchTerms: ["frostbite", "cold injury"],
+  },
+  {
+    frenchPhrases: ["coup de soleil"],
+    englishSearchTerms: ["sunburn"],
+  },
 
   {
     frenchPhrases: ["douleur abdominale", "douleur au ventre", "mal au ventre", "douleur abdominal"],

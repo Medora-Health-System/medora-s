@@ -85,6 +85,8 @@ const ENDOCRINE_BATCH_FORBIDDEN_FR = [...WOUND_FORBIDDEN_FR, ...ENDOCRINE_CERTAI
 
 const RESPIRATORY_FORBIDDEN_ON_WOUND_EN = ["asthma", "wheezing", "bronchitis"] as const;
 const RESPIRATORY_FORBIDDEN_ON_WOUND_FR = ["asthme", "sifflement", "bronchite"] as const;
+const BURN_CROSS_TEMPLATE_FORBIDDEN_EN = ["fracture", "sprain", "cast", "splint"] as const;
+const BURN_CROSS_TEMPLATE_FORBIDDEN_FR = ["fracture", "entorse", "plâtre", "attelle"] as const;
 
 /** Per-template integrity rules — prevents catalog/registry copy-paste mismatches. */
 export const PROVIDER_DISCHARGE_TEMPLATE_CONTENT_INTEGRITY: Record<
@@ -565,6 +567,54 @@ export const PROVIDER_DISCHARGE_TEMPLATE_CONTENT_INTEGRITY: Record<
   trauma_msk_crush_generic_v1: {
     mustIncludeAny: { en: ["crush"], fr: ["écrasement"] },
     forbiddenCrossTemplateMarkers: { en: RESPIRATORY_FORBIDDEN_ON_WOUND_EN, fr: RESPIRATORY_FORBIDDEN_ON_WOUND_FR },
+  },
+  burn_superficial_v1: {
+    mustIncludeAny: { en: ["dressing", "return", "infection"], fr: ["pansement", "retournez", "infection"] },
+    forbiddenCrossTemplateMarkers: { en: BURN_CROSS_TEMPLATE_FORBIDDEN_EN, fr: BURN_CROSS_TEMPLATE_FORBIDDEN_FR },
+  },
+  burn_partial_thickness_v1: {
+    mustIncludeAny: { en: ["dressing", "return", "infection"], fr: ["pansement", "retournez", "infection"] },
+    forbiddenCrossTemplateMarkers: { en: BURN_CROSS_TEMPLATE_FORBIDDEN_EN, fr: BURN_CROSS_TEMPLATE_FORBIDDEN_FR },
+  },
+  burn_full_thickness_followup_v1: {
+    mustIncludeAny: { en: ["dressing", "return", "infection"], fr: ["pansement", "retournez", "infection"] },
+    forbiddenCrossTemplateMarkers: { en: BURN_CROSS_TEMPLATE_FORBIDDEN_EN, fr: BURN_CROSS_TEMPLATE_FORBIDDEN_FR },
+  },
+  burn_face_v1: {
+    mustIncludeAny: { en: ["dressing", "return", "breathing"], fr: ["pansement", "retournez", "respiratoire"] },
+    forbiddenCrossTemplateMarkers: { en: BURN_CROSS_TEMPLATE_FORBIDDEN_EN, fr: BURN_CROSS_TEMPLATE_FORBIDDEN_FR },
+  },
+  burn_hand_v1: {
+    mustIncludeAny: { en: ["dressing", "return", "numbness"], fr: ["pansement", "retournez", "engourdissement"] },
+    forbiddenCrossTemplateMarkers: { en: BURN_CROSS_TEMPLATE_FORBIDDEN_EN, fr: BURN_CROSS_TEMPLATE_FORBIDDEN_FR },
+  },
+  burn_foot_v1: {
+    mustIncludeAny: { en: ["dressing", "return", "numbness"], fr: ["pansement", "retournez", "engourdissement"] },
+    forbiddenCrossTemplateMarkers: { en: BURN_CROSS_TEMPLATE_FORBIDDEN_EN, fr: BURN_CROSS_TEMPLATE_FORBIDDEN_FR },
+  },
+  burn_eye_v1: {
+    mustIncludeAny: { en: ["eye", "return", "vision"], fr: ["œil", "retournez", "vision"] },
+    forbiddenCrossTemplateMarkers: { en: BURN_CROSS_TEMPLATE_FORBIDDEN_EN, fr: BURN_CROSS_TEMPLATE_FORBIDDEN_FR },
+  },
+  burn_chemical_v1: {
+    mustIncludeAny: { en: ["chemical", "return", "dressing"], fr: ["chimique", "retournez", "pansement"] },
+    forbiddenCrossTemplateMarkers: { en: BURN_CROSS_TEMPLATE_FORBIDDEN_EN, fr: BURN_CROSS_TEMPLATE_FORBIDDEN_FR },
+  },
+  burn_electrical_v1: {
+    mustIncludeAny: { en: ["electrical", "return", "wound"], fr: ["électrique", "retournez", "brûlure"] },
+    forbiddenCrossTemplateMarkers: { en: BURN_CROSS_TEMPLATE_FORBIDDEN_EN, fr: BURN_CROSS_TEMPLATE_FORBIDDEN_FR },
+  },
+  burn_inhalation_aftercare_v1: {
+    mustIncludeAny: { en: ["inhalation", "return", "breathing"], fr: ["inhalation", "retournez", "respiratoire"] },
+    forbiddenCrossTemplateMarkers: { en: BURN_CROSS_TEMPLATE_FORBIDDEN_EN, fr: BURN_CROSS_TEMPLATE_FORBIDDEN_FR },
+  },
+  frostbite_v1: {
+    mustIncludeAny: { en: ["frostbite", "return", "wound"], fr: ["gelure", "retournez", "brûlure"] },
+    forbiddenCrossTemplateMarkers: { en: BURN_CROSS_TEMPLATE_FORBIDDEN_EN, fr: BURN_CROSS_TEMPLATE_FORBIDDEN_FR },
+  },
+  sunburn_v1: {
+    mustIncludeAny: { en: ["sunburn", "return", "skin"], fr: ["coup de soleil", "retournez", "peau"] },
+    forbiddenCrossTemplateMarkers: { en: BURN_CROSS_TEMPLATE_FORBIDDEN_EN, fr: BURN_CROSS_TEMPLATE_FORBIDDEN_FR },
   },
   trauma_msk_amputation_finger_thumb_v1: {
     mustIncludeAny: { en: ["amputation"], fr: ["amputation"] },

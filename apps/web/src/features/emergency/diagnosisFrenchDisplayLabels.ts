@@ -67,6 +67,12 @@ const FRENCH_ICD10_DISPLAY_LABELS_BY_NORMALIZED_CODE: Readonly<Record<string, st
   S300: "Contusion de la paroi abdominale, non précisée",
   L0390: "Cellulite, non précisée",
   L03: "Cellulite",
+  T2010XA: "Brûlure du premier degré de la tête, du visage et du cou, partie non précisée",
+  T23201A: "Brûlure du deuxième degré de la main non précisée",
+  T270XXA: "Brûlure des voies respiratoires, partie non précisée",
+  T754XXA: "Effets de la foudre",
+  T33011A: "Gelure superficielle du doigt",
+  L559: "Coup de soleil, sans précision",
 };
 
 export function getFrenchDiagnosisDisplayLabel(code: string, englishLabel: string): string {

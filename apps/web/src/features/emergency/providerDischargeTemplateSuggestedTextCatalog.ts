@@ -2678,6 +2678,127 @@ export const TRAUMA_MSK_CRUSH_GENERIC_SUGGESTED_TEXT: ProviderDischargeTemplateS
     }
   );
 
+function burnSuggestedText(
+  descriptionEn: string,
+  instructionsEn: string,
+  returnEn: string,
+  descriptionFr: string,
+  instructionsFr: string,
+  returnFr: string
+): ProviderDischargeTemplateSuggestedText {
+  return localizedSuggestedText(
+    {
+      description: descriptionEn,
+      diagnosisInstructions: `Keep the wound clean and protect the dressing as instructed. ${instructionsEn} Arrange follow-up within 24–48 hours or as directed.`,
+      medicationTreatment: "Use pain treatment only as prescribed or recommended by your clinician; do not start medicines on your own.",
+      returnPrecautions: `Return urgently for increasing pain, spreading redness, swelling, fever, pus or foul drainage, or a wet/loose dressing. ${returnEn}`,
+    },
+    {
+      description: descriptionFr,
+      diagnosisInstructions: `Gardez la brûlure propre et protégez le pansement selon les consignes. ${instructionsFr} Organisez un suivi dans les 24 à 48 heures ou selon les directives.`,
+      medicationTreatment: "Utilisez le traitement contre la douleur seulement tel que prescrit ou recommandé par votre clinicien; ne commencez pas de médicament de votre propre initiative.",
+      returnPrecautions: `Retournez rapidement pour douleur croissante, rougeur qui s'étend, gonflement, fièvre, pus ou écoulement malodorant, ou pansement mouillé ou déplacé. ${returnFr}`,
+    }
+  );
+}
+
+export const BURN_SUPERFICIAL_SUGGESTED_TEXT = burnSuggestedText(
+  "You were evaluated for a superficial burn.",
+  "Avoid friction and sun exposure; do not break blisters if they develop.",
+  "Return for blistering over a large area or symptoms that are getting worse instead of better.",
+  "Vous avez été pris en charge pour une brûlure superficielle.",
+  "Évitez les frottements et l'exposition au soleil; ne percez pas les cloques si elles apparaissent.",
+  "Retournez si des cloques couvrent une grande zone ou si les symptômes s'aggravent au lieu de s'améliorer."
+);
+export const BURN_PARTIAL_THICKNESS_SUGGESTED_TEXT = burnSuggestedText(
+  "You were evaluated for a partial-thickness burn.",
+  "Do not remove the dressing or break blisters unless your clinician told you to do so.",
+  "Return for new numbness, worsening blistering, or skin that becomes pale, dark, or tight.",
+  "Vous avez été pris en charge pour une brûlure d'épaisseur partielle.",
+  "Ne retirez pas le pansement et ne percez pas les cloques sauf consigne du clinicien.",
+  "Retournez pour un nouvel engourdissement, des cloques qui s'aggravent, ou une peau pâle, foncée ou tendue."
+);
+export const BURN_FULL_THICKNESS_FOLLOWUP_SUGGESTED_TEXT = burnSuggestedText(
+  "You were evaluated for a deep or full-thickness burn.",
+  "Keep the dressing intact and follow burn-specialty or surgical instructions without delay.",
+  "Return immediately for numbness, a cold or pale area, rapidly increasing swelling, or any breathing difficulty.",
+  "Vous avez été pris en charge pour une brûlure profonde ou de pleine épaisseur.",
+  "Gardez le pansement intact et suivez sans délai les consignes du spécialiste des brûlures ou du chirurgien.",
+  "Retournez immédiatement pour engourdissement, zone froide ou pâle, gonflement rapide ou toute difficulté respiratoire."
+);
+export const BURN_FACE_SUGGESTED_TEXT = burnSuggestedText(
+  "You were evaluated for a facial burn.",
+  "Protect the facial dressing and avoid products near the eyes, mouth, or nose unless prescribed.",
+  "Return immediately for hoarseness, cough, soot in the mouth, trouble swallowing, eye pain, vision change, or breathing difficulty.",
+  "Vous avez été pris en charge pour une brûlure du visage.",
+  "Protégez le pansement du visage et évitez les produits près des yeux, de la bouche ou du nez sauf prescription.",
+  "Retournez immédiatement pour voix rauque, toux, suie dans la bouche, difficulté à avaler, douleur oculaire, changement de vision ou difficulté respiratoire."
+);
+export const BURN_HAND_SUGGESTED_TEXT = burnSuggestedText(
+  "You were evaluated for a hand burn.",
+  "Keep the hand elevated when resting and move the fingers only as instructed.",
+  "Return immediately for numbness, tingling, blue/pale/cold fingers, increasing tightness, or inability to move the fingers.",
+  "Vous avez été pris en charge pour une brûlure de la main.",
+  "Gardez la main surélevée au repos et bougez les doigts seulement selon les consignes.",
+  "Retournez immédiatement pour engourdissement, fourmillements, doigts bleus, pâles ou froids, tension croissante ou incapacité à bouger les doigts."
+);
+export const BURN_FOOT_SUGGESTED_TEXT = burnSuggestedText(
+  "You were evaluated for a foot burn.",
+  "Elevate the foot and limit walking or pressure as directed to protect the dressing.",
+  "Return immediately for numbness, tingling, blue/pale/cold toes, worsening swelling, or inability to walk safely.",
+  "Vous avez été pris en charge pour une brûlure du pied.",
+  "Surélevez le pied et limitez la marche ou l'appui selon les directives pour protéger le pansement.",
+  "Retournez immédiatement pour engourdissement, fourmillements, orteils bleus, pâles ou froids, gonflement qui s'aggrave ou marche non sécuritaire."
+);
+export const BURN_EYE_SUGGESTED_TEXT = burnSuggestedText(
+  "You were evaluated for an eye burn.",
+  "Do not rub the eye or use drops unless prescribed; protect the eye as directed.",
+  "Return immediately for worsening eye pain, light sensitivity, reduced vision, persistent tearing, or inability to open the eye.",
+  "Vous avez été pris en charge pour une brûlure de l'œil.",
+  "Ne frottez pas l'œil et n'utilisez pas de gouttes sauf prescription; protégez l'œil selon les consignes.",
+  "Retournez immédiatement pour douleur oculaire croissante, sensibilité à la lumière, baisse de vision, larmoiement persistant ou incapacité à ouvrir l'œil."
+);
+export const BURN_CHEMICAL_SUGGESTED_TEXT = burnSuggestedText(
+  "You were evaluated for a chemical burn or corrosion.",
+  "Follow decontamination and dressing instructions exactly; do not apply neutralizing substances or home remedies.",
+  "Return immediately for renewed burning after rinsing, eye exposure, worsening pain, breathing symptoms, or a chemical exposure that was not fully irrigated.",
+  "Vous avez été pris en charge pour une brûlure chimique ou une corrosion.",
+  "Suivez exactement les consignes de décontamination et de pansement; n'appliquez pas de produit neutralisant ni de remède maison.",
+  "Retournez immédiatement si la sensation de brûlure reprend après le rinçage, en cas d'exposition de l'œil, douleur croissante, symptômes respiratoires ou décontamination incomplète."
+);
+export const BURN_ELECTRICAL_SUGGESTED_TEXT = burnSuggestedText(
+  "You were evaluated for an electrical or lightning injury.",
+  "Keep entry and exit wounds covered as directed and follow arranged reassessment even if the skin injury appears small.",
+  "Return immediately for chest pain, palpitations, fainting, confusion, weakness, dark urine, worsening pain, or numbness.",
+  "Vous avez été pris en charge pour une blessure électrique ou par la foudre.",
+  "Gardez les points d'entrée et de sortie couverts selon les consignes et respectez le contrôle prévu même si la lésion cutanée paraît petite.",
+  "Retournez immédiatement pour douleur thoracique, palpitations, évanouissement, confusion, faiblesse, urines foncées, douleur croissante ou engourdissement."
+);
+export const BURN_INHALATION_AFTERCARE_SUGGESTED_TEXT = burnSuggestedText(
+  "You were evaluated after smoke inhalation or an airway burn.",
+  "Avoid smoke and irritants and follow the breathing and wound-care plan given by your clinician.",
+  "Return immediately for shortness of breath, wheezing, hoarseness, persistent cough, confusion, severe headache, or worsening facial swelling.",
+  "Vous avez été pris en charge après inhalation de fumée ou brûlure des voies aériennes.",
+  "Évitez la fumée et les irritants et suivez le plan respiratoire et les soins de brûlure remis par votre clinicien.",
+  "Retournez immédiatement pour essoufflement, sifflement, voix rauque, toux persistante, confusion, céphalée intense ou gonflement du visage qui s'aggrave."
+);
+export const FROSTBITE_SUGGESTED_TEXT = burnSuggestedText(
+  "You were evaluated for frostbite or a cold injury.",
+  "Keep the area clean, dry, protected from cold, and do not rub it or apply direct heat.",
+  "Return immediately for pale, blue, black, numb, cold, or increasingly swollen skin, or new blisters.",
+  "Vous avez été pris en charge pour une gelure ou une lésion due au froid.",
+  "Gardez la zone propre, sèche, protégée du froid; ne la frottez pas et n'appliquez pas de chaleur directe.",
+  "Retournez immédiatement pour peau pâle, bleue, noire, engourdie, froide ou de plus en plus gonflée, ou apparition de nouvelles cloques."
+);
+export const SUNBURN_SUGGESTED_TEXT = burnSuggestedText(
+  "You were evaluated for sunburn.",
+  "Protect the skin from further sun exposure, keep the area cool, and maintain hydration as directed.",
+  "Return for extensive blistering, fever, vomiting, dizziness, fainting, dehydration, or worsening pain.",
+  "Vous avez été pris en charge pour un coup de soleil.",
+  "Protégez la peau d'une nouvelle exposition solaire, gardez la zone fraîche et maintenez une bonne hydratation selon les consignes.",
+  "Retournez pour cloques étendues, fièvre, vomissements, étourdissements, évanouissement, déshydratation ou douleur croissante."
+);
+
 export const TRAUMA_MSK_AMPUTATION_FINGER_THUMB_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
   localizedSuggestedText(
     {

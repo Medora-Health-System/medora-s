@@ -80,6 +80,12 @@ export const COMMON_DIAGNOSES: Array<{ code: string; label: string }> = [
   { code: "S98.111A", label: "Amputation traumatique du gros orteil droit, rencontre initiale" },
   { code: "T15.00XA", label: "Corps étranger de la cornée, rencontre initiale" },
   { code: "S61.441A", label: "Plaie avec corps étranger de la main droite, rencontre initiale" },
+  { code: "T20.10XA", label: "Brûlure du premier degré de la tête, du visage et du cou, partie non précisée, rencontre initiale" },
+  { code: "T23.201A", label: "Brûlure du deuxième degré de la main non précisée, rencontre initiale" },
+  { code: "T27.0XXA", label: "Brûlure du larynx et de la trachée, rencontre initiale" },
+  { code: "T75.4XXA", label: "Électrocution, rencontre initiale" },
+  { code: "T33.011A", label: "Gelure superficielle du doigt, rencontre initiale" },
+  { code: "L55.9", label: "Coup de soleil, sans précision" },
   { code: "Z23", label: "Besoin de vaccination contre une maladie bactérienne" },
   { code: "Z00.0", label: "Examen médical général de suivi" },
 ];
