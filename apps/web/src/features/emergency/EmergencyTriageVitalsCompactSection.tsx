@@ -582,19 +582,7 @@ export function EmergencyTriageVitalsCompactSection({
           >
             {attributionLine}
           </p>
-        ) : (
-          <p
-            style={{
-              margin: 0,
-              flex: "1 1 100%",
-              fontSize: 11,
-              color: "#64748b",
-              lineHeight: 1.4,
-            }}
-          >
-            {t("vitalsContext.saveVitalsHint")}
-          </p>
-        )}
+        ) : null}
         {statusMessage ? (
           <p
             role={statusTone === "error" ? "alert" : "status"}

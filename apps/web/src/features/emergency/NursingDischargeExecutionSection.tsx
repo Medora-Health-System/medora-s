@@ -46,6 +46,7 @@ import {
   type PatientTriageVitalsResponse,
   type PatientTriageVitalsSnapshot,
   buildVitalsTimelineNewestFirst,
+  hasMeaningfulVitalMeasurement,
   hasVitalsJson,
 } from "@/lib/patientVitals";
 import { saveNursingDischargeVitals } from "./saveNursingDischargeVitals";
@@ -199,7 +200,10 @@ export function NursingDischargeExecutionSection({
         if (cancelled) return;
         const merged = buildVitalsTimelineNewestFirst(res.latest, res.history, []);
         const forEnc = merged.filter(
-          (s) => s.encounterId === encounterId && hasVitalsJson(s.vitalsJson) && s.status !== "VOIDED"
+          (s) =>
+            s.encounterId === encounterId &&
+            hasMeaningfulVitalMeasurement(s.vitalsJson) &&
+            s.status !== "VOIDED"
         );
         const newest = forEnc[0] ?? null;
         if (
@@ -664,9 +668,6 @@ export function NursingDischargeExecutionSection({
                     showHeading={false}
                     saveLabel={t("nursingDischargeVitals.saveDischargeVitals")}
                   />
-                  <p style={{ margin: "6px 0 0", fontSize: 11, color: "#64748b" }}>
-                    {t("nursingDischargeVitals.saveHint")}
-                  </p>
                 </div>
               : null}
 

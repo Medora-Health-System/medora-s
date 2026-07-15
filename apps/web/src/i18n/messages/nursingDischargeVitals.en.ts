@@ -1,7 +1,6 @@
 export const nursingDischargeVitalsEn = {
   sectionTitle: "Discharge vital signs",
   saveDischargeVitals: "Save discharge vitals",
-  saveHint: "Save vitals before confirming nursing discharge. Uses the authenticated user as recorder.",
   saveOk: "Discharge vitals saved",
   saveFailed: "Unable to save discharge vital signs.",
   unauthorized: "You do not have permission to record discharge vitals.",
