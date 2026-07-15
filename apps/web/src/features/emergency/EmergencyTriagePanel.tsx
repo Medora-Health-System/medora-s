@@ -56,7 +56,18 @@ import {
 import { mergeVitalsJsonForSave } from "./emergencyTriageVitalsMerge";
 import { isTriageStaleConflictError } from "./triageConcurrency";
 import { flipHeightInputMode } from "@/lib/vitalsEntryFlip";
-import { temperatureHintPairCelsiusFahrenheit, weightHintPairKgPounds } from "@medora/shared";
+import {
+  OXYGEN_DELIVERY_DEVICES,
+  VITAL_TEMPERATURE_SITES,
+  oxygenDeviceSuggestsFiO2,
+  oxygenDeviceSuggestsFlow,
+  temperatureHintPairCelsiusFahrenheit,
+  weightHintPairKgPounds,
+} from "@medora/shared";
+import {
+  oxygenDeviceI18nKey,
+  temperatureSiteI18nKey,
+} from "@/lib/vitalsMeasurementContextDisplay";
 import {
   emptyErTriageV1Form,
   erTriageV1FormFromVitalsJson,
@@ -129,6 +140,11 @@ type TriageFormState = {
   heightFeet: string;
   heightInches: string;
   allergyNote: string;
+  temperatureSite: string;
+  oxygenDevice: string;
+  oxygenFlowLpm: string;
+  oxygenFiO2Percent: string;
+  oxygenDeviceNotes: string;
   strokeScreen: ErStrokeScreenForm;
   sepsisScreen: ErSepsisScreenForm;
   triageCompleteAt: string;
@@ -161,6 +177,11 @@ const emptyForm = (): TriageFormState => ({
   heightFeet: "",
   heightInches: "",
   allergyNote: "",
+  temperatureSite: "",
+  oxygenDevice: "ROOM_AIR",
+  oxygenFlowLpm: "",
+  oxygenFiO2Percent: "",
+  oxygenDeviceNotes: "",
   strokeScreen: emptyStrokeScreenForm(),
   sepsisScreen: emptySepsisScreenForm(),
   triageCompleteAt: "",
@@ -423,6 +444,12 @@ export function EmergencyTriagePanel({
           heightFeet: s?.heightFeet ?? "",
           heightInches: s?.heightInches ?? "",
           allergyNote: (v as { allergyNote?: string | null }).allergyNote ?? "",
+          temperatureSite: typeof v.temperatureSite === "string" ? v.temperatureSite : "",
+          oxygenDevice: typeof v.oxygenDevice === "string" ? v.oxygenDevice : "ROOM_AIR",
+          oxygenFlowLpm: v.oxygenFlowLpm != null && v.oxygenFlowLpm !== "" ? String(v.oxygenFlowLpm) : "",
+          oxygenFiO2Percent:
+            v.oxygenFiO2Percent != null && v.oxygenFiO2Percent !== "" ? String(v.oxygenFiO2Percent) : "",
+          oxygenDeviceNotes: typeof v.oxygenDeviceNotes === "string" ? v.oxygenDeviceNotes : "",
           strokeScreen: strokeScreenFromUnknown(d.strokeScreen),
           sepsisScreen: sepsisScreenFromUnknown(d.sepsisScreen),
           triageCompleteAt: d.triageCompleteAt
@@ -768,6 +795,11 @@ export function EmergencyTriagePanel({
       heightInputMode: formData.heightInputMode,
       heightFeet: formData.heightFeet,
       heightInches: formData.heightInches,
+      temperatureSite: formData.temperatureSite,
+      oxygenDevice: formData.oxygenDevice,
+      oxygenFlowLpm: formData.oxygenFlowLpm,
+      oxygenFiO2Percent: formData.oxygenFiO2Percent,
+      oxygenDeviceNotes: formData.oxygenDeviceNotes,
     }),
     [formData]
   );
@@ -1151,6 +1183,29 @@ export function EmergencyTriagePanel({
                         disabled={formDisabled}
                         style={{ ...inputBase, flex: 1, minWidth: 0, backgroundColor: formDisabled ? "#f8fafc" : "#fff" }}
                       />
+                      <select
+                        value={formData.temperatureSite}
+                        onChange={(e) => setFormData((f) => ({ ...f, temperatureSite: e.target.value }))}
+                        disabled={formDisabled}
+                        aria-label={t("vitalsContext.temperatureSiteLabel")}
+                        style={{
+                          padding: "8px 10px",
+                          borderRadius: 10,
+                          border: "1px solid #e2e8f0",
+                          fontSize: 13,
+                          fontWeight: 600,
+                          color: "#334155",
+                          backgroundColor: formDisabled ? "#f8fafc" : "#fff",
+                          minWidth: 120,
+                        }}
+                      >
+                        <option value="">{t("vitalsContext.temperatureSitePlaceholder")}</option>
+                        {VITAL_TEMPERATURE_SITES.map((site) => (
+                          <option key={site} value={site}>
+                            {t(temperatureSiteI18nKey(site))}
+                          </option>
+                        ))}
+                      </select>
                     </div>
                     {(() => {
                       if (!formData.tempC.trim()) return null;
@@ -1205,17 +1260,95 @@ export function EmergencyTriagePanel({
                       style={{ ...inputBase, backgroundColor: formDisabled ? "#f8fafc" : "#fff" }}
                     />
                   </div>
-                  <div>
+                  <div style={{ gridColumn: "1 / -1" }}>
                     <label style={labelStyle}>{t("erTriage.panel.spo2")}</label>
-                    <input
-                      type="number"
-                      min={0}
-                      max={100}
-                      value={formData.spo2}
-                      onChange={(e) => setFormData((f) => ({ ...f, spo2: e.target.value }))}
-                      disabled={formDisabled}
-                      style={{ ...inputBase, backgroundColor: formDisabled ? "#f8fafc" : "#fff" }}
-                    />
+                    <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                      <input
+                        type="number"
+                        min={0}
+                        max={100}
+                        value={formData.spo2}
+                        onChange={(e) => setFormData((f) => ({ ...f, spo2: e.target.value }))}
+                        disabled={formDisabled}
+                        style={{
+                          ...inputBase,
+                          flex: "0 1 120px",
+                          backgroundColor: formDisabled ? "#f8fafc" : "#fff",
+                        }}
+                      />
+                      <select
+                        value={formData.oxygenDevice}
+                        onChange={(e) => {
+                          const next = e.target.value;
+                          setFormData((f) => ({
+                            ...f,
+                            oxygenDevice: next,
+                            ...(next === "ROOM_AIR"
+                              ? { oxygenFlowLpm: "", oxygenFiO2Percent: "" }
+                              : null),
+                          }));
+                        }}
+                        disabled={formDisabled}
+                        aria-label={t("vitalsContext.oxygenDeviceLabel")}
+                        style={{
+                          ...inputBase,
+                          flex: "1 1 220px",
+                          backgroundColor: formDisabled ? "#f8fafc" : "#fff",
+                        }}
+                      >
+                        {OXYGEN_DELIVERY_DEVICES.map((device) => (
+                          <option key={device} value={device}>
+                            {t(oxygenDeviceI18nKey(device))}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    {oxygenDeviceSuggestsFlow(formData.oxygenDevice as any) ||
+                    oxygenDeviceSuggestsFiO2(formData.oxygenDevice as any) ? (
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 8 }}>
+                        {oxygenDeviceSuggestsFlow(formData.oxygenDevice as any) ? (
+                          <div>
+                            <label style={labelStyle}>{t("vitalsContext.oxygenFlow")}</label>
+                            <input
+                              type="number"
+                              step="0.1"
+                              value={formData.oxygenFlowLpm}
+                              onChange={(e) => setFormData((f) => ({ ...f, oxygenFlowLpm: e.target.value }))}
+                              disabled={formDisabled}
+                              style={{ ...inputBase, backgroundColor: formDisabled ? "#f8fafc" : "#fff" }}
+                            />
+                          </div>
+                        ) : null}
+                        {oxygenDeviceSuggestsFiO2(formData.oxygenDevice as any) ? (
+                          <div>
+                            <label style={labelStyle}>{t("vitalsContext.oxygenFiO2")}</label>
+                            <input
+                              type="number"
+                              min={21}
+                              max={100}
+                              value={formData.oxygenFiO2Percent}
+                              onChange={(e) =>
+                                setFormData((f) => ({ ...f, oxygenFiO2Percent: e.target.value }))
+                              }
+                              disabled={formDisabled}
+                              style={{ ...inputBase, backgroundColor: formDisabled ? "#f8fafc" : "#fff" }}
+                            />
+                          </div>
+                        ) : null}
+                      </div>
+                    ) : null}
+                    {formData.oxygenDevice === "OTHER" || formData.oxygenDeviceNotes ? (
+                      <div style={{ marginTop: 8 }}>
+                        <label style={labelStyle}>{t("vitalsContext.oxygenDeviceNotes")}</label>
+                        <input
+                          type="text"
+                          value={formData.oxygenDeviceNotes}
+                          onChange={(e) => setFormData((f) => ({ ...f, oxygenDeviceNotes: e.target.value }))}
+                          disabled={formDisabled}
+                          style={{ ...inputBase, backgroundColor: formDisabled ? "#f8fafc" : "#fff" }}
+                        />
+                      </div>
+                    ) : null}
                   </div>
                   <div>
                     <label style={labelStyle}>{t("vitalsUnits.weightLabel")}</label>
