@@ -23,7 +23,8 @@ All require JWT and `x-facility-id`.
 - **Catalog path:** `icd10CatalogId` (UUID). Optional `description` overrides catalog short label.  
 - **Explicit manual path:** `manualNonCatalog: true` and required `code`; optional `description`, `onsetDate`, `notes`.  
 - **Legacy / API compatibility:** `code` required when neither catalog nor manual flag is used.  
-- Optional: `sortOrder`, `onsetDate`, `notes`.
+- Optional: `sortOrder`, `onsetDate`, `onsetPrecision` (`UNKNOWN` | `DATE` | `DATETIME`), `notes`.
+  Clinical onset is distinct from documentation time (`createdAt` / audit `createdByDisplay`).
 
 **Reorder (POST encounter diagnoses/reorder)**  
 Body: `{ "orderedIds": ["uuid", ...] }` — every id must belong to the encounter.

@@ -6,12 +6,18 @@ import {
   createDiagnosis,
   removeDiagnosis,
   reorderEncounterDiagnoses,
+  updateDiagnosis,
   type Icd10SearchHit,
 } from "@/lib/chartApi";
 import { MEDORA_CARD_SHELL } from "@/components/medora-card";
 import { useI18n } from "@/lib/i18n";
 import { normalizeUserFacingError } from "@/lib/userFacingError";
 import { Icd10DiagnosisEntryPanel } from "@/components/diagnosis/Icd10DiagnosisEntryPanel";
+import { AddDiagnosisDialog } from "@/components/diagnosis/AddDiagnosisDialog";
+import {
+  formatClinicalOnsetDisplay,
+  formatDocumentedAt,
+} from "@/components/diagnosis/clinicalOnsetModel";
 import {
   RemoveDiagnosisModal,
   type RemoveDiagnosisConfirmPayload,
@@ -30,11 +36,22 @@ type DxRow = {
   code: string;
   description: string | null;
   onsetDate: string | null;
+  onsetPrecision: string | null;
   sortOrder: number;
   codeSource?: string;
   createdAt: string;
   status?: string;
+  createdByDisplay?: {
+    userId: string;
+    name: string;
+    role: string | null;
+    at: string;
+  } | null;
 };
+
+type PendingAdd =
+  | { kind: "catalog"; hit: Icd10SearchHit }
+  | { kind: "manual"; code: string; description?: string };
 
 export function EncounterDiagnosticsPanel({
   encounterId,
@@ -42,7 +59,6 @@ export function EncounterDiagnosticsPanel({
   facilityId,
   canDocumentDiagnoses,
   isLocked,
-  onGoPatientChart,
 }: {
   encounterId: string;
   patientId: string;
@@ -50,7 +66,6 @@ export function EncounterDiagnosticsPanel({
   /** RN, provider, or admin — aligned with POST /encounters/:id/diagnoses roles. */
   canDocumentDiagnoses: boolean;
   isLocked: boolean;
-  onGoPatientChart: () => void;
 }) {
   const { t, language } = useI18n();
   const dateLocale = language === "en" ? "en-US" : "fr-FR";
@@ -63,6 +78,8 @@ export function EncounterDiagnosticsPanel({
   const [removeTarget, setRemoveTarget] = useState<{ row: DxRow; index: number } | null>(null);
   const [removeBusy, setRemoveBusy] = useState(false);
   const [successNotice, setSuccessNotice] = useState<string | null>(null);
+  const [pendingAdd, setPendingAdd] = useState<PendingAdd | null>(null);
+  const [editOnsetRow, setEditOnsetRow] = useState<DxRow | null>(null);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -81,19 +98,26 @@ export function EncounterDiagnosticsPanel({
     setError(null);
     try {
       const data = await apiFetch(`/patients/${patientId}/diagnoses?status=ACTIVE&limit=200`, { facilityId });
-      const items = Array.isArray((data as { items?: unknown }).items) ? (data as { items: Record<string, unknown>[] }).items : [];
+      const items = Array.isArray((data as { items?: unknown }).items)
+        ? (data as { items: Record<string, unknown>[] }).items
+        : [];
       const forEncounter = items
         .filter((d) => d.encounterId === encounterId && (d.status == null || d.status === "ACTIVE"))
-        .map((d) => ({
-          id: String(d.id),
-          code: String(d.code ?? ""),
-          description: (d.description as string | null) ?? null,
-          onsetDate: (d.onsetDate as string | null) ?? null,
-          sortOrder: typeof d.sortOrder === "number" ? d.sortOrder : 0,
-          codeSource: typeof d.codeSource === "string" ? d.codeSource : undefined,
-          createdAt: typeof d.createdAt === "string" ? d.createdAt : "",
-          status: typeof d.status === "string" ? d.status : "ACTIVE",
-        }))
+        .map((d) => {
+          const createdBy = d.createdByDisplay as DxRow["createdByDisplay"] | undefined;
+          return {
+            id: String(d.id),
+            code: String(d.code ?? ""),
+            description: (d.description as string | null) ?? null,
+            onsetDate: (d.onsetDate as string | null) ?? null,
+            onsetPrecision: typeof d.onsetPrecision === "string" ? d.onsetPrecision : null,
+            sortOrder: typeof d.sortOrder === "number" ? d.sortOrder : 0,
+            codeSource: typeof d.codeSource === "string" ? d.codeSource : undefined,
+            createdAt: typeof d.createdAt === "string" ? d.createdAt : "",
+            status: typeof d.status === "string" ? d.status : "ACTIVE",
+            createdByDisplay: createdBy ?? null,
+          };
+        })
         .sort((a, b) => a.sortOrder - b.sortOrder || a.createdAt.localeCompare(b.createdAt));
       setRows(forEncounter);
     } catch {
@@ -107,51 +131,61 @@ export function EncounterDiagnosticsPanel({
     void load();
   }, [load]);
 
-  const pickCatalog = async (hit: Icd10SearchHit) => {
-    if (isLocked) return;
+  const confirmAdd = async (payload: {
+    onsetDate: string | null;
+    onsetPrecision: "UNKNOWN" | "DATE" | "DATETIME";
+    notes?: string;
+  }) => {
+    if (!pendingAdd || isLocked) return;
     setSaving(true);
     setError(null);
     try {
-      await createDiagnosis(facilityId, encounterId, {
-        icd10CatalogId: hit.id,
-        code: hit.code,
-        description: hit.shortDescription,
-      });
+      if (pendingAdd.kind === "catalog") {
+        await createDiagnosis(facilityId, encounterId, {
+          icd10CatalogId: pendingAdd.hit.id,
+          code: pendingAdd.hit.code,
+          description: pendingAdd.hit.shortDescription,
+          onsetDate: payload.onsetDate,
+          onsetPrecision: payload.onsetPrecision,
+          notes: payload.notes,
+        });
+      } else {
+        await createDiagnosis(facilityId, encounterId, {
+          code: pendingAdd.code,
+          description: pendingAdd.description,
+          onsetDate: payload.onsetDate,
+          onsetPrecision: payload.onsetPrecision,
+          notes: payload.notes,
+          manualNonCatalog: true,
+        });
+      }
+      setPendingAdd(null);
       await load();
     } catch (e: unknown) {
       const raw = e instanceof Error ? e.message : (e as { message?: string })?.message;
-      setError(
-        normalizeUserFacingError(raw, language) || t("encounterConsultDiagnostics.saveError")
-      );
+      setError(normalizeUserFacingError(raw, language) || t("encounterConsultDiagnostics.saveError"));
     } finally {
       setSaving(false);
     }
   };
 
-  const submitManual = async (payload: {
-    code: string;
-    description?: string;
-    onsetDate?: string;
-    notes?: string;
-    manualNonCatalog: true;
+  const confirmEditOnset = async (payload: {
+    onsetDate: string | null;
+    onsetPrecision: "UNKNOWN" | "DATE" | "DATETIME";
   }) => {
-    if (isLocked) return;
+    if (!editOnsetRow || isLocked) return;
     setSaving(true);
     setError(null);
     try {
-      await createDiagnosis(facilityId, encounterId, {
-        code: payload.code,
-        description: payload.description,
+      await updateDiagnosis(facilityId, editOnsetRow.id, {
         onsetDate: payload.onsetDate,
-        notes: payload.notes,
-        manualNonCatalog: true,
+        onsetPrecision: payload.onsetPrecision,
       });
+      setEditOnsetRow(null);
       await load();
     } catch (e: unknown) {
       const raw = e instanceof Error ? e.message : (e as { message?: string })?.message;
-      setError(
-        normalizeUserFacingError(raw, language) || t("encounterConsultDiagnostics.saveError")
-      );
+      setError(normalizeUserFacingError(raw, language) || t("diagnosisOnset.saveError"));
     } finally {
       setSaving(false);
     }
@@ -196,9 +230,7 @@ export function EncounterDiagnosticsPanel({
       await load();
     } catch (e: unknown) {
       const raw = e instanceof Error ? e.message : (e as { message?: string })?.message;
-      setError(
-        normalizeUserFacingError(raw, language) || t("removeDiagnosisModal.failure")
-      );
+      setError(normalizeUserFacingError(raw, language) || t("removeDiagnosisModal.failure"));
     } finally {
       setRemoveBusy(false);
     }
@@ -232,6 +264,18 @@ export function EncounterDiagnosticsPanel({
     return "";
   };
 
+  const documentedLine = (r: DxRow) => {
+    const when = formatDocumentedAt(r.createdByDisplay?.at || r.createdAt, dateLocale);
+    const who = r.createdByDisplay?.name?.trim();
+    const role = r.createdByDisplay?.role?.trim();
+    if (who) {
+      return t("diagnosisOnset.documentedByLine")
+        .replace("{name}", role ? `${who}, ${role}` : who)
+        .replace("{when}", when);
+    }
+    return t("diagnosisOnset.documentedLine").replace("{when}", when);
+  };
+
   if (loading) {
     return (
       <div
@@ -257,66 +301,47 @@ export function EncounterDiagnosticsPanel({
     boxShadow: MEDORA_CARD_SHELL.boxShadow,
   };
 
+  const dialogCode =
+    pendingAdd?.kind === "catalog"
+      ? pendingAdd.hit.code
+      : pendingAdd?.kind === "manual"
+        ? pendingAdd.code
+        : editOnsetRow?.code ?? "";
+  const dialogDescription =
+    pendingAdd?.kind === "catalog"
+      ? pendingAdd.hit.shortDescription
+      : pendingAdd?.kind === "manual"
+        ? pendingAdd.description ?? null
+        : editOnsetRow?.description ?? null;
+
   return (
     <div
       style={{ display: "flex", flexDirection: "column", gap: 14 }}
       data-testid="encounter-diagnostics-panel-layout"
       data-layout-mode={layoutMode}
     >
-      <div
-        style={{
-          ...dxShell,
-          padding: "14px 18px",
-          display: "flex",
-          justifyContent: "space-between",
-          gap: 12,
-          alignItems: "center",
-          flexWrap: "wrap",
-        }}
-      >
+      <div style={{ ...dxShell, padding: "14px 18px" }}>
         <h3 style={{ margin: 0, fontSize: 16, fontWeight: 600, color: "#0f172a" }}>
-          {t("encounterConsultDiagnostics.heading")}
+          {t("encounterConsultDiagnostics.headingShort")}
         </h3>
-        {canDocumentDiagnoses ? (
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            <button
-              type="button"
-              onClick={onGoPatientChart}
-              disabled={isLocked}
-              style={diagnosisOrdersTouchButtonStyle(
-                {
-                  padding: "8px 14px",
-                  border: "1px solid #e2e8f0",
-                  borderRadius: 10,
-                  background: "#f8fafc",
-                  color: "#0f172a",
-                  fontSize: 14,
-                  fontWeight: 600,
-                  cursor: isLocked ? "not-allowed" : "pointer",
-                  opacity: isLocked ? 0.65 : 1,
-                },
-                layoutMode
-              )}
-            >
-              {t("encounterConsultDiagnostics.addButton")}
-            </button>
-          </div>
-        ) : null}
       </div>
 
       {canDocumentDiagnoses && !isLocked ? (
         <div style={{ ...dxShell, padding: "14px 18px" }}>
           <Icd10DiagnosisEntryPanel
             facilityId={facilityId}
-            disabled={isLocked}
+            disabled={isLocked || saving}
             language={language}
             t={tEntry}
             saving={saving}
+            selectionOnly
             onError={setError}
-            onPickCatalog={async (hit) => {
-              await pickCatalog(hit);
-            }}
-            onSubmitManual={submitManual}
+            onPickCatalog={async () => undefined}
+            onSubmitManual={async () => undefined}
+            onSelectCatalog={(hit) => setPendingAdd({ kind: "catalog", hit })}
+            onSelectManual={(draft) =>
+              setPendingAdd({ kind: "manual", code: draft.code, description: draft.description })
+            }
           />
         </div>
       ) : null}
@@ -359,7 +384,7 @@ export function EncounterDiagnosticsPanel({
         </div>
       ) : layoutMode === "desktopDense" ? (
         <div style={{ ...dxShell, overflowX: "auto", minWidth: 0 }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14, minWidth: 480 }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14, minWidth: 560 }}>
             <thead>
               <tr style={{ backgroundColor: "#f8fafc" }}>
                 <th style={{ padding: "12px 14px", textAlign: "left", fontWeight: 600, color: "#334155", borderBottom: "1px solid #e2e8f0" }}>
@@ -372,7 +397,7 @@ export function EncounterDiagnosticsPanel({
                   {t("encounterConsultDiagnostics.colLabel")}
                 </th>
                 <th style={{ padding: "12px 14px", textAlign: "left", fontWeight: 600, color: "#334155", borderBottom: "1px solid #e2e8f0" }}>
-                  {t("encounterConsultDiagnostics.colOnset")}
+                  {t("diagnosisOnset.clinicalOnset")}
                 </th>
                 {canDocumentDiagnoses && !isLocked ? (
                   <th
@@ -454,10 +479,45 @@ export function EncounterDiagnosticsPanel({
                     ) : null}
                   </td>
                   <td style={{ padding: "12px 14px", color: "#334155", wordBreak: "break-word", overflowWrap: "anywhere" }}>
-                    {getLocalizedDiagnosisDisplayLabel({ code: r.code, description: r.description }, language) || "—"}
+                    <div>
+                      {getLocalizedDiagnosisDisplayLabel({ code: r.code, description: r.description }, language) ||
+                        "—"}
+                    </div>
+                    <div style={{ fontSize: 11, color: "#64748b", marginTop: 4 }}>{documentedLine(r)}</div>
                   </td>
-                  <td style={{ padding: "12px 14px", color: "#334155" }}>
-                    {r.onsetDate ? new Date(r.onsetDate).toLocaleDateString(dateLocale) : "—"}
+                  <td style={{ padding: "12px 14px", color: "#334155", verticalAlign: "top" }}>
+                    {canDocumentDiagnoses && !isLocked ? (
+                      <button
+                        type="button"
+                        data-testid={`edit-onset-${r.id}`}
+                        onClick={() => setEditOnsetRow(r)}
+                        title={t("diagnosisOnset.editOnset")}
+                        style={{
+                          padding: 0,
+                          border: "none",
+                          background: "transparent",
+                          color: "#1d4ed8",
+                          fontSize: 13,
+                          fontWeight: 600,
+                          cursor: "pointer",
+                          textAlign: "left",
+                        }}
+                      >
+                        {formatClinicalOnsetDisplay(
+                          r.onsetDate,
+                          r.onsetPrecision,
+                          dateLocale,
+                          t("diagnosisOnset.unknown")
+                        )}
+                      </button>
+                    ) : (
+                      formatClinicalOnsetDisplay(
+                        r.onsetDate,
+                        r.onsetPrecision,
+                        dateLocale,
+                        t("diagnosisOnset.unknown")
+                      )
+                    )}
                   </td>
                   {canDocumentDiagnoses && !isLocked ? (
                     <td style={{ padding: "10px 14px", textAlign: "right", verticalAlign: "middle" }}>
@@ -572,15 +632,77 @@ export function EncounterDiagnosticsPanel({
                 >
                   {getLocalizedDiagnosisDisplayLabel({ code: r.code, description: r.description }, language) || "—"}
                 </p>
+                <p style={{ margin: "6px 0 0 0", fontSize: 12, color: "#64748b" }}>{documentedLine(r)}</p>
                 <p style={{ margin: "6px 0 0 0", fontSize: 12, color: "#64748b" }}>
-                  <span style={{ fontWeight: 600, color: "#475569" }}>{t("encounterConsultDiagnostics.colOnset")}</span>{" "}
-                  {r.onsetDate ? new Date(r.onsetDate).toLocaleDateString(dateLocale) : "—"}
+                  <span style={{ fontWeight: 600, color: "#475569" }}>{t("diagnosisOnset.clinicalOnset")}</span>{" "}
+                  {canDocumentDiagnoses && !isLocked ? (
+                    <button
+                      type="button"
+                      data-testid={`edit-onset-${r.id}`}
+                      onClick={() => setEditOnsetRow(r)}
+                      style={{
+                        padding: 0,
+                        border: "none",
+                        background: "transparent",
+                        color: "#1d4ed8",
+                        fontSize: 12,
+                        fontWeight: 600,
+                        cursor: "pointer",
+                      }}
+                    >
+                      {formatClinicalOnsetDisplay(
+                        r.onsetDate,
+                        r.onsetPrecision,
+                        dateLocale,
+                        t("diagnosisOnset.unknown")
+                      )}
+                    </button>
+                  ) : (
+                    formatClinicalOnsetDisplay(
+                      r.onsetDate,
+                      r.onsetPrecision,
+                      dateLocale,
+                      t("diagnosisOnset.unknown")
+                    )
+                  )}
                 </p>
               </div>
             </li>
           ))}
         </ul>
       )}
+
+      <AddDiagnosisDialog
+        open={Boolean(pendingAdd)}
+        mode="add"
+        code={dialogCode}
+        description={dialogDescription}
+        willBePrimary={rows.length === 0}
+        submitting={saving}
+        t={t}
+        onCancel={() => {
+          if (!saving) setPendingAdd(null);
+        }}
+        onConfirm={confirmAdd}
+      />
+
+      <AddDiagnosisDialog
+        open={Boolean(editOnsetRow)}
+        mode="editOnset"
+        code={editOnsetRow?.code ?? ""}
+        description={editOnsetRow?.description ?? null}
+        initialOnset={
+          editOnsetRow
+            ? { onsetDate: editOnsetRow.onsetDate, onsetPrecision: editOnsetRow.onsetPrecision }
+            : undefined
+        }
+        submitting={saving}
+        t={t}
+        onCancel={() => {
+          if (!saving) setEditOnsetRow(null);
+        }}
+        onConfirm={confirmEditOnset}
+      />
 
       <RemoveDiagnosisModal
         open={Boolean(removeTarget)}

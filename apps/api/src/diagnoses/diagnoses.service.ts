@@ -3,7 +3,7 @@ import {
   NotFoundException,
   BadRequestException,
 } from "@nestjs/common";
-import { DiagnosisCodeSource, Prisma, RoleCode } from "@prisma/client";
+import { DiagnosisCodeSource, DiagnosisOnsetPrecision, Prisma, RoleCode } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
 import { logBreakGlassAccessIfApplicable } from "../common/break-glass/break-glass-audit.helper";
 import { AuditService } from "../common/services/audit.service";
@@ -25,6 +25,7 @@ import type {
   ListDiagnosesQuery,
   RemoveDiagnosisDto,
 } from "./dto";
+import { resolveDiagnosisOnsetInput } from "./diagnosis-onset.util";
 
 const diagnosisInclude = {
   patient: {
@@ -164,6 +165,10 @@ export class DiagnosesService {
     code = code.trim();
 
     const sortOrder = dto.sortOrder ?? (await this.nextSortOrder(encounterId));
+    const onset = resolveDiagnosisOnsetInput({
+      onsetDate: dto.onsetDate ?? null,
+      onsetPrecision: (dto.onsetPrecision as DiagnosisOnsetPrecision | null | undefined) ?? null,
+    });
 
     const row = await this.prisma.diagnosis.create({
       data: {
@@ -172,7 +177,8 @@ export class DiagnosesService {
         facilityId,
         code,
         description: description ?? undefined,
-        onsetDate: dto.onsetDate ?? undefined,
+        onsetDate: onset.onsetDate,
+        onsetPrecision: onset.onsetPrecision,
         notes: dto.notes?.trim() ? dto.notes.trim() : undefined,
         status: "ACTIVE",
         sortOrder,
@@ -190,7 +196,12 @@ export class DiagnosesService {
       entityId: row.id,
       ip,
       userAgent,
-      metadata: { code, codeSource },
+      metadata: {
+        code,
+        codeSource,
+        onsetDate: onset.onsetDate?.toISOString() ?? null,
+        onsetPrecision: onset.onsetPrecision,
+      },
     });
 
     const createdAtIso =
@@ -398,11 +409,26 @@ export class DiagnosesService {
     assertEncounterNotSigned(enc);
 
     const data: Prisma.DiagnosisUpdateInput = {};
+    const previousOnset = {
+      onsetDate: existing.onsetDate?.toISOString() ?? null,
+      onsetPrecision: existing.onsetPrecision ?? null,
+    };
 
     if (dto.sortOrder !== undefined) {
       data.sortOrder = dto.sortOrder;
     }
-    if (dto.onsetDate !== undefined) data.onsetDate = dto.onsetDate;
+    if (dto.onsetDate !== undefined || dto.onsetPrecision !== undefined) {
+      const onset = resolveDiagnosisOnsetInput({
+        onsetDate:
+          dto.onsetDate !== undefined ? dto.onsetDate : existing.onsetDate,
+        onsetPrecision:
+          dto.onsetPrecision !== undefined
+            ? ((dto.onsetPrecision as DiagnosisOnsetPrecision | null) ?? null)
+            : existing.onsetPrecision,
+      });
+      data.onsetDate = onset.onsetDate;
+      data.onsetPrecision = onset.onsetPrecision;
+    }
     if (dto.notes !== undefined) data.notes = dto.notes;
 
     if (dto.manualNonCatalog === true) {
@@ -465,6 +491,15 @@ export class DiagnosesService {
       include: diagnosisInclude,
     });
 
+    const nextOnset =
+      dto.onsetDate !== undefined || dto.onsetPrecision !== undefined
+        ? {
+            onsetDate:
+              row.onsetDate instanceof Date ? row.onsetDate.toISOString() : null,
+            onsetPrecision: row.onsetPrecision ?? null,
+          }
+        : null;
+
     await this.audit.log(AuditAction.UPDATE, "DIAGNOSIS", {
       userId,
       facilityId,
@@ -473,7 +508,12 @@ export class DiagnosesService {
       entityId: id,
       ip,
       userAgent,
-      metadata: { fields: Object.keys(dto) },
+      metadata: {
+        fields: Object.keys(dto),
+        ...(nextOnset
+          ? { previousOnset, nextOnset }
+          : {}),
+      },
     });
 
     const billingRelevant =

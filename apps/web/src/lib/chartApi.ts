@@ -307,10 +307,13 @@ export async function fetchEncounterAuditTimeline(
   });
 }
 
+export type DiagnosisOnsetPrecision = "UNKNOWN" | "DATE" | "DATETIME";
+
 export type CreateDiagnosisBody = {
   code?: string;
   description?: string;
-  onsetDate?: string;
+  onsetDate?: string | null;
+  onsetPrecision?: DiagnosisOnsetPrecision | null;
   notes?: string;
   icd10CatalogId?: string;
   manualNonCatalog?: boolean;
@@ -320,6 +323,21 @@ export type CreateDiagnosisBody = {
 export async function createDiagnosis(facilityId: string, encounterId: string, body: CreateDiagnosisBody) {
   return apiFetch(`/encounters/${encounterId}/diagnoses`, {
     method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+    facilityId,
+  });
+}
+
+export type UpdateDiagnosisBody = {
+  onsetDate?: string | null;
+  onsetPrecision?: DiagnosisOnsetPrecision | null;
+  notes?: string | null;
+};
+
+export async function updateDiagnosis(facilityId: string, diagnosisId: string, body: UpdateDiagnosisBody) {
+  return apiFetch(`/diagnoses/${diagnosisId}`, {
+    method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
     facilityId,

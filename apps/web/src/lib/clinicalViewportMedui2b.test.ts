@@ -108,7 +108,7 @@ describe("MEDUI.2B ED trackboard tablet compact board", () => {
     expect(trackboard).toContain("roomValue={room}");
     expect(trackboard).toContain("primaryStatusLabel");
     expect(trackboard).toContain("opsChips");
-    expect(trackboard).toContain("emergencyChartPath");
+    expect(trackboard).toContain("resolveEdBoardPatientNameHref");
     expect(trackboard).toContain("emergencyActiveWorkspacePath");
   });
 

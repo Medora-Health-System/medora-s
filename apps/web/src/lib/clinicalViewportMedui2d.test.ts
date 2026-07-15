@@ -109,7 +109,7 @@ describe("MEDUI.2D tablet trackboard horizontal census", () => {
 
   it("does not change card actions or routing", () => {
     const trackboard = readWebSource("src/features/emergency/EmergencyTrackboardView.tsx");
-    expect(trackboard).toContain("emergencyChartPath");
+    expect(trackboard).toContain("resolveEdBoardPatientNameHref");
     expect(trackboard).toContain("emergencyActiveWorkspacePath");
     expect(trackboard).toContain("claimSelf(encounter.id, \"provider\")");
     expect(trackboard).toContain("claimSelf(encounter.id, \"nurse\")");

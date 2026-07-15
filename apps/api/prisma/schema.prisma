@@ -1640,7 +1640,10 @@ model Diagnosis {
   code           String
   description    String?
   status         DiagnosisStatus     @default(ACTIVE)
+  /// Clinical symptom/problem onset (not documentation time). Null when unknown.
   onsetDate      DateTime?
+  /// Precision for onsetDate: UNKNOWN (null date), DATE (calendar day), DATETIME (known time).
+  onsetPrecision DiagnosisOnsetPrecision?
   resolvedDate   DateTime?
   notes          String?
   createdAt      DateTime            @default(now())
@@ -3399,6 +3402,13 @@ enum DiagnosisCodeSource {
   ICD10_CATALOG
   /// User explicitly documented a non-catalog code (not validated as ICD-10-CM).
   MANUAL_DECLARED
+}
+
+/// Clinical onset precision for Diagnosis.onsetDate (distinct from createdAt documentation time).
+enum DiagnosisOnsetPrecision {
+  UNKNOWN
+  DATE
+  DATETIME
 }
 
 enum InventoryTransactionType {

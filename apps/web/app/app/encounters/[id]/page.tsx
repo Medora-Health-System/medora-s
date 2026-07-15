@@ -2652,7 +2652,6 @@ function EncounterDetailPageInner({ session }: { session: ReturnType<typeof useF
                 facilityId={facilityId}
                 canDocumentDiagnoses={canDocumentEncounterDiagnoses}
                 isLocked={isLocked}
-                onGoPatientChart={() => router.push(`/app/patients/${patient.id}`)}
               />
               <EncounterProcedureCapturePanel
                 encounterId={encounter.id}

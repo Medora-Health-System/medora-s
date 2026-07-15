@@ -1,11 +1,15 @@
 import { z } from "zod";
 import { isIcd10CmLikeCodeFormat } from "@medora/shared";
 
+const onsetPrecisionSchema = z.enum(["UNKNOWN", "DATE", "DATETIME"]);
+
 export const updateDiagnosisDtoSchema = z
   .object({
     code: z.string().min(1).max(64).optional(),
     description: z.string().max(2000).optional().nullable(),
+    /** Clinical onset (not documentation time). */
     onsetDate: z.coerce.date().optional().nullable(),
+    onsetPrecision: onsetPrecisionSchema.optional().nullable(),
     notes: z.string().max(4000).optional().nullable(),
     /** Set to link this row to the ICD-10 catalog (code/description updated from catalog unless description sent). */
     icd10CatalogId: z.string().uuid().nullable().optional(),

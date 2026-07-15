@@ -69,7 +69,7 @@ describe("EmergencyTrackboardView responsive wiring (19M.3)", () => {
     expect(trackboardSource).toContain("esiDisplayChar");
     expect(trackboardSource).toContain("primaryStatusLabel");
     expect(trackboardSource).toContain("arrivalDisplay");
-    expect(trackboardSource).toContain("emergencyChartPath");
+    expect(trackboardSource).toContain("resolveEdBoardPatientNameHref");
     expect(trackboardSource).toContain("emergencyActiveWorkspacePath");
   });
 

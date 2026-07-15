@@ -26,6 +26,13 @@ export type Icd10DiagnosisEntryPanelProps = {
     notes?: string;
     manualNonCatalog: true;
   }) => Promise<void>;
+  /**
+   * When true, catalog/manual selection notifies parent only (parent opens onset dialog).
+   * Skips immediate createDiagnosis.
+   */
+  selectionOnly?: boolean;
+  onSelectCatalog?: (hit: Icd10SearchHit) => void;
+  onSelectManual?: (draft: { code: string; description?: string }) => void;
   /** Show onset date + notes fields (chart modal / ER quick add). */
   showOnsetNotes?: boolean;
   /** External busy flag (e.g. parent saving). */
@@ -45,6 +52,9 @@ export function Icd10DiagnosisEntryPanel({
   onError,
   onPickCatalog,
   onSubmitManual,
+  selectionOnly = false,
+  onSelectCatalog,
+  onSelectManual,
   showOnsetNotes = false,
   saving = false,
   manualPrefill = null,
@@ -125,6 +135,12 @@ export function Icd10DiagnosisEntryPanel({
   const pickCatalog = async (hit: Icd10SearchHit) => {
     if (busy) return;
     onError(null);
+    if (selectionOnly) {
+      onSelectCatalog?.(hit);
+      setSearchQ("");
+      setSearchHits([]);
+      return;
+    }
     try {
       await onPickCatalog(hit, {
         onsetDate: showOnsetNotes && onsetDate.trim() ? onsetDate.trim() : undefined,
@@ -154,6 +170,10 @@ export function Icd10DiagnosisEntryPanel({
       return;
     }
     onError(null);
+    if (selectionOnly) {
+      onSelectManual?.({ code, description: manualDesc.trim() || undefined });
+      return;
+    }
     try {
       await onSubmitManual({
         code,
@@ -178,9 +198,7 @@ export function Icd10DiagnosisEntryPanel({
   const manualFormatOk = manualCode.trim().length === 0 || isIcd10CmLikeCodeFormat(manualCode.trim());
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-      <p style={{ margin: 0, fontSize: 12, color: "#64748b", lineHeight: 1.45 }}>{t("diagnosisEntry.primaryOrderHint")}</p>
-
+    <div style={{ display: "flex", flexDirection: "column", gap: 12 }} data-testid="icd10-diagnosis-entry-panel">
       {showOnsetNotes ? (
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           <label style={{ fontSize: 13, fontWeight: 600, color: "#334155" }}>

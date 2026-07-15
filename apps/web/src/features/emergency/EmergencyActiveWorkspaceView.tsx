@@ -1299,7 +1299,6 @@ export function EmergencyActiveWorkspaceView() {
                 facilityId={fid}
                 canDocumentDiagnoses={canDocumentEncounterDiagnoses}
                 isLocked={isLocked}
-                onGoPatientChart={() => setShowCreateDx(true)}
               />
             </div>
           ) : null}
