@@ -8261,7 +8261,10 @@ export default {
     templateLacerationSoftTissueComplaintV1Help: "Inserts cliquables — lacération, soins de plaie, infection et suivi.",
     templateAnimalBiteAdultComplaintV1: "Morsure animale / mammifère (adulte)",
     templateAnimalBiteAdultComplaintV1Help:
-      "Morsure animale, morsure de chien, morsure de chat, morsure humaine, plaie par morsure, plaie perforante — rage, tétanos, antibiotiques, soins de plaie.",
+      "Morsure animale, morsure de chien, morsure de chat, plaie par morsure, plaie perforante — rage, tétanos, antibiotiques, soins de plaie.",
+    templateHumanBiteHighRiskWoundAdultComplaintV1: "Morsure humaine / Plaie traumatique contaminée à haut risque",
+    templateHumanBiteHighRiskWoundAdultComplaintV1Help:
+      "Morsure humaine, morsure du poing, poing fermé, plaie contaminée, plaie sale, plaie retardée, plaie exposée à l'eau, eau douce, eau salée — tétanos, précautions d'infection et suivi de la main.",
     templateFractureAdultComplaintV1: "Fracture",
     templateFractureAdultComplaintV1Help:
       "Fracture, os cassé, bras cassé, poignet cassé, hanche cassée, jambe cassée, cheville cassée, doigt cassé, orteil cassé, clavicule, côte, mâchoire, nez, fracture ouverte, fracture fermée, fracture de stress, fracture pathologique — toutes régions du corps.",

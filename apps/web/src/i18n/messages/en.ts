@@ -8283,7 +8283,10 @@ export default {
     templateLacerationSoftTissueComplaintV1Help: "Click-to-insert prompts for laceration, wound care, infection risk, and follow-up.",
     templateAnimalBiteAdultComplaintV1: "Adult animal bite / mammal bite",
     templateAnimalBiteAdultComplaintV1Help:
-      "Animal bite, dog bite, cat bite, human bite, mammal bite, bite wound, puncture wound — rabies, tetanus, antibiotics, wound care.",
+      "Animal bite, dog bite, cat bite, mammal bite, bite wound, puncture wound — rabies, tetanus, antibiotics, wound care.",
+    templateHumanBiteHighRiskWoundAdultComplaintV1: "Human Bite / High-Risk Contaminated Wound",
+    templateHumanBiteHighRiskWoundAdultComplaintV1Help:
+      "Human bite, fight bite, clenched fist, knuckle bite, contaminated wound, dirty wound, delayed wound, water-exposed wound, freshwater, saltwater — tetanus, infection precautions, hand follow-up.",
     templateFractureAdultComplaintV1: "Fracture",
     templateFractureAdultComplaintV1Help:
       "Fracture, broken bone, broken arm, broken wrist, broken hip, broken leg, broken ankle, broken finger, broken toe, clavicle, rib, jaw, nose, greenstick, buckle, avulsion, compression, stress, open, closed, pathologic fracture — all body regions.",

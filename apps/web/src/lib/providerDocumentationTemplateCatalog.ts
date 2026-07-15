@@ -93,6 +93,7 @@ import {
   MINOR_HEAD_INJURY_COMPLAINT_V1_INTEL,
   LACERATION_SOFT_TISSUE_COMPLAINT_V1_INTEL,
   ANIMAL_BITE_ADULT_COMPLAINT_V1_INTEL,
+  HUMAN_BITE_HIGH_RISK_WOUND_ADULT_COMPLAINT_V1_INTEL,
   DISLOCATION_ADULT_COMPLAINT_V1_INTEL,
   FRACTURE_ADULT_COMPLAINT_V1_INTEL,
   LIGAMENT_INJURY_ADULT_COMPLAINT_V1_INTEL,
@@ -1884,6 +1885,12 @@ export const PROVIDER_DOCUMENTATION_TEMPLATES: ProviderDocumentationTemplateDefi
     "providerDocumentationWorkspace.templateAnimalBiteAdultComplaintV1",
     "providerDocumentationWorkspace.templateAnimalBiteAdultComplaintV1Help",
     ANIMAL_BITE_ADULT_COMPLAINT_V1_INTEL
+  ),
+  mskTraumaComplaintV1Template(
+    "human_bite_high_risk_wound_adult_complaint_v1",
+    "providerDocumentationWorkspace.templateHumanBiteHighRiskWoundAdultComplaintV1",
+    "providerDocumentationWorkspace.templateHumanBiteHighRiskWoundAdultComplaintV1Help",
+    HUMAN_BITE_HIGH_RISK_WOUND_ADULT_COMPLAINT_V1_INTEL
   ),
   mskTraumaComplaintV1Template(
     "fracture_adult_complaint_v1",

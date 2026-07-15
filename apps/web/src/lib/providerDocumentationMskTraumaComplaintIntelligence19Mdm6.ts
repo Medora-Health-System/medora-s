@@ -3,6 +3,7 @@ import type { ProviderDocumentationComplaintIntelligence } from "./providerDocum
 import {
   buildAnkleFootInjuryComplaintV1Intel,
   buildAnimalBiteAdultComplaintV1Intel,
+  buildHumanBiteHighRiskWoundAdultComplaintV1Intel,
   buildBackPainComplaintV1Intel,
   buildFallTraumaComplaintV1Intel,
   buildDislocationAdultComplaintV1Intel,
@@ -36,6 +37,7 @@ const fallTrauma = (key: string) => `providerDocumentationComplaintIntel.fallTra
 const minorHeadInjury = (key: string) => `providerDocumentationComplaintIntel.minorHeadInjuryComplaintV1.${key}`;
 const lacerationSoftTissue = (key: string) => `providerDocumentationComplaintIntel.lacerationSoftTissueComplaintV1.${key}`;
 const animalBiteAdult = (key: string) => `providerDocumentationComplaintIntel.animalBiteAdultComplaintV1.${key}`;
+const humanBiteHighRiskWoundAdult = (key: string) => `providerDocumentationComplaintIntel.humanBiteHighRiskWoundAdultComplaintV1.${key}`;
 const fractureAdult = (key: string) => `providerDocumentationComplaintIntel.fractureAdultComplaintV1.${key}`;
 const dislocationAdult = (key: string) => `providerDocumentationComplaintIntel.dislocationAdultComplaintV1.${key}`;
 const sprainStrainAdult = (key: string) => `providerDocumentationComplaintIntel.sprainStrainAdultComplaintV1.${key}`;
@@ -70,6 +72,8 @@ export const LACERATION_SOFT_TISSUE_COMPLAINT_V1_INTEL: ProviderDocumentationCom
   buildLacerationSoftTissueComplaintV1Intel(lacerationSoftTissue);
 export const ANIMAL_BITE_ADULT_COMPLAINT_V1_INTEL: ProviderDocumentationComplaintIntelligence =
   buildAnimalBiteAdultComplaintV1Intel(animalBiteAdult);
+export const HUMAN_BITE_HIGH_RISK_WOUND_ADULT_COMPLAINT_V1_INTEL: ProviderDocumentationComplaintIntelligence =
+  buildHumanBiteHighRiskWoundAdultComplaintV1Intel(humanBiteHighRiskWoundAdult);
 export const FRACTURE_ADULT_COMPLAINT_V1_INTEL: ProviderDocumentationComplaintIntelligence =
   buildFractureAdultComplaintV1Intel(fractureAdult);
 export const DISLOCATION_ADULT_COMPLAINT_V1_INTEL: ProviderDocumentationComplaintIntelligence =
@@ -99,6 +103,7 @@ export const MSK_TRAUMA_COMPLAINT_V1_TEMPLATE_IDS = [
   "minor_head_injury_complaint_v1",
   "laceration_soft_tissue_complaint_v1",
   "animal_bite_adult_complaint_v1",
+  "human_bite_high_risk_wound_adult_complaint_v1",
   "fracture_adult_complaint_v1",
   "dislocation_adult_complaint_v1",
   "sprain_strain_adult_complaint_v1",
@@ -124,6 +129,7 @@ export const MSK_TRAUMA_COMPLAINT_V1_INTEL_BY_TEMPLATE_ID = {
   minor_head_injury_complaint_v1: MINOR_HEAD_INJURY_COMPLAINT_V1_INTEL,
   laceration_soft_tissue_complaint_v1: LACERATION_SOFT_TISSUE_COMPLAINT_V1_INTEL,
   animal_bite_adult_complaint_v1: ANIMAL_BITE_ADULT_COMPLAINT_V1_INTEL,
+  human_bite_high_risk_wound_adult_complaint_v1: HUMAN_BITE_HIGH_RISK_WOUND_ADULT_COMPLAINT_V1_INTEL,
   fracture_adult_complaint_v1: FRACTURE_ADULT_COMPLAINT_V1_INTEL,
   dislocation_adult_complaint_v1: DISLOCATION_ADULT_COMPLAINT_V1_INTEL,
   sprain_strain_adult_complaint_v1: SPRAIN_STRAIN_ADULT_COMPLAINT_V1_INTEL,

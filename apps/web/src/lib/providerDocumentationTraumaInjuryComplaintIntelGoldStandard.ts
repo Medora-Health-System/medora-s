@@ -764,7 +764,6 @@ export function buildAnimalBiteAdultComplaintV1Intel(d: (key: string) => string)
     hpi: [
       d("hpiBiteDog"),
       d("hpiBiteCat"),
-      d("hpiBiteHuman"),
       d("hpiBiteUnknownAnimal"),
       d("hpiBiteWildAnimal"),
       d("hpiBiteOther"),
@@ -850,14 +849,12 @@ export function buildAnimalBiteAdultComplaintV1Intel(d: (key: string) => string)
         d("waAnimalBite"),
         d("waDogBite"),
         d("waCatBite"),
-        d("waHumanBite"),
         d("waSoftTissueInjury"),
       ],
       clinicalImpression: [
         d("impAnimalBite"),
         d("impDogBite"),
         d("impCatBite"),
-        d("impHumanBite"),
         d("impOpenBiteWound"),
       ],
       mdmPlanSummary: [
@@ -882,7 +879,6 @@ export function buildAnimalBiteAdultComplaintV1Intel(d: (key: string) => string)
       mdmClinicalRationale: [
         d("reasoningHighRiskBiteWound"),
         d("reasoningCatBiteInfectionRisk"),
-        d("reasoningHumanBiteInfectionRisk"),
         d("reasoningRabiesRiskLow"),
         d("reasoningRabiesRiskElevated"),
         d("reasoningNeurovascularExamReassuring"),
@@ -893,6 +889,35 @@ export function buildAnimalBiteAdultComplaintV1Intel(d: (key: string) => string)
         d("riskHighRiskBiteWound"),
         d("riskAdmissionRecommended"),
       ],
+    },
+  });
+}
+
+export function buildHumanBiteHighRiskWoundAdultComplaintV1Intel(
+  d: (key: string) => string,
+): ProviderDocumentationComplaintIntelligence {
+  return buildMskTraumaV1Intel(d, {
+    hpi: [
+      d("hpiHumanBite"), d("hpiFightBite"), d("hpiClenchedFist"), d("hpiAssault"),
+      d("hpiSalivaExposure"), d("hpiBloodExposure"), d("hpiContaminatedWound"),
+      d("hpiTetanusUpToDate"), d("hpiTetanusStatusUnknown"), d("hpiWoundPuncture"),
+      d("hpiWoundDeep"), d("hpiDelayedPresentation"), d("hpiHandOrKnuckleLocation"),
+      d("hpiJointOrTendonConcern"), d("hpiImmunocompromisedOrDiabetes"),
+    ],
+    physicalExam: {
+      general: [d("examHemodynamicallyStable")],
+      skin: [d("examBiteWoundPresent"), d("examPunctureWoundPresent"), d("examWoundIrrigated"), d("examInfectionSignsPresent"), d("examNoInfectionSigns")],
+      musculoskeletal: [d("examLocalizedTendernessPresent"), d("examSwellingPresent"), d("examTendonJointConcern"), d("examDecreasedRangeOfMotion")],
+      neuroPsych: [d("examNeurovascularIntact"), d("examNormalStrength"), d("examNormalSensation")],
+    },
+    extraDifferential: [d("diffCellulitis"), d("diffAbscess"), d("diffFlexorTenosynovitis"), d("diffSepticArthritis"), d("diffOsteomyelitis"), d("diffNecrotizingInfection"), d("diffTendonInjury"), d("diffRetainedForeignBody")],
+    mdmOverrides: {
+      mdmWorkingAssessment: [d("waHumanBite"), d("waFightBite"), d("waContaminatedWound"), d("waHighRiskHandWound")],
+      clinicalImpression: [d("impHumanBite"), d("impFightBite"), d("impContaminatedWound"), d("impHighRiskHandWound")],
+      mdmDataReviewed: [d("mdmXrayReviewed"), d("mdmTetanusStatusReviewed"), d("mdmWoundCarePlanReviewed")],
+      mdmPlanSummary: [d("planWoundIrrigationCleansing"), d("planTetanusUpdate"), d("planAntibioticsDecision"), d("planImagingDecision"), d("planHandSurgeryConsultRequested"), d("planOrthopedicConsultRequested"), d("planWoundCareInstructions"), d("planFollowUp24To48Hours"), d("planReturnPrecautions")],
+      mdmClinicalRationale: [d("reasoningHumanBiteInfectionRisk"), d("reasoningFightBiteHighRisk"), d("reasoningDeepInfectionConcern"), d("reasoningNeurovascularExamReassuring")],
+      mdmRiskStratification: [d("riskLowRiskBiteWound"), d("riskModerateRiskBiteWound"), d("riskHighRiskBiteWound"), d("riskAdmissionRecommended")],
     },
   });
 }
@@ -1680,6 +1705,7 @@ export const TRAUMA_INJURY_GOLD_STANDARD_BUILDERS = {
   minor_head_injury_complaint_v1: buildMinorHeadInjuryComplaintV1Intel,
   laceration_soft_tissue_complaint_v1: buildLacerationSoftTissueComplaintV1Intel,
   animal_bite_adult_complaint_v1: buildAnimalBiteAdultComplaintV1Intel,
+  human_bite_high_risk_wound_adult_complaint_v1: buildHumanBiteHighRiskWoundAdultComplaintV1Intel,
   fracture_adult_complaint_v1: buildFractureAdultComplaintV1Intel,
   dislocation_adult_complaint_v1: buildDislocationAdultComplaintV1Intel,
   sprain_strain_adult_complaint_v1: buildSprainStrainAdultComplaintV1Intel,

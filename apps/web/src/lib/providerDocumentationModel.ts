@@ -128,6 +128,7 @@ export type ProviderDocumentationTemplateId =
   | "minor_head_injury_complaint_v1"
   | "laceration_soft_tissue_complaint_v1"
   | "animal_bite_adult_complaint_v1"
+  | "human_bite_high_risk_wound_adult_complaint_v1"
   | "fracture_adult_complaint_v1"
   | "dislocation_adult_complaint_v1"
   | "sprain_strain_adult_complaint_v1"
