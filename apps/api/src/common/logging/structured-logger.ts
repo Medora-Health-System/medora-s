@@ -1,4 +1,5 @@
 import { Logger } from "@nestjs/common";
+import { getLogPolicy, nestLevelAllowed } from "./log-policy";
 import { redactPHI } from "./redact-phi";
 
 export type StructuredLogMeta = Record<string, unknown>;
@@ -20,13 +21,20 @@ export function createStructuredLogger(context: string) {
 
   return {
     log(event: string, meta?: StructuredLogMeta) {
+      if (!nestLevelAllowed("log")) return;
       nest.log(line(event, meta));
     },
     warn(event: string, meta?: StructuredLogMeta) {
+      if (!nestLevelAllowed("warn")) return;
       nest.warn(line(event, meta));
     },
     error(event: string, meta?: StructuredLogMeta) {
+      if (!nestLevelAllowed("error")) return;
       nest.error(line(event, meta));
+    },
+    debug(event: string, meta?: StructuredLogMeta) {
+      if (!getLogPolicy().debugEnabled || !nestLevelAllowed("debug")) return;
+      nest.debug(line(event, meta));
     },
   };
 }

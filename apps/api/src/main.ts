@@ -4,14 +4,28 @@ import cookieParser = require("cookie-parser");
 import { randomUUID } from "crypto";
 import { AppModule } from "./app.module";
 import { AllExceptionsFilter } from "./common/filters/all-exceptions.filter";
+import { getLogPolicy, resetLogPolicyCache } from "./common/logging/log-policy";
+import { MedoraNestLogger } from "./common/logging/medora-nest-logger";
 import { createStructuredLogger } from "./common/logging/structured-logger";
 import { buildCorsOriginList } from "./config/cors-origins";
 
+resetLogPolicyCache();
 const bootstrapLog = createStructuredLogger("Bootstrap");
 const processLog = createStructuredLogger("Process");
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule, { bodyParser: false });
+  const logPolicy = getLogPolicy();
+  bootstrapLog.log("bootstrap_started", {
+    nodeEnv: logPolicy.nodeEnv,
+    nestLevels: logPolicy.nestLevels,
+    startupRoutesEnabled: logPolicy.startupRoutesEnabled,
+    httpSuccessEnabled: logPolicy.httpSuccessEnabled,
+  });
+
+  const app = await NestFactory.create(AppModule, {
+    bodyParser: false,
+    logger: new MedoraNestLogger(),
+  });
   const http = app.getHttpAdapter().getInstance() as { set?: (key: string, value: unknown) => void };
   if (typeof http?.set === "function") {
     /** Correct client IP behind reverse proxies (rate limits, audit). */

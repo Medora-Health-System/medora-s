@@ -13,6 +13,20 @@ const SENSITIVE_KEY = new Set(
     "token",
     "refreshtoken",
     "authorization",
+    "cookie",
+    "cookies",
+    "setcookie",
+    "databaseurl",
+    "databasedurl",
+    "connectionstring",
+    "webhookurl",
+    "sftppassword",
+    "sftpuser",
+    "apikey",
+    "secret",
+    "signaturevector",
+    "signaturestrokes",
+    "documentcontent",
     "patientid",
     "patient_id",
     "encounterid",
@@ -54,7 +68,16 @@ function normalizeKey(key: string): string {
 function isSensitiveKey(key: string): boolean {
   const n = normalizeKey(key);
   if (SENSITIVE_KEY.has(n)) return true;
-  if (n.endsWith("email") || n.includes("password") || n.includes("token")) return true;
+  if (
+    n.endsWith("email") ||
+    n.includes("password") ||
+    n.includes("token") ||
+    n.includes("secret") ||
+    n.includes("apikey") ||
+    n.includes("webhook")
+  ) {
+    return true;
+  }
   return false;
 }
 
