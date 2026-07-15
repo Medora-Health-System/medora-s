@@ -7915,7 +7915,6 @@ export default {
     recordedAt: "Recorded at",
     recordedByLine: "Recorded by: {initials} ({name}) • Recorded at: {datetime}",
     saveVitals: "Save vitals",
-    saveVitalsHint: "Vitals are saved with the measured date/time. They can be corrected until the chart is signed.",
     editVitals: "Edit vitals",
     removeVitalEntry: "Remove vital entry",
     editVitalEntryAria: "Edit vital entry",
@@ -7932,7 +7931,7 @@ export default {
     errors: {
       invalidMeasuredAt: "Measured date or time is invalid.",
       futureMeasuredAt: "The selected measurement time is too far in the future.",
-      emptyVitals: "Enter at least one vital sign before saving.",
+      emptyVitals: "Enter at least one vital-sign measurement before saving.",
       missingContext: "Encounter or facility context is missing. Reload and try again.",
       closedEncounter: "This encounter is closed and cannot be modified.",
       unauthorized: "You do not have permission to record vitals for this encounter.",

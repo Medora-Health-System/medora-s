@@ -7886,8 +7886,6 @@ export default {
     recordedAt: "Enregistré à",
     recordedByLine: "Saisi par : {initials} ({name}) • Enregistré à : {datetime}",
     saveVitals: "Enregistrer les signes vitaux",
-    saveVitalsHint:
-      "Les signes vitaux sont enregistrés avec la date et l’heure de mesure. Ils peuvent être corrigés tant que le dossier n’est pas signé.",
     editVitals: "Modifier les signes vitaux",
     removeVitalEntry: "Retirer le relevé",
     editVitalEntryAria: "Modifier le relevé de signes vitaux",
@@ -7905,7 +7903,7 @@ export default {
     errors: {
       invalidMeasuredAt: "La date ou l’heure de mesure est invalide.",
       futureMeasuredAt: "L’heure de mesure sélectionnée est trop loin dans le futur.",
-      emptyVitals: "Saisissez au moins un signe vital avant d’enregistrer.",
+      emptyVitals: "Saisissez au moins une mesure de signe vital avant d’enregistrer.",
       missingContext: "Contexte de consultation ou d’établissement manquant. Rechargez et réessayez.",
       closedEncounter: "Cette consultation est clôturée et ne peut pas être modifiée.",
       unauthorized: "Vous n’avez pas l’autorisation d’enregistrer les signes vitaux pour cette consultation.",

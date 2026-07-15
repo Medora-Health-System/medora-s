@@ -22,7 +22,10 @@ import type { PatientTriageVitalsResponse } from "@/lib/patientVitals";
 import {
   buildVitalsTimelineNewestFirst,
   hasVitalsJson,
+  hasMeaningfulVitalMeasurement,
   MEDORA_PATIENT_VITALS_UPDATED,
+  pickLatestMeaningfulVitalsSnapshot,
+  snapshotKey,
   vitalsSnapshotMeasuredAtMs,
 } from "@/lib/patientVitals";
 import { snapshotsToVitalSummaryReadings, VitalSummaryPanel } from "@/components/patients/VitalSummaryPanel";
@@ -500,65 +503,113 @@ export function EmergencyActiveWorkspaceView() {
     return () => window.removeEventListener(MEDORA_PATIENT_VITALS_UPDATED, onVitals);
   }, [encounter?.patient?.id]);
 
-  const encounterVitalSummaryReadings = useMemo(() => {
+  const encounterVitalSnapshotsNewestFirst = useMemo(() => {
     if (!patientVitalsTimeline || !encounterId) return [];
     const merged = buildVitalsTimelineNewestFirst(
       patientVitalsTimeline.latest,
       patientVitalsTimeline.history,
       []
     );
-    const forEnc = merged.filter((s) => s.encounterId === encounterId && hasVitalsJson(s.vitalsJson));
-    return snapshotsToVitalSummaryReadings(forEnc, language, t);
-  }, [patientVitalsTimeline, encounterId, language, t]);
+    return merged.filter((s) => s.encounterId === encounterId && hasVitalsJson(s.vitalsJson));
+  }, [patientVitalsTimeline, encounterId]);
+
+  const encounterLatestMeaningfulVital = useMemo(
+    () => pickLatestMeaningfulVitalsSnapshot(encounterVitalSnapshotsNewestFirst),
+    [encounterVitalSnapshotsNewestFirst]
+  );
+
+  const encounterVitalSummaryReadings = useMemo(() => {
+    return snapshotsToVitalSummaryReadings(encounterVitalSnapshotsNewestFirst, language, t);
+  }, [encounterVitalSnapshotsNewestFirst, language, t]);
 
   const encounterVitalsSnapshotsOldestFirst = useMemo(() => {
-    if (!patientVitalsTimeline) return null;
-    const merged = buildVitalsTimelineNewestFirst(
-      patientVitalsTimeline.latest,
-      patientVitalsTimeline.history,
-      []
+    const meaningful = encounterVitalSnapshotsNewestFirst.filter((s) =>
+      hasMeaningfulVitalMeasurement(s.vitalsJson)
     );
-    const forEnc = merged.filter(
-      (s) => s.encounterId === encounterId && hasVitalsJson(s.vitalsJson)
-    );
-    if (forEnc.length < 2) return null;
-    return [...forEnc].sort(
+    if (meaningful.length < 2) return null;
+    return [...meaningful].sort(
       (a, b) => vitalsSnapshotMeasuredAtMs(a) - vitalsSnapshotMeasuredAtMs(b)
     );
-  }, [patientVitalsTimeline, encounterId]);
+  }, [encounterVitalSnapshotsNewestFirst]);
 
   const clinicalStripModel = useMemo(() => {
     const parsed = triagePreviewSliceFromTriageGet(triageSnapshot, language);
+    const emptySlice = {
+      chiefComplaint: "",
+      onsetAt: "",
+      esi: "",
+      tempC: "",
+      hr: "",
+      rr: "",
+      bpSys: "",
+      bpDia: "",
+      spo2: "",
+      weightKg: "",
+      heightCm: "",
+      allergyNote: "",
+      triageCompleteAt: "",
+      heightFeet: "",
+      heightInches: "",
+    };
     if (!parsed) {
-      const emptySlice = {
-        chiefComplaint: "",
-        onsetAt: "",
-        esi: "",
-        tempC: "",
-        hr: "",
-        rr: "",
-        bpSys: "",
-        bpDia: "",
-        spo2: "",
-        weightKg: "",
-        heightCm: "",
-        allergyNote: "",
-        triageCompleteAt: "",
-        heightFeet: "",
-        heightInches: "",
-      };
       return {
         esi: "",
         allergyText: "",
         pairs: buildErWorkspaceVitalPairs(emptySlice, language),
       };
     }
+    // Prefer newest meaningful reading for the header grid so a later context-only row cannot blank it.
+    const meaningful = encounterLatestMeaningfulVital?.vitalsJson;
+    const sliceForPairs =
+      meaningful && hasMeaningfulVitalMeasurement(meaningful)
+        ? {
+            ...parsed.slice,
+            tempC:
+              meaningful.tempC != null && meaningful.tempC !== ""
+                ? String(meaningful.tempC)
+                : parsed.slice.tempC,
+            hr: meaningful.hr != null && meaningful.hr !== "" ? String(meaningful.hr) : parsed.slice.hr,
+            rr: meaningful.rr != null && meaningful.rr !== "" ? String(meaningful.rr) : parsed.slice.rr,
+            bpSys:
+              meaningful.bpSys != null && meaningful.bpSys !== ""
+                ? String(meaningful.bpSys)
+                : parsed.slice.bpSys,
+            bpDia:
+              meaningful.bpDia != null && meaningful.bpDia !== ""
+                ? String(meaningful.bpDia)
+                : parsed.slice.bpDia,
+            spo2:
+              meaningful.spo2 != null && meaningful.spo2 !== ""
+                ? String(meaningful.spo2)
+                : parsed.slice.spo2,
+            weightKg:
+              meaningful.weightKg != null && meaningful.weightKg !== ""
+                ? String(meaningful.weightKg)
+                : parsed.slice.weightKg,
+            heightCm:
+              meaningful.heightCm != null && meaningful.heightCm !== ""
+                ? String(meaningful.heightCm)
+                : parsed.slice.heightCm,
+          }
+        : hasMeaningfulVitalMeasurement({
+            tempC: parsed.slice.tempC,
+            hr: parsed.slice.hr,
+            rr: parsed.slice.rr,
+            bpSys: parsed.slice.bpSys,
+            bpDia: parsed.slice.bpDia,
+            spo2: parsed.slice.spo2,
+            weightKg: parsed.slice.weightKg,
+            heightCm: parsed.slice.heightCm,
+          })
+          ? parsed.slice
+          : { ...parsed.slice, tempC: "", hr: "", rr: "", bpSys: "", bpDia: "", spo2: "", weightKg: "", heightCm: "" };
+
     return {
       esi: parsed.slice.esi,
       allergyText: buildAllergyStripSummary(parsed.slice, parsed.er, language),
-      pairs: buildErWorkspaceVitalPairs(parsed.slice, language),
+      pairs: buildErWorkspaceVitalPairs(sliceForPairs as typeof parsed.slice, language),
     };
-  }, [triageSnapshot, language]);
+  }, [triageSnapshot, language, encounterLatestMeaningfulVital]);
 
   const erCdsRecommendations = useMemo(
     () =>
@@ -1106,7 +1157,11 @@ export function EmergencyActiveWorkspaceView() {
                   <div style={{ minWidth: 0, maxWidth: "100%", overflowX: "auto", marginTop: 8 }}>
                     <VitalSummaryPanel
                       readings={encounterVitalSummaryReadings}
-                      latestReadingId={encounterVitalSummaryReadings[0]?.id}
+                      latestReadingId={
+                        encounterLatestMeaningfulVital
+                          ? snapshotKey(encounterLatestMeaningfulVital)
+                          : undefined
+                      }
                       onClose={() => {
                         setShowVitalsHistory(false);
                         if (!vitalsQuickEditEnabled) setShowQuickVitals(false);

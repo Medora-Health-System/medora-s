@@ -35,6 +35,7 @@ import {
   MEDORA_PATIENT_VITALS_UPDATED,
   type PatientTriageVitalsResponse,
   type PatientTriageVitalsSnapshot,
+  hasMeaningfulVitalMeasurement,
   hasVitalsJson,
   buildVitalsTimelineNewestFirst,
   hasServerVitalsTimelineData,
@@ -356,7 +357,9 @@ export default function PatientDetailPage() {
   const latestVitalsJson = vitalsTimeline?.latest?.vitalsJson as
     | Record<string, number | string | null | undefined>
     | undefined;
-  const hasClinicalLatestVitals = Boolean(latestVitalsJson && hasVitalsJson(latestVitalsJson));
+  const hasClinicalLatestVitals = Boolean(
+    latestVitalsJson && hasMeaningfulVitalMeasurement(latestVitalsJson)
+  );
 
   const { line: headerVitalsLine, hasVitals: hasHeaderVitals } = computeHeaderVitalsLine(
     hasClinicalLatestVitals ? latestVitalsJson : undefined,

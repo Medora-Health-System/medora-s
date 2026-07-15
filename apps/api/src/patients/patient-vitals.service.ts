@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
 import { RoleCode, TriageVitalsReadingStatus } from "@prisma/client";
+import { hasMeaningfulVitalMeasurement, resolveLatestMeaningfulVitalsReading } from "@medora/shared";
 import { AuditService } from "../common/services/audit.service";
 import { logBreakGlassAccessIfApplicable } from "../common/break-glass/break-glass-audit.helper";
 import { PrismaService } from "../prisma/prisma.service";
@@ -24,11 +25,6 @@ export type PatientTriageVitalsSnapshot = {
   recordedByInitials: string | null;
   recordedByRole: string | null;
 };
-
-function hasVitalsJson(vitalsJson: unknown): boolean {
-  if (vitalsJson == null || typeof vitalsJson !== "object" || Array.isArray(vitalsJson)) return false;
-  return Object.keys(vitalsJson as object).length > 0;
-}
 
 function pickRoleTitle(codes: RoleCode[]): string | null {
   if (codes.includes(RoleCode.PROVIDER)) return "PROVIDER";
@@ -97,42 +93,49 @@ export class PatientVitalsService {
       },
     });
 
-    const snapshots: PatientTriageVitalsSnapshot[] = readings
-      .filter((r) => hasVitalsJson(r.vitalsJson))
-      .map((r) => {
-        const display = r.recordedBy
-          ? `${r.recordedBy.firstName ?? ""} ${r.recordedBy.lastName ?? ""}`.trim()
-          : "";
-        let initials: string | null = null;
-        if (r.recordedByUserId && display) {
-          initials = computeDisplayNameInitials(display);
-        } else if (r.recordedByUserId && !display) {
-          initials = "—";
-        } else if (!r.recordedByUserId) {
-          // Legacy rows pre-attribution — do not invent initials
-          initials = "—";
-        }
-        const roleCodes = (r.recordedBy?.userRoles ?? []).map((ur) => ur.role.code);
-        return {
-          readingId: r.id,
-          encounterId: r.encounterId,
-          encounterType: r.encounter.type,
-          triageId: r.triageId,
-          measuredAt: r.measuredAt.toISOString(),
-          recordedAt: r.recordedAt.toISOString(),
-          updatedAt: r.measuredAt.toISOString(),
-          triageCompleteAt: r.triageCompleteAt ? r.triageCompleteAt.toISOString() : null,
-          vitalsJson: (r.vitalsJson ?? {}) as Record<string, unknown>,
-          status: r.status,
-          recordedByUserId: r.recordedByUserId,
-          recordedByDisplayName: display || null,
-          recordedByInitials: initials,
-          recordedByRole: pickRoleTitle(roleCodes),
-        };
-      });
+    const snapshots: PatientTriageVitalsSnapshot[] = readings.map((r) => {
+      const firstName = (r.recordedBy?.firstName ?? "").trim();
+      const lastName = (r.recordedBy?.lastName ?? "").trim();
+      const display = `${firstName} ${lastName}`.trim();
+      let initials: string | null = null;
+      if (display) {
+        initials = computeDisplayNameInitials(display) || null;
+      }
+      if (!initials && (firstName || lastName)) {
+        initials = `${firstName[0] ?? ""}${lastName[0] ?? ""}`.toUpperCase() || null;
+      }
+      // Legacy rows without recorder may render "—" in the UI; never invent fake initials.
+      const roleCodes = (r.recordedBy?.userRoles ?? []).map((ur) => ur.role.code);
+      return {
+        readingId: r.id,
+        encounterId: r.encounterId,
+        encounterType: r.encounter.type,
+        triageId: r.triageId,
+        measuredAt: r.measuredAt.toISOString(),
+        recordedAt: r.recordedAt.toISOString(),
+        updatedAt: r.measuredAt.toISOString(),
+        triageCompleteAt: r.triageCompleteAt ? r.triageCompleteAt.toISOString() : null,
+        vitalsJson: (r.vitalsJson ?? {}) as Record<string, unknown>,
+        status: r.status,
+        recordedByUserId: r.recordedByUserId,
+        recordedByDisplayName: display || null,
+        recordedByInitials: initials,
+        recordedByRole: pickRoleTitle(roleCodes),
+      };
+    });
 
-    const latest = snapshots[0] ?? null;
-    const history = snapshots.slice(1);
+    // History may include context-only rows for audit visibility, but "latest" is meaningful-only.
+    const latest =
+      resolveLatestMeaningfulVitalsReading(
+        snapshots.map((s) => ({
+          ...s,
+          status: s.status,
+          measuredAt: s.measuredAt,
+          recordedAt: s.recordedAt,
+          vitalsJson: s.vitalsJson,
+        }))
+      ) ?? null;
+    const history = snapshots.filter((s) => !latest || s.readingId !== latest.readingId);
     return { latest, history };
   }
 }

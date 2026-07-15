@@ -5,6 +5,7 @@
  * first-save state; callers must not abort before PUT. upsertTriage creates the row.
  */
 
+import { hasMeaningfulVitalMeasurement } from "@medora/shared";
 import { apiFetch } from "@/lib/apiClient";
 import { measuredAtIsoFromLocalInputs } from "@/lib/vitalsMeasurementContextDisplay";
 import { mergeVitalsJsonForSave, type VitalsJsonMergeFormInput } from "./emergencyTriageVitalsMerge";
@@ -205,7 +206,7 @@ export async function saveIndependentEncounterVitals(args: {
     oxygenDeviceNotes: form.oxygenDeviceNotes,
   });
 
-  if (!vitalsMerged) {
+  if (!vitalsMerged || !hasMeaningfulVitalMeasurement(vitalsMerged)) {
     diag.errorCategory = "EMPTY_VITALS";
     logIndependentVitalsSaveDiagnostics(diag);
     return { ok: false, code: "EMPTY_VITALS" };
@@ -213,6 +214,12 @@ export async function saveIndependentEncounterVitals(args: {
 
   if (args.mutateVitalsJson) {
     args.mutateVitalsJson(vitalsMerged);
+  }
+  // Mutator must not strip clinical measurements.
+  if (!hasMeaningfulVitalMeasurement(vitalsMerged)) {
+    diag.errorCategory = "EMPTY_VITALS";
+    logIndependentVitalsSaveDiagnostics(diag);
+    return { ok: false, code: "EMPTY_VITALS" };
   }
 
   const strokeJson = strokeScreenFormToJson(

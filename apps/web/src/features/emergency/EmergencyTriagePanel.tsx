@@ -53,6 +53,7 @@ import {
   type TriageCarryForwardMeta,
   type TriageCarryForwardSectionKey,
 } from "./triageCarryForward";
+import { hasMeaningfulVitalMeasurement } from "@medora/shared";
 import { mergeVitalsJsonForSave } from "./emergencyTriageVitalsMerge";
 import { isTriageStaleConflictError } from "./triageConcurrency";
 import {
@@ -628,6 +629,16 @@ export function EmergencyTriagePanel({
         formData,
         normalizeCarryForwardMetaFromForm(carryForwardMeta, formData)
       );
+      // Only newly submitted meaningful form vitals create a reading. Empty/context-only drafts
+      // must preserve the prior triage snapshot and must not append a duplicate reading.
+      const draftIsMeaningful = Boolean(
+        vitalsMerged && hasMeaningfulVitalMeasurement(vitalsMerged)
+      );
+      const vitalsForSave = draftIsMeaningful
+        ? vitalsMerged
+        : triage?.vitalsJson && hasMeaningfulVitalMeasurement(triage.vitalsJson)
+          ? triage.vitalsJson
+          : vitalsMerged;
 
       const lastKnownTriageUpdatedAt =
         triage?.updatedAt && typeof triage.updatedAt === "string"
@@ -636,14 +647,15 @@ export function EmergencyTriagePanel({
             ? new Date(triage.updatedAt as string).toISOString()
             : null;
 
-      const measuredAt =
-        measuredAtIsoFromLocalInputs(formData.measuredDate, formData.measuredTime) ?? undefined;
+      const measuredAt = draftIsMeaningful
+        ? measuredAtIsoFromLocalInputs(formData.measuredDate, formData.measuredTime) ?? undefined
+        : undefined;
 
       const payload: Record<string, unknown> = {
         chiefComplaint: safeTrim(formData.chiefComplaint) || null,
         onsetAt: formData.onsetAt ? new Date(formData.onsetAt).toISOString() : null,
         esi: formData.esi ? parseInt(formData.esi, 10) : null,
-        vitalsJson: vitalsMerged,
+        vitalsJson: vitalsForSave,
         strokeScreen: strokeScreenParsed,
         sepsisScreen: sepsisScreenParsed,
         triageCompleteAt: formData.triageCompleteAt ? new Date(formData.triageCompleteAt).toISOString() : null,

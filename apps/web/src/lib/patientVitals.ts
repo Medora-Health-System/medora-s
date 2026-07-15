@@ -1,5 +1,13 @@
 import type { SupportedLanguage } from "@/i18n/config";
-import { celsiusToFahrenheit, cmToFeetInches, kgToPounds } from "@medora/shared";
+import {
+  celsiusToFahrenheit,
+  cmToFeetInches,
+  hasMeaningfulVitalMeasurement,
+  kgToPounds,
+  resolveLatestMeaningfulVitalsReading,
+} from "@medora/shared";
+
+export { hasMeaningfulVitalMeasurement, resolveLatestMeaningfulVitalsReading };
 
 /** Dispatched after encounter triage vitals save (detail: { patientId, supersededSnapshot? }). */
 export const MEDORA_PATIENT_VITALS_UPDATED = "medora:patient-vitals-updated";
@@ -48,7 +56,7 @@ export function vitalsTimelineFallbackFromChartSummary(args: {
   );
   for (const e of sortedEnc) {
     const t = e.triage;
-    if (!t || !hasVitalsJson(t.vitalsJson)) continue;
+    if (!t || !hasMeaningfulVitalMeasurement(t.vitalsJson)) continue;
     const measured = t.triageCompleteAt || e.createdAt;
     snaps.push({
       encounterId: e.id,
@@ -59,7 +67,7 @@ export function vitalsTimelineFallbackFromChartSummary(args: {
       vitalsJson: (t.vitalsJson ?? {}) as Record<string, unknown>,
     });
   }
-  if (hasVitalsJson(latestVitalsJson)) {
+  if (hasMeaningfulVitalMeasurement(latestVitalsJson)) {
     const enc = sortedEnc[0];
     const at = latestVitalsAt || enc?.createdAt || new Date().toISOString();
     snaps.push({
@@ -79,9 +87,12 @@ export function vitalsTimelineFallbackFromChartSummary(args: {
     seen.add(k);
     dedup.push(s);
   }
-  return { latest: dedup[0] ?? null, history: dedup.slice(1) };
+  const latest = pickLatestMeaningfulVitalsSnapshot(dedup);
+  const history = dedup.filter((s) => !latest || snapshotKey(s) !== snapshotKey(latest));
+  return { latest, history };
 }
 
+/** Any non-empty vitals JSON object (may be context-only). Prefer hasMeaningfulVitalMeasurement for clinical latest. */
 export function hasVitalsJson(vitalsJson: unknown): boolean {
   if (vitalsJson == null || typeof vitalsJson !== "object" || Array.isArray(vitalsJson)) return false;
   return Object.keys(vitalsJson as object).length > 0;
@@ -219,6 +230,21 @@ export function buildVitalsTimelineNewestFirst(
   const all = [latest, ...withoutDup];
   all.sort((a, b) => vitalsSnapshotMeasuredAtMs(b) - vitalsSnapshotMeasuredAtMs(a));
   return all;
+}
+
+/** Newest ACTIVE meaningful reading from a newest-first (or unsorted) timeline. */
+export function pickLatestMeaningfulVitalsSnapshot(
+  snapshots: PatientTriageVitalsSnapshot[]
+): PatientTriageVitalsSnapshot | null {
+  return resolveLatestMeaningfulVitalsReading(
+    snapshots.map((s) => ({
+      ...s,
+      status: s.status,
+      measuredAt: s.measuredAt ?? s.updatedAt,
+      recordedAt: s.recordedAt,
+      vitalsJson: s.vitalsJson,
+    }))
+  );
 }
 
 /** Horodatage de mesure pour tri — prefers measuredAt, then triageCompleteAt, then updatedAt. */

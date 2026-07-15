@@ -14,7 +14,7 @@ import {
 } from "@/lib/printI18n";
 import { calculateAge } from "@/lib/patientDisplay";
 import { selectClinicalDocumentationPayloadSummary } from "@medora/shared";
-import { formatVitalsHeaderLineForLocale } from "@/lib/patientVitals";
+import { formatVitalsHeaderLineForLocale, hasMeaningfulVitalMeasurement } from "@/lib/patientVitals";
 import {
   diagnosisDisplayFr,
   DISCHARGE_SUMMARY_CORE_STRING_KEYS,
@@ -201,7 +201,7 @@ export function getPatientChartPrintHtml(params: {
 
   const latestVitalsJson = p.latestVitalsJson as Record<string, number | string | null | undefined> | null | undefined;
   const latestVitalsLine =
-    latestVitalsJson && Object.keys(latestVitalsJson).length > 0
+    latestVitalsJson && hasMeaningfulVitalMeasurement(latestVitalsJson)
       ? formatVitalsHeaderLineForLocale(latestVitalsJson, lang)
       : "—";
   const latestVitalsWhen = p.latestVitalsAt ? fmtDt(p.latestVitalsAt, lang) : null;

@@ -4,7 +4,7 @@
  * Does not place orders or alter server state.
  */
 
-import type { PatientTriageVitalsSnapshot } from "@/lib/patientVitals";
+import { hasMeaningfulVitalMeasurement, type PatientTriageVitalsSnapshot } from "@/lib/patientVitals";
 import {
   strokeScreenFromUnknown,
   sepsisScreenFromUnknown,
@@ -279,7 +279,48 @@ export function buildErCdsRecommendations(ctx: ErCdsContext): ErCdsRecommendatio
     });
   }
 
-  let vitalConcerns = collectVitalConcerns(slice);
+  // Instant vitals rules use newest meaningful same-encounter reading when available.
+  const trendSnapsForCurrent = ctx.encounterVitalsSnapshotsOldestFirst;
+  const newestMeaningful =
+    Array.isArray(trendSnapsForCurrent) && trendSnapsForCurrent.length > 0
+      ? trendSnapsForCurrent[trendSnapsForCurrent.length - 1]
+      : null;
+  const instantVitalsSlice =
+    newestMeaningful && hasMeaningfulVitalMeasurement(newestMeaningful.vitalsJson)
+      ? {
+          ...slice,
+          tempC:
+            newestMeaningful.vitalsJson.tempC != null && newestMeaningful.vitalsJson.tempC !== ""
+              ? String(newestMeaningful.vitalsJson.tempC)
+              : "",
+          hr:
+            newestMeaningful.vitalsJson.hr != null && newestMeaningful.vitalsJson.hr !== ""
+              ? String(newestMeaningful.vitalsJson.hr)
+              : "",
+          rr:
+            newestMeaningful.vitalsJson.rr != null && newestMeaningful.vitalsJson.rr !== ""
+              ? String(newestMeaningful.vitalsJson.rr)
+              : "",
+          bpSys:
+            newestMeaningful.vitalsJson.bpSys != null && newestMeaningful.vitalsJson.bpSys !== ""
+              ? String(newestMeaningful.vitalsJson.bpSys)
+              : "",
+          spo2:
+            newestMeaningful.vitalsJson.spo2 != null && newestMeaningful.vitalsJson.spo2 !== ""
+              ? String(newestMeaningful.vitalsJson.spo2)
+              : "",
+        }
+      : hasMeaningfulVitalMeasurement({
+            tempC: slice.tempC,
+            hr: slice.hr,
+            rr: slice.rr,
+            bpSys: slice.bpSys,
+            spo2: slice.spo2,
+          })
+        ? slice
+        : { ...slice, tempC: "", hr: "", rr: "", bpSys: "", bpDia: "", spo2: "" };
+
+  let vitalConcerns = collectVitalConcerns(instantVitalsSlice);
   if (sepsisConcern) {
     vitalConcerns = vitalConcerns.filter(
       (c) => c !== "hypotension" && c !== "tachycardia" && c !== "tachypnea"
@@ -295,7 +336,7 @@ export function buildErCdsRecommendations(ctx: ErCdsContext): ErCdsRecommendatio
       actionTarget: "triage",
     };
   } else if (vitalConcerns.length === 1) {
-    instantVitalRec = vitalConcernToRecommendation(vitalConcerns[0], slice);
+    instantVitalRec = vitalConcernToRecommendation(vitalConcerns[0], instantVitalsSlice);
   } else if (esiIsUrgent(slice.esi)) {
     instantVitalRec = {
       id: "cds_er_esi_urgent",

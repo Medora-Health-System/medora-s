@@ -3,7 +3,11 @@
 import React from "react";
 import Link from "next/link";
 import { calculateAge } from "@/lib/patientDisplay";
-import { formatVitalsHeaderLineForLocale, hasVitalsJson } from "@/lib/patientVitals";
+import {
+  formatVitalsHeaderLineForLocale,
+  hasMeaningfulVitalMeasurement,
+  hasVitalsJson,
+} from "@/lib/patientVitals";
 import {
   encounterBcp47,
   tEncounterStatus,
@@ -261,16 +265,20 @@ export function computeHeaderVitalsLine(
   patientLatestJson: unknown,
   language: SupportedLanguage
 ): { line: string; hasVitals: boolean } {
-  if (clinicalLatest && hasVitalsJson(clinicalLatest)) {
+  if (clinicalLatest && hasMeaningfulVitalMeasurement(clinicalLatest)) {
     const line = formatVitalsHeaderLineForLocale(clinicalLatest, language);
     return { line, hasVitals: Boolean(line) };
   }
-  if (patientLatestJson && hasVitalsJson(patientLatestJson)) {
+  if (patientLatestJson && hasMeaningfulVitalMeasurement(patientLatestJson)) {
     const line = formatVitalsHeaderLineForLocale(
       patientLatestJson as Record<string, number | string | null | undefined>,
       language
     );
     return { line, hasVitals: Boolean(line) };
+  }
+  // Avoid presenting context-only JSON (e.g. Room air alone) as present vitals.
+  if (clinicalLatest && hasVitalsJson(clinicalLatest) && !hasMeaningfulVitalMeasurement(clinicalLatest)) {
+    /* fall through */
   }
   return { line: "", hasVitals: false };
 }

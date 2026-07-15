@@ -17,6 +17,7 @@ import {
   normalizeVitalsMeasurementContext,
   resolveMeasuredAt,
 } from "../utils/vitals-measurement-context.util";
+import { hasMeaningfulVitalMeasurement, resolveLatestMeaningfulVitalsReading } from "@medora/shared";
 import { hasNonEmptyVitalsJson } from "../utils/patient-sex-map";
 
 @Injectable()
@@ -74,14 +75,16 @@ export class TriageVitalsReadingService {
   }
 
   private async refreshPatientLatestFromActiveReadings(patientId: string, facilityId: string) {
-    const newest = await this.prisma.triageVitalsReading.findFirst({
+    const readings = await this.prisma.triageVitalsReading.findMany({
       where: {
         patientId,
         facilityId,
         status: TriageVitalsReadingStatus.ACTIVE,
       },
       orderBy: [{ measuredAt: "desc" }, { recordedAt: "desc" }],
+      take: 40,
     });
+    const newest = resolveLatestMeaningfulVitalsReading(readings);
     await this.prisma.patient.update({
       where: { id: patientId },
       data: {
@@ -99,14 +102,16 @@ export class TriageVitalsReadingService {
     facilityId: string,
     patientId: string
   ) {
-    const newestOnEncounter = await this.prisma.triageVitalsReading.findFirst({
+    const readings = await this.prisma.triageVitalsReading.findMany({
       where: {
         encounterId,
         facilityId,
         status: TriageVitalsReadingStatus.ACTIVE,
       },
       orderBy: [{ measuredAt: "desc" }, { recordedAt: "desc" }],
+      take: 40,
     });
+    const newestOnEncounter = resolveLatestMeaningfulVitalsReading(readings);
     await this.prisma.triage.updateMany({
       where: { encounterId, facilityId },
       data: {
@@ -161,8 +166,10 @@ export class TriageVitalsReadingService {
         throw new BadRequestException("vitalsJson must be an object");
       }
       nextVitals = normalizeVitalsMeasurementContext(body.vitalsJson as Record<string, unknown>);
-      if (!hasNonEmptyVitalsJson(nextVitals)) {
-        throw new BadRequestException("vitalsJson cannot be empty");
+      if (!hasNonEmptyVitalsJson(nextVitals) || !hasMeaningfulVitalMeasurement(nextVitals)) {
+        throw new BadRequestException(
+          "Enter at least one vital-sign measurement before saving."
+        );
       }
     } else {
       nextVitals = normalizeVitalsMeasurementContext(previousVitals);

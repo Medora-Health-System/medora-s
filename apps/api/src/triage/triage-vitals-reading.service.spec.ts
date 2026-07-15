@@ -44,6 +44,7 @@ describe("TriageVitalsReadingService", () => {
       },
       triageVitalsReading: {
         findFirst: jest.fn().mockResolvedValue(reading),
+        findMany: jest.fn().mockResolvedValue([reading]),
         update: jest.fn().mockImplementation(async ({ data }: any) => ({
           ...reading,
           ...data,

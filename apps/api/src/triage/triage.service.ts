@@ -1,7 +1,16 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
+import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 import { AuditService } from "../common/services/audit.service";
-import { AuditAction, EncounterClinicalEventType, EncounterType, RoleCode, type Triage } from "@prisma/client";
+import {
+  AuditAction,
+  EncounterClinicalEventType,
+  EncounterType,
+  Prisma,
+  RoleCode,
+  TriageVitalsReadingStatus,
+  type Triage,
+} from "@prisma/client";
+import { hasMeaningfulVitalMeasurement, resolveLatestMeaningfulVitalsReading } from "@medora/shared";
 import { PatientClinicalHistoryService } from "../patients/patient-clinical-history.service";
 import { buildVitalsRecordedPayloadJson } from "../utils/clinical-event-vitals.util";
 import { computeDisplayNameInitials } from "../utils/clinical-event-nursing-assessment-json.util";
@@ -41,6 +50,30 @@ export class TriageService {
       where: { encounterId },
     });
     return this.enrichTriageWithDisplay(row);
+  }
+
+  /**
+   * Project Patient.latestVitals* from newest ACTIVE meaningful reading only.
+   * Context-only / empty rows (e.g. Room air alone) are excluded.
+   */
+  private async refreshPatientLatestMeaningfulVitals(patientId: string, facilityId: string) {
+    const readings = await this.prisma.triageVitalsReading.findMany({
+      where: {
+        patientId,
+        facilityId,
+        status: TriageVitalsReadingStatus.ACTIVE,
+      },
+      orderBy: [{ measuredAt: "desc" }, { recordedAt: "desc" }],
+      take: 40,
+    });
+    const newest = resolveLatestMeaningfulVitalsReading(readings);
+    await this.prisma.patient.update({
+      where: { id: patientId },
+      data: {
+        latestVitalsJson: newest ? (newest.vitalsJson as Prisma.InputJsonValue) : Prisma.DbNull,
+        latestVitalsAt: newest ? newest.measuredAt : null,
+      },
+    });
   }
 
   /** Ajoute `updatedByDisplayFr` pour l’UI (sans changement de schéma). */
@@ -175,12 +208,16 @@ export class TriageService {
 
     let normalizedIncomingVitals: Record<string, unknown> | undefined;
     let resolvedMeasuredAt: Date | undefined;
+    let createVitalsReading = false;
     if (data.vitalsJson !== undefined && hasNonEmptyVitalsJson(data.vitalsJson)) {
       const rawVitals =
         data.vitalsJson && typeof data.vitalsJson === "object" && !Array.isArray(data.vitalsJson)
           ? (data.vitalsJson as Record<string, unknown>)
           : {};
       const measuredAtFromJson = rawVitals.measuredAt;
+      const measuredAtExplicit =
+        (data.measuredAt !== undefined && data.measuredAt !== null && data.measuredAt !== "") ||
+        (measuredAtFromJson != null && measuredAtFromJson !== "");
       normalizedIncomingVitals = normalizeVitalsMeasurementContext(rawVitals);
       resolvedMeasuredAt = resolveMeasuredAt(
         data.measuredAt !== undefined && data.measuredAt !== null
@@ -188,11 +225,38 @@ export class TriageService {
           : measuredAtFromJson
       );
       data.vitalsJson = normalizedIncomingVitals;
+      // Require an explicit measuredAt so full Save triage that only preserves prior vitalsJson
+      // does not append a duplicate TriageVitalsReading.
+      createVitalsReading =
+        measuredAtExplicit && hasMeaningfulVitalMeasurement(normalizedIncomingVitals);
     }
 
     const existing = await this.prisma.triage.findUnique({
       where: { encounterId },
     });
+
+    // Context-only / empty vital payloads must not wipe a meaningful triage snapshot or spawn readings.
+    // Independent Save vitals always sends measuredAt — reject empty measurement sets with 400.
+    if (
+      data.vitalsJson !== undefined &&
+      normalizedIncomingVitals &&
+      !hasMeaningfulVitalMeasurement(normalizedIncomingVitals)
+    ) {
+      if (data.measuredAt !== undefined && data.measuredAt !== null) {
+        throw new BadRequestException(
+          "Enter at least one vital-sign measurement before saving."
+        );
+      }
+      if (existing && hasMeaningfulVitalMeasurement(existing.vitalsJson)) {
+        data.vitalsJson = existing.vitalsJson as object;
+      } else if (existing?.vitalsJson != null) {
+        data.vitalsJson = existing.vitalsJson as object;
+      } else {
+        data.vitalsJson = null;
+      }
+      createVitalsReading = false;
+      normalizedIncomingVitals = undefined;
+    }
 
     /**
      * Optimistic-concurrency guard for non-vitals triage flat fields (multi-user safety).
@@ -265,12 +329,10 @@ export class TriageService {
       create: triageData,
     });
 
-    if (
-      data.vitalsJson !== undefined &&
-      hasNonEmptyVitalsJson(data.vitalsJson) &&
-      normalizedIncomingVitals &&
-      resolvedMeasuredAt
-    ) {
+    if (createVitalsReading && normalizedIncomingVitals && resolvedMeasuredAt) {
+      if (!userId) {
+        throw new BadRequestException("Authenticated user required to record vital signs");
+      }
       await this.prisma.triageVitalsReading.create({
         data: {
           facilityId,
@@ -280,34 +342,27 @@ export class TriageService {
           vitalsJson: normalizedIncomingVitals as object,
           triageCompleteAt: data.triageCompleteAt ?? null,
           measuredAt: resolvedMeasuredAt,
-          recordedByUserId: userId ?? null,
+          recordedByUserId: userId,
         },
       });
-      await this.prisma.patient.update({
-        where: { id: encounter.patientId },
+      await this.prisma.encounterClinicalEvent.create({
         data: {
-          latestVitalsJson: normalizedIncomingVitals as object,
-          latestVitalsAt: resolvedMeasuredAt,
+          facilityId,
+          encounterId,
+          patientId: encounter.patientId,
+          eventType: EncounterClinicalEventType.VITALS_RECORDED,
+          payloadJson: buildVitalsRecordedPayloadJson(
+            normalizedIncomingVitals,
+            normalizedIncomingVitals.recordingContext === "NURSING_DISCHARGE"
+              ? "NURSING_DISCHARGE"
+              : "TRIAGE"
+          ),
+          createdByUserId: userId,
         },
       });
-      if (userId) {
-        await this.prisma.encounterClinicalEvent.create({
-          data: {
-            facilityId,
-            encounterId,
-            patientId: encounter.patientId,
-            eventType: EncounterClinicalEventType.VITALS_RECORDED,
-            payloadJson: buildVitalsRecordedPayloadJson(
-              normalizedIncomingVitals,
-              normalizedIncomingVitals.recordingContext === "NURSING_DISCHARGE"
-                ? "NURSING_DISCHARGE"
-                : "TRIAGE"
-            ),
-            createdByUserId: userId,
-          },
-        });
-      }
     }
+
+    await this.refreshPatientLatestMeaningfulVitals(encounter.patientId, facilityId);
 
     /**
      * Append-only TRIAGE_ASSESSMENT_SAVED event lifecycle (multi-user safety, S15D).
