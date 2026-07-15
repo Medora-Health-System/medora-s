@@ -59,9 +59,10 @@ describe("edTrackboardBadgeCleanup (MEDUI.ED.LIFECYCLE.UI.CLEANUP.2)", () => {
     expect(trackboard).toContain("erDispositionBadgeFromEncounterJson");
   });
 
-  it("Trackboard keeps Chart action", () => {
+  it("Trackboard removes redundant Chart action (patient name + workspace full chart)", () => {
     const trackboard = readSrc("features/emergency/EmergencyTrackboardView.tsx");
-    expect(trackboard).toContain('t("emergencyTrackboard.chartLink")');
+    expect(trackboard).not.toContain('t("emergencyTrackboard.chartLink")');
+    expect(trackboard).toContain("resolveEdBoardPatientNameHref");
   });
 
   it("Trackboard uses clickable patient name instead of redundant View action", () => {
@@ -71,27 +72,28 @@ describe("edTrackboardBadgeCleanup (MEDUI.ED.LIFECYCLE.UI.CLEANUP.2)", () => {
     expect(trackboard).not.toContain('t("common.view")');
   });
 
-  it("Trackboard keeps Nurse: me action", () => {
+  it("Trackboard keeps Assign me nurse action before self-assignment", () => {
     const trackboard = readSrc("features/emergency/EmergencyTrackboardView.tsx");
     expect(trackboard).toContain("assignNurseMeShort");
-    expect(trackboard).toContain("assignNurseMine");
+    expect(trackboard).toContain("isNurse && !isNurseMine");
   });
 
-  it("Trackboard keeps Provider: me action", () => {
+  it("Trackboard keeps Assign me provider action before self-assignment", () => {
     const trackboard = readSrc("features/emergency/EmergencyTrackboardView.tsx");
     expect(trackboard).toContain("assignProviderMeShort");
-    expect(trackboard).toContain("assignProviderMine");
+    expect(trackboard).toContain("isProvider && !isPhysMine");
   });
 
-  it("My Patients keeps Nurse: me action", () => {
+  it("My Patients keeps Assign me nurse action before self-assignment", () => {
     const trackboard = readSrc("features/emergency/EmergencyTrackboardView.tsx");
     expect(trackboard).toContain('boardViewMode === "myPatients"');
+    expect(trackboard).toContain("assignNurseMeShort");
     expect(trackboard).not.toMatch(
       /boardViewMode === "myPatients"[\s\S]{0,400}assignNurseMeShort[\s\S]{0,40}\? null/
     );
   });
 
-  it("My Patients keeps Provider: me action", () => {
+  it("My Patients keeps Assign me provider action before self-assignment", () => {
     const trackboard = readSrc("features/emergency/EmergencyTrackboardView.tsx");
     expect(trackboard).toContain("assignProviderMeShort");
   });

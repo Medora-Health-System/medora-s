@@ -30,7 +30,6 @@ import {
 import { readDischargeSortieExecutionFromEncounter } from "@/features/emergency/emergencyDispositionV1";
 import {
   emergencyActiveWorkspacePath,
-  emergencyChartPath,
   resolveEdBoardPatientNameHref,
 } from "@/features/emergency/emergencyRoutes";
 import type { EncounterBedUnitCode } from "@medora/shared";
@@ -1425,37 +1424,14 @@ export function EmergencyTrackboardView() {
                                   {t("edLifecycle.incompleteCharts.reviewCertification")}
                                 </button>
                               ) : null}
-                              <Link
-                                href={emergencyChartPath(encounter.id)}
-                                style={erTrackboardCensusActionButtonStyle(
-                                  {
-                                    display: "inline-flex",
-                                    alignItems: "center",
-                                    justifyContent: "center",
-                                    padding: "4px 10px",
-                                    borderRadius: 8,
-                                    border: "1px solid #93c5fd",
-                                    backgroundColor: "#dbeafe",
-                                    color: "#1e40af",
-                                    fontSize: 12,
-                                    fontWeight: 600,
-                                    textDecoration: "none",
-                                  },
-                                  layoutMode
-                                )}
-                              >
-                                {t("emergencyTrackboard.chartLink")}
-                              </Link>
-                              {isProvider ? (
+                              {/* Chart link removed: patient name → workspace/chart; Full encounter chart in workspace. */}
+                              {isProvider && !isPhysMine ? (
                                 <button
                                   type="button"
+                                  data-testid={`ed-assign-provider-${encounter.id}`}
                                   onClick={() => void claimSelf(encounter.id, "provider")}
-                                  disabled={assigningId === encounter.id || isPhysMine}
-                                  title={
-                                    isPhysMine
-                                      ? t("emergencyTrackboard.assignProviderMine")
-                                      : t("emergencyTrackboard.assignProviderMe")
-                                  }
+                                  disabled={assigningId === encounter.id}
+                                  title={t("emergencyTrackboard.assignProviderMe")}
                                   style={erTrackboardCensusActionButtonStyle(
                                     {
                                       display: "inline-flex",
@@ -1463,33 +1439,28 @@ export function EmergencyTrackboardView() {
                                       justifyContent: "center",
                                       padding: "4px 10px",
                                       borderRadius: 8,
-                                      border: isPhysMine ? "1px solid #6ee7b7" : "1px solid #cbd5e1",
-                                      backgroundColor: isPhysMine ? "#d1fae5" : "#fff",
-                                      color: isPhysMine ? "#065f46" : "#0f172a",
+                                      border: "1px solid #cbd5e1",
+                                      backgroundColor: "#fff",
+                                      color: "#0f172a",
                                       fontSize: 12,
                                       fontWeight: 600,
-                                      cursor: assigningId === encounter.id || isPhysMine ? "default" : "pointer",
+                                      cursor: assigningId === encounter.id ? "default" : "pointer",
                                     },
                                     layoutMode
                                   )}
                                 >
-                                  {isPhysMine
-                                    ? t("emergencyTrackboard.assignProviderMine")
-                                    : assigningId === encounter.id
-                                      ? t("emergencyTrackboard.assignSubmitting")
-                                      : t("emergencyTrackboard.assignProviderMeShort")}
+                                  {assigningId === encounter.id
+                                    ? t("emergencyTrackboard.assignSubmitting")
+                                    : t("emergencyTrackboard.assignProviderMeShort")}
                                 </button>
                               ) : null}
-                              {isNurse ? (
+                              {isNurse && !isNurseMine ? (
                                 <button
                                   type="button"
+                                  data-testid={`ed-assign-nurse-${encounter.id}`}
                                   onClick={() => void claimSelf(encounter.id, "nurse")}
-                                  disabled={assigningId === encounter.id || isNurseMine}
-                                  title={
-                                    isNurseMine
-                                      ? t("emergencyTrackboard.assignNurseMine")
-                                      : t("emergencyTrackboard.assignNurseMe")
-                                  }
+                                  disabled={assigningId === encounter.id}
+                                  title={t("emergencyTrackboard.assignNurseMe")}
                                   style={erTrackboardCensusActionButtonStyle(
                                     {
                                       display: "inline-flex",
@@ -1497,21 +1468,19 @@ export function EmergencyTrackboardView() {
                                       justifyContent: "center",
                                       padding: "4px 10px",
                                       borderRadius: 8,
-                                      border: isNurseMine ? "1px solid #6ee7b7" : "1px solid #cbd5e1",
-                                      backgroundColor: isNurseMine ? "#d1fae5" : "#fff",
-                                      color: isNurseMine ? "#065f46" : "#0f172a",
+                                      border: "1px solid #cbd5e1",
+                                      backgroundColor: "#fff",
+                                      color: "#0f172a",
                                       fontSize: 12,
                                       fontWeight: 600,
-                                      cursor: assigningId === encounter.id || isNurseMine ? "default" : "pointer",
+                                      cursor: assigningId === encounter.id ? "default" : "pointer",
                                     },
                                     layoutMode
                                   )}
                                 >
-                                  {isNurseMine
-                                    ? t("emergencyTrackboard.assignNurseMine")
-                                    : assigningId === encounter.id
-                                      ? t("emergencyTrackboard.assignSubmitting")
-                                      : t("emergencyTrackboard.assignNurseMeShort")}
+                                  {assigningId === encounter.id
+                                    ? t("emergencyTrackboard.assignSubmitting")
+                                    : t("emergencyTrackboard.assignNurseMeShort")}
                                 </button>
                               ) : null}
                             </div>

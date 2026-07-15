@@ -198,11 +198,11 @@ describe("edIncompleteChartsFilter (MEDUI.ED.LIFECYCLE.5)", () => {
     expect(loadBlock).not.toContain("resolveIncompleteChartsEncounters");
   });
 
-  it("patient chart links remain accessible on list cards", () => {
+  it("patient-name navigation remains accessible on list cards", () => {
     const trackboard = readSrc("features/emergency/EmergencyTrackboardView.tsx");
-    expect(trackboard).toContain("emergencyChartPath(encounter.id)");
     expect(trackboard).toContain("resolveEdBoardPatientNameHref");
     expect(trackboard).toContain("ed-board-patient-name-");
+    expect(trackboard).not.toContain("emergencyChartPath(encounter.id)");
     expect(resolveEdIncompleteChartBadgeKeys(departedIncompleteRow("e1")).length).toBeGreaterThan(0);
   });
 });

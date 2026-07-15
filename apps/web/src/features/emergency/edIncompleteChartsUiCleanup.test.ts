@@ -104,17 +104,17 @@ describe("edIncompleteChartsUiCleanup (MEDUI.ED.LIFECYCLE.6C)", () => {
     );
   });
 
-  it("My Incomplete Charts keeps Chart and clickable patient-name workspace entry", () => {
+  it("My Incomplete Charts keeps clickable patient-name workspace entry without Chart button", () => {
     const trackboard = readSrc("features/emergency/EmergencyTrackboardView.tsx");
-    expect(trackboard).toContain('t("emergencyTrackboard.chartLink")');
+    expect(trackboard).not.toContain('t("emergencyTrackboard.chartLink")');
     expect(trackboard).toContain("resolveEdBoardPatientNameHref");
     expect(trackboard).not.toContain('t("common.view")');
   });
 
-  it("My Incomplete Charts keeps Nurse: me assignment action", () => {
+  it("My Incomplete Charts keeps Assign me nurse action before self-assignment", () => {
     const trackboard = readSrc("features/emergency/EmergencyTrackboardView.tsx");
     expect(trackboard).toContain("assignNurseMeShort");
-    expect(trackboard).toContain("assignNurseMine");
+    expect(trackboard).toContain("isNurse && !isNurseMine");
   });
 
   it("My Incomplete Charts keeps Review certification as prominent first action", () => {
@@ -123,7 +123,7 @@ describe("edIncompleteChartsUiCleanup (MEDUI.ED.LIFECYCLE.6C)", () => {
     expect(trackboard).toContain("edLifecycle.incompleteCharts.reviewCertification");
     const actionBlock = trackboard.slice(
       trackboard.indexOf('boardViewMode === "incompleteCharts" ? ('),
-      trackboard.indexOf('t("emergencyTrackboard.chartLink")')
+      trackboard.indexOf("isProvider && !isPhysMine")
     );
     expect(actionBlock).toContain("reviewCertification");
   });
