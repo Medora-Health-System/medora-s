@@ -9,36 +9,34 @@ import { PrismaService } from "../prisma/prisma.service";
 import { OrdersService } from "./orders.service";
 import { AuditService } from "../common/services/audit.service";
 import { EncounterStatus, EncounterType } from "@prisma/client";
+import { applyE2eAuthTestEnv } from "../test-utils/e2e-auth-env";
+import { closeE2eApp, createE2eApp } from "../test-utils/e2e-app";
 
 describe("OrdersService create — audit atomicity (e2e)", () => {
   let app: INestApplication;
+  let moduleRef: TestingModule;
   let prisma: PrismaService;
   let ordersService: OrdersService;
 
   const suffix = randomBytes(4).toString("hex");
 
   beforeAll(async () => {
-    process.env.JWT_ACCESS_SECRET = process.env.JWT_ACCESS_SECRET ?? "test_access_secret";
-    process.env.JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET ?? "test_refresh_secret";
-    process.env.JWT_ACCESS_TTL = process.env.JWT_ACCESS_TTL ?? "15m";
-    process.env.JWT_REFRESH_TTL = process.env.JWT_REFRESH_TTL ?? "14d";
-    process.env.TOKEN_ISSUER = process.env.TOKEN_ISSUER ?? "medora-s";
+    applyE2eAuthTestEnv();
     /** Default for CI: audit failures inside $transaction must propagate (see AuditService). */
     process.env.AUDIT_FAILURE_MODE = process.env.AUDIT_FAILURE_MODE ?? "best_effort";
 
-    const moduleFixture: TestingModule = await Test.createTestingModule({
+    moduleRef = await Test.createTestingModule({
       imports: [AppModule],
     }).compile();
 
-    app = moduleFixture.createNestApplication();
-    await app.init();
+    app = await createE2eApp(moduleRef);
 
-    prisma = moduleFixture.get<PrismaService>(PrismaService);
-    ordersService = moduleFixture.get<OrdersService>(OrdersService);
+    prisma = moduleRef.get<PrismaService>(PrismaService);
+    ordersService = moduleRef.get<OrdersService>(OrdersService);
   });
 
   afterAll(async () => {
-    await app.close();
+    await closeE2eApp({ app, moduleRef, prisma });
   });
 
   it("rolls back Order when audit.log rejects inside the same transaction", async () => {

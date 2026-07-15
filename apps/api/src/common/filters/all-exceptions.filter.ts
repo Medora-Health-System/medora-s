@@ -9,6 +9,22 @@ import { createStructuredLogger } from "../logging/structured-logger";
 
 const log = createStructuredLogger("AllExceptionsFilter");
 
+/** Express / http-errors / body-parser client errors expose status|statusCode. */
+function readClientErrorStatus(exception: unknown): number | undefined {
+  if (!exception || typeof exception !== "object") return undefined;
+  const e = exception as { status?: unknown; statusCode?: unknown };
+  const raw =
+    typeof e.status === "number"
+      ? e.status
+      : typeof e.statusCode === "number"
+        ? e.statusCode
+        : undefined;
+  if (raw === undefined || !Number.isFinite(raw)) return undefined;
+  const status = Math.trunc(raw);
+  if (status >= 400 && status < 500) return status;
+  return undefined;
+}
+
 @Catch()
 export class AllExceptionsFilter implements ExceptionFilter {
   catch(exception: unknown, host: ArgumentsHost) {
@@ -18,6 +34,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
 
     const isDev = process.env.NODE_ENV !== "production";
     const isHttpException = exception instanceof HttpException;
+    const clientStatus = !isHttpException ? readClientErrorStatus(exception) : undefined;
 
     if (isHttpException) {
       const statusCode = exception.getStatus();
@@ -42,6 +59,13 @@ export class AllExceptionsFilter implements ExceptionFilter {
           method: request.method,
         });
       }
+    } else if (clientStatus !== undefined) {
+      log.warn("http_client_error", {
+        statusCode: clientStatus,
+        name: exception instanceof Error ? exception.name : typeof exception,
+        requestId: request.requestId,
+        method: request.method,
+      });
     } else if (exception instanceof Error) {
       log.error("non_http_exception", {
         name: exception.name,
@@ -66,6 +90,12 @@ export class AllExceptionsFilter implements ExceptionFilter {
         typeof exceptionResponse === "string"
           ? exceptionResponse
           : exceptionResponse;
+    } else if (clientStatus !== undefined) {
+      status = clientStatus;
+      message =
+        exception instanceof Error
+          ? { error: exception.name, message: exception.message }
+          : "Bad Request";
     } else {
       status = HttpStatus.INTERNAL_SERVER_ERROR;
       if (isDev) {

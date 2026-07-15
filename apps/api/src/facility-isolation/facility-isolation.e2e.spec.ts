@@ -9,11 +9,13 @@ import { randomBytes } from "crypto";
 import { AppModule } from "../app.module";
 import { PrismaService } from "../prisma/prisma.service";
 import { applyE2eAuthTestEnv, assertE2eLoginAccessToken } from "../test-utils/e2e-auth-env";
+import { closeE2eApp, createE2eApp } from "../test-utils/e2e-app";
 import * as argon2 from "argon2";
 import { EncounterType, EncounterStatus, OrderStatus, RoleCode } from "@prisma/client";
 
 describe("Facility isolation (e2e)", () => {
   let app: INestApplication;
+  let moduleRef: TestingModule;
   let prisma: PrismaService;
 
   let facilityIdA: string;
@@ -41,15 +43,14 @@ describe("Facility isolation (e2e)", () => {
   beforeAll(async () => {
     applyE2eAuthTestEnv();
 
-    const moduleFixture: TestingModule = await Test.createTestingModule({
+    moduleRef = await Test.createTestingModule({
       imports: [AppModule],
     }).compile();
 
-    app = moduleFixture.createNestApplication();
-    await app.init();
+    app = await createE2eApp(moduleRef);
     applyE2eAuthTestEnv();
 
-    prisma = moduleFixture.get<PrismaService>(PrismaService);
+    prisma = moduleRef.get<PrismaService>(PrismaService);
 
     const facilityA = await prisma.facility.create({
       data: {
@@ -254,28 +255,33 @@ describe("Facility isolation (e2e)", () => {
   });
 
   afterAll(async () => {
-    await prisma.orderItem.deleteMany({
-      where: { order: { facilityId: { in: [facilityIdA, facilityIdB] } } },
-    });
-    await prisma.order.deleteMany({
-      where: { facilityId: { in: [facilityIdA, facilityIdB] } },
-    });
-    await prisma.encounter.deleteMany({
-      where: { facilityId: { in: [facilityIdA, facilityIdB] } },
-    });
-    await prisma.patient.deleteMany({
-      where: { facilityId: { in: [facilityIdA, facilityIdB] } },
-    });
-    await prisma.userRole.deleteMany({
-      where: { facilityId: { in: [facilityIdA, facilityIdB] } },
-    });
-    await prisma.user.deleteMany({
-      where: { email: { contains: "@fi-test.local" } },
-    });
-    await prisma.facility.deleteMany({
-      where: { id: { in: [facilityIdA, facilityIdB] } },
-    });
-    await app.close();
+    try {
+      if (prisma && facilityIdA && facilityIdB) {
+        await prisma.orderItem.deleteMany({
+          where: { order: { facilityId: { in: [facilityIdA, facilityIdB] } } },
+        });
+        await prisma.order.deleteMany({
+          where: { facilityId: { in: [facilityIdA, facilityIdB] } },
+        });
+        await prisma.encounter.deleteMany({
+          where: { facilityId: { in: [facilityIdA, facilityIdB] } },
+        });
+        await prisma.patient.deleteMany({
+          where: { facilityId: { in: [facilityIdA, facilityIdB] } },
+        });
+        await prisma.userRole.deleteMany({
+          where: { facilityId: { in: [facilityIdA, facilityIdB] } },
+        });
+        await prisma.user.deleteMany({
+          where: { email: { contains: `+${suffix}@fi-test.local` } },
+        });
+        await prisma.facility.deleteMany({
+          where: { id: { in: [facilityIdA, facilityIdB] } },
+        });
+      }
+    } finally {
+      await closeE2eApp({ app, moduleRef, prisma });
+    }
   });
 
   describe("Patients: tenant boundary on GET/PATCH", () => {
