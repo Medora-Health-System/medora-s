@@ -1,0 +1,44 @@
+{
+  "manifestId": "texas-registration-packet-sources",
+  "jurisdiction": "US-TX",
+  "status": "SOURCE_GROUNDED_PENDING_LEGAL_APPROVAL",
+  "retrievedAt": "2026-07-15",
+  "sources": [
+    {
+      "sourceId": "TX-HSC-254",
+      "title": "Texas Health and Safety Code Chapter 254 — Freestanding Emergency Medical Care Facilities",
+      "issuingAuthority": "State of Texas",
+      "officialUrl": "https://statutes.capitol.texas.gov/Docs/HS/htm/HS.254.htm",
+      "jurisdiction": "US-TX",
+      "retrievedAt": "2026-07-15",
+      "appliesTo": ["freestanding_er", "facility_disclosure"],
+      "sourceType": "STATUTE",
+      "notes": "Do not paste statute verbatim into patient packets; adapt facility disclosures after legal review.",
+      "reviewedStatus": "PENDING_LEGAL_APPROVAL"
+    },
+    {
+      "sourceId": "TX-HSC-324",
+      "title": "Texas Health and Safety Code Chapter 324 — Consumer Access to Healthcare Information",
+      "issuingAuthority": "State of Texas",
+      "officialUrl": "https://statutes.capitol.texas.gov/Docs/HS/htm/HS.324.htm",
+      "jurisdiction": "US-TX",
+      "retrievedAt": "2026-07-15",
+      "appliesTo": ["price_transparency", "facility_disclosure"],
+      "sourceType": "STATUTE",
+      "notes": "Facility fee / consumer disclosure content must use facility-approved amounts and effective dates.",
+      "reviewedStatus": "PENDING_LEGAL_APPROVAL"
+    },
+    {
+      "sourceId": "TX-TAC-509",
+      "title": "26 Texas Administrative Code Chapter 509 — Freestanding Emergency Medical Care Facilities",
+      "issuingAuthority": "Texas Health and Human Services",
+      "officialUrl": "https://www.sos.texas.gov/tac/index.shtml",
+      "jurisdiction": "US-TX",
+      "retrievedAt": "2026-07-15",
+      "appliesTo": ["freestanding_er"],
+      "sourceType": "REGULATION",
+      "notes": "Confirm current HHSC guidance letters before production legal approval.",
+      "reviewedStatus": "PENDING_LEGAL_APPROVAL"
+    }
+  ]
+}

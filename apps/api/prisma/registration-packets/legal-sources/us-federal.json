@@ -1,0 +1,68 @@
+{
+  "manifestId": "us-federal-registration-packet-sources",
+  "jurisdiction": "US-FEDERAL",
+  "status": "SOURCE_GROUNDED_PENDING_LEGAL_APPROVAL",
+  "retrievedAt": "2026-07-15",
+  "sources": [
+    {
+      "sourceId": "HHS-HIPAA-NPP-PROVIDER-MODEL",
+      "title": "HHS Model Notice of Privacy Practices for Health Care Providers",
+      "issuingAuthority": "U.S. Department of Health and Human Services",
+      "officialUrl": "https://www.hhs.gov/hipaa/for-professionals/privacy/guidance/privacy-practices-health-care-provider/",
+      "jurisdiction": "US-FEDERAL",
+      "retrievedAt": "2026-07-15",
+      "appliesTo": ["privacy", "hipaa_npp"],
+      "sourceType": "MODEL_NOTICE",
+      "notes": "Framework for facility Notice of Privacy Practices. Adapt; do not claim facility-specific contacts from HHS model.",
+      "reviewedStatus": "PENDING_LEGAL_APPROVAL"
+    },
+    {
+      "sourceId": "HHS-HIPAA-NPP-GUIDANCE",
+      "title": "HHS Model Notices of Privacy Practices Guidance",
+      "issuingAuthority": "U.S. Department of Health and Human Services",
+      "officialUrl": "https://www.hhs.gov/hipaa/for-professionals/privacy/guidance/model-notices-privacy-practices/",
+      "jurisdiction": "US-FEDERAL",
+      "retrievedAt": "2026-07-15",
+      "appliesTo": ["privacy"],
+      "sourceType": "GUIDANCE",
+      "notes": "Index of model NPP materials.",
+      "reviewedStatus": "PENDING_LEGAL_APPROVAL"
+    },
+    {
+      "sourceId": "CMS-EMTALA",
+      "title": "Emergency Medical Treatment and Labor Act (EMTALA)",
+      "issuingAuthority": "Centers for Medicare & Medicaid Services",
+      "officialUrl": "https://www.cms.gov/medicare/regulations-guidance/legislation/emergency-medical-treatment-labor-act",
+      "jurisdiction": "US-FEDERAL",
+      "retrievedAt": "2026-07-15",
+      "appliesTo": ["emtala", "hospital"],
+      "sourceType": "STATUTE_GUIDANCE",
+      "notes": "Applicability depends on hospital participation and facility structure. Use EmtalaApplicability facility flag.",
+      "reviewedStatus": "PENDING_LEGAL_APPROVAL"
+    },
+    {
+      "sourceId": "CMS-ER-RIGHTS",
+      "title": "CMS Emergency Room Rights",
+      "issuingAuthority": "Centers for Medicare & Medicaid Services",
+      "officialUrl": "https://www.cms.gov/priorities/your-patient-rights/emergency-room-rights",
+      "jurisdiction": "US-FEDERAL",
+      "retrievedAt": "2026-07-15",
+      "appliesTo": ["rights", "freestanding_er", "hospital"],
+      "sourceType": "CONSUMER_GUIDANCE",
+      "notes": "Patient-facing emergency rights education; facility policy must still be reviewed.",
+      "reviewedStatus": "PENDING_LEGAL_APPROVAL"
+    },
+    {
+      "sourceId": "CMS-NO-SURPRISES-OVERVIEW",
+      "title": "No Surprises Act — Overview of Rules & Fact Sheets",
+      "issuingAuthority": "Centers for Medicare & Medicaid Services",
+      "officialUrl": "https://www.cms.gov/nosurprises/policies-and-resources/overview-of-rules-fact-sheets",
+      "jurisdiction": "US-FEDERAL",
+      "retrievedAt": "2026-07-15",
+      "appliesTo": ["no_surprises"],
+      "sourceType": "GUIDANCE",
+      "notes": "NSA notice/consent must remain distinct from general registration consent when required.",
+      "reviewedStatus": "PENDING_LEGAL_APPROVAL"
+    }
+  ]
+}

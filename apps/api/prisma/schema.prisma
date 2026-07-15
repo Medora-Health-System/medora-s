@@ -62,6 +62,7 @@ model Facility {
   enterpriseDocuments                    EnterpriseDocument[]
   enterpriseDocPacketSources             EnterpriseDocumentPacketSource[] @relation("PacketSourceFacility")
   registrationPacketThemes               RegistrationPacketTheme[]        @relation("RegistrationPacketThemeFacility")
+  registrationDisclosureConfig           FacilityRegistrationDisclosureConfig?
   diseaseCaseReports                     DiseaseCaseReport[]
   encounters                             Encounter[]
   encounterChartExports                  EncounterChartExport[]
@@ -3747,6 +3748,28 @@ model RegistrationPacketSection {
   /// Localized titles: { en, fr, es? }.
   titleJson         Json
   helpTextJson      Json?
+  /// Concise patient-facing summary: { en, fr, es? }.
+  conciseSummaryJson Json?
+  /// Full approved legal text for PDF / See more: { en, fr, es? }.
+  fullBodyJson       Json?
+  sourceLabel        String?
+  sourceUrl          String?
+  /// FEDERAL | STATE | FACILITY_POLICY | INTERNAL
+  authorityType      String?
+  /// DRAFT | LEGAL_REVIEW | APPROVED | PUBLISHED | RETIRED
+  legalReviewStatus  LegalContentReviewStatus @default(DRAFT)
+  legalReviewedBy    String?
+  legalReviewedAt    DateTime?
+  effectiveFrom      DateTime?
+  effectiveTo        DateTime?
+  contentVersion     String?
+  acknowledgmentRequired Boolean @default(false)
+  acknowledgmentTextJson Json?
+  separateSignatureRequired Boolean @default(false)
+  /// FULL_BODY | SUMMARY_AND_FULL | SUMMARY_ONLY
+  pdfInclusionPolicy String? @default("FULL_BODY")
+  /// Extra disclosure metadata (optional JSON).
+  disclosureMetaJson Json?
   isRequired        Boolean  @default(true)
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
@@ -3757,6 +3780,37 @@ model RegistrationPacketSection {
 
   @@unique([templateVersionId, key])
   @@index([templateVersionId, sortOrder])
+  @@index([legalReviewStatus])
+}
+
+/// Facility-approved registration disclosure settings (never hard-code in React).
+model FacilityRegistrationDisclosureConfig {
+  id                 String               @id @default(uuid())
+  facilityId         String               @unique
+  emtalaApplicability EmtalaApplicability @default(NOT_CONFIGURED)
+  medicareParticipation ParticipationStatus @default(NOT_CONFIGURED)
+  medicaidParticipation ParticipationStatus @default(NOT_CONFIGURED)
+  noSurprisesApplicability Boolean        @default(false)
+  nondiscriminationApplicability Boolean  @default(true)
+  hospitalAffiliation  String?
+  physicianOwnershipJson Json?
+  networkDisclosureJson  Json?
+  /// Fee/range disclosures only when facility-approved (effective dates inside JSON).
+  facilityFeeDisclosureJson Json?
+  observationDisclosureJson Json?
+  separateBillingEntitiesJson Json?
+  privacyOfficerName   String?
+  privacyOfficerEmail  String?
+  privacyOfficerPhone  String?
+  grievanceContactJson Json?
+  billingContactJson   Json?
+  approvedLegalPacketVersion String?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  facility Facility @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+
+  @@index([facilityId])
 }
 
 model RegistrationPacketField {
@@ -3854,6 +3908,29 @@ enum RegistrationPacketTemplateStatus {
   DRAFT
   PUBLISHED
   ARCHIVED
+}
+
+/// Legal section / content lifecycle (distinct from template version publish status).
+enum LegalContentReviewStatus {
+  DRAFT
+  LEGAL_REVIEW
+  APPROVED
+  PUBLISHED
+  RETIRED
+}
+
+/// EMTALA applicability depends on facility structure — never assume for all freestanding ERs.
+enum EmtalaApplicability {
+  HOSPITAL_EMERGENCY_DEPARTMENT
+  HOSPITAL_AFFILIATED_OFF_CAMPUS_ED
+  INDEPENDENT_FREESTANDING_ER
+  NOT_CONFIGURED
+}
+
+enum ParticipationStatus {
+  PARTICIPATES
+  DOES_NOT_PARTICIPATE
+  NOT_CONFIGURED
 }
 
 enum RegistrationPacketFieldType {

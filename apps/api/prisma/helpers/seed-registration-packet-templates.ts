@@ -111,9 +111,9 @@ const FREESTANDING_ER_SECTIONS: Array<{
     fieldKey: "medicare_medicaid_text",
     fieldType: RegistrationPacketFieldType.STATIC_TEXT,
     content: L(
-      "I acknowledge that this facility is a freestanding emergency room and may not participate in Medicare or Medicaid programs. I understand that I am responsible for payment of all charges incurred during my visit. I have been informed that a hospital-based emergency room may accept these programs.",
-      "Je reconnais que cet établissement est une salle d'urgence autonome et peut ne pas participer aux programmes Medicare ou Medicaid. Je comprends que je suis responsable du paiement de tous les frais engagés lors de ma visite. J'ai été informé qu'une salle d'urgence hospitalière peut accepter ces programmes.",
-      "Reconozco que este establecimiento es una sala de emergencias independiente y puede no participar en los programas Medicare o Medicaid. Entiendo que soy responsable del pago de todos los cargos incurridos durante mi visita. Se me ha informado que una sala de emergencias hospitalaria puede aceptar estos programas.",
+      "Medicare and/or Medicaid participation for this facility is stated only from facility-approved configuration. If status is not configured, staff must not assert non-participation. Ask for the current written participation status before relying on any statement. No obsolete fee amounts are included.",
+      "La participation Medicare et/ou Medicaid de cet établissement n'est indiquée que selon la configuration approuvée. Si le statut n'est pas configuré, le personnel ne doit pas affirmer une non-participation. Demandez le statut écrit actuel avant de vous fier à toute affirmation. Aucun montant obsolète n'est inclus.",
+      "La participación en Medicare y/o Medicaid de este establecimiento se indica solo según la configuración aprobada. Si el estado no está configurado, el personal no debe afirmar la no participación. Solicite el estado escrito actual antes de confiar en cualquier declaración. No se incluyen montos obsoletos.",
     ),
   },
 ];
