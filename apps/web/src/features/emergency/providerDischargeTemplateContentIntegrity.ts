@@ -891,6 +891,16 @@ export const PROVIDER_DISCHARGE_TEMPLATE_CONTENT_INTEGRITY: Record<
     mustIncludeAny: { en: ["wellness", "routine"], fr: ["santé", "routine"] },
     forbiddenCrossTemplateMarkers: { en: WOUND_FORBIDDEN_EN, fr: WOUND_FORBIDDEN_FR },
   },
+  blast_ear_injury_v1: { mustIncludeAny: { en: ["blast", "ear"], fr: ["explosion", "oreille"] }, forbiddenCrossTemplateMarkers: { en: [], fr: [] } },
+  blast_lung_aftercare_v1: { mustIncludeAny: { en: ["blast", "pressure"], fr: ["explosion", "pression"] }, forbiddenCrossTemplateMarkers: { en: [], fr: [] } },
+  blast_abdominal_observation_v1: { mustIncludeAny: { en: ["blast", "abdominal"], fr: ["explosion", "abdominale"] }, forbiddenCrossTemplateMarkers: { en: [], fr: [] } },
+  blast_mild_tbi_v1: { mustIncludeAny: { en: ["blast", "head"], fr: ["explosion", "crânien"] }, forbiddenCrossTemplateMarkers: { en: [], fr: [] } },
+  blast_fragment_wound_v1: { mustIncludeAny: { en: ["fragment", "shrapnel"], fr: ["fragment", "éclat"] }, forbiddenCrossTemplateMarkers: { en: [], fr: [] } },
+  blast_burn_aftercare_v1: { mustIncludeAny: { en: ["explosion", "burn"], fr: ["explosion", "brûlure"] }, forbiddenCrossTemplateMarkers: { en: [], fr: [] } },
+  blast_crush_aftercare_v1: { mustIncludeAny: { en: ["compression", "entrapment"], fr: ["compression", "ensevelissement"] }, forbiddenCrossTemplateMarkers: { en: [], fr: [] } },
+  post_structural_collapse_v1: { mustIncludeAny: { en: ["compression", "entrapment"], fr: ["compression", "ensevelissement"] }, forbiddenCrossTemplateMarkers: { en: [], fr: [] } },
+  polytrauma_followup_v1: { mustIncludeAny: { en: ["multiple injuries"], fr: ["plusieurs blessures"] }, forbiddenCrossTemplateMarkers: { en: [], fr: [] } },
+  blast_injury_minor_v1: { mustIncludeAny: { en: ["explosion"], fr: ["explosion"] }, forbiddenCrossTemplateMarkers: { en: [], fr: [] } },
 };
 
 function suggestedTextBlob(body: {

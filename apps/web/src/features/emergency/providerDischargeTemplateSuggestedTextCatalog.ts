@@ -2839,6 +2839,34 @@ export const POST_WOUND_EXPLORATION_SUGGESTED_TEXT = PENETRATING_WOUND_MINOR_SUG
 export const POST_FOREIGN_BODY_REMOVAL_SUGGESTED_TEXT = RETAINED_PROJECTILE_SUGGESTED_TEXT;
 export const POST_TOURNIQUET_EXTREMITY_SUGGESTED_TEXT = GUNSHOT_WOUND_EXTREMITY_SUGGESTED_TEXT;
 
+function blastPolytraumaSuggestedText(descriptionEn: string, returnEn: string, descriptionFr: string, returnFr: string): ProviderDischargeTemplateSuggestedText {
+  return localizedSuggestedText(
+    {
+      description: descriptionEn,
+      diagnosisInstructions: "Follow the trauma plan and activity restrictions provided by your clinician. Blast-related symptoms can be delayed; keep all directed follow-up.",
+      medicationTreatment: "Take medicines only as prescribed. Do not start, stop, or share medicines without clinician guidance.",
+      returnPrecautions: `Return immediately for trouble breathing, chest pain, worsening abdominal pain, vomiting, confusion, weakness, fainting, new hearing loss, increasing pain, or any worsening symptom. ${returnEn}`,
+    },
+    {
+      description: descriptionFr,
+      diagnosisInstructions: "Suivez le plan de traumatologie et les restrictions d'activité indiqués par votre clinicien. Des symptômes liés à l'explosion peuvent être retardés; respectez tous les suivis indiqués.",
+      medicationTreatment: "Prenez les médicaments uniquement selon la prescription. Ne commencez pas, n'arrêtez pas et ne partagez pas de médicaments sans avis clinique.",
+      returnPrecautions: `Retournez immédiatement en cas de difficulté à respirer, douleur thoracique, douleur abdominale croissante, vomissements, confusion, faiblesse, évanouissement, nouvelle perte auditive, douleur croissante ou aggravation. ${returnFr}`,
+    },
+  );
+}
+
+export const BLAST_EAR_INJURY_SUGGESTED_TEXT = blastPolytraumaSuggestedText("You were evaluated for blast-related ear injury.", "Return for ringing, vertigo, drainage, reduced hearing, or severe ear pain.", "Vous avez été pris en charge pour une blessure de l'oreille liée à une explosion.", "Retournez pour acouphènes, vertiges, écoulement, baisse d'audition ou douleur auriculaire sévère.");
+export const BLAST_LUNG_AFTERCARE_SUGGESTED_TEXT = blastPolytraumaSuggestedText("You were evaluated after possible blast-related pressure injury.", "Return immediately for shortness of breath, cough, coughing blood, or worsening chest pain.", "Vous avez été pris en charge après un possible effet de pression lié à une explosion.", "Retournez immédiatement pour essoufflement, toux, crachats de sang ou douleur thoracique croissante.");
+export const BLAST_ABDOMINAL_OBSERVATION_SUGGESTED_TEXT = blastPolytraumaSuggestedText("You were evaluated after blast exposure with abdominal injury concern.", "Return immediately for worsening abdominal pain, repeated vomiting, distension, fainting, or bleeding.", "Vous avez été pris en charge après une exposition à une explosion avec préoccupation de blessure abdominale.", "Retournez immédiatement pour douleur abdominale croissante, vomissements répétés, distension, évanouissement ou saignement.");
+export const BLAST_MILD_TBI_SUGGESTED_TEXT = blastPolytraumaSuggestedText("You were evaluated for possible blast-related mild head injury.", "Have a responsible adult monitor you as directed; return for worsening headache, vomiting, confusion, seizure, or weakness.", "Vous avez été pris en charge pour un possible traumatisme crânien léger lié à une explosion.", "Faites-vous surveiller par un adulte responsable selon les consignes; retournez pour mal de tête croissant, vomissements, confusion, convulsion ou faiblesse.");
+export const BLAST_FRAGMENT_WOUND_SUGGESTED_TEXT = blastPolytraumaSuggestedText("You were evaluated for fragment or shrapnel injury after an explosion.", "Do not probe or remove retained material; return for bleeding, numbness, weakness, fever, or drainage.", "Vous avez été pris en charge pour une blessure par fragment ou éclat après une explosion.", "N'explorez pas et ne retirez pas de matériel retenu; retournez pour saignement, engourdissement, faiblesse, fièvre ou écoulement.");
+export const BLAST_BURN_AFTERCARE_SUGGESTED_TEXT = blastPolytraumaSuggestedText("You were evaluated for an explosion-related burn.", "Keep the burn protected and return for breathing symptoms, spreading redness, fever, drainage, or worsening pain.", "Vous avez été pris en charge pour une brûlure liée à une explosion.", "Gardez la brûlure protégée et retournez pour symptômes respiratoires, rougeur qui s'étend, fièvre, écoulement ou douleur croissante.");
+export const BLAST_CRUSH_AFTERCARE_SUGGESTED_TEXT = blastPolytraumaSuggestedText("You were evaluated after blast-related compression or entrapment.", "Return for increasing swelling, numbness, weakness, dark urine, reduced urine, or worsening limb pain.", "Vous avez été pris en charge après compression ou ensevelissement lié à une explosion.", "Retournez pour gonflement croissant, engourdissement, faiblesse, urines foncées, diminution des urines ou douleur croissante d'un membre.");
+export const POST_STRUCTURAL_COLLAPSE_SUGGESTED_TEXT = BLAST_CRUSH_AFTERCARE_SUGGESTED_TEXT;
+export const POLYTRAUMA_FOLLOWUP_SUGGESTED_TEXT = blastPolytraumaSuggestedText("You were evaluated for multiple injuries after trauma.", "Keep all trauma follow-up and return immediately for a new or worsening symptom.", "Vous avez été pris en charge pour plusieurs blessures après un traumatisme.", "Respectez tous les suivis de traumatologie et retournez immédiatement pour un symptôme nouveau ou aggravé.");
+export const BLAST_INJURY_MINOR_SUGGESTED_TEXT = blastPolytraumaSuggestedText("You were evaluated after explosion exposure.", "Return for delayed breathing, abdominal, neurologic, hearing, burn, or crush symptoms.", "Vous avez été pris en charge après une exposition à une explosion.", "Retournez pour symptômes respiratoires, abdominaux, neurologiques, auditifs, de brûlure ou d'écrasement retardés.");
+
 export const TRAUMA_MSK_AMPUTATION_FINGER_THUMB_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
   localizedSuggestedText(
     {

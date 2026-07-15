@@ -79,6 +79,13 @@ const FRENCH_ICD10_DISPLAY_LABELS_BY_NORMALIZED_CODE: Readonly<Record<string, st
   S0550XA: "Plaie pénétrante de l'œil, sans corps étranger",
   S91339A: "Plaie punctiforme du pied, sans corps étranger",
   S1193XA: "Plaie ouverte du cou",
+  T07XXXA: "Blessures multiples, sans précision",
+  T794XXA: "Choc traumatique",
+  S0920XA: "Rupture traumatique du tympan, sans précision",
+  T700XXA: "Barotraumatisme otitique",
+  W400XXA: "Explosion de matériel de dynamitage",
+  W39XXXA: "Décharge de feu d'artifice",
+  T7121XA: "Asphyxie due à un ensevelissement",
 };
 
 export function getFrenchDiagnosisDisplayLabel(code: string, englishLabel: string): string {

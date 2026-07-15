@@ -55,8 +55,8 @@ export const ICD10_CM_DEV_SAMPLE_MANIFEST: Icd10CmReleaseManifest = {
   sourceUrl: "apps/api/prisma/data/icd10-cm-sample-dev.csv",
   preferredInnerFile: "icd10-cm-sample-dev.csv",
   preferredInnerFileSha256: "",
-  expectedOrderRows: 98,
-  expectedBillableRows: 98,
+  expectedOrderRows: 105,
+  expectedBillableRows: 105,
   notes: "Development-only representative sample. Not production-complete.",
 };
 

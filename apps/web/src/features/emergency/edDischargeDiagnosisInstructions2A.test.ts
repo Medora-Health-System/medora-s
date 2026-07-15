@@ -70,7 +70,7 @@ describe("MEDUI.ED.DISCHARGE.DIAGNOSIS_INSTRUCTIONS.2A", () => {
 
     it("1 — reports total picker diagnoses in repo-bound union", () => {
       expect(audit.summary.totalPickerRecordsAudited).toBeGreaterThan(0);
-      expect(audit.summary.devIcdSampleRowCount).toBe(98);
+      expect(audit.summary.devIcdSampleRowCount).toBe(105);
       expect(buildCoverageAuditLevel2PickerUnion().length).toBe(audit.summary.totalPickerRecordsAudited);
     });
 
@@ -78,9 +78,9 @@ describe("MEDUI.ED.DISCHARGE.DIAGNOSIS_INSTRUCTIONS.2A", () => {
       expect(audit.summary.totalDiagnosisSpecificMapped + audit.summary.totalGenericFallbackOnly).toBe(
         audit.summary.totalPickerRecordsAudited
       );
-      expect(audit.summary.totalPickerRecordsAudited).toBe(112);
+      expect(audit.summary.totalPickerRecordsAudited).toBe(119);
       expect(audit.summary.totalGenericFallbackOnly).toBe(0);
-      expect(audit.summary.totalDiagnosisSpecificMapped).toBe(112);
+      expect(audit.summary.totalDiagnosisSpecificMapped).toBe(119);
     });
 
     it("3 — top 100 fallback list is generated when any generic fallback exists", () => {
@@ -113,7 +113,7 @@ describe("MEDUI.ED.DISCHARGE.DIAGNOSIS_INSTRUCTIONS.2A", () => {
 
     it("picker model is hybrid API search + manual", () => {
       expect(audit.summary.pickerModel).toBe("hybrid_api_search_and_manual");
-      expect(loadIcd10DevSampleCatalog().length).toBe(98);
+      expect(loadIcd10DevSampleCatalog().length).toBe(105);
     });
   });
 
