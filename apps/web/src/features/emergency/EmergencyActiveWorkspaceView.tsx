@@ -46,6 +46,11 @@ import { ErClinicalDecisionSupportPanel } from "@/features/emergency/ErClinicalD
 import { EmergencyResultsPanel } from "@/features/emergency/EmergencyResultsPanel";
 import { EmergencyQuickVitalsEditor } from "@/features/emergency/EmergencyQuickVitalsEditor";
 import {
+  VitalReadingEditModal,
+  VitalReadingVoidModal,
+} from "@/features/emergency/VitalReadingGovernanceModals";
+import type { VitalSummaryReading } from "@/components/patients/VitalSummaryPanel";
+import {
   EmergencyWorkspaceAllergiesCard,
   EmergencyWorkspaceVitalsCard,
 } from "@/features/emergency/EmergencyWorkspaceClinicalStrip";
@@ -244,6 +249,9 @@ export function EmergencyActiveWorkspaceView() {
   );
   const [triageLoading, setTriageLoading] = useState(false);
   const [showQuickVitals, setShowQuickVitals] = useState(false);
+  const [showVitalsHistory, setShowVitalsHistory] = useState(false);
+  const [editVitalReading, setEditVitalReading] = useState<VitalSummaryReading | null>(null);
+  const [voidVitalReading, setVoidVitalReading] = useState<VitalSummaryReading | null>(null);
   const [showIvAccessModal, setShowIvAccessModal] = useState(false);
   const [showProcedureLauncherModal, setShowProcedureLauncherModal] = useState(false);
 
@@ -500,8 +508,8 @@ export function EmergencyActiveWorkspaceView() {
       []
     );
     const forEnc = merged.filter((s) => s.encounterId === encounterId && hasVitalsJson(s.vitalsJson));
-    return snapshotsToVitalSummaryReadings(forEnc, language);
-  }, [patientVitalsTimeline, encounterId, language]);
+    return snapshotsToVitalSummaryReadings(forEnc, language, t);
+  }, [patientVitalsTimeline, encounterId, language, t]);
 
   const encounterVitalsSnapshotsOldestFirst = useMemo(() => {
     if (!patientVitalsTimeline) return null;
@@ -897,7 +905,10 @@ export function EmergencyActiveWorkspaceView() {
                 allergyText={clinicalStripModel.allergyText}
                 vitalsDisplayMode={vitalsDisplayMode}
                 vitalsQuickEditEnabled={vitalsQuickEditEnabled}
-                onVitalsEdit={() => setShowQuickVitals(true)}
+                onVitalsEdit={() => {
+                  setShowQuickVitals(true);
+                  setShowVitalsHistory(true);
+                }}
                 vitalsEditAriaLabel={t("erQuickVitals.vitalsEditAria")}
                 canDocumentIvAccess={canDocumentIvAccess}
                 showQuickVitals={showQuickVitals}
@@ -1015,7 +1026,14 @@ export function EmergencyActiveWorkspaceView() {
                     vitalPairs={clinicalStripModel.pairs}
                     loading={triageLoading}
                     editable={vitalsQuickEditEnabled}
-                    onEditClick={vitalsQuickEditEnabled ? () => setShowQuickVitals(true) : undefined}
+                    onEditClick={
+                      vitalsQuickEditEnabled
+                        ? () => {
+                            setShowQuickVitals(true);
+                            setShowVitalsHistory(true);
+                          }
+                        : undefined
+                    }
                     editAriaLabel={t("erQuickVitals.vitalsEditAria")}
                     displayMode={vitalsDisplayMode}
                   />
@@ -1084,67 +1102,72 @@ export function EmergencyActiveWorkspaceView() {
                     </button>
                   ) : null}
                 </div>
-                {showQuickVitals && vitalsQuickEditEnabled && fid ? (
-                  <>
-                    {/**
-                     * Desktop forces a stable 2-col layout (summary LEFT, quick-entry RIGHT) so the panel
-                     * does not prematurely wrap inside the ED header column. Below the workspace tablet
-                     * breakpoint the row collapses to a single stacked column. Summary gets the wider
-                     * track because its table has more columns (TIME → BY) and was clipping at the
-                     * earlier 0.95fr ratio. Inline media query is injected with a unique class.
-                     */}
-                    <style
-                      dangerouslySetInnerHTML={{
-                        __html: `
-                          .medora-er-vitals-twocol {
-                            display: grid;
-                            grid-template-columns: minmax(520px, 1.05fr) minmax(500px, 0.95fr);
-                            gap: 16px;
-                            align-items: start;
-                            width: 100%;
-                            max-width: none;
-                            min-width: 0;
-                          }
-                          .medora-er-vitals-twocol > * {
-                            min-width: 0;
-                          }
-                          @media (max-width: 1199.98px) {
-                            .medora-er-vitals-twocol {
-                              grid-template-columns: 1fr;
+                {(showVitalsHistory || showQuickVitals) && fid ? (
+                  <div style={{ minWidth: 0, maxWidth: "100%", overflowX: "auto", marginTop: 8 }}>
+                    <VitalSummaryPanel
+                      readings={encounterVitalSummaryReadings}
+                      latestReadingId={encounterVitalSummaryReadings[0]?.id}
+                      onClose={() => {
+                        setShowVitalsHistory(false);
+                        if (!vitalsQuickEditEnabled) setShowQuickVitals(false);
+                      }}
+                      onViewFullHistory={
+                        patient?.id
+                          ? () => {
+                              router.push(`/app/patients/${patient.id}`);
                             }
-                          }
-                        `,
+                          : undefined
+                      }
+                      actionsEnabled={Boolean(vitalsQuickEditEnabled && encounter?.status === "OPEN" && !isLocked)}
+                      onEditReading={
+                        vitalsQuickEditEnabled
+                          ? (r) => setEditVitalReading(r)
+                          : undefined
+                      }
+                      onVoidReading={
+                        vitalsQuickEditEnabled
+                          ? (r) => setVoidVitalReading(r)
+                          : undefined
+                      }
+                    />
+                  </div>
+                ) : null}
+                {showQuickVitals && vitalsQuickEditEnabled && fid ? (
+                  <EmergencyQuickVitalsEditor
+                    open={showQuickVitals}
+                    onClose={() => setShowQuickVitals(false)}
+                    encounterId={encounterId}
+                    facilityId={fid}
+                    patientId={patient?.id}
+                    triageSnapshot={triageSnapshot}
+                    onSaved={async () => {
+                      setTriageRefresh((r) => r + 1);
+                      setShowVitalsHistory(true);
+                    }}
+                  />
+                ) : null}
+                {fid ? (
+                  <>
+                    <VitalReadingEditModal
+                      open={Boolean(editVitalReading)}
+                      reading={editVitalReading}
+                      encounterId={encounterId}
+                      facilityId={fid}
+                      onClose={() => setEditVitalReading(null)}
+                      onDone={async () => {
+                        setTriageRefresh((r) => r + 1);
                       }}
                     />
-                    <div className="medora-er-vitals-twocol">
-                      <div style={{ minWidth: 0, maxWidth: "100%", overflowX: "auto" }}>
-                        <VitalSummaryPanel
-                          readings={encounterVitalSummaryReadings}
-                          latestReadingId={encounterVitalSummaryReadings[0]?.id}
-                          onClose={() => setShowQuickVitals(false)}
-                          onViewFullHistory={
-                            patient?.id
-                              ? () => {
-                                  router.push(`/app/patients/${patient.id}`);
-                                }
-                              : undefined
-                          }
-                        />
-                      </div>
-                      <div style={{ minWidth: 0, width: "100%", justifySelf: "stretch" }}>
-                        <EmergencyQuickVitalsEditor
-                          open={showQuickVitals}
-                          onClose={() => setShowQuickVitals(false)}
-                          encounterId={encounterId}
-                          facilityId={fid}
-                          patientId={patient?.id}
-                          triageSnapshot={triageSnapshot}
-                          onSaved={async () => {
-                            setTriageRefresh((r) => r + 1);
-                          }}
-                        />
-                      </div>
-                    </div>
+                    <VitalReadingVoidModal
+                      open={Boolean(voidVitalReading)}
+                      reading={voidVitalReading}
+                      encounterId={encounterId}
+                      facilityId={fid}
+                      onClose={() => setVoidVitalReading(null)}
+                      onDone={async () => {
+                        setTriageRefresh((r) => r + 1);
+                      }}
+                    />
                   </>
                 ) : null}
                 {showIvAccessModal && fid ? (

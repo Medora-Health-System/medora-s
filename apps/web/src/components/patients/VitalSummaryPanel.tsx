@@ -3,26 +3,38 @@
 import React from "react";
 import type { SupportedLanguage } from "@/i18n/config";
 import { encounterBcp47 } from "@/lib/encounterChromeI18n";
-import { formatTemperatureDualLine, formatWeightDualLine, formatHeightDualLine, snapshotKey } from "@/lib/patientVitals";
+import {
+  formatTemperatureDualLine,
+  formatWeightDualLine,
+  formatHeightDualLine,
+  snapshotKey,
+} from "@/lib/patientVitals";
 import type { PatientTriageVitalsSnapshot } from "@/lib/patientVitals";
+import {
+  formatOxygenSupportCompact,
+  temperatureSiteI18nKey,
+} from "@/lib/vitalsMeasurementContextDisplay";
+import { isVitalTemperatureSite } from "@medora/shared";
 import { useI18n } from "@/lib/i18n";
 
 export type VitalSummaryReading = {
   id: string;
+  readingId?: string;
   measuredAtIso: string;
+  recordedAtIso?: string;
   bp: string;
   hr: string;
   rr: string;
   temp: string;
+  tempSiteLabel: string;
   spo2: string;
+  oxygenLabel: string;
   weight: string;
   height: string;
   pain: string;
-  /**
-   * Initials of the user who recorded vitals (e.g. "MJ"). "—" when no metadata is available
-   * on the existing triage vitals readings payload.
-   */
   byInitials: string;
+  byTitle: string;
+  vitalsJson: Record<string, unknown>;
 };
 
 function dash(v: string): string {
@@ -43,7 +55,11 @@ export function vitalSummaryInitials(opts: {
   firstName?: string | null;
   lastName?: string | null;
   displayName?: string | null;
+  serverInitials?: string | null;
 }): string {
+  const server = (opts.serverInitials ?? "").trim();
+  if (server && server !== "—") return server.toUpperCase();
+  if (server === "SYS") return "SYS";
   const first = (opts.firstName ?? "").trim();
   const last = (opts.lastName ?? "").trim();
   if (first || last) {
@@ -64,17 +80,17 @@ export function vitalSummaryInitials(opts: {
 
 /**
  * Maps triage vitals snapshots to table rows (caller supplies newest-first order).
- * BY initials default to "—" — the existing `/patients/:id/triage` payload (and `TriageVitalsReading`)
- * does not carry recorder identity. If/when the snapshot type adds it, read it here without a backend change.
  */
 export function snapshotsToVitalSummaryReadings(
   snapshotsNewestFirst: PatientTriageVitalsSnapshot[],
-  language: SupportedLanguage
+  language: SupportedLanguage,
+  t?: (key: string) => string
 ): VitalSummaryReading[] {
+  const translate = t ?? ((key: string) => key);
   return snapshotsNewestFirst.map((snap) => {
     const v = (snap.vitalsJson || {}) as Record<string, unknown>;
     const tempN = num(v.tempC);
-    const measured = snap.triageCompleteAt ?? snap.updatedAt;
+    const measured = snap.measuredAt ?? snap.triageCompleteAt ?? snap.updatedAt;
     const sys = v.bpSys;
     const dia = v.bpDia;
     const bp =
@@ -97,30 +113,49 @@ export function snapshotsToVitalSummaryReadings(
         if (legacy != null && legacy !== "") pain = `${String(legacy).trim()}/10`;
       }
     }
-    /** Best-effort: if a future snapshot field carries recorder identity, surface it without backend changes. */
-    const optional = snap as unknown as {
-      recordedByDisplayName?: string | null;
-      recordedByFirstName?: string | null;
-      recordedByLastName?: string | null;
-      enteredByDisplayName?: string | null;
-    };
+    const siteRaw = v.temperatureSite;
+    const tempSiteLabel =
+      typeof siteRaw === "string" && isVitalTemperatureSite(siteRaw)
+        ? translate(temperatureSiteI18nKey(siteRaw))
+        : "";
+    const oxygenLabel = formatOxygenSupportCompact(v, translate);
     const byInitials = vitalSummaryInitials({
-      firstName: optional.recordedByFirstName,
-      lastName: optional.recordedByLastName,
-      displayName: optional.recordedByDisplayName ?? optional.enteredByDisplayName ?? null,
+      firstName: null,
+      lastName: null,
+      displayName: snap.recordedByDisplayName ?? null,
+      serverInitials: snap.recordedByInitials ?? null,
     });
+    const name = (snap.recordedByDisplayName ?? "").trim();
+    const role = (snap.recordedByRole ?? "").trim();
+    const byTitle = name
+      ? translate("vitalsContext.enteredByTitle")
+          .replace("{name}", name)
+          .replace("{role}", role || "—")
+      : translate("vitalsContext.enteredByUnknown");
+
+    const tempBase = tempN != null ? formatTemperatureDualLine(tempN, language) : "—";
+    const temp = tempSiteLabel && tempBase !== "—" ? `${tempBase} ${tempSiteLabel}` : tempBase;
+    const spo2Display =
+      spo2 && oxygenLabel ? `${spo2}% · ${oxygenLabel}` : spo2 ? `${spo2}%` : oxygenLabel;
+
     return {
       id: snapshotKey(snap),
+      readingId: snap.readingId,
       measuredAtIso: measured,
+      recordedAtIso: snap.recordedAt,
       bp: dash(bp),
       hr: dash(hr),
       rr: dash(rr),
-      temp: tempN != null ? formatTemperatureDualLine(tempN, language) : "—",
-      spo2: dash(spo2),
+      temp,
+      tempSiteLabel,
+      spo2: dash(spo2Display),
+      oxygenLabel,
       weight: wk != null ? formatWeightDualLine(wk, language) : "—",
       height: hc != null ? formatHeightDualLine(hc, language) : "—",
       pain: pain || "—",
       byInitials,
+      byTitle,
+      vitalsJson: v,
     };
   });
 }
@@ -160,11 +195,17 @@ export function VitalSummaryPanel({
   latestReadingId,
   onClose,
   onViewFullHistory,
+  onEditReading,
+  onVoidReading,
+  actionsEnabled,
 }: {
   readings: VitalSummaryReading[];
   latestReadingId?: string;
   onClose?: () => void;
   onViewFullHistory?: () => void;
+  onEditReading?: (reading: VitalSummaryReading) => void;
+  onVoidReading?: (reading: VitalSummaryReading) => void;
+  actionsEnabled?: boolean;
 }) {
   const { t, language } = useI18n();
   const loc = encounterBcp47(language);
@@ -236,6 +277,7 @@ export function VitalSummaryPanel({
                 <th style={th}>{vs("labels.height")}</th>
                 <th style={th}>{vs("labels.pain")}</th>
                 <th style={th}>{vs("labels.by")}</th>
+                {actionsEnabled ? <th style={th}>{vs("labels.actions")}</th> : null}
               </tr>
             </thead>
             <tbody>
@@ -266,10 +308,12 @@ export function VitalSummaryPanel({
                     <td style={{ ...td, fontFamily: "ui-monospace, SFMono-Regular, monospace" }}>{r.bp}</td>
                     <td style={{ ...td, fontFamily: "ui-monospace, SFMono-Regular, monospace" }}>{r.hr}</td>
                     <td style={{ ...td, fontFamily: "ui-monospace, SFMono-Regular, monospace" }}>{r.rr}</td>
-                    <td style={{ ...td, fontFamily: "ui-monospace, SFMono-Regular, monospace", maxWidth: 140 }}>
+                    <td style={{ ...td, fontFamily: "ui-monospace, SFMono-Regular, monospace", maxWidth: 160, whiteSpace: "normal" }}>
                       {r.temp}
                     </td>
-                    <td style={{ ...td, fontFamily: "ui-monospace, SFMono-Regular, monospace" }}>{r.spo2}</td>
+                    <td style={{ ...td, fontFamily: "ui-monospace, SFMono-Regular, monospace", maxWidth: 180, whiteSpace: "normal" }}>
+                      {r.spo2}
+                    </td>
                     <td style={{ ...td, fontFamily: "ui-monospace, SFMono-Regular, monospace", maxWidth: 120 }}>
                       {r.weight}
                     </td>
@@ -277,7 +321,53 @@ export function VitalSummaryPanel({
                       {r.height}
                     </td>
                     <td style={{ ...td, fontFamily: "ui-monospace, SFMono-Regular, monospace" }}>{r.pain}</td>
-                    <td style={{ ...td, fontWeight: 600, color: "#334155" }}>{r.byInitials}</td>
+                    <td style={{ ...td, fontWeight: 600, color: "#334155" }}>
+                      <span title={r.byTitle} aria-label={r.byTitle}>
+                        {r.byInitials}
+                      </span>
+                    </td>
+                    {actionsEnabled ? (
+                      <td style={{ ...td, whiteSpace: "normal" }}>
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                          {onEditReading && r.readingId ? (
+                            <button
+                              type="button"
+                              onClick={() => onEditReading(r)}
+                              style={{
+                                padding: "4px 8px",
+                                borderRadius: 6,
+                                border: "1px solid #cbd5e1",
+                                background: "#fff",
+                                fontSize: 11,
+                                fontWeight: 600,
+                                cursor: "pointer",
+                                color: "#0f172a",
+                              }}
+                            >
+                              {t("vitalsContext.editVitals")}
+                            </button>
+                          ) : null}
+                          {onVoidReading && r.readingId ? (
+                            <button
+                              type="button"
+                              onClick={() => onVoidReading(r)}
+                              style={{
+                                padding: "4px 8px",
+                                borderRadius: 6,
+                                border: "1px solid #fecaca",
+                                background: "#fff",
+                                fontSize: 11,
+                                fontWeight: 600,
+                                cursor: "pointer",
+                                color: "#b91c1c",
+                              }}
+                            >
+                              {t("vitalsContext.removeVitalEntry")}
+                            </button>
+                          ) : null}
+                        </div>
+                      </td>
+                    ) : null}
                   </tr>
                 );
               })}

@@ -11,6 +11,14 @@ export type PatientTriageVitalsSnapshot = {
   updatedAt: string;
   triageCompleteAt: string | null;
   vitalsJson: Record<string, unknown>;
+  readingId?: string;
+  measuredAt?: string;
+  recordedAt?: string;
+  status?: "ACTIVE" | "VOIDED";
+  recordedByUserId?: string | null;
+  recordedByDisplayName?: string | null;
+  recordedByInitials?: string | null;
+  recordedByRole?: string | null;
 };
 
 export type PatientTriageVitalsResponse = {
@@ -213,14 +221,19 @@ export function buildVitalsTimelineNewestFirst(
   return all;
 }
 
-/** Horodatage de mesure pour tri (préfère fin de triage si connue). */
-export function vitalsSnapshotMeasuredAtMs(s: Pick<PatientTriageVitalsSnapshot, "triageCompleteAt" | "updatedAt">): number {
-  const raw = s.triageCompleteAt ?? s.updatedAt;
+/** Horodatage de mesure pour tri — prefers measuredAt, then triageCompleteAt, then updatedAt. */
+export function vitalsSnapshotMeasuredAtMs(
+  s: Pick<PatientTriageVitalsSnapshot, "measuredAt" | "triageCompleteAt" | "updatedAt" | "recordedAt">
+): number {
+  const raw = s.measuredAt ?? s.triageCompleteAt ?? s.updatedAt ?? s.recordedAt;
   return new Date(raw).getTime();
 }
 
-export function snapshotKey(s: Pick<PatientTriageVitalsSnapshot, "triageId" | "updatedAt">): string {
-  return `${s.triageId}:${s.updatedAt}`;
+export function snapshotKey(
+  s: Pick<PatientTriageVitalsSnapshot, "readingId" | "triageId" | "updatedAt" | "measuredAt">
+): string {
+  if (s.readingId) return `reading:${s.readingId}`;
+  return `${s.triageId}:${s.measuredAt ?? s.updatedAt}`;
 }
 
 export function mergeVitalsHistory(

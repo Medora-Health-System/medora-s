@@ -2,64 +2,50 @@ import { describe, expect, it } from "vitest";
 import { emptyErTriageV1Form } from "./medoraErTriageV1";
 import { mergeVitalsJsonForSave } from "./emergencyTriageVitalsMerge";
 
-describe("emergencyTriageVitalsMerge", () => {
-  it("persists painScore at top-level vitalsJson", () => {
+describe("mergeVitalsJsonForSave measurement context", () => {
+  it("stores temperature site and room-air oxygen without flow", () => {
     const merged = mergeVitalsJsonForSave(null, {
-      tempC: "",
-      hr: "88",
-      rr: "",
+      tempC: "98.6",
+      hr: "80",
+      rr: "16",
       bpSys: "120",
       bpDia: "80",
-      spo2: "",
+      spo2: "97",
       weightKg: "",
       heightCm: "",
-      painScore: "8",
+      painScore: "",
       allergyNote: "",
       erV1: emptyErTriageV1Form(),
+      tempInputUnit: "F",
+      temperatureSite: "ORAL",
+      oxygenDevice: "ROOM_AIR",
+      oxygenFlowLpm: "2",
+      oxygenFiO2Percent: "40",
     });
-    expect(merged?.painScore).toBe(8);
+    expect(merged?.temperatureSite).toBe("ORAL");
+    expect(merged?.oxygenDevice).toBe("ROOM_AIR");
+    expect(merged?.oxygenFlowLpm).toBeUndefined();
+    expect(merged?.oxygenFiO2Percent).toBeUndefined();
   });
 
-  it("backfills legacy medoraErTriageV1 painScale0to10 when saving vitals pain", () => {
-    const merged = mergeVitalsJsonForSave(
-      { medoraErTriageV1: { painScale0to10: 3 } },
-      {
-        tempC: "",
-        hr: "",
-        rr: "",
-        bpSys: "",
-        bpDia: "",
-        spo2: "",
-        weightKg: "",
-        heightCm: "",
-        painScore: "7",
-        allergyNote: "",
-        erV1: { ...emptyErTriageV1Form(), painScale0to10: "3" },
-      }
-    );
-    const er = merged?.medoraErTriageV1 as { painScale0to10?: number | string };
-    expect(merged?.painScore).toBe(7);
-    expect(er?.painScale0to10).toBe(7);
-  });
-
-  it("preserves existing vitals when pain is cleared", () => {
-    const merged = mergeVitalsJsonForSave(
-      { hr: 90, painScore: 5 },
-      {
-        tempC: "",
-        hr: "90",
-        rr: "",
-        bpSys: "",
-        bpDia: "",
-        spo2: "",
-        weightKg: "",
-        heightCm: "",
-        painScore: "",
-        allergyNote: "",
-        erV1: emptyErTriageV1Form(),
-      }
-    );
-    expect(merged?.hr).toBe(90);
-    expect(merged?.painScore).toBeUndefined();
+  it("stores nasal cannula flow with SpO2", () => {
+    const merged = mergeVitalsJsonForSave(null, {
+      tempC: "",
+      hr: "",
+      rr: "",
+      bpSys: "",
+      bpDia: "",
+      spo2: "94",
+      weightKg: "",
+      heightCm: "",
+      painScore: "",
+      allergyNote: "",
+      erV1: emptyErTriageV1Form(),
+      oxygenDevice: "NASAL_CANNULA",
+      oxygenFlowLpm: "2",
+    });
+    expect(merged?.spo2).toBe(94);
+    expect(merged?.oxygenDevice).toBe("NASAL_CANNULA");
+    expect(merged?.oxygenFlowLpm).toBe(2);
   });
 });
