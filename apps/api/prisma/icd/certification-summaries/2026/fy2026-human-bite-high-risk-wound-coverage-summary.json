@@ -1,0 +1,13 @@
+{
+  "humanBiteHighRiskWound": {
+    "scopedOfficialBillable": 441,
+    "presentInMedora": 441,
+    "missingCodes": [],
+    "descriptionMismatches": [],
+    "duplicateCodes": [],
+    "invalidSelectableHeaders": 0
+  },
+  "certification": {
+    "pass": true
+  }
+}

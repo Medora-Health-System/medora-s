@@ -14,6 +14,17 @@ export type Icd10QueryExpansion = {
 
 /** Exact-phrase expansions for common ED tendon/ligament searches. */
 export const ICD10_CLINICAL_QUERY_EXPANSIONS: Icd10QueryExpansion[] = [
+  // Human bite / high-risk contaminated wound (Phase 8). These map only to official description text.
+  { query: "human bite", anyOf: ["accidental bite by another person", "assault by human bite"] },
+  { query: "morsure humaine", anyOf: ["accidental bite by another person", "assault by human bite"] },
+  { query: "fight bite", anyOf: ["accidental bite by another person", "assault by human bite"] },
+  { query: "clenched fist", anyOf: ["accidental bite by another person", "assault by human bite"] },
+  { query: "knuckle bite", anyOf: ["accidental bite by another person", "assault by human bite"] },
+  { query: "morsure du poing", anyOf: ["accidental bite by another person", "assault by human bite"] },
+  { query: "contaminated wound", anyOf: ["open wound", "puncture wound"] },
+  { query: "plaie contaminée", anyOf: ["open wound", "puncture wound"] },
+  { query: "dirty wound", anyOf: ["open wound", "puncture wound"] },
+  { query: "plaie sale", anyOf: ["open wound", "puncture wound"] },
   { query: "achilles tendon rupture", anyOf: ["achilles tendon", "injury of achilles"] },
   { query: "achilles laceration", anyOf: ["laceration of achilles", "achilles tendon"] },
   { query: "rotator cuff tear", anyOf: ["rotator cuff", "rotatr-cuff", "rotatr cuff"] },

@@ -18,6 +18,15 @@ const REQUIRED_QUERIES: Array<{
   mustContainDescription?: string;
   mustMatchCodePrefix?: string;
 }> = [
+  // Human bite / contaminated wound (Phase 8)
+  { q: "human bite", mustMatchCodePrefix: "W50.3" },
+  { q: "morsure humaine", mustMatchCodePrefix: "W50.3" },
+  { q: "fight bite", mustMatchCodePrefix: "W50.3" },
+  { q: "clenched fist", mustMatchCodePrefix: "W50.3" },
+  { q: "knuckle bite", mustMatchCodePrefix: "W50.3" },
+  { q: "morsure du poing", mustMatchCodePrefix: "W50.3" },
+  { q: "contaminated wound", mustContainDescription: "wound" },
+  { q: "plaie contaminée", mustContainDescription: "wound" },
   { q: "Achilles tendon rupture", mustContainDescription: "Achilles" },
   { q: "Achilles laceration", mustContainDescription: "Achilles" },
   { q: "rotator cuff tear", mustContainDescription: "rotator cuff" },
@@ -316,6 +325,21 @@ async function main() {
     }, null, 2);
     writeFileSync(join(summaryDir, "fy2026-blast-polytrauma-search-summary.json"), blastSummary);
     writeFileSync(join(releaseSummaryDir, "fy2026-blast-polytrauma-search-summary.json"), blastSummary);
+    const humanBiteQueryPattern =
+      /human bite|morsure humaine|fight bite|clenched fist|knuckle bite|morsure du poing|contaminated wound|plaie contaminée|dirty wound|plaie sale/;
+    const humanBiteFailures = failures.filter((failure) => humanBiteQueryPattern.test(failure.toLowerCase()));
+    const humanBiteSummary = JSON.stringify(
+      {
+        generatedAt: report.generatedAt,
+        queryCount: REQUIRED_QUERIES.filter((row) => humanBiteQueryPattern.test(row.q)).length,
+        failures: humanBiteFailures,
+        pass: humanBiteFailures.length === 0,
+      },
+      null,
+      2,
+    );
+    writeFileSync(join(summaryDir, "fy2026-human-bite-high-risk-wound-search-summary.json"), humanBiteSummary);
+    writeFileSync(join(releaseSummaryDir, "fy2026-human-bite-high-risk-wound-search-summary.json"), humanBiteSummary);
     if (!report.pass) process.exit(1);
   } finally {
     await prisma.$disconnect();
