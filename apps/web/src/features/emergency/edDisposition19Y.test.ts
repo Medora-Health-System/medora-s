@@ -8092,7 +8092,7 @@ describe("edDisposition19Y", () => {
         PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.length
       );
       // Update this constant intentionally when registry governance content changes.
-      expect(hash).toBe("c1d5543f4c823aa7540df71461b510bb4a015d9a3d7f41dbd148e150c0a4e2b1");
+      expect(hash).toBe("fb0386cef981409a02da41c75221e074e43a95afcb70be5ca4d899516c72e159");
     });
 
     it("registry governance snapshot hash remains stable for reviewed registry (FR)", () => {
@@ -8102,7 +8102,7 @@ describe("edDisposition19Y", () => {
         PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.length
       );
       // Update this constant intentionally when registry governance content changes.
-      expect(hash).toBe("98427f7d58096fd369b79320a9598fc57e7001be14e76a055e96417d5b36389b");
+      expect(hash).toBe("1aa02dcc8e0a6e5889e491cd02333e8edcd0bec0bc5f913dc4b53b0049f623ce");
     });
 
     it("timesApplied exists in type but is not incremented anywhere", () => {

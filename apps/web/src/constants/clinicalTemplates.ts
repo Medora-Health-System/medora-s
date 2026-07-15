@@ -49,6 +49,7 @@ export const COMMON_DIAGNOSES: Array<{ code: string; label: string }> = [
   { code: "W54.0XXA", label: "Morsure de chien, rencontre initiale" },
   { code: "W55.01XA", label: "Morsure de chat, rencontre initiale" },
   { code: "W50.3XXA", label: "Morsure humaine accidentelle, rencontre initiale" },
+  { code: "Y04.1XXA", label: "Agression par morsure humaine, rencontre initiale" },
   { code: "W55.81XA", label: "Morsure par autre mammifère, rencontre initiale" },
   { code: "S61.459A", label: "Morsure ouverte du doigt, non précisé, rencontre initiale" },
   { code: "S52.531A", label: "Fracture de Colles du radius droit, fermée, rencontre initiale" },

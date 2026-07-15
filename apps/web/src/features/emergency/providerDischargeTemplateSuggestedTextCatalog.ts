@@ -188,6 +188,73 @@ export const ANIMAL_BITE_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText 
     }
   );
 
+function humanBiteHighRiskWoundSuggestedText(
+  descriptionEn: string,
+  instructionsEn: string,
+  descriptionFr: string,
+  instructionsFr: string,
+): ProviderDischargeTemplateSuggestedText {
+  return localizedSuggestedText(
+    {
+      description: descriptionEn,
+      diagnosisInstructions: `${instructionsEn} Keep the wound clean and dry. Change dressings as instructed. Complete antibiotics if prescribed. Update tetanus immunization if directed. Arrange hand or orthopedic follow-up when advised.`,
+      medicationTreatment: "Take antibiotics, pain medicine, and tetanus-related treatments only as prescribed or directed during this visit. Do not stop antibiotics early unless your clinician tells you to.",
+      returnPrecautions: "Return immediately for fever, spreading redness, red streaking, pus or drainage, increasing pain or swelling, numbness, weakness, decreased finger or hand motion, or wound reopening.",
+      returnWorkSchool: "Protect the wound from strain or contamination; return to work or school as directed by your clinician.",
+    },
+    {
+      description: descriptionFr,
+      diagnosisInstructions: `${instructionsFr} Gardez la plaie propre et sèche. Changez les pansements selon les instructions. Terminez les antibiotiques s'ils ont été prescrits. Mettez à jour la vaccination antitétanique si indiqué. Organisez un suivi de la main ou en orthopédie lorsque conseillé.`,
+      medicationTreatment: "Prenez les antibiotiques, antalgiques et traitements antitétaniques uniquement selon la prescription ou les indications de cette visite. N'arrêtez pas les antibiotiques précocement sauf avis contraire.",
+      returnPrecautions: "Reconsultez immédiatement en cas de fièvre, rougeur qui s'étend, traînées rouges, pus ou écoulement, douleur ou gonflement croissants, engourdissement, faiblesse, diminution des mouvements de la main ou des doigts, ou réouverture de la plaie.",
+      returnWorkSchool: "Protégez la plaie contre l'effort et la contamination ; reprenez le travail ou l'école selon les instructions de votre clinicien.",
+    },
+  );
+}
+
+export const HUMAN_BITE_SUGGESTED_TEXT = humanBiteHighRiskWoundSuggestedText(
+  "Your human bite wound was evaluated in the emergency department. These wounds can become infected quickly and may involve deep hand structures.",
+  "Follow infection precautions and wound care exactly as directed.",
+  "Votre plaie par morsure humaine a été évaluée aux urgences. Ces plaies peuvent s'infecter rapidement et atteindre des structures profondes de la main.",
+  "Suivez exactement les précautions d'infection et les soins de plaie indiqués.",
+);
+export const FIGHT_BITE_SUGGESTED_TEXT = humanBiteHighRiskWoundSuggestedText(
+  "Your fight-bite or clenched-fist wound was evaluated in the emergency department. These injuries can involve joints or tendons.",
+  "Protect the hand and keep all directed hand-surgery or orthopedic follow-up.",
+  "Votre morsure du poing a été évaluée aux urgences. Ces blessures peuvent atteindre une articulation ou un tendon.",
+  "Protégez la main et respectez le suivi de chirurgie de la main ou d'orthopédie indiqué.",
+);
+export const HIGH_RISK_HAND_WOUND_SUGGESTED_TEXT = humanBiteHighRiskWoundSuggestedText(
+  "You were evaluated for a high-risk hand wound.",
+  "Keep hand elevation and wound care as directed and arrange specialty follow-up when advised.",
+  "Vous avez été pris en charge pour une plaie à haut risque de la main.",
+  "Maintenez l'élévation de la main et les soins de plaie indiqués, et organisez un suivi spécialisé lorsque conseillé.",
+);
+export const CONTAMINATED_WOUND_SUGGESTED_TEXT = humanBiteHighRiskWoundSuggestedText(
+  "You were evaluated for a contaminated traumatic wound.",
+  "Continue wound cleansing and infection monitoring as directed.",
+  "Vous avez été pris en charge pour une plaie traumatique contaminée.",
+  "Poursuivez le nettoyage de la plaie et la surveillance d'infection selon les consignes.",
+);
+export const WATER_EXPOSED_WOUND_SUGGESTED_TEXT = humanBiteHighRiskWoundSuggestedText(
+  "You were evaluated for a water-exposed wound.",
+  "Keep the wound clean and dry after discharge and watch closely for infection.",
+  "Vous avez été pris en charge pour une plaie exposée à l'eau.",
+  "Gardez la plaie propre et sèche après le départ et surveillez étroitement une infection.",
+);
+export const DELAYED_WOUND_SUGGESTED_TEXT = humanBiteHighRiskWoundSuggestedText(
+  "You were evaluated for a delayed wound presentation.",
+  "Because presentation was delayed, infection monitoring and early follow-up are especially important.",
+  "Vous avez été pris en charge pour une plaie présentée de façon retardée.",
+  "Parce que la présentation était retardée, la surveillance d'infection et un suivi précoce sont particulièrement importants.",
+);
+export const DEEP_CONTAMINATED_WOUND_SUGGESTED_TEXT = humanBiteHighRiskWoundSuggestedText(
+  "You were evaluated for a deep or heavily contaminated wound with infection risk.",
+  "Follow wound care, infection precautions, antibiotics, and specialty follow-up exactly as directed.",
+  "Vous avez été pris en charge pour une plaie profonde ou fortement contaminée avec risque d'infection.",
+  "Suivez exactement les soins de plaie, les précautions d'infection, les antibiotiques et le suivi spécialisé indiqués.",
+  );
+
 export const NAUSEA_VOMITING_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
   localizedSuggestedText(
     {

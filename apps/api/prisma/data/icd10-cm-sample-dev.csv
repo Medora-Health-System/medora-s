@@ -32,6 +32,7 @@ W55.01XA,"Bitten by cat, initial encounter","Animal bite / cat bite — bitten b
 W55.03XA,"Bitten by cat, subsequent encounter","Animal bite / cat bite — bitten by cat, subsequent encounter.",true,true,2026,FY2026-MEDORA-DEV-SAMPLE,XX,
 W55.81XA,"Bitten by other mammals, initial encounter","Animal bite / mammal bite — bitten by other mammal, initial encounter.",true,true,2026,FY2026-MEDORA-DEV-SAMPLE,XX,
 W50.3XXA,"Accidental bite by another person, initial encounter","Human bite — accidental bite by another person, initial encounter. Search: human bite bite wound.",true,true,2026,FY2026-MEDORA-DEV-SAMPLE,XX,
+Y04.1XXA,"Assault by human bite, initial encounter","Assault by human bite, initial encounter. Search: human bite assault fight bite.",true,true,2026,FY2026-MEDORA-DEV-SAMPLE,XX,
 S61.459A,"Open bite of unspecified finger, initial encounter","Open bite / bite wound of finger, initial encounter. Search: hand bite finger bite puncture wound.",true,true,2026,FY2026-MEDORA-DEV-SAMPLE,XIX,
 S01.05XA,"Open bite of scalp, initial encounter","Open bite of scalp / face bite adjacent region, initial encounter. Search: face bite scalp bite animal bite.",true,true,2026,FY2026-MEDORA-DEV-SAMPLE,XIX,
 S52.531A,"Displaced Colles' fracture of right radius, initial encounter for closed fracture","Fracture / distal radius fracture, closed, initial encounter. Search: fracture broken wrist distal radius fracture colles fracture.",true,true,2026,FY2026-MEDORA-DEV-SAMPLE,XIX,

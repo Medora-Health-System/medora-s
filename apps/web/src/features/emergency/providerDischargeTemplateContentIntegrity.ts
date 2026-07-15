@@ -121,11 +121,39 @@ export const PROVIDER_DISCHARGE_TEMPLATE_CONTENT_INTEGRITY: Record<
     },
   },
   animal_bite_v1: {
-    mustIncludeAny: { en: ["bite", "wound"], fr: ["morsure", "plaie"] },
+    mustIncludeAny: { en: ["rabies"], fr: ["rage"] },
     forbiddenCrossTemplateMarkers: {
       en: RESPIRATORY_FORBIDDEN_ON_WOUND_EN,
       fr: RESPIRATORY_FORBIDDEN_ON_WOUND_FR,
     },
+  },
+  human_bite_v1: {
+    mustIncludeAny: { en: ["human bite", "infection"], fr: ["morsure humaine", "infection"] },
+    forbiddenCrossTemplateMarkers: { en: ["rabies", "animal control"], fr: ["rage", "contrôle animalier"] },
+  },
+  fight_bite_v1: {
+    mustIncludeAny: { en: ["fight bite", "clenched-fist", "hand"], fr: ["morsure du poing", "main"] },
+    forbiddenCrossTemplateMarkers: { en: ["rabies", "animal control"], fr: ["rage", "contrôle animalier"] },
+  },
+  high_risk_hand_wound_v1: {
+    mustIncludeAny: { en: ["hand wound", "infection"], fr: ["haut risque", "main", "infection"] },
+    forbiddenCrossTemplateMarkers: { en: ["rabies", "animal control"], fr: ["rage", "contrôle animalier"] },
+  },
+  contaminated_wound_v1: {
+    mustIncludeAny: { en: ["contaminated", "infection"], fr: ["contaminée", "infection"] },
+    forbiddenCrossTemplateMarkers: { en: ["rabies", "animal control"], fr: ["rage", "contrôle animalier"] },
+  },
+  water_exposed_wound_v1: {
+    mustIncludeAny: { en: ["water-exposed", "infection"], fr: ["exposée à l'eau", "infection"] },
+    forbiddenCrossTemplateMarkers: { en: ["rabies", "animal control"], fr: ["rage", "contrôle animalier"] },
+  },
+  delayed_wound_v1: {
+    mustIncludeAny: { en: ["delayed", "infection"], fr: ["retardée", "infection"] },
+    forbiddenCrossTemplateMarkers: { en: ["rabies", "animal control"], fr: ["rage", "contrôle animalier"] },
+  },
+  deep_contaminated_wound_v1: {
+    mustIncludeAny: { en: ["deep contaminated", "infection"], fr: ["profonde contaminée", "infection"] },
+    forbiddenCrossTemplateMarkers: { en: ["rabies", "animal control"], fr: ["rage", "contrôle animalier"] },
   },
   nausea_vomiting_v1: {
     mustIncludeAny: { en: ["nausea", "vomiting"], fr: ["nausées", "vomissements"] },

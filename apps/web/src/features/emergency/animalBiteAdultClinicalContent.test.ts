@@ -6,7 +6,7 @@ import {
   filterProviderDocumentationTemplates,
   providerDocumentationTemplateSearchableText,
 } from "@/lib/providerDocumentationTemplateSearch";
-import { ANIMAL_BITE_ADULT_COMPLAINT_V1_INTEL } from "@/lib/providerDocumentationMskTraumaComplaintIntelligence19Mdm6";
+import { ANIMAL_BITE_ADULT_COMPLAINT_V1_INTEL, HUMAN_BITE_HIGH_RISK_WOUND_ADULT_COMPLAINT_V1_INTEL } from "@/lib/providerDocumentationMskTraumaComplaintIntelligence19Mdm6";
 import { resolveProviderDischargeTemplateForDiagnosis } from "@/features/emergency/providerDischargeTemplateRegistry";
 import { COMMON_DIAGNOSES } from "@/constants/clinicalTemplates";
 import enMessages from "@/i18n/messages/en";
@@ -35,7 +35,7 @@ describe("MEDUI.CLINICAL_CONTENT.ANIMAL_BITE_ADULT_TEMPLATE_AND_DX", () => {
     expect(template!.pickerSubgroupKey).toBe("msk_trauma");
   });
 
-  it.each(["animal bite", "dog bite", "cat bite", "human bite", "mammal bite", "bite wound", "puncture wound"])(
+  it.each(["animal bite", "dog bite", "cat bite", "mammal bite", "bite wound", "puncture wound"])(
     "template search finds animal bite for %s",
     (query) => {
       expect(template).toBeTruthy();
@@ -49,6 +49,13 @@ describe("MEDUI.CLINICAL_CONTENT.ANIMAL_BITE_ADULT_TEMPLATE_AND_DX", () => {
       }
     },
   );
+
+  it("routes human-bite search to the dedicated high-risk wound template", () => {
+    const matches = filterProviderDocumentationTemplates("human bite", (k) => resolveWorkspaceLabel(k, enMessages));
+    expect(matches.some((t) => t.id === "human_bite_high_risk_wound_adult_complaint_v1")).toBe(true);
+    expect(matches.some((t) => t.id === "animal_bite_adult_complaint_v1")).toBe(false);
+    expect((HUMAN_BITE_HIGH_RISK_WOUND_ADULT_COMPLAINT_V1_INTEL.mdmPlanSummary ?? []).some((key) => key.includes("planTetanusUpdate"))).toBe(true);
+  });
 
   it("template intelligence populates HPI ROS PE MDM impression and plan sections", () => {
     const intel = ANIMAL_BITE_ADULT_COMPLAINT_V1_INTEL;
@@ -120,11 +127,10 @@ describe("MEDUI.CLINICAL_CONTENT.ANIMAL_BITE_ADULT_TEMPLATE_AND_DX", () => {
     expect(frNs.planRabiesRiskAssessment).toMatch(/rage/i);
   });
 
-  it("diagnosis resolve for animal/dog/cat/human bite uses animal_bite_v1 not phobia", () => {
+  it("diagnosis resolve preserves animal ownership and routes human bite separately", () => {
     const cases = [
       { code: "W54.0XXA", displayName: "Bitten by dog, initial encounter" },
       { code: "W55.01XA", displayName: "Bitten by cat, initial encounter" },
-      { code: "W50.3XXA", displayName: "Accidental bite by another person" },
       { code: "S61.459A", displayName: "Open bite of unspecified finger" },
       { code: "", displayName: "Animal bite wound" },
       { code: "", displayName: "Dog bite" },
@@ -135,6 +141,7 @@ describe("MEDUI.CLINICAL_CONTENT.ANIMAL_BITE_ADULT_TEMPLATE_AND_DX", () => {
       expect(resolved.template.id).toBe("animal_bite_v1");
       expect(resolved.template.id).not.toMatch(/phobia|allergy/i);
     }
+    expect(resolveProviderDischargeTemplateForDiagnosis({ code: "W50.3XXA", displayName: "Accidental bite by another person" }).template.id).toBe("human_bite_v1");
   });
 
   it("animal bite discharge prefills include wound care infection antibiotics rabies return and follow-up", () => {

@@ -206,6 +206,14 @@ const FRENCH_DIAGNOSIS_SEARCH_ALIASES: readonly FrenchDiagnosisSearchAlias[] = [
     englishSearchTerms: ["human bite"],
   },
   {
+    frenchPhrases: ["morsure du poing", "poing fermé"],
+    englishSearchTerms: ["fight bite", "clenched fist", "knuckle bite"],
+  },
+  {
+    frenchPhrases: ["plaie contaminée", "plaie sale"],
+    englishSearchTerms: ["contaminated wound", "dirty wound"],
+  },
+  {
     frenchPhrases: ["plaie par morsure", "plaie perforante"],
     englishSearchTerms: ["bite wound", "puncture wound", "open bite"],
   },
