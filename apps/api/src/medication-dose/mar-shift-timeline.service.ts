@@ -74,6 +74,7 @@ import { loadMarShiftTimelineAdministrationEnrichment } from "./mar-shift-timeli
 import { loadMarShiftTimelineOrderItemFallbackPlacements } from "./mar-shift-timeline-order-item-fallback.util";
 import { loadMarShiftTimelineCanceledPlacements } from "./mar-shift-timeline-canceled.util";
 import { resolveMarTimelineFluidEnrichment } from "./mar-shift-timeline-fluid-enrichment.util";
+import { resolveMarAssignedNurseFilter } from "./mar-assigned-nurse-query.util";
 import {
   appendMarShiftTimelineCellItem,
   collectVisiblePrnOrderItemIds,
@@ -284,6 +285,8 @@ export type MarShiftTimelineResponse = {
   };
   title: string;
   viewer: MarShiftTimelineViewer;
+  /** Primary assigned nurse for encounter-scoped MAR (not the viewing user). */
+  assignedNurse: MarShiftTimelineViewer | null;
   shift: {
     code: MarShiftTimelineShiftCode;
     label: string;
@@ -323,7 +326,7 @@ function formatViewerDisplayName(input: {
 }): string {
   const name = [input.firstName?.trim(), input.lastName?.trim()].filter(Boolean).join(" ");
   const roleLabel = input.role?.trim() || "RN";
-  return name ? `${name} ${roleLabel}` : roleLabel;
+  return name ? `${name}, ${roleLabel}` : roleLabel;
 }
 
 function governanceRequiresWitness(
@@ -368,6 +371,7 @@ export class MarShiftTimelineService {
         facility: { id: facility.id, name: facility.name, timeZone: facilityTimeZone },
         title: buildMarShiftTimelineTitle(facility.name),
         viewer,
+        assignedNurse: null,
         shift: { ...emptyShift, timeZone: facilityTimeZone },
         rows: [],
         locale: displayLocale,
@@ -398,6 +402,7 @@ export class MarShiftTimelineService {
       shiftWindow.facilityTimeZone
     );
 
+    const assignedNurseFilter = resolveMarAssignedNurseFilter(query);
     const excludedStatuses = ["CANCELLED", "SUPERSEDED"];
     const doses: MedicationPassQueueDoseRow[] = await this.prisma.medicationDoseInstance.findMany({
       where: {
@@ -418,9 +423,7 @@ export class MarShiftTimelineService {
           },
         ],
         encounter: {
-          ...(query.assignedToUserId
-            ? { nurseAssignedUserId: query.assignedToUserId }
-            : {}),
+          ...(assignedNurseFilter ? { nurseAssignedUserId: assignedNurseFilter } : {}),
           ...(!query.encounterId ? { status: "OPEN" } : {}),
         },
       },
@@ -1073,7 +1076,7 @@ export class MarShiftTimelineService {
       facilityTimeZone: shiftWindow.facilityTimeZone,
       displayLocale,
       encounterId: query.encounterId,
-      assignedToUserId: query.assignedToUserId,
+      assignedToUserId: assignedNurseFilter,
       includeCompleted,
       orderItemIdsWithDoseInstances,
       visiblePrnOrderItemIds,
@@ -1118,7 +1121,7 @@ export class MarShiftTimelineService {
       facilityTimeZone: shiftWindow.facilityTimeZone,
       displayLocale,
       encounterId: query.encounterId,
-      assignedToUserId: query.assignedToUserId,
+      assignedToUserId: assignedNurseFilter,
       governanceByCatalogId,
     });
 
@@ -1280,12 +1283,17 @@ export class MarShiftTimelineService {
     }
 
     const rows = mergeScheduledAndPrnMarShiftTimelineRows(scheduledRowMap, prnRowMap);
+    const assignedNurse = await this.resolveAssignedNurseForEncounter(
+      facilityId,
+      query.encounterId
+    );
 
     return {
       enabled: true,
       facility: { id: facility.id, name: facility.name, timeZone: shiftWindow.facilityTimeZone },
       title: buildMarShiftTimelineTitle(facility.name),
       viewer,
+      assignedNurse,
       shift: {
         code: shiftWindow.code,
         label: shiftWindow.label,
@@ -1325,6 +1333,24 @@ export class MarShiftTimelineService {
       }),
       role: roleRow?.role.code ?? "RN",
     };
+  }
+
+  /** Encounter primary nurse for MAR header — null when unassigned or facility-wide board. */
+  async resolveAssignedNurseForEncounter(
+    facilityId: string,
+    encounterId?: string
+  ): Promise<MarShiftTimelineViewer | null> {
+    if (!encounterId?.trim()) return null;
+    const encounter = await this.prisma.encounter.findFirst({
+      where: { id: encounterId, facilityId },
+      select: { nurseAssignedUserId: true },
+    });
+    if (!encounter?.nurseAssignedUserId) return null;
+    try {
+      return await this.resolveViewer(facilityId, encounter.nurseAssignedUserId);
+    } catch {
+      return null;
+    }
   }
 }
 

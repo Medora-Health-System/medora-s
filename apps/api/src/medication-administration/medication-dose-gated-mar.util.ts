@@ -28,10 +28,11 @@ const ELIGIBILITY_REASON_MESSAGES: Record<MedicationDoseGatedMarEligibilityReaso
   INFUSION_LIFECYCLE: "Ce médicament requiert une documentation infusion début/fin.",
   DIRECT_MAR: "Cette ordonnance utilise une administration directe (sans dose planifiée).",
   ON_DEMAND: "Cette ordonnance est à la demande (PRN) — administration par dose non disponible.",
-  DOSE_ALREADY_TERMINAL: "Cette dose est déjà terminée.",
+  DOSE_ALREADY_TERMINAL: "Cette dose est déjà terminée. Le MAR a été actualisé.",
   DOSE_STATUS_NOT_ADMINISTRABLE: "Cette dose n'est pas administrable dans son état actuel.",
   DOSE_OUTSIDE_ADMINISTRATION_WINDOW: "Cette dose est en dehors de la fenêtre d'administration.",
-  DOSE_ALREADY_HAS_TERMINAL_MAR: "Une administration terminale existe déjà pour cette dose.",
+  DOSE_ALREADY_HAS_TERMINAL_MAR:
+    "Le statut de la dose a été modifié par un autre clinicien. Le MAR a été actualisé.",
   ORDER_ITEM_MISMATCH: "La dose ne correspond pas à la ligne d'ordre indiquée.",
   ENCOUNTER_MISMATCH: "La dose n'appartient pas à cette consultation.",
   FACILITY_MISMATCH: "Établissement invalide pour cette dose.",

@@ -685,6 +685,40 @@ describe("MarShiftTimelineService (M1.8B.7K.1)", () => {
     expect(result.rows.some((r) => r.encounterId === excluded.id)).toBe(false);
   });
 
+  it("encounter-scoped MAR ignores assignedToUserId and returns assignedNurse metadata", async () => {
+    const encounter = await createEncounterWithNurse("07");
+    const doses = await createBidOrder(encounter.id);
+    const dose = doses[0]!;
+    await prisma.medicationDoseInstance.update({
+      where: { id: dose.id },
+      data: {
+        doseStatus: "DUE",
+        scheduledAt: new Date("2026-06-11T08:00:00.000Z"),
+        dueWindowStartAt: new Date("2026-06-11T08:00:00.000Z"),
+        dueWindowEndAt: new Date("2026-06-11T09:00:00.000Z"),
+      },
+    });
+
+    const otherNurseViewer = {
+      ...viewer,
+      userId: "other-nurse-viewer",
+      displayName: "Other Nurse, RN",
+    };
+
+    const result = await timelineService.getMarShiftTimeline(facilityId, otherNurseViewer, {
+      shiftCode: "7A_7P",
+      shiftStart: new Date("2026-06-11T07:00:00.000Z"),
+      shiftEnd: new Date("2026-06-11T20:00:00.000Z"),
+      encounterId: encounter.id,
+      // Would incorrectly empty the MAR if still applied for encounter charts.
+      assignedToUserId: "not-the-assigned-nurse",
+    });
+
+    expect(result.rows.some((r) => r.encounterId === encounter.id)).toBe(true);
+    expect(result.assignedNurse?.userId).toBe(nurseUserId);
+    expect(result.viewer.userId).toBe(otherNurseViewer.userId);
+  });
+
   it("returns multiple medications in the same patient/hour cell", async () => {
     const encounter = await createEncounterWithNurse();
     const payload: OrderCreateDto = {

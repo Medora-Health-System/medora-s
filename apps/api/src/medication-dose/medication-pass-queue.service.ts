@@ -23,6 +23,7 @@ import { getMedicationSchedulingFeatureFlagsFromEnv } from "../medication-schedu
 import { MEDICATION_PASS_QUEUE_DOSE_SELECT, type MedicationPassQueueDoseRow } from "./medication-pass-queue-dose.select";
 import { loadMedicationSafetyGovernanceByCatalogIdSafe } from "../medication-safety/medication-governance-enrichment.util";
 import { PrismaService } from "../prisma/prisma.service";
+import { resolveMarAssignedNurseFilter } from "./mar-assigned-nurse-query.util";
 
 export type MedicationPassQueueQuery = {
   encounterId?: string;
@@ -186,6 +187,7 @@ export class MedicationPassQueueService {
           ? passQueueDefaultShiftWindow(at)
           : null;
 
+    const assignedNurseFilter = resolveMarAssignedNurseFilter(query);
     const doses: MedicationPassQueueDoseRow[] = await this.prisma.medicationDoseInstance.findMany({
       where: {
         facilityId,
@@ -198,9 +200,7 @@ export class MedicationPassQueueService {
             }
           : {}),
         encounter: {
-          ...(query.assignedToUserId
-            ? { nurseAssignedUserId: query.assignedToUserId }
-            : {}),
+          ...(assignedNurseFilter ? { nurseAssignedUserId: assignedNurseFilter } : {}),
           ...(!query.encounterId ? { status: "OPEN" } : {}),
         },
       },

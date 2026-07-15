@@ -279,6 +279,12 @@ export type MarShiftTimelineResponse = {
     displayName: string;
     role: string;
   };
+  /** Primary assigned nurse for this encounter MAR (null when unassigned / facility board). */
+  assignedNurse?: {
+    userId: string;
+    displayName: string;
+    role: string;
+  } | null;
   shift: {
     code: string;
     label: string;
@@ -309,7 +315,10 @@ function buildMarShiftTimelineSearchParams(query: Omit<FetchMarShiftTimelineInpu
   if (query.shiftStart?.trim()) params.set("shiftStart", query.shiftStart.trim());
   if (query.shiftEnd?.trim()) params.set("shiftEnd", query.shiftEnd.trim());
   if (query.encounterId?.trim()) params.set("encounterId", query.encounterId.trim());
-  if (query.assignedToUserId?.trim()) params.set("assignedToUserId", query.assignedToUserId.trim());
+  // Encounter-scoped MAR must not filter by assignment (shared clinical access).
+  if (!query.encounterId?.trim() && query.assignedToUserId?.trim()) {
+    params.set("assignedToUserId", query.assignedToUserId.trim());
+  }
   if (query.includeCompleted === true) params.set("includeCompleted", "true");
   if (query.includeCompleted === false) params.set("includeCompleted", "false");
   if (query.includeUpcoming === true) params.set("includeUpcoming", "true");

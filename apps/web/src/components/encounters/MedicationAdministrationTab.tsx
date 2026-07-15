@@ -2559,7 +2559,6 @@ export function MedicationAdministrationTab({
         <FacilityMarShiftTimeline
           facilityId={facilityId}
           encounterId={encounterId}
-          assignedToUserId={currentUserId}
           viewerUserId={currentUserId}
           compact={marCompact}
           embedded={embeddedWorkspaceLayout}

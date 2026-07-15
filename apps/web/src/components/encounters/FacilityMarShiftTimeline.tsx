@@ -166,7 +166,8 @@ export function FacilityMarShiftTimeline({
       const response = await fetchMarShiftTimeline({
         facilityId,
         encounterId,
-        assignedToUserId,
+        // Encounter MAR is shared; never gate the chart timeline on assignment.
+        assignedToUserId: encounterId?.trim() ? undefined : assignedToUserId,
         shiftCode,
         shiftStart: explicitShiftWindow?.shiftStart,
         shiftEnd: explicitShiftWindow?.shiftEnd,

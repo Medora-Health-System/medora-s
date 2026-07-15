@@ -305,9 +305,12 @@ export async function loadMarShiftTimelineOrderItemFallbackPlacements(input: {
         status: { notIn: excludedOrderStatuses },
         encounter: {
           ...(input.encounterId ? { id: input.encounterId } : { status: "OPEN" }),
-          ...(input.assignedToUserId
-            ? { nurseAssignedUserId: input.assignedToUserId }
-            : {}),
+          ...(() => {
+            const assigned = input.encounterId?.trim()
+              ? undefined
+              : input.assignedToUserId?.trim() || undefined;
+            return assigned ? { nurseAssignedUserId: assigned } : {};
+          })(),
         },
       },
     },
