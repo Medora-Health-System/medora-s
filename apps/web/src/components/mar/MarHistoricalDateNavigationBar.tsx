@@ -5,7 +5,6 @@ import { MEDORA_CARD_SHELL } from "@/components/medora-card/medoraCardTokens";
 import {
   addFacilityLocalDays,
   formatMarHistoricalDateLabel,
-  resolveFacilityLocalToday,
 } from "@/lib/marHistoricalTimeline";
 import { useI18n } from "@/lib/i18n";
 import { CLINICAL_MIN_TOUCH_TARGET_PX } from "@/lib/clinicalViewport";
@@ -13,19 +12,16 @@ import { CLINICAL_MIN_TOUCH_TARGET_PX } from "@/lib/clinicalViewport";
 export type MarHistoricalDateNavigationBarProps = {
   selectedDateLocal: string;
   facilityTimeZone: string;
-  shiftLabel: string;
-  shiftTimeRangeLabel: string;
   isToday: boolean;
   compact?: boolean;
   onDateChange: (dateLocal: string) => void;
   onToday: () => void;
 };
 
+/** Top MAR toolbar row: previous / date / next (left) and Today (right). */
 export function MarHistoricalDateNavigationBar({
   selectedDateLocal,
   facilityTimeZone,
-  shiftLabel,
-  shiftTimeRangeLabel,
   isToday,
   compact = false,
   onDateChange,
@@ -132,6 +128,7 @@ export function MarHistoricalDateNavigationBar({
                   border: "1px solid #cbd5e1",
                   fontSize: 13,
                   background: "#fff",
+                  minHeight: CLINICAL_MIN_TOUCH_TARGET_PX,
                 }}
               />
             </label>
@@ -173,24 +170,11 @@ export function MarHistoricalDateNavigationBar({
             fontSize: compact ? 13 : 14,
             fontWeight: 600,
             color: "#334155",
+            flexShrink: 0,
           }}
         >
           {t("marHistorical.today")}
         </button>
-      </div>
-
-      <div
-        data-testid="mar-historical-shift-context"
-        style={{
-          marginTop: 8,
-          fontSize: compact ? 12 : 13,
-          color: "#475569",
-        }}
-      >
-        <span style={{ fontWeight: 600, color: "#334155" }}>
-          {t("marHistorical.shiftContext")}:
-        </span>{" "}
-        {shiftLabel} · {shiftTimeRangeLabel}
       </div>
     </div>
   );

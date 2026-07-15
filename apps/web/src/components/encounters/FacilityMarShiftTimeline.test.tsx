@@ -73,9 +73,13 @@ describe("FacilityMarShiftTimeline (M1.8B.7K.2)", () => {
     expect(timeline).not.toContain("Medora Dashboard");
   });
 
-  it("component renders nurse/viewer line", () => {
+  it("component renders assigned nurse (not viewer-as-assignment gate)", () => {
+    expect(timeline).toContain('data-testid="mar-shift-timeline-assigned-nurse"');
+    expect(timeline).toContain('data-testid="mar-shift-timeline-assigned-nurse-name"');
+    expect(timeline).toContain('t("marShiftTimeline.assignedNurseLabel")');
     expect(timeline).toContain('data-testid="mar-shift-timeline-viewer"');
-    expect(timeline).toContain('t("marShiftTimeline.nurseLine")');
+    expect(timeline).toContain('fontWeight: 700');
+    expect(timeline).toContain('assignedToUserId: encounterId?.trim() ? undefined : assignedToUserId');
   });
 
   it("shift selector includes all standard shift labels", () => {

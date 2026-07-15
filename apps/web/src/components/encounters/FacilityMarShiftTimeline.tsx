@@ -238,6 +238,30 @@ export function FacilityMarShiftTimeline({
   })();
 
   const viewerName = data?.viewer?.displayName?.trim() || "—";
+  const assignedNurseName =
+    data?.assignedNurse?.displayName?.trim() || t("marShiftTimeline.unassignedNurse");
+  const showViewingAs =
+    Boolean(encounterId?.trim()) &&
+    Boolean(data?.viewer?.userId) &&
+    data?.assignedNurse?.userId != null &&
+    data.assignedNurse.userId !== data.viewer.userId;
+  const shiftHoursLabel = (() => {
+    const start = data?.shift?.startAt?.trim();
+    const end = data?.shift?.endAt?.trim();
+    const tz = data?.shift?.timeZone?.trim() || facilityTimeZone?.trim() || undefined;
+    if (!start || !end) return data?.shift?.label?.trim() || "";
+    try {
+      const fmt = new Intl.DateTimeFormat(dateLocale, {
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: false,
+        timeZone: tz,
+      });
+      return `${fmt.format(new Date(start))}–${fmt.format(new Date(end))}`;
+    } catch {
+      return data?.shift?.label?.trim() || "";
+    }
+  })();
   const headerClockText = formatMarShiftTimelineHeaderClock(headerNow, dateLocale, facilityTimeZone);
   const uiLocale = language === "en" ? "en" : "fr";
 
@@ -255,62 +279,102 @@ export function FacilityMarShiftTimeline({
       }}
     >
       <header style={{ marginBottom: embedded ? 6 : compact ? 8 : 10 }}>
-        <h2
-          data-testid="mar-shift-timeline-title"
-          style={{
-            margin: 0,
-            fontSize: embedded ? 14 : compact ? 15 : 17,
-            fontWeight: embedded ? 600 : 700,
-            lineHeight: 1.25,
-            color: "#334155",
-          }}
-        >
-          {title}
-        </h2>
         <div
           data-testid="mar-shift-timeline-metadata"
           style={{
             display: "flex",
             flexWrap: "wrap",
-            alignItems: "center",
-            gap: "4px 8px",
-            marginTop: 4,
+            alignItems: "flex-start",
+            justifyContent: "space-between",
+            gap: "8px 16px",
             fontSize: 13,
             color: "#475569",
           }}
         >
-          <span data-testid="mar-shift-timeline-viewer">
-            {interpolateMessage(t("marShiftTimeline.nurseLine"), { name: viewerName })}
-          </span>
-          <span aria-hidden="true">·</span>
-          <label style={{ display: "inline-flex", alignItems: "center", gap: 6, margin: 0 }}>
-            <span>{t("marShiftTimeline.shiftLabel")}</span>
-            <select
-              data-testid="mar-shift-timeline-shift-select"
-              value={shiftCode}
-              onChange={(e) => handleShiftChange(e.target.value as MarShiftTimelineShiftCode)}
+          <div style={{ minWidth: 0, flex: "1 1 220px" }}>
+            <h2
+              data-testid="mar-shift-timeline-title"
               style={{
-                padding: "4px 8px",
-                borderRadius: 8,
-                border: "1px solid #cbd5e1",
-                fontSize: 13,
-                backgroundColor: "#fff",
+                margin: 0,
+                fontSize: embedded ? 14 : compact ? 15 : 17,
+                fontWeight: embedded ? 600 : 700,
+                lineHeight: 1.25,
+                color: "#0f172a",
               }}
             >
-              {MAR_SHIFT_TIMELINE_SHIFT_CODES.map((code) => (
-                <option key={code} value={code}>
-                  {MAR_SHIFT_TIMELINE_SHIFT_LABELS[code]}
-                </option>
-              ))}
-            </select>
-          </label>
-          <span aria-hidden="true">·</span>
-          <span
-            data-testid="mar-shift-timeline-current-time"
-            style={{ whiteSpace: "nowrap" }}
+              {title}
+            </h2>
+            <p
+              data-testid="mar-shift-timeline-assigned-nurse"
+              style={{ margin: "4px 0 0", fontSize: 13, color: "#475569", lineHeight: 1.35 }}
+            >
+              {t("marShiftTimeline.assignedNurseLabel")}:{" "}
+              <span
+                data-testid="mar-shift-timeline-assigned-nurse-name"
+                style={{ color: "#0f172a", fontWeight: 700 }}
+              >
+                {assignedNurseName}
+              </span>
+            </p>
+            {showViewingAs ? (
+              <p
+                data-testid="mar-shift-timeline-viewer"
+                style={{ margin: "2px 0 0", fontSize: 12, color: "#64748b" }}
+              >
+                {interpolateMessage(t("marShiftTimeline.viewingAsLine"), { name: viewerName })}
+              </p>
+            ) : (
+              <span data-testid="mar-shift-timeline-viewer" className="sr-only">
+                {interpolateMessage(t("marShiftTimeline.viewingAsLine"), { name: viewerName })}
+              </span>
+            )}
+          </div>
+          <div
+            data-testid="mar-shift-timeline-shift-controls"
+            style={{
+              display: "flex",
+              flexWrap: "wrap",
+              alignItems: "center",
+              justifyContent: "flex-end",
+              gap: "6px 10px",
+              flex: "0 1 auto",
+              minWidth: 0,
+            }}
           >
-            {interpolateMessage(t("marShiftTimeline.currentTimeLine"), { datetime: headerClockText })}
-          </span>
+            <label style={{ display: "inline-flex", alignItems: "center", gap: 6, margin: 0 }}>
+              <span>{t("marShiftTimeline.shiftLabel")}</span>
+              <select
+                data-testid="mar-shift-timeline-shift-select"
+                value={shiftCode}
+                onChange={(e) => handleShiftChange(e.target.value as MarShiftTimelineShiftCode)}
+                style={{
+                  padding: "4px 8px",
+                  borderRadius: 8,
+                  border: "1px solid #cbd5e1",
+                  fontSize: 13,
+                  backgroundColor: "#fff",
+                  minHeight: 36,
+                }}
+              >
+                {MAR_SHIFT_TIMELINE_SHIFT_CODES.map((code) => (
+                  <option key={code} value={code}>
+                    {MAR_SHIFT_TIMELINE_SHIFT_LABELS[code]}
+                  </option>
+                ))}
+              </select>
+            </label>
+            {shiftHoursLabel ? (
+              <span data-testid="mar-shift-timeline-shift-hours" style={{ whiteSpace: "nowrap" }}>
+                {shiftHoursLabel}
+              </span>
+            ) : null}
+            <span
+              data-testid="mar-shift-timeline-current-time"
+              style={{ whiteSpace: "nowrap" }}
+            >
+              {interpolateMessage(t("marShiftTimeline.currentTimeLine"), { datetime: headerClockText })}
+            </span>
+          </div>
         </div>
         {historicalReadOnly ? (
           <p

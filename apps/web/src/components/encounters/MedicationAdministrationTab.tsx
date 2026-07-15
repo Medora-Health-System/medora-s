@@ -2541,8 +2541,6 @@ export function MedicationAdministrationTab({
       <MarHistoricalDateNavigationBar
         selectedDateLocal={marSelectedDateLocal}
         facilityTimeZone={clinicalTz}
-        shiftLabel={marHistoricalTimeline.shiftLabel}
-        shiftTimeRangeLabel={marHistoricalTimeline.shiftTimeRangeLabel}
         isToday={marHistoricalTimeline.isToday}
         compact={marCompact}
         onDateChange={handleMarSelectedDateChange}
