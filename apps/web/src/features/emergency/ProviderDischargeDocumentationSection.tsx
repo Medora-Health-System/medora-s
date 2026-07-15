@@ -33,6 +33,7 @@ import {
   type ProviderDischargeFollowUpRow,
   type ProviderDischargeValidationErrors,
 } from "./providerDischargeDocumentationModel";
+import { pruneDischargeFormAfterDiagnosisRemoval } from "./pruneDischargeFormAfterDiagnosisRemoval";
 import {
   edDispositionDiagnosisCardShellStyle,
   edDispositionFollowUpRowGridStyle,
@@ -539,19 +540,25 @@ export function ProviderDischargeDocumentationSection({
 }) {
   const { t, language } = useI18n();
   const [encounterDiagnoses, setEncounterDiagnoses] = useState<DxRow[]>([]);
+  const [diagnosesLoaded, setDiagnosesLoaded] = useState(false);
   const patientLeftEdLocal = isoToDatetimeLocal(providerForm.patientLeftEdAt);
 
   useEffect(() => {
-    if (!patientId) return;
+    if (!patientId) {
+      setDiagnosesLoaded(false);
+      setEncounterDiagnoses([]);
+      return;
+    }
     let cancelled = false;
+    setDiagnosesLoaded(false);
     (async () => {
       try {
-        const data = await apiFetch(`/patients/${patientId}/diagnoses?limit=200`, { facilityId });
+        const data = await apiFetch(`/patients/${patientId}/diagnoses?status=ACTIVE&limit=200`, { facilityId });
         const items = Array.isArray((data as { items?: unknown }).items) ?
           (data as { items: Record<string, unknown>[] }).items
         : [];
         const rows = items
-          .filter((d) => d.encounterId === encounterId)
+          .filter((d) => d.encounterId === encounterId && (d.status == null || d.status === "ACTIVE"))
           .map((d) => ({
             id: String(d.id),
             code: String(d.code ?? ""),
@@ -559,9 +566,15 @@ export function ProviderDischargeDocumentationSection({
             sortOrder: typeof d.sortOrder === "number" ? d.sortOrder : 0,
           }))
           .sort((a, b) => a.sortOrder - b.sortOrder || a.code.localeCompare(b.code));
-        if (!cancelled) setEncounterDiagnoses(rows);
+        if (!cancelled) {
+          setEncounterDiagnoses(rows);
+          setDiagnosesLoaded(true);
+        }
       } catch {
-        if (!cancelled) setEncounterDiagnoses([]);
+        if (!cancelled) {
+          setEncounterDiagnoses([]);
+          setDiagnosesLoaded(true);
+        }
       }
     })();
     return () => {
@@ -569,6 +582,13 @@ export function ProviderDischargeDocumentationSection({
     };
   }, [encounterId, facilityId, patientId]);
 
+  useEffect(() => {
+    if (!diagnosesLoaded) return;
+    const activeIds = new Set(encounterDiagnoses.map((d) => d.id));
+    const pruned = pruneDischargeFormAfterDiagnosisRemoval(providerForm, activeIds);
+    if (pruned === providerForm) return;
+    onProviderFormChange(pruned);
+  }, [diagnosesLoaded, encounterDiagnoses, onProviderFormChange, providerForm]);
   const patchProvider = useCallback(
     (patch: Partial<ProviderDischargeDocumentationForm>) => {
       onProviderFormChange({ ...providerForm, ...patch });

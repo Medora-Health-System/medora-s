@@ -23,6 +23,7 @@ import type {
   CreateDiagnosisDto,
   UpdateDiagnosisDto,
   ListDiagnosesQuery,
+  RemoveDiagnosisDto,
 } from "./dto";
 
 const diagnosisInclude = {
@@ -383,6 +384,9 @@ export class DiagnosesService {
     if (existing.status === "RESOLVED") {
       throw new BadRequestException("Cannot update a resolved diagnosis");
     }
+    if (existing.status === "REMOVED") {
+      throw new BadRequestException("Cannot update a removed diagnosis");
+    }
 
     const enc = await this.prisma.encounter.findFirst({
       where: { id: existing.encounterId, facilityId },
@@ -587,6 +591,9 @@ export class DiagnosesService {
     if (existing.status === "RESOLVED") {
       throw new BadRequestException("Diagnosis is already resolved");
     }
+    if (existing.status === "REMOVED") {
+      throw new BadRequestException("Cannot resolve a removed diagnosis");
+    }
 
     const enc = await this.prisma.encounter.findFirst({
       where: { id: existing.encounterId, facilityId },
@@ -614,6 +621,101 @@ export class DiagnosesService {
       ip,
       userAgent,
       metadata: { action: "resolve", resolvedDate: resolvedDate.toISOString() },
+    });
+
+    return row;
+  }
+
+  /**
+   * Soft-remove (void) an encounter diagnosis with a required reason.
+   * Promotes the next ACTIVE row to principal (sortOrder 0) via normalize.
+   */
+  async remove(
+    id: string,
+    facilityId: string,
+    dto: RemoveDiagnosisDto,
+    userId?: string,
+    ip?: string,
+    userAgent?: string
+  ) {
+    const existing = await this.prisma.diagnosis.findFirst({
+      where: { id, facilityId },
+    });
+    if (!existing) {
+      throw new NotFoundException("Diagnosis not found");
+    }
+    if (existing.status === "REMOVED") {
+      throw new BadRequestException("Diagnosis is already removed");
+    }
+    if (existing.status === "RESOLVED") {
+      throw new BadRequestException("Cannot remove a resolved diagnosis; it is already inactive");
+    }
+
+    const enc = await this.prisma.encounter.findFirst({
+      where: { id: existing.encounterId, facilityId },
+    });
+    if (!enc) {
+      throw new NotFoundException("Encounter not found");
+    }
+    assertEncounterOpenForClinicalMutation(enc);
+    assertEncounterNotSigned(enc);
+
+    if (!userId) {
+      throw new BadRequestException("Authenticated user required to remove a diagnosis");
+    }
+
+    const removedAt = new Date();
+    const wasPrimary = existing.sortOrder === 0;
+    const previousSortOrder = existing.sortOrder;
+    const reasonText = dto.reasonText?.trim() || dto.notes?.trim() || null;
+
+    const row = await this.prisma.$transaction(async (tx) => {
+      const updated = await tx.diagnosis.update({
+        where: { id },
+        data: {
+          status: "REMOVED",
+          removedAt,
+          removedByUserId: userId,
+          removalReasonCode: dto.reasonCode,
+          removalReasonText: reasonText,
+        },
+        include: diagnosisInclude,
+      });
+
+      const active = await tx.diagnosis.findMany({
+        where: { encounterId: existing.encounterId, facilityId, status: "ACTIVE" },
+        orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+        select: { id: true },
+      });
+      await Promise.all(
+        active.map((r, index) =>
+          tx.diagnosis.update({
+            where: { id: r.id },
+            data: { sortOrder: index },
+          })
+        )
+      );
+
+      return updated;
+    });
+
+    await this.audit.log(AuditAction.DIAGNOSIS_REMOVED, "DIAGNOSIS", {
+      userId,
+      facilityId,
+      patientId: existing.patientId,
+      encounterId: existing.encounterId,
+      entityId: id,
+      ip,
+      userAgent,
+      metadata: {
+        diagnosisId: id,
+        code: existing.code,
+        description: existing.description,
+        reasonCode: dto.reasonCode,
+        reasonText,
+        wasPrimary,
+        previousSortOrder,
+      },
     });
 
     return row;

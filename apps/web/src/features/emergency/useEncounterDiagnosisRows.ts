@@ -26,11 +26,15 @@ export function useEncounterDiagnosisRows(input: {
     let cancelled = false;
     (async () => {
       try {
-        const data = await apiFetch(`/patients/${input.patientId}/diagnoses?limit=200`, {
+        const data = await apiFetch(`/patients/${input.patientId}/diagnoses?status=ACTIVE&limit=200`, {
           facilityId: input.facilityId,
         });
         if (cancelled) return;
-        setRows(parseEncounterDiagnosisApiItems(data, input.encounterId));
+        setRows(
+          parseEncounterDiagnosisApiItems(data, input.encounterId).filter(
+            (row) => !row.status || row.status === "ACTIVE"
+          )
+        );
       } catch {
         if (!cancelled) setRows([]);
       }

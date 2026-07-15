@@ -217,6 +217,7 @@ model User {
   encounterNotesAuthored                          EncounterNote[]                        @relation("EncounterNoteAuthor")
   encounterNotesCosigned                          EncounterNote[]                        @relation("EncounterNoteCosignedBy")
   encounterNotesVoided                            EncounterNote[]                        @relation("EncounterNoteVoidedBy")
+  diagnosesRemoved                                Diagnosis[]                            @relation("DiagnosisRemovedBy")
   providerAddendaCreated                          EncounterProviderAddendum[]
   followUpsCreated                                FollowUp[]
   inventoryTransactions                           InventoryTransaction[]
@@ -1648,10 +1649,16 @@ model Diagnosis {
   sortOrder      Int                 @default(0)
   icd10CatalogId String?
   codeSource     DiagnosisCodeSource @default(LEGACY)
+  /// Soft-removal (void) metadata — row retained for audit; excluded when status=REMOVED.
+  removedAt           DateTime?
+  removedByUserId     String?
+  removalReasonCode   String?
+  removalReasonText   String?
   encounter      Encounter           @relation(fields: [encounterId], references: [id])
   facility       Facility            @relation(fields: [facilityId], references: [id])
   icd10Catalog   Icd10DiagnosisCode? @relation(fields: [icd10CatalogId], references: [id])
   patient        Patient             @relation(fields: [patientId], references: [id])
+  removedBy      User?               @relation("DiagnosisRemovedBy", fields: [removedByUserId], references: [id])
 
   @@index([patientId])
   @@index([encounterId])
@@ -1660,6 +1667,7 @@ model Diagnosis {
   @@index([status])
   @@index([code])
   @@index([icd10CatalogId])
+  @@index([removedByUserId])
 }
 
 model InventoryItem {
@@ -3045,6 +3053,8 @@ enum AuditAction {
   ENCOUNTER_NOTE_AMENDED
   ENCOUNTER_NOTE_VOIDED
   ENCOUNTER_NOTE_COSIGNED
+  /// Governed soft-removal of an encounter diagnosis (reason required; PHI-safe metadata only).
+  DIAGNOSIS_REMOVED
   /// EDOC.2 — structured clinical documentation entry created (PHI-safe metadata only).
   ENCOUNTER_CLINICAL_DOCUMENTATION_CREATED
   /// EDOC.4 — second signer witnessed clinical documentation (PHI-safe metadata only).
@@ -3377,6 +3387,8 @@ enum MedicationCorrectionStatus {
 enum DiagnosisStatus {
   ACTIVE
   RESOLVED
+  /// Soft-removed (entered in error / duplicate / ruled out). Excluded from active chart and billing.
+  REMOVED
 }
 
 /// How a clinical diagnosis row was coded (ER-1 — billing / export metadata).

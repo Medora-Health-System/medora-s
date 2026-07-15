@@ -2,11 +2,20 @@
 
 import React, { useCallback, useEffect, useState } from "react";
 import { apiFetch } from "@/lib/apiClient";
-import { createDiagnosis, reorderEncounterDiagnoses, type Icd10SearchHit } from "@/lib/chartApi";
+import {
+  createDiagnosis,
+  removeDiagnosis,
+  reorderEncounterDiagnoses,
+  type Icd10SearchHit,
+} from "@/lib/chartApi";
 import { MEDORA_CARD_SHELL } from "@/components/medora-card";
 import { useI18n } from "@/lib/i18n";
 import { normalizeUserFacingError } from "@/lib/userFacingError";
 import { Icd10DiagnosisEntryPanel } from "@/components/diagnosis/Icd10DiagnosisEntryPanel";
+import {
+  RemoveDiagnosisModal,
+  type RemoveDiagnosisConfirmPayload,
+} from "@/components/diagnosis/RemoveDiagnosisModal";
 import { getLocalizedDiagnosisDisplayLabel } from "@/features/emergency/diagnosisFrenchDisplayLabels";
 import {
   diagnosisOrdersDiagnosisCardShellStyle,
@@ -24,6 +33,7 @@ type DxRow = {
   sortOrder: number;
   codeSource?: string;
   createdAt: string;
+  status?: string;
 };
 
 export function EncounterDiagnosticsPanel({
@@ -50,6 +60,9 @@ export function EncounterDiagnosticsPanel({
   const [error, setError] = useState<string | null>(null);
   const [reorderBusy, setReorderBusy] = useState(false);
   const [layoutMode, setLayoutMode] = useState<DiagnosisOrdersLayoutMode>("desktopDense");
+  const [removeTarget, setRemoveTarget] = useState<{ row: DxRow; index: number } | null>(null);
+  const [removeBusy, setRemoveBusy] = useState(false);
+  const [successNotice, setSuccessNotice] = useState<string | null>(null);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -67,10 +80,10 @@ export function EncounterDiagnosticsPanel({
     setLoading(true);
     setError(null);
     try {
-      const data = await apiFetch(`/patients/${patientId}/diagnoses?limit=200`, { facilityId });
+      const data = await apiFetch(`/patients/${patientId}/diagnoses?status=ACTIVE&limit=200`, { facilityId });
       const items = Array.isArray((data as { items?: unknown }).items) ? (data as { items: Record<string, unknown>[] }).items : [];
       const forEncounter = items
-        .filter((d) => d.encounterId === encounterId)
+        .filter((d) => d.encounterId === encounterId && (d.status == null || d.status === "ACTIVE"))
         .map((d) => ({
           id: String(d.id),
           code: String(d.code ?? ""),
@@ -79,6 +92,7 @@ export function EncounterDiagnosticsPanel({
           sortOrder: typeof d.sortOrder === "number" ? d.sortOrder : 0,
           codeSource: typeof d.codeSource === "string" ? d.codeSource : undefined,
           createdAt: typeof d.createdAt === "string" ? d.createdAt : "",
+          status: typeof d.status === "string" ? d.status : "ACTIVE",
         }))
         .sort((a, b) => a.sortOrder - b.sortOrder || a.createdAt.localeCompare(b.createdAt));
       setRows(forEncounter);
@@ -165,6 +179,51 @@ export function EncounterDiagnosticsPanel({
       setReorderBusy(false);
     }
   };
+
+  const confirmRemove = async (payload: RemoveDiagnosisConfirmPayload) => {
+    if (!removeTarget || isLocked) return;
+    setRemoveBusy(true);
+    setError(null);
+    setSuccessNotice(null);
+    try {
+      await removeDiagnosis(facilityId, removeTarget.row.id, payload);
+      setRemoveTarget(null);
+      setSuccessNotice(
+        removeTarget.index === 0 && rows.length > 1
+          ? t("removeDiagnosisModal.primaryPromoted")
+          : t("removeDiagnosisModal.success")
+      );
+      await load();
+    } catch (e: unknown) {
+      const raw = e instanceof Error ? e.message : (e as { message?: string })?.message;
+      setError(
+        normalizeUserFacingError(raw, language) || t("removeDiagnosisModal.failure")
+      );
+    } finally {
+      setRemoveBusy(false);
+    }
+  };
+
+  const removeButtonStyle = (layout: DiagnosisOrdersLayoutMode): React.CSSProperties =>
+    diagnosisOrdersTouchButtonStyle(
+      {
+        display: "inline-flex",
+        alignItems: "center",
+        justifyContent: "center",
+        minWidth: 36,
+        minHeight: 36,
+        padding: "6px 10px",
+        fontSize: 16,
+        fontWeight: 700,
+        lineHeight: 1,
+        borderRadius: 8,
+        border: "1px solid #fecaca",
+        background: "#fef2f2",
+        color: "#b91c1c",
+        cursor: removeBusy || reorderBusy ? "not-allowed" : "pointer",
+      },
+      layout
+    );
 
   const codeSourceLabel = (src?: string) => {
     if (src === "ICD10_CATALOG") return t("encounterConsultDiagnostics.sourceCatalog");
@@ -278,6 +337,22 @@ export function EncounterDiagnosticsPanel({
         </div>
       ) : null}
 
+      {successNotice ? (
+        <div
+          role="status"
+          style={{
+            ...dxShell,
+            padding: "12px 14px",
+            borderColor: "#a7f3d0",
+            background: "#ecfdf5",
+            color: "#065f46",
+            fontSize: 13,
+          }}
+        >
+          {successNotice}
+        </div>
+      ) : null}
+
       {rows.length === 0 ? (
         <div style={{ ...dxShell, padding: "18px 20px", color: "#64748b", fontSize: 14, lineHeight: 1.5 }}>
           {t("encounterConsultDiagnostics.empty")}
@@ -299,6 +374,19 @@ export function EncounterDiagnosticsPanel({
                 <th style={{ padding: "12px 14px", textAlign: "left", fontWeight: 600, color: "#334155", borderBottom: "1px solid #e2e8f0" }}>
                   {t("encounterConsultDiagnostics.colOnset")}
                 </th>
+                {canDocumentDiagnoses && !isLocked ? (
+                  <th
+                    aria-label={t("encounterConsultDiagnostics.colActions")}
+                    style={{
+                      padding: "12px 14px",
+                      textAlign: "right",
+                      fontWeight: 600,
+                      color: "#334155",
+                      borderBottom: "1px solid #e2e8f0",
+                      width: 72,
+                    }}
+                  />
+                ) : null}
               </tr>
             </thead>
             <tbody>
@@ -310,7 +398,7 @@ export function EncounterDiagnosticsPanel({
                         <div style={{ display: "flex", gap: 6 }}>
                           <button
                             type="button"
-                            disabled={reorderBusy || idx === 0}
+                            disabled={reorderBusy || removeBusy || idx === 0}
                             onClick={() => void moveRow(idx, -1)}
                             aria-label={t("encounterConsultDiagnostics.moveUp")}
                             style={{
@@ -326,7 +414,7 @@ export function EncounterDiagnosticsPanel({
                           </button>
                           <button
                             type="button"
-                            disabled={reorderBusy || idx === rows.length - 1}
+                            disabled={reorderBusy || removeBusy || idx === rows.length - 1}
                             onClick={() => void moveRow(idx, 1)}
                             aria-label={t("encounterConsultDiagnostics.moveDown")}
                             style={{
@@ -371,6 +459,21 @@ export function EncounterDiagnosticsPanel({
                   <td style={{ padding: "12px 14px", color: "#334155" }}>
                     {r.onsetDate ? new Date(r.onsetDate).toLocaleDateString(dateLocale) : "—"}
                   </td>
+                  {canDocumentDiagnoses && !isLocked ? (
+                    <td style={{ padding: "10px 14px", textAlign: "right", verticalAlign: "middle" }}>
+                      <button
+                        type="button"
+                        data-testid={`remove-diagnosis-${r.id}`}
+                        disabled={removeBusy || reorderBusy}
+                        title={t("removeDiagnosisModal.removeAria")}
+                        aria-label={t("removeDiagnosisModal.removeAria")}
+                        onClick={() => setRemoveTarget({ row: r, index: idx })}
+                        style={removeButtonStyle(layoutMode)}
+                      >
+                        ×
+                      </button>
+                    </td>
+                  ) : null}
                 </tr>
               ))}
             </tbody>
@@ -404,10 +507,10 @@ export function EncounterDiagnosticsPanel({
                     ) : null}
                   </div>
                   {canDocumentDiagnoses && !isLocked ? (
-                    <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
+                    <div style={{ display: "flex", gap: 8, flexShrink: 0, alignItems: "center" }}>
                       <button
                         type="button"
-                        disabled={reorderBusy || idx === 0}
+                        disabled={reorderBusy || removeBusy || idx === 0}
                         onClick={() => void moveRow(idx, -1)}
                         aria-label={t("encounterConsultDiagnostics.moveUp")}
                         style={diagnosisOrdersTouchButtonStyle(
@@ -426,7 +529,7 @@ export function EncounterDiagnosticsPanel({
                       </button>
                       <button
                         type="button"
-                        disabled={reorderBusy || idx === rows.length - 1}
+                        disabled={reorderBusy || removeBusy || idx === rows.length - 1}
                         onClick={() => void moveRow(idx, 1)}
                         aria-label={t("encounterConsultDiagnostics.moveDown")}
                         style={diagnosisOrdersTouchButtonStyle(
@@ -442,6 +545,17 @@ export function EncounterDiagnosticsPanel({
                         )}
                       >
                         ↓
+                      </button>
+                      <button
+                        type="button"
+                        data-testid={`remove-diagnosis-${r.id}`}
+                        disabled={removeBusy || reorderBusy}
+                        title={t("removeDiagnosisModal.removeAria")}
+                        aria-label={t("removeDiagnosisModal.removeAria")}
+                        onClick={() => setRemoveTarget({ row: r, index: idx })}
+                        style={removeButtonStyle(layoutMode)}
+                      >
+                        ×
                       </button>
                     </div>
                   ) : null}
@@ -467,6 +581,19 @@ export function EncounterDiagnosticsPanel({
           ))}
         </ul>
       )}
+
+      <RemoveDiagnosisModal
+        open={Boolean(removeTarget)}
+        code={removeTarget?.row.code ?? ""}
+        description={removeTarget?.row.description ?? null}
+        isPrimary={removeTarget?.index === 0}
+        submitting={removeBusy}
+        onClose={() => {
+          if (removeBusy) return;
+          setRemoveTarget(null);
+        }}
+        onConfirm={confirmRemove}
+      />
     </div>
   );
 }

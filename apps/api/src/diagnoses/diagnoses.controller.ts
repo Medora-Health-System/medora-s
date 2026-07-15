@@ -16,7 +16,7 @@ import { RolesGuard, RequireRoles } from "../common/guards/roles.guard";
 import { RoleCode } from "@prisma/client";
 import { DiagnosesService } from "./diagnoses.service";
 import { Icd10CatalogService } from "./icd10-catalog.service";
-import { updateDiagnosisDtoSchema } from "./dto";
+import { removeDiagnosisDtoSchema, updateDiagnosisDtoSchema } from "./dto";
 
 @Controller("diagnoses")
 @UseGuards(AuthGuard("jwt"), RolesGuard)
@@ -85,6 +85,24 @@ export class DiagnosesController {
     return this.diagnosesService.resolve(
       id,
       this.facilityId(req),
+      req.user?.userId,
+      req.ip,
+      req.headers["user-agent"]
+    );
+  }
+
+  /** Soft-remove (void) an active encounter diagnosis; requires reason. */
+  @Post(":id/remove")
+  @RequireRoles(RoleCode.RN, RoleCode.PROVIDER, RoleCode.ADMIN)
+  async remove(@Param("id") id: string, @Body() body: unknown, @Req() req: any) {
+    const parsed = removeDiagnosisDtoSchema.safeParse(body);
+    if (!parsed.success) {
+      throw new BadRequestException("Invalid payload", { cause: parsed.error });
+    }
+    return this.diagnosesService.remove(
+      id,
+      this.facilityId(req),
+      parsed.data,
       req.user?.userId,
       req.ip,
       req.headers["user-agent"]

@@ -359,6 +359,34 @@ export async function resolveDiagnosis(
   });
 }
 
+export type RemoveDiagnosisReasonCode =
+  | "ENTERED_IN_ERROR"
+  | "DUPLICATE_DIAGNOSIS"
+  | "DIAGNOSIS_RULED_OUT"
+  | "INCORRECT_PATIENT_ENCOUNTER"
+  | "MORE_SPECIFIC_SELECTED"
+  | "OTHER";
+
+export type RemoveDiagnosisBody = {
+  reasonCode: RemoveDiagnosisReasonCode;
+  reasonText?: string;
+  notes?: string;
+};
+
+/** Soft-remove (void) an active encounter diagnosis with a required reason. */
+export async function removeDiagnosis(
+  facilityId: string,
+  diagnosisId: string,
+  body: RemoveDiagnosisBody
+) {
+  return apiFetch(`/diagnoses/${diagnosisId}/remove`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+    facilityId,
+  });
+}
+
 export type BillingProcedureSearchHit = {
   id: string;
   code: string;
