@@ -61,6 +61,7 @@ jobs:
 
   api-e2e:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     services:
       postgres:
         image: postgres:16
@@ -81,6 +82,12 @@ jobs:
       JWT_ACCESS_SECRET: ci_access_secret
       JWT_REFRESH_SECRET: ci_refresh_secret
       NODE_ENV: test
+      MEDORA_BACKGROUND_WORKERS_ENABLED: "false"
+      CLEARINGHOUSE_RETRY_WORKER_ENABLED: "false"
+      MEDICATION_DOSE_STATUS_PROMOTION_ENABLED: "false"
+      MEDICATION_DOSE_HORIZON_MAINTENANCE_ENABLED: "false"
+      MEDORA_REGISTRY_PREWARM_ENABLED: "false"
+      MEDORA_ALERT_ENABLED: "false"
 
     steps:
       - uses: actions/checkout@v4
@@ -108,4 +115,4 @@ jobs:
 
       - name: Run facility isolation and RBAC e2e
         working-directory: apps/api
-        run: pnpm exec jest --config jest.config.cjs facility-isolation.e2e.spec.ts rbac.e2e.spec.ts orders-create-atomic.e2e.spec.ts --runInBand
+        run: pnpm exec jest --config jest.config.cjs facility-isolation.e2e.spec.ts rbac.e2e.spec.ts orders-create-atomic.e2e.spec.ts e2e-json-charset.e2e.spec.ts --runInBand --detectOpenHandles
