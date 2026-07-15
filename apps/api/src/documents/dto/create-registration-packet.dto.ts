@@ -27,11 +27,30 @@ const patientSchema = z
 const sectionSchema = z.object({
   id: z.string().min(1),
   title: z.string(),
+  /** Full legal text for PDF / snapshot (required). */
   body: z.string(),
+  /** Concise patient-facing summary (wizard). */
+  conciseSummary: z.string().optional(),
+  /** Explicit full body when different from body (defaults to body). */
+  fullBody: z.string().optional(),
+  sourceLabel: z.string().optional(),
+  sourceUrl: z.string().optional(),
+  authorityType: z.string().optional(),
+  contentVersion: z.string().optional(),
+  legalReviewStatus: z.string().optional(),
+  acknowledgmentRequired: z.boolean().optional(),
+  acknowledgmentText: z.string().optional(),
+  separateSignatureRequired: z.boolean().optional(),
+  /** True when See more made full text available (not proof of reading every word). */
+  fullTextMadeAvailable: z.boolean().optional(),
+  fullTextMadeAvailableAt: z.string().nullable().optional(),
+  acknowledged: z.boolean().optional(),
+  acknowledgedAt: z.string().nullable().optional(),
   reviewed: z.boolean().optional(),
   reviewedAt: z.string().nullable().optional(),
   reviewedBy: z.string().nullable().optional(),
   required: z.boolean().optional(),
+  declined: z.boolean().optional(),
 });
 
 const signatureSchema = z.object({

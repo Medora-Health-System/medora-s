@@ -61,25 +61,6 @@ const PACKET_TEMPLATES = [
   "HOSPITAL",
 ] as const;
 
-const FREESTANDING_ER_SECTIONS = [
-  "packetSectionAob",
-  "packetSectionCoordination",
-  "packetSectionDemographics",
-  "packetSectionDisclosure",
-  "packetSectionConsent",
-  "packetSectionPrivacy",
-  "packetSectionBillOfRights",
-  "packetSectionMedicareMedicaidNotice",
-] as const;
-
-const STANDARD_PACKET_SECTIONS = [
-  "packetSectionDemographics",
-  "packetSectionDisclosure",
-  "packetSectionConsent",
-  "packetSectionPrivacy",
-  "packetSectionBillOfRights",
-] as const;
-
 export function RegistrationDocumentCenter({
   patientId,
   facilityId,
@@ -478,8 +459,6 @@ export function RegistrationDocumentCenter({
             const key = `packetTemplate${tmpl.charAt(0)}${tmpl.slice(1).toLowerCase().replace(/_([a-z])/g, (_, c: string) => c.toUpperCase())}`;
             const label = t(`documentCenter.${key}`);
             const existing = packets.find((d) => d.notes?.includes(tmpl));
-            const sections =
-              tmpl === "FREESTANDING_ER" ? FREESTANDING_ER_SECTIONS : STANDARD_PACKET_SECTIONS;
 
             return (
               <div
@@ -491,7 +470,10 @@ export function RegistrationDocumentCenter({
                   background: existing ? "#f0fdf4" : "#fafafa",
                 }}
               >
-                <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 4, color: "#0f172a" }}>{label}</div>
+                <div style={{ fontSize: 13, marginBottom: 4, color: "#0f172a" }}>
+                  <div style={{ fontWeight: 600 }}>{label}</div>
+                  <div style={{ fontWeight: 700, fontSize: 12, color: "#334155" }}>{t("packetWizard.registrationPackage")}</div>
+                </div>
                 {existing && (
                   <>
                     <div style={{ fontSize: 11, marginBottom: 4, display: "flex", alignItems: "center", gap: 4 }}>
@@ -612,11 +594,7 @@ export function RegistrationDocumentCenter({
                 {packetPreview === tmpl && (
                   <div style={{ marginTop: 8, padding: 8, background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 6, fontSize: 12 }}>
                     <div style={{ fontWeight: 600, marginBottom: 4 }}>{t("documentCenter.packetSections")}:</div>
-                    <ul style={{ margin: 0, paddingLeft: 16 }}>
-                      {sections.map((s) => (
-                        <li key={s} style={{ marginBottom: 2 }}>{t(`documentCenter.${s}`)}</li>
-                      ))}
-                    </ul>
+                    <div style={{ color: "#475569" }}>{t("documentCenter.packetIncludesDisclosures")}</div>
                     {tmpl === "FREESTANDING_ER" && (
                       <div style={{ marginTop: 6, padding: "4px 8px", background: "#fff3e0", borderRadius: 4, fontSize: 11, color: "#e65100" }}>
                         ⚠ {t("documentCenter.packetMedicareMedicaidWarning")}

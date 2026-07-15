@@ -307,7 +307,20 @@ export class RegistrationPacketTemplateEngine {
       sections.push({
         id: section.key,
         title,
-        body: bodyParts.filter(Boolean).join("\n\n"),
+        body: bodyParts.filter(Boolean).join("\n\n") || pickLocalized(section.fullBodyJson, locale),
+        conciseSummary: pickLocalized(section.conciseSummaryJson, locale) || undefined,
+        fullBody:
+          pickLocalized(section.fullBodyJson, locale) ||
+          bodyParts.filter(Boolean).join("\n\n") ||
+          undefined,
+        sourceLabel: section.sourceLabel || undefined,
+        sourceUrl: section.sourceUrl || undefined,
+        authorityType: section.authorityType || undefined,
+        contentVersion: section.contentVersion || undefined,
+        legalReviewStatus: section.legalReviewStatus || undefined,
+        acknowledgmentRequired: section.acknowledgmentRequired,
+        acknowledgmentText: pickLocalized(section.acknowledgmentTextJson, locale) || undefined,
+        separateSignatureRequired: section.separateSignatureRequired,
         reviewed: false,
         required: section.isRequired,
       });
@@ -387,6 +400,17 @@ export class RegistrationPacketTemplateEngine {
         sortOrder: s.sortOrder,
         titleJson: s.titleJson,
         helpTextJson: s.helpTextJson,
+        conciseSummaryJson: s.conciseSummaryJson,
+        fullBodyJson: s.fullBodyJson,
+        sourceLabel: s.sourceLabel,
+        sourceUrl: s.sourceUrl,
+        authorityType: s.authorityType,
+        legalReviewStatus: s.legalReviewStatus,
+        contentVersion: s.contentVersion,
+        acknowledgmentRequired: s.acknowledgmentRequired,
+        acknowledgmentTextJson: s.acknowledgmentTextJson,
+        separateSignatureRequired: s.separateSignatureRequired,
+        pdfInclusionPolicy: s.pdfInclusionPolicy,
         isRequired: s.isRequired,
         fields: s.fields.map((f) => ({
           id: f.id,

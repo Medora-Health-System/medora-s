@@ -29,11 +29,27 @@ import {
 export interface StructuredPacketSection {
   id: string;
   title: string;
+  /** Full legal text snapshotted for PDF. */
   body: string;
+  conciseSummary?: string;
+  fullBody?: string;
+  sourceLabel?: string;
+  sourceUrl?: string;
+  authorityType?: string;
+  contentVersion?: string;
+  legalReviewStatus?: string;
+  acknowledgmentRequired?: boolean;
+  acknowledgmentText?: string;
+  separateSignatureRequired?: boolean;
+  fullTextMadeAvailable?: boolean;
+  fullTextMadeAvailableAt?: string | null;
+  acknowledged?: boolean;
+  acknowledgedAt?: string | null;
   reviewed?: boolean;
   reviewedAt?: string | null;
   reviewedBy?: string | null;
   required?: boolean;
+  declined?: boolean;
 }
 
 export interface StructuredPacketSignature {
@@ -429,7 +445,12 @@ export class PacketSourceService {
       sections: sections.map((s) => ({
         key: s.id,
         label: s.title,
-        content: s.body,
+        /** Prefer fullBody for PDF; body remains the durable full-text field. */
+        content: (s.fullBody && s.fullBody.trim()) || s.body,
+        conciseSummary: s.conciseSummary,
+        sourceLabel: s.sourceLabel,
+        sourceUrl: s.sourceUrl,
+        contentVersion: s.contentVersion,
       })),
       signatures: {
         signerName: sigData?.signerName || "—",

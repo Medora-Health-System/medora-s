@@ -120,33 +120,14 @@ describe("MEDUI.DOCUMENTS.ENTERPRISE_DOCUMENT_CENTER (Phase 2)", () => {
       expect(docComponent).toContain('"HOSPITAL"');
     });
 
-    it("freestanding ER template includes all required sections", () => {
-      expect(docComponent).toContain("packetSectionAob");
-      expect(docComponent).toContain("packetSectionCoordination");
-      expect(docComponent).toContain("packetSectionDemographics");
-      expect(docComponent).toContain("packetSectionDisclosure");
-      expect(docComponent).toContain("packetSectionConsent");
-      expect(docComponent).toContain("packetSectionPrivacy");
-      expect(docComponent).toContain("packetSectionBillOfRights");
-      expect(docComponent).toContain("packetSectionMedicareMedicaidNotice");
+    it("preview shows generic expandable-disclosures copy instead of a hard-coded section list", () => {
+      expect(docComponent).toContain("documentCenter.packetIncludesDisclosures");
+      expect(docComponent).not.toContain("FREESTANDING_ER_SECTIONS");
+      expect(docComponent).not.toContain("STANDARD_PACKET_SECTIONS");
     });
 
     it("freestanding ER includes Medicare/Medicaid warning", () => {
       expect(docComponent).toContain("packetMedicareMedicaidWarning");
-    });
-
-    it("standard templates do not include Medicare/Medicaid notice section", () => {
-      const standardSections = [
-        "packetSectionDemographics",
-        "packetSectionDisclosure",
-        "packetSectionConsent",
-        "packetSectionPrivacy",
-        "packetSectionBillOfRights",
-      ];
-      expect(docComponent).toContain("STANDARD_PACKET_SECTIONS");
-      for (const s of standardSections) {
-        expect(docComponent).toContain(s);
-      }
     });
 
     it("has generate packet button", () => {

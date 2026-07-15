@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useI18n } from "@/lib/i18n";
 import { encounterBcp47 } from "@/lib/encounterChromeI18n";
 import { apiFetch } from "@/lib/apiClient";
@@ -12,6 +12,12 @@ import {
   listAvailableHardwareSignatureAdapters,
   type ExternalSignatureDeviceAdapter,
 } from "./externalSignatureAdapters";
+import { ExpandableLegalSection } from "./ExpandableLegalSection";
+import {
+  CURRENT_PACKET_CONTENT_VERSION,
+  sectionCatalogForTemplate,
+  type PacketSectionContent,
+} from "@/features/documents/usRegistrationPacketContent";
 
 const API_BASE = "/api/backend";
 
@@ -40,40 +46,6 @@ type InsuranceRow = {
 
 type SectionStatus = "not_started" | "reviewed" | "signed";
 
-/* ── section keys ───────────────────────────────────────── */
-
-const FREESTANDING_ER_SECTION_KEYS = [
-  "demographics",
-  "insurance",
-  "consent",
-  "aob",
-  "privacy",
-  "rights",
-  "facilityNotice",
-  "medicareMedicaid",
-] as const;
-
-const STANDARD_SECTION_KEYS = [
-  "demographics",
-  "insurance",
-  "consent",
-  "aob",
-  "privacy",
-  "rights",
-  "facilityNotice",
-] as const;
-
-const SECTION_I18N: Record<string, string> = {
-  demographics: "packetWizard.sectionDemographics",
-  insurance: "packetWizard.sectionInsurance",
-  consent: "packetWizard.sectionConsent",
-  aob: "packetWizard.sectionAob",
-  privacy: "packetWizard.sectionPrivacy",
-  rights: "packetWizard.sectionRights",
-  facilityNotice: "packetWizard.sectionFacilityNotice",
-  medicareMedicaid: "packetWizard.sectionMedicareMedicaid",
-};
-
 /* ── component ──────────────────────────────────────────── */
 
 export function RegistrationPacketWizard({
@@ -95,16 +67,34 @@ export function RegistrationPacketWizard({
   const facilityName =
     facilities.find((f) => f.id === facilityId)?.name?.trim() || facilityId;
 
-  const sectionKeys =
-    template === "FREESTANDING_ER" ? FREESTANDING_ER_SECTION_KEYS : STANDARD_SECTION_KEYS;
-
-  const initStatus: Record<string, SectionStatus> = {};
-  for (const k of sectionKeys) initStatus[k] = "not_started";
+  const catalog = useMemo<PacketSectionContent[]>(
+    () => sectionCatalogForTemplate(template),
+    [template],
+  );
+  const catalogByKey = useMemo(() => {
+    const map = new Map<string, PacketSectionContent>();
+    for (const section of catalog) map.set(section.key, section);
+    return map;
+  }, [catalog]);
+  const sectionKeys = useMemo(() => catalog.map((s) => s.key), [catalog]);
 
   const [patient, setPatient] = useState<PatientData | null>(null);
   const [insurance, setInsurance] = useState<InsuranceRow[]>([]);
-  const [openSection, setOpenSection] = useState<string>(sectionKeys[0]);
-  const [sectionStatus, setSectionStatus] = useState<Record<string, SectionStatus>>(initStatus);
+  const [openSection, setOpenSection] = useState<string>(sectionKeys[0] || "");
+  const [sectionStatus, setSectionStatus] = useState<Record<string, SectionStatus>>({});
+  const [fullTextAvailable, setFullTextAvailable] = useState<Record<string, boolean>>({});
+  const [sectionAck, setSectionAck] = useState<Record<string, boolean>>({});
+  const fullTextAvailableAtRef = useRef<Record<string, string>>({});
+  const sectionAckAtRef = useRef<Record<string, string>>({});
+
+  useEffect(() => {
+    setOpenSection(sectionKeys[0] || "");
+    setSectionStatus((prev) => {
+      const next: Record<string, SectionStatus> = {};
+      for (const k of sectionKeys) next[k] = prev[k] || "not_started";
+      return next;
+    });
+  }, [sectionKeys]);
 
   const [signerName, setSignerName] = useState("");
   const [signerRelationship, setSignerRelationship] = useState("self");
@@ -145,14 +135,36 @@ export function RegistrationPacketWizard({
     })();
   }, [patientId, facilityId]);
 
+  const handleFullTextMadeAvailable = useCallback((key: string) => {
+    setFullTextAvailable((prev) => {
+      if (prev[key]) return prev;
+      fullTextAvailableAtRef.current[key] = new Date().toISOString();
+      return { ...prev, [key]: true };
+    });
+  }, []);
+
+  const handleSectionAckChange = useCallback((key: string, checked: boolean) => {
+    setSectionAck((prev) => ({ ...prev, [key]: checked }));
+    if (checked) sectionAckAtRef.current[key] = new Date().toISOString();
+  }, []);
+
+  const canMarkReviewed = useCallback(
+    (key: string) => {
+      const section = catalogByKey.get(key);
+      if (section?.acknowledgmentRequired) return !!sectionAck[key];
+      return true;
+    },
+    [catalogByKey, sectionAck],
+  );
+
   const markReviewed = (key: string) => {
+    if (!canMarkReviewed(key)) return;
     setSectionStatus((prev) => ({ ...prev, [key]: "reviewed" }));
-    const arr = sectionKeys as readonly string[];
-    const idx = arr.indexOf(key);
-    if (idx >= 0 && idx < arr.length - 1) setOpenSection(arr[idx + 1]);
+    const idx = sectionKeys.indexOf(key);
+    if (idx >= 0 && idx < sectionKeys.length - 1) setOpenSection(sectionKeys[idx + 1]);
   };
 
-  const allReviewed = sectionKeys.every((k) => sectionStatus[k] === "reviewed");
+  const allReviewed = sectionKeys.length > 0 && sectionKeys.every((k) => sectionStatus[k] === "reviewed");
   const patientSigValid = isRefused ? !!refusalReason.trim() : (!!signerName.trim() && !!patientSigData && patientAttestation);
   const staffSigValid = !!staffName.trim() && !!staffSigData && staffAttestation;
   const canFinalize = allReviewed && patientSigValid && staffSigValid;
@@ -187,15 +199,32 @@ export function RegistrationPacketWizard({
           memberId: ins.memberId || null,
           groupNumber: ins.groupNumber || null,
         })),
-        sections: sectionKeys.map((key) => ({
-          id: key,
-          title: t(SECTION_I18N[key] || key),
-          body: getSectionText(key, patient, insurance, t),
-          reviewed: sectionStatus[key] === "reviewed",
-          reviewedAt: sectionStatus[key] === "reviewed" ? now : null,
-          reviewedBy: null,
-          required: true,
-        })),
+        sections: catalog.map((section) => {
+          const status = sectionStatus[section.key];
+          const acknowledgmentRequired = !!section.acknowledgmentRequired;
+          const acknowledged = acknowledgmentRequired ? !!sectionAck[section.key] : undefined;
+          const fullBody = t(section.fullKey);
+          return {
+            id: section.key,
+            title: t(section.titleKey),
+            body: fullBody,
+            conciseSummary: t(section.summaryKey),
+            fullBody,
+            sourceLabel: section.sourceLabel,
+            sourceUrl: section.sourceUrl,
+            contentVersion: CURRENT_PACKET_CONTENT_VERSION,
+            legalReviewStatus: "LEGAL_REVIEW",
+            acknowledgmentRequired,
+            fullTextMadeAvailable: !!fullTextAvailable[section.key],
+            fullTextMadeAvailableAt: fullTextAvailableAtRef.current[section.key] || null,
+            acknowledged,
+            acknowledgedAt: acknowledged ? sectionAckAtRef.current[section.key] || now : null,
+            reviewed: status === "reviewed",
+            reviewedAt: status === "reviewed" ? now : null,
+            reviewedBy: null,
+            required: true,
+          };
+        }),
         signatures: [
           {
             signerType: isRefused ? "PATIENT" : (signerRelationship === "self" ? "PATIENT" : "REPRESENTATIVE"),
@@ -319,48 +348,27 @@ export function RegistrationPacketWizard({
   const priIns = insurance.find((r) => r.rank === "PRIMARY");
   const secIns = insurance.find((r) => r.rank === "SECONDARY");
 
-  const sectionContent = (key: string) => {
-    switch (key) {
-      case "demographics":
-        return (
-          <div style={{ fontSize: 13, lineHeight: 1.6 }}>
-            <div><strong>{t("packetWizard.fieldName")}:</strong> {patient?.firstName} {patient?.lastName}</div>
-            <div><strong>{t("packetWizard.fieldDob")}:</strong> {formatDate(patient?.dob)}</div>
-            <div><strong>{t("packetWizard.fieldPhone")}:</strong> {patient?.phone || "—"}</div>
-            <div><strong>{t("packetWizard.fieldEmail")}:</strong> {patient?.email || "—"}</div>
-            <div><strong>{t("packetWizard.fieldAddress")}:</strong> {[patient?.addressLine1, patient?.city, patient?.stateProvince, patient?.postalCode].filter(Boolean).join(", ") || "—"}</div>
-          </div>
-        );
-      case "insurance":
-        return (
-          <div style={{ fontSize: 13, lineHeight: 1.6 }}>
-            <div><strong>{t("packetWizard.fieldPrimary")}:</strong> {priIns?.payer?.name || priIns?.payerNameFreeText || "—"} {priIns?.memberId ? `· ${priIns.memberId}` : ""}</div>
-            <div><strong>{t("packetWizard.fieldSecondary")}:</strong> {secIns?.payer?.name || secIns?.payerNameFreeText || "—"} {secIns?.memberId ? `· ${secIns.memberId}` : ""}</div>
-            <p style={{ margin: "8px 0 0", fontSize: 12, color: "#475569" }}>{t("packetWizard.insuranceAcknowledge")}</p>
-          </div>
-        );
-      case "consent":
-        return <p style={{ fontSize: 13, lineHeight: 1.6, color: "#334155" }}>{t("packetWizard.consentText")}</p>;
-      case "aob":
-        return <p style={{ fontSize: 13, lineHeight: 1.6, color: "#334155" }}>{t("packetWizard.aobText")}</p>;
-      case "privacy":
-        return <p style={{ fontSize: 13, lineHeight: 1.6, color: "#334155" }}>{t("packetWizard.privacyText")}</p>;
-      case "rights":
-        return <p style={{ fontSize: 13, lineHeight: 1.6, color: "#334155" }}>{t("packetWizard.rightsText")}</p>;
-      case "facilityNotice":
-        return <p style={{ fontSize: 13, lineHeight: 1.6, color: "#334155" }}>{t("packetWizard.facilityNoticeText")}</p>;
-      case "medicareMedicaid":
-        return (
-          <div style={{ fontSize: 13, lineHeight: 1.6, color: "#334155" }}>
-            <div style={{ padding: "6px 10px", background: "#fff3e0", borderRadius: 4, marginBottom: 6, color: "#e65100", fontSize: 12, fontWeight: 600 }}>
-              {t("documentCenter.packetMedicareMedicaidWarning")}
-            </div>
-            <p>{t("packetWizard.medicareMedicaidText")}</p>
-          </div>
-        );
-      default:
-        return null;
+  const dataFieldsForSection = (key: string) => {
+    if (key === "demographics") {
+      return (
+        <div style={{ fontSize: 13, lineHeight: 1.6, marginBottom: 10, paddingBottom: 10, borderBottom: "1px dashed #e2e8f0" }}>
+          <div><strong>{t("packetWizard.fieldName")}:</strong> {patient?.firstName} {patient?.lastName}</div>
+          <div><strong>{t("packetWizard.fieldDob")}:</strong> {formatDate(patient?.dob)}</div>
+          <div><strong>{t("packetWizard.fieldPhone")}:</strong> {patient?.phone || "—"}</div>
+          <div><strong>{t("packetWizard.fieldEmail")}:</strong> {patient?.email || "—"}</div>
+          <div><strong>{t("packetWizard.fieldAddress")}:</strong> {[patient?.addressLine1, patient?.city, patient?.stateProvince, patient?.postalCode].filter(Boolean).join(", ") || "—"}</div>
+        </div>
+      );
     }
+    if (key === "insurance") {
+      return (
+        <div style={{ fontSize: 13, lineHeight: 1.6, marginBottom: 10, paddingBottom: 10, borderBottom: "1px dashed #e2e8f0" }}>
+          <div><strong>{t("packetWizard.fieldPrimary")}:</strong> {priIns?.payer?.name || priIns?.payerNameFreeText || "—"} {priIns?.memberId ? `· ${priIns.memberId}` : ""}</div>
+          <div><strong>{t("packetWizard.fieldSecondary")}:</strong> {secIns?.payer?.name || secIns?.payerNameFreeText || "—"} {secIns?.memberId ? `· ${secIns.memberId}` : ""}</div>
+        </div>
+      );
+    }
+    return null;
   };
 
   const reviewedCount = sectionKeys.filter((k) => sectionStatus[k] === "reviewed").length;
@@ -405,10 +413,19 @@ export function RegistrationPacketWizard({
           <button type="button" onClick={onClose} style={{ background: "transparent", border: "none", fontSize: 18, cursor: "pointer", color: "#64748b", flexShrink: 0 }} aria-label={t("packetWizard.cancel")}>✕</button>
         </div>
 
+        {/* Legal pending notice */}
+        <div style={{ margin: "10px 20px 0", padding: "8px 12px", background: "#fffbeb", border: "1px solid #fde68a", borderRadius: 6, fontSize: 11, color: "#92400e" }}>
+          {t("packetWizard.legalPendingNotice")}
+        </div>
+
         {/* Accordion */}
-        <div style={{ padding: "12px 20px", maxHeight: "50vh", overflowY: "auto" }}>
-          {sectionKeys.map((key) => {
+        <div style={{ padding: "12px 20px", maxHeight: "55vh", overflowY: "auto" }}>
+          {catalog.map((section) => {
+            const key = section.key;
             const isOpen = openSection === key;
+            const requiresAck = !!section.acknowledgmentRequired;
+            const ackChecked = !!sectionAck[key];
+            const alreadyReviewed = sectionStatus[key] === "reviewed";
             return (
               <div key={key} style={{ marginBottom: 8, border: "1px solid #e2e8f0", borderRadius: 8, overflow: "hidden" }}>
                 <button
@@ -427,17 +444,40 @@ export function RegistrationPacketWizard({
                   }}
                 >
                   <span style={{ fontSize: 13, fontWeight: 600, color: "#0f172a" }}>
-                    {t(SECTION_I18N[key])}
+                    {t(section.titleKey)}
                   </span>
-                  {statusBadge(sectionStatus[key])}
+                  {statusBadge(sectionStatus[key] || "not_started")}
                 </button>
                 {isOpen && (
                   <div style={{ padding: "12px 14px", borderTop: "1px solid #f1f5f9" }}>
-                    {sectionContent(key)}
-                    {sectionStatus[key] !== "reviewed" && (
+                    {dataFieldsForSection(key)}
+                    <ExpandableLegalSection
+                      title={t(section.titleKey)}
+                      summary={t(section.summaryKey)}
+                      fullBody={t(section.fullKey)}
+                      sourceLabel={section.sourceLabel}
+                      sourceUrl={section.sourceUrl}
+                      seeMoreLabel={t("packetWizard.seeMore")}
+                      showLessLabel={t("packetWizard.showLess")}
+                      sourceHeading={t("packetWizard.sourceHeading")}
+                      onFullTextMadeAvailable={() => handleFullTextMadeAvailable(key)}
+                    />
+                    {requiresAck && (
+                      <label style={{ display: "flex", alignItems: "flex-start", gap: 6, marginTop: 10, fontSize: 12, color: "#334155", cursor: "pointer" }}>
+                        <input
+                          type="checkbox"
+                          checked={ackChecked}
+                          onChange={(e) => handleSectionAckChange(key, e.target.checked)}
+                          style={{ marginTop: 2 }}
+                        />
+                        <span>{t("packetWizard.sectionAcknowledge")}</span>
+                      </label>
+                    )}
+                    {!alreadyReviewed && (
                       <button
                         type="button"
                         onClick={() => markReviewed(key)}
+                        disabled={!canMarkReviewed(key)}
                         style={{
                           marginTop: 10,
                           padding: "6px 14px",
@@ -445,9 +485,9 @@ export function RegistrationPacketWizard({
                           fontWeight: 600,
                           border: "1px solid #16a34a",
                           borderRadius: 5,
-                          background: "#f0fdf4",
-                          color: "#16a34a",
-                          cursor: "pointer",
+                          background: canMarkReviewed(key) ? "#f0fdf4" : "#f1f5f9",
+                          color: canMarkReviewed(key) ? "#16a34a" : "#94a3b8",
+                          cursor: canMarkReviewed(key) ? "pointer" : "not-allowed",
                         }}
                       >
                         {t("packetWizard.markReviewed")}
@@ -638,35 +678,4 @@ export function RegistrationPacketWizard({
       </div>
     </div>
   );
-}
-
-/* ── section text helper ─────────────────────────────── */
-
-function getSectionText(
-  key: string,
-  patient: PatientData | null,
-  insurance: InsuranceRow[],
-  t: (key: string) => string,
-): string {
-  const priIns = insurance.find((r) => r.rank === "PRIMARY");
-  const secIns = insurance.find((r) => r.rank === "SECONDARY");
-
-  switch (key) {
-    case "demographics":
-      return [
-        `${t("packetWizard.fieldName")}: ${patient?.firstName || ""} ${patient?.lastName || ""}`,
-        `${t("packetWizard.fieldDob")}: ${patient?.dob || "—"}`,
-        `${t("packetWizard.fieldPhone")}: ${patient?.phone || "—"}`,
-        `${t("packetWizard.fieldAddress")}: ${[patient?.addressLine1, patient?.city, patient?.stateProvince, patient?.postalCode].filter(Boolean).join(", ") || "—"}`,
-      ].join("\n");
-    case "insurance":
-      return [
-        `${t("packetWizard.fieldPrimary")}: ${priIns?.payer?.name || priIns?.payerNameFreeText || "—"} ${priIns?.memberId ? `(${priIns.memberId})` : ""}`,
-        `${t("packetWizard.fieldSecondary")}: ${secIns?.payer?.name || secIns?.payerNameFreeText || "—"} ${secIns?.memberId ? `(${secIns.memberId})` : ""}`,
-      ].join("\n");
-    case "medicareMedicaid":
-      return t("documentCenter.packetMedicareMedicaidWarning");
-    default:
-      return t(`packetWizard.${key}Text`);
-  }
 }

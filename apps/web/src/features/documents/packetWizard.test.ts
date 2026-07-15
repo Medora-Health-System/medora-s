@@ -1,6 +1,7 @@
 import { readFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { sectionCatalogForTemplate } from "./usRegistrationPacketContent";
 
 const webRoot = join(import.meta.dirname, "../..");
 const repoRoot = join(webRoot, "../../..");
@@ -44,10 +45,6 @@ describe("MEDUI.REGISTRATION.PHASE_3_ELECTRONIC_PACKET_E_SIGNATURE", () => {
   });
 
   describe("Packet templates", () => {
-    it("has FREESTANDING_ER template", () => {
-      expect(wizardComponent).toContain("FREESTANDING_ER");
-    });
-
     it("has URGENT_CARE template", () => {
       expect(docCenterComponent).toContain("URGENT_CARE");
     });
@@ -60,21 +57,23 @@ describe("MEDUI.REGISTRATION.PHASE_3_ELECTRONIC_PACKET_E_SIGNATURE", () => {
       expect(docCenterComponent).toContain('"HOSPITAL"');
     });
 
-    it("Freestanding ER includes Medicare/Medicaid section key", () => {
-      expect(wizardComponent).toContain('"medicareMedicaid"');
-      expect(wizardComponent).toContain("FREESTANDING_ER_SECTION_KEYS");
+    it("wizard is catalog-driven (no hard-coded FREESTANDING_ER_SECTION_KEYS / STANDARD_SECTION_KEYS lists)", () => {
+      expect(wizardComponent).toContain("sectionCatalogForTemplate");
+      expect(wizardComponent).not.toContain("FREESTANDING_ER_SECTION_KEYS");
+      expect(wizardComponent).not.toContain("STANDARD_SECTION_KEYS");
     });
 
-    it("Standard templates do NOT include medicareMedicaid section", () => {
-      expect(wizardComponent).toContain("STANDARD_SECTION_KEYS");
-      const standardBlock = wizardComponent.slice(
-        wizardComponent.indexOf("STANDARD_SECTION_KEYS"),
-        wizardComponent.indexOf("] as const;", wizardComponent.indexOf("STANDARD_SECTION_KEYS")),
-      );
-      expect(standardBlock).not.toContain("medicareMedicaid");
+    it("Freestanding ER catalog includes Medicare/Medicaid section key", () => {
+      const keys = sectionCatalogForTemplate("FREESTANDING_ER").map((s) => s.key);
+      expect(keys).toContain("medicareMedicaid");
     });
 
-    it("Freestanding ER has all required section keys", () => {
+    it("Standard templates (CLINIC) do NOT include medicareMedicaid section", () => {
+      const keys = sectionCatalogForTemplate("CLINIC").map((s) => s.key);
+      expect(keys).not.toContain("medicareMedicaid");
+    });
+
+    it("Freestanding ER catalog has all required section keys", () => {
       const requiredSections = [
         "demographics",
         "insurance",
@@ -82,11 +81,12 @@ describe("MEDUI.REGISTRATION.PHASE_3_ELECTRONIC_PACKET_E_SIGNATURE", () => {
         "aob",
         "privacy",
         "rights",
-        "facilityNotice",
+        "facilityDisclosure",
         "medicareMedicaid",
       ];
+      const keys = sectionCatalogForTemplate("FREESTANDING_ER").map((s) => s.key);
       for (const s of requiredSections) {
-        expect(wizardComponent).toContain(`"${s}"`);
+        expect(keys).toContain(s);
       }
     });
   });
@@ -309,7 +309,7 @@ describe("MEDUI.REGISTRATION.PHASE_3_ELECTRONIC_PACKET_E_SIGNATURE", () => {
     }
 
     it("EN packet templates are subtype labels (not Freestanding ER Registration Package main title)", () => {
-      expect(enMessages).toContain('packetTemplateFreestandingEr: "Freestanding Emergency Room Packet"');
+      expect(enMessages).toContain('packetTemplateFreestandingEr: "Freestanding Emergency Room"');
       expect(enMessages).not.toContain("Freestanding ER Registration Package");
     });
 

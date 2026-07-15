@@ -23,7 +23,7 @@ export interface PacketPdfInput {
     memberId?: string | null;
     groupNumber?: string | null;
   }[];
-  sections: { key: string; label: string; content: string }[];
+  sections: { key: string; label: string; content: string; conciseSummary?: string; sourceLabel?: string; sourceUrl?: string; contentVersion?: string }[];
   signatures: {
     signerName: string;
     signerRelationship: string;
@@ -200,11 +200,35 @@ export class PacketPdfService {
         if (doc.y > 680) doc.addPage();
         doc.fontSize(11).font("Helvetica-Bold").text(section.label || "");
         doc.moveDown(0.2);
+        // Full legal text only — never summary-only in the signed PDF.
         doc.fontSize(9).font("Helvetica").text(section.content || "", { lineGap: 2 });
+        if (section.sourceLabel || section.sourceUrl || section.contentVersion) {
+          doc.moveDown(0.2);
+          doc.fontSize(7).fillColor("#666666");
+          const meta = [
+            section.contentVersion ? `contentVersion:${section.contentVersion}` : "",
+            section.sourceLabel || "",
+            section.sourceUrl || "",
+          ]
+            .filter(Boolean)
+            .join(" · ");
+          if (meta) doc.text(meta, { lineGap: 1 });
+          doc.fillColor("#000000");
+        }
         doc.moveDown(0.6);
       }
 
       if (doc.y > 600) doc.addPage();
+      doc.moveDown(0.5);
+      doc.fontSize(10).font("Helvetica-Bold").text("Document metadata");
+      doc.moveDown(0.3);
+      doc.fontSize(8).font("Helvetica").fillColor("#444444");
+      doc.text(`Packet type: ${input.template}`);
+      doc.text(`Packet version: ${input.packetVersion || "1.0"}`);
+      doc.text(`Locale: ${input.locale || "en"}`);
+      doc.text(`Generated: ${input.generatedAt}`);
+      if (input.sourceHash) doc.text(`Source hash: ${input.sourceHash}`);
+      doc.fillColor("#000000");
       doc.moveDown(0.5);
       doc.moveTo(50, doc.y).lineTo(562, doc.y).stroke("#333333");
       doc.moveDown(0.5);
