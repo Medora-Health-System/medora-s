@@ -1,33 +1,18 @@
 "use client";
 
 import React, { useCallback, useEffect, useState } from "react";
-import { apiFetch } from "@/lib/apiClient";
-import {
-  hasVitalsJson,
-  MEDORA_PATIENT_VITALS_UPDATED,
-  type PatientTriageVitalsSnapshot,
-} from "@/lib/patientVitals";
+import { MEDORA_PATIENT_VITALS_UPDATED } from "@/lib/patientVitals";
 import { normalizeUserFacingError } from "@/lib/userFacingError";
 import { useI18n } from "@/lib/i18n";
 import { defaultVitalsEntryUnits } from "@/lib/vitalsEntryDefaults";
-import {
-  measuredAtIsoFromLocalInputs,
-  splitMeasuredAtLocal,
-} from "@/lib/vitalsMeasurementContextDisplay";
-import {
-  sepsisScreenFormToJson,
-  sepsisScreenFromUnknown,
-  strokeScreenFormToJson,
-  strokeScreenFromUnknown,
-  triagePreviewSliceFromTriageGet,
-} from "./emergencyTriageDocPreview";
-import { mergeVitalsJsonForSave } from "./emergencyTriageVitalsMerge";
-import { erTriageV1FormFromVitalsJson } from "./medoraErTriageV1";
+import { splitMeasuredAtLocal } from "@/lib/vitalsMeasurementContextDisplay";
+import { triagePreviewSliceFromTriageGet } from "./emergencyTriageDocPreview";
 import { isTriageStaleConflictError } from "./triageConcurrency";
 import {
   EmergencyTriageVitalsCompactSection,
   type TriageVitalsCompactValues,
 } from "./EmergencyTriageVitalsCompactSection";
+import { saveIndependentEncounterVitals } from "./saveIndependentEncounterVitals";
 
 type Draft = TriageVitalsCompactValues & { allergyNote: string };
 
@@ -165,86 +150,47 @@ export function EmergencyQuickVitalsEditor({
     setSaving(true);
     setMsg(null);
     try {
-      const measuredAt = measuredAtIsoFromLocalInputs(draft.measuredDate, draft.measuredTime);
-      if (!measuredAt) {
-        setMsgTone("error");
-        setMsg(t("vitalsContext.errors.invalidMeasuredAt"));
-        return;
-      }
-
-      const latestRaw = await apiFetch(`/encounters/${encounterId}/triage`, { facilityId });
-      const latest =
-        latestRaw && typeof latestRaw === "object" && !Array.isArray(latestRaw)
-          ? (latestRaw as Record<string, unknown>)
-          : null;
-      if (!latest) {
-        setMsgTone("error");
-        setMsg(normalizeUserFacingError(null, language) || t("erQuickVitals.saveError"));
-        return;
-      }
-
-      const erV1 = erTriageV1FormFromVitalsJson(latest.vitalsJson);
-      const vitalsMerged = mergeVitalsJsonForSave(latest.vitalsJson, {
-        ...draft,
-        erV1,
-      });
-
-      const strokeJson = strokeScreenFormToJson(
-        strokeScreenFromUnknown(latest.strokeScreen),
-        latest.strokeScreen
-      );
-      const sepsisJson = sepsisScreenFormToJson(
-        sepsisScreenFromUnknown(latest.sepsisScreen),
-        latest.sepsisScreen
-      );
-      const strokeScreenParsed = Object.keys(strokeJson).length > 0 ? strokeJson : null;
-      const sepsisScreenParsed = Object.keys(sepsisJson).length > 0 ? sepsisJson : null;
-
-      const lastKnownTriageUpdatedAt =
-        typeof latest.updatedAt === "string"
-          ? latest.updatedAt
-          : latest.updatedAt
-            ? new Date(latest.updatedAt as string).toISOString()
-            : null;
-
-      await apiFetch(`/encounters/${encounterId}/triage`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          chiefComplaint: (latest.chiefComplaint as string | undefined)?.trim() || null,
-          onsetAt: latest.onsetAt ? new Date(latest.onsetAt as string).toISOString() : null,
-          esi: latest.esi != null ? parseInt(String(latest.esi), 10) : null,
-          vitalsJson: vitalsMerged,
-          strokeScreen: strokeScreenParsed,
-          sepsisScreen: sepsisScreenParsed,
-          triageCompleteAt: latest.triageCompleteAt
-            ? new Date(latest.triageCompleteAt as string).toISOString()
-            : null,
-          lastKnownTriageUpdatedAt,
-          measuredAt,
-        }),
+      const result = await saveIndependentEncounterVitals({
+        encounterId,
         facilityId,
+        form: {
+          ...draft,
+          allergyNote: draft.allergyNote,
+        },
       });
 
-      if (patientId && latest && hasVitalsJson(latest.vitalsJson) && latest.id) {
-        const u = latest.updatedAt;
-        const supersededSnapshot: PatientTriageVitalsSnapshot = {
-          encounterId,
-          encounterType: "EMERGENCY",
-          triageId: latest.id as string,
-          updatedAt: typeof u === "string" ? u : new Date(u as string).toISOString(),
-          triageCompleteAt: latest.triageCompleteAt
-            ? new Date(latest.triageCompleteAt as string).toISOString()
-            : null,
-          vitalsJson: { ...(latest.vitalsJson as object) } as Record<string, unknown>,
-        };
-        if (typeof window !== "undefined") {
-          window.dispatchEvent(
-            new CustomEvent(MEDORA_PATIENT_VITALS_UPDATED, {
-              detail: { patientId, supersededSnapshot },
-            })
-          );
+      if (!result.ok) {
+        setMsgTone("error");
+        if (result.code === "INVALID_MEASURED_AT") {
+          setMsg(t("vitalsContext.errors.invalidMeasuredAt"));
+        } else if (result.code === "EMPTY_VITALS") {
+          setMsg(t("vitalsContext.errors.emptyVitals"));
+        } else if (result.code === "MISSING_CONTEXT") {
+          setMsg(t("vitalsContext.errors.missingContext"));
+        } else {
+          const cause = result.cause;
+          const raw = cause instanceof Error ? cause.message : null;
+          if (raw && /measuredAt cannot be in the future/i.test(raw)) {
+            setMsg(t("vitalsContext.errors.futureMeasuredAt"));
+          } else if (isTriageStaleConflictError(cause)) {
+            setMsg(t("erTriage.panel.staleConflict"));
+          } else if (raw && /closed|signed|not open/i.test(raw)) {
+            setMsg(t("vitalsContext.errors.closedEncounter"));
+          } else if (raw && /forbidden|not authorized|permission/i.test(raw)) {
+            setMsg(t("vitalsContext.errors.unauthorized"));
+          } else {
+            setMsg(normalizeUserFacingError(raw, language) || t("vitalsContext.errors.generic"));
+          }
         }
+        return;
+      }
+
+      if (patientId && typeof window !== "undefined") {
+        window.dispatchEvent(
+          new CustomEvent(MEDORA_PATIENT_VITALS_UPDATED, {
+            detail: { patientId, supersededSnapshot: null },
+          })
+        );
       }
 
       setMsgTone("success");
@@ -254,18 +200,8 @@ export function EmergencyQuickVitalsEditor({
     } catch (e) {
       console.error(e);
       setMsgTone("error");
-      if (isTriageStaleConflictError(e)) {
-        setMsg(t("erTriage.panel.staleConflict"));
-      } else {
-        const raw = e instanceof Error ? e.message : null;
-        if (raw && /measuredAt cannot be in the future/i.test(raw)) {
-          setMsg(t("vitalsContext.errors.futureMeasuredAt"));
-        } else {
-          setMsg(
-            normalizeUserFacingError(raw, language) || t("erQuickVitals.saveError")
-          );
-        }
-      }
+      const raw = e instanceof Error ? e.message : null;
+      setMsg(normalizeUserFacingError(raw, language) || t("vitalsContext.errors.generic"));
     } finally {
       setSaving(false);
     }

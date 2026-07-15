@@ -72,6 +72,7 @@ import {
   safeTrim,
   type ErTriageV1Form,
 } from "./medoraErTriageV1";
+import { saveIndependentEncounterVitals } from "./saveIndependentEncounterVitals";
 import {
   getErChiefComplaintQuickPicks,
   searchErChiefComplaintTemplates,
@@ -721,94 +722,71 @@ export function EmergencyTriagePanel({
   };
 
   /**
-   * Dedicated vitals save: refreshes latest triage non-vitals from server, merges current vitals
-   * draft + measuredAt, and does not require saving the full triage assessment.
+   * Dedicated vitals save: uses shared independent saver.
+   * Null GET triage (no row yet) is a valid first-save baseline — must still PUT.
    */
   const handleSaveVitals = async () => {
     if (formDisabled || savingVitals || saving) return;
     setSavingVitals(true);
     setVitalsSaveInfo(null);
     try {
-      const measuredAt = measuredAtIsoFromLocalInputs(formData.measuredDate, formData.measuredTime);
-      if (!measuredAt) {
-        setVitalsSaveTone("error");
-        setVitalsSaveInfo(t("vitalsContext.errors.invalidMeasuredAt"));
-        return;
-      }
-
-      const latestRaw = await apiFetch(`/encounters/${encounter.id}/triage`, { facilityId });
-      const latest =
-        latestRaw && typeof latestRaw === "object" && !Array.isArray(latestRaw)
-          ? (latestRaw as Record<string, unknown>)
-          : null;
-      if (!latest) {
-        setVitalsSaveTone("error");
-        setVitalsSaveInfo(t("erQuickVitals.saveError"));
-        return;
-      }
-
-      const erV1 = erTriageV1FormFromVitalsJson(latest.vitalsJson);
-      const vitalsMerged = mergeVitalsJsonForSave(latest.vitalsJson, {
-        tempC: formData.tempC,
-        hr: formData.hr,
-        rr: formData.rr,
-        bpSys: formData.bpSys,
-        bpDia: formData.bpDia,
-        spo2: formData.spo2,
-        weightKg: formData.weightKg,
-        heightCm: formData.heightCm,
-        painScore: formData.painScore,
-        allergyNote: formData.allergyNote,
-        erV1: {
-          ...normalizeErTriageV1Form(erV1),
-          painScale0to10: formData.painScore.trim() || erV1.painScale0to10,
-        },
-        tempInputUnit: formData.tempInputUnit,
-        weightInputUnit: formData.weightInputUnit,
-        heightInputMode: formData.heightInputMode,
-        heightFeet: formData.heightFeet,
-        heightInches: formData.heightInches,
-        temperatureSite: formData.temperatureSite,
-        oxygenDevice: formData.oxygenDevice,
-        oxygenFlowLpm: formData.oxygenFlowLpm,
-        oxygenFiO2Percent: formData.oxygenFiO2Percent,
-        oxygenDeviceNotes: formData.oxygenDeviceNotes,
-      });
-
-      const strokeJson = strokeScreenFormToJson(
-        strokeScreenFromUnknown(latest.strokeScreen),
-        latest.strokeScreen
-      );
-      const sepsisJson = sepsisScreenFormToJson(
-        sepsisScreenFromUnknown(latest.sepsisScreen),
-        latest.sepsisScreen
-      );
-
-      const lastKnownTriageUpdatedAt =
-        typeof latest.updatedAt === "string"
-          ? latest.updatedAt
-          : latest.updatedAt
-            ? new Date(latest.updatedAt as string).toISOString()
-            : null;
-
-      await apiFetch(`/encounters/${encounter.id}/triage`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          chiefComplaint: (latest.chiefComplaint as string | undefined)?.trim() || null,
-          onsetAt: latest.onsetAt ? new Date(latest.onsetAt as string).toISOString() : null,
-          esi: latest.esi != null ? parseInt(String(latest.esi), 10) : null,
-          vitalsJson: vitalsMerged,
-          strokeScreen: Object.keys(strokeJson).length > 0 ? strokeJson : null,
-          sepsisScreen: Object.keys(sepsisJson).length > 0 ? sepsisJson : null,
-          triageCompleteAt: latest.triageCompleteAt
-            ? new Date(latest.triageCompleteAt as string).toISOString()
-            : null,
-          lastKnownTriageUpdatedAt,
-          measuredAt,
-        }),
+      const result = await saveIndependentEncounterVitals({
+        encounterId: encounter.id,
         facilityId,
+        form: {
+          tempC: formData.tempC,
+          hr: formData.hr,
+          rr: formData.rr,
+          bpSys: formData.bpSys,
+          bpDia: formData.bpDia,
+          spo2: formData.spo2,
+          weightKg: formData.weightKg,
+          heightCm: formData.heightCm,
+          painScore: formData.painScore,
+          allergyNote: formData.allergyNote,
+          erV1: formData.erV1,
+          tempInputUnit: formData.tempInputUnit,
+          weightInputUnit: formData.weightInputUnit,
+          heightInputMode: formData.heightInputMode,
+          heightFeet: formData.heightFeet,
+          heightInches: formData.heightInches,
+          temperatureSite: formData.temperatureSite,
+          oxygenDevice: formData.oxygenDevice,
+          oxygenFlowLpm: formData.oxygenFlowLpm,
+          oxygenFiO2Percent: formData.oxygenFiO2Percent,
+          oxygenDeviceNotes: formData.oxygenDeviceNotes,
+          measuredDate: formData.measuredDate,
+          measuredTime: formData.measuredTime,
+        },
       });
+
+      if (!result.ok) {
+        setVitalsSaveTone("error");
+        if (result.code === "INVALID_MEASURED_AT") {
+          setVitalsSaveInfo(t("vitalsContext.errors.invalidMeasuredAt"));
+        } else if (result.code === "EMPTY_VITALS") {
+          setVitalsSaveInfo(t("vitalsContext.errors.emptyVitals"));
+        } else if (result.code === "MISSING_CONTEXT") {
+          setVitalsSaveInfo(t("vitalsContext.errors.missingContext"));
+        } else {
+          const cause = result.cause;
+          const raw = cause instanceof Error ? cause.message : null;
+          if (raw && /measuredAt cannot be in the future/i.test(raw)) {
+            setVitalsSaveInfo(t("vitalsContext.errors.futureMeasuredAt"));
+          } else if (isTriageStaleConflictError(cause)) {
+            setVitalsSaveInfo(t("erTriage.panel.staleConflict"));
+          } else if (raw && /closed|signed|not open/i.test(raw)) {
+            setVitalsSaveInfo(t("vitalsContext.errors.closedEncounter"));
+          } else if (raw && /forbidden|not authorized|permission/i.test(raw)) {
+            setVitalsSaveInfo(t("vitalsContext.errors.unauthorized"));
+          } else {
+            setVitalsSaveInfo(
+              normalizeUserFacingError(raw, language) || t("vitalsContext.errors.generic")
+            );
+          }
+        }
+        return;
+      }
 
       const patientIdForEvent = encounter.patient?.id as string | undefined;
       if (patientIdForEvent && typeof window !== "undefined") {
@@ -845,13 +823,7 @@ export function EmergencyTriagePanel({
       console.error(e);
       const raw = e instanceof Error ? e.message : null;
       setVitalsSaveTone("error");
-      if (raw && /measuredAt cannot be in the future/i.test(raw)) {
-        setVitalsSaveInfo(t("vitalsContext.errors.futureMeasuredAt"));
-      } else if (isTriageStaleConflictError(e)) {
-        setVitalsSaveInfo(t("erTriage.panel.staleConflict"));
-      } else {
-        setVitalsSaveInfo(normalizeUserFacingError(raw, language) || t("erQuickVitals.saveError"));
-      }
+      setVitalsSaveInfo(normalizeUserFacingError(raw, language) || t("vitalsContext.errors.generic"));
     } finally {
       setSavingVitals(false);
     }

@@ -7903,8 +7903,13 @@ export default {
     updateError: "Impossible de modifier les signes vitaux.",
     voidError: "Impossible de retirer le relevé.",
     errors: {
-      invalidMeasuredAt: "Saisissez une date et une heure de mesure valides.",
-      futureMeasuredAt: "L’heure de mesure ne peut pas être dans le futur.",
+      invalidMeasuredAt: "La date ou l’heure de mesure est invalide.",
+      futureMeasuredAt: "L’heure de mesure sélectionnée est trop loin dans le futur.",
+      emptyVitals: "Saisissez au moins un signe vital avant d’enregistrer.",
+      missingContext: "Contexte de consultation ou d’établissement manquant. Rechargez et réessayez.",
+      closedEncounter: "Cette consultation est clôturée et ne peut pas être modifiée.",
+      unauthorized: "Vous n’avez pas l’autorisation d’enregistrer les signes vitaux pour cette consultation.",
+      generic: "Les signes vitaux n’ont pas pu être enregistrés. Veuillez réessayer.",
     },
     temperatureSite: {
       ORAL: "Orale",

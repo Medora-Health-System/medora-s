@@ -597,8 +597,8 @@ export function EmergencyTriageVitalsCompactSection({
         )}
         {statusMessage ? (
           <p
-            role="status"
-            aria-live="polite"
+            role={statusTone === "error" ? "alert" : "status"}
+            aria-live={statusTone === "error" ? "assertive" : "polite"}
             style={{
               margin: 0,
               flex: "1 1 100%",

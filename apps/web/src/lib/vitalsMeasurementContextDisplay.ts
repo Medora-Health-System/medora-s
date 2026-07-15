@@ -57,12 +57,62 @@ export function toDatetimeLocalValue(d: Date): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
-export function measuredAtIsoFromLocalInputs(dateStr: string, timeStr: string): string | null {
-  const d = (dateStr || "").trim();
-  const tm = (timeStr || "").trim();
+/**
+ * Build a local Date from HTML date (YYYY-MM-DD) + time (HH:mm or HH:mm:ss) inputs.
+ * Does not use ambiguous `new Date("YYYY-MM-DD HH:mm")` / locale-string parsing.
+ */
+export function combineLocalDateAndTime(dateValue: string, timeValue: string): Date | null {
+  const d = (dateValue || "").trim();
+  const tm = (timeValue || "").trim();
   if (!d || !tm) return null;
-  const local = new Date(`${d}T${tm}`);
-  if (Number.isNaN(local.getTime())) return null;
+  const dateMatch = /^(\d{4})-(\d{2})-(\d{2})$/.exec(d);
+  const timeMatch = /^(\d{1,2}):(\d{2})(?::(\d{2}))?$/.exec(tm);
+  if (!dateMatch || !timeMatch) return null;
+  const year = Number(dateMatch[1]);
+  const monthIndex = Number(dateMatch[2]) - 1;
+  const day = Number(dateMatch[3]);
+  const hour = Number(timeMatch[1]);
+  const minute = Number(timeMatch[2]);
+  const second = Number(timeMatch[3] ?? "0");
+  if (
+    !Number.isInteger(year) ||
+    !Number.isInteger(monthIndex) ||
+    !Number.isInteger(day) ||
+    !Number.isInteger(hour) ||
+    !Number.isInteger(minute) ||
+    !Number.isInteger(second) ||
+    monthIndex < 0 ||
+    monthIndex > 11 ||
+    day < 1 ||
+    day > 31 ||
+    hour < 0 ||
+    hour > 23 ||
+    minute < 0 ||
+    minute > 59 ||
+    second < 0 ||
+    second > 59
+  ) {
+    return null;
+  }
+  const local = new Date(year, monthIndex, day, hour, minute, second, 0);
+  if (!Number.isFinite(local.getTime())) return null;
+  // Reject overflow dates (e.g. 2026-02-31 → March).
+  if (
+    local.getFullYear() !== year ||
+    local.getMonth() !== monthIndex ||
+    local.getDate() !== day ||
+    local.getHours() !== hour ||
+    local.getMinutes() !== minute ||
+    local.getSeconds() !== second
+  ) {
+    return null;
+  }
+  return local;
+}
+
+export function measuredAtIsoFromLocalInputs(dateStr: string, timeStr: string): string | null {
+  const local = combineLocalDateAndTime(dateStr, timeStr);
+  if (!local) return null;
   return local.toISOString();
 }
 

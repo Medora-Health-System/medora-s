@@ -7930,8 +7930,13 @@ export default {
     updateError: "Could not update vital signs.",
     voidError: "Could not remove vital entry.",
     errors: {
-      invalidMeasuredAt: "Enter a valid measured date and time.",
-      futureMeasuredAt: "Measured time cannot be in the future.",
+      invalidMeasuredAt: "Measured date or time is invalid.",
+      futureMeasuredAt: "The selected measurement time is too far in the future.",
+      emptyVitals: "Enter at least one vital sign before saving.",
+      missingContext: "Encounter or facility context is missing. Reload and try again.",
+      closedEncounter: "This encounter is closed and cannot be modified.",
+      unauthorized: "You do not have permission to record vitals for this encounter.",
+      generic: "The vital signs could not be saved. Please try again.",
     },
     temperatureSite: {
       ORAL: "Oral",
