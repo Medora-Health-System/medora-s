@@ -1,5 +1,6 @@
 import { Injectable } from "@nestjs/common";
-import PDFDocument from "pdfkit";
+/** CJS `export =` — use import-equals so Nest/CommonJS emit does not read `.default`. */
+import PDFDocument = require("pdfkit");
 import { REGISTRATION_PACKAGE_TITLE } from "./packet-title.util";
 
 export interface PacketPdfInput {
