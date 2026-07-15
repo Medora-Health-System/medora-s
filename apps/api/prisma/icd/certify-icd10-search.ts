@@ -74,6 +74,33 @@ const REQUIRED_QUERIES: Array<{
   { q: "foreign body foot", mustContainDescription: "foreign body" },
   { q: "swallowed foreign body", mustMatchCodePrefix: "T18" },
   { q: "aspirated foreign body", mustMatchCodePrefix: "T17" },
+  // Burn / inhalation / frostbite / electrical (Phase 5)
+  { q: "burn", mustContainDescription: "burn" },
+  { q: "thermal burn", mustContainDescription: "burn" },
+  { q: "first-degree burn", mustContainDescription: "first degree" },
+  { q: "second-degree burn", mustContainDescription: "second degree" },
+  { q: "third-degree burn", mustContainDescription: "third degree" },
+  { q: "superficial burn", mustContainDescription: "first degree" },
+  { q: "partial-thickness burn", mustContainDescription: "second degree" },
+  { q: "full-thickness burn", mustContainDescription: "third degree" },
+  { q: "facial burn", mustMatchCodePrefix: "T20" },
+  { q: "hand burn", mustMatchCodePrefix: "T23" },
+  { q: "foot burn", mustMatchCodePrefix: "T25" },
+  { q: "genital burn", mustContainDescription: "genital" },
+  { q: "chemical burn", mustContainDescription: "corrosion" },
+  { q: "acid burn", mustContainDescription: "corrosion" },
+  { q: "alkali burn", mustContainDescription: "corrosion" },
+  { q: "electrical burn", mustMatchCodePrefix: "T75" },
+  { q: "lightning injury", mustMatchCodePrefix: "T75.0" },
+  { q: "smoke inhalation", mustMatchCodePrefix: "T27" },
+  { q: "inhalation injury", mustMatchCodePrefix: "T27" },
+  { q: "airway burn", mustMatchCodePrefix: "T27" },
+  { q: "frostbite", mustContainDescription: "frostbite" },
+  { q: "cold injury", mustContainDescription: "frostbite" },
+  { q: "sunburn", mustMatchCodePrefix: "L55" },
+  { q: "scald", mustContainDescription: "burn" },
+  { q: "grease burn", mustContainDescription: "burn" },
+  { q: "steam burn", mustContainDescription: "burn" },
 ];
 
 function encounterChar(code: string): string {
@@ -185,6 +212,28 @@ async function main() {
     const summaryDir = resolve(__dirname, "certification-summaries");
     mkdirSync(summaryDir, { recursive: true });
     writeFileSync(join(summaryDir, "fy2026-search-summary.json"), JSON.stringify(report, null, 2));
+    const burnQueryCount = REQUIRED_QUERIES.filter((row) =>
+      /burn|frostbite|inhalation|sunburn|scald|grease|steam|lightning|chemical|acid|alkali|electrical|airway|cold injury|genital|facial|hand burn|foot burn|circumferential|thermal|partial-thickness|full-thickness|first-degree|second-degree|third-degree|superficial burn/.test(
+        row.q.toLowerCase()
+      )
+    ).length;
+    writeFileSync(
+      join(summaryDir, "fy2026-burn-search-summary.json"),
+      JSON.stringify(
+        {
+          generatedAt: report.generatedAt,
+          queryCount: burnQueryCount,
+          failures: failures.filter((f) =>
+            /burn|frostbite|inhalation|sunburn|scald|grease|steam|lightning|chemical|acid|alkali|electrical|airway|cold injury|genital|facial|hand burn|foot burn|thermal|partial|full-thickness|first-degree|second-degree|third-degree|superficial/.test(
+              f.toLowerCase()
+            )
+          ),
+          pass: failures.length === 0,
+        },
+        null,
+        2
+      )
+    );
     if (!report.pass) process.exit(1);
   } finally {
     await prisma.$disconnect();

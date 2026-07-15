@@ -1,0 +1,12 @@
+{
+  "generatedAt": "2026-07-15T13:47:51.430Z",
+  "releaseVersion": "FY2026",
+  "burnScoped": 2822,
+  "burnUnexplainedFallbacks": 0,
+  "burnStolenByGenericWound": 0,
+  "inhalationStolenByGenericRespiratory": 0,
+  "chemicalStolenByGenericExposure": 0,
+  "frostbiteStolenByGenericFamily": 0,
+  "burnFallbackSample": [],
+  "pass": true
+}
