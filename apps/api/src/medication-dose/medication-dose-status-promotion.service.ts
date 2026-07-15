@@ -1,10 +1,13 @@
 import { Injectable, OnModuleDestroy, OnModuleInit } from "@nestjs/common";
 import { medicationSchedulingFeatureFlagsEnabled } from "@medora/shared";
+import { createLogDedupGate } from "../common/logging/log-dedup";
+import { schedulerCompletionLevel } from "../common/logging/log-policy";
 import { createStructuredLogger } from "../common/logging/structured-logger";
 import { getMedicationSchedulingFeatureFlagsFromEnv } from "../medication-scheduling/medication-scheduling-feature-flags.util";
 import { PrismaService } from "../prisma/prisma.service";
 
 const log = createStructuredLogger("MedicationDoseStatusPromotion");
+const disabledStateDedup = createLogDedupGate({ intervalMs: 24 * 60 * 60_000 });
 
 function readEnv(key: string): string | undefined {
   try {
@@ -59,9 +62,11 @@ export class MedicationDoseStatusPromotionService implements OnModuleInit, OnMod
 
   onModuleInit(): void {
     if (!this.isSchedulerEnabled()) {
-      log.log("dose_status_promotion_scheduler_disabled", {
-        reason: "scheduling_flags_or_PROMOTION_ENABLED",
-      });
+      if (disabledStateDedup.allow("dose_status_promotion_scheduler_disabled")) {
+        log.log("dose_status_promotion_scheduler_disabled", {
+          reason: "scheduling_flags_or_PROMOTION_ENABLED",
+        });
+      }
       this.lastSnapshot = {
         at: new Date().toISOString(),
         status: "disabled",
@@ -152,13 +157,20 @@ export class MedicationDoseStatusPromotionService implements OnModuleInit, OnMod
         promotedToOverdue,
       };
       this.lastSnapshot = snap;
-      log.log("dose_status_promotion_completed", {
+      const changed = promotedToDue + promotedToOverdue;
+      const level = schedulerCompletionLevel(changed);
+      const meta = {
         durationMs: snap.durationMs,
         promotedToDue,
         promotedToOverdue,
         facilityId: options.facilityId ?? null,
         encounterId: options.encounterId ?? null,
-      });
+      };
+      if (level === "log") {
+        log.log("dose_status_promotion_completed", meta);
+      } else if (level === "debug") {
+        log.debug("dose_status_promotion_completed", meta);
+      }
       return snap;
     } catch (err) {
       const snap: MedicationDoseStatusPromotionSnapshot = {

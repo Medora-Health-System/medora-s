@@ -4,6 +4,8 @@ import {
   resolveMedicationDoseMaintenanceHorizonEnd,
   shouldReplenishMedicationDoseHorizon,
 } from "@medora/shared";
+import { createLogDedupGate } from "../common/logging/log-dedup";
+import { schedulerCompletionLevel } from "../common/logging/log-policy";
 import { createStructuredLogger } from "../common/logging/structured-logger";
 import { getMedicationSchedulingFeatureFlagsFromEnv } from "../medication-scheduling/medication-scheduling-feature-flags.util";
 import { PrismaService } from "../prisma/prisma.service";
@@ -13,6 +15,7 @@ import {
 } from "./medication-dose-expansion.service";
 
 const log = createStructuredLogger("MedicationDoseHorizonMaintenance");
+const disabledStateDedup = createLogDedupGate({ intervalMs: 24 * 60 * 60_000 });
 
 const SKIPPED_DOSE_STATUSES = ["CANCELLED", "SUPERSEDED"] as const;
 
@@ -66,9 +69,11 @@ export class MedicationDoseHorizonMaintenanceService implements OnModuleInit, On
 
   onModuleInit(): void {
     if (!this.isGloballyEnabled()) {
-      log.log("dose_horizon_maintenance_disabled", {
-        reason: "scheduling_flags_or_MAINTENANCE_ENABLED",
-      });
+      if (disabledStateDedup.allow("dose_horizon_maintenance_disabled")) {
+        log.log("dose_horizon_maintenance_disabled", {
+          reason: "scheduling_flags_or_MAINTENANCE_ENABLED",
+        });
+      }
       this.lastSnapshot = {
         at: new Date().toISOString(),
         status: "disabled",
@@ -217,14 +222,20 @@ export class MedicationDoseHorizonMaintenanceService implements OnModuleInit, On
         dosesSkipped,
       };
       this.lastSnapshot = snap;
-      log.log("dose_horizon_maintenance_completed", {
+      const level = schedulerCompletionLevel(dosesCreated + schedulesExpanded);
+      const meta = {
         durationMs: snap.durationMs,
         schedulesScanned,
         schedulesExpanded,
         schedulesSkipped,
         dosesCreated,
         dosesSkipped,
-      });
+      };
+      if (level === "log") {
+        log.log("dose_horizon_maintenance_completed", meta);
+      } else if (level === "debug") {
+        log.debug("dose_horizon_maintenance_completed", meta);
+      }
       return snap;
     } catch (err) {
       const snap: MedicationDoseHorizonMaintenanceSnapshot = {

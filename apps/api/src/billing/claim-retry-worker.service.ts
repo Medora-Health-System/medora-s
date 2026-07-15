@@ -1,6 +1,8 @@
 import { Injectable, OnModuleDestroy, OnModuleInit } from "@nestjs/common";
 import { ClaimSubmissionStatus } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
+import { createLogDedupGate } from "../common/logging/log-dedup";
+import { schedulerCompletionLevel } from "../common/logging/log-policy";
 import { createStructuredLogger } from "../common/logging/structured-logger";
 import { ClaimTransmissionService } from "./claim-transmission.service";
 import type { ClearinghouseTransportHint } from "./clearinghouse-config.util";
@@ -9,6 +11,7 @@ import { isTerminalSubmissionStatus } from "./claim-submission-state-machine.uti
 import { ClaimOperationalEventService } from "./claim-operational-event.service";
 
 const log = createStructuredLogger("ClaimRetryWorker");
+const disabledStateDedup = createLogDedupGate({ intervalMs: 24 * 60 * 60_000 });
 
 function readEnv(key: string): string | undefined {
   try {
@@ -76,7 +79,11 @@ export class ClaimRetryWorkerService implements OnModuleInit, OnModuleDestroy {
 
   onModuleInit(): void {
     if (!this.isGloballyEnabled()) {
-      log.log("retry_worker_disabled", { reason: "CLEARINGHOUSE_RETRY_WORKER_ENABLED or NODE_ENV" });
+      if (disabledStateDedup.allow("retry_worker_disabled")) {
+        log.log("retry_worker_disabled", {
+          reason: "CLEARINGHOUSE_RETRY_WORKER_ENABLED or NODE_ENV",
+        });
+      }
       this.lastSnapshot = {
         at: new Date().toISOString(),
         status: "disabled",
@@ -92,7 +99,7 @@ export class ClaimRetryWorkerService implements OnModuleInit, OnModuleDestroy {
     const ms = rawMs ? Number(rawMs) : 60_000;
     const interval = Number.isFinite(ms) && ms >= 5_000 ? ms : 60_000;
     this.timer = setInterval(() => {
-      void this.runOnce().catch((e) => log.log("retry_worker_tick_error", { error: String(e) }));
+      void this.runOnce().catch((e) => log.error("retry_worker_tick_error", { error: String(e) }));
     }, interval);
     log.log("retry_worker_scheduler_armed", { intervalMs: interval });
   }
@@ -123,7 +130,6 @@ export class ClaimRetryWorkerService implements OnModuleInit, OnModuleDestroy {
     const rawBatch = readEnv("CLEARINGHOUSE_RETRY_WORKER_BATCH_SIZE");
     const batchSize = Math.min(Math.max(rawBatch ? Number(rawBatch) : 20, 1), 100);
     const now = new Date();
-    log.log("retry_worker_started", { batchSize });
 
     let processed = 0;
     let succeeded = 0;
@@ -170,7 +176,7 @@ export class ClaimRetryWorkerService implements OnModuleInit, OnModuleDestroy {
         });
 
         if (!fresh) {
-          log.log("retry_attempt_skipped", {
+          log.debug("retry_attempt_skipped", {
             submissionId: sub.id,
             claimType: sub.claimType,
             reason: "RETRY_SKIPPED_NOT_FOUND",
@@ -196,7 +202,7 @@ export class ClaimRetryWorkerService implements OnModuleInit, OnModuleDestroy {
         };
 
         if (isTerminalSubmissionStatus(fresh.status)) {
-          log.log("retry_attempt_skipped", {
+          log.debug("retry_attempt_skipped", {
             submissionId: fresh.id,
             claimType: fresh.claimType,
             reason: "RETRY_SKIPPED_TERMINAL",
@@ -207,7 +213,7 @@ export class ClaimRetryWorkerService implements OnModuleInit, OnModuleDestroy {
         }
 
         if (fresh.status !== ClaimSubmissionStatus.READY_TO_SEND) {
-          log.log("retry_attempt_skipped", {
+          log.debug("retry_attempt_skipped", {
             submissionId: fresh.id,
             claimType: fresh.claimType,
             reason: "RETRY_SKIPPED_STATUS_CHANGED",
@@ -220,7 +226,7 @@ export class ClaimRetryWorkerService implements OnModuleInit, OnModuleDestroy {
 
         const last = fresh.attempts[0];
         if (!last) {
-          log.log("retry_attempt_skipped", {
+          log.debug("retry_attempt_skipped", {
             submissionId: fresh.id,
             claimType: fresh.claimType,
             reason: "RETRY_SKIPPED_NO_ATTEMPTS",
@@ -231,7 +237,7 @@ export class ClaimRetryWorkerService implements OnModuleInit, OnModuleDestroy {
         }
 
         if (last.ok) {
-          log.log("retry_attempt_skipped", {
+          log.debug("retry_attempt_skipped", {
             submissionId: fresh.id,
             claimType: fresh.claimType,
             reason: "RETRY_SKIPPED_NEWER_ATTEMPT_EXISTS",
@@ -242,7 +248,7 @@ export class ClaimRetryWorkerService implements OnModuleInit, OnModuleDestroy {
         }
 
         if (!isLatestAttemptDueForWorkerRetry({ latestAttempt: last, now })) {
-          log.log("retry_attempt_skipped", {
+          log.debug("retry_attempt_skipped", {
             submissionId: fresh.id,
             claimType: fresh.claimType,
             reason: "RETRY_SKIPPED_NOT_DUE",
@@ -252,7 +258,7 @@ export class ClaimRetryWorkerService implements OnModuleInit, OnModuleDestroy {
           continue;
         }
 
-        log.log("retry_candidate_found", {
+        log.debug("retry_candidate_found", {
           submissionId: fresh.id,
           claimType: fresh.claimType,
           facilityId: fresh.facilityId,
@@ -262,7 +268,7 @@ export class ClaimRetryWorkerService implements OnModuleInit, OnModuleDestroy {
         const hint = normalizeTransportHint(last.transport);
 
         try {
-          log.log("retry_attempt_triggered", {
+          log.debug("retry_attempt_triggered", {
             submissionId: fresh.id,
             claimType: fresh.claimType,
             transport: hint,
@@ -286,7 +292,7 @@ export class ClaimRetryWorkerService implements OnModuleInit, OnModuleDestroy {
           if (res && typeof res === "object" && "skipped" in res && (res as { skipped?: boolean }).skipped) {
             const reason = (res as { skipReason?: string }).skipReason ?? "RETRY_SKIPPED";
             const gateReason = (res as { sideGateReasonCode?: string | null }).sideGateReasonCode;
-            log.log("retry_attempt_skipped", {
+            log.debug("retry_attempt_skipped", {
               submissionId: fresh.id,
               claimType: fresh.claimType,
               reason,
@@ -305,12 +311,12 @@ export class ClaimRetryWorkerService implements OnModuleInit, OnModuleDestroy {
             });
             skipped += 1;
           } else {
-            log.log("retry_attempt_succeeded", { submissionId: fresh.id, claimType: fresh.claimType });
+            log.debug("retry_attempt_succeeded", { submissionId: fresh.id, claimType: fresh.claimType });
             succeeded += 1;
           }
         } catch (e) {
           const msg = e instanceof Error ? e.message : String(e);
-          log.log("retry_attempt_failed", { submissionId: fresh.id, claimType: fresh.claimType, error: msg });
+          log.error("retry_attempt_failed", { submissionId: fresh.id, claimType: fresh.claimType, error: msg });
           void this.claimOperationalEventService.append({
             facilityId: fresh.facilityId,
             encounterId: fresh.encounterId,
@@ -336,12 +342,14 @@ export class ClaimRetryWorkerService implements OnModuleInit, OnModuleDestroy {
         skipped,
       };
       this.lastSnapshot = snap;
-      log.log("retry_worker_finished", {
-        processed,
-        succeeded,
-        failed,
-        skipped,
-      });
+      const changed = processed + succeeded + failed;
+      const level = schedulerCompletionLevel(changed);
+      const meta = { batchSize, processed, succeeded, failed, skipped };
+      if (level === "log") {
+        log.log("retry_worker_finished", meta);
+      } else if (level === "debug") {
+        log.debug("retry_worker_finished", meta);
+      }
       return snap;
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
@@ -355,7 +363,7 @@ export class ClaimRetryWorkerService implements OnModuleInit, OnModuleDestroy {
         skipped,
       };
       this.lastSnapshot = snap;
-      log.log("retry_worker_finished", { error: msg, processed, succeeded, failed, skipped });
+      log.error("retry_worker_failed", { error: msg, processed, succeeded, failed, skipped });
       return snap;
     }
   }
