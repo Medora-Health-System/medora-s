@@ -51,6 +51,22 @@ const FRENCH_DIAGNOSIS_SEARCH_ALIASES: readonly FrenchDiagnosisSearchAlias[] = [
     frenchPhrases: ["coup de soleil"],
     englishSearchTerms: ["sunburn"],
   },
+  {
+    frenchPhrases: ["plaie pénétrante", "plaie penetrante", "blessure pénétrante", "blessure penetrante", "plaie par balle"],
+    englishSearchTerms: ["penetrating wound", "puncture wound", "gunshot"],
+  },
+  {
+    frenchPhrases: ["blessure par balle", "arme à feu", "arme a feu", "balle"],
+    englishSearchTerms: ["gunshot", "firearm", "bullet"],
+  },
+  {
+    frenchPhrases: ["arme blanche", "coup de couteau", "plaie par couteau"],
+    englishSearchTerms: ["stab", "knife", "stab wound"],
+  },
+  {
+    frenchPhrases: ["objet empalé", "objet empale", "empalement", "projectile retenu", "balle retenue"],
+    englishSearchTerms: ["impalement", "retained projectile", "retained bullet"],
+  },
 
   {
     frenchPhrases: ["douleur abdominale", "douleur au ventre", "mal au ventre", "douleur abdominal"],

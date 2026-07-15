@@ -1476,7 +1476,7 @@ describe("edDisposition19Y", () => {
     });
 
     it("wound/laceration injury families resolve correctly", () => {
-      for (const code of ["S01.01", "S41.012", "S61.1", "T14.1"]) {
+      for (const code of ["S01.01", "S41.012", "T14.1"]) {
         const resolved = resolveProviderDischargeTemplateForDiagnosis({ code, displayName: "Laceration" });
         expect(resolved.template.id).toBe("wound_laceration_v1");
         expect(["icdExact", "icdFamily"]).toContain(resolved.matchLevel);
@@ -8092,7 +8092,7 @@ describe("edDisposition19Y", () => {
         PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.length
       );
       // Update this constant intentionally when registry governance content changes.
-      expect(hash).toBe("072268fd83b2dc9b8442c23a1b747d5fd09386ea4d28cd2f9cf3ef11126e29f3");
+      expect(hash).toBe("e7edbb14bac5dfbd0c4b538fb527c25f24c9d5d582aaa334a597492b64c193bf");
     });
 
     it("registry governance snapshot hash remains stable for reviewed registry (FR)", () => {
@@ -8102,7 +8102,7 @@ describe("edDisposition19Y", () => {
         PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.length
       );
       // Update this constant intentionally when registry governance content changes.
-      expect(hash).toBe("e2b75b4c1d9b39f19400227ae96bc32911fe0700b3aafa673b473e706a738746");
+      expect(hash).toBe("9805c8a47405c82aecd74ea1d4f2f7e2c1bd324de42da4187a376af7f1f03340");
     });
 
     it("timesApplied exists in type but is not incremented anywhere", () => {

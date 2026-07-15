@@ -616,6 +616,33 @@ export const PROVIDER_DISCHARGE_TEMPLATE_CONTENT_INTEGRITY: Record<
     mustIncludeAny: { en: ["sunburn", "return", "skin"], fr: ["coup de soleil", "retournez", "peau"] },
     forbiddenCrossTemplateMarkers: { en: BURN_CROSS_TEMPLATE_FORBIDDEN_EN, fr: BURN_CROSS_TEMPLATE_FORBIDDEN_FR },
   },
+  penetrating_wound_minor_v1: {
+    mustIncludeAny: { en: ["penetrating", "wound"], fr: ["pénétrante", "plaie"] },
+    forbiddenCrossTemplateMarkers: { en: ["animal bite"], fr: ["morsure animale"] },
+  },
+  gunshot_wound_extremity_v1: {
+    mustIncludeAny: { en: ["gunshot", "extremity"], fr: ["blessure par balle", "membre"] },
+    forbiddenCrossTemplateMarkers: { en: ["animal bite"], fr: ["morsure animale"] },
+  },
+  stab_wound_minor_v1: {
+    mustIncludeAny: { en: ["stab", "wound"], fr: ["arme blanche", "plaie"] },
+    forbiddenCrossTemplateMarkers: { en: ["animal bite"], fr: ["morsure animale"] },
+  },
+  retained_projectile_v1: {
+    mustIncludeAny: { en: ["retained", "projectile"], fr: ["projectile", "retenu"] },
+    forbiddenCrossTemplateMarkers: { en: ["animal bite"], fr: ["morsure animale"] },
+  },
+  penetrating_hand_injury_v1: { mustIncludeAny: { en: ["hand", "penetrating"], fr: ["main", "pénétrante"] }, forbiddenCrossTemplateMarkers: { en: ["animal bite"], fr: ["morsure animale"] } },
+  penetrating_foot_injury_v1: { mustIncludeAny: { en: ["foot", "penetrating"], fr: ["pied", "pénétrante"] }, forbiddenCrossTemplateMarkers: { en: ["animal bite"], fr: ["morsure animale"] } },
+  penetrating_face_v1: { mustIncludeAny: { en: ["facial", "penetrating"], fr: ["visage", "pénétrante"] }, forbiddenCrossTemplateMarkers: { en: ["animal bite"], fr: ["morsure animale"] } },
+  penetrating_eye_followup_v1: { mustIncludeAny: { en: ["eye", "penetrating"], fr: ["œil", "pénétrante"] }, forbiddenCrossTemplateMarkers: { en: ["animal bite"], fr: ["morsure animale"] } },
+  penetrating_chest_v1: { mustIncludeAny: { en: ["chest", "penetrating"], fr: ["thorax", "pénétrante"] }, forbiddenCrossTemplateMarkers: { en: ["animal bite"], fr: ["morsure animale"] } },
+  penetrating_abdomen_v1: { mustIncludeAny: { en: ["abdominal", "penetrating"], fr: ["abdomen", "pénétrante"] }, forbiddenCrossTemplateMarkers: { en: ["animal bite"], fr: ["morsure animale"] } },
+  penetrating_neck_v1: { mustIncludeAny: { en: ["neck", "penetrating"], fr: ["cou", "pénétrante"] }, forbiddenCrossTemplateMarkers: { en: ["animal bite"], fr: ["morsure animale"] } },
+  penetrating_head_v1: { mustIncludeAny: { en: ["head", "penetrating"], fr: ["tête", "pénétrante"] }, forbiddenCrossTemplateMarkers: { en: ["animal bite"], fr: ["morsure animale"] } },
+  post_wound_exploration_v1: { mustIncludeAny: { en: ["penetrating", "wound"], fr: ["pénétrante", "plaie"] }, forbiddenCrossTemplateMarkers: { en: ["animal bite"], fr: ["morsure animale"] } },
+  post_foreign_body_removal_v1: { mustIncludeAny: { en: ["retained", "projectile"], fr: ["projectile", "retenu"] }, forbiddenCrossTemplateMarkers: { en: ["animal bite"], fr: ["morsure animale"] } },
+  post_tourniquet_extremity_v1: { mustIncludeAny: { en: ["gunshot", "extremity"], fr: ["blessure par balle", "membre"] }, forbiddenCrossTemplateMarkers: { en: ["animal bite"], fr: ["morsure animale"] } },
   trauma_msk_amputation_finger_thumb_v1: {
     mustIncludeAny: { en: ["amputation"], fr: ["amputation"] },
     forbiddenCrossTemplateMarkers: { en: RESPIRATORY_FORBIDDEN_ON_WOUND_EN, fr: RESPIRATORY_FORBIDDEN_ON_WOUND_FR },

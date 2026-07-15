@@ -86,6 +86,12 @@ export const COMMON_DIAGNOSES: Array<{ code: string; label: string }> = [
   { code: "T75.4XXA", label: "Électrocution, rencontre initiale" },
   { code: "T33.011A", label: "Gelure superficielle du doigt, rencontre initiale" },
   { code: "L55.9", label: "Coup de soleil, sans précision" },
+  { code: "S21.301A", label: "Plaie pénétrante de la paroi antérieure du thorax, rencontre initiale" },
+  { code: "S31.601A", label: "Plaie pénétrante de la paroi abdominale, rencontre initiale" },
+  { code: "S61.239A", label: "Plaie punctiforme d'un doigt, sans corps étranger, rencontre initiale" },
+  { code: "S05.50XA", label: "Plaie pénétrante de l'œil, sans corps étranger, rencontre initiale" },
+  { code: "S91.339A", label: "Plaie punctiforme du pied, sans corps étranger, rencontre initiale" },
+  { code: "S11.93XA", label: "Plaie ouverte du cou, rencontre initiale" },
   { code: "Z23", label: "Besoin de vaccination contre une maladie bactérienne" },
   { code: "Z00.0", label: "Examen médical général de suivi" },
 ];

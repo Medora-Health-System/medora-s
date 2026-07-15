@@ -4,7 +4,6 @@
 
 import type { ClinicalConditionFamilyDefinition } from "./providerDischargeConditionFamilyTypes";
 import {
-  FOREIGN_BODY_EYE_PENETRATING_ICD_PREFIXES,
   FOREIGN_BODY_FOOT_TOE_ICD_PREFIXES,
   FOREIGN_BODY_HAND_FINGER_ICD_PREFIXES,
   FOREIGN_BODY_SKIN_SOFT_TISSUE_OPEN_ICD_PREFIXES,
@@ -313,7 +312,6 @@ export const PHASE1_CLINICAL_CONDITION_FAMILIES: readonly ClinicalConditionFamil
       "S17",
       "S08.1",
       "S08.8",
-      "S05.5",
     ],
     keywords: ["laceration", "wound", "cut", "abrasion", "plaie", "suture"],
     specialtyCategory: "wound_care",
@@ -1249,7 +1247,9 @@ export const PHASE1_CLINICAL_CONDITION_FAMILIES: readonly ClinicalConditionFamil
     label: "Foreign Body — Eye",
     templateId: "trauma_msk_foreign_body_eye_v1",
     clinicalDomain: "Trauma",
-    icdPrefixes: ["T15", ...FOREIGN_BODY_EYE_PENETRATING_ICD_PREFIXES],
+    // Penetrating ocular S05.5x is owned by trauma_penetrating_eye (Phase 6).
+    // Keep T15 for true external ocular foreign-body discharge routing.
+    icdPrefixes: ["T15"],
     keywords: ["foreign body eye", "corneal foreign body", "corps étranger oeil"],
     specialtyCategory: "ophthalmology",
     riskCategory: "moderate_to_high",
@@ -1567,6 +1567,62 @@ export const PHASE1_CLINICAL_CONDITION_FAMILIES: readonly ClinicalConditionFamil
     reviewStatus: "reviewed",
     routingStatus: "READY",
     sourceReferenceLabels: ["MedlinePlus — Burns"],
+  },
+  {
+    id: "trauma_penetrating_eye", label: "Penetrating injury — Eye", templateId: "penetrating_eye_followup_v1", clinicalDomain: "Trauma",
+    icdPrefixes: ["S05.4", "S05.50", "S05.51", "S05.52", "S05.5", "S05.6"], keywords: ["penetrating eye", "ocular penetration", "plaie pénétrante oeil", "plaie pénétrante de l'œil"],
+    specialtyCategory: "ophthalmology", riskCategory: "high", clinicalRationale: "Penetrating ocular trauma needs urgent specialist-directed reassessment.", reviewStatus: "reviewed", routingStatus: "READY", sourceReferenceLabels: ["MedlinePlus — Eye injuries"],
+  },
+  {
+    id: "trauma_penetrating_chest", label: "Penetrating injury — Chest", templateId: "penetrating_chest_v1", clinicalDomain: "Trauma",
+    icdPrefixes: ["S21.1", "S21.2", "S21.3", "S21.4", "S25", "S26", "S27"], keywords: ["penetrating chest", "gunshot chest", "stab chest"],
+    specialtyCategory: "emergency_medicine", riskCategory: "high", clinicalRationale: "Thoracic penetrating injury must not use minor-wound instructions.", reviewStatus: "reviewed", routingStatus: "READY", sourceReferenceLabels: ["MedlinePlus — Chest injuries"],
+  },
+  {
+    id: "trauma_penetrating_abdomen", label: "Penetrating injury — Abdomen", templateId: "penetrating_abdomen_v1", clinicalDomain: "Trauma",
+    icdPrefixes: ["S31.0", "S31.1", "S31.5", "S31.6", "S31.8", "S35", "S36", "S37"], keywords: ["penetrating abdomen", "gunshot abdomen", "stab abdomen"],
+    specialtyCategory: "emergency_medicine", riskCategory: "high", clinicalRationale: "Abdominal or organ penetrating injury requires strong escalation precautions.", reviewStatus: "reviewed", routingStatus: "READY", sourceReferenceLabels: ["MedlinePlus — Abdominal injuries"],
+  },
+  {
+    id: "trauma_penetrating_neck", label: "Penetrating injury — Neck", templateId: "penetrating_neck_v1", clinicalDomain: "Trauma",
+    icdPrefixes: ["S11.0", "S11.1", "S11.2", "S11.8", "S11.9", "S15"], keywords: ["penetrating neck", "gunshot neck", "stab neck", "plaie ouverte du cou"],
+    specialtyCategory: "emergency_medicine", riskCategory: "high", clinicalRationale: "Neck penetrating injury needs airway and bleeding escalation language.", reviewStatus: "reviewed", routingStatus: "READY", sourceReferenceLabels: ["MedlinePlus — Neck injuries"],
+  },
+  {
+    id: "trauma_penetrating_head", label: "Penetrating injury — Head", templateId: "penetrating_head_v1", clinicalDomain: "Trauma",
+    icdPrefixes: ["S01.0", "S01.1", "S01.2", "S01.3", "S01.4", "S01.5", "S01.8", "S01.9"], keywords: ["penetrating head", "gunshot head", "stab head"],
+    specialtyCategory: "emergency_medicine", riskCategory: "high", clinicalRationale: "Head penetrating injury must not route to generic laceration content.", reviewStatus: "reviewed", routingStatus: "READY", sourceReferenceLabels: ["MedlinePlus — Head injuries"],
+  },
+  {
+    id: "trauma_penetrating_hand", label: "Penetrating injury — Hand", templateId: "penetrating_hand_injury_v1", clinicalDomain: "Trauma",
+    icdPrefixes: ["S61.0", "S61.1", "S61.2", "S61.3", "S61.4", "S61.5", "S65"], keywords: ["penetrating hand", "puncture hand", "plaie pénétrante main"],
+    specialtyCategory: "hand_surgery", riskCategory: "moderate_to_high", clinicalRationale: "Hand puncture and vascular injury require neurovascular precautions.", reviewStatus: "reviewed", routingStatus: "READY", sourceReferenceLabels: ["MedlinePlus — Hand injuries"],
+  },
+  {
+    id: "trauma_penetrating_foot", label: "Penetrating injury — Foot", templateId: "penetrating_foot_injury_v1", clinicalDomain: "Trauma",
+    icdPrefixes: ["S91.0", "S91.1", "S91.2", "S91.3", "S95"], keywords: ["penetrating foot", "puncture foot", "plaie pénétrante pied"],
+    specialtyCategory: "orthopedics", riskCategory: "moderate_to_high", clinicalRationale: "Foot puncture and vascular injury require protected ambulation and reassessment.", reviewStatus: "reviewed", routingStatus: "READY", sourceReferenceLabels: ["MedlinePlus — Foot injuries"],
+  },
+  {
+    id: "trauma_penetrating_face", label: "Penetrating injury — Face", templateId: "penetrating_face_v1", clinicalDomain: "Trauma",
+    icdPrefixes: ["S01.1", "S01.2", "S01.4", "S01.5", "S01.8", "S01.9"], keywords: ["penetrating face", "facial penetrating", "plaie pénétrante visage"],
+    specialtyCategory: "emergency_medicine", riskCategory: "high", clinicalRationale: "Facial penetrating injury needs airway and vision return precautions.", reviewStatus: "reviewed", routingStatus: "READY", sourceReferenceLabels: ["MedlinePlus — Facial injuries"],
+  },
+  {
+    id: "trauma_penetrating_gsw_extremity", label: "Gunshot wound — Extremity", templateId: "gunshot_wound_extremity_v1", clinicalDomain: "Trauma",
+    keywords: ["gunshot", "firearm", "bullet", "blessure par balle"], specialtyCategory: "orthopedics", riskCategory: "high", clinicalRationale: "Gunshot extremity discharge requires bleeding and neurovascular precautions.", reviewStatus: "reviewed", routingStatus: "READY", sourceReferenceLabels: ["MedlinePlus — Wounds and injuries"],
+  },
+  {
+    id: "trauma_penetrating_stab_minor", label: "Stab wound — Minor", templateId: "stab_wound_minor_v1", clinicalDomain: "Trauma",
+    keywords: ["stab", "knife", "arme blanche", "couteau"], specialtyCategory: "emergency_medicine", riskCategory: "moderate", clinicalRationale: "Minor evaluated stab wound instructions remain distinct from torso penetrating trauma.", reviewStatus: "reviewed", routingStatus: "READY", sourceReferenceLabels: ["MedlinePlus — Wounds and injuries"],
+  },
+  {
+    id: "trauma_penetrating_retained_projectile", label: "Retained projectile", templateId: "retained_projectile_v1", clinicalDomain: "Trauma",
+    keywords: ["retained bullet", "retained projectile", "projectile retained", "balle retenue", "projectile retenu"], specialtyCategory: "emergency_medicine", riskCategory: "high", clinicalRationale: "Retained projectiles must not be manipulated or removed outside the planned care path.", reviewStatus: "reviewed", routingStatus: "READY", sourceReferenceLabels: ["MedlinePlus — Wounds and injuries"],
+  },
+  {
+    id: "trauma_penetrating_minor", label: "Penetrating wound — Minor", templateId: "penetrating_wound_minor_v1", clinicalDomain: "Trauma",
+    icdPrefixes: ["S11", "S21", "S31"], keywords: ["penetrating wound", "puncture wound", "plaie pénétrante", "plaie perforante"], specialtyCategory: "emergency_medicine", riskCategory: "moderate", clinicalRationale: "Fallback only after longer anatomic penetrating families are considered.", reviewStatus: "reviewed", routingStatus: "READY", sourceReferenceLabels: ["MedlinePlus — Wounds and injuries"],
   },
 
 ] as const;

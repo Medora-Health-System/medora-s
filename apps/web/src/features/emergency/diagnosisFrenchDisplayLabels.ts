@@ -73,6 +73,12 @@ const FRENCH_ICD10_DISPLAY_LABELS_BY_NORMALIZED_CODE: Readonly<Record<string, st
   T754XXA: "Effets de la foudre",
   T33011A: "Gelure superficielle du doigt",
   L559: "Coup de soleil, sans précision",
+  S21301A: "Plaie pénétrante de la paroi antérieure du thorax",
+  S31601A: "Plaie pénétrante de la paroi abdominale",
+  S61239A: "Plaie punctiforme d'un doigt, sans corps étranger",
+  S0550XA: "Plaie pénétrante de l'œil, sans corps étranger",
+  S91339A: "Plaie punctiforme du pied, sans corps étranger",
+  S1193XA: "Plaie ouverte du cou",
 };
 
 export function getFrenchDiagnosisDisplayLabel(code: string, englishLabel: string): string {
