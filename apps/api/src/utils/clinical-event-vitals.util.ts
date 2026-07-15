@@ -1,6 +1,6 @@
 import type { Prisma } from "@prisma/client";
 
-export type VitalsClinicalEventSource = "ENCOUNTER_CHART" | "TRIAGE";
+export type VitalsClinicalEventSource = "ENCOUNTER_CHART" | "TRIAGE" | "NURSING_DISCHARGE";
 
 /**
  * JSON-clone vitals (drops non-JSON values) and wrap with `source` for EncounterClinicalEvent.payloadJson.

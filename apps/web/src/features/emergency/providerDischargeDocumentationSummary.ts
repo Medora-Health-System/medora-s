@@ -251,6 +251,49 @@ export function buildNursingDischargeExecutionSummaryBlock19Y(
     }
   }
 
+  if (exec.dischargeVitalReadingId || exec.dischargeVitalsSnapshot) {
+    lines.push("");
+    lines.push(p(locale, "nursingDischargeVitalsSection"));
+    const snap = exec.dischargeVitalsSnapshot;
+    if (snap) {
+      pushLine(lines, "BP", snap.bp);
+      pushLine(lines, "HR", snap.hr);
+      pushLine(lines, "RR", snap.rr);
+      const tempLine = [snap.temp, snap.tempSite].filter(Boolean).join(" · ");
+      pushLine(lines, "Temp", tempLine || undefined);
+      const spo2Line = [snap.spo2, snap.oxygen].filter(Boolean).join(" · ");
+      pushLine(lines, "SpO₂", spo2Line || undefined);
+      pushLine(lines, "Pain", snap.pain);
+      pushLine(lines, p(locale, "nursingDischargeVitalsMeasuredAt"), snap.measuredAt);
+      pushLine(lines, p(locale, "nursingDischargeVitalsEnteredBy"), snap.enteredBy);
+    } else {
+      lines.push(p(locale, "nursingDischargeVitalsAssociated"));
+    }
+    if (exec.dischargeVitalsConfirmedByDisplayName) {
+      pushLine(
+        lines,
+        p(locale, "nursingDischargeVitalsConfirmedBy"),
+        exec.dischargeVitalsConfirmedAt
+          ? `${exec.dischargeVitalsConfirmedByDisplayName} — ${formatIso(exec.dischargeVitalsConfirmedAt, locale)}`
+          : exec.dischargeVitalsConfirmedByDisplayName
+      );
+    }
+  }
+  if (exec.dischargeVitalsExceptionReason) {
+    const reasonKey = `nursingDischargeVitalsException.${exec.dischargeVitalsExceptionReason}`;
+    const reasonLabel = p(locale, reasonKey);
+    pushLine(
+      lines,
+      p(locale, "nursingDischargeVitalsExceptionLabel"),
+      reasonLabel.startsWith("providerDischargeDocumentation19Y.")
+        ? exec.dischargeVitalsExceptionReason
+        : reasonLabel
+    );
+    if (exec.dischargeVitalsExceptionNote) {
+      pushLine(lines, p(locale, "nursingDischargeVitalsExceptionNote"), exec.dischargeVitalsExceptionNote);
+    }
+  }
+
   pushLine(lines, p(locale, "nursingNote"), exec.dischargeSortieExecutionNote);
 
   return { title: p(locale, "nursingSummaryBlockTitle"), lines };

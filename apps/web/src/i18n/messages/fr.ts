@@ -1,6 +1,8 @@
 import { labels } from "@/lib/uiLabels";
 import { erTriageMessagesFr } from "./erTriage.fr";
 import { providerDischargeDocumentation19YFr } from "./providerDischargeDocumentation19Y.fr";
+import { nursingDischargeVitalsFr } from "./nursingDischargeVitals.fr";
+import { nursingDischargeNotesFr } from "./nursingDischargeNotes.fr";
 import { tdapVaccineAdminFr } from "./tdapVaccineAdmin.fr";
 import { providerDocumentationGiExtensionsComplaintIntelFr } from "./providerDocumentationGiExtensionsComplaintIntel.fr";
 import { providerDocumentationPsychBehavioralComplaintIntelFr } from "./providerDocumentationPsychBehavioralComplaintIntel.fr";
@@ -12674,6 +12676,8 @@ export default {
       "Formats : PDF (champ dédié), PNG, JPEG ou WebP. Taille max. environ 1,5 Mo par fichier (limite serveur après encodage). Volume total du texte + des pièces en JSON : max. 2,5 millions de caractères.",
   },
   providerDischargeDocumentation19Y: providerDischargeDocumentation19YFr,
+  nursingDischargeVitals: nursingDischargeVitalsFr,
+  nursingDischargeNotes: nursingDischargeNotesFr,
   tdapVaccineAdmin: tdapVaccineAdminFr,
   emergencyDisposition: {
     preview: {

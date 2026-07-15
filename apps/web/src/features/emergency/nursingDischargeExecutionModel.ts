@@ -61,6 +61,8 @@ export type NursingDischargeExecutionForm = {
   teachingReviewed: NursingDischargeTeachingItem[];
   conditionAtDischarge: NursingDischargeCondition | "";
   nursingDischargeNote: string;
+  selectedTemplateIds: string[];
+  selectedPhraseIds: string[];
 };
 
 export type NursingDischargeExecutionStored = ErDischargeSortieExecutionStored & {
@@ -68,6 +70,30 @@ export type NursingDischargeExecutionStored = ErDischargeSortieExecutionStored &
   nursingConditionAtDischarge?: NursingDischargeCondition;
   nursingTeachingReviewed?: NursingDischargeTeachingItem[];
   dischargedByTitle?: string;
+  /** Associated discharge vital reading (TriageVitalsReading.id). */
+  dischargeVitalReadingId?: string;
+  dischargeVitalsSelectedFromExisting?: boolean;
+  dischargeVitalsConfirmedByDisplayName?: string;
+  dischargeVitalsConfirmedAt?: string;
+  dischargeVitalsSnapshot?: {
+    bp?: string;
+    hr?: string;
+    rr?: string;
+    temp?: string;
+    tempSite?: string;
+    spo2?: string;
+    oxygen?: string;
+    pain?: string;
+    measuredAt?: string;
+    enteredBy?: string;
+  };
+  dischargeVitalsExceptionReason?: string;
+  dischargeVitalsExceptionNote?: string;
+  dischargeVitalsExceptionByDisplayName?: string;
+  dischargeVitalsExceptionAt?: string;
+  nursingNoteTemplateIds?: string[];
+  nursingNotePhraseIds?: string[];
+  nursingNoteTemplateVersion?: string;
 };
 
 export function emptyNursingDischargeExecutionForm(): NursingDischargeExecutionForm {
@@ -77,6 +103,8 @@ export function emptyNursingDischargeExecutionForm(): NursingDischargeExecutionF
     teachingReviewed: [],
     conditionAtDischarge: "",
     nursingDischargeNote: "",
+    selectedTemplateIds: [],
+    selectedPhraseIds: [],
   };
 }
 
@@ -125,6 +153,15 @@ export function hydrateNursingDischargeExecutionForm(
   const note = o.dischargeSortieExecutionNote;
   if (typeof note === "string") form.nursingDischargeNote = note;
 
+  const tplIds = o.nursingNoteTemplateIds;
+  if (Array.isArray(tplIds)) {
+    form.selectedTemplateIds = tplIds.filter((x): x is string => typeof x === "string");
+  }
+  const phraseIds = o.nursingNotePhraseIds;
+  if (Array.isArray(phraseIds)) {
+    form.selectedPhraseIds = phraseIds.filter((x): x is string => typeof x === "string");
+  }
+
   return form;
 }
 
@@ -165,6 +202,44 @@ export function readNursingDischargeExecutionStored(
   const title = o.dischargedByTitle;
   if (typeof title === "string" && title.trim()) out.dischargedByTitle = title.trim();
 
+  if (typeof o.dischargeVitalReadingId === "string" && o.dischargeVitalReadingId.trim()) {
+    out.dischargeVitalReadingId = o.dischargeVitalReadingId.trim();
+  }
+  if (o.dischargeVitalsSelectedFromExisting === true) out.dischargeVitalsSelectedFromExisting = true;
+  if (typeof o.dischargeVitalsConfirmedByDisplayName === "string" && o.dischargeVitalsConfirmedByDisplayName.trim()) {
+    out.dischargeVitalsConfirmedByDisplayName = o.dischargeVitalsConfirmedByDisplayName.trim();
+  }
+  if (typeof o.dischargeVitalsConfirmedAt === "string" && o.dischargeVitalsConfirmedAt.trim()) {
+    out.dischargeVitalsConfirmedAt = o.dischargeVitalsConfirmedAt.trim();
+  }
+  if (o.dischargeVitalsSnapshot && typeof o.dischargeVitalsSnapshot === "object" && !Array.isArray(o.dischargeVitalsSnapshot)) {
+    out.dischargeVitalsSnapshot = o.dischargeVitalsSnapshot as NursingDischargeExecutionStored["dischargeVitalsSnapshot"];
+  }
+  if (typeof o.dischargeVitalsExceptionReason === "string" && o.dischargeVitalsExceptionReason.trim()) {
+    out.dischargeVitalsExceptionReason = o.dischargeVitalsExceptionReason.trim();
+  }
+  if (typeof o.dischargeVitalsExceptionNote === "string" && o.dischargeVitalsExceptionNote.trim()) {
+    out.dischargeVitalsExceptionNote = o.dischargeVitalsExceptionNote.trim();
+  }
+  if (
+    typeof o.dischargeVitalsExceptionByDisplayName === "string" &&
+    o.dischargeVitalsExceptionByDisplayName.trim()
+  ) {
+    out.dischargeVitalsExceptionByDisplayName = o.dischargeVitalsExceptionByDisplayName.trim();
+  }
+  if (typeof o.dischargeVitalsExceptionAt === "string" && o.dischargeVitalsExceptionAt.trim()) {
+    out.dischargeVitalsExceptionAt = o.dischargeVitalsExceptionAt.trim();
+  }
+  if (Array.isArray(o.nursingNoteTemplateIds)) {
+    out.nursingNoteTemplateIds = o.nursingNoteTemplateIds.filter((x): x is string => typeof x === "string");
+  }
+  if (Array.isArray(o.nursingNotePhraseIds)) {
+    out.nursingNotePhraseIds = o.nursingNotePhraseIds.filter((x): x is string => typeof x === "string");
+  }
+  if (typeof o.nursingNoteTemplateVersion === "string" && o.nursingNoteTemplateVersion.trim()) {
+    out.nursingNoteTemplateVersion = o.nursingNoteTemplateVersion.trim();
+  }
+
   return out;
 }
 
@@ -177,18 +252,52 @@ export function mergeNursingDischargeExecutionIntoNursingAssessment(
       ? { ...(previousNursingAssessment as Record<string, unknown>) }
       : {};
 
+  const prevExec =
+    base[ER_DISPOSITION_EXECUTION_V1_KEY] &&
+    typeof base[ER_DISPOSITION_EXECUTION_V1_KEY] === "object" &&
+    !Array.isArray(base[ER_DISPOSITION_EXECUTION_V1_KEY])
+      ? { ...(base[ER_DISPOSITION_EXECUTION_V1_KEY] as Record<string, unknown>) }
+      : {};
+
   const payload: Record<string, unknown> = {
+    ...prevExec,
     dischargeSortieCompletedAt: stored.dischargeSortieCompletedAt,
     dischargeSortieCompletedByDisplayName: stored.dischargeSortieCompletedByDisplayName,
   };
 
   const note = stored.dischargeSortieExecutionNote?.trim().slice(0, 2000);
   if (note) payload.dischargeSortieExecutionNote = note;
+  else delete payload.dischargeSortieExecutionNote;
 
   if (stored.nursingDestination) payload.nursingDestination = stored.nursingDestination;
   if (stored.nursingConditionAtDischarge) payload.nursingConditionAtDischarge = stored.nursingConditionAtDischarge;
   if (stored.nursingTeachingReviewed?.length) payload.nursingTeachingReviewed = stored.nursingTeachingReviewed;
   if (stored.dischargedByTitle?.trim()) payload.dischargedByTitle = stored.dischargedByTitle.trim();
+
+  if (stored.dischargeVitalReadingId) payload.dischargeVitalReadingId = stored.dischargeVitalReadingId;
+  if (stored.dischargeVitalsSelectedFromExisting === true) {
+    payload.dischargeVitalsSelectedFromExisting = true;
+  }
+  if (stored.dischargeVitalsConfirmedByDisplayName) {
+    payload.dischargeVitalsConfirmedByDisplayName = stored.dischargeVitalsConfirmedByDisplayName;
+  }
+  if (stored.dischargeVitalsConfirmedAt) payload.dischargeVitalsConfirmedAt = stored.dischargeVitalsConfirmedAt;
+  if (stored.dischargeVitalsSnapshot) payload.dischargeVitalsSnapshot = stored.dischargeVitalsSnapshot;
+  if (stored.dischargeVitalsExceptionReason) {
+    payload.dischargeVitalsExceptionReason = stored.dischargeVitalsExceptionReason;
+  }
+  if (stored.dischargeVitalsExceptionNote) {
+    payload.dischargeVitalsExceptionNote = stored.dischargeVitalsExceptionNote;
+  }
+  if (stored.dischargeVitalsExceptionByDisplayName) {
+    payload.dischargeVitalsExceptionByDisplayName = stored.dischargeVitalsExceptionByDisplayName;
+  }
+  if (stored.dischargeVitalsExceptionAt) {
+    payload.dischargeVitalsExceptionAt = stored.dischargeVitalsExceptionAt;
+  }
+  if (stored.nursingNoteTemplateIds?.length) payload.nursingNoteTemplateIds = stored.nursingNoteTemplateIds;
+  if (stored.nursingNotePhraseIds?.length) payload.nursingNotePhraseIds = stored.nursingNotePhraseIds;
+  if (stored.nursingNoteTemplateVersion) payload.nursingNoteTemplateVersion = stored.nursingNoteTemplateVersion;
 
   base[ER_DISPOSITION_EXECUTION_V1_KEY] = payload;
   return base;
@@ -197,7 +306,8 @@ export function mergeNursingDischargeExecutionIntoNursingAssessment(
 export function nursingDischargeFormToStored(
   form: NursingDischargeExecutionForm,
   completedByDisplayName: string,
-  completedByTitle?: string
+  completedByTitle?: string,
+  extras?: Partial<NursingDischargeExecutionStored>
 ): NursingDischargeExecutionStored {
   const iso =
     form.dischargeAtLocal.trim() ?
@@ -212,5 +322,9 @@ export function nursingDischargeFormToStored(
     nursingConditionAtDischarge: form.conditionAtDischarge || undefined,
     nursingTeachingReviewed: form.teachingReviewed.length ? form.teachingReviewed : undefined,
     dischargedByTitle: completedByTitle?.trim() || undefined,
+    nursingNoteTemplateIds: form.selectedTemplateIds.length ? form.selectedTemplateIds : undefined,
+    nursingNotePhraseIds: form.selectedPhraseIds.length ? form.selectedPhraseIds : undefined,
+    nursingNoteTemplateVersion: "nd-note-v1",
+    ...extras,
   };
 }

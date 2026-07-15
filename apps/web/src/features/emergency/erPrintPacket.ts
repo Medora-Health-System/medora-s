@@ -967,6 +967,61 @@ function appendNursingDischargeDocumentationBlock(
       body.push(`<p style="margin: 0 0 4px 0; font-size: 13px;">• ${esc(i18nMessage(language, `providerDischargeDocumentation19Y.nursingTeaching.${item}`))}</p>`);
     }
   }
+  if (exec?.dischargeVitalReadingId || exec?.dischargeVitalsSnapshot) {
+    body.push(
+      `<p style="margin: 10px 0 4px 0; font-size: 13px; font-weight: 700;">${esc(
+        i18nMessage(language, "providerDischargeDocumentation19Y.nursingDischargeVitalsSection")
+      )}</p>`
+    );
+    const snap = exec.dischargeVitalsSnapshot;
+    if (snap) {
+      if (snap.bp) body.push(line("BP", snap.bp));
+      if (snap.hr) body.push(line("HR", snap.hr));
+      if (snap.rr) body.push(line("RR", snap.rr));
+      if (snap.temp || snap.tempSite) {
+        body.push(line("Temp", [snap.temp, snap.tempSite].filter(Boolean).join(" · ")));
+      }
+      if (snap.spo2 || snap.oxygen) {
+        body.push(line("SpO₂", [snap.spo2, snap.oxygen].filter(Boolean).join(" · ")));
+      }
+      if (snap.pain) body.push(line("Pain", snap.pain));
+      if (snap.measuredAt) {
+        body.push(
+          line(
+            i18nMessage(language, "providerDischargeDocumentation19Y.nursingDischargeVitalsMeasuredAt"),
+            snap.measuredAt
+          )
+        );
+      }
+      if (snap.enteredBy) {
+        body.push(
+          line(
+            i18nMessage(language, "providerDischargeDocumentation19Y.nursingDischargeVitalsEnteredBy"),
+            snap.enteredBy
+          )
+        );
+      }
+    }
+  }
+  if (exec?.dischargeVitalsExceptionReason) {
+    body.push(
+      line(
+        i18nMessage(language, "providerDischargeDocumentation19Y.nursingDischargeVitalsExceptionLabel"),
+        i18nMessage(
+          language,
+          `providerDischargeDocumentation19Y.nursingDischargeVitalsException.${exec.dischargeVitalsExceptionReason}`
+        )
+      )
+    );
+    if (exec.dischargeVitalsExceptionNote) {
+      body.push(
+        line(
+          i18nMessage(language, "providerDischargeDocumentation19Y.nursingDischargeVitalsExceptionNote"),
+          exec.dischargeVitalsExceptionNote
+        )
+      );
+    }
+  }
   if (section.executionNote) {
     body.push(
       line(printT(language, "printOutput.erPacket.executionNote"), section.executionNote)

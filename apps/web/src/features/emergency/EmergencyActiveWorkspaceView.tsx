@@ -1562,6 +1562,7 @@ export function EmergencyActiveWorkspaceView() {
                   <NursingDischargeExecutionSection
                     encounterId={encounterId}
                     facilityId={fid}
+                    patientId={patient?.id}
                     nursingAssessment={encounter.nursingAssessment}
                     onSaved={onEmbeddedEncounterUpdate}
                     canEdit={canRecordDischargeSortieExecution && encounter.status === "OPEN"}

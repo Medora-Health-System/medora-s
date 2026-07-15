@@ -1,0 +1,36 @@
+export const nursingDischargeVitalsFr = {
+  sectionTitle: "Signes vitaux de sortie",
+  saveDischargeVitals: "Enregistrer les signes vitaux de sortie",
+  saveHint:
+    "Enregistrez les signes vitaux avant de confirmer la sortie infirmière. L’utilisateur authentifié est enregistré comme auteur.",
+  saveOk: "Signes vitaux de sortie enregistrés",
+  saveFailed: "Impossible d’enregistrer les signes vitaux de sortie.",
+  useRecentOk: "Derniers signes vitaux sélectionnés comme signes de sortie.",
+  latestAvailable: "Derniers signes vitaux disponibles : mesurés {when} par {by}",
+  minutesAgo: "il y a {n} minutes",
+  useAsDischarge: "Utiliser comme signes vitaux de sortie",
+  enterNew: "Saisir de nouveaux signes vitaux de sortie",
+  associatedReadingPresent: "Signes vitaux de sortie associés à cette exécution infirmière.",
+  requiredBeforeConfirm:
+    "Associez des signes vitaux de sortie ou documentez une exception encadrée avant de confirmer.",
+  exceptionLabel: "Exception — signes vitaux de sortie",
+  exceptionRequired: "Sélectionnez un motif d’exception.",
+  exceptionOtherRequired: "Décrivez le motif d’exception (Autre).",
+  exceptionOtherPlaceholder: "Décrivez pourquoi les signes vitaux n’ont pas pu être obtenus…",
+  exceptionSaved: "Exception relative aux signes vitaux de sortie documentée.",
+  saveException: "Enregistrer l’exception",
+  concerningWarning:
+    "Avertissement : ces signes vitaux de sortie comportent des valeurs préoccupantes. Réévaluez et documentez avant de confirmer la sortie.",
+  exception: {
+    PATIENT_REFUSED: "Patient a refusé",
+    LEFT_BEFORE_COMPLETION: "Patient parti avant la fin",
+    ELOPEMENT_LWBS: "Fugue / LWBS",
+    AGAINST_MEDICAL_ADVICE: "Contre avis médical",
+    IMMEDIATE_TRANSFER: "Transfert immédiat",
+    CLINICAL_EMERGENCY_TRANSFER: "Urgence clinique / transfert urgent",
+    DECEASED: "Décédé",
+    UNABLE_RELIABLE_MEASUREMENT: "Mesure fiable impossible",
+    EQUIPMENT_UNAVAILABLE: "Équipement indisponible",
+    OTHER: "Autre",
+  },
+};

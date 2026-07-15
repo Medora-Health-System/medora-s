@@ -133,6 +133,7 @@ export function EmergencyTriageVitalsCompactSection({
   statusTone = "error",
   attributionLine,
   showHeading = true,
+  saveLabel,
 }: {
   values: TriageVitalsCompactValues;
   onChange: (patch: Partial<TriageVitalsCompactValues>) => void;
@@ -144,6 +145,7 @@ export function EmergencyTriageVitalsCompactSection({
   statusTone?: "error" | "success" | "info";
   attributionLine?: string | null;
   showHeading?: boolean;
+  saveLabel?: string;
 }) {
   const { t } = useI18n();
   const showFlow = oxygenDeviceSuggestsFlow(values.oxygenDevice as any);
@@ -547,7 +549,7 @@ export function EmergencyTriageVitalsCompactSection({
               minHeight: 40,
             }}
           >
-            {saving ? t("erQuickVitals.saving") : t("vitalsContext.saveVitals")}
+            {saving ? t("erQuickVitals.saving") : saveLabel ?? t("vitalsContext.saveVitals")}
           </button>
           <button
             type="button"

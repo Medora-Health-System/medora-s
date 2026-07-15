@@ -297,7 +297,12 @@ export class TriageService {
             encounterId,
             patientId: encounter.patientId,
             eventType: EncounterClinicalEventType.VITALS_RECORDED,
-            payloadJson: buildVitalsRecordedPayloadJson(normalizedIncomingVitals, "TRIAGE"),
+            payloadJson: buildVitalsRecordedPayloadJson(
+              normalizedIncomingVitals,
+              normalizedIncomingVitals.recordingContext === "NURSING_DISCHARGE"
+                ? "NURSING_DISCHARGE"
+                : "TRIAGE"
+            ),
             createdByUserId: userId,
           },
         });
