@@ -40,6 +40,7 @@ function backoffMsAfterFailure(attempt: number): number {
 }
 
 const warnedNoWebhookForEventType = new Set<string>();
+const pendingAlertDeliveries = new Set<Promise<void>>();
 
 function trimOrUndef(s: string | null | undefined): string | undefined {
   if (s == null) return undefined;
@@ -50,7 +51,21 @@ function trimOrUndef(s: string | null | undefined): string | undefined {
 function readAlertsEnabled(): boolean {
   const raw = process.env.MEDORA_ALERT_ENABLED?.trim().toLowerCase();
   if (raw === "false" || raw === "0" || raw === "no" || raw === "off") return false;
+  if (raw === "true" || raw === "1" || raw === "yes" || raw === "on") return true;
+  // Quiet no-op transport in Jest / NODE_ENV=test unless explicitly enabled.
+  if ((process.env.NODE_ENV ?? "").toLowerCase() === "test") return false;
   return true;
+}
+
+/** Await in-flight alert deliveries so Jest can exit without open handles. */
+export async function drainMedoraAlerts(): Promise<void> {
+  await Promise.allSettled([...pendingAlertDeliveries]);
+}
+
+/** Test helper: clear one-shot webhook warnings and pending set. */
+export function resetMedoraAlertTestState(): void {
+  warnedNoWebhookForEventType.clear();
+  pendingAlertDeliveries.clear();
 }
 
 function readWebhookUrl(): string | undefined {
@@ -298,7 +313,7 @@ export function queueMedoraAlert(input: MedoraAlertInput): void {
   const bodyString =
     format === "slack" ? JSON.stringify(buildSlackWebhookBody(payload)) : JSON.stringify(payload);
 
-  void (async () => {
+  const delivery = (async () => {
     try {
       if (!url) {
         if (!warnedNoWebhookForEventType.has(payload.event)) {
@@ -321,4 +336,9 @@ export function queueMedoraAlert(input: MedoraAlertInput): void {
       console.warn("[medora-alert] unexpected delivery error", errorName);
     }
   })();
+
+  pendingAlertDeliveries.add(delivery);
+  void delivery.finally(() => {
+    pendingAlertDeliveries.delete(delivery);
+  });
 }

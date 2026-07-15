@@ -3,18 +3,32 @@ import {
   buildMedoraAlertPayload,
   buildSlackWebhookBody,
   deliverMedoraAlertWebhookWithRetries,
+  drainMedoraAlerts,
+  queueMedoraAlert,
+  resetMedoraAlertTestState,
 } from "./medoraAlert";
 
 describe("medoraAlert S17C", () => {
   const baseInput = { event: "test_alert_event", severity: "critical" as const };
+  const prevAlertEnabled = process.env.MEDORA_ALERT_ENABLED;
+  const prevNodeEnv = process.env.NODE_ENV;
+  const prevWebhook = process.env.MEDORA_ALERT_WEBHOOK_URL;
 
   beforeEach(() => {
     jest.spyOn(medoraLogger, "logInfo").mockImplementation(() => {});
     jest.spyOn(medoraLogger, "logError").mockImplementation(() => {});
+    resetMedoraAlertTestState();
   });
 
   afterEach(() => {
     jest.restoreAllMocks();
+    resetMedoraAlertTestState();
+    if (prevAlertEnabled === undefined) delete process.env.MEDORA_ALERT_ENABLED;
+    else process.env.MEDORA_ALERT_ENABLED = prevAlertEnabled;
+    if (prevNodeEnv === undefined) delete process.env.NODE_ENV;
+    else process.env.NODE_ENV = prevNodeEnv;
+    if (prevWebhook === undefined) delete process.env.MEDORA_ALERT_WEBHOOK_URL;
+    else process.env.MEDORA_ALERT_WEBHOOK_URL = prevWebhook;
   });
 
   it("buildMedoraAlertPayload only exposes allowlisted operational fields", () => {
@@ -76,5 +90,27 @@ describe("medoraAlert S17C", () => {
       deliverMedoraAlertWebhookWithRetries("http://example.test/hook", "{}", p, fetchImpl as unknown as typeof fetch)
     ).resolves.toBe(false);
     expect(fetchImpl).toHaveBeenCalledTimes(3);
+  });
+
+  it("is a no-op in NODE_ENV=test unless MEDORA_ALERT_ENABLED=true", async () => {
+    process.env.NODE_ENV = "test";
+    delete process.env.MEDORA_ALERT_ENABLED;
+    delete process.env.MEDORA_ALERT_WEBHOOK_URL;
+    const warn = jest.spyOn(console, "warn").mockImplementation(() => {});
+    queueMedoraAlert(baseInput);
+    await drainMedoraAlerts();
+    expect(warn).not.toHaveBeenCalled();
+  });
+
+  it("warns once when alerts enabled without webhook, and drain settles", async () => {
+    process.env.NODE_ENV = "development";
+    process.env.MEDORA_ALERT_ENABLED = "true";
+    delete process.env.MEDORA_ALERT_WEBHOOK_URL;
+    const warn = jest.spyOn(console, "warn").mockImplementation(() => {});
+    queueMedoraAlert(baseInput);
+    queueMedoraAlert(baseInput);
+    await drainMedoraAlerts();
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect(String(warn.mock.calls[0]?.[0] ?? "")).toContain("MEDORA_ALERT_WEBHOOK_URL not set");
   });
 });

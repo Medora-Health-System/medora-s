@@ -5,6 +5,7 @@ import { schedulerCompletionLevel } from "../common/logging/log-policy";
 import { createStructuredLogger } from "../common/logging/structured-logger";
 import { getMedicationSchedulingFeatureFlagsFromEnv } from "../medication-scheduling/medication-scheduling-feature-flags.util";
 import { PrismaService } from "../prisma/prisma.service";
+import { resolveWorkerEnabledFlag } from "../common/runtime/background-workers-policy";
 
 const log = createStructuredLogger("MedicationDoseStatusPromotion");
 const disabledStateDedup = createLogDedupGate({ intervalMs: 24 * 60 * 60_000 });
@@ -18,12 +19,14 @@ function readEnv(key: string): string | undefined {
   }
 }
 
-/** Env `true` enables scheduler; `false` disables; unset → disabled in production, enabled in non-production. */
+/**
+ * Env `true` enables scheduler; `false` disables;
+ * unset → disabled in production/test, enabled in other non-production.
+ */
 export function medicationDoseStatusPromotionSchedulerEnabled(): boolean {
-  const raw = readEnv("MEDICATION_DOSE_STATUS_PROMOTION_ENABLED");
-  if (raw === "true") return true;
-  if (raw === "false") return false;
-  return process.env.NODE_ENV !== "production";
+  return resolveWorkerEnabledFlag("MEDICATION_DOSE_STATUS_PROMOTION_ENABLED", {
+    legacyNonProductionDefault: true,
+  });
 }
 
 export type MedicationDoseStatusPromotionRunOptions = {

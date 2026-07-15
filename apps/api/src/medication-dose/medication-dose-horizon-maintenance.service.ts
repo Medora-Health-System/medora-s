@@ -13,6 +13,7 @@ import {
   MEDICATION_ORDER_SCHEDULE_STATUS_ACTIVE,
   MedicationDoseExpansionService,
 } from "./medication-dose-expansion.service";
+import { resolveWorkerEnabledFlag } from "../common/runtime/background-workers-policy";
 
 const log = createStructuredLogger("MedicationDoseHorizonMaintenance");
 const disabledStateDedup = createLogDedupGate({ intervalMs: 24 * 60 * 60_000 });
@@ -28,12 +29,14 @@ function readEnv(key: string): string | undefined {
   }
 }
 
-/** Env `true` enables; `false` disables; unset → disabled in production, enabled in non-production. */
+/**
+ * Env `true` enables; `false` disables;
+ * unset → disabled in production/test, enabled in other non-production.
+ */
 export function medicationDoseHorizonMaintenanceEnabled(): boolean {
-  const raw = readEnv("MEDICATION_DOSE_HORIZON_MAINTENANCE_ENABLED");
-  if (raw === "true") return true;
-  if (raw === "false") return false;
-  return process.env.NODE_ENV !== "production";
+  return resolveWorkerEnabledFlag("MEDICATION_DOSE_HORIZON_MAINTENANCE_ENABLED", {
+    legacyNonProductionDefault: true,
+  });
 }
 
 export type MedicationDoseHorizonMaintenanceSnapshot = {

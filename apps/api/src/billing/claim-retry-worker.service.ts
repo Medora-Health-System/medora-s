@@ -9,6 +9,7 @@ import type { ClearinghouseTransportHint } from "./clearinghouse-config.util";
 import { isLatestAttemptDueForWorkerRetry } from "./clearinghouse-retry-policy.util";
 import { isTerminalSubmissionStatus } from "./claim-submission-state-machine.util";
 import { ClaimOperationalEventService } from "./claim-operational-event.service";
+import { resolveWorkerEnabledFlag } from "../common/runtime/background-workers-policy";
 
 const log = createStructuredLogger("ClaimRetryWorker");
 const disabledStateDedup = createLogDedupGate({ intervalMs: 24 * 60 * 60_000 });
@@ -22,12 +23,14 @@ function readEnv(key: string): string | undefined {
   }
 }
 
-/** Env `true` enables; `false` disables; unset → enabled in non-production, disabled in production. */
+/**
+ * Env `true` enables; `false` disables;
+ * unset → enabled in non-production (except test), disabled in production/test.
+ */
 export function clearinghouseRetryWorkerGloballyEnabled(): boolean {
-  const raw = readEnv("CLEARINGHOUSE_RETRY_WORKER_ENABLED");
-  if (raw === "true") return true;
-  if (raw === "false") return false;
-  return process.env.NODE_ENV !== "production";
+  return resolveWorkerEnabledFlag("CLEARINGHOUSE_RETRY_WORKER_ENABLED", {
+    legacyNonProductionDefault: true,
+  });
 }
 
 export type ClaimRetryWorkerLastSnapshot = {
