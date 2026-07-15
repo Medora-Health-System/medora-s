@@ -48,6 +48,7 @@ describe("saveIndependentEncounterVitals", () => {
     if (result.ok) {
       expect(result.createdFirstTriageRow).toBe(true);
       expect(result.measuredAt).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+      expect(result.vitalsJson.hr).toBe(78);
     }
     expect(calls.filter((c) => (c.method ?? "GET") === "GET")).toHaveLength(1);
     const puts = calls.filter((c) => c.method === "PUT");

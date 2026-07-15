@@ -40,26 +40,16 @@ import {
   type TriageVitalsCompactValues,
 } from "./EmergencyTriageVitalsCompactSection";
 import { defaultVitalsEntryUnits } from "@/lib/vitalsEntryDefaults";
-import {
-  measuredAtIsoFromLocalInputs,
-  splitMeasuredAtLocal,
-} from "@/lib/vitalsMeasurementContextDisplay";
-import { mergeVitalsJsonForSave } from "./emergencyTriageVitalsMerge";
-import { erTriageV1FormFromVitalsJson, normalizeErTriageV1Form } from "./medoraErTriageV1";
+import { splitMeasuredAtLocal } from "@/lib/vitalsMeasurementContextDisplay";
 import {
   MEDORA_PATIENT_VITALS_UPDATED,
   type PatientTriageVitalsResponse,
   type PatientTriageVitalsSnapshot,
   buildVitalsTimelineNewestFirst,
   hasVitalsJson,
-  vitalsSnapshotMeasuredAtMs,
 } from "@/lib/patientVitals";
-import {
-  sepsisScreenFormToJson,
-  sepsisScreenFromUnknown,
-  strokeScreenFormToJson,
-  strokeScreenFromUnknown,
-} from "./emergencyTriageDocPreview";
+import { saveNursingDischargeVitals } from "./saveNursingDischargeVitals";
+import { isTriageStaleConflictError } from "./triageConcurrency";
 
 const labelStyle: React.CSSProperties = {
   display: "block",
@@ -168,6 +158,7 @@ export function NursingDischargeExecutionSection({
   const [savingVitals, setSavingVitals] = useState(false);
   const [saveInfo, setSaveInfo] = useState<string | null>(null);
   const [vitalsInfo, setVitalsInfo] = useState<string | null>(null);
+  const [vitalsInfoTone, setVitalsInfoTone] = useState<"error" | "success" | "info">("error");
   const [layoutMode, setLayoutMode] = useState<EdDispositionLayoutMode>("desktopSplit");
   const [vitalsDraft, setVitalsDraft] = useState<TriageVitalsCompactValues>(() =>
     emptyVitalsDraft(language)
@@ -327,9 +318,11 @@ export function NursingDischargeExecutionSection({
         dischargeVitalsSnapshot: snapshot,
       });
       await onSaved();
+      setVitalsInfoTone("success");
       setVitalsInfo(t("nursingDischargeVitals.useRecentOk"));
       setShowNewVitals(false);
     } catch (e) {
+      setVitalsInfoTone("error");
       setVitalsInfo(
         normalizeUserFacingError(e instanceof Error ? e.message : null, language) ||
           t("nursingDischargeVitals.saveFailed")
@@ -343,74 +336,46 @@ export function NursingDischargeExecutionSection({
     if (!canEdit || stored || savingVitals) return;
     setSavingVitals(true);
     setVitalsInfo(null);
+    setVitalsInfoTone("error");
     try {
-      const measuredAt = measuredAtIsoFromLocalInputs(
-        vitalsDraft.measuredDate,
-        vitalsDraft.measuredTime
-      );
-      if (!measuredAt) {
-        setVitalsInfo(t("vitalsContext.errors.invalidMeasuredAt"));
-        setSavingVitals(false);
-        return;
-      }
-
-      const latestRaw = await apiFetch(`/encounters/${encounterId}/triage`, { facilityId });
-      const latest =
-        latestRaw && typeof latestRaw === "object" && !Array.isArray(latestRaw)
-          ? (latestRaw as Record<string, unknown>)
-          : null;
-      if (!latest) {
-        setVitalsInfo(t("nursingDischargeVitals.saveFailed"));
-        setSavingVitals(false);
-        return;
-      }
-
-      const erV1 = normalizeErTriageV1Form(erTriageV1FormFromVitalsJson(latest.vitalsJson));
-      const vitalsMerged = mergeVitalsJsonForSave(latest.vitalsJson, {
-        ...vitalsDraft,
-        allergyNote:
-          typeof (latest.vitalsJson as { allergyNote?: string } | null)?.allergyNote === "string"
-            ? String((latest.vitalsJson as { allergyNote?: string }).allergyNote)
-            : "",
-        erV1: { ...erV1, painScale0to10: vitalsDraft.painScore.trim() || erV1.painScale0to10 },
-      });
-      if (vitalsMerged) {
-        vitalsMerged.recordingContext = "NURSING_DISCHARGE";
-      }
-
-      const strokeJson = strokeScreenFormToJson(
-        strokeScreenFromUnknown(latest.strokeScreen),
-        latest.strokeScreen
-      );
-      const sepsisJson = sepsisScreenFormToJson(
-        sepsisScreenFromUnknown(latest.sepsisScreen),
-        latest.sepsisScreen
-      );
-      const lastKnownTriageUpdatedAt =
-        typeof latest.updatedAt === "string"
-          ? latest.updatedAt
-          : latest.updatedAt
-            ? new Date(latest.updatedAt as string).toISOString()
-            : null;
-
-      await apiFetch(`/encounters/${encounterId}/triage`, {
-        method: "PUT",
+      const actor = await resolveActorDisplay();
+      const result = await saveNursingDischargeVitals({
+        encounterId,
         facilityId,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          chiefComplaint: (latest.chiefComplaint as string | undefined)?.trim() || null,
-          onsetAt: latest.onsetAt ? new Date(latest.onsetAt as string).toISOString() : null,
-          esi: latest.esi != null ? parseInt(String(latest.esi), 10) : null,
-          vitalsJson: vitalsMerged,
-          strokeScreen: Object.keys(strokeJson).length > 0 ? strokeJson : null,
-          sepsisScreen: Object.keys(sepsisJson).length > 0 ? sepsisJson : null,
-          triageCompleteAt: latest.triageCompleteAt
-            ? new Date(latest.triageCompleteAt as string).toISOString()
-            : null,
-          lastKnownTriageUpdatedAt,
-          measuredAt,
-        }),
+        patientId,
+        confirmedByDisplayName: actor.name,
+        form: { ...vitalsDraft },
       });
+
+      if (!result.ok) {
+        setVitalsInfoTone("error");
+        if (result.code === "INVALID_MEASURED_AT") {
+          setVitalsInfo(t("vitalsContext.errors.invalidMeasuredAt"));
+        } else if (result.code === "EMPTY_VITALS") {
+          setVitalsInfo(t("vitalsContext.errors.emptyVitals"));
+        } else if (result.code === "MISSING_CONTEXT") {
+          setVitalsInfo(t("vitalsContext.errors.missingContext"));
+        } else if (result.code === "READING_NOT_FOUND") {
+          setVitalsInfo(t("nursingDischargeVitals.saveFailed"));
+        } else {
+          const cause = result.cause;
+          const raw = cause instanceof Error ? cause.message : null;
+          if (raw && /measuredAt cannot be in the future/i.test(raw)) {
+            setVitalsInfo(t("vitalsContext.errors.futureMeasuredAt"));
+          } else if (isTriageStaleConflictError(cause)) {
+            setVitalsInfo(t("erTriage.panel.staleConflict"));
+          } else if (raw && /closed|signed|not open/i.test(raw)) {
+            setVitalsInfo(t("vitalsContext.errors.closedEncounter"));
+          } else if (raw && /forbidden|not authorized|permission/i.test(raw)) {
+            setVitalsInfo(t("nursingDischargeVitals.unauthorized"));
+          } else {
+            setVitalsInfo(
+              normalizeUserFacingError(raw, language) || t("nursingDischargeVitals.saveFailed")
+            );
+          }
+        }
+        return;
+      }
 
       if (patientId && typeof window !== "undefined") {
         window.dispatchEvent(
@@ -420,46 +385,15 @@ export function NursingDischargeExecutionSection({
         );
       }
 
-      let readingId: string | undefined;
-      if (patientId) {
-        const timeline = (await apiFetch(`/patients/${patientId}/triage?latest=true`, {
-          facilityId,
-        })) as PatientTriageVitalsResponse;
-        const merged = buildVitalsTimelineNewestFirst(timeline.latest, timeline.history, []);
-        const match = merged.find(
-          (s) =>
-            s.encounterId === encounterId &&
-            hasVitalsJson(s.vitalsJson) &&
-            Math.abs(vitalsSnapshotMeasuredAtMs(s) - new Date(measuredAt).getTime()) < 120_000
-        );
-        readingId = match?.readingId ?? merged.find((s) => s.encounterId === encounterId)?.readingId;
-      }
-
-      const actor = await resolveActorDisplay();
-      if (readingId) {
-        const snapshot = buildNursingDischargeVitalsSnapshot({
-          vitalsJson: vitalsMerged,
-          measuredAt,
-          enteredBy: actor.name,
-        });
-        await persistVitalsAssociation({
-          dischargeVitalReadingId: readingId,
-          dischargeVitalsSelectedFromExisting: false,
-          dischargeVitalsConfirmedByDisplayName: actor.name,
-          dischargeVitalsConfirmedAt: new Date().toISOString(),
-          dischargeVitalsSnapshot: snapshot,
-        });
-      }
-
+      await persistVitalsAssociation(result.association);
       await onSaved();
+      setVitalsInfoTone("success");
       setVitalsInfo(t("nursingDischargeVitals.saveOk"));
+      setShowNewVitals(false);
     } catch (e) {
       const raw = e instanceof Error ? e.message : null;
-      if (raw && /measuredAt cannot be in the future/i.test(raw)) {
-        setVitalsInfo(t("vitalsContext.errors.futureMeasuredAt"));
-      } else {
-        setVitalsInfo(normalizeUserFacingError(raw, language) || t("nursingDischargeVitals.saveFailed"));
-      }
+      setVitalsInfoTone("error");
+      setVitalsInfo(normalizeUserFacingError(raw, language) || t("nursingDischargeVitals.saveFailed"));
     } finally {
       setSavingVitals(false);
     }
@@ -486,8 +420,10 @@ export function NursingDischargeExecutionSection({
         dischargeVitalsExceptionAt: new Date().toISOString(),
       });
       await onSaved();
+      setVitalsInfoTone("success");
       setVitalsInfo(t("nursingDischargeVitals.exceptionSaved"));
     } catch (e) {
+      setVitalsInfoTone("error");
       setVitalsInfo(
         normalizeUserFacingError(e instanceof Error ? e.message : null, language) ||
           t("nursingDischargeVitals.saveFailed")
@@ -723,7 +659,8 @@ export function NursingDischargeExecutionSection({
                     saving={savingVitals}
                     onSaveVitals={() => void handleSaveDischargeVitals()}
                     onClearVitals={() => setVitalsDraft(emptyVitalsDraft(language))}
-                    statusMessage={null}
+                    statusMessage={vitalsInfo}
+                    statusTone={vitalsInfoTone}
                     showHeading={false}
                     saveLabel={t("nursingDischargeVitals.saveDischargeVitals")}
                   />
@@ -783,8 +720,21 @@ export function NursingDischargeExecutionSection({
                 : null}
               </div>
 
-              {vitalsInfo ?
-                <p role="status" aria-live="polite" style={{ margin: "8px 0 0", fontSize: 12, color: "#0369a1" }}>
+              {vitalsInfo && !(showNewVitals || !recentSnap) ?
+                <p
+                  role={vitalsInfoTone === "error" ? "alert" : "status"}
+                  aria-live={vitalsInfoTone === "error" ? "assertive" : "polite"}
+                  style={{
+                    margin: "8px 0 0",
+                    fontSize: 12,
+                    color:
+                      vitalsInfoTone === "success"
+                        ? "#047857"
+                        : vitalsInfoTone === "error"
+                          ? "#b91c1c"
+                          : "#0369a1",
+                  }}
+                >
                   {vitalsInfo}
                 </p>
               : null}

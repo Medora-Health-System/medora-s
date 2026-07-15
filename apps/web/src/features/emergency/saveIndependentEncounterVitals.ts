@@ -31,7 +31,14 @@ export type IndependentVitalsSaveErrorCode =
   | "REQUEST_FAILED";
 
 export type IndependentVitalsSaveResult =
-  | { ok: true; measuredAt: string; createdFirstTriageRow: boolean; response: unknown }
+  | {
+      ok: true;
+      measuredAt: string;
+      createdFirstTriageRow: boolean;
+      response: unknown;
+      /** Canonical vitalsJson that was PUT (after optional mutate). */
+      vitalsJson: Record<string, unknown>;
+    }
   | { ok: false; code: IndependentVitalsSaveErrorCode; cause?: unknown };
 
 export type IndependentVitalsSaveDiagnostics = {
@@ -125,6 +132,11 @@ export async function saveIndependentEncounterVitals(args: {
   encounterId: string;
   facilityId: string;
   form: IndependentVitalsSaveForm;
+  /**
+   * Optional post-merge mutator (e.g. set recordingContext = NURSING_DISCHARGE).
+   * Must not remove canonical vital fields.
+   */
+  mutateVitalsJson?: (vitalsJson: Record<string, unknown>) => void;
   /** Optional: inject fetch for tests. Defaults to apiFetch. */
   fetchImpl?: typeof apiFetch;
 }): Promise<IndependentVitalsSaveResult> {
@@ -199,6 +211,10 @@ export async function saveIndependentEncounterVitals(args: {
     return { ok: false, code: "EMPTY_VITALS" };
   }
 
+  if (args.mutateVitalsJson) {
+    args.mutateVitalsJson(vitalsMerged);
+  }
+
   const strokeJson = strokeScreenFormToJson(
     strokeScreenFromUnknown(baseline.strokeScreen),
     baseline.strokeScreen
@@ -232,7 +248,7 @@ export async function saveIndependentEncounterVitals(args: {
     });
     diag.errorCategory = "SUCCESS";
     logIndependentVitalsSaveDiagnostics(diag);
-    return { ok: true, measuredAt, createdFirstTriageRow, response };
+    return { ok: true, measuredAt, createdFirstTriageRow, response, vitalsJson: vitalsMerged };
   } catch (cause) {
     diag.errorCategory = "REQUEST_FAILED";
     logIndependentVitalsSaveDiagnostics(diag);

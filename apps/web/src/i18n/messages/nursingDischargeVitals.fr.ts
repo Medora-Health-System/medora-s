@@ -5,6 +5,7 @@ export const nursingDischargeVitalsFr = {
     "Enregistrez les signes vitaux avant de confirmer la sortie infirmière. L’utilisateur authentifié est enregistré comme auteur.",
   saveOk: "Signes vitaux de sortie enregistrés",
   saveFailed: "Impossible d’enregistrer les signes vitaux de sortie.",
+  unauthorized: "Vous n’avez pas l’autorisation d’enregistrer les signes vitaux de sortie.",
   useRecentOk: "Derniers signes vitaux sélectionnés comme signes de sortie.",
   latestAvailable: "Derniers signes vitaux disponibles : mesurés {when} par {by}",
   minutesAgo: "il y a {n} minutes",

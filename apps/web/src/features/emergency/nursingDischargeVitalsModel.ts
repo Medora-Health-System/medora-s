@@ -275,3 +275,62 @@ export function isRecentVitalForDischarge(
   const age = nowMs - measured;
   return age >= 0 && age <= windowMs;
 }
+
+export type NursingDischargeReadingCandidate = {
+  encounterId: string;
+  readingId?: string;
+  measuredAt?: string;
+  status?: "ACTIVE" | "VOIDED" | string;
+  vitalsJson?: Record<string, unknown> | null;
+};
+
+/**
+ * Resolve the authoritative ACTIVE discharge vital reading after a save.
+ * Prefers NURSING_DISCHARGE recordingContext + measuredAt match; never returns VOIDED.
+ */
+export function resolveAuthoritativeNursingDischargeReadingId(args: {
+  encounterId: string;
+  measuredAtIso: string;
+  candidates: NursingDischargeReadingCandidate[];
+  measuredAtToleranceMs?: number;
+}): string | null {
+  const tolerance = args.measuredAtToleranceMs ?? 120_000;
+  const targetMs = new Date(args.measuredAtIso).getTime();
+  if (!Number.isFinite(targetMs)) return null;
+
+  const active = args.candidates.filter((c) => {
+    if (!c.readingId?.trim()) return false;
+    if (c.encounterId !== args.encounterId) return false;
+    if (c.status === "VOIDED") return false;
+    return true;
+  });
+
+  const withContext = active.filter(
+    (c) => c.vitalsJson && c.vitalsJson.recordingContext === "NURSING_DISCHARGE"
+  );
+  const pools = [withContext, active];
+
+  for (const pool of pools) {
+    let best: { id: string; delta: number } | null = null;
+    for (const c of pool) {
+      const measured = c.measuredAt ? new Date(c.measuredAt).getTime() : NaN;
+      if (!Number.isFinite(measured)) continue;
+      const delta = Math.abs(measured - targetMs);
+      if (delta > tolerance) continue;
+      if (!best || delta < best.delta) {
+        best = { id: c.readingId!.trim(), delta };
+      }
+    }
+    if (best) return best.id;
+  }
+
+  // Last resort: newest ACTIVE NURSING_DISCHARGE on this encounter (still not VOIDED).
+  const contextOnly = withContext
+    .slice()
+    .sort((a, b) => {
+      const am = a.measuredAt ? new Date(a.measuredAt).getTime() : 0;
+      const bm = b.measuredAt ? new Date(b.measuredAt).getTime() : 0;
+      return bm - am;
+    });
+  return contextOnly[0]?.readingId?.trim() || null;
+}
