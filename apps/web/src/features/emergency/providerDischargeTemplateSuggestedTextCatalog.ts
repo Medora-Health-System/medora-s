@@ -218,11 +218,106 @@ export const HUMAN_BITE_SUGGESTED_TEXT = humanBiteHighRiskWoundSuggestedText(
   "Votre plaie par morsure humaine a été évaluée aux urgences. Ces plaies peuvent s'infecter rapidement et atteindre des structures profondes de la main.",
   "Suivez exactement les précautions d'infection et les soins de plaie indiqués.",
 );
-export const FIGHT_BITE_SUGGESTED_TEXT = humanBiteHighRiskWoundSuggestedText(
-  "Your fight-bite or clenched-fist wound was evaluated in the emergency department. These injuries can involve joints or tendons.",
-  "Protect the hand and keep all directed hand-surgery or orthopedic follow-up.",
-  "Votre morsure du poing a été évaluée aux urgences. Ces blessures peuvent atteindre une articulation ou un tendon.",
-  "Protégez la main et respectez le suivi de chirurgie de la main ou d'orthopédie indiqué.",
+export const FIGHT_BITE_SUGGESTED_TEXT = localizedSuggestedText(
+  {
+    description:
+      "Your fight-bite or clenched-fist wound was evaluated in the emergency department. These injuries can involve joints or tendons even when the skin wound looks small.",
+    diagnosisInstructions:
+      "Protect the hand, elevate as directed, and keep all hand-surgery or orthopedic follow-up. Complete antibiotics if prescribed. Update tetanus immunization if directed.",
+    medicationTreatment:
+      "Take antibiotics, pain medicine, and tetanus-related treatments only as prescribed or directed during this visit. Do not stop antibiotics early unless your clinician tells you to.",
+    returnPrecautions:
+      "Return immediately for increasing hand swelling, spreading redness, pus, fever, increasing knuckle or MCP pain, inability to move a finger, pain with finger extension, numbness, color change, or worsening weakness.",
+    returnWorkSchool:
+      "Protect the hand from strain or contamination; return to work or school as directed by your clinician.",
+  },
+  {
+    description:
+      "Votre morsure du poing a été évaluée aux urgences. Ces blessures peuvent atteindre une articulation ou un tendon même si la plaie cutanée paraît petite.",
+    diagnosisInstructions:
+      "Protégez la main, élévez-la selon les consignes, et respectez le suivi de chirurgie de la main ou d'orthopédie. Terminez les antibiotiques s'ils ont été prescrits. Mettez à jour la vaccination antitétanique si indiqué.",
+    medicationTreatment:
+      "Prenez les antibiotiques, antalgiques et traitements antitétaniques uniquement selon la prescription ou les indications de cette visite. N'arrêtez pas les antibiotiques précocement sauf avis contraire.",
+    returnPrecautions:
+      "Reconsultez immédiatement en cas de gonflement croissant de la main, rougeur qui s'étend, pus, fièvre, douleur croissante de l'articulation métacarpophalangienne, impossibilité de bouger un doigt, douleur à l'extension du doigt, engourdissement, changement de couleur ou faiblesse croissante.",
+    returnWorkSchool:
+      "Protégez la main contre l'effort et la contamination ; reprenez le travail ou l'école selon les instructions de votre clinicien.",
+  },
+);
+
+export const ANIMAL_BITE_RABIES_FOLLOWUP_SUGGESTED_TEXT = localizedSuggestedText(
+  {
+    description:
+      "You were given specific follow-up instructions related to animal bite rabies risk assessment.",
+    diagnosisInstructions:
+      "Continue animal observation or testing as directed. Keep all public-health or animal-control appointments. Complete any rabies-related treatments only if they were ordered for you.",
+    medicationTreatment:
+      "Take rabies vaccine, rabies immunoglobulin, or other medicines only if prescribed or administered during this visit. Do not start rabies treatment on your own.",
+    returnPrecautions:
+      "Return immediately if the animal becomes ill, dies, escapes observation, or if you develop fever, headache, confusion, unusual tingling near the wound, or other concerning symptoms.",
+    returnWorkSchool:
+      "Follow clinician and public-health guidance before returning to high-risk activities.",
+  },
+  {
+    description:
+      "Des consignes spécifiques de suivi liées à l'évaluation du risque de rage après morsure animale vous ont été données.",
+    diagnosisInstructions:
+      "Poursuivez l'observation ou les tests de l'animal selon les consignes. Respectez tous les rendez-vous de santé publique ou de contrôle animalier. Ne suivez un traitement antirabique que s'il a été prescrit.",
+    medicationTreatment:
+      "Prenez le vaccin antirabique, l'immunoglobuline antirabique ou d'autres médicaments uniquement s'ils ont été prescrits ou administrés pendant cette visite. N'entreprenez pas un traitement antirabique de votre propre initiative.",
+    returnPrecautions:
+      "Reconsultez immédiatement si l'animal tombe malade, meurt, échappe à l'observation, ou si vous présentez fièvre, céphalées, confusion, fourmillements inhabituels près de la plaie ou d'autres signes inquiétants.",
+    returnWorkSchool:
+      "Suivez les consignes du clinicien et de la santé publique avant de reprendre des activités à risque.",
+  },
+);
+
+export const INFECTED_TRAUMATIC_WOUND_SUGGESTED_TEXT = humanBiteHighRiskWoundSuggestedText(
+  "You were evaluated for an infected traumatic wound.",
+  "Continue wound care and infection monitoring exactly as directed.",
+  "Vous avez été pris en charge pour une plaie traumatique infectée.",
+  "Poursuivez exactement les soins de plaie et la surveillance d'infection indiqués.",
+);
+
+export const BITE_CELLULITIS_SUGGESTED_TEXT = humanBiteHighRiskWoundSuggestedText(
+  "You were evaluated for cellulitis associated with a bite or contaminated wound.",
+  "Complete antibiotics if prescribed and recheck promptly if infection worsens.",
+  "Vous avez été pris en charge pour une cellulite associée à une morsure ou une plaie contaminée.",
+  "Terminez les antibiotiques s'ils ont été prescrits et reconsultez rapidement si l'infection s'aggrave.",
+);
+
+export const POST_BITE_ABSCESS_DRAINAGE_SUGGESTED_TEXT = humanBiteHighRiskWoundSuggestedText(
+  "You were evaluated after drainage of an abscess related to a bite or contaminated wound.",
+  "Keep wound packing or dressing care exactly as directed and arrange wound check as advised.",
+  "Vous avez été pris en charge après drainage d'un abcès lié à une morsure ou une plaie contaminée.",
+  "Respectez exactement les soins de pansement ou de mèche et organisez le contrôle de plaie conseillé.",
+);
+
+export const TETANUS_FOLLOWUP_SUGGESTED_TEXT = localizedSuggestedText(
+  {
+    description:
+      "Tetanus immunization status was reviewed during this emergency visit.",
+    diagnosisInstructions:
+      "Follow any tetanus vaccine or immunoglobulin plan that was ordered for you. Keep immunization records updated.",
+    medicationTreatment:
+      "Receive tetanus vaccine or immunoglobulin only as ordered. Do not self-administer tetanus treatments.",
+    returnPrecautions:
+      "Return for severe local reaction, difficulty breathing, hives, muscle stiffness, spasms, fever, or other concerning symptoms after immunization.",
+    returnWorkSchool:
+      "Resume usual activity as directed after immunization unless your clinician advises otherwise.",
+  },
+  {
+    description:
+      "Le statut de vaccination antitétanique a été revu pendant cette visite aux urgences.",
+    diagnosisInstructions:
+      "Suivez tout plan de vaccin antitétanique ou d'immunoglobuline qui vous a été prescrit. Tenez à jour vos documents de vaccination.",
+    medicationTreatment:
+      "Recevez le vaccin antitétanique ou l'immunoglobuline uniquement selon la prescription. N'administrez pas vous-même de traitement antitétanique.",
+    returnPrecautions:
+      "Reconsultez en cas de réaction locale sévère, difficulté respiratoire, urticaire, raideur musculaire, spasmes, fièvre ou autres signes inquiétants après vaccination.",
+    returnWorkSchool:
+      "Reprenez vos activités habituelles selon les consignes après vaccination, sauf avis contraire.",
+  },
 );
 export const HIGH_RISK_HAND_WOUND_SUGGESTED_TEXT = humanBiteHighRiskWoundSuggestedText(
   "You were evaluated for a high-risk hand wound.",

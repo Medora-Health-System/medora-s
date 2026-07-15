@@ -214,6 +214,30 @@ const FRENCH_DIAGNOSIS_SEARCH_ALIASES: readonly FrenchDiagnosisSearchAlias[] = [
     englishSearchTerms: ["contaminated wound", "dirty wound"],
   },
   {
+    frenchPhrases: ["morsure de chauve-souris"],
+    englishSearchTerms: ["bat bite"],
+  },
+  {
+    frenchPhrases: ["plaie exposée à l'eau", "plaie d'eau douce", "plaie d'eau salée"],
+    englishSearchTerms: ["water-exposed wound", "freshwater", "saltwater"],
+  },
+  {
+    frenchPhrases: ["plaie agricole", "plaie de ferme"],
+    englishSearchTerms: ["farm wound", "farm contamination"],
+  },
+  {
+    frenchPhrases: ["plaie tardive", "plaie retardée"],
+    englishSearchTerms: ["delayed wound", "delayed presentation wound"],
+  },
+  {
+    frenchPhrases: ["infection profonde de la main", "ténosynovite infectieuse"],
+    englishSearchTerms: ["deep-space hand infection", "flexor tenosynovitis"],
+  },
+  {
+    frenchPhrases: ["cellulite après morsure", "morsure infectée", "plaie infectée"],
+    englishSearchTerms: ["bite cellulitis", "infected bite", "infected traumatic wound"],
+  },
+  {
     frenchPhrases: ["plaie par morsure", "plaie perforante"],
     englishSearchTerms: ["bite wound", "puncture wound", "open bite"],
   },

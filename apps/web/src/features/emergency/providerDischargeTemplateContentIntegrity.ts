@@ -132,7 +132,7 @@ export const PROVIDER_DISCHARGE_TEMPLATE_CONTENT_INTEGRITY: Record<
     forbiddenCrossTemplateMarkers: { en: ["rabies", "animal control"], fr: ["rage", "contrôle animalier"] },
   },
   fight_bite_v1: {
-    mustIncludeAny: { en: ["fight bite", "clenched-fist", "hand"], fr: ["morsure du poing", "main"] },
+    mustIncludeAny: { en: ["fight bite", "fight-bite", "clenched-fist", "hand"], fr: ["morsure du poing", "main"] },
     forbiddenCrossTemplateMarkers: { en: ["rabies", "animal control"], fr: ["rage", "contrôle animalier"] },
   },
   high_risk_hand_wound_v1: {
@@ -150,6 +150,26 @@ export const PROVIDER_DISCHARGE_TEMPLATE_CONTENT_INTEGRITY: Record<
   delayed_wound_v1: {
     mustIncludeAny: { en: ["delayed", "infection"], fr: ["retardée", "infection"] },
     forbiddenCrossTemplateMarkers: { en: ["rabies", "animal control"], fr: ["rage", "contrôle animalier"] },
+  },
+  animal_bite_rabies_followup_v1: {
+    mustIncludeAny: { en: ["rabies"], fr: ["rage"] },
+    forbiddenCrossTemplateMarkers: { en: ["human bite"], fr: ["morsure humaine"] },
+  },
+  infected_traumatic_wound_v1: {
+    mustIncludeAny: { en: ["infected"], fr: ["infect"] },
+    forbiddenCrossTemplateMarkers: { en: ["rabies"], fr: ["rage"] },
+  },
+  bite_cellulitis_v1: {
+    mustIncludeAny: { en: ["cellulitis", "bite"], fr: ["cellulite", "morsure"] },
+    forbiddenCrossTemplateMarkers: { en: ["rabies"], fr: ["rage"] },
+  },
+  post_bite_abscess_drainage_v1: {
+    mustIncludeAny: { en: ["abscess", "drainage"], fr: ["abcès", "drainage"] },
+    forbiddenCrossTemplateMarkers: { en: ["rabies"], fr: ["rage"] },
+  },
+  tetanus_followup_v1: {
+    mustIncludeAny: { en: ["tetanus"], fr: ["tétanos", "antitétanique"] },
+    forbiddenCrossTemplateMarkers: { en: ["rabies"], fr: ["rage"] },
   },
   deep_contaminated_wound_v1: {
     mustIncludeAny: { en: ["deep contaminated", "infection"], fr: ["profonde contaminée", "infection"] },

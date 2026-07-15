@@ -418,6 +418,31 @@ export const PHASE1_CLINICAL_CONDITION_FAMILIES: readonly ClinicalConditionFamil
     clinicalRationale: "Deep or unusually contaminated wound instructions with urgent infection precautions.", reviewStatus: "reviewed", routingStatus: "READY", sourceReferenceLabels: ["MedlinePlus — Wounds and injuries"],
   },
   {
+    id: "trauma_animal_bite_rabies_followup", label: "Trauma / Animal Bite Rabies Follow-up", templateId: "animal_bite_rabies_followup_v1", clinicalDomain: "Trauma",
+    keywords: ["rabies follow-up", "animal observation", "suivi rage"], specialtyCategory: "infectious_disease", riskCategory: "high",
+    clinicalRationale: "Animal-only rabies observation and public-health follow-up; never applied to human bites.", reviewStatus: "reviewed", routingStatus: "READY", sourceReferenceLabels: ["MedlinePlus — Animal bites"],
+  },
+  {
+    id: "trauma_infected_traumatic_wound", label: "Trauma / Infected Traumatic Wound", templateId: "infected_traumatic_wound_v1", clinicalDomain: "Trauma",
+    keywords: ["infected traumatic wound", "infected bite", "morsure infectée", "plaie infectée"], specialtyCategory: "wound_care", riskCategory: "high",
+    clinicalRationale: "Infected traumatic wound instructions with infection return precautions.", reviewStatus: "reviewed", routingStatus: "READY", sourceReferenceLabels: ["MedlinePlus — Wounds and injuries"],
+  },
+  {
+    id: "trauma_bite_cellulitis", label: "Trauma / Bite Cellulitis", templateId: "bite_cellulitis_v1", clinicalDomain: "Trauma",
+    keywords: ["bite cellulitis", "cellulitis following bite", "cellulite après morsure"], specialtyCategory: "infectious_disease", riskCategory: "moderate_to_high",
+    clinicalRationale: "Keyword-routed bite-associated cellulitis; generic L03 cellulitis remains on infectious cellulitis family.", reviewStatus: "reviewed", routingStatus: "READY", sourceReferenceLabels: ["MedlinePlus — Cellulitis"],
+  },
+  {
+    id: "trauma_post_bite_abscess_drainage", label: "Trauma / Post Bite Abscess Drainage", templateId: "post_bite_abscess_drainage_v1", clinicalDomain: "Trauma",
+    keywords: ["post bite abscess", "abscess drainage bite"], specialtyCategory: "wound_care", riskCategory: "high",
+    clinicalRationale: "Post-drainage instructions after bite-related abscess care.", reviewStatus: "reviewed", routingStatus: "READY", sourceReferenceLabels: ["MedlinePlus — Abscess"],
+  },
+  {
+    id: "trauma_tetanus_followup", label: "Trauma / Tetanus Follow-up", templateId: "tetanus_followup_v1", clinicalDomain: "Trauma",
+    keywords: ["tetanus follow-up", "suivi antitétanique"], specialtyCategory: "infectious_disease", riskCategory: "moderate",
+    clinicalRationale: "Shared tetanus follow-up family reusable across wound mechanisms.", reviewStatus: "reviewed", routingStatus: "READY", sourceReferenceLabels: ["MedlinePlus — Tetanus"],
+  },
+  {
     id: "dizziness_vertigo",
     label: "Dizziness / Vertigo",
     templateId: "vertigo_dizziness_v1",
