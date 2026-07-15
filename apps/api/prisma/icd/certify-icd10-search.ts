@@ -101,6 +101,47 @@ const REQUIRED_QUERIES: Array<{
   { q: "scald", mustContainDescription: "burn" },
   { q: "grease burn", mustContainDescription: "burn" },
   { q: "steam burn", mustContainDescription: "burn" },
+  // Penetrating trauma (Phase 6)
+  { q: "gunshot wound", mustMatchCodePrefix: "S" },
+  { q: "bullet wound", mustMatchCodePrefix: "S" },
+  { q: "firearm injury", mustMatchCodePrefix: "S" },
+  { q: "retained bullet", mustMatchCodePrefix: "S" },
+  { q: "retained projectile", mustMatchCodePrefix: "S" },
+  { q: "shotgun injury", mustMatchCodePrefix: "S" },
+  { q: "pellet wound", mustMatchCodePrefix: "S" },
+  { q: "BB gun injury", mustMatchCodePrefix: "S" },
+  { q: "stab wound", mustMatchCodePrefix: "S" },
+  { q: "knife wound", mustMatchCodePrefix: "S" },
+  { q: "penetrating trauma", mustContainDescription: "wound" },
+  { q: "penetrating wound", mustContainDescription: "wound" },
+  { q: "puncture wound", mustContainDescription: "pnctr", mustMatchCodePrefix: "S" },
+  { q: "impalement", mustMatchCodePrefix: "S" },
+  { q: "through-and-through wound", mustMatchCodePrefix: "S" },
+  { q: "penetrating chest wound", mustContainDescription: "thorax", mustMatchCodePrefix: "S21" },
+  { q: "penetrating abdominal wound", mustContainDescription: "abd", mustMatchCodePrefix: "S31" },
+  { q: "penetrating neck wound", mustContainDescription: "neck", mustMatchCodePrefix: "S11" },
+  { q: "penetrating head wound", mustContainDescription: "scalp", mustMatchCodePrefix: "S01" },
+  { q: "penetrating hand wound", mustContainDescription: "hand", mustMatchCodePrefix: "S61" },
+  { q: "penetrating eye injury", mustMatchCodePrefix: "S05" },
+  { q: "gunshot", mustMatchCodePrefix: "S" },
+  { q: "firearm", mustMatchCodePrefix: "S" },
+  { q: "bullet", mustMatchCodePrefix: "S" },
+  { q: "stab", mustMatchCodePrefix: "S" },
+  { q: "knife", mustMatchCodePrefix: "S" },
+  // French aliases expand to English ICD search terms
+  { q: "blessure par balle", mustMatchCodePrefix: "S" },
+  { q: "plaie par balle", mustMatchCodePrefix: "S" },
+  { q: "blessure par arme à feu", mustMatchCodePrefix: "S" },
+  { q: "projectile retenu", mustMatchCodePrefix: "S" },
+  { q: "plaie par arme blanche", mustMatchCodePrefix: "S" },
+  { q: "coup de couteau", mustMatchCodePrefix: "S" },
+  { q: "traumatisme pénétrant", mustContainDescription: "wound" },
+  { q: "plaie pénétrante", mustContainDescription: "wound" },
+  { q: "empalement", mustMatchCodePrefix: "S" },
+  { q: "blessure thoracique pénétrante", mustMatchCodePrefix: "S21" },
+  { q: "blessure abdominale pénétrante", mustMatchCodePrefix: "S31" },
+  { q: "blessure cervicale pénétrante", mustMatchCodePrefix: "S11" },
+  { q: "blessure oculaire pénétrante", mustMatchCodePrefix: "S05" },
 ];
 
 function encounterChar(code: string): string {
@@ -234,6 +275,23 @@ async function main() {
         2
       )
     );
+    const penetratingQueryPattern =
+      /penetrating|gunshot|firearm|bullet|stab|knife|impalement|retained projectile|retained bullet|shotgun|pellet|bb gun|puncture|through-and-through|blessure par balle|plaie par balle|arme à feu|projectile retenu|arme blanche|coup de couteau|traumatisme pénétrant|plaie pénétrante|empalement|blessure thoracique|blessure abdominale|blessure cervicale|blessure oculaire/;
+    const penetratingQueryCount = REQUIRED_QUERIES.filter((row) => penetratingQueryPattern.test(row.q)).length;
+    const penetratingSummary = JSON.stringify(
+      {
+        generatedAt: report.generatedAt,
+        queryCount: penetratingQueryCount,
+        failures: failures.filter((failure) => penetratingQueryPattern.test(failure.toLowerCase())),
+        pass: failures.filter((failure) => penetratingQueryPattern.test(failure.toLowerCase())).length === 0,
+      },
+      null,
+      2
+    );
+    writeFileSync(join(summaryDir, "fy2026-penetrating-trauma-search-summary.json"), penetratingSummary);
+    const releaseSummaryDir = join(summaryDir, "2026");
+    mkdirSync(releaseSummaryDir, { recursive: true });
+    writeFileSync(join(releaseSummaryDir, "fy2026-penetrating-trauma-search-summary.json"), penetratingSummary);
     if (!report.pass) process.exit(1);
   } finally {
     await prisma.$disconnect();

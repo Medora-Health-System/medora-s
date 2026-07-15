@@ -1,0 +1,21 @@
+{
+  "generatedAt": "2026-07-15T15:11:54.207Z",
+  "overall": {
+    "officialReleaseTotalRows": 98186,
+    "officialBillableRows": 74719,
+    "medoraImportedRows": 98186,
+    "releaseVersion": "FY2026",
+    "artifactSha256": "a852eb91b3344ae38476e63816976ee1eeb94dcced7151118324f060e8499f88"
+  },
+  "penetratingTrauma": {
+    "scopedOfficialBillable": 3702,
+    "presentInMedora": 3702,
+    "missingCodes": [],
+    "descriptionMismatches": [],
+    "invalidSelectableHeaders": 0
+  },
+  "certification": {
+    "penetratingTraumaPass": true,
+    "overallParityPass": true
+  }
+}

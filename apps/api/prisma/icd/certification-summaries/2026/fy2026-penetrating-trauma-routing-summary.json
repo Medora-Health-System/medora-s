@@ -1,0 +1,15 @@
+{
+  "generatedAt": "2026-07-15T15:11:54.869Z",
+  "releaseVersion": "FY2026",
+  "penetratingTraumaScoped": 3702,
+  "penetratingTraumaUnexplainedFallbacks": 0,
+  "penetratingTraumaStolenByGenericWound": 0,
+  "penetratingTraumaStolenByForeignBody": 0,
+  "penetratingTraumaStolenBySymptoms": 0,
+  "approvedForeignBodySteals": [],
+  "fallbackSample": [],
+  "genericWoundStealSample": [],
+  "foreignBodyStealSample": [],
+  "symptomStealSample": [],
+  "pass": true
+}
