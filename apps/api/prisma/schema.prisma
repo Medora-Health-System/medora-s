@@ -218,6 +218,8 @@ model User {
   encounterNotesCosigned                          EncounterNote[]                        @relation("EncounterNoteCosignedBy")
   encounterNotesVoided                            EncounterNote[]                        @relation("EncounterNoteVoidedBy")
   diagnosesRemoved                                Diagnosis[]                            @relation("DiagnosisRemovedBy")
+  triageVitalsReadingsRecorded                    TriageVitalsReading[]                  @relation("TriageVitalsReadingRecordedBy")
+  triageVitalsReadingsVoided                      TriageVitalsReading[]                  @relation("TriageVitalsReadingVoidedBy")
   providerAddendaCreated                          EncounterProviderAddendum[]
   followUpsCreated                                FollowUp[]
   inventoryTransactions                           InventoryTransaction[]
@@ -1136,23 +1138,38 @@ model Triage {
 
 /// Append-only vitals readings per triage save (Signes vitaux); `Triage.vitalsJson` remains current row.
 model TriageVitalsReading {
-  id               String    @id @default(uuid())
+  id               String                     @id @default(uuid())
   facilityId       String
   patientId        String
   encounterId      String
   triageId         String
   vitalsJson       Json
   triageCompleteAt DateTime?
-  recordedAt       DateTime  @default(now())
-  encounter        Encounter @relation(fields: [encounterId], references: [id])
-  facility         Facility  @relation(fields: [facilityId], references: [id])
-  patient          Patient   @relation(fields: [patientId], references: [id])
-  triage           Triage    @relation(fields: [triageId], references: [id])
+  /// Clinical measurement time (clinician-selectable). Distinct from `recordedAt`.
+  measuredAt       DateTime                   @default(now())
+  /// Server documentation timestamp — when Medora received the entry.
+  recordedAt       DateTime                   @default(now())
+  recordedByUserId String?
+  status           TriageVitalsReadingStatus  @default(ACTIVE)
+  voidedAt         DateTime?
+  voidedByUserId   String?
+  voidReasonCode   String?
+  voidReasonText   String?
+  encounter        Encounter                  @relation(fields: [encounterId], references: [id])
+  facility         Facility                   @relation(fields: [facilityId], references: [id])
+  patient          Patient                    @relation(fields: [patientId], references: [id])
+  triage           Triage                     @relation(fields: [triageId], references: [id])
+  recordedBy       User?                      @relation("TriageVitalsReadingRecordedBy", fields: [recordedByUserId], references: [id])
+  voidedBy         User?                      @relation("TriageVitalsReadingVoidedBy", fields: [voidedByUserId], references: [id])
 
   @@index([facilityId])
   @@index([patientId, recordedAt])
-  @@index([encounterId])
+  @@index([patientId, measuredAt])
+  @@index([encounterId, measuredAt])
   @@index([triageId])
+  @@index([recordedByUserId])
+  @@index([status])
+  @@index([voidedByUserId])
 }
 
 model Result {
@@ -3409,6 +3426,11 @@ enum DiagnosisOnsetPrecision {
   UNKNOWN
   DATE
   DATETIME
+}
+
+enum TriageVitalsReadingStatus {
+  ACTIVE
+  VOIDED
 }
 
 enum InventoryTransactionType {

@@ -14,6 +14,10 @@ import {
   assertEncounterNotSigned,
   assertEncounterOpenForClinicalMutation,
 } from "../encounters/encounter-sign-lock.util";
+import {
+  normalizeVitalsMeasurementContext,
+  resolveMeasuredAt,
+} from "../utils/vitals-measurement-context.util";
 import { throwTriageConcurrentModification } from "./triage-concurrency.util";
 
 @Injectable()
@@ -150,6 +154,8 @@ export class TriageService {
        * check because there is no prior content to overwrite.
        */
       lastKnownTriageUpdatedAt?: string | null;
+      /** Clinician-selected clinical measurement time (distinct from server recordedAt). */
+      measuredAt?: Date | string | null;
     },
     userId?: string,
     ip?: string,
@@ -166,6 +172,23 @@ export class TriageService {
 
     assertEncounterOpenForClinicalMutation(encounter);
     assertEncounterNotSigned(encounter);
+
+    let normalizedIncomingVitals: Record<string, unknown> | undefined;
+    let resolvedMeasuredAt: Date | undefined;
+    if (data.vitalsJson !== undefined && hasNonEmptyVitalsJson(data.vitalsJson)) {
+      const rawVitals =
+        data.vitalsJson && typeof data.vitalsJson === "object" && !Array.isArray(data.vitalsJson)
+          ? (data.vitalsJson as Record<string, unknown>)
+          : {};
+      const measuredAtFromJson = rawVitals.measuredAt;
+      normalizedIncomingVitals = normalizeVitalsMeasurementContext(rawVitals);
+      resolvedMeasuredAt = resolveMeasuredAt(
+        data.measuredAt !== undefined && data.measuredAt !== null
+          ? data.measuredAt
+          : measuredAtFromJson
+      );
+      data.vitalsJson = normalizedIncomingVitals;
+    }
 
     const existing = await this.prisma.triage.findUnique({
       where: { encounterId },
@@ -242,22 +265,29 @@ export class TriageService {
       create: triageData,
     });
 
-    if (data.vitalsJson !== undefined && hasNonEmptyVitalsJson(data.vitalsJson)) {
+    if (
+      data.vitalsJson !== undefined &&
+      hasNonEmptyVitalsJson(data.vitalsJson) &&
+      normalizedIncomingVitals &&
+      resolvedMeasuredAt
+    ) {
       await this.prisma.triageVitalsReading.create({
         data: {
           facilityId,
           patientId: encounter.patientId,
           encounterId,
           triageId: triage.id,
-          vitalsJson: data.vitalsJson as object,
+          vitalsJson: normalizedIncomingVitals as object,
           triageCompleteAt: data.triageCompleteAt ?? null,
+          measuredAt: resolvedMeasuredAt,
+          recordedByUserId: userId ?? null,
         },
       });
       await this.prisma.patient.update({
         where: { id: encounter.patientId },
         data: {
-          latestVitalsJson: data.vitalsJson as object,
-          latestVitalsAt: new Date(),
+          latestVitalsJson: normalizedIncomingVitals as object,
+          latestVitalsAt: resolvedMeasuredAt,
         },
       });
       if (userId) {
@@ -267,10 +297,7 @@ export class TriageService {
             encounterId,
             patientId: encounter.patientId,
             eventType: EncounterClinicalEventType.VITALS_RECORDED,
-            payloadJson: buildVitalsRecordedPayloadJson(
-              data.vitalsJson as Record<string, unknown>,
-              "TRIAGE"
-            ),
+            payloadJson: buildVitalsRecordedPayloadJson(normalizedIncomingVitals, "TRIAGE"),
             createdByUserId: userId,
           },
         });

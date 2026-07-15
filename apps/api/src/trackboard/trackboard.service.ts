@@ -197,10 +197,11 @@ export class TrackboardService {
       `),
       this.prisma.$queryRaw<Array<{ encounterId: string; lastAt: Date }>>(Prisma.sql`
         SELECT t."encounterId" AS "encounterId",
-          MAX(t."recordedAt") AS "lastAt"
+          MAX(t."measuredAt") AS "lastAt"
         FROM "TriageVitalsReading" t
         WHERE t."facilityId" = ${facilityId}
           AND t."encounterId" IN (${idsSql})
+          AND t."status" = 'ACTIVE'::"TriageVitalsReadingStatus"
         GROUP BY t."encounterId"
       `),
       this.prisma.$queryRaw<Array<{ encounterId: string; openOrderCount: bigint }>>(Prisma.sql`

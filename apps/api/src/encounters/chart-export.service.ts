@@ -890,8 +890,11 @@ export class EncounterChartExportService {
         },
       }),
       this.prisma.triageVitalsReading.findMany({
-        where: { encounterId, facilityId },
-        orderBy: { recordedAt: "asc" },
+        where: { encounterId, facilityId, status: "ACTIVE" },
+        orderBy: [{ measuredAt: "asc" }, { recordedAt: "asc" }],
+        include: {
+          recordedBy: { select: { id: true, firstName: true, lastName: true } },
+        },
       }),
       this.prisma.encounterClinicalEvent.findMany({
         where: {
@@ -1062,10 +1065,13 @@ export class EncounterChartExportService {
       const vj = asObjectOrNull(r.vitalsJson);
       if (!vj) continue;
       vitalsEntries.push({
-        recordedAt: r.recordedAt.toISOString(),
+        recordedAt: r.measuredAt.toISOString(),
         source: "TRIAGE",
         vitals: vj,
-        recordedBy: { userId: null, displayName: null },
+        recordedBy: {
+          userId: r.recordedByUserId,
+          displayName: r.recordedBy ? userDisplayFr(r.recordedBy) : null,
+        },
       });
     }
     for (const e of vitalsEvents) {

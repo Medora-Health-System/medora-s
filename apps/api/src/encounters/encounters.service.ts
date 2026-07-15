@@ -2480,10 +2480,15 @@ export class EncountersService {
     }
 
     const readings = await this.prisma.triageVitalsReading.findMany({
-      where: { encounterId, facilityId },
-      orderBy: { recordedAt: "asc" },
+      where: {
+        encounterId,
+        facilityId,
+        status: "ACTIVE",
+      },
+      orderBy: [{ measuredAt: "asc" }, { recordedAt: "asc" }],
       include: {
         triage: { select: { createdByUserId: true } },
+        recordedBy: { select: { id: true, firstName: true, lastName: true } },
       },
     });
 
@@ -2506,8 +2511,12 @@ export class EncountersService {
     };
 
     type Entry = {
+      readingId?: string;
+      measuredAt: string;
       recordedAt: string;
-      recordedBy: VitalsAttribution;
+      recordedBy: VitalsAttribution & {
+        initials?: string | null;
+      };
       source: string;
       vitals: Record<string, unknown>;
     };
@@ -2558,17 +2567,36 @@ export class EncountersService {
       const vj = r.vitalsJson;
       if (!hasNonEmptyVitalsJson(vj)) continue;
       const vitals = vj as Record<string, unknown>;
-      let recordedBy = triageAttributionByVitals.get(vitalsSignature(vitals)) ?? {
-        userId: null,
-        displayName: null,
-        role: null,
-      };
+      let recordedBy = r.recordedByUserId
+        ? await resolvePerformer(r.recordedByUserId)
+        : triageAttributionByVitals.get(vitalsSignature(vitals)) ?? {
+            userId: null,
+            displayName: null,
+            role: null,
+          };
+      if (!recordedBy.displayName && r.recordedBy) {
+        recordedBy = {
+          userId: r.recordedBy.id,
+          displayName: this.userDisplayName(r.recordedBy) || null,
+          role: recordedBy.role,
+        };
+      }
       if (!recordedBy.displayName && r.triage?.createdByUserId) {
         recordedBy = await resolvePerformer(r.triage.createdByUserId);
       }
+      const displayName = recordedBy.displayName;
       entries.push({
+        readingId: r.id,
+        measuredAt: r.measuredAt.toISOString(),
         recordedAt: r.recordedAt.toISOString(),
-        recordedBy,
+        recordedBy: {
+          ...recordedBy,
+          initials: displayName
+            ? computeDisplayNameInitials(displayName)
+            : recordedBy.userId
+              ? "—"
+              : "—",
+        },
         source: "TRIAGE",
         vitals,
       });
@@ -2591,18 +2619,25 @@ export class EncountersService {
       const displayName =
         performer.displayName || this.userDisplayName(e.createdBy) || null;
       entries.push({
+        measuredAt: e.createdAt.toISOString(),
         recordedAt: e.createdAt.toISOString(),
         recordedBy: {
           userId: e.createdByUserId,
           displayName,
           role: performer.role || null,
+          initials: displayName ? computeDisplayNameInitials(displayName) : e.createdByUserId ? "—" : "—",
         },
         source: src,
         vitals,
       });
     }
 
-    entries.sort((a, b) => new Date(a.recordedAt).getTime() - new Date(b.recordedAt).getTime());
+    entries.sort((a, b) => {
+      const am = new Date(a.measuredAt).getTime();
+      const bm = new Date(b.measuredAt).getTime();
+      if (am !== bm) return am - bm;
+      return new Date(a.recordedAt).getTime() - new Date(b.recordedAt).getTime();
+    });
     return { entries };
   }
 

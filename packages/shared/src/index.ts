@@ -162,6 +162,7 @@ export * from "./orders/labRadiologyOperationalReconciliation.js";
 export * from "./orders/labRadiologyOperationalEscalation.js";
 export * from "./encounter-allergy-safety.js";
 export * from "./vitalsUnitConversions.js";
+export * from "./vitalsMeasurementContext.js";
 export * from "./documentedProcedureBillingBridge.js";
 export * from "./documentedProcedureSummary.js";
 export * from "./medicationSafetyWarnings.js";
