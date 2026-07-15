@@ -1546,6 +1546,28 @@ export function buildForeignBodyAdultComplaintV1Intel(d: (key: string) => string
   });
 }
 
+export function buildBurnInjuryAdultComplaintV1Intel(d: (key: string) => string): ProviderDocumentationComplaintIntelligence {
+  return buildMskTraumaV1Intel(d, {
+    hpi: [d("hpiBurnMechanismFlame"), d("hpiBurnMechanismScald"), d("hpiBurnMechanismChemical"), d("hpiBurnMechanismElectrical"), d("hpiSmokeOrHotGasExposure"), d("hpiFrostbiteExposure"), d("hpiBurnDepthReported"), d("hpiTbsaEstimated"), d("hpiAirwaySymptoms"), d("hpiCircumferentialBurnConcern")],
+    physicalExam: {
+      general: [d("examHemodynamicallyStable")],
+      heent: [d("examFacialBurnPresent"), d("examSootInNaresOrOropharynx")],
+      respiratory: [d("examAirwayPatent"), d("examRespiratoryDistressPresent")],
+      skin: [d("examBurnDepthDocumented"), d("examTbsaDocumented"), d("examCircumferentialBurnPresent"), d("examChemicalDecontaminationCompleted"), d("examFrostbiteTissueChangesPresent")],
+      neuroPsych: [d("examDistalPulsesIntact"), d("examSensationIntactDistally")],
+    },
+    extraDifferential: [d("diffInhalationInjury"), d("diffFullThicknessBurn"), d("diffChemicalBurn"), d("diffElectricalInjury"), d("diffCompartmentSyndrome")],
+    mdmOverrides: {
+      mdmWorkingAssessment: [d("waBurnInjury"), d("waInhalationInjury"), d("waChemicalBurn"), d("waElectricalBurn"), d("waFrostbite")],
+      clinicalImpression: [d("impBurnInjury"), d("impInhalationInjury"), d("impFullThicknessBurn"), d("impFrostbite")],
+      mdmDataReviewed: [d("mdmTraumaImagingReviewed"), d("mdmCbcReviewed"), d("mdmCmpReviewed")],
+      mdmPlanSummary: [d("planBurnWoundCare"), d("planTbsaAndDepthDocumentation"), d("planAirwayMonitoring"), d("planChemicalIrrigation"), d("planElectricalMonitoring"), d("planBurnCenterConsult"), d("planReturnPrecautions")],
+      mdmClinicalRationale: [d("reasoningAirwayRisk"), d("reasoningBurnDepthAndTbsaRisk"), d("reasoningChemicalExposureRisk"), d("reasoningElectricalInjuryRisk"), d("reasoningFrostbiteRewarming")],
+      mdmRiskStratification: [d("riskLowRiskBurn"), d("riskModerateRiskBurn"), d("riskHighRiskBurn"), d("riskAdmissionRecommended")],
+    },
+  });
+}
+
 export const TRAUMA_INJURY_GOLD_STANDARD_BUILDERS = {
   fall: buildFallComplaintIntel,
   head_injury: buildHeadInjuryComplaintIntel,
@@ -1578,5 +1600,6 @@ export const TRAUMA_INJURY_GOLD_STANDARD_BUILDERS = {
   crush_injury_adult_complaint_v1: buildCrushInjuryAdultComplaintV1Intel,
   traumatic_amputation_adult_complaint_v1: buildTraumaticAmputationAdultComplaintV1Intel,
   foreign_body_adult_complaint_v1: buildForeignBodyAdultComplaintV1Intel,
+  burn_injury_adult_complaint_v1: buildBurnInjuryAdultComplaintV1Intel,
   concussion_followup_complaint_v1: buildConcussionFollowupComplaintV1Intel,
 } as const;

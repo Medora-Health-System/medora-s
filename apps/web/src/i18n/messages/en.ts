@@ -8396,10 +8396,13 @@ export default {
     templateForeignBodyAdultComplaintV1: "Foreign Body",
     templateForeignBodyAdultComplaintV1Help:
       "Foreign body, foreign body eye, foreign body ear, foreign body nose, foreign body hand, foreign body foot, retained fragment, splinter, glass, fishhook, needle fragment, foreign object — location, material, depth, removal completeness, and specialty risk.",
+    templateBurnInjuryAdultComplaintV1: "Burn / Inhalation Injury",
+    templateBurnInjuryAdultComplaintV1Help:
+      "Burn, scald, steam, chemical burn, electrical burn, inhalation injury, smoke, hot gas, frostbite, sunburn — mechanism, depth, TBSA, airway, decontamination, and specialty risk.",
     templatePenetratingInjury: "Penetrating injury",
     templatePenetratingInjuryHelp: "Mechanism, weapon, bleeding, abdomen / chest exam, imaging as indicated.",
-    templateBurn: "Burn",
-    templateBurnHelp: "Agent, estimated surface area, airway concern, fluids / pain / reassessment.",
+    templateBurn: "Burn (legacy)",
+    templateBurnHelp: "Legacy: agent, estimated surface area, airway concern, fluids / pain / reassessment.",
     templateFractureConcern: "Fracture concern",
     templateFractureConcernHelp: "Mechanism, deformity, distal NV, imaging, immobilization / reassessment.",
     templatePediatricFever: "Fever (pediatric)",

@@ -8374,10 +8374,13 @@ export default {
     templateForeignBodyAdultComplaintV1: "Corps étranger",
     templateForeignBodyAdultComplaintV1Help:
       "Corps étranger, fragment retenu, écharde, verre, hameçon, fragment d'aiguille — localisation, matériau, profondeur, retrait complet et risque nécessitant un spécialiste.",
+    templateBurnInjuryAdultComplaintV1: "Brûlure / Lésion par inhalation",
+    templateBurnInjuryAdultComplaintV1Help:
+      "Brûlure, ébouillantage, vapeur, brûlure chimique, brûlure électrique, lésion par inhalation, fumée, gaz chaud, gelure, coup de soleil — mécanisme, profondeur, surface corporelle, voies aériennes, décontamination et risque spécialisé.",
     templatePenetratingInjury: "Plaie pénétrante",
     templatePenetratingInjuryHelp: "Mécanisme, arme, saignement, examen abdomen / thorax, imagerie selon indication.",
-    templateBurn: "Brûlure",
-    templateBurnHelp: "Agent causal, surface estimée, voies aériennes, fluides / douleur / réévaluation.",
+    templateBurn: "Brûlure (ancien modèle)",
+    templateBurnHelp: "Ancien modèle : agent causal, surface estimée, voies aériennes, fluides / douleur / réévaluation.",
     templateFractureConcern: "Suspicion de fracture",
     templateFractureConcernHelp: "Mécanisme, déformité, NV distal, imagerie, immobilisation / réévaluation.",
     templatePediatricFever: "Fièvre (pédiatrique)",
