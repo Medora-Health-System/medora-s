@@ -100,6 +100,7 @@ import {
   TRAUMATIC_AMPUTATION_ADULT_COMPLAINT_V1_INTEL,
   FOREIGN_BODY_ADULT_COMPLAINT_V1_INTEL,
   BURN_INJURY_ADULT_COMPLAINT_V1_INTEL,
+  PENETRATING_TRAUMA_ADULT_COMPLAINT_V1_INTEL,
   SPRAIN_STRAIN_ADULT_COMPLAINT_V1_INTEL,
   TENDON_INJURY_ADULT_COMPLAINT_V1_INTEL,
   FEVER_COMPLAINT_V1_INTEL,
@@ -1917,6 +1918,7 @@ export const PROVIDER_DOCUMENTATION_TEMPLATES: ProviderDocumentationTemplateDefi
   mskTraumaComplaintV1Template("traumatic_amputation_adult_complaint_v1", "providerDocumentationWorkspace.templateTraumaticAmputationAdultComplaintV1", "providerDocumentationWorkspace.templateTraumaticAmputationAdultComplaintV1Help", TRAUMATIC_AMPUTATION_ADULT_COMPLAINT_V1_INTEL),
   mskTraumaComplaintV1Template("foreign_body_adult_complaint_v1", "providerDocumentationWorkspace.templateForeignBodyAdultComplaintV1", "providerDocumentationWorkspace.templateForeignBodyAdultComplaintV1Help", FOREIGN_BODY_ADULT_COMPLAINT_V1_INTEL),
   mskTraumaComplaintV1Template("burn_injury_adult_complaint_v1", "providerDocumentationWorkspace.templateBurnInjuryAdultComplaintV1", "providerDocumentationWorkspace.templateBurnInjuryAdultComplaintV1Help", BURN_INJURY_ADULT_COMPLAINT_V1_INTEL),
+  mskTraumaComplaintV1Template("penetrating_trauma_adult_complaint_v1", "providerDocumentationWorkspace.templatePenetratingTraumaAdultComplaintV1", "providerDocumentationWorkspace.templatePenetratingTraumaAdultComplaintV1Help", PENETRATING_TRAUMA_ADULT_COMPLAINT_V1_INTEL),
   infectiousEntComplaintV1Template(
     "fever_complaint_v1",
     "providerDocumentationWorkspace.templateFeverComplaintV1",

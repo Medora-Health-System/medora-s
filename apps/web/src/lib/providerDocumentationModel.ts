@@ -137,6 +137,7 @@ export type ProviderDocumentationTemplateId =
   | "traumatic_amputation_adult_complaint_v1"
   | "foreign_body_adult_complaint_v1"
   | "burn_injury_adult_complaint_v1"
+  | "penetrating_trauma_adult_complaint_v1"
   | "fever_complaint_v1"
   | "cellulitis_skin_infection_complaint_v1"
   | "abscess_soft_tissue_complaint_v1"

@@ -1568,6 +1568,30 @@ export function buildBurnInjuryAdultComplaintV1Intel(d: (key: string) => string)
   });
 }
 
+export function buildPenetratingTraumaAdultComplaintV1Intel(d: (key: string) => string): ProviderDocumentationComplaintIntelligence {
+  return buildMskTraumaV1Intel(d, {
+    hpi: [d("hpiGunshotMechanism"), d("hpiStabMechanism"), d("hpiImpalementMechanism"), d("hpiEntryWound"), d("hpiExitWound"), d("hpiThroughAndThroughWound"), d("hpiRetainedProjectile"), d("hpiActiveHemorrhage"), d("hpiTourniquetApplied"), d("hpiObjectLeftInPlace")],
+    physicalExam: {
+      general: [d("examHemodynamicInstability"), d("examHemodynamicallyStable")],
+      heent: [d("examAirwayPatent")],
+      respiratory: [d("examChestWoundPresent"), d("examBreathSoundsAsymmetric")],
+      abdomen: [d("examAbdominalWoundPresent"), d("examAbdominalTendernessPresent")],
+      skin: [d("examEntryExitWoundsDocumented"), d("examActiveBleedingPresent"), d("examImpaledObjectInPlace")],
+      neuroPsych: [d("examNeurovascularIntact"), d("examSensationIntactDistally")],
+      musculoskeletal: [d("examDistalPulsesIntact")],
+    },
+    extraDifferential: [d("diffVascularInjury"), d("diffThoracicOrganInjury"), d("diffAbdominalOrganInjury"), d("diffNerveInjury"), d("diffRetainedForeignBody")],
+    mdmOverrides: {
+      mdmWorkingAssessment: [d("waPenetratingTrauma"), d("waGunshotWound"), d("waStabWound"), d("waHemorrhagicShock")],
+      clinicalImpression: [d("impPenetratingTrauma"), d("impGunshotWound"), d("impStabWound")],
+      mdmDataReviewed: [d("mdmTraumaImagingReviewed"), d("mdmCbcReviewed"), d("mdmCmpReviewed")],
+      mdmPlanSummary: [d("planTraumaActivation"), d("planHemorrhageControl"), d("planTourniquetReassessment"), d("planImpaledObjectStabilized"), d("planSerialNeurovascularChecks"), d("planTraumaTransfer"), d("planForensicEvidencePreservedOptional")],
+      mdmClinicalRationale: [d("reasoningPenetratingMechanismHighRisk"), d("reasoningHemorrhageRisk"), d("reasoningThoracoabdominalRisk"), d("reasoningNeurovascularRisk"), d("reasoningForensicEvidenceOptional")],
+      mdmRiskStratification: [d("riskLowRiskSuperficialPuncture"), d("riskModerateRiskExtremityWound"), d("riskHighRiskPenetratingTrauma"), d("riskTraumaTransfer")],
+    },
+  });
+}
+
 export const TRAUMA_INJURY_GOLD_STANDARD_BUILDERS = {
   fall: buildFallComplaintIntel,
   head_injury: buildHeadInjuryComplaintIntel,
@@ -1601,5 +1625,6 @@ export const TRAUMA_INJURY_GOLD_STANDARD_BUILDERS = {
   traumatic_amputation_adult_complaint_v1: buildTraumaticAmputationAdultComplaintV1Intel,
   foreign_body_adult_complaint_v1: buildForeignBodyAdultComplaintV1Intel,
   burn_injury_adult_complaint_v1: buildBurnInjuryAdultComplaintV1Intel,
+  penetrating_trauma_adult_complaint_v1: buildPenetratingTraumaAdultComplaintV1Intel,
   concussion_followup_complaint_v1: buildConcussionFollowupComplaintV1Intel,
 } as const;

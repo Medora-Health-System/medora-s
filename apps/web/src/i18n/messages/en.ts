@@ -8399,7 +8399,10 @@ export default {
     templateBurnInjuryAdultComplaintV1: "Burn / Inhalation Injury",
     templateBurnInjuryAdultComplaintV1Help:
       "Burn, scald, steam, chemical burn, electrical burn, inhalation injury, smoke, hot gas, frostbite, sunburn — mechanism, depth, TBSA, airway, decontamination, and specialty risk.",
-    templatePenetratingInjury: "Penetrating injury",
+    templatePenetratingTraumaAdultComplaintV1: "Gunshot / Stab / Penetrating Trauma",
+    templatePenetratingTraumaAdultComplaintV1Help:
+      "Gunshot, firearm, bullet, stab, knife, impalement, puncture wound, retained projectile, entry wound, exit wound, tourniquet — mechanism, hemorrhage control, neurovascular status, airway, chest and abdomen injury risk.",
+    templatePenetratingInjury: "Penetrating injury (legacy)",
     templatePenetratingInjuryHelp: "Mechanism, weapon, bleeding, abdomen / chest exam, imaging as indicated.",
     templateBurn: "Burn (legacy)",
     templateBurnHelp: "Legacy: agent, estimated surface area, airway concern, fluids / pain / reassessment.",
