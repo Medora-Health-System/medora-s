@@ -16,7 +16,8 @@ const regionFor = (code: string, text: string): CrushRegion[] => {
   if (code.startsWith("S77") || code.startsWith("S87") || /lower extremity|leg|knee|thigh|jambe|genou|cuisse/.test(text)) return ["lower_extremity"];
   if (code.startsWith("S97") || /foot|toe|pied|orteil/.test(text)) return ["foot_toe"];
   if (code.startsWith("S28") || code.startsWith("S38") || /chest|abdomen|pelvis|thorax|bassin/.test(text)) return ["chest_abdomen_pelvis"];
-  if (code.startsWith("S07") || /head|face|tete|visage/.test(text)) return ["head_face"];
+  if (code.startsWith("S07") || code.startsWith("S17") || /head|face|neck|tete|visage|cou/.test(text))
+    return ["head_face"];
   return /crush|ecras/.test(text) || code.startsWith("T79.6") ? ["unspecified"] : [];
 };
 function family(regions: CrushRegion[], severity: CrushSeverity, modifiers: CrushModifier[]) {
