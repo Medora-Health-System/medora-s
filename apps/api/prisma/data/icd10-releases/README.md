@@ -34,4 +34,21 @@ pnpm --filter @medora/api icd:coverage -- \
   --write-reports
 ```
 
+5. Certify crush / traumatic amputation / foreign-body parity + routing + search:
+
+```bash
+pnpm --filter @medora/api icd:coverage:crush-amp-fb -- \
+  --file "/path/to/icd10cm-Code-Descriptions-2026.zip" \
+  --release 2026 \
+  --write-reports
+
+pnpm --filter @medora/api icd:routing:crush-amp-fb -- \
+  --file "/path/to/icd10cm-Code-Descriptions-2026.zip" \
+  --release 2026
+
+pnpm --filter @medora/api icd:search
+```
+
+Summaries are written under `apps/api/prisma/icd/certification-summaries/`.
+
 Place downloaded artifacts under `.cache/` (gitignored) or any secure operator path.

@@ -1,0 +1,41 @@
+{
+  "generatedAt": "2026-07-15T00:44:04.584Z",
+  "overall": {
+    "officialReleaseTotalRows": 98186,
+    "officialBillableRows": 74719,
+    "medoraImportedRows": 98186,
+    "medoraActiveSelectableRows": 74719,
+    "releaseVersion": "FY2026",
+    "artifactSha256": "a852eb91b3344ae38476e63816976ee1eeb94dcced7151118324f060e8499f88",
+    "sourceSha256": "6dc95c9c7e96c734806e1682f4bf9df76251d60e99199bba0d375ba3dd11026b"
+  },
+  "certification": {
+    "crushOfficialCount": 237,
+    "crushImportedCount": 237,
+    "crushMissing": 0,
+    "amputationOfficialCount": 582,
+    "amputationImportedCount": 582,
+    "amputationMissing": 0,
+    "foreignBodyOfficialCount": 1413,
+    "foreignBodyImportedCount": 1413,
+    "foreignBodyMissing": 0,
+    "duplicateActiveCodes": 0,
+    "invalidSelectableCodes": 0,
+    "crushPass": true,
+    "amputationPass": true,
+    "foreignBodyPass": true,
+    "overallParityPass": true
+  },
+  "crush": {
+    "scopedOfficialBillable": 237,
+    "missing": 0
+  },
+  "amputation": {
+    "scopedOfficialBillable": 582,
+    "missing": 0
+  },
+  "foreignBody": {
+    "scopedOfficialBillable": 1413,
+    "missing": 0
+  }
+}

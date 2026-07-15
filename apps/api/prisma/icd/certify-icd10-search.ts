@@ -2,6 +2,8 @@
  * Diagnosis search certification against the imported active ICD catalog.
  * Mirrors clinical query expansion used by Icd10CatalogService.
  */
+import { mkdirSync, writeFileSync } from "node:fs";
+import { join, resolve } from "node:path";
 import { PrismaClient, Prisma } from "@prisma/client";
 import { resolveIcd10ClinicalQueryExpansion } from "../../src/diagnoses/icd10-clinical-query-expansion";
 
@@ -38,6 +40,40 @@ const REQUIRED_QUERIES: Array<{
   { q: "gamekeeper's thumb", mustContainDescription: "thumb", mustMatchCodePrefix: "S63.64" },
   { q: "scapholunate ligament injury", mustMatchCodePrefix: "S63." },
   { q: "elbow UCL injury", mustContainDescription: "ulnar collateral" },
+  // Crush / amputation / foreign body (Phase 4 production certification)
+  { q: "crush injury", mustContainDescription: "crush" },
+  { q: "crushed hand", mustContainDescription: "hand", mustMatchCodePrefix: "S67" },
+  { q: "crushed finger", mustContainDescription: "finger", mustMatchCodePrefix: "S67" },
+  { q: "crushed foot", mustContainDescription: "foot", mustMatchCodePrefix: "S97" },
+  { q: "industrial crush injury", mustContainDescription: "crush" },
+  { q: "prolonged compression", mustMatchCodePrefix: "T79.6" },
+  { q: "degloving injury", mustContainDescription: "crush" },
+  { q: "compartment syndrome after crush", mustMatchCodePrefix: "T79.6" },
+  { q: "rhabdomyolysis after crush", mustMatchCodePrefix: "T79.6" },
+  { q: "traumatic amputation", mustContainDescription: "amp" },
+  { q: "partial amputation", mustContainDescription: "partial" },
+  { q: "complete amputation", mustContainDescription: "complete" },
+  { q: "severed finger", mustMatchCodePrefix: "S68" },
+  { q: "finger cut off", mustMatchCodePrefix: "S68" },
+  { q: "thumb cut off", mustContainDescription: "thmb", mustMatchCodePrefix: "S68" },
+  { q: "toe cut off", mustContainDescription: "toe", mustMatchCodePrefix: "S98" },
+  { q: "avulsed digit", mustMatchCodePrefix: "S68" },
+  { q: "hand amputation", mustContainDescription: "hand", mustMatchCodePrefix: "S68" },
+  { q: "foot amputation", mustContainDescription: "foot", mustMatchCodePrefix: "S98" },
+  { q: "foreign body", mustContainDescription: "foreign body" },
+  { q: "retained foreign body", mustContainDescription: "fb" },
+  { q: "splinter", mustContainDescription: "foreign body" },
+  { q: "glass in skin", mustContainDescription: "foreign body" },
+  { q: "metal fragment", mustContainDescription: "foreign body" },
+  { q: "needle fragment", mustContainDescription: "foreign body" },
+  { q: "fishhook", mustContainDescription: "foreign body" },
+  { q: "foreign body eye", mustMatchCodePrefix: "T15" },
+  { q: "foreign body ear", mustMatchCodePrefix: "T16" },
+  { q: "foreign body nose", mustMatchCodePrefix: "T17" },
+  { q: "foreign body hand", mustContainDescription: "foreign body" },
+  { q: "foreign body foot", mustContainDescription: "foreign body" },
+  { q: "swallowed foreign body", mustMatchCodePrefix: "T18" },
+  { q: "aspirated foreign body", mustMatchCodePrefix: "T17" },
 ];
 
 function encounterChar(code: string): string {
@@ -146,6 +182,9 @@ async function main() {
       pass: failures.length === 0,
     };
     console.log(JSON.stringify(report, null, 2));
+    const summaryDir = resolve(__dirname, "certification-summaries");
+    mkdirSync(summaryDir, { recursive: true });
+    writeFileSync(join(summaryDir, "fy2026-search-summary.json"), JSON.stringify(report, null, 2));
     if (!report.pass) process.exit(1);
   } finally {
     await prisma.$disconnect();

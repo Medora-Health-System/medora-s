@@ -1,0 +1,18 @@
+{
+  "generatedAt": "2026-07-15T00:44:08.344Z",
+  "releaseVersion": "FY2026",
+  "crushScoped": 237,
+  "amputationScoped": 582,
+  "foreignBodyScoped": 1413,
+  "crushUnexplainedFallbacks": 0,
+  "amputationUnexplainedFallbacks": 0,
+  "foreignBodyUnexplainedFallbacks": 0,
+  "crushStolenByGenericWound": 0,
+  "amputationStolenByGenericWound": 0,
+  "foreignBodyStolenByGenericWound": 0,
+  "crushFallbackSample": [],
+  "amputationFallbackSample": [],
+  "foreignBodyFallbackSample": [],
+  "foreignBodyStealSample": [],
+  "pass": true
+}
