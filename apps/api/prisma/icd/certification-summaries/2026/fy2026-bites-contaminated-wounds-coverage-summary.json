@@ -1,0 +1,16 @@
+{
+  "bitesContaminatedWounds": {
+    "scopedOfficialBillable": 733,
+    "presentInMedora": 733,
+    "missingCodes": [],
+    "descriptionMismatches": [],
+    "duplicateCodes": [],
+    "invalidSelectableHeaders": 0,
+    "animalScoped": 162,
+    "humanScoped": 441,
+    "infectionScoped": 130
+  },
+  "certification": {
+    "pass": true
+  }
+}

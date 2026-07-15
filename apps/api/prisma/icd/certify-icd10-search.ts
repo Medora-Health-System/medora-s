@@ -340,6 +340,21 @@ async function main() {
     );
     writeFileSync(join(summaryDir, "fy2026-human-bite-high-risk-wound-search-summary.json"), humanBiteSummary);
     writeFileSync(join(releaseSummaryDir, "fy2026-human-bite-high-risk-wound-search-summary.json"), humanBiteSummary);
+    const bitesQueryPattern =
+      /animal bite|dog bite|cat bite|bat bite|human bite|morsure|fight bite|clenched fist|contaminated wound|dirty wound|water-exposed|farm wound|flexor tenosynovitis|bite cellulitis|deep-space hand|plaie contamin|plaie sale|plaie infect/;
+    const bitesFailures = failures.filter((failure) => bitesQueryPattern.test(failure.toLowerCase()));
+    const bitesSummary = JSON.stringify(
+      {
+        generatedAt: report.generatedAt,
+        queryCount: REQUIRED_QUERIES.filter((row) => bitesQueryPattern.test(row.q)).length,
+        failures: bitesFailures,
+        pass: bitesFailures.length === 0,
+      },
+      null,
+      2,
+    );
+    writeFileSync(join(summaryDir, "fy2026-bites-contaminated-wounds-search-summary.json"), bitesSummary);
+    writeFileSync(join(releaseSummaryDir, "fy2026-bites-contaminated-wounds-search-summary.json"), bitesSummary);
     if (!report.pass) process.exit(1);
   } finally {
     await prisma.$disconnect();

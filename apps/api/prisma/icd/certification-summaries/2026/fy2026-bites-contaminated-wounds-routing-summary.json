@@ -1,0 +1,14 @@
+{
+  "bitesContaminatedWoundsScoped": 733,
+  "animalScoped": 162,
+  "humanScoped": 441,
+  "humanOwnerFailures": [],
+  "animalOwnerFailures": [],
+  "humanAnimalCrossRouting": [],
+  "unexplainedFallbacks": [],
+  "genericWoundSteals": [],
+  "foreignBodySteals": [],
+  "penetratingSteals": [],
+  "infectionUnderRouting": [],
+  "pass": true
+}
