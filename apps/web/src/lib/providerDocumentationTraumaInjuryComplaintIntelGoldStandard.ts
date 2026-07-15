@@ -1592,6 +1592,70 @@ export function buildPenetratingTraumaAdultComplaintV1Intel(d: (key: string) => 
   });
 }
 
+export function buildBlastPolytraumaAdultComplaintV1Intel(d: (key: string) => string): ProviderDocumentationComplaintIntelligence {
+  return buildMskTraumaV1Intel(d, {
+    hpi: [
+      d("hpiExplosionMechanism"),
+      d("hpiPrimaryBlastExposure"),
+      d("hpiSecondaryFragmentInjury"),
+      d("hpiTertiaryBluntCrush"),
+      d("hpiQuaternaryBurnInhalation"),
+      d("hpiEnclosedSpaceBlast"),
+      d("hpiThrownByBlast"),
+      d("hpiEntrapmentDuration"),
+      d("hpiHearingLossOrTinnitus"),
+      d("hpiDyspneaOrHemoptysis"),
+      d("hpiAbdominalPain"),
+      d("hpiLossOfConsciousness"),
+    ],
+    physicalExam: {
+      general: [d("examHemodynamicInstability"), d("examHemodynamicallyStable"), d("examPrimarySurveyCompleted")],
+      heent: [d("examAirwayPatent"), d("examTympanicMembraneAssessed"), d("examHearingGrosslyAssessed")],
+      respiratory: [d("examBreathSoundsSymmetric"), d("examRespiratoryDistressPresent"), d("examBlastLungConcern")],
+      abdomen: [d("examAbdominalTendernessPresent"), d("examPeritonealSignsAbsent")],
+      skin: [d("examBurnsDocumented"), d("examFragmentWoundsDocumented"), d("examActiveBleedingPresent")],
+      neuroPsych: [d("examGcsDocumented"), d("examNoFocalNeurologicDeficit"), d("examNeurovascularIntact")],
+      musculoskeletal: [d("examDistalPulsesIntact"), d("examCrushOrDeformityDocumented")],
+    },
+    extraDifferential: [
+      d("diffBlastLung"),
+      d("diffTympanicMembraneRupture"),
+      d("diffBowelBlastInjury"),
+      d("diffTraumaticBrainInjury"),
+      d("diffTraumaticShock"),
+      d("diffFragmentInjury"),
+      d("diffCrushSyndrome"),
+    ],
+    mdmOverrides: {
+      mdmWorkingAssessment: [d("waBlastInjury"), d("waPolytrauma"), d("waTraumaticShock"), d("waMultisystemTrauma")],
+      clinicalImpression: [d("impBlastInjury"), d("impPolytrauma"), d("impBlastLungConcern")],
+      mdmDataReviewed: [d("mdmTraumaImagingReviewed"), d("mdmCbcReviewed"), d("mdmCmpReviewed"), d("mdmChestImagingReviewed")],
+      mdmPlanSummary: [
+        d("planTraumaActivation"),
+        d("planPrimarySecondarySurvey"),
+        d("planSerialExams"),
+        d("planHemorrhageControl"),
+        d("planSpecialtyConsultsAsIndicated"),
+        d("planTraumaTransfer"),
+        d("planDelayedInjuryPrecautions"),
+      ],
+      mdmClinicalRationale: [
+        d("reasoningBlastMechanismMultisystem"),
+        d("reasoningDelayedBlastLungBowel"),
+        d("reasoningEarInjuryNotExclusive"),
+        d("reasoningCompositeInjuryFamilies"),
+        d("reasoningResourceAndTransferContext"),
+      ],
+      mdmRiskStratification: [
+        d("riskLowRiskMinorBlast"),
+        d("riskModerateObservationBlast"),
+        d("riskHighRiskPolytrauma"),
+        d("riskTraumaTransfer"),
+      ],
+    },
+  });
+}
+
 export const TRAUMA_INJURY_GOLD_STANDARD_BUILDERS = {
   fall: buildFallComplaintIntel,
   head_injury: buildHeadInjuryComplaintIntel,
@@ -1626,5 +1690,6 @@ export const TRAUMA_INJURY_GOLD_STANDARD_BUILDERS = {
   foreign_body_adult_complaint_v1: buildForeignBodyAdultComplaintV1Intel,
   burn_injury_adult_complaint_v1: buildBurnInjuryAdultComplaintV1Intel,
   penetrating_trauma_adult_complaint_v1: buildPenetratingTraumaAdultComplaintV1Intel,
+  blast_polytrauma_adult_complaint_v1: buildBlastPolytraumaAdultComplaintV1Intel,
   concussion_followup_complaint_v1: buildConcussionFollowupComplaintV1Intel,
 } as const;

@@ -57,7 +57,7 @@ function assertSectionCoverage(bundle: (typeof MSK_TRAUMA_BUNDLES)[number]) {
 
 describe("provider documentation MSK / trauma complaint intelligence (19MDM.6)", () => {
   it("registers all 20 MSK/trauma complaint_v1 templates", () => {
-    expect(MSK_TRAUMA_COMPLAINT_V1_TEMPLATE_IDS).toHaveLength(21);
+    expect(MSK_TRAUMA_COMPLAINT_V1_TEMPLATE_IDS).toHaveLength(22);
     for (const id of MSK_TRAUMA_COMPLAINT_V1_TEMPLATE_IDS) {
       expect(COMPLAINT_INTEL_BY_TEMPLATE_ID[id]).toBeDefined();
       expect(PROVIDER_DOCUMENTATION_TEMPLATES.some((template) => template.id === id)).toBe(true);

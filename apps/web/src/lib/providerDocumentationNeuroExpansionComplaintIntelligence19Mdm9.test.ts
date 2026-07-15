@@ -188,7 +188,7 @@ describe("provider documentation neurology expansion complaint intelligence (19M
     expect(GI_COMPLAINT_V1_TEMPLATE_IDS).toHaveLength(9);
     expect(RESPIRATORY_COMPLAINT_V1_TEMPLATE_IDS).toHaveLength(9);
     expect(GU_RENAL_COMPLAINT_V1_TEMPLATE_IDS).toHaveLength(9);
-    expect(MSK_TRAUMA_COMPLAINT_V1_TEMPLATE_IDS).toHaveLength(21);
+    expect(MSK_TRAUMA_COMPLAINT_V1_TEMPLATE_IDS).toHaveLength(22);
     expect(INFECTIOUS_ENT_COMPLAINT_V1_TEMPLATE_IDS).toHaveLength(10);
     expect(ENDOCRINE_METABOLIC_COMPLAINT_V1_TEMPLATE_IDS).toHaveLength(10);
     expect(COMPLAINT_INTEL_BY_TEMPLATE_ID.dysuria_complaint_v1).toBe(DYSURIA_COMPLAINT_V1_INTEL);

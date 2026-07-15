@@ -16,6 +16,7 @@ import {
   buildForeignBodyAdultComplaintV1Intel,
   buildBurnInjuryAdultComplaintV1Intel,
   buildPenetratingTraumaAdultComplaintV1Intel,
+  buildBlastPolytraumaAdultComplaintV1Intel,
   buildHipPainInjuryComplaintV1Intel,
   buildKneeInjuryComplaintV1Intel,
   buildLacerationSoftTissueComplaintV1Intel,
@@ -45,6 +46,7 @@ const traumaticAmputationAdult = (key: string) => `providerDocumentationComplain
 const foreignBodyAdult = (key: string) => `providerDocumentationComplaintIntel.foreignBodyAdultComplaintV1.${key}`;
 const burnInjuryAdult = (key: string) => `providerDocumentationComplaintIntel.burnInjuryAdultComplaintV1.${key}`;
 const penetratingTraumaAdult = (key: string) => `providerDocumentationComplaintIntel.penetratingTraumaAdultComplaintV1.${key}`;
+const blastPolytraumaAdult = (key: string) => `providerDocumentationComplaintIntel.blastPolytraumaAdultComplaintV1.${key}`;
 
 export const BACK_PAIN_COMPLAINT_V1_INTEL: ProviderDocumentationComplaintIntelligence =
   buildBackPainComplaintV1Intel(backPain);
@@ -83,6 +85,7 @@ export const TRAUMATIC_AMPUTATION_ADULT_COMPLAINT_V1_INTEL = buildTraumaticAmput
 export const FOREIGN_BODY_ADULT_COMPLAINT_V1_INTEL = buildForeignBodyAdultComplaintV1Intel(foreignBodyAdult);
 export const BURN_INJURY_ADULT_COMPLAINT_V1_INTEL = buildBurnInjuryAdultComplaintV1Intel(burnInjuryAdult);
 export const PENETRATING_TRAUMA_ADULT_COMPLAINT_V1_INTEL = buildPenetratingTraumaAdultComplaintV1Intel(penetratingTraumaAdult);
+export const BLAST_POLYTRAUMA_ADULT_COMPLAINT_V1_INTEL = buildBlastPolytraumaAdultComplaintV1Intel(blastPolytraumaAdult);
 
 export const MSK_TRAUMA_COMPLAINT_V1_TEMPLATE_IDS = [
   "back_pain_complaint_v1",
@@ -106,6 +109,7 @@ export const MSK_TRAUMA_COMPLAINT_V1_TEMPLATE_IDS = [
   "foreign_body_adult_complaint_v1",
   "burn_injury_adult_complaint_v1",
   "penetrating_trauma_adult_complaint_v1",
+  "blast_polytrauma_adult_complaint_v1",
 ] as const;
 
 export const MSK_TRAUMA_COMPLAINT_V1_INTEL_BY_TEMPLATE_ID = {
@@ -130,4 +134,5 @@ export const MSK_TRAUMA_COMPLAINT_V1_INTEL_BY_TEMPLATE_ID = {
   foreign_body_adult_complaint_v1: FOREIGN_BODY_ADULT_COMPLAINT_V1_INTEL,
   burn_injury_adult_complaint_v1: BURN_INJURY_ADULT_COMPLAINT_V1_INTEL,
   penetrating_trauma_adult_complaint_v1: PENETRATING_TRAUMA_ADULT_COMPLAINT_V1_INTEL,
+  blast_polytrauma_adult_complaint_v1: BLAST_POLYTRAUMA_ADULT_COMPLAINT_V1_INTEL,
 } as const;

@@ -84,7 +84,7 @@ function messagesForBundle(bundle: (typeof TRAUMA_INJURY_GOLD_STANDARD_BUNDLES)[
 
 describe("providerDocumentationTraumaInjuryTrackC — MEDUI.ED.ME.2N-R", () => {
   it("accounts for all governed trauma template IDs", () => {
-    expect(TRAUMA_INJURY_COMPLAINT_INTEL_TEMPLATE_IDS).toHaveLength(34);
+    expect(TRAUMA_INJURY_COMPLAINT_INTEL_TEMPLATE_IDS).toHaveLength(35);
     for (const templateId of TRAUMA_INJURY_COMPLAINT_INTEL_TEMPLATE_IDS) {
       expect(PROVIDER_DOCUMENTATION_TEMPLATES.some((template) => template.id === templateId)).toBe(true);
     }

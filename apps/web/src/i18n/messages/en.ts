@@ -8402,6 +8402,9 @@ export default {
     templatePenetratingTraumaAdultComplaintV1: "Gunshot / Stab / Penetrating Trauma",
     templatePenetratingTraumaAdultComplaintV1Help:
       "Gunshot, firearm, bullet, stab, knife, impalement, puncture wound, retained projectile, entry wound, exit wound, tourniquet — mechanism, hemorrhage control, neurovascular status, airway, chest and abdomen injury risk.",
+    templateBlastPolytraumaAdultComplaintV1: "Blast Injury / Polytrauma",
+    templateBlastPolytraumaAdultComplaintV1Help:
+      "Explosion, blast, firework, collapse, entrapment, fragments, burns, inhalation, ear, lung, abdomen and neurologic effects — ABCDE assessment and delayed-symptom precautions.",
     templatePenetratingInjury: "Penetrating injury (legacy)",
     templatePenetratingInjuryHelp: "Mechanism, weapon, bleeding, abdomen / chest exam, imaging as indicated.",
     templateBurn: "Burn (legacy)",

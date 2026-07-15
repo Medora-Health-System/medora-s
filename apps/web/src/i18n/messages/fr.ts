@@ -8380,6 +8380,9 @@ export default {
     templatePenetratingTraumaAdultComplaintV1: "Blessure par balle / Arme blanche / Traumatisme pénétrant",
     templatePenetratingTraumaAdultComplaintV1Help:
       "Blessure par balle, arme à feu, projectile, coup de couteau, arme blanche, empalement, plaie punctiforme, projectile retenu, orifice d'entrée, orifice de sortie, garrot — mécanisme, contrôle de l'hémorragie, état neurovasculaire, voies aériennes et risque thoraco-abdominal.",
+    templateBlastPolytraumaAdultComplaintV1: "Lésion par explosion / Polytraumatisme",
+    templateBlastPolytraumaAdultComplaintV1Help:
+      "Explosion, déflagration, feu d'artifice, effondrement, ensevelissement, fragments, brûlures, inhalation, effets sur l'oreille, le poumon, l'abdomen et le système nerveux — évaluation ABCDE et précautions pour symptômes retardés.",
     templatePenetratingInjury: "Plaie pénétrante (ancien modèle)",
     templatePenetratingInjuryHelp: "Mécanisme, arme, saignement, examen abdomen / thorax, imagerie selon indication.",
     templateBurn: "Brûlure (ancien modèle)",
