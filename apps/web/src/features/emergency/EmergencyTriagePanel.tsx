@@ -55,19 +55,16 @@ import {
 } from "./triageCarryForward";
 import { mergeVitalsJsonForSave } from "./emergencyTriageVitalsMerge";
 import { isTriageStaleConflictError } from "./triageConcurrency";
-import { flipHeightInputMode } from "@/lib/vitalsEntryFlip";
 import {
-  OXYGEN_DELIVERY_DEVICES,
-  VITAL_TEMPERATURE_SITES,
-  oxygenDeviceSuggestsFiO2,
-  oxygenDeviceSuggestsFlow,
-  temperatureHintPairCelsiusFahrenheit,
-  weightHintPairKgPounds,
-} from "@medora/shared";
+  EmergencyTriageVitalsCompactSection,
+  type TriageVitalsCompactValues,
+} from "./EmergencyTriageVitalsCompactSection";
 import {
-  oxygenDeviceI18nKey,
-  temperatureSiteI18nKey,
+  measuredAtIsoFromLocalInputs,
+  splitMeasuredAtLocal,
 } from "@/lib/vitalsMeasurementContextDisplay";
+import { fetchAuthMeSession } from "@/lib/authSessionMe";
+import { vitalSummaryInitials } from "@/components/patients/VitalSummaryPanel";
 import {
   emptyErTriageV1Form,
   erTriageV1FormFromVitalsJson,
@@ -145,6 +142,8 @@ type TriageFormState = {
   oxygenFlowLpm: string;
   oxygenFiO2Percent: string;
   oxygenDeviceNotes: string;
+  measuredDate: string;
+  measuredTime: string;
   strokeScreen: ErStrokeScreenForm;
   sepsisScreen: ErSepsisScreenForm;
   triageCompleteAt: string;
@@ -182,6 +181,10 @@ const emptyForm = (): TriageFormState => ({
   oxygenFlowLpm: "",
   oxygenFiO2Percent: "",
   oxygenDeviceNotes: "",
+  ...(() => {
+    const m = splitMeasuredAtLocal(new Date().toISOString());
+    return { measuredDate: m.date, measuredTime: m.time };
+  })(),
   strokeScreen: emptyStrokeScreenForm(),
   sepsisScreen: emptySepsisScreenForm(),
   triageCompleteAt: "",
@@ -279,6 +282,10 @@ export function EmergencyTriagePanel({
   const [formData, setFormData] = useState<TriageFormState>(emptyForm);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [savingVitals, setSavingVitals] = useState(false);
+  const [vitalsSaveInfo, setVitalsSaveInfo] = useState<string | null>(null);
+  const [vitalsSaveTone, setVitalsSaveTone] = useState<"error" | "success" | "info">("info");
+  const [vitalsAttributionLine, setVitalsAttributionLine] = useState<string | null>(null);
   const [saveInfo, setSaveInfo] = useState<string | null>(null);
   const [complaintTemplateQuery, setComplaintTemplateQuery] = useState("");
   const [templateAppliedHint, setTemplateAppliedHint] = useState<string | null>(null);
@@ -450,6 +457,10 @@ export function EmergencyTriagePanel({
           oxygenFiO2Percent:
             v.oxygenFiO2Percent != null && v.oxygenFiO2Percent !== "" ? String(v.oxygenFiO2Percent) : "",
           oxygenDeviceNotes: typeof v.oxygenDeviceNotes === "string" ? v.oxygenDeviceNotes : "",
+          ...(() => {
+            const m = splitMeasuredAtLocal(new Date().toISOString());
+            return { measuredDate: m.date, measuredTime: m.time };
+          })(),
           strokeScreen: strokeScreenFromUnknown(d.strokeScreen),
           sepsisScreen: sepsisScreenFromUnknown(d.sepsisScreen),
           triageCompleteAt: d.triageCompleteAt
@@ -624,6 +635,9 @@ export function EmergencyTriagePanel({
             ? new Date(triage.updatedAt as string).toISOString()
             : null;
 
+      const measuredAt =
+        measuredAtIsoFromLocalInputs(formData.measuredDate, formData.measuredTime) ?? undefined;
+
       const payload: Record<string, unknown> = {
         chiefComplaint: safeTrim(formData.chiefComplaint) || null,
         onsetAt: formData.onsetAt ? new Date(formData.onsetAt).toISOString() : null,
@@ -633,6 +647,7 @@ export function EmergencyTriagePanel({
         sepsisScreen: sepsisScreenParsed,
         triageCompleteAt: formData.triageCompleteAt ? new Date(formData.triageCompleteAt).toISOString() : null,
         lastKnownTriageUpdatedAt,
+        ...(measuredAt ? { measuredAt } : {}),
       };
 
       const res = await apiFetch(`/encounters/${encounter.id}/triage`, {
@@ -703,6 +718,181 @@ export function EmergencyTriagePanel({
     } finally {
       setSaving(false);
     }
+  };
+
+  /**
+   * Dedicated vitals save: refreshes latest triage non-vitals from server, merges current vitals
+   * draft + measuredAt, and does not require saving the full triage assessment.
+   */
+  const handleSaveVitals = async () => {
+    if (formDisabled || savingVitals || saving) return;
+    setSavingVitals(true);
+    setVitalsSaveInfo(null);
+    try {
+      const measuredAt = measuredAtIsoFromLocalInputs(formData.measuredDate, formData.measuredTime);
+      if (!measuredAt) {
+        setVitalsSaveTone("error");
+        setVitalsSaveInfo(t("vitalsContext.errors.invalidMeasuredAt"));
+        return;
+      }
+
+      const latestRaw = await apiFetch(`/encounters/${encounter.id}/triage`, { facilityId });
+      const latest =
+        latestRaw && typeof latestRaw === "object" && !Array.isArray(latestRaw)
+          ? (latestRaw as Record<string, unknown>)
+          : null;
+      if (!latest) {
+        setVitalsSaveTone("error");
+        setVitalsSaveInfo(t("erQuickVitals.saveError"));
+        return;
+      }
+
+      const erV1 = erTriageV1FormFromVitalsJson(latest.vitalsJson);
+      const vitalsMerged = mergeVitalsJsonForSave(latest.vitalsJson, {
+        tempC: formData.tempC,
+        hr: formData.hr,
+        rr: formData.rr,
+        bpSys: formData.bpSys,
+        bpDia: formData.bpDia,
+        spo2: formData.spo2,
+        weightKg: formData.weightKg,
+        heightCm: formData.heightCm,
+        painScore: formData.painScore,
+        allergyNote: formData.allergyNote,
+        erV1: {
+          ...normalizeErTriageV1Form(erV1),
+          painScale0to10: formData.painScore.trim() || erV1.painScale0to10,
+        },
+        tempInputUnit: formData.tempInputUnit,
+        weightInputUnit: formData.weightInputUnit,
+        heightInputMode: formData.heightInputMode,
+        heightFeet: formData.heightFeet,
+        heightInches: formData.heightInches,
+        temperatureSite: formData.temperatureSite,
+        oxygenDevice: formData.oxygenDevice,
+        oxygenFlowLpm: formData.oxygenFlowLpm,
+        oxygenFiO2Percent: formData.oxygenFiO2Percent,
+        oxygenDeviceNotes: formData.oxygenDeviceNotes,
+      });
+
+      const strokeJson = strokeScreenFormToJson(
+        strokeScreenFromUnknown(latest.strokeScreen),
+        latest.strokeScreen
+      );
+      const sepsisJson = sepsisScreenFormToJson(
+        sepsisScreenFromUnknown(latest.sepsisScreen),
+        latest.sepsisScreen
+      );
+
+      const lastKnownTriageUpdatedAt =
+        typeof latest.updatedAt === "string"
+          ? latest.updatedAt
+          : latest.updatedAt
+            ? new Date(latest.updatedAt as string).toISOString()
+            : null;
+
+      await apiFetch(`/encounters/${encounter.id}/triage`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          chiefComplaint: (latest.chiefComplaint as string | undefined)?.trim() || null,
+          onsetAt: latest.onsetAt ? new Date(latest.onsetAt as string).toISOString() : null,
+          esi: latest.esi != null ? parseInt(String(latest.esi), 10) : null,
+          vitalsJson: vitalsMerged,
+          strokeScreen: Object.keys(strokeJson).length > 0 ? strokeJson : null,
+          sepsisScreen: Object.keys(sepsisJson).length > 0 ? sepsisJson : null,
+          triageCompleteAt: latest.triageCompleteAt
+            ? new Date(latest.triageCompleteAt as string).toISOString()
+            : null,
+          lastKnownTriageUpdatedAt,
+          measuredAt,
+        }),
+        facilityId,
+      });
+
+      const patientIdForEvent = encounter.patient?.id as string | undefined;
+      if (patientIdForEvent && typeof window !== "undefined") {
+        window.dispatchEvent(
+          new CustomEvent(MEDORA_PATIENT_VITALS_UPDATED, {
+            detail: { patientId: patientIdForEvent, supersededSnapshot: null },
+          })
+        );
+      }
+
+      const me = await fetchAuthMeSession();
+      const meData = me.ok && me.data ? me.data : null;
+      const firstName = typeof meData?.firstName === "string" ? meData.firstName : "";
+      const lastName = typeof meData?.lastName === "string" ? meData.lastName : "";
+      const displayName = `${firstName} ${lastName}`.trim();
+      const initials = vitalSummaryInitials({ firstName, lastName, displayName });
+      const recordedAtLabel = new Date().toLocaleString(language === "en" ? "en-US" : "fr-FR", {
+        dateStyle: "short",
+        timeStyle: "short",
+      });
+      setVitalsAttributionLine(
+        t("vitalsContext.recordedByLine")
+          .replace("{initials}", initials)
+          .replace("{name}", displayName || "—")
+          .replace("{role}", "")
+          .replace("{datetime}", recordedAtLabel)
+      );
+
+      await loadTriage();
+      await onSaved();
+      setVitalsSaveTone("success");
+      setVitalsSaveInfo(t("vitalsContext.saveSuccess"));
+    } catch (e) {
+      console.error(e);
+      const raw = e instanceof Error ? e.message : null;
+      setVitalsSaveTone("error");
+      if (raw && /measuredAt cannot be in the future/i.test(raw)) {
+        setVitalsSaveInfo(t("vitalsContext.errors.futureMeasuredAt"));
+      } else if (isTriageStaleConflictError(e)) {
+        setVitalsSaveInfo(t("erTriage.panel.staleConflict"));
+      } else {
+        setVitalsSaveInfo(normalizeUserFacingError(raw, language) || t("erQuickVitals.saveError"));
+      }
+    } finally {
+      setSavingVitals(false);
+    }
+  };
+
+  const handleClearVitalsFields = () => {
+    if (formDisabled || savingVitals) return;
+    const measured = splitMeasuredAtLocal(new Date().toISOString());
+    setFormData((f) => ({
+      ...f,
+      tempC: "",
+      hr: "",
+      rr: "",
+      bpSys: "",
+      bpDia: "",
+      spo2: "",
+      weightKg: "",
+      heightCm: "",
+      heightFeet: "",
+      heightInches: "",
+      painScore: "",
+      temperatureSite: "",
+      oxygenDevice: "ROOM_AIR",
+      oxygenFlowLpm: "",
+      oxygenFiO2Percent: "",
+      oxygenDeviceNotes: "",
+      measuredDate: measured.date,
+      measuredTime: measured.time,
+      erV1: { ...f.erV1, painScale0to10: "" },
+    }));
+    setVitalsSaveInfo(null);
+  };
+
+  const patchVitalsCompact = (patch: Partial<TriageVitalsCompactValues>) => {
+    setFormData((f) => {
+      const next = { ...f, ...patch };
+      if (patch.painScore !== undefined) {
+        next.erV1 = { ...f.erV1, painScale0to10: patch.painScore };
+      }
+      return next;
+    });
   };
 
   useEffect(() => {
@@ -1148,384 +1338,39 @@ export function EmergencyTriagePanel({
                 </div>
               </div>
 
-              <div>
-                <p style={sectionHeading}>{t("erTriage.panel.sectionVitals")}</p>
-                <div style={{ marginTop: 10, ...grid3 }}>
-                  <div>
-                    <label style={labelStyle}>{t("vitalsUnits.tempLabel")}</label>
-                    <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                      <select
-                        value={formData.tempInputUnit}
-                        onChange={(e) => {
-                          const u = e.target.value as "C" | "F";
-                          setFormData((f) => ({ ...f, tempInputUnit: u }));
-                        }}
-                        disabled={formDisabled}
-                        style={{
-                          padding: "8px 10px",
-                          borderRadius: 10,
-                          border: "1px solid #e2e8f0",
-                          fontSize: 13,
-                          fontWeight: 600,
-                          color: "#334155",
-                          backgroundColor: formDisabled ? "#f8fafc" : "#fff",
-                          cursor: formDisabled ? "not-allowed" : "pointer",
-                        }}
-                      >
-                        <option value="F">{t("vitalsUnits.unitF")}</option>
-                        <option value="C">{t("vitalsUnits.unitC")}</option>
-                      </select>
-                      <input
-                        type="number"
-                        step="0.1"
-                        value={formData.tempC}
-                        onChange={(e) => setFormData((f) => ({ ...f, tempC: e.target.value }))}
-                        disabled={formDisabled}
-                        style={{ ...inputBase, flex: 1, minWidth: 0, backgroundColor: formDisabled ? "#f8fafc" : "#fff" }}
-                      />
-                      <select
-                        value={formData.temperatureSite}
-                        onChange={(e) => setFormData((f) => ({ ...f, temperatureSite: e.target.value }))}
-                        disabled={formDisabled}
-                        aria-label={t("vitalsContext.temperatureSiteLabel")}
-                        style={{
-                          padding: "8px 10px",
-                          borderRadius: 10,
-                          border: "1px solid #e2e8f0",
-                          fontSize: 13,
-                          fontWeight: 600,
-                          color: "#334155",
-                          backgroundColor: formDisabled ? "#f8fafc" : "#fff",
-                          minWidth: 120,
-                        }}
-                      >
-                        <option value="">{t("vitalsContext.temperatureSitePlaceholder")}</option>
-                        {VITAL_TEMPERATURE_SITES.map((site) => (
-                          <option key={site} value={site}>
-                            {t(temperatureSiteI18nKey(site))}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    {(() => {
-                      if (!formData.tempC.trim()) return null;
-                      const pair = temperatureHintPairCelsiusFahrenheit(formData.tempC, formData.tempInputUnit);
-                      if (!pair) return null;
-                      return (
-                        <p style={{ margin: "4px 0 0 0", fontSize: 11, color: "#64748b" }}>
-                          {formData.tempInputUnit === "F"
-                            ? t("vitalsUnits.tempHintC").replace("{n}", pair.celsius.toFixed(1))
-                            : t("vitalsUnits.tempHintF").replace("{n}", pair.fahrenheit.toFixed(1))}
-                        </p>
-                      );
-                    })()}
-                  </div>
-                  <div>
-                    <label style={labelStyle}>{t("erTriage.panel.hr")}</label>
-                    <input
-                      type="number"
-                      value={formData.hr}
-                      onChange={(e) => setFormData((f) => ({ ...f, hr: e.target.value }))}
-                      disabled={formDisabled}
-                      style={{ ...inputBase, backgroundColor: formDisabled ? "#f8fafc" : "#fff" }}
-                    />
-                  </div>
-                  <div>
-                    <label style={labelStyle}>{t("erTriage.panel.rr")}</label>
-                    <input
-                      type="number"
-                      value={formData.rr}
-                      onChange={(e) => setFormData((f) => ({ ...f, rr: e.target.value }))}
-                      disabled={formDisabled}
-                      style={{ ...inputBase, backgroundColor: formDisabled ? "#f8fafc" : "#fff" }}
-                    />
-                  </div>
-                  <div>
-                    <label style={labelStyle}>{t("erTriage.panel.bpSys")}</label>
-                    <input
-                      type="number"
-                      value={formData.bpSys}
-                      onChange={(e) => setFormData((f) => ({ ...f, bpSys: e.target.value }))}
-                      disabled={formDisabled}
-                      style={{ ...inputBase, backgroundColor: formDisabled ? "#f8fafc" : "#fff" }}
-                    />
-                  </div>
-                  <div>
-                    <label style={labelStyle}>{t("erTriage.panel.bpDia")}</label>
-                    <input
-                      type="number"
-                      value={formData.bpDia}
-                      onChange={(e) => setFormData((f) => ({ ...f, bpDia: e.target.value }))}
-                      disabled={formDisabled}
-                      style={{ ...inputBase, backgroundColor: formDisabled ? "#f8fafc" : "#fff" }}
-                    />
-                  </div>
-                  <div style={{ gridColumn: "1 / -1" }}>
-                    <label style={labelStyle}>{t("erTriage.panel.spo2")}</label>
-                    <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-                      <input
-                        type="number"
-                        min={0}
-                        max={100}
-                        value={formData.spo2}
-                        onChange={(e) => setFormData((f) => ({ ...f, spo2: e.target.value }))}
-                        disabled={formDisabled}
-                        style={{
-                          ...inputBase,
-                          flex: "0 1 120px",
-                          backgroundColor: formDisabled ? "#f8fafc" : "#fff",
-                        }}
-                      />
-                      <select
-                        value={formData.oxygenDevice}
-                        onChange={(e) => {
-                          const next = e.target.value;
-                          setFormData((f) => ({
-                            ...f,
-                            oxygenDevice: next,
-                            ...(next === "ROOM_AIR"
-                              ? { oxygenFlowLpm: "", oxygenFiO2Percent: "" }
-                              : null),
-                          }));
-                        }}
-                        disabled={formDisabled}
-                        aria-label={t("vitalsContext.oxygenDeviceLabel")}
-                        style={{
-                          ...inputBase,
-                          flex: "1 1 220px",
-                          backgroundColor: formDisabled ? "#f8fafc" : "#fff",
-                        }}
-                      >
-                        {OXYGEN_DELIVERY_DEVICES.map((device) => (
-                          <option key={device} value={device}>
-                            {t(oxygenDeviceI18nKey(device))}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    {oxygenDeviceSuggestsFlow(formData.oxygenDevice as any) ||
-                    oxygenDeviceSuggestsFiO2(formData.oxygenDevice as any) ? (
-                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 8 }}>
-                        {oxygenDeviceSuggestsFlow(formData.oxygenDevice as any) ? (
-                          <div>
-                            <label style={labelStyle}>{t("vitalsContext.oxygenFlow")}</label>
-                            <input
-                              type="number"
-                              step="0.1"
-                              value={formData.oxygenFlowLpm}
-                              onChange={(e) => setFormData((f) => ({ ...f, oxygenFlowLpm: e.target.value }))}
-                              disabled={formDisabled}
-                              style={{ ...inputBase, backgroundColor: formDisabled ? "#f8fafc" : "#fff" }}
-                            />
-                          </div>
-                        ) : null}
-                        {oxygenDeviceSuggestsFiO2(formData.oxygenDevice as any) ? (
-                          <div>
-                            <label style={labelStyle}>{t("vitalsContext.oxygenFiO2")}</label>
-                            <input
-                              type="number"
-                              min={21}
-                              max={100}
-                              value={formData.oxygenFiO2Percent}
-                              onChange={(e) =>
-                                setFormData((f) => ({ ...f, oxygenFiO2Percent: e.target.value }))
-                              }
-                              disabled={formDisabled}
-                              style={{ ...inputBase, backgroundColor: formDisabled ? "#f8fafc" : "#fff" }}
-                            />
-                          </div>
-                        ) : null}
-                      </div>
-                    ) : null}
-                    {formData.oxygenDevice === "OTHER" || formData.oxygenDeviceNotes ? (
-                      <div style={{ marginTop: 8 }}>
-                        <label style={labelStyle}>{t("vitalsContext.oxygenDeviceNotes")}</label>
-                        <input
-                          type="text"
-                          value={formData.oxygenDeviceNotes}
-                          onChange={(e) => setFormData((f) => ({ ...f, oxygenDeviceNotes: e.target.value }))}
-                          disabled={formDisabled}
-                          style={{ ...inputBase, backgroundColor: formDisabled ? "#f8fafc" : "#fff" }}
-                        />
-                      </div>
-                    ) : null}
-                  </div>
-                  <div>
-                    <label style={labelStyle}>{t("vitalsUnits.weightLabel")}</label>
-                    <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                      <select
-                        value={formData.weightInputUnit}
-                        onChange={(e) => {
-                          const u = e.target.value as "kg" | "lb";
-                          setFormData((f) => ({ ...f, weightInputUnit: u }));
-                        }}
-                        disabled={formDisabled}
-                        style={{
-                          padding: "8px 10px",
-                          borderRadius: 10,
-                          border: "1px solid #e2e8f0",
-                          fontSize: 13,
-                          fontWeight: 600,
-                          color: "#334155",
-                          backgroundColor: formDisabled ? "#f8fafc" : "#fff",
-                          cursor: formDisabled ? "not-allowed" : "pointer",
-                        }}
-                      >
-                        <option value="lb">{t("vitalsUnits.unitLb")}</option>
-                        <option value="kg">{t("vitalsUnits.unitKg")}</option>
-                      </select>
-                      <input
-                        type="number"
-                        step="0.1"
-                        value={formData.weightKg}
-                        onChange={(e) => setFormData((f) => ({ ...f, weightKg: e.target.value }))}
-                        disabled={formDisabled}
-                        style={{ ...inputBase, flex: 1, minWidth: 0, backgroundColor: formDisabled ? "#f8fafc" : "#fff" }}
-                      />
-                    </div>
-                    {(() => {
-                      if (!formData.weightKg.trim()) return null;
-                      const pair = weightHintPairKgPounds(formData.weightKg, formData.weightInputUnit);
-                      if (!pair) return null;
-                      return (
-                        <p style={{ margin: "4px 0 0 0", fontSize: 11, color: "#64748b" }}>
-                          {formData.weightInputUnit === "lb"
-                            ? t("vitalsUnits.weightHintKg").replace("{n}", pair.kg.toFixed(1))
-                            : t("vitalsUnits.weightHintLb").replace("{n}", pair.pounds.toFixed(1))}
-                        </p>
-                      );
-                    })()}
-                  </div>
-                  <div style={{ gridColumn: "1 / -1", width: "100%", minWidth: 0 }}>
-                    <label style={labelStyle}>{t("vitalsUnits.heightLabel")}</label>
-                    <div
-                      style={{
-                        display: "flex",
-                        gap: 10,
-                        alignItems: "center",
-                        flexWrap: "wrap",
-                        width: "100%",
-                        marginTop: 4,
-                      }}
-                    >
-                      <select
-                        value={formData.heightInputMode}
-                        onChange={(e) => {
-                          const m = e.target.value as "cm" | "ftin";
-                          setFormData((f) => {
-                            const h = flipHeightInputMode({
-                              heightCmStr: f.heightCm,
-                              heightFeetStr: f.heightFeet,
-                              heightInchesStr: f.heightInches,
-                              from: f.heightInputMode,
-                              to: m,
-                            });
-                            return { ...f, heightInputMode: m, ...h };
-                          });
-                        }}
-                        disabled={formDisabled}
-                        style={{
-                          padding: "8px 10px",
-                          borderRadius: 10,
-                          border: "1px solid #e2e8f0",
-                          fontSize: 13,
-                          fontWeight: 600,
-                          color: "#334155",
-                          backgroundColor: formDisabled ? "#f8fafc" : "#fff",
-                          cursor: formDisabled ? "not-allowed" : "pointer",
-                        }}
-                      >
-                        <option value="ftin">{t("vitalsUnits.unitFtIn")}</option>
-                        <option value="cm">{t("vitalsUnits.unitCm")}</option>
-                      </select>
-                      {formData.heightInputMode === "cm" ? (
-                        <input
-                          type="number"
-                          step="0.1"
-                          value={formData.heightCm}
-                          onChange={(e) => setFormData((f) => ({ ...f, heightCm: e.target.value }))}
-                          disabled={formDisabled}
-                          style={{
-                            ...inputBase,
-                            flex: "1 1 140px",
-                            minWidth: 120,
-                            maxWidth: 220,
-                            backgroundColor: formDisabled ? "#f8fafc" : "#fff",
-                          }}
-                        />
-                      ) : (
-                        <div
-                          style={{
-                            display: "flex",
-                            gap: 8,
-                            alignItems: "center",
-                            flexWrap: "wrap",
-                            flex: "1 1 200px",
-                            minWidth: 0,
-                          }}
-                        >
-                          <input
-                            type="number"
-                            min={0}
-                            step="1"
-                            placeholder={t("vitalsUnits.feetPh")}
-                            value={formData.heightFeet}
-                            onChange={(e) => setFormData((f) => ({ ...f, heightFeet: e.target.value }))}
-                            disabled={formDisabled}
-                            style={{
-                              ...inputBase,
-                              width: 88,
-                              minWidth: 72,
-                              backgroundColor: formDisabled ? "#f8fafc" : "#fff",
-                            }}
-                          />
-                          <span style={{ fontSize: 13, color: "#64748b", flexShrink: 0 }}>′</span>
-                          <input
-                            type="number"
-                            min={0}
-                            max={11.9}
-                            step="0.1"
-                            placeholder={t("vitalsUnits.inchesPh")}
-                            value={formData.heightInches}
-                            onChange={(e) => setFormData((f) => ({ ...f, heightInches: e.target.value }))}
-                            disabled={formDisabled}
-                            style={{
-                              ...inputBase,
-                              width: 88,
-                              minWidth: 72,
-                              backgroundColor: formDisabled ? "#f8fafc" : "#fff",
-                            }}
-                          />
-                          <span style={{ fontSize: 13, color: "#64748b", flexShrink: 0 }}>″</span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                  <div>
-                    <label style={labelStyle}>{t("erTriage.v1.pain010")}</label>
-                    <select
-                      value={formData.painScore}
-                      onChange={(e) => {
-                        const painScore = e.target.value;
-                        setFormData((f) => ({
-                          ...f,
-                          painScore,
-                          erV1: { ...f.erV1, painScale0to10: painScore },
-                        }));
-                      }}
-                      disabled={formDisabled}
-                      style={{ ...inputBase, backgroundColor: formDisabled ? "#f8fafc" : "#fff" }}
-                    >
-                      <option value="">{t("common.dash")}</option>
-                      {Array.from({ length: 11 }, (_, n) => (
-                        <option key={n} value={String(n)}>
-                          {n}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-              </div>
+              <EmergencyTriageVitalsCompactSection
+                values={{
+                  tempC: formData.tempC,
+                  hr: formData.hr,
+                  rr: formData.rr,
+                  bpSys: formData.bpSys,
+                  bpDia: formData.bpDia,
+                  spo2: formData.spo2,
+                  weightKg: formData.weightKg,
+                  heightCm: formData.heightCm,
+                  painScore: formData.painScore,
+                  tempInputUnit: formData.tempInputUnit,
+                  weightInputUnit: formData.weightInputUnit,
+                  heightInputMode: formData.heightInputMode,
+                  heightFeet: formData.heightFeet,
+                  heightInches: formData.heightInches,
+                  temperatureSite: formData.temperatureSite,
+                  oxygenDevice: formData.oxygenDevice,
+                  oxygenFlowLpm: formData.oxygenFlowLpm,
+                  oxygenFiO2Percent: formData.oxygenFiO2Percent,
+                  oxygenDeviceNotes: formData.oxygenDeviceNotes,
+                  measuredDate: formData.measuredDate,
+                  measuredTime: formData.measuredTime,
+                }}
+                onChange={patchVitalsCompact}
+                disabled={formDisabled}
+                saving={savingVitals || saving}
+                onSaveVitals={() => void handleSaveVitals()}
+                onClearVitals={handleClearVitalsFields}
+                statusMessage={vitalsSaveInfo}
+                statusTone={vitalsSaveTone}
+                attributionLine={vitalsAttributionLine}
+              />
 
               <div>
                 <div>
