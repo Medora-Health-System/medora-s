@@ -64,9 +64,11 @@ describe("edTrackboardBadgeCleanup (MEDUI.ED.LIFECYCLE.UI.CLEANUP.2)", () => {
     expect(trackboard).toContain('t("emergencyTrackboard.chartLink")');
   });
 
-  it("Trackboard keeps View action", () => {
+  it("Trackboard uses clickable patient name instead of redundant View action", () => {
     const trackboard = readSrc("features/emergency/EmergencyTrackboardView.tsx");
-    expect(trackboard).toContain('t("common.view")');
+    expect(trackboard).toContain("resolveEdBoardPatientNameHref");
+    expect(trackboard).toContain("ed-board-patient-name-");
+    expect(trackboard).not.toContain('t("common.view")');
   });
 
   it("Trackboard keeps Nurse: me action", () => {

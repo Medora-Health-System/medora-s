@@ -46,13 +46,13 @@ describe("MEDUI.2B ED trackboard tablet compact board", () => {
     expect(trackboard).toContain("ER_TRACKBOARD_TOUCH_TARGET_MIN_PX");
   });
 
-  it("groups Chart / View / Nurse actions in a touch row on tablet compact board", () => {
+  it("groups Chart / Nurse actions in a touch row on tablet compact board", () => {
     const actions = erTrackboardTouchActionGroupStyle("tabletCompactBoard");
     expect(actions.display).toBe("flex");
     expect(actions.flexDirection).toBe("row");
     const trackboard = readWebSource("src/features/emergency/EmergencyTrackboardView.tsx");
     expect(trackboard).toContain('t("emergencyTrackboard.chartLink")');
-    expect(trackboard).toContain('t("common.view")');
+    expect(trackboard).toContain("resolveEdBoardPatientNameHref");
     expect(trackboard).toContain("assignNurseMeShort");
     expect(trackboard).toContain("erTrackboardTouchActionGroupStyle");
   });

@@ -28,7 +28,11 @@ import {
   type ErDispositionBadgeVariant,
 } from "@/features/emergency/erTrackboardDispositionBadge";
 import { readDischargeSortieExecutionFromEncounter } from "@/features/emergency/emergencyDispositionV1";
-import { emergencyActiveWorkspacePath, emergencyChartPath } from "@/features/emergency/emergencyRoutes";
+import {
+  emergencyActiveWorkspacePath,
+  emergencyChartPath,
+  resolveEdBoardPatientNameHref,
+} from "@/features/emergency/emergencyRoutes";
 import type { EncounterBedUnitCode } from "@medora/shared";
 import {
   erHandoffV1SatisfiesInpatientTransferConfirm,
@@ -1265,7 +1269,36 @@ export function EmergencyTrackboardView() {
                         identity={
                           <>
                             <h2 style={erTrackboardIdentityTitleStyle(layoutMode)}>
-                              {fullPatientName(patient, dash)}
+                              <Link
+                                href={resolveEdBoardPatientNameHref({
+                                  encounterId: encounter.id,
+                                  status: encounter.status,
+                                  workflowState: (encounter as { workflowState?: string | null }).workflowState,
+                                })}
+                                data-testid={`ed-board-patient-name-${encounter.id}`}
+                                title={t("emergencyTrackboard.patientNameLinkTitle")}
+                                aria-label={t("emergencyTrackboard.openPatientChartAria").replace(
+                                  "{{name}}",
+                                  fullPatientName(patient, dash)
+                                )}
+                                style={{
+                                  color: "inherit",
+                                  textDecoration: "none",
+                                  cursor: "pointer",
+                                  borderRadius: 4,
+                                  outlineOffset: 2,
+                                }}
+                                onMouseEnter={(e) => {
+                                  e.currentTarget.style.textDecoration = "underline";
+                                  e.currentTarget.style.color = "#1d4ed8";
+                                }}
+                                onMouseLeave={(e) => {
+                                  e.currentTarget.style.textDecoration = "none";
+                                  e.currentTarget.style.color = "inherit";
+                                }}
+                              >
+                                {fullPatientName(patient, dash)}
+                              </Link>
                             </h2>
                             <p style={erTrackboardIdentityLineStyle(layoutMode, { fontSize: 12, color: "#64748b" })}>
                               <span style={{ fontWeight: 600, color: "#475569" }}>{t("encounterChrome.labelNirMrn")}</span>{" "}
@@ -1412,27 +1445,6 @@ export function EmergencyTrackboardView() {
                                 )}
                               >
                                 {t("emergencyTrackboard.chartLink")}
-                              </Link>
-                              <Link
-                                href={emergencyActiveWorkspacePath(encounter.id)}
-                                style={erTrackboardCensusActionButtonStyle(
-                                  {
-                                    display: "inline-flex",
-                                    alignItems: "center",
-                                    justifyContent: "center",
-                                    padding: "4px 10px",
-                                    borderRadius: 8,
-                                    border: "1px solid #bfdbfe",
-                                    backgroundColor: "#eff6ff",
-                                    color: "#1d4ed8",
-                                    fontSize: 12,
-                                    fontWeight: 600,
-                                    textDecoration: "none",
-                                  },
-                                  layoutMode
-                                )}
-                              >
-                                {t("common.view")}
                               </Link>
                               {isProvider ? (
                                 <button

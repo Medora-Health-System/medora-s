@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { EncounterBedUnitCode, ManualBedOperationalStatus } from "@medora/shared";
 import { manualStatusBlockedByOccupancy } from "@medora/shared";
@@ -257,7 +258,31 @@ export function BedBoardStatusDetailModal({
           </p>
           <p style={{ margin: 0, fontSize: 13 }}>
             <span style={{ color: "#64748b", fontWeight: 600 }}>{t("bedBoard.statusDetailOccupant")}:</span>{" "}
-            {occupantName ?? t("bedBoard.statusDetailNoOccupant")}
+            {hasOccupant && bed?.occupantEncounterId && encounterChartPath && occupantName ? (
+              <Link
+                href={encounterChartPath(bed.occupantEncounterId, unit)}
+                data-testid="bed-board-occupant-name-link"
+                aria-label={t("emergencyTrackboard.openPatientChartAria").replace("{{name}}", occupantName)}
+                style={{
+                  color: "#0f172a",
+                  fontWeight: 600,
+                  textDecoration: "none",
+                  cursor: "pointer",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.textDecoration = "underline";
+                  e.currentTarget.style.color = "#1d4ed8";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.textDecoration = "none";
+                  e.currentTarget.style.color = "#0f172a";
+                }}
+              >
+                {occupantName}
+              </Link>
+            ) : (
+              occupantName ?? t("bedBoard.statusDetailNoOccupant")
+            )}
           </p>
           {bed.reasonText || bed.reasonCode ? (
             <p style={{ margin: 0, fontSize: 12, color: "#475569" }}>

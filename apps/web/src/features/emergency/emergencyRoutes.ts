@@ -27,3 +27,20 @@ export function emergencyChartPath(encounterId: string): string {
 export function genericEncounterPath(encounterId: string): string {
   return `/app/encounters/${encodeURIComponent(encounterId)}`;
 }
+
+/**
+ * Primary patient-name destination from ED boards.
+ * Closed → read-only chart; open / incomplete → active workspace.
+ */
+export function resolveEdBoardPatientNameHref(input: {
+  encounterId: string;
+  status?: string | null;
+  workflowState?: string | null;
+}): string {
+  const closed =
+    input.status === "CLOSED" ||
+    input.workflowState === "CLOSED" ||
+    input.status === "SIGNED";
+  if (closed) return emergencyChartPath(input.encounterId);
+  return emergencyActiveWorkspacePath(input.encounterId);
+}

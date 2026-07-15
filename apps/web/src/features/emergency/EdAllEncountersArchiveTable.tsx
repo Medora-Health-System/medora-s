@@ -68,7 +68,30 @@ export function EdAllEncountersArchiveTable({ rows }: EdAllEncountersArchiveTabl
         <tbody>
           {rows.map((row) => (
             <tr key={row.id} data-testid={`ed-all-encounters-row-${row.id}`}>
-              <td style={tdStyle}>{row.patientName}</td>
+              <td style={tdStyle}>
+                <Link
+                  href={row.chartHref}
+                  data-testid={`ed-all-encounters-patient-name-${row.id}`}
+                  aria-label={t("emergencyTrackboard.openPatientChartAria").replace("{{name}}", row.patientName)}
+                  title={t("emergencyTrackboard.patientNameLinkTitle")}
+                  style={{
+                    color: "#0f172a",
+                    fontWeight: 600,
+                    textDecoration: "none",
+                    cursor: "pointer",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.textDecoration = "underline";
+                    e.currentTarget.style.color = "#1d4ed8";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.textDecoration = "none";
+                    e.currentTarget.style.color = "#0f172a";
+                  }}
+                >
+                  {row.patientName}
+                </Link>
+              </td>
               <td style={tdStyle}>{row.mrn ?? t("common.dash")}</td>
               <td style={tdStyle}>
                 {formatPatientAgeSexLine(row.dob, row.gender, null, t)}

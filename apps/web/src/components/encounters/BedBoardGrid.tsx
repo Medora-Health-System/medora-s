@@ -12,7 +12,7 @@ import {
   resolveBedStatusLabel,
 } from "@/lib/bedStatusPresentation";
 import { isBedBoardDischargePending, isBedBoardTransferPending } from "@/lib/bedStatusDisplay";
-import { emergencyChartPath } from "@/features/emergency/emergencyRoutes";
+import { emergencyActiveWorkspacePath } from "@/features/emergency/emergencyRoutes";
 import { BedBoardStatusDetailModal } from "@/components/encounters/BedBoardStatusDetailModal";
 
 export type BedBoardGridProps = {
@@ -45,7 +45,8 @@ function DischargeIcon() {
 
 function defaultChartPath(encounterId: string, unit: EncounterBedUnitCode): string {
   if (unit === "ED") {
-    return emergencyChartPath(encounterId);
+    // Occupied ED bed → active workspace (patient-name / View encounter primary route).
+    return emergencyActiveWorkspacePath(encounterId);
   }
   return `/app/encounters/${encodeURIComponent(encounterId)}`;
 }

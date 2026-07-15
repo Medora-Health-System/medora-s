@@ -201,7 +201,8 @@ describe("edIncompleteChartsFilter (MEDUI.ED.LIFECYCLE.5)", () => {
   it("patient chart links remain accessible on list cards", () => {
     const trackboard = readSrc("features/emergency/EmergencyTrackboardView.tsx");
     expect(trackboard).toContain("emergencyChartPath(encounter.id)");
-    expect(trackboard).toContain("emergencyActiveWorkspacePath(encounter.id)");
+    expect(trackboard).toContain("resolveEdBoardPatientNameHref");
+    expect(trackboard).toContain("ed-board-patient-name-");
     expect(resolveEdIncompleteChartBadgeKeys(departedIncompleteRow("e1")).length).toBeGreaterThan(0);
   });
 });

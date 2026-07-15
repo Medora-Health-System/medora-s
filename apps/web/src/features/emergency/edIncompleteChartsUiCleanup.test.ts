@@ -104,10 +104,11 @@ describe("edIncompleteChartsUiCleanup (MEDUI.ED.LIFECYCLE.6C)", () => {
     );
   });
 
-  it("My Incomplete Charts keeps Chart and View actions", () => {
+  it("My Incomplete Charts keeps Chart and clickable patient-name workspace entry", () => {
     const trackboard = readSrc("features/emergency/EmergencyTrackboardView.tsx");
     expect(trackboard).toContain('t("emergencyTrackboard.chartLink")');
-    expect(trackboard).toContain('t("common.view")');
+    expect(trackboard).toContain("resolveEdBoardPatientNameHref");
+    expect(trackboard).not.toContain('t("common.view")');
   });
 
   it("My Incomplete Charts keeps Nurse: me assignment action", () => {
