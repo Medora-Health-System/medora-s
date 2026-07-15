@@ -114,7 +114,7 @@ describe("MEDUI.CLINICAL_CONTENT.ANIMAL_BITE_ADULT_TEMPLATE_AND_DX", () => {
   });
 
   it("EN/FR workspace labels exist without raw i18n keys leaking", () => {
-    expect(enMessages.providerDocumentationWorkspace.templateAnimalBiteAdultComplaintV1).toMatch(/animal bite/i);
+    expect(enMessages.providerDocumentationWorkspace.templateAnimalBiteAdultComplaintV1).toMatch(/animal bite|sting/i);
     expect(frMessages.providerDocumentationWorkspace.templateAnimalBiteAdultComplaintV1).toMatch(/morsure/i);
   });
 

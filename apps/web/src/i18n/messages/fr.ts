@@ -8307,7 +8307,7 @@ export default {
     templateMinorHeadInjuryComplaintV1Help: "Inserts cliquables — traumatisme crânien, imagerie et suivi commotion.",
     templateLacerationSoftTissueComplaintV1: "Lacération / tissus mous (intelligence MSK)",
     templateLacerationSoftTissueComplaintV1Help: "Inserts cliquables — lacération, soins de plaie, infection et suivi.",
-    templateAnimalBiteAdultComplaintV1: "Morsure animale / mammifère (adulte)",
+    templateAnimalBiteAdultComplaintV1: "Morsure / Piqûre animale",
     templateAnimalBiteAdultComplaintV1Help:
       "Morsure animale, morsure de chien, morsure de chat, plaie par morsure, plaie perforante — rage, tétanos, antibiotiques, soins de plaie.",
     templateHumanBiteHighRiskWoundAdultComplaintV1: "Morsure humaine / Plaie traumatique contaminée à haut risque",

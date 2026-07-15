@@ -48,6 +48,12 @@ describe("MEDUI.CLINICAL.INJURY_INTELLIGENCE_PHASE_8_HUMAN_BITE", () => {
     expect(JSON.stringify(HUMAN_BITE_HIGH_RISK_WOUND_ADULT_COMPLAINT_V1_INTEL).toLowerCase()).not.toMatch(/rabies/);
   });
 
+  it("documents Kanavel signs and dorsal MCP fight-bite findings without auto-diagnosis", () => {
+    const blob = JSON.stringify(HUMAN_BITE_HIGH_RISK_WOUND_ADULT_COMPLAINT_V1_INTEL);
+    expect(blob).toMatch(/examKanavelSignsDocumented|hpiDorsalMcpWound|examPainWithPassiveExtension/);
+    expect(blob).not.toMatch(/automatically diagnosed flexor tenosynovitis/i);
+  });
+
   it("routes human bite and fight bite away from animal bite", () => {
     expect(
       resolveProviderDischargeTemplateForDiagnosis({
