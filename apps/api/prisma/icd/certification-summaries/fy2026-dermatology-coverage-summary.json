@@ -1,0 +1,13 @@
+{
+  "dermatology": {
+    "scopedOfficialBillable": 480,
+    "presentInMedora": 480,
+    "missingCodes": [],
+    "descriptionMismatches": [],
+    "duplicateActiveCodes": [],
+    "invalidSelectableHeaders": []
+  },
+  "certification": {
+    "pass": true
+  }
+}

@@ -1,0 +1,36 @@
+{
+  "dermatologyScoped": 480,
+  "viralOwned": 80,
+  "fungalOwned": 16,
+  "parasiticOwned": 10,
+  "inflammatoryOwned": 114,
+  "emergencyDrugReactionOwned": 7,
+  "bullousOwned": 22,
+  "neoplasmOwned": 212,
+  "ownershipGaps": [],
+  "unexplainedRoutingFallbacks": [],
+  "phase13InfectionSteals": [],
+  "burnSunburnSteals": [],
+  "hsvRoutedToZoster": [],
+  "hsvZosterCrossContamination": [],
+  "ophthalmicZosterFlagged": [
+    "B02.30",
+    "B02.31",
+    "B02.32",
+    "B02.33",
+    "B02.34",
+    "B02.39"
+  ],
+  "oticRamsayHuntFlagged": [
+    "B02.21",
+    "B02.22",
+    "B02.23",
+    "B02.24",
+    "B02.29"
+  ],
+  "fungalStealingInflammatory": [],
+  "inflammatoryStealingFungal": [],
+  "sjsTenUnderUncomplicatedDrugEruption": [],
+  "neoplasmUnderBenignLesionOnly": [],
+  "pass": true
+}
