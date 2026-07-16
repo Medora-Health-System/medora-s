@@ -636,6 +636,220 @@ export function buildSpinalTraumaAdultComplaintV1Intel(d: (key: string) => strin
   });
 }
 
+/**
+ * Head injury / TBI (adult) — single adaptive provider documentation template covering minor
+ * head injury through severe TBI, intracranial hemorrhage, skull fracture, and anticoagulated /
+ * pediatric / geriatric / NAT context. Severity emphasis is not baked into fixed sub-templates;
+ * `adaptHeadInjuryComplaintIntel` (see `headInjuryClinicalIntelligence.ts`) reorders these same
+ * chips by resolved branch and red-flag category. GCS documentation uses the structured
+ * foundation in `glasgowComaScaleFoundation.ts` and never auto-derives TBI severity.
+ */
+export function buildHeadInjuryAdultComplaintV1Intel(d: (key: string) => string): ProviderDocumentationComplaintIntelligence {
+  return buildMskTraumaV1Intel(d, {
+    hpi: [
+      d("hpiHeadStrikeMechanismDocumented"),
+      d("hpiLossOfConsciousness"),
+      d("hpiBriefLossOfConsciousness"),
+      d("hpiNoLossOfConsciousness"),
+      d("hpiAmnesiaAfterInjury"),
+      d("hpiHeadacheSinceInjury"),
+      d("hpiVomitingSinceInjury"),
+      d("hpiSeizureSinceInjury"),
+      d("hpiWorseningSymptomsSinceInjury"),
+      d("hpiAnticoagulantOrAntiplateletUse"),
+      d("hpiIntoxicationAtTimeOfInjury"),
+      d("hpiGeriatricGroundLevelFallMechanism"),
+      d("hpiPediatricMechanismDocumented"),
+      d("hpiMechanismInconsistentWithReportedInjury"),
+    ],
+    physicalExam: {
+      general: [d("examAlertAndOriented"), d("examHemodynamicallyStable")],
+      heent: [
+        d("examScalpHematomaPresent"),
+        d("examScalpLacerationPresent"),
+        d("examBattleSignPresent"),
+        d("examRaccoonEyesPresent"),
+        d("examHemotympanumPresent"),
+        d("examCsfOtorrheaOrRhinorrheaPresent"),
+        d("examPupilsEqualAndReactive"),
+      ],
+      neuroPsych: [
+        d("examGcsDocumented"),
+        d("examSerialGcsDocumented"),
+        d("examNoFocalNeurologicDeficit"),
+        d("examFocalNeurologicDeficitPresent"),
+      ],
+    },
+    extraDifferential: [
+      d("diffMinorHeadInjury"),
+      d("diffConcussionMildTbi"),
+      d("diffModerateTbi"),
+      d("diffSevereTbi"),
+      d("diffSubduralHematoma"),
+      d("diffEpiduralHematoma"),
+      d("diffSubarachnoidHemorrhage"),
+      d("diffIntraparenchymalHemorrhage"),
+      d("diffCerebralContusion"),
+      d("diffDiffuseAxonalInjury"),
+      d("diffSkullFractureHead"),
+      d("diffBasilarSkullFracture"),
+      d("diffAnticoagulatedHeadInjuryRisk"),
+      d("diffNonAccidentalTraumaConcern"),
+    ],
+    mdmOverrides: {
+      mdmWorkingAssessment: [
+        d("waMinorHeadInjury"),
+        d("waConcussionMildTbi"),
+        d("waModerateTbi"),
+        d("waIntracranialHemorrhageConcern"),
+        d("waAnticoagulatedHeadInjury"),
+      ],
+      clinicalImpression: [
+        d("impMinorHeadInjury"),
+        d("impConcussionMildTbi"),
+        d("impIntracranialHemorrhageConcern"),
+        d("impSkullFractureConcern"),
+      ],
+      mdmDataReviewed: [
+        d("mdmCtHeadReviewed"),
+        d("mdmGcsDocumentedReviewed"),
+        d("mdmSerialGcsReviewed"),
+        d("mdmCoagulationStatusReviewed"),
+        d("mdmCbcReviewed"),
+      ],
+      mdmRiskStratification: [
+        d("riskLowRiskHeadInjury"),
+        d("riskModerateRiskHeadInjury"),
+        d("riskHighRiskHeadInjury"),
+        d("riskAnticoagulatedHigherRisk"),
+        d("riskAdmissionRecommended"),
+      ],
+      mdmClinicalRationale: [
+        d("reasoningGcsAndSerialExamGuideDecision"),
+        d("reasoningAnticoagulationIncreasesIchRisk"),
+        d("reasoningBasilarSkullSignsDocumented"),
+        d("reasoningNonAccidentalTraumaConcernDocumented"),
+        d("reasoningNoAutonomousDisposition"),
+      ],
+      mdmPlanSummary: [
+        d("planConcussionPrecautions"),
+        d("planReturnForWorseningNeurologicSymptoms"),
+        d("planNeurosurgicalConsultRequested"),
+        d("planSocialWorkReferralForNatConcern"),
+        d("planReturnPrecautions"),
+      ],
+    },
+  });
+}
+
+/**
+ * Facial trauma / facial fracture (adult) — single adaptive provider documentation template
+ * covering nasal, orbital, zygomatic, maxillary, mandibular, Le Fort, dental, jaw dislocation,
+ * ear, septal hematoma, facial laceration, and facial nerve injury. Region emphasis is not baked
+ * into fixed sub-templates; `adaptFacialTraumaComplaintIntel` (see
+ * `facialTraumaClinicalIntelligence.ts`) reorders these same chips by resolved branch. Eye,
+ * ENT, and dental clinical ownership stays with the treating specialty — this template only
+ * documents findings and does not adjudicate management.
+ */
+export function buildFacialTraumaAdultComplaintV1Intel(d: (key: string) => string): ProviderDocumentationComplaintIntelligence {
+  return buildMskTraumaV1Intel(d, {
+    hpi: [
+      d("hpiDirectBlowToFace"),
+      d("hpiFacialPainOrSwelling"),
+      d("hpiEpistaxisAfterInjury"),
+      d("hpiNasalDeformityReported"),
+      d("hpiMalocclusionReported"),
+      d("hpiTrismusReported"),
+      d("hpiVisionChangeReported"),
+      d("hpiDiplopiaReported"),
+      d("hpiToothInjuryReported"),
+      d("hpiJawLockedOpenOrClosed"),
+      d("hpiFacialNumbnessReported"),
+      d("hpiPediatricOrGeriatricFacialTraumaContext"),
+      d("hpiMechanismInconsistentWithReportedInjury"),
+    ],
+    physicalExam: {
+      general: [d("examAlertAndOriented"), d("examHemodynamicallyStable")],
+      heent: [
+        d("examFacialEcchymosisPresent"),
+        d("examFacialAsymmetryPresent"),
+        d("examStepOffDeformityPresent"),
+        d("examSeptalHematomaPresent"),
+        d("examEpistaxisControlled"),
+        d("examMalocclusionPresent"),
+        d("examTrismusPresent"),
+        d("examExtraocularMovementsIntact"),
+        d("examVisualAcuityDocumented"),
+        d("examPeriorbitalEcchymosisPresent"),
+        d("examAuricularHematomaPresent"),
+        d("examToothAvulsionOrFracturePresent"),
+        d("examFacialSensationDocumented"),
+      ],
+      neuroPsych: [d("examNoFocalNeurologicDeficit")],
+    },
+    extraDifferential: [
+      d("diffNasalFracture"),
+      d("diffOrbitalFracture"),
+      d("diffZygomaticFracture"),
+      d("diffMaxillaryFracture"),
+      d("diffMandibularFracture"),
+      d("diffLefortFracture"),
+      d("diffDentalFractureOrAvulsion"),
+      d("diffTmjDislocation"),
+      d("diffAuricularInjury"),
+      d("diffSeptalHematoma"),
+      d("diffFacialLaceration"),
+      d("diffFacialNerveInjury"),
+      d("diffGlobeInjury"),
+      d("diffNonAccidentalTraumaConcern"),
+    ],
+    mdmOverrides: {
+      mdmWorkingAssessment: [
+        d("waNasalFracture"),
+        d("waOrbitalFracture"),
+        d("waZygomaticFracture"),
+        d("waMandibularFracture"),
+        d("waDentalInjury"),
+        d("waJawDislocation"),
+      ],
+      clinicalImpression: [
+        d("impFacialFracture"),
+        d("impNasalFracture"),
+        d("impOrbitalFractureConcern"),
+        d("impDentalInjury"),
+        d("impJawDislocation"),
+      ],
+      mdmDataReviewed: [
+        d("mdmFacialCtReviewed"),
+        d("mdmVisualAcuityReviewed"),
+        d("mdmDentalExamReviewed"),
+        d("mdmXrayReviewed"),
+      ],
+      mdmRiskStratification: [
+        d("riskLowRiskFacialInjury"),
+        d("riskModerateRiskFacialFracture"),
+        d("riskHighRiskFacialInjury"),
+        d("riskVisionThreateningConcern"),
+        d("riskAdmissionRecommended"),
+      ],
+      mdmClinicalRationale: [
+        d("reasoningEyeExamGuidesOrbitalDecision"),
+        d("reasoningSeptalHematomaRequiresPromptDrainageReferral"),
+        d("reasoningDentalInjuryTimeSensitive"),
+        d("reasoningJawDislocationReductionDocumented"),
+        d("reasoningNoAutonomousDisposition"),
+      ],
+      mdmPlanSummary: [
+        d("planEpistaxisControlMeasures"),
+        d("planOphthalmologyReferralRequested"),
+        d("planOralMaxillofacialReferralRequested"),
+        d("planDentalReferralRequested"),
+        d("planReturnPrecautions"),
+      ],
+    },
+  });
+}
+
 export function buildNeckPainComplaintV1Intel(d: (key: string) => string): ProviderDocumentationComplaintIntelligence {
   return buildMskTraumaV1Intel(d, {
     hpi: [
@@ -1836,6 +2050,8 @@ export const TRAUMA_INJURY_GOLD_STANDARD_BUILDERS = {
   back_pain_complaint_v1: buildBackPainComplaintV1Intel,
   spine_back_pain_adult_complaint_v1: buildSpineBackPainAdultComplaintV1Intel,
   spinal_trauma_adult_complaint_v1: buildSpinalTraumaAdultComplaintV1Intel,
+  head_injury_adult_complaint_v1: buildHeadInjuryAdultComplaintV1Intel,
+  facial_trauma_adult_complaint_v1: buildFacialTraumaAdultComplaintV1Intel,
   neck_pain_complaint_v1: buildNeckPainComplaintV1Intel,
   shoulder_injury_complaint_v1: buildShoulderInjuryComplaintV1Intel,
   knee_injury_complaint_v1: buildKneeInjuryComplaintV1Intel,

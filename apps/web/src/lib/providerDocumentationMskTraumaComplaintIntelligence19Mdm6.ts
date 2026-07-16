@@ -26,6 +26,8 @@ import {
   buildShoulderInjuryComplaintV1Intel,
   buildSpineBackPainAdultComplaintV1Intel,
   buildSpinalTraumaAdultComplaintV1Intel,
+  buildHeadInjuryAdultComplaintV1Intel,
+  buildFacialTraumaAdultComplaintV1Intel,
 } from "./providerDocumentationTraumaInjuryComplaintIntelGoldStandard";
 
 const backPain = (key: string) => `providerDocumentationComplaintIntel.backPainComplaintV1.${key}`;
@@ -53,6 +55,8 @@ const penetratingTraumaAdult = (key: string) => `providerDocumentationComplaintI
 const blastPolytraumaAdult = (key: string) => `providerDocumentationComplaintIntel.blastPolytraumaAdultComplaintV1.${key}`;
 const spineBackPainAdult = (key: string) => `providerDocumentationComplaintIntel.spineBackPainAdultComplaintV1.${key}`;
 const spinalTraumaAdult = (key: string) => `providerDocumentationComplaintIntel.spinalTraumaAdultComplaintV1.${key}`;
+const headInjuryAdult = (key: string) => `providerDocumentationComplaintIntel.headInjuryAdultComplaintV1.${key}`;
+const facialTraumaAdult = (key: string) => `providerDocumentationComplaintIntel.facialTraumaAdultComplaintV1.${key}`;
 
 export const BACK_PAIN_COMPLAINT_V1_INTEL: ProviderDocumentationComplaintIntelligence =
   buildBackPainComplaintV1Intel(backPain);
@@ -96,6 +100,8 @@ export const PENETRATING_TRAUMA_ADULT_COMPLAINT_V1_INTEL = buildPenetratingTraum
 export const BLAST_POLYTRAUMA_ADULT_COMPLAINT_V1_INTEL = buildBlastPolytraumaAdultComplaintV1Intel(blastPolytraumaAdult);
 export const SPINE_BACK_PAIN_ADULT_COMPLAINT_V1_INTEL = buildSpineBackPainAdultComplaintV1Intel(spineBackPainAdult);
 export const SPINAL_TRAUMA_ADULT_COMPLAINT_V1_INTEL = buildSpinalTraumaAdultComplaintV1Intel(spinalTraumaAdult);
+export const HEAD_INJURY_ADULT_COMPLAINT_V1_INTEL = buildHeadInjuryAdultComplaintV1Intel(headInjuryAdult);
+export const FACIAL_TRAUMA_ADULT_COMPLAINT_V1_INTEL = buildFacialTraumaAdultComplaintV1Intel(facialTraumaAdult);
 
 export const MSK_TRAUMA_COMPLAINT_V1_TEMPLATE_IDS = [
   "back_pain_complaint_v1",
@@ -123,6 +129,8 @@ export const MSK_TRAUMA_COMPLAINT_V1_TEMPLATE_IDS = [
   "blast_polytrauma_adult_complaint_v1",
   "spine_back_pain_adult_complaint_v1",
   "spinal_trauma_adult_complaint_v1",
+  "head_injury_adult_complaint_v1",
+  "facial_trauma_adult_complaint_v1",
 ] as const;
 
 export const MSK_TRAUMA_COMPLAINT_V1_INTEL_BY_TEMPLATE_ID = {
@@ -151,4 +159,6 @@ export const MSK_TRAUMA_COMPLAINT_V1_INTEL_BY_TEMPLATE_ID = {
   blast_polytrauma_adult_complaint_v1: BLAST_POLYTRAUMA_ADULT_COMPLAINT_V1_INTEL,
   spine_back_pain_adult_complaint_v1: SPINE_BACK_PAIN_ADULT_COMPLAINT_V1_INTEL,
   spinal_trauma_adult_complaint_v1: SPINAL_TRAUMA_ADULT_COMPLAINT_V1_INTEL,
+  head_injury_adult_complaint_v1: HEAD_INJURY_ADULT_COMPLAINT_V1_INTEL,
+  facial_trauma_adult_complaint_v1: FACIAL_TRAUMA_ADULT_COMPLAINT_V1_INTEL,
 } as const;
