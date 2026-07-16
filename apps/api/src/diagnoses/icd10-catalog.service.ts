@@ -106,12 +106,15 @@ export class Icd10CatalogService {
     const shortPrefixSql = rawPrefix ? Prisma.sql`"shortDescription" ILIKE ${rawPrefix}` : Prisma.sql`FALSE`;
     const shortContainsSql = pattern ? Prisma.sql`"shortDescription" ILIKE ${pattern}` : Prisma.sql`FALSE`;
     const longContainsSql = pattern ? Prisma.sql`"longDescription" ILIKE ${pattern}` : Prisma.sql`FALSE`;
+    const expansionShortPhrases = [...(expansion?.anyOf ?? []), ...(expansion?.allOf ?? [])].filter(
+      (phrase) => phrase.length >= 2,
+    );
     const expansionRankSql =
-      expansion?.anyOf?.[0] != null
-        ? Prisma.sql`"shortDescription" ILIKE ${`%${expansion.anyOf[0]}%`} OR "longDescription" ILIKE ${`%${expansion.anyOf[0]}%`}`
-        : expansion?.allOf?.[0] != null
-          ? Prisma.sql`"shortDescription" ILIKE ${`%${expansion.allOf[0]}%`}`
-          : Prisma.sql`FALSE`;
+      expansionShortPhrases.length > 0
+        ? expansionShortPhrases
+            .map((phrase) => Prisma.sql`"shortDescription" ILIKE ${`%${phrase}%`}`)
+            .reduce((acc, part, index) => (index === 0 ? part : Prisma.sql`${acc} OR ${part}`))
+        : Prisma.sql`FALSE`;
 
     // Prefer production FY release over demo sample; prefer billable/selectable;
     // prefer initial-encounter (A) over subsequent (D) / sequela (S) for acute ED search.

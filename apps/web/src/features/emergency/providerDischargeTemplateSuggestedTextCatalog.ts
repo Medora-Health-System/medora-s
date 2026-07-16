@@ -2104,6 +2104,35 @@ export const TRAUMA_MSK_BACK_STRAIN_SUGGESTED_TEXT: ProviderDischargeTemplateSug
     }
   );
 
+const spineSuggestedText = (description: string, frDescription: string, precautions = MSK_SPINE_ESCALATION_EN, frPrecautions = MSK_SPINE_ESCALATION_FR) =>
+  localizedSuggestedText(
+    { description, diagnosisInstructions: `${MSK_ACTIVITY_EN} Return precautions were reviewed.`, medicationTreatment: MSK_MED_EN, returnPrecautions: precautions },
+    { description: frDescription, diagnosisInstructions: `${MSK_ACTIVITY_FR} Les consignes de retour ont été revues.`, medicationTreatment: MSK_MED_FR, returnPrecautions: frPrecautions },
+  );
+export const SPINE_CERVICAL_STRAIN_SUGGESTED_TEXT = spineSuggestedText("You were evaluated for cervical strain or neck pain.", "Vous avez été pris en charge pour une entorse cervicale ou une douleur au cou.");
+export const SPINE_THORACIC_STRAIN_SUGGESTED_TEXT = spineSuggestedText("You were evaluated for thoracic back strain.", "Vous avez été pris en charge pour une entorse thoracique.");
+export const SPINE_LUMBAR_STRAIN_SUGGESTED_TEXT = spineSuggestedText("You were evaluated for lumbar strain.", "Vous avez été pris en charge pour une entorse lombaire.");
+export const SPINE_MECHANICAL_BACK_PAIN_SUGGESTED_TEXT = spineSuggestedText("You were evaluated for mechanical back pain.", "Vous avez été pris en charge pour une douleur dorsale mécanique.");
+export const SPINE_CERVICAL_RADICULOPATHY_SUGGESTED_TEXT = spineSuggestedText("You were evaluated for cervical radicular symptoms.", "Vous avez été pris en charge pour des symptômes radiculaires cervicaux.");
+export const SPINE_LUMBAR_RADICULOPATHY_SCIATICA_SUGGESTED_TEXT = spineSuggestedText("You were evaluated for lumbar radiculopathy or sciatica.", "Vous avez été pris en charge pour une radiculopathie lombaire ou une sciatique.");
+export const SPINE_DISC_HERNIATION_SUGGESTED_TEXT = spineSuggestedText("You were evaluated for disc-related back symptoms.", "Vous avez été pris en charge pour des symptômes dorsaux liés à un disque.");
+export const SPINE_STENOSIS_SUGGESTED_TEXT = spineSuggestedText("You were evaluated for spinal stenosis symptoms.", "Vous avez été pris en charge pour des symptômes de sténose rachidienne.");
+export const SPINE_VERTEBRAL_COMPRESSION_FRACTURE_SUGGESTED_TEXT = spineSuggestedText("You were evaluated for vertebral compression fracture.", "Vous avez été pris en charge pour une fracture-compression vertébrale.");
+export const SPINE_STABLE_VERTEBRAL_FRACTURE_SUGGESTED_TEXT = spineSuggestedText("You were evaluated after a stable vertebral fracture.", "Vous avez été pris en charge après une fracture vertébrale stable.");
+export const SPINE_POST_TRAUMA_EVALUATION_SUGGESTED_TEXT = spineSuggestedText("You were evaluated after spinal trauma.", "Vous avez été pris en charge après un traumatisme rachidien.");
+export const SPINE_POST_CAUDA_RED_FLAG_EVALUATION_SUGGESTED_TEXT = spineSuggestedText(
+  "You were evaluated for spinal red-flag symptoms. Return immediately for new or worsening weakness, numbness in the saddle area, difficulty walking, urinary retention, incontinence, or bowel changes.",
+  "Vous avez été pris en charge pour des signes d’alerte rachidiens. Retournez immédiatement en cas de faiblesse nouvelle ou aggravée, d’engourdissement en selle, de difficulté à marcher, de rétention urinaire, d’incontinence ou de modification intestinale.",
+  "Return immediately for new or worsening weakness, saddle numbness, difficulty walking, urinary retention, incontinence, or bowel changes.",
+  "Retournez immédiatement en cas de faiblesse nouvelle ou aggravée, d’engourdissement en selle, de difficulté à marcher, de rétention urinaire, d’incontinence ou de modification intestinale.",
+);
+export const SPINE_INFECTION_FOLLOWUP_SUGGESTED_TEXT = spineSuggestedText(
+  "You were evaluated for a possible spinal infection. This instruction set is used only when the clinician explicitly selects discharge after completed evaluation. Return immediately for fever, worsening back pain, new weakness, numbness, difficulty walking, urinary retention, or confusion.",
+  "Vous avez été pris en charge pour une possible infection rachidienne. Ces consignes ne s’appliquent que si le clinicien choisit explicitement une sortie après évaluation complète. Retournez immédiatement en cas de fièvre, d’aggravation de la douleur dorsale, de faiblesse nouvelle, d’engourdissement, de difficulté à marcher, de rétention urinaire ou de confusion.",
+  "Return immediately for fever, worsening back pain, new weakness, numbness, difficulty walking, urinary retention, or confusion.",
+  "Retournez immédiatement en cas de fièvre, d’aggravation de la douleur dorsale, de faiblesse nouvelle, d’engourdissement, de difficulté à marcher, de rétention urinaire ou de confusion.",
+);
+
 export const TRAUMA_MSK_NECK_STRAIN_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
   localizedSuggestedText(
     {

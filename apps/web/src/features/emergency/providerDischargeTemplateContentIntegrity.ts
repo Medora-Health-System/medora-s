@@ -949,6 +949,19 @@ export const PROVIDER_DISCHARGE_TEMPLATE_CONTENT_INTEGRITY: Record<
   post_structural_collapse_v1: { mustIncludeAny: { en: ["compression", "entrapment"], fr: ["compression", "ensevelissement"] }, forbiddenCrossTemplateMarkers: { en: [], fr: [] } },
   polytrauma_followup_v1: { mustIncludeAny: { en: ["multiple injuries"], fr: ["plusieurs blessures"] }, forbiddenCrossTemplateMarkers: { en: [], fr: [] } },
   blast_injury_minor_v1: { mustIncludeAny: { en: ["explosion"], fr: ["explosion"] }, forbiddenCrossTemplateMarkers: { en: [], fr: [] } },
+  cervical_strain_v1: { mustIncludeAny: { en: ["cervical", "neck"], fr: ["cervicale", "cou"] }, forbiddenCrossTemplateMarkers: { en: [], fr: [] } },
+  thoracic_strain_v1: { mustIncludeAny: { en: ["thoracic"], fr: ["thoracique"] }, forbiddenCrossTemplateMarkers: { en: [], fr: [] } },
+  lumbar_strain_v1: { mustIncludeAny: { en: ["lumbar"], fr: ["lombaire"] }, forbiddenCrossTemplateMarkers: { en: [], fr: [] } },
+  acute_mechanical_back_pain_v1: { mustIncludeAny: { en: ["mechanical back"], fr: ["dorsale mécanique"] }, forbiddenCrossTemplateMarkers: { en: [], fr: [] } },
+  cervical_radiculopathy_v1: { mustIncludeAny: { en: ["cervical radicular"], fr: ["radiculaires cervicaux"] }, forbiddenCrossTemplateMarkers: { en: [], fr: [] } },
+  lumbar_radiculopathy_sciatica_v1: { mustIncludeAny: { en: ["sciatica", "radiculopathy"], fr: ["sciatique", "radiculopathie"] }, forbiddenCrossTemplateMarkers: { en: [], fr: [] } },
+  disc_herniation_conservative_v1: { mustIncludeAny: { en: ["disc"], fr: ["disque"] }, forbiddenCrossTemplateMarkers: { en: [], fr: [] } },
+  spinal_stenosis_v1: { mustIncludeAny: { en: ["stenosis"], fr: ["sténose"] }, forbiddenCrossTemplateMarkers: { en: [], fr: [] } },
+  vertebral_compression_fracture_v1: { mustIncludeAny: { en: ["vertebral compression"], fr: ["fracture-compression"] }, forbiddenCrossTemplateMarkers: { en: [], fr: [] } },
+  stable_vertebral_fracture_followup_v1: { mustIncludeAny: { en: ["vertebral fracture"], fr: ["fracture vertébrale"] }, forbiddenCrossTemplateMarkers: { en: [], fr: [] } },
+  post_spinal_trauma_evaluation_v1: { mustIncludeAny: { en: ["spinal trauma"], fr: ["traumatisme rachidien"] }, forbiddenCrossTemplateMarkers: { en: [], fr: [] } },
+  post_caudal_red_flag_evaluation_v1: { mustIncludeAny: { en: ["red-flag", "urinary retention"], fr: ["alerte", "rétention urinaire"] }, forbiddenCrossTemplateMarkers: { en: ["safe for discharge"], fr: ["congé sécuritaire"] } },
+  spinal_infection_followup_v1: { mustIncludeAny: { en: ["spinal infection", "fever"], fr: ["infection rachidienne", "fièvre"] }, forbiddenCrossTemplateMarkers: { en: ["safe for discharge"], fr: ["congé sécuritaire"] } },
 };
 
 function suggestedTextBlob(body: {
