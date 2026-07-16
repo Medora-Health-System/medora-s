@@ -185,7 +185,11 @@ export type ProviderDocumentationTemplateId =
   | "dermatologic_rash_adult_v1"
   | "allergic_inflammatory_dermatology_adult_v1"
   | "vesicular_bullous_skin_disorder_adult_v1"
-  | "dermatologic_emergency_adult_v1";
+  | "dermatologic_emergency_adult_v1"
+  | "heat_environmental_illness_adult_v1"
+  | "cold_environmental_injury_adult_v1"
+  | "submersion_electrical_lightning_adult_v1"
+  | "altitude_diving_radiation_exposure_adult_v1";
 
 export type ProviderDocumentationTemplatePickerSubgroupKey =
   | "gi_abdominal"

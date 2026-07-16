@@ -36,6 +36,7 @@ import { providerDocumentationNeuroExpansionComplaintIntel19Mdm9En } from "./pro
 import { providerDocumentationNeuroStrokeWeaknessComplaintIntelEn } from "./providerDocumentationNeuroStrokeWeaknessComplaintIntel.en";
 import { providerDocumentationCardiacNonChestPainComplaintIntelEn } from "./providerDocumentationCardiacNonChestPainComplaintIntel.en";
 import { providerDocumentationDermatologyComplaintIntelEn } from "./providerDocumentationDermatologyComplaintIntel.en";
+import { providerDocumentationEnvironmentalExposureComplaintIntelEn } from "./providerDocumentationEnvironmentalExposureComplaintIntel.en";
 
 export default {
   common: {
@@ -8446,6 +8447,14 @@ export default {
     templateVesicularBullousSkinDisorderAdultV1Help: "Click-to-insert prompts for herpes simplex/zoster, zoster with eye involvement concern, varicella, bullous impetigo, erythema multiforme, and Stevens-Johnson syndrome / eczema herpeticum red flags.",
     templateDermatologicEmergencyAdultV1: "Dermatologic Emergency / High-Risk Rash",
     templateDermatologicEmergencyAdultV1Help: "Click-to-insert prompts for Stevens-Johnson syndrome/TEN, DRESS, AGEP, meningococcal-type rash, purpura fulminans, severe erythroderma, and mucosal/eye involvement red flags.",
+    templateHeatEnvironmentalIllnessAdultV1: "Heat Illness / Hyperthermia",
+    templateHeatEnvironmentalIllnessAdultV1Help: "Click-to-insert prompts for heat cramps, heat syncope, heat exhaustion, exertional heat illness, heat stroke concern, and rhabdomyolysis/dehydration red flags.",
+    templateColdEnvironmentalInjuryAdultV1: "Cold Exposure / Hypothermia / Frostbite",
+    templateColdEnvironmentalInjuryAdultV1Help: "Click-to-insert prompts for hypothermia staging, frostnip, superficial and deep frostbite concern, chilblains, immersion foot, and cold water exposure red flags.",
+    templateSubmersionElectricalLightningAdultV1: "Submersion / Electrical / Lightning Injury",
+    templateSubmersionElectricalLightningAdultV1Help: "Click-to-insert prompts for nonfatal drowning, aspiration after submersion, low/high-voltage electrical injury, lightning injury concern, and cardiac/neuro complication red flags.",
+    templateAltitudeDivingRadiationExposureAdultV1: "Altitude / Diving / Radiation Exposure",
+    templateAltitudeDivingRadiationExposureAdultV1Help: "Click-to-insert prompts for acute mountain sickness, high-altitude cerebral/pulmonary edema concern, decompression illness, arterial gas embolism concern, barotrauma, and radiation exposure red flags.",
     templateObservationReassessment: "Observation reassessment",
     templateObservationReassessmentHelp: "Interval symptoms, pending results, vitals, monitoring, discharge/transfer readiness.",
     templateCategoryCardiopulmonary: "Cardiopulmonary",
@@ -9832,6 +9841,7 @@ export default {
   },
   providerDocumentationComplaintIntel: {
     ...providerDocumentationDermatologyComplaintIntelEn,
+    ...providerDocumentationEnvironmentalExposureComplaintIntelEn,
     ...providerDocumentationPsychBehavioralComplaintIntelEn,
     ...providerDocumentationMedicationRefillComplaintIntelEn,
     ...providerDocumentationObservationReassessmentComplaintIntelEn,

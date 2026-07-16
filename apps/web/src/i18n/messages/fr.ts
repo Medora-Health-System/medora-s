@@ -11,6 +11,7 @@ import { providerDocumentationObservationReassessmentComplaintIntelFr } from "./
 import { providerDocumentationRespiratoryComplaintIntel19Mdm3Fr } from "./providerDocumentationRespiratoryComplaintIntel19Mdm3.fr";
 import { providerDocumentationCardiacNonChestPainComplaintIntelFr } from "./providerDocumentationCardiacNonChestPainComplaintIntel.fr";
 import { providerDocumentationDermatologyComplaintIntelFr } from "./providerDocumentationDermatologyComplaintIntel.fr";
+import { providerDocumentationEnvironmentalExposureComplaintIntelFr } from "./providerDocumentationEnvironmentalExposureComplaintIntel.fr";
 import { providerDocumentationGuRenalComplaintIntel19Mdm5Fr } from "./providerDocumentationGuRenalComplaintIntel19Mdm5.fr";
 import { providerDocumentationInfectiousEntComplaintIntel19Mdm7Fr } from "./providerDocumentationInfectiousEntComplaintIntel19Mdm7.fr";
 import { providerDocumentationDentalOralComplaintIntelFr } from "./providerDocumentationDentalOralComplaintIntel.fr";
@@ -8424,6 +8425,14 @@ export default {
     templateVesicularBullousSkinDisorderAdultV1Help: "Inserts cliquables — herpès simplex/zona, suspicion de zona ophtalmique, varicelle, impétigo bulleux, érythème polymorphe et signaux d'alerte du syndrome de Stevens-Johnson / eczéma herpéticum.",
     templateDermatologicEmergencyAdultV1: "Urgence dermatologique / Éruption à haut risque",
     templateDermatologicEmergencyAdultV1Help: "Inserts cliquables — syndrome de Stevens-Johnson/NET, DRESS, AGEP, éruption de type méningococcique, purpura fulminans, érythrodermie sévère et signaux d'alerte d'atteinte oculaire/muqueuse.",
+    templateHeatEnvironmentalIllnessAdultV1: "Maladie liée à la chaleur / Hyperthermie",
+    templateHeatEnvironmentalIllnessAdultV1Help: "Inserts cliquables — crampes de chaleur, syncope de chaleur, épuisement par la chaleur, maladie de chaleur d'effort, suspicion de coup de chaleur et signaux d'alerte de rhabdomyolyse/déshydratation.",
+    templateColdEnvironmentalInjuryAdultV1: "Exposition au froid / Hypothermie / Gelure",
+    templateColdEnvironmentalInjuryAdultV1Help: "Inserts cliquables — stades d'hypothermie, gelure superficielle, suspicion de gelure profonde, engelures, pied d'immersion et signaux d'alerte d'exposition à l'eau froide.",
+    templateSubmersionElectricalLightningAdultV1: "Submersion / Lésion électrique / Foudroiement",
+    templateSubmersionElectricalLightningAdultV1Help: "Inserts cliquables — noyade non mortelle, aspiration après submersion, lésion électrique basse/haute tension, suspicion de foudroiement et signaux d'alerte de complication cardiaque/neurologique.",
+    templateAltitudeDivingRadiationExposureAdultV1: "Exposition à l'altitude / Plongée / Rayonnements",
+    templateAltitudeDivingRadiationExposureAdultV1Help: "Inserts cliquables — mal aigu des montagnes, suspicion d'œdème cérébral/pulmonaire de haute altitude, maladie de décompression, suspicion d'embolie gazeuse artérielle, barotraumatisme et signaux d'alerte d'exposition aux rayonnements.",
     templateObservationReassessment: "Réévaluation observation",
     templateObservationReassessmentHelp: "Évolution, résultats en attente, signes vitaux, surveillance, aptitude sortie / transfert.",
     templateCategoryCardiopulmonary: "Cardiopulmonaire",
@@ -9816,6 +9825,7 @@ export default {
   },
   providerDocumentationComplaintIntel: {
     ...providerDocumentationDermatologyComplaintIntelFr,
+    ...providerDocumentationEnvironmentalExposureComplaintIntelFr,
     ...providerDocumentationPsychBehavioralComplaintIntelFr,
     ...providerDocumentationMedicationRefillComplaintIntelFr,
     ...providerDocumentationObservationReassessmentComplaintIntelFr,

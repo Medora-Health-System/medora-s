@@ -156,6 +156,10 @@ import {
   ALLERGIC_INFLAMMATORY_DERMATOLOGY_ADULT_V1_INTEL,
   VESICULAR_BULLOUS_SKIN_DISORDER_ADULT_V1_INTEL,
   DERMATOLOGIC_EMERGENCY_ADULT_V1_INTEL,
+  HEAT_ENVIRONMENTAL_ILLNESS_ADULT_V1_INTEL,
+  COLD_ENVIRONMENTAL_INJURY_ADULT_V1_INTEL,
+  SUBMERSION_ELECTRICAL_LIGHTNING_ADULT_V1_INTEL,
+  ALTITUDE_DIVING_RADIATION_EXPOSURE_ADULT_V1_INTEL,
   type ProviderDocumentationComplaintIntelligence,
 } from "./providerDocumentationComplaintIntelligence";
 import type { ProviderDocumentationTemplatePickerSubgroupKey } from "./providerDocumentationModel";
@@ -2215,6 +2219,30 @@ export const PROVIDER_DOCUMENTATION_TEMPLATES: ProviderDocumentationTemplateDefi
     "providerDocumentationWorkspace.templateDermatologicEmergencyAdultV1",
     "providerDocumentationWorkspace.templateDermatologicEmergencyAdultV1Help",
     DERMATOLOGIC_EMERGENCY_ADULT_V1_INTEL
+  ),
+  infectiousEntComplaintV1Template(
+    "heat_environmental_illness_adult_v1",
+    "providerDocumentationWorkspace.templateHeatEnvironmentalIllnessAdultV1",
+    "providerDocumentationWorkspace.templateHeatEnvironmentalIllnessAdultV1Help",
+    HEAT_ENVIRONMENTAL_ILLNESS_ADULT_V1_INTEL
+  ),
+  infectiousEntComplaintV1Template(
+    "cold_environmental_injury_adult_v1",
+    "providerDocumentationWorkspace.templateColdEnvironmentalInjuryAdultV1",
+    "providerDocumentationWorkspace.templateColdEnvironmentalInjuryAdultV1Help",
+    COLD_ENVIRONMENTAL_INJURY_ADULT_V1_INTEL
+  ),
+  infectiousEntComplaintV1Template(
+    "submersion_electrical_lightning_adult_v1",
+    "providerDocumentationWorkspace.templateSubmersionElectricalLightningAdultV1",
+    "providerDocumentationWorkspace.templateSubmersionElectricalLightningAdultV1Help",
+    SUBMERSION_ELECTRICAL_LIGHTNING_ADULT_V1_INTEL
+  ),
+  infectiousEntComplaintV1Template(
+    "altitude_diving_radiation_exposure_adult_v1",
+    "providerDocumentationWorkspace.templateAltitudeDivingRadiationExposureAdultV1",
+    "providerDocumentationWorkspace.templateAltitudeDivingRadiationExposureAdultV1Help",
+    ALTITUDE_DIVING_RADIATION_EXPOSURE_ADULT_V1_INTEL
   ),
   {
     id: "observation_reassessment",
