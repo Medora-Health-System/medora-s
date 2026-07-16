@@ -1,0 +1,13 @@
+{
+  "entEmergencies": {
+    "scopedOfficialBillable": 437,
+    "presentInMedora": 437,
+    "missingCodes": [],
+    "descriptionMismatches": [],
+    "duplicateActiveCodes": [],
+    "invalidSelectableHeaders": []
+  },
+  "certification": {
+    "pass": true
+  }
+}

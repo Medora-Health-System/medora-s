@@ -318,6 +318,69 @@ const REQUIRED_QUERIES: Array<{
   { q: "endophtalmie", mustMatchCodePrefix: "H44.0" },
   { q: "eye trauma", mustMatchCodePrefix: "S05" },
   { q: "traumatisme oculaire", mustMatchCodePrefix: "S05" },
+  // ENT emergencies (Phase 12)
+  { q: "ear pain", mustMatchCodePrefix: "H92" },
+  { q: "douleur de l'oreille", mustMatchCodePrefix: "H92" },
+  { q: "otitis externa", mustMatchCodePrefix: "H60" },
+  { q: "otite externe", mustMatchCodePrefix: "H60" },
+  { q: "malignant otitis externa", mustMatchCodePrefix: "H60.2" },
+  { q: "otite externe maligne", mustMatchCodePrefix: "H60.2" },
+  { q: "otitis media", mustMatchCodePrefix: "H66" },
+  { q: "otite moyenne", mustMatchCodePrefix: "H66" },
+  { q: "mastoiditis", mustMatchCodePrefix: "H70" },
+  { q: "mastoïdite", mustMatchCodePrefix: "H70" },
+  { q: "tympanic membrane perforation", mustMatchCodePrefix: "H72" },
+  { q: "perforation tympanique", mustMatchCodePrefix: "H72" },
+  { q: "sudden hearing loss", mustMatchCodePrefix: "H91.2" },
+  { q: "surdité soudaine", mustMatchCodePrefix: "H91.2" },
+  { q: "sudden sensorineural hearing loss", mustMatchCodePrefix: "H91.2" },
+  { q: "surdité neurosensorielle soudaine", mustMatchCodePrefix: "H91.2" },
+  { q: "vertigo", mustMatchCodePrefix: "H81" },
+  { q: "vertige", mustMatchCodePrefix: "H81" },
+  { q: "BPPV", mustMatchCodePrefix: "H81.1" },
+  { q: "vertige positionnel paroxystique bénin", mustMatchCodePrefix: "H81.1" },
+  { q: "vestibular neuritis", mustMatchCodePrefix: "H81.2" },
+  { q: "névrite vestibulaire", mustMatchCodePrefix: "H81.2" },
+  { q: "labyrinthitis", mustMatchCodePrefix: "H83" },
+  { q: "labyrinthite", mustMatchCodePrefix: "H83" },
+  { q: "Meniere disease", mustMatchCodePrefix: "H81.0" },
+  { q: "maladie de Ménière", mustMatchCodePrefix: "H81.0" },
+  { q: "facial nerve palsy", mustMatchCodePrefix: "G51" },
+  { q: "paralysie faciale", mustMatchCodePrefix: "G51" },
+  { q: "Bell palsy", mustMatchCodePrefix: "G51.0" },
+  { q: "paralysie de Bell", mustMatchCodePrefix: "G51.0" },
+  { q: "Ramsay Hunt syndrome", mustMatchCodePrefix: "B02.2" },
+  { q: "syndrome de Ramsay Hunt", mustMatchCodePrefix: "B02.2" },
+  { q: "epistaxis", mustMatchCodePrefix: "R04.0" },
+  { q: "épistaxis", mustMatchCodePrefix: "R04.0" },
+  { q: "posterior nosebleed", mustMatchCodePrefix: "R04.0" },
+  { q: "saignement nasal postérieur", mustMatchCodePrefix: "R04.0" },
+  { q: "nasal foreign body", mustMatchCodePrefix: "T17.1" },
+  { q: "corps étranger nasal", mustMatchCodePrefix: "T17" },
+  { q: "peritonsillar abscess", mustMatchCodePrefix: "J36" },
+  { q: "abcès périamygdalien", mustMatchCodePrefix: "J36" },
+  { q: "retropharyngeal abscess", mustMatchCodePrefix: "J39.0" },
+  { q: "abcès rétropharyngé", mustMatchCodePrefix: "J39.0" },
+  { q: "parapharyngeal abscess", mustMatchCodePrefix: "J39.0" },
+  { q: "abcès parapharyngé", mustMatchCodePrefix: "J39.0" },
+  { q: "deep neck infection", mustMatchCodePrefix: "J39" },
+  { q: "infection profonde du cou", mustMatchCodePrefix: "J39" },
+  { q: "Ludwig angina", mustMatchCodePrefix: "K12.2" },
+  { q: "angine de Ludwig", mustMatchCodePrefix: "K12.2" },
+  { q: "epiglottitis", mustMatchCodePrefix: "J05.1" },
+  { q: "épiglottite", mustMatchCodePrefix: "J05.1" },
+  { q: "supraglottitis", mustMatchCodePrefix: "J05.1" },
+  { q: "supraglottite", mustMatchCodePrefix: "J05.1" },
+  { q: "throat foreign body", mustMatchCodePrefix: "T17.2" },
+  { q: "corps étranger de la gorge", mustMatchCodePrefix: "T17.2" },
+  { q: "airway foreign body", mustMatchCodePrefix: "T17" },
+  { q: "corps étranger des voies aériennes", mustMatchCodePrefix: "T17" },
+  { q: "sialadenitis", mustMatchCodePrefix: "K11.2" },
+  { q: "sialadénite", mustMatchCodePrefix: "K11.2" },
+  { q: "salivary stone", mustMatchCodePrefix: "K11.5" },
+  { q: "calcul salivaire", mustMatchCodePrefix: "K11.5" },
+  { q: "salivary duct obstruction", mustMatchCodePrefix: "K11.5" },
+  { q: "obstruction du canal salivaire", mustMatchCodePrefix: "K11.5" },
 ];
 
 function encounterChar(code: string): string {
@@ -492,6 +555,21 @@ async function main() {
     );
     writeFileSync(join(summaryDir, "fy2026-eye-emergencies-search-summary.json"), eyeEmergenciesSummary);
     writeFileSync(join(releaseSummaryDir, "fy2026-eye-emergencies-search-summary.json"), eyeEmergenciesSummary);
+    const entEmergenciesQueryPattern =
+      /ear pain|douleur de l'oreille|otitis externa|otite externe|malignant otitis|otite externe maligne|otitis media|otite moyenne|mastoiditis|mastoïdite|tympanic membrane|perforation tympanique|sudden hearing|surdité soudaine|sudden sensorineural|surdité neurosensorielle|vertigo|vertige|bppv|vertige positionnel|vestibular neuritis|névrite vestibulaire|labyrinthitis|labyrinthite|meniere|ménière|facial nerve|paralysie faciale|bell palsy|paralysie de bell|ramsay hunt|epistaxis|épistaxis|posterior nosebleed|saignement nasal|nasal foreign body|corps étranger nasal|peritonsillar|périamygdalien|retropharyngeal|rétropharyngé|parapharyngeal|parapharyngé|deep neck|infection profonde du cou|ludwig|epiglottitis|épiglottite|supraglottitis|supraglottite|throat foreign body|corps étranger de la gorge|airway foreign body|corps étranger des voies aériennes|sialadenitis|sialadénite|salivary stone|calcul salivaire|salivary duct|obstruction du canal salivaire/;
+    const entEmergenciesFailures = failures.filter((failure) => entEmergenciesQueryPattern.test(failure.toLowerCase()));
+    const entEmergenciesSummary = JSON.stringify(
+      {
+        generatedAt: report.generatedAt,
+        queryCount: REQUIRED_QUERIES.filter((row) => entEmergenciesQueryPattern.test(row.q.toLowerCase())).length,
+        failures: entEmergenciesFailures,
+        pass: entEmergenciesFailures.length === 0,
+      },
+      null,
+      2,
+    );
+    writeFileSync(join(summaryDir, "fy2026-ent-emergencies-search-summary.json"), entEmergenciesSummary);
+    writeFileSync(join(releaseSummaryDir, "fy2026-ent-emergencies-search-summary.json"), entEmergenciesSummary);
     if (!report.pass) process.exit(1);
   } finally {
     await prisma.$disconnect();
