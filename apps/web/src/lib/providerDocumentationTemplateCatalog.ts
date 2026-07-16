@@ -103,6 +103,8 @@ import {
   BURN_INJURY_ADULT_COMPLAINT_V1_INTEL,
   PENETRATING_TRAUMA_ADULT_COMPLAINT_V1_INTEL,
   BLAST_POLYTRAUMA_ADULT_COMPLAINT_V1_INTEL,
+  SPINE_BACK_PAIN_ADULT_COMPLAINT_V1_INTEL,
+  SPINAL_TRAUMA_ADULT_COMPLAINT_V1_INTEL,
   SPRAIN_STRAIN_ADULT_COMPLAINT_V1_INTEL,
   TENDON_INJURY_ADULT_COMPLAINT_V1_INTEL,
   FEVER_COMPLAINT_V1_INTEL,
@@ -1928,6 +1930,8 @@ export const PROVIDER_DOCUMENTATION_TEMPLATES: ProviderDocumentationTemplateDefi
   mskTraumaComplaintV1Template("burn_injury_adult_complaint_v1", "providerDocumentationWorkspace.templateBurnInjuryAdultComplaintV1", "providerDocumentationWorkspace.templateBurnInjuryAdultComplaintV1Help", BURN_INJURY_ADULT_COMPLAINT_V1_INTEL),
   mskTraumaComplaintV1Template("penetrating_trauma_adult_complaint_v1", "providerDocumentationWorkspace.templatePenetratingTraumaAdultComplaintV1", "providerDocumentationWorkspace.templatePenetratingTraumaAdultComplaintV1Help", PENETRATING_TRAUMA_ADULT_COMPLAINT_V1_INTEL),
   mskTraumaComplaintV1Template("blast_polytrauma_adult_complaint_v1", "providerDocumentationWorkspace.templateBlastPolytraumaAdultComplaintV1", "providerDocumentationWorkspace.templateBlastPolytraumaAdultComplaintV1Help", BLAST_POLYTRAUMA_ADULT_COMPLAINT_V1_INTEL),
+  mskTraumaComplaintV1Template("spine_back_pain_adult_complaint_v1", "providerDocumentationWorkspace.templateSpineBackPainAdultComplaintV1", "providerDocumentationWorkspace.templateSpineBackPainAdultComplaintV1Help", SPINE_BACK_PAIN_ADULT_COMPLAINT_V1_INTEL),
+  mskTraumaComplaintV1Template("spinal_trauma_adult_complaint_v1", "providerDocumentationWorkspace.templateSpinalTraumaAdultComplaintV1", "providerDocumentationWorkspace.templateSpinalTraumaAdultComplaintV1Help", SPINAL_TRAUMA_ADULT_COMPLAINT_V1_INTEL),
   infectiousEntComplaintV1Template(
     "fever_complaint_v1",
     "providerDocumentationWorkspace.templateFeverComplaintV1",

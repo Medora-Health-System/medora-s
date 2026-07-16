@@ -576,6 +576,66 @@ export function buildBackPainComplaintV1Intel(d: (key: string) => string): Provi
   });
 }
 
+export function buildSpineBackPainAdultComplaintV1Intel(d: (key: string) => string): ProviderDocumentationComplaintIntelligence {
+  return buildMskTraumaV1Intel(d, {
+    hpi: [d("hpiCervicalThoracicLumbarPain"), d("hpiRadicularPain"), d("hpiSciatica"), d("hpiBowelBladderChange"), d("hpiSaddleAnesthesia"), d("hpiFeverInfectionRisk"), d("hpiCancerWeightLoss"), d("hpiNeuroSymptoms")],
+    physicalExam: {
+      general: [d("examHemodynamicallyStable")],
+      musculoskeletal: [d("examSpinalMidlineTenderness"), d("examParaspinalTenderness"), d("examRangeOfMotionDocumented")],
+      neuroPsych: [d("examLowerExtremityStrengthDocumented"), d("examSensationDocumented"), d("examGaitDocumented"), d("examSaddleSensationDocumented")],
+    },
+    extraDifferential: [d("diffCaudaEquina"), d("diffEpiduralAbscess"), d("diffSpinalMalignancy"), d("diffVertebralFracture"), d("diffAorticMimic")],
+    mdmOverrides: {
+      mdmWorkingAssessment: [d("waMechanicalBackPain"), d("waRadiculopathy"), d("waSpineRedFlagConcern")],
+      clinicalImpression: [d("impBackPain"), d("impRadiculopathy"), d("impSpineRedFlagConcern")],
+      mdmDataReviewed: [d("mdmSpineImagingReviewed"), d("mdmNeurologicExamReviewed")],
+      mdmRiskStratification: [
+        d("riskLowRiskMechanicalSpinePain"),
+        d("riskModerateRiskRadiculopathy"),
+        d("riskHighRiskSpineEmergency"),
+        d("riskUrgentSpecialtyEvaluation"),
+      ],
+      mdmClinicalRationale: [
+        d("reasoningSpineRedFlagsAddressed"),
+        d("reasoningNeurologicExamDocumented"),
+        d("reasoningImagingDecisionDocumented"),
+        d("reasoningNoAutonomousDisposition"),
+      ],
+      mdmPlanSummary: [d("planDocumentRedFlagEvaluation"), d("planReturnForBowelBladderOrWeakness"), d("planUrgentEvaluationForRedFlags")],
+    },
+  });
+}
+
+export function buildSpinalTraumaAdultComplaintV1Intel(d: (key: string) => string): ProviderDocumentationComplaintIntelligence {
+  return buildMskTraumaV1Intel(d, {
+    hpi: [d("hpiSpinalTraumaMechanism"), d("hpiCervicalThoracicLumbarPain"), d("hpiMotorSensoryChange"), d("hpiBowelBladderChange"), d("hpiCordSyndromeSymptoms"), d("hpiNeurogenicShockFeatures"), d("hpiSpinalShockFeatures"), d("hpiSciworaDescriptor")],
+    physicalExam: {
+      general: [d("examHemodynamicallyStable")],
+      musculoskeletal: [d("examSpinalMidlineTenderness"), d("examSpineRegionDocumented")],
+      neuroPsych: [d("examMotorSensoryExamDocumented"), d("examRectalSensationDocumented"), d("examCordSyndromeFindingsDocumented")],
+    },
+    extraDifferential: [d("diffVertebralFracture"), d("diffSpinalCordInjury"), d("diffCentralCordSyndrome"), d("diffNeurogenicShock"), d("diffSpinalShock")],
+    mdmOverrides: {
+      mdmWorkingAssessment: [d("waSpinalTrauma"), d("waSpinalCordInjuryConcern"), d("waVertebralFracture")],
+      clinicalImpression: [d("impSpinalTrauma"), d("impSpinalCordInjuryConcern")],
+      mdmDataReviewed: [d("mdmSpineImagingReviewed"), d("mdmSerialNeurologicExamReviewed")],
+      mdmRiskStratification: [
+        d("riskLowRiskMechanicalSpinePain"),
+        d("riskModerateRiskRadiculopathy"),
+        d("riskHighRiskSpineEmergency"),
+        d("riskUrgentSpecialtyEvaluation"),
+      ],
+      mdmClinicalRationale: [
+        d("reasoningSpineRedFlagsAddressed"),
+        d("reasoningNeurologicExamDocumented"),
+        d("reasoningImagingDecisionDocumented"),
+        d("reasoningNoAutonomousDisposition"),
+      ],
+      mdmPlanSummary: [d("planSpinalPrecautions"), d("planSerialNeurologicExams"), d("planSpecialtyTraumaEvaluation")],
+    },
+  });
+}
+
 export function buildNeckPainComplaintV1Intel(d: (key: string) => string): ProviderDocumentationComplaintIntelligence {
   return buildMskTraumaV1Intel(d, {
     hpi: [
@@ -1774,6 +1834,8 @@ export const TRAUMA_INJURY_GOLD_STANDARD_BUILDERS = {
   burn: buildBurnInjuryComplaintIntel,
   pediatric_trauma: buildPediatricTraumaComplaintIntel,
   back_pain_complaint_v1: buildBackPainComplaintV1Intel,
+  spine_back_pain_adult_complaint_v1: buildSpineBackPainAdultComplaintV1Intel,
+  spinal_trauma_adult_complaint_v1: buildSpinalTraumaAdultComplaintV1Intel,
   neck_pain_complaint_v1: buildNeckPainComplaintV1Intel,
   shoulder_injury_complaint_v1: buildShoulderInjuryComplaintV1Intel,
   knee_injury_complaint_v1: buildKneeInjuryComplaintV1Intel,

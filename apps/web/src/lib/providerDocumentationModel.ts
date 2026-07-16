@@ -140,6 +140,8 @@ export type ProviderDocumentationTemplateId =
   | "burn_injury_adult_complaint_v1"
   | "penetrating_trauma_adult_complaint_v1"
   | "blast_polytrauma_adult_complaint_v1"
+  | "spine_back_pain_adult_complaint_v1"
+  | "spinal_trauma_adult_complaint_v1"
   | "fever_complaint_v1"
   | "cellulitis_skin_infection_complaint_v1"
   | "abscess_soft_tissue_complaint_v1"
