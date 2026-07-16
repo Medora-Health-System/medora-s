@@ -266,6 +266,64 @@ const FRENCH_DIAGNOSIS_SEARCH_ALIASES: readonly FrenchDiagnosisSearchAlias[] = [
     frenchPhrases: ["cellulite après morsure", "morsure infectée", "plaie infectée"],
     englishSearchTerms: ["bite cellulitis", "infected bite", "infected traumatic wound"],
   },
+  // Soft tissue / wound infection (Phase 13)
+  {
+    frenchPhrases: ["cellulite", "cellulite faciale", "cellulite de la main", "cellulite de la jambe", "cellulite du pied"],
+    englishSearchTerms: ["cellulitis", "facial cellulitis", "hand cellulitis", "leg cellulitis", "foot cellulitis"],
+  },
+  {
+    frenchPhrases: ["érysipèle", "erysipele"],
+    englishSearchTerms: ["erysipelas"],
+  },
+  {
+    frenchPhrases: ["abcès cutané", "abces cutane", "furoncle", "anthrax cutané", "anthrax cutane"],
+    englishSearchTerms: ["cutaneous abscess", "skin abscess", "furuncle", "carbuncle"],
+  },
+  {
+    frenchPhrases: ["panaris pulpaire", "paronychie", "abcès pilonidal", "abces pilonidal", "abcès d'hidradénite", "abces d hidradenite"],
+    englishSearchTerms: ["felon", "paronychia", "pilonidal abscess", "hidradenitis abscess"],
+  },
+  {
+    frenchPhrases: ["plaie traumatique infectée", "plaie traumatique infectee", "infection du site opératoire", "infection du site operatoire", "infection postopératoire de plaie", "déhiscence de plaie", "dehiscence de plaie"],
+    englishSearchTerms: [
+      "infected traumatic wound",
+      "surgical site infection",
+      "postoperative wound infection",
+      "wound dehiscence",
+    ],
+  },
+  {
+    frenchPhrases: ["fasciite nécrosante", "fasciite necrosante", "infection nécrosante des tissus mous", "gangrène gazeuse", "gangrene gazeuse", "gangrène de Fournier", "gangrene de fournier"],
+    englishSearchTerms: [
+      "necrotizing fasciitis",
+      "necrotizing soft tissue infection",
+      "gas gangrene",
+      "Fournier gangrene",
+    ],
+  },
+  {
+    frenchPhrases: ["pyomyosite", "myosite infectieuse", "ténosynovite infectieuse des fléchisseurs", "tenosynovite infectieuse des flechisseurs", "bursite septique"],
+    englishSearchTerms: ["pyomyositis", "infectious myositis", "flexor tenosynovitis", "septic bursitis"],
+  },
+  {
+    frenchPhrases: ["infection du pied diabétique", "infection du pied diabetique", "ulcère diabétique infecté", "ulcere diabetique infecte", "escarre infectée", "escarre infectee", "ulcère veineux infecté", "ulcere veineux infecte"],
+    englishSearchTerms: [
+      "diabetic foot infection",
+      "infected diabetic foot ulcer",
+      "infected pressure ulcer",
+      "infected venous ulcer",
+    ],
+  },
+  {
+    frenchPhrases: ["ostéomyélite liée à une plaie", "osteomyelite liee a une plaie", "arthrite septique liée à une plaie", "arthrite septique liee a une plaie", "infection de plaie exposée à l'eau", "infection après morsure", "infection associee a un corps etranger", "infection associée à un corps étranger"],
+    englishSearchTerms: [
+      "osteomyelitis from wound",
+      "septic arthritis from wound",
+      "water exposed wound infection",
+      "bite wound infection",
+      "foreign body wound infection",
+    ],
+  },
   {
     frenchPhrases: ["plaie par morsure", "plaie perforante"],
     englishSearchTerms: ["bite wound", "puncture wound", "open bite"],

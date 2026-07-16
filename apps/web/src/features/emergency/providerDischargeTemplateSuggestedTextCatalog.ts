@@ -5658,3 +5658,443 @@ export const THROAT_FOREIGN_BODY_FOLLOWUP_V1_SUGGESTED_TEXT: ProviderDischargeTe
         "Retournez immédiatement en cas de difficulté à respirer ou à avaler, de bave incontrôlable, de douleur thoracique, d'aggravation de la douleur à la gorge, ou de vomissements de sang.",
     }
   );
+
+// ---- Phase 13 — soft tissue / wound infection discharge documentation (Commit 2) ----
+const WOUND_MED_EN =
+  "Take any antibiotic or pain medicine only as prescribed or specifically directed during this visit. Do not start, stop, or change medications on your own.";
+const WOUND_MED_FR =
+  "Prenez tout antibiotique ou antalgique uniquement selon la prescription ou les directives spécifiques données lors de cette visite. Ne commencez, n'arrêtez et ne modifiez pas les médicaments de votre propre initiative.";
+
+export const ERYSIPELAS_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for erysipelas — a sharply demarcated, superficial skin infection.",
+      diagnosisInstructions:
+        "Keep the affected area clean and elevated as directed. Mark the edge of the redness if your clinician advised you to do so, so you can track whether it is spreading.",
+      medicationTreatment: WOUND_MED_EN,
+      returnPrecautions:
+        "Return for care if the redness spreads beyond the marked border, fever develops, pain or swelling increases, blistering or skin breakdown appears, or symptoms have not improved after finishing the prescribed course.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour un érysipèle — une infection cutanée superficielle à bordure nette.",
+      diagnosisInstructions:
+        "Gardez la zone touchée propre et surélevée selon les consignes. Tracez la limite de la rougeur si votre clinicien vous l'a demandé, afin de pouvoir suivre son évolution.",
+      medicationTreatment: WOUND_MED_FR,
+      returnPrecautions:
+        "Reconsultez si la rougeur s'étend au-delà de la limite tracée, si de la fièvre apparaît, si la douleur ou le gonflement augmentent, si des cloques ou une atteinte de la peau apparaissent, ou si les symptômes ne se sont pas améliorés après la fin du traitement prescrit.",
+    }
+  );
+
+export const POST_ABSCESS_DRAINAGE_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for a skin abscess that was drained (incision and drainage) during this visit.",
+      diagnosisInstructions:
+        "If packing was placed, follow the specific instructions given for when and how it should be removed or changed. Keep the area clean and covered with a clean dressing as directed. Warm compresses may be recommended to help continued drainage.",
+      medicationTreatment: WOUND_MED_EN,
+      returnPrecautions:
+        "Return for care if redness spreads, fever develops, pain or swelling increases, new pus or drainage appears after the wound seemed to be healing, red streaking occurs, or symptoms worsen.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour un abcès cutané qui a été drainé (incision et drainage) lors de cette visite.",
+      diagnosisInstructions:
+        "Si un méchage a été mis en place, suivez les instructions précises données quant au moment et à la façon de le retirer ou de le changer. Gardez la zone propre et couverte d'un pansement propre selon les consignes. Des compresses chaudes peuvent être recommandées pour favoriser le drainage.",
+      medicationTreatment: WOUND_MED_FR,
+      returnPrecautions:
+        "Reconsultez si la rougeur s'étend, si de la fièvre apparaît, si la douleur ou le gonflement augmentent, si un nouvel écoulement ou du pus apparaît après une amélioration apparente, en cas de traînées rouges, ou d'aggravation des symptômes.",
+    }
+  );
+
+export const ABSCESS_WITHOUT_DRAINAGE_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for a skin abscess that was treated without incision and drainage during this visit.",
+      diagnosisInstructions:
+        "Apply warm compresses to the area several times a day as directed — this may help the abscess drain or resolve on its own. Keep the area clean. Watch closely for the abscess becoming larger, more painful, or more fluctuant.",
+      medicationTreatment: WOUND_MED_EN,
+      returnPrecautions:
+        "Return for care if the area becomes larger, more painful, or fluctuant (suggesting it now needs drainage), if redness spreads, fever develops, or symptoms have not improved after finishing the prescribed course.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour un abcès cutané traité sans incision ni drainage lors de cette visite.",
+      diagnosisInstructions:
+        "Appliquez des compresses chaudes sur la région plusieurs fois par jour selon les consignes — cela peut aider l'abcès à se drainer ou à se résorber de lui-même. Gardez la zone propre. Surveillez attentivement si l'abcès devient plus gros, plus douloureux ou plus fluctuant.",
+      medicationTreatment: WOUND_MED_FR,
+      returnPrecautions:
+        "Reconsultez si la région devient plus grosse, plus douloureuse ou fluctuante (signe qu'un drainage est maintenant nécessaire), si la rougeur s'étend, si de la fièvre apparaît, ou si les symptômes ne se sont pas améliorés après la fin du traitement prescrit.",
+    }
+  );
+
+export const FURUNCLE_CARBUNCLE_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for a furuncle (boil) or carbuncle — an infected hair follicle or cluster of follicles.",
+      diagnosisInstructions:
+        "Apply warm compresses several times a day as directed to help drainage. Keep the area clean and avoid squeezing or picking at it. Wash hands well after touching the area to avoid spreading it.",
+      medicationTreatment: WOUND_MED_EN,
+      returnPrecautions:
+        "Return for care if the area spreads, becomes more painful or swollen, fever develops, new boils appear, or symptoms have not improved after finishing the prescribed course.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour un furoncle ou un anthrax (furoncles regroupés) — une infection d'un ou plusieurs follicules pileux.",
+      diagnosisInstructions:
+        "Appliquez des compresses chaudes plusieurs fois par jour selon les consignes pour favoriser le drainage. Gardez la zone propre et évitez de la presser ou de la percer. Lavez-vous bien les mains après avoir touché la zone pour éviter de propager l'infection.",
+      medicationTreatment: WOUND_MED_FR,
+      returnPrecautions:
+        "Reconsultez si la zone s'étend, devient plus douloureuse ou enflée, si de la fièvre apparaît, si de nouveaux furoncles apparaissent, ou si les symptômes ne se sont pas améliorés après la fin du traitement prescrit.",
+    }
+  );
+
+export const FELON_POST_PROCEDURE_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for a felon — an infection of the fingertip pad — and it was addressed during this visit.",
+      diagnosisInstructions:
+        "Keep the finger clean, dry, and elevated as directed. If packing was placed, follow the specific instructions given for when and how it should be removed or changed. Protect the fingertip from further trauma while it heals.",
+      medicationTreatment: WOUND_MED_EN,
+      returnPrecautions:
+        "Return immediately for spreading redness or swelling up the finger or into the hand, fever, increasing pain, numbness, or if the finger is not improving after finishing the prescribed course.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour un phlegmon pulpaire (felon) — une infection de la pulpe du bout du doigt — traité lors de cette visite.",
+      diagnosisInstructions:
+        "Gardez le doigt propre, sec et surélevé selon les consignes. Si un méchage a été mis en place, suivez les instructions précises données quant au moment et à la façon de le retirer ou de le changer. Protégez le bout du doigt de tout nouveau traumatisme pendant la guérison.",
+      medicationTreatment: WOUND_MED_FR,
+      returnPrecautions:
+        "Retournez immédiatement en cas de rougeur ou d'enflure qui s'étend le long du doigt ou vers la main, de fièvre, de douleur croissante, d'engourdissement, ou si le doigt ne s'améliore pas après la fin du traitement prescrit.",
+    }
+  );
+
+export const PARONYCHIA_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for paronychia — an infection of the skin fold beside the fingernail or toenail.",
+      diagnosisInstructions:
+        "Soak the affected finger or toe in warm water several times a day as directed. Keep the area clean and dry between soaks. Avoid biting nails or picking at the cuticle while it heals.",
+      medicationTreatment: WOUND_MED_EN,
+      returnPrecautions:
+        "Return for care if redness or swelling spreads, fever develops, pus reaccumulates after drainage, or symptoms have not improved after finishing the prescribed course.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour une paronychie — une infection du repli cutané à côté de l'ongle du doigt ou de l'orteil.",
+      diagnosisInstructions:
+        "Faites tremper le doigt ou l'orteil atteint dans de l'eau tiède plusieurs fois par jour selon les consignes. Gardez la zone propre et sèche entre les trempages. Évitez de mordre vos ongles ou de manipuler la cuticule pendant la guérison.",
+      medicationTreatment: WOUND_MED_FR,
+      returnPrecautions:
+        "Reconsultez si la rougeur ou l'enflure s'étend, si de la fièvre apparaît, si du pus se réaccumule après le drainage, ou si les symptômes ne se sont pas améliorés après la fin du traitement prescrit.",
+    }
+  );
+
+export const PILONIDAL_ABSCESS_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for a pilonidal abscess — an infected cyst near the top of the buttocks crease.",
+      diagnosisInstructions:
+        "Keep the area clean. If packing was placed, follow the specific instructions given for when and how it should be removed or changed. Sitz baths (warm shallow baths) may be recommended as directed. Avoid prolonged sitting on hard surfaces while it heals.",
+      medicationTreatment: WOUND_MED_EN,
+      returnPrecautions:
+        "Return for care if redness spreads, fever develops, pain or swelling increases, new drainage appears after the wound seemed to be healing, or symptoms have not improved after finishing the prescribed course.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour un abcès pilonidal — un kyste infecté près du haut du sillon interfessier.",
+      diagnosisInstructions:
+        "Gardez la zone propre. Si un méchage a été mis en place, suivez les instructions précises données quant au moment et à la façon de le retirer ou de le changer. Des bains de siège (bains chauds peu profonds) peuvent être recommandés selon les consignes. Évitez de rester assis longtemps sur une surface dure pendant la guérison.",
+      medicationTreatment: WOUND_MED_FR,
+      returnPrecautions:
+        "Reconsultez si la rougeur s'étend, si de la fièvre apparaît, si la douleur ou le gonflement augmentent, si un nouvel écoulement apparaît après une amélioration apparente, ou si les symptômes ne se sont pas améliorés après la fin du traitement prescrit.",
+    }
+  );
+
+export const HIDRADENITIS_FLARE_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for a flare of hidradenitis suppurativa — a chronic condition causing painful, recurring lumps in skin folds (such as the armpits or groin).",
+      diagnosisInstructions:
+        "Keep the affected area clean and dry. Apply warm compresses as directed for comfort and drainage. Wear loose, breathable clothing over the area. This is a chronic condition — outpatient dermatology follow-up is recommended for long-term management, not only for this flare.",
+      medicationTreatment: WOUND_MED_EN,
+      returnPrecautions:
+        "Return for care if redness or swelling spreads, fever develops, pain increases significantly, or symptoms have not improved after finishing the prescribed course.",
+      returnWorkSchool: "Follow up with dermatology for ongoing management of this chronic condition, in addition to any return precautions above.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour une poussée d'hidrosadénite suppurée — une affection chronique causant des masses douloureuses et récurrentes dans les plis cutanés (comme les aisselles ou l'aine).",
+      diagnosisInstructions:
+        "Gardez la zone touchée propre et sèche. Appliquez des compresses chaudes selon les consignes pour le confort et le drainage. Portez des vêtements amples et respirants sur la zone. Il s'agit d'une affection chronique — un suivi ambulatoire en dermatologie est recommandé pour la prise en charge à long terme, pas seulement pour cette poussée.",
+      medicationTreatment: WOUND_MED_FR,
+      returnPrecautions:
+        "Reconsultez si la rougeur ou l'enflure s'étend, si de la fièvre apparaît, si la douleur augmente considérablement, ou si les symptômes ne se sont pas améliorés après la fin du traitement prescrit.",
+      returnWorkSchool: "Faites un suivi en dermatologie pour la prise en charge continue de cette affection chronique, en plus des consignes de retour ci-dessus.",
+    }
+  );
+
+export const POSTOPERATIVE_WOUND_INFECTION_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated for an infection of a surgical wound (surgical site infection). This documentation is used only after the surgical team or treating clinician has already directed outpatient wound care and antibiotic aftercare — not as an autonomous decision about the surgery itself.",
+      diagnosisInstructions:
+        "Keep the incision clean and covered with a clean dressing as directed, and change dressings as instructed. Do not remove any sutures, staples, or drains yourself. Keep the scheduled wound-check appointment with the surgical team.",
+      medicationTreatment: WOUND_MED_EN,
+      returnPrecautions:
+        "Return immediately for spreading redness, increasing swelling or pain, wound opening (dehiscence), foul-smelling or increasing drainage, fever, or if symptoms have not improved after finishing the prescribed course.",
+      returnWorkSchool: "Follow up with the surgical team exactly as directed — this is a surgical-site follow-up, not routine primary care.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge pour une infection d'une plaie chirurgicale (infection du site opératoire). Ce document est utilisé uniquement après que l'équipe chirurgicale ou le clinicien traitant a déjà déterminé les soins de plaie et l'antibiothérapie ambulatoires — non comme une décision autonome concernant la chirurgie elle-même.",
+      diagnosisInstructions:
+        "Gardez l'incision propre et couverte d'un pansement propre selon les consignes, et changez les pansements comme indiqué. Ne retirez vous-même aucun point, agrafe ou drain. Respectez le rendez-vous prévu de contrôle de la plaie avec l'équipe chirurgicale.",
+      medicationTreatment: WOUND_MED_FR,
+      returnPrecautions:
+        "Retournez immédiatement en cas de rougeur qui s'étend, d'augmentation de l'enflure ou de la douleur, d'ouverture de la plaie (déhiscence), d'écoulement malodorant ou croissant, de fièvre, ou si les symptômes ne se sont pas améliorés après la fin du traitement prescrit.",
+      returnWorkSchool: "Faites le suivi avec l'équipe chirurgicale exactement selon les directives — il s'agit d'un suivi du site opératoire, non d'un suivi habituel de soins primaires.",
+    }
+  );
+
+export const WOUND_DEHISCENCE_POST_ACUTE_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated for a wound that has partially reopened (dehiscence) following a procedure. This documentation is used only after the surgical team has already directed outpatient wound-care aftercare for a wound without evisceration or exposed deep structures, not as an autonomous surgical decision.",
+      diagnosisInstructions:
+        "Cover the wound with a clean, moist dressing exactly as instructed and change it as directed. Do not pack or close the wound yourself. Avoid heavy lifting or straining as directed. Keep the scheduled wound-check appointment with the surgical team.",
+      medicationTreatment: WOUND_MED_EN,
+      returnPrecautions:
+        "Return immediately for the wound opening further, any tissue, bowel, or organ becoming visible in the wound, spreading redness, fever, foul-smelling drainage, or severe pain.",
+      returnWorkSchool: "Follow up with the surgical team exactly as directed — this is a close surgical follow-up, not routine primary care.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge pour une plaie partiellement rouverte (déhiscence) après une intervention. Ce document est utilisé uniquement après que l'équipe chirurgicale a déjà déterminé les soins de plaie ambulatoires pour une plaie sans éviscération ni structures profondes exposées — non comme une décision chirurgicale autonome.",
+      diagnosisInstructions:
+        "Couvrez la plaie avec un pansement propre et humide exactement comme indiqué, et changez-le selon les directives. Ne tentez pas de mécher ou de refermer la plaie vous-même. Évitez de soulever des charges lourdes ou de forcer selon les consignes. Respectez le rendez-vous prévu de contrôle de la plaie avec l'équipe chirurgicale.",
+      medicationTreatment: WOUND_MED_FR,
+      returnPrecautions:
+        "Retournez immédiatement si la plaie s'ouvre davantage, si un tissu, l'intestin ou un organe devient visible dans la plaie, en cas de rougeur qui s'étend, de fièvre, d'écoulement malodorant, ou de douleur intense.",
+      returnWorkSchool: "Faites le suivi avec l'équipe chirurgicale exactement selon les directives — il s'agit d'un suivi chirurgical rapproché, non d'un suivi habituel de soins primaires.",
+    }
+  );
+
+export const DIABETIC_FOOT_INFECTION_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated for a diabetic foot infection. This documentation is used only for a non-limb-threatening infection where the treating clinician has already directed outpatient wound care and antibiotic aftercare.",
+      diagnosisInstructions:
+        "Keep the foot clean, dry, and off the ground as much as possible (offloading) as directed. Check your blood sugar as usual and keep it as controlled as possible — this helps healing. Inspect the wound daily for changes.",
+      medicationTreatment: WOUND_MED_EN,
+      returnPrecautions:
+        "Return immediately for spreading redness, new black or dead-looking tissue, foul odor, increasing pain or swelling, fever, or if the wound is not improving after finishing the prescribed course.",
+      returnWorkSchool: "Follow up with podiatry or your diabetes care team as directed — this wound needs close monitoring in addition to any return precautions above.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge pour une infection du pied diabétique. Ce document est utilisé uniquement pour une infection ne menaçant pas le membre, pour laquelle le clinicien traitant a déjà déterminé les soins de plaie et l'antibiothérapie ambulatoires.",
+      diagnosisInstructions:
+        "Gardez le pied propre, sec et le moins possible en appui (décharge) selon les consignes. Vérifiez votre glycémie comme d'habitude et gardez-la aussi contrôlée que possible — cela favorise la guérison. Inspectez la plaie chaque jour pour détecter tout changement.",
+      medicationTreatment: WOUND_MED_FR,
+      returnPrecautions:
+        "Retournez immédiatement en cas de rougeur qui s'étend, de nouveau tissu noir ou d'apparence nécrosée, d'odeur nauséabonde, d'augmentation de la douleur ou de l'enflure, de fièvre, ou si la plaie ne s'améliore pas après la fin du traitement prescrit.",
+      returnWorkSchool: "Faites un suivi en podologie ou avec votre équipe de soins du diabète selon les directives — cette plaie nécessite une surveillance rapprochée, en plus des consignes de retour ci-dessus.",
+    }
+  );
+
+export const INFECTED_ULCER_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for an infected chronic wound or ulcer.",
+      diagnosisInstructions:
+        "Keep the wound clean and covered with a clean dressing, changed as directed. Keep pressure off the area if you were instructed to do so. Inspect the wound daily for changes.",
+      medicationTreatment: WOUND_MED_EN,
+      returnPrecautions:
+        "Return for care if redness spreads, fever develops, pain or swelling increases, drainage worsens or has a foul odor, new black or dead-looking tissue appears, or symptoms have not improved after finishing the prescribed course.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour une plaie chronique ou un ulcère infecté.",
+      diagnosisInstructions:
+        "Gardez la plaie propre et couverte d'un pansement propre, changé selon les consignes. Évitez toute pression sur la zone si cela vous a été demandé. Inspectez la plaie chaque jour pour détecter tout changement.",
+      medicationTreatment: WOUND_MED_FR,
+      returnPrecautions:
+        "Reconsultez si la rougeur s'étend, si de la fièvre apparaît, si la douleur ou le gonflement augmentent, si l'écoulement s'aggrave ou devient nauséabond, si un nouveau tissu noir ou d'apparence nécrosée apparaît, ou si les symptômes ne se sont pas améliorés après la fin du traitement prescrit.",
+    }
+  );
+
+export const SEPTIC_BURSITIS_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for septic (infected) bursitis.",
+      diagnosisInstructions:
+        "Rest and elevate the affected joint as directed. Apply ice as directed for swelling and pain. Avoid pressure on the area (for example, avoid leaning on an infected elbow).",
+      medicationTreatment: WOUND_MED_EN,
+      returnPrecautions:
+        "Return immediately for spreading redness, fever, increasing joint pain or swelling, inability to move the joint, or if symptoms have not improved after finishing the prescribed course.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour une bursite septique (infectée).",
+      diagnosisInstructions:
+        "Reposez et surélevez l'articulation touchée selon les consignes. Appliquez de la glace selon les consignes pour l'enflure et la douleur. Évitez toute pression sur la zone (par exemple, évitez de vous appuyer sur un coude infecté).",
+      medicationTreatment: WOUND_MED_FR,
+      returnPrecautions:
+        "Retournez immédiatement en cas de rougeur qui s'étend, de fièvre, d'augmentation de la douleur ou de l'enflure articulaire, d'incapacité à bouger l'articulation, ou si les symptômes ne se sont pas améliorés après la fin du traitement prescrit.",
+    }
+  );
+
+export const DEEP_HAND_INFECTION_POST_ACUTE_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated for a deep space hand infection. This documentation is used only after hand surgery has already directed outpatient aftercare following surgical/urgent management — not as an autonomous ED discharge decision.",
+      diagnosisInstructions:
+        "Keep the hand elevated above heart level as much as possible as directed. Keep every scheduled hand surgery follow-up appointment. Move fingers gently as directed if instructed to prevent stiffness, but do not force movement that causes pain.",
+      medicationTreatment: WOUND_MED_EN,
+      returnPrecautions:
+        "Return immediately for spreading redness or swelling, increasing pain, new numbness or weakness in the hand or fingers, fever, or any new inability to move the fingers.",
+      returnWorkSchool: "Follow up with hand surgery exactly as directed — this is a close specialist follow-up, not routine primary care.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge pour une infection profonde de l'espace de la main. Ce document est utilisé uniquement après qu'une prise en charge en chirurgie de la main a déjà déterminé les soins ambulatoires suivant une gestion chirurgicale/urgente — non comme une décision autonome de sortie des urgences.",
+      diagnosisInstructions:
+        "Gardez la main surélevée au-dessus du niveau du cœur autant que possible selon les consignes. Respectez chaque rendez-vous de suivi en chirurgie de la main prévu. Bougez doucement les doigts selon les consignes si cela vous a été demandé pour prévenir la raideur, sans forcer un mouvement douloureux.",
+      medicationTreatment: WOUND_MED_FR,
+      returnPrecautions:
+        "Retournez immédiatement en cas de rougeur ou d'enflure qui s'étend, d'augmentation de la douleur, de nouvel engourdissement ou faiblesse de la main ou des doigts, de fièvre, ou de toute nouvelle incapacité à bouger les doigts.",
+      returnWorkSchool: "Faites le suivi en chirurgie de la main exactement selon les directives — il s'agit d'un suivi spécialisé rapproché, non d'un suivi habituel de soins primaires.",
+    }
+  );
+
+export const FLEXOR_TENOSYNOVITIS_POST_ACUTE_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated for infectious flexor tenosynovitis (an infection of the tendon sheath of the finger). This documentation is used only after hand surgery has already directed outpatient aftercare following surgical/urgent management — not as an autonomous ED discharge decision.",
+      diagnosisInstructions:
+        "Keep the hand elevated above heart level as much as possible as directed. Keep every scheduled hand surgery follow-up appointment. Move the finger gently only as directed.",
+      medicationTreatment: WOUND_MED_EN,
+      returnPrecautions:
+        "Return immediately for spreading redness or swelling, increasing pain, the finger becoming more flexed or harder to straighten, fever, or new numbness in the hand or fingers.",
+      returnWorkSchool: "Follow up with hand surgery exactly as directed — this is a close specialist follow-up, not routine primary care.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge pour une ténosynovite infectieuse des fléchisseurs (une infection de la gaine tendineuse du doigt). Ce document est utilisé uniquement après qu'une prise en charge en chirurgie de la main a déjà déterminé les soins ambulatoires suivant une gestion chirurgicale/urgente — non comme une décision autonome de sortie des urgences.",
+      diagnosisInstructions:
+        "Gardez la main surélevée au-dessus du niveau du cœur autant que possible selon les consignes. Respectez chaque rendez-vous de suivi en chirurgie de la main prévu. Bougez doucement le doigt uniquement selon les consignes.",
+      medicationTreatment: WOUND_MED_FR,
+      returnPrecautions:
+        "Retournez immédiatement en cas de rougeur ou d'enflure qui s'étend, d'augmentation de la douleur, si le doigt devient plus fléchi ou plus difficile à redresser, de fièvre, ou de nouvel engourdissement de la main ou des doigts.",
+      returnWorkSchool: "Faites le suivi en chirurgie de la main exactement selon les directives — il s'agit d'un suivi spécialisé rapproché, non d'un suivi habituel de soins primaires.",
+    }
+  );
+
+export const NECROTIZING_SOFT_TISSUE_INFECTION_POST_ACUTE_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated for a necrotizing soft tissue infection (necrotizing fasciitis) — a life-threatening infection distinct from routine cellulitis. This documentation is used only after surgery/infectious disease has already directed outpatient aftercare following surgical debridement — not as an autonomous ED discharge decision.",
+      diagnosisInstructions:
+        "Complete the full course of the specialist-directed antibiotic treatment exactly as prescribed. Keep every scheduled surgery and infectious disease follow-up appointment — this infection is monitored very closely for wound healing and recurrence.",
+      medicationTreatment: WOUND_MED_EN,
+      returnPrecautions:
+        "Return immediately for fever, spreading redness or discoloration, increasing pain out of proportion to how the wound looks, new blistering or skin breakdown, confusion, or feeling generally unwell.",
+      returnWorkSchool: "Follow up with surgery/infectious disease exactly as directed — this is a close specialist follow-up, not routine primary care.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge pour une infection nécrosante des tissus mous (fasciite nécrosante) — une infection potentiellement mortelle distincte d'une cellulite habituelle. Ce document est utilisé uniquement après qu'une prise en charge en chirurgie/maladies infectieuses a déjà déterminé les soins ambulatoires suivant un débridement chirurgical — non comme une décision autonome de sortie des urgences.",
+      diagnosisInstructions:
+        "Terminez la cure complète du traitement antibiotique dirigé par le spécialiste exactement comme prescrit. Respectez chaque rendez-vous de suivi en chirurgie et en maladies infectieuses prévu — cette infection est surveillée très étroitement pour la guérison de la plaie et la récidive.",
+      medicationTreatment: WOUND_MED_FR,
+      returnPrecautions:
+        "Retournez immédiatement en cas de fièvre, de rougeur ou de changement de couleur qui s'étend, de douleur croissante disproportionnée par rapport à l'apparence de la plaie, de nouvelles cloques ou atteinte de la peau, de confusion, ou de malaise général.",
+      returnWorkSchool: "Faites le suivi en chirurgie/maladies infectieuses exactement selon les directives — il s'agit d'un suivi spécialisé rapproché, non d'un suivi habituel de soins primaires.",
+    }
+  );
+
+export const PYOMYOSITIS_POST_ACUTE_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated for pyomyositis (an infection within the muscle). This documentation is used only after surgery/infectious disease has already directed outpatient aftercare following surgical/urgent management — not as an autonomous ED discharge decision.",
+      diagnosisInstructions:
+        "Complete the full course of the specialist-directed antibiotic treatment exactly as prescribed. Rest the affected limb as directed. Keep every scheduled surgery/infectious disease follow-up appointment.",
+      medicationTreatment: WOUND_MED_EN,
+      returnPrecautions:
+        "Return immediately for fever, spreading redness or swelling, increasing pain, new drainage, or feeling generally unwell.",
+      returnWorkSchool: "Follow up with surgery/infectious disease exactly as directed — this is a close specialist follow-up, not routine primary care.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge pour une pyomyosite (une infection à l'intérieur du muscle). Ce document est utilisé uniquement après qu'une prise en charge en chirurgie/maladies infectieuses a déjà déterminé les soins ambulatoires suivant une gestion chirurgicale/urgente — non comme une décision autonome de sortie des urgences.",
+      diagnosisInstructions:
+        "Terminez la cure complète du traitement antibiotique dirigé par le spécialiste exactement comme prescrit. Reposez le membre atteint selon les consignes. Respectez chaque rendez-vous de suivi en chirurgie/maladies infectieuses prévu.",
+      medicationTreatment: WOUND_MED_FR,
+      returnPrecautions:
+        "Retournez immédiatement en cas de fièvre, de rougeur ou d'enflure qui s'étend, d'augmentation de la douleur, de nouvel écoulement, ou de malaise général.",
+      returnWorkSchool: "Faites le suivi en chirurgie/maladies infectieuses exactement selon les directives — il s'agit d'un suivi spécialisé rapproché, non d'un suivi habituel de soins primaires.",
+    }
+  );
+
+export const WATER_EXPOSED_WOUND_INFECTION_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for a wound infection following exposure to fresh water, salt water, or soil/farm contamination.",
+      diagnosisInstructions:
+        "Keep the wound clean and covered with a clean, dry dressing, changed as directed. Avoid re-exposing the wound to water (pools, lakes, oceans, hot tubs) or soil until it is fully healed and your clinician says it is safe.",
+      medicationTreatment: WOUND_MED_EN,
+      returnPrecautions:
+        "Return immediately for spreading redness, increasing pain or swelling, fever, foul-smelling drainage, or if symptoms have not improved after finishing the prescribed course — these water- and soil-associated infections can involve organisms not covered by routine antibiotics.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour une infection de plaie après une exposition à de l'eau douce, à de l'eau salée, ou à une contamination par le sol/le milieu agricole.",
+      diagnosisInstructions:
+        "Gardez la plaie propre et couverte d'un pansement propre et sec, changé selon les consignes. Évitez de réexposer la plaie à l'eau (piscine, lac, océan, spa) ou au sol jusqu'à guérison complète et l'accord de votre clinicien.",
+      medicationTreatment: WOUND_MED_FR,
+      returnPrecautions:
+        "Retournez immédiatement en cas de rougeur qui s'étend, d'augmentation de la douleur ou de l'enflure, de fièvre, d'écoulement nauséabond, ou si les symptômes ne se sont pas améliorés après la fin du traitement prescrit — ces infections associées à l'eau ou au sol peuvent impliquer des organismes non couverts par les antibiotiques habituels.",
+    }
+  );
+
+export const FOREIGN_BODY_ASSOCIATED_INFECTION_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for a wound infection associated with a foreign body (such as a splinter, thorn, or metal fragment).",
+      diagnosisInstructions:
+        "Keep the wound clean and covered with a clean dressing, changed as directed. If any foreign material remains and was not removed, follow the specific instructions given about monitoring or planned removal.",
+      medicationTreatment: WOUND_MED_EN,
+      returnPrecautions:
+        "Return immediately for spreading redness, increasing pain or swelling, fever, new drainage, a foreign body that becomes more visible or painful, or if symptoms have not improved after finishing the prescribed course.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour une infection de plaie associée à un corps étranger (comme une écharde, une épine ou un fragment de métal).",
+      diagnosisInstructions:
+        "Gardez la plaie propre et couverte d'un pansement propre, changé selon les consignes. Si un corps étranger reste en place et n'a pas été retiré, suivez les instructions précises données concernant la surveillance ou un retrait prévu.",
+      medicationTreatment: WOUND_MED_FR,
+      returnPrecautions:
+        "Retournez immédiatement en cas de rougeur qui s'étend, d'augmentation de la douleur ou de l'enflure, de fièvre, de nouvel écoulement, si le corps étranger devient plus visible ou douloureux, ou si les symptômes ne se sont pas améliorés après la fin du traitement prescrit.",
+    }
+  );

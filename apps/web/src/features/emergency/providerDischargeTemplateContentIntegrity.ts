@@ -1163,6 +1163,140 @@ export const PROVIDER_DISCHARGE_TEMPLATE_CONTENT_INTEGRITY: Record<
     mustIncludeAny: { en: ["throat foreign body"], fr: ["corps étranger dans la gorge"] },
     forbiddenCrossTemplateMarkers: { en: [], fr: [] },
   },
+  // Phase 13 — Soft tissue / wound infection
+  erysipelas_v1: {
+    mustIncludeAny: { en: ["erysipelas"], fr: ["érysipèle"] },
+    forbiddenCrossTemplateMarkers: {
+      en: ["necrotizing soft tissue infection"],
+      fr: ["infection nécrosante des tissus mous"],
+    },
+  },
+  post_abscess_drainage_v1: {
+    mustIncludeAny: { en: ["abscess that was drained", "incision and drainage"], fr: ["abcès cutané qui a été drainé", "incision et drainage"] },
+    forbiddenCrossTemplateMarkers: {
+      en: ["skin infection or cellulitis"],
+      fr: ["infection cutanée ou une cellulite"],
+    },
+  },
+  abscess_without_drainage_v1: {
+    mustIncludeAny: { en: ["abscess that was treated without incision"], fr: ["abcès cutané traité sans incision"] },
+    forbiddenCrossTemplateMarkers: {
+      en: ["skin infection or cellulitis"],
+      fr: ["infection cutanée ou une cellulite"],
+    },
+  },
+  furuncle_carbuncle_v1: {
+    mustIncludeAny: { en: ["furuncle", "carbuncle"], fr: ["furoncle", "anthrax"] },
+    forbiddenCrossTemplateMarkers: {
+      en: ["necrotizing soft tissue infection"],
+      fr: ["infection nécrosante des tissus mous"],
+    },
+  },
+  felon_post_procedure_v1: {
+    mustIncludeAny: { en: ["felon"], fr: ["phlegmon pulpaire", "felon"] },
+    forbiddenCrossTemplateMarkers: {
+      en: ["skin infection or cellulitis"],
+      fr: ["infection cutanée ou une cellulite"],
+    },
+  },
+  paronychia_v1: {
+    mustIncludeAny: { en: ["paronychia"], fr: ["paronychie"] },
+    forbiddenCrossTemplateMarkers: {
+      en: ["skin infection or cellulitis"],
+      fr: ["infection cutanée ou une cellulite"],
+    },
+  },
+  pilonidal_abscess_v1: {
+    mustIncludeAny: { en: ["pilonidal abscess"], fr: ["abcès pilonidal"] },
+    forbiddenCrossTemplateMarkers: {
+      en: ["skin infection or cellulitis"],
+      fr: ["infection cutanée ou une cellulite"],
+    },
+  },
+  hidradenitis_flare_v1: {
+    mustIncludeAny: { en: ["hidradenitis"], fr: ["hidrosadénite"] },
+    forbiddenCrossTemplateMarkers: {
+      en: ["skin infection or cellulitis"],
+      fr: ["infection cutanée ou une cellulite"],
+    },
+  },
+  postoperative_wound_infection_v1: {
+    mustIncludeAny: { en: ["surgical site infection", "surgical wound"], fr: ["infection du site opératoire", "plaie chirurgicale"] },
+    forbiddenCrossTemplateMarkers: {
+      en: ["skin infection or cellulitis"],
+      fr: ["infection cutanée ou une cellulite"],
+    },
+  },
+  wound_dehiscence_post_acute_v1: {
+    mustIncludeAny: { en: ["dehiscence"], fr: ["déhiscence"] },
+    forbiddenCrossTemplateMarkers: {
+      en: ["skin infection or cellulitis"],
+      fr: ["infection cutanée ou une cellulite"],
+    },
+  },
+  diabetic_foot_infection_v1: {
+    mustIncludeAny: { en: ["diabetic foot infection"], fr: ["infection du pied diabétique"] },
+    forbiddenCrossTemplateMarkers: {
+      en: ["skin infection or cellulitis"],
+      fr: ["infection cutanée ou une cellulite"],
+    },
+  },
+  infected_ulcer_v1: {
+    mustIncludeAny: { en: ["infected chronic wound", "ulcer"], fr: ["ulcère infecté", "plaie chronique"] },
+    forbiddenCrossTemplateMarkers: {
+      en: ["skin infection or cellulitis"],
+      fr: ["infection cutanée ou une cellulite"],
+    },
+  },
+  septic_bursitis_v1: {
+    mustIncludeAny: { en: ["septic", "bursitis"], fr: ["bursite septique"] },
+    forbiddenCrossTemplateMarkers: {
+      en: ["skin infection or cellulitis"],
+      fr: ["infection cutanée ou une cellulite"],
+    },
+  },
+  deep_hand_infection_post_acute_v1: {
+    mustIncludeAny: { en: ["deep space hand infection"], fr: ["infection profonde"] },
+    forbiddenCrossTemplateMarkers: {
+      en: ["skin infection or cellulitis"],
+      fr: ["infection cutanée ou une cellulite"],
+    },
+  },
+  flexor_tenosynovitis_post_acute_v1: {
+    mustIncludeAny: { en: ["flexor tenosynovitis"], fr: ["ténosynovite infectieuse des fléchisseurs"] },
+    forbiddenCrossTemplateMarkers: {
+      en: ["skin infection or cellulitis"],
+      fr: ["infection cutanée ou une cellulite"],
+    },
+  },
+  necrotizing_soft_tissue_infection_post_acute_v1: {
+    mustIncludeAny: { en: ["necrotizing soft tissue infection", "necrotizing fasciitis"], fr: ["infection nécrosante", "fasciite nécrosante"] },
+    forbiddenCrossTemplateMarkers: {
+      en: ["skin infection or cellulitis"],
+      fr: ["infection cutanée ou une cellulite"],
+    },
+  },
+  pyomyositis_post_acute_v1: {
+    mustIncludeAny: { en: ["pyomyositis"], fr: ["pyomyosite"] },
+    forbiddenCrossTemplateMarkers: {
+      en: ["skin infection or cellulitis"],
+      fr: ["infection cutanée ou une cellulite"],
+    },
+  },
+  water_exposed_wound_infection_v1: {
+    mustIncludeAny: { en: ["fresh water", "salt water"], fr: ["eau douce", "eau salée"] },
+    forbiddenCrossTemplateMarkers: {
+      en: ["skin infection or cellulitis"],
+      fr: ["infection cutanée ou une cellulite"],
+    },
+  },
+  foreign_body_associated_infection_v1: {
+    mustIncludeAny: { en: ["foreign body"], fr: ["corps étranger"] },
+    forbiddenCrossTemplateMarkers: {
+      en: ["skin infection or cellulitis"],
+      fr: ["infection cutanée ou une cellulite"],
+    },
+  },
 };
 
 function suggestedTextBlob(body: {

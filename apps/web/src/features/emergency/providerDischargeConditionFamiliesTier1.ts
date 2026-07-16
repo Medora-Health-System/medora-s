@@ -213,14 +213,15 @@ export const TIER1_CLINICAL_CONDITION_FAMILIES: readonly ClinicalConditionFamily
   {
     id: "cutaneous_abscess",
     label: "Abscess",
-    templateId: "cellulitis_v1",
+    templateId: "abscess_without_drainage_v1",
+    additionalTemplateIds: ["post_abscess_drainage_v1"],
     clinicalDomain: "Skin/Infection",
     icdPrefixes: ["L02"],
     keywords: ["abscess", "cutaneous abscess", "skin abscess"],
     specialtyCategory: "primary_care",
     riskCategory: "low_to_moderate",
     clinicalRationale:
-      "Cutaneous abscess uses skin infection template conservatively; distinct from cellulitis L03 routing.",
+      "Phase 13: L02 cutaneous abscess routes to purulent abscess discharge text (not nonpurulent cellulitis_v1).",
     reviewStatus: "reviewed",
     routingStatus: "READY",
     sourceReferenceLabels: ["MedlinePlus — Abscess"],
