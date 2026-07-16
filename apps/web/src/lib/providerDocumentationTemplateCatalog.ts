@@ -146,6 +146,9 @@ import {
   SOB_COMPLAINT_INTEL,
   STROKE_SYMPTOMS_COMPLAINT_INTEL,
   WEAKNESS_COMPLAINT_INTEL,
+  ENT_EAR_HEARING_VERTIGO_ADULT_V1_INTEL,
+  ENT_NOSE_EPISTAXIS_ADULT_V1_INTEL,
+  ENT_THROAT_NECK_AIRWAY_ADULT_V1_INTEL,
   type ProviderDocumentationComplaintIntelligence,
 } from "./providerDocumentationComplaintIntelligence";
 import type { ProviderDocumentationTemplatePickerSubgroupKey } from "./providerDocumentationModel";
@@ -2145,6 +2148,24 @@ export const PROVIDER_DOCUMENTATION_TEMPLATES: ProviderDocumentationTemplateDefi
     "providerDocumentationWorkspace.templateBackPainNeuroRedFlagsComplaintV1",
     "providerDocumentationWorkspace.templateBackPainNeuroRedFlagsComplaintV1Help",
     BACK_PAIN_NEURO_RED_FLAGS_COMPLAINT_V1_INTEL
+  ),
+  infectiousEntComplaintV1Template(
+    "ent_ear_hearing_vertigo_adult_v1",
+    "providerDocumentationWorkspace.templateEntEarHearingVertigoAdultV1",
+    "providerDocumentationWorkspace.templateEntEarHearingVertigoAdultV1Help",
+    ENT_EAR_HEARING_VERTIGO_ADULT_V1_INTEL
+  ),
+  infectiousEntComplaintV1Template(
+    "ent_nose_epistaxis_adult_v1",
+    "providerDocumentationWorkspace.templateEntNoseEpistaxisAdultV1",
+    "providerDocumentationWorkspace.templateEntNoseEpistaxisAdultV1Help",
+    ENT_NOSE_EPISTAXIS_ADULT_V1_INTEL
+  ),
+  infectiousEntComplaintV1Template(
+    "ent_throat_neck_airway_adult_v1",
+    "providerDocumentationWorkspace.templateEntThroatNeckAirwayAdultV1",
+    "providerDocumentationWorkspace.templateEntThroatNeckAirwayAdultV1Help",
+    ENT_THROAT_NECK_AIRWAY_ADULT_V1_INTEL
   ),
   {
     id: "observation_reassessment",

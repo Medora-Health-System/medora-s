@@ -175,7 +175,10 @@ export type ProviderDocumentationTemplateId =
   | "migraine_headache_complaint_v1"
   | "concussion_followup_complaint_v1"
   | "gait_instability_falls_neuro_complaint_v1"
-  | "back_pain_neuro_red_flags_complaint_v1";
+  | "back_pain_neuro_red_flags_complaint_v1"
+  | "ent_ear_hearing_vertigo_adult_v1"
+  | "ent_nose_epistaxis_adult_v1"
+  | "ent_throat_neck_airway_adult_v1";
 
 export type ProviderDocumentationTemplatePickerSubgroupKey =
   | "gi_abdominal"
