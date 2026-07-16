@@ -7,7 +7,7 @@
 | POST | `/encounters/:encounterId/diagnoses` | RN, PROVIDER, ADMIN | Create diagnosis for encounter |
 | POST | `/encounters/:encounterId/diagnoses/reorder` | RN, PROVIDER, ADMIN | Set encounter diagnosis order (`orderedIds`) |
 | GET | `/patients/:patientId/diagnoses` | RN, PROVIDER, ADMIN | List diagnoses for patient |
-| GET | `/diagnoses/icd10/search` | RN, PROVIDER, ADMIN, BILLING | ICD-10-CM catalog search (`q`, optional `limit`) |
+| GET | `/diagnoses/icd10/search` | RN, PROVIDER, ADMIN, BILLING | ICD-10-CM catalog search (`q`, optional `limit`) — one row per ICD code |
 | GET | `/diagnoses/icd10/by-code` | RN, PROVIDER, ADMIN, BILLING | Lookup one active catalog row (`code` query) |
 
 ### ICD-10 search pipeline
@@ -15,9 +15,10 @@
 1. **UI** — `Icd10DiagnosisEntryPanel` → `searchIcd10Catalog` (`chartApi.ts`). French UI may expand to English synonym queries (`diagnosisFrenchSearchAliases`); that is query expansion only, not a second catalog.
 2. **HTTP** — `GET /diagnoses/icd10/search?q=&limit=` → `DiagnosesController` → `Icd10CatalogService.search`.
 3. **Match** — `icd10-catalog-search.query.ts` builds OR predicates over `code` / `normalizedCode` / short / long / `searchText`, plus clinical synonym expansion (`icd10-clinical-query-expansion.ts`).
-4. **Catalog** — rows in `Icd10DiagnosisCode`. Uniqueness is `(codeSystem, releaseVersion, code)`, so the same ICD code can exist in `FY2026`, `UNSPECIFIED`, and `FY2026-MEDORA-DEV-SAMPLE` (the production duplicate source when search does not collapse by `code`).
-5. **Ranking** — code exact → prefix → short description → expansion → long/token; prefer official release over DEV-SAMPLE/UNSPECIFIED; prefer billable and initial-encounter (`A`) for trauma codes. Aliases feed ranking/match only.
-6. **JSON** — `{ items: [...], limit }` from the catalog select builder.
+4. **Catalog** — rows in `Icd10DiagnosisCode`. Uniqueness is `(codeSystem, releaseVersion, code)`, so the same ICD code can exist in `FY2026`, `UNSPECIFIED`, and `FY2026-MEDORA-DEV-SAMPLE`.
+5. **Release collapse** — `DISTINCT ON ("code")` keeps one catalog row per ICD code (official FY release preferred over `UNSPECIFIED` / DEV-SAMPLE). Aliases and synonym matches only widen predicates; they do not add extra visible rows.
+6. **Ranking** — code exact → prefix → short description → expansion → long/token; prefer billable and initial-encounter (`A`) for trauma codes.
+7. **JSON** — `{ items: [...], limit }` with duplicate ICD codes = 0.
 | PATCH | `/diagnoses/:id` | RN, PROVIDER, ADMIN | Update diagnosis |
 | POST | `/diagnoses/:id/resolve` | RN, PROVIDER, ADMIN | Set status RESOLVED and resolvedDate |
 | GET | `/patients/:id/chart-summary` | RN, PROVIDER, ADMIN | Patient chart summary (demographics + recent data) |

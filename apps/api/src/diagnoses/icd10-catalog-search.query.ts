@@ -159,9 +159,8 @@ export function buildIcd10CatalogSearchMatch(rawInput: string): Icd10CatalogSear
   };
 }
 
-/** Visible result ranking (match quality + clinical encounter preference). */
+/** Visible result ranking across distinct ICD codes (release already collapsed). */
 export function icd10MatchQualityOrderSql(match: Icd10CatalogSearchMatch): Prisma.Sql {
-  const releasePick = icd10ReleasePreferenceOrderSql();
   return Prisma.sql`
     CASE
       WHEN ${match.codeExactSql} THEN 1
@@ -174,7 +173,6 @@ export function icd10MatchQualityOrderSql(match: Icd10CatalogSearchMatch): Prism
       WHEN ${match.tokenRankSql} THEN 8
       ELSE 9
     END ASC,
-    ${releasePick},
     "isBillable" DESC,
     CASE
       WHEN RIGHT(REPLACE("code", '.', ''), 1) = 'A' THEN 0
@@ -192,10 +190,12 @@ export function icd10MatchQualityOrderSql(match: Icd10CatalogSearchMatch): Prism
 }
 
 /**
- * Flat catalog select (architecture extraction).
- * Prefer official releases in ORDER BY; does not yet collapse multi-release rows.
+ * One visible row per ICD code.
+ * Inner DISTINCT ON picks the preferred release (FY official > UNSPECIFIED > DEV-SAMPLE);
+ * outer ORDER BY applies match-quality ranking across distinct codes.
  */
 export function buildIcd10CatalogSearchSelectSql(match: Icd10CatalogSearchMatch, take: number): Prisma.Sql {
+  const releasePick = icd10ReleasePreferenceOrderSql();
   const qualityOrder = icd10MatchQualityOrderSql(match);
   return Prisma.sql`
     SELECT
@@ -209,10 +209,29 @@ export function buildIcd10CatalogSearchSelectSql(match: Icd10CatalogSearchMatch,
       "isBillable",
       "effectiveYear",
       "codeSetVersion"
-    FROM "Icd10DiagnosisCode"
-    WHERE "isActive" = TRUE
-      AND "isSelectable" = TRUE
-      AND (${match.matchSql})
+    FROM (
+      SELECT DISTINCT ON ("code")
+        "id",
+        "code",
+        "normalizedCode",
+        "shortDescription",
+        "longDescription",
+        "chapter",
+        "category",
+        "isBillable",
+        "effectiveYear",
+        "codeSetVersion"
+      FROM "Icd10DiagnosisCode"
+      WHERE "isActive" = TRUE
+        AND "isSelectable" = TRUE
+        AND (${match.matchSql})
+      ORDER BY
+        "code",
+        ${releasePick},
+        "isBillable" DESC,
+        COALESCE("releaseYear", 0) DESC,
+        "id" ASC
+    ) AS one_per_code
     ORDER BY
       ${qualityOrder}
     LIMIT ${take}

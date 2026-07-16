@@ -1,16 +1,18 @@
 /**
  * Diagnosis search certification against the imported active ICD catalog.
- * Mirrors clinical query expansion used by Icd10CatalogService.
+ * Uses the same match + one-row-per-code select as Icd10CatalogService.
  */
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { PrismaClient, Prisma } from "@prisma/client";
-import { resolveIcd10ClinicalQueryExpansion } from "../../src/diagnoses/icd10-clinical-query-expansion";
+import { PrismaClient } from "@prisma/client";
+import {
+  buildIcd10CatalogSearchMatch,
+  buildIcd10CatalogSearchSelectSql,
+  type Icd10CatalogSearchRow,
+} from "../../src/diagnoses/icd10-catalog-search.query";
 
-type SearchRow = {
-  code: string;
-  shortDescription: string;
-  releaseVersion: string | null;
+type SearchRow = Pick<Icd10CatalogSearchRow, "code" | "shortDescription"> & {
+  releaseVersion?: string | null;
 };
 
 const REQUIRED_QUERIES: Array<{
@@ -322,73 +324,10 @@ function encounterChar(code: string): string {
   return code.replace(/\./g, "").slice(-1).toUpperCase();
 }
 
-function joinSqlOr(conditions: Prisma.Sql[]) {
-  return conditions.reduce((acc, condition, index) => {
-    if (index === 0) return condition;
-    return Prisma.sql`${acc} OR ${condition}`;
-  }, Prisma.empty);
-}
-
 async function searchCatalog(prisma: PrismaClient, q: string, take = 25): Promise<SearchRow[]> {
-  const pattern = `%${q}%`;
-  const lower = `%${q.toLowerCase()}%`;
-  const expansion = resolveIcd10ClinicalQueryExpansion(q);
-  const or: Prisma.Sql[] = [
-    Prisma.sql`"shortDescription" ILIKE ${pattern}`,
-    Prisma.sql`"longDescription" ILIKE ${pattern}`,
-    Prisma.sql`"searchText" ILIKE ${lower}`,
-  ];
-  const shortExpansionRank: Prisma.Sql[] = [];
-  for (const phrase of expansion?.anyOf ?? []) {
-    const p = `%${phrase}%`;
-    const lp = `%${phrase.toLowerCase()}%`;
-    or.push(Prisma.sql`"shortDescription" ILIKE ${p}`);
-    or.push(Prisma.sql`"longDescription" ILIKE ${p}`);
-    or.push(Prisma.sql`"searchText" ILIKE ${lp}`);
-    shortExpansionRank.push(Prisma.sql`"shortDescription" ILIKE ${p}`);
-  }
-  if (expansion?.allOf?.length) {
-    const andParts = expansion.allOf.map((phrase) => {
-      const p = `%${phrase}%`;
-      const lp = `%${phrase.toLowerCase()}%`;
-      return Prisma.sql`(
-        "shortDescription" ILIKE ${p}
-        OR "longDescription" ILIKE ${p}
-        OR "searchText" ILIKE ${lp}
-      )`;
-    });
-    or.push(andParts.reduce((acc, part, index) => (index === 0 ? part : Prisma.sql`${acc} AND ${part}`)));
-    for (const phrase of expansion.allOf) {
-      shortExpansionRank.push(Prisma.sql`"shortDescription" ILIKE ${`%${phrase}%`}`);
-    }
-  }
-  const matchSql = joinSqlOr(or);
-  const expansionShortRankSql =
-    shortExpansionRank.length > 0 ? joinSqlOr(shortExpansionRank) : Prisma.sql`FALSE`;
-  return prisma.$queryRaw<SearchRow[]>`
-    SELECT "code", "shortDescription", "releaseVersion"
-    FROM "Icd10DiagnosisCode"
-    WHERE "isActive" = TRUE
-      AND "isSelectable" = TRUE
-      AND (${matchSql})
-    ORDER BY
-      CASE WHEN ${expansionShortRankSql} THEN 0 ELSE 1 END ASC,
-      CASE WHEN "releaseVersion" LIKE '%DEV-SAMPLE%' THEN 1 ELSE 0 END ASC,
-      "isBillable" DESC,
-      CASE
-        WHEN RIGHT(REPLACE("code", '.', ''), 1) = 'A' THEN 0
-        WHEN RIGHT(REPLACE("code", '.', ''), 1) = 'D' THEN 1
-        WHEN RIGHT(REPLACE("code", '.', ''), 1) = 'S' THEN 2
-        ELSE 0
-      END ASC,
-      CASE
-        WHEN "code" LIKE 'S%' OR "code" LIKE 'M66%' OR "code" LIKE 'M75%' THEN 0
-        ELSE 1
-      END ASC,
-      LENGTH("shortDescription") ASC,
-      "code" ASC
-    LIMIT ${take};
-  `;
+  const match = buildIcd10CatalogSearchMatch(q);
+  if (!match) return [];
+  return prisma.$queryRaw<SearchRow[]>(buildIcd10CatalogSearchSelectSql(match, take));
 }
 
 async function main() {
@@ -414,14 +353,18 @@ async function main() {
           );
         }
       }
-      const firstNonDev = rows.find((r) => !(r.releaseVersion ?? "").includes("DEV-SAMPLE")) ?? rows[0];
+      const first = rows[0]!;
       const firstSequelaIdx = rows.findIndex((r) => encounterChar(r.code) === "S");
       const firstInitialIdx = rows.findIndex((r) => encounterChar(r.code) === "A");
       if (firstSequelaIdx === 0 && firstInitialIdx > 0) {
-        failures.push(`"${req.q}" sequela dominates (first=${firstNonDev.code})`);
+        failures.push(`"${req.q}" sequela dominates (first=${first.code})`);
       }
-      if (encounterChar(firstNonDev.code) === "S" && rows.some((r) => encounterChar(r.code) === "A")) {
+      if (encounterChar(first.code) === "S" && rows.some((r) => encounterChar(r.code) === "A")) {
         failures.push(`"${req.q}" ranked sequela before available initial encounter`);
+      }
+      const codes = rows.map((r) => r.code);
+      if (new Set(codes).size !== codes.length) {
+        failures.push(`"${req.q}" returned duplicate ICD codes`);
       }
     }
 
