@@ -277,6 +277,26 @@ import {
   AURICULAR_HEMATOMA_FOLLOWUP_SUGGESTED_TEXT,
   SEPTAL_HEMATOMA_FOLLOWUP_SUGGESTED_TEXT,
   FACIAL_LACERATION_SUGGESTED_TEXT,
+  CORNEAL_ABRASION_V1_SUGGESTED_TEXT,
+  CORNEAL_FOREIGN_BODY_V1_SUGGESTED_TEXT,
+  POST_OCULAR_FOREIGN_BODY_REMOVAL_V1_SUGGESTED_TEXT,
+  PHOTOKERATITIS_V1_SUGGESTED_TEXT,
+  CORNEAL_ULCER_FOLLOWUP_V1_SUGGESTED_TEXT,
+  CHEMICAL_EYE_INJURY_V1_SUGGESTED_TEXT,
+  TRAUMATIC_IRITIS_V1_SUGGESTED_TEXT,
+  HYPHEMA_FOLLOWUP_V1_SUGGESTED_TEXT,
+  OPEN_GLOBE_POST_ACUTE_V1_SUGGESTED_TEXT,
+  ACUTE_GLAUCOMA_FOLLOWUP_V1_SUGGESTED_TEXT,
+  RETINAL_DETACHMENT_FOLLOWUP_V1_SUGGESTED_TEXT,
+  VITREOUS_HEMORRHAGE_V1_SUGGESTED_TEXT,
+  ORBITAL_CELLULITIS_FOLLOWUP_V1_SUGGESTED_TEXT,
+  PRESEPTAL_CELLULITIS_V1_SUGGESTED_TEXT,
+  UVEITIS_IRITIS_V1_SUGGESTED_TEXT,
+  SCLERITIS_V1_SUGGESTED_TEXT,
+  EYELID_LACERATION_V1_SUGGESTED_TEXT,
+  CANALICULAR_INJURY_FOLLOWUP_V1_SUGGESTED_TEXT,
+  ENDOPHTHALMITIS_POST_ACUTE_V1_SUGGESTED_TEXT,
+  CRAO_CRVO_FOLLOWUP_V1_SUGGESTED_TEXT,
 } from "./providerDischargeTemplateSuggestedTextCatalog";
 import {
   newDefaultFollowUpRow,
@@ -598,6 +618,13 @@ const BEHAVIORAL_HEALTH_TEMPLATE_GOVERNANCE = {
 const TRAUMA_MSK_TEMPLATE_GOVERNANCE = {
   ...BATCH_GOVERNANCE_DRAFT,
   specialtyCategory: "orthopedics",
+  riskCategory: "moderate",
+};
+
+/** Phase 11 — eye emergencies discharge governance (documentation advisory only). */
+const EYE_EMERGENCY_TEMPLATE_GOVERNANCE = {
+  ...BATCH_GOVERNANCE_DRAFT,
+  specialtyCategory: "ophthalmology",
   riskCategory: "moderate",
 };
 
@@ -6140,6 +6167,138 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
       suggestedText,
     });
   }),
+  {
+    id: "corneal_abrasion_v1", version: "1.0.0", title: "Corneal abrasion discharge documentation", ...EYE_EMERGENCY_TEMPLATE_GOVERNANCE,
+    // S05.0 only — H16.1 is superficial keratitis (a different clinical entity, and H16.13 photokeratitis is
+    // already owned by photokeratitis_v1); use keywords to also catch abrasion documented without an S05.0 code.
+    diagnosisMappings: { icdFamily: ["S05.0"], keyword: ["corneal abrasion", "abrasion cornéenne", "scratched eye"] },
+    sourceReferences: [{ label: "MedlinePlus — Eye injuries", url: "https://medlineplus.gov/eyeinjuries.html", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("eye-abrasion-oph", "OPHTHALMOLOGY", "within 24–48 hours or as directed")], suggestedText: CORNEAL_ABRASION_V1_SUGGESTED_TEXT,
+  },
+  {
+    id: "corneal_foreign_body_v1", version: "1.0.0", title: "Corneal foreign body discharge documentation", ...EYE_EMERGENCY_TEMPLATE_GOVERNANCE,
+    // Keyword-only: T15 (all eye foreign body codes, including T15.0 corneal) is already owned by
+    // trauma_msk_foreign_body_eye_v1 (Phase pre-11); this avoids duplicate/competing ICD ownership.
+    diagnosisMappings: { keyword: ["foreign body in cornea"] },
+    sourceReferences: [{ label: "MedlinePlus — Eye injuries", url: "https://medlineplus.gov/eyeinjuries.html", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("eye-cfb-oph", "OPHTHALMOLOGY", "within 24 hours or as directed")], suggestedText: CORNEAL_FOREIGN_BODY_V1_SUGGESTED_TEXT,
+  },
+  {
+    id: "post_ocular_foreign_body_removal_v1", version: "1.0.0", title: "Post ocular foreign body removal discharge documentation", ...EYE_EMERGENCY_TEMPLATE_GOVERNANCE,
+    diagnosisMappings: { keyword: ["post ocular foreign body removal", "after corneal foreign body removal", "retrait de corps étranger oculaire"] },
+    sourceReferences: [{ label: "MedlinePlus — Eye injuries", url: "https://medlineplus.gov/eyeinjuries.html", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("eye-postfbr-oph", "OPHTHALMOLOGY", "within 24–48 hours or as directed")], suggestedText: POST_OCULAR_FOREIGN_BODY_REMOVAL_V1_SUGGESTED_TEXT,
+  },
+  {
+    id: "photokeratitis_v1", version: "1.0.0", title: "Photokeratitis discharge documentation", ...EYE_EMERGENCY_TEMPLATE_GOVERNANCE,
+    diagnosisMappings: { icdFamily: ["H16.13"], keyword: ["photokeratitis", "welder's flash", "uv keratitis", "snow blindness", "arc eye"] },
+    sourceReferences: [{ label: "MedlinePlus — Eye injuries", url: "https://medlineplus.gov/eyeinjuries.html", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("eye-pk-pcp", "PRIMARY_CARE", "within 48–72 hours or as directed")], suggestedText: PHOTOKERATITIS_V1_SUGGESTED_TEXT,
+  },
+  {
+    id: "corneal_ulcer_followup_v1", version: "1.0.0", title: "Corneal ulcer follow-up discharge documentation", ...EYE_EMERGENCY_TEMPLATE_GOVERNANCE, riskCategory: "moderate_to_high",
+    diagnosisMappings: { icdFamily: ["H16.0"], keyword: ["corneal ulcer", "microbial keratitis"] },
+    sourceReferences: [{ label: "MedlinePlus — Eye infections", url: "https://medlineplus.gov/eyeinjuries.html", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("eye-ulcer-oph", "OPHTHALMOLOGY", "within 24 hours or as directed")], suggestedText: CORNEAL_ULCER_FOLLOWUP_V1_SUGGESTED_TEXT,
+  },
+  {
+    id: "chemical_eye_injury_v1", version: "1.0.0", title: "Chemical eye injury discharge documentation", ...EYE_EMERGENCY_TEMPLATE_GOVERNANCE, riskCategory: "moderate_to_high",
+    // Keyword-only: T26 chemical/thermal eye burn ICD prefixes are already owned by burn_eye_v1 / burn_chemical_v1 (Phase 10); this avoids duplicate ICD ownership.
+    diagnosisMappings: { keyword: ["chemical eye injury", "eye irrigation aftercare", "alkali eye exposure", "acid eye exposure"] },
+    sourceReferences: [{ label: "MedlinePlus — Eye injuries", url: "https://medlineplus.gov/eyeinjuries.html", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("eye-chem-oph", "OPHTHALMOLOGY", "within 24 hours or as directed")], suggestedText: CHEMICAL_EYE_INJURY_V1_SUGGESTED_TEXT,
+  },
+  {
+    id: "traumatic_iritis_v1", version: "1.0.0", title: "Traumatic iritis discharge documentation", ...EYE_EMERGENCY_TEMPLATE_GOVERNANCE,
+    diagnosisMappings: { keyword: ["traumatic iritis", "traumatic iridocyclitis"] },
+    sourceReferences: [{ label: "MedlinePlus — Eye injuries", url: "https://medlineplus.gov/eyeinjuries.html", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("eye-tirit-oph", "OPHTHALMOLOGY", "within 24–48 hours or as directed")], suggestedText: TRAUMATIC_IRITIS_V1_SUGGESTED_TEXT,
+  },
+  {
+    id: "hyphema_followup_v1", version: "1.0.0", title: "Hyphema follow-up discharge documentation", ...EYE_EMERGENCY_TEMPLATE_GOVERNANCE, riskCategory: "moderate_to_high",
+    diagnosisMappings: { icdFamily: ["H21.0"], keyword: ["hyphema follow-up"] },
+    sourceReferences: [{ label: "MedlinePlus — Eye injuries", url: "https://medlineplus.gov/eyeinjuries.html", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("eye-hyphema-oph", "OPHTHALMOLOGY", "within 24 hours or as directed")], suggestedText: HYPHEMA_FOLLOWUP_V1_SUGGESTED_TEXT,
+  },
+  {
+    id: "open_globe_post_acute_v1", version: "1.0.0", title: "Open globe post-acute discharge documentation", ...EYE_EMERGENCY_TEMPLATE_GOVERNANCE, riskCategory: "high",
+    diagnosisMappings: { icdFamily: ["S05.2", "S05.3"], keyword: ["open globe", "globe rupture", "ruptured globe"] },
+    sourceReferences: [{ label: "MedlinePlus — Eye injuries", url: "https://medlineplus.gov/eyeinjuries.html", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("eye-globe-oph", "OPHTHALMOLOGY", "urgent — within 24 hours or as directed")], suggestedText: OPEN_GLOBE_POST_ACUTE_V1_SUGGESTED_TEXT,
+  },
+  {
+    id: "acute_glaucoma_followup_v1", version: "1.0.0", title: "Acute glaucoma follow-up discharge documentation", ...EYE_EMERGENCY_TEMPLATE_GOVERNANCE, riskCategory: "high",
+    // H40.21 (Acute angle-closure glaucoma) only — H40.22/H40.23/H40.24 are chronic/intermittent/residual
+    // angle-closure glaucoma, which are not acute emergencies and should not route to this template.
+    diagnosisMappings: { icdFamily: ["H40.21"], keyword: ["acute angle-closure glaucoma", "angle closure glaucoma"] },
+    sourceReferences: [{ label: "MedlinePlus — Glaucoma", url: "https://medlineplus.gov/glaucoma.html", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("eye-glaucoma-oph", "OPHTHALMOLOGY", "urgent — within 24 hours or as directed")], suggestedText: ACUTE_GLAUCOMA_FOLLOWUP_V1_SUGGESTED_TEXT,
+  },
+  {
+    id: "retinal_detachment_followup_v1", version: "1.0.0", title: "Retinal detachment follow-up discharge documentation", ...EYE_EMERGENCY_TEMPLATE_GOVERNANCE, riskCategory: "high",
+    // H33.0/H33.2/H33.4/H33.8 (actual detachment codes) only — H33.1x retinoschisis/retinal cysts and
+    // H33.3x retinal breaks without detachment are different entities and are intentionally excluded.
+    diagnosisMappings: { icdFamily: ["H33.0", "H33.2", "H33.4", "H33.8"], keyword: ["retinal detachment"] },
+    sourceReferences: [{ label: "MedlinePlus — Retinal disorders", url: "https://medlineplus.gov/retinaldisorders.html", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("eye-rd-oph", "OPHTHALMOLOGY", "urgent — within 24 hours or as directed")], suggestedText: RETINAL_DETACHMENT_FOLLOWUP_V1_SUGGESTED_TEXT,
+  },
+  {
+    id: "vitreous_hemorrhage_v1", version: "1.0.0", title: "Vitreous hemorrhage discharge documentation", ...EYE_EMERGENCY_TEMPLATE_GOVERNANCE, riskCategory: "moderate_to_high",
+    diagnosisMappings: { icdFamily: ["H43.1"], keyword: ["vitreous hemorrhage"] },
+    sourceReferences: [{ label: "MedlinePlus — Retinal disorders", url: "https://medlineplus.gov/retinaldisorders.html", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("eye-vh-oph", "OPHTHALMOLOGY", "within 24–48 hours or as directed")], suggestedText: VITREOUS_HEMORRHAGE_V1_SUGGESTED_TEXT,
+  },
+  {
+    id: "orbital_cellulitis_followup_v1", version: "1.0.0", title: "Orbital cellulitis follow-up discharge documentation", ...EYE_EMERGENCY_TEMPLATE_GOVERNANCE, riskCategory: "high",
+    diagnosisMappings: { icdFamily: ["H05.01"], keyword: ["orbital cellulitis"] },
+    sourceReferences: [{ label: "MedlinePlus — Eye infections", url: "https://medlineplus.gov/eyeinjuries.html", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("eye-orbcell-oph", "OPHTHALMOLOGY", "urgent — within 24 hours or as directed")], suggestedText: ORBITAL_CELLULITIS_FOLLOWUP_V1_SUGGESTED_TEXT,
+  },
+  {
+    id: "preseptal_cellulitis_v1", version: "1.0.0", title: "Preseptal cellulitis discharge documentation", ...EYE_EMERGENCY_TEMPLATE_GOVERNANCE, riskCategory: "moderate_to_high",
+    // L03.213 "Periorbital cellulitis" only — L03.211/L03.212 are face cellulitis/lymphangitis, not preseptal.
+    diagnosisMappings: { icdFamily: ["L03.213"], keyword: ["preseptal cellulitis", "periorbital cellulitis"] },
+    sourceReferences: [{ label: "MedlinePlus — Eye infections", url: "https://medlineplus.gov/eyeinjuries.html", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("eye-presep-pcp", "PRIMARY_CARE", "within 24–48 hours or as directed")], suggestedText: PRESEPTAL_CELLULITIS_V1_SUGGESTED_TEXT,
+  },
+  {
+    id: "uveitis_iritis_v1", version: "1.0.0", title: "Uveitis/iritis discharge documentation", ...EYE_EMERGENCY_TEMPLATE_GOVERNANCE,
+    diagnosisMappings: { icdFamily: ["H20"], keyword: ["uveitis", "iritis", "iridocyclitis"] },
+    sourceReferences: [{ label: "MedlinePlus — Eye diseases", url: "https://medlineplus.gov/eyediseases.html", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("eye-uveitis-oph", "OPHTHALMOLOGY", "within 24–48 hours or as directed")], suggestedText: UVEITIS_IRITIS_V1_SUGGESTED_TEXT,
+  },
+  {
+    id: "scleritis_v1", version: "1.0.0", title: "Scleritis discharge documentation", ...EYE_EMERGENCY_TEMPLATE_GOVERNANCE,
+    diagnosisMappings: { icdFamily: ["H15.0"], keyword: ["scleritis"] },
+    sourceReferences: [{ label: "MedlinePlus — Eye diseases", url: "https://medlineplus.gov/eyediseases.html", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("eye-scleritis-oph", "OPHTHALMOLOGY", "within 24–48 hours or as directed")], suggestedText: SCLERITIS_V1_SUGGESTED_TEXT,
+  },
+  {
+    id: "eyelid_laceration_v1", version: "1.0.0", title: "Eyelid laceration discharge documentation", ...EYE_EMERGENCY_TEMPLATE_GOVERNANCE, specialtyCategory: "wound_care",
+    diagnosisMappings: { icdFamily: ["S01.11", "S01.12"], keyword: ["eyelid laceration", "lid laceration"] },
+    sourceReferences: [{ label: "MedlinePlus — Eye injuries", url: "https://medlineplus.gov/eyeinjuries.html", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("eye-lidlac-oph", "OPHTHALMOLOGY", "for suture/staple removal or wound check as directed")], suggestedText: EYELID_LACERATION_V1_SUGGESTED_TEXT,
+  },
+  {
+    id: "canalicular_injury_followup_v1", version: "1.0.0", title: "Canalicular injury follow-up discharge documentation", ...EYE_EMERGENCY_TEMPLATE_GOVERNANCE, riskCategory: "moderate_to_high",
+    diagnosisMappings: { keyword: ["canalicular injury", "canalicular laceration", "lacrimal duct injury"] },
+    sourceReferences: [{ label: "MedlinePlus — Eye injuries", url: "https://medlineplus.gov/eyeinjuries.html", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("eye-canal-oph", "OPHTHALMOLOGY", "as directed by the specialist who performed repair")], suggestedText: CANALICULAR_INJURY_FOLLOWUP_V1_SUGGESTED_TEXT,
+  },
+  {
+    id: "endophthalmitis_post_acute_v1", version: "1.0.0", title: "Endophthalmitis post-acute discharge documentation", ...EYE_EMERGENCY_TEMPLATE_GOVERNANCE, riskCategory: "high",
+    diagnosisMappings: { icdFamily: ["H44.0"], keyword: ["endophthalmitis"] },
+    sourceReferences: [{ label: "MedlinePlus — Eye infections", url: "https://medlineplus.gov/eyeinjuries.html", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("eye-endo-oph", "OPHTHALMOLOGY", "urgent — as directed by ophthalmology")], suggestedText: ENDOPHTHALMITIS_POST_ACUTE_V1_SUGGESTED_TEXT,
+  },
+  {
+    id: "crao_crvo_followup_v1", version: "1.0.0", title: "Central retinal artery/vein occlusion follow-up discharge documentation", ...EYE_EMERGENCY_TEMPLATE_GOVERNANCE, riskCategory: "high",
+    // H34.1 (central retinal artery occlusion) and H34.81 (central retinal vein occlusion) only —
+    // H34.0 (transient), H34.2 (partial/branch artery), and H34.82/H34.83 (venous engorgement/branch vein) are distinct entities.
+    diagnosisMappings: { icdFamily: ["H34.1", "H34.81"], keyword: ["central retinal artery occlusion", "central retinal vein occlusion", "crao", "crvo"] },
+    sourceReferences: [{ label: "MedlinePlus — Retinal disorders", url: "https://medlineplus.gov/retinaldisorders.html", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("eye-crao-oph", "OPHTHALMOLOGY", "urgent — within 24 hours or as directed")], suggestedText: CRAO_CRVO_FOLLOWUP_V1_SUGGESTED_TEXT,
+  },
   {
     id: GENERIC_PROVIDER_DISCHARGE_TEMPLATE_ID,
     version: "1.0.0",

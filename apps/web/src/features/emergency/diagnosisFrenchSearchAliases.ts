@@ -496,6 +496,94 @@ const FRENCH_DIAGNOSIS_SEARCH_ALIASES: readonly FrenchDiagnosisSearchAlias[] = [
     frenchPhrases: ["douleur epaule", "douleur épaule"],
     englishSearchTerms: ["shoulder pain"],
   },
+  {
+    frenchPhrases: ["oeil rouge", "œil rouge", "yeux rouges"],
+    englishSearchTerms: ["red eye"],
+  },
+  {
+    frenchPhrases: ["douleur oculaire", "douleur à l'oeil", "douleur a l oeil", "mal à l'oeil"],
+    englishSearchTerms: ["eye pain", "ocular pain"],
+  },
+  {
+    frenchPhrases: ["trouble visuel", "vision trouble", "perte de vision", "baisse de vision"],
+    englishSearchTerms: ["vision change", "vision loss", "blurred vision"],
+  },
+  {
+    frenchPhrases: ["abrasion cornéenne", "abrasion corneenne", "cornée éraflée", "oeil éraflé"],
+    englishSearchTerms: ["corneal abrasion", "scratched cornea", "scratched eye"],
+  },
+  {
+    frenchPhrases: ["corps étranger dans l'oeil", "corps etranger dans l oeil", "corps étranger cornéen"],
+    englishSearchTerms: ["corneal foreign body", "foreign body in cornea", "foreign body eye"],
+  },
+  {
+    frenchPhrases: ["ulcère cornéen", "ulcere corneen", "infection de la cornée"],
+    englishSearchTerms: ["corneal ulcer", "microbial keratitis"],
+  },
+  {
+    frenchPhrases: ["brûlure chimique de l'oeil", "brulure chimique de l oeil", "projection chimique dans l'oeil"],
+    englishSearchTerms: ["chemical eye injury", "chemical eye burn", "eye irrigation"],
+  },
+  {
+    frenchPhrases: ["coup de soleil de l'oeil", "coup de soleil oculaire", "photokératite", "photokeratite"],
+    englishSearchTerms: ["photokeratitis", "welder's flash", "uv keratitis", "snow blindness"],
+  },
+  {
+    frenchPhrases: ["globe oculaire ouvert", "oeil perforé", "oeil perfore", "plaie oculaire pénétrante"],
+    englishSearchTerms: ["open globe", "globe rupture", "penetrating eye injury"],
+  },
+  {
+    frenchPhrases: ["hyphéma", "hyphema", "sang dans l'oeil"],
+    englishSearchTerms: ["hyphema", "blood in the eye"],
+  },
+  {
+    frenchPhrases: ["glaucome aigu", "crise de glaucome", "pression oculaire élevée"],
+    englishSearchTerms: ["acute angle-closure glaucoma", "angle closure glaucoma"],
+  },
+  {
+    frenchPhrases: ["décollement de la rétine", "decollement de la retine", "rideau dans la vision"],
+    englishSearchTerms: ["retinal detachment", "curtain over vision"],
+  },
+  {
+    frenchPhrases: ["hémorragie du vitré", "hemorragie du vitre"],
+    englishSearchTerms: ["vitreous hemorrhage"],
+  },
+  {
+    frenchPhrases: ["occlusion de l'artère rétinienne", "occlusion de l artere retinienne", "crao"],
+    englishSearchTerms: ["central retinal artery occlusion", "CRAO"],
+  },
+  {
+    frenchPhrases: ["cellulite orbitaire", "infection derrière l'oeil", "infection derriere l oeil"],
+    englishSearchTerms: ["orbital cellulitis"],
+  },
+  {
+    frenchPhrases: ["cellulite préseptale", "cellulite preseptale", "cellulite périorbitaire", "cellulite periorbitaire"],
+    englishSearchTerms: ["preseptal cellulitis", "periorbital cellulitis"],
+  },
+  {
+    frenchPhrases: ["uvéite", "uveite", "iritis"],
+    englishSearchTerms: ["uveitis", "iritis"],
+  },
+  {
+    frenchPhrases: ["sclérite", "sclerite"],
+    englishSearchTerms: ["scleritis"],
+  },
+  {
+    frenchPhrases: ["lacération de la paupière", "laceration de la paupiere", "coupure à la paupière", "paupière coupée"],
+    englishSearchTerms: ["eyelid laceration", "lid laceration"],
+  },
+  {
+    frenchPhrases: ["lésion des voies lacrymales", "lesion des voies lacrymales", "canalicule lacrymal"],
+    englishSearchTerms: ["canalicular injury", "lacrimal duct injury"],
+  },
+  {
+    frenchPhrases: ["endophtalmie", "infection à l'intérieur de l'oeil"],
+    englishSearchTerms: ["endophthalmitis"],
+  },
+  {
+    frenchPhrases: ["traumatisme oculaire", "traumatisme de l'oeil", "traumatisme de l oeil"],
+    englishSearchTerms: ["eye trauma", "ocular trauma"],
+  },
 ];
 
 /** Accent-insensitive, lowercase normalization for diagnosis search. */

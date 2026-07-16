@@ -78,9 +78,9 @@ describe("MEDUI.ED.DISCHARGE.DIAGNOSIS_INSTRUCTIONS.2A", () => {
       expect(audit.summary.totalDiagnosisSpecificMapped + audit.summary.totalGenericFallbackOnly).toBe(
         audit.summary.totalPickerRecordsAudited
       );
-      expect(audit.summary.totalPickerRecordsAudited).toBe(144);
+      expect(audit.summary.totalPickerRecordsAudited).toBe(158);
       expect(audit.summary.totalGenericFallbackOnly).toBe(0);
-      expect(audit.summary.totalDiagnosisSpecificMapped).toBe(144);
+      expect(audit.summary.totalDiagnosisSpecificMapped).toBe(158);
     });
 
     it("3 — top 100 fallback list is generated when any generic fallback exists", () => {

@@ -408,6 +408,68 @@ export const ICD10_CLINICAL_QUERY_EXPANSIONS: Icd10QueryExpansion[] = [
   // No traumatic-specific CSF leak code — G96.08 is the only non-spontaneous cranial CSF leak code.
   { query: "csf leak after trauma", anyOf: ["Other cranial cerebrospinal fluid leak"] },
   { query: "fuite de lcr post-traumatique", anyOf: ["Other cranial cerebrospinal fluid leak"] },
+  // Eye emergencies (Phase 11). Official FY2026 text is used verbatim wherever possible —
+  // "corneal abrasion", "corneal ulcer", "photokeratitis", "hyphema", "acute angle-closure
+  // glaucoma", "retinal detachment", "vitreous hemorrhage", and "central retinal artery
+  // occlusion" already appear literally in official descriptions and need no expansion for
+  // the English query, but French queries and a few English terms not used verbatim by CMS
+  // (e.g. "corneal foreign body" -> "foreign body in cornea") require explicit expansion.
+  { query: "corneal abrasion", anyOf: ["corneal abrasion"] },
+  { query: "abrasion cornéenne", anyOf: ["corneal abrasion"] },
+  { query: "corneal foreign body", anyOf: ["foreign body in cornea", "foreign body on external eye"] },
+  { query: "corps étranger cornéen", anyOf: ["foreign body in cornea", "foreign body on external eye"] },
+  { query: "corneal ulcer", anyOf: ["corneal ulcer"] },
+  { query: "ulcère cornéen", anyOf: ["corneal ulcer"] },
+  { query: "photokeratitis", anyOf: ["Photokeratitis"] },
+  { query: "photokératite", anyOf: ["Photokeratitis"] },
+  { query: "chemical eye injury", anyOf: ["Corrosion of cornea and conjunctival sac", "Corrosion of unspecified eyelid and periocular area"] },
+  { query: "brûlure chimique de l'oeil", anyOf: ["Corrosion of cornea and conjunctival sac", "Corrosion of unspecified eyelid and periocular area"] },
+  { query: "open globe", anyOf: ["Ocular laceration and rupture", "prolapse or loss of intraocular tissue"] },
+  { query: "globe oculaire ouvert", anyOf: ["Ocular laceration and rupture", "prolapse or loss of intraocular tissue"] },
+  { query: "hyphema", anyOf: ["Hyphema"] },
+  { query: "hyphéma", anyOf: ["Hyphema"] },
+  { query: "acute angle-closure glaucoma", anyOf: ["Acute angle-closure glaucoma"] },
+  { query: "glaucome aigu", anyOf: ["Acute angle-closure glaucoma"] },
+  { query: "retinal detachment", anyOf: ["retinal detachment"] },
+  { query: "décollement de la rétine", anyOf: ["retinal detachment"] },
+  { query: "vitreous hemorrhage", anyOf: ["Vitreous hemorrhage"] },
+  { query: "hémorragie du vitré", anyOf: ["Vitreous hemorrhage"] },
+  { query: "central retinal artery occlusion", anyOf: ["Central retinal artery occlusion"] },
+  { query: "occlusion de l'artère rétinienne", anyOf: ["Central retinal artery occlusion"] },
+  { query: "orbital cellulitis", anyOf: ["Cellulitis of right orbit", "Cellulitis of left orbit", "Cellulitis of unspecified orbit"] },
+  { query: "cellulite orbitaire", anyOf: ["Cellulitis of right orbit", "Cellulitis of left orbit", "Cellulitis of unspecified orbit"] },
+  { query: "preseptal cellulitis", anyOf: ["Periorbital cellulitis"] },
+  { query: "cellulite préseptale", anyOf: ["Periorbital cellulitis"] },
+  { query: "uveitis", anyOf: ["iridocyclitis"] },
+  { query: "uvéite", anyOf: ["iridocyclitis"] },
+  { query: "scleritis", anyOf: ["scleritis"] },
+  { query: "sclérite", anyOf: ["scleritis"] },
+  {
+    query: "eyelid laceration",
+    anyOf: [
+      "Laceration without foreign body of right eyelid",
+      "Laceration without foreign body of left eyelid",
+      "Laceration without foreign body of unspecified eyelid",
+      "Laceration with foreign body of right eyelid",
+      "Laceration with foreign body of left eyelid",
+      "Laceration with foreign body of unspecified eyelid",
+    ],
+  },
+  {
+    query: "lacération de la paupière",
+    anyOf: [
+      "Laceration without foreign body of right eyelid",
+      "Laceration without foreign body of left eyelid",
+      "Laceration without foreign body of unspecified eyelid",
+      "Laceration with foreign body of right eyelid",
+      "Laceration with foreign body of left eyelid",
+      "Laceration with foreign body of unspecified eyelid",
+    ],
+  },
+  { query: "endophthalmitis", anyOf: ["endophthalmitis"] },
+  { query: "endophtalmie", anyOf: ["endophthalmitis"] },
+  { query: "eye trauma", anyOf: ["Injury of eye and orbit", "eyeball"] },
+  { query: "traumatisme oculaire", anyOf: ["Injury of eye and orbit", "eyeball"] },
 ];
 
 export function normalizeIcd10SearchQuery(q: string): string {

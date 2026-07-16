@@ -192,6 +192,14 @@ export const PROVIDER_DISCHARGE_FOLLOW_UP_TIMING_LOCALE: Record<string, Localize
     en: "for suture/staple removal or wound check as directed",
     fr: "pour le retrait des points/agrafes ou le contrôle de la plaie selon les directives",
   },
+  "as directed by the specialist who performed repair": {
+    en: "as directed by the specialist who performed repair",
+    fr: "selon les directives du spécialiste ayant effectué la réparation",
+  },
+  "urgent — as directed by ophthalmology": {
+    en: "urgent — as directed by ophthalmology",
+    fr: "urgent — selon les directives de l'ophtalmologie",
+  },
 };
 
 export const PROVIDER_DISCHARGE_FOLLOW_UP_COMMENTS_LOCALE: Record<string, LocalizedPair> = {

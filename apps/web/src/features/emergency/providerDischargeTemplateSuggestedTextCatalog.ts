@@ -4712,3 +4712,481 @@ export const FACIAL_LACERATION_SUGGESTED_TEXT: ProviderDischargeTemplateSuggeste
         "Retournez immédiatement en cas d'aggravation de la douleur, d'aggravation de l'enflure, de rougeur qui s'étend, de pus ou d'écoulement nauséabond, de fièvre, de réouverture de la plaie ou d'engourdissement du visage.",
     }
   );
+
+/** Phase 11 — eye emergencies discharge suggested text (advisory documentation only). */
+const EYE_MED_EN =
+  "Use only the eye drops, eye ointment, or pain medicines prescribed or specifically recommended during this visit.";
+const EYE_MED_FR =
+  "Utilisez uniquement les gouttes, la pommade ophtalmique ou les antidouleurs prescrits ou recommandés spécifiquement lors de cette visite.";
+
+export const CORNEAL_ABRASION_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for a corneal abrasion — a scratch on the clear front surface of the eye.",
+      diagnosisInstructions:
+        "Avoid rubbing or touching the affected eye. Wear sunglasses outdoors if light bothers the eye. Do not wear contact lenses until fully healed and cleared by a clinician. Most corneal abrasions heal within 1 to 3 days.",
+      medicationTreatment: EYE_MED_EN,
+      returnPrecautions:
+        "Return immediately for worsening eye pain, worsening redness, new or worsening vision changes, worsening light sensitivity, or new discharge from the eye.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour une abrasion cornéenne — une éraflure de la surface claire de l'œil.",
+      diagnosisInstructions:
+        "Évitez de frotter ou de toucher l'œil atteint. Portez des lunettes de soleil à l'extérieur si la lumière incommode l'œil. Ne portez pas de lentilles de contact avant la guérison complète et l'autorisation d'un clinicien. La plupart des abrasions cornéennes guérissent en 1 à 3 jours.",
+      medicationTreatment: EYE_MED_FR,
+      returnPrecautions:
+        "Retournez immédiatement en cas d'aggravation de la douleur oculaire, d'aggravation de la rougeur, de changements de vision nouveaux ou qui s'aggravent, d'aggravation de la sensibilité à la lumière, ou de nouvel écoulement de l'œil.",
+    }
+  );
+
+export const CORNEAL_FOREIGN_BODY_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for a corneal foreign body that was identified on the clear front surface of the eye.",
+      diagnosisInstructions:
+        "Avoid rubbing the eye. Do not wear contact lenses until fully healed and cleared by a clinician. Some scratchy or gritty sensation is expected for a day or two after the foreign body is removed.",
+      medicationTreatment: EYE_MED_EN,
+      returnPrecautions:
+        "Return immediately for worsening eye pain, worsening redness, new or worsening vision changes, worsening light sensitivity, or discharge from the eye.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour un corps étranger cornéen identifié sur la surface claire de l'œil.",
+      diagnosisInstructions:
+        "Évitez de frotter l'œil. Ne portez pas de lentilles de contact avant la guérison complète et l'autorisation d'un clinicien. Une légère sensation de grattement est attendue pendant un jour ou deux après le retrait du corps étranger.",
+      medicationTreatment: EYE_MED_FR,
+      returnPrecautions:
+        "Retournez immédiatement en cas d'aggravation de la douleur oculaire, d'aggravation de la rougeur, de changements de vision nouveaux ou qui s'aggravent, d'aggravation de la sensibilité à la lumière, ou d'écoulement de l'œil.",
+    }
+  );
+
+export const POST_OCULAR_FOREIGN_BODY_REMOVAL_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department after removal of a foreign body from the eye. Aftercare helps the surface of the eye heal without infection.",
+      diagnosisInstructions:
+        "Avoid rubbing the eye. Do not wear contact lenses until fully healed and cleared by a clinician. A gritty or scratchy feeling for a day or two after removal is common and should gradually improve.",
+      medicationTreatment: EYE_MED_EN,
+      returnPrecautions:
+        "Return immediately for worsening eye pain, worsening redness, new or worsening vision changes, worsening light sensitivity, or discharge from the eye.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences après le retrait d'un corps étranger de l'œil. Les soins post-retrait favorisent la guérison de la surface de l'œil sans infection.",
+      diagnosisInstructions:
+        "Évitez de frotter l'œil. Ne portez pas de lentilles de contact avant la guérison complète et l'autorisation d'un clinicien. Une sensation de grattement pendant un jour ou deux après le retrait est fréquente et devrait s'améliorer progressivement.",
+      medicationTreatment: EYE_MED_FR,
+      returnPrecautions:
+        "Retournez immédiatement en cas d'aggravation de la douleur oculaire, d'aggravation de la rougeur, de changements de vision nouveaux ou qui s'aggravent, d'aggravation de la sensibilité à la lumière, ou d'écoulement de l'œil.",
+    }
+  );
+
+export const PHOTOKERATITIS_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for photokeratitis (a sunburn-like injury of the cornea from UV light exposure, such as welding flash or bright snow glare).",
+      diagnosisInstructions:
+        "Avoid further UV light exposure and wear proper UV-protective eyewear once symptomatic photophobia improves. Avoid rubbing the eyes. Symptoms typically improve within 24 to 48 hours.",
+      medicationTreatment: EYE_MED_EN,
+      returnPrecautions:
+        "Return immediately for worsening eye pain, worsening vision changes, worsening light sensitivity that does not improve, or discharge from the eye.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour une photokératite (une atteinte de la cornée semblable à un coup de soleil, causée par une exposition aux rayons UV, comme un flash de soudure ou l'éblouissement de la neige).",
+      diagnosisInstructions:
+        "Évitez toute exposition supplémentaire aux rayons UV et portez des lunettes de protection UV appropriées une fois la photophobie améliorée. Évitez de frotter les yeux. Les symptômes s'améliorent généralement en 24 à 48 heures.",
+      medicationTreatment: EYE_MED_FR,
+      returnPrecautions:
+        "Retournez immédiatement en cas d'aggravation de la douleur oculaire, de changements de vision qui s'aggravent, de sensibilité à la lumière qui ne s'améliore pas, ou d'écoulement de l'œil.",
+    }
+  );
+
+export const CORNEAL_ULCER_FOLLOWUP_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for a corneal ulcer (an infection or sore on the clear front surface of the eye). Close ophthalmology follow-up is required to protect vision.",
+      diagnosisInstructions:
+        "Do not wear contact lenses until fully healed and cleared by an eye clinician. Avoid rubbing the eye. Use eye drops exactly on the schedule directed — missed doses can allow the infection to worsen.",
+      medicationTreatment: EYE_MED_EN,
+      returnPrecautions:
+        "Return immediately for worsening eye pain, worsening redness, new or worsening vision loss, increasing white/cloudy spot on the eye, or new discharge from the eye.",
+      returnWorkSchool:
+        "Follow up with ophthalmology as directed — this is not routine primary care follow-up.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour un ulcère cornéen (une infection ou une plaie sur la surface claire de l'œil). Un suivi ophtalmologique rapproché est requis pour protéger la vision.",
+      diagnosisInstructions:
+        "Ne portez pas de lentilles de contact avant la guérison complète et l'autorisation d'un clinicien en ophtalmologie. Évitez de frotter l'œil. Utilisez les gouttes ophtalmiques exactement selon l'horaire indiqué — des doses manquées peuvent aggraver l'infection.",
+      medicationTreatment: EYE_MED_FR,
+      returnPrecautions:
+        "Retournez immédiatement en cas d'aggravation de la douleur oculaire, d'aggravation de la rougeur, de perte de vision nouvelle ou qui s'aggrave, d'une tache blanchâtre ou trouble qui augmente sur l'œil, ou d'un nouvel écoulement de l'œil.",
+      returnWorkSchool:
+        "Faites le suivi en ophtalmologie selon les directives — ceci n'est pas un suivi habituel de soins primaires.",
+    }
+  );
+
+export const CHEMICAL_EYE_INJURY_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for a chemical eye exposure. The eye was irrigated and evaluated for ongoing injury.",
+      diagnosisInstructions:
+        "Avoid rubbing the eye. Do not wear contact lenses until fully healed and cleared by a clinician. Avoid further exposure to the causative chemical and review safety eyewear for future exposure risk.",
+      medicationTreatment: EYE_MED_EN,
+      returnPrecautions:
+        "Return immediately for worsening eye pain, worsening redness, new or worsening vision changes, worsening light sensitivity, or a white/cloudy spot on the eye.",
+      returnWorkSchool: "Follow up with ophthalmology as directed.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour une exposition chimique de l'œil. L'œil a été irrigué et évalué pour une atteinte évolutive.",
+      diagnosisInstructions:
+        "Évitez de frotter l'œil. Ne portez pas de lentilles de contact avant la guérison complète et l'autorisation d'un clinicien. Évitez toute nouvelle exposition au produit chimique en cause et vérifiez le port de lunettes de protection pour un risque futur.",
+      medicationTreatment: EYE_MED_FR,
+      returnPrecautions:
+        "Retournez immédiatement en cas d'aggravation de la douleur oculaire, d'aggravation de la rougeur, de changements de vision nouveaux ou qui s'aggravent, d'aggravation de la sensibilité à la lumière, ou d'une tache blanchâtre ou trouble sur l'œil.",
+      returnWorkSchool: "Faites le suivi en ophtalmologie selon les directives.",
+    }
+  );
+
+export const TRAUMATIC_IRITIS_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for traumatic iritis (inflammation inside the eye following an injury).",
+      diagnosisInstructions:
+        "Wear sunglasses outdoors if light bothers the eye. Avoid rubbing the eye. Use eye drops exactly on the schedule directed. Avoid contact sports until cleared by an eye clinician.",
+      medicationTreatment: EYE_MED_EN,
+      returnPrecautions:
+        "Return immediately for worsening eye pain, worsening redness, new or worsening vision changes, worsening light sensitivity, or a change in pupil appearance.",
+      returnWorkSchool: "Follow up with ophthalmology as directed.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour une iritis traumatique (inflammation à l'intérieur de l'œil après une blessure).",
+      diagnosisInstructions:
+        "Portez des lunettes de soleil à l'extérieur si la lumière incommode l'œil. Évitez de frotter l'œil. Utilisez les gouttes ophtalmiques exactement selon l'horaire indiqué. Évitez les sports de contact jusqu'à l'autorisation d'un clinicien en ophtalmologie.",
+      medicationTreatment: EYE_MED_FR,
+      returnPrecautions:
+        "Retournez immédiatement en cas d'aggravation de la douleur oculaire, d'aggravation de la rougeur, de changements de vision nouveaux ou qui s'aggravent, d'aggravation de la sensibilité à la lumière, ou d'un changement d'aspect de la pupille.",
+      returnWorkSchool: "Faites le suivi en ophtalmologie selon les directives.",
+    }
+  );
+
+export const HYPHEMA_FOLLOWUP_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for a hyphema (blood inside the front part of the eye after an injury). This requires close ophthalmology follow-up to protect vision and eye pressure.",
+      diagnosisInstructions:
+        "Rest with the head elevated as directed. Avoid bending, straining, and heavy lifting. Avoid contact sports and any activity that risks re-injury until cleared by an eye clinician. Avoid aspirin or other blood-thinning medicines unless directed by your clinician.",
+      medicationTreatment: EYE_MED_EN,
+      returnPrecautions:
+        "Return immediately for worsening eye pain, worsening vision changes, new or worsening redness, or if the blood in the eye appears to increase.",
+      returnWorkSchool: "Follow up with ophthalmology as directed — this is not routine primary care follow-up.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour un hyphéma (présence de sang dans la partie avant de l'œil après une blessure). Un suivi ophtalmologique rapproché est requis pour protéger la vision et la pression oculaire.",
+      diagnosisInstructions:
+        "Reposez-vous avec la tête surélevée selon les directives. Évitez de vous pencher, de forcer et de soulever des objets lourds. Évitez les sports de contact et toute activité à risque de nouvelle blessure jusqu'à l'autorisation d'un clinicien en ophtalmologie. Évitez l'aspirine ou d'autres médicaments anticoagulants sauf indication contraire de votre clinicien.",
+      medicationTreatment: EYE_MED_FR,
+      returnPrecautions:
+        "Retournez immédiatement en cas d'aggravation de la douleur oculaire, de changements de vision qui s'aggravent, de rougeur nouvelle ou qui s'aggrave, ou si la quantité de sang dans l'œil semble augmenter.",
+      returnWorkSchool: "Faites le suivi en ophtalmologie selon les directives — ceci n'est pas un suivi habituel de soins primaires.",
+    }
+  );
+
+export const OPEN_GLOBE_POST_ACUTE_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated and treated for an open globe (penetrating) eye injury. This documentation is used only after specialty ophthalmology/surgical management has already directed outpatient aftercare.",
+      diagnosisInstructions:
+        "Keep the protective shield or eyewear in place exactly as directed. Avoid any pressure on the eye, rubbing, straining, or heavy lifting. Avoid bending at the waist and any activity that increases pressure in the eye until cleared by ophthalmology.",
+      medicationTreatment: EYE_MED_EN,
+      returnPrecautions:
+        "Return immediately for worsening eye pain, worsening vision loss, new drainage from the eye, or fever.",
+      returnWorkSchool: "Follow up with ophthalmology exactly as directed — this injury requires specialist-directed aftercare only.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge pour une plaie oculaire pénétrante (globe ouvert). Ce document est utilisé uniquement après qu'une prise en charge spécialisée en ophtalmologie/chirurgie a déjà déterminé les soins ambulatoires.",
+      diagnosisInstructions:
+        "Gardez la coque protectrice ou les lunettes de protection en place exactement selon les directives. Évitez toute pression sur l'œil, tout frottement, tout effort et le port de charges lourdes. Évitez de vous pencher à la taille et toute activité augmentant la pression dans l'œil jusqu'à l'autorisation de l'ophtalmologie.",
+      medicationTreatment: EYE_MED_FR,
+      returnPrecautions:
+        "Retournez immédiatement en cas d'aggravation de la douleur oculaire, de perte de vision qui s'aggrave, de nouvel écoulement de l'œil, ou de fièvre.",
+      returnWorkSchool: "Faites le suivi en ophtalmologie exactement selon les directives — cette blessure nécessite des soins dirigés uniquement par le spécialiste.",
+    }
+  );
+
+export const ACUTE_GLAUCOMA_FOLLOWUP_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated and treated for acute angle-closure glaucoma (a sudden rise in eye pressure). This documentation is used only after ophthalmology has directed outpatient aftercare.",
+      diagnosisInstructions:
+        "Use eye drops exactly on the schedule directed — missed doses can allow eye pressure to rise again. Avoid activities and medicines your clinician told you to avoid. Keep the urgent ophthalmology follow-up appointment; laser treatment of the other eye may also be recommended.",
+      medicationTreatment: EYE_MED_EN,
+      returnPrecautions:
+        "Return immediately for worsening eye pain, worsening headache, worsening nausea or vomiting, worsening vision changes, or halos around lights that worsen.",
+      returnWorkSchool: "Follow up with ophthalmology exactly as directed — this is an urgent specialist follow-up, not routine primary care.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge pour un glaucome aigu par fermeture de l'angle (une élévation soudaine de la pression oculaire). Ce document est utilisé uniquement après qu'une prise en charge en ophtalmologie a déjà déterminé les soins ambulatoires.",
+      diagnosisInstructions:
+        "Utilisez les gouttes ophtalmiques exactement selon l'horaire indiqué — des doses manquées peuvent faire remonter la pression oculaire. Évitez les activités et les médicaments que votre clinicien vous a demandé d'éviter. Respectez le rendez-vous ophtalmologique urgent; un traitement au laser de l'autre œil peut aussi être recommandé.",
+      medicationTreatment: EYE_MED_FR,
+      returnPrecautions:
+        "Retournez immédiatement en cas d'aggravation de la douleur oculaire, d'aggravation des maux de tête, d'aggravation des nausées ou vomissements, de changements de vision qui s'aggravent, ou de halos autour des lumières qui s'aggravent.",
+      returnWorkSchool: "Faites le suivi en ophtalmologie exactement selon les directives — il s'agit d'un suivi spécialisé urgent, non d'un suivi habituel de soins primaires.",
+    }
+  );
+
+export const RETINAL_DETACHMENT_FOLLOWUP_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated for a retinal detachment or related retinal finding. This documentation is used only after ophthalmology has directed outpatient aftercare and timing of any procedure.",
+      diagnosisInstructions:
+        "Follow any positioning instructions (such as head position) exactly as directed by ophthalmology. Avoid heavy lifting, straining, and strenuous activity until cleared. Keep the urgent ophthalmology follow-up appointment — timing of treatment affects vision outcome.",
+      medicationTreatment: EYE_MED_EN,
+      returnPrecautions:
+        "Return immediately for a new or worsening curtain or shadow in your vision, a sudden increase in floaters or flashes of light, or new vision loss.",
+      returnWorkSchool: "Follow up with ophthalmology exactly as directed — this is an urgent specialist follow-up, not routine primary care.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge pour un décollement de la rétine ou une atteinte rétinienne connexe. Ce document est utilisé uniquement après qu'une prise en charge en ophtalmologie a déjà déterminé les soins ambulatoires et le moment de toute intervention.",
+      diagnosisInstructions:
+        "Suivez toute consigne de positionnement (comme la position de la tête) exactement selon les directives de l'ophtalmologie. Évitez de soulever des charges lourdes, de forcer et toute activité intense jusqu'à l'autorisation. Respectez le rendez-vous ophtalmologique urgent — le moment du traitement influence le résultat visuel.",
+      medicationTreatment: EYE_MED_FR,
+      returnPrecautions:
+        "Retournez immédiatement en cas de rideau ou d'ombre nouveau ou qui s'aggrave dans votre vision, d'augmentation soudaine des corps flottants ou des éclairs lumineux, ou de nouvelle perte de vision.",
+      returnWorkSchool: "Faites le suivi en ophtalmologie exactement selon les directives — il s'agit d'un suivi spécialisé urgent, non d'un suivi habituel de soins primaires.",
+    }
+  );
+
+export const VITREOUS_HEMORRHAGE_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated for a vitreous hemorrhage (bleeding inside the back chamber of the eye).",
+      diagnosisInstructions:
+        "Rest with the head elevated as directed. Avoid heavy lifting, straining, and strenuous activity until cleared. Avoid aspirin or other blood-thinning medicines unless directed by your clinician.",
+      medicationTreatment: EYE_MED_EN,
+      returnPrecautions:
+        "Return immediately for a new or worsening curtain or shadow in your vision, a sudden increase in floaters or flashes of light, worsening vision loss, or worsening eye pain.",
+      returnWorkSchool: "Follow up with ophthalmology as directed.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge pour une hémorragie du vitré (saignement à l'intérieur de la chambre postérieure de l'œil).",
+      diagnosisInstructions:
+        "Reposez-vous avec la tête surélevée selon les directives. Évitez de soulever des charges lourdes, de forcer et toute activité intense jusqu'à l'autorisation. Évitez l'aspirine ou d'autres médicaments anticoagulants sauf indication contraire de votre clinicien.",
+      medicationTreatment: EYE_MED_FR,
+      returnPrecautions:
+        "Retournez immédiatement en cas de rideau ou d'ombre nouveau ou qui s'aggrave dans votre vision, d'augmentation soudaine des corps flottants ou des éclairs lumineux, de perte de vision qui s'aggrave, ou d'aggravation de la douleur oculaire.",
+      returnWorkSchool: "Faites le suivi en ophtalmologie selon les directives.",
+    }
+  );
+
+export const ORBITAL_CELLULITIS_FOLLOWUP_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated and treated for orbital cellulitis (a serious infection behind the eye). This documentation is used only after specialty-directed outpatient antibiotic aftercare.",
+      diagnosisInstructions:
+        "Take the full course of antibiotics exactly as prescribed, even if you feel better. Keep the close follow-up appointment to check the eye's response to treatment.",
+      medicationTreatment: EYE_MED_EN,
+      returnPrecautions:
+        "Return immediately for worsening eye swelling, worsening pain with eye movement, new or worsening vision changes, bulging of the eye, worsening fever, or confusion.",
+      returnWorkSchool: "Follow up exactly as directed — this infection can worsen quickly and requires close monitoring.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge pour une cellulite orbitaire (une infection grave derrière l'œil). Ce document est utilisé uniquement après une prise en charge antibiotique ambulatoire dirigée par un spécialiste.",
+      diagnosisInstructions:
+        "Prenez la totalité des antibiotiques exactement comme prescrit, même si vous vous sentez mieux. Respectez le rendez-vous de suivi rapproché pour vérifier la réponse de l'œil au traitement.",
+      medicationTreatment: EYE_MED_FR,
+      returnPrecautions:
+        "Retournez immédiatement en cas d'aggravation de l'enflure de l'œil, d'aggravation de la douleur aux mouvements de l'œil, de changements de vision nouveaux ou qui s'aggravent, de saillie de l'œil, d'aggravation de la fièvre, ou de confusion.",
+      returnWorkSchool: "Faites le suivi exactement selon les directives — cette infection peut s'aggraver rapidement et nécessite une surveillance rapprochée.",
+    }
+  );
+
+export const PRESEPTAL_CELLULITIS_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated and treated for preseptal (periorbital) cellulitis, an infection of the eyelid and skin around the eye that has not spread behind the eye.",
+      diagnosisInstructions:
+        "Take the full course of antibiotics exactly as prescribed, even if you feel better. Warm compresses may be used as directed.",
+      medicationTreatment: EYE_MED_EN,
+      returnPrecautions:
+        "Return immediately for worsening eye swelling, pain with eye movement, vision changes, bulging of the eye, or worsening fever — these signs may indicate the infection has spread behind the eye.",
+      returnWorkSchool: "Follow up as directed to confirm improvement.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge pour une cellulite préseptale (périorbitaire), une infection de la paupière et de la peau autour de l'œil qui ne s'est pas propagée derrière l'œil.",
+      diagnosisInstructions:
+        "Prenez la totalité des antibiotiques exactement comme prescrit, même si vous vous sentez mieux. Des compresses chaudes peuvent être utilisées selon les directives.",
+      medicationTreatment: EYE_MED_FR,
+      returnPrecautions:
+        "Retournez immédiatement en cas d'aggravation de l'enflure de l'œil, de douleur aux mouvements de l'œil, de changements de vision, de saillie de l'œil, ou d'aggravation de la fièvre — ces signes peuvent indiquer que l'infection s'est propagée derrière l'œil.",
+      returnWorkSchool: "Faites le suivi selon les directives pour confirmer l'amélioration.",
+    }
+  );
+
+export const UVEITIS_IRITIS_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated and treated for uveitis/iritis (inflammation inside the eye).",
+      diagnosisInstructions:
+        "Wear sunglasses outdoors if light bothers the eye. Use eye drops exactly on the schedule directed — missed doses can allow the inflammation to worsen.",
+      medicationTreatment: EYE_MED_EN,
+      returnPrecautions:
+        "Return immediately for worsening eye pain, worsening redness, new or worsening vision changes, or worsening light sensitivity.",
+      returnWorkSchool: "Follow up with ophthalmology as directed.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge pour une uvéite/iritis (inflammation à l'intérieur de l'œil).",
+      diagnosisInstructions:
+        "Portez des lunettes de soleil à l'extérieur si la lumière incommode l'œil. Utilisez les gouttes ophtalmiques exactement selon l'horaire indiqué — des doses manquées peuvent aggraver l'inflammation.",
+      medicationTreatment: EYE_MED_FR,
+      returnPrecautions:
+        "Retournez immédiatement en cas d'aggravation de la douleur oculaire, d'aggravation de la rougeur, de changements de vision nouveaux ou qui s'aggravent, ou d'aggravation de la sensibilité à la lumière.",
+      returnWorkSchool: "Faites le suivi en ophtalmologie selon les directives.",
+    }
+  );
+
+export const SCLERITIS_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated and treated for scleritis (inflammation of the white outer wall of the eye).",
+      diagnosisInstructions:
+        "Wear sunglasses outdoors if light bothers the eye. Use any prescribed eye drops or oral medicines exactly on the schedule directed.",
+      medicationTreatment: EYE_MED_EN,
+      returnPrecautions:
+        "Return immediately for worsening eye pain, worsening redness, new or worsening vision changes, or worsening light sensitivity.",
+      returnWorkSchool: "Follow up with ophthalmology as directed.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge pour une sclérite (inflammation de la paroi blanche externe de l'œil).",
+      diagnosisInstructions:
+        "Portez des lunettes de soleil à l'extérieur si la lumière incommode l'œil. Utilisez toute goutte ophtalmique ou médicament oral prescrit exactement selon l'horaire indiqué.",
+      medicationTreatment: EYE_MED_FR,
+      returnPrecautions:
+        "Retournez immédiatement en cas d'aggravation de la douleur oculaire, d'aggravation de la rougeur, de changements de vision nouveaux ou qui s'aggravent, ou d'aggravation de la sensibilité à la lumière.",
+      returnWorkSchool: "Faites le suivi en ophtalmologie selon les directives.",
+    }
+  );
+
+export const EYELID_LACERATION_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for an eyelid laceration (cut). Eyelid wounds are closely monitored to protect eyelid function and eye protection.",
+      diagnosisInstructions:
+        "Keep the wound clean and dry as directed. Apply ointment and change the dressing as directed. Follow up as directed for suture removal or wound check.",
+      medicationTreatment: EYE_MED_EN,
+      returnPrecautions:
+        "Return immediately for worsening pain, worsening swelling, spreading redness, pus or foul drainage, fever, wound reopening, or new vision changes.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour une lacération (coupure) de la paupière. Les plaies de la paupière sont surveillées de près pour protéger la fonction palpébrale et la protection de l'œil.",
+      diagnosisInstructions:
+        "Gardez la plaie propre et sèche selon les directives. Appliquez la pommade et changez le pansement selon les directives. Suivez le suivi selon les directives pour le retrait des points ou le contrôle de la plaie.",
+      medicationTreatment: EYE_MED_FR,
+      returnPrecautions:
+        "Retournez immédiatement en cas d'aggravation de la douleur, d'aggravation de l'enflure, de rougeur qui s'étend, de pus ou d'écoulement nauséabond, de fièvre, de réouverture de la plaie, ou de nouveaux changements de vision.",
+    }
+  );
+
+export const CANALICULAR_INJURY_FOLLOWUP_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated for a canalicular (tear duct) injury near the eyelid. This documentation is used only after ophthalmology/ENT has directed outpatient aftercare, often after a repair procedure.",
+      diagnosisInstructions:
+        "Keep any stent or tube in place exactly as directed — do not remove it yourself. Keep the area clean and dry as directed. Keep the close specialist follow-up appointment.",
+      medicationTreatment: EYE_MED_EN,
+      returnPrecautions:
+        "Return immediately for worsening pain, worsening swelling, spreading redness, pus or foul drainage, fever, or if the stent/tube falls out.",
+      returnWorkSchool: "Follow up with the specialist exactly as directed.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge pour une blessure canaliculaire (voie lacrymale) près de la paupière. Ce document est utilisé uniquement après qu'une prise en charge en ophtalmologie/ORL a déjà déterminé les soins ambulatoires, souvent après une réparation.",
+      diagnosisInstructions:
+        "Gardez toute tige ou tube en place exactement selon les directives — ne le retirez pas vous-même. Gardez la région propre et sèche selon les directives. Respectez le rendez-vous de suivi spécialisé rapproché.",
+      medicationTreatment: EYE_MED_FR,
+      returnPrecautions:
+        "Retournez immédiatement en cas d'aggravation de la douleur, d'aggravation de l'enflure, de rougeur qui s'étend, de pus ou d'écoulement nauséabond, de fièvre, ou si la tige/le tube se déloge.",
+      returnWorkSchool: "Faites le suivi avec le spécialiste exactement selon les directives.",
+    }
+  );
+
+export const ENDOPHTHALMITIS_POST_ACUTE_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated and treated for endophthalmitis (a serious infection inside the eye). This documentation is used only after ophthalmology has directed outpatient aftercare following urgent treatment.",
+      diagnosisInstructions:
+        "Use any prescribed eye drops or other medicines exactly on the schedule directed — missed doses can allow the infection to worsen and threaten vision. Keep the close, frequent ophthalmology follow-up appointments.",
+      medicationTreatment: EYE_MED_EN,
+      returnPrecautions:
+        "Return immediately for worsening eye pain, worsening vision loss, worsening redness, new discharge from the eye, or fever.",
+      returnWorkSchool: "Follow up with ophthalmology exactly as directed — this infection can threaten vision and requires close monitoring.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge pour une endophtalmie (une infection grave à l'intérieur de l'œil). Ce document est utilisé uniquement après qu'une prise en charge en ophtalmologie a déjà déterminé les soins ambulatoires après un traitement urgent.",
+      diagnosisInstructions:
+        "Utilisez toute goutte ophtalmique ou autre médicament prescrit exactement selon l'horaire indiqué — des doses manquées peuvent aggraver l'infection et menacer la vision. Respectez les rendez-vous de suivi ophtalmologique rapprochés et fréquents.",
+      medicationTreatment: EYE_MED_FR,
+      returnPrecautions:
+        "Retournez immédiatement en cas d'aggravation de la douleur oculaire, de perte de vision qui s'aggrave, d'aggravation de la rougeur, de nouvel écoulement de l'œil, ou de fièvre.",
+      returnWorkSchool: "Faites le suivi en ophtalmologie exactement selon les directives — cette infection peut menacer la vision et nécessite une surveillance rapprochée.",
+    }
+  );
+
+export const CRAO_CRVO_FOLLOWUP_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated for a central retinal artery or vein occlusion (a blocked blood vessel in the eye). This documentation is used only after ophthalmology (and any indicated stroke workup) has directed outpatient aftercare.",
+      diagnosisInstructions:
+        "Keep the urgent ophthalmology follow-up appointment. Complete any referrals for a stroke/cardiovascular risk workup exactly as directed — this eye finding can reflect the same risk factors as a stroke.",
+      medicationTreatment: EYE_MED_EN,
+      returnPrecautions:
+        "Return immediately for new or worsening vision loss, new weakness, numbness, difficulty speaking, or a severe headache.",
+      returnWorkSchool: "Follow up with ophthalmology exactly as directed — this is an urgent specialist follow-up, not routine primary care.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge pour une occlusion de l'artère ou de la veine centrale de la rétine (un vaisseau sanguin obstrué dans l'œil). Ce document est utilisé uniquement après qu'une prise en charge en ophtalmologie (et tout bilan d'AVC indiqué) a déjà déterminé les soins ambulatoires.",
+      diagnosisInstructions:
+        "Respectez le rendez-vous ophtalmologique urgent. Complétez toute référence pour un bilan de risque d'AVC/cardiovasculaire exactement selon les directives — cette atteinte oculaire peut refléter les mêmes facteurs de risque qu'un AVC.",
+      medicationTreatment: EYE_MED_FR,
+      returnPrecautions:
+        "Retournez immédiatement en cas de perte de vision nouvelle ou qui s'aggrave, de faiblesse nouvelle, d'engourdissement, de difficulté à parler, ou de céphalée sévère.",
+      returnWorkSchool: "Faites le suivi en ophtalmologie exactement selon les directives — il s'agit d'un suivi spécialisé urgent, non d'un suivi habituel de soins primaires.",
+    }
+  );
