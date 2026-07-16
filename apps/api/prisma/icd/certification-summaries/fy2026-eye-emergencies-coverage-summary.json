@@ -1,0 +1,13 @@
+{
+  "eyeEmergencies": {
+    "scopedOfficialBillable": 1376,
+    "presentInMedora": 1376,
+    "missingCodes": [],
+    "descriptionMismatches": [],
+    "duplicateActiveCodes": [],
+    "invalidSelectableHeaders": []
+  },
+  "certification": {
+    "pass": true
+  }
+}

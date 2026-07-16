@@ -279,6 +279,43 @@ const REQUIRED_QUERIES: Array<{
   { q: "hématome septal", mustContainDescription: "nose" },
   { q: "CSF leak after trauma", mustContainDescription: "cerebrospinal fluid leak" },
   { q: "fuite de LCR post-traumatique", mustContainDescription: "cerebrospinal fluid leak" },
+  // Eye emergencies (Phase 11)
+  { q: "corneal abrasion", mustMatchCodePrefix: "S05.0" },
+  { q: "abrasion cornéenne", mustMatchCodePrefix: "S05.0" },
+  { q: "corneal foreign body", mustMatchCodePrefix: "T15" },
+  { q: "corps étranger cornéen", mustMatchCodePrefix: "T15" },
+  { q: "corneal ulcer", mustMatchCodePrefix: "H16.0" },
+  { q: "ulcère cornéen", mustMatchCodePrefix: "H16.0" },
+  { q: "photokeratitis", mustMatchCodePrefix: "H16.13" },
+  { q: "photokératite", mustMatchCodePrefix: "H16.13" },
+  { q: "chemical eye injury", mustMatchCodePrefix: "T26" },
+  { q: "brûlure chimique de l'oeil", mustMatchCodePrefix: "T26" },
+  { q: "open globe", mustMatchCodePrefix: "S05.2" },
+  { q: "globe oculaire ouvert", mustMatchCodePrefix: "S05.2" },
+  { q: "hyphema", mustMatchCodePrefix: "H21.0" },
+  { q: "hyphéma", mustMatchCodePrefix: "H21.0" },
+  { q: "acute angle-closure glaucoma", mustMatchCodePrefix: "H40.21" },
+  { q: "glaucome aigu", mustMatchCodePrefix: "H40.21" },
+  { q: "retinal detachment", mustMatchCodePrefix: "H33.0" },
+  { q: "décollement de la rétine", mustMatchCodePrefix: "H33.0" },
+  { q: "vitreous hemorrhage", mustMatchCodePrefix: "H43.1" },
+  { q: "hémorragie du vitré", mustMatchCodePrefix: "H43.1" },
+  { q: "central retinal artery occlusion", mustMatchCodePrefix: "H34.1" },
+  { q: "occlusion de l'artère rétinienne", mustMatchCodePrefix: "H34.1" },
+  { q: "orbital cellulitis", mustMatchCodePrefix: "H05.01" },
+  { q: "cellulite orbitaire", mustMatchCodePrefix: "H05.01" },
+  { q: "preseptal cellulitis", mustMatchCodePrefix: "L03.213" },
+  { q: "cellulite préseptale", mustMatchCodePrefix: "L03.213" },
+  { q: "uveitis", mustMatchCodePrefix: "H20" },
+  { q: "uvéite", mustMatchCodePrefix: "H20" },
+  { q: "scleritis", mustMatchCodePrefix: "H15.0" },
+  { q: "sclérite", mustMatchCodePrefix: "H15.0" },
+  { q: "eyelid laceration", mustMatchCodePrefix: "S01.11" },
+  { q: "lacération de la paupière", mustMatchCodePrefix: "S01.11" },
+  { q: "endophthalmitis", mustMatchCodePrefix: "H44.0" },
+  { q: "endophtalmie", mustMatchCodePrefix: "H44.0" },
+  { q: "eye trauma", mustMatchCodePrefix: "S05" },
+  { q: "traumatisme oculaire", mustMatchCodePrefix: "S05" },
 ];
 
 function encounterChar(code: string): string {
@@ -497,6 +534,21 @@ async function main() {
     );
     writeFileSync(join(summaryDir, "fy2026-head-facial-trauma-search-summary.json"), headFacialTraumaSummary);
     writeFileSync(join(releaseSummaryDir, "fy2026-head-facial-trauma-search-summary.json"), headFacialTraumaSummary);
+    const eyeEmergenciesQueryPattern =
+      /corneal abrasion|abrasion cornéenne|corneal foreign body|corps étranger cornéen|corneal ulcer|ulcère cornéen|photokeratitis|photokératite|chemical eye injury|brûlure chimique de l'oeil|open globe|globe oculaire ouvert|hyphema|hyphéma|acute angle-closure glaucoma|glaucome aigu|retinal detachment|décollement de la rétine|vitreous hemorrhage|hémorragie du vitré|central retinal artery occlusion|occlusion de l'artère rétinienne|orbital cellulitis|cellulite orbitaire|preseptal cellulitis|cellulite préseptale|uveitis|uvéite|scleritis|sclérite|eyelid laceration|lacération de la paupière|endophthalmitis|endophtalmie|eye trauma|traumatisme oculaire/;
+    const eyeEmergenciesFailures = failures.filter((failure) => eyeEmergenciesQueryPattern.test(failure.toLowerCase()));
+    const eyeEmergenciesSummary = JSON.stringify(
+      {
+        generatedAt: report.generatedAt,
+        queryCount: REQUIRED_QUERIES.filter((row) => eyeEmergenciesQueryPattern.test(row.q.toLowerCase())).length,
+        failures: eyeEmergenciesFailures,
+        pass: eyeEmergenciesFailures.length === 0,
+      },
+      null,
+      2,
+    );
+    writeFileSync(join(summaryDir, "fy2026-eye-emergencies-search-summary.json"), eyeEmergenciesSummary);
+    writeFileSync(join(releaseSummaryDir, "fy2026-eye-emergencies-search-summary.json"), eyeEmergenciesSummary);
     if (!report.pass) process.exit(1);
   } finally {
     await prisma.$disconnect();
