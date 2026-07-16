@@ -10,6 +10,7 @@ import { providerDocumentationMedicationRefillComplaintIntelFr } from "./provide
 import { providerDocumentationObservationReassessmentComplaintIntelFr } from "./providerDocumentationObservationReassessmentComplaintIntel.fr";
 import { providerDocumentationRespiratoryComplaintIntel19Mdm3Fr } from "./providerDocumentationRespiratoryComplaintIntel19Mdm3.fr";
 import { providerDocumentationCardiacNonChestPainComplaintIntelFr } from "./providerDocumentationCardiacNonChestPainComplaintIntel.fr";
+import { providerDocumentationDermatologyComplaintIntelFr } from "./providerDocumentationDermatologyComplaintIntel.fr";
 import { providerDocumentationGuRenalComplaintIntel19Mdm5Fr } from "./providerDocumentationGuRenalComplaintIntel19Mdm5.fr";
 import { providerDocumentationInfectiousEntComplaintIntel19Mdm7Fr } from "./providerDocumentationInfectiousEntComplaintIntel19Mdm7.fr";
 import { providerDocumentationDentalOralComplaintIntelFr } from "./providerDocumentationDentalOralComplaintIntel.fr";
@@ -8415,6 +8416,14 @@ export default {
     templateAbscessPurulentInfectionAdultV1Help: "Inserts cliquables — abcès cutané, furoncle/anthrax, panaris, périonyxis, abcès pilonidal et lié à l'hidrosadénite, et signaux du panaris herpétique (sans drainage).",
     templateHighRiskWoundInfectionAdultV1: "Plaie à haut risque / Infection profonde des tissus mous",
     templateHighRiskWoundInfectionAdultV1Help: "Inserts cliquables — infection profonde de la main, ténosynovite infectieuse, infection nécrosante et gazeuse, déhiscence de plaie, infection d'ulcère ischémique diabétique et signaux d'ostéomyélite/arthrite septique.",
+    templateDermatologicRashAdultV1: "Éruption cutanée / Lésion de la peau",
+    templateDermatologicRashAdultV1Help: "Inserts cliquables — éruption indifférenciée, exanthème viral, suspicion d'infection bactérienne/fongique/parasitaire, dermatose inflammatoire, lésion suspecte et signaux d'alerte d'éruption grave.",
+    templateAllergicInflammatoryDermatologyAdultV1: "Affection cutanée allergique / inflammatoire",
+    templateAllergicInflammatoryDermatologyAdultV1Help: "Inserts cliquables — dermatite de contact, dermatite atopique/eczéma, urticaire, chevauchement avec angio-œdème, psoriasis, rosacée, dermite séborrhéique et intertrigo.",
+    templateVesicularBullousSkinDisorderAdultV1: "Affection cutanée vésiculeuse / bulleuse",
+    templateVesicularBullousSkinDisorderAdultV1Help: "Inserts cliquables — herpès simplex/zona, suspicion de zona ophtalmique, varicelle, impétigo bulleux, érythème polymorphe et signaux d'alerte du syndrome de Stevens-Johnson / eczéma herpéticum.",
+    templateDermatologicEmergencyAdultV1: "Urgence dermatologique / Éruption à haut risque",
+    templateDermatologicEmergencyAdultV1Help: "Inserts cliquables — syndrome de Stevens-Johnson/NET, DRESS, AGEP, éruption de type méningococcique, purpura fulminans, érythrodermie sévère et signaux d'alerte d'atteinte oculaire/muqueuse.",
     templateObservationReassessment: "Réévaluation observation",
     templateObservationReassessmentHelp: "Évolution, résultats en attente, signes vitaux, surveillance, aptitude sortie / transfert.",
     templateCategoryCardiopulmonary: "Cardiopulmonaire",
@@ -9806,6 +9815,7 @@ export default {
     },
   },
   providerDocumentationComplaintIntel: {
+    ...providerDocumentationDermatologyComplaintIntelFr,
     ...providerDocumentationPsychBehavioralComplaintIntelFr,
     ...providerDocumentationMedicationRefillComplaintIntelFr,
     ...providerDocumentationObservationReassessmentComplaintIntelFr,

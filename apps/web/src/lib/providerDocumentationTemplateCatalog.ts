@@ -152,6 +152,10 @@ import {
   SOFT_TISSUE_INFECTION_ADULT_V1_INTEL,
   ABSCESS_PURULENT_INFECTION_ADULT_V1_INTEL,
   HIGH_RISK_WOUND_INFECTION_ADULT_V1_INTEL,
+  DERMATOLOGIC_RASH_ADULT_V1_INTEL,
+  ALLERGIC_INFLAMMATORY_DERMATOLOGY_ADULT_V1_INTEL,
+  VESICULAR_BULLOUS_SKIN_DISORDER_ADULT_V1_INTEL,
+  DERMATOLOGIC_EMERGENCY_ADULT_V1_INTEL,
   type ProviderDocumentationComplaintIntelligence,
 } from "./providerDocumentationComplaintIntelligence";
 import type { ProviderDocumentationTemplatePickerSubgroupKey } from "./providerDocumentationModel";
@@ -2187,6 +2191,30 @@ export const PROVIDER_DOCUMENTATION_TEMPLATES: ProviderDocumentationTemplateDefi
     "providerDocumentationWorkspace.templateHighRiskWoundInfectionAdultV1",
     "providerDocumentationWorkspace.templateHighRiskWoundInfectionAdultV1Help",
     HIGH_RISK_WOUND_INFECTION_ADULT_V1_INTEL
+  ),
+  infectiousEntComplaintV1Template(
+    "dermatologic_rash_adult_v1",
+    "providerDocumentationWorkspace.templateDermatologicRashAdultV1",
+    "providerDocumentationWorkspace.templateDermatologicRashAdultV1Help",
+    DERMATOLOGIC_RASH_ADULT_V1_INTEL
+  ),
+  infectiousEntComplaintV1Template(
+    "allergic_inflammatory_dermatology_adult_v1",
+    "providerDocumentationWorkspace.templateAllergicInflammatoryDermatologyAdultV1",
+    "providerDocumentationWorkspace.templateAllergicInflammatoryDermatologyAdultV1Help",
+    ALLERGIC_INFLAMMATORY_DERMATOLOGY_ADULT_V1_INTEL
+  ),
+  infectiousEntComplaintV1Template(
+    "vesicular_bullous_skin_disorder_adult_v1",
+    "providerDocumentationWorkspace.templateVesicularBullousSkinDisorderAdultV1",
+    "providerDocumentationWorkspace.templateVesicularBullousSkinDisorderAdultV1Help",
+    VESICULAR_BULLOUS_SKIN_DISORDER_ADULT_V1_INTEL
+  ),
+  infectiousEntComplaintV1Template(
+    "dermatologic_emergency_adult_v1",
+    "providerDocumentationWorkspace.templateDermatologicEmergencyAdultV1",
+    "providerDocumentationWorkspace.templateDermatologicEmergencyAdultV1Help",
+    DERMATOLOGIC_EMERGENCY_ADULT_V1_INTEL
   ),
   {
     id: "observation_reassessment",

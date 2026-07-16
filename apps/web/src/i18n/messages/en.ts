@@ -35,6 +35,7 @@ import { providerDocumentationPediatricLegacyComplaintIntelEn } from "./provider
 import { providerDocumentationNeuroExpansionComplaintIntel19Mdm9En } from "./providerDocumentationNeuroExpansionComplaintIntel19Mdm9.en";
 import { providerDocumentationNeuroStrokeWeaknessComplaintIntelEn } from "./providerDocumentationNeuroStrokeWeaknessComplaintIntel.en";
 import { providerDocumentationCardiacNonChestPainComplaintIntelEn } from "./providerDocumentationCardiacNonChestPainComplaintIntel.en";
+import { providerDocumentationDermatologyComplaintIntelEn } from "./providerDocumentationDermatologyComplaintIntel.en";
 
 export default {
   common: {
@@ -8437,6 +8438,14 @@ export default {
     templateAbscessPurulentInfectionAdultV1Help: "Click-to-insert prompts for cutaneous abscess, furuncle/carbuncle, felon, paronychia, pilonidal and hidradenitis-related abscess, and herpetic whitlow (no-drainage) red flags.",
     templateHighRiskWoundInfectionAdultV1: "High-Risk Wound / Deep Soft Tissue Infection",
     templateHighRiskWoundInfectionAdultV1Help: "Click-to-insert prompts for deep space hand infection, infectious tenosynovitis, necrotizing and gas-forming infection, wound dehiscence, diabetic ischemic ulcer infection, and osteomyelitis/septic joint red flags.",
+    templateDermatologicRashAdultV1: "Rash / Skin Lesion",
+    templateDermatologicRashAdultV1Help: "Click-to-insert prompts for undifferentiated rash, viral exanthem, bacterial/fungal/parasitic infection concern, inflammatory dermatosis, suspicious lesion, and serious rash red flags.",
+    templateAllergicInflammatoryDermatologyAdultV1: "Allergic / Inflammatory Skin Disorder",
+    templateAllergicInflammatoryDermatologyAdultV1Help: "Click-to-insert prompts for contact dermatitis, atopic dermatitis/eczema, urticaria, angioedema overlap, psoriasis, rosacea, seborrheic dermatitis, and intertrigo.",
+    templateVesicularBullousSkinDisorderAdultV1: "Vesicular / Bullous Skin Disorder",
+    templateVesicularBullousSkinDisorderAdultV1Help: "Click-to-insert prompts for herpes simplex/zoster, zoster with eye involvement concern, varicella, bullous impetigo, erythema multiforme, and Stevens-Johnson syndrome / eczema herpeticum red flags.",
+    templateDermatologicEmergencyAdultV1: "Dermatologic Emergency / High-Risk Rash",
+    templateDermatologicEmergencyAdultV1Help: "Click-to-insert prompts for Stevens-Johnson syndrome/TEN, DRESS, AGEP, meningococcal-type rash, purpura fulminans, severe erythroderma, and mucosal/eye involvement red flags.",
     templateObservationReassessment: "Observation reassessment",
     templateObservationReassessmentHelp: "Interval symptoms, pending results, vitals, monitoring, discharge/transfer readiness.",
     templateCategoryCardiopulmonary: "Cardiopulmonary",
@@ -9822,6 +9831,7 @@ export default {
     },
   },
   providerDocumentationComplaintIntel: {
+    ...providerDocumentationDermatologyComplaintIntelEn,
     ...providerDocumentationPsychBehavioralComplaintIntelEn,
     ...providerDocumentationMedicationRefillComplaintIntelEn,
     ...providerDocumentationObservationReassessmentComplaintIntelEn,

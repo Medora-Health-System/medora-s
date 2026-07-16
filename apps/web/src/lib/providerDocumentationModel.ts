@@ -181,7 +181,11 @@ export type ProviderDocumentationTemplateId =
   | "ent_throat_neck_airway_adult_v1"
   | "soft_tissue_infection_adult_v1"
   | "abscess_purulent_infection_adult_v1"
-  | "high_risk_wound_infection_adult_v1";
+  | "high_risk_wound_infection_adult_v1"
+  | "dermatologic_rash_adult_v1"
+  | "allergic_inflammatory_dermatology_adult_v1"
+  | "vesicular_bullous_skin_disorder_adult_v1"
+  | "dermatologic_emergency_adult_v1";
 
 export type ProviderDocumentationTemplatePickerSubgroupKey =
   | "gi_abdominal"
