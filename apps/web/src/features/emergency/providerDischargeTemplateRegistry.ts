@@ -297,6 +297,26 @@ import {
   CANALICULAR_INJURY_FOLLOWUP_V1_SUGGESTED_TEXT,
   ENDOPHTHALMITIS_POST_ACUTE_V1_SUGGESTED_TEXT,
   CRAO_CRVO_FOLLOWUP_V1_SUGGESTED_TEXT,
+  ACUTE_OTITIS_EXTERNA_V1_SUGGESTED_TEXT,
+  MALIGNANT_OTITIS_EXTERNA_POST_ACUTE_V1_SUGGESTED_TEXT,
+  MASTOIDITIS_POST_ACUTE_V1_SUGGESTED_TEXT,
+  TM_PERFORATION_V1_SUGGESTED_TEXT,
+  SUDDEN_HEARING_LOSS_FOLLOWUP_V1_SUGGESTED_TEXT,
+  BPPV_V1_SUGGESTED_TEXT,
+  VESTIBULAR_NEURITIS_V1_SUGGESTED_TEXT,
+  LABYRINTHITIS_V1_SUGGESTED_TEXT,
+  FACIAL_NERVE_PALSY_V1_SUGGESTED_TEXT,
+  RAMSAY_HUNT_FOLLOWUP_V1_SUGGESTED_TEXT,
+  POST_NASAL_PACKING_V1_SUGGESTED_TEXT,
+  POSTERIOR_EPISTAXIS_POST_ACUTE_V1_SUGGESTED_TEXT,
+  NASAL_FOREIGN_BODY_V1_SUGGESTED_TEXT,
+  PERITONSILLAR_ABSCESS_POST_DRAINAGE_V1_SUGGESTED_TEXT,
+  DEEP_NECK_INFECTION_POST_ACUTE_V1_SUGGESTED_TEXT,
+  LUDWIG_ANGINA_POST_ACUTE_V1_SUGGESTED_TEXT,
+  EPIGLOTTITIS_POST_ACUTE_V1_SUGGESTED_TEXT,
+  SIALADENITIS_V1_SUGGESTED_TEXT,
+  SALIVARY_OBSTRUCTION_V1_SUGGESTED_TEXT,
+  THROAT_FOREIGN_BODY_FOLLOWUP_V1_SUGGESTED_TEXT,
 } from "./providerDischargeTemplateSuggestedTextCatalog";
 import {
   newDefaultFollowUpRow,
@@ -625,6 +645,13 @@ const TRAUMA_MSK_TEMPLATE_GOVERNANCE = {
 const EYE_EMERGENCY_TEMPLATE_GOVERNANCE = {
   ...BATCH_GOVERNANCE_DRAFT,
   specialtyCategory: "ophthalmology",
+  riskCategory: "moderate",
+};
+
+/** Phase 12 — ENT emergencies discharge governance (documentation advisory only). */
+const ENT_EMERGENCY_TEMPLATE_GOVERNANCE = {
+  ...BATCH_GOVERNANCE_DRAFT,
+  specialtyCategory: "ent",
   riskCategory: "moderate",
 };
 
@@ -4630,7 +4657,9 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
     title: "Trauma/MSK foreign body ear/nose discharge documentation",
     ...TRAUMA_MSK_TEMPLATE_GOVERNANCE,
     traumaMskSafety: { requiresNeurovascularPrecautions: false, requiresOrthopedicFollowUp: false, requiresReturnActivityRestrictions: true },
-    diagnosisMappings: { icdFamily: ["T16"], keyword: ["foreign body ear", "foreign body nose", "corps étranger oreille"] },
+    // T17.0/T17.1 (nasal FB) take precedence over the broader T17 aspirated-airway family below —
+    // mirrors the trauma_foreign_body_ear_nose condition family's longest-prefix ownership.
+    diagnosisMappings: { icdFamily: ["T16", "T17.0", "T17.1"], keyword: ["foreign body ear", "foreign body nose", "corps étranger oreille"] },
     sourceReferences: [{ label: "MedlinePlus — Ear disorders", url: "https://medlineplus.gov/eardisorders.html", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
     defaultFollowUps: [registryFollowUp("tmfben-ent", "ENT", "within 24–72 hours or as directed")],
     suggestedText: TRAUMA_MSK_FOREIGN_BODY_EAR_NOSE_SUGGESTED_TEXT,
@@ -6298,6 +6327,132 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
     diagnosisMappings: { icdFamily: ["H34.1", "H34.81"], keyword: ["central retinal artery occlusion", "central retinal vein occlusion", "crao", "crvo"] },
     sourceReferences: [{ label: "MedlinePlus — Retinal disorders", url: "https://medlineplus.gov/retinaldisorders.html", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
     defaultFollowUps: [registryFollowUp("eye-crao-oph", "OPHTHALMOLOGY", "urgent — within 24 hours or as directed")], suggestedText: CRAO_CRVO_FOLLOWUP_V1_SUGGESTED_TEXT,
+  },
+  {
+    id: "acute_otitis_externa_v1", version: "1.0.0", title: "Acute otitis externa discharge documentation", ...ENT_EMERGENCY_TEMPLATE_GOVERNANCE,
+    // H60.3 acute infective otitis externa only — H60.2 malignant/necrotizing otitis externa is owned separately.
+    diagnosisMappings: { icdFamily: ["H60.3"], keyword: ["otitis externa", "swimmer's ear", "ear canal infection"] },
+    sourceReferences: [{ label: "MedlinePlus — Ear infections", url: "https://medlineplus.gov/earinfections.html", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("ent-aoe-pcp", "PRIMARY_CARE", "within 5–7 days if not improved or as directed")], suggestedText: ACUTE_OTITIS_EXTERNA_V1_SUGGESTED_TEXT,
+  },
+  {
+    id: "malignant_otitis_externa_post_acute_v1", version: "1.0.0", title: "Malignant otitis externa post-acute discharge documentation", ...ENT_EMERGENCY_TEMPLATE_GOVERNANCE, riskCategory: "high",
+    diagnosisMappings: { icdFamily: ["H60.2"], keyword: ["malignant otitis externa", "necrotizing otitis externa", "skull base osteomyelitis"] },
+    sourceReferences: [{ label: "MedlinePlus — Ear infections", url: "https://medlineplus.gov/earinfections.html", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("ent-moe-ent", "ENT", "urgent — as directed by ENT/infectious disease")], suggestedText: MALIGNANT_OTITIS_EXTERNA_POST_ACUTE_V1_SUGGESTED_TEXT,
+  },
+  {
+    id: "mastoiditis_post_acute_v1", version: "1.0.0", title: "Mastoiditis post-acute discharge documentation", ...ENT_EMERGENCY_TEMPLATE_GOVERNANCE, riskCategory: "high",
+    diagnosisMappings: { icdFamily: ["H70"], keyword: ["mastoiditis", "postauricular swelling"] },
+    sourceReferences: [{ label: "MedlinePlus — Ear infections", url: "https://medlineplus.gov/earinfections.html", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("ent-mast-ent", "ENT", "urgent — as directed by ENT")], suggestedText: MASTOIDITIS_POST_ACUTE_V1_SUGGESTED_TEXT,
+  },
+  {
+    id: "tm_perforation_v1", version: "1.0.0", title: "Tympanic membrane perforation discharge documentation", ...ENT_EMERGENCY_TEMPLATE_GOVERNANCE,
+    diagnosisMappings: { icdFamily: ["H72"], keyword: ["tympanic membrane perforation", "perforated eardrum"] },
+    sourceReferences: [{ label: "MedlinePlus — Ear disorders", url: "https://medlineplus.gov/eardisorders.html", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("ent-tmp-ent", "ENT", "within 7–14 days or as directed")], suggestedText: TM_PERFORATION_V1_SUGGESTED_TEXT,
+  },
+  {
+    id: "sudden_hearing_loss_followup_v1", version: "1.0.0", title: "Sudden sensorineural hearing loss follow-up discharge documentation", ...ENT_EMERGENCY_TEMPLATE_GOVERNANCE, riskCategory: "high",
+    diagnosisMappings: { icdFamily: ["H91.2"], keyword: ["sudden sensorineural hearing loss", "ssnhl", "sudden hearing loss"] },
+    sourceReferences: [{ label: "MedlinePlus — Hearing disorders", url: "https://medlineplus.gov/hearingdisordersanddeafness.html", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("ent-ssnhl-ent", "ENT", "urgent — within 24–48 hours or as directed")], suggestedText: SUDDEN_HEARING_LOSS_FOLLOWUP_V1_SUGGESTED_TEXT,
+  },
+  {
+    id: "bppv_v1", version: "1.0.0", title: "BPPV discharge documentation", ...ENT_EMERGENCY_TEMPLATE_GOVERNANCE,
+    diagnosisMappings: { icdFamily: ["H81.10", "H81.11"], keyword: ["benign vertigo", "bppv", "benign paroxysmal positional vertigo"] },
+    sourceReferences: [{ label: "MedlinePlus — Dizziness and vertigo", url: "https://medlineplus.gov/dizzinessandvertigo.html", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("ent-bppv-pcp", "PRIMARY_CARE", "if symptoms persist or as directed")], suggestedText: BPPV_V1_SUGGESTED_TEXT,
+  },
+  {
+    id: "vestibular_neuritis_v1", version: "1.0.0", title: "Vestibular neuritis discharge documentation", ...ENT_EMERGENCY_TEMPLATE_GOVERNANCE,
+    diagnosisMappings: { icdFamily: ["H81.2"], keyword: ["vestibular neuritis", "acute unilateral vestibulopathy"] },
+    sourceReferences: [{ label: "MedlinePlus — Dizziness and vertigo", url: "https://medlineplus.gov/dizzinessandvertigo.html", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("ent-vn-pcp", "PRIMARY_CARE", "within 1 week if not improving or as directed")], suggestedText: VESTIBULAR_NEURITIS_V1_SUGGESTED_TEXT,
+  },
+  {
+    id: "labyrinthitis_v1", version: "1.0.0", title: "Labyrinthitis discharge documentation", ...ENT_EMERGENCY_TEMPLATE_GOVERNANCE,
+    diagnosisMappings: { icdFamily: ["H83.0"], keyword: ["labyrinthitis"] },
+    sourceReferences: [{ label: "MedlinePlus — Dizziness and vertigo", url: "https://medlineplus.gov/dizzinessandvertigo.html", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("ent-laby-ent", "ENT", "within 1 week or as directed")], suggestedText: LABYRINTHITIS_V1_SUGGESTED_TEXT,
+  },
+  {
+    id: "facial_nerve_palsy_v1", version: "1.0.0", title: "Facial nerve (Bell's) palsy discharge documentation", ...ENT_EMERGENCY_TEMPLATE_GOVERNANCE,
+    diagnosisMappings: { icdExact: ["G51.0"], keyword: ["facial nerve palsy", "bell's palsy", "facial droop"] },
+    sourceReferences: [{ label: "MedlinePlus — Bell's palsy", url: "https://medlineplus.gov/bellspalsy.html", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("ent-fnp-ent", "ENT", "within 3–5 days or as directed")], suggestedText: FACIAL_NERVE_PALSY_V1_SUGGESTED_TEXT,
+  },
+  {
+    id: "ramsay_hunt_followup_v1", version: "1.0.0", title: "Ramsay Hunt syndrome follow-up discharge documentation", ...ENT_EMERGENCY_TEMPLATE_GOVERNANCE, riskCategory: "moderate_to_high",
+    diagnosisMappings: { icdExact: ["B02.2"], keyword: ["ramsay hunt", "herpes zoster oticus"] },
+    sourceReferences: [{ label: "MedlinePlus — Shingles", url: "https://medlineplus.gov/shingles.html", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("ent-rh-ent", "ENT", "urgent — as directed by ENT/neurology")], suggestedText: RAMSAY_HUNT_FOLLOWUP_V1_SUGGESTED_TEXT,
+  },
+  {
+    id: "post_nasal_packing_v1", version: "1.0.0", title: "Post nasal packing aftercare discharge documentation", ...ENT_EMERGENCY_TEMPLATE_GOVERNANCE,
+    // Keyword-only: does not claim R04.0 (owned by epistaxis_v1).
+    diagnosisMappings: { keyword: ["nasal packing", "post nasal packing"] },
+    sourceReferences: [{ label: "MedlinePlus — Nosebleed", url: "https://medlineplus.gov/nosebleeds.html", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("ent-pnp-ent", "ENT", "for packing removal as scheduled")], suggestedText: POST_NASAL_PACKING_V1_SUGGESTED_TEXT,
+  },
+  {
+    id: "posterior_epistaxis_post_acute_v1", version: "1.0.0", title: "Posterior epistaxis post-acute discharge documentation", ...ENT_EMERGENCY_TEMPLATE_GOVERNANCE, riskCategory: "high",
+    // Keyword-only: higher-risk posterior bleed source, distinct from anterior R04.0 (owned by epistaxis_v1).
+    diagnosisMappings: { keyword: ["posterior epistaxis", "posterior nosebleed", "failed anterior packing"] },
+    sourceReferences: [{ label: "MedlinePlus — Nosebleed", url: "https://medlineplus.gov/nosebleeds.html", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("ent-pepa-ent", "ENT", "urgent — as directed by ENT")], suggestedText: POSTERIOR_EPISTAXIS_POST_ACUTE_V1_SUGGESTED_TEXT,
+  },
+  {
+    id: "nasal_foreign_body_v1", version: "1.0.0", title: "Nasal foreign body discharge documentation", ...ENT_EMERGENCY_TEMPLATE_GOVERNANCE,
+    // Keyword-only: T17.0/T17.1 already owned by trauma_msk_foreign_body_ear_nose_v1.
+    diagnosisMappings: { keyword: ["nasal foreign body", "foreign body in the nose", "object in the nostril"] },
+    sourceReferences: [{ label: "MedlinePlus — Foreign object in nose", url: "https://medlineplus.gov/ency/article/000047.htm", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("ent-nfb-pcp", "PRIMARY_CARE", "if symptoms persist or as directed")], suggestedText: NASAL_FOREIGN_BODY_V1_SUGGESTED_TEXT,
+  },
+  {
+    id: "peritonsillar_abscess_post_drainage_v1", version: "1.0.0", title: "Peritonsillar abscess post-drainage discharge documentation", ...ENT_EMERGENCY_TEMPLATE_GOVERNANCE, riskCategory: "high",
+    diagnosisMappings: { icdFamily: ["J36"], keyword: ["peritonsillar abscess", "quinsy"] },
+    sourceReferences: [{ label: "MedlinePlus — Tonsillitis", url: "https://medlineplus.gov/tonsillitis.html", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("ent-pta-ent", "ENT", "within 24–48 hours or as directed")], suggestedText: PERITONSILLAR_ABSCESS_POST_DRAINAGE_V1_SUGGESTED_TEXT,
+  },
+  {
+    id: "deep_neck_infection_post_acute_v1", version: "1.0.0", title: "Deep neck space infection post-acute discharge documentation", ...ENT_EMERGENCY_TEMPLATE_GOVERNANCE, riskCategory: "high",
+    diagnosisMappings: { icdFamily: ["J39.0"], keyword: ["retropharyngeal abscess", "parapharyngeal abscess", "deep neck space infection", "prevertebral soft tissue swelling"] },
+    sourceReferences: [{ label: "MedlinePlus — Throat disorders", url: "https://medlineplus.gov/throatdisorders.html", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("ent-dnip-ent", "ENT", "urgent — as directed by ENT/surgery")], suggestedText: DEEP_NECK_INFECTION_POST_ACUTE_V1_SUGGESTED_TEXT,
+  },
+  {
+    id: "ludwig_angina_post_acute_v1", version: "1.0.0", title: "Ludwig's angina post-acute discharge documentation", ...ENT_EMERGENCY_TEMPLATE_GOVERNANCE, riskCategory: "high",
+    diagnosisMappings: { icdFamily: ["K12.2"], keyword: ["ludwig's angina", "ludwig angina", "bilateral submandibular swelling", "floor of mouth swelling"] },
+    sourceReferences: [{ label: "MedlinePlus — Mouth disorders", url: "https://medlineplus.gov/mouthdisorders.html", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("ent-la-ent", "ENT", "urgent — as directed by ENT/oral surgery")], suggestedText: LUDWIG_ANGINA_POST_ACUTE_V1_SUGGESTED_TEXT,
+  },
+  {
+    id: "epiglottitis_post_acute_v1", version: "1.0.0", title: "Epiglottitis post-acute discharge documentation", ...ENT_EMERGENCY_TEMPLATE_GOVERNANCE, riskCategory: "high",
+    // J05.1 is longer/more specific than the broader J05 pediatric_respiratory (J05.0 croup) prefix.
+    diagnosisMappings: { icdFamily: ["J05.1"], keyword: ["epiglottitis", "thumbprint sign"] },
+    sourceReferences: [{ label: "MedlinePlus — Throat disorders", url: "https://medlineplus.gov/throatdisorders.html", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("ent-epig-ent", "ENT", "urgent — as directed by ENT")], suggestedText: EPIGLOTTITIS_POST_ACUTE_V1_SUGGESTED_TEXT,
+  },
+  {
+    id: "sialadenitis_v1", version: "1.0.0", title: "Sialadenitis discharge documentation", ...ENT_EMERGENCY_TEMPLATE_GOVERNANCE,
+    diagnosisMappings: { icdFamily: ["K11.2"], keyword: ["sialadenitis", "salivary gland infection"] },
+    sourceReferences: [{ label: "MedlinePlus — Salivary gland disorders", url: "https://medlineplus.gov/salivaryglanddisorders.html", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("ent-sial-pcp", "PRIMARY_CARE", "within 5–7 days if not improved or as directed")], suggestedText: SIALADENITIS_V1_SUGGESTED_TEXT,
+  },
+  {
+    id: "salivary_obstruction_v1", version: "1.0.0", title: "Salivary duct obstruction discharge documentation", ...ENT_EMERGENCY_TEMPLATE_GOVERNANCE,
+    diagnosisMappings: { icdFamily: ["K11.5"], keyword: ["sialolithiasis", "salivary duct obstruction", "salivary stone"] },
+    sourceReferences: [{ label: "MedlinePlus — Salivary gland disorders", url: "https://medlineplus.gov/salivaryglanddisorders.html", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("ent-salob-ent", "ENT", "within 7–14 days if not resolved or as directed")], suggestedText: SALIVARY_OBSTRUCTION_V1_SUGGESTED_TEXT,
+  },
+  {
+    id: "throat_foreign_body_followup_v1", version: "1.0.0", title: "Throat foreign body follow-up discharge documentation", ...ENT_EMERGENCY_TEMPLATE_GOVERNANCE,
+    // Keyword-only: T17.2/T18.1 already owned by trauma_msk_foreign_body_aspirated_v1 / trauma_msk_foreign_body_ingested_v1.
+    diagnosisMappings: { keyword: ["throat foreign body", "fish bone", "food bolus impaction"] },
+    sourceReferences: [{ label: "MedlinePlus — Foreign object swallowed or inhaled", url: "https://medlineplus.gov/ency/article/000047.htm", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("ent-tfb-pcp", "PRIMARY_CARE", "if symptoms persist or as directed")], suggestedText: THROAT_FOREIGN_BODY_FOLLOWUP_V1_SUGGESTED_TEXT,
   },
   {
     id: GENERIC_PROVIDER_DISCHARGE_TEMPLATE_ID,

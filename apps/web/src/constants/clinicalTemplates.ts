@@ -143,6 +143,23 @@ export const COMMON_DIAGNOSES: Array<{ code: string; label: string }> = [
   { code: "S14.121A", label: "Syndrome centromédullaire en C1, rencontre initiale" },
   { code: "Z23", label: "Besoin de vaccination contre une maladie bactérienne" },
   { code: "Z00.0", label: "Examen médical général de suivi" },
+  { code: "H60.339", label: "Otite externe infectieuse (oreille du baigneur), oreille non précisée" },
+  { code: "H60.20", label: "Otite externe maligne (nécrosante), oreille non précisée" },
+  { code: "H66.90", label: "Otite moyenne, sans précision" },
+  { code: "H70.90", label: "Mastoïdite, sans précision" },
+  { code: "H72.90", label: "Perforation de la membrane tympanique, sans précision" },
+  { code: "H91.20", label: "Surdité soudaine idiopathique, oreille non précisée" },
+  { code: "H81.10", label: "Vertige positionnel paroxystique bénin, oreille non précisée" },
+  { code: "H81.20", label: "Névrite vestibulaire, oreille non précisée" },
+  { code: "H83.01", label: "Labyrinthite, oreille droite" },
+  { code: "G51.0", label: "Paralysie de Bell" },
+  { code: "R04.0", label: "Épistaxis" },
+  { code: "T17.1XXA", label: "Corps étranger dans la narine, rencontre initiale" },
+  { code: "J36", label: "Abcès périamygdalien" },
+  { code: "J39.0", label: "Abcès rétropharyngé et parapharyngé" },
+  { code: "K12.2", label: "Cellulite et abcès de la bouche (angine de Ludwig)" },
+  { code: "J05.10", label: "Épiglottite aiguë, sans obstruction" },
+  { code: "K11.20", label: "Sialadénite, sans précision" },
 ];
 
 /** Quick-insert snippets for nursing / general consultation notes (Notes de consultation). */

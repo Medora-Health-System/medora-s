@@ -200,6 +200,58 @@ export const PROVIDER_DISCHARGE_FOLLOW_UP_TIMING_LOCALE: Record<string, Localize
     en: "urgent — as directed by ophthalmology",
     fr: "urgent — selon les directives de l'ophtalmologie",
   },
+  "within 5–7 days if not improved or as directed": {
+    en: "within 5–7 days if not improved or as directed",
+    fr: "dans 5 à 7 jours si aucune amélioration ou selon les directives",
+  },
+  "urgent — as directed by ENT/infectious disease": {
+    en: "urgent — as directed by ENT/infectious disease",
+    fr: "urgent — selon les directives de l'ORL/des maladies infectieuses",
+  },
+  "urgent — as directed by ENT": {
+    en: "urgent — as directed by ENT",
+    fr: "urgent — selon les directives de l'ORL",
+  },
+  "within 7–14 days or as directed": {
+    en: "within 7–14 days or as directed",
+    fr: "dans 7 à 14 jours ou selon les directives",
+  },
+  "within 7–14 days if not resolved or as directed": {
+    en: "within 7–14 days if not resolved or as directed",
+    fr: "dans 7 à 14 jours si non résolu ou selon les directives",
+  },
+  "urgent — within 24–48 hours or as directed": {
+    en: "urgent — within 24–48 hours or as directed",
+    fr: "urgent — dans les 24 à 48 heures ou selon les directives",
+  },
+  "if symptoms persist or as directed": {
+    en: "if symptoms persist or as directed",
+    fr: "si les symptômes persistent ou selon les directives",
+  },
+  "within 1 week if not improving or as directed": {
+    en: "within 1 week if not improving or as directed",
+    fr: "dans 1 semaine en l'absence d'amélioration ou selon les directives",
+  },
+  "within 1 week or as directed": {
+    en: "within 1 week or as directed",
+    fr: "dans 1 semaine ou selon les directives",
+  },
+  "urgent — as directed by ENT/neurology": {
+    en: "urgent — as directed by ENT/neurology",
+    fr: "urgent — selon les directives de l'ORL/neurologie",
+  },
+  "for packing removal as scheduled": {
+    en: "for packing removal as scheduled",
+    fr: "pour le retrait du méchage tel que prévu",
+  },
+  "urgent — as directed by ENT/surgery": {
+    en: "urgent — as directed by ENT/surgery",
+    fr: "urgent — selon les directives de l'ORL/chirurgie",
+  },
+  "urgent — as directed by ENT/oral surgery": {
+    en: "urgent — as directed by ENT/oral surgery",
+    fr: "urgent — selon les directives de l'ORL/chirurgie buccale",
+  },
 };
 
 export const PROVIDER_DISCHARGE_FOLLOW_UP_COMMENTS_LOCALE: Record<string, LocalizedPair> = {

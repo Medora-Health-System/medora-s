@@ -87,6 +87,9 @@ const RESPIRATORY_FORBIDDEN_ON_WOUND_EN = ["asthma", "wheezing", "bronchitis"] a
 const RESPIRATORY_FORBIDDEN_ON_WOUND_FR = ["asthme", "sifflement", "bronchite"] as const;
 const BURN_CROSS_TEMPLATE_FORBIDDEN_EN = ["fracture", "sprain", "cast", "splint"] as const;
 const BURN_CROSS_TEMPLATE_FORBIDDEN_FR = ["fracture", "entorse", "plâtre", "attelle"] as const;
+/** Phase 12 — guards high-risk ENT post-acute templates against routine otitis/pharyngitis copy-paste. */
+const ENT_ROUTINE_OTITIS_PHARYNGITIS_FORBIDDEN_EN = ["ear pain or sore throat"] as const;
+const ENT_ROUTINE_OTITIS_PHARYNGITIS_FORBIDDEN_FR = ["otalgie ou un mal de gorge"] as const;
 
 /** Per-template integrity rules — prevents catalog/registry copy-paste mismatches. */
 export const PROVIDER_DISCHARGE_TEMPLATE_CONTENT_INTEGRITY: Record<
@@ -1054,6 +1057,110 @@ export const PROVIDER_DISCHARGE_TEMPLATE_CONTENT_INTEGRITY: Record<
   endophthalmitis_post_acute_v1: { mustIncludeAny: { en: ["endophthalmitis"], fr: ["endophtalmie"] }, forbiddenCrossTemplateMarkers: { en: [], fr: [] } },
   crao_crvo_followup_v1: {
     mustIncludeAny: { en: ["retinal artery", "retinal vein"], fr: ["artère", "veine"] },
+    forbiddenCrossTemplateMarkers: { en: [], fr: [] },
+  },
+  acute_otitis_externa_v1: {
+    mustIncludeAny: { en: ["otitis externa"], fr: ["otite externe"] },
+    forbiddenCrossTemplateMarkers: { en: [], fr: [] },
+  },
+  malignant_otitis_externa_post_acute_v1: {
+    mustIncludeAny: { en: ["malignant"], fr: ["maligne"] },
+    forbiddenCrossTemplateMarkers: {
+      en: ENT_ROUTINE_OTITIS_PHARYNGITIS_FORBIDDEN_EN,
+      fr: ENT_ROUTINE_OTITIS_PHARYNGITIS_FORBIDDEN_FR,
+    },
+  },
+  mastoiditis_post_acute_v1: {
+    mustIncludeAny: { en: ["mastoiditis"], fr: ["mastoïdite"] },
+    forbiddenCrossTemplateMarkers: {
+      en: ENT_ROUTINE_OTITIS_PHARYNGITIS_FORBIDDEN_EN,
+      fr: ENT_ROUTINE_OTITIS_PHARYNGITIS_FORBIDDEN_FR,
+    },
+  },
+  tm_perforation_v1: {
+    mustIncludeAny: { en: ["tympanic membrane perforation"], fr: ["membrane tympanique"] },
+    forbiddenCrossTemplateMarkers: { en: [], fr: [] },
+  },
+  sudden_hearing_loss_followup_v1: {
+    mustIncludeAny: { en: ["sudden sensorineural hearing loss", "ssnhl"], fr: ["surdité brusque"] },
+    forbiddenCrossTemplateMarkers: {
+      en: ENT_ROUTINE_OTITIS_PHARYNGITIS_FORBIDDEN_EN,
+      fr: ENT_ROUTINE_OTITIS_PHARYNGITIS_FORBIDDEN_FR,
+    },
+  },
+  bppv_v1: {
+    mustIncludeAny: { en: ["benign paroxysmal positional vertigo", "bppv"], fr: ["vertige positionnel paroxystique", "vppb"] },
+    forbiddenCrossTemplateMarkers: { en: [], fr: [] },
+  },
+  vestibular_neuritis_v1: {
+    mustIncludeAny: { en: ["vestibular neuritis"], fr: ["névrite vestibulaire"] },
+    forbiddenCrossTemplateMarkers: { en: [], fr: [] },
+  },
+  labyrinthitis_v1: {
+    mustIncludeAny: { en: ["labyrinthitis"], fr: ["labyrinthite"] },
+    forbiddenCrossTemplateMarkers: { en: [], fr: [] },
+  },
+  facial_nerve_palsy_v1: {
+    mustIncludeAny: { en: ["facial nerve", "bell's palsy"], fr: ["paralysie du nerf facial", "paralysie faciale"] },
+    forbiddenCrossTemplateMarkers: { en: [], fr: [] },
+  },
+  ramsay_hunt_followup_v1: {
+    mustIncludeAny: { en: ["ramsay hunt"], fr: ["ramsay hunt"] },
+    forbiddenCrossTemplateMarkers: {
+      en: ENT_ROUTINE_OTITIS_PHARYNGITIS_FORBIDDEN_EN,
+      fr: ENT_ROUTINE_OTITIS_PHARYNGITIS_FORBIDDEN_FR,
+    },
+  },
+  post_nasal_packing_v1: {
+    mustIncludeAny: { en: ["nasal packing"], fr: ["tamponnement nasal"] },
+    forbiddenCrossTemplateMarkers: { en: [], fr: [] },
+  },
+  posterior_epistaxis_post_acute_v1: {
+    mustIncludeAny: { en: ["posterior epistaxis"], fr: ["épistaxis postérieure"] },
+    forbiddenCrossTemplateMarkers: { en: [], fr: [] },
+  },
+  nasal_foreign_body_v1: {
+    mustIncludeAny: { en: ["foreign body in the nose", "nasal foreign body"], fr: ["corps étranger dans le nez"] },
+    forbiddenCrossTemplateMarkers: { en: [], fr: [] },
+  },
+  peritonsillar_abscess_post_drainage_v1: {
+    mustIncludeAny: { en: ["peritonsillar abscess"], fr: ["abcès périamygdalien"] },
+    forbiddenCrossTemplateMarkers: {
+      en: ENT_ROUTINE_OTITIS_PHARYNGITIS_FORBIDDEN_EN,
+      fr: ENT_ROUTINE_OTITIS_PHARYNGITIS_FORBIDDEN_FR,
+    },
+  },
+  deep_neck_infection_post_acute_v1: {
+    mustIncludeAny: { en: ["deep neck space infection"], fr: ["infection profonde de l'espace du cou"] },
+    forbiddenCrossTemplateMarkers: {
+      en: ENT_ROUTINE_OTITIS_PHARYNGITIS_FORBIDDEN_EN,
+      fr: ENT_ROUTINE_OTITIS_PHARYNGITIS_FORBIDDEN_FR,
+    },
+  },
+  ludwig_angina_post_acute_v1: {
+    mustIncludeAny: { en: ["ludwig's angina", "ludwig angina"], fr: ["angine de ludwig"] },
+    forbiddenCrossTemplateMarkers: {
+      en: ENT_ROUTINE_OTITIS_PHARYNGITIS_FORBIDDEN_EN,
+      fr: ENT_ROUTINE_OTITIS_PHARYNGITIS_FORBIDDEN_FR,
+    },
+  },
+  epiglottitis_post_acute_v1: {
+    mustIncludeAny: { en: ["epiglottitis"], fr: ["épiglottite"] },
+    forbiddenCrossTemplateMarkers: {
+      en: ENT_ROUTINE_OTITIS_PHARYNGITIS_FORBIDDEN_EN,
+      fr: ENT_ROUTINE_OTITIS_PHARYNGITIS_FORBIDDEN_FR,
+    },
+  },
+  sialadenitis_v1: {
+    mustIncludeAny: { en: ["sialadenitis"], fr: ["sialadénite"] },
+    forbiddenCrossTemplateMarkers: { en: [], fr: [] },
+  },
+  salivary_obstruction_v1: {
+    mustIncludeAny: { en: ["salivary duct obstruction", "sialolithiasis"], fr: ["obstruction du canal salivaire", "sialolithiase"] },
+    forbiddenCrossTemplateMarkers: { en: [], fr: [] },
+  },
+  throat_foreign_body_followup_v1: {
+    mustIncludeAny: { en: ["throat foreign body"], fr: ["corps étranger dans la gorge"] },
     forbiddenCrossTemplateMarkers: { en: [], fr: [] },
   },
 };

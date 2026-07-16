@@ -584,6 +584,86 @@ const FRENCH_DIAGNOSIS_SEARCH_ALIASES: readonly FrenchDiagnosisSearchAlias[] = [
     frenchPhrases: ["traumatisme oculaire", "traumatisme de l'oeil", "traumatisme de l oeil"],
     englishSearchTerms: ["eye trauma", "ocular trauma"],
   },
+  {
+    frenchPhrases: ["oreille du baigneur", "otite externe"],
+    englishSearchTerms: ["swimmer's ear", "otitis externa"],
+  },
+  {
+    frenchPhrases: ["otite externe maligne", "otite externe necrosante", "otite externe nécrosante"],
+    englishSearchTerms: ["malignant otitis externa", "necrotizing otitis externa"],
+  },
+  {
+    frenchPhrases: ["mastoïdite", "mastoidite"],
+    englishSearchTerms: ["mastoiditis"],
+  },
+  {
+    frenchPhrases: ["perforation du tympan", "tympan perforé", "tympan perfore"],
+    englishSearchTerms: ["tympanic membrane perforation", "perforated eardrum"],
+  },
+  {
+    frenchPhrases: ["surdité brusque", "surdite brusque", "surdité soudaine", "surdite soudaine"],
+    englishSearchTerms: ["sudden sensorineural hearing loss", "sudden hearing loss", "SSNHL"],
+  },
+  {
+    frenchPhrases: ["vertige positionnel paroxystique bénin", "vertige positionnel paroxystique benin", "vppb"],
+    englishSearchTerms: ["BPPV", "benign paroxysmal positional vertigo"],
+  },
+  {
+    frenchPhrases: ["névrite vestibulaire", "nevrite vestibulaire"],
+    englishSearchTerms: ["vestibular neuritis"],
+  },
+  {
+    frenchPhrases: ["labyrinthite"],
+    englishSearchTerms: ["labyrinthitis"],
+  },
+  {
+    frenchPhrases: ["paralysie de bell", "paralysie faciale"],
+    englishSearchTerms: ["bell's palsy", "facial nerve palsy", "facial droop"],
+  },
+  {
+    frenchPhrases: ["syndrome de ramsay hunt", "zona auriculaire"],
+    englishSearchTerms: ["ramsay hunt", "herpes zoster oticus"],
+  },
+  {
+    frenchPhrases: ["tamponnement nasal"],
+    englishSearchTerms: ["nasal packing", "post nasal packing"],
+  },
+  {
+    frenchPhrases: ["épistaxis postérieure", "epistaxis posterieure"],
+    englishSearchTerms: ["posterior epistaxis"],
+  },
+  {
+    frenchPhrases: ["corps étranger nasal", "corps etranger nasal", "corps étranger dans le nez"],
+    englishSearchTerms: ["nasal foreign body", "foreign body in the nose"],
+  },
+  {
+    frenchPhrases: ["abcès périamygdalien", "abces periamygdalien", "phlegmon péritonsillaire"],
+    englishSearchTerms: ["peritonsillar abscess", "quinsy"],
+  },
+  {
+    frenchPhrases: ["abcès rétropharyngé", "abces retropharynge", "infection profonde de l'espace du cou"],
+    englishSearchTerms: ["retropharyngeal abscess", "deep neck space infection", "parapharyngeal abscess"],
+  },
+  {
+    frenchPhrases: ["angine de ludwig"],
+    englishSearchTerms: ["ludwig's angina", "ludwig angina"],
+  },
+  {
+    frenchPhrases: ["épiglottite", "epiglottite"],
+    englishSearchTerms: ["epiglottitis"],
+  },
+  {
+    frenchPhrases: ["sialadénite", "sialadenite"],
+    englishSearchTerms: ["sialadenitis", "salivary gland infection"],
+  },
+  {
+    frenchPhrases: ["sialolithiase", "calcul salivaire"],
+    englishSearchTerms: ["sialolithiasis", "salivary duct obstruction", "salivary stone"],
+  },
+  {
+    frenchPhrases: ["corps étranger dans la gorge", "corps etranger dans la gorge", "arête de poisson", "arete de poisson"],
+    englishSearchTerms: ["throat foreign body", "fish bone"],
+  },
 ];
 
 /** Accent-insensitive, lowercase normalization for diagnosis search. */

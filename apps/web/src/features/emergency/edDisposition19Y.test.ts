@@ -1830,9 +1830,15 @@ describe("edDisposition19Y", () => {
     });
 
     it("vertigo H81 family resolves correctly", () => {
+      // Phase 12 — H81.10/H81.11 (BPPV) now route to the dedicated bppv_v1 template
+      // (Epley/repositioning guidance) instead of the generic vertigo_dizziness_v1 template.
       const resolved = resolveProviderDischargeTemplateForDiagnosis({ code: "H81.10", displayName: "Vertigo" });
-      expect(resolved.template.id).toBe("vertigo_dizziness_v1");
+      expect(resolved.template.id).toBe("bppv_v1");
       expect(resolved.matchLevel).toBe("icdFamily");
+
+      const nonBppvVertigo = resolveProviderDischargeTemplateForDiagnosis({ code: "H81.09", displayName: "Vertigo" });
+      expect(nonBppvVertigo.template.id).toBe("vertigo_dizziness_v1");
+      expect(nonBppvVertigo.matchLevel).toBe("icdFamily");
     });
 
     it("kidney stone N20 family resolves correctly", () => {
@@ -8092,7 +8098,7 @@ describe("edDisposition19Y", () => {
         PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.length
       );
       // Update this constant intentionally when registry governance content changes.
-      expect(hash).toBe("a73913f3693a8012a4d84e3ba0d0f913da221aaa72ef62348eb3f0c242b682b9");
+      expect(hash).toBe("9cd15d22bb35c9f474412473ab90c7213db5f7a616d8c09e5632216d7f66d456");
     });
 
     it("registry governance snapshot hash remains stable for reviewed registry (FR)", () => {
@@ -8102,7 +8108,7 @@ describe("edDisposition19Y", () => {
         PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.length
       );
       // Update this constant intentionally when registry governance content changes.
-      expect(hash).toBe("84d8da479d19fe649ff8171ce9a68f797eefab047aa6713e936d595dedf63755");
+      expect(hash).toBe("63dd2dff800738f4666fc9373bdc562b6a6c59ddfdf7b7db8f012b637be8c2aa");
     });
 
     it("timesApplied exists in type but is not incremented anywhere", () => {

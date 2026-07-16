@@ -5190,3 +5190,471 @@ export const CRAO_CRVO_FOLLOWUP_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSugg
       returnWorkSchool: "Faites le suivi en ophtalmologie exactement selon les directives — il s'agit d'un suivi spécialisé urgent, non d'un suivi habituel de soins primaires.",
     }
   );
+
+/** Phase 12 — ENT emergencies discharge suggested text (advisory documentation only). */
+const ENT_MED_EN =
+  "Take any antibiotic, pain, or ear/nose drop medicine only as prescribed or specifically directed during this visit. Do not start, stop, or change medications on your own.";
+const ENT_MED_FR =
+  "Prenez tout antibiotique, antidouleur ou goutte auriculaire/nasale uniquement selon la prescription ou les directives spécifiques données lors de cette visite. Ne commencez, n'arrêtez et ne modifiez pas les médicaments de votre propre initiative.";
+
+export const ACUTE_OTITIS_EXTERNA_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for acute otitis externa (swimmer's ear) — an infection of the ear canal.",
+      diagnosisInstructions:
+        "Keep the ear canal dry — avoid swimming and keep water out of the ear while showering until healed. Do not insert cotton swabs, fingers, or other objects into the ear canal. Use ear drops exactly as prescribed, for the full course.",
+      medicationTreatment: ENT_MED_EN,
+      returnPrecautions:
+        "Return immediately for worsening ear pain, spreading redness or swelling outside the ear canal, fever, new facial weakness, or if symptoms have not improved after finishing the prescribed course.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour une otite externe aiguë (oreille du baigneur) — une infection du conduit auditif.",
+      diagnosisInstructions:
+        "Gardez le conduit auditif sec — évitez la baignade et empêchez l'eau d'entrer dans l'oreille pendant la douche jusqu'à la guérison. N'insérez pas de coton-tige, de doigt ou d'autre objet dans le conduit auditif. Utilisez les gouttes auriculaires exactement comme prescrit, pour toute la durée du traitement.",
+      medicationTreatment: ENT_MED_FR,
+      returnPrecautions:
+        "Retournez immédiatement en cas d'aggravation de la douleur à l'oreille, de rougeur ou d'enflure qui s'étend au-delà du conduit auditif, de fièvre, de nouvelle faiblesse faciale, ou si les symptômes ne se sont pas améliorés après la fin du traitement prescrit.",
+    }
+  );
+
+export const MALIGNANT_OTITIS_EXTERNA_POST_ACUTE_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated for malignant (necrotizing) otitis externa — a serious infection that can spread from the ear canal into the skull base. This documentation is used only after ENT/infectious disease has already directed outpatient antibiotic aftercare, not as an autonomous ED discharge decision.",
+      diagnosisInstructions:
+        "Complete the full course of the specialist-directed antibiotic treatment exactly as prescribed, even if the ear feels better. Keep every scheduled ENT and infectious disease follow-up appointment — this infection is monitored closely for weeks.",
+      medicationTreatment: ENT_MED_EN,
+      returnPrecautions:
+        "Return immediately for worsening ear pain, new facial weakness or drooping, new headache, new hearing loss, fever, or any new neurologic symptom.",
+      returnWorkSchool: "Follow up with ENT/infectious disease exactly as directed — this is a close specialist follow-up, not routine primary care.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge pour une otite externe maligne (nécrosante) — une infection grave pouvant s'étendre du conduit auditif à la base du crâne. Ce document est utilisé uniquement après qu'une prise en charge en ORL/maladies infectieuses a déjà déterminé les soins antibiotiques ambulatoires, non comme une décision autonome de sortie des urgences.",
+      diagnosisInstructions:
+        "Terminez la cure complète du traitement antibiotique dirigé par le spécialiste exactement comme prescrit, même si l'oreille se sent mieux. Respectez chaque rendez-vous de suivi ORL et maladies infectieuses prévu — cette infection est surveillée de près pendant plusieurs semaines.",
+      medicationTreatment: ENT_MED_FR,
+      returnPrecautions:
+        "Retournez immédiatement en cas d'aggravation de la douleur à l'oreille, de nouvelle faiblesse ou affaissement du visage, de nouvelle céphalée, de nouvelle perte d'audition, de fièvre, ou de tout nouveau symptôme neurologique.",
+      returnWorkSchool: "Faites le suivi en ORL/maladies infectieuses exactement selon les directives — il s'agit d'un suivi spécialisé rapproché, non d'un suivi habituel de soins primaires.",
+    }
+  );
+
+export const MASTOIDITIS_POST_ACUTE_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated for mastoiditis — an infection of the bone behind the ear. This documentation is used only after ENT has already directed outpatient antibiotic aftercare, not as an autonomous ED discharge decision.",
+      diagnosisInstructions:
+        "Complete the full course of the specialist-directed antibiotic treatment exactly as prescribed. Keep every scheduled ENT follow-up appointment to confirm the infection is clearing.",
+      medicationTreatment: ENT_MED_EN,
+      returnPrecautions:
+        "Return immediately for worsening swelling or redness behind the ear, worsening ear pain, fever, new facial weakness, severe headache, neck stiffness, or confusion.",
+      returnWorkSchool: "Follow up with ENT exactly as directed — this is a close specialist follow-up, not routine primary care.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge pour une mastoïdite — une infection de l'os situé derrière l'oreille. Ce document est utilisé uniquement après qu'une prise en charge en ORL a déjà déterminé les soins antibiotiques ambulatoires, non comme une décision autonome de sortie des urgences.",
+      diagnosisInstructions:
+        "Terminez la cure complète du traitement antibiotique dirigé par le spécialiste exactement comme prescrit. Respectez chaque rendez-vous de suivi ORL prévu pour confirmer que l'infection se résorbe.",
+      medicationTreatment: ENT_MED_FR,
+      returnPrecautions:
+        "Retournez immédiatement en cas d'aggravation de l'enflure ou de la rougeur derrière l'oreille, d'aggravation de la douleur à l'oreille, de fièvre, de nouvelle faiblesse faciale, de céphalée sévère, de raideur de la nuque, ou de confusion.",
+      returnWorkSchool: "Faites le suivi en ORL exactement selon les directives — il s'agit d'un suivi spécialisé rapproché, non d'un suivi habituel de soins primaires.",
+    }
+  );
+
+export const TM_PERFORATION_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for a tympanic membrane perforation (a hole or tear in the eardrum).",
+      diagnosisInstructions:
+        "Keep the ear completely dry — no swimming and no water in the ear canal while showering or bathing until cleared by ENT. Do not insert anything into the ear canal. Most small perforations heal on their own over several weeks.",
+      medicationTreatment: ENT_MED_EN,
+      returnPrecautions:
+        "Return immediately for worsening ear pain, new or worsening hearing loss, drainage from the ear, fever, dizziness, or facial weakness.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour une perforation de la membrane tympanique (un trou ou une déchirure dans le tympan).",
+      diagnosisInstructions:
+        "Gardez l'oreille complètement sèche — pas de baignade et pas d'eau dans le conduit auditif pendant la douche ou le bain jusqu'à l'autorisation de l'ORL. N'insérez rien dans le conduit auditif. La plupart des petites perforations guérissent d'elles-mêmes en quelques semaines.",
+      medicationTreatment: ENT_MED_FR,
+      returnPrecautions:
+        "Retournez immédiatement en cas d'aggravation de la douleur à l'oreille, de perte d'audition nouvelle ou qui s'aggrave, d'écoulement de l'oreille, de fièvre, de vertiges, ou de faiblesse faciale.",
+    }
+  );
+
+export const SUDDEN_HEARING_LOSS_FOLLOWUP_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated for sudden sensorineural hearing loss (SSNHL) — a sudden, unexplained loss of hearing that is a time-sensitive ENT emergency. This documentation is used only after ENT has already directed urgent outpatient aftercare (such as a steroid course and audiology testing), not as an autonomous ED discharge decision.",
+      diagnosisInstructions:
+        "Start the specialist-directed steroid course exactly as prescribed and complete it fully. Keep the urgent audiology and ENT follow-up appointments — early treatment gives the best chance of hearing recovery.",
+      medicationTreatment: ENT_MED_EN,
+      returnPrecautions:
+        "Return immediately for new dizziness or vertigo, new weakness or numbness, difficulty speaking, severe headache, or worsening hearing loss.",
+      returnWorkSchool: "Follow up with ENT/audiology exactly as directed — this is an urgent specialist follow-up, not routine primary care.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge pour une surdité brusque neurosensorielle — une perte auditive soudaine et inexpliquée qui constitue une urgence ORL nécessitant une prise en charge rapide. Ce document est utilisé uniquement après qu'une prise en charge en ORL a déjà déterminé les soins ambulatoires urgents (comme une cure de corticoïdes et des tests audiologiques), non comme une décision autonome de sortie des urgences.",
+      diagnosisInstructions:
+        "Commencez la cure de corticoïdes dirigée par le spécialiste exactement comme prescrit et terminez-la complètement. Respectez les rendez-vous urgents d'audiologie et de suivi ORL — un traitement précoce offre la meilleure chance de récupération auditive.",
+      medicationTreatment: ENT_MED_FR,
+      returnPrecautions:
+        "Retournez immédiatement en cas de nouveaux vertiges, de nouvelle faiblesse ou d'engourdissement, de difficulté à parler, de céphalée sévère, ou d'aggravation de la perte auditive.",
+      returnWorkSchool: "Faites le suivi en ORL/audiologie exactement selon les directives — il s'agit d'un suivi spécialisé urgent, non d'un suivi habituel de soins primaires.",
+    }
+  );
+
+export const BPPV_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for benign paroxysmal positional vertigo (BPPV) — brief spinning episodes triggered by changes in head position.",
+      diagnosisInstructions:
+        "Move slowly when changing position — sitting up, standing, and turning in bed. If a repositioning maneuver (such as the Epley maneuver) was performed or taught during this visit, continue any home exercises exactly as directed.",
+      medicationTreatment: ENT_MED_EN,
+      returnPrecautions:
+        "Return immediately for new weakness or numbness, difficulty speaking, double vision, trouble walking, severe headache, or vertigo that does not improve with repositioning treatment.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour un vertige positionnel paroxystique bénin (VPPB) — de brefs épisodes de sensation de rotation déclenchés par des changements de position de la tête.",
+      diagnosisInstructions:
+        "Bougez lentement lors des changements de position — en vous asseyant, en vous levant et en vous tournant dans le lit. Si une manœuvre de repositionnement (comme la manœuvre d'Epley) a été effectuée ou enseignée lors de cette visite, poursuivez les exercices à domicile exactement selon les directives.",
+      medicationTreatment: ENT_MED_FR,
+      returnPrecautions:
+        "Retournez immédiatement en cas de nouvelle faiblesse ou d'engourdissement, de difficulté à parler, de vision double, de difficulté à marcher, de céphalée sévère, ou de vertiges qui ne s'améliorent pas avec le traitement de repositionnement.",
+    }
+  );
+
+export const VESTIBULAR_NEURITIS_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for vestibular neuritis — inflammation of the inner ear balance nerve causing continuous vertigo.",
+      diagnosisInstructions:
+        "Rest as needed during the most severe symptoms, then gradually resume normal activity — staying still for too long can slow recovery. Move carefully to prevent falls. Vestibular rehabilitation exercises may be recommended.",
+      medicationTreatment: ENT_MED_EN,
+      returnPrecautions:
+        "Return immediately for new weakness or numbness, difficulty speaking, double vision, new hearing loss, severe headache, or inability to walk unassisted.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour une névrite vestibulaire — une inflammation du nerf de l'équilibre de l'oreille interne causant des vertiges continus.",
+      diagnosisInstructions:
+        "Reposez-vous au besoin pendant les symptômes les plus intenses, puis reprenez progressivement vos activités normales — rester immobile trop longtemps peut ralentir la récupération. Bougez avec précaution pour éviter les chutes. Des exercices de rééducation vestibulaire peuvent être recommandés.",
+      medicationTreatment: ENT_MED_FR,
+      returnPrecautions:
+        "Retournez immédiatement en cas de nouvelle faiblesse ou d'engourdissement, de difficulté à parler, de vision double, de nouvelle perte d'audition, de céphalée sévère, ou d'incapacité à marcher sans aide.",
+    }
+  );
+
+export const LABYRINTHITIS_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for labyrinthitis — inflammation of the inner ear causing vertigo along with hearing changes.",
+      diagnosisInstructions:
+        "Rest as needed during the most severe symptoms, then gradually resume normal activity. Move carefully to prevent falls. Keep the ENT/audiology follow-up to check hearing recovery.",
+      medicationTreatment: ENT_MED_EN,
+      returnPrecautions:
+        "Return immediately for new weakness or numbness, difficulty speaking, double vision, worsening hearing loss, severe headache, or inability to walk unassisted.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour une labyrinthite — une inflammation de l'oreille interne causant des vertiges accompagnés de changements auditifs.",
+      diagnosisInstructions:
+        "Reposez-vous au besoin pendant les symptômes les plus intenses, puis reprenez progressivement vos activités normales. Bougez avec précaution pour éviter les chutes. Respectez le suivi ORL/audiologie pour vérifier la récupération auditive.",
+      medicationTreatment: ENT_MED_FR,
+      returnPrecautions:
+        "Retournez immédiatement en cas de nouvelle faiblesse ou d'engourdissement, de difficulté à parler, de vision double, d'aggravation de la perte auditive, de céphalée sévère, ou d'incapacité à marcher sans aide.",
+    }
+  );
+
+export const FACIAL_NERVE_PALSY_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for facial nerve (Bell's) palsy — sudden weakness of one side of the face after stroke has been excluded by the treating clinician.",
+      diagnosisInstructions:
+        "Protect the affected eye — use lubricating eye drops or ointment as directed and tape the eyelid closed at night if it does not close fully, to prevent corneal injury. Start any prescribed steroid course as early as directed — timing matters for recovery.",
+      medicationTreatment: ENT_MED_EN,
+      returnPrecautions:
+        "Return immediately for new weakness elsewhere in the body, difficulty speaking, vision changes, eye pain or redness, severe headache, or if facial weakness worsens after initial improvement.",
+      returnWorkSchool: "Follow up with ENT or neurology as directed to monitor recovery.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour une paralysie du nerf facial (de Bell) — une faiblesse soudaine d'un côté du visage après qu'un AVC a été exclu par le clinicien traitant.",
+      diagnosisInstructions:
+        "Protégez l'œil atteint — utilisez des gouttes ou une pommade lubrifiante selon les directives et fermez la paupière avec du ruban adhésif la nuit si elle ne se ferme pas complètement, afin de prévenir une lésion cornéenne. Commencez toute cure de corticoïdes prescrite le plus tôt possible selon les directives — le moment du traitement influence la récupération.",
+      medicationTreatment: ENT_MED_FR,
+      returnPrecautions:
+        "Retournez immédiatement en cas de nouvelle faiblesse ailleurs dans le corps, de difficulté à parler, de changements de vision, de douleur ou de rougeur oculaire, de céphalée sévère, ou si la faiblesse faciale s'aggrave après une amélioration initiale.",
+      returnWorkSchool: "Faites le suivi en ORL ou en neurologie selon les directives pour surveiller la récupération.",
+    }
+  );
+
+export const RAMSAY_HUNT_FOLLOWUP_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated for Ramsay Hunt syndrome (shingles affecting the facial nerve near the ear). This documentation is used only after ENT/neurology has already directed outpatient antiviral and steroid aftercare, not as an autonomous ED discharge decision.",
+      diagnosisInstructions:
+        "Complete the full course of the specialist-directed antiviral and steroid treatment exactly as prescribed. Protect the affected eye if the eyelid does not close fully — use lubricating drops or ointment as directed. Keep every scheduled ENT/neurology follow-up appointment.",
+      medicationTreatment: ENT_MED_EN,
+      returnPrecautions:
+        "Return immediately for worsening facial weakness, new weakness elsewhere in the body, difficulty speaking, eye pain or redness, worsening hearing loss, severe headache, or spreading rash.",
+      returnWorkSchool: "Follow up with ENT/neurology exactly as directed — this is a close specialist follow-up, not routine primary care.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge pour un syndrome de Ramsay Hunt (zona atteignant le nerf facial près de l'oreille). Ce document est utilisé uniquement après qu'une prise en charge en ORL/neurologie a déjà déterminé les soins antiviraux et corticoïdes ambulatoires, non comme une décision autonome de sortie des urgences.",
+      diagnosisInstructions:
+        "Terminez la cure complète du traitement antiviral et corticoïde dirigé par le spécialiste exactement comme prescrit. Protégez l'œil atteint si la paupière ne se ferme pas complètement — utilisez des gouttes ou une pommade lubrifiante selon les directives. Respectez chaque rendez-vous de suivi ORL/neurologie prévu.",
+      medicationTreatment: ENT_MED_FR,
+      returnPrecautions:
+        "Retournez immédiatement en cas d'aggravation de la faiblesse faciale, de nouvelle faiblesse ailleurs dans le corps, de difficulté à parler, de douleur ou de rougeur oculaire, d'aggravation de la perte auditive, de céphalée sévère, ou d'éruption qui s'étend.",
+      returnWorkSchool: "Faites le suivi en ORL/neurologie exactement selon les directives — il s'agit d'un suivi spécialisé rapproché, non d'un suivi habituel de soins primaires.",
+    }
+  );
+
+export const POST_NASAL_PACKING_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department and had nasal packing placed to control a nosebleed. This documentation covers aftercare while the packing remains in place.",
+      diagnosisInstructions:
+        "Do not remove the nasal packing yourself — it will be removed by a clinician as directed. Breathe through your mouth if the packing blocks your nose. Avoid blowing your nose, strenuous activity, and bending over until the packing is removed.",
+      medicationTreatment: ENT_MED_EN,
+      returnPrecautions:
+        "Return immediately for new or worsening bleeding around or through the packing, difficulty breathing, fever, severe pain, or if the packing falls out on its own.",
+      returnWorkSchool: "Keep the scheduled ENT appointment for packing removal — do not miss this visit.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences et un tamponnement nasal a été mis en place pour contrôler un saignement de nez. Ce document couvre les soins pendant que le tamponnement reste en place.",
+      diagnosisInstructions:
+        "Ne retirez pas le tamponnement nasal vous-même — il sera retiré par un clinicien selon les directives. Respirez par la bouche si le tamponnement bloque votre nez. Évitez de vous moucher, les activités intenses et de vous pencher en avant jusqu'au retrait du tamponnement.",
+      medicationTreatment: ENT_MED_FR,
+      returnPrecautions:
+        "Retournez immédiatement en cas de saignement nouveau ou qui s'aggrave autour ou à travers le tamponnement, de difficulté à respirer, de fièvre, de douleur sévère, ou si le tamponnement se détache de lui-même.",
+      returnWorkSchool: "Respectez le rendez-vous ORL prévu pour le retrait du tamponnement — ne manquez pas cette visite.",
+    }
+  );
+
+export const POSTERIOR_EPISTAXIS_POST_ACUTE_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated for posterior epistaxis (a nosebleed originating from deeper in the nose) — a higher-risk bleeding source than a typical anterior nosebleed. This documentation is used only after ENT has already directed outpatient aftercare following control of the bleeding.",
+      diagnosisInstructions:
+        "Avoid blowing your nose, strenuous activity, and bending over for the time directed. Keep your head elevated. Follow any specialist instructions about packing or cautery care exactly as directed.",
+      medicationTreatment: ENT_MED_EN,
+      returnPrecautions:
+        "Return immediately for new or recurrent bleeding, difficulty breathing, dizziness, fainting, chest pain, or if bleeding does not stop with the directed first-aid steps.",
+      returnWorkSchool: "Follow up with ENT exactly as directed — this is a close specialist follow-up, not routine primary care.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge pour une épistaxis postérieure (un saignement de nez provenant de plus profond dans le nez) — une source de saignement à plus haut risque qu'un saignement de nez antérieur habituel. Ce document est utilisé uniquement après qu'une prise en charge en ORL a déjà déterminé les soins ambulatoires après le contrôle du saignement.",
+      diagnosisInstructions:
+        "Évitez de vous moucher, les activités intenses et de vous pencher en avant pendant la durée indiquée. Gardez la tête élevée. Suivez toute instruction du spécialiste concernant les soins du tamponnement ou de la cautérisation exactement selon les directives.",
+      medicationTreatment: ENT_MED_FR,
+      returnPrecautions:
+        "Retournez immédiatement en cas de saignement nouveau ou récurrent, de difficulté à respirer, de vertiges, d'évanouissement, de douleur thoracique, ou si le saignement ne s'arrête pas avec les mesures de premiers soins indiquées.",
+      returnWorkSchool: "Faites le suivi en ORL exactement selon les directives — il s'agit d'un suivi spécialisé rapproché, non d'un suivi habituel de soins primaires.",
+    }
+  );
+
+export const NASAL_FOREIGN_BODY_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for a foreign body in the nose that was removed during this visit.",
+      diagnosisInstructions:
+        "Some mild nasal irritation, crusting, or small streaks of blood are expected for a day or two after removal. Avoid inserting anything into the nose.",
+      medicationTreatment: ENT_MED_EN,
+      returnPrecautions:
+        "Return immediately for worsening nasal pain, foul-smelling nasal discharge, heavy bleeding, difficulty breathing, or signs that a piece of the object remains in the nose.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour un corps étranger dans le nez qui a été retiré lors de cette visite.",
+      diagnosisInstructions:
+        "Une légère irritation nasale, des croûtes ou de petites traces de sang sont attendues pendant un jour ou deux après le retrait. Évitez d'insérer quoi que ce soit dans le nez.",
+      medicationTreatment: ENT_MED_FR,
+      returnPrecautions:
+        "Retournez immédiatement en cas d'aggravation de la douleur nasale, d'écoulement nasal nauséabond, de saignement important, de difficulté à respirer, ou de signes qu'un fragment de l'objet reste dans le nez.",
+    }
+  );
+
+export const PERITONSILLAR_ABSCESS_POST_DRAINAGE_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated for a peritonsillar abscess (quinsy) that was drained during this visit. This documentation is used only after drainage has already been performed and ENT has directed outpatient aftercare — this is not routine sore-throat/pharyngitis discharge.",
+      diagnosisInstructions:
+        "Complete the full course of the specialist-directed antibiotic treatment exactly as prescribed. Eat soft foods and drink fluids as tolerated. Keep the ENT follow-up appointment to confirm the infection is clearing.",
+      medicationTreatment: ENT_MED_EN,
+      returnPrecautions:
+        "Return immediately for difficulty breathing or swallowing, difficulty opening your mouth, worsening throat swelling, drooling you cannot control, fever, or muffled voice that worsens.",
+      returnWorkSchool: "Follow up with ENT exactly as directed — this is a close specialist follow-up, not routine primary care.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge pour un abcès périamygdalien (phlegmon) qui a été drainé lors de cette visite. Ce document est utilisé uniquement après que le drainage a déjà été effectué et qu'une prise en charge en ORL a déterminé les soins ambulatoires — ceci n'est pas un congé de routine pour mal de gorge/pharyngite.",
+      diagnosisInstructions:
+        "Terminez la cure complète du traitement antibiotique dirigé par le spécialiste exactement comme prescrit. Mangez des aliments mous et buvez des liquides selon votre tolérance. Respectez le rendez-vous de suivi ORL pour confirmer que l'infection se résorbe.",
+      medicationTreatment: ENT_MED_FR,
+      returnPrecautions:
+        "Retournez immédiatement en cas de difficulté à respirer ou à avaler, de difficulté à ouvrir la bouche, d'aggravation de l'enflure de la gorge, de bave incontrôlable, de fièvre, ou de voix étouffée qui s'aggrave.",
+      returnWorkSchool: "Faites le suivi en ORL exactement selon les directives — il s'agit d'un suivi spécialisé rapproché, non d'un suivi habituel de soins primaires.",
+    }
+  );
+
+export const DEEP_NECK_INFECTION_POST_ACUTE_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated for a deep neck space infection (retropharyngeal or parapharyngeal abscess). This documentation is used only after ENT/surgery has already directed outpatient aftercare following airway-safe management, not as an autonomous ED discharge decision.",
+      diagnosisInstructions:
+        "Complete the full course of the specialist-directed antibiotic treatment exactly as prescribed. Keep every scheduled ENT/surgery follow-up appointment to confirm the infection is clearing.",
+      medicationTreatment: ENT_MED_EN,
+      returnPrecautions:
+        "Return immediately for difficulty breathing or swallowing, worsening neck swelling or pain, neck stiffness, inability to fully open your mouth, drooling you cannot control, or fever.",
+      returnWorkSchool: "Follow up with ENT/surgery exactly as directed — this is a close specialist follow-up, not routine primary care.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge pour une infection profonde de l'espace du cou (abcès rétropharyngé ou parapharyngé). Ce document est utilisé uniquement après qu'une prise en charge en ORL/chirurgie a déjà déterminé les soins ambulatoires après une gestion sécuritaire des voies respiratoires, non comme une décision autonome de sortie des urgences.",
+      diagnosisInstructions:
+        "Terminez la cure complète du traitement antibiotique dirigé par le spécialiste exactement comme prescrit. Respectez chaque rendez-vous de suivi ORL/chirurgie prévu pour confirmer que l'infection se résorbe.",
+      medicationTreatment: ENT_MED_FR,
+      returnPrecautions:
+        "Retournez immédiatement en cas de difficulté à respirer ou à avaler, d'aggravation de l'enflure ou de la douleur au cou, de raideur de la nuque, d'incapacité à ouvrir complètement la bouche, de bave incontrôlable, ou de fièvre.",
+      returnWorkSchool: "Faites le suivi en ORL/chirurgie exactement selon les directives — il s'agit d'un suivi spécialisé rapproché, non d'un suivi habituel de soins primaires.",
+    }
+  );
+
+export const LUDWIG_ANGINA_POST_ACUTE_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated for Ludwig's angina (a rapidly spreading infection of the floor of the mouth, often from a dental source) that can threaten the airway. This documentation is used only after airway-safe management and specialty-directed outpatient aftercare have already been arranged — this is not routine dental-pain discharge.",
+      diagnosisInstructions:
+        "Complete the full course of the specialist-directed antibiotic treatment exactly as prescribed. Keep every scheduled ENT/oral surgery follow-up appointment — this infection is monitored very closely.",
+      medicationTreatment: ENT_MED_EN,
+      returnPrecautions:
+        "Return immediately for any difficulty breathing or swallowing, drooling you cannot control, tongue swelling, voice change, worsening neck or floor-of-mouth swelling, or fever.",
+      returnWorkSchool: "Follow up with ENT/oral surgery exactly as directed — this is a close specialist follow-up, not routine dental or primary care.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge pour un angine de Ludwig (une infection à propagation rapide du plancher de la bouche, souvent d'origine dentaire) pouvant menacer les voies respiratoires. Ce document est utilisé uniquement après qu'une gestion sécuritaire des voies respiratoires et des soins ambulatoires dirigés par un spécialiste ont déjà été organisés — ceci n'est pas un congé de routine pour douleur dentaire.",
+      diagnosisInstructions:
+        "Terminez la cure complète du traitement antibiotique dirigé par le spécialiste exactement comme prescrit. Respectez chaque rendez-vous de suivi ORL/chirurgie orale prévu — cette infection est surveillée très étroitement.",
+      medicationTreatment: ENT_MED_FR,
+      returnPrecautions:
+        "Retournez immédiatement en cas de toute difficulté à respirer ou à avaler, de bave incontrôlable, d'enflure de la langue, de changement de voix, d'aggravation de l'enflure du cou ou du plancher de la bouche, ou de fièvre.",
+      returnWorkSchool: "Faites le suivi en ORL/chirurgie orale exactement selon les directives — il s'agit d'un suivi spécialisé rapproché, non d'un suivi dentaire ou de soins primaires habituel.",
+    }
+  );
+
+export const EPIGLOTTITIS_POST_ACUTE_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated for epiglottitis (a swollen, infected epiglottis that can threaten the airway). This documentation is used only after airway-safe management and specialty-directed outpatient aftercare have already been arranged — this is not routine pharyngitis/sore-throat discharge.",
+      diagnosisInstructions:
+        "Complete the full course of the specialist-directed antibiotic treatment exactly as prescribed. Keep every scheduled ENT follow-up appointment — this condition is monitored very closely.",
+      medicationTreatment: ENT_MED_EN,
+      returnPrecautions:
+        "Return immediately for any difficulty breathing or swallowing, drooling you cannot control, a muffled or changed voice, noisy or high-pitched breathing (stridor), or fever.",
+      returnWorkSchool: "Follow up with ENT exactly as directed — this is a close specialist follow-up, not routine primary care.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge pour une épiglottite (un épiglotte enflé et infecté pouvant menacer les voies respiratoires). Ce document est utilisé uniquement après qu'une gestion sécuritaire des voies respiratoires et des soins ambulatoires dirigés par un spécialiste ont déjà été organisés — ceci n'est pas un congé de routine pour pharyngite/mal de gorge.",
+      diagnosisInstructions:
+        "Terminez la cure complète du traitement antibiotique dirigé par le spécialiste exactement comme prescrit. Respectez chaque rendez-vous de suivi ORL prévu — cette condition est surveillée très étroitement.",
+      medicationTreatment: ENT_MED_FR,
+      returnPrecautions:
+        "Retournez immédiatement en cas de toute difficulté à respirer ou à avaler, de bave incontrôlable, d'une voix étouffée ou modifiée, d'une respiration bruyante ou aiguë (stridor), ou de fièvre.",
+      returnWorkSchool: "Faites le suivi en ORL exactement selon les directives — il s'agit d'un suivi spécialisé rapproché, non d'un suivi habituel de soins primaires.",
+    }
+  );
+
+export const SIALADENITIS_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for sialadenitis (an infected salivary gland).",
+      diagnosisInstructions:
+        "Drink plenty of fluids. Apply warm compresses to the affected area as directed. Gently massage the gland toward the mouth opening several times a day as directed, and use sour candy or citrus to stimulate saliva flow if recommended.",
+      medicationTreatment: ENT_MED_EN,
+      returnPrecautions:
+        "Return immediately for worsening facial or neck swelling, difficulty breathing or swallowing, spreading redness, fever, or if symptoms have not improved after finishing the prescribed course.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour une sialadénite (une infection d'une glande salivaire).",
+      diagnosisInstructions:
+        "Buvez beaucoup de liquides. Appliquez des compresses chaudes sur la région atteinte selon les directives. Massez doucement la glande en direction de l'ouverture buccale plusieurs fois par jour selon les directives, et utilisez un bonbon acidulé ou des agrumes pour stimuler la salivation si cela est recommandé.",
+      medicationTreatment: ENT_MED_FR,
+      returnPrecautions:
+        "Retournez immédiatement en cas d'aggravation de l'enflure du visage ou du cou, de difficulté à respirer ou à avaler, de rougeur qui s'étend, de fièvre, ou si les symptômes ne se sont pas améliorés après la fin du traitement prescrit.",
+    }
+  );
+
+export const SALIVARY_OBSTRUCTION_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for a salivary duct obstruction (sialolithiasis) — a stone blocking a salivary gland duct.",
+      diagnosisInstructions:
+        "Drink plenty of fluids. Use sour candy or citrus to stimulate saliva flow if recommended, and massage the gland toward the mouth opening as directed to help move the stone.",
+      medicationTreatment: ENT_MED_EN,
+      returnPrecautions:
+        "Return immediately for worsening facial or neck swelling, signs of infection (fever, spreading redness, pus), or worsening pain not relieved by the directed measures.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour une obstruction du canal salivaire (sialolithiase) — un calcul bloquant le canal d'une glande salivaire.",
+      diagnosisInstructions:
+        "Buvez beaucoup de liquides. Utilisez un bonbon acidulé ou des agrumes pour stimuler la salivation si cela est recommandé, et massez la glande en direction de l'ouverture buccale selon les directives pour aider à déplacer le calcul.",
+      medicationTreatment: ENT_MED_FR,
+      returnPrecautions:
+        "Retournez immédiatement en cas d'aggravation de l'enflure du visage ou du cou, de signes d'infection (fièvre, rougeur qui s'étend, pus), ou d'aggravation de la douleur non soulagée par les mesures indiquées.",
+    }
+  );
+
+export const THROAT_FOREIGN_BODY_FOLLOWUP_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for a throat foreign body (such as a fish bone or food bolus) that was removed or passed during this visit.",
+      diagnosisInstructions:
+        "Eat soft foods for the next day or two. Some mild throat scratchiness or discomfort is expected for a day or two after removal.",
+      medicationTreatment: ENT_MED_EN,
+      returnPrecautions:
+        "Return immediately for difficulty breathing or swallowing, drooling you cannot control, chest pain, worsening throat pain, or vomiting blood.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour un corps étranger dans la gorge (comme une arête de poisson ou un bol alimentaire) qui a été retiré ou est passé lors de cette visite.",
+      diagnosisInstructions:
+        "Mangez des aliments mous pendant les prochains jours. Une légère irritation ou un inconfort de la gorge sont attendus pendant un jour ou deux après le retrait.",
+      medicationTreatment: ENT_MED_FR,
+      returnPrecautions:
+        "Retournez immédiatement en cas de difficulté à respirer ou à avaler, de bave incontrôlable, de douleur thoracique, d'aggravation de la douleur à la gorge, ou de vomissements de sang.",
+    }
+  );
