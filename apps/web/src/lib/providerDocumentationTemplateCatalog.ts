@@ -149,6 +149,9 @@ import {
   ENT_EAR_HEARING_VERTIGO_ADULT_V1_INTEL,
   ENT_NOSE_EPISTAXIS_ADULT_V1_INTEL,
   ENT_THROAT_NECK_AIRWAY_ADULT_V1_INTEL,
+  SOFT_TISSUE_INFECTION_ADULT_V1_INTEL,
+  ABSCESS_PURULENT_INFECTION_ADULT_V1_INTEL,
+  HIGH_RISK_WOUND_INFECTION_ADULT_V1_INTEL,
   type ProviderDocumentationComplaintIntelligence,
 } from "./providerDocumentationComplaintIntelligence";
 import type { ProviderDocumentationTemplatePickerSubgroupKey } from "./providerDocumentationModel";
@@ -2166,6 +2169,24 @@ export const PROVIDER_DOCUMENTATION_TEMPLATES: ProviderDocumentationTemplateDefi
     "providerDocumentationWorkspace.templateEntThroatNeckAirwayAdultV1",
     "providerDocumentationWorkspace.templateEntThroatNeckAirwayAdultV1Help",
     ENT_THROAT_NECK_AIRWAY_ADULT_V1_INTEL
+  ),
+  infectiousEntComplaintV1Template(
+    "soft_tissue_infection_adult_v1",
+    "providerDocumentationWorkspace.templateSoftTissueInfectionAdultV1",
+    "providerDocumentationWorkspace.templateSoftTissueInfectionAdultV1Help",
+    SOFT_TISSUE_INFECTION_ADULT_V1_INTEL
+  ),
+  infectiousEntComplaintV1Template(
+    "abscess_purulent_infection_adult_v1",
+    "providerDocumentationWorkspace.templateAbscessPurulentInfectionAdultV1",
+    "providerDocumentationWorkspace.templateAbscessPurulentInfectionAdultV1Help",
+    ABSCESS_PURULENT_INFECTION_ADULT_V1_INTEL
+  ),
+  infectiousEntComplaintV1Template(
+    "high_risk_wound_infection_adult_v1",
+    "providerDocumentationWorkspace.templateHighRiskWoundInfectionAdultV1",
+    "providerDocumentationWorkspace.templateHighRiskWoundInfectionAdultV1Help",
+    HIGH_RISK_WOUND_INFECTION_ADULT_V1_INTEL
   ),
   {
     id: "observation_reassessment",

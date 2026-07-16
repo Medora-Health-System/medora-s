@@ -178,7 +178,10 @@ export type ProviderDocumentationTemplateId =
   | "back_pain_neuro_red_flags_complaint_v1"
   | "ent_ear_hearing_vertigo_adult_v1"
   | "ent_nose_epistaxis_adult_v1"
-  | "ent_throat_neck_airway_adult_v1";
+  | "ent_throat_neck_airway_adult_v1"
+  | "soft_tissue_infection_adult_v1"
+  | "abscess_purulent_infection_adult_v1"
+  | "high_risk_wound_infection_adult_v1";
 
 export type ProviderDocumentationTemplatePickerSubgroupKey =
   | "gi_abdominal"
