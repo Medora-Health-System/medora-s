@@ -144,6 +144,8 @@ export type ProviderDocumentationTemplateId =
   | "spinal_trauma_adult_complaint_v1"
   | "head_injury_adult_complaint_v1"
   | "facial_trauma_adult_complaint_v1"
+  | "eye_complaint_adult_v1"
+  | "eye_trauma_adult_v1"
   | "fever_complaint_v1"
   | "cellulitis_skin_infection_complaint_v1"
   | "abscess_soft_tissue_complaint_v1"

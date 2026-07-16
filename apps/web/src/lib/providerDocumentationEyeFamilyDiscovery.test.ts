@@ -1,6 +1,8 @@
 /**
- * MEDUI.ED.POSTCERT.4 — Eye / Vision complaint-family discovery audit (read-only).
- * No clinical content changes. No remediation.
+ * MEDUI.ED.POSTCERT.4 — Eye / Vision complaint-family discovery audit.
+ * Phase 11 (MEDUI.CLINICAL.DIAGNOSTIC_INTELLIGENCE_PHASE_11_EYE_EMERGENCIES) introduced exactly
+ * two dedicated adaptive Eye / Vision templates (`eye_complaint_adult_v1`, `eye_trauma_adult_v1`).
+ * This audit now confirms exactly those two templates exist and nothing further has drifted in.
  */
 import { describe, expect, it } from "vitest";
 import { PROVIDER_DOCUMENTATION_TEMPLATES } from "./providerDocumentationTemplateCatalog";
@@ -33,6 +35,7 @@ const EYE_DISCOVERY_TERMS = [
 /** Terms that indicate a dedicated eye chief-complaint template (not cross-family ROS chips). */
 const DEDICATED_EYE_TEMPLATE_TERMS = [
   "eye complaint",
+  "eye trauma",
   "red eye",
   "eye pain",
   "conjunctivit",
@@ -44,6 +47,8 @@ const DEDICATED_EYE_TEMPLATE_TERMS = [
   "foreign body eye",
   "contact lens",
 ] as const;
+
+const EXPECTED_DEDICATED_EYE_TEMPLATE_IDS = ["eye_complaint_adult_v1", "eye_trauma_adult_v1"] as const;
 
 function resolveLabel(labelKey: string): string {
   const parts = labelKey.split(".");
@@ -66,7 +71,7 @@ describe("providerDocumentationEyeFamilyDiscovery — MEDUI.ED.POSTCERT.4", () =
     family.templates.map((template) => template.templateId)
   );
 
-  it("finds no dedicated Eye / Vision complaint template in the provider documentation catalog", () => {
+  it("finds exactly the two Phase 11 dedicated Eye / Vision complaint templates in the catalog", () => {
     /** Trauma Injury Intelligence adaptive FB (Phase 4) — not an Eye/Vision chief-complaint family. */
     const TRAUMA_FOREIGN_BODY_TEMPLATE_ID = "foreign_body_adult_complaint_v1";
     const dedicatedMatches = PROVIDER_DOCUMENTATION_TEMPLATES.filter((template) => {
@@ -77,10 +82,12 @@ describe("providerDocumentationEyeFamilyDiscovery — MEDUI.ED.POSTCERT.4", () =
       return matchesAnyTerm(haystack, DEDICATED_EYE_TEMPLATE_TERMS);
     });
 
-    expect(dedicatedMatches.map((template) => template.id)).toEqual([]);
+    expect(dedicatedMatches.map((template) => template.id).sort()).toEqual(
+      [...EXPECTED_DEDICATED_EYE_TEMPLATE_IDS].sort()
+    );
   });
 
-  it("registers no Eye governance family in the enterprise registry", () => {
+  it("registers no separate Eye governance family in the enterprise registry (adaptive templates only)", () => {
     const eyeFamilies = ENTERPRISE_GOVERNANCE_REGISTRY.filter((entry) =>
       matchesAnyTerm(`${entry.familyId} ${entry.displayName} ${entry.governanceModule}`, [
         "eye",
@@ -92,7 +99,7 @@ describe("providerDocumentationEyeFamilyDiscovery — MEDUI.ED.POSTCERT.4", () =
     expect(eyeFamilies).toEqual([]);
   });
 
-  it("registers no Eye templates in Human Documentation audit families", () => {
+  it("registers no separate Eye templates in Human Documentation audit families (adaptive templates only)", () => {
     const eyeAudited = allAuditTemplateIds.filter((templateId) =>
       matchesAnyTerm(templateId, DEDICATED_EYE_TEMPLATE_TERMS)
     );
@@ -102,6 +109,7 @@ describe("providerDocumentationEyeFamilyDiscovery — MEDUI.ED.POSTCERT.4", () =
   it("documents adjacent vision-related chips embedded in non-eye families", () => {
     const embeddedVisionTemplates = PROVIDER_DOCUMENTATION_TEMPLATES.filter((template) => {
       if (!template.complaintIntelligence) return false;
+      if ((EXPECTED_DEDICATED_EYE_TEMPLATE_IDS as readonly string[]).includes(template.id)) return false;
       const keys = flattenComplaintIntelligenceKeys(template.complaintIntelligence);
       return keys.some((key) => matchesAnyTerm(key, ["vision", "photophobia", "extraocular", "eye"]));
     }).map((template) => template.id);
@@ -115,21 +123,23 @@ describe("providerDocumentationEyeFamilyDiscovery — MEDUI.ED.POSTCERT.4", () =
     }
   });
 
-  it("confirms no eye-specific complaint-intel namespace exists", () => {
+  it("confirms exactly the Phase 11 eye-specific complaint-intel namespaces exist", () => {
     const allIntelKeys = PROVIDER_DOCUMENTATION_TEMPLATES.flatMap((template) =>
       template.complaintIntelligence ? flattenComplaintIntelligenceKeys(template.complaintIntelligence) : []
     );
     const eyeNamespaceKeys = allIntelKeys.filter((key) =>
       /providerDocumentationComplaintIntel\.(eye|ocular|ophthalm|vision|redEye|conjunctiv)/i.test(key)
     );
-    expect(eyeNamespaceKeys).toEqual([]);
+    expect(eyeNamespaceKeys.length).toBeGreaterThan(0);
+    const namespaces = new Set(eyeNamespaceKeys.map((key) => key.split(".")[1]));
+    expect([...namespaces].sort()).toEqual(["eyeComplaintAdultV1", "eyeTraumaAdultV1"]);
   });
 
-  it("classifies catalog coverage: no eye template IDs in ProviderDocumentationTemplateId union", () => {
+  it("classifies catalog coverage: exactly the two Phase 11 eye template IDs in ProviderDocumentationTemplateId union", () => {
     const eyeLikeIds = allTemplateIds.filter((id) =>
       matchesAnyTerm(id, ["eye", "ocular", "ophthalm", "conjunctiv", "corneal", "vision_complaint", "red_eye"])
     );
-    expect(eyeLikeIds).toEqual([]);
+    expect(eyeLikeIds.sort()).toEqual([...EXPECTED_DEDICATED_EYE_TEMPLATE_IDS].sort());
   });
 
   it("documents discovery term scan baseline for future drift detection", () => {
@@ -137,7 +147,9 @@ describe("providerDocumentationEyeFamilyDiscovery — MEDUI.ED.POSTCERT.4", () =
       const label = resolveLabel(template.labelKey);
       return matchesAnyTerm(`${template.id} ${label}`, [...EYE_DISCOVERY_TERMS]);
     });
-    // Injury Intelligence Phase 4 adaptive trauma template (not a dedicated Eye family).
-    expect(scanHits.map((template) => template.id)).toEqual(["foreign_body_adult_complaint_v1"]);
+    // Injury Intelligence Phase 4 adaptive trauma template plus the two Phase 11 eye templates.
+    expect(scanHits.map((template) => template.id).sort()).toEqual(
+      ["foreign_body_adult_complaint_v1", ...EXPECTED_DEDICATED_EYE_TEMPLATE_IDS].sort()
+    );
   });
 });

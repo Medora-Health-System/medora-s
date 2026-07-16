@@ -2034,6 +2034,213 @@ export function buildBlastPolytraumaAdultComplaintV1Intel(d: (key: string) => st
   });
 }
 
+/**
+ * Eye pain / red eye / vision change (adult) — single adaptive provider documentation template
+ * covering atraumatic ocular complaints (red eye, eye pain, acute visual loss, corneal
+ * abrasion/ulcer, acute angle-closure glaucoma, retinal detachment, CRAO/CRVO, optic neuritis,
+ * uveitis, scleritis, orbital/preseptal cellulitis, contact-lens-related irritation or
+ * keratitis). Branch emphasis is not baked into fixed sub-templates; `adaptEyeComplaintIntel`
+ * (see `eyeComplaintClinicalIntelligence.ts`) reorders these same chips by resolved branch and
+ * red-flag category. IOP documentation always defers to the open-globe/red-flag safety gates in
+ * `ocularExamFoundation.ts` and `eyeEmergencyRedFlagEngine.ts` and never asserts a diagnosis or
+ * disposition on its own.
+ */
+export function buildEyeComplaintAdultV1Intel(d: (key: string) => string): ProviderDocumentationComplaintIntelligence {
+  return buildMskTraumaV1Intel(d, {
+    hpi: [
+      d("hpiEyePainOnset"),
+      d("hpiRedEyeReported"),
+      d("hpiVisionChangeReported"),
+      d("hpiPhotophobiaReported"),
+      d("hpiFlashesOrFloatersReported"),
+      d("hpiCurtainOrShadowInVisionReported"),
+      d("hpiHalosAroundLightsReported"),
+      d("hpiEyeDischargeReported"),
+      d("hpiContactLensWearReported"),
+      d("hpiContactLensOvernightWearReported"),
+      d("hpiPriorEyeSurgeryOrInjectionReported"),
+      d("hpiUnilateralEyeSymptomsReported"),
+      d("hpiSuddenOnsetEyeSymptomsReported"),
+      d("hpiFeverWithEyeSymptomsReported"),
+      d("hpiDeniesOcularTrauma"),
+    ],
+    physicalExam: {
+      general: [d("examAlertAndOriented"), d("examHemodynamicallyStable")],
+      heent: [
+        d("examVisualAcuityOdOs"),
+        d("examPupilsEqualAndReactive"),
+        d("examAfferentPupillaryDefectPresent"),
+        d("examExtraocularMovementsIntact"),
+        d("examPainWithExtraocularMovement"),
+        d("examConjunctivalInjectionPresent"),
+        d("examCornealOpacityOrInfiltratePresent"),
+        d("examFluoresceinStaining"),
+        d("examAnteriorChamberDocumented"),
+        d("examHypopyonPresent"),
+        d("examEyelidSwellingPresent"),
+        d("examProptosisPresent"),
+        d("examIopDocumentedWhenSafe"),
+        d("examIopDeferredOpenGlobeConcern"),
+      ],
+      neuroPsych: [d("examNoFocalNeurologicDeficit")],
+    },
+    extraDifferential: [
+      d("diffAcuteAngleClosureGlaucoma"),
+      d("diffCornealUlcer"),
+      d("diffRetinalDetachment"),
+      d("diffCentralRetinalArteryOrVeinOcclusion"),
+      d("diffOrbitalCellulitisEye"),
+      d("diffPreseptalCellulitisEye"),
+      d("diffEndophthalmitis"),
+      d("diffUveitisIritis"),
+      d("diffScleritisEye"),
+      d("diffOpticNeuritis"),
+      d("diffConjunctivitis"),
+    ],
+    mdmOverrides: {
+      mdmWorkingAssessment: [
+        d("waRedEyeEvaluation"),
+        d("waCornealAbrasionConcern"),
+        d("waAcuteAngleClosureGlaucomaConcern"),
+        d("waOrbitalOrPreseptalCellulitisConcern"),
+        d("waUveitisIritisConcern"),
+      ],
+      clinicalImpression: [
+        d("impCornealAbrasion"),
+        d("impConjunctivitis"),
+        d("impAcuteAngleClosureGlaucomaConcern"),
+        d("impVisionThreateningEyeFindingConcern"),
+      ],
+      mdmDataReviewed: [
+        d("mdmVisualAcuityReviewed"),
+        d("mdmIntraocularPressureReviewed"),
+        d("mdmSlitLampExamReviewed"),
+        d("mdmFluoresceinExamReviewed"),
+      ],
+      mdmRiskStratification: [
+        d("riskLowRiskEyeComplaint"),
+        d("riskModerateRiskEyeComplaint"),
+        d("riskVisionThreateningEyeConcern"),
+        d("riskUrgentOphthalmologyEvaluation"),
+      ],
+      mdmClinicalRationale: [
+        d("reasoningVisualAcuityAndPupilExamGuideDecision"),
+        d("reasoningIntraocularPressureGuidesGlaucomaConcern"),
+        d("reasoningRedFlagEyeFindingsDocumented"),
+        d("reasoningNoAutonomousDisposition"),
+      ],
+      mdmPlanSummary: [
+        d("planOphthalmologyConsultRequested"),
+        d("planUrgentOphthalmologyReferralRequested"),
+        d("planTopicalEyeMedicationProvided"),
+        d("planReturnPrecautions"),
+      ],
+    },
+  });
+}
+
+/**
+ * Eye trauma / ocular foreign body (adult) — single adaptive provider documentation template
+ * covering corneal/conjunctival foreign body, chemical and thermal/UV injury, open globe,
+ * hyphema, traumatic iritis, eyelid/canalicular laceration, retrobulbar hemorrhage, and orbital
+ * compartment syndrome. Branch emphasis is not baked into fixed sub-templates;
+ * `adaptEyeTraumaComplaintIntel` (see `eyeTraumaClinicalIntelligence.ts`) reorders these same
+ * chips by resolved branch. IOP documentation is always gated by `isIopDocumentationRequired`
+ * and the open-globe safety checks in `eyeEmergencyRedFlagEngine.ts` — this template never
+ * requires or asserts an IOP value when an open globe is suspected.
+ */
+export function buildEyeTraumaAdultV1Intel(d: (key: string) => string): ProviderDocumentationComplaintIntelligence {
+  return buildMskTraumaV1Intel(d, {
+    hpi: [
+      d("hpiMechanismDirectBlowToEye"),
+      d("hpiMechanismChemicalSplashToEye"),
+      d("hpiMechanismWeldingOrUvExposure"),
+      d("hpiMechanismHighVelocityProjectile"),
+      d("hpiForeignBodySensationReported"),
+      d("hpiVisionChangeSinceInjuryReported"),
+      d("hpiPainWithEyeMovementReported"),
+      d("hpiChemicalTypeReported"),
+      d("hpiEyeShieldAppliedPriorToArrival"),
+      d("hpiIrrigationPerformedPriorToArrival"),
+      d("hpiDeniesPriorVisionLoss"),
+    ],
+    physicalExam: {
+      general: [d("examAlertAndOriented"), d("examHemodynamicallyStable")],
+      heent: [
+        d("examVisualAcuityOdOs"),
+        d("examPupilsEqualAndReactive"),
+        d("examTeardropOrPeakedPupilPresent"),
+        d("examSeidelSignPositive"),
+        d("examSeidelSignNegative"),
+        d("examHyphemaPresent"),
+        d("examCornealFluoresceinUptakePresent"),
+        d("examConjunctivalForeignBodyVisualized"),
+        d("examCornealForeignBodyVisualized"),
+        d("examEyelidLacerationPresent"),
+        d("examCanalicularInvolvementSuspected"),
+        d("examProptosisPresent"),
+        d("examIopDeferredOpenGlobeConcern"),
+        d("examIopDocumentedWhenSafe"),
+        d("examRigidShieldApplied"),
+      ],
+      neuroPsych: [d("examNoFocalNeurologicDeficit")],
+    },
+    extraDifferential: [
+      d("diffOpenGlobeInjury"),
+      d("diffTraumaticHyphema"),
+      d("diffCornealForeignBody"),
+      d("diffConjunctivalForeignBody"),
+      d("diffChemicalEyeInjury"),
+      d("diffPhotokeratitis"),
+      d("diffTraumaticIritis"),
+      d("diffOrbitalCompartmentSyndrome"),
+      d("diffRetrobulbarHemorrhage"),
+      d("diffCanalicularLaceration"),
+    ],
+    mdmOverrides: {
+      mdmWorkingAssessment: [
+        d("waOpenGlobeConcern"),
+        d("waTraumaticHyphemaConcern"),
+        d("waCornealForeignBodyConcern"),
+        d("waChemicalEyeInjuryConcern"),
+        d("waEyelidLacerationConcern"),
+      ],
+      clinicalImpression: [
+        d("impOpenGlobeConcern"),
+        d("impTraumaticHyphema"),
+        d("impCornealForeignBody"),
+        d("impChemicalEyeInjury"),
+      ],
+      mdmDataReviewed: [
+        d("mdmVisualAcuityReviewed"),
+        d("mdmSeidelTestReviewed"),
+        d("mdmSlitLampExamReviewed"),
+        d("mdmIntraocularPressureStatusReviewed"),
+      ],
+      mdmRiskStratification: [
+        d("riskLowRiskOcularTrauma"),
+        d("riskModerateRiskOcularTrauma"),
+        d("riskHighRiskOpenGlobeConcern"),
+        d("riskUrgentOphthalmologyEvaluation"),
+      ],
+      mdmClinicalRationale: [
+        d("reasoningSeidelAndAnteriorChamberGuideOpenGlobeConcern"),
+        d("reasoningIntraocularPressureContraindicatedWhenOpenGlobeSuspected"),
+        d("reasoningChemicalIrrigationStartedWithoutDelay"),
+        d("reasoningNoAutonomousDisposition"),
+      ],
+      mdmPlanSummary: [
+        d("planRigidEyeShieldApplied"),
+        d("planNoPressureAppliedToGlobe"),
+        d("planNpoInAnticipationOfSurgery"),
+        d("planOphthalmologyConsultRequested"),
+        d("planContinuousIrrigationForChemicalExposure"),
+        d("planReturnPrecautions"),
+      ],
+    },
+  });
+}
+
 export const TRAUMA_INJURY_GOLD_STANDARD_BUILDERS = {
   fall: buildFallComplaintIntel,
   head_injury: buildHeadInjuryComplaintIntel,
@@ -2075,4 +2282,6 @@ export const TRAUMA_INJURY_GOLD_STANDARD_BUILDERS = {
   penetrating_trauma_adult_complaint_v1: buildPenetratingTraumaAdultComplaintV1Intel,
   blast_polytrauma_adult_complaint_v1: buildBlastPolytraumaAdultComplaintV1Intel,
   concussion_followup_complaint_v1: buildConcussionFollowupComplaintV1Intel,
+  eye_complaint_adult_v1: buildEyeComplaintAdultV1Intel,
+  eye_trauma_adult_v1: buildEyeTraumaAdultV1Intel,
 } as const;

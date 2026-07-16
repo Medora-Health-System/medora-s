@@ -107,6 +107,8 @@ import {
   SPINAL_TRAUMA_ADULT_COMPLAINT_V1_INTEL,
   HEAD_INJURY_ADULT_COMPLAINT_V1_INTEL,
   FACIAL_TRAUMA_ADULT_COMPLAINT_V1_INTEL,
+  EYE_COMPLAINT_ADULT_V1_INTEL,
+  EYE_TRAUMA_ADULT_V1_INTEL,
   SPRAIN_STRAIN_ADULT_COMPLAINT_V1_INTEL,
   TENDON_INJURY_ADULT_COMPLAINT_V1_INTEL,
   FEVER_COMPLAINT_V1_INTEL,
@@ -1936,6 +1938,8 @@ export const PROVIDER_DOCUMENTATION_TEMPLATES: ProviderDocumentationTemplateDefi
   mskTraumaComplaintV1Template("spinal_trauma_adult_complaint_v1", "providerDocumentationWorkspace.templateSpinalTraumaAdultComplaintV1", "providerDocumentationWorkspace.templateSpinalTraumaAdultComplaintV1Help", SPINAL_TRAUMA_ADULT_COMPLAINT_V1_INTEL),
   mskTraumaComplaintV1Template("head_injury_adult_complaint_v1", "providerDocumentationWorkspace.templateHeadInjuryAdultComplaintV1", "providerDocumentationWorkspace.templateHeadInjuryAdultComplaintV1Help", HEAD_INJURY_ADULT_COMPLAINT_V1_INTEL),
   mskTraumaComplaintV1Template("facial_trauma_adult_complaint_v1", "providerDocumentationWorkspace.templateFacialTraumaAdultComplaintV1", "providerDocumentationWorkspace.templateFacialTraumaAdultComplaintV1Help", FACIAL_TRAUMA_ADULT_COMPLAINT_V1_INTEL),
+  mskTraumaComplaintV1Template("eye_complaint_adult_v1", "providerDocumentationWorkspace.templateEyeComplaintAdultV1", "providerDocumentationWorkspace.templateEyeComplaintAdultV1Help", EYE_COMPLAINT_ADULT_V1_INTEL),
+  mskTraumaComplaintV1Template("eye_trauma_adult_v1", "providerDocumentationWorkspace.templateEyeTraumaAdultV1", "providerDocumentationWorkspace.templateEyeTraumaAdultV1Help", EYE_TRAUMA_ADULT_V1_INTEL),
   infectiousEntComplaintV1Template(
     "fever_complaint_v1",
     "providerDocumentationWorkspace.templateFeverComplaintV1",
