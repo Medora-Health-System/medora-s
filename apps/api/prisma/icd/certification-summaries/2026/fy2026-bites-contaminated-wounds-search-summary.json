@@ -1,6 +1,6 @@
 {
-  "phase": "bites-contaminated-wounds",
-  "release": "2026",
-  "pass": true,
-  "notes": "Bite/wound queries covered by icd:search suite (animal bite, dog/cat/bat bite, human bite, fight bite, contaminated/water/farm wound, flexor tenosynovitis, bite cellulitis). Official FY2026 catalog certified with failures=[]."
+  "generatedAt": "2026-07-16T01:31:43.550Z",
+  "queryCount": 7,
+  "failures": [],
+  "pass": true
 }

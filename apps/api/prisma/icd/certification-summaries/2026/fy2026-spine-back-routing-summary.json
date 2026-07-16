@@ -1,0 +1,16 @@
+{
+  "spineBackScoped": 2006,
+  "radiculopathyOwned": 15,
+  "caudaOwned": 1,
+  "cordOwned": 369,
+  "infectionOwned": 72,
+  "vertebralFractureOwned": 1230,
+  "genericBackPainSteals": [],
+  "genericSprainSteals": [],
+  "fractureUnderRouting": [],
+  "cordEmergencyUnderRouting": [],
+  "infectionUnderRouting": [],
+  "symptomRoutingSteals": [],
+  "unexplainedFallbacks": [],
+  "pass": true
+}

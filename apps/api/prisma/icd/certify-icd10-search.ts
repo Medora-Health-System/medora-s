@@ -18,6 +18,74 @@ const REQUIRED_QUERIES: Array<{
   mustContainDescription?: string;
   mustMatchCodePrefix?: string;
 }> = [
+  // Spine/back emergencies (Phase 9)
+  { q: "neck pain", mustContainDescription: "cervical" },
+  { q: "cervical strain", mustMatchCodePrefix: "S16.1" },
+  { q: "thoracic strain", mustContainDescription: "thoracic" },
+  { q: "lumbar strain", mustMatchCodePrefix: "S39.012" },
+  { q: "low back pain", mustContainDescription: "low back" },
+  { q: "herniated disc", mustContainDescription: "disc" },
+  { q: "cervical disc herniation", mustMatchCodePrefix: "M50" },
+  { q: "lumbar disc herniation", mustMatchCodePrefix: "M51" },
+  { q: "cervical radiculopathy", mustContainDescription: "radiculopathy" },
+  { q: "thoracic radiculopathy", mustContainDescription: "radiculopathy" },
+  { q: "lumbar radiculopathy", mustContainDescription: "radiculopathy" },
+  { q: "sciatica", mustContainDescription: "sciatica" },
+  { q: "spinal stenosis", mustContainDescription: "stenosis" },
+  { q: "cervical myelopathy", mustContainDescription: "myelopathy" },
+  { q: "thoracic myelopathy", mustContainDescription: "myelopathy" },
+  { q: "cauda equina syndrome", mustContainDescription: "cauda" },
+  { q: "conus medullaris syndrome", mustContainDescription: "conus" },
+  { q: "spinal epidural abscess", mustContainDescription: "abscess" },
+  { q: "vertebral osteomyelitis", mustContainDescription: "osteomyelitis" },
+  { q: "discitis", mustContainDescription: "discitis" },
+  { q: "spinal cord compression", mustContainDescription: "cord" },
+  { q: "metastatic spinal cord compression", mustContainDescription: "cord" },
+  { q: "vertebral compression fracture", mustContainDescription: "fracture" },
+  { q: "burst fracture", mustContainDescription: "fracture" },
+  { q: "cervical spine fracture", mustMatchCodePrefix: "S12" },
+  { q: "thoracic spine fracture", mustMatchCodePrefix: "S22" },
+  { q: "lumbar spine fracture", mustMatchCodePrefix: "S32" },
+  { q: "spinal cord injury", mustContainDescription: "spinal cord" },
+  { q: "central cord syndrome", mustContainDescription: "central cord" },
+  { q: "anterior cord syndrome", mustContainDescription: "anterior cord" },
+  { q: "posterior cord syndrome", mustContainDescription: "posterior cord" },
+  { q: "Brown-Sequard syndrome", mustContainDescription: "brown" },
+  { q: "neurogenic shock", mustContainDescription: "shock" },
+  { q: "spinal shock", mustContainDescription: "shock" },
+  { q: "SCIWORA", mustContainDescription: "spinal cord" },
+  { q: "douleur cervicale", mustContainDescription: "cervical" },
+  { q: "entorse cervicale", mustMatchCodePrefix: "S16.1" },
+  { q: "douleur thoracique rachidienne", mustContainDescription: "thoracic" },
+  { q: "entorse lombaire", mustMatchCodePrefix: "S39.012" },
+  { q: "lombalgie", mustContainDescription: "low back" },
+  { q: "hernie discale", mustContainDescription: "disc" },
+  { q: "radiculopathie cervicale", mustContainDescription: "radiculopathy" },
+  { q: "radiculopathie lombaire", mustContainDescription: "radiculopathy" },
+  { q: "sciatique", mustContainDescription: "sciatica" },
+  { q: "sténose rachidienne", mustContainDescription: "stenosis" },
+  { q: "myélopathie cervicale", mustContainDescription: "myelopathy" },
+  { q: "syndrome de la queue de cheval", mustContainDescription: "cauda" },
+  { q: "syndrome du cône médullaire", mustContainDescription: "conus" },
+  { q: "abcès épidural rachidien", mustContainDescription: "abscess" },
+  { q: "ostéomyélite vertébrale", mustContainDescription: "osteomyelitis" },
+  { q: "discite", mustContainDescription: "discitis" },
+  { q: "compression médullaire", mustContainDescription: "cord" },
+  { q: "compression médullaire métastatique", mustContainDescription: "cord" },
+  { q: "fracture vertébrale par compression", mustContainDescription: "fracture" },
+  { q: "fracture éclatement", mustContainDescription: "fracture" },
+  { q: "fracture cervicale", mustMatchCodePrefix: "S12" },
+  { q: "fracture thoracique", mustMatchCodePrefix: "S22" },
+  { q: "fracture lombaire", mustMatchCodePrefix: "S32" },
+  { q: "lésion médullaire", mustContainDescription: "spinal cord" },
+  { q: "syndrome centromédullaire", mustContainDescription: "central cord" },
+  { q: "syndrome médullaire antérieur", mustContainDescription: "anterior cord" },
+  { q: "syndrome de Brown-Séquard", mustContainDescription: "brown" },
+  { q: "choc neurogène", mustContainDescription: "shock" },
+  { q: "choc spinal", mustContainDescription: "shock" },
+  { q: "radiculopathie", mustContainDescription: "radiculopathy" },
+  { q: "queue de cheval", mustContainDescription: "cauda" },
+  { q: "cauda equina", mustContainDescription: "cauda" },
   // Human bite / contaminated wound (Phase 8)
   { q: "human bite", mustMatchCodePrefix: "W50.3" },
   { q: "morsure humaine", mustMatchCodePrefix: "W50.3" },
@@ -187,12 +255,14 @@ async function searchCatalog(prisma: PrismaClient, q: string, take = 25): Promis
     Prisma.sql`"longDescription" ILIKE ${pattern}`,
     Prisma.sql`"searchText" ILIKE ${lower}`,
   ];
+  const shortExpansionRank: Prisma.Sql[] = [];
   for (const phrase of expansion?.anyOf ?? []) {
     const p = `%${phrase}%`;
     const lp = `%${phrase.toLowerCase()}%`;
     or.push(Prisma.sql`"shortDescription" ILIKE ${p}`);
     or.push(Prisma.sql`"longDescription" ILIKE ${p}`);
     or.push(Prisma.sql`"searchText" ILIKE ${lp}`);
+    shortExpansionRank.push(Prisma.sql`"shortDescription" ILIKE ${p}`);
   }
   if (expansion?.allOf?.length) {
     const andParts = expansion.allOf.map((phrase) => {
@@ -205,8 +275,13 @@ async function searchCatalog(prisma: PrismaClient, q: string, take = 25): Promis
       )`;
     });
     or.push(andParts.reduce((acc, part, index) => (index === 0 ? part : Prisma.sql`${acc} AND ${part}`)));
+    for (const phrase of expansion.allOf) {
+      shortExpansionRank.push(Prisma.sql`"shortDescription" ILIKE ${`%${phrase}%`}`);
+    }
   }
   const matchSql = joinSqlOr(or);
+  const expansionShortRankSql =
+    shortExpansionRank.length > 0 ? joinSqlOr(shortExpansionRank) : Prisma.sql`FALSE`;
   return prisma.$queryRaw<SearchRow[]>`
     SELECT "code", "shortDescription", "releaseVersion"
     FROM "Icd10DiagnosisCode"
@@ -214,6 +289,7 @@ async function searchCatalog(prisma: PrismaClient, q: string, take = 25): Promis
       AND "isSelectable" = TRUE
       AND (${matchSql})
     ORDER BY
+      CASE WHEN ${expansionShortRankSql} THEN 0 ELSE 1 END ASC,
       CASE WHEN "releaseVersion" LIKE '%DEV-SAMPLE%' THEN 1 ELSE 0 END ASC,
       "isBillable" DESC,
       CASE
@@ -355,6 +431,11 @@ async function main() {
     );
     writeFileSync(join(summaryDir, "fy2026-bites-contaminated-wounds-search-summary.json"), bitesSummary);
     writeFileSync(join(releaseSummaryDir, "fy2026-bites-contaminated-wounds-search-summary.json"), bitesSummary);
+    const spineQueryPattern = /sciatica|radiculopathy|radiculopathie|cauda equina|queue de cheval|spinal cord injury|lésion médullaire|epidural abscess|abcès épidural|neck pain|low back pain|herniated disc|spinal stenosis|myelopathy|myélopathie|compression|fracture cervicale|fracture lombaire|SCIWORA|sciatique|lombalgie|hernie discale|sténose|Brown-Sequard|Brown-Séquard|choc neurogène|choc spinal|central cord|anterior cord|conus|discite|osteomyelitis|ostéomyélite|cord compression|compression médullaire|vertebral|vertébrale|burst fracture|fracture éclatement|cervical strain|lumbar strain|entorse|douleur cervicale/;
+    const spineFailures = failures.filter((failure) => spineQueryPattern.test(failure.toLowerCase()));
+    const spineSummary = JSON.stringify({ generatedAt: report.generatedAt, queryCount: REQUIRED_QUERIES.filter((row) => spineQueryPattern.test(row.q)).length, failures: spineFailures, pass: spineFailures.length === 0 }, null, 2);
+    writeFileSync(join(summaryDir, "fy2026-spine-back-search-summary.json"), spineSummary);
+    writeFileSync(join(releaseSummaryDir, "fy2026-spine-back-search-summary.json"), spineSummary);
     if (!report.pass) process.exit(1);
   } finally {
     await prisma.$disconnect();

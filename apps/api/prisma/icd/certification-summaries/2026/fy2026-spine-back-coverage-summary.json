@@ -1,0 +1,13 @@
+{
+  "spineBack": {
+    "scopedOfficialBillable": 2006,
+    "presentInMedora": 2006,
+    "missingCodes": [],
+    "descriptionMismatches": [],
+    "duplicateActiveCodes": [],
+    "invalidSelectableHeaders": []
+  },
+  "certification": {
+    "pass": true
+  }
+}
