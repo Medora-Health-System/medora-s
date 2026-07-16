@@ -1,0 +1,13 @@
+{
+  "softTissueWoundInfections": {
+    "scopedOfficialBillable": 276,
+    "presentInMedora": 276,
+    "missingCodes": [],
+    "descriptionMismatches": [],
+    "duplicateActiveCodes": [],
+    "invalidSelectableHeaders": []
+  },
+  "certification": {
+    "pass": true
+  }
+}

@@ -381,6 +381,80 @@ const REQUIRED_QUERIES: Array<{
   { q: "calcul salivaire", mustMatchCodePrefix: "K11.5" },
   { q: "salivary duct obstruction", mustMatchCodePrefix: "K11.5" },
   { q: "obstruction du canal salivaire", mustMatchCodePrefix: "K11.5" },
+  // Soft tissue / wound infection (Phase 13)
+  { q: "cellulitis", mustMatchCodePrefix: "L03" },
+  { q: "cellulite", mustMatchCodePrefix: "L03" },
+  { q: "erysipelas", mustMatchCodePrefix: "A46" },
+  { q: "érysipèle", mustMatchCodePrefix: "A46" },
+  { q: "facial cellulitis", mustContainDescription: "face" },
+  { q: "cellulite faciale", mustContainDescription: "face" },
+  { q: "hand cellulitis", mustContainDescription: "hand" },
+  { q: "cellulite de la main", mustContainDescription: "hand" },
+  { q: "leg cellulitis", mustContainDescription: "lower limb" },
+  { q: "cellulite de la jambe", mustContainDescription: "lower limb" },
+  { q: "foot cellulitis", mustContainDescription: "foot" },
+  { q: "cellulite du pied", mustContainDescription: "foot" },
+  { q: "skin abscess", mustMatchCodePrefix: "L02" },
+  { q: "cutaneous abscess", mustMatchCodePrefix: "L02" },
+  { q: "abcès cutané", mustMatchCodePrefix: "L02" },
+  { q: "furuncle", mustContainDescription: "furuncle" },
+  { q: "furoncle", mustContainDescription: "furuncle" },
+  { q: "carbuncle", mustContainDescription: "carbuncle" },
+  { q: "anthrax cutané", mustContainDescription: "carbuncle" },
+  { q: "felon", mustContainDescription: "finger" },
+  { q: "panaris pulpaire", mustContainDescription: "finger" },
+  { q: "paronychia", mustContainDescription: "finger" },
+  { q: "paronychie", mustContainDescription: "finger" },
+  { q: "pilonidal abscess", mustMatchCodePrefix: "L05.0" },
+  { q: "abcès pilonidal", mustMatchCodePrefix: "L05.0" },
+  { q: "hidradenitis abscess", mustMatchCodePrefix: "L73.2" },
+  { q: "abcès d'hidradénite", mustMatchCodePrefix: "L73.2" },
+  { q: "infected wound", mustContainDescription: "cellulitis" },
+  { q: "plaie infectée", mustContainDescription: "cellulitis" },
+  { q: "infected traumatic wound", mustContainDescription: "cellulitis" },
+  { q: "plaie traumatique infectée", mustContainDescription: "cellulitis" },
+  { q: "surgical site infection", mustMatchCodePrefix: "T81.4" },
+  { q: "infection du site opératoire", mustMatchCodePrefix: "T81.4" },
+  { q: "postoperative wound infection", mustMatchCodePrefix: "T81.4" },
+  { q: "infection postopératoire de plaie", mustMatchCodePrefix: "T81.4" },
+  { q: "wound dehiscence", mustMatchCodePrefix: "T81.3" },
+  { q: "déhiscence de plaie", mustMatchCodePrefix: "T81.3" },
+  { q: "necrotizing fasciitis", mustMatchCodePrefix: "M72.6" },
+  { q: "fasciite nécrosante", mustMatchCodePrefix: "M72.6" },
+  { q: "necrotizing soft tissue infection", mustMatchCodePrefix: "M72.6" },
+  { q: "infection nécrosante des tissus mous", mustMatchCodePrefix: "M72.6" },
+  { q: "gas gangrene", mustMatchCodePrefix: "A48.0" },
+  { q: "gangrène gazeuse", mustMatchCodePrefix: "A48.0" },
+  { q: "Fournier gangrene", mustMatchCodePrefix: "N49.3" },
+  { q: "gangrène de Fournier", mustMatchCodePrefix: "N49.3" },
+  { q: "pyomyositis", mustMatchCodePrefix: "M60.0" },
+  { q: "pyomyosite", mustMatchCodePrefix: "M60.0" },
+  { q: "infectious myositis", mustMatchCodePrefix: "M60.0" },
+  { q: "myosite infectieuse", mustMatchCodePrefix: "M60.0" },
+  { q: "flexor tenosynovitis", mustMatchCodePrefix: "M65.1" },
+  { q: "ténosynovite infectieuse des fléchisseurs", mustMatchCodePrefix: "M65.1" },
+  { q: "deep space hand infection", mustContainDescription: "hand" },
+  { q: "infection profonde de la main", mustContainDescription: "hand" },
+  { q: "septic bursitis", mustMatchCodePrefix: "M71.1" },
+  { q: "bursite septique", mustMatchCodePrefix: "M71.1" },
+  { q: "diabetic foot infection", mustMatchCodePrefix: "E11.62" },
+  { q: "infection du pied diabétique", mustMatchCodePrefix: "E11.62" },
+  { q: "infected diabetic foot ulcer", mustMatchCodePrefix: "E11.62" },
+  { q: "ulcère diabétique infecté", mustMatchCodePrefix: "E11.62" },
+  { q: "infected pressure ulcer", mustContainDescription: "pressure ulcer" },
+  { q: "escarre infectée", mustContainDescription: "pressure ulcer" },
+  { q: "infected venous ulcer", mustContainDescription: "non-pressure chronic ulcer" },
+  { q: "ulcère veineux infecté", mustContainDescription: "non-pressure chronic ulcer" },
+  { q: "osteomyelitis from wound", mustContainDescription: "osteomyelitis" },
+  { q: "ostéomyélite liée à une plaie", mustContainDescription: "osteomyelitis" },
+  { q: "septic arthritis from wound", mustContainDescription: "arthritis" },
+  { q: "arthrite septique liée à une plaie", mustContainDescription: "arthritis" },
+  { q: "water exposed wound infection", mustContainDescription: "cellulitis" },
+  { q: "infection de plaie exposée à l'eau", mustContainDescription: "cellulitis" },
+  { q: "bite wound infection", mustMatchCodePrefix: "L03" },
+  { q: "infection après morsure", mustMatchCodePrefix: "L03" },
+  { q: "foreign body wound infection", mustContainDescription: "foreign body" },
+  { q: "infection associée à un corps étranger", mustContainDescription: "foreign body" },
 ];
 
 function encounterChar(code: string): string {
@@ -570,6 +644,31 @@ async function main() {
     );
     writeFileSync(join(summaryDir, "fy2026-ent-emergencies-search-summary.json"), entEmergenciesSummary);
     writeFileSync(join(releaseSummaryDir, "fy2026-ent-emergencies-search-summary.json"), entEmergenciesSummary);
+    const softTissueWoundInfectionQueryPattern =
+      /cellulitis|cellulite|erysipelas|érysipèle|facial cellulitis|hand cellulitis|leg cellulitis|foot cellulitis|skin abscess|cutaneous abscess|abcès cutané|furuncle|furoncle|carbuncle|anthrax cutané|felon|panaris|paronychia|paronychie|pilonidal|hidradenitis|hidradénite|infected wound|plaie infectée|infected traumatic|plaie traumatique infectée|surgical site|infection du site opératoire|postoperative wound|infection postopératoire|wound dehiscence|déhiscence|necrotizing|fasciite nécrosante|gas gangrene|gangrène gazeuse|fournier|gangrène de fournier|pyomyositis|pyomyosite|infectious myositis|myosite infectieuse|flexor tenosynovitis|ténosynovite infectieuse|deep space hand|infection profonde de la main|septic bursitis|bursite septique|diabetic foot|pied diabétique|infected diabetic|ulcère diabétique|infected pressure|escarre infectée|infected venous|ulcère veineux|osteomyelitis from wound|ostéomyélite liée|septic arthritis from wound|arthrite septique liée|water exposed|exposée à l'eau|bite wound infection|infection après morsure|foreign body wound|corps étranger/;
+    const softTissueWoundInfectionFailures = failures.filter((failure) =>
+      softTissueWoundInfectionQueryPattern.test(failure.toLowerCase()),
+    );
+    const softTissueWoundInfectionSummary = JSON.stringify(
+      {
+        generatedAt: report.generatedAt,
+        queryCount: REQUIRED_QUERIES.filter((row) =>
+          softTissueWoundInfectionQueryPattern.test(row.q.toLowerCase()),
+        ).length,
+        failures: softTissueWoundInfectionFailures,
+        pass: softTissueWoundInfectionFailures.length === 0,
+      },
+      null,
+      2,
+    );
+    writeFileSync(
+      join(summaryDir, "fy2026-soft-tissue-wound-infections-search-summary.json"),
+      softTissueWoundInfectionSummary,
+    );
+    writeFileSync(
+      join(releaseSummaryDir, "fy2026-soft-tissue-wound-infections-search-summary.json"),
+      softTissueWoundInfectionSummary,
+    );
     if (!report.pass) process.exit(1);
   } finally {
     await prisma.$disconnect();

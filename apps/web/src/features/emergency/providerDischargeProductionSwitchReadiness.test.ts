@@ -64,10 +64,12 @@ describe("MEDUI.ED.DISCHARGE.PRODUCTION_SWITCH_READINESS.1", () => {
   });
 
   describe("Phase 3 — real encounter validation threshold", () => {
-    it("05 — fixture mode returns NOT_READY_FOR_DEFAULT_ON_DATA_INSUFFICIENT", () => {
+    it("05 — fixture mode returns NOT_READY_FOR_DEFAULT_ON_THRESHOLDS_UNMET", () => {
+      // Phase 13 — COMMON_DIAGNOSES growth pushed fixture audit past the ≥500-row volume gate;
+      // production-default switch remains blocked on safety/sign-off thresholds.
       const report = buildRealEncounterProductionSwitchValidationReport({ mode: "fixture" });
-      expect(report.result).toBe("NOT_READY_FOR_DEFAULT_ON_DATA_INSUFFICIENT");
-      expect(report.aggregate.totalRows).toBeLessThan(
+      expect(report.result).toBe("NOT_READY_FOR_DEFAULT_ON_THRESHOLDS_UNMET");
+      expect(report.aggregate.totalRows).toBeGreaterThanOrEqual(
         PRODUCTION_DEFAULT_SWITCH_THRESHOLDS.minimumRealEdDiagnosisRows
       );
     });
@@ -250,7 +252,7 @@ describe("MEDUI.ED.DISCHARGE.PRODUCTION_SWITCH_READINESS.1", () => {
       const cert = runProductionSwitchReadinessCertification();
       expect(cert.resolverState.activeProductionResolver).toBe("registry");
       expect(cert.cmsAudit.cmsStatus).toBe("FULL_CMS_DATA_NOT_AVAILABLE_LOCALLY");
-      expect(cert.realEncounter.result).toBe("NOT_READY_FOR_DEFAULT_ON_DATA_INSUFFICIENT");
+      expect(cert.realEncounter.result).toBe("NOT_READY_FOR_DEFAULT_ON_THRESHOLDS_UNMET");
       expect(cert.resolverSafety.allPassed).toBe(true);
     });
 

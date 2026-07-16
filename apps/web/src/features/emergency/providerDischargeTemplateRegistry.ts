@@ -6491,7 +6491,7 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
     id: "post_abscess_drainage_v1", version: "1.0.0", title: "Post abscess drainage discharge documentation", ...SOFT_TISSUE_WOUND_INFECTION_TEMPLATE_GOVERNANCE,
     diagnosisMappings: { keyword: ["post abscess drainage", "after incision and drainage", "après drainage d'abcès"] },
     sourceReferences: [{ label: "MedlinePlus — Abscess", url: "https://medlineplus.gov/abscess.html", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
-    defaultFollowUps: [registryFollowUp("sti-iad-pcp", "PRIMARY_CARE", "within 48 hours for packing/wound check or as directed")], suggestedText: POST_ABSCESS_DRAINAGE_V1_SUGGESTED_TEXT,
+    defaultFollowUps: [registryFollowUp("sti-iad-pcp", "PRIMARY_CARE", "within 24–48 hours or as directed")], suggestedText: POST_ABSCESS_DRAINAGE_V1_SUGGESTED_TEXT,
   },
   {
     id: "abscess_without_drainage_v1", version: "1.0.0", title: "Abscess without drainage discharge documentation", ...SOFT_TISSUE_WOUND_INFECTION_TEMPLATE_GOVERNANCE,
@@ -6503,7 +6503,7 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
     id: "furuncle_carbuncle_v1", version: "1.0.0", title: "Furuncle / carbuncle discharge documentation", ...SOFT_TISSUE_WOUND_INFECTION_TEMPLATE_GOVERNANCE,
     diagnosisMappings: { keyword: ["furuncle", "carbuncle", "boil", "furoncle", "anthrax cutané"] },
     sourceReferences: [{ label: "MedlinePlus — Abscess", url: "https://medlineplus.gov/abscess.html", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
-    defaultFollowUps: [registryFollowUp("sti-fur-pcp", "PRIMARY_CARE", "within 5–7 days or as directed")], suggestedText: FURUNCLE_CARBUNCLE_V1_SUGGESTED_TEXT,
+    defaultFollowUps: [registryFollowUp("sti-fur-pcp", "PRIMARY_CARE", "within 3–7 days or as directed")], suggestedText: FURUNCLE_CARBUNCLE_V1_SUGGESTED_TEXT,
   },
   {
     id: "felon_post_procedure_v1", version: "1.0.0", title: "Felon post-procedure discharge documentation", ...SOFT_TISSUE_WOUND_INFECTION_TEMPLATE_GOVERNANCE, riskCategory: "moderate_to_high",
@@ -6521,25 +6521,25 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
     id: "pilonidal_abscess_v1", version: "1.0.0", title: "Pilonidal abscess discharge documentation", ...SOFT_TISSUE_WOUND_INFECTION_TEMPLATE_GOVERNANCE,
     diagnosisMappings: { icdFamily: ["L05.0"], keyword: ["pilonidal abscess", "abcès pilonidal"] },
     sourceReferences: [{ label: "MedlinePlus — Pilonidal sinus", url: "https://medlineplus.gov/", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
-    defaultFollowUps: [registryFollowUp("sti-pil-surg", "GENERAL_SURGERY", "within 5–7 days or as directed")], suggestedText: PILONIDAL_ABSCESS_V1_SUGGESTED_TEXT,
+    defaultFollowUps: [registryFollowUp("sti-pil-surg", "GENERAL_SURGERY", "within 3–7 days or as directed")], suggestedText: PILONIDAL_ABSCESS_V1_SUGGESTED_TEXT,
   },
   {
     id: "hidradenitis_flare_v1", version: "1.0.0", title: "Hidradenitis flare discharge documentation", ...SOFT_TISSUE_WOUND_INFECTION_TEMPLATE_GOVERNANCE,
     diagnosisMappings: { icdFamily: ["L73.2"], keyword: ["hidradenitis", "hidradénite", "hidrosadénite"] },
     sourceReferences: [{ label: "MedlinePlus — Hidradenitis", url: "https://medlineplus.gov/", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
-    defaultFollowUps: [registryFollowUp("sti-hs-derm", "DERMATOLOGY", "within 1–2 weeks or as directed")], suggestedText: HIDRADENITIS_FLARE_V1_SUGGESTED_TEXT,
+    defaultFollowUps: [registryFollowUp("sti-hs-derm", "DERMATOLOGY", "within 3–7 days or as directed")], suggestedText: HIDRADENITIS_FLARE_V1_SUGGESTED_TEXT,
   },
   {
     id: "postoperative_wound_infection_v1", version: "1.0.0", title: "Postoperative wound infection discharge documentation", ...SOFT_TISSUE_WOUND_INFECTION_TEMPLATE_GOVERNANCE, riskCategory: "moderate_to_high",
     diagnosisMappings: { icdFamily: ["T81.4"], keyword: ["surgical site infection", "postoperative wound infection", "infection du site opératoire"] },
     sourceReferences: [{ label: "MedlinePlus — After surgery", url: "https://medlineplus.gov/", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
-    defaultFollowUps: [registryFollowUp("sti-ssi-surg", "GENERAL_SURGERY", "within 24–48 hours or as directed by operating surgeon")], suggestedText: POSTOPERATIVE_WOUND_INFECTION_V1_SUGGESTED_TEXT,
+    defaultFollowUps: [registryFollowUp("sti-ssi-surg", "GENERAL_SURGERY", "within 24–48 hours or as directed")], suggestedText: POSTOPERATIVE_WOUND_INFECTION_V1_SUGGESTED_TEXT,
   },
   {
     id: "wound_dehiscence_post_acute_v1", version: "1.0.0", title: "Wound dehiscence post-acute discharge documentation", ...SOFT_TISSUE_WOUND_INFECTION_TEMPLATE_GOVERNANCE, riskCategory: "high",
     diagnosisMappings: { icdFamily: ["T81.3"], keyword: ["wound dehiscence", "déhiscence de plaie", "surgical wound disruption"] },
     sourceReferences: [{ label: "MedlinePlus — After surgery", url: "https://medlineplus.gov/", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
-    defaultFollowUps: [registryFollowUp("sti-deh-surg", "GENERAL_SURGERY", "urgent — as directed by operating surgeon")], suggestedText: WOUND_DEHISCENCE_POST_ACUTE_V1_SUGGESTED_TEXT,
+    defaultFollowUps: [registryFollowUp("sti-deh-surg", "GENERAL_SURGERY", "urgent / as directed")], suggestedText: WOUND_DEHISCENCE_POST_ACUTE_V1_SUGGESTED_TEXT,
   },
   {
     id: "diabetic_foot_infection_v1", version: "1.0.0", title: "Diabetic foot infection discharge documentation", ...SOFT_TISSUE_WOUND_INFECTION_TEMPLATE_GOVERNANCE, riskCategory: "high",
@@ -6557,32 +6557,32 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
     id: "septic_bursitis_v1", version: "1.0.0", title: "Septic bursitis discharge documentation", ...SOFT_TISSUE_WOUND_INFECTION_TEMPLATE_GOVERNANCE, riskCategory: "moderate_to_high",
     diagnosisMappings: { icdFamily: ["M71.1"], keyword: ["septic bursitis", "infective bursitis", "bursite septique"] },
     sourceReferences: [{ label: "MedlinePlus — Bursitis", url: "https://medlineplus.gov/bursitis.html", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
-    defaultFollowUps: [registryFollowUp("sti-burs-ortho", "ORTHOPEDICS", "within 48 hours or as directed")], suggestedText: SEPTIC_BURSITIS_V1_SUGGESTED_TEXT,
+    defaultFollowUps: [registryFollowUp("sti-burs-ortho", "ORTHOPEDICS", "within 24–48 hours or as directed")], suggestedText: SEPTIC_BURSITIS_V1_SUGGESTED_TEXT,
   },
   {
     id: "deep_hand_infection_post_acute_v1", version: "1.0.0", title: "Deep hand infection post-acute discharge documentation", ...SOFT_TISSUE_WOUND_INFECTION_TEMPLATE_GOVERNANCE, riskCategory: "high",
     diagnosisMappings: { keyword: ["deep space hand infection", "deep palmar space infection", "infection profonde de la main"] },
     sourceReferences: [{ label: "MedlinePlus — Hand injuries", url: "https://medlineplus.gov/", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
-    defaultFollowUps: [registryFollowUp("sti-dhi-hand", "HAND_SURGERY", "urgent — as directed by hand surgery")], suggestedText: DEEP_HAND_INFECTION_POST_ACUTE_V1_SUGGESTED_TEXT,
+    defaultFollowUps: [registryFollowUp("sti-dhi-hand", "HAND_SURGERY", "urgent / as directed")], suggestedText: DEEP_HAND_INFECTION_POST_ACUTE_V1_SUGGESTED_TEXT,
   },
   {
     id: "flexor_tenosynovitis_post_acute_v1", version: "1.0.0", title: "Flexor tenosynovitis post-acute discharge documentation", ...SOFT_TISSUE_WOUND_INFECTION_TEMPLATE_GOVERNANCE, riskCategory: "high",
-    // Keyword-only when M65.1 is already owned by high_risk_hand_wound; longer keyword match for post-acute aftercare.
-    diagnosisMappings: { keyword: ["flexor tenosynovitis", "infectious flexor tenosynovitis", "ténosynovite infectieuse des fléchisseurs"] },
+    // Keyword-only aftercare; M65.1 / "flexor tenosynovitis" remain owned by high_risk_hand_wound_v1.
+    diagnosisMappings: { keyword: ["infectious flexor tenosynovitis aftercare", "ténosynovite infectieuse des fléchisseurs post-aiguë"] },
     sourceReferences: [{ label: "MedlinePlus — Hand injuries", url: "https://medlineplus.gov/", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
-    defaultFollowUps: [registryFollowUp("sti-fts-hand", "HAND_SURGERY", "urgent — as directed by hand surgery")], suggestedText: FLEXOR_TENOSYNOVITIS_POST_ACUTE_V1_SUGGESTED_TEXT,
+    defaultFollowUps: [registryFollowUp("sti-fts-hand", "HAND_SURGERY", "urgent / as directed")], suggestedText: FLEXOR_TENOSYNOVITIS_POST_ACUTE_V1_SUGGESTED_TEXT,
   },
   {
     id: "necrotizing_soft_tissue_infection_post_acute_v1", version: "1.0.0", title: "Necrotizing soft tissue infection post-acute discharge documentation", ...SOFT_TISSUE_WOUND_INFECTION_TEMPLATE_GOVERNANCE, riskCategory: "high",
     diagnosisMappings: { icdFamily: ["M72.6", "A48.0", "N49.3"], keyword: ["necrotizing fasciitis", "necrotizing soft tissue infection", "gas gangrene", "fournier gangrene", "fasciite nécrosante"] },
     sourceReferences: [{ label: "MedlinePlus — Necrotizing soft tissue infection", url: "https://medlineplus.gov/", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
-    defaultFollowUps: [registryFollowUp("sti-nsti-surg", "GENERAL_SURGERY", "urgent — as directed by surgery/infectious disease")], suggestedText: NECROTIZING_SOFT_TISSUE_INFECTION_POST_ACUTE_V1_SUGGESTED_TEXT,
+    defaultFollowUps: [registryFollowUp("sti-nsti-surg", "GENERAL_SURGERY", "urgent / as directed")], suggestedText: NECROTIZING_SOFT_TISSUE_INFECTION_POST_ACUTE_V1_SUGGESTED_TEXT,
   },
   {
     id: "pyomyositis_post_acute_v1", version: "1.0.0", title: "Pyomyositis post-acute discharge documentation", ...SOFT_TISSUE_WOUND_INFECTION_TEMPLATE_GOVERNANCE, riskCategory: "high",
     diagnosisMappings: { icdFamily: ["M60.0"], keyword: ["pyomyositis", "infective myositis", "pyomyosite"] },
     sourceReferences: [{ label: "MedlinePlus — Muscle disorders", url: "https://medlineplus.gov/", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
-    defaultFollowUps: [registryFollowUp("sti-pyo-surg", "GENERAL_SURGERY", "urgent — as directed")], suggestedText: PYOMYOSITIS_POST_ACUTE_V1_SUGGESTED_TEXT,
+    defaultFollowUps: [registryFollowUp("sti-pyo-surg", "GENERAL_SURGERY", "urgent / as directed")], suggestedText: PYOMYOSITIS_POST_ACUTE_V1_SUGGESTED_TEXT,
   },
   {
     id: "water_exposed_wound_infection_v1", version: "1.0.0", title: "Water-exposed wound infection discharge documentation", ...SOFT_TISSUE_WOUND_INFECTION_TEMPLATE_GOVERNANCE, riskCategory: "moderate_to_high",
@@ -6594,7 +6594,7 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
     id: "foreign_body_associated_infection_v1", version: "1.0.0", title: "Foreign-body-associated infection discharge documentation", ...SOFT_TISSUE_WOUND_INFECTION_TEMPLATE_GOVERNANCE, riskCategory: "moderate_to_high",
     diagnosisMappings: { keyword: ["foreign body wound infection", "infected retained foreign body", "infection associée à un corps étranger"] },
     sourceReferences: [{ label: "MedlinePlus — Foreign body", url: "https://medlineplus.gov/", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
-    defaultFollowUps: [registryFollowUp("sti-fbi-pcp", "PRIMARY_CARE", "within 48 hours or as directed")], suggestedText: FOREIGN_BODY_ASSOCIATED_INFECTION_V1_SUGGESTED_TEXT,
+    defaultFollowUps: [registryFollowUp("sti-fbi-pcp", "PRIMARY_CARE", "within 24–48 hours or as directed")], suggestedText: FOREIGN_BODY_ASSOCIATED_INFECTION_V1_SUGGESTED_TEXT,
   },
   {
     id: GENERIC_PROVIDER_DISCHARGE_TEMPLATE_ID,

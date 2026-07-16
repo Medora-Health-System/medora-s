@@ -245,15 +245,16 @@ describe("MEDUI.ED.DISCHARGE.TEMPLATE_FAMILY_COVERAGE.6", () => {
     });
 
     it("production default switch thresholds not met on fixture-only audit", () => {
+      // Phase 13 — fixture volume now meets the ≥500-row gate; remaining blockers are
+      // pediatric/high-risk/sign-off thresholds (switch must still stay OFF).
       const report = runRealEncounterShadowValidation({ mode: "fixture" });
       expect(report.productionDefaultSwitchEvaluation.readyForProductionDefaultSwitch).toBe(
         false
       );
-      expect(
-        report.productionDefaultSwitchEvaluation.blockers.some((b) =>
-          b.includes(String(PRODUCTION_DEFAULT_SWITCH_THRESHOLDS.minimumRealEdDiagnosisRows))
-        )
-      ).toBe(true);
+      expect(report.aggregate.totalRows).toBeGreaterThanOrEqual(
+        PRODUCTION_DEFAULT_SWITCH_THRESHOLDS.minimumRealEdDiagnosisRows
+      );
+      expect(report.productionDefaultSwitchEvaluation.blockers.length).toBeGreaterThan(0);
     });
   });
 });

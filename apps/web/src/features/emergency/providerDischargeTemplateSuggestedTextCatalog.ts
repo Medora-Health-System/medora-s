@@ -5828,7 +5828,7 @@ export const HIDRADENITIS_FLARE_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSugg
         "Keep the affected area clean and dry. Apply warm compresses as directed for comfort and drainage. Wear loose, breathable clothing over the area. This is a chronic condition — outpatient dermatology follow-up is recommended for long-term management, not only for this flare.",
       medicationTreatment: WOUND_MED_EN,
       returnPrecautions:
-        "Return for care if redness or swelling spreads, fever develops, pain increases significantly, or symptoms have not improved after finishing the prescribed course.",
+        "Return immediately if redness or swelling spreads, fever develops, pain increases significantly, or symptoms have not improved after finishing the prescribed course.",
       returnWorkSchool: "Follow up with dermatology for ongoing management of this chronic condition, in addition to any return precautions above.",
     },
     {
@@ -5838,7 +5838,7 @@ export const HIDRADENITIS_FLARE_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSugg
         "Gardez la zone touchée propre et sèche. Appliquez des compresses chaudes selon les consignes pour le confort et le drainage. Portez des vêtements amples et respirants sur la zone. Il s'agit d'une affection chronique — un suivi ambulatoire en dermatologie est recommandé pour la prise en charge à long terme, pas seulement pour cette poussée.",
       medicationTreatment: WOUND_MED_FR,
       returnPrecautions:
-        "Reconsultez si la rougeur ou l'enflure s'étend, si de la fièvre apparaît, si la douleur augmente considérablement, ou si les symptômes ne se sont pas améliorés après la fin du traitement prescrit.",
+        "Retournez immédiatement si la rougeur ou l'enflure s'étend, si de la fièvre apparaît, si la douleur augmente considérablement, ou si les symptômes ne se sont pas améliorés après la fin du traitement prescrit.",
       returnWorkSchool: "Faites un suivi en dermatologie pour la prise en charge continue de cette affection chronique, en plus des consignes de retour ci-dessus.",
     }
   );

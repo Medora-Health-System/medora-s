@@ -166,25 +166,27 @@ describe("MEDUI.ED.DISCHARGE.REAL_WORLD_PARITY_VALIDATION.1", () => {
   });
 
   describe("Phase 10 — pilot readiness certification", () => {
-    it("14 — pilot readiness fails when rows <500 (fixture)", () => {
-      const cert = certifyLimitedPilotReadiness({ mode: "fixture" });
+    it("14 — pilot readiness fails when rows <500 (injected small set)", () => {
+      const rows = buildRealWorldEdTrafficRows(120);
+      const cert = certifyLimitedPilotReadiness({ mode: "injected", rows });
       expect(cert.decision).toBe("NOT_READY");
       expect(cert.blockers.some((b) => b.includes("500"))).toBe(true);
     });
 
-    it("15 — pilot readiness fails when parity <95 (fixture)", () => {
-      // Phase 12 — fixture parity is now ~95.1% after aligning the trauma_msk_foreign_body_ear_nose_v1
-      // registry mapping with its condition family (T17.0/T17.1 nasal FB precedence). The fixture
-      // dataset still fails readiness on the <500-row threshold regardless of parity.
+    it("15 — fixture dataset meets row and parity thresholds after Phase 13 picker growth", () => {
+      // Phase 13 — COMMON_DIAGNOSES expansion pushed the fixture audit past ≥500 rows with ≥95% parity.
       const cert = certifyLimitedPilotReadiness({ mode: "fixture" });
-      expect(cert.parityReport.registryParityPercent).toBeGreaterThanOrEqual(90);
-      expect(cert.blockers.some((b) => b.includes("parity") || b.includes("500"))).toBe(true);
+      expect(cert.parityReport.totalRows).toBeGreaterThanOrEqual(500);
+      expect(cert.parityReport.registryParityPercent).toBeGreaterThanOrEqual(95);
+      expect(cert.parityReport.gatedSafeParityPercent).toBe(100);
+      expect(cert.decision).toBe("READY_FOR_LIMITED_PILOT");
     });
 
-    it("16 — pilot readiness fails when unsafe >0 (simulated)", () => {
+    it("16 — fixture high-risk audit remains safe (unsafe routed = 0)", () => {
       const cert = certifyLimitedPilotReadiness({ mode: "fixture" });
       expect(cert.highRiskAudit.unsafeRoutedCount).toBe(0);
-      expect(cert.decision).toBe("NOT_READY");
+      expect(cert.highRiskAudit.passed).toBe(true);
+      expect(cert.decision).toBe("READY_FOR_LIMITED_PILOT");
     });
 
     it("17 — pilot readiness passes when thresholds met (injected high-parity traffic)", () => {

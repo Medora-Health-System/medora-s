@@ -1300,7 +1300,7 @@ export const DOMAIN_EXTENSION_CLINICAL_CONDITION_FAMILIES: readonly ClinicalCond
       label: "Flexor Tenosynovitis, Post-Acute",
       templateId: "flexor_tenosynovitis_post_acute_v1",
       clinicalDomain: "Skin/Infection",
-      keywords: ["flexor tenosynovitis", "infectious flexor tenosynovitis", "ténosynovite infectieuse des fléchisseurs"],
+      keywords: ["infectious flexor tenosynovitis aftercare", "ténosynovite infectieuse des fléchisseurs post-aiguë"],
       guardrails: { safety: { highRiskEscalation: true, requiresEdReturnPrecautions: true, requiresSpecialistFollowUp: true } },
       specialtyCategory: "hand_surgery",
       riskCategory: "high",
