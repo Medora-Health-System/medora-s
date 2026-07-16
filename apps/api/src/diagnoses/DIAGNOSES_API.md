@@ -19,6 +19,8 @@
 5. **Release collapse** — `DISTINCT ON ("code")` keeps one catalog row per ICD code (official FY release preferred over `UNSPECIFIED` / DEV-SAMPLE). Aliases and synonym matches only widen predicates; they do not add extra visible rows.
 6. **Ranking** — code exact → prefix → short description → expansion → long/token; prefer billable and initial-encounter (`A`) for trauma codes.
 7. **JSON** — `{ items: [...], limit }` with duplicate ICD codes = 0.
+
+Certification: `pnpm --filter @medora/api icd:search` (ranking/aliases) and `pnpm --filter @medora/api icd:search:uniqueness` (zero duplicate codes).
 | PATCH | `/diagnoses/:id` | RN, PROVIDER, ADMIN | Update diagnosis |
 | POST | `/diagnoses/:id/resolve` | RN, PROVIDER, ADMIN | Set status RESOLVED and resolvedDate |
 | GET | `/patients/:id/chart-summary` | RN, PROVIDER, ADMIN | Patient chart summary (demographics + recent data) |

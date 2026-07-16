@@ -1,0 +1,118 @@
+{
+  "generatedAt": "2026-07-16T15:20:23.787Z",
+  "certification": "icd10-search-uniqueness",
+  "duplicateIcdCodes": 0,
+  "duplicateSearchResults": 0,
+  "aliasSearch": "PASS",
+  "ranking": "PASS",
+  "searchPerformance": "unchanged_or_improved",
+  "productionExamples": [
+    "P10.0",
+    "I62.01",
+    "R07.1",
+    "R07.9",
+    "A42.1",
+    "S02.411G"
+  ],
+  "queryCount": 16,
+  "failures": [],
+  "pass": true,
+  "queries": [
+    {
+      "q": "P10.0",
+      "resultCount": 1,
+      "uniqueCodes": 1,
+      "duplicateCodes": []
+    },
+    {
+      "q": "I62.01",
+      "resultCount": 1,
+      "uniqueCodes": 1,
+      "duplicateCodes": []
+    },
+    {
+      "q": "R07.1",
+      "resultCount": 1,
+      "uniqueCodes": 1,
+      "duplicateCodes": []
+    },
+    {
+      "q": "R07.9",
+      "resultCount": 1,
+      "uniqueCodes": 1,
+      "duplicateCodes": []
+    },
+    {
+      "q": "A42.1",
+      "resultCount": 1,
+      "uniqueCodes": 1,
+      "duplicateCodes": []
+    },
+    {
+      "q": "S02.411G",
+      "resultCount": 1,
+      "uniqueCodes": 1,
+      "duplicateCodes": []
+    },
+    {
+      "q": "chest pain",
+      "resultCount": 50,
+      "uniqueCodes": 50,
+      "duplicateCodes": []
+    },
+    {
+      "q": "subdural",
+      "resultCount": 35,
+      "uniqueCodes": 35,
+      "duplicateCodes": []
+    },
+    {
+      "q": "fracture",
+      "resultCount": 50,
+      "uniqueCodes": 50,
+      "duplicateCodes": []
+    },
+    {
+      "q": "pain",
+      "resultCount": 50,
+      "uniqueCodes": 50,
+      "duplicateCodes": []
+    },
+    {
+      "q": "wound",
+      "resultCount": 50,
+      "uniqueCodes": 50,
+      "duplicateCodes": []
+    },
+    {
+      "q": "abrasion",
+      "resultCount": 50,
+      "uniqueCodes": 50,
+      "duplicateCodes": []
+    },
+    {
+      "q": "R07",
+      "resultCount": 7,
+      "uniqueCodes": 7,
+      "duplicateCodes": []
+    },
+    {
+      "q": "S02",
+      "resultCount": 50,
+      "uniqueCodes": 50,
+      "duplicateCodes": []
+    },
+    {
+      "q": "douleur thoracique",
+      "resultCount": 0,
+      "uniqueCodes": 0,
+      "duplicateCodes": []
+    },
+    {
+      "q": "hémorragie",
+      "resultCount": 0,
+      "uniqueCodes": 0,
+      "duplicateCodes": []
+    }
+  ]
+}

@@ -193,7 +193,7 @@ const REQUIRED_QUERIES: Array<{
   { q: "knife wound", mustMatchCodePrefix: "S" },
   { q: "penetrating trauma", mustContainDescription: "wound" },
   { q: "penetrating wound", mustContainDescription: "wound" },
-  { q: "puncture wound", mustContainDescription: "pnctr", mustMatchCodePrefix: "S" },
+  { q: "puncture wound", mustContainDescription: "puncture", mustMatchCodePrefix: "S" },
   { q: "impalement", mustMatchCodePrefix: "S" },
   { q: "through-and-through wound", mustMatchCodePrefix: "S" },
   { q: "penetrating chest wound", mustContainDescription: "thorax", mustMatchCodePrefix: "S21" },
