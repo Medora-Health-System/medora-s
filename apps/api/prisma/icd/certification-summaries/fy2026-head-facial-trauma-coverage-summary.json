@@ -1,0 +1,13 @@
+{
+  "headFacialTrauma": {
+    "scopedOfficialBillable": 1787,
+    "presentInMedora": 1787,
+    "missingCodes": [],
+    "descriptionMismatches": [],
+    "duplicateActiveCodes": [],
+    "invalidSelectableHeaders": []
+  },
+  "certification": {
+    "pass": true
+  }
+}

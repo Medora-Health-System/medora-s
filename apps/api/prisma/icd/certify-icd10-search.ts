@@ -233,6 +233,52 @@ const REQUIRED_QUERIES: Array<{
   { q: "blessure abdominale pénétrante", mustMatchCodePrefix: "S31" },
   { q: "blessure cervicale pénétrante", mustMatchCodePrefix: "S11" },
   { q: "blessure oculaire pénétrante", mustMatchCodePrefix: "S05" },
+  // Head / facial trauma (Phase 10)
+  { q: "head injury", mustMatchCodePrefix: "S06" },
+  { q: "traumatisme crânien", mustMatchCodePrefix: "S06" },
+  { q: "concussion", mustMatchCodePrefix: "S06.0" },
+  { q: "commotion cérébrale", mustMatchCodePrefix: "S06.0" },
+  { q: "mild TBI", mustMatchCodePrefix: "S06.0" },
+  { q: "mild traumatic brain injury", mustMatchCodePrefix: "S06.0" },
+  { q: "TCC léger", mustMatchCodePrefix: "S06.0" },
+  { q: "traumatisme crânien léger", mustMatchCodePrefix: "S06.0" },
+  { q: "epidural hematoma", mustMatchCodePrefix: "S06.4" },
+  { q: "hématome épidural", mustMatchCodePrefix: "S06.4" },
+  { q: "subdural hematoma", mustMatchCodePrefix: "S06.5" },
+  { q: "hématome sous-dural", mustMatchCodePrefix: "S06.5" },
+  { q: "hématome sous-dural traumatique", mustMatchCodePrefix: "S06.5" },
+  { q: "traumatic SAH", mustMatchCodePrefix: "S06.6" },
+  { q: "traumatic subarachnoid hemorrhage", mustMatchCodePrefix: "S06.6" },
+  { q: "hémorragie sous-arachnoïdienne traumatique", mustMatchCodePrefix: "S06.6" },
+  { q: "skull fracture", mustMatchCodePrefix: "S02" },
+  { q: "fracture du crâne", mustMatchCodePrefix: "S02" },
+  { q: "basilar skull fracture", mustMatchCodePrefix: "S02.1" },
+  { q: "fracture de la base du crâne", mustMatchCodePrefix: "S02.1" },
+  { q: "nasal fracture", mustMatchCodePrefix: "S02.2" },
+  { q: "fracture nasale", mustMatchCodePrefix: "S02.2" },
+  { q: "orbital fracture", mustMatchCodePrefix: "S02" },
+  { q: "fracture orbitaire", mustMatchCodePrefix: "S02" },
+  { q: "zygomatic fracture", mustContainDescription: "malar", mustMatchCodePrefix: "S02.4" },
+  { q: "fracture zygomatique", mustContainDescription: "malar", mustMatchCodePrefix: "S02.4" },
+  { q: "maxillary fracture", mustMatchCodePrefix: "S02.4" },
+  { q: "fracture maxillaire", mustMatchCodePrefix: "S02.4" },
+  { q: "mandibular fracture", mustMatchCodePrefix: "S02.6" },
+  { q: "fracture mandibulaire", mustMatchCodePrefix: "S02.6" },
+  { q: "Le Fort fracture", mustMatchCodePrefix: "S02.41" },
+  { q: "LeFort fracture", mustMatchCodePrefix: "S02.41" },
+  { q: "fracture de Le Fort", mustMatchCodePrefix: "S02.41" },
+  { q: "dental trauma", mustContainDescription: "tooth" },
+  { q: "traumatisme dentaire", mustContainDescription: "tooth" },
+  { q: "tooth avulsion", mustMatchCodePrefix: "S03.2" },
+  { q: "avulsion dentaire", mustMatchCodePrefix: "S03.2" },
+  { q: "jaw dislocation", mustMatchCodePrefix: "S03.0" },
+  { q: "luxation de la mâchoire", mustMatchCodePrefix: "S03.0" },
+  { q: "auricular hematoma", mustContainDescription: "ear" },
+  { q: "hématome auriculaire", mustContainDescription: "ear" },
+  { q: "septal hematoma", mustContainDescription: "nose" },
+  { q: "hématome septal", mustContainDescription: "nose" },
+  { q: "CSF leak after trauma", mustContainDescription: "cerebrospinal fluid leak" },
+  { q: "fuite de LCR post-traumatique", mustContainDescription: "cerebrospinal fluid leak" },
 ];
 
 function encounterChar(code: string): string {
@@ -436,6 +482,21 @@ async function main() {
     const spineSummary = JSON.stringify({ generatedAt: report.generatedAt, queryCount: REQUIRED_QUERIES.filter((row) => spineQueryPattern.test(row.q)).length, failures: spineFailures, pass: spineFailures.length === 0 }, null, 2);
     writeFileSync(join(summaryDir, "fy2026-spine-back-search-summary.json"), spineSummary);
     writeFileSync(join(releaseSummaryDir, "fy2026-spine-back-search-summary.json"), spineSummary);
+    const headFacialTraumaQueryPattern =
+      /head injury|traumatisme crânien|concussion|commotion cérébrale|mild tbi|traumatic brain injury|tcc léger|epidural hematoma|hématome épidural|subdural hematoma|hématome sous-dural|traumatic sah|subarachnoid hemorrhage|hémorragie sous-arachnoïdienne|skull fracture|fracture du crâne|basilar skull|fracture de la base du crâne|nasal fracture|fracture nasale|orbital fracture|fracture orbitaire|zygomatic fracture|fracture zygomatique|maxillary fracture|fracture maxillaire|mandibular fracture|fracture mandibulaire|le fort|lefort|dental trauma|traumatisme dentaire|tooth avulsion|avulsion dentaire|jaw dislocation|luxation de la mâchoire|auricular hematoma|hématome auriculaire|septal hematoma|hématome septal|csf leak|fuite de lcr/;
+    const headFacialTraumaFailures = failures.filter((failure) => headFacialTraumaQueryPattern.test(failure.toLowerCase()));
+    const headFacialTraumaSummary = JSON.stringify(
+      {
+        generatedAt: report.generatedAt,
+        queryCount: REQUIRED_QUERIES.filter((row) => headFacialTraumaQueryPattern.test(row.q.toLowerCase())).length,
+        failures: headFacialTraumaFailures,
+        pass: headFacialTraumaFailures.length === 0,
+      },
+      null,
+      2,
+    );
+    writeFileSync(join(summaryDir, "fy2026-head-facial-trauma-search-summary.json"), headFacialTraumaSummary);
+    writeFileSync(join(releaseSummaryDir, "fy2026-head-facial-trauma-search-summary.json"), headFacialTraumaSummary);
     if (!report.pass) process.exit(1);
   } finally {
     await prisma.$disconnect();

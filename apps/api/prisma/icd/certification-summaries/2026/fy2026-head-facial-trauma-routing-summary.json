@@ -1,0 +1,19 @@
+{
+  "headFacialTraumaScoped": 1787,
+  "intracranialInjuryScoped": 569,
+  "skullFacialFractureScoped": 456,
+  "concussionOwned": 12,
+  "ichOwned": 557,
+  "skullFacialFractureOwned": 456,
+  "eyeOwned": 90,
+  "dentalOwned": 33,
+  "jawDislocationOwned": 12,
+  "genericHeadacheSteals": [],
+  "genericWoundSteals": [],
+  "fractureUnderRouting": [],
+  "eyeUnderRouting": [],
+  "entDentalUnderRouting": [],
+  "symptomRoutingSteals": [],
+  "unexplainedFallbacks": [],
+  "pass": true
+}
