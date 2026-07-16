@@ -98,7 +98,7 @@ export const TIER2_CLINICAL_CONDITION_FAMILIES: readonly ClinicalConditionFamily
   {
     id: "concussion",
     label: "Concussion",
-    templateId: "minor_head_injury_v1",
+    templateId: "concussion_mild_tbi_v1",
     additionalTemplateIds: ["pediatric_concussion_v1"],
     clinicalDomain: "Neurologic",
     icdExact: ["S06.0X0A", "S06.0X1A"],
@@ -109,7 +109,7 @@ export const TIER2_CLINICAL_CONDITION_FAMILIES: readonly ClinicalConditionFamily
     },
     specialtyCategory: "neurology",
     riskCategory: "moderate",
-    clinicalRationale: "Concussion return-to-activity precautions.",
+    clinicalRationale: "Concussion return-to-activity precautions (Phase 10 — dedicated concussion_mild_tbi_v1 template, distinct from generic minor head injury).",
     reviewStatus: "reviewed",
     routingStatus: "READY",
     sourceReferenceLabels: ["MedlinePlus — Concussion"],

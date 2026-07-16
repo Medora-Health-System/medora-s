@@ -128,7 +128,7 @@ describe("MEDUI.ED.DISCHARGE.TEMPLATE_FAMILY_COVERAGE.2", () => {
     it("15 — S06.0X0A resolves to concussion family", () => {
       const r = resolveClinicalConditionFamily({ code: "S06.0X0A", displayName: "Concussion" });
       expect(r.familyId).toBe("concussion");
-      expect(r.templateId).toBe("minor_head_injury_v1");
+      expect(r.templateId).toBe("concussion_mild_tbi_v1");
     });
 
     it("16 — E11.65 resolves to hyperglycemia tier2 family", () => {

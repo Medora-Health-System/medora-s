@@ -1859,9 +1859,9 @@ describe("edDisposition19Y", () => {
       expect(["icdFamily", "keyword"]).toContain(resolved.matchLevel);
     });
 
-    it("minor head injury S06.0 family resolves correctly", () => {
+    it("concussion S06.0 family resolves correctly (Phase 10 — dedicated concussion_mild_tbi_v1)", () => {
       const resolved = resolveProviderDischargeTemplateForDiagnosis({ code: "S06.0X0A", displayName: "Concussion" });
-      expect(resolved.template.id).toBe("minor_head_injury_v1");
+      expect(resolved.template.id).toBe("concussion_mild_tbi_v1");
       expect(resolved.matchLevel).toBe("icdFamily");
     });
 
@@ -8092,7 +8092,7 @@ describe("edDisposition19Y", () => {
         PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.length
       );
       // Update this constant intentionally when registry governance content changes.
-      expect(hash).toBe("a41717e3bb528f76f8139c5e12e84df372873e2441bbbd85b6ad29e04510a836");
+      expect(hash).toBe("b2317e8b7b9cfd763d5eaa9a61a604ffe8221ecadd8629489c89be206aa68466");
     });
 
     it("registry governance snapshot hash remains stable for reviewed registry (FR)", () => {
@@ -8102,7 +8102,7 @@ describe("edDisposition19Y", () => {
         PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.length
       );
       // Update this constant intentionally when registry governance content changes.
-      expect(hash).toBe("f5adbf9f848af7c2d96c40c2b8b5c496c48e2949ed49f2b6b47a612ad8ca708c");
+      expect(hash).toBe("bcb203872c20b73f9e1b6c7bdf8571b9107a120cc76893b54ff619faa9ee497f");
     });
 
     it("timesApplied exists in type but is not incremented anywhere", () => {

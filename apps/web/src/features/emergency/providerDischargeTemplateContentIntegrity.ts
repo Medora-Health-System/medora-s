@@ -495,6 +495,77 @@ export const PROVIDER_DISCHARGE_TEMPLATE_CONTENT_INTEGRITY: Record<
     mustIncludeAny: { en: ["facial", "jaw", "nasal", "orbital"], fr: ["visage", "mâchoire", "nez", "orbite"] },
     forbiddenCrossTemplateMarkers: { en: WOUND_FORBIDDEN_EN, fr: WOUND_FORBIDDEN_FR },
   },
+  concussion_mild_tbi_v1: {
+    mustIncludeAny: { en: ["concussion"], fr: ["commotion"] },
+    forbiddenCrossTemplateMarkers: {
+      en: ["subdural hematoma", "epidural hematoma", "intracranial hemorrhage", ...WOUND_FORBIDDEN_EN],
+      fr: ["hématome sous-dural", "hématome extradural", "hémorragie intracrânienne", ...WOUND_FORBIDDEN_FR],
+    },
+  },
+  post_head_injury_observation_v1: {
+    mustIncludeAny: { en: ["head injury"], fr: ["traumatisme crânien"] },
+    forbiddenCrossTemplateMarkers: {
+      en: ["subdural hematoma", "epidural hematoma", "return to sports", ...WOUND_FORBIDDEN_EN],
+      fr: ["hématome sous-dural", "hématome extradural", "retour au sport", ...WOUND_FORBIDDEN_FR],
+    },
+  },
+  skull_fracture_followup_v1: {
+    mustIncludeAny: { en: ["skull fracture"], fr: ["fracture du crâne", "fracture de la base du crâne"] },
+    forbiddenCrossTemplateMarkers: { en: WOUND_FORBIDDEN_EN, fr: WOUND_FORBIDDEN_FR },
+  },
+  intracranial_hemorrhage_followup_v1: {
+    mustIncludeAny: {
+      en: ["intracranial hemorrhage", "subdural", "epidural"],
+      fr: ["hémorragie intracrânienne", "sous-dural", "extradural"],
+    },
+    forbiddenCrossTemplateMarkers: {
+      en: ["return to sports", "return-to-play", ...WOUND_FORBIDDEN_EN],
+      fr: ["retour au sport", "retour au jeu", ...WOUND_FORBIDDEN_FR],
+    },
+  },
+  nasal_fracture_v1: {
+    mustIncludeAny: { en: ["nasal fracture", "broken nose"], fr: ["fracture nasale", "nez cassé"] },
+    forbiddenCrossTemplateMarkers: { en: WOUND_FORBIDDEN_EN, fr: WOUND_FORBIDDEN_FR },
+  },
+  orbital_fracture_v1: {
+    mustIncludeAny: { en: ["orbital", "eye socket"], fr: ["orbitaire", "orbite"] },
+    forbiddenCrossTemplateMarkers: { en: WOUND_FORBIDDEN_EN, fr: WOUND_FORBIDDEN_FR },
+  },
+  mandibular_fracture_v1: {
+    mustIncludeAny: { en: ["mandible", "mandibular"], fr: ["mandibule", "mandibulaire"] },
+    forbiddenCrossTemplateMarkers: { en: WOUND_FORBIDDEN_EN, fr: WOUND_FORBIDDEN_FR },
+  },
+  maxillary_lefort_fracture_v1: {
+    mustIncludeAny: { en: ["le fort", "maxillary"], fr: ["le fort", "maxillaire"] },
+    forbiddenCrossTemplateMarkers: { en: WOUND_FORBIDDEN_EN, fr: WOUND_FORBIDDEN_FR },
+  },
+  dental_trauma_v1: {
+    mustIncludeAny: { en: ["tooth fracture", "dental"], fr: ["fracture dentaire", "dentaire"] },
+    forbiddenCrossTemplateMarkers: { en: ["avulsed", "knocked-out"], fr: ["avulsée", "arrachée"] },
+  },
+  tooth_avulsion_v1: {
+    mustIncludeAny: { en: ["avulsed", "knocked-out"], fr: ["avulsée", "arrachée"] },
+    forbiddenCrossTemplateMarkers: { en: WOUND_FORBIDDEN_EN, fr: WOUND_FORBIDDEN_FR },
+  },
+  jaw_dislocation_post_reduction_v1: {
+    mustIncludeAny: { en: ["jaw", "tmj"], fr: ["mâchoire", "atm"] },
+    forbiddenCrossTemplateMarkers: { en: WOUND_FORBIDDEN_EN, fr: WOUND_FORBIDDEN_FR },
+  },
+  auricular_hematoma_followup_v1: {
+    mustIncludeAny: { en: ["auricular hematoma", "cauliflower ear"], fr: ["hématome auriculaire", "oreille en chou-fleur"] },
+    forbiddenCrossTemplateMarkers: {
+      en: ["septal hematoma", "nasal septum"],
+      fr: ["hématome septal", "cloison nasale"],
+    },
+  },
+  septal_hematoma_followup_v1: {
+    mustIncludeAny: { en: ["septal hematoma"], fr: ["hématome septal", "hématome de la cloison nasale"] },
+    forbiddenCrossTemplateMarkers: { en: ["nasal fracture", "broken nose"], fr: ["fracture nasale", "nez cassé"] },
+  },
+  facial_laceration_v1: {
+    mustIncludeAny: { en: ["facial laceration", "laceration"], fr: ["lacération", "visage"] },
+    forbiddenCrossTemplateMarkers: { en: RESPIRATORY_FORBIDDEN_ON_WOUND_EN, fr: RESPIRATORY_FORBIDDEN_ON_WOUND_FR },
+  },
   trauma_msk_fracture_spine_v1: {
     mustIncludeAny: { en: ["spinal", "vertebral"], fr: ["vertébrale", "colonne"] },
     forbiddenCrossTemplateMarkers: { en: WOUND_FORBIDDEN_EN, fr: WOUND_FORBIDDEN_FR },

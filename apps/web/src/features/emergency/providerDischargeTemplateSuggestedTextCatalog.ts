@@ -4384,3 +4384,331 @@ export const WELLNESS_VISIT_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedTe
         "Retournez aux urgences immédiatement si de nouveaux symptômes sévères apparaissent, si les symptômes s'aggravent ou si vous ne vous sentez pas en sécurité à domicile.",
     }
   );
+
+/**
+ * Phase 10 — head/facial trauma discharge templates (concussion, ICH, skull/facial fractures,
+ * dental/jaw, ear/nose hematomas, facial laceration).
+ */
+
+const HEAD_FACIAL_MED_EN = "Take pain medicines only as prescribed or directed during this visit.";
+const HEAD_FACIAL_MED_FR =
+  "Prenez les antidouleurs uniquement selon la prescription ou les indications données pendant cette visite.";
+
+export const CONCUSSION_MILD_TBI_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for a concussion (mild traumatic brain injury). Most people recover within days to a few weeks; outpatient follow-up is recommended when clinically appropriate.",
+      diagnosisInstructions:
+        "Rest as directed for the first day or two, then return gradually to light activity as tolerated. Do not return to sports, contact activity, or play until cleared by a clinician — a repeat head injury before you have recovered can be dangerous. Avoid driving, biking, or operating machinery if you have concussion symptoms. Have a responsible adult monitor you as directed. Return precautions for worsening or concerning neurologic symptoms were reviewed.",
+      medicationTreatment:
+        "Take pain medicines only as prescribed or directed during this visit. Avoid sedating medicines before driving unless cleared by your clinician.",
+      returnPrecautions:
+        "Return immediately for worsening headache, repeated vomiting, confusion, seizure, weakness or numbness, trouble waking, slurred speech, unequal pupils, behavior change, or vision changes.",
+      returnWorkSchool:
+        "Return to work, school, or sports (return-to-play) only in a gradual, stepwise manner and only as directed by your clinician.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour une commotion cérébrale (traumatisme crânien léger). La plupart des personnes récupèrent en quelques jours à quelques semaines ; un suivi ambulatoire est recommandé lorsque c'est cliniquement pertinent.",
+      diagnosisInstructions:
+        "Reposez-vous selon les indications les premiers jours, puis reprenez progressivement une activité légère selon votre tolérance. Ne reprenez pas le sport, les activités de contact ou le jeu avant l'autorisation d'un clinicien — un nouveau traumatisme crânien avant la guérison complète peut être dangereux. Évitez de conduire, faire du vélo ou utiliser des machines si vous avez des symptômes de commotion. Faites-vous surveiller par un adulte responsable selon les indications. Les consignes de retour en cas de signes neurologiques inquiétants ou d'aggravation ont été revues.",
+      medicationTreatment: HEAD_FACIAL_MED_FR,
+      returnPrecautions:
+        "Reconsultez immédiatement aux urgences en cas de céphalée aggravée, de vomissements répétés, de confusion, de convulsion, de faiblesse ou engourdissement, de difficulté à se réveiller, de trouble de l'élocution, de pupilles inégales, de changement de comportement ou de trouble visuel.",
+      returnWorkSchool:
+        "Reprenez le travail, les cours ou le sport (retour au jeu) uniquement de façon progressive et par étapes, et seulement selon les instructions de votre clinicien.",
+    }
+  );
+
+export const POST_HEAD_INJURY_OBSERVATION_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated and observed in the emergency department after a head injury. No specific fracture or bleeding requiring intervention was identified during this observation period; symptoms may still evolve.",
+      diagnosisInstructions:
+        "Have a responsible adult observe you as directed for the first 24 hours. Rest as directed and avoid strenuous activity, contact sports, or driving until symptoms fully resolve or you are cleared by a clinician. Return precautions for worsening or concerning symptoms were reviewed.",
+      medicationTreatment: HEAD_FACIAL_MED_EN,
+      returnPrecautions:
+        "Return immediately for worsening headache, repeated vomiting, confusion, seizure, weakness or numbness, trouble waking, behavior change, or vision changes.",
+      returnWorkSchool:
+        "Return to work, school, or sports only as directed by your clinician after the observation period.",
+    },
+    {
+      description:
+        "Vous avez été évalué et observé aux urgences après un traumatisme crânien. Aucune fracture ni saignement nécessitant une intervention n'a été identifié pendant cette période d'observation ; les symptômes peuvent encore évoluer.",
+      diagnosisInstructions:
+        "Faites-vous observer par un adulte responsable selon les indications pendant les 24 premières heures. Reposez-vous selon les indications et évitez les efforts intenses, les sports de contact ou la conduite jusqu'à la résolution complète des symptômes ou l'autorisation d'un clinicien. Les consignes de retour en cas d'aggravation ou de signes inquiétants ont été revues.",
+      medicationTreatment: HEAD_FACIAL_MED_FR,
+      returnPrecautions:
+        "Reconsultez immédiatement aux urgences en cas de céphalée aggravée, de vomissements répétés, de confusion, de convulsion, de faiblesse ou engourdissement, de difficulté à se réveiller, de changement de comportement ou de trouble visuel.",
+      returnWorkSchool:
+        "Reprenez le travail, les cours ou le sport uniquement selon les instructions de votre clinicien après la période d'observation.",
+    }
+  );
+
+export const SKULL_FRACTURE_FOLLOWUP_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for a skull fracture after this evaluation. Skull fractures can be associated with underlying brain injury; close observation and follow-up are important.",
+      diagnosisInstructions:
+        "Rest as directed. Avoid contact sports, heavy activity, and driving until cleared by your clinician. Have a responsible adult monitor you as directed. Keep the area clean and avoid pressure on the fracture site. Follow up as directed for repeat neurologic or neurosurgical evaluation.",
+      medicationTreatment: HEAD_FACIAL_MED_EN,
+      returnPrecautions:
+        "Return immediately for worsening headache, repeated vomiting, confusion, seizure, weakness or numbness, trouble waking, clear fluid draining from the nose or ear, new bruising behind the ear or around the eyes, or vision changes.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour une fracture du crâne après cette évaluation. Les fractures du crâne peuvent être associées à une lésion cérébrale sous-jacente ; une surveillance étroite et un suivi sont importants.",
+      diagnosisInstructions:
+        "Reposez-vous selon les indications. Évitez les sports de contact, les efforts importants et la conduite jusqu'à l'autorisation de votre clinicien. Faites-vous surveiller par un adulte responsable selon les indications. Gardez la zone propre et évitez toute pression sur le site de la fracture. Suivez le suivi selon les directives pour une nouvelle évaluation neurologique ou neurochirurgicale.",
+      medicationTreatment: HEAD_FACIAL_MED_FR,
+      returnPrecautions:
+        "Retournez immédiatement aux urgences en cas de céphalée aggravée, de vomissements répétés, de confusion, de convulsion, de faiblesse ou engourdissement, de difficulté à se réveiller, d'écoulement de liquide clair du nez ou de l'oreille, de nouvelle ecchymose derrière l'oreille ou autour des yeux, ou de trouble visuel.",
+    }
+  );
+
+export const INTRACRANIAL_HEMORRHAGE_FOLLOWUP_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated for a traumatic intracranial hemorrhage (bleeding around or in the brain). This documentation is used only after clinician evaluation and an explicit decision that outpatient management is appropriate; this is not routine concussion rest advice. Intracranial hemorrhage carries a higher risk of delayed complications than a simple concussion.",
+      diagnosisInstructions:
+        "Have a responsible adult observe you closely as directed. Rest as directed and avoid any contact sports, heavy exertion, alcohol, blood thinners not approved by your clinician, and driving until specifically cleared. Keep all scheduled follow-up imaging and neurosurgery or neurology appointments — do not skip these.",
+      medicationTreatment:
+        "Take pain medicines only as prescribed or directed during this visit. Do not take aspirin, NSAIDs (such as ibuprofen), or blood thinners unless specifically approved by your clinician, as these can increase bleeding risk.",
+      returnPrecautions:
+        "Return immediately or call emergency services for worsening headache, repeated vomiting, confusion, drowsiness or difficulty waking, seizure, new weakness or numbness, unequal pupils, slurred speech, or any worsening neurologic symptoms. This bleeding requires close follow-up even if you feel better.",
+    },
+    {
+      description:
+        "Vous avez été évalué pour une hémorragie intracrânienne traumatique (saignement autour ou dans le cerveau). Cette documentation n'est utilisée qu'après évaluation clinique et décision explicite qu'une prise en charge ambulatoire est appropriée ; il ne s'agit pas de conseils de repos habituels pour une commotion. Une hémorragie intracrânienne comporte un risque plus élevé de complications retardées qu'une simple commotion.",
+      diagnosisInstructions:
+        "Faites-vous surveiller étroitement par un adulte responsable selon les indications. Reposez-vous selon les indications et évitez tout sport de contact, effort intense, alcool, anticoagulants non approuvés par votre clinicien et la conduite jusqu'à autorisation spécifique. Respectez tous les rendez-vous d'imagerie de suivi et de neurochirurgie ou neurologie prévus — ne les manquez pas.",
+      medicationTreatment:
+        "Prenez les antidouleurs uniquement selon la prescription ou les indications données pendant cette visite. Ne prenez pas d'aspirine, d'anti-inflammatoires (comme l'ibuprofène) ou d'anticoagulants sauf autorisation spécifique de votre clinicien, car cela peut augmenter le risque de saignement.",
+      returnPrecautions:
+        "Retournez immédiatement aux urgences ou appelez les services d'urgence en cas de céphalée aggravée, de vomissements répétés, de confusion, de somnolence ou de difficulté à se réveiller, de convulsion, de nouvelle faiblesse ou engourdissement, de pupilles inégales, de trouble de l'élocution ou de tout symptôme neurologique qui s'aggrave. Ce saignement nécessite un suivi étroit même si vous vous sentez mieux.",
+    }
+  );
+
+export const NASAL_FRACTURE_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for a nasal fracture (broken nose). Swelling may hide the final shape of the nose for several days.",
+      diagnosisInstructions:
+        "Ice the nose as directed to reduce swelling. Avoid blowing your nose forcefully. Avoid contact sports and activities that could re-injure the nose until cleared. Follow up as directed with ENT or your clinician once swelling decreases, for reassessment of alignment and septal hematoma.",
+      medicationTreatment: HEAD_FACIAL_MED_EN,
+      returnPrecautions:
+        "Return immediately for worsening pain, worsening swelling, difficulty breathing through the nose, persistent or heavy nosebleed, clear fluid draining from the nose, vision changes, or fever.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour une fracture nasale (nez cassé). L'enflure peut masquer la forme définitive du nez pendant plusieurs jours.",
+      diagnosisInstructions:
+        "Glace sur le nez selon les directives pour réduire l'enflure. Évitez de vous moucher fort. Évitez les sports de contact et les activités pouvant blesser à nouveau le nez jusqu'à l'autorisation. Suivez le suivi en ORL ou avec votre clinicien selon les directives une fois l'enflure réduite, pour réévaluer l'alignement et rechercher un hématome de la cloison nasale.",
+      medicationTreatment: HEAD_FACIAL_MED_FR,
+      returnPrecautions:
+        "Retournez immédiatement en cas d'aggravation de la douleur, d'aggravation de l'enflure, de difficulté à respirer par le nez, de saignement de nez persistant ou important, d'écoulement de liquide clair du nez, de changement de vision ou de fièvre.",
+    }
+  );
+
+export const ORBITAL_FRACTURE_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for an orbital (eye socket) fracture. Eye function and vision must be protected while this heals.",
+      diagnosisInstructions:
+        "Avoid blowing your nose or straining, which can push air into the eye socket. Use ice as directed to reduce swelling. Avoid contact sports and activities that risk re-injury until cleared. Follow up as directed for repeat eye (ophthalmology) and facial (ENT or maxillofacial) evaluation.",
+      medicationTreatment: HEAD_FACIAL_MED_EN,
+      returnPrecautions:
+        "Return immediately for worsening pain, worsening swelling, double vision, vision loss or vision changes, inability to move the eye normally, new numbness of the face, or fever.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour une fracture de l'orbite (cavité de l'œil). La fonction visuelle et la vision doivent être protégées pendant la guérison.",
+      diagnosisInstructions:
+        "Évitez de vous moucher ou de forcer, ce qui peut pousser de l'air dans la cavité orbitaire. Utilisez de la glace selon les directives pour réduire l'enflure. Évitez les sports de contact et les activités à risque de nouvelle blessure jusqu'à l'autorisation. Suivez le suivi selon les directives pour une nouvelle évaluation ophtalmologique et faciale (ORL ou maxillo-faciale).",
+      medicationTreatment: HEAD_FACIAL_MED_FR,
+      returnPrecautions:
+        "Retournez immédiatement en cas d'aggravation de la douleur, d'aggravation de l'enflure, de vision double, de perte de vision ou de changement de vision, d'incapacité à bouger l'œil normalement, de nouvel engourdissement du visage ou de fièvre.",
+    }
+  );
+
+export const MANDIBULAR_FRACTURE_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for a mandible (lower jaw) fracture. Proper healing depends on limiting jaw movement and following diet restrictions.",
+      diagnosisInstructions:
+        "Eat a soft or liquid diet only as directed. Avoid wide mouth opening, hard or chewy foods, and contact sports until cleared. If your jaw was wired or banded, keep emergency wire cutters available as instructed. Follow up as directed with oral/maxillofacial surgery or ENT.",
+      medicationTreatment: HEAD_FACIAL_MED_EN,
+      returnPrecautions:
+        "Return immediately for worsening pain, worsening swelling, new numbness of the face or lip, difficulty breathing, inability to close the mouth, drooling you cannot control, or new difficulty biting or misaligned bite.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour une fracture de la mandibule (mâchoire inférieure). Une bonne guérison dépend de la limitation des mouvements de la mâchoire et du respect des restrictions alimentaires.",
+      diagnosisInstructions:
+        "Alimentation molle ou liquide uniquement selon les directives. Évitez d'ouvrir grand la bouche, les aliments durs ou collants et les sports de contact jusqu'à l'autorisation. Si votre mâchoire a été fixée par fils ou élastiques, gardez des ciseaux coupe-fils d'urgence disponibles selon les indications. Suivez le suivi en chirurgie orale/maxillo-faciale ou ORL selon les directives.",
+      medicationTreatment: HEAD_FACIAL_MED_FR,
+      returnPrecautions:
+        "Retournez immédiatement en cas d'aggravation de la douleur, d'aggravation de l'enflure, de nouvel engourdissement du visage ou de la lèvre, de difficulté à respirer, d'incapacité à fermer la bouche, de bave incontrôlable ou de nouvelle difficulté à mordre ou mauvais alignement dentaire.",
+    }
+  );
+
+export const MAXILLARY_LEFORT_FRACTURE_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for a maxillary (Le Fort) facial fracture. This is a significant facial injury; oral/maxillofacial surgery involvement and close follow-up are typically required.",
+      diagnosisInstructions:
+        "Eat a soft or liquid diet only as directed. Avoid nose blowing, straining, and contact sports until cleared. Keep the head elevated as directed to reduce swelling. Follow up as directed with oral/maxillofacial surgery for reassessment and possible imaging.",
+      medicationTreatment: HEAD_FACIAL_MED_EN,
+      returnPrecautions:
+        "Return immediately for worsening pain, worsening facial swelling, difficulty breathing, clear fluid draining from the nose, vision changes, double vision, new numbness of the face, or new difficulty with your bite.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour une fracture faciale maxillaire (Le Fort). Il s'agit d'une blessure faciale importante ; l'intervention d'un chirurgien maxillo-facial et un suivi étroit sont généralement nécessaires.",
+      diagnosisInstructions:
+        "Alimentation molle ou liquide uniquement selon les directives. Évitez de vous moucher, de forcer et les sports de contact jusqu'à l'autorisation. Gardez la tête surélevée selon les directives pour réduire l'enflure. Suivez le suivi en chirurgie maxillo-faciale selon les directives pour réévaluation et imagerie éventuelle.",
+      medicationTreatment: HEAD_FACIAL_MED_FR,
+      returnPrecautions:
+        "Retournez immédiatement en cas d'aggravation de la douleur, d'aggravation de l'enflure du visage, de difficulté à respirer, d'écoulement de liquide clair du nez, de changement de vision, de vision double, de nouvel engourdissement du visage ou de nouvelle difficulté à mordre.",
+    }
+  );
+
+export const DENTAL_TRAUMA_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for a traumatic tooth fracture. Follow-up dental care is important to protect the tooth and nerve.",
+      diagnosisInstructions:
+        "Eat a soft diet and avoid chewing on the affected tooth until seen by a dentist. Avoid very hot or cold foods and drinks if the tooth is sensitive. Follow up with a dentist as directed, ideally within a few days.",
+      medicationTreatment: HEAD_FACIAL_MED_EN,
+      returnPrecautions:
+        "Return immediately for worsening facial swelling, fever, difficulty swallowing or breathing, or spreading redness. Follow up with dental for worsening tooth pain or new looseness of the tooth.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour une fracture dentaire traumatique. Un suivi dentaire est important pour protéger la dent et le nerf.",
+      diagnosisInstructions:
+        "Alimentation molle et évitez de mâcher sur la dent atteinte jusqu'à la consultation dentaire. Évitez les aliments et boissons très chauds ou très froids si la dent est sensible. Consultez un dentiste selon les directives, idéalement dans les prochains jours.",
+      medicationTreatment: HEAD_FACIAL_MED_FR,
+      returnPrecautions:
+        "Retournez immédiatement en cas d'aggravation de l'enflure du visage, de fièvre, de difficulté à avaler ou à respirer, ou de rougeur qui s'étend. Consultez un dentiste en cas d'aggravation de la douleur dentaire ou de nouvelle mobilité de la dent.",
+    }
+  );
+
+export const TOOTH_AVULSION_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for a knocked-out (avulsed) or displaced tooth. Time-sensitive dental follow-up gives the best chance of saving the tooth.",
+      diagnosisInstructions:
+        "See a dentist as soon as possible — ideally the same day — for reimplantation or splinting as needed. Eat a soft diet and avoid chewing on the affected area. If a permanent tooth was replanted or splinted, avoid biting on it until directed by your dentist.",
+      medicationTreatment: HEAD_FACIAL_MED_EN,
+      returnPrecautions:
+        "Return immediately for worsening facial swelling, fever, difficulty swallowing or breathing, or spreading redness. See a dentist urgently if the tooth becomes loose again or falls out.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour une dent arrachée (avulsée) ou déplacée. Un suivi dentaire rapide donne les meilleures chances de sauver la dent.",
+      diagnosisInstructions:
+        "Consultez un dentiste dès que possible — idéalement le même jour — pour une réimplantation ou une contention si nécessaire. Alimentation molle et évitez de mâcher sur la zone atteinte. Si une dent permanente a été réimplantée ou attelée, évitez de mordre dessus jusqu'à l'avis de votre dentiste.",
+      medicationTreatment: HEAD_FACIAL_MED_FR,
+      returnPrecautions:
+        "Retournez immédiatement en cas d'aggravation de l'enflure du visage, de fièvre, de difficulté à avaler ou à respirer, ou de rougeur qui s'étend. Consultez un dentiste en urgence si la dent devient à nouveau mobile ou tombe.",
+    }
+  );
+
+export const JAW_DISLOCATION_POST_REDUCTION_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for a jaw (TMJ) dislocation, which has been reduced (put back into place) during this visit. Symptoms may change after the visit.",
+      diagnosisInstructions:
+        "Eat a soft diet only as directed. Avoid wide mouth opening, yawning forcefully, and hard chewing for the time directed to reduce the risk of re-dislocation. Follow up as directed for maxillofacial or ENT evaluation.",
+      medicationTreatment: HEAD_FACIAL_MED_EN,
+      returnPrecautions:
+        "Return immediately for inability to close the mouth, worsening pain, new facial numbness, difficulty breathing, or recurrent jaw locking or dislocation.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour une luxation de la mâchoire (ATM), qui a été réduite (remise en place) lors de cette visite. Les symptômes peuvent évoluer après la visite.",
+      diagnosisInstructions:
+        "Alimentation molle uniquement selon les directives. Évitez d'ouvrir grand la bouche, de bâiller fort et de mâcher des aliments durs pendant la durée indiquée pour réduire le risque de nouvelle luxation. Suivez le suivi selon les directives pour une évaluation maxillo-faciale ou ORL.",
+      medicationTreatment: HEAD_FACIAL_MED_FR,
+      returnPrecautions:
+        "Retournez immédiatement en cas d'incapacité à fermer la bouche, d'aggravation de la douleur, de nouvel engourdissement du visage, de difficulté à respirer ou de blocage ou de luxation récidivante de la mâchoire.",
+    }
+  );
+
+export const AURICULAR_HEMATOMA_FOLLOWUP_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for a hematoma (blood collection) of the ear (auricle/pinna). Without prompt drainage and follow-up, this can lead to permanent ear deformity (cauliflower ear).",
+      diagnosisInstructions:
+        "Keep any pressure dressing or bolster on the ear as directed — do not remove it early. Avoid contact sports (wrestling, boxing, martial arts) until fully healed and cleared. Follow up as directed with ENT within the timeframe given, as re-accumulation of the hematoma can occur and may need repeat drainage.",
+      medicationTreatment: HEAD_FACIAL_MED_EN,
+      returnPrecautions:
+        "Return immediately for worsening pain, worsening swelling, fever, spreading redness, or if the dressing becomes soaked or falls off early. Follow up urgently with ENT if the swelling returns.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour un hématome (accumulation de sang) de l'oreille (pavillon/pinna). Sans drainage rapide et suivi, cela peut entraîner une déformation permanente de l'oreille (oreille en chou-fleur).",
+      diagnosisInstructions:
+        "Gardez le pansement compressif ou l'attelle sur l'oreille selon les directives — ne le retirez pas trop tôt. Évitez les sports de contact (lutte, boxe, arts martiaux) jusqu'à guérison complète et autorisation. Suivez le suivi en ORL selon le délai indiqué, car une récidive de l'hématome peut survenir et nécessiter un nouveau drainage.",
+      medicationTreatment: HEAD_FACIAL_MED_FR,
+      returnPrecautions:
+        "Retournez immédiatement en cas d'aggravation de la douleur, d'aggravation de l'enflure, de fièvre, de rougeur qui s'étend, ou si le pansement devient imbibé ou se détache trop tôt. Consultez en urgence en ORL si l'enflure revient.",
+    }
+  );
+
+export const SEPTAL_HEMATOMA_FOLLOWUP_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for a nasal septal hematoma (blood collection inside the nasal septum). This requires urgent drainage to prevent septal cartilage damage and must not be left untreated — escalate to ENT promptly if not already drained.",
+      diagnosisInstructions:
+        "If the hematoma was drained during this visit, keep any nasal packing or splint in place as directed. Avoid blowing your nose forcefully. Follow up urgently with ENT as directed, as re-accumulation can occur and requires prompt re-evaluation.",
+      medicationTreatment: HEAD_FACIAL_MED_EN,
+      returnPrecautions:
+        "Return immediately or escalate to ENT for worsening nasal pain or swelling, fever, difficulty breathing through the nose, or if drainage or packing falls out early — untreated septal hematoma can permanently damage the nasal septum within days.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour un hématome de la cloison nasale (accumulation de sang à l'intérieur du septum nasal). Ceci nécessite un drainage urgent pour éviter une lésion du cartilage septal et ne doit pas être laissé sans traitement — orientez rapidement vers l'ORL si le drainage n'a pas déjà été fait.",
+      diagnosisInstructions:
+        "Si l'hématome a été drainé lors de cette visite, gardez le méchage ou l'attelle nasale en place selon les directives. Évitez de vous moucher fort. Consultez en urgence en ORL selon les directives, car une récidive peut survenir et nécessite une réévaluation rapide.",
+      medicationTreatment: HEAD_FACIAL_MED_FR,
+      returnPrecautions:
+        "Retournez immédiatement ou orientez-vous en urgence vers l'ORL en cas d'aggravation de la douleur ou de l'enflure nasale, de fièvre, de difficulté à respirer par le nez, ou si le méchage ou l'attelle tombe prématurément — un hématome septal non traité peut endommager définitivement le septum nasal en quelques jours.",
+    }
+  );
+
+export const FACIAL_LACERATION_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for a facial laceration (cut). Facial wounds are closely monitored for cosmetic healing and infection.",
+      diagnosisInstructions:
+        "Keep the wound clean and dry as directed. Apply ointment and change the dressing as directed. Avoid sun exposure to the healing scar and use sunscreen once healed to reduce scarring. Follow up as directed for suture/staple removal or wound check.",
+      medicationTreatment: HEAD_FACIAL_MED_EN,
+      returnPrecautions:
+        "Return immediately for worsening pain, worsening swelling, spreading redness, pus or foul drainage, fever, wound reopening, or numbness of the face.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour une lacération (coupure) du visage. Les plaies du visage sont surveillées de près pour la guérison esthétique et l'infection.",
+      diagnosisInstructions:
+        "Gardez la plaie propre et sèche selon les directives. Appliquez la pommade et changez le pansement selon les directives. Évitez l'exposition au soleil de la cicatrice en cours de guérison et utilisez un écran solaire une fois guérie pour réduire les cicatrices. Suivez le suivi selon les directives pour le retrait des points/agrafes ou le contrôle de la plaie.",
+      medicationTreatment: HEAD_FACIAL_MED_FR,
+      returnPrecautions:
+        "Retournez immédiatement en cas d'aggravation de la douleur, d'aggravation de l'enflure, de rougeur qui s'étend, de pus ou d'écoulement nauséabond, de fièvre, de réouverture de la plaie ou d'engourdissement du visage.",
+    }
+  );

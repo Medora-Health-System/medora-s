@@ -172,6 +172,26 @@ export const PROVIDER_DISCHARGE_FOLLOW_UP_TIMING_LOCALE: Record<string, Localize
     en: "Endocrinology follow-up as directed",
     fr: "Suivi endocrinologique selon les directives",
   },
+  "as directed — do not skip": {
+    en: "as directed — do not skip",
+    fr: "selon les directives — ne pas manquer",
+  },
+  "with dentistry within a few days or as directed": {
+    en: "with dentistry within a few days or as directed",
+    fr: "avec le dentiste dans les prochains jours ou selon les directives",
+  },
+  "same day with dentistry or as directed": {
+    en: "same day with dentistry or as directed",
+    fr: "le même jour avec le dentiste ou selon les directives",
+  },
+  "urgent — within 24 hours or as directed": {
+    en: "urgent — within 24 hours or as directed",
+    fr: "urgent — dans les 24 heures ou selon les directives",
+  },
+  "for suture/staple removal or wound check as directed": {
+    en: "for suture/staple removal or wound check as directed",
+    fr: "pour le retrait des points/agrafes ou le contrôle de la plaie selon les directives",
+  },
 };
 
 export const PROVIDER_DISCHARGE_FOLLOW_UP_COMMENTS_LOCALE: Record<string, LocalizedPair> = {

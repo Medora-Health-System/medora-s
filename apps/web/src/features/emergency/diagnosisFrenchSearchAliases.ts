@@ -323,6 +323,68 @@ const FRENCH_DIAGNOSIS_SEARCH_ALIASES: readonly FrenchDiagnosisSearchAlias[] = [
     englishSearchTerms: ["broken jaw", "mandible fracture", "broken nose", "nasal fracture"],
   },
   {
+    frenchPhrases: ["commotion cérébrale", "commotion cerebrale", "traumatisme crânien léger", "traumatisme cranien leger"],
+    englishSearchTerms: ["concussion", "mild traumatic brain injury", "mild tbi"],
+  },
+  {
+    frenchPhrases: [
+      "hématome sous-dural",
+      "hematome sous-dural",
+      "hématome extradural",
+      "hematome extradural",
+      "hémorragie intracrânienne",
+      "hemorragie intracranienne",
+    ],
+    englishSearchTerms: [
+      "subdural hematoma",
+      "subdural hemorrhage",
+      "epidural hematoma",
+      "epidural hemorrhage",
+      "intracranial hemorrhage",
+    ],
+  },
+  {
+    frenchPhrases: ["fracture du crâne", "fracture du crane", "fracture de la base du crâne", "fracture de la base du crane"],
+    englishSearchTerms: ["skull fracture", "basilar skull fracture"],
+  },
+  {
+    frenchPhrases: ["fracture orbitaire", "fracture du plancher orbitaire", "fracture de l'orbite"],
+    englishSearchTerms: ["orbital fracture", "blowout fracture", "eye socket fracture"],
+  },
+  {
+    frenchPhrases: ["fracture de le fort", "fracture de lefort", "fracture maxillaire"],
+    englishSearchTerms: ["le fort fracture", "lefort fracture", "maxillary fracture"],
+  },
+  {
+    frenchPhrases: ["dent cassée", "dent cassee", "fracture dentaire", "dent fracturée", "dent fracturee"],
+    englishSearchTerms: ["tooth fracture", "dental fracture", "fractured tooth"],
+  },
+  {
+    frenchPhrases: ["dent avulsée", "dent avulsee", "dent arrachée", "dent arrachee", "dent expulsée", "dent expulsee"],
+    englishSearchTerms: ["tooth avulsion", "avulsed tooth", "knocked out tooth"],
+  },
+  {
+    frenchPhrases: [
+      "luxation de la mâchoire après réduction",
+      "luxation de la machoire apres reduction",
+      "luxation atm réduite",
+      "luxation atm reduite",
+    ],
+    englishSearchTerms: ["jaw dislocation post-reduction", "tmj dislocation post reduction", "post-reduction jaw dislocation"],
+  },
+  {
+    frenchPhrases: ["oreille en chou-fleur", "hématome de l'oreille", "hematome de l oreille", "hématome auriculaire"],
+    englishSearchTerms: ["cauliflower ear", "auricular hematoma", "hematoma of the ear"],
+  },
+  {
+    frenchPhrases: ["hématome de la cloison nasale", "hematome de la cloison nasale", "hématome septal", "hematome septal"],
+    englishSearchTerms: ["septal hematoma", "nasal septal hematoma"],
+  },
+  {
+    frenchPhrases: ["lacération du visage", "laceration du visage", "coupure au visage", "plaie du visage"],
+    englishSearchTerms: ["facial laceration", "face laceration", "laceration to the face"],
+  },
+  {
     frenchPhrases: ["entorse"],
     englishSearchTerms: ["sprain"],
   },

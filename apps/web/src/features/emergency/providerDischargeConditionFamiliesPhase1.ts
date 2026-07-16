@@ -661,15 +661,17 @@ export const PHASE1_CLINICAL_CONDITION_FAMILIES: readonly ClinicalConditionFamil
   },
   {
     id: "trauma_fracture_facial",
-    label: "Fracture — Facial / Nasal / Orbital / Mandible",
+    label: "Fracture — Facial (zygomatic/malar, general)",
     templateId: "trauma_msk_fracture_facial_v1",
     clinicalDomain: "Trauma",
     icdPrefixes: ["S02"],
-    keywords: ["facial fracture", "broken jaw", "broken nose", "orbital fracture", "mandible fracture"],
+    keywords: ["facial fracture", "zygomatic fracture", "malar fracture"],
     specialtyCategory: "ent",
     riskCategory: "moderate_to_high",
     clinicalRationale:
-      "Facial, nasal, orbital, and mandible fractures with vision/malocclusion escalation language and ENT or maxillofacial follow-up.",
+      "General facial fracture fallback (e.g. zygomatic/malar). Nasal (S02.2), orbital (S02.3), mandibular (S02.6), " +
+      "maxillary Le Fort (S02.41), and dental (S02.5) fractures are routed to dedicated Phase 10 families with " +
+      "longer/more specific ICD prefixes that take precedence over this S02 fallback.",
     reviewStatus: "reviewed",
     routingStatus: "READY",
     sourceReferenceLabels: ["MedlinePlus — Facial injuries and disorders"],

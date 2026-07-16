@@ -346,6 +346,68 @@ export const ICD10_CLINICAL_QUERY_EXPANSIONS: Icd10QueryExpansion[] = [
   { query: "barotraumatisme otitique", anyOf: ["Otitic barotrauma"] },
   { query: "explosion de matériau de dynamitage", anyOf: ["Explosion of blasting material"] },
   { query: "décharge de feu d'artifice", anyOf: ["Discharge of firework"] },
+  // Head / facial trauma (Phase 10): official FY2026 text never uses "hematoma" for
+  // traumatic intracranial/skull findings — it uses "hemorrhage". Prefer the traumatic
+  // phrase explicitly so spontaneous (I62.*) codes are never surfaced ahead of S06.*.
+  { query: "head injury", anyOf: ["intracranial injury", "unspecified injury of head"] },
+  { query: "traumatisme crânien", anyOf: ["intracranial injury", "unspecified injury of head"] },
+  { query: "concussion", anyOf: ["Concussion"] },
+  { query: "commotion cérébrale", anyOf: ["Concussion"] },
+  { query: "mild tbi", anyOf: ["Concussion"] },
+  { query: "mild traumatic brain injury", anyOf: ["Concussion"] },
+  { query: "tcc léger", anyOf: ["Concussion"] },
+  { query: "traumatisme crânien léger", anyOf: ["Concussion"] },
+  { query: "epidural hematoma", anyOf: ["Epidural hemorrhage"] },
+  { query: "hématome épidural", anyOf: ["Epidural hemorrhage"] },
+  { query: "subdural hematoma", anyOf: ["Traumatic subdural hemorrhage"] },
+  { query: "hématome sous-dural", anyOf: ["Traumatic subdural hemorrhage"] },
+  { query: "hématome sous-dural traumatique", anyOf: ["Traumatic subdural hemorrhage"] },
+  // Prefer the abbreviated shortDescription phrase ("Traum subrac hem") for ranking — the
+  // unabbreviated "Traumatic subarachnoid hemorrhage" only appears in longDescription, so
+  // without it the unrelated but unabbreviated "Other nontraumatic subarachnoid hemorrhage"
+  // (I60.8) wins the shortDescription rank boost and outranks the traumatic S06.6 codes.
+  { query: "traumatic sah", anyOf: ["Traum subrac hem", "Traumatic subarachnoid hemorrhage"] },
+  { query: "traumatic subarachnoid hemorrhage", anyOf: ["Traum subrac hem", "Traumatic subarachnoid hemorrhage"] },
+  { query: "hémorragie sous-arachnoïdienne traumatique", anyOf: ["Traum subrac hem", "Traumatic subarachnoid hemorrhage"] },
+  { query: "skull fracture", anyOf: ["fracture of vault of skull", "fracture of base of skull"] },
+  { query: "fracture du crâne", anyOf: ["fracture of vault of skull", "fracture of base of skull"] },
+  { query: "basilar skull fracture", anyOf: ["fracture of base of skull"] },
+  { query: "fracture de la base du crâne", anyOf: ["fracture of base of skull"] },
+  { query: "nasal fracture", anyOf: ["fracture of nasal bones"] },
+  { query: "fracture nasale", anyOf: ["fracture of nasal bones"] },
+  { query: "orbital fracture", anyOf: ["fracture of orbital floor", "fracture of orbit"] },
+  { query: "fracture orbitaire", anyOf: ["fracture of orbital floor", "fracture of orbit"] },
+  // Official FY2026 text uses "malar" (not "zygomatic") for the malar/maxillary/zygoma family.
+  { query: "zygomatic fracture", anyOf: ["Malar fracture"] },
+  { query: "fracture zygomatique", anyOf: ["Malar fracture"] },
+  { query: "maxillary fracture", anyOf: ["Malar fracture", "LeFort fracture"] },
+  { query: "fracture maxillaire", anyOf: ["Malar fracture", "LeFort fracture"] },
+  { query: "mandibular fracture", anyOf: ["fracture of mandible"] },
+  { query: "fracture mandibulaire", anyOf: ["fracture of mandible"] },
+  { query: "le fort fracture", anyOf: ["LeFort fracture", "LeFort I fracture", "LeFort II fracture", "LeFort III fracture"] },
+  { query: "lefort fracture", anyOf: ["LeFort fracture", "LeFort I fracture", "LeFort II fracture", "LeFort III fracture"] },
+  { query: "fracture de le fort", anyOf: ["LeFort fracture", "LeFort I fracture", "LeFort II fracture", "LeFort III fracture"] },
+  { query: "dental trauma", anyOf: ["Fracture of tooth", "Dislocation of tooth"] },
+  { query: "traumatisme dentaire", anyOf: ["Fracture of tooth", "Dislocation of tooth"] },
+  { query: "tooth avulsion", anyOf: ["Dislocation of tooth"] },
+  { query: "avulsion dentaire", anyOf: ["Dislocation of tooth"] },
+  { query: "jaw dislocation", anyOf: ["Dislocation of jaw"] },
+  { query: "luxation de la mâchoire", anyOf: ["Dislocation of jaw"] },
+  // No dedicated "hematoma" code for auricular/septal contusion — map to the official contusion
+  // text. Ear contusion is lateralized ("Contusion of right/left/unspecified ear"), so list each.
+  {
+    query: "auricular hematoma",
+    anyOf: ["Contusion of right ear", "Contusion of left ear", "Contusion of unspecified ear"],
+  },
+  {
+    query: "hématome auriculaire",
+    anyOf: ["Contusion of right ear", "Contusion of left ear", "Contusion of unspecified ear"],
+  },
+  { query: "septal hematoma", anyOf: ["Contusion of nose"] },
+  { query: "hématome septal", anyOf: ["Contusion of nose"] },
+  // No traumatic-specific CSF leak code — G96.08 is the only non-spontaneous cranial CSF leak code.
+  { query: "csf leak after trauma", anyOf: ["Other cranial cerebrospinal fluid leak"] },
+  { query: "fuite de lcr post-traumatique", anyOf: ["Other cranial cerebrospinal fluid leak"] },
 ];
 
 export function normalizeIcd10SearchQuery(q: string): string {

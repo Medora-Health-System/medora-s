@@ -127,7 +127,7 @@ describe("MEDUI.CLINICAL.INJURY_INTELLIGENCE_PHASE_1_FOUNDATION_AND_FRACTURES", 
   it.each([
     { code: "S52.531A", displayName: "Colles fracture", templateId: "trauma_msk_minor_fracture_precautions_v1" },
     { code: "S72.001A", displayName: "Hip fracture", templateId: "trauma_msk_fracture_hip_v1" },
-    { code: "S02.3XXA", displayName: "Orbital floor fracture", templateId: "trauma_msk_fracture_facial_v1" },
+    { code: "S02.3XXA", displayName: "Orbital floor fracture", templateId: "orbital_fracture_v1" },
     { code: "S32.010A", displayName: "Lumbar compression fracture", templateId: "trauma_msk_fracture_spine_v1" },
     { code: "S82.201B", displayName: "Open tibia fracture", templateId: "trauma_msk_fracture_open_v1" },
     { code: "S62.351A", displayName: "Metacarpal fracture", templateId: "trauma_msk_fracture_hand_v1" },

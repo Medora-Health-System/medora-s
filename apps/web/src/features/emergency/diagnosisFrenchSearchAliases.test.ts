@@ -102,4 +102,39 @@ describe("19Y.16A French diagnosis search aliases", () => {
       diagnosisMatchesLocalizedSearch(mockHit("R07.9", "Chest pain, unspecified"), "chest", "en")
     ).toBe(true);
   });
+
+  it("Phase 10 — commotion cérébrale finds concussion", () => {
+    expect(resolveLocalizedDiagnosisSearchQuery("commotion cérébrale", "fr")).toBe("concussion");
+    expect(
+      diagnosisMatchesLocalizedSearch(mockHit("S06.0X0A", "Concussion without loss of consciousness"), "commotion cérébrale", "fr")
+    ).toBe(true);
+  });
+
+  it("Phase 10 — hématome sous-dural finds subdural hematoma", () => {
+    const queries = resolveLocalizedDiagnosisSearchQueries("hématome sous-dural", "fr");
+    expect(queries).toContain("subdural hematoma");
+    expect(
+      diagnosisMatchesLocalizedSearch(
+        mockHit("S06.5X0A", "Traumatic subdural hemorrhage without loss of consciousness"),
+        "hématome sous-dural",
+        "fr"
+      )
+    ).toBe(true);
+  });
+
+  it("Phase 10 — fracture orbitaire finds orbital fracture (distinct from fracture du crâne)", () => {
+    expect(resolveLocalizedDiagnosisSearchQuery("fracture orbitaire", "fr")).toBe("orbital fracture");
+    expect(resolveLocalizedDiagnosisSearchQuery("fracture du crâne", "fr")).toBe("skull fracture");
+  });
+
+  it("Phase 10 — dent avulsée finds tooth avulsion, distinct from dent cassée (tooth fracture)", () => {
+    expect(resolveLocalizedDiagnosisSearchQuery("dent avulsée", "fr")).toBe("tooth avulsion");
+    expect(resolveLocalizedDiagnosisSearchQuery("dent cassée", "fr")).toBe("tooth fracture");
+  });
+
+  it("Phase 10 — hématome septal finds septal hematoma, distinct from nasal fracture aliases", () => {
+    const queries = resolveLocalizedDiagnosisSearchQueries("hématome septal", "fr");
+    expect(queries).toContain("septal hematoma");
+    expect(queries).not.toContain("nasal fracture");
+  });
 });
