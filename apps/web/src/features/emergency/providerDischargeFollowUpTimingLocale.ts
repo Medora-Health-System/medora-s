@@ -48,6 +48,10 @@ export const PROVIDER_DISCHARGE_FOLLOW_UP_TIMING_LOCALE: Record<string, Localize
   },
   "within 1 week": { en: "within 1 week", fr: "dans 1 semaine" },
   "within 2 weeks": { en: "within 2 weeks", fr: "dans 2 semaines" },
+  "within 2 weeks or as directed": {
+    en: "within 2 weeks or as directed",
+    fr: "dans 2 semaines ou selon les directives",
+  },
   "within 1–3 days if fever persists": {
     en: "within 1–3 days if fever persists",
     fr: "dans 1 à 3 jours si la fièvre persiste",

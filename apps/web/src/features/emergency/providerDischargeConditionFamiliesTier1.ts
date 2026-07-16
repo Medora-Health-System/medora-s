@@ -322,21 +322,25 @@ export const TIER1_CLINICAL_CONDITION_FAMILIES: readonly ClinicalConditionFamily
     sourceReferenceLabels: ["MedlinePlus — Rashes"],
   },
   {
+    // Phase 14: retargeted from allergic_reaction_v1 to viral_exanthem_v1 — undifferentiated adult rash/dermatitis
+    // is not an allergy diagnosis, and allergy retains exclusive ownership of L50 urticaria/anaphylaxis.
+    // L20 (atopic dermatitis) is now exclusively owned by the "atopic_dermatitis" family (Phase 14 domain extensions,
+    // more specific icdPrefix) so this catch-all only resolves L30/L21 for adults without a more specific match.
     id: "rash_dermatitis",
     label: "Rash / Dermatitis",
-    templateId: "allergic_reaction_v1",
+    templateId: "viral_exanthem_v1",
     additionalTemplateIds: ["pediatric_rash_v1"],
     clinicalDomain: "Skin/Infection",
-    icdPrefixes: ["L30", "L20", "L21"],
+    icdPrefixes: ["L30", "L21"],
     excludeIcdPrefixes: ["L50"],
-    keywords: ["rash", "dermatitis", "eczema flare"],
+    keywords: ["rash", "dermatitis"],
     guardrails: { age: { minAgeYears: 18 } },
     specialtyCategory: "dermatology",
     riskCategory: "low_to_moderate",
     clinicalRationale:
-      "Adult dermatitis/rash uses allergic reaction template conservatively; pediatric uses separate family.",
+      "Phase 14: undifferentiated adult rash/dermatitis without a more specific dermatology family routes to a general dermatology discharge path (viral_exanthem_v1) rather than the allergy template; pediatric uses separate family.",
     reviewStatus: "reviewed",
-    routingStatus: "NEEDS_REVIEW",
+    routingStatus: "READY",
     sourceReferenceLabels: ["MedlinePlus — Rashes"],
   },
   {

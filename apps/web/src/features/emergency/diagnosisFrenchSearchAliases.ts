@@ -722,6 +722,135 @@ const FRENCH_DIAGNOSIS_SEARCH_ALIASES: readonly FrenchDiagnosisSearchAlias[] = [
     frenchPhrases: ["corps étranger dans la gorge", "corps etranger dans la gorge", "arête de poisson", "arete de poisson"],
     englishSearchTerms: ["throat foreign body", "fish bone"],
   },
+  // Dermatology (Phase 14)
+  {
+    frenchPhrases: ["dermatite de contact allergique", "eczéma de contact allergique", "eczema de contact allergique"],
+    englishSearchTerms: ["allergic contact dermatitis"],
+  },
+  {
+    frenchPhrases: ["dermatite de contact irritative", "dermatite irritative", "eczéma de contact irritatif", "eczema de contact irritatif"],
+    englishSearchTerms: ["irritant contact dermatitis"],
+  },
+  {
+    frenchPhrases: ["dermatite atopique", "eczéma atopique", "eczema atopique", "poussée d'eczéma", "poussee d eczema"],
+    englishSearchTerms: ["atopic dermatitis", "eczema flare"],
+  },
+  {
+    frenchPhrases: ["urticaire", "urticaire non complexe", "plaques d'urticaire", "plaques d urticaire"],
+    englishSearchTerms: ["urticaria", "hives", "uncomplicated urticaria"],
+  },
+  {
+    frenchPhrases: ["psoriasis", "poussée de psoriasis", "poussee de psoriasis", "plaques de psoriasis"],
+    englishSearchTerms: ["psoriasis", "psoriasis flare"],
+  },
+  {
+    frenchPhrases: ["rosacée", "rosacee", "couperose"],
+    englishSearchTerms: ["rosacea"],
+  },
+  {
+    frenchPhrases: ["hidrosadénite suppurée chronique", "hidrosadenite suppuree chronique", "maladie de verneuil"],
+    englishSearchTerms: ["chronic hidradenitis suppurativa", "hidradenitis suppurativa"],
+  },
+  {
+    frenchPhrases: ["impétigo", "impetigo"],
+    englishSearchTerms: ["impetigo"],
+  },
+  {
+    frenchPhrases: ["folliculite"],
+    englishSearchTerms: ["folliculitis"],
+  },
+  {
+    frenchPhrases: ["herpès simplex", "herpes simplex", "feu sauvage", "bouton de fièvre", "bouton de fievre", "herpès labial", "herpes labial", "herpès génital", "herpes genital"],
+    englishSearchTerms: ["herpes simplex", "cold sore", "genital herpes"],
+  },
+  {
+    frenchPhrases: ["zona", "zona sans complication"],
+    englishSearchTerms: ["herpes zoster", "shingles"],
+  },
+  {
+    frenchPhrases: ["zona ophtalmique", "zona oculaire"],
+    englishSearchTerms: ["ophthalmic zoster", "herpes zoster ophthalmicus"],
+  },
+  {
+    frenchPhrases: ["varicelle"],
+    englishSearchTerms: ["varicella", "chickenpox"],
+  },
+  {
+    frenchPhrases: ["molluscum contagiosum", "molluscum"],
+    englishSearchTerms: ["molluscum contagiosum"],
+  },
+  {
+    frenchPhrases: ["exanthème viral", "exantheme viral", "éruption virale", "eruption virale"],
+    englishSearchTerms: ["viral exanthem", "viral rash"],
+  },
+  {
+    frenchPhrases: ["pityriasis rosé", "pityriasis rose", "pityriasis rosé de Gibert", "pityriasis rose de gibert"],
+    englishSearchTerms: ["pityriasis rosea"],
+  },
+  {
+    frenchPhrases: ["teigne du corps", "dermatophytose du corps"],
+    englishSearchTerms: ["tinea corporis", "ringworm"],
+  },
+  {
+    frenchPhrases: ["teigne du cuir chevelu", "teigne tondante"],
+    englishSearchTerms: ["tinea capitis", "scalp ringworm"],
+  },
+  {
+    frenchPhrases: ["intertrigo inguinal dermatophytique", "eczéma marginé de Hebra", "eczema margine de hebra"],
+    englishSearchTerms: ["tinea cruris", "jock itch"],
+  },
+  {
+    frenchPhrases: ["pied d'athlète", "pied d athlete", "mycose du pied"],
+    englishSearchTerms: ["tinea pedis", "athlete's foot"],
+  },
+  {
+    frenchPhrases: ["pityriasis versicolor", "tinea versicolor"],
+    englishSearchTerms: ["tinea versicolor", "pityriasis versicolor"],
+  },
+  {
+    frenchPhrases: ["intertrigo candidosique", "candidose cutanée", "candidose cutanee"],
+    englishSearchTerms: ["candidal intertrigo", "cutaneous candidiasis"],
+  },
+  {
+    frenchPhrases: ["gale", "scabiose"],
+    englishSearchTerms: ["scabies"],
+  },
+  {
+    frenchPhrases: ["pédiculose", "pediculose", "poux de tête", "poux de tete", "poux du corps"],
+    englishSearchTerms: ["pediculosis", "head lice", "body lice"],
+  },
+  {
+    frenchPhrases: ["érythème polymorphe", "erytheme polymorphe"],
+    englishSearchTerms: ["erythema multiforme"],
+  },
+  {
+    frenchPhrases: ["éruption médicamenteuse", "eruption medicamenteuse", "éruption cutanée médicamenteuse", "eruption cutanee medicamenteuse"],
+    englishSearchTerms: ["drug eruption", "drug rash"],
+  },
+  {
+    frenchPhrases: ["syndrome de stevens-johnson", "syndrome de stevens johnson"],
+    englishSearchTerms: ["stevens-johnson syndrome"],
+  },
+  {
+    frenchPhrases: ["nécrolyse épidermique toxique", "necrolyse epidermique toxique", "syndrome de lyell"],
+    englishSearchTerms: ["toxic epidermal necrolysis"],
+  },
+  {
+    frenchPhrases: ["syndrome dress", "réaction médicamenteuse avec éosinophilie", "reaction medicamenteuse avec eosinophilie"],
+    englishSearchTerms: ["DRESS syndrome", "drug reaction with eosinophilia and systemic symptoms"],
+  },
+  {
+    frenchPhrases: ["maladie bulleuse auto-immune", "maladie bulleuse auto immune", "pemphigoïde bulleuse", "pemphigoide bulleuse", "pemphigus"],
+    englishSearchTerms: ["bullous disorder", "bullous pemphigoid", "pemphigus"],
+  },
+  {
+    frenchPhrases: ["vascularite cutanée", "vascularite cutanee"],
+    englishSearchTerms: ["cutaneous vasculitis"],
+  },
+  {
+    frenchPhrases: ["lésion cutanée suspecte", "lesion cutanee suspecte", "grain de beauté suspect", "grain de beaute suspect", "lésion pigmentée suspecte", "lesion pigmentee suspecte"],
+    englishSearchTerms: ["suspicious skin lesion", "suspicious pigmented lesion"],
+  },
 ];
 
 /** Accent-insensitive, lowercase normalization for diagnosis search. */

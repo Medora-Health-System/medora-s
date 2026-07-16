@@ -1297,6 +1297,127 @@ export const PROVIDER_DISCHARGE_TEMPLATE_CONTENT_INTEGRITY: Record<
       fr: ["infection cutanée ou une cellulite"],
     },
   },
+  // Phase 14 — Dermatology content integrity rules (Commit 2).
+  allergic_contact_dermatitis_v1: {
+    mustIncludeAny: { en: ["allergic contact dermatitis"], fr: ["dermite de contact allergique"] },
+    forbiddenCrossTemplateMarkers: { en: ["irritant contact dermatitis"], fr: ["dermite de contact irritative"] },
+  },
+  irritant_contact_dermatitis_v1: {
+    mustIncludeAny: { en: ["irritant contact dermatitis"], fr: ["dermite de contact irritative"] },
+    forbiddenCrossTemplateMarkers: { en: ["allergic contact dermatitis"], fr: ["dermite de contact allergique"] },
+  },
+  atopic_dermatitis_v1: {
+    mustIncludeAny: { en: ["atopic dermatitis"], fr: ["dermatite atopique"] },
+    forbiddenCrossTemplateMarkers: { en: ["eczema herpeticum"], fr: ["eczéma herpétique"] },
+  },
+  uncomplicated_urticaria_v1: {
+    mustIncludeAny: { en: ["uncomplicated urticaria"], fr: ["urticaire non compliquée"] },
+    forbiddenCrossTemplateMarkers: { en: ["epinephrine was administered"], fr: ["l'épinéphrine a été administrée"] },
+  },
+  psoriasis_flare_v1: {
+    mustIncludeAny: { en: ["psoriasis flare"], fr: ["poussée de psoriasis"] },
+    forbiddenCrossTemplateMarkers: { en: ["generalized pustular psoriasis"], fr: ["psoriasis pustuleux généralisé"] },
+  },
+  rosacea_v1: {
+    mustIncludeAny: { en: ["rosacea"], fr: ["rosacée"] },
+    forbiddenCrossTemplateMarkers: { en: ["allergic contact dermatitis"], fr: ["dermite de contact allergique"] },
+  },
+  impetigo_v1: {
+    mustIncludeAny: { en: ["impetigo"], fr: ["impétigo"] },
+    forbiddenCrossTemplateMarkers: { en: ["fungal", "tinea"], fr: ["fongique", "tinea"] },
+  },
+  folliculitis_v1: {
+    mustIncludeAny: { en: ["folliculitis"], fr: ["folliculite"] },
+    forbiddenCrossTemplateMarkers: { en: ["hidradenitis"], fr: ["hidradénite"] },
+  },
+  herpes_simplex_v1: {
+    mustIncludeAny: { en: ["herpes simplex"], fr: ["herpès simplex"] },
+    forbiddenCrossTemplateMarkers: { en: ["herpes zoster", "shingles"], fr: ["zona"] },
+  },
+  herpes_zoster_v1: {
+    mustIncludeAny: { en: ["herpes zoster", "shingles"], fr: ["zona"] },
+    forbiddenCrossTemplateMarkers: { en: ["cold sore"], fr: [] },
+  },
+  ophthalmic_zoster_post_acute_v1: {
+    mustIncludeAny: { en: ["herpes zoster ophthalmicus", "ophthalmic zoster"], fr: ["zona ophtalmique"] },
+    forbiddenCrossTemplateMarkers: { en: ["ramsay hunt", "herpes simplex"], fr: ["ramsay hunt", "herpès simplex"] },
+  },
+  varicella_v1: {
+    mustIncludeAny: { en: ["varicella", "chickenpox"], fr: ["varicelle"] },
+    forbiddenCrossTemplateMarkers: { en: ["herpes zoster", "shingles"], fr: ["zona"] },
+  },
+  molluscum_contagiosum_v1: {
+    mustIncludeAny: { en: ["molluscum contagiosum"], fr: ["molluscum contagiosum", "molluscum contagieux"] },
+    forbiddenCrossTemplateMarkers: { en: ["herpes simplex"], fr: ["herpès simplex"] },
+  },
+  viral_exanthem_v1: {
+    mustIncludeAny: { en: ["viral exanthem"], fr: ["exanthème viral"] },
+    forbiddenCrossTemplateMarkers: { en: ["drug eruption", "stevens-johnson"], fr: ["éruption médicamenteuse", "stevens-johnson"] },
+  },
+  pityriasis_rosea_v1: {
+    mustIncludeAny: { en: ["pityriasis rosea"], fr: ["pityriasis rosé"] },
+    forbiddenCrossTemplateMarkers: { en: ["tinea corporis", "ringworm"], fr: ["dermatophytose"] },
+  },
+  tinea_corporis_v1: {
+    mustIncludeAny: { en: ["tinea corporis"], fr: ["tinea corporis", "dermatophytose du corps"] },
+    forbiddenCrossTemplateMarkers: { en: ["allergic contact dermatitis", "atopic dermatitis"], fr: ["dermite de contact allergique", "dermatite atopique"] },
+  },
+  tinea_capitis_v1: {
+    mustIncludeAny: { en: ["tinea capitis"], fr: ["tinea capitis", "teigne du cuir chevelu"] },
+    forbiddenCrossTemplateMarkers: { en: ["allergic contact dermatitis", "atopic dermatitis"], fr: ["dermite de contact allergique", "dermatite atopique"] },
+  },
+  tinea_cruris_v1: {
+    mustIncludeAny: { en: ["tinea cruris"], fr: ["tinea cruris", "dermatophytose de l'aine"] },
+    forbiddenCrossTemplateMarkers: { en: ["candidal intertrigo"], fr: ["intertrigo candidosique"] },
+  },
+  tinea_pedis_v1: {
+    mustIncludeAny: { en: ["tinea pedis"], fr: ["tinea pedis", "pied d'athlète"] },
+    forbiddenCrossTemplateMarkers: { en: ["allergic contact dermatitis"], fr: ["dermite de contact allergique"] },
+  },
+  tinea_versicolor_v1: {
+    mustIncludeAny: { en: ["tinea", "pityriasis versicolor"], fr: ["pityriasis versicolor"] },
+    forbiddenCrossTemplateMarkers: { en: ["candidal intertrigo"], fr: ["intertrigo candidosique"] },
+  },
+  candidal_intertrigo_v1: {
+    mustIncludeAny: { en: ["candidal intertrigo"], fr: ["intertrigo candidosique"] },
+    forbiddenCrossTemplateMarkers: { en: ["allergic contact dermatitis", "atopic dermatitis"], fr: ["dermite de contact allergique", "dermatite atopique"] },
+  },
+  scabies_v1: {
+    mustIncludeAny: { en: ["scabies"], fr: ["gale"] },
+    forbiddenCrossTemplateMarkers: { en: ["pediculosis", "head lice"], fr: ["pédiculose", "poux"] },
+  },
+  pediculosis_v1: {
+    mustIncludeAny: { en: ["pediculosis", "head or body lice"], fr: ["pédiculose"] },
+    forbiddenCrossTemplateMarkers: { en: ["scabies"], fr: ["gale"] },
+  },
+  erythema_multiforme_v1: {
+    mustIncludeAny: { en: ["erythema multiforme"], fr: ["érythème polymorphe"] },
+    forbiddenCrossTemplateMarkers: { en: ["stevens-johnson syndrome", "toxic epidermal necrolysis"], fr: ["syndrome de stevens-johnson", "nécrolyse épidermique toxique"] },
+  },
+  drug_eruption_v1: {
+    mustIncludeAny: { en: ["drug eruption"], fr: ["éruption médicamenteuse"] },
+    forbiddenCrossTemplateMarkers: { en: ["stevens-johnson", "toxic epidermal necrolysis", "dress syndrome"], fr: ["stevens-johnson", "nécrolyse épidermique toxique", "syndrome dress"] },
+  },
+  sjs_ten_post_acute_v1: {
+    mustIncludeAny: { en: ["stevens-johnson syndrome", "toxic epidermal necrolysis"], fr: ["syndrome de stevens-johnson", "nécrolyse épidermique toxique"] },
+    forbiddenCrossTemplateMarkers: { en: ["morbilliform"], fr: ["morbiliforme"] },
+  },
+  dress_post_acute_v1: {
+    mustIncludeAny: { en: ["dress syndrome"], fr: ["syndrome dress"] },
+    forbiddenCrossTemplateMarkers: { en: ["morbilliform"], fr: ["morbiliforme"] },
+  },
+  bullous_disorder_post_acute_v1: {
+    mustIncludeAny: { en: ["bullous pemphigoid", "pemphigus vulgaris", "autoimmune bullous disorder"], fr: ["pemphigoïde bulleuse", "pemphigus vulgaire", "maladie bulleuse auto-immune"] },
+    forbiddenCrossTemplateMarkers: { en: ["atopic dermatitis"], fr: ["dermatite atopique"] },
+  },
+  cutaneous_vasculitis_followup_v1: {
+    mustIncludeAny: { en: ["cutaneous vasculitis"], fr: ["vasculite cutanée"] },
+    forbiddenCrossTemplateMarkers: { en: ["purpura fulminans"], fr: ["purpura fulminans"] },
+  },
+  suspicious_skin_lesion_v1: {
+    mustIncludeAny: { en: ["skin lesion"], fr: ["lésion cutanée"] },
+    forbiddenCrossTemplateMarkers: { en: ["benign", "not concerning", "no further evaluation needed"], fr: ["bénigne", "aucune évaluation supplémentaire nécessaire"] },
+  },
 };
 
 function suggestedTextBlob(body: {

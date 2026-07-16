@@ -6098,3 +6098,700 @@ export const FOREIGN_BODY_ASSOCIATED_INFECTION_V1_SUGGESTED_TEXT: ProviderDischa
         "Retournez immédiatement en cas de rougeur qui s'étend, d'augmentation de la douleur ou de l'enflure, de fièvre, de nouvel écoulement, si le corps étranger devient plus visible ou douloureux, ou si les symptômes ne se sont pas améliorés après la fin du traitement prescrit.",
     }
   );
+
+// ---- Phase 14 — dermatology discharge documentation (Commit 2). Mirrors Phase 13 soft-tissue suggested text pattern. ----
+const DERM_TOPICAL_MED_EN =
+  "Use any prescribed topical or oral medication exactly as directed. Do not start, stop, or change medications on your own, and avoid using leftover or shared prescription creams.";
+const DERM_TOPICAL_MED_FR =
+  "Utilisez tout médicament topique ou oral prescrit exactement selon les directives. Ne commencez, n'arrêtez et ne modifiez pas les médicaments de votre propre initiative, et évitez d'utiliser des crèmes prescrites restantes ou partagées.";
+const DERM_ANTIVIRAL_MED_EN =
+  "Take the antiviral medication exactly as prescribed and complete the full course, even if the rash starts to improve. Do not start, stop, or change medications on your own.";
+const DERM_ANTIVIRAL_MED_FR =
+  "Prenez l'antiviral exactement comme prescrit et terminez la cure complète, même si l'éruption commence à s'améliorer. Ne commencez, n'arrêtez et ne modifiez pas les médicaments de votre propre initiative.";
+const DERM_ANTIFUNGAL_MED_EN =
+  "Use the antifungal medication exactly as prescribed and complete the full course, even after the rash appears to clear — stopping early can allow the infection to return.";
+const DERM_ANTIFUNGAL_MED_FR =
+  "Utilisez l'antifongique exactement comme prescrit et terminez la cure complète, même après la disparition apparente de l'éruption — un arrêt précoce peut permettre à l'infection de revenir.";
+const DERM_ANTIPARASITIC_MED_EN =
+  "Use the prescribed treatment exactly as directed, including the timing and any repeat application or dose. Do not start, stop, or change treatment on your own.";
+const DERM_ANTIPARASITIC_MED_FR =
+  "Utilisez le traitement prescrit exactement selon les directives, y compris le moment et toute application ou dose répétée. Ne commencez, n'arrêtez et ne modifiez pas le traitement de votre propre initiative.";
+/** High-risk post-acute dermatology template medication line — never implies routine/self-directed medication use. */
+const DERM_HIGH_RISK_MED_EN =
+  "Take any medication only exactly as directed by the specialist team managing this condition. Never restart a medication identified as a possible trigger unless explicitly instructed otherwise.";
+const DERM_HIGH_RISK_MED_FR =
+  "Prenez tout médicament uniquement selon les directives précises de l'équipe spécialisée qui prend en charge cette condition. Ne recommencez jamais un médicament identifié comme déclencheur possible, sauf indication contraire explicite.";
+
+export const ALLERGIC_CONTACT_DERMATITIS_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for allergic contact dermatitis — a skin reaction that develops after contact with an allergen such as poison ivy, poison oak, nickel, or a new skincare product.",
+      diagnosisInstructions:
+        "Wash the affected skin and anything that touched the allergen (clothing, tools) to remove any remaining residue. Avoid scratching, and avoid re-exposure to the trigger if it has been identified.",
+      medicationTreatment: DERM_TOPICAL_MED_EN,
+      returnPrecautions:
+        "Return for care if the rash spreads rapidly, blistering worsens, swelling involves the face or airway, fever develops, or the rash has not improved within the expected time after treatment.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour une dermite de contact allergique — une réaction cutanée qui apparaît après un contact avec un allergène comme l'herbe à puce, le sumac vénéneux, le nickel ou un nouveau produit de soins de la peau.",
+      diagnosisInstructions:
+        "Lavez la peau atteinte et tout ce qui a touché l'allergène (vêtements, outils) pour retirer les résidus restants. Évitez de vous grattez et évitez toute nouvelle exposition au déclencheur si celui-ci a été identifié.",
+      medicationTreatment: DERM_TOPICAL_MED_FR,
+      returnPrecautions:
+        "Consultez de nouveau si l'éruption s'étend rapidement, si les cloques s'aggravent, si l'enflure touche le visage ou les voies respiratoires, si de la fièvre apparaît, ou si l'éruption ne s'améliore pas dans le délai attendu après le traitement.",
+    }
+  );
+
+export const IRRITANT_CONTACT_DERMATITIS_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for irritant contact dermatitis — skin irritation caused by direct contact with a chemical, soap, detergent, or other irritating substance (not an allergic reaction).",
+      diagnosisInstructions:
+        "Avoid further contact with the irritant. Wash the area gently with mild soap and water and pat dry; avoid harsh soaps or scrubbing while the skin heals.",
+      medicationTreatment: DERM_TOPICAL_MED_EN,
+      returnPrecautions:
+        "Return for care if the skin breaks down further, signs of infection develop (increasing redness, warmth, pus, fever), or the irritation does not improve after avoiding the irritant.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour une dermite de contact irritative — une irritation cutanée causée par un contact direct avec un produit chimique, un savon, un détergent ou une autre substance irritante (et non une réaction allergique).",
+      diagnosisInstructions:
+        "Évitez tout nouveau contact avec l'agent irritant. Lavez la zone délicatement avec un savon doux et de l'eau, puis asséchez sans frotter; évitez les savons agressifs ou le frottement pendant la guérison de la peau.",
+      medicationTreatment: DERM_TOPICAL_MED_FR,
+      returnPrecautions:
+        "Consultez de nouveau si la peau se détériore davantage, si des signes d'infection apparaissent (rougeur croissante, chaleur, pus, fièvre), ou si l'irritation ne s'améliore pas après avoir évité l'agent irritant.",
+    }
+  );
+
+export const ATOPIC_DERMATITIS_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for an atopic dermatitis (eczema) flare.",
+      diagnosisInstructions:
+        "Moisturize the skin regularly, especially after bathing. Use lukewarm (not hot) water for washing and avoid known triggers such as harsh soaps, wool fabric, or excessive dryness.",
+      medicationTreatment: DERM_TOPICAL_MED_EN,
+      returnPrecautions:
+        "Return for care if the skin appears infected (increasing redness, warmth, pus, honey-colored crusting, fever), if painful clustered blisters or punched-out sores develop, or if the flare does not improve with your usual regimen.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour une poussée de dermatite atopique (eczéma).",
+      diagnosisInstructions:
+        "Hydratez régulièrement la peau, surtout après le bain. Utilisez de l'eau tiède (non chaude) pour vous laver et évitez les déclencheurs connus comme les savons agressifs, les tissus en laine ou une sécheresse excessive.",
+      medicationTreatment: DERM_TOPICAL_MED_FR,
+      returnPrecautions:
+        "Consultez de nouveau si la peau semble infectée (rougeur croissante, chaleur, pus, croûtes couleur miel, fièvre), si des cloques groupées douloureuses ou des plaies en creux apparaissent, ou si la poussée ne s'améliore pas avec votre traitement habituel.",
+    }
+  );
+
+export const UNCOMPLICATED_URTICARIA_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for uncomplicated urticaria (hives) without airway or systemic involvement — anaphylaxis was assessed and excluded during this visit.",
+      diagnosisInstructions:
+        "Avoid known triggers if one has been identified. Cool compresses and loose, breathable clothing may reduce discomfort.",
+      medicationTreatment: DERM_TOPICAL_MED_EN,
+      returnPrecautions:
+        "Return immediately for throat or tongue swelling, difficulty breathing or swallowing, dizziness, or fainting — these require emergency care, not routine follow-up. Also return if hives persist beyond a few weeks or worsen despite treatment.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour une urticaire non compliquée, sans atteinte des voies respiratoires ni signe systémique — l'anaphylaxie a été évaluée et exclue lors de cette visite.",
+      diagnosisInstructions:
+        "Évitez les déclencheurs connus s'ils ont été identifiés. Des compresses fraîches et des vêtements amples et respirants peuvent réduire l'inconfort.",
+      medicationTreatment: DERM_TOPICAL_MED_FR,
+      returnPrecautions:
+        "Retournez immédiatement en cas d'enflure de la gorge ou de la langue, de difficulté à respirer ou à avaler, d'étourdissements ou d'évanouissement — ces signes nécessitent des soins d'urgence et non un suivi habituel. Consultez également si l'urticaire persiste plus de quelques semaines ou s'aggrave malgré le traitement.",
+    }
+  );
+
+export const PSORIASIS_FLARE_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for a psoriasis flare (plaque or guttate-type), without widespread pustular or erythrodermic (whole-body) involvement.",
+      diagnosisInstructions:
+        "Continue your regular psoriasis skin-care routine as directed. Moisturize regularly and avoid known triggers such as skin trauma, certain infections, or stress when possible.",
+      medicationTreatment: DERM_TOPICAL_MED_EN,
+      returnPrecautions:
+        "Return for care if the rash becomes widespread with pustules, involves most of the body surface, is associated with fever or feeling unwell, or does not improve with your usual treatment.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour une poussée de psoriasis (en plaques ou de type guttata), sans atteinte pustuleuse étendue ni érythrodermie (atteinte de tout le corps).",
+      diagnosisInstructions:
+        "Poursuivez votre routine habituelle de soins de la peau pour le psoriasis selon les consignes. Hydratez régulièrement et évitez les déclencheurs connus comme les traumatismes cutanés, certaines infections ou le stress lorsque possible.",
+      medicationTreatment: DERM_TOPICAL_MED_FR,
+      returnPrecautions:
+        "Consultez de nouveau si l'éruption devient étendue avec des pustules, touche la majeure partie de la surface corporelle, s'accompagne de fièvre ou de malaise, ou ne s'améliore pas avec votre traitement habituel.",
+    }
+  );
+
+export const ROSACEA_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for a rosacea flare — a chronic facial skin condition causing redness, visible blood vessels, and sometimes bumps or pimples.",
+      diagnosisInstructions:
+        "Avoid known triggers such as sun exposure, hot beverages, spicy food, alcohol, or extreme temperatures when possible. Use gentle, fragrance-free skin care products.",
+      medicationTreatment: DERM_TOPICAL_MED_EN,
+      returnPrecautions:
+        "Return for care if the eyes become red, painful, or light-sensitive (possible ocular rosacea), if swelling or pain increase, or if the area shows signs of infection.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour une poussée de rosacée — une affection cutanée chronique du visage causant rougeur, vaisseaux sanguins visibles et parfois des boutons ou papules.",
+      diagnosisInstructions:
+        "Évitez les déclencheurs connus comme l'exposition au soleil, les boissons chaudes, les aliments épicés, l'alcool ou les températures extrêmes lorsque possible. Utilisez des produits de soins de la peau doux et sans parfum.",
+      medicationTreatment: DERM_TOPICAL_MED_FR,
+      returnPrecautions:
+        "Consultez de nouveau si les yeux deviennent rouges, douloureux ou sensibles à la lumière (possible rosacée oculaire), si l'enflure ou la douleur augmentent, ou si la zone montre des signes d'infection.",
+    }
+  );
+
+export const IMPETIGO_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for impetigo — a contagious, superficial bacterial skin infection, often with honey-colored crusting.",
+      diagnosisInstructions:
+        "Keep the affected area clean and covered when possible to reduce spread to others. Wash your hands frequently and avoid sharing towels, razors, or bedding until it has healed.",
+      medicationTreatment: DERM_TOPICAL_MED_EN,
+      returnPrecautions:
+        "Return for care if redness or swelling spreads, fever develops, new areas of skin become involved, or symptoms have not improved after completing the prescribed treatment.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour un impétigo — une infection cutanée bactérienne superficielle et contagieuse, souvent avec des croûtes couleur miel.",
+      diagnosisInstructions:
+        "Gardez la zone touchée propre et couverte lorsque possible pour réduire la transmission. Lavez-vous fréquemment les mains et évitez de partager serviettes, rasoirs ou literie jusqu'à guérison.",
+      medicationTreatment: DERM_TOPICAL_MED_FR,
+      returnPrecautions:
+        "Consultez de nouveau si la rougeur ou l'enflure s'étend, si de la fièvre apparaît, si de nouvelles zones de peau sont touchées, ou si les symptômes ne se sont pas améliorés après la fin du traitement prescrit.",
+    }
+  );
+
+export const FOLLICULITIS_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for folliculitis — inflammation or infection of the hair follicles causing small red bumps or pustules.",
+      diagnosisInstructions:
+        "Keep the affected area clean and dry. Avoid shaving, waxing, or friction over the area until it has healed, and avoid sharing razors or towels.",
+      medicationTreatment: DERM_TOPICAL_MED_EN,
+      returnPrecautions:
+        "Return for care if the area becomes increasingly painful or swollen, forms a larger collection under the skin (possible abscess), fever develops, or it spreads despite treatment.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour une folliculite — une inflammation ou infection des follicules pileux causant de petites bosses rouges ou des pustules.",
+      diagnosisInstructions:
+        "Gardez la zone touchée propre et sèche. Évitez le rasage, l'épilation à la cire ou la friction sur la zone jusqu'à guérison, et évitez de partager rasoirs ou serviettes.",
+      medicationTreatment: DERM_TOPICAL_MED_FR,
+      returnPrecautions:
+        "Consultez de nouveau si la zone devient de plus en plus douloureuse ou enflée, si une collection plus importante se forme sous la peau (possible abcès), si de la fièvre apparaît, ou si elle s'étend malgré le traitement.",
+    }
+  );
+
+export const HERPES_SIMPLEX_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for herpes simplex (cold sores or genital herpes) — a viral infection causing recurrent, painful vesicular lesions.",
+      diagnosisInstructions:
+        "Keep the area clean and dry. Avoid touching or popping the blisters, and wash your hands after any contact with the area to avoid spreading it to other body parts or other people.",
+      medicationTreatment: DERM_ANTIVIRAL_MED_EN,
+      returnPrecautions:
+        "Return for care if lesions spread widely, involve the eye, are associated with fever or feeling generally unwell, or occur in someone with a weakened immune system.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour un herpès simplex (feux sauvages ou herpès génital) — une infection virale causant des lésions vésiculaires douloureuses et récurrentes.",
+      diagnosisInstructions:
+        "Gardez la zone propre et sèche. Évitez de toucher ou de percer les cloques, et lavez-vous les mains après tout contact avec la zone pour éviter de propager l'infection à d'autres parties du corps ou à d'autres personnes.",
+      medicationTreatment: DERM_ANTIVIRAL_MED_FR,
+      returnPrecautions:
+        "Consultez de nouveau si les lésions s'étendent largement, touchent l'œil, s'accompagnent de fièvre ou de malaise général, ou surviennent chez une personne dont le système immunitaire est affaibli.",
+    }
+  );
+
+export const HERPES_ZOSTER_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for herpes zoster (shingles) — a painful, blistering rash caused by reactivation of the varicella-zoster virus, typically in a band-like distribution. This is distinct from herpes simplex.",
+      diagnosisInstructions:
+        "Keep the rash covered with a clean, dry, non-stick dressing to reduce the risk of spreading the virus to others who have not had chickenpox or the vaccine, especially pregnant women, infants, and people with weakened immune systems.",
+      medicationTreatment: DERM_ANTIVIRAL_MED_EN,
+      returnPrecautions:
+        "Return immediately for eye involvement (redness, pain, vision changes), rash spreading widely beyond the original band, facial weakness, severe pain not controlled by your prescribed medication, or fever.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour un zona (herpès zoster) — une éruption douloureuse et vésiculeuse causée par la réactivation du virus varicelle-zona, généralement en bande sur un côté du corps. Ceci est distinct de l'herpès simplex.",
+      diagnosisInstructions:
+        "Gardez l'éruption couverte d'un pansement propre, sec et non adhérent pour réduire le risque de transmission du virus à des personnes n'ayant pas eu la varicelle ou le vaccin, surtout les femmes enceintes, les nourrissons et les personnes immunodéprimées.",
+      medicationTreatment: DERM_ANTIVIRAL_MED_FR,
+      returnPrecautions:
+        "Retournez immédiatement en cas d'atteinte oculaire (rougeur, douleur, changements de la vision), d'éruption qui s'étend largement au-delà de la bande initiale, de faiblesse faciale, de douleur intense non contrôlée par le médicament prescrit, ou de fièvre.",
+    }
+  );
+
+/** High-risk post-acute template — used only after ophthalmology has directed outpatient aftercare; never routine dermatitis reassurance. */
+export const OPHTHALMIC_ZOSTER_POST_ACUTE_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated for herpes zoster ophthalmicus (shingles involving the eye/forehead region) — a condition that carries a risk of permanent vision loss. This documentation is used only after ophthalmology has already directed outpatient aftercare — not as an autonomous ED discharge decision.",
+      diagnosisInstructions:
+        "Complete the full course of the ophthalmology-directed antiviral treatment exactly as prescribed. Keep every scheduled ophthalmology follow-up appointment — this condition is monitored closely for sight-threatening eye complications.",
+      medicationTreatment: DERM_HIGH_RISK_MED_EN,
+      returnPrecautions:
+        "Return immediately for new or worsening eye pain, redness, vision changes, light sensitivity, or if the rash spreads — these can signal a sight-threatening complication.",
+      returnWorkSchool: "Follow up with ophthalmology exactly as directed — this is a close specialist follow-up, not routine primary care.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge pour un zona ophtalmique (zona touchant la région de l'œil/du front) — une affection comportant un risque de perte de vision permanente. Ce document est utilisé uniquement après qu'une prise en charge en ophtalmologie a déjà déterminé les soins ambulatoires — non comme une décision autonome de sortie des urgences.",
+      diagnosisInstructions:
+        "Terminez la cure complète du traitement antiviral dirigé par l'ophtalmologiste exactement comme prescrit. Respectez chaque rendez-vous de suivi en ophtalmologie prévu — cette affection est surveillée étroitement en raison du risque de complications oculaires menaçant la vision.",
+      medicationTreatment: DERM_HIGH_RISK_MED_FR,
+      returnPrecautions:
+        "Retournez immédiatement en cas de douleur oculaire nouvelle ou qui s'aggrave, de rougeur, de changements de la vision, de sensibilité à la lumière, ou si l'éruption s'étend — ces signes peuvent indiquer une complication menaçant la vision.",
+      returnWorkSchool: "Faites le suivi en ophtalmologie exactement selon les directives — il s'agit d'un suivi spécialisé rapproché, non d'un suivi habituel de soins primaires.",
+    }
+  );
+
+export const VARICELLA_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for varicella (chickenpox) — a contagious viral infection causing an itchy, blistering rash.",
+      diagnosisInstructions:
+        "Keep fingernails trimmed short and avoid scratching to reduce scarring and secondary infection. Stay home and avoid contact with pregnant women, newborns, and people with weakened immune systems until all blisters have crusted over.",
+      medicationTreatment: DERM_ANTIVIRAL_MED_EN,
+      returnPrecautions:
+        "Return for care if the rash appears infected (increasing redness, warmth, pus), if breathing becomes difficult, if severe headache or stiff neck develops, or if fever is prolonged or worsens.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour une varicelle — une infection virale contagieuse causant une éruption vésiculeuse et prurigineuse.",
+      diagnosisInstructions:
+        "Gardez les ongles courts et évitez de vous grattez pour réduire les cicatrices et les infections secondaires. Restez à la maison et évitez tout contact avec les femmes enceintes, les nouveau-nés et les personnes immunodéprimées jusqu'à ce que toutes les lésions soient croûtées.",
+      medicationTreatment: DERM_ANTIVIRAL_MED_FR,
+      returnPrecautions:
+        "Consultez de nouveau si l'éruption semble infectée (rougeur croissante, chaleur, pus), si la respiration devient difficile, si des céphalées sévères ou une raideur de la nuque apparaissent, ou si la fièvre se prolonge ou s'aggrave.",
+    }
+  );
+
+export const MOLLUSCUM_CONTAGIOSUM_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for molluscum contagiosum — a common, contagious viral skin infection causing small, firm, dome-shaped bumps.",
+      diagnosisInstructions:
+        "Avoid scratching or picking at the bumps, and avoid sharing towels or clothing, to reduce spread to other areas of the body or to other people. The bumps typically resolve on their own over time.",
+      medicationTreatment: DERM_TOPICAL_MED_EN,
+      returnPrecautions:
+        "Return for care if the bumps become red, swollen, or painful (possible secondary infection), spread rapidly, or do not resolve over several months.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour un molluscum contagiosum — une infection cutanée virale fréquente et contagieuse causant de petites bosses fermes en forme de dôme.",
+      diagnosisInstructions:
+        "Évitez de grattez ou de percer les bosses, et évitez de partager serviettes ou vêtements, afin de réduire la propagation à d'autres parties du corps ou à d'autres personnes. Les bosses disparaissent généralement d'elles-mêmes avec le temps.",
+      medicationTreatment: DERM_TOPICAL_MED_FR,
+      returnPrecautions:
+        "Consultez de nouveau si les bosses deviennent rouges, enflées ou douloureuses (possible infection secondaire), se propagent rapidement, ou ne disparaissent pas après plusieurs mois.",
+    }
+  );
+
+export const VIRAL_EXANTHEM_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for a viral exanthem — a widespread rash associated with a viral illness. You appeared well without signs of a serious or drug-related cause during this evaluation.",
+      diagnosisInstructions:
+        "Rest and stay well hydrated. The rash and other viral symptoms typically resolve on their own over one to two weeks.",
+      medicationTreatment: DERM_TOPICAL_MED_EN,
+      returnPrecautions:
+        "Return for care if the rash blisters or peels, involves the mouth, eyes, or genitals, is associated with high fever or joint swelling, or if you or your child appear increasingly unwell.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour un exanthème viral — une éruption étendue associée à une maladie virale. Vous sembliez bien portant, sans signe d'une cause grave ou médicamenteuse lors de cette évaluation.",
+      diagnosisInstructions:
+        "Reposez-vous et restez bien hydraté. L'éruption et les autres symptômes viraux disparaissent généralement d'eux-mêmes en une à deux semaines.",
+      medicationTreatment: DERM_TOPICAL_MED_FR,
+      returnPrecautions:
+        "Consultez de nouveau si l'éruption forme des cloques ou pèle, touche la bouche, les yeux ou les organes génitaux, s'accompagne de fièvre élevée ou d'enflure articulaire, ou si vous ou votre enfant semblez de plus en plus malade.",
+    }
+  );
+
+export const PITYRIASIS_ROSEA_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for pityriasis rosea — a common, self-limited skin rash of unclear cause, often starting with a single larger patch followed by smaller patches.",
+      diagnosisInstructions:
+        "The rash typically resolves on its own over 6–8 weeks without specific treatment. Mild itching can be managed with gentle moisturizers as directed.",
+      medicationTreatment: DERM_TOPICAL_MED_EN,
+      returnPrecautions:
+        "Return for care if the rash does not improve after 8–10 weeks, becomes widespread and severe, or if new concerning features develop.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour un pityriasis rosé — une éruption cutanée fréquente et spontanément résolutive, de cause mal définie, débutant souvent par une plaque unique plus grande suivie de plaques plus petites.",
+      diagnosisInstructions:
+        "L'éruption disparaît généralement d'elle-même en 6 à 8 semaines sans traitement spécifique. Les démangeaisons légères peuvent être atténuées avec des hydratants doux selon les consignes.",
+      medicationTreatment: DERM_TOPICAL_MED_FR,
+      returnPrecautions:
+        "Consultez de nouveau si l'éruption ne s'améliore pas après 8 à 10 semaines, devient étendue et sévère, ou si de nouveaux signes préoccupants apparaissent.",
+    }
+  );
+
+export const TINEA_CORPORIS_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for tinea corporis (ringworm of the body) — a superficial fungal skin infection causing a ring-shaped, scaly rash.",
+      diagnosisInstructions:
+        "Keep the area clean and dry. Avoid sharing towels, clothing, or bedding, and limit close skin contact with pets that may have a similar rash.",
+      medicationTreatment: DERM_ANTIFUNGAL_MED_EN,
+      returnPrecautions:
+        "Return for care if the rash spreads widely, does not improve after finishing the prescribed treatment, or shows signs of secondary bacterial infection (increasing redness, warmth, pus, fever).",
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour une tinea corporis (dermatophytose du corps, ou teigne du corps) — une infection fongique superficielle causant une éruption annulaire et squameuse.",
+      diagnosisInstructions:
+        "Gardez la zone propre et sèche. Évitez de partager serviettes, vêtements ou literie, et limitez les contacts cutanés étroits avec des animaux de compagnie qui pourraient avoir une éruption similaire.",
+      medicationTreatment: DERM_ANTIFUNGAL_MED_FR,
+      returnPrecautions:
+        "Consultez de nouveau si l'éruption s'étend largement, ne s'améliore pas après la fin du traitement prescrit, ou montre des signes d'infection bactérienne secondaire (rougeur croissante, chaleur, pus, fièvre).",
+    }
+  );
+
+export const TINEA_CAPITIS_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for tinea capitis (ringworm of the scalp) — a fungal infection of the scalp and hair that can cause patchy hair loss.",
+      diagnosisInstructions:
+        "Avoid sharing combs, brushes, hats, or pillowcases with others until treatment is complete. Continue the full prescribed course even if the rash appears to improve.",
+      medicationTreatment: DERM_ANTIFUNGAL_MED_EN,
+      returnPrecautions:
+        "Return for care if hair loss worsens or spreads, the scalp becomes swollen or develops boggy, tender areas (possible kerion), or symptoms do not improve after completing treatment.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour une tinea capitis (teigne du cuir chevelu) — une infection fongique du cuir chevelu et des cheveux pouvant causer une perte de cheveux en plaques.",
+      diagnosisInstructions:
+        "Évitez de partager peignes, brosses, chapeaux ou oreillers avec d'autres personnes jusqu'à la fin du traitement. Poursuivez la cure complète prescrite même si l'éruption semble s'améliorer.",
+      medicationTreatment: DERM_ANTIFUNGAL_MED_FR,
+      returnPrecautions:
+        "Consultez de nouveau si la perte de cheveux s'aggrave ou s'étend, si le cuir chevelu devient enflé ou développe des zones molles et sensibles (possible kérion), ou si les symptômes ne s'améliorent pas après la fin du traitement.",
+    }
+  );
+
+export const TINEA_CRURIS_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for tinea cruris (jock itch) — a fungal skin infection of the groin and inner thigh area.",
+      diagnosisInstructions:
+        "Keep the area clean and dry, and wear loose-fitting, breathable clothing. Avoid sharing towels or clothing with others.",
+      medicationTreatment: DERM_ANTIFUNGAL_MED_EN,
+      returnPrecautions:
+        "Return for care if the rash spreads beyond the groin area, does not improve after finishing the prescribed treatment, or shows signs of secondary bacterial infection.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour une tinea cruris (dermatophytose de l'aine) — une infection fongique cutanée de l'aine et de la face interne des cuisses.",
+      diagnosisInstructions:
+        "Gardez la zone propre et sèche, et portez des vêtements amples et respirants. Évitez de partager serviettes ou vêtements avec d'autres personnes.",
+      medicationTreatment: DERM_ANTIFUNGAL_MED_FR,
+      returnPrecautions:
+        "Consultez de nouveau si l'éruption s'étend au-delà de l'aine, ne s'améliore pas après la fin du traitement prescrit, ou montre des signes d'infection bactérienne secondaire.",
+    }
+  );
+
+export const TINEA_PEDIS_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for tinea pedis (athlete's foot) — a fungal skin infection of the feet, often between the toes.",
+      diagnosisInstructions:
+        "Keep your feet clean and dry, especially between the toes. Change socks daily, wear breathable footwear, and avoid walking barefoot in shared damp areas such as locker rooms or pools.",
+      medicationTreatment: DERM_ANTIFUNGAL_MED_EN,
+      returnPrecautions:
+        "Return for care if the skin between the toes cracks and becomes increasingly red, warm, swollen, or painful (possible bacterial infection), or if symptoms do not improve after finishing the prescribed treatment.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour une tinea pedis (pied d'athlète) — une infection fongique cutanée des pieds, souvent entre les orteils.",
+      diagnosisInstructions:
+        "Gardez vos pieds propres et secs, surtout entre les orteils. Changez vos chaussettes chaque jour, portez des chaussures respirantes, et évitez de marcher pieds nus dans les zones humides communes comme les vestiaires ou les piscines.",
+      medicationTreatment: DERM_ANTIFUNGAL_MED_FR,
+      returnPrecautions:
+        "Consultez de nouveau si la peau entre les orteils se fissure et devient de plus en plus rouge, chaude, enflée ou douloureuse (possible infection bactérienne), ou si les symptômes ne s'améliorent pas après la fin du traitement prescrit.",
+    }
+  );
+
+export const TINEA_VERSICOLOR_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for tinea (pityriasis) versicolor — a common, superficial fungal skin condition causing patches of lighter or darker skin, often on the trunk.",
+      diagnosisInstructions:
+        "Complete the full prescribed antifungal treatment even after the patches begin to fade — the color change can take several weeks to months to fully even out after successful treatment.",
+      medicationTreatment: DERM_ANTIFUNGAL_MED_EN,
+      returnPrecautions:
+        "Return for care if the patches spread rapidly, become itchy, red, or inflamed, or do not improve after completing the prescribed treatment.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour un pityriasis versicolor — une affection fongique cutanée superficielle et fréquente causant des taches de peau plus claires ou plus foncées, souvent sur le tronc.",
+      diagnosisInstructions:
+        "Terminez la cure complète d'antifongique prescrite, même après que les taches commencent à s'estomper — le changement de couleur peut prendre plusieurs semaines à plusieurs mois pour s'uniformiser complètement après un traitement réussi.",
+      medicationTreatment: DERM_ANTIFUNGAL_MED_FR,
+      returnPrecautions:
+        "Consultez de nouveau si les taches se propagent rapidement, deviennent prurigineuses, rouges ou enflammées, ou ne s'améliorent pas après la fin du traitement prescrit.",
+    }
+  );
+
+export const CANDIDAL_INTERTRIGO_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for candidal intertrigo — a yeast infection in a skin fold (such as under the breasts, groin, or abdominal folds), often appearing as a red, moist, sometimes itchy or burning rash.",
+      diagnosisInstructions:
+        "Keep the skin fold clean and thoroughly dry, especially after bathing or sweating. Loose, breathable clothing and moisture-wicking fabric can help the area stay dry.",
+      medicationTreatment: DERM_ANTIFUNGAL_MED_EN,
+      returnPrecautions:
+        "Return for care if the rash spreads, develops pustules or increasing pain, or does not improve after finishing the prescribed treatment, particularly if you have diabetes or a weakened immune system.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour un intertrigo candidosique — une infection à levures dans un pli cutané (comme sous les seins, à l'aine ou dans les plis abdominaux), se présentant souvent comme une éruption rouge, humide, parfois prurigineuse ou irritante.",
+      diagnosisInstructions:
+        "Gardez le pli cutané propre et bien sec, surtout après le bain ou la transpiration. Des vêtements amples et respirants en tissu évacuant l'humidité peuvent aider à garder la zone sèche.",
+      medicationTreatment: DERM_ANTIFUNGAL_MED_FR,
+      returnPrecautions:
+        "Consultez de nouveau si l'éruption s'étend, développe des pustules ou une douleur croissante, ou ne s'améliore pas après la fin du traitement prescrit, particulièrement si vous êtes diabétique ou immunodéprimé.",
+    }
+  );
+
+export const SCABIES_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for scabies — a contagious skin infestation caused by a microscopic mite, causing intense itching, especially at night.",
+      diagnosisInstructions:
+        "Treat all household and close contacts at the same time, even if they have no symptoms yet, as directed. Wash all recently worn clothing, bedding, and towels in hot water and dry on high heat, or seal unwashable items in a plastic bag for several days.",
+      medicationTreatment: DERM_ANTIPARASITIC_MED_EN,
+      returnPrecautions:
+        "Return for care if itching and rash do not improve within 2–4 weeks after treatment, if signs of a secondary skin infection develop (increasing redness, warmth, pus, fever), or if new household members develop symptoms.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour la gale — une infestation cutanée contagieuse causée par un acarien microscopique, provoquant des démangeaisons intenses, surtout la nuit.",
+      diagnosisInstructions:
+        "Traitez tous les membres du foyer et contacts rapprochés en même temps, même sans symptômes, selon les consignes. Lavez tous les vêtements, la literie et les serviettes récemment utilisés à l'eau chaude et séchez à haute température, ou scellez les articles non lavables dans un sac de plastique pendant plusieurs jours.",
+      medicationTreatment: DERM_ANTIPARASITIC_MED_FR,
+      returnPrecautions:
+        "Consultez de nouveau si les démangeaisons et l'éruption ne s'améliorent pas dans les 2 à 4 semaines suivant le traitement, si des signes d'infection cutanée secondaire apparaissent (rougeur croissante, chaleur, pus, fièvre), ou si de nouveaux membres du foyer développent des symptômes.",
+    }
+  );
+
+export const PEDICULOSIS_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for pediculosis (head or body lice) — a contagious infestation causing itching of the scalp or body.",
+      diagnosisInstructions:
+        "Treat all household and close contacts as directed, even without symptoms. Wash recently used bedding, clothing, and hats in hot water, and avoid sharing combs, brushes, or hats until treatment is complete.",
+      medicationTreatment: DERM_ANTIPARASITIC_MED_EN,
+      returnPrecautions:
+        "Return for care if itching or lice/nits persist after a second treatment, if the scalp or skin becomes infected (increasing redness, warmth, pus), or if symptoms spread to new areas.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour une pédiculose (poux de tête ou du corps) — une infestation contagieuse causant des démangeaisons du cuir chevelu ou du corps.",
+      diagnosisInstructions:
+        "Traitez tous les membres du foyer et contacts rapprochés selon les consignes, même sans symptômes. Lavez la literie, les vêtements et les chapeaux récemment utilisés à l'eau chaude, et évitez de partager peignes, brosses ou chapeaux jusqu'à la fin du traitement.",
+      medicationTreatment: DERM_ANTIPARASITIC_MED_FR,
+      returnPrecautions:
+        "Consultez de nouveau si les démangeaisons ou les poux/lentes persistent après un deuxième traitement, si le cuir chevelu ou la peau s'infecte (rougeur croissante, chaleur, pus), ou si les symptômes s'étendent à de nouvelles zones.",
+    }
+  );
+
+export const ERYTHEMA_MULTIFORME_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for erythema multiforme (minor form) — a target-shaped skin rash reaction, most often triggered by a viral infection (commonly herpes simplex), confirmed to be limited to the skin without mucosal or systemic involvement.",
+      diagnosisInstructions:
+        "The rash typically resolves on its own over 1–2 weeks without scarring. Avoid known triggers if one has been identified (such as recurrent cold sores).",
+      medicationTreatment: DERM_TOPICAL_MED_EN,
+      returnPrecautions:
+        "Return immediately if blisters or sores develop in the mouth, eyes, or genitals, if the skin begins to peel or blister widely, if fever develops, or if you feel increasingly unwell — these can signal a more serious reaction requiring urgent care.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour un érythème polymorphe (forme mineure) — une éruption cutanée en cocardes, le plus souvent déclenchée par une infection virale (fréquemment l'herpès simplex), confirmée comme étant limitée à la peau, sans atteinte des muqueuses ni signe systémique.",
+      diagnosisInstructions:
+        "L'éruption disparaît généralement d'elle-même en 1 à 2 semaines sans cicatrice. Évitez les déclencheurs connus s'ils ont été identifiés (comme des feux sauvages récurrents).",
+      medicationTreatment: DERM_TOPICAL_MED_FR,
+      returnPrecautions:
+        "Retournez immédiatement si des cloques ou des plaies apparaissent dans la bouche, les yeux ou les organes génitaux, si la peau commence à peler ou à former des cloques étendues, si de la fièvre apparaît, ou si vous vous sentez de plus en plus malade — ces signes peuvent indiquer une réaction plus grave nécessitant des soins urgents.",
+    }
+  );
+
+export const DRUG_ERUPTION_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for an uncomplicated drug eruption (morbilliform/exanthematous drug rash) — a rash reaction to a medication without blistering, mucosal involvement, facial swelling, or systemic illness.",
+      diagnosisInstructions:
+        "Do not restart the suspected medication unless specifically instructed by the prescribing clinician. Keep a written record of the medication and reaction to share with future healthcare providers.",
+      medicationTreatment: DERM_TOPICAL_MED_EN,
+      returnPrecautions:
+        "Return immediately for blistering or skin peeling, mouth, eye, or genital involvement, facial or throat swelling, fever, or feeling generally unwell — these can signal a more serious drug reaction requiring urgent care.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour une éruption médicamenteuse non compliquée (éruption morbiliforme/exanthématique) — une réaction cutanée à un médicament, sans cloques, atteinte des muqueuses, enflure du visage ni maladie systémique.",
+      diagnosisInstructions:
+        "Ne recommencez pas le médicament suspecté sauf indication précise du clinicien prescripteur. Conservez une note écrite du médicament et de la réaction à partager avec vos futurs professionnels de la santé.",
+      medicationTreatment: DERM_TOPICAL_MED_FR,
+      returnPrecautions:
+        "Retournez immédiatement en cas de cloques ou de desquamation de la peau, d'atteinte de la bouche, des yeux ou des organes génitaux, d'enflure du visage ou de la gorge, de fièvre, ou de malaise général — ces signes peuvent indiquer une réaction médicamenteuse plus grave nécessitant des soins urgents.",
+    }
+  );
+
+/** High-risk post-acute template — used only after dermatology/burn specialists have directed outpatient aftercare; never routine/uncomplicated drug eruption reassurance. */
+export const SJS_TEN_POST_ACUTE_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated for Stevens-Johnson syndrome / toxic epidermal necrolysis (SJS/TEN) — a life-threatening skin and mucosal reaction, most often to a medication. This documentation is used only after dermatology/burn specialists have already directed outpatient aftercare following acute-phase treatment — not as an autonomous ED discharge decision, and not routine or uncomplicated drug eruption care.",
+      diagnosisInstructions:
+        "Follow the specialist-directed wound and skin care plan exactly as instructed. Keep every scheduled dermatology, ophthalmology, and burn/wound care follow-up appointment — this condition requires very close monitoring during recovery.",
+      medicationTreatment: DERM_HIGH_RISK_MED_EN,
+      returnPrecautions:
+        "Return immediately for new blistering or skin breakdown, eye pain or vision changes, difficulty swallowing or breathing, fever, or feeling generally unwell.",
+      returnWorkSchool: "Follow up with dermatology/burn specialists exactly as directed — this is close specialist follow-up, not routine primary care.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge pour un syndrome de Stevens-Johnson / une nécrolyse épidermique toxique (SJS/TEN) — une réaction cutanée et muqueuse potentiellement mortelle, le plus souvent à un médicament. Ce document est utilisé uniquement après qu'une prise en charge en dermatologie/soins des grands brûlés a déjà déterminé les soins ambulatoires suivant le traitement en phase aiguë — non comme une décision autonome de sortie des urgences, et non comme des soins habituels d'éruption médicamenteuse non compliquée.",
+      diagnosisInstructions:
+        "Suivez exactement le plan de soins de la plaie et de la peau dirigé par le spécialiste. Respectez chaque rendez-vous de suivi en dermatologie, en ophtalmologie et en soins des plaies/grands brûlés prévu — cette affection nécessite une surveillance très étroite pendant la guérison.",
+      medicationTreatment: DERM_HIGH_RISK_MED_FR,
+      returnPrecautions:
+        "Retournez immédiatement en cas de nouvelles cloques ou de détérioration de la peau, de douleur oculaire ou de changements de la vision, de difficulté à avaler ou à respirer, de fièvre, ou de malaise général.",
+      returnWorkSchool: "Faites le suivi en dermatologie/soins des grands brûlés exactement selon les directives — il s'agit d'un suivi spécialisé rapproché, non d'un suivi habituel de soins primaires.",
+    }
+  );
+
+/** High-risk post-acute template — used only after dermatology/allergy/internal medicine has directed outpatient aftercare; never routine drug rash reassurance. */
+export const DRESS_POST_ACUTE_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated for DRESS syndrome (drug reaction with eosinophilia and systemic symptoms) — a severe, delayed drug reaction affecting the skin and internal organs. This documentation is used only after dermatology/allergy/internal medicine has already directed outpatient aftercare following acute-phase treatment — not as an autonomous ED discharge decision, and not routine drug rash care.",
+      diagnosisInstructions:
+        "Never restart the suspected medication. Keep every scheduled follow-up appointment, including any laboratory monitoring for organ involvement (liver, kidney) as directed — DRESS can worsen or relapse for weeks after the rash appears to improve.",
+      medicationTreatment: DERM_HIGH_RISK_MED_EN,
+      returnPrecautions:
+        "Return immediately for worsening rash, yellowing of the skin or eyes, decreased urination, fever, swollen glands, or feeling increasingly unwell.",
+      returnWorkSchool: "Follow up with dermatology/allergy/internal medicine exactly as directed — this is close specialist follow-up, not routine primary care.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge pour un syndrome DRESS (réaction médicamenteuse avec éosinophilie et symptômes systémiques) — une réaction médicamenteuse grave et retardée touchant la peau et les organes internes. Ce document est utilisé uniquement après qu'une prise en charge en dermatologie/allergologie/médecine interne a déjà déterminé les soins ambulatoires suivant le traitement en phase aiguë — non comme une décision autonome de sortie des urgences, et non comme des soins habituels d'éruption médicamenteuse.",
+      diagnosisInstructions:
+        "Ne recommencez jamais le médicament suspecté. Respectez chaque rendez-vous de suivi prévu, y compris toute surveillance de laboratoire pour l'atteinte des organes (foie, reins) selon les consignes — le syndrome DRESS peut s'aggraver ou récidiver pendant des semaines après l'amélioration apparente de l'éruption.",
+      medicationTreatment: DERM_HIGH_RISK_MED_FR,
+      returnPrecautions:
+        "Retournez immédiatement en cas d'aggravation de l'éruption, de jaunissement de la peau ou des yeux, de diminution des urines, de fièvre, de ganglions enflés, ou de malaise croissant.",
+      returnWorkSchool: "Faites le suivi en dermatologie/allergologie/médecine interne exactement selon les directives — il s'agit d'un suivi spécialisé rapproché, non d'un suivi habituel de soins primaires.",
+    }
+  );
+
+/** High-risk post-acute template — used only after dermatology has directed outpatient aftercare; never routine dermatitis reassurance. */
+export const BULLOUS_DISORDER_POST_ACUTE_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated for an autoimmune bullous disorder (such as bullous pemphigoid or pemphigus vulgaris) — a chronic condition causing blistering of the skin and/or mucous membranes. This documentation is used only after dermatology has already directed outpatient aftercare following acute-phase treatment — not as an autonomous ED discharge decision, and not routine dermatitis care.",
+      diagnosisInstructions:
+        "Follow the dermatology-directed skin care and medication plan exactly as instructed. Keep every scheduled dermatology follow-up appointment — these conditions require close monitoring of blister activity and medication side effects.",
+      medicationTreatment: DERM_HIGH_RISK_MED_EN,
+      returnPrecautions:
+        "Return immediately for widespread new blistering, mouth or eye involvement, signs of skin infection, fever, or feeling generally unwell.",
+      returnWorkSchool: "Follow up with dermatology exactly as directed — this is close specialist follow-up, not routine primary care.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge pour une maladie bulleuse auto-immune (comme la pemphigoïde bulleuse ou le pemphigus vulgaire) — une affection chronique causant des cloques de la peau et/ou des muqueuses. Ce document est utilisé uniquement après qu'une prise en charge en dermatologie a déjà déterminé les soins ambulatoires suivant le traitement en phase aiguë — non comme une décision autonome de sortie des urgences, et non comme des soins habituels de dermatite.",
+      diagnosisInstructions:
+        "Suivez exactement le plan de soins de la peau et de médication dirigé par la dermatologie. Respectez chaque rendez-vous de suivi en dermatologie prévu — ces affections nécessitent une surveillance étroite de l'activité des cloques et des effets secondaires des médicaments.",
+      medicationTreatment: DERM_HIGH_RISK_MED_FR,
+      returnPrecautions:
+        "Retournez immédiatement en cas de nouvelles cloques étendues, d'atteinte de la bouche ou des yeux, de signes d'infection cutanée, de fièvre, ou de malaise général.",
+      returnWorkSchool: "Faites le suivi en dermatologie exactement selon les directives — il s'agit d'un suivi spécialisé rapproché, non d'un suivi habituel de soins primaires.",
+    }
+  );
+
+export const CUTANEOUS_VASCULITIS_FOLLOWUP_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated for cutaneous vasculitis (skin-limited) — inflammation of small blood vessels in the skin causing palpable purpura, most often on the legs. Systemic involvement was assessed, and this documentation reflects skin-limited disease as directed by your treating clinician.",
+      diagnosisInstructions:
+        "Elevate the legs when possible and avoid prolonged standing. Keep the follow-up appointment with the specialist who directed this evaluation (dermatology or rheumatology) to monitor for any new systemic symptoms.",
+      medicationTreatment: DERM_HIGH_RISK_MED_EN,
+      returnPrecautions:
+        "Return immediately for new fever, joint pain or swelling, abdominal pain, blood in urine or stool, shortness of breath, or if the rash spreads rapidly or blisters — these can signal that the vasculitis involves other organs.",
+      returnWorkSchool: "Follow up with dermatology/rheumatology exactly as directed for ongoing monitoring of this condition.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge pour une vasculite cutanée (limitée à la peau) — une inflammation des petits vaisseaux sanguins de la peau causant un purpura palpable, le plus souvent sur les jambes. L'atteinte systémique a été évaluée, et ce document reflète une maladie limitée à la peau selon les directives de votre clinicien traitant.",
+      diagnosisInstructions:
+        "Surélevez les jambes lorsque possible et évitez de rester debout longtemps. Respectez le rendez-vous de suivi avec le spécialiste ayant dirigé cette évaluation (dermatologie ou rhumatologie) pour surveiller l'apparition de nouveaux symptômes systémiques.",
+      medicationTreatment: DERM_HIGH_RISK_MED_FR,
+      returnPrecautions:
+        "Retournez immédiatement en cas de nouvelle fièvre, de douleur ou d'enflure articulaire, de douleur abdominale, de sang dans les urines ou les selles, d'essoufflement, ou si l'éruption s'étend rapidement ou forme des cloques — ces signes peuvent indiquer que la vasculite touche d'autres organes.",
+      returnWorkSchool: "Faites le suivi en dermatologie/rhumatologie exactement selon les directives pour la surveillance continue de cette affection.",
+    }
+  );
+
+export const SUSPICIOUS_SKIN_LESION_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated for a skin lesion with features that warrant further evaluation (such as an irregular border, changing size or color, or a non-healing sore). This documentation supports scheduling that further evaluation — it is not a diagnosis of skin cancer.",
+      diagnosisInstructions:
+        "Keep the scheduled dermatology follow-up appointment for further evaluation, which may include a biopsy. Protect the area from sun exposure and avoid picking at or irritating the lesion in the meantime.",
+      medicationTreatment: DERM_TOPICAL_MED_EN,
+      returnPrecautions:
+        "Return sooner if the lesion bleeds persistently, grows rapidly, becomes painful, or if you notice new similar lesions elsewhere on your skin.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge pour une lésion cutanée présentant des caractéristiques justifiant une évaluation plus approfondie (comme un bord irrégulier, un changement de taille ou de couleur, ou une plaie qui ne guérit pas). Ce document vise à faciliter la planification de cette évaluation — il ne s'agit pas d'un diagnostic de cancer de la peau.",
+      diagnosisInstructions:
+        "Respectez le rendez-vous de suivi en dermatologie prévu pour une évaluation plus approfondie, qui pourrait inclure une biopsie. Protégez la zone du soleil et évitez de gratter ou d'irriter la lésion en attendant.",
+      medicationTreatment: DERM_TOPICAL_MED_FR,
+      returnPrecautions:
+        "Consultez plus rapidement si la lésion saigne de façon persistante, grossit rapidement, devient douloureuse, ou si vous remarquez de nouvelles lésions similaires ailleurs sur votre peau.",
+    }
+  );

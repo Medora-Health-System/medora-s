@@ -336,6 +336,36 @@ import {
   PYOMYOSITIS_POST_ACUTE_V1_SUGGESTED_TEXT,
   WATER_EXPOSED_WOUND_INFECTION_V1_SUGGESTED_TEXT,
   FOREIGN_BODY_ASSOCIATED_INFECTION_V1_SUGGESTED_TEXT,
+  ALLERGIC_CONTACT_DERMATITIS_V1_SUGGESTED_TEXT,
+  IRRITANT_CONTACT_DERMATITIS_V1_SUGGESTED_TEXT,
+  ATOPIC_DERMATITIS_V1_SUGGESTED_TEXT,
+  UNCOMPLICATED_URTICARIA_V1_SUGGESTED_TEXT,
+  PSORIASIS_FLARE_V1_SUGGESTED_TEXT,
+  ROSACEA_V1_SUGGESTED_TEXT,
+  IMPETIGO_V1_SUGGESTED_TEXT,
+  FOLLICULITIS_V1_SUGGESTED_TEXT,
+  HERPES_SIMPLEX_V1_SUGGESTED_TEXT,
+  HERPES_ZOSTER_V1_SUGGESTED_TEXT,
+  OPHTHALMIC_ZOSTER_POST_ACUTE_V1_SUGGESTED_TEXT,
+  VARICELLA_V1_SUGGESTED_TEXT,
+  MOLLUSCUM_CONTAGIOSUM_V1_SUGGESTED_TEXT,
+  VIRAL_EXANTHEM_V1_SUGGESTED_TEXT,
+  PITYRIASIS_ROSEA_V1_SUGGESTED_TEXT,
+  TINEA_CORPORIS_V1_SUGGESTED_TEXT,
+  TINEA_CAPITIS_V1_SUGGESTED_TEXT,
+  TINEA_CRURIS_V1_SUGGESTED_TEXT,
+  TINEA_PEDIS_V1_SUGGESTED_TEXT,
+  TINEA_VERSICOLOR_V1_SUGGESTED_TEXT,
+  CANDIDAL_INTERTRIGO_V1_SUGGESTED_TEXT,
+  SCABIES_V1_SUGGESTED_TEXT,
+  PEDICULOSIS_V1_SUGGESTED_TEXT,
+  ERYTHEMA_MULTIFORME_V1_SUGGESTED_TEXT,
+  DRUG_ERUPTION_V1_SUGGESTED_TEXT,
+  SJS_TEN_POST_ACUTE_V1_SUGGESTED_TEXT,
+  DRESS_POST_ACUTE_V1_SUGGESTED_TEXT,
+  BULLOUS_DISORDER_POST_ACUTE_V1_SUGGESTED_TEXT,
+  CUTANEOUS_VASCULITIS_FOLLOWUP_V1_SUGGESTED_TEXT,
+  SUSPICIOUS_SKIN_LESION_V1_SUGGESTED_TEXT,
 } from "./providerDischargeTemplateSuggestedTextCatalog";
 import {
   newDefaultFollowUpRow,
@@ -678,6 +708,13 @@ const ENT_EMERGENCY_TEMPLATE_GOVERNANCE = {
 const SOFT_TISSUE_WOUND_INFECTION_TEMPLATE_GOVERNANCE = {
   ...BATCH_GOVERNANCE_DRAFT,
   specialtyCategory: "wound_care",
+  riskCategory: "moderate",
+};
+
+/** Phase 14 — dermatology discharge governance (documentation advisory only, Commit 2). Mirrors SOFT_TISSUE_WOUND_INFECTION_TEMPLATE_GOVERNANCE. */
+const DERMATOLOGY_TEMPLATE_GOVERNANCE = {
+  ...BATCH_GOVERNANCE_DRAFT,
+  specialtyCategory: "dermatology",
   riskCategory: "moderate",
 };
 
@@ -6525,7 +6562,14 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
   },
   {
     id: "hidradenitis_flare_v1", version: "1.0.0", title: "Hidradenitis flare discharge documentation", ...SOFT_TISSUE_WOUND_INFECTION_TEMPLATE_GOVERNANCE,
-    diagnosisMappings: { icdFamily: ["L73.2"], keyword: ["hidradenitis", "hidradénite", "hidrosadénite"] },
+    // Phase 14 note: L73.2 has a single owner (this template). A separate "hidradenitis_suppurativa_v1" was
+    // deliberately NOT created — HS is coded L73.2 regardless of acute-flare vs chronic framing, so a second
+    // template would require a duplicate icdFamily mapping and fail registry validation. Chronic-HS keywords
+    // are added here instead; suggested text already covers chronic long-term management language.
+    diagnosisMappings: {
+      icdFamily: ["L73.2"],
+      keyword: ["hidradenitis", "hidradénite", "hidrosadénite", "hidradenitis suppurativa", "chronic hidradenitis suppurativa", "hidradénite suppurée chronique"],
+    },
     sourceReferences: [{ label: "MedlinePlus — Hidradenitis", url: "https://medlineplus.gov/", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
     defaultFollowUps: [registryFollowUp("sti-hs-derm", "DERMATOLOGY", "within 3–7 days or as directed")], suggestedText: HIDRADENITIS_FLARE_V1_SUGGESTED_TEXT,
   },
@@ -6595,6 +6639,213 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
     diagnosisMappings: { keyword: ["foreign body wound infection", "infected retained foreign body", "infection associée à un corps étranger"] },
     sourceReferences: [{ label: "MedlinePlus — Foreign body", url: "https://medlineplus.gov/", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
     defaultFollowUps: [registryFollowUp("sti-fbi-pcp", "PRIMARY_CARE", "within 24–48 hours or as directed")], suggestedText: FOREIGN_BODY_ASSOCIATED_INFECTION_V1_SUGGESTED_TEXT,
+  },
+  // Phase 14 — Dermatology discharge templates (Commit 2). Allergic/inflammatory, infectious (bacterial/viral/fungal/parasitic),
+  // and high-risk post-acute (SJS/TEN, DRESS, bullous, ophthalmic zoster) discharge documentation. Preserves Phase 13
+  // soft tissue ownership of L02/L03/A46/NSTI and allergy ownership of L50 urticaria/anaphylaxis (allergic_reaction_v1).
+  {
+    id: "allergic_contact_dermatitis_v1", version: "1.0.0", title: "Allergic contact dermatitis discharge documentation", ...DERMATOLOGY_TEMPLATE_GOVERNANCE,
+    diagnosisMappings: { icdFamily: ["L23"], keyword: ["allergic contact dermatitis", "poison ivy dermatitis", "poison oak dermatitis", "dermite de contact allergique"] },
+    sourceReferences: [{ label: "MedlinePlus — Contact dermatitis", url: "https://medlineplus.gov/contactdermatitis.html", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("derm-acd-pcp", "PRIMARY_CARE", "within 1 week or as directed")], suggestedText: ALLERGIC_CONTACT_DERMATITIS_V1_SUGGESTED_TEXT,
+  },
+  {
+    id: "irritant_contact_dermatitis_v1", version: "1.0.0", title: "Irritant contact dermatitis discharge documentation", ...DERMATOLOGY_TEMPLATE_GOVERNANCE,
+    diagnosisMappings: { icdFamily: ["L24"], keyword: ["irritant contact dermatitis", "dermite de contact irritative"] },
+    sourceReferences: [{ label: "MedlinePlus — Contact dermatitis", url: "https://medlineplus.gov/contactdermatitis.html", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("derm-icd-pcp", "PRIMARY_CARE", "within 1 week or as directed")], suggestedText: IRRITANT_CONTACT_DERMATITIS_V1_SUGGESTED_TEXT,
+  },
+  {
+    id: "atopic_dermatitis_v1", version: "1.0.0", title: "Atopic dermatitis discharge documentation", ...DERMATOLOGY_TEMPLATE_GOVERNANCE,
+    diagnosisMappings: { icdFamily: ["L20"], keyword: ["atopic dermatitis", "eczema flare", "dermatite atopique"] },
+    sourceReferences: [{ label: "MedlinePlus — Atopic dermatitis", url: "https://medlineplus.gov/eczema.html", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("derm-ad-pcp", "PRIMARY_CARE", "within 1 week or as directed")], suggestedText: ATOPIC_DERMATITIS_V1_SUGGESTED_TEXT,
+  },
+  {
+    // Keyword-only: L50 (urticaria) remains fully owned by allergy's allergic_reaction_v1 — no icdFamily here.
+    id: "uncomplicated_urticaria_v1", version: "1.0.0", title: "Uncomplicated urticaria discharge documentation", ...DERMATOLOGY_TEMPLATE_GOVERNANCE,
+    diagnosisMappings: { keyword: ["uncomplicated urticaria", "chronic urticaria without angioedema", "urticaire non compliquée", "urticaire chronique sans angio-œdème"] },
+    sourceReferences: [{ label: "MedlinePlus — Hives", url: "https://medlineplus.gov/hives.html", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("derm-urt-pcp", "PRIMARY_CARE", "for recurrent or worsening symptoms")], suggestedText: UNCOMPLICATED_URTICARIA_V1_SUGGESTED_TEXT,
+  },
+  {
+    // Excludes L40.1–L40.3 (pustular/acrodermatitis/palmoplantar pustulosis) — high-acuity variants never get routine reassurance.
+    id: "psoriasis_flare_v1", version: "1.0.0", title: "Psoriasis flare discharge documentation", ...DERMATOLOGY_TEMPLATE_GOVERNANCE,
+    diagnosisMappings: { icdFamily: ["L40.0", "L40.4", "L40.8", "L40.9"], keyword: ["psoriasis flare", "plaque psoriasis", "guttate psoriasis", "poussée de psoriasis", "psoriasis en plaques"] },
+    sourceReferences: [{ label: "MedlinePlus — Psoriasis", url: "https://medlineplus.gov/psoriasis.html", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("derm-pso-derm", "DERMATOLOGY", "within 1 week or as directed")], suggestedText: PSORIASIS_FLARE_V1_SUGGESTED_TEXT,
+  },
+  {
+    id: "rosacea_v1", version: "1.0.0", title: "Rosacea discharge documentation", ...DERMATOLOGY_TEMPLATE_GOVERNANCE,
+    diagnosisMappings: { icdFamily: ["L71"], keyword: ["rosacea", "rosacée"] },
+    sourceReferences: [{ label: "MedlinePlus — Rosacea", url: "https://medlineplus.gov/rosacea.html", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("derm-ros-derm", "DERMATOLOGY", "within 2 weeks or as directed")], suggestedText: ROSACEA_V1_SUGGESTED_TEXT,
+  },
+  {
+    id: "impetigo_v1", version: "1.0.0", title: "Impetigo discharge documentation", ...DERMATOLOGY_TEMPLATE_GOVERNANCE,
+    diagnosisMappings: { icdFamily: ["L01"], keyword: ["impetigo", "impétigo"] },
+    sourceReferences: [{ label: "MedlinePlus — Impetigo", url: "https://medlineplus.gov/impetigo.html", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("derm-imp-pcp", "PRIMARY_CARE", "within 48–72 hours or as directed")], suggestedText: IMPETIGO_V1_SUGGESTED_TEXT,
+  },
+  {
+    // L73.9 (follicular disorder, unspecified) — does not overlap with hidradenitis_flare_v1's more specific L73.2 mapping.
+    id: "folliculitis_v1", version: "1.0.0", title: "Folliculitis discharge documentation", ...DERMATOLOGY_TEMPLATE_GOVERNANCE,
+    diagnosisMappings: { icdFamily: ["L73.9"], keyword: ["folliculitis", "folliculite"] },
+    sourceReferences: [{ label: "MedlinePlus — Folliculitis", url: "https://medlineplus.gov/", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("derm-fol-pcp", "PRIMARY_CARE", "within 3–7 days or as directed")], suggestedText: FOLLICULITIS_V1_SUGGESTED_TEXT,
+  },
+  {
+    id: "herpes_simplex_v1", version: "1.0.0", title: "Herpes simplex discharge documentation", ...DERMATOLOGY_TEMPLATE_GOVERNANCE,
+    diagnosisMappings: { icdFamily: ["B00"], keyword: ["herpes simplex", "cold sore", "oral herpes", "genital herpes", "herpès simplex", "herpès labial", "herpès génital"] },
+    sourceReferences: [{ label: "MedlinePlus — Herpes simplex", url: "https://medlineplus.gov/herpessimplex.html", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("derm-hsv-pcp", "PRIMARY_CARE", "if symptoms persist or as directed")], suggestedText: HERPES_SIMPLEX_V1_SUGGESTED_TEXT,
+  },
+  {
+    // icdFamily B02 catches all zoster except B02.2 (icdExact — Ramsay Hunt/ENT, checked first) and B02.3 (ophthalmic, longer/more specific prefix wins).
+    id: "herpes_zoster_v1", version: "1.0.0", title: "Herpes zoster discharge documentation", ...DERMATOLOGY_TEMPLATE_GOVERNANCE,
+    diagnosisMappings: { icdFamily: ["B02"], keyword: ["herpes zoster", "shingles", "zona"] },
+    sourceReferences: [{ label: "MedlinePlus — Shingles", url: "https://medlineplus.gov/shingles.html", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("derm-zos-pcp", "PRIMARY_CARE", "within 3–7 days or as directed")], suggestedText: HERPES_ZOSTER_V1_SUGGESTED_TEXT,
+  },
+  {
+    // B02.3 (zoster ocular disease) — eye-owned continuity template; distinct from B02.2 Ramsay Hunt (ENT) and plain B02 zoster.
+    id: "ophthalmic_zoster_post_acute_v1", version: "1.0.0", title: "Ophthalmic zoster post-acute discharge documentation", ...DERMATOLOGY_TEMPLATE_GOVERNANCE, riskCategory: "high",
+    diagnosisMappings: { icdFamily: ["B02.3"], keyword: ["ophthalmic zoster", "zoster ophthalmicus", "zona ophtalmique"] },
+    sourceReferences: [{ label: "MedlinePlus — Shingles", url: "https://medlineplus.gov/shingles.html", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("derm-ozos-oph", "OPHTHALMOLOGY", "urgent — as directed by ophthalmology")], suggestedText: OPHTHALMIC_ZOSTER_POST_ACUTE_V1_SUGGESTED_TEXT,
+  },
+  {
+    id: "varicella_v1", version: "1.0.0", title: "Varicella discharge documentation", ...DERMATOLOGY_TEMPLATE_GOVERNANCE,
+    diagnosisMappings: { icdFamily: ["B01"], keyword: ["varicella", "chickenpox", "varicelle"] },
+    sourceReferences: [{ label: "MedlinePlus — Chickenpox", url: "https://medlineplus.gov/chickenpox.html", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("derm-var-pcp", "PRIMARY_CARE", "if new or worsening symptoms develop")], suggestedText: VARICELLA_V1_SUGGESTED_TEXT,
+  },
+  {
+    id: "molluscum_contagiosum_v1", version: "1.0.0", title: "Molluscum contagiosum discharge documentation", ...DERMATOLOGY_TEMPLATE_GOVERNANCE,
+    diagnosisMappings: { icdFamily: ["B08.1"], keyword: ["molluscum contagiosum", "molluscum contagieux"] },
+    sourceReferences: [{ label: "MedlinePlus — Molluscum contagiosum", url: "https://medlineplus.gov/", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("derm-mol-pcp", "PRIMARY_CARE", "within 2 weeks or as directed")], suggestedText: MOLLUSCUM_CONTAGIOSUM_V1_SUGGESTED_TEXT,
+  },
+  {
+    // B08.1 (molluscum, more specific) takes precedence over this broader B08 mapping.
+    id: "viral_exanthem_v1", version: "1.0.0", title: "Viral exanthem discharge documentation", ...DERMATOLOGY_TEMPLATE_GOVERNANCE,
+    diagnosisMappings: {
+      icdFamily: ["B08", "B05", "B06", "B09"],
+      keyword: ["viral exanthem", "measles", "rubella", "roseola", "fifth disease", "hand foot and mouth disease", "exanthème viral", "cinquième maladie", "syndrome pieds-mains-bouche"],
+    },
+    sourceReferences: [{ label: "MedlinePlus — Rashes", url: "https://medlineplus.gov/rashes.html", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("derm-vex-pcp", "PRIMARY_CARE", "if rash spreads or concerns develop")], suggestedText: VIRAL_EXANTHEM_V1_SUGGESTED_TEXT,
+  },
+  {
+    id: "pityriasis_rosea_v1", version: "1.0.0", title: "Pityriasis rosea discharge documentation", ...DERMATOLOGY_TEMPLATE_GOVERNANCE,
+    diagnosisMappings: { icdFamily: ["L42"], keyword: ["pityriasis rosea", "pityriasis rosé"] },
+    sourceReferences: [{ label: "MedlinePlus — Skin conditions", url: "https://medlineplus.gov/skinconditions.html", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("derm-pr-pcp", "PRIMARY_CARE", "within 2 weeks or as directed")], suggestedText: PITYRIASIS_ROSEA_V1_SUGGESTED_TEXT,
+  },
+  {
+    id: "tinea_corporis_v1", version: "1.0.0", title: "Tinea corporis discharge documentation", ...DERMATOLOGY_TEMPLATE_GOVERNANCE,
+    diagnosisMappings: { icdFamily: ["B35.4"], keyword: ["tinea corporis", "ringworm body", "tinea du corps", "dermatophytose du corps"] },
+    sourceReferences: [{ label: "MedlinePlus — Ringworm", url: "https://medlineplus.gov/ringworm.html", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("derm-tco-pcp", "PRIMARY_CARE", "within 2 weeks or as directed")], suggestedText: TINEA_CORPORIS_V1_SUGGESTED_TEXT,
+  },
+  {
+    id: "tinea_capitis_v1", version: "1.0.0", title: "Tinea capitis discharge documentation", ...DERMATOLOGY_TEMPLATE_GOVERNANCE,
+    diagnosisMappings: { icdFamily: ["B35.0"], keyword: ["tinea capitis", "ringworm scalp", "tinea du cuir chevelu"] },
+    sourceReferences: [{ label: "MedlinePlus — Ringworm", url: "https://medlineplus.gov/ringworm.html", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("derm-tca-pcp", "PRIMARY_CARE", "within 2 weeks or as directed")], suggestedText: TINEA_CAPITIS_V1_SUGGESTED_TEXT,
+  },
+  {
+    id: "tinea_cruris_v1", version: "1.0.0", title: "Tinea cruris discharge documentation", ...DERMATOLOGY_TEMPLATE_GOVERNANCE,
+    diagnosisMappings: { icdFamily: ["B35.6"], keyword: ["tinea cruris", "jock itch", "tinea de l'aine"] },
+    sourceReferences: [{ label: "MedlinePlus — Ringworm", url: "https://medlineplus.gov/ringworm.html", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("derm-tcr-pcp", "PRIMARY_CARE", "within 2 weeks or as directed")], suggestedText: TINEA_CRURIS_V1_SUGGESTED_TEXT,
+  },
+  {
+    id: "tinea_pedis_v1", version: "1.0.0", title: "Tinea pedis discharge documentation", ...DERMATOLOGY_TEMPLATE_GOVERNANCE,
+    diagnosisMappings: { icdFamily: ["B35.3"], keyword: ["tinea pedis", "athlete's foot", "pied d'athlète"] },
+    sourceReferences: [{ label: "MedlinePlus — Athlete's foot", url: "https://medlineplus.gov/athletesfoot.html", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("derm-tpe-pcp", "PRIMARY_CARE", "within 2 weeks or as directed")], suggestedText: TINEA_PEDIS_V1_SUGGESTED_TEXT,
+  },
+  {
+    id: "tinea_versicolor_v1", version: "1.0.0", title: "Tinea versicolor discharge documentation", ...DERMATOLOGY_TEMPLATE_GOVERNANCE,
+    diagnosisMappings: { icdFamily: ["B36.0"], keyword: ["tinea versicolor", "pityriasis versicolor"] },
+    sourceReferences: [{ label: "MedlinePlus — Skin conditions", url: "https://medlineplus.gov/skinconditions.html", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("derm-tve-pcp", "PRIMARY_CARE", "within 2 weeks or as directed")], suggestedText: TINEA_VERSICOLOR_V1_SUGGESTED_TEXT,
+  },
+  {
+    id: "candidal_intertrigo_v1", version: "1.0.0", title: "Candidal intertrigo discharge documentation", ...DERMATOLOGY_TEMPLATE_GOVERNANCE,
+    diagnosisMappings: { icdFamily: ["B37.2"], keyword: ["candidal intertrigo", "yeast skin infection", "intertrigo candidosique"] },
+    sourceReferences: [{ label: "MedlinePlus — Candidiasis", url: "https://medlineplus.gov/candidiasis.html", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("derm-cin-pcp", "PRIMARY_CARE", "within 1 week or as directed")], suggestedText: CANDIDAL_INTERTRIGO_V1_SUGGESTED_TEXT,
+  },
+  {
+    id: "scabies_v1", version: "1.0.0", title: "Scabies discharge documentation", ...DERMATOLOGY_TEMPLATE_GOVERNANCE,
+    diagnosisMappings: { icdFamily: ["B86"], keyword: ["scabies", "gale"] },
+    sourceReferences: [{ label: "MedlinePlus — Scabies", url: "https://medlineplus.gov/scabies.html", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("derm-sca-pcp", "PRIMARY_CARE", "within 2 weeks or as directed")], suggestedText: SCABIES_V1_SUGGESTED_TEXT,
+  },
+  {
+    id: "pediculosis_v1", version: "1.0.0", title: "Pediculosis discharge documentation", ...DERMATOLOGY_TEMPLATE_GOVERNANCE,
+    diagnosisMappings: { icdFamily: ["B85"], keyword: ["pediculosis", "head lice", "body lice", "pédiculose", "poux"] },
+    sourceReferences: [{ label: "MedlinePlus — Head lice", url: "https://medlineplus.gov/headlice.html", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("derm-ped-pcp", "PRIMARY_CARE", "within 2 weeks or as directed")], suggestedText: PEDICULOSIS_V1_SUGGESTED_TEXT,
+  },
+  {
+    // icdFamily L51 excludes L51.1/L51.2/L51.3 by virtue of sjs_ten_post_acute_v1's more specific mapping winning on longest-prefix match.
+    id: "erythema_multiforme_v1", version: "1.0.0", title: "Erythema multiforme discharge documentation", ...DERMATOLOGY_TEMPLATE_GOVERNANCE,
+    diagnosisMappings: { icdFamily: ["L51"], keyword: ["erythema multiforme", "érythème polymorphe"] },
+    sourceReferences: [{ label: "MedlinePlus — Skin conditions", url: "https://medlineplus.gov/skinconditions.html", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("derm-em-pcp", "PRIMARY_CARE", "within 1 week or as directed")], suggestedText: ERYTHEMA_MULTIFORME_V1_SUGGESTED_TEXT,
+  },
+  {
+    id: "drug_eruption_v1", version: "1.0.0", title: "Drug eruption (uncomplicated) discharge documentation", ...DERMATOLOGY_TEMPLATE_GOVERNANCE,
+    diagnosisMappings: { icdFamily: ["L27"], keyword: ["drug eruption", "morbilliform drug rash", "exanthematous drug eruption", "éruption médicamenteuse"] },
+    sourceReferences: [{ label: "MedlinePlus — Drug reactions", url: "https://medlineplus.gov/", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("derm-drg-pcp", "PRIMARY_CARE", "within 1 week or as directed")], suggestedText: DRUG_ERUPTION_V1_SUGGESTED_TEXT,
+  },
+  {
+    // L51.1 (SJS), L51.2 (TEN), L51.3 (SJS-TEN overlap) — more specific than erythema_multiforme_v1's L51 mapping; overrides drug_eruption_v1's separate L27 range entirely (no shared codes).
+    id: "sjs_ten_post_acute_v1", version: "1.0.0", title: "SJS/TEN post-acute discharge documentation", ...DERMATOLOGY_TEMPLATE_GOVERNANCE, riskCategory: "high",
+    diagnosisMappings: {
+      icdFamily: ["L51.1", "L51.2", "L51.3"],
+      keyword: ["stevens-johnson syndrome post-acute care", "toxic epidermal necrolysis post-acute care", "syndrome de stevens-johnson soins post-aigus", "nécrolyse épidermique toxique soins post-aigus"],
+    },
+    sourceReferences: [{ label: "MedlinePlus — Stevens-Johnson syndrome", url: "https://medlineplus.gov/", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("derm-sjsten-derm", "DERMATOLOGY", "urgent / as directed")], suggestedText: SJS_TEN_POST_ACUTE_V1_SUGGESTED_TEXT,
+  },
+  {
+    // Keyword-only: DRESS has no dedicated ICD-10-CM code; avoids ambiguous overlap with drug_eruption_v1's L27 range.
+    id: "dress_post_acute_v1", version: "1.0.0", title: "DRESS syndrome post-acute discharge documentation", ...DERMATOLOGY_TEMPLATE_GOVERNANCE, riskCategory: "high",
+    diagnosisMappings: {
+      icdExact: ["D72.12"],
+      keyword: ["dress syndrome post-acute care", "drug reaction with eosinophilia and systemic symptoms post-acute", "syndrome dress soins post-aigus"],
+    },
+    sourceReferences: [{ label: "MedlinePlus — Drug reactions", url: "https://medlineplus.gov/", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("derm-dress-derm", "DERMATOLOGY", "urgent / as directed")], suggestedText: DRESS_POST_ACUTE_V1_SUGGESTED_TEXT,
+  },
+  {
+    id: "bullous_disorder_post_acute_v1", version: "1.0.0", title: "Autoimmune bullous disorder post-acute discharge documentation", ...DERMATOLOGY_TEMPLATE_GOVERNANCE, riskCategory: "high",
+    diagnosisMappings: {
+      icdFamily: ["L10", "L12"],
+      keyword: ["bullous pemphigoid post-acute care", "pemphigus vulgaris post-acute care", "pemphigoïde bulleuse soins post-aigus", "pemphigus vulgaire soins post-aigus"],
+    },
+    sourceReferences: [{ label: "MedlinePlus — Skin conditions", url: "https://medlineplus.gov/skinconditions.html", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("derm-bull-derm", "DERMATOLOGY", "within 1 week if not improving or as directed")], suggestedText: BULLOUS_DISORDER_POST_ACUTE_V1_SUGGESTED_TEXT,
+  },
+  {
+    id: "cutaneous_vasculitis_followup_v1", version: "1.0.0", title: "Cutaneous vasculitis follow-up discharge documentation", ...DERMATOLOGY_TEMPLATE_GOVERNANCE, riskCategory: "moderate_to_high",
+    diagnosisMappings: { icdFamily: ["L95"], keyword: ["cutaneous vasculitis", "vasculite cutanée"] },
+    sourceReferences: [{ label: "MedlinePlus — Vasculitis", url: "https://medlineplus.gov/vasculitis.html", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("derm-vasc-derm", "DERMATOLOGY", "within 1 week or as directed")], suggestedText: CUTANEOUS_VASCULITIS_FOLLOWUP_V1_SUGGESTED_TEXT,
+  },
+  {
+    // Keyword-only, no ICD — documentation advisory only; never establishes a neoplasm/melanoma diagnosis.
+    id: "suspicious_skin_lesion_v1", version: "1.0.0", title: "Suspicious skin lesion discharge documentation", ...DERMATOLOGY_TEMPLATE_GOVERNANCE, riskCategory: "moderate",
+    diagnosisMappings: {
+      keyword: ["suspicious skin lesion", "irregular pigmented lesion", "changing mole", "non-healing skin lesion", "concern for melanoma", "lésion cutanée suspecte", "grain de beauté suspect", "lésion cutanée non cicatrisante"],
+    },
+    sourceReferences: [{ label: "MedlinePlus — Skin cancer", url: "https://medlineplus.gov/skincancer.html", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("derm-lesion-derm", "DERMATOLOGY", "within 2 weeks or as directed")], suggestedText: SUSPICIOUS_SKIN_LESION_V1_SUGGESTED_TEXT,
   },
   {
     id: GENERIC_PROVIDER_DISCHARGE_TEMPLATE_ID,
