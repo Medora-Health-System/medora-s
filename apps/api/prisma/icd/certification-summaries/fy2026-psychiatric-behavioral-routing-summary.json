@@ -1,0 +1,35 @@
+{
+  "unexplainedRoutingFallbacks": [],
+  "suicidalIdeationVsAttemptCollision": [],
+  "psychosisVsDeliriumCollision": [],
+  "maniaVsAgitationCollision": [],
+  "postpartumPsychiatricProvenance": [],
+  "substancePsychosisProvenance": [],
+  "nssiVsSuicideAttemptCollision": [],
+  "refusalStealsUnderlyingDiagnosis": [],
+  "crossPhaseUnderRouting": [],
+  "ownershipGaps": [],
+  "counts": {
+    "scoped": 679,
+    "suicideSelfHarm": 135,
+    "psychoticMoodAnxiety": 152,
+    "deliriumCognitive": 76,
+    "neurodevelopmental": 33,
+    "eatingDisorder": 30,
+    "puerperalMental": 2,
+    "refusalLegal": 17,
+    "suicidalIdeation": 1,
+    "suicideAttempt": 3,
+    "selfHarmExternal": 126,
+    "psychosis": 9,
+    "delirium": 1,
+    "mania": 37,
+    "agitation": 1,
+    "substancePsychotic": 90,
+    "nssiHistory": 1,
+    "refusalCodes": 4
+  },
+  "certification": {
+    "pass": true
+  }
+}

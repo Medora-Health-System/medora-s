@@ -1,0 +1,35 @@
+{
+  "psychiatricBehavioral": {
+    "scopedOfficialBillable": 679,
+    "presentInMedora": 679,
+    "missingCodes": [],
+    "descriptionMismatches": [],
+    "duplicateActiveCodes": [],
+    "invalidSelectableHeaders": []
+  },
+  "buckets": {
+    "suicideSelfHarm": 135,
+    "psychoticMoodAnxiety": 152,
+    "deliriumCognitive": 76,
+    "neurodevelopmental": 33,
+    "eatingDisorder": 30,
+    "puerperalMental": 2,
+    "refusalLegal": 17
+  },
+  "ownershipGaps": [],
+  "crossPhaseOwnershipSteals": [],
+  "coveragePresence": {
+    "suicidalIdeationCoveragePresent": true,
+    "suicideAttemptCoveragePresent": true,
+    "intentionalSelfHarmExternalCausePresent": true,
+    "nssiHistoryPresent": true
+  },
+  "ownershipNotes": {
+    "intentionalPoisoningMechanism": "T36–T50 and T40.x2 intentional poisoning remain Phase 16 tox ownership",
+    "substancePrimaryRouting": "F10.1/F10.2 intoxication/withdrawal primary routing stays Phase 16",
+    "forensicAbuse": "T74/T76/Y07 are coverage presence; forensic exclusive ownership preserved"
+  },
+  "certification": {
+    "pass": true
+  }
+}
