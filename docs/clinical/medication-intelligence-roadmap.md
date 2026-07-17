@@ -86,25 +86,24 @@ flowchart LR
 **Builds on:** `haiti-canonical-linkage-*`, `canonical-medication-activation-*` docs.
 
 
-## Phase 3 — Official medication concept catalog import (RxNorm-centered clinical drugs)
+## Phase 3 — Scoped RxNorm reference ingestion, staging, and candidate mapping
 
 | Field | Value |
 |-------|-------|
-| **Objective** | Import RxNorm clinical drug concepts (IN, MIN, SCDF, SCD, GPCK as scoped) into `MedicationConcept` using Phase 2 mapping statuses — **curated subset first**, not full US dump |
-| **Scope** | Import pipeline, staging (`MedicationFormularyImportStaging`), promotion workflow, retire/quarantine rules; populate `rxNormConceptId` + `rxNormMappingStatus=VERIFIED` only with provenance |
-| **Data source** | NLM RxNorm monthly release; facility formulary gap analysis from Phase 1 coverage audit; Phase 2 schema |
-| **Migration likelihood** | **Low** — reuse Phase 2 additive columns |
-| **Seed/import likelihood** | **High** — batch import with manifest + reconciliation status |
-| **Risks** | Storage/bloat from full US catalog (MEDIUM); wrong scope for Haiti clinic (HIGH — phase-lock to curated needs); false VERIFIED without review (CRITICAL — Phase 2 helpers forbid) |
-| **Exit criteria** | Import certifier PASS for scoped release; no silent promotion; staging reconciliation documented; dual-layer candidates reviewed without fuzzy merge |
+| **Objective** | Controlled, version-aware RxNorm **reference** ingestion into staging — provenance, idempotency, candidate mapping, activation/rollback — **without** clinical search/order/MAR/billing changes |
+| **Scope** | `RxNormReferenceRelease`, `RxNormImportJob`, `RxNormStagingConcept`, `RxNormMappingCandidate`, `RxNormImportConflict`; synthetic certification fixture; CLI import modes; Phase 3 certifier |
+| **Data source** | Synthetic fixture (`SYNTH*` RxCUIs) for certification; NLM RxNorm **not** committed — operator-supplied path reserved for future licensed import |
+| **Migration** | **YES (additive)** — `20261005120000_medication_phase_3_rxnorm_staging` |
+| **Seed/import** | **Seed Required: NO**; `RealRxNormDataUsed: NO`; `SyntheticFixtureUsed: YES` |
+| **Risks** | Name-match candidate volume (MEDIUM — review-only); accidental clinical wiring (mitigated: CLI isolation + defaults) |
+| **Exit criteria** | Phase 3 enterprise certifier PASS; `AutomaticVerificationEnabled=NO`; clinical search/MAR/billing unchanged; rollback preserves history |
 | **Complexity** | **High** |
-| **Depends on** | Phase 2 certification (`RxNormSchemaReady=YES`, `RxNormDataImported=NO` at Phase 2 exit) |
+| **Status** | Implemented — see [`medication-intelligence-phase-3-rxnorm-reference-ingestion.md`](./medication-intelligence-phase-3-rxnorm-reference-ingestion.md) |
 
-**Note:** Complete US/RxNorm catalog remains **out of scope for clinic MVP** — import **needed clinical subset** only.
+**Phase count note:** Roadmap remains **11 phases**. Phase 3 owns staged reference ingestion; Phase 4 owns controlled canonical reconciliation / catalog expansion (not authorized by Phase 3 alone).
 
----
 
-## Phase 4 — Strength, form, route normalization and bilingual aliases
+## Phase 4 — Controlled RxNorm canonical reconciliation and catalog expansion (plus normalization)
 
 | Field | Value |
 |-------|-------|
@@ -116,6 +115,8 @@ flowchart LR
 | **Risks** | Breaking FK if codes renamed (CRITICAL — display vs code separation required) |
 | **Exit criteria** | 100% `displayNameFr` on active catalog; alias certifier PASS; classification conflict flags trending down |
 | **Complexity** | **Medium–High** |
+
+**Depends on:** Phase 3 certification (`StagingLayerReady=YES`, `AutomaticVerificationEnabled=NO`). Phase 4 must not auto-verify candidates without explicit review workflows.
 
 **Milestone A contribution:** Search quality improves before scale (Phase 5).
 
