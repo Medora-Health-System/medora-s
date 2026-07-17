@@ -134,25 +134,28 @@ flowchart LR
 | **Complexity** | **High** |
 | **Status** | Implemented — see [`medication-intelligence-phase-5-controlled-real-rxnorm-ingestion.md`](./medication-intelligence-phase-5-controlled-real-rxnorm-ingestion.md) |
 
-**Phase count note:** Roadmap remains **11 phases**. Phase 6 owns governed review operations / admin API-UI / limited real mapping pilot — not started by Phase 5.
+**Phase count note:** Roadmap remains **11 phases**. Phase 6 = governed review operations / admin API-UI / pilot configuration (no clinical activation).
 
 
-## Phase 6 — Canonical ordering integration and order sentences
+## Phase 6 — Governed RxNorm review operations, admin API/UI, controlled pilot config
 
 | Field | Value |
 |-------|-------|
-| **Objective** | Populate `OrderItem.medicationProductId` / `medicationPackageId`; structured order sentences (dose, route, frequency, duration); optional provider search cutover per tranche |
-| **Scope** | Order create/enrich paths, label snapshots, governance gates, phased M1.5F cutover **only after certifier PASS** |
-| **Data source** | Canonical product/package graph; order sentence templates per administration type |
-| **Migration likelihood** | **High** — backfill order FKs; MAR label snapshot alignment |
-| **Seed/import likelihood** | **Low** |
-| **Risks** | MAR/order ID drift (CRITICAL); billing capture regression (HIGH) |
-| **Exit criteria** | New orders write canonical FKs; cutover audit SAFE (conditional) for pilot tranche; legacy catalog IDs stable for in-flight orders |
+| **Objective** | Authorized reviewers safely approve/reject/defer/retire/supersede mapping candidates via REST + admin UI with full audit and metrics |
+| **Scope** | `MEDICATION_REVIEWER` / `MEDICATION_ADMIN` roles; `/medications/review/*` API; reviewer console; defer/assign/bulk; dashboard; EM pilot config (**disabled**, no import) |
+| **Data source** | Existing staging + candidates from Phases 3–5; Phase 4 verification service |
+| **Migration** | **YES** — `20261008120000_medication_phase_6_governed_review_operations` |
+| **Seed** | **YES** for Role rows (`seed-core-roles`) |
+| **Risks** | Accidental clinical activation (mitigated: confirm flags + Phase 4 guards); role sprawl (kept to two medication roles) |
+| **Exit criteria** | Phase 6 certifier PASS; `AutomaticVerificationEnabled=NO`; `ClinicalActivationEnabled=NO`; `EmPilotImportExecuted=NO`; prior phases still certified |
 | **Complexity** | **High** |
+| **Status** | Implemented — see [`medication-intelligence-phase-6-governed-review-operations.md`](./medication-intelligence-phase-6-governed-review-operations.md) |
 
-**Milestone B complete** when Phase 6 exit criteria met.
+**Depends on:** Phase 5 certification. Does **not** enable clinical search cutover or automatic real RxCUI activation.
 
-**Depends on:** Phase 5 certification (`RealRxNormDataSupported=YES`, `ClinicalActivationEnabled=NO`). Do not enable clinical search cutover without a separate certification.
+### Deferred after Phase 6 — Canonical ordering integration and order sentences
+
+Populate `OrderItem.medicationProductId` / `medicationPackageId` and structured order sentences. Formerly listed as Phase 6; now scheduled after governed review certification (clinical cutover remains separately certified).
 
 ---
 
@@ -254,7 +257,7 @@ Depends on Phase 7 for discharge reconciliation completeness.
 | 3 | Concept catalog import | High | Low | High | A |
 | 4 | Normalization + bilingual aliases | Med–High | Medium | High | A |
 | 5 | Enterprise search at scale | Medium | Low–Med | Medium | **A** |
-| 6 | Canonical ordering + order sentences | High | High | Low | **B** |
+| 6 | Governed review ops + admin API/UI | High | High | Low | Governance |
 | 7 | Prescription entity | High | High | — | **E** (partial) |
 | 8 | Medication reconciliation | High | High | — | Clinical continuity |
 | 9 | Licensed safety knowledge | Very High | Medium | High | **C** |
@@ -267,7 +270,7 @@ Depends on Phase 7 for discharge reconciliation completeness.
 
 1. **Do not skip Phase 2–4** before canonical search cutover (M1.5F) — documented NOT SAFE today.
 2. **Phase 9 (licensed safety)** requires vendor selection — do not fake DDI from JSON group IDs.
-3. **Phase 7–8** can overlap after Phase 6 but neither replaces canonical ordering foundation.
+3. **Canonical ordering** (deferred after Phase 6) remains a prerequisite before broad search/order cutover; Phase 7–8 neither replaces it.
 4. **Phase 10** partially deliverable in parallel with 6–9 for Haiti pilot inventory subset.
 5. **Phase 11** is documentation/certification only — no production deploy implied.
 
@@ -305,7 +308,7 @@ When Phase 1 live audit counts conflict with older `docs/medications/*` snapshot
 Medication Intelligence is **enterprise-certified** (Phase 11) when:
 
 - Curated catalog is searchable (EN/FR) with normalized identity (Phases 2–5)
-- Orders and MAR use canonical package FKs with structured sentences (Phase 6)
+- Governed RxNorm review platform is certified without clinical auto-activation (Phase 6); orders/MAR use canonical package FKs after the deferred ordering integration
 - Discharge Rx and med rec exist as first-class entities (Phases 7–8)
 - Licensed safety checks run at order time with audit (Phase 9)
 - NDC/HCPCS/inventory/MAR governance certifiers PASS (Phase 10)

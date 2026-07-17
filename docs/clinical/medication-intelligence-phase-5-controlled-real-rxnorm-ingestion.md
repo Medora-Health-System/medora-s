@@ -137,4 +137,4 @@ pnpm --filter @medora/api medication:certify:phase5
 
 ## Phase 6 recommendation
 
-**Governed RxNorm Review Operations, Admin API/UI, and Controlled Real Mapping Pilot** — only after Phase 5 certification. Still no broad clinical activation without a separate certification.
+**Done** — see [`medication-intelligence-phase-6-governed-review-operations.md`](./medication-intelligence-phase-6-governed-review-operations.md). Still no broad clinical activation without a separate certification.
