@@ -1,0 +1,40 @@
+{
+  "generatedAt": "2026-07-17T18:30:00.000Z",
+  "certification": "enterprise-localization",
+  "phase": 19,
+  "certifierScript": "clinical:i18n:enterprise-certify",
+  "pairs": [
+    {
+      "label": "Phase 18 psychiatric behavioral",
+      "enFile": "providerDocumentationPsychiatricBehavioralComplaintIntel.en.ts",
+      "frFile": "providerDocumentationPsychiatricBehavioralComplaintIntel.fr.ts",
+      "parityPass": true
+    },
+    {
+      "label": "Phase 16 toxicology",
+      "enFile": "providerDocumentationToxicologyComplaintIntel.en.ts",
+      "frFile": "providerDocumentationToxicologyComplaintIntel.fr.ts",
+      "parityPass": true
+    },
+    {
+      "label": "Phase 14 dermatology",
+      "enFile": "providerDocumentationDermatologyComplaintIntel.en.ts",
+      "frFile": "providerDocumentationDermatologyComplaintIntel.fr.ts",
+      "parityPass": true
+    },
+    {
+      "label": "Phase 17 OB/GYN urology",
+      "enFile": "providerDocumentationObGynUrologyComplaintIntel.en.ts",
+      "frFile": "providerDocumentationObGynUrologyComplaintIntel.fr.ts",
+      "parityPass": true
+    }
+  ],
+  "dischargeRegistryHashes": {
+    "en": "8a5f13e2f30da5f2ddbb0fa886e110f816477c05260633fb5b674e903d74a932",
+    "fr": "dec2ec8b4c6b568aa168e97832027f426695a9ec506d482166579d8a6c07cdb8"
+  },
+  "productUiLanguage": "fr",
+  "failures": [],
+  "notes": "Certifier checks EN/FR key parity for sample specialty namespaces. Full product UI French-only per medora-i18n rules. Crisis 911 copy localization deferred to facility ops.",
+  "pass": true
+}

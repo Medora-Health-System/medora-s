@@ -1,0 +1,159 @@
+{
+  "generatedAt": "2026-07-17T18:24:06.928Z",
+  "specialties": [
+    {
+      "key": "tendon_ligament",
+      "coverageSummaryFile": "tendon-coverage.json",
+      "summaryExists": true,
+      "summaryPass": null,
+      "summaryScopedCount": 1840,
+      "liveScopedCount": 2416,
+      "codesNotInEnterpriseUnion": []
+    },
+    {
+      "key": "crush_amputation_foreign_body",
+      "coverageSummaryFile": "fy2026-crush-amputation-foreign-body-coverage-summary.json",
+      "summaryExists": true,
+      "summaryPass": null,
+      "summaryScopedCount": null,
+      "liveScopedCount": 2232,
+      "codesNotInEnterpriseUnion": []
+    },
+    {
+      "key": "burn",
+      "coverageSummaryFile": "fy2026-burn-coverage-summary.json",
+      "summaryExists": true,
+      "summaryPass": null,
+      "summaryScopedCount": 2822,
+      "liveScopedCount": 2822,
+      "codesNotInEnterpriseUnion": []
+    },
+    {
+      "key": "penetrating_trauma",
+      "coverageSummaryFile": "fy2026-penetrating-trauma-coverage-summary.json",
+      "summaryExists": true,
+      "summaryPass": null,
+      "summaryScopedCount": 3702,
+      "liveScopedCount": 3702,
+      "codesNotInEnterpriseUnion": []
+    },
+    {
+      "key": "human_bite_high_risk_wound",
+      "coverageSummaryFile": "fy2026-human-bite-high-risk-wound-coverage-summary.json",
+      "summaryExists": true,
+      "summaryPass": true,
+      "summaryScopedCount": null,
+      "liveScopedCount": 441,
+      "codesNotInEnterpriseUnion": []
+    },
+    {
+      "key": "bites_contaminated_wounds",
+      "coverageSummaryFile": "fy2026-bites-contaminated-wounds-coverage-summary.json",
+      "summaryExists": true,
+      "summaryPass": true,
+      "summaryScopedCount": null,
+      "liveScopedCount": 733,
+      "codesNotInEnterpriseUnion": []
+    },
+    {
+      "key": "blast_polytrauma",
+      "coverageSummaryFile": "fy2026-blast-polytrauma-coverage-summary.json",
+      "summaryExists": true,
+      "summaryPass": null,
+      "summaryScopedCount": 394,
+      "liveScopedCount": 394,
+      "codesNotInEnterpriseUnion": []
+    },
+    {
+      "key": "spine_back",
+      "coverageSummaryFile": "fy2026-spine-back-coverage-summary.json",
+      "summaryExists": true,
+      "summaryPass": true,
+      "summaryScopedCount": 2006,
+      "liveScopedCount": 2006,
+      "codesNotInEnterpriseUnion": []
+    },
+    {
+      "key": "head_facial_trauma",
+      "coverageSummaryFile": "fy2026-head-facial-trauma-coverage-summary.json",
+      "summaryExists": true,
+      "summaryPass": true,
+      "summaryScopedCount": 1787,
+      "liveScopedCount": 1787,
+      "codesNotInEnterpriseUnion": []
+    },
+    {
+      "key": "eye_emergencies",
+      "coverageSummaryFile": "fy2026-eye-emergencies-coverage-summary.json",
+      "summaryExists": true,
+      "summaryPass": true,
+      "summaryScopedCount": 1376,
+      "liveScopedCount": 1376,
+      "codesNotInEnterpriseUnion": []
+    },
+    {
+      "key": "ent_emergencies",
+      "coverageSummaryFile": "fy2026-ent-emergencies-coverage-summary.json",
+      "summaryExists": true,
+      "summaryPass": true,
+      "summaryScopedCount": 437,
+      "liveScopedCount": 437,
+      "codesNotInEnterpriseUnion": []
+    },
+    {
+      "key": "soft_tissue_wound_infections",
+      "coverageSummaryFile": "fy2026-soft-tissue-wound-infections-coverage-summary.json",
+      "summaryExists": true,
+      "summaryPass": true,
+      "summaryScopedCount": null,
+      "liveScopedCount": 276,
+      "codesNotInEnterpriseUnion": []
+    },
+    {
+      "key": "dermatology",
+      "coverageSummaryFile": "fy2026-dermatology-coverage-summary.json",
+      "summaryExists": true,
+      "summaryPass": true,
+      "summaryScopedCount": 480,
+      "liveScopedCount": 480,
+      "codesNotInEnterpriseUnion": []
+    },
+    {
+      "key": "environmental_exposure",
+      "coverageSummaryFile": "fy2026-environmental-exposure-coverage-summary.json",
+      "summaryExists": true,
+      "summaryPass": true,
+      "summaryScopedCount": 420,
+      "liveScopedCount": 420,
+      "codesNotInEnterpriseUnion": []
+    },
+    {
+      "key": "toxicology_envenomation",
+      "coverageSummaryFile": "fy2026-toxicology-envenomation-coverage-summary.json",
+      "summaryExists": true,
+      "summaryPass": true,
+      "summaryScopedCount": 5280,
+      "liveScopedCount": 5280,
+      "codesNotInEnterpriseUnion": []
+    },
+    {
+      "key": "obgyn_urology",
+      "coverageSummaryFile": "fy2026-obgyn-urology-coverage-summary.json",
+      "summaryExists": true,
+      "summaryPass": true,
+      "summaryScopedCount": null,
+      "liveScopedCount": 3157,
+      "codesNotInEnterpriseUnion": []
+    },
+    {
+      "key": "psychiatric_behavioral",
+      "coverageSummaryFile": "fy2026-psychiatric-behavioral-coverage-summary.json",
+      "summaryExists": true,
+      "summaryPass": true,
+      "summaryScopedCount": 679,
+      "liveScopedCount": 679,
+      "codesNotInEnterpriseUnion": []
+    }
+  ],
+  "pass": true
+}

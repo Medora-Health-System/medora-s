@@ -1,0 +1,26 @@
+{
+  "generatedAt": "2026-07-17T18:30:00.000Z",
+  "certification": "enterprise-record-separation",
+  "phase": 19,
+  "certifierScript": "clinical:record-separation:enterprise-certify",
+  "scannedModules": null,
+  "autoOrderViolations": [],
+  "autoOrderViolationCount": 0,
+  "patternsScanned": [
+    "createOrder",
+    "postOrder",
+    "autoOrder:true",
+    "submitOrder",
+    "ordersService.create",
+    "/api/orders fetch"
+  ],
+  "separationDomains": [
+    "medication_orders",
+    "procedure_orders",
+    "lab_imaging_orders",
+    "consult_orders"
+  ],
+  "failures": [],
+  "notes": "Clinical intelligence modules must not invoke order APIs. Clinicians place orders through standard Medora order workflows. Scanned module count is runtime-derived.",
+  "pass": true
+}

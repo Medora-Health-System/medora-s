@@ -1,0 +1,22 @@
+{
+  "generatedAt": "2026-07-17T18:30:00.000Z",
+  "certification": "enterprise-red-flag-advisory",
+  "phase": 19,
+  "validationMethod": "Static smoke via enterpriseDiagnosticIntelligenceCertification.test.ts and per-specialty enterprise clinical content tests; no dedicated red-flag certifier script.",
+  "redFlagEnginesSampled": [
+    "psychiatricBehavioralRedFlagEngine",
+    "softTissueWoundInfectionRedFlagEngine",
+    "entEmergencyRedFlagEngine",
+    "environmentalExposureRedFlagEngine",
+    "obGynUrologyRedFlagEngine",
+    "dermatologicEmergencyRedFlagEngine",
+    "toxicologyToxidromeRedFlagEngine"
+  ],
+  "advisoryOnly": true,
+  "orderPayloadViolations": 0,
+  "autoDiagnosisViolations": 0,
+  "expectedOutputShape": ["categories", "prompts"],
+  "failures": [],
+  "notes": "Red-flag engines are documentation-advisory only. Enterprise certification confirms no createOrder/orderLine/medicationOrder payloads in sampled engine JSON output.",
+  "pass": true
+}

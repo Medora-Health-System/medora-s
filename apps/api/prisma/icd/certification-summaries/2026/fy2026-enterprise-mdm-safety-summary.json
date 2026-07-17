@@ -1,0 +1,27 @@
+{
+  "generatedAt": "2026-07-17T18:30:00.000Z",
+  "certification": "enterprise-mdm-safety",
+  "phase": 19,
+  "certifierScript": "clinical:mdm:enterprise-certify",
+  "scannedClinicalIntelligenceModules": null,
+  "unsupportedGeneratorHits": 0,
+  "forbiddenPatternsScanned": [
+    "generateMdmFromAi",
+    "openai.chat.completions",
+    "anthropic.messages",
+    "autoGenerateMdm",
+    "llmGenerate"
+  ],
+  "forbiddenAutoMdmPhrasesBlockedInTests": [
+    "medically cleared",
+    "troponin negative",
+    "lungs clear",
+    "appendicitis ruled out",
+    "pe ruled out",
+    "no acute process"
+  ],
+  "flagged": [],
+  "failures": [],
+  "notes": "Scanned module count is runtime-derived from *ClinicalIntelligence.ts files. Phase 19 confirms zero unsupported LLM/AI MDM generator hits in production intel modules.",
+  "pass": true
+}

@@ -1,0 +1,152 @@
+{
+  "generatedAt": "2026-07-17T18:24:06.928Z",
+  "releaseVersion": "FY2026",
+  "enterpriseUniqueScopedBillable": 26371,
+  "specialtyScopedCounts": {
+    "toxicology_envenomation": 5280,
+    "soft_tissue_wound_infections": 276,
+    "human_bite_high_risk_wound": 441,
+    "bites_contaminated_wounds": 733,
+    "blast_polytrauma": 394,
+    "penetrating_trauma": 3702,
+    "burn": 2822,
+    "crush_amputation_foreign_body": 2232,
+    "tendon_ligament": 2416,
+    "head_facial_trauma": 1787,
+    "spine_back": 2006,
+    "eye_emergencies": 1376,
+    "ent_emergencies": 437,
+    "dermatology": 480,
+    "environmental_exposure": 420,
+    "obgyn_urology": 3157,
+    "psychiatric_behavioral": 679
+  },
+  "ownershipPriority": [
+    {
+      "code": "A22.0",
+      "primaryOwner": "dermatology",
+      "primaryFamilyId": "derm_cutaneous_anthrax"
+    },
+    {
+      "code": "A46",
+      "primaryOwner": "soft_tissue_wound_infections",
+      "primaryFamilyId": "sti_erysipelas"
+    },
+    {
+      "code": "A48.0",
+      "primaryOwner": "soft_tissue_wound_infections",
+      "primaryFamilyId": "sti_gas_gangrene"
+    },
+    {
+      "code": "A59.00",
+      "primaryOwner": "obgyn_urology",
+      "primaryFamilyId": "ob_gyn_a59"
+    },
+    {
+      "code": "A59.01",
+      "primaryOwner": "obgyn_urology",
+      "primaryFamilyId": "ob_gyn_a59"
+    },
+    {
+      "code": "A59.02",
+      "primaryOwner": "obgyn_urology",
+      "primaryFamilyId": "ob_gyn_a59"
+    },
+    {
+      "code": "A59.03",
+      "primaryOwner": "obgyn_urology",
+      "primaryFamilyId": "ob_gyn_a59"
+    },
+    {
+      "code": "A59.09",
+      "primaryOwner": "obgyn_urology",
+      "primaryFamilyId": "ob_gyn_a59"
+    },
+    {
+      "code": "A60.00",
+      "primaryOwner": "obgyn_urology",
+      "primaryFamilyId": "ob_gyn_a60"
+    },
+    {
+      "code": "A60.01",
+      "primaryOwner": "obgyn_urology",
+      "primaryFamilyId": "ob_gyn_a60"
+    },
+    {
+      "code": "A60.02",
+      "primaryOwner": "obgyn_urology",
+      "primaryFamilyId": "ob_gyn_a60"
+    },
+    {
+      "code": "A60.03",
+      "primaryOwner": "obgyn_urology",
+      "primaryFamilyId": "ob_gyn_a60"
+    },
+    {
+      "code": "A60.04",
+      "primaryOwner": "obgyn_urology",
+      "primaryFamilyId": "ob_gyn_a60"
+    },
+    {
+      "code": "A60.09",
+      "primaryOwner": "obgyn_urology",
+      "primaryFamilyId": "ob_gyn_a60"
+    },
+    {
+      "code": "A60.1",
+      "primaryOwner": "obgyn_urology",
+      "primaryFamilyId": "ob_gyn_a60"
+    },
+    {
+      "code": "A60.9",
+      "primaryOwner": "obgyn_urology",
+      "primaryFamilyId": "ob_gyn_a60"
+    },
+    {
+      "code": "B00.0",
+      "primaryOwner": "dermatology",
+      "primaryFamilyId": "derm_viral_hsv"
+    },
+    {
+      "code": "B00.1",
+      "primaryOwner": "dermatology",
+      "primaryFamilyId": "derm_viral_hsv"
+    },
+    {
+      "code": "B00.2",
+      "primaryOwner": "dermatology",
+      "primaryFamilyId": "derm_viral_hsv"
+    },
+    {
+      "code": "B00.3",
+      "primaryOwner": "dermatology",
+      "primaryFamilyId": "derm_viral_hsv"
+    },
+    {
+      "code": "B00.4",
+      "primaryOwner": "dermatology",
+      "primaryFamilyId": "derm_viral_hsv"
+    },
+    {
+      "code": "B00.50",
+      "primaryOwner": "dermatology",
+      "primaryFamilyId": "derm_viral_hsv"
+    },
+    {
+      "code": "B00.51",
+      "primaryOwner": "dermatology",
+      "primaryFamilyId": "derm_viral_hsv"
+    },
+    {
+      "code": "B00.52",
+      "primaryOwner": "dermatology",
+      "primaryFamilyId": "derm_viral_hsv"
+    },
+    {
+      "code": "B00.53",
+      "primaryOwner": "dermatology",
+      "primaryFamilyId": "derm_viral_hsv"
+    }
+  ],
+  "overlapNotes": "Specialty scoped counts may exceed enterprise unique due to intentional overlap; union deduplicates by ownership priority."
+}

@@ -1,0 +1,429 @@
+{
+  "generatedAt": "2026-07-17T18:28:54.293Z",
+  "certification": "enterprise-diagnostic-intelligence-search",
+  "queryCount": 70,
+  "failures": [],
+  "queries": [
+    {
+      "q": "necrotizing fasciitis",
+      "resultCount": 1,
+      "topCode": "M72.6",
+      "pass": true
+    },
+    {
+      "q": "fasciite nécrosante",
+      "resultCount": 1,
+      "topCode": "M72.6",
+      "pass": true
+    },
+    {
+      "q": "Fournier gangrene",
+      "resultCount": 1,
+      "topCode": "N49.3",
+      "pass": true
+    },
+    {
+      "q": "gangrène de Fournier",
+      "resultCount": 1,
+      "topCode": "N49.3",
+      "pass": true
+    },
+    {
+      "q": "gas gangrene",
+      "resultCount": 1,
+      "topCode": "A48.0",
+      "pass": true
+    },
+    {
+      "q": "facial cellulitis",
+      "resultCount": 1,
+      "topCode": "L03.211",
+      "pass": true
+    },
+    {
+      "q": "cellulite faciale",
+      "resultCount": 1,
+      "topCode": "L03.211",
+      "pass": true
+    },
+    {
+      "q": "cutaneous abscess",
+      "resultCount": 27,
+      "topCode": "L02.01",
+      "pass": true
+    },
+    {
+      "q": "surgical site infection",
+      "resultCount": 16,
+      "topCode": "T81.40XA",
+      "pass": true
+    },
+    {
+      "q": "wound dehiscence",
+      "resultCount": 6,
+      "topCode": "T81.30XA",
+      "pass": true
+    },
+    {
+      "q": "carbon monoxide poisoning",
+      "resultCount": 50,
+      "topCode": "T58.11XA",
+      "pass": true
+    },
+    {
+      "q": "intoxication au monoxyde de carbone",
+      "resultCount": 50,
+      "topCode": "T58.11XA",
+      "pass": true
+    },
+    {
+      "q": "acetaminophen overdose",
+      "resultCount": 18,
+      "topCode": "T39.1X2A",
+      "pass": true
+    },
+    {
+      "q": "opioid overdose",
+      "resultCount": 50,
+      "topCode": "T37.4X1A",
+      "pass": true
+    },
+    {
+      "q": "snake envenomation",
+      "resultCount": 36,
+      "topCode": "T63.002A",
+      "pass": true
+    },
+    {
+      "q": "envenimation par serpent",
+      "resultCount": 36,
+      "topCode": "T63.002A",
+      "pass": true
+    },
+    {
+      "q": "scorpion sting",
+      "resultCount": 12,
+      "topCode": "T63.2X2A",
+      "pass": true
+    },
+    {
+      "q": "serotonin syndrome",
+      "resultCount": 1,
+      "topCode": "G90.81",
+      "pass": true
+    },
+    {
+      "q": "intentional overdose",
+      "resultCount": 50,
+      "topCode": "X78.1XXA",
+      "pass": true
+    },
+    {
+      "q": "heat stroke",
+      "resultCount": 6,
+      "topCode": "T67.01XA",
+      "pass": true
+    },
+    {
+      "q": "hypothermia",
+      "resultCount": 9,
+      "topCode": "T68.XXXA",
+      "pass": true
+    },
+    {
+      "q": "near drowning",
+      "resultCount": 3,
+      "topCode": "T75.1XXA",
+      "pass": true
+    },
+    {
+      "q": "ectopic pregnancy",
+      "resultCount": 9,
+      "topCode": "P01.4",
+      "pass": true
+    },
+    {
+      "q": "grossesse ectopique",
+      "resultCount": 9,
+      "topCode": "P01.4",
+      "pass": true
+    },
+    {
+      "q": "kidney stone",
+      "resultCount": 3,
+      "topCode": "N20.0",
+      "pass": true
+    },
+    {
+      "q": "calcul du rein",
+      "resultCount": 2,
+      "topCode": "N20.0",
+      "pass": true
+    },
+    {
+      "q": "testicular torsion",
+      "resultCount": 1,
+      "topCode": "N44.00",
+      "pass": true
+    },
+    {
+      "q": "torsion testiculaire",
+      "resultCount": 1,
+      "topCode": "N44.00",
+      "pass": true
+    },
+    {
+      "q": "pyelonephritis",
+      "resultCount": 5,
+      "topCode": "N10",
+      "pass": true
+    },
+    {
+      "q": "postpartum hemorrhage",
+      "resultCount": 2,
+      "topCode": "O72.1",
+      "pass": true
+    },
+    {
+      "q": "hémorragie post-partum",
+      "resultCount": 2,
+      "topCode": "O72.1",
+      "pass": true
+    },
+    {
+      "q": "suicidal ideation",
+      "resultCount": 1,
+      "topCode": "R45.851",
+      "pass": true
+    },
+    {
+      "q": "idées suicidaires",
+      "resultCount": 1,
+      "topCode": "R45.851",
+      "pass": true
+    },
+    {
+      "q": "suicide attempt",
+      "resultCount": 3,
+      "topCode": "T14.91XA",
+      "pass": true
+    },
+    {
+      "q": "tentative de suicide",
+      "resultCount": 3,
+      "topCode": "T14.91XA",
+      "pass": true
+    },
+    {
+      "q": "delirium",
+      "resultCount": 37,
+      "topCode": "F05",
+      "pass": true
+    },
+    {
+      "q": "délirium",
+      "resultCount": 37,
+      "topCode": "F10.131",
+      "pass": true
+    },
+    {
+      "q": "postpartum depression",
+      "resultCount": 1,
+      "topCode": "F53.0",
+      "pass": true
+    },
+    {
+      "q": "acute psychosis",
+      "resultCount": 1,
+      "topCode": "F29",
+      "pass": true
+    },
+    {
+      "q": "catatonia",
+      "resultCount": 2,
+      "topCode": "F20.2",
+      "pass": true
+    },
+    {
+      "q": "refusal of treatment",
+      "resultCount": 2,
+      "topCode": "Z53.29",
+      "pass": true
+    },
+    {
+      "q": "Stevens-Johnson syndrome",
+      "resultCount": 2,
+      "topCode": "L51.1",
+      "pass": true
+    },
+    {
+      "q": "syndrome de Stevens-Johnson",
+      "resultCount": 2,
+      "topCode": "L51.1",
+      "pass": true
+    },
+    {
+      "q": "toxic epidermal necrolysis",
+      "resultCount": 2,
+      "topCode": "L51.2",
+      "pass": true
+    },
+    {
+      "q": "epistaxis",
+      "resultCount": 1,
+      "topCode": "R04.0",
+      "pass": true
+    },
+    {
+      "q": "épistaxis",
+      "resultCount": 1,
+      "topCode": "R04.0",
+      "pass": true
+    },
+    {
+      "q": "peritonsillar abscess",
+      "resultCount": 1,
+      "topCode": "J36",
+      "pass": true
+    },
+    {
+      "q": "mastoiditis",
+      "resultCount": 24,
+      "topCode": "H75.03",
+      "pass": true
+    },
+    {
+      "q": "retinal detachment",
+      "resultCount": 50,
+      "topCode": "H33.012",
+      "pass": true
+    },
+    {
+      "q": "central retinal artery occlusion",
+      "resultCount": 4,
+      "topCode": "H34.12",
+      "pass": true
+    },
+    {
+      "q": "endophthalmitis",
+      "resultCount": 10,
+      "topCode": "H44.19",
+      "pass": true
+    },
+    {
+      "q": "subdural hematoma",
+      "resultCount": 30,
+      "topCode": "I62.00",
+      "pass": true
+    },
+    {
+      "q": "concussion",
+      "resultCount": 25,
+      "topCode": "S06.0X1A",
+      "pass": true
+    },
+    {
+      "q": "cauda equina syndrome",
+      "resultCount": 1,
+      "topCode": "G83.4",
+      "pass": true
+    },
+    {
+      "q": "cervical spine fracture",
+      "resultCount": 50,
+      "topCode": "S12.101A",
+      "pass": true
+    },
+    {
+      "q": "lumbar radiculopathy",
+      "resultCount": 4,
+      "topCode": "M54.16",
+      "pass": true
+    },
+    {
+      "q": "human bite",
+      "resultCount": 6,
+      "topCode": "Y04.1XXA",
+      "pass": true
+    },
+    {
+      "q": "morsure humaine",
+      "resultCount": 6,
+      "topCode": "Y04.1XXA",
+      "pass": true
+    },
+    {
+      "q": "animal bite",
+      "resultCount": 50,
+      "topCode": "W54.0XXA",
+      "pass": true
+    },
+    {
+      "q": "hand burn",
+      "resultCount": 50,
+      "topCode": "T23.392A",
+      "pass": true
+    },
+    {
+      "q": "explosion of blasting material",
+      "resultCount": 3,
+      "topCode": "W40.0XXA",
+      "pass": true
+    },
+    {
+      "q": "foreign body eye",
+      "resultCount": 18,
+      "topCode": "T15.02XA",
+      "pass": true
+    },
+    {
+      "q": "crush injury",
+      "resultCount": 50,
+      "topCode": "S28.0XXA",
+      "pass": true
+    },
+    {
+      "q": "Achilles tendon rupture",
+      "resultCount": 39,
+      "topCode": "S86.012A",
+      "pass": true
+    },
+    {
+      "q": "ACL tear",
+      "resultCount": 12,
+      "topCode": "S83.512A",
+      "pass": true
+    },
+    {
+      "q": "open fracture forearm",
+      "resultCount": 50,
+      "topCode": "S52.90XF",
+      "pass": true
+    },
+    {
+      "q": "penetrating chest wound",
+      "resultCount": 50,
+      "topCode": "S20.301A",
+      "pass": true
+    },
+    {
+      "q": "traumatic amputation finger",
+      "resultCount": 50,
+      "topCode": "M66.145",
+      "pass": true
+    },
+    {
+      "q": "facial fracture",
+      "resultCount": 50,
+      "topCode": "S02.3XXA",
+      "pass": true
+    },
+    {
+      "q": "spinal cord injury cervical",
+      "resultCount": 50,
+      "topCode": "S14.121A",
+      "pass": true
+    }
+  ],
+  "pass": true
+}

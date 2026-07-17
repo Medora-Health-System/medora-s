@@ -1,0 +1,25 @@
+{
+  "generatedAt": "2026-07-17T18:30:00.000Z",
+  "certification": "enterprise-discharge-governance",
+  "phase": 19,
+  "certifierScript": "clinical:discharge:enterprise-certify",
+  "uniqueDischargeFamilyCount": 98,
+  "prefixEntryCount": null,
+  "minimumFamilyGate": 30,
+  "webModulesPresent": 3,
+  "webModulesRequired": [
+    "providerDischargeConditionFamilyResolver.ts",
+    "providerDischargeTemplateRegistry.ts",
+    "providerDischargeEnterpriseCertification.ts"
+  ],
+  "governanceSnapshotHashes": {
+    "en": "8a5f13e2f30da5f2ddbb0fa886e110f816477c05260633fb5b674e903d74a932",
+    "fr": "dec2ec8b4c6b568aa168e97832027f426695a9ec506d482166579d8a6c07cdb8"
+  },
+  "conditionFamilyResolverDefault": false,
+  "routingProbePassCount": 15,
+  "routingProbeTotal": 15,
+  "failures": [],
+  "notes": "Discharge suggested text centralized in providerDischargeTemplateRegistry.ts. EN/FR hashes pinned in edDisposition19Y.test.ts. Condition-family resolver feature flag defaults off.",
+  "pass": true
+}

@@ -1,0 +1,40 @@
+{
+  "generatedAt": "2026-07-17T18:24:06.928Z",
+  "releaseVersion": "FY2026",
+  "enterprise": {
+    "scopedUniqueBillable": 26371,
+    "presentInMedora": 26371,
+    "missingCodes": [],
+    "descriptionMismatches": [],
+    "duplicateActiveCodes": [],
+    "invalidSelectableHeaders": [],
+    "orphanedActiveCodes": [],
+    "orphanedActiveCount": 0
+  },
+  "specialtyScopedCounts": {
+    "toxicology_envenomation": 5280,
+    "soft_tissue_wound_infections": 276,
+    "human_bite_high_risk_wound": 441,
+    "bites_contaminated_wounds": 733,
+    "blast_polytrauma": 394,
+    "penetrating_trauma": 3702,
+    "burn": 2822,
+    "crush_amputation_foreign_body": 2232,
+    "tendon_ligament": 2416,
+    "head_facial_trauma": 1787,
+    "spine_back": 2006,
+    "eye_emergencies": 1376,
+    "ent_emergencies": 437,
+    "dermatology": 480,
+    "environmental_exposure": 420,
+    "obgyn_urology": 3157,
+    "psychiatric_behavioral": 679
+  },
+  "specialtyReconciliationFailures": {
+    "claimNotInUnion": [],
+    "summaryPassFalse": []
+  },
+  "certification": {
+    "pass": true
+  }
+}

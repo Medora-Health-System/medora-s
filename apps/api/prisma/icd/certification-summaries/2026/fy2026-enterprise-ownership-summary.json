@@ -1,0 +1,125 @@
+{
+  "generatedAt": "2026-07-17T18:18:41.456Z",
+  "probeCount": 13,
+  "probesPassed": 13,
+  "probesFailed": 0,
+  "probeResults": [
+    {
+      "id": "fournier_n493",
+      "codePattern": "N49.3",
+      "resolvedCode": "N49.3",
+      "primaryOwner": "soft_tissue_wound_infections",
+      "primaryFamilyId": "sti_fournier",
+      "pass": true,
+      "notes": "Fournier → soft_tissue / nsti before OB/uro N49*"
+    },
+    {
+      "id": "kidney_stone_n20",
+      "codePattern": "N20",
+      "resolvedCode": "N20.0",
+      "primaryOwner": "obgyn_urology",
+      "primaryFamilyId": "ob_uro_n20",
+      "pass": true,
+      "notes": "N20 → urology/kidney_stone"
+    },
+    {
+      "id": "delirium_f05",
+      "codePattern": "F05",
+      "resolvedCode": "F05",
+      "primaryOwner": "psychiatric_behavioral",
+      "primaryFamilyId": "psych_f05",
+      "pass": true,
+      "notes": "F05 delirium (medical/neuro) not psychosis"
+    },
+    {
+      "id": "postpartum_f531",
+      "codePattern": "F53.1",
+      "resolvedCode": "F53.1",
+      "primaryOwner": "psychiatric_behavioral",
+      "primaryFamilyId": "psych_f53",
+      "pass": true,
+      "notes": "F53.1 postpartum_psychiatric; OB secondary for O90* complications only"
+    },
+    {
+      "id": "suicidal_ideation_r45851",
+      "codePattern": "R45.851",
+      "resolvedCode": "R45.851",
+      "primaryOwner": "psychiatric_behavioral",
+      "primaryFamilyId": "psych_suicide_r45851",
+      "pass": true
+    },
+    {
+      "id": "suicide_attempt_t1491",
+      "codePattern": "T14.91",
+      "resolvedCode": "T14.91XA",
+      "primaryOwner": "psychiatric_behavioral",
+      "primaryFamilyId": "psych_suicide_t1491",
+      "pass": true
+    },
+    {
+      "id": "intentional_t40",
+      "codePattern": "T40",
+      "resolvedCode": "T40.0X1A",
+      "primaryOwner": "toxicology_envenomation",
+      "primaryFamilyId": "tox_med_t40",
+      "pass": true,
+      "notes": "T40.* intentional — tox ownership for poisoning mechanism"
+    },
+    {
+      "id": "carbon_monoxide_t58",
+      "codePattern": "T58",
+      "resolvedCode": "T58.01XA",
+      "primaryOwner": "toxicology_envenomation",
+      "primaryFamilyId": "tox_nonmed_t58",
+      "pass": true,
+      "notes": "T58 CO before environmental heat/inhalation overlap"
+    },
+    {
+      "id": "envenomation_t63",
+      "codePattern": "T63",
+      "resolvedCode": "T63.001A",
+      "primaryOwner": "toxicology_envenomation",
+      "primaryFamilyId": "tox_envenomation_t63",
+      "pass": true
+    },
+    {
+      "id": "ectopic_o00",
+      "codePattern": "O00",
+      "resolvedCode": "O00.00",
+      "primaryOwner": "obgyn_urology",
+      "primaryFamilyId": "ob_obstetric_o00",
+      "pass": true
+    },
+    {
+      "id": "testicular_torsion_n44",
+      "codePattern": "N44",
+      "resolvedCode": "N44.00",
+      "primaryOwner": "obgyn_urology",
+      "primaryFamilyId": "ob_uro_n44",
+      "pass": true
+    },
+    {
+      "id": "heat_exhaustion_t674",
+      "codePattern": "T67.4",
+      "resolvedCode": "T67.4XXA",
+      "primaryOwner": "environmental_exposure",
+      "primaryFamilyId": "env_heat_illness_t67",
+      "pass": true,
+      "notes": "Heat illness env before generic tox"
+    },
+    {
+      "id": "necrotizing_m726",
+      "codePattern": "M72.6",
+      "resolvedCode": "M72.6",
+      "primaryOwner": "soft_tissue_wound_infections",
+      "primaryFamilyId": "sti_necrotizing_fasciitis",
+      "pass": true
+    }
+  ],
+  "failures": [],
+  "conflictingPrimaryOwners": [],
+  "enterpriseUniqueScoped": 26371,
+  "certification": {
+    "pass": true
+  }
+}

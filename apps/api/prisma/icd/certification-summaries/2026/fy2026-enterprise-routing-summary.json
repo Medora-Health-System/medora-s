@@ -1,0 +1,117 @@
+{
+  "generatedAt": "2026-07-17T18:18:44.845Z",
+  "uniqueDischargeFamilyCount": 98,
+  "probeCount": 15,
+  "unexplainedRoutingFallbacks": [],
+  "probeResults": [
+    {
+      "label": "Fournier gangrene",
+      "code": "N49.3",
+      "expectedFamily": "necrotizing_soft_tissue_infection_post_acute",
+      "resolvedFamily": "necrotizing_soft_tissue_infection_post_acute",
+      "pass": true
+    },
+    {
+      "label": "Kidney stone",
+      "code": "N20.0",
+      "expectedFamily": "kidney_stone",
+      "resolvedFamily": "kidney_stone",
+      "pass": true
+    },
+    {
+      "label": "Delirium",
+      "code": "F05.9",
+      "expectedFamily": "delirium_post_acute_v1",
+      "resolvedFamily": "delirium_post_acute_v1",
+      "pass": true
+    },
+    {
+      "label": "Postpartum psychiatric",
+      "code": "F53.1",
+      "expectedFamily": "postpartum_psychiatric_crisis_post_acute_v1",
+      "resolvedFamily": "postpartum_psychiatric_crisis_post_acute_v1",
+      "pass": true
+    },
+    {
+      "label": "Suicidal ideation",
+      "code": "R45.851",
+      "expectedFamily": "suicidal_ideation_post_assessment_v1",
+      "resolvedFamily": "suicidal_ideation_post_assessment_v1",
+      "pass": true
+    },
+    {
+      "label": "Suicide attempt",
+      "code": "T14.91",
+      "expectedFamily": "suicide_attempt_post_acute_v1",
+      "resolvedFamily": "suicide_attempt_post_acute_v1",
+      "pass": true
+    },
+    {
+      "label": "Medication poisoning",
+      "code": "T40.0X1A",
+      "expectedFamily": "tox_medication_poisoning",
+      "resolvedFamily": "tox_medication_poisoning",
+      "pass": true
+    },
+    {
+      "label": "Carbon monoxide",
+      "code": "T58.01XA",
+      "expectedFamily": "tox_nonmedicinal",
+      "resolvedFamily": "tox_nonmedicinal",
+      "pass": true
+    },
+    {
+      "label": "Envenomation",
+      "code": "T63.001A",
+      "expectedFamily": "tox_envenomation",
+      "resolvedFamily": "tox_envenomation",
+      "pass": true
+    },
+    {
+      "label": "Ectopic pregnancy",
+      "code": "O00.101",
+      "expectedFamily": "obgyn_ectopic_pregnancy",
+      "resolvedFamily": "obgyn_ectopic_pregnancy",
+      "pass": true
+    },
+    {
+      "label": "Testicular torsion",
+      "code": "N44.00",
+      "expectedFamily": "urology_testicular_torsion",
+      "resolvedFamily": "urology_testicular_torsion",
+      "pass": true
+    },
+    {
+      "label": "Heat exhaustion",
+      "code": "T67.4XXA",
+      "expectedFamily": "env_heat_illness",
+      "resolvedFamily": "env_heat_illness",
+      "pass": true
+    },
+    {
+      "label": "Necrotizing fasciitis",
+      "code": "M72.6",
+      "expectedFamily": "necrotizing_soft_tissue_infection_post_acute",
+      "resolvedFamily": "necrotizing_soft_tissue_infection_post_acute",
+      "pass": true
+    },
+    {
+      "label": "Penetrating trauma chest",
+      "code": "S21.101A",
+      "expectedFamily": "trauma_penetrating_chest",
+      "resolvedFamily": "trauma_penetrating_chest",
+      "pass": true
+    },
+    {
+      "label": "Burn hand",
+      "code": "T23.012A",
+      "expectedFamily": "trauma_burn_hand",
+      "resolvedFamily": "trauma_burn_hand",
+      "pass": true
+    }
+  ],
+  "probeFailures": [],
+  "certification": {
+    "pass": true
+  }
+}

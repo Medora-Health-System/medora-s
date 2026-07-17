@@ -1,0 +1,28 @@
+{
+  "generatedAt": "2026-07-17T18:30:00.000Z",
+  "certification": "enterprise-composite-guidance",
+  "phase": 19,
+  "certifierScript": "clinical:composite-guidance:enterprise-certify",
+  "requiredModules": 8,
+  "missingModules": [],
+  "goldStandardModuleCount": null,
+  "goldStandardModulesVerified": [
+    "providerDocumentationSoftTissueWoundInfectionIntelGoldStandard.ts",
+    "providerDocumentationToxicologyIntelGoldStandard.ts",
+    "providerDocumentationPsychiatricBehavioralIntelGoldStandard.ts"
+  ],
+  "duplicateKeyGuardPresent": true,
+  "webTests": [
+    "enterpriseCompositeGuidanceCertification.test.ts"
+  ],
+  "compositeScenariosVerified": [
+    "intentional_od_plus_suicidal_ideation",
+    "delirium_plus_agitation",
+    "postpartum_psychosis_plus_insomnia",
+    "fournier_plus_scrotal_pain",
+    "suicide_attempt_plus_self_inflicted_injury"
+  ],
+  "failures": [],
+  "notes": "Composite composers deduplicate return precautions. Gold-standard module count varies by repo scan; certifier checks required intel modules and duplicate-key guards.",
+  "pass": true
+}

@@ -1,0 +1,34 @@
+{
+  "generatedAt": "2026-07-17T18:30:00.000Z",
+  "certification": "enterprise-performance-advisory",
+  "phase": 19,
+  "pass": true,
+  "benchmarkScope": "advisory-only",
+  "ciEnforced": false,
+  "coldStartMeasured": false,
+  "warmCacheMeasured": false,
+  "notes": "Full p99 ICD search and template-resolution benchmarks are advisory in Phase 19. Cold/warm cache behavior is not measured in CI certification pipeline. No performance regression gate blocks merge on latency alone.",
+  "advisoryThresholds": {
+    "icdSearchP99Ms": {
+      "target": 500,
+      "enforced": false,
+      "rationale": "Clinic MVP target for interactive diagnosis search; not CI-gated in Phase 19"
+    },
+    "dischargeTemplateResolveP99Ms": {
+      "target": 50,
+      "enforced": false,
+      "rationale": "In-memory registry resolution; expected sub-millisecond; formal benchmark deferred"
+    },
+    "complaintIntelChipRenderP99Ms": {
+      "target": 200,
+      "enforced": false,
+      "rationale": "Documentation workspace render; monitor post-deploy if needed"
+    }
+  },
+  "recommendedPostDeployMonitoring": [
+    "ICD catalog search latency by query length",
+    "Discharge card materialization time at disposition",
+    "Template picker initial load on low-resource devices"
+  ],
+  "failures": []
+}

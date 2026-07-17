@@ -1,0 +1,427 @@
+{
+  "generatedAt": "2026-07-17T18:24:10.713Z",
+  "totalVisibleTemplates": 172,
+  "inventoriedAdaptiveTemplates": 59,
+  "entries": [
+    {
+      "id": "back_pain_complaint_v1",
+      "phase": "injury",
+      "batch": "injury_msk_adaptive",
+      "titleEnKey": "providerDocumentationWorkspace.template_back_pain_complaint",
+      "titleFrKey": "providerDocumentationWorkspace.template_back_pain_complaint"
+    },
+    {
+      "id": "neck_pain_complaint_v1",
+      "phase": "injury",
+      "batch": "injury_msk_adaptive",
+      "titleEnKey": "providerDocumentationWorkspace.template_neck_pain_complaint",
+      "titleFrKey": "providerDocumentationWorkspace.template_neck_pain_complaint"
+    },
+    {
+      "id": "shoulder_injury_complaint_v1",
+      "phase": "injury",
+      "batch": "injury_msk_adaptive",
+      "titleEnKey": "providerDocumentationWorkspace.template_shoulder_injury_complaint",
+      "titleFrKey": "providerDocumentationWorkspace.template_shoulder_injury_complaint"
+    },
+    {
+      "id": "knee_injury_complaint_v1",
+      "phase": "injury",
+      "batch": "injury_msk_adaptive",
+      "titleEnKey": "providerDocumentationWorkspace.template_knee_injury_complaint",
+      "titleFrKey": "providerDocumentationWorkspace.template_knee_injury_complaint"
+    },
+    {
+      "id": "ankle_foot_injury_complaint_v1",
+      "phase": "injury",
+      "batch": "injury_msk_adaptive",
+      "titleEnKey": "providerDocumentationWorkspace.template_ankle_foot_injury_complaint",
+      "titleFrKey": "providerDocumentationWorkspace.template_ankle_foot_injury_complaint"
+    },
+    {
+      "id": "hip_pain_injury_complaint_v1",
+      "phase": "injury",
+      "batch": "injury_msk_adaptive",
+      "titleEnKey": "providerDocumentationWorkspace.template_hip_pain_injury_complaint",
+      "titleFrKey": "providerDocumentationWorkspace.template_hip_pain_injury_complaint"
+    },
+    {
+      "id": "hand_wrist_injury_complaint_v1",
+      "phase": "injury",
+      "batch": "injury_msk_adaptive",
+      "titleEnKey": "providerDocumentationWorkspace.template_hand_wrist_injury_complaint",
+      "titleFrKey": "providerDocumentationWorkspace.template_hand_wrist_injury_complaint"
+    },
+    {
+      "id": "fall_trauma_complaint_v1",
+      "phase": "injury",
+      "batch": "injury_msk_adaptive",
+      "titleEnKey": "providerDocumentationWorkspace.template_fall_trauma_complaint",
+      "titleFrKey": "providerDocumentationWorkspace.template_fall_trauma_complaint"
+    },
+    {
+      "id": "minor_head_injury_complaint_v1",
+      "phase": "injury",
+      "batch": "injury_msk_adaptive",
+      "titleEnKey": "providerDocumentationWorkspace.template_minor_head_injury_complaint",
+      "titleFrKey": "providerDocumentationWorkspace.template_minor_head_injury_complaint"
+    },
+    {
+      "id": "laceration_soft_tissue_complaint_v1",
+      "phase": "injury",
+      "batch": "injury_msk_adaptive",
+      "titleEnKey": "providerDocumentationWorkspace.template_laceration_soft_tissue_complaint",
+      "titleFrKey": "providerDocumentationWorkspace.template_laceration_soft_tissue_complaint"
+    },
+    {
+      "id": "animal_bite_adult_complaint_v1",
+      "phase": "injury",
+      "batch": "injury_msk_adaptive",
+      "titleEnKey": "providerDocumentationWorkspace.template_animal_bite_adult_complaint",
+      "titleFrKey": "providerDocumentationWorkspace.template_animal_bite_adult_complaint"
+    },
+    {
+      "id": "human_bite_high_risk_wound_adult_complaint_v1",
+      "phase": "injury",
+      "batch": "injury_msk_adaptive",
+      "titleEnKey": "providerDocumentationWorkspace.template_human_bite_high_risk_wound_adult_complaint",
+      "titleFrKey": "providerDocumentationWorkspace.template_human_bite_high_risk_wound_adult_complaint"
+    },
+    {
+      "id": "fracture_adult_complaint_v1",
+      "phase": "injury",
+      "batch": "injury_msk_adaptive",
+      "titleEnKey": "providerDocumentationWorkspace.template_fracture_adult_complaint",
+      "titleFrKey": "providerDocumentationWorkspace.template_fracture_adult_complaint"
+    },
+    {
+      "id": "dislocation_adult_complaint_v1",
+      "phase": "injury",
+      "batch": "injury_msk_adaptive",
+      "titleEnKey": "providerDocumentationWorkspace.template_dislocation_adult_complaint",
+      "titleFrKey": "providerDocumentationWorkspace.template_dislocation_adult_complaint"
+    },
+    {
+      "id": "sprain_strain_adult_complaint_v1",
+      "phase": "injury",
+      "batch": "injury_msk_adaptive",
+      "titleEnKey": "providerDocumentationWorkspace.template_sprain_strain_adult_complaint",
+      "titleFrKey": "providerDocumentationWorkspace.template_sprain_strain_adult_complaint"
+    },
+    {
+      "id": "tendon_injury_adult_complaint_v1",
+      "phase": "injury",
+      "batch": "injury_msk_adaptive",
+      "titleEnKey": "providerDocumentationWorkspace.template_tendon_injury_adult_complaint",
+      "titleFrKey": "providerDocumentationWorkspace.template_tendon_injury_adult_complaint"
+    },
+    {
+      "id": "ligament_injury_adult_complaint_v1",
+      "phase": "injury",
+      "batch": "injury_msk_adaptive",
+      "titleEnKey": "providerDocumentationWorkspace.template_ligament_injury_adult_complaint",
+      "titleFrKey": "providerDocumentationWorkspace.template_ligament_injury_adult_complaint"
+    },
+    {
+      "id": "crush_injury_adult_complaint_v1",
+      "phase": "injury",
+      "batch": "injury_msk_adaptive",
+      "titleEnKey": "providerDocumentationWorkspace.template_crush_injury_adult_complaint",
+      "titleFrKey": "providerDocumentationWorkspace.template_crush_injury_adult_complaint"
+    },
+    {
+      "id": "traumatic_amputation_adult_complaint_v1",
+      "phase": "injury",
+      "batch": "injury_msk_adaptive",
+      "titleEnKey": "providerDocumentationWorkspace.template_traumatic_amputation_adult_complaint",
+      "titleFrKey": "providerDocumentationWorkspace.template_traumatic_amputation_adult_complaint"
+    },
+    {
+      "id": "foreign_body_adult_complaint_v1",
+      "phase": "injury",
+      "batch": "injury_msk_adaptive",
+      "titleEnKey": "providerDocumentationWorkspace.template_foreign_body_adult_complaint",
+      "titleFrKey": "providerDocumentationWorkspace.template_foreign_body_adult_complaint"
+    },
+    {
+      "id": "burn_injury_adult_complaint_v1",
+      "phase": "injury",
+      "batch": "injury_msk_adaptive",
+      "titleEnKey": "providerDocumentationWorkspace.template_burn_injury_adult_complaint",
+      "titleFrKey": "providerDocumentationWorkspace.template_burn_injury_adult_complaint"
+    },
+    {
+      "id": "penetrating_trauma_adult_complaint_v1",
+      "phase": "injury",
+      "batch": "injury_msk_adaptive",
+      "titleEnKey": "providerDocumentationWorkspace.template_penetrating_trauma_adult_complaint",
+      "titleFrKey": "providerDocumentationWorkspace.template_penetrating_trauma_adult_complaint"
+    },
+    {
+      "id": "blast_polytrauma_adult_complaint_v1",
+      "phase": "injury",
+      "batch": "injury_msk_adaptive",
+      "titleEnKey": "providerDocumentationWorkspace.template_blast_polytrauma_adult_complaint",
+      "titleFrKey": "providerDocumentationWorkspace.template_blast_polytrauma_adult_complaint"
+    },
+    {
+      "id": "spine_back_pain_adult_complaint_v1",
+      "phase": "injury",
+      "batch": "injury_msk_adaptive",
+      "titleEnKey": "providerDocumentationWorkspace.template_spine_back_pain_adult_complaint",
+      "titleFrKey": "providerDocumentationWorkspace.template_spine_back_pain_adult_complaint"
+    },
+    {
+      "id": "spinal_trauma_adult_complaint_v1",
+      "phase": "injury",
+      "batch": "injury_msk_adaptive",
+      "titleEnKey": "providerDocumentationWorkspace.template_spinal_trauma_adult_complaint",
+      "titleFrKey": "providerDocumentationWorkspace.template_spinal_trauma_adult_complaint"
+    },
+    {
+      "id": "head_injury_adult_complaint_v1",
+      "phase": "injury",
+      "batch": "injury_msk_adaptive",
+      "titleEnKey": "providerDocumentationWorkspace.template_head_injury_adult_complaint",
+      "titleFrKey": "providerDocumentationWorkspace.template_head_injury_adult_complaint"
+    },
+    {
+      "id": "facial_trauma_adult_complaint_v1",
+      "phase": "injury",
+      "batch": "injury_msk_adaptive",
+      "titleEnKey": "providerDocumentationWorkspace.template_facial_trauma_adult_complaint",
+      "titleFrKey": "providerDocumentationWorkspace.template_facial_trauma_adult_complaint"
+    },
+    {
+      "id": "eye_complaint_adult_v1",
+      "phase": "injury",
+      "batch": "injury_msk_adaptive",
+      "titleEnKey": "providerDocumentationWorkspace.template_eye_complaint_adult",
+      "titleFrKey": "providerDocumentationWorkspace.template_eye_complaint_adult"
+    },
+    {
+      "id": "eye_trauma_adult_v1",
+      "phase": "injury",
+      "batch": "injury_msk_adaptive",
+      "titleEnKey": "providerDocumentationWorkspace.template_eye_trauma_adult",
+      "titleFrKey": "providerDocumentationWorkspace.template_eye_trauma_adult"
+    },
+    {
+      "id": "ent_ear_hearing_vertigo_adult_v1",
+      "phase": 12,
+      "batch": "batch22",
+      "titleEnKey": "providerDocumentationWorkspace.template_ent_ear_hearing_vertigo_adult",
+      "titleFrKey": "providerDocumentationWorkspace.template_ent_ear_hearing_vertigo_adult"
+    },
+    {
+      "id": "ent_nose_epistaxis_adult_v1",
+      "phase": 12,
+      "batch": "batch22",
+      "titleEnKey": "providerDocumentationWorkspace.template_ent_nose_epistaxis_adult",
+      "titleFrKey": "providerDocumentationWorkspace.template_ent_nose_epistaxis_adult"
+    },
+    {
+      "id": "ent_throat_neck_airway_adult_v1",
+      "phase": 12,
+      "batch": "batch22",
+      "titleEnKey": "providerDocumentationWorkspace.template_ent_throat_neck_airway_adult",
+      "titleFrKey": "providerDocumentationWorkspace.template_ent_throat_neck_airway_adult"
+    },
+    {
+      "id": "soft_tissue_infection_adult_v1",
+      "phase": 13,
+      "batch": "batch23",
+      "titleEnKey": "providerDocumentationWorkspace.template_soft_tissue_infection_adult",
+      "titleFrKey": "providerDocumentationWorkspace.template_soft_tissue_infection_adult"
+    },
+    {
+      "id": "abscess_purulent_infection_adult_v1",
+      "phase": 13,
+      "batch": "batch23",
+      "titleEnKey": "providerDocumentationWorkspace.template_abscess_purulent_infection_adult",
+      "titleFrKey": "providerDocumentationWorkspace.template_abscess_purulent_infection_adult"
+    },
+    {
+      "id": "high_risk_wound_infection_adult_v1",
+      "phase": 13,
+      "batch": "batch23",
+      "titleEnKey": "providerDocumentationWorkspace.template_high_risk_wound_infection_adult",
+      "titleFrKey": "providerDocumentationWorkspace.template_high_risk_wound_infection_adult"
+    },
+    {
+      "id": "dermatologic_rash_adult_v1",
+      "phase": 14,
+      "batch": "batch24",
+      "titleEnKey": "providerDocumentationWorkspace.template_dermatologic_rash_adult",
+      "titleFrKey": "providerDocumentationWorkspace.template_dermatologic_rash_adult"
+    },
+    {
+      "id": "allergic_inflammatory_dermatology_adult_v1",
+      "phase": 14,
+      "batch": "batch24",
+      "titleEnKey": "providerDocumentationWorkspace.template_allergic_inflammatory_dermatology_adult",
+      "titleFrKey": "providerDocumentationWorkspace.template_allergic_inflammatory_dermatology_adult"
+    },
+    {
+      "id": "vesicular_bullous_skin_disorder_adult_v1",
+      "phase": 14,
+      "batch": "batch24",
+      "titleEnKey": "providerDocumentationWorkspace.template_vesicular_bullous_skin_disorder_adult",
+      "titleFrKey": "providerDocumentationWorkspace.template_vesicular_bullous_skin_disorder_adult"
+    },
+    {
+      "id": "dermatologic_emergency_adult_v1",
+      "phase": 14,
+      "batch": "batch24",
+      "titleEnKey": "providerDocumentationWorkspace.template_dermatologic_emergency_adult",
+      "titleFrKey": "providerDocumentationWorkspace.template_dermatologic_emergency_adult"
+    },
+    {
+      "id": "heat_environmental_illness_adult_v1",
+      "phase": 15,
+      "batch": "batch25",
+      "titleEnKey": "providerDocumentationWorkspace.template_heat_environmental_illness_adult",
+      "titleFrKey": "providerDocumentationWorkspace.template_heat_environmental_illness_adult"
+    },
+    {
+      "id": "cold_environmental_injury_adult_v1",
+      "phase": 15,
+      "batch": "batch25",
+      "titleEnKey": "providerDocumentationWorkspace.template_cold_environmental_injury_adult",
+      "titleFrKey": "providerDocumentationWorkspace.template_cold_environmental_injury_adult"
+    },
+    {
+      "id": "submersion_electrical_lightning_adult_v1",
+      "phase": 15,
+      "batch": "batch25",
+      "titleEnKey": "providerDocumentationWorkspace.template_submersion_electrical_lightning_adult",
+      "titleFrKey": "providerDocumentationWorkspace.template_submersion_electrical_lightning_adult"
+    },
+    {
+      "id": "altitude_diving_radiation_exposure_adult_v1",
+      "phase": 15,
+      "batch": "batch25",
+      "titleEnKey": "providerDocumentationWorkspace.template_altitude_diving_radiation_exposure_adult",
+      "titleFrKey": "providerDocumentationWorkspace.template_altitude_diving_radiation_exposure_adult"
+    },
+    {
+      "id": "toxic_ingestion_overdose_adult_v1",
+      "phase": 16,
+      "batch": "batch26",
+      "titleEnKey": "providerDocumentationWorkspace.template_toxic_ingestion_overdose_adult",
+      "titleFrKey": "providerDocumentationWorkspace.template_toxic_ingestion_overdose_adult"
+    },
+    {
+      "id": "substance_intoxication_withdrawal_adult_v1",
+      "phase": 16,
+      "batch": "batch26",
+      "titleEnKey": "providerDocumentationWorkspace.template_substance_intoxication_withdrawal_adult",
+      "titleFrKey": "providerDocumentationWorkspace.template_substance_intoxication_withdrawal_adult"
+    },
+    {
+      "id": "inhaled_industrial_toxic_exposure_adult_v1",
+      "phase": 16,
+      "batch": "batch26",
+      "titleEnKey": "providerDocumentationWorkspace.template_inhaled_industrial_toxic_exposure_adult",
+      "titleFrKey": "providerDocumentationWorkspace.template_inhaled_industrial_toxic_exposure_adult"
+    },
+    {
+      "id": "envenomation_poisonous_exposure_adult_v1",
+      "phase": 16,
+      "batch": "batch26",
+      "titleEnKey": "providerDocumentationWorkspace.template_envenomation_poisonous_exposure_adult",
+      "titleFrKey": "providerDocumentationWorkspace.template_envenomation_poisonous_exposure_adult"
+    },
+    {
+      "id": "early_pregnancy_bleeding_pain_v1",
+      "phase": 17,
+      "batch": "batch27",
+      "titleEnKey": "providerDocumentationWorkspace.template_early_pregnancy_bleeding_pain",
+      "titleFrKey": "providerDocumentationWorkspace.template_early_pregnancy_bleeding_pain"
+    },
+    {
+      "id": "late_pregnancy_labor_emergency_v1",
+      "phase": 17,
+      "batch": "batch27",
+      "titleEnKey": "providerDocumentationWorkspace.template_late_pregnancy_labor_emergency",
+      "titleFrKey": "providerDocumentationWorkspace.template_late_pregnancy_labor_emergency"
+    },
+    {
+      "id": "hypertensive_postpartum_obstetric_emergency_v1",
+      "phase": 17,
+      "batch": "batch27",
+      "titleEnKey": "providerDocumentationWorkspace.template_hypertensive_postpartum_obstetric_emergency",
+      "titleFrKey": "providerDocumentationWorkspace.template_hypertensive_postpartum_obstetric_emergency"
+    },
+    {
+      "id": "acute_gynecologic_pelvic_complaint_v1",
+      "phase": 17,
+      "batch": "batch27",
+      "titleEnKey": "providerDocumentationWorkspace.template_acute_gynecologic_pelvic_complaint",
+      "titleFrKey": "providerDocumentationWorkspace.template_acute_gynecologic_pelvic_complaint"
+    },
+    {
+      "id": "renal_urinary_emergency_v1",
+      "phase": 17,
+      "batch": "batch27",
+      "titleEnKey": "providerDocumentationWorkspace.template_renal_urinary_emergency",
+      "titleFrKey": "providerDocumentationWorkspace.template_renal_urinary_emergency"
+    },
+    {
+      "id": "acute_scrotal_penile_emergency_v1",
+      "phase": 17,
+      "batch": "batch27",
+      "titleEnKey": "providerDocumentationWorkspace.template_acute_scrotal_penile_emergency",
+      "titleFrKey": "providerDocumentationWorkspace.template_acute_scrotal_penile_emergency"
+    },
+    {
+      "id": "suicide_self_harm_risk_v1",
+      "phase": 18,
+      "batch": "batch28",
+      "titleEnKey": "providerDocumentationWorkspace.template_suicide_self_harm_risk",
+      "titleFrKey": "providerDocumentationWorkspace.template_suicide_self_harm_risk"
+    },
+    {
+      "id": "psychosis_mania_behavioral_crisis_v1",
+      "phase": 18,
+      "batch": "batch28",
+      "titleEnKey": "providerDocumentationWorkspace.template_psychosis_mania_behavioral_crisis",
+      "titleFrKey": "providerDocumentationWorkspace.template_psychosis_mania_behavioral_crisis"
+    },
+    {
+      "id": "depression_anxiety_trauma_crisis_v1",
+      "phase": 18,
+      "batch": "batch28",
+      "titleEnKey": "providerDocumentationWorkspace.template_depression_anxiety_trauma_crisis",
+      "titleFrKey": "providerDocumentationWorkspace.template_depression_anxiety_trauma_crisis"
+    },
+    {
+      "id": "delirium_catatonia_cognitive_behavior_change_v1",
+      "phase": 18,
+      "batch": "batch28",
+      "titleEnKey": "providerDocumentationWorkspace.template_delirium_catatonia_cognitive_behavior_change",
+      "titleFrKey": "providerDocumentationWorkspace.template_delirium_catatonia_cognitive_behavior_change"
+    },
+    {
+      "id": "pediatric_developmental_behavioral_emergency_v1",
+      "phase": 18,
+      "batch": "batch28",
+      "titleEnKey": "providerDocumentationWorkspace.template_pediatric_developmental_behavioral_emergency",
+      "titleFrKey": "providerDocumentationWorkspace.template_pediatric_developmental_behavioral_emergency"
+    },
+    {
+      "id": "capacity_refusal_safety_disposition_v1",
+      "phase": 18,
+      "batch": "batch28",
+      "titleEnKey": "providerDocumentationWorkspace.template_capacity_refusal_safety_disposition",
+      "titleFrKey": "providerDocumentationWorkspace.template_capacity_refusal_safety_disposition"
+    }
+  ],
+  "duplicateTemplateIds": 0,
+  "phase19NewTemplates": 0,
+  "missingCatalogEntries": [],
+  "certification": {
+    "pass": true
+  },
+  "failures": []
+}

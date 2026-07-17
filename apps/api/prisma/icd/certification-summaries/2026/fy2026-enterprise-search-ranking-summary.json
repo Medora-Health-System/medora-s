@@ -1,0 +1,93 @@
+{
+  "generatedAt": "2026-07-17T18:28:27.230Z",
+  "certification": "enterprise-search-ranking",
+  "queryCount": 10,
+  "rankings": [
+    {
+      "q": "suicidal ideation",
+      "top3": [
+        "R45.851"
+      ],
+      "expectedPrefixInTop3": true
+    },
+    {
+      "q": "kidney stone",
+      "top3": [
+        "N20.0",
+        "N20.1",
+        "N20.2"
+      ],
+      "expectedPrefixInTop3": true
+    },
+    {
+      "q": "necrotizing fasciitis",
+      "top3": [
+        "M72.6"
+      ],
+      "expectedPrefixInTop3": true
+    },
+    {
+      "q": "ectopic pregnancy",
+      "top3": [
+        "P01.4",
+        "O00.81",
+        "O00.80"
+      ],
+      "expectedPrefixInTop3": true
+    },
+    {
+      "q": "carbon monoxide poisoning",
+      "top3": [
+        "T58.11XA",
+        "T58.91XA",
+        "T58.8X4A"
+      ],
+      "expectedPrefixInTop3": true
+    },
+    {
+      "q": "delirium",
+      "top3": [
+        "F05",
+        "F10.131",
+        "F11.121"
+      ],
+      "expectedPrefixInTop3": true
+    },
+    {
+      "q": "testicular torsion",
+      "top3": [
+        "N44.00"
+      ],
+      "expectedPrefixInTop3": true
+    },
+    {
+      "q": "human bite",
+      "top3": [
+        "Y04.1XXA",
+        "W50.3XXA",
+        "Y04.1XXD"
+      ],
+      "expectedPrefixInTop3": true
+    },
+    {
+      "q": "subdural hematoma",
+      "top3": [
+        "I62.00",
+        "S06.5X9A",
+        "S06.5X3A"
+      ],
+      "expectedPrefixInTop3": true
+    },
+    {
+      "q": "opioid overdose",
+      "top3": [
+        "T37.4X1A",
+        "T40.601A",
+        "T42.1X1A"
+      ],
+      "expectedPrefixInTop3": true
+    }
+  ],
+  "failures": [],
+  "pass": true
+}

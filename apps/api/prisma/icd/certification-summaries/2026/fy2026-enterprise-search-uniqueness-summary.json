@@ -1,0 +1,50 @@
+{
+  "generatedAt": "2026-07-17T18:28:30.650Z",
+  "certification": "enterprise-search-uniqueness",
+  "queryCount": 10,
+  "duplicateIcdCodes": 0,
+  "failures": [],
+  "queries": [
+    {
+      "q": "cellulitis",
+      "duplicateCodes": []
+    },
+    {
+      "q": "delirium",
+      "duplicateCodes": []
+    },
+    {
+      "q": "kidney stone",
+      "duplicateCodes": []
+    },
+    {
+      "q": "Fournier gangrene",
+      "duplicateCodes": []
+    },
+    {
+      "q": "suicidal ideation",
+      "duplicateCodes": []
+    },
+    {
+      "q": "ectopic pregnancy",
+      "duplicateCodes": []
+    },
+    {
+      "q": "Achilles tendon rupture",
+      "duplicateCodes": []
+    },
+    {
+      "q": "carbon monoxide poisoning",
+      "duplicateCodes": []
+    },
+    {
+      "q": "human bite",
+      "duplicateCodes": []
+    },
+    {
+      "q": "testicular torsion",
+      "duplicateCodes": []
+    }
+  ],
+  "pass": true
+}
