@@ -1,0 +1,23 @@
+{
+  "toxicologyEnvenomation": {
+    "scopedOfficialBillable": 5280,
+    "presentInMedora": 5280,
+    "missingCodes": [],
+    "descriptionMismatches": [],
+    "duplicateActiveCodes": [],
+    "invalidSelectableHeaders": []
+  },
+  "buckets": {
+    "medicationPoisoning": 3186,
+    "nonmedicinalToxicEffect": 1176,
+    "envenomation": 456,
+    "substanceUse": 458,
+    "toxidromeSyndromes": 4,
+    "inhaledIndustrial": 264
+  },
+  "ownershipGaps": [],
+  "crossPhaseOwnershipSteals": [],
+  "certification": {
+    "pass": true
+  }
+}

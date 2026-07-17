@@ -1,0 +1,23 @@
+{
+  "unexplainedRoutingFallbacks": [],
+  "poisoningAdverseEffectCollision": [],
+  "intentLoss": [],
+  "intoxicationWithdrawalCollision": [],
+  "environmentalToxicologyCollision": [],
+  "envenomationBiteCollision": [],
+  "psychiatricLinkageIntentFlagged": [],
+  "symptomStealing": [],
+  "counts": {
+    "scoped": 5280,
+    "poisoning": 1692,
+    "adverseEffect": 414,
+    "underdosing": 414,
+    "intentionalSelfHarm": 423,
+    "alcoholIntox": 3,
+    "alcoholWithdrawal": 4,
+    "envenomation": 456
+  },
+  "certification": {
+    "pass": true
+  }
+}
