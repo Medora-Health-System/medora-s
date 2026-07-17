@@ -160,6 +160,10 @@ import {
   COLD_ENVIRONMENTAL_INJURY_ADULT_V1_INTEL,
   SUBMERSION_ELECTRICAL_LIGHTNING_ADULT_V1_INTEL,
   ALTITUDE_DIVING_RADIATION_EXPOSURE_ADULT_V1_INTEL,
+  TOXIC_INGESTION_OVERDOSE_ADULT_V1_INTEL,
+  SUBSTANCE_INTOXICATION_WITHDRAWAL_ADULT_V1_INTEL,
+  INHALED_INDUSTRIAL_TOXIC_EXPOSURE_ADULT_V1_INTEL,
+  ENVENOMATION_POISONOUS_EXPOSURE_ADULT_V1_INTEL,
   type ProviderDocumentationComplaintIntelligence,
 } from "./providerDocumentationComplaintIntelligence";
 import type { ProviderDocumentationTemplatePickerSubgroupKey } from "./providerDocumentationModel";
@@ -2243,6 +2247,30 @@ export const PROVIDER_DOCUMENTATION_TEMPLATES: ProviderDocumentationTemplateDefi
     "providerDocumentationWorkspace.templateAltitudeDivingRadiationExposureAdultV1",
     "providerDocumentationWorkspace.templateAltitudeDivingRadiationExposureAdultV1Help",
     ALTITUDE_DIVING_RADIATION_EXPOSURE_ADULT_V1_INTEL
+  ),
+  infectiousEntComplaintV1Template(
+    "toxic_ingestion_overdose_adult_v1",
+    "providerDocumentationWorkspace.templateToxicIngestionOverdoseAdultV1",
+    "providerDocumentationWorkspace.templateToxicIngestionOverdoseAdultV1Help",
+    TOXIC_INGESTION_OVERDOSE_ADULT_V1_INTEL
+  ),
+  infectiousEntComplaintV1Template(
+    "substance_intoxication_withdrawal_adult_v1",
+    "providerDocumentationWorkspace.templateSubstanceIntoxicationWithdrawalAdultV1",
+    "providerDocumentationWorkspace.templateSubstanceIntoxicationWithdrawalAdultV1Help",
+    SUBSTANCE_INTOXICATION_WITHDRAWAL_ADULT_V1_INTEL
+  ),
+  infectiousEntComplaintV1Template(
+    "inhaled_industrial_toxic_exposure_adult_v1",
+    "providerDocumentationWorkspace.templateInhaledIndustrialToxicExposureAdultV1",
+    "providerDocumentationWorkspace.templateInhaledIndustrialToxicExposureAdultV1Help",
+    INHALED_INDUSTRIAL_TOXIC_EXPOSURE_ADULT_V1_INTEL
+  ),
+  infectiousEntComplaintV1Template(
+    "envenomation_poisonous_exposure_adult_v1",
+    "providerDocumentationWorkspace.templateEnvenomationPoisonousExposureAdultV1",
+    "providerDocumentationWorkspace.templateEnvenomationPoisonousExposureAdultV1Help",
+    ENVENOMATION_POISONOUS_EXPOSURE_ADULT_V1_INTEL
   ),
   {
     id: "observation_reassessment",

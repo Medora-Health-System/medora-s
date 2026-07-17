@@ -37,6 +37,7 @@ import { providerDocumentationNeuroStrokeWeaknessComplaintIntelEn } from "./prov
 import { providerDocumentationCardiacNonChestPainComplaintIntelEn } from "./providerDocumentationCardiacNonChestPainComplaintIntel.en";
 import { providerDocumentationDermatologyComplaintIntelEn } from "./providerDocumentationDermatologyComplaintIntel.en";
 import { providerDocumentationEnvironmentalExposureComplaintIntelEn } from "./providerDocumentationEnvironmentalExposureComplaintIntel.en";
+import { providerDocumentationToxicologyComplaintIntelEn } from "./providerDocumentationToxicologyComplaintIntel.en";
 
 export default {
   common: {
@@ -8455,6 +8456,14 @@ export default {
     templateSubmersionElectricalLightningAdultV1Help: "Click-to-insert prompts for nonfatal drowning, aspiration after submersion, low/high-voltage electrical injury, lightning injury concern, and cardiac/neuro complication red flags.",
     templateAltitudeDivingRadiationExposureAdultV1: "Altitude / Diving / Radiation Exposure",
     templateAltitudeDivingRadiationExposureAdultV1Help: "Click-to-insert prompts for acute mountain sickness, high-altitude cerebral/pulmonary edema concern, decompression illness, arterial gas embolism concern, barotrauma, and radiation exposure red flags.",
+    templateToxicIngestionOverdoseAdultV1: "Overdose / Toxic Ingestion",
+    templateToxicIngestionOverdoseAdultV1Help: "Click-to-insert prompts for medication overdose, unknown or mixed ingestion, intent, formulation, toxidrome screening, poison-control workflow, and psychiatric linkage without medical-clearance shortcuts.",
+    templateSubstanceIntoxicationWithdrawalAdultV1: "Substance Intoxication / Withdrawal",
+    templateSubstanceIntoxicationWithdrawalAdultV1Help: "Click-to-insert prompts for alcohol, opioids, stimulants, cannabis, sedative withdrawal, polysubstance intoxication, and CIWA-Ar/COWS review without score-driven orders.",
+    templateInhaledIndustrialToxicExposureAdultV1: "Inhaled / Industrial Toxic Exposure",
+    templateInhaledIndustrialToxicExposureAdultV1Help: "Click-to-insert prompts for carbon monoxide, cyanide, hydrogen sulfide, smoke toxic exposure, irritant gases, methemoglobinemia, and occupational or mass exposure red flags.",
+    templateEnvenomationPoisonousExposureAdultV1: "Envenomation / Poisonous Exposure",
+    templateEnvenomationPoisonousExposureAdultV1Help: "Click-to-insert prompts for snake, spider, scorpion, marine envenomation, toxic plants or mushrooms, and pesticide exposure without cutting, suction, ice, or tight-tourniquet advice.",
     templateObservationReassessment: "Observation reassessment",
     templateObservationReassessmentHelp: "Interval symptoms, pending results, vitals, monitoring, discharge/transfer readiness.",
     templateCategoryCardiopulmonary: "Cardiopulmonary",
@@ -9842,6 +9851,7 @@ export default {
   providerDocumentationComplaintIntel: {
     ...providerDocumentationDermatologyComplaintIntelEn,
     ...providerDocumentationEnvironmentalExposureComplaintIntelEn,
+    ...providerDocumentationToxicologyComplaintIntelEn,
     ...providerDocumentationPsychBehavioralComplaintIntelEn,
     ...providerDocumentationMedicationRefillComplaintIntelEn,
     ...providerDocumentationObservationReassessmentComplaintIntelEn,

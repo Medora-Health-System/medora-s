@@ -189,7 +189,11 @@ export type ProviderDocumentationTemplateId =
   | "heat_environmental_illness_adult_v1"
   | "cold_environmental_injury_adult_v1"
   | "submersion_electrical_lightning_adult_v1"
-  | "altitude_diving_radiation_exposure_adult_v1";
+  | "altitude_diving_radiation_exposure_adult_v1"
+  | "toxic_ingestion_overdose_adult_v1"
+  | "substance_intoxication_withdrawal_adult_v1"
+  | "inhaled_industrial_toxic_exposure_adult_v1"
+  | "envenomation_poisonous_exposure_adult_v1";
 
 export type ProviderDocumentationTemplatePickerSubgroupKey =
   | "gi_abdominal"

@@ -12,6 +12,7 @@ import { providerDocumentationRespiratoryComplaintIntel19Mdm3Fr } from "./provid
 import { providerDocumentationCardiacNonChestPainComplaintIntelFr } from "./providerDocumentationCardiacNonChestPainComplaintIntel.fr";
 import { providerDocumentationDermatologyComplaintIntelFr } from "./providerDocumentationDermatologyComplaintIntel.fr";
 import { providerDocumentationEnvironmentalExposureComplaintIntelFr } from "./providerDocumentationEnvironmentalExposureComplaintIntel.fr";
+import { providerDocumentationToxicologyComplaintIntelFr } from "./providerDocumentationToxicologyComplaintIntel.fr";
 import { providerDocumentationGuRenalComplaintIntel19Mdm5Fr } from "./providerDocumentationGuRenalComplaintIntel19Mdm5.fr";
 import { providerDocumentationInfectiousEntComplaintIntel19Mdm7Fr } from "./providerDocumentationInfectiousEntComplaintIntel19Mdm7.fr";
 import { providerDocumentationDentalOralComplaintIntelFr } from "./providerDocumentationDentalOralComplaintIntel.fr";
@@ -8433,6 +8434,14 @@ export default {
     templateSubmersionElectricalLightningAdultV1Help: "Inserts cliquables — noyade non mortelle, aspiration après submersion, lésion électrique basse/haute tension, suspicion de foudroiement et signaux d'alerte de complication cardiaque/neurologique.",
     templateAltitudeDivingRadiationExposureAdultV1: "Exposition à l'altitude / Plongée / Rayonnements",
     templateAltitudeDivingRadiationExposureAdultV1Help: "Inserts cliquables — mal aigu des montagnes, suspicion d'œdème cérébral/pulmonaire de haute altitude, maladie de décompression, suspicion d'embolie gazeuse artérielle, barotraumatisme et signaux d'alerte d'exposition aux rayonnements.",
+    templateToxicIngestionOverdoseAdultV1: "Surdosage / Ingestion toxique",
+    templateToxicIngestionOverdoseAdultV1Help: "Inserts cliquables — surdosage médicamenteux, ingestion inconnue ou mixte, intention, formulation, dépistage de toxidrome, centre antipoison et lien psychiatrique sans raccourci de clearance médicale.",
+    templateSubstanceIntoxicationWithdrawalAdultV1: "Intoxication / Sevrage lié à une substance",
+    templateSubstanceIntoxicationWithdrawalAdultV1Help: "Inserts cliquables — alcool, opioïdes, stimulants, cannabis, sevrage aux sédatifs, intoxication polysubstance, et revue CIWA-Ar/COWS sans ordonnances pilotées par le score.",
+    templateInhaledIndustrialToxicExposureAdultV1: "Exposition toxique inhalée / industrielle",
+    templateInhaledIndustrialToxicExposureAdultV1Help: "Inserts cliquables — monoxyde de carbone, cyanure, hydrogène sulfuré, fumée toxique, gaz irritants, méthémoglobinémie et exposition professionnelle ou de masse.",
+    templateEnvenomationPoisonousExposureAdultV1: "Envenimation / Exposition à une substance toxique",
+    templateEnvenomationPoisonousExposureAdultV1Help: "Inserts cliquables — serpent, araignée, scorpion, envenimation marine, plantes ou champignons toxiques et pesticides, sans conseil d'incision, d'aspiration, de glace ou de garrot serré.",
     templateObservationReassessment: "Réévaluation observation",
     templateObservationReassessmentHelp: "Évolution, résultats en attente, signes vitaux, surveillance, aptitude sortie / transfert.",
     templateCategoryCardiopulmonary: "Cardiopulmonaire",
@@ -9826,6 +9835,7 @@ export default {
   providerDocumentationComplaintIntel: {
     ...providerDocumentationDermatologyComplaintIntelFr,
     ...providerDocumentationEnvironmentalExposureComplaintIntelFr,
+    ...providerDocumentationToxicologyComplaintIntelFr,
     ...providerDocumentationPsychBehavioralComplaintIntelFr,
     ...providerDocumentationMedicationRefillComplaintIntelFr,
     ...providerDocumentationObservationReassessmentComplaintIntelFr,
