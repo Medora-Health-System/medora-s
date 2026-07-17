@@ -234,6 +234,7 @@ model User {
   medicationOrderSchedulesCancelled               MedicationOrderSchedule[]              @relation("MedicationOrderScheduleCancelledBy")
   medicationOrderSchedulesCreated                 MedicationOrderSchedule[]              @relation("MedicationOrderScheduleCreatedBy")
   medicationOrderSchedulesUpdated                 MedicationOrderSchedule[]              @relation("MedicationOrderScheduleUpdatedBy")
+  medicationConceptsRxNormMapped                    MedicationConcept[]                    @relation("MedicationConceptRxNormMappedBy")
   medicationProductsActivationApproved            MedicationProduct[]                    @relation("MedicationProductActivationApprovedBy")
   medicationWasteDocumentationsDocumented         MedicationWasteDocumentation[]         @relation("MedicationWasteDocumentedBy")
   medicationWasteDocumentationsWitnessed          MedicationWasteDocumentation[]         @relation("MedicationWasteWitness")
@@ -1432,9 +1433,13 @@ model CatalogMedication {
   legacyMedicationProducts              MedicationProduct?                     @relation("CatalogMedicationLegacyProduct")
   medicationWasteDocumentations         MedicationWasteDocumentation[]
   pharmacyVerifications                 PharmacyVerification[]
+  /// PRODUCTION | FIXTURE | DEV_SAMPLE | UNKNOWN — does not delete rows; filters optional
+  dataClassification                    String                                 @default("UNKNOWN") @db.VarChar(32)
+  dataSourceLabel                       String?                                @db.VarChar(64)
 
   @@index([ndc11])
   @@index([isActive])
+  @@index([dataClassification])
 }
 
 model MedicationAlias {
@@ -2056,13 +2061,18 @@ model MedicationTherapeuticClass {
 }
 
 model MedicationRoute {
-  id                   String                   @id @default(uuid())
-  code                 String                   @unique
+  id                   String                             @id @default(uuid())
+  code                 String                             @unique
   label                String
-  createdAt            DateTime                 @default(now())
-  updatedAt            DateTime                 @updatedAt
+  isActive             Boolean                            @default(true)
+  sortOrder            Int                                @default(0)
+  /// ORAL | INJECTABLE | TOPICAL | INHALED | OTHER
+  clinicalCategory     String?                            @db.VarChar(32)
+  createdAt            DateTime                           @default(now())
+  updatedAt            DateTime                           @updatedAt
   orderSetLinksDefault MedicationOrderSetLink[]
-  productsDefault      MedicationProduct[]      @relation("MedicationProductDefaultRoute")
+  productsDefault      MedicationProduct[]                @relation("MedicationProductDefaultRoute")
+  productRoutePermissions MedicationProductRoutePermission[]
 }
 
 model MedicationDoseUnit {
@@ -2086,18 +2096,30 @@ model MedicationConcept {
   genericName        String
   displayName        String
   therapeuticClassId String?
-  rxNormConceptId    String?                     @db.VarChar(64)
-  isActive           Boolean                     @default(true)
-  retiredAt          DateTime?
-  createdAt          DateTime                    @default(now())
-  updatedAt          DateTime                    @updatedAt
-  therapeuticClass   MedicationTherapeuticClass? @relation(fields: [therapeuticClassId], references: [id])
-  products           MedicationProduct[]
-  safetyProfile      MedicationSafetyProfile?
-  searchAliases      MedicationSearchAlias[]
+  rxNormConceptId         String?                     @db.VarChar(64)
+  rxNormTermType          String?                     @db.VarChar(32)
+  rxNormSourceVocabulary  String?                     @db.VarChar(32)
+  rxNormMappingStatus     String                      @default("UNMAPPED") @db.VarChar(32)
+  rxNormMappingConfidence String?                     @db.VarChar(16)
+  rxNormMappingVersion    String?                     @db.VarChar(64)
+  rxNormMappedAt          DateTime?
+  rxNormMappedByUserId    String?
+  rxNormReviewedAt        DateTime?
+  rxNormReviewNotes       String?
+  isActive                Boolean                     @default(true)
+  retiredAt               DateTime?
+  createdAt               DateTime                    @default(now())
+  updatedAt               DateTime                    @updatedAt
+  therapeuticClass        MedicationTherapeuticClass? @relation(fields: [therapeuticClassId], references: [id])
+  rxNormMappedBy          User?                       @relation("MedicationConceptRxNormMappedBy", fields: [rxNormMappedByUserId], references: [id])
+  products                MedicationProduct[]
+  safetyProfile           MedicationSafetyProfile?
+  searchAliases           MedicationSearchAlias[]
 
   @@index([therapeuticClassId])
   @@index([isActive])
+  @@index([rxNormConceptId])
+  @@index([rxNormMappingStatus])
 }
 
 model MedicationConcentration {
@@ -2147,6 +2169,11 @@ model MedicationProduct {
   baselineAvailable          Boolean                          @default(false)
   baselineSource             String?                          @db.VarChar(48)
   baselineSourceRowId        String?                          @db.VarChar(128)
+  dualLayerLinkageStatus     String                           @default("UNLINKED") @db.VarChar(32)
+  dualLayerLinkageMethod     String?                          @db.VarChar(48)
+  dualLayerLinkageConfidence String?                          @db.VarChar(16)
+  dualLayerLinkageReviewedAt DateTime?
+  dualLayerLinkageNotes      String?
   infusionProfile            InfusionProfile?
   infusionSessions           InfusionSession[]
   administrations            MedicationAdministration[]
@@ -2160,6 +2187,7 @@ model MedicationProduct {
   defaultRoute               MedicationRoute?                 @relation("MedicationProductDefaultRoute", fields: [defaultRouteId], references: [id])
   legacyCatalogMedication    CatalogMedication?               @relation("CatalogMedicationLegacyProduct", fields: [legacyCatalogMedicationId], references: [id])
   searchAliases              MedicationSearchAlias[]
+  routePermissions           MedicationProductRoutePermission[]
   orderItems                 OrderItem[]
 
   @@index([conceptId])
@@ -2169,6 +2197,7 @@ model MedicationProduct {
   @@index([governanceStatus])
   @@index([baselineAvailable])
   @@index([baselineSource])
+  @@index([dualLayerLinkageStatus])
 }
 
 model MedicationPackage {
@@ -2243,6 +2272,9 @@ model MedicationBillingProfile {
   companionProcedureCptSuggested String?           @db.VarChar(16)
   wastageBillable                Boolean           @default(false)
   requiresManualReview           Boolean           @default(true)
+  mappingStatus                  String            @default("CANDIDATE") @db.VarChar(32)
+  mappingSource                  String?           @db.VarChar(64)
+  mappingVersion                 String?           @db.VarChar(64)
   effectiveFrom                  DateTime?
   effectiveTo                    DateTime?
   createdAt                      DateTime          @default(now())
@@ -2251,6 +2283,27 @@ model MedicationBillingProfile {
 
   @@index([packageId])
   @@index([payerProfileId])
+}
+
+model MedicationProductRoutePermission {
+  id                    String            @id @default(uuid())
+  productId             String
+  routeId               String
+  /// ALLOWED | RESTRICTED | INACTIVE | DEPRECATED | REQUIRES_CONFIGURATION | NOT_VERIFIED
+  eligibilityStatus     String            @default("NOT_VERIFIED") @db.VarChar(32)
+  requiresConfiguration Boolean           @default(false)
+  notes                 String?
+  effectiveFrom         DateTime?
+  effectiveTo           DateTime?
+  createdAt             DateTime          @default(now())
+  updatedAt             DateTime          @updatedAt
+  product               MedicationProduct @relation(fields: [productId], references: [id], onDelete: Cascade)
+  route                 MedicationRoute   @relation(fields: [routeId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, routeId])
+  @@index([productId])
+  @@index([routeId])
+  @@index([eligibilityStatus])
 }
 
 model MedicationSafetyProfile {
