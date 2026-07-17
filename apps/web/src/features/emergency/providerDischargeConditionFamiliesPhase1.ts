@@ -511,9 +511,12 @@ export const PHASE1_CLINICAL_CONDITION_FAMILIES: readonly ClinicalConditionFamil
       "behavioral_health_grief_adjustment_v1",
       "anxiety_panic_v1",
       "alcohol_intoxication_v1",
+      "alcohol_withdrawal_post_acute_v1",
     ],
     clinicalDomain: "Behavioral Health",
-    icdExact: ["R45.851", "F41.0", "F41.9", "F32.9", "F10.239", "T40.2X5A"],
+    // F10.239 medical alcohol withdrawal aftercare is Phase 16 toxicology-owned
+    // (alcohol_withdrawal_post_acute_v1). BH keeps keyword-only withdrawal precautions.
+    icdExact: ["R45.851", "F41.0", "F41.9", "F32.9", "T40.2X5A"],
     icdPrefixes: ["F32"],
     keywords: [
       "bh suicidal ideation",
@@ -529,7 +532,7 @@ export const PHASE1_CLINICAL_CONDITION_FAMILIES: readonly ClinicalConditionFamil
       "F41.9": "behavioral_health_anxiety_panic_symptoms_v1",
       "F32.9": "behavioral_health_depression_crisis_precautions_v1",
       "R45.851": "behavioral_health_suicidal_ideation_precautions_v1",
-      "F10.239": "behavioral_health_alcohol_withdrawal_precautions_v1",
+      "F10.239": "alcohol_withdrawal_post_acute_v1",
       "T40.2X5A": "behavioral_health_opioid_overdose_aftercare_v1",
     },
     guardrails: {

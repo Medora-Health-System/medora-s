@@ -78,11 +78,10 @@ describe("MEDUI.ED.DISCHARGE.DIAGNOSIS_INSTRUCTIONS.2A", () => {
       expect(audit.summary.totalDiagnosisSpecificMapped + audit.summary.totalGenericFallbackOnly).toBe(
         audit.summary.totalPickerRecordsAudited
       );
-      // Phase 15 Commit 2 added 14 unique environmental COMMON_DIAGNOSES rows (211 -> 225);
-      // T75.4XXA electrocution was already present from burn/electrical quick picks.
-      expect(audit.summary.totalPickerRecordsAudited).toBe(225);
+      // Phase 15: 225 picker records; Phase 16 toxicology/envenomation adds 20 COMMON_DIAGNOSES (225 -> 245).
+      expect(audit.summary.totalPickerRecordsAudited).toBe(245);
       expect(audit.summary.totalGenericFallbackOnly).toBe(0);
-      expect(audit.summary.totalDiagnosisSpecificMapped).toBe(225);
+      expect(audit.summary.totalDiagnosisSpecificMapped).toBe(245);
     });
 
     it("3 — top 100 fallback list is generated when any generic fallback exists", () => {

@@ -7369,3 +7369,453 @@ export const RADIATION_INJURY_POST_ACUTE_V1_SUGGESTED_TEXT: ProviderDischargeTem
         "Faites le suivi exactement selon les directives de l'équipe spécialisée — il s'agit d'un suivi clinique rapproché, non d'un suivi habituel de soins primaires.",
     }
   );
+
+/** Phase 16 — toxicology / envenomation discharge suggested text (Commit 2). */
+const TOX_ROUTINE_MED_EN =
+  "Take any medication only exactly as directed. Do not start, stop, or change medications on your own. Antidotes or reversal agents are given only when ordered and recorded in the medication administration record.";
+const TOX_ROUTINE_MED_FR =
+  "Prenez tout médicament uniquement selon les directives précises. Ne commencez, n'arrêtez et ne modifiez pas les médicaments de votre propre initiative. Les antidotes ou agents de renversement ne sont administrés que lorsqu'ils sont prescrits et consignés dans le dossier d'administration des médicaments.";
+const TOX_HIGH_RISK_MED_EN =
+  "Take any medication only exactly as directed by the specialist team managing this exposure. Do not start, stop, or change medications on your own.";
+const TOX_HIGH_RISK_MED_FR =
+  "Prenez tout médicament uniquement selon les directives précises de l'équipe spécialisée qui prend en charge cette exposition. Ne commencez, n'arrêtez et ne modifiez pas les médicaments de votre propre initiative.";
+
+export const LOW_RISK_TOXIC_EXPOSURE_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        'You were evaluated in the emergency department for a low-risk toxic exposure after clinical assessment and observation as directed.',
+      diagnosisInstructions:
+        'Avoid further exposure to the substance. Keep medications and household chemicals secured. Follow poison-control or clinician advice exactly as given.',
+      medicationTreatment: TOX_ROUTINE_MED_EN,
+      returnPrecautions:
+        'Return immediately for confusion, trouble breathing, vomiting that will not stop, seizure, chest pain, or worsening symptoms.',
+    },
+    {
+      description:
+        'Vous avez été pris en charge aux urgences pour une exposition toxique à faible risque après évaluation clinique et observation selon les directives.',
+      diagnosisInstructions:
+        'Évitez toute nouvelle exposition à la substance. Rangez les médicaments et produits ménagers en sécurité. Suivez exactement les conseils du centre antipoison ou du clinicien.',
+      medicationTreatment: TOX_ROUTINE_MED_FR,
+      returnPrecautions:
+        "Retournez immédiatement en cas de confusion, de difficulté à respirer, de vomissements persistants, de crise convulsive, de douleur thoracique ou d'aggravation des symptômes.",
+    }
+  );
+
+export const ACCIDENTAL_INGESTION_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        'You were evaluated for an accidental ingestion. Amount and substance details were reviewed as available; unknown amounts were not assumed.',
+      diagnosisInstructions:
+        "Keep all medications and household products out of children's reach. Use child-resistant containers. Call poison control if further exposure occurs.",
+      medicationTreatment: TOX_ROUTINE_MED_EN,
+      returnPrecautions:
+        'Return immediately for sleepiness that is hard to wake, trouble breathing, repeated vomiting, seizure, or behavior change.',
+    },
+    {
+      description:
+        "Vous avez été pris en charge pour une ingestion accidentelle. La quantité et la substance ont été revues selon les informations disponibles ; aucune quantité inconnue n'a été inventée.",
+      diagnosisInstructions:
+        "Gardez tous les médicaments et produits ménagers hors de portée des enfants. Utilisez des contenants à l'épreuve des enfants. Appelez le centre antipoison en cas de nouvelle exposition.",
+      medicationTreatment: TOX_ROUTINE_MED_FR,
+      returnPrecautions:
+        'Retournez immédiatement en cas de somnolence difficile à réveiller, de difficulté à respirer, de vomissements répétés, de crise convulsive ou de changement de comportement.',
+    }
+  );
+
+export const ACETAMINOPHEN_EXPOSURE_FOLLOWUP_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        'You were evaluated for acetaminophen (paracetamol) exposure. Follow-up applies only after clinician-directed observation and laboratory review when indicated.',
+      diagnosisInstructions:
+        'Do not take additional acetaminophen or combination products containing acetaminophen unless a clinician specifically directs it. Keep poison-control follow-up as arranged.',
+      medicationTreatment: TOX_ROUTINE_MED_EN,
+      returnPrecautions:
+        'Return immediately for abdominal pain, vomiting, yellowing of the skin or eyes, confusion, or feeling very unwell.',
+    },
+    {
+      description:
+        "Vous avez été pris en charge pour une exposition au paracétamol (acétaminophène). Ce suivi s'applique uniquement après observation et revue de laboratoire dirigées par le clinicien lorsque indiqué.",
+      diagnosisInstructions:
+        "Ne prenez pas de paracétamol supplémentaire ni de produits combinés en contenant, sauf indication précise d'un clinicien. Respectez le suivi du centre antipoison s'il a été organisé.",
+      medicationTreatment: TOX_ROUTINE_MED_FR,
+      returnPrecautions:
+        'Retournez immédiatement en cas de douleur abdominale, de vomissements, de jaunisse de la peau ou des yeux, de confusion ou de malaise important.',
+    }
+  );
+
+export const SALICYLATE_EXPOSURE_FOLLOWUP_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        'You were evaluated for salicylate (aspirin) exposure. This follow-up is used only after clinician-directed evaluation and observation.',
+      diagnosisInstructions:
+        'Avoid further salicylate-containing products unless specifically directed. Keep scheduled laboratory or clinical follow-up.',
+      medicationTreatment: TOX_ROUTINE_MED_EN,
+      returnPrecautions:
+        'Return immediately for ringing in the ears, rapid breathing, confusion, vomiting, fever, or worsening symptoms.',
+    },
+    {
+      description:
+        'Vous avez été pris en charge pour une exposition aux salicylates (aspirine). Ce suivi est utilisé uniquement après évaluation et observation dirigées par le clinicien.',
+      diagnosisInstructions:
+        "Évitez d'autres produits contenant des salicylates sauf indication précise. Respectez le suivi clinique ou de laboratoire prévu.",
+      medicationTreatment: TOX_ROUTINE_MED_FR,
+      returnPrecautions:
+        "Retournez immédiatement en cas de bourdonnements d'oreilles, de respiration rapide, de confusion, de vomissements, de fièvre ou d'aggravation.",
+    }
+  );
+
+export const OPIOID_OVERDOSE_POST_OBSERVATION_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        'You were evaluated for opioid overdose or opioid toxicity and observed as directed by the treating clinician. Reversal medication, if given, was recorded in the medication administration record.',
+      diagnosisInstructions:
+        'Do not use opioids or sedatives unless a clinician specifically directs it. Arrange naloxone access and overdose-prevention resources when offered. Someone should stay with you during the observation period after discharge if advised.',
+      medicationTreatment: TOX_ROUTINE_MED_EN,
+      returnPrecautions:
+        'Return immediately for slow or shallow breathing, extreme sleepiness, blue lips, confusion, or if someone cannot wake you.',
+    },
+    {
+      description:
+        "Vous avez été pris en charge pour un surdosage ou une toxicité aux opioïdes et observé selon les directives du clinicien traitant. Tout médicament de renversement, s'il a été administré, a été consigné dans le dossier d'administration des médicaments.",
+      diagnosisInstructions:
+        "N'utilisez pas d'opioïdes ni de sédatifs sauf indication précise d'un clinicien. Organisez l'accès à la naloxone et aux ressources de prévention du surdosage lorsqu'elles sont proposées. Une personne devrait rester avec vous pendant la période d'observation après la sortie si cela est conseillé.",
+      medicationTreatment: TOX_ROUTINE_MED_FR,
+      returnPrecautions:
+        "Retournez immédiatement en cas de respiration lente ou superficielle, de somnolence extrême, de lèvres bleues, de confusion, ou si quelqu'un ne peut pas vous réveiller.",
+    }
+  );
+
+export const SEDATIVE_OVERDOSE_POST_OBSERVATION_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        'You were evaluated for benzodiazepine or sedative-hypnotic overdose and observed as directed. Reversal agents, if administered, remain medication-administration-record documented.',
+      diagnosisInstructions:
+        'Avoid alcohol and additional sedatives unless specifically directed. Arrange reliable supervision if advised.',
+      medicationTreatment: TOX_ROUTINE_MED_EN,
+      returnPrecautions:
+        'Return immediately for extreme sleepiness, trouble breathing, confusion, or falls.',
+    },
+    {
+      description:
+        "Vous avez été pris en charge pour un surdosage de benzodiazépine ou de sédatif-hypnotique et observé selon les directives. Les agents de renversement, s'ils ont été administrés, restent consignés dans le dossier d'administration des médicaments.",
+      diagnosisInstructions:
+        "Évitez l'alcool et tout sédatif supplémentaire sauf indication précise. Organisez une surveillance fiable si conseillé.",
+      medicationTreatment: TOX_ROUTINE_MED_FR,
+      returnPrecautions:
+        'Retournez immédiatement en cas de somnolence extrême, de difficulté à respirer, de confusion ou de chutes.',
+    }
+  );
+
+export const ALCOHOL_WITHDRAWAL_POST_ACUTE_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        'You were evaluated for alcohol withdrawal after acute management as directed by the treating clinician. Scoring tools such as CIWA-Ar, if used, do not by themselves order medications or disposition.',
+      diagnosisInstructions:
+        'Do not stop prescribed withdrawal medications abruptly. Avoid alcohol. Keep behavioral-health and primary-care follow-up as arranged.',
+      medicationTreatment: TOX_HIGH_RISK_MED_EN,
+      returnPrecautions:
+        'Return immediately for seizure, severe confusion, hallucinations, chest pain, or inability to keep fluids down.',
+    },
+    {
+      description:
+        "Vous avez été pris en charge pour un sevrage alcoolique après prise en charge aiguë selon les directives du clinicien traitant. Des outils de score comme le CIWA-Ar, s'ils ont été utilisés, ne déclenchent pas à eux seuls d'ordonnances ni de disposition.",
+      diagnosisInstructions:
+        "N'arrêtez pas brusquement les médicaments de sevrage prescrits. Évitez l'alcool. Respectez le suivi en santé comportementale et en soins primaires s'il a été organisé.",
+      medicationTreatment: TOX_HIGH_RISK_MED_FR,
+      returnPrecautions:
+        "Retournez immédiatement en cas de crise convulsive, de confusion sévère, d'hallucinations, de douleur thoracique ou d'incapacité à garder les liquides.",
+    }
+  );
+
+export const STIMULANT_INTOXICATION_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        'You were evaluated for stimulant intoxication (such as cocaine or methamphetamine). Agitation, chest pain, and hyperthermia concerns were reviewed as documented.',
+      diagnosisInstructions:
+        'Rest in a calm environment. Avoid further stimulant use. Seek substance-use resources when offered.',
+      medicationTreatment: TOX_ROUTINE_MED_EN,
+      returnPrecautions:
+        'Return immediately for chest pain, severe headache, seizure, extreme agitation, or high fever.',
+    },
+    {
+      description:
+        "Vous avez été pris en charge pour une intoxication aux stimulants (comme la cocaïne ou la méthamphétamine). L'agitation, la douleur thoracique et les préoccupations d'hyperthermie ont été revues telles que documentées.",
+      diagnosisInstructions:
+        "Reposez-vous dans un environnement calme. Évitez toute nouvelle consommation de stimulants. Utilisez les ressources pour l'usage de substances lorsqu'elles sont proposées.",
+      medicationTreatment: TOX_ROUTINE_MED_FR,
+      returnPrecautions:
+        "Retournez immédiatement en cas de douleur thoracique, de céphalée sévère, de crise convulsive, d'agitation extrême ou de forte fièvre.",
+    }
+  );
+
+export const CANNABIS_INTOXICATION_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        'You were evaluated for cannabis or synthetic cannabinoid intoxication.',
+      diagnosisInstructions:
+        'Rest in a safe place. Avoid driving or operating machinery until fully alert. Avoid further use until reviewed with a clinician.',
+      medicationTreatment: TOX_ROUTINE_MED_EN,
+      returnPrecautions:
+        'Return for severe anxiety, vomiting that will not stop, chest pain, confusion, or trouble breathing.',
+    },
+    {
+      description:
+        'Vous avez été pris en charge pour une intoxication au cannabis ou à des cannabinoïdes de synthèse.',
+      diagnosisInstructions:
+        "Reposez-vous dans un endroit sûr. Évitez de conduire ou d'utiliser des machines jusqu'à être pleinement alerte. Évitez toute nouvelle consommation jusqu'à revue avec un clinicien.",
+      medicationTreatment: TOX_ROUTINE_MED_FR,
+      returnPrecautions:
+        "Retournez en cas d'anxiété sévère, de vomissements persistants, de douleur thoracique, de confusion ou de difficulté à respirer.",
+    }
+  );
+
+export const UNKNOWN_INGESTION_POST_OBSERVATION_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        'You were evaluated for an unknown or mixed ingestion and observed as directed. A specific toxin was not assumed without evidence.',
+      diagnosisInstructions:
+        'Keep the product container if available. Follow poison-control advice exactly. Arrange reliable supervision if advised.',
+      medicationTreatment: TOX_ROUTINE_MED_EN,
+      returnPrecautions:
+        'Return immediately for worsening sleepiness, trouble breathing, seizure, confusion, or new symptoms.',
+    },
+    {
+      description:
+        "Vous avez été pris en charge pour une ingestion inconnue ou mixte et observé selon les directives. Aucune toxine précise n'a été présumée sans preuve.",
+      diagnosisInstructions:
+        "Conservez le contenant du produit s'il est disponible. Suivez exactement les conseils du centre antipoison. Organisez une surveillance fiable si conseillé.",
+      medicationTreatment: TOX_ROUTINE_MED_FR,
+      returnPrecautions:
+        "Retournez immédiatement en cas d'aggravation de la somnolence, de difficulté à respirer, de crise convulsive, de confusion ou de nouveaux symptômes.",
+    }
+  );
+
+export const CARBON_MONOXIDE_POST_ACUTE_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        'You were evaluated for carbon monoxide poisoning. Pulse oximetry alone does not exclude this diagnosis; co-oximetry and clinical findings guide care. Hyperbaric therapy, if considered, remains a clinician decision.',
+      diagnosisInstructions:
+        'Have home or workplace CO sources inspected as advised. Do not re-enter an unsafe environment. Keep follow-up as arranged.',
+      medicationTreatment: TOX_HIGH_RISK_MED_EN,
+      returnPrecautions:
+        'Return immediately for confusion, chest pain, severe headache, trouble breathing, or fainting.',
+    },
+    {
+      description:
+        "Vous avez été pris en charge pour une intoxication au monoxyde de carbone. L'oxymétrie de pouls seule n'exclut pas ce diagnostic ; la co-oxymétrie et les constatations cliniques guident les soins. L'oxygénothérapie hyperbare, si envisagée, reste une décision clinique.",
+      diagnosisInstructions:
+        'Faites inspecter les sources de CO à domicile ou au travail selon les conseils. Ne retournez pas dans un environnement dangereux. Respectez le suivi organisé.',
+      medicationTreatment: TOX_HIGH_RISK_MED_FR,
+      returnPrecautions:
+        "Retournez immédiatement en cas de confusion, de douleur thoracique, de céphalée sévère, de difficulté à respirer ou d'évanouissement.",
+    }
+  );
+
+export const CAUSTIC_INGESTION_POST_ACUTE_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        'You were evaluated for caustic or corrosive ingestion after acute airway and gastrointestinal assessment as directed. Do not induce vomiting. Neutralization was not performed as a routine measure.',
+      diagnosisInstructions:
+        'Follow diet and endoscopy or specialty follow-up exactly as directed. Keep poison-control advice.',
+      medicationTreatment: TOX_HIGH_RISK_MED_EN,
+      returnPrecautions:
+        'Return immediately for drooling, trouble swallowing, chest or abdominal pain, vomiting blood, or breathing difficulty.',
+    },
+    {
+      description:
+        "Vous avez été pris en charge pour une ingestion caustique ou corrosive après évaluation aiguë des voies aériennes et digestives selon les directives. Ne provoquez pas de vomissements. La neutralisation n'a pas été réalisée comme mesure de routine.",
+      diagnosisInstructions:
+        "Suivez exactement le régime et le suivi d'endoscopie ou de spécialité selon les directives. Respectez les conseils du centre antipoison.",
+      medicationTreatment: TOX_HIGH_RISK_MED_FR,
+      returnPrecautions:
+        'Retournez immédiatement en cas de bave, de difficulté à avaler, de douleur thoracique ou abdominale, de vomissements de sang ou de difficulté à respirer.',
+    }
+  );
+
+export const HYDROCARBON_EXPOSURE_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        'You were evaluated for hydrocarbon exposure. Aspiration risk and respiratory symptoms were reviewed as documented.',
+      diagnosisInstructions:
+        'Avoid further hydrocarbon inhalation or ingestion. Do not induce vomiting.',
+      medicationTreatment: TOX_ROUTINE_MED_EN,
+      returnPrecautions:
+        'Return immediately for cough, trouble breathing, chest pain, fever, or worsening symptoms.',
+    },
+    {
+      description:
+        "Vous avez été pris en charge pour une exposition aux hydrocarbures. Le risque d'aspiration et les symptômes respiratoires ont été revus tels que documentés.",
+      diagnosisInstructions:
+        "Évitez toute nouvelle inhalation ou ingestion d'hydrocarbures. Ne provoquez pas de vomissements.",
+      medicationTreatment: TOX_ROUTINE_MED_FR,
+      returnPrecautions:
+        "Retournez immédiatement en cas de toux, de difficulté à respirer, de douleur thoracique, de fièvre ou d'aggravation.",
+    }
+  );
+
+export const PESTICIDE_EXPOSURE_POST_ACUTE_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        'You were evaluated for pesticide or organophosphate exposure after decontamination and clinical stabilization as directed. Antidotes, if given, were medication-administration-record documented.',
+      diagnosisInstructions:
+        'Avoid re-exposure. Follow occupational and poison-control advice. Contaminated clothing should be handled safely as instructed.',
+      medicationTreatment: TOX_HIGH_RISK_MED_EN,
+      returnPrecautions:
+        'Return immediately for increased secretions, trouble breathing, weakness, diarrhea, or seizure.',
+    },
+    {
+      description:
+        "Vous avez été pris en charge pour une exposition aux pesticides ou organophosphorés après décontamination et stabilisation clinique selon les directives. Les antidotes, s'ils ont été administrés, ont été consignés dans le dossier d'administration des médicaments.",
+      diagnosisInstructions:
+        'Évitez toute nouvelle exposition. Suivez les conseils professionnels et du centre antipoison. Les vêtements contaminés doivent être manipulés en sécurité selon les instructions.',
+      medicationTreatment: TOX_HIGH_RISK_MED_FR,
+      returnPrecautions:
+        "Retournez immédiatement en cas d'augmentation des sécrétions, de difficulté à respirer, de faiblesse, de diarrhée ou de crise convulsive.",
+    }
+  );
+
+export const METHEMOGLOBINEMIA_POST_ACUTE_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        'You were evaluated for methemoglobinemia concern after oxidizing exposure assessment as directed. Diagnosis is not made from cyanosis alone; co-oximetry guides confirmation when obtained.',
+      diagnosisInstructions:
+        'Avoid the implicated oxidizing agent. Keep specialty follow-up as arranged.',
+      medicationTreatment: TOX_HIGH_RISK_MED_EN,
+      returnPrecautions:
+        'Return immediately for worsening cyanosis, trouble breathing, chest pain, or confusion.',
+    },
+    {
+      description:
+        "Vous avez été pris en charge pour une préoccupation de méthémoglobinémie après évaluation d'une exposition oxydante selon les directives. Le diagnostic n'est pas posé sur la cyanose seule ; la co-oxymétrie guide la confirmation lorsqu'elle est obtenue.",
+      diagnosisInstructions:
+        "Évitez l'agent oxydant en cause. Respectez le suivi spécialisé organisé.",
+      medicationTreatment: TOX_HIGH_RISK_MED_FR,
+      returnPrecautions:
+        "Retournez immédiatement en cas d'aggravation de la cyanose, de difficulté à respirer, de douleur thoracique ou de confusion.",
+    }
+  );
+
+export const SNAKE_ENVENOMATION_POST_ACUTE_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        'You were evaluated for snake envenomation. Antivenom, if administered, was recorded in the medication administration record. Cutting, suction, ice, and tight tourniquets are not recommended.',
+      diagnosisInstructions:
+        'Keep the affected limb positioned as instructed. Return for serial circumference checks if advised. Follow poison-control or toxicology instructions.',
+      medicationTreatment: TOX_HIGH_RISK_MED_EN,
+      returnPrecautions:
+        'Return immediately for spreading swelling, bleeding, trouble breathing, weakness, or severe pain.',
+    },
+    {
+      description:
+        "Vous avez été pris en charge pour une envenimation par serpent. L'antivenin, s'il a été administré, a été consigné dans le dossier d'administration des médicaments. L'incision, l'aspiration, la glace et les garrots serrés ne sont pas recommandés.",
+      diagnosisInstructions:
+        'Maintenez le membre atteint dans la position indiquée. Revenez pour des mesures de circonférence en série si conseillé. Suivez les instructions du centre antipoison ou de toxicologie.',
+      medicationTreatment: TOX_HIGH_RISK_MED_FR,
+      returnPrecautions:
+        'Retournez immédiatement en cas de gonflement progressif, de saignement, de difficulté à respirer, de faiblesse ou de douleur sévère.',
+    }
+  );
+
+export const SPIDER_ENVENOMATION_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        'You were evaluated for spider envenomation or a concerning spider bite with systemic or local toxicity features as documented.',
+      diagnosisInstructions:
+        'Elevate the area if advised. Keep wound care as directed. Follow poison-control advice.',
+      medicationTreatment: TOX_ROUTINE_MED_EN,
+      returnPrecautions:
+        'Return for spreading redness, severe pain, fever, muscle cramps, or breathing difficulty.',
+    },
+    {
+      description:
+        "Vous avez été pris en charge pour une envenimation par araignée ou une morsure d'araignée préoccupante avec des caractéristiques de toxicité locale ou systémique telles que documentées.",
+      diagnosisInstructions:
+        'Surélevez la zone si conseillé. Suivez les soins de plaie selon les directives. Respectez les conseils du centre antipoison.',
+      medicationTreatment: TOX_ROUTINE_MED_FR,
+      returnPrecautions:
+        'Retournez en cas de rougeur progressive, de douleur sévère, de fièvre, de crampes musculaires ou de difficulté à respirer.',
+    }
+  );
+
+export const SCORPION_ENVENOMATION_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        'You were evaluated for scorpion sting or envenomation.',
+      diagnosisInstructions:
+        'Rest and keep the affected area comfortable as advised. Follow poison-control instructions.',
+      medicationTreatment: TOX_ROUTINE_MED_EN,
+      returnPrecautions:
+        'Return immediately for trouble breathing, drooling, twitching, severe pain, or weakness.',
+    },
+    {
+      description:
+        'Vous avez été pris en charge pour une piqûre ou envenimation de scorpion.',
+      diagnosisInstructions:
+        'Reposez-vous et maintenez la zone atteinte confortable selon les conseils. Suivez les instructions du centre antipoison.',
+      medicationTreatment: TOX_ROUTINE_MED_FR,
+      returnPrecautions:
+        'Retournez immédiatement en cas de difficulté à respirer, de bave, de secousses, de douleur sévère ou de faiblesse.',
+    }
+  );
+
+export const MARINE_ENVENOMATION_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        'You were evaluated for venomous marine injury or marine toxin exposure.',
+      diagnosisInstructions:
+        'Follow wound care and pain-control instructions exactly as given. Avoid further marine exposure until cleared by a clinician.',
+      medicationTreatment: TOX_ROUTINE_MED_EN,
+      returnPrecautions:
+        'Return for spreading swelling, trouble breathing, chest pain, or severe systemic symptoms.',
+    },
+    {
+      description:
+        'Vous avez été pris en charge pour une blessure marine venimeuse ou une exposition à une toxine marine.',
+      diagnosisInstructions:
+        "Suivez exactement les consignes de soins de plaie et de contrôle de la douleur. Évitez toute nouvelle exposition marine jusqu'à avis clinique.",
+      medicationTreatment: TOX_ROUTINE_MED_FR,
+      returnPrecautions:
+        'Retournez en cas de gonflement progressif, de difficulté à respirer, de douleur thoracique ou de symptômes systémiques sévères.',
+    }
+  );
+
+export const POISON_CONTROL_FOLLOWUP_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        'You were evaluated for a toxic exposure and poison-control consultation was documented when arranged. Recommendations from poison control are advisory support for clinician decisions.',
+      diagnosisInstructions:
+        'Keep the poison-control case or reference number if provided. Follow the written aftercare plan exactly.',
+      medicationTreatment: TOX_ROUTINE_MED_EN,
+      returnPrecautions:
+        'Return immediately for any worsening symptoms listed on your aftercare plan, or if new concerning symptoms develop.',
+    },
+    {
+      description:
+        "Vous avez été pris en charge pour une exposition toxique et une consultation du centre antipoison a été documentée lorsqu'elle a été organisée. Les recommandations du centre antipoison sont un soutien consultatif aux décisions du clinicien.",
+      diagnosisInstructions:
+        "Conservez le numéro de dossier ou de référence du centre antipoison s'il a été fourni. Suivez exactement le plan de soins écrit.",
+      medicationTreatment: TOX_ROUTINE_MED_FR,
+      returnPrecautions:
+        "Retournez immédiatement pour tout symptôme qui s'aggrave selon votre plan de soins, ou si de nouveaux symptômes préoccupants apparaissent.",
+    }
+  );

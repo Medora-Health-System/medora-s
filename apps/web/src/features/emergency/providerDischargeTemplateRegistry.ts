@@ -389,6 +389,26 @@ import {
   DECOMPRESSION_ILLNESS_POST_ACUTE_V1_SUGGESTED_TEXT,
   RADIATION_EXPOSURE_FOLLOWUP_V1_SUGGESTED_TEXT,
   RADIATION_INJURY_POST_ACUTE_V1_SUGGESTED_TEXT,
+  LOW_RISK_TOXIC_EXPOSURE_V1_SUGGESTED_TEXT,
+  ACCIDENTAL_INGESTION_V1_SUGGESTED_TEXT,
+  ACETAMINOPHEN_EXPOSURE_FOLLOWUP_V1_SUGGESTED_TEXT,
+  SALICYLATE_EXPOSURE_FOLLOWUP_V1_SUGGESTED_TEXT,
+  OPIOID_OVERDOSE_POST_OBSERVATION_V1_SUGGESTED_TEXT,
+  SEDATIVE_OVERDOSE_POST_OBSERVATION_V1_SUGGESTED_TEXT,
+  ALCOHOL_WITHDRAWAL_POST_ACUTE_V1_SUGGESTED_TEXT,
+  STIMULANT_INTOXICATION_V1_SUGGESTED_TEXT,
+  CANNABIS_INTOXICATION_V1_SUGGESTED_TEXT,
+  UNKNOWN_INGESTION_POST_OBSERVATION_V1_SUGGESTED_TEXT,
+  CARBON_MONOXIDE_POST_ACUTE_V1_SUGGESTED_TEXT,
+  CAUSTIC_INGESTION_POST_ACUTE_V1_SUGGESTED_TEXT,
+  HYDROCARBON_EXPOSURE_V1_SUGGESTED_TEXT,
+  PESTICIDE_EXPOSURE_POST_ACUTE_V1_SUGGESTED_TEXT,
+  METHEMOGLOBINEMIA_POST_ACUTE_V1_SUGGESTED_TEXT,
+  SNAKE_ENVENOMATION_POST_ACUTE_V1_SUGGESTED_TEXT,
+  SPIDER_ENVENOMATION_V1_SUGGESTED_TEXT,
+  SCORPION_ENVENOMATION_V1_SUGGESTED_TEXT,
+  MARINE_ENVENOMATION_V1_SUGGESTED_TEXT,
+  POISON_CONTROL_FOLLOWUP_V1_SUGGESTED_TEXT,
 } from "./providerDischargeTemplateSuggestedTextCatalog";
 import {
   newDefaultFollowUpRow,
@@ -743,6 +763,13 @@ const DERMATOLOGY_TEMPLATE_GOVERNANCE = {
 
 /** Phase 15 — environmental / exposure discharge governance (documentation advisory only, Commit 2). Mirrors DERMATOLOGY_TEMPLATE_GOVERNANCE. */
 const ENVIRONMENTAL_EXPOSURE_TEMPLATE_GOVERNANCE = {
+  ...BATCH_GOVERNANCE_DRAFT,
+  specialtyCategory: "emergency_medicine",
+  riskCategory: "moderate",
+};
+
+/** Phase 16 — toxicology / envenomation discharge governance (Commit 2). */
+const TOXICOLOGY_ENVENOMATION_TEMPLATE_GOVERNANCE = {
   ...BATCH_GOVERNANCE_DRAFT,
   specialtyCategory: "emergency_medicine",
   riskCategory: "moderate",
@@ -1590,10 +1617,11 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
       icdExact: ["R29.818"],
       icdFamily: ["G45", "R47"],
       keyword: [
-        "tia",
+        // Do not use bare "tia" — it matches French "initiale" (rencontre initiale) via substring.
         "transient ischemic attack",
+        "accident ischémique transitoire",
         "stroke-like symptoms",
-        "numbness",
+        "symptômes d'allure d'avc",
         "speech difficulty",
       ],
     },
@@ -1812,8 +1840,15 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
     riskCategory: "moderate",
     ...BATCH_GOVERNANCE_DRAFT,
     diagnosisMappings: {
+      // F10.23* withdrawal is owned by alcohol_withdrawal_post_acute_v1 (longer prefix wins).
+      // Do not use bare "intoxication" — it steals medication-poisoning French labels.
       icdFamily: ["F10.92", "F10"],
-      keyword: ["alcohol intoxication", "intoxication", "alcohol use"],
+      keyword: [
+        "alcohol intoxication",
+        "intoxication alcoolique",
+        "ethanol intoxication",
+        "alcohol use disorder intoxication",
+      ],
     },
     sourceReferences: [
       {
@@ -2862,8 +2897,9 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
       requiresWithdrawalPrecautions: true,
       requiresBehavioralHealthFollowUp: true,
     },
+    // F10.23* medical withdrawal aftercare is owned by Phase 16 alcohol_withdrawal_post_acute_v1.
+    // This BH template remains keyword-only for behavioral-health framing ("bh alcohol withdrawal").
     diagnosisMappings: {
-      icdExact: ["F10.239"],
       keyword: ["bh alcohol withdrawal", "alcohol withdrawal precautions", "sevrage alcool bh"],
     },
     sourceReferences: [
@@ -7047,6 +7083,150 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
     diagnosisMappings: { keyword: ["radiation injury post-acute care", "acute radiation syndrome post-acute care", "lésion par radiation soins post-aigus", "syndrome d'irradiation aiguë soins post-aigus"] },
     sourceReferences: [{ label: "MedlinePlus — Radiation exposure", url: "https://medlineplus.gov/", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
     defaultFollowUps: [registryFollowUp("env-radinjpa-em", "EMERGENCY_MEDICINE", "urgent / as directed")], suggestedText: RADIATION_INJURY_POST_ACUTE_V1_SUGGESTED_TEXT,
+  },
+  // Phase 16 — toxicology / envenomation discharge templates (Commit 2).
+  // Preserves BH alcohol_intoxication_v1; preserves T40.x5 adverse-effect ownership on BH opioid aftercare;
+  // preserves ordinary animal_bite_v1 for nonvenomous bites; claims T58 CO and T63 envenomation.
+  {
+    id: "low_risk_toxic_exposure_v1", version: "1.0.0", title: "Low-risk toxic exposure discharge documentation", ...TOXICOLOGY_ENVENOMATION_TEMPLATE_GOVERNANCE,
+    diagnosisMappings: { keyword: ['low-risk toxic exposure', 'exposition toxique à faible risque'] },
+    sourceReferences: [{ label: "MedlinePlus — Poisoning", url: "https://medlineplus.gov/poisoning.html", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("tox-lowrisk-pcp", "PRIMARY_CARE", "within 24–48 hours or as directed")], suggestedText: LOW_RISK_TOXIC_EXPOSURE_V1_SUGGESTED_TEXT,
+  },
+  {
+    id: "accidental_ingestion_v1", version: "1.0.0", title: "Accidental ingestion discharge documentation", ...TOXICOLOGY_ENVENOMATION_TEMPLATE_GOVERNANCE,
+    diagnosisMappings: { keyword: ['accidental ingestion', 'pediatric accidental ingestion', 'ingestion accidentelle'] },
+    sourceReferences: [{ label: "MedlinePlus — Poisoning", url: "https://medlineplus.gov/poisoning.html", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("tox-accing-pcp", "PRIMARY_CARE", "within 24 hours or as directed")], suggestedText: ACCIDENTAL_INGESTION_V1_SUGGESTED_TEXT,
+  },
+  {
+    id: "acetaminophen_exposure_followup_v1", version: "1.0.0", title: "Acetaminophen exposure follow-up discharge documentation", ...TOXICOLOGY_ENVENOMATION_TEMPLATE_GOVERNANCE,
+    diagnosisMappings: { icdFamily: ['T39.1'], keyword: ['acetaminophen overdose', 'acetaminophen poisoning', 'paracetamol overdose', 'surdosage au paracétamol', 'intoxication au paracétamol'] },
+    sourceReferences: [{ label: "MedlinePlus — Poisoning", url: "https://medlineplus.gov/poisoning.html", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("tox-apap-pcp", "PRIMARY_CARE", "within 24 hours or as directed")], suggestedText: ACETAMINOPHEN_EXPOSURE_FOLLOWUP_V1_SUGGESTED_TEXT,
+  },
+  {
+    id: "salicylate_exposure_followup_v1", version: "1.0.0", title: "Salicylate exposure follow-up discharge documentation", ...TOXICOLOGY_ENVENOMATION_TEMPLATE_GOVERNANCE,
+    diagnosisMappings: { icdFamily: ['T39.0'], keyword: ['salicylate toxicity', 'aspirin overdose', 'toxicité aux salicylates', "surdosage d'aspirine"] },
+    sourceReferences: [{ label: "MedlinePlus — Poisoning", url: "https://medlineplus.gov/poisoning.html", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("tox-asa-pcp", "PRIMARY_CARE", "within 24 hours or as directed")], suggestedText: SALICYLATE_EXPOSURE_FOLLOWUP_V1_SUGGESTED_TEXT,
+  },
+  {
+    id: "opioid_overdose_post_observation_v1", version: "1.0.0", title: "Opioid overdose post-observation discharge documentation", ...TOXICOLOGY_ENVENOMATION_TEMPLATE_GOVERNANCE,
+    diagnosisMappings: { icdFamily: ['T40.0X1', 'T40.0X2', 'T40.0X3', 'T40.0X4', 'T40.1X1', 'T40.1X2', 'T40.1X3', 'T40.1X4', 'T40.2X1', 'T40.2X2', 'T40.2X3', 'T40.2X4', 'T40.4X1', 'T40.4X2', 'T40.4X3', 'T40.4X4'], keyword: ['opioid overdose', 'fentanyl overdose', 'methadone overdose', "surdosage d'opioïde", 'surdosage de fentanyl'] },
+    sourceReferences: [{ label: "MedlinePlus — Poisoning", url: "https://medlineplus.gov/poisoning.html", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("tox-opioid-em", "EMERGENCY_MEDICINE", "as directed after observation")], suggestedText: OPIOID_OVERDOSE_POST_OBSERVATION_V1_SUGGESTED_TEXT,
+  },
+  {
+    id: "sedative_overdose_post_observation_v1", version: "1.0.0", title: "Sedative overdose post-observation discharge documentation", ...TOXICOLOGY_ENVENOMATION_TEMPLATE_GOVERNANCE,
+    diagnosisMappings: { icdFamily: ['T42.4X1', 'T42.4X2', 'T42.4X3', 'T42.4X4'], keyword: ['benzodiazepine overdose', 'sedative overdose', 'surdosage de benzodiazépine', 'surdosage de sédatif'] },
+    sourceReferences: [{ label: "MedlinePlus — Poisoning", url: "https://medlineplus.gov/poisoning.html", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("tox-sed-em", "EMERGENCY_MEDICINE", "as directed after observation")], suggestedText: SEDATIVE_OVERDOSE_POST_OBSERVATION_V1_SUGGESTED_TEXT,
+  },
+  {
+    id: "alcohol_withdrawal_post_acute_v1", version: "1.0.0", title: "Alcohol withdrawal post-acute discharge documentation", ...TOXICOLOGY_ENVENOMATION_TEMPLATE_GOVERNANCE, riskCategory: "high",
+    diagnosisMappings: { icdFamily: ['F10.23'], keyword: ['alcohol withdrawal post-acute care', 'delirium tremens post-acute care', 'sevrage alcoolique soins post-aigus'] },
+    sourceReferences: [{ label: "MedlinePlus — Poisoning", url: "https://medlineplus.gov/poisoning.html", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("tox-etohwd-em", "EMERGENCY_MEDICINE", "urgent / as directed")], suggestedText: ALCOHOL_WITHDRAWAL_POST_ACUTE_V1_SUGGESTED_TEXT,
+  },
+  {
+    id: "stimulant_intoxication_v1", version: "1.0.0", title: "Stimulant intoxication discharge documentation", ...TOXICOLOGY_ENVENOMATION_TEMPLATE_GOVERNANCE,
+    diagnosisMappings: { icdFamily: ['F14.12', 'F14.92', 'F15.12', 'F15.92'], keyword: ['cocaine toxicity', 'methamphetamine intoxication', 'stimulant overdose', 'intoxication à la cocaïne', 'intoxication à la méthamphétamine'] },
+    sourceReferences: [{ label: "MedlinePlus — Poisoning", url: "https://medlineplus.gov/poisoning.html", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("tox-stim-pcp", "PRIMARY_CARE", "within 24–48 hours or as directed")], suggestedText: STIMULANT_INTOXICATION_V1_SUGGESTED_TEXT,
+  },
+  {
+    id: "cannabis_intoxication_v1", version: "1.0.0", title: "Cannabis intoxication discharge documentation", ...TOXICOLOGY_ENVENOMATION_TEMPLATE_GOVERNANCE,
+    diagnosisMappings: { icdFamily: ['F12.12', 'F12.92'], keyword: ['cannabis intoxication', 'synthetic cannabinoid intoxication', 'intoxication au cannabis'] },
+    sourceReferences: [{ label: "MedlinePlus — Poisoning", url: "https://medlineplus.gov/poisoning.html", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("tox-cann-pcp", "PRIMARY_CARE", "within 1–2 days or as directed")], suggestedText: CANNABIS_INTOXICATION_V1_SUGGESTED_TEXT,
+  },
+  {
+    id: "unknown_ingestion_post_observation_v1", version: "1.0.0", title: "Unknown ingestion post-observation discharge documentation", ...TOXICOLOGY_ENVENOMATION_TEMPLATE_GOVERNANCE,
+    diagnosisMappings: { icdFamily: ['T50.901', 'T50.902', 'T50.903', 'T50.904'], keyword: ['unknown ingestion', 'mixed overdose', 'ingestion inconnue', 'surdosage mixte'] },
+    sourceReferences: [{ label: "MedlinePlus — Poisoning", url: "https://medlineplus.gov/poisoning.html", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("tox-unk-em", "EMERGENCY_MEDICINE", "as directed after observation")], suggestedText: UNKNOWN_INGESTION_POST_OBSERVATION_V1_SUGGESTED_TEXT,
+  },
+  {
+    id: "carbon_monoxide_post_acute_v1", version: "1.0.0", title: "Carbon monoxide post-acute discharge documentation", ...TOXICOLOGY_ENVENOMATION_TEMPLATE_GOVERNANCE, riskCategory: "high",
+    diagnosisMappings: { icdFamily: ['T58'], keyword: ['carbon monoxide poisoning', 'intoxication au monoxyde de carbone', 'carbon monoxide post-acute care'] },
+    sourceReferences: [{ label: "MedlinePlus — Poisoning", url: "https://medlineplus.gov/poisoning.html", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("tox-co-em", "EMERGENCY_MEDICINE", "urgent / as directed")], suggestedText: CARBON_MONOXIDE_POST_ACUTE_V1_SUGGESTED_TEXT,
+  },
+  {
+    id: "caustic_ingestion_post_acute_v1", version: "1.0.0", title: "Caustic ingestion post-acute discharge documentation", ...TOXICOLOGY_ENVENOMATION_TEMPLATE_GOVERNANCE, riskCategory: "high",
+    diagnosisMappings: { icdFamily: ['T54'], keyword: ['caustic ingestion', 'corrosive ingestion', 'ingestion caustique', 'ingestion corrosive'] },
+    sourceReferences: [{ label: "MedlinePlus — Poisoning", url: "https://medlineplus.gov/poisoning.html", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("tox-caustic-em", "EMERGENCY_MEDICINE", "urgent / as directed")], suggestedText: CAUSTIC_INGESTION_POST_ACUTE_V1_SUGGESTED_TEXT,
+  },
+  {
+    id: "hydrocarbon_exposure_v1", version: "1.0.0", title: "Hydrocarbon exposure discharge documentation", ...TOXICOLOGY_ENVENOMATION_TEMPLATE_GOVERNANCE,
+    diagnosisMappings: { icdFamily: ['T52'], keyword: ['hydrocarbon ingestion', 'petroleum product toxicity', "ingestion d'hydrocarbures"] },
+    sourceReferences: [{ label: "MedlinePlus — Poisoning", url: "https://medlineplus.gov/poisoning.html", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("tox-hc-pcp", "PRIMARY_CARE", "within 24 hours or as directed")], suggestedText: HYDROCARBON_EXPOSURE_V1_SUGGESTED_TEXT,
+  },
+  {
+    id: "pesticide_exposure_post_acute_v1", version: "1.0.0", title: "Pesticide exposure post-acute discharge documentation", ...TOXICOLOGY_ENVENOMATION_TEMPLATE_GOVERNANCE, riskCategory: "high",
+    diagnosisMappings: { icdFamily: ['T60'], keyword: ['pesticide poisoning', 'organophosphate poisoning', 'intoxication par pesticide', 'intoxication aux organophosphorés'] },
+    sourceReferences: [{ label: "MedlinePlus — Poisoning", url: "https://medlineplus.gov/poisoning.html", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("tox-pest-em", "EMERGENCY_MEDICINE", "urgent / as directed")], suggestedText: PESTICIDE_EXPOSURE_POST_ACUTE_V1_SUGGESTED_TEXT,
+  },
+  {
+    id: "methemoglobinemia_post_acute_v1", version: "1.0.0", title: "Methemoglobinemia post-acute discharge documentation", ...TOXICOLOGY_ENVENOMATION_TEMPLATE_GOVERNANCE, riskCategory: "high",
+    diagnosisMappings: { icdFamily: ['D74.8', 'D74.9'], keyword: ['methemoglobinemia', 'méthémoglobinémie'] },
+    sourceReferences: [{ label: "MedlinePlus — Poisoning", url: "https://medlineplus.gov/poisoning.html", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("tox-metHb-em", "EMERGENCY_MEDICINE", "urgent / as directed")], suggestedText: METHEMOGLOBINEMIA_POST_ACUTE_V1_SUGGESTED_TEXT,
+  },
+  {
+    id: "snake_envenomation_post_acute_v1", version: "1.0.0", title: "Snake envenomation post-acute discharge documentation", ...TOXICOLOGY_ENVENOMATION_TEMPLATE_GOVERNANCE, riskCategory: "high",
+    diagnosisMappings: { icdFamily: ['T63.0'], keyword: ['snake envenomation', 'venomous snake bite', 'envenimation par serpent', 'morsure de serpent venimeux'] },
+    sourceReferences: [{ label: "MedlinePlus — Poisoning", url: "https://medlineplus.gov/poisoning.html", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("tox-snake-em", "EMERGENCY_MEDICINE", "urgent / as directed")], suggestedText: SNAKE_ENVENOMATION_POST_ACUTE_V1_SUGGESTED_TEXT,
+  },
+  {
+    id: "spider_envenomation_v1", version: "1.0.0", title: "Spider envenomation discharge documentation", ...TOXICOLOGY_ENVENOMATION_TEMPLATE_GOVERNANCE,
+    diagnosisMappings: { icdFamily: ['T63.3'], keyword: ['spider envenomation', 'black widow bite', 'brown recluse bite', 'envenimation par araignée', 'morsure de veuve noire'] },
+    sourceReferences: [{ label: "MedlinePlus — Poisoning", url: "https://medlineplus.gov/poisoning.html", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("tox-spider-pcp", "PRIMARY_CARE", "within 24–48 hours or as directed")], suggestedText: SPIDER_ENVENOMATION_V1_SUGGESTED_TEXT,
+  },
+  {
+    id: "scorpion_envenomation_v1", version: "1.0.0", title: "Scorpion envenomation discharge documentation", ...TOXICOLOGY_ENVENOMATION_TEMPLATE_GOVERNANCE,
+    diagnosisMappings: { icdFamily: ['T63.2'], keyword: ['scorpion sting', 'scorpion envenomation', 'piqûre de scorpion', 'envenimation par scorpion'] },
+    sourceReferences: [{ label: "MedlinePlus — Poisoning", url: "https://medlineplus.gov/poisoning.html", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("tox-scorp-pcp", "PRIMARY_CARE", "within 24–48 hours or as directed")], suggestedText: SCORPION_ENVENOMATION_V1_SUGGESTED_TEXT,
+  },
+  {
+    id: "marine_envenomation_v1", version: "1.0.0", title: "Marine envenomation discharge documentation", ...TOXICOLOGY_ENVENOMATION_TEMPLATE_GOVERNANCE,
+    diagnosisMappings: { icdFamily: ['T63.5', 'T63.6'], keyword: ['marine envenomation', 'venomous marine injury', 'envenimation marine'] },
+    sourceReferences: [{ label: "MedlinePlus — Poisoning", url: "https://medlineplus.gov/poisoning.html", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("tox-marine-pcp", "PRIMARY_CARE", "within 24–48 hours or as directed")], suggestedText: MARINE_ENVENOMATION_V1_SUGGESTED_TEXT,
+  },
+  {
+    id: "poison_control_followup_v1", version: "1.0.0", title: "Poison control follow-up discharge documentation", ...TOXICOLOGY_ENVENOMATION_TEMPLATE_GOVERNANCE,
+    diagnosisMappings: {
+      icdExact: ["G90.81", "G21.0"],
+      // Cardio/CNS agent poisoning + heavy-metal/lithium toxic-effect follow-up (poison-control pathway).
+      icdFamily: ["G90.81", "G21.0", "T44.7", "T46.0", "T46.1", "T43.5", "T56.8"],
+      keyword: [
+        "poison control follow-up",
+        "suivi centre antipoison",
+        "poison-control follow-up",
+        "serotonin syndrome",
+        "syndrome sérotoninergique",
+        "neuroleptic malignant syndrome",
+        "syndrome malin des neuroleptiques",
+        "beta blocker overdose",
+        "calcium channel blocker overdose",
+        "digoxin toxicity",
+        "lithium toxicity",
+        "surdosage de bêta-bloquant",
+        "surdosage d'inhibiteur calcique",
+        "toxicité à la digoxine",
+        "toxicité au lithium",
+      ],
+    },
+    sourceReferences: [{ label: "MedlinePlus — Poisoning", url: "https://medlineplus.gov/poisoning.html", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("tox-pc-pcp", "PRIMARY_CARE", "as directed by poison control / clinician")], suggestedText: POISON_CONTROL_FOLLOWUP_V1_SUGGESTED_TEXT,
   },
   {
     id: GENERIC_PROVIDER_DISCHARGE_TEMPLATE_ID,

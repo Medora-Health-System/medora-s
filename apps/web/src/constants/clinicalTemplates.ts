@@ -213,6 +213,27 @@ export const COMMON_DIAGNOSES: Array<{ code: string; label: string }> = [
   { code: "T70.3XXA", label: "Maladie des caissons (maladie de décompression), rencontre initiale" },
   { code: "T70.8XXA", label: "Autres effets de la pression de l'air et de l'eau, rencontre initiale" },
   { code: "T66.XXXA", label: "Maladie des rayons, sans précision, rencontre initiale" },
+  // Phase 16 — toxicologie / envenimation
+  { code: "T39.1X1A", label: "Intoxication par dérivés du 4-aminophénol (paracétamol), accidentelle, rencontre initiale" },
+  { code: "T39.091A", label: "Intoxication par salicylates, accidentelle, rencontre initiale" },
+  { code: "T40.2X1A", label: "Intoxication par autres opioïdes, accidentelle, rencontre initiale" },
+  { code: "T42.4X1A", label: "Intoxication par benzodiazépines, accidentelle, rencontre initiale" },
+  { code: "F10.129", label: "Intoxication alcoolique avec trouble de l'usage de l'alcool, sans précision" },
+  { code: "F10.239", label: "Sevrage alcoolique avec trouble de l'usage de l'alcool, sans précision" },
+  { code: "F14.129", label: "Intoxication à la cocaïne avec trouble de l'usage, sans précision" },
+  { code: "F15.129", label: "Intoxication aux stimulants avec trouble de l'usage, sans précision" },
+  { code: "G90.81", label: "Syndrome sérotoninergique" },
+  { code: "G21.0", label: "Syndrome malin des neuroleptiques" },
+  { code: "T60.0X1A", label: "Effet toxique des insecticides organophosphorés et carbamates, accidentel, rencontre initiale" },
+  { code: "T44.7X1A", label: "Intoxication par bêta-bloquants, accidentelle, rencontre initiale" },
+  { code: "T46.1X1A", label: "Intoxication par inhibiteurs calciques, accidentelle, rencontre initiale" },
+  { code: "T46.0X1A", label: "Intoxication par glucosides cardiotoniques et médicaments d'action similaire, accidentelle, rencontre initiale" },
+  { code: "T56.891A", label: "Effet toxique d'autres métaux (dont lithium), accidentel, rencontre initiale" },
+  { code: "T58.91XA", label: "Effet toxique du monoxyde de carbone de source non précisée, accidentel, rencontre initiale" },
+  { code: "T54.91XA", label: "Effet toxique de substance corrosive non précisée, accidentel, rencontre initiale" },
+  { code: "T50.901A", label: "Intoxication par substances médicamenteuses non précisées, accidentelle, rencontre initiale" },
+  { code: "T50.902A", label: "Intoxication par substances médicamenteuses non précisées, automutilation intentionnelle, rencontre initiale" },
+  { code: "T63.001A", label: "Effet toxique du venin de serpent non précisé, accidentel, rencontre initiale" },
 ];
 
 /** Quick-insert snippets for nursing / general consultation notes (Notes de consultation). */

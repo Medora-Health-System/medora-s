@@ -1511,6 +1511,87 @@ export const PROVIDER_DISCHARGE_TEMPLATE_CONTENT_INTEGRITY: Record<
     mustIncludeAny: { en: ["radiation injury", "radiation syndrome"], fr: ["lésion par radiation", "irradiation"] },
     forbiddenCrossTemplateMarkers: { en: ["exposure only without injury"], fr: ["exposition seule sans lésion"] },
   },
+  // Phase 16 — Toxicology / envenomation content integrity rules (Commit 2).
+  low_risk_toxic_exposure_v1: {
+    mustIncludeAny: { en: ['low-risk toxic exposure'], fr: ['exposition toxique à faible risque'] },
+    forbiddenCrossTemplateMarkers: { en: ['medically cleared'], fr: ['clearance médicale'] },
+  },
+  accidental_ingestion_v1: {
+    mustIncludeAny: { en: ['accidental ingestion'], fr: ['ingestion accidentelle'] },
+    forbiddenCrossTemplateMarkers: { en: ['medically cleared'], fr: ['clearance médicale'] },
+  },
+  acetaminophen_exposure_followup_v1: {
+    mustIncludeAny: { en: ['acetaminophen'], fr: ['paracétamol'] },
+    forbiddenCrossTemplateMarkers: { en: ['medically cleared'], fr: ['clearance médicale'] },
+  },
+  salicylate_exposure_followup_v1: {
+    mustIncludeAny: { en: ['salicylate'], fr: ['salicylates'] },
+    forbiddenCrossTemplateMarkers: { en: ['medically cleared'], fr: ['clearance médicale'] },
+  },
+  opioid_overdose_post_observation_v1: {
+    mustIncludeAny: { en: ['opioid'], fr: ['opioïdes'] },
+    forbiddenCrossTemplateMarkers: { en: ['medically cleared'], fr: ['clearance médicale'] },
+  },
+  sedative_overdose_post_observation_v1: {
+    mustIncludeAny: { en: ['sedative', 'benzodiazepine'], fr: ['sédatif', 'benzodiazépine'] },
+    forbiddenCrossTemplateMarkers: { en: ['medically cleared'], fr: ['clearance médicale'] },
+  },
+  alcohol_withdrawal_post_acute_v1: {
+    mustIncludeAny: { en: ['alcohol withdrawal'], fr: ['sevrage alcoolique'] },
+    forbiddenCrossTemplateMarkers: { en: ['medically cleared'], fr: ['clearance médicale'] },
+  },
+  stimulant_intoxication_v1: {
+    mustIncludeAny: { en: ['stimulant'], fr: ['stimulants'] },
+    forbiddenCrossTemplateMarkers: { en: ['excited delirium'], fr: ['délire excité'] },
+  },
+  cannabis_intoxication_v1: {
+    mustIncludeAny: { en: ['cannabis'], fr: ['cannabis'] },
+    forbiddenCrossTemplateMarkers: { en: ['medically cleared'], fr: ['clearance médicale'] },
+  },
+  unknown_ingestion_post_observation_v1: {
+    mustIncludeAny: { en: ['unknown', 'mixed'], fr: ['inconnue', 'mixte'] },
+    forbiddenCrossTemplateMarkers: { en: ['medically cleared'], fr: ['clearance médicale'] },
+  },
+  carbon_monoxide_post_acute_v1: {
+    mustIncludeAny: { en: ['carbon monoxide'], fr: ['monoxyde de carbone'] },
+    forbiddenCrossTemplateMarkers: { en: ['pulse oximetry alone excludes'], fr: ['oxymétrie de pouls seule exclut'] },
+  },
+  caustic_ingestion_post_acute_v1: {
+    mustIncludeAny: { en: ['caustic', 'corrosive'], fr: ['caustique', 'corrosive'] },
+    forbiddenCrossTemplateMarkers: { en: ['induce vomiting at home'], fr: ['provoquez des vomissements à domicile'] },
+  },
+  hydrocarbon_exposure_v1: {
+    mustIncludeAny: { en: ['hydrocarbon'], fr: ['hydrocarbures'] },
+    forbiddenCrossTemplateMarkers: { en: ['induce vomiting at home'], fr: ['provoquez des vomissements à domicile'] },
+  },
+  pesticide_exposure_post_acute_v1: {
+    mustIncludeAny: { en: ['pesticide', 'organophosphate'], fr: ['pesticides', 'organophosphorés'] },
+    forbiddenCrossTemplateMarkers: { en: ['medically cleared'], fr: ['clearance médicale'] },
+  },
+  methemoglobinemia_post_acute_v1: {
+    mustIncludeAny: { en: ['methemoglobinemia'], fr: ['méthémoglobinémie'] },
+    forbiddenCrossTemplateMarkers: { en: ['from cyanosis alone without'], fr: ['à partir de la cyanose seule sans'] },
+  },
+  snake_envenomation_post_acute_v1: {
+    mustIncludeAny: { en: ['snake envenomation'], fr: ['envenimation par serpent'] },
+    forbiddenCrossTemplateMarkers: { en: ['apply a tight tourniquet', 'cut the wound', 'suck the venom'], fr: ['appliquez un garrot serré', 'incisez la plaie', 'aspirez le venin'] },
+  },
+  spider_envenomation_v1: {
+    mustIncludeAny: { en: ['spider'], fr: ['araignée'] },
+    forbiddenCrossTemplateMarkers: { en: ['dog bite discharge'], fr: ['morsure de chien'] },
+  },
+  scorpion_envenomation_v1: {
+    mustIncludeAny: { en: ['scorpion'], fr: ['scorpion'] },
+    forbiddenCrossTemplateMarkers: { en: ['dog bite discharge'], fr: ['morsure de chien'] },
+  },
+  marine_envenomation_v1: {
+    mustIncludeAny: { en: ['marine'], fr: ['marine'] },
+    forbiddenCrossTemplateMarkers: { en: ['dog bite discharge'], fr: ['morsure de chien'] },
+  },
+  poison_control_followup_v1: {
+    mustIncludeAny: { en: ['poison control', 'poison-control'], fr: ['centre antipoison'] },
+    forbiddenCrossTemplateMarkers: { en: ['medically cleared'], fr: ['clearance médicale'] },
+  },
 };
 
 function suggestedTextBlob(body: {

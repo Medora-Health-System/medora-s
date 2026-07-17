@@ -78,6 +78,14 @@ export const PROVIDER_DISCHARGE_FOLLOW_UP_TIMING_LOCALE: Record<string, Localize
   },
   "3–5 days if advised": { en: "3–5 days if advised", fr: "3 à 5 jours si recommandé" },
   "as directed": { en: "as directed", fr: "selon les directives" },
+  "as directed after observation": {
+    en: "as directed after observation",
+    fr: "selon les directives après observation",
+  },
+  "as directed by poison control / clinician": {
+    en: "as directed by poison control / clinician",
+    fr: "selon les directives du centre antipoison / du clinicien",
+  },
   "as directed by dialysis team": {
     en: "as directed by dialysis team",
     fr: "selon les directives de l'équipe de dialyse",

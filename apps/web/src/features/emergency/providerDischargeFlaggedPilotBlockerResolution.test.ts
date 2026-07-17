@@ -81,8 +81,9 @@ describe("MEDUI.ED.DISCHARGE.TEMPLATE_FAMILY_COVERAGE.5", () => {
 
     it("9 — alcohol withdrawal does not route to intoxication", () => {
       const withdrawal = resolveClinicalConditionFamily({ code: "F10.239", displayName: "Alcohol withdrawal" });
-      expect(withdrawal.templateId).toBe("behavioral_health_alcohol_withdrawal_precautions_v1");
+      expect(withdrawal.templateId).toBe("alcohol_withdrawal_post_acute_v1");
       expect(withdrawal.templateId).not.toBe("alcohol_intoxication_v1");
+      expect(withdrawal.templateId).not.toBe("behavioral_health_alcohol_withdrawal_precautions_v1");
     });
 
     it("10 — opioid overdose does not route to generic substance use only", () => {
