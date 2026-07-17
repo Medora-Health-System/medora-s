@@ -714,6 +714,66 @@ const REQUIRED_QUERIES: Array<{
   { q: "surdosage mixte", mustMatchCodePrefix: "T50.9" },
   { q: "intentional overdose", mustContainDescription: "intentional self-harm" },
   { q: "surdosage intentionnel", mustContainDescription: "intentional self-harm" },
+  // OB/GYN / urology (Phase 17)
+  { q: "pregnancy of unknown location", mustMatchCodePrefix: "O02.81" },
+  { q: "grossesse de localisation inconnue", mustMatchCodePrefix: "O02.81" },
+  { q: "threatened abortion", mustMatchCodePrefix: "O20.0" },
+  { q: "threatened miscarriage", mustMatchCodePrefix: "O20.0" },
+  { q: "menace d'avortement", mustMatchCodePrefix: "O20.0" },
+  { q: "spontaneous abortion", mustMatchCodePrefix: "O03" },
+  { q: "avortement spontané", mustMatchCodePrefix: "O03" },
+  { q: "ectopic pregnancy", mustMatchCodePrefix: "O00" },
+  { q: "grossesse ectopique", mustMatchCodePrefix: "O00" },
+  { q: "hyperemesis gravidarum", mustMatchCodePrefix: "O21" },
+  { q: "hyperémèse gravidique", mustMatchCodePrefix: "O21" },
+  { q: "preeclampsia", mustMatchCodePrefix: "O14" },
+  { q: "prééclampsie", mustMatchCodePrefix: "O14" },
+  { q: "HELLP syndrome", mustMatchCodePrefix: "O14.2" },
+  { q: "syndrome HELLP", mustMatchCodePrefix: "O14.2" },
+  { q: "preterm labor", mustMatchCodePrefix: "O60" },
+  { q: "travail prématuré", mustMatchCodePrefix: "O60" },
+  { q: "rupture of membranes", mustMatchCodePrefix: "O42" },
+  { q: "rupture prématurée des membranes", mustMatchCodePrefix: "O42" },
+  { q: "postpartum hemorrhage", mustMatchCodePrefix: "O72" },
+  { q: "hémorragie post-partum", mustMatchCodePrefix: "O72" },
+  { q: "postpartum endometritis", mustMatchCodePrefix: "O86.12" },
+  { q: "endométrite post-partum", mustMatchCodePrefix: "O86.12" },
+  { q: "ovarian torsion", mustMatchCodePrefix: "N83.5" },
+  { q: "torsion ovarienne", mustMatchCodePrefix: "N83.5" },
+  { q: "ovarian cyst", mustMatchCodePrefix: "N83.2" },
+  { q: "kyste ovarien", mustMatchCodePrefix: "N83.2" },
+  { q: "pelvic inflammatory disease", mustMatchCodePrefix: "N73" },
+  { q: "maladie pelvienne inflammatoire", mustMatchCodePrefix: "N73" },
+  { q: "tubo-ovarian abscess", mustMatchCodePrefix: "N70" },
+  { q: "abcès tubo-ovarien", mustMatchCodePrefix: "N70" },
+  { q: "Bartholin cyst", mustMatchCodePrefix: "N75" },
+  { q: "kyste de Bartholin", mustMatchCodePrefix: "N75" },
+  { q: "postmenopausal bleeding", mustMatchCodePrefix: "N95.0" },
+  { q: "saignement postménopausique", mustMatchCodePrefix: "N95.0" },
+  { q: "IUD complication", mustMatchCodePrefix: "T83.3" },
+  { q: "complication DIU", mustMatchCodePrefix: "T83.3" },
+  { q: "kidney stone", mustMatchCodePrefix: "N20" },
+  { q: "calcul du rein", mustMatchCodePrefix: "N20" },
+  { q: "pyelonephritis", mustMatchCodePrefix: "N10" },
+  { q: "pyélonéphrite", mustMatchCodePrefix: "N10" },
+  { q: "cystitis", mustMatchCodePrefix: "N30" },
+  { q: "cystite", mustMatchCodePrefix: "N30" },
+  { q: "hematuria", mustMatchCodePrefix: "R31" },
+  { q: "hématurie", mustMatchCodePrefix: "R31" },
+  { q: "urinary retention", mustMatchCodePrefix: "R33" },
+  { q: "rétention urinaire", mustMatchCodePrefix: "R33" },
+  { q: "testicular torsion", mustMatchCodePrefix: "N44" },
+  { q: "torsion testiculaire", mustMatchCodePrefix: "N44" },
+  { q: "epididymitis", mustMatchCodePrefix: "N45" },
+  { q: "épididymite", mustMatchCodePrefix: "N45" },
+  { q: "prostatitis", mustMatchCodePrefix: "N41" },
+  { q: "prostatite", mustMatchCodePrefix: "N41" },
+  { q: "urethritis", mustMatchCodePrefix: "N34" },
+  { q: "urétrite", mustMatchCodePrefix: "N34" },
+  { q: "priapism", mustMatchCodePrefix: "N48.3" },
+  { q: "priapisme", mustMatchCodePrefix: "N48.3" },
+  { q: "paraphimosis", mustMatchCodePrefix: "N47.2" },
+  { q: "penile fracture", mustMatchCodePrefix: "S39.840" },
 ];
 
 function encounterChar(code: string): string {
@@ -992,6 +1052,31 @@ async function main() {
     writeFileSync(
       join(releaseSummaryDir, "fy2026-toxicology-envenomation-search-summary.json"),
       toxicologyEnvenomationSummary,
+    );
+    const obgynUrologyQueryPattern =
+      /pregnancy of unknown|localisation inconnue|threatened abortion|threatened miscarriage|menace d'avortement|spontaneous abortion|avortement spontané|ectopic pregnancy|grossesse ectopique|hyperemesis|hyperémèse|preeclampsia|prééclampsie|hellp|preterm labor|travail prématuré|rupture of membranes|rupture prématurée|postpartum hemorrhage|hémorragie post-partum|postpartum endometritis|endométrite post-partum|ovarian torsion|torsion ovarienne|ovarian cyst|kyste ovarien|pelvic inflammatory|pelvienne inflammatoire|tubo-ovarian|abcès tubo|bartholin|postmenopausal bleeding|postménopausique|iud complication|complication diu|kidney stone|calcul du rein|pyelonephritis|pyélonéphrite|cystitis|cystite|hematuria|hématurie|urinary retention|rétention urinaire|testicular torsion|torsion testiculaire|epididymitis|épididymite|prostatitis|prostatite|urethritis|uretrite|priapism|priapisme|paraphimosis|penile fracture/;
+    const obgynUrologyFailures = failures.filter((failure) =>
+      obgynUrologyQueryPattern.test(failure.toLowerCase()),
+    );
+    const obgynUrologySummary = JSON.stringify(
+      {
+        generatedAt: report.generatedAt,
+        queryCount: REQUIRED_QUERIES.filter((row) =>
+          obgynUrologyQueryPattern.test(row.q.toLowerCase()),
+        ).length,
+        failures: obgynUrologyFailures,
+        pass: obgynUrologyFailures.length === 0,
+      },
+      null,
+      2,
+    );
+    writeFileSync(
+      join(summaryDir, "fy2026-obgyn-urology-search-summary.json"),
+      obgynUrologySummary,
+    );
+    writeFileSync(
+      join(releaseSummaryDir, "fy2026-obgyn-urology-search-summary.json"),
+      obgynUrologySummary,
     );
 
     if (!report.pass) process.exit(1);

@@ -1,0 +1,31 @@
+{
+  "unexplainedRoutingFallbacks": [],
+  "pregnancyUnknownLocationVsEctopic": [],
+  "threatenedVsSpontaneousAbortionCollision": [],
+  "trimesterPreservation": [],
+  "postpartumProvenance": [],
+  "ovarianTorsionVsCyst": [],
+  "pidVsTuboOvarianAbscess": [],
+  "stonePyeloObstructionCollision": [],
+  "testicularTorsionVsEpididymitis": [],
+  "fournierRoutingCollision": [],
+  "biteUnderRouting": [],
+  "ownershipGaps": [],
+  "counts": {
+    "scoped": 3157,
+    "obstetric": 2163,
+    "gynecologic": 319,
+    "urologic": 156,
+    "guTrauma": 519,
+    "pregnancyUnknownLocation": 1,
+    "ectopic": 18,
+    "threatenedMiscarriage": 1,
+    "spontaneousAbortion": 28,
+    "ovarianTorsion": 7,
+    "ovarianCyst": 6,
+    "fournier": 1
+  },
+  "certification": {
+    "pass": true
+  }
+}

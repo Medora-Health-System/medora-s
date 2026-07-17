@@ -1,0 +1,22 @@
+{
+  "obgynUrology": {
+    "scopedOfficialBillable": 3157,
+    "presentInMedora": 3157,
+    "missingCodes": [],
+    "descriptionMismatches": [],
+    "duplicateActiveCodes": [],
+    "invalidSelectableHeaders": []
+  },
+  "buckets": {
+    "obstetric": 2163,
+    "gynecologic": 319,
+    "urologic": 156,
+    "guTrauma": 519
+  },
+  "ownershipGaps": [],
+  "crossPhaseOwnershipSteals": [],
+  "fournierCoveragePresent": true,
+  "certification": {
+    "pass": true
+  }
+}
