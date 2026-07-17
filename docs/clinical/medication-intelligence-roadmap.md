@@ -103,24 +103,22 @@ flowchart LR
 **Phase count note:** Roadmap remains **11 phases**. Phase 3 owns staged reference ingestion; Phase 4 owns controlled canonical reconciliation / catalog expansion (not authorized by Phase 3 alone).
 
 
-## Phase 4 — Controlled RxNorm canonical reconciliation and catalog expansion (plus normalization)
+## Phase 4 — Controlled canonical reconciliation and human-verified RxCUI assignment
 
 | Field | Value |
 |-------|-------|
-| **Objective** | Normalize `MedicationConcentration`, `MedicationDoseUnit`, `MedicationRoute`; complete EN/FR aliases; fix code/token duplication (e.g. embedded form/route in catalog codes) |
-| **Scope** | `MedicationSearchAlias` expansion, `displayNameFr` backfill (79 gaps), `deriveMedicationCatalogCode` hygiene, classification audit flag remediation |
-| **Data source** | RxNorm attributes (strength, dose form, route); existing `medication-localization-*` contracts |
-| **Migration likelihood** | **Medium** — may add normalized columns; preserve legacy codes for FK stability |
-| **Seed/import likelihood** | **High** — alias seed waves (see `enterprise-search-alias-expansion.md`) |
-| **Risks** | Breaking FK if codes renamed (CRITICAL — display vs code separation required) |
-| **Exit criteria** | 100% `displayNameFr` on active catalog; alias certifier PASS; classification conflict flags trending down |
-| **Complexity** | **Medium–High** |
+| **Objective** | Human-reviewed mapping decisions from staged RxNorm candidates to synthetic/canonical targets with durable history — **no** auto-verify, **no** clinical activation |
+| **Scope** | `RxNormVerifiedMapping`; candidate concurrency/rejection fields; CLI verify/reject/retire; synthetic canonical targets (`SYNTH_MC_*` / `SYNTH_MP_*`); Phase 4 certifier |
+| **Data source** | Phase 3 synthetic release only (`RealRxNormDataUsed: NO`) |
+| **Migration** | **YES** — `20261006120000_medication_phase_4_canonical_reconciliation` |
+| **Seed** | **NO** |
+| **Risks** | Synthetic→real leak (mitigated: hard block); concurrent verify (mitigated: reviewVersion); accidental clinical wiring (CLI isolation) |
+| **Exit criteria** | Phase 4 certifier PASS; `HumanVerificationRequired=YES`; `SyntheticToRealMappingBlocked=YES`; search/MAR/billing unchanged |
+| **Complexity** | **High** |
+| **Status** | Implemented — see [`medication-intelligence-phase-4-canonical-reconciliation.md`](./medication-intelligence-phase-4-canonical-reconciliation.md) |
 
-**Depends on:** Phase 3 certification (`StagingLayerReady=YES`, `AutomaticVerificationEnabled=NO`). Phase 4 must not auto-verify candidates without explicit review workflows.
+**Phase count note:** Roadmap remains **11 phases**. Phase 5 owns controlled **real** RxNorm ingestion / limited enrichment planning — not started by Phase 4.
 
-**Milestone A contribution:** Search quality improves before scale (Phase 5).
-
----
 
 ## Phase 5 — Enterprise medication search at scale
 
@@ -138,6 +136,8 @@ flowchart LR
 **Milestone A complete** when Phases 2–5 exit criteria met.
 
 **Builds on:** `enterprise-search-*`, `provider-search-canonical-*` docs.
+
+**Depends on:** Phase 4 certification (`HumanVerificationRequired=YES`, `SyntheticToRealMappingBlocked=YES`). Do not auto-verify real RxCUIs without review workflows.
 
 ---
 
