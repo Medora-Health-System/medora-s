@@ -261,6 +261,53 @@ export default function RxNormReviewConsolePage() {
             <strong>{t("medicationRxNormReview.pilotTitle")}</strong> —{" "}
             {t("medicationRxNormReview.pilotDisabled")}
           </div>
+          {dashboard.emPilotMetrics && (
+            <div style={{ marginTop: 12 }}>
+              <h3 style={{ margin: "0 0 8px", fontSize: 14 }}>
+                {t("medicationRxNormReview.pilotMetricsTitle")}
+              </h3>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 12, fontSize: 13 }}>
+                <span>
+                  {t("medicationRxNormReview.pilotSourceRows")}:{" "}
+                  {dashboard.emPilotMetrics.pilotSourceRows}
+                </span>
+                <span>
+                  {t("medicationRxNormReview.pilotStagedItems")}:{" "}
+                  {dashboard.emPilotMetrics.stagedItems}
+                </span>
+                <span>
+                  {t("medicationRxNormReview.pilotExactDuplicates")}:{" "}
+                  {dashboard.emPilotMetrics.exactDuplicates}
+                </span>
+                <span>
+                  {t("medicationRxNormReview.pilotNormalizedDuplicates")}:{" "}
+                  {dashboard.emPilotMetrics.normalizedDuplicates}
+                </span>
+                <span>
+                  {t("medicationRxNormReview.pilotProbableDuplicates")}:{" "}
+                  {dashboard.emPilotMetrics.probableDuplicates}
+                </span>
+                <span>
+                  {t("medicationRxNormReview.pilotPossibleDuplicates")}:{" "}
+                  {dashboard.emPilotMetrics.possibleDuplicates}
+                </span>
+                <span>
+                  {t("medicationRxNormReview.pilotOpenAssessments")}:{" "}
+                  {dashboard.emPilotMetrics.openDuplicateAssessments}
+                </span>
+                <span>
+                  {t("medicationRxNormReview.pilotResolutionRate")}:{" "}
+                  {dashboard.emPilotMetrics.duplicateResolutionRate == null
+                    ? "—"
+                    : `${Math.round(dashboard.emPilotMetrics.duplicateResolutionRate * 100)}%`}
+                </span>
+                <span>
+                  {t("medicationRxNormReview.pilotClinicalActivations")}:{" "}
+                  {dashboard.emPilotMetrics.clinicalActivations}
+                </span>
+              </div>
+            </div>
+          )}
         </section>
       )}
 

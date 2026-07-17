@@ -1,4 +1,5 @@
 import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
+import { z } from "zod";
 import { PrismaService } from "../../prisma/prisma.service";
 import {
   approveReviewCandidate,
@@ -14,6 +15,9 @@ import {
   supersedeReviewMapping,
   type ReviewQueueFilters,
 } from "./rxnorm-review-operations";
+import {
+  resolvePilotDuplicateAssessment,
+} from "../pilot/medication-em-pilot.service";
 import type {
   ReviewApproveBody,
   ReviewAssignBody,
@@ -24,12 +28,98 @@ import type {
   ReviewSupersedeBody,
 } from "./dto/rxnorm-review.dto";
 
+const pilotDuplicateResolveSchema = z.object({
+  action: z.enum([
+    "LINK_TO_EXISTING",
+    "APPROVE_NEW_RECORD",
+    "CONFIRM_DISTINCT",
+    "REJECT_DUPLICATE",
+    "DEFER",
+    "REQUEST_CLARIFICATION",
+  ]),
+  rationale: z.string().min(1),
+  /** Spoofed reviewer IDs are ignored — authenticated user is the actor. */
+  reviewerUserId: z.string().optional(),
+});
+
 @Injectable()
 export class RxNormReviewService {
   constructor(private readonly prisma: PrismaService) {}
 
   listCandidates(filters: ReviewQueueFilters) {
     return listReviewQueue(this.prisma, filters);
+  }
+
+  async listPilotDuplicates(filters: {
+    pilotId?: string;
+    classification?: string;
+    resolutionStatus?: string;
+    limit: number;
+    offset: number;
+  }) {
+    const where = {
+      ...(filters.pilotId ? { pilotId: filters.pilotId } : {}),
+      ...(filters.classification ? { classification: filters.classification } : {}),
+      ...(filters.resolutionStatus
+        ? { resolutionStatus: filters.resolutionStatus }
+        : {}),
+    };
+    const limit = Math.min(Math.max(filters.limit, 1), 200);
+    const offset = Math.max(filters.offset, 0);
+    const [total, rows] = await Promise.all([
+      this.prisma.medicationDuplicateAssessment.count({ where }),
+      this.prisma.medicationDuplicateAssessment.findMany({
+        where,
+        take: limit,
+        skip: offset,
+        orderBy: [{ resolutionStatus: "asc" }, { confidenceScore: "desc" }],
+      }),
+    ]);
+    return { total, limit, offset, rows };
+  }
+
+  async resolvePilotDuplicate(
+    assessmentId: string,
+    body: unknown,
+    authenticatedUserId: string,
+    facilityId?: string
+  ) {
+    const parsed = pilotDuplicateResolveSchema.safeParse(body);
+    if (!parsed.success) {
+      throw new BadRequestException(parsed.error.issues[0]?.message ?? "Requête invalide.");
+    }
+    // Reject payload reviewer spoofing: only the authenticated JWT user may act.
+    if (
+      parsed.data.reviewerUserId &&
+      parsed.data.reviewerUserId !== authenticatedUserId
+    ) {
+      throw new BadRequestException(
+        "Payload reviewerUserId must match the authenticated user."
+      );
+    }
+
+    const roleRows = facilityId
+      ? await this.prisma.userRole.findMany({
+          where: { userId: authenticatedUserId, facilityId, isActive: true },
+          include: { role: true },
+        })
+      : [];
+    const roles = roleRows.map((r) => r.role.code);
+
+    try {
+      return await resolvePilotDuplicateAssessment(this.prisma, {
+        userId: authenticatedUserId,
+        roles,
+      }, {
+        assessmentId,
+        action: parsed.data.action,
+        rationale: parsed.data.rationale,
+      });
+    } catch (error) {
+      throw new BadRequestException(
+        error instanceof Error ? error.message : "Résolution doublon impossible."
+      );
+    }
   }
 
   async getCandidate(candidateId: string, actorUserId: string, actorRoleLabel?: string) {

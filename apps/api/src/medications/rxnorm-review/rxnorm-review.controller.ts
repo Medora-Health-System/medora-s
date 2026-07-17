@@ -53,6 +53,9 @@ export class RxNormReviewController {
     @Query("reviewerUserId") reviewerUserId?: string,
     @Query("ambiguityOnly") ambiguityOnly?: string,
     @Query("conflictOnly") conflictOnly?: string,
+    @Query("pilotId") pilotId?: string,
+    @Query("duplicateClassification") duplicateClassification?: string,
+    @Query("medicationCategory") medicationCategory?: string,
     @Query("search") search?: string,
     @Query("limit") limit?: string,
     @Query("offset") offset?: string
@@ -65,10 +68,48 @@ export class RxNormReviewController {
       reviewerUserId,
       ambiguityOnly: ambiguityOnly === "true" || ambiguityOnly === "1",
       conflictOnly: conflictOnly === "true" || conflictOnly === "1",
+      pilotId,
+      duplicateClassification,
+      medicationCategory,
       search,
       limit: parseIntQuery(limit, 50),
       offset: parseIntQuery(offset, 0),
     });
+  }
+
+  @Get("pilot/duplicates")
+  @RequireRoles(...RXNORM_REVIEW_READ_ROLES)
+  listPilotDuplicates(
+    @Query("pilotId") pilotId?: string,
+    @Query("classification") classification?: string,
+    @Query("resolutionStatus") resolutionStatus?: string,
+    @Query("limit") limit?: string,
+    @Query("offset") offset?: string
+  ) {
+    return this.review.listPilotDuplicates({
+      pilotId,
+      classification,
+      resolutionStatus,
+      limit: parseIntQuery(limit, 50),
+      offset: parseIntQuery(offset, 0),
+    });
+  }
+
+  @Post("pilot/duplicates/:id/resolve")
+  @RequireRoles(...RXNORM_REVIEW_WRITE_ROLES)
+  resolvePilotDuplicate(
+    @Param("id") id: string,
+    @Body() body: unknown,
+    @Req() req: AuthReq
+  ) {
+    const userId = req.user?.userId;
+    const facilityId =
+      (typeof req.user?.facilityId === "string" && req.user.facilityId) ||
+      (typeof req.headers["x-facility-id"] === "string"
+        ? req.headers["x-facility-id"]
+        : undefined);
+    if (!userId) throw new UnauthorizedException();
+    return this.review.resolvePilotDuplicate(id, body, userId, facilityId);
   }
 
   @Get("candidate/:id")

@@ -2113,8 +2113,10 @@ model MedicationConcept {
   rxNormMappedByUserId    String?
   rxNormReviewedAt        DateTime?
   rxNormReviewNotes       String?
-  /// PRODUCTION | FIXTURE | DEV_SAMPLE | UNKNOWN
+  /// PRODUCTION | FIXTURE | DEV_SAMPLE | UNKNOWN | CONTROLLED_REAL_PILOT
   dataClassification      String                      @default("UNKNOWN") @db.VarChar(32)
+  /// Phase 6.5 — deterministic concept identity key (nullable until backfill).
+  identityKey             String?                     @db.VarChar(255)
   isActive                Boolean                     @default(true)
   retiredAt               DateTime?
   createdAt               DateTime                    @default(now())
@@ -2130,6 +2132,7 @@ model MedicationConcept {
   @@index([rxNormConceptId])
   @@index([rxNormMappingStatus])
   @@index([dataClassification])
+  @@index([identityKey])
 }
 
 model MedicationConcentration {
@@ -2184,6 +2187,8 @@ model MedicationProduct {
   dualLayerLinkageConfidence String?                          @db.VarChar(16)
   dualLayerLinkageReviewedAt DateTime?
   dualLayerLinkageNotes      String?
+  /// Phase 6.5 — deterministic product identity key (nullable until backfill).
+  identityKey                String?                          @db.VarChar(512)
   infusionProfile            InfusionProfile?
   infusionSessions           InfusionSession[]
   administrations            MedicationAdministration[]
@@ -2208,6 +2213,7 @@ model MedicationProduct {
   @@index([baselineAvailable])
   @@index([baselineSource])
   @@index([dualLayerLinkageStatus])
+  @@index([identityKey])
 }
 
 model MedicationPackage {
@@ -2224,6 +2230,8 @@ model MedicationPackage {
   defaultDoseUnitId      String?
   isDefaultForProduct    Boolean                    @default(false)
   isActive               Boolean                    @default(true)
+  /// Phase 6.5 — deterministic package identity key (nullable until backfill).
+  identityKey            String?                    @db.VarChar(768)
   createdAt              DateTime                   @default(now())
   updatedAt              DateTime                   @updatedAt
   facilityFormularyItems FacilityFormularyItem[]
@@ -2242,6 +2250,7 @@ model MedicationPackage {
   @@index([ndc11])
   @@index([isActive])
   @@index([isDefaultForProduct])
+  @@index([identityKey])
 }
 
 model FacilityFormularyItem {
@@ -2517,6 +2526,129 @@ model RxNormReviewAuditEvent {
   @@index([action])
   @@index([actorUserId])
   @@index([createdAt])
+}
+
+/// Phase 6.5 — governed Emergency Medicine controlled pilot manifest.
+model MedicationPilotManifest {
+  id                         String   @id @default(uuid())
+  pilotId                    String   @unique @db.VarChar(64)
+  pilotName                  String
+  pilotVersion               String   @db.VarChar(32)
+  scope                      String   @db.VarChar(64)
+  clinicalDomain             String   @default("EMERGENCY_MEDICINE") @db.VarChar(64)
+  createdAt                  DateTime @default(now())
+  createdByUserId            String?
+  approvedByUserId           String?
+  approvedAt                 DateTime?
+  /// DRAFT | APPROVED | SUPERSEDED
+  approvalStatus             String   @default("DRAFT") @db.VarChar(32)
+  medicationCountExpected    Int      @default(0)
+  sourceReleaseId            String?
+  sourceManifestHash         String   @db.VarChar(64)
+  dataClassification         String   @default("CONTROLLED_REAL_PILOT") @db.VarChar(32)
+  /// DRAFT | VALIDATED | STAGED | COMPLETED | ROLLED_BACK
+  pilotStatus                String   @default("DRAFT") @db.VarChar(32)
+  clinicalActivationAllowed  Boolean  @default(false)
+  rollbackAllowed            Boolean  @default(true)
+  notes                      String?
+  updatedAt                  DateTime @updatedAt
+  items                      MedicationPilotItem[]
+  duplicateAssessments       MedicationDuplicateAssessment[]
+  importJobs                 MedicationPilotImportJob[]
+
+  @@index([approvalStatus])
+  @@index([pilotStatus])
+  @@index([sourceManifestHash])
+}
+
+model MedicationPilotItem {
+  id                    String   @id @default(uuid())
+  manifestId            String
+  itemCode              String   @db.VarChar(128)
+  genericName           String
+  brandName             String?
+  strengthDisplay       String
+  concentrationText     String?
+  dosageForm            String   @db.VarChar(64)
+  route                 String   @db.VarChar(64)
+  releaseType           String?  @db.VarChar(32)
+  packageQuantity       String?
+  packageUnit           String?
+  containerType         String?
+  singleOrMultiDose     String?
+  category              String   @db.VarChar(32)
+  conceptIdentityKey    String   @db.VarChar(255)
+  productIdentityKey    String   @db.VarChar(512)
+  packageIdentityKey    String   @db.VarChar(768)
+  /// PILOT_STAGED | IDENTITY_REVIEWED | RXNORM_VERIFIED | CATALOG_REVIEW_REQUIRED | CATALOG_APPROVED | CLINICALLY_INACTIVE
+  lifecycleStatus       String   @default("PILOT_STAGED") @db.VarChar(48)
+  reuseDecision         String?  @db.VarChar(48)
+  matchedConceptId      String?
+  matchedProductId      String?
+  matchedPackageId      String?
+  sourcePayloadJson     Json
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  manifest              MedicationPilotManifest @relation(fields: [manifestId], references: [id], onDelete: Cascade)
+  duplicateAssessments  MedicationDuplicateAssessment[]
+
+  @@unique([manifestId, itemCode])
+  @@index([conceptIdentityKey])
+  @@index([productIdentityKey])
+  @@index([packageIdentityKey])
+  @@index([lifecycleStatus])
+  @@index([category])
+}
+
+model MedicationDuplicateAssessment {
+  id                   String   @id @default(uuid())
+  pilotId              String?
+  manifestId           String?
+  pilotItemId          String?
+  sourceEntityType     String   @db.VarChar(64)
+  sourceEntityId       String
+  matchedEntityType    String?  @db.VarChar(64)
+  matchedEntityId      String?
+  classification       String   @db.VarChar(48)
+  confidenceScore      Float
+  normalizedIdentityKey String  @db.VarChar(768)
+  matchedIdentityKey   String?  @db.VarChar(768)
+  evidenceJson         Json
+  recommendedAction    String   @db.VarChar(48)
+  /// OPEN | CONFIRMED_DUPLICATE | CONFIRMED_DISTINCT | MERGED | LINKED_TO_EXISTING | NEW_RECORD_APPROVED | REJECTED | DEFERRED
+  resolutionStatus     String   @default("OPEN") @db.VarChar(48)
+  resolvedByUserId     String?
+  resolvedAt           DateTime?
+  resolutionRationale  String?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+  manifest             MedicationPilotManifest? @relation(fields: [manifestId], references: [id], onDelete: SetNull)
+  pilotItem            MedicationPilotItem?     @relation(fields: [pilotItemId], references: [id], onDelete: SetNull)
+
+  @@index([pilotId])
+  @@index([manifestId])
+  @@index([pilotItemId])
+  @@index([classification])
+  @@index([resolutionStatus])
+  @@index([normalizedIdentityKey])
+}
+
+model MedicationPilotImportJob {
+  id               String   @id @default(uuid())
+  manifestId       String
+  mode             String   @db.VarChar(32)
+  status           String   @default("PENDING") @db.VarChar(32)
+  manifestHash     String   @db.VarChar(64)
+  resumeAllowed    Boolean  @default(false)
+  startedByUserId  String?
+  startedAt        DateTime @default(now())
+  completedAt      DateTime?
+  summaryJson      Json?
+  errorMessage     String?
+  manifest         MedicationPilotManifest @relation(fields: [manifestId], references: [id], onDelete: Cascade)
+
+  @@unique([manifestId, manifestHash, mode])
+  @@index([status])
 }
 
 /// Durable RxNorm verified mapping history — Phase 4 canonical reconciliation (CLI/service only).

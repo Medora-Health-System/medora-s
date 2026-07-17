@@ -136,6 +136,22 @@ export type RxNormReviewDashboard = {
     importExecuted: boolean;
     notes: string;
   };
+  emPilotMetrics?: {
+    pilotId: string | null;
+    pilotStatus: string | null;
+    approvalStatus: string | null;
+    pilotSourceRows: number;
+    stagedItems: number;
+    exactDuplicates: number;
+    normalizedDuplicates: number;
+    probableDuplicates: number;
+    possibleDuplicates: number;
+    openDuplicateAssessments: number;
+    duplicateResolutionRate: number | null;
+    clinicalActivations: 0;
+    clinicalActivationAllowed: false;
+    automaticVerificationEnabled: false;
+  };
 };
 
 export type RxNormReviewMutationResult = {

@@ -44,6 +44,10 @@ export type ReviewQueueFilters = {
   reviewerUserId?: string;
   ambiguityOnly?: boolean;
   conflictOnly?: boolean;
+  /** Phase 6.5 — filter candidates whose evidence mentions pilot id. */
+  pilotId?: string;
+  duplicateClassification?: string;
+  medicationCategory?: string;
   search?: string;
   limit?: number;
   offset?: number;
@@ -163,6 +167,23 @@ export type ReviewDashboardMetrics = {
   automaticVerificationEnabled: false;
   clinicalActivationEnabled: false;
   pilot: RxNormEmPilotConfig;
+  /** Phase 6.5 controlled EM pilot metrics (governance only). */
+  emPilotMetrics: {
+    pilotId: string | null;
+    pilotStatus: string | null;
+    approvalStatus: string | null;
+    pilotSourceRows: number;
+    stagedItems: number;
+    exactDuplicates: number;
+    normalizedDuplicates: number;
+    probableDuplicates: number;
+    possibleDuplicates: number;
+    openDuplicateAssessments: number;
+    duplicateResolutionRate: number | null;
+    clinicalActivations: 0;
+    clinicalActivationAllowed: false;
+    automaticVerificationEnabled: false;
+  };
 };
 
 async function writeReviewAudit(
@@ -220,6 +241,40 @@ export async function listReviewQueue(
       { targetCode: { contains: q, mode: "insensitive" } },
       { stagingConcept: { rxcui: { contains: q, mode: "insensitive" } } },
       { stagingConcept: { displayTerm: { contains: q, mode: "insensitive" } } },
+    ];
+  }
+  if (filters.pilotId?.trim()) {
+    // Pilot provenance is stored in evidence JSON when candidates are linked to a pilot.
+    where.AND = [
+      ...(Array.isArray(where.AND) ? where.AND : where.AND ? [where.AND] : []),
+      {
+        evidenceJson: {
+          path: ["pilotId"],
+          equals: filters.pilotId.trim(),
+        },
+      },
+    ];
+  }
+  if (filters.duplicateClassification?.trim()) {
+    where.AND = [
+      ...(Array.isArray(where.AND) ? where.AND : where.AND ? [where.AND] : []),
+      {
+        evidenceJson: {
+          path: ["duplicateClassification"],
+          equals: filters.duplicateClassification.trim(),
+        },
+      },
+    ];
+  }
+  if (filters.medicationCategory?.trim()) {
+    where.AND = [
+      ...(Array.isArray(where.AND) ? where.AND : where.AND ? [where.AND] : []),
+      {
+        evidenceJson: {
+          path: ["medicationCategory"],
+          equals: filters.medicationCategory.trim(),
+        },
+      },
     ];
   }
 
@@ -897,6 +952,31 @@ export async function getReviewDashboardMetrics(
 
   const pilot = loadEmRealMappingPilotConfig();
 
+  let emPilotMetrics: ReviewDashboardMetrics["emPilotMetrics"] = {
+    pilotId: null,
+    pilotStatus: null,
+    approvalStatus: null,
+    pilotSourceRows: 0,
+    stagedItems: 0,
+    exactDuplicates: 0,
+    normalizedDuplicates: 0,
+    probableDuplicates: 0,
+    possibleDuplicates: 0,
+    openDuplicateAssessments: 0,
+    duplicateResolutionRate: null,
+    clinicalActivations: 0,
+    clinicalActivationAllowed: false,
+    automaticVerificationEnabled: false,
+  };
+  try {
+    const { getPilotDuplicateMetrics } = await import(
+      "../pilot/medication-em-pilot.service"
+    );
+    emPilotMetrics = await getPilotDuplicateMetrics(prisma);
+  } catch {
+    // Migration not applied yet — keep zeroed pilot metrics.
+  }
+
   return {
     candidatesTotal,
     candidatesOpen,
@@ -921,5 +1001,6 @@ export async function getReviewDashboardMetrics(
     automaticVerificationEnabled: false,
     clinicalActivationEnabled: false,
     pilot,
+    emPilotMetrics,
   };
 }

@@ -184,6 +184,8 @@ export * from "./medication/medicationRxNormImportModes.js";
 export * from "./medication/medicationRxNormCandidateMapping.js";
 export * from "./medication/medicationRxNormVerification.js";
 export * from "./medication/medicationRxNormReviewGovernance.js";
+export * from "./medication/medicationPilotDuplicatePrevention.js";
+export * from "./medication/medicationEmPilotDataset.js";
 export * from "./medication/medicationRxNormSourceGovernance.js";
 export * from "./medication/medicationFixtureClassification.js";
 export * from "./medication/medicationBillingTraceability.js";
