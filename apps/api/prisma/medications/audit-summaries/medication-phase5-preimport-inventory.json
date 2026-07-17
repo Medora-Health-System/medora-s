@@ -1,0 +1,26 @@
+{
+  "auditStatus": "COMPLETE",
+  "catalogClassification": "CURATED",
+  "catalogComplete": false,
+  "certificationId": "MEDUI.MEDICATION_INTELLIGENCE_PHASE_5_CONTROLLED_REAL_RXNORM_REFERENCE_INGESTION_RELEASE_GOVERNANCE_NONCLINICAL_VALIDATION",
+  "confidence": "HIGH",
+  "dataSource": "database",
+  "generatedAt": "2026-07-17T21:38:47.381Z",
+  "live": {
+    "candidates": 1288,
+    "catalogMedication": 1042,
+    "conceptRealRxNormPopulated": 0,
+    "conceptRxNormPopulated": 1,
+    "realClassifiedReleases": 0,
+    "referenceClassifiedStaging": 0,
+    "releases": 3,
+    "routePermissions": 0,
+    "stagingRows": 33,
+    "syntheticReleases": 3,
+    "verifiedActiveReal": 0,
+    "verifiedActiveSynthetic": 1
+  },
+  "note": "Schema capability vs live content distinguished via schema probe + live metrics",
+  "phase": 5,
+  "title": "Pre-import / live inventory"
+}

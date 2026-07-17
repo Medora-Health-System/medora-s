@@ -1,17 +1,25 @@
 {
+  "AutomaticAssignmentsDetected": 0,
+  "CanonicalRxNormAssignmentsTotal": 1,
   "ClinicalSearchUnchanged": "YES",
   "FormularyUnchanged": "YES",
+  "InvalidRealToFixtureAssignments": 0,
+  "InvalidSyntheticToRealAssignments": 0,
   "InventoryUnchanged": "YES",
   "OrderabilityUnchanged": "YES",
+  "Phase4GovernedSyntheticAssignmentsAccepted": "YES",
+  "RealProductionAssignments": 0,
+  "SyntheticFixtureAssignments": 1,
+  "UnexplainedAssignments": 0,
   "auditStatus": "COMPLETE",
   "catalogClassification": "CURATED",
   "catalogComplete": false,
   "catalogCount": 1042,
   "certificationId": "MEDUI.MEDICATION_INTELLIGENCE_PHASE_3_SCOPED_RXNORM_REFERENCE_INGESTION_STAGING_PROVENANCE_MAPPING",
-  "conceptRxNormStillEmpty": true,
   "confidence": "HIGH",
   "dataSource": "database",
-  "generatedAt": "2026-07-17T20:11:13.731Z",
+  "generatedAt": "2026-07-17T21:46:37.145Z",
   "phase": 3,
-  "title": "Clinical search isolation report"
+  "title": "Clinical search isolation report",
+  "unauthorizedRealRxNormAssignment": false
 }

@@ -1,0 +1,11 @@
+{
+  "MARUnchanged": "YES",
+  "auditStatus": "COMPLETE",
+  "catalogClassification": "CURATED",
+  "catalogComplete": false,
+  "certificationId": "MEDUI.MEDICATION_INTELLIGENCE_PHASE_5_CONTROLLED_REAL_RXNORM_REFERENCE_INGESTION_RELEASE_GOVERNANCE_NONCLINICAL_VALIDATION",
+  "confidence": "HIGH",
+  "dataSource": "seed_files_only",
+  "generatedAt": "2026-07-17T21:38:47.384Z",
+  "phase": 5
+}

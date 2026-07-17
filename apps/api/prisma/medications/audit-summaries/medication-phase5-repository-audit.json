@@ -1,0 +1,26 @@
+{
+  "AutomaticVerificationEnabled": false,
+  "ClinicalSearchUsesRxNormReferenceLayer": false,
+  "Phase3FoundationPresent": true,
+  "Phase4VerificationPresent": true,
+  "RealRxNormReleasePreviouslyImported": false,
+  "auditStatus": "COMPLETE",
+  "catalogClassification": "CURATED",
+  "catalogComplete": false,
+  "certificationId": "MEDUI.MEDICATION_INTELLIGENCE_PHASE_5_CONTROLLED_REAL_RXNORM_REFERENCE_INGESTION_RELEASE_GOVERNANCE_NONCLINICAL_VALIDATION",
+  "confidence": "HIGH",
+  "dataSource": "database",
+  "generatedAt": "2026-07-17T21:38:47.380Z",
+  "phase": 5,
+  "schema": {
+    "gitignoreBlocksRrf": true,
+    "hasManifestHash": true,
+    "hasReferenceActivationStatus": true,
+    "hasSourceClassification": true,
+    "migrationPresent": true,
+    "phase3ModelsPresent": true,
+    "phase4VerifiedMappingPresent": true,
+    "structuralFixturePresent": true,
+    "structuralManifestPresent": true
+  }
+}

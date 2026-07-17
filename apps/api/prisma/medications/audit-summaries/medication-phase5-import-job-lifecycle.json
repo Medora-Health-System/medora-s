@@ -1,0 +1,19 @@
+{
+  "auditStatus": "COMPLETE",
+  "catalogClassification": "CURATED",
+  "catalogComplete": false,
+  "certificationId": "MEDUI.MEDICATION_INTELLIGENCE_PHASE_5_CONTROLLED_REAL_RXNORM_REFERENCE_INGESTION_RELEASE_GOVERNANCE_NONCLINICAL_VALIDATION",
+  "confidence": "HIGH",
+  "dataSource": "seed_files_only",
+  "generatedAt": "2026-07-17T21:38:47.383Z",
+  "modes": [
+    "VALIDATE_MANIFEST",
+    "VALIDATE_SOURCE",
+    "STAGE_REAL_REFERENCE",
+    "GENERATE_REAL_CANDIDATES",
+    "REPORT_RELEASE",
+    "ROLLBACK_REAL_RELEASE"
+  ],
+  "phase": 5,
+  "validateDoesNotStage": true
+}

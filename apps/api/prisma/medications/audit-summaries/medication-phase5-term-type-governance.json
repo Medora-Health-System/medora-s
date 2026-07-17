@@ -1,0 +1,27 @@
+{
+  "auditStatus": "COMPLETE",
+  "catalogClassification": "CURATED",
+  "catalogComplete": false,
+  "certificationId": "MEDUI.MEDICATION_INTELLIGENCE_PHASE_5_CONTROLLED_REAL_RXNORM_REFERENCE_INGESTION_RELEASE_GOVERNANCE_NONCLINICAL_VALIDATION",
+  "conceptTypes": [
+    "IN",
+    "PIN",
+    "MIN",
+    "BN"
+  ],
+  "confidence": "HIGH",
+  "dataSource": "seed_files_only",
+  "deferred": [
+    "DF",
+    "GPCK",
+    "BPCK"
+  ],
+  "generatedAt": "2026-07-17T21:38:47.381Z",
+  "phase": 5,
+  "productTypes": [
+    "SCD",
+    "SBD",
+    "SCDF",
+    "SBDF"
+  ]
+}

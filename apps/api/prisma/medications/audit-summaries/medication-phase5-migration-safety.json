@@ -1,0 +1,15 @@
+{
+  "SeedRequired": "NO",
+  "additiveOnly": true,
+  "auditStatus": "COMPLETE",
+  "catalogClassification": "CURATED",
+  "catalogComplete": false,
+  "certificationId": "MEDUI.MEDICATION_INTELLIGENCE_PHASE_5_CONTROLLED_REAL_RXNORM_REFERENCE_INGESTION_RELEASE_GOVERNANCE_NONCLINICAL_VALIDATION",
+  "confidence": "HIGH",
+  "dataSource": "seed_files_only",
+  "generatedAt": "2026-07-17T21:38:47.384Z",
+  "migration": "20261007120000_medication_phase_5_real_rxnorm_ingestion",
+  "phase": 5,
+  "productionCommand": "DATABASE_URL=\"<RAILWAY_DATABASE_URL>\" pnpm --filter @medora/api exec prisma migrate deploy",
+  "productionImportNotExecuted": true
+}

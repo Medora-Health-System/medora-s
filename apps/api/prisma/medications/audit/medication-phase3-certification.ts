@@ -9,6 +9,8 @@ import {
   assertCandidateNotAutoVerified,
   generateRxNormMappingCandidates,
   isSupportedTermTypeForStaging,
+  isSyntheticRxCui,
+  isSyntheticTargetCode,
   normalizeRxNormDisplayTerm,
   RXNORM_IMPORT_MODE_VALUES,
   RXNORM_TERM_TYPE_VALUES,
@@ -69,6 +71,41 @@ export type Phase3SchemaProbe = {
   syntheticFixturePresent: boolean;
 };
 
+export type CanonicalRxNormAssignmentClass =
+  | "SYNTHETIC_FIXTURE_ASSIGNMENT"
+  | "REAL_PRODUCTION_ASSIGNMENT"
+  | "UNEXPLAINED_ASSIGNMENT"
+  | "INVALID_SYNTHETIC_TO_REAL_ASSIGNMENT"
+  | "INVALID_REAL_TO_FIXTURE_ASSIGNMENT";
+
+export type CanonicalRxNormAssignmentInput = {
+  conceptId: string;
+  conceptCode: string;
+  dataClassification: string | null | undefined;
+  rxNormConceptId: string;
+  verifiedMapping: {
+    rxcui: string;
+    isSynthetic: boolean;
+    isActive: boolean;
+    targetKind: string;
+    targetId: string;
+    releaseIsSynthetic: boolean;
+    releaseSourceClassification: string | null | undefined;
+  } | null;
+};
+
+export type CanonicalRxNormAssignmentSummary = {
+  CanonicalRxNormAssignmentsTotal: number;
+  SyntheticFixtureAssignments: number;
+  RealProductionAssignments: number;
+  UnexplainedAssignments: number;
+  InvalidSyntheticToRealAssignments: number;
+  InvalidRealToFixtureAssignments: number;
+  AutomaticAssignmentsDetected: number;
+  Phase4GovernedSyntheticAssignmentsAccepted: "YES" | "NO";
+  classifications: CanonicalRxNormAssignmentClass[];
+};
+
 export type Phase3LiveMetrics = {
   releases: number;
   activeReleases: number;
@@ -78,7 +115,127 @@ export type Phase3LiveMetrics = {
   conflicts: number;
   conceptRxNormPopulated: number;
   catalogMedication: number;
+  assignmentSummary: CanonicalRxNormAssignmentSummary;
 };
+
+export function isSyntheticSourceRelease(input: {
+  isSynthetic: boolean;
+  sourceClassification: string | null | undefined;
+}): boolean {
+  if (input.isSynthetic) return true;
+  const classification = (input.sourceClassification ?? "").trim().toUpperCase();
+  return classification === "SYNTHETIC_FIXTURE";
+}
+
+/**
+ * Classify a populated MedicationConcept.rxNormConceptId by provenance,
+ * synthetic namespace, target classification, and verified mapping history.
+ */
+export function classifyCanonicalRxNormAssignment(
+  input: CanonicalRxNormAssignmentInput
+): CanonicalRxNormAssignmentClass {
+  const rxcui = input.rxNormConceptId.trim();
+  if (!rxcui) return "UNEXPLAINED_ASSIGNMENT";
+
+  const targetClassification = (input.dataClassification ?? "UNKNOWN").trim().toUpperCase();
+  const syntheticRxcui = isSyntheticRxCui(rxcui);
+  const syntheticTargetCode = isSyntheticTargetCode(input.conceptCode);
+  const mapping = input.verifiedMapping;
+
+  const hasMatchingActiveMapping =
+    !!mapping &&
+    mapping.isActive &&
+    mapping.targetKind === "MEDICATION_CONCEPT" &&
+    mapping.targetId === input.conceptId &&
+    mapping.rxcui.trim() === rxcui;
+
+  if (!hasMatchingActiveMapping || !mapping) {
+    return "UNEXPLAINED_ASSIGNMENT";
+  }
+
+  if (syntheticRxcui && (targetClassification !== "FIXTURE" || !syntheticTargetCode)) {
+    return "INVALID_SYNTHETIC_TO_REAL_ASSIGNMENT";
+  }
+
+  if (!syntheticRxcui && targetClassification === "FIXTURE") {
+    return "INVALID_REAL_TO_FIXTURE_ASSIGNMENT";
+  }
+
+  const releaseSynthetic = isSyntheticSourceRelease({
+    isSynthetic: mapping.releaseIsSynthetic,
+    sourceClassification: mapping.releaseSourceClassification,
+  });
+
+  if (
+    syntheticRxcui &&
+    mapping.isSynthetic &&
+    targetClassification === "FIXTURE" &&
+    syntheticTargetCode &&
+    releaseSynthetic
+  ) {
+    return "SYNTHETIC_FIXTURE_ASSIGNMENT";
+  }
+
+  if (
+    !syntheticRxcui &&
+    !mapping.isSynthetic &&
+    targetClassification !== "FIXTURE" &&
+    !releaseSynthetic
+  ) {
+    return "REAL_PRODUCTION_ASSIGNMENT";
+  }
+
+  if (!syntheticRxcui && targetClassification !== "FIXTURE") {
+    return "REAL_PRODUCTION_ASSIGNMENT";
+  }
+
+  return "UNEXPLAINED_ASSIGNMENT";
+}
+
+export function summarizeCanonicalRxNormAssignments(input: {
+  assignments: CanonicalRxNormAssignmentInput[];
+  autoVerifiedCandidates: number;
+}): CanonicalRxNormAssignmentSummary {
+  const classifications = input.assignments.map(classifyCanonicalRxNormAssignment);
+  const count = (cls: CanonicalRxNormAssignmentClass) =>
+    classifications.filter((value) => value === cls).length;
+
+  const syntheticFixture = count("SYNTHETIC_FIXTURE_ASSIGNMENT");
+  const total = classifications.length;
+
+  return {
+    CanonicalRxNormAssignmentsTotal: total,
+    SyntheticFixtureAssignments: syntheticFixture,
+    RealProductionAssignments: count("REAL_PRODUCTION_ASSIGNMENT"),
+    UnexplainedAssignments: count("UNEXPLAINED_ASSIGNMENT"),
+    InvalidSyntheticToRealAssignments: count("INVALID_SYNTHETIC_TO_REAL_ASSIGNMENT"),
+    InvalidRealToFixtureAssignments: count("INVALID_REAL_TO_FIXTURE_ASSIGNMENT"),
+    AutomaticAssignmentsDetected: input.autoVerifiedCandidates,
+    Phase4GovernedSyntheticAssignmentsAccepted:
+      total > 0 && syntheticFixture === total ? "YES" : "NO",
+    classifications,
+  };
+}
+
+export function isPhase3CanonicalAssignmentGatePassing(
+  summary: CanonicalRxNormAssignmentSummary
+): boolean {
+  return (
+    summary.AutomaticAssignmentsDetected === 0 &&
+    summary.UnexplainedAssignments === 0 &&
+    summary.InvalidSyntheticToRealAssignments === 0 &&
+    summary.InvalidRealToFixtureAssignments === 0 &&
+    summary.RealProductionAssignments === 0 &&
+    summary.SyntheticFixtureAssignments === summary.CanonicalRxNormAssignmentsTotal
+  );
+}
+
+function emptyAssignmentSummary(autoVerifiedCandidates = 0): CanonicalRxNormAssignmentSummary {
+  return summarizeCanonicalRxNormAssignments({
+    assignments: [],
+    autoVerifiedCandidates,
+  });
+}
 
 export type RegressionEvidence = {
   focusedTestsPass: boolean;
@@ -111,7 +268,7 @@ async function collectLiveMetrics(prisma: PrismaClient): Promise<Phase3LiveMetri
     candidates,
     autoVerifiedCandidates,
     conflicts,
-    conceptRxNormPopulated,
+    populatedConcepts,
     catalogMedication,
   ] = await Promise.all([
     prisma.rxNormReferenceRelease.count(),
@@ -120,9 +277,71 @@ async function collectLiveMetrics(prisma: PrismaClient): Promise<Phase3LiveMetri
     prisma.rxNormMappingCandidate.count(),
     prisma.rxNormMappingCandidate.count({ where: { autoVerified: true } }),
     prisma.rxNormImportConflict.count(),
-    prisma.medicationConcept.count({ where: { rxNormConceptId: { not: null } } }),
+    prisma.medicationConcept.findMany({
+      where: { rxNormConceptId: { not: null } },
+      select: {
+        id: true,
+        code: true,
+        dataClassification: true,
+        rxNormConceptId: true,
+      },
+    }),
     prisma.catalogMedication.count(),
   ]);
+
+  const conceptIds = populatedConcepts.map((row) => row.id);
+  const verifiedMappings =
+    conceptIds.length === 0
+      ? []
+      : await prisma.rxNormVerifiedMapping.findMany({
+          where: {
+            isActive: true,
+            targetKind: "MEDICATION_CONCEPT",
+            targetId: { in: conceptIds },
+          },
+          select: {
+            rxcui: true,
+            isSynthetic: true,
+            isActive: true,
+            targetKind: true,
+            targetId: true,
+            release: {
+              select: {
+                isSynthetic: true,
+                sourceClassification: true,
+              },
+            },
+          },
+        });
+
+  const mappingByTarget = new Map(
+    verifiedMappings.map((row) => [
+      row.targetId,
+      {
+        rxcui: row.rxcui,
+        isSynthetic: row.isSynthetic,
+        isActive: row.isActive,
+        targetKind: row.targetKind,
+        targetId: row.targetId,
+        releaseIsSynthetic: row.release.isSynthetic,
+        releaseSourceClassification: row.release.sourceClassification,
+      },
+    ])
+  );
+
+  const assignments: CanonicalRxNormAssignmentInput[] = populatedConcepts.map((row) => ({
+    conceptId: row.id,
+    conceptCode: row.code,
+    dataClassification: row.dataClassification,
+    rxNormConceptId: row.rxNormConceptId!,
+    verifiedMapping: mappingByTarget.get(row.id) ?? null,
+  }));
+
+  const assignmentSummary = summarizeCanonicalRxNormAssignments({
+    assignments,
+    autoVerifiedCandidates,
+  });
+
   return {
     releases,
     activeReleases,
@@ -130,8 +349,9 @@ async function collectLiveMetrics(prisma: PrismaClient): Promise<Phase3LiveMetri
     candidates,
     autoVerifiedCandidates,
     conflicts,
-    conceptRxNormPopulated,
+    conceptRxNormPopulated: populatedConcepts.length,
     catalogMedication,
+    assignmentSummary,
   };
 }
 
@@ -365,6 +585,7 @@ export function buildRollbackSafety() {
 }
 
 export function buildClinicalSearchIsolation(metrics: Phase3LiveMetrics | null) {
+  const summary = metrics?.assignmentSummary ?? emptyAssignmentSummary();
   return {
     ...base("database", metrics ? "HIGH" : "LOW"),
     title: "Clinical search isolation report",
@@ -372,7 +593,20 @@ export function buildClinicalSearchIsolation(metrics: Phase3LiveMetrics | null) 
     OrderabilityUnchanged: "YES",
     FormularyUnchanged: "YES",
     InventoryUnchanged: "YES",
-    conceptRxNormStillEmpty: metrics ? metrics.conceptRxNormPopulated === 0 : null,
+    CanonicalRxNormAssignmentsTotal: summary.CanonicalRxNormAssignmentsTotal,
+    SyntheticFixtureAssignments: summary.SyntheticFixtureAssignments,
+    RealProductionAssignments: summary.RealProductionAssignments,
+    UnexplainedAssignments: summary.UnexplainedAssignments,
+    InvalidSyntheticToRealAssignments: summary.InvalidSyntheticToRealAssignments,
+    InvalidRealToFixtureAssignments: summary.InvalidRealToFixtureAssignments,
+    AutomaticAssignmentsDetected: summary.AutomaticAssignmentsDetected,
+    Phase4GovernedSyntheticAssignmentsAccepted:
+      summary.Phase4GovernedSyntheticAssignmentsAccepted,
+    unauthorizedRealRxNormAssignment:
+      summary.RealProductionAssignments > 0 ||
+      summary.UnexplainedAssignments > 0 ||
+      summary.InvalidSyntheticToRealAssignments > 0 ||
+      summary.InvalidRealToFixtureAssignments > 0,
     catalogCount: metrics?.catalogMedication ?? null,
   };
 }
@@ -467,8 +701,10 @@ export function buildEnterpriseSummary(input: {
     input.schema.hasConflictModel &&
     input.schema.syntheticFixturePresent;
 
-  const noAutoVerified = !input.metrics || input.metrics.autoVerifiedCandidates === 0;
-  const noCanonicalPopulate = !input.metrics || input.metrics.conceptRxNormPopulated === 0;
+  const assignmentSummary =
+    input.metrics?.assignmentSummary ??
+    emptyAssignmentSummary(input.metrics?.autoVerifiedCandidates ?? 0);
+  const assignmentGateOk = isPhase3CanonicalAssignmentGatePassing(assignmentSummary);
   const focusedOk = input.evidence.focusedTestsPass;
   const buildOk = input.evidence.buildPass !== false;
   const typeOk = input.evidence.typecheckPass !== false;
@@ -476,8 +712,7 @@ export function buildEnterpriseSummary(input: {
 
   const certified =
     schemaOk &&
-    noAutoVerified &&
-    noCanonicalPopulate &&
+    assignmentGateOk &&
     focusedOk &&
     buildOk &&
     typeOk &&
@@ -523,6 +758,16 @@ export function buildEnterpriseSummary(input: {
     MigrationRequired: "YES",
     SeedRequired: "NO",
     ProductionMigrationRequired: "YES_DOCUMENT_ONLY_NOT_EXECUTED",
+    CanonicalRxNormAssignmentsTotal: assignmentSummary.CanonicalRxNormAssignmentsTotal,
+    SyntheticFixtureAssignments: assignmentSummary.SyntheticFixtureAssignments,
+    RealProductionAssignments: assignmentSummary.RealProductionAssignments,
+    UnexplainedAssignments: assignmentSummary.UnexplainedAssignments,
+    InvalidSyntheticToRealAssignments: assignmentSummary.InvalidSyntheticToRealAssignments,
+    InvalidRealToFixtureAssignments: assignmentSummary.InvalidRealToFixtureAssignments,
+    AutomaticAssignmentsDetected: assignmentSummary.AutomaticAssignmentsDetected,
+    Phase4GovernedSyntheticAssignmentsAccepted:
+      assignmentSummary.Phase4GovernedSyntheticAssignmentsAccepted,
+    CanonicalAssignmentGate: assignmentGateOk ? "PASS" : "FAIL",
     FocusedTests: input.evidence.focusedTestsPass ? "PASS" : "FAIL",
     FullRegression:
       input.evidence.fullRegressionPass === true
@@ -570,8 +815,7 @@ export async function writeAllPhase3Artifacts(input: {
   const knownBlockingGaps = input.knownBlockingGaps ?? [];
   const knownNonblockingGaps = input.knownNonblockingGaps ?? [
     "Real NLM RxNorm release not ingested (synthetic certification only)",
-    "Candidate mappings are review-only; none verified onto MedicationConcept",
-    "RRF/RXNCONSO parser deferred until licensed source is available",
+    "Phase 3 still forbids unauthorized real RxCUI assignment; governed Phase 4 synthetic FIXTURE mappings may populate canonical RxCUI fields",
     "Administrative RxNorm reference search UI not built (CLI/staging only)",
     "HTTP admin import API not exposed (CLI-only by design)",
   ];

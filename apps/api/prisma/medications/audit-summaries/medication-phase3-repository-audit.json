@@ -7,16 +7,29 @@
   "confidence": "HIGH",
   "dataSource": "database",
   "formularyStagingReused": false,
-  "generatedAt": "2026-07-17T20:11:13.727Z",
+  "generatedAt": "2026-07-17T21:46:37.141Z",
   "live": {
     "activeReleases": 0,
+    "assignmentSummary": {
+      "AutomaticAssignmentsDetected": 0,
+      "CanonicalRxNormAssignmentsTotal": 1,
+      "InvalidRealToFixtureAssignments": 0,
+      "InvalidSyntheticToRealAssignments": 0,
+      "Phase4GovernedSyntheticAssignmentsAccepted": "YES",
+      "RealProductionAssignments": 0,
+      "SyntheticFixtureAssignments": 1,
+      "UnexplainedAssignments": 0,
+      "classifications": [
+        "SYNTHETIC_FIXTURE_ASSIGNMENT"
+      ]
+    },
     "autoVerifiedCandidates": 0,
-    "candidates": 645,
+    "candidates": 1288,
     "catalogMedication": 1042,
-    "conceptRxNormPopulated": 0,
+    "conceptRxNormPopulated": 1,
     "conflicts": 645,
-    "releases": 1,
-    "stagingRows": 28
+    "releases": 3,
+    "stagingRows": 33
   },
   "phase": 3,
   "phase2Foundation": "PRESENT",
