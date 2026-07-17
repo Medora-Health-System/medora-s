@@ -37,8 +37,33 @@ export function isBehavioralHealthProviderDischargeTemplateCandidate(
   template: Pick<ProviderDischargeTemplate, "id" | "specialtyCategory">
 ): boolean {
   if (template.id.startsWith("behavioral_health_") || template.id.startsWith("bh_")) return true;
+  if (PHASE_18_PSYCHIATRIC_BEHAVIORAL_BH_GOVERNANCE_IDS.has(template.id)) return true;
   return false;
 }
+
+/** Phase 18 discharge families validated under behavioral health governance. */
+export const PHASE_18_PSYCHIATRIC_BEHAVIORAL_BH_GOVERNANCE_IDS = new Set([
+  "suicidal_ideation_post_assessment_v1",
+  "self_harm_post_assessment_v1",
+  "suicide_attempt_post_acute_v1",
+  "depression_crisis_v1",
+  "anxiety_panic_crisis_v1",
+  "acute_stress_reaction_v1",
+  "psychosis_post_acute_v1",
+  "mania_post_acute_v1",
+  "behavioral_agitation_post_acute_v1",
+  "substance_induced_behavioral_crisis_v1",
+  "delirium_post_acute_v1",
+  "dementia_behavior_change_v1",
+  "catatonia_post_acute_v1",
+  "eating_disorder_medical_followup_v1",
+  "pediatric_behavioral_crisis_v1",
+  "postpartum_psychiatric_crisis_post_acute_v1",
+  "informed_refusal_v1",
+  "against_medical_advice_v1",
+  "behavioral_health_safety_plan_v1",
+  "crisis_resource_followup_v1",
+]);
 
 export const PROVIDER_DISCHARGE_BH_FORBIDDEN_PHRASES: readonly { id: string; pattern: RegExp }[] = [
   { id: "psychiatrically-cleared", pattern: /\bpsychiatrically cleared\b/i },

@@ -453,6 +453,7 @@ import {
   PARAPHIMOSIS_POST_ACUTE_V1_SUGGESTED_TEXT,
   PENILE_FRACTURE_POST_ACUTE_V1_SUGGESTED_TEXT,
 } from "./providerDischargeTemplateSuggestedTextCatalog";
+import { buildPhase18PsychiatricBehavioralDischargeTemplates } from "./psychiatricBehavioralDischargeTemplateEntries";
 import {
   newDefaultFollowUpRow,
   newDiagnosisDocId,
@@ -647,6 +648,11 @@ export const BATCH_7_OBGYN_ED_DISCHARGE_TEMPLATE_IDS = [
 ] as const;
 
 /** Phase 19Y.12 — behavioral health & substance-use ED discharge template batch 8. */
+export {
+  PHASE_18_PSYCHIATRIC_BEHAVIORAL_ED_DISCHARGE_TEMPLATE_IDS,
+  buildPhase18PsychiatricBehavioralDischargeTemplates,
+} from "./psychiatricBehavioralDischargeTemplateEntries";
+
 export const BATCH_8_BEHAVIORAL_HEALTH_ED_DISCHARGE_TEMPLATE_IDS = [
   "behavioral_health_anxiety_panic_symptoms_v1",
   "behavioral_health_depression_crisis_precautions_v1",
@@ -2864,7 +2870,6 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
       requiresBehavioralHealthFollowUp: true,
     },
     diagnosisMappings: {
-      icdExact: ["F41.0"],
       keyword: ["bh anxiety panic", "behavioral health panic symptoms", "anxiété panique bh"],
     },
     sourceReferences: [
@@ -2891,8 +2896,6 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
       requiresBehavioralHealthFollowUp: true,
     },
     diagnosisMappings: {
-      icdExact: ["F32.9"],
-      icdFamily: ["F32"],
       keyword: ["bh depression crisis", "depression crisis precautions", "dépression crise bh"],
     },
     sourceReferences: [
@@ -2921,7 +2924,6 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
       requiresPrivacySensitiveWording: true,
     },
     diagnosisMappings: {
-      icdExact: ["R45.851"],
       keyword: ["bh suicidal ideation", "suicidal ideation precautions", "idées suicidaires bh"],
     },
     sourceReferences: [
@@ -7569,6 +7571,8 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
     sourceReferences: [{ label: "MedlinePlus — Urologic", url: "https://medlineplus.gov/", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
     defaultFollowUps: [registryFollowUp("p17-penile_fract", "UROLOGY", "urgent / as directed")], suggestedText: PENILE_FRACTURE_POST_ACUTE_V1_SUGGESTED_TEXT,
   },
+  // Phase 18 — psychiatric / behavioral discharge templates (Commit 2). Preserves Batch 8 legacy families.
+  ...buildPhase18PsychiatricBehavioralDischargeTemplates(),
   {
     id: GENERIC_PROVIDER_DISCHARGE_TEMPLATE_ID,
     version: "1.0.0",

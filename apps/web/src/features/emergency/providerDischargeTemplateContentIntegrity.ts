@@ -1765,6 +1765,87 @@ export const PROVIDER_DISCHARGE_TEMPLATE_CONTENT_INTEGRITY: Record<
     mustIncludeAny: { en: ["penile fracture","fracture pénienne"], fr: ["penile fracture","fracture pénienne"] },
     forbiddenCrossTemplateMarkers: {"en":["ectopic excluded","torsion excluded","medically cleared","fetal well-being confirmed"],"fr":["ectopique exclue","torsion exclue","clearance médicale","bien-être fœtal confirmé"]},
   },
+  // Phase 18 — psychiatric / behavioral content integrity (Commit 2).
+  suicidal_ideation_post_assessment_v1: {
+    mustIncludeAny: { en: ["suicidal ideation","crisis resources"], fr: ["idées suicidaires","ressources de crise"] },
+    forbiddenCrossTemplateMarkers: { en: ["medically cleared", "safe for discharge", "low risk for suicide"], fr: ["clearance médicale", "safe for discharge"] },
+  },
+  self_harm_post_assessment_v1: {
+    mustIncludeAny: { en: ["self-harm","non-suicidal"], fr: ["automutilation","non suicidaire"] },
+    forbiddenCrossTemplateMarkers: { en: ["medically cleared", "safe for discharge"], fr: ["clearance médicale"] },
+  },
+  suicide_attempt_post_acute_v1: {
+    mustIncludeAny: { en: ["suicide attempt","self-inflicted"], fr: ["tentative de suicide","auto-infligée"] },
+    forbiddenCrossTemplateMarkers: { en: ["medically cleared", "safe for discharge"], fr: ["clearance médicale"] },
+  },
+  depression_crisis_v1: {
+    mustIncludeAny: { en: ["depression","crisis resources"], fr: ["dépression","ressources de crise"] },
+    forbiddenCrossTemplateMarkers: { en: ["medically cleared", "low risk for suicide"], fr: ["clearance médicale"] },
+  },
+  anxiety_panic_crisis_v1: {
+    mustIncludeAny: { en: ["anxiety","panic"], fr: ["anxiété","angoisse"] },
+    forbiddenCrossTemplateMarkers: { en: ["medically cleared"], fr: ["clearance médicale"] },
+  },
+  acute_stress_reaction_v1: {
+    mustIncludeAny: { en: ["stress reaction","crisis resources"], fr: ["réaction aiguë au stress","ressources de crise"] },
+    forbiddenCrossTemplateMarkers: { en: ["medically cleared"], fr: ["clearance médicale"] },
+  },
+  psychosis_post_acute_v1: {
+    mustIncludeAny: { en: ["psychosis","hallucinations"], fr: ["psychose","hallucinations"] },
+    forbiddenCrossTemplateMarkers: { en: ["not psychotic", "medically cleared"], fr: ["clearance médicale"] },
+  },
+  mania_post_acute_v1: {
+    mustIncludeAny: { en: ["mania","behavioral"], fr: ["manie","comportemental"] },
+    forbiddenCrossTemplateMarkers: { en: ["medically cleared"], fr: ["clearance médicale"] },
+  },
+  behavioral_agitation_post_acute_v1: {
+    mustIncludeAny: { en: ["agitation","crisis"], fr: ["agitation","crise"] },
+    forbiddenCrossTemplateMarkers: { en: ["medically cleared"], fr: ["clearance médicale"] },
+  },
+  substance_induced_behavioral_crisis_v1: {
+    mustIncludeAny: { en: ["substance","behavioral health"], fr: ["substance","santé comportementale"] },
+    forbiddenCrossTemplateMarkers: { en: ["intoxication resolved", "clinically sober"], fr: ["clearance médicale"] },
+  },
+  delirium_post_acute_v1: {
+    mustIncludeAny: { en: ["delirium","medical emergency"], fr: ["délirium","urgence médicale"] },
+    forbiddenCrossTemplateMarkers: { en: ["medically cleared"], fr: ["clearance médicale"] },
+  },
+  dementia_behavior_change_v1: {
+    mustIncludeAny: { en: ["dementia","behavioral"], fr: ["démence","comportemental"] },
+    forbiddenCrossTemplateMarkers: { en: ["medically cleared"], fr: ["clearance médicale"] },
+  },
+  catatonia_post_acute_v1: {
+    mustIncludeAny: { en: ["catatonia","crisis"], fr: ["catatonie","crise"] },
+    forbiddenCrossTemplateMarkers: { en: ["medically cleared"], fr: ["clearance médicale"] },
+  },
+  eating_disorder_medical_followup_v1: {
+    mustIncludeAny: { en: ["eating disorder","follow-up"], fr: ["trouble de l'alimentation","suivi"] },
+    forbiddenCrossTemplateMarkers: { en: ["medically cleared"], fr: ["clearance médicale"] },
+  },
+  pediatric_behavioral_crisis_v1: {
+    mustIncludeAny: { en: ["pediatric","behavioral"], fr: ["pédiatrique","comportemental"] },
+    forbiddenCrossTemplateMarkers: { en: ["medically cleared"], fr: ["clearance médicale"] },
+  },
+  postpartum_psychiatric_crisis_post_acute_v1: {
+    mustIncludeAny: { en: ["postpartum","obstetric"], fr: ["post-partum","obstétrical"] },
+    forbiddenCrossTemplateMarkers: { en: ["medically cleared", "routine psychiatric outpatient"], fr: ["clearance médicale"] },
+  },
+  informed_refusal_v1: {
+    mustIncludeAny: { en: ["refusal","capacity"], fr: ["refus","capacité"] },
+    forbiddenCrossTemplateMarkers: { en: ["has capacity", "lacks capacity"], fr: ["has capacity", "lacks capacity"] },
+  },
+  against_medical_advice_v1: {
+    mustIncludeAny: { en: ["against medical advice","AMA"], fr: ["contre avis médical"] },
+    forbiddenCrossTemplateMarkers: { en: ["has capacity", "lacks capacity"], fr: ["has capacity", "lacks capacity"] },
+  },
+  behavioral_health_safety_plan_v1: {
+    mustIncludeAny: { en: ["safety plan","crisis resources"], fr: ["plan de sécurité","ressources de crise"] },
+    forbiddenCrossTemplateMarkers: { en: ["medically cleared"], fr: ["clearance médicale"] },
+  },
+  crisis_resource_followup_v1: {
+    mustIncludeAny: { en: ["crisis resource","crisis line"], fr: ["ressources de crise","ligne de crise"] },
+    forbiddenCrossTemplateMarkers: { en: ["medically cleared"], fr: ["clearance médicale"] },
+  },
 };
 
 function suggestedTextBlob(body: {

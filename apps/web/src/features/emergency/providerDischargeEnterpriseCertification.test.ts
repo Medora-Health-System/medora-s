@@ -253,13 +253,13 @@ describe("MEDUI.ED.DISCHARGE.ENTERPRISE_CERTIFICATION.1", () => {
     it("54 — F41.9 family anxiety template when family resolver used", () => {
       expect(
         resolveClinicalConditionFamily({ code: "F41.9", displayName: "Anxiety" }).templateId
-      ).toBe("behavioral_health_anxiety_panic_symptoms_v1");
+      ).toBe("anxiety_panic_crisis_v1");
     });
 
     it("55 — R45.851 suicidal ideation family template", () => {
       expect(
         resolveClinicalConditionFamily({ code: "R45.851", displayName: "Suicidal ideation" }).templateId
-      ).toBe("behavioral_health_suicidal_ideation_precautions_v1");
+      ).toBe("suicidal_ideation_post_assessment_v1");
     });
 
     it("56 — I82.409 DVT high-risk family template", () => {

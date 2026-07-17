@@ -17,6 +17,7 @@ import {
   BATCH_6_PEDIATRIC_HIGHER_RISK_ED_DISCHARGE_TEMPLATE_IDS,
   BATCH_7_OBGYN_ED_DISCHARGE_TEMPLATE_IDS,
   BATCH_8_BEHAVIORAL_HEALTH_ED_DISCHARGE_TEMPLATE_IDS,
+  PHASE_18_PSYCHIATRIC_BEHAVIORAL_ED_DISCHARGE_TEMPLATE_IDS,
   BATCH_9_TRAUMA_MSK_ED_DISCHARGE_TEMPLATE_IDS,
   BATCH_10_CARDIO_HIGH_RISK_ED_DISCHARGE_TEMPLATE_IDS,
   BATCH_11_INFECTIOUS_SEPSIS_ED_DISCHARGE_TEMPLATE_IDS,
@@ -2556,7 +2557,7 @@ describe("edDisposition19Y", () => {
     });
 
     it("anxiety/panic F41 family resolves correctly", () => {
-      const resolved = resolveProviderDischargeTemplateForDiagnosis({ code: "F41.9", displayName: "Anxiety" });
+      const resolved = resolveProviderDischargeTemplateForDiagnosis({ code: "F41.1", displayName: "Generalized anxiety disorder" });
       expect(resolved.template.id).toBe("anxiety_panic_v1");
       expect(resolved.matchLevel).toBe("icdFamily");
     });
@@ -4001,10 +4002,10 @@ describe("edDisposition19Y", () => {
       expect(
         resolveProviderDischargeTemplateForDiagnosis({ code: "F41.9", displayName: "Anxiety disorder, unspecified" })
           .template.id
-      ).toBe("anxiety_panic_v1");
+      ).toBe("anxiety_panic_crisis_v1");
       expect(
         resolveProviderDischargeTemplateForDiagnosis({ code: "F41.0", displayName: "Panic disorder" }).template.id
-      ).toBe("behavioral_health_anxiety_panic_symptoms_v1");
+      ).toBe("anxiety_panic_crisis_v1");
       expect(
         resolveProviderDischargeTemplateForDiagnosis({ code: "F10.129", displayName: "Alcohol intoxication" })
           .template.id
@@ -4042,10 +4043,46 @@ describe("edDisposition19Y", () => {
     });
 
     it("existing adult/pediatric/OB templates still validate", () => {
-      const nonBh = PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.filter((t) => !t.id.startsWith("behavioral_health_"));
+      const nonBh = PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.filter(
+        (t) => !t.id.startsWith("behavioral_health_") && !PHASE_18_PSYCHIATRIC_BEHAVIORAL_ED_DISCHARGE_TEMPLATE_IDS.includes(t.id as never),
+      );
       const result = validateProviderDischargeTemplateRegistry(nonBh);
       expect(result.ok).toBe(true);
       expect(result.errors).toEqual([]);
+    });
+  });
+
+  describe("Phase 18 psychiatric / behavioral discharge templates (Commit 2)", () => {
+    const phase18Templates = () =>
+      PHASE_18_PSYCHIATRIC_BEHAVIORAL_ED_DISCHARGE_TEMPLATE_IDS.map(
+        (id) => PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.find((t) => t.id === id)!,
+      );
+
+    it("all 20 Phase 18 psychiatric / behavioral templates exist", () => {
+      expect(PHASE_18_PSYCHIATRIC_BEHAVIORAL_ED_DISCHARGE_TEMPLATE_IDS).toHaveLength(20);
+      for (const id of PHASE_18_PSYCHIATRIC_BEHAVIORAL_ED_DISCHARGE_TEMPLATE_IDS) {
+        expect(PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.some((t) => t.id === id)).toBe(true);
+      }
+    });
+
+    it("EN/FR bodies and behavioralHealthSafety governance pass for Phase 18 templates", () => {
+      for (const template of phase18Templates()) {
+        expect(template.suggestedText.en.description.trim()).not.toBe("");
+        expect(template.suggestedText.fr.description.trim()).not.toBe("");
+        expect(template.behavioralHealthSafety).toBeTruthy();
+        expect(validateProviderDischargeBehavioralHealthTemplateGovernance(template)).toEqual([]);
+      }
+    });
+
+    it("Phase 18 registry snapshot hash differs when Phase 18 templates removed", () => {
+      const base = computeProviderDischargeRegistryGovernanceSnapshotHash(PROVIDER_DISCHARGE_TEMPLATE_REGISTRY, "en");
+      const withoutP18 = computeProviderDischargeRegistryGovernanceSnapshotHash(
+        PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.filter(
+          (t) => !PHASE_18_PSYCHIATRIC_BEHAVIORAL_ED_DISCHARGE_TEMPLATE_IDS.includes(t.id as never),
+        ),
+        "en",
+      );
+      expect(base).not.toBe(withoutP18);
     });
   });
 
@@ -8098,7 +8135,7 @@ describe("edDisposition19Y", () => {
         PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.length
       );
       // Update this constant intentionally when registry governance content changes.
-      expect(hash).toBe("3f2dd36a70069f562334d1bef0bbeab1ab6eb86b182e350af66eae042dc86e90");
+      expect(hash).toBe("8a5f13e2f30da5f2ddbb0fa886e110f816477c05260633fb5b674e903d74a932");
     });
 
     it("registry governance snapshot hash remains stable for reviewed registry (FR)", () => {
@@ -8108,7 +8145,7 @@ describe("edDisposition19Y", () => {
         PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.length
       );
       // Update this constant intentionally when registry governance content changes.
-      expect(hash).toBe("50db88ae6184952ad29ec6df3e613634b11b69b928e965b1c6fbb17b7ea3cad9");
+      expect(hash).toBe("dec2ec8b4c6b568aa168e97832027f426695a9ec506d482166579d8a6c07cdb8");
     });
 
     it("timesApplied exists in type but is not incremented anywhere", () => {

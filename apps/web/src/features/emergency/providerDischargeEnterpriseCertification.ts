@@ -267,14 +267,14 @@ export const ENTERPRISE_DISCHARGE_SCENARIOS: EnterpriseDischargeScenarioDefiniti
     label: "F41.9 anxiety/panic",
     code: "F41.9",
     displayName: "Anxiety disorder",
-    expectedFamilyTemplateId: "behavioral_health_anxiety_panic_symptoms_v1",
+    expectedFamilyTemplateId: "anxiety_panic_crisis_v1",
   },
   {
     id: "s12",
     label: "R45.851 suicidal ideation",
     code: "R45.851",
     displayName: "Suicidal ideation",
-    expectedFamilyTemplateId: "behavioral_health_suicidal_ideation_precautions_v1",
+    expectedFamilyTemplateId: "suicidal_ideation_post_assessment_v1",
   },
   {
     id: "s13",

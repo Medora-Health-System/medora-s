@@ -275,6 +275,27 @@ export const COMMON_DIAGNOSES: Array<{ code: string; label: string }> = [
   { code: "N48.33", label: "Priapisme, dû à des médicaments" },
   { code: "N47.2", label: "Paraphimosis" },
   { code: "S39.840A", label: "Fracture du corps caverneux du pénis, rencontre initiale" },
+  // Phase 18 — psychiatrie / santé comportementale (Part 37 quick picks)
+  { code: "R45.851", label: "Idées suicidaires" },
+  { code: "T14.91XA", label: "Lésion auto-infligée volontairement, rencontre initiale" },
+  { code: "Z91.52", label: "Automutilation intentionnelle, rencontre initiale" },
+  { code: "R45.850", label: "Idées homicidaires" },
+  { code: "F29", label: "Psychose non organique, sans précision" },
+  { code: "R44.1", label: "Hallucinations visuelles" },
+  { code: "F31.9", label: "Trouble bipolaire, épisode actuel non précisé, sans précision" },
+  { code: "F32.9", label: "Épisode dépressif majeur, épisode unique, sans précision" },
+  { code: "F41.0", label: "Trouble panique (crises)" },
+  { code: "F43.10", label: "Réaction aiguë au stress" },
+  { code: "F05", label: "Délirium non superposé à une démence" },
+  { code: "F03.91", label: "Démence non précisée, avec perturbation comportementale" },
+  { code: "F06.1", label: "Catatonie associée à un autre trouble mental" },
+  { code: "R45.1", label: "Agitation et agressivité" },
+  { code: "F19.959", label: "Trouble psychotique induit par les drogues, sans précision" },
+  { code: "F10.231", label: "Syndrome de sevrage alcoolique avec délirium" },
+  { code: "F53.0", label: "Psychose puerpérale" },
+  { code: "F50.01", label: "Anorexie mentale, type restrictif" },
+  { code: "F84.0", label: "Trouble du spectre de l'autisme" },
+  { code: "Z53.20", label: "Procédure et traitement non effectués en raison du refus du patient" },
 ];
 
 /** Quick-insert snippets for nursing / general consultation notes (Notes de consultation). */

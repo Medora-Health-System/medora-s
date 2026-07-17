@@ -3,6 +3,10 @@
  */
 
 import type { ClinicalConditionFamilyDefinition } from "./providerDischargeConditionFamilyTypes";
+import {
+  PSYCHIATRIC_BEHAVIORAL_DOMAIN_EXTENSIONS,
+  PSYCHIATRIC_BEHAVIORAL_EXPLICIT_TEMPLATE_FAMILY_MAP,
+} from "./psychiatricBehavioralDomainExtensions";
 
 export const DOMAIN_EXTENSION_CLINICAL_CONDITION_FAMILIES: readonly ClinicalConditionFamilyDefinition[] =
   [
@@ -3036,6 +3040,7 @@ export const DOMAIN_EXTENSION_CLINICAL_CONDITION_FAMILIES: readonly ClinicalCond
       routingStatus: "READY",
       sourceReferenceLabels: ["MedlinePlus — Urologic"],
     },
+    ...PSYCHIATRIC_BEHAVIORAL_DOMAIN_EXTENSIONS,
   ] as const;
 
 /**
@@ -3411,4 +3416,5 @@ export const EXPLICIT_REGISTRY_TEMPLATE_FAMILY_MAP: Readonly<Record<string, stri
   priapism_post_acute_v1: "priapism_post_acute",
   paraphimosis_post_acute_v1: "paraphimosis_post_acute",
   penile_fracture_post_acute_v1: "penile_fracture_post_acute",
+  ...PSYCHIATRIC_BEHAVIORAL_EXPLICIT_TEMPLATE_FAMILY_MAP,
 };

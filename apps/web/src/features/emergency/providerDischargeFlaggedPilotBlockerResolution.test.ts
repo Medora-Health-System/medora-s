@@ -74,7 +74,7 @@ describe("MEDUI.ED.DISCHARGE.TEMPLATE_FAMILY_COVERAGE.5", () => {
 
     it("8 — suicidal ideation remains crisis-protected", () => {
       const r = resolveClinicalConditionFamily({ code: "R45.851", displayName: "Suicidal ideation" });
-      expect(r.templateId).toBe("behavioral_health_suicidal_ideation_precautions_v1");
+      expect(r.templateId).toBe("suicidal_ideation_post_assessment_v1");
       const cmp = compareRegistryResolverToFamilyResolver({ code: "R45.851", displayName: "Suicidal ideation" });
       expect(cmp.familyOutcome).not.toBe("regression_risk");
     });
