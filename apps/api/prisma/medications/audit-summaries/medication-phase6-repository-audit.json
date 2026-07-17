@@ -1,0 +1,37 @@
+{
+  "auditStatus": "COMPLETE",
+  "catalogClassification": "CURATED",
+  "catalogComplete": false,
+  "certificationId": "MEDUI.MEDICATION_INTELLIGENCE_PHASE_6_GOVERNED_REVIEW_OPERATIONS_ADMIN_PLATFORM",
+  "clinicalRuntimeUntouched": true,
+  "confidence": "HIGH",
+  "dataSource": "database",
+  "generatedAt": "2026-07-17T22:23:28.817Z",
+  "live": {
+    "activeRealVerifiedMappings": 0,
+    "auditEvents": 0,
+    "autoVerifiedCandidates": 0,
+    "candidatesOpen": 649,
+    "candidatesTotal": 1289,
+    "catalogMedication": 1042,
+    "deferredCount": 0,
+    "pilotEnabled": false,
+    "pilotImportExecuted": false,
+    "rejectedCount": 7,
+    "verifiedCount": 1
+  },
+  "phase": 6,
+  "schema": {
+    "controllerPresent": true,
+    "hasAssignedToUserId": true,
+    "hasDeferredStatusTransition": true,
+    "hasMedicationAdminRole": true,
+    "hasMedicationReviewerRole": true,
+    "hasReviewAuditModel": true,
+    "migrationPresent": true,
+    "phase4VerifiedMappingPresent": true,
+    "pilotConfigPresent": true,
+    "uiPresent": true
+  },
+  "title": "Phase 6 repository audit"
+}

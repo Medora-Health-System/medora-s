@@ -1,0 +1,13 @@
+{
+  "auditStatus": "COMPLETE",
+  "catalogClassification": "CURATED",
+  "catalogComplete": false,
+  "certificationId": "MEDUI.MEDICATION_INTELLIGENCE_PHASE_6_GOVERNED_REVIEW_OPERATIONS_ADMIN_PLATFORM",
+  "confidence": "HIGH",
+  "dataSource": "database",
+  "deterministic": true,
+  "generatedAt": "2026-07-17T22:23:28.818Z",
+  "liveAuditEvents": 0,
+  "model": "RxNormReviewAuditEvent",
+  "phase": 6
+}

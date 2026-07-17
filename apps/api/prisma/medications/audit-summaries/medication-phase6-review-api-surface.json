@@ -1,0 +1,24 @@
+{
+  "auditStatus": "COMPLETE",
+  "catalogClassification": "CURATED",
+  "catalogComplete": false,
+  "certificationId": "MEDUI.MEDICATION_INTELLIGENCE_PHASE_6_GOVERNED_REVIEW_OPERATIONS_ADMIN_PLATFORM",
+  "confidence": "HIGH",
+  "controller": "medications/review",
+  "controllerPresent": true,
+  "dataSource": "seed_files_only",
+  "endpoints": [
+    "GET /medications/review/candidates",
+    "GET /medications/review/candidate/:id",
+    "POST /medications/review/approve",
+    "POST /medications/review/reject",
+    "POST /medications/review/defer",
+    "POST /medications/review/supersede",
+    "POST /medications/review/retire",
+    "GET /medications/review/dashboard",
+    "POST /medications/review/assign",
+    "POST /medications/review/bulk"
+  ],
+  "generatedAt": "2026-07-17T22:23:28.817Z",
+  "phase": 6
+}

@@ -1,0 +1,23 @@
+{
+  "auditStatus": "COMPLETE",
+  "catalogClassification": "CURATED",
+  "catalogComplete": false,
+  "certificationId": "MEDUI.MEDICATION_INTELLIGENCE_PHASE_6_GOVERNED_REVIEW_OPERATIONS_ADMIN_PLATFORM",
+  "confidence": "HIGH",
+  "dashboardEndpoint": "GET /medications/review/dashboard",
+  "dataSource": "database",
+  "generatedAt": "2026-07-17T22:23:28.818Z",
+  "metricsTracked": [
+    "candidatesReviewed",
+    "approvalRate",
+    "rejectionRate",
+    "averageReviewTime",
+    "reviewerWorkload",
+    "conflictRate",
+    "unresolvedAmbiguity",
+    "mappingsPerRelease",
+    "supersededMappings",
+    "retiredMappings"
+  ],
+  "phase": 6
+}

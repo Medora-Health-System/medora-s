@@ -1,0 +1,22 @@
+{
+  "auditStatus": "COMPLETE",
+  "catalogClassification": "CURATED",
+  "catalogComplete": false,
+  "certificationId": "MEDUI.MEDICATION_INTELLIGENCE_PHASE_6_GOVERNED_REVIEW_OPERATIONS_ADMIN_PLATFORM",
+  "confidence": "HIGH",
+  "dataSource": "seed_files_only",
+  "enabledByDefault": false,
+  "generatedAt": "2026-07-17T22:23:28.818Z",
+  "importExecutedInPhase6": false,
+  "phase": 6,
+  "pilot": {
+    "automaticVerificationEnabled": false,
+    "clinicalActivationEnabled": false,
+    "enabled": false,
+    "importExecuted": false,
+    "notes": "Configurable future pilot of ~100 Emergency Medicine medications. Disabled by default. Phase 6 does not import or activate these mappings.",
+    "pilotId": "EM_REAL_MAPPING_PILOT_V1",
+    "targetCount": 100,
+    "therapeuticArea": "EMERGENCY_MEDICINE"
+  }
+}

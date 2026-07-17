@@ -1,0 +1,13 @@
+{
+  "auditStatus": "COMPLETE",
+  "catalogClassification": "CURATED",
+  "catalogComplete": false,
+  "certificationId": "MEDUI.MEDICATION_INTELLIGENCE_PHASE_6_GOVERNED_REVIEW_OPERATIONS_ADMIN_PLATFORM",
+  "confidence": "HIGH",
+  "conflictOverrideRequired": true,
+  "dataSource": "seed_files_only",
+  "generatedAt": "2026-07-17T22:23:28.818Z",
+  "phase": 6,
+  "retireEndpoint": "POST /medications/review/retire",
+  "supersedeEndpoint": "POST /medications/review/supersede"
+}

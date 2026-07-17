@@ -1,0 +1,14 @@
+{
+  "audience": "administrators_and_pharmacists_reviewers",
+  "auditStatus": "COMPLETE",
+  "catalogClassification": "CURATED",
+  "catalogComplete": false,
+  "certificationId": "MEDUI.MEDICATION_INTELLIGENCE_PHASE_6_GOVERNED_REVIEW_OPERATIONS_ADMIN_PLATFORM",
+  "confidence": "HIGH",
+  "dataSource": "seed_files_only",
+  "frenchI18nSection": "medicationRxNormReview",
+  "generatedAt": "2026-07-17T22:23:28.817Z",
+  "phase": 6,
+  "route": "/app/admin/medication-governance/rxnorm-review",
+  "uiPresent": true
+}

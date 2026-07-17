@@ -112,6 +112,7 @@
     "medication:certify:phase3": "ts-node --transpile-only prisma/medications/audit/run-medication-phase3-certification.ts",
     "medication:certify:phase4": "ts-node --transpile-only prisma/medications/audit/run-medication-phase4-certification.ts",
     "medication:certify:phase5": "ts-node --transpile-only prisma/medications/audit/run-medication-phase5-certification.ts",
+    "medication:certify:phase6": "ts-node --transpile-only prisma/medications/audit/run-medication-phase6-certification.ts",
     "medication:rxnorm:validate": "ts-node --transpile-only prisma/medications/rxnorm/run-rxnorm-import.ts --mode=VALIDATE_ONLY --allow-synthetic",
     "medication:rxnorm:stage": "ts-node --transpile-only prisma/medications/rxnorm/run-rxnorm-import.ts --mode=STAGE_ONLY --allow-synthetic",
     "medication:rxnorm:candidates": "ts-node --transpile-only prisma/medications/rxnorm/run-rxnorm-import.ts --mode=CANDIDATE_MAPPING --allow-synthetic",
