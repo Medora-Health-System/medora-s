@@ -1418,6 +1418,99 @@ export const PROVIDER_DISCHARGE_TEMPLATE_CONTENT_INTEGRITY: Record<
     mustIncludeAny: { en: ["skin lesion"], fr: ["lésion cutanée"] },
     forbiddenCrossTemplateMarkers: { en: ["benign", "not concerning", "no further evaluation needed"], fr: ["bénigne", "aucune évaluation supplémentaire nécessaire"] },
   },
+  // Phase 15 — Environmental / exposure content integrity rules (Commit 2).
+  heat_cramps_v1: {
+    mustIncludeAny: { en: ["heat cramps"], fr: ["crampes de chaleur"] },
+    forbiddenCrossTemplateMarkers: { en: ["heat stroke"], fr: ["coup de chaleur"] },
+  },
+  heat_syncope_v1: {
+    mustIncludeAny: { en: ["heat syncope"], fr: ["syncope de chaleur"] },
+    forbiddenCrossTemplateMarkers: { en: ["heat stroke"], fr: ["coup de chaleur"] },
+  },
+  heat_exhaustion_v1: {
+    mustIncludeAny: { en: ["heat exhaustion"], fr: ["épuisement par la chaleur"] },
+    forbiddenCrossTemplateMarkers: { en: ["life-threatening heat illness"], fr: ["maladie liée à la chaleur mettant en jeu le pronostic vital"] },
+  },
+  exertional_heat_illness_v1: {
+    mustIncludeAny: { en: ["exertional heat illness"], fr: ["maladie de chaleur liée à l'effort"] },
+    forbiddenCrossTemplateMarkers: { en: ["heat stroke"], fr: ["coup de chaleur"] },
+  },
+  heat_stroke_post_acute_v1: {
+    mustIncludeAny: { en: ["heat stroke"], fr: ["coup de chaleur"] },
+    forbiddenCrossTemplateMarkers: { en: ["heat exhaustion — a heat-related illness with symptoms such as heavy sweating"], fr: ["épuisement par la chaleur — une maladie liée à la chaleur avec des symptômes comme une transpiration abondante"] },
+  },
+  mild_hypothermia_v1: {
+    mustIncludeAny: { en: ["mild hypothermia"], fr: ["hypothermie légère"] },
+    forbiddenCrossTemplateMarkers: { en: ["severe hypothermia"], fr: ["hypothermie sévère"] },
+  },
+  hypothermia_post_acute_v1: {
+    mustIncludeAny: { en: ["hypothermia"], fr: ["hypothermie"] },
+    forbiddenCrossTemplateMarkers: { en: ["mild hypothermia — a cold-related illness"], fr: ["hypothermie légère — une maladie liée au froid"] },
+  },
+  superficial_frostbite_v1: {
+    mustIncludeAny: { en: ["superficial frostbite", "frostnip"], fr: ["gelure superficielle"] },
+    forbiddenCrossTemplateMarkers: { en: ["tissue necrosis"], fr: ["nécrose tissulaire"] },
+  },
+  deep_frostbite_post_acute_v1: {
+    mustIncludeAny: { en: ["deep frostbite", "frostbite with tissue necrosis"], fr: ["gelure profonde"] },
+    forbiddenCrossTemplateMarkers: { en: ["frostnip"], fr: ["engelures"] },
+  },
+  chilblains_pernio_v1: {
+    mustIncludeAny: { en: ["chilblains", "pernio"], fr: ["engelures"] },
+    forbiddenCrossTemplateMarkers: { en: ["frostbite with tissue necrosis"], fr: ["gelure avec nécrose"] },
+  },
+  immersion_foot_v1: {
+    mustIncludeAny: { en: ["immersion foot", "trench foot"], fr: ["pied d'immersion", "pied des tranchées"] },
+    forbiddenCrossTemplateMarkers: { en: ["dry drowning", "secondary drowning"], fr: ["noyade sèche", "noyade secondaire"] },
+  },
+  post_submersion_observation_v1: {
+    mustIncludeAny: { en: ["submersion"], fr: ["submersion"] },
+    forbiddenCrossTemplateMarkers: { en: ["dry drowning", "secondary drowning"], fr: ["noyade sèche", "noyade secondaire"] },
+  },
+  nonfatal_drowning_post_acute_v1: {
+    mustIncludeAny: { en: ["nonfatal drowning", "drowning"], fr: ["noyade non mortelle", "noyade"] },
+    forbiddenCrossTemplateMarkers: { en: ["dry drowning", "secondary drowning"], fr: ["noyade sèche", "noyade secondaire"] },
+  },
+  low_voltage_electrical_injury_v1: {
+    mustIncludeAny: { en: ["low-voltage", "low voltage"], fr: ["basse tension"] },
+    forbiddenCrossTemplateMarkers: { en: ["high-voltage electrical injury post-acute"], fr: ["haute tension soins post-aigus"] },
+  },
+  high_voltage_electrical_injury_post_acute_v1: {
+    mustIncludeAny: { en: ["high-voltage", "high voltage"], fr: ["haute tension"] },
+    forbiddenCrossTemplateMarkers: { en: ["low-voltage electrical injury —"], fr: ["blessure électrique basse tension —"] },
+  },
+  lightning_injury_post_acute_v1: {
+    mustIncludeAny: { en: ["lightning"], fr: ["foudre", "foudroiement"] },
+    forbiddenCrossTemplateMarkers: { en: ["ordinary household electrical injury only"], fr: ["blessure électrique domestique ordinaire uniquement"] },
+  },
+  acute_mountain_sickness_v1: {
+    mustIncludeAny: { en: ["acute mountain sickness", "altitude"], fr: ["mal des montagnes", "altitude"] },
+    forbiddenCrossTemplateMarkers: { en: ["high-altitude cerebral edema", "high-altitude pulmonary edema"], fr: ["œdème cérébral de haute altitude", "œdème pulmonaire de haute altitude"] },
+  },
+  hace_post_acute_v1: {
+    mustIncludeAny: { en: ["high-altitude cerebral edema", "hace"], fr: ["œdème cérébral de haute altitude"] },
+    forbiddenCrossTemplateMarkers: { en: ["routine acute mountain sickness"], fr: ["mal des montagnes non compliqué"] },
+  },
+  hape_post_acute_v1: {
+    mustIncludeAny: { en: ["high-altitude pulmonary edema", "hape"], fr: ["œdème pulmonaire de haute altitude"] },
+    forbiddenCrossTemplateMarkers: { en: ["routine acute mountain sickness"], fr: ["mal des montagnes non compliqué"] },
+  },
+  barotrauma_v1: {
+    mustIncludeAny: { en: ["diving barotrauma", "barotrauma"], fr: ["barotraumatisme"] },
+    forbiddenCrossTemplateMarkers: { en: ["decompression sickness"], fr: ["maladie de décompression"] },
+  },
+  decompression_illness_post_acute_v1: {
+    mustIncludeAny: { en: ["decompression"], fr: ["décompression"] },
+    forbiddenCrossTemplateMarkers: { en: ["generic joint pain only"], fr: ["douleur articulaire générique uniquement"] },
+  },
+  radiation_exposure_followup_v1: {
+    mustIncludeAny: { en: ["radiation exposure"], fr: ["exposition aux radiations", "exposition"] },
+    forbiddenCrossTemplateMarkers: { en: ["acute radiation syndrome"], fr: ["syndrome d'irradiation aiguë"] },
+  },
+  radiation_injury_post_acute_v1: {
+    mustIncludeAny: { en: ["radiation injury", "radiation syndrome"], fr: ["lésion par radiation", "irradiation"] },
+    forbiddenCrossTemplateMarkers: { en: ["exposure only without injury"], fr: ["exposition seule sans lésion"] },
+  },
 };
 
 function suggestedTextBlob(body: {

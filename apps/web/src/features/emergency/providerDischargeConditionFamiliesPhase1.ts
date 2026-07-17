@@ -1512,15 +1512,17 @@ export const PHASE1_CLINICAL_CONDITION_FAMILIES: readonly ClinicalConditionFamil
     sourceReferenceLabels: ["MedlinePlus — Chemical burns"],
   },
   {
+    // Phase 15: T75.0 (effects of lightning) moved to lightning_injury_post_acute family.
+    // This burn/tissue-injury family keeps T75.4 electrocution ownership only.
     id: "trauma_burn_electrical",
-    label: "Burn — Electrical / Lightning",
+    label: "Burn — Electrical",
     templateId: "burn_electrical_v1",
     clinicalDomain: "Trauma",
-    icdPrefixes: ["T75.0", "T75.4"],
-    keywords: ["electrical burn", "lightning", "brûlure électrique", "foudre"],
+    icdPrefixes: ["T75.4"],
+    keywords: ["electrical burn", "electrocution", "brûlure électrique", "électrocution"],
     specialtyCategory: "emergency_medicine",
     riskCategory: "high",
-    clinicalRationale: "Electrical injury may have occult cardiac, neurologic, or deep-tissue effects.",
+    clinicalRationale: "Electrical injury may have occult cardiac, neurologic, or deep-tissue effects. Lightning (T75.0) is owned by the Phase 15 environmental lightning family.",
     reviewStatus: "reviewed",
     routingStatus: "READY",
     sourceReferenceLabels: ["MedlinePlus — Electrical injuries"],

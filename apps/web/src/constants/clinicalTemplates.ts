@@ -197,6 +197,22 @@ export const COMMON_DIAGNOSES: Array<{ code: string; label: string }> = [
   { code: "D72.12", label: "Syndrome DRESS (réaction médicamenteuse avec éosinophilie)" },
   { code: "L95.9", label: "Vascularite cutanée, sans précision" },
   { code: "D48.5", label: "Lésion cutanée pigmentée suspecte (comportement incertain)" },
+  // Phase 15 — urgences environnementales / exposition
+  { code: "T67.5XXA", label: "Épuisement par la chaleur, sans précision, rencontre initiale" },
+  { code: "T67.01XA", label: "Coup de chaleur et insolation, rencontre initiale" },
+  { code: "T67.02XA", label: "Coup de chaleur d'effort, rencontre initiale" },
+  { code: "T68.XXXA", label: "Hypothermie, rencontre initiale" },
+  { code: "T33.90XA", label: "Gelure superficielle de siège non précisé, rencontre initiale" },
+  { code: "T69.1XXA", label: "Engelures, rencontre initiale" },
+  { code: "T69.029A", label: "Pied d'immersion, pied non précisé, rencontre initiale" },
+  { code: "T75.1XXA", label: "Effets d'une noyade et d'une submersion non mortelle, rencontre initiale" },
+  // T75.4XXA électrocution already present in burn/electrical quick picks — do not duplicate.
+  { code: "T75.00XA", label: "Effets de la foudre, sans précision, rencontre initiale" },
+  { code: "T70.20XA", label: "Effets de la haute altitude, sans précision, rencontre initiale" },
+  { code: "T70.29XA", label: "Autres effets de la haute altitude, rencontre initiale" },
+  { code: "T70.3XXA", label: "Maladie des caissons (maladie de décompression), rencontre initiale" },
+  { code: "T70.8XXA", label: "Autres effets de la pression de l'air et de l'eau, rencontre initiale" },
+  { code: "T66.XXXA", label: "Maladie des rayons, sans précision, rencontre initiale" },
 ];
 
 /** Quick-insert snippets for nursing / general consultation notes (Notes de consultation). */

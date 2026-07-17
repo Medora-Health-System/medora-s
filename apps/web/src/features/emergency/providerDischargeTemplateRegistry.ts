@@ -366,6 +366,29 @@ import {
   BULLOUS_DISORDER_POST_ACUTE_V1_SUGGESTED_TEXT,
   CUTANEOUS_VASCULITIS_FOLLOWUP_V1_SUGGESTED_TEXT,
   SUSPICIOUS_SKIN_LESION_V1_SUGGESTED_TEXT,
+  HEAT_CRAMPS_V1_SUGGESTED_TEXT,
+  HEAT_SYNCOPE_V1_SUGGESTED_TEXT,
+  HEAT_EXHAUSTION_V1_SUGGESTED_TEXT,
+  EXERTIONAL_HEAT_ILLNESS_V1_SUGGESTED_TEXT,
+  HEAT_STROKE_POST_ACUTE_V1_SUGGESTED_TEXT,
+  MILD_HYPOTHERMIA_V1_SUGGESTED_TEXT,
+  HYPOTHERMIA_POST_ACUTE_V1_SUGGESTED_TEXT,
+  SUPERFICIAL_FROSTBITE_V1_SUGGESTED_TEXT,
+  DEEP_FROSTBITE_POST_ACUTE_V1_SUGGESTED_TEXT,
+  CHILBLAINS_PERNIO_V1_SUGGESTED_TEXT,
+  IMMERSION_FOOT_V1_SUGGESTED_TEXT,
+  POST_SUBMERSION_OBSERVATION_V1_SUGGESTED_TEXT,
+  NONFATAL_DROWNING_POST_ACUTE_V1_SUGGESTED_TEXT,
+  LOW_VOLTAGE_ELECTRICAL_INJURY_V1_SUGGESTED_TEXT,
+  HIGH_VOLTAGE_ELECTRICAL_INJURY_POST_ACUTE_V1_SUGGESTED_TEXT,
+  LIGHTNING_INJURY_POST_ACUTE_V1_SUGGESTED_TEXT,
+  ACUTE_MOUNTAIN_SICKNESS_V1_SUGGESTED_TEXT,
+  HACE_POST_ACUTE_V1_SUGGESTED_TEXT,
+  HAPE_POST_ACUTE_V1_SUGGESTED_TEXT,
+  BAROTRAUMA_V1_SUGGESTED_TEXT,
+  DECOMPRESSION_ILLNESS_POST_ACUTE_V1_SUGGESTED_TEXT,
+  RADIATION_EXPOSURE_FOLLOWUP_V1_SUGGESTED_TEXT,
+  RADIATION_INJURY_POST_ACUTE_V1_SUGGESTED_TEXT,
 } from "./providerDischargeTemplateSuggestedTextCatalog";
 import {
   newDefaultFollowUpRow,
@@ -715,6 +738,13 @@ const SOFT_TISSUE_WOUND_INFECTION_TEMPLATE_GOVERNANCE = {
 const DERMATOLOGY_TEMPLATE_GOVERNANCE = {
   ...BATCH_GOVERNANCE_DRAFT,
   specialtyCategory: "dermatology",
+  riskCategory: "moderate",
+};
+
+/** Phase 15 — environmental / exposure discharge governance (documentation advisory only, Commit 2). Mirrors DERMATOLOGY_TEMPLATE_GOVERNANCE. */
+const ENVIRONMENTAL_EXPOSURE_TEMPLATE_GOVERNANCE = {
+  ...BATCH_GOVERNANCE_DRAFT,
+  specialtyCategory: "emergency_medicine",
   riskCategory: "moderate",
 };
 
@@ -4970,8 +5000,11 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
     defaultFollowUps: [registryFollowUp("burn-chemical-specialist", "SPECIALIST", "within 24 hours or as directed")], suggestedText: BURN_CHEMICAL_SUGGESTED_TEXT,
   },
   {
+    // Phase 15: retargeted to T75.4 (electrocution) only — T75.0 (effects of lightning) ownership moved to
+    // lightning_injury_post_acute_v1 (environmental-mechanism template); this template keeps tissue-injury-phase
+    // ownership of electrical burns. "lightning"/"foudre" keywords removed for the same reason.
     id: "burn_electrical_v1", version: "1.0.0", title: "Electrical burn discharge documentation", ...TRAUMA_MSK_TEMPLATE_GOVERNANCE, specialtyCategory: "emergency_medicine", riskCategory: "high",
-    diagnosisMappings: { icdFamily: ["T75.0", "T75.4"], keyword: ["electrical burn", "lightning", "brûlure électrique", "foudre"] },
+    diagnosisMappings: { icdFamily: ["T75.4"], keyword: ["electrical burn", "brûlure électrique"] },
     sourceReferences: [{ label: "MedlinePlus — Electrical injuries", url: "https://medlineplus.gov/ency/article/000030.htm", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
     defaultFollowUps: [registryFollowUp("burn-electrical-ed", "EMERGENCY_MEDICINE", "within 24 hours or as directed")], suggestedText: BURN_ELECTRICAL_SUGGESTED_TEXT,
   },
@@ -6846,6 +6879,174 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
     },
     sourceReferences: [{ label: "MedlinePlus — Skin cancer", url: "https://medlineplus.gov/skincancer.html", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
     defaultFollowUps: [registryFollowUp("derm-lesion-derm", "DERMATOLOGY", "within 2 weeks or as directed")], suggestedText: SUSPICIOUS_SKIN_LESION_V1_SUGGESTED_TEXT,
+  },
+  // Phase 15 — environmental / exposure discharge templates (Commit 2). Heat illness, cold illness/frostbite,
+  // submersion/electrical/lightning, altitude/diving, and radiation. Preserves Phase 5 burn ownership of
+  // frostbite (T33-T35, keyword "frostbite"/"gelure"/"cold injury") and electrical burns (T75.4); preserves
+  // ENT ownership of otitic/sinus barotrauma (T70.0/T70.1) and blast ownership of blast ear/lung (T70.0/T70.8/T70.9).
+  {
+    id: "heat_cramps_v1", version: "1.0.0", title: "Heat cramps discharge documentation", ...ENVIRONMENTAL_EXPOSURE_TEMPLATE_GOVERNANCE,
+    diagnosisMappings: { icdFamily: ["T67.2"], keyword: ["heat cramp", "heat cramps", "crampe de chaleur", "crampes de chaleur"] },
+    sourceReferences: [{ label: "MedlinePlus — Heat illness", url: "https://medlineplus.gov/heatillness.html", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("env-heatcramp-pcp", "PRIMARY_CARE", "within 1 week or as directed")], suggestedText: HEAT_CRAMPS_V1_SUGGESTED_TEXT,
+  },
+  {
+    id: "heat_syncope_v1", version: "1.0.0", title: "Heat syncope discharge documentation", ...ENVIRONMENTAL_EXPOSURE_TEMPLATE_GOVERNANCE,
+    diagnosisMappings: { icdFamily: ["T67.1"], keyword: ["heat syncope", "syncope de chaleur"] },
+    sourceReferences: [{ label: "MedlinePlus — Heat illness", url: "https://medlineplus.gov/heatillness.html", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("env-heatsync-pcp", "PRIMARY_CARE", "within 48–72 hours or as directed")], suggestedText: HEAT_SYNCOPE_V1_SUGGESTED_TEXT,
+  },
+  {
+    // icdFamily excludes T67.0 (heatstroke, longer/more specific prefix owned by heat_stroke_post_acute_v1),
+    // T67.1 (heat syncope), and T67.2 (heat cramp) — all more specific and win on longest-prefix match.
+    id: "heat_exhaustion_v1", version: "1.0.0", title: "Heat exhaustion discharge documentation", ...ENVIRONMENTAL_EXPOSURE_TEMPLATE_GOVERNANCE,
+    diagnosisMappings: { icdFamily: ["T67.3", "T67.4", "T67.5", "T67.6", "T67.7", "T67.8", "T67.9"], keyword: ["heat exhaustion", "épuisement par la chaleur", "épuisement dû à la chaleur"] },
+    sourceReferences: [{ label: "MedlinePlus — Heat illness", url: "https://medlineplus.gov/heatillness.html", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("env-heatexh-pcp", "PRIMARY_CARE", "within 24–48 hours or as directed")], suggestedText: HEAT_EXHAUSTION_V1_SUGGESTED_TEXT,
+  },
+  {
+    // Keyword-only — no dedicated ICD-10-CM code distinguishes exertional from classic/nonexertional heat
+    // exhaustion; avoids ambiguous overlap with heat_exhaustion_v1's T67 range.
+    id: "exertional_heat_illness_v1", version: "1.0.0", title: "Exertional heat illness discharge documentation", ...ENVIRONMENTAL_EXPOSURE_TEMPLATE_GOVERNANCE,
+    diagnosisMappings: { keyword: ["exertional heat illness", "exercise-associated heat illness", "maladie de chaleur d'effort", "maladie de chaleur liée à l'effort"] },
+    sourceReferences: [{ label: "MedlinePlus — Heat illness", url: "https://medlineplus.gov/heatillness.html", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("env-exheat-pcp", "PRIMARY_CARE", "within 24–48 hours or as directed")], suggestedText: EXERTIONAL_HEAT_ILLNESS_V1_SUGGESTED_TEXT,
+  },
+  {
+    id: "heat_stroke_post_acute_v1", version: "1.0.0", title: "Heat stroke post-acute discharge documentation", ...ENVIRONMENTAL_EXPOSURE_TEMPLATE_GOVERNANCE, riskCategory: "high",
+    diagnosisMappings: { icdFamily: ["T67.0"], keyword: ["heat stroke post-acute care", "sunstroke post-acute care", "coup de chaleur soins post-aigus"] },
+    sourceReferences: [{ label: "MedlinePlus — Heat illness", url: "https://medlineplus.gov/heatillness.html", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("env-heatstroke-em", "EMERGENCY_MEDICINE", "urgent / as directed")], suggestedText: HEAT_STROKE_POST_ACUTE_V1_SUGGESTED_TEXT,
+  },
+  {
+    id: "mild_hypothermia_v1", version: "1.0.0", title: "Mild hypothermia discharge documentation", ...ENVIRONMENTAL_EXPOSURE_TEMPLATE_GOVERNANCE,
+    diagnosisMappings: { icdFamily: ["T68"], keyword: ["mild hypothermia", "hypothermie légère"] },
+    sourceReferences: [{ label: "MedlinePlus — Hypothermia", url: "https://medlineplus.gov/ency/article/000038.htm", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("env-mildhypo-pcp", "PRIMARY_CARE", "within 24–48 hours or as directed")], suggestedText: MILD_HYPOTHERMIA_V1_SUGGESTED_TEXT,
+  },
+  {
+    // Keyword-only — a single ICD-10-CM code (T68) covers hypothermia regardless of severity; T68 stays
+    // mild_hypothermia_v1's default routine mapping, and severity is documentation-driven, not code-driven.
+    id: "hypothermia_post_acute_v1", version: "1.0.0", title: "Hypothermia post-acute discharge documentation", ...ENVIRONMENTAL_EXPOSURE_TEMPLATE_GOVERNANCE, riskCategory: "high",
+    diagnosisMappings: { keyword: ["moderate to severe hypothermia post-acute care", "severe hypothermia post-acute care", "hypothermie modérée à sévère soins post-aigus", "hypothermie sévère soins post-aigus"] },
+    sourceReferences: [{ label: "MedlinePlus — Hypothermia", url: "https://medlineplus.gov/ency/article/000038.htm", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("env-severhypo-em", "EMERGENCY_MEDICINE", "urgent / as directed")], suggestedText: HYPOTHERMIA_POST_ACUTE_V1_SUGGESTED_TEXT,
+  },
+  {
+    // Keyword-only, more specific than frostbite_v1's bare "frostbite"/"gelure"/"cold injury" — never reuses
+    // those bare terms. frostbite_v1 (Phase 5 burn) keeps icdFamily T33/T34/T35 ownership for general frostbite.
+    id: "superficial_frostbite_v1", version: "1.0.0", title: "Superficial frostbite discharge documentation", ...ENVIRONMENTAL_EXPOSURE_TEMPLATE_GOVERNANCE,
+    diagnosisMappings: { keyword: ["superficial frostbite", "frostnip", "gelure superficielle"] },
+    sourceReferences: [{ label: "MedlinePlus — Frostbite", url: "https://medlineplus.gov/ency/article/000057.htm", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("env-supfrost-pcp", "PRIMARY_CARE", "within 24–48 hours or as directed")], suggestedText: SUPERFICIAL_FROSTBITE_V1_SUGGESTED_TEXT,
+  },
+  {
+    // Keyword-only, more specific than frostbite_v1's bare "frostbite"/"gelure"/"cold injury" — never reuses
+    // those bare terms. frostbite_v1 (Phase 5 burn) keeps icdFamily T33/T34/T35 ownership for general frostbite.
+    id: "deep_frostbite_post_acute_v1", version: "1.0.0", title: "Deep frostbite post-acute discharge documentation", ...ENVIRONMENTAL_EXPOSURE_TEMPLATE_GOVERNANCE, riskCategory: "high",
+    diagnosisMappings: { keyword: ["deep frostbite", "frostbite with tissue necrosis", "gelure profonde", "gelure avec nécrose tissulaire"] },
+    sourceReferences: [{ label: "MedlinePlus — Frostbite", url: "https://medlineplus.gov/ency/article/000057.htm", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("env-deepfrost-surg", "GENERAL_SURGERY", "urgent / as directed")], suggestedText: DEEP_FROSTBITE_POST_ACUTE_V1_SUGGESTED_TEXT,
+  },
+  {
+    id: "chilblains_pernio_v1", version: "1.0.0", title: "Chilblains (pernio) discharge documentation", ...ENVIRONMENTAL_EXPOSURE_TEMPLATE_GOVERNANCE,
+    diagnosisMappings: { icdFamily: ["T69.1"], keyword: ["chilblains", "pernio", "engelures"] },
+    sourceReferences: [{ label: "MedlinePlus — Cold exposure", url: "https://medlineplus.gov/ency/article/000057.htm", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("env-chilblain-pcp", "PRIMARY_CARE", "within 1 week or as directed")], suggestedText: CHILBLAINS_PERNIO_V1_SUGGESTED_TEXT,
+  },
+  {
+    // T69.02 (immersion foot) only — excludes T69.01 (immersion hand), a distinct body-region entity.
+    id: "immersion_foot_v1", version: "1.0.0", title: "Immersion foot discharge documentation", ...ENVIRONMENTAL_EXPOSURE_TEMPLATE_GOVERNANCE,
+    diagnosisMappings: { icdFamily: ["T69.02"], keyword: ["immersion foot", "trench foot", "pied d'immersion", "pied des tranchées"] },
+    sourceReferences: [{ label: "MedlinePlus — Cold exposure", url: "https://medlineplus.gov/ency/article/000057.htm", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("env-immfoot-pcp", "PRIMARY_CARE", "within 48–72 hours or as directed")], suggestedText: IMMERSION_FOOT_V1_SUGGESTED_TEXT,
+  },
+  {
+    id: "post_submersion_observation_v1", version: "1.0.0", title: "Post-submersion observation discharge documentation", ...ENVIRONMENTAL_EXPOSURE_TEMPLATE_GOVERNANCE,
+    diagnosisMappings: { icdFamily: ["T75.1"], keyword: ["submersion observation", "brief submersion", "near-drowning observation", "observation post-submersion"] },
+    sourceReferences: [{ label: "MedlinePlus — Drowning", url: "https://medlineplus.gov/drowning.html", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("env-postsubm-pcp", "PRIMARY_CARE", "within 24 hours or as directed")], suggestedText: POST_SUBMERSION_OBSERVATION_V1_SUGGESTED_TEXT,
+  },
+  {
+    // Keyword-only — a single ICD-10-CM code (T75.1) covers drowning/submersion effects regardless of
+    // severity; T75.1 stays post_submersion_observation_v1's default routine mapping. Never uses "dry
+    // drowning" or "secondary drowning" language.
+    id: "nonfatal_drowning_post_acute_v1", version: "1.0.0", title: "Nonfatal drowning post-acute discharge documentation", ...ENVIRONMENTAL_EXPOSURE_TEMPLATE_GOVERNANCE, riskCategory: "high",
+    diagnosisMappings: { keyword: ["nonfatal drowning post-acute care", "drowning aspiration post-acute care", "noyade non mortelle soins post-aigus"] },
+    sourceReferences: [{ label: "MedlinePlus — Drowning", url: "https://medlineplus.gov/drowning.html", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("env-drowningpa-em", "EMERGENCY_MEDICINE", "urgent / as directed")], suggestedText: NONFATAL_DROWNING_POST_ACUTE_V1_SUGGESTED_TEXT,
+  },
+  {
+    // Keyword-only — T75.4 stays burn_electrical_v1-owned (tissue-injury phase); differentiated here purely
+    // by voltage-specific keywords, never by ICD code.
+    id: "low_voltage_electrical_injury_v1", version: "1.0.0", title: "Low-voltage electrical injury discharge documentation", ...ENVIRONMENTAL_EXPOSURE_TEMPLATE_GOVERNANCE,
+    diagnosisMappings: { keyword: ["low-voltage electrical injury", "low voltage electrical injury", "blessure électrique basse tension"] },
+    sourceReferences: [{ label: "MedlinePlus — Electrical injuries", url: "https://medlineplus.gov/ency/article/000030.htm", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("env-lowvolt-pcp", "PRIMARY_CARE", "within 24–48 hours or as directed")], suggestedText: LOW_VOLTAGE_ELECTRICAL_INJURY_V1_SUGGESTED_TEXT,
+  },
+  {
+    id: "high_voltage_electrical_injury_post_acute_v1", version: "1.0.0", title: "High-voltage electrical injury post-acute discharge documentation", ...ENVIRONMENTAL_EXPOSURE_TEMPLATE_GOVERNANCE, riskCategory: "high",
+    diagnosisMappings: { keyword: ["high-voltage electrical injury post-acute care", "high voltage electrical injury post-acute care", "blessure électrique haute tension soins post-aigus"] },
+    sourceReferences: [{ label: "MedlinePlus — Electrical injuries", url: "https://medlineplus.gov/ency/article/000030.htm", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("env-highvoltpa-em", "EMERGENCY_MEDICINE", "urgent / as directed")], suggestedText: HIGH_VOLTAGE_ELECTRICAL_INJURY_POST_ACUTE_V1_SUGGESTED_TEXT,
+  },
+  {
+    // T75.0 (effects of lightning) — carved out of burn_electrical_v1 (now T75.4-only). Always uses
+    // clinician-directed disposition language per Phase 15 guardrail, even for uncomplicated contact.
+    id: "lightning_injury_post_acute_v1", version: "1.0.0", title: "Lightning injury post-acute discharge documentation", ...ENVIRONMENTAL_EXPOSURE_TEMPLATE_GOVERNANCE, riskCategory: "high",
+    diagnosisMappings: { icdFamily: ["T75.0"], keyword: ["lightning injury", "effects of lightning", "foudroiement", "effet de la foudre"] },
+    sourceReferences: [{ label: "MedlinePlus — Electrical injuries", url: "https://medlineplus.gov/ency/article/000030.htm", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("env-lightning-em", "EMERGENCY_MEDICINE", "urgent / as directed")], suggestedText: LIGHTNING_INJURY_POST_ACUTE_V1_SUGGESTED_TEXT,
+  },
+  {
+    id: "acute_mountain_sickness_v1", version: "1.0.0", title: "Acute mountain sickness discharge documentation", ...ENVIRONMENTAL_EXPOSURE_TEMPLATE_GOVERNANCE,
+    diagnosisMappings: { icdFamily: ["T70.2"], keyword: ["acute mountain sickness", "altitude sickness", "mal des montagnes", "mal aigu des montagnes"] },
+    sourceReferences: [{ label: "MedlinePlus — Altitude sickness", url: "https://medlineplus.gov/ency/article/000133.htm", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("env-ams-pcp", "PRIMARY_CARE", "within 24–48 hours or as directed")], suggestedText: ACUTE_MOUNTAIN_SICKNESS_V1_SUGGESTED_TEXT,
+  },
+  {
+    // Keyword-only — no dedicated ICD-10-CM code distinguishes HACE from AMS; T70.2 stays
+    // acute_mountain_sickness_v1's default routine mapping, and severity is documentation-driven.
+    id: "hace_post_acute_v1", version: "1.0.0", title: "HACE post-acute discharge documentation", ...ENVIRONMENTAL_EXPOSURE_TEMPLATE_GOVERNANCE, riskCategory: "high",
+    diagnosisMappings: { keyword: ["high-altitude cerebral edema post-acute care", "hace post-acute care", "œdème cérébral de haute altitude soins post-aigus"] },
+    sourceReferences: [{ label: "MedlinePlus — Altitude sickness", url: "https://medlineplus.gov/ency/article/000133.htm", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("env-hace-em", "EMERGENCY_MEDICINE", "urgent / as directed")], suggestedText: HACE_POST_ACUTE_V1_SUGGESTED_TEXT,
+  },
+  {
+    // Keyword-only — no dedicated ICD-10-CM code distinguishes HAPE from AMS; T70.2 stays
+    // acute_mountain_sickness_v1's default routine mapping, and severity is documentation-driven.
+    id: "hape_post_acute_v1", version: "1.0.0", title: "HAPE post-acute discharge documentation", ...ENVIRONMENTAL_EXPOSURE_TEMPLATE_GOVERNANCE, riskCategory: "high",
+    diagnosisMappings: { keyword: ["high-altitude pulmonary edema post-acute care", "hape post-acute care", "œdème pulmonaire de haute altitude soins post-aigus"] },
+    sourceReferences: [{ label: "MedlinePlus — Altitude sickness", url: "https://medlineplus.gov/ency/article/000133.htm", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("env-hape-em", "EMERGENCY_MEDICINE", "urgent / as directed")], suggestedText: HAPE_POST_ACUTE_V1_SUGGESTED_TEXT,
+  },
+  {
+    // Keyword-only — never steals T70.0/T70.1 (ENT/blast-owned otitic/sinus barotrauma) or T70.8/T70.9
+    // (blast_lung_aftercare_v1's pulmonary-barotrauma mapping). "diving barotrauma" is a unique keyword.
+    id: "barotrauma_v1", version: "1.0.0", title: "Diving barotrauma discharge documentation", ...ENVIRONMENTAL_EXPOSURE_TEMPLATE_GOVERNANCE,
+    diagnosisMappings: { keyword: ["diving barotrauma", "barotraumatisme de plongée"] },
+    sourceReferences: [{ label: "MedlinePlus — Diving and undersea medicine", url: "https://medlineplus.gov/", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("env-baro-pcp", "PRIMARY_CARE", "within 48–72 hours or as directed")], suggestedText: BAROTRAUMA_V1_SUGGESTED_TEXT,
+  },
+  {
+    id: "decompression_illness_post_acute_v1", version: "1.0.0", title: "Decompression illness post-acute discharge documentation", ...ENVIRONMENTAL_EXPOSURE_TEMPLATE_GOVERNANCE, riskCategory: "high",
+    diagnosisMappings: { icdFamily: ["T70.3"], keyword: ["decompression illness post-acute care", "decompression sickness post-acute care", "maladie de décompression soins post-aigus"] },
+    sourceReferences: [{ label: "MedlinePlus — Diving and undersea medicine", url: "https://medlineplus.gov/", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("env-dci-em", "EMERGENCY_MEDICINE", "urgent / as directed")], suggestedText: DECOMPRESSION_ILLNESS_POST_ACUTE_V1_SUGGESTED_TEXT,
+  },
+  {
+    id: "radiation_exposure_followup_v1", version: "1.0.0", title: "Radiation exposure follow-up discharge documentation", ...ENVIRONMENTAL_EXPOSURE_TEMPLATE_GOVERNANCE,
+    diagnosisMappings: { icdFamily: ["T66"], keyword: ["radiation exposure follow-up", "occupational radiation exposure", "suivi d'exposition aux radiations"] },
+    sourceReferences: [{ label: "MedlinePlus — Radiation exposure", url: "https://medlineplus.gov/", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("env-radexp-pcp", "PRIMARY_CARE", "within 1 week or as directed")], suggestedText: RADIATION_EXPOSURE_FOLLOWUP_V1_SUGGESTED_TEXT,
+  },
+  {
+    // Keyword-only — a single ICD-10-CM code (T66) covers radiation sickness regardless of severity; T66
+    // stays radiation_exposure_followup_v1's default routine mapping, and severity is documentation-driven.
+    id: "radiation_injury_post_acute_v1", version: "1.0.0", title: "Radiation injury post-acute discharge documentation", ...ENVIRONMENTAL_EXPOSURE_TEMPLATE_GOVERNANCE, riskCategory: "high",
+    diagnosisMappings: { keyword: ["radiation injury post-acute care", "acute radiation syndrome post-acute care", "lésion par radiation soins post-aigus", "syndrome d'irradiation aiguë soins post-aigus"] },
+    sourceReferences: [{ label: "MedlinePlus — Radiation exposure", url: "https://medlineplus.gov/", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("env-radinjpa-em", "EMERGENCY_MEDICINE", "urgent / as directed")], suggestedText: RADIATION_INJURY_POST_ACUTE_V1_SUGGESTED_TEXT,
   },
   {
     id: GENERIC_PROVIDER_DISCHARGE_TEMPLATE_ID,

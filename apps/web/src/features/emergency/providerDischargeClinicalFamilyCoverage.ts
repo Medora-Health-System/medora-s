@@ -37,6 +37,7 @@ const ALL_DOMAINS: EdClinicalDomain[] = [
   "Ophthalmology",
   "Dental",
   "General Medical",
+  "Environmental",
 ];
 
 export type DomainCoverageRow = {

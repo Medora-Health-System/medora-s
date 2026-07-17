@@ -78,10 +78,11 @@ describe("MEDUI.ED.DISCHARGE.DIAGNOSIS_INSTRUCTIONS.2A", () => {
       expect(audit.summary.totalDiagnosisSpecificMapped + audit.summary.totalGenericFallbackOnly).toBe(
         audit.summary.totalPickerRecordsAudited
       );
-      // Phase 14 Commit 2 added 24 dermatology COMMON_DIAGNOSES rows (187 -> 211), all diagnosis-specific.
-      expect(audit.summary.totalPickerRecordsAudited).toBe(211);
+      // Phase 15 Commit 2 added 14 unique environmental COMMON_DIAGNOSES rows (211 -> 225);
+      // T75.4XXA electrocution was already present from burn/electrical quick picks.
+      expect(audit.summary.totalPickerRecordsAudited).toBe(225);
       expect(audit.summary.totalGenericFallbackOnly).toBe(0);
-      expect(audit.summary.totalDiagnosisSpecificMapped).toBe(211);
+      expect(audit.summary.totalDiagnosisSpecificMapped).toBe(225);
     });
 
     it("3 — top 100 fallback list is generated when any generic fallback exists", () => {

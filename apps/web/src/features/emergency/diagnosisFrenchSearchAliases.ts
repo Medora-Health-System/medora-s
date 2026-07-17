@@ -851,6 +851,87 @@ const FRENCH_DIAGNOSIS_SEARCH_ALIASES: readonly FrenchDiagnosisSearchAlias[] = [
     frenchPhrases: ["lésion cutanée suspecte", "lesion cutanee suspecte", "grain de beauté suspect", "grain de beaute suspect", "lésion pigmentée suspecte", "lesion pigmentee suspecte"],
     englishSearchTerms: ["suspicious skin lesion", "suspicious pigmented lesion"],
   },
+  // Environmental / exposure (Phase 15)
+  {
+    frenchPhrases: ["crampes de chaleur", "crampe de chaleur"],
+    englishSearchTerms: ["heat cramps", "heat cramp"],
+  },
+  {
+    frenchPhrases: ["syncope de chaleur"],
+    englishSearchTerms: ["heat syncope"],
+  },
+  {
+    frenchPhrases: ["épuisement par la chaleur", "epuisement par la chaleur", "épuisement dû à la chaleur", "epuisement du a la chaleur"],
+    englishSearchTerms: ["heat exhaustion"],
+  },
+  {
+    frenchPhrases: ["coup de chaleur", "insolation", "coup de chaleur d'effort", "coup de chaleur d effort"],
+    englishSearchTerms: ["heat stroke", "sunstroke", "exertional heatstroke"],
+  },
+  {
+    frenchPhrases: ["maladie de chaleur d'effort", "maladie de chaleur d effort", "maladie de chaleur liée à l'effort"],
+    englishSearchTerms: ["exertional heat illness"],
+  },
+  {
+    frenchPhrases: ["hyperthermie", "hyperthermie environnementale"],
+    englishSearchTerms: ["hyperthermia", "heat illness"],
+  },
+  {
+    frenchPhrases: ["hypothermie", "hypothermie légère", "hypothermie legere", "hypothermie sévère", "hypothermie severe"],
+    englishSearchTerms: ["hypothermia"],
+  },
+  {
+    frenchPhrases: ["gelure", "gelure superficielle", "gelure profonde"],
+    englishSearchTerms: ["frostbite", "superficial frostbite", "frostbite with tissue necrosis"],
+  },
+  {
+    frenchPhrases: ["engelures", "pernio"],
+    englishSearchTerms: ["chilblains", "pernio"],
+  },
+  {
+    frenchPhrases: ["pied d'immersion", "pied d immersion", "pied des tranchées", "pied des tranchees"],
+    englishSearchTerms: ["immersion foot", "trench foot"],
+  },
+  {
+    frenchPhrases: ["noyade non mortelle", "submersion", "quasi-noyade", "quasi noyade"],
+    englishSearchTerms: ["nonfatal drowning", "submersion injury", "drowning"],
+  },
+  {
+    frenchPhrases: ["électrocution", "electrocution", "blessure électrique", "blessure electrique", "lésion électrique", "lesion electrique"],
+    englishSearchTerms: ["electrocution", "electrical injury", "electric shock"],
+  },
+  {
+    frenchPhrases: ["foudroiement", "effet de la foudre", "effets de la foudre", "foudre"],
+    englishSearchTerms: ["lightning injury", "effects of lightning", "lightning"],
+  },
+  {
+    frenchPhrases: ["mal des montagnes", "mal aigu des montagnes", "maladie de l'altitude", "maladie de l altitude"],
+    englishSearchTerms: ["acute mountain sickness", "altitude sickness", "effects of high altitude"],
+  },
+  {
+    frenchPhrases: ["œdème cérébral de haute altitude", "oedeme cerebral de haute altitude", "hace"],
+    englishSearchTerms: ["high altitude cerebral edema", "HACE", "effects of high altitude"],
+  },
+  {
+    frenchPhrases: ["œdème pulmonaire de haute altitude", "oedeme pulmonaire de haute altitude", "hape"],
+    englishSearchTerms: ["high altitude pulmonary edema", "HAPE", "effects of high altitude"],
+  },
+  {
+    frenchPhrases: ["maladie de décompression", "maladie de decompression", "maladie des caissons"],
+    englishSearchTerms: ["decompression sickness", "decompression illness", "caisson disease"],
+  },
+  {
+    frenchPhrases: ["barotraumatisme", "barotraumatisme de plongée", "barotraumatisme de plongee", "barotraumatisme otitique"],
+    englishSearchTerms: ["barotrauma", "diving barotrauma", "otitic barotrauma"],
+  },
+  {
+    frenchPhrases: ["embolie gazeuse artérielle", "embolie gazeuse arterielle"],
+    englishSearchTerms: ["arterial gas embolism"],
+  },
+  {
+    frenchPhrases: ["exposition aux radiations", "maladie des rayons", "syndrome d'irradiation aiguë", "syndrome d irradiation aigue", "irradiation aiguë", "irradiation aigue"],
+    englishSearchTerms: ["radiation exposure", "radiation sickness", "acute radiation syndrome"],
+  },
 ];
 
 /** Accent-insensitive, lowercase normalization for diagnosis search. */

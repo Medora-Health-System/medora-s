@@ -2957,11 +2957,13 @@ export const BURN_CHEMICAL_SUGGESTED_TEXT = burnSuggestedText(
   "Suivez exactement les consignes de décontamination et de pansement; n'appliquez pas de produit neutralisant ni de remède maison.",
   "Retournez immédiatement si la sensation de brûlure reprend après le rinçage, en cas d'exposition de l'œil, douleur croissante, symptômes respiratoires ou décontamination incomplète."
 );
+// Phase 15: retargeted to electrical injury only — effects-of-lightning ownership (T75.0) moved to
+// lightning_injury_post_acute_v1 (see the Phase 15 environmental exposure section below).
 export const BURN_ELECTRICAL_SUGGESTED_TEXT = burnSuggestedText(
-  "You were evaluated for an electrical or lightning injury.",
+  "You were evaluated for an electrical injury.",
   "Keep entry and exit wounds covered as directed and follow arranged reassessment even if the skin injury appears small.",
   "Return immediately for chest pain, palpitations, fainting, confusion, weakness, dark urine, worsening pain, or numbness.",
-  "Vous avez été pris en charge pour une blessure électrique ou par la foudre.",
+  "Vous avez été pris en charge pour une blessure électrique.",
   "Gardez les points d'entrée et de sortie couverts selon les consignes et respectez le contrôle prévu même si la lésion cutanée paraît petite.",
   "Retournez immédiatement pour douleur thoracique, palpitations, évanouissement, confusion, faiblesse, urines foncées, douleur croissante ou engourdissement."
 );
@@ -6793,5 +6795,577 @@ export const SUSPICIOUS_SKIN_LESION_V1_SUGGESTED_TEXT: ProviderDischargeTemplate
       medicationTreatment: DERM_TOPICAL_MED_FR,
       returnPrecautions:
         "Consultez plus rapidement si la lésion saigne de façon persistante, grossit rapidement, devient douloureuse, ou si vous remarquez de nouvelles lésions similaires ailleurs sur votre peau.",
+    }
+  );
+
+// ---- Phase 15 — environmental / exposure discharge documentation (Commit 2). Mirrors Phase 14 dermatology
+// suggested text pattern. Routine templates use ENV_ROUTINE_MED_*; high-acuity post-acute templates (heat
+// stroke, moderate/severe hypothermia, deep frostbite, nonfatal drowning w/ aspiration, high-voltage electrical,
+// lightning, HACE, HAPE, decompression illness, radiation injury) use ENV_HIGH_RISK_MED_* and are used only
+// after the treating clinician/specialist team has already directed outpatient aftercare — never an
+// autonomous ED discharge decision, and never routine mild-exposure reassurance. ----
+const ENV_ROUTINE_MED_EN =
+  "Follow any medication or symptom-relief instructions exactly as directed. Do not start, stop, or change medications on your own.";
+const ENV_ROUTINE_MED_FR =
+  "Suivez exactement les consignes concernant tout médicament ou soulagement des symptômes. Ne commencez, n'arrêtez et ne modifiez pas les médicaments de votre propre initiative.";
+/** High-acuity post-acute environmental template medication line — never implies routine/self-directed medication use. */
+const ENV_HIGH_RISK_MED_EN =
+  "Take any medication only exactly as directed by the specialist team managing this condition. Do not start, stop, or change medications on your own.";
+const ENV_HIGH_RISK_MED_FR =
+  "Prenez tout médicament uniquement selon les directives précises de l'équipe spécialisée qui prend en charge cette condition. Ne commencez, n'arrêtez et ne modifiez pas les médicaments de votre propre initiative.";
+
+export const HEAT_CRAMPS_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for heat cramps — painful muscle spasms, usually in the legs or abdomen, related to exercise or exertion in a hot environment.",
+      diagnosisInstructions:
+        "Rest in a cool place, stretch and gently massage the affected muscles, and rehydrate with water or a sports/oral rehydration drink containing electrolytes.",
+      medicationTreatment: ENV_ROUTINE_MED_EN,
+      returnPrecautions:
+        "Return for care if cramps do not improve with rest and rehydration, if you develop confusion, high fever, or fainting, or if cramps recur repeatedly despite avoiding heat and exertion.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour des crampes de chaleur — des spasmes musculaires douloureux, habituellement aux jambes ou à l'abdomen, liés à l'exercice ou à un effort par temps chaud.",
+      diagnosisInstructions:
+        "Reposez-vous dans un endroit frais, étirez et massez doucement les muscles touchés, et réhydratez-vous avec de l'eau ou une boisson de réhydratation contenant des électrolytes.",
+      medicationTreatment: ENV_ROUTINE_MED_FR,
+      returnPrecautions:
+        "Consultez de nouveau si les crampes ne s'améliorent pas avec le repos et la réhydratation, si vous développez de la confusion, une forte fièvre ou un évanouissement, ou si les crampes reviennent malgré l'évitement de la chaleur et de l'effort.",
+    }
+  );
+
+export const HEAT_SYNCOPE_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for heat syncope — a brief fainting or near-fainting episode related to standing or being active in a hot environment.",
+      diagnosisInstructions:
+        "Rest in a cool place, sit or lie down right away if you feel lightheaded, and rehydrate with water or an electrolyte drink. Avoid standing up quickly from sitting or lying.",
+      medicationTreatment: ENV_ROUTINE_MED_EN,
+      returnPrecautions:
+        "Return immediately for chest pain, palpitations, repeated fainting, confusion, a fall or injury during the episode, or if lightheadedness persists despite rest and rehydration.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour une syncope de chaleur — un épisode bref d'évanouissement ou de quasi-évanouissement lié à la station debout ou à une activité par temps chaud.",
+      diagnosisInstructions:
+        "Reposez-vous dans un endroit frais, asseyez-vous ou allongez-vous immédiatement si vous vous sentez étourdi, et réhydratez-vous avec de l'eau ou une boisson électrolytique. Évitez de vous relever rapidement d'une position assise ou couchée.",
+      medicationTreatment: ENV_ROUTINE_MED_FR,
+      returnPrecautions:
+        "Retournez immédiatement en cas de douleur thoracique, de palpitations, d'évanouissements répétés, de confusion, d'une chute ou d'une blessure pendant l'épisode, ou si les étourdissements persistent malgré le repos et la réhydratation.",
+    }
+  );
+
+export const HEAT_EXHAUSTION_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for heat exhaustion — a heat-related illness with symptoms such as heavy sweating, weakness, nausea, or headache, without confusion or loss of consciousness.",
+      diagnosisInstructions:
+        "Rest in a cool environment, remove excess clothing, and rehydrate with water or an electrolyte drink. Avoid strenuous activity and further heat exposure for at least 24–48 hours.",
+      medicationTreatment: ENV_ROUTINE_MED_EN,
+      returnPrecautions:
+        "Return immediately for confusion, slurred speech, seizure, loss of consciousness, a very high body temperature, or if symptoms do not improve with rest, cooling, and rehydration.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour un épuisement par la chaleur — une maladie liée à la chaleur avec des symptômes comme une transpiration abondante, une faiblesse, des nausées ou des céphalées, sans confusion ni perte de conscience.",
+      diagnosisInstructions:
+        "Reposez-vous dans un environnement frais, retirez les vêtements superflus et réhydratez-vous avec de l'eau ou une boisson électrolytique. Évitez les activités intenses et toute nouvelle exposition à la chaleur pendant au moins 24 à 48 heures.",
+      medicationTreatment: ENV_ROUTINE_MED_FR,
+      returnPrecautions:
+        "Retournez immédiatement en cas de confusion, de difficulté à parler, de convulsions, de perte de conscience, d'une température corporelle très élevée, ou si les symptômes ne s'améliorent pas avec le repos, le refroidissement et la réhydratation.",
+    }
+  );
+
+export const EXERTIONAL_HEAT_ILLNESS_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for exertional heat illness — a heat-related illness that developed during or after strenuous physical activity, without confusion or loss of consciousness.",
+      diagnosisInstructions:
+        "Rest and avoid strenuous exercise or heat exposure until fully recovered and cleared to resume activity. Rehydrate with water or an electrolyte drink, and reintroduce exercise gradually once symptom-free.",
+      medicationTreatment: ENV_ROUTINE_MED_EN,
+      returnPrecautions:
+        "Return immediately for confusion, dark or decreased urine, severe muscle pain, or if symptoms worsen or fail to improve with rest, cooling, and rehydration.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour une maladie de chaleur liée à l'effort — une maladie liée à la chaleur apparue pendant ou après une activité physique intense, sans confusion ni perte de conscience.",
+      diagnosisInstructions:
+        "Reposez-vous et évitez l'exercice intense ou l'exposition à la chaleur jusqu'à un rétablissement complet et l'autorisation de reprendre l'activité. Réhydratez-vous avec de l'eau ou une boisson électrolytique, et reprenez l'exercice progressivement une fois les symptômes disparus.",
+      medicationTreatment: ENV_ROUTINE_MED_FR,
+      returnPrecautions:
+        "Retournez immédiatement en cas de confusion, d'urines foncées ou diminuées, de douleurs musculaires intenses, ou si les symptômes s'aggravent ou ne s'améliorent pas avec le repos, le refroidissement et la réhydratation.",
+    }
+  );
+
+/** High-risk post-acute template — used only after the treating clinician has already directed outpatient aftercare; never routine heat-exhaustion reassurance. */
+export const HEAT_STROKE_POST_ACUTE_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated for heat stroke — a life-threatening heat illness involving a very high body temperature with altered mental status. This documentation is used only after the treating clinician has already directed outpatient aftercare following acute-phase treatment — not as an autonomous ED discharge decision, and not routine heat-exhaustion reassurance.",
+      diagnosisInstructions:
+        "Follow the clinician-directed activity, hydration, and heat-avoidance plan exactly as instructed. Keep every scheduled follow-up appointment, including any laboratory monitoring for organ involvement (kidney, liver, muscle) as directed.",
+      medicationTreatment: ENV_HIGH_RISK_MED_EN,
+      returnPrecautions:
+        "Return immediately for confusion, fainting, seizure, dark urine, decreased urination, chest pain, or feeling generally unwell.",
+      returnWorkSchool:
+        "Follow up exactly as directed by the specialist team — this is close clinician follow-up, not routine primary care, and you should not return to strenuous activity or heat exposure until specifically cleared.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge pour un coup de chaleur — une maladie liée à la chaleur potentiellement mortelle avec une température corporelle très élevée et une altération de l'état mental. Ce document est utilisé uniquement après qu'une prise en charge clinique a déjà déterminé les soins ambulatoires suivant le traitement en phase aiguë — non comme une décision autonome de sortie des urgences, et non comme des soins habituels d'épuisement par la chaleur.",
+      diagnosisInstructions:
+        "Suivez exactement le plan d'activité, d'hydratation et d'évitement de la chaleur dirigé par le clinicien. Respectez chaque rendez-vous de suivi prévu, y compris toute surveillance de laboratoire pour l'atteinte des organes (reins, foie, muscles) selon les consignes.",
+      medicationTreatment: ENV_HIGH_RISK_MED_FR,
+      returnPrecautions:
+        "Retournez immédiatement en cas de confusion, d'évanouissement, de convulsions, d'urines foncées, de diminution des urines, de douleur thoracique, ou de malaise général.",
+      returnWorkSchool:
+        "Faites le suivi exactement selon les directives de l'équipe spécialisée — il s'agit d'un suivi clinique rapproché, non d'un suivi habituel de soins primaires, et vous ne devez pas reprendre d'activité intense ou d'exposition à la chaleur avant d'y être spécifiquement autorisé.",
+    }
+  );
+
+export const MILD_HYPOTHERMIA_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for mild hypothermia after cold exposure, and were alert and stable at the time of discharge.",
+      diagnosisInstructions:
+        "Stay warm and dry, dress in layers, and avoid further cold exposure until fully recovered. Warm beverages and gradual rewarming are appropriate; avoid alcohol and direct high-heat sources.",
+      medicationTreatment: ENV_ROUTINE_MED_EN,
+      returnPrecautions:
+        "Return immediately for confusion, drowsiness, slurred speech, an irregular heartbeat, or if you feel unusually cold, stiff, or unwell despite rewarming.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour une hypothermie légère après une exposition au froid, et étiez alerte et stable au moment du congé.",
+      diagnosisInstructions:
+        "Restez au chaud et au sec, habillez-vous en plusieurs couches, et évitez toute nouvelle exposition au froid jusqu'à un rétablissement complet. Des boissons chaudes et un réchauffement progressif sont appropriés; évitez l'alcool et les sources de chaleur directe intense.",
+      medicationTreatment: ENV_ROUTINE_MED_FR,
+      returnPrecautions:
+        "Retournez immédiatement en cas de confusion, de somnolence, de difficulté à parler, de battements cardiaques irréguliers, ou si vous vous sentez inhabituellement froid, raide ou mal malgré le réchauffement.",
+    }
+  );
+
+/** High-risk post-acute template — used only after the treating clinician has already directed outpatient aftercare; never routine mild-cold-exposure reassurance. */
+export const HYPOTHERMIA_POST_ACUTE_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated for moderate to severe hypothermia — a potentially life-threatening drop in body temperature that can affect heart rhythm and mental status. This documentation is used only after the treating clinician has already directed outpatient aftercare following acute-phase treatment — not as an autonomous ED discharge decision, and not routine mild-cold-exposure reassurance.",
+      diagnosisInstructions:
+        "Follow the clinician-directed rewarming, activity, and monitoring plan exactly as instructed. Keep every scheduled follow-up appointment, including any cardiac monitoring as directed.",
+      medicationTreatment: ENV_HIGH_RISK_MED_EN,
+      returnPrecautions:
+        "Return immediately for an irregular heartbeat, chest pain, confusion, drowsiness, or feeling generally unwell.",
+      returnWorkSchool:
+        "Follow up exactly as directed by the specialist team — this is close clinician follow-up, not routine primary care.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge pour une hypothermie modérée à sévère — une baisse potentiellement mortelle de la température corporelle pouvant affecter le rythme cardiaque et l'état mental. Ce document est utilisé uniquement après qu'une prise en charge clinique a déjà déterminé les soins ambulatoires suivant le traitement en phase aiguë — non comme une décision autonome de sortie des urgences, et non comme des soins habituels d'exposition légère au froid.",
+      diagnosisInstructions:
+        "Suivez exactement le plan de réchauffement, d'activité et de surveillance dirigé par le clinicien. Respectez chaque rendez-vous de suivi prévu, y compris toute surveillance cardiaque selon les consignes.",
+      medicationTreatment: ENV_HIGH_RISK_MED_FR,
+      returnPrecautions:
+        "Retournez immédiatement en cas de battements cardiaques irréguliers, de douleur thoracique, de confusion, de somnolence, ou de malaise général.",
+      returnWorkSchool:
+        "Faites le suivi exactement selon les directives de l'équipe spécialisée — il s'agit d'un suivi clinique rapproché, non d'un suivi habituel de soins primaires.",
+    }
+  );
+
+export const SUPERFICIAL_FROSTBITE_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for superficial frostbite (or frostnip) — a mild cold injury to the skin without deep tissue damage.",
+      diagnosisInstructions:
+        "Keep the area clean, dry, and protected from cold and further trauma. Do not rub the area, apply direct heat, or attempt to rewarm it with hot water — gradual, controlled rewarming as directed by your clinician is safest.",
+      medicationTreatment: ENV_ROUTINE_MED_EN,
+      returnPrecautions:
+        "Return immediately for blistering, increasing numbness, skin turning blue, black, or hard, or if pain or swelling worsens.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour une gelure superficielle (ou gelure débutante) — une lésion cutanée légère due au froid, sans atteinte des tissus profonds.",
+      diagnosisInstructions:
+        "Gardez la zone propre, sèche et protégée du froid et de tout nouveau traumatisme. Ne frottez pas la zone, n'appliquez pas de chaleur directe et n'essayez pas de la réchauffer avec de l'eau chaude — un réchauffement progressif et contrôlé selon les directives de votre clinicien est le plus sûr.",
+      medicationTreatment: ENV_ROUTINE_MED_FR,
+      returnPrecautions:
+        "Retournez immédiatement en cas de cloques, d'engourdissement croissant, de peau devenant bleue, noire ou dure, ou si la douleur ou l'enflure s'aggrave.",
+    }
+  );
+
+/** High-risk post-acute template — used only after burn/wound specialists have already directed outpatient aftercare; never routine superficial-frostbite reassurance. */
+export const DEEP_FROSTBITE_POST_ACUTE_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated for deep frostbite with tissue necrosis — a severe cold injury that can involve permanent tissue loss. This documentation is used only after burn/wound specialists have already directed outpatient aftercare following acute-phase treatment — not as an autonomous ED discharge decision, and not routine superficial-frostbite care.",
+      diagnosisInstructions:
+        "Follow the specialist-directed wound care plan exactly as instructed, including any dressing changes and activity restrictions. Keep every scheduled burn/wound care and vascular follow-up appointment — tissue viability requires close monitoring.",
+      medicationTreatment: ENV_HIGH_RISK_MED_EN,
+      returnPrecautions:
+        "Return immediately for spreading discoloration, worsening pain, drainage with fever, foul odor, or new numbness.",
+      returnWorkSchool:
+        "Follow up with burn/wound specialists exactly as directed — this is close specialist follow-up, not routine primary care.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge pour une gelure profonde avec nécrose tissulaire — une lésion cutanée sévère due au froid pouvant entraîner une perte permanente de tissu. Ce document est utilisé uniquement après qu'une prise en charge en soins des plaies/grands brûlés a déjà déterminé les soins ambulatoires suivant le traitement en phase aiguë — non comme une décision autonome de sortie des urgences, et non comme des soins habituels de gelure superficielle.",
+      diagnosisInstructions:
+        "Suivez exactement le plan de soins de la plaie dirigé par le spécialiste, y compris les changements de pansement et les restrictions d'activité. Respectez chaque rendez-vous de suivi en soins des plaies/grands brûlés et en chirurgie vasculaire — la viabilité des tissus nécessite une surveillance étroite.",
+      medicationTreatment: ENV_HIGH_RISK_MED_FR,
+      returnPrecautions:
+        "Retournez immédiatement en cas de décoloration qui s'étend, de douleur qui s'aggrave, d'écoulement avec fièvre, d'odeur nauséabonde, ou de nouvel engourdissement.",
+      returnWorkSchool:
+        "Faites le suivi en soins des plaies/grands brûlés exactement selon les directives — il s'agit d'un suivi spécialisé rapproché, non d'un suivi habituel de soins primaires.",
+    }
+  );
+
+export const CHILBLAINS_PERNIO_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for chilblains (pernio) — small, itchy or painful red or purple patches on the skin caused by repeated exposure to cold, damp conditions.",
+      diagnosisInstructions:
+        "Keep the affected skin warm and dry, and avoid rapid rewarming or direct heat. Avoid scratching the area, and dress warmly in layers to prevent further exposure.",
+      medicationTreatment: ENV_ROUTINE_MED_EN,
+      returnPrecautions:
+        "Return for care if the skin blisters, ulcerates, shows signs of infection (increasing redness, warmth, pus, fever), or does not improve after avoiding cold exposure.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour des engelures (pernio) — de petites plaques rouges ou violacées, démangeantes ou douloureuses, causées par une exposition répétée au froid humide.",
+      diagnosisInstructions:
+        "Gardez la peau atteinte au chaud et au sec, et évitez un réchauffement rapide ou une chaleur directe. Évitez de gratter la zone, et habillez-vous chaudement en plusieurs couches pour prévenir une nouvelle exposition.",
+      medicationTreatment: ENV_ROUTINE_MED_FR,
+      returnPrecautions:
+        "Consultez de nouveau si la peau se met à faire des cloques, s'ulcère, montre des signes d'infection (rougeur croissante, chaleur, pus, fièvre), ou ne s'améliore pas après avoir évité l'exposition au froid.",
+    }
+  );
+
+export const IMMERSION_FOOT_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for immersion foot (trench foot) — a skin and tissue injury caused by prolonged exposure to wet, cold conditions.",
+      diagnosisInstructions:
+        "Keep the feet clean, dry, and warm, and change into dry socks and footwear as soon as possible. Elevate the feet and avoid prolonged standing or walking while healing.",
+      medicationTreatment: ENV_ROUTINE_MED_EN,
+      returnPrecautions:
+        "Return for care if the skin blisters, ulcerates, becomes numb or discolored, or shows signs of infection (increasing redness, warmth, pus, fever).",
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour un pied d'immersion (pied des tranchées) — une lésion de la peau et des tissus causée par une exposition prolongée à des conditions froides et humides.",
+      diagnosisInstructions:
+        "Gardez les pieds propres, secs et au chaud, et changez pour des chaussettes et des chaussures sèches dès que possible. Élevez les pieds et évitez de rester debout ou de marcher longtemps pendant la guérison.",
+      medicationTreatment: ENV_ROUTINE_MED_FR,
+      returnPrecautions:
+        "Consultez de nouveau si la peau se met à faire des cloques, s'ulcère, devient engourdie ou décolorée, ou montre des signes d'infection (rougeur croissante, chaleur, pus, fièvre).",
+    }
+  );
+
+export const POST_SUBMERSION_OBSERVATION_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for a brief submersion or near-drowning episode. You were monitored, remained well-appearing throughout the observation period, and had no breathing difficulty.",
+      diagnosisInstructions:
+        "Rest and monitor for any new breathing symptoms over the next 24–48 hours, since some effects of submersion can develop with a delay. There is no need to restrict normal daily activities unless directed otherwise.",
+      medicationTreatment: ENV_ROUTINE_MED_EN,
+      returnPrecautions:
+        "Return immediately for any new cough, shortness of breath, chest pain, wheeze, confusion, or unusual tiredness in the next 24–48 hours, even if you feel well now.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour un bref épisode de submersion ou de quasi-noyade. Vous avez été surveillé, êtes resté en bon état général pendant toute la période d'observation, et n'avez présenté aucune difficulté respiratoire.",
+      diagnosisInstructions:
+        "Reposez-vous et surveillez l'apparition de tout nouveau symptôme respiratoire au cours des 24 à 48 prochaines heures, car certains effets de la submersion peuvent apparaître avec un délai. Il n'est pas nécessaire de restreindre vos activités quotidiennes habituelles sauf indication contraire.",
+      medicationTreatment: ENV_ROUTINE_MED_FR,
+      returnPrecautions:
+        "Retournez immédiatement en cas de nouvelle toux, d'essoufflement, de douleur thoracique, de sibilances, de confusion, ou de fatigue inhabituelle au cours des 24 à 48 prochaines heures, même si vous vous sentez bien maintenant.",
+    }
+  );
+
+/** High-risk post-acute template — used only after the treating clinician has already directed outpatient aftercare; never routine brief-submersion observation care. Never uses "dry drowning" or "secondary drowning" language. */
+export const NONFATAL_DROWNING_POST_ACUTE_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated for a nonfatal drowning or submersion event with aspiration or other concerning findings. This documentation is used only after the treating clinician has already directed outpatient aftercare following acute-phase treatment — not as an autonomous ED discharge decision, and not routine brief-submersion observation care.",
+      diagnosisInstructions:
+        "Follow the clinician-directed monitoring plan exactly as instructed, and keep every scheduled follow-up appointment. Delayed breathing problems can occur after submersion and should always be reassessed by a clinician — never assume symptoms will resolve on their own.",
+      medicationTreatment: ENV_HIGH_RISK_MED_EN,
+      returnPrecautions:
+        "Return immediately for any cough, shortness of breath, chest pain, wheeze, confusion, or unusual tiredness.",
+      returnWorkSchool:
+        "Follow up exactly as directed by the specialist team — this is close clinician follow-up, not routine observation.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge pour un épisode de noyade non mortelle ou de submersion avec aspiration ou d'autres signes préoccupants. Ce document est utilisé uniquement après qu'une prise en charge clinique a déjà déterminé les soins ambulatoires suivant le traitement en phase aiguë — non comme une décision autonome de sortie des urgences, et non comme des soins habituels d'observation après une submersion brève.",
+      diagnosisInstructions:
+        "Suivez exactement le plan de surveillance dirigé par le clinicien, et respectez chaque rendez-vous de suivi prévu. Des problèmes respiratoires retardés peuvent survenir après une submersion et doivent toujours être réévalués par un clinicien — ne présumez jamais que les symptômes se résorberont d'eux-mêmes.",
+      medicationTreatment: ENV_HIGH_RISK_MED_FR,
+      returnPrecautions:
+        "Retournez immédiatement en cas de toux, d'essoufflement, de douleur thoracique, de sibilances, de confusion, ou de fatigue inhabituelle.",
+      returnWorkSchool:
+        "Faites le suivi exactement selon les directives de l'équipe spécialisée — il s'agit d'un suivi clinique rapproché, non d'une observation habituelle.",
+    }
+  );
+
+export const LOW_VOLTAGE_ELECTRICAL_INJURY_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for a low-voltage electrical injury, and had no concerning heart, muscle, or neurologic findings at the time of discharge.",
+      diagnosisInstructions:
+        "Keep any skin entry or exit wounds clean and covered as directed, and follow the arranged reassessment plan even if the injury appears minor.",
+      medicationTreatment: ENV_ROUTINE_MED_EN,
+      returnPrecautions:
+        "Return immediately for chest pain, palpitations, fainting, confusion, weakness, dark urine, worsening pain, or numbness.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour une blessure électrique à basse tension, et ne présentiez aucun signe cardiaque, musculaire ou neurologique préoccupant au moment du congé.",
+      diagnosisInstructions:
+        "Gardez les points d'entrée et de sortie cutanés propres et couverts selon les consignes, et respectez le contrôle prévu même si la blessure paraît mineure.",
+      medicationTreatment: ENV_ROUTINE_MED_FR,
+      returnPrecautions:
+        "Retournez immédiatement pour douleur thoracique, palpitations, évanouissement, confusion, faiblesse, urines foncées, douleur croissante ou engourdissement.",
+    }
+  );
+
+/** High-risk post-acute template — used only after the treating clinician has already directed outpatient aftercare; never routine low-voltage injury care. */
+export const HIGH_VOLTAGE_ELECTRICAL_INJURY_POST_ACUTE_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated for a high-voltage electrical injury — an injury that can cause deep tissue damage, heart rhythm problems, and delayed complications. This documentation is used only after the treating clinician has already directed outpatient aftercare following acute-phase treatment — not as an autonomous ED discharge decision, and not routine low-voltage injury care.",
+      diagnosisInstructions:
+        "Follow the clinician-directed wound care and cardiac monitoring plan exactly as instructed. Keep every scheduled follow-up appointment, including any laboratory monitoring for muscle or kidney injury.",
+      medicationTreatment: ENV_HIGH_RISK_MED_EN,
+      returnPrecautions:
+        "Return immediately for chest pain, palpitations, fainting, confusion, weakness, dark urine, worsening wound pain, or numbness.",
+      returnWorkSchool:
+        "Follow up exactly as directed by the specialist team — this is close clinician follow-up, not routine primary care.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge pour une blessure électrique à haute tension — une blessure pouvant causer des lésions tissulaires profondes, des troubles du rythme cardiaque et des complications retardées. Ce document est utilisé uniquement après qu'une prise en charge clinique a déjà déterminé les soins ambulatoires suivant le traitement en phase aiguë — non comme une décision autonome de sortie des urgences, et non comme des soins habituels de blessure à basse tension.",
+      diagnosisInstructions:
+        "Suivez exactement le plan de soins de la plaie et de surveillance cardiaque dirigé par le clinicien. Respectez chaque rendez-vous de suivi prévu, y compris toute surveillance de laboratoire pour une atteinte musculaire ou rénale.",
+      medicationTreatment: ENV_HIGH_RISK_MED_FR,
+      returnPrecautions:
+        "Retournez immédiatement en cas de douleur thoracique, de palpitations, d'évanouissement, de confusion, de faiblesse, d'urines foncées, de douleur croissante de la plaie, ou d'engourdissement.",
+      returnWorkSchool:
+        "Faites le suivi exactement selon les directives de l'équipe spécialisée — il s'agit d'un suivi clinique rapproché, non d'un suivi habituel de soins primaires.",
+    }
+  );
+
+/** High-risk post-acute template — always used with clinician-directed disposition language, even for uncomplicated lightning contact, given the risk of delayed cardiac/neurologic/ocular complications. */
+export const LIGHTNING_INJURY_POST_ACUTE_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated for a lightning injury. This documentation is used only after the treating clinician has already directed outpatient aftercare following acute-phase evaluation — not as an autonomous ED discharge decision, since lightning injuries can cause delayed heart, neurologic, or eye complications even when the initial injury appears minor.",
+      diagnosisInstructions:
+        "Follow the clinician-directed monitoring plan exactly as instructed. Keep every scheduled follow-up appointment, including any cardiac, neurologic, or eye evaluation as directed.",
+      medicationTreatment: ENV_HIGH_RISK_MED_EN,
+      returnPrecautions:
+        "Return immediately for chest pain, palpitations, fainting, confusion, weakness, vision changes, hearing changes, or new numbness.",
+      returnWorkSchool:
+        "Follow up exactly as directed by the specialist team — this is close clinician follow-up, not routine primary care.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge pour une blessure par la foudre (foudroiement). Ce document est utilisé uniquement après qu'une prise en charge clinique a déjà déterminé les soins ambulatoires suivant l'évaluation en phase aiguë — non comme une décision autonome de sortie des urgences, car les blessures par la foudre peuvent causer des complications cardiaques, neurologiques ou oculaires retardées même lorsque la blessure initiale paraît mineure.",
+      diagnosisInstructions:
+        "Suivez exactement le plan de surveillance dirigé par le clinicien. Respectez chaque rendez-vous de suivi prévu, y compris toute évaluation cardiaque, neurologique ou oculaire selon les consignes.",
+      medicationTreatment: ENV_HIGH_RISK_MED_FR,
+      returnPrecautions:
+        "Retournez immédiatement en cas de douleur thoracique, de palpitations, d'évanouissement, de confusion, de faiblesse, de changements de la vision, de changements de l'audition, ou d'un nouvel engourdissement.",
+      returnWorkSchool:
+        "Faites le suivi exactement selon les directives de l'équipe spécialisée — il s'agit d'un suivi clinique rapproché, non d'un suivi habituel de soins primaires.",
+    }
+  );
+
+export const ACUTE_MOUNTAIN_SICKNESS_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for acute mountain sickness — headache, nausea, or fatigue related to travel or exertion at high altitude, without signs of brain or lung swelling.",
+      diagnosisInstructions:
+        "Avoid further ascent until symptoms fully resolve, rest, and stay well hydrated. If symptoms do not improve, descending to a lower altitude is the most effective treatment.",
+      medicationTreatment: ENV_ROUTINE_MED_EN,
+      returnPrecautions:
+        "Return immediately for worsening headache, confusion, difficulty walking (loss of coordination), shortness of breath at rest, or a cough with pink or frothy sputum.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour un mal aigu des montagnes — céphalées, nausées ou fatigue liées à un déplacement ou à un effort en haute altitude, sans signe d'œdème cérébral ou pulmonaire.",
+      diagnosisInstructions:
+        "Évitez toute nouvelle ascension jusqu'à la disparition complète des symptômes, reposez-vous et restez bien hydraté. Si les symptômes ne s'améliorent pas, la descente vers une altitude plus basse est le traitement le plus efficace.",
+      medicationTreatment: ENV_ROUTINE_MED_FR,
+      returnPrecautions:
+        "Retournez immédiatement en cas de céphalées qui s'aggravent, de confusion, de difficulté à marcher (perte de coordination), d'essoufflement au repos, ou de toux avec expectorations roses ou mousseuses.",
+    }
+  );
+
+/** High-risk post-acute template — used only after the treating clinician has already directed outpatient aftercare; never routine acute-mountain-sickness reassurance. */
+export const HACE_POST_ACUTE_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated for high-altitude cerebral edema (HACE) — a life-threatening swelling of the brain caused by high-altitude exposure. This documentation is used only after the treating clinician has already directed outpatient aftercare following acute-phase treatment (including descent and, if needed, oxygen or medication) — not as an autonomous ED discharge decision, and not routine acute-mountain-sickness reassurance.",
+      diagnosisInstructions:
+        "Follow the clinician-directed descent, activity, and medication plan exactly as instructed. Do not return to high altitude until specifically cleared. Keep every scheduled follow-up appointment.",
+      medicationTreatment: ENV_HIGH_RISK_MED_EN,
+      returnPrecautions:
+        "Return immediately for worsening headache, confusion, difficulty walking, drowsiness, or vision changes.",
+      returnWorkSchool:
+        "Follow up exactly as directed by the specialist team — this is close clinician follow-up, not routine primary care.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge pour un œdème cérébral de haute altitude (HACE) — un gonflement potentiellement mortel du cerveau causé par une exposition à la haute altitude. Ce document est utilisé uniquement après qu'une prise en charge clinique a déjà déterminé les soins ambulatoires suivant le traitement en phase aiguë (incluant la descente et, si nécessaire, l'oxygène ou des médicaments) — non comme une décision autonome de sortie des urgences, et non comme des soins habituels de mal aigu des montagnes.",
+      diagnosisInstructions:
+        "Suivez exactement le plan de descente, d'activité et de médication dirigé par le clinicien. Ne retournez pas en haute altitude avant d'y être spécifiquement autorisé. Respectez chaque rendez-vous de suivi prévu.",
+      medicationTreatment: ENV_HIGH_RISK_MED_FR,
+      returnPrecautions:
+        "Retournez immédiatement en cas de céphalées qui s'aggravent, de confusion, de difficulté à marcher, de somnolence, ou de changements de la vision.",
+      returnWorkSchool:
+        "Faites le suivi exactement selon les directives de l'équipe spécialisée — il s'agit d'un suivi clinique rapproché, non d'un suivi habituel de soins primaires.",
+    }
+  );
+
+/** High-risk post-acute template — used only after the treating clinician has already directed outpatient aftercare; never routine acute-mountain-sickness reassurance. */
+export const HAPE_POST_ACUTE_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated for high-altitude pulmonary edema (HAPE) — a life-threatening buildup of fluid in the lungs caused by high-altitude exposure. This documentation is used only after the treating clinician has already directed outpatient aftercare following acute-phase treatment (including descent and, if needed, oxygen or medication) — not as an autonomous ED discharge decision, and not routine acute-mountain-sickness reassurance.",
+      diagnosisInstructions:
+        "Follow the clinician-directed descent, activity, and medication plan exactly as instructed. Do not return to high altitude until specifically cleared. Keep every scheduled follow-up appointment.",
+      medicationTreatment: ENV_HIGH_RISK_MED_EN,
+      returnPrecautions:
+        "Return immediately for shortness of breath at rest, cough with pink or frothy sputum, chest tightness, or worsening fatigue.",
+      returnWorkSchool:
+        "Follow up exactly as directed by the specialist team — this is close clinician follow-up, not routine primary care.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge pour un œdème pulmonaire de haute altitude (HAPE) — une accumulation de liquide potentiellement mortelle dans les poumons causée par une exposition à la haute altitude. Ce document est utilisé uniquement après qu'une prise en charge clinique a déjà déterminé les soins ambulatoires suivant le traitement en phase aiguë (incluant la descente et, si nécessaire, l'oxygène ou des médicaments) — non comme une décision autonome de sortie des urgences, et non comme des soins habituels de mal aigu des montagnes.",
+      diagnosisInstructions:
+        "Suivez exactement le plan de descente, d'activité et de médication dirigé par le clinicien. Ne retournez pas en haute altitude avant d'y être spécifiquement autorisé. Respectez chaque rendez-vous de suivi prévu.",
+      medicationTreatment: ENV_HIGH_RISK_MED_FR,
+      returnPrecautions:
+        "Retournez immédiatement en cas d'essoufflement au repos, de toux avec expectorations roses ou mousseuses, d'oppression thoracique, ou de fatigue qui s'aggrave.",
+      returnWorkSchool:
+        "Faites le suivi exactement selon les directives de l'équipe spécialisée — il s'agit d'un suivi clinique rapproché, non d'un suivi habituel de soins primaires.",
+    }
+  );
+
+export const BAROTRAUMA_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for barotrauma related to diving or pressure changes, affecting the lungs or other air-containing spaces, without signs of a serious lung injury requiring urgent intervention.",
+      diagnosisInstructions:
+        "Avoid further diving, flying, or altitude changes until cleared by your clinician. Rest and avoid strenuous activity as directed.",
+      medicationTreatment: ENV_ROUTINE_MED_EN,
+      returnPrecautions:
+        "Return immediately for shortness of breath, chest pain, coughing up blood, or new neurologic symptoms such as weakness, numbness, or confusion.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour un barotraumatisme lié à la plongée ou à des changements de pression, touchant les poumons ou d'autres espaces contenant de l'air, sans signe de lésion pulmonaire grave nécessitant une intervention urgente.",
+      diagnosisInstructions:
+        "Évitez toute nouvelle plongée, tout vol ou changement d'altitude jusqu'à l'autorisation de votre clinicien. Reposez-vous et évitez les activités intenses selon les consignes.",
+      medicationTreatment: ENV_ROUTINE_MED_FR,
+      returnPrecautions:
+        "Retournez immédiatement en cas d'essoufflement, de douleur thoracique, de toux avec du sang, ou de nouveaux symptômes neurologiques comme faiblesse, engourdissement ou confusion.",
+    }
+  );
+
+/** High-risk post-acute template — used only after the treating clinician has already directed outpatient aftercare (including any hyperbaric oxygen therapy); never routine diving-barotrauma reassurance. */
+export const DECOMPRESSION_ILLNESS_POST_ACUTE_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated for decompression illness (decompression sickness or arterial gas embolism) related to diving — a condition that can cause joint pain, neurologic symptoms, or breathing problems from bubbles forming in the body after a pressure change. This documentation is used only after the treating clinician has already directed outpatient aftercare following acute-phase treatment (including any hyperbaric oxygen therapy) — not as an autonomous ED discharge decision, and not routine diving-barotrauma reassurance.",
+      diagnosisInstructions:
+        "Follow the clinician-directed activity and diving-restriction plan exactly as instructed. Do not fly or dive again until specifically cleared. Keep every scheduled follow-up appointment, including any hyperbaric medicine follow-up.",
+      medicationTreatment: ENV_HIGH_RISK_MED_EN,
+      returnPrecautions:
+        "Return immediately for worsening joint pain, weakness, numbness, confusion, difficulty breathing, or chest pain.",
+      returnWorkSchool:
+        "Follow up exactly as directed by the specialist team — this is close clinician follow-up, not routine primary care.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge pour une maladie de décompression (accident de décompression ou embolie gazeuse artérielle) liée à la plongée — une affection pouvant causer des douleurs articulaires, des symptômes neurologiques ou des problèmes respiratoires dus à la formation de bulles dans le corps après un changement de pression. Ce document est utilisé uniquement après qu'une prise en charge clinique a déjà déterminé les soins ambulatoires suivant le traitement en phase aiguë (incluant toute oxygénothérapie hyperbare) — non comme une décision autonome de sortie des urgences, et non comme des soins habituels de barotraumatisme de plongée.",
+      diagnosisInstructions:
+        "Suivez exactement le plan d'activité et de restriction de plongée dirigé par le clinicien. Ne prenez pas l'avion et ne plongez pas de nouveau avant d'y être spécifiquement autorisé. Respectez chaque rendez-vous de suivi prévu, y compris tout suivi en médecine hyperbare.",
+      medicationTreatment: ENV_HIGH_RISK_MED_FR,
+      returnPrecautions:
+        "Retournez immédiatement en cas de douleur articulaire qui s'aggrave, de faiblesse, d'engourdissement, de confusion, de difficulté à respirer, ou de douleur thoracique.",
+      returnWorkSchool:
+        "Faites le suivi exactement selon les directives de l'équipe spécialisée — il s'agit d'un suivi clinique rapproché, non d'un suivi habituel de soins primaires.",
+    }
+  );
+
+export const RADIATION_EXPOSURE_FOLLOWUP_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for a radiation exposure that was assessed as low-dose or occupational, without signs of acute radiation sickness.",
+      diagnosisInstructions:
+        "Follow any monitoring or dosimetry instructions provided, and follow up as directed by occupational health or radiation safety if this exposure occurred at work.",
+      medicationTreatment: ENV_ROUTINE_MED_EN,
+      returnPrecautions:
+        "Return immediately for nausea, vomiting, diarrhea, skin redness or burns, unusual bleeding or bruising, or feeling generally unwell in the days after exposure.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour une exposition aux radiations évaluée comme étant à faible dose ou d'origine professionnelle, sans signe de maladie aiguë des rayons.",
+      diagnosisInstructions:
+        "Suivez toute instruction de surveillance ou de dosimétrie fournie, et faites le suivi selon les directives de la santé au travail ou de la radioprotection si cette exposition est survenue au travail.",
+      medicationTreatment: ENV_ROUTINE_MED_FR,
+      returnPrecautions:
+        "Retournez immédiatement en cas de nausées, de vomissements, de diarrhée, de rougeur ou de brûlures cutanées, de saignements ou d'ecchymoses inhabituels, ou de malaise général dans les jours suivant l'exposition.",
+    }
+  );
+
+/** High-risk post-acute template — used only after the treating clinician (in coordination with radiation safety/toxicology) has already directed outpatient aftercare; never routine low-dose exposure reassurance. */
+export const RADIATION_INJURY_POST_ACUTE_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated for acute radiation syndrome or a significant radiation injury. This documentation is used only after the treating clinician (in coordination with radiation safety/toxicology) has already directed outpatient aftercare following acute-phase treatment — not as an autonomous ED discharge decision, and not routine low-dose exposure reassurance.",
+      diagnosisInstructions:
+        "Follow the clinician-directed monitoring plan exactly as instructed, including any laboratory monitoring of blood counts. Keep every scheduled follow-up appointment.",
+      medicationTreatment: ENV_HIGH_RISK_MED_EN,
+      returnPrecautions:
+        "Return immediately for fever, unusual bleeding or bruising, worsening nausea or vomiting, skin breakdown, or feeling generally unwell.",
+      returnWorkSchool:
+        "Follow up exactly as directed by the specialist team — this is close clinician follow-up, not routine primary care.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge pour un syndrome d'irradiation aiguë ou une lésion importante par radiation. Ce document est utilisé uniquement après qu'une prise en charge clinique (en coordination avec la radioprotection/toxicologie) a déjà déterminé les soins ambulatoires suivant le traitement en phase aiguë — non comme une décision autonome de sortie des urgences, et non comme des soins habituels d'exposition à faible dose.",
+      diagnosisInstructions:
+        "Suivez exactement le plan de surveillance dirigé par le clinicien, y compris toute surveillance de laboratoire de la numération sanguine. Respectez chaque rendez-vous de suivi prévu.",
+      medicationTreatment: ENV_HIGH_RISK_MED_FR,
+      returnPrecautions:
+        "Retournez immédiatement en cas de fièvre, de saignements ou d'ecchymoses inhabituels, de nausées ou de vomissements qui s'aggravent, de détérioration de la peau, ou de malaise général.",
+      returnWorkSchool:
+        "Faites le suivi exactement selon les directives de l'équipe spécialisée — il s'agit d'un suivi clinique rapproché, non d'un suivi habituel de soins primaires.",
     }
   );

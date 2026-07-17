@@ -28,7 +28,8 @@ export type EdClinicalDomain =
   | "ENT"
   | "Ophthalmology"
   | "Dental"
-  | "General Medical";
+  | "General Medical"
+  | "Environmental";
 
 export type ClinicalConditionFamilyAgeGuardrail = {
   /** Family eligible only when patient age is strictly below this value (pediatric). */
