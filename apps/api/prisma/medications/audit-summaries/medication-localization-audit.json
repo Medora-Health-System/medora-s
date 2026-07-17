@@ -1,0 +1,20 @@
+{
+  "auditStatus": "COMPLETE",
+  "catalogClassification": "CURATED",
+  "catalogComplete": false,
+  "catalogTotal": 1042,
+  "confidence": "HIGH",
+  "dataSource": "database",
+  "displayNameEnPopulated": 1042,
+  "displayNameFrPopulated": 963,
+  "englishCoverageRate": 1,
+  "frenchCoverageRate": 0.9241842610364683,
+  "gaps": [
+    "Some enterprise vaccine rows may have identical EN/FR display strings"
+  ],
+  "generatedAt": "2026-07-17T19:13:46.643Z",
+  "maturityScores": {
+    "englishLocalization": 4,
+    "frenchLocalization": 4
+  }
+}

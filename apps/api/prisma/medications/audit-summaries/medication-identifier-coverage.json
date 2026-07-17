@@ -1,0 +1,55 @@
+{
+  "auditStatus": "COMPLETE",
+  "catalogClassification": "CURATED",
+  "catalogComplete": false,
+  "confidence": "HIGH",
+  "coverage": {
+    "canonicalConcepts": 1365,
+    "catalogCodes": 1042,
+    "catalogNdc11": 84,
+    "packageNdc11": 544,
+    "rxNormConceptIds": 0
+  },
+  "dataSource": "database",
+  "dualIdentityRisk": {
+    "catalogWithoutLegacyProduct": 806,
+    "cutoverSafe": false,
+    "productWithoutLegacyCatalog": 1192
+  },
+  "duplicateDetection": {
+    "duplicateCodes": [],
+    "duplicateGenericStrengthGroups": [
+      "albuterol|||inh (2)",
+      "dextrose|5% 500 ml|perfusion|intraveineuse (2)",
+      "morphine|||ivp (26)",
+      "ondansetron|||ivp (3)",
+      "potassium chloride|||iv (66)",
+      "regular insulin|||sq (13)",
+      "sodium chloride|||iv (59)",
+      "vancomycin|||iv (132)",
+      "|500mg|tablet| (79)",
+      "|||im (21)",
+      "|||iv (32)",
+      "|||ivp (154)",
+      "|||ivpb (21)",
+      "|||po (22)",
+      "|||sq (21)"
+    ]
+  },
+  "generatedAt": "2026-07-17T19:13:46.643Z",
+  "maturityScore": 2,
+  "missingIdentifierCounters": {
+    "catalogMissingNdc": 958,
+    "conceptMissingRxNorm": 1365,
+    "packageMissingNdc": 884,
+    "productMissingConcentration": 732
+  },
+  "orphanCounters": {
+    "catalogWithoutDisplayEn": 0,
+    "catalogWithoutDisplayFr": 79,
+    "catalogWithoutLegacyProduct": 806,
+    "conceptWithoutProduct": 10,
+    "packageWithoutProduct": 0,
+    "productWithoutLegacyCatalog": 1192
+  }
+}

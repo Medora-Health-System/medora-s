@@ -1,0 +1,16 @@
+{
+  "administrationCount": 956,
+  "appendOnlyCorrections": true,
+  "auditStatus": "COMPLETE",
+  "catalogClassification": "CURATED",
+  "catalogComplete": false,
+  "confidence": "HIGH",
+  "dataSource": "database",
+  "gaps": [
+    "Some vaccine-specific MAR flows not fully wired"
+  ],
+  "generatedAt": "2026-07-17T19:13:46.644Z",
+  "marModel": "MedicationAdministration",
+  "maturityScore": 4,
+  "witnessVerification": true
+}

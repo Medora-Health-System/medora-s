@@ -1,0 +1,16 @@
+{
+  "auditStatus": "COMPLETE",
+  "catalogClassification": "CURATED",
+  "catalogComplete": false,
+  "confidence": "HIGH",
+  "dataSource": "database",
+  "fhirMedicationRequestRuntime": false,
+  "gaps": [
+    "No Surescripts/FHIR medication runtime integration"
+  ],
+  "generatedAt": "2026-07-17T19:13:46.645Z",
+  "maturityScore": 1,
+  "ndcOfficialImportPipeline": "partial CSV loader only",
+  "rxNormImportPipeline": false,
+  "surescriptsRuntime": false
+}

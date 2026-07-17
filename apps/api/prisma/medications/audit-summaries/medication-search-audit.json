@@ -1,0 +1,386 @@
+{
+  "auditStatus": "COMPLETE",
+  "catalogClassification": "CURATED",
+  "catalogComplete": false,
+  "confidence": "HIGH",
+  "dataSource": "database",
+  "generatedAt": "2026-07-17T19:13:46.643Z",
+  "maturityScore": 3,
+  "notes": [],
+  "probeCount": 25,
+  "probes": [
+    {
+      "expectMinResults": 1,
+      "label": "English generic ibuprofen",
+      "latencyMs": 9,
+      "pass": true,
+      "query": "ibuprofen",
+      "resultCount": 3,
+      "skipped": false,
+      "topCodes": [
+        "IBUPROFEN_200",
+        "IBUPROFEN_400_MG_COMPRIME_ORAL",
+        "IBUPROFEN_100_MG_PER_5_ML_SUSPENSION_BUVABLE_ORAL"
+      ]
+    },
+    {
+      "expectMinResults": 1,
+      "label": "French ibuprofène",
+      "latencyMs": 7,
+      "pass": true,
+      "query": "ibuprofène",
+      "resultCount": 3,
+      "skipped": false,
+      "topCodes": [
+        "IBUPROFEN_200",
+        "IBUPROFEN_400_MG_COMPRIME_ORAL",
+        "IBUPROFEN_100_MG_PER_5_ML_SUSPENSION_BUVABLE_ORAL"
+      ]
+    },
+    {
+      "expectMinResults": 1,
+      "label": "Controlled benzodiazepine",
+      "latencyMs": 16,
+      "pass": true,
+      "query": "lorazepam",
+      "resultCount": 2,
+      "skipped": false,
+      "topCodes": [
+        "LORAZEPAM_2MG_ML_INJECTABLE",
+        "LORAZEPAM_2_MG_COMPRIME_ORAL"
+      ]
+    },
+    {
+      "expectMinResults": 1,
+      "label": "English acetaminophen",
+      "latencyMs": 45,
+      "pass": true,
+      "query": "acetaminophen",
+      "resultCount": 21,
+      "skipped": false,
+      "topCodes": [
+        "ACETAMINOPHEN_500",
+        "PARACETAMOL_1_G_COMPRIME_ORAL",
+        "PARACETAMOL_250_MG_SUPPOSITOIRE_SUPPOSITOIRE_RECTAL",
+        "PARACETAMOL_120_MG_PER_5_ML_SIROP_ORAL",
+        "PARACETAMOL_1G_100ML_IV"
+      ]
+    },
+    {
+      "expectMinResults": 1,
+      "label": "Paracetamol alias",
+      "latencyMs": 14,
+      "pass": true,
+      "query": "paracetamol",
+      "resultCount": 21,
+      "skipped": false,
+      "topCodes": [
+        "ACETAMINOPHEN_500",
+        "PARACETAMOL_1_G_COMPRIME_ORAL",
+        "PARACETAMOL_250_MG_SUPPOSITOIRE_SUPPOSITOIRE_RECTAL",
+        "PARACETAMOL_120_MG_PER_5_ML_SIROP_ORAL",
+        "PARACETAMOL_1G_100ML_IV"
+      ]
+    },
+    {
+      "expectMinResults": 1,
+      "label": "French paracétamol",
+      "latencyMs": 10,
+      "pass": true,
+      "query": "paracétamol",
+      "resultCount": 6,
+      "skipped": false,
+      "topCodes": [
+        "ACETAMINOPHEN_500",
+        "PARACETAMOL_1_G_COMPRIME_ORAL",
+        "PARACETAMOL_250_MG_SUPPOSITOIRE_SUPPOSITOIRE_RECTAL",
+        "PARACETAMOL_120_MG_PER_5_ML_SIROP_ORAL",
+        "PARACETAMOL_1G_100ML_IV"
+      ]
+    },
+    {
+      "expectMinResults": 0,
+      "label": "Brand lipitor (may resolve via alias expansion)",
+      "latencyMs": 13,
+      "pass": true,
+      "query": "lipitor",
+      "resultCount": 1,
+      "skipped": false,
+      "topCodes": [
+        "ATORVASTATIN_20_MG_COMPRIME_ORAL"
+      ]
+    },
+    {
+      "expectMinResults": 1,
+      "label": "Generic atorvastatin",
+      "latencyMs": 13,
+      "pass": true,
+      "query": "atorvastatin",
+      "resultCount": 1,
+      "skipped": false,
+      "topCodes": [
+        "ATORVASTATIN_20_MG_COMPRIME_ORAL"
+      ]
+    },
+    {
+      "expectMinResults": 1,
+      "label": "Controlled opioid",
+      "latencyMs": 9,
+      "pass": true,
+      "query": "morphine",
+      "resultCount": 27,
+      "skipped": false,
+      "topCodes": [
+        "MORPHINE_10_MG_PER_ML_INJECTABLE_INJECTION",
+        "MORPHINE_MST_4f7a99af",
+        "MORPHINE_MST_27143775",
+        "MORPHINE_MST_8d786c8a",
+        "MORPHINE_MST_00077376"
+      ]
+    },
+    {
+      "expectMinResults": 1,
+      "label": "Common antibiotic",
+      "latencyMs": 6,
+      "pass": true,
+      "query": "amoxicillin",
+      "resultCount": 8,
+      "skipped": false,
+      "topCodes": [
+        "AMOXICILLIN_250_MG_CAPSULE_ORAL",
+        "AMOXICILLIN_500",
+        "AMOXICILLIN_250_MG_PER_5_ML_SUSPENSION_BUVABLE_ORAL",
+        "AMOXICILLIN_125_MG_PER_5_ML_SUSPENSION_BUVABLE_ORAL",
+        "AMOXICILLIN_500_MG_COMPRIME_DISPERSIBLE_ORAL"
+      ]
+    },
+    {
+      "expectMinResults": 1,
+      "label": "Diabetes staple",
+      "latencyMs": 13,
+      "pass": true,
+      "query": "metformin",
+      "resultCount": 3,
+      "skipped": false,
+      "topCodes": [
+        "METFORMIN_500",
+        "METFORMIN_850_MG_COMPRIME_ORAL",
+        "METFORMIN_1000_MG_COMPRIME_ORAL"
+      ]
+    },
+    {
+      "expectMinResults": 1,
+      "label": "Electrolyte alias expansion",
+      "latencyMs": 20,
+      "pass": true,
+      "query": "potassium",
+      "resultCount": 50,
+      "skipped": false,
+      "topCodes": [
+        "KCL_MST_4420f458",
+        "KCL_MST_ecadc4e9",
+        "KCL_MST_f3aa631d",
+        "KCL_MST_219edb7d",
+        "KCL_MST_5e05f778"
+      ]
+    },
+    {
+      "expectMinResults": 1,
+      "label": "KCL alias",
+      "latencyMs": 23,
+      "pass": true,
+      "query": "kcl",
+      "resultCount": 50,
+      "skipped": false,
+      "topCodes": [
+        "KCL_MST_4420f458",
+        "KCL_MST_ecadc4e9",
+        "KCL_MST_f3aa631d",
+        "KCL_MST_219edb7d",
+        "KCL_MST_5e05f778"
+      ]
+    },
+    {
+      "expectMinResults": 0,
+      "label": "French insulin (may be partial)",
+      "latencyMs": 9,
+      "pass": true,
+      "query": "insuline",
+      "resultCount": 17,
+      "skipped": false,
+      "topCodes": [
+        "REGULAR_INSULIN_100_UI_PER_ML_INJECTABLE_SUBCUTANEOUS",
+        "NPH_INSULIN_100_UI_PER_ML_INJECTABLE_SUBCUTANEOUS",
+        "INSULIN_7030_100_UI_PER_ML_INJECTABLE_SUBCUTANEOUS",
+        "REGULAR_INSULIN_3083aa19",
+        "REGULAR_INSULIN_9fbad5dc"
+      ]
+    },
+    {
+      "expectMinResults": 1,
+      "label": "English insulin",
+      "latencyMs": 8,
+      "pass": true,
+      "query": "insulin",
+      "resultCount": 17,
+      "skipped": false,
+      "topCodes": [
+        "REGULAR_INSULIN_100_UI_PER_ML_INJECTABLE_SUBCUTANEOUS",
+        "NPH_INSULIN_100_UI_PER_ML_INJECTABLE_SUBCUTANEOUS",
+        "INSULIN_7030_100_UI_PER_ML_INJECTABLE_SUBCUTANEOUS",
+        "REGULAR_INSULIN_3083aa19",
+        "REGULAR_INSULIN_9fbad5dc"
+      ]
+    },
+    {
+      "expectMaxResults": 0,
+      "expectMinResults": 0,
+      "label": "Nonsense zero-hit probe",
+      "latencyMs": 6,
+      "pass": true,
+      "query": "zzz_not_a_medication_xyz",
+      "resultCount": 0,
+      "skipped": false,
+      "topCodes": []
+    },
+    {
+      "expectMinResults": 1,
+      "label": "Brand/generic aspirin",
+      "latencyMs": 7,
+      "pass": true,
+      "query": "aspirin",
+      "resultCount": 3,
+      "skipped": false,
+      "topCodes": [
+        "ASPIRIN_81",
+        "ASPIRIN_325_MG_COMPRIME_ORAL",
+        "ASPIRIN_100_MG_COMPRIME_ORAL"
+      ]
+    },
+    {
+      "expectMinResults": 1,
+      "label": "Bactrim alias target",
+      "latencyMs": 6,
+      "pass": true,
+      "query": "cotrimoxazole",
+      "resultCount": 3,
+      "skipped": false,
+      "topCodes": [
+        "COTRIMOXAZOLE_400_PER_80_MG_COMPRIME_ORAL",
+        "COTRIMOXAZOLE_800_PER_160_MG_COMPRIME_ORAL",
+        "COTRIMOXAZOLE_240_MG_PER_5_ML_SUSPENSION_BUVABLE_ORAL"
+      ]
+    },
+    {
+      "expectMinResults": 1,
+      "label": "Brand bactrim alias",
+      "latencyMs": 30,
+      "pass": true,
+      "query": "bactrim",
+      "resultCount": 3,
+      "skipped": false,
+      "topCodes": [
+        "COTRIMOXAZOLE_400_PER_80_MG_COMPRIME_ORAL",
+        "COTRIMOXAZOLE_800_PER_160_MG_COMPRIME_ORAL",
+        "COTRIMOXAZOLE_240_MG_PER_5_ML_SUSPENSION_BUVABLE_ORAL"
+      ]
+    },
+    {
+      "expectMinResults": 1,
+      "label": "IV antibiotic",
+      "latencyMs": 14,
+      "pass": true,
+      "query": "vancomycin",
+      "resultCount": 50,
+      "skipped": false,
+      "topCodes": [
+        "VANCO_MST_65c5cf7e",
+        "VANCOMYCIN_IVPB_fcc926a4",
+        "VANCOMYCIN_IVPB_0c4c2554",
+        "VANCO_MPQ_e55c6b9f",
+        "VANCOMYCIN_140441a8"
+      ]
+    },
+    {
+      "expectMinResults": 1,
+      "label": "Anticoagulant",
+      "latencyMs": 7,
+      "pass": true,
+      "query": "heparin",
+      "resultCount": 2,
+      "skipped": false,
+      "topCodes": [
+        "HEPARIN_5000UI_ML_INJECTABLE",
+        "HEPARIN_25000_UNITS_500_ML_PERFUSION_INTRAVEINEUSE"
+      ]
+    },
+    {
+      "expectMinResults": 1,
+      "label": "Antiemetic",
+      "latencyMs": 27,
+      "pass": true,
+      "query": "ondansetron",
+      "resultCount": 6,
+      "skipped": false,
+      "topCodes": [
+        "ONDANSETRON_4_MG_COMPRIME_ORAL",
+        "ONDANSETRON_8_MG_COMPRIME_ORAL",
+        "ONDANSETRON_4_MG_PER_2_ML_INJECTABLE_INJECTION",
+        "ONDAN_K10A_k10a-1781236448357",
+        "OND_PRN_7b9241ca"
+      ]
+    },
+    {
+      "expectMinResults": 1,
+      "label": "Steroid",
+      "latencyMs": 6,
+      "pass": true,
+      "query": "prednisone",
+      "resultCount": 2,
+      "skipped": false,
+      "topCodes": [
+        "PREDNISONE_5",
+        "PREDNISONE_20_MG_COMPRIME_ORAL"
+      ]
+    },
+    {
+      "expectMinResults": 0,
+      "label": "Albuterol FR (may alias)",
+      "latencyMs": 11,
+      "pass": true,
+      "query": "salbutamol",
+      "resultCount": 7,
+      "skipped": false,
+      "topCodes": [
+        "SALBUTAMOL_100_MCG_PER_DOSE_INHALATEUR_INHALATION",
+        "SALBUTAMOL_2.5_MG_PER_2.5_ML_SOLUTION_NEBULISATION_INHALATION",
+        "SALBUTAMOL_100_MCG_PER_DOSE_AROSOL_DOSEUR_INHALATION",
+        "SALBUTAMOL_2.5_MG_PER_2.5_ML_NBULISATION_INHALATION",
+        "SALBUTAMOL_2_MG_PER_5_ML_SIROP_ORAL"
+      ]
+    },
+    {
+      "expectMinResults": 1,
+      "label": "Albuterol EN",
+      "latencyMs": 24,
+      "pass": true,
+      "query": "albuterol",
+      "resultCount": 7,
+      "skipped": false,
+      "topCodes": [
+        "SALBUTAMOL_100_MCG_PER_DOSE_INHALATEUR_INHALATION",
+        "SALBUTAMOL_2.5_MG_PER_2.5_ML_SOLUTION_NEBULISATION_INHALATION",
+        "SALBUTAMOL_100_MCG_PER_DOSE_AROSOL_DOSEUR_INHALATION",
+        "SALBUTAMOL_2.5_MG_PER_2.5_ML_NBULISATION_INHALATION",
+        "SALBUTAMOL_2_MG_PER_5_ML_SIROP_ORAL"
+      ]
+    }
+  ],
+  "summary": {
+    "avgLatencyMs": 14,
+    "failCount": 0,
+    "maxLatencyMs": 45,
+    "passCount": 25,
+    "zeroHitProbePass": true
+  }
+}

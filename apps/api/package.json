@@ -100,7 +100,14 @@
     "catalog:deactivate-ct-head": "ts-node --transpile-only prisma/scripts/deactivate-ct-head-catalog.ts",
     "catalog:readiness": "pnpm run catalog:report-display-en && pnpm run icd10:report-readiness",
     "catalog:gen-haiti-med-en-csv": "ts-node --transpile-only scripts/generate-phase-f-medication-display-en-csv.ts",
-    "catalog:guard-stale-js": "ts-node --transpile-only scripts/assert-no-stale-prisma-catalog-js.ts"
+    "catalog:guard-stale-js": "ts-node --transpile-only scripts/assert-no-stale-prisma-catalog-js.ts",
+    "medication:audit:architecture": "ts-node --transpile-only prisma/medications/audit/run-medication-architecture-audit.ts",
+    "medication:audit:catalog": "ts-node --transpile-only prisma/medications/audit/run-medication-catalog-audit.ts",
+    "medication:audit:identifiers": "ts-node --transpile-only prisma/medications/audit/run-medication-identifiers-audit.ts",
+    "medication:audit:search": "ts-node --transpile-only prisma/medications/audit/run-medication-search-audit.ts",
+    "medication:audit:localization": "ts-node --transpile-only prisma/medications/audit/run-medication-localization-audit.ts",
+    "medication:audit:hcpcs": "ts-node --transpile-only prisma/medications/audit/run-medication-hcpcs-audit.ts",
+    "medication:audit:readiness": "ts-node --transpile-only prisma/medications/audit/run-medication-readiness-audit.ts"
   },
   "prisma": {
     "seed": "ts-node --transpile-only prisma/seed.ts"

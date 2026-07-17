@@ -1,0 +1,22 @@
+{
+  "auditStatus": "COMPLETE",
+  "catalogClassification": "CURATED",
+  "catalogComplete": false,
+  "catalogLinkage": {
+    "canonicalProductCount": 1428,
+    "catalogMedicationCount": 1042,
+    "orderUsesCanonicalIds": true
+  },
+  "confidence": "HIGH",
+  "dataSource": "database",
+  "gaps": [
+    "Order sentence normalization incomplete for all enterprise rows"
+  ],
+  "generatedAt": "2026-07-17T19:13:46.643Z",
+  "maturityScore": 4,
+  "medicationOrderItemCount": 3942,
+  "orderModels": [
+    "Order",
+    "OrderItem"
+  ]
+}

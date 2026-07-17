@@ -1,0 +1,34 @@
+{
+  "allergyChecking": {
+    "interactionEnginePresent": false,
+    "maturityScore": 2,
+    "mechanism": "Acknowledgement gates; free-text allergies on encounter"
+  },
+  "auditStatus": "COMPLETE",
+  "catalogClassification": "CURATED",
+  "catalogComplete": false,
+  "confidence": "HIGH",
+  "controlledSubstances": {
+    "maturityScore": 3,
+    "mechanism": "isControlled flags + waste/witness schema; limited enforcement breadth"
+  },
+  "dataSource": "database",
+  "dosingIntelligence": {
+    "maturityScore": 2,
+    "mechanism": "Partial weight/frequency fields; no dosing knowledge base"
+  },
+  "generatedAt": "2026-07-17T19:13:46.645Z",
+  "interactionChecking": {
+    "maturityScore": 1,
+    "mechanism": "interactionGroupIds JSON only; no runtime interaction engine"
+  },
+  "pediatricSupport": {
+    "maturityScore": 2,
+    "mechanism": "Partial pediatric manifests; no unified dosing"
+  },
+  "renalHepaticSupport": {
+    "maturityScore": 1,
+    "mechanism": "Absent as structured knowledge source"
+  },
+  "safetyProfileModel": "MedicationSafetyProfile"
+}

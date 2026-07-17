@@ -1,0 +1,94 @@
+{
+  "auditStatus": "COMPLETE",
+  "catalogClassification": "CURATED",
+  "catalogComplete": false,
+  "confidence": "HIGH",
+  "dataSource": "database",
+  "duplicateDetection": {
+    "duplicateCodes": [],
+    "duplicateGenericStrengthGroups": [
+      "albuterol|||inh (2)",
+      "dextrose|5% 500 ml|perfusion|intraveineuse (2)",
+      "morphine|||ivp (26)",
+      "ondansetron|||ivp (3)",
+      "potassium chloride|||iv (66)",
+      "regular insulin|||sq (13)",
+      "sodium chloride|||iv (59)",
+      "vancomycin|||iv (132)",
+      "|500mg|tablet| (79)",
+      "|||im (21)",
+      "|||iv (32)",
+      "|||ivp (154)",
+      "|||ivpb (21)",
+      "|||po (22)",
+      "|||sq (21)"
+    ]
+  },
+  "fixturePollution": {
+    "fixtureExamples": [
+      "GENERIC_MST_c1b6ceee",
+      "GENERIC_MST_ecadc4e9",
+      "GENERIC_MST_f3aa631d",
+      "GENERIC_MST_f8dc0718",
+      "KCL_MST_c1b6ceee",
+      "KCL_MST_ecadc4e9",
+      "KCL_MST_f3aa631d",
+      "VANCO_MST_c1b6ceee",
+      "VANCO_MST_ecadc4e9",
+      "VANCO_MST_f3aa631d"
+    ],
+    "fixtureLike": 386,
+    "productionLike": 656
+  },
+  "generatedAt": "2026-07-17T19:13:46.272Z",
+  "liveCounts": {
+    "catalogMedication": 1042,
+    "catalogMedicationActive": 969,
+    "controlledCatalog": 18,
+    "displayNameEnPopulated": 1042,
+    "displayNameFrPopulated": 963,
+    "formularyItem": 898,
+    "hcpcsBilling": 95,
+    "hcpcsCatalog": 92,
+    "importStagingRows": 1262,
+    "inventoryItem": 15,
+    "medicationAdministration": 956,
+    "medicationAlias": 1348,
+    "medicationConcept": 1365,
+    "medicationPackage": 1428,
+    "medicationProduct": 1428,
+    "medicationSearchAlias": 466,
+    "ndcCatalog": 84,
+    "ndcPackage": 544,
+    "orderMedicationItems": 3942,
+    "rxNormPopulated": 0,
+    "safetyProfile": 1085
+  },
+  "missingIdentifierCounters": {
+    "catalogMissingNdc": 958,
+    "conceptMissingRxNorm": 1365,
+    "packageMissingNdc": 884,
+    "productMissingConcentration": 732
+  },
+  "notes": [],
+  "orphanCounters": {
+    "catalogWithoutDisplayEn": 0,
+    "catalogWithoutDisplayFr": 79,
+    "catalogWithoutLegacyProduct": 806,
+    "conceptWithoutProduct": 10,
+    "packageWithoutProduct": 0,
+    "productWithoutLegacyCatalog": 1192
+  },
+  "seedFileCounts": {
+    "haitiActive": 268,
+    "haitiInactive": 0,
+    "haitiMedicationCatalog": 268,
+    "haitiMedicationCatalogFull": 326
+  },
+  "summary": {
+    "dualIdentityCutoverSafe": false,
+    "enterpriseScaleProven": false,
+    "haitiSeedParityExpected": 326,
+    "rxNormReady": false
+  }
+}

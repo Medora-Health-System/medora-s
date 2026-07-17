@@ -1,0 +1,16 @@
+{
+  "auditStatus": "COMPLETE",
+  "catalogClassification": "CURATED",
+  "catalogComplete": false,
+  "catalogCoverageRate": 0.08061420345489444,
+  "confidence": "HIGH",
+  "dataSource": "database",
+  "generatedAt": "2026-07-17T19:13:46.643Z",
+  "maturityScore": 2,
+  "missingCatalogNdc": 958,
+  "missingPackageNdc": 884,
+  "ndcCatalog": 84,
+  "ndcPackage": 544,
+  "packageCoverageRate": 0.38095238095238093,
+  "recommendation": "Link MedicationPackage.ndc11 to official NDC packages; avoid billing-only NDC on CatalogMedication"
+}

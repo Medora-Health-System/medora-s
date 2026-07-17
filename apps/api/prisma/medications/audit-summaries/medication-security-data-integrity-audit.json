@@ -1,0 +1,18 @@
+{
+  "administrationCount": 956,
+  "auditStatus": "COMPLETE",
+  "catalogClassification": "CURATED",
+  "catalogComplete": false,
+  "catalogMutable": true,
+  "confidence": "HIGH",
+  "dataSource": "database",
+  "facilityScopedMar": true,
+  "gaps": [
+    "Catalog rows mutable without version history; rely on MAR snapshots"
+  ],
+  "generatedAt": "2026-07-17T19:13:46.646Z",
+  "inventoryFacilityScoped": true,
+  "marAuditTrail": true,
+  "marLabelSnapshots": true,
+  "maturityScore": 3
+}

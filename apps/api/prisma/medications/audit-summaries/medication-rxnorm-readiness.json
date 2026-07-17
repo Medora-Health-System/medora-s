@@ -1,0 +1,17 @@
+{
+  "auditStatus": "COMPLETE",
+  "blockers": [
+    "No rxNormConceptId values populated on MedicationConcept"
+  ],
+  "catalogClassification": "CURATED",
+  "catalogComplete": false,
+  "confidence": "HIGH",
+  "dataSource": "database",
+  "generatedAt": "2026-07-17T19:13:46.643Z",
+  "maturityScore": 1,
+  "populationRate": 0,
+  "ready": false,
+  "recommendation": "Import RxNorm SCD/SBD core and backfill MedicationConcept.rxNormConceptId",
+  "rxNormPopulated": 0,
+  "totalConcepts": 1365
+}

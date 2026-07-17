@@ -1,0 +1,191 @@
+{
+  "auditStatus": "COMPLETE",
+  "blockers": [
+    "RxNorm unpopulated on MedicationConcept",
+    "Dual-identity cutover NOT SAFE",
+    "No Prescription entity",
+    "No medication reconciliation entity"
+  ],
+  "catalogClassification": "CURATED",
+  "catalogComplete": false,
+  "confidence": "HIGH",
+  "dataSource": "database",
+  "domains": [
+    {
+      "domain": "dataModel",
+      "evidence": "Dual CatalogMedication + Concept/Product/Package",
+      "maxScore": 5,
+      "score": 4
+    },
+    {
+      "domain": "canonicalIdentifiers",
+      "evidence": "Internal codes yes; RxNorm=0",
+      "maxScore": 5,
+      "score": 2
+    },
+    {
+      "domain": "catalogCompleteness",
+      "evidence": "CURATED not COMPLETE",
+      "maxScore": 5,
+      "score": 2
+    },
+    {
+      "domain": "genericBrand",
+      "evidence": "genericName + aliases; no formal brand entity",
+      "maxScore": 5,
+      "score": 3
+    },
+    {
+      "domain": "strengthFormRoute",
+      "evidence": "String fields; concentration model exists",
+      "maxScore": 5,
+      "score": 3
+    },
+    {
+      "domain": "searchQuality",
+      "evidence": "Tiered ranking on CatalogMedication; scale unproven at 100k+",
+      "maxScore": 5,
+      "score": 3
+    },
+    {
+      "domain": "englishLocalization",
+      "evidence": "displayNameEn populated",
+      "maxScore": 5,
+      "score": 4
+    },
+    {
+      "domain": "frenchLocalization",
+      "evidence": "displayNameFr mostly populated",
+      "maxScore": 5,
+      "score": 4
+    },
+    {
+      "domain": "medicationOrdering",
+      "evidence": "Order/OrderItem mature",
+      "maxScore": 5,
+      "score": 4
+    },
+    {
+      "domain": "prescriptionWorkflow",
+      "evidence": "No Prescription model",
+      "maxScore": 5,
+      "score": 1
+    },
+    {
+      "domain": "marAdministration",
+      "evidence": "Append-only MAR",
+      "maxScore": 5,
+      "score": 4
+    },
+    {
+      "domain": "medicationReconciliation",
+      "evidence": "No clinical med-rec entity",
+      "maxScore": 5,
+      "score": 1
+    },
+    {
+      "domain": "allergyChecking",
+      "evidence": "Ack gates; free-text allergies",
+      "maxScore": 5,
+      "score": 2
+    },
+    {
+      "domain": "interactionChecking",
+      "evidence": "interactionGroupIds JSON only; no engine",
+      "maxScore": 5,
+      "score": 1
+    },
+    {
+      "domain": "dosingIntelligence",
+      "evidence": "Partial weight/frequency; no knowledge base",
+      "maxScore": 5,
+      "score": 2
+    },
+    {
+      "domain": "pediatricSupport",
+      "evidence": "Partial",
+      "maxScore": 5,
+      "score": 2
+    },
+    {
+      "domain": "renalHepaticSupport",
+      "evidence": "Absent as knowledge source",
+      "maxScore": 5,
+      "score": 1
+    },
+    {
+      "domain": "controlledSubstances",
+      "evidence": "Flags + waste schema; limited enforcement",
+      "maxScore": 5,
+      "score": 3
+    },
+    {
+      "domain": "formulary",
+      "evidence": "FacilityFormularyItem + waves",
+      "maxScore": 5,
+      "score": 3
+    },
+    {
+      "domain": "inventory",
+      "evidence": "InventoryItem exists; small stocked set",
+      "maxScore": 5,
+      "score": 3
+    },
+    {
+      "domain": "hcpcsBilling",
+      "evidence": "Partial mappings; billing ≠ clinical",
+      "maxScore": 5,
+      "score": 2
+    },
+    {
+      "domain": "externalIntegration",
+      "evidence": "No Surescripts/FHIR med runtime",
+      "maxScore": 5,
+      "score": 1
+    },
+    {
+      "domain": "securityAuditability",
+      "evidence": "Facility scope + MAR audit",
+      "maxScore": 5,
+      "score": 3
+    },
+    {
+      "domain": "historicalVersionSafety",
+      "evidence": "Snapshots on MAR; catalog mutable",
+      "maxScore": 5,
+      "score": 3
+    },
+    {
+      "domain": "testCoverage",
+      "evidence": "Large shared/api MAR test surface",
+      "maxScore": 5,
+      "score": 4
+    },
+    {
+      "domain": "performanceScalability",
+      "evidence": "Search OK for ~1k; no proven 100k",
+      "maxScore": 5,
+      "score": 2
+    },
+    {
+      "domain": "dataUpdateLifecycle",
+      "evidence": "Staging/promotion exists",
+      "maxScore": 5,
+      "score": 3
+    },
+    {
+      "domain": "productionDeploymentReadiness",
+      "evidence": "Curated formulary deployable; not full catalog",
+      "maxScore": 5,
+      "score": 3
+    }
+  ],
+  "finalDecision": "MEDICATION_ENGINE_FOUNDATION_REPAIR_REQUIRED",
+  "generatedAt": "2026-07-17T19:13:46.646Z",
+  "summary": {
+    "domainCount": 28,
+    "maxPossible": 140,
+    "percentage": 52.1,
+    "sum": 73
+  }
+}

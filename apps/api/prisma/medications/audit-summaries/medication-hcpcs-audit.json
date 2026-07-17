@@ -1,0 +1,17 @@
+{
+  "auditStatus": "COMPLETE",
+  "billingCatalogScope": "BillingCatalog triggerSource=MEDICATION system=HCPCS",
+  "billingProfileScope": "MedicationBillingProfile.hcpcsCodeSuggested",
+  "catalogClassification": "CURATED",
+  "catalogComplete": false,
+  "clinicalBillingSeparation": true,
+  "confidence": "HIGH",
+  "dataSource": "database",
+  "gaps": [
+    "Partial HCPCS mappings; billing codes not canonical clinical identity"
+  ],
+  "generatedAt": "2026-07-17T19:13:46.643Z",
+  "hcpcsBillingProfiles": 95,
+  "hcpcsCatalogRows": 92,
+  "maturityScore": 2
+}

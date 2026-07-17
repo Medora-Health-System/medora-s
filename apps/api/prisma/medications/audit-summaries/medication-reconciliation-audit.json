@@ -1,0 +1,14 @@
+{
+  "auditStatus": "COMPLETE",
+  "catalogClassification": "CURATED",
+  "catalogComplete": false,
+  "confidence": "HIGH",
+  "dataSource": "database",
+  "gaps": [
+    "No clinical medication reconciliation entity or workflow"
+  ],
+  "generatedAt": "2026-07-17T19:13:46.645Z",
+  "maturityScore": 1,
+  "medicationReconciliationModelPresent": false,
+  "structuredMedRecEntity": false
+}

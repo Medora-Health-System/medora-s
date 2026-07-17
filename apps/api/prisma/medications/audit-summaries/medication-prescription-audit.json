@@ -1,0 +1,15 @@
+{
+  "auditStatus": "COMPLETE",
+  "catalogClassification": "CURATED",
+  "catalogComplete": false,
+  "confidence": "HIGH",
+  "dataSource": "database",
+  "dischargeRxWorkflowPresent": false,
+  "gaps": [
+    "No Prescription entity",
+    "No structured discharge Rx document lifecycle"
+  ],
+  "generatedAt": "2026-07-17T19:13:46.644Z",
+  "maturityScore": 1,
+  "prescriptionModelPresent": false
+}

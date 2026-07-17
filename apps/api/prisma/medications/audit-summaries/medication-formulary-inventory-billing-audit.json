@@ -1,0 +1,20 @@
+{
+  "auditStatus": "COMPLETE",
+  "billingSeparationNote": "HCPCS/NDC billing mappings are suggestions; not clinical identity",
+  "catalogClassification": "CURATED",
+  "catalogComplete": false,
+  "confidence": "HIGH",
+  "dataSource": "database",
+  "formularyItemCount": 898,
+  "generatedAt": "2026-07-17T19:13:46.645Z",
+  "hcpcsBillingProfileCount": 95,
+  "hcpcsCatalogCount": 92,
+  "inventoryItemCount": 15,
+  "maturityScores": {
+    "formulary": 3,
+    "hcpcsBilling": 2,
+    "inventory": 3
+  },
+  "ndcCatalogCount": 84,
+  "ndcPackageCount": 544
+}

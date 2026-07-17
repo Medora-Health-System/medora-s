@@ -1,0 +1,211 @@
+{
+  "auditStatus": "COMPLETE",
+  "catalogClassification": "CURATED",
+  "catalogComplete": false,
+  "confidence": "HIGH",
+  "currentPhase": 1,
+  "dataSource": "database",
+  "generatedAt": "2026-07-17T19:13:46.646Z",
+  "milestones": [
+    {
+      "deliverables": [
+        "Architecture inventory JSON",
+        "Catalog metrics JSON",
+        "Maturity score JSON"
+      ],
+      "id": "A",
+      "phases": [
+        1
+      ],
+      "title": "Foundation visibility"
+    },
+    {
+      "deliverables": [
+        "RxNorm readiness JSON green",
+        "Identifier coverage JSON",
+        "Legacy linkage backfill"
+      ],
+      "id": "B",
+      "phases": [
+        2,
+        3
+      ],
+      "title": "Canonical identity"
+    },
+    {
+      "deliverables": [
+        "Localization audit improvements",
+        "Strength/form/route normalization",
+        "Alias expansion"
+      ],
+      "id": "C",
+      "phases": [
+        4
+      ],
+      "title": "Catalog quality"
+    },
+    {
+      "deliverables": [
+        "Search audit probes at scale",
+        "Ranking/uniqueness certification"
+      ],
+      "id": "D",
+      "phases": [
+        5
+      ],
+      "title": "Search excellence"
+    },
+    {
+      "deliverables": [
+        "Ordering audit maturity ≥ 4",
+        "Canonical order-sentence integration"
+      ],
+      "id": "E",
+      "phases": [
+        6
+      ],
+      "title": "Clinical ordering"
+    },
+    {
+      "deliverables": [
+        "Prescription audit entity present",
+        "Medication reconciliation workflow"
+      ],
+      "id": "F",
+      "phases": [
+        7,
+        8
+      ],
+      "title": "Prescribing & reconciliation"
+    },
+    {
+      "deliverables": [
+        "Safety engine audit maturity uplift",
+        "Formulary/inventory/billing hardening",
+        "Enterprise certification gate"
+      ],
+      "id": "G",
+      "phases": [
+        9,
+        10,
+        11
+      ],
+      "title": "Safety, operations, certification"
+    }
+  ],
+  "nextRecommendedPhase": 2,
+  "phaseCount": 11,
+  "phases": [
+    {
+      "exitCriteria": [
+        "20 audit JSON artifacts generated",
+        "Live DB metrics captured or seed fallback documented",
+        "Maturity score and foundation repair decision recorded"
+      ],
+      "name": "Architecture audit",
+      "objective": "Read-only medication engine inventory, metrics, maturity, and JSON artifacts",
+      "phase": 1,
+      "status": "DONE"
+    },
+    {
+      "exitCriteria": [
+        "rxNormConceptId populated for core concepts",
+        "Dual-identity linkage audit passes"
+      ],
+      "name": "Canonical identity + RxNorm foundation",
+      "objective": "Establish RxNorm-backed MedicationConcept identity and legacy linkage rules",
+      "phase": 2,
+      "status": "PLANNED"
+    },
+    {
+      "exitCriteria": [
+        "Import pipeline idempotent",
+        "No silent promotion from staging"
+      ],
+      "name": "Official medication concept import (RxNorm SCD/SBD core)",
+      "objective": "Import licensed RxNorm SCD/SBD subset aligned to Haiti/enterprise formulary",
+      "phase": 3,
+      "status": "PLANNED"
+    },
+    {
+      "exitCriteria": [
+        "Duplicate strength/form signatures reduced",
+        "EN/FR alias parity validated"
+      ],
+      "name": "Strength/form/route normalization + EN/FR aliases",
+      "objective": "Normalize concentration, route, dosage form, and bilingual search aliases",
+      "phase": 4,
+      "status": "PLANNED"
+    },
+    {
+      "exitCriteria": [
+        "Probe suite green at target scale",
+        "No duplicate top-hit codes"
+      ],
+      "name": "Enterprise search ranking at scale",
+      "objective": "Prove search latency and ranking quality at 10k–100k catalog scale",
+      "phase": 5,
+      "status": "PLANNED"
+    },
+    {
+      "exitCriteria": [
+        "Order search gated on canonical linkage",
+        "Legacy catalog codes preserved for FK stability"
+      ],
+      "name": "Order-sentence / ordering integration with canonical IDs",
+      "objective": "OrderItem uses canonical product/package IDs consistently in provider workflows",
+      "phase": 6,
+      "status": "PLANNED"
+    },
+    {
+      "exitCriteria": [
+        "Prescription schema + API",
+        "Discharge Rx printable artifact"
+      ],
+      "name": "Prescription entity + discharge Rx",
+      "objective": "Structured Prescription model and discharge medication workflow",
+      "phase": 7,
+      "status": "PLANNED"
+    },
+    {
+      "exitCriteria": [
+        "MedicationReconciliation entity",
+        "Encounter-scoped med list compare UI"
+      ],
+      "name": "Medication reconciliation",
+      "objective": "Admission/discharge/transfer med-rec with provenance",
+      "phase": 8,
+      "status": "PLANNED"
+    },
+    {
+      "exitCriteria": [
+        "Interaction engine beyond JSON group ids",
+        "Allergy class mapping beyond free text"
+      ],
+      "name": "Safety knowledge (allergy class + interactions — licensed source)",
+      "objective": "Licensed allergy class and drug-drug interaction knowledge integration",
+      "phase": 9,
+      "status": "PLANNED"
+    },
+    {
+      "exitCriteria": [
+        "Package NDC coverage target met",
+        "HCPCS billing separated from clinical identity"
+      ],
+      "name": "MAR/inventory/billing hardening + HCPCS/NDC package linkage",
+      "objective": "Harden MAR, inventory, and billing with package-level NDC/HCPCS linkage",
+      "phase": 10,
+      "status": "PLANNED"
+    },
+    {
+      "exitCriteria": [
+        "Certification probe matrix green",
+        "Production deployment readiness ≥ 4/5"
+      ],
+      "name": "Enterprise certification",
+      "objective": "Full medication intelligence certification gate before national-scale rollout",
+      "phase": 11,
+      "status": "FUTURE"
+    }
+  ]
+}

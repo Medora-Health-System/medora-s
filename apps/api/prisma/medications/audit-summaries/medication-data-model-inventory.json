@@ -1,0 +1,154 @@
+{
+  "auditStatus": "COMPLETE",
+  "catalogClassification": "CURATED",
+  "catalogComplete": false,
+  "concentrationModelPresent": true,
+  "confidence": "HIGH",
+  "dataSource": "database",
+  "generatedAt": "2026-07-17T19:13:46.641Z",
+  "medicationReconciliationModelPresent": false,
+  "models": [
+    {
+      "model": "CatalogMedication",
+      "presentInSchema": true
+    },
+    {
+      "model": "MedicationAlias",
+      "presentInSchema": true
+    },
+    {
+      "model": "MedicationConcept",
+      "presentInSchema": true
+    },
+    {
+      "model": "MedicationProduct",
+      "presentInSchema": true
+    },
+    {
+      "model": "MedicationPackage",
+      "presentInSchema": true
+    },
+    {
+      "model": "MedicationConcentration",
+      "presentInSchema": true
+    },
+    {
+      "model": "MedicationSearchAlias",
+      "presentInSchema": true
+    },
+    {
+      "model": "MedicationSafetyProfile",
+      "presentInSchema": true
+    },
+    {
+      "model": "MedicationAdministrationProfile",
+      "presentInSchema": true
+    },
+    {
+      "model": "MedicationBillingProfile",
+      "presentInSchema": true
+    },
+    {
+      "model": "FacilityFormularyItem",
+      "presentInSchema": true
+    },
+    {
+      "model": "MedicationAdministration",
+      "presentInSchema": true
+    },
+    {
+      "model": "MedicationAdministrationVerification",
+      "presentInSchema": true
+    },
+    {
+      "model": "MedicationAdministrationOverride",
+      "presentInSchema": true
+    },
+    {
+      "model": "MedicationAdministrationCorrection",
+      "presentInSchema": true
+    },
+    {
+      "model": "MedicationFormularyImportStaging",
+      "presentInSchema": true
+    },
+    {
+      "model": "MedicationOrderSetLink",
+      "presentInSchema": true
+    },
+    {
+      "model": "InventoryItem",
+      "presentInSchema": true
+    },
+    {
+      "model": "MedicationDispense",
+      "presentInSchema": true
+    },
+    {
+      "model": "PharmacyVerification",
+      "presentInSchema": true
+    },
+    {
+      "model": "MedicationWasteDocumentation",
+      "presentInSchema": true
+    },
+    {
+      "model": "InfusionProfile",
+      "presentInSchema": true
+    },
+    {
+      "model": "InfusionSession",
+      "presentInSchema": true
+    },
+    {
+      "model": "BillingCatalog",
+      "presentInSchema": true
+    },
+    {
+      "model": "Order",
+      "presentInSchema": true
+    },
+    {
+      "model": "OrderItem",
+      "presentInSchema": true
+    }
+  ],
+  "prescriptionModelPresent": false,
+  "relationships": [
+    {
+      "cardinality": "0..1:1",
+      "from": "CatalogMedication",
+      "linkedCount": 236,
+      "to": "MedicationProduct",
+      "via": "legacyCatalogMedicationId"
+    },
+    {
+      "cardinality": "1:N",
+      "from": "MedicationConcept",
+      "linkedCount": 1428,
+      "to": "MedicationProduct",
+      "via": "conceptId"
+    },
+    {
+      "cardinality": "1:N",
+      "from": "MedicationProduct",
+      "linkedCount": 1428,
+      "to": "MedicationPackage",
+      "via": "productId"
+    },
+    {
+      "cardinality": "1:N",
+      "from": "MedicationPackage",
+      "linkedCount": 898,
+      "to": "FacilityFormularyItem",
+      "via": "packageId"
+    },
+    {
+      "cardinality": "optional FK",
+      "from": "OrderItem",
+      "linkedCount": 3942,
+      "to": "MedicationProduct/MedicationPackage",
+      "via": "medicationProductId/medicationPackageId"
+    }
+  ]
+}

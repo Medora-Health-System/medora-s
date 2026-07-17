@@ -1,0 +1,59 @@
+{
+  "auditStatus": "COMPLETE",
+  "catalogClassification": "CURATED",
+  "catalogComplete": false,
+  "confidence": "HIGH",
+  "dataSource": "database",
+  "generatedAt": "2026-07-17T19:13:46.646Z",
+  "phiPolicy": "Audit artifacts contain aggregate counts and catalog codes only — no PHI",
+  "recommendations": [
+    "Execute RxNorm license review before Phase 3 import",
+    "Keep billing codes (HCPCS/NDC) separate from clinical search identity",
+    "Do not treat DEV-SAMPLE or MST_ fixture codes as production catalog rows",
+    "Use MedicationFormularyImportStaging for all bulk catalog updates"
+  ],
+  "sources": [
+    {
+      "license": "Medora internal curated catalog",
+      "path": "apps/api/prisma/data/haiti-medications.ts",
+      "phi": false,
+      "productionUse": "Permitted for Haiti clinic MVP pilot",
+      "source": "Haiti curated formulary seed"
+    },
+    {
+      "license": "Medora internal curated catalog",
+      "path": "packages/shared/src/medication/*FormularyManifest.ts",
+      "phi": false,
+      "productionUse": "Staged activation only; not bulk auto-enable",
+      "source": "Enterprise formulary manifests"
+    },
+    {
+      "license": "NLM RxNorm — license required before production import",
+      "path": "Not imported",
+      "phi": false,
+      "productionUse": "NOT READY — rxNormConceptId unpopulated",
+      "source": "RxNorm"
+    },
+    {
+      "license": "FDA NDC — verify terms before production bulk import",
+      "path": "Partial CSV loader (development)",
+      "phi": false,
+      "productionUse": "Partial; package linkage incomplete",
+      "source": "NDC Directory"
+    },
+    {
+      "license": "CMS HCPCS — billing reference only",
+      "path": "BillingCatalog + MedicationBillingProfile",
+      "phi": false,
+      "productionUse": "Billing suggestions; not clinical identity",
+      "source": "HCPCS billing mappings"
+    },
+    {
+      "license": "No licensed interaction vendor integrated",
+      "path": "MedicationSafetyProfile.interactionGroupIds JSON",
+      "phi": false,
+      "productionUse": "NOT READY for automated interaction checking",
+      "source": "Drug interaction knowledge"
+    }
+  ]
+}
