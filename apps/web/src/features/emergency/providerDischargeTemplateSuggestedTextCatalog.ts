@@ -7819,3 +7819,697 @@ export const POISON_CONTROL_FOLLOWUP_V1_SUGGESTED_TEXT: ProviderDischargeTemplat
         "Retournez immédiatement pour tout symptôme qui s'aggrave selon votre plan de soins, ou si de nouveaux symptômes préoccupants apparaissent.",
     }
   );
+
+/** Phase 17 — OB/GYN / urology discharge suggested text (Commit 2). */
+const OBGYN_URO_ROUTINE_MED_EN = OBGYN_MED_EN;
+const OBGYN_URO_ROUTINE_MED_FR = OBGYN_MED_FR;
+const OBGYN_URO_HIGH_RISK_MED_EN = OBGYN_MED_EN;
+const OBGYN_URO_HIGH_RISK_MED_FR = OBGYN_MED_FR;
+
+export const EARLY_PREGNANCY_BLEEDING_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description: "You were evaluated for early pregnancy bleeding. This guidance supports monitoring only and does not replace clinician judgment. Ectopic pregnancy, ovarian torsion, testicular torsion, and other high-risk conditions are not excluded by this visit alone.",
+      diagnosisInstructions: "Monitor bleeding, pain, and dizziness. Arrange OB/GYN follow-up as directed. Return precautions were reviewed.",
+      medicationTreatment: OBGYN_URO_HIGH_RISK_MED_EN,
+      returnPrecautions: "Return immediately for heavy bleeding, severe pain, shoulder pain, dizziness, fainting, or fever.",
+    },
+    {
+      description: "Vous avez été pris en charge pour saignement en début de grossesse. Ces conseils servent à la surveillance uniquement et ne remplacent pas le jugement du clinicien. Une grossesse ectopique, une torsion ovarienne, une torsion testiculaire et d'autres états à haut risque ne sont pas exclus par cette seule visite.",
+      diagnosisInstructions: "Surveillez les saignements, la douleur et les étourdissements. Organisez un suivi OB/GYN selon les directives. Les consignes de retour ont été revues.",
+      medicationTreatment: OBGYN_URO_HIGH_RISK_MED_FR,
+      returnPrecautions: "Retournez immédiatement en cas de saignement abondant, de douleur intense, de douleur à l'épaule, d'étourdissements, d'évanouissement ou de fièvre.",
+    }
+  );
+
+export const PREGNANCY_UNKNOWN_LOCATION_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description: "You were evaluated for pregnancy of unknown location. This guidance supports monitoring only and does not replace clinician judgment. Ectopic pregnancy, ovarian torsion, testicular torsion, and other high-risk conditions are not excluded by this visit alone.",
+      diagnosisInstructions: "Keep all scheduled follow-up for serial beta-hCG and ultrasound as directed. Do not assume a benign intrauterine pregnancy without planned reassessment. Return precautions were reviewed.",
+      medicationTreatment: OBGYN_URO_HIGH_RISK_MED_EN,
+      returnPrecautions: "Return immediately for severe pain, heavy bleeding, dizziness, fainting, or shoulder pain.",
+    },
+    {
+      description: "Vous avez été pris en charge pour grossesse de localisation inconnue. Ces conseils servent à la surveillance uniquement et ne remplacent pas le jugement du clinicien. Une grossesse ectopique, une torsion ovarienne, une torsion testiculaire et d'autres états à haut risque ne sont pas exclus par cette seule visite.",
+      diagnosisInstructions: "Respectez tout suivi prévu pour beta-hCG sériques et échographie selon les directives. Ne présumez pas une grossesse intra-utérine bénigne sans réévaluation planifiée. Les consignes de retour ont été revues.",
+      medicationTreatment: OBGYN_URO_HIGH_RISK_MED_FR,
+      returnPrecautions: "Retournez immédiatement en cas de douleur intense, de saignement abondant, d'étourdissements, d'évanouissement ou de douleur à l'épaule.",
+    }
+  );
+
+export const THREATENED_ABORTION_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description: "You were evaluated for bleeding or cramping during early pregnancy consistent with threatened abortion. This guidance supports monitoring only and does not replace clinician judgment. Ectopic pregnancy, ovarian torsion, testicular torsion, and other high-risk conditions are not excluded by this visit alone.",
+      diagnosisInstructions: "Rest and pelvic rest only as directed. Monitor bleeding and pain. Keep OB/GYN follow-up. Return precautions were reviewed.",
+      medicationTreatment: OBGYN_URO_HIGH_RISK_MED_EN,
+      returnPrecautions: "Return immediately for heavy bleeding, worsening pain, dizziness, fainting, or fever.",
+    },
+    {
+      description: "Vous avez été pris en charge pour saignement ou crampes en début de grossesse compatibles avec une menace d'avortement. Ces conseils servent à la surveillance uniquement et ne remplacent pas le jugement du clinicien. Une grossesse ectopique, une torsion ovarienne, une torsion testiculaire et d'autres états à haut risque ne sont pas exclus par cette seule visite.",
+      diagnosisInstructions: "Repos et repos pelvien uniquement selon les directives. Surveillez saignements et douleur. Respectez le suivi OB/GYN. Les consignes de retour ont été revues.",
+      medicationTreatment: OBGYN_URO_HIGH_RISK_MED_FR,
+      returnPrecautions: "Retournez immédiatement en cas de saignement abondant, d'aggravation de la douleur, d'étourdissements, d'évanouissement ou de fièvre.",
+    }
+  );
+
+export const EARLY_PREGNANCY_LOSS_POST_ACUTE_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description: "You were evaluated for early pregnancy loss after acute evaluation. This guidance supports monitoring only and does not replace clinician judgment. Ectopic pregnancy, ovarian torsion, testicular torsion, and other high-risk conditions are not excluded by this visit alone.",
+      diagnosisInstructions: "Follow bleeding precautions and activity restrictions as directed. Arrange grief or behavioral-health support if offered. Return precautions were reviewed.",
+      medicationTreatment: OBGYN_URO_HIGH_RISK_MED_EN,
+      returnPrecautions: "Return immediately for heavy bleeding, severe pain, fever, fainting, or soaking more than one pad per hour.",
+    },
+    {
+      description: "Vous avez été pris en charge pour perte de grossesse précoce après évaluation aiguë. Ces conseils servent à la surveillance uniquement et ne remplacent pas le jugement du clinicien. Une grossesse ectopique, une torsion ovarienne, une torsion testiculaire et d'autres états à haut risque ne sont pas exclus par cette seule visite.",
+      diagnosisInstructions: "Suivez les consignes de saignement et d'activité selon les directives. Acceptez un soutien en deuil ou en santé comportementale si proposé. Les consignes de retour ont été revues.",
+      medicationTreatment: OBGYN_URO_HIGH_RISK_MED_FR,
+      returnPrecautions: "Retournez immédiatement en cas de saignement abondant, de douleur intense, de fièvre, d'évanouissement ou si vous imbibez plus d'une serviette par heure.",
+    }
+  );
+
+export const ECTOPIC_PREGNANCY_POST_ACUTE_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description: "You were evaluated for ectopic pregnancy after acute management as directed. This guidance supports monitoring only and does not replace clinician judgment. Ectopic pregnancy, ovarian torsion, testicular torsion, and other high-risk conditions are not excluded by this visit alone.",
+      diagnosisInstructions: "Keep all medication and follow-up plans exactly as directed. Arrange reliable support and transportation for return visits. Return precautions were reviewed.",
+      medicationTreatment: OBGYN_URO_HIGH_RISK_MED_EN,
+      returnPrecautions: "Return immediately for severe abdominal or pelvic pain, heavy bleeding, dizziness, fainting, or shoulder pain.",
+    },
+    {
+      description: "Vous avez été pris en charge pour grossesse ectopique après prise en charge aiguë selon les directives. Ces conseils servent à la surveillance uniquement et ne remplacent pas le jugement du clinicien. Une grossesse ectopique, une torsion ovarienne, une torsion testiculaire et d'autres états à haut risque ne sont pas exclus par cette seule visite.",
+      diagnosisInstructions: "Respectez exactement le plan médicamenteux et de suivi. Organisez un accompagnement fiable pour les visites de contrôle. Les consignes de retour ont été revues.",
+      medicationTreatment: OBGYN_URO_HIGH_RISK_MED_FR,
+      returnPrecautions: "Retournez immédiatement en cas de douleur abdominale ou pelvienne intense, de saignement abondant, d'étourdissements, d'évanouissement ou de douleur à l'épaule.",
+    }
+  );
+
+export const HYPEREMESIS_GRAVIDARUM_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description: "You were evaluated for hyperemesis gravidarum with nausea and vomiting during pregnancy. This guidance supports monitoring only and does not replace clinician judgment. Ectopic pregnancy, ovarian torsion, testicular torsion, and other high-risk conditions are not excluded by this visit alone.",
+      diagnosisInstructions: "Take antiemetics only as directed. Sip fluids frequently. Keep OB/GYN follow-up for weight and hydration monitoring. Return precautions were reviewed.",
+      medicationTreatment: OBGYN_URO_HIGH_RISK_MED_EN,
+      returnPrecautions: "Return immediately for inability to keep fluids down, dizziness, fainting, blood in vomit, or decreased urination.",
+    },
+    {
+      description: "Vous avez été pris en charge pour hyperémèse gravidique avec nausées et vomissements pendant la grossesse. Ces conseils servent à la surveillance uniquement et ne remplacent pas le jugement du clinicien. Une grossesse ectopique, une torsion ovarienne, une torsion testiculaire et d'autres états à haut risque ne sont pas exclus par cette seule visite.",
+      diagnosisInstructions: "Prenez les antiémétiques uniquement selon les directives. Buvez par petites gorgées fréquemment. Respectez le suivi OB/GYN pour l'hydratation. Les consignes de retour ont été revues.",
+      medicationTreatment: OBGYN_URO_HIGH_RISK_MED_FR,
+      returnPrecautions: "Retournez immédiatement si vous ne pouvez pas garder les liquides, en cas d'étourdissements, d'évanouissement, de sang dans les vomissements ou de diminution des urines.",
+    }
+  );
+
+export const PREGNANCY_ABDOMINAL_PAIN_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description: "You were evaluated for pregnancy abdominal pain with abdominal or pelvic pain during pregnancy. This guidance supports monitoring only and does not replace clinician judgment. Ectopic pregnancy, ovarian torsion, testicular torsion, and other high-risk conditions are not excluded by this visit alone.",
+      diagnosisInstructions: "Monitor pain, bleeding, and fetal movement as directed. Keep scheduled OB/GYN follow-up. Return precautions were reviewed.",
+      medicationTreatment: OBGYN_URO_HIGH_RISK_MED_EN,
+      returnPrecautions: "Return immediately for severe or worsening pain, heavy bleeding, fever, fainting, or decreased fetal movement when applicable.",
+    },
+    {
+      description: "Vous avez été pris en charge pour douleur abdominale grossesse avec douleur abdominale ou pelvienne pendant la grossesse. Ces conseils servent à la surveillance uniquement et ne remplacent pas le jugement du clinicien. Une grossesse ectopique, une torsion ovarienne, une torsion testiculaire et d'autres états à haut risque ne sont pas exclus par cette seule visite.",
+      diagnosisInstructions: "Surveillez la douleur, les saignements et les mouvements fœtaux selon les directives. Respectez le suivi OB/GYN prévu. Les consignes de retour ont été revues.",
+      medicationTreatment: OBGYN_URO_HIGH_RISK_MED_FR,
+      returnPrecautions: "Retournez immédiatement en cas de douleur sévère ou aggravée, de saignement abondant, de fièvre, d'évanouissement ou de diminution des mouvements fœtaux le cas échéant.",
+    }
+  );
+
+export const LATE_PREGNANCY_BLEEDING_POST_ACUTE_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description: "You were evaluated for late pregnancy bleeding after acute evaluation. This guidance supports monitoring only and does not replace clinician judgment. Ectopic pregnancy, ovarian torsion, testicular torsion, and other high-risk conditions are not excluded by this visit alone.",
+      diagnosisInstructions: "Pelvic rest and activity limits only as directed. Do not ignore recurrent bleeding. Return precautions were reviewed.",
+      medicationTreatment: OBGYN_URO_HIGH_RISK_MED_EN,
+      returnPrecautions: "Return immediately for heavy bleeding, contractions, decreased fetal movement, severe pain, or fainting.",
+    },
+    {
+      description: "Vous avez été pris en charge pour saignement en fin de grossesse après évaluation aiguë. Ces conseils servent à la surveillance uniquement et ne remplacent pas le jugement du clinicien. Une grossesse ectopique, une torsion ovarienne, une torsion testiculaire et d'autres états à haut risque ne sont pas exclus par cette seule visite.",
+      diagnosisInstructions: "Repos pelvien et limites d'activité uniquement selon les directives. N'ignorez pas un saignement récurrent. Les consignes de retour ont été revues.",
+      medicationTreatment: OBGYN_URO_HIGH_RISK_MED_FR,
+      returnPrecautions: "Retournez immédiatement en cas de saignement abondant, de contractions, de diminution des mouvements fœtaux, de douleur intense ou d'évanouissement.",
+    }
+  );
+
+export const FALSE_LABOR_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description: "You were evaluated for contractions evaluated as false labor or preterm uterine activity without established labor. This guidance supports monitoring only and does not replace clinician judgment. Ectopic pregnancy, ovarian torsion, testicular torsion, and other high-risk conditions are not excluded by this visit alone.",
+      diagnosisInstructions: "Hydrate and rest as directed. Track contraction pattern and fetal movement if applicable. Return precautions were reviewed.",
+      medicationTreatment: OBGYN_URO_ROUTINE_MED_EN,
+      returnPrecautions: "Return for regular painful contractions, rupture of membranes, heavy bleeding, or decreased fetal movement.",
+    },
+    {
+      description: "Vous avez été pris en charge pour contractions évaluées comme fausse couche de travail ou activité utérine prématurée sans travail établi. Ces conseils servent à la surveillance uniquement et ne remplacent pas le jugement du clinicien. Une grossesse ectopique, une torsion ovarienne, une torsion testiculaire et d'autres états à haut risque ne sont pas exclus par cette seule visite.",
+      diagnosisInstructions: "Hydratez-vous et reposez-vous selon les directives. Notez le rythme des contractions et les mouvements fœtaux le cas échéant. Les consignes de retour ont été revues.",
+      medicationTreatment: OBGYN_URO_ROUTINE_MED_FR,
+      returnPrecautions: "Retournez en cas de contractions régulières douloureuses, de rupture des membranes, de saignement abondant ou de diminution des mouvements fœtaux.",
+    }
+  );
+
+export const PRETERM_LABOR_POST_ACUTE_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description: "You were evaluated for preterm labor concerns after acute evaluation and treatment as directed. This guidance supports monitoring only and does not replace clinician judgment. Ectopic pregnancy, ovarian torsion, testicular torsion, and other high-risk conditions are not excluded by this visit alone.",
+      diagnosisInstructions: "Take tocolytic or steroid medications only as prescribed. Keep all OB follow-up and monitoring appointments. Return precautions were reviewed.",
+      medicationTreatment: OBGYN_URO_HIGH_RISK_MED_EN,
+      returnPrecautions: "Return immediately for regular contractions, rupture of membranes, bleeding, decreased fetal movement, or fever.",
+    },
+    {
+      description: "Vous avez été pris en charge pour travail prématuré après évaluation aiguë et traitement selon les directives. Ces conseils servent à la surveillance uniquement et ne remplacent pas le jugement du clinicien. Une grossesse ectopique, une torsion ovarienne, une torsion testiculaire et d'autres états à haut risque ne sont pas exclus par cette seule visite.",
+      diagnosisInstructions: "Prenez les tocolytiques ou corticoïdes uniquement selon prescription. Respectez tous les rendez-vous de suivi obstétrical. Les consignes de retour ont été revues.",
+      medicationTreatment: OBGYN_URO_HIGH_RISK_MED_FR,
+      returnPrecautions: "Retournez immédiatement en cas de contractions régulières, de rupture des membranes, de saignement, de diminution des mouvements fœtaux ou de fièvre.",
+    }
+  );
+
+export const RUPTURE_OF_MEMBRANES_POST_ACUTE_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description: "You were evaluated for rupture of membranes after acute evaluation. This guidance supports monitoring only and does not replace clinician judgment. Ectopic pregnancy, ovarian torsion, testicular torsion, and other high-risk conditions are not excluded by this visit alone.",
+      diagnosisInstructions: "Avoid baths or tampons unless directed. Monitor fluid color, odor, fever, and fetal movement. Return precautions were reviewed.",
+      medicationTreatment: OBGYN_URO_HIGH_RISK_MED_EN,
+      returnPrecautions: "Return immediately for fever, foul-smelling fluid, heavy bleeding, decreased fetal movement, or contractions.",
+    },
+    {
+      description: "Vous avez été pris en charge pour rupture des membranes après évaluation aiguë. Ces conseils servent à la surveillance uniquement et ne remplacent pas le jugement du clinicien. Une grossesse ectopique, une torsion ovarienne, une torsion testiculaire et d'autres états à haut risque ne sont pas exclus par cette seule visite.",
+      diagnosisInstructions: "Évitez bains et tampons sauf indication. Surveillez la couleur et l'odeur des pertes, la fièvre et les mouvements fœtaux. Les consignes de retour ont été revues.",
+      medicationTreatment: OBGYN_URO_HIGH_RISK_MED_FR,
+      returnPrecautions: "Retournez immédiatement en cas de fièvre, de pertes malodorantes, de saignement abondant, de diminution des mouvements fœtaux ou de contractions.",
+    }
+  );
+
+export const HYPERTENSIVE_PREGNANCY_POST_ACUTE_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description: "You were evaluated for hypertensive pregnancy after acute management. This guidance supports monitoring only and does not replace clinician judgment. Ectopic pregnancy, ovarian torsion, testicular torsion, and other high-risk conditions are not excluded by this visit alone.",
+      diagnosisInstructions: "Take blood-pressure medications only as directed. Monitor blood pressure at home if advised. Keep all OB follow-up. Return precautions were reviewed.",
+      medicationTreatment: OBGYN_URO_HIGH_RISK_MED_EN,
+      returnPrecautions: "Return immediately for severe headache, vision changes, upper abdominal pain, shortness of breath, or very high blood pressure.",
+    },
+    {
+      description: "Vous avez été pris en charge pour hypertension grossesse après prise en charge aiguë. Ces conseils servent à la surveillance uniquement et ne remplacent pas le jugement du clinicien. Une grossesse ectopique, une torsion ovarienne, une torsion testiculaire et d'autres états à haut risque ne sont pas exclus par cette seule visite.",
+      diagnosisInstructions: "Prenez les antihypertenseurs uniquement selon les directives. Surveillez la tension à domicile si conseillé. Respectez le suivi OB/GYN. Les consignes de retour ont été revues.",
+      medicationTreatment: OBGYN_URO_HIGH_RISK_MED_FR,
+      returnPrecautions: "Retournez immédiatement en cas de céphalée sévère, de troubles visuels, de douleur épigastrique, de dyspnée ou de tension très élevée.",
+    }
+  );
+
+export const POSTPARTUM_BLEEDING_POST_ACUTE_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description: "You were evaluated for postpartum bleeding after acute evaluation. This guidance supports monitoring only and does not replace clinician judgment. Ectopic pregnancy, ovarian torsion, testicular torsion, and other high-risk conditions are not excluded by this visit alone.",
+      diagnosisInstructions: "Monitor pad counts and dizziness. Breastfeed or pump only as directed after bleeding assessment. Return precautions were reviewed.",
+      medicationTreatment: OBGYN_URO_HIGH_RISK_MED_EN,
+      returnPrecautions: "Return immediately for heavy bleeding, large clots, dizziness, fainting, or foul-smelling discharge with fever.",
+    },
+    {
+      description: "Vous avez été pris en charge pour saignement post-partum après évaluation aiguë. Ces conseils servent à la surveillance uniquement et ne remplacent pas le jugement du clinicien. Une grossesse ectopique, une torsion ovarienne, une torsion testiculaire et d'autres états à haut risque ne sont pas exclus par cette seule visite.",
+      diagnosisInstructions: "Surveillez le nombre de serviettes et les étourdissements. Allaitement ou tire-lait uniquement selon les directives après évaluation du saignement. Les consignes de retour ont été revues.",
+      medicationTreatment: OBGYN_URO_HIGH_RISK_MED_FR,
+      returnPrecautions: "Retournez immédiatement en cas de saignement abondant, de gros caillots, d'étourdissements, d'évanouissement ou de pertes malodorantes avec fièvre.",
+    }
+  );
+
+export const POSTPARTUM_ENDOMETRITIS_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description: "You were evaluated for postpartum endometritis after acute treatment as directed. This guidance supports monitoring only and does not replace clinician judgment. Ectopic pregnancy, ovarian torsion, testicular torsion, and other high-risk conditions are not excluded by this visit alone.",
+      diagnosisInstructions: "Complete antibiotics exactly as prescribed. Monitor fever, pain, and lochia. Return precautions were reviewed.",
+      medicationTreatment: OBGYN_URO_HIGH_RISK_MED_EN,
+      returnPrecautions: "Return immediately for high fever, worsening pain, heavy bleeding, or difficulty breathing.",
+    },
+    {
+      description: "Vous avez été pris en charge pour endométrite post-partum après traitement aigu selon les directives. Ces conseils servent à la surveillance uniquement et ne remplacent pas le jugement du clinicien. Une grossesse ectopique, une torsion ovarienne, une torsion testiculaire et d'autres états à haut risque ne sont pas exclus par cette seule visite.",
+      diagnosisInstructions: "Terminez les antibiotiques exactement selon prescription. Surveillez fièvre, douleur et lochies. Les consignes de retour ont été revues.",
+      medicationTreatment: OBGYN_URO_HIGH_RISK_MED_FR,
+      returnPrecautions: "Retournez immédiatement en cas de forte fièvre, d'aggravation de la douleur, de saignement abondant ou de difficulté à respirer.",
+    }
+  );
+
+export const POSTPARTUM_HYPERTENSION_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description: "You were evaluated for postpartum hypertension after acute evaluation. This guidance supports monitoring only and does not replace clinician judgment. Ectopic pregnancy, ovarian torsion, testicular torsion, and other high-risk conditions are not excluded by this visit alone.",
+      diagnosisInstructions: "Take blood-pressure medications only as directed. Monitor blood pressure at home if advised. Return precautions were reviewed.",
+      medicationTreatment: OBGYN_URO_HIGH_RISK_MED_EN,
+      returnPrecautions: "Return immediately for severe headache, vision changes, chest pain, shortness of breath, or very high blood pressure.",
+    },
+    {
+      description: "Vous avez été pris en charge pour hypertension post-partum après évaluation aiguë. Ces conseils servent à la surveillance uniquement et ne remplacent pas le jugement du clinicien. Une grossesse ectopique, une torsion ovarienne, une torsion testiculaire et d'autres états à haut risque ne sont pas exclus par cette seule visite.",
+      diagnosisInstructions: "Prenez les antihypertenseurs uniquement selon les directives. Surveillez la tension à domicile si conseillé. Les consignes de retour ont été revues.",
+      medicationTreatment: OBGYN_URO_HIGH_RISK_MED_FR,
+      returnPrecautions: "Retournez immédiatement en cas de céphalée sévère, de troubles visuels, de douleur thoracique, de dyspnée ou de tension très élevée.",
+    }
+  );
+
+export const ACUTE_PELVIC_PAIN_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description: "You were evaluated for acute pelvic pain. This guidance supports monitoring only and does not replace clinician judgment. Ectopic pregnancy, ovarian torsion, testicular torsion, and other high-risk conditions are not excluded by this visit alone.",
+      diagnosisInstructions: "Monitor pain, fever, and bleeding. Keep gynecology follow-up as arranged. Return precautions were reviewed.",
+      medicationTreatment: OBGYN_URO_HIGH_RISK_MED_EN,
+      returnPrecautions: "Return immediately for severe worsening pain, fever, fainting, heavy bleeding, or vomiting.",
+    },
+    {
+      description: "Vous avez été pris en charge pour douleur pelvienne aiguë. Ces conseils servent à la surveillance uniquement et ne remplacent pas le jugement du clinicien. Une grossesse ectopique, une torsion ovarienne, une torsion testiculaire et d'autres états à haut risque ne sont pas exclus par cette seule visite.",
+      diagnosisInstructions: "Surveillez douleur, fièvre et saignements. Respectez le suivi gynécologique organisé. Les consignes de retour ont été revues.",
+      medicationTreatment: OBGYN_URO_HIGH_RISK_MED_FR,
+      returnPrecautions: "Retournez immédiatement en cas d'aggravation intense de la douleur, de fièvre, d'évanouissement, de saignement abondant ou de vomissements.",
+    }
+  );
+
+export const OVARIAN_CYST_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description: "You were evaluated for ovarian cyst after evaluation. This guidance supports monitoring only and does not replace clinician judgment. Ectopic pregnancy, ovarian torsion, testicular torsion, and other high-risk conditions are not excluded by this visit alone.",
+      diagnosisInstructions: "Use pain control only as directed. Keep outpatient gynecology follow-up for repeat imaging if advised. Return precautions were reviewed.",
+      medicationTreatment: OBGYN_URO_ROUTINE_MED_EN,
+      returnPrecautions: "Return immediately for sudden severe pelvic pain, fever, vomiting, or fainting.",
+    },
+    {
+      description: "Vous avez été pris en charge pour kyste ovarien après évaluation. Ces conseils servent à la surveillance uniquement et ne remplacent pas le jugement du clinicien. Une grossesse ectopique, une torsion ovarienne, une torsion testiculaire et d'autres états à haut risque ne sont pas exclus par cette seule visite.",
+      diagnosisInstructions: "Prenez les antalgiques uniquement selon les directives. Respectez le suivi gynécologique pour imagerie de contrôle si conseillé. Les consignes de retour ont été revues.",
+      medicationTreatment: OBGYN_URO_ROUTINE_MED_FR,
+      returnPrecautions: "Retournez immédiatement en cas de douleur pelvienne soudaine intense, de fièvre, de vomissements ou d'évanouissement.",
+    }
+  );
+
+export const OVARIAN_TORSION_POST_ACUTE_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description: "You were evaluated for ovarian torsion after acute evaluation or intervention as directed. This guidance supports monitoring only and does not replace clinician judgment. Ectopic pregnancy, ovarian torsion, testicular torsion, and other high-risk conditions are not excluded by this visit alone.",
+      diagnosisInstructions: "Activity restrictions only as directed. Keep surgical or gynecology follow-up. Return precautions were reviewed.",
+      medicationTreatment: OBGYN_URO_HIGH_RISK_MED_EN,
+      returnPrecautions: "Return immediately for sudden severe pelvic pain, fever, vomiting, or fainting.",
+    },
+    {
+      description: "Vous avez été pris en charge pour torsion ovarienne après évaluation aiguë ou intervention selon les directives. Ces conseils servent à la surveillance uniquement et ne remplacent pas le jugement du clinicien. Une grossesse ectopique, une torsion ovarienne, une torsion testiculaire et d'autres états à haut risque ne sont pas exclus par cette seule visite.",
+      diagnosisInstructions: "Restrictions d'activité uniquement selon les directives. Respectez le suivi chirurgical ou gynécologique. Les consignes de retour ont été revues.",
+      medicationTreatment: OBGYN_URO_HIGH_RISK_MED_FR,
+      returnPrecautions: "Retournez immédiatement en cas de douleur pelvienne soudaine intense, de fièvre, de vomissements ou d'évanouissement.",
+    }
+  );
+
+export const PELVIC_INFLAMMATORY_DISEASE_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description: "You were evaluated for pelvic inflammatory disease after acute treatment as directed. This guidance supports monitoring only and does not replace clinician judgment. Ectopic pregnancy, ovarian torsion, testicular torsion, and other high-risk conditions are not excluded by this visit alone.",
+      diagnosisInstructions: "Complete antibiotics exactly as prescribed. Avoid intercourse until cleared by a clinician. Return precautions were reviewed.",
+      medicationTreatment: OBGYN_URO_HIGH_RISK_MED_EN,
+      returnPrecautions: "Return immediately for high fever, worsening pain, vomiting, or fainting.",
+    },
+    {
+      description: "Vous avez été pris en charge pour maladie pelvienne inflammatoire après traitement aigu selon les directives. Ces conseils servent à la surveillance uniquement et ne remplacent pas le jugement du clinicien. Une grossesse ectopique, une torsion ovarienne, une torsion testiculaire et d'autres états à haut risque ne sont pas exclus par cette seule visite.",
+      diagnosisInstructions: "Terminez les antibiotiques exactement selon prescription. Évitez les rapports jusqu'à avis clinique. Les consignes de retour ont été revues.",
+      medicationTreatment: OBGYN_URO_HIGH_RISK_MED_FR,
+      returnPrecautions: "Retournez immédiatement en cas de forte fièvre, d'aggravation de la douleur, de vomissements ou d'évanouissement.",
+    }
+  );
+
+export const TUBO_OVARIAN_ABSCESS_POST_ACUTE_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description: "You were evaluated for tubo-ovarian abscess after acute management as directed. This guidance supports monitoring only and does not replace clinician judgment. Ectopic pregnancy, ovarian torsion, testicular torsion, and other high-risk conditions are not excluded by this visit alone.",
+      diagnosisInstructions: "Complete antibiotics and follow drainage or surgical plans exactly as directed. Return precautions were reviewed.",
+      medicationTreatment: OBGYN_URO_HIGH_RISK_MED_EN,
+      returnPrecautions: "Return immediately for high fever, worsening pain, vomiting, or fainting.",
+    },
+    {
+      description: "Vous avez été pris en charge pour abcès tubo-ovarien après prise en charge aiguë selon les directives. Ces conseils servent à la surveillance uniquement et ne remplacent pas le jugement du clinicien. Une grossesse ectopique, une torsion ovarienne, une torsion testiculaire et d'autres états à haut risque ne sont pas exclus par cette seule visite.",
+      diagnosisInstructions: "Terminez les antibiotiques et suivez le plan de drainage ou chirurgie exactement selon les directives. Les consignes de retour ont été revues.",
+      medicationTreatment: OBGYN_URO_HIGH_RISK_MED_FR,
+      returnPrecautions: "Retournez immédiatement en cas de forte fièvre, d'aggravation de la douleur, de vomissements ou d'évanouissement.",
+    }
+  );
+
+export const CERVICITIS_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description: "You were evaluated for cervicitis after evaluation. This guidance supports monitoring only and does not replace clinician judgment. Ectopic pregnancy, ovarian torsion, testicular torsion, and other high-risk conditions are not excluded by this visit alone.",
+      diagnosisInstructions: "Complete antibiotics only if prescribed. Avoid intercourse until cleared if advised. Return precautions were reviewed.",
+      medicationTreatment: OBGYN_URO_ROUTINE_MED_EN,
+      returnPrecautions: "Return for high fever, severe pelvic pain, or worsening symptoms.",
+    },
+    {
+      description: "Vous avez été pris en charge pour cervicite après évaluation. Ces conseils servent à la surveillance uniquement et ne remplacent pas le jugement du clinicien. Une grossesse ectopique, une torsion ovarienne, une torsion testiculaire et d'autres états à haut risque ne sont pas exclus par cette seule visite.",
+      diagnosisInstructions: "Terminez les antibiotiques uniquement s'ils sont prescrits. Évitez les rapports jusqu'à avis si conseillé. Les consignes de retour ont été revues.",
+      medicationTreatment: OBGYN_URO_ROUTINE_MED_FR,
+      returnPrecautions: "Retournez en cas de forte fièvre, de douleur pelvienne intense ou d'aggravation des signes.",
+    }
+  );
+
+export const VAGINITIS_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description: "You were evaluated for vaginitis or vulvovaginal irritation. This guidance supports monitoring only and does not replace clinician judgment. Ectopic pregnancy, ovarian torsion, testicular torsion, and other high-risk conditions are not excluded by this visit alone.",
+      diagnosisInstructions: "Use prescribed treatment only as directed. Avoid irritants and douching. Return precautions were reviewed.",
+      medicationTreatment: OBGYN_URO_ROUTINE_MED_EN,
+      returnPrecautions: "Return for fever, severe pelvic pain, or worsening symptoms.",
+    },
+    {
+      description: "Vous avez été pris en charge pour vaginite ou irritation vulvovaginale. Ces conseils servent à la surveillance uniquement et ne remplacent pas le jugement du clinicien. Une grossesse ectopique, une torsion ovarienne, une torsion testiculaire et d'autres états à haut risque ne sont pas exclus par cette seule visite.",
+      diagnosisInstructions: "Utilisez le traitement prescrit uniquement selon les directives. Évitez irritants et douches. Les consignes de retour ont été revues.",
+      medicationTreatment: OBGYN_URO_ROUTINE_MED_FR,
+      returnPrecautions: "Retournez en cas de fièvre, de douleur pelvienne intense ou d'aggravation des signes.",
+    }
+  );
+
+export const BARTHOLIN_CYST_ABSCESS_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description: "You were evaluated for Bartholin gland cyst or abscess after evaluation. This guidance supports monitoring only and does not replace clinician judgment. Ectopic pregnancy, ovarian torsion, testicular torsion, and other high-risk conditions are not excluded by this visit alone.",
+      diagnosisInstructions: "Sitz baths and wound care only as directed. Complete antibiotics if prescribed. Return precautions were reviewed.",
+      medicationTreatment: OBGYN_URO_ROUTINE_MED_EN,
+      returnPrecautions: "Return for high fever, spreading redness, worsening pain, or inability to sit or walk.",
+    },
+    {
+      description: "Vous avez été pris en charge pour kyste ou abcès de la glande de Bartholin après évaluation. Ces conseils servent à la surveillance uniquement et ne remplacent pas le jugement du clinicien. Une grossesse ectopique, une torsion ovarienne, une torsion testiculaire et d'autres états à haut risque ne sont pas exclus par cette seule visite.",
+      diagnosisInstructions: "Bains de siège et soins de plaie uniquement selon les directives. Terminez les antibiotiques si prescrits. Les consignes de retour ont été revues.",
+      medicationTreatment: OBGYN_URO_ROUTINE_MED_FR,
+      returnPrecautions: "Retournez en cas de forte fièvre, de rougeur extensée, d'aggravation de la douleur ou d'incapacité à s'asseoir ou marcher.",
+    }
+  );
+
+export const ABNORMAL_UTERINE_BLEEDING_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description: "You were evaluated for abnormal uterine bleeding. This guidance supports monitoring only and does not replace clinician judgment. Ectopic pregnancy, ovarian torsion, testicular torsion, and other high-risk conditions are not excluded by this visit alone.",
+      diagnosisInstructions: "Monitor bleeding amount and dizziness. Keep gynecology follow-up. Return precautions were reviewed.",
+      medicationTreatment: OBGYN_URO_ROUTINE_MED_EN,
+      returnPrecautions: "Return immediately for heavy bleeding, dizziness, fainting, or severe pain.",
+    },
+    {
+      description: "Vous avez été pris en charge pour saignements utérins anormaux. Ces conseils servent à la surveillance uniquement et ne remplacent pas le jugement du clinicien. Une grossesse ectopique, une torsion ovarienne, une torsion testiculaire et d'autres états à haut risque ne sont pas exclus par cette seule visite.",
+      diagnosisInstructions: "Surveillez l'abondance des saignements et les étourdissements. Respectez le suivi gynécologique. Les consignes de retour ont été revues.",
+      medicationTreatment: OBGYN_URO_ROUTINE_MED_FR,
+      returnPrecautions: "Retournez immédiatement en cas de saignement abondant, d'étourdissements, d'évanouissement ou de douleur intense.",
+    }
+  );
+
+export const POSTMENOPAUSAL_BLEEDING_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description: "You were evaluated for postmenopausal bleeding after evaluation. This guidance supports monitoring only and does not replace clinician judgment. Ectopic pregnancy, ovarian torsion, testicular torsion, and other high-risk conditions are not excluded by this visit alone.",
+      diagnosisInstructions: "Keep gynecology follow-up for evaluation as directed. Do not ignore recurrent bleeding. Return precautions were reviewed.",
+      medicationTreatment: OBGYN_URO_HIGH_RISK_MED_EN,
+      returnPrecautions: "Return immediately for heavy bleeding, dizziness, fainting, or severe pain.",
+    },
+    {
+      description: "Vous avez été pris en charge pour saignement postménopausique après évaluation. Ces conseils servent à la surveillance uniquement et ne remplacent pas le jugement du clinicien. Une grossesse ectopique, une torsion ovarienne, une torsion testiculaire et d'autres états à haut risque ne sont pas exclus par cette seule visite.",
+      diagnosisInstructions: "Respectez le suivi gynécologique pour évaluation selon les directives. N'ignorez pas un saignement récurrent. Les consignes de retour ont été revues.",
+      medicationTreatment: OBGYN_URO_HIGH_RISK_MED_FR,
+      returnPrecautions: "Retournez immédiatement en cas de saignement abondant, d'étourdissements, d'évanouissement ou de douleur intense.",
+    }
+  );
+
+export const VAGINAL_FOREIGN_BODY_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description: "You were evaluated for vaginal foreign body after evaluation or removal as documented. This guidance supports monitoring only and does not replace clinician judgment. Ectopic pregnancy, ovarian torsion, testicular torsion, and other high-risk conditions are not excluded by this visit alone.",
+      diagnosisInstructions: "Follow hygiene instructions only as directed. Complete antibiotics if prescribed. Return precautions were reviewed.",
+      medicationTreatment: OBGYN_URO_ROUTINE_MED_EN,
+      returnPrecautions: "Return for fever, foul discharge, severe pain, or bleeding.",
+    },
+    {
+      description: "Vous avez été pris en charge pour corps étranger vaginal après évaluation ou retrait tel que documenté. Ces conseils servent à la surveillance uniquement et ne remplacent pas le jugement du clinicien. Une grossesse ectopique, une torsion ovarienne, une torsion testiculaire et d'autres états à haut risque ne sont pas exclus par cette seule visite.",
+      diagnosisInstructions: "Suivez les consignes d'hygiène uniquement selon les directives. Terminez les antibiotiques si prescrits. Les consignes de retour ont été revues.",
+      medicationTreatment: OBGYN_URO_ROUTINE_MED_FR,
+      returnPrecautions: "Retournez en cas de fièvre, de pertes malodorantes, de douleur intense ou de saignement.",
+    }
+  );
+
+export const IUD_COMPLICATION_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description: "You were evaluated for IUD complication after evaluation. This guidance supports monitoring only and does not replace clinician judgment. Ectopic pregnancy, ovarian torsion, testicular torsion, and other high-risk conditions are not excluded by this visit alone.",
+      diagnosisInstructions: "Pelvic rest and activity limits only as directed. Keep gynecology follow-up. Return precautions were reviewed.",
+      medicationTreatment: OBGYN_URO_HIGH_RISK_MED_EN,
+      returnPrecautions: "Return immediately for severe pain, heavy bleeding, fever, or fainting.",
+    },
+    {
+      description: "Vous avez été pris en charge pour complication de DIU après évaluation. Ces conseils servent à la surveillance uniquement et ne remplacent pas le jugement du clinicien. Une grossesse ectopique, une torsion ovarienne, une torsion testiculaire et d'autres états à haut risque ne sont pas exclus par cette seule visite.",
+      diagnosisInstructions: "Repos pelvien et limites d'activité uniquement selon les directives. Respectez le suivi gynécologique. Les consignes de retour ont été revues.",
+      medicationTreatment: OBGYN_URO_HIGH_RISK_MED_FR,
+      returnPrecautions: "Retournez immédiatement en cas de douleur intense, de saignement abondant, de fièvre ou d'évanouissement.",
+    }
+  );
+
+export const UNCOMPLICATED_RENAL_COLIC_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description: "You were evaluated for uncomplicated renal colic with kidney stone pain without obstruction requiring admission. This guidance supports monitoring only and does not replace clinician judgment. Ectopic pregnancy, ovarian torsion, testicular torsion, and other high-risk conditions are not excluded by this visit alone.",
+      diagnosisInstructions: "Hydrate as directed. Strain urine if advised. Take pain medications only as prescribed. Return precautions were reviewed.",
+      medicationTreatment: OBGYN_URO_ROUTINE_MED_EN,
+      returnPrecautions: "Return immediately for fever, vomiting, inability to keep fluids, severe uncontrolled pain, or no urine output.",
+    },
+    {
+      description: "Vous avez été pris en charge pour colique néphrétique sans obstruction nécessitant une hospitalisation. Ces conseils servent à la surveillance uniquement et ne remplacent pas le jugement du clinicien. Une grossesse ectopique, une torsion ovarienne, une torsion testiculaire et d'autres états à haut risque ne sont pas exclus par cette seule visite.",
+      diagnosisInstructions: "Hydratez-vous selon les directives. Filtrez les urines si conseillé. Prenez les antalgiques uniquement selon prescription. Les consignes de retour ont été revues.",
+      medicationTreatment: OBGYN_URO_ROUTINE_MED_FR,
+      returnPrecautions: "Retournez immédiatement en cas de fièvre, de vomissements, d'incapacité à garder les liquides, de douleur incontrôlée ou d'anurie.",
+    }
+  );
+
+export const OBSTRUCTING_URETERAL_STONE_POST_ACUTE_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description: "You were evaluated for obstructing ureteral stone with obstructing stone after acute evaluation. This guidance supports monitoring only and does not replace clinician judgment. Ectopic pregnancy, ovarian torsion, testicular torsion, and other high-risk conditions are not excluded by this visit alone.",
+      diagnosisInstructions: "Hydrate as directed. Keep urology follow-up for definitive stone management. Return precautions were reviewed.",
+      medicationTreatment: OBGYN_URO_HIGH_RISK_MED_EN,
+      returnPrecautions: "Return immediately for fever, chills, vomiting, severe pain, or no urine output.",
+    },
+    {
+      description: "Vous avez été pris en charge pour calcul urétéral obstructif avec calcul obstructif après évaluation aiguë. Ces conseils servent à la surveillance uniquement et ne remplacent pas le jugement du clinicien. Une grossesse ectopique, une torsion ovarienne, une torsion testiculaire et d'autres états à haut risque ne sont pas exclus par cette seule visite.",
+      diagnosisInstructions: "Hydratez-vous selon les directives. Respectez le suivi urologique pour traitement définitif. Les consignes de retour ont été revues.",
+      medicationTreatment: OBGYN_URO_HIGH_RISK_MED_FR,
+      returnPrecautions: "Retournez immédiatement en cas de fièvre, de frissons, de vomissements, de douleur intense ou d'anurie.",
+    }
+  );
+
+export const CYSTITIS_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description: "You were evaluated for cystitis after evaluation. This guidance supports monitoring only and does not replace clinician judgment. Ectopic pregnancy, ovarian torsion, testicular torsion, and other high-risk conditions are not excluded by this visit alone.",
+      diagnosisInstructions: "Complete antibiotics exactly as prescribed. Hydrate well. Return precautions were reviewed.",
+      medicationTreatment: OBGYN_URO_ROUTINE_MED_EN,
+      returnPrecautions: "Return for fever, flank pain, vomiting, or worsening urinary symptoms.",
+    },
+    {
+      description: "Vous avez été pris en charge pour cystite après évaluation. Ces conseils servent à la surveillance uniquement et ne remplacent pas le jugement du clinicien. Une grossesse ectopique, une torsion ovarienne, une torsion testiculaire et d'autres états à haut risque ne sont pas exclus par cette seule visite.",
+      diagnosisInstructions: "Terminez les antibiotiques exactement selon prescription. Hydratez-vous bien. Les consignes de retour ont été revues.",
+      medicationTreatment: OBGYN_URO_ROUTINE_MED_FR,
+      returnPrecautions: "Retournez en cas de fièvre, de douleur lombaire, de vomissements ou d'aggravation des signes urinaires.",
+    }
+  );
+
+export const PYELONEPHRITIS_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description: "You were evaluated for pyelonephritis after acute treatment as directed. This guidance supports monitoring only and does not replace clinician judgment. Ectopic pregnancy, ovarian torsion, testicular torsion, and other high-risk conditions are not excluded by this visit alone.",
+      diagnosisInstructions: "Complete antibiotics exactly as prescribed. Hydrate and rest as directed. Return precautions were reviewed.",
+      medicationTreatment: OBGYN_URO_HIGH_RISK_MED_EN,
+      returnPrecautions: "Return immediately for high fever, persistent vomiting, severe flank pain, or confusion.",
+    },
+    {
+      description: "Vous avez été pris en charge pour pyélonéphrite après traitement aigu selon les directives. Ces conseils servent à la surveillance uniquement et ne remplacent pas le jugement du clinicien. Une grossesse ectopique, une torsion ovarienne, une torsion testiculaire et d'autres états à haut risque ne sont pas exclus par cette seule visite.",
+      diagnosisInstructions: "Terminez les antibiotiques exactement selon prescription. Hydratez-vous et reposez-vous selon les directives. Les consignes de retour ont été revues.",
+      medicationTreatment: OBGYN_URO_HIGH_RISK_MED_FR,
+      returnPrecautions: "Retournez immédiatement en cas de forte fièvre, de vomissements persistants, de douleur lombaire intense ou de confusion.",
+    }
+  );
+
+export const INFECTED_OBSTRUCTED_STONE_POST_ACUTE_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description: "You were evaluated for infected obstructed urinary stone after acute management. This guidance supports monitoring only and does not replace clinician judgment. Ectopic pregnancy, ovarian torsion, testicular torsion, and other high-risk conditions are not excluded by this visit alone.",
+      diagnosisInstructions: "Complete antibiotics and keep all urology follow-up for drainage or definitive care. Return precautions were reviewed.",
+      medicationTreatment: OBGYN_URO_HIGH_RISK_MED_EN,
+      returnPrecautions: "Return immediately for high fever, chills, confusion, severe pain, or no urine output.",
+    },
+    {
+      description: "Vous avez été pris en charge pour calcul urinaire infected obstructed après prise en charge aiguë. Ces conseils servent à la surveillance uniquement et ne remplacent pas le jugement du clinicien. Une grossesse ectopique, une torsion ovarienne, une torsion testiculaire et d'autres états à haut risque ne sont pas exclus par cette seule visite.",
+      diagnosisInstructions: "Terminez les antibiotiques et respectez tout suivi urologique pour drainage ou soins définitifs. Les consignes de retour ont été revues.",
+      medicationTreatment: OBGYN_URO_HIGH_RISK_MED_FR,
+      returnPrecautions: "Retournez immédiatement en cas de forte fièvre, de frissons, de confusion, de douleur intense ou d'anurie.",
+    }
+  );
+
+export const HEMATURIA_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description: "You were evaluated for hematuria after evaluation. This guidance supports monitoring only and does not replace clinician judgment. Ectopic pregnancy, ovarian torsion, testicular torsion, and other high-risk conditions are not excluded by this visit alone.",
+      diagnosisInstructions: "Hydrate as directed. Avoid strenuous activity until cleared. Keep urology follow-up if arranged. Return precautions were reviewed.",
+      medicationTreatment: OBGYN_URO_ROUTINE_MED_EN,
+      returnPrecautions: "Return immediately for inability to urinate, large clots, severe pain, fever, or dizziness.",
+    },
+    {
+      description: "Vous avez été pris en charge pour hématurie après évaluation. Ces conseils servent à la surveillance uniquement et ne remplacent pas le jugement du clinicien. Une grossesse ectopique, une torsion ovarienne, une torsion testiculaire et d'autres états à haut risque ne sont pas exclus par cette seule visite.",
+      diagnosisInstructions: "Hydratez-vous selon les directives. Évitez l'effort intense jusqu'à avis. Respectez le suivi urologique si organisé. Les consignes de retour ont été revues.",
+      medicationTreatment: OBGYN_URO_ROUTINE_MED_FR,
+      returnPrecautions: "Retournez immédiatement en cas d'incapacité à uriner, de gros caillots, de douleur intense, de fièvre ou d'étourdissements.",
+    }
+  );
+
+export const URINARY_RETENTION_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description: "You were evaluated for urinary retention after evaluation. This guidance supports monitoring only and does not replace clinician judgment. Ectopic pregnancy, ovarian torsion, testicular torsion, and other high-risk conditions are not excluded by this visit alone.",
+      diagnosisInstructions: "Follow catheter care instructions if a catheter remains. Keep urology follow-up. Return precautions were reviewed.",
+      medicationTreatment: OBGYN_URO_ROUTINE_MED_EN,
+      returnPrecautions: "Return immediately for inability to urinate, severe suprapubic pain, fever, or catheter problems.",
+    },
+    {
+      description: "Vous avez été pris en charge pour rétention urinaire après évaluation. Ces conseils servent à la surveillance uniquement et ne remplacent pas le jugement du clinicien. Une grossesse ectopique, une torsion ovarienne, une torsion testiculaire et d'autres états à haut risque ne sont pas exclus par cette seule visite.",
+      diagnosisInstructions: "Suivez les consignes de sonde si une sonde est en place. Respectez le suivi urologique. Les consignes de retour ont été revues.",
+      medicationTreatment: OBGYN_URO_ROUTINE_MED_FR,
+      returnPrecautions: "Retournez immédiatement en cas d'incapacité à uriner, de douleur sus-pubienne intense, de fièvre ou de problème de sonde.",
+    }
+  );
+
+export const URINARY_CATHETER_COMPLICATION_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description: "You were evaluated for urinary catheter complication after evaluation. This guidance supports monitoring only and does not replace clinician judgment. Ectopic pregnancy, ovarian torsion, testicular torsion, and other high-risk conditions are not excluded by this visit alone.",
+      diagnosisInstructions: "Follow catheter care and hygiene instructions exactly as directed. Return precautions were reviewed.",
+      medicationTreatment: OBGYN_URO_ROUTINE_MED_EN,
+      returnPrecautions: "Return for fever, inability to drain urine, severe pain, or bleeding around the catheter.",
+    },
+    {
+      description: "Vous avez été pris en charge pour complication de sonde urinaire après évaluation. Ces conseils servent à la surveillance uniquement et ne remplacent pas le jugement du clinicien. Une grossesse ectopique, une torsion ovarienne, une torsion testiculaire et d'autres états à haut risque ne sont pas exclus par cette seule visite.",
+      diagnosisInstructions: "Suivez exactement les consignes de soins et d'hygiène de la sonde. Les consignes de retour ont été revues.",
+      medicationTreatment: OBGYN_URO_ROUTINE_MED_FR,
+      returnPrecautions: "Retournez en cas de fièvre, d'incapacité à drainer les urines, de douleur intense ou de saignement autour de la sonde.",
+    }
+  );
+
+export const EPIDIDYMITIS_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description: "You were evaluated for epididymitis after acute treatment as directed. This guidance supports monitoring only and does not replace clinician judgment. Ectopic pregnancy, ovarian torsion, testicular torsion, and other high-risk conditions are not excluded by this visit alone.",
+      diagnosisInstructions: "Complete antibiotics exactly as prescribed. Scrotal support and rest as directed. Return precautions were reviewed.",
+      medicationTreatment: OBGYN_URO_ROUTINE_MED_EN,
+      returnPrecautions: "Return immediately for high fever, sudden severe testicular pain, swelling, or nausea.",
+    },
+    {
+      description: "Vous avez été pris en charge pour épididymite après traitement aigu selon les directives. Ces conseils servent à la surveillance uniquement et ne remplacent pas le jugement du clinicien. Une grossesse ectopique, une torsion ovarienne, une torsion testiculaire et d'autres états à haut risque ne sont pas exclus par cette seule visite.",
+      diagnosisInstructions: "Terminez les antibiotiques exactement selon prescription. Support scrotal et repos selon les directives. Les consignes de retour ont été revues.",
+      medicationTreatment: OBGYN_URO_ROUTINE_MED_FR,
+      returnPrecautions: "Retournez immédiatement en cas de forte fièvre, de douleur testiculaire soudaine intense, de gonflement ou de nausées.",
+    }
+  );
+
+export const ORCHITIS_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description: "You were evaluated for orchitis after acute treatment as directed. This guidance supports monitoring only and does not replace clinician judgment. Ectopic pregnancy, ovarian torsion, testicular torsion, and other high-risk conditions are not excluded by this visit alone.",
+      diagnosisInstructions: "Complete antibiotics or antiviral therapy only as prescribed. Scrotal support as directed. Return precautions were reviewed.",
+      medicationTreatment: OBGYN_URO_ROUTINE_MED_EN,
+      returnPrecautions: "Return immediately for high fever, sudden severe testicular pain, or swelling.",
+    },
+    {
+      description: "Vous avez été pris en charge pour orchidite après traitement aigu selon les directives. Ces conseils servent à la surveillance uniquement et ne remplacent pas le jugement du clinicien. Une grossesse ectopique, une torsion ovarienne, une torsion testiculaire et d'autres états à haut risque ne sont pas exclus par cette seule visite.",
+      diagnosisInstructions: "Terminez antibiotiques ou antiviraux uniquement selon prescription. Support scrotal selon les directives. Les consignes de retour ont été revues.",
+      medicationTreatment: OBGYN_URO_ROUTINE_MED_FR,
+      returnPrecautions: "Retournez immédiatement en cas de forte fièvre, de douleur testiculaire soudaine intense ou de gonflement.",
+    }
+  );
+
+export const TESTICULAR_TORSION_POST_ACUTE_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description: "You were evaluated for testicular torsion after acute evaluation or intervention as directed. This guidance supports monitoring only and does not replace clinician judgment. Ectopic pregnancy, ovarian torsion, testicular torsion, and other high-risk conditions are not excluded by this visit alone.",
+      diagnosisInstructions: "Activity restrictions and scrotal care only as directed. Keep urology or surgical follow-up. Return precautions were reviewed.",
+      medicationTreatment: OBGYN_URO_HIGH_RISK_MED_EN,
+      returnPrecautions: "Return immediately for sudden severe testicular pain, swelling, nausea, or fever.",
+    },
+    {
+      description: "Vous avez été pris en charge pour torsion testiculaire après évaluation aiguë ou intervention selon les directives. Ces conseils servent à la surveillance uniquement et ne remplacent pas le jugement du clinicien. Une grossesse ectopique, une torsion ovarienne, une torsion testiculaire et d'autres états à haut risque ne sont pas exclus par cette seule visite.",
+      diagnosisInstructions: "Restrictions d'activité et soins scrotaux uniquement selon les directives. Respectez le suivi urologique ou chirurgical. Les consignes de retour ont été revues.",
+      medicationTreatment: OBGYN_URO_HIGH_RISK_MED_FR,
+      returnPrecautions: "Retournez immédiatement en cas de douleur testiculaire soudaine intense, de gonflement, de nausées ou de fièvre.",
+    }
+  );
+
+export const PROSTATITIS_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description: "You were evaluated for prostatitis after acute treatment as directed. This guidance supports monitoring only and does not replace clinician judgment. Ectopic pregnancy, ovarian torsion, testicular torsion, and other high-risk conditions are not excluded by this visit alone.",
+      diagnosisInstructions: "Complete antibiotics exactly as prescribed. Increase fluids as directed. Return precautions were reviewed.",
+      medicationTreatment: OBGYN_URO_ROUTINE_MED_EN,
+      returnPrecautions: "Return for high fever, inability to urinate, severe perineal pain, or confusion.",
+    },
+    {
+      description: "Vous avez été pris en charge pour prostatite après traitement aigu selon les directives. Ces conseils servent à la surveillance uniquement et ne remplacent pas le jugement du clinicien. Une grossesse ectopique, une torsion ovarienne, une torsion testiculaire et d'autres états à haut risque ne sont pas exclus par cette seule visite.",
+      diagnosisInstructions: "Terminez les antibiotiques exactement selon prescription. Augmentez les liquides selon les directives. Les consignes de retour ont été revues.",
+      medicationTreatment: OBGYN_URO_ROUTINE_MED_FR,
+      returnPrecautions: "Retournez en cas de forte fièvre, d'incapacité à uriner, de douleur périnéale intense ou de confusion.",
+    }
+  );
+
+export const URETHRITIS_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description: "You were evaluated for urethritis after evaluation. This guidance supports monitoring only and does not replace clinician judgment. Ectopic pregnancy, ovarian torsion, testicular torsion, and other high-risk conditions are not excluded by this visit alone.",
+      diagnosisInstructions: "Complete antibiotics only if prescribed. Avoid intercourse until cleared if advised. Return precautions were reviewed.",
+      medicationTreatment: OBGYN_URO_ROUTINE_MED_EN,
+      returnPrecautions: "Return for fever, testicular pain, or worsening urinary symptoms.",
+    },
+    {
+      description: "Vous avez été pris en charge pour uretrite après évaluation. Ces conseils servent à la surveillance uniquement et ne remplacent pas le jugement du clinicien. Une grossesse ectopique, une torsion ovarienne, une torsion testiculaire et d'autres états à haut risque ne sont pas exclus par cette seule visite.",
+      diagnosisInstructions: "Terminez les antibiotiques uniquement s'ils sont prescrits. Évitez les rapports jusqu'à avis si conseillé. Les consignes de retour ont été revues.",
+      medicationTreatment: OBGYN_URO_ROUTINE_MED_FR,
+      returnPrecautions: "Retournez en cas de fièvre, de douleur testiculaire ou d'aggravation des signes urinaires.",
+    }
+  );
+
+export const PRIAPISM_POST_ACUTE_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description: "You were evaluated for priapism after acute management as directed. This guidance supports monitoring only and does not replace clinician judgment. Ectopic pregnancy, ovarian torsion, testicular torsion, and other high-risk conditions are not excluded by this visit alone.",
+      diagnosisInstructions: "Avoid medications or substances that may trigger recurrence unless directed otherwise. Keep urology follow-up. Return precautions were reviewed.",
+      medicationTreatment: OBGYN_URO_HIGH_RISK_MED_EN,
+      returnPrecautions: "Return immediately for prolonged painful erection, fever, or worsening pain.",
+    },
+    {
+      description: "Vous avez été pris en charge pour priapisme après prise en charge aiguë selon les directives. Ces conseils servent à la surveillance uniquement et ne remplacent pas le jugement du clinicien. Une grossesse ectopique, une torsion ovarienne, une torsion testiculaire et d'autres états à haut risque ne sont pas exclus par cette seule visite.",
+      diagnosisInstructions: "Évitez médicaments ou substances pouvant déclencher une récidive sauf indication contraire. Respectez le suivi urologique. Les consignes de retour ont été revues.",
+      medicationTreatment: OBGYN_URO_HIGH_RISK_MED_FR,
+      returnPrecautions: "Retournez immédiatement en cas d'érection prolongée douloureuse, de fièvre ou d'aggravation de la douleur.",
+    }
+  );
+
+export const PARAPHIMOSIS_POST_ACUTE_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description: "You were evaluated for paraphimosis after acute reduction or evaluation. This guidance supports monitoring only and does not replace clinician judgment. Ectopic pregnancy, ovarian torsion, testicular torsion, and other high-risk conditions are not excluded by this visit alone.",
+      diagnosisInstructions: "Follow genital hygiene and retraction instructions only as directed. Return precautions were reviewed.",
+      medicationTreatment: OBGYN_URO_ROUTINE_MED_EN,
+      returnPrecautions: "Return immediately if foreskin becomes trapped again, pain worsens, or urination is difficult.",
+    },
+    {
+      description: "Vous avez été pris en charge pour paraphimosis après réduction aiguë ou évaluation. Ces conseils servent à la surveillance uniquement et ne remplacent pas le jugement du clinicien. Une grossesse ectopique, une torsion ovarienne, une torsion testiculaire et d'autres états à haut risque ne sont pas exclus par cette seule visite.",
+      diagnosisInstructions: "Suivez les consignes d'hygiène et de rétraction uniquement selon les directives. Les consignes de retour ont été revues.",
+      medicationTreatment: OBGYN_URO_ROUTINE_MED_FR,
+      returnPrecautions: "Retournez immédiatement si le prépuce se coince à nouveau, si la douleur s'aggrave ou si la miction est difficile.",
+    }
+  );
+
+export const PENILE_FRACTURE_POST_ACUTE_V1_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description: "You were evaluated for penile fracture after acute evaluation or intervention as directed. This guidance supports monitoring only and does not replace clinician judgment. Ectopic pregnancy, ovarian torsion, testicular torsion, and other high-risk conditions are not excluded by this visit alone.",
+      diagnosisInstructions: "Pelvic rest and activity restrictions only as directed. Keep urology or surgical follow-up. Return precautions were reviewed.",
+      medicationTreatment: OBGYN_URO_HIGH_RISK_MED_EN,
+      returnPrecautions: "Return immediately for worsening pain, swelling, inability to urinate, or fever.",
+    },
+    {
+      description: "Vous avez été pris en charge pour fracture pénienne après évaluation aiguë ou intervention selon les directives. Ces conseils servent à la surveillance uniquement et ne remplacent pas le jugement du clinicien. Une grossesse ectopique, une torsion ovarienne, une torsion testiculaire et d'autres états à haut risque ne sont pas exclus par cette seule visite.",
+      diagnosisInstructions: "Repos pelvien et restrictions d'activité uniquement selon les directives. Respectez le suivi urologique ou chirurgical. Les consignes de retour ont été revues.",
+      medicationTreatment: OBGYN_URO_HIGH_RISK_MED_FR,
+      returnPrecautions: "Retournez immédiatement en cas d'aggravation de la douleur, de gonflement, d'incapacité à uriner ou de fièvre.",
+    }
+  );

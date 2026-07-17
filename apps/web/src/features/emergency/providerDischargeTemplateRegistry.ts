@@ -409,6 +409,49 @@ import {
   SCORPION_ENVENOMATION_V1_SUGGESTED_TEXT,
   MARINE_ENVENOMATION_V1_SUGGESTED_TEXT,
   POISON_CONTROL_FOLLOWUP_V1_SUGGESTED_TEXT,
+  EARLY_PREGNANCY_BLEEDING_V1_SUGGESTED_TEXT,
+  PREGNANCY_UNKNOWN_LOCATION_V1_SUGGESTED_TEXT,
+  THREATENED_ABORTION_V1_SUGGESTED_TEXT,
+  EARLY_PREGNANCY_LOSS_POST_ACUTE_V1_SUGGESTED_TEXT,
+  ECTOPIC_PREGNANCY_POST_ACUTE_V1_SUGGESTED_TEXT,
+  HYPEREMESIS_GRAVIDARUM_V1_SUGGESTED_TEXT,
+  PREGNANCY_ABDOMINAL_PAIN_V1_SUGGESTED_TEXT,
+  LATE_PREGNANCY_BLEEDING_POST_ACUTE_V1_SUGGESTED_TEXT,
+  FALSE_LABOR_V1_SUGGESTED_TEXT,
+  PRETERM_LABOR_POST_ACUTE_V1_SUGGESTED_TEXT,
+  RUPTURE_OF_MEMBRANES_POST_ACUTE_V1_SUGGESTED_TEXT,
+  HYPERTENSIVE_PREGNANCY_POST_ACUTE_V1_SUGGESTED_TEXT,
+  POSTPARTUM_BLEEDING_POST_ACUTE_V1_SUGGESTED_TEXT,
+  POSTPARTUM_ENDOMETRITIS_V1_SUGGESTED_TEXT,
+  POSTPARTUM_HYPERTENSION_V1_SUGGESTED_TEXT,
+  ACUTE_PELVIC_PAIN_V1_SUGGESTED_TEXT,
+  OVARIAN_CYST_V1_SUGGESTED_TEXT,
+  OVARIAN_TORSION_POST_ACUTE_V1_SUGGESTED_TEXT,
+  PELVIC_INFLAMMATORY_DISEASE_V1_SUGGESTED_TEXT,
+  TUBO_OVARIAN_ABSCESS_POST_ACUTE_V1_SUGGESTED_TEXT,
+  CERVICITIS_V1_SUGGESTED_TEXT,
+  VAGINITIS_V1_SUGGESTED_TEXT,
+  BARTHOLIN_CYST_ABSCESS_V1_SUGGESTED_TEXT,
+  ABNORMAL_UTERINE_BLEEDING_V1_SUGGESTED_TEXT,
+  POSTMENOPAUSAL_BLEEDING_V1_SUGGESTED_TEXT,
+  VAGINAL_FOREIGN_BODY_V1_SUGGESTED_TEXT,
+  IUD_COMPLICATION_V1_SUGGESTED_TEXT,
+  UNCOMPLICATED_RENAL_COLIC_V1_SUGGESTED_TEXT,
+  OBSTRUCTING_URETERAL_STONE_POST_ACUTE_V1_SUGGESTED_TEXT,
+  CYSTITIS_V1_SUGGESTED_TEXT,
+  PYELONEPHRITIS_V1_SUGGESTED_TEXT,
+  INFECTED_OBSTRUCTED_STONE_POST_ACUTE_V1_SUGGESTED_TEXT,
+  HEMATURIA_V1_SUGGESTED_TEXT,
+  URINARY_RETENTION_V1_SUGGESTED_TEXT,
+  URINARY_CATHETER_COMPLICATION_V1_SUGGESTED_TEXT,
+  EPIDIDYMITIS_V1_SUGGESTED_TEXT,
+  ORCHITIS_V1_SUGGESTED_TEXT,
+  TESTICULAR_TORSION_POST_ACUTE_V1_SUGGESTED_TEXT,
+  PROSTATITIS_V1_SUGGESTED_TEXT,
+  URETHRITIS_V1_SUGGESTED_TEXT,
+  PRIAPISM_POST_ACUTE_V1_SUGGESTED_TEXT,
+  PARAPHIMOSIS_POST_ACUTE_V1_SUGGESTED_TEXT,
+  PENILE_FRACTURE_POST_ACUTE_V1_SUGGESTED_TEXT,
 } from "./providerDischargeTemplateSuggestedTextCatalog";
 import {
   newDefaultFollowUpRow,
@@ -774,6 +817,49 @@ const TOXICOLOGY_ENVENOMATION_TEMPLATE_GOVERNANCE = {
   specialtyCategory: "emergency_medicine",
   riskCategory: "moderate",
 };
+
+/** Phase 17 — OB/GYN discharge governance (Commit 2). Mirrors BATCH_7 OBGYN_TEMPLATE_GOVERNANCE. */
+const OBGYN_UROLOGY_TEMPLATE_GOVERNANCE = {
+  ...BATCH_GOVERNANCE_DRAFT,
+  specialtyCategory: "obgyn",
+  riskCategory: "high",
+};
+
+/** Phase 17 — urology discharge governance; matches RENAL_UROLOGY_ELECTROLYTE specialtyCategory. */
+const UROLOGY_PHASE17_TEMPLATE_GOVERNANCE = {
+  ...BATCH_GOVERNANCE_DRAFT,
+  specialtyCategory: "nephrology_urology",
+  riskCategory: "moderate",
+};
+
+const OBGYN_PHASE17_PREGNANCY_SAFETY = {
+  pregnancySensitive: true,
+  requiresPregnancyStatusDocumentation: true,
+  requiresEctopicPrecautions: true,
+  requiresOBGynFollowUp: true,
+} as const;
+
+const OBGYN_PHASE17_PREGNANCY_BLEEDING_SAFETY = {
+  ...OBGYN_PHASE17_PREGNANCY_SAFETY,
+  requiresBleedingPrecautions: true,
+} as const;
+
+const OBGYN_PHASE17_PELVIC_SAFETY = {
+  pregnancySensitive: true,
+  requiresPregnancyStatusDocumentation: true,
+  requiresPelvicPainPrecautions: true,
+  requiresEctopicPrecautions: true,
+  requiresOBGynFollowUp: true,
+} as const;
+
+const OBGYN_PHASE17_ROUTINE_SAFETY = {
+  requiresOBGynFollowUp: true,
+} as const;
+
+const OBGYN_PHASE17_SEXUAL_HEALTH_SAFETY = {
+  requiresSexualHealthPrivacyWarning: true,
+  requiresOBGynFollowUp: true,
+} as const;
 
 const CARDIO_HIGH_RISK_TEMPLATE_GOVERNANCE = {
   ...BATCH_GOVERNANCE_DRAFT,
@@ -1501,7 +1587,7 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
     riskCategory: "moderate",
     ...BATCH_GOVERNANCE_DRAFT,
     diagnosisMappings: {
-      icdFamily: ["N20", "R31"],
+      icdFamily: ["N20"],
       keyword: ["kidney stone", "renal colic", "flank pain"],
     },
     sourceReferences: [
@@ -2553,7 +2639,6 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
       requiresOBGynFollowUp: true,
     },
     diagnosisMappings: {
-      icdExact: ["R10.2"],
       keyword: ["obgyn pelvic pain", "gynecologic pelvic pain", "douleur pelvienne obgyn"],
     },
     sourceReferences: [
@@ -2601,8 +2686,7 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
       requiresOBGynFollowUp: true,
     },
     diagnosisMappings: {
-      icdExact: ["O21.9"],
-      keyword: ["obgyn hyperemesis", "pregnancy vomiting obgyn", "hyperémèse gravidique"],
+      keyword: ["obgyn hyperemesis", "pregnancy vomiting obgyn"],
     },
     sourceReferences: [
       {
@@ -2628,7 +2712,6 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
       requiresOBGynFollowUp: true,
     },
     diagnosisMappings: {
-      icdExact: ["O20.9"],
       keyword: ["obgyn early pregnancy", "early pregnancy symptoms obgyn", "début grossesse obgyn"],
     },
     sourceReferences: [
@@ -2655,7 +2738,6 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
       requiresOBGynFollowUp: true,
     },
     diagnosisMappings: {
-      icdExact: ["O20.0"],
       keyword: [
         "obgyn pregnancy bleeding precautions",
         "early pregnancy bleeding precautions",
@@ -2683,7 +2765,6 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
       requiresOBGynFollowUp: true,
     },
     diagnosisMappings: {
-      icdExact: ["N76.0"],
       keyword: ["obgyn vaginitis", "gynecologic discharge", "vaginite obgyn"],
     },
     sourceReferences: [
@@ -7227,6 +7308,266 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
     },
     sourceReferences: [{ label: "MedlinePlus — Poisoning", url: "https://medlineplus.gov/poisoning.html", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
     defaultFollowUps: [registryFollowUp("tox-pc-pcp", "PRIMARY_CARE", "as directed by poison control / clinician")], suggestedText: POISON_CONTROL_FOLLOWUP_V1_SUGGESTED_TEXT,
+  },
+  // Phase 17 — OB/GYN / urology discharge templates (Commit 2).
+  // Preserves Batch 7 OB/GYN and Batch 12 urology legacy templates; N49.3 stays Phase 13 NSTI.
+  {
+    id: "early_pregnancy_bleeding_v1", version: "1.0.0", title: "Early pregnancy bleeding discharge documentation", ...OBGYN_UROLOGY_TEMPLATE_GOVERNANCE, riskCategory: "high", obGynSafety: OBGYN_PHASE17_PREGNANCY_BLEEDING_SAFETY,
+    diagnosisMappings: { icdFamily: ["O20"], icdExact: ["O20.9"], keyword: ["early pregnancy bleeding","first trimester bleeding","saignement début grossesse"] },
+    sourceReferences: [{ label: "MedlinePlus — Obstetric", url: "https://medlineplus.gov/", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("p17-early_pregna", "OBGYN", "within 1–2 days or as directed")], suggestedText: EARLY_PREGNANCY_BLEEDING_V1_SUGGESTED_TEXT,
+  },
+  {
+    id: "pregnancy_unknown_location_v1", version: "1.0.0", title: "Pregnancy of unknown location discharge documentation", ...OBGYN_UROLOGY_TEMPLATE_GOVERNANCE, riskCategory: "high", obGynSafety: OBGYN_PHASE17_PREGNANCY_SAFETY,
+    diagnosisMappings: { icdExact: ["O02.81"], icdFamily: ["O02.81"], keyword: ["pregnancy of unknown location","PUL","grossesse de localisation inconnue"] },
+    sourceReferences: [{ label: "MedlinePlus — Obstetric", url: "https://medlineplus.gov/", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("p17-pregnancy_un", "OBGYN", "within 24–48 hours or as directed")], suggestedText: PREGNANCY_UNKNOWN_LOCATION_V1_SUGGESTED_TEXT,
+  },
+  {
+    id: "threatened_abortion_v1", version: "1.0.0", title: "Threatened abortion discharge documentation", ...OBGYN_UROLOGY_TEMPLATE_GOVERNANCE, riskCategory: "high", obGynSafety: OBGYN_PHASE17_PREGNANCY_BLEEDING_SAFETY,
+    diagnosisMappings: { icdExact: ["O20.0"], icdFamily: ["O20.0"], keyword: ["threatened abortion","threatened miscarriage","menace d'avortement"] },
+    sourceReferences: [{ label: "MedlinePlus — Obstetric", url: "https://medlineplus.gov/", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("p17-threatened_a", "OBGYN", "within 1–2 days or as directed")], suggestedText: THREATENED_ABORTION_V1_SUGGESTED_TEXT,
+  },
+  {
+    id: "early_pregnancy_loss_post_acute_v1", version: "1.0.0", title: "Early pregnancy loss post-acute discharge documentation", ...OBGYN_UROLOGY_TEMPLATE_GOVERNANCE, riskCategory: "high", obGynSafety: OBGYN_PHASE17_PREGNANCY_BLEEDING_SAFETY,
+    diagnosisMappings: { icdFamily: ["O03"], keyword: ["early pregnancy loss","spontaneous abortion","miscarriage post-acute","fausse couche"] },
+    sourceReferences: [{ label: "MedlinePlus — Obstetric", url: "https://medlineplus.gov/", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("p17-early_pregna", "OBGYN", "within 1–3 days or as directed")], suggestedText: EARLY_PREGNANCY_LOSS_POST_ACUTE_V1_SUGGESTED_TEXT,
+  },
+  {
+    id: "ectopic_pregnancy_post_acute_v1", version: "1.0.0", title: "Ectopic pregnancy post-acute discharge documentation", ...OBGYN_UROLOGY_TEMPLATE_GOVERNANCE, riskCategory: "high", obGynSafety: OBGYN_PHASE17_PREGNANCY_SAFETY,
+    diagnosisMappings: { icdExact: ["O00.90","O00.91","O00.00"], icdFamily: ["O00"], keyword: ["ectopic pregnancy post-acute","tubal pregnancy post-acute","grossesse ectopique soins post-aigus"] },
+    sourceReferences: [{ label: "MedlinePlus — Obstetric", url: "https://medlineplus.gov/", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("p17-ectopic_preg", "OBGYN", "urgent / as directed")], suggestedText: ECTOPIC_PREGNANCY_POST_ACUTE_V1_SUGGESTED_TEXT,
+  },
+  {
+    id: "hyperemesis_gravidarum_v1", version: "1.0.0", title: "Hyperemesis gravidarum discharge documentation", ...OBGYN_UROLOGY_TEMPLATE_GOVERNANCE, riskCategory: "high", obGynSafety: OBGYN_PHASE17_PREGNANCY_SAFETY,
+    diagnosisMappings: { icdExact: ["O21.9"], icdFamily: ["O21"], keyword: ["hyperemesis gravidarum","excessive vomiting in pregnancy","hyperémèse gravidique"] },
+    sourceReferences: [{ label: "MedlinePlus — Obstetric", url: "https://medlineplus.gov/", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("p17-hyperemesis_", "OBGYN", "within 1–3 days or as directed")], suggestedText: HYPEREMESIS_GRAVIDARUM_V1_SUGGESTED_TEXT,
+  },
+  {
+    id: "pregnancy_abdominal_pain_v1", version: "1.0.0", title: "Pregnancy abdominal pain discharge documentation", ...OBGYN_UROLOGY_TEMPLATE_GOVERNANCE, riskCategory: "high", obGynSafety: OBGYN_PHASE17_PREGNANCY_SAFETY,
+    diagnosisMappings: { icdFamily: ["O26"], keyword: ["pregnancy abdominal pain","pregnancy pelvic pain","douleur abdominale grossesse"] },
+    sourceReferences: [{ label: "MedlinePlus — Obstetric", url: "https://medlineplus.gov/", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("p17-pregnancy_ab", "OBGYN", "within 1–2 days or as directed")], suggestedText: PREGNANCY_ABDOMINAL_PAIN_V1_SUGGESTED_TEXT,
+  },
+  {
+    id: "late_pregnancy_bleeding_post_acute_v1", version: "1.0.0", title: "Late pregnancy bleeding post-acute discharge documentation", ...OBGYN_UROLOGY_TEMPLATE_GOVERNANCE, riskCategory: "high", obGynSafety: OBGYN_PHASE17_PREGNANCY_BLEEDING_SAFETY,
+    diagnosisMappings: { icdFamily: ["O44","O45","O46"], keyword: ["late pregnancy bleeding","antepartum hemorrhage","saignement fin de grossesse"] },
+    sourceReferences: [{ label: "MedlinePlus — Obstetric", url: "https://medlineplus.gov/", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("p17-late_pregnan", "OBGYN", "urgent / as directed")], suggestedText: LATE_PREGNANCY_BLEEDING_POST_ACUTE_V1_SUGGESTED_TEXT,
+  },
+  {
+    id: "false_labor_v1", version: "1.0.0", title: "False labor discharge documentation", ...OBGYN_UROLOGY_TEMPLATE_GOVERNANCE, obGynSafety: OBGYN_PHASE17_PREGNANCY_SAFETY,
+    diagnosisMappings: { icdFamily: ["O47"], keyword: ["false labor","Braxton Hicks","fausse couche de travail","travail spurious"] },
+    sourceReferences: [{ label: "MedlinePlus — Obstetric", url: "https://medlineplus.gov/", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("p17-false_labor_", "OBGYN", "within 1–2 days or as directed")], suggestedText: FALSE_LABOR_V1_SUGGESTED_TEXT,
+  },
+  {
+    id: "preterm_labor_post_acute_v1", version: "1.0.0", title: "Preterm labor post-acute discharge documentation", ...OBGYN_UROLOGY_TEMPLATE_GOVERNANCE, riskCategory: "high", obGynSafety: OBGYN_PHASE17_PREGNANCY_SAFETY,
+    diagnosisMappings: { icdFamily: ["O60"], keyword: ["preterm labor post-acute","premature labor","travail prématuré soins post-aigus"] },
+    sourceReferences: [{ label: "MedlinePlus — Obstetric", url: "https://medlineplus.gov/", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("p17-preterm_labo", "OBGYN", "urgent / as directed")], suggestedText: PRETERM_LABOR_POST_ACUTE_V1_SUGGESTED_TEXT,
+  },
+  {
+    id: "rupture_of_membranes_post_acute_v1", version: "1.0.0", title: "Rupture of membranes post-acute discharge documentation", ...OBGYN_UROLOGY_TEMPLATE_GOVERNANCE, riskCategory: "high", obGynSafety: OBGYN_PHASE17_PREGNANCY_SAFETY,
+    diagnosisMappings: { icdFamily: ["O42"], keyword: ["rupture of membranes","PROM","rupture prématurée des membranes"] },
+    sourceReferences: [{ label: "MedlinePlus — Obstetric", url: "https://medlineplus.gov/", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("p17-rupture_of_m", "OBGYN", "urgent / as directed")], suggestedText: RUPTURE_OF_MEMBRANES_POST_ACUTE_V1_SUGGESTED_TEXT,
+  },
+  {
+    id: "hypertensive_pregnancy_post_acute_v1", version: "1.0.0", title: "Hypertensive pregnancy post-acute discharge documentation", ...OBGYN_UROLOGY_TEMPLATE_GOVERNANCE, riskCategory: "high", obGynSafety: OBGYN_PHASE17_PREGNANCY_SAFETY,
+    diagnosisMappings: { icdExact: ["O14.00","O14.10","O14.20"], icdFamily: ["O11","O12","O13","O14","O15"], keyword: ["preeclampsia post-acute","HELLP post-acute","hypertensive disorder of pregnancy","prééclampsie soins post-aigus"] },
+    sourceReferences: [{ label: "MedlinePlus — Obstetric", url: "https://medlineplus.gov/", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("p17-hypertensive", "OBGYN", "urgent — within 24–48 hours or as directed")], suggestedText: HYPERTENSIVE_PREGNANCY_POST_ACUTE_V1_SUGGESTED_TEXT,
+  },
+  {
+    id: "postpartum_bleeding_post_acute_v1", version: "1.0.0", title: "Postpartum bleeding post-acute discharge documentation", ...OBGYN_UROLOGY_TEMPLATE_GOVERNANCE, riskCategory: "high", obGynSafety: { requiresBleedingPrecautions: true, requiresOBGynFollowUp: true },
+    diagnosisMappings: { icdExact: ["O72.1"], icdFamily: ["O72"], keyword: ["postpartum hemorrhage post-acute","postpartum bleeding","hémorragie post-partum"] },
+    sourceReferences: [{ label: "MedlinePlus — Obstetric", url: "https://medlineplus.gov/", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("p17-postpartum_b", "OBGYN", "urgent / as directed")], suggestedText: POSTPARTUM_BLEEDING_POST_ACUTE_V1_SUGGESTED_TEXT,
+  },
+  {
+    id: "postpartum_endometritis_v1", version: "1.0.0", title: "Postpartum endometritis discharge documentation", ...OBGYN_UROLOGY_TEMPLATE_GOVERNANCE, riskCategory: "high", obGynSafety: OBGYN_PHASE17_ROUTINE_SAFETY,
+    diagnosisMappings: { icdExact: ["O86.12"], icdFamily: ["O86.1"], keyword: ["postpartum endometritis","endometritis following delivery","endométrite post-partum"] },
+    sourceReferences: [{ label: "MedlinePlus — Obstetric", url: "https://medlineplus.gov/", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("p17-postpartum_e", "OBGYN", "within 1–3 days or as directed")], suggestedText: POSTPARTUM_ENDOMETRITIS_V1_SUGGESTED_TEXT,
+  },
+  {
+    id: "postpartum_hypertension_v1", version: "1.0.0", title: "Postpartum hypertension discharge documentation", ...OBGYN_UROLOGY_TEMPLATE_GOVERNANCE, riskCategory: "high", obGynSafety: OBGYN_PHASE17_ROUTINE_SAFETY,
+    diagnosisMappings: { icdExact: ["O90.3"], icdFamily: ["O10","O16"], keyword: ["postpartum hypertension","hypertension post-partum"] },
+    sourceReferences: [{ label: "MedlinePlus — Obstetric", url: "https://medlineplus.gov/", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("p17-postpartum_h", "OBGYN", "within 1–3 days or as directed")], suggestedText: POSTPARTUM_HYPERTENSION_V1_SUGGESTED_TEXT,
+  },
+  {
+    id: "acute_pelvic_pain_v1", version: "1.0.0", title: "Acute pelvic pain discharge documentation", ...OBGYN_UROLOGY_TEMPLATE_GOVERNANCE, riskCategory: "high", obGynSafety: OBGYN_PHASE17_PELVIC_SAFETY,
+    diagnosisMappings: { icdExact: ["R10.2"], icdFamily: ["R10.2","N94"], keyword: ["acute pelvic pain","douleur pelvienne aiguë"] },
+    sourceReferences: [{ label: "MedlinePlus — Gynecologic", url: "https://medlineplus.gov/", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("p17-acute_pelvic", "OBGYN", "within 1–2 days or as directed")], suggestedText: ACUTE_PELVIC_PAIN_V1_SUGGESTED_TEXT,
+  },
+  {
+    id: "ovarian_cyst_v1", version: "1.0.0", title: "Ovarian cyst discharge documentation", ...OBGYN_UROLOGY_TEMPLATE_GOVERNANCE, obGynSafety: OBGYN_PHASE17_ROUTINE_SAFETY,
+    diagnosisMappings: { icdExact: ["N83.202"], icdFamily: ["N83.2"], keyword: ["ovarian cyst","kyste ovarien"] },
+    sourceReferences: [{ label: "MedlinePlus — Gynecologic", url: "https://medlineplus.gov/", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("p17-ovarian_cyst", "OBGYN", "within 1–2 days or as directed")], suggestedText: OVARIAN_CYST_V1_SUGGESTED_TEXT,
+  },
+  {
+    id: "ovarian_torsion_post_acute_v1", version: "1.0.0", title: "Ovarian torsion post-acute discharge documentation", ...OBGYN_UROLOGY_TEMPLATE_GOVERNANCE, riskCategory: "high", obGynSafety: OBGYN_PHASE17_ROUTINE_SAFETY,
+    diagnosisMappings: { icdExact: ["N83.511","N83.512"], icdFamily: ["N83.5"], keyword: ["ovarian torsion post-acute","torsion d'ovaire soins post-aigus"] },
+    sourceReferences: [{ label: "MedlinePlus — Gynecologic", url: "https://medlineplus.gov/", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("p17-ovarian_tors", "OBGYN", "urgent / as directed")], suggestedText: OVARIAN_TORSION_POST_ACUTE_V1_SUGGESTED_TEXT,
+  },
+  {
+    id: "pelvic_inflammatory_disease_v1", version: "1.0.0", title: "Pelvic inflammatory disease discharge documentation", ...OBGYN_UROLOGY_TEMPLATE_GOVERNANCE, riskCategory: "high", obGynSafety: { ...OBGYN_PHASE17_PELVIC_SAFETY, requiresSexualHealthPrivacyWarning: true },
+    diagnosisMappings: { icdExact: ["N73.9"], icdFamily: ["N73"], keyword: ["pelvic inflammatory disease","PID","maladie pelvienne inflammatoire"] },
+    sourceReferences: [{ label: "MedlinePlus — Gynecologic", url: "https://medlineplus.gov/", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("p17-pelvic_infla", "OBGYN", "within 2–3 days or as directed")], suggestedText: PELVIC_INFLAMMATORY_DISEASE_V1_SUGGESTED_TEXT,
+  },
+  {
+    id: "tubo_ovarian_abscess_post_acute_v1", version: "1.0.0", title: "Tubo-ovarian abscess post-acute discharge documentation", ...OBGYN_UROLOGY_TEMPLATE_GOVERNANCE, riskCategory: "high", obGynSafety: OBGYN_PHASE17_ROUTINE_SAFETY,
+    diagnosisMappings: { icdExact: ["N70.03"], icdFamily: ["N70.03"], keyword: ["tubo-ovarian abscess post-acute","TOA post-acute","abcès tubo-ovarien","acute salpingitis and oophoritis"] },
+    sourceReferences: [{ label: "MedlinePlus — Gynecologic", url: "https://medlineplus.gov/", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("p17-tubo_ovarian", "OBGYN", "urgent / as directed")], suggestedText: TUBO_OVARIAN_ABSCESS_POST_ACUTE_V1_SUGGESTED_TEXT,
+  },
+  {
+    id: "cervicitis_v1", version: "1.0.0", title: "Cervicitis discharge documentation", ...OBGYN_UROLOGY_TEMPLATE_GOVERNANCE, obGynSafety: OBGYN_PHASE17_SEXUAL_HEALTH_SAFETY,
+    diagnosisMappings: { icdExact: ["N72"], icdFamily: ["N72"], keyword: ["cervicitis","cervical inflammation","cervicite"] },
+    sourceReferences: [{ label: "MedlinePlus — Gynecologic", url: "https://medlineplus.gov/", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("p17-cervicitis_v", "OBGYN", "within 1–2 days or as directed")], suggestedText: CERVICITIS_V1_SUGGESTED_TEXT,
+  },
+  {
+    id: "vaginitis_v1", version: "1.0.0", title: "Vaginitis discharge documentation", ...OBGYN_UROLOGY_TEMPLATE_GOVERNANCE, obGynSafety: OBGYN_PHASE17_SEXUAL_HEALTH_SAFETY,
+    diagnosisMappings: { icdExact: ["N76.0"], icdFamily: ["N76"], keyword: ["vaginitis","vulvovaginitis","vaginite"] },
+    sourceReferences: [{ label: "MedlinePlus — Gynecologic", url: "https://medlineplus.gov/", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("p17-vaginitis_v1", "OBGYN", "within 1–2 days or as directed")], suggestedText: VAGINITIS_V1_SUGGESTED_TEXT,
+  },
+  {
+    id: "bartholin_cyst_abscess_v1", version: "1.0.0", title: "Bartholin cyst or abscess discharge documentation", ...OBGYN_UROLOGY_TEMPLATE_GOVERNANCE, obGynSafety: OBGYN_PHASE17_ROUTINE_SAFETY,
+    diagnosisMappings: { icdExact: ["N75.0"], icdFamily: ["N75"], keyword: ["Bartholin cyst","Bartholin abscess","kyste de Bartholin"] },
+    sourceReferences: [{ label: "MedlinePlus — Gynecologic", url: "https://medlineplus.gov/", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("p17-bartholin_cy", "OBGYN", "within 3–5 days or as directed")], suggestedText: BARTHOLIN_CYST_ABSCESS_V1_SUGGESTED_TEXT,
+  },
+  {
+    id: "abnormal_uterine_bleeding_v1", version: "1.0.0", title: "Abnormal uterine bleeding discharge documentation", ...OBGYN_UROLOGY_TEMPLATE_GOVERNANCE, obGynSafety: { requiresBleedingPrecautions: true, requiresOBGynFollowUp: true },
+    diagnosisMappings: { icdExact: ["N92.0"], icdFamily: ["N92"], keyword: ["abnormal uterine bleeding","menorrhagia","saignements utérins anormaux"] },
+    sourceReferences: [{ label: "MedlinePlus — Gynecologic", url: "https://medlineplus.gov/", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("p17-abnormal_ute", "OBGYN", "within 1–2 days or as directed")], suggestedText: ABNORMAL_UTERINE_BLEEDING_V1_SUGGESTED_TEXT,
+  },
+  {
+    id: "postmenopausal_bleeding_v1", version: "1.0.0", title: "Postmenopausal bleeding discharge documentation", ...OBGYN_UROLOGY_TEMPLATE_GOVERNANCE, riskCategory: "high", obGynSafety: { requiresBleedingPrecautions: true, requiresOBGynFollowUp: true },
+    diagnosisMappings: { icdExact: ["N95.0"], icdFamily: ["N95.0"], keyword: ["postmenopausal bleeding","saignement postménopausique"] },
+    sourceReferences: [{ label: "MedlinePlus — Gynecologic", url: "https://medlineplus.gov/", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("p17-postmenopaus", "OBGYN", "urgent / as directed")], suggestedText: POSTMENOPAUSAL_BLEEDING_V1_SUGGESTED_TEXT,
+  },
+  {
+    id: "vaginal_foreign_body_v1", version: "1.0.0", title: "Vaginal foreign body discharge documentation", ...OBGYN_UROLOGY_TEMPLATE_GOVERNANCE, obGynSafety: OBGYN_PHASE17_ROUTINE_SAFETY,
+    diagnosisMappings: { icdExact: ["T19.9XXA"], icdFamily: ["T19.9"], keyword: ["vaginal foreign body","corps étranger vaginal"] },
+    sourceReferences: [{ label: "MedlinePlus — Gynecologic", url: "https://medlineplus.gov/", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("p17-vaginal_fore", "OBGYN", "within 1–2 days or as directed")], suggestedText: VAGINAL_FOREIGN_BODY_V1_SUGGESTED_TEXT,
+  },
+  {
+    id: "iud_complication_v1", version: "1.0.0", title: "IUD complication discharge documentation", ...OBGYN_UROLOGY_TEMPLATE_GOVERNANCE, riskCategory: "high", obGynSafety: OBGYN_PHASE17_ROUTINE_SAFETY,
+    diagnosisMappings: { icdExact: ["T83.32XA"], icdFamily: ["T83.3"], keyword: ["IUD complication","intrauterine device complication","complication DIU"] },
+    sourceReferences: [{ label: "MedlinePlus — Gynecologic", url: "https://medlineplus.gov/", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("p17-iud_complica", "OBGYN", "within 1–3 days or as directed")], suggestedText: IUD_COMPLICATION_V1_SUGGESTED_TEXT,
+  },
+  {
+    id: "uncomplicated_renal_colic_v1", version: "1.0.0", title: "Uncomplicated renal colic discharge documentation", ...UROLOGY_PHASE17_TEMPLATE_GOVERNANCE,
+    diagnosisMappings: { icdFamily: ["N23"], keyword: ["uncomplicated renal colic","kidney stone uncomplicated","colique néphrétique simple"] },
+    sourceReferences: [{ label: "MedlinePlus — Urologic", url: "https://medlineplus.gov/", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("p17-uncomplicate", "UROLOGY", "within 1–2 days or as directed")], suggestedText: UNCOMPLICATED_RENAL_COLIC_V1_SUGGESTED_TEXT,
+  },
+  {
+    id: "obstructing_ureteral_stone_post_acute_v1", version: "1.0.0", title: "Obstructing ureteral stone post-acute discharge documentation", ...UROLOGY_PHASE17_TEMPLATE_GOVERNANCE, riskCategory: "high",
+    diagnosisMappings: { icdExact: ["N13.2"], icdFamily: ["N13"], keyword: ["obstructing ureteral stone","hydronephrosis stone","calcul urétéral obstructif"] },
+    sourceReferences: [{ label: "MedlinePlus — Urologic", url: "https://medlineplus.gov/", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("p17-obstructing_", "UROLOGY", "urgent / as directed")], suggestedText: OBSTRUCTING_URETERAL_STONE_POST_ACUTE_V1_SUGGESTED_TEXT,
+  },
+  {
+    id: "cystitis_v1", version: "1.0.0", title: "Cystitis discharge documentation", ...UROLOGY_PHASE17_TEMPLATE_GOVERNANCE,
+    diagnosisMappings: { icdExact: ["N30.00"], icdFamily: ["N30"], keyword: ["cystitis","bladder infection","cystite"] },
+    sourceReferences: [{ label: "MedlinePlus — Urologic", url: "https://medlineplus.gov/", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("p17-cystitis_v1", "PRIMARY_CARE", "within 1–2 days or as directed")], suggestedText: CYSTITIS_V1_SUGGESTED_TEXT,
+  },
+  {
+    id: "pyelonephritis_v1", version: "1.0.0", title: "Pyelonephritis discharge documentation", ...UROLOGY_PHASE17_TEMPLATE_GOVERNANCE, riskCategory: "high",
+    diagnosisMappings: { icdExact: ["N10"], icdFamily: ["N10"], keyword: ["pyelonephritis","kidney infection","pyélonéphrite"] },
+    sourceReferences: [{ label: "MedlinePlus — Urologic", url: "https://medlineplus.gov/", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("p17-pyelonephrit", "PRIMARY_CARE", "within 1–3 days or as directed")], suggestedText: PYELONEPHRITIS_V1_SUGGESTED_TEXT,
+  },
+  {
+    id: "infected_obstructed_stone_post_acute_v1", version: "1.0.0", title: "Infected obstructed stone post-acute discharge documentation", ...UROLOGY_PHASE17_TEMPLATE_GOVERNANCE, riskCategory: "high",
+    diagnosisMappings: { icdExact: ["N13.6"], icdFamily: ["N13.6"], keyword: ["infected obstructed stone","pyonephrosis","pyélo-urétérite obstructive"] },
+    sourceReferences: [{ label: "MedlinePlus — Urologic", url: "https://medlineplus.gov/", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("p17-infected_obs", "UROLOGY", "urgent / as directed")], suggestedText: INFECTED_OBSTRUCTED_STONE_POST_ACUTE_V1_SUGGESTED_TEXT,
+  },
+  {
+    id: "hematuria_v1", version: "1.0.0", title: "Hematuria discharge documentation", ...UROLOGY_PHASE17_TEMPLATE_GOVERNANCE,
+    diagnosisMappings: { icdExact: ["R31.9"], icdFamily: ["R31"], keyword: ["hematuria","blood in urine","hématurie"] },
+    sourceReferences: [{ label: "MedlinePlus — Urologic", url: "https://medlineplus.gov/", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("p17-hematuria_v1", "UROLOGY", "within 1–2 days or as directed")], suggestedText: HEMATURIA_V1_SUGGESTED_TEXT,
+  },
+  {
+    id: "urinary_retention_v1", version: "1.0.0", title: "Urinary retention discharge documentation", ...UROLOGY_PHASE17_TEMPLATE_GOVERNANCE,
+    diagnosisMappings: { icdExact: ["R33.9"], icdFamily: ["R33"], keyword: ["urinary retention","retention urinaire"] },
+    sourceReferences: [{ label: "MedlinePlus — Urologic", url: "https://medlineplus.gov/", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("p17-urinary_rete", "UROLOGY", "within 1–3 days or as directed")], suggestedText: URINARY_RETENTION_V1_SUGGESTED_TEXT,
+  },
+  {
+    id: "urinary_catheter_complication_v1", version: "1.0.0", title: "Urinary catheter complication discharge documentation", ...UROLOGY_PHASE17_TEMPLATE_GOVERNANCE,
+    diagnosisMappings: { icdExact: ["T83.511A"], icdFamily: ["T83.0","T83.1"], keyword: ["urinary catheter complication","Foley complication","complication de sonde urinaire"] },
+    sourceReferences: [{ label: "MedlinePlus — Urologic", url: "https://medlineplus.gov/", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("p17-urinary_cath", "UROLOGY", "within 1–3 days or as directed")], suggestedText: URINARY_CATHETER_COMPLICATION_V1_SUGGESTED_TEXT,
+  },
+  {
+    id: "epididymitis_v1", version: "1.0.0", title: "Epididymitis discharge documentation", ...UROLOGY_PHASE17_TEMPLATE_GOVERNANCE,
+    diagnosisMappings: { icdExact: ["N45.1"], icdFamily: ["N45.1"], keyword: ["epididymitis","épididymite"] },
+    sourceReferences: [{ label: "MedlinePlus — Urologic", url: "https://medlineplus.gov/", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("p17-epididymitis", "UROLOGY", "within 1–2 days or as directed")], suggestedText: EPIDIDYMITIS_V1_SUGGESTED_TEXT,
+  },
+  {
+    id: "orchitis_v1", version: "1.0.0", title: "Orchitis discharge documentation", ...UROLOGY_PHASE17_TEMPLATE_GOVERNANCE,
+    diagnosisMappings: { icdExact: ["N45.2"], icdFamily: ["N45.2"], keyword: ["orchitis","orchidite"] },
+    sourceReferences: [{ label: "MedlinePlus — Urologic", url: "https://medlineplus.gov/", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("p17-orchitis_v1", "UROLOGY", "within 1–2 days or as directed")], suggestedText: ORCHITIS_V1_SUGGESTED_TEXT,
+  },
+  {
+    id: "testicular_torsion_post_acute_v1", version: "1.0.0", title: "Testicular torsion post-acute discharge documentation", ...UROLOGY_PHASE17_TEMPLATE_GOVERNANCE, riskCategory: "high",
+    diagnosisMappings: { icdExact: ["N44.00"], icdFamily: ["N44"], keyword: ["testicular torsion post-acute","torsion testiculaire soins post-aigus"] },
+    sourceReferences: [{ label: "MedlinePlus — Urologic", url: "https://medlineplus.gov/", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("p17-testicular_t", "UROLOGY", "urgent / as directed")], suggestedText: TESTICULAR_TORSION_POST_ACUTE_V1_SUGGESTED_TEXT,
+  },
+  {
+    id: "prostatitis_v1", version: "1.0.0", title: "Prostatitis discharge documentation", ...UROLOGY_PHASE17_TEMPLATE_GOVERNANCE,
+    diagnosisMappings: { icdExact: ["N41.9"], icdFamily: ["N41"], keyword: ["prostatitis","prostatite"] },
+    sourceReferences: [{ label: "MedlinePlus — Urologic", url: "https://medlineplus.gov/", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("p17-prostatitis_", "UROLOGY", "within 1–2 days or as directed")], suggestedText: PROSTATITIS_V1_SUGGESTED_TEXT,
+  },
+  {
+    id: "urethritis_v1", version: "1.0.0", title: "Urethritis discharge documentation", ...UROLOGY_PHASE17_TEMPLATE_GOVERNANCE,
+    diagnosisMappings: { icdExact: ["N34.1"], icdFamily: ["N34"], keyword: ["urethritis","uretrite"] },
+    sourceReferences: [{ label: "MedlinePlus — Urologic", url: "https://medlineplus.gov/", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("p17-urethritis_v", "PRIMARY_CARE", "within 1–2 days or as directed")], suggestedText: URETHRITIS_V1_SUGGESTED_TEXT,
+  },
+  {
+    id: "priapism_post_acute_v1", version: "1.0.0", title: "Priapism post-acute discharge documentation", ...UROLOGY_PHASE17_TEMPLATE_GOVERNANCE, riskCategory: "high",
+    diagnosisMappings: { icdExact: ["N48.33"], icdFamily: ["N48.3"], keyword: ["priapism post-acute","priapisme soins post-aigus"] },
+    sourceReferences: [{ label: "MedlinePlus — Urologic", url: "https://medlineplus.gov/", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("p17-priapism_pos", "UROLOGY", "urgent / as directed")], suggestedText: PRIAPISM_POST_ACUTE_V1_SUGGESTED_TEXT,
+  },
+  {
+    id: "paraphimosis_post_acute_v1", version: "1.0.0", title: "Paraphimosis post-acute discharge documentation", ...UROLOGY_PHASE17_TEMPLATE_GOVERNANCE,
+    diagnosisMappings: { icdExact: ["N47.2"], icdFamily: ["N47.2"], keyword: ["paraphimosis post-acute","paraphimosis","paraphimosis soins post-aigus"] },
+    sourceReferences: [{ label: "MedlinePlus — Urologic", url: "https://medlineplus.gov/", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("p17-paraphimosis", "UROLOGY", "within 1–2 days or as directed")], suggestedText: PARAPHIMOSIS_POST_ACUTE_V1_SUGGESTED_TEXT,
+  },
+  {
+    id: "penile_fracture_post_acute_v1", version: "1.0.0", title: "Penile fracture post-acute discharge documentation", ...UROLOGY_PHASE17_TEMPLATE_GOVERNANCE, riskCategory: "high",
+    diagnosisMappings: { icdExact: ["S39.840A"], icdFamily: ["S39.840"], keyword: ["penile fracture post-acute","fracture of corpus cavernosum penis","fracture pénienne soins post-aigus"] },
+    sourceReferences: [{ label: "MedlinePlus — Urologic", url: "https://medlineplus.gov/", publisher: "U.S. National Library of Medicine (MedlinePlus)", accessedAt: ACCESSED_AT }],
+    defaultFollowUps: [registryFollowUp("p17-penile_fract", "UROLOGY", "urgent / as directed")], suggestedText: PENILE_FRACTURE_POST_ACUTE_V1_SUGGESTED_TEXT,
   },
   {
     id: GENERIC_PROVIDER_DISCHARGE_TEMPLATE_ID,

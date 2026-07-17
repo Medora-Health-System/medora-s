@@ -1592,6 +1592,179 @@ export const PROVIDER_DISCHARGE_TEMPLATE_CONTENT_INTEGRITY: Record<
     mustIncludeAny: { en: ['poison control', 'poison-control'], fr: ['centre antipoison'] },
     forbiddenCrossTemplateMarkers: { en: ['medically cleared'], fr: ['clearance médicale'] },
   },
+  // Phase 17 — OB/GYN / urology content integrity rules (Commit 2).
+  early_pregnancy_bleeding_v1: {
+    mustIncludeAny: { en: ["early pregnancy bleeding","début de grossesse"], fr: ["early pregnancy bleeding","début de grossesse"] },
+    forbiddenCrossTemplateMarkers: {"en":["ectopic excluded","torsion excluded","medically cleared","fetal well-being confirmed"],"fr":["ectopique exclue","torsion exclue","clearance médicale","bien-être fœtal confirmé"]},
+  },
+  pregnancy_unknown_location_v1: {
+    mustIncludeAny: { en: ["unknown location","localisation inconnue"], fr: ["unknown location","localisation inconnue"] },
+    forbiddenCrossTemplateMarkers: {"en":["ectopic excluded","torsion excluded","medically cleared","fetal well-being confirmed"],"fr":["ectopique exclue","torsion exclue","clearance médicale","bien-être fœtal confirmé"]},
+  },
+  threatened_abortion_v1: {
+    mustIncludeAny: { en: ["threatened abortion","menace d'avortement"], fr: ["threatened abortion","menace d'avortement"] },
+    forbiddenCrossTemplateMarkers: {"en":["ectopic excluded","torsion excluded","medically cleared","fetal well-being confirmed"],"fr":["ectopique exclue","torsion exclue","clearance médicale","bien-être fœtal confirmé"]},
+  },
+  early_pregnancy_loss_post_acute_v1: {
+    mustIncludeAny: { en: ["pregnancy loss","perte de grossesse"], fr: ["pregnancy loss","perte de grossesse"] },
+    forbiddenCrossTemplateMarkers: {"en":["ectopic excluded","torsion excluded","medically cleared","fetal well-being confirmed"],"fr":["ectopique exclue","torsion exclue","clearance médicale","bien-être fœtal confirmé"]},
+  },
+  ectopic_pregnancy_post_acute_v1: {
+    mustIncludeAny: { en: ["ectopic pregnancy","grossesse ectopique"], fr: ["ectopic pregnancy","grossesse ectopique"] },
+    forbiddenCrossTemplateMarkers: {"en":["ectopic excluded","torsion excluded","medically cleared","fetal well-being confirmed"],"fr":["ectopique exclue","torsion exclue","clearance médicale","bien-être fœtal confirmé"]},
+  },
+  hyperemesis_gravidarum_v1: {
+    mustIncludeAny: { en: ["hyperemesis","hyperémèse"], fr: ["hyperemesis","hyperémèse"] },
+    forbiddenCrossTemplateMarkers: {"en":["ectopic excluded","torsion excluded","medically cleared","fetal well-being confirmed"],"fr":["ectopique exclue","torsion exclue","clearance médicale","bien-être fœtal confirmé"]},
+  },
+  pregnancy_abdominal_pain_v1: {
+    mustIncludeAny: { en: ["pregnancy abdominal pain","douleur abdominale grossesse"], fr: ["pregnancy abdominal pain","douleur abdominale grossesse"] },
+    forbiddenCrossTemplateMarkers: {"en":["ectopic excluded","torsion excluded","medically cleared","fetal well-being confirmed"],"fr":["ectopique exclue","torsion exclue","clearance médicale","bien-être fœtal confirmé"]},
+  },
+  late_pregnancy_bleeding_post_acute_v1: {
+    mustIncludeAny: { en: ["late pregnancy bleeding","fin de grossesse"], fr: ["late pregnancy bleeding","fin de grossesse"] },
+    forbiddenCrossTemplateMarkers: {"en":["ectopic excluded","torsion excluded","medically cleared","fetal well-being confirmed"],"fr":["ectopique exclue","torsion exclue","clearance médicale","bien-être fœtal confirmé"]},
+  },
+  false_labor_v1: {
+    mustIncludeAny: { en: ["false labor","fausse couche de travail"], fr: ["false labor","fausse couche de travail"] },
+    forbiddenCrossTemplateMarkers: {"en":["ectopic excluded","torsion excluded","medically cleared","fetal well-being confirmed"],"fr":["ectopique exclue","torsion exclue","clearance médicale","bien-être fœtal confirmé"]},
+  },
+  preterm_labor_post_acute_v1: {
+    mustIncludeAny: { en: ["preterm labor","travail prématuré"], fr: ["preterm labor","travail prématuré"] },
+    forbiddenCrossTemplateMarkers: {"en":["ectopic excluded","torsion excluded","medically cleared","fetal well-being confirmed"],"fr":["ectopique exclue","torsion exclue","clearance médicale","bien-être fœtal confirmé"]},
+  },
+  rupture_of_membranes_post_acute_v1: {
+    mustIncludeAny: { en: ["rupture of membranes","rupture des membranes"], fr: ["rupture of membranes","rupture des membranes"] },
+    forbiddenCrossTemplateMarkers: {"en":["ectopic excluded","torsion excluded","medically cleared","fetal well-being confirmed"],"fr":["ectopique exclue","torsion exclue","clearance médicale","bien-être fœtal confirmé"]},
+  },
+  hypertensive_pregnancy_post_acute_v1: {
+    mustIncludeAny: { en: ["hypertensive pregnancy","hypertension grossesse"], fr: ["hypertensive pregnancy","hypertension grossesse"] },
+    forbiddenCrossTemplateMarkers: {"en":["ectopic excluded","torsion excluded","medically cleared","fetal well-being confirmed"],"fr":["ectopique exclue","torsion exclue","clearance médicale","bien-être fœtal confirmé"]},
+  },
+  postpartum_bleeding_post_acute_v1: {
+    mustIncludeAny: { en: ["postpartum bleeding","saignement post-partum"], fr: ["postpartum bleeding","saignement post-partum"] },
+    forbiddenCrossTemplateMarkers: {"en":["ectopic excluded","torsion excluded","medically cleared","fetal well-being confirmed"],"fr":["ectopique exclue","torsion exclue","clearance médicale","bien-être fœtal confirmé"]},
+  },
+  postpartum_endometritis_v1: {
+    mustIncludeAny: { en: ["postpartum endometritis","endométrite post-partum"], fr: ["postpartum endometritis","endométrite post-partum"] },
+    forbiddenCrossTemplateMarkers: {"en":["ectopic excluded","torsion excluded","medically cleared","fetal well-being confirmed"],"fr":["ectopique exclue","torsion exclue","clearance médicale","bien-être fœtal confirmé"]},
+  },
+  postpartum_hypertension_v1: {
+    mustIncludeAny: { en: ["postpartum hypertension","hypertension post-partum"], fr: ["postpartum hypertension","hypertension post-partum"] },
+    forbiddenCrossTemplateMarkers: {"en":["ectopic excluded","torsion excluded","medically cleared","fetal well-being confirmed"],"fr":["ectopique exclue","torsion exclue","clearance médicale","bien-être fœtal confirmé"]},
+  },
+  acute_pelvic_pain_v1: {
+    mustIncludeAny: { en: ["acute pelvic pain","douleur pelvienne aiguë"], fr: ["acute pelvic pain","douleur pelvienne aiguë"] },
+    forbiddenCrossTemplateMarkers: {"en":["ectopic excluded","torsion excluded","medically cleared","fetal well-being confirmed"],"fr":["ectopique exclue","torsion exclue","clearance médicale","bien-être fœtal confirmé"]},
+  },
+  ovarian_cyst_v1: {
+    mustIncludeAny: { en: ["ovarian cyst","kyste ovarien"], fr: ["ovarian cyst","kyste ovarien"] },
+    forbiddenCrossTemplateMarkers: {"en":["ectopic excluded","torsion excluded","medically cleared","fetal well-being confirmed"],"fr":["ectopique exclue","torsion exclue","clearance médicale","bien-être fœtal confirmé"]},
+  },
+  ovarian_torsion_post_acute_v1: {
+    mustIncludeAny: { en: ["ovarian torsion","torsion ovarienne"], fr: ["ovarian torsion","torsion ovarienne"] },
+    forbiddenCrossTemplateMarkers: {"en":["ectopic excluded","torsion excluded","medically cleared","fetal well-being confirmed"],"fr":["ectopique exclue","torsion exclue","clearance médicale","bien-être fœtal confirmé"]},
+  },
+  pelvic_inflammatory_disease_v1: {
+    mustIncludeAny: { en: ["pelvic inflammatory","pelvienne inflammatoire"], fr: ["pelvic inflammatory","pelvienne inflammatoire"] },
+    forbiddenCrossTemplateMarkers: {"en":["ectopic excluded","torsion excluded","medically cleared","fetal well-being confirmed"],"fr":["ectopique exclue","torsion exclue","clearance médicale","bien-être fœtal confirmé"]},
+  },
+  tubo_ovarian_abscess_post_acute_v1: {
+    mustIncludeAny: { en: ["tubo-ovarian abscess","abcès tubo-ovarien"], fr: ["tubo-ovarian abscess","abcès tubo-ovarien"] },
+    forbiddenCrossTemplateMarkers: {"en":["ectopic excluded","torsion excluded","medically cleared","fetal well-being confirmed"],"fr":["ectopique exclue","torsion exclue","clearance médicale","bien-être fœtal confirmé"]},
+  },
+  cervicitis_v1: {
+    mustIncludeAny: { en: ["cervicitis","cervicite"], fr: ["cervicitis","cervicite"] },
+    forbiddenCrossTemplateMarkers: {"en":["ectopic excluded","torsion excluded","medically cleared","fetal well-being confirmed"],"fr":["ectopique exclue","torsion exclue","clearance médicale","bien-être fœtal confirmé"]},
+  },
+  vaginitis_v1: {
+    mustIncludeAny: { en: ["vaginitis","vaginite"], fr: ["vaginitis","vaginite"] },
+    forbiddenCrossTemplateMarkers: {"en":["ectopic excluded","torsion excluded","medically cleared","fetal well-being confirmed"],"fr":["ectopique exclue","torsion exclue","clearance médicale","bien-être fœtal confirmé"]},
+  },
+  bartholin_cyst_abscess_v1: {
+    mustIncludeAny: { en: ["Bartholin","Bartholin"], fr: ["Bartholin","Bartholin"] },
+    forbiddenCrossTemplateMarkers: {"en":["ectopic excluded","torsion excluded","medically cleared","fetal well-being confirmed"],"fr":["ectopique exclue","torsion exclue","clearance médicale","bien-être fœtal confirmé"]},
+  },
+  abnormal_uterine_bleeding_v1: {
+    mustIncludeAny: { en: ["uterine bleeding","saignements utérins"], fr: ["uterine bleeding","saignements utérins"] },
+    forbiddenCrossTemplateMarkers: {"en":["ectopic excluded","torsion excluded","medically cleared","fetal well-being confirmed"],"fr":["ectopique exclue","torsion exclue","clearance médicale","bien-être fœtal confirmé"]},
+  },
+  postmenopausal_bleeding_v1: {
+    mustIncludeAny: { en: ["postmenopausal bleeding","postménopausique"], fr: ["postmenopausal bleeding","postménopausique"] },
+    forbiddenCrossTemplateMarkers: {"en":["ectopic excluded","torsion excluded","medically cleared","fetal well-being confirmed"],"fr":["ectopique exclue","torsion exclue","clearance médicale","bien-être fœtal confirmé"]},
+  },
+  vaginal_foreign_body_v1: {
+    mustIncludeAny: { en: ["foreign body","corps étranger"], fr: ["foreign body","corps étranger"] },
+    forbiddenCrossTemplateMarkers: {"en":["ectopic excluded","torsion excluded","medically cleared","fetal well-being confirmed"],"fr":["ectopique exclue","torsion exclue","clearance médicale","bien-être fœtal confirmé"]},
+  },
+  iud_complication_v1: {
+    mustIncludeAny: { en: ["IUD","DIU"], fr: ["IUD","DIU"] },
+    forbiddenCrossTemplateMarkers: {"en":["ectopic excluded","torsion excluded","medically cleared","fetal well-being confirmed"],"fr":["ectopique exclue","torsion exclue","clearance médicale","bien-être fœtal confirmé"]},
+  },
+  uncomplicated_renal_colic_v1: {
+    mustIncludeAny: { en: ["renal colic","colique néphrétique"], fr: ["renal colic","colique néphrétique"] },
+    forbiddenCrossTemplateMarkers: {"en":["ectopic excluded","torsion excluded","medically cleared","fetal well-being confirmed"],"fr":["ectopique exclue","torsion exclue","clearance médicale","bien-être fœtal confirmé"]},
+  },
+  obstructing_ureteral_stone_post_acute_v1: {
+    mustIncludeAny: { en: ["obstructing stone","obstructif"], fr: ["obstructing stone","obstructif"] },
+    forbiddenCrossTemplateMarkers: {"en":["ectopic excluded","torsion excluded","medically cleared","fetal well-being confirmed"],"fr":["ectopique exclue","torsion exclue","clearance médicale","bien-être fœtal confirmé"]},
+  },
+  cystitis_v1: {
+    mustIncludeAny: { en: ["cystitis","cystite"], fr: ["cystitis","cystite"] },
+    forbiddenCrossTemplateMarkers: {"en":["ectopic excluded","torsion excluded","medically cleared","fetal well-being confirmed"],"fr":["ectopique exclue","torsion exclue","clearance médicale","bien-être fœtal confirmé"]},
+  },
+  pyelonephritis_v1: {
+    mustIncludeAny: { en: ["pyelonephritis","pyélonéphrite"], fr: ["pyelonephritis","pyélonéphrite"] },
+    forbiddenCrossTemplateMarkers: {"en":["ectopic excluded","torsion excluded","medically cleared","fetal well-being confirmed"],"fr":["ectopique exclue","torsion exclue","clearance médicale","bien-être fœtal confirmé"]},
+  },
+  infected_obstructed_stone_post_acute_v1: {
+    mustIncludeAny: { en: ["infected obstructed","obstructive infect"], fr: ["infected obstructed","obstructive infect"] },
+    forbiddenCrossTemplateMarkers: {"en":["ectopic excluded","torsion excluded","medically cleared","fetal well-being confirmed"],"fr":["ectopique exclue","torsion exclue","clearance médicale","bien-être fœtal confirmé"]},
+  },
+  hematuria_v1: {
+    mustIncludeAny: { en: ["hematuria","hématurie"], fr: ["hematuria","hématurie"] },
+    forbiddenCrossTemplateMarkers: {"en":["ectopic excluded","torsion excluded","medically cleared","fetal well-being confirmed"],"fr":["ectopique exclue","torsion exclue","clearance médicale","bien-être fœtal confirmé"]},
+  },
+  urinary_retention_v1: {
+    mustIncludeAny: { en: ["urinary retention","rétention urinaire"], fr: ["urinary retention","rétention urinaire"] },
+    forbiddenCrossTemplateMarkers: {"en":["ectopic excluded","torsion excluded","medically cleared","fetal well-being confirmed"],"fr":["ectopique exclue","torsion exclue","clearance médicale","bien-être fœtal confirmé"]},
+  },
+  urinary_catheter_complication_v1: {
+    mustIncludeAny: { en: ["catheter complication","sonde urinaire"], fr: ["catheter complication","sonde urinaire"] },
+    forbiddenCrossTemplateMarkers: {"en":["ectopic excluded","torsion excluded","medically cleared","fetal well-being confirmed"],"fr":["ectopique exclue","torsion exclue","clearance médicale","bien-être fœtal confirmé"]},
+  },
+  epididymitis_v1: {
+    mustIncludeAny: { en: ["epididymitis","épididymite"], fr: ["epididymitis","épididymite"] },
+    forbiddenCrossTemplateMarkers: {"en":["ectopic excluded","torsion excluded","medically cleared","fetal well-being confirmed"],"fr":["ectopique exclue","torsion exclue","clearance médicale","bien-être fœtal confirmé"]},
+  },
+  orchitis_v1: {
+    mustIncludeAny: { en: ["orchitis","orchidite"], fr: ["orchitis","orchidite"] },
+    forbiddenCrossTemplateMarkers: {"en":["ectopic excluded","torsion excluded","medically cleared","fetal well-being confirmed"],"fr":["ectopique exclue","torsion exclue","clearance médicale","bien-être fœtal confirmé"]},
+  },
+  testicular_torsion_post_acute_v1: {
+    mustIncludeAny: { en: ["testicular torsion","torsion testiculaire"], fr: ["testicular torsion","torsion testiculaire"] },
+    forbiddenCrossTemplateMarkers: {"en":["ectopic excluded","torsion excluded","medically cleared","fetal well-being confirmed"],"fr":["ectopique exclue","torsion exclue","clearance médicale","bien-être fœtal confirmé"]},
+  },
+  prostatitis_v1: {
+    mustIncludeAny: { en: ["prostatitis","prostatite"], fr: ["prostatitis","prostatite"] },
+    forbiddenCrossTemplateMarkers: {"en":["ectopic excluded","torsion excluded","medically cleared","fetal well-being confirmed"],"fr":["ectopique exclue","torsion exclue","clearance médicale","bien-être fœtal confirmé"]},
+  },
+  urethritis_v1: {
+    mustIncludeAny: { en: ["urethritis","uretrite"], fr: ["urethritis","uretrite"] },
+    forbiddenCrossTemplateMarkers: {"en":["ectopic excluded","torsion excluded","medically cleared","fetal well-being confirmed"],"fr":["ectopique exclue","torsion exclue","clearance médicale","bien-être fœtal confirmé"]},
+  },
+  priapism_post_acute_v1: {
+    mustIncludeAny: { en: ["priapism","priapisme"], fr: ["priapism","priapisme"] },
+    forbiddenCrossTemplateMarkers: {"en":["ectopic excluded","torsion excluded","medically cleared","fetal well-being confirmed"],"fr":["ectopique exclue","torsion exclue","clearance médicale","bien-être fœtal confirmé"]},
+  },
+  paraphimosis_post_acute_v1: {
+    mustIncludeAny: { en: ["paraphimosis","paraphimosis"], fr: ["paraphimosis","paraphimosis"] },
+    forbiddenCrossTemplateMarkers: {"en":["ectopic excluded","torsion excluded","medically cleared","fetal well-being confirmed"],"fr":["ectopique exclue","torsion exclue","clearance médicale","bien-être fœtal confirmé"]},
+  },
+  penile_fracture_post_acute_v1: {
+    mustIncludeAny: { en: ["penile fracture","fracture pénienne"], fr: ["penile fracture","fracture pénienne"] },
+    forbiddenCrossTemplateMarkers: {"en":["ectopic excluded","torsion excluded","medically cleared","fetal well-being confirmed"],"fr":["ectopique exclue","torsion exclue","clearance médicale","bien-être fœtal confirmé"]},
+  },
 };
 
 function suggestedTextBlob(body: {

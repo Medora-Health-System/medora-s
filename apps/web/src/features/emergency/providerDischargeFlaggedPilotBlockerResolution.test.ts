@@ -62,7 +62,7 @@ describe("MEDUI.ED.DISCHARGE.TEMPLATE_FAMILY_COVERAGE.5", () => {
         displayName: "Threatened miscarriage",
         context: { patientSex: "female", isPregnant: true },
       });
-      expect(r.templateId).toBe("obgyn_threatened_miscarriage_precautions_v1");
+      expect(r.templateId).toBe("threatened_abortion_v1");
       expect(r.templateId).not.toBe("generic_ed_discharge_v1");
     });
 

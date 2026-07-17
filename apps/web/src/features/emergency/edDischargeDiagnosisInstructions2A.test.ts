@@ -78,10 +78,10 @@ describe("MEDUI.ED.DISCHARGE.DIAGNOSIS_INSTRUCTIONS.2A", () => {
       expect(audit.summary.totalDiagnosisSpecificMapped + audit.summary.totalGenericFallbackOnly).toBe(
         audit.summary.totalPickerRecordsAudited
       );
-      // Phase 15: 225 picker records; Phase 16 toxicology/envenomation adds 20 COMMON_DIAGNOSES (225 -> 245).
-      expect(audit.summary.totalPickerRecordsAudited).toBe(245);
+      // Phase 15: 225 picker records; Phase 16 toxicology adds 20 (225 -> 245); Phase 17 OB/GYN/urology adds 40 (245 -> 285).
+      expect(audit.summary.totalPickerRecordsAudited).toBe(285);
       expect(audit.summary.totalGenericFallbackOnly).toBe(0);
-      expect(audit.summary.totalDiagnosisSpecificMapped).toBe(245);
+      expect(audit.summary.totalDiagnosisSpecificMapped).toBe(285);
     });
 
     it("3 — top 100 fallback list is generated when any generic fallback exists", () => {
