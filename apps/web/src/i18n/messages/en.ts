@@ -39,6 +39,7 @@ import { providerDocumentationDermatologyComplaintIntelEn } from "./providerDocu
 import { providerDocumentationEnvironmentalExposureComplaintIntelEn } from "./providerDocumentationEnvironmentalExposureComplaintIntel.en";
 import { providerDocumentationToxicologyComplaintIntelEn } from "./providerDocumentationToxicologyComplaintIntel.en";
 import { providerDocumentationObGynUrologyComplaintIntelEn } from "./providerDocumentationObGynUrologyComplaintIntel.en";
+import { providerDocumentationPsychiatricBehavioralComplaintIntelEn } from "./providerDocumentationPsychiatricBehavioralComplaintIntel.en";
 
 export default {
   common: {
@@ -8477,6 +8478,18 @@ export default {
     templateRenalUrinaryEmergencyV1Help: "Click-to-insert prompts for obstructive uropathy, infected stone, retention, gross hematuria, pyelonephritis, and urosepsis without autonomous antibiotic or drainage selection.",
     templateAcuteScrotalPenileEmergencyV1: "Acute Scrotal / Penile Emergency",
     templateAcuteScrotalPenileEmergencyV1Help: "Click-to-insert prompts for testicular torsion, epididymitis, priapism, penile fracture, paraphimosis, and Fournier overlap documentation without torsion-exclusion language.",
+    templateSuicideSelfHarmRiskV1: "Suicidal Ideation / Self-Harm",
+    templateSuicideSelfHarmRiskV1Help: "Click-to-insert prompts for suicidal ideation, self-harm, NSSI distinction, means access, C-SSRS/monitoring as documentation prompts only, and Phase 16 intentional overdose linkage without suicide-risk classification or medical-clearance shortcuts.",
+    templatePsychosisManiaBehavioralCrisisV1: "Psychosis / Mania / Behavioral Crisis",
+    templatePsychosisManiaBehavioralCrisisV1Help: "Click-to-insert prompts for psychosis, mania, behavioral crisis, and agitation without not-psychotic-unless-supported language or autonomous medication or disposition selection.",
+    templateDepressionAnxietyTraumaCrisisV1: "Depression / Anxiety / Trauma Crisis",
+    templateDepressionAnxietyTraumaCrisisV1Help: "Click-to-insert prompts for depression, anxiety, trauma, grief, and panic without low-suicide-risk or medical-clearance shortcuts.",
+    templateDeliriumCatatoniaCognitiveBehaviorChangeV1: "Delirium / Catatonia / Cognitive-Behavioral Change",
+    templateDeliriumCatatoniaCognitiveBehaviorChangeV1Help: "Click-to-insert prompts for delirium as medical emergency, catatonia, and cognitive-behavioral change without presuming primary psychiatric illness or stating medically cleared.",
+    templatePediatricDevelopmentalBehavioralEmergencyV1: "Pediatric / Developmental Behavioral Emergency",
+    templatePediatricDevelopmentalBehavioralEmergencyV1Help: "Click-to-insert prompts for pediatric behavioral emergencies, developmental baseline, autism-related distress, ADHD agitation, and safeguarding without autonomous capacity or hold decisions.",
+    templateCapacityRefusalSafetyDispositionV1: "Capacity / Refusal / Safety Disposition",
+    templateCapacityRefusalSafetyDispositionV1Help: "Click-to-insert prompts for refusal, AMA, decision-specific capacity documentation, and safety disposition without equating refusal with incapacity or AMA with capacity determination.",
     templateObservationReassessment: "Observation reassessment",
     templateObservationReassessmentHelp: "Interval symptoms, pending results, vitals, monitoring, discharge/transfer readiness.",
     templateCategoryCardiopulmonary: "Cardiopulmonary",
@@ -9866,6 +9879,7 @@ export default {
     ...providerDocumentationEnvironmentalExposureComplaintIntelEn,
     ...providerDocumentationToxicologyComplaintIntelEn,
     ...providerDocumentationObGynUrologyComplaintIntelEn,
+    ...providerDocumentationPsychiatricBehavioralComplaintIntelEn,
     ...providerDocumentationPsychBehavioralComplaintIntelEn,
     ...providerDocumentationMedicationRefillComplaintIntelEn,
     ...providerDocumentationObservationReassessmentComplaintIntelEn,

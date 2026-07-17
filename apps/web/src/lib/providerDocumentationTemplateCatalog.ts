@@ -170,6 +170,12 @@ import {
   ACUTE_GYNECOLOGIC_PELVIC_COMPLAINT_V1_INTEL,
   RENAL_URINARY_EMERGENCY_V1_INTEL,
   ACUTE_SCROTAL_PENILE_EMERGENCY_V1_INTEL,
+  SUICIDE_SELF_HARM_RISK_V1_INTEL,
+  PSYCHOSIS_MANIA_BEHAVIORAL_CRISIS_V1_INTEL,
+  DEPRESSION_ANXIETY_TRAUMA_CRISIS_V1_INTEL,
+  DELIRIUM_CATATONIA_COGNITIVE_BEHAVIOR_CHANGE_V1_INTEL,
+  PEDIATRIC_DEVELOPMENTAL_BEHAVIORAL_EMERGENCY_V1_INTEL,
+  CAPACITY_REFUSAL_SAFETY_DISPOSITION_V1_INTEL,
   type ProviderDocumentationComplaintIntelligence,
 } from "./providerDocumentationComplaintIntelligence";
 import type { ProviderDocumentationTemplatePickerSubgroupKey } from "./providerDocumentationModel";
@@ -2313,6 +2319,42 @@ export const PROVIDER_DOCUMENTATION_TEMPLATES: ProviderDocumentationTemplateDefi
     "providerDocumentationWorkspace.templateAcuteScrotalPenileEmergencyV1",
     "providerDocumentationWorkspace.templateAcuteScrotalPenileEmergencyV1Help",
     ACUTE_SCROTAL_PENILE_EMERGENCY_V1_INTEL
+  ),
+  infectiousEntComplaintV1Template(
+    "suicide_self_harm_risk_v1",
+    "providerDocumentationWorkspace.templateSuicideSelfHarmRiskV1",
+    "providerDocumentationWorkspace.templateSuicideSelfHarmRiskV1Help",
+    SUICIDE_SELF_HARM_RISK_V1_INTEL
+  ),
+  infectiousEntComplaintV1Template(
+    "psychosis_mania_behavioral_crisis_v1",
+    "providerDocumentationWorkspace.templatePsychosisManiaBehavioralCrisisV1",
+    "providerDocumentationWorkspace.templatePsychosisManiaBehavioralCrisisV1Help",
+    PSYCHOSIS_MANIA_BEHAVIORAL_CRISIS_V1_INTEL
+  ),
+  infectiousEntComplaintV1Template(
+    "depression_anxiety_trauma_crisis_v1",
+    "providerDocumentationWorkspace.templateDepressionAnxietyTraumaCrisisV1",
+    "providerDocumentationWorkspace.templateDepressionAnxietyTraumaCrisisV1Help",
+    DEPRESSION_ANXIETY_TRAUMA_CRISIS_V1_INTEL
+  ),
+  infectiousEntComplaintV1Template(
+    "delirium_catatonia_cognitive_behavior_change_v1",
+    "providerDocumentationWorkspace.templateDeliriumCatatoniaCognitiveBehaviorChangeV1",
+    "providerDocumentationWorkspace.templateDeliriumCatatoniaCognitiveBehaviorChangeV1Help",
+    DELIRIUM_CATATONIA_COGNITIVE_BEHAVIOR_CHANGE_V1_INTEL
+  ),
+  infectiousEntComplaintV1Template(
+    "pediatric_developmental_behavioral_emergency_v1",
+    "providerDocumentationWorkspace.templatePediatricDevelopmentalBehavioralEmergencyV1",
+    "providerDocumentationWorkspace.templatePediatricDevelopmentalBehavioralEmergencyV1Help",
+    PEDIATRIC_DEVELOPMENTAL_BEHAVIORAL_EMERGENCY_V1_INTEL
+  ),
+  infectiousEntComplaintV1Template(
+    "capacity_refusal_safety_disposition_v1",
+    "providerDocumentationWorkspace.templateCapacityRefusalSafetyDispositionV1",
+    "providerDocumentationWorkspace.templateCapacityRefusalSafetyDispositionV1Help",
+    CAPACITY_REFUSAL_SAFETY_DISPOSITION_V1_INTEL
   ),
   {
     id: "observation_reassessment",

@@ -14,6 +14,7 @@ import { providerDocumentationDermatologyComplaintIntelFr } from "./providerDocu
 import { providerDocumentationEnvironmentalExposureComplaintIntelFr } from "./providerDocumentationEnvironmentalExposureComplaintIntel.fr";
 import { providerDocumentationToxicologyComplaintIntelFr } from "./providerDocumentationToxicologyComplaintIntel.fr";
 import { providerDocumentationObGynUrologyComplaintIntelFr } from "./providerDocumentationObGynUrologyComplaintIntel.fr";
+import { providerDocumentationPsychiatricBehavioralComplaintIntelFr } from "./providerDocumentationPsychiatricBehavioralComplaintIntel.fr";
 import { providerDocumentationGuRenalComplaintIntel19Mdm5Fr } from "./providerDocumentationGuRenalComplaintIntel19Mdm5.fr";
 import { providerDocumentationInfectiousEntComplaintIntel19Mdm7Fr } from "./providerDocumentationInfectiousEntComplaintIntel19Mdm7.fr";
 import { providerDocumentationDentalOralComplaintIntelFr } from "./providerDocumentationDentalOralComplaintIntel.fr";
@@ -8455,6 +8456,18 @@ export default {
     templateRenalUrinaryEmergencyV1Help: "Inserts cliquables — uropathie obstructive, calcul infecté, rétention, hématurie macroscopique, pyélonéphrite et urosépsis sans choix autonome d'antibiotiques ou de drainage.",
     templateAcuteScrotalPenileEmergencyV1: "Urgence scrotale / Pénienne aiguë",
     templateAcuteScrotalPenileEmergencyV1Help: "Inserts cliquables — torsion testiculaire, épididymite, priapisme, fracture pénienne, paraphimosis et recoupement Fournier sans langage d'exclusion de torsion.",
+    templateSuicideSelfHarmRiskV1: "Idées suicidaires / Automutilation",
+    templateSuicideSelfHarmRiskV1Help: "Inserts cliquables — idées suicidaires, automutilation, distinction NSSI, accès aux moyens, C-SSRS/surveillance comme aide à la documentation seulement, et lien Phase 16 surdose intentionnelle sans classification du risque suicidaire ni raccourci d'aptitude médicale.",
+    templatePsychosisManiaBehavioralCrisisV1: "Psychose / Manie / Crise comportementale",
+    templatePsychosisManiaBehavioralCrisisV1Help: "Inserts cliquables — psychose, manie, crise comportementale et agitation sans énoncé « non psychotique » non étayé ni sélection autonome de médicaments ou de disposition.",
+    templateDepressionAnxietyTraumaCrisisV1: "Dépression / Anxiété / Crise liée au traumatisme",
+    templateDepressionAnxietyTraumaCrisisV1Help: "Inserts cliquables — dépression, anxiété, traumatisme, deuil et panique sans raccourci de faible risque suicidaire ni d'aptitude médicale.",
+    templateDeliriumCatatoniaCognitiveBehaviorChangeV1: "Délirium / Catatonie / Changement cognitivo-comportemental",
+    templateDeliriumCatatoniaCognitiveBehaviorChangeV1Help: "Inserts cliquables — délirium comme urgence médicale, catatonie et changement cognitivo-comportemental sans présumer d'une cause psychiatrique primaire ni énoncer d'aptitude médicale.",
+    templatePediatricDevelopmentalBehavioralEmergencyV1: "Urgence comportementale pédiatrique / Développementale",
+    templatePediatricDevelopmentalBehavioralEmergencyV1Help: "Inserts cliquables — urgences comportementales pédiatriques, baseline développementale, détresse liée à l'autisme, agitation TDAH et protection de l'enfance sans décision autonome de capacité ou de contention.",
+    templateCapacityRefusalSafetyDispositionV1: "Capacité décisionnelle / Refus / Disposition sécuritaire",
+    templateCapacityRefusalSafetyDispositionV1Help: "Inserts cliquables — refus, sortie contre avis médical, documentation de capacité spécifique à la décision et disposition sécuritaire sans équivaloir refus et incapacité ni AMA et détermination de capacité.",
     templateObservationReassessment: "Réévaluation observation",
     templateObservationReassessmentHelp: "Évolution, résultats en attente, signes vitaux, surveillance, aptitude sortie / transfert.",
     templateCategoryCardiopulmonary: "Cardiopulmonaire",
@@ -9850,6 +9863,7 @@ export default {
     ...providerDocumentationEnvironmentalExposureComplaintIntelFr,
     ...providerDocumentationToxicologyComplaintIntelFr,
     ...providerDocumentationObGynUrologyComplaintIntelFr,
+    ...providerDocumentationPsychiatricBehavioralComplaintIntelFr,
     ...providerDocumentationPsychBehavioralComplaintIntelFr,
     ...providerDocumentationMedicationRefillComplaintIntelFr,
     ...providerDocumentationObservationReassessmentComplaintIntelFr,

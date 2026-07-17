@@ -199,7 +199,13 @@ export type ProviderDocumentationTemplateId =
   | "hypertensive_postpartum_obstetric_emergency_v1"
   | "acute_gynecologic_pelvic_complaint_v1"
   | "renal_urinary_emergency_v1"
-  | "acute_scrotal_penile_emergency_v1";
+  | "acute_scrotal_penile_emergency_v1"
+  | "suicide_self_harm_risk_v1"
+  | "psychosis_mania_behavioral_crisis_v1"
+  | "depression_anxiety_trauma_crisis_v1"
+  | "delirium_catatonia_cognitive_behavior_change_v1"
+  | "pediatric_developmental_behavioral_emergency_v1"
+  | "capacity_refusal_safety_disposition_v1";
 
 export type ProviderDocumentationTemplatePickerSubgroupKey =
   | "gi_abdominal"
