@@ -1,0 +1,28 @@
+{
+  "auditStatus": "COMPLETE",
+  "catalogClassification": "CURATED",
+  "catalogComplete": false,
+  "certificationId": "MEDUI.MEDICATION_INTELLIGENCE_PHASE_6_5_CONTROLLED_EMERGENCY_MEDICATION_PILOT_DUPLICATE_PREVENTION",
+  "confidence": "HIGH",
+  "dataSource": "database",
+  "generatedAt": "2026-07-17T22:50:46.025Z",
+  "phase": "6.5",
+  "pilotCliPath": "/Users/matz/Desktop/medora-s-main/medora-s/apps/api/prisma/medications/pilot/run-medication-em-pilot.ts",
+  "pilotServicePath": "/Users/matz/Desktop/medora-s-main/medora-s/apps/api/src/medications/pilot/medication-em-pilot.service.ts",
+  "schema": {
+    "hasActiveIdentityPartialUniques": true,
+    "hasConceptIdentityKey": true,
+    "hasDuplicateAssessmentModel": true,
+    "hasPackageIdentityKey": true,
+    "hasPilotImportJobModel": true,
+    "hasPilotItemModel": true,
+    "hasPilotManifestModel": true,
+    "hasProductIdentityKey": true,
+    "migrationPresent": true,
+    "pilotCliPresent": true,
+    "pilotServicePresent": true,
+    "sharedDedupePresent": true
+  },
+  "sharedDedupePath": "/Users/matz/Desktop/medora-s-main/medora-s/packages/shared/src/medication/medicationPilotDuplicatePrevention.ts",
+  "title": "Phase 6.5 repository audit"
+}

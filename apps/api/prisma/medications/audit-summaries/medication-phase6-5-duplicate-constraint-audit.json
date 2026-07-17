@@ -1,0 +1,16 @@
+{
+  "auditStatus": "COMPLETE",
+  "bulkRealMappingApprovalAllowed": false,
+  "catalogClassification": "CURATED",
+  "catalogComplete": false,
+  "certificationId": "MEDUI.MEDICATION_INTELLIGENCE_PHASE_6_5_CONTROLLED_EMERGENCY_MEDICATION_PILOT_DUPLICATE_PREVENTION",
+  "confidence": "HIGH",
+  "dataSource": "database",
+  "exactReuseDoesNotBlockStaging": true,
+  "generatedAt": "2026-07-17T22:50:46.026Z",
+  "partialUniqueIndexes": true,
+  "phase": "6.5",
+  "probableAutoMergeAllowed": false,
+  "sourceDuplicateBlocksStaging": true,
+  "title": "Phase 6.5 duplicate constraint audit"
+}

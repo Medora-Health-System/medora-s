@@ -1,0 +1,63 @@
+{
+  "AutomaticVerificationEnabled": "NO",
+  "BulkRealMappingApprovalEnabled": "NO",
+  "CertificationIdempotent": "YES",
+  "ClinicalActivationEnabled": "NO",
+  "DuplicatePreventionEnabled": "YES",
+  "ExactDuplicateAutoCreationAllowed": "NO",
+  "ExistingEntityReuseEnabled": "YES",
+  "FinalDecision": "MEDICATION_INTELLIGENCE_PHASE_6_5_CERTIFIED",
+  "HumanVerificationRequired": "YES",
+  "KnownBlockingGaps": [],
+  "KnownNonblockingGaps": [
+    "No pilot manifest registered yet until operator runs medication:pilot:manifest",
+    "Certification does not execute pilot import or create verified mappings"
+  ],
+  "LiveMetrics": {
+    "activeRealVerifiedMappings": 0,
+    "autoVerifiedCandidates": 0,
+    "catalogMedication": 1042,
+    "duplicateAssessmentCount": 0,
+    "openDuplicateAssessments": 0,
+    "pilotItemCount": 0,
+    "pilotManifestCount": 0
+  },
+  "PilotDatasetSize": 110,
+  "PilotImportExecutedDuringCertification": "NO",
+  "ProbableDuplicateAutoMergeAllowed": "NO",
+  "RealVerifiedMappingsCreatedByCertification": 0,
+  "RegressionEvidence": {
+    "buildPass": null,
+    "certificationIdempotent": true,
+    "diffCheckPass": null,
+    "focusedTestSummary": "Shared pilot duplicate prevention + phase6.5 certification specs",
+    "focusedTestsPass": true,
+    "fullRegressionPass": null,
+    "fullRegressionSummary": "Set after pnpm verify",
+    "priorPhasesPass": true,
+    "typecheckPass": null
+  },
+  "SchemaProbe": {
+    "hasActiveIdentityPartialUniques": true,
+    "hasConceptIdentityKey": true,
+    "hasDuplicateAssessmentModel": true,
+    "hasPackageIdentityKey": true,
+    "hasPilotImportJobModel": true,
+    "hasPilotItemModel": true,
+    "hasPilotManifestModel": true,
+    "hasProductIdentityKey": true,
+    "migrationPresent": true,
+    "pilotCliPresent": true,
+    "pilotServicePresent": true,
+    "sharedDedupePresent": true
+  },
+  "auditStatus": "COMPLETE",
+  "catalogClassification": "CURATED",
+  "catalogComplete": false,
+  "certificationId": "MEDUI.MEDICATION_INTELLIGENCE_PHASE_6_5_CONTROLLED_EMERGENCY_MEDICATION_PILOT_DUPLICATE_PREVENTION",
+  "confidence": "HIGH",
+  "dataSource": "database",
+  "generatedAt": "2026-07-17T22:50:46.033Z",
+  "phase": "6.5",
+  "title": "Phase 6.5 enterprise certification summary"
+}

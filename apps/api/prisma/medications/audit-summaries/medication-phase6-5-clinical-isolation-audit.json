@@ -1,0 +1,19 @@
+{
+  "auditStatus": "COMPLETE",
+  "automaticVerificationEnabled": false,
+  "billingChanged": false,
+  "catalogClassification": "CURATED",
+  "catalogComplete": false,
+  "certificationId": "MEDUI.MEDICATION_INTELLIGENCE_PHASE_6_5_CONTROLLED_EMERGENCY_MEDICATION_PILOT_DUPLICATE_PREVENTION",
+  "clinicalActivationEnabled": false,
+  "clinicallyActiveRecordsCreatedAutomatically": 0,
+  "confidence": "HIGH",
+  "dataSource": "database",
+  "formularyChanged": false,
+  "generatedAt": "2026-07-17T22:50:46.032Z",
+  "marChanged": false,
+  "orderingChanged": false,
+  "patientFacingSearchChanged": false,
+  "phase": "6.5",
+  "title": "Phase 6.5 clinical isolation audit"
+}

@@ -1,0 +1,23 @@
+{
+  "auditStatus": "COMPLETE",
+  "catalogClassification": "CURATED",
+  "catalogComplete": false,
+  "certificationId": "MEDUI.MEDICATION_INTELLIGENCE_PHASE_6_5_CONTROLLED_EMERGENCY_MEDICATION_PILOT_DUPLICATE_PREVENTION",
+  "combinationIngredientOrderingDeterministic": true,
+  "concentrationNotEquatedToTotalDose": true,
+  "confidence": "HIGH",
+  "dataSource": "database",
+  "generatedAt": "2026-07-17T22:50:46.026Z",
+  "identityLayers": [
+    "concept",
+    "product",
+    "package",
+    "catalog"
+  ],
+  "phase": "6.5",
+  "strengthEquivalenceExamples": [
+    "1000 mg ↔ 1 g",
+    "1 mg/mL ↔ 1mg/ml"
+  ],
+  "title": "Phase 6.5 normalization audit"
+}

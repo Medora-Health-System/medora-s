@@ -1,0 +1,28 @@
+{
+  "auditStatus": "COMPLETE",
+  "catalogClassification": "CURATED",
+  "catalogComplete": false,
+  "certificationId": "MEDUI.MEDICATION_INTELLIGENCE_PHASE_6_5_CONTROLLED_EMERGENCY_MEDICATION_PILOT_DUPLICATE_PREVENTION",
+  "clinicalActivationAllowed": false,
+  "confidence": "HIGH",
+  "dataSource": "database",
+  "defaultManifest": {
+    "approvalStatus": "DRAFT",
+    "clinicalActivationAllowed": false,
+    "clinicalDomain": "EMERGENCY_MEDICINE",
+    "dataClassification": "CONTROLLED_REAL_PILOT",
+    "medicationCountExpected": 110,
+    "notes": "Curated EM pilot (~100 items). Dry-run/dedupe/preview only until MEDICATION_ADMIN approves staging. No clinical activation.",
+    "pilotId": "EM_CONTROLLED_PILOT_V1",
+    "pilotName": "Emergency Medicine Controlled Medication Pilot",
+    "pilotStatus": "DRAFT",
+    "pilotVersion": "1.0.0",
+    "scope": "CONTROLLED_EMERGENCY_MEDICATION_PILOT"
+  },
+  "generatedAt": "2026-07-17T22:50:46.031Z",
+  "liveManifestCount": 0,
+  "liveStagedItems": 0,
+  "phase": "6.5",
+  "pilotImportExecutedDuringCertification": false,
+  "title": "Phase 6.5 pilot manifest audit"
+}

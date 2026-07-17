@@ -1,0 +1,32 @@
+{
+  "activeRealVerifiedMappings": 0,
+  "auditStatus": "COMPLETE",
+  "catalogClassification": "CURATED",
+  "catalogComplete": false,
+  "catalogMedication": 1042,
+  "certificationId": "MEDUI.MEDICATION_INTELLIGENCE_PHASE_6_5_CONTROLLED_EMERGENCY_MEDICATION_PILOT_DUPLICATE_PREVENTION",
+  "confidence": "HIGH",
+  "curatedPilotCategories": {
+    "ALLERGY": 3,
+    "ANALGESIA": 12,
+    "ANTIBIOTIC": 19,
+    "CARDIAC": 13,
+    "ELECTROLYTE": 5,
+    "ENDOCRINE": 4,
+    "FLUID": 3,
+    "GI": 11,
+    "NEUROLOGIC": 4,
+    "PROCEDURAL": 6,
+    "RESPIRATORY": 6,
+    "RESUSCITATION": 7,
+    "SEDATION": 8,
+    "THROMBOLYTIC": 2,
+    "TOXICOLOGY": 7
+  },
+  "curatedPilotDatasetSize": 110,
+  "dataSource": "database",
+  "generatedAt": "2026-07-17T22:50:46.026Z",
+  "note": "Certification does not execute pilot import or create verified mappings.",
+  "phase": "6.5",
+  "title": "Phase 6.5 pre-pilot inventory"
+}

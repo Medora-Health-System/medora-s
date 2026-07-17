@@ -1,0 +1,24 @@
+{
+  "adminOnlyActions": [
+    "approvePilotManifest",
+    "stagePilot",
+    "rollbackPilot",
+    "APPROVE_NEW_RECORD",
+    "LINK_TO_EXISTING"
+  ],
+  "auditStatus": "COMPLETE",
+  "bulkRealMappingApprovalEnabled": false,
+  "catalogClassification": "CURATED",
+  "catalogComplete": false,
+  "certificationId": "MEDUI.MEDICATION_INTELLIGENCE_PHASE_6_5_CONTROLLED_EMERGENCY_MEDICATION_PILOT_DUPLICATE_PREVENTION",
+  "confidence": "HIGH",
+  "dataSource": "database",
+  "generatedAt": "2026-07-17T22:50:46.032Z",
+  "phase": "6.5",
+  "pilotRoles": [
+    "MEDICATION_REVIEWER",
+    "MEDICATION_ADMIN"
+  ],
+  "reviewerIdSpoofingRejected": true,
+  "title": "Phase 6.5 security audit"
+}
