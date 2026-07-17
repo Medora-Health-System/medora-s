@@ -2,7 +2,7 @@
 module.exports = {
   preset: "ts-jest",
   testEnvironment: "node",
-  roots: ["<rootDir>/src", "<rootDir>/prisma/icd"],
+  roots: ["<rootDir>/src", "<rootDir>/prisma/icd", "<rootDir>/prisma/medications"],
   testMatch: ["**/*.spec.ts"],
   moduleFileExtensions: ["ts", "js", "json"],
   moduleNameMapper: {
