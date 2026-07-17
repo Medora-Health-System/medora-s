@@ -1,0 +1,24 @@
+{
+  "environmentalExposure": {
+    "scopedOfficialBillable": 420,
+    "presentInMedora": 420,
+    "missingCodes": [],
+    "descriptionMismatches": [],
+    "duplicateActiveCodes": [],
+    "invalidSelectableHeaders": []
+  },
+  "buckets": {
+    "heatIllness": 45,
+    "coldIllness": 51,
+    "frostbite": 222,
+    "submersion": 18,
+    "electricalLightning": 24,
+    "altitudeDiving": 24,
+    "radiation": 36
+  },
+  "ownershipGaps": [],
+  "crossPhaseOwnershipSteals": [],
+  "certification": {
+    "pass": true
+  }
+}

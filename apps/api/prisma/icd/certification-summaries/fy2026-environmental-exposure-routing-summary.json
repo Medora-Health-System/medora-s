@@ -1,0 +1,41 @@
+{
+  "generatedAt": "2026-07-16T22:22:05.983Z",
+  "releaseVersion": "FY2026",
+  "environmentalExposureScoped": 420,
+  "buckets": {
+    "heatIllness": 45,
+    "coldIllness": 51,
+    "frostbite": 222,
+    "submersion": 18,
+    "electricalLightning": 24,
+    "altitudeDiving": 24,
+    "radiation": 36
+  },
+  "unexplainedRoutingFallbacks": [],
+  "feverHeatCrossRouting": [],
+  "frostbiteDualListIntact": true,
+  "burnFrostbiteStealing": [],
+  "traumaMechanismLoss": [],
+  "submersionProvenanceLoss": [],
+  "altitudeUnderRouting": [],
+  "divingUnderRouting": [],
+  "radiationExposureInjuryCollision": [],
+  "toxicologyOwnershipCollision": [],
+  "entBarotraumaFlagged": [
+    "T70.0XXA",
+    "T70.0XXD",
+    "T70.0XXS",
+    "T70.1XXA",
+    "T70.1XXD",
+    "T70.1XXS"
+  ],
+  "blastPressureDualListFlagged": [
+    "T70.8XXA",
+    "T70.8XXD",
+    "T70.8XXS",
+    "T70.9XXA",
+    "T70.9XXD",
+    "T70.9XXS"
+  ],
+  "pass": true
+}

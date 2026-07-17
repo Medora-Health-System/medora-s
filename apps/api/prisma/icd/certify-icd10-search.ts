@@ -529,6 +529,104 @@ const REQUIRED_QUERIES: Array<{
   { q: "lupus cutané", mustMatchCodePrefix: "L93" },
   { q: "vasculitis limited to skin", mustMatchCodePrefix: "L95" },
   { q: "vascularite limitée à la peau", mustMatchCodePrefix: "L95" },
+  // Environmental exposure (Phase 15)
+  { q: "heat stroke", mustMatchCodePrefix: "T67.0" },
+  { q: "heatstroke", mustMatchCodePrefix: "T67.0" },
+  { q: "coup de chaleur", mustMatchCodePrefix: "T67.0" },
+  { q: "exertional heatstroke", mustMatchCodePrefix: "T67.02" },
+  { q: "coup de chaleur d'exercice", mustMatchCodePrefix: "T67.02" },
+  { q: "heat exhaustion", mustContainDescription: "heat exhaustion" },
+  { q: "épuisement par la chaleur", mustContainDescription: "heat exhaustion" },
+  { q: "heat cramps", mustMatchCodePrefix: "T67.2" },
+  { q: "crampes de chaleur", mustMatchCodePrefix: "T67.2" },
+  { q: "heat syncope", mustMatchCodePrefix: "T67.1" },
+  { q: "syncope de chaleur", mustMatchCodePrefix: "T67.1" },
+  { q: "heat edema", mustMatchCodePrefix: "T67.7" },
+  { q: "oedème de chaleur", mustMatchCodePrefix: "T67.7" },
+  { q: "hypothermia", mustMatchCodePrefix: "T68" },
+  { q: "hypothermie", mustMatchCodePrefix: "T68" },
+  { q: "immersion foot", mustMatchCodePrefix: "T69.02" },
+  { q: "trench foot", mustMatchCodePrefix: "T69.02" },
+  { q: "pied d'immersion", mustMatchCodePrefix: "T69.02" },
+  { q: "immersion hand", mustMatchCodePrefix: "T69.01" },
+  { q: "main d'immersion", mustMatchCodePrefix: "T69.01" },
+  { q: "chilblains", mustMatchCodePrefix: "T69.1" },
+  { q: "engelures", mustMatchCodePrefix: "T69.1" },
+  // Frostnip has no dedicated ICD-10-CM code — maps to T69.8/T69.9 (other/unspecified
+  // effects of reduced temperature), not the frostbite (T33/T34) dual-listed family.
+  { q: "frostnip", mustContainDescription: "reduced temperature" },
+  { q: "engelure superficielle", mustContainDescription: "reduced temperature" },
+  { q: "drowning", mustContainDescription: "drowning" },
+  { q: "noyade", mustContainDescription: "drowning" },
+  { q: "near drowning", mustContainDescription: "drowning" },
+  { q: "quasi-noyade", mustContainDescription: "drowning" },
+  { q: "submersion injury", mustContainDescription: "submersion" },
+  { q: "lésion de submersion", mustContainDescription: "submersion" },
+  { q: "bathtub drowning", mustMatchCodePrefix: "W65" },
+  { q: "noyade en baignoire", mustMatchCodePrefix: "W65" },
+  { q: "swimming pool drowning", mustMatchCodePrefix: "W67" },
+  { q: "noyade en piscine", mustMatchCodePrefix: "W67" },
+  { q: "freshwater drowning", mustMatchCodePrefix: "W69" },
+  { q: "natural water drowning", mustMatchCodePrefix: "W69" },
+  { q: "noyade en eau douce", mustMatchCodePrefix: "W69" },
+  { q: "lightning strike", mustMatchCodePrefix: "T75.0" },
+  { q: "struck by lightning", mustMatchCodePrefix: "T75.01" },
+  { q: "frappé par la foudre", mustMatchCodePrefix: "T75.01" },
+  { q: "electrocution", mustMatchCodePrefix: "T75.4" },
+  { q: "électrocution", mustMatchCodePrefix: "T75.4" },
+  { q: "electric shock", mustContainDescription: "electric" },
+  { q: "choc électrique", mustContainDescription: "electric" },
+  { q: "high voltage injury", mustMatchCodePrefix: "W85" },
+  { q: "exposition aux lignes électriques", mustMatchCodePrefix: "W85" },
+  { q: "household electrical exposure", mustMatchCodePrefix: "W86.0" },
+  { q: "exposition au câblage domestique", mustMatchCodePrefix: "W86.0" },
+  { q: "high altitude sickness", mustMatchCodePrefix: "T70.2" },
+  { q: "altitude sickness", mustMatchCodePrefix: "T70.2" },
+  { q: "acute mountain sickness", mustMatchCodePrefix: "T70.2" },
+  { q: "mal aigu des montagnes", mustMatchCodePrefix: "T70.2" },
+  { q: "mal des montagnes", mustMatchCodePrefix: "T70.2" },
+  // HACE/HAPE have no dedicated ICD-10-CM code — map to T70.2 (other/unspecified
+  // effects of high altitude), per certification policy of never inventing codes.
+  { q: "HACE", mustMatchCodePrefix: "T70.2" },
+  { q: "HAPE", mustMatchCodePrefix: "T70.2" },
+  { q: "high altitude cerebral edema", mustMatchCodePrefix: "T70.2" },
+  { q: "high altitude pulmonary edema", mustMatchCodePrefix: "T70.2" },
+  { q: "oedème cérébral de haute altitude", mustMatchCodePrefix: "T70.2" },
+  { q: "oedème pulmonaire de haute altitude", mustMatchCodePrefix: "T70.2" },
+  { q: "decompression sickness", mustMatchCodePrefix: "T70.3" },
+  { q: "the bends", mustMatchCodePrefix: "T70.3" },
+  { q: "caisson disease", mustMatchCodePrefix: "T70.3" },
+  { q: "maladie de décompression", mustMatchCodePrefix: "T70.3" },
+  { q: "maladie des caissons", mustMatchCodePrefix: "T70.3" },
+  { q: "diver's ear", mustMatchCodePrefix: "T70.0" },
+  { q: "barotraumatisme de l'oreille du plongeur", mustMatchCodePrefix: "T70.0" },
+  { q: "sinus barotrauma", mustMatchCodePrefix: "T70.1" },
+  { q: "barotraumatisme sinusien", mustMatchCodePrefix: "T70.1" },
+  { q: "diving injury", mustMatchCodePrefix: "T70.4" },
+  { q: "blessure de plongée", mustMatchCodePrefix: "T70.4" },
+  { q: "radiation sickness", mustMatchCodePrefix: "T66" },
+  { q: "acute radiation syndrome", mustMatchCodePrefix: "T66" },
+  { q: "mal des rayons", mustMatchCodePrefix: "T66" },
+  { q: "syndrome d'irradiation aiguë", mustMatchCodePrefix: "T66" },
+  { q: "radiation exposure", mustMatchCodePrefix: "W88" },
+  { q: "exposition aux radiations ionisantes", mustMatchCodePrefix: "W88" },
+  { q: "x-ray exposure", mustMatchCodePrefix: "W88.0" },
+  { q: "exposition aux rayons x", mustMatchCodePrefix: "W88.0" },
+  // Welding-light exposure is external-cause context only — must not steal photokeratitis
+  // (H16.13, Phase 11 eye emergencies) ownership.
+  { q: "welding flash", mustMatchCodePrefix: "W89.0" },
+  { q: "arc eye exposure", mustMatchCodePrefix: "W89.0" },
+  { q: "exposition à la lumière de soudure", mustMatchCodePrefix: "W89.0" },
+  { q: "tanning bed exposure", mustMatchCodePrefix: "W89.1" },
+  { q: "exposition au lit de bronzage", mustMatchCodePrefix: "W89.1" },
+  { q: "excessive heat exposure", mustContainDescription: "excessive" },
+  { q: "exposition à la chaleur excessive", mustContainDescription: "excessive" },
+  { q: "excessive cold exposure", mustContainDescription: "excessive" },
+  { q: "exposition au froid excessif", mustContainDescription: "excessive" },
+  { q: "sun exposure", mustMatchCodePrefix: "X32" },
+  { q: "exposition au soleil", mustMatchCodePrefix: "X32" },
+  { q: "dry ice exposure", mustMatchCodePrefix: "W93.0" },
+  { q: "exposition à la glace sèche", mustMatchCodePrefix: "W93.0" },
 ];
 
 function encounterChar(code: string): string {
@@ -758,6 +856,31 @@ async function main() {
     );
     writeFileSync(join(summaryDir, "fy2026-dermatology-search-summary.json"), dermatologySummary);
     writeFileSync(join(releaseSummaryDir, "fy2026-dermatology-search-summary.json"), dermatologySummary);
+    const environmentalExposureQueryPattern =
+      /heat stroke|heatstroke|coup de chaleur|exertional heatstroke|heat exhaustion|épuisement par la chaleur|heat cramps|crampes de chaleur|heat syncope|syncope de chaleur|heat edema|oedème de chaleur|hypothermia|hypothermie|immersion foot|trench foot|pied d'immersion|immersion hand|main d'immersion|chilblains|engelures|frostnip|engelure superficielle|drowning|noyade|near drowning|quasi-noyade|submersion injury|lésion de submersion|bathtub drowning|noyade en baignoire|swimming pool drowning|noyade en piscine|freshwater drowning|natural water drowning|noyade en eau douce|lightning strike|struck by lightning|frappé par la foudre|electrocution|électrocution|electric shock|choc électrique|high voltage injury|exposition aux lignes électriques|household electrical exposure|exposition au câblage domestique|altitude sickness|mal aigu des montagnes|mal des montagnes|hace|hape|high altitude cerebral edema|high altitude pulmonary edema|oedème cérébral de haute altitude|oedème pulmonaire de haute altitude|decompression sickness|the bends|caisson disease|maladie de décompression|maladie des caissons|diver's ear|barotraumatisme de l'oreille du plongeur|sinus barotrauma|barotraumatisme sinusien|diving injury|blessure de plongée|radiation sickness|acute radiation syndrome|mal des rayons|syndrome d'irradiation aiguë|radiation exposure|exposition aux radiations ionisantes|x-ray exposure|exposition aux rayons x|welding flash|arc eye exposure|exposition à la lumière de soudure|tanning bed exposure|exposition au lit de bronzage|excessive heat exposure|exposition à la chaleur excessive|excessive cold exposure|exposition au froid excessif|sun exposure|exposition au soleil|dry ice exposure|exposition à la glace sèche/;
+    const environmentalExposureFailures = failures.filter((failure) =>
+      environmentalExposureQueryPattern.test(failure.toLowerCase()),
+    );
+    const environmentalExposureSummary = JSON.stringify(
+      {
+        generatedAt: report.generatedAt,
+        queryCount: REQUIRED_QUERIES.filter((row) =>
+          environmentalExposureQueryPattern.test(row.q.toLowerCase()),
+        ).length,
+        failures: environmentalExposureFailures,
+        pass: environmentalExposureFailures.length === 0,
+      },
+      null,
+      2,
+    );
+    writeFileSync(
+      join(summaryDir, "fy2026-environmental-exposure-search-summary.json"),
+      environmentalExposureSummary,
+    );
+    writeFileSync(
+      join(releaseSummaryDir, "fy2026-environmental-exposure-search-summary.json"),
+      environmentalExposureSummary,
+    );
     if (!report.pass) process.exit(1);
   } finally {
     await prisma.$disconnect();
