@@ -153,6 +153,22 @@ flowchart LR
 
 **Depends on:** Phase 5 certification. Does **not** enable clinical search cutover or automatic real RxCUI activation.
 
+### Phase 6.5 — Controlled Emergency Medicine pilot and duplicate-prevention hardening
+
+| Field | Value |
+|-------|-------|
+| **Objective** | Prove safe ingestion/normalization/dedupe/preview/staging of ~100 EM medications without duplicate creation, auto-verify, or clinical activation |
+| **Scope** | Pilot manifest + items; `MedicationDuplicateAssessment`; identity keys + partial uniques; normalization/dedupe engine; CLI dry-run/preview/stage/candidates/rollback; reviewer duplicate filters/metrics |
+| **Data source** | Curated EM pilot dataset in `@medora/shared` (not a national catalog import) |
+| **Migration** | **YES (additive)** — `20261009120000_medication_phase_6_5_emergency_pilot_duplicate_prevention` |
+| **Seed/import** | **NO during certification** — `PilotImportExecutedDuringCertification=NO` |
+| **Risks** | False merges / false duplicates (mitigated: classification + human review); accidental clinical activation (forbidden) |
+| **Exit criteria** | Phase 6.5 certifier PASS; duplicate prevention certified; rollback validated; clinically active auto-created = 0 |
+| **Complexity** | **High** |
+| **Status** | Implemented — see [`medication-intelligence-phase-6-5-controlled-emergency-pilot.md`](./medication-intelligence-phase-6-5-controlled-emergency-pilot.md) |
+
+**Scaled batch readiness (post–Phase 6.5):** Only after Phase 6.5 certification may controlled batch size grow from ~100 toward ~500–1,000 medications. Do **not** jump to a full national catalog. This readiness gate is separate from roadmap Phase 7 (prescription entity).
+
 ### Deferred after Phase 6 — Canonical ordering integration and order sentences
 
 Populate `OrderItem.medicationProductId` / `medicationPackageId` and structured order sentences. Formerly listed as Phase 6; now scheduled after governed review certification (clinical cutover remains separately certified).
