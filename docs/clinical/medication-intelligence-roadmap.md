@@ -71,31 +71,34 @@ flowchart LR
 
 | Field | Value |
 |-------|-------|
-| **Objective** | Make `MedicationConcept.rxNormConceptId` the authoritative clinical key; define safe legacy↔canonical linkage rules |
-| **Scope** | Identity model contracts, linkage backfill design, quarantine/deny-list for import noise, activation gate updates — **no provider search cutover** |
-| **Data source** | RxNorm API / RRF (NLM) for concept IDs; existing Haiti + enterprise manifests for mapping targets |
-| **Migration likelihood** | **Medium** — nullable `rxNormConceptId` already exists; may add indexes/constraints |
-| **Seed/import likelihood** | **Low** — mapping script for curated rows first (~326 Haiti + activated enterprise), not full import |
-| **Risks** | Wrong RxNorm mapping (HIGH); bulk attach to 993+ noise products (CRITICAL — documented in M1.5E quarantine design) |
-| **Exit criteria** | ≥90% of **activated** concepts have validated `rxNormConceptId`; linkage integrity certifier PASS; cutover still NOT SAFE |
-| **Complexity** | **High** |
+| **Objective** | Establish additive, auditable canonical identity + RxNorm **schema** foundation, dual-layer reconciliation statuses, route permission model, fixture classification, and MAR/billing quantity provenance — **without** bulk RxNorm import or runtime search/order/MAR behavior change |
+| **Scope** | Additive Prisma migration; shared identity/fixture/billing helpers; product↔route permission table (unenforced); certification artifacts — **no provider search cutover**, **no bulk RxCUI populate**, **no fuzzy auto-merge** |
+| **Data source** | Existing dual-layer schema + Phase 1 audit measurements; NLM RxNorm reserved for Phase 3 scoped import |
+| **Migration** | **YES (additive)** — `20261004120000_medication_phase_2_canonical_identity` |
+| **Seed/import** | **NO** — `Seed Required: NO`; `RxNormDataImported: NO` |
+| **Risks** | Premature route enforcement (mitigated: not enabled); unsafe auto-link (mitigated: status + fuzzy-merge forbid); historical rewrite (forbidden) |
+| **Exit criteria** | Phase 2 enterprise certifier PASS; schema/status enums ready; historical snapshot-first identity helper; cutover still NOT SAFE; RxCUI population deferred to Phase 3 |
+| **Complexity** | **Medium–High** |
+| **Status** | Implemented — see [`medication-intelligence-phase-2-canonical-identity.md`](./medication-intelligence-phase-2-canonical-identity.md) |
+
+**Phase count note:** Roadmap remains **11 phases**. Phase 2 exit criteria were tightened from “≥90% activated RxCUI populated” to “foundation certified without bulk import” so Phase 3 owns scoped RxNorm import without collapsing import into identity-schema work.
 
 **Builds on:** `haiti-canonical-linkage-*`, `canonical-medication-activation-*` docs.
 
----
 
 ## Phase 3 — Official medication concept catalog import (RxNorm-centered clinical drugs)
 
 | Field | Value |
 |-------|-------|
-| **Objective** | Import RxNorm clinical drug concepts (IN, MIN, SCDF, SCD, GPCK as scoped) into `MedicationConcept` — **curated subset first**, not full US dump |
-| **Scope** | Import pipeline, staging (`MedicationFormularyImportStaging`), promotion workflow, retire/quarantine rules |
-| **Data source** | NLM RxNorm monthly release; facility formulary gap analysis from Phase 1 coverage audit |
-| **Migration likelihood** | **Low** — reuse existing canonical tables |
+| **Objective** | Import RxNorm clinical drug concepts (IN, MIN, SCDF, SCD, GPCK as scoped) into `MedicationConcept` using Phase 2 mapping statuses — **curated subset first**, not full US dump |
+| **Scope** | Import pipeline, staging (`MedicationFormularyImportStaging`), promotion workflow, retire/quarantine rules; populate `rxNormConceptId` + `rxNormMappingStatus=VERIFIED` only with provenance |
+| **Data source** | NLM RxNorm monthly release; facility formulary gap analysis from Phase 1 coverage audit; Phase 2 schema |
+| **Migration likelihood** | **Low** — reuse Phase 2 additive columns |
 | **Seed/import likelihood** | **High** — batch import with manifest + reconciliation status |
-| **Risks** | Storage/bloat from full US catalog (MEDIUM); wrong scope for Haiti clinic (HIGH — phase-lock to curated needs) |
-| **Exit criteria** | Import certifier PASS for scoped release; no silent promotion; staging reconciliation documented |
+| **Risks** | Storage/bloat from full US catalog (MEDIUM); wrong scope for Haiti clinic (HIGH — phase-lock to curated needs); false VERIFIED without review (CRITICAL — Phase 2 helpers forbid) |
+| **Exit criteria** | Import certifier PASS for scoped release; no silent promotion; staging reconciliation documented; dual-layer candidates reviewed without fuzzy merge |
 | **Complexity** | **High** |
+| **Depends on** | Phase 2 certification (`RxNormSchemaReady=YES`, `RxNormDataImported=NO` at Phase 2 exit) |
 
 **Note:** Complete US/RxNorm catalog remains **out of scope for clinic MVP** — import **needed clinical subset** only.
 
