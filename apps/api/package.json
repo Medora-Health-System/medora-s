@@ -110,11 +110,17 @@
     "medication:audit:readiness": "ts-node --transpile-only prisma/medications/audit/run-medication-readiness-audit.ts",
     "medication:certify:phase2": "ts-node --transpile-only prisma/medications/audit/run-medication-phase2-certification.ts",
     "medication:certify:phase3": "ts-node --transpile-only prisma/medications/audit/run-medication-phase3-certification.ts",
+    "medication:certify:phase4": "ts-node --transpile-only prisma/medications/audit/run-medication-phase4-certification.ts",
     "medication:rxnorm:validate": "ts-node --transpile-only prisma/medications/rxnorm/run-rxnorm-import.ts --mode=VALIDATE_ONLY --allow-synthetic",
     "medication:rxnorm:stage": "ts-node --transpile-only prisma/medications/rxnorm/run-rxnorm-import.ts --mode=STAGE_ONLY --allow-synthetic",
     "medication:rxnorm:candidates": "ts-node --transpile-only prisma/medications/rxnorm/run-rxnorm-import.ts --mode=CANDIDATE_MAPPING --allow-synthetic",
     "medication:rxnorm:activate": "ts-node --transpile-only prisma/medications/rxnorm/run-rxnorm-import.ts --mode=ACTIVATE_REFERENCE_RELEASE --allow-synthetic",
-    "medication:rxnorm:rollback": "ts-node --transpile-only prisma/medications/rxnorm/run-rxnorm-import.ts --mode=ROLLBACK_RELEASE --allow-synthetic"
+    "medication:rxnorm:rollback": "ts-node --transpile-only prisma/medications/rxnorm/run-rxnorm-import.ts --mode=ROLLBACK_RELEASE --allow-synthetic",
+    "medication:rxnorm:ensure-synthetic-targets": "ts-node --transpile-only prisma/medications/rxnorm/run-rxnorm-verify.ts --mode=ensure-targets",
+    "medication:rxnorm:review-report": "ts-node --transpile-only prisma/medications/rxnorm/run-rxnorm-verify.ts --mode=review-report",
+    "medication:rxnorm:verify": "ts-node --transpile-only prisma/medications/rxnorm/run-rxnorm-verify.ts --mode=verify",
+    "medication:rxnorm:reject": "ts-node --transpile-only prisma/medications/rxnorm/run-rxnorm-verify.ts --mode=reject",
+    "medication:rxnorm:retire": "ts-node --transpile-only prisma/medications/rxnorm/run-rxnorm-verify.ts --mode=retire"
   },
   "prisma": {
     "seed": "ts-node --transpile-only prisma/seed.ts"

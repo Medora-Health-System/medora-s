@@ -234,6 +234,8 @@ model User {
   rxNormReferenceReleasesStarted                  RxNormReferenceRelease[]               @relation("RxNormReferenceReleaseStartedBy")
   rxNormImportJobsStarted                         RxNormImportJob[]                      @relation("RxNormImportJobStartedBy")
   rxNormMappingCandidatesReviewed                 RxNormMappingCandidate[]               @relation("RxNormMappingCandidateReviewedBy")
+  rxNormVerifiedMappingsVerified                  RxNormVerifiedMapping[]                @relation("RxNormVerifiedMappingVerifiedBy")
+  rxNormVerifiedMappingsRetired                   RxNormVerifiedMapping[]                @relation("RxNormVerifiedMappingRetiredBy")
   medicationOrderSchedulesCancelled               MedicationOrderSchedule[]              @relation("MedicationOrderScheduleCancelledBy")
   medicationOrderSchedulesCreated                 MedicationOrderSchedule[]              @relation("MedicationOrderScheduleCreatedBy")
   medicationOrderSchedulesUpdated                 MedicationOrderSchedule[]              @relation("MedicationOrderScheduleUpdatedBy")
@@ -2109,6 +2111,8 @@ model MedicationConcept {
   rxNormMappedByUserId    String?
   rxNormReviewedAt        DateTime?
   rxNormReviewNotes       String?
+  /// PRODUCTION | FIXTURE | DEV_SAMPLE | UNKNOWN
+  dataClassification      String                      @default("UNKNOWN") @db.VarChar(32)
   isActive                Boolean                     @default(true)
   retiredAt               DateTime?
   createdAt               DateTime                    @default(now())
@@ -2123,6 +2127,7 @@ model MedicationConcept {
   @@index([isActive])
   @@index([rxNormConceptId])
   @@index([rxNormMappingStatus])
+  @@index([dataClassification])
 }
 
 model MedicationConcentration {
@@ -2342,6 +2347,7 @@ model RxNormReferenceRelease {
   jobs                 RxNormImportJob[]
   stagingConcepts      RxNormStagingConcept[]
   mappingCandidates    RxNormMappingCandidate[]
+  verifiedMappings     RxNormVerifiedMapping[]
   conflicts            RxNormImportConflict[]
   startedBy            User?                    @relation("RxNormReferenceReleaseStartedBy", fields: [startedByUserId], references: [id])
   supersededBy         RxNormReferenceRelease?  @relation("RxNormReferenceReleaseSupersession", fields: [supersededByReleaseId], references: [id])
@@ -2410,6 +2416,7 @@ model RxNormStagingConcept {
   updatedAt               DateTime               @updatedAt
   release                 RxNormReferenceRelease @relation(fields: [releaseId], references: [id], onDelete: Cascade)
   mappingCandidates       RxNormMappingCandidate[]
+  verifiedMappings        RxNormVerifiedMapping[]
   conflicts               RxNormImportConflict[]
 
   @@unique([releaseId, rowChecksum])
@@ -2420,29 +2427,86 @@ model RxNormStagingConcept {
 }
 
 model RxNormMappingCandidate {
-  id               String                 @id @default(uuid())
-  releaseId        String
-  stagingConceptId String
-  targetKind       String                 @db.VarChar(32)
-  targetId         String
-  targetCode       String?                @db.VarChar(128)
-  status           String                 @default("CANDIDATE") @db.VarChar(32)
-  confidence       String?                @db.VarChar(16)
-  evidenceJson     Json
-  autoVerified     Boolean                @default(false)
-  reviewedAt       DateTime?
-  reviewedByUserId String?
-  reviewNotes      String?
-  createdAt        DateTime               @default(now())
-  updatedAt        DateTime               @updatedAt
-  release          RxNormReferenceRelease @relation(fields: [releaseId], references: [id], onDelete: Cascade)
-  stagingConcept   RxNormStagingConcept   @relation(fields: [stagingConceptId], references: [id], onDelete: Cascade)
-  reviewedBy       User?                  @relation("RxNormMappingCandidateReviewedBy", fields: [reviewedByUserId], references: [id])
+  id                           String                   @id @default(uuid())
+  releaseId                    String
+  stagingConceptId             String
+  targetKind                   String                   @db.VarChar(32)
+  targetId                     String
+  targetCode                   String?                  @db.VarChar(128)
+  status                       String                   @default("CANDIDATE") @db.VarChar(32)
+  confidence                   String?                  @db.VarChar(16)
+  evidenceJson                 Json
+  autoVerified                 Boolean                  @default(false)
+  reviewVersion                Int                      @default(0)
+  rejectionReasonCategory      String?                  @db.VarChar(48)
+  conflictOverrideAcknowledged Boolean                  @default(false)
+  conflictOverrideReasons      Json?
+  decisionEvidenceJson         Json?
+  verifiedMappingId            String?                  @unique
+  reviewedAt                   DateTime?
+  reviewedByUserId             String?
+  reviewNotes                  String?
+  createdAt                    DateTime                 @default(now())
+  updatedAt                    DateTime                 @updatedAt
+  release                      RxNormReferenceRelease   @relation(fields: [releaseId], references: [id], onDelete: Cascade)
+  stagingConcept               RxNormStagingConcept     @relation(fields: [stagingConceptId], references: [id], onDelete: Cascade)
+  reviewedBy                   User?                    @relation("RxNormMappingCandidateReviewedBy", fields: [reviewedByUserId], references: [id])
+  verifiedMapping              RxNormVerifiedMapping?   @relation(fields: [verifiedMappingId], references: [id])
 
   @@unique([stagingConceptId, targetKind, targetId])
   @@index([releaseId])
   @@index([status])
   @@index([targetKind, targetId])
+  @@index([verifiedMappingId])
+}
+
+/// Durable RxNorm verified mapping history — Phase 4 canonical reconciliation (CLI/service only).
+model RxNormVerifiedMapping {
+  id                   String                  @id @default(uuid())
+  candidateId          String?
+  releaseId            String
+  stagingConceptId     String
+  targetKind           String                  @db.VarChar(32)
+  targetId             String
+  targetCode           String?                 @db.VarChar(128)
+  rxcui                String                  @db.VarChar(64)
+  termType             String                  @db.VarChar(16)
+  sourceVocabulary     String                  @default("RXNORM") @db.VarChar(32)
+  /// ACTIVE | SUPERSEDED | RETIRED
+  lifecycleStatus      String                  @default("ACTIVE") @db.VarChar(32)
+  isActive             Boolean                 @default(true)
+  isSynthetic          Boolean                 @default(false)
+  dataClassification   String                  @default("FIXTURE") @db.VarChar(32)
+  evidenceJson         Json
+  reviewerNotes        String?
+  verifiedByUserId       String?
+  verifiedAt           DateTime
+  effectiveFrom        DateTime                @default(now())
+  effectiveTo          DateTime?
+  supersedesMappingId  String?
+  supersededByMappingId String?
+  retiredAt            DateTime?
+  retiredByUserId      String?
+  retireReason         String?
+  createdAt            DateTime                @default(now())
+  updatedAt            DateTime                @updatedAt
+  release              RxNormReferenceRelease  @relation(fields: [releaseId], references: [id], onDelete: Cascade)
+  stagingConcept       RxNormStagingConcept    @relation(fields: [stagingConceptId], references: [id], onDelete: Cascade)
+  verifiedBy           User?                   @relation("RxNormVerifiedMappingVerifiedBy", fields: [verifiedByUserId], references: [id])
+  retiredBy            User?                   @relation("RxNormVerifiedMappingRetiredBy", fields: [retiredByUserId], references: [id])
+  supersedesMapping    RxNormVerifiedMapping?  @relation("RxNormVerifiedMappingSupersession", fields: [supersedesMappingId], references: [id])
+  supersededByRecords  RxNormVerifiedMapping[] @relation("RxNormVerifiedMappingSupersession")
+  supersededByMapping  RxNormVerifiedMapping?  @relation("RxNormVerifiedMappingSupersededBy", fields: [supersededByMappingId], references: [id])
+  supersedesRecords    RxNormVerifiedMapping[] @relation("RxNormVerifiedMappingSupersededBy")
+  linkedCandidate      RxNormMappingCandidate?
+
+  @@index([targetKind, targetId])
+  @@index([rxcui])
+  @@index([lifecycleStatus])
+  @@index([isActive])
+  @@index([releaseId])
+  @@index([candidateId])
+  @@index([stagingConceptId])
 }
 
 model RxNormImportConflict {

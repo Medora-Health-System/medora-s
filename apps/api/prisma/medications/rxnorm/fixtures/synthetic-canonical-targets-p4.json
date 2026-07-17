@@ -1,0 +1,29 @@
+{
+  "fixtureKind": "SYNTHETIC_CANONICAL_TARGETS",
+  "notRealClinicalMedications": true,
+  "concepts": [
+    {
+      "code": "SYNTH_MC_ACETAMINOPHEN",
+      "genericName": "Acetaminophen (synthetic cert)",
+      "displayName": "Acetaminophen (synthetic cert)"
+    },
+    {
+      "code": "SYNTH_MC_ONDANSETRON",
+      "genericName": "Ondansetron (synthetic cert)",
+      "displayName": "Ondansetron (synthetic cert)"
+    },
+    {
+      "code": "SYNTH_MC_EPINEPHRINE",
+      "genericName": "Epinephrine (synthetic cert)",
+      "displayName": "Epinephrine (synthetic cert)"
+    }
+  ],
+  "products": [
+    {
+      "code": "SYNTH_MP_ACETAMINOPHEN_500_TAB",
+      "conceptCode": "SYNTH_MC_ACETAMINOPHEN",
+      "strengthDisplay": "500 mg",
+      "dosageForm": "oral tablet"
+    }
+  ]
+}
