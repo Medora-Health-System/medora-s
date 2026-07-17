@@ -183,6 +183,7 @@ export * from "./medication/medicationRxNormNormalization.js";
 export * from "./medication/medicationRxNormImportModes.js";
 export * from "./medication/medicationRxNormCandidateMapping.js";
 export * from "./medication/medicationRxNormVerification.js";
+export * from "./medication/medicationRxNormSourceGovernance.js";
 export * from "./medication/medicationFixtureClassification.js";
 export * from "./medication/medicationBillingTraceability.js";
 export * from "./medication/medicationOrderIdentity.js";

@@ -2328,6 +2328,24 @@ model RxNormReferenceRelease {
   importModeLast       String?                  @db.VarChar(32)
   isSynthetic          Boolean                  @default(false)
   isActiveReference    Boolean                  @default(false)
+  /// NLM_OFFICIAL | APPROVED_NLM_EXTRACT | SYNTHETIC_FIXTURE | DEV_SAMPLE | UNKNOWN
+  sourceClassification String?                  @db.VarChar(32)
+  /// LIMITED_APPROVED_EXTRACT | DEVELOPMENT_SUBSET | TERM_TYPE_SCOPED_IMPORT | RXCUI_ALLOWLIST | FULL_RELEASE
+  releaseScope         String?                  @db.VarChar(32)
+  releaseVersionOfficial String?                @db.VarChar(64)
+  retrievedAt          DateTime?
+  sourceUrlOrDescription String?
+  licenseAcknowledged  Boolean                  @default(false)
+  importPurpose        String?                  @db.VarChar(64)
+  authorizedOperator   String?                  @db.VarChar(128)
+  manifestJson         Json?
+  manifestHashSha256   String?                  @db.VarChar(64)
+  fileManifestJson     Json?
+  normalizationVersion String?                  @default("RXNORM_NORMALIZATION_V1") @db.VarChar(64)
+  parsingVersion       String?                  @default("RXNCONSO_PARSER_V1") @db.VarChar(64)
+  /// REFERENCE_RELEASE_ACTIVE | CLINICALLY_ACTIVE (Phase 5 never sets CLINICALLY_ACTIVE)
+  referenceActivationStatus String?             @db.VarChar(32)
+  lastCheckpointJson   Json?
   recordCount          Int                      @default(0)
   acceptedCount        Int                      @default(0)
   rejectedCount        Int                      @default(0)
@@ -2357,6 +2375,9 @@ model RxNormReferenceRelease {
   @@index([sourceChecksumSha256])
   @@index([importStatus])
   @@index([isActiveReference])
+  @@index([sourceClassification])
+  @@index([releaseScope])
+  @@index([manifestHashSha256])
 }
 
 model RxNormImportJob {
@@ -2376,6 +2397,11 @@ model RxNormImportJob {
   errorCount      Int                  @default(0)
   failureReason   String?
   resultSummaryJson Json?
+  manifestHashSha256 String?           @db.VarChar(64)
+  rowsRead        Int                  @default(0)
+  rowsSkipped     Int                  @default(0)
+  malformedRows   Int                  @default(0)
+  checkpointJson  Json?
   createdAt       DateTime             @default(now())
   updatedAt       DateTime             @updatedAt
   release         RxNormReferenceRelease @relation(fields: [releaseId], references: [id], onDelete: Cascade)
@@ -2384,6 +2410,7 @@ model RxNormImportJob {
   @@index([releaseId])
   @@index([status])
   @@index([mode])
+  @@index([manifestHashSha256])
 }
 
 model RxNormStagingConcept {

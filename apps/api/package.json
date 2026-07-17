@@ -111,6 +111,7 @@
     "medication:certify:phase2": "ts-node --transpile-only prisma/medications/audit/run-medication-phase2-certification.ts",
     "medication:certify:phase3": "ts-node --transpile-only prisma/medications/audit/run-medication-phase3-certification.ts",
     "medication:certify:phase4": "ts-node --transpile-only prisma/medications/audit/run-medication-phase4-certification.ts",
+    "medication:certify:phase5": "ts-node --transpile-only prisma/medications/audit/run-medication-phase5-certification.ts",
     "medication:rxnorm:validate": "ts-node --transpile-only prisma/medications/rxnorm/run-rxnorm-import.ts --mode=VALIDATE_ONLY --allow-synthetic",
     "medication:rxnorm:stage": "ts-node --transpile-only prisma/medications/rxnorm/run-rxnorm-import.ts --mode=STAGE_ONLY --allow-synthetic",
     "medication:rxnorm:candidates": "ts-node --transpile-only prisma/medications/rxnorm/run-rxnorm-import.ts --mode=CANDIDATE_MAPPING --allow-synthetic",
@@ -120,7 +121,13 @@
     "medication:rxnorm:review-report": "ts-node --transpile-only prisma/medications/rxnorm/run-rxnorm-verify.ts --mode=review-report",
     "medication:rxnorm:verify": "ts-node --transpile-only prisma/medications/rxnorm/run-rxnorm-verify.ts --mode=verify",
     "medication:rxnorm:reject": "ts-node --transpile-only prisma/medications/rxnorm/run-rxnorm-verify.ts --mode=reject",
-    "medication:rxnorm:retire": "ts-node --transpile-only prisma/medications/rxnorm/run-rxnorm-verify.ts --mode=retire"
+    "medication:rxnorm:retire": "ts-node --transpile-only prisma/medications/rxnorm/run-rxnorm-verify.ts --mode=retire",
+    "medication:rxnorm:real:manifest": "ts-node --transpile-only prisma/medications/rxnorm/run-rxnorm-real-import.ts",
+    "medication:rxnorm:real:validate": "ts-node --transpile-only prisma/medications/rxnorm/run-rxnorm-real-import.ts",
+    "medication:rxnorm:real:stage": "ts-node --transpile-only prisma/medications/rxnorm/run-rxnorm-real-import.ts",
+    "medication:rxnorm:real:candidates": "ts-node --transpile-only prisma/medications/rxnorm/run-rxnorm-real-import.ts",
+    "medication:rxnorm:real:report": "ts-node --transpile-only prisma/medications/rxnorm/run-rxnorm-real-import.ts",
+    "medication:rxnorm:real:rollback": "ts-node --transpile-only prisma/medications/rxnorm/run-rxnorm-real-import.ts"
   },
   "prisma": {
     "seed": "ts-node --transpile-only prisma/seed.ts"

@@ -85,7 +85,13 @@ describe("medicationCanonicalIdentity", () => {
 
 describe("medicationFixtureClassification", () => {
   it("exports data classification values", () => {
-    expect(DATA_CLASSIFICATION_VALUES).toEqual(["PRODUCTION", "FIXTURE", "DEV_SAMPLE", "UNKNOWN"]);
+    expect(DATA_CLASSIFICATION_VALUES).toEqual([
+      "PRODUCTION",
+      "REFERENCE",
+      "FIXTURE",
+      "DEV_SAMPLE",
+      "UNKNOWN",
+    ]);
   });
 
   it("detects MST fixture codes", () => {

@@ -1,0 +1,20 @@
+{
+  "manifestVersion": "RXNORM_RELEASE_MANIFEST_V1",
+  "sourceClassification": "DEV_SAMPLE",
+  "releaseScope": "DEVELOPMENT_SUBSET",
+  "releaseVersionOfficial": "STRUCTURAL-P5-20261007",
+  "licenseAcknowledged": true,
+  "importPurpose": "PHASE_5_NONCLINICAL_VALIDATION",
+  "sourceUrlOrDescription": "apps/api/prisma/medications/rxnorm/fixtures/structural-rxnconso-p5.rrf.fixture",
+  "authorizedOperator": "phase5-structural-tests",
+  "termTypes": ["IN", "SCD", "SBD", "DF", "GPCK"],
+  "rxcuiAllowlist": [],
+  "files": [
+    {
+      "fileName": "structural-rxnconso-p5.rrf.fixture",
+      "fileRole": "RXNCONSO",
+      "sha256": "e852a0ea3cd22cf3b467450078f70d174794dea932c09ef7e0d515349d04d46b"
+    }
+  ],
+  "notes": "Structural RXNCONSO-shaped fixture only — RealRxNormDataUsedDuringCertification=NO"
+}

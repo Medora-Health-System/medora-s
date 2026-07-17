@@ -1,7 +1,13 @@
 import { z } from "zod";
 
 /** CatalogMedication.dataClassification — metadata only; does not delete rows. */
-export const DATA_CLASSIFICATION_VALUES = ["PRODUCTION", "FIXTURE", "DEV_SAMPLE", "UNKNOWN"] as const;
+export const DATA_CLASSIFICATION_VALUES = [
+  "PRODUCTION",
+  "REFERENCE",
+  "FIXTURE",
+  "DEV_SAMPLE",
+  "UNKNOWN",
+] as const;
 
 export type MedicationDataClassification = (typeof DATA_CLASSIFICATION_VALUES)[number];
 
@@ -48,7 +54,11 @@ export function isNonProductionDataClassification(
   classification: string | null | undefined
 ): boolean {
   const normalized = classification?.trim().toUpperCase();
-  return normalized === "FIXTURE" || normalized === "DEV_SAMPLE";
+  return (
+    normalized === "FIXTURE" ||
+    normalized === "DEV_SAMPLE" ||
+    normalized === "REFERENCE"
+  );
 }
 
 export function parseMedicationDataClassification(
