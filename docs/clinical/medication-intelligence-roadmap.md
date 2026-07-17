@@ -120,26 +120,22 @@ flowchart LR
 **Phase count note:** Roadmap remains **11 phases**. Phase 5 owns controlled **real** RxNorm ingestion / limited enrichment planning — not started by Phase 4.
 
 
-## Phase 5 — Enterprise medication search at scale
+## Phase 5 — Controlled real RxNorm reference ingestion and release governance
 
 | Field | Value |
 |-------|-------|
-| **Objective** | Fast, deduplicated, facility-scoped search across 1,000+ curated rows with canonical enrichment and activation gates |
-| **Scope** | Search indexing review, alias ranking, formulary boost, pilot tranche expansion — **still legacy ID returns until Phase 6** |
-| **Data source** | `CatalogMedication`, `MedicationAlias`, `MedicationSearchAlias`, `FacilityFormularyItem` |
-| **Migration likelihood** | **Low–Medium** — composite indexes (`20260910140000_catalog_medication_search_indexes`) pattern |
-| **Seed/import likelihood** | **Medium** — enterprise wave alias seeds |
-| **Risks** | Duplicate brand/generic hits (HIGH — Lasix/Furosemide); performance on low-resource hardware (MEDIUM) |
-| **Exit criteria** | Search latency benchmark PASS; zero duplicate catalog ID inflation in pilot; M1.5F preconditions met for Phase 6 planning |
-| **Complexity** | **Medium** |
+| **Objective** | Controlled real/structural RxNorm reference ingestion with manifest integrity, streaming RXNCONSO parse, non-clinical staging, candidate generation — **no** auto-verify, **no** clinical activation |
+| **Scope** | Release provenance fields; source governance; RRF streaming parser; real-import CLI; structural fixture certification; Phase 5 certifier |
+| **Data source** | Operator-supplied NLM under `.local-data/rxnorm/` (gitignored); CI uses structural `DEV_SAMPLE` fixture |
+| **Migration** | **YES** — `20261007120000_medication_phase_5_real_rxnorm_ingestion` |
+| **Seed** | **NO** |
+| **Risks** | Accidental clinical wiring (mitigated: write guards); mislabeling synthetic as official (boundary asserts); full-release without confirm (blocked) |
+| **Exit criteria** | Phase 5 certifier PASS; `RealVerifiedMappingsCreatedByCertification=0`; `SourceFilesCommittedToGit=NO`; search/MAR/billing unchanged |
+| **Complexity** | **High** |
+| **Status** | Implemented — see [`medication-intelligence-phase-5-controlled-real-rxnorm-ingestion.md`](./medication-intelligence-phase-5-controlled-real-rxnorm-ingestion.md) |
 
-**Milestone A complete** when Phases 2–5 exit criteria met.
+**Phase count note:** Roadmap remains **11 phases**. Phase 6 owns governed review operations / admin API-UI / limited real mapping pilot — not started by Phase 5.
 
-**Builds on:** `enterprise-search-*`, `provider-search-canonical-*` docs.
-
-**Depends on:** Phase 4 certification (`HumanVerificationRequired=YES`, `SyntheticToRealMappingBlocked=YES`). Do not auto-verify real RxCUIs without review workflows.
-
----
 
 ## Phase 6 — Canonical ordering integration and order sentences
 
@@ -155,6 +151,8 @@ flowchart LR
 | **Complexity** | **High** |
 
 **Milestone B complete** when Phase 6 exit criteria met.
+
+**Depends on:** Phase 5 certification (`RealRxNormDataSupported=YES`, `ClinicalActivationEnabled=NO`). Do not enable clinical search cutover without a separate certification.
 
 ---
 
