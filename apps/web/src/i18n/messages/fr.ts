@@ -13,6 +13,7 @@ import { providerDocumentationCardiacNonChestPainComplaintIntelFr } from "./prov
 import { providerDocumentationDermatologyComplaintIntelFr } from "./providerDocumentationDermatologyComplaintIntel.fr";
 import { providerDocumentationEnvironmentalExposureComplaintIntelFr } from "./providerDocumentationEnvironmentalExposureComplaintIntel.fr";
 import { providerDocumentationToxicologyComplaintIntelFr } from "./providerDocumentationToxicologyComplaintIntel.fr";
+import { providerDocumentationObGynUrologyComplaintIntelFr } from "./providerDocumentationObGynUrologyComplaintIntel.fr";
 import { providerDocumentationGuRenalComplaintIntel19Mdm5Fr } from "./providerDocumentationGuRenalComplaintIntel19Mdm5.fr";
 import { providerDocumentationInfectiousEntComplaintIntel19Mdm7Fr } from "./providerDocumentationInfectiousEntComplaintIntel19Mdm7.fr";
 import { providerDocumentationDentalOralComplaintIntelFr } from "./providerDocumentationDentalOralComplaintIntel.fr";
@@ -8442,6 +8443,18 @@ export default {
     templateInhaledIndustrialToxicExposureAdultV1Help: "Inserts cliquables — monoxyde de carbone, cyanure, hydrogène sulfuré, fumée toxique, gaz irritants, méthémoglobinémie et exposition professionnelle ou de masse.",
     templateEnvenomationPoisonousExposureAdultV1: "Envenimation / Exposition à une substance toxique",
     templateEnvenomationPoisonousExposureAdultV1Help: "Inserts cliquables — serpent, araignée, scorpion, envenimation marine, plantes ou champignons toxiques et pesticides, sans conseil d'incision, d'aspiration, de glace ou de garrot serré.",
+    templateEarlyPregnancyBleedingPainV1: "Saignement du début de grossesse / Douleur pelvienne",
+    templateEarlyPregnancyBleedingPainV1Help: "Inserts cliquables — saignement du premier trimestre, douleur pelvienne, test de grossesse, datation, drapeaux rouges de grossesse extra-utérine et suivi obstétrical sans raccourci d'exclusion ou de confirmation de viabilité.",
+    templateLatePregnancyLaborEmergencyV1: "Urgence de grossesse avancée / Travail obstétrical",
+    templateLatePregnancyLaborEmergencyV1Help: "Inserts cliquables — saignement tardif, symptômes de travail, RPMO, urgence placentaire, prolapsus de cordon et surveillance fœtale sans diagnostic autonome du travail ni toucher cervical digital si praevia non résolu.",
+    templateHypertensivePostpartumObstetricEmergencyV1: "Urgence obstétricale hypertensive / Post-partum",
+    templateHypertensivePostpartumObstetricEmergencyV1Help: "Inserts cliquables — prééclampsie, éclampsie, suspicion HELLP, hypertension post-partum, hémorragie et endométrite sans posologie de magnésium ni raccourci de clearance médicale.",
+    templateAcuteGynecologicPelvicComplaintV1: "Urgence gynécologique / Douleur pelvienne",
+    templateAcuteGynecologicPelvicComplaintV1Help: "Inserts cliquables — douleur pelvienne aiguë, torsion ovarienne, MIP, abcès tubo-ovarien et lien agression sexuelle sans langage d'exclusion de torsion ni examen médico-légal imposé.",
+    templateRenalUrinaryEmergencyV1: "Urgence rénale / Urinaire",
+    templateRenalUrinaryEmergencyV1Help: "Inserts cliquables — uropathie obstructive, calcul infecté, rétention, hématurie macroscopique, pyélonéphrite et urosépsis sans choix autonome d'antibiotiques ou de drainage.",
+    templateAcuteScrotalPenileEmergencyV1: "Urgence scrotale / Pénienne aiguë",
+    templateAcuteScrotalPenileEmergencyV1Help: "Inserts cliquables — torsion testiculaire, épididymite, priapisme, fracture pénienne, paraphimosis et recoupement Fournier sans langage d'exclusion de torsion.",
     templateObservationReassessment: "Réévaluation observation",
     templateObservationReassessmentHelp: "Évolution, résultats en attente, signes vitaux, surveillance, aptitude sortie / transfert.",
     templateCategoryCardiopulmonary: "Cardiopulmonaire",
@@ -9836,6 +9849,7 @@ export default {
     ...providerDocumentationDermatologyComplaintIntelFr,
     ...providerDocumentationEnvironmentalExposureComplaintIntelFr,
     ...providerDocumentationToxicologyComplaintIntelFr,
+    ...providerDocumentationObGynUrologyComplaintIntelFr,
     ...providerDocumentationPsychBehavioralComplaintIntelFr,
     ...providerDocumentationMedicationRefillComplaintIntelFr,
     ...providerDocumentationObservationReassessmentComplaintIntelFr,

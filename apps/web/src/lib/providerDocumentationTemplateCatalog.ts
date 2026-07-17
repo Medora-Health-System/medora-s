@@ -164,6 +164,12 @@ import {
   SUBSTANCE_INTOXICATION_WITHDRAWAL_ADULT_V1_INTEL,
   INHALED_INDUSTRIAL_TOXIC_EXPOSURE_ADULT_V1_INTEL,
   ENVENOMATION_POISONOUS_EXPOSURE_ADULT_V1_INTEL,
+  EARLY_PREGNANCY_BLEEDING_PAIN_V1_INTEL,
+  LATE_PREGNANCY_LABOR_EMERGENCY_V1_INTEL,
+  HYPERTENSIVE_POSTPARTUM_OBSTETRIC_EMERGENCY_V1_INTEL,
+  ACUTE_GYNECOLOGIC_PELVIC_COMPLAINT_V1_INTEL,
+  RENAL_URINARY_EMERGENCY_V1_INTEL,
+  ACUTE_SCROTAL_PENILE_EMERGENCY_V1_INTEL,
   type ProviderDocumentationComplaintIntelligence,
 } from "./providerDocumentationComplaintIntelligence";
 import type { ProviderDocumentationTemplatePickerSubgroupKey } from "./providerDocumentationModel";
@@ -2271,6 +2277,42 @@ export const PROVIDER_DOCUMENTATION_TEMPLATES: ProviderDocumentationTemplateDefi
     "providerDocumentationWorkspace.templateEnvenomationPoisonousExposureAdultV1",
     "providerDocumentationWorkspace.templateEnvenomationPoisonousExposureAdultV1Help",
     ENVENOMATION_POISONOUS_EXPOSURE_ADULT_V1_INTEL
+  ),
+  infectiousEntComplaintV1Template(
+    "early_pregnancy_bleeding_pain_v1",
+    "providerDocumentationWorkspace.templateEarlyPregnancyBleedingPainV1",
+    "providerDocumentationWorkspace.templateEarlyPregnancyBleedingPainV1Help",
+    EARLY_PREGNANCY_BLEEDING_PAIN_V1_INTEL
+  ),
+  infectiousEntComplaintV1Template(
+    "late_pregnancy_labor_emergency_v1",
+    "providerDocumentationWorkspace.templateLatePregnancyLaborEmergencyV1",
+    "providerDocumentationWorkspace.templateLatePregnancyLaborEmergencyV1Help",
+    LATE_PREGNANCY_LABOR_EMERGENCY_V1_INTEL
+  ),
+  infectiousEntComplaintV1Template(
+    "hypertensive_postpartum_obstetric_emergency_v1",
+    "providerDocumentationWorkspace.templateHypertensivePostpartumObstetricEmergencyV1",
+    "providerDocumentationWorkspace.templateHypertensivePostpartumObstetricEmergencyV1Help",
+    HYPERTENSIVE_POSTPARTUM_OBSTETRIC_EMERGENCY_V1_INTEL
+  ),
+  infectiousEntComplaintV1Template(
+    "acute_gynecologic_pelvic_complaint_v1",
+    "providerDocumentationWorkspace.templateAcuteGynecologicPelvicComplaintV1",
+    "providerDocumentationWorkspace.templateAcuteGynecologicPelvicComplaintV1Help",
+    ACUTE_GYNECOLOGIC_PELVIC_COMPLAINT_V1_INTEL
+  ),
+  infectiousEntComplaintV1Template(
+    "renal_urinary_emergency_v1",
+    "providerDocumentationWorkspace.templateRenalUrinaryEmergencyV1",
+    "providerDocumentationWorkspace.templateRenalUrinaryEmergencyV1Help",
+    RENAL_URINARY_EMERGENCY_V1_INTEL
+  ),
+  infectiousEntComplaintV1Template(
+    "acute_scrotal_penile_emergency_v1",
+    "providerDocumentationWorkspace.templateAcuteScrotalPenileEmergencyV1",
+    "providerDocumentationWorkspace.templateAcuteScrotalPenileEmergencyV1Help",
+    ACUTE_SCROTAL_PENILE_EMERGENCY_V1_INTEL
   ),
   {
     id: "observation_reassessment",

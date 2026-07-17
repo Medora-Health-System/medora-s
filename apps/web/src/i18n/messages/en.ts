@@ -38,6 +38,7 @@ import { providerDocumentationCardiacNonChestPainComplaintIntelEn } from "./prov
 import { providerDocumentationDermatologyComplaintIntelEn } from "./providerDocumentationDermatologyComplaintIntel.en";
 import { providerDocumentationEnvironmentalExposureComplaintIntelEn } from "./providerDocumentationEnvironmentalExposureComplaintIntel.en";
 import { providerDocumentationToxicologyComplaintIntelEn } from "./providerDocumentationToxicologyComplaintIntel.en";
+import { providerDocumentationObGynUrologyComplaintIntelEn } from "./providerDocumentationObGynUrologyComplaintIntel.en";
 
 export default {
   common: {
@@ -8464,6 +8465,18 @@ export default {
     templateInhaledIndustrialToxicExposureAdultV1Help: "Click-to-insert prompts for carbon monoxide, cyanide, hydrogen sulfide, smoke toxic exposure, irritant gases, methemoglobinemia, and occupational or mass exposure red flags.",
     templateEnvenomationPoisonousExposureAdultV1: "Envenomation / Poisonous Exposure",
     templateEnvenomationPoisonousExposureAdultV1Help: "Click-to-insert prompts for snake, spider, scorpion, marine envenomation, toxic plants or mushrooms, and pesticide exposure without cutting, suction, ice, or tight-tourniquet advice.",
+    templateEarlyPregnancyBleedingPainV1: "Early Pregnancy Bleeding / Pelvic Pain",
+    templateEarlyPregnancyBleedingPainV1Help: "Click-to-insert prompts for first-trimester bleeding, pelvic pain, pregnancy test, dating, ectopic red flags, and obstetric follow-up without ectopic-exclusion or viability-confirmation shortcuts.",
+    templateLatePregnancyLaborEmergencyV1: "Late Pregnancy / Labor Emergency",
+    templateLatePregnancyLaborEmergencyV1Help: "Click-to-insert prompts for late-pregnancy bleeding, labor symptoms, PPROM, placental emergency, cord prolapse, and fetal monitoring without autonomous labor diagnosis or digital exam when previa unresolved.",
+    templateHypertensivePostpartumObstetricEmergencyV1: "Hypertensive / Postpartum Obstetric Emergency",
+    templateHypertensivePostpartumObstetricEmergencyV1Help: "Click-to-insert prompts for preeclampsia, eclampsia, HELLP concern, postpartum hypertension, hemorrhage, and endometritis red flags without magnesium dosing or medical-clearance shortcuts.",
+    templateAcuteGynecologicPelvicComplaintV1: "Acute Gynecologic / Pelvic Complaint",
+    templateAcuteGynecologicPelvicComplaintV1Help: "Click-to-insert prompts for acute pelvic pain, ovarian torsion, PID, tubo-ovarian abscess, and sexual-assault linkage without torsion-exclusion language or forced forensic exam.",
+    templateRenalUrinaryEmergencyV1: "Renal / Urinary Emergency",
+    templateRenalUrinaryEmergencyV1Help: "Click-to-insert prompts for obstructive uropathy, infected stone, retention, gross hematuria, pyelonephritis, and urosepsis without autonomous antibiotic or drainage selection.",
+    templateAcuteScrotalPenileEmergencyV1: "Acute Scrotal / Penile Emergency",
+    templateAcuteScrotalPenileEmergencyV1Help: "Click-to-insert prompts for testicular torsion, epididymitis, priapism, penile fracture, paraphimosis, and Fournier overlap documentation without torsion-exclusion language.",
     templateObservationReassessment: "Observation reassessment",
     templateObservationReassessmentHelp: "Interval symptoms, pending results, vitals, monitoring, discharge/transfer readiness.",
     templateCategoryCardiopulmonary: "Cardiopulmonary",
@@ -9852,6 +9865,7 @@ export default {
     ...providerDocumentationDermatologyComplaintIntelEn,
     ...providerDocumentationEnvironmentalExposureComplaintIntelEn,
     ...providerDocumentationToxicologyComplaintIntelEn,
+    ...providerDocumentationObGynUrologyComplaintIntelEn,
     ...providerDocumentationPsychBehavioralComplaintIntelEn,
     ...providerDocumentationMedicationRefillComplaintIntelEn,
     ...providerDocumentationObservationReassessmentComplaintIntelEn,

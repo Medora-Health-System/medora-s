@@ -193,7 +193,13 @@ export type ProviderDocumentationTemplateId =
   | "toxic_ingestion_overdose_adult_v1"
   | "substance_intoxication_withdrawal_adult_v1"
   | "inhaled_industrial_toxic_exposure_adult_v1"
-  | "envenomation_poisonous_exposure_adult_v1";
+  | "envenomation_poisonous_exposure_adult_v1"
+  | "early_pregnancy_bleeding_pain_v1"
+  | "late_pregnancy_labor_emergency_v1"
+  | "hypertensive_postpartum_obstetric_emergency_v1"
+  | "acute_gynecologic_pelvic_complaint_v1"
+  | "renal_urinary_emergency_v1"
+  | "acute_scrotal_penile_emergency_v1";
 
 export type ProviderDocumentationTemplatePickerSubgroupKey =
   | "gi_abdominal"
