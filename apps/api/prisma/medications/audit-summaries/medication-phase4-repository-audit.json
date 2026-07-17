@@ -1,0 +1,39 @@
+{
+  "auditStatus": "COMPLETE",
+  "catalogClassification": "CURATED",
+  "catalogComplete": false,
+  "certificationId": "MEDUI.MEDICATION_INTELLIGENCE_PHASE_4_CONTROLLED_CANONICAL_RECONCILIATION_HUMAN_VERIFICATION_RXCUI_ASSIGNMENT",
+  "clinicalSearch": "CatalogMedication only",
+  "confidence": "HIGH",
+  "dataSource": "database",
+  "generatedAt": "2026-07-17T20:55:30.215Z",
+  "live": {
+    "candidatesByStatus": {
+      "AMBIGUOUS": 646,
+      "CANDIDATE": 3,
+      "REJECTED": 6,
+      "VERIFIED": 1
+    },
+    "catalog": 1042,
+    "conceptRxNormPopulated": 1,
+    "conceptRxNormVerified": 1,
+    "concepts": 1376,
+    "fixtureConcepts": 3,
+    "products": 1429,
+    "routePermissionCount": 0,
+    "verifiedMappingsActive": 1,
+    "verifiedMappingsSynthetic": 2,
+    "verifiedMappingsToRealBlockedProbe": true
+  },
+  "phase": 4,
+  "phase2": "PRESENT",
+  "phase3": "PRESENT",
+  "schema": {
+    "hasCandidateReviewVersion": true,
+    "hasConceptDataClassification": true,
+    "hasVerifiedMappingModel": true,
+    "migrationPresent": true,
+    "syntheticTargetsPresent": true
+  },
+  "title": "Phase 4 repository audit"
+}

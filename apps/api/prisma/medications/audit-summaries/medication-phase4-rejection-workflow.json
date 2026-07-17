@@ -1,0 +1,26 @@
+{
+  "auditStatus": "COMPLETE",
+  "catalogClassification": "CURATED",
+  "catalogComplete": false,
+  "certificationId": "MEDUI.MEDICATION_INTELLIGENCE_PHASE_4_CONTROLLED_CANONICAL_RECONCILIATION_HUMAN_VERIFICATION_RXCUI_ASSIGNMENT",
+  "confidence": "HIGH",
+  "dataSource": "seed_files_only",
+  "generatedAt": "2026-07-17T20:55:30.217Z",
+  "phase": 4,
+  "reasons": [
+    "WRONG_INGREDIENT",
+    "WRONG_STRENGTH",
+    "WRONG_DOSE_FORM",
+    "WRONG_BRAND",
+    "WRONG_SEMANTIC_LEVEL",
+    "DUPLICATE_TARGET",
+    "AMBIGUOUS_SOURCE",
+    "SUPPRESSED_SOURCE",
+    "RETIRED_SOURCE",
+    "SYNTHETIC_ONLY",
+    "INSUFFICIENT_EVIDENCE",
+    "TERM_TYPE_MISMATCH",
+    "SYNTHETIC_REAL_VIOLATION",
+    "OTHER"
+  ]
+}

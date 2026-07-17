@@ -1,0 +1,13 @@
+{
+  "SeedRequired": "NO",
+  "auditStatus": "COMPLETE",
+  "catalogClassification": "CURATED",
+  "catalogComplete": false,
+  "certificationId": "MEDUI.MEDICATION_INTELLIGENCE_PHASE_4_CONTROLLED_CANONICAL_RECONCILIATION_HUMAN_VERIFICATION_RXCUI_ASSIGNMENT",
+  "confidence": "HIGH",
+  "dataSource": "seed_files_only",
+  "generatedAt": "2026-07-17T20:55:30.218Z",
+  "migration": "20261006120000_medication_phase_4_canonical_reconciliation",
+  "phase": 4,
+  "productionCommand": "DATABASE_URL=\"<RAILWAY_DATABASE_URL>\" pnpm --filter @medora/api exec prisma migrate deploy"
+}

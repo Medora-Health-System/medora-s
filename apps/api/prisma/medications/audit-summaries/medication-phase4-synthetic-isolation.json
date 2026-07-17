@@ -1,0 +1,12 @@
+{
+  "SyntheticToRealMappingBlocked": "YES",
+  "auditStatus": "COMPLETE",
+  "catalogClassification": "CURATED",
+  "catalogComplete": false,
+  "certificationId": "MEDUI.MEDICATION_INTELLIGENCE_PHASE_4_CONTROLLED_CANONICAL_RECONCILIATION_HUMAN_VERIFICATION_RXCUI_ASSIGNMENT",
+  "confidence": "HIGH",
+  "dataSource": "database",
+  "generatedAt": "2026-07-17T20:55:30.217Z",
+  "phase": 4,
+  "syntheticTargetsFixture": "synthetic-canonical-targets-p4.json"
+}

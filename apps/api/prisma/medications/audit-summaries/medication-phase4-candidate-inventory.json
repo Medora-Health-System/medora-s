@@ -1,0 +1,17 @@
+{
+  "auditStatus": "COMPLETE",
+  "byStatus": {
+    "AMBIGUOUS": 646,
+    "CANDIDATE": 3,
+    "REJECTED": 6,
+    "VERIFIED": 1
+  },
+  "catalogClassification": "CURATED",
+  "catalogComplete": false,
+  "certificationId": "MEDUI.MEDICATION_INTELLIGENCE_PHASE_4_CONTROLLED_CANONICAL_RECONCILIATION_HUMAN_VERIFICATION_RXCUI_ASSIGNMENT",
+  "confidence": "HIGH",
+  "dataSource": "database",
+  "generatedAt": "2026-07-17T20:55:30.216Z",
+  "phase": 4,
+  "title": "Current candidate inventory"
+}

@@ -1,0 +1,15 @@
+{
+  "auditStatus": "COMPLETE",
+  "catalogClassification": "CURATED",
+  "catalogComplete": false,
+  "certificationId": "MEDUI.MEDICATION_INTELLIGENCE_PHASE_4_CONTROLLED_CANONICAL_RECONCILIATION_HUMAN_VERIFICATION_RXCUI_ASSIGNMENT",
+  "confidence": "HIGH",
+  "dataSource": "seed_files_only",
+  "generatedAt": "2026-07-17T20:55:30.218Z",
+  "indexes": [
+    "RxNormVerifiedMapping active target partial unique",
+    "RxNormVerifiedMapping active rxcui+targetKind partial unique",
+    "candidate reviewVersion"
+  ],
+  "phase": 4
+}
