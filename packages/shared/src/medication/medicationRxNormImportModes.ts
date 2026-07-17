@@ -28,6 +28,7 @@ export const RXNORM_CANDIDATE_STATUS_VALUES = [
   "REJECTED",
   "AMBIGUOUS",
   "CONFLICT",
+  "DEFERRED",
   "RETIRED",
 ] as const;
 

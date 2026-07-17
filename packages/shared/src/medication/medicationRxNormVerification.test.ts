@@ -24,11 +24,13 @@ describe("medicationRxNormVerification enums", () => {
 });
 
 describe("assertLegalMappingTransition", () => {
-  it("allows verify/reject from reviewable statuses", () => {
+  it("allows verify/reject/defer from reviewable statuses", () => {
     for (const status of ["CANDIDATE", "NEEDS_REVIEW", "AMBIGUOUS", "CONFLICT"] as const) {
       expect(() => assertLegalMappingTransition(status, "VERIFIED")).not.toThrow();
       expect(() => assertLegalMappingTransition(status, "REJECTED")).not.toThrow();
+      expect(() => assertLegalMappingTransition(status, "DEFERRED")).not.toThrow();
     }
+    expect(() => assertLegalMappingTransition("DEFERRED", "VERIFIED")).not.toThrow();
   });
 
   it("blocks illegal transitions", () => {

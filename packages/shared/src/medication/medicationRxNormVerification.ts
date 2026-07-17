@@ -34,6 +34,7 @@ export const RXNORM_MAPPING_DECISION_VALUES = [
   "NEEDS_REVIEW",
   "AMBIGUOUS",
   "CONFLICT",
+  "DEFERRED",
   "VERIFIED",
   "REJECTED",
   "RETIRED",
@@ -46,21 +47,23 @@ export const RXNORM_VERIFIABLE_CANDIDATE_STATUS_VALUES = [
   "NEEDS_REVIEW",
   "AMBIGUOUS",
   "CONFLICT",
+  "DEFERRED",
 ] as const;
 
 export type RxNormVerifiableCandidateStatus = (typeof RXNORM_VERIFIABLE_CANDIDATE_STATUS_VALUES)[number];
 
 export type RxNormVerifyTargetKind = "MEDICATION_CONCEPT" | "MEDICATION_PRODUCT";
 
-/** Legal candidate-status transitions for Phase 4 manual review. */
+/** Legal candidate-status transitions for Phase 4/6 manual review. */
 export const RXNORM_MAPPING_STATUS_TRANSITIONS: Record<
   RxNormCandidateStatus,
   readonly RxNormMappingDecision[]
 > = {
-  CANDIDATE: ["VERIFIED", "REJECTED"],
-  NEEDS_REVIEW: ["VERIFIED", "REJECTED"],
-  AMBIGUOUS: ["VERIFIED", "REJECTED"],
-  CONFLICT: ["VERIFIED", "REJECTED"],
+  CANDIDATE: ["VERIFIED", "REJECTED", "DEFERRED", "NEEDS_REVIEW"],
+  NEEDS_REVIEW: ["VERIFIED", "REJECTED", "DEFERRED"],
+  AMBIGUOUS: ["VERIFIED", "REJECTED", "DEFERRED"],
+  CONFLICT: ["VERIFIED", "REJECTED", "DEFERRED"],
+  DEFERRED: ["VERIFIED", "REJECTED", "NEEDS_REVIEW"],
   VERIFIED: ["RETIRED"],
   REJECTED: [],
   RETIRED: [],

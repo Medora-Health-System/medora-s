@@ -27,6 +27,8 @@ export const APP_ROLE_CODES = [
   "LAB",
   "RADIOLOGY",
   "BILLING",
+  "MEDICATION_REVIEWER",
+  "MEDICATION_ADMIN",
 ] as const;
 
 export type AppRoleCode = (typeof APP_ROLE_CODES)[number];
@@ -195,6 +197,16 @@ const APP_ROUTE_RULES: RouteRule[] = [
   },
   { prefix: "/app/reports", roles: ["ADMIN", "MEDORA_SUPER_ADMIN"] },
   { prefix: "/app/admin/go-live", roles: ["ADMIN", "MEDORA_SUPER_ADMIN"] },
+  {
+    prefix: "/app/admin/medication-governance/rxnorm-review",
+    roles: [
+      "ADMIN",
+      "MEDORA_SUPER_ADMIN",
+      "MEDICATION_ADMIN",
+      "MEDICATION_REVIEWER",
+      "PHARMACY",
+    ],
+  },
   { prefix: "/app/admin", roles: ["ADMIN", "MEDORA_SUPER_ADMIN"] },
   { prefix: "/app/admin/users", roles: ["ADMIN", "MEDORA_SUPER_ADMIN"] },
   { prefix: "/app/users", roles: ["ADMIN", "MEDORA_SUPER_ADMIN"] },

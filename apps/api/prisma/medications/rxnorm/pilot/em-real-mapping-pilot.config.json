@@ -1,0 +1,10 @@
+{
+  "pilotId": "EM_REAL_MAPPING_PILOT_V1",
+  "enabled": false,
+  "targetCount": 100,
+  "therapeuticArea": "EMERGENCY_MEDICINE",
+  "clinicalActivationEnabled": false,
+  "automaticVerificationEnabled": false,
+  "importExecuted": false,
+  "notes": "Configurable future pilot of ~100 Emergency Medicine medications. Disabled by default. Phase 6 does not import or activate these mappings."
+}

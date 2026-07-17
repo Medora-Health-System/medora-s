@@ -234,6 +234,8 @@ model User {
   rxNormReferenceReleasesStarted                  RxNormReferenceRelease[]               @relation("RxNormReferenceReleaseStartedBy")
   rxNormImportJobsStarted                         RxNormImportJob[]                      @relation("RxNormImportJobStartedBy")
   rxNormMappingCandidatesReviewed                 RxNormMappingCandidate[]               @relation("RxNormMappingCandidateReviewedBy")
+  rxNormMappingCandidatesAssigned                 RxNormMappingCandidate[]               @relation("RxNormMappingCandidateAssignedTo")
+  rxNormReviewAuditEvents                         RxNormReviewAuditEvent[]               @relation("RxNormReviewAuditEventActor")
   rxNormVerifiedMappingsVerified                  RxNormVerifiedMapping[]                @relation("RxNormVerifiedMappingVerifiedBy")
   rxNormVerifiedMappingsRetired                   RxNormVerifiedMapping[]                @relation("RxNormVerifiedMappingRetiredBy")
   medicationOrderSchedulesCancelled               MedicationOrderSchedule[]              @relation("MedicationOrderScheduleCancelledBy")
@@ -2473,18 +2475,48 @@ model RxNormMappingCandidate {
   reviewedAt                   DateTime?
   reviewedByUserId             String?
   reviewNotes                  String?
+  /// Phase 6 — reviewer work-queue assignment (non-clinical).
+  assignedToUserId             String?
+  assignedAt                   DateTime?
+  reviewStartedAt              DateTime?
+  deferredAt                   DateTime?
+  deferredReason               String?
   createdAt                    DateTime                 @default(now())
   updatedAt                    DateTime                 @updatedAt
   release                      RxNormReferenceRelease   @relation(fields: [releaseId], references: [id], onDelete: Cascade)
   stagingConcept               RxNormStagingConcept     @relation(fields: [stagingConceptId], references: [id], onDelete: Cascade)
   reviewedBy                   User?                    @relation("RxNormMappingCandidateReviewedBy", fields: [reviewedByUserId], references: [id])
+  assignedTo                   User?                    @relation("RxNormMappingCandidateAssignedTo", fields: [assignedToUserId], references: [id])
   verifiedMapping              RxNormVerifiedMapping?   @relation(fields: [verifiedMappingId], references: [id])
+  reviewAuditEvents            RxNormReviewAuditEvent[]
 
   @@unique([stagingConceptId, targetKind, targetId])
   @@index([releaseId])
   @@index([status])
   @@index([targetKind, targetId])
   @@index([verifiedMappingId])
+  @@index([assignedToUserId])
+}
+
+/// Phase 6 — deterministic RxNorm review audit trail (governance only; not clinical).
+model RxNormReviewAuditEvent {
+  id               String                 @id @default(uuid())
+  candidateId      String?
+  verifiedMappingId String?
+  action           String                 @db.VarChar(48)
+  actorUserId      String?
+  actorRoleLabel   String?                @db.VarChar(64)
+  rationaleNotes   String?
+  evidenceJson     Json?
+  createdAt        DateTime               @default(now())
+  candidate        RxNormMappingCandidate? @relation(fields: [candidateId], references: [id], onDelete: SetNull)
+  actor            User?                  @relation("RxNormReviewAuditEventActor", fields: [actorUserId], references: [id])
+
+  @@index([candidateId])
+  @@index([verifiedMappingId])
+  @@index([action])
+  @@index([actorUserId])
+  @@index([createdAt])
 }
 
 /// Durable RxNorm verified mapping history — Phase 4 canonical reconciliation (CLI/service only).
@@ -3232,6 +3264,10 @@ enum RoleCode {
   BILLING
   /// Medora platform operations (exports, env health, backup readiness). Assigned only by platform ops / DB — not in facility admin role picker.
   MEDORA_SUPER_ADMIN
+  /// Phase 6 — governed RxNorm mapping reviewer (queue approve/reject/defer; non-clinical).
+  MEDICATION_REVIEWER
+  /// Phase 6 — medication governance admin (review ops + pilot configuration; non-clinical).
+  MEDICATION_ADMIN
 }
 
 enum DepartmentCode {
