@@ -80,6 +80,9 @@ export function parseBehavioralHealthFromText(text = ""): BehavioralHealthFindin
         normalized
       ) && !/\b(denies access to weapons|no access to means|means removed)\b/.test(normalized),
     legalStatusReported:
+      // 5150 (California) and 302 (Pennsylvania) are US jurisdiction-specific hold labels used only
+      // as recognition tokens when already documented in chart text. Involuntary hold criteria,
+      // duration, and legal process are facility-configurable — not universal law.
       /\b(involuntary hold|5150|302|certification|court order|legal status|psychiatric hold|emergency petition)\b/.test(
         normalized
       ),

@@ -104,6 +104,7 @@ import {
 import {
   NEURO_EXPANSION_COMPLAINT_V1_INTEL_BY_TEMPLATE_ID,
   NEURO_EXPANSION_COMPLAINT_V1_TEMPLATE_IDS,
+  SEIZURE_COMPLAINT_V1_INTEL,
 } from "./providerDocumentationNeuroExpansionComplaintIntelligence19Mdm9";
 import {
   ENT_EMERGENCY_COMPLAINT_V1_INTEL_BY_TEMPLATE_ID,
@@ -729,6 +730,8 @@ export const COMPLAINT_INTEL_BY_TEMPLATE_ID: Partial<
   allergic_reaction_rash: ALLERGIC_REACTION_RASH_COMPLAINT_INTEL,
   adult_nausea_vomiting: ADULT_NAUSEA_VOMITING_COMPLAINT_INTEL,
   adult_diarrhea: ADULT_DIARRHEA_COMPLAINT_INTEL,
+  /** Historical adult alias — shares seizure_complaint_v1 intel (Phase 19 governance). */
+  adult_seizure: SEIZURE_COMPLAINT_V1_INTEL,
   medication_refill: MEDICATION_REFILL_COMPLAINT_INTEL,
   observation_reassessment: OBSERVATION_REASSESSMENT_COMPLAINT_INTEL,
   mvc: MVC_COLLISION_COMPLAINT_INTEL,
@@ -868,6 +871,8 @@ export const COMPLAINT_INTEL_TEMPLATE_IDS = [
   "uri_respiratory",
   "diarrhea",
   "ear_pain",
+  /** Historical alias — same intel as seizure_complaint_v1; not a new Phase 19 template. */
+  "adult_seizure",
 ] as const;
 
 export function flattenComplaintIntelligenceKeys(bundle: ProviderDocumentationComplaintIntelligence): string[] {

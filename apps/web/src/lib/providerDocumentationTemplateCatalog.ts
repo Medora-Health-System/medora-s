@@ -1331,7 +1331,9 @@ export const PROVIDER_DOCUMENTATION_TEMPLATES: ProviderDocumentationTemplateDefi
       general: ["erMseExamChips.genAlert"],
       neuroPsych: ["erMseExamChips.neuroAlertOriented", "erMseExamChips.neuroFollowsCommands", "erMseExamChips.neuroFocalDeficitNoted"],
     },
-    ADULT_GUIDANCE_NEURO
+    ADULT_GUIDANCE_NEURO,
+    undefined,
+    SEIZURE_COMPLAINT_V1_INTEL
   ),
   adultTemplate(
     "stroke_symptoms",

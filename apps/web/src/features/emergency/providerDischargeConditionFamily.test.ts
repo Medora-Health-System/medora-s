@@ -107,6 +107,14 @@ describe("MEDUI.ED.DISCHARGE.TEMPLATE_FAMILY_COVERAGE.1", () => {
       const r = resolveClinicalConditionFamily({ code: "E11.65", displayName: "Hyperglycemia" });
       expect(r.matchLevel).toBe("icdExact");
       expect(r.templateId).toBe("hyperglycemia_v1");
+      expect(r.familyId).toBe("diabetes_hyperglycemia");
+    });
+
+    it("12b — duplicate E11.65 icdExact owners resolve deterministically (not first-wins)", () => {
+      const a = resolveClinicalConditionFamily({ code: "E11.65", displayName: "Hyperglycemia" });
+      const b = resolveClinicalConditionFamily({ code: "E11.65", displayName: "Type 2 DM with hyperglycemia" });
+      expect(a.familyId).toBe(b.familyId);
+      expect(a.familyId).toBe("diabetes_hyperglycemia");
     });
 
     it("13 — longer ICD prefix beats shorter prefix", () => {

@@ -7,6 +7,7 @@ import {
   getRoutableClinicalConditionFamilies,
   type ClinicalConditionFamilyDefinition,
   type ClinicalConditionFamilyId,
+  type ClinicalConditionFamilyRoutingStatus,
 } from "./providerDischargeConditionFamilies";
 import {
   evaluatePediatricFeverAgePolicy,
@@ -139,6 +140,63 @@ function resultFromFamily(
   };
 }
 
+/** Lower rank wins when multiple families claim the same icdExact. */
+const ICD_EXACT_ROUTING_STATUS_RANK: Record<ClinicalConditionFamilyRoutingStatus, number> = {
+  READY: 0,
+  NEEDS_REVIEW: 1,
+  DEFERRED_SPECIALTY_ONLY: 2,
+  UNSAFE_DO_NOT_MAP: 3,
+};
+
+/**
+ * Deterministic tie-break when several families share an icdExact code.
+ * Order: READY routing > more dedicated exact owner > optional icdExactOwnerPriority > family id (stable).
+ */
+function icdExactMatchSpecificityScore(
+  family: ClinicalConditionFamilyDefinition,
+  code: string
+): number {
+  const exactCount = family.icdExact?.length ?? 0;
+  const normalized = normalizeIcdCode(code);
+  const hasOverride = Object.keys(family.icdExactTemplateOverrides ?? {}).some(
+    (exact) => normalizeIcdCode(exact) === normalized
+  );
+  return (hasOverride ? 10_000 : 0) + (exactCount > 0 ? 1_000 - exactCount : 0);
+}
+
+function primaryOwnerPriority(family: ClinicalConditionFamilyDefinition): number {
+  const priority = (family as ClinicalConditionFamilyDefinition & { icdExactOwnerPriority?: number })
+    .icdExactOwnerPriority;
+  return typeof priority === "number" ? priority : 0;
+}
+
+function compareIcdExactFamilyCandidates(
+  a: ClinicalConditionFamilyDefinition,
+  b: ClinicalConditionFamilyDefinition,
+  code: string
+): number {
+  const statusDiff =
+    ICD_EXACT_ROUTING_STATUS_RANK[a.routingStatus] -
+    ICD_EXACT_ROUTING_STATUS_RANK[b.routingStatus];
+  if (statusDiff !== 0) return statusDiff;
+
+  const specificityDiff =
+    icdExactMatchSpecificityScore(b, code) - icdExactMatchSpecificityScore(a, code);
+  if (specificityDiff !== 0) return specificityDiff;
+
+  const ownerDiff = primaryOwnerPriority(b) - primaryOwnerPriority(a);
+  if (ownerDiff !== 0) return ownerDiff;
+
+  return a.id.localeCompare(b.id);
+}
+
+function pickBestIcdExactFamily(
+  candidates: readonly ClinicalConditionFamilyDefinition[],
+  code: string
+): ClinicalConditionFamilyDefinition {
+  return [...candidates].sort((a, b) => compareIcdExactFamilyCandidates(a, b, code))[0]!;
+}
+
 function buildEffectiveFamilyResolveContext(
   input: {
     code?: string;
@@ -192,14 +250,20 @@ export function resolveClinicalConditionFamily(input: {
   const families = getRoutableClinicalConditionFamilies();
 
   if (code) {
+    const exactMatches: ClinicalConditionFamilyDefinition[] = [];
     for (const family of families) {
       if (!passesGuardrails(family, context)) continue;
       if (isExcluded(code, family)) continue;
       for (const exact of family.icdExact ?? []) {
         if (code === normalizeIcdCode(exact)) {
-          return resultFromFamily(family, code, "icdExact");
+          exactMatches.push(family);
+          break;
         }
       }
+    }
+    if (exactMatches.length > 0) {
+      const best = pickBestIcdExactFamily(exactMatches, code);
+      return resultFromFamily(best, code, "icdExact");
     }
 
     let bestPrefix: {

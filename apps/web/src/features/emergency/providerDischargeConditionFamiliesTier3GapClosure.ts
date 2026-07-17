@@ -155,14 +155,15 @@ export const TIER3_GAP_CLOSURE_CLINICAL_CONDITION_FAMILIES: readonly ClinicalCon
       label: "Metabolic Dehydration Follow-Up",
       templateId: "metabolic_dehydration_followup_v1",
       clinicalDomain: "General Medical",
-      icdExact: ["E86.0"],
+      // E86.0 exact ownership stays with Tier1 `dehydration`; this family is keyword/follow-up only.
       keywords: ["metabolic dehydration follow-up", "dehydration renal precautions"],
       guardrails: {
         safety: { requiresEdReturnPrecautions: true },
       },
       specialtyCategory: "primary_care",
       riskCategory: "moderate",
-      clinicalRationale: "Metabolic dehydration follow-up aligns with E86.0 when present.",
+      clinicalRationale:
+        "Metabolic dehydration follow-up keyword path; E86.0 exact match remains on primary dehydration family.",
       reviewStatus: "reviewed",
       routingStatus: "READY",
       sourceReferenceLabels: ["MedlinePlus — Dehydration"],

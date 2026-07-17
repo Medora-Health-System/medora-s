@@ -366,7 +366,7 @@ export const TIER1_CLINICAL_CONDITION_FAMILIES: readonly ClinicalConditionFamily
     templateId: "dehydration_v1",
     additionalTemplateIds: ["pediatric_vomiting_v1"],
     clinicalDomain: "Gastrointestinal",
-    icdExact: ["E86.0"],
+    // E86.0 remains owned by the primary `dehydration` family (deterministic exact-match ranking).
     keywords: ["nausea with dehydration", "vomiting dehydration"],
     specialtyCategory: "emergency_medicine",
     riskCategory: "moderate",

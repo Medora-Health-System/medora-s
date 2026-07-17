@@ -2876,7 +2876,7 @@ export const DOMAIN_EXTENSION_CLINICAL_CONDITION_FAMILIES: readonly ClinicalCond
       sourceReferenceLabels: ["MedlinePlus — Urologic"],
     },
     {
-      id: "hematuria",
+      id: "hematuria_v1",
       label: "Hematuria",
       templateId: "hematuria_v1",
       clinicalDomain: "Genitourinary",
@@ -2891,7 +2891,7 @@ export const DOMAIN_EXTENSION_CLINICAL_CONDITION_FAMILIES: readonly ClinicalCond
       sourceReferenceLabels: ["MedlinePlus — Urologic"],
     },
     {
-      id: "urinary_retention",
+      id: "urinary_retention_v1",
       label: "Urinary retention",
       templateId: "urinary_retention_v1",
       clinicalDomain: "Genitourinary",
@@ -3405,8 +3405,8 @@ export const EXPLICIT_REGISTRY_TEMPLATE_FAMILY_MAP: Readonly<Record<string, stri
   cystitis_v1: "cystitis",
   pyelonephritis_v1: "pyelonephritis",
   infected_obstructed_stone_post_acute_v1: "infected_obstructed_stone_post_acute",
-  hematuria_v1: "hematuria",
-  urinary_retention_v1: "urinary_retention",
+  hematuria_v1: "hematuria_v1",
+  urinary_retention_v1: "urinary_retention_v1",
   urinary_catheter_complication_v1: "urinary_catheter_complication",
   epididymitis_v1: "epididymitis",
   orchitis_v1: "orchitis",
