@@ -1,0 +1,32 @@
+{
+  "auditStatus": "COMPLETE",
+  "catalogClassification": "CURATED",
+  "catalogComplete": false,
+  "certificationId": "MEDUI.MEDICATION_INTELLIGENCE_PHASE_3_SCOPED_RXNORM_REFERENCE_INGESTION_STAGING_PROVENANCE_MAPPING",
+  "confidence": "HIGH",
+  "dataSource": "database",
+  "generatedAt": "2026-07-17T20:11:13.729Z",
+  "live": {
+    "activeReleases": 0,
+    "autoVerifiedCandidates": 0,
+    "candidates": 645,
+    "catalogMedication": 1042,
+    "conceptRxNormPopulated": 0,
+    "conflicts": 645,
+    "releases": 1,
+    "stagingRows": 28
+  },
+  "model": "RxNormReferenceRelease",
+  "phase": 3,
+  "statuses": [
+    "REGISTERED",
+    "VALIDATING",
+    "STAGING",
+    "STAGED",
+    "FAILED",
+    "ACTIVE",
+    "SUPERSEDED",
+    "ROLLED_BACK"
+  ],
+  "title": "Release registry report"
+}

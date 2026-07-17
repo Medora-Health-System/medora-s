@@ -1,0 +1,14 @@
+{
+  "auditStatus": "COMPLETE",
+  "catalogClassification": "CURATED",
+  "catalogComplete": false,
+  "certificationId": "MEDUI.MEDICATION_INTELLIGENCE_PHASE_3_SCOPED_RXNORM_REFERENCE_INGESTION_STAGING_PROVENANCE_MAPPING",
+  "confidence": "HIGH",
+  "dataSource": "seed_files_only",
+  "generatedAt": "2026-07-17T20:11:13.731Z",
+  "phase": 3,
+  "sampleA": "acetaminophen 500 mg",
+  "sampleB": "acetaminophen 500 mg",
+  "stable": true,
+  "title": "Normalization determinism report"
+}

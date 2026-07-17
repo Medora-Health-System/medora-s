@@ -1,0 +1,14 @@
+{
+  "BillingUnchanged": "YES",
+  "auditStatus": "COMPLETE",
+  "catalogClassification": "CURATED",
+  "catalogComplete": false,
+  "certificationId": "MEDUI.MEDICATION_INTELLIGENCE_PHASE_3_SCOPED_RXNORM_REFERENCE_INGESTION_STAGING_PROVENANCE_MAPPING",
+  "confidence": "HIGH",
+  "dataSource": "seed_files_only",
+  "generatedAt": "2026-07-17T20:11:13.732Z",
+  "importTouchesBillingModels": false,
+  "noChargesFromStaging": true,
+  "phase": 3,
+  "title": "Billing regression report"
+}

@@ -1,0 +1,47 @@
+{
+  "auditStatus": "COMPLETE",
+  "catalogClassification": "CURATED",
+  "catalogComplete": false,
+  "certificationId": "MEDUI.MEDICATION_INTELLIGENCE_PHASE_3_SCOPED_RXNORM_REFERENCE_INGESTION_STAGING_PROVENANCE_MAPPING",
+  "clinicalSearchable": false,
+  "confidence": "HIGH",
+  "dataSource": "seed_files_only",
+  "deferredOrExcluded": [
+    "SCDG",
+    "SBDG",
+    "BPCK",
+    "DFG"
+  ],
+  "everOrderable": false,
+  "generatedAt": "2026-07-17T20:11:13.729Z",
+  "phase": 3,
+  "supportedForStaging": [
+    "IN",
+    "PIN",
+    "MIN",
+    "SCD",
+    "SBD",
+    "SCDF",
+    "SBDF",
+    "GPCK",
+    "BN",
+    "DF"
+  ],
+  "termTypes": [
+    "IN",
+    "PIN",
+    "MIN",
+    "SCD",
+    "SBD",
+    "SCDF",
+    "SBDF",
+    "SCDG",
+    "SBDG",
+    "GPCK",
+    "BPCK",
+    "BN",
+    "DF",
+    "DFG"
+  ],
+  "title": "Supported RxNorm term-type policy"
+}

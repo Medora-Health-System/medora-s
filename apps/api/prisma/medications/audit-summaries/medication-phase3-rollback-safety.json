@@ -1,0 +1,15 @@
+{
+  "auditStatus": "COMPLETE",
+  "canRollbackActive": true,
+  "catalogClassification": "CURATED",
+  "catalogComplete": false,
+  "certificationId": "MEDUI.MEDICATION_INTELLIGENCE_PHASE_3_SCOPED_RXNORM_REFERENCE_INGESTION_STAGING_PROVENANCE_MAPPING",
+  "confidence": "HIGH",
+  "dataSource": "seed_files_only",
+  "doesNotDeleteImportJobs": true,
+  "doesNotMutateCanonicalConcepts": true,
+  "generatedAt": "2026-07-17T20:11:13.731Z",
+  "phase": 3,
+  "preservesStagingHistory": true,
+  "title": "Rollback safety report"
+}

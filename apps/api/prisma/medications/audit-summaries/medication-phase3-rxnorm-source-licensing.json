@@ -1,0 +1,22 @@
+{
+  "RealRxNormDataUsed": "NO",
+  "SyntheticFixtureUsed": "YES",
+  "auditStatus": "COMPLETE",
+  "catalogClassification": "CURATED",
+  "catalogComplete": false,
+  "certificationId": "MEDUI.MEDICATION_INTELLIGENCE_PHASE_3_SCOPED_RXNORM_REFERENCE_INGESTION_STAGING_PROVENANCE_MAPPING",
+  "confidence": "HIGH",
+  "dataSource": "seed_files_only",
+  "fixtureMarkers": [
+    "SYNTHETIC_CERTIFICATION",
+    "notRealRxNorm:true",
+    "SYNTH* RxCUIs"
+  ],
+  "fixturePath": "apps/api/prisma/medications/rxnorm/fixtures/synthetic-rxnorm-cert-p3.json",
+  "generatedAt": "2026-07-17T20:11:13.729Z",
+  "licensingReviewed": "YES_SYNTHETIC_ONLY_NO_NLM_ARTIFACT",
+  "nlmRxNorm": "Not downloaded, not committed, not redistributed in this phase",
+  "operatorSourcePathSupported": true,
+  "phase": 3,
+  "title": "RxNorm source and licensing assessment"
+}

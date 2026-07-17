@@ -1,0 +1,20 @@
+{
+  "auditStatus": "COMPLETE",
+  "catalogClassification": "CURATED",
+  "catalogComplete": false,
+  "certificationId": "MEDUI.MEDICATION_INTELLIGENCE_PHASE_3_SCOPED_RXNORM_REFERENCE_INGESTION_STAGING_PROVENANCE_MAPPING",
+  "confidence": "HIGH",
+  "dataSource": "seed_files_only",
+  "enterpriseScaleClaim": "NOT_CLAIMED",
+  "generatedAt": "2026-07-17T20:11:13.732Z",
+  "indexes": [
+    "RxNormReferenceRelease(sourceChecksumSha256, importStatus, isActiveReference)",
+    "RxNormStagingConcept(releaseId+rxcui, rxcui+termType, normalizedTerm, validationStatus)",
+    "RxNormMappingCandidate(releaseId, status, targetKind+targetId)"
+  ],
+  "phase": 3,
+  "schemaReady": true,
+  "scopedFixtureOnly": true,
+  "title": "Performance and indexing report",
+  "wholeFileMemoryAssumption": false
+}

@@ -1,0 +1,17 @@
+{
+  "auditStatus": "COMPLETE",
+  "canonicalMutation": false,
+  "catalogClassification": "CURATED",
+  "catalogComplete": false,
+  "certificationId": "MEDUI.MEDICATION_INTELLIGENCE_PHASE_3_SCOPED_RXNORM_REFERENCE_INGESTION_STAGING_PROVENANCE_MAPPING",
+  "confidence": "HIGH",
+  "dataSource": "database",
+  "generatedAt": "2026-07-17T20:11:13.729Z",
+  "isOrderableEligibleDefault": false,
+  "isSearchableReferenceDefault": false,
+  "liveStagingRows": 28,
+  "model": "RxNormStagingConcept",
+  "phase": 3,
+  "title": "Staging integrity report",
+  "uniqueKey": "[releaseId, rowChecksum]"
+}

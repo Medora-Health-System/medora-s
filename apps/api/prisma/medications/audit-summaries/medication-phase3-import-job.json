@@ -1,0 +1,27 @@
+{
+  "activationRequiresConfirmFlag": true,
+  "auditStatus": "COMPLETE",
+  "catalogClassification": "CURATED",
+  "catalogComplete": false,
+  "certificationId": "MEDUI.MEDICATION_INTELLIGENCE_PHASE_3_SCOPED_RXNORM_REFERENCE_INGESTION_STAGING_PROVENANCE_MAPPING",
+  "cli": [
+    "medication:rxnorm:validate",
+    "medication:rxnorm:stage",
+    "medication:rxnorm:candidates",
+    "medication:rxnorm:activate",
+    "medication:rxnorm:rollback"
+  ],
+  "confidence": "HIGH",
+  "dataSource": "seed_files_only",
+  "generatedAt": "2026-07-17T20:11:13.729Z",
+  "modes": [
+    "VALIDATE_ONLY",
+    "STAGE_ONLY",
+    "CANDIDATE_MAPPING",
+    "ACTIVATE_REFERENCE_RELEASE",
+    "ROLLBACK_RELEASE"
+  ],
+  "phase": 3,
+  "rollbackRequiresConfirmFlag": true,
+  "title": "Import-job report"
+}
