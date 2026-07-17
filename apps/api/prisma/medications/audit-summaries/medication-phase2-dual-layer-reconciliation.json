@@ -1,0 +1,31 @@
+{
+  "auditStatus": "COMPLETE",
+  "automaticFuzzyMergeForbidden": true,
+  "bridgeField": "MedicationProduct.legacyCatalogMedicationId",
+  "catalogClassification": "CURATED",
+  "catalogComplete": false,
+  "certificationId": "MEDUI.MEDICATION_INTELLIGENCE_PHASE_2_CANONICAL_IDENTITY_RXNORM_ROUTE_MAR_BILLING_FOUNDATION",
+  "confidence": "HIGH",
+  "dataSource": "database",
+  "generatedAt": "2026-07-17T19:45:18.674Z",
+  "linkageStatuses": [
+    "UNLINKED",
+    "CANDIDATE",
+    "VERIFIED",
+    "REJECTED",
+    "DO_NOT_LINK"
+  ],
+  "live": {
+    "dualLayerUnlinked": 1428,
+    "dualLayerVerified": 0,
+    "productsWithLegacyFk": 236
+  },
+  "phase": 2,
+  "rules": [
+    "Legacy FK presence does not imply VERIFIED linkage",
+    "No automatic merge from display name, strength, route, NDC fragment, or fuzzy score",
+    "CANDIDATE → VERIFIED requires explicit method + provenance"
+  ],
+  "statusField": "MedicationProduct.dualLayerLinkageStatus",
+  "title": "Dual-layer reconciliation"
+}

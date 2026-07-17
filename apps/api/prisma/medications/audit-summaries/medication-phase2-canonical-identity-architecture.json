@@ -1,0 +1,48 @@
+{
+  "auditStatus": "COMPLETE",
+  "catalogClassification": "CURATED",
+  "catalogComplete": false,
+  "certificationId": "MEDUI.MEDICATION_INTELLIGENCE_PHASE_2_CANONICAL_IDENTITY_RXNORM_ROUTE_MAR_BILLING_FOUNDATION",
+  "confidence": "HIGH",
+  "dataSource": "database",
+  "generatedAt": "2026-07-17T19:45:18.674Z",
+  "layers": [
+    "MedicationConcept (canonical clinical identity)",
+    "MedicationProduct (strength/form clinical product)",
+    "MedicationPackage (NDC/physical package)",
+    "CatalogMedication (runtime orderable curated catalog)",
+    "FacilityFormularyItem / FacilityMedicationUsage (facility orderability)",
+    "OrderItem → MedicationAdministration → BillingEvent (clinical + charge chain)"
+  ],
+  "liveCounts": {
+    "catalogActive": 969,
+    "catalogMedication": 1042,
+    "concept": 1365,
+    "conceptsUnmapped": 1365,
+    "fixtureClassified": 0,
+    "fixtureLikeCodes": 386,
+    "missingFrenchDisplay": 6,
+    "package": 1428,
+    "product": 1428,
+    "productsDualLayerUnlinked": 1428,
+    "productsDualLayerVerified": 0,
+    "productsWithLegacyFk": 236,
+    "routePermissionRows": 0,
+    "routesActive": 12,
+    "rxNormPopulated": 0,
+    "rxNormVerifiedFalsePositives": 0
+  },
+  "nonGoals": [
+    "Bulk RxNorm import",
+    "Automatic fuzzy merge of dual layers",
+    "Collapsing concept/product/package into one table"
+  ],
+  "ownership": {
+    "catalogMedication": "GLOBAL_RUNTIME_CURATED",
+    "conceptProductPackage": "GLOBAL_REFERENCE",
+    "formularyInventoryMarBilling": "FACILITY_SCOPED"
+  },
+  "phase": 2,
+  "schemaReady": true,
+  "title": "Canonical medication identity architecture"
+}

@@ -1,0 +1,15 @@
+{
+  "auditStatus": "COMPLETE",
+  "catalogClassification": "CURATED",
+  "catalogComplete": false,
+  "certificationId": "MEDUI.MEDICATION_INTELLIGENCE_PHASE_2_CANONICAL_IDENTITY_RXNORM_ROUTE_MAR_BILLING_FOUNDATION",
+  "confidence": "HIGH",
+  "dataSource": "database",
+  "deferred": "Populate ALLOWED/RESTRICTED rows from verified formulary/RxNorm attributes in Phase 3+",
+  "generatedAt": "2026-07-17T19:45:18.675Z",
+  "livePermissionRows": 0,
+  "note": "Phase 2 does not seed clinical product-to-route permissions without verified source data.",
+  "phase": 2,
+  "status": "SCHEMA_READY_MATRIX_UNPOPULATED",
+  "title": "Product–formulation–route matrix"
+}

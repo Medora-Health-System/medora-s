@@ -1,0 +1,22 @@
+{
+  "additiveOnly": true,
+  "auditStatus": "COMPLETE",
+  "bulkDualLayerMerge": false,
+  "bulkRxCuiBackfill": false,
+  "catalogClassification": "CURATED",
+  "catalogComplete": false,
+  "certificationId": "MEDUI.MEDICATION_INTELLIGENCE_PHASE_2_CANONICAL_IDENTITY_RXNORM_ROUTE_MAR_BILLING_FOUNDATION",
+  "confidence": "HIGH",
+  "dataSource": "seed_files_only",
+  "destructiveRewrites": false,
+  "generatedAt": "2026-07-17T19:45:18.676Z",
+  "localCommand": "pnpm --filter @medora/api exec prisma migrate deploy  # or migrate dev in interactive local setups",
+  "migrationFolder": "20261004120000_medication_phase_2_canonical_identity",
+  "migrationPresent": true,
+  "phase": 2,
+  "productionCommand": "DATABASE_URL=\"$RAILWAY_DATABASE_URL\" pnpm --filter @medora/api exec prisma migrate deploy",
+  "productionCommandExecutedInPhase2": false,
+  "rollbackStrategy": "Forward-fix preferred. Columns are nullable/defaulted; route permission table can be dropped only if unused. Do not rewrite historical OrderItem/MAR rows.",
+  "seedRequired": false,
+  "title": "Migration safety"
+}

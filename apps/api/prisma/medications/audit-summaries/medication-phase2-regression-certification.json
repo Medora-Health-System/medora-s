@@ -1,0 +1,20 @@
+{
+  "auditStatus": "COMPLETE",
+  "buildPass": true,
+  "catalogClassification": "CURATED",
+  "catalogComplete": false,
+  "certificationId": "MEDUI.MEDICATION_INTELLIGENCE_PHASE_2_CANONICAL_IDENTITY_RXNORM_ROUTE_MAR_BILLING_FOUNDATION",
+  "confidence": "HIGH",
+  "dataSource": "seed_files_only",
+  "diffCheckPass": true,
+  "focusedTestSummary": "shared medicationPhase2Foundation (14) + api foundation util (5) + phase2 certification (7)",
+  "focusedTestsPass": true,
+  "fullRegressionPass": true,
+  "fullRegressionSummary": "pnpm verify: 666 files / 7800 tests + shared/web/api typecheck PASS",
+  "generatedAt": "2026-07-17T19:45:18.677Z",
+  "phase": 2,
+  "routeOrderingEnforcementNotEnabled": true,
+  "runtimeSearchDefaultUnchanged": true,
+  "title": "Regression certification",
+  "typecheckPass": true
+}
