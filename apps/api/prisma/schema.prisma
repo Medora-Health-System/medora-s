@@ -231,6 +231,9 @@ model User {
   medicationAdministrationVerificationsAsWitness  MedicationAdministrationVerification[] @relation("MedicationAdministrationVerificationWitness")
   medicationDispenses                             MedicationDispense[]
   medicationFormularyImportStagingImported        MedicationFormularyImportStaging[]     @relation("MedicationFormularyImportStagingImportedBy")
+  rxNormReferenceReleasesStarted                  RxNormReferenceRelease[]               @relation("RxNormReferenceReleaseStartedBy")
+  rxNormImportJobsStarted                         RxNormImportJob[]                      @relation("RxNormImportJobStartedBy")
+  rxNormMappingCandidatesReviewed                 RxNormMappingCandidate[]               @relation("RxNormMappingCandidateReviewedBy")
   medicationOrderSchedulesCancelled               MedicationOrderSchedule[]              @relation("MedicationOrderScheduleCancelledBy")
   medicationOrderSchedulesCreated                 MedicationOrderSchedule[]              @relation("MedicationOrderScheduleCreatedBy")
   medicationOrderSchedulesUpdated                 MedicationOrderSchedule[]              @relation("MedicationOrderScheduleUpdatedBy")
@@ -2304,6 +2307,159 @@ model MedicationProductRoutePermission {
   @@index([productId])
   @@index([routeId])
   @@index([eligibilityStatus])
+}
+
+/// RxNorm reference release registry — staging only in Phase 3; not wired to clinical order search.
+model RxNormReferenceRelease {
+  id                   String                   @id @default(uuid())
+  sourceVocabulary     String                   @default("RXNORM") @db.VarChar(32)
+  releaseIdentifier    String                   @db.VarChar(64)
+  releaseDate          DateTime?
+  importedAt           DateTime?
+  sourceFilename       String?                  @db.VarChar(255)
+  sourceChecksumSha256 String                   @db.VarChar(64)
+  sourceFormat         String                   @db.VarChar(32)
+  importStatus         String                   @default("REGISTERED") @db.VarChar(32)
+  importModeLast       String?                  @db.VarChar(32)
+  isSynthetic          Boolean                  @default(false)
+  isActiveReference    Boolean                  @default(false)
+  recordCount          Int                      @default(0)
+  acceptedCount        Int                      @default(0)
+  rejectedCount        Int                      @default(0)
+  duplicateCount       Int                      @default(0)
+  conflictCount        Int                      @default(0)
+  warningCount         Int                      @default(0)
+  errorCount           Int                      @default(0)
+  startedByUserId      String?
+  startedAt            DateTime?
+  completedAt          DateTime?
+  failureReason        String?
+  supersededByReleaseId String?
+  rollbackStatus       String?                  @db.VarChar(32)
+  notes                String?
+  createdAt            DateTime                 @default(now())
+  updatedAt            DateTime                 @updatedAt
+  jobs                 RxNormImportJob[]
+  stagingConcepts      RxNormStagingConcept[]
+  mappingCandidates    RxNormMappingCandidate[]
+  conflicts            RxNormImportConflict[]
+  startedBy            User?                    @relation("RxNormReferenceReleaseStartedBy", fields: [startedByUserId], references: [id])
+  supersededBy         RxNormReferenceRelease?  @relation("RxNormReferenceReleaseSupersession", fields: [supersededByReleaseId], references: [id])
+  supersedes           RxNormReferenceRelease[] @relation("RxNormReferenceReleaseSupersession")
+
+  @@unique([sourceVocabulary, releaseIdentifier])
+  @@index([sourceChecksumSha256])
+  @@index([importStatus])
+  @@index([isActiveReference])
+}
+
+model RxNormImportJob {
+  id              String               @id @default(uuid())
+  releaseId       String
+  mode            String               @db.VarChar(32)
+  status          String               @default("PENDING") @db.VarChar(32)
+  dryRun          Boolean              @default(false)
+  startedByUserId String?
+  startedAt       DateTime?
+  completedAt     DateTime?
+  acceptedCount   Int                  @default(0)
+  rejectedCount   Int                  @default(0)
+  duplicateCount  Int                  @default(0)
+  conflictCount   Int                  @default(0)
+  warningCount    Int                  @default(0)
+  errorCount      Int                  @default(0)
+  failureReason   String?
+  resultSummaryJson Json?
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+  release         RxNormReferenceRelease @relation(fields: [releaseId], references: [id], onDelete: Cascade)
+  startedBy       User?                @relation("RxNormImportJobStartedBy", fields: [startedByUserId], references: [id])
+
+  @@index([releaseId])
+  @@index([status])
+  @@index([mode])
+}
+
+model RxNormStagingConcept {
+  id                      String                 @id @default(uuid())
+  releaseId               String
+  rxcui                   String                 @db.VarChar(64)
+  termType                String                 @db.VarChar(16)
+  language                String?                @db.VarChar(16)
+  suppressFlag            String?                @db.VarChar(8)
+  sourceVocabulary        String                 @default("RXNORM") @db.VarChar(32)
+  sourceCode              String?                @db.VarChar(64)
+  displayTerm             String
+  normalizedTerm          String
+  ingredientIdentity      String?                @db.VarChar(128)
+  strengthText            String?                @db.VarChar(128)
+  doseFormText            String?                @db.VarChar(128)
+  brandName               String?                @db.VarChar(128)
+  relationshipMetadata    Json?
+  sourceRowNumber         Int?
+  rowChecksum             String                 @db.VarChar(64)
+  parsingStatus           String                 @default("PARSED") @db.VarChar(32)
+  validationStatus        String                 @default("ACCEPTED") @db.VarChar(32)
+  conflictStatus          String                 @default("NONE") @db.VarChar(32)
+  rejectionReason         String?
+  isSearchableReference   Boolean                @default(false)
+  isOrderableEligible     Boolean                @default(false)
+  dataClassification      String                 @default("FIXTURE") @db.VarChar(32)
+  importedAt              DateTime               @default(now())
+  createdAt               DateTime               @default(now())
+  updatedAt               DateTime               @updatedAt
+  release                 RxNormReferenceRelease @relation(fields: [releaseId], references: [id], onDelete: Cascade)
+  mappingCandidates       RxNormMappingCandidate[]
+  conflicts               RxNormImportConflict[]
+
+  @@unique([releaseId, rowChecksum])
+  @@index([releaseId, rxcui])
+  @@index([rxcui, termType])
+  @@index([normalizedTerm])
+  @@index([validationStatus])
+}
+
+model RxNormMappingCandidate {
+  id               String                 @id @default(uuid())
+  releaseId        String
+  stagingConceptId String
+  targetKind       String                 @db.VarChar(32)
+  targetId         String
+  targetCode       String?                @db.VarChar(128)
+  status           String                 @default("CANDIDATE") @db.VarChar(32)
+  confidence       String?                @db.VarChar(16)
+  evidenceJson     Json
+  autoVerified     Boolean                @default(false)
+  reviewedAt       DateTime?
+  reviewedByUserId String?
+  reviewNotes      String?
+  createdAt        DateTime               @default(now())
+  updatedAt        DateTime               @updatedAt
+  release          RxNormReferenceRelease @relation(fields: [releaseId], references: [id], onDelete: Cascade)
+  stagingConcept   RxNormStagingConcept   @relation(fields: [stagingConceptId], references: [id], onDelete: Cascade)
+  reviewedBy       User?                  @relation("RxNormMappingCandidateReviewedBy", fields: [reviewedByUserId], references: [id])
+
+  @@unique([stagingConceptId, targetKind, targetId])
+  @@index([releaseId])
+  @@index([status])
+  @@index([targetKind, targetId])
+}
+
+model RxNormImportConflict {
+  id               String                  @id @default(uuid())
+  releaseId        String
+  conflictType     String                  @db.VarChar(64)
+  severity         String                  @default("WARNING") @db.VarChar(16)
+  message          String
+  stagingConceptId String?
+  relatedTargetId  String?
+  evidenceJson     Json?
+  createdAt        DateTime                @default(now())
+  release          RxNormReferenceRelease  @relation(fields: [releaseId], references: [id], onDelete: Cascade)
+  stagingConcept   RxNormStagingConcept?   @relation(fields: [stagingConceptId], references: [id], onDelete: SetNull)
+
+  @@index([releaseId])
+  @@index([conflictType])
 }
 
 model MedicationSafetyProfile {

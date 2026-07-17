@@ -108,7 +108,13 @@
     "medication:audit:localization": "ts-node --transpile-only prisma/medications/audit/run-medication-localization-audit.ts",
     "medication:audit:hcpcs": "ts-node --transpile-only prisma/medications/audit/run-medication-hcpcs-audit.ts",
     "medication:audit:readiness": "ts-node --transpile-only prisma/medications/audit/run-medication-readiness-audit.ts",
-    "medication:certify:phase2": "ts-node --transpile-only prisma/medications/audit/run-medication-phase2-certification.ts"
+    "medication:certify:phase2": "ts-node --transpile-only prisma/medications/audit/run-medication-phase2-certification.ts",
+    "medication:certify:phase3": "ts-node --transpile-only prisma/medications/audit/run-medication-phase3-certification.ts",
+    "medication:rxnorm:validate": "ts-node --transpile-only prisma/medications/rxnorm/run-rxnorm-import.ts --mode=VALIDATE_ONLY --allow-synthetic",
+    "medication:rxnorm:stage": "ts-node --transpile-only prisma/medications/rxnorm/run-rxnorm-import.ts --mode=STAGE_ONLY --allow-synthetic",
+    "medication:rxnorm:candidates": "ts-node --transpile-only prisma/medications/rxnorm/run-rxnorm-import.ts --mode=CANDIDATE_MAPPING --allow-synthetic",
+    "medication:rxnorm:activate": "ts-node --transpile-only prisma/medications/rxnorm/run-rxnorm-import.ts --mode=ACTIVATE_REFERENCE_RELEASE --allow-synthetic",
+    "medication:rxnorm:rollback": "ts-node --transpile-only prisma/medications/rxnorm/run-rxnorm-import.ts --mode=ROLLBACK_RELEASE --allow-synthetic"
   },
   "prisma": {
     "seed": "ts-node --transpile-only prisma/seed.ts"

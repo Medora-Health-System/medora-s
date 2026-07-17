@@ -1,0 +1,316 @@
+{
+  "fixtureKind": "SYNTHETIC_CERTIFICATION",
+  "notRealRxNorm": true,
+  "releaseIdentifier": "SYNTHETIC-CERT-P3-20260717",
+  "sourceVocabulary": "RXNORM",
+  "sourceFormat": "SYNTHETIC_JSON",
+  "releaseDate": "2026-07-17",
+  "rows": [
+    {
+      "rxcui": "SYNTH000001",
+      "termType": "IN",
+      "language": "ENG",
+      "suppressFlag": "N",
+      "displayTerm": "Acetaminophen",
+      "ingredientIdentity": "acetaminophen"
+    },
+    {
+      "rxcui": "SYNTH000002",
+      "termType": "IN",
+      "language": "ENG",
+      "suppressFlag": "N",
+      "displayTerm": "Ibuprofen",
+      "ingredientIdentity": "ibuprofen"
+    },
+    {
+      "rxcui": "SYNTH000003",
+      "termType": "PIN",
+      "language": "ENG",
+      "suppressFlag": "N",
+      "displayTerm": "Acetaminophen / Codeine",
+      "ingredientIdentity": "acetaminophen|codeine"
+    },
+    {
+      "rxcui": "SYNTH000004",
+      "termType": "MIN",
+      "language": "ENG",
+      "suppressFlag": "N",
+      "displayTerm": "Amoxicillin / Clavulanate",
+      "ingredientIdentity": "amoxicillin|clavulanate"
+    },
+    {
+      "rxcui": "SYNTH000005",
+      "termType": "SCD",
+      "language": "ENG",
+      "suppressFlag": "N",
+      "displayTerm": "Acetaminophen 500 MG Oral Tablet",
+      "ingredientIdentity": "acetaminophen",
+      "strengthText": "500 mg",
+      "doseFormText": "oral tablet"
+    },
+    {
+      "rxcui": "SYNTH000006",
+      "termType": "SCD",
+      "language": "ENG",
+      "suppressFlag": "N",
+      "displayTerm": "Acetaminophen 325 MG Oral Tablet",
+      "ingredientIdentity": "acetaminophen",
+      "strengthText": "325 mg",
+      "doseFormText": "oral tablet"
+    },
+    {
+      "rxcui": "SYNTH000007",
+      "termType": "SCD",
+      "language": "ENG",
+      "suppressFlag": "N",
+      "displayTerm": "Ibuprofen 200 MG Oral Tablet",
+      "ingredientIdentity": "ibuprofen",
+      "strengthText": "200 mg",
+      "doseFormText": "oral tablet"
+    },
+    {
+      "rxcui": "SYNTH000008",
+      "termType": "SBD",
+      "language": "ENG",
+      "suppressFlag": "N",
+      "displayTerm": "Tylenol 500 MG Oral Tablet",
+      "brandName": "Tylenol",
+      "ingredientIdentity": "acetaminophen",
+      "strengthText": "500 mg",
+      "doseFormText": "oral tablet"
+    },
+    {
+      "rxcui": "SYNTH000009",
+      "termType": "SCDF",
+      "language": "ENG",
+      "suppressFlag": "N",
+      "displayTerm": "Acetaminophen Oral Tablet",
+      "ingredientIdentity": "acetaminophen",
+      "doseFormText": "oral tablet"
+    },
+    {
+      "rxcui": "SYNTH000010",
+      "termType": "SBDF",
+      "language": "ENG",
+      "suppressFlag": "N",
+      "displayTerm": "Tylenol Oral Tablet",
+      "brandName": "Tylenol",
+      "doseFormText": "oral tablet"
+    },
+    {
+      "rxcui": "SYNTH000011",
+      "termType": "BN",
+      "language": "ENG",
+      "suppressFlag": "N",
+      "displayTerm": "Tylenol",
+      "brandName": "Tylenol"
+    },
+    {
+      "rxcui": "SYNTH000012",
+      "termType": "DF",
+      "language": "ENG",
+      "suppressFlag": "N",
+      "displayTerm": "Oral Tablet",
+      "doseFormText": "oral tablet"
+    },
+    {
+      "rxcui": "SYNTH000013",
+      "termType": "GPCK",
+      "language": "ENG",
+      "suppressFlag": "N",
+      "displayTerm": "Amoxicillin 250 MG / Clavulanate 125 MG Oral Tablet Pack",
+      "ingredientIdentity": "amoxicillin|clavulanate",
+      "strengthText": "250 mg / 125 mg",
+      "doseFormText": "oral tablet"
+    },
+    {
+      "rxcui": "SYNTH000014",
+      "termType": "SCD",
+      "language": "ENG",
+      "suppressFlag": "Y",
+      "displayTerm": "Acetaminophen 650 MG Oral Tablet [Suppressed]",
+      "ingredientIdentity": "acetaminophen",
+      "strengthText": "650 mg",
+      "doseFormText": "oral tablet"
+    },
+    {
+      "rxcui": "SYNTH000015",
+      "termType": "SCD",
+      "language": "ENG",
+      "suppressFlag": "N",
+      "displayTerm": "Acetaminophen 500 MG Oral Tablet",
+      "ingredientIdentity": "acetaminophen",
+      "strengthText": "500 mg",
+      "doseFormText": "oral tablet"
+    },
+    {
+      "rxcui": "SYNTH000016",
+      "termType": "SCD",
+      "language": "ENG",
+      "suppressFlag": "N",
+      "displayTerm": "Acetaminophen 500 MG Oral Capsule",
+      "ingredientIdentity": "acetaminophen",
+      "strengthText": "500 mg",
+      "doseFormText": "oral capsule"
+    },
+    {
+      "rxcui": "SYNTH000017",
+      "termType": "SCD",
+      "language": "ENG",
+      "suppressFlag": "N",
+      "displayTerm": "Morphine 2 MG/ML Injectable Solution",
+      "ingredientIdentity": "morphine",
+      "strengthText": "2 mg/ml",
+      "doseFormText": "injectable solution"
+    },
+    {
+      "rxcui": "SYNTH000018",
+      "termType": "SCD",
+      "language": "ENG",
+      "suppressFlag": "N",
+      "displayTerm": "Morphine 4 MG/ML Injectable Solution",
+      "ingredientIdentity": "morphine",
+      "strengthText": "4 mg/ml",
+      "doseFormText": "injectable solution"
+    },
+    {
+      "rxcui": "SYNTH000019",
+      "termType": "SCD",
+      "language": "ENG",
+      "suppressFlag": "N",
+      "displayTerm": "Normal Saline 0.9 % Injectable Solution",
+      "ingredientIdentity": "sodium chloride",
+      "strengthText": "0.9 %",
+      "doseFormText": "injectable solution"
+    },
+    {
+      "rxcui": "SYNTH000020",
+      "termType": "SCD",
+      "language": "ENG",
+      "suppressFlag": "N",
+      "displayTerm": "Potassium Chloride 20 MEQ/50 ML Injectable Solution",
+      "ingredientIdentity": "potassium chloride",
+      "strengthText": "20 meq/50 ml",
+      "doseFormText": "injectable solution"
+    },
+    {
+      "rxcui": "SYNTH000021",
+      "termType": "IN",
+      "language": "ENG",
+      "suppressFlag": "N",
+      "displayTerm": "Metformin",
+      "ingredientIdentity": "metformin"
+    },
+    {
+      "rxcui": "SYNTH000022",
+      "termType": "SCD",
+      "language": "ENG",
+      "suppressFlag": "N",
+      "displayTerm": "Metformin 500 MG Oral Tablet",
+      "ingredientIdentity": "metformin",
+      "strengthText": "500 mg",
+      "doseFormText": "oral tablet"
+    },
+    {
+      "rxcui": "SYNTH000023",
+      "termType": "SCD",
+      "language": "ENG",
+      "suppressFlag": "N",
+      "displayTerm": "Metformin 850 MG Oral Tablet",
+      "ingredientIdentity": "metformin",
+      "strengthText": "850 mg",
+      "doseFormText": "oral tablet"
+    },
+    {
+      "rxcui": "SYNTH000024",
+      "termType": "SBD",
+      "language": "ENG",
+      "suppressFlag": "N",
+      "displayTerm": "Glucophage 500 MG Oral Tablet",
+      "brandName": "Glucophage",
+      "ingredientIdentity": "metformin",
+      "strengthText": "500 mg",
+      "doseFormText": "oral tablet"
+    },
+    {
+      "rxcui": "SYNTH000025",
+      "termType": "MIN",
+      "language": "ENG",
+      "suppressFlag": "N",
+      "displayTerm": "Trimethoprim / Sulfamethoxazole",
+      "ingredientIdentity": "trimethoprim|sulfamethoxazole"
+    },
+    {
+      "rxcui": "SYNTH000026",
+      "termType": "SCD",
+      "language": "ENG",
+      "suppressFlag": "N",
+      "displayTerm": "Trimethoprim 80 MG / Sulfamethoxazole 400 MG Oral Tablet",
+      "ingredientIdentity": "trimethoprim|sulfamethoxazole",
+      "strengthText": "80 mg / 400 mg",
+      "doseFormText": "oral tablet"
+    },
+    {
+      "rxcui": "SYNTH000027",
+      "termType": "SCD",
+      "language": "ENG",
+      "suppressFlag": "N",
+      "displayTerm": "Ondansetron 4 MG Oral Tablet",
+      "ingredientIdentity": "ondansetron",
+      "strengthText": "4 mg",
+      "doseFormText": "oral tablet"
+    },
+    {
+      "rxcui": "SYNTH000028",
+      "termType": "SCD",
+      "language": "ENG",
+      "suppressFlag": "N",
+      "displayTerm": "Ondansetron 4 MG Oral Tablet",
+      "ingredientIdentity": "ondansetron",
+      "strengthText": "4 mg",
+      "doseFormText": "oral tablet"
+    },
+    {
+      "rxcui": "SYNTH000029",
+      "termType": "BPCK",
+      "language": "ENG",
+      "suppressFlag": "N",
+      "displayTerm": "Amoxicillin Brand Pack Oral Tablet",
+      "brandName": "Amoxil",
+      "doseFormText": "oral tablet"
+    },
+    {
+      "rxcui": "SYNTH000030",
+      "termType": "SCDG",
+      "language": "ENG",
+      "suppressFlag": "N",
+      "displayTerm": "Acetaminophen Oral Tablet Dose Form Group",
+      "doseFormText": "oral tablet"
+    },
+    {
+      "rxcui": "SYNTH000031",
+      "termType": "SBDG",
+      "language": "ENG",
+      "suppressFlag": "N",
+      "displayTerm": "Tylenol Oral Tablet Dose Form Group",
+      "brandName": "Tylenol",
+      "doseFormText": "oral tablet"
+    },
+    {
+      "rxcui": "SYNTH000032",
+      "termType": "DFG",
+      "language": "ENG",
+      "suppressFlag": "N",
+      "displayTerm": "Oral Tablet Dose Form Group",
+      "doseFormText": "oral tablet"
+    },
+    {
+      "rxcui": "SYNTH000033",
+      "termType": "SCD",
+      "language": "ENG",
+      "suppressFlag": "N",
+      "displayTerm": "INVALID ROW MISSING RXCUI PREFIX",
+      "termTypeOverride": "BAD"
+    }
+  ]
+}
