@@ -230,7 +230,19 @@ flowchart LR
 | **Exit criteria** | Phase 11 certifier PASS; provider alerts/order blocking/overrides remain off; readiness never emits live activation; search/order/MAR/billing unchanged |
 | **Status** | Implemented — see [`medication-intelligence-phase-11-shadow-validation-coverage-activation-readiness.md`](./medication-intelligence-phase-11-shadow-validation-coverage-activation-readiness.md) |
 
-**Note:** Distinct from product-roadmap Phase 11 (enterprise certification packaging) below. Provider-facing pilot design remains Phase 12 MI and requires an approved scoped readiness attestation.
+**Note:** Distinct from product-roadmap Phase 11 (enterprise certification packaging) below. Provider-facing pilot remains a later MI activation phase and requires an approved scoped readiness attestation after controlled knowledge population and shadow validation.
+
+### Phase 12 — Controlled Emergency Medicine clinical/safety knowledge population
+
+| Field | Value |
+|-------|-------|
+| **Objective** | Populate governed clinical and safety knowledge drafts for the controlled 35-family EM batch; human/pharmacist review; shadow eligibility — **no clinical activation** |
+| **Scope** | Knowledge population batches/items, manifest + intake schemas, preview/dry-run/draft import, conflicts/duplicates, coverage + shadow eligibility, admin UI/API/CLI |
+| **Migration** | **YES (additive)** — `20261015120000_medication_phase_12_controlled_emergency_knowledge_population` |
+| **Exit criteria** | Phase 12 certifier PASS; records without sources = 0; import never creates approved records; provider alerts/order blocking/overrides remain off; search/order/MAR/billing unchanged |
+| **Status** | Implemented — see [`medication-intelligence-phase-12-controlled-emergency-medication-knowledge-population.md`](./medication-intelligence-phase-12-controlled-emergency-medication-knowledge-population.md) |
+
+**Note:** Distinct from product-roadmap Phase 12 below. Phase 13 MI should run controlled shadow validation against approved Phase 12 knowledge — still without provider-facing alerts.
 
 ### Deferred after Phase 6 — Canonical ordering integration and order sentences
 
