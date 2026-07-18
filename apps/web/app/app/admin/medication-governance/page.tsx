@@ -452,6 +452,12 @@ export default function MedicationGovernancePage() {
           {t("medicationGovernance.openShadowEvaluation")}
         </Link>
         <Link
+          href="/app/admin/medication-governance/remediation"
+          style={{ alignSelf: "center", fontSize: 14 }}
+        >
+          {t("medicationGovernance.openPhase15Remediation")}
+        </Link>
+        <Link
           href="/app/admin/medication-governance/activation"
           style={{ alignSelf: "center", fontSize: 14 }}
         >

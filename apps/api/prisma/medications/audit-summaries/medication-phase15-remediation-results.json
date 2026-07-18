@@ -1,0 +1,60 @@
+{
+  "implementationId": "MEDUI.MEDICATION_INTELLIGENCE_PHASE_15_PART2C_EXECUTION_CERTIFICATION",
+  "generatedAt": "2026-07-18T14:34:49.988Z",
+  "results": [
+    {
+      "workItemId": "1a071ca5-8ef7-4d83-9575-67a5033aae1b",
+      "familyKey": "EM_FAM_CETIRIZINE",
+      "outcome": "DEFERRED",
+      "result": "UPDATED"
+    },
+    {
+      "workItemId": "040ce189-ad4e-4af5-8b80-f7b5bbe3ee1c",
+      "familyKey": "EM_FAM_DEXAMETHASONE",
+      "outcome": "DEFERRED",
+      "result": "UPDATED"
+    },
+    {
+      "workItemId": "f69cca47-1bcd-424b-945f-8aade1370259",
+      "familyKey": "EM_FAM_FAMOTIDINE",
+      "outcome": "DEFERRED",
+      "result": "UPDATED"
+    },
+    {
+      "workItemId": "9895ff59-8054-452e-8e32-99cbc6f5c914",
+      "familyKey": "EM_FAM_IBUPROFEN",
+      "outcome": "DEFERRED",
+      "result": "UPDATED"
+    },
+    {
+      "workItemId": "1972b6cf-7e57-40a6-b6b6-b474f343d007",
+      "familyKey": "EM_FAM_IPRATROPIUM",
+      "outcome": "DEFERRED",
+      "result": "UPDATED"
+    },
+    {
+      "workItemId": "64b67f5f-f5a9-4ae9-ad30-3327d4e5a75a",
+      "familyKey": "EM_FAM_ONDANSETRON",
+      "outcome": "DEFERRED",
+      "result": "UPDATED"
+    },
+    {
+      "workItemId": "1ce59d48-4e20-4193-ba69-82f99aef6e20",
+      "familyKey": "EM_FAM_PANTOPRAZOLE",
+      "outcome": "DEFERRED",
+      "result": "UPDATED"
+    },
+    {
+      "workItemId": "6cbb3ea6-039f-4a98-b748-d4c73d7c1308",
+      "familyKey": "EM_FAM_PREDNISONE",
+      "outcome": "DEFERRED",
+      "result": "UPDATED"
+    }
+  ],
+  "summary": {
+    "deferred": 8,
+    "remediated": 0,
+    "blocked": 0,
+    "fabricateFacts": false
+  }
+}

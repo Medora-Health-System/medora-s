@@ -1,0 +1,239 @@
+{
+  "generatedAt": "2026-07-18T14:34:50.157Z",
+  "executionPolicy": "NO_ELIGIBLE_CHANGE_REUSE_PRIOR_SYNTHETIC_BATCH",
+  "batchStatus": "ANALYZED",
+  "readiness": "QUALIFIED_WITH_GAPS",
+  "metrics": {
+    "wave1Families": 8,
+    "criticalMisses": 0,
+    "familiesFailed": 0,
+    "familiesPassed": 0,
+    "missedFindings": 0,
+    "referenceCases": 40,
+    "matchedFindings": 24,
+    "expectedFindings": 0,
+    "familiesExecuted": 8,
+    "expectedNoFindings": 8,
+    "unexpectedFindings": 0,
+    "deferredDomainSkips": 8,
+    "shadowSnapshotsConsumed": 8,
+    "approvedForShadowFamilies": 8,
+    "immutableExecutionsCreated": 40,
+    "familiesRequiringRemediation": 0,
+    "familiesPassedWithNoncriticalGaps": 8
+  },
+  "dashboard": {
+    "BatchKey": "EM_WAVE1_SYNTHETIC_SHADOW_VALIDATION_V1",
+    "BatchStatus": "CERTIFIED",
+    "Readiness": "QUALIFIED_WITH_GAPS",
+    "WaveKey": "EM_WAVE1_SOURCE_BACKED_V1",
+    "ApprovedForShadow": 8,
+    "ShadowSnapshots": 8,
+    "FamiliesExecuted": 8,
+    "FamiliesPassed": 0,
+    "FamiliesPassedWithNoncriticalGaps": 8,
+    "FamiliesRequiringRemediation": 0,
+    "FamiliesFailed": 0,
+    "ReferenceCases": 40,
+    "MatchedFindings": 24,
+    "MissedFindings": 0,
+    "UnexpectedFindings": 0,
+    "CriticalMisses": 0,
+    "DeferredDomainSkips": 8,
+    "OpenGaps": 8,
+    "GapLinks": [
+      {
+        "gapType": "KNOWLEDGE",
+        "familyKey": "EM_FAM_PREDNISONE",
+        "description": "Positive clinical expected findings not authored — Tier-1/licensed source required. Domain deferred, not missed.",
+        "severity": "INFO",
+        "status": "OPEN"
+      },
+      {
+        "gapType": "KNOWLEDGE",
+        "familyKey": "EM_FAM_FAMOTIDINE",
+        "description": "Positive clinical expected findings not authored — Tier-1/licensed source required. Domain deferred, not missed.",
+        "severity": "INFO",
+        "status": "OPEN"
+      },
+      {
+        "gapType": "KNOWLEDGE",
+        "familyKey": "EM_FAM_DEXAMETHASONE",
+        "description": "Positive clinical expected findings not authored — Tier-1/licensed source required. Domain deferred, not missed.",
+        "severity": "INFO",
+        "status": "OPEN"
+      },
+      {
+        "gapType": "KNOWLEDGE",
+        "familyKey": "EM_FAM_CETIRIZINE",
+        "description": "Positive clinical expected findings not authored — Tier-1/licensed source required. Domain deferred, not missed.",
+        "severity": "INFO",
+        "status": "OPEN"
+      },
+      {
+        "gapType": "KNOWLEDGE",
+        "familyKey": "EM_FAM_PANTOPRAZOLE",
+        "description": "Positive clinical expected findings not authored — Tier-1/licensed source required. Domain deferred, not missed.",
+        "severity": "INFO",
+        "status": "OPEN"
+      },
+      {
+        "gapType": "KNOWLEDGE",
+        "familyKey": "EM_FAM_ONDANSETRON",
+        "description": "Positive clinical expected findings not authored — Tier-1/licensed source required. Domain deferred, not missed.",
+        "severity": "INFO",
+        "status": "OPEN"
+      },
+      {
+        "gapType": "KNOWLEDGE",
+        "familyKey": "EM_FAM_IPRATROPIUM",
+        "description": "Positive clinical expected findings not authored — Tier-1/licensed source required. Domain deferred, not missed.",
+        "severity": "INFO",
+        "status": "OPEN"
+      },
+      {
+        "gapType": "KNOWLEDGE",
+        "familyKey": "EM_FAM_IBUPROFEN",
+        "description": "Positive clinical expected findings not authored — Tier-1/licensed source required. Domain deferred, not missed.",
+        "severity": "INFO",
+        "status": "OPEN"
+      }
+    ],
+    "FamilyResults": [
+      {
+        "familyKey": "EM_FAM_IPRATROPIUM",
+        "status": "SHADOW_EXECUTED_PASS_WITH_NONCRITICAL_GAPS",
+        "casesExecuted": 5,
+        "matchedCount": 3,
+        "missedCount": 0,
+        "unexpectedCount": 0,
+        "deferredSkipCount": 1,
+        "openGaps": 1,
+        "shadowSnapshotId": "50b39d72-d1ec-4d70-9232-2f7ecb08d83e",
+        "metricsJson": {
+          "snapshotVersion": "SHADOW_V1_1.0.0"
+        }
+      },
+      {
+        "familyKey": "EM_FAM_ONDANSETRON",
+        "status": "SHADOW_EXECUTED_PASS_WITH_NONCRITICAL_GAPS",
+        "casesExecuted": 5,
+        "matchedCount": 3,
+        "missedCount": 0,
+        "unexpectedCount": 0,
+        "deferredSkipCount": 1,
+        "openGaps": 1,
+        "shadowSnapshotId": "17dd80aa-9126-4fa2-b534-f4a3d7bcd092",
+        "metricsJson": {
+          "snapshotVersion": "SHADOW_V1_1.0.0"
+        }
+      },
+      {
+        "familyKey": "EM_FAM_FAMOTIDINE",
+        "status": "SHADOW_EXECUTED_PASS_WITH_NONCRITICAL_GAPS",
+        "casesExecuted": 5,
+        "matchedCount": 3,
+        "missedCount": 0,
+        "unexpectedCount": 0,
+        "deferredSkipCount": 1,
+        "openGaps": 1,
+        "shadowSnapshotId": "75a06e98-3fdc-427a-9831-986289bf6f85",
+        "metricsJson": {
+          "snapshotVersion": "SHADOW_V1_1.0.0"
+        }
+      },
+      {
+        "familyKey": "EM_FAM_PANTOPRAZOLE",
+        "status": "SHADOW_EXECUTED_PASS_WITH_NONCRITICAL_GAPS",
+        "casesExecuted": 5,
+        "matchedCount": 3,
+        "missedCount": 0,
+        "unexpectedCount": 0,
+        "deferredSkipCount": 1,
+        "openGaps": 1,
+        "shadowSnapshotId": "56d71a81-9b09-4645-89e3-135854b7ae39",
+        "metricsJson": {
+          "snapshotVersion": "SHADOW_V1_1.0.0"
+        }
+      },
+      {
+        "familyKey": "EM_FAM_DEXAMETHASONE",
+        "status": "SHADOW_EXECUTED_PASS_WITH_NONCRITICAL_GAPS",
+        "casesExecuted": 5,
+        "matchedCount": 3,
+        "missedCount": 0,
+        "unexpectedCount": 0,
+        "deferredSkipCount": 1,
+        "openGaps": 1,
+        "shadowSnapshotId": "1f25ba81-6d0d-4c5b-97dc-ff693235f8e3",
+        "metricsJson": {
+          "snapshotVersion": "SHADOW_V1_1.0.0"
+        }
+      },
+      {
+        "familyKey": "EM_FAM_IBUPROFEN",
+        "status": "SHADOW_EXECUTED_PASS_WITH_NONCRITICAL_GAPS",
+        "casesExecuted": 5,
+        "matchedCount": 3,
+        "missedCount": 0,
+        "unexpectedCount": 0,
+        "deferredSkipCount": 1,
+        "openGaps": 1,
+        "shadowSnapshotId": "f10617ec-c174-402b-b3b9-5d64db591a72",
+        "metricsJson": {
+          "snapshotVersion": "SHADOW_V1_1.0.0"
+        }
+      },
+      {
+        "familyKey": "EM_FAM_PREDNISONE",
+        "status": "SHADOW_EXECUTED_PASS_WITH_NONCRITICAL_GAPS",
+        "casesExecuted": 5,
+        "matchedCount": 3,
+        "missedCount": 0,
+        "unexpectedCount": 0,
+        "deferredSkipCount": 1,
+        "openGaps": 1,
+        "shadowSnapshotId": "66980cbf-52e1-4795-b8f4-b915b14ec675",
+        "metricsJson": {
+          "snapshotVersion": "SHADOW_V1_1.0.0"
+        }
+      },
+      {
+        "familyKey": "EM_FAM_CETIRIZINE",
+        "status": "SHADOW_EXECUTED_PASS_WITH_NONCRITICAL_GAPS",
+        "casesExecuted": 5,
+        "matchedCount": 3,
+        "missedCount": 0,
+        "unexpectedCount": 0,
+        "deferredSkipCount": 1,
+        "openGaps": 1,
+        "shadowSnapshotId": "3a8f581e-b8c4-4688-b086-e96ab61a4a59",
+        "metricsJson": {
+          "snapshotVersion": "SHADOW_V1_1.0.0"
+        }
+      }
+    ],
+    "ClinicalActivation": 0,
+    "ProviderFacingAlerts": 0,
+    "OrderBlocks": 0,
+    "OrderingChanged": "NO",
+    "MARChanged": "NO",
+    "BillingChanged": "NO",
+    "KnowledgeControlsPatientCare": false,
+    "banner": {
+      "syntheticShadowOnly": true,
+      "noPatientCareFindings": true,
+      "noClinicalActivation": true
+    }
+  },
+  "determinism": {
+    "deterministicRerunsPassed": true,
+    "sampled": 8,
+    "passed": 8,
+    "failed": 0
+  },
+  "analyzedStatus": "ANALYZED",
+  "criticalMisses": 0,
+  "unexpectedFindings": 0,
+  "note": "Synthetic re-execution skipped: no immutable snapshot content change under governed deferral."
+}

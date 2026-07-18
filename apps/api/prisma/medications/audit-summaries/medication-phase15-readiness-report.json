@@ -1,0 +1,18 @@
+{
+  "generatedAt": "2026-07-18T14:34:50.164Z",
+  "certificationId": "MEDUI.MEDICATION_INTELLIGENCE_PHASE_15_AUTHORITATIVE_SOURCE_ACQUISITION_TIER1_KNOWLEDGE_COMPLETION_AND_WAVE1_REMEDIATION",
+  "readiness": "QUALIFIED_WITH_GOVERNED_DEFERRALS",
+  "operationalReadiness": "QUALIFIED_WITH_GAPS",
+  "deferredWorkItems": 8,
+  "openPhase14BGaps": 8,
+  "openTier1KnowledgeGaps": 8,
+  "wave1Families": 8,
+  "approvedForShadow": 8,
+  "acetaminophenIdentityBlocked": true,
+  "clinicalActivations": 0,
+  "providerAlerts": 0,
+  "orderBlocks": 0,
+  "productionCds": "OFF",
+  "phase15CertifiedClaim": false,
+  "note": "Final certification decision emitted by medication:phase15:certify"
+}

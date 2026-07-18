@@ -1,0 +1,47 @@
+{
+  "implementationId": "MEDUI.MEDICATION_INTELLIGENCE_PHASE_15_PART2B_API_UI_CLI_OPERATIONAL_WORKFLOWS",
+  "phase": "15",
+  "part": "PART_2C_PRE_REMEDIATION",
+  "certificationClaimed": false,
+  "generatedAt": "2026-07-18T14:34:49.936Z",
+  "waveKey": "EM_WAVE1_SOURCE_BACKED_V1",
+  "programKey": "EM_WAVE1_AUTHORITATIVE_SOURCE_REMEDIATION_V1",
+  "wave1Families": [
+    "ibuprofen",
+    "ondansetron",
+    "famotidine",
+    "pantoprazole",
+    "dexamethasone",
+    "prednisone",
+    "cetirizine",
+    "ipratropium"
+  ],
+  "liveBaseline": {
+    "Wave1Families": 8,
+    "ApprovedForShadow": 8,
+    "OpenPhase14BGaps": 8,
+    "OpenTier1KnowledgeGaps": 8,
+    "OpenWorkItems": 8,
+    "ResolvedWorkItems": 0,
+    "BlockedWorkItems": 8,
+    "WorkItemsByStatus": {
+      "BLOCKED_PENDING_AUTHORITATIVE_SOURCE": 8
+    },
+    "SourcesByLifecycle": {
+      "ACCEPTED_FOR_KNOWLEDGE_USE": 2
+    },
+    "SyntheticReadiness": "QUALIFIED_WITH_GAPS",
+    "OperationalReadiness": "BLOCKED",
+    "AcetaminophenIdentityBlocked": true,
+    "ClinicalActivations": 0,
+    "ProviderAlerts": 0,
+    "OrderBlocks": 0,
+    "ProductionCds": "OFF"
+  },
+  "banner": {
+    "administrativeOnly": true,
+    "noProductionCds": true,
+    "noPatientCareWorkflowImpact": true
+  },
+  "certificationId": "MEDUI.MEDICATION_INTELLIGENCE_PHASE_15_AUTHORITATIVE_SOURCE_ACQUISITION_TIER1_KNOWLEDGE_COMPLETION_AND_WAVE1_REMEDIATION"
+}

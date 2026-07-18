@@ -4827,9 +4827,13 @@ model MedicationEvidenceSourceRegistration {
   safetySourceId             String?
   safetyVersionId            String?
   sourceTier                 String   @db.VarChar(48)
+  /// REGULATORY_LABELING | GOVERNMENT_MONOGRAPH | … (Phase 15)
+  sourceCategory             String?  @db.VarChar(48)
   publisher                  String?  @db.VarChar(255)
   jurisdiction               String?  @db.VarChar(64)
   licenseStatus              String   @default("INSTITUTIONAL_USE") @db.VarChar(64)
+  /// LICENSED | PUBLIC_DOMAIN | RESTRICTED | UNKNOWN | INSTITUTIONAL_USE
+  licensingStatus            String?  @db.VarChar(32)
   licenseNotes               String?
   citationText               String?
   sourceUrlReference         String?
@@ -4839,8 +4843,11 @@ model MedicationEvidenceSourceRegistration {
   checksum                   String?  @db.VarChar(128)
   clinicalSetting            String?  @db.VarChar(64)
   language                   String   @default("en") @db.VarChar(16)
-  /// PLANNED | REGISTERED | RETRIEVED | ACCEPTED_FOR_KNOWLEDGE_USE | REJECTED | SUPERSEDED | RETIRED
+  /// Phase 14A + Phase 15 lifecycle including AUTHORITATIVE_SOURCE_CONFIRMED
   acquisitionStatus          String   @default("REGISTERED") @db.VarChar(48)
+  /// PENDING | APPROVED | REJECTED
+  reviewStatus               String?  @db.VarChar(32)
+  lifecycleNotes             String?
   redistributesFullText      Boolean  @default(false)
   containsCredentials        Boolean  @default(false)
   createdByUserId            String
@@ -4848,11 +4855,14 @@ model MedicationEvidenceSourceRegistration {
   updatedAt                  DateTime @updatedAt
   batch                      MedicationEvidenceAcquisitionBatch? @relation(fields: [batchId], references: [id], onDelete: SetNull)
   evidenceLinks              MedicationKnowledgeEvidenceLink[]
+  remediationWorkItems       MedicationRemediationWorkItem[]
 
   @@index([batchId])
   @@index([knowledgeScope])
   @@index([sourceTier])
+  @@index([sourceCategory])
   @@index([acquisitionStatus])
+  @@index([reviewStatus])
   @@index([clinicalVersionId])
   @@index([safetyVersionId])
 }
@@ -5269,12 +5279,103 @@ model MedicationShadowGapLink {
   createdAt    DateTime @default(now())
   batch        MedicationShadowEvaluationBatch? @relation(fields: [batchId], references: [id], onDelete: SetNull)
   execution    MedicationShadowEvaluationExecution? @relation(fields: [executionId], references: [id], onDelete: SetNull)
+  remediationWorkItems MedicationRemediationWorkItem[]
 
   @@unique([batchId, gapKey])
   @@index([batchId])
   @@index([executionId])
   @@index([gapType])
   @@index([status])
+}
+
+/// Phase 15 Part 2A — Wave 1 authoritative-source remediation program (no CDS).
+model MedicationRemediationProgram {
+  id                           String   @id @default(uuid())
+  programKey                   String   @unique @db.VarChar(64)
+  name                         String   @db.VarChar(255)
+  description                  String?
+  waveKey                      String?  @db.VarChar(64)
+  /// PLANNED | SEEDING | IN_REMEDIATION | QUALITY_RECALC | COMPLETED | BLOCKED
+  status                       String   @default("PLANNED") @db.VarChar(48)
+  programVersion               String?  @db.VarChar(32)
+  targetFamilyCount            Int      @default(8)
+  openWorkItemCount            Int      @default(0)
+  resolvedWorkItemCount        Int      @default(0)
+  blockedWorkItemCount         Int      @default(0)
+  metricsJson                  Json?
+  clinicalActivationAllowed    Boolean  @default(false)
+  providerFacingAlertsAllowed  Boolean  @default(false)
+  orderBlockingAllowed         Boolean  @default(false)
+  knowledgeControlsPatientCare Boolean  @default(false)
+  createdByUserId              String
+  completedAt                  DateTime?
+  createdAt                    DateTime @default(now())
+  updatedAt                    DateTime @updatedAt
+  workItems                    MedicationRemediationWorkItem[]
+  auditEvents                  MedicationRemediationAuditEvent[]
+
+  @@index([status])
+  @@index([waveKey])
+}
+
+/// Phase 15 Part 2A — remediation work item linked to Phase 14B gap (no fabricated knowledge).
+model MedicationRemediationWorkItem {
+  id                       String   @id @default(uuid())
+  programId                String
+  workItemKey              String   @unique @db.VarChar(255)
+  familyKey                String   @db.VarChar(128)
+  canonicalConceptId       String?
+  /// KNOWLEDGE | EVIDENCE | REVIEW | REFERENCE_CASE | PROVENANCE | IDENTITY | ENGINE | QUALITY
+  gapCategory              String   @db.VarChar(32)
+  shadowGapLinkId          String?
+  knowledgeGapId           String?
+  evidenceRegistrationId   String?
+  /// OPEN | TRIAGED | ROUTED | IN_REMEDIATION | BLOCKED_PENDING_AUTHORITATIVE_SOURCE | …
+  status                   String   @default("OPEN") @db.VarChar(48)
+  severity                 String   @default("INFO") @db.VarChar(16)
+  title                    String   @db.VarChar(255)
+  description              String
+  recommendedAction        String?
+  readinessTarget          String?  @db.VarChar(64)
+  assignedToUserId         String?
+  requiresAuthoritativeSource Boolean @default(true)
+  fabricatedKnowledgeForbidden Boolean @default(true)
+  routedAt                 DateTime?
+  resolvedAt               DateTime?
+  createdByUserId          String
+  createdAt                DateTime @default(now())
+  updatedAt                DateTime @updatedAt
+  program                  MedicationRemediationProgram @relation(fields: [programId], references: [id], onDelete: Cascade)
+  shadowGapLink            MedicationShadowGapLink? @relation(fields: [shadowGapLinkId], references: [id], onDelete: SetNull)
+  evidenceRegistration     MedicationEvidenceSourceRegistration? @relation(fields: [evidenceRegistrationId], references: [id], onDelete: SetNull)
+
+  @@index([programId])
+  @@index([familyKey])
+  @@index([gapCategory])
+  @@index([status])
+  @@index([shadowGapLinkId])
+  @@index([evidenceRegistrationId])
+}
+
+model MedicationRemediationAuditEvent {
+  id                String   @id @default(uuid())
+  programId         String?
+  entityType        String   @db.VarChar(64)
+  entityId          String
+  action            String   @db.VarChar(64)
+  beforeState       Json?
+  afterState        Json?
+  performedByUserId String
+  performedAt       DateTime @default(now())
+  reason            String?
+  createdAt         DateTime @default(now())
+  program           MedicationRemediationProgram? @relation(fields: [programId], references: [id], onDelete: SetNull)
+
+  @@index([programId])
+  @@index([entityType, entityId])
+  @@index([action])
+  @@index([performedByUserId])
+  @@index([performedAt])
 }
 
 /// Durable RxNorm verified mapping history — Phase 4 canonical reconciliation (CLI/service only).

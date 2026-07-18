@@ -1,0 +1,138 @@
+{
+  "phase": "15",
+  "part": "PART_1_FOUNDATION",
+  "title": "Phase 15 Part 1 foundation baseline (live DB capture)",
+  "certificationId": "MEDUI.MEDICATION_INTELLIGENCE_PHASE_15_AUTHORITATIVE_SOURCE_ACQUISITION_TIER1_KNOWLEDGE_COMPLETION_AND_WAVE1_REMEDIATION",
+  "expectedFinalDecision": "MEDICATION_INTELLIGENCE_PHASE_15_CERTIFIED",
+  "part1CertificationDecision": "FOUNDATION_ONLY_PART2_CERTIFIES",
+  "dataSource": "database",
+  "generatedAt": "2026-07-18T14:07:34.610Z",
+  "priorPhase": {
+    "phase": "14B",
+    "finalDecision": "MEDICATION_INTELLIGENCE_PHASE_14B_CERTIFIED",
+    "syntheticBatchKey": "EM_WAVE1_SYNTHETIC_SHADOW_VALIDATION_V1"
+  },
+  "liveBaseline": {
+    "Wave1Families": 8,
+    "ApprovedForShadow": 8,
+    "ShadowSnapshots": 8,
+    "ShadowExecuted": 8,
+    "QualifiedWithGaps": 8,
+    "familiesPassedWithNoncriticalGaps": 8,
+    "CriticalMisses": 0,
+    "UnexpectedFindings": 0,
+    "MissedFindings": 0,
+    "KnowledgeGaps": 8,
+    "OpenShadowGapLinks": 8,
+    "ClinicalActivations": 0,
+    "ProviderAlerts": 0,
+    "OrderBlocks": 0,
+    "syntheticBatchStatus": "CERTIFIED",
+    "syntheticReadiness": "QUALIFIED_WITH_GAPS",
+    "acetaminophenInWave1": false,
+    "acetaminophenIdentityBlocked": true
+  },
+  "wave1Families": [
+    "ibuprofen",
+    "ondansetron",
+    "famotidine",
+    "pantoprazole",
+    "dexamethasone",
+    "prednisone",
+    "cetirizine",
+    "ipratropium"
+  ],
+  "remediationClassification": {
+    "principle": "Classify root cause before remediation; never fabricate Tier-1 facts",
+    "openGaps": [
+      {
+        "familyKey": "EM_FAM_CETIRIZINE",
+        "gapType": "KNOWLEDGE",
+        "gapKey": "KNOWLEDGE_GAP:EM_FAM_CETIRIZINE:POSITIVE_TIER1",
+        "severity": "INFO",
+        "remediationCategory": "KNOWLEDGE",
+        "requiresAuthoritativeSource": true
+      },
+      {
+        "familyKey": "EM_FAM_DEXAMETHASONE",
+        "gapType": "KNOWLEDGE",
+        "gapKey": "KNOWLEDGE_GAP:EM_FAM_DEXAMETHASONE:POSITIVE_TIER1",
+        "severity": "INFO",
+        "remediationCategory": "KNOWLEDGE",
+        "requiresAuthoritativeSource": true
+      },
+      {
+        "familyKey": "EM_FAM_FAMOTIDINE",
+        "gapType": "KNOWLEDGE",
+        "gapKey": "KNOWLEDGE_GAP:EM_FAM_FAMOTIDINE:POSITIVE_TIER1",
+        "severity": "INFO",
+        "remediationCategory": "KNOWLEDGE",
+        "requiresAuthoritativeSource": true
+      },
+      {
+        "familyKey": "EM_FAM_IBUPROFEN",
+        "gapType": "KNOWLEDGE",
+        "gapKey": "KNOWLEDGE_GAP:EM_FAM_IBUPROFEN:POSITIVE_TIER1",
+        "severity": "INFO",
+        "remediationCategory": "KNOWLEDGE",
+        "requiresAuthoritativeSource": true
+      },
+      {
+        "familyKey": "EM_FAM_IPRATROPIUM",
+        "gapType": "KNOWLEDGE",
+        "gapKey": "KNOWLEDGE_GAP:EM_FAM_IPRATROPIUM:POSITIVE_TIER1",
+        "severity": "INFO",
+        "remediationCategory": "KNOWLEDGE",
+        "requiresAuthoritativeSource": true
+      },
+      {
+        "familyKey": "EM_FAM_ONDANSETRON",
+        "gapType": "KNOWLEDGE",
+        "gapKey": "KNOWLEDGE_GAP:EM_FAM_ONDANSETRON:POSITIVE_TIER1",
+        "severity": "INFO",
+        "remediationCategory": "KNOWLEDGE",
+        "requiresAuthoritativeSource": true
+      },
+      {
+        "familyKey": "EM_FAM_PANTOPRAZOLE",
+        "gapType": "KNOWLEDGE",
+        "gapKey": "KNOWLEDGE_GAP:EM_FAM_PANTOPRAZOLE:POSITIVE_TIER1",
+        "severity": "INFO",
+        "remediationCategory": "KNOWLEDGE",
+        "requiresAuthoritativeSource": true
+      },
+      {
+        "familyKey": "EM_FAM_PREDNISONE",
+        "gapType": "KNOWLEDGE",
+        "gapKey": "KNOWLEDGE_GAP:EM_FAM_PREDNISONE:POSITIVE_TIER1",
+        "severity": "INFO",
+        "remediationCategory": "KNOWLEDGE",
+        "requiresAuthoritativeSource": true
+      }
+    ]
+  },
+  "part1Deliverables": {
+    "sharedGovernance": "YES",
+    "authoritativeSourceConfirmedEnum": "YES_SHARED_ONLY",
+    "reuseAudit": "YES",
+    "docsAndRoadmap": "YES",
+    "prismaMigration": "NO_PART2",
+    "apiUiCli": "NO_PART2",
+    "fullCertification": "NO_PART2"
+  },
+  "safetyBoundaries": {
+    "ClinicalActivationEnabled": "NO",
+    "ProviderFacingAlertsEnabled": "NO",
+    "OrderBlockingEnabled": "NO",
+    "KnowledgeControlsPatientCare": "NO",
+    "OrderingChanged": "NO",
+    "MARChanged": "NO",
+    "BillingChanged": "NO",
+    "ExpandBeyondWave1": "NO",
+    "AcetaminophenResolved": "NO",
+    "CopyrightedContentEmbeddedInRepo": "NO"
+  },
+  "targetAfterPart2": "QUALIFIED_WITH_COMPLETE_AUTHORITATIVE_KNOWLEDGE",
+  "confidence": "HIGH",
+  "auditStatus": "FOUNDATION_COMPLETE"
+}

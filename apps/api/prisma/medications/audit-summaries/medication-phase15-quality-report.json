@@ -1,0 +1,80 @@
+{
+  "generatedAt": "2026-07-18T14:34:50.069Z",
+  "completenessFamilies": 8,
+  "qualityScoresCalculated": 8,
+  "scores": [
+    {
+      "familyKey": "EM_FAM_IPRATROPIUM",
+      "overallScore": 92,
+      "clinicalScore": 100,
+      "safetyScore": 100,
+      "evidenceScore": 60,
+      "reviewScore": 100,
+      "consistencyScore": 100
+    },
+    {
+      "familyKey": "EM_FAM_ONDANSETRON",
+      "overallScore": 92,
+      "clinicalScore": 100,
+      "safetyScore": 100,
+      "evidenceScore": 60,
+      "reviewScore": 100,
+      "consistencyScore": 100
+    },
+    {
+      "familyKey": "EM_FAM_FAMOTIDINE",
+      "overallScore": 92,
+      "clinicalScore": 100,
+      "safetyScore": 100,
+      "evidenceScore": 60,
+      "reviewScore": 100,
+      "consistencyScore": 100
+    },
+    {
+      "familyKey": "EM_FAM_PANTOPRAZOLE",
+      "overallScore": 92,
+      "clinicalScore": 100,
+      "safetyScore": 100,
+      "evidenceScore": 60,
+      "reviewScore": 100,
+      "consistencyScore": 100
+    },
+    {
+      "familyKey": "EM_FAM_DEXAMETHASONE",
+      "overallScore": 92,
+      "clinicalScore": 100,
+      "safetyScore": 100,
+      "evidenceScore": 60,
+      "reviewScore": 100,
+      "consistencyScore": 100
+    },
+    {
+      "familyKey": "EM_FAM_IBUPROFEN",
+      "overallScore": 92,
+      "clinicalScore": 100,
+      "safetyScore": 100,
+      "evidenceScore": 60,
+      "reviewScore": 100,
+      "consistencyScore": 100
+    },
+    {
+      "familyKey": "EM_FAM_PREDNISONE",
+      "overallScore": 92,
+      "clinicalScore": 100,
+      "safetyScore": 100,
+      "evidenceScore": 60,
+      "reviewScore": 100,
+      "consistencyScore": 100
+    },
+    {
+      "familyKey": "EM_FAM_CETIRIZINE",
+      "overallScore": 92,
+      "clinicalScore": 100,
+      "safetyScore": 100,
+      "evidenceScore": 60,
+      "reviewScore": 100,
+      "consistencyScore": 100
+    }
+  ],
+  "note": "Historical scores preserved via new rows / updates per Phase 14A/14B engines."
+}

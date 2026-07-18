@@ -1,0 +1,91 @@
+{
+  "generatedAt": "2026-07-18T14:34:50.104Z",
+  "snapshotsBefore": 8,
+  "snapshotsAfter": 8,
+  "newSnapshotsCreated": 0,
+  "qualification": {
+    "batchId": "991a3950-b9df-465b-bedb-c96b76dbcbf6",
+    "familiesReviewed": 8,
+    "familiesApprovedForShadow": 8,
+    "familiesDeferred": 0,
+    "results": [
+      {
+        "familyKey": "EM_FAM_IPRATROPIUM",
+        "status": "APPROVED_FOR_SHADOW"
+      },
+      {
+        "familyKey": "EM_FAM_ONDANSETRON",
+        "status": "APPROVED_FOR_SHADOW"
+      },
+      {
+        "familyKey": "EM_FAM_FAMOTIDINE",
+        "status": "APPROVED_FOR_SHADOW"
+      },
+      {
+        "familyKey": "EM_FAM_PANTOPRAZOLE",
+        "status": "APPROVED_FOR_SHADOW"
+      },
+      {
+        "familyKey": "EM_FAM_DEXAMETHASONE",
+        "status": "APPROVED_FOR_SHADOW"
+      },
+      {
+        "familyKey": "EM_FAM_IBUPROFEN",
+        "status": "APPROVED_FOR_SHADOW"
+      },
+      {
+        "familyKey": "EM_FAM_PREDNISONE",
+        "status": "APPROVED_FOR_SHADOW"
+      },
+      {
+        "familyKey": "EM_FAM_CETIRIZINE",
+        "status": "APPROVED_FOR_SHADOW"
+      }
+    ],
+    "ClinicalActivation": 0,
+    "ProviderFacingAlerts": 0
+  },
+  "familySnapshotOutcomes": [
+    {
+      "familyName": "ibuprofen",
+      "snapshotResult": "REUSED_SNAPSHOT",
+      "note": "Governed deferral does not alter approved shadow knowledge content"
+    },
+    {
+      "familyName": "ondansetron",
+      "snapshotResult": "REUSED_SNAPSHOT",
+      "note": "Governed deferral does not alter approved shadow knowledge content"
+    },
+    {
+      "familyName": "famotidine",
+      "snapshotResult": "REUSED_SNAPSHOT",
+      "note": "Governed deferral does not alter approved shadow knowledge content"
+    },
+    {
+      "familyName": "pantoprazole",
+      "snapshotResult": "REUSED_SNAPSHOT",
+      "note": "Governed deferral does not alter approved shadow knowledge content"
+    },
+    {
+      "familyName": "dexamethasone",
+      "snapshotResult": "REUSED_SNAPSHOT",
+      "note": "Governed deferral does not alter approved shadow knowledge content"
+    },
+    {
+      "familyName": "prednisone",
+      "snapshotResult": "REUSED_SNAPSHOT",
+      "note": "Governed deferral does not alter approved shadow knowledge content"
+    },
+    {
+      "familyName": "cetirizine",
+      "snapshotResult": "REUSED_SNAPSHOT",
+      "note": "Governed deferral does not alter approved shadow knowledge content"
+    },
+    {
+      "familyName": "ipratropium",
+      "snapshotResult": "REUSED_SNAPSHOT",
+      "note": "Governed deferral does not alter approved shadow knowledge content"
+    }
+  ],
+  "clinicalActivationAllowed": false
+}

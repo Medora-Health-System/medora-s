@@ -1,0 +1,118 @@
+{
+  "implementationId": "MEDUI.MEDICATION_INTELLIGENCE_PHASE_15_PART2C_EXECUTION_CERTIFICATION",
+  "generatedAt": "2026-07-18T14:34:49.943Z",
+  "waveKey": "EM_WAVE1_SOURCE_BACKED_V1",
+  "tier1EligibleSourceCount": 0,
+  "institutionalOnlySources": 2,
+  "plan": [
+    {
+      "workItemId": "1a071ca5-8ef7-4d83-9575-67a5033aae1b",
+      "workItemKey": "P15:KNOWLEDGE_GAP:EM_FAM_CETIRIZINE:POSITIVE_TIER1",
+      "familyKey": "EM_FAM_CETIRIZINE",
+      "gapCategory": "KNOWLEDGE",
+      "currentStatus": "BLOCKED_PENDING_AUTHORITATIVE_SOURCE",
+      "proposedOutcome": "DEFERRED",
+      "reason": "No Tier-1/licensed authoritative source available; fabricating positive Tier-1 findings is forbidden",
+      "authoritativeSourceAvailable": false,
+      "shadowRequalificationRequired": false,
+      "newSnapshotRequired": false,
+      "mutates": false
+    },
+    {
+      "workItemId": "040ce189-ad4e-4af5-8b80-f7b5bbe3ee1c",
+      "workItemKey": "P15:KNOWLEDGE_GAP:EM_FAM_DEXAMETHASONE:POSITIVE_TIER1",
+      "familyKey": "EM_FAM_DEXAMETHASONE",
+      "gapCategory": "KNOWLEDGE",
+      "currentStatus": "BLOCKED_PENDING_AUTHORITATIVE_SOURCE",
+      "proposedOutcome": "DEFERRED",
+      "reason": "No Tier-1/licensed authoritative source available; fabricating positive Tier-1 findings is forbidden",
+      "authoritativeSourceAvailable": false,
+      "shadowRequalificationRequired": false,
+      "newSnapshotRequired": false,
+      "mutates": false
+    },
+    {
+      "workItemId": "f69cca47-1bcd-424b-945f-8aade1370259",
+      "workItemKey": "P15:KNOWLEDGE_GAP:EM_FAM_FAMOTIDINE:POSITIVE_TIER1",
+      "familyKey": "EM_FAM_FAMOTIDINE",
+      "gapCategory": "KNOWLEDGE",
+      "currentStatus": "BLOCKED_PENDING_AUTHORITATIVE_SOURCE",
+      "proposedOutcome": "DEFERRED",
+      "reason": "No Tier-1/licensed authoritative source available; fabricating positive Tier-1 findings is forbidden",
+      "authoritativeSourceAvailable": false,
+      "shadowRequalificationRequired": false,
+      "newSnapshotRequired": false,
+      "mutates": false
+    },
+    {
+      "workItemId": "9895ff59-8054-452e-8e32-99cbc6f5c914",
+      "workItemKey": "P15:KNOWLEDGE_GAP:EM_FAM_IBUPROFEN:POSITIVE_TIER1",
+      "familyKey": "EM_FAM_IBUPROFEN",
+      "gapCategory": "KNOWLEDGE",
+      "currentStatus": "BLOCKED_PENDING_AUTHORITATIVE_SOURCE",
+      "proposedOutcome": "DEFERRED",
+      "reason": "No Tier-1/licensed authoritative source available; fabricating positive Tier-1 findings is forbidden",
+      "authoritativeSourceAvailable": false,
+      "shadowRequalificationRequired": false,
+      "newSnapshotRequired": false,
+      "mutates": false
+    },
+    {
+      "workItemId": "1972b6cf-7e57-40a6-b6b6-b474f343d007",
+      "workItemKey": "P15:KNOWLEDGE_GAP:EM_FAM_IPRATROPIUM:POSITIVE_TIER1",
+      "familyKey": "EM_FAM_IPRATROPIUM",
+      "gapCategory": "KNOWLEDGE",
+      "currentStatus": "BLOCKED_PENDING_AUTHORITATIVE_SOURCE",
+      "proposedOutcome": "DEFERRED",
+      "reason": "No Tier-1/licensed authoritative source available; fabricating positive Tier-1 findings is forbidden",
+      "authoritativeSourceAvailable": false,
+      "shadowRequalificationRequired": false,
+      "newSnapshotRequired": false,
+      "mutates": false
+    },
+    {
+      "workItemId": "64b67f5f-f5a9-4ae9-ad30-3327d4e5a75a",
+      "workItemKey": "P15:KNOWLEDGE_GAP:EM_FAM_ONDANSETRON:POSITIVE_TIER1",
+      "familyKey": "EM_FAM_ONDANSETRON",
+      "gapCategory": "KNOWLEDGE",
+      "currentStatus": "BLOCKED_PENDING_AUTHORITATIVE_SOURCE",
+      "proposedOutcome": "DEFERRED",
+      "reason": "No Tier-1/licensed authoritative source available; fabricating positive Tier-1 findings is forbidden",
+      "authoritativeSourceAvailable": false,
+      "shadowRequalificationRequired": false,
+      "newSnapshotRequired": false,
+      "mutates": false
+    },
+    {
+      "workItemId": "1ce59d48-4e20-4193-ba69-82f99aef6e20",
+      "workItemKey": "P15:KNOWLEDGE_GAP:EM_FAM_PANTOPRAZOLE:POSITIVE_TIER1",
+      "familyKey": "EM_FAM_PANTOPRAZOLE",
+      "gapCategory": "KNOWLEDGE",
+      "currentStatus": "BLOCKED_PENDING_AUTHORITATIVE_SOURCE",
+      "proposedOutcome": "DEFERRED",
+      "reason": "No Tier-1/licensed authoritative source available; fabricating positive Tier-1 findings is forbidden",
+      "authoritativeSourceAvailable": false,
+      "shadowRequalificationRequired": false,
+      "newSnapshotRequired": false,
+      "mutates": false
+    },
+    {
+      "workItemId": "6cbb3ea6-039f-4a98-b748-d4c73d7c1308",
+      "workItemKey": "P15:KNOWLEDGE_GAP:EM_FAM_PREDNISONE:POSITIVE_TIER1",
+      "familyKey": "EM_FAM_PREDNISONE",
+      "gapCategory": "KNOWLEDGE",
+      "currentStatus": "BLOCKED_PENDING_AUTHORITATIVE_SOURCE",
+      "proposedOutcome": "DEFERRED",
+      "reason": "No Tier-1/licensed authoritative source available; fabricating positive Tier-1 findings is forbidden",
+      "authoritativeSourceAvailable": false,
+      "shadowRequalificationRequired": false,
+      "newSnapshotRequired": false,
+      "mutates": false
+    }
+  ],
+  "summary": {
+    "wouldRemediate": 0,
+    "wouldDefer": 8,
+    "fabricateFacts": false
+  }
+}

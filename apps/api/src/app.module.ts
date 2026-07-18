@@ -31,6 +31,7 @@ import { MedicationSourceBackedValidationModule } from "./medications/source-bac
 import { MedicationEvidenceGovernanceModule } from "./medications/evidence-governance/medication-evidence-governance.module";
 import { MedicationExpertReviewModule } from "./medications/expert-review/medication-expert-review.module";
 import { MedicationShadowEvaluationModule } from "./medications/shadow-evaluation/medication-shadow-evaluation.module";
+import { MedicationRemediationModule } from "./medications/remediation/medication-remediation.module";
 import { OrderCatalogModule } from "./order-catalog/order-catalog.module";
 import { PublicHealthModule } from "./public-health/public-health.module";
 import { DiagnosesModule } from "./diagnoses/diagnoses.module";
@@ -91,6 +92,7 @@ const imports = [
   MedicationEvidenceGovernanceModule,
   MedicationExpertReviewModule,
   MedicationShadowEvaluationModule,
+  MedicationRemediationModule,
   OrderCatalogModule,
   PublicHealthModule,
   DiagnosesModule,
