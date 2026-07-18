@@ -378,11 +378,17 @@ flowchart LR
 | **Docs** | [`medication-import-platform-architecture.md`](./medication-import-platform-architecture.md), [`medication-knowledge-expansion-wave-3-certification-report.md`](./medication-knowledge-expansion-wave-3-certification-report.md), [`medication-expansion-roadmap.md`](./medication-expansion-roadmap.md) |
 | **Naming** | Distinct from **Enterprise Formulary Wave 3** and from Medication Intelligence Phase 19 (**do not create Phase 19**) |
 
-### Knowledge Expansion Wave 4 (next)
+### Medication Knowledge Expansion Wave 4 — Clinical Medication Library
 
-| Wave | Target |
-|------|--------|
-| Wave 4 | ~5,000 total canonical medication concepts |
+| Field | Value |
+|-------|-------|
+| **Objective** | Expand usable clinical library toward ~5,000 distinct generics via Wave 3 import platform (no Phase 19) |
+| **Certification ID** | `MEDUI.MEDICATION_KNOWLEDGE_EXPANSION_WAVE_4_CLINICAL_LIBRARY` |
+| **Migration** | **NO** |
+| **Status** | **Complete** — measured final distinct generics 5206; net-new 3200 |
+| **Typical live decision** | `MEDICATION_KNOWLEDGE_EXPANSION_WAVE_4_CERTIFIED` |
+| **Docs** | [`medication-knowledge-expansion-wave-4-guide.md`](./medication-knowledge-expansion-wave-4-guide.md), [`medication-expansion-roadmap.md`](./medication-expansion-roadmap.md) |
+| **Naming** | Distinct from **Enterprise Formulary Wave 4** and from Medication Intelligence Phase 19 (**do not create Phase 19**) |
 
 **Note:** Medication Intelligence Phases 15–18 remain complete. Do **not** resolve acetaminophen via catalog expansion. Production CDS / Enterprise Active remain off unless separately certified. Catalog availability ≠ recommendation activation.
 

@@ -11,19 +11,22 @@ Status: certified with review items (measured net-new never padded)
 
 **Medication Knowledge Expansion Wave 3**
 Import-Driven Comprehensive Formulary
-Target: approximately 2,000 total canonical generic concepts
-Measured: 2006 distinct generics (1048 net-new from baseline 958)
+Measured: 2006 distinct generics
 Status: `MEDICATION_KNOWLEDGE_EXPANSION_WAVE_3_CERTIFIED`
+
+**Medication Knowledge Expansion Wave 4**
+Clinical Medication Library Expansion
+Target: approximately 5,000 total canonical generic concepts
+Measured: 5206 distinct generics (3200 net-new from baseline 2006)
+Status: `MEDICATION_KNOWLEDGE_EXPANSION_WAVE_4_CERTIFIED`
 
 ## ACTIVE
 
-None — Wave 3 complete. Prepare Wave 4.
+None — Wave 4 complete.
 
 ## NEXT
 
-**Medication Knowledge Expansion Wave 4**
-Enterprise Medication Knowledge Scale
-Target: approximately 5,000 canonical concepts
+Enterprise-scale source feeds, scheduled terminology refresh, and licensed commercial knowledge (if acquired) under separate governance.
 
 ## FUTURE
 
