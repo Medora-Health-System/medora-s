@@ -366,11 +366,22 @@ flowchart LR
 | **Docs** | [`medication-knowledge-expansion-program.md`](./medication-knowledge-expansion-program.md), [`medication-knowledge-expansion-wave-2-em-catalog-guide.md`](./medication-knowledge-expansion-wave-2-em-catalog-guide.md), [`medication-expansion-roadmap.md`](./medication-expansion-roadmap.md) |
 | **Naming** | Distinct from **Enterprise Formulary Wave 2** and from Medication Intelligence Phase 19 (**do not create Phase 19**) |
 
-### Knowledge Expansion Wave 3 / 4 (next — not started)
+### Medication Knowledge Expansion Wave 3 — Import-Driven Comprehensive Formulary
+
+| Field | Value |
+|-------|-------|
+| **Objective** | Reusable import platform + expand toward ~2,000 distinct generic concepts via approved source ingestion (not Phase 19) |
+| **Certification ID** | `MEDUI.MEDICATION_KNOWLEDGE_EXPANSION_WAVE_3_IMPORT_DRIVEN_COMPREHENSIVE_FORMULARY` |
+| **Migration** | **NO** |
+| **Status** | **Complete** — measured final distinct generics 2006; net-new 1048 |
+| **Typical live decision** | `MEDICATION_KNOWLEDGE_EXPANSION_WAVE_3_CERTIFIED` |
+| **Docs** | [`medication-import-platform-architecture.md`](./medication-import-platform-architecture.md), [`medication-knowledge-expansion-wave-3-certification-report.md`](./medication-knowledge-expansion-wave-3-certification-report.md), [`medication-expansion-roadmap.md`](./medication-expansion-roadmap.md) |
+| **Naming** | Distinct from **Enterprise Formulary Wave 3** and from Medication Intelligence Phase 19 (**do not create Phase 19**) |
+
+### Knowledge Expansion Wave 4 (next)
 
 | Wave | Target |
 |------|--------|
-| Wave 3 | ~2,000 total canonical medication concepts |
 | Wave 4 | ~5,000 total canonical medication concepts |
 
 **Note:** Medication Intelligence Phases 15–18 remain complete. Do **not** resolve acetaminophen via catalog expansion. Production CDS / Enterprise Active remain off unless separately certified. Catalog availability ≠ recommendation activation.
