@@ -290,7 +290,47 @@ flowchart LR
 | **Exit criteria** | Phase 14B certifier PASS; CriticalMisses=0; snapshots consumed; acetaminophen identity-blocked; alerts/blocking/activation remain off |
 | **Status** | Implemented — see [`medication-intelligence-phase-14b-controlled-synthetic-shadow-evaluation.md`](./medication-intelligence-phase-14b-controlled-synthetic-shadow-evaluation.md) |
 
-**Future Phase 15:** Broader authoritative source acquisition, remediation, expanded family population, and larger-scale shadow validation — still without automatic live alerts unless separately certified.
+### Phase 15 Part 1 — Authoritative source acquisition foundation (Wave 1)
+
+| Field | Value |
+|-------|-------|
+| **Objective** | Establish Tier-1 source lifecycle governance vocabulary, remediation gap classification, and live Wave 1 baseline from Phase 14B — **no clinical activation** |
+| **Scope** | Shared governance + tests, reuse audit, foundation baseline artifact, docs/roadmap |
+| **Status** | **Complete** — see [`medication-intelligence-phase-15-authoritative-source-acquisition-tier1-knowledge-completion.md`](./medication-intelligence-phase-15-authoritative-source-acquisition-tier1-knowledge-completion.md) |
+
+### Phase 15 Part 2A — Core remediation / database
+
+| Field | Value |
+|-------|-------|
+| **Objective** | Remediation program/work items, source lifecycle on Phase 14A registrations, quality recalculation orchestration |
+| **Migration** | **YES** — `20261020120000_medication_phase_15_part2a_remediation_source_lifecycle` |
+| **Status** | **Complete** |
+
+### Phase 15 Part 2B — Operational API / UI / CLI
+
+| Field | Value |
+|-------|-------|
+| **Objective** | Secured APIs, admin dashboard/queue, CLI, preview/dry-run, readiness reporting — **no certification** |
+| **Scope** | `/medications/remediation/*`, `/app/admin/medication-governance/remediation`, `medication:phase15:*` |
+| **Status** | **Complete** — see [`medication-intelligence-phase-15-part2b-operational-api-ui-cli.md`](./medication-intelligence-phase-15-part2b-operational-api-ui-cli.md) |
+
+### Phase 15 Part 2C — Execution / requalification / certification
+
+| Field | Value |
+|-------|-------|
+| **Objective** | Governed remediation execution, quality recalculation, shadow requalification, synthetic report, readiness, Phase 15 certification, docs, three local commits |
+| **Status** | **Complete** — see [`medication-intelligence-phase-15-part2c-execution-certification.md`](./medication-intelligence-phase-15-part2c-execution-certification.md) |
+| **Typical live decision** | `MEDICATION_INTELLIGENCE_PHASE_15_CERTIFIED_WITH_GOVERNED_DEFERRALS` when Tier-1 gaps remain openly deferred |
+
+### Phase 16 — Emergency Medicine family expansion (recommended next — not started)
+
+| Field | Value |
+|-------|-------|
+| **Objective** | Controlled expansion beyond Wave 1 with governed knowledge population |
+| **Certification ID (planned)** | `MEDICATION_INTELLIGENCE_PHASE_16_EMERGENCY_MEDICINE_FAMILY_EXPANSION_AND_CONTROLLED_KNOWLEDGE_POPULATION` |
+| **Status** | **Not started** — do not begin until Phase 15 is reviewed |
+
+**Note:** Phase 15 does **not** expand beyond Wave 1 and does **not** resolve acetaminophen. Still without automatic live alerts unless separately certified.
 
 ### Deferred after Phase 6 — Canonical ordering integration and order sentences
 
