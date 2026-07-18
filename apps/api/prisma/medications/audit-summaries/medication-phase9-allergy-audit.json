@@ -1,0 +1,13 @@
+{
+  "AllergyKnowledgeFoundationImplemented": "YES",
+  "CrossReactivityFoundationImplemented": "YES",
+  "auditStatus": "COMPLETE",
+  "catalogClassification": "CURATED",
+  "catalogComplete": false,
+  "certificationId": "MEDUI.MEDICATION_INTELLIGENCE_PHASE_9_INTERACTION_ALLERGY_DUPLICATE_THERAPY_KNOWLEDGE_FOUNDATION",
+  "confidence": "HIGH",
+  "dataSource": "database",
+  "generatedAt": "2026-07-18T01:23:01.733Z",
+  "phase": 9,
+  "title": "Phase 9 allergy audit"
+}

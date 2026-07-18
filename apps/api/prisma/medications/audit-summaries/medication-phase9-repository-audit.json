@@ -1,0 +1,33 @@
+{
+  "SchemaProbe": {
+    "allergyServicePresent": true,
+    "cliPresent": true,
+    "clinicalActivationDefaultFalse": true,
+    "controllerPresent": true,
+    "duplicateDetectionPresent": true,
+    "duplicateTherapyServicePresent": true,
+    "frenchI18nPresent": true,
+    "hasAllergenConcept": true,
+    "hasAuditEvent": true,
+    "hasClassMembership": true,
+    "hasCrossReactivity": true,
+    "hasDrugInteraction": true,
+    "hasDuplicateTherapyGroup": true,
+    "hasSafetySource": true,
+    "hasSafetyVersion": true,
+    "interactionServicePresent": true,
+    "migrationPresent": true,
+    "noOrderBlockingHook": true,
+    "symmetricPairHelperWorks": true,
+    "uiPresent": true
+  },
+  "auditStatus": "COMPLETE",
+  "catalogClassification": "CURATED",
+  "catalogComplete": false,
+  "certificationId": "MEDUI.MEDICATION_INTELLIGENCE_PHASE_9_INTERACTION_ALLERGY_DUPLICATE_THERAPY_KNOWLEDGE_FOUNDATION",
+  "confidence": "HIGH",
+  "dataSource": "database",
+  "generatedAt": "2026-07-18T01:23:01.732Z",
+  "phase": 9,
+  "title": "Phase 9 repository audit"
+}
