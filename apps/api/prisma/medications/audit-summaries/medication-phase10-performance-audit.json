@@ -1,0 +1,18 @@
+{
+  "LiveMetrics": {
+    "findingCount": 0,
+    "findingsWithShadowOnlyFalse": 0,
+    "providerFacingAlertRoutes": 0,
+    "runCount": 0
+  },
+  "auditStatus": "COMPLETE",
+  "catalogClassification": "CURATED",
+  "catalogComplete": false,
+  "certificationId": "MEDUI.MEDICATION_INTELLIGENCE_PHASE_10_PATIENT_SPECIFIC_MEDICATION_SAFETY_EVALUATION_SHADOW_MODE",
+  "confidence": "HIGH",
+  "dataSource": "database",
+  "generatedAt": "2026-07-18T01:48:36.921Z",
+  "notes": "Durations recorded per run; fixture-only claims not asserted as production SLA",
+  "phase": 10,
+  "title": "Phase 10 performance audit"
+}

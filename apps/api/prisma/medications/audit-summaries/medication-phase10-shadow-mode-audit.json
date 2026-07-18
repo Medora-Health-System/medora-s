@@ -1,0 +1,14 @@
+{
+  "ActiveCdsModeAvailable": "NO",
+  "OrderBlockingEnabled": "NO",
+  "ProviderFacingAlertsEnabled": "NO",
+  "auditStatus": "COMPLETE",
+  "catalogClassification": "CURATED",
+  "catalogComplete": false,
+  "certificationId": "MEDUI.MEDICATION_INTELLIGENCE_PHASE_10_PATIENT_SPECIFIC_MEDICATION_SAFETY_EVALUATION_SHADOW_MODE",
+  "confidence": "HIGH",
+  "dataSource": "database",
+  "generatedAt": "2026-07-18T01:48:36.920Z",
+  "phase": 10,
+  "title": "Phase 10 shadow mode audit"
+}

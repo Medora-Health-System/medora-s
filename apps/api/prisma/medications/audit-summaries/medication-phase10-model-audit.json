@@ -1,0 +1,18 @@
+{
+  "auditStatus": "COMPLETE",
+  "catalogClassification": "CURATED",
+  "catalogComplete": false,
+  "certificationId": "MEDUI.MEDICATION_INTELLIGENCE_PHASE_10_PATIENT_SPECIFIC_MEDICATION_SAFETY_EVALUATION_SHADOW_MODE",
+  "confidence": "HIGH",
+  "dataSource": "database",
+  "generatedAt": "2026-07-18T01:48:36.920Z",
+  "models": [
+    "MedicationSafetyEvaluationRun",
+    "MedicationSafetyPatientContextSnapshot",
+    "MedicationSafetyEvaluationFinding",
+    "MedicationSafetyFindingValidation",
+    "MedicationSafetySuppressionRule"
+  ],
+  "phase": 10,
+  "title": "Phase 10 model audit"
+}
