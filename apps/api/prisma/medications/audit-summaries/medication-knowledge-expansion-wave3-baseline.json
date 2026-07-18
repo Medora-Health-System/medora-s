@@ -1,0 +1,19 @@
+{
+  "title": "Medication Knowledge Expansion Wave 3 — Baseline",
+  "generatedAt": "2026-07-18T21:27:49.273Z",
+  "catalogTotal": 2875,
+  "catalogActive": 2802,
+  "distinctNormalizedGenerics": 958,
+  "aliases": 6931,
+  "concepts": 2376,
+  "products": 3262,
+  "packages": 3261,
+  "productsWithLegacyLink": 2069,
+  "rxNormMappedConcepts": 1,
+  "rxNormStagingConcepts": 33,
+  "ordersUsingCatalogMed": 3942,
+  "dispenses": 8,
+  "administrations": 956,
+  "recommendationDefinitions": 8,
+  "note": "Counts from live database; not hardcoded."
+}

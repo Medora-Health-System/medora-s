@@ -1,0 +1,123 @@
+{
+  "mode": "VALIDATE",
+  "jobId": "W3_VALIDATE_1784410069274",
+  "importerVersion": "wave3-import-1.0.0",
+  "sourceKey": "MEDORA_CURATED",
+  "sourceChecksumSha256": "8736ac9c69056d0eaeb0a93ce00ec3285e27a82c1c207aee618700e674b535eb",
+  "sourceFileName": "medora-curated-wave3-candidates.json",
+  "dryRun": true,
+  "baselineBefore": {
+    "generatedAt": "2026-07-18T21:27:49.285Z",
+    "catalogTotal": 2875,
+    "catalogActive": 2802,
+    "distinctNormalizedGenerics": 958,
+    "aliases": 6931,
+    "concepts": 2376,
+    "products": 3262,
+    "packages": 3261,
+    "productsWithLegacyLink": 2069,
+    "rxNormMappedConcepts": 1,
+    "rxNormStagingConcepts": 33,
+    "ordersUsingCatalogMed": 3942,
+    "dispenses": 8,
+    "administrations": 956,
+    "recommendationDefinitions": 8
+  },
+  "baselineAfter": null,
+  "rowsReceived": 1102,
+  "rowsValid": 1102,
+  "rowsInvalid": 0,
+  "stagedRows": 0,
+  "newCanonicalConcepts": 0,
+  "existingMatches": 0,
+  "existingNewProducts": 0,
+  "duplicateRejected": 0,
+  "sourceInsufficient": 0,
+  "conflictReview": 0,
+  "catalogRowsCreated": 0,
+  "aliasesCreated": 0,
+  "conceptsCreated": 0,
+  "productsCreated": 0,
+  "packagesCreated": 0,
+  "byDomain": {},
+  "conflicts": [],
+  "orderMutations": 0,
+  "marMutations": 0,
+  "chartMutations": 0,
+  "recommendationActivations": 0,
+  "productionCdsActivations": 0,
+  "enterpriseActivations": 0,
+  "rxNormAdapter": {
+    "stagingConceptsAvailable": 33,
+    "fabricatedRxCui": 0
+  },
+  "dailyMedAdapter": {
+    "implemented": false,
+    "rowsIngested": 0
+  },
+  "sourceRegistrySnapshot": [
+    {
+      "sourceKey": "MEDORA_CURATED",
+      "sourceName": "Medora curated hospital/ambulatory formulary extract",
+      "sourceType": "CURATED_MANIFEST",
+      "authority": "MEDORA",
+      "licenseClassification": "INTERNAL_CURATED",
+      "approvalStatus": "APPROVED_FOR_INGESTION",
+      "notes": "Primary Wave 3 deterministic local extract; no RxNorm/NDC fabricated"
+    },
+    {
+      "sourceKey": "MEDORA_WAVE2",
+      "sourceName": "Wave 2 EM catalog content",
+      "sourceType": "PRIOR_EXPANSION",
+      "authority": "MEDORA",
+      "licenseClassification": "INTERNAL_CURATED",
+      "approvalStatus": "IMPORTED",
+      "notes": "Match-only; do not re-create"
+    },
+    {
+      "sourceKey": "RXNORM",
+      "sourceName": "RxNorm / RxNav terminology",
+      "sourceType": "TERMINOLOGY",
+      "authority": "NLM",
+      "licenseClassification": "PUBLIC_TERMINOLOGY",
+      "approvalStatus": "REGISTERED",
+      "notes": "Staging/mapping lane only; never invent RxCUI; not full CDS"
+    },
+    {
+      "sourceKey": "DAILYMED",
+      "sourceName": "DailyMed structured labeling",
+      "sourceType": "LABELING",
+      "authority": "FDA/NLM",
+      "licenseClassification": "PUBLIC_LABELING",
+      "approvalStatus": "REGISTERED",
+      "notes": "Enrichment/provenance only; no bulk narrative copy in Wave 3"
+    },
+    {
+      "sourceKey": "FDA",
+      "sourceName": "FDA public resources",
+      "sourceType": "PUBLIC_AUTHORITY",
+      "authority": "FDA",
+      "licenseClassification": "PUBLIC",
+      "approvalStatus": "REGISTERED",
+      "notes": "Adapter reserved; not primary Wave 3 CREATE source"
+    },
+    {
+      "sourceKey": "FACILITY_FORMULARY",
+      "sourceName": "Facility formulary workbook",
+      "sourceType": "FACILITY",
+      "authority": "FACILITY",
+      "licenseClassification": "FACILITY_LOCAL",
+      "approvalStatus": "REGISTERED",
+      "notes": "Existing formulary staging path — not global CREATE"
+    },
+    {
+      "sourceKey": "LICENSED_COMMERCIAL",
+      "sourceName": "Licensed commercial medication knowledge (e.g. FDB)",
+      "sourceType": "COMMERCIAL",
+      "authority": "VENDOR",
+      "licenseClassification": "REQUIRES_LICENSE",
+      "approvalStatus": "REJECTED",
+      "notes": "Rejected without active license and approved integration"
+    }
+  ]
+}
