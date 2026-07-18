@@ -1,0 +1,18 @@
+{
+  "adminOnlyApprove": true,
+  "auditEvents": true,
+  "auditStatus": "COMPLETE",
+  "catalogClassification": "CURATED",
+  "catalogComplete": false,
+  "certificationId": "MEDUI.MEDICATION_INTELLIGENCE_PHASE_8_CLINICAL_KNOWLEDGE_FOUNDATION",
+  "confidence": "HIGH",
+  "dataSource": "database",
+  "generatedAt": "2026-07-18T00:56:37.569Z",
+  "phase": 8,
+  "reviewerIdSpoofingRejected": true,
+  "roles": [
+    "MEDICATION_REVIEWER",
+    "MEDICATION_ADMIN"
+  ],
+  "title": "Phase 8 security audit"
+}

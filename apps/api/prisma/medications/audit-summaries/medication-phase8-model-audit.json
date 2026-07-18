@@ -1,0 +1,37 @@
+{
+  "auditStatus": "COMPLETE",
+  "catalogClassification": "CURATED",
+  "catalogComplete": false,
+  "catalogMedicationReferenced": false,
+  "certificationId": "MEDUI.MEDICATION_INTELLIGENCE_PHASE_8_CLINICAL_KNOWLEDGE_FOUNDATION",
+  "confidence": "HIGH",
+  "dataSource": "database",
+  "generatedAt": "2026-07-18T00:56:37.569Z",
+  "identityFkTargets": [
+    "MedicationConcept",
+    "MedicationProduct"
+  ],
+  "models": [
+    "MedicationClinicalKnowledgeSource",
+    "MedicationClinicalKnowledgeVersion",
+    "MedicationClinicalProfile",
+    "MedicationDoseRecommendation",
+    "MedicationWeightBasedDose",
+    "MedicationRenalAdjustment",
+    "MedicationHepaticAdjustment",
+    "MedicationAdministrationInstruction",
+    "MedicationInfusionGuidance",
+    "MedicationMonitoringRequirement",
+    "MedicationContraindication",
+    "MedicationPrecaution",
+    "MedicationBlackBoxWarning",
+    "MedicationPregnancyInformation",
+    "MedicationLactationInformation",
+    "MedicationHighAlertProfile",
+    "MedicationEmergencyProfile",
+    "MedicationStorageRequirement",
+    "MedicationReconstitutionInstruction"
+  ],
+  "phase": 8,
+  "title": "Phase 8 model audit"
+}

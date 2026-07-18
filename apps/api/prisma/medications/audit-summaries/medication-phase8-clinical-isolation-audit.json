@@ -1,0 +1,19 @@
+{
+  "auditStatus": "COMPLETE",
+  "automaticClinicalActivationEnabled": false,
+  "billingChanged": false,
+  "catalogClassification": "CURATED",
+  "catalogComplete": false,
+  "certificationId": "MEDUI.MEDICATION_INTELLIGENCE_PHASE_8_CLINICAL_KNOWLEDGE_FOUNDATION",
+  "clinicalDecisionSupportEnabled": false,
+  "confidence": "HIGH",
+  "dataSource": "database",
+  "generatedAt": "2026-07-18T00:56:37.570Z",
+  "interactionCheckingEnabled": false,
+  "marChanged": false,
+  "medicationSearchChanged": false,
+  "orderingBehaviorChanged": false,
+  "patientSpecificDosingEnabled": false,
+  "phase": 8,
+  "title": "Phase 8 clinical isolation audit"
+}

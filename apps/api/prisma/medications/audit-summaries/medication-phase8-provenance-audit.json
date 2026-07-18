@@ -1,0 +1,21 @@
+{
+  "auditStatus": "COMPLETE",
+  "catalogClassification": "CURATED",
+  "catalogComplete": false,
+  "certificationId": "MEDUI.MEDICATION_INTELLIGENCE_PHASE_8_CLINICAL_KNOWLEDGE_FOUNDATION",
+  "confidence": "HIGH",
+  "dataSource": "database",
+  "generatedAt": "2026-07-18T00:56:37.569Z",
+  "phase": 8,
+  "requiredFields": [
+    "knowledgeSource",
+    "knowledgeVersion",
+    "effectiveDate",
+    "reviewedBy",
+    "approvedBy",
+    "approvalDate",
+    "evidenceLevel",
+    "lastModified"
+  ],
+  "title": "Phase 8 provenance audit"
+}

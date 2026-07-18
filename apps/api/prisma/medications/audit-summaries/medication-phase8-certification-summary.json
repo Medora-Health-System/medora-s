@@ -1,0 +1,59 @@
+{
+  "AutomaticClinicalActivationEnabled": "NO",
+  "BillingChanged": "NO",
+  "CertificationIdempotent": "YES",
+  "ClinicalKnowledgeFoundationImplemented": "YES",
+  "ClinicalKnowledgeVersioningEnabled": "YES",
+  "DuplicateKnowledgeIdentityPrevented": "YES",
+  "FinalDecision": "MEDICATION_INTELLIGENCE_PHASE_8_CERTIFIED",
+  "HumanApprovalRequired": "YES",
+  "KnownBlockingGaps": [],
+  "KnownNonblockingGaps": [
+    "Phase 8 stores knowledge only; CDS/alerts/patient dosing deferred",
+    "No bulk clinical content import in CI certification"
+  ],
+  "LiveMetrics": {
+    "approvedCount": 0,
+    "approvedWithActivationTrue": 0,
+    "profileCount": 0,
+    "sourceCount": 0
+  },
+  "MARChanged": "NO",
+  "MedicationIdentitySeparated": "YES",
+  "MedicationSearchChanged": "NO",
+  "OrderingBehaviorChanged": "NO",
+  "RegressionEvidence": {
+    "buildPass": null,
+    "certificationIdempotent": true,
+    "diffCheckPass": null,
+    "focusedTestSummary": "Shared clinical knowledge governance + service + phase8 certification specs",
+    "focusedTestsPass": true,
+    "fullRegressionPass": null,
+    "fullRegressionSummary": "Set after pnpm verify",
+    "priorPhasesPass": true,
+    "typecheckPass": null
+  },
+  "SchemaProbe": {
+    "clinicalActivationDefaultFalse": true,
+    "controllerPresent": true,
+    "hasAdministrationInstruction": true,
+    "hasClinicalProfile": true,
+    "hasContraindication": true,
+    "hasDoseRecommendation": true,
+    "hasEmergencyProfile": true,
+    "hasKnowledgeSource": true,
+    "hasKnowledgeVersion": true,
+    "migrationPresent": true,
+    "servicePresent": true,
+    "uiPresent": true
+  },
+  "auditStatus": "COMPLETE",
+  "catalogClassification": "CURATED",
+  "catalogComplete": false,
+  "certificationId": "MEDUI.MEDICATION_INTELLIGENCE_PHASE_8_CLINICAL_KNOWLEDGE_FOUNDATION",
+  "confidence": "HIGH",
+  "dataSource": "database",
+  "generatedAt": "2026-07-18T00:56:37.570Z",
+  "phase": 8,
+  "title": "Phase 8 clinical knowledge foundation certification summary"
+}
