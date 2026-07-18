@@ -308,6 +308,49 @@ export default function RxNormReviewConsolePage() {
               </div>
             </div>
           )}
+          {dashboard.emBatchMetrics && (
+            <div style={{ marginTop: 12 }}>
+              <h3 style={{ margin: "0 0 8px", fontSize: 14 }}>
+                {t("medicationRxNormReview.batchMetricsTitle")}
+              </h3>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 12, fontSize: 13 }}>
+                <span>
+                  {t("medicationRxNormReview.batchFamilies")}:{" "}
+                  {dashboard.emBatchMetrics.medicationFamiliesInScope}
+                </span>
+                <span>
+                  {t("medicationRxNormReview.batchStagedItems")}:{" "}
+                  {dashboard.emBatchMetrics.stagedItems}
+                </span>
+                <span>
+                  {t("medicationRxNormReview.batchReuseLinks")}:{" "}
+                  {dashboard.emBatchMetrics.reuseLinks}
+                </span>
+                <span>
+                  {t("medicationRxNormReview.batchOpenAssessments")}:{" "}
+                  {dashboard.emBatchMetrics.openDuplicateAssessments}
+                </span>
+                <span>
+                  {t("medicationRxNormReview.batchHighAlert")}:{" "}
+                  {dashboard.emBatchMetrics.highAlertReviewCount}
+                </span>
+                <span>
+                  {t("medicationRxNormReview.batchControlled")}:{" "}
+                  {dashboard.emBatchMetrics.controlledSubstanceReviewCount}
+                </span>
+                <span>
+                  {t("medicationRxNormReview.batchClinicalActivations")}:{" "}
+                  {dashboard.emBatchMetrics.clinicalActivations}
+                </span>
+                <span>
+                  {t("medicationRxNormReview.batchRollbackReady")}:{" "}
+                  {dashboard.emBatchMetrics.rollbackReadiness
+                    ? t("medicationRxNormReview.yes")
+                    : t("medicationRxNormReview.no")}
+                </span>
+              </div>
+            </div>
+          )}
         </section>
       )}
 

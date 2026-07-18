@@ -2605,6 +2605,10 @@ model MedicationDuplicateAssessment {
   pilotId              String?
   manifestId           String?
   pilotItemId          String?
+  /// Phase 7 batch linkage (optional; parallel to pilot).
+  batchId              String?
+  batchManifestId      String?
+  batchItemId          String?
   sourceEntityType     String   @db.VarChar(64)
   sourceEntityId       String
   matchedEntityType    String?  @db.VarChar(64)
@@ -2624,10 +2628,15 @@ model MedicationDuplicateAssessment {
   updatedAt            DateTime @updatedAt
   manifest             MedicationPilotManifest? @relation(fields: [manifestId], references: [id], onDelete: SetNull)
   pilotItem            MedicationPilotItem?     @relation(fields: [pilotItemId], references: [id], onDelete: SetNull)
+  batchManifest        MedicationBatchManifest? @relation(fields: [batchManifestId], references: [id], onDelete: SetNull)
+  batchItem            MedicationBatchItem?     @relation(fields: [batchItemId], references: [id], onDelete: SetNull)
 
   @@index([pilotId])
   @@index([manifestId])
   @@index([pilotItemId])
+  @@index([batchId])
+  @@index([batchManifestId])
+  @@index([batchItemId])
   @@index([classification])
   @@index([resolutionStatus])
   @@index([normalizedIdentityKey])
@@ -2649,6 +2658,157 @@ model MedicationPilotImportJob {
 
   @@unique([manifestId, manifestHash, mode])
   @@index([status])
+}
+
+/// Phase 7 — controlled Emergency Medicine batch manifest (authentic RxNorm extract).
+model MedicationBatchManifest {
+  id                            String   @id @default(uuid())
+  batchId                       String   @db.VarChar(64)
+  batchName                     String
+  batchVersion                  String   @db.VarChar(32)
+  clinicalDomain                String   @default("EMERGENCY_MEDICINE") @db.VarChar(64)
+  scope                         String   @db.VarChar(64)
+  sourceReleaseId               String?
+  sourceManifestHash            String?  @db.VarChar(64)
+  batchManifestHash             String   @db.VarChar(64)
+  createdAt                     DateTime @default(now())
+  createdByUserId               String?
+  approvedAt                    DateTime?
+  approvedByUserId              String?
+  /// DRAFT | APPROVED | SUPERSEDED
+  approvalStatus                String   @default("DRAFT") @db.VarChar(32)
+  expectedMedicationFamilyCount Int      @default(0)
+  expectedSourceRowCount        Int      @default(0)
+  dataClassification            String   @default("CONTROLLED_REAL_BATCH") @db.VarChar(32)
+  /// See MedicationBatchStatus shared enum
+  batchStatus                   String   @default("DRAFT") @db.VarChar(48)
+  duplicateReviewRequired       Boolean  @default(true)
+  humanVerificationRequired     Boolean  @default(true)
+  clinicalActivationAllowed     Boolean  @default(false)
+  rollbackAllowed               Boolean  @default(true)
+  normalizationVersion          String   @default("MEDICATION_BATCH_NORMALIZATION_V1") @db.VarChar(64)
+  parserVersion                 String   @default("RXNCONSO_PARSER_V1") @db.VarChar(64)
+  notes                         String?
+  updatedAt                     DateTime @updatedAt
+  items                         MedicationBatchItem[]
+  jobs                          MedicationBatchJob[]
+  checkpoints                   MedicationBatchCheckpoint[]
+  entityLinks                   MedicationBatchEntityLink[]
+  duplicateAssessments          MedicationDuplicateAssessment[]
+
+  @@unique([batchId, batchVersion])
+  @@unique([batchManifestHash])
+  @@index([batchId])
+  @@index([approvalStatus])
+  @@index([batchStatus])
+  @@index([sourceReleaseId])
+}
+
+model MedicationBatchItem {
+  id                       String   @id @default(uuid())
+  manifestId               String
+  itemCode                 String   @db.VarChar(128)
+  familyCode               String   @db.VarChar(128)
+  genericName              String
+  brandName                String?
+  sourceRxcui              String?  @db.VarChar(64)
+  sourceTermType           String?  @db.VarChar(16)
+  sourceString             String?
+  normalizedString         String?
+  strengthDisplay          String?
+  concentrationText        String?
+  dosageForm               String?  @db.VarChar(64)
+  route                    String?  @db.VarChar(64)
+  releaseType              String?  @db.VarChar(32)
+  category                 String   @db.VarChar(32)
+  conceptIdentityKey       String   @db.VarChar(255)
+  productIdentityKey       String   @db.VarChar(512)
+  packageIdentityKey       String   @db.VarChar(768)
+  sourceRowChecksum        String?  @db.VarChar(64)
+  reuseDecision            String?  @db.VarChar(64)
+  lifecycleStatus          String   @default("BATCH_STAGED") @db.VarChar(48)
+  frenchDisplayStatus      String   @default("CURATED_FRENCH_MISSING") @db.VarChar(48)
+  governanceReview         String   @default("STANDARD_REVIEW") @db.VarChar(48)
+  highAlertReview          Boolean  @default(false)
+  controlledSubstanceReview Boolean @default(false)
+  matchedConceptId         String?
+  matchedProductId         String?
+  matchedPackageId         String?
+  catalogPreparationId     String?
+  sourcePayloadJson        Json
+  createdAt                DateTime @default(now())
+  updatedAt                DateTime @updatedAt
+  manifest                 MedicationBatchManifest @relation(fields: [manifestId], references: [id], onDelete: Cascade)
+  entityLinks              MedicationBatchEntityLink[]
+  duplicateAssessments     MedicationDuplicateAssessment[]
+
+  @@unique([manifestId, itemCode])
+  @@unique([manifestId, sourceRowChecksum])
+  @@index([familyCode])
+  @@index([conceptIdentityKey])
+  @@index([productIdentityKey])
+  @@index([packageIdentityKey])
+  @@index([lifecycleStatus])
+  @@index([category])
+  @@index([sourceRxcui])
+}
+
+model MedicationBatchJob {
+  id              String   @id @default(uuid())
+  manifestId      String
+  mode            String   @db.VarChar(32)
+  status          String   @default("PENDING") @db.VarChar(32)
+  manifestHash    String   @db.VarChar(64)
+  sourceHash      String?  @db.VarChar(64)
+  resumeAllowed   Boolean  @default(false)
+  startedByUserId String?
+  startedAt       DateTime @default(now())
+  completedAt     DateTime?
+  summaryJson     Json?
+  errorMessage    String?
+  manifest        MedicationBatchManifest @relation(fields: [manifestId], references: [id], onDelete: Cascade)
+
+  @@unique([manifestId, manifestHash, mode])
+  @@index([status])
+}
+
+model MedicationBatchCheckpoint {
+  id            String   @id @default(uuid())
+  manifestId    String
+  fromStatus    String   @db.VarChar(48)
+  toStatus      String   @db.VarChar(48)
+  actorUserId   String?
+  rationale     String?
+  beforeJson    Json?
+  afterJson     Json?
+  manifestHash  String   @db.VarChar(64)
+  sourceHash    String?  @db.VarChar(64)
+  createdAt     DateTime @default(now())
+  manifest      MedicationBatchManifest @relation(fields: [manifestId], references: [id], onDelete: Cascade)
+
+  @@index([manifestId])
+  @@index([createdAt])
+}
+
+model MedicationBatchEntityLink {
+  id               String   @id @default(uuid())
+  manifestId       String
+  batchItemId      String?
+  existingEntityType String @db.VarChar(64)
+  existingEntityId String
+  reuseDecision    String   @db.VarChar(64)
+  identityEvidence Json?
+  rxcuiEvidence    Json?
+  ndcEvidence      Json?
+  reviewedByUserId String?
+  reviewedAt       DateTime?
+  createdAt        DateTime @default(now())
+  manifest         MedicationBatchManifest @relation(fields: [manifestId], references: [id], onDelete: Cascade)
+  batchItem        MedicationBatchItem?    @relation(fields: [batchItemId], references: [id], onDelete: SetNull)
+
+  @@index([manifestId])
+  @@index([batchItemId])
+  @@index([existingEntityType, existingEntityId])
 }
 
 /// Durable RxNorm verified mapping history — Phase 4 canonical reconciliation (CLI/service only).

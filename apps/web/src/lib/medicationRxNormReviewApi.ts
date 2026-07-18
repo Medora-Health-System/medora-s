@@ -152,6 +152,21 @@ export type RxNormReviewDashboard = {
     clinicalActivationAllowed: false;
     automaticVerificationEnabled: false;
   };
+  emBatchMetrics?: {
+    batchId: string | null;
+    batchStatus: string | null;
+    approvalStatus: string | null;
+    medicationFamiliesInScope: number;
+    stagedItems: number;
+    openDuplicateAssessments: number;
+    reuseLinks: number;
+    highAlertReviewCount: number;
+    controlledSubstanceReviewCount: number;
+    clinicalActivations: 0;
+    clinicalActivationAllowed: false;
+    automaticVerificationEnabled: false;
+    rollbackReadiness: boolean;
+  };
 };
 
 export type RxNormReviewMutationResult = {

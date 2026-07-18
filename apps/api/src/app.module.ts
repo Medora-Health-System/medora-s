@@ -21,6 +21,7 @@ import { PharmacyDispenseModule } from "./pharmacy-dispense/pharmacy-dispense.mo
 import { MedicationCatalogModule } from "./medication-catalog/medication-catalog.module";
 import { MedicationMasterModule } from "./medication-master/medication-master.module";
 import { RxNormReviewModule } from "./medications/rxnorm-review/rxnorm-review.module";
+import { MedicationBatchModule } from "./medications/batch/medication-batch.module";
 import { OrderCatalogModule } from "./order-catalog/order-catalog.module";
 import { PublicHealthModule } from "./public-health/public-health.module";
 import { DiagnosesModule } from "./diagnoses/diagnoses.module";
@@ -71,6 +72,7 @@ const imports = [
   MedicationCatalogModule,
   MedicationMasterModule,
   RxNormReviewModule,
+  MedicationBatchModule,
   OrderCatalogModule,
   PublicHealthModule,
   DiagnosesModule,

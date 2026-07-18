@@ -46,6 +46,8 @@ export type ReviewQueueFilters = {
   conflictOnly?: boolean;
   /** Phase 6.5 — filter candidates whose evidence mentions pilot id. */
   pilotId?: string;
+  /** Phase 7 — filter candidates whose evidence mentions batch id. */
+  batchId?: string;
   duplicateClassification?: string;
   medicationCategory?: string;
   search?: string;
@@ -184,6 +186,22 @@ export type ReviewDashboardMetrics = {
     clinicalActivationAllowed: false;
     automaticVerificationEnabled: false;
   };
+  /** Phase 7 controlled EM batch metrics (governance only). */
+  emBatchMetrics: {
+    batchId: string | null;
+    batchStatus: string | null;
+    approvalStatus: string | null;
+    medicationFamiliesInScope: number;
+    stagedItems: number;
+    openDuplicateAssessments: number;
+    reuseLinks: number;
+    highAlertReviewCount: number;
+    controlledSubstanceReviewCount: number;
+    clinicalActivations: 0;
+    clinicalActivationAllowed: false;
+    automaticVerificationEnabled: false;
+    rollbackReadiness: boolean;
+  };
 };
 
 async function writeReviewAudit(
@@ -251,6 +269,17 @@ export async function listReviewQueue(
         evidenceJson: {
           path: ["pilotId"],
           equals: filters.pilotId.trim(),
+        },
+      },
+    ];
+  }
+  if (filters.batchId?.trim()) {
+    where.AND = [
+      ...(Array.isArray(where.AND) ? where.AND : where.AND ? [where.AND] : []),
+      {
+        evidenceJson: {
+          path: ["batchId"],
+          equals: filters.batchId.trim(),
         },
       },
     ];
@@ -977,6 +1006,30 @@ export async function getReviewDashboardMetrics(
     // Migration not applied yet — keep zeroed pilot metrics.
   }
 
+  let emBatchMetrics: ReviewDashboardMetrics["emBatchMetrics"] = {
+    batchId: null,
+    batchStatus: null,
+    approvalStatus: null,
+    medicationFamiliesInScope: 0,
+    stagedItems: 0,
+    openDuplicateAssessments: 0,
+    reuseLinks: 0,
+    highAlertReviewCount: 0,
+    controlledSubstanceReviewCount: 0,
+    clinicalActivations: 0,
+    clinicalActivationAllowed: false,
+    automaticVerificationEnabled: false,
+    rollbackReadiness: true,
+  };
+  try {
+    const { getBatchDashboardMetrics } = await import(
+      "../batch/medication-em-batch.service"
+    );
+    emBatchMetrics = await getBatchDashboardMetrics(prisma);
+  } catch {
+    // Migration not applied yet — keep zeroed batch metrics.
+  }
+
   return {
     candidatesTotal,
     candidatesOpen,
@@ -1002,5 +1055,6 @@ export async function getReviewDashboardMetrics(
     clinicalActivationEnabled: false,
     pilot,
     emPilotMetrics,
+    emBatchMetrics,
   };
 }

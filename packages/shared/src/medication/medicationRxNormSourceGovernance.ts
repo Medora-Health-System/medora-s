@@ -4,6 +4,7 @@ import { isSyntheticRxCui } from "./medicationRxNormVerification.js";
 export const RXNORM_SOURCE_CLASSIFICATION_VALUES = [
   "NLM_OFFICIAL",
   "APPROVED_NLM_EXTRACT",
+  "AUTHENTIC_NLM_RXNORM",
   "SYNTHETIC_FIXTURE",
   "DEV_SAMPLE",
   "UNKNOWN",
@@ -16,6 +17,7 @@ export const RXNORM_RELEASE_SCOPE_VALUES = [
   "DEVELOPMENT_SUBSET",
   "TERM_TYPE_SCOPED_IMPORT",
   "RXCUI_ALLOWLIST",
+  "CONTROLLED_EMERGENCY_MEDICINE_BATCH",
   "FULL_RELEASE",
 ] as const;
 
@@ -67,6 +69,7 @@ export type RxNormReleaseManifest = z.infer<typeof rxNormReleaseManifestSchema>;
 const REAL_SOURCE_CLASSIFICATIONS = new Set<RxNormSourceClassification>([
   "NLM_OFFICIAL",
   "APPROVED_NLM_EXTRACT",
+  "AUTHENTIC_NLM_RXNORM",
 ]);
 
 const NON_REAL_SOURCE_CLASSIFICATIONS = new Set<RxNormSourceClassification>([
