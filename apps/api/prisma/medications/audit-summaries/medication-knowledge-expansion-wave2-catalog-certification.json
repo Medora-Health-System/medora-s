@@ -1,0 +1,281 @@
+{
+  "generatedAt": "2026-07-18T19:09:03.943Z",
+  "auditStatus": "COMPLETE",
+  "dataSource": "database",
+  "confidence": "HIGH",
+  "catalogClassification": "CURATED",
+  "catalogComplete": false,
+  "title": "Medication Knowledge Expansion Wave 2 — EM Catalog",
+  "certificationId": "MEDUI.MEDICATION_KNOWLEDGE_EXPANSION_WAVE_2_EMERGENCY_MEDICINE_CATALOG",
+  "implementationId": "MEDUI.MEDICATION_KNOWLEDGE_EXPANSION_WAVE_2_EM_CATALOG_CREATE",
+  "FinalDecision": "MEDICATION_KNOWLEDGE_EXPANSION_WAVE_2_CERTIFIED_WITH_REVIEW_ITEMS",
+  "LiveMetrics": {
+    "baseline": {
+      "generatedAt": "2026-07-18T19:09:03.930Z",
+      "catalogTotal": 2875,
+      "catalogActive": 2802,
+      "catalogInactive": 73,
+      "distinctNormalizedGenerics": 958,
+      "aliases": 6931,
+      "concepts": 2376,
+      "conceptsActive": 14,
+      "products": 3262,
+      "packages": 3261,
+      "productsWithLegacyLink": 2069,
+      "searchAliases": 466,
+      "formularyItems": 898,
+      "rxNormMappedConcepts": 1,
+      "ordersUsingCatalogMed": 3942,
+      "dispenses": 8,
+      "administrations": 956,
+      "duplicateCatalogCodes": 0,
+      "recommendationDefinitions": 8
+    },
+    "apply": {
+      "mode": "APPLY",
+      "programKey": "EM_KNOWLEDGE_EXPANSION_WAVE2_CATALOG_V1",
+      "dryRun": false,
+      "restoredFrom": "first-apply-console-and-live-db",
+      "baselineBefore": {
+        "generatedAt": "2026-07-18T19:05:30.324Z",
+        "catalogTotal": 1042,
+        "catalogActive": 969,
+        "catalogInactive": 73,
+        "distinctNormalizedGenerics": 242,
+        "aliases": 3091,
+        "concepts": 1377,
+        "conceptsActive": 14,
+        "products": 1429,
+        "packages": 1428,
+        "productsWithLegacyLink": 236,
+        "searchAliases": 466,
+        "formularyItems": 898,
+        "rxNormMappedConcepts": 1,
+        "ordersUsingCatalogMed": 3942,
+        "dispenses": 8,
+        "administrations": 956,
+        "duplicateCatalogCodes": 0,
+        "recommendationDefinitions": 8
+      },
+      "baselineAfter": {
+        "generatedAt": "2026-07-18T19:06:41.426Z",
+        "catalogTotal": 2875,
+        "catalogActive": 2802,
+        "distinctNormalizedGenerics": 959,
+        "aliases": 6931,
+        "concepts": 2376,
+        "products": 3262,
+        "packages": 3261,
+        "productsWithLegacyLink": 2069
+      },
+      "candidatesEvaluated": 1000,
+      "newCanonicalConcepts": 834,
+      "existingConceptNewVariants": 165,
+      "duplicateRejected": 4,
+      "sourceInsufficient": 0,
+      "conflictReview": 0,
+      "catalogRowsCreated": 1833,
+      "aliasesCreated": 3840,
+      "conceptsCreated": 999,
+      "productsCreated": 1833,
+      "packagesCreated": 1833,
+      "synonymsAddedToExisting": 0,
+      "byPack": {
+        "AIRWAY_RSI": {
+          "variantsCreated": 94
+        },
+        "ALLERGY": {
+          "variantsCreated": 37
+        },
+        "CARDIOLOGY": {
+          "variantsCreated": 263
+        },
+        "DERMATOLOGY": {
+          "variantsCreated": 90
+        },
+        "ENDOCRINE": {
+          "variantsCreated": 152
+        },
+        "ENT_DENTAL": {
+          "variantsCreated": 45
+        },
+        "GASTROENTEROLOGY": {
+          "variantsCreated": 122
+        },
+        "HEMATOLOGY_ONCOLOGY": {
+          "variantsCreated": 72
+        },
+        "INFECTIOUS_DISEASE": {
+          "variantsCreated": 199
+        },
+        "MUSCULOSKELETAL": {
+          "variantsCreated": 61
+        },
+        "NEUROLOGY": {
+          "variantsCreated": 173
+        },
+        "OB": {
+          "variantsCreated": 77
+        },
+        "OPHTHALMOLOGY": {
+          "variantsCreated": 62
+        },
+        "OTHER": {
+          "variantsCreated": 2
+        },
+        "PEDIATRICS": {
+          "variantsCreated": 76
+        },
+        "PSYCHIATRY": {
+          "variantsCreated": 133
+        },
+        "PULMONARY": {
+          "variantsCreated": 137
+        },
+        "RENAL_UROLOGY": {
+          "variantsCreated": 84
+        },
+        "TOXICOLOGY": {
+          "variantsCreated": 91
+        },
+        "TRAUMA": {
+          "variantsCreated": 101
+        }
+      },
+      "conflicts": [],
+      "orderMutations": 0,
+      "marMutations": 0,
+      "chartMutations": 0,
+      "recommendationActivations": 0,
+      "productionCdsActivations": 0,
+      "enterpriseActivations": 0,
+      "liveWave2Concepts": 999,
+      "liveWave2Products": 1833,
+      "importIdempotentSecondApply": {
+        "newCanonicalConcepts": 0,
+        "catalogRowsCreated": 0,
+        "duplicateRejected": 1000
+      }
+    },
+    "candidateCount": 1000,
+    "wave2Concepts": 999,
+    "wave2LinkedProducts": 1833,
+    "orphanVariants": 0,
+    "duplicateCanonicalConcepts": 0,
+    "searchSampleHits": 2071,
+    "measuredNetNewGenerics": 716,
+    "classifierNetNewConcepts": 834,
+    "netNewConcepts": 716,
+    "catalogRowsCreated": 1833,
+    "productsCreated": 1833,
+    "aliasesCreated": 3840,
+    "duplicateRejected": 4,
+    "conflictReview": 0,
+    "sourceInsufficient": 0,
+    "orderMutations": 0,
+    "marMutations": 0,
+    "chartMutations": 0,
+    "recommendationActivations": 0,
+    "productionCdsActivations": 0,
+    "enterpriseActivations": 0,
+    "byPack": {
+      "AIRWAY_RSI": {
+        "variantsCreated": 94
+      },
+      "ALLERGY": {
+        "variantsCreated": 37
+      },
+      "CARDIOLOGY": {
+        "variantsCreated": 263
+      },
+      "DERMATOLOGY": {
+        "variantsCreated": 90
+      },
+      "ENDOCRINE": {
+        "variantsCreated": 152
+      },
+      "ENT_DENTAL": {
+        "variantsCreated": 45
+      },
+      "GASTROENTEROLOGY": {
+        "variantsCreated": 122
+      },
+      "HEMATOLOGY_ONCOLOGY": {
+        "variantsCreated": 72
+      },
+      "INFECTIOUS_DISEASE": {
+        "variantsCreated": 199
+      },
+      "MUSCULOSKELETAL": {
+        "variantsCreated": 61
+      },
+      "NEUROLOGY": {
+        "variantsCreated": 173
+      },
+      "OB": {
+        "variantsCreated": 77
+      },
+      "OPHTHALMOLOGY": {
+        "variantsCreated": 62
+      },
+      "OTHER": {
+        "variantsCreated": 2
+      },
+      "PEDIATRICS": {
+        "variantsCreated": 76
+      },
+      "PSYCHIATRY": {
+        "variantsCreated": 133
+      },
+      "PULMONARY": {
+        "variantsCreated": 137
+      },
+      "RENAL_UROLOGY": {
+        "variantsCreated": 84
+      },
+      "TOXICOLOGY": {
+        "variantsCreated": 91
+      },
+      "TRAUMA": {
+        "variantsCreated": 101
+      }
+    }
+  },
+  "SchemaProbe": {
+    "candidatesPresent": true,
+    "importModulePresent": true,
+    "applyArtifactPresent": true,
+    "baselineArtifactPresent": true
+  },
+  "RegressionEvidence": {
+    "focusedTestsPass": true,
+    "fullRegressionPass": true,
+    "buildPass": true,
+    "typecheckPass": true,
+    "diffCheckPass": true,
+    "certificationIdempotent": true,
+    "importIdempotent": true,
+    "searchValidated": true,
+    "orderingValidated": true
+  },
+  "MigrationRequired": "NO",
+  "MigrationIdentifier": null,
+  "ProductionDeployStatus": "NOT_DEPLOYED",
+  "TargetNetNewConcepts": 750,
+  "ActualNetNewConcepts": 716,
+  "TargetMet": false,
+  "Safety": {
+    "orderMutations": 0,
+    "marMutations": 0,
+    "chartMutations": 0,
+    "recommendationActivations": 0,
+    "productionCdsActivations": 0,
+    "enterpriseActivations": 0
+  },
+  "CertificationIdempotent": "YES",
+  "KnownNonblockingGaps": [
+    "RxNorm/NDC not fabricated — most Wave 2 rows lack terminology mapping",
+    "MedicationConcept historical pollution (acetaminophen fixtures) remains outside Wave 2 codes",
+    "Below-target net-new counts certify WITH_REVIEW_ITEMS, never padded"
+  ]
+}

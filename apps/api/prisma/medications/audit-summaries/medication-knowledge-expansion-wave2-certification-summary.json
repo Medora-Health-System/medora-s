@@ -1,0 +1,148 @@
+{
+  "AcetaminophenIdentityBlocked": "YES",
+  "CertificationIdempotent": "YES",
+  "ClinicalActivationEnabled": "NO",
+  "FinalDecision": "MEDICATION_KNOWLEDGE_EXPANSION_WAVE_2_CERTIFIED",
+  "KnownNonblockingGaps": [
+    "Coverage gaps remain for specialty families not yet present in CatalogMedication",
+    "Wave 2 organizes and enriches existing catalog — does not auto-activate ordering",
+    "Ophthalmology/ENT/Urology packs may have lower catalog match until future ENRICH/CREATE seeds"
+  ],
+  "LiveMetrics": {
+    "AcetaminophenCatalogRows": 15,
+    "AcetaminophenInPacks": 0,
+    "ClinicalActivationEnabled": false,
+    "CoveragePercent": 66,
+    "DuplicateCatalogCodes": 0,
+    "EnterpriseActiveAllowed": false,
+    "FamilyUniverse": 117,
+    "MatchedFamilies": 77,
+    "OrderFromRecommendation": false,
+    "PackCount": 15,
+    "PackCoverage": [
+      {
+        "coveragePercent": 70,
+        "familyCount": 23,
+        "matchedCount": 16,
+        "packKey": "CARDIOLOGY"
+      },
+      {
+        "coveragePercent": 75,
+        "familyCount": 12,
+        "matchedCount": 9,
+        "packKey": "PULMONARY"
+      },
+      {
+        "coveragePercent": 33,
+        "familyCount": 12,
+        "matchedCount": 4,
+        "packKey": "NEUROLOGY"
+      },
+      {
+        "coveragePercent": 83,
+        "familyCount": 18,
+        "matchedCount": 15,
+        "packKey": "INFECTIOUS_DISEASE"
+      },
+      {
+        "coveragePercent": 89,
+        "familyCount": 9,
+        "matchedCount": 8,
+        "packKey": "TRAUMA"
+      },
+      {
+        "coveragePercent": 22,
+        "familyCount": 9,
+        "matchedCount": 2,
+        "packKey": "TOXICOLOGY"
+      },
+      {
+        "coveragePercent": 64,
+        "familyCount": 11,
+        "matchedCount": 7,
+        "packKey": "ENDOCRINE"
+      },
+      {
+        "coveragePercent": 75,
+        "familyCount": 4,
+        "matchedCount": 3,
+        "packKey": "OB"
+      },
+      {
+        "coveragePercent": 89,
+        "familyCount": 9,
+        "matchedCount": 8,
+        "packKey": "PEDIATRICS"
+      },
+      {
+        "coveragePercent": 50,
+        "familyCount": 4,
+        "matchedCount": 2,
+        "packKey": "OPHTHALMOLOGY"
+      },
+      {
+        "coveragePercent": 0,
+        "familyCount": 3,
+        "matchedCount": 0,
+        "packKey": "ENT"
+      },
+      {
+        "coveragePercent": 100,
+        "familyCount": 4,
+        "matchedCount": 4,
+        "packKey": "UROLOGY"
+      },
+      {
+        "coveragePercent": 78,
+        "familyCount": 9,
+        "matchedCount": 7,
+        "packKey": "GASTROENTEROLOGY"
+      },
+      {
+        "coveragePercent": 78,
+        "familyCount": 9,
+        "matchedCount": 7,
+        "packKey": "ALLERGY"
+      },
+      {
+        "coveragePercent": 100,
+        "familyCount": 8,
+        "matchedCount": 8,
+        "packKey": "PSYCHIATRY"
+      }
+    ],
+    "SearchExpansionKeys": 218,
+    "SecondMedicationMaster": false,
+    "TaggedCatalogRows": 325
+  },
+  "MigrationRequired": "NO",
+  "RegressionEvidence": {
+    "buildPass": true,
+    "certificationIdempotent": true,
+    "diffCheckPass": true,
+    "focusedTestsPass": true,
+    "fullRegressionPass": true,
+    "typecheckPass": true
+  },
+  "SchemaProbe": {
+    "cliPresent": true,
+    "docsPresent": true,
+    "evidenceGovernanceReused": true,
+    "noSecondMedicationMasterInWave2Module": true,
+    "runtimeCatalogStillSingle": true,
+    "searchWired": true,
+    "sharedPresent": true,
+    "uiHasPackChips": true,
+    "uiPresent": true
+  },
+  "SecondMedicationMaster": "NO",
+  "auditStatus": "COMPLETE",
+  "catalogClassification": "CURATED",
+  "catalogComplete": false,
+  "certificationId": "MEDUI.MEDICATION_KNOWLEDGE_EXPANSION_WAVE_2_EMERGENCY_MEDICINE_FOUNDATION",
+  "confidence": "HIGH",
+  "dataSource": "database",
+  "generatedAt": "2026-07-18T17:33:01.551Z",
+  "implementationId": "MEDUI.MEDICATION_KNOWLEDGE_EXPANSION_WAVE_2_EM_SPECIALTY_PACKS",
+  "title": "Medication Knowledge Expansion Wave 2 — EM Foundation"
+}
