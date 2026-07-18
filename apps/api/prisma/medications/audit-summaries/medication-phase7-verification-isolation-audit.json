@@ -1,0 +1,16 @@
+{
+  "auditStatus": "COMPLETE",
+  "automaticVerificationEnabled": false,
+  "bulkRealMappingApprovalEnabled": false,
+  "catalogClassification": "CURATED",
+  "catalogComplete": false,
+  "certificationId": "MEDUI.MEDICATION_INTELLIGENCE_PHASE_7_CONTROLLED_EMERGENCY_MEDICATION_BATCH_IMPLEMENTATION",
+  "confidence": "HIGH",
+  "dataSource": "database",
+  "generatedAt": "2026-07-18T00:39:27.056Z",
+  "phase": 7,
+  "phase4SoleMutationAuthority": true,
+  "realBatchExecutedDuringCertification": false,
+  "realVerifiedMappingsCreatedByCertification": 0,
+  "title": "Phase 7 verification isolation audit"
+}

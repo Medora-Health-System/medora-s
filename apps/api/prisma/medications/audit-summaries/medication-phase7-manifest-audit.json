@@ -1,0 +1,28 @@
+{
+  "auditStatus": "COMPLETE",
+  "catalogClassification": "CURATED",
+  "catalogComplete": false,
+  "certificationId": "MEDUI.MEDICATION_INTELLIGENCE_PHASE_7_CONTROLLED_EMERGENCY_MEDICATION_BATCH_IMPLEMENTATION",
+  "clinicalActivationAllowed": false,
+  "confidence": "HIGH",
+  "dataSource": "database",
+  "defaultManifest": {
+    "approvalStatus": "DRAFT",
+    "batchId": "EM_CONTROLLED_BATCH_V1",
+    "batchName": "Emergency Medicine Controlled Medication Batch",
+    "batchStatus": "DRAFT",
+    "batchVersion": "1.0.0",
+    "clinicalActivationAllowed": false,
+    "clinicalDomain": "EMERGENCY_MEDICINE",
+    "dataClassification": "CONTROLLED_REAL_BATCH",
+    "duplicateReviewRequired": true,
+    "expectedMedicationFamilyCount": 121,
+    "humanVerificationRequired": true,
+    "notes": "Phase 7 controlled EM batch. Authentic RxNorm extract required for operator execution; CI uses structural fixtures only. Clinical activation forbidden.",
+    "scope": "CONTROLLED_EMERGENCY_MEDICATION_BATCH"
+  },
+  "generatedAt": "2026-07-18T00:39:27.056Z",
+  "immutableAfterApproval": true,
+  "phase": 7,
+  "title": "Phase 7 manifest audit"
+}

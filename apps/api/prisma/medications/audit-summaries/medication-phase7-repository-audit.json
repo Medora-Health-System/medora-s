@@ -1,0 +1,27 @@
+{
+  "auditStatus": "COMPLETE",
+  "batchCliPath": "/Users/matz/Desktop/medora-s-main/medora-s/apps/api/prisma/medications/batch/run-medication-em-batch.ts",
+  "batchControllerPath": "/Users/matz/Desktop/medora-s-main/medora-s/apps/api/src/medications/batch/medication-batch.controller.ts",
+  "batchServicePath": "/Users/matz/Desktop/medora-s-main/medora-s/apps/api/src/medications/batch/medication-em-batch.service.ts",
+  "catalogClassification": "CURATED",
+  "catalogComplete": false,
+  "certificationId": "MEDUI.MEDICATION_INTELLIGENCE_PHASE_7_CONTROLLED_EMERGENCY_MEDICATION_BATCH_IMPLEMENTATION",
+  "confidence": "HIGH",
+  "dataSource": "database",
+  "generatedAt": "2026-07-18T00:39:27.055Z",
+  "phase": 7,
+  "schema": {
+    "batchCliPresent": true,
+    "batchControllerPresent": true,
+    "batchServicePresent": true,
+    "hasBatchCheckpointModel": true,
+    "hasBatchEntityLinkModel": true,
+    "hasBatchItemModel": true,
+    "hasBatchJobModel": true,
+    "hasBatchManifestModel": true,
+    "hasDuplicateBatchLinkage": true,
+    "migrationPresent": true,
+    "phase65MigrationPresent": true
+  },
+  "title": "Phase 7 repository audit"
+}

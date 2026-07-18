@@ -1,0 +1,17 @@
+{
+  "auditStatus": "COMPLETE",
+  "billingChanged": false,
+  "catalogClassification": "CURATED",
+  "catalogComplete": false,
+  "catalogPreparationClinicallyInactiveOnly": true,
+  "certificationId": "MEDUI.MEDICATION_INTELLIGENCE_PHASE_7_CONTROLLED_EMERGENCY_MEDICATION_BATCH_IMPLEMENTATION",
+  "clinicalActivations": 0,
+  "confidence": "HIGH",
+  "dataSource": "database",
+  "generatedAt": "2026-07-18T00:39:27.056Z",
+  "marChanged": false,
+  "orderingChanged": false,
+  "patientFacingSearchChanged": false,
+  "phase": 7,
+  "title": "Phase 7 catalog isolation audit"
+}

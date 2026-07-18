@@ -1,0 +1,28 @@
+{
+  "auditStatus": "COMPLETE",
+  "catalogClassification": "CURATED",
+  "catalogComplete": false,
+  "certificationId": "MEDUI.MEDICATION_INTELLIGENCE_PHASE_7_CONTROLLED_EMERGENCY_MEDICATION_BATCH_IMPLEMENTATION",
+  "confidence": "HIGH",
+  "curatedFamilyCount": 121,
+  "dataSource": "database",
+  "generatedAt": "2026-07-18T00:39:27.055Z",
+  "inventory": {
+    "blockBatchExecution": false,
+    "existingActiveIdentityKeyCollisions": 0,
+    "existingActiveVerifiedMappings": 1,
+    "existingBatchManifests": 0,
+    "existingCatalogMedications": 1042,
+    "existingConcepts": 1377,
+    "existingPackages": 1428,
+    "existingPilotManifests": 0,
+    "existingProducts": 1429,
+    "existingRealVerifiedMappings": 0,
+    "existingRxNormReleases": 3,
+    "existingSyntheticVerifiedMappings": 1,
+    "existingUnresolvedDuplicateAssessments": 0,
+    "identityCollisionSamples": []
+  },
+  "phase": 7,
+  "title": "Phase 7 pre-batch inventory"
+}

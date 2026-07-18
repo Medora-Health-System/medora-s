@@ -1,0 +1,16 @@
+{
+  "auditStatus": "COMPLETE",
+  "authenticClassification": "AUTHENTIC_NLM_RXNORM",
+  "catalogClassification": "CURATED",
+  "catalogComplete": false,
+  "certificationId": "MEDUI.MEDICATION_INTELLIGENCE_PHASE_7_CONTROLLED_EMERGENCY_MEDICATION_BATCH_IMPLEMENTATION",
+  "ciUsesStructuralFixtureOnly": true,
+  "confidence": "HIGH",
+  "dataSource": "database",
+  "generatedAt": "2026-07-18T00:39:27.056Z",
+  "gitignoredSourcePath": ".local-data/rxnorm/",
+  "importPurpose": "PHASE_7_CONTROLLED_BATCH",
+  "phase": 7,
+  "releaseScope": "CONTROLLED_EMERGENCY_MEDICINE_BATCH",
+  "title": "Phase 7 source governance audit"
+}
