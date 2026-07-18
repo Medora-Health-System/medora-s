@@ -8,6 +8,8 @@ export type CatalogSearchParams = {
   limit: number;
   /** Uniquement pour MEDICATION */
   favoritesFirst?: boolean;
+  /** Knowledge Expansion Wave 2 — EM specialty pack filter */
+  specialtyPack?: string;
 };
 
 /**
@@ -25,6 +27,7 @@ export function createRemoteCatalogSearchAdapter(): CatalogSearchAdapter {
         q: params.q,
         limit: params.limit,
         favoritesFirst: params.favoritesFirst,
+        specialtyPack: params.specialtyPack,
       });
     },
   };

@@ -35,12 +35,18 @@ export type CatalogMedication = {
 
 export async function searchMedications(
   facilityId: string,
-  params: { q: string; limit?: number; favoritesFirst?: boolean }
+  params: {
+    q: string;
+    limit?: number;
+    favoritesFirst?: boolean;
+    specialtyPack?: string;
+  }
 ) {
   const items = await searchCatalog(facilityId, "MEDICATION", {
     q: params.q,
     limit: params.limit,
     favoritesFirst: params.favoritesFirst,
+    specialtyPack: params.specialtyPack,
   });
   return { items };
 }

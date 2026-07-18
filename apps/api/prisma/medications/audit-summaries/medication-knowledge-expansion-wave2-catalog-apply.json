@@ -1,0 +1,126 @@
+{
+  "mode": "APPLY",
+  "programKey": "EM_KNOWLEDGE_EXPANSION_WAVE2_CATALOG_V1",
+  "dryRun": false,
+  "restoredFrom": "first-apply-console-and-live-db",
+  "baselineBefore": {
+    "generatedAt": "2026-07-18T19:05:30.324Z",
+    "catalogTotal": 1042,
+    "catalogActive": 969,
+    "catalogInactive": 73,
+    "distinctNormalizedGenerics": 242,
+    "aliases": 3091,
+    "concepts": 1377,
+    "conceptsActive": 14,
+    "products": 1429,
+    "packages": 1428,
+    "productsWithLegacyLink": 236,
+    "searchAliases": 466,
+    "formularyItems": 898,
+    "rxNormMappedConcepts": 1,
+    "ordersUsingCatalogMed": 3942,
+    "dispenses": 8,
+    "administrations": 956,
+    "duplicateCatalogCodes": 0,
+    "recommendationDefinitions": 8
+  },
+  "baselineAfter": {
+    "generatedAt": "2026-07-18T19:06:41.426Z",
+    "catalogTotal": 2875,
+    "catalogActive": 2802,
+    "distinctNormalizedGenerics": 959,
+    "aliases": 6931,
+    "concepts": 2376,
+    "products": 3262,
+    "packages": 3261,
+    "productsWithLegacyLink": 2069
+  },
+  "candidatesEvaluated": 1000,
+  "newCanonicalConcepts": 834,
+  "existingConceptNewVariants": 165,
+  "duplicateRejected": 4,
+  "sourceInsufficient": 0,
+  "conflictReview": 0,
+  "catalogRowsCreated": 1833,
+  "aliasesCreated": 3840,
+  "conceptsCreated": 999,
+  "productsCreated": 1833,
+  "packagesCreated": 1833,
+  "synonymsAddedToExisting": 0,
+  "byPack": {
+    "AIRWAY_RSI": {
+      "variantsCreated": 94
+    },
+    "ALLERGY": {
+      "variantsCreated": 37
+    },
+    "CARDIOLOGY": {
+      "variantsCreated": 263
+    },
+    "DERMATOLOGY": {
+      "variantsCreated": 90
+    },
+    "ENDOCRINE": {
+      "variantsCreated": 152
+    },
+    "ENT_DENTAL": {
+      "variantsCreated": 45
+    },
+    "GASTROENTEROLOGY": {
+      "variantsCreated": 122
+    },
+    "HEMATOLOGY_ONCOLOGY": {
+      "variantsCreated": 72
+    },
+    "INFECTIOUS_DISEASE": {
+      "variantsCreated": 199
+    },
+    "MUSCULOSKELETAL": {
+      "variantsCreated": 61
+    },
+    "NEUROLOGY": {
+      "variantsCreated": 173
+    },
+    "OB": {
+      "variantsCreated": 77
+    },
+    "OPHTHALMOLOGY": {
+      "variantsCreated": 62
+    },
+    "OTHER": {
+      "variantsCreated": 2
+    },
+    "PEDIATRICS": {
+      "variantsCreated": 76
+    },
+    "PSYCHIATRY": {
+      "variantsCreated": 133
+    },
+    "PULMONARY": {
+      "variantsCreated": 137
+    },
+    "RENAL_UROLOGY": {
+      "variantsCreated": 84
+    },
+    "TOXICOLOGY": {
+      "variantsCreated": 91
+    },
+    "TRAUMA": {
+      "variantsCreated": 101
+    }
+  },
+  "conflicts": [],
+  "orderMutations": 0,
+  "marMutations": 0,
+  "chartMutations": 0,
+  "recommendationActivations": 0,
+  "productionCdsActivations": 0,
+  "enterpriseActivations": 0,
+  "liveWave2Concepts": 999,
+  "liveWave2Products": 1833,
+  "importIdempotentSecondApply": {
+    "newCanonicalConcepts": 0,
+    "catalogRowsCreated": 0,
+    "duplicateRejected": 1000
+  }
+}

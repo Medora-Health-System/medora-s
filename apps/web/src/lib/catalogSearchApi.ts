@@ -21,12 +21,19 @@ function pathForType(type: CatalogType): string {
 export async function searchCatalog(
   facilityId: string,
   catalogType: CatalogType,
-  params: { q: string; limit?: number; favoritesFirst?: boolean; purpose?: "order" | "documentation" }
+  params: {
+    q: string;
+    limit?: number;
+    favoritesFirst?: boolean;
+    specialtyPack?: string;
+    purpose?: "order" | "documentation";
+  }
 ): Promise<CatalogSearchItem[]> {
   const q = new URLSearchParams();
   q.set("q", params.q.trim());
   if (params.limit != null) q.set("limit", String(params.limit));
   if (params.favoritesFirst) q.set("favoritesFirst", "true");
+  if (params.specialtyPack) q.set("specialtyPack", params.specialtyPack);
   if (params.purpose) q.set("purpose", params.purpose);
   const res = (await apiFetch(`${pathForType(catalogType)}?${q.toString()}`, {
     facilityId,

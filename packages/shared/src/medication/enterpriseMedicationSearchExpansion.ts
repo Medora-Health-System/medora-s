@@ -9,6 +9,7 @@ import {
 } from "./enterpriseMedicationAliasManifest.js";
 import { buildIvFluidSearchQueryExpansions } from "./enterpriseIvFluidsSearchAliasManifest.js";
 import { buildWave1SearchQueryExpansions } from "./enterpriseFormularyWave1SearchAliasManifest.js";
+import { buildMkExpansionWave2SearchQueryExpansions } from "./medicationKnowledgeExpansionWave2.js";
 
 export function normalizeEnterpriseSearchToken(value: string): string {
   return value.trim().toLowerCase().replace(/\s+/g, " ");
@@ -58,6 +59,13 @@ export function buildEnterpriseMedicationSearchQueryExpansions(): Readonly<
   }
 
   for (const [key, aliases] of Object.entries(buildWave1SearchQueryExpansions())) {
+    add(key, ...aliases);
+    for (const alias of aliases) add(alias, key);
+  }
+
+  for (const [key, aliases] of Object.entries(
+    buildMkExpansionWave2SearchQueryExpansions()
+  )) {
     add(key, ...aliases);
     for (const alias of aliases) add(alias, key);
   }

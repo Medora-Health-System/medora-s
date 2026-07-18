@@ -1,0 +1,105 @@
+{
+  "programKey": "EM_KNOWLEDGE_EXPANSION_WAVE2_V1",
+  "dryRun": false,
+  "taggedCatalogRows": 325,
+  "aliasesUpserted": 1743,
+  "familyUniverse": 117,
+  "packCount": 15,
+  "familyCount": 117,
+  "matchedFamilyCount": 79,
+  "coveragePercent": 68,
+  "packs": [
+    {
+      "packKey": "CARDIOLOGY",
+      "familyCount": 23,
+      "matchedCount": 16,
+      "coveragePercent": 70
+    },
+    {
+      "packKey": "PULMONARY",
+      "familyCount": 12,
+      "matchedCount": 9,
+      "coveragePercent": 75
+    },
+    {
+      "packKey": "NEUROLOGY",
+      "familyCount": 12,
+      "matchedCount": 4,
+      "coveragePercent": 33
+    },
+    {
+      "packKey": "INFECTIOUS_DISEASE",
+      "familyCount": 18,
+      "matchedCount": 15,
+      "coveragePercent": 83
+    },
+    {
+      "packKey": "TRAUMA",
+      "familyCount": 9,
+      "matchedCount": 8,
+      "coveragePercent": 89
+    },
+    {
+      "packKey": "TOXICOLOGY",
+      "familyCount": 9,
+      "matchedCount": 2,
+      "coveragePercent": 22
+    },
+    {
+      "packKey": "ENDOCRINE",
+      "familyCount": 11,
+      "matchedCount": 9,
+      "coveragePercent": 82
+    },
+    {
+      "packKey": "OB",
+      "familyCount": 4,
+      "matchedCount": 3,
+      "coveragePercent": 75
+    },
+    {
+      "packKey": "PEDIATRICS",
+      "familyCount": 9,
+      "matchedCount": 8,
+      "coveragePercent": 89
+    },
+    {
+      "packKey": "OPHTHALMOLOGY",
+      "familyCount": 4,
+      "matchedCount": 2,
+      "coveragePercent": 50
+    },
+    {
+      "packKey": "ENT",
+      "familyCount": 3,
+      "matchedCount": 0,
+      "coveragePercent": 0
+    },
+    {
+      "packKey": "UROLOGY",
+      "familyCount": 4,
+      "matchedCount": 4,
+      "coveragePercent": 100
+    },
+    {
+      "packKey": "GASTROENTEROLOGY",
+      "familyCount": 9,
+      "matchedCount": 7,
+      "coveragePercent": 78
+    },
+    {
+      "packKey": "ALLERGY",
+      "familyCount": 9,
+      "matchedCount": 7,
+      "coveragePercent": 78
+    },
+    {
+      "packKey": "PSYCHIATRY",
+      "familyCount": 8,
+      "matchedCount": 8,
+      "coveragePercent": 100
+    }
+  ],
+  "acetaminophenExcluded": true,
+  "clinicalActivationEnabled": false
+}

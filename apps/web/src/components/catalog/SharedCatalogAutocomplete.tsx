@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useRef, useEffect, useMemo } from "react";
+import React, { useRef, useEffect, useMemo, useState } from "react";
 import { useSharedCatalogSearch } from "@/hooks/useSharedCatalogSearch";
 import {
   createRemoteCatalogSearchAdapter,
@@ -12,8 +12,10 @@ import type { CatalogSearchItem, CatalogType } from "@/lib/catalogSearchTypes";
 import { getCatalogSearchItemDisplayLabel } from "@/lib/catalogDisplayLabel";
 import { formatCatalogMedicationSubtitleForLocale } from "@/lib/localizedMedicationDisplay";
 import { MedicationCanonicalBadges } from "@/components/medication/MedicationCanonicalBadges";
-import { compactMedicationRoute } from "@medora/shared";
+import { compactMedicationRoute, MK_EXPANSION_WAVE2_SPECIALTY_PACKS } from "@medora/shared";
 import { useI18n } from "@/lib/i18n";
+
+const EM_SPECIALTY_PACK_CHIPS = MK_EXPANSION_WAVE2_SPECIALTY_PACKS.slice(0, 8);
 
 function catalogListPrimaryLine(
   item: CatalogSearchItem,
@@ -184,6 +186,7 @@ export function SharedCatalogAutocomplete({
 }: SharedCatalogAutocompleteProps) {
   void _value;
   const { t, language } = useI18n();
+  const [specialtyPack, setSpecialtyPack] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const adapter = useMemo(
@@ -196,6 +199,7 @@ export function SharedCatalogAutocomplete({
     minChars,
     debounceMs: 250,
     favoritesFirst: catalogType === "MEDICATION" ? favoritesFirst : false,
+    specialtyPack: catalogType === "MEDICATION" ? specialtyPack : null,
   });
 
   useEffect(() => {
@@ -287,6 +291,56 @@ export function SharedCatalogAutocomplete({
         aria-autocomplete="list"
         aria-expanded={showList}
       />
+      {catalogType === "MEDICATION" ? (
+        <div
+          style={{
+            display: "flex",
+            flexWrap: "wrap",
+            gap: 4,
+            marginTop: 6,
+          }}
+          role="group"
+          aria-label={t("medicationKnowledgeExpansionWave2.specialtyPacks")}
+        >
+          <button
+            type="button"
+            disabled={disabled}
+            onClick={() => setSpecialtyPack(null)}
+            style={{
+              fontSize: 11,
+              padding: "2px 8px",
+              borderRadius: 9999,
+              border: "1px solid #cbd5e1",
+              background: specialtyPack == null ? "#e2e8f0" : "#fff",
+              cursor: "pointer",
+            }}
+          >
+            {t("medicationKnowledgeExpansionWave2.packAll")}
+          </button>
+          {EM_SPECIALTY_PACK_CHIPS.map((pack) => (
+            <button
+              key={pack.packKey}
+              type="button"
+              disabled={disabled}
+              onClick={() =>
+                setSpecialtyPack((cur) =>
+                  cur === pack.packKey ? null : pack.packKey
+                )
+              }
+              style={{
+                fontSize: 11,
+                padding: "2px 8px",
+                borderRadius: 9999,
+                border: "1px solid #cbd5e1",
+                background: specialtyPack === pack.packKey ? "#fef3c7" : "#fff",
+                cursor: "pointer",
+              }}
+            >
+              {language === "fr" ? pack.titleFr : pack.titleEn}
+            </button>
+          ))}
+        </div>
+      ) : null}
       {search.query.trim().length > 0 && search.query.trim().length < minChars && (
         <div style={{ fontSize: 12, color: "#666", marginTop: 4 }}>
           {fillTemplate(t("sharedCatalogAutocomplete.minCharsHint"), { minChars })}

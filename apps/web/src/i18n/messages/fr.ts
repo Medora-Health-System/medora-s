@@ -4226,6 +4226,10 @@ export default {
     metricPilots: "Pilotes actifs",
     errorLoad: "Impossible de charger le centre d’opérations Phase 18.",
   },
+  medicationKnowledgeExpansionWave2: {
+    specialtyPacks: "Packs spécialisés urgences",
+    packAll: "Tous",
+  },
   highRiskMedicationReview: {
     title: "Approbation médicaments à risque élevé",
     intro:
@@ -4439,6 +4443,7 @@ export default {
     openPhase16Recommendations: "Recommandations médicaments Phase 16 →",
     openPhase17Pilot: "Projet pilote contrôlé Phase 17 →",
     openPhase18Ops: "Centre d’opérations Phase 18 →",
+    openWave2Expansion: "Packs spécialisés médicaments urgence (Vague 2) →",
     activationReview: {
       intro:
         "Produits canoniques inactifs promus en attente d’approbation gouvernance avant la file d’activation contrôlée.",

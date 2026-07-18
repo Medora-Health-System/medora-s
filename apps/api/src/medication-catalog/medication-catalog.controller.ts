@@ -37,6 +37,7 @@ export class MedicationCatalogController {
       q: parsed.data.q,
       limit: parsed.data.limit,
       favoritesFirst: parsed.data.favoritesFirst,
+      specialtyPack: parsed.data.specialtyPack,
       pilotScope: {
         facilityId,
         userId: req.user?.userId,

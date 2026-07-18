@@ -6,7 +6,10 @@ import { searchMedications, type MedicationSearchItem } from "@/lib/pharmacyApi"
 const DEBOUNCE_MS = 250;
 const MIN_CHARS = 2;
 
-export function useMedicationSearch(facilityId: string | null, options?: { favoritesFirst?: boolean; limit?: number }) {
+export function useMedicationSearch(
+  facilityId: string | null,
+  options?: { favoritesFirst?: boolean; limit?: number; specialtyPack?: string | null }
+) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<MedicationSearchItem[]>([]);
   const [loading, setLoading] = useState(false);
@@ -27,6 +30,7 @@ export function useMedicationSearch(facilityId: string | null, options?: { favor
           q: q.trim(),
           limit: options?.limit ?? 20,
           favoritesFirst: options?.favoritesFirst ?? true,
+          specialtyPack: options?.specialtyPack ?? undefined,
         });
         setResults(res.items ?? []);
         setSelectedIndex(-1);
@@ -36,7 +40,7 @@ export function useMedicationSearch(facilityId: string | null, options?: { favor
         setLoading(false);
       }
     },
-    [facilityId, options?.limit, options?.favoritesFirst]
+    [facilityId, options?.limit, options?.favoritesFirst, options?.specialtyPack]
   );
 
   useEffect(() => {

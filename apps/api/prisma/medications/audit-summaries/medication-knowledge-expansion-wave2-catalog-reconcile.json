@@ -1,0 +1,367 @@
+{
+  "mode": "RECONCILE",
+  "duplicateGroupsFound": 93,
+  "groupsProcessed": 93,
+  "productsRelinked": 150,
+  "conceptsRetired": 110,
+  "remainingActiveDuplicateGenerics": 0,
+  "details": [
+    {
+      "generic": "naloxone",
+      "keep": "EM_W2C_NALOXONE",
+      "retired": [
+        "EM_W2C_NALOXONE_PEDIATRIC"
+      ]
+    },
+    {
+      "generic": "cetirizine",
+      "keep": "EM_W2C_CETIRIZINE",
+      "retired": [
+        "EM_W2C_CETIRIZINE_DERM"
+      ]
+    },
+    {
+      "generic": "amitriptyline",
+      "keep": "EM_W2C_AMITRIPTYLINE",
+      "retired": [
+        "EM_W2C_AMITRIPTYLINE_MIGRAINE"
+      ]
+    },
+    {
+      "generic": "azithromycin",
+      "keep": "EM_W2C_AZITHROMYCIN",
+      "retired": [
+        "EM_W2C_AZITHROMYCIN_PREGNANCY",
+        "EM_W2C_AZITHROMYCIN_SUSPENSION"
+      ]
+    },
+    {
+      "generic": "enoxaparin",
+      "keep": "EM_W2C_ENOXAPARIN",
+      "retired": [
+        "EM_W2C_ENOXAPARIN_PREGNANCY"
+      ]
+    },
+    {
+      "generic": "bupivacaine",
+      "keep": "EM_W2C_BUPIVACAINE",
+      "retired": [
+        "EM_W2C_BUPIVACAINE_EPIDURAL"
+      ]
+    },
+    {
+      "generic": "cefiderocol",
+      "keep": "EM_W2C_CEFIDEROCOL",
+      "retired": [
+        "EM_W2C_CEFIDEROCOL_CUTI",
+        "EM_W2C_CEFIDEROCOL_SULFATE"
+      ]
+    },
+    {
+      "generic": "atropine",
+      "keep": "EM_W2C_ATROPINE",
+      "retired": [
+        "EM_W2C_ATROPINE_PEDIATRIC_BRADYCARDIA"
+      ]
+    },
+    {
+      "generic": "hydralazine",
+      "keep": "EM_W2C_HYDRALAZINE",
+      "retired": [
+        "EM_W2C_HYDRALAZINE_PREECLAMPSIA"
+      ]
+    },
+    {
+      "generic": "ropivacaine",
+      "keep": "EM_W2C_ROPIVACAINE",
+      "retired": [
+        "EM_W2C_ROPIVACAINE_EPIDURAL"
+      ]
+    },
+    {
+      "generic": "valproate sodium",
+      "keep": "EM_W2C_VALPROATE_SODIUM",
+      "retired": [
+        "EM_W2C_VALPROATE",
+        "EM_W2C_VALPROIC_ACID_IV"
+      ]
+    },
+    {
+      "generic": "dupilumab",
+      "keep": "EM_W2C_DUPILUMAB",
+      "retired": [
+        "EM_W2C_DUPILUMAB_DERM"
+      ]
+    },
+    {
+      "generic": "prazosin",
+      "keep": "EM_W2C_PRAZOSIN",
+      "retired": [
+        "EM_W2C_PRAZOSIN_MIGRAINE"
+      ]
+    },
+    {
+      "generic": "methotrexate",
+      "keep": "EM_W2C_METHOTREXATE",
+      "retired": [
+        "EM_W2C_METHOTREXATE_ECTOPIC"
+      ]
+    },
+    {
+      "generic": "topiramate",
+      "keep": "EM_W2C_TOPIRAMATE",
+      "retired": [
+        "EM_W2C_TOPIRAMATE_MIGRAINE"
+      ]
+    },
+    {
+      "generic": "clindamycin",
+      "keep": "EM_W2C_CLINDAMYCIN",
+      "retired": [
+        "EM_W2C_CLINDAMYCIN_PREGNANCY",
+        "EM_W2C_CLINDAMYCIN_DERM_ORAL",
+        "EM_W2C_CLINDAMYCIN_TOPICAL"
+      ]
+    },
+    {
+      "generic": "cephalexin",
+      "keep": "EM_W2C_CEPHALEXIN",
+      "retired": [
+        "EM_W2C_CEPHALEXIN_DERM",
+        "EM_W2C_CEPHALEXIN_SUSPENSION"
+      ]
+    },
+    {
+      "generic": "ephedrine",
+      "keep": "EM_W2C_EPHEDRINE",
+      "retired": [
+        "EM_W2C_EPHEDRINE_SPINAL_HYPOTENSION"
+      ]
+    },
+    {
+      "generic": "ketoconazole",
+      "keep": "EM_W2C_KETOCONAZOLE",
+      "retired": [
+        "EM_W2C_KETOCONAZOLE_TOPICAL"
+      ]
+    },
+    {
+      "generic": "doxycycline",
+      "keep": "EM_W2C_DOXYCYCLINE",
+      "retired": [
+        "EM_W2C_DOXYCYCLINE_DERM"
+      ]
+    },
+    {
+      "generic": "dapsone",
+      "keep": "EM_W2C_DAPSONE",
+      "retired": [
+        "EM_W2C_DAPSONE_TOPICAL"
+      ]
+    },
+    {
+      "generic": "vasopressin",
+      "keep": "EM_W2C_VASOPRESSIN",
+      "retired": [
+        "EM_W2C_VASOPRESSIN_CARDIAC_ARREST"
+      ]
+    },
+    {
+      "generic": "dalbavancin",
+      "keep": "EM_W2C_DALBAVANCIN",
+      "retired": [
+        "EM_W2C_DALBAVANCIN_SKIN"
+      ]
+    },
+    {
+      "generic": "morphine",
+      "keep": "EM_W2C_MORPHINE",
+      "retired": [
+        "EM_W2C_MORPHINE_PEDIATRIC_ANALGESIA"
+      ]
+    },
+    {
+      "generic": "normal saline",
+      "keep": "EM_W2C_NORMAL_SALINE",
+      "retired": [
+        "EM_W2C_NORMAL_SALINE_BOLUS_PEDIATRIC"
+      ]
+    },
+    {
+      "generic": "phenobarbital",
+      "keep": "EM_W2C_PHENOBARBITAL",
+      "retired": [
+        "EM_W2C_PHENOBARBITAL_PEDIATRIC_ELIXIR"
+      ]
+    },
+    {
+      "generic": "rocuronium",
+      "keep": "EM_W2C_ROCURONIUM",
+      "retired": [
+        "EM_W2C_ROCURONIUM_PEDIATRIC_RSI"
+      ]
+    },
+    {
+      "generic": "clotrimazole",
+      "keep": "EM_W2C_CLOTRIMAZOLE",
+      "retired": [
+        "EM_W2C_CLOTRIMAZOLE_TOPICAL"
+      ]
+    },
+    {
+      "generic": "oxytocin",
+      "keep": "EM_W2C_OXYTOCIN",
+      "retired": [
+        "EM_W2C_OXYTOCIN_INFUSION"
+      ]
+    },
+    {
+      "generic": "hydrocortisone",
+      "keep": "EM_W2C_HYDROCORTISONE",
+      "retired": [
+        "EM_W2C_HYDROCORTISONE_TOPICAL"
+      ]
+    },
+    {
+      "generic": "midazolam",
+      "keep": "EM_W2C_MIDAZOLAM",
+      "retired": [
+        "EM_W2C_MIDAZOLAM_BUCCAL"
+      ]
+    },
+    {
+      "generic": "racemic epinephrine",
+      "keep": "EM_W2C_RACEMIC_EPINEPHRINE",
+      "retired": [
+        "EM_W2C_RACEMIC_EPINEPHRINE_CROUP"
+      ]
+    },
+    {
+      "generic": "triamcinolone",
+      "keep": "EM_W2C_TRIAMCINOLONE",
+      "retired": [
+        "EM_W2C_TRIAMCINOLONE_TOPICAL"
+      ]
+    },
+    {
+      "generic": "prednisone",
+      "keep": "EM_W2C_PREDNISONE",
+      "retired": [
+        "EM_W2C_PREDNISONE_DERM"
+      ]
+    },
+    {
+      "generic": "hypertonic saline 3%",
+      "keep": "EM_W2C_HYPERTONIC_SALINE_3",
+      "retired": [
+        "EM_W2C_HYPERTONIC_SALINE_NEBULIZER_PEDIATRIC"
+      ]
+    },
+    {
+      "generic": "labetalol",
+      "keep": "EM_W2C_LABETALOL",
+      "retired": [
+        "EM_W2C_LABETALOL_PREECLAMPSIA"
+      ]
+    },
+    {
+      "generic": "amoxicillin/clavulanate",
+      "keep": "EM_W2C_AMOXICILLIN_CLAVULANATE",
+      "retired": [
+        "EM_W2C_AMOXICILLIN_CLAVULANATE_SUSPENSION"
+      ]
+    },
+    {
+      "generic": "misoprostol",
+      "keep": "EM_W2C_MISOPROSTOL",
+      "retired": [
+        "EM_W2C_MISOPROSTOL_PPH"
+      ]
+    },
+    {
+      "generic": "cefazolin",
+      "keep": "EM_W2C_CEFAZOLIN",
+      "retired": [
+        "EM_W2C_CEFAZOLIN_SURGICAL_OB"
+      ]
+    },
+    {
+      "generic": "terbutaline",
+      "keep": "EM_W2C_TERBUTALINE",
+      "retired": [
+        "EM_W2C_TERBUTALINE_TOCOLYSIS"
+      ]
+    },
+    {
+      "generic": "erythromycin",
+      "keep": "EM_W2C_ERYTHROMYCIN_TOPICAL",
+      "retired": [
+        "EM_W2C_ERYTHROMYCIN_OPHTHALMIC_PROPHYLAXIS"
+      ]
+    },
+    {
+      "generic": "cefdinir",
+      "keep": "EM_W2C_CEFDINIR",
+      "retired": [
+        "EM_W2C_CEFDINIR_SUSPENSION"
+      ]
+    },
+    {
+      "generic": "doxylamine/pyridoxine",
+      "keep": "EM_W2C_DOXYLAMINE_PYRIDOXINE",
+      "retired": [
+        "EM_W2C_DOXYLAMINE_PYRIDOXINE_NAUSEA"
+      ]
+    },
+    {
+      "generic": "propranolol",
+      "keep": "EM_W2C_PROPRANOLOL",
+      "retired": [
+        "EM_W2C_PROPRANOLOL_MIGRAINE"
+      ]
+    },
+    {
+      "generic": "levetiracetam",
+      "keep": "EM_W2C_LEVETIRACETAM",
+      "retired": [
+        "EM_W2C_LEVETIRACETAM_PEDIATRIC_IV"
+      ]
+    },
+    {
+      "generic": "ibuprofen",
+      "keep": "EM_W2C_IBUPROFEN",
+      "retired": [
+        "EM_W2C_IBUPROFEN_SUSPENSION_PEDIATRIC"
+      ]
+    },
+    {
+      "generic": "acetaminophen",
+      "keep": "EM_W2C_ACETAMINOPHEN",
+      "retired": [
+        "EM_W2C_ACETAMINOPHEN_SUSPENSION_PEDIATRIC"
+      ]
+    },
+    {
+      "generic": "amiodarone",
+      "keep": "EM_W2C_AMIODARONE",
+      "retired": [
+        "EM_W2C_AMIODARONE_PEDIATRIC_ARREST"
+      ]
+    },
+    {
+      "generic": "vancomycin",
+      "keep": "EM_W2C_VANCOMYCIN_GBS",
+      "retired": [
+        "EM_W2C_VANCOMYCIN_DERM"
+      ]
+    },
+    {
+      "generic": "cefotaxime",
+      "keep": "EM_W2C_CEFOTAXIME",
+      "retired": [
+        "EM_W2C_CEFOTAXIME_MENINGITIS_PEDIATRIC"
+      ]
+    }
+  ],
+  "detailsTruncated": true
+}

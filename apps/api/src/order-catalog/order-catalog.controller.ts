@@ -80,6 +80,7 @@ export class OrderCatalogController {
       q: parsed.data.q,
       limit: parsed.data.limit,
       favoritesFirst: parsed.data.favoritesFirst ?? false,
+      specialtyPack: parsed.data.specialtyPack,
       purpose: parsed.data.purpose ?? "order",
       pilotScope: {
         facilityId,

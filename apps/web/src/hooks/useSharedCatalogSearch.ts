@@ -16,12 +16,14 @@ export function useSharedCatalogSearch(
     minChars?: number;
     debounceMs?: number;
     favoritesFirst?: boolean;
+    specialtyPack?: string | null;
   }
 ) {
   const limit = options?.limit ?? 20;
   const minChars = options?.minChars ?? DEFAULT_MIN_CHARS;
   const debounceMs = options?.debounceMs ?? DEFAULT_DEBOUNCE_MS;
   const favoritesFirst = options?.favoritesFirst ?? false;
+  const specialtyPack = options?.specialtyPack ?? undefined;
 
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<CatalogSearchItem[]>([]);
@@ -44,7 +46,12 @@ export function useSharedCatalogSearch(
           catalogType,
           q: q.trim(),
           limit,
-          ...(catalogType === "MEDICATION" ? { favoritesFirst } : {}),
+          ...(catalogType === "MEDICATION"
+            ? {
+                favoritesFirst,
+                ...(specialtyPack ? { specialtyPack } : {}),
+              }
+            : {}),
         });
         setResults(items);
         setSelectedIndex(-1);
@@ -54,7 +61,7 @@ export function useSharedCatalogSearch(
         setLoading(false);
       }
     },
-    [adapter, facilityId, catalogType, limit, minChars, favoritesFirst]
+    [adapter, facilityId, catalogType, limit, minChars, favoritesFirst, specialtyPack]
   );
 
   useEffect(() => {

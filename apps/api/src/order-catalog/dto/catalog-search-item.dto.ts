@@ -84,6 +84,16 @@ export const catalogSearchQuerySchema = z.object({
     .union([z.literal("true"), z.literal("false"), z.literal("1"), z.literal("0")])
     .optional()
     .transform((v) => v === "true" || v === "1"),
+  /**
+   * Knowledge Expansion Wave 2 — optional EM specialty pack filter (e.g. CARDIOLOGY).
+   * Matches pack marker in searchText; does not redesign ordering UI.
+   */
+  specialtyPack: z
+    .string()
+    .trim()
+    .max(64)
+    .regex(/^[A-Z][A-Z0-9_]*$/)
+    .optional(),
   /** `documentation` skips order-search activation gate (triage home med / allergy history). */
   purpose: catalogSearchPurposeSchema,
 });

@@ -4261,6 +4261,10 @@ export default {
     metricPilots: "Active pilots",
     errorLoad: "Unable to load Phase 18 operations center.",
   },
+  medicationKnowledgeExpansionWave2: {
+    specialtyPacks: "Emergency specialty packs",
+    packAll: "All",
+  },
   highRiskMedicationReview: {
     title: "High-risk medication approval",
     intro:
@@ -4473,6 +4477,7 @@ export default {
     openPhase16Recommendations: "Phase 16 medication recommendations →",
     openPhase17Pilot: "Phase 17 controlled pilot →",
     openPhase18Ops: "Phase 18 operations center →",
+    openWave2Expansion: "EM medication specialty packs (Wave 2) →",
     activationReview: {
       intro:
         "Promoted inactive canonical products awaiting governance approval before the controlled activation queue.",

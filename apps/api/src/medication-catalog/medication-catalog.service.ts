@@ -58,6 +58,7 @@ export class MedicationCatalogService {
       q: string;
       limit: number;
       favoritesFirst?: boolean;
+      specialtyPack?: string;
       purpose?: "order" | "documentation";
       pilotScope?: PilotScopeInput;
     }
@@ -68,8 +69,29 @@ export class MedicationCatalogService {
     if (!q) return { items: [] };
 
     const searchTerms = expandMedicationSearchQuery(q);
+    const packMarker = query.specialtyPack
+      ? `EM_PACK:${query.specialtyPack.trim().toUpperCase()}`
+      : null;
+    const baseWhere = buildCatalogMedicationVisibilityWhere(searchTerms);
     const byCatalog = await this.prisma.catalogMedication.findMany({
-      where: buildCatalogMedicationVisibilityWhere(searchTerms),
+      where: packMarker
+        ? {
+            AND: [
+              baseWhere,
+              {
+                OR: [
+                  { searchText: { contains: packMarker, mode: "insensitive" } },
+                  {
+                    therapeuticClass: {
+                      contains: query.specialtyPack!,
+                      mode: "insensitive",
+                    },
+                  },
+                ],
+              },
+            ],
+          }
+        : baseWhere,
       orderBy: [{ isEssential: "desc" }, { sortPriority: "asc" }, { name: "asc" }],
       take: limit * 3,
     });

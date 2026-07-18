@@ -1,0 +1,163 @@
+{
+  "mode": "VERIFY",
+  "programKey": "EM_KNOWLEDGE_EXPANSION_WAVE2_CATALOG_V1",
+  "dryRun": true,
+  "baselineBefore": {
+    "generatedAt": "2026-07-18T19:06:19.362Z",
+    "catalogTotal": 2875,
+    "catalogActive": 2802,
+    "catalogInactive": 73,
+    "distinctNormalizedGenerics": 958,
+    "aliases": 6931,
+    "concepts": 2376,
+    "conceptsActive": 14,
+    "products": 3262,
+    "packages": 3261,
+    "productsWithLegacyLink": 2069,
+    "searchAliases": 466,
+    "formularyItems": 898,
+    "rxNormMappedConcepts": 1,
+    "ordersUsingCatalogMed": 3942,
+    "dispenses": 8,
+    "administrations": 956,
+    "duplicateCatalogCodes": 0,
+    "recommendationDefinitions": 8
+  },
+  "baselineAfter": {
+    "generatedAt": "2026-07-18T19:06:19.385Z",
+    "catalogTotal": 2875,
+    "catalogActive": 2802,
+    "catalogInactive": 73,
+    "distinctNormalizedGenerics": 958,
+    "aliases": 6931,
+    "concepts": 2376,
+    "conceptsActive": 14,
+    "products": 3262,
+    "packages": 3261,
+    "productsWithLegacyLink": 2069,
+    "searchAliases": 466,
+    "formularyItems": 898,
+    "rxNormMappedConcepts": 1,
+    "ordersUsingCatalogMed": 3942,
+    "dispenses": 8,
+    "administrations": 956,
+    "duplicateCatalogCodes": 0,
+    "recommendationDefinitions": 8
+  },
+  "candidatesEvaluated": 1000,
+  "newCanonicalConcepts": 0,
+  "existingConceptNewVariants": 0,
+  "duplicateRejected": 1000,
+  "sourceInsufficient": 0,
+  "conflictReview": 0,
+  "catalogRowsCreated": 0,
+  "aliasesCreated": 0,
+  "conceptsCreated": 0,
+  "productsCreated": 0,
+  "packagesCreated": 0,
+  "synonymsAddedToExisting": 0,
+  "byPack": {
+    "CARDIOLOGY": {
+      "candidates": 108,
+      "netNewConcepts": 0,
+      "variantsCreated": 0
+    },
+    "AIRWAY_RSI": {
+      "candidates": 49,
+      "netNewConcepts": 0,
+      "variantsCreated": 0
+    },
+    "PULMONARY": {
+      "candidates": 56,
+      "netNewConcepts": 0,
+      "variantsCreated": 0
+    },
+    "INFECTIOUS_DISEASE": {
+      "candidates": 87,
+      "netNewConcepts": 0,
+      "variantsCreated": 0
+    },
+    "NEUROLOGY": {
+      "candidates": 81,
+      "netNewConcepts": 0,
+      "variantsCreated": 0
+    },
+    "TOXICOLOGY": {
+      "candidates": 48,
+      "netNewConcepts": 0,
+      "variantsCreated": 0
+    },
+    "ENDOCRINE": {
+      "candidates": 58,
+      "netNewConcepts": 0,
+      "variantsCreated": 0
+    },
+    "GASTROENTEROLOGY": {
+      "candidates": 55,
+      "netNewConcepts": 0,
+      "variantsCreated": 0
+    },
+    "ALLERGY": {
+      "candidates": 18,
+      "netNewConcepts": 0,
+      "variantsCreated": 0
+    },
+    "TRAUMA": {
+      "candidates": 43,
+      "netNewConcepts": 0,
+      "variantsCreated": 0
+    },
+    "OB": {
+      "candidates": 52,
+      "netNewConcepts": 0,
+      "variantsCreated": 0
+    },
+    "PEDIATRICS": {
+      "candidates": 54,
+      "netNewConcepts": 0,
+      "variantsCreated": 0
+    },
+    "PSYCHIATRY": {
+      "candidates": 47,
+      "netNewConcepts": 0,
+      "variantsCreated": 0
+    },
+    "RENAL_UROLOGY": {
+      "candidates": 48,
+      "netNewConcepts": 0,
+      "variantsCreated": 0
+    },
+    "OPHTHALMOLOGY": {
+      "candidates": 38,
+      "netNewConcepts": 0,
+      "variantsCreated": 0
+    },
+    "ENT_DENTAL": {
+      "candidates": 26,
+      "netNewConcepts": 0,
+      "variantsCreated": 0
+    },
+    "DERMATOLOGY": {
+      "candidates": 60,
+      "netNewConcepts": 0,
+      "variantsCreated": 0
+    },
+    "MUSCULOSKELETAL": {
+      "candidates": 33,
+      "netNewConcepts": 0,
+      "variantsCreated": 0
+    },
+    "HEMATOLOGY_ONCOLOGY": {
+      "candidates": 39,
+      "netNewConcepts": 0,
+      "variantsCreated": 0
+    }
+  },
+  "conflicts": [],
+  "orderMutations": 0,
+  "marMutations": 0,
+  "chartMutations": 0,
+  "recommendationActivations": 0,
+  "productionCdsActivations": 0,
+  "enterpriseActivations": 0
+}
