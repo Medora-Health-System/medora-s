@@ -208,6 +208,18 @@ flowchart LR
 
 **Note:** Distinct from the product-roadmap Phase 9 row below (licensed runtime checking / order-time evaluation), which remains future work after this knowledge foundation.
 
+### Phase 10 — Patient-specific medication safety evaluation (shadow mode)
+
+| Field | Value |
+|-------|-------|
+| **Objective** | Patient-specific DDI/allergy/duplicate/renal/hepatic/pregnancy evaluation using approved knowledge — **SHADOW only** |
+| **Scope** | Evaluation runs, minimized context snapshots, shadow findings, suppression governance, admin validation UI/API/CLI; no provider alerts or order blocking |
+| **Migration** | **YES (additive)** — `20261013120000_medication_phase_10_patient_specific_safety_evaluation_shadow_mode` |
+| **Exit criteria** | Phase 10 certifier PASS; fail-closed DISABLED/SHADOW modes; shadowOnly enforced; evaluation failure isolated from orders; search/order/MAR/billing unchanged |
+| **Status** | Implemented — see [`medication-intelligence-phase-10-patient-specific-safety-evaluation-shadow-mode.md`](./medication-intelligence-phase-10-patient-specific-safety-evaluation-shadow-mode.md) |
+
+**Note:** Distinct from product-roadmap Phase 10 (MAR/inventory/billing hardening) below. Live interruptive CDS remains a future activation phase after shadow analytics.
+
 ### Deferred after Phase 6 — Canonical ordering integration and order sentences
 
 Populate `OrderItem.medicationProductId` / `medicationPackageId` and structured order sentences. Formerly listed as Phase 6; now scheduled after governed review certification (clinical cutover remains separately certified).
