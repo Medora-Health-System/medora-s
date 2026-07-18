@@ -220,6 +220,18 @@ flowchart LR
 
 **Note:** Distinct from product-roadmap Phase 10 (MAR/inventory/billing hardening) below. Live interruptive CDS remains a future activation phase after shadow analytics.
 
+### Phase 11 — Shadow validation, coverage analytics, pharmacist review, activation readiness
+
+| Field | Value |
+|-------|-------|
+| **Objective** | Measure coverage, validate shadow findings with pharmacist dual/blind review, analyze FP/FN/gaps, and assess scoped activation readiness — **no clinical activation** |
+| **Scope** | Family coverage profiles, validation cases/batches/reference sets, gap registries, readiness policies/assessments/candidates/attestations, admin UI/API/CLI |
+| **Migration** | **YES (additive)** — `20261014120000_medication_phase_11_shadow_validation_coverage_activation_readiness` |
+| **Exit criteria** | Phase 11 certifier PASS; provider alerts/order blocking/overrides remain off; readiness never emits live activation; search/order/MAR/billing unchanged |
+| **Status** | Implemented — see [`medication-intelligence-phase-11-shadow-validation-coverage-activation-readiness.md`](./medication-intelligence-phase-11-shadow-validation-coverage-activation-readiness.md) |
+
+**Note:** Distinct from product-roadmap Phase 11 (enterprise certification packaging) below. Provider-facing pilot design remains Phase 12 MI and requires an approved scoped readiness attestation.
+
 ### Deferred after Phase 6 — Canonical ordering integration and order sentences
 
 Populate `OrderItem.medicationProductId` / `medicationPackageId` and structured order sentences. Formerly listed as Phase 6; now scheduled after governed review certification (clinical cutover remains separately certified).
