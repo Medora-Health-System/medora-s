@@ -242,7 +242,19 @@ flowchart LR
 | **Exit criteria** | Phase 12 certifier PASS; records without sources = 0; import never creates approved records; provider alerts/order blocking/overrides remain off; search/order/MAR/billing unchanged |
 | **Status** | Implemented — see [`medication-intelligence-phase-12-controlled-emergency-medication-knowledge-population.md`](./medication-intelligence-phase-12-controlled-emergency-medication-knowledge-population.md) |
 
-**Note:** Distinct from product-roadmap Phase 12 below. Phase 13 MI should run controlled shadow validation against approved Phase 12 knowledge — still without provider-facing alerts.
+**Note:** Distinct from product-roadmap Phase 12 below. Phase 13 MI runs source-backed review and controlled shadow validation — still without provider-facing alerts.
+
+### Phase 13 — Source-backed review, approval-for-shadow, controlled shadow validation
+
+| Field | Value |
+|-------|-------|
+| **Objective** | Investigate identity blockers, select a narrow Wave 1, enforce source readiness / placeholder rejection, approval-for-shadow gates, and synthetic shadow validation metrics — **no clinical activation** |
+| **Scope** | Identity resolution cases, approval waves, source-readiness snapshots, shadow validation runs, unexpected-finding review, engine gaps, admin UI/API/CLI |
+| **Migration** | **YES (additive)** — `20261016120000_medication_phase_13_source_backed_review_approval_shadow_validation` |
+| **Exit criteria** | Phase 13 certifier PASS; acetaminophen not auto-resolved; scaffolding not approved; draft knowledge not consumed by Phase 10; alerts/blocking/activation remain off |
+| **Status** | Implemented — see [`medication-intelligence-phase-13-source-backed-review-approval-controlled-shadow-validation.md`](./medication-intelligence-phase-13-source-backed-review-approval-controlled-shadow-validation.md) |
+
+**Note:** Distinct from product-roadmap Phase 13 below. Phase 14 MI should remediate gaps and expand approved families based on Phase 13 results — still without automatic live alerts.
 
 ### Deferred after Phase 6 — Canonical ordering integration and order sentences
 
