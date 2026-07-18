@@ -332,14 +332,25 @@ flowchart LR
 | **Status** | **Complete** — see [`medication-intelligence-phase-16-controlled-recommendation-engine.md`](./medication-intelligence-phase-16-controlled-recommendation-engine.md) |
 | **Typical live decision** | `MEDICATION_INTELLIGENCE_PHASE_16_CERTIFIED_SHADOW_ONLY` |
 
-### Phase 17 — Controlled Pilot (recommended next — not started)
+### Phase 17 — Controlled Pilot Qualification & Limited Clinical Advisory
 
 | Field | Value |
 |-------|-------|
-| **Objective** | Limited Controlled Pilot of shadow-qualified recommendations after additional safety evidence |
-| **Status** | **Not started** — do not begin until Phase 16 is reviewed |
+| **Objective** | Qualify shadow evidence; authorize facility-/provider-/definition-/time-scoped controlled pilot; nonblocking informational advisories; safety monitoring + immediate suspension |
+| **Certification ID** | `MEDUI.MEDICATION_INTELLIGENCE_PHASE_17_CONTROLLED_PILOT_QUALIFICATION_SAFETY_MONITORING_LIMITED_CLINICAL_ADVISORY` |
+| **Migration** | **YES** — `20261022120000_medication_phase_17_controlled_pilot` |
+| **Status** | **Complete** — controlled, limited, reversible, nonblocking, non-ordering; **not** enterprise active |
+| **Typical live decision** | `MEDICATION_INTELLIGENCE_PHASE_17_CERTIFIED_PILOT_READY_NOT_ACTIVATED` (or continue shadow-only if qualification fails) |
+| **Docs** | [`medication-intelligence-phase-17-controlled-pilot-architecture.md`](./medication-intelligence-phase-17-controlled-pilot-architecture.md) |
 
-**Note:** Phase 15–16 remain Wave 1 only and do **not** resolve acetaminophen. Production CDS / Pilot / Enterprise Active remain off unless separately certified.
+### Phase 18 — Broader pilot evaluation (recommended next — not started)
+
+| Field | Value |
+|-------|-------|
+| **Objective** | Evaluate controlled-pilot outcomes before any enterprise consideration |
+| **Status** | **Not started** — do not implement in Phase 17 |
+
+**Note:** Phase 15–17 remain Wave 1 only and do **not** resolve acetaminophen. Production CDS / Enterprise Active remain off unless separately certified. Controlled Pilot requires explicit authorization.
 
 ### Deferred after Phase 6 — Canonical ordering integration and order sentences
 
