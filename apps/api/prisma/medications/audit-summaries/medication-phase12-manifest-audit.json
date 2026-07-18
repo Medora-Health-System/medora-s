@@ -1,0 +1,14 @@
+{
+  "ExpectedFamilyCount": 35,
+  "ManifestImplemented": true,
+  "ManifestPath": "/Users/matz/Desktop/medora-s-main/medora-s/apps/api/prisma/medications/knowledge-population/medication-phase12-emergency-knowledge-manifest.json",
+  "auditStatus": "COMPLETE",
+  "catalogClassification": "CURATED",
+  "catalogComplete": false,
+  "certificationId": "MEDUI.MEDICATION_INTELLIGENCE_PHASE_12_CONTROLLED_EMERGENCY_MEDICATION_CLINICAL_SAFETY_KNOWLEDGE_POPULATION",
+  "confidence": "HIGH",
+  "dataSource": "database",
+  "generatedAt": "2026-07-18T03:35:05.851Z",
+  "phase": 12,
+  "title": "Phase 12 manifest audit"
+}

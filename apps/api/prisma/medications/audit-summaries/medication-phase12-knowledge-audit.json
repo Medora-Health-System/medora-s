@@ -1,0 +1,17 @@
+{
+  "ClinicalApprovedProfiles": 0,
+  "ClinicalDraftProfiles": 34,
+  "RecordsWithoutSources": 0,
+  "SafetyApprovedMappings": 0,
+  "SafetyDraftMappings": 34,
+  "ShadowEvaluableFamilies": 0,
+  "auditStatus": "COMPLETE",
+  "catalogClassification": "CURATED",
+  "catalogComplete": false,
+  "certificationId": "MEDUI.MEDICATION_INTELLIGENCE_PHASE_12_CONTROLLED_EMERGENCY_MEDICATION_CLINICAL_SAFETY_KNOWLEDGE_POPULATION",
+  "confidence": "HIGH",
+  "dataSource": "database",
+  "generatedAt": "2026-07-18T03:35:05.851Z",
+  "phase": 12,
+  "title": "Phase 12 knowledge population audit"
+}

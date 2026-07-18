@@ -1,0 +1,32 @@
+{
+  "AutomaticMedicationIdentityCreationEnabled": "NO",
+  "LiveMetrics": {
+    "batchKey": "EM_KNOWLEDGE_POPULATION_V1",
+    "batchStatus": "IDENTITY_RESOLUTION",
+    "clinicalActivations": 0,
+    "clinicalApprovedProfiles": 0,
+    "clinicalDraftProfiles": 34,
+    "conflictsBlocking": 0,
+    "conflictsOpen": 0,
+    "familiesRequested": 35,
+    "familiesResolved": 34,
+    "familiesUnresolved": 1,
+    "importRunsCreatingApproved": 0,
+    "recordsWithoutSources": 0,
+    "safetyApprovedMappings": 0,
+    "safetyDraftMappings": 34,
+    "shadowEvaluableFamilies": 0,
+    "unresolvedFamilyNames": [
+      "acetaminophen"
+    ]
+  },
+  "auditStatus": "COMPLETE",
+  "catalogClassification": "CURATED",
+  "catalogComplete": false,
+  "certificationId": "MEDUI.MEDICATION_INTELLIGENCE_PHASE_12_CONTROLLED_EMERGENCY_MEDICATION_CLINICAL_SAFETY_KNOWLEDGE_POPULATION",
+  "confidence": "HIGH",
+  "dataSource": "database",
+  "generatedAt": "2026-07-18T03:35:05.851Z",
+  "phase": 12,
+  "title": "Phase 12 identity resolution audit"
+}
