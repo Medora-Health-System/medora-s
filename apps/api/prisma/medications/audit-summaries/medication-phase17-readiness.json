@@ -1,0 +1,11 @@
+{
+  "readiness": "PILOT_READY_NOT_ACTIVATED",
+  "activePilotCount": 0,
+  "eligibleQualifications": 24,
+  "enterpriseActiveAllowed": false,
+  "orderFromRecommendationEnabled": false,
+  "orderMutations": 0,
+  "marMutations": 0,
+  "chartMutations": 0,
+  "productionCds": "OFF"
+}
