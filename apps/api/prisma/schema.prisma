@@ -4782,6 +4782,161 @@ model MedicationKnowledgeSourceBackedAuditEvent {
   @@index([performedAt])
 }
 
+/// Phase 14A — evidence acquisition / knowledge completion batch (Wave 1 scoped).
+model MedicationEvidenceAcquisitionBatch {
+  id                            String   @id @default(uuid())
+  batchKey                      String   @unique @db.VarChar(64)
+  name                          String   @db.VarChar(255)
+  description                   String?
+  waveKey                       String?  @db.VarChar(64)
+  /// PLANNED | SOURCE_REGISTRATION | LINKING | COMPLETENESS_SCORED | UNDER_REVIEW | COMPLETED | BLOCKED | RETIRED
+  status                        String   @default("PLANNED") @db.VarChar(48)
+  targetFamilyCount             Int      @default(0)
+  familiesWithProvenanceCount   Int      @default(0)
+  evidenceLinksCreatedCount     Int      @default(0)
+  placeholdersRetiredCount      Int      @default(0)
+  programVersion                String?  @db.VarChar(32)
+  clinicalActivationAllowed     Boolean  @default(false)
+  providerFacingAlertsAllowed   Boolean  @default(false)
+  orderBlockingAllowed          Boolean  @default(false)
+  knowledgeControlsPatientCare  Boolean  @default(false)
+  createdByUserId               String
+  completedAt                   DateTime?
+  lockedAt                      DateTime?
+  createdAt                     DateTime @default(now())
+  updatedAt                     DateTime @updatedAt
+  sourceRegistrations           MedicationEvidenceSourceRegistration[]
+  evidenceLinks                 MedicationKnowledgeEvidenceLink[]
+  completenessScores            MedicationKnowledgeCompletenessScore[]
+  auditEvents                   MedicationEvidenceGovernanceAuditEvent[]
+
+  @@index([status])
+  @@index([waveKey])
+  @@index([createdByUserId])
+}
+
+/// Phase 14A — registration of an evidence source version (reuses Phase 8/9 source FKs).
+model MedicationEvidenceSourceRegistration {
+  id                         String   @id @default(uuid())
+  batchId                    String?
+  registrationKey            String   @unique @db.VarChar(128)
+  /// CLINICAL | SAFETY
+  knowledgeScope             String   @db.VarChar(16)
+  clinicalSourceId           String?
+  clinicalVersionId          String?
+  safetySourceId             String?
+  safetyVersionId            String?
+  sourceTier                 String   @db.VarChar(48)
+  publisher                  String?  @db.VarChar(255)
+  jurisdiction               String?  @db.VarChar(64)
+  licenseStatus              String   @default("INSTITUTIONAL_USE") @db.VarChar(64)
+  licenseNotes               String?
+  citationText               String?
+  sourceUrlReference         String?
+  publicationDate            DateTime?
+  effectiveDate              DateTime?
+  retrievalDate              DateTime?
+  checksum                   String?  @db.VarChar(128)
+  clinicalSetting            String?  @db.VarChar(64)
+  language                   String   @default("en") @db.VarChar(16)
+  /// PLANNED | REGISTERED | RETRIEVED | ACCEPTED_FOR_KNOWLEDGE_USE | REJECTED | SUPERSEDED | RETIRED
+  acquisitionStatus          String   @default("REGISTERED") @db.VarChar(48)
+  redistributesFullText      Boolean  @default(false)
+  containsCredentials        Boolean  @default(false)
+  createdByUserId            String
+  createdAt                  DateTime @default(now())
+  updatedAt                  DateTime @updatedAt
+  batch                      MedicationEvidenceAcquisitionBatch? @relation(fields: [batchId], references: [id], onDelete: SetNull)
+  evidenceLinks              MedicationKnowledgeEvidenceLink[]
+
+  @@index([batchId])
+  @@index([knowledgeScope])
+  @@index([sourceTier])
+  @@index([acquisitionStatus])
+  @@index([clinicalVersionId])
+  @@index([safetyVersionId])
+}
+
+/// Phase 14A — deterministic evidence link from a knowledge record to a registered source version.
+model MedicationKnowledgeEvidenceLink {
+  id                         String   @id @default(uuid())
+  batchId                    String?
+  registrationId             String
+  familyKey                  String   @db.VarChar(128)
+  canonicalConceptId         String?
+  /// CLINICAL_PROFILE | SAFETY_MEMBERSHIP | etc.
+  knowledgeDomain            String   @db.VarChar(64)
+  knowledgeRecordType        String   @db.VarChar(64)
+  knowledgeRecordId          String
+  evidenceLevel              String?  @db.VarChar(48)
+  citationSummary            String?
+  retrievalDate              DateTime?
+  effectiveDate              DateTime?
+  /// DRAFT | LINKED | UNDER_REVIEW | ACCEPTED | SUPERSEDED | RETIRED
+  linkStatus                 String   @default("LINKED") @db.VarChar(32)
+  replacesPlaceholder        Boolean  @default(false)
+  clinicalActivationAllowed  Boolean  @default(false)
+  createdByUserId            String
+  createdAt                  DateTime @default(now())
+  updatedAt                  DateTime @updatedAt
+  batch                      MedicationEvidenceAcquisitionBatch? @relation(fields: [batchId], references: [id], onDelete: SetNull)
+  registration               MedicationEvidenceSourceRegistration @relation(fields: [registrationId], references: [id], onDelete: Restrict)
+
+  @@unique([knowledgeRecordType, knowledgeRecordId, knowledgeDomain, registrationId])
+  @@index([batchId])
+  @@index([familyKey])
+  @@index([canonicalConceptId])
+  @@index([knowledgeRecordId])
+  @@index([linkStatus])
+}
+
+/// Phase 14A — per-family knowledge completeness / provenance score.
+model MedicationKnowledgeCompletenessScore {
+  id                         String   @id @default(uuid())
+  batchId                    String?
+  familyKey                  String   @db.VarChar(128)
+  canonicalConceptId         String?
+  domainStatusesJson          Json
+  overallScore               Int      @default(0)
+  provenanceScore            Int      @default(0)
+  clinicalScore              Int      @default(0)
+  safetyScore                Int      @default(0)
+  domainsComplete            Int      @default(0)
+  domainsTotal               Int      @default(0)
+  placeholdersRemaining      Int      @default(0)
+  evidenceLinkCount          Int      @default(0)
+  knowledgeWithoutProvenance Int      @default(0)
+  calculatedAt               DateTime @default(now())
+  batch                      MedicationEvidenceAcquisitionBatch? @relation(fields: [batchId], references: [id], onDelete: SetNull)
+
+  @@index([batchId])
+  @@index([familyKey])
+  @@index([overallScore])
+  @@index([provenanceScore])
+  @@index([calculatedAt])
+}
+
+model MedicationEvidenceGovernanceAuditEvent {
+  id                 String   @id @default(uuid())
+  batchId            String?
+  entityType         String   @db.VarChar(64)
+  entityId           String
+  action             String   @db.VarChar(64)
+  beforeState        Json?
+  afterState         Json?
+  performedByUserId  String
+  performedAt        DateTime @default(now())
+  reason             String?
+  createdAt          DateTime @default(now())
+  batch              MedicationEvidenceAcquisitionBatch? @relation(fields: [batchId], references: [id], onDelete: SetNull)
+
+  @@index([batchId])
+  @@index([entityType, entityId])
+  @@index([action])
+  @@index([performedByUserId])
+  @@index([performedAt])
+}
+
 /// Durable RxNorm verified mapping history — Phase 4 canonical reconciliation (CLI/service only).
 model RxNormVerifiedMapping {
   id                   String                  @id @default(uuid())

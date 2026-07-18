@@ -434,6 +434,12 @@ export default function MedicationGovernancePage() {
           {t("medicationGovernance.openSourceBackedValidation")}
         </Link>
         <Link
+          href="/app/admin/medication-governance/evidence-governance"
+          style={{ alignSelf: "center", fontSize: 14 }}
+        >
+          {t("medicationGovernance.openEvidenceGovernance")}
+        </Link>
+        <Link
           href="/app/admin/medication-governance/activation"
           style={{ alignSelf: "center", fontSize: 14 }}
         >
