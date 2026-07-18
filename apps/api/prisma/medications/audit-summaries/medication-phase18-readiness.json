@@ -1,0 +1,12 @@
+{
+  "readiness": "OPERATIONAL_READY",
+  "sealedVersions": 8,
+  "qualityScore": 88,
+  "replayTotal": 8,
+  "unmatchedReplays": 0,
+  "enterpriseActiveAllowed": false,
+  "productionCds": "OFF",
+  "orderMutations": 0,
+  "marMutations": 0,
+  "chartMutations": 0
+}

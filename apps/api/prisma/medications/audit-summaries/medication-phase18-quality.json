@@ -1,0 +1,19 @@
+{
+  "id": "53e4d8e0-03a6-456e-adc5-543119d3adaa",
+  "snapshotKey": "P18_QUALITY_2026-07-18T17",
+  "coverageScore": 100,
+  "evidenceCompleteness": 70,
+  "reviewCompleteness": 90,
+  "confidenceCalibration": 72,
+  "governanceCompleteness": 85,
+  "auditCompleteness": 90,
+  "traceabilityScore": 90,
+  "explainabilityScore": 92,
+  "reproducibilityScore": 100,
+  "qualityScore": 88,
+  "metricsJson": {
+    "opsSnapshotKey": "P18_OPS_2026-07-18T17"
+  },
+  "generatedAt": "2026-07-18T17:18:30.398Z",
+  "createdAt": "2026-07-18T17:18:30.398Z"
+}

@@ -1,0 +1,117 @@
+{
+  "artifacts": [
+    {
+      "id": "56f3c3a8-f2c5-4a99-93c1-7de932c5f04b",
+      "artifactKey": "P18_FDA_SAMD",
+      "framework": "FDA_SaMD",
+      "title": "FDA SaMD evidence pack (no approval claim)",
+      "summary": "Traceability of recommendation versions, reviews, and fail-closed activation ceiling.",
+      "claimsApproval": false,
+      "evidenceJson": {
+        "qualityScore": 88,
+        "productionCdsEnabled": false,
+        "enterpriseActiveAllowed": false,
+        "orderFromRecommendationEnabled": false
+      },
+      "generatedAt": "2026-07-18T17:18:31.086Z",
+      "createdAt": "2026-07-18T17:18:31.086Z"
+    },
+    {
+      "id": "fdb00758-98c3-4522-b21e-ef2d3c71df3e",
+      "artifactKey": "P18_IEC_62304",
+      "framework": "IEC_62304",
+      "title": "IEC 62304 software lifecycle evidence",
+      "summary": "Version immutability, rollback lineage, audit events, and replay verification.",
+      "claimsApproval": false,
+      "evidenceJson": {
+        "qualityScore": 88,
+        "productionCdsEnabled": false,
+        "enterpriseActiveAllowed": false,
+        "orderFromRecommendationEnabled": false
+      },
+      "generatedAt": "2026-07-18T17:18:31.088Z",
+      "createdAt": "2026-07-18T17:18:31.088Z"
+    },
+    {
+      "id": "c353f2f7-fe49-40c4-870d-7f428c461a0f",
+      "artifactKey": "P18_ISO_14971",
+      "framework": "ISO_14971",
+      "title": "ISO 14971 risk management evidence",
+      "summary": "Safety monitoring, drift alerts, suspension, and zero mutation counters.",
+      "claimsApproval": false,
+      "evidenceJson": {
+        "qualityScore": 88,
+        "productionCdsEnabled": false,
+        "enterpriseActiveAllowed": false,
+        "orderFromRecommendationEnabled": false
+      },
+      "generatedAt": "2026-07-18T17:18:31.090Z",
+      "createdAt": "2026-07-18T17:18:31.090Z"
+    },
+    {
+      "id": "8877e9de-df84-4169-a019-813b0254e948",
+      "artifactKey": "P18_ISO_13485",
+      "framework": "ISO_13485",
+      "title": "ISO 13485 traceability evidence",
+      "summary": "Definition lineage, evidence provenance metadata, review history.",
+      "claimsApproval": false,
+      "evidenceJson": {
+        "qualityScore": 88,
+        "productionCdsEnabled": false,
+        "enterpriseActiveAllowed": false,
+        "orderFromRecommendationEnabled": false
+      },
+      "generatedAt": "2026-07-18T17:18:31.091Z",
+      "createdAt": "2026-07-18T17:18:31.091Z"
+    },
+    {
+      "id": "73c6637e-c193-4e97-9188-a740d6269d23",
+      "artifactKey": "P18_JOINT_COMMISSION",
+      "framework": "Joint_Commission",
+      "title": "Joint Commission medication safety evidence",
+      "summary": "Advisory-only recommendations; clinician authority preserved.",
+      "claimsApproval": false,
+      "evidenceJson": {
+        "qualityScore": 88,
+        "productionCdsEnabled": false,
+        "enterpriseActiveAllowed": false,
+        "orderFromRecommendationEnabled": false
+      },
+      "generatedAt": "2026-07-18T17:18:31.092Z",
+      "createdAt": "2026-07-18T17:18:31.092Z"
+    },
+    {
+      "id": "824617ea-6353-42d6-b224-e35eabad242a",
+      "artifactKey": "P18_CMS_AUDIT",
+      "framework": "CMS_audit",
+      "title": "CMS audit support evidence",
+      "summary": "Operational snapshots and quality metrics for governance review.",
+      "claimsApproval": false,
+      "evidenceJson": {
+        "qualityScore": 88,
+        "productionCdsEnabled": false,
+        "enterpriseActiveAllowed": false,
+        "orderFromRecommendationEnabled": false
+      },
+      "generatedAt": "2026-07-18T17:18:31.093Z",
+      "createdAt": "2026-07-18T17:18:31.093Z"
+    },
+    {
+      "id": "8a511288-f176-4066-9ebe-89da2ef967bc",
+      "artifactKey": "P18_HIPAA_AUDIT",
+      "framework": "HIPAA_audit_support",
+      "title": "HIPAA audit support evidence",
+      "summary": "Facility-scoped ops audit; no copyrighted source content in explanations.",
+      "claimsApproval": false,
+      "evidenceJson": {
+        "qualityScore": 88,
+        "productionCdsEnabled": false,
+        "enterpriseActiveAllowed": false,
+        "orderFromRecommendationEnabled": false
+      },
+      "generatedAt": "2026-07-18T17:18:31.094Z",
+      "createdAt": "2026-07-18T17:18:31.094Z"
+    }
+  ],
+  "claimsApproval": false
+}
