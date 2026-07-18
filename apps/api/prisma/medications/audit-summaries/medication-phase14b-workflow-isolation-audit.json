@@ -1,0 +1,19 @@
+{
+  "AdministrationChanged": "NO",
+  "BillingChanged": "NO",
+  "DispensingChanged": "NO",
+  "KnowledgeControlsPatientCare": "NO",
+  "MARChanged": "NO",
+  "MedicationReconciliationChanged": "NO",
+  "MedicationVerificationChanged": "NO",
+  "OrderingChanged": "NO",
+  "auditStatus": "COMPLETE",
+  "catalogClassification": "CURATED",
+  "catalogComplete": false,
+  "certificationId": "MEDUI.MEDICATION_INTELLIGENCE_PHASE_14B_EXPERT_KNOWLEDGE_REVIEW_APPROVAL_FOR_SHADOW_AND_WAVE1_QUALIFICATION",
+  "confidence": "HIGH",
+  "dataSource": "database",
+  "generatedAt": "2026-07-18T12:45:55.895Z",
+  "phase": "14B",
+  "title": "Phase 14B workflow isolation audit"
+}
