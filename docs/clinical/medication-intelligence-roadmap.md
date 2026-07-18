@@ -196,6 +196,18 @@ flowchart LR
 
 **Note:** Distinct from product-roadmap Phase 8 (medication reconciliation) below.
 
+### Phase 9 — Interaction, allergy, and duplicate-therapy knowledge foundation (Medication Intelligence)
+
+| Field | Value |
+|-------|-------|
+| **Objective** | Versioned drug–drug, allergy/cross-reactivity, and duplicate-therapy **knowledge storage** on canonical identities — no patient evaluation or alerts |
+| **Scope** | Safety source/version models; interaction pair normalization; allergen + cross-reactivity; therapeutic class membership; duplicate-therapy groups/rules; admin API/UI/CLI; approval lifecycle |
+| **Migration** | **YES (additive)** — `20261012120000_medication_phase_9_interaction_allergy_duplicate_therapy_knowledge` |
+| **Exit criteria** | Phase 9 certifier PASS; identity reused; duplicate knowledge prevented; human/admin approval; clinical activation remains disabled; search/order/MAR/billing/Phase 8 unchanged |
+| **Status** | Implemented — see [`medication-intelligence-phase-9-interaction-allergy-duplicate-therapy-knowledge.md`](./medication-intelligence-phase-9-interaction-allergy-duplicate-therapy-knowledge.md) |
+
+**Note:** Distinct from the product-roadmap Phase 9 row below (licensed runtime checking / order-time evaluation), which remains future work after this knowledge foundation.
+
 ### Deferred after Phase 6 — Canonical ordering integration and order sentences
 
 Populate `OrderItem.medicationProductId` / `medicationPackageId` and structured order sentences. Formerly listed as Phase 6; now scheduled after governed review certification (clinical cutover remains separately certified).
@@ -236,20 +248,20 @@ Depends on Phase 7 for discharge reconciliation completeness.
 
 ---
 
-## Phase 9 — Medication safety knowledge (allergies, interactions — licensed)
+## Phase 9 (product roadmap) — Medication safety checking at order/MAR time (licensed)
 
 | Field | Value |
 |-------|-------|
-| **Objective** | Licensed or contractually cleared DDI/allergy/duplicate-therapy checking at order and MAR time |
-| **Scope** | Replace `interactionGroupIds` JSON-only storage with evaluated rules; patient allergy cross-check; configurable hard-stop vs soft-warning |
-| **Data source** | **Licensed vendor** (FDB, Medi-Span, or equivalent) — not inferred from RxNorm alone |
+| **Objective** | Licensed or contractually cleared DDI/allergy/duplicate-therapy **evaluation** at order and MAR time |
+| **Scope** | Patient-specific matching against Phase 9 MI knowledge (and/or vendor content); configurable hard-stop vs soft-warning — **not** the MI Phase 9 knowledge foundation above |
+| **Data source** | **Licensed vendor** (FDB, Medi-Span, or equivalent) and/or approved Medora safety knowledge |
 | **Migration likelihood** | **Medium** — safety check service layer; may cache vendor subset locally for offline planning |
 | **Seed/import likelihood** | **High** — vendor knowledge base import (scheduled refresh) |
 | **Risks** | License cost (MEDIUM); false positives blocking care (HIGH); offline dependency (MEDIUM — design cache strategy, do not implement full offline sync now) |
 | **Exit criteria** | Order-time allergy + major DDI checks with audit; LASA/high-alert hard gates; certifier PASS on test patient scenarios |
 | **Complexity** | **Very High** |
 
-**Milestone C complete** when Phase 9 exit criteria met.
+Depends on Medication Intelligence Phase 9 knowledge foundation. Runtime evaluation remains deferred (Phase 10+ MI / product safety checking track).
 
 ---
 
