@@ -1,0 +1,19 @@
+{
+  "title": "Medication Knowledge Expansion Wave 4 — Baseline",
+  "generatedAt": "2026-07-18T22:09:23.266Z",
+  "catalogTotal": 4759,
+  "catalogActive": 4686,
+  "distinctNormalizedGenerics": 2006,
+  "aliases": 7765,
+  "concepts": 3473,
+  "products": 4360,
+  "packages": 4359,
+  "productsWithLegacyLink": 3167,
+  "rxNormMappedConcepts": 1,
+  "rxNormStagingConcepts": 33,
+  "ordersUsingCatalogMed": 3942,
+  "dispenses": 8,
+  "administrations": 956,
+  "recommendationDefinitions": 8,
+  "note": "Counts from live database; not hardcoded."
+}

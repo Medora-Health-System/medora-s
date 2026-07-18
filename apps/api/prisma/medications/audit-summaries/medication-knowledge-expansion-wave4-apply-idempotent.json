@@ -1,0 +1,275 @@
+{
+  "mode": "APPLY",
+  "jobId": "W4_APPLY_1784412680979",
+  "importerVersion": "wave4-import-1.0.0",
+  "sourceKey": "MEDORA_CURATED",
+  "sourceChecksumSha256": "8f7545e2279de1a9dcde58069795c5508795ec64a1a5bea5c6395114fa63c03f",
+  "sourceFileName": "medora-curated-wave4-candidates.json",
+  "dryRun": false,
+  "baselineBefore": {
+    "generatedAt": "2026-07-18T22:11:21.055Z",
+    "catalogTotal": 10730,
+    "catalogActive": 10657,
+    "distinctNormalizedGenerics": 5206,
+    "aliases": 7765,
+    "concepts": 6673,
+    "products": 10331,
+    "packages": 10330,
+    "productsWithLegacyLink": 9138,
+    "rxNormMappedConcepts": 1,
+    "rxNormStagingConcepts": 33,
+    "ordersUsingCatalogMed": 3942,
+    "dispenses": 8,
+    "administrations": 956,
+    "recommendationDefinitions": 8
+  },
+  "baselineAfter": {
+    "generatedAt": "2026-07-18T22:11:21.130Z",
+    "catalogTotal": 10730,
+    "catalogActive": 10657,
+    "distinctNormalizedGenerics": 5206,
+    "aliases": 7765,
+    "concepts": 6673,
+    "products": 10331,
+    "packages": 10330,
+    "productsWithLegacyLink": 9138,
+    "rxNormMappedConcepts": 1,
+    "rxNormStagingConcepts": 33,
+    "ordersUsingCatalogMed": 3942,
+    "dispenses": 8,
+    "administrations": 956,
+    "recommendationDefinitions": 8
+  },
+  "rowsReceived": 3200,
+  "rowsValid": 3200,
+  "rowsInvalid": 0,
+  "stagedRows": 3200,
+  "newCanonicalConcepts": 0,
+  "existingMatches": 3200,
+  "existingNewProducts": 0,
+  "duplicateRejected": 0,
+  "sourceInsufficient": 0,
+  "conflictReview": 0,
+  "catalogRowsCreated": 0,
+  "aliasesCreated": 0,
+  "conceptsCreated": 0,
+  "productsCreated": 0,
+  "packagesCreated": 0,
+  "byDomain": {
+    "INFECTIOUS_DISEASE": {
+      "candidates": 461,
+      "netNewConcepts": 0,
+      "variantsCreated": 0
+    },
+    "CARDIOLOGY": {
+      "candidates": 294,
+      "netNewConcepts": 0,
+      "variantsCreated": 0
+    },
+    "ENT": {
+      "candidates": 160,
+      "netNewConcepts": 0,
+      "variantsCreated": 0
+    },
+    "PAIN_MEDICINE": {
+      "candidates": 184,
+      "netNewConcepts": 0,
+      "variantsCreated": 0
+    },
+    "CRITICAL_CARE": {
+      "candidates": 160,
+      "netNewConcepts": 0,
+      "variantsCreated": 0
+    },
+    "PSYCHIATRY": {
+      "candidates": 144,
+      "netNewConcepts": 0,
+      "variantsCreated": 0
+    },
+    "DERMATOLOGY": {
+      "candidates": 127,
+      "netNewConcepts": 0,
+      "variantsCreated": 0
+    },
+    "PULMONOLOGY": {
+      "candidates": 121,
+      "netNewConcepts": 0,
+      "variantsCreated": 0
+    },
+    "ENDOCRINOLOGY": {
+      "candidates": 108,
+      "netNewConcepts": 0,
+      "variantsCreated": 0
+    },
+    "NEUROLOGY": {
+      "candidates": 104,
+      "netNewConcepts": 0,
+      "variantsCreated": 0
+    },
+    "ALLERGY_IMMUNOLOGY": {
+      "candidates": 93,
+      "netNewConcepts": 0,
+      "variantsCreated": 0
+    },
+    "GASTROENTEROLOGY": {
+      "candidates": 92,
+      "netNewConcepts": 0,
+      "variantsCreated": 0
+    },
+    "FAMILY_MEDICINE": {
+      "candidates": 85,
+      "netNewConcepts": 0,
+      "variantsCreated": 0
+    },
+    "OPHTHALMOLOGY": {
+      "candidates": 63,
+      "netNewConcepts": 0,
+      "variantsCreated": 0
+    },
+    "ANESTHESIOLOGY": {
+      "candidates": 39,
+      "netNewConcepts": 0,
+      "variantsCreated": 0
+    },
+    "HEMATOLOGY": {
+      "candidates": 39,
+      "netNewConcepts": 0,
+      "variantsCreated": 0
+    },
+    "ORTHOPEDICS": {
+      "candidates": 38,
+      "netNewConcepts": 0,
+      "variantsCreated": 0
+    },
+    "EMERGENCY_MEDICINE": {
+      "candidates": 29,
+      "netNewConcepts": 0,
+      "variantsCreated": 0
+    },
+    "UROLOGY": {
+      "candidates": 24,
+      "netNewConcepts": 0,
+      "variantsCreated": 0
+    },
+    "PALLIATIVE": {
+      "candidates": 19,
+      "netNewConcepts": 0,
+      "variantsCreated": 0
+    },
+    "NEPHROLOGY": {
+      "candidates": 12,
+      "netNewConcepts": 0,
+      "variantsCreated": 0
+    },
+    "ONCOLOGY_SUPPORTIVE": {
+      "candidates": 11,
+      "netNewConcepts": 0,
+      "variantsCreated": 0
+    },
+    "RHEUMATOLOGY": {
+      "candidates": 11,
+      "netNewConcepts": 0,
+      "variantsCreated": 0
+    },
+    "GYNECOLOGY": {
+      "candidates": 8,
+      "netNewConcepts": 0,
+      "variantsCreated": 0
+    },
+    "OBSTETRICS": {
+      "candidates": 4,
+      "netNewConcepts": 0,
+      "variantsCreated": 0
+    },
+    "PEDIATRICS": {
+      "candidates": 1,
+      "netNewConcepts": 0,
+      "variantsCreated": 0
+    },
+    "INTERNAL_MEDICINE": {
+      "candidates": 769,
+      "netNewConcepts": 0,
+      "variantsCreated": 0
+    }
+  },
+  "conflicts": [],
+  "orderMutations": 0,
+  "marMutations": 0,
+  "chartMutations": 0,
+  "recommendationActivations": 0,
+  "productionCdsActivations": 0,
+  "enterpriseActivations": 0,
+  "rxNormAdapter": {
+    "stagingConceptsAvailable": 33,
+    "fabricatedRxCui": 0
+  },
+  "dailyMedAdapter": {
+    "implemented": false,
+    "rowsIngested": 0
+  },
+  "sourceRegistrySnapshot": [
+    {
+      "sourceKey": "MEDORA_CURATED",
+      "sourceName": "Medora curated hospital/ambulatory formulary extract",
+      "sourceType": "CURATED_MANIFEST",
+      "authority": "MEDORA",
+      "licenseClassification": "INTERNAL_CURATED",
+      "approvalStatus": "APPROVED_FOR_INGESTION",
+      "notes": "Primary Wave 3 deterministic local extract; no RxNorm/NDC fabricated"
+    },
+    {
+      "sourceKey": "MEDORA_WAVE2",
+      "sourceName": "Wave 2 EM catalog content",
+      "sourceType": "PRIOR_EXPANSION",
+      "authority": "MEDORA",
+      "licenseClassification": "INTERNAL_CURATED",
+      "approvalStatus": "IMPORTED",
+      "notes": "Match-only; do not re-create"
+    },
+    {
+      "sourceKey": "RXNORM",
+      "sourceName": "RxNorm / RxNav terminology",
+      "sourceType": "TERMINOLOGY",
+      "authority": "NLM",
+      "licenseClassification": "PUBLIC_TERMINOLOGY",
+      "approvalStatus": "REGISTERED",
+      "notes": "Staging/mapping lane only; never invent RxCUI; not full CDS"
+    },
+    {
+      "sourceKey": "DAILYMED",
+      "sourceName": "DailyMed structured labeling",
+      "sourceType": "LABELING",
+      "authority": "FDA/NLM",
+      "licenseClassification": "PUBLIC_LABELING",
+      "approvalStatus": "REGISTERED",
+      "notes": "Enrichment/provenance only; no bulk narrative copy in Wave 3"
+    },
+    {
+      "sourceKey": "FDA",
+      "sourceName": "FDA public resources",
+      "sourceType": "PUBLIC_AUTHORITY",
+      "authority": "FDA",
+      "licenseClassification": "PUBLIC",
+      "approvalStatus": "REGISTERED",
+      "notes": "Adapter reserved; not primary Wave 3 CREATE source"
+    },
+    {
+      "sourceKey": "FACILITY_FORMULARY",
+      "sourceName": "Facility formulary workbook",
+      "sourceType": "FACILITY",
+      "authority": "FACILITY",
+      "licenseClassification": "FACILITY_LOCAL",
+      "approvalStatus": "REGISTERED",
+      "notes": "Existing formulary staging path — not global CREATE"
+    },
+    {
+      "sourceKey": "LICENSED_COMMERCIAL",
+      "sourceName": "Licensed commercial medication knowledge (e.g. FDB)",
+      "sourceType": "COMMERCIAL",
+      "authority": "VENDOR",
+      "licenseClassification": "REQUIRES_LICENSE",
+      "approvalStatus": "REJECTED",
+      "notes": "Rejected without active license and approved integration"
+    }
+  ]
+}
