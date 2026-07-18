@@ -266,7 +266,19 @@ flowchart LR
 | **Exit criteria** | Phase 14A certifier PASS; Wave 1 knowledge has provenance links; placeholders retired from Wave 1 drafts; no knowledge without provenance allowed by policy; alerts/blocking/activation/care-workflow control remain off |
 | **Status** | Implemented — see [`medication-intelligence-phase-14a-source-acquisition-evidence-governance-knowledge-completion.md`](./medication-intelligence-phase-14a-source-acquisition-evidence-governance-knowledge-completion.md) |
 
-**Note:** Distinct from product-roadmap phases below. Later MI work may attach Tier-1/licensed labeling and human approval-for-shadow — still without automatic live alerts.
+**Note:** Distinct from product-roadmap phases below. Phase 14B MI runs expert review and APPROVED_FOR_SHADOW qualification — still without automatic live alerts.
+
+### Phase 14B — Expert knowledge review, approval-for-shadow, and Wave 1 qualification
+
+| Field | Value |
+|-------|-------|
+| **Objective** | Expert clinical/safety/consistency review, deterministic quality scoring, rule-based APPROVED_FOR_SHADOW via Phase 13 gates, immutable shadow snapshots — **no clinical activation** |
+| **Scope** | Domain reviews, quality scores, shadow qualification, conflicts, snapshots, admin UI/API/CLI |
+| **Migration** | **YES (additive)** — `20261018120000_medication_phase_14b_expert_knowledge_review_approval_for_shadow_wave1_qualification` |
+| **Exit criteria** | Phase 14B certifier PASS; Wave 1 reviewed and scored; eligible families APPROVED_FOR_SHADOW with snapshots; alerts/blocking/activation/care-workflow control remain off |
+| **Status** | Implemented — see [`medication-intelligence-phase-14b-expert-knowledge-review-approval-for-shadow-wave1-qualification.md`](./medication-intelligence-phase-14b-expert-knowledge-review-approval-for-shadow-wave1-qualification.md) |
+
+**Note:** Distinct from product-roadmap phases below. Part 3 / later MI work executes controlled synthetic shadow evaluation — still without automatic live alerts.
 
 ### Deferred after Phase 6 — Canonical ordering integration and order sentences
 
