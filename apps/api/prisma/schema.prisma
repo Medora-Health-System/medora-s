@@ -3841,6 +3841,523 @@ model MedicationSafetyEvaluationAuditEvent {
   @@index([correlationId])
 }
 
+/// Phase 11 — family-level medication coverage profile (shadow validation / readiness only).
+model MedicationFamilyCoverageProfile {
+  id                                String   @id @default(uuid())
+  medicationFamilyKey               String   @unique @db.VarChar(128)
+  canonicalConceptId                String?
+  normalizedFamilyName              String   @db.VarChar(255)
+  displayName                       String   @db.VarChar(255)
+  displayNameFr                     String?  @db.VarChar(255)
+  emergencyMedicinePriority         Int      @default(0)
+  phase7ManifestItemId              String?
+  activeProductCount                Int      @default(0)
+  activePackageCount                Int      @default(0)
+  catalogMedicationCount            Int      @default(0)
+  therapeuticClassCount             Int      @default(0)
+  approvedClinicalProfileCount      Int      @default(0)
+  approvedInteractionCount          Int      @default(0)
+  approvedAllergenMappingCount      Int      @default(0)
+  approvedCrossReactivityRuleCount  Int      @default(0)
+  duplicateTherapyMembershipCount   Int      @default(0)
+  renalKnowledgeAvailable           Boolean  @default(false)
+  hepaticKnowledgeAvailable         Boolean  @default(false)
+  pregnancyKnowledgeAvailable       Boolean  @default(false)
+  lactationKnowledgeAvailable       Boolean  @default(false)
+  administrationKnowledgeAvailable  Boolean  @default(false)
+  monitoringKnowledgeAvailable      Boolean  @default(false)
+  shadowEvaluable                   Boolean  @default(false)
+  /// NOT_STARTED | IDENTITY_ONLY | ... | BLOCKED — VALIDATED/ACTIVATION_CANDIDATE never auto-assigned
+  coverageStatus                    String   @default("NOT_STARTED") @db.VarChar(48)
+  coverageScore                     Decimal? @db.Decimal(8, 4)
+  criticalGatesJson                 Json?
+  fixtureMarker                     String?  @db.VarChar(64)
+  lastCalculatedAt                  DateTime?
+  createdAt                         DateTime @default(now())
+  updatedAt                         DateTime @updatedAt
+  domainScores                      MedicationCoverageScore[]
+  validationCases                   MedicationSafetyValidationCase[]
+  knowledgeGaps                     MedicationKnowledgeGap[]
+
+  @@index([canonicalConceptId])
+  @@index([coverageStatus])
+  @@index([shadowEvaluable])
+  @@index([emergencyMedicinePriority])
+  @@index([fixtureMarker])
+  @@index([lastCalculatedAt])
+}
+
+model MedicationCoverageScore {
+  id                        String   @id @default(uuid())
+  familyCoverageProfileId   String
+  domain                    String   @db.VarChar(48)
+  numerator                 Int      @default(0)
+  denominator               Int      @default(1)
+  percentage                Decimal  @db.Decimal(8, 4)
+  weight                    Decimal  @db.Decimal(8, 4)
+  weightedScore             Decimal  @db.Decimal(8, 4)
+  calculationVersion        String   @db.VarChar(64)
+  calculatedAt              DateTime @default(now())
+  familyCoverageProfile     MedicationFamilyCoverageProfile @relation(fields: [familyCoverageProfileId], references: [id], onDelete: Cascade)
+
+  @@unique([familyCoverageProfileId, domain, calculationVersion])
+  @@index([familyCoverageProfileId])
+  @@index([domain])
+  @@index([calculatedAt])
+}
+
+model MedicationSafetyValidationBatch {
+  id                      String   @id @default(uuid())
+  name                    String   @db.VarChar(255)
+  description             String?
+  /// RANDOM_SAMPLE | HIGH_SEVERITY | EMERGENCY_MEDICINE | ...
+  batchType               String   @db.VarChar(48)
+  selectionCriteriaJson   Json?
+  targetFindingCount      Int      @default(0)
+  selectedFindingCount    Int      @default(0)
+  /// DRAFT | READY | IN_PROGRESS | COMPLETED | LOCKED | RETIRED
+  status                  String   @default("DRAFT") @db.VarChar(32)
+  createdByUserId         String
+  startedAt               DateTime?
+  completedAt             DateTime?
+  lockedAt                DateTime?
+  engineVersion           String?  @db.VarChar(64)
+  knowledgeVersionIdsJson Json?
+  evaluationRunIdsJson    Json?
+  fixtureMarker           String?  @db.VarChar(64)
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+  cases                   MedicationSafetyValidationCase[]
+
+  @@index([status])
+  @@index([batchType])
+  @@index([createdByUserId])
+  @@index([fixtureMarker])
+}
+
+/// Phase 11 — pharmacist validation case for a shadow finding.
+model MedicationSafetyValidationCase {
+  id                              String   @id @default(uuid())
+  evaluationFindingId             String
+  evaluationRunId                 String
+  patientContextSnapshotId        String?
+  medicationFamilyCoverageProfileId String?
+  validationBatchId               String?
+  findingType                     String   @db.VarChar(64)
+  severity                        String?  @db.VarChar(32)
+  clinicalSignificance            String?  @db.VarChar(32)
+  emergencyContext                String?  @db.VarChar(48)
+  /// LOW | ROUTINE | HIGH | CRITICAL
+  validationPriority              String   @default("ROUTINE") @db.VarChar(16)
+  /// UNASSIGNED | ASSIGNED | IN_REVIEW | ...
+  validationStatus                String   @default("UNASSIGNED") @db.VarChar(32)
+  requiresDualReview              Boolean  @default(false)
+  requiresAdjudication            Boolean  @default(false)
+  blindReviewEnabled              Boolean  @default(true)
+  assignedReviewerCount           Int      @default(0)
+  completedReviewerCount          Int      @default(0)
+  finalClassification             String?  @db.VarChar(48)
+  finalSeverity                   String?  @db.VarChar(32)
+  fixtureMarker                   String?  @db.VarChar(64)
+  createdAt                       DateTime @default(now())
+  updatedAt                       DateTime @updatedAt
+  familyCoverageProfile           MedicationFamilyCoverageProfile? @relation(fields: [medicationFamilyCoverageProfileId], references: [id], onDelete: SetNull)
+  validationBatch                 MedicationSafetyValidationBatch? @relation(fields: [validationBatchId], references: [id], onDelete: SetNull)
+  assignments                     MedicationSafetyValidationAssignment[]
+  reviews                         MedicationSafetyValidationReview[]
+  adjudication                    MedicationSafetyValidationAdjudication?
+
+  @@unique([evaluationFindingId])
+  @@index([evaluationRunId])
+  @@index([validationStatus])
+  @@index([validationPriority])
+  @@index([findingType])
+  @@index([validationBatchId])
+  @@index([medicationFamilyCoverageProfileId])
+  @@index([fixtureMarker])
+}
+
+model MedicationSafetyValidationAssignment {
+  id                String   @id @default(uuid())
+  validationCaseId  String
+  reviewerUserId    String
+  /// PRIMARY | SECONDARY | ADJUDICATOR
+  assignmentRole    String   @default("PRIMARY") @db.VarChar(32)
+  assignedByUserId  String
+  assignedAt        DateTime @default(now())
+  completedAt       DateTime?
+  createdAt         DateTime @default(now())
+  validationCase    MedicationSafetyValidationCase @relation(fields: [validationCaseId], references: [id], onDelete: Cascade)
+
+  @@unique([validationCaseId, reviewerUserId])
+  @@index([reviewerUserId])
+  @@index([assignmentRole])
+}
+
+model MedicationSafetyValidationReview {
+  id                        String   @id @default(uuid())
+  validationCaseId          String
+  reviewerUserId            String
+  reviewedAt                DateTime @default(now())
+  classification            String   @db.VarChar(48)
+  clinicalRelevance         String?  @db.VarChar(48)
+  severityAssessment        String?  @db.VarChar(32)
+  patientContextAssessment  String?  @db.VarChar(48)
+  knowledgeAssessment       String?  @db.VarChar(48)
+  engineAssessment          String?  @db.VarChar(48)
+  rationale                 String
+  recommendedAction         String?
+  /// LOW | MODERATE | HIGH
+  confidence                String   @default("MODERATE") @db.VarChar(16)
+  lockedAt                  DateTime?
+  fixtureMarker             String?  @db.VarChar(64)
+  createdAt                 DateTime @default(now())
+  updatedAt                 DateTime @updatedAt
+  validationCase            MedicationSafetyValidationCase @relation(fields: [validationCaseId], references: [id], onDelete: Cascade)
+
+  @@unique([validationCaseId, reviewerUserId])
+  @@index([classification])
+  @@index([reviewerUserId])
+  @@index([lockedAt])
+}
+
+model MedicationSafetyValidationAdjudication {
+  id                      String   @id @default(uuid())
+  validationCaseId        String   @unique
+  reviewAgreement         Boolean  @default(false)
+  classificationAgreement Boolean  @default(false)
+  severityAgreement       Boolean  @default(false)
+  adjudicationRequired    Boolean  @default(true)
+  finalClassification     String?  @db.VarChar(48)
+  finalSeverity           String?  @db.VarChar(32)
+  adjudicatedByUserId     String?
+  adjudicatedAt           DateTime?
+  adjudicationRationale   String?
+  status                  String   @default("OPEN") @db.VarChar(32)
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+  validationCase          MedicationSafetyValidationCase @relation(fields: [validationCaseId], references: [id], onDelete: Cascade)
+
+  @@index([status])
+  @@index([adjudicatedByUserId])
+}
+
+model MedicationSafetyReferenceSet {
+  id                      String   @id @default(uuid())
+  code                    String   @unique @db.VarChar(64)
+  name                    String   @db.VarChar(255)
+  description             String?
+  version                 String   @db.VarChar(32)
+  /// DRAFT | UNDER_REVIEW | APPROVED | SUPERSEDED | RETIRED
+  status                  String   @default("DRAFT") @db.VarChar(32)
+  pharmacistApprovedBy    String?
+  pharmacistApprovedAt    DateTime?
+  fixtureMarker           String   @default("MEDICATION_SAFETY_REFERENCE_FIXTURE") @db.VarChar(64)
+  isValidationContent     Boolean  @default(true)
+  excludedFromProductionAnalytics Boolean @default(true)
+  createdByUserId         String
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+  cases                   MedicationSafetyReferenceCase[]
+
+  @@index([status])
+  @@index([fixtureMarker])
+}
+
+model MedicationSafetyReferenceCase {
+  id                String   @id @default(uuid())
+  referenceSetId    String
+  caseKey           String   @db.VarChar(128)
+  title             String   @db.VarChar(255)
+  description       String?
+  syntheticContextJson Json?
+  /// PHASE11_VALIDATION_FIXTURE | MEDICATION_SAFETY_REFERENCE_FIXTURE
+  fixtureMarker     String   @default("MEDICATION_SAFETY_REFERENCE_FIXTURE") @db.VarChar(64)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  referenceSet      MedicationSafetyReferenceSet @relation(fields: [referenceSetId], references: [id], onDelete: Cascade)
+  expectedFindings  MedicationSafetyExpectedFinding[]
+  missedFindings    MedicationSafetyMissedFinding[]
+
+  @@unique([referenceSetId, caseKey])
+  @@index([fixtureMarker])
+}
+
+model MedicationSafetyExpectedFinding {
+  id                      String   @id @default(uuid())
+  referenceCaseId         String
+  expectedFindingType     String   @db.VarChar(64)
+  expectedSeverity        String?  @db.VarChar(32)
+  expectedKnowledgeEntityType String? @db.VarChar(64)
+  expectedKnowledgeEntityId   String?
+  notes                   String?
+  createdAt               DateTime @default(now())
+  referenceCase           MedicationSafetyReferenceCase @relation(fields: [referenceCaseId], references: [id], onDelete: Cascade)
+  missedFindings          MedicationSafetyMissedFinding[]
+
+  @@index([referenceCaseId])
+  @@index([expectedFindingType])
+  @@index([expectedKnowledgeEntityId])
+}
+
+model MedicationSafetyMissedFinding {
+  id                        String   @id @default(uuid())
+  referenceCaseId           String
+  expectedFindingId         String?
+  expectedFindingType       String   @db.VarChar(64)
+  expectedKnowledgeEntityId String?
+  engineRunId               String?
+  /// IDENTITY_NOT_RESOLVED | KNOWLEDGE_MISSING | ...
+  missReason                String   @db.VarChar(48)
+  identityResolved          Boolean  @default(false)
+  knowledgeAvailable        Boolean  @default(false)
+  patientContextAvailable   Boolean  @default(false)
+  ruleEligible              Boolean  @default(false)
+  engineEvaluated           Boolean  @default(false)
+  fixtureMarker             String?  @db.VarChar(64)
+  createdAt                 DateTime @default(now())
+  updatedAt                 DateTime @updatedAt
+  referenceCase             MedicationSafetyReferenceCase @relation(fields: [referenceCaseId], references: [id], onDelete: Cascade)
+  expectedFinding           MedicationSafetyExpectedFinding? @relation(fields: [expectedFindingId], references: [id], onDelete: SetNull)
+
+  @@index([referenceCaseId])
+  @@index([engineRunId])
+  @@index([missReason])
+  @@index([expectedFindingType])
+}
+
+model MedicationKnowledgeGap {
+  id                              String   @id @default(uuid())
+  medicationFamilyCoverageProfileId String?
+  medicationConceptId             String?
+  medicationProductId             String?
+  gapType                         String   @db.VarChar(64)
+  severity                        String   @default("MODERATE") @db.VarChar(32)
+  sourceFindingId                 String?
+  sourceValidationCaseId          String?
+  description                     String
+  recommendedRemediation          String?
+  /// OPEN | TRIAGED | IN_REMEDIATION | RESOLVED | DEFERRED | NOT_APPLICABLE
+  status                          String   @default("OPEN") @db.VarChar(32)
+  assignedToUserId                String?
+  resolvedByUserId                String?
+  resolvedAt                      DateTime?
+  fixtureMarker                   String?  @db.VarChar(64)
+  createdAt                       DateTime @default(now())
+  updatedAt                       DateTime @updatedAt
+  familyCoverageProfile           MedicationFamilyCoverageProfile? @relation(fields: [medicationFamilyCoverageProfileId], references: [id], onDelete: SetNull)
+
+  @@unique([gapType, medicationConceptId, medicationProductId, description])
+  @@index([status])
+  @@index([gapType])
+  @@index([medicationFamilyCoverageProfileId])
+  @@index([medicationConceptId])
+}
+
+model MedicationIdentityGap {
+  id                      String   @id @default(uuid())
+  sourceType              String   @db.VarChar(48)
+  sourceRecordId          String?
+  description             String
+  /// OPEN | UNDER_REVIEW | RESOLVED_EXISTING_IDENTITY | REQUIRES_GOVERNED_MAPPING | DEFERRED | INVALID_SOURCE_DATA
+  status                  String   @default("OPEN") @db.VarChar(48)
+  ambiguousSynonym        String?
+  ambiguousStrength       String?
+  ambiguousRoute          String?
+  assignedToUserId        String?
+  resolvedByUserId        String?
+  resolvedAt              DateTime?
+  fixtureMarker           String?  @db.VarChar(64)
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+
+  @@index([status])
+  @@index([sourceType])
+  @@index([sourceRecordId])
+}
+
+model MedicationPatientContextGap {
+  id                      String   @id @default(uuid())
+  evaluationRunId         String?
+  validationCaseId        String?
+  patientIdHash           String?  @db.VarChar(128)
+  missingField            String   @db.VarChar(64)
+  description             String
+  /// OPEN | TRIAGED | RESOLVED | DEFERRED | NOT_APPLICABLE
+  status                  String   @default("OPEN") @db.VarChar(32)
+  assignedToUserId        String?
+  resolvedByUserId        String?
+  resolvedAt              DateTime?
+  fixtureMarker           String?  @db.VarChar(64)
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+
+  @@index([status])
+  @@index([missingField])
+  @@index([evaluationRunId])
+  @@index([validationCaseId])
+}
+
+model MedicationSafetyActivationReadinessPolicy {
+  id                              String   @id @default(uuid())
+  name                            String   @db.VarChar(255)
+  version                         String   @db.VarChar(32)
+  scope                           String   @db.VarChar(64)
+  findingTypesJson                Json?
+  medicationFamiliesJson          Json?
+  minimumReviewedCases            Int      @default(200)
+  minimumDualReviewedCases        Int      @default(50)
+  minimumTruePositiveRate         Decimal  @default(0.90) @db.Decimal(6, 4)
+  maximumFalsePositiveRate        Decimal  @default(0.10) @db.Decimal(6, 4)
+  minimumEstimatedRecall          Decimal  @default(0.95) @db.Decimal(6, 4)
+  maximumCriticalMisses           Int      @default(0)
+  maximumIdentityGapRate          Decimal  @default(0.01) @db.Decimal(6, 4)
+  maximumContextGapRate           Decimal  @default(0.05) @db.Decimal(6, 4)
+  maximumEvaluationFailureRate    Decimal  @default(0.005) @db.Decimal(6, 4)
+  maximumP95LatencyMs             Int      @default(5000)
+  minimumSeverityAgreement        Decimal  @default(0.95) @db.Decimal(6, 4)
+  minimumKnowledgeCoverage        Decimal  @default(0.95) @db.Decimal(6, 4)
+  minimumFamilyCoverage           Decimal  @default(0.80) @db.Decimal(6, 4)
+  requirePharmacistApproval       Boolean  @default(true)
+  requireMedicalDirectorApproval  Boolean  @default(true)
+  requireMedicationAdminApproval  Boolean  @default(true)
+  providerFacingAlertsAllowed     Boolean  @default(false)
+  orderBlockingAllowed            Boolean  @default(false)
+  /// DRAFT | UNDER_REVIEW | APPROVED | SUPERSEDED | RETIRED
+  status                          String   @default("DRAFT") @db.VarChar(32)
+  effectiveDate                   DateTime?
+  createdByUserId                 String
+  createdAt                       DateTime @default(now())
+  updatedAt                       DateTime @updatedAt
+  assessments                     MedicationSafetyActivationReadinessAssessment[]
+  candidates                      MedicationSafetyActivationCandidate[]
+  attestations                    MedicationSafetyActivationReadinessAttestation[]
+
+  @@unique([name, version])
+  @@index([status])
+  @@index([scope])
+}
+
+model MedicationSafetyActivationReadinessAssessment {
+  id                          String   @id @default(uuid())
+  readinessPolicyId           String
+  scopeType                   String   @db.VarChar(48)
+  scopeIdentifier             String   @db.VarChar(128)
+  engineVersion               String   @db.VarChar(64)
+  knowledgeVersionIdsJson     Json?
+  casesReviewed               Int      @default(0)
+  casesDualReviewed           Int      @default(0)
+  truePositiveRate            Decimal? @db.Decimal(8, 4)
+  falsePositiveRate           Decimal? @db.Decimal(8, 4)
+  estimatedRecall             Decimal? @db.Decimal(8, 4)
+  criticalMisses              Int      @default(0)
+  severityAgreement           Decimal? @db.Decimal(8, 4)
+  identityGapRate             Decimal? @db.Decimal(8, 4)
+  contextGapRate              Decimal? @db.Decimal(8, 4)
+  knowledgeCoverage           Decimal? @db.Decimal(8, 4)
+  evaluationFailureRate       Decimal? @db.Decimal(8, 4)
+  p95LatencyMs                Int?
+  blockingCriteriaPassedJson  Json?
+  blockingCriteriaFailedJson  Json?
+  /// NOT_ASSESSED | NOT_READY | REMEDIATION_REQUIRED | READY_FOR_ADDITIONAL_VALIDATION | READY_FOR_GOVERNANCE_REVIEW
+  readinessResult             String   @default("NOT_ASSESSED") @db.VarChar(48)
+  sampleSource                String   @default("production-shadow-derived") @db.VarChar(64)
+  metricsJson                 Json?
+  createdByUserId             String
+  createdAt                   DateTime @default(now())
+  updatedAt                   DateTime @updatedAt
+  readinessPolicy             MedicationSafetyActivationReadinessPolicy @relation(fields: [readinessPolicyId], references: [id], onDelete: Restrict)
+  candidates                  MedicationSafetyActivationCandidate[]
+  attestations                MedicationSafetyActivationReadinessAttestation[]
+
+  @@index([readinessPolicyId])
+  @@index([readinessResult])
+  @@index([scopeType, scopeIdentifier])
+  @@index([createdAt])
+}
+
+model MedicationSafetyActivationCandidate {
+  id                              String   @id @default(uuid())
+  scopeType                       String   @db.VarChar(48)
+  scopeIdentifier                 String   @db.VarChar(128)
+  findingTypesJson                Json?
+  medicationFamilyIdsJson         Json?
+  therapeuticClassIdsJson         Json?
+  emergencyContextsJson           Json?
+  engineVersion                   String   @db.VarChar(64)
+  knowledgeVersionIdsJson         Json?
+  readinessPolicyId               String?
+  assessmentId                    String?
+  /// NOT_READY | ... | APPROVED_FOR_FUTURE_PILOT_DESIGN | REJECTED | RETIRED — never ACTIVE/LIVE
+  candidateStatus                 String   @default("NOT_READY") @db.VarChar(48)
+  recommendedFutureDisplayMode    String?  @db.VarChar(48)
+  recommendedFutureSeverityLevelsJson Json?
+  recommendedFuturePilotPopulation String?
+  recommendedFutureFacilitiesJson Json?
+  limitations                     String?
+  knownRisks                      String?
+  createdByUserId                 String
+  createdAt                       DateTime @default(now())
+  updatedAt                       DateTime @updatedAt
+  readinessPolicy                 MedicationSafetyActivationReadinessPolicy? @relation(fields: [readinessPolicyId], references: [id], onDelete: SetNull)
+  assessment                      MedicationSafetyActivationReadinessAssessment? @relation(fields: [assessmentId], references: [id], onDelete: SetNull)
+
+  @@index([candidateStatus])
+  @@index([scopeType, scopeIdentifier])
+  @@index([readinessPolicyId])
+  @@index([assessmentId])
+}
+
+model MedicationSafetyActivationReadinessAttestation {
+  id                          String   @id @default(uuid())
+  assessmentId                String
+  policyId                    String
+  scope                       String   @db.VarChar(128)
+  result                      String   @db.VarChar(48)
+  engineVersion               String   @db.VarChar(64)
+  knowledgeVersionIdsJson     Json?
+  reviewedByPharmacistUserId  String?
+  reviewedByMedicalDirectorUserId String?
+  approvedByMedicationAdminUserId String
+  attestedAt                  DateTime @default(now())
+  limitations                 String?
+  unresolvedRisks             String?
+  checksum                    String   @db.VarChar(128)
+  providerFacingAlertsEnabled Boolean  @default(false)
+  orderBlockingEnabled        Boolean  @default(false)
+  clinicalActivationPerformed Boolean  @default(false)
+  immutable                   Boolean  @default(true)
+  createdAt                   DateTime @default(now())
+  assessment                  MedicationSafetyActivationReadinessAssessment @relation(fields: [assessmentId], references: [id], onDelete: Restrict)
+  policy                      MedicationSafetyActivationReadinessPolicy @relation(fields: [policyId], references: [id], onDelete: Restrict)
+
+  @@index([assessmentId])
+  @@index([policyId])
+  @@index([attestedAt])
+  @@index([checksum])
+}
+
+model MedicationSafetyValidationAuditEvent {
+  id                 String   @id @default(uuid())
+  entityType         String   @db.VarChar(64)
+  entityId           String
+  action             String   @db.VarChar(64)
+  beforeState        Json?
+  afterState         Json?
+  performedByUserId  String
+  performedAt        DateTime @default(now())
+  reason             String?
+  correlationId      String?  @db.VarChar(128)
+  identifiableAccess Boolean  @default(false)
+  createdAt          DateTime @default(now())
+
+  @@index([entityType, entityId])
+  @@index([action])
+  @@index([performedByUserId])
+  @@index([performedAt])
+  @@index([identifiableAccess])
+}
+
 /// Durable RxNorm verified mapping history — Phase 4 canonical reconciliation (CLI/service only).
 model RxNormVerifiedMapping {
   id                   String                  @id @default(uuid())
