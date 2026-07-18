@@ -1,5 +1,14 @@
 {
-  "RoleSpoofingRejected": "YES",
+  "BatchStatus": "CERTIFIED",
+  "CriticalMisses": 0,
+  "DeferredDomainSkips": 8,
+  "FamiliesExecuted": 8,
+  "MatchedFindings": 24,
+  "MissedFindings": 0,
+  "OpenGaps": 8,
+  "Readiness": "QUALIFIED_WITH_GAPS",
+  "ReferenceCases": 40,
+  "UnexpectedFindings": 0,
   "auditStatus": "COMPLETE",
   "catalogClassification": "CURATED",
   "catalogComplete": false,
@@ -8,5 +17,5 @@
   "dataSource": "database",
   "generatedAt": "2026-07-18T13:26:53.012Z",
   "phase": "14B",
-  "title": "Phase 14B security audit"
+  "title": "Phase 14B synthetic shadow evaluation audit"
 }

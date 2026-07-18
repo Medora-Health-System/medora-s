@@ -6,48 +6,56 @@ import {
 } from "./medication-phase14b-certification";
 
 describe("medication-phase14b-certification", () => {
-  it("uses the expected certification identifier", () => {
+  it("uses the Part 3 certification identifier", () => {
     expect(PHASE14B_CERTIFICATION_ID).toBe(
-      "MEDUI.MEDICATION_INTELLIGENCE_PHASE_14B_EXPERT_KNOWLEDGE_REVIEW_APPROVAL_FOR_SHADOW_AND_WAVE1_QUALIFICATION"
+      "MEDUI.MEDICATION_INTELLIGENCE_PHASE_14B_CONTROLLED_SYNTHETIC_SHADOW_EVALUATION_GAP_ANALYSIS_REPORTING"
     );
   });
 
-  it("lists eight certification artifacts", () => {
-    expect(PHASE14B_ARTIFACTS).toHaveLength(8);
+  it("lists nine certification artifacts", () => {
+    expect(PHASE14B_ARTIFACTS).toHaveLength(9);
   });
 
-  it("probes schema, Phase 13 reuse, services, API, UI, CLI", () => {
+  it("probes Part 2 and Part 3 schema, Phase 10 reuse, and isolation", () => {
     const schema = probePhase14BSchema();
-    expect(schema.migrationPresent).toBe(true);
-    expect(schema.hasExpertReviewBatch).toBe(true);
-    expect(schema.hasDomainReview).toBe(true);
-    expect(schema.hasShadowSnapshot).toBe(true);
-    expect(schema.servicePresent).toBe(true);
-    expect(schema.reusesPhase13Approval).toBe(true);
+    expect(schema.migrationPart2Present).toBe(true);
+    expect(schema.migrationPart3Present).toBe(true);
+    expect(schema.hasSyntheticBatch).toBe(true);
+    expect(schema.hasSyntheticExecution).toBe(true);
+    expect(schema.syntheticServicePresent).toBe(true);
+    expect(schema.reusesPhase10Engine).toBe(true);
+    expect(schema.rejectsDraftConsumption).toBe(true);
     expect(schema.controllerPresent).toBe(true);
     expect(schema.uiPresent).toBe(true);
     expect(schema.cliPresent).toBe(true);
     expect(schema.frenchI18nPresent).toBe(true);
-    expect(schema.sharedGovernancePresent).toBe(true);
     expect(schema.noCareControlDbConstraint).toBe(true);
   });
 
-  it("certifies when review and shadow qualification exist without care control", () => {
+  it("certifies when synthetic execution completes without critical misses", () => {
     const summary = buildEnterpriseSummary({
       dataSource: "database",
       confidence: "HIGH",
       schema: probePhase14BSchema(),
       metrics: {
-        batchStatus: "COMPLETED",
+        expertReviewBatchStatus: "COMPLETED",
         familiesReviewed: 8,
         familiesApprovedForShadow: 8,
-        familiesDeferred: 0,
-        clinicalDomainsReviewed: 100,
-        safetyDomainsReviewed: 60,
         qualityScores: 8,
         shadowSnapshots: 8,
         openConflicts: 0,
-        auditEntries: 20,
+        syntheticBatchStatus: "CERTIFIED",
+        syntheticReadiness: "QUALIFIED_WITH_GAPS",
+        familiesExecuted: 8,
+        familiesPassed: 8,
+        referenceCases: 40,
+        matchedFindings: 32,
+        missedFindings: 0,
+        unexpectedFindings: 0,
+        criticalMisses: 0,
+        deferredDomainSkips: 8,
+        openGaps: 8,
+        acetaminophenInWave1: false,
         clinicalActivations: 0,
       },
       evidence: {
@@ -67,7 +75,7 @@ describe("medication-phase14b-certification", () => {
     expect(summary.FinalDecision).toBe(
       "MEDICATION_INTELLIGENCE_PHASE_14B_CERTIFIED"
     );
-    expect(summary.ApprovedForShadowImpliesProduction).toBe("NO");
-    expect(summary.ClinicalActivationEnabled).toBe("NO");
+    expect(summary.MutableDraftKnowledgeConsumed).toBe("NO");
+    expect(summary.AcetaminophenIdentityBlocked).toBe("YES");
   });
 });

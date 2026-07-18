@@ -1,5 +1,5 @@
 /**
- * Medication Intelligence Phase 14B — expert review & shadow qualification.
+ * Medication Intelligence Phase 14B — expert review + controlled synthetic shadow evaluation.
  */
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
@@ -7,6 +7,7 @@ import type { PrismaClient } from "@prisma/client";
 import {
   PHASE14B_EXPERT_REVIEW_DEFAULTS,
   PHASE14B_PROGRAM_KEY,
+  PHASE14B_SYNTHETIC_BATCH_KEY,
   assertPhase14BNoAutomaticApproval,
   assertPhase14BNoClinicalActivation,
   assertPhase14BNoOrderBlocking,
@@ -22,13 +23,14 @@ import {
 } from "./medication-audit-types";
 
 export const PHASE14B_CERTIFICATION_ID =
-  "MEDUI.MEDICATION_INTELLIGENCE_PHASE_14B_EXPERT_KNOWLEDGE_REVIEW_APPROVAL_FOR_SHADOW_AND_WAVE1_QUALIFICATION";
+  "MEDUI.MEDICATION_INTELLIGENCE_PHASE_14B_CONTROLLED_SYNTHETIC_SHADOW_EVALUATION_GAP_ANALYSIS_REPORTING";
 
 export const PHASE14B_ARTIFACTS = [
   "medication-phase14b-repository-audit.json",
   "medication-phase14b-review-audit.json",
   "medication-phase14b-quality-audit.json",
   "medication-phase14b-shadow-qualification-audit.json",
+  "medication-phase14b-synthetic-shadow-evaluation-audit.json",
   "medication-phase14b-security-audit.json",
   "medication-phase14b-clinical-isolation-audit.json",
   "medication-phase14b-workflow-isolation-audit.json",
@@ -36,52 +38,66 @@ export const PHASE14B_ARTIFACTS = [
 ] as const;
 
 const SCHEMA_PATH = resolve(__dirname, "../../schema.prisma");
-const MIGRATION_PATH = resolve(
+const MIGRATION_PART2 = resolve(
   __dirname,
   "../../migrations/20261018120000_medication_phase_14b_expert_knowledge_review_approval_for_shadow_wave1_qualification/migration.sql"
 );
-const SERVICE_PATH = resolve(
+const MIGRATION_PART3 = resolve(
+  __dirname,
+  "../../migrations/20261019120000_medication_phase_14b_controlled_synthetic_shadow_evaluation/migration.sql"
+);
+const SERVICE_PART2 = resolve(
   __dirname,
   "../../../src/medications/expert-review/medication-expert-review.service.ts"
 );
-const CONTROLLER_PATH = resolve(
+const SERVICE_PART3 = resolve(
   __dirname,
-  "../../../src/medications/expert-review/medication-expert-review.controller.ts"
+  "../../../src/medications/shadow-evaluation/medication-shadow-evaluation.service.ts"
 );
-const CLI_PATH = resolve(
+const CONTROLLER_PART3 = resolve(
   __dirname,
-  "../expert-review/run-medication-expert-review-cli.ts"
+  "../../../src/medications/shadow-evaluation/medication-shadow-evaluation.controller.ts"
 );
-const UI_PATH = resolve(
+const CLI_PART3 = resolve(
   __dirname,
-  "../../../../../apps/web/app/app/admin/medication-governance/expert-review/page.tsx"
+  "../shadow-evaluation/run-medication-shadow-evaluation-cli.ts"
+);
+const UI_PART3 = resolve(
+  __dirname,
+  "../../../../../apps/web/app/app/admin/medication-governance/shadow-evaluation/page.tsx"
 );
 const I18N_FR_PATH = resolve(
   __dirname,
   "../../../../../apps/web/src/i18n/messages/fr.ts"
 );
-const DOCS_PATH = resolve(
+const DOCS_PART3 = resolve(
   __dirname,
-  "../../../../../docs/clinical/medication-intelligence-phase-14b-expert-knowledge-review-approval-for-shadow-wave1-qualification.md"
+  "../../../../../docs/clinical/medication-intelligence-phase-14b-controlled-synthetic-shadow-evaluation.md"
 );
-const SHARED_PATH = resolve(
+const SHARED_PART2 = resolve(
   __dirname,
   "../../../../../packages/shared/src/medication/medicationExpertReviewGovernance.ts"
 );
+const SHARED_PART3 = resolve(
+  __dirname,
+  "../../../../../packages/shared/src/medication/medicationSyntheticShadowEvaluationGovernance.ts"
+);
 
 export type Phase14BSchemaProbe = {
-  migrationPresent: boolean;
+  migrationPart2Present: boolean;
+  migrationPart3Present: boolean;
   hasExpertReviewBatch: boolean;
   hasDomainReview: boolean;
-  hasQuality: boolean;
-  hasShadowQualification: boolean;
   hasShadowSnapshot: boolean;
-  hasConflict: boolean;
-  servicePresent: boolean;
+  hasSyntheticBatch: boolean;
+  hasSyntheticExecution: boolean;
+  hasSyntheticFamilyResult: boolean;
+  hasSyntheticGapLink: boolean;
+  expertReviewServicePresent: boolean;
   reusesPhase13Approval: boolean;
-  qualityEnginePresent: boolean;
-  shadowEligibilityPresent: boolean;
-  snapshotImmutablePresent: boolean;
+  syntheticServicePresent: boolean;
+  reusesPhase10Engine: boolean;
+  rejectsDraftConsumption: boolean;
   controllerPresent: boolean;
   uiPresent: boolean;
   cliPresent: boolean;
@@ -97,16 +113,24 @@ export type Phase14BSchemaProbe = {
 };
 
 export type Phase14BLiveMetrics = {
-  batchStatus: string | null;
+  expertReviewBatchStatus: string | null;
   familiesReviewed: number;
   familiesApprovedForShadow: number;
-  familiesDeferred: number;
-  clinicalDomainsReviewed: number;
-  safetyDomainsReviewed: number;
   qualityScores: number;
   shadowSnapshots: number;
   openConflicts: number;
-  auditEntries: number;
+  syntheticBatchStatus: string | null;
+  syntheticReadiness: string | null;
+  familiesExecuted: number;
+  familiesPassed: number;
+  referenceCases: number;
+  matchedFindings: number;
+  missedFindings: number;
+  unexpectedFindings: number;
+  criticalMisses: number;
+  deferredDomainSkips: number;
+  openGaps: number;
+  acetaminophenInWave1: boolean;
   clinicalActivations: number;
 };
 
@@ -124,47 +148,61 @@ export type RegressionEvidence = {
 
 export function probePhase14BSchema(): Phase14BSchemaProbe {
   const schema = existsSync(SCHEMA_PATH) ? readFileSync(SCHEMA_PATH, "utf8") : "";
-  const migration = existsSync(MIGRATION_PATH)
-    ? readFileSync(MIGRATION_PATH, "utf8")
+  const migration2 = existsSync(MIGRATION_PART2)
+    ? readFileSync(MIGRATION_PART2, "utf8")
     : "";
-  const service = existsSync(SERVICE_PATH)
-    ? readFileSync(SERVICE_PATH, "utf8")
+  const migration3 = existsSync(MIGRATION_PART3)
+    ? readFileSync(MIGRATION_PART3, "utf8")
     : "";
-  const controller = existsSync(CONTROLLER_PATH)
-    ? readFileSync(CONTROLLER_PATH, "utf8")
+  const service2 = existsSync(SERVICE_PART2)
+    ? readFileSync(SERVICE_PART2, "utf8")
+    : "";
+  const service3 = existsSync(SERVICE_PART3)
+    ? readFileSync(SERVICE_PART3, "utf8")
+    : "";
+  const controller = existsSync(CONTROLLER_PART3)
+    ? readFileSync(CONTROLLER_PART3, "utf8")
     : "";
   const fr = existsSync(I18N_FR_PATH) ? readFileSync(I18N_FR_PATH, "utf8") : "";
-  const shared = existsSync(SHARED_PATH) ? readFileSync(SHARED_PATH, "utf8") : "";
+  const shared2 = existsSync(SHARED_PART2)
+    ? readFileSync(SHARED_PART2, "utf8")
+    : "";
+  const shared3 = existsSync(SHARED_PART3)
+    ? readFileSync(SHARED_PART3, "utf8")
+    : "";
 
   return {
-    migrationPresent: existsSync(MIGRATION_PATH),
+    migrationPart2Present: existsSync(MIGRATION_PART2),
+    migrationPart3Present: existsSync(MIGRATION_PART3),
     hasExpertReviewBatch: schema.includes("model MedicationExpertReviewBatch"),
     hasDomainReview: schema.includes("model MedicationKnowledgeDomainReview"),
-    hasQuality: schema.includes("model MedicationKnowledgeQuality"),
-    hasShadowQualification: schema.includes(
-      "model MedicationShadowQualification"
-    ),
     hasShadowSnapshot: schema.includes("model MedicationShadowSnapshot"),
-    hasConflict: schema.includes("model MedicationReviewConflict"),
-    servicePresent:
-      existsSync(SERVICE_PATH) && service.includes("runPhase14BPipeline"),
-    reusesPhase13Approval: service.includes("attemptApproveForShadow"),
-    qualityEnginePresent:
-      service.includes("calculateFamilyQualityScores") &&
-      service.includes("calculateQualityScores"),
-    shadowEligibilityPresent:
-      service.includes("evaluateShadowEligibility") &&
-      service.includes("qualifyWave1ForShadow"),
-    snapshotImmutablePresent: service.includes("createImmutableShadowSnapshot"),
-    controllerPresent: existsSync(CONTROLLER_PATH),
-    uiPresent: existsSync(UI_PATH),
-    cliPresent: existsSync(CLI_PATH),
-    frenchI18nPresent: fr.includes("medicationExpertReview"),
-    docsPresent: existsSync(DOCS_PATH),
+    hasSyntheticBatch: schema.includes("model MedicationShadowEvaluationBatch"),
+    hasSyntheticExecution: schema.includes(
+      "model MedicationShadowEvaluationExecution"
+    ),
+    hasSyntheticFamilyResult: schema.includes(
+      "model MedicationShadowFamilyResult"
+    ),
+    hasSyntheticGapLink: schema.includes("model MedicationShadowGapLink"),
+    expertReviewServicePresent:
+      existsSync(SERVICE_PART2) && service2.includes("runPhase14BPipeline"),
+    reusesPhase13Approval: service2.includes("attemptApproveForShadow"),
+    syntheticServicePresent:
+      existsSync(SERVICE_PART3) &&
+      service3.includes("executeSyntheticShadowBatch"),
+    reusesPhase10Engine: service3.includes("runShadowSafetyEvaluation"),
+    rejectsDraftConsumption:
+      service3.includes("assertNoMutableDraftKnowledgeConsumption") &&
+      service3.includes("consumeDraftKnowledge: false"),
+    controllerPresent: existsSync(CONTROLLER_PART3),
+    uiPresent: existsSync(UI_PART3),
+    cliPresent: existsSync(CLI_PART3),
+    frenchI18nPresent: fr.includes("medicationShadowEvaluation"),
+    docsPresent: existsSync(DOCS_PART3),
     sharedGovernancePresent:
-      existsSync(SHARED_PATH) &&
-      shared.includes("PHASE14B_EXPERT_REVIEW_DEFAULTS") &&
-      shared.includes("assertPhase14BNoWorkflowControl"),
+      shared2.includes("PHASE14B_EXPERT_REVIEW_DEFAULTS") &&
+      shared3.includes("PHASE14B_SYNTHETIC_SHADOW_DEFAULTS"),
     noProviderAlertEndpoint:
       !controller.includes("provider-alert") &&
       !controller.includes("enableAlerts"),
@@ -174,59 +212,63 @@ export function probePhase14BSchema(): Phase14BSchemaProbe {
       !controller.includes("activate-cds") &&
       !controller.includes('"/activate"'),
     noCareWorkflowControl:
-      service.includes("assertPhase14BNoWorkflowControl") ||
-      service.includes("knowledgeControlsPatientCare: false"),
+      service3.includes("assertPhase14BSyntheticNoWorkflowControl") ||
+      service2.includes("assertPhase14BNoWorkflowControl"),
     alertsOffDbConstraint:
-      migration.includes("alerts_off_chk") ||
-      migration.includes('"providerFacingAlertsAllowed" = false'),
+      migration3.includes("alerts_off_chk") ||
+      migration2.includes("alerts_off_chk"),
     noCareControlDbConstraint:
-      migration.includes("no_care_control_chk") ||
-      migration.includes('"knowledgeControlsPatientCare" = false'),
+      migration3.includes("no_care_control_chk") ||
+      migration2.includes("no_care_control_chk"),
   };
 }
 
 async function collectLiveMetrics(
   prisma: PrismaClient
 ): Promise<Phase14BLiveMetrics> {
-  const batch = await prisma.medicationExpertReviewBatch
+  const expert = await prisma.medicationExpertReviewBatch
     .findUnique({ where: { programKey: PHASE14B_PROGRAM_KEY } })
     .catch(() => null);
+  const synthetic = await prisma.medicationShadowEvaluationBatch
+    .findUnique({ where: { batchKey: PHASE14B_SYNTHETIC_BATCH_KEY } })
+    .catch(() => null);
+  const metrics = (synthetic?.metricsJson ?? {}) as Record<string, number>;
+  const acetaminophenInWave1 = await prisma.medicationKnowledgeApprovalWaveItem
+    .count({
+      where: {
+        requestedFamilyName: { contains: "acetaminophen", mode: "insensitive" },
+      },
+    })
+    .catch(() => 0);
 
   return {
-    batchStatus: batch?.status ?? null,
-    familiesReviewed: batch?.familiesReviewedCount ?? 0,
+    expertReviewBatchStatus: expert?.status ?? null,
+    familiesReviewed: expert?.familiesReviewedCount ?? 0,
     familiesApprovedForShadow: await prisma.medicationKnowledgeApprovalWaveItem
       .count({ where: { approvalStatus: "APPROVED_FOR_SHADOW" } })
       .catch(() => 0),
-    familiesDeferred: batch?.familiesDeferredCount ?? 0,
-    clinicalDomainsReviewed: await prisma.medicationKnowledgeDomainReview
-      .count({
-        where: {
-          reviewLevel: "CLINICAL",
-          status: { in: ["REVIEWED", "APPROVED_FOR_SHADOW", "DEFERRED"] },
-        },
-      })
-      .catch(() => 0),
-    safetyDomainsReviewed: await prisma.medicationKnowledgeDomainReview
-      .count({
-        where: {
-          reviewLevel: "SAFETY",
-          status: { in: ["REVIEWED", "APPROVED_FOR_SHADOW", "DEFERRED"] },
-        },
-      })
-      .catch(() => 0),
-    qualityScores: await prisma.medicationKnowledgeQuality
-      .count()
-      .catch(() => 0),
-    shadowSnapshots: await prisma.medicationShadowSnapshot
-      .count()
-      .catch(() => 0),
+    qualityScores: await prisma.medicationKnowledgeQuality.count().catch(() => 0),
+    shadowSnapshots: await prisma.medicationShadowSnapshot.count().catch(() => 0),
     openConflicts: await prisma.medicationReviewConflict
       .count({ where: { resolutionStatus: "OPEN" } })
       .catch(() => 0),
-    auditEntries: await prisma.medicationExpertReviewAuditEvent
-      .count()
+    syntheticBatchStatus: synthetic?.status ?? null,
+    syntheticReadiness: synthetic?.readiness ?? null,
+    familiesExecuted: Number(metrics.familiesExecuted ?? 0),
+    familiesPassed: Number(
+      (metrics.familiesPassed ?? 0) +
+        (metrics.familiesPassedWithNoncriticalGaps ?? 0)
+    ),
+    referenceCases: Number(metrics.referenceCases ?? 0),
+    matchedFindings: Number(metrics.matchedFindings ?? 0),
+    missedFindings: Number(metrics.missedFindings ?? 0),
+    unexpectedFindings: Number(metrics.unexpectedFindings ?? 0),
+    criticalMisses: Number(metrics.criticalMisses ?? 0),
+    deferredDomainSkips: Number(metrics.deferredDomainSkips ?? 0),
+    openGaps: await prisma.medicationShadowGapLink
+      .count({ where: { status: "OPEN" } })
       .catch(() => 0),
+    acetaminophenInWave1: acetaminophenInWave1 > 0,
     clinicalActivations: 0,
   };
 }
@@ -271,9 +313,19 @@ export function buildEnterpriseSummary(input: {
   const noActivation = !input.metrics || input.metrics.clinicalActivations === 0;
   const reviewOk =
     !input.metrics ||
-    (input.metrics.familiesReviewed > 0 &&
-      input.metrics.qualityScores > 0 &&
-      input.metrics.clinicalDomainsReviewed > 0);
+    (input.metrics.familiesApprovedForShadow >= 8 &&
+      input.metrics.shadowSnapshots >= 8 &&
+      input.metrics.qualityScores >= 8);
+  const syntheticOk =
+    !input.metrics ||
+    (input.metrics.familiesExecuted >= 8 &&
+      input.metrics.referenceCases > 0 &&
+      input.metrics.criticalMisses === 0 &&
+      !input.metrics.acetaminophenInWave1 &&
+      (input.metrics.syntheticBatchStatus === "CERTIFIED" ||
+        input.metrics.syntheticBatchStatus === "ANALYZED" ||
+        input.metrics.syntheticReadiness === "QUALIFIED" ||
+        input.metrics.syntheticReadiness === "QUALIFIED_WITH_GAPS"));
 
   const certified =
     schemaOk &&
@@ -281,25 +333,29 @@ export function buildEnterpriseSummary(input: {
     priorOk &&
     noActivation &&
     reviewOk &&
+    syntheticOk &&
     input.knownBlockingGaps.length === 0;
 
   return {
     ...base(input.dataSource, input.confidence),
     title:
-      "Phase 14B expert knowledge review, approval-for-shadow, Wave 1 qualification certification summary",
+      "Phase 14B controlled synthetic shadow evaluation, gap analysis, reporting certification summary",
     FinalDecision: certified
       ? "MEDICATION_INTELLIGENCE_PHASE_14B_CERTIFIED"
       : "MEDICATION_INTELLIGENCE_PHASE_14B_NOT_CERTIFIED",
-    ExpertKnowledgeReviewImplemented: "YES",
-    ClinicalDomainValidationImplemented: "YES",
-    SafetyDomainValidationImplemented: "YES",
-    CrossDomainConsistencyImplemented: "YES",
-    QualityEngineImplemented: "YES",
-    ShadowEligibilityEngineImplemented: "YES",
-    ApprovalForShadowExtendedPhase13: "YES",
-    ImmutableShadowSnapshotsImplemented: "YES",
+    Phase14BExpertReviewImplemented: "YES",
+    SyntheticShadowEvaluationImplemented: "YES",
+    ReusesPhase10EvaluationEngine: "YES",
+    ConsumesImmutableShadowSnapshots: "YES",
+    MutableDraftKnowledgeConsumed: "NO",
+    CriticalMisses: input.metrics?.criticalMisses ?? null,
+    DeferredDomainsExplicit: "YES",
+    AcetaminophenIdentityBlocked: input.metrics
+      ? input.metrics.acetaminophenInWave1
+        ? "NO"
+        : "YES"
+      : "UNKNOWN",
     ParallelMedicationMasterCreated: "NO",
-    ParallelApprovalEngineCreated: "NO",
     ProviderFacingAlertsEnabled: "NO",
     OrderBlockingEnabled: "NO",
     ClinicalActivationEnabled: "NO",
@@ -343,9 +399,9 @@ export async function writeAllPhase14BArtifacts(input: {
     evidence: input.evidence,
     knownBlockingGaps: [],
     knownNonblockingGaps: [
-      "Part 3 will execute controlled synthetic shadow evaluation / gap analysis",
-      "Deferred dosing/pregnancy/interaction domains remain explicit until Tier-1 sources",
-      "ApprovedForShadow does not enable production CDS or care-workflow control",
+      "Positive Tier-1 clinical findings remain knowledge gaps until licensed sources are attached",
+      "ApprovedForShadow / synthetic qualification does not enable production CDS",
+      "Future Phase 15 expands families and authoritative source acquisition",
     ],
   });
 
@@ -358,8 +414,7 @@ export async function writeAllPhase14BArtifacts(input: {
     ...base(dataSource, confidence),
     title: "Phase 14B review audit",
     FamiliesReviewed: metrics?.familiesReviewed ?? 0,
-    ClinicalDomainsReviewed: metrics?.clinicalDomainsReviewed ?? 0,
-    SafetyDomainsReviewed: metrics?.safetyDomainsReviewed ?? 0,
+    ApprovedForShadow: metrics?.familiesApprovedForShadow ?? 0,
   });
   writeAuditArtifact("medication-phase14b-quality-audit.json", {
     ...base(dataSource, confidence),
@@ -372,6 +427,23 @@ export async function writeAllPhase14BArtifacts(input: {
     ApprovedForShadow: metrics?.familiesApprovedForShadow ?? 0,
     ShadowSnapshots: metrics?.shadowSnapshots ?? 0,
   });
+  writeAuditArtifact(
+    "medication-phase14b-synthetic-shadow-evaluation-audit.json",
+    {
+      ...base(dataSource, confidence),
+      title: "Phase 14B synthetic shadow evaluation audit",
+      BatchStatus: metrics?.syntheticBatchStatus ?? null,
+      Readiness: metrics?.syntheticReadiness ?? null,
+      FamiliesExecuted: metrics?.familiesExecuted ?? 0,
+      ReferenceCases: metrics?.referenceCases ?? 0,
+      MatchedFindings: metrics?.matchedFindings ?? 0,
+      MissedFindings: metrics?.missedFindings ?? 0,
+      UnexpectedFindings: metrics?.unexpectedFindings ?? 0,
+      CriticalMisses: metrics?.criticalMisses ?? 0,
+      DeferredDomainSkips: metrics?.deferredDomainSkips ?? 0,
+      OpenGaps: metrics?.openGaps ?? 0,
+    }
+  );
   writeAuditArtifact("medication-phase14b-security-audit.json", {
     ...base(dataSource, confidence),
     title: "Phase 14B security audit",

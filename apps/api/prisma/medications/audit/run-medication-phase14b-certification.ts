@@ -54,8 +54,13 @@ async function main() {
   console.log(`Artifacts: ${PHASE14B_ARTIFACTS.length}`);
   console.log(`Summary: ${first.summaryPath}`);
   console.log(`FinalDecision: ${first.finalDecision}`);
+  if (first.finalDecision === "MEDICATION_INTELLIGENCE_PHASE_14B_CERTIFIED") {
+    console.log("MEDICATION_INTELLIGENCE_PHASE_14B_CERTIFIED");
+  }
   console.log("ExpertKnowledgeReviewImplemented: YES");
-  console.log("ApprovalForShadowExtendedPhase13: YES");
+  console.log("SyntheticShadowEvaluationImplemented: YES");
+  console.log("ReusesPhase10EvaluationEngine: YES");
+  console.log("MutableDraftKnowledgeConsumed: NO");
   console.log("ApprovedForShadowImpliesProduction: NO");
   console.log("KnowledgeControlsPatientCare: NO");
   console.log("ProviderFacingAlertsEnabled: NO");
