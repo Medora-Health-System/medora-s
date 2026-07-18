@@ -4856,6 +4856,8 @@ model MedicationEvidenceSourceRegistration {
   batch                      MedicationEvidenceAcquisitionBatch? @relation(fields: [batchId], references: [id], onDelete: SetNull)
   evidenceLinks              MedicationKnowledgeEvidenceLink[]
   remediationWorkItems       MedicationRemediationWorkItem[]
+  recommendationDefinitions  MedicationRecommendationDefinition[]
+  recommendationEvidenceLinks MedicationRecommendationEvidenceLink[]
 
   @@index([batchId])
   @@index([knowledgeScope])
@@ -5082,6 +5084,7 @@ model MedicationShadowSnapshot {
   syntheticCasesJson Json?
   createdAt          DateTime @default(now())
   batch              MedicationExpertReviewBatch? @relation(fields: [batchId], references: [id], onDelete: SetNull)
+  recommendationDefinitions MedicationRecommendationDefinition[]
 
   @@unique([knowledgeId, shadowVersion])
   @@index([batchId])
@@ -5370,6 +5373,218 @@ model MedicationRemediationAuditEvent {
   reason            String?
   createdAt         DateTime @default(now())
   program           MedicationRemediationProgram? @relation(fields: [programId], references: [id], onDelete: SetNull)
+
+  @@index([programId])
+  @@index([entityType, entityId])
+  @@index([action])
+  @@index([performedByUserId])
+  @@index([performedAt])
+}
+
+/// Phase 16 — shadow-first recommendation program (extends Phase 15; no care activation).
+model MedicationRecommendationProgram {
+  id                           String   @id @default(uuid())
+  programKey                   String   @unique @db.VarChar(64)
+  name                         String   @db.VarChar(255)
+  description                  String?
+  waveKey                      String?  @db.VarChar(64)
+  /// PLANNED | SEEDING | IN_REVIEW | SHADOW_READY | COMPLETED | BLOCKED
+  status                       String   @default("PLANNED") @db.VarChar(48)
+  programVersion               String?  @db.VarChar(32)
+  targetFamilyCount            Int      @default(8)
+  definitionCount              Int      @default(0)
+  shadowEligibleCount          Int      @default(0)
+  metricsJson                  Json?
+  shadowRecommendationAllowed  Boolean  @default(true)
+  controlledPilotAllowed       Boolean  @default(false)
+  enterpriseActiveAllowed      Boolean  @default(false)
+  clinicalActivationAllowed    Boolean  @default(false)
+  providerFacingAlertsAllowed  Boolean  @default(false)
+  orderBlockingAllowed         Boolean  @default(false)
+  knowledgeControlsPatientCare Boolean  @default(false)
+  orderFromRecommendationAllowed Boolean @default(false)
+  createdByUserId              String
+  completedAt                  DateTime?
+  createdAt                    DateTime @default(now())
+  updatedAt                    DateTime @updatedAt
+  definitions                  MedicationRecommendationDefinition[]
+  shadowEvaluations            MedicationRecommendationShadowEvaluation[]
+  analyticsSnapshots           MedicationRecommendationAnalyticsSnapshot[]
+  auditEvents                  MedicationRecommendationAuditEvent[]
+
+  @@index([status])
+  @@index([waveKey])
+}
+
+/// Phase 16 — governed recommendation definition (Wave 1; provenance required for shadow).
+model MedicationRecommendationDefinition {
+  id                       String   @id @default(uuid())
+  programId                String
+  definitionKey            String   @unique @db.VarChar(255)
+  familyKey                String   @db.VarChar(128)
+  canonicalConceptId       String?
+  /// FIRST_LINE | ALTERNATIVE_THERAPY | CONTRAINDICATED | …
+  recommendationKind       String   @db.VarChar(48)
+  title                    String   @db.VarChar(255)
+  reasonSummary            String
+  structuredPayloadJson    Json?
+  /// DRAFT | EVIDENCE_COMPLETE | EXPERT_REVIEW | APPROVED | SHADOW_RECOMMENDATION | …
+  lifecycleStatus          String   @default("DRAFT") @db.VarChar(48)
+  version                  String   @default("1.0.0") @db.VarChar(32)
+  priorVersionId           String?
+  confidenceScore          Int      @default(0)
+  evidenceCompleteness     Int      @default(0)
+  evidenceLevel            String?  @db.VarChar(32)
+  recommendationStrength   String?  @db.VarChar(32)
+  validationStatus         String   @default("UNVALIDATED") @db.VarChar(32)
+  approvalStatus           String   @default("PENDING") @db.VarChar(32)
+  approvedByUserId         String?
+  approvedAt               DateTime?
+  shadowSnapshotId         String?
+  evidenceRegistrationId   String?
+  knowledgeVersion         String?  @db.VarChar(64)
+  missingReferencesJson    Json?
+  supportingReferencesJson Json?
+  fabricatedForbidden      Boolean  @default(true)
+  createdByUserId          String
+  createdAt                DateTime @default(now())
+  updatedAt                DateTime @updatedAt
+  program                  MedicationRecommendationProgram @relation(fields: [programId], references: [id], onDelete: Restrict)
+  shadowSnapshot           MedicationShadowSnapshot? @relation(fields: [shadowSnapshotId], references: [id], onDelete: SetNull)
+  evidenceRegistration     MedicationEvidenceSourceRegistration? @relation(fields: [evidenceRegistrationId], references: [id], onDelete: SetNull)
+  priorVersion             MedicationRecommendationDefinition? @relation("RecommendationVersionChain", fields: [priorVersionId], references: [id], onDelete: SetNull)
+  nextVersions             MedicationRecommendationDefinition[] @relation("RecommendationVersionChain")
+  evidenceLinks            MedicationRecommendationEvidenceLink[]
+  reviews                  MedicationRecommendationReview[]
+  feedback                 MedicationRecommendationFeedback[]
+
+  @@index([programId])
+  @@index([familyKey])
+  @@index([recommendationKind])
+  @@index([lifecycleStatus])
+  @@index([shadowSnapshotId])
+  @@index([evidenceRegistrationId])
+  @@index([confidenceScore])
+}
+
+model MedicationRecommendationEvidenceLink {
+  id                     String   @id @default(uuid())
+  definitionId           String
+  evidenceRegistrationId String?
+  sourceIdentity         String?  @db.VarChar(128)
+  sourceTier             String?  @db.VarChar(48)
+  evidenceLevel          String?  @db.VarChar(32)
+  permittedUseStatus     String?  @db.VarChar(32)
+  excerptNormalized      String?
+  provenanceJson         Json?
+  createdAt              DateTime @default(now())
+  definition             MedicationRecommendationDefinition @relation(fields: [definitionId], references: [id], onDelete: Restrict)
+  evidenceRegistration   MedicationEvidenceSourceRegistration? @relation(fields: [evidenceRegistrationId], references: [id], onDelete: SetNull)
+
+  @@index([definitionId])
+  @@index([evidenceRegistrationId])
+}
+
+model MedicationRecommendationReview {
+  id               String   @id @default(uuid())
+  definitionId     String
+  /// READY_FOR_REVIEW | UNDER_REVIEW | CHANGES_REQUESTED | APPROVED | REJECTED | DEFERRED
+  decision         String   @db.VarChar(48)
+  rationale        String?
+  reviewerUserId   String
+  reviewedAt       DateTime @default(now())
+  limitationsJson  Json?
+  createdAt        DateTime @default(now())
+  definition       MedicationRecommendationDefinition @relation(fields: [definitionId], references: [id], onDelete: Restrict)
+
+  @@index([definitionId])
+  @@index([decision])
+  @@index([reviewerUserId])
+}
+
+/// Phase 16 — shadow evaluation store only (never mutates orders/MAR/chart).
+model MedicationRecommendationShadowEvaluation {
+  id                       String   @id @default(uuid())
+  programId                String?
+  facilityId               String
+  patientId                String?
+  encounterId              String?
+  providerUserId           String
+  evaluatedAt              DateTime @default(now())
+  recommendationVersionSet String?  @db.VarChar(128)
+  knowledgeVersionSet      String?  @db.VarChar(64)
+  recommendationsJson      Json
+  reasoningPathJson        Json?
+  confidenceSummaryJson    Json?
+  metricsJson              Json?
+  mutatesOrders            Boolean  @default(false)
+  mutatesMar               Boolean  @default(false)
+  mutatesChart             Boolean  @default(false)
+  clinicalActivation       Boolean  @default(false)
+  createdAt                DateTime @default(now())
+  program                  MedicationRecommendationProgram? @relation(fields: [programId], references: [id], onDelete: SetNull)
+
+  @@index([programId])
+  @@index([facilityId])
+  @@index([patientId])
+  @@index([encounterId])
+  @@index([providerUserId])
+  @@index([evaluatedAt])
+}
+
+model MedicationRecommendationFeedback {
+  id               String   @id @default(uuid())
+  definitionId     String
+  evaluationId     String?
+  facilityId       String
+  providerUserId   String
+  encounterId      String?
+  /// ACKNOWLEDGED | ACCEPTED_AS_INFORMATION | REJECTED | OVERRIDE_DOCUMENTED
+  feedbackType     String   @db.VarChar(48)
+  overrideReason   String?
+  notes            String?
+  createdAt        DateTime @default(now())
+  definition       MedicationRecommendationDefinition @relation(fields: [definitionId], references: [id], onDelete: Restrict)
+
+  @@index([definitionId])
+  @@index([facilityId])
+  @@index([providerUserId])
+  @@index([feedbackType])
+}
+
+model MedicationRecommendationAnalyticsSnapshot {
+  id                    String   @id @default(uuid())
+  programId             String?
+  snapshotKey           String   @unique @db.VarChar(128)
+  generatedCount        Int      @default(0)
+  acknowledgedCount     Int      @default(0)
+  rejectedCount         Int      @default(0)
+  overrideCount         Int      @default(0)
+  shadowEvaluationCount Int      @default(0)
+  coveragePercent       Int      @default(0)
+  confidenceBucketsJson Json?
+  metricsJson           Json?
+  capturedAt            DateTime @default(now())
+  createdAt             DateTime @default(now())
+  program               MedicationRecommendationProgram? @relation(fields: [programId], references: [id], onDelete: SetNull)
+
+  @@index([programId])
+  @@index([capturedAt])
+}
+
+model MedicationRecommendationAuditEvent {
+  id                String   @id @default(uuid())
+  programId         String?
+  entityType        String   @db.VarChar(64)
+  entityId          String
+  action            String   @db.VarChar(64)
+  beforeState       Json?
+  afterState        Json?
+  performedByUserId String
+  performedAt       DateTime @default(now())
+  reason            String?
+  createdAt         DateTime @default(now())
+  program           MedicationRecommendationProgram? @relation(fields: [programId], references: [id], onDelete: SetNull)
 
   @@index([programId])
   @@index([entityType, entityId])

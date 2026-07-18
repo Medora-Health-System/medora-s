@@ -282,6 +282,11 @@ export default function ProviderPage() {
           <p style={{ margin: "8px 0 0 0", fontSize: 14, color: "#64748b", maxWidth: 720, lineHeight: 1.55 }}>
             {t("clinicalDashboard.providerSubtitle")}
           </p>
+          <p style={{ margin: "8px 0 0 0", fontSize: 14 }}>
+            <Link href="/app/provider/medication-recommendations">
+              {t("medicationPhase16Recommendations.openProviderLink")}
+            </Link>
+          </p>
         </header>
 
         <ProcedureWorkQueuePanel

@@ -198,6 +198,7 @@ export * from "./medication/medicationEvidenceGovernance.js";
 export * from "./medication/medicationExpertReviewGovernance.js";
 export * from "./medication/medicationSyntheticShadowEvaluationGovernance.js";
 export * from "./medication/medicationAuthoritativeSourceAcquisitionGovernance.js";
+export * from "./medication/medicationRecommendationEngineGovernance.js";
 export * from "./medication/medicationRxNormSourceGovernance.js";
 export * from "./medication/medicationFixtureClassification.js";
 export * from "./medication/medicationBillingTraceability.js";
