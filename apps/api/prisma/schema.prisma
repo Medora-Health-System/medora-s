@@ -4545,6 +4545,243 @@ model MedicationKnowledgePopulationAuditEvent {
   @@index([performedAt])
 }
 
+/// Phase 13 — governed identity investigation (e.g. acetaminophen blocker).
+model MedicationKnowledgeIdentityResolutionCase {
+  id                     String   @id @default(uuid())
+  batchItemId            String?
+  requestedFamilyName    String   @db.VarChar(255)
+  normalizedFamilyName   String   @db.VarChar(255)
+  candidateConceptIdsJson Json?
+  candidateProductIdsJson Json?
+  candidateSynonymsJson  Json?
+  candidateRxCuisJson    Json?
+  investigationNotesJson Json?
+  /// OPEN | UNDER_INVESTIGATION | DEFERRED_IDENTITY_BLOCKER | RESOLVED_* | EXCLUDED_FROM_PHASE13 | REQUIRES_NEW_CANONICAL_IDENTITY_GOVERNANCE
+  resolutionStatus       String   @default("OPEN") @db.VarChar(64)
+  selectedConceptId      String?
+  resolutionMethod       String?  @db.VarChar(64)
+  resolutionConfidence   String?  @db.VarChar(16)
+  reviewedByUserId       String?
+  approvedByUserId       String?
+  reviewNotes            String?
+  createdAt              DateTime @default(now())
+  resolvedAt             DateTime?
+  updatedAt              DateTime @updatedAt
+
+  @@index([batchItemId])
+  @@index([normalizedFamilyName])
+  @@index([resolutionStatus])
+  @@index([selectedConceptId])
+}
+
+/// Phase 13 — controlled approval wave (narrow first wave).
+model MedicationKnowledgeApprovalWave {
+  id                         String   @id @default(uuid())
+  waveKey                    String   @unique @db.VarChar(64)
+  name                       String   @db.VarChar(255)
+  description                String?
+  batchId                    String?
+  /// DRAFT | SELECTION_COMPLETE | ... | RETIRED
+  status                     String   @default("DRAFT") @db.VarChar(48)
+  targetFamilyCount          Int      @default(0)
+  selectedFamilyCount        Int      @default(0)
+  approvedFamilyCount        Int      @default(0)
+  shadowEligibleFamilyCount  Int      @default(0)
+  selectionPolicyVersion     String?  @db.VarChar(32)
+  clinicalActivationAllowed  Boolean  @default(false)
+  providerFacingAlertsAllowed Boolean @default(false)
+  orderBlockingAllowed       Boolean  @default(false)
+  createdByUserId            String
+  startedAt                  DateTime?
+  completedAt                DateTime?
+  lockedAt                   DateTime?
+  createdAt                  DateTime @default(now())
+  updatedAt                  DateTime @updatedAt
+  items                      MedicationKnowledgeApprovalWaveItem[]
+  sourceReadinessSnapshots   MedicationKnowledgeSourceReadinessSnapshot[]
+  shadowValidationRuns       MedicationKnowledgeShadowValidationRun[]
+  auditEvents                MedicationKnowledgeSourceBackedAuditEvent[]
+
+  @@index([status])
+  @@index([batchId])
+  @@index([createdByUserId])
+}
+
+model MedicationKnowledgeApprovalWaveItem {
+  id                        String   @id @default(uuid())
+  waveId                    String
+  batchItemId               String?
+  familyKey                 String   @db.VarChar(128)
+  requestedFamilyName       String   @db.VarChar(255)
+  canonicalConceptId        String?
+  selectionReason           String?
+  /// LOW | MODERATE | HIGH | CRITICAL
+  complexityLevel           String   @default("MODERATE") @db.VarChar(16)
+  identityStatus            String   @default("UNRESOLVED") @db.VarChar(48)
+  sourceStatus              String   @default("NOT_READY") @db.VarChar(48)
+  clinicalContentStatus     String   @default("DRAFT") @db.VarChar(48)
+  safetyContentStatus       String   @default("DRAFT") @db.VarChar(48)
+  reviewStatus              String   @default("NOT_STARTED") @db.VarChar(48)
+  /// NOT_APPROVED | APPROVED_FOR_SHADOW | REJECTED | DEFERRED
+  approvalStatus            String   @default("NOT_APPROVED") @db.VarChar(48)
+  shadowEligibilityStatus   String   @default("NOT_ELIGIBLE") @db.VarChar(48)
+  blockingReasonCodesJson   Json?
+  isPlaceholderDetected     Boolean  @default(false)
+  clinicalActivationAllowed Boolean  @default(false)
+  shadowUseAllowed          Boolean  @default(false)
+  createdAt                 DateTime @default(now())
+  updatedAt                 DateTime @updatedAt
+  wave                      MedicationKnowledgeApprovalWave @relation(fields: [waveId], references: [id], onDelete: Cascade)
+
+  @@unique([waveId, familyKey])
+  @@index([waveId])
+  @@index([canonicalConceptId])
+  @@index([approvalStatus])
+  @@index([identityStatus])
+}
+
+model MedicationKnowledgeSourceReadinessSnapshot {
+  id                         String   @id @default(uuid())
+  waveId                     String?
+  familyKey                  String   @db.VarChar(128)
+  canonicalConceptId         String?
+  requiredDomainsJson        Json?
+  sourceVersionsAvailableJson Json?
+  sourceVersionsApprovedJson Json?
+  missingSourceDomainsJson   Json?
+  conflictingSourceDomainsJson Json?
+  licensedUseConfirmed       Boolean  @default(false)
+  sourceReady                Boolean  @default(false)
+  isPlaceholderContent       Boolean  @default(false)
+  blockingReasonsJson        Json?
+  calculatedAt               DateTime @default(now())
+  wave                       MedicationKnowledgeApprovalWave? @relation(fields: [waveId], references: [id], onDelete: SetNull)
+
+  @@index([waveId])
+  @@index([familyKey])
+  @@index([sourceReady])
+  @@index([calculatedAt])
+}
+
+model MedicationKnowledgeShadowValidationRun {
+  id                          String   @id @default(uuid())
+  waveId                      String?
+  referenceSetId              String?
+  engineVersion               String?  @db.VarChar(64)
+  clinicalKnowledgeVersionIdsJson Json?
+  safetyKnowledgeVersionIdsJson Json?
+  /// QUEUED | RUNNING | COMPLETED | COMPLETED_WITH_WARNINGS | FAILED | INVALIDATED
+  status                      String   @default("QUEUED") @db.VarChar(48)
+  caseCount                   Int      @default(0)
+  completedCaseCount          Int      @default(0)
+  expectedFindingCount        Int      @default(0)
+  generatedFindingCount       Int      @default(0)
+  matchedFindingCount         Int      @default(0)
+  missedFindingCount          Int      @default(0)
+  unexpectedFindingCount      Int      @default(0)
+  duplicateFindingCount       Int      @default(0)
+  suppressedFindingCount      Int      @default(0)
+  criticalMissCount           Int      @default(0)
+  evaluationFailureCount      Int      @default(0)
+  medianLatencyMs             Int?
+  p95LatencyMs                Int?
+  p99LatencyMs                Int?
+  metricsLabel                String   @default("synthetic-reference-derived") @db.VarChar(64)
+  clinicalActivationAllowed   Boolean  @default(false)
+  providerFacingAlertsAllowed Boolean  @default(false)
+  orderBlockingAllowed        Boolean  @default(false)
+  startedAt                   DateTime?
+  completedAt                 DateTime?
+  createdAt                   DateTime @default(now())
+  updatedAt                   DateTime @updatedAt
+  wave                        MedicationKnowledgeApprovalWave? @relation(fields: [waveId], references: [id], onDelete: SetNull)
+  caseResults                 MedicationKnowledgeShadowValidationCaseResult[]
+
+  @@index([waveId])
+  @@index([referenceSetId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model MedicationKnowledgeShadowValidationCaseResult {
+  id                     String   @id @default(uuid())
+  runId                  String
+  referenceCaseId        String?
+  caseKey                String   @db.VarChar(128)
+  matchClassification    String   @db.VarChar(64)
+  expectedFindingCount   Int      @default(0)
+  generatedFindingCount  Int      @default(0)
+  matchedCount           Int      @default(0)
+  missedCount            Int      @default(0)
+  unexpectedCount        Int      @default(0)
+  latencyMs              Int?
+  detailsJson            Json?
+  createdAt              DateTime @default(now())
+  run                    MedicationKnowledgeShadowValidationRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+
+  @@index([runId])
+  @@index([caseKey])
+  @@index([matchClassification])
+}
+
+model MedicationKnowledgeUnexpectedFindingReview {
+  id                     String   @id @default(uuid())
+  runId                  String?
+  caseResultId           String?
+  findingKey             String   @db.VarChar(255)
+  /// UNEXPECTED_FINDING_REVIEW_REQUIRED | TRUE_POSITIVE_NOT_IN_REFERENCE_SET | LIKELY_TRUE_POSITIVE | FALSE_POSITIVE | LIKELY_FALSE_POSITIVE | REFERENCE_CASE_DEFECT | KNOWLEDGE_SCOPE_ERROR | ENGINE_LOGIC_ERROR | SEVERITY_ERROR | DUPLICATE_FINDING
+  classification         String   @default("UNEXPECTED_FINDING_REVIEW_REQUIRED") @db.VarChar(64)
+  reviewedByUserId       String?
+  reviewedAt             DateTime?
+  notes                  String?
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+
+  @@index([runId])
+  @@index([classification])
+  @@index([reviewedByUserId])
+}
+
+model MedicationKnowledgeEngineGap {
+  id                     String   @id @default(uuid())
+  gapType                String   @db.VarChar(64)
+  description            String
+  /// OPEN | UNDER_REVIEW | RESOLVED | DEFERRED | BLOCKING
+  status                 String   @default("OPEN") @db.VarChar(32)
+  severity               String   @default("MODERATE") @db.VarChar(32)
+  runId                  String?
+  familyKey              String?  @db.VarChar(128)
+  detailsJson            Json?
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+
+  @@index([status])
+  @@index([gapType])
+  @@index([familyKey])
+  @@index([runId])
+}
+
+model MedicationKnowledgeSourceBackedAuditEvent {
+  id                 String   @id @default(uuid())
+  waveId             String?
+  entityType         String   @db.VarChar(64)
+  entityId           String
+  action             String   @db.VarChar(64)
+  beforeState        Json?
+  afterState         Json?
+  performedByUserId  String
+  performedAt        DateTime @default(now())
+  reason             String?
+  createdAt          DateTime @default(now())
+  wave               MedicationKnowledgeApprovalWave? @relation(fields: [waveId], references: [id], onDelete: SetNull)
+
+  @@index([waveId])
+  @@index([entityType, entityId])
+  @@index([action])
+  @@index([performedByUserId])
+  @@index([performedAt])
+}
+
 /// Durable RxNorm verified mapping history — Phase 4 canonical reconciliation (CLI/service only).
 model RxNormVerifiedMapping {
   id                   String                  @id @default(uuid())

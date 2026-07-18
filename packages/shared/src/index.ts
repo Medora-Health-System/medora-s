@@ -193,6 +193,7 @@ export * from "./medication/medicationSafetyKnowledgeGovernance.js";
 export * from "./medication/medicationSafetyEvaluationGovernance.js";
 export * from "./medication/medicationSafetyValidationGovernance.js";
 export * from "./medication/medicationKnowledgePopulationGovernance.js";
+export * from "./medication/medicationSourceBackedValidationGovernance.js";
 export * from "./medication/medicationRxNormSourceGovernance.js";
 export * from "./medication/medicationFixtureClassification.js";
 export * from "./medication/medicationBillingTraceability.js";
