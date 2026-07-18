@@ -2056,6 +2056,12 @@ model MedicationTherapeuticClass {
   id                             String                       @id @default(uuid())
   code                           String                       @unique
   name                           String
+  /// Phase 9 — optional terminology metadata (extends existing class identity).
+  codeSystem                     String?                      @db.VarChar(64)
+  normalizedName                 String?                      @db.VarChar(255)
+  displayNameFr                  String?
+  description                    String?
+  active                         Boolean                      @default(true)
   parentId                       String?
   createdAt                      DateTime                     @default(now())
   updatedAt                      DateTime                     @updatedAt
@@ -2063,8 +2069,16 @@ model MedicationTherapeuticClass {
   safetyProfilesDuplicateTherapy MedicationSafetyProfile[]    @relation("MedicationSafetyDuplicateTherapyClass")
   parent                         MedicationTherapeuticClass?  @relation("MedicationTherapeuticClassHierarchy", fields: [parentId], references: [id])
   children                       MedicationTherapeuticClass[] @relation("MedicationTherapeuticClassHierarchy")
+  classMemberships               MedicationTherapeuticClassMembership[]
+  drugClassInteractions          MedicationDrugClassInteraction[]
+  subjectClassInteractions       MedicationClassInteraction[] @relation("MedicationClassInteractionSubject")
+  objectClassInteractions        MedicationClassInteraction[] @relation("MedicationClassInteractionObject")
+  allergenMappings               MedicationAllergenMapping[]
+  crossReactivityRules           MedicationAllergyCrossReactivityRule[]
 
   @@index([parentId])
+  @@index([active])
+  @@index([normalizedName])
 }
 
 model MedicationRoute {
@@ -2127,6 +2141,13 @@ model MedicationConcept {
   safetyProfile           MedicationSafetyProfile?
   searchAliases           MedicationSearchAlias[]
   clinicalProfiles        MedicationClinicalProfile[]
+  safetyClassMemberships  MedicationTherapeuticClassMembership[]
+  subjectDrugInteractions MedicationDrugInteraction[] @relation("MedicationDrugInteractionSubjectConcept")
+  objectDrugInteractions  MedicationDrugInteraction[] @relation("MedicationDrugInteractionObjectConcept")
+  drugClassInteractions   MedicationDrugClassInteraction[]
+  allergenMappings        MedicationAllergenMapping[]
+  crossReactivityRules    MedicationAllergyCrossReactivityRule[]
+  duplicateTherapyMemberships MedicationDuplicateTherapyMembership[]
 
   @@index([therapeuticClassId])
   @@index([isActive])
@@ -2206,6 +2227,13 @@ model MedicationProduct {
   routePermissions           MedicationProductRoutePermission[]
   orderItems                 OrderItem[]
   clinicalProfiles           MedicationClinicalProfile[]
+  safetyClassMemberships     MedicationTherapeuticClassMembership[]
+  subjectDrugInteractions    MedicationDrugInteraction[] @relation("MedicationDrugInteractionSubjectProduct")
+  objectDrugInteractions     MedicationDrugInteraction[] @relation("MedicationDrugInteractionObjectProduct")
+  drugClassInteractions      MedicationDrugClassInteraction[]
+  allergenMappings           MedicationAllergenMapping[]
+  crossReactivityRules       MedicationAllergyCrossReactivityRule[]
+  duplicateTherapyMemberships MedicationDuplicateTherapyMembership[]
 
   @@index([conceptId])
   @@index([legacyCatalogMedicationId])
@@ -3148,6 +3176,445 @@ model MedicationReconstitutionInstruction {
   profile            MedicationClinicalProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
 
   @@index([profileId])
+}
+
+/// Phase 9 — safety knowledge source (interactions / allergy / duplicate therapy).
+model MedicationSafetyKnowledgeSource {
+  id                 String   @id @default(uuid())
+  name               String
+  sourceCode         String   @unique @db.VarChar(64)
+  /// INTERNAL_CURATED | FDA | NLM | RXNORM | DAILYMED | MANUFACTURER_LABEL | PEER_REVIEWED_LITERATURE | CLINICAL_GUIDELINE | PHARMACY_REFERENCE | OTHER
+  sourceType         String   @default("INTERNAL_CURATED") @db.VarChar(48)
+  publisher          String?
+  sourceUrl          String?
+  licenseReference   String?
+  releaseVersion     String?  @db.VarChar(64)
+  publicationDate    DateTime?
+  effectiveDate      DateTime?
+  expirationDate     DateTime?
+  language           String?  @db.VarChar(16)
+  jurisdiction       String?  @db.VarChar(64)
+  active             Boolean  @default(true)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  versions           MedicationSafetyKnowledgeVersion[]
+
+  @@index([sourceType])
+  @@index([active])
+}
+
+/// Phase 9 — versioned safety knowledge package.
+model MedicationSafetyKnowledgeVersion {
+  id                 String   @id @default(uuid())
+  sourceId           String
+  version            String   @db.VarChar(64)
+  releaseIdentifier  String?  @db.VarChar(128)
+  effectiveDate      DateTime?
+  importedAt         DateTime?
+  importedByUserId   String?
+  checksum           String?  @db.VarChar(128)
+  /// DRAFT | UNDER_REVIEW | APPROVED | SUPERSEDED | RETIRED | REJECTED
+  status             String   @default("DRAFT") @db.VarChar(32)
+  notes              String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  source             MedicationSafetyKnowledgeSource @relation(fields: [sourceId], references: [id], onDelete: Restrict)
+  drugInteractions   MedicationDrugInteraction[]
+  drugClassInteractions MedicationDrugClassInteraction[]
+  classInteractions  MedicationClassInteraction[]
+  classMemberships   MedicationTherapeuticClassMembership[]
+  allergenMappings   MedicationAllergenMapping[]
+  crossReactivityRules MedicationAllergyCrossReactivityRule[]
+  duplicateTherapyMemberships MedicationDuplicateTherapyMembership[]
+  duplicateTherapyRules MedicationDuplicateTherapyRule[]
+  evidenceRows       MedicationSafetyEvidence[]
+  auditEvents        MedicationSafetyKnowledgeAuditEvent[]
+
+  @@unique([sourceId, version])
+  @@index([status])
+  @@index([checksum])
+}
+
+/// Phase 9 — governed therapeutic class membership (does not replace concept.therapeuticClassId).
+model MedicationTherapeuticClassMembership {
+  id                 String   @id @default(uuid())
+  medicationConceptId String?
+  medicationProductId String?
+  therapeuticClassId String
+  /// PRIMARY | SECONDARY | PHARMACOLOGIC | THERAPEUTIC | CHEMICAL | SAFETY_GROUP | DUPLICATE_THERAPY_GROUP
+  membershipType     String   @db.VarChar(48)
+  sourceVersionId    String
+  /// DRAFT | UNDER_REVIEW | APPROVED | SUPERSEDED | RETIRED | REJECTED
+  status             String   @default("DRAFT") @db.VarChar(32)
+  reviewedByUserId   String?
+  reviewedAt         DateTime?
+  approvedByUserId   String?
+  approvedAt         DateTime?
+  futureAlertEligible Boolean @default(false)
+  clinicalActivationAllowed Boolean @default(false)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  concept            MedicationConcept? @relation(fields: [medicationConceptId], references: [id], onDelete: Restrict)
+  product            MedicationProduct? @relation(fields: [medicationProductId], references: [id], onDelete: Restrict)
+  therapeuticClass   MedicationTherapeuticClass @relation(fields: [therapeuticClassId], references: [id], onDelete: Restrict)
+  sourceVersion      MedicationSafetyKnowledgeVersion @relation(fields: [sourceVersionId], references: [id], onDelete: Restrict)
+
+  @@index([medicationConceptId])
+  @@index([medicationProductId])
+  @@index([therapeuticClassId])
+  @@index([sourceVersionId])
+  @@index([status])
+  @@index([clinicalActivationAllowed])
+}
+
+/// Phase 9 — drug–drug interaction knowledge (no patient evaluation).
+model MedicationDrugInteraction {
+  id                              String   @id @default(uuid())
+  subjectMedicationConceptId      String?
+  objectMedicationConceptId       String?
+  subjectMedicationProductId      String?
+  objectMedicationProductId       String?
+  /// Symmetric: lower|higher|scope|sourceVersionId; directional: DIR|subject|object|scope|sourceVersionId
+  normalizedPairKey               String   @db.VarChar(512)
+  directional                     Boolean  @default(false)
+  /// CONCEPT_TO_CONCEPT | PRODUCT_TO_PRODUCT | CONCEPT_TO_PRODUCT | INGREDIENT_TO_INGREDIENT
+  interactionScope                String   @db.VarChar(48)
+  interactionType                 String   @db.VarChar(48)
+  severity                        String   @db.VarChar(32)
+  clinicalSignificance            String?  @db.VarChar(32)
+  evidenceLevel                   String?  @db.VarChar(48)
+  onset                           String?  @db.VarChar(32)
+  mechanism                       String?
+  clinicalEffect                  String?
+  managementRecommendation        String?
+  monitoringRecommendation        String?
+  administrationSeparationMinutes Int?
+  contraindicatedCombination      Boolean  @default(false)
+  emergencyContextNotesJson       Json?
+  futureAlertEligible             Boolean  @default(false)
+  clinicalActivationAllowed       Boolean  @default(false)
+  sourceVersionId                 String
+  /// DRAFT | UNDER_REVIEW | APPROVED | SUPERSEDED | RETIRED | REJECTED
+  status                          String   @default("DRAFT") @db.VarChar(32)
+  reviewedByUserId                String?
+  reviewedAt                      DateTime?
+  approvedByUserId                String?
+  approvedAt                      DateTime?
+  effectiveDate                   DateTime?
+  supersedesId                    String?
+  notes                           String?
+  createdAt                       DateTime @default(now())
+  updatedAt                       DateTime @updatedAt
+  subjectConcept                  MedicationConcept? @relation("MedicationDrugInteractionSubjectConcept", fields: [subjectMedicationConceptId], references: [id], onDelete: Restrict)
+  objectConcept                   MedicationConcept? @relation("MedicationDrugInteractionObjectConcept", fields: [objectMedicationConceptId], references: [id], onDelete: Restrict)
+  subjectProduct                  MedicationProduct? @relation("MedicationDrugInteractionSubjectProduct", fields: [subjectMedicationProductId], references: [id], onDelete: Restrict)
+  objectProduct                   MedicationProduct? @relation("MedicationDrugInteractionObjectProduct", fields: [objectMedicationProductId], references: [id], onDelete: Restrict)
+  sourceVersion                   MedicationSafetyKnowledgeVersion @relation(fields: [sourceVersionId], references: [id], onDelete: Restrict)
+  supersedes                      MedicationDrugInteraction? @relation("MedicationDrugInteractionSupersession", fields: [supersedesId], references: [id])
+  supersededBy                    MedicationDrugInteraction[] @relation("MedicationDrugInteractionSupersession")
+  evidenceRows                    MedicationSafetyEvidence[]
+
+  @@index([normalizedPairKey])
+  @@index([sourceVersionId])
+  @@index([status])
+  @@index([severity])
+  @@index([directional])
+  @@index([futureAlertEligible])
+  @@index([clinicalActivationAllowed])
+  @@index([subjectMedicationConceptId])
+  @@index([objectMedicationConceptId])
+}
+
+model MedicationDrugClassInteraction {
+  id                         String   @id @default(uuid())
+  medicationConceptId        String?
+  medicationProductId        String?
+  therapeuticClassId         String
+  normalizedIdentityKey      String   @db.VarChar(512)
+  directional                Boolean  @default(false)
+  interactionType            String   @db.VarChar(48)
+  severity                   String   @db.VarChar(32)
+  clinicalSignificance       String?  @db.VarChar(32)
+  evidenceLevel              String?  @db.VarChar(48)
+  mechanism                  String?
+  clinicalEffect             String?
+  managementRecommendation   String?
+  monitoringRecommendation   String?
+  contraindicatedCombination Boolean  @default(false)
+  futureAlertEligible        Boolean  @default(false)
+  clinicalActivationAllowed  Boolean  @default(false)
+  sourceVersionId            String
+  status                     String   @default("DRAFT") @db.VarChar(32)
+  reviewedByUserId           String?
+  approvedByUserId           String?
+  effectiveDate              DateTime?
+  createdAt                  DateTime @default(now())
+  updatedAt                  DateTime @updatedAt
+  concept                    MedicationConcept? @relation(fields: [medicationConceptId], references: [id], onDelete: Restrict)
+  product                    MedicationProduct? @relation(fields: [medicationProductId], references: [id], onDelete: Restrict)
+  therapeuticClass           MedicationTherapeuticClass @relation(fields: [therapeuticClassId], references: [id], onDelete: Restrict)
+  sourceVersion              MedicationSafetyKnowledgeVersion @relation(fields: [sourceVersionId], references: [id], onDelete: Restrict)
+
+  @@index([normalizedIdentityKey])
+  @@index([therapeuticClassId])
+  @@index([sourceVersionId])
+  @@index([status])
+  @@index([clinicalActivationAllowed])
+}
+
+model MedicationClassInteraction {
+  id                         String   @id @default(uuid())
+  subjectClassId             String
+  objectClassId              String
+  normalizedPairKey          String   @db.VarChar(512)
+  directional                Boolean  @default(false)
+  interactionType            String   @db.VarChar(48)
+  severity                   String   @db.VarChar(32)
+  clinicalSignificance       String?  @db.VarChar(32)
+  evidenceLevel              String?  @db.VarChar(48)
+  mechanism                  String?
+  clinicalEffect             String?
+  managementRecommendation   String?
+  monitoringRecommendation   String?
+  futureAlertEligible        Boolean  @default(false)
+  clinicalActivationAllowed  Boolean  @default(false)
+  sourceVersionId            String
+  status                     String   @default("DRAFT") @db.VarChar(32)
+  createdAt                  DateTime @default(now())
+  updatedAt                  DateTime @updatedAt
+  subjectClass               MedicationTherapeuticClass @relation("MedicationClassInteractionSubject", fields: [subjectClassId], references: [id], onDelete: Restrict)
+  objectClass                MedicationTherapeuticClass @relation("MedicationClassInteractionObject", fields: [objectClassId], references: [id], onDelete: Restrict)
+  sourceVersion              MedicationSafetyKnowledgeVersion @relation(fields: [sourceVersionId], references: [id], onDelete: Restrict)
+
+  @@index([normalizedPairKey])
+  @@index([sourceVersionId])
+  @@index([status])
+  @@index([clinicalActivationAllowed])
+}
+
+model MedicationAllergenConcept {
+  id                 String   @id @default(uuid())
+  /// MEDICATION_INGREDIENT | MEDICATION_CLASS | EXCIPIENT | FOOD | BIOLOGIC | ENVIRONMENTAL | OTHER
+  allergenType       String   @db.VarChar(48)
+  normalizedName     String   @db.VarChar(255)
+  displayName        String
+  displayNameFr      String?
+  codeSystem         String?  @db.VarChar(64)
+  code               String?  @db.VarChar(64)
+  parentAllergenId   String?
+  description        String?
+  active             Boolean  @default(true)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  parent             MedicationAllergenConcept? @relation("MedicationAllergenHierarchy", fields: [parentAllergenId], references: [id])
+  children           MedicationAllergenConcept[] @relation("MedicationAllergenHierarchy")
+  mappings           MedicationAllergenMapping[]
+  sourceCrossRules   MedicationAllergyCrossReactivityRule[]
+
+  @@unique([allergenType, normalizedName])
+  @@index([codeSystem, code])
+  @@index([active])
+}
+
+model MedicationAllergenMapping {
+  id                         String   @id @default(uuid())
+  allergenConceptId          String
+  medicationConceptId        String?
+  medicationProductId        String?
+  therapeuticClassId         String?
+  /// DIRECT_INGREDIENT | SAME_ACTIVE_INGREDIENT | SAME_THERAPEUTIC_CLASS | STRUCTURAL_SIMILARITY | KNOWN_CROSS_REACTIVITY | POSSIBLE_CROSS_REACTIVITY | EXCIPIENT_RELATED | NO_EXPECTED_CROSS_REACTIVITY
+  relationshipType           String   @db.VarChar(48)
+  /// TRUE_IMMUNE_ALLERGY | NONIMMUNE_HYPERSENSITIVITY | INTOLERANCE | EXPECTED_ADVERSE_EFFECT | CONTRAINDICATION | CROSS_REACTIVITY_CONCERN | UNKNOWN_REACTION
+  reactionKind               String?  @db.VarChar(48)
+  crossReactivityRisk        String?  @db.VarChar(32)
+  evidenceLevel              String?  @db.VarChar(48)
+  clinicalDescription        String?
+  futureAlertEligible        Boolean  @default(false)
+  clinicalActivationAllowed  Boolean  @default(false)
+  sourceVersionId            String
+  status                     String   @default("DRAFT") @db.VarChar(32)
+  reviewedByUserId           String?
+  approvedByUserId           String?
+  createdAt                  DateTime @default(now())
+  updatedAt                  DateTime @updatedAt
+  allergenConcept            MedicationAllergenConcept @relation(fields: [allergenConceptId], references: [id], onDelete: Restrict)
+  concept                    MedicationConcept? @relation(fields: [medicationConceptId], references: [id], onDelete: Restrict)
+  product                    MedicationProduct? @relation(fields: [medicationProductId], references: [id], onDelete: Restrict)
+  therapeuticClass           MedicationTherapeuticClass? @relation(fields: [therapeuticClassId], references: [id], onDelete: Restrict)
+  sourceVersion              MedicationSafetyKnowledgeVersion @relation(fields: [sourceVersionId], references: [id], onDelete: Restrict)
+  evidenceRows               MedicationSafetyEvidence[]
+
+  @@index([allergenConceptId])
+  @@index([medicationConceptId])
+  @@index([medicationProductId])
+  @@index([therapeuticClassId])
+  @@index([sourceVersionId])
+  @@index([status])
+  @@index([clinicalActivationAllowed])
+}
+
+model MedicationAllergyCrossReactivityRule {
+  id                         String   @id @default(uuid())
+  sourceAllergenId           String
+  targetMedicationConceptId  String?
+  targetMedicationProductId  String?
+  targetTherapeuticClassId   String?
+  normalizedIdentityKey      String   @db.VarChar(512)
+  /// NONE_EXPECTED | LOW | POSSIBLE | MODERATE | HIGH | CONTRAINDICATED | UNKNOWN
+  riskLevel                  String   @db.VarChar(32)
+  crossReactivityType        String?  @db.VarChar(48)
+  evidenceLevel              String?  @db.VarChar(48)
+  estimatedFrequency         String?  @db.VarChar(64)
+  clinicalDescription        String?
+  managementRecommendation   String?
+  futureAlertEligible        Boolean  @default(false)
+  clinicalActivationAllowed  Boolean  @default(false)
+  sourceVersionId            String
+  status                     String   @default("DRAFT") @db.VarChar(32)
+  createdAt                  DateTime @default(now())
+  updatedAt                  DateTime @updatedAt
+  sourceAllergen             MedicationAllergenConcept @relation(fields: [sourceAllergenId], references: [id], onDelete: Restrict)
+  targetConcept              MedicationConcept? @relation(fields: [targetMedicationConceptId], references: [id], onDelete: Restrict)
+  targetProduct              MedicationProduct? @relation(fields: [targetMedicationProductId], references: [id], onDelete: Restrict)
+  targetClass                MedicationTherapeuticClass? @relation(fields: [targetTherapeuticClassId], references: [id], onDelete: Restrict)
+  sourceVersion              MedicationSafetyKnowledgeVersion @relation(fields: [sourceVersionId], references: [id], onDelete: Restrict)
+  evidenceRows               MedicationSafetyEvidence[]
+
+  @@index([normalizedIdentityKey])
+  @@index([sourceAllergenId])
+  @@index([sourceVersionId])
+  @@index([status])
+  @@index([clinicalActivationAllowed])
+}
+
+model MedicationDuplicateTherapyGroup {
+  id                         String   @id @default(uuid())
+  code                       String   @unique @db.VarChar(64)
+  normalizedName             String   @db.VarChar(255)
+  displayName                String
+  displayNameFr              String?
+  description                String?
+  severity                   String?  @db.VarChar(32)
+  defaultClinicalSignificance String? @db.VarChar(32)
+  active                     Boolean  @default(true)
+  createdAt                  DateTime @default(now())
+  updatedAt                  DateTime @updatedAt
+  memberships                MedicationDuplicateTherapyMembership[]
+  rules                      MedicationDuplicateTherapyRule[]
+
+  @@index([normalizedName])
+  @@index([active])
+}
+
+model MedicationDuplicateTherapyMembership {
+  id                         String   @id @default(uuid())
+  duplicateTherapyGroupId    String
+  medicationConceptId        String?
+  medicationProductId        String?
+  ingredientConceptId        String?
+  /// PRIMARY | CONTRIBUTING | COMBINATION_COMPONENT | CONDITIONAL
+  membershipRole             String   @db.VarChar(48)
+  sourceVersionId            String
+  status                     String   @default("DRAFT") @db.VarChar(32)
+  futureAlertEligible        Boolean  @default(false)
+  clinicalActivationAllowed  Boolean  @default(false)
+  createdAt                  DateTime @default(now())
+  updatedAt                  DateTime @updatedAt
+  group                      MedicationDuplicateTherapyGroup @relation(fields: [duplicateTherapyGroupId], references: [id], onDelete: Restrict)
+  concept                    MedicationConcept? @relation(fields: [medicationConceptId], references: [id], onDelete: Restrict)
+  product                    MedicationProduct? @relation(fields: [medicationProductId], references: [id], onDelete: Restrict)
+  sourceVersion              MedicationSafetyKnowledgeVersion @relation(fields: [sourceVersionId], references: [id], onDelete: Restrict)
+
+  @@index([duplicateTherapyGroupId])
+  @@index([medicationConceptId])
+  @@index([medicationProductId])
+  @@index([ingredientConceptId])
+  @@index([sourceVersionId])
+  @@index([status])
+  @@index([clinicalActivationAllowed])
+}
+
+model MedicationDuplicateTherapyRule {
+  id                                  String   @id @default(uuid())
+  duplicateTherapyGroupId             String
+  ruleType                            String   @db.VarChar(64)
+  severity                            String   @db.VarChar(32)
+  clinicalSignificance                String?  @db.VarChar(32)
+  minimumDistinctMedications          Int      @default(2)
+  maximumRecommendedConcurrentAgents  Int?
+  sameIngredientOnly                  Boolean  @default(false)
+  sameRouteOnly                       Boolean  @default(false)
+  sameDosageFormOnly                  Boolean  @default(false)
+  includeCombinationProducts          Boolean  @default(true)
+  excludeTopicalProducts              Boolean  @default(false)
+  excludeSingleAdministrationEmergencyUse Boolean @default(false)
+  emergencyContextNotesJson           Json?
+  futureAlertEligible                 Boolean  @default(false)
+  clinicalActivationAllowed           Boolean  @default(false)
+  sourceVersionId                     String
+  status                              String   @default("DRAFT") @db.VarChar(32)
+  createdAt                           DateTime @default(now())
+  updatedAt                           DateTime @updatedAt
+  group                               MedicationDuplicateTherapyGroup @relation(fields: [duplicateTherapyGroupId], references: [id], onDelete: Restrict)
+  sourceVersion                       MedicationSafetyKnowledgeVersion @relation(fields: [sourceVersionId], references: [id], onDelete: Restrict)
+  evidenceRows                        MedicationSafetyEvidence[]
+
+  @@index([duplicateTherapyGroupId])
+  @@index([sourceVersionId])
+  @@index([status])
+  @@index([clinicalActivationAllowed])
+}
+
+model MedicationSafetyEvidence {
+  id                         String   @id @default(uuid())
+  interactionId              String?
+  allergenMappingId          String?
+  crossReactivityRuleId      String?
+  duplicateTherapyRuleId     String?
+  citationType               String?  @db.VarChar(48)
+  citationReference          String
+  sourceUrl                  String?
+  publicationDate            DateTime?
+  evidenceLevel              String?  @db.VarChar(48)
+  evidenceSummary            String?
+  language                   String?  @db.VarChar(16)
+  sourceVersionId            String?
+  createdAt                  DateTime @default(now())
+  updatedAt                  DateTime @updatedAt
+  interaction                MedicationDrugInteraction? @relation(fields: [interactionId], references: [id], onDelete: Cascade)
+  allergenMapping            MedicationAllergenMapping? @relation(fields: [allergenMappingId], references: [id], onDelete: Cascade)
+  crossReactivityRule        MedicationAllergyCrossReactivityRule? @relation(fields: [crossReactivityRuleId], references: [id], onDelete: Cascade)
+  duplicateTherapyRule       MedicationDuplicateTherapyRule? @relation(fields: [duplicateTherapyRuleId], references: [id], onDelete: Cascade)
+  sourceVersion              MedicationSafetyKnowledgeVersion? @relation(fields: [sourceVersionId], references: [id], onDelete: SetNull)
+
+  @@index([interactionId])
+  @@index([allergenMappingId])
+  @@index([crossReactivityRuleId])
+  @@index([duplicateTherapyRuleId])
+  @@index([sourceVersionId])
+}
+
+model MedicationSafetyKnowledgeAuditEvent {
+  id                 String   @id @default(uuid())
+  entityType         String   @db.VarChar(64)
+  entityId           String
+  action             String   @db.VarChar(64)
+  beforeState        Json?
+  afterState         Json?
+  performedByUserId  String
+  performedAt        DateTime @default(now())
+  reason             String?
+  sourceIp           String?  @db.VarChar(64)
+  requestId          String?  @db.VarChar(128)
+  sourceVersionId    String?
+  createdAt          DateTime @default(now())
+  sourceVersion      MedicationSafetyKnowledgeVersion? @relation(fields: [sourceVersionId], references: [id], onDelete: SetNull)
+
+  @@index([entityType, entityId])
+  @@index([action])
+  @@index([performedByUserId])
+  @@index([performedAt])
+  @@index([sourceVersionId])
 }
 
 /// Durable RxNorm verified mapping history — Phase 4 canonical reconciliation (CLI/service only).
