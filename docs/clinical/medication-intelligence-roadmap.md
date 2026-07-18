@@ -167,7 +167,22 @@ flowchart LR
 | **Complexity** | **High** |
 | **Status** | Implemented — see [`medication-intelligence-phase-6-5-controlled-emergency-pilot.md`](./medication-intelligence-phase-6-5-controlled-emergency-pilot.md) |
 
-**Scaled batch readiness (post–Phase 6.5):** Only after Phase 6.5 certification may controlled batch size grow from ~100 toward ~500–1,000 medications. Do **not** jump to a full national catalog. This readiness gate is separate from roadmap Phase 7 (prescription entity).
+### Phase 7 — Controlled Emergency Medicine batch implementation (Medication Intelligence)
+
+| Field | Value |
+|-------|-------|
+| **Objective** | Governed EM batch platform: authentic RxNorm extract, ~100 medication families, dedupe/reuse, human verification, inactive catalog prep, rollback — **no** clinical activation |
+| **Scope** | `MedicationBatchManifest/Item/Job/Checkpoint/EntityLink`; batch CLI/API; dashboard metrics; platform certifier + operator attestation |
+| **Data source** | Authentic NLM under `.local-data/rxnorm/` (operator); CI structural fixtures only |
+| **Migration** | **YES (additive)** — `20261010120000_medication_phase_7_controlled_emergency_batch` |
+| **Seed/import** | **NO in CI** — `RealBatchExecutedDuringCertification=NO` |
+| **Exit criteria** | Phase 7 platform certifier PASS; duplicate prevention operational; clinical activations = 0 |
+| **Complexity** | **High** |
+| **Status** | Implemented — see [`medication-intelligence-phase-7-controlled-emergency-batch.md`](./medication-intelligence-phase-7-controlled-emergency-batch.md) |
+
+**Note:** This Medication Intelligence Phase 7 (controlled batch) is distinct from the product-roadmap **prescription entity** track below (historically also labeled Phase 7). Do not conflate them.
+
+**Scaled batch readiness (post–Phase 7):** After platform certification **and** staging batch attestation, scale toward Phase 8A (~500–1,000 families). Do **not** jump to a full national catalog.
 
 ### Deferred after Phase 6 — Canonical ordering integration and order sentences
 
@@ -175,7 +190,7 @@ Populate `OrderItem.medicationProductId` / `medicationPackageId` and structured 
 
 ---
 
-## Phase 7 — Prescription entity and discharge prescribing
+## Phase 7 (product roadmap) — Prescription entity and discharge prescribing
 
 | Field | Value |
 |-------|-------|
