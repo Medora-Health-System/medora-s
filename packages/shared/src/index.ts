@@ -192,6 +192,7 @@ export * from "./medication/medicationKnowledgeExpansionWave2.js";
 export * from "./medication/medicationKnowledgeExpansionWave2Catalog.js";
 export * from "./medication/medicationKnowledgeExpansionWave3.js";
 export * from "./medication/medicationKnowledgeExpansionWave4.js";
+export * from "./medication/medicationOrderableCatalogCompletion.js";
 export * from "./medication/medicationClinicalKnowledgeGovernance.js";
 export * from "./medication/medicationSafetyKnowledgeGovernance.js";
 export * from "./medication/medicationSafetyEvaluationGovernance.js";
