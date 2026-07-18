@@ -184,6 +184,18 @@ flowchart LR
 
 **Scaled batch readiness (post–Phase 7):** After platform certification **and** staging batch attestation, scale toward Phase 8A (~500–1,000 families). Do **not** jump to a full national catalog.
 
+### Phase 8 — Clinical knowledge foundation (Medication Intelligence)
+
+| Field | Value |
+|-------|-------|
+| **Objective** | Versioned, provenance-aware clinical knowledge attached to canonical identities — **storage only**, no CDS/alerts/patient dosing |
+| **Scope** | `MedicationClinicalProfile` + domain tables; source/version models; admin API/UI; approval lifecycle; emergency-use metadata |
+| **Migration** | **YES (additive)** — `20261011120000_medication_phase_8_clinical_knowledge_foundation` |
+| **Exit criteria** | Phase 8 certifier PASS; identity separated; human approval required; clinical activation remains disabled; search/order/MAR/billing unchanged |
+| **Status** | Implemented — see [`medication-intelligence-phase-8-clinical-knowledge-foundation.md`](./medication-intelligence-phase-8-clinical-knowledge-foundation.md) |
+
+**Note:** Distinct from product-roadmap Phase 8 (medication reconciliation) below.
+
 ### Deferred after Phase 6 — Canonical ordering integration and order sentences
 
 Populate `OrderItem.medicationProductId` / `medicationPackageId` and structured order sentences. Formerly listed as Phase 6; now scheduled after governed review certification (clinical cutover remains separately certified).
