@@ -1,0 +1,26 @@
+{
+  "title": "Medication Orderable Catalog Completion — Baseline",
+  "generatedAt": "2026-07-18T23:29:49.013Z",
+  "catalogTotal": 10730,
+  "catalogActive": 10657,
+  "catalogInactive": 73,
+  "distinctGenerics": 5206,
+  "aliases": 7765,
+  "brandAliasRows": 7588,
+  "concepts": 6673,
+  "products": 10331,
+  "productsActive": 0,
+  "packages": 10330,
+  "clinicallyRelevantCatalogRows": 10413,
+  "providerOrderableCatalogRows": 10079,
+  "nonOrderableCatalogRows": 334,
+  "coveragePercent": 96.79,
+  "blockers": {
+    "MISSING_STRENGTH": 301,
+    "MISSING_GENERIC": 33,
+    "TEST_OR_NONCLINICAL": 317
+  },
+  "ordersUsingCatalogMed": 3942,
+  "administrations": 956,
+  "recommendationDefinitions": 8
+}

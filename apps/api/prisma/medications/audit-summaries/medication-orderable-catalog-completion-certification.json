@@ -1,0 +1,89 @@
+{
+  "generatedAt": "2026-07-18T23:31:26.084Z",
+  "auditStatus": "COMPLETE",
+  "dataSource": "database",
+  "confidence": "HIGH",
+  "catalogClassification": "CURATED",
+  "catalogComplete": false,
+  "title": "Medication Orderable Catalog Completion — Universal Provider Ordering",
+  "certificationId": "MEDUI.MEDICATION_ORDERABLE_CATALOG_COMPLETION",
+  "implementationId": "MEDUI.MEDICATION_ORDERABLE_CATALOG_COMPLETION_UNIVERSAL_PROVIDER_ORDERING",
+  "FinalDecision": "MEDICATION_ORDERABLE_CATALOG_COMPLETION_CERTIFIED",
+  "Baseline": {
+    "generatedAt": "2026-07-18T23:31:26.084Z",
+    "catalogTotal": 10730,
+    "catalogActive": 10657,
+    "catalogInactive": 73,
+    "distinctGenerics": 5206,
+    "aliases": 21602,
+    "brandAliasRows": 20912,
+    "concepts": 6673,
+    "products": 10331,
+    "productsActive": 0,
+    "packages": 10330,
+    "clinicallyRelevantCatalogRows": 10413,
+    "providerOrderableCatalogRows": 10380,
+    "nonOrderableCatalogRows": 33,
+    "coveragePercent": 99.68,
+    "blockers": {
+      "MISSING_GENERIC": 33,
+      "TEST_OR_NONCLINICAL": 317
+    },
+    "ordersUsingCatalogMed": 3942,
+    "administrations": 956,
+    "recommendationDefinitions": 8
+  },
+  "Completion": {
+    "metadataStrengthFilled": 301,
+    "metadataFormFilled": 301,
+    "aliasesCreated": 13837,
+    "searchTextUpdated": 1316,
+    "manualReviewCount": 106,
+    "commonClinicalSearch": {
+      "queries": 64,
+      "passed": 64,
+      "failed": [],
+      "passRate": 1
+    },
+    "productsActivated": 0
+  },
+  "Safety": {
+    "orderMutations": 0,
+    "marMutations": 0,
+    "chartMutations": 0,
+    "productsActivated": 0,
+    "dualLayerBulkActivated": false,
+    "productionCds": 0
+  },
+  "MigrationRequired": "NO",
+  "MigrationIdentifier": null,
+  "ProductionDeployStatus": "NOT_DEPLOYED",
+  "ProviderQuestion": "Can a provider reliably search for and order virtually every common medication used in EM, inpatient, outpatient, and primary care?",
+  "ProviderAnswerMeasured": {
+    "coveragePercent": 99.68,
+    "providerOrderableCatalogRows": 10380,
+    "nonOrderableCatalogRows": 33,
+    "distinctGenerics": 5206,
+    "commonClinicalSearchPassRate": 1,
+    "commonClinicalFailed": []
+  },
+  "RegressionEvidence": {
+    "focusedTestsPass": true,
+    "fullRegressionPass": true,
+    "buildPass": true,
+    "typecheckPass": true,
+    "diffCheckPass": true,
+    "certificationIdempotent": true,
+    "completionIdempotent": true,
+    "pharmacyValidated": true,
+    "marValidated": true,
+    "reconciliationValidated": true
+  },
+  "CertificationIdempotent": "YES",
+  "KnownNonblockingGaps": [
+    "Dual-layer products remain inactive by design (CatalogMedication-first ordering)",
+    "Test/fixture catalog rows excluded from clinical coverage",
+    "Undervable strength/form rows flagged for manual review",
+    "No formulary redesign; no CDS activation"
+  ]
+}

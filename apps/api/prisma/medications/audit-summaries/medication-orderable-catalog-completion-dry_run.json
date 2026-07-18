@@ -1,0 +1,605 @@
+{
+  "mode": "DRY_RUN",
+  "programKey": "MEDICATION_ORDERABLE_CATALOG_COMPLETION_V1",
+  "importerVersion": "orderable-catalog-completion-1.0.0",
+  "dryRun": true,
+  "baselineBefore": {
+    "generatedAt": "2026-07-18T23:30:10.290Z",
+    "catalogTotal": 10730,
+    "catalogActive": 10657,
+    "catalogInactive": 73,
+    "distinctGenerics": 5206,
+    "aliases": 7765,
+    "brandAliasRows": 7588,
+    "concepts": 6673,
+    "products": 10331,
+    "productsActive": 0,
+    "packages": 10330,
+    "clinicallyRelevantCatalogRows": 10413,
+    "providerOrderableCatalogRows": 10079,
+    "nonOrderableCatalogRows": 334,
+    "coveragePercent": 96.79,
+    "blockers": {
+      "MISSING_STRENGTH": 301,
+      "MISSING_GENERIC": 33,
+      "TEST_OR_NONCLINICAL": 317
+    },
+    "ordersUsingCatalogMed": 3942,
+    "administrations": 956,
+    "recommendationDefinitions": 8
+  },
+  "baselineAfter": {
+    "generatedAt": "2026-07-18T23:30:14.111Z",
+    "catalogTotal": 10730,
+    "catalogActive": 10657,
+    "catalogInactive": 73,
+    "distinctGenerics": 5206,
+    "aliases": 7765,
+    "brandAliasRows": 7588,
+    "concepts": 6673,
+    "products": 10331,
+    "productsActive": 0,
+    "packages": 10330,
+    "clinicallyRelevantCatalogRows": 10413,
+    "providerOrderableCatalogRows": 10079,
+    "nonOrderableCatalogRows": 334,
+    "coveragePercent": 96.79,
+    "blockers": {
+      "MISSING_STRENGTH": 301,
+      "MISSING_GENERIC": 33,
+      "TEST_OR_NONCLINICAL": 317
+    },
+    "ordersUsingCatalogMed": 3942,
+    "administrations": 956,
+    "recommendationDefinitions": 8
+  },
+  "metadataStrengthFilled": 301,
+  "metadataFormFilled": 301,
+  "aliasesCreated": 13837,
+  "searchTextUpdated": 1316,
+  "manualReview": [
+    {
+      "catalogId": "1d1fc679-cb54-45b1-a502-c0aeb0c0efa4",
+      "code": "METRO_K10A_k10a-1781236448357",
+      "reason": "MISSING_STRENGTH_UNDERIVABLE"
+    },
+    {
+      "catalogId": "b099d2f9-0432-42f9-ba4a-ff273a9b7cb4",
+      "code": "PRBC_TRANSFUSION_140441a8",
+      "reason": "MISSING_STRENGTH_UNDERIVABLE"
+    },
+    {
+      "catalogId": "b9561d21-8bd2-49f4-aabb-e3e7fa98b01e",
+      "code": "19G1-ACET-1779373089356",
+      "reason": "TEST_OR_NONCLINICAL"
+    },
+    {
+      "catalogId": "2a47539d-e8c0-4650-a7bc-857bdd96d65f",
+      "code": "19G1-ACET-1779373111553",
+      "reason": "TEST_OR_NONCLINICAL"
+    },
+    {
+      "catalogId": "4f188140-890f-4f7c-a50e-5b6ed60b95a1",
+      "code": "PRBC_TRANSFUSION_729d8e52",
+      "reason": "MISSING_STRENGTH_UNDERIVABLE"
+    },
+    {
+      "catalogId": "fa243e6f-5da8-4978-bee8-3f690b523a88",
+      "code": "19G1-ACET-1779235515731",
+      "reason": "TEST_OR_NONCLINICAL"
+    },
+    {
+      "catalogId": "c5aedbc7-be16-4724-aa97-a8abd2d34820",
+      "code": "19G1-ACET-1779236043505",
+      "reason": "TEST_OR_NONCLINICAL"
+    },
+    {
+      "catalogId": "9f6989c9-706c-400b-bc99-88f731d4a0cc",
+      "code": "19G1-ACET-1779235568012",
+      "reason": "TEST_OR_NONCLINICAL"
+    },
+    {
+      "catalogId": "266fca98-0c93-4656-a56a-e59dbc4b38f9",
+      "code": "19G1-ACET-1779235583752",
+      "reason": "TEST_OR_NONCLINICAL"
+    },
+    {
+      "catalogId": "189d2013-9382-4ff4-ba03-836a8332b43b",
+      "code": "19G1-ACET-1779372891793",
+      "reason": "TEST_OR_NONCLINICAL"
+    },
+    {
+      "catalogId": "7b5dbb3b-4141-46a3-98d2-38ba94859697",
+      "code": "19G1-ACET-1779373081596",
+      "reason": "TEST_OR_NONCLINICAL"
+    },
+    {
+      "catalogId": "43e9cd72-a33f-4fdb-bf7e-94dc41cbea7d",
+      "code": "19G1-ACET-1779375854014",
+      "reason": "TEST_OR_NONCLINICAL"
+    },
+    {
+      "catalogId": "1515814f-7827-403b-b9fd-ff09902eeb51",
+      "code": "19G1-ACET-1779375890715",
+      "reason": "TEST_OR_NONCLINICAL"
+    },
+    {
+      "catalogId": "95789b8e-0eda-4f22-a0db-2eab91c99d18",
+      "code": "19G1-ACET-1779376270694",
+      "reason": "TEST_OR_NONCLINICAL"
+    },
+    {
+      "catalogId": "e38837ad-ccaa-4be4-873c-e266a601e709",
+      "code": "19G1-ACET-1779378205100",
+      "reason": "TEST_OR_NONCLINICAL"
+    },
+    {
+      "catalogId": "cd23f0d2-89e7-42f3-b308-3d8de4adf616",
+      "code": "19G1-ACET-1779383556544",
+      "reason": "TEST_OR_NONCLINICAL"
+    },
+    {
+      "catalogId": "24a8dbab-3e25-4013-bd61-b659d76b935f",
+      "code": "19G1-ACET-1779387955213",
+      "reason": "TEST_OR_NONCLINICAL"
+    },
+    {
+      "catalogId": "db5dfcd9-22a7-4d22-9544-a2d4c2378270",
+      "code": "19G1-ACET-1779388296317",
+      "reason": "TEST_OR_NONCLINICAL"
+    },
+    {
+      "catalogId": "cc2f5ad7-b24e-46ca-91c0-71cee6d4ead0",
+      "code": "19G1-ACET-1779394090872",
+      "reason": "TEST_OR_NONCLINICAL"
+    },
+    {
+      "catalogId": "819b7b19-aee1-48d7-a7f4-6b0c648ddc36",
+      "code": "19G1-ACET-1779394094981",
+      "reason": "TEST_OR_NONCLINICAL"
+    },
+    {
+      "catalogId": "819df8bf-f20b-43c2-b1bd-297cac1313ec",
+      "code": "19G1-ACET-1779394368819",
+      "reason": "TEST_OR_NONCLINICAL"
+    },
+    {
+      "catalogId": "d6eecce0-4bac-44d0-acec-45f6f97dbd85",
+      "code": "19G1-ACET-1779394386098",
+      "reason": "TEST_OR_NONCLINICAL"
+    },
+    {
+      "catalogId": "8b1ead58-5fa6-4c03-a16c-05aac95d49bc",
+      "code": "19G1-ACET-1779394415910",
+      "reason": "TEST_OR_NONCLINICAL"
+    },
+    {
+      "catalogId": "dfb5b0a5-8ba4-4add-a981-73cdd472c07a",
+      "code": "19G1-ACET-1779394442070",
+      "reason": "TEST_OR_NONCLINICAL"
+    },
+    {
+      "catalogId": "89309b11-d1f6-4861-b152-9d5300006a18",
+      "code": "19G1-ACET-1779394516286",
+      "reason": "TEST_OR_NONCLINICAL"
+    },
+    {
+      "catalogId": "a91aa486-d399-413b-a8f7-600b1dcfadfe",
+      "code": "19G1-ACET-1779394579279",
+      "reason": "TEST_OR_NONCLINICAL"
+    },
+    {
+      "catalogId": "73cfe259-3170-435e-96cb-7c467d299132",
+      "code": "19G1-ACET-1779394590560",
+      "reason": "TEST_OR_NONCLINICAL"
+    },
+    {
+      "catalogId": "2b7cc92f-4eaf-4823-b5b5-401f3aa48d07",
+      "code": "19G1-ACET-1779394625023",
+      "reason": "TEST_OR_NONCLINICAL"
+    },
+    {
+      "catalogId": "ba7887fd-00e3-4ab1-9ca3-7bcd514d9213",
+      "code": "19G1-ACET-1779394717479",
+      "reason": "TEST_OR_NONCLINICAL"
+    },
+    {
+      "catalogId": "16eebd84-59e5-467d-bb3c-1e7caf99c300",
+      "code": "19G1-ACET-1779395098241",
+      "reason": "TEST_OR_NONCLINICAL"
+    },
+    {
+      "catalogId": "c76e348f-2727-450e-b217-c6d8d01de44f",
+      "code": "19G1-ACET-1779397958992",
+      "reason": "TEST_OR_NONCLINICAL"
+    },
+    {
+      "catalogId": "972dedcd-b0a2-44b4-83ca-4567b6c475e8",
+      "code": "19G1-ACET-1779398010806",
+      "reason": "TEST_OR_NONCLINICAL"
+    },
+    {
+      "catalogId": "14b6770a-b6b8-4972-b2e3-f9368326dcb1",
+      "code": "19G1-ACET-1779400213345",
+      "reason": "TEST_OR_NONCLINICAL"
+    },
+    {
+      "catalogId": "73a99044-bf93-4fdd-bb92-ccb514053c30",
+      "code": "19G1-ACET-1779551310120",
+      "reason": "TEST_OR_NONCLINICAL"
+    },
+    {
+      "catalogId": "271a311e-5bee-4d53-b427-da62ad5abd08",
+      "code": "19G1-ACET-1779373061574",
+      "reason": "TEST_OR_NONCLINICAL"
+    },
+    {
+      "catalogId": "4428cf91-cb8f-4849-aefa-fae4b25e6ea3",
+      "code": "19G1-ACET-1779375852030",
+      "reason": "TEST_OR_NONCLINICAL"
+    },
+    {
+      "catalogId": "cdfd5385-fec1-4b8b-a852-0141bd4c7acd",
+      "code": "19G1-ACET-1780354650888",
+      "reason": "TEST_OR_NONCLINICAL"
+    },
+    {
+      "catalogId": "a3e33854-3b7b-48cc-99d3-e08d18d43d68",
+      "code": "19G1-ACET-1780354658482",
+      "reason": "TEST_OR_NONCLINICAL"
+    },
+    {
+      "catalogId": "d2e1eea5-59c2-4554-95c5-b244e6f78c6e",
+      "code": "19G1-ACET-1780366135683",
+      "reason": "TEST_OR_NONCLINICAL"
+    },
+    {
+      "catalogId": "dbb3a98f-0ef7-445b-b57e-60034c668f6f",
+      "code": "19G1-ACET-1780367483682",
+      "reason": "TEST_OR_NONCLINICAL"
+    },
+    {
+      "catalogId": "3356424d-9ab0-45d9-bb01-9219d9a8ab55",
+      "code": "19G1-ACET-1780368638934",
+      "reason": "TEST_OR_NONCLINICAL"
+    },
+    {
+      "catalogId": "60439c3d-9df0-4fd1-a61f-0e6ddb3bf966",
+      "code": "19G1-ACET-1780369315130",
+      "reason": "TEST_OR_NONCLINICAL"
+    },
+    {
+      "catalogId": "e5b6c38c-4bd7-4a56-8674-b111765087e9",
+      "code": "19G1-ACET-1779235553834",
+      "reason": "TEST_OR_NONCLINICAL"
+    },
+    {
+      "catalogId": "f461e8b2-ab3d-4b57-85c2-9d14124091b1",
+      "code": "19G1-ACET-1779235558860",
+      "reason": "TEST_OR_NONCLINICAL"
+    },
+    {
+      "catalogId": "9a944c77-a00e-4889-8561-f632d17a2284",
+      "code": "19G1-ACET-1779235610121",
+      "reason": "TEST_OR_NONCLINICAL"
+    },
+    {
+      "catalogId": "d8e7c895-d3a4-4507-8cb4-74c66367b166",
+      "code": "19G1-ACET-1780369997110",
+      "reason": "TEST_OR_NONCLINICAL"
+    },
+    {
+      "catalogId": "6e9dfd7f-c0d7-47ef-8934-3b87b0cf07d4",
+      "code": "19G1-ACET-1780370628408",
+      "reason": "TEST_OR_NONCLINICAL"
+    },
+    {
+      "catalogId": "b27fa968-3650-4684-aefb-a1e8f9275be6",
+      "code": "19G1-ACET-1780371236159",
+      "reason": "TEST_OR_NONCLINICAL"
+    },
+    {
+      "catalogId": "3c2db595-bd99-45d7-9e4d-8b13d6995328",
+      "code": "19G1-ACET-1780398663739",
+      "reason": "TEST_OR_NONCLINICAL"
+    },
+    {
+      "catalogId": "44788de0-f7cc-46c0-bbe1-924758508ccb",
+      "code": "19G1-ACET-1780399927850",
+      "reason": "TEST_OR_NONCLINICAL"
+    },
+    {
+      "catalogId": "fbe2e95f-0e09-4406-aece-318440f85ebb",
+      "code": "19G1-ACET-1780405487564",
+      "reason": "TEST_OR_NONCLINICAL"
+    },
+    {
+      "catalogId": "0ed91056-fb42-4b83-a185-5237fb130b42",
+      "code": "19G1-ACET-1780405517918",
+      "reason": "TEST_OR_NONCLINICAL"
+    },
+    {
+      "catalogId": "118da08e-c7d2-44ad-aac4-62459b105b67",
+      "code": "19G1-ACET-1780415814879",
+      "reason": "TEST_OR_NONCLINICAL"
+    },
+    {
+      "catalogId": "dc54b009-af2e-4215-81d1-9868824b4200",
+      "code": "19G1-ACET-1780423340692",
+      "reason": "TEST_OR_NONCLINICAL"
+    },
+    {
+      "catalogId": "030b75b4-7132-406a-bb03-e6d375185739",
+      "code": "19G1-ACET-1780423351788",
+      "reason": "TEST_OR_NONCLINICAL"
+    },
+    {
+      "catalogId": "5d7e0a7b-00ea-4dca-8b41-ea318ee2e9f7",
+      "code": "19G1-ACET-1780425678284",
+      "reason": "TEST_OR_NONCLINICAL"
+    },
+    {
+      "catalogId": "b50bdd90-8846-4952-8f0a-bf6302027576",
+      "code": "19G1-ACET-1779375865933",
+      "reason": "TEST_OR_NONCLINICAL"
+    },
+    {
+      "catalogId": "e8b9dc39-2016-484d-86b4-d868b9e1d7e6",
+      "code": "19G1-ACET-1779375891473",
+      "reason": "TEST_OR_NONCLINICAL"
+    },
+    {
+      "catalogId": "1416f180-bdd2-4840-a1d9-d83f4eaac285",
+      "code": "19G1-ACET-1779376277317",
+      "reason": "TEST_OR_NONCLINICAL"
+    },
+    {
+      "catalogId": "c457ac06-fff6-4e78-b3ac-f62b553d530b",
+      "code": "19G1-ACET-1779383567787",
+      "reason": "TEST_OR_NONCLINICAL"
+    },
+    {
+      "catalogId": "a4a5e812-e00d-40d2-beb3-37c34a487f36",
+      "code": "19G1-ACET-1779387960088",
+      "reason": "TEST_OR_NONCLINICAL"
+    },
+    {
+      "catalogId": "e41c4cd3-e7e0-43ac-9fc1-ff5dfee3484a",
+      "code": "19G1-ACET-1779388300386",
+      "reason": "TEST_OR_NONCLINICAL"
+    },
+    {
+      "catalogId": "929a13ba-96b6-42f9-996f-feabd76f680a",
+      "code": "19G1-ACET-1779394332594",
+      "reason": "TEST_OR_NONCLINICAL"
+    },
+    {
+      "catalogId": "39694f52-b502-48fb-8f61-35e28a0e8ff9",
+      "code": "19G1-ACET-1779394374084",
+      "reason": "TEST_OR_NONCLINICAL"
+    },
+    {
+      "catalogId": "ba2d1caa-63c7-41df-bd70-bf63361f6839",
+      "code": "19G1-ACET-1779394434021",
+      "reason": "TEST_OR_NONCLINICAL"
+    },
+    {
+      "catalogId": "ea4d6a6b-5f03-4f5d-80cc-54c7a297bde7",
+      "code": "19G1-ACET-1779394459186",
+      "reason": "TEST_OR_NONCLINICAL"
+    },
+    {
+      "catalogId": "841083e3-012c-487e-9ed5-0ddb5e3ad8bf",
+      "code": "19G1-ACET-1779394553130",
+      "reason": "TEST_OR_NONCLINICAL"
+    },
+    {
+      "catalogId": "4288324d-4c5f-482e-b95b-3fc58faf35c6",
+      "code": "19G1-ACET-1779394617613",
+      "reason": "TEST_OR_NONCLINICAL"
+    },
+    {
+      "catalogId": "59742298-e88b-41ed-860a-654a007a1098",
+      "code": "19G1-ACET-1779394634477",
+      "reason": "TEST_OR_NONCLINICAL"
+    },
+    {
+      "catalogId": "b622cc1d-1ae9-4629-9412-ed1e578767ee",
+      "code": "19G1-ACET-1779395085266",
+      "reason": "TEST_OR_NONCLINICAL"
+    },
+    {
+      "catalogId": "e47dc564-5005-404f-bea2-b12bae968525",
+      "code": "19G1-ACET-1779400108700",
+      "reason": "TEST_OR_NONCLINICAL"
+    },
+    {
+      "catalogId": "077b05ae-ab34-4132-89f1-805320908664",
+      "code": "19G1-ACET-1779400225181",
+      "reason": "TEST_OR_NONCLINICAL"
+    },
+    {
+      "catalogId": "31d69c66-f8d5-45b4-84ad-3a880898f97e",
+      "code": "19G1-ACET-1780353732618",
+      "reason": "TEST_OR_NONCLINICAL"
+    },
+    {
+      "catalogId": "fc82280b-744f-4f51-b83c-0b7e949c2edc",
+      "code": "19G1-ACET-1780365701165",
+      "reason": "TEST_OR_NONCLINICAL"
+    },
+    {
+      "catalogId": "3821cd70-3393-4b69-90b6-8815aa7ffb46",
+      "code": "19G1-ACET-1780364639257",
+      "reason": "TEST_OR_NONCLINICAL"
+    },
+    {
+      "catalogId": "0992d47a-fbcd-44c1-be14-04c680227792",
+      "code": "19G1-ACET-1780424702963",
+      "reason": "TEST_OR_NONCLINICAL"
+    },
+    {
+      "catalogId": "dab2754f-4980-4d2b-b643-0b17246f3216",
+      "code": "PRBC_TRANSFUSION_7d670fbe",
+      "reason": "MISSING_STRENGTH_UNDERIVABLE"
+    },
+    {
+      "catalogId": "8c4318fc-ef2c-4fab-a3ad-fd542706dd2c",
+      "code": "PRBC_TRANSFUSION_44b298d7",
+      "reason": "MISSING_STRENGTH_UNDERIVABLE"
+    },
+    {
+      "catalogId": "498f9ceb-ccd4-4837-9a97-91fc7db1a315",
+      "code": "PRBC_TRANSFUSION_3083aa19",
+      "reason": "MISSING_STRENGTH_UNDERIVABLE"
+    },
+    {
+      "catalogId": "0e7888a8-83c4-44b5-8608-4cc67da1a5b1",
+      "code": "PRBC_TRANSFUSION_aa006d36",
+      "reason": "MISSING_STRENGTH_UNDERIVABLE"
+    },
+    {
+      "catalogId": "e28b604e-5642-4a99-bd91-6338105131d9",
+      "code": "PRBC_TRANSFUSION_80ffa2d8",
+      "reason": "MISSING_STRENGTH_UNDERIVABLE"
+    },
+    {
+      "catalogId": "e4dd2d8c-4700-4252-9438-b80bd874dee2",
+      "code": "PRBC_TRANSFUSION_d98b0870",
+      "reason": "MISSING_STRENGTH_UNDERIVABLE"
+    },
+    {
+      "catalogId": "a7c0c15d-b0c3-430f-b3bd-7a598736dfa8",
+      "code": "PRBC_TRANSFUSION_d58b10f5",
+      "reason": "MISSING_STRENGTH_UNDERIVABLE"
+    },
+    {
+      "catalogId": "af52373c-b52f-420d-b2ce-b959984a4313",
+      "code": "PRBC_TRANSFUSION_79ef3709",
+      "reason": "MISSING_STRENGTH_UNDERIVABLE"
+    },
+    {
+      "catalogId": "192861ce-d6f1-4d02-b807-2b78b33b30dc",
+      "code": "PRBC_TRANSFUSION_52ae5a51",
+      "reason": "MISSING_STRENGTH_UNDERIVABLE"
+    },
+    {
+      "catalogId": "c6dfced0-feb0-4c82-9e54-a116e1f0b131",
+      "code": "PRBC_TRANSFUSION_9fbad5dc",
+      "reason": "MISSING_STRENGTH_UNDERIVABLE"
+    },
+    {
+      "catalogId": "ca3c7a96-1698-4c42-bc31-6e965f98ccbf",
+      "code": "PRBC_TRANSFUSION_4f5312fc",
+      "reason": "MISSING_STRENGTH_UNDERIVABLE"
+    },
+    {
+      "catalogId": "9776db9b-ad4d-4917-9164-f6ccf4e375d7",
+      "code": "PRBC_TRANSFUSION_1b884aba",
+      "reason": "MISSING_STRENGTH_UNDERIVABLE"
+    },
+    {
+      "catalogId": "5bea2352-10ca-4558-a4c4-81da5ba57ef6",
+      "code": "PRBC_TRANSFUSION_466b67ac",
+      "reason": "MISSING_STRENGTH_UNDERIVABLE"
+    },
+    {
+      "catalogId": "c1ffb460-4656-4ebe-aa6b-cf5215640d3d",
+      "code": "PRBC_TRANSFUSION_6740fc6a",
+      "reason": "MISSING_STRENGTH_UNDERIVABLE"
+    },
+    {
+      "catalogId": "45343505-ee9d-4157-8d24-5a2b5e1dc619",
+      "code": "PRBC_TRANSFUSION_4205d0a8",
+      "reason": "MISSING_STRENGTH_UNDERIVABLE"
+    },
+    {
+      "catalogId": "998dec88-5421-4faa-b256-774a1b516f79",
+      "code": "PRBC_TRANSFUSION_cec63dda",
+      "reason": "MISSING_STRENGTH_UNDERIVABLE"
+    },
+    {
+      "catalogId": "fa1ae73b-b482-40ca-900f-65d878f35f08",
+      "code": "PRBC_TRANSFUSION_d1756aa2",
+      "reason": "MISSING_STRENGTH_UNDERIVABLE"
+    },
+    {
+      "catalogId": "2abc121c-eb04-4c78-a11e-bfc48e236f34",
+      "code": "PRBC_TRANSFUSION_0187bf3d",
+      "reason": "MISSING_STRENGTH_UNDERIVABLE"
+    },
+    {
+      "catalogId": "688392bb-98c1-4c36-ba51-807efb422c61",
+      "code": "PRBC_TRANSFUSION_a0d6757f",
+      "reason": "MISSING_STRENGTH_UNDERIVABLE"
+    },
+    {
+      "catalogId": "ecc4d7e9-f565-4076-8f9b-89833f5b4331",
+      "code": "PRBC_TRANSFUSION_8cd0eaf0",
+      "reason": "MISSING_STRENGTH_UNDERIVABLE"
+    },
+    {
+      "catalogId": "bc9d43a7-2d1e-4461-8de7-8888e09abb7d",
+      "code": "PRBC_TRANSFUSION_23d8a2ee",
+      "reason": "MISSING_STRENGTH_UNDERIVABLE"
+    },
+    {
+      "catalogId": "8579e5bd-e173-4eac-a457-ecfb798568de",
+      "code": "PRBC_TRANSFUSION_fb309e58",
+      "reason": "MISSING_STRENGTH_UNDERIVABLE"
+    },
+    {
+      "catalogId": "1038ca33-6aef-4761-af3f-95ae82af0303",
+      "code": "PRBC_TRANSFUSION_9e99c123",
+      "reason": "MISSING_STRENGTH_UNDERIVABLE"
+    },
+    {
+      "catalogId": "3f0a4c24-585c-4894-8ebd-80092caead3d",
+      "code": "PRBC_TRANSFUSION_ebc00a25",
+      "reason": "MISSING_STRENGTH_UNDERIVABLE"
+    },
+    {
+      "catalogId": "239dcbe5-6390-4174-b2ad-335979165126",
+      "code": "PRBC_TRANSFUSION_75f98436",
+      "reason": "MISSING_STRENGTH_UNDERIVABLE"
+    },
+    {
+      "catalogId": "f2ef2d1d-c9b4-44a5-b5fb-2e6cc0cfe466",
+      "code": "PRBC_TRANSFUSION_7904b0c5",
+      "reason": "MISSING_STRENGTH_UNDERIVABLE"
+    },
+    {
+      "catalogId": "1094d536-e118-41fa-834b-d8fa9f116f3c",
+      "code": "PRBC_TRANSFUSION_104ad4d5",
+      "reason": "MISSING_STRENGTH_UNDERIVABLE"
+    },
+    {
+      "catalogId": "67521439-15e5-4ded-b761-121967b5dc8c",
+      "code": "PRBC_TRANSFUSION_7c5098f3",
+      "reason": "MISSING_STRENGTH_UNDERIVABLE"
+    },
+    {
+      "catalogId": "5c4f2e1f-12b6-4042-bfa9-c3675ffa1818",
+      "code": "PRBC_TRANSFUSION_4f65f67a",
+      "reason": "MISSING_STRENGTH_UNDERIVABLE"
+    },
+    {
+      "catalogId": "501f7154-a9dd-4790-b288-de9904b690f0",
+      "code": "PRBC_TRANSFUSION_61e0bbea",
+      "reason": "MISSING_STRENGTH_UNDERIVABLE"
+    }
+  ],
+  "commonClinicalSearch": {
+    "queries": 64,
+    "passed": 63,
+    "failed": [
+      "Piperacillin/Tazobactam"
+    ],
+    "passRate": 0.984375
+  },
+  "orderMutations": 0,
+  "marMutations": 0,
+  "chartMutations": 0,
+  "productsActivated": 0,
+  "checksumBrandSource": "12b7d979d0add883d4e083fcc39149f24f95909f7dfa50ea60d7f3c7d173ce0a"
+}
