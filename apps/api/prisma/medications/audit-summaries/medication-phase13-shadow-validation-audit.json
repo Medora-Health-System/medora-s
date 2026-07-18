@@ -1,0 +1,18 @@
+{
+  "ConfirmedFalsePositives": 0,
+  "DraftKnowledgeConsumedByShadowEngine": "NO",
+  "MatchedFindings": 8,
+  "MissedFindings": 0,
+  "ReferenceCases": 8,
+  "UnexpectedFindings": 0,
+  "auditStatus": "COMPLETE",
+  "catalogClassification": "CURATED",
+  "catalogComplete": false,
+  "certificationId": "MEDUI.MEDICATION_INTELLIGENCE_PHASE_13_SOURCE_BACKED_REVIEW_APPROVAL_CONTROLLED_SHADOW_VALIDATION",
+  "confidence": "HIGH",
+  "dataSource": "database",
+  "generatedAt": "2026-07-18T11:07:31.783Z",
+  "metricsLabel": "synthetic-reference-derived",
+  "phase": 13,
+  "title": "Phase 13 shadow validation audit"
+}
