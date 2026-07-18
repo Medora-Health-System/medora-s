@@ -343,14 +343,25 @@ flowchart LR
 | **Typical live decision** | `MEDICATION_INTELLIGENCE_PHASE_17_CERTIFIED_PILOT_READY_NOT_ACTIVATED` (or continue shadow-only if qualification fails) |
 | **Docs** | [`medication-intelligence-phase-17-controlled-pilot-architecture.md`](./medication-intelligence-phase-17-controlled-pilot-architecture.md) |
 
-### Phase 18 — Broader pilot evaluation (recommended next — not started)
+### Phase 18 — Operational Safety, Monitoring, Explainability & Regulatory Readiness
+
+| Field | Value |
+|-------|-------|
+| **Objective** | Operational governance platform: explainability, deterministic replay, version immutability/rollback, drift detection, quality/safety metrics, regulatory *evidence* artifacts — **no autonomy increase** |
+| **Certification ID** | `MEDUI.MEDICATION_INTELLIGENCE_PHASE_18_OPERATIONAL_SAFETY_MONITORING_EXPLAINABILITY_REGULATORY_READINESS` |
+| **Migration** | **YES** — `20261023120000_medication_phase_18_operational_governance` |
+| **Status** | **Complete** — advisory-only; Enterprise Active / Production CDS remain off; no regulatory approval claimed |
+| **Typical live decision** | `MEDICATION_INTELLIGENCE_PHASE_18_CERTIFIED_OPERATIONAL_READY` (or governance/monitoring-ready) |
+| **Docs** | [`medication-intelligence-phase-18-architecture.md`](./medication-intelligence-phase-18-architecture.md) |
+
+### Phase 19 — Broader pilot evaluation (recommended next — not started)
 
 | Field | Value |
 |-------|-------|
 | **Objective** | Evaluate controlled-pilot outcomes before any enterprise consideration |
-| **Status** | **Not started** — do not implement in Phase 17 |
+| **Status** | **Not started** — do not implement in Phase 18 |
 
-**Note:** Phase 15–17 remain Wave 1 only and do **not** resolve acetaminophen. Production CDS / Enterprise Active remain off unless separately certified. Controlled Pilot requires explicit authorization.
+**Note:** Phase 15–18 remain Wave 1 only and do **not** resolve acetaminophen. Production CDS / Enterprise Active remain off unless separately certified. Controlled Pilot requires explicit authorization. Phase 18 does not increase autonomy.
 
 ### Deferred after Phase 6 — Canonical ordering integration and order sentences
 
