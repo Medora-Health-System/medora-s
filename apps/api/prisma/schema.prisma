@@ -4937,6 +4937,196 @@ model MedicationEvidenceGovernanceAuditEvent {
   @@index([performedAt])
 }
 
+/// Phase 14B — expert review program batch (extends Phase 13 wave + Phase 14A evidence).
+model MedicationExpertReviewBatch {
+  id                            String   @id @default(uuid())
+  programKey                    String   @unique @db.VarChar(64)
+  name                          String   @db.VarChar(255)
+  description                   String?
+  waveKey                       String?  @db.VarChar(64)
+  /// PLANNED | CLINICAL_REVIEW | SAFETY_REVIEW | CONSISTENCY | QUALITY | SHADOW_QUAL | COMPLETED | BLOCKED
+  status                        String   @default("PLANNED") @db.VarChar(48)
+  targetFamilyCount             Int      @default(0)
+  familiesReviewedCount         Int      @default(0)
+  familiesApprovedForShadowCount Int     @default(0)
+  familiesDeferredCount         Int      @default(0)
+  programVersion                String?  @db.VarChar(32)
+  clinicalActivationAllowed     Boolean  @default(false)
+  providerFacingAlertsAllowed   Boolean  @default(false)
+  orderBlockingAllowed          Boolean  @default(false)
+  knowledgeControlsPatientCare  Boolean  @default(false)
+  createdByUserId               String
+  completedAt                   DateTime?
+  createdAt                     DateTime @default(now())
+  updatedAt                     DateTime @updatedAt
+  domainReviews                 MedicationKnowledgeDomainReview[]
+  qualityScores                 MedicationKnowledgeQuality[]
+  shadowQualifications          MedicationShadowQualification[]
+  shadowSnapshots               MedicationShadowSnapshot[]
+  conflicts                     MedicationReviewConflict[]
+  auditEvents                   MedicationExpertReviewAuditEvent[]
+
+  @@index([status])
+  @@index([waveKey])
+}
+
+/// Phase 14B — per-domain expert review status.
+model MedicationKnowledgeDomainReview {
+  id                 String   @id @default(uuid())
+  batchId            String?
+  knowledgeId        String   @db.VarChar(128)
+  familyKey          String   @db.VarChar(128)
+  canonicalConceptId String?
+  waveItemId         String?
+  domain             String   @db.VarChar(64)
+  /// CLINICAL | SAFETY | CROSS_DOMAIN
+  reviewLevel        String   @default("CLINICAL") @db.VarChar(32)
+  /// NOT_STARTED | DRAFT | UNDER_REVIEW | CHANGES_REQUESTED | READY_FOR_REVIEW | REVIEWED | APPROVED_FOR_SHADOW | DEFERRED | REJECTED
+  status             String   @default("NOT_STARTED") @db.VarChar(32)
+  reviewerId         String?
+  reviewStartedAt    DateTime?
+  reviewCompletedAt  DateTime?
+  comments           String?
+  revisionNumber     Int      @default(1)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  batch              MedicationExpertReviewBatch? @relation(fields: [batchId], references: [id], onDelete: SetNull)
+
+  @@unique([knowledgeId, domain, revisionNumber])
+  @@index([batchId])
+  @@index([familyKey])
+  @@index([status])
+  @@index([reviewLevel])
+}
+
+/// Phase 14B — deterministic quality scores (not AI confidence).
+model MedicationKnowledgeQuality {
+  id                 String   @id @default(uuid())
+  batchId            String?
+  knowledgeId        String   @db.VarChar(128)
+  familyKey          String   @db.VarChar(128)
+  canonicalConceptId String?
+  clinicalScore      Int      @default(0)
+  safetyScore        Int      @default(0)
+  evidenceScore      Int      @default(0)
+  consistencyScore   Int      @default(0)
+  reviewScore        Int      @default(0)
+  overallScore       Int      @default(0)
+  lastCalculated     DateTime @default(now())
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  batch              MedicationExpertReviewBatch? @relation(fields: [batchId], references: [id], onDelete: SetNull)
+
+  @@index([batchId])
+  @@index([familyKey])
+  @@index([knowledgeId])
+  @@index([overallScore])
+}
+
+/// Phase 14B — shadow eligibility / qualification decision (not clinical activation).
+model MedicationShadowQualification {
+  id                 String   @id @default(uuid())
+  batchId            String?
+  knowledgeId        String   @db.VarChar(128)
+  familyKey          String   @db.VarChar(128)
+  canonicalConceptId String?
+  waveKey            String?  @db.VarChar(64)
+  /// NOT_ELIGIBLE | REQUIRES_CHANGES | READY_FOR_REVIEW | APPROVED_FOR_SHADOW | DEFERRED | REJECTED
+  status             String   @default("NOT_ELIGIBLE") @db.VarChar(48)
+  qualifiedAt        DateTime?
+  qualifiedBy        String?
+  reason             String?
+  majorVersion       Int      @default(1)
+  minorVersion       Int      @default(0)
+  evidenceVersion    String?  @db.VarChar(64)
+  reviewVersion      String?  @db.VarChar(64)
+  approvalVersion    String?  @db.VarChar(64)
+  shadowVersion      String?  @db.VarChar(64)
+  clinicalActivationAllowed Boolean @default(false)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  batch              MedicationExpertReviewBatch? @relation(fields: [batchId], references: [id], onDelete: SetNull)
+
+  @@unique([knowledgeId])
+  @@index([batchId])
+  @@index([familyKey])
+  @@index([status])
+  @@index([waveKey])
+}
+
+/// Phase 14B — immutable approved-for-shadow snapshot.
+model MedicationShadowSnapshot {
+  id                 String   @id @default(uuid())
+  batchId            String?
+  knowledgeId        String   @db.VarChar(128)
+  familyKey          String   @db.VarChar(128)
+  canonicalConceptId String?
+  shadowVersion      String   @db.VarChar(64)
+  snapshotHash       String   @db.VarChar(128)
+  knowledgeSnapshot  Json
+  safetySnapshot     Json
+  evidenceSnapshot   Json
+  reviewSnapshot     Json
+  approvalSnapshot   Json
+  qualitySnapshot    Json?
+  syntheticCasesJson Json?
+  createdAt          DateTime @default(now())
+  batch              MedicationExpertReviewBatch? @relation(fields: [batchId], references: [id], onDelete: SetNull)
+
+  @@unique([knowledgeId, shadowVersion])
+  @@index([batchId])
+  @@index([familyKey])
+  @@index([snapshotHash])
+}
+
+/// Phase 14B — reviewer / evidence / safety conflicts.
+model MedicationReviewConflict {
+  id                 String   @id @default(uuid())
+  batchId            String?
+  knowledgeId        String   @db.VarChar(128)
+  familyKey          String   @db.VarChar(128)
+  /// REVIEWER | EVIDENCE | SAFETY | CLINICAL | CONSISTENCY
+  conflictType       String   @db.VarChar(32)
+  severity           String   @default("INFO") @db.VarChar(16)
+  description        String
+  /// OPEN | RESOLVED | DEFERRED | ACCEPTED_RISK
+  resolutionStatus   String   @default("OPEN") @db.VarChar(32)
+  resolutionNotes    String?
+  resolvedByUserId   String?
+  resolvedAt         DateTime?
+  createdByUserId    String
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  batch              MedicationExpertReviewBatch? @relation(fields: [batchId], references: [id], onDelete: SetNull)
+
+  @@index([batchId])
+  @@index([familyKey])
+  @@index([conflictType])
+  @@index([resolutionStatus])
+  @@index([severity])
+}
+
+model MedicationExpertReviewAuditEvent {
+  id                 String   @id @default(uuid())
+  batchId            String?
+  entityType         String   @db.VarChar(64)
+  entityId           String
+  action             String   @db.VarChar(64)
+  beforeState        Json?
+  afterState         Json?
+  performedByUserId  String
+  performedAt        DateTime @default(now())
+  reason             String?
+  createdAt          DateTime @default(now())
+  batch              MedicationExpertReviewBatch? @relation(fields: [batchId], references: [id], onDelete: SetNull)
+
+  @@index([batchId])
+  @@index([entityType, entityId])
+  @@index([action])
+  @@index([performedByUserId])
+  @@index([performedAt])
+}
+
 /// Durable RxNorm verified mapping history — Phase 4 canonical reconciliation (CLI/service only).
 model RxNormVerifiedMapping {
   id                   String                  @id @default(uuid())

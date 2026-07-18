@@ -440,6 +440,12 @@ export default function MedicationGovernancePage() {
           {t("medicationGovernance.openEvidenceGovernance")}
         </Link>
         <Link
+          href="/app/admin/medication-governance/expert-review"
+          style={{ alignSelf: "center", fontSize: 14 }}
+        >
+          {t("medicationGovernance.openExpertReview")}
+        </Link>
+        <Link
           href="/app/admin/medication-governance/activation"
           style={{ alignSelf: "center", fontSize: 14 }}
         >
