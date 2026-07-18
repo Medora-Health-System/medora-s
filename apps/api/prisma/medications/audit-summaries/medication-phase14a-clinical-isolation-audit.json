@@ -1,0 +1,15 @@
+{
+  "AutomaticallyApprovedKnowledgeRecords": 0,
+  "ClinicalActivationsPerformed": 0,
+  "OrderBlocksCreated": 0,
+  "ProviderFacingAlertsCreated": 0,
+  "auditStatus": "COMPLETE",
+  "catalogClassification": "CURATED",
+  "catalogComplete": false,
+  "certificationId": "MEDUI.MEDICATION_INTELLIGENCE_PHASE_14A_SOURCE_ACQUISITION_EVIDENCE_GOVERNANCE_KNOWLEDGE_COMPLETION",
+  "confidence": "HIGH",
+  "dataSource": "database",
+  "generatedAt": "2026-07-18T12:18:58.763Z",
+  "phase": "14A",
+  "title": "Phase 14A clinical isolation audit"
+}
