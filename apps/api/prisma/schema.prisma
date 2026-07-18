@@ -5457,6 +5457,9 @@ model MedicationRecommendationDefinition {
   evidenceLinks            MedicationRecommendationEvidenceLink[]
   reviews                  MedicationRecommendationReview[]
   feedback                 MedicationRecommendationFeedback[]
+  pilotDefinitions         MedicationRecommendationPilotDefinition[]
+  pilotQualifications      MedicationRecommendationPilotQualification[]
+  pilotExposures           MedicationRecommendationPilotExposure[]
 
   @@index([programId])
   @@index([familyKey])
@@ -5590,6 +5593,241 @@ model MedicationRecommendationAuditEvent {
   @@index([entityType, entityId])
   @@index([action])
   @@index([performedByUserId])
+  @@index([performedAt])
+}
+
+/// Phase 17 — facility-scoped controlled pilot program (Enterprise Active blocked).
+model MedicationRecommendationPilotProgram {
+  id                             String   @id @default(uuid())
+  programKey                     String   @unique @db.VarChar(128)
+  title                          String   @db.VarChar(255)
+  description                    String?
+  facilityId                     String
+  /// DRAFT | … | ACTIVE | SUSPENDED | …
+  status                         String   @default("DRAFT") @db.VarChar(48)
+  waveKey                        String?  @db.VarChar(64)
+  startAt                        DateTime?
+  endAt                          DateTime?
+  activatedAt                    DateTime?
+  pausedAt                       DateTime?
+  suspendedAt                    DateTime?
+  completedAt                    DateTime?
+  revokedAt                      DateTime?
+  suspensionReason               String?
+  revocationReason               String?
+  controlledPilotAllowed         Boolean  @default(false)
+  enterpriseActiveAllowed        Boolean  @default(false)
+  productionCdsEnabled           Boolean  @default(false)
+  providerAlertsEnabled          Boolean  @default(false)
+  orderBlockingEnabled           Boolean  @default(false)
+  orderFromRecommendationEnabled Boolean  @default(false)
+  autoOrderEnabled               Boolean  @default(false)
+  autoSelectEnabled              Boolean  @default(false)
+  version                        String   @default("1.0.0") @db.VarChar(32)
+  createdByUserId                String
+  approvedByUserId               String?
+  approvedAt                     DateTime?
+  createdAt                      DateTime @default(now())
+  updatedAt                      DateTime @updatedAt
+  definitions                    MedicationRecommendationPilotDefinition[]
+  providers                      MedicationRecommendationPilotProvider[]
+  exposures                      MedicationRecommendationPilotExposure[]
+  safetyEvents                   MedicationRecommendationPilotSafetyEvent[]
+  monitoringSnapshots            MedicationRecommendationPilotMonitoringSnapshot[]
+  auditEvents                    MedicationRecommendationPilotAuditEvent[]
+
+  @@index([facilityId])
+  @@index([status])
+  @@index([waveKey])
+  @@index([startAt, endAt])
+}
+
+model MedicationRecommendationPilotDefinition {
+  id                         String   @id @default(uuid())
+  pilotProgramId             String
+  recommendationDefinitionId String
+  pinnedRecommendationVersion String  @db.VarChar(32)
+  pinnedKnowledgeVersion     String?  @db.VarChar(64)
+  qualificationDecision      String   @db.VarChar(48)
+  qualificationArtifactJson  Json?
+  enabled                    Boolean  @default(true)
+  activatedAt                DateTime?
+  suspendedAt                DateTime?
+  createdAt                  DateTime @default(now())
+  updatedAt                  DateTime @updatedAt
+  pilotProgram               MedicationRecommendationPilotProgram @relation(fields: [pilotProgramId], references: [id], onDelete: Restrict)
+  recommendationDefinition   MedicationRecommendationDefinition @relation(fields: [recommendationDefinitionId], references: [id], onDelete: Restrict)
+
+  @@unique([pilotProgramId, recommendationDefinitionId])
+  @@index([pilotProgramId])
+  @@index([recommendationDefinitionId])
+  @@index([qualificationDecision])
+}
+
+model MedicationRecommendationPilotProvider {
+  id                   String   @id @default(uuid())
+  pilotProgramId       String
+  providerUserId       String
+  facilityId           String
+  /// AUTHORIZED | REVOKED | PENDING
+  authorizationStatus  String   @default("PENDING") @db.VarChar(32)
+  trainingCompletedAt  DateTime?
+  acknowledgementAt    DateTime?
+  activatedAt          DateTime?
+  revokedAt            DateTime?
+  revocationReason     String?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+  pilotProgram         MedicationRecommendationPilotProgram @relation(fields: [pilotProgramId], references: [id], onDelete: Restrict)
+
+  @@unique([pilotProgramId, providerUserId])
+  @@index([pilotProgramId])
+  @@index([providerUserId])
+  @@index([facilityId])
+  @@index([authorizationStatus])
+}
+
+model MedicationRecommendationPilotQualification {
+  id                           String   @id @default(uuid())
+  recommendationDefinitionId   String
+  facilityId                   String?
+  shadowEvaluationCount        Int      @default(0)
+  coverageScore                Int      @default(0)
+  confidenceScore              Int      @default(0)
+  agreementRate                Int?
+  disagreementRate             Int?
+  falsePositiveReviewCount     Int      @default(0)
+  falseNegativeReviewCount     Int      @default(0)
+  unresolvedConflictCount      Int      @default(0)
+  constitutionalViolationCount Int      @default(0)
+  orderMutationCount           Int      @default(0)
+  marMutationCount             Int      @default(0)
+  chartMutationCount           Int      @default(0)
+  qualificationDecision        String   @db.VarChar(48)
+  limitationsJson              Json?
+  evidenceSnapshotJson         Json?
+  blockersJson                 Json?
+  evaluatedAt                  DateTime @default(now())
+  evaluatedByUserId            String
+  version                      String   @default("1.0.0") @db.VarChar(32)
+  createdAt                    DateTime @default(now())
+  recommendationDefinition     MedicationRecommendationDefinition @relation(fields: [recommendationDefinitionId], references: [id], onDelete: Restrict)
+
+  @@index([recommendationDefinitionId])
+  @@index([facilityId])
+  @@index([qualificationDecision])
+  @@index([evaluatedAt])
+}
+
+model MedicationRecommendationPilotExposure {
+  id                         String   @id @default(uuid())
+  pilotProgramId             String
+  recommendationDefinitionId String
+  shadowEvaluationId         String?
+  encounterId                String?
+  patientId                  String?
+  facilityId                 String
+  providerUserId             String
+  recommendationVersion      String   @db.VarChar(32)
+  knowledgeVersion           String?  @db.VarChar(64)
+  advisoryDisplayedAt        DateTime @default(now())
+  displayContext             String?  @db.VarChar(64)
+  confidence                 Int      @default(0)
+  evidenceLevel              String?  @db.VarChar(32)
+  reasoningPathJson          Json?
+  acknowledgedAt             DateTime?
+  dismissedAt                DateTime?
+  disagreedAt                DateTime?
+  providerResponse           String?  @db.VarChar(48)
+  providerReason             String?
+  workflowImpactMs           Int?
+  orderMutationDetected      Boolean  @default(false)
+  marMutationDetected        Boolean  @default(false)
+  chartMutationDetected      Boolean  @default(false)
+  createdAt                  DateTime @default(now())
+  pilotProgram               MedicationRecommendationPilotProgram @relation(fields: [pilotProgramId], references: [id], onDelete: Restrict)
+  recommendationDefinition   MedicationRecommendationDefinition @relation(fields: [recommendationDefinitionId], references: [id], onDelete: Restrict)
+  safetyEvents               MedicationRecommendationPilotSafetyEvent[]
+
+  @@index([pilotProgramId])
+  @@index([recommendationDefinitionId])
+  @@index([facilityId])
+  @@index([providerUserId])
+  @@index([encounterId])
+  @@index([advisoryDisplayedAt])
+}
+
+model MedicationRecommendationPilotSafetyEvent {
+  id                 String   @id @default(uuid())
+  pilotProgramId     String
+  exposureId         String?
+  severity           String   @default("INFO") @db.VarChar(16)
+  eventType          String   @db.VarChar(64)
+  description        String
+  detectionSource    String?  @db.VarChar(64)
+  requiresSuspension Boolean  @default(false)
+  detectedAt         DateTime @default(now())
+  reviewedAt         DateTime?
+  resolvedAt         DateTime?
+  resolution         String?
+  auditMetadataJson  Json?
+  createdAt          DateTime @default(now())
+  pilotProgram       MedicationRecommendationPilotProgram @relation(fields: [pilotProgramId], references: [id], onDelete: Restrict)
+  exposure           MedicationRecommendationPilotExposure? @relation(fields: [exposureId], references: [id], onDelete: SetNull)
+
+  @@index([pilotProgramId])
+  @@index([exposureId])
+  @@index([severity])
+  @@index([eventType])
+  @@index([detectedAt])
+}
+
+model MedicationRecommendationPilotMonitoringSnapshot {
+  id                        String   @id @default(uuid())
+  pilotProgramId            String
+  snapshotKey               String   @unique @db.VarChar(128)
+  exposureCount             Int      @default(0)
+  acknowledgementRate       Int      @default(0)
+  dismissalRate             Int      @default(0)
+  disagreementRate          Int      @default(0)
+  overrideRate              Int      @default(0)
+  safetyEventCount          Int      @default(0)
+  constitutionalViolationCount Int  @default(0)
+  orderMutationCount        Int      @default(0)
+  marMutationCount          Int      @default(0)
+  chartMutationCount        Int      @default(0)
+  activeProviderCount       Int      @default(0)
+  activeDefinitionCount     Int      @default(0)
+  metricsJson               Json?
+  generatedAt               DateTime @default(now())
+  createdAt                 DateTime @default(now())
+  pilotProgram              MedicationRecommendationPilotProgram @relation(fields: [pilotProgramId], references: [id], onDelete: Restrict)
+
+  @@index([pilotProgramId])
+  @@index([generatedAt])
+}
+
+model MedicationRecommendationPilotAuditEvent {
+  id                         String   @id @default(uuid())
+  pilotProgramId             String?
+  facilityId                 String?
+  providerUserId             String?
+  recommendationDefinitionId String?
+  entityType                 String   @db.VarChar(64)
+  entityId                   String
+  action                     String   @db.VarChar(64)
+  beforeState                Json?
+  afterState                 Json?
+  reason                     String?
+  performedByUserId          String
+  performedAt                DateTime @default(now())
+  createdAt                  DateTime @default(now())
+  pilotProgram               MedicationRecommendationPilotProgram? @relation(fields: [pilotProgramId], references: [id], onDelete: SetNull)
+
+  @@index([pilotProgramId])
+  @@index([facilityId])
+  @@index([entityType, entityId])
+  @@index([action])
   @@index([performedAt])
 }
 

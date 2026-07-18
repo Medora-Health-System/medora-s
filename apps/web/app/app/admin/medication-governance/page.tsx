@@ -464,6 +464,12 @@ export default function MedicationGovernancePage() {
           {t("medicationGovernance.openPhase16Recommendations")}
         </Link>
         <Link
+          href="/app/admin/medication-governance/recommendation-pilot"
+          style={{ alignSelf: "center", fontSize: 14 }}
+        >
+          {t("medicationGovernance.openPhase17Pilot")}
+        </Link>
+        <Link
           href="/app/admin/medication-governance/activation"
           style={{ alignSelf: "center", fontSize: 14 }}
         >

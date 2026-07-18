@@ -33,6 +33,7 @@ import { MedicationExpertReviewModule } from "./medications/expert-review/medica
 import { MedicationShadowEvaluationModule } from "./medications/shadow-evaluation/medication-shadow-evaluation.module";
 import { MedicationRemediationModule } from "./medications/remediation/medication-remediation.module";
 import { MedicationRecommendationModule } from "./medications/recommendation/medication-recommendation.module";
+import { MedicationRecommendationPilotModule } from "./medications/recommendation-pilot/medication-recommendation-pilot.module";
 import { OrderCatalogModule } from "./order-catalog/order-catalog.module";
 import { PublicHealthModule } from "./public-health/public-health.module";
 import { DiagnosesModule } from "./diagnoses/diagnoses.module";
@@ -95,6 +96,7 @@ const imports = [
   MedicationShadowEvaluationModule,
   MedicationRemediationModule,
   MedicationRecommendationModule,
+  MedicationRecommendationPilotModule,
   OrderCatalogModule,
   PublicHealthModule,
   DiagnosesModule,
