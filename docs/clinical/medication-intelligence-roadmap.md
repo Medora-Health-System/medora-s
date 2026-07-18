@@ -322,15 +322,24 @@ flowchart LR
 | **Status** | **Complete** — see [`medication-intelligence-phase-15-part2c-execution-certification.md`](./medication-intelligence-phase-15-part2c-execution-certification.md) |
 | **Typical live decision** | `MEDICATION_INTELLIGENCE_PHASE_15_CERTIFIED_WITH_GOVERNED_DEFERRALS` when Tier-1 gaps remain openly deferred |
 
-### Phase 16 — Emergency Medicine family expansion (recommended next — not started)
+### Phase 16 — Controlled shadow recommendation engine
 
 | Field | Value |
 |-------|-------|
-| **Objective** | Controlled expansion beyond Wave 1 with governed knowledge population |
-| **Certification ID (planned)** | `MEDICATION_INTELLIGENCE_PHASE_16_EMERGENCY_MEDICINE_FAMILY_EXPANSION_AND_CONTROLLED_KNOWLEDGE_POPULATION` |
-| **Status** | **Not started** — do not begin until Phase 15 is reviewed |
+| **Objective** | Governed recommendation engine with shadow exposure, analytics, admin/provider read-only UI — **no Pilot/Enterprise Active** |
+| **Certification ID** | `MEDUI.MEDICATION_INTELLIGENCE_PHASE_16_CONTROLLED_ACTIVATION_ENTERPRISE_MEDICATION_RECOMMENDATION_ENGINE` |
+| **Migration** | **YES** — `20261021120000_medication_phase_16_controlled_recommendation_engine` |
+| **Status** | **Complete** — see [`medication-intelligence-phase-16-controlled-recommendation-engine.md`](./medication-intelligence-phase-16-controlled-recommendation-engine.md) |
+| **Typical live decision** | `MEDICATION_INTELLIGENCE_PHASE_16_CERTIFIED_SHADOW_ONLY` |
 
-**Note:** Phase 15 does **not** expand beyond Wave 1 and does **not** resolve acetaminophen. Still without automatic live alerts unless separately certified.
+### Phase 17 — Controlled Pilot (recommended next — not started)
+
+| Field | Value |
+|-------|-------|
+| **Objective** | Limited Controlled Pilot of shadow-qualified recommendations after additional safety evidence |
+| **Status** | **Not started** — do not begin until Phase 16 is reviewed |
+
+**Note:** Phase 15–16 remain Wave 1 only and do **not** resolve acetaminophen. Production CDS / Pilot / Enterprise Active remain off unless separately certified.
 
 ### Deferred after Phase 6 — Canonical ordering integration and order sentences
 
