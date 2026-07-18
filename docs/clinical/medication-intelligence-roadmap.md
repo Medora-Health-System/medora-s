@@ -254,7 +254,19 @@ flowchart LR
 | **Exit criteria** | Phase 13 certifier PASS; acetaminophen not auto-resolved; scaffolding not approved; draft knowledge not consumed by Phase 10; alerts/blocking/activation remain off |
 | **Status** | Implemented — see [`medication-intelligence-phase-13-source-backed-review-approval-controlled-shadow-validation.md`](./medication-intelligence-phase-13-source-backed-review-approval-controlled-shadow-validation.md) |
 
-**Note:** Distinct from product-roadmap Phase 13 below. Phase 14 MI should remediate gaps and expand approved families based on Phase 13 results — still without automatic live alerts.
+**Note:** Distinct from product-roadmap Phase 13 below. Phase 14A MI establishes evidence governance and provenance completion for Wave 1 — still without automatic live alerts.
+
+### Phase 14A — Source acquisition, evidence governance, and knowledge completion
+
+| Field | Value |
+|-------|-------|
+| **Objective** | Populate evidence-governed provenance for Wave 1 medication knowledge; source registration, evidence links, completeness scoring — **no clinical activation** |
+| **Scope** | Evidence acquisition batches, source registrations (reuse Phase 8/9 catalogs), knowledge evidence links, completeness scores, admin UI/API/CLI |
+| **Migration** | **YES (additive)** — `20261017120000_medication_phase_14a_source_acquisition_evidence_governance_knowledge_completion` |
+| **Exit criteria** | Phase 14A certifier PASS; Wave 1 knowledge has provenance links; placeholders retired from Wave 1 drafts; no knowledge without provenance allowed by policy; alerts/blocking/activation/care-workflow control remain off |
+| **Status** | Implemented — see [`medication-intelligence-phase-14a-source-acquisition-evidence-governance-knowledge-completion.md`](./medication-intelligence-phase-14a-source-acquisition-evidence-governance-knowledge-completion.md) |
+
+**Note:** Distinct from product-roadmap phases below. Later MI work may attach Tier-1/licensed labeling and human approval-for-shadow — still without automatic live alerts.
 
 ### Deferred after Phase 6 — Canonical ordering integration and order sentences
 
