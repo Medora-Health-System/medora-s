@@ -7,12 +7,22 @@ import {
   PHASE17_CERTIFICATION_ID,
   PHASE17_QUALIFICATION_THRESHOLDS,
   PHASE17_RECOMMENDATION_DEFAULTS,
+  PHASE18_CERTIFICATION_ID,
+  PHASE18_RECOMMENDATION_DEFAULTS,
   assertEnterpriseActivationBlocked,
+  assertGovernanceAlertsOnly,
+  assertNoCopyrightedSourceContent,
   assertPhase16SafetyDefaults,
+  assertPhase18SafetyDefaults,
   assertPilotTimeWindowValid,
+  assertRecommendationImmutable,
+  assertReplayDoesNotMutateCare,
+  buildRecommendationReplayFingerprint,
+  calculateOperationalQualityScores,
   calculatePilotQualification,
   calculateRecommendationConfidence,
   canTransitionPilotAuthorization,
+  canTransitionVersionGovernanceState,
   isPhase16LifecycleTransitionAllowed,
   isPhase17LifecycleTransitionAllowed,
   isRecommendationExposableToProviders,
@@ -146,5 +156,79 @@ describe("Phase 17 controlled pilot governance", () => {
         now,
       })
     ).toThrow(/outside/i);
+  });
+});
+
+describe("Phase 18 operational governance", () => {
+  it("keeps fail-closed defaults and no autonomy increase", () => {
+    expect(PHASE18_RECOMMENDATION_DEFAULTS.enterpriseActiveAllowed).toBe(false);
+    expect(PHASE18_RECOMMENDATION_DEFAULTS.productionCdsEnabled).toBe(false);
+    expect(PHASE18_RECOMMENDATION_DEFAULTS.orderFromRecommendationEnabled).toBe(
+      false
+    );
+    expect(PHASE18_RECOMMENDATION_DEFAULTS.claimRegulatoryApproval).toBe(false);
+    expect(PHASE18_CERTIFICATION_ID).toContain("PHASE_18");
+    expect(() => assertPhase18SafetyDefaults()).not.toThrow();
+  });
+
+  it("builds deterministic replay fingerprints and blocks care mutation", () => {
+    const a = buildRecommendationReplayFingerprint({
+      definitionId: "d1",
+      recommendationVersion: "1.0.0",
+      knowledgeVersion: "SHADOW_V1",
+      title: "Ibuprofen",
+      reasonSummary: "First-line",
+      recommendationKind: "FIRST_LINE",
+      familyKey: "ibuprofen",
+      confidenceScore: 52,
+      evidenceLevel: "B",
+      lifecycleStatus: "SHADOW_RECOMMENDATION",
+    });
+    const b = buildRecommendationReplayFingerprint({
+      definitionId: "d1",
+      recommendationVersion: "1.0.0",
+      knowledgeVersion: "SHADOW_V1",
+      title: "Ibuprofen",
+      reasonSummary: "First-line",
+      recommendationKind: "FIRST_LINE",
+      familyKey: "ibuprofen",
+      confidenceScore: 52,
+      evidenceLevel: "B",
+      lifecycleStatus: "SHADOW_RECOMMENDATION",
+    });
+    expect(a).toBe(b);
+    expect(() => assertReplayDoesNotMutateCare(true)).toThrow(/read-only/i);
+    expect(() =>
+      assertRecommendationImmutable({
+        immutableAt: new Date(),
+        attemptingMutation: true,
+      })
+    ).toThrow(/immutable/i);
+    expect(() =>
+      assertNoCopyrightedSourceContent({ containsCopyrightedExcerpt: true })
+    ).toThrow(/copyrighted/i);
+    expect(() => assertGovernanceAlertsOnly(true)).toThrow(/interrupt/i);
+  });
+
+  it("supports version governance transitions and quality scores", () => {
+    expect(canTransitionVersionGovernanceState("CURRENT", "SUPERSEDED")).toBe(
+      true
+    );
+    expect(canTransitionVersionGovernanceState("ARCHIVED", "CURRENT")).toBe(
+      false
+    );
+    const q = calculateOperationalQualityScores({
+      coveragePercent: 80,
+      evidenceCompletenessAvg: 70,
+      reviewCompletenessPercent: 90,
+      confidenceCalibrationPercent: 60,
+      governanceCompletenessPercent: 85,
+      auditCompletenessPercent: 95,
+      traceabilityPercent: 88,
+      explainabilityPercent: 92,
+      reproducibilityPercent: 100,
+    });
+    expect(q.qualityScore).toBeGreaterThan(70);
+    expect(q.reproducibilityScore).toBe(100);
   });
 });

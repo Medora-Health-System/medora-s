@@ -659,3 +659,227 @@ export function assertPhase17SafetyDefaults(): void {
     throw new Error("Phase 17 forbids autoSelectEnabled.");
   }
 }
+
+// ---------------------------------------------------------------------------
+// Phase 18 — Operational Safety, Monitoring, Explainability & Regulatory Readiness
+// Extends Phase 17. Does NOT increase autonomy. Enterprise Active remains blocked.
+// ---------------------------------------------------------------------------
+
+export const PHASE18_RECOMMENDATION_DEFAULTS = {
+  ...PHASE17_RECOMMENDATION_DEFAULTS,
+  clinicalActivationEnabled: false,
+  enterpriseActiveAllowed: false,
+  controlledPilotAllowed: false,
+  shadowRecommendationAllowed: true,
+  productionCdsEnabled: false,
+  providerAlertsEnabled: false,
+  orderBlockingEnabled: false,
+  orderFromRecommendationEnabled: false,
+  autoOrderEnabled: false,
+  autoSelectEnabled: false,
+  /** Governance alerts only — never interrupt providers. */
+  governanceAdminAlertsOnly: true,
+  /** Replay/explainability never mutate care. */
+  replayMutatesPatientCare: false,
+  /** Do not claim regulatory approval; evidence artifacts only. */
+  claimRegulatoryApproval: false,
+} as const;
+
+export const PHASE18_CERTIFICATION_ID =
+  "MEDUI.MEDICATION_INTELLIGENCE_PHASE_18_OPERATIONAL_SAFETY_MONITORING_EXPLAINABILITY_REGULATORY_READINESS";
+
+export const PHASE18_IMPLEMENTATION_ID =
+  "MEDUI.MEDICATION_INTELLIGENCE_PHASE_18_OPERATIONAL_GOVERNANCE";
+
+export const PHASE18_PROGRAM_KEY = "EM_WAVE1_OPERATIONAL_GOVERNANCE_V1";
+
+export const PHASE18_CERTIFICATION_DECISION_VALUES = [
+  "MEDICATION_INTELLIGENCE_PHASE_18_CERTIFIED_OPERATIONAL_READY",
+  "MEDICATION_INTELLIGENCE_PHASE_18_CERTIFIED_GOVERNANCE_READY",
+  "MEDICATION_INTELLIGENCE_PHASE_18_CERTIFIED_MONITORING_READY",
+  "MEDICATION_INTELLIGENCE_PHASE_18_NOT_CERTIFIED",
+] as const;
+
+export type Phase18CertificationDecision =
+  (typeof PHASE18_CERTIFICATION_DECISION_VALUES)[number];
+
+export const PHASE18_VERSION_GOVERNANCE_STATE_VALUES = [
+  "CURRENT",
+  "SUPERSEDED",
+  "RETIRED",
+  "ARCHIVED",
+  "EXPERIMENTAL",
+  "SHADOW",
+  "PILOT",
+] as const;
+
+export type Phase18VersionGovernanceState =
+  (typeof PHASE18_VERSION_GOVERNANCE_STATE_VALUES)[number];
+
+export const PHASE18_DRIFT_TYPE_VALUES = [
+  "RECOMMENDATION_VERSION_DRIFT",
+  "KNOWLEDGE_VERSION_DRIFT",
+  "EVIDENCE_DRIFT",
+  "REVIEW_DRIFT",
+  "CONFIGURATION_DRIFT",
+  "SHADOW_DRIFT",
+  "PILOT_DRIFT",
+  "DATABASE_DRIFT",
+  "CONFIGURATION_MISMATCH",
+] as const;
+
+export type Phase18DriftType = (typeof PHASE18_DRIFT_TYPE_VALUES)[number];
+
+/** Stable fingerprint for deterministic replay comparison (metadata only). */
+export function buildRecommendationReplayFingerprint(input: {
+  definitionId: string;
+  recommendationVersion: string;
+  knowledgeVersion: string | null | undefined;
+  title: string;
+  reasonSummary: string;
+  recommendationKind: string;
+  familyKey: string;
+  confidenceScore: number;
+  evidenceLevel: string | null | undefined;
+  lifecycleStatus: string;
+}): string {
+  const parts = [
+    input.definitionId,
+    input.recommendationVersion,
+    input.knowledgeVersion ?? "",
+    input.title,
+    input.reasonSummary,
+    input.recommendationKind,
+    input.familyKey,
+    String(input.confidenceScore),
+    input.evidenceLevel ?? "",
+    input.lifecycleStatus,
+  ];
+  return parts.join("|");
+}
+
+export function assertRecommendationImmutable(input: {
+  immutableAt: Date | string | null | undefined;
+  attemptingMutation: boolean;
+}): void {
+  if (input.immutableAt && input.attemptingMutation) {
+    throw new Error(
+      "Phase 18 forbids mutating an approved immutable recommendation version; create a new version."
+    );
+  }
+}
+
+export function assertReplayDoesNotMutateCare(mutatesCare: boolean): void {
+  if (mutatesCare) {
+    throw new Error("Phase 18 replay is read-only and must never mutate patient care.");
+  }
+}
+
+export function assertNoCopyrightedSourceContent(input: {
+  containsCopyrightedExcerpt: boolean;
+}): void {
+  if (input.containsCopyrightedExcerpt) {
+    throw new Error(
+      "Phase 18 explainability exposes provenance metadata only — never copyrighted source content."
+    );
+  }
+}
+
+export function assertGovernanceAlertsOnly(
+  interruptProviders: boolean
+): void {
+  if (interruptProviders) {
+    throw new Error(
+      "Phase 18 drift/safety alerts are governance-admin only; never interrupt providers."
+    );
+  }
+}
+
+export function canTransitionVersionGovernanceState(
+  from: Phase18VersionGovernanceState,
+  to: Phase18VersionGovernanceState
+): boolean {
+  if (from === to) return false;
+  const edges: Record<Phase18VersionGovernanceState, Phase18VersionGovernanceState[]> = {
+    EXPERIMENTAL: ["SHADOW", "CURRENT", "RETIRED", "ARCHIVED"],
+    SHADOW: ["PILOT", "CURRENT", "SUPERSEDED", "RETIRED", "ARCHIVED"],
+    PILOT: ["CURRENT", "SUPERSEDED", "RETIRED", "ARCHIVED", "SHADOW"],
+    CURRENT: ["SUPERSEDED", "RETIRED", "ARCHIVED"],
+    SUPERSEDED: ["ARCHIVED", "RETIRED"],
+    RETIRED: ["ARCHIVED"],
+    ARCHIVED: [],
+  };
+  return edges[from]?.includes(to) ?? false;
+}
+
+export function calculateOperationalQualityScores(input: {
+  coveragePercent: number;
+  evidenceCompletenessAvg: number;
+  reviewCompletenessPercent: number;
+  confidenceCalibrationPercent: number;
+  governanceCompletenessPercent: number;
+  auditCompletenessPercent: number;
+  traceabilityPercent: number;
+  explainabilityPercent: number;
+  reproducibilityPercent: number;
+}): {
+  coverageScore: number;
+  evidenceCompleteness: number;
+  reviewCompleteness: number;
+  confidenceCalibration: number;
+  governanceCompleteness: number;
+  auditCompleteness: number;
+  traceabilityScore: number;
+  explainabilityScore: number;
+  reproducibilityScore: number;
+  qualityScore: number;
+} {
+  const clamp = (n: number) => Math.max(0, Math.min(100, Math.round(n)));
+  const scores = {
+    coverageScore: clamp(input.coveragePercent),
+    evidenceCompleteness: clamp(input.evidenceCompletenessAvg),
+    reviewCompleteness: clamp(input.reviewCompletenessPercent),
+    confidenceCalibration: clamp(input.confidenceCalibrationPercent),
+    governanceCompleteness: clamp(input.governanceCompletenessPercent),
+    auditCompleteness: clamp(input.auditCompletenessPercent),
+    traceabilityScore: clamp(input.traceabilityPercent),
+    explainabilityScore: clamp(input.explainabilityPercent),
+    reproducibilityScore: clamp(input.reproducibilityPercent),
+  };
+  const qualityScore = clamp(
+    (scores.coverageScore +
+      scores.evidenceCompleteness +
+      scores.reviewCompleteness +
+      scores.confidenceCalibration +
+      scores.governanceCompleteness +
+      scores.auditCompleteness +
+      scores.traceabilityScore +
+      scores.explainabilityScore +
+      scores.reproducibilityScore) /
+      9
+  );
+  return { ...scores, qualityScore };
+}
+
+export function assertPhase18SafetyDefaults(): void {
+  assertPhase17SafetyDefaults();
+  assertEnterpriseActivationBlocked(
+    PHASE18_RECOMMENDATION_DEFAULTS.enterpriseActiveAllowed
+  );
+  assertNoBlockingBehavior(PHASE18_RECOMMENDATION_DEFAULTS.orderBlockingEnabled);
+  assertReplayDoesNotMutateCare(
+    PHASE18_RECOMMENDATION_DEFAULTS.replayMutatesPatientCare
+  );
+  assertGovernanceAlertsOnly(false);
+  if (PHASE18_RECOMMENDATION_DEFAULTS.claimRegulatoryApproval) {
+    throw new Error(
+      "Phase 18 must not claim regulatory approval; evidence artifacts only."
+    );
+  }
+  if (PHASE18_RECOMMENDATION_DEFAULTS.productionCdsEnabled) {
+    throw new Error("Phase 18 keeps productionCdsEnabled=false.");
+  }
+  if (PHASE18_RECOMMENDATION_DEFAULTS.orderFromRecommendationEnabled) {
+    throw new Error("Phase 18 keeps orderFromRecommendationEnabled=false.");
+  }
+}

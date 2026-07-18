@@ -5457,9 +5457,17 @@ model MedicationRecommendationDefinition {
   evidenceLinks            MedicationRecommendationEvidenceLink[]
   reviews                  MedicationRecommendationReview[]
   feedback                 MedicationRecommendationFeedback[]
+  /// Phase 18 — CURRENT | SUPERSEDED | RETIRED | ARCHIVED | EXPERIMENTAL | SHADOW | PILOT
+  versionGovernanceState   String   @default("CURRENT") @db.VarChar(32)
+  /// Content fingerprint for immutability / replay (metadata only).
+  contentHash              String?  @db.VarChar(128)
+  immutableAt              DateTime?
   pilotDefinitions         MedicationRecommendationPilotDefinition[]
   pilotQualifications      MedicationRecommendationPilotQualification[]
   pilotExposures           MedicationRecommendationPilotExposure[]
+  replayRuns               MedicationRecommendationReplayRun[]
+  rollbackEvents           MedicationRecommendationRollbackEvent[]
+  driftAlerts              MedicationRecommendationDriftAlert[]
 
   @@index([programId])
   @@index([familyKey])
@@ -5468,6 +5476,8 @@ model MedicationRecommendationDefinition {
   @@index([shadowSnapshotId])
   @@index([evidenceRegistrationId])
   @@index([confidenceScore])
+  @@index([versionGovernanceState])
+  @@index([contentHash])
 }
 
 model MedicationRecommendationEvidenceLink {
@@ -5826,6 +5836,186 @@ model MedicationRecommendationPilotAuditEvent {
 
   @@index([pilotProgramId])
   @@index([facilityId])
+  @@index([entityType, entityId])
+  @@index([action])
+  @@index([performedAt])
+}
+
+/// Phase 18 — operational monitoring snapshot (governance only; no care activation).
+model MedicationRecommendationOpsSnapshot {
+  id                         String   @id @default(uuid())
+  snapshotKey                String   @unique @db.VarChar(128)
+  recommendationsGenerated   Int      @default(0)
+  recommendationsViewed      Int      @default(0)
+  recommendationsAcknowledged Int     @default(0)
+  recommendationsDismissed   Int      @default(0)
+  providerDisagreements      Int      @default(0)
+  agreementRate              Int      @default(0)
+  coveragePercent            Int      @default(0)
+  knowledgeFreshnessPercent  Int      @default(0)
+  reviewBacklog              Int      @default(0)
+  reviewAgingDaysAvg         Int      @default(0)
+  staleEvidenceCount         Int      @default(0)
+  pilotUtilization           Int      @default(0)
+  avgConfidence              Int      @default(0)
+  recommendationLatencyMs    Int      @default(0)
+  apiLatencyMs               Int      @default(0)
+  shadowLatencyMs            Int      @default(0)
+  governanceLatencyMs        Int      @default(0)
+  orderMutationCount         Int      @default(0)
+  marMutationCount           Int      @default(0)
+  chartMutationCount         Int      @default(0)
+  enterpriseActivationCount  Int      @default(0)
+  metricsJson                Json?
+  generatedAt                DateTime @default(now())
+  createdAt                  DateTime @default(now())
+
+  @@index([generatedAt])
+}
+
+/// Phase 18 — deterministic replay run (read-only; never mutates care).
+model MedicationRecommendationReplayRun {
+  id                         String   @id @default(uuid())
+  recommendationDefinitionId String
+  encounterId                String?
+  facilityId                 String?
+  recommendationVersion      String   @db.VarChar(32)
+  knowledgeVersion           String?  @db.VarChar(64)
+  expectedFingerprint        String   @db.VarChar(512)
+  actualFingerprint          String   @db.VarChar(512)
+  matched                    Boolean  @default(false)
+  mutatesPatientCare         Boolean  @default(false)
+  replayPayloadJson          Json?
+  performedByUserId          String?
+  performedAt                DateTime @default(now())
+  createdAt                  DateTime @default(now())
+  recommendationDefinition   MedicationRecommendationDefinition @relation(fields: [recommendationDefinitionId], references: [id], onDelete: Restrict)
+  failures                   MedicationRecommendationReplayFailure[]
+
+  @@index([recommendationDefinitionId])
+  @@index([encounterId])
+  @@index([facilityId])
+  @@index([matched])
+  @@index([performedAt])
+}
+
+model MedicationRecommendationReplayFailure {
+  id              String   @id @default(uuid())
+  replayRunId     String
+  failureCode     String   @db.VarChar(64)
+  description     String
+  expectedJson    Json?
+  actualJson      Json?
+  detectedAt      DateTime @default(now())
+  createdAt       DateTime @default(now())
+  replayRun       MedicationRecommendationReplayRun @relation(fields: [replayRunId], references: [id], onDelete: Restrict)
+
+  @@index([replayRunId])
+  @@index([failureCode])
+  @@index([detectedAt])
+}
+
+/// Phase 18 — rollback to prior approved version (preserves audit; never deletes).
+model MedicationRecommendationRollbackEvent {
+  id                         String   @id @default(uuid())
+  recommendationDefinitionId String
+  fromDefinitionId           String
+  toDefinitionId             String
+  fromVersion                String   @db.VarChar(32)
+  toVersion                  String   @db.VarChar(32)
+  reason                     String
+  preservesAudit             Boolean  @default(true)
+  preservesHistory           Boolean  @default(true)
+  deletesRecords             Boolean  @default(false)
+  performedByUserId          String
+  performedAt                DateTime @default(now())
+  createdAt                  DateTime @default(now())
+  recommendationDefinition   MedicationRecommendationDefinition @relation(fields: [recommendationDefinitionId], references: [id], onDelete: Restrict)
+
+  @@index([recommendationDefinitionId])
+  @@index([fromDefinitionId])
+  @@index([toDefinitionId])
+  @@index([performedAt])
+}
+
+/// Phase 18 — governance-admin drift alerts (never interrupt providers).
+model MedicationRecommendationDriftAlert {
+  id                         String   @id @default(uuid())
+  recommendationDefinitionId String?
+  facilityId                 String?
+  driftType                  String   @db.VarChar(64)
+  severity                   String   @default("WARNING") @db.VarChar(16)
+  description                String
+  interruptProviders         Boolean  @default(false)
+  governanceAdminOnly        Boolean  @default(true)
+  detectedAt                 DateTime @default(now())
+  acknowledgedAt             DateTime?
+  resolvedAt                 DateTime?
+  metadataJson               Json?
+  createdAt                  DateTime @default(now())
+  recommendationDefinition   MedicationRecommendationDefinition? @relation(fields: [recommendationDefinitionId], references: [id], onDelete: SetNull)
+
+  @@index([recommendationDefinitionId])
+  @@index([facilityId])
+  @@index([driftType])
+  @@index([severity])
+  @@index([detectedAt])
+}
+
+/// Phase 18 — quality metrics snapshot.
+model MedicationRecommendationQualitySnapshot {
+  id                         String   @id @default(uuid())
+  snapshotKey                String   @unique @db.VarChar(128)
+  coverageScore              Int      @default(0)
+  evidenceCompleteness       Int      @default(0)
+  reviewCompleteness         Int      @default(0)
+  confidenceCalibration      Int      @default(0)
+  governanceCompleteness     Int      @default(0)
+  auditCompleteness          Int      @default(0)
+  traceabilityScore          Int      @default(0)
+  explainabilityScore        Int      @default(0)
+  reproducibilityScore       Int      @default(0)
+  qualityScore               Int      @default(0)
+  metricsJson                Json?
+  generatedAt                DateTime @default(now())
+  createdAt                  DateTime @default(now())
+
+  @@index([generatedAt])
+  @@index([qualityScore])
+}
+
+/// Phase 18 — regulatory readiness evidence artifact (no approval claim).
+model MedicationRecommendationRegulatoryArtifact {
+  id                 String   @id @default(uuid())
+  artifactKey        String   @unique @db.VarChar(128)
+  framework          String   @db.VarChar(64)
+  title              String   @db.VarChar(255)
+  summary            String
+  claimsApproval     Boolean  @default(false)
+  evidenceJson       Json?
+  generatedAt        DateTime @default(now())
+  createdAt          DateTime @default(now())
+
+  @@index([framework])
+  @@index([generatedAt])
+}
+
+model MedicationRecommendationOpsAuditEvent {
+  id                         String   @id @default(uuid())
+  facilityId                 String?
+  recommendationDefinitionId String?
+  entityType                 String   @db.VarChar(64)
+  entityId                   String
+  action                     String   @db.VarChar(64)
+  beforeState                Json?
+  afterState                 Json?
+  reason                     String?
+  performedByUserId          String
+  performedAt                DateTime @default(now())
+  createdAt                  DateTime @default(now())
+
+  @@index([facilityId])
+  @@index([recommendationDefinitionId])
   @@index([entityType, entityId])
   @@index([action])
   @@index([performedAt])
