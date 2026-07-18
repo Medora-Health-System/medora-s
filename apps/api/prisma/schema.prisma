@@ -4358,6 +4358,193 @@ model MedicationSafetyValidationAuditEvent {
   @@index([identifiableAccess])
 }
 
+/// Phase 12 — controlled Emergency Medicine knowledge population batch.
+model MedicationKnowledgePopulationBatch {
+  id                            String   @id @default(uuid())
+  batchKey                      String   @unique @db.VarChar(64)
+  name                          String   @db.VarChar(255)
+  description                   String?
+  scope                         String   @db.VarChar(64)
+  /// DRAFT | IDENTITY_RESOLUTION | ... | RETIRED — never DRAFT→APPROVED
+  status                        String   @default("DRAFT") @db.VarChar(48)
+  targetFamilyCount             Int      @default(0)
+  resolvedFamilyCount           Int      @default(0)
+  unresolvedFamilyCount         Int      @default(0)
+  draftClinicalRecordCount      Int      @default(0)
+  draftSafetyRecordCount        Int      @default(0)
+  approvedClinicalRecordCount   Int      @default(0)
+  approvedSafetyRecordCount     Int      @default(0)
+  conflictCount                 Int      @default(0)
+  duplicateCount                Int      @default(0)
+  rejectedCount                 Int      @default(0)
+  sourceVersionIdsJson          Json?
+  manifestVersion               String?  @db.VarChar(32)
+  clinicalActivationAllowed     Boolean  @default(false)
+  providerFacingAlertsAllowed   Boolean  @default(false)
+  orderBlockingAllowed          Boolean  @default(false)
+  createdByUserId               String
+  reviewStartedAt               DateTime?
+  approvedAt                    DateTime?
+  completedAt                   DateTime?
+  lockedAt                      DateTime?
+  fixtureMarker                 String?  @db.VarChar(64)
+  createdAt                     DateTime @default(now())
+  updatedAt                     DateTime @updatedAt
+  items                         MedicationKnowledgePopulationBatchItem[]
+  conflicts                     MedicationKnowledgeConflict[]
+  importRuns                    MedicationKnowledgePopulationImportRun[]
+  eligibilitySnapshots          MedicationKnowledgeShadowEligibilitySnapshot[]
+  auditEvents                   MedicationKnowledgePopulationAuditEvent[]
+
+  @@index([status])
+  @@index([scope])
+  @@index([createdByUserId])
+  @@index([clinicalActivationAllowed])
+}
+
+model MedicationKnowledgePopulationBatchItem {
+  id                        String   @id @default(uuid())
+  batchId                   String
+  requestedFamilyName       String   @db.VarChar(255)
+  normalizedFamilyName      String   @db.VarChar(255)
+  familyKey                 String   @db.VarChar(128)
+  canonicalConceptId        String?
+  canonicalProductIdsJson   Json?
+  /// UNRESOLVED | RESOLVED_EXACT | ... | IDENTITY_REVIEW_REQUIRED | EXCLUDED
+  resolutionStatus          String   @default("UNRESOLVED") @db.VarChar(48)
+  resolutionConfidence      String?  @db.VarChar(16)
+  resolutionCandidatesJson  Json?
+  clinicalKnowledgeStatus   String   @default("NOT_STARTED") @db.VarChar(48)
+  safetyKnowledgeStatus     String   @default("NOT_STARTED") @db.VarChar(48)
+  domainApplicabilityJson   Json?
+  coverageBeforeJson        Json?
+  coverageAfterJson         Json?
+  blockingIssueCount        Int      @default(0)
+  warningCount              Int      @default(0)
+  populationWave            String?  @db.VarChar(32)
+  highAlertCandidate        Boolean  @default(false)
+  assignedReviewerId        String?
+  assignedPharmacistId      String?
+  assignedMedicalReviewerId String?
+  draftClinicalProfileId    String?
+  fixtureMarker             String?  @db.VarChar(64)
+  createdAt                 DateTime @default(now())
+  updatedAt                 DateTime @updatedAt
+  batch                     MedicationKnowledgePopulationBatch @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  eligibilitySnapshots      MedicationKnowledgeShadowEligibilitySnapshot[]
+
+  @@unique([batchId, familyKey])
+  @@index([batchId])
+  @@index([resolutionStatus])
+  @@index([canonicalConceptId])
+  @@index([normalizedFamilyName])
+  @@index([populationWave])
+}
+
+model MedicationKnowledgeConflict {
+  id                 String   @id @default(uuid())
+  batchId            String?
+  familyKey          String?  @db.VarChar(128)
+  domain             String   @db.VarChar(64)
+  recordType         String   @db.VarChar(64)
+  recordAId          String?
+  recordBId          String?
+  sourceVersionAId   String?
+  sourceVersionBId   String?
+  conflictType       String   @db.VarChar(64)
+  severity           String   @default("MODERATE") @db.VarChar(32)
+  description        String
+  /// OPEN | UNDER_REVIEW | RESOLVED_* | DEFERRED | BLOCKING
+  status             String   @default("OPEN") @db.VarChar(48)
+  resolution         String?
+  resolvedByUserId   String?
+  resolvedAt         DateTime?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  batch              MedicationKnowledgePopulationBatch? @relation(fields: [batchId], references: [id], onDelete: SetNull)
+
+  @@index([batchId])
+  @@index([familyKey])
+  @@index([status])
+  @@index([conflictType])
+  @@index([severity])
+}
+
+model MedicationKnowledgePopulationImportRun {
+  id                    String   @id @default(uuid())
+  batchId               String
+  /// PREVIEW | DRY_RUN | EXECUTE_DRAFTS | ROLLBACK | RESUME
+  runType               String   @db.VarChar(32)
+  status                String   @default("COMPLETED") @db.VarChar(32)
+  stageJson             Json?
+  reportJson            Json?
+  checksum              String?  @db.VarChar(128)
+  wroteKnowledgeRecords Boolean  @default(false)
+  createdApprovedRecords Boolean @default(false)
+  performedByUserId     String
+  createdAt             DateTime @default(now())
+  batch                 MedicationKnowledgePopulationBatch @relation(fields: [batchId], references: [id], onDelete: Cascade)
+
+  @@index([batchId])
+  @@index([runType])
+  @@index([createdAt])
+  @@index([wroteKnowledgeRecords])
+  @@index([createdApprovedRecords])
+}
+
+model MedicationKnowledgeShadowEligibilitySnapshot {
+  id                            String   @id @default(uuid())
+  batchId                       String?
+  batchItemId                   String?
+  familyKey                     String   @db.VarChar(128)
+  canonicalConceptId            String?
+  identityResolved              Boolean  @default(false)
+  clinicalProfileApproved       Boolean  @default(false)
+  administrationReviewed        Boolean  @default(false)
+  monitoringReviewed            Boolean  @default(false)
+  therapeuticClassReviewed      Boolean  @default(false)
+  allergyMappingReviewed        Boolean  @default(false)
+  duplicateTherapyReviewed      Boolean  @default(false)
+  majorSafetyKnowledgeReviewed  Boolean  @default(false)
+  emergencyContextReviewed      Boolean  @default(false)
+  criticalConflictCount         Int      @default(0)
+  identityBlockerCount          Int      @default(0)
+  shadowEvaluable               Boolean  @default(false)
+  reasonCodesJson               Json?
+  gatesJson                     Json?
+  calculatedAt                  DateTime @default(now())
+  batch                         MedicationKnowledgePopulationBatch? @relation(fields: [batchId], references: [id], onDelete: SetNull)
+  batchItem                     MedicationKnowledgePopulationBatchItem? @relation(fields: [batchItemId], references: [id], onDelete: SetNull)
+
+  @@index([batchId])
+  @@index([familyKey])
+  @@index([shadowEvaluable])
+  @@index([canonicalConceptId])
+  @@index([calculatedAt])
+}
+
+model MedicationKnowledgePopulationAuditEvent {
+  id                 String   @id @default(uuid())
+  batchId            String?
+  entityType         String   @db.VarChar(64)
+  entityId           String
+  action             String   @db.VarChar(64)
+  beforeState        Json?
+  afterState         Json?
+  performedByUserId  String
+  performedAt        DateTime @default(now())
+  reason             String?
+  correlationId      String?  @db.VarChar(128)
+  createdAt          DateTime @default(now())
+  batch              MedicationKnowledgePopulationBatch? @relation(fields: [batchId], references: [id], onDelete: SetNull)
+
+  @@index([batchId])
+  @@index([entityType, entityId])
+  @@index([action])
+  @@index([performedByUserId])
+  @@index([performedAt])
+}
+
 /// Durable RxNorm verified mapping history — Phase 4 canonical reconciliation (CLI/service only).
 model RxNormVerifiedMapping {
   id                   String                  @id @default(uuid())

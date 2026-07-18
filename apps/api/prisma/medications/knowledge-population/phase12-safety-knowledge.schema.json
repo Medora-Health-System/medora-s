@@ -1,0 +1,88 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "phase12-safety-knowledge.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "records"
+  ],
+  "properties": {
+    "records": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "recordKey",
+          "familyKey",
+          "scope",
+          "interactionOrRuleType",
+          "structuredPayload",
+          "sourceVersionKey"
+        ],
+        "properties": {
+          "recordKey": {
+            "type": "string"
+          },
+          "familyKey": {
+            "type": "string"
+          },
+          "canonicalConceptId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "scope": {
+            "type": "string"
+          },
+          "subjectIdentity": {
+            "type": "string"
+          },
+          "objectIdentity": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "interactionOrRuleType": {
+            "type": "string"
+          },
+          "severity": {
+            "type": "string"
+          },
+          "clinicalSignificance": {
+            "type": "string"
+          },
+          "structuredPayload": {
+            "type": "object"
+          },
+          "sourceVersionKey": {
+            "type": "string"
+          },
+          "evidenceLevel": {
+            "type": "string"
+          },
+          "directionality": {
+            "type": "string"
+          },
+          "emergencyContexts": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "reviewNotes": {
+            "type": "string"
+          },
+          "fixtureMarker": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      }
+    }
+  }
+}

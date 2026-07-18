@@ -1,0 +1,1413 @@
+{
+  "manifestKey": "EM_KNOWLEDGE_POPULATION_V1",
+  "version": "1.0.0",
+  "scope": "CONTROLLED_EMERGENCY_MEDICATION_KNOWLEDGE_BATCH",
+  "clinicalActivationAllowed": false,
+  "providerFacingAlertsAllowed": false,
+  "orderBlockingAllowed": false,
+  "automaticApprovalAllowed": false,
+  "fixtureMarker": null,
+  "notes": "Phase 12 controlled EM knowledge population. Canonical concept IDs resolved at runtime against the live database. No fabricated approved clinical claims.",
+  "families": [
+    {
+      "familyKey": "EM_FAM_ACETAMINOPHEN",
+      "requestedFamilyName": "acetaminophen",
+      "canonicalConceptId": null,
+      "expectedProducts": [],
+      "therapeuticClassKeys": [],
+      "emergencyContexts": [
+        "PAIN_MANAGEMENT",
+        "INFECTION",
+        "RESPIRATORY_DISTRESS"
+      ],
+      "requiredClinicalDomains": [
+        "CLINICAL_PROFILE",
+        "ADMINISTRATION",
+        "CONTRAINDICATIONS",
+        "EMERGENCY_MEDICINE_PROFILE"
+      ],
+      "requiredSafetyDomains": [
+        "THERAPEUTIC_CLASS_MEMBERSHIP",
+        "ACTIVE_INGREDIENT_ALLERGEN_MAPPING",
+        "DUPLICATE_THERAPY_MEMBERSHIP"
+      ],
+      "priority": 1,
+      "highAlertCandidate": false,
+      "controlledSubstanceCandidate": false,
+      "sourceVersionKeys": [
+        "PHASE12_CLINICAL_FRAMEWORK_V1",
+        "PHASE12_SAFETY_FRAMEWORK_V1"
+      ],
+      "contentFiles": [
+        "phase12-clinical-intake.json",
+        "phase12-safety-intake.json"
+      ],
+      "reviewRequirements": [
+        "CLINICAL",
+        "PHARMACIST"
+      ],
+      "populationWave": "WAVE_1",
+      "domainApplicabilityNote": "Scaffolding only — clinical facts require approved labeled sources before approval."
+    },
+    {
+      "familyKey": "EM_FAM_IBUPROFEN",
+      "requestedFamilyName": "ibuprofen",
+      "canonicalConceptId": null,
+      "expectedProducts": [],
+      "therapeuticClassKeys": [],
+      "emergencyContexts": [
+        "PAIN_MANAGEMENT",
+        "INFECTION",
+        "RESPIRATORY_DISTRESS"
+      ],
+      "requiredClinicalDomains": [
+        "CLINICAL_PROFILE",
+        "ADMINISTRATION",
+        "CONTRAINDICATIONS",
+        "EMERGENCY_MEDICINE_PROFILE"
+      ],
+      "requiredSafetyDomains": [
+        "THERAPEUTIC_CLASS_MEMBERSHIP",
+        "ACTIVE_INGREDIENT_ALLERGEN_MAPPING",
+        "DUPLICATE_THERAPY_MEMBERSHIP"
+      ],
+      "priority": 2,
+      "highAlertCandidate": false,
+      "controlledSubstanceCandidate": false,
+      "sourceVersionKeys": [
+        "PHASE12_CLINICAL_FRAMEWORK_V1",
+        "PHASE12_SAFETY_FRAMEWORK_V1"
+      ],
+      "contentFiles": [
+        "phase12-clinical-intake.json",
+        "phase12-safety-intake.json"
+      ],
+      "reviewRequirements": [
+        "CLINICAL",
+        "PHARMACIST"
+      ],
+      "populationWave": "WAVE_1",
+      "domainApplicabilityNote": "Scaffolding only — clinical facts require approved labeled sources before approval."
+    },
+    {
+      "familyKey": "EM_FAM_NAPROXEN",
+      "requestedFamilyName": "naproxen",
+      "canonicalConceptId": null,
+      "expectedProducts": [],
+      "therapeuticClassKeys": [],
+      "emergencyContexts": [
+        "PAIN_MANAGEMENT",
+        "INFECTION",
+        "RESPIRATORY_DISTRESS"
+      ],
+      "requiredClinicalDomains": [
+        "CLINICAL_PROFILE",
+        "ADMINISTRATION",
+        "CONTRAINDICATIONS",
+        "EMERGENCY_MEDICINE_PROFILE"
+      ],
+      "requiredSafetyDomains": [
+        "THERAPEUTIC_CLASS_MEMBERSHIP",
+        "ACTIVE_INGREDIENT_ALLERGEN_MAPPING",
+        "DUPLICATE_THERAPY_MEMBERSHIP"
+      ],
+      "priority": 3,
+      "highAlertCandidate": false,
+      "controlledSubstanceCandidate": false,
+      "sourceVersionKeys": [
+        "PHASE12_CLINICAL_FRAMEWORK_V1",
+        "PHASE12_SAFETY_FRAMEWORK_V1"
+      ],
+      "contentFiles": [
+        "phase12-clinical-intake.json",
+        "phase12-safety-intake.json"
+      ],
+      "reviewRequirements": [
+        "CLINICAL",
+        "PHARMACIST"
+      ],
+      "populationWave": "WAVE_4",
+      "domainApplicabilityNote": "Scaffolding only — clinical facts require approved labeled sources before approval."
+    },
+    {
+      "familyKey": "EM_FAM_ASPIRIN",
+      "requestedFamilyName": "aspirin",
+      "canonicalConceptId": null,
+      "expectedProducts": [],
+      "therapeuticClassKeys": [],
+      "emergencyContexts": [
+        "PAIN_MANAGEMENT",
+        "INFECTION",
+        "RESPIRATORY_DISTRESS"
+      ],
+      "requiredClinicalDomains": [
+        "CLINICAL_PROFILE",
+        "ADMINISTRATION",
+        "CONTRAINDICATIONS",
+        "EMERGENCY_MEDICINE_PROFILE"
+      ],
+      "requiredSafetyDomains": [
+        "THERAPEUTIC_CLASS_MEMBERSHIP",
+        "ACTIVE_INGREDIENT_ALLERGEN_MAPPING",
+        "DUPLICATE_THERAPY_MEMBERSHIP"
+      ],
+      "priority": 4,
+      "highAlertCandidate": false,
+      "controlledSubstanceCandidate": false,
+      "sourceVersionKeys": [
+        "PHASE12_CLINICAL_FRAMEWORK_V1",
+        "PHASE12_SAFETY_FRAMEWORK_V1"
+      ],
+      "contentFiles": [
+        "phase12-clinical-intake.json",
+        "phase12-safety-intake.json"
+      ],
+      "reviewRequirements": [
+        "CLINICAL",
+        "PHARMACIST"
+      ],
+      "populationWave": "WAVE_4",
+      "domainApplicabilityNote": "Scaffolding only — clinical facts require approved labeled sources before approval."
+    },
+    {
+      "familyKey": "EM_FAM_ONDANSETRON",
+      "requestedFamilyName": "ondansetron",
+      "canonicalConceptId": null,
+      "expectedProducts": [],
+      "therapeuticClassKeys": [],
+      "emergencyContexts": [
+        "PAIN_MANAGEMENT",
+        "INFECTION",
+        "RESPIRATORY_DISTRESS"
+      ],
+      "requiredClinicalDomains": [
+        "CLINICAL_PROFILE",
+        "ADMINISTRATION",
+        "CONTRAINDICATIONS",
+        "EMERGENCY_MEDICINE_PROFILE"
+      ],
+      "requiredSafetyDomains": [
+        "THERAPEUTIC_CLASS_MEMBERSHIP",
+        "ACTIVE_INGREDIENT_ALLERGEN_MAPPING",
+        "DUPLICATE_THERAPY_MEMBERSHIP"
+      ],
+      "priority": 5,
+      "highAlertCandidate": false,
+      "controlledSubstanceCandidate": false,
+      "sourceVersionKeys": [
+        "PHASE12_CLINICAL_FRAMEWORK_V1",
+        "PHASE12_SAFETY_FRAMEWORK_V1"
+      ],
+      "contentFiles": [
+        "phase12-clinical-intake.json",
+        "phase12-safety-intake.json"
+      ],
+      "reviewRequirements": [
+        "CLINICAL",
+        "PHARMACIST"
+      ],
+      "populationWave": "WAVE_1",
+      "domainApplicabilityNote": "Scaffolding only — clinical facts require approved labeled sources before approval."
+    },
+    {
+      "familyKey": "EM_FAM_METOCLOPRAMIDE",
+      "requestedFamilyName": "metoclopramide",
+      "canonicalConceptId": null,
+      "expectedProducts": [],
+      "therapeuticClassKeys": [],
+      "emergencyContexts": [
+        "PAIN_MANAGEMENT",
+        "INFECTION",
+        "RESPIRATORY_DISTRESS"
+      ],
+      "requiredClinicalDomains": [
+        "CLINICAL_PROFILE",
+        "ADMINISTRATION",
+        "CONTRAINDICATIONS",
+        "EMERGENCY_MEDICINE_PROFILE"
+      ],
+      "requiredSafetyDomains": [
+        "THERAPEUTIC_CLASS_MEMBERSHIP",
+        "ACTIVE_INGREDIENT_ALLERGEN_MAPPING",
+        "DUPLICATE_THERAPY_MEMBERSHIP"
+      ],
+      "priority": 6,
+      "highAlertCandidate": false,
+      "controlledSubstanceCandidate": false,
+      "sourceVersionKeys": [
+        "PHASE12_CLINICAL_FRAMEWORK_V1",
+        "PHASE12_SAFETY_FRAMEWORK_V1"
+      ],
+      "contentFiles": [
+        "phase12-clinical-intake.json",
+        "phase12-safety-intake.json"
+      ],
+      "reviewRequirements": [
+        "CLINICAL",
+        "PHARMACIST"
+      ],
+      "populationWave": "WAVE_4",
+      "domainApplicabilityNote": "Scaffolding only — clinical facts require approved labeled sources before approval."
+    },
+    {
+      "familyKey": "EM_FAM_PROMETHAZINE",
+      "requestedFamilyName": "promethazine",
+      "canonicalConceptId": null,
+      "expectedProducts": [],
+      "therapeuticClassKeys": [],
+      "emergencyContexts": [
+        "PAIN_MANAGEMENT",
+        "INFECTION",
+        "RESPIRATORY_DISTRESS"
+      ],
+      "requiredClinicalDomains": [
+        "CLINICAL_PROFILE",
+        "ADMINISTRATION",
+        "CONTRAINDICATIONS",
+        "EMERGENCY_MEDICINE_PROFILE"
+      ],
+      "requiredSafetyDomains": [
+        "THERAPEUTIC_CLASS_MEMBERSHIP",
+        "ACTIVE_INGREDIENT_ALLERGEN_MAPPING",
+        "DUPLICATE_THERAPY_MEMBERSHIP"
+      ],
+      "priority": 7,
+      "highAlertCandidate": false,
+      "controlledSubstanceCandidate": false,
+      "sourceVersionKeys": [
+        "PHASE12_CLINICAL_FRAMEWORK_V1",
+        "PHASE12_SAFETY_FRAMEWORK_V1"
+      ],
+      "contentFiles": [
+        "phase12-clinical-intake.json",
+        "phase12-safety-intake.json"
+      ],
+      "reviewRequirements": [
+        "CLINICAL",
+        "PHARMACIST"
+      ],
+      "populationWave": "WAVE_4",
+      "domainApplicabilityNote": "Scaffolding only — clinical facts require approved labeled sources before approval."
+    },
+    {
+      "familyKey": "EM_FAM_FAMOTIDINE",
+      "requestedFamilyName": "famotidine",
+      "canonicalConceptId": null,
+      "expectedProducts": [],
+      "therapeuticClassKeys": [],
+      "emergencyContexts": [
+        "PAIN_MANAGEMENT",
+        "INFECTION",
+        "RESPIRATORY_DISTRESS"
+      ],
+      "requiredClinicalDomains": [
+        "CLINICAL_PROFILE",
+        "ADMINISTRATION",
+        "CONTRAINDICATIONS",
+        "EMERGENCY_MEDICINE_PROFILE"
+      ],
+      "requiredSafetyDomains": [
+        "THERAPEUTIC_CLASS_MEMBERSHIP",
+        "ACTIVE_INGREDIENT_ALLERGEN_MAPPING",
+        "DUPLICATE_THERAPY_MEMBERSHIP"
+      ],
+      "priority": 8,
+      "highAlertCandidate": false,
+      "controlledSubstanceCandidate": false,
+      "sourceVersionKeys": [
+        "PHASE12_CLINICAL_FRAMEWORK_V1",
+        "PHASE12_SAFETY_FRAMEWORK_V1"
+      ],
+      "contentFiles": [
+        "phase12-clinical-intake.json",
+        "phase12-safety-intake.json"
+      ],
+      "reviewRequirements": [
+        "CLINICAL",
+        "PHARMACIST"
+      ],
+      "populationWave": "WAVE_1",
+      "domainApplicabilityNote": "Scaffolding only — clinical facts require approved labeled sources before approval."
+    },
+    {
+      "familyKey": "EM_FAM_PANTOPRAZOLE",
+      "requestedFamilyName": "pantoprazole",
+      "canonicalConceptId": null,
+      "expectedProducts": [],
+      "therapeuticClassKeys": [],
+      "emergencyContexts": [
+        "PAIN_MANAGEMENT",
+        "INFECTION",
+        "RESPIRATORY_DISTRESS"
+      ],
+      "requiredClinicalDomains": [
+        "CLINICAL_PROFILE",
+        "ADMINISTRATION",
+        "CONTRAINDICATIONS",
+        "EMERGENCY_MEDICINE_PROFILE"
+      ],
+      "requiredSafetyDomains": [
+        "THERAPEUTIC_CLASS_MEMBERSHIP",
+        "ACTIVE_INGREDIENT_ALLERGEN_MAPPING",
+        "DUPLICATE_THERAPY_MEMBERSHIP"
+      ],
+      "priority": 9,
+      "highAlertCandidate": false,
+      "controlledSubstanceCandidate": false,
+      "sourceVersionKeys": [
+        "PHASE12_CLINICAL_FRAMEWORK_V1",
+        "PHASE12_SAFETY_FRAMEWORK_V1"
+      ],
+      "contentFiles": [
+        "phase12-clinical-intake.json",
+        "phase12-safety-intake.json"
+      ],
+      "reviewRequirements": [
+        "CLINICAL",
+        "PHARMACIST"
+      ],
+      "populationWave": "WAVE_1",
+      "domainApplicabilityNote": "Scaffolding only — clinical facts require approved labeled sources before approval."
+    },
+    {
+      "familyKey": "EM_FAM_OMEPRAZOLE",
+      "requestedFamilyName": "omeprazole",
+      "canonicalConceptId": null,
+      "expectedProducts": [],
+      "therapeuticClassKeys": [],
+      "emergencyContexts": [
+        "PAIN_MANAGEMENT",
+        "INFECTION",
+        "RESPIRATORY_DISTRESS"
+      ],
+      "requiredClinicalDomains": [
+        "CLINICAL_PROFILE",
+        "ADMINISTRATION",
+        "CONTRAINDICATIONS",
+        "EMERGENCY_MEDICINE_PROFILE"
+      ],
+      "requiredSafetyDomains": [
+        "THERAPEUTIC_CLASS_MEMBERSHIP",
+        "ACTIVE_INGREDIENT_ALLERGEN_MAPPING",
+        "DUPLICATE_THERAPY_MEMBERSHIP"
+      ],
+      "priority": 10,
+      "highAlertCandidate": false,
+      "controlledSubstanceCandidate": false,
+      "sourceVersionKeys": [
+        "PHASE12_CLINICAL_FRAMEWORK_V1",
+        "PHASE12_SAFETY_FRAMEWORK_V1"
+      ],
+      "contentFiles": [
+        "phase12-clinical-intake.json",
+        "phase12-safety-intake.json"
+      ],
+      "reviewRequirements": [
+        "CLINICAL",
+        "PHARMACIST"
+      ],
+      "populationWave": "WAVE_4",
+      "domainApplicabilityNote": "Scaffolding only — clinical facts require approved labeled sources before approval."
+    },
+    {
+      "familyKey": "EM_FAM_LACTULOSE",
+      "requestedFamilyName": "lactulose",
+      "canonicalConceptId": null,
+      "expectedProducts": [],
+      "therapeuticClassKeys": [],
+      "emergencyContexts": [
+        "PAIN_MANAGEMENT",
+        "INFECTION",
+        "RESPIRATORY_DISTRESS"
+      ],
+      "requiredClinicalDomains": [
+        "CLINICAL_PROFILE",
+        "ADMINISTRATION",
+        "CONTRAINDICATIONS",
+        "EMERGENCY_MEDICINE_PROFILE"
+      ],
+      "requiredSafetyDomains": [
+        "THERAPEUTIC_CLASS_MEMBERSHIP",
+        "ACTIVE_INGREDIENT_ALLERGEN_MAPPING",
+        "DUPLICATE_THERAPY_MEMBERSHIP"
+      ],
+      "priority": 11,
+      "highAlertCandidate": false,
+      "controlledSubstanceCandidate": false,
+      "sourceVersionKeys": [
+        "PHASE12_CLINICAL_FRAMEWORK_V1",
+        "PHASE12_SAFETY_FRAMEWORK_V1"
+      ],
+      "contentFiles": [
+        "phase12-clinical-intake.json",
+        "phase12-safety-intake.json"
+      ],
+      "reviewRequirements": [
+        "CLINICAL",
+        "PHARMACIST"
+      ],
+      "populationWave": "WAVE_4",
+      "domainApplicabilityNote": "Scaffolding only — clinical facts require approved labeled sources before approval."
+    },
+    {
+      "familyKey": "EM_FAM_CEFTAZIDIME",
+      "requestedFamilyName": "ceftazidime",
+      "canonicalConceptId": null,
+      "expectedProducts": [],
+      "therapeuticClassKeys": [],
+      "emergencyContexts": [
+        "PAIN_MANAGEMENT",
+        "INFECTION",
+        "RESPIRATORY_DISTRESS"
+      ],
+      "requiredClinicalDomains": [
+        "CLINICAL_PROFILE",
+        "ADMINISTRATION",
+        "CONTRAINDICATIONS",
+        "EMERGENCY_MEDICINE_PROFILE"
+      ],
+      "requiredSafetyDomains": [
+        "THERAPEUTIC_CLASS_MEMBERSHIP",
+        "ACTIVE_INGREDIENT_ALLERGEN_MAPPING",
+        "DUPLICATE_THERAPY_MEMBERSHIP"
+      ],
+      "priority": 12,
+      "highAlertCandidate": false,
+      "controlledSubstanceCandidate": false,
+      "sourceVersionKeys": [
+        "PHASE12_CLINICAL_FRAMEWORK_V1",
+        "PHASE12_SAFETY_FRAMEWORK_V1"
+      ],
+      "contentFiles": [
+        "phase12-clinical-intake.json",
+        "phase12-safety-intake.json"
+      ],
+      "reviewRequirements": [
+        "CLINICAL",
+        "PHARMACIST"
+      ],
+      "populationWave": "WAVE_2",
+      "domainApplicabilityNote": "Scaffolding only — clinical facts require approved labeled sources before approval."
+    },
+    {
+      "familyKey": "EM_FAM_VANCOMYCIN",
+      "requestedFamilyName": "vancomycin",
+      "canonicalConceptId": null,
+      "expectedProducts": [],
+      "therapeuticClassKeys": [],
+      "emergencyContexts": [
+        "PAIN_MANAGEMENT",
+        "INFECTION",
+        "RESPIRATORY_DISTRESS"
+      ],
+      "requiredClinicalDomains": [
+        "CLINICAL_PROFILE",
+        "ADMINISTRATION",
+        "CONTRAINDICATIONS",
+        "EMERGENCY_MEDICINE_PROFILE"
+      ],
+      "requiredSafetyDomains": [
+        "THERAPEUTIC_CLASS_MEMBERSHIP",
+        "ACTIVE_INGREDIENT_ALLERGEN_MAPPING",
+        "DUPLICATE_THERAPY_MEMBERSHIP"
+      ],
+      "priority": 13,
+      "highAlertCandidate": true,
+      "controlledSubstanceCandidate": false,
+      "sourceVersionKeys": [
+        "PHASE12_CLINICAL_FRAMEWORK_V1",
+        "PHASE12_SAFETY_FRAMEWORK_V1"
+      ],
+      "contentFiles": [
+        "phase12-clinical-intake.json",
+        "phase12-safety-intake.json"
+      ],
+      "reviewRequirements": [
+        "PHARMACIST",
+        "MEDICAL"
+      ],
+      "populationWave": "WAVE_2",
+      "domainApplicabilityNote": "Scaffolding only — clinical facts require approved labeled sources before approval."
+    },
+    {
+      "familyKey": "EM_FAM_CLINDAMYCIN",
+      "requestedFamilyName": "clindamycin",
+      "canonicalConceptId": null,
+      "expectedProducts": [],
+      "therapeuticClassKeys": [],
+      "emergencyContexts": [
+        "PAIN_MANAGEMENT",
+        "INFECTION",
+        "RESPIRATORY_DISTRESS"
+      ],
+      "requiredClinicalDomains": [
+        "CLINICAL_PROFILE",
+        "ADMINISTRATION",
+        "CONTRAINDICATIONS",
+        "EMERGENCY_MEDICINE_PROFILE"
+      ],
+      "requiredSafetyDomains": [
+        "THERAPEUTIC_CLASS_MEMBERSHIP",
+        "ACTIVE_INGREDIENT_ALLERGEN_MAPPING",
+        "DUPLICATE_THERAPY_MEMBERSHIP"
+      ],
+      "priority": 14,
+      "highAlertCandidate": false,
+      "controlledSubstanceCandidate": false,
+      "sourceVersionKeys": [
+        "PHASE12_CLINICAL_FRAMEWORK_V1",
+        "PHASE12_SAFETY_FRAMEWORK_V1"
+      ],
+      "contentFiles": [
+        "phase12-clinical-intake.json",
+        "phase12-safety-intake.json"
+      ],
+      "reviewRequirements": [
+        "CLINICAL",
+        "PHARMACIST"
+      ],
+      "populationWave": "WAVE_2",
+      "domainApplicabilityNote": "Scaffolding only — clinical facts require approved labeled sources before approval."
+    },
+    {
+      "familyKey": "EM_FAM_AZITHROMYCIN",
+      "requestedFamilyName": "azithromycin",
+      "canonicalConceptId": null,
+      "expectedProducts": [],
+      "therapeuticClassKeys": [],
+      "emergencyContexts": [
+        "PAIN_MANAGEMENT",
+        "INFECTION",
+        "RESPIRATORY_DISTRESS"
+      ],
+      "requiredClinicalDomains": [
+        "CLINICAL_PROFILE",
+        "ADMINISTRATION",
+        "CONTRAINDICATIONS",
+        "EMERGENCY_MEDICINE_PROFILE"
+      ],
+      "requiredSafetyDomains": [
+        "THERAPEUTIC_CLASS_MEMBERSHIP",
+        "ACTIVE_INGREDIENT_ALLERGEN_MAPPING",
+        "DUPLICATE_THERAPY_MEMBERSHIP"
+      ],
+      "priority": 15,
+      "highAlertCandidate": false,
+      "controlledSubstanceCandidate": false,
+      "sourceVersionKeys": [
+        "PHASE12_CLINICAL_FRAMEWORK_V1",
+        "PHASE12_SAFETY_FRAMEWORK_V1"
+      ],
+      "contentFiles": [
+        "phase12-clinical-intake.json",
+        "phase12-safety-intake.json"
+      ],
+      "reviewRequirements": [
+        "CLINICAL",
+        "PHARMACIST"
+      ],
+      "populationWave": "WAVE_2",
+      "domainApplicabilityNote": "Scaffolding only — clinical facts require approved labeled sources before approval."
+    },
+    {
+      "familyKey": "EM_FAM_DOXYCYCLINE",
+      "requestedFamilyName": "doxycycline",
+      "canonicalConceptId": null,
+      "expectedProducts": [],
+      "therapeuticClassKeys": [],
+      "emergencyContexts": [
+        "PAIN_MANAGEMENT",
+        "INFECTION",
+        "RESPIRATORY_DISTRESS"
+      ],
+      "requiredClinicalDomains": [
+        "CLINICAL_PROFILE",
+        "ADMINISTRATION",
+        "CONTRAINDICATIONS",
+        "EMERGENCY_MEDICINE_PROFILE"
+      ],
+      "requiredSafetyDomains": [
+        "THERAPEUTIC_CLASS_MEMBERSHIP",
+        "ACTIVE_INGREDIENT_ALLERGEN_MAPPING",
+        "DUPLICATE_THERAPY_MEMBERSHIP"
+      ],
+      "priority": 16,
+      "highAlertCandidate": false,
+      "controlledSubstanceCandidate": false,
+      "sourceVersionKeys": [
+        "PHASE12_CLINICAL_FRAMEWORK_V1",
+        "PHASE12_SAFETY_FRAMEWORK_V1"
+      ],
+      "contentFiles": [
+        "phase12-clinical-intake.json",
+        "phase12-safety-intake.json"
+      ],
+      "reviewRequirements": [
+        "CLINICAL",
+        "PHARMACIST"
+      ],
+      "populationWave": "WAVE_2",
+      "domainApplicabilityNote": "Scaffolding only — clinical facts require approved labeled sources before approval."
+    },
+    {
+      "familyKey": "EM_FAM_CIPROFLOXACIN",
+      "requestedFamilyName": "ciprofloxacin",
+      "canonicalConceptId": null,
+      "expectedProducts": [],
+      "therapeuticClassKeys": [],
+      "emergencyContexts": [
+        "PAIN_MANAGEMENT",
+        "INFECTION",
+        "RESPIRATORY_DISTRESS"
+      ],
+      "requiredClinicalDomains": [
+        "CLINICAL_PROFILE",
+        "ADMINISTRATION",
+        "CONTRAINDICATIONS",
+        "EMERGENCY_MEDICINE_PROFILE"
+      ],
+      "requiredSafetyDomains": [
+        "THERAPEUTIC_CLASS_MEMBERSHIP",
+        "ACTIVE_INGREDIENT_ALLERGEN_MAPPING",
+        "DUPLICATE_THERAPY_MEMBERSHIP"
+      ],
+      "priority": 17,
+      "highAlertCandidate": false,
+      "controlledSubstanceCandidate": false,
+      "sourceVersionKeys": [
+        "PHASE12_CLINICAL_FRAMEWORK_V1",
+        "PHASE12_SAFETY_FRAMEWORK_V1"
+      ],
+      "contentFiles": [
+        "phase12-clinical-intake.json",
+        "phase12-safety-intake.json"
+      ],
+      "reviewRequirements": [
+        "CLINICAL",
+        "PHARMACIST"
+      ],
+      "populationWave": "WAVE_2",
+      "domainApplicabilityNote": "Scaffolding only — clinical facts require approved labeled sources before approval."
+    },
+    {
+      "familyKey": "EM_FAM_METRONIDAZOLE",
+      "requestedFamilyName": "metronidazole",
+      "canonicalConceptId": null,
+      "expectedProducts": [],
+      "therapeuticClassKeys": [],
+      "emergencyContexts": [
+        "PAIN_MANAGEMENT",
+        "INFECTION",
+        "RESPIRATORY_DISTRESS"
+      ],
+      "requiredClinicalDomains": [
+        "CLINICAL_PROFILE",
+        "ADMINISTRATION",
+        "CONTRAINDICATIONS",
+        "EMERGENCY_MEDICINE_PROFILE"
+      ],
+      "requiredSafetyDomains": [
+        "THERAPEUTIC_CLASS_MEMBERSHIP",
+        "ACTIVE_INGREDIENT_ALLERGEN_MAPPING",
+        "DUPLICATE_THERAPY_MEMBERSHIP"
+      ],
+      "priority": 18,
+      "highAlertCandidate": false,
+      "controlledSubstanceCandidate": false,
+      "sourceVersionKeys": [
+        "PHASE12_CLINICAL_FRAMEWORK_V1",
+        "PHASE12_SAFETY_FRAMEWORK_V1"
+      ],
+      "contentFiles": [
+        "phase12-clinical-intake.json",
+        "phase12-safety-intake.json"
+      ],
+      "reviewRequirements": [
+        "CLINICAL",
+        "PHARMACIST"
+      ],
+      "populationWave": "WAVE_2",
+      "domainApplicabilityNote": "Scaffolding only — clinical facts require approved labeled sources before approval."
+    },
+    {
+      "familyKey": "EM_FAM_MEROPENEM",
+      "requestedFamilyName": "meropenem",
+      "canonicalConceptId": null,
+      "expectedProducts": [],
+      "therapeuticClassKeys": [],
+      "emergencyContexts": [
+        "PAIN_MANAGEMENT",
+        "INFECTION",
+        "RESPIRATORY_DISTRESS"
+      ],
+      "requiredClinicalDomains": [
+        "CLINICAL_PROFILE",
+        "ADMINISTRATION",
+        "CONTRAINDICATIONS",
+        "EMERGENCY_MEDICINE_PROFILE"
+      ],
+      "requiredSafetyDomains": [
+        "THERAPEUTIC_CLASS_MEMBERSHIP",
+        "ACTIVE_INGREDIENT_ALLERGEN_MAPPING",
+        "DUPLICATE_THERAPY_MEMBERSHIP"
+      ],
+      "priority": 19,
+      "highAlertCandidate": false,
+      "controlledSubstanceCandidate": false,
+      "sourceVersionKeys": [
+        "PHASE12_CLINICAL_FRAMEWORK_V1",
+        "PHASE12_SAFETY_FRAMEWORK_V1"
+      ],
+      "contentFiles": [
+        "phase12-clinical-intake.json",
+        "phase12-safety-intake.json"
+      ],
+      "reviewRequirements": [
+        "CLINICAL",
+        "PHARMACIST"
+      ],
+      "populationWave": "WAVE_2",
+      "domainApplicabilityNote": "Scaffolding only — clinical facts require approved labeled sources before approval."
+    },
+    {
+      "familyKey": "EM_FAM_FLUCONAZOLE",
+      "requestedFamilyName": "fluconazole",
+      "canonicalConceptId": null,
+      "expectedProducts": [],
+      "therapeuticClassKeys": [],
+      "emergencyContexts": [
+        "PAIN_MANAGEMENT",
+        "INFECTION",
+        "RESPIRATORY_DISTRESS"
+      ],
+      "requiredClinicalDomains": [
+        "CLINICAL_PROFILE",
+        "ADMINISTRATION",
+        "CONTRAINDICATIONS",
+        "EMERGENCY_MEDICINE_PROFILE"
+      ],
+      "requiredSafetyDomains": [
+        "THERAPEUTIC_CLASS_MEMBERSHIP",
+        "ACTIVE_INGREDIENT_ALLERGEN_MAPPING",
+        "DUPLICATE_THERAPY_MEMBERSHIP"
+      ],
+      "priority": 20,
+      "highAlertCandidate": false,
+      "controlledSubstanceCandidate": false,
+      "sourceVersionKeys": [
+        "PHASE12_CLINICAL_FRAMEWORK_V1",
+        "PHASE12_SAFETY_FRAMEWORK_V1"
+      ],
+      "contentFiles": [
+        "phase12-clinical-intake.json",
+        "phase12-safety-intake.json"
+      ],
+      "reviewRequirements": [
+        "CLINICAL",
+        "PHARMACIST"
+      ],
+      "populationWave": "WAVE_2",
+      "domainApplicabilityNote": "Scaffolding only — clinical facts require approved labeled sources before approval."
+    },
+    {
+      "familyKey": "EM_FAM_ACYCLOVIR",
+      "requestedFamilyName": "acyclovir",
+      "canonicalConceptId": null,
+      "expectedProducts": [],
+      "therapeuticClassKeys": [],
+      "emergencyContexts": [
+        "PAIN_MANAGEMENT",
+        "INFECTION",
+        "RESPIRATORY_DISTRESS"
+      ],
+      "requiredClinicalDomains": [
+        "CLINICAL_PROFILE",
+        "ADMINISTRATION",
+        "CONTRAINDICATIONS",
+        "EMERGENCY_MEDICINE_PROFILE"
+      ],
+      "requiredSafetyDomains": [
+        "THERAPEUTIC_CLASS_MEMBERSHIP",
+        "ACTIVE_INGREDIENT_ALLERGEN_MAPPING",
+        "DUPLICATE_THERAPY_MEMBERSHIP"
+      ],
+      "priority": 21,
+      "highAlertCandidate": false,
+      "controlledSubstanceCandidate": false,
+      "sourceVersionKeys": [
+        "PHASE12_CLINICAL_FRAMEWORK_V1",
+        "PHASE12_SAFETY_FRAMEWORK_V1"
+      ],
+      "contentFiles": [
+        "phase12-clinical-intake.json",
+        "phase12-safety-intake.json"
+      ],
+      "reviewRequirements": [
+        "CLINICAL",
+        "PHARMACIST"
+      ],
+      "populationWave": "WAVE_2",
+      "domainApplicabilityNote": "Scaffolding only — clinical facts require approved labeled sources before approval."
+    },
+    {
+      "familyKey": "EM_FAM_METOPROLOL",
+      "requestedFamilyName": "metoprolol",
+      "canonicalConceptId": null,
+      "expectedProducts": [],
+      "therapeuticClassKeys": [],
+      "emergencyContexts": [
+        "PAIN_MANAGEMENT",
+        "INFECTION",
+        "RESPIRATORY_DISTRESS"
+      ],
+      "requiredClinicalDomains": [
+        "CLINICAL_PROFILE",
+        "ADMINISTRATION",
+        "CONTRAINDICATIONS",
+        "EMERGENCY_MEDICINE_PROFILE"
+      ],
+      "requiredSafetyDomains": [
+        "THERAPEUTIC_CLASS_MEMBERSHIP",
+        "ACTIVE_INGREDIENT_ALLERGEN_MAPPING",
+        "DUPLICATE_THERAPY_MEMBERSHIP"
+      ],
+      "priority": 22,
+      "highAlertCandidate": false,
+      "controlledSubstanceCandidate": false,
+      "sourceVersionKeys": [
+        "PHASE12_CLINICAL_FRAMEWORK_V1",
+        "PHASE12_SAFETY_FRAMEWORK_V1"
+      ],
+      "contentFiles": [
+        "phase12-clinical-intake.json",
+        "phase12-safety-intake.json"
+      ],
+      "reviewRequirements": [
+        "CLINICAL",
+        "PHARMACIST"
+      ],
+      "populationWave": "WAVE_4",
+      "domainApplicabilityNote": "Scaffolding only — clinical facts require approved labeled sources before approval."
+    },
+    {
+      "familyKey": "EM_FAM_HEPARIN",
+      "requestedFamilyName": "heparin",
+      "canonicalConceptId": null,
+      "expectedProducts": [],
+      "therapeuticClassKeys": [],
+      "emergencyContexts": [
+        "PAIN_MANAGEMENT",
+        "INFECTION",
+        "RESPIRATORY_DISTRESS"
+      ],
+      "requiredClinicalDomains": [
+        "CLINICAL_PROFILE",
+        "ADMINISTRATION",
+        "CONTRAINDICATIONS",
+        "EMERGENCY_MEDICINE_PROFILE"
+      ],
+      "requiredSafetyDomains": [
+        "THERAPEUTIC_CLASS_MEMBERSHIP",
+        "ACTIVE_INGREDIENT_ALLERGEN_MAPPING",
+        "DUPLICATE_THERAPY_MEMBERSHIP"
+      ],
+      "priority": 23,
+      "highAlertCandidate": true,
+      "controlledSubstanceCandidate": false,
+      "sourceVersionKeys": [
+        "PHASE12_CLINICAL_FRAMEWORK_V1",
+        "PHASE12_SAFETY_FRAMEWORK_V1"
+      ],
+      "contentFiles": [
+        "phase12-clinical-intake.json",
+        "phase12-safety-intake.json"
+      ],
+      "reviewRequirements": [
+        "PHARMACIST",
+        "MEDICAL"
+      ],
+      "populationWave": "WAVE_3",
+      "domainApplicabilityNote": "Scaffolding only — clinical facts require approved labeled sources before approval."
+    },
+    {
+      "familyKey": "EM_FAM_ENOXAPARIN",
+      "requestedFamilyName": "enoxaparin",
+      "canonicalConceptId": null,
+      "expectedProducts": [],
+      "therapeuticClassKeys": [],
+      "emergencyContexts": [
+        "PAIN_MANAGEMENT",
+        "INFECTION",
+        "RESPIRATORY_DISTRESS"
+      ],
+      "requiredClinicalDomains": [
+        "CLINICAL_PROFILE",
+        "ADMINISTRATION",
+        "CONTRAINDICATIONS",
+        "EMERGENCY_MEDICINE_PROFILE"
+      ],
+      "requiredSafetyDomains": [
+        "THERAPEUTIC_CLASS_MEMBERSHIP",
+        "ACTIVE_INGREDIENT_ALLERGEN_MAPPING",
+        "DUPLICATE_THERAPY_MEMBERSHIP"
+      ],
+      "priority": 24,
+      "highAlertCandidate": true,
+      "controlledSubstanceCandidate": false,
+      "sourceVersionKeys": [
+        "PHASE12_CLINICAL_FRAMEWORK_V1",
+        "PHASE12_SAFETY_FRAMEWORK_V1"
+      ],
+      "contentFiles": [
+        "phase12-clinical-intake.json",
+        "phase12-safety-intake.json"
+      ],
+      "reviewRequirements": [
+        "PHARMACIST",
+        "MEDICAL"
+      ],
+      "populationWave": "WAVE_3",
+      "domainApplicabilityNote": "Scaffolding only — clinical facts require approved labeled sources before approval."
+    },
+    {
+      "familyKey": "EM_FAM_IPRATROPIUM",
+      "requestedFamilyName": "ipratropium",
+      "canonicalConceptId": null,
+      "expectedProducts": [],
+      "therapeuticClassKeys": [],
+      "emergencyContexts": [
+        "PAIN_MANAGEMENT",
+        "INFECTION",
+        "RESPIRATORY_DISTRESS"
+      ],
+      "requiredClinicalDomains": [
+        "CLINICAL_PROFILE",
+        "ADMINISTRATION",
+        "CONTRAINDICATIONS",
+        "EMERGENCY_MEDICINE_PROFILE"
+      ],
+      "requiredSafetyDomains": [
+        "THERAPEUTIC_CLASS_MEMBERSHIP",
+        "ACTIVE_INGREDIENT_ALLERGEN_MAPPING",
+        "DUPLICATE_THERAPY_MEMBERSHIP"
+      ],
+      "priority": 25,
+      "highAlertCandidate": false,
+      "controlledSubstanceCandidate": false,
+      "sourceVersionKeys": [
+        "PHASE12_CLINICAL_FRAMEWORK_V1",
+        "PHASE12_SAFETY_FRAMEWORK_V1"
+      ],
+      "contentFiles": [
+        "phase12-clinical-intake.json",
+        "phase12-safety-intake.json"
+      ],
+      "reviewRequirements": [
+        "CLINICAL",
+        "PHARMACIST"
+      ],
+      "populationWave": "WAVE_1",
+      "domainApplicabilityNote": "Scaffolding only — clinical facts require approved labeled sources before approval."
+    },
+    {
+      "familyKey": "EM_FAM_BUDESONIDE",
+      "requestedFamilyName": "budesonide",
+      "canonicalConceptId": null,
+      "expectedProducts": [],
+      "therapeuticClassKeys": [],
+      "emergencyContexts": [
+        "PAIN_MANAGEMENT",
+        "INFECTION",
+        "RESPIRATORY_DISTRESS"
+      ],
+      "requiredClinicalDomains": [
+        "CLINICAL_PROFILE",
+        "ADMINISTRATION",
+        "CONTRAINDICATIONS",
+        "EMERGENCY_MEDICINE_PROFILE"
+      ],
+      "requiredSafetyDomains": [
+        "THERAPEUTIC_CLASS_MEMBERSHIP",
+        "ACTIVE_INGREDIENT_ALLERGEN_MAPPING",
+        "DUPLICATE_THERAPY_MEMBERSHIP"
+      ],
+      "priority": 26,
+      "highAlertCandidate": false,
+      "controlledSubstanceCandidate": false,
+      "sourceVersionKeys": [
+        "PHASE12_CLINICAL_FRAMEWORK_V1",
+        "PHASE12_SAFETY_FRAMEWORK_V1"
+      ],
+      "contentFiles": [
+        "phase12-clinical-intake.json",
+        "phase12-safety-intake.json"
+      ],
+      "reviewRequirements": [
+        "CLINICAL",
+        "PHARMACIST"
+      ],
+      "populationWave": "WAVE_4",
+      "domainApplicabilityNote": "Scaffolding only — clinical facts require approved labeled sources before approval."
+    },
+    {
+      "familyKey": "EM_FAM_DEXAMETHASONE",
+      "requestedFamilyName": "dexamethasone",
+      "canonicalConceptId": null,
+      "expectedProducts": [],
+      "therapeuticClassKeys": [],
+      "emergencyContexts": [
+        "PAIN_MANAGEMENT",
+        "INFECTION",
+        "RESPIRATORY_DISTRESS"
+      ],
+      "requiredClinicalDomains": [
+        "CLINICAL_PROFILE",
+        "ADMINISTRATION",
+        "CONTRAINDICATIONS",
+        "EMERGENCY_MEDICINE_PROFILE"
+      ],
+      "requiredSafetyDomains": [
+        "THERAPEUTIC_CLASS_MEMBERSHIP",
+        "ACTIVE_INGREDIENT_ALLERGEN_MAPPING",
+        "DUPLICATE_THERAPY_MEMBERSHIP"
+      ],
+      "priority": 27,
+      "highAlertCandidate": false,
+      "controlledSubstanceCandidate": false,
+      "sourceVersionKeys": [
+        "PHASE12_CLINICAL_FRAMEWORK_V1",
+        "PHASE12_SAFETY_FRAMEWORK_V1"
+      ],
+      "contentFiles": [
+        "phase12-clinical-intake.json",
+        "phase12-safety-intake.json"
+      ],
+      "reviewRequirements": [
+        "CLINICAL",
+        "PHARMACIST"
+      ],
+      "populationWave": "WAVE_1",
+      "domainApplicabilityNote": "Scaffolding only — clinical facts require approved labeled sources before approval."
+    },
+    {
+      "familyKey": "EM_FAM_PREDNISONE",
+      "requestedFamilyName": "prednisone",
+      "canonicalConceptId": null,
+      "expectedProducts": [],
+      "therapeuticClassKeys": [],
+      "emergencyContexts": [
+        "PAIN_MANAGEMENT",
+        "INFECTION",
+        "RESPIRATORY_DISTRESS"
+      ],
+      "requiredClinicalDomains": [
+        "CLINICAL_PROFILE",
+        "ADMINISTRATION",
+        "CONTRAINDICATIONS",
+        "EMERGENCY_MEDICINE_PROFILE"
+      ],
+      "requiredSafetyDomains": [
+        "THERAPEUTIC_CLASS_MEMBERSHIP",
+        "ACTIVE_INGREDIENT_ALLERGEN_MAPPING",
+        "DUPLICATE_THERAPY_MEMBERSHIP"
+      ],
+      "priority": 28,
+      "highAlertCandidate": false,
+      "controlledSubstanceCandidate": false,
+      "sourceVersionKeys": [
+        "PHASE12_CLINICAL_FRAMEWORK_V1",
+        "PHASE12_SAFETY_FRAMEWORK_V1"
+      ],
+      "contentFiles": [
+        "phase12-clinical-intake.json",
+        "phase12-safety-intake.json"
+      ],
+      "reviewRequirements": [
+        "CLINICAL",
+        "PHARMACIST"
+      ],
+      "populationWave": "WAVE_1",
+      "domainApplicabilityNote": "Scaffolding only — clinical facts require approved labeled sources before approval."
+    },
+    {
+      "familyKey": "EM_FAM_CETIRIZINE",
+      "requestedFamilyName": "cetirizine",
+      "canonicalConceptId": null,
+      "expectedProducts": [],
+      "therapeuticClassKeys": [],
+      "emergencyContexts": [
+        "PAIN_MANAGEMENT",
+        "INFECTION",
+        "RESPIRATORY_DISTRESS"
+      ],
+      "requiredClinicalDomains": [
+        "CLINICAL_PROFILE",
+        "ADMINISTRATION",
+        "CONTRAINDICATIONS",
+        "EMERGENCY_MEDICINE_PROFILE"
+      ],
+      "requiredSafetyDomains": [
+        "THERAPEUTIC_CLASS_MEMBERSHIP",
+        "ACTIVE_INGREDIENT_ALLERGEN_MAPPING",
+        "DUPLICATE_THERAPY_MEMBERSHIP"
+      ],
+      "priority": 29,
+      "highAlertCandidate": false,
+      "controlledSubstanceCandidate": false,
+      "sourceVersionKeys": [
+        "PHASE12_CLINICAL_FRAMEWORK_V1",
+        "PHASE12_SAFETY_FRAMEWORK_V1"
+      ],
+      "contentFiles": [
+        "phase12-clinical-intake.json",
+        "phase12-safety-intake.json"
+      ],
+      "reviewRequirements": [
+        "CLINICAL",
+        "PHARMACIST"
+      ],
+      "populationWave": "WAVE_1",
+      "domainApplicabilityNote": "Scaffolding only — clinical facts require approved labeled sources before approval."
+    },
+    {
+      "familyKey": "EM_FAM_MAGNESIUM_SULFATE",
+      "requestedFamilyName": "magnesium sulfate",
+      "canonicalConceptId": null,
+      "expectedProducts": [],
+      "therapeuticClassKeys": [],
+      "emergencyContexts": [
+        "PAIN_MANAGEMENT",
+        "INFECTION",
+        "RESPIRATORY_DISTRESS"
+      ],
+      "requiredClinicalDomains": [
+        "CLINICAL_PROFILE",
+        "ADMINISTRATION",
+        "CONTRAINDICATIONS",
+        "EMERGENCY_MEDICINE_PROFILE"
+      ],
+      "requiredSafetyDomains": [
+        "THERAPEUTIC_CLASS_MEMBERSHIP",
+        "ACTIVE_INGREDIENT_ALLERGEN_MAPPING",
+        "DUPLICATE_THERAPY_MEMBERSHIP"
+      ],
+      "priority": 30,
+      "highAlertCandidate": true,
+      "controlledSubstanceCandidate": false,
+      "sourceVersionKeys": [
+        "PHASE12_CLINICAL_FRAMEWORK_V1",
+        "PHASE12_SAFETY_FRAMEWORK_V1"
+      ],
+      "contentFiles": [
+        "phase12-clinical-intake.json",
+        "phase12-safety-intake.json"
+      ],
+      "reviewRequirements": [
+        "PHARMACIST",
+        "MEDICAL"
+      ],
+      "populationWave": "WAVE_3",
+      "domainApplicabilityNote": "Scaffolding only — clinical facts require approved labeled sources before approval."
+    },
+    {
+      "familyKey": "EM_FAM_CALCIUM_GLUCONATE",
+      "requestedFamilyName": "calcium gluconate",
+      "canonicalConceptId": null,
+      "expectedProducts": [],
+      "therapeuticClassKeys": [],
+      "emergencyContexts": [
+        "PAIN_MANAGEMENT",
+        "INFECTION",
+        "RESPIRATORY_DISTRESS"
+      ],
+      "requiredClinicalDomains": [
+        "CLINICAL_PROFILE",
+        "ADMINISTRATION",
+        "CONTRAINDICATIONS",
+        "EMERGENCY_MEDICINE_PROFILE"
+      ],
+      "requiredSafetyDomains": [
+        "THERAPEUTIC_CLASS_MEMBERSHIP",
+        "ACTIVE_INGREDIENT_ALLERGEN_MAPPING",
+        "DUPLICATE_THERAPY_MEMBERSHIP"
+      ],
+      "priority": 31,
+      "highAlertCandidate": false,
+      "controlledSubstanceCandidate": false,
+      "sourceVersionKeys": [
+        "PHASE12_CLINICAL_FRAMEWORK_V1",
+        "PHASE12_SAFETY_FRAMEWORK_V1"
+      ],
+      "contentFiles": [
+        "phase12-clinical-intake.json",
+        "phase12-safety-intake.json"
+      ],
+      "reviewRequirements": [
+        "CLINICAL",
+        "PHARMACIST"
+      ],
+      "populationWave": "WAVE_3",
+      "domainApplicabilityNote": "Scaffolding only — clinical facts require approved labeled sources before approval."
+    },
+    {
+      "familyKey": "EM_FAM_POTASSIUM_CHLORIDE",
+      "requestedFamilyName": "potassium chloride",
+      "canonicalConceptId": null,
+      "expectedProducts": [],
+      "therapeuticClassKeys": [],
+      "emergencyContexts": [
+        "PAIN_MANAGEMENT",
+        "INFECTION",
+        "RESPIRATORY_DISTRESS"
+      ],
+      "requiredClinicalDomains": [
+        "CLINICAL_PROFILE",
+        "ADMINISTRATION",
+        "CONTRAINDICATIONS",
+        "EMERGENCY_MEDICINE_PROFILE"
+      ],
+      "requiredSafetyDomains": [
+        "THERAPEUTIC_CLASS_MEMBERSHIP",
+        "ACTIVE_INGREDIENT_ALLERGEN_MAPPING",
+        "DUPLICATE_THERAPY_MEMBERSHIP"
+      ],
+      "priority": 32,
+      "highAlertCandidate": true,
+      "controlledSubstanceCandidate": false,
+      "sourceVersionKeys": [
+        "PHASE12_CLINICAL_FRAMEWORK_V1",
+        "PHASE12_SAFETY_FRAMEWORK_V1"
+      ],
+      "contentFiles": [
+        "phase12-clinical-intake.json",
+        "phase12-safety-intake.json"
+      ],
+      "reviewRequirements": [
+        "PHARMACIST",
+        "MEDICAL"
+      ],
+      "populationWave": "WAVE_3",
+      "domainApplicabilityNote": "Scaffolding only — clinical facts require approved labeled sources before approval."
+    },
+    {
+      "familyKey": "EM_FAM_TRANEXAMIC_ACID",
+      "requestedFamilyName": "tranexamic acid",
+      "canonicalConceptId": null,
+      "expectedProducts": [],
+      "therapeuticClassKeys": [],
+      "emergencyContexts": [
+        "PAIN_MANAGEMENT",
+        "INFECTION",
+        "RESPIRATORY_DISTRESS"
+      ],
+      "requiredClinicalDomains": [
+        "CLINICAL_PROFILE",
+        "ADMINISTRATION",
+        "CONTRAINDICATIONS",
+        "EMERGENCY_MEDICINE_PROFILE"
+      ],
+      "requiredSafetyDomains": [
+        "THERAPEUTIC_CLASS_MEMBERSHIP",
+        "ACTIVE_INGREDIENT_ALLERGEN_MAPPING",
+        "DUPLICATE_THERAPY_MEMBERSHIP"
+      ],
+      "priority": 33,
+      "highAlertCandidate": true,
+      "controlledSubstanceCandidate": false,
+      "sourceVersionKeys": [
+        "PHASE12_CLINICAL_FRAMEWORK_V1",
+        "PHASE12_SAFETY_FRAMEWORK_V1"
+      ],
+      "contentFiles": [
+        "phase12-clinical-intake.json",
+        "phase12-safety-intake.json"
+      ],
+      "reviewRequirements": [
+        "PHARMACIST",
+        "MEDICAL"
+      ],
+      "populationWave": "WAVE_3",
+      "domainApplicabilityNote": "Scaffolding only — clinical facts require approved labeled sources before approval."
+    },
+    {
+      "familyKey": "EM_FAM_VITAMIN_K",
+      "requestedFamilyName": "vitamin K",
+      "canonicalConceptId": null,
+      "expectedProducts": [],
+      "therapeuticClassKeys": [],
+      "emergencyContexts": [
+        "PAIN_MANAGEMENT",
+        "INFECTION",
+        "RESPIRATORY_DISTRESS"
+      ],
+      "requiredClinicalDomains": [
+        "CLINICAL_PROFILE",
+        "ADMINISTRATION",
+        "CONTRAINDICATIONS",
+        "EMERGENCY_MEDICINE_PROFILE"
+      ],
+      "requiredSafetyDomains": [
+        "THERAPEUTIC_CLASS_MEMBERSHIP",
+        "ACTIVE_INGREDIENT_ALLERGEN_MAPPING",
+        "DUPLICATE_THERAPY_MEMBERSHIP"
+      ],
+      "priority": 34,
+      "highAlertCandidate": false,
+      "controlledSubstanceCandidate": false,
+      "sourceVersionKeys": [
+        "PHASE12_CLINICAL_FRAMEWORK_V1",
+        "PHASE12_SAFETY_FRAMEWORK_V1"
+      ],
+      "contentFiles": [
+        "phase12-clinical-intake.json",
+        "phase12-safety-intake.json"
+      ],
+      "reviewRequirements": [
+        "CLINICAL",
+        "PHARMACIST"
+      ],
+      "populationWave": "WAVE_3",
+      "domainApplicabilityNote": "Scaffolding only — clinical facts require approved labeled sources before approval."
+    },
+    {
+      "familyKey": "EM_FAM_OXYTOCIN",
+      "requestedFamilyName": "oxytocin",
+      "canonicalConceptId": null,
+      "expectedProducts": [],
+      "therapeuticClassKeys": [],
+      "emergencyContexts": [
+        "PAIN_MANAGEMENT",
+        "INFECTION",
+        "RESPIRATORY_DISTRESS"
+      ],
+      "requiredClinicalDomains": [
+        "CLINICAL_PROFILE",
+        "ADMINISTRATION",
+        "CONTRAINDICATIONS",
+        "EMERGENCY_MEDICINE_PROFILE"
+      ],
+      "requiredSafetyDomains": [
+        "THERAPEUTIC_CLASS_MEMBERSHIP",
+        "ACTIVE_INGREDIENT_ALLERGEN_MAPPING",
+        "DUPLICATE_THERAPY_MEMBERSHIP"
+      ],
+      "priority": 35,
+      "highAlertCandidate": true,
+      "controlledSubstanceCandidate": false,
+      "sourceVersionKeys": [
+        "PHASE12_CLINICAL_FRAMEWORK_V1",
+        "PHASE12_SAFETY_FRAMEWORK_V1"
+      ],
+      "contentFiles": [
+        "phase12-clinical-intake.json",
+        "phase12-safety-intake.json"
+      ],
+      "reviewRequirements": [
+        "PHARMACIST",
+        "MEDICAL"
+      ],
+      "populationWave": "WAVE_3",
+      "domainApplicabilityNote": "Scaffolding only — clinical facts require approved labeled sources before approval."
+    }
+  ]
+}

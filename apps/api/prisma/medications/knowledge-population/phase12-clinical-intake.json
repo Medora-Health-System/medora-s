@@ -1,0 +1,854 @@
+{
+  "records": [
+    {
+      "recordKey": "CLIN_PROFILE_EM_FAM_IBUPROFEN",
+      "familyKey": "EM_FAM_IBUPROFEN",
+      "canonicalConceptId": null,
+      "domain": "CLINICAL_PROFILE",
+      "structuredPayload": {
+        "kind": "DOMAIN_SCAFFOLDING",
+        "emergencyMedicineRelevant": true,
+        "populationWave": "WAVE_1",
+        "highAlertReviewCandidate": false,
+        "note": "Scaffolding draft only. Do not treat as approved dosing or safety truth. Requires labeled source-backed review.",
+        "requiredDomainsPendingSource": [
+          "ADULT_DOSING",
+          "ADMINISTRATION",
+          "CONTRAINDICATIONS",
+          "MONITORING"
+        ]
+      },
+      "sourceVersionKey": "PHASE12_CLINICAL_FRAMEWORK_V1",
+      "evidenceLevel": "INSTITUTIONAL_SCAFFOLDING",
+      "jurisdiction": "HAITI_CLINIC_MVP",
+      "applicability": "REQUIRED",
+      "reviewNotes": "Phase 12 controlled draft scaffolding — human/pharmacist review required before any approval.",
+      "fixtureMarker": null
+    },
+    {
+      "recordKey": "CLIN_PROFILE_EM_FAM_NAPROXEN",
+      "familyKey": "EM_FAM_NAPROXEN",
+      "canonicalConceptId": null,
+      "domain": "CLINICAL_PROFILE",
+      "structuredPayload": {
+        "kind": "DOMAIN_SCAFFOLDING",
+        "emergencyMedicineRelevant": true,
+        "populationWave": "WAVE_4",
+        "highAlertReviewCandidate": false,
+        "note": "Scaffolding draft only. Do not treat as approved dosing or safety truth. Requires labeled source-backed review.",
+        "requiredDomainsPendingSource": [
+          "ADULT_DOSING",
+          "ADMINISTRATION",
+          "CONTRAINDICATIONS",
+          "MONITORING"
+        ]
+      },
+      "sourceVersionKey": "PHASE12_CLINICAL_FRAMEWORK_V1",
+      "evidenceLevel": "INSTITUTIONAL_SCAFFOLDING",
+      "jurisdiction": "HAITI_CLINIC_MVP",
+      "applicability": "REQUIRED",
+      "reviewNotes": "Phase 12 controlled draft scaffolding — human/pharmacist review required before any approval.",
+      "fixtureMarker": null
+    },
+    {
+      "recordKey": "CLIN_PROFILE_EM_FAM_ASPIRIN",
+      "familyKey": "EM_FAM_ASPIRIN",
+      "canonicalConceptId": null,
+      "domain": "CLINICAL_PROFILE",
+      "structuredPayload": {
+        "kind": "DOMAIN_SCAFFOLDING",
+        "emergencyMedicineRelevant": true,
+        "populationWave": "WAVE_4",
+        "highAlertReviewCandidate": false,
+        "note": "Scaffolding draft only. Do not treat as approved dosing or safety truth. Requires labeled source-backed review.",
+        "requiredDomainsPendingSource": [
+          "ADULT_DOSING",
+          "ADMINISTRATION",
+          "CONTRAINDICATIONS",
+          "MONITORING"
+        ]
+      },
+      "sourceVersionKey": "PHASE12_CLINICAL_FRAMEWORK_V1",
+      "evidenceLevel": "INSTITUTIONAL_SCAFFOLDING",
+      "jurisdiction": "HAITI_CLINIC_MVP",
+      "applicability": "REQUIRED",
+      "reviewNotes": "Phase 12 controlled draft scaffolding — human/pharmacist review required before any approval.",
+      "fixtureMarker": null
+    },
+    {
+      "recordKey": "CLIN_PROFILE_EM_FAM_ONDANSETRON",
+      "familyKey": "EM_FAM_ONDANSETRON",
+      "canonicalConceptId": null,
+      "domain": "CLINICAL_PROFILE",
+      "structuredPayload": {
+        "kind": "DOMAIN_SCAFFOLDING",
+        "emergencyMedicineRelevant": true,
+        "populationWave": "WAVE_1",
+        "highAlertReviewCandidate": false,
+        "note": "Scaffolding draft only. Do not treat as approved dosing or safety truth. Requires labeled source-backed review.",
+        "requiredDomainsPendingSource": [
+          "ADULT_DOSING",
+          "ADMINISTRATION",
+          "CONTRAINDICATIONS",
+          "MONITORING"
+        ]
+      },
+      "sourceVersionKey": "PHASE12_CLINICAL_FRAMEWORK_V1",
+      "evidenceLevel": "INSTITUTIONAL_SCAFFOLDING",
+      "jurisdiction": "HAITI_CLINIC_MVP",
+      "applicability": "REQUIRED",
+      "reviewNotes": "Phase 12 controlled draft scaffolding — human/pharmacist review required before any approval.",
+      "fixtureMarker": null
+    },
+    {
+      "recordKey": "CLIN_PROFILE_EM_FAM_METOCLOPRAMIDE",
+      "familyKey": "EM_FAM_METOCLOPRAMIDE",
+      "canonicalConceptId": null,
+      "domain": "CLINICAL_PROFILE",
+      "structuredPayload": {
+        "kind": "DOMAIN_SCAFFOLDING",
+        "emergencyMedicineRelevant": true,
+        "populationWave": "WAVE_4",
+        "highAlertReviewCandidate": false,
+        "note": "Scaffolding draft only. Do not treat as approved dosing or safety truth. Requires labeled source-backed review.",
+        "requiredDomainsPendingSource": [
+          "ADULT_DOSING",
+          "ADMINISTRATION",
+          "CONTRAINDICATIONS",
+          "MONITORING"
+        ]
+      },
+      "sourceVersionKey": "PHASE12_CLINICAL_FRAMEWORK_V1",
+      "evidenceLevel": "INSTITUTIONAL_SCAFFOLDING",
+      "jurisdiction": "HAITI_CLINIC_MVP",
+      "applicability": "REQUIRED",
+      "reviewNotes": "Phase 12 controlled draft scaffolding — human/pharmacist review required before any approval.",
+      "fixtureMarker": null
+    },
+    {
+      "recordKey": "CLIN_PROFILE_EM_FAM_PROMETHAZINE",
+      "familyKey": "EM_FAM_PROMETHAZINE",
+      "canonicalConceptId": null,
+      "domain": "CLINICAL_PROFILE",
+      "structuredPayload": {
+        "kind": "DOMAIN_SCAFFOLDING",
+        "emergencyMedicineRelevant": true,
+        "populationWave": "WAVE_4",
+        "highAlertReviewCandidate": false,
+        "note": "Scaffolding draft only. Do not treat as approved dosing or safety truth. Requires labeled source-backed review.",
+        "requiredDomainsPendingSource": [
+          "ADULT_DOSING",
+          "ADMINISTRATION",
+          "CONTRAINDICATIONS",
+          "MONITORING"
+        ]
+      },
+      "sourceVersionKey": "PHASE12_CLINICAL_FRAMEWORK_V1",
+      "evidenceLevel": "INSTITUTIONAL_SCAFFOLDING",
+      "jurisdiction": "HAITI_CLINIC_MVP",
+      "applicability": "REQUIRED",
+      "reviewNotes": "Phase 12 controlled draft scaffolding — human/pharmacist review required before any approval.",
+      "fixtureMarker": null
+    },
+    {
+      "recordKey": "CLIN_PROFILE_EM_FAM_FAMOTIDINE",
+      "familyKey": "EM_FAM_FAMOTIDINE",
+      "canonicalConceptId": null,
+      "domain": "CLINICAL_PROFILE",
+      "structuredPayload": {
+        "kind": "DOMAIN_SCAFFOLDING",
+        "emergencyMedicineRelevant": true,
+        "populationWave": "WAVE_1",
+        "highAlertReviewCandidate": false,
+        "note": "Scaffolding draft only. Do not treat as approved dosing or safety truth. Requires labeled source-backed review.",
+        "requiredDomainsPendingSource": [
+          "ADULT_DOSING",
+          "ADMINISTRATION",
+          "CONTRAINDICATIONS",
+          "MONITORING"
+        ]
+      },
+      "sourceVersionKey": "PHASE12_CLINICAL_FRAMEWORK_V1",
+      "evidenceLevel": "INSTITUTIONAL_SCAFFOLDING",
+      "jurisdiction": "HAITI_CLINIC_MVP",
+      "applicability": "REQUIRED",
+      "reviewNotes": "Phase 12 controlled draft scaffolding — human/pharmacist review required before any approval.",
+      "fixtureMarker": null
+    },
+    {
+      "recordKey": "CLIN_PROFILE_EM_FAM_PANTOPRAZOLE",
+      "familyKey": "EM_FAM_PANTOPRAZOLE",
+      "canonicalConceptId": null,
+      "domain": "CLINICAL_PROFILE",
+      "structuredPayload": {
+        "kind": "DOMAIN_SCAFFOLDING",
+        "emergencyMedicineRelevant": true,
+        "populationWave": "WAVE_1",
+        "highAlertReviewCandidate": false,
+        "note": "Scaffolding draft only. Do not treat as approved dosing or safety truth. Requires labeled source-backed review.",
+        "requiredDomainsPendingSource": [
+          "ADULT_DOSING",
+          "ADMINISTRATION",
+          "CONTRAINDICATIONS",
+          "MONITORING"
+        ]
+      },
+      "sourceVersionKey": "PHASE12_CLINICAL_FRAMEWORK_V1",
+      "evidenceLevel": "INSTITUTIONAL_SCAFFOLDING",
+      "jurisdiction": "HAITI_CLINIC_MVP",
+      "applicability": "REQUIRED",
+      "reviewNotes": "Phase 12 controlled draft scaffolding — human/pharmacist review required before any approval.",
+      "fixtureMarker": null
+    },
+    {
+      "recordKey": "CLIN_PROFILE_EM_FAM_OMEPRAZOLE",
+      "familyKey": "EM_FAM_OMEPRAZOLE",
+      "canonicalConceptId": null,
+      "domain": "CLINICAL_PROFILE",
+      "structuredPayload": {
+        "kind": "DOMAIN_SCAFFOLDING",
+        "emergencyMedicineRelevant": true,
+        "populationWave": "WAVE_4",
+        "highAlertReviewCandidate": false,
+        "note": "Scaffolding draft only. Do not treat as approved dosing or safety truth. Requires labeled source-backed review.",
+        "requiredDomainsPendingSource": [
+          "ADULT_DOSING",
+          "ADMINISTRATION",
+          "CONTRAINDICATIONS",
+          "MONITORING"
+        ]
+      },
+      "sourceVersionKey": "PHASE12_CLINICAL_FRAMEWORK_V1",
+      "evidenceLevel": "INSTITUTIONAL_SCAFFOLDING",
+      "jurisdiction": "HAITI_CLINIC_MVP",
+      "applicability": "REQUIRED",
+      "reviewNotes": "Phase 12 controlled draft scaffolding — human/pharmacist review required before any approval.",
+      "fixtureMarker": null
+    },
+    {
+      "recordKey": "CLIN_PROFILE_EM_FAM_LACTULOSE",
+      "familyKey": "EM_FAM_LACTULOSE",
+      "canonicalConceptId": null,
+      "domain": "CLINICAL_PROFILE",
+      "structuredPayload": {
+        "kind": "DOMAIN_SCAFFOLDING",
+        "emergencyMedicineRelevant": true,
+        "populationWave": "WAVE_4",
+        "highAlertReviewCandidate": false,
+        "note": "Scaffolding draft only. Do not treat as approved dosing or safety truth. Requires labeled source-backed review.",
+        "requiredDomainsPendingSource": [
+          "ADULT_DOSING",
+          "ADMINISTRATION",
+          "CONTRAINDICATIONS",
+          "MONITORING"
+        ]
+      },
+      "sourceVersionKey": "PHASE12_CLINICAL_FRAMEWORK_V1",
+      "evidenceLevel": "INSTITUTIONAL_SCAFFOLDING",
+      "jurisdiction": "HAITI_CLINIC_MVP",
+      "applicability": "REQUIRED",
+      "reviewNotes": "Phase 12 controlled draft scaffolding — human/pharmacist review required before any approval.",
+      "fixtureMarker": null
+    },
+    {
+      "recordKey": "CLIN_PROFILE_EM_FAM_CEFTAZIDIME",
+      "familyKey": "EM_FAM_CEFTAZIDIME",
+      "canonicalConceptId": null,
+      "domain": "CLINICAL_PROFILE",
+      "structuredPayload": {
+        "kind": "DOMAIN_SCAFFOLDING",
+        "emergencyMedicineRelevant": true,
+        "populationWave": "WAVE_2",
+        "highAlertReviewCandidate": false,
+        "note": "Scaffolding draft only. Do not treat as approved dosing or safety truth. Requires labeled source-backed review.",
+        "requiredDomainsPendingSource": [
+          "ADULT_DOSING",
+          "ADMINISTRATION",
+          "CONTRAINDICATIONS",
+          "MONITORING"
+        ]
+      },
+      "sourceVersionKey": "PHASE12_CLINICAL_FRAMEWORK_V1",
+      "evidenceLevel": "INSTITUTIONAL_SCAFFOLDING",
+      "jurisdiction": "HAITI_CLINIC_MVP",
+      "applicability": "REQUIRED",
+      "reviewNotes": "Phase 12 controlled draft scaffolding — human/pharmacist review required before any approval.",
+      "fixtureMarker": null
+    },
+    {
+      "recordKey": "CLIN_PROFILE_EM_FAM_VANCOMYCIN",
+      "familyKey": "EM_FAM_VANCOMYCIN",
+      "canonicalConceptId": null,
+      "domain": "CLINICAL_PROFILE",
+      "structuredPayload": {
+        "kind": "DOMAIN_SCAFFOLDING",
+        "emergencyMedicineRelevant": true,
+        "populationWave": "WAVE_2",
+        "highAlertReviewCandidate": true,
+        "note": "Scaffolding draft only. Do not treat as approved dosing or safety truth. Requires labeled source-backed review.",
+        "requiredDomainsPendingSource": [
+          "ADULT_DOSING",
+          "ADMINISTRATION",
+          "CONTRAINDICATIONS",
+          "MONITORING"
+        ]
+      },
+      "sourceVersionKey": "PHASE12_CLINICAL_FRAMEWORK_V1",
+      "evidenceLevel": "INSTITUTIONAL_SCAFFOLDING",
+      "jurisdiction": "HAITI_CLINIC_MVP",
+      "applicability": "REQUIRED",
+      "reviewNotes": "Phase 12 controlled draft scaffolding — human/pharmacist review required before any approval.",
+      "fixtureMarker": null
+    },
+    {
+      "recordKey": "CLIN_PROFILE_EM_FAM_CLINDAMYCIN",
+      "familyKey": "EM_FAM_CLINDAMYCIN",
+      "canonicalConceptId": null,
+      "domain": "CLINICAL_PROFILE",
+      "structuredPayload": {
+        "kind": "DOMAIN_SCAFFOLDING",
+        "emergencyMedicineRelevant": true,
+        "populationWave": "WAVE_2",
+        "highAlertReviewCandidate": false,
+        "note": "Scaffolding draft only. Do not treat as approved dosing or safety truth. Requires labeled source-backed review.",
+        "requiredDomainsPendingSource": [
+          "ADULT_DOSING",
+          "ADMINISTRATION",
+          "CONTRAINDICATIONS",
+          "MONITORING"
+        ]
+      },
+      "sourceVersionKey": "PHASE12_CLINICAL_FRAMEWORK_V1",
+      "evidenceLevel": "INSTITUTIONAL_SCAFFOLDING",
+      "jurisdiction": "HAITI_CLINIC_MVP",
+      "applicability": "REQUIRED",
+      "reviewNotes": "Phase 12 controlled draft scaffolding — human/pharmacist review required before any approval.",
+      "fixtureMarker": null
+    },
+    {
+      "recordKey": "CLIN_PROFILE_EM_FAM_AZITHROMYCIN",
+      "familyKey": "EM_FAM_AZITHROMYCIN",
+      "canonicalConceptId": null,
+      "domain": "CLINICAL_PROFILE",
+      "structuredPayload": {
+        "kind": "DOMAIN_SCAFFOLDING",
+        "emergencyMedicineRelevant": true,
+        "populationWave": "WAVE_2",
+        "highAlertReviewCandidate": false,
+        "note": "Scaffolding draft only. Do not treat as approved dosing or safety truth. Requires labeled source-backed review.",
+        "requiredDomainsPendingSource": [
+          "ADULT_DOSING",
+          "ADMINISTRATION",
+          "CONTRAINDICATIONS",
+          "MONITORING"
+        ]
+      },
+      "sourceVersionKey": "PHASE12_CLINICAL_FRAMEWORK_V1",
+      "evidenceLevel": "INSTITUTIONAL_SCAFFOLDING",
+      "jurisdiction": "HAITI_CLINIC_MVP",
+      "applicability": "REQUIRED",
+      "reviewNotes": "Phase 12 controlled draft scaffolding — human/pharmacist review required before any approval.",
+      "fixtureMarker": null
+    },
+    {
+      "recordKey": "CLIN_PROFILE_EM_FAM_DOXYCYCLINE",
+      "familyKey": "EM_FAM_DOXYCYCLINE",
+      "canonicalConceptId": null,
+      "domain": "CLINICAL_PROFILE",
+      "structuredPayload": {
+        "kind": "DOMAIN_SCAFFOLDING",
+        "emergencyMedicineRelevant": true,
+        "populationWave": "WAVE_2",
+        "highAlertReviewCandidate": false,
+        "note": "Scaffolding draft only. Do not treat as approved dosing or safety truth. Requires labeled source-backed review.",
+        "requiredDomainsPendingSource": [
+          "ADULT_DOSING",
+          "ADMINISTRATION",
+          "CONTRAINDICATIONS",
+          "MONITORING"
+        ]
+      },
+      "sourceVersionKey": "PHASE12_CLINICAL_FRAMEWORK_V1",
+      "evidenceLevel": "INSTITUTIONAL_SCAFFOLDING",
+      "jurisdiction": "HAITI_CLINIC_MVP",
+      "applicability": "REQUIRED",
+      "reviewNotes": "Phase 12 controlled draft scaffolding — human/pharmacist review required before any approval.",
+      "fixtureMarker": null
+    },
+    {
+      "recordKey": "CLIN_PROFILE_EM_FAM_CIPROFLOXACIN",
+      "familyKey": "EM_FAM_CIPROFLOXACIN",
+      "canonicalConceptId": null,
+      "domain": "CLINICAL_PROFILE",
+      "structuredPayload": {
+        "kind": "DOMAIN_SCAFFOLDING",
+        "emergencyMedicineRelevant": true,
+        "populationWave": "WAVE_2",
+        "highAlertReviewCandidate": false,
+        "note": "Scaffolding draft only. Do not treat as approved dosing or safety truth. Requires labeled source-backed review.",
+        "requiredDomainsPendingSource": [
+          "ADULT_DOSING",
+          "ADMINISTRATION",
+          "CONTRAINDICATIONS",
+          "MONITORING"
+        ]
+      },
+      "sourceVersionKey": "PHASE12_CLINICAL_FRAMEWORK_V1",
+      "evidenceLevel": "INSTITUTIONAL_SCAFFOLDING",
+      "jurisdiction": "HAITI_CLINIC_MVP",
+      "applicability": "REQUIRED",
+      "reviewNotes": "Phase 12 controlled draft scaffolding — human/pharmacist review required before any approval.",
+      "fixtureMarker": null
+    },
+    {
+      "recordKey": "CLIN_PROFILE_EM_FAM_METRONIDAZOLE",
+      "familyKey": "EM_FAM_METRONIDAZOLE",
+      "canonicalConceptId": null,
+      "domain": "CLINICAL_PROFILE",
+      "structuredPayload": {
+        "kind": "DOMAIN_SCAFFOLDING",
+        "emergencyMedicineRelevant": true,
+        "populationWave": "WAVE_2",
+        "highAlertReviewCandidate": false,
+        "note": "Scaffolding draft only. Do not treat as approved dosing or safety truth. Requires labeled source-backed review.",
+        "requiredDomainsPendingSource": [
+          "ADULT_DOSING",
+          "ADMINISTRATION",
+          "CONTRAINDICATIONS",
+          "MONITORING"
+        ]
+      },
+      "sourceVersionKey": "PHASE12_CLINICAL_FRAMEWORK_V1",
+      "evidenceLevel": "INSTITUTIONAL_SCAFFOLDING",
+      "jurisdiction": "HAITI_CLINIC_MVP",
+      "applicability": "REQUIRED",
+      "reviewNotes": "Phase 12 controlled draft scaffolding — human/pharmacist review required before any approval.",
+      "fixtureMarker": null
+    },
+    {
+      "recordKey": "CLIN_PROFILE_EM_FAM_MEROPENEM",
+      "familyKey": "EM_FAM_MEROPENEM",
+      "canonicalConceptId": null,
+      "domain": "CLINICAL_PROFILE",
+      "structuredPayload": {
+        "kind": "DOMAIN_SCAFFOLDING",
+        "emergencyMedicineRelevant": true,
+        "populationWave": "WAVE_2",
+        "highAlertReviewCandidate": false,
+        "note": "Scaffolding draft only. Do not treat as approved dosing or safety truth. Requires labeled source-backed review.",
+        "requiredDomainsPendingSource": [
+          "ADULT_DOSING",
+          "ADMINISTRATION",
+          "CONTRAINDICATIONS",
+          "MONITORING"
+        ]
+      },
+      "sourceVersionKey": "PHASE12_CLINICAL_FRAMEWORK_V1",
+      "evidenceLevel": "INSTITUTIONAL_SCAFFOLDING",
+      "jurisdiction": "HAITI_CLINIC_MVP",
+      "applicability": "REQUIRED",
+      "reviewNotes": "Phase 12 controlled draft scaffolding — human/pharmacist review required before any approval.",
+      "fixtureMarker": null
+    },
+    {
+      "recordKey": "CLIN_PROFILE_EM_FAM_FLUCONAZOLE",
+      "familyKey": "EM_FAM_FLUCONAZOLE",
+      "canonicalConceptId": null,
+      "domain": "CLINICAL_PROFILE",
+      "structuredPayload": {
+        "kind": "DOMAIN_SCAFFOLDING",
+        "emergencyMedicineRelevant": true,
+        "populationWave": "WAVE_2",
+        "highAlertReviewCandidate": false,
+        "note": "Scaffolding draft only. Do not treat as approved dosing or safety truth. Requires labeled source-backed review.",
+        "requiredDomainsPendingSource": [
+          "ADULT_DOSING",
+          "ADMINISTRATION",
+          "CONTRAINDICATIONS",
+          "MONITORING"
+        ]
+      },
+      "sourceVersionKey": "PHASE12_CLINICAL_FRAMEWORK_V1",
+      "evidenceLevel": "INSTITUTIONAL_SCAFFOLDING",
+      "jurisdiction": "HAITI_CLINIC_MVP",
+      "applicability": "REQUIRED",
+      "reviewNotes": "Phase 12 controlled draft scaffolding — human/pharmacist review required before any approval.",
+      "fixtureMarker": null
+    },
+    {
+      "recordKey": "CLIN_PROFILE_EM_FAM_ACYCLOVIR",
+      "familyKey": "EM_FAM_ACYCLOVIR",
+      "canonicalConceptId": null,
+      "domain": "CLINICAL_PROFILE",
+      "structuredPayload": {
+        "kind": "DOMAIN_SCAFFOLDING",
+        "emergencyMedicineRelevant": true,
+        "populationWave": "WAVE_2",
+        "highAlertReviewCandidate": false,
+        "note": "Scaffolding draft only. Do not treat as approved dosing or safety truth. Requires labeled source-backed review.",
+        "requiredDomainsPendingSource": [
+          "ADULT_DOSING",
+          "ADMINISTRATION",
+          "CONTRAINDICATIONS",
+          "MONITORING"
+        ]
+      },
+      "sourceVersionKey": "PHASE12_CLINICAL_FRAMEWORK_V1",
+      "evidenceLevel": "INSTITUTIONAL_SCAFFOLDING",
+      "jurisdiction": "HAITI_CLINIC_MVP",
+      "applicability": "REQUIRED",
+      "reviewNotes": "Phase 12 controlled draft scaffolding — human/pharmacist review required before any approval.",
+      "fixtureMarker": null
+    },
+    {
+      "recordKey": "CLIN_PROFILE_EM_FAM_METOPROLOL",
+      "familyKey": "EM_FAM_METOPROLOL",
+      "canonicalConceptId": null,
+      "domain": "CLINICAL_PROFILE",
+      "structuredPayload": {
+        "kind": "DOMAIN_SCAFFOLDING",
+        "emergencyMedicineRelevant": true,
+        "populationWave": "WAVE_4",
+        "highAlertReviewCandidate": false,
+        "note": "Scaffolding draft only. Do not treat as approved dosing or safety truth. Requires labeled source-backed review.",
+        "requiredDomainsPendingSource": [
+          "ADULT_DOSING",
+          "ADMINISTRATION",
+          "CONTRAINDICATIONS",
+          "MONITORING"
+        ]
+      },
+      "sourceVersionKey": "PHASE12_CLINICAL_FRAMEWORK_V1",
+      "evidenceLevel": "INSTITUTIONAL_SCAFFOLDING",
+      "jurisdiction": "HAITI_CLINIC_MVP",
+      "applicability": "REQUIRED",
+      "reviewNotes": "Phase 12 controlled draft scaffolding — human/pharmacist review required before any approval.",
+      "fixtureMarker": null
+    },
+    {
+      "recordKey": "CLIN_PROFILE_EM_FAM_HEPARIN",
+      "familyKey": "EM_FAM_HEPARIN",
+      "canonicalConceptId": null,
+      "domain": "CLINICAL_PROFILE",
+      "structuredPayload": {
+        "kind": "DOMAIN_SCAFFOLDING",
+        "emergencyMedicineRelevant": true,
+        "populationWave": "WAVE_3",
+        "highAlertReviewCandidate": true,
+        "note": "Scaffolding draft only. Do not treat as approved dosing or safety truth. Requires labeled source-backed review.",
+        "requiredDomainsPendingSource": [
+          "ADULT_DOSING",
+          "ADMINISTRATION",
+          "CONTRAINDICATIONS",
+          "MONITORING"
+        ]
+      },
+      "sourceVersionKey": "PHASE12_CLINICAL_FRAMEWORK_V1",
+      "evidenceLevel": "INSTITUTIONAL_SCAFFOLDING",
+      "jurisdiction": "HAITI_CLINIC_MVP",
+      "applicability": "REQUIRED",
+      "reviewNotes": "Phase 12 controlled draft scaffolding — human/pharmacist review required before any approval.",
+      "fixtureMarker": null
+    },
+    {
+      "recordKey": "CLIN_PROFILE_EM_FAM_ENOXAPARIN",
+      "familyKey": "EM_FAM_ENOXAPARIN",
+      "canonicalConceptId": null,
+      "domain": "CLINICAL_PROFILE",
+      "structuredPayload": {
+        "kind": "DOMAIN_SCAFFOLDING",
+        "emergencyMedicineRelevant": true,
+        "populationWave": "WAVE_3",
+        "highAlertReviewCandidate": true,
+        "note": "Scaffolding draft only. Do not treat as approved dosing or safety truth. Requires labeled source-backed review.",
+        "requiredDomainsPendingSource": [
+          "ADULT_DOSING",
+          "ADMINISTRATION",
+          "CONTRAINDICATIONS",
+          "MONITORING"
+        ]
+      },
+      "sourceVersionKey": "PHASE12_CLINICAL_FRAMEWORK_V1",
+      "evidenceLevel": "INSTITUTIONAL_SCAFFOLDING",
+      "jurisdiction": "HAITI_CLINIC_MVP",
+      "applicability": "REQUIRED",
+      "reviewNotes": "Phase 12 controlled draft scaffolding — human/pharmacist review required before any approval.",
+      "fixtureMarker": null
+    },
+    {
+      "recordKey": "CLIN_PROFILE_EM_FAM_IPRATROPIUM",
+      "familyKey": "EM_FAM_IPRATROPIUM",
+      "canonicalConceptId": null,
+      "domain": "CLINICAL_PROFILE",
+      "structuredPayload": {
+        "kind": "DOMAIN_SCAFFOLDING",
+        "emergencyMedicineRelevant": true,
+        "populationWave": "WAVE_1",
+        "highAlertReviewCandidate": false,
+        "note": "Scaffolding draft only. Do not treat as approved dosing or safety truth. Requires labeled source-backed review.",
+        "requiredDomainsPendingSource": [
+          "ADULT_DOSING",
+          "ADMINISTRATION",
+          "CONTRAINDICATIONS",
+          "MONITORING"
+        ]
+      },
+      "sourceVersionKey": "PHASE12_CLINICAL_FRAMEWORK_V1",
+      "evidenceLevel": "INSTITUTIONAL_SCAFFOLDING",
+      "jurisdiction": "HAITI_CLINIC_MVP",
+      "applicability": "REQUIRED",
+      "reviewNotes": "Phase 12 controlled draft scaffolding — human/pharmacist review required before any approval.",
+      "fixtureMarker": null
+    },
+    {
+      "recordKey": "CLIN_PROFILE_EM_FAM_BUDESONIDE",
+      "familyKey": "EM_FAM_BUDESONIDE",
+      "canonicalConceptId": null,
+      "domain": "CLINICAL_PROFILE",
+      "structuredPayload": {
+        "kind": "DOMAIN_SCAFFOLDING",
+        "emergencyMedicineRelevant": true,
+        "populationWave": "WAVE_4",
+        "highAlertReviewCandidate": false,
+        "note": "Scaffolding draft only. Do not treat as approved dosing or safety truth. Requires labeled source-backed review.",
+        "requiredDomainsPendingSource": [
+          "ADULT_DOSING",
+          "ADMINISTRATION",
+          "CONTRAINDICATIONS",
+          "MONITORING"
+        ]
+      },
+      "sourceVersionKey": "PHASE12_CLINICAL_FRAMEWORK_V1",
+      "evidenceLevel": "INSTITUTIONAL_SCAFFOLDING",
+      "jurisdiction": "HAITI_CLINIC_MVP",
+      "applicability": "REQUIRED",
+      "reviewNotes": "Phase 12 controlled draft scaffolding — human/pharmacist review required before any approval.",
+      "fixtureMarker": null
+    },
+    {
+      "recordKey": "CLIN_PROFILE_EM_FAM_DEXAMETHASONE",
+      "familyKey": "EM_FAM_DEXAMETHASONE",
+      "canonicalConceptId": null,
+      "domain": "CLINICAL_PROFILE",
+      "structuredPayload": {
+        "kind": "DOMAIN_SCAFFOLDING",
+        "emergencyMedicineRelevant": true,
+        "populationWave": "WAVE_1",
+        "highAlertReviewCandidate": false,
+        "note": "Scaffolding draft only. Do not treat as approved dosing or safety truth. Requires labeled source-backed review.",
+        "requiredDomainsPendingSource": [
+          "ADULT_DOSING",
+          "ADMINISTRATION",
+          "CONTRAINDICATIONS",
+          "MONITORING"
+        ]
+      },
+      "sourceVersionKey": "PHASE12_CLINICAL_FRAMEWORK_V1",
+      "evidenceLevel": "INSTITUTIONAL_SCAFFOLDING",
+      "jurisdiction": "HAITI_CLINIC_MVP",
+      "applicability": "REQUIRED",
+      "reviewNotes": "Phase 12 controlled draft scaffolding — human/pharmacist review required before any approval.",
+      "fixtureMarker": null
+    },
+    {
+      "recordKey": "CLIN_PROFILE_EM_FAM_PREDNISONE",
+      "familyKey": "EM_FAM_PREDNISONE",
+      "canonicalConceptId": null,
+      "domain": "CLINICAL_PROFILE",
+      "structuredPayload": {
+        "kind": "DOMAIN_SCAFFOLDING",
+        "emergencyMedicineRelevant": true,
+        "populationWave": "WAVE_1",
+        "highAlertReviewCandidate": false,
+        "note": "Scaffolding draft only. Do not treat as approved dosing or safety truth. Requires labeled source-backed review.",
+        "requiredDomainsPendingSource": [
+          "ADULT_DOSING",
+          "ADMINISTRATION",
+          "CONTRAINDICATIONS",
+          "MONITORING"
+        ]
+      },
+      "sourceVersionKey": "PHASE12_CLINICAL_FRAMEWORK_V1",
+      "evidenceLevel": "INSTITUTIONAL_SCAFFOLDING",
+      "jurisdiction": "HAITI_CLINIC_MVP",
+      "applicability": "REQUIRED",
+      "reviewNotes": "Phase 12 controlled draft scaffolding — human/pharmacist review required before any approval.",
+      "fixtureMarker": null
+    },
+    {
+      "recordKey": "CLIN_PROFILE_EM_FAM_CETIRIZINE",
+      "familyKey": "EM_FAM_CETIRIZINE",
+      "canonicalConceptId": null,
+      "domain": "CLINICAL_PROFILE",
+      "structuredPayload": {
+        "kind": "DOMAIN_SCAFFOLDING",
+        "emergencyMedicineRelevant": true,
+        "populationWave": "WAVE_1",
+        "highAlertReviewCandidate": false,
+        "note": "Scaffolding draft only. Do not treat as approved dosing or safety truth. Requires labeled source-backed review.",
+        "requiredDomainsPendingSource": [
+          "ADULT_DOSING",
+          "ADMINISTRATION",
+          "CONTRAINDICATIONS",
+          "MONITORING"
+        ]
+      },
+      "sourceVersionKey": "PHASE12_CLINICAL_FRAMEWORK_V1",
+      "evidenceLevel": "INSTITUTIONAL_SCAFFOLDING",
+      "jurisdiction": "HAITI_CLINIC_MVP",
+      "applicability": "REQUIRED",
+      "reviewNotes": "Phase 12 controlled draft scaffolding — human/pharmacist review required before any approval.",
+      "fixtureMarker": null
+    },
+    {
+      "recordKey": "CLIN_PROFILE_EM_FAM_MAGNESIUM_SULFATE",
+      "familyKey": "EM_FAM_MAGNESIUM_SULFATE",
+      "canonicalConceptId": null,
+      "domain": "CLINICAL_PROFILE",
+      "structuredPayload": {
+        "kind": "DOMAIN_SCAFFOLDING",
+        "emergencyMedicineRelevant": true,
+        "populationWave": "WAVE_3",
+        "highAlertReviewCandidate": true,
+        "note": "Scaffolding draft only. Do not treat as approved dosing or safety truth. Requires labeled source-backed review.",
+        "requiredDomainsPendingSource": [
+          "ADULT_DOSING",
+          "ADMINISTRATION",
+          "CONTRAINDICATIONS",
+          "MONITORING"
+        ]
+      },
+      "sourceVersionKey": "PHASE12_CLINICAL_FRAMEWORK_V1",
+      "evidenceLevel": "INSTITUTIONAL_SCAFFOLDING",
+      "jurisdiction": "HAITI_CLINIC_MVP",
+      "applicability": "REQUIRED",
+      "reviewNotes": "Phase 12 controlled draft scaffolding — human/pharmacist review required before any approval.",
+      "fixtureMarker": null
+    },
+    {
+      "recordKey": "CLIN_PROFILE_EM_FAM_CALCIUM_GLUCONATE",
+      "familyKey": "EM_FAM_CALCIUM_GLUCONATE",
+      "canonicalConceptId": null,
+      "domain": "CLINICAL_PROFILE",
+      "structuredPayload": {
+        "kind": "DOMAIN_SCAFFOLDING",
+        "emergencyMedicineRelevant": true,
+        "populationWave": "WAVE_3",
+        "highAlertReviewCandidate": false,
+        "note": "Scaffolding draft only. Do not treat as approved dosing or safety truth. Requires labeled source-backed review.",
+        "requiredDomainsPendingSource": [
+          "ADULT_DOSING",
+          "ADMINISTRATION",
+          "CONTRAINDICATIONS",
+          "MONITORING"
+        ]
+      },
+      "sourceVersionKey": "PHASE12_CLINICAL_FRAMEWORK_V1",
+      "evidenceLevel": "INSTITUTIONAL_SCAFFOLDING",
+      "jurisdiction": "HAITI_CLINIC_MVP",
+      "applicability": "REQUIRED",
+      "reviewNotes": "Phase 12 controlled draft scaffolding — human/pharmacist review required before any approval.",
+      "fixtureMarker": null
+    },
+    {
+      "recordKey": "CLIN_PROFILE_EM_FAM_POTASSIUM_CHLORIDE",
+      "familyKey": "EM_FAM_POTASSIUM_CHLORIDE",
+      "canonicalConceptId": null,
+      "domain": "CLINICAL_PROFILE",
+      "structuredPayload": {
+        "kind": "DOMAIN_SCAFFOLDING",
+        "emergencyMedicineRelevant": true,
+        "populationWave": "WAVE_3",
+        "highAlertReviewCandidate": true,
+        "note": "Scaffolding draft only. Do not treat as approved dosing or safety truth. Requires labeled source-backed review.",
+        "requiredDomainsPendingSource": [
+          "ADULT_DOSING",
+          "ADMINISTRATION",
+          "CONTRAINDICATIONS",
+          "MONITORING"
+        ]
+      },
+      "sourceVersionKey": "PHASE12_CLINICAL_FRAMEWORK_V1",
+      "evidenceLevel": "INSTITUTIONAL_SCAFFOLDING",
+      "jurisdiction": "HAITI_CLINIC_MVP",
+      "applicability": "REQUIRED",
+      "reviewNotes": "Phase 12 controlled draft scaffolding — human/pharmacist review required before any approval.",
+      "fixtureMarker": null
+    },
+    {
+      "recordKey": "CLIN_PROFILE_EM_FAM_TRANEXAMIC_ACID",
+      "familyKey": "EM_FAM_TRANEXAMIC_ACID",
+      "canonicalConceptId": null,
+      "domain": "CLINICAL_PROFILE",
+      "structuredPayload": {
+        "kind": "DOMAIN_SCAFFOLDING",
+        "emergencyMedicineRelevant": true,
+        "populationWave": "WAVE_3",
+        "highAlertReviewCandidate": true,
+        "note": "Scaffolding draft only. Do not treat as approved dosing or safety truth. Requires labeled source-backed review.",
+        "requiredDomainsPendingSource": [
+          "ADULT_DOSING",
+          "ADMINISTRATION",
+          "CONTRAINDICATIONS",
+          "MONITORING"
+        ]
+      },
+      "sourceVersionKey": "PHASE12_CLINICAL_FRAMEWORK_V1",
+      "evidenceLevel": "INSTITUTIONAL_SCAFFOLDING",
+      "jurisdiction": "HAITI_CLINIC_MVP",
+      "applicability": "REQUIRED",
+      "reviewNotes": "Phase 12 controlled draft scaffolding — human/pharmacist review required before any approval.",
+      "fixtureMarker": null
+    },
+    {
+      "recordKey": "CLIN_PROFILE_EM_FAM_VITAMIN_K",
+      "familyKey": "EM_FAM_VITAMIN_K",
+      "canonicalConceptId": null,
+      "domain": "CLINICAL_PROFILE",
+      "structuredPayload": {
+        "kind": "DOMAIN_SCAFFOLDING",
+        "emergencyMedicineRelevant": true,
+        "populationWave": "WAVE_3",
+        "highAlertReviewCandidate": false,
+        "note": "Scaffolding draft only. Do not treat as approved dosing or safety truth. Requires labeled source-backed review.",
+        "requiredDomainsPendingSource": [
+          "ADULT_DOSING",
+          "ADMINISTRATION",
+          "CONTRAINDICATIONS",
+          "MONITORING"
+        ]
+      },
+      "sourceVersionKey": "PHASE12_CLINICAL_FRAMEWORK_V1",
+      "evidenceLevel": "INSTITUTIONAL_SCAFFOLDING",
+      "jurisdiction": "HAITI_CLINIC_MVP",
+      "applicability": "REQUIRED",
+      "reviewNotes": "Phase 12 controlled draft scaffolding — human/pharmacist review required before any approval.",
+      "fixtureMarker": null
+    },
+    {
+      "recordKey": "CLIN_PROFILE_EM_FAM_OXYTOCIN",
+      "familyKey": "EM_FAM_OXYTOCIN",
+      "canonicalConceptId": null,
+      "domain": "CLINICAL_PROFILE",
+      "structuredPayload": {
+        "kind": "DOMAIN_SCAFFOLDING",
+        "emergencyMedicineRelevant": true,
+        "populationWave": "WAVE_3",
+        "highAlertReviewCandidate": true,
+        "note": "Scaffolding draft only. Do not treat as approved dosing or safety truth. Requires labeled source-backed review.",
+        "requiredDomainsPendingSource": [
+          "ADULT_DOSING",
+          "ADMINISTRATION",
+          "CONTRAINDICATIONS",
+          "MONITORING"
+        ]
+      },
+      "sourceVersionKey": "PHASE12_CLINICAL_FRAMEWORK_V1",
+      "evidenceLevel": "INSTITUTIONAL_SCAFFOLDING",
+      "jurisdiction": "HAITI_CLINIC_MVP",
+      "applicability": "REQUIRED",
+      "reviewNotes": "Phase 12 controlled draft scaffolding — human/pharmacist review required before any approval.",
+      "fixtureMarker": null
+    }
+  ]
+}

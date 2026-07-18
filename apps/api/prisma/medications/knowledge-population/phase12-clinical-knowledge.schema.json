@@ -1,0 +1,70 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "phase12-clinical-knowledge.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "records"
+  ],
+  "properties": {
+    "records": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "recordKey",
+          "familyKey",
+          "domain",
+          "structuredPayload",
+          "sourceVersionKey",
+          "applicability"
+        ],
+        "properties": {
+          "recordKey": {
+            "type": "string"
+          },
+          "familyKey": {
+            "type": "string"
+          },
+          "canonicalConceptId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "domain": {
+            "type": "string"
+          },
+          "structuredPayload": {
+            "type": "object"
+          },
+          "sourceVersionKey": {
+            "type": "string"
+          },
+          "evidenceLevel": {
+            "type": "string"
+          },
+          "jurisdiction": {
+            "type": "string"
+          },
+          "applicability": {
+            "type": "string"
+          },
+          "effectiveDate": {
+            "type": "string"
+          },
+          "reviewNotes": {
+            "type": "string"
+          },
+          "fixtureMarker": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      }
+    }
+  }
+}
