@@ -354,14 +354,26 @@ flowchart LR
 | **Typical live decision** | `MEDICATION_INTELLIGENCE_PHASE_18_CERTIFIED_OPERATIONAL_READY` (or governance/monitoring-ready) |
 | **Docs** | [`medication-intelligence-phase-18-architecture.md`](./medication-intelligence-phase-18-architecture.md) |
 
-### Phase 19 — Broader pilot evaluation (recommended next — not started)
+### Medication Knowledge Expansion Wave 2 — Emergency Medicine Catalog Expansion (content)
 
 | Field | Value |
 |-------|-------|
-| **Objective** | Evaluate controlled-pilot outcomes before any enterprise consideration |
-| **Status** | **Not started** — do not implement in Phase 18 |
+| **Objective** | Net-new EM catalog CREATE (CatalogMedication-first + dual-layer link) toward ~750 new concepts; specialty-pack search organization remains complementary |
+| **Certification ID** | `MEDUI.MEDICATION_KNOWLEDGE_EXPANSION_WAVE_2_EMERGENCY_MEDICINE_CATALOG` |
+| **Migration** | **NO** |
+| **Status** | **Complete** — measured net-new generics may be below 750; never padded |
+| **Typical live decision** | `MEDICATION_KNOWLEDGE_EXPANSION_WAVE_2_CERTIFIED` or `_CERTIFIED_WITH_REVIEW_ITEMS` |
+| **Docs** | [`medication-knowledge-expansion-program.md`](./medication-knowledge-expansion-program.md), [`medication-knowledge-expansion-wave-2-em-catalog-guide.md`](./medication-knowledge-expansion-wave-2-em-catalog-guide.md), [`medication-expansion-roadmap.md`](./medication-expansion-roadmap.md) |
+| **Naming** | Distinct from **Enterprise Formulary Wave 2** and from Medication Intelligence Phase 19 (**do not create Phase 19**) |
 
-**Note:** Phase 15–18 remain Wave 1 only and do **not** resolve acetaminophen. Production CDS / Enterprise Active remain off unless separately certified. Controlled Pilot requires explicit authorization. Phase 18 does not increase autonomy.
+### Knowledge Expansion Wave 3 / 4 (next — not started)
+
+| Wave | Target |
+|------|--------|
+| Wave 3 | ~2,000 total canonical medication concepts |
+| Wave 4 | ~5,000 total canonical medication concepts |
+
+**Note:** Medication Intelligence Phases 15–18 remain complete. Do **not** resolve acetaminophen via catalog expansion. Production CDS / Enterprise Active remain off unless separately certified. Catalog availability ≠ recommendation activation.
 
 ### Deferred after Phase 6 — Canonical ordering integration and order sentences
 
