@@ -5127,6 +5127,156 @@ model MedicationExpertReviewAuditEvent {
   @@index([performedAt])
 }
 
+/// Phase 14B Part 3 — controlled synthetic shadow evaluation batch.
+model MedicationShadowEvaluationBatch {
+  id                            String   @id @default(uuid())
+  batchKey                      String   @unique @db.VarChar(64)
+  version                       String   @default("1.0.0") @db.VarChar(32)
+  /// DRAFT | VALIDATED | READY_TO_EXECUTE | EXECUTING | EXECUTED | ANALYZED | CERTIFIED | FAILED | CANCELLED
+  status                        String   @default("DRAFT") @db.VarChar(48)
+  readiness                     String   @default("NOT_READY") @db.VarChar(48)
+  waveKey                       String?  @db.VarChar(64)
+  referenceSetId                String?
+  approvalWaveId                String?
+  engineVersion                 String?  @db.VarChar(64)
+  ruleSetVersion                String?  @db.VarChar(64)
+  configurationJson             Json?
+  metricsJson                   Json?
+  inputHash                     String?  @db.VarChar(128)
+  resultHash                    String?  @db.VarChar(128)
+  clinicalActivationAllowed     Boolean  @default(false)
+  providerFacingAlertsAllowed   Boolean  @default(false)
+  orderBlockingAllowed          Boolean  @default(false)
+  knowledgeControlsPatientCare  Boolean  @default(false)
+  startedAt                     DateTime?
+  completedAt                   DateTime?
+  certifiedAt                   DateTime?
+  createdByUserId               String
+  createdAt                     DateTime @default(now())
+  updatedAt                     DateTime @updatedAt
+  executions                    MedicationShadowEvaluationExecution[]
+  familyResults                 MedicationShadowFamilyResult[]
+  gapLinks                      MedicationShadowGapLink[]
+
+  @@index([status])
+  @@index([readiness])
+  @@index([waveKey])
+}
+
+/// Phase 14B Part 3 — immutable synthetic case execution (completed rows never updated).
+model MedicationShadowEvaluationExecution {
+  id                     String   @id @default(uuid())
+  batchId                String
+  referenceCaseId        String?
+  referenceCaseKey       String   @db.VarChar(128)
+  referenceCaseVersion   String?  @db.VarChar(32)
+  familyKey              String   @db.VarChar(128)
+  canonicalConceptId     String?
+  shadowSnapshotId       String?
+  attemptNumber          Int      @default(1)
+  /// QUEUED | RUNNING | COMPLETED | FAILED | SKIPPED
+  status                 String   @default("QUEUED") @db.VarChar(32)
+  executionMode          String   @default("SYNTHETIC_SHADOW") @db.VarChar(32)
+  caseCategory           String   @db.VarChar(64)
+  engineVersion          String?  @db.VarChar(64)
+  ruleSetVersion         String?  @db.VarChar(64)
+  engineRunId            String?
+  inputSnapshotJson      Json
+  outputSnapshotJson     Json?
+  inputHash              String   @db.VarChar(128)
+  outputHash             String?  @db.VarChar(128)
+  executionHash          String?  @db.VarChar(128)
+  startedAt              DateTime?
+  completedAt            DateTime?
+  createdAt              DateTime @default(now())
+  batch                  MedicationShadowEvaluationBatch @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  findingResults         MedicationShadowFindingResult[]
+  gapLinks               MedicationShadowGapLink[]
+
+  @@unique([batchId, referenceCaseKey, attemptNumber])
+  @@index([batchId])
+  @@index([familyKey])
+  @@index([status])
+  @@index([shadowSnapshotId])
+  @@index([engineRunId])
+}
+
+model MedicationShadowFindingResult {
+  id                        String   @id @default(uuid())
+  executionId               String
+  expectedFindingId         String?
+  actualFindingIdentifier   String?  @db.VarChar(255)
+  findingType               String?  @db.VarChar(64)
+  domain                    String?  @db.VarChar(64)
+  severityExpected          String?  @db.VarChar(32)
+  severityActual            String?  @db.VarChar(32)
+  /// MATCHED | MISSED | UNEXPECTED | DEFERRED_DOMAIN_SKIPPED | ...
+  classification            String   @db.VarChar(48)
+  required                  Boolean  @default(true)
+  critical                  Boolean  @default(false)
+  matchDetailsJson          Json?
+  evidenceLinkIdsJson       Json?
+  createdAt                 DateTime @default(now())
+  execution                 MedicationShadowEvaluationExecution @relation(fields: [executionId], references: [id], onDelete: Cascade)
+
+  @@index([executionId])
+  @@index([classification])
+  @@index([critical])
+}
+
+model MedicationShadowFamilyResult {
+  id                     String   @id @default(uuid())
+  batchId                String
+  familyKey              String   @db.VarChar(128)
+  canonicalConceptId     String?
+  shadowSnapshotId       String?
+  /// SHADOW_EXECUTED_PASS | ...
+  status                 String   @db.VarChar(64)
+  metricsJson            Json?
+  casesExecuted          Int      @default(0)
+  matchedCount           Int      @default(0)
+  missedCount            Int      @default(0)
+  unexpectedCount        Int      @default(0)
+  deferredSkipCount      Int      @default(0)
+  criticalMisses         Int      @default(0)
+  highSeverityMisses     Int      @default(0)
+  openGaps               Int      @default(0)
+  resultHash             String?  @db.VarChar(128)
+  qualifiedAt            DateTime?
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+  batch                  MedicationShadowEvaluationBatch @relation(fields: [batchId], references: [id], onDelete: Cascade)
+
+  @@unique([batchId, familyKey])
+  @@index([batchId])
+  @@index([status])
+  @@index([shadowSnapshotId])
+}
+
+model MedicationShadowGapLink {
+  id           String   @id @default(uuid())
+  batchId      String?
+  executionId  String?
+  familyKey    String?  @db.VarChar(128)
+  /// KNOWLEDGE | IDENTITY | ENGINE | PROVENANCE | REFERENCE_CASE | REVIEW
+  gapType      String   @db.VarChar(32)
+  gapId        String?  @db.VarChar(128)
+  gapKey       String   @db.VarChar(255)
+  description  String
+  severity     String   @default("INFO") @db.VarChar(16)
+  /// OPEN | RESOLVED | ACCEPTED
+  status       String   @default("OPEN") @db.VarChar(32)
+  createdAt    DateTime @default(now())
+  batch        MedicationShadowEvaluationBatch? @relation(fields: [batchId], references: [id], onDelete: SetNull)
+  execution    MedicationShadowEvaluationExecution? @relation(fields: [executionId], references: [id], onDelete: SetNull)
+
+  @@unique([batchId, gapKey])
+  @@index([batchId])
+  @@index([executionId])
+  @@index([gapType])
+  @@index([status])
+}
+
 /// Durable RxNorm verified mapping history — Phase 4 canonical reconciliation (CLI/service only).
 model RxNormVerifiedMapping {
   id                   String                  @id @default(uuid())
