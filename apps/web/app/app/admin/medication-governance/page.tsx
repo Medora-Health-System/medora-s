@@ -410,6 +410,12 @@ export default function MedicationGovernancePage() {
           {t("medicationGovernance.openSafetyKnowledge")}
         </Link>
         <Link
+          href="/app/admin/medication-governance/safety-evaluation"
+          style={{ alignSelf: "center", fontSize: 14 }}
+        >
+          {t("medicationGovernance.openSafetyEvaluation")}
+        </Link>
+        <Link
           href="/app/admin/medication-governance/activation"
           style={{ alignSelf: "center", fontSize: 14 }}
         >

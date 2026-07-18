@@ -24,6 +24,7 @@ import { RxNormReviewModule } from "./medications/rxnorm-review/rxnorm-review.mo
 import { MedicationBatchModule } from "./medications/batch/medication-batch.module";
 import { MedicationClinicalKnowledgeModule } from "./medications/clinical-knowledge/medication-clinical-knowledge.module";
 import { MedicationSafetyKnowledgeModule } from "./medications/safety-knowledge/medication-safety-knowledge.module";
+import { MedicationSafetyEvaluationModule } from "./medications/safety-evaluation/medication-safety-evaluation.module";
 import { OrderCatalogModule } from "./order-catalog/order-catalog.module";
 import { PublicHealthModule } from "./public-health/public-health.module";
 import { DiagnosesModule } from "./diagnoses/diagnoses.module";
@@ -77,6 +78,7 @@ const imports = [
   MedicationBatchModule,
   MedicationClinicalKnowledgeModule,
   MedicationSafetyKnowledgeModule,
+  MedicationSafetyEvaluationModule,
   OrderCatalogModule,
   PublicHealthModule,
   DiagnosesModule,

@@ -227,6 +227,8 @@ export const MEDICATION_SAFETY_EMERGENCY_CONTEXT_VALUES = [
   "OBSTETRIC_EMERGENCY",
   "PAIN_MANAGEMENT",
   "BEHAVIORAL_EMERGENCY",
+  "SHOCK",
+  "CARDIAC_ARREST",
 ] as const;
 
 export type MedicationSafetyEmergencyContext =

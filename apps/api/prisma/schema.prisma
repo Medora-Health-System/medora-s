@@ -3617,6 +3617,230 @@ model MedicationSafetyKnowledgeAuditEvent {
   @@index([sourceVersionId])
 }
 
+/// Phase 10 — minimized immutable patient context for a shadow evaluation run.
+model MedicationSafetyPatientContextSnapshot {
+  id                              String   @id @default(uuid())
+  patientId                       String
+  encounterId                     String?
+  ageYears                        Int?
+  ageMonths                       Int?
+  weightKg                        Decimal? @db.Decimal(10, 3)
+  heightCm                        Decimal? @db.Decimal(10, 3)
+  bodySurfaceAreaM2               Decimal? @db.Decimal(10, 4)
+  sexAtBirth                      String?  @db.VarChar(32)
+  pregnancyStatus                 String?  @db.VarChar(32)
+  lactationStatus                 String?  @db.VarChar(32)
+  estimatedGfr                    Decimal? @db.Decimal(10, 3)
+  creatinineClearance             Decimal? @db.Decimal(10, 3)
+  hepaticFunctionClassification   String?  @db.VarChar(48)
+  activeDiagnosisCodesJson        Json?
+  activeAllergyIdsJson            Json?
+  activeMedicationOrderIdsJson    Json?
+  activeHomeMedicationIdsJson     Json?
+  relevantLaboratoryResultIdsJson Json?
+  emergencyContextTagsJson        Json?
+  contextCompleteness             String   @default("PARTIAL") @db.VarChar(32)
+  missingContextFieldsJson        Json?
+  /// PHASE10_SHADOW_FIXTURE marker when applicable
+  fixtureMarker                   String?  @db.VarChar(64)
+  capturedAt                      DateTime @default(now())
+  createdAt                       DateTime @default(now())
+  evaluationRuns                  MedicationSafetyEvaluationRun[]
+
+  @@index([patientId])
+  @@index([encounterId])
+  @@index([capturedAt])
+  @@index([fixtureMarker])
+}
+
+/// Phase 10 — shadow evaluation run (never blocks orders).
+model MedicationSafetyEvaluationRun {
+  id                          String   @id @default(uuid())
+  patientId                   String
+  encounterId                 String?
+  /// MANUAL_ADMIN_TEST | ORDER_DRAFT_SHADOW | ORDER_SIGN_SHADOW | ...
+  triggerType                 String   @db.VarChar(48)
+  /// DISABLED | SHADOW
+  operatingMode               String   @db.VarChar(16)
+  /// QUEUED | RUNNING | COMPLETED | COMPLETED_WITH_WARNINGS | FAILED | CANCELLED
+  status                      String   @default("QUEUED") @db.VarChar(32)
+  requestedByUserId           String?
+  requestedAt                 DateTime @default(now())
+  startedAt                   DateTime?
+  completedAt                 DateTime?
+  failedAt                    DateTime?
+  knowledgeVersionIdsJson     Json?
+  patientContextSnapshotId    String?
+  candidateMedicationOrderId  String?
+  candidateMedicationConceptId String?
+  candidateMedicationProductId String?
+  rulesConsidered             Int      @default(0)
+  rulesEvaluated              Int      @default(0)
+  findingsCreated             Int      @default(0)
+  findingsSuppressed          Int      @default(0)
+  findingsDeduplicated        Int      @default(0)
+  errorsJson                  Json?
+  engineVersion               String   @db.VarChar(64)
+  correlationId               String?  @db.VarChar(128)
+  durationMs                  Int?
+  knowledgeRetrievalMs        Int?
+  ruleEvaluationMs            Int?
+  findingPersistenceMs        Int?
+  fixtureMarker               String?  @db.VarChar(64)
+  createdAt                   DateTime @default(now())
+  updatedAt                   DateTime @updatedAt
+  contextSnapshot             MedicationSafetyPatientContextSnapshot? @relation(fields: [patientContextSnapshotId], references: [id], onDelete: SetNull)
+  findings                    MedicationSafetyEvaluationFinding[]
+
+  @@index([patientId])
+  @@index([encounterId])
+  @@index([status])
+  @@index([operatingMode])
+  @@index([triggerType])
+  @@index([requestedAt])
+  @@index([correlationId])
+  @@index([fixtureMarker])
+  @@index([patientContextSnapshotId])
+}
+
+/// Phase 10 — shadow-only safety finding.
+model MedicationSafetyEvaluationFinding {
+  id                          String   @id @default(uuid())
+  evaluationRunId             String
+  patientId                   String
+  encounterId                 String?
+  candidateMedicationOrderId  String?
+  relatedMedicationOrderId    String?
+  relatedHomeMedicationId     String?
+  relatedAllergyId            String?
+  findingType                 String   @db.VarChar(64)
+  severity                    String?  @db.VarChar(32)
+  clinicalSignificance        String?  @db.VarChar(32)
+  ruleId                      String?
+  knowledgeEntityType         String?  @db.VarChar(64)
+  knowledgeEntityId           String?
+  sourceVersionId             String?
+  title                       String
+  summary                     String
+  mechanism                   String?
+  recommendedFutureAction     String?
+  monitoringRecommendation    String?
+  evidenceLevel               String?  @db.VarChar(48)
+  futureAlertEligible         Boolean  @default(false)
+  /// Must always be true in Phase 10 (DB + service enforced).
+  shadowOnly                  Boolean  @default(true)
+  suppressionStatus           String?  @db.VarChar(32)
+  suppressionReason           String?  @db.VarChar(48)
+  deduplicationKey            String   @db.VarChar(768)
+  contextCompleteness         String?  @db.VarChar(32)
+  requiresClinicalValidation  Boolean  @default(false)
+  emergencyContextTagsJson    Json?
+  calculationTraceJson        Json?
+  fixtureMarker               String?  @db.VarChar(64)
+  createdAt                   DateTime @default(now())
+  updatedAt                   DateTime @updatedAt
+  evaluationRun               MedicationSafetyEvaluationRun @relation(fields: [evaluationRunId], references: [id], onDelete: Cascade)
+  validations                 MedicationSafetyFindingValidation[]
+  suppressions                MedicationSafetyFindingSuppression[]
+
+  @@unique([deduplicationKey])
+  @@index([evaluationRunId])
+  @@index([patientId])
+  @@index([encounterId])
+  @@index([findingType])
+  @@index([severity])
+  @@index([shadowOnly])
+  @@index([sourceVersionId])
+  @@index([fixtureMarker])
+}
+
+model MedicationSafetyFindingValidation {
+  id                          String   @id @default(uuid())
+  findingId                   String
+  /// TRUE_POSITIVE | FALSE_POSITIVE | CLINICALLY_INTENTIONAL | ...
+  classification              String   @default("UNREVIEWED") @db.VarChar(48)
+  reason                      String?
+  notes                       String?
+  recommendedKnowledgeChange  String?
+  recommendedEngineChange     String?
+  reviewedByUserId            String?
+  reviewedAt                  DateTime?
+  createdAt                   DateTime @default(now())
+  updatedAt                   DateTime @updatedAt
+  finding                     MedicationSafetyEvaluationFinding @relation(fields: [findingId], references: [id], onDelete: Cascade)
+
+  @@index([findingId])
+  @@index([classification])
+  @@index([reviewedByUserId])
+}
+
+model MedicationSafetySuppressionRule {
+  id                          String   @id @default(uuid())
+  code                        String   @unique @db.VarChar(64)
+  /// APPROVED_EMERGENCY_PROTOCOL | ...
+  suppressionReason           String   @db.VarChar(48)
+  findingType                 String?  @db.VarChar(64)
+  emergencyContext            String?  @db.VarChar(48)
+  normalizedRuleIdentity      String?  @db.VarChar(255)
+  summary                     String
+  /// DRAFT | UNDER_REVIEW | APPROVED | SUPERSEDED | RETIRED | REJECTED
+  status                      String   @default("DRAFT") @db.VarChar(32)
+  shadowOnly                  Boolean  @default(true)
+  clinicalActivationAllowed   Boolean  @default(false)
+  sourceVersionId             String?
+  reviewedByUserId            String?
+  approvedByUserId            String?
+  approvedAt                  DateTime?
+  supersedesId                String?
+  createdAt                   DateTime @default(now())
+  updatedAt                   DateTime @updatedAt
+  supersedes                  MedicationSafetySuppressionRule? @relation("MedicationSafetySuppressionSupersession", fields: [supersedesId], references: [id])
+  supersededBy                MedicationSafetySuppressionRule[] @relation("MedicationSafetySuppressionSupersession")
+  findingSuppressions         MedicationSafetyFindingSuppression[]
+
+  @@index([status])
+  @@index([suppressionReason])
+  @@index([findingType])
+  @@index([shadowOnly])
+  @@index([clinicalActivationAllowed])
+}
+
+model MedicationSafetyFindingSuppression {
+  id                          String   @id @default(uuid())
+  findingId                   String
+  suppressionRuleId           String?
+  suppressionReason           String   @db.VarChar(48)
+  explanation                 String
+  performedByUserId           String?
+  createdAt                   DateTime @default(now())
+  finding                     MedicationSafetyEvaluationFinding @relation(fields: [findingId], references: [id], onDelete: Cascade)
+  suppressionRule             MedicationSafetySuppressionRule? @relation(fields: [suppressionRuleId], references: [id], onDelete: SetNull)
+
+  @@index([findingId])
+  @@index([suppressionRuleId])
+  @@index([suppressionReason])
+}
+
+model MedicationSafetyEvaluationAuditEvent {
+  id                 String   @id @default(uuid())
+  entityType         String   @db.VarChar(64)
+  entityId           String
+  action             String   @db.VarChar(64)
+  beforeState        Json?
+  afterState         Json?
+  performedByUserId  String
+  performedAt        DateTime @default(now())
+  reason             String?
+  correlationId      String?  @db.VarChar(128)
+  createdAt          DateTime @default(now())
+
+  @@index([entityType, entityId])
+  @@index([action])
+  @@index([performedByUserId])
+  @@index([performedAt])
+  @@index([correlationId])
+}
+
 /// Durable RxNorm verified mapping history — Phase 4 canonical reconciliation (CLI/service only).
 model RxNormVerifiedMapping {
   id                   String                  @id @default(uuid())
