@@ -398,6 +398,12 @@ export default function MedicationGovernancePage() {
           {t("medicationGovernance.openDuplicateQueue")}
         </Link>
         <Link
+          href="/app/admin/medication-governance/clinical-knowledge"
+          style={{ alignSelf: "center", fontSize: 14 }}
+        >
+          {t("medicationGovernance.openClinicalKnowledge")}
+        </Link>
+        <Link
           href="/app/admin/medication-governance/activation"
           style={{ alignSelf: "center", fontSize: 14 }}
         >

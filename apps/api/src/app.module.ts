@@ -22,6 +22,7 @@ import { MedicationCatalogModule } from "./medication-catalog/medication-catalog
 import { MedicationMasterModule } from "./medication-master/medication-master.module";
 import { RxNormReviewModule } from "./medications/rxnorm-review/rxnorm-review.module";
 import { MedicationBatchModule } from "./medications/batch/medication-batch.module";
+import { MedicationClinicalKnowledgeModule } from "./medications/clinical-knowledge/medication-clinical-knowledge.module";
 import { OrderCatalogModule } from "./order-catalog/order-catalog.module";
 import { PublicHealthModule } from "./public-health/public-health.module";
 import { DiagnosesModule } from "./diagnoses/diagnoses.module";
@@ -73,6 +74,7 @@ const imports = [
   MedicationMasterModule,
   RxNormReviewModule,
   MedicationBatchModule,
+  MedicationClinicalKnowledgeModule,
   OrderCatalogModule,
   PublicHealthModule,
   DiagnosesModule,

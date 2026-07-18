@@ -2126,6 +2126,7 @@ model MedicationConcept {
   products                MedicationProduct[]
   safetyProfile           MedicationSafetyProfile?
   searchAliases           MedicationSearchAlias[]
+  clinicalProfiles        MedicationClinicalProfile[]
 
   @@index([therapeuticClassId])
   @@index([isActive])
@@ -2204,6 +2205,7 @@ model MedicationProduct {
   searchAliases              MedicationSearchAlias[]
   routePermissions           MedicationProductRoutePermission[]
   orderItems                 OrderItem[]
+  clinicalProfiles           MedicationClinicalProfile[]
 
   @@index([conceptId])
   @@index([legacyCatalogMedicationId])
@@ -2809,6 +2811,343 @@ model MedicationBatchEntityLink {
   @@index([manifestId])
   @@index([batchItemId])
   @@index([existingEntityType, existingEntityId])
+}
+
+/// Phase 8 — authoritative clinical knowledge source (provenance).
+model MedicationClinicalKnowledgeSource {
+  id                 String   @id @default(uuid())
+  sourceCode         String   @unique @db.VarChar(64)
+  sourceName         String
+  organization       String?
+  licenseNotes       String?
+  sourceUrl          String?
+  isAuthoritative    Boolean  @default(true)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  versions           MedicationClinicalKnowledgeVersion[]
+  profiles           MedicationClinicalProfile[]
+
+  @@index([isAuthoritative])
+}
+
+/// Phase 8 — versioned knowledge package for a source.
+model MedicationClinicalKnowledgeVersion {
+  id                 String   @id @default(uuid())
+  sourceId           String
+  versionLabel       String   @db.VarChar(64)
+  knowledgeVersion   String   @db.VarChar(64)
+  effectiveDate      DateTime?
+  retrievedAt        DateTime?
+  notes              String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  source             MedicationClinicalKnowledgeSource @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  profiles           MedicationClinicalProfile[]
+
+  @@unique([sourceId, versionLabel])
+  @@index([knowledgeVersion])
+}
+
+/// Phase 8 — clinical knowledge profile hub attached to canonical identity (not CatalogMedication).
+model MedicationClinicalProfile {
+  id                              String   @id @default(uuid())
+  conceptId                       String?
+  productId                       String?
+  sourceId                        String
+  knowledgeVersionId              String
+  /// DRAFT | UNDER_REVIEW | APPROVED | SUPERSEDED | RETIRED
+  lifecycleStatus                 String   @default("DRAFT") @db.VarChar(32)
+  knowledgeSourceLabel            String?  @db.VarChar(128)
+  knowledgeVersionLabel           String?  @db.VarChar(64)
+  evidenceLevel                   String?  @db.VarChar(32)
+  effectiveDate                   DateTime?
+  reviewedByUserId                String?
+  approvedByUserId                String?
+  approvalDate                    DateTime?
+  supersedesProfileId             String?
+  clinicalActivationAllowed       Boolean  @default(false)
+  notes                           String?
+  createdAt                       DateTime @default(now())
+  updatedAt                       DateTime @updatedAt
+  concept                         MedicationConcept? @relation(fields: [conceptId], references: [id], onDelete: Restrict)
+  product                         MedicationProduct? @relation(fields: [productId], references: [id], onDelete: Restrict)
+  source                          MedicationClinicalKnowledgeSource @relation(fields: [sourceId], references: [id], onDelete: Restrict)
+  knowledgeVersion                MedicationClinicalKnowledgeVersion @relation(fields: [knowledgeVersionId], references: [id], onDelete: Restrict)
+  supersedesProfile               MedicationClinicalProfile? @relation("MedicationClinicalProfileSupersession", fields: [supersedesProfileId], references: [id])
+  supersededByProfiles            MedicationClinicalProfile[] @relation("MedicationClinicalProfileSupersession")
+  doseRecommendations             MedicationDoseRecommendation[]
+  weightBasedDoses                MedicationWeightBasedDose[]
+  renalAdjustments                MedicationRenalAdjustment[]
+  hepaticAdjustments              MedicationHepaticAdjustment[]
+  administrationInstructions      MedicationAdministrationInstruction[]
+  infusionGuidance                MedicationInfusionGuidance[]
+  monitoringRequirements          MedicationMonitoringRequirement[]
+  contraindications               MedicationContraindication[]
+  precautions                     MedicationPrecaution[]
+  blackBoxWarnings                MedicationBlackBoxWarning[]
+  pregnancyInformation            MedicationPregnancyInformation[]
+  lactationInformation            MedicationLactationInformation[]
+  highAlertProfiles               MedicationHighAlertProfile[]
+  emergencyProfiles               MedicationEmergencyProfile[]
+  storageRequirements             MedicationStorageRequirement[]
+  reconstitutionInstructions      MedicationReconstitutionInstruction[]
+
+  @@index([conceptId])
+  @@index([productId])
+  @@index([sourceId])
+  @@index([knowledgeVersionId])
+  @@index([lifecycleStatus])
+  @@index([clinicalActivationAllowed])
+}
+
+model MedicationDoseRecommendation {
+  id                 String   @id @default(uuid())
+  profileId          String
+  /// FIXED | WEIGHT_BASED | BSA_BASED | AGE_BASED | ADULT | PEDIATRIC
+  doseKind           String   @db.VarChar(32)
+  population         String?  @db.VarChar(32)
+  routeCode          String?  @db.VarChar(64)
+  doseAmount         Decimal? @db.Decimal(16, 6)
+  doseUnit           String?  @db.VarChar(32)
+  doseMinAmount      Decimal? @db.Decimal(16, 6)
+  doseMaxAmount      Decimal? @db.Decimal(16, 6)
+  frequencyText      String?
+  indicationText     String?
+  structuredJson     Json?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  profile            MedicationClinicalProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@index([profileId])
+  @@index([doseKind])
+}
+
+model MedicationWeightBasedDose {
+  id                 String   @id @default(uuid())
+  profileId          String
+  routeCode          String?  @db.VarChar(64)
+  amountPerKg        Decimal  @db.Decimal(16, 6)
+  amountUnit         String   @db.VarChar(32)
+  maxTotalAmount     Decimal? @db.Decimal(16, 6)
+  maxTotalUnit       String?  @db.VarChar(32)
+  population         String?  @db.VarChar(32)
+  notes              String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  profile            MedicationClinicalProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@index([profileId])
+}
+
+model MedicationRenalAdjustment {
+  id                 String   @id @default(uuid())
+  profileId          String
+  egfrMin            Decimal? @db.Decimal(16, 6)
+  egfrMax            Decimal? @db.Decimal(16, 6)
+  adjustmentSummary  String
+  structuredJson     Json?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  profile            MedicationClinicalProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@index([profileId])
+}
+
+model MedicationHepaticAdjustment {
+  id                 String   @id @default(uuid())
+  profileId          String
+  severityBand       String?  @db.VarChar(32)
+  adjustmentSummary  String
+  structuredJson     Json?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  profile            MedicationClinicalProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@index([profileId])
+}
+
+model MedicationAdministrationInstruction {
+  id                         String   @id @default(uuid())
+  profileId                  String
+  routeCode                  String   @db.VarChar(64)
+  administrationMethod       String?  @db.VarChar(64)
+  dilutionRequired           Boolean  @default(false)
+  compatibleDiluentsJson     Json?
+  incompatibleDiluentsJson   Json?
+  ivPushRateText             String?
+  infusionRateText           String?
+  centralLineRequired        Boolean  @default(false)
+  peripheralGuidance         String?
+  extravasationPrecautions   String?
+  monitoringDuringAdmin      String?
+  structuredJson             Json?
+  createdAt                  DateTime @default(now())
+  updatedAt                  DateTime @updatedAt
+  profile                    MedicationClinicalProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@index([profileId])
+  @@index([routeCode])
+}
+
+model MedicationInfusionGuidance {
+  id                 String   @id @default(uuid())
+  profileId          String
+  diluentText        String?
+  concentrationText  String?
+  rateMin            Decimal? @db.Decimal(16, 6)
+  rateMax            Decimal? @db.Decimal(16, 6)
+  rateUnit           String?  @db.VarChar(32)
+  durationMinutes    Int?
+  notes              String?
+  structuredJson     Json?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  profile            MedicationClinicalProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@index([profileId])
+}
+
+model MedicationMonitoringRequirement {
+  id                 String   @id @default(uuid())
+  profileId          String
+  /// CLINICAL | LABORATORY
+  monitoringKind     String   @db.VarChar(32)
+  parameterCode      String?  @db.VarChar(64)
+  parameterLabel     String
+  frequencyText      String?
+  notes              String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  profile            MedicationClinicalProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@index([profileId])
+  @@index([monitoringKind])
+}
+
+model MedicationContraindication {
+  id                 String   @id @default(uuid())
+  profileId          String
+  code               String?  @db.VarChar(64)
+  summary            String
+  isAbsolute         Boolean  @default(true)
+  structuredJson     Json?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  profile            MedicationClinicalProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@index([profileId])
+}
+
+model MedicationPrecaution {
+  id                 String   @id @default(uuid())
+  profileId          String
+  code               String?  @db.VarChar(64)
+  summary            String
+  population         String?  @db.VarChar(32)
+  structuredJson     Json?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  profile            MedicationClinicalProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@index([profileId])
+}
+
+model MedicationBlackBoxWarning {
+  id                 String   @id @default(uuid())
+  profileId          String
+  warningCode        String?  @db.VarChar(64)
+  summary            String
+  structuredJson     Json?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  profile            MedicationClinicalProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@index([profileId])
+}
+
+model MedicationPregnancyInformation {
+  id                 String   @id @default(uuid())
+  profileId          String
+  riskSummary        String
+  trimesterNotes     String?
+  structuredJson     Json?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  profile            MedicationClinicalProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@index([profileId])
+}
+
+model MedicationLactationInformation {
+  id                 String   @id @default(uuid())
+  profileId          String
+  riskSummary        String
+  structuredJson     Json?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  profile            MedicationClinicalProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@index([profileId])
+}
+
+model MedicationHighAlertProfile {
+  id                 String   @id @default(uuid())
+  profileId          String
+  isHighAlert        Boolean  @default(true)
+  categoriesJson     Json?
+  lasaGroupCode      String?  @db.VarChar(64)
+  controlledSchedule String?  @db.VarChar(8)
+  notes              String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  profile            MedicationClinicalProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@index([profileId])
+  @@index([isHighAlert])
+}
+
+model MedicationEmergencyProfile {
+  id                 String   @id @default(uuid())
+  profileId          String
+  /// RSI | ACLS | PALS | STROKE | SEPSIS | TRAUMA | PROCEDURAL_SEDATION | TOXICOLOGY | ANAPHYLAXIS | STATUS_EPILEPTICUS | OTHER
+  useProfile         String   @db.VarChar(48)
+  notes              String?
+  structuredJson     Json?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  profile            MedicationClinicalProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@index([profileId])
+  @@index([useProfile])
+}
+
+model MedicationStorageRequirement {
+  id                 String   @id @default(uuid())
+  profileId          String
+  temperatureText    String?
+  lightSensitive     Boolean  @default(false)
+  storageSummary     String
+  structuredJson     Json?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  profile            MedicationClinicalProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@index([profileId])
+}
+
+model MedicationReconstitutionInstruction {
+  id                 String   @id @default(uuid())
+  profileId          String
+  diluentText        String?
+  volumeText         String?
+  stabilityText      String?
+  summary            String
+  structuredJson     Json?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  profile            MedicationClinicalProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@index([profileId])
 }
 
 /// Durable RxNorm verified mapping history — Phase 4 canonical reconciliation (CLI/service only).
