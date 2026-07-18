@@ -16,13 +16,17 @@ Status: `MEDICATION_KNOWLEDGE_EXPANSION_WAVE_3_CERTIFIED`
 
 **Medication Knowledge Expansion Wave 4**
 Clinical Medication Library Expansion
-Target: approximately 5,000 total canonical generic concepts
-Measured: 5206 distinct generics (3200 net-new from baseline 2006)
+Measured: 5206 distinct generics
 Status: `MEDICATION_KNOWLEDGE_EXPANSION_WAVE_4_CERTIFIED`
+
+**Medication Orderable Catalog Completion**
+Universal Provider Ordering
+Measured coverage: 99.68% (10380 orderable / 33 non-orderable clinical)
+Status: `MEDICATION_ORDERABLE_CATALOG_COMPLETION_CERTIFIED`
 
 ## ACTIVE
 
-None — Wave 4 complete.
+None — orderable catalog completion complete.
 
 ## NEXT
 

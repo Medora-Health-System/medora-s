@@ -390,6 +390,17 @@ flowchart LR
 | **Docs** | [`medication-knowledge-expansion-wave-4-guide.md`](./medication-knowledge-expansion-wave-4-guide.md), [`medication-expansion-roadmap.md`](./medication-expansion-roadmap.md) |
 | **Naming** | Distinct from **Enterprise Formulary Wave 4** and from Medication Intelligence Phase 19 (**do not create Phase 19**) |
 
+### Medication Orderable Catalog Completion — Universal Provider Ordering
+
+| Field | Value |
+|-------|-------|
+| **Objective** | Make existing clinical catalog medications searchable and orderable for providers (not Phase 19; not an expansion wave) |
+| **Certification ID** | `MEDUI.MEDICATION_ORDERABLE_CATALOG_COMPLETION` |
+| **Migration** | **NO** |
+| **Status** | **Complete** — measured coverage 99.68%; common clinical search 64/64 |
+| **Typical live decision** | `MEDICATION_ORDERABLE_CATALOG_COMPLETION_CERTIFIED` |
+| **Docs** | [`medication-orderable-catalog-audit.md`](./medication-orderable-catalog-audit.md), [`medication-expansion-roadmap.md`](./medication-expansion-roadmap.md) |
+
 **Note:** Medication Intelligence Phases 15–18 remain complete. Do **not** resolve acetaminophen via catalog expansion. Production CDS / Enterprise Active remain off unless separately certified. Catalog availability ≠ recommendation activation.
 
 ### Deferred after Phase 6 — Canonical ordering integration and order sentences
