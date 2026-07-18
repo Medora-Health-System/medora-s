@@ -278,7 +278,19 @@ flowchart LR
 | **Exit criteria** | Phase 14B certifier PASS; Wave 1 reviewed and scored; eligible families APPROVED_FOR_SHADOW with snapshots; alerts/blocking/activation/care-workflow control remain off |
 | **Status** | Implemented — see [`medication-intelligence-phase-14b-expert-knowledge-review-approval-for-shadow-wave1-qualification.md`](./medication-intelligence-phase-14b-expert-knowledge-review-approval-for-shadow-wave1-qualification.md) |
 
-**Note:** Distinct from product-roadmap phases below. Part 3 / later MI work executes controlled synthetic shadow evaluation — still without automatic live alerts.
+**Note:** Distinct from product-roadmap phases below. Phase 14B Part 3 executes controlled synthetic shadow evaluation — still without automatic live alerts.
+
+### Phase 14B Part 3 — Controlled synthetic shadow evaluation & gap analysis
+
+| Field | Value |
+|-------|-------|
+| **Objective** | Execute synthetic shadow evaluation against immutable Wave 1 snapshots via Phase 10; match findings; register gaps; family/batch readiness — **no clinical activation** |
+| **Scope** | Evaluation batch/executions, reference cases, finding classification, gap links, admin UI/API/CLI |
+| **Migration** | **YES (additive)** — `20261019120000_medication_phase_14b_controlled_synthetic_shadow_evaluation` |
+| **Exit criteria** | Phase 14B certifier PASS; CriticalMisses=0; snapshots consumed; acetaminophen identity-blocked; alerts/blocking/activation remain off |
+| **Status** | Implemented — see [`medication-intelligence-phase-14b-controlled-synthetic-shadow-evaluation.md`](./medication-intelligence-phase-14b-controlled-synthetic-shadow-evaluation.md) |
+
+**Future Phase 15:** Broader authoritative source acquisition, remediation, expanded family population, and larger-scale shadow validation — still without automatic live alerts unless separately certified.
 
 ### Deferred after Phase 6 — Canonical ordering integration and order sentences
 
