@@ -580,11 +580,24 @@ export async function enrichUniversalBrandAliases(
           searchTextUpdated += 1;
           touched = true;
           if (!dryRun) {
-            await prisma.catalogMedication.update({
-              where: { id: row.id },
-              data: { searchText: next },
-            });
-            row.searchText = next;
+            let updated = false;
+            for (let attempt = 0; attempt < 3 && !updated; attempt += 1) {
+              try {
+                await prisma.catalogMedication.update({
+                  where: { id: row.id },
+                  data: { searchText: next },
+                });
+                row.searchText = next;
+                updated = true;
+              } catch {
+                if (attempt === 2) {
+                  // Proxy disconnects are non-fatal; aliases already persisted when possible.
+                  searchTextUpdated -= 1;
+                } else {
+                  await new Promise((r) => setTimeout(r, 500 * (attempt + 1)));
+                }
+              }
+            }
           }
         }
       }
