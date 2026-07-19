@@ -2878,6 +2878,7 @@ export function CreateOrderModal({
                       onSelect={handleSelectItem}
                       favoritesFirst={activeTab === "MEDICATION"}
                       minChars={activeTab === "MEDICATION" ? 2 : 2}
+                      limit={activeTab === "MEDICATION" ? 40 : 20}
                     />
                     {!(erAdministerOnlyMedication && activeTab === "MEDICATION") ? (
                       <ManualOrderEntry tab={activeTab} onAdd={handleAddManualLine} />

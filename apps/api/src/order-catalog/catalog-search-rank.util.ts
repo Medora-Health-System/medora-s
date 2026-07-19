@@ -1,52 +1,114 @@
 /**
  * Ranking for catalog autocomplete: lower score sorts first.
- * Match tier: exact (0) < prefix (1) < alias-only path (2) < contains (3).
- * Boost: essential first, then lower sortPriority, then name.
+ *
+ * Provider-oriented tiers (deterministic):
+ * 0 exact active brand-alias match
+ * 1 exact active generic/name/display/code match
+ * 2 brand-alias prefix (token-boundary)
+ * 3 generic/name/display/code prefix
+ * 4 exact normalized alias / ingredient-combination alias match (non-brand)
+ * 5 brand/generic token-prefix in searchText
+ * 6 synonym / alias-only path (legacy)
+ * 7 bounded contains (token-boundary)
+ * 8 mid-string fuzzy contains (penalized; suppressed for short queries)
+ * 9 no match
  */
 export type CatalogRankableRow = {
   code: string;
   name: string;
   displayNameEn?: string | null;
   displayNameFr?: string | null;
+  genericName?: string | null;
   searchText?: string | null;
   isEssential: boolean;
   sortPriority: number;
 };
 
+function norm(value: string | null | undefined): string {
+  return (value ?? "").trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+function tokenize(value: string): string[] {
+  return norm(value)
+    .split(/[^a-z0-9]+/)
+    .filter((t) => t.length >= 2);
+}
+
+/** True when needle matches a whole token prefix (jardiance←jar, not mounjaro←jar). */
+export function tokenPrefixMatch(haystack: string, needle: string): boolean {
+  const n = norm(needle);
+  if (!n) return false;
+  return tokenize(haystack).some((token) => token.startsWith(n));
+}
+
+export function tokenExactMatch(haystack: string, needle: string): boolean {
+  const n = norm(needle);
+  if (!n) return false;
+  return tokenize(haystack).some((token) => token === n);
+}
+
 export function matchTierForQuery(
   q: string,
   row: CatalogRankableRow,
-  opts: { aliasOnlyMatch: boolean }
+  opts: { aliasOnlyMatch: boolean; aliases?: readonly string[] } = { aliasOnlyMatch: false }
 ): number {
-  const ql = q.trim().toLowerCase();
+  const ql = norm(q);
   if (!ql) return 9;
-  const code = (row.code ?? "").toLowerCase();
-  const name = (row.name ?? "").toLowerCase();
-  const den = (row.displayNameEn ?? "").toLowerCase();
-  const dfr = (row.displayNameFr ?? "").toLowerCase();
-  const st = (row.searchText ?? "").toLowerCase();
 
-  const exact =
-    code === ql || name === ql || den === ql || dfr === ql || (st.length > 0 && st === ql);
-  if (exact) return 0;
+  const aliases = (opts.aliases ?? []).map(norm).filter(Boolean);
+  const code = norm(row.code);
+  const name = norm(row.name);
+  const den = norm(row.displayNameEn);
+  const dfr = norm(row.displayNameFr);
+  const generic = norm(row.genericName);
+  const st = norm(row.searchText);
+  const shortQuery = ql.length <= 3;
 
-  const prefix =
+  if (aliases.some((alias) => alias === ql)) return 0;
+
+  if (code === ql || name === ql || den === ql || dfr === ql || generic === ql) return 1;
+
+  if (aliases.some((alias) => alias.startsWith(ql) || tokenPrefixMatch(alias, ql))) return 2;
+
+  if (
     code.startsWith(ql) ||
     name.startsWith(ql) ||
     den.startsWith(ql) ||
     dfr.startsWith(ql) ||
-    st.startsWith(ql);
-  if (prefix) return 1;
+    generic.startsWith(ql)
+  ) {
+    return 3;
+  }
 
-  if (opts.aliasOnlyMatch) return 2;
+  if (aliases.some((alias) => tokenExactMatch(alias, ql))) return 4;
 
-  const contains =
+  if (tokenPrefixMatch(st, ql) || aliases.some((alias) => tokenPrefixMatch(alias, ql))) return 5;
+
+  if (opts.aliasOnlyMatch) return 6;
+
+  const boundaryContains =
+    tokenPrefixMatch(name, ql) ||
+    tokenPrefixMatch(den, ql) ||
+    tokenPrefixMatch(dfr, ql) ||
+    tokenPrefixMatch(generic, ql) ||
+    tokenPrefixMatch(st, ql) ||
+    aliases.some((alias) => tokenPrefixMatch(alias, ql));
+  if (boundaryContains) return 7;
+
+  if (shortQuery) {
+    // Short queries: do not promote mid-string collisions (e.g. mounjaro ⊃ "jar").
+    return 9;
+  }
+
+  const midString =
     code.includes(ql) ||
     name.includes(ql) ||
     den.includes(ql) ||
     dfr.includes(ql) ||
-    st.includes(ql);
-  if (contains) return 3;
+    generic.includes(ql) ||
+    st.includes(ql) ||
+    aliases.some((alias) => alias.includes(ql));
+  if (midString) return 8;
 
   return 9;
 }
@@ -129,4 +191,25 @@ export function compareOrderCatalogRows(
   const bLabel = displayLabel(b.row);
   if (aLabel.length !== bLabel.length) return aLabel.length - bLabel.length;
   return aLabel.localeCompare(bLabel, "fr");
+}
+
+/** Pick best brand alias for display when the query matches a brand family. */
+export function resolveMatchedBrandAlias(
+  q: string,
+  aliases: readonly string[],
+  searchTerms: readonly string[] = []
+): string | null {
+  const ql = norm(q);
+  const terms = new Set([ql, ...searchTerms.map(norm)].filter(Boolean));
+  const normalized = aliases.map((a) => a.trim()).filter((a) => a.length >= 2);
+  if (normalized.length === 0) return null;
+
+  const exact = normalized.find((a) => terms.has(norm(a)));
+  if (exact) return exact;
+
+  const prefix = normalized.find((a) => {
+    const al = norm(a);
+    return [...terms].some((t) => t.length >= 3 && (al.startsWith(t) || tokenPrefixMatch(al, t)));
+  });
+  return prefix ?? null;
 }

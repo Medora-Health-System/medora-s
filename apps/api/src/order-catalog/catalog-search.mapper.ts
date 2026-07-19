@@ -34,9 +34,26 @@ type ImagingRow = {
 
 export function mapMedicationToCatalogSearchItem(
   m: CatalogMedication & { isFavorite?: boolean },
-  searchTextTruncated?: string | undefined
+  searchTextTruncated?: string | undefined,
+  opts?: {
+    matchedBrandAlias?: string | null;
+    commonAliases?: string[];
+  }
 ): CatalogSearchItemDto {
-  const displayNameFr = (m.displayNameFr ?? m.name ?? "").trim() || m.name;
+  const genericName = m.genericName?.trim() || "";
+  const matchedBrandRaw = opts?.matchedBrandAlias?.trim() || "";
+  const matchedBrand = matchedBrandRaw
+    ? matchedBrandRaw.replace(/\w+/g, (w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+    : "";
+  const brandPrimary = matchedBrand
+    ? genericName && genericName.toLowerCase() !== matchedBrand.toLowerCase()
+      ? `${matchedBrand} (${genericName})`
+      : matchedBrand
+    : null;
+
+  const displayNameFr =
+    brandPrimary || (m.displayNameFr ?? m.name ?? "").trim() || m.name;
+  const displayNameEn = brandPrimary || m.displayNameEn?.trim() || null;
   const localizedSecondary = buildMedicationCatalogSecondaryTexts({
     strength: m.strength,
     dosageForm: m.dosageForm,
@@ -46,7 +63,7 @@ export function mapMedicationToCatalogSearchItem(
   const secondaryText =
     localizedSecondary.secondaryTextFr ||
     localizedSecondary.secondaryTextEn ||
-    m.genericName?.trim() ||
+    genericName ||
     undefined;
 
   return {
@@ -54,8 +71,8 @@ export function mapMedicationToCatalogSearchItem(
     code: m.code,
     type: "MEDICATION",
     displayNameFr,
-    displayNameEn: m.displayNameEn?.trim() || null,
-    name: m.name?.trim() || undefined,
+    displayNameEn,
+    name: brandPrimary || m.name?.trim() || undefined,
     secondaryText,
     secondaryTextFr: localizedSecondary.secondaryTextFr || undefined,
     secondaryTextEn: localizedSecondary.secondaryTextEn || undefined,
@@ -72,10 +89,11 @@ export function mapMedicationToCatalogSearchItem(
       controlledSchedule: m.controlledSchedule ?? undefined,
       requiresWitness: m.requiresWitness || undefined,
       requiresDoubleSign: m.requiresDoubleSign || undefined,
-      genericName: m.genericName?.trim() || undefined,
+      genericName: genericName || undefined,
       therapeuticClass: m.therapeuticClass?.trim() || undefined,
       administrationType: m.administrationType?.trim() || undefined,
       billingClass: m.billingClass?.trim() || undefined,
+      commonAliases: opts?.commonAliases,
     },
   };
 }

@@ -57,6 +57,15 @@ function catalogSearchHaystack(
     .join(" ");
 }
 
+function tokenPrefixInHaystack(haystack: string, needle: string): boolean {
+  const n = normalizeSearchText(needle);
+  if (!n) return false;
+  return normalizeSearchText(haystack)
+    .split(" ")
+    .filter(Boolean)
+    .some((token) => token.startsWith(n));
+}
+
 function rankCatalogSearchItem(
   item: CatalogSearchItem,
   query: string,
@@ -64,18 +73,30 @@ function rankCatalogSearchItem(
   t: (key: string) => string
 ): number {
   const needle = normalizeSearchText(query);
-  if (!needle) return 3;
+  if (!needle) return 9;
 
   const primary = normalizeSearchText(catalogListPrimaryLine(item, language, t));
   const code = normalizeSearchText(item.code);
+  const aliases = (item.metadata?.commonAliases ?? []).map(normalizeSearchText).filter(Boolean);
   const haystack = normalizeSearchText(catalogSearchHaystack(item, language, t));
+  const shortQuery = needle.length <= 3;
 
-  if (primary === needle || code === needle) return 0;
-  if (primary.startsWith(needle) || code.startsWith(needle)) return 1;
-  if (haystack.includes(needle)) return 2;
+  if (aliases.some((alias) => alias === needle) || primary === needle || code === needle) return 0;
+  if (
+    aliases.some((alias) => alias.startsWith(needle) || tokenPrefixInHaystack(alias, needle)) ||
+    primary.startsWith(needle) ||
+    code.startsWith(needle)
+  ) {
+    return 1;
+  }
+  if (tokenPrefixInHaystack(haystack, needle) || aliases.some((alias) => tokenPrefixInHaystack(alias, needle))) {
+    return 2;
+  }
+  if (shortQuery) return 9;
+  if (haystack.includes(needle)) return 3;
 
   const tokens = needle.split(" ").filter(Boolean);
-  return tokens.length > 0 && tokens.every((token) => haystack.includes(token)) ? 2 : 3;
+  return tokens.length > 0 && tokens.every((token) => haystack.includes(token)) ? 3 : 9;
 }
 
 function typeBadgeForCatalogItem(item: CatalogSearchItem): string {

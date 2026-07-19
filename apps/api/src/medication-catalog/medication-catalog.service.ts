@@ -7,6 +7,7 @@ import type { CatalogSearchItemDto } from "../order-catalog/dto/catalog-search-i
 import {
   compareCatalogRows,
   matchTierForQuery,
+  resolveMatchedBrandAlias,
   truncateSearchText,
   type CatalogRankableRow,
 } from "../order-catalog/catalog-search-rank.util";
@@ -35,10 +36,15 @@ function medicationToRankable(m: CatalogMedication): CatalogRankableRow {
     name: m.name,
     displayNameEn: m.displayNameEn,
     displayNameFr: m.displayNameFr,
+    genericName: m.genericName,
     searchText: m.searchText,
     isEssential: m.isEssential,
     sortPriority: m.sortPriority,
   };
+}
+
+function normalizeGenericKey(raw: string | null | undefined): string {
+  return (raw ?? "").trim().toLowerCase().replace(/\s+/g, " ");
 }
 
 @Injectable()
@@ -112,16 +118,12 @@ export class MedicationCatalogService {
         : [];
 
     const directIds = new Set(byCatalog.map((r) => r.id));
-    const scored: ScoredMedicationRow[] = [];
-
-    for (const row of byCatalog) {
-      const tier = matchTierForQuery(q, medicationToRankable(row), { aliasOnlyMatch: false });
-      scored.push({ row, tier });
-    }
+    const candidateRows = [...byCatalog];
     for (const row of byAliasCatalog) {
-      if (directIds.has(row.id)) continue;
-      const tier = matchTierForQuery(q, medicationToRankable(row), { aliasOnlyMatch: true });
-      scored.push({ row, tier });
+      if (!directIds.has(row.id)) {
+        candidateRows.push(row);
+        directIds.add(row.id);
+      }
     }
 
     const canonicalAliasCatalogIds = (
@@ -133,10 +135,60 @@ export class MedicationCatalogService {
         where: buildCatalogMedicationAliasVisibilityWhere(missingCanonicalIds),
       });
       for (const row of extraRows) {
-        if (scored.some((s) => s.row.id === row.id)) continue;
-        const tier = matchTierForQuery(q, medicationToRankable(row), { aliasOnlyMatch: true });
-        scored.push({ row, tier });
+        if (directIds.has(row.id)) continue;
+        candidateRows.push(row);
+        directIds.add(row.id);
       }
+    }
+
+    // Exact-family expansion: pull sibling strengths for top generic hits before truncation.
+    const seedGenerics = [
+      ...new Set(
+        candidateRows
+          .slice(0, Math.max(limit, 12))
+          .map((r) => normalizeGenericKey(r.genericName))
+          .filter(Boolean)
+      ),
+    ].slice(0, 8);
+    if (seedGenerics.length > 0) {
+      const siblings = await this.prisma.catalogMedication.findMany({
+        where: {
+          isActive: true,
+          OR: seedGenerics.map((g) => ({
+            genericName: { equals: g, mode: "insensitive" as const },
+          })),
+        },
+        take: 120,
+      });
+      for (const row of siblings) {
+        if (directIds.has(row.id)) continue;
+        candidateRows.push(row);
+        directIds.add(row.id);
+      }
+    }
+
+    const aliasRows = await this.prisma.medicationAlias.findMany({
+      where: { catalogMedicationId: { in: [...directIds] } },
+      select: { catalogMedicationId: true, alias: true },
+    });
+    const aliasesByCatalogId = new Map<string, string[]>();
+    for (const a of aliasRows) {
+      const list = aliasesByCatalogId.get(a.catalogMedicationId) ?? [];
+      list.push(a.alias);
+      aliasesByCatalogId.set(a.catalogMedicationId, list);
+    }
+
+    const scored: ScoredMedicationRow[] = [];
+    const aliasMatchedIds = new Set(byAliasCatalog.map((r) => r.id));
+    for (const row of candidateRows) {
+      const aliases = aliasesByCatalogId.get(row.id) ?? [];
+      const aliasOnlyMatch = aliasMatchedIds.has(row.id) && !byCatalog.some((r) => r.id === row.id);
+      const tier = matchTierForQuery(q, medicationToRankable(row), {
+        aliasOnlyMatch,
+        aliases,
+      });
+      if (tier >= 9) continue;
+      scored.push({ row, tier });
     }
 
     scored.sort((a, b) =>
@@ -195,15 +247,18 @@ export class MedicationCatalogService {
       ? await this.getFavoriteCatalogIds(facilityId, sliced.map((m) => m.id))
       : new Set<string>();
 
-    let items: CatalogSearchItemDto[] = sliced.map((m) =>
-      mapMedicationToCatalogSearchItem(
+    let items: CatalogSearchItemDto[] = sliced.map((m) => {
+      const aliases = aliasesByCatalogId.get(m.id) ?? [];
+      const matchedBrand = resolveMatchedBrandAlias(q, aliases, searchTerms);
+      return mapMedicationToCatalogSearchItem(
         {
           ...m,
           isFavorite: favoriteIds.has(m.id),
         },
-        truncateSearchText(m.searchText)
-      )
-    );
+        truncateSearchText(m.searchText),
+        { matchedBrandAlias: matchedBrand, commonAliases: aliases }
+      );
+    });
 
     if (query.favoritesFirst && items.length > 0) {
       items = [...items].sort((a, b) => {

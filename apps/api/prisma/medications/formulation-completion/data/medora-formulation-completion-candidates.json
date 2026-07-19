@@ -1,0 +1,2092 @@
+[
+  {
+    "conceptKey": "fondaparinux",
+    "genericName": "Fondaparinux",
+    "domain": "FORMULATION_COMPLETION",
+    "displayNameEn": "Fondaparinux",
+    "displayNameFr": "Fondaparinux",
+    "therapeuticClass": "Formulation completion",
+    "aliases": [],
+    "brands": [
+      "Arixtra",
+      "fondaparinux",
+      "arixtra"
+    ],
+    "variants": [
+      {
+        "strength": "2.5 mg",
+        "dosageForm": "injectable",
+        "route": "sous-cutanée",
+        "administrationType": "INJECTION",
+        "billingClass": "THERAPEUTIC"
+      }
+    ],
+    "sourceNote": "ENTERPRISE_FORMULARY_MANIFEST"
+  },
+  {
+    "conceptKey": "diltiazem",
+    "genericName": "Diltiazem",
+    "domain": "FORMULATION_COMPLETION",
+    "displayNameEn": "Diltiazem",
+    "displayNameFr": "Diltiazem",
+    "therapeuticClass": "Formulation completion",
+    "aliases": [],
+    "brands": [
+      "Cardizem",
+      "diltiazem",
+      "cardizem",
+      "Cardizem IV",
+      "cardizem iv"
+    ],
+    "variants": [
+      {
+        "strength": "120 mg",
+        "dosageForm": "comprimé",
+        "route": "orale",
+        "administrationType": "ORAL",
+        "billingClass": "DRUG_SUPPLY"
+      },
+      {
+        "strength": "20 mg/2 mL",
+        "dosageForm": "injectable",
+        "route": "injectable",
+        "administrationType": "PUSH",
+        "billingClass": "THERAPEUTIC"
+      }
+    ],
+    "sourceNote": "ENTERPRISE_FORMULARY_MANIFEST"
+  },
+  {
+    "conceptKey": "fluticasone",
+    "genericName": "Fluticasone",
+    "domain": "FORMULATION_COMPLETION",
+    "displayNameEn": "Fluticasone",
+    "displayNameFr": "Fluticasone",
+    "therapeuticClass": "Formulation completion",
+    "aliases": [],
+    "brands": [
+      "Flovent",
+      "fluticasone",
+      "flovent",
+      "Flonase",
+      "fluticasone nasal",
+      "spray nasal",
+      "nasale",
+      "corticoide nasal",
+      "flonase"
+    ],
+    "variants": [
+      {
+        "strength": "110 mcg/dose",
+        "dosageForm": "inhalateur",
+        "route": "inhalée",
+        "administrationType": "INHALATION",
+        "billingClass": "DRUG_SUPPLY"
+      },
+      {
+        "strength": "50 mcg/dose",
+        "dosageForm": "spray nasal",
+        "route": "nasale",
+        "administrationType": "INHALATION",
+        "billingClass": "DRUG_SUPPLY"
+      }
+    ],
+    "sourceNote": "ENTERPRISE_FORMULARY_MANIFEST"
+  },
+  {
+    "conceptKey": "fluticasone salmeterol",
+    "genericName": "Fluticasone salmeterol",
+    "domain": "FORMULATION_COMPLETION",
+    "displayNameEn": "Fluticasone salmeterol",
+    "displayNameFr": "Fluticasone salmeterol",
+    "therapeuticClass": "Formulation completion",
+    "aliases": [],
+    "brands": [
+      "Advair",
+      "fluticasone salmeterol",
+      "advair",
+      "Advair 100/50",
+      "fluticasone salmétérol 100",
+      "inhalateur",
+      "inhalee",
+      "antiasthmatique",
+      "advair 100/50",
+      "fluticasone salmeterol 100"
+    ],
+    "variants": [
+      {
+        "strength": "250/50 mcg",
+        "dosageForm": "inhalateur",
+        "route": "inhalée",
+        "administrationType": "INHALATION",
+        "billingClass": "DRUG_SUPPLY"
+      },
+      {
+        "strength": "100/50 mcg",
+        "dosageForm": "inhalateur",
+        "route": "inhalée",
+        "administrationType": "INHALATION",
+        "billingClass": "DRUG_SUPPLY"
+      }
+    ],
+    "sourceNote": "ENTERPRISE_FORMULARY_MANIFEST"
+  },
+  {
+    "conceptKey": "valproic acid",
+    "genericName": "Valproic acid",
+    "domain": "FORMULATION_COMPLETION",
+    "displayNameEn": "Valproic acid",
+    "displayNameFr": "Valproic acid",
+    "therapeuticClass": "Formulation completion",
+    "aliases": [],
+    "brands": [
+      "Depakote",
+      "valproate",
+      "valproic acid",
+      "depakote",
+      "Depakote ER",
+      "valproate 500",
+      "comprime",
+      "orale",
+      "anticonvulsivant",
+      "depakote er",
+      "acide valproique"
+    ],
+    "variants": [
+      {
+        "strength": "250 mg",
+        "dosageForm": "comprimé",
+        "route": "orale",
+        "administrationType": "ORAL",
+        "billingClass": "DRUG_SUPPLY"
+      },
+      {
+        "strength": "500 mg",
+        "dosageForm": "comprimé",
+        "route": "orale",
+        "administrationType": "ORAL",
+        "billingClass": "DRUG_SUPPLY"
+      }
+    ],
+    "sourceNote": "ENTERPRISE_FORMULARY_MANIFEST"
+  },
+  {
+    "conceptKey": "sevelamer carbonate",
+    "genericName": "Sevelamer carbonate",
+    "domain": "FORMULATION_COMPLETION",
+    "displayNameEn": "Sevelamer carbonate",
+    "displayNameFr": "Sevelamer carbonate",
+    "therapeuticClass": "Formulation completion",
+    "aliases": [],
+    "brands": [
+      "Renvela",
+      "Renagel",
+      "sévélamer",
+      "sevelamer carbonate",
+      "comprime",
+      "orale",
+      "chelateur du phosphate",
+      "renvela",
+      "renagel",
+      "carbonate de sevelamer",
+      "sevelamer"
+    ],
+    "variants": [
+      {
+        "strength": "800 mg",
+        "dosageForm": "comprimé",
+        "route": "orale",
+        "administrationType": "ORAL",
+        "billingClass": "DRUG_SUPPLY"
+      }
+    ],
+    "sourceNote": "ENTERPRISE_FORMULARY_MANIFEST"
+  },
+  {
+    "conceptKey": "epoetin alfa",
+    "genericName": "Epoetin alfa",
+    "domain": "FORMULATION_COMPLETION",
+    "displayNameEn": "Epoetin alfa",
+    "displayNameFr": "Epoetin alfa",
+    "therapeuticClass": "Formulation completion",
+    "aliases": [],
+    "brands": [
+      "Epogen",
+      "Procrit",
+      "Épogen",
+      "époétine",
+      "epoetin alfa",
+      "injectable",
+      "sous-cutanee",
+      "agent hematopoietique",
+      "epogen",
+      "procrit",
+      "epoetine alfa",
+      "epoetine"
+    ],
+    "variants": [
+      {
+        "strength": "4000 UI/mL",
+        "dosageForm": "injectable",
+        "route": "sous-cutanée",
+        "administrationType": "SUBCUTANEOUS",
+        "billingClass": "THERAPEUTIC"
+      }
+    ],
+    "sourceNote": "ENTERPRISE_FORMULARY_MANIFEST"
+  },
+  {
+    "conceptKey": "ferric carboxymaltose",
+    "genericName": "Ferric carboxymaltose",
+    "domain": "FORMULATION_COMPLETION",
+    "displayNameEn": "Ferric carboxymaltose",
+    "displayNameFr": "Ferric carboxymaltose",
+    "therapeuticClass": "Formulation completion",
+    "aliases": [],
+    "brands": [
+      "Injectafer",
+      "fer carboxymaltose",
+      "ferric carboxymaltose",
+      "injectable",
+      "intraveineuse",
+      "supplement fer",
+      "injectafer",
+      "carboxymaltose ferrique"
+    ],
+    "variants": [
+      {
+        "strength": "750 mg/15 mL",
+        "dosageForm": "injectable",
+        "route": "intraveineuse",
+        "administrationType": "INFUSION",
+        "billingClass": "THERAPEUTIC"
+      }
+    ],
+    "sourceNote": "ENTERPRISE_FORMULARY_MANIFEST"
+  },
+  {
+    "conceptKey": "sodium polystyrene sulfonate",
+    "genericName": "Sodium polystyrene sulfonate",
+    "domain": "FORMULATION_COMPLETION",
+    "displayNameEn": "Sodium polystyrene sulfonate",
+    "displayNameFr": "Sodium polystyrene sulfonate",
+    "therapeuticClass": "Formulation completion",
+    "aliases": [],
+    "brands": [
+      "Kayexalate",
+      "sodium polystyrene sulfonate",
+      "poudre",
+      "orale",
+      "chelateur du potassium",
+      "kayexalate",
+      "sulfonate de polystyrene sodique"
+    ],
+    "variants": [
+      {
+        "strength": "15 g",
+        "dosageForm": "poudre",
+        "route": "orale",
+        "administrationType": "ORAL",
+        "billingClass": "DRUG_SUPPLY"
+      }
+    ],
+    "sourceNote": "ENTERPRISE_FORMULARY_MANIFEST"
+  },
+  {
+    "conceptKey": "clobetasol propionate",
+    "genericName": "Clobetasol propionate",
+    "domain": "FORMULATION_COMPLETION",
+    "displayNameEn": "Clobetasol propionate",
+    "displayNameFr": "Clobetasol propionate",
+    "therapeuticClass": "Formulation completion",
+    "aliases": [],
+    "brands": [
+      "Temovate",
+      "clobetasol",
+      "clobétasol",
+      "clobetasol propionate",
+      "creme",
+      "topique",
+      "corticoide topique",
+      "temovate",
+      "propionate de clobetasol"
+    ],
+    "variants": [
+      {
+        "strength": "0.05%",
+        "dosageForm": "crème",
+        "route": "topique",
+        "administrationType": "TOPICAL",
+        "billingClass": "DRUG_SUPPLY"
+      }
+    ],
+    "sourceNote": "ENTERPRISE_FORMULARY_MANIFEST"
+  },
+  {
+    "conceptKey": "betamethasone valerate",
+    "genericName": "Betamethasone valerate",
+    "domain": "FORMULATION_COMPLETION",
+    "displayNameEn": "Betamethasone valerate",
+    "displayNameFr": "Betamethasone valerate",
+    "therapeuticClass": "Formulation completion",
+    "aliases": [],
+    "brands": [
+      "Valisone",
+      "betamethasone cream",
+      "bétaméthasone",
+      "betamethasone valerate",
+      "creme",
+      "topique",
+      "corticoide topique",
+      "valisone",
+      "valerate de betamethasone",
+      "betamethasone"
+    ],
+    "variants": [
+      {
+        "strength": "0.1%",
+        "dosageForm": "crème",
+        "route": "topique",
+        "administrationType": "TOPICAL",
+        "billingClass": "DRUG_SUPPLY"
+      }
+    ],
+    "sourceNote": "ENTERPRISE_FORMULARY_MANIFEST"
+  },
+  {
+    "conceptKey": "triamcinolone acetonide",
+    "genericName": "Triamcinolone acetonide",
+    "domain": "FORMULATION_COMPLETION",
+    "displayNameEn": "Triamcinolone acetonide",
+    "displayNameFr": "Triamcinolone acetonide",
+    "therapeuticClass": "Formulation completion",
+    "aliases": [],
+    "brands": [
+      "Kenalog cream",
+      "triamcinolone topical",
+      "Kenalog crème",
+      "triamcinolone topique",
+      "triamcinolone acetonide",
+      "creme",
+      "topique",
+      "corticoide topique",
+      "kenalog cream",
+      "acetonide de triamcinolone",
+      "kenalog creme"
+    ],
+    "variants": [
+      {
+        "strength": "0.1%",
+        "dosageForm": "crème",
+        "route": "topique",
+        "administrationType": "TOPICAL",
+        "billingClass": "DRUG_SUPPLY"
+      }
+    ],
+    "sourceNote": "ENTERPRISE_FORMULARY_MANIFEST"
+  },
+  {
+    "conceptKey": "phenytoin",
+    "genericName": "Phenytoin",
+    "domain": "FORMULATION_COMPLETION",
+    "displayNameEn": "Phenytoin",
+    "displayNameFr": "Phenytoin",
+    "therapeuticClass": "Formulation completion",
+    "aliases": [],
+    "brands": [
+      "Dilantin 125",
+      "phénytoïne 125",
+      "phenytoin",
+      "gelule",
+      "orale",
+      "anticonvulsivant",
+      "dilantin 125",
+      "phenytoine",
+      "phenytoine 125"
+    ],
+    "variants": [
+      {
+        "strength": "125 mg",
+        "dosageForm": "gélule",
+        "route": "orale",
+        "administrationType": "ORAL",
+        "billingClass": "DRUG_SUPPLY"
+      }
+    ],
+    "sourceNote": "ENTERPRISE_FORMULARY_MANIFEST"
+  },
+  {
+    "conceptKey": "levetiracetam",
+    "genericName": "Levetiracetam",
+    "domain": "FORMULATION_COMPLETION",
+    "displayNameEn": "Levetiracetam",
+    "displayNameFr": "Levetiracetam",
+    "therapeuticClass": "Formulation completion",
+    "aliases": [],
+    "brands": [
+      "Keppra 750",
+      "lévétiracétam 750",
+      "levetiracetam",
+      "comprime",
+      "orale",
+      "anticonvulsivant",
+      "keppra 750",
+      "levetiracetam 750",
+      "Keppra IV",
+      "levetiracetam IV",
+      "lévétiracétam IV",
+      "injectable",
+      "intraveineuse",
+      "anticonvulsivant iv",
+      "keppra iv",
+      "levetiracetam iv"
+    ],
+    "variants": [
+      {
+        "strength": "750 mg",
+        "dosageForm": "comprimé",
+        "route": "orale",
+        "administrationType": "ORAL",
+        "billingClass": "DRUG_SUPPLY"
+      },
+      {
+        "strength": "500 mg/5 mL",
+        "dosageForm": "injectable",
+        "route": "intraveineuse",
+        "administrationType": "INFUSION",
+        "billingClass": "THERAPEUTIC"
+      }
+    ],
+    "sourceNote": "ENTERPRISE_FORMULARY_MANIFEST"
+  },
+  {
+    "conceptKey": "haloperidol",
+    "genericName": "Haloperidol",
+    "domain": "FORMULATION_COMPLETION",
+    "displayNameEn": "Haloperidol",
+    "displayNameFr": "Haloperidol",
+    "therapeuticClass": "Formulation completion",
+    "aliases": [],
+    "brands": [
+      "Haldol oral",
+      "Haldol comprimé",
+      "halopéridol oral",
+      "haloperidol",
+      "comprime",
+      "orale",
+      "antipsychotique",
+      "haldol oral",
+      "haldol comprime",
+      "haloperidol oral"
+    ],
+    "variants": [
+      {
+        "strength": "2 mg",
+        "dosageForm": "comprimé",
+        "route": "orale",
+        "administrationType": "ORAL",
+        "billingClass": "DRUG_SUPPLY"
+      }
+    ],
+    "sourceNote": "ENTERPRISE_FORMULARY_MANIFEST"
+  },
+  {
+    "conceptKey": "lorazepam",
+    "genericName": "Lorazepam",
+    "domain": "FORMULATION_COMPLETION",
+    "displayNameEn": "Lorazepam",
+    "displayNameFr": "Lorazepam",
+    "therapeuticClass": "Formulation completion",
+    "aliases": [],
+    "brands": [
+      "Ativan 0.5",
+      "lorazépam 0.5",
+      "lorazepam",
+      "comprime",
+      "orale",
+      "anxiolytique",
+      "ativan 0.5",
+      "lorazepam 0.5",
+      "Ativan peds IV",
+      "lorazepam peds",
+      "Ativan péd IV",
+      "lorazépam péd",
+      "injectable",
+      "intraveineuse",
+      "statut epileptique pediatrique",
+      "ativan peds iv",
+      "ativan ped iv",
+      "lorazepam ped"
+    ],
+    "variants": [
+      {
+        "strength": "0.5 mg",
+        "dosageForm": "comprimé",
+        "route": "orale",
+        "administrationType": "ORAL",
+        "billingClass": "DRUG_SUPPLY"
+      },
+      {
+        "strength": "2 mg/mL peds IV",
+        "dosageForm": "injectable",
+        "route": "intraveineuse",
+        "administrationType": "PUSH",
+        "billingClass": "THERAPEUTIC"
+      }
+    ],
+    "sourceNote": "ENTERPRISE_FORMULARY_MANIFEST"
+  },
+  {
+    "conceptKey": "budesonide formoterol",
+    "genericName": "Budesonide formoterol",
+    "domain": "FORMULATION_COMPLETION",
+    "displayNameEn": "Budesonide formoterol",
+    "displayNameFr": "Budesonide formoterol",
+    "therapeuticClass": "Formulation completion",
+    "aliases": [],
+    "brands": [
+      "Symbicort",
+      "budésonide formotérol",
+      "budesonide formoterol",
+      "inhalateur",
+      "inhalee",
+      "antiasthmatique",
+      "symbicort"
+    ],
+    "variants": [
+      {
+        "strength": "160/4.5 mcg",
+        "dosageForm": "inhalateur",
+        "route": "inhalée",
+        "administrationType": "INHALATION",
+        "billingClass": "DRUG_SUPPLY"
+      }
+    ],
+    "sourceNote": "ENTERPRISE_FORMULARY_MANIFEST"
+  },
+  {
+    "conceptKey": "fluticasone umeclidinium vilanterol",
+    "genericName": "Fluticasone umeclidinium vilanterol",
+    "domain": "FORMULATION_COMPLETION",
+    "displayNameEn": "Fluticasone umeclidinium vilanterol",
+    "displayNameFr": "Fluticasone umeclidinium vilanterol",
+    "therapeuticClass": "Formulation completion",
+    "aliases": [],
+    "brands": [
+      "Trelegy Ellipta",
+      "fluticasone umeclidinium vilanterol",
+      "inhalateur",
+      "inhalee",
+      "bpco",
+      "trelegy ellipta"
+    ],
+    "variants": [
+      {
+        "strength": "100/62.5/25 mcg",
+        "dosageForm": "inhalateur",
+        "route": "inhalée",
+        "administrationType": "INHALATION",
+        "billingClass": "DRUG_SUPPLY"
+      }
+    ],
+    "sourceNote": "ENTERPRISE_FORMULARY_MANIFEST"
+  },
+  {
+    "conceptKey": "sodium chloride",
+    "genericName": "Sodium chloride",
+    "domain": "FORMULATION_COMPLETION",
+    "displayNameEn": "Sodium chloride",
+    "displayNameFr": "Sodium chloride",
+    "therapeuticClass": "Formulation completion",
+    "aliases": [],
+    "brands": [
+      "hypertonic saline neb",
+      "HTS 3%",
+      "saline hypertonique",
+      "nébulisation saline 3%",
+      "sodium chloride",
+      "hypertonic saline",
+      "solution de nebulisation",
+      "inhalee",
+      "mucolytique",
+      "hts 3",
+      "chlorure de sodium hypertonique",
+      "nebulisation saline 3"
+    ],
+    "variants": [
+      {
+        "strength": "3%",
+        "dosageForm": "solution de nébulisation",
+        "route": "inhalée",
+        "administrationType": "INHALATION",
+        "billingClass": "DRUG_SUPPLY"
+      }
+    ],
+    "sourceNote": "ENTERPRISE_FORMULARY_MANIFEST"
+  },
+  {
+    "conceptKey": "theophylline",
+    "genericName": "Theophylline",
+    "domain": "FORMULATION_COMPLETION",
+    "displayNameEn": "Theophylline",
+    "displayNameFr": "Theophylline",
+    "therapeuticClass": "Formulation completion",
+    "aliases": [],
+    "brands": [
+      "Theo-24",
+      "théophylline",
+      "theophylline",
+      "comprime",
+      "orale",
+      "bronchodilatateur",
+      "theo-24"
+    ],
+    "variants": [
+      {
+        "strength": "300 mg",
+        "dosageForm": "comprimé",
+        "route": "orale",
+        "administrationType": "ORAL",
+        "billingClass": "DRUG_SUPPLY"
+      }
+    ],
+    "sourceNote": "ENTERPRISE_FORMULARY_MANIFEST"
+  },
+  {
+    "conceptKey": "cromolyn sodium",
+    "genericName": "Cromolyn sodium",
+    "domain": "FORMULATION_COMPLETION",
+    "displayNameEn": "Cromolyn sodium",
+    "displayNameFr": "Cromolyn sodium",
+    "therapeuticClass": "Formulation completion",
+    "aliases": [],
+    "brands": [
+      "Intal neb",
+      "Intal",
+      "cromoglycate",
+      "cromolyn sodium",
+      "solution de nebulisation",
+      "inhalee",
+      "antiasthmatique",
+      "intal neb",
+      "cromoglycate de sodium",
+      "intal"
+    ],
+    "variants": [
+      {
+        "strength": "10 mg/2 mL",
+        "dosageForm": "solution de nébulisation",
+        "route": "inhalée",
+        "administrationType": "INHALATION",
+        "billingClass": "DRUG_SUPPLY"
+      }
+    ],
+    "sourceNote": "ENTERPRISE_FORMULARY_MANIFEST"
+  },
+  {
+    "conceptKey": "glycopyrrolate",
+    "genericName": "Glycopyrrolate",
+    "domain": "FORMULATION_COMPLETION",
+    "displayNameEn": "Glycopyrrolate",
+    "displayNameFr": "Glycopyrrolate",
+    "therapeuticClass": "Formulation completion",
+    "aliases": [],
+    "brands": [
+      "Seebri",
+      "glycopyrrolate inhaler",
+      "glycopyrronium",
+      "glycopyrrolate",
+      "inhalateur",
+      "inhalee",
+      "anticholinergique inhale",
+      "seebri"
+    ],
+    "variants": [
+      {
+        "strength": "15 mcg",
+        "dosageForm": "inhalateur",
+        "route": "inhalée",
+        "administrationType": "INHALATION",
+        "billingClass": "DRUG_SUPPLY"
+      }
+    ],
+    "sourceNote": "ENTERPRISE_FORMULARY_MANIFEST"
+  },
+  {
+    "conceptKey": "dexamethasone",
+    "genericName": "Dexamethasone",
+    "domain": "FORMULATION_COMPLETION",
+    "displayNameEn": "Dexamethasone",
+    "displayNameFr": "Dexamethasone",
+    "therapeuticClass": "Formulation completion",
+    "aliases": [],
+    "brands": [
+      "dex neb",
+      "dexaméthasone néb",
+      "dexamethasone",
+      "solution de nebulisation",
+      "inhalee",
+      "corticoide",
+      "dexamethasone neb",
+      "Decadron 10",
+      "dex 10 mg",
+      "injectable",
+      "intraveineuse",
+      "corticosteroide iv",
+      "decadron 10",
+      "Decadron 6 mg IM",
+      "dexamethasone fetal lung",
+      "dexaméthasone maturation",
+      "intramusculaire",
+      "maturation pulmonaire",
+      "decadron 6 mg im",
+      "dexamethasone maturation",
+      "Decadron peds croup",
+      "dexamethasone peds",
+      "Decadron péd croup",
+      "dexaméthasone péd",
+      "croup pediatrique",
+      "decadron peds croup",
+      "decadron ped croup",
+      "dexamethasone ped"
+    ],
+    "variants": [
+      {
+        "strength": "0.4 mg/2 mL",
+        "dosageForm": "solution de nébulisation",
+        "route": "inhalée",
+        "administrationType": "INHALATION",
+        "billingClass": "DRUG_SUPPLY"
+      },
+      {
+        "strength": "10 mg",
+        "dosageForm": "injectable",
+        "route": "intraveineuse",
+        "administrationType": "PUSH",
+        "billingClass": "THERAPEUTIC"
+      },
+      {
+        "strength": "6 mg IM",
+        "dosageForm": "injectable",
+        "route": "intramusculaire",
+        "administrationType": "IM",
+        "billingClass": "THERAPEUTIC"
+      },
+      {
+        "strength": "0.4 mg/mL peds",
+        "dosageForm": "injectable",
+        "route": "intraveineuse",
+        "administrationType": "PUSH",
+        "billingClass": "THERAPEUTIC"
+      }
+    ],
+    "sourceNote": "ENTERPRISE_FORMULARY_MANIFEST"
+  },
+  {
+    "conceptKey": "succinylcholine",
+    "genericName": "Succinylcholine",
+    "domain": "FORMULATION_COMPLETION",
+    "displayNameEn": "Succinylcholine",
+    "displayNameFr": "Succinylcholine",
+    "therapeuticClass": "Formulation completion",
+    "aliases": [],
+    "brands": [
+      "Anectine powder",
+      "Anectine poudre",
+      "succinylcholine poudre",
+      "succinylcholine",
+      "poudre",
+      "intraveineuse",
+      "paralytique rsi",
+      "anectine powder",
+      "anectine poudre"
+    ],
+    "variants": [
+      {
+        "strength": "100 mg",
+        "dosageForm": "poudre",
+        "route": "intraveineuse",
+        "administrationType": "PUSH",
+        "billingClass": "THERAPEUTIC"
+      }
+    ],
+    "sourceNote": "ENTERPRISE_FORMULARY_MANIFEST"
+  },
+  {
+    "conceptKey": "rocuronium",
+    "genericName": "Rocuronium",
+    "domain": "FORMULATION_COMPLETION",
+    "displayNameEn": "Rocuronium",
+    "displayNameFr": "Rocuronium",
+    "therapeuticClass": "Formulation completion",
+    "aliases": [],
+    "brands": [
+      "Zemuron 50 mg",
+      "Roc 50",
+      "rocuronium 50 mg",
+      "rocuronium",
+      "injectable",
+      "intraveineuse",
+      "paralytique rsi",
+      "zemuron 50 mg",
+      "roc 50"
+    ],
+    "variants": [
+      {
+        "strength": "50 mg/5 mL",
+        "dosageForm": "injectable",
+        "route": "intraveineuse",
+        "administrationType": "PUSH",
+        "billingClass": "THERAPEUTIC"
+      }
+    ],
+    "sourceNote": "ENTERPRISE_FORMULARY_MANIFEST"
+  },
+  {
+    "conceptKey": "fentanyl",
+    "genericName": "Fentanyl",
+    "domain": "FORMULATION_COMPLETION",
+    "displayNameEn": "Fentanyl",
+    "displayNameFr": "Fentanyl",
+    "therapeuticClass": "Formulation completion",
+    "aliases": [],
+    "brands": [
+      "fentanyl 100 mcg",
+      "fentanyl",
+      "injectable",
+      "intraveineuse",
+      "analgesique opioide",
+      "fentanyl drip",
+      "fentanyl infusion",
+      "fentanyl perfusion",
+      "perfusion fentanyl",
+      "perfusion opioide continue"
+    ],
+    "variants": [
+      {
+        "strength": "100 mcg/2 mL",
+        "dosageForm": "injectable",
+        "route": "intraveineuse",
+        "administrationType": "PUSH",
+        "billingClass": "THERAPEUTIC"
+      },
+      {
+        "strength": "250 mcg/5 mL",
+        "dosageForm": "injectable",
+        "route": "intraveineuse",
+        "administrationType": "INFUSION",
+        "billingClass": "THERAPEUTIC"
+      }
+    ],
+    "sourceNote": "ENTERPRISE_FORMULARY_MANIFEST"
+  },
+  {
+    "conceptKey": "morphine",
+    "genericName": "Morphine",
+    "domain": "FORMULATION_COMPLETION",
+    "displayNameEn": "Morphine",
+    "displayNameFr": "Morphine",
+    "therapeuticClass": "Formulation completion",
+    "aliases": [],
+    "brands": [
+      "morphine 4 mg/mL",
+      "morphine IV",
+      "morphine",
+      "injectable",
+      "intraveineuse",
+      "analgesique opioide",
+      "morphine 4 mg/ml",
+      "morphine iv"
+    ],
+    "variants": [
+      {
+        "strength": "4 mg/mL",
+        "dosageForm": "injectable",
+        "route": "intraveineuse",
+        "administrationType": "PUSH",
+        "billingClass": "THERAPEUTIC"
+      }
+    ],
+    "sourceNote": "ENTERPRISE_FORMULARY_MANIFEST"
+  },
+  {
+    "conceptKey": "hydromorphone",
+    "genericName": "Hydromorphone",
+    "domain": "FORMULATION_COMPLETION",
+    "displayNameEn": "Hydromorphone",
+    "displayNameFr": "Hydromorphone",
+    "therapeuticClass": "Formulation completion",
+    "aliases": [],
+    "brands": [
+      "Dilaudid 4",
+      "hydromorphone 4 mg/mL",
+      "hydromorphone",
+      "injectable",
+      "intraveineuse",
+      "analgesique opioide",
+      "dilaudid 4",
+      "hydromorphone 4 mg/ml"
+    ],
+    "variants": [
+      {
+        "strength": "4 mg/mL",
+        "dosageForm": "injectable",
+        "route": "intraveineuse",
+        "administrationType": "PUSH",
+        "billingClass": "THERAPEUTIC"
+      }
+    ],
+    "sourceNote": "ENTERPRISE_FORMULARY_MANIFEST"
+  },
+  {
+    "conceptKey": "ketorolac",
+    "genericName": "Ketorolac",
+    "domain": "FORMULATION_COMPLETION",
+    "displayNameEn": "Ketorolac",
+    "displayNameFr": "Ketorolac",
+    "therapeuticClass": "Formulation completion",
+    "aliases": [],
+    "brands": [
+      "Toradol 15",
+      "ketorolac IV",
+      "kétorolac IV",
+      "ketorolac",
+      "injectable",
+      "intraveineuse",
+      "ains iv",
+      "toradol 15",
+      "ketorolac iv"
+    ],
+    "variants": [
+      {
+        "strength": "15 mg/mL",
+        "dosageForm": "injectable",
+        "route": "intraveineuse",
+        "administrationType": "PUSH",
+        "billingClass": "THERAPEUTIC"
+      }
+    ],
+    "sourceNote": "ENTERPRISE_FORMULARY_MANIFEST"
+  },
+  {
+    "conceptKey": "nalbuphine",
+    "genericName": "Nalbuphine",
+    "domain": "FORMULATION_COMPLETION",
+    "displayNameEn": "Nalbuphine",
+    "displayNameFr": "Nalbuphine",
+    "therapeuticClass": "Formulation completion",
+    "aliases": [],
+    "brands": [
+      "Nubain",
+      "nalbuphine",
+      "injectable",
+      "intraveineuse",
+      "analgesique opioide",
+      "nubain"
+    ],
+    "variants": [
+      {
+        "strength": "10 mg/mL",
+        "dosageForm": "injectable",
+        "route": "intraveineuse",
+        "administrationType": "PUSH",
+        "billingClass": "THERAPEUTIC"
+      }
+    ],
+    "sourceNote": "ENTERPRISE_FORMULARY_MANIFEST"
+  },
+  {
+    "conceptKey": "lidocaine",
+    "genericName": "Lidocaine",
+    "domain": "FORMULATION_COMPLETION",
+    "displayNameEn": "Lidocaine",
+    "displayNameFr": "Lidocaine",
+    "therapeuticClass": "Formulation completion",
+    "aliases": [],
+    "brands": [
+      "Xylocaine 1%",
+      "lidocaine local",
+      "lidocaïne locale",
+      "lidocaine 1 injectable injectable",
+      "lidocaine",
+      "injectable",
+      "anesthesique local",
+      "xylocaine 1",
+      "lidocaine locale"
+    ],
+    "variants": [
+      {
+        "strength": "1%",
+        "dosageForm": "injectable",
+        "route": "injectable",
+        "administrationType": "PUSH",
+        "billingClass": "THERAPEUTIC"
+      }
+    ],
+    "sourceNote": "ENTERPRISE_FORMULARY_MANIFEST"
+  },
+  {
+    "conceptKey": "atropine",
+    "genericName": "Atropine",
+    "domain": "FORMULATION_COMPLETION",
+    "displayNameEn": "Atropine",
+    "displayNameFr": "Atropine",
+    "therapeuticClass": "Formulation completion",
+    "aliases": [],
+    "brands": [
+      "atropine 1 mg",
+      "atropine",
+      "injectable",
+      "intraveineuse",
+      "anticholinergique acls",
+      "atropine peds",
+      "atropine 0.05 mg/mL",
+      "atropine péd",
+      "bradyarrhythmie pediatrique",
+      "atropine 0.05 mg/ml",
+      "atropine ped"
+    ],
+    "variants": [
+      {
+        "strength": "1 mg/10 mL",
+        "dosageForm": "injectable",
+        "route": "intraveineuse",
+        "administrationType": "PUSH",
+        "billingClass": "THERAPEUTIC"
+      },
+      {
+        "strength": "0.05 mg/mL peds",
+        "dosageForm": "injectable",
+        "route": "intraveineuse",
+        "administrationType": "PUSH",
+        "billingClass": "THERAPEUTIC"
+      }
+    ],
+    "sourceNote": "ENTERPRISE_FORMULARY_MANIFEST"
+  },
+  {
+    "conceptKey": "sodium bicarbonate",
+    "genericName": "Sodium bicarbonate",
+    "domain": "FORMULATION_COMPLETION",
+    "displayNameEn": "Sodium bicarbonate",
+    "displayNameFr": "Sodium bicarbonate",
+    "therapeuticClass": "Formulation completion",
+    "aliases": [],
+    "brands": [
+      "bicarb 50 mEq",
+      "sodium bicarbonate amp",
+      "bicarbonate 50 mEq",
+      "bicarbonate ampoule",
+      "sodium bicarbonate",
+      "injectable",
+      "intraveineuse",
+      "alcalinisant acls",
+      "bicarb 50 meq",
+      "bicarbonate de sodium",
+      "bicarbonate 50 meq",
+      "bicarb 4.2% peds",
+      "sodium bicarbonate peds",
+      "bicarbonate 4.2% péd",
+      "bicarbonate de sodium péd",
+      "acidose metabolique pediatrique",
+      "bicarb 4.2 peds",
+      "bicarbonate 4.2 ped",
+      "bicarbonate de sodium ped"
+    ],
+    "variants": [
+      {
+        "strength": "50 mEq/50 mL",
+        "dosageForm": "injectable",
+        "route": "intraveineuse",
+        "administrationType": "PUSH",
+        "billingClass": "THERAPEUTIC"
+      },
+      {
+        "strength": "4.2% peds",
+        "dosageForm": "injectable",
+        "route": "intraveineuse",
+        "administrationType": "PUSH",
+        "billingClass": "THERAPEUTIC"
+      }
+    ],
+    "sourceNote": "ENTERPRISE_FORMULARY_MANIFEST"
+  },
+  {
+    "conceptKey": "nitroglycerin",
+    "genericName": "Nitroglycerin",
+    "domain": "FORMULATION_COMPLETION",
+    "displayNameEn": "Nitroglycerin",
+    "displayNameFr": "Nitroglycerin",
+    "therapeuticClass": "Formulation completion",
+    "aliases": [],
+    "brands": [
+      "Nitro IV",
+      "nitroglycerin IV",
+      "nitroglycérine IV",
+      "nitroglycerin",
+      "injectable",
+      "intraveineuse",
+      "vasodilatateur acls",
+      "nitro iv",
+      "nitroglycerin iv",
+      "nitroglycerine",
+      "nitroglycerine iv"
+    ],
+    "variants": [
+      {
+        "strength": "5 mg/mL",
+        "dosageForm": "injectable",
+        "route": "intraveineuse",
+        "administrationType": "INFUSION",
+        "billingClass": "THERAPEUTIC"
+      }
+    ],
+    "sourceNote": "ENTERPRISE_FORMULARY_MANIFEST"
+  },
+  {
+    "conceptKey": "piperacillin tazobactam",
+    "genericName": "Piperacillin tazobactam",
+    "domain": "FORMULATION_COMPLETION",
+    "displayNameEn": "Piperacillin tazobactam",
+    "displayNameFr": "Piperacillin tazobactam",
+    "therapeuticClass": "Formulation completion",
+    "aliases": [],
+    "brands": [
+      "Zosyn 2.25",
+      "pip-tazo 2.25",
+      "piperacillin tazobactam",
+      "poudre",
+      "intraveineuse",
+      "antibiotique iv",
+      "zosyn 2.25",
+      "piperacilline tazobactam"
+    ],
+    "variants": [
+      {
+        "strength": "2.25 g",
+        "dosageForm": "poudre",
+        "route": "intraveineuse",
+        "administrationType": "INFUSION",
+        "billingClass": "THERAPEUTIC"
+      }
+    ],
+    "sourceNote": "ENTERPRISE_FORMULARY_MANIFEST"
+  },
+  {
+    "conceptKey": "vancomycin",
+    "genericName": "Vancomycin",
+    "domain": "FORMULATION_COMPLETION",
+    "displayNameEn": "Vancomycin",
+    "displayNameFr": "Vancomycin",
+    "therapeuticClass": "Formulation completion",
+    "aliases": [],
+    "brands": [
+      "Vancocin 500",
+      "vancomycin 500 mg",
+      "vancomycine 500 mg",
+      "vancomycin",
+      "poudre",
+      "intraveineuse",
+      "antibiotique iv",
+      "vancocin 500",
+      "vancomycine",
+      "vancomycin 750",
+      "Vanc 750",
+      "vancomycine 750",
+      "vanc 750"
+    ],
+    "variants": [
+      {
+        "strength": "500 mg",
+        "dosageForm": "poudre",
+        "route": "intraveineuse",
+        "administrationType": "INFUSION",
+        "billingClass": "THERAPEUTIC"
+      },
+      {
+        "strength": "750 mg",
+        "dosageForm": "poudre",
+        "route": "intraveineuse",
+        "administrationType": "INFUSION",
+        "billingClass": "THERAPEUTIC"
+      }
+    ],
+    "sourceNote": "ENTERPRISE_FORMULARY_MANIFEST"
+  },
+  {
+    "conceptKey": "imipenem cilastatin",
+    "genericName": "Imipenem cilastatin",
+    "domain": "FORMULATION_COMPLETION",
+    "displayNameEn": "Imipenem cilastatin",
+    "displayNameFr": "Imipenem cilastatin",
+    "therapeuticClass": "Formulation completion",
+    "aliases": [],
+    "brands": [
+      "Primaxin 250",
+      "imipenem 250",
+      "imipénem 250",
+      "imipenem cilastatin",
+      "poudre",
+      "intraveineuse",
+      "antibiotique iv",
+      "primaxin 250",
+      "imipenem cilastatine"
+    ],
+    "variants": [
+      {
+        "strength": "250 mg",
+        "dosageForm": "poudre",
+        "route": "intraveineuse",
+        "administrationType": "INFUSION",
+        "billingClass": "THERAPEUTIC"
+      }
+    ],
+    "sourceNote": "ENTERPRISE_FORMULARY_MANIFEST"
+  },
+  {
+    "conceptKey": "nimodipine",
+    "genericName": "Nimodipine",
+    "domain": "FORMULATION_COMPLETION",
+    "displayNameEn": "Nimodipine",
+    "displayNameFr": "Nimodipine",
+    "therapeuticClass": "Formulation completion",
+    "aliases": [],
+    "brands": [
+      "Nimotop",
+      "nimodipine SAH",
+      "nimodipine HSA",
+      "nimodipine",
+      "gelule",
+      "orale",
+      "vasodilatateur cerebral",
+      "nimotop",
+      "nimodipine sah",
+      "nimodipine hsa"
+    ],
+    "variants": [
+      {
+        "strength": "60 mg",
+        "dosageForm": "gélule",
+        "route": "orale",
+        "administrationType": "ORAL",
+        "billingClass": "DRUG_SUPPLY"
+      }
+    ],
+    "sourceNote": "ENTERPRISE_FORMULARY_MANIFEST"
+  },
+  {
+    "conceptKey": "hypertonic saline",
+    "genericName": "Hypertonic saline",
+    "domain": "FORMULATION_COMPLETION",
+    "displayNameEn": "Hypertonic saline",
+    "displayNameFr": "Hypertonic saline",
+    "therapeuticClass": "Formulation completion",
+    "aliases": [],
+    "brands": [
+      "HTS 23.4%",
+      "hypertonic saline amp",
+      "saline hypertonique ampoule",
+      "hypertonic saline",
+      "injectable",
+      "intraveineuse",
+      "osmotherapie",
+      "hts 23.4",
+      "saline hypertonique"
+    ],
+    "variants": [
+      {
+        "strength": "23.4% 30 mL",
+        "dosageForm": "injectable",
+        "route": "intraveineuse",
+        "administrationType": "PUSH",
+        "billingClass": "THERAPEUTIC"
+      }
+    ],
+    "sourceNote": "ENTERPRISE_FORMULARY_MANIFEST"
+  },
+  {
+    "conceptKey": "labetalol",
+    "genericName": "Labetalol",
+    "domain": "FORMULATION_COMPLETION",
+    "displayNameEn": "Labetalol",
+    "displayNameFr": "Labetalol",
+    "therapeuticClass": "Formulation completion",
+    "aliases": [],
+    "brands": [
+      "labetalol 100 mg",
+      "labetalol IV",
+      "labétalol 100 mg",
+      "labétalol IV",
+      "labetalol",
+      "injectable",
+      "intraveineuse",
+      "antihypertenseur iv",
+      "labetalol iv"
+    ],
+    "variants": [
+      {
+        "strength": "100 mg/20 mL",
+        "dosageForm": "injectable",
+        "route": "intraveineuse",
+        "administrationType": "INFUSION",
+        "billingClass": "THERAPEUTIC"
+      }
+    ],
+    "sourceNote": "ENTERPRISE_FORMULARY_MANIFEST"
+  },
+  {
+    "conceptKey": "enoxaparin",
+    "genericName": "Enoxaparin",
+    "domain": "FORMULATION_COMPLETION",
+    "displayNameEn": "Enoxaparin",
+    "displayNameFr": "Enoxaparin",
+    "therapeuticClass": "Formulation completion",
+    "aliases": [],
+    "brands": [
+      "Lovenox 120",
+      "enoxaparin 120",
+      "énoxaparine 120",
+      "enoxaparin",
+      "injectable",
+      "sous-cutanee",
+      "anticoagulant traitement",
+      "lovenox 120",
+      "enoxaparine",
+      "enoxaparine 120"
+    ],
+    "variants": [
+      {
+        "strength": "120 mg/0.8 mL",
+        "dosageForm": "injectable",
+        "route": "sous-cutanée",
+        "administrationType": "SQ",
+        "billingClass": "THERAPEUTIC"
+      }
+    ],
+    "sourceNote": "ENTERPRISE_FORMULARY_MANIFEST"
+  },
+  {
+    "conceptKey": "nitroprusside",
+    "genericName": "Nitroprusside",
+    "domain": "FORMULATION_COMPLETION",
+    "displayNameEn": "Nitroprusside",
+    "displayNameFr": "Nitroprusside",
+    "therapeuticClass": "Formulation completion",
+    "aliases": [],
+    "brands": [
+      "Nipride",
+      "nitroprusside drip",
+      "nitroprussiate perfusion",
+      "nitroprusside",
+      "injectable",
+      "intraveineuse",
+      "antihypertenseur iv",
+      "nipride",
+      "nitroprussiate de sodium"
+    ],
+    "variants": [
+      {
+        "strength": "50 mg/2 mL",
+        "dosageForm": "injectable",
+        "route": "intraveineuse",
+        "administrationType": "INFUSION",
+        "billingClass": "THERAPEUTIC"
+      }
+    ],
+    "sourceNote": "ENTERPRISE_FORMULARY_MANIFEST"
+  },
+  {
+    "conceptKey": "albuterol",
+    "genericName": "Albuterol",
+    "domain": "FORMULATION_COMPLETION",
+    "displayNameEn": "Albuterol",
+    "displayNameFr": "Albuterol",
+    "therapeuticClass": "Formulation completion",
+    "aliases": [],
+    "brands": [
+      "albuterol 0.5% neb",
+      "Proventil 0.5%",
+      "salbutamol 0.5% néb",
+      "Ventolin 0.5%",
+      "albuterol",
+      "solution de nebulisation",
+      "inhalee",
+      "bronchodilatateur",
+      "albuterol 0.5 neb",
+      "proventil 0.5",
+      "salbutamol",
+      "salbutamol 0.5 neb",
+      "ventolin 0.5",
+      "albuterol 0.083% peds",
+      "Proventil peds neb",
+      "salbutamol 0.083% péd",
+      "Ventolin péd néb",
+      "bronchospasme pediatrique",
+      "albuterol 0.083 peds",
+      "proventil peds neb",
+      "salbutamol 0.083 ped",
+      "ventolin ped neb"
+    ],
+    "variants": [
+      {
+        "strength": "0.5%",
+        "dosageForm": "solution de nébulisation",
+        "route": "inhalée",
+        "administrationType": "INHALATION",
+        "billingClass": "DRUG_SUPPLY"
+      },
+      {
+        "strength": "0.083% peds neb",
+        "dosageForm": "solution de nébulisation",
+        "route": "inhalée",
+        "administrationType": "INHALATION",
+        "billingClass": "DRUG_SUPPLY"
+      }
+    ],
+    "sourceNote": "ENTERPRISE_FORMULARY_MANIFEST"
+  },
+  {
+    "conceptKey": "magnesium sulfate",
+    "genericName": "Magnesium sulfate",
+    "domain": "FORMULATION_COMPLETION",
+    "displayNameEn": "Magnesium sulfate",
+    "displayNameFr": "Magnesium sulfate",
+    "therapeuticClass": "Formulation completion",
+    "aliases": [],
+    "brands": [
+      "MgSO4 neb",
+      "magnesium nebulization",
+      "MgSO4 néb",
+      "magnésium nébulisation",
+      "magnesium sulfate",
+      "solution de nebulisation",
+      "inhalee",
+      "bronchodilatateur",
+      "mgso4 neb",
+      "sulfate de magnesium",
+      "magnesium nebulisation"
+    ],
+    "variants": [
+      {
+        "strength": "1 g/50 mL neb",
+        "dosageForm": "solution de nébulisation",
+        "route": "inhalée",
+        "administrationType": "INHALATION",
+        "billingClass": "DRUG_SUPPLY"
+      }
+    ],
+    "sourceNote": "ENTERPRISE_FORMULARY_MANIFEST"
+  },
+  {
+    "conceptKey": "aminophylline",
+    "genericName": "Aminophylline",
+    "domain": "FORMULATION_COMPLETION",
+    "displayNameEn": "Aminophylline",
+    "displayNameFr": "Aminophylline",
+    "therapeuticClass": "Formulation completion",
+    "aliases": [],
+    "brands": [
+      "aminophylline IV",
+      "theophylline IV",
+      "théophylline IV",
+      "aminophylline",
+      "injectable",
+      "intraveineuse",
+      "bronchodilatateur",
+      "aminophylline iv",
+      "theophylline iv"
+    ],
+    "variants": [
+      {
+        "strength": "250 mg/10 mL",
+        "dosageForm": "injectable",
+        "route": "intraveineuse",
+        "administrationType": "INFUSION",
+        "billingClass": "THERAPEUTIC"
+      }
+    ],
+    "sourceNote": "ENTERPRISE_FORMULARY_MANIFEST"
+  },
+  {
+    "conceptKey": "terbutaline",
+    "genericName": "Terbutaline",
+    "domain": "FORMULATION_COMPLETION",
+    "displayNameEn": "Terbutaline",
+    "displayNameFr": "Terbutaline",
+    "therapeuticClass": "Formulation completion",
+    "aliases": [],
+    "brands": [
+      "terbutaline neb",
+      "Brethine neb",
+      "terbutaline néb",
+      "Brethine néb",
+      "terbutaline",
+      "solution de nebulisation",
+      "inhalee",
+      "bronchodilatateur",
+      "brethine neb",
+      "Brethine OB",
+      "terbutaline tocolysis",
+      "terbutaline tocolyse",
+      "injectable",
+      "sous-cutanee",
+      "tocolytique",
+      "brethine ob"
+    ],
+    "variants": [
+      {
+        "strength": "0.25 mg/mL",
+        "dosageForm": "solution de nébulisation",
+        "route": "inhalée",
+        "administrationType": "INHALATION",
+        "billingClass": "DRUG_SUPPLY"
+      },
+      {
+        "strength": "0.25 mg SC OB",
+        "dosageForm": "injectable",
+        "route": "sous-cutanée",
+        "administrationType": "SQ",
+        "billingClass": "THERAPEUTIC"
+      }
+    ],
+    "sourceNote": "ENTERPRISE_FORMULARY_MANIFEST"
+  },
+  {
+    "conceptKey": "epinephrine",
+    "genericName": "Epinephrine",
+    "domain": "FORMULATION_COMPLETION",
+    "displayNameEn": "Epinephrine",
+    "displayNameFr": "Epinephrine",
+    "therapeuticClass": "Formulation completion",
+    "aliases": [],
+    "brands": [
+      "epi IM asthma",
+      "epinephrine IM",
+      "épi IM asthme",
+      "épinéphrine IM",
+      "epinephrine",
+      "injectable",
+      "intramusculaire",
+      "bronchospasme severe",
+      "epi im asthma",
+      "epinephrine im",
+      "epi im asthme",
+      "EpiPen Jr",
+      "epinephrine auto-injector peds",
+      "épinéphrine auto-injecteur péd",
+      "anaphylaxie pediatrique",
+      "epipen jr",
+      "epinephrine auto-injecteur ped",
+      "EpiPen",
+      "epinephrine auto-injector",
+      "épinéphrine auto-injecteur",
+      "anaphylaxie",
+      "epipen",
+      "epinephrine auto-injecteur"
+    ],
+    "variants": [
+      {
+        "strength": "1 mg/1 mL IM",
+        "dosageForm": "injectable",
+        "route": "intramusculaire",
+        "administrationType": "IM",
+        "billingClass": "THERAPEUTIC"
+      },
+      {
+        "strength": "0.15 mg/0.15 mL",
+        "dosageForm": "injectable",
+        "route": "intramusculaire",
+        "administrationType": "IM",
+        "billingClass": "THERAPEUTIC"
+      },
+      {
+        "strength": "0.3 mg/0.3 mL",
+        "dosageForm": "injectable",
+        "route": "intramusculaire",
+        "administrationType": "IM",
+        "billingClass": "THERAPEUTIC"
+      }
+    ],
+    "sourceNote": "ENTERPRISE_FORMULARY_MANIFEST"
+  },
+  {
+    "conceptKey": "naloxone",
+    "genericName": "Naloxone",
+    "domain": "FORMULATION_COMPLETION",
+    "displayNameEn": "Naloxone",
+    "displayNameFr": "Naloxone",
+    "therapeuticClass": "Formulation completion",
+    "aliases": [],
+    "brands": [
+      "Narcan nasal",
+      "naloxone nasal",
+      "naloxone",
+      "injectable",
+      "intranasale",
+      "antidote opioide",
+      "narcan nasal"
+    ],
+    "variants": [
+      {
+        "strength": "4 mg/0.4 mL",
+        "dosageForm": "injectable",
+        "route": "intranasale",
+        "administrationType": "INHALATION",
+        "billingClass": "THERAPEUTIC"
+      }
+    ],
+    "sourceNote": "ENTERPRISE_FORMULARY_MANIFEST"
+  },
+  {
+    "conceptKey": "acetylcysteine",
+    "genericName": "Acetylcysteine",
+    "domain": "FORMULATION_COMPLETION",
+    "displayNameEn": "Acetylcysteine",
+    "displayNameFr": "Acetylcysteine",
+    "therapeuticClass": "Formulation completion",
+    "aliases": [],
+    "brands": [
+      "Acetadote",
+      "NAC IV 20%",
+      "acetylcysteine",
+      "injectable",
+      "intraveineuse",
+      "antidote paracetamol",
+      "acetadote",
+      "nac iv 20",
+      "NAC loading 6.25%",
+      "Acetadote loading",
+      "NAC charge 6.25%",
+      "Acetadote charge",
+      "nac loading 6.25",
+      "acetadote loading",
+      "nac charge 6.25",
+      "acetadote charge"
+    ],
+    "variants": [
+      {
+        "strength": "20% IV",
+        "dosageForm": "injectable",
+        "route": "intraveineuse",
+        "administrationType": "INFUSION",
+        "billingClass": "THERAPEUTIC"
+      },
+      {
+        "strength": "6.25% IV",
+        "dosageForm": "injectable",
+        "route": "intraveineuse",
+        "administrationType": "INFUSION",
+        "billingClass": "THERAPEUTIC"
+      }
+    ],
+    "sourceNote": "ENTERPRISE_FORMULARY_MANIFEST"
+  },
+  {
+    "conceptKey": "fomepizole",
+    "genericName": "Fomepizole",
+    "domain": "FORMULATION_COMPLETION",
+    "displayNameEn": "Fomepizole",
+    "displayNameFr": "Fomepizole",
+    "therapeuticClass": "Formulation completion",
+    "aliases": [],
+    "brands": [
+      "Antizol",
+      "fomepizole",
+      "fomépizole",
+      "injectable",
+      "intraveineuse",
+      "antidote alcool",
+      "antizol"
+    ],
+    "variants": [
+      {
+        "strength": "15 mg/mL",
+        "dosageForm": "injectable",
+        "route": "intraveineuse",
+        "administrationType": "INFUSION",
+        "billingClass": "THERAPEUTIC"
+      }
+    ],
+    "sourceNote": "ENTERPRISE_FORMULARY_MANIFEST"
+  },
+  {
+    "conceptKey": "sodium thiosulfate",
+    "genericName": "Sodium thiosulfate",
+    "domain": "FORMULATION_COMPLETION",
+    "displayNameEn": "Sodium thiosulfate",
+    "displayNameFr": "Sodium thiosulfate",
+    "therapeuticClass": "Formulation completion",
+    "aliases": [],
+    "brands": [
+      "sodium thiosulfate",
+      "cyanide antidote adjunct",
+      "thiosulfate de sodium",
+      "antidote cyanure adjuvant",
+      "injectable",
+      "intraveineuse",
+      "antidote cyanure"
+    ],
+    "variants": [
+      {
+        "strength": "12.5 g",
+        "dosageForm": "injectable",
+        "route": "intraveineuse",
+        "administrationType": "INFUSION",
+        "billingClass": "THERAPEUTIC"
+      }
+    ],
+    "sourceNote": "ENTERPRISE_FORMULARY_MANIFEST"
+  },
+  {
+    "conceptKey": "dextrose",
+    "genericName": "Dextrose",
+    "domain": "FORMULATION_COMPLETION",
+    "displayNameEn": "Dextrose",
+    "displayNameFr": "Dextrose",
+    "therapeuticClass": "Formulation completion",
+    "aliases": [],
+    "brands": [
+      "D50",
+      "dextrose 50%",
+      "dextrose",
+      "injectable",
+      "intraveineuse",
+      "reanimation metabolique",
+      "d50",
+      "dextrose 50",
+      "D25 neonatal",
+      "dextrose 25% neonate",
+      "D25 néonatal",
+      "dextrose 25% nouveau-né",
+      "hypoglycemie neonatale",
+      "d25 neonatal",
+      "dextrose 25 neonate",
+      "dextrose 25 nouveau-ne"
+    ],
+    "variants": [
+      {
+        "strength": "50% 50 mL",
+        "dosageForm": "injectable",
+        "route": "intraveineuse",
+        "administrationType": "PUSH",
+        "billingClass": "THERAPEUTIC"
+      },
+      {
+        "strength": "25% 25 mL neonatal",
+        "dosageForm": "injectable",
+        "route": "intraveineuse",
+        "administrationType": "PUSH",
+        "billingClass": "THERAPEUTIC"
+      }
+    ],
+    "sourceNote": "ENTERPRISE_FORMULARY_MANIFEST"
+  },
+  {
+    "conceptKey": "misoprostol",
+    "genericName": "Misoprostol",
+    "domain": "FORMULATION_COMPLETION",
+    "displayNameEn": "Misoprostol",
+    "displayNameFr": "Misoprostol",
+    "therapeuticClass": "Formulation completion",
+    "aliases": [],
+    "brands": [
+      "Cytotec 25",
+      "misoprostol buccal",
+      "misoprostol",
+      "comprime",
+      "orale",
+      "uterotonique",
+      "cytotec 25"
+    ],
+    "variants": [
+      {
+        "strength": "25 mcg",
+        "dosageForm": "comprimé",
+        "route": "orale",
+        "administrationType": "ORAL",
+        "billingClass": "DRUG_SUPPLY"
+      }
+    ],
+    "sourceNote": "ENTERPRISE_FORMULARY_MANIFEST"
+  },
+  {
+    "conceptKey": "betamethasone",
+    "genericName": "Betamethasone",
+    "domain": "FORMULATION_COMPLETION",
+    "displayNameEn": "Betamethasone",
+    "displayNameFr": "Betamethasone",
+    "therapeuticClass": "Formulation completion",
+    "aliases": [],
+    "brands": [
+      "Celestone",
+      "betamethasone fetal lung",
+      "bétaméthasone maturation",
+      "betamethasone",
+      "injectable",
+      "intramusculaire",
+      "maturation pulmonaire",
+      "celestone",
+      "betamethasone maturation"
+    ],
+    "variants": [
+      {
+        "strength": "12 mg",
+        "dosageForm": "injectable",
+        "route": "intramusculaire",
+        "administrationType": "IM",
+        "billingClass": "THERAPEUTIC"
+      }
+    ],
+    "sourceNote": "ENTERPRISE_FORMULARY_MANIFEST"
+  },
+  {
+    "conceptKey": "ceftriaxone",
+    "genericName": "Ceftriaxone",
+    "domain": "FORMULATION_COMPLETION",
+    "displayNameEn": "Ceftriaxone",
+    "displayNameFr": "Ceftriaxone",
+    "therapeuticClass": "Formulation completion",
+    "aliases": [],
+    "brands": [
+      "Rocephin peds",
+      "ceftriaxone peds",
+      "Rocephin péd",
+      "ceftriaxone péd",
+      "ceftriaxone",
+      "poudre",
+      "intraveineuse",
+      "antibiotique pediatrique",
+      "rocephin peds",
+      "rocephin ped",
+      "ceftriaxone ped"
+    ],
+    "variants": [
+      {
+        "strength": "100 mg/mL peds",
+        "dosageForm": "poudre",
+        "route": "intraveineuse",
+        "administrationType": "INFUSION",
+        "billingClass": "THERAPEUTIC"
+      }
+    ],
+    "sourceNote": "ENTERPRISE_FORMULARY_MANIFEST"
+  },
+  {
+    "conceptKey": "midazolam",
+    "genericName": "Midazolam",
+    "domain": "FORMULATION_COMPLETION",
+    "displayNameEn": "Midazolam",
+    "displayNameFr": "Midazolam",
+    "therapeuticClass": "Formulation completion",
+    "aliases": [],
+    "brands": [
+      "Versed nasal",
+      "midazolam intranasal",
+      "midazolam",
+      "solution nasale",
+      "nasale",
+      "statut epileptique pediatrique",
+      "versed nasal"
+    ],
+    "variants": [
+      {
+        "strength": "5 mg/0.5 mL nasal",
+        "dosageForm": "solution nasale",
+        "route": "nasale",
+        "administrationType": "INHALATION",
+        "billingClass": "DRUG_SUPPLY"
+      }
+    ],
+    "sourceNote": "ENTERPRISE_FORMULARY_MANIFEST"
+  },
+  {
+    "conceptKey": "ketamine",
+    "genericName": "Ketamine",
+    "domain": "FORMULATION_COMPLETION",
+    "displayNameEn": "Ketamine",
+    "displayNameFr": "Ketamine",
+    "therapeuticClass": "Formulation completion",
+    "aliases": [],
+    "brands": [
+      "Ketalar peds",
+      "ketamine peds procedural",
+      "Ketalar péd",
+      "kétamine sédation péd",
+      "ketamine",
+      "injectable",
+      "intraveineuse",
+      "sedation pediatrique",
+      "ketalar peds",
+      "ketalar ped",
+      "ketamine sedation ped"
+    ],
+    "variants": [
+      {
+        "strength": "100 mg/mL peds",
+        "dosageForm": "injectable",
+        "route": "intraveineuse",
+        "administrationType": "PUSH",
+        "billingClass": "THERAPEUTIC"
+      }
+    ],
+    "sourceNote": "ENTERPRISE_FORMULARY_MANIFEST"
+  },
+  {
+    "conceptKey": "calcium gluconate",
+    "genericName": "Calcium gluconate",
+    "domain": "FORMULATION_COMPLETION",
+    "displayNameEn": "Calcium gluconate",
+    "displayNameFr": "Calcium gluconate",
+    "therapeuticClass": "Formulation completion",
+    "aliases": [],
+    "brands": [
+      "calcium gluconate peds",
+      "Ca gluconate peds",
+      "gluconate de calcium péd",
+      "Ca gluconate péd",
+      "calcium gluconate",
+      "injectable",
+      "intraveineuse",
+      "hypocalcemie pediatrique",
+      "ca gluconate peds",
+      "gluconate de calcium",
+      "gluconate de calcium ped",
+      "ca gluconate ped"
+    ],
+    "variants": [
+      {
+        "strength": "100 mg/mL peds",
+        "dosageForm": "injectable",
+        "route": "intraveineuse",
+        "administrationType": "PUSH",
+        "billingClass": "THERAPEUTIC"
+      }
+    ],
+    "sourceNote": "ENTERPRISE_FORMULARY_MANIFEST"
+  },
+  {
+    "conceptKey": "racemic epinephrine",
+    "genericName": "Racemic epinephrine",
+    "domain": "FORMULATION_COMPLETION",
+    "displayNameEn": "Racemic epinephrine",
+    "displayNameFr": "Racemic epinephrine",
+    "therapeuticClass": "Formulation completion",
+    "aliases": [],
+    "brands": [
+      "racemic epi peds croup",
+      "Asthmanefrin peds",
+      "épinéphrine racémique péd croup",
+      "Asthmanefrin péd",
+      "racemic epinephrine",
+      "solution de nebulisation",
+      "inhalee",
+      "croup severe pediatrique",
+      "asthmanefrin peds",
+      "epinephrine racemique",
+      "epinephrine racemique ped croup",
+      "asthmanefrin ped"
+    ],
+    "variants": [
+      {
+        "strength": "0.25 mL peds neb",
+        "dosageForm": "solution de nébulisation",
+        "route": "inhalée",
+        "administrationType": "INHALATION",
+        "billingClass": "DRUG_SUPPLY"
+      }
+    ],
+    "sourceNote": "ENTERPRISE_FORMULARY_MANIFEST"
+  },
+  {
+    "conceptKey": "ondansetron",
+    "genericName": "Ondansetron",
+    "domain": "FORMULATION_COMPLETION",
+    "displayNameEn": "Ondansetron",
+    "displayNameFr": "Ondansetron",
+    "therapeuticClass": "Formulation completion",
+    "aliases": [],
+    "brands": [
+      "Zofran ODT",
+      "ondansetron ODT pediatric",
+      "ondansetron ODT pediatrique",
+      "ondansetron",
+      "comprime orodispersible",
+      "orale",
+      "antiemetique pediatrique",
+      "zofran odt",
+      "ondansetron odt pediatric",
+      "ondansetron odt pediatrique",
+      "Zofran oral",
+      "ondansetron pediatric oral",
+      "Zofran solution buvable",
+      "ondansetron sirop pediatrique",
+      "solution buvable",
+      "zofran oral",
+      "zofran solution buvable"
+    ],
+    "variants": [
+      {
+        "strength": "4 mg ODT",
+        "dosageForm": "comprimé orodispersible",
+        "route": "orale",
+        "administrationType": "ORAL",
+        "billingClass": "DRUG_SUPPLY"
+      },
+      {
+        "strength": "4 mg/5 mL",
+        "dosageForm": "solution buvable",
+        "route": "orale",
+        "administrationType": "ORAL",
+        "billingClass": "DRUG_SUPPLY"
+      }
+    ],
+    "sourceNote": "ENTERPRISE_FORMULARY_MANIFEST"
+  },
+  {
+    "conceptKey": "acetaminophen",
+    "genericName": "Acetaminophen",
+    "domain": "FORMULATION_COMPLETION",
+    "displayNameEn": "Acetaminophen",
+    "displayNameFr": "Acetaminophen",
+    "therapeuticClass": "Formulation completion",
+    "aliases": [],
+    "brands": [
+      "Tylenol pediatric",
+      "acetaminophen oral liquid",
+      "Doliprane sirop",
+      "paracetamol sirop pediatrique",
+      "acetaminophen",
+      "sirop",
+      "orale",
+      "antalgique pediatrique",
+      "tylenol pediatric",
+      "paracetamol",
+      "doliprane sirop",
+      "Tylenol rectal",
+      "acetaminophen pediatric rectal",
+      "Doliprane suppositoire",
+      "paracetamol suppositoire pediatrique",
+      "suppositoire",
+      "rectale",
+      "tylenol rectal",
+      "doliprane suppositoire"
+    ],
+    "variants": [
+      {
+        "strength": "120 mg/5 mL",
+        "dosageForm": "sirop",
+        "route": "orale",
+        "administrationType": "ORAL",
+        "billingClass": "DRUG_SUPPLY"
+      },
+      {
+        "strength": "250 mg",
+        "dosageForm": "suppositoire",
+        "route": "rectale",
+        "administrationType": "ORAL",
+        "billingClass": "DRUG_SUPPLY"
+      }
+    ],
+    "sourceNote": "ENTERPRISE_FORMULARY_MANIFEST"
+  }
+]
