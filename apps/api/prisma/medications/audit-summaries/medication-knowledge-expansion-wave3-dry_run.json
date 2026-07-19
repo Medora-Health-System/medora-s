@@ -1,48 +1,48 @@
 {
   "mode": "DRY_RUN",
-  "jobId": "W3_DRY_RUN_1784410069846",
+  "jobId": "W3_DRY_RUN_1784470759373",
   "importerVersion": "wave3-import-1.0.0",
   "sourceKey": "MEDORA_CURATED",
   "sourceChecksumSha256": "8736ac9c69056d0eaeb0a93ce00ec3285e27a82c1c207aee618700e674b535eb",
   "sourceFileName": "medora-curated-wave3-candidates.json",
   "dryRun": true,
   "baselineBefore": {
-    "generatedAt": "2026-07-18T21:27:49.910Z",
-    "catalogTotal": 2875,
-    "catalogActive": 2802,
-    "distinctNormalizedGenerics": 958,
-    "aliases": 6931,
-    "concepts": 2376,
-    "products": 3262,
-    "packages": 3261,
-    "productsWithLegacyLink": 2069,
-    "rxNormMappedConcepts": 1,
-    "rxNormStagingConcepts": 33,
-    "ordersUsingCatalogMed": 3942,
-    "dispenses": 8,
-    "administrations": 956,
-    "recommendationDefinitions": 8
+    "generatedAt": "2026-07-19T14:19:20.662Z",
+    "catalogTotal": 732,
+    "catalogActive": 553,
+    "distinctNormalizedGenerics": 395,
+    "aliases": 2347,
+    "concepts": 588,
+    "products": 740,
+    "packages": 740,
+    "productsWithLegacyLink": 638,
+    "rxNormMappedConcepts": 0,
+    "rxNormStagingConcepts": 0,
+    "ordersUsingCatalogMed": 175,
+    "dispenses": 15,
+    "administrations": 194,
+    "recommendationDefinitions": 0
   },
   "baselineAfter": null,
   "rowsReceived": 1102,
   "rowsValid": 1102,
   "rowsInvalid": 0,
   "stagedRows": 1102,
-  "newCanonicalConcepts": 1048,
-  "existingMatches": 3,
+  "newCanonicalConcepts": 1050,
+  "existingMatches": 2,
   "existingNewProducts": 50,
-  "duplicateRejected": 1,
+  "duplicateRejected": 0,
   "sourceInsufficient": 0,
   "conflictReview": 0,
-  "catalogRowsCreated": 1884,
-  "aliasesCreated": 834,
-  "conceptsCreated": 1097,
-  "productsCreated": 1884,
-  "packagesCreated": 1884,
+  "catalogRowsCreated": 1887,
+  "aliasesCreated": 839,
+  "conceptsCreated": 1086,
+  "productsCreated": 1887,
+  "packagesCreated": 1887,
   "byDomain": {
     "CARDIOLOGY": {
       "candidates": 174,
-      "netNewConcepts": 171,
+      "netNewConcepts": 169,
       "variantsCreated": 325
     },
     "CRITICAL_CARE": {
@@ -87,18 +87,18 @@
     },
     "NEPHROLOGY": {
       "candidates": 10,
-      "netNewConcepts": 6,
+      "netNewConcepts": 7,
       "variantsCreated": 15
     },
     "NEUROLOGY": {
       "candidates": 46,
-      "netNewConcepts": 44,
-      "variantsCreated": 80
+      "netNewConcepts": 45,
+      "variantsCreated": 81
     },
     "OBSTETRICS": {
       "candidates": 12,
-      "netNewConcepts": 7,
-      "variantsCreated": 11
+      "netNewConcepts": 8,
+      "variantsCreated": 13
     },
     "ONCOLOGY_SUPPORTIVE": {
       "candidates": 4,
@@ -122,7 +122,7 @@
     },
     "PSYCHIATRY": {
       "candidates": 83,
-      "netNewConcepts": 82,
+      "netNewConcepts": 83,
       "variantsCreated": 157
     },
     "PULMONOLOGY": {
@@ -154,7 +154,7 @@
   "productionCdsActivations": 0,
   "enterpriseActivations": 0,
   "rxNormAdapter": {
-    "stagingConceptsAvailable": 33,
+    "stagingConceptsAvailable": 0,
     "fabricatedRxCui": 0
   },
   "dailyMedAdapter": {

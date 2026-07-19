@@ -6,42 +6,65 @@
   "sourceChecksumSha256": "3ae70ce8d75ef31688e05e8c8169a7da14bcb51ef78d7ddfdcaba27a51263a67",
   "sourceFileName": "medora-formulation-completion-candidates.json",
   "baselineBefore": {
-    "generatedAt": "2026-07-18T23:46:42.779Z",
-    "catalogActive": 10657,
-    "distinctGenerics": 5206,
-    "distinctStrengths": 722,
-    "distinctDosageForms": 94,
-    "distinctRoutes": 32,
-    "distinctFormulations": 9970,
-    "genericsSingleStrength": 1086,
-    "genericsMultiStrength": 4120,
-    "aliases": 21602,
-    "productsActive": 0,
-    "ordersUsingCatalogMed": 3942,
-    "administrations": 956
+    "generatedAt": "2026-07-19T15:27:54.041Z",
+    "catalogActive": 4270,
+    "distinctGenerics": 2015,
+    "distinctStrengths": 768,
+    "distinctDosageForms": 103,
+    "distinctRoutes": 27,
+    "distinctFormulations": 4119,
+    "genericsSingleStrength": 663,
+    "genericsMultiStrength": 1352,
+    "aliases": 7021,
+    "productsActive": 39,
+    "ordersUsingCatalogMed": 175,
+    "administrations": 194
   },
   "baselineAfter": {
-    "generatedAt": "2026-07-18T23:47:05.592Z",
-    "catalogActive": 10739,
-    "distinctGenerics": 5206,
-    "distinctStrengths": 762,
-    "distinctDosageForms": 96,
-    "distinctRoutes": 33,
-    "distinctFormulations": 10052,
-    "genericsSingleStrength": 1077,
-    "genericsMultiStrength": 4129,
-    "aliases": 22477,
-    "productsActive": 0,
-    "ordersUsingCatalogMed": 3942,
-    "administrations": 956
+    "generatedAt": "2026-07-19T15:28:31.403Z",
+    "catalogActive": 4316,
+    "distinctGenerics": 2015,
+    "distinctStrengths": 791,
+    "distinctDosageForms": 105,
+    "distinctRoutes": 28,
+    "distinctFormulations": 4165,
+    "genericsSingleStrength": 658,
+    "genericsMultiStrength": 1357,
+    "aliases": 7548,
+    "productsActive": 39,
+    "ordersUsingCatalogMed": 175,
+    "administrations": 194
   },
   "candidatesConcepts": 61,
   "candidatesVariants": 82,
-  "variantsCreated": 82,
-  "variantsSkippedExisting": 0,
-  "aliasesCreated": 875,
-  "rejectedNewGeneric": 0,
-  "manualReview": [],
+  "variantsCreated": 46,
+  "variantsSkippedExisting": 31,
+  "aliasesCreated": 527,
+  "availabilityAliasesCreated": 14,
+  "searchTextUpdated": 0,
+  "rejectedNewGeneric": 5,
+  "manualReview": [
+    {
+      "conceptKey": "sevelamer carbonate",
+      "reason": "GENERIC_NOT_IN_CATALOG"
+    },
+    {
+      "conceptKey": "clobetasol propionate",
+      "reason": "GENERIC_NOT_IN_CATALOG"
+    },
+    {
+      "conceptKey": "betamethasone valerate",
+      "reason": "GENERIC_NOT_IN_CATALOG"
+    },
+    {
+      "conceptKey": "triamcinolone acetonide",
+      "reason": "GENERIC_NOT_IN_CATALOG"
+    },
+    {
+      "conceptKey": "cromolyn sodium",
+      "reason": "GENERIC_NOT_IN_CATALOG"
+    }
+  ],
   "familySearch": {
     "checks": 20,
     "passed": 20,
@@ -53,7 +76,5 @@
   "orderMutations": 0,
   "marMutations": 0,
   "chartMutations": 0,
-  "productsActivated": 0,
-  "availabilityAliasesCreated": 12,
-  "searchTextUpdated": 0
+  "productsActivated": 0
 }

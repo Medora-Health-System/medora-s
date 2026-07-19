@@ -1,0 +1,64 @@
+{
+  "title": "Medication Runtime Provider Availability Completion",
+  "certificationId": "MEDUI.MEDICATION_RUNTIME_PROVIDER_AVAILABILITY_COMPLETION",
+  "programKey": "MEDICATION_RUNTIME_PROVIDER_AVAILABILITY_COMPLETION_V1",
+  "version": "medication-runtime-provider-availability-1.0.0",
+  "FinalDecision": "MEDICATION_RUNTIME_PROVIDER_AVAILABILITY_CERTIFIED_WITH_REVIEW_ITEMS",
+  "PriorCertificationInvalidatedForProduction": "MEDUI.MEDICATION_FORMULATION_STRENGTH_COMPLETION local-DB CERTIFIED is not production evidence",
+  "RootCause": "Completion APPLY/measurement used localhost Postgres; provider UI uses Railway production Postgres",
+  "RuntimeEvidence": {
+    "host": "switchyard.proxy.rlwy.net",
+    "database": "railway",
+    "isLocalhost": false,
+    "facilityName": "Wayne Urgent Care Emergency Room",
+    "catalogActive": 4316,
+    "aliasCount": 26070,
+    "inventoryFamilyCount": 40,
+    "searchPassRate": 1,
+    "orderabilityPassRate": 1,
+    "classificationCounts": {
+      "AVAILABLE_COMPLETE": 40,
+      "AVAILABLE_PARTIAL": 0,
+      "EXISTS_BUT_HIDDEN": 0,
+      "EXISTS_BUT_INACTIVE": 0,
+      "EXISTS_BUT_NOT_ORDERABLE": 0,
+      "ALIAS_MISSING": 0,
+      "STRENGTH_MISSING": 0,
+      "FORM_MISSING": 0,
+      "ROUTE_MISSING": 0,
+      "FACILITY_FILTERED": 0,
+      "COMPLETELY_ABSENT": 0,
+      "AMBIGUOUS": 0,
+      "SOURCE_REQUIRED": 0
+    },
+    "hardAcceptancePass": true,
+    "usedRealMedicationCatalogService": true,
+    "usedSnapshotBypassValidator": false
+  },
+  "HardAcceptanceProbes": {
+    "jard": "10 mg + 25 mg required",
+    "Biktarvy": "supported tablet formulation required",
+    "path": "MedicationCatalogService.search purpose=order limit=40"
+  },
+  "DatabaseApply": {
+    "wave2CatalogApply": "COMPLETED_ON_PRODUCTION",
+    "wave3Apply": "COMPLETED_ON_PRODUCTION",
+    "formulationApply": "COMPLETED_ON_PRODUCTION",
+    "universalApply": "PARTIAL_OR_RETRY_REQUIRED"
+  },
+  "Safety": {
+    "orderMutations": 0,
+    "marMutations": 0,
+    "chartMutations": 0,
+    "productsActivated": 0,
+    "productionCds": 0
+  },
+  "MigrationRequired": "NO",
+  "ProductionDeployStatus": "API_ONLINE_DATA_APPLY_PERFORMED",
+  "RemainingGaps": [
+    "Universal alias enrichment APPLY may need retry after connection drops",
+    "Inventory is a representative clinical sample (not exhaustive US corpus)",
+    "Wave 4 APPLY not yet executed on production in this remediation",
+    "Secondary ranking noise (e.g. Estriol on short query jard) remains a polish item"
+  ]
+}

@@ -1,55 +1,197 @@
 {
+  "mode": "DRY_RUN",
   "programKey": "MEDICATION_FORMULATION_STRENGTH_COMPLETION_V1",
-  "importerVersion": "formulation-strength-completion-1.0.0",
+  "importerVersion": "formulation-strength-completion-1.1.0-provider-facing",
+  "dryRun": true,
   "sourceChecksumSha256": "3ae70ce8d75ef31688e05e8c8169a7da14bcb51ef78d7ddfdcaba27a51263a67",
   "sourceFileName": "medora-formulation-completion-candidates.json",
+  "baselineBefore": {
+    "generatedAt": "2026-07-19T14:22:07.093Z",
+    "catalogActive": 553,
+    "distinctGenerics": 302,
+    "distinctStrengths": 263,
+    "distinctDosageForms": 40,
+    "distinctRoutes": 16,
+    "distinctFormulations": 544,
+    "genericsSingleStrength": 171,
+    "genericsMultiStrength": 131,
+    "aliases": 2347,
+    "productsActive": 39,
+    "ordersUsingCatalogMed": 175,
+    "administrations": 194
+  },
+  "baselineAfter": {
+    "generatedAt": "2026-07-19T14:22:11.012Z",
+    "catalogActive": 553,
+    "distinctGenerics": 302,
+    "distinctStrengths": 263,
+    "distinctDosageForms": 40,
+    "distinctRoutes": 16,
+    "distinctFormulations": 544,
+    "genericsSingleStrength": 171,
+    "genericsMultiStrength": 131,
+    "aliases": 2347,
+    "productsActive": 39,
+    "ordersUsingCatalogMed": 175,
+    "administrations": 194
+  },
   "candidatesConcepts": 61,
   "candidatesVariants": 82,
-  "rejectedNewGeneric": 0,
-  "manualReview": [],
+  "variantsCreated": 29,
+  "variantsSkippedExisting": 31,
+  "aliasesCreated": 435,
+  "availabilityAliasesCreated": 2,
+  "searchTextUpdated": 0,
+  "rejectedNewGeneric": 21,
+  "manualReview": [
+    {
+      "conceptKey": "sevelamer carbonate",
+      "reason": "GENERIC_NOT_IN_CATALOG"
+    },
+    {
+      "conceptKey": "epoetin alfa",
+      "reason": "GENERIC_NOT_IN_CATALOG"
+    },
+    {
+      "conceptKey": "ferric carboxymaltose",
+      "reason": "GENERIC_NOT_IN_CATALOG"
+    },
+    {
+      "conceptKey": "sodium polystyrene sulfonate",
+      "reason": "GENERIC_NOT_IN_CATALOG"
+    },
+    {
+      "conceptKey": "clobetasol propionate",
+      "reason": "GENERIC_NOT_IN_CATALOG"
+    },
+    {
+      "conceptKey": "betamethasone valerate",
+      "reason": "GENERIC_NOT_IN_CATALOG"
+    },
+    {
+      "conceptKey": "triamcinolone acetonide",
+      "reason": "GENERIC_NOT_IN_CATALOG"
+    },
+    {
+      "conceptKey": "budesonide formoterol",
+      "reason": "GENERIC_NOT_IN_CATALOG"
+    },
+    {
+      "conceptKey": "fluticasone umeclidinium vilanterol",
+      "reason": "GENERIC_NOT_IN_CATALOG"
+    },
+    {
+      "conceptKey": "theophylline",
+      "reason": "GENERIC_NOT_IN_CATALOG"
+    },
+    {
+      "conceptKey": "cromolyn sodium",
+      "reason": "GENERIC_NOT_IN_CATALOG"
+    },
+    {
+      "conceptKey": "glycopyrrolate",
+      "reason": "GENERIC_NOT_IN_CATALOG"
+    },
+    {
+      "conceptKey": "nalbuphine",
+      "reason": "GENERIC_NOT_IN_CATALOG"
+    },
+    {
+      "conceptKey": "imipenem cilastatin",
+      "reason": "GENERIC_NOT_IN_CATALOG"
+    },
+    {
+      "conceptKey": "nimodipine",
+      "reason": "GENERIC_NOT_IN_CATALOG"
+    },
+    {
+      "conceptKey": "nitroprusside",
+      "reason": "GENERIC_NOT_IN_CATALOG"
+    },
+    {
+      "conceptKey": "aminophylline",
+      "reason": "GENERIC_NOT_IN_CATALOG"
+    },
+    {
+      "conceptKey": "acetylcysteine",
+      "reason": "GENERIC_NOT_IN_CATALOG"
+    },
+    {
+      "conceptKey": "fomepizole",
+      "reason": "GENERIC_NOT_IN_CATALOG"
+    },
+    {
+      "conceptKey": "sodium thiosulfate",
+      "reason": "GENERIC_NOT_IN_CATALOG"
+    },
+    {
+      "conceptKey": "racemic epinephrine",
+      "reason": "GENERIC_NOT_IN_CATALOG"
+    }
+  ],
   "familySearch": {
-    "checks": 15,
-    "passed": 15,
-    "failed": [],
-    "passRate": 1
+    "checks": 20,
+    "passed": 12,
+    "failed": [
+      {
+        "query": "Jardiance",
+        "missing": [
+          "25 mg"
+        ]
+      },
+      {
+        "query": "jard",
+        "missing": [
+          "25 mg"
+        ]
+      },
+      {
+        "query": "jar",
+        "missing": [
+          "25 mg"
+        ]
+      },
+      {
+        "query": "Empagliflozin",
+        "missing": [
+          "25 mg"
+        ]
+      },
+      {
+        "query": "Biktarvy",
+        "missing": [
+          "50 mg",
+          "200 mg",
+          "25 mg"
+        ]
+      },
+      {
+        "query": "bikt",
+        "missing": [
+          "50 mg",
+          "200 mg",
+          "25 mg"
+        ]
+      },
+      {
+        "query": "bictegravir",
+        "missing": [
+          "50 mg"
+        ]
+      },
+      {
+        "query": "Acetaminophen",
+        "missing": [
+          "650 mg"
+        ]
+      }
+    ],
+    "passRate": 0.6,
+    "exactRankingPassRate": 1,
+    "hardAcceptancePass": false
   },
   "orderMutations": 0,
   "marMutations": 0,
   "chartMutations": 0,
-  "productsActivated": 0,
-  "mode": "DRY_RUN",
-  "dryRun": true,
-  "baselineBefore": {
-    "generatedAt": "2026-07-18T23:46:42.779Z",
-    "catalogActive": 10657,
-    "distinctGenerics": 5206,
-    "distinctStrengths": 722,
-    "distinctDosageForms": 94,
-    "distinctRoutes": 32,
-    "distinctFormulations": 9970,
-    "genericsSingleStrength": 1086,
-    "genericsMultiStrength": 4120,
-    "aliases": 21602,
-    "productsActive": 0,
-    "ordersUsingCatalogMed": 3942,
-    "administrations": 956
-  },
-  "baselineAfter": {
-    "generatedAt": "2026-07-18T23:46:42.779Z",
-    "catalogActive": 10657,
-    "distinctGenerics": 5206,
-    "distinctStrengths": 722,
-    "distinctDosageForms": 94,
-    "distinctRoutes": 32,
-    "distinctFormulations": 9970,
-    "genericsSingleStrength": 1086,
-    "genericsMultiStrength": 4120,
-    "aliases": 21602,
-    "productsActive": 0,
-    "ordersUsingCatalogMed": 3942,
-    "administrations": 956
-  },
-  "variantsCreated": 82,
-  "variantsSkippedExisting": 0,
-  "aliasesCreated": 1020
+  "productsActivated": 0
 }

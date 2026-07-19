@@ -1,0 +1,1223 @@
+{
+  "generatedAt": "2026-07-19T15:59:45.852Z",
+  "host": "switchyard.proxy.rlwy.net",
+  "database": "railway",
+  "isLocalhost": false,
+  "facilityIdPrefix": "90395a66",
+  "facilityName": "Wayne Urgent Care Emergency Room",
+  "catalogActive": 4316,
+  "aliasCount": 26070,
+  "familyCount": 40,
+  "searchPassRate": 1,
+  "orderabilityPassRate": 1,
+  "classificationCounts": {
+    "AVAILABLE_COMPLETE": 40,
+    "AVAILABLE_PARTIAL": 0,
+    "EXISTS_BUT_HIDDEN": 0,
+    "EXISTS_BUT_INACTIVE": 0,
+    "EXISTS_BUT_NOT_ORDERABLE": 0,
+    "ALIAS_MISSING": 0,
+    "STRENGTH_MISSING": 0,
+    "FORM_MISSING": 0,
+    "ROUTE_MISSING": 0,
+    "FACILITY_FILTERED": 0,
+    "COMPLETELY_ABSENT": 0,
+    "AMBIGUOUS": 0,
+    "SOURCE_REQUIRED": 0
+  },
+  "completelyAbsentCount": 0,
+  "results": [
+    {
+      "familyId": "epinephrine",
+      "domain": "EMERGENCY",
+      "classification": "AVAILABLE_COMPLETE",
+      "missingStrengths": [],
+      "perQuery": [
+        {
+          "q": "epinephrine",
+          "count": 40,
+          "strengths": [
+            "0.1 mg/ml",
+            "0.15 mg/0.15 ml",
+            "0.15 mg",
+            "1 mg/ml",
+            "0.3 mg/0.3 ml",
+            "1 mg/1 ml im",
+            "16 mg/250 ml",
+            "4 mg/250 ml",
+            "1 mg/10 ml",
+            "0.3 mg",
+            "2.25%",
+            "4%/1:100000"
+          ]
+        },
+        {
+          "q": "adrenaline",
+          "count": 17,
+          "strengths": [
+            "1 mg/ml",
+            "0.1 mg/ml",
+            "solution",
+            "4 mg/4 ml",
+            "16 mcg/ml",
+            "0.15 mg/0.15 ml",
+            "0.3 mg/0.3 ml",
+            "1 mg/1 ml im",
+            "0.25 ml peds neb",
+            "2.25%",
+            "5%",
+            "20 mg/ml"
+          ]
+        }
+      ]
+    },
+    {
+      "familyId": "norepinephrine",
+      "domain": "EMERGENCY",
+      "classification": "AVAILABLE_COMPLETE",
+      "missingStrengths": [],
+      "perQuery": [
+        {
+          "q": "norepinephrine",
+          "count": 40,
+          "strengths": [
+            "4 mg/4 ml",
+            "1 mg/ml",
+            "16 mcg/ml",
+            "16 mg/250 ml",
+            "8 mg/250 ml",
+            "2%",
+            "1%",
+            "20 mg/ml",
+            "5%",
+            "4%",
+            "100 mg/5 ml",
+            "81 mg"
+          ]
+        }
+      ]
+    },
+    {
+      "familyId": "vasopressin",
+      "domain": "EMERGENCY",
+      "classification": "AVAILABLE_COMPLETE",
+      "missingStrengths": [],
+      "perQuery": [
+        {
+          "q": "vasopressin",
+          "count": 40,
+          "strengths": [
+            "20 units/ml",
+            "40 units/100 ml",
+            "20 ui/ml",
+            "0.4 units/ml",
+            "20 mg",
+            "10 mcg/spray",
+            "0.1 mg",
+            "4 mcg/ml",
+            "81 mg",
+            "20%",
+            "spray",
+            "50 mg"
+          ]
+        }
+      ]
+    },
+    {
+      "familyId": "phenylephrine",
+      "domain": "EMERGENCY",
+      "classification": "AVAILABLE_COMPLETE",
+      "missingStrengths": [],
+      "perQuery": [
+        {
+          "q": "phenylephrine",
+          "count": 40,
+          "strengths": [
+            "50 mg/250 ml",
+            "10 mg/ml",
+            "100 mcg/ml",
+            "0.25%",
+            "200 mg",
+            "400 mg",
+            "81 mg",
+            "325 mg",
+            "100 mg",
+            "4 mg",
+            "4 mg/ml",
+            "100 mg/5 ml"
+          ]
+        }
+      ]
+    },
+    {
+      "familyId": "dopamine",
+      "domain": "EMERGENCY",
+      "classification": "AVAILABLE_COMPLETE",
+      "missingStrengths": [],
+      "perQuery": [
+        {
+          "q": "dopamine",
+          "count": 40,
+          "strengths": [
+            "400 mg/250 ml",
+            "40 mg/ml",
+            "800 mcg/ml",
+            "800 mg/250 ml",
+            "10 mg/ml",
+            "0.5 mg",
+            "81 mg",
+            "spray",
+            "20%",
+            "0.3 ml ampule",
+            "50 mg",
+            "5 mg/ml"
+          ]
+        }
+      ]
+    },
+    {
+      "familyId": "atropine",
+      "domain": "EMERGENCY",
+      "classification": "AVAILABLE_COMPLETE",
+      "missingStrengths": [],
+      "perQuery": [
+        {
+          "q": "atropine",
+          "count": 40,
+          "strengths": [
+            "1 mg/ml",
+            "0.1 mg/ml",
+            "1 mg/10 ml",
+            "0.05 mg/ml peds",
+            "120 mg/5 ml",
+            "250 mg",
+            "30 mg/300 mg",
+            "10 mg/325 mg",
+            "5 mg/325 mg",
+            "650 mg",
+            "10 mg/ml",
+            "120 mg"
+          ]
+        }
+      ]
+    },
+    {
+      "familyId": "adenosine",
+      "domain": "EMERGENCY",
+      "classification": "AVAILABLE_COMPLETE",
+      "missingStrengths": [],
+      "perQuery": [
+        {
+          "q": "adenosine",
+          "count": 37,
+          "strengths": [
+            "6 mg/2 ml",
+            "3 mg/ml",
+            "81 mg",
+            "20%",
+            "spray",
+            "50 mg",
+            "0.3 ml ampule",
+            "5 mg/ml",
+            "0.4 mg",
+            "400 mcg/spray",
+            "200 mcg/ml",
+            "25 mg/ml"
+          ]
+        }
+      ]
+    },
+    {
+      "familyId": "amiodarone",
+      "domain": "EMERGENCY",
+      "classification": "AVAILABLE_COMPLETE",
+      "missingStrengths": [],
+      "perQuery": [
+        {
+          "q": "amiodarone",
+          "count": 40,
+          "strengths": [
+            "150 mg/3 ml",
+            "50 mg/ml",
+            "200 mg",
+            "150 mg/100 ml",
+            "900 mg/500 ml",
+            "250 mg suppositoire",
+            "250 mg/5 ml",
+            "15 mg/5 ml",
+            "120 mg/5 ml",
+            "20%",
+            "spray",
+            "35 mg/ml"
+          ]
+        }
+      ]
+    },
+    {
+      "familyId": "lidocaine",
+      "domain": "EMERGENCY",
+      "classification": "AVAILABLE_COMPLETE",
+      "missingStrengths": [],
+      "perQuery": [
+        {
+          "q": "lidocaine",
+          "count": 40,
+          "strengths": [
+            "2%",
+            "1%",
+            "100 mg/5 ml",
+            "4%",
+            "5%",
+            "20 mg/ml",
+            "200 mg",
+            "400 mg",
+            "50 mg",
+            "4 mg",
+            "4 mg/ml",
+            "100 mg"
+          ]
+        }
+      ]
+    },
+    {
+      "familyId": "magnesium-sulfate",
+      "domain": "EMERGENCY",
+      "classification": "AVAILABLE_COMPLETE",
+      "missingStrengths": [],
+      "perQuery": [
+        {
+          "q": "magnesium sulfate",
+          "count": 40,
+          "strengths": [
+            "500 mg/ml",
+            "1 g/50 ml neb",
+            "4 g/100 ml",
+            "1 g/2 ml",
+            "2 g/50 ml",
+            "5 g/10 ml",
+            "40 g/1000 ml ob",
+            "4 g/100 ml ob",
+            "1.745 g/30 ml",
+            "400 mg/5 ml",
+            "400 mg",
+            "50 mg/ml"
+          ]
+        }
+      ]
+    },
+    {
+      "familyId": "calcium-gluconate",
+      "domain": "EMERGENCY",
+      "classification": "AVAILABLE_COMPLETE",
+      "missingStrengths": [],
+      "perQuery": [
+        {
+          "q": "calcium gluconate",
+          "count": 7,
+          "strengths": [
+            "10%",
+            "100 mg/ml peds",
+            "100 mg/ml",
+            "10% 100 ml",
+            "50% 50 ml",
+            "15 g"
+          ]
+        }
+      ]
+    },
+    {
+      "familyId": "sodium-bicarbonate",
+      "domain": "EMERGENCY",
+      "classification": "AVAILABLE_COMPLETE",
+      "missingStrengths": [],
+      "perQuery": [
+        {
+          "q": "sodium bicarbonate",
+          "count": 29,
+          "strengths": [
+            "8.4%",
+            "4.2%",
+            "4.2% peds",
+            "50 meq/50 ml",
+            "650 mg",
+            "20 mg",
+            "40 mg",
+            "500 mg",
+            "500 mg/10 ml",
+            "1000 mg",
+            "1.745 g/30 ml",
+            "400 mg/5 ml"
+          ]
+        }
+      ]
+    },
+    {
+      "familyId": "naloxone",
+      "domain": "EMERGENCY",
+      "classification": "AVAILABLE_COMPLETE",
+      "missingStrengths": [],
+      "perQuery": [
+        {
+          "q": "naloxone",
+          "count": 40,
+          "strengths": [
+            "0.4 mg/ml",
+            "4 mg",
+            "1 mg/ml",
+            "2 mg",
+            "4 mg/0.4 ml",
+            "8 mg/2 mg",
+            "2 mg/0.5 mg",
+            "250 mg suppositoire",
+            "15 mg/5 ml",
+            "40 mg",
+            "120 mg/5 ml",
+            "500 mg"
+          ]
+        },
+        {
+          "q": "narcan",
+          "count": 14,
+          "strengths": [
+            "0.4 mg/ml",
+            "2 mg",
+            "1 mg/ml",
+            "4 mg",
+            "4 mg/0.4 ml",
+            "20%",
+            "1 mg",
+            "100 ui/ml",
+            "100 ui/ml drip kit"
+          ]
+        }
+      ]
+    },
+    {
+      "familyId": "alteplase",
+      "domain": "EMERGENCY",
+      "classification": "AVAILABLE_COMPLETE",
+      "missingStrengths": [],
+      "perQuery": [
+        {
+          "q": "alteplase",
+          "count": 7,
+          "strengths": [
+            "100 mg",
+            "50 mg",
+            "2 mg",
+            "2 mg/ml",
+            "1000 mg/10 ml",
+            "500 mg",
+            "500 mg/5 ml"
+          ]
+        },
+        {
+          "q": "tPA",
+          "count": 30,
+          "strengths": [
+            "100 mg",
+            "2 mg",
+            "50 mg",
+            "81 mg",
+            "325 mg",
+            "120 mg/5 ml",
+            "250 mg",
+            "30 mg/300 mg",
+            "5 mg/325 mg",
+            "10 mg/325 mg",
+            "650 mg",
+            "120 mg"
+          ]
+        }
+      ]
+    },
+    {
+      "familyId": "jardiance",
+      "domain": "DIABETES",
+      "classification": "AVAILABLE_COMPLETE",
+      "missingStrengths": [],
+      "perQuery": [
+        {
+          "q": "jard",
+          "count": 7,
+          "strengths": [
+            "10 mg",
+            "25 mg",
+            "2 mg",
+            "1 mg",
+            "12.5 mg/1000 mg",
+            "5 mg/500 mg"
+          ]
+        },
+        {
+          "q": "Jardiance",
+          "count": 3,
+          "strengths": [
+            "10 mg",
+            "25 mg"
+          ]
+        },
+        {
+          "q": "Empagliflozin",
+          "count": 5,
+          "strengths": [
+            "10 mg",
+            "25 mg",
+            "5 mg/500 mg",
+            "12.5 mg/1000 mg"
+          ]
+        }
+      ]
+    },
+    {
+      "familyId": "biktarvy",
+      "domain": "HIV",
+      "classification": "AVAILABLE_COMPLETE",
+      "missingStrengths": [],
+      "perQuery": [
+        {
+          "q": "Biktar",
+          "count": 1,
+          "strengths": [
+            "50 mg/200 mg/25 mg"
+          ]
+        },
+        {
+          "q": "Biktarvy",
+          "count": 1,
+          "strengths": [
+            "50 mg/200 mg/25 mg"
+          ]
+        },
+        {
+          "q": "bikt",
+          "count": 1,
+          "strengths": [
+            "50 mg/200 mg/25 mg"
+          ]
+        }
+      ]
+    },
+    {
+      "familyId": "metformin",
+      "domain": "DIABETES",
+      "classification": "AVAILABLE_COMPLETE",
+      "missingStrengths": [],
+      "perQuery": [
+        {
+          "q": "metformin",
+          "count": 40,
+          "strengths": [
+            "500 mg",
+            "850 mg",
+            "1000 mg",
+            "150 mg/1000 mg",
+            "50 mg/500 mg",
+            "5 mg/500 mg",
+            "10 mg/1000 mg",
+            "12.5 mg/1000 mg",
+            "750 mg",
+            "2.5 mg/500 mg",
+            "2.5 mg/1000 mg",
+            "50 mg/1000 mg"
+          ]
+        }
+      ]
+    },
+    {
+      "familyId": "lisinopril",
+      "domain": "HYPERTENSION",
+      "classification": "AVAILABLE_COMPLETE",
+      "missingStrengths": [],
+      "perQuery": [
+        {
+          "q": "lisinopril",
+          "count": 9,
+          "strengths": [
+            "10 mg",
+            "5 mg",
+            "20 mg",
+            "10 mg/12.5 mg",
+            "20 mg/25 mg",
+            "25 mg",
+            "12.5 mg"
+          ]
+        }
+      ]
+    },
+    {
+      "familyId": "amlodipine",
+      "domain": "HYPERTENSION",
+      "classification": "AVAILABLE_COMPLETE",
+      "missingStrengths": [],
+      "perQuery": [
+        {
+          "q": "amlodipine",
+          "count": 12,
+          "strengths": [
+            "5 mg",
+            "10 mg",
+            "5 mg/80 mg",
+            "10 mg/160 mg"
+          ]
+        }
+      ]
+    },
+    {
+      "familyId": "metoprolol",
+      "domain": "CARDIOLOGY",
+      "classification": "AVAILABLE_COMPLETE",
+      "missingStrengths": [],
+      "perQuery": [
+        {
+          "q": "metoprolol",
+          "count": 40,
+          "strengths": [
+            "5 mg/5 ml",
+            "1 mg/ml",
+            "50 mg",
+            "25 mg",
+            "10 mg",
+            "5 mg",
+            "10 mg/160 mg",
+            "5 mg/80 mg",
+            "20 mg/ml",
+            "12.5 mg",
+            "81 mg",
+            "spray"
+          ]
+        }
+      ]
+    },
+    {
+      "familyId": "furosemide",
+      "domain": "CARDIOLOGY",
+      "classification": "AVAILABLE_COMPLETE",
+      "missingStrengths": [],
+      "perQuery": [
+        {
+          "q": "furosemide",
+          "count": 8,
+          "strengths": [
+            "40 mg",
+            "20 mg/2 ml",
+            "40 mg/4 ml",
+            "10 mg/ml",
+            "20 mg",
+            "5 mg",
+            "5 mg/50 mg"
+          ]
+        },
+        {
+          "q": "lasix",
+          "count": 6,
+          "strengths": [
+            "40 mg",
+            "20 mg/2 ml",
+            "40 mg/4 ml",
+            "10 mg/ml",
+            "20 mg"
+          ]
+        }
+      ]
+    },
+    {
+      "familyId": "atorvastatin",
+      "domain": "CARDIOLOGY",
+      "classification": "AVAILABLE_COMPLETE",
+      "missingStrengths": [],
+      "perQuery": [
+        {
+          "q": "atorvastatin",
+          "count": 7,
+          "strengths": [
+            "20 mg",
+            "40 mg",
+            "10 mg",
+            "40 mg/10 mg",
+            "10 mg/10 mg",
+            "5 mg/80 mg",
+            "10 mg/160 mg"
+          ]
+        },
+        {
+          "q": "lipitor",
+          "count": 5,
+          "strengths": [
+            "20 mg",
+            "40 mg/10 mg",
+            "10 mg/10 mg",
+            "40 mg",
+            "10 mg"
+          ]
+        }
+      ]
+    },
+    {
+      "familyId": "apixaban",
+      "domain": "CARDIOLOGY",
+      "classification": "AVAILABLE_COMPLETE",
+      "missingStrengths": [],
+      "perQuery": [
+        {
+          "q": "apixaban",
+          "count": 3,
+          "strengths": [
+            "5 mg",
+            "2.5 mg"
+          ]
+        },
+        {
+          "q": "eliquis",
+          "count": 3,
+          "strengths": [
+            "5 mg",
+            "2.5 mg"
+          ]
+        }
+      ]
+    },
+    {
+      "familyId": "sertraline",
+      "domain": "PSYCHIATRY",
+      "classification": "AVAILABLE_COMPLETE",
+      "missingStrengths": [],
+      "perQuery": [
+        {
+          "q": "sertraline",
+          "count": 5,
+          "strengths": [
+            "50 mg",
+            "100 mg",
+            "25 mg"
+          ]
+        },
+        {
+          "q": "zoloft",
+          "count": 5,
+          "strengths": [
+            "50 mg",
+            "100 mg",
+            "25 mg"
+          ]
+        }
+      ]
+    },
+    {
+      "familyId": "olanzapine",
+      "domain": "PSYCHIATRY",
+      "classification": "AVAILABLE_COMPLETE",
+      "missingStrengths": [],
+      "perQuery": [
+        {
+          "q": "olanzapine",
+          "count": 13,
+          "strengths": [
+            "5 mg",
+            "10 mg",
+            "10 mg odt",
+            "20 mg",
+            "5 mg/ml",
+            "25 mg"
+          ]
+        }
+      ]
+    },
+    {
+      "familyId": "lorazepam",
+      "domain": "PSYCHIATRY",
+      "classification": "AVAILABLE_COMPLETE",
+      "missingStrengths": [],
+      "perQuery": [
+        {
+          "q": "lorazepam",
+          "count": 12,
+          "strengths": [
+            "2 mg/ml",
+            "2 mg/ml peds iv",
+            "0.5 mg",
+            "1 mg",
+            "4 mg/ml",
+            "2 mg",
+            "5 mg/ml",
+            "25 mg",
+            "10 mg",
+            "10 mg odt",
+            "20 mg"
+          ]
+        },
+        {
+          "q": "ativan",
+          "count": 7,
+          "strengths": [
+            "2 mg/ml",
+            "2 mg/ml peds iv",
+            "0.5 mg",
+            "1 mg",
+            "4 mg/ml",
+            "2 mg"
+          ]
+        }
+      ]
+    },
+    {
+      "familyId": "omeprazole",
+      "domain": "GI",
+      "classification": "AVAILABLE_COMPLETE",
+      "missingStrengths": [],
+      "perQuery": [
+        {
+          "q": "omeprazole",
+          "count": 40,
+          "strengths": [
+            "20 mg",
+            "40 mg",
+            "81 mg",
+            "325 mg",
+            "250 mg",
+            "500 mg",
+            "250 mg/5 ml",
+            "500/125 mg",
+            "875/125 mg",
+            "400/57 mg/5 ml",
+            "100 mg",
+            "125 mg/5 ml"
+          ]
+        },
+        {
+          "q": "prilosec",
+          "count": 12,
+          "strengths": [
+            "20 mg",
+            "40 mg",
+            "81 mg",
+            "325 mg",
+            "100 mg",
+            "25 mg/200 mg",
+            "250 mg/5 ml"
+          ]
+        }
+      ]
+    },
+    {
+      "familyId": "ondansetron",
+      "domain": "GI",
+      "classification": "AVAILABLE_COMPLETE",
+      "missingStrengths": [],
+      "perQuery": [
+        {
+          "q": "ondansetron",
+          "count": 40,
+          "strengths": [
+            "4 mg",
+            "8 mg",
+            "4 mg/2 ml",
+            "4 mg/5 ml",
+            "2 mg/ml",
+            "4 mg odt",
+            "15 mg/5 ml",
+            "40 mg",
+            "20 mg",
+            "10 mg",
+            "1 g",
+            "2 g"
+          ]
+        },
+        {
+          "q": "zofran",
+          "count": 11,
+          "strengths": [
+            "4 mg",
+            "8 mg",
+            "4 mg/2 ml",
+            "4 mg/5 ml",
+            "4 mg odt",
+            "2 mg/ml"
+          ]
+        }
+      ]
+    },
+    {
+      "familyId": "pantoprazole",
+      "domain": "GI",
+      "classification": "AVAILABLE_COMPLETE",
+      "missingStrengths": [],
+      "perQuery": [
+        {
+          "q": "pantoprazole",
+          "count": 40,
+          "strengths": [
+            "40 mg",
+            "20 mg",
+            "10000 units",
+            "150 mg",
+            "20 mg/120 mg",
+            "5000 iu",
+            "25 mg/200 mg",
+            "81 mg",
+            "325 mg",
+            "0.1 mg/ml",
+            "0.05 mg/ml peds",
+            "1 mg/10 ml"
+          ]
+        }
+      ]
+    },
+    {
+      "familyId": "acetaminophen",
+      "domain": "PAIN",
+      "classification": "AVAILABLE_COMPLETE",
+      "missingStrengths": [],
+      "perQuery": [
+        {
+          "q": "acetaminophen",
+          "count": 40,
+          "strengths": [
+            "120 mg/5 ml",
+            "250 mg",
+            "120mg",
+            "160mg/5ml",
+            "325mg",
+            "650 mg",
+            "160 mg/5 ml",
+            "10 mg/ml",
+            "500 mg",
+            "120 mg",
+            "1000 mg/100 ml",
+            "1 g"
+          ]
+        },
+        {
+          "q": "tylenol",
+          "count": 30,
+          "strengths": [
+            "500 mg",
+            "120 mg/5 ml",
+            "250 mg",
+            "120mg",
+            "160mg/5ml",
+            "325mg",
+            "650 mg",
+            "160 mg/5 ml",
+            "10 mg/ml",
+            "120 mg",
+            "1000 mg/100 ml",
+            "250 mg suppositoire"
+          ]
+        }
+      ]
+    },
+    {
+      "familyId": "ibuprofen",
+      "domain": "PAIN",
+      "classification": "AVAILABLE_COMPLETE",
+      "missingStrengths": [],
+      "perQuery": [
+        {
+          "q": "ibuprofen",
+          "count": 40,
+          "strengths": [
+            "200 mg",
+            "400 mg",
+            "100 mg/5 ml",
+            "600 mg",
+            "10 mg/ml",
+            "20 mg",
+            "50 mg/ml",
+            "20 mg/2 ml",
+            "250 mg",
+            "120 mg/5 ml",
+            "30 mg/300 mg",
+            "10 mg/325 mg"
+          ]
+        }
+      ]
+    },
+    {
+      "familyId": "morphine",
+      "domain": "PAIN",
+      "classification": "AVAILABLE_COMPLETE",
+      "missingStrengths": [],
+      "perQuery": [
+        {
+          "q": "morphine",
+          "count": 28,
+          "strengths": [
+            "10 mg/ml",
+            "4 mg/ml",
+            "2 mg/ml",
+            "1 mg/ml",
+            "15 mg",
+            "0.05 mg/ml peds",
+            "1 mg/10 ml",
+            "0.1 mg/ml",
+            "525 mg/15 ml",
+            "262 mg",
+            "10 mg/5 ml",
+            "30 mg"
+          ]
+        }
+      ]
+    },
+    {
+      "familyId": "ceftriaxone",
+      "domain": "INFECTIOUS_DISEASE",
+      "classification": "AVAILABLE_COMPLETE",
+      "missingStrengths": [],
+      "perQuery": [
+        {
+          "q": "ceftriaxone",
+          "count": 40,
+          "strengths": [
+            "2 g",
+            "1 g",
+            "100 mg/ml peds",
+            "500 mg",
+            "250 mg/ml",
+            "250 mg suppositoire",
+            "15 mg/5 ml",
+            "120 mg/5 ml",
+            "100 mg/5 ml",
+            "500 ml",
+            "1 l",
+            "1500 mg"
+          ]
+        }
+      ]
+    },
+    {
+      "familyId": "vancomycin",
+      "domain": "INFECTIOUS_DISEASE",
+      "classification": "AVAILABLE_COMPLETE",
+      "missingStrengths": [],
+      "perQuery": [
+        {
+          "q": "vancomycin",
+          "count": 33,
+          "strengths": [
+            "1 g",
+            "500 mg",
+            "125 mg",
+            "750 mg",
+            "5%",
+            "500 mg/100 ml",
+            "600 mg/4 ml",
+            "2 mg/ml",
+            "200 mg",
+            "500 mg/250 ml",
+            "400 mg/200 ml",
+            "900 mg/50 ml"
+          ]
+        }
+      ]
+    },
+    {
+      "familyId": "azithromycin",
+      "domain": "INFECTIOUS_DISEASE",
+      "classification": "AVAILABLE_COMPLETE",
+      "missingStrengths": [],
+      "perQuery": [
+        {
+          "q": "azithromycin",
+          "count": 19,
+          "strengths": [
+            "250 mg",
+            "500 mg",
+            "200 mg/5 ml",
+            "1 g",
+            "500 mg/250 ml",
+            "3.375 g",
+            "100 mg/ml peds",
+            "2.25 g",
+            "4.5 g",
+            "125 mg",
+            "750 mg"
+          ]
+        }
+      ]
+    },
+    {
+      "familyId": "albuterol",
+      "domain": "RESPIRATORY",
+      "classification": "AVAILABLE_COMPLETE",
+      "missingStrengths": [],
+      "perQuery": [
+        {
+          "q": "albuterol",
+          "count": 40,
+          "strengths": [
+            "0.5%",
+            "0.083% peds neb",
+            "2 mg",
+            "90 mcg/actuation",
+            "2.5 mg/3 ml",
+            "1.25 mg/3 ml",
+            "100 mcg/dose",
+            "2.5 mg/2.5 ml",
+            "2 mg/5 ml",
+            "3 mg/0.5 mg",
+            "100 mcg/20 mcg",
+            "250 mg suppositoire"
+          ]
+        },
+        {
+          "q": "salbutamol",
+          "count": 40,
+          "strengths": [
+            "100 mcg/dose",
+            "2.5 mg/2.5 ml",
+            "2 mg/5 ml",
+            "0.083% peds neb",
+            "0.5%",
+            "2.5 mg/3 ml",
+            "2 mg",
+            "90 mcg/actuation",
+            "1.25 mg/3 ml",
+            "3 mg/0.5 mg",
+            "100 mcg/20 mcg",
+            "81 mg"
+          ]
+        }
+      ]
+    },
+    {
+      "familyId": "levetiracetam",
+      "domain": "NEUROLOGY",
+      "classification": "AVAILABLE_COMPLETE",
+      "missingStrengths": [],
+      "perQuery": [
+        {
+          "q": "levetiracetam",
+          "count": 11,
+          "strengths": [
+            "750 mg",
+            "500 mg",
+            "500 mg/5 ml",
+            "1000 mg",
+            "100 mg/ml",
+            "1000 mg/100 ml",
+            "2 mg/ml",
+            "1000 mg/10 ml"
+          ]
+        },
+        {
+          "q": "keppra",
+          "count": 33,
+          "strengths": [
+            "750 mg",
+            "1000 mg",
+            "500 mg",
+            "100 mg/ml",
+            "500 mg/5 ml",
+            "1000 mg/100 ml",
+            "81 mg",
+            "325 mg",
+            "100 mg",
+            "250 mg",
+            "120 mg/5 ml",
+            "30 mg/300 mg"
+          ]
+        }
+      ]
+    },
+    {
+      "familyId": "insulin-glargine",
+      "domain": "DIABETES",
+      "classification": "AVAILABLE_COMPLETE",
+      "missingStrengths": [],
+      "perQuery": [
+        {
+          "q": "insulin glargine",
+          "count": 14,
+          "strengths": [
+            "100 units/ml",
+            "100 ui/ml",
+            "300 units/ml",
+            "100 units/3.6 mg/ml",
+            "100 units/33 mcg/ml",
+            "200 units/ml"
+          ]
+        },
+        {
+          "q": "lantus",
+          "count": 5,
+          "strengths": [
+            "100 units/ml",
+            "100 ui/ml",
+            "300 units/ml"
+          ]
+        }
+      ]
+    },
+    {
+      "familyId": "normal-saline",
+      "domain": "IV_FLUIDS",
+      "classification": "AVAILABLE_COMPLETE",
+      "missingStrengths": [],
+      "perQuery": [
+        {
+          "q": "normal saline",
+          "count": 40,
+          "strengths": [
+            "0.9% 500 ml",
+            "0.9% 1 l",
+            "0.9%",
+            "0.9% flush",
+            "0.9% 10 ml",
+            "0.9% 1000 ml",
+            "0.9% 250 ml",
+            "2 mg",
+            "0.005%/0.064%",
+            "450 mg",
+            "300 mg",
+            "150 mg"
+          ]
+        },
+        {
+          "q": "sodium chloride 0.9",
+          "count": 40,
+          "strengths": [
+            "2 mg",
+            "0.005%/0.064%",
+            "450 mg",
+            "300 mg",
+            "150 mg",
+            "125 mg/5 ml",
+            "90 mg",
+            "30 mg",
+            "60 mg",
+            "200 mg",
+            "100 mg",
+            "8 meq/5 ml"
+          ]
+        }
+      ]
+    },
+    {
+      "familyId": "potassium-chloride",
+      "domain": "ELECTROLYTES",
+      "classification": "AVAILABLE_COMPLETE",
+      "missingStrengths": [],
+      "perQuery": [
+        {
+          "q": "potassium chloride",
+          "count": 31,
+          "strengths": [
+            "10 meq",
+            "2 meq/ml",
+            "20 meq",
+            "20 meq/10 ml",
+            "10 meq/100 ml",
+            "40 meq/1000 ml",
+            "40 meq",
+            "30 mg",
+            "15 mg",
+            "10 mg/5 ml",
+            "10 mg/100 mg/5 ml",
+            "25 mg"
+          ]
+        }
+      ]
+    }
+  ]
+}
