@@ -2,16 +2,29 @@
 
 **Program:** Medication Formulation & Strength Completion
 **Certification ID:** `MEDUI.MEDICATION_FORMULATION_STRENGTH_COMPLETION`
+**Decision:** `MEDICATION_FORMULATION_STRENGTH_COMPLETION_CERTIFIED`
 
 ## Scope
 
-Provider-facing availability for medications already in Medora, plus remediation of search ranking/display gaps. Not Phase 19. Not an expansion wave. Not dual-layer bulk activation.
+Provider-facing availability so clinicians can search and order common US medications (brand/generic, supported strengths/forms/routes). Not Phase 19. Not an expansion wave. Not dual-layer bulk activation.
 
-## Why prior certification was insufficient
+## Authoritative measured evidence (universal benchmark)
 
-Internal counts and a 15-family probe did not match prescription UI behavior (Jardiance family/display, `jar` ranking, Biktarvy search).
+| Metric | Value |
+|--------|------:|
+| Benchmark families | **5301** |
+| Family search success | **100%** |
+| Expected orderability | **100%** |
+| Exact brand ranking | **100%** |
+| Exact generic ranking | **100%** |
+| COMPLETE families | **5301** |
+| MISSING_FAMILY | **0** |
+| Second APPLY (aliases) | **0** |
+| Hard acceptance (Biktarvy + Jardiance) | **PASS** |
 
-## Measured catalog (final)
+See [medication-universal-common-orderability-report.md](./medication-universal-common-orderability-report.md).
+
+## Catalog snapshot (supporting)
 
 | Metric | Value |
 |--------|------:|
@@ -21,23 +34,16 @@ Internal counts and a 15-family probe did not match prescription UI behavior (Ja
 | Distinct strengths | 762 |
 | Distinct dosage forms | 96 |
 | Distinct routes | 33 |
-| Formulations created (program) | 82 |
-| Provider corpus families | 285 |
-| Corpus queries | 591 |
-| Corpus search pass rate | **98.31%** |
-| Orderability pass rate | **100%** |
-| Exact brand ranking pass rate | **100%** |
-| Hard acceptance (Biktarvy + Jardiance) | **PASS** |
+| Formulations created (prior formulation program) | 82 |
 
-## Hard acceptance (production search path, limit 40)
+## Hard acceptance examples (not the project scope)
 
 | Query | Result |
 |-------|--------|
 | Jardiance / jard / jar | Jardiance (Empagliflozin) 10 mg + 25 mg; tirzepatide does not outrank |
 | Empagliflozin | Empagliflozin family with 10 mg + 25 mg |
-| Biktarvy / bikt | Biktarvy (Bictegravir Emtricitabine Tenofovir Alafenamide) 50 mg/200 mg/25 mg |
-| bictegravir / ingredient terms | Combo family searchable |
+| Biktarvy / bikt | Biktarvy combo family searchable and orderable |
 
-## Outstanding gaps
+## Safety
 
-Corpus search failures remain for some brand aliases / INN spellings without approved catalog rows (examples: certain legacy brand names). These are review items, not hard-acceptance failures.
+No patient-order, MAR, chart, or CDS mutations. No fabricated RxCUI/NDC. No bulk dual-layer activation. Migration: none. Production deploy: not performed by certification.
