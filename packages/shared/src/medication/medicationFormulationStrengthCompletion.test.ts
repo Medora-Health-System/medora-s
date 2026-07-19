@@ -70,7 +70,7 @@ describe("Medication Formulation & Strength Completion", () => {
     ).toBe("MEDICATION_FORMULATION_STRENGTH_COMPLETION_CERTIFIED_WITH_REVIEW_ITEMS");
   });
 
-  it("certifies fully when provider-facing evidence is complete", () => {
+  it("keeps review items when universal benchmark is absent", () => {
     expect(
       decideMedicationFormulationStrengthCompletion({
         schemaOk: true,
@@ -90,6 +90,36 @@ describe("Medication Formulation & Strength Completion", () => {
         corpusSearchPassRate: 1,
         corpusSize: 200,
         absentHardAcceptanceCount: 0,
+      })
+    ).toBe("MEDICATION_FORMULATION_STRENGTH_COMPLETION_CERTIFIED_WITH_REVIEW_ITEMS");
+  });
+
+  it("certifies fully when universal common-medication benchmark is 100%", () => {
+    expect(
+      decideMedicationFormulationStrengthCompletion({
+        schemaOk: true,
+        regressionOk: true,
+        fabricatedData: false,
+        createdNewGenerics: false,
+        dualLayerActivated: false,
+        familySearchPassRate: 1,
+        formulationsCreated: 80,
+        sourceApproved: true,
+        orderMutations: 0,
+        marMutations: 0,
+        chartMutations: 0,
+        completionIdempotent: true,
+        hardAcceptancePass: true,
+        exactRankingPassRate: 1,
+        corpusSearchPassRate: 0.98,
+        corpusSize: 285,
+        absentHardAcceptanceCount: 0,
+        universalBenchmarkFamilyCount: 5301,
+        universalBenchmarkSearchPassRate: 1,
+        universalBenchmarkOrderabilityPassRate: 1,
+        universalExactBrandRankingPassRate: 1,
+        universalExactGenericRankingPassRate: 1,
+        universalMissingFamilyCount: 0,
       })
     ).toBe("MEDICATION_FORMULATION_STRENGTH_COMPLETION_CERTIFIED");
   });

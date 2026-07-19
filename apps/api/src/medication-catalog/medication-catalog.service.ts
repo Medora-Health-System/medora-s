@@ -141,13 +141,19 @@ export class MedicationCatalogService {
       }
     }
 
-    // Exact-family expansion: pull sibling strengths for top generic hits before truncation.
+    // Exact-family expansion: when the query matches an exact generic name, seed that
+    // family first so combination products cannot hide sibling strengths.
+    const qGenericKey = normalizeGenericKey(q);
+    const hasExactGenericHit = candidateRows.some(
+      (r) => normalizeGenericKey(r.genericName) === qGenericKey
+    );
     const seedGenerics = [
+      ...(hasExactGenericHit && qGenericKey ? [qGenericKey] : []),
       ...new Set(
         candidateRows
           .slice(0, Math.max(limit, 12))
           .map((r) => normalizeGenericKey(r.genericName))
-          .filter(Boolean)
+          .filter((g) => g && g !== qGenericKey)
       ),
     ].slice(0, 8);
     if (seedGenerics.length > 0) {
@@ -198,7 +204,33 @@ export class MedicationCatalogService {
       )
     );
 
-    let sliced = scored.slice(0, limit).map((s) => s.row);
+    // Keep distinct strength variants; exact-generic family before combinations.
+    const diversifyScored = (items: ScoredMedicationRow[]): ScoredMedicationRow[] => {
+      const diversified: ScoredMedicationRow[] = [];
+      const seenStrengthKeys = new Set<string>();
+      const remainder: ScoredMedicationRow[] = [];
+      for (const item of items) {
+        const key = `${(item.row.genericName || "").trim().toLowerCase()}|${(item.row.strength || "").trim().toLowerCase()}`;
+        if (!seenStrengthKeys.has(key)) {
+          seenStrengthKeys.add(key);
+          diversified.push(item);
+        } else {
+          remainder.push(item);
+        }
+      }
+      return [...diversified, ...remainder];
+    };
+    const exactFamilyScored =
+      hasExactGenericHit && qGenericKey
+        ? scored.filter((s) => normalizeGenericKey(s.row.genericName) === qGenericKey)
+        : [];
+    const otherScored =
+      hasExactGenericHit && qGenericKey
+        ? scored.filter((s) => normalizeGenericKey(s.row.genericName) !== qGenericKey)
+        : scored;
+    let sliced = [...diversifyScored(exactFamilyScored), ...diversifyScored(otherScored)]
+      .slice(0, limit)
+      .map((s) => s.row);
     if (purpose !== "documentation") {
       const eligibleCatalogIds = await this.activationGovernance.filterProviderSearchCatalogIds(
         facilityId,

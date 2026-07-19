@@ -121,6 +121,13 @@ export function decideMedicationFormulationStrengthCompletion(input: {
   corpusSearchPassRate: number;
   corpusSize: number;
   absentHardAcceptanceCount: number;
+  /** Universal common-medication benchmark (required for full CERTIFIED). */
+  universalBenchmarkFamilyCount?: number;
+  universalBenchmarkSearchPassRate?: number;
+  universalBenchmarkOrderabilityPassRate?: number;
+  universalExactBrandRankingPassRate?: number;
+  universalExactGenericRankingPassRate?: number;
+  universalMissingFamilyCount?: number;
 }): MedicationFormulationStrengthCompletionDecision {
   if (
     !input.schemaOk ||
@@ -139,15 +146,38 @@ export function decideMedicationFormulationStrengthCompletion(input: {
   ) {
     return "MEDICATION_FORMULATION_STRENGTH_COMPLETION_NOT_CERTIFIED";
   }
+
+  const universalCount = input.universalBenchmarkFamilyCount ?? 0;
+  const universalSearch = input.universalBenchmarkSearchPassRate ?? 0;
+  const universalOrder = input.universalBenchmarkOrderabilityPassRate ?? 0;
+  const universalBrandRank = input.universalExactBrandRankingPassRate ?? 0;
+  const universalGenericRank = input.universalExactGenericRankingPassRate ?? 0;
+  const universalMissing = input.universalMissingFamilyCount ?? Number.POSITIVE_INFINITY;
+
+  // Full CERTIFIED requires the authoritative universal common-medication
+  // benchmark at 100% search + expected orderability (not the smaller probe corpus).
+  if (
+    universalCount >= 1000 &&
+    universalSearch >= 1 &&
+    universalOrder >= 1 &&
+    universalBrandRank >= 1 &&
+    universalGenericRank >= 1 &&
+    universalMissing === 0 &&
+    input.familySearchPassRate >= 1 &&
+    input.exactRankingPassRate >= 1 &&
+    input.hardAcceptancePass
+  ) {
+    return "MEDICATION_FORMULATION_STRENGTH_COMPLETION_CERTIFIED";
+  }
+
   if (
     input.familySearchPassRate < 1 ||
     input.exactRankingPassRate < 1 ||
-    input.corpusSearchPassRate < 0.95
+    input.corpusSearchPassRate < 0.95 ||
+    (universalCount >= 1000 && (universalSearch < 1 || universalOrder < 1))
   ) {
     return "MEDICATION_FORMULATION_STRENGTH_COMPLETION_CERTIFIED_WITH_REVIEW_ITEMS";
   }
-  if (input.corpusSearchPassRate < 1) {
-    return "MEDICATION_FORMULATION_STRENGTH_COMPLETION_CERTIFIED_WITH_REVIEW_ITEMS";
-  }
-  return "MEDICATION_FORMULATION_STRENGTH_COMPLETION_CERTIFIED";
+
+  return "MEDICATION_FORMULATION_STRENGTH_COMPLETION_CERTIFIED_WITH_REVIEW_ITEMS";
 }
