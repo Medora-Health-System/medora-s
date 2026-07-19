@@ -1,0 +1,119 @@
+{
+  "generatedAt": "2026-07-19T00:11:02.718Z",
+  "auditStatus": "COMPLETE",
+  "dataSource": "database",
+  "confidence": "HIGH",
+  "catalogClassification": "CURATED",
+  "catalogComplete": false,
+  "title": "Medication Formulation & Strength Completion",
+  "certificationId": "MEDUI.MEDICATION_FORMULATION_STRENGTH_COMPLETION",
+  "implementationId": "MEDUI.MEDICATION_FORMULATION_STRENGTH_COMPLETION_CLINICAL_COMPLETENESS",
+  "FinalDecision": "MEDICATION_FORMULATION_STRENGTH_COMPLETION_CERTIFIED_WITH_REVIEW_ITEMS",
+  "WhyPreviousCertificationInsufficient": [
+    "Certified from internal catalog counts and a 15-family probe, not production UI search behavior",
+    "Jardiance brand search showed generic-only single strength; jar ranked tirzepatide via mid-string match",
+    "Biktarvy provider search failed despite Wave3 catalog presence (alias/ranking/display gaps)",
+    "Result limit/UI default hid sibling strengths; brand aliases were not promoted in display"
+  ],
+  "Baseline": {
+    "generatedAt": "2026-07-19T00:11:02.718Z",
+    "catalogActive": 10739,
+    "distinctGenerics": 5206,
+    "distinctStrengths": 762,
+    "distinctDosageForms": 96,
+    "distinctRoutes": 33,
+    "distinctFormulations": 10052,
+    "genericsSingleStrength": 1077,
+    "genericsMultiStrength": 4129,
+    "aliases": 22489,
+    "productsActive": 0,
+    "ordersUsingCatalogMed": 3942,
+    "administrations": 956
+  },
+  "Completion": {
+    "variantsCreated": 82,
+    "variantsSkippedExisting": 0,
+    "aliasesCreated": 875,
+    "availabilityAliasesCreated": 12,
+    "searchTextUpdated": 0,
+    "candidatesVariants": 82,
+    "familySearch": {
+      "checks": 20,
+      "passed": 20,
+      "failed": [],
+      "passRate": 1,
+      "exactRankingPassRate": 1,
+      "hardAcceptancePass": true
+    },
+    "sourceChecksumSha256": "3ae70ce8d75ef31688e05e8c8169a7da14bcb51ef78d7ddfdcaba27a51263a67"
+  },
+  "ProviderFacingValidation": {
+    "corpusSize": 285,
+    "queryCount": 591,
+    "searchPassRate": 0.9830795262267343,
+    "orderabilityPassRate": 1,
+    "exactRankingPassRate": 1,
+    "hardAcceptance": {
+      "pass": true,
+      "failures": []
+    },
+    "absentFamilies": 0,
+    "partialFamilies": 0,
+    "uiLimit": 40
+  },
+  "HardAcceptance": {
+    "Biktarvy": [],
+    "Jardiance": [],
+    "pass": true
+  },
+  "Safety": {
+    "orderMutations": 0,
+    "marMutations": 0,
+    "chartMutations": 0,
+    "productsActivated": 0,
+    "productionCds": 0
+  },
+  "MigrationRequired": "NO",
+  "MigrationIdentifier": null,
+  "ProductionDeployStatus": "NOT_DEPLOYED",
+  "ProviderQuestion": "When a physician types Biktarvy, Jardiance, or another commonly prescribed medication, does Medora return the complete, correct, orderable product family?",
+  "ProviderAnswerMeasured": {
+    "hardAcceptancePass": true,
+    "corpusSearchPassRate": 0.9830795262267343,
+    "orderabilityPassRate": 1,
+    "exactRankingPassRate": 1,
+    "familySearchPassRate": 1,
+    "distinctFormulations": 10052,
+    "distinctStrengths": 762,
+    "distinctDosageForms": 96,
+    "distinctRoutes": 33,
+    "genericsMultiStrength": 4129,
+    "variantsCreated": 82,
+    "absentFamilies": 0,
+    "partialFamilies": 0
+  },
+  "RegressionEvidence": {
+    "focusedTestsPass": true,
+    "fullRegressionPass": true,
+    "buildPass": true,
+    "typecheckPass": true,
+    "diffCheckPass": true,
+    "certificationIdempotent": true,
+    "completionIdempotent": true,
+    "pharmacyValidated": true,
+    "marValidated": true,
+    "reconciliationValidated": true
+  },
+  "CertificationIdempotent": "YES",
+  "KnownNonblockingGaps": [
+    "Broad corpus may remain incomplete where brand aliases or formulations lack approved source rows",
+    "Dual-layer products remain inactive (CatalogMedication-first)",
+    "RxNorm/DailyMed CREATE still registered-only — no fabricated RxCUI/NDC",
+    "Remaining single-strength generics without approved multi-strength source data"
+  ],
+  "SourceDataUsed": [
+    "MEDORA_CURATED enterprise/Wave2/Wave3 formulary manifests (formulation candidates)",
+    "Existing CatalogMedication + MedicationAlias provider search path",
+    "RxNorm/DailyMed adapters registered but not used for fabricated CREATE"
+  ]
+}

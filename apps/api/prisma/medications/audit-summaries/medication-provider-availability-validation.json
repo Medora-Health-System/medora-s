@@ -1,0 +1,74 @@
+{
+  "generatedAt": "2026-07-19T00:08:08.582Z",
+  "facilityId": "e3e2b7a9-208b-4b47-839a-5158348412d2",
+  "corpusSize": 285,
+  "queryCount": 591,
+  "searchPassed": 581,
+  "searchFailed": 10,
+  "searchPassRate": 0.9830795262267343,
+  "orderablePassed": 581,
+  "orderableFailed": 0,
+  "orderabilityPassRate": 1,
+  "exactRankingPassed": 295,
+  "exactRankingChecks": 295,
+  "exactRankingPassRate": 1,
+  "hardAcceptance": {
+    "pass": true,
+    "failures": []
+  },
+  "absentFamilies": [],
+  "partialFamilies": [],
+  "failedQueries": [
+    {
+      "query": "amoxicillin clavulanate",
+      "familyId": "amoxicillin-clavulanate-augmentin",
+      "reason": "NO_RESULTS"
+    },
+    {
+      "query": "erythropoietin",
+      "familyId": "erythropoietin-epogen",
+      "reason": "NO_RESULTS"
+    },
+    {
+      "query": "Thalitone",
+      "familyId": "chlorthalidone-thalitone",
+      "reason": "NO_RESULTS"
+    },
+    {
+      "query": "Duragesic",
+      "familyId": "fentanyl-duragesic",
+      "reason": "NO_RESULTS"
+    },
+    {
+      "query": "Theo-Dur",
+      "familyId": "theophylline-theo-dur",
+      "reason": "NO_RESULTS"
+    },
+    {
+      "query": "Principen",
+      "familyId": "ampicillin-principen",
+      "reason": "NO_RESULTS"
+    },
+    {
+      "query": "Nydrazid",
+      "familyId": "isoniazid-nydrazid",
+      "reason": "NO_RESULTS"
+    },
+    {
+      "query": "Nucynta",
+      "familyId": "tapentadol-nucynta",
+      "reason": "NO_RESULTS"
+    },
+    {
+      "query": "sacubitril valsartan",
+      "familyId": "sacubitril-valsartan-entresto",
+      "reason": "NO_RESULTS"
+    },
+    {
+      "query": "Osmitrol",
+      "familyId": "mannitol-osmitrol",
+      "reason": "NO_RESULTS"
+    }
+  ],
+  "uiLimit": 40
+}

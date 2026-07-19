@@ -1,0 +1,119 @@
+{
+  "Baseline": {
+    "administrations": 956,
+    "aliases": 22489,
+    "catalogActive": 10739,
+    "distinctDosageForms": 96,
+    "distinctFormulations": 10052,
+    "distinctGenerics": 5206,
+    "distinctRoutes": 33,
+    "distinctStrengths": 762,
+    "generatedAt": "2026-07-19T00:11:02.718Z",
+    "genericsMultiStrength": 4129,
+    "genericsSingleStrength": 1077,
+    "ordersUsingCatalogMed": 3942,
+    "productsActive": 0
+  },
+  "CertificationIdempotent": "YES",
+  "Completion": {
+    "aliasesCreated": 875,
+    "availabilityAliasesCreated": 12,
+    "candidatesVariants": 82,
+    "familySearch": {
+      "checks": 20,
+      "exactRankingPassRate": 1,
+      "failed": [],
+      "hardAcceptancePass": true,
+      "passRate": 1,
+      "passed": 20
+    },
+    "searchTextUpdated": 0,
+    "sourceChecksumSha256": "3ae70ce8d75ef31688e05e8c8169a7da14bcb51ef78d7ddfdcaba27a51263a67",
+    "variantsCreated": 82,
+    "variantsSkippedExisting": 0
+  },
+  "FinalDecision": "MEDICATION_FORMULATION_STRENGTH_COMPLETION_CERTIFIED_WITH_REVIEW_ITEMS",
+  "HardAcceptance": {
+    "Biktarvy": [],
+    "Jardiance": [],
+    "pass": true
+  },
+  "KnownNonblockingGaps": [
+    "Broad corpus may remain incomplete where brand aliases or formulations lack approved source rows",
+    "Dual-layer products remain inactive (CatalogMedication-first)",
+    "RxNorm/DailyMed CREATE still registered-only — no fabricated RxCUI/NDC",
+    "Remaining single-strength generics without approved multi-strength source data"
+  ],
+  "MigrationIdentifier": null,
+  "MigrationRequired": "NO",
+  "ProductionDeployStatus": "NOT_DEPLOYED",
+  "ProviderAnswerMeasured": {
+    "absentFamilies": 0,
+    "corpusSearchPassRate": 0.9830795262267343,
+    "distinctDosageForms": 96,
+    "distinctFormulations": 10052,
+    "distinctRoutes": 33,
+    "distinctStrengths": 762,
+    "exactRankingPassRate": 1,
+    "familySearchPassRate": 1,
+    "genericsMultiStrength": 4129,
+    "hardAcceptancePass": true,
+    "orderabilityPassRate": 1,
+    "partialFamilies": 0,
+    "variantsCreated": 82
+  },
+  "ProviderFacingValidation": {
+    "absentFamilies": 0,
+    "corpusSize": 285,
+    "exactRankingPassRate": 1,
+    "hardAcceptance": {
+      "failures": [],
+      "pass": true
+    },
+    "orderabilityPassRate": 1,
+    "partialFamilies": 0,
+    "queryCount": 591,
+    "searchPassRate": 0.9830795262267343,
+    "uiLimit": 40
+  },
+  "ProviderQuestion": "When a physician types Biktarvy, Jardiance, or another commonly prescribed medication, does Medora return the complete, correct, orderable product family?",
+  "RegressionEvidence": {
+    "buildPass": true,
+    "certificationIdempotent": true,
+    "completionIdempotent": true,
+    "diffCheckPass": true,
+    "focusedTestsPass": true,
+    "fullRegressionPass": true,
+    "marValidated": true,
+    "pharmacyValidated": true,
+    "reconciliationValidated": true,
+    "typecheckPass": true
+  },
+  "Safety": {
+    "chartMutations": 0,
+    "marMutations": 0,
+    "orderMutations": 0,
+    "productionCds": 0,
+    "productsActivated": 0
+  },
+  "SourceDataUsed": [
+    "MEDORA_CURATED enterprise/Wave2/Wave3 formulary manifests (formulation candidates)",
+    "Existing CatalogMedication + MedicationAlias provider search path",
+    "RxNorm/DailyMed adapters registered but not used for fabricated CREATE"
+  ],
+  "WhyPreviousCertificationInsufficient": [
+    "Certified from internal catalog counts and a 15-family probe, not production UI search behavior",
+    "Jardiance brand search showed generic-only single strength; jar ranked tirzepatide via mid-string match",
+    "Biktarvy provider search failed despite Wave3 catalog presence (alias/ranking/display gaps)",
+    "Result limit/UI default hid sibling strengths; brand aliases were not promoted in display"
+  ],
+  "auditStatus": "COMPLETE",
+  "catalogClassification": "CURATED",
+  "catalogComplete": false,
+  "certificationId": "MEDUI.MEDICATION_FORMULATION_STRENGTH_COMPLETION",
+  "confidence": "HIGH",
+  "dataSource": "database",
+  "generatedAt": "2026-07-19T00:11:02.718Z",
+  "implementationId": "MEDUI.MEDICATION_FORMULATION_STRENGTH_COMPLETION_CLINICAL_COMPLETENESS",
+  "title": "Medication Formulation & Strength Completion"
+}

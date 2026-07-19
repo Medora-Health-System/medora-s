@@ -1,0 +1,16 @@
+{
+  "title": "Medication Formulation & Strength Completion — Baseline",
+  "generatedAt": "2026-07-18T23:46:42.779Z",
+  "catalogActive": 10657,
+  "distinctGenerics": 5206,
+  "distinctStrengths": 722,
+  "distinctDosageForms": 94,
+  "distinctRoutes": 32,
+  "distinctFormulations": 9970,
+  "genericsSingleStrength": 1086,
+  "genericsMultiStrength": 4120,
+  "aliases": 21602,
+  "productsActive": 0,
+  "ordersUsingCatalogMed": 3942,
+  "administrations": 956
+}
