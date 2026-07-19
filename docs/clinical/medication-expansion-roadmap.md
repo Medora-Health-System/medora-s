@@ -24,9 +24,14 @@ Universal Provider Ordering
 Measured coverage: 99.68% (10380 orderable / 33 non-orderable clinical)
 Status: `MEDICATION_ORDERABLE_CATALOG_COMPLETION_CERTIFIED`
 
+**Medication Formulation & Strength Completion**
+Provider-Orderable Clinical Completeness (provider-facing remediation)
+Measured: +82 formulations; corpus 285 families @ 98.31% search; hard acceptance PASS
+Status: `MEDICATION_FORMULATION_STRENGTH_COMPLETION_CERTIFIED_WITH_REVIEW_ITEMS`
+
 ## ACTIVE
 
-None — orderable catalog completion complete.
+None — formulation & strength completion complete.
 
 ## NEXT
 

@@ -401,6 +401,17 @@ flowchart LR
 | **Typical live decision** | `MEDICATION_ORDERABLE_CATALOG_COMPLETION_CERTIFIED` |
 | **Docs** | [`medication-orderable-catalog-audit.md`](./medication-orderable-catalog-audit.md), [`medication-expansion-roadmap.md`](./medication-expansion-roadmap.md) |
 
+### Medication Formulation & Strength Completion — Provider-Orderable Clinical Completeness
+
+| Field | Value |
+|-------|-------|
+| **Objective** | Complete clinically relevant strengths, dosage forms, and routes for medications already in Medora (not Phase 19; not an expansion wave) |
+| **Certification ID** | `MEDUI.MEDICATION_FORMULATION_STRENGTH_COMPLETION` |
+| **Migration** | **NO** |
+| **Status** | **Complete with review items** — provider-facing hard acceptance PASS; corpus 285 @ 98.31% |
+| **Typical live decision** | `MEDICATION_FORMULATION_STRENGTH_COMPLETION_CERTIFIED_WITH_REVIEW_ITEMS` |
+| **Docs** | [`medication-formulation-root-cause-report.md`](./medication-formulation-root-cause-report.md), [`medication-completeness-report.md`](./medication-completeness-report.md), [`medication-expansion-roadmap.md`](./medication-expansion-roadmap.md) |
+
 **Note:** Medication Intelligence Phases 15–18 remain complete. Do **not** resolve acetaminophen via catalog expansion. Production CDS / Enterprise Active remain off unless separately certified. Catalog availability ≠ recommendation activation.
 
 ### Deferred after Phase 6 — Canonical ordering integration and order sentences
