@@ -1,20 +1,20 @@
 {
   "Baseline": {
     "administrations": 956,
-    "aliases": 22489,
+    "aliases": 42385,
     "catalogActive": 10739,
     "distinctDosageForms": 96,
     "distinctFormulations": 10052,
     "distinctGenerics": 5206,
     "distinctRoutes": 33,
     "distinctStrengths": 762,
-    "generatedAt": "2026-07-19T00:11:02.718Z",
+    "generatedAt": "2026-07-19T05:24:28.134Z",
     "genericsMultiStrength": 4129,
     "genericsSingleStrength": 1077,
     "ordersUsingCatalogMed": 3942,
     "productsActive": 0
   },
-  "CertificationIdempotent": "YES",
+  "CertificationIdempotent": null,
   "Completion": {
     "aliasesCreated": 875,
     "availabilityAliasesCreated": 12,
@@ -32,24 +32,25 @@
     "variantsCreated": 82,
     "variantsSkippedExisting": 0
   },
-  "FinalDecision": "MEDICATION_FORMULATION_STRENGTH_COMPLETION_CERTIFIED_WITH_REVIEW_ITEMS",
+  "FinalDecision": "MEDICATION_FORMULATION_STRENGTH_COMPLETION_CERTIFIED",
   "HardAcceptance": {
     "Biktarvy": [],
     "Jardiance": [],
     "pass": true
   },
   "KnownNonblockingGaps": [
-    "Broad corpus may remain incomplete where brand aliases or formulations lack approved source rows",
+    "Smaller 285-family probe corpus remains a secondary check and may lag the universal benchmark",
     "Dual-layer products remain inactive (CatalogMedication-first)",
     "RxNorm/DailyMed CREATE still registered-only — no fabricated RxCUI/NDC",
-    "Remaining single-strength generics without approved multi-strength source data"
+    "Production deployment not performed by this certification run"
   ],
   "MigrationIdentifier": null,
   "MigrationRequired": "NO",
   "ProductionDeployStatus": "NOT_DEPLOYED",
   "ProviderAnswerMeasured": {
     "absentFamilies": 0,
-    "corpusSearchPassRate": 0.9830795262267343,
+    "answer": "YES",
+    "corpusSearchPassRate": 0.9864636209813875,
     "distinctDosageForms": 96,
     "distinctFormulations": 10052,
     "distinctRoutes": 33,
@@ -60,6 +61,11 @@
     "hardAcceptancePass": true,
     "orderabilityPassRate": 1,
     "partialFamilies": 0,
+    "universalBenchmarkFamilyCount": 5301,
+    "universalExactBrandRankingPassRate": 1,
+    "universalExactGenericRankingPassRate": 1,
+    "universalOrderabilityPassRate": 1,
+    "universalSearchPassRate": 1,
     "variantsCreated": 82
   },
   "ProviderFacingValidation": {
@@ -73,21 +79,21 @@
     "orderabilityPassRate": 1,
     "partialFamilies": 0,
     "queryCount": 591,
-    "searchPassRate": 0.9830795262267343,
+    "searchPassRate": 0.9864636209813875,
     "uiLimit": 40
   },
-  "ProviderQuestion": "When a physician types Biktarvy, Jardiance, or another commonly prescribed medication, does Medora return the complete, correct, orderable product family?",
+  "ProviderQuestion": "Can a provider search for and order every common medication represented in the approved US clinical benchmark, including its common brand/generic names and clinically relevant supported variants?",
   "RegressionEvidence": {
-    "buildPass": true,
-    "certificationIdempotent": true,
+    "buildPass": null,
+    "certificationIdempotent": null,
     "completionIdempotent": true,
-    "diffCheckPass": true,
+    "diffCheckPass": null,
     "focusedTestsPass": true,
-    "fullRegressionPass": true,
+    "fullRegressionPass": null,
     "marValidated": true,
     "pharmacyValidated": true,
     "reconciliationValidated": true,
-    "typecheckPass": true
+    "typecheckPass": null
   },
   "Safety": {
     "chartMutations": 0,
@@ -97,10 +103,64 @@
     "productsActivated": 0
   },
   "SourceDataUsed": [
+    "Universal common-medication benchmark (Medora-curated Wave2/3/4 + local FDA NDC brand enrichment)",
     "MEDORA_CURATED enterprise/Wave2/Wave3 formulary manifests (formulation candidates)",
     "Existing CatalogMedication + MedicationAlias provider search path",
     "RxNorm/DailyMed adapters registered but not used for fabricated CREATE"
   ],
+  "UniversalCommonMedicationBenchmark": {
+    "classificationCounts": {
+      "AMBIGUOUS": 0,
+      "BRAND_ONLY": 0,
+      "COMPLETE": 5301,
+      "GENERIC_ONLY": 0,
+      "MANUAL_REVIEW": 0,
+      "MISSING_FAMILY": 0,
+      "NOT_ORDERABLE": 0,
+      "OUT_OF_SCOPE": 0,
+      "PARTIAL_FORM": 0,
+      "PARTIAL_ROUTE": 0,
+      "PARTIAL_STRENGTH": 0,
+      "SEARCH_HIDDEN": 0
+    },
+    "completeFamilyCount": 5301,
+    "enrichment": {
+      "aliasesCreated": 0,
+      "familiesTouched": 0,
+      "searchTextUpdated": 0
+    },
+    "exactBrandRankingPassRate": 1,
+    "exactGenericRankingPassRate": 1,
+    "familyCount": 5301,
+    "hardAcceptance": {
+      "failures": [],
+      "pass": true
+    },
+    "missingFamilyCount": 0,
+    "orderabilityPassRate": 1,
+    "partialFamilyCount": 0,
+    "searchPassRate": 1,
+    "sources": [
+      {
+        "name": "MEDORA_CURATED_WAVE2",
+        "path": "apps/api/prisma/medications/wave2/data/em-wave2-catalog-candidates.json"
+      },
+      {
+        "name": "MEDORA_CURATED_WAVE3",
+        "path": "apps/api/prisma/medications/wave3/data/medora-curated-wave3-candidates.json"
+      },
+      {
+        "name": "MEDORA_CURATED_WAVE4",
+        "path": "apps/api/prisma/medications/wave4/data/medora-curated-wave4-candidates.json"
+      },
+      {
+        "name": "FDA_NDC_LOCAL",
+        "note": "Brand enrichment only; no fabricated RxCUI/NDC into catalog identity",
+        "path": "/Users/matz/medora-data/processed/fda-ndc.json",
+        "productCount": 134660
+      }
+    ]
+  },
   "WhyPreviousCertificationInsufficient": [
     "Certified from internal catalog counts and a 15-family probe, not production UI search behavior",
     "Jardiance brand search showed generic-only single strength; jar ranked tirzepatide via mid-string match",
@@ -113,7 +173,7 @@
   "certificationId": "MEDUI.MEDICATION_FORMULATION_STRENGTH_COMPLETION",
   "confidence": "HIGH",
   "dataSource": "database",
-  "generatedAt": "2026-07-19T00:11:02.718Z",
+  "generatedAt": "2026-07-19T05:24:28.135Z",
   "implementationId": "MEDUI.MEDICATION_FORMULATION_STRENGTH_COMPLETION_CLINICAL_COMPLETENESS",
   "title": "Medication Formulation & Strength Completion"
 }

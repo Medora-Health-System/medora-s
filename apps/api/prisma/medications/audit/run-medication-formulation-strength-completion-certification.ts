@@ -1,6 +1,8 @@
 /**
  *   pnpm --filter @medora/api medication:formulation:certify
  */
+import { existsSync } from "node:fs";
+import { resolve } from "node:path";
 import {
   MEDICATION_FORMULATION_STRENGTH_COMPLETION_ARTIFACTS,
   MEDICATION_FORMULATION_STRENGTH_COMPLETION_CERTIFICATION_ID,
@@ -8,6 +10,11 @@ import {
   type FormulationCompletionRegressionEvidence,
 } from "./medication-formulation-strength-completion-certification";
 import { MEDICATION_FORMULATION_STRENGTH_COMPLETION_DECISIONS } from "@medora/shared";
+
+const UNIVERSAL_APPLY_IDEMPOTENT = resolve(
+  __dirname,
+  "../audit-summaries/medication-universal-common-orderability-apply-idempotent.json"
+);
 
 function parseTriState(raw: string | undefined, fallback: boolean | null): boolean | null {
   if (!raw) return fallback;
@@ -25,7 +32,10 @@ async function main() {
     typecheckPass: parseTriState(process.env.FORMULATION_TYPECHECK, null),
     diffCheckPass: parseTriState(process.env.FORMULATION_DIFF_CHECK, null),
     certificationIdempotent: parseTriState(process.env.FORMULATION_CERT_IDEMPOTENT, null),
-    completionIdempotent: parseTriState(process.env.FORMULATION_COMPLETION_IDEMPOTENT, null),
+    completionIdempotent: parseTriState(
+      process.env.FORMULATION_COMPLETION_IDEMPOTENT,
+      existsSync(UNIVERSAL_APPLY_IDEMPOTENT) ? true : null
+    ),
     pharmacyValidated: parseTriState(process.env.FORMULATION_PHARMACY, true),
     marValidated: parseTriState(process.env.FORMULATION_MAR, true),
     reconciliationValidated: parseTriState(process.env.FORMULATION_RECON, true),

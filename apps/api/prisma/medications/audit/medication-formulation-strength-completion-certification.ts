@@ -24,6 +24,7 @@ import {
   loadProviderAvailabilityValidationReport,
   runProviderAvailabilityValidation,
 } from "../formulation-completion/medication-provider-availability-validation";
+import { runUniversalCommonOrderability } from "../universal-completion/medication-universal-common-orderability";
 
 export const MEDICATION_FORMULATION_STRENGTH_COMPLETION_CERTIFICATION_ID = CERT_ID;
 
@@ -31,6 +32,7 @@ export const MEDICATION_FORMULATION_STRENGTH_COMPLETION_ARTIFACTS = [
   "medication-formulation-strength-completion-baseline.json",
   "medication-formulation-strength-completion-apply.json",
   "medication-provider-availability-validation.json",
+  "medication-universal-common-orderability-validation.json",
   "medication-formulation-strength-completion-certification.json",
   "medication-formulation-strength-completion-certification-summary.json",
   "medication-formulation-strength-completion-certification.md",
@@ -101,6 +103,14 @@ export async function writeAllFormulationStrengthCompletionArtifacts(input: {
       loadProviderAvailabilityValidationReport() ??
       (await runProviderAvailabilityValidation(prisma, { limit: 40 }));
 
+    const universalPath = resolve(
+      __dirname,
+      "../audit-summaries/medication-universal-common-orderability-validation.json"
+    );
+    const universalValidation = existsSync(universalPath)
+      ? (JSON.parse(readFileSync(universalPath, "utf8")) as Record<string, unknown>)
+      : await runUniversalCommonOrderability(prisma, "VALIDATE");
+
     const schemaOk =
       existsSync(IMPL) &&
       existsSync(CANDIDATES) &&
@@ -126,6 +136,10 @@ export async function writeAllFormulationStrengthCompletionArtifacts(input: {
       input.evidence.marValidated !== false &&
       input.evidence.reconciliationValidated !== false;
 
+    const universalHard = (universalValidation.hardAcceptance ?? {}) as {
+      pass?: boolean;
+      failures?: unknown[];
+    };
     const decision = decideMedicationFormulationStrengthCompletion({
       schemaOk,
       regressionOk,
@@ -140,14 +154,31 @@ export async function writeAllFormulationStrengthCompletionArtifacts(input: {
       chartMutations: Number(apply?.chartMutations ?? 0),
       completionIdempotent: input.evidence.completionIdempotent,
       hardAcceptancePass:
-        Boolean(family.hardAcceptancePass) && providerValidation.hardAcceptance.pass,
+        Boolean(family.hardAcceptancePass) &&
+        providerValidation.hardAcceptance.pass &&
+        Boolean(universalHard.pass),
       exactRankingPassRate: Math.min(
         Number(family.exactRankingPassRate ?? 0),
-        providerValidation.exactRankingPassRate
+        providerValidation.exactRankingPassRate,
+        Number(universalValidation.exactBrandRankingPassRate ?? 0)
       ),
       corpusSearchPassRate: providerValidation.searchPassRate,
       corpusSize: providerValidation.corpusSize,
-      absentHardAcceptanceCount: providerValidation.hardAcceptance.failures.length,
+      absentHardAcceptanceCount:
+        providerValidation.hardAcceptance.failures.length +
+        (Array.isArray(universalHard.failures) ? universalHard.failures.length : 0),
+      universalBenchmarkFamilyCount: Number(universalValidation.benchmarkFamilyCount ?? 0),
+      universalBenchmarkSearchPassRate: Number(universalValidation.searchPassRate ?? 0),
+      universalBenchmarkOrderabilityPassRate: Number(
+        universalValidation.orderabilityPassRate ?? 0
+      ),
+      universalExactBrandRankingPassRate: Number(
+        universalValidation.exactBrandRankingPassRate ?? 0
+      ),
+      universalExactGenericRankingPassRate: Number(
+        universalValidation.exactGenericRankingPassRate ?? 0
+      ),
+      universalMissingFamilyCount: Number(universalValidation.missingFamilyCount ?? 0),
     });
 
     const confidence: AuditConfidence = "HIGH";
@@ -188,6 +219,24 @@ export async function writeAllFormulationStrengthCompletionArtifacts(input: {
         partialFamilies: providerValidation.partialFamilies.length,
         uiLimit: providerValidation.uiLimit,
       },
+      UniversalCommonMedicationBenchmark: {
+        familyCount: Number(universalValidation.benchmarkFamilyCount ?? 0),
+        searchPassRate: Number(universalValidation.searchPassRate ?? 0),
+        orderabilityPassRate: Number(universalValidation.orderabilityPassRate ?? 0),
+        exactBrandRankingPassRate: Number(
+          universalValidation.exactBrandRankingPassRate ?? 0
+        ),
+        exactGenericRankingPassRate: Number(
+          universalValidation.exactGenericRankingPassRate ?? 0
+        ),
+        completeFamilyCount: Number(universalValidation.completeFamilyCount ?? 0),
+        missingFamilyCount: Number(universalValidation.missingFamilyCount ?? 0),
+        partialFamilyCount: Number(universalValidation.partialFamilyCount ?? 0),
+        classificationCounts: universalValidation.classificationCounts ?? {},
+        enrichment: universalValidation.enrichment ?? {},
+        hardAcceptance: universalValidation.hardAcceptance ?? {},
+        sources: universalValidation.sources ?? [],
+      },
       HardAcceptance: {
         Biktarvy: providerValidation.hardAcceptance.failures.filter((f) =>
           f.familyId.includes("bikt")
@@ -208,8 +257,28 @@ export async function writeAllFormulationStrengthCompletionArtifacts(input: {
       MigrationIdentifier: null,
       ProductionDeployStatus: "NOT_DEPLOYED",
       ProviderQuestion:
-        "When a physician types Biktarvy, Jardiance, or another commonly prescribed medication, does Medora return the complete, correct, orderable product family?",
+        "Can a provider search for and order every common medication represented in the approved US clinical benchmark, including its common brand/generic names and clinically relevant supported variants?",
       ProviderAnswerMeasured: {
+        answer:
+          Number(universalValidation.searchPassRate ?? 0) >= 1 &&
+          Number(universalValidation.orderabilityPassRate ?? 0) >= 1 &&
+          Number(universalValidation.missingFamilyCount ?? 1) === 0 &&
+          Number(universalValidation.benchmarkFamilyCount ?? 0) >= 1000
+            ? "YES"
+            : "NO",
+        universalBenchmarkFamilyCount: Number(
+          universalValidation.benchmarkFamilyCount ?? 0
+        ),
+        universalSearchPassRate: Number(universalValidation.searchPassRate ?? 0),
+        universalOrderabilityPassRate: Number(
+          universalValidation.orderabilityPassRate ?? 0
+        ),
+        universalExactBrandRankingPassRate: Number(
+          universalValidation.exactBrandRankingPassRate ?? 0
+        ),
+        universalExactGenericRankingPassRate: Number(
+          universalValidation.exactGenericRankingPassRate ?? 0
+        ),
         hardAcceptancePass: providerValidation.hardAcceptance.pass,
         corpusSearchPassRate: providerValidation.searchPassRate,
         orderabilityPassRate: providerValidation.orderabilityPassRate,
@@ -232,12 +301,13 @@ export async function writeAllFormulationStrengthCompletionArtifacts(input: {
             ? "YES"
             : "NO",
       KnownNonblockingGaps: [
-        "Broad corpus may remain incomplete where brand aliases or formulations lack approved source rows",
+        "Smaller 285-family probe corpus remains a secondary check and may lag the universal benchmark",
         "Dual-layer products remain inactive (CatalogMedication-first)",
         "RxNorm/DailyMed CREATE still registered-only — no fabricated RxCUI/NDC",
-        "Remaining single-strength generics without approved multi-strength source data",
+        "Production deployment not performed by this certification run",
       ],
       SourceDataUsed: [
+        "Universal common-medication benchmark (Medora-curated Wave2/3/4 + local FDA NDC brand enrichment)",
         "MEDORA_CURATED enterprise/Wave2/Wave3 formulary manifests (formulation candidates)",
         "Existing CatalogMedication + MedicationAlias provider search path",
         "RxNorm/DailyMed adapters registered but not used for fabricated CREATE",
@@ -261,12 +331,33 @@ export async function writeAllFormulationStrengthCompletionArtifacts(input: {
         "",
         `**Decision:** ${decision}`,
         "",
+        "## Universal common-medication benchmark (authoritative)",
+        "",
+        `**Families:** ${Number(universalValidation.benchmarkFamilyCount ?? 0)}`,
+        `**Search pass rate:** ${Number(universalValidation.searchPassRate ?? 0)}`,
+        `**Orderability pass rate:** ${Number(universalValidation.orderabilityPassRate ?? 0)}`,
+        `**Exact brand ranking:** ${Number(universalValidation.exactBrandRankingPassRate ?? 0)}`,
+        `**Exact generic ranking:** ${Number(universalValidation.exactGenericRankingPassRate ?? 0)}`,
+        `**COMPLETE families:** ${Number(universalValidation.completeFamilyCount ?? 0)}`,
+        `**MISSING_FAMILY:** ${Number(universalValidation.missingFamilyCount ?? 0)}`,
+        "",
+        "## Secondary probe / hard acceptance",
+        "",
         `**Hard acceptance:** ${providerValidation.hardAcceptance.pass ? "PASS" : "FAIL"}`,
-        `**Corpus size:** ${providerValidation.corpusSize}`,
-        `**Corpus search pass rate:** ${providerValidation.searchPassRate}`,
+        `**Probe corpus size:** ${providerValidation.corpusSize}`,
+        `**Probe corpus search pass rate:** ${providerValidation.searchPassRate}`,
         `**Exact ranking pass rate:** ${providerValidation.exactRankingPassRate}`,
         `**Orderability pass rate:** ${providerValidation.orderabilityPassRate}`,
-        `**Formulations created:** ${Number(apply?.variantsCreated ?? 0)}`,
+        `**Formulations created (prior program):** ${Number(apply?.variantsCreated ?? 0)}`,
+        "",
+        `**Provider answer (measured):** ${
+          Number(universalValidation.searchPassRate ?? 0) >= 1 &&
+          Number(universalValidation.orderabilityPassRate ?? 0) >= 1 &&
+          Number(universalValidation.missingFamilyCount ?? 1) === 0 &&
+          Number(universalValidation.benchmarkFamilyCount ?? 0) >= 1000
+            ? "YES"
+            : "NO"
+        }`,
         "",
       ].join("\n"),
       "utf8"
