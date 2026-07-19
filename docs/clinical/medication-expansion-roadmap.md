@@ -25,9 +25,13 @@ Measured coverage: 99.68% (10380 orderable / 33 non-orderable clinical)
 Status: `MEDICATION_ORDERABLE_CATALOG_COMPLETION_CERTIFIED`
 
 **Medication Formulation & Strength Completion**
-Provider-Orderable Clinical Completeness (universal common-medication benchmark)
-Measured: universal benchmark 5301 families @ 100% search + orderability; hard acceptance PASS
-Status: `MEDICATION_FORMULATION_STRENGTH_COMPLETION_CERTIFIED`
+Provider-Orderable Clinical Completeness (local-DB certification — invalidated for production UI)
+Status: superseded for production by runtime availability remediation
+
+**Medication Runtime Provider Availability Completion**
+Production Railway DB + real `MedicationCatalogService.search` (Wayne Urgent Care)
+Measured: hard acceptance PASS (Jardiance 10+25 mg, Biktarvy); 40-family inventory 100%
+Status: `MEDICATION_RUNTIME_PROVIDER_AVAILABILITY_CERTIFIED_WITH_REVIEW_ITEMS`
 
 ## ACTIVE
 
