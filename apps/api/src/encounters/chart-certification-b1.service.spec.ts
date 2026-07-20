@@ -3,12 +3,17 @@ import { ChartCertificationB1Service } from "./chart-certification-b1.service";
 
 describe("ChartCertificationB1Service", () => {
   it("isEnabled defaults false", () => {
-    const prev = process.env.ENTERPRISE_CHART_CERTIFICATION_STAGE_B1;
+    const prevB1 = process.env.ENTERPRISE_CHART_CERTIFICATION_STAGE_B1;
+    const prevB2 = process.env.ENTERPRISE_CHART_CERTIFICATION_STAGE_B2;
     delete process.env.ENTERPRISE_CHART_CERTIFICATION_STAGE_B1;
     delete process.env.NEXT_PUBLIC_ENTERPRISE_CHART_CERTIFICATION_STAGE_B1;
+    delete process.env.ENTERPRISE_CHART_CERTIFICATION_STAGE_B2;
+    delete process.env.NEXT_PUBLIC_ENTERPRISE_CHART_CERTIFICATION_STAGE_B2;
     const svc = new ChartCertificationB1Service({} as never, {} as never);
     expect(svc.isEnabled()).toBe(false);
-    if (prev !== undefined) process.env.ENTERPRISE_CHART_CERTIFICATION_STAGE_B1 = prev;
+    expect(svc.isStageB2Enabled()).toBe(false);
+    if (prevB1 !== undefined) process.env.ENTERPRISE_CHART_CERTIFICATION_STAGE_B1 = prevB1;
+    if (prevB2 !== undefined) process.env.ENTERPRISE_CHART_CERTIFICATION_STAGE_B2 = prevB2;
   });
 
   it("controller route is registered in source", async () => {

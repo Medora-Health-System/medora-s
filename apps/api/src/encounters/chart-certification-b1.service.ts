@@ -5,13 +5,20 @@ import {
 } from "@nestjs/common";
 import {
   buildChartCertificationB1,
+  buildChartCertificationB2,
+  computeDiagnosticRevision,
   enterpriseChartCertificationStageB1EnabledFromProcessEnv,
+  enterpriseChartCertificationStageB2EnabledFromProcessEnv,
   isEdPhysicalDepartureCompleted,
   type ChartCertificationB1Context,
   type ChartCertificationB1Result,
+  type DiagnosticOrderItemSnapshot,
+  type EcgDocumentationSnapshot,
   PROVIDER_DOCUMENTATION_NAMESPACE_KEY,
   ER_NURSING_REASSESSMENT_V1_KEY,
 } from "@medora/shared";
+
+const ECG_12_LEAD_DOCUMENTATION_CARD_ID = "ecg_12_lead_documentation";
 import { PrismaService } from "../prisma/prisma.service";
 import { EncountersService } from "./encounters.service";
 
@@ -98,7 +105,14 @@ export class ChartCertificationB1Service {
   ) {}
 
   isEnabled(): boolean {
-    return enterpriseChartCertificationStageB1EnabledFromProcessEnv(process.env);
+    return (
+      enterpriseChartCertificationStageB2EnabledFromProcessEnv(process.env) ||
+      enterpriseChartCertificationStageB1EnabledFromProcessEnv(process.env)
+    );
+  }
+
+  isStageB2Enabled(): boolean {
+    return enterpriseChartCertificationStageB2EnabledFromProcessEnv(process.env);
   }
 
   async getChartCertification(
@@ -137,6 +151,11 @@ export class ChartCertificationB1Service {
           nursingReady: null,
           providerReady: null,
           dispositionDocumentationReady: null,
+          ordersReady: null,
+          laboratoryReady: null,
+          imagingReady: null,
+          ecgReady: null,
+          resultReviewReady: null,
         },
         authoritativeReadiness: {
           ...stale.authoritativeReadiness,
@@ -180,6 +199,11 @@ export class ChartCertificationB1Service {
             nursingReady: null,
             providerReady: null,
             dispositionDocumentationReady: null,
+            ordersReady: null,
+            laboratoryReady: null,
+            imagingReady: null,
+            ecgReady: null,
+            resultReviewReady: null,
           },
           authoritativeReadiness: {
             ...retried.authoritativeReadiness,
@@ -190,6 +214,41 @@ export class ChartCertificationB1Service {
         };
       }
       return retried;
+    }
+
+    // B2: order/result mutations may not bump Encounter.version — recheck diagnostic revision.
+    if (this.isStageB2Enabled() && result.diagnosticRevision) {
+      const rev = await this.loadDiagnosticRevisionToken(facilityId, encounterId);
+      if (rev !== result.diagnosticRevision) {
+        const retried = await this.evaluate(facilityId, encounterId);
+        const rev2 = await this.loadDiagnosticRevisionToken(facilityId, encounterId);
+        if (rev2 !== retried.diagnosticRevision) {
+          return {
+            ...retried,
+            coverageStatus: "ERROR",
+            evaluationErrors: [
+              ...retried.evaluationErrors,
+              {
+                code: "STALE_DIAGNOSTIC_REVISION",
+                messageKey: "edLifecycle.certification.b2.errors.staleDiagnosticRevision",
+              },
+            ],
+            evaluatedReadiness: {
+              registrationReady: null,
+              triageReady: null,
+              nursingReady: null,
+              providerReady: null,
+              dispositionDocumentationReady: null,
+              ordersReady: null,
+              laboratoryReady: null,
+              imagingReady: null,
+              ecgReady: null,
+              resultReviewReady: null,
+            },
+          };
+        }
+        return retried;
+      }
     }
 
     return result;
@@ -408,6 +467,176 @@ export class ChartCertificationB1Service {
       },
     };
 
-    return buildChartCertificationB1(context);
+    if (!this.isStageB2Enabled()) {
+      return buildChartCertificationB1(context);
+    }
+
+    const diagnostics = await this.loadDiagnosticsContext(facilityId, encounterId);
+    return buildChartCertificationB2({ ...context, diagnostics });
+  }
+
+  private async loadDiagnosticRevisionToken(
+    facilityId: string,
+    encounterId: string
+  ): Promise<string> {
+    const diagnostics = await this.loadDiagnosticsContext(facilityId, encounterId);
+    return diagnostics.diagnosticRevision;
+  }
+
+  private async loadDiagnosticsContext(facilityId: string, encounterId: string) {
+    const ECG_CARD = ECG_12_LEAD_DOCUMENTATION_CARD_ID;
+    const RHYTHM_CARD = "rhythm_strip_documentation";
+
+    const [orders, ecgEntries] = await Promise.all([
+      this.prisma.order.findMany({
+        where: { encounterId, facilityId },
+        select: {
+          id: true,
+          type: true,
+          status: true,
+          priority: true,
+          orderedBy: true,
+          createdAt: true,
+          updatedAt: true,
+          cancelledAt: true,
+          cancellationReason: true,
+          items: {
+            select: {
+              id: true,
+              catalogItemType: true,
+              enterpriseProcedureId: true,
+              status: true,
+              lifecycleState: true,
+              replacesOrderItemId: true,
+              documentedCollectedAt: true,
+              effectiveCollectedAt: true,
+              documentedPerformedAt: true,
+              effectivePerformedAt: true,
+              documentedCompletedAt: true,
+              completedAt: true,
+              medicationLifecycleStatus: true,
+              updatedAt: true,
+              result: {
+                select: {
+                  id: true,
+                  criticalValue: true,
+                  verifiedAt: true,
+                  verifiedByUserId: true,
+                  acknowledgedByProviderAt: true,
+                  acknowledgedByUserId: true,
+                  updatedAt: true,
+                },
+              },
+            },
+          },
+        },
+      }),
+      this.prisma.encounterClinicalDocumentationEntry.findMany({
+        where: {
+          encounterId,
+          facilityId,
+          voidedAt: null,
+          cardId: { in: [ECG_CARD, RHYTHM_CARD] },
+        },
+        select: {
+          id: true,
+          cardId: true,
+          payloadJson: true,
+          createdAt: true,
+        },
+        take: 50,
+      }),
+    ]);
+
+    const supersededBy = new Map<string, string>();
+    for (const order of orders) {
+      for (const it of order.items) {
+        if (it.replacesOrderItemId) {
+          supersededBy.set(it.replacesOrderItemId, it.id);
+        }
+      }
+    }
+
+    const orderItems: DiagnosticOrderItemSnapshot[] = [];
+    for (const order of orders) {
+      for (const it of order.items) {
+        const result = it.result;
+        orderItems.push({
+          orderId: order.id,
+          orderItemId: it.id,
+          orderType: order.type,
+          catalogItemType: it.catalogItemType,
+          enterpriseProcedureId: it.enterpriseProcedureId,
+          orderStatus: String(order.status),
+          itemStatus: String(it.status),
+          lifecycleState: it.lifecycleState ? String(it.lifecycleState) : null,
+          priority: order.priority ? String(order.priority) : null,
+          placedAt: order.createdAt?.toISOString() ?? null,
+          updatedAt: (it.updatedAt ?? order.updatedAt)?.toISOString() ?? null,
+          cancelledAt: order.cancelledAt?.toISOString() ?? null,
+          cancellationReason: order.cancellationReason,
+          orderedBy: order.orderedBy,
+          replacesOrderItemId: it.replacesOrderItemId,
+          supersededByOrderItemId: supersededBy.get(it.id) ?? null,
+          documentedCollectedAt: it.documentedCollectedAt?.toISOString() ?? null,
+          effectiveCollectedAt: it.effectiveCollectedAt?.toISOString() ?? null,
+          documentedPerformedAt: it.documentedPerformedAt?.toISOString() ?? null,
+          effectivePerformedAt: it.effectivePerformedAt?.toISOString() ?? null,
+          documentedCompletedAt: it.documentedCompletedAt?.toISOString() ?? null,
+          completedAt: it.completedAt?.toISOString() ?? null,
+          medicationLifecycleStatus: it.medicationLifecycleStatus
+            ? String(it.medicationLifecycleStatus)
+            : null,
+          result: result
+            ? {
+                id: result.id,
+                criticalValue: result.criticalValue === true,
+                verifiedAt: result.verifiedAt?.toISOString() ?? null,
+                verifiedByUserId: result.verifiedByUserId,
+                acknowledgedByProviderAt: result.acknowledgedByProviderAt?.toISOString() ?? null,
+                acknowledgedByUserId: result.acknowledgedByUserId,
+                updatedAt: result.updatedAt?.toISOString() ?? null,
+                // Presence of Result row only — never load report bodies into certification.
+                hasResultPayload: true,
+              }
+            : null,
+        });
+      }
+    }
+
+    const ecgDocumentation: EcgDocumentationSnapshot[] = ecgEntries.map((entry) => {
+      const payload = asObject(entry.payloadJson) ?? {};
+      const yes = (v: unknown) => String(v ?? "").toUpperCase() === "YES";
+      const interpretation =
+        typeof payload.interpretation === "string" &&
+        payload.interpretation.trim().length > 0 &&
+        String(payload.interpretation).toUpperCase() !== "PENDING_PROVIDER_REVIEW";
+      return {
+        entryId: entry.id,
+        cardId: entry.cardId,
+        performed: payload.performed == null ? null : yes(payload.performed),
+        providerReviewed:
+          payload.providerReviewed == null
+            ? payload.stripReviewedByClinician == null
+              ? null
+              : yes(payload.stripReviewedByClinician)
+            : yes(payload.providerReviewed),
+        criticalFindingPresent:
+          payload.criticalFindingPresent == null ? null : yes(payload.criticalFindingPresent),
+        providerNotified: payload.providerNotified == null ? null : yes(payload.providerNotified),
+        interpretationPresent: interpretation || yes(payload.providerReviewed),
+        interpretationSigned: false,
+        machineInterpretationOnly: false,
+        updatedAt: entry.createdAt?.toISOString() ?? null,
+      };
+    });
+
+    return {
+      orderItems,
+      ecgDocumentation,
+      diagnosticRevision: computeDiagnosticRevision(orderItems, ecgDocumentation),
+      sendOutFollowUpModelPresent: false,
+      loadError: null as { code: string; messageKey: string } | null,
+    };
   }
 }
