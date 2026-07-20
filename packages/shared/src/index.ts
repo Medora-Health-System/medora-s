@@ -51,6 +51,7 @@ export * from "./encounters/edClosedEncounterCertification.js";
 export * from "./encounters/chartCertificationDedupe.js";
 export * from "./encounters/chartCertificationBenchmark.js";
 export * from "./encounters/enterpriseChartCertificationStageAFeatureFlag.js";
+export * from "./encounters/chartCertificationB1/index.js";
 export * from "./encounters/governedRoomLabel.js";
 export * from "./emergency/canDocumentEdTriage.js";
 export * from "./emergency/closureDischargeReadiness.js";
