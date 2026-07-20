@@ -6575,6 +6575,156 @@ export default {
           },
         },
       },
+      b2: {
+        panelTitle: "Chart certification review",
+        banner: "Stage B2 advisory diagnostic review — partial clinical module coverage",
+        coveragePartial:
+          "Coverage: partial Stage B2 (medications, MAR, procedures, pathways not evaluated)",
+        loadError: "Unable to load chart certification. This is not a completed certification.",
+        evaluationErrorsPresent: "Evaluation incomplete — results are not READY.",
+        authoritativeReadiness: "Authoritative readiness (existing workflow)",
+        evaluatedModules: "Stage B2 evaluated modules",
+        unevaluatedTitle: "Modules not yet evaluated",
+        findingsTitle: "Diagnostic findings",
+        advisoryFinding: "Advisory finding (does not block actions)",
+        establishedFinding: "Established workflow finding",
+        openRemediation: "Open related section",
+        errors: {
+          evaluatorThrew: "A diagnostic evaluator failed.",
+          forced: "Forced evaluation error.",
+          staleDiagnosticRevision: "Diagnostic data changed during evaluation.",
+        },
+        codes: {
+          LAB_SPECIMEN_NOT_COLLECTED: {
+            title: "Lab specimen not collected",
+            description: "No specimen collection is recorded for this laboratory order.",
+          },
+          LAB_SPECIMEN_REJECTED: {
+            title: "Lab specimen rejected",
+            description: "The specimen was rejected and requires resolution.",
+          },
+          LAB_RESULT_MISSING: {
+            title: "Lab result missing",
+            description: "A result is required and not present for this laboratory order.",
+          },
+          LAB_RESULT_PRELIMINARY: {
+            title: "Preliminary lab result",
+            description: "A preliminary result is present under an accepted modeled policy.",
+          },
+          LAB_RESULT_UNVERIFIED: {
+            title: "Lab result unverified",
+            description: "The laboratory result is not yet verified/final.",
+          },
+          LAB_RESULT_UNREVIEWED: {
+            title: "Lab result unreviewed",
+            description: "A final laboratory result has not been provider-reviewed.",
+          },
+          LAB_CRITICAL_RESULT_UNACKNOWLEDGED: {
+            title: "Critical lab result unacknowledged",
+            description: "A critical laboratory result requires clinician acknowledgment.",
+          },
+          LAB_SEND_OUT_FOLLOW_UP_MISSING: {
+            title: "Send-out follow-up missing",
+            description: "Send-out result lacks an assigned follow-up owner.",
+          },
+          LAB_SEND_OUT_FOLLOW_UP_ACTIVE: {
+            title: "Send-out follow-up active",
+            description: "An approved send-out follow-up workflow is active.",
+          },
+          LAB_STATUS_CONFLICT: {
+            title: "Lab status conflict",
+            description: "Laboratory order status is contradictory or unknown.",
+          },
+          SEND_OUT_FOLLOW_UP_MODEL_LIMITATION: {
+            title: "Send-out follow-up model limitation",
+            description: "No durable post-departure send-out follow-up model is fully modeled.",
+          },
+          IMAGING_NOT_PERFORMED: {
+            title: "Imaging not performed",
+            description: "The imaging study has not been performed.",
+          },
+          IMAGING_REPORT_MISSING: {
+            title: "Imaging report missing",
+            description: "The study was performed but no report/result is present.",
+          },
+          IMAGING_PRELIMINARY_REVIEW: {
+            title: "Preliminary imaging report",
+            description: "A preliminary imaging interpretation is present.",
+          },
+          IMAGING_PRELIMINARY_ACCEPTED: {
+            title: "Preliminary imaging accepted",
+            description: "Preliminary imaging is accepted under modeled workflow.",
+          },
+          IMAGING_FINAL_REPORT_UNREVIEWED: {
+            title: "Imaging report unreviewed",
+            description: "A final imaging report has not been provider-reviewed.",
+          },
+          IMAGING_CRITICAL_FINDING_UNACKNOWLEDGED: {
+            title: "Critical imaging finding unacknowledged",
+            description: "A critical imaging finding requires clinician acknowledgment.",
+          },
+          IMAGING_STATUS_CONFLICT: {
+            title: "Imaging status conflict",
+            description: "Imaging order status is contradictory or unknown.",
+          },
+          ECG_NOT_ACQUIRED: {
+            title: "ECG not acquired",
+            description: "An ECG was ordered but acquisition is not documented.",
+          },
+          ECG_INTERPRETATION_MISSING: {
+            title: "ECG interpretation missing",
+            description: "Provider interpretation is not documented (machine-only is insufficient).",
+          },
+          ECG_INTERPRETATION_UNSIGNED: {
+            title: "ECG interpretation unsigned",
+            description: "Durable ECG interpretation signature is not modeled or missing.",
+          },
+          ECG_CRITICAL_FINDING_UNACKNOWLEDGED: {
+            title: "Critical ECG finding unacknowledged",
+            description: "A critical ECG finding lacks required provider notification.",
+          },
+          ECG_FRAGMENTED_EVIDENCE_LIMITATION: {
+            title: "ECG evidence limitation",
+            description: "ECG uses CARE orders and clinical documentation cards — no dedicated Result model.",
+          },
+          DIAGNOSTIC_ORDER_REFUSAL_UNDOCUMENTED: {
+            title: "Diagnostic refusal undocumented",
+            description: "Refusal is indicated without authoritative refusal documentation.",
+          },
+          DIAGNOSTIC_ORDER_STATUS_UNKNOWN: {
+            title: "Diagnostic order status unknown",
+            description: "Order lifecycle could not be normalized safely.",
+          },
+          DIAGNOSTIC_ORDER_FUTURE_EXCLUDED: {
+            title: "Future order excluded",
+            description: "Future outpatient orders are outside Stage B2 encounter certification.",
+          },
+          MEDICATION_ORDERS_EXCLUDED_FROM_B2: {
+            title: "Medication orders excluded",
+            description: "Medication orders are not certified in Stage B2 (deferred).",
+          },
+          PROCEDURE_ORDERS_EXCLUDED_FROM_B2: {
+            title: "Procedure orders excluded",
+            description: "Non-diagnostic procedure orders are not certified in Stage B2.",
+          },
+          RESULT_REVIEW_REQUIRED: {
+            title: "Result review required",
+            description: "Provider review is required for this final result.",
+          },
+          RESULT_REVIEW_NOT_FROM_DISPLAY: {
+            title: "Review is not display",
+            description: "Opening or displaying a result does not satisfy provider review.",
+          },
+          CRITICAL_RESULT_ACKNOWLEDGMENT_MISSING: {
+            title: "Critical result acknowledgment missing",
+            description: "Critical-result acknowledgment is required and not recorded.",
+          },
+          CRITICAL_ACK_NOT_FROM_REVIEW_ALONE: {
+            title: "Acknowledgment is not review alone",
+            description: "Provider review/verify does not replace critical-result acknowledgment.",
+          },
+        },
+      },
     },
   },
   emergencyTrackboard: {

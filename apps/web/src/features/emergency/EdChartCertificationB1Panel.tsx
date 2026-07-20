@@ -55,10 +55,21 @@ function remediationHref(
   remediation?: { route?: string; tab?: string; section?: string }
 ): string {
   const route = remediation?.route ?? "chart";
+  const tab = remediation?.tab;
   if (route === "triage") return `${emergencyActiveWorkspacePath(encounterId)}?tab=triage`;
   if (route === "nursing") return `${emergencyActiveWorkspacePath(encounterId)}?tab=nursing`;
-  if (route === "provider") return `${emergencyActiveWorkspacePath(encounterId)}?tab=provider`;
+  if (route === "provider") {
+    const q = tab === "ecg" ? "provider&section=ecg" : "provider";
+    return `${emergencyActiveWorkspacePath(encounterId)}?tab=${q}`;
+  }
   if (route === "disposition") return `${emergencyActiveWorkspacePath(encounterId)}?tab=disposition`;
+  if (route === "orders") {
+    const orderTab = tab === "imaging" ? "imaging" : tab === "care" ? "care" : "orders";
+    return `${emergencyActiveWorkspacePath(encounterId)}?tab=${orderTab}`;
+  }
+  if (route === "results") {
+    return `${emergencyActiveWorkspacePath(encounterId)}?tab=results`;
+  }
   if (route === "registration") return `/app/patients`;
   return emergencyChartPath(encounterId);
 }
@@ -103,13 +114,16 @@ export function EdChartCertificationB1Panel({
   const patientName =
     `${(encounter.patient?.firstName ?? "").trim()} ${(encounter.patient?.lastName ?? "").trim()}`.trim() ||
     t("common.dash");
+  const stage = result?.certificationStage === "B2" ? "B2" : "B1";
+  const i18nPrefix =
+    stage === "B2" ? "edLifecycle.certification.b2" : "edLifecycle.certification.b1";
 
   return (
     <div
       role="dialog"
       aria-modal="true"
       data-testid="ed-chart-certification-b1-panel"
-      data-certification-stage="B1"
+      data-certification-stage={stage}
       data-certification-authority={result?.certificationAuthority ?? "ADVISORY"}
       style={{
         position: "fixed",
@@ -136,13 +150,13 @@ export function EdChartCertificationB1Panel({
         <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
           <div>
             <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "#0f172a" }}>
-              {t("edLifecycle.certification.b1.panelTitle")}
+              {t(`${i18nPrefix}.panelTitle`)}
             </h2>
             <p
               data-testid="ed-certification-b1-banner"
               style={{ margin: "6px 0 0 0", fontSize: 13, color: "#92400e", fontWeight: 600 }}
             >
-              {t("edLifecycle.certification.b1.banner")}
+              {t(`${i18nPrefix}.banner`)}
             </p>
           </div>
           <div style={{ display: "flex", gap: 8 }}>
@@ -217,11 +231,12 @@ export function EdChartCertificationB1Panel({
         {result ? (
           <>
             <p style={{ margin: "12px 0 0 0", fontSize: 12, color: "#64748b" }}>
-              {t("edLifecycle.certification.b1.coveragePartial")}
+              {t(`${i18nPrefix}.coveragePartial`)}
               {" · "}
               {t("edLifecycle.certification.evaluatedAt")}: {result.evaluatedAt}
               {" · v"}
               {result.encounterVersion}
+              {result.diagnosticRevision ? ` · diag ${result.diagnosticRevision}` : null}
             </p>
 
             {(result.evaluationErrors?.length ?? 0) > 0 ? (
@@ -261,7 +276,7 @@ export function EdChartCertificationB1Panel({
 
             <section style={{ marginTop: 16 }}>
               <h3 style={{ margin: 0, fontSize: 13, fontWeight: 700 }}>
-                {t("edLifecycle.certification.b1.evaluatedModules")}
+                {t(`${i18nPrefix}.evaluatedModules`)}
               </h3>
               <div style={{ marginTop: 8, display: "flex", gap: 12, flexWrap: "wrap" }}>
                 {(
@@ -271,13 +286,26 @@ export function EdChartCertificationB1Panel({
                     ["nursingReady", "NURSING"],
                     ["providerReady", "PROVIDER"],
                     ["dispositionDocumentationReady", "DISPOSITION_DOCUMENTATION"],
+                    ...(stage === "B2"
+                      ? ([
+                          ["ordersReady", "ORDERS"],
+                          ["laboratoryReady", "LAB_RESULTS"],
+                          ["imagingReady", "IMAGING"],
+                          ["ecgReady", "ECG"],
+                          ["resultReviewReady", "RESULT_ACKNOWLEDGMENT"],
+                        ] as const)
+                      : []),
                   ] as const
                 ).map(([key, mod]) => (
                   <div key={mod}>
                     <div style={{ fontSize: 11, color: "#64748b" }}>
                       {t(`edLifecycle.certification.b1.modules.${mod}`)}
                     </div>
-                    {pill(result.evaluatedReadiness[key], t)}
+                    {pill(
+                      (result.evaluatedReadiness as Record<string, boolean | null | undefined>)[key] ??
+                        null,
+                      t
+                    )}
                   </div>
                 ))}
               </div>
@@ -285,7 +313,7 @@ export function EdChartCertificationB1Panel({
 
             <section style={{ marginTop: 16 }} data-testid="ed-certification-b1-unevaluated">
               <h3 style={{ margin: 0, fontSize: 13, fontWeight: 700 }}>
-                {t("edLifecycle.certification.b1.unevaluatedTitle")}
+                {t(`${i18nPrefix}.unevaluatedTitle`)}
               </h3>
               <ul style={{ margin: "8px 0 0 0", paddingLeft: 18, fontSize: 12, color: "#64748b" }}>
                 {result.unevaluatedModules.slice(0, 11).map((m) => (

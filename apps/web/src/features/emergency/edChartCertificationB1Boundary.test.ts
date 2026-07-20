@@ -41,7 +41,8 @@ describe("Stage B1 UI/workflow boundary", () => {
     expect(panel).toContain("/chart-certification");
     expect(panel).not.toContain("buildEdClosedEncounterCertification");
     expect(panel).not.toContain("buildChartCertificationB1");
-    expect(panel).toContain("edLifecycle.certification.b1.banner");
+    expect(panel).toContain("edLifecycle.certification.b1");
+    expect(panel).toContain("${i18nPrefix}.banner");
   });
 
   it("EN/FR B1 banners present", () => {

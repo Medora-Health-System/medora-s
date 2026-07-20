@@ -6551,6 +6551,156 @@ export default {
           },
         },
       },
+      b2: {
+        panelTitle: "Revue de certification du dossier",
+        banner: "Revue diagnostique consultative Stage B2 — couverture clinique partielle des modules",
+        coveragePartial:
+          "Couverture : Stage B2 partiel (médicaments, MAR, procédures, parcours non évalués)",
+        loadError: "Impossible de charger la certification. Ce n’est pas une certification complète.",
+        evaluationErrorsPresent: "Évaluation incomplète — les résultats ne sont pas READY.",
+        authoritativeReadiness: "État de préparation autoritatif (flux existant)",
+        evaluatedModules: "Modules Stage B2 évalués",
+        unevaluatedTitle: "Modules pas encore évalués",
+        findingsTitle: "Constats diagnostiques",
+        advisoryFinding: "Constat consultatif (ne bloque pas les actions)",
+        establishedFinding: "Constat du flux établi",
+        openRemediation: "Ouvrir la section associée",
+        errors: {
+          evaluatorThrew: "Un évaluateur diagnostique a échoué.",
+          forced: "Erreur d’évaluation forcée.",
+          staleDiagnosticRevision: "Les données diagnostiques ont changé pendant l’évaluation.",
+        },
+        codes: {
+          LAB_SPECIMEN_NOT_COLLECTED: {
+            title: "Prélèvement de laboratoire non effectué",
+            description: "Aucun prélèvement n’est enregistré pour cette ordonnance de laboratoire.",
+          },
+          LAB_SPECIMEN_REJECTED: {
+            title: "Prélèvement rejeté",
+            description: "Le prélèvement a été rejeté et nécessite une résolution.",
+          },
+          LAB_RESULT_MISSING: {
+            title: "Résultat de laboratoire manquant",
+            description: "Un résultat est requis et absent pour cette ordonnance de laboratoire.",
+          },
+          LAB_RESULT_PRELIMINARY: {
+            title: "Résultat de laboratoire préliminaire",
+            description: "Un résultat préliminaire est présent selon une politique modélisée acceptée.",
+          },
+          LAB_RESULT_UNVERIFIED: {
+            title: "Résultat de laboratoire non vérifié",
+            description: "Le résultat de laboratoire n’est pas encore vérifié/final.",
+          },
+          LAB_RESULT_UNREVIEWED: {
+            title: "Résultat de laboratoire non revu",
+            description: "Un résultat final de laboratoire n’a pas été revu par le médecin.",
+          },
+          LAB_CRITICAL_RESULT_UNACKNOWLEDGED: {
+            title: "Résultat critique de laboratoire non acquitté",
+            description: "Un résultat critique de laboratoire nécessite un acquittement clinique.",
+          },
+          LAB_SEND_OUT_FOLLOW_UP_MISSING: {
+            title: "Suivi d’envoi externe manquant",
+            description: "Le résultat envoyé à l’extérieur n’a pas de responsable de suivi assigné.",
+          },
+          LAB_SEND_OUT_FOLLOW_UP_ACTIVE: {
+            title: "Suivi d’envoi externe actif",
+            description: "Un flux de suivi d’envoi externe approuvé est actif.",
+          },
+          LAB_STATUS_CONFLICT: {
+            title: "Conflit de statut laboratoire",
+            description: "Le statut de l’ordonnance de laboratoire est contradictoire ou inconnu.",
+          },
+          SEND_OUT_FOLLOW_UP_MODEL_LIMITATION: {
+            title: "Limitation du modèle de suivi d’envoi",
+            description: "Aucun modèle durable de suivi post-départ pour envois externes n’est pleinement modélisé.",
+          },
+          IMAGING_NOT_PERFORMED: {
+            title: "Imagerie non réalisée",
+            description: "L’examen d’imagerie n’a pas été réalisé.",
+          },
+          IMAGING_REPORT_MISSING: {
+            title: "Compte rendu d’imagerie manquant",
+            description: "L’examen a été réalisé mais aucun compte rendu/résultat n’est présent.",
+          },
+          IMAGING_PRELIMINARY_REVIEW: {
+            title: "Compte rendu d’imagerie préliminaire",
+            description: "Une interprétation d’imagerie préliminaire est présente.",
+          },
+          IMAGING_PRELIMINARY_ACCEPTED: {
+            title: "Imagerie préliminaire acceptée",
+            description: "L’imagerie préliminaire est acceptée selon le flux modélisé.",
+          },
+          IMAGING_FINAL_REPORT_UNREVIEWED: {
+            title: "Compte rendu d’imagerie non revu",
+            description: "Un compte rendu final d’imagerie n’a pas été revu par le médecin.",
+          },
+          IMAGING_CRITICAL_FINDING_UNACKNOWLEDGED: {
+            title: "Constat critique d’imagerie non acquitté",
+            description: "Un constat critique d’imagerie nécessite un acquittement clinique.",
+          },
+          IMAGING_STATUS_CONFLICT: {
+            title: "Conflit de statut imagerie",
+            description: "Le statut de l’ordonnance d’imagerie est contradictoire ou inconnu.",
+          },
+          ECG_NOT_ACQUIRED: {
+            title: "ECG non acquis",
+            description: "Un ECG a été prescrit mais l’acquisition n’est pas documentée.",
+          },
+          ECG_INTERPRETATION_MISSING: {
+            title: "Interprétation ECG manquante",
+            description: "L’interprétation médicale n’est pas documentée (machine seule insuffisante).",
+          },
+          ECG_INTERPRETATION_UNSIGNED: {
+            title: "Interprétation ECG non signée",
+            description: "La signature durable de l’interprétation ECG n’est pas modélisée ou manquante.",
+          },
+          ECG_CRITICAL_FINDING_UNACKNOWLEDGED: {
+            title: "Constat critique ECG non acquitté",
+            description: "Un constat critique ECG sans notification médicale requise.",
+          },
+          ECG_FRAGMENTED_EVIDENCE_LIMITATION: {
+            title: "Limitation des preuves ECG",
+            description: "L’ECG utilise des ordres CARE et la documentation clinique — pas de modèle Result dédié.",
+          },
+          DIAGNOSTIC_ORDER_REFUSAL_UNDOCUMENTED: {
+            title: "Refus diagnostique non documenté",
+            description: "Un refus est indiqué sans documentation de refus autoritative.",
+          },
+          DIAGNOSTIC_ORDER_STATUS_UNKNOWN: {
+            title: "Statut d’ordonnance diagnostique inconnu",
+            description: "Le cycle de vie de l’ordonnance n’a pas pu être normalisé en toute sécurité.",
+          },
+          DIAGNOSTIC_ORDER_FUTURE_EXCLUDED: {
+            title: "Ordonnance future exclue",
+            description: "Les ordonnances ambulatoires futures sont hors certification Stage B2.",
+          },
+          MEDICATION_ORDERS_EXCLUDED_FROM_B2: {
+            title: "Ordonnances médicamenteuses exclues",
+            description: "Les ordonnances médicamenteuses ne sont pas certifiées au Stage B2 (reportées).",
+          },
+          PROCEDURE_ORDERS_EXCLUDED_FROM_B2: {
+            title: "Ordonnances de procédure exclues",
+            description: "Les procédures non diagnostiques ne sont pas certifiées au Stage B2.",
+          },
+          RESULT_REVIEW_REQUIRED: {
+            title: "Revue de résultat requise",
+            description: "Une revue médicale est requise pour ce résultat final.",
+          },
+          RESULT_REVIEW_NOT_FROM_DISPLAY: {
+            title: "La revue n’est pas l’affichage",
+            description: "Ouvrir ou afficher un résultat ne constitue pas une revue médicale.",
+          },
+          CRITICAL_RESULT_ACKNOWLEDGMENT_MISSING: {
+            title: "Acquittement de résultat critique manquant",
+            description: "L’acquittement du résultat critique est requis et non enregistré.",
+          },
+          CRITICAL_ACK_NOT_FROM_REVIEW_ALONE: {
+            title: "L’acquittement n’est pas la seule revue",
+            description: "La revue/vérification médicale ne remplace pas l’acquittement critique.",
+          },
+        },
+      },
     },
   },
   emergencyTrackboard: {
