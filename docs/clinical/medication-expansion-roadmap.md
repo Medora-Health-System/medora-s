@@ -33,20 +33,24 @@ Production Railway DB + real `MedicationCatalogService.search` (Wayne Urgent Car
 Measured: hard acceptance PASS (Jardiance 10+25 mg, Biktarvy); 40-family inventory 100%
 Status: `MEDICATION_RUNTIME_PROVIDER_AVAILABILITY_CERTIFIED_WITH_REVIEW_ITEMS`
 
+## COMPLETED (also)
+
+- Universal common medication orderability
+- Production universal catalog APPLY (Railway)
+
 ## ACTIVE
 
-None — formulation & strength completion complete.
-
-## NEXT
-
-Enterprise-scale source feeds, scheduled terminology refresh, and licensed commercial knowledge (if acquired) under separate governance.
+**Permanent Medication Validation Suite**
+Provider-facing regression protection via real `MedicationCatalogService.search`
+Certification: `MEDUI.PERMANENT_MEDICATION_VALIDATION_SUITE`
+Commands: `pnpm medication:validate:unit|critical|full|deployment`
 
 ## FUTURE
 
-- Scheduled source-version ingestion
-- Broader RxNorm coverage
-- DailyMed linkage
-- Licensed commercial medication knowledge (if licensed)
-- Facility formulary feeds
-- International terminology mapping
-- Clinical knowledge ingestion under separate governance
+- Clinical medication knowledge
+- Dosing intelligence
+- Interaction intelligence
+- Renal/hepatic considerations
+- Scheduled source-version ingestion / licensed commercial knowledge (if licensed)
+
+Do not begin FUTURE programs in the permanent validation suite project.
