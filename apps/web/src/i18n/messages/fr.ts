@@ -6598,6 +6598,11 @@ export default {
             title: "Aucun parcours de disposition",
             description: "Aucune décision de disposition n’a encore été documentée.",
           },
+          DISPOSITION_DECISION_UNSIGNED: {
+            title: "Décision de disposition non signée",
+            description:
+              "Le parcours de disposition est sélectionné, mais la décision n’a pas encore été signée.",
+          },
           ESTABLISHED_DISPOSITION_BLOCKER: {
             title: "Blocage de disposition établi",
             description: "Une règle existante d’état de disposition nécessite une attention avant clôture.",
@@ -14264,6 +14269,37 @@ export default {
       "Cette consultation est liée à une prise en charge d’observation ou de court séjour (type de dossier). Vérifiez le dossier complet pour le détail administratif et clinique.",
     saveQueued: "En attente de synchronisation.",
     saveOk: "Disposition enregistrée.",
+    saveDraftButton: "Enregistrer le brouillon",
+    signDecisionButton: "Signer la décision de disposition",
+    signDecisionOk:
+      "Décision de disposition signée. Le départ physique et la clôture restent des étapes distinctes.",
+    signDecisionUnauthorized: "Seuls les cliniciens autorisés peuvent signer la décision de disposition.",
+    decisionDoesNotClose: "Signer la décision de disposition ne clôture pas la consultation.",
+    decisionSignedBadge: "Décision signée",
+    decisionDraftBadge: "Brouillon",
+    onePathwayVisible: "Un seul parcours affiché",
+    changePathwayAction: "Changer de parcours…",
+    pathwayChangeTitle: "Changer le parcours de disposition",
+    pathwayChangeBody:
+      "Une décision de disposition signée existe déjà. Le changement de parcours exige un motif de correction et invalide la signature précédente jusqu’à nouvelle signature.",
+    pathwayChangeReasonLabel: "Motif de correction",
+    pathwayChangeReasonRequired: "Saisissez un motif de correction (au moins 3 caractères).",
+    pathwayChangeCancel: "Conserver le parcours actuel",
+    pathwayChangeConfirm: "Confirmer le changement de parcours",
+    boardTitle: {
+      HOME: "Tableau — Sortie à domicile",
+      ADMISSION: "Tableau — Décision d’admission / observation",
+      TRANSFER: "Tableau — Transfert externe",
+      AMA: "Tableau — Contre avis médical (LAMA)",
+      LWBS: "Tableau — Départ anticipé / fugue",
+      DECEASED: "Tableau — Décès",
+      OTHER: "Tableau — Autre disposition encadrée",
+    },
+    homeValidation: {
+      requiredFinalDiagnosis: "Sélectionnez et documentez un diagnostic de sortie final.",
+      requiredInstructionsCommunicated:
+        "Confirmez que les consignes de sortie ont été expliquées au patient ou à son représentant.",
+    },
     saveOkObservationAdmission: "Admission en observation enregistrée. Poursuivre les soins en observation.",
     observationHandoffAwaitingRn: "En attente de la prise en charge infirmière en observation",
     observationActive: "Observation active",

@@ -6620,6 +6620,11 @@ export default {
             title: "No disposition path selected",
             description: "A disposition decision has not been documented yet.",
           },
+          DISPOSITION_DECISION_UNSIGNED: {
+            title: "Disposition decision not signed",
+            description:
+              "The disposition pathway is selected but the disposition decision has not been signed yet.",
+          },
           ESTABLISHED_DISPOSITION_BLOCKER: {
             title: "Established disposition blocker",
             description: "An existing disposition-readiness rule requires attention before close.",
@@ -14226,6 +14231,36 @@ export default {
       "This encounter is linked to an observation / short-stay stay (encounter type). Open the full chart for administrative and clinical detail.",
     saveQueued: "Pending sync.",
     saveOk: "Disposition saved.",
+    saveDraftButton: "Save draft",
+    signDecisionButton: "Sign disposition decision",
+    signDecisionOk: "Disposition decision signed. Physical departure and closure remain separate steps.",
+    signDecisionUnauthorized: "Only authorized clinicians may sign the disposition decision.",
+    decisionDoesNotClose: "Signing the disposition decision does not close the encounter.",
+    decisionSignedBadge: "Decision signed",
+    decisionDraftBadge: "Draft",
+    onePathwayVisible: "One pathway board visible",
+    changePathwayAction: "Change pathway…",
+    pathwayChangeTitle: "Change disposition pathway",
+    pathwayChangeBody:
+      "A signed disposition decision already exists. Changing pathway requires a correction reason and invalidates the prior signature until re-signed.",
+    pathwayChangeReasonLabel: "Correction reason",
+    pathwayChangeReasonRequired: "Enter a correction reason (at least 3 characters).",
+    pathwayChangeCancel: "Keep current pathway",
+    pathwayChangeConfirm: "Confirm pathway change",
+    boardTitle: {
+      HOME: "Home Discharge Board",
+      ADMISSION: "Admission / Observation Decision Board",
+      TRANSFER: "External Transfer Board",
+      AMA: "AMA Board",
+      LWBS: "LWBS / Elopement Board",
+      DECEASED: "Deceased Board",
+      OTHER: "Governed Other Disposition Board",
+    },
+    homeValidation: {
+      requiredFinalDiagnosis: "Select and document a final discharge diagnosis.",
+      requiredInstructionsCommunicated:
+        "Confirm that discharge instructions were explained to the patient or representative.",
+    },
     saveOkObservationAdmission: "Observation admission saved. Continue care in observation.",
     observationHandoffAwaitingRn: "Awaiting nursing observation handoff",
     observationActive: "Observation active",

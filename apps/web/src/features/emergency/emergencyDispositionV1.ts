@@ -95,12 +95,27 @@ export function emptyErDispositionSupplementForm(): ErDispositionSupplementForm 
   };
 }
 
+export type ErDispositionDecisionPersist = {
+  documentationStatus: "DRAFT" | "SIGNED";
+  signedAt?: string;
+  signedByDisplayName?: string;
+  revision?: number;
+  previousPath?: string;
+  revisionReason?: string;
+};
+
 export type ErDispositionSupplementStored = {
   lwbsNarrative: string;
   transferHandoffNote: string;
   amaRisksDiscussed: string;
   deceasedPlaceholderNote: string;
   signature?: ErDispositionSignature;
+  documentationStatus?: "DRAFT" | "SIGNED";
+  signedAt?: string;
+  signedByDisplayName?: string;
+  revision?: number;
+  previousPath?: string;
+  revisionReason?: string;
 };
 
 const MAX_MED = 4000;
@@ -194,15 +209,25 @@ export function erDispositionSupplementFromEncounter(nursingAssessment: unknown)
 
 function supplementToStored(
   form: ErDispositionSupplementForm,
-  signature: ErDispositionSignature
+  signature: ErDispositionSignature,
+  decision?: ErDispositionDecisionPersist | null
 ): ErDispositionSupplementStored {
-  return {
+  const stored: ErDispositionSupplementStored = {
     lwbsNarrative: form.lwbsNarrative.trim().slice(0, MAX_LONG),
     transferHandoffNote: form.transferHandoffNote.trim().slice(0, MAX_LONG),
     amaRisksDiscussed: form.amaRisksDiscussed.trim().slice(0, MAX_MED),
     deceasedPlaceholderNote: form.deceasedPlaceholderNote.trim().slice(0, MAX_LONG),
     signature,
   };
+  if (decision) {
+    stored.documentationStatus = decision.documentationStatus;
+    if (decision.signedAt) stored.signedAt = decision.signedAt;
+    if (decision.signedByDisplayName) stored.signedByDisplayName = decision.signedByDisplayName;
+    if (typeof decision.revision === "number") stored.revision = decision.revision;
+    if (decision.previousPath) stored.previousPath = decision.previousPath;
+    if (decision.revisionReason) stored.revisionReason = decision.revisionReason;
+  }
+  return stored;
 }
 
 export function supplementFormHasContent(form: ErDispositionSupplementForm): boolean {
@@ -223,13 +248,42 @@ export function supplementFormHasContent(form: ErDispositionSupplementForm): boo
 export function mergeErDispositionV1IntoNursingAssessment(
   previousNursingAssessment: unknown,
   form: ErDispositionSupplementForm,
-  signature: ErDispositionSignature
+  signature: ErDispositionSignature,
+  decision?: ErDispositionDecisionPersist | null
 ): Record<string, unknown> {
   const base =
     previousNursingAssessment && typeof previousNursingAssessment === "object" && !Array.isArray(previousNursingAssessment)
       ? { ...(previousNursingAssessment as Record<string, unknown>) }
       : {};
-  base[ER_DISPOSITION_V1_KEY] = supplementToStored(form, signature);
+  const prevNs =
+    base[ER_DISPOSITION_V1_KEY] &&
+    typeof base[ER_DISPOSITION_V1_KEY] === "object" &&
+    !Array.isArray(base[ER_DISPOSITION_V1_KEY])
+      ? (base[ER_DISPOSITION_V1_KEY] as Record<string, unknown>)
+      : null;
+  const prevRevision =
+    typeof prevNs?.revision === "number" && Number.isFinite(prevNs.revision)
+      ? Math.max(0, Math.floor(prevNs.revision))
+      : 0;
+  const resolvedDecision: ErDispositionDecisionPersist | null = decision
+    ? {
+        ...decision,
+        revision:
+          typeof decision.revision === "number" ? decision.revision : prevRevision,
+      }
+    : prevNs?.documentationStatus === "DRAFT" || prevNs?.documentationStatus === "SIGNED"
+      ? {
+          documentationStatus: prevNs.documentationStatus,
+          signedAt: typeof prevNs.signedAt === "string" ? prevNs.signedAt : undefined,
+          signedByDisplayName:
+            typeof prevNs.signedByDisplayName === "string" ? prevNs.signedByDisplayName : undefined,
+          revision: prevRevision,
+          previousPath: typeof prevNs.previousPath === "string" ? prevNs.previousPath : undefined,
+          revisionReason:
+            typeof prevNs.revisionReason === "string" ? prevNs.revisionReason : undefined,
+        }
+      : { documentationStatus: "DRAFT", revision: prevRevision };
+  base[ER_DISPOSITION_V1_KEY] = supplementToStored(form, signature, resolvedDecision);
   return base;
 }
 

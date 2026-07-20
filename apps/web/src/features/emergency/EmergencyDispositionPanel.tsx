@@ -1,6 +1,11 @@
 "use client";
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  projectEdDispositionState,
+  readEdDispositionDecisionFromNursingAssessment,
+  resolveEdDispositionPath,
+} from "@medora/shared";
 import { apiFetch, parseApiResponse } from "@/lib/apiClient";
 import { normalizeUserFacingError } from "@/lib/userFacingError";
 import { useI18n } from "@/lib/i18n";
@@ -29,6 +34,7 @@ import {
   mergeErDispositionV1IntoNursingAssessment,
   outcomeUiToDischargeMode,
   readDispositionSignatureFromEncounter,
+  type ErDispositionDecisionPersist,
   type ErDispositionOutcomeUi,
   type ErDispositionPreviewLabels,
   type ErDispositionSupplementForm,
@@ -233,9 +239,29 @@ export function EmergencyDispositionPanel({
   const [cancelReason, setCancelReason] = useState("");
   const [cancelSaving, setCancelSaving] = useState(false);
   const [cancelError, setCancelError] = useState<string | null>(null);
+  const [pathwayChangeConfirm, setPathwayChangeConfirm] = useState<ErDispositionOutcomeUi | null>(
+    null
+  );
+  const [pathwayChangeReason, setPathwayChangeReason] = useState("");
   const hasSavedAdmission = useMemo(
     () => parseAdmissionSummaryForChart(encounter.admissionSummaryJson) != null,
     [encounter.admissionSummaryJson]
+  );
+
+  const dispositionState = useMemo(
+    () =>
+      projectEdDispositionState({
+        status: encounter.status ?? "OPEN",
+        dischargeSummaryJson: encounter.dischargeSummaryJson,
+        admissionSummaryJson: encounter.admissionSummaryJson,
+        nursingAssessment: encounter.nursingAssessment,
+      }),
+    [
+      encounter.status,
+      encounter.dischargeSummaryJson,
+      encounter.admissionSummaryJson,
+      encounter.nursingAssessment,
+    ]
   );
 
   const isReadOnly = encounter.status !== "OPEN";
@@ -269,9 +295,19 @@ export function EmergencyDispositionPanel({
     hydrateAll();
   }, [hydrateAll, encounter.updatedAt]);
 
-  const setOutcomeFromUi = (o: ErDispositionOutcomeUi) => {
+  const applyOutcomeFromUi = useCallback((o: ErDispositionOutcomeUi) => {
     setOutcomeUi(o);
     setDischargeForm((prev) => ({ ...prev, dischargeMode: outcomeUiToDischargeMode(o) }));
+  }, []);
+
+  const setOutcomeFromUi = (o: ErDispositionOutcomeUi) => {
+    if (dispositionState.requiresCorrectionToChangePathway) {
+      setPathwayChangeConfirm(o);
+      if (o !== outcomeUi) setPathwayChangeReason("");
+      return;
+    }
+    if (o === outcomeUi) return;
+    applyOutcomeFromUi(o);
   };
 
   const [layoutMode, setLayoutMode] = useState<EdDispositionLayoutMode>("desktopSplit");
@@ -428,29 +464,56 @@ export function EmergencyDispositionPanel({
     setEmtalaComplement((f) => ({ ...f, ...patch }));
   }, []);
 
-  const handleSave = async () => {
+  const handleSave = async (
+    mode: "DRAFT" | "SIGN" = "DRAFT",
+    outcomeOverride?: ErDispositionOutcomeUi
+  ) => {
     if (formDisabled) return;
+    if (mode === "SIGN" && !canEditMedicalDischarge && !canPrescribe) {
+      setSaveInfo(t("emergencyDisposition.signDecisionUnauthorized"));
+      return;
+    }
+
+    const effectiveOutcome = outcomeOverride ?? outcomeUi;
 
     const showProviderDischargeOnSave =
-      outcomeUi !== "ADMISSION" &&
-      (outcomeUi === "HOME" ||
-        outcomeUi === "AMA" ||
-        outcomeUi === "LWBS" ||
-        outcomeUi === "OTHER" ||
-        outcomeUi === "TRANSFER");
+      effectiveOutcome !== "ADMISSION" &&
+      (effectiveOutcome === "HOME" ||
+        effectiveOutcome === "AMA" ||
+        effectiveOutcome === "LWBS" ||
+        effectiveOutcome === "OTHER" ||
+        effectiveOutcome === "TRANSFER");
 
+    const homeStrict = effectiveOutcome === "HOME" && (mode === "SIGN" || canEditMedicalDischarge);
     if (
       canEditMedicalDischarge &&
       showProviderDischargeOnSave &&
-      providerDischargeDoc.diagnosisRefs.length > 0
+      (providerDischargeDoc.diagnosisRefs.length > 0 || homeStrict)
     ) {
-      const validationErrors = validateProviderDischargeDocumentation(providerDischargeDoc, {
-        requiredDescription: t("providerDischargeDocumentation19Y.validation.requiredDescription"),
-        requiredInstructions: t("providerDischargeDocumentation19Y.validation.requiredInstructions"),
-        requiredMedication: t("providerDischargeDocumentation19Y.validation.requiredMedication"),
-        requiredReturnPrecautions: t("providerDischargeDocumentation19Y.validation.requiredReturnPrecautions"),
-        requiredFollowUp: t("providerDischargeDocumentation19Y.validation.requiredFollowUp"),
-      });
+      const validationErrors = validateProviderDischargeDocumentation(
+        providerDischargeDoc,
+        {
+          requiredDescription: t("providerDischargeDocumentation19Y.validation.requiredDescription"),
+          requiredInstructions: t("providerDischargeDocumentation19Y.validation.requiredInstructions"),
+          requiredMedication: t("providerDischargeDocumentation19Y.validation.requiredMedication"),
+          requiredReturnPrecautions: t(
+            "providerDischargeDocumentation19Y.validation.requiredReturnPrecautions"
+          ),
+          requiredFollowUp: t("providerDischargeDocumentation19Y.validation.requiredFollowUp"),
+        },
+        effectiveOutcome === "HOME"
+          ? {
+              requireFinalDiagnosis: mode === "SIGN" || providerDischargeDoc.diagnosisRefs.length > 0,
+              requireInstructionsCommunicated: mode === "SIGN",
+              messages: {
+                requiredFinalDiagnosis: t("emergencyDisposition.homeValidation.requiredFinalDiagnosis"),
+                requiredInstructionsCommunicated: t(
+                  "emergencyDisposition.homeValidation.requiredInstructionsCommunicated"
+                ),
+              },
+            }
+          : undefined
+      );
       if (validationErrors) {
         setProviderDischargeValidationErrors(validationErrors);
         setSaveInfo(t("providerDischargeDocumentation19Y.validation.saveBlocked"));
@@ -474,13 +537,50 @@ export function EmergencyDispositionPanel({
         /* repli */
       }
       const signature = { savedAt: new Date().toISOString(), savedByDisplayName };
+      const priorDecision = readEdDispositionDecisionFromNursingAssessment(encounter.nursingAssessment);
+      const priorPath = resolveEdDispositionPath({
+        dischargeSummaryJson: encounter.dischargeSummaryJson,
+        admissionSummaryJson: encounter.admissionSummaryJson,
+        nursingAssessment: encounter.nursingAssessment,
+      });
+      const decisionPersist: ErDispositionDecisionPersist = {
+        documentationStatus: mode === "SIGN" ? "SIGNED" : "DRAFT",
+        revision: priorDecision.revision,
+        ...(mode === "SIGN"
+          ? { signedAt: signature.savedAt, signedByDisplayName: savedByDisplayName }
+          : priorDecision.signedAt
+            ? {
+                signedAt: priorDecision.signedAt,
+                signedByDisplayName: priorDecision.signedByDisplayName ?? undefined,
+              }
+            : {}),
+        ...(priorDecision.previousPath ? { previousPath: priorDecision.previousPath } : {}),
+        ...(priorDecision.revisionReason ? { revisionReason: priorDecision.revisionReason } : {}),
+      };
+      if (
+        mode === "DRAFT" &&
+        dispositionState.decisionSigned &&
+        priorPath !== "NONE" &&
+        priorPath !== effectiveOutcome &&
+        pathwayChangeReason.trim()
+      ) {
+        decisionPersist.previousPath = priorPath;
+        decisionPersist.revisionReason = pathwayChangeReason.trim().slice(0, 500);
+        decisionPersist.revision = priorDecision.revision + 1;
+        decisionPersist.documentationStatus = "DRAFT";
+      }
+
+      const dischargeFormForSave =
+        outcomeOverride != null
+          ? { ...dischargeForm, dischargeMode: outcomeUiToDischargeMode(effectiveOutcome) }
+          : dischargeForm;
 
       const mergedDischarge = mergeErDischargeForEncounterPatch(
         encounter.dischargeSummaryJson,
-        dischargeForm,
+        dischargeFormForSave,
         canEditNursingDischarge,
         canEditMedicalDischarge,
-        outcomeUi
+        effectiveOutcome
       );
 
       const admissionPayload = admissionFormToPayload(admissionForm);
@@ -490,7 +590,7 @@ export function EmergencyDispositionPanel({
        * Phase 15F-D — observation admission must not PATCH discharge summary (avoids
        * DISCHARGE_SUMMARY_SAVED timeline noise). Trackboard disposition uses admission packet + erDispositionV1.
        */
-      if (mergedDischarge !== null && outcomeUi !== "ADMISSION") {
+      if (mergedDischarge !== null && effectiveOutcome !== "ADMISSION") {
         if (canEditMedicalDischarge) {
           body.dischargeSummaryJson = buildProviderDischargeJsonForSave(
             encounter.dischargeSummaryJson,
@@ -503,7 +603,7 @@ export function EmergencyDispositionPanel({
         }
       }
       if (
-        outcomeUi === "ADMISSION" &&
+        effectiveOutcome === "ADMISSION" &&
         canPrescribe &&
         encounter.status === "OPEN" &&
         Object.keys(admissionPayload).length > 0
@@ -513,10 +613,11 @@ export function EmergencyDispositionPanel({
       const naWithDisp = mergeErDispositionV1IntoNursingAssessment(
         encounter.nursingAssessment,
         supplementForm,
-        signature
+        signature,
+        decisionPersist
       );
       body.nursingAssessment = applyEmtalaV1ComplementToNursingAssessment(naWithDisp, {
-        outcome: outcomeUi,
+        outcome: effectiveOutcome,
         complement: emtalaComplement,
         dispositionDecidedAtIso: signature.savedAt,
       });
@@ -529,13 +630,18 @@ export function EmergencyDispositionPanel({
       });
       const queued =
         res && typeof res === "object" && !Array.isArray(res) && (res as { queued?: boolean }).queued === true;
+      if (outcomeOverride) applyOutcomeFromUi(outcomeOverride);
       await onSaved();
+      setPathwayChangeConfirm(null);
+      setPathwayChangeReason("");
       setSaveInfo(
         queued
           ? t("emergencyDisposition.saveQueued")
-          : outcomeUi === "ADMISSION"
-            ? t("emergencyDisposition.saveOkObservationAdmission")
-            : t("emergencyDisposition.saveOk")
+          : mode === "SIGN"
+            ? t("emergencyDisposition.signDecisionOk")
+            : effectiveOutcome === "ADMISSION"
+              ? t("emergencyDisposition.saveOkObservationAdmission")
+              : t("emergencyDisposition.saveOk")
       );
     } catch (e) {
       console.error(e);
@@ -694,8 +800,49 @@ export function EmergencyDispositionPanel({
           data-layout-mode={layoutMode}
         >
           <div style={{ display: "flex", flexDirection: "column", gap: 14, minWidth: 0 }}>
-            <div>
+            <div
+              data-testid="ed-disposition-active-board"
+              data-disposition-board={
+                outcomeUi === "HOME"
+                  ? "HOME_DISCHARGE"
+                  : outcomeUi === "ADMISSION"
+                    ? "ADMISSION_OBSERVATION"
+                    : outcomeUi === "TRANSFER"
+                      ? "EXTERNAL_TRANSFER"
+                      : outcomeUi === "AMA"
+                        ? "AMA"
+                        : outcomeUi === "LWBS"
+                          ? "LWBS_ELOPEMENT"
+                          : outcomeUi === "DECEASED"
+                            ? "DECEASED"
+                            : "OTHER_GOVERNED"
+              }
+              data-disposition-workflow-state={dispositionState.workflowState}
+              data-decision-status={dispositionState.decisionStatus}
+            >
               <p style={sectionHeading}>{t("emergencyDisposition.sectionPrimaryDecision")}</p>
+              <p
+                style={{
+                  margin: "8px 0 0 0",
+                  padding: "8px 10px",
+                  borderRadius: 10,
+                  border: "1px solid #d4d4d8",
+                  background: "#f4f4f5",
+                  fontSize: 12,
+                  fontWeight: 700,
+                  color: "#3f3f46",
+                  letterSpacing: "0.02em",
+                }}
+                role="status"
+              >
+                {t(`emergencyDisposition.boardTitle.${outcomeUi}`)}
+                {" · "}
+                {dispositionState.decisionSigned
+                  ? t("emergencyDisposition.decisionSignedBadge")
+                  : t("emergencyDisposition.decisionDraftBadge")}
+                {" · "}
+                {t("emergencyDisposition.onePathwayVisible")}
+              </p>
               <div
                 style={{
                   marginTop: 8,
@@ -708,29 +855,60 @@ export function EmergencyDispositionPanel({
                   backgroundColor: "#f8fafc",
                 }}
               >
-                {OUTCOME_OPTIONS.map((opt) => (
-                  <label
-                    key={opt.id}
+                {OUTCOME_OPTIONS.map((opt) => {
+                  const showOption =
+                    opt.id === outcomeUi ||
+                    !dispositionState.decisionSigned ||
+                    pathwayChangeConfirm != null;
+                  return (
+                    <label
+                      key={opt.id}
+                      style={{
+                        display: showOption ? "flex" : "none",
+                        alignItems: "flex-start",
+                        gap: 8,
+                        fontSize: 13,
+                        color: "#0f172a",
+                        cursor: outcomeDisabled ? "not-allowed" : "pointer",
+                      }}
+                    >
+                      <input
+                        type="radio"
+                        name="er-disposition-outcome"
+                        checked={
+                          pathwayChangeConfirm != null
+                            ? pathwayChangeConfirm === opt.id
+                            : outcomeUi === opt.id
+                        }
+                        disabled={outcomeDisabled}
+                        onChange={() => setOutcomeFromUi(opt.id)}
+                        style={{ marginTop: 2 }}
+                      />
+                      <span>{opt.label}</span>
+                    </label>
+                  );
+                })}
+                {dispositionState.decisionSigned && !formDisabled && pathwayChangeConfirm == null ? (
+                  <button
+                    type="button"
+                    data-testid="ed-disposition-change-pathway"
+                    onClick={() => setPathwayChangeConfirm(outcomeUi)}
                     style={{
-                      display: "flex",
-                      alignItems: "flex-start",
-                      gap: 8,
-                      fontSize: 13,
-                      color: "#0f172a",
-                      cursor: outcomeDisabled ? "not-allowed" : "pointer",
+                      marginTop: 6,
+                      alignSelf: "flex-start",
+                      border: "1px solid #cbd5e1",
+                      background: "#fff",
+                      borderRadius: 8,
+                      padding: "6px 10px",
+                      fontSize: 12,
+                      fontWeight: 600,
+                      color: "#475569",
+                      cursor: "pointer",
                     }}
                   >
-                    <input
-                      type="radio"
-                      name="er-disposition-outcome"
-                      checked={outcomeUi === opt.id}
-                      disabled={outcomeDisabled}
-                      onChange={() => setOutcomeFromUi(opt.id)}
-                      style={{ marginTop: 2 }}
-                    />
-                    <span>{opt.label}</span>
-                  </label>
-                ))}
+                    {t("emergencyDisposition.changePathwayAction")}
+                  </button>
+                ) : null}
               </div>
               <p style={{ margin: "8px 0 0 0", fontSize: 12, color: "#64748b", lineHeight: 1.45 }}>
                 {t("emergencyDisposition.outcomeHint1")}
@@ -1089,7 +1267,8 @@ export function EmergencyDispositionPanel({
             <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center", width: "100%", minWidth: 0 }}>
               <button
                 type="button"
-                onClick={() => void handleSave()}
+                data-testid="ed-disposition-save-draft"
+                onClick={() => void handleSave("DRAFT")}
                 disabled={formDisabled || saving}
                 style={edDispositionTouchButtonStyle(
                   {
@@ -1105,8 +1284,34 @@ export function EmergencyDispositionPanel({
                   layoutMode
                 )}
               >
-                {saving ? t("emergencyDisposition.saveButtonSaving") : t("emergencyDisposition.saveButton")}
+                {saving ? t("emergencyDisposition.saveButtonSaving") : t("emergencyDisposition.saveDraftButton")}
               </button>
+              {(canEditMedicalDischarge || canPrescribe) && !formDisabled ? (
+                <button
+                  type="button"
+                  data-testid="ed-disposition-sign-decision"
+                  onClick={() => void handleSave("SIGN")}
+                  disabled={saving}
+                  style={edDispositionTouchButtonStyle(
+                    {
+                      padding: "9px 16px",
+                      borderRadius: 10,
+                      border: "1px solid #1d4ed8",
+                      backgroundColor: "#1d4ed8",
+                      color: "#fff",
+                      fontWeight: 600,
+                      fontSize: 14,
+                      cursor: saving ? "not-allowed" : "pointer",
+                    },
+                    layoutMode
+                  )}
+                >
+                  {t("emergencyDisposition.signDecisionButton")}
+                </button>
+              ) : null}
+              <p style={{ margin: 0, fontSize: 11, color: "#64748b", flex: "1 1 220px" }}>
+                {t("emergencyDisposition.decisionDoesNotClose")}
+              </p>
               {isLocked ? (
                 <span style={{ fontSize: 12, color: "#b45309" }}>{t("emergencyDisposition.lockedSigned")}</span>
               ) : null}
@@ -1307,6 +1512,118 @@ export function EmergencyDispositionPanel({
               {cancelSaving
                 ? t("emergencyDisposition.cancelAdmissionSaving")
                 : t("emergencyDisposition.cancelAdmissionConfirm")}
+            </button>
+          </div>
+        </div>
+      </div>
+    ) : null}
+    {pathwayChangeConfirm != null && pathwayChangeConfirm !== outcomeUi ? (
+      <div
+        role="dialog"
+        aria-modal="true"
+        data-testid="ed-disposition-pathway-change-modal"
+        aria-label={t("emergencyDisposition.pathwayChangeTitle")}
+        style={{
+          position: "fixed",
+          inset: 0,
+          backgroundColor: "rgba(15, 23, 42, 0.45)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          zIndex: 1000,
+          padding: 16,
+        }}
+        onClick={() => {
+          if (!saving) {
+            setPathwayChangeConfirm(null);
+            setPathwayChangeReason("");
+          }
+        }}
+      >
+        <div
+          onClick={(e) => e.stopPropagation()}
+          style={{
+            width: "100%",
+            maxWidth: 460,
+            backgroundColor: "#fff",
+            borderRadius: 12,
+            border: "1px solid #e2e8f0",
+            boxShadow: "0 12px 28px rgba(15, 23, 42, 0.18)",
+            padding: 18,
+            boxSizing: "border-box",
+          }}
+        >
+          <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: "#0f172a" }}>
+            {t("emergencyDisposition.pathwayChangeTitle")}
+          </p>
+          <p style={{ margin: "6px 0 12px 0", fontSize: 13, color: "#475569", lineHeight: 1.45 }}>
+            {t("emergencyDisposition.pathwayChangeBody")}
+          </p>
+          <label style={labelStyle}>{t("emergencyDisposition.pathwayChangeReasonLabel")}</label>
+          <textarea
+            value={pathwayChangeReason}
+            onChange={(e) => setPathwayChangeReason(e.target.value)}
+            disabled={saving}
+            rows={3}
+            maxLength={500}
+            style={{
+              ...inputBase,
+              minHeight: 76,
+              resize: "vertical",
+            }}
+          />
+          <div
+            style={{
+              marginTop: 14,
+              display: "flex",
+              justifyContent: "flex-end",
+              gap: 8,
+              flexWrap: "wrap",
+            }}
+          >
+            <button
+              type="button"
+              onClick={() => {
+                setPathwayChangeConfirm(null);
+                setPathwayChangeReason("");
+              }}
+              disabled={saving}
+              style={{
+                padding: "9px 14px",
+                borderRadius: 10,
+                border: "1px solid #cbd5e1",
+                backgroundColor: "#fff",
+                color: "#0f172a",
+                fontWeight: 600,
+                fontSize: 13,
+                cursor: saving ? "not-allowed" : "pointer",
+              }}
+            >
+              {t("emergencyDisposition.pathwayChangeCancel")}
+            </button>
+            <button
+              type="button"
+              data-testid="ed-disposition-pathway-change-confirm"
+              onClick={() => {
+                if (pathwayChangeReason.trim().length < 3) {
+                  setSaveInfo(t("emergencyDisposition.pathwayChangeReasonRequired"));
+                  return;
+                }
+                void handleSave("DRAFT", pathwayChangeConfirm);
+              }}
+              disabled={saving}
+              style={{
+                padding: "9px 14px",
+                borderRadius: 10,
+                border: "1px solid #b45309",
+                backgroundColor: "#b45309",
+                color: "#fff",
+                fontWeight: 700,
+                fontSize: 13,
+                cursor: saving ? "not-allowed" : "pointer",
+              }}
+            >
+              {t("emergencyDisposition.pathwayChangeConfirm")}
             </button>
           </div>
         </div>

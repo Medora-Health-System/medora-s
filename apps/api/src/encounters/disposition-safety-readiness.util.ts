@@ -6,6 +6,7 @@ import {
   hasClosureFollowUpDocumented,
   hasClosurePatientInstructionsExplained,
   hasClosureReturnPrecautionsDocumented,
+  projectEdDispositionState,
   type MarClinicalAction,
 } from "@medora/shared";
 
@@ -45,6 +46,8 @@ export type DispositionSafetyReadinessResult = {
   warnings: DispositionSafetyIssue[];
   lastVitalsAt?: string;
   activeOrderCounts: DispositionSafetyActiveOrderCounts;
+  /** D1 server-owned disposition state projection (non-authoritative for close). */
+  dispositionState?: import("@medora/shared").EdDispositionStateProjection;
 };
 
 type OrderItemForSafety = {
@@ -189,12 +192,22 @@ export function computeDispositionSafetyReadiness(input: {
   const counts: DispositionSafetyActiveOrderCounts = { lab: 0, imaging: 0, medication: 0, care: 0 };
 
   const { encounter } = input;
+  const dispositionStateBase = {
+    status: encounter.status,
+    dischargeSummaryJson: input.effectiveDischargeSummary ?? encounter.dischargeSummaryJson,
+    admissionSummaryJson: encounter.admissionSummaryJson,
+    nursingAssessment: encounter.nursingAssessment,
+  };
   if (encounter.status !== EncounterStatus.OPEN) {
     return {
       canClose: true,
       blockers: [],
       warnings: [],
       activeOrderCounts: counts,
+      dispositionState: projectEdDispositionState({
+        ...dispositionStateBase,
+        dispositionSafetyCanClose: true,
+      }),
     };
   }
 
@@ -340,12 +353,17 @@ export function computeDispositionSafetyReadiness(input: {
     }
   }
 
+  const canClose = blockers.length === 0;
   return {
-    canClose: blockers.length === 0,
+    canClose,
     blockers,
     warnings,
     ...(lastVitalsAt ? { lastVitalsAt } : {}),
     activeOrderCounts: counts,
+    dispositionState: projectEdDispositionState({
+      ...dispositionStateBase,
+      dispositionSafetyCanClose: canClose,
+    }),
   };
 }
 

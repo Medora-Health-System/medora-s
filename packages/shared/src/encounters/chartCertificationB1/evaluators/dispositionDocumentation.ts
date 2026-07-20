@@ -2,6 +2,11 @@ import {
   isEdPhysicalDepartureCompleted,
   resolveEdDispositionPath,
 } from "../../edEncounterLifecycle.js";
+import {
+  EdDispositionDocumentationStatus,
+  readEdDispositionDecisionFromNursingAssessment,
+} from "../../edDispositionDecisionV1.js";
+import { projectEdDispositionState } from "../../edDispositionStateMachine.js";
 import { advisoryEffects, establishedEffects, makeDeficiency } from "../deficiency.js";
 import {
   CertificationModule,
@@ -142,6 +147,41 @@ export function evaluateDispositionDocumentationModule(
       module: CertificationModule.DISPOSITION_DOCUMENTATION,
       titleKey: "edLifecycle.certification.b1.codes.DISPOSITION_PATH_NONE.title",
       descriptionKey: "edLifecycle.certification.b1.codes.DISPOSITION_PATH_NONE.description",
+    });
+  }
+
+  const dispositionProjection = projectEdDispositionState({
+    status: context.encounter.status ?? "OPEN",
+    dischargeSummaryJson: context.encounter.dischargeSummaryJson,
+    admissionSummaryJson: context.encounter.admissionSummaryJson,
+    nursingAssessment: context.encounter.nursingAssessment,
+    dispositionSafetyCanClose: context.established.dispositionCanClose,
+  });
+
+  // Only when D1 explicit DRAFT is persisted — avoid legacy false positives when status absent.
+  const decisionMeta = readEdDispositionDecisionFromNursingAssessment(
+    context.encounter.nursingAssessment
+  );
+  if (
+    path !== "NONE" &&
+    decisionMeta.documentationStatus === EdDispositionDocumentationStatus.DRAFT &&
+    !dispositionProjection.encounterClosed
+  ) {
+    deficiencies.push({
+      ...makeDeficiency({
+        stableCode: "DISPOSITION_DECISION_UNSIGNED",
+        module: CertificationModule.DISPOSITION_DOCUMENTATION,
+        owner: ChartCertificationOwner.DISPOSITION,
+        sourceAuthority: ChartCertificationSourceAuthority.STAGE_B1_EVALUATED,
+        effects: advisoryEffects({
+          suggestsProviderReview: true,
+          suggestsDocumentationReview: true,
+        }),
+        remediation: { route: "disposition", section: "decision-sign", requiredRole: "PROVIDER" },
+        deduplicationKey: "DISPOSITION_DECISION_UNSIGNED",
+      }),
+      titleKey: "edLifecycle.certification.b1.codes.DISPOSITION_DECISION_UNSIGNED.title",
+      descriptionKey: "edLifecycle.certification.b1.codes.DISPOSITION_DECISION_UNSIGNED.description",
     });
   }
 
