@@ -60,6 +60,7 @@ import { CodingIntegrityReviewService } from "./coding-integrity-review.service"
 import { ClaimAssemblyPreviewService } from "./claim-assembly-preview.service";
 import { EncounterNotesService } from "./encounter-notes.service";
 import { ClinicalDocumentationService } from "./clinical-documentation.service";
+import { ChartCertificationB1Service } from "./chart-certification-b1.service";
 import {
   encounterNoteCreateDtoSchema,
   encounterNoteAmendDtoSchema,
@@ -89,6 +90,7 @@ export class EncountersController {
     private readonly claimAssemblyPreviewService: ClaimAssemblyPreviewService,
     private readonly encounterNotesService: EncounterNotesService,
     private readonly clinicalDocumentationService: ClinicalDocumentationService,
+    private readonly chartCertificationB1Service: ChartCertificationB1Service,
   ) {}
 
   /** MEDNOTE.1 — list append-only encounter notes (+ optional legacy erNotesV1 read-only). */
@@ -939,6 +941,43 @@ export class EncountersController {
       throw new BadRequestException("Facility ID required");
     }
     return this.encountersService.getDispositionSafetyReadiness(facilityId, id, undefined);
+  }
+
+  /**
+   * Stage B1 — server-owned chart certification (advisory / partial).
+   * Read-only. Facility-scoped. Does not mutate the chart.
+   */
+  @Get("encounters/:id/chart-certification")
+  @RequireRoles(
+    RoleCode.FRONT_DESK,
+    RoleCode.RN,
+    RoleCode.PROVIDER,
+    RoleCode.BILLING,
+    RoleCode.LAB,
+    RoleCode.RADIOLOGY,
+    RoleCode.ADMIN
+  )
+  async getChartCertification(
+    @Param("id") id: string,
+    @Query("encounterVersion") encounterVersionRaw: string | undefined,
+    @Req() req: any
+  ) {
+    const facilityId = req.user?.facilityId || req.headers["x-facility-id"];
+    if (!facilityId) {
+      throw new BadRequestException("Facility ID required");
+    }
+    // Prefer JWT facility; never trust a client-supplied facility override for scope.
+    const jwtFacility = req.user?.facilityId;
+    if (jwtFacility && jwtFacility !== facilityId) {
+      throw new ForbiddenException("Facility scope violation");
+    }
+    const encounterVersion =
+      encounterVersionRaw != null && encounterVersionRaw !== ""
+        ? Number(encounterVersionRaw)
+        : undefined;
+    return this.chartCertificationB1Service.getChartCertification(facilityId, id, {
+      encounterVersion: Number.isFinite(encounterVersion) ? encounterVersion : undefined,
+    });
   }
 
   @Get("encounters/:id")

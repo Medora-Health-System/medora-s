@@ -20,12 +20,14 @@ import { CodingIntegrityReviewService } from "./coding-integrity-review.service"
 import { ClaimAssemblyPreviewService } from "./claim-assembly-preview.service";
 import { EncounterNotesService } from "./encounter-notes.service";
 import { ClinicalDocumentationService } from "./clinical-documentation.service";
+import { ChartCertificationB1Service } from "./chart-certification-b1.service";
 
 @Module({
   imports: [PrismaModule, DiagnosesModule, OrdersModule, TrackboardModule, FacilitiesModule],
   controllers: [EncountersController],
   providers: [
     EncountersService,
+    ChartCertificationB1Service,
     EncounterChartExportService,
     UnifiedEncounterTimelineService,
     ObservationOrderTemplateService,
