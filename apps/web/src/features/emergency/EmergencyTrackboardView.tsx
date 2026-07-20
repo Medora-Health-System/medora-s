@@ -92,6 +92,7 @@ import {
 import { shouldShowTrackboardBedStatusChip } from "@/features/emergency/edTrackboardBadgeCleanup";
 import { EdClosedEncounterCertificationPanel } from "@/features/emergency/EdClosedEncounterCertificationPanel";
 import { EdChartCertificationB1Panel } from "@/features/emergency/EdChartCertificationB1Panel";
+import { requestChartCertificationRefresh } from "@/features/emergency/chartCertificationProductionUi";
 import { isEnterpriseChartCertificationStageB1Enabled } from "@/features/emergency/enterpriseChartCertificationStageB1Flag";
 import { isEnterpriseChartCertificationStageB2Enabled } from "@/features/emergency/enterpriseChartCertificationStageB2Flag";
 import { isEnterpriseChartCertificationStageB3Enabled } from "@/features/emergency/enterpriseChartCertificationStageB3Flag";
@@ -427,6 +428,8 @@ export function EmergencyTrackboardView() {
         setEdBedBoard(bedBoard);
         setBedIndex(indexBedBoardByKey(bedBoard));
       }
+      // Keep an open certification review current after trackboard data refresh.
+      requestChartCertificationRefresh();
     } catch (e) {
       console.error("Failed to load emergency trackboard:", e);
       if (!silent) {

@@ -8,6 +8,12 @@ import { useI18n } from "@/lib/i18n";
 import { MEDORA_CARD_SHELL } from "@/components/medora-card";
 import { emergencyActiveWorkspacePath, emergencyChartPath } from "@/features/emergency/emergencyRoutes";
 import type { EdTrackboardCertificationEncounter } from "@/features/emergency/edClosedEncounterCertificationFromTrackboard";
+import {
+  CHART_CERTIFICATION_REFRESH_EVENT,
+  loadWithSingleRetry,
+} from "@/features/emergency/chartCertificationProductionUi";
+import { formatEncounterChromeDateTime } from "@/lib/encounterChromeI18n";
+import { computeLos } from "@/features/emergency/erLengthOfStay";
 
 type Props = {
   encounter: EdTrackboardCertificationEncounter;
@@ -84,56 +90,85 @@ export function EdChartCertificationB1Panel({
   dispositionLabel,
   onClose,
 }: Props) {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   const [result, setResult] = useState<ChartCertificationB1Result | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(false);
-  const [refreshNonce, setRefreshNonce] = useState(0);
 
-  const load = useCallback(async () => {
-    if (!facilityId) return;
-    setLoading(true);
-    setError(false);
+  const loadOnce = useCallback(async (): Promise<boolean> => {
+    if (!facilityId) return false;
     try {
       const raw = await apiFetch(`/encounters/${encounter.id}/chart-certification`, { facilityId });
       if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
         setResult(null);
-        setError(true);
-        return;
+        return false;
       }
       setResult(raw as ChartCertificationB1Result);
+      return true;
     } catch {
       setResult(null);
-      setError(true);
-    } finally {
-      setLoading(false);
+      return false;
     }
   }, [encounter.id, facilityId]);
 
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(false);
+    const ok = await loadWithSingleRetry(loadOnce);
+    setError(!ok);
+    setLoading(false);
+  }, [loadOnce]);
+
   useEffect(() => {
     void load();
-  }, [load, refreshNonce]);
+  }, [load]);
+
+  useEffect(() => {
+    const onRefresh = () => {
+      void load();
+    };
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") void load();
+    };
+    window.addEventListener(CHART_CERTIFICATION_REFRESH_EVENT, onRefresh);
+    window.addEventListener("focus", onRefresh);
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      window.removeEventListener(CHART_CERTIFICATION_REFRESH_EVENT, onRefresh);
+      window.removeEventListener("focus", onRefresh);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, [load]);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
 
   const patientName =
     `${(encounter.patient?.firstName ?? "").trim()} ${(encounter.patient?.lastName ?? "").trim()}`.trim() ||
     t("common.dash");
+  const mrn = (encounter.patient?.mrn ?? "").trim() || t("common.dash");
+  const visitDate = encounter.createdAt
+    ? formatEncounterChromeDateTime(encounter.createdAt, language)
+    : t("common.dash");
+  const los = computeLos(encounter.createdAt)?.labelPadded ?? t("common.dash");
+
   const stage =
     result?.certificationStage === "B3"
       ? "B3"
       : result?.certificationStage === "B2"
         ? "B2"
         : "B1";
-  const i18nPrefix =
-    stage === "B3"
-      ? "edLifecycle.certification.b3"
-      : stage === "B2"
-        ? "edLifecycle.certification.b2"
-        : "edLifecycle.certification.b1";
 
   return (
     <div
       role="dialog"
       aria-modal="true"
+      aria-labelledby="ed-chart-certification-b1-title"
       data-testid="ed-chart-certification-b1-panel"
       data-certification-stage={stage}
       data-certification-authority={result?.certificationAuthority ?? "ADVISORY"}
@@ -159,57 +194,47 @@ export function EdChartCertificationB1Panel({
         }}
         onClick={(e) => e.stopPropagation()}
       >
-        <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
-          <div>
-            <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "#0f172a" }}>
-              {t(`${i18nPrefix}.panelTitle`)}
-            </h2>
-            <p
-              data-testid="ed-certification-b1-banner"
-              style={{ margin: "6px 0 0 0", fontSize: 13, color: "#92400e", fontWeight: 600 }}
-            >
-              {t(`${i18nPrefix}.banner`)}
-            </p>
-          </div>
-          <div style={{ display: "flex", gap: 8 }}>
-            <button
-              type="button"
-              data-testid="ed-certification-b1-refresh"
-              disabled={loading}
-              onClick={() => setRefreshNonce((n) => n + 1)}
-              style={{
-                border: "1px solid #e2e8f0",
-                background: "#fff",
-                borderRadius: 10,
-                padding: "6px 10px",
-                fontSize: 12,
-                fontWeight: 600,
-                cursor: loading ? "wait" : "pointer",
-              }}
-            >
-              {t("edLifecycle.certification.advisory.refresh")}
-            </button>
-            <button
-              type="button"
-              onClick={onClose}
-              style={{
-                border: "1px solid #e2e8f0",
-                background: "#fff",
-                borderRadius: 10,
-                padding: "6px 10px",
-                fontSize: 12,
-                fontWeight: 600,
-                cursor: "pointer",
-              }}
-            >
-              {t("common.cancel")}
-            </button>
-          </div>
+        <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "flex-start" }}>
+          <h2
+            id="ed-chart-certification-b1-title"
+            style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "#0f172a" }}
+          >
+            {t("edLifecycle.certification.panelTitle")}
+          </h2>
+          <button
+            type="button"
+            aria-label={t("edLifecycle.certification.closeDialog")}
+            data-testid="ed-certification-close"
+            onClick={onClose}
+            style={{
+              border: "1px solid #e2e8f0",
+              background: "#fff",
+              borderRadius: 10,
+              width: 36,
+              height: 36,
+              cursor: "pointer",
+              fontSize: 18,
+              lineHeight: 1,
+              color: "#475569",
+              flexShrink: 0,
+            }}
+          >
+            ×
+          </button>
         </div>
 
-        <div style={{ marginTop: 12, fontSize: 13, color: "#334155" }}>
+        <div style={{ marginTop: 14, display: "grid", gap: 6, fontSize: 13, color: "#334155" }}>
           <div>
             <strong>{t("edLifecycle.certification.patient")}:</strong> {patientName}
+          </div>
+          <div>
+            <strong>{t("edLifecycle.certification.mrn")}:</strong> {mrn}
+          </div>
+          <div>
+            <strong>{t("edLifecycle.certification.visitDate")}:</strong> {visitDate}
+          </div>
+          <div>
+            <strong>{t("edLifecycle.certification.los")}:</strong> {los}
           </div>
           <div>
             <strong>{t("edLifecycle.certification.facility")}:</strong> {facilityName || t("common.dash")}
@@ -236,24 +261,12 @@ export function EdChartCertificationB1Panel({
               padding: "8px 10px",
             }}
           >
-            {t("edLifecycle.certification.b1.loadError")}
+            {t("edLifecycle.certification.refreshError")}
           </p>
         ) : null}
 
         {result ? (
           <>
-            <p style={{ margin: "12px 0 0 0", fontSize: 12, color: "#64748b" }}>
-              {t(`${i18nPrefix}.coveragePartial`)}
-              {" · "}
-              {t("edLifecycle.certification.evaluatedAt")}: {result.evaluatedAt}
-              {" · v"}
-              {result.encounterVersion}
-              {result.diagnosticRevision ? ` · diag ${result.diagnosticRevision}` : null}
-              {result.medicationProcedureRevision
-                ? ` · med ${result.medicationProcedureRevision.slice(0, 24)}`
-                : null}
-            </p>
-
             {(result.evaluationErrors?.length ?? 0) > 0 ? (
               <p
                 data-testid="ed-certification-b1-eval-errors"
@@ -291,7 +304,7 @@ export function EdChartCertificationB1Panel({
 
             <section style={{ marginTop: 16 }}>
               <h3 style={{ margin: 0, fontSize: 13, fontWeight: 700 }}>
-                {t(`${i18nPrefix}.evaluatedModules`)}
+                {t("edLifecycle.certification.modulesTitle")}
               </h3>
               <div style={{ marginTop: 8, display: "flex", gap: 12, flexWrap: "wrap" }}>
                 {(
@@ -336,21 +349,10 @@ export function EdChartCertificationB1Panel({
               </div>
             </section>
 
-            <section style={{ marginTop: 16 }} data-testid="ed-certification-b1-unevaluated">
-              <h3 style={{ margin: 0, fontSize: 13, fontWeight: 700 }}>
-                {t(`${i18nPrefix}.unevaluatedTitle`)}
-              </h3>
-              <ul style={{ margin: "8px 0 0 0", paddingLeft: 18, fontSize: 12, color: "#64748b" }}>
-                {result.unevaluatedModules.slice(0, 11).map((m) => (
-                  <li key={m}>{t(`edLifecycle.certification.b1.modules.${m}`)}</li>
-                ))}
-              </ul>
-            </section>
-
             {result.deficiencies.length > 0 ? (
               <section style={{ marginTop: 16 }}>
                 <h3 style={{ margin: 0, fontSize: 13, fontWeight: 700 }}>
-                  {t("edLifecycle.certification.b1.findingsTitle")}
+                  {t("edLifecycle.certification.findingsTitle")}
                 </h3>
                 <ul style={{ listStyle: "none", margin: "8px 0 0 0", padding: 0, display: "grid", gap: 8 }}>
                   {result.deficiencies.map((d) => (
@@ -369,8 +371,8 @@ export function EdChartCertificationB1Panel({
                       </div>
                       <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 6 }}>
                         {d.sourceAuthority === "ESTABLISHED_WORKFLOW"
-                          ? t("edLifecycle.certification.b1.establishedFinding")
-                          : t("edLifecycle.certification.b1.advisoryFinding")}
+                          ? t("edLifecycle.certification.requiresAttention")
+                          : t("edLifecycle.certification.forReview")}
                       </div>
                       <Link
                         href={remediationHref(encounter.id, d.remediation)}
@@ -389,6 +391,69 @@ export function EdChartCertificationB1Panel({
                 </ul>
               </section>
             ) : null}
+
+            <div style={{ marginTop: 20, display: "flex", flexWrap: "wrap", gap: 8 }}>
+              <Link
+                href={emergencyChartPath(encounter.id)}
+                style={{
+                  padding: "8px 12px",
+                  borderRadius: 10,
+                  border: "1px solid #93c5fd",
+                  background: "#eff6ff",
+                  color: "#1d4ed8",
+                  fontSize: 12,
+                  fontWeight: 600,
+                  textDecoration: "none",
+                }}
+              >
+                {t("edLifecycle.certification.actions.openChart")}
+              </Link>
+              <Link
+                href={emergencyActiveWorkspacePath(encounter.id)}
+                style={{
+                  padding: "8px 12px",
+                  borderRadius: 10,
+                  border: "1px solid #cbd5e1",
+                  background: "#fff",
+                  color: "#0f172a",
+                  fontSize: 12,
+                  fontWeight: 600,
+                  textDecoration: "none",
+                }}
+              >
+                {t("edLifecycle.certification.actions.openDocumentation")}
+              </Link>
+              <Link
+                href={`/app/billing/encounters/${encounter.id}`}
+                style={{
+                  padding: "8px 12px",
+                  borderRadius: 10,
+                  border: "1px solid #cbd5e1",
+                  background: "#fff",
+                  color: "#0f172a",
+                  fontSize: 12,
+                  fontWeight: 600,
+                  textDecoration: "none",
+                }}
+              >
+                {t("edLifecycle.certification.actions.openBilling")}
+              </Link>
+              <Link
+                href={`${emergencyActiveWorkspacePath(encounter.id)}?tab=mar`}
+                style={{
+                  padding: "8px 12px",
+                  borderRadius: 10,
+                  border: "1px solid #cbd5e1",
+                  background: "#fff",
+                  color: "#0f172a",
+                  fontSize: 12,
+                  fontWeight: 600,
+                  textDecoration: "none",
+                }}
+              >
+                {t("edLifecycle.certification.actions.openMar")}
+              </Link>
+            </div>
           </>
         ) : null}
       </div>

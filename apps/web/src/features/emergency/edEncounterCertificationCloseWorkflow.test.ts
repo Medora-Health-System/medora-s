@@ -67,12 +67,13 @@ describe("edEncounterCertificationCloseWorkflow (MEDUI.ED.LIFECYCLE.6B)", () => 
     expect(closure).not.toMatch(/setShowCloseModal\(false\)[\s\S]{0,120}void runCloseCheck\(\)/);
   });
 
-  it("certification review panel component exists with advisory boundary messaging", () => {
+  it("certification review panel component exists for close workflow", () => {
     const review = readSrc("features/emergency/EdEncounterCertificationReview.tsx");
     expect(review).toContain('data-testid="ed-encounter-certification-review"');
-    expect(review).toContain("edLifecycle.certification.advisory.banner");
+    expect(review).not.toContain("edLifecycle.certification.advisory.banner");
     expect(review).toContain("establishedBlockers");
     expect(review).toContain("ed-certification-continue-close");
+    expect(review).toContain("ed-certification-close");
   });
 
   it("close-check still runs only after certification review continue", () => {

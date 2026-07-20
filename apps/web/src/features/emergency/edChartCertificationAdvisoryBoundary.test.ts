@@ -163,17 +163,17 @@ describe("Stage A chart certification advisory UI/workflow boundary", () => {
     expect(withOrders).not.toContain("edLifecycle.incompleteCharts.badge.ordersNotReconciled");
   });
 
-  it("Stage A flag on shows advisory labeling in review/panel source", () => {
+  it("Stage A flag on keeps authority metadata without engineering banners", () => {
     const review = readSrc("features/emergency/EdEncounterCertificationReview.tsx");
     const panel = readSrc("features/emergency/EdClosedEncounterCertificationPanel.tsx");
-    expect(review).toContain("edLifecycle.certification.advisory.banner");
-    expect(panel).toContain("edLifecycle.certification.advisory.banner");
-    expect(panel).toContain("ed-certification-unevaluated-modules");
+    expect(review).not.toContain("edLifecycle.certification.advisory.banner");
+    expect(panel).not.toContain("edLifecycle.certification.advisory.banner");
+    expect(panel).not.toContain("ed-certification-unevaluated-modules");
     expect(panel).toContain("ed-certification-readiness-error");
     expect(review).toContain("data-certification-authority");
   });
 
-  it("EN/FR advisory keys are present", () => {
+  it("EN/FR advisory keys are present for diagnostics/catalogs", () => {
     const en = readSrc("i18n/messages/en.ts");
     const fr = readSrc("i18n/messages/fr.ts");
     expect(en).toContain("Advisory chart review — partial module coverage");
@@ -187,10 +187,10 @@ describe("Stage A chart certification advisory UI/workflow boundary", () => {
     expect(shouldShowCertificationReviewOnCloseRequest(certification)).toBe(true);
   });
 
-  it("panel refreshes disposition readiness on open (wired)", () => {
+  it("panel auto-refreshes disposition readiness on open (wired)", () => {
     const panel = readSrc("features/emergency/EdClosedEncounterCertificationPanel.tsx");
     expect(panel).toContain("/disposition-readiness");
-    expect(panel).toContain("setRefreshNonce");
-    expect(panel).toContain("ed-certification-refresh");
+    expect(panel).toContain("loadWithSingleRetry");
+    expect(panel).not.toContain("ed-certification-refresh");
   });
 });

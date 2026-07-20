@@ -13,9 +13,9 @@ describe("EdClosedEncounterCertificationPanel (MEDUI.ED.LIFECYCLE.6)", () => {
     const panel = readSrc("features/emergency/EdClosedEncounterCertificationPanel.tsx");
     expect(panel).toContain('data-testid="ed-closed-encounter-certification-panel"');
     expect(panel).toContain("buildEdClosedEncounterCertificationFromTrackboardRow");
-    expect(panel).toContain("edLifecycle.certification.advisory.banner");
-    expect(panel).toContain("edLifecycle.certification.advisory.findingsTitle");
+    expect(panel).toContain("edLifecycle.certification.findingsTitle");
     expect(panel).toContain("edLifecycle.certification.actions.openChart");
+    expect(panel).not.toContain("edLifecycle.certification.advisory.banner");
   });
 
   it("fetches disposition readiness only when panel is opened for open encounter", () => {

@@ -42,10 +42,11 @@ describe("Stage B1 UI/workflow boundary", () => {
     expect(panel).not.toContain("buildEdClosedEncounterCertification");
     expect(panel).not.toContain("buildChartCertificationB1");
     expect(panel).toContain("edLifecycle.certification.b1");
-    expect(panel).toContain("${i18nPrefix}.banner");
+    expect(panel).not.toContain("coveragePartial");
+    expect(panel).not.toContain("ed-certification-b1-refresh");
   });
 
-  it("EN/FR B1 banners present", () => {
+  it("EN/FR B1 diagnostic banner keys remain in message catalogs", () => {
     const en = readSrc("i18n/messages/en.ts");
     const fr = readSrc("i18n/messages/fr.ts");
     expect(en).toContain("Stage B1 advisory chart review — partial clinical module coverage");

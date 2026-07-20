@@ -20,17 +20,17 @@ describe("edChartCertificationB3Boundary", () => {
     expect(trackboard).toContain("EdChartCertificationB1Panel");
   });
 
-  it("panel consumes server payload and supports B3 stage keys", () => {
+  it("panel consumes server payload and supports B3 readiness keys", () => {
     const panel = readSrc("features/emergency/EdChartCertificationB1Panel.tsx");
     expect(panel).toContain("chart-certification");
-    expect(panel).toContain("edLifecycle.certification.b3");
     expect(panel).toContain("medicationOrdersReady");
     expect(panel).toContain("marReady");
     expect(panel).not.toContain("buildChartCertificationB3");
     expect(panel).toContain('route === "mar"');
+    expect(panel).not.toContain("coveragePartial");
   });
 
-  it("French and English B3 banners exist", () => {
+  it("French and English B3 diagnostic banner keys exist in catalogs", () => {
     const en = readSrc("i18n/messages/en.ts");
     const fr = readSrc("i18n/messages/fr.ts");
     expect(en).toContain("Stage B3 advisory medication and procedure review");

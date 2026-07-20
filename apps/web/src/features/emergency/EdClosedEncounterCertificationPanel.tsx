@@ -18,6 +18,10 @@ import { MEDORA_CARD_SHELL } from "@/components/medora-card";
 import { isEnterpriseChartCertificationStageAEnabled } from "@/features/emergency/enterpriseChartCertificationStageAFlag";
 import { resolveCertificationDeficiencyDisplay } from "@/features/emergency/certificationDeficiencyDisplay";
 import type { SupportedLanguage } from "@/i18n/config";
+import {
+  CHART_CERTIFICATION_REFRESH_EVENT,
+  loadWithSingleRetry,
+} from "@/features/emergency/chartCertificationProductionUi";
 
 type Props = {
   encounter: EdTrackboardCertificationEncounter;
@@ -27,7 +31,7 @@ type Props = {
   onClose: () => void;
 };
 
-function advisoryPill(suggested: boolean, t: (key: string) => string) {
+function reviewPill(suggested: boolean, t: (key: string) => string) {
   return (
     <span
       style={{
@@ -76,7 +80,7 @@ function deficiencyGroup(
   items: EdClosedEncounterCertificationResult["deficiencies"],
   t: (key: string) => string,
   language: SupportedLanguage,
-  advisory?: boolean
+  forReview?: boolean
 ) {
   if (items.length === 0) return null;
   return (
@@ -86,27 +90,27 @@ function deficiencyGroup(
         {items.map((d) => {
           const display = resolveCertificationDeficiencyDisplay(t, language, d);
           return (
-          <li
-            key={d.id}
-            style={{
-              border: "1px solid #e2e8f0",
-              borderRadius: 12,
-              padding: "10px 12px",
-              background: "#fff",
-            }}
-          >
-            <div style={{ fontSize: 13, fontWeight: 600, color: "#0f172a" }}>{display.title}</div>
-            <div style={{ fontSize: 12, color: "#64748b", marginTop: 4 }}>{display.description}</div>
-            <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 6 }}>
-              {t(`edLifecycle.certification.role.${d.responsibleRole.toLowerCase()}`)}
-              {" · "}
-              {advisory || d.sourceAuthority === EdChartCertificationSourceAuthority.STAGE_A_ADVISORY
-                ? t("edLifecycle.certification.advisory.reviewSuggested")
-                : d.blockingClosure
-                  ? t("edLifecycle.certification.blocksClosure")
-                  : t("edLifecycle.certification.noClosureBlock")}
-            </div>
-          </li>
+            <li
+              key={d.id}
+              style={{
+                border: "1px solid #e2e8f0",
+                borderRadius: 12,
+                padding: "10px 12px",
+                background: "#fff",
+              }}
+            >
+              <div style={{ fontSize: 13, fontWeight: 600, color: "#0f172a" }}>{display.title}</div>
+              <div style={{ fontSize: 12, color: "#64748b", marginTop: 4 }}>{display.description}</div>
+              <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 6 }}>
+                {t(`edLifecycle.certification.role.${d.responsibleRole.toLowerCase()}`)}
+                {" · "}
+                {forReview || d.sourceAuthority === EdChartCertificationSourceAuthority.STAGE_A_ADVISORY
+                  ? t("edLifecycle.certification.forReview")
+                  : d.blockingClosure
+                    ? t("edLifecycle.certification.blocksClosure")
+                    : t("edLifecycle.certification.noClosureBlock")}
+              </div>
+            </li>
           );
         })}
       </ul>
@@ -127,22 +131,17 @@ export function EdClosedEncounterCertificationPanel({
     useState<DispositionSafetyReadinessResponse | null>(null);
   const [loadingReadiness, setLoadingReadiness] = useState(false);
   const [readinessError, setReadinessError] = useState(false);
-  const [refreshNonce, setRefreshNonce] = useState(0);
 
-  const loadReadiness = useCallback(async () => {
+  const loadOnce = useCallback(async (): Promise<boolean> => {
     if (!facilityId || encounter.status !== "OPEN") {
       setDispositionReadiness(null);
-      setReadinessError(false);
-      return;
+      return true;
     }
-    setLoadingReadiness(true);
-    setReadinessError(false);
     try {
       const raw = await apiFetch(`/encounters/${encounter.id}/disposition-readiness`, { facilityId });
       if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
         setDispositionReadiness(null);
-        setReadinessError(true);
-        return;
+        return false;
       }
       const o = raw as Record<string, unknown>;
       setDispositionReadiness({
@@ -155,17 +154,49 @@ export function EdClosedEncounterCertificationPanel({
             ? (o.activeOrderCounts as DispositionSafetyReadinessResponse["activeOrderCounts"])
             : { lab: 0, imaging: 0, medication: 0, care: 0 },
       });
+      return true;
     } catch {
       setDispositionReadiness(null);
-      setReadinessError(true);
-    } finally {
-      setLoadingReadiness(false);
+      return false;
     }
   }, [encounter.id, encounter.status, facilityId]);
 
+  const loadReadiness = useCallback(async () => {
+    setLoadingReadiness(true);
+    setReadinessError(false);
+    const ok = await loadWithSingleRetry(loadOnce);
+    setReadinessError(!ok && encounter.status === "OPEN");
+    setLoadingReadiness(false);
+  }, [encounter.status, loadOnce]);
+
   useEffect(() => {
     void loadReadiness();
-  }, [loadReadiness, refreshNonce]);
+  }, [loadReadiness]);
+
+  useEffect(() => {
+    const onRefresh = () => {
+      void loadReadiness();
+    };
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") void loadReadiness();
+    };
+    window.addEventListener(CHART_CERTIFICATION_REFRESH_EVENT, onRefresh);
+    window.addEventListener("focus", onRefresh);
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      window.removeEventListener(CHART_CERTIFICATION_REFRESH_EVENT, onRefresh);
+      window.removeEventListener("focus", onRefresh);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, [loadReadiness]);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
 
   const certification = useMemo(
     () =>
@@ -202,8 +233,6 @@ export function EdClosedEncounterCertificationPanel({
       )
     : [];
 
-  const unevaluated = certification.unevaluatedModules ?? [];
-
   return (
     <div
       role="dialog"
@@ -235,51 +264,29 @@ export function EdClosedEncounterCertificationPanel({
         onClick={(e) => e.stopPropagation()}
       >
         <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "flex-start" }}>
-          <div>
-            <h2 id="ed-certification-panel-title" style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "#0f172a" }}>
-              {t("edLifecycle.certification.panelTitle")}
-            </h2>
-            <p
-              data-testid="ed-certification-advisory-banner"
-              style={{ margin: "6px 0 0 0", fontSize: 13, color: "#92400e", fontWeight: 600 }}
-            >
-              {t("edLifecycle.certification.advisory.banner")}
-            </p>
-          </div>
-          <div style={{ display: "flex", gap: 8 }}>
-            <button
-              type="button"
-              data-testid="ed-certification-refresh"
-              onClick={() => setRefreshNonce((n) => n + 1)}
-              disabled={loadingReadiness}
-              style={{
-                border: "1px solid #e2e8f0",
-                background: "#fff",
-                borderRadius: 10,
-                padding: "6px 10px",
-                cursor: loadingReadiness ? "wait" : "pointer",
-                fontSize: 12,
-                fontWeight: 600,
-              }}
-            >
-              {t("edLifecycle.certification.advisory.refresh")}
-            </button>
-            <button
-              type="button"
-              onClick={onClose}
-              style={{
-                border: "1px solid #e2e8f0",
-                background: "#fff",
-                borderRadius: 10,
-                padding: "6px 10px",
-                cursor: "pointer",
-                fontSize: 12,
-                fontWeight: 600,
-              }}
-            >
-              {t("common.cancel")}
-            </button>
-          </div>
+          <h2 id="ed-certification-panel-title" style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "#0f172a" }}>
+            {t("edLifecycle.certification.panelTitle")}
+          </h2>
+          <button
+            type="button"
+            aria-label={t("edLifecycle.certification.closeDialog")}
+            data-testid="ed-certification-close"
+            onClick={onClose}
+            style={{
+              border: "1px solid #e2e8f0",
+              background: "#fff",
+              borderRadius: 10,
+              width: 36,
+              height: 36,
+              cursor: "pointer",
+              fontSize: 18,
+              lineHeight: 1,
+              color: "#475569",
+              flexShrink: 0,
+            }}
+          >
+            ×
+          </button>
         </div>
 
         {readinessError ? (
@@ -296,11 +303,11 @@ export function EdClosedEncounterCertificationPanel({
               padding: "8px 10px",
             }}
           >
-            {t("edLifecycle.certification.advisory.readinessError")}
+            {t("edLifecycle.certification.refreshError")}
           </p>
         ) : null}
 
-        <div style={{ marginTop: 16, display: "grid", gap: 8, fontSize: 13, color: "#334155" }}>
+        <div style={{ marginTop: 16, display: "grid", gap: 6, fontSize: 13, color: "#334155" }}>
           <div>
             <strong>{t("edLifecycle.certification.patient")}:</strong> {patientName}
           </div>
@@ -323,16 +330,16 @@ export function EdClosedEncounterCertificationPanel({
           ) : null}
         </div>
 
-        <div style={{ marginTop: 20, display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
+        <div style={{ marginTop: 18, display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
           <div>
             <div style={{ fontSize: 11, fontWeight: 600, color: "#64748b", marginBottom: 4 }}>
-              {t("edLifecycle.certification.advisory.authoritativeClosure")}
+              {t("edLifecycle.certification.closure")}
             </div>
             {authoritativePill(authoritative.clinicalClosureReady, t)}
           </div>
           <div>
             <div style={{ fontSize: 11, fontWeight: 600, color: "#64748b", marginBottom: 4 }}>
-              {t("edLifecycle.certification.advisory.authoritativeBilling")}
+              {t("edLifecycle.certification.billing")}
             </div>
             {authoritativePill(authoritative.billingReady, t)}
           </div>
@@ -341,7 +348,7 @@ export function EdClosedEncounterCertificationPanel({
               <div style={{ fontSize: 11, fontWeight: 600, color: "#64748b", marginBottom: 4 }}>
                 {t("edLifecycle.certification.advisory.chartReview")}
               </div>
-              {advisoryPill(
+              {reviewPill(
                 certification.summary?.advisoryChartReviewLabel === "FINDINGS_PRESENT" ||
                   advisoryFindings.length > 0,
                 t
@@ -353,35 +360,6 @@ export function EdClosedEncounterCertificationPanel({
           ) : null}
         </div>
 
-        <p style={{ margin: "10px 0 0 0", fontSize: 12, color: "#64748b", lineHeight: 1.45 }}>
-          {t("edLifecycle.certification.advisory.coveragePartial")}
-        </p>
-        <p style={{ margin: "4px 0 0 0", fontSize: 11, color: "#94a3b8" }}>
-          {t("edLifecycle.certification.evaluatedAt")}: {certification.evaluatedAt ?? certification.certificationVersion}
-        </p>
-
-        {stageAEnabled && unevaluated.length > 0 ? (
-          <section style={{ marginTop: 12 }} data-testid="ed-certification-unevaluated-modules">
-            <h3 style={{ margin: "0 0 6px 0", fontSize: 12, fontWeight: 700, color: "#64748b" }}>
-              {t("edLifecycle.certification.advisory.unevaluatedTitle")}
-            </h3>
-            <ul style={{ margin: 0, paddingLeft: 18, fontSize: 12, color: "#64748b" }}>
-              {(
-                [
-                  "orders_results_lifecycle",
-                  "mar_intelligence",
-                  "procedures",
-                  "clinical_pathways",
-                  "contextual_vitals",
-                  "mutation_wide_freshness",
-                ] as const
-              ).map((m) => (
-                <li key={m}>{t(`edLifecycle.certification.advisory.modules.${m}`)}</li>
-              ))}
-            </ul>
-          </section>
-        ) : null}
-
         {deficiencyGroup(
           t("edLifecycle.certification.closeReview.closureBlockers"),
           establishedFindings.filter((d) => d.blockingClosure),
@@ -390,7 +368,7 @@ export function EdClosedEncounterCertificationPanel({
         )}
         {stageAEnabled
           ? deficiencyGroup(
-              t("edLifecycle.certification.advisory.findingsTitle"),
+              t("edLifecycle.certification.findingsTitle"),
               advisoryFindings,
               t,
               language,
@@ -444,23 +422,21 @@ export function EdClosedEncounterCertificationPanel({
           >
             {t("edLifecycle.certification.actions.openBilling")}
           </Link>
-          <button
-            type="button"
-            disabled
-            title={t("edLifecycle.certification.actions.comingSoon")}
+          <Link
+            href={`${emergencyActiveWorkspacePath(encounter.id)}?tab=mar`}
             style={{
               padding: "8px 12px",
               borderRadius: 10,
-              border: "1px solid #e2e8f0",
-              background: "#f8fafc",
-              color: "#94a3b8",
+              border: "1px solid #cbd5e1",
+              background: "#fff",
+              color: "#0f172a",
               fontSize: 12,
               fontWeight: 600,
-              cursor: "not-allowed",
+              textDecoration: "none",
             }}
           >
             {t("edLifecycle.certification.actions.openMar")}
-          </button>
+          </Link>
         </div>
       </div>
     </div>

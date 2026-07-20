@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo } from "react";
+import React, { useEffect, useMemo } from "react";
 import {
   EdChartCertificationSourceAuthority,
   type DispositionSafetyReadinessResponse,
@@ -82,13 +82,13 @@ function DeficiencyGroup({
   items,
   t,
   language,
-  advisory,
+  forReview,
 }: {
   title: string;
   items: EdClosedEncounterCertificationResult["deficiencies"];
   t: (key: string) => string;
   language: SupportedLanguage;
-  advisory?: boolean;
+  forReview?: boolean;
 }) {
   if (items.length === 0) return null;
   return (
@@ -98,25 +98,25 @@ function DeficiencyGroup({
         {items.map((d) => {
           const display = resolveCertificationDeficiencyDisplay(t, language, d);
           return (
-          <li
-            key={d.id}
-            style={{
-              border: "1px solid #e2e8f0",
-              borderRadius: 12,
-              padding: "10px 12px",
-              background: "#fff",
-            }}
-          >
-            <div style={{ fontSize: 13, fontWeight: 600, color: "#0f172a" }}>{display.title}</div>
-            <div style={{ fontSize: 12, color: "#64748b", marginTop: 4 }}>{display.description}</div>
-            <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 6 }}>
-              {advisory || d.sourceAuthority === EdChartCertificationSourceAuthority.STAGE_A_ADVISORY
-                ? t("edLifecycle.certification.advisory.reviewSuggested")
-                : d.blockingClosure
-                  ? t("edLifecycle.certification.blocksClosure")
-                  : t("edLifecycle.certification.noClosureBlock")}
-            </div>
-          </li>
+            <li
+              key={d.id}
+              style={{
+                border: "1px solid #e2e8f0",
+                borderRadius: 12,
+                padding: "10px 12px",
+                background: "#fff",
+              }}
+            >
+              <div style={{ fontSize: 13, fontWeight: 600, color: "#0f172a" }}>{display.title}</div>
+              <div style={{ fontSize: 12, color: "#64748b", marginTop: 4 }}>{display.description}</div>
+              <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 6 }}>
+                {forReview || d.sourceAuthority === EdChartCertificationSourceAuthority.STAGE_A_ADVISORY
+                  ? t("edLifecycle.certification.forReview")
+                  : d.blockingClosure
+                    ? t("edLifecycle.certification.blocksClosure")
+                    : t("edLifecycle.certification.noClosureBlock")}
+              </div>
+            </li>
           );
         })}
       </ul>
@@ -175,6 +175,14 @@ export function EdEncounterCertificationReview({
     ? groups.advisory
     : groups.advisory.filter(() => false);
 
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && !closing) onCancel();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [closing, onCancel]);
+
   return (
     <div
       role="dialog"
@@ -193,6 +201,9 @@ export function EdEncounterCertificationReview({
         justifyContent: "center",
         padding: 16,
       }}
+      onClick={() => {
+        if (!closing) onCancel();
+      }}
     >
       <div
         style={{
@@ -202,30 +213,40 @@ export function EdEncounterCertificationReview({
           overflow: "auto",
           padding: 20,
         }}
+        onClick={(e) => e.stopPropagation()}
       >
-        <h2 id="ed-encounter-certification-review-title" style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "#0f172a" }}>
-          {t("edLifecycle.certification.closeReview.title")}
-        </h2>
-
-        <p
-          data-testid="ed-certification-advisory-banner"
-          style={{
-            margin: "10px 0 0 0",
-            fontSize: 13,
-            color: "#92400e",
-            fontWeight: 600,
-            lineHeight: 1.45,
-            background: "#fffbeb",
-            border: "1px solid #fde68a",
-            borderRadius: 10,
-            padding: "8px 10px",
-          }}
-        >
-          {t("edLifecycle.certification.advisory.banner")}
-        </p>
+        <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "flex-start" }}>
+          <h2
+            id="ed-encounter-certification-review-title"
+            style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "#0f172a" }}
+          >
+            {t("edLifecycle.certification.closeReview.title")}
+          </h2>
+          <button
+            type="button"
+            aria-label={t("edLifecycle.certification.closeDialog")}
+            data-testid="ed-certification-close"
+            disabled={closing}
+            onClick={onCancel}
+            style={{
+              border: "1px solid #e2e8f0",
+              background: "#fff",
+              borderRadius: 10,
+              width: 36,
+              height: 36,
+              cursor: closing ? "wait" : "pointer",
+              fontSize: 18,
+              lineHeight: 1,
+              color: "#475569",
+              flexShrink: 0,
+            }}
+          >
+            ×
+          </button>
+        </div>
 
         {establishedBlockers.length > 0 ? (
-          <p style={{ margin: "10px 0 0 0", fontSize: 14, color: "#991b1b", fontWeight: 600, lineHeight: 1.45 }}>
+          <p style={{ margin: "12px 0 0 0", fontSize: 14, color: "#991b1b", fontWeight: 600, lineHeight: 1.45 }}>
             {t("edLifecycle.certification.closeReview.establishedBlockersPresent")}
           </p>
         ) : null}
@@ -252,12 +273,6 @@ export function EdEncounterCertificationReview({
           />
         </div>
 
-        <p style={{ margin: "12px 0 0 0", fontSize: 12, color: "#64748b", lineHeight: 1.45 }}>
-          {t("edLifecycle.certification.advisory.coveragePartial")}
-          {" · "}
-          {t("edLifecycle.certification.advisory.stageLabel")}
-        </p>
-
         {establishedBlockers.length > 0 ? (
           <section style={{ marginTop: 16 }}>
             <h3 style={{ margin: "0 0 8px 0", fontSize: 13, fontWeight: 700, color: "#334155" }}>
@@ -275,11 +290,11 @@ export function EdEncounterCertificationReview({
 
         {stageAEnabled ? (
           <DeficiencyGroup
-            title={t("edLifecycle.certification.advisory.findingsTitle")}
+            title={t("edLifecycle.certification.findingsTitle")}
             items={advisoryItems}
             t={t}
             language={language}
-            advisory
+            forReview
           />
         ) : null}
 
@@ -324,25 +339,6 @@ export function EdEncounterCertificationReview({
         ) : null}
 
         <div style={{ marginTop: 18, display: "flex", flexWrap: "wrap", gap: 10, justifyContent: "flex-end" }}>
-          <button
-            type="button"
-            disabled={closing}
-            onClick={onCancel}
-            style={edDispositionTouchButtonStyle(
-              {
-                padding: "8px 14px",
-                borderRadius: 10,
-                border: "1px solid #e2e8f0",
-                backgroundColor: "#fff",
-                fontSize: 14,
-                fontWeight: 500,
-                cursor: closing ? "wait" : "pointer",
-              },
-              layoutMode
-            )}
-          >
-            {t("common.cancel")}
-          </button>
           <button
             type="button"
             disabled={closing || !canContinue}

@@ -37,11 +37,12 @@ describe("Stage B2 UI/workflow boundary", () => {
     expect(panel).toContain("/chart-certification");
     expect(panel).not.toContain("buildChartCertificationB2");
     expect(panel).not.toContain("normalizeDiagnosticOrderItem");
-    expect(panel).toContain("edLifecycle.certification.b2");
-    expect(panel).toContain("${i18nPrefix}.banner");
+    expect(panel).toContain("ordersReady");
+    expect(panel).toContain("laboratoryReady");
+    expect(panel).not.toContain("coveragePartial");
   });
 
-  it("EN/FR B2 banners present", () => {
+  it("EN/FR B2 diagnostic banner keys remain in message catalogs", () => {
     const en = readSrc("i18n/messages/en.ts");
     const fr = readSrc("i18n/messages/fr.ts");
     expect(en).toContain("Stage B2 advisory diagnostic review — partial clinical module coverage");
