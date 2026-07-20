@@ -3,6 +3,7 @@
  * Per-diagnosis billing-safe cards with template governance metadata.
  */
 
+import { isClosureFollowUpRowComplete } from "@medora/shared";
 import { parseDischargeSummaryForChart } from "@/components/patient-chart/patientChartHelpers";
 import type { DischargeFormState } from "@/lib/encounterDischarge";
 import { hydrateSharedFieldsIntoForm } from "./providerDischargeSharedPlanningMerge";
@@ -109,7 +110,11 @@ export type ProviderDischargeCardFieldKey =
   | "diagnosisInstructions"
   | "medicationTreatment";
 
-export type ProviderDischargeSharedFieldKey = "returnPrecautions" | "followUps";
+export type ProviderDischargeSharedFieldKey =
+  | "returnPrecautions"
+  | "followUps"
+  | "patientInstructionsGiven"
+  | "finalDiagnosis";
 
 /** @deprecated Use ProviderDischargeCardFieldKey */
 export type ProviderDischargeDocFieldKey = ProviderDischargeCardFieldKey | ProviderDischargeSharedFieldKey;
@@ -666,8 +671,27 @@ export function getPrimaryRollupDoc(form: ProviderDischargeDocumentationForm): P
 }
 
 function followUpRowIsComplete(row: ProviderDischargeFollowUpRow): boolean {
-  return Boolean(row.providerOrFacility.trim()) || Boolean(row.timing.trim());
+  return isClosureFollowUpRowComplete({
+    specialty: row.specialty,
+    providerOrFacility: row.providerOrFacility,
+    name: row.providerOrFacility,
+    timing: row.timing,
+    phone: row.phone,
+    address: row.address,
+    comments: row.comments,
+  });
 }
+
+export type ValidateProviderDischargeDocumentationOptions = {
+  /** HOME pathway: require at least one diagnosis card. */
+  requireFinalDiagnosis?: boolean;
+  /** HOME pathway: require patientInstructionsGiven communication acknowledgment. */
+  requireInstructionsCommunicated?: boolean;
+  messages?: {
+    requiredFinalDiagnosis?: string;
+    requiredInstructionsCommunicated?: string;
+  };
+};
 
 export function validateProviderDischargeDocumentation(
   form: ProviderDischargeDocumentationForm,
@@ -677,12 +701,22 @@ export function validateProviderDischargeDocumentation(
     requiredMedication: string;
     requiredReturnPrecautions: string;
     requiredFollowUp: string;
-  }
+  },
+  options?: ValidateProviderDischargeDocumentationOptions
 ): ProviderDischargeValidationErrors | null {
-  if (form.diagnosisRefs.length === 0) return null;
+  const requireFinalDiagnosis = options?.requireFinalDiagnosis === true;
+  const requireInstructionsCommunicated = options?.requireInstructionsCommunicated === true;
+
+  if (form.diagnosisRefs.length === 0 && !requireFinalDiagnosis && !requireInstructionsCommunicated) {
+    return null;
+  }
 
   const byDocId: ProviderDischargeValidationErrors["byDocId"] = {};
   let hasError = false;
+
+  if (form.diagnosisRefs.length === 0 && requireFinalDiagnosis) {
+    hasError = true;
+  }
 
   for (const ref of form.diagnosisRefs) {
     const doc = findDiagnosisDocForRef(form, ref);
@@ -708,8 +742,20 @@ export function validateProviderDischargeDocumentation(
   }
 
   const shared: Partial<Record<ProviderDischargeSharedFieldKey, string>> = {};
-  if (!form.returnPrecautions.trim()) shared.returnPrecautions = messages.requiredReturnPrecautions;
-  if (!form.followUps.some(followUpRowIsComplete)) shared.followUps = messages.requiredFollowUp;
+  if (form.diagnosisRefs.length === 0 && requireFinalDiagnosis) {
+    shared.finalDiagnosis =
+      options?.messages?.requiredFinalDiagnosis ?? messages.requiredDescription;
+  }
+  if (form.diagnosisRefs.length > 0 && !form.returnPrecautions.trim()) {
+    shared.returnPrecautions = messages.requiredReturnPrecautions;
+  }
+  if (form.diagnosisRefs.length > 0 && !form.followUps.some(followUpRowIsComplete)) {
+    shared.followUps = messages.requiredFollowUp;
+  }
+  if (requireInstructionsCommunicated && form.patientInstructionsGiven !== true) {
+    shared.patientInstructionsGiven =
+      options?.messages?.requiredInstructionsCommunicated ?? messages.requiredFollowUp;
+  }
   if (Object.keys(shared).length > 0) hasError = true;
 
   if (!hasError) return null;

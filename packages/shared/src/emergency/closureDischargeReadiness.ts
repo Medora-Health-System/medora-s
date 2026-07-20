@@ -35,7 +35,8 @@ function docStr(doc: Record<string, unknown>, key: string): string {
   return typeof v === "string" ? v.trim() : "";
 }
 
-function followUpRowHasContent(row: Record<string, unknown>): boolean {
+/** Structured follow-up row completeness — shared by closure readiness and provider UI validation. */
+export function isClosureFollowUpRowComplete(row: Record<string, unknown>): boolean {
   const specialty = docStr(row, "specialty");
   const provider = docStr(row, "providerOrFacility") || docStr(row, "name");
   const timing = docStr(row, "timing");
@@ -45,6 +46,10 @@ function followUpRowHasContent(row: Record<string, unknown>): boolean {
   const hasProvider = Boolean(specialty || provider);
   const hasScheduling = Boolean(timing || phone || address || comments);
   return hasProvider && hasScheduling;
+}
+
+function followUpRowHasContent(row: Record<string, unknown>): boolean {
+  return isClosureFollowUpRowComplete(row);
 }
 
 /** Follow-up documented via narrative fields or structured provider rows. */

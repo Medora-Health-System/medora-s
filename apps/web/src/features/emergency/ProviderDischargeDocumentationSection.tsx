@@ -321,6 +321,11 @@ const SharedDischargePlanningSection = React.memo(function SharedDischargePlanni
       <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "#0f172a" }}>
         {t("providerDischargeDocumentation19Y.dischargePlanningSection")}
       </p>
+      {validationErrors?.finalDiagnosis ? (
+        <p style={{ margin: "8px 0 0 0", fontSize: 12, color: "#b91c1c", lineHeight: 1.4 }}>
+          {validationErrors.finalDiagnosis}
+        </p>
+      ) : null}
 
       <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 10 }}>
         <div>
@@ -507,11 +512,17 @@ const SharedDischargePlanningSection = React.memo(function SharedDischargePlanni
             type="checkbox"
             checked={patientInstructionsGiven}
             disabled={disabled}
+            aria-invalid={Boolean(validationErrors?.patientInstructionsGiven)}
             onChange={(e) => onPatchShared({ patientInstructionsGiven: e.target.checked })}
             style={{ marginTop: 2 }}
           />
           <span>{t("patientDischargeInstructions.givenCheckbox")}</span>
         </label>
+        {validationErrors?.patientInstructionsGiven ? (
+          <p style={{ margin: "6px 0 0 0", fontSize: 12, color: "#b91c1c", lineHeight: 1.4 }}>
+            {validationErrors.patientInstructionsGiven}
+          </p>
+        ) : null}
       </div>
     </div>
   );
