@@ -6402,11 +6402,17 @@ export default {
           ECG: "ECG",
           RESULT_ACKNOWLEDGMENT: "Result acknowledgment",
           MEDICATION_ORDERS: "Medication orders",
-          MAR: "MAR",
+          MAR: "Medication administration",
           INFUSIONS: "Infusions",
+          MEDICATION_RECONCILIATION: "Medication reconciliation",
           PROCEDURES: "Procedures",
           CLINICAL_PATHWAYS: "Clinical pathways",
-          FULL_REASSESSMENT: "Full reassessment",
+          FULL_REASSESSMENT: "Reassessment",
+          ADVANCED_MEDICATION_SAFETY: "Advanced medication safety",
+          DRUG_INTERACTIONS: "Drug interactions",
+          RENAL_DOSING: "Renal dosing",
+          HEPATIC_DOSING: "Hepatic dosing",
+          PEDIATRIC_DOSING: "Pediatric dosing",
         },
         errors: {
           dispositionReadinessLoadFailed: "Disposition readiness could not be loaded.",
@@ -6737,6 +6743,63 @@ export default {
           CRITICAL_ACK_NOT_FROM_REVIEW_ALONE: {
             title: "Acknowledgment is not review alone",
             description: "Provider review/verify does not replace critical-result acknowledgment.",
+          },
+        },
+      },
+      b3: {
+        panelTitle: "Chart certification review",
+        banner:
+          "Stage B3 advisory medication and procedure review — partial clinical module coverage",
+        coveragePartial:
+          "Coverage: partial Stage B3 (advanced medication safety, pathways, interactions, and dosing not evaluated)",
+        loadError: "Unable to load chart certification. This is not a completed certification.",
+        evaluationErrorsPresent: "Evaluation incomplete — results are not READY.",
+        authoritativeReadiness: "Authoritative readiness (existing workflow)",
+        evaluatedModules: "Stage B3 evaluated modules",
+        unevaluatedTitle: "Modules not yet evaluated",
+        findingsTitle: "Medication and procedure findings",
+        advisoryFinding: "Advisory finding (does not block actions)",
+        establishedFinding: "Established workflow finding",
+        openRemediation: "Open related section",
+        errors: {
+          evaluatorThrew: "A medication/procedure evaluator failed.",
+          loadFailed: "Medication, MAR, or procedure data could not be loaded.",
+          staleMedicationProcedureRevision:
+            "Medication, MAR, or procedure data changed during evaluation.",
+        },
+        codes: {
+          MAR_DOSE_UNRESOLVED: {
+            title: "MAR dose unresolved",
+            description: "An administration-required dose has no resolving MAR action.",
+          },
+          MAR_REFUSAL_REASON_MISSING: {
+            title: "MAR refusal reason missing",
+            description: "A refused dose requires a documented refusal reason.",
+          },
+          INFUSION_UNRESOLVED_AT_DISPOSITION: {
+            title: "Infusion unresolved at disposition",
+            description: "An active infusion must be stopped, completed, or handed off before home discharge.",
+          },
+          PROCEDURE_DOCUMENTATION_MISSING: {
+            title: "Procedure documentation missing",
+            description: "A performed procedure requires structured procedure documentation.",
+          },
+          PROCEDURE_NOTE_UNSIGNED: {
+            title: "Procedure note unsigned",
+            description: "Procedure documentation exists but is not signed.",
+          },
+          PAIN_REASSESSMENT_MISSING: {
+            title: "Pain reassessment missing",
+            description: "Analgesic administration requires a documented pain/response reassessment.",
+          },
+          MEDICATION_RECONCILIATION_MODEL_NOT_DURABLE: {
+            title: "Medication reconciliation not durably modeled",
+            description:
+              "No durable medication-reconciliation completion state exists; module remains partially evaluated.",
+          },
+          PROCEDURE_SUPPLY_CHARGE_INSUFFICIENT_EVIDENCE: {
+            title: "Supply/charge is not procedure proof",
+            description: "Supply or billing evidence alone does not prove a procedure was performed.",
           },
         },
       },

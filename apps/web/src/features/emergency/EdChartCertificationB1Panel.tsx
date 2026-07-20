@@ -67,6 +67,9 @@ function remediationHref(
     const orderTab = tab === "imaging" ? "imaging" : tab === "care" ? "care" : "orders";
     return `${emergencyActiveWorkspacePath(encounterId)}?tab=${orderTab}`;
   }
+  if (route === "mar") {
+    return `${emergencyActiveWorkspacePath(encounterId)}?tab=mar`;
+  }
   if (route === "results") {
     return `${emergencyActiveWorkspacePath(encounterId)}?tab=results`;
   }
@@ -114,9 +117,18 @@ export function EdChartCertificationB1Panel({
   const patientName =
     `${(encounter.patient?.firstName ?? "").trim()} ${(encounter.patient?.lastName ?? "").trim()}`.trim() ||
     t("common.dash");
-  const stage = result?.certificationStage === "B2" ? "B2" : "B1";
+  const stage =
+    result?.certificationStage === "B3"
+      ? "B3"
+      : result?.certificationStage === "B2"
+        ? "B2"
+        : "B1";
   const i18nPrefix =
-    stage === "B2" ? "edLifecycle.certification.b2" : "edLifecycle.certification.b1";
+    stage === "B3"
+      ? "edLifecycle.certification.b3"
+      : stage === "B2"
+        ? "edLifecycle.certification.b2"
+        : "edLifecycle.certification.b1";
 
   return (
     <div
@@ -237,6 +249,9 @@ export function EdChartCertificationB1Panel({
               {" · v"}
               {result.encounterVersion}
               {result.diagnosticRevision ? ` · diag ${result.diagnosticRevision}` : null}
+              {result.medicationProcedureRevision
+                ? ` · med ${result.medicationProcedureRevision.slice(0, 24)}`
+                : null}
             </p>
 
             {(result.evaluationErrors?.length ?? 0) > 0 ? (
@@ -286,13 +301,23 @@ export function EdChartCertificationB1Panel({
                     ["nursingReady", "NURSING"],
                     ["providerReady", "PROVIDER"],
                     ["dispositionDocumentationReady", "DISPOSITION_DOCUMENTATION"],
-                    ...(stage === "B2"
+                    ...(stage === "B2" || stage === "B3"
                       ? ([
                           ["ordersReady", "ORDERS"],
                           ["laboratoryReady", "LAB_RESULTS"],
                           ["imagingReady", "IMAGING"],
                           ["ecgReady", "ECG"],
                           ["resultReviewReady", "RESULT_ACKNOWLEDGMENT"],
+                        ] as const)
+                      : []),
+                    ...(stage === "B3"
+                      ? ([
+                          ["medicationOrdersReady", "MEDICATION_ORDERS"],
+                          ["marReady", "MAR"],
+                          ["infusionsReady", "INFUSIONS"],
+                          ["medicationReconciliationReady", "MEDICATION_RECONCILIATION"],
+                          ["proceduresReady", "PROCEDURES"],
+                          ["reassessmentReady", "FULL_REASSESSMENT"],
                         ] as const)
                       : []),
                   ] as const

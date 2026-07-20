@@ -94,6 +94,7 @@ import { EdClosedEncounterCertificationPanel } from "@/features/emergency/EdClos
 import { EdChartCertificationB1Panel } from "@/features/emergency/EdChartCertificationB1Panel";
 import { isEnterpriseChartCertificationStageB1Enabled } from "@/features/emergency/enterpriseChartCertificationStageB1Flag";
 import { isEnterpriseChartCertificationStageB2Enabled } from "@/features/emergency/enterpriseChartCertificationStageB2Flag";
+import { isEnterpriseChartCertificationStageB3Enabled } from "@/features/emergency/enterpriseChartCertificationStageB3Flag";
 import {
   fetchFacilityBedBoard,
   findBedBoardUnit,
@@ -1593,6 +1594,7 @@ export function EmergencyTrackboardView() {
         />
       ) : null}
       {certificationPanelEncounter && facilityId ? (
+        isEnterpriseChartCertificationStageB3Enabled() ||
         isEnterpriseChartCertificationStageB2Enabled() ||
         isEnterpriseChartCertificationStageB1Enabled() ? (
           <EdChartCertificationB1Panel

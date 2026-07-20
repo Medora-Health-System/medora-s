@@ -6377,11 +6377,17 @@ export default {
           ECG: "ECG",
           RESULT_ACKNOWLEDGMENT: "Accusé de réception des résultats",
           MEDICATION_ORDERS: "Ordres de médicaments",
-          MAR: "MAR",
+          MAR: "Administration des médicaments",
           INFUSIONS: "Perfusions",
+          MEDICATION_RECONCILIATION: "Réconciliation médicamenteuse",
           PROCEDURES: "Procédures",
           CLINICAL_PATHWAYS: "Parcours cliniques",
-          FULL_REASSESSMENT: "Réévaluation complète",
+          FULL_REASSESSMENT: "Réévaluation",
+          ADVANCED_MEDICATION_SAFETY: "Sécurité médicamenteuse avancée",
+          DRUG_INTERACTIONS: "Interactions médicamenteuses",
+          RENAL_DOSING: "Posologie rénale",
+          HEPATIC_DOSING: "Posologie hépatique",
+          PEDIATRIC_DOSING: "Posologie pédiatrique",
         },
         errors: {
           dispositionReadinessLoadFailed: "Impossible de charger l’état de disposition.",
@@ -6713,6 +6719,66 @@ export default {
           CRITICAL_ACK_NOT_FROM_REVIEW_ALONE: {
             title: "L’acquittement n’est pas la seule revue",
             description: "La revue/vérification médicale ne remplace pas l’acquittement critique.",
+          },
+        },
+      },
+      b3: {
+        panelTitle: "Revue de certification du dossier",
+        banner:
+          "Revue consultative Stage B3 des médicaments et procédures — couverture clinique partielle des modules",
+        coveragePartial:
+          "Couverture : Stage B3 partiel (sécurité médicamenteuse avancée, parcours, interactions et posologies non évalués)",
+        loadError: "Impossible de charger la certification. Ce n’est pas une certification complète.",
+        evaluationErrorsPresent: "Évaluation incomplète — les résultats ne sont pas READY.",
+        authoritativeReadiness: "État de préparation autoritatif (flux existant)",
+        evaluatedModules: "Modules Stage B3 évalués",
+        unevaluatedTitle: "Modules pas encore évalués",
+        findingsTitle: "Constats médicaments et procédures",
+        advisoryFinding: "Constat consultatif (ne bloque pas les actions)",
+        establishedFinding: "Constat du flux établi",
+        openRemediation: "Ouvrir la section associée",
+        errors: {
+          evaluatorThrew: "Un évaluateur médicaments/procédures a échoué.",
+          loadFailed: "Impossible de charger les données médicaments, MAR ou procédures.",
+          staleMedicationProcedureRevision:
+            "Les données médicaments, MAR ou procédures ont changé pendant l’évaluation.",
+        },
+        codes: {
+          MAR_DOSE_UNRESOLVED: {
+            title: "Dose MAR non résolue",
+            description: "Une dose à administrer n’a aucune action MAR résolutive.",
+          },
+          MAR_REFUSAL_REASON_MISSING: {
+            title: "Motif de refus MAR manquant",
+            description: "Une dose refusée exige un motif de refus documenté.",
+          },
+          INFUSION_UNRESOLVED_AT_DISPOSITION: {
+            title: "Perfusion non résolue à la disposition",
+            description:
+              "Une perfusion active doit être arrêtée, terminée ou transférée avant une sortie à domicile.",
+          },
+          PROCEDURE_DOCUMENTATION_MISSING: {
+            title: "Documentation de procédure manquante",
+            description: "Une procédure réalisée exige une documentation structurée.",
+          },
+          PROCEDURE_NOTE_UNSIGNED: {
+            title: "Note de procédure non signée",
+            description: "La documentation de procédure existe mais n’est pas signée.",
+          },
+          PAIN_REASSESSMENT_MISSING: {
+            title: "Réévaluation de la douleur manquante",
+            description:
+              "L’administration d’un analgésique exige une réévaluation documentée de la douleur/réponse.",
+          },
+          MEDICATION_RECONCILIATION_MODEL_NOT_DURABLE: {
+            title: "Réconciliation médicamenteuse non modélisée durablement",
+            description:
+              "Aucun état durable de complétion de réconciliation n’existe ; le module reste partiellement évalué.",
+          },
+          PROCEDURE_SUPPLY_CHARGE_INSUFFICIENT_EVIDENCE: {
+            title: "Fourniture/facturation insuffisante comme preuve",
+            description:
+              "Les preuves de fourniture ou de facturation seules ne prouvent pas qu’une procédure a été réalisée.",
           },
         },
       },
