@@ -6,9 +6,11 @@ import {
 import {
   buildChartCertificationB1,
   buildChartCertificationB2,
+  buildChartCertificationB3,
   computeDiagnosticRevision,
   enterpriseChartCertificationStageB1EnabledFromProcessEnv,
   enterpriseChartCertificationStageB2EnabledFromProcessEnv,
+  enterpriseChartCertificationStageB3EnabledFromProcessEnv,
   isEdPhysicalDepartureCompleted,
   type ChartCertificationB1Context,
   type ChartCertificationB1Result,
@@ -21,6 +23,7 @@ import {
 const ECG_12_LEAD_DOCUMENTATION_CARD_ID = "ecg_12_lead_documentation";
 import { PrismaService } from "../prisma/prisma.service";
 import { EncountersService } from "./encounters.service";
+import { loadChartCertificationB3MedicationsContext } from "./chart-certification-b3-loader.util";
 
 function asObject(value: unknown): Record<string, unknown> | null {
   return value && typeof value === "object" && !Array.isArray(value)
@@ -106,13 +109,21 @@ export class ChartCertificationB1Service {
 
   isEnabled(): boolean {
     return (
+      enterpriseChartCertificationStageB3EnabledFromProcessEnv(process.env) ||
       enterpriseChartCertificationStageB2EnabledFromProcessEnv(process.env) ||
       enterpriseChartCertificationStageB1EnabledFromProcessEnv(process.env)
     );
   }
 
   isStageB2Enabled(): boolean {
-    return enterpriseChartCertificationStageB2EnabledFromProcessEnv(process.env);
+    return (
+      enterpriseChartCertificationStageB3EnabledFromProcessEnv(process.env) ||
+      enterpriseChartCertificationStageB2EnabledFromProcessEnv(process.env)
+    );
+  }
+
+  isStageB3Enabled(): boolean {
+    return enterpriseChartCertificationStageB3EnabledFromProcessEnv(process.env);
   }
 
   async getChartCertification(
@@ -156,6 +167,12 @@ export class ChartCertificationB1Service {
           imagingReady: null,
           ecgReady: null,
           resultReviewReady: null,
+          medicationOrdersReady: null,
+          marReady: null,
+          infusionsReady: null,
+          medicationReconciliationReady: null,
+          proceduresReady: null,
+          reassessmentReady: null,
         },
         authoritativeReadiness: {
           ...stale.authoritativeReadiness,
@@ -204,6 +221,12 @@ export class ChartCertificationB1Service {
             imagingReady: null,
             ecgReady: null,
             resultReviewReady: null,
+            medicationOrdersReady: null,
+            marReady: null,
+            infusionsReady: null,
+            medicationReconciliationReady: null,
+            proceduresReady: null,
+            reassessmentReady: null,
           },
           authoritativeReadiness: {
             ...retried.authoritativeReadiness,
@@ -244,6 +267,53 @@ export class ChartCertificationB1Service {
               imagingReady: null,
               ecgReady: null,
               resultReviewReady: null,
+              medicationOrdersReady: null,
+              marReady: null,
+              infusionsReady: null,
+              medicationReconciliationReady: null,
+              proceduresReady: null,
+              reassessmentReady: null,
+            },
+          };
+        }
+        return retried;
+      }
+    }
+
+    // B3: medication/MAR/procedure mutations may not bump Encounter.version.
+    if (this.isStageB3Enabled() && result.medicationProcedureRevision) {
+      const medRev = await this.loadMedicationProcedureRevisionToken(facilityId, encounterId);
+      if (medRev !== result.medicationProcedureRevision) {
+        const retried = await this.evaluate(facilityId, encounterId);
+        const medRev2 = await this.loadMedicationProcedureRevisionToken(facilityId, encounterId);
+        if (medRev2 !== retried.medicationProcedureRevision) {
+          return {
+            ...retried,
+            coverageStatus: "ERROR",
+            evaluationErrors: [
+              ...retried.evaluationErrors,
+              {
+                code: "STALE_MEDICATION_PROCEDURE_REVISION",
+                messageKey: "edLifecycle.certification.b3.errors.staleMedicationProcedureRevision",
+              },
+            ],
+            evaluatedReadiness: {
+              registrationReady: null,
+              triageReady: null,
+              nursingReady: null,
+              providerReady: null,
+              dispositionDocumentationReady: null,
+              ordersReady: null,
+              laboratoryReady: null,
+              imagingReady: null,
+              ecgReady: null,
+              resultReviewReady: null,
+              medicationOrdersReady: null,
+              marReady: null,
+              infusionsReady: null,
+              medicationReconciliationReady: null,
+              proceduresReady: null,
+              reassessmentReady: null,
             },
           };
         }
@@ -472,7 +542,16 @@ export class ChartCertificationB1Service {
     }
 
     const diagnostics = await this.loadDiagnosticsContext(facilityId, encounterId);
-    return buildChartCertificationB2({ ...context, diagnostics });
+    if (!this.isStageB3Enabled()) {
+      return buildChartCertificationB2({ ...context, diagnostics });
+    }
+
+    const medications = await loadChartCertificationB3MedicationsContext(
+      this.prisma,
+      facilityId,
+      encounterId
+    );
+    return buildChartCertificationB3({ ...context, diagnostics, medications });
   }
 
   private async loadDiagnosticRevisionToken(
@@ -481,6 +560,18 @@ export class ChartCertificationB1Service {
   ): Promise<string> {
     const diagnostics = await this.loadDiagnosticsContext(facilityId, encounterId);
     return diagnostics.diagnosticRevision;
+  }
+
+  private async loadMedicationProcedureRevisionToken(
+    facilityId: string,
+    encounterId: string
+  ): Promise<string> {
+    const medications = await loadChartCertificationB3MedicationsContext(
+      this.prisma,
+      facilityId,
+      encounterId
+    );
+    return medications.medicationProcedureRevision;
   }
 
   private async loadDiagnosticsContext(facilityId: string, encounterId: string) {
