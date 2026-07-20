@@ -6376,6 +6376,46 @@ export default {
           ready_for_billing: "Ready for billing",
         },
       },
+      stageA: {
+        codes: {
+          PROVIDER_NOTE_UNSIGNED: {
+            title: "Provider note unsigned",
+            description: "Provider documentation exists but is not signed.",
+          },
+          DISCHARGE_RETURN_PRECAUTIONS_MISSING: {
+            title: "Discharge return precautions missing",
+            description: "Record return precautions and warning signs in discharge instructions.",
+          },
+          ACTIVE_ORDERS_UNRESOLVED: {
+            title: "Active orders unresolved",
+            description: "Active diagnostic or care orders must be completed or cancelled.",
+          },
+          VITALS_MISSING: {
+            title: "Vitals missing",
+            description: "No recent vitals are documented for this encounter.",
+          },
+          VITALS_STALE: {
+            title: "Vitals stale",
+            description: "The latest vitals are older than the configured freshness window.",
+          },
+          PHYSICAL_DEPARTURE_INCOMPLETE: {
+            title: "Physical departure incomplete",
+            description: "Disposition execution or handoff is not complete.",
+          },
+          DEPARTURE_TIME_MISSING: {
+            title: "Departure time missing",
+            description: "Encounter dischargedAt is not recorded.",
+          },
+          PROVIDER_DOCUMENTATION: {
+            title: "Provider documentation missing",
+            description: "Required provider documentation is incomplete for this encounter.",
+          },
+          NURSING_ASSESSMENT: {
+            title: "Nursing assessment missing",
+            description: "Required nursing assessment documentation is incomplete.",
+          },
+        },
+      },
       b1: {
         panelTitle: "Chart certification review",
         banner: "Stage B1 advisory chart review — partial clinical module coverage",
@@ -6776,9 +6816,49 @@ export default {
             title: "MAR refusal reason missing",
             description: "A refused dose requires a documented refusal reason.",
           },
+          MAR_NOT_AVAILABLE_ACTION_MISSING: {
+            title: "MAR not-available action missing",
+            description: "A not-available dose requires documented escalation or follow-up action.",
+          },
+          MAR_ADMINISTRATION_TIME_MISSING: {
+            title: "MAR administration time missing",
+            description: "An administered dose requires a documented administration time.",
+          },
+          CONTROLLED_SUBSTANCE_WITNESS_MISSING: {
+            title: "Controlled-substance witness missing",
+            description: "Waste documentation requires a recorded witness where modeled.",
+          },
+          CONTROLLED_SUBSTANCE_QUANTITY_MISMATCH: {
+            title: "Controlled-substance quantity mismatch",
+            description: "Dispensed, administered, and wasted quantities do not reconcile.",
+          },
+          PRN_ADMINISTRATION_REASON_MISSING: {
+            title: "PRN administration reason missing",
+            description: "An administered PRN dose requires a documented indication/reason.",
+          },
+          PRN_EFFECTIVENESS_REASSESSMENT_MISSING: {
+            title: "PRN effectiveness reassessment missing",
+            description: "An administered PRN medication requires documented response/effectiveness.",
+          },
           INFUSION_UNRESOLVED_AT_DISPOSITION: {
             title: "Infusion unresolved at disposition",
             description: "An active infusion must be stopped, completed, or handed off before home discharge.",
+          },
+          INFUSION_NOT_STARTED: {
+            title: "Infusion not started",
+            description: "An ordered infusion intended for ED administration has no start documentation.",
+          },
+          INFUSION_STOP_TIME_MISSING: {
+            title: "Infusion stop time missing",
+            description: "A started infusion requires a stop, completion, or handoff timestamp.",
+          },
+          INFUSION_DISCONTINUATION_REASON_MISSING: {
+            title: "Infusion discontinuation reason missing",
+            description: "A discontinued infusion requires a documented reason.",
+          },
+          INFUSION_HANDOFF_DOCUMENTED: {
+            title: "Infusion handoff documented",
+            description: "Infusion continuation was handed off to the next care setting.",
           },
           PROCEDURE_DOCUMENTATION_MISSING: {
             title: "Procedure documentation missing",
@@ -6788,9 +6868,61 @@ export default {
             title: "Procedure note unsigned",
             description: "Procedure documentation exists but is not signed.",
           },
+          PROCEDURE_CONSENT_MISSING: {
+            title: "Procedure consent missing",
+            description: "Required procedure consent documentation is missing.",
+          },
+          PROCEDURE_TIMEOUT_MISSING: {
+            title: "Procedure timeout missing",
+            description: "Required procedure timeout documentation is missing.",
+          },
+          PROCEDURE_STATUS_CONFLICT: {
+            title: "Procedure status conflict",
+            description: "Procedure evidence sources conflict and require review.",
+          },
           PAIN_REASSESSMENT_MISSING: {
             title: "Pain reassessment missing",
             description: "Analgesic administration requires a documented pain/response reassessment.",
+          },
+          POST_PROCEDURE_REASSESSMENT_MISSING: {
+            title: "Post-procedure reassessment missing",
+            description: "A performed procedure requires documented post-procedure reassessment.",
+          },
+          MEDICATION_ORDER_DOSE_MISSING: {
+            title: "Medication order dose missing",
+            description: "An ED medication order is missing a required dose value.",
+          },
+          MEDICATION_ORDER_UNIT_MISSING: {
+            title: "Medication order unit missing",
+            description: "An ED medication order is missing a required dose unit.",
+          },
+          MEDICATION_ORDER_ROUTE_MISSING: {
+            title: "Medication order route missing",
+            description: "An ED medication order is missing a required route.",
+          },
+          MEDICATION_ORDER_FREQUENCY_MISSING: {
+            title: "Medication order frequency missing",
+            description: "An ED medication order is missing a required frequency or schedule.",
+          },
+          MEDICATION_ORDER_PRN_INDICATION_MISSING: {
+            title: "Medication order PRN indication missing",
+            description: "A PRN medication order requires a documented indication.",
+          },
+          MEDICATION_ORDER_HOLD_REASON_MISSING: {
+            title: "Medication hold reason missing",
+            description: "A held medication order requires a documented hold reason.",
+          },
+          MEDICATION_ORDER_DISCONTINUE_REASON_MISSING: {
+            title: "Medication discontinue reason missing",
+            description: "A discontinued medication order requires a documented reason.",
+          },
+          MEDICATION_ORDER_STATUS_CONFLICT: {
+            title: "Medication order status conflict",
+            description: "Medication order lifecycle status values conflict and require review.",
+          },
+          MEDICATION_ORDER_UNKNOWN_CLASSIFICATION: {
+            title: "Medication order classification unknown",
+            description: "The medication order could not be classified for chart-completion evaluation.",
           },
           MEDICATION_RECONCILIATION_MODEL_NOT_DURABLE: {
             title: "Medication reconciliation not durably modeled",

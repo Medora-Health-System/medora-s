@@ -11,6 +11,7 @@ import {
   chartCertificationDedupeKey,
   mergeChartCertificationDeficiencyFlags,
 } from "./chartCertificationDedupe.js";
+import { resolveChartCertificationLocalizationKeys } from "./chartCertificationLocalization.js";
 import {
   EdEncounterLifecycleState,
   evaluateEdEncounterDocumentationDeficiencies,
@@ -131,8 +132,20 @@ export type EdClosedEncounterCertificationDeficiency = {
   deduplicationKey?: string;
   category: EdClosedEncounterCertificationCategory;
   severity: EdClosedEncounterCertificationSeverity;
+  /**
+   * English-only compatibility fallback. Never put French (or any locale-selected)
+   * API messages here — the UI resolves titleKey/descriptionKey by active locale.
+   */
   title: string;
+  /**
+   * English-only compatibility fallback. Never put disposition-readiness
+   * `blocker.message` here (API messages are French in Medora).
+   */
   description: string;
+  /** Preferred UI title key resolved by the active application locale. */
+  titleKey?: string;
+  /** Preferred UI description key resolved by the active application locale. */
+  descriptionKey?: string;
   responsibleRole: EdClosedEncounterCertificationResponsibleRole;
   /**
    * Authoritative action block — true only for ESTABLISHED_WORKFLOW sources in Stage A.
@@ -289,18 +302,20 @@ const DISPOSITION_BLOCKER_CATEGORY: Record<
   VITALS_MISSING: EdClosedEncounterCertificationCategory.NURSING_DOCUMENTATION,
 };
 
-/** Prefer clinical semantics over raw code title-casing (content vs communication). */
-const DISPOSITION_BLOCKER_TITLES: Record<string, string> = {
-  DISCHARGE_INSTRUCTIONS_MISSING: "Discharge Instructions Content Missing",
-  DISCHARGE_INSTRUCTIONS_NOT_GIVEN: "Discharge Instruction Communication Not Documented",
-  DISCHARGE_FOLLOW_UP_MISSING: "Discharge Follow-Up Missing",
-  DISCHARGE_RETURN_PRECAUTIONS_MISSING: "Discharge Return Precautions Missing",
-  PROVIDER_DOCUMENTATION_UNSIGNED: "Provider Note Unsigned",
-};
-
-function deficiencyTitleForCode(code: string): string {
-  if (DISPOSITION_BLOCKER_TITLES[code]) return DISPOSITION_BLOCKER_TITLES[code]!;
-  return code.replace(/_/g, " ").toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
+function localizedDeficiencyFields(code: string): {
+  title: string;
+  description: string;
+  titleKey: string;
+  descriptionKey: string;
+} {
+  const keys = resolveChartCertificationLocalizationKeys(code);
+  return {
+    title: keys?.fallbackTitleEn ?? code,
+    description: keys?.fallbackDescriptionEn ?? `Certification finding: ${code}`,
+    titleKey: keys?.titleKey ?? `edLifecycle.certification.stageA.codes.${code}.title`,
+    descriptionKey:
+      keys?.descriptionKey ?? `edLifecycle.certification.stageA.codes.${code}.description`,
+  };
 }
 
 function pushDeficiency(
@@ -340,13 +355,16 @@ function mapDocumentationDeficiencies(
     };
     const suggestsBilling =
       mapped.category === EdClosedEncounterCertificationCategory.DIAGNOSIS;
+    const loc = localizedDeficiencyFields(d.code);
     pushDeficiency(out, seen, {
       id: `doc:${d.code}`,
       stableCode: d.code,
       category: mapped.category,
       severity: EdClosedEncounterCertificationSeverity.WARNING,
-      title: deficiencyTitleForCode(d.code),
-      description: `Documentation deficiency: ${d.code}`,
+      title: loc.title,
+      description: loc.description,
+      titleKey: loc.titleKey,
+      descriptionKey: loc.descriptionKey,
       responsibleRole: mapped.role,
       blockingClosure: false,
       blockingBilling: false,
@@ -358,13 +376,16 @@ function mapDocumentationDeficiencies(
   }
   // Unsigned signature only when provider content exists (avoid duplicate with missing-doc).
   if (!providerContentMissing && !isEdProviderDocumentationSigned(snapshot)) {
+    const loc = localizedDeficiencyFields("PROVIDER_NOTE_UNSIGNED");
     pushDeficiency(out, seen, {
       id: "provider:unsigned",
       stableCode: "PROVIDER_NOTE_UNSIGNED",
       category: EdClosedEncounterCertificationCategory.PROVIDER_DOCUMENTATION,
       severity: EdClosedEncounterCertificationSeverity.WARNING,
-      title: "Provider Note Unsigned",
-      description: "Provider documentation exists but is not signed.",
+      title: loc.title,
+      description: loc.description,
+      titleKey: loc.titleKey,
+      descriptionKey: loc.descriptionKey,
       responsibleRole: EdClosedEncounterCertificationResponsibleRole.PROVIDER,
       blockingClosure: false,
       blockingBilling: false,
@@ -386,12 +407,16 @@ function mapDispositionDeficiencies(
   const seen = new Set<string>();
 
   if (!isEdPhysicalDepartureCompleted(snapshot)) {
+    const loc = localizedDeficiencyFields("PHYSICAL_DEPARTURE_INCOMPLETE");
     pushDeficiency(out, seen, {
       id: "disposition:departure-incomplete",
+      stableCode: "PHYSICAL_DEPARTURE_INCOMPLETE",
       category: EdClosedEncounterCertificationCategory.DISPOSITION,
       severity: EdClosedEncounterCertificationSeverity.BLOCKER,
-      title: "Physical Departure Incomplete",
-      description: "Disposition execution or handoff is not complete.",
+      title: loc.title,
+      description: loc.description,
+      titleKey: loc.titleKey,
+      descriptionKey: loc.descriptionKey,
       responsibleRole: EdClosedEncounterCertificationResponsibleRole.NURSE,
       blockingClosure: true,
       blockingBilling: false,
@@ -403,12 +428,16 @@ function mapDispositionDeficiencies(
   }
 
   if (!snapshot.dischargedAt && isEdPhysicalDepartureCompleted(snapshot)) {
+    const loc = localizedDeficiencyFields("DEPARTURE_TIME_MISSING");
     pushDeficiency(out, seen, {
       id: "timestamps:departure-missing",
+      stableCode: "DEPARTURE_TIME_MISSING",
       category: EdClosedEncounterCertificationCategory.TIMESTAMPS,
       severity: EdClosedEncounterCertificationSeverity.INFO,
-      title: "Departure Time Missing",
-      description: "Encounter dischargedAt is not recorded.",
+      title: loc.title,
+      description: loc.description,
+      titleKey: loc.titleKey,
+      descriptionKey: loc.descriptionKey,
       responsibleRole: EdClosedEncounterCertificationResponsibleRole.SYSTEM,
       blockingClosure: false,
       blockingBilling: false,
@@ -454,16 +483,18 @@ function mapDispositionDeficiencies(
           continue;
         }
       }
+      // Never pipe disposition-readiness `blocker.message` (French API copy) into
+      // locale-neutral certification fields — UI resolves titleKey/descriptionKey.
+      const loc = localizedDeficiencyFields(blocker.code);
       pushDeficiency(out, seen, {
         id: `disposition:${blocker.code}`,
         stableCode: blocker.code,
         category,
         severity: EdClosedEncounterCertificationSeverity.BLOCKER,
-        title:
-          blocker.code === "PROVIDER_DOCUMENTATION_UNSIGNED"
-            ? "Provider Note Unsigned"
-            : deficiencyTitleForCode(blocker.code),
-        description: blocker.message,
+        title: loc.title,
+        description: loc.description,
+        titleKey: loc.titleKey,
+        descriptionKey: loc.descriptionKey,
         responsibleRole:
           blocker.code === "PROVIDER_DOCUMENTATION_UNSIGNED"
             ? EdClosedEncounterCertificationResponsibleRole.PROVIDER

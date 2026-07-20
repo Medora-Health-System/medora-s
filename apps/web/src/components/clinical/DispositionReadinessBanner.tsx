@@ -9,7 +9,9 @@ import { formatEncounterChromeDateTime } from "@/lib/encounterChromeI18n";
 export function dispositionReadinessIssueText(
   t: (key: string) => string,
   issue: { code: string; message: string },
-  data: DispositionSafetyReadinessResponse
+  data: DispositionSafetyReadinessResponse,
+  /** Active Medora UI locale. English must never fall back to French API messages. */
+  language: "en" | "fr" = "en"
 ): string {
   const blockKey = `dispositionReadiness.blockers.${issue.code}`;
   const warnKey = `dispositionReadiness.warnings.${issue.code}`;
@@ -26,6 +28,10 @@ export function dispositionReadinessIssueText(
         .replace("{care}", String(c.care));
     }
     return resolved;
+  }
+  // Never surface French API `message` into an English UI.
+  if (language === "en") {
+    return issue.code.replace(/_/g, " ").toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
   }
   return issue.message;
 }
@@ -190,7 +196,7 @@ export function DispositionReadinessBanner({
         <ul style={{ margin: "0 0 8px 0", paddingLeft: 18, fontSize: 12, color: "#7f1d1d", lineHeight: 1.45 }}>
           {data.blockers.map((b) => (
             <li key={b.code} style={{ marginBottom: 4 }}>
-              {dispositionReadinessIssueText(t, b, data)}
+              {dispositionReadinessIssueText(t, b, data, language)}
             </li>
           ))}
         </ul>
@@ -199,7 +205,7 @@ export function DispositionReadinessBanner({
         <ul style={{ margin: "0 0 0 0", paddingLeft: 18, fontSize: 12, color: "#92400e", lineHeight: 1.45 }}>
           {data.warnings.map((w) => (
             <li key={w.code} style={{ marginBottom: 4 }}>
-              {dispositionReadinessIssueText(t, w, data)}
+              {dispositionReadinessIssueText(t, w, data, language)}
             </li>
           ))}
         </ul>

@@ -16,6 +16,8 @@ import type { EdTrackboardCertificationEncounter } from "@/features/emergency/ed
 import { emergencyActiveWorkspacePath, emergencyChartPath } from "@/features/emergency/emergencyRoutes";
 import { MEDORA_CARD_SHELL } from "@/components/medora-card";
 import { isEnterpriseChartCertificationStageAEnabled } from "@/features/emergency/enterpriseChartCertificationStageAFlag";
+import { resolveCertificationDeficiencyDisplay } from "@/features/emergency/certificationDeficiencyDisplay";
+import type { SupportedLanguage } from "@/i18n/config";
 
 type Props = {
   encounter: EdTrackboardCertificationEncounter;
@@ -73,6 +75,7 @@ function deficiencyGroup(
   title: string,
   items: EdClosedEncounterCertificationResult["deficiencies"],
   t: (key: string) => string,
+  language: SupportedLanguage,
   advisory?: boolean
 ) {
   if (items.length === 0) return null;
@@ -80,7 +83,9 @@ function deficiencyGroup(
     <section style={{ marginTop: 16 }}>
       <h3 style={{ margin: "0 0 8px 0", fontSize: 13, fontWeight: 700, color: "#334155" }}>{title}</h3>
       <ul style={{ margin: 0, padding: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: 8 }}>
-        {items.map((d) => (
+        {items.map((d) => {
+          const display = resolveCertificationDeficiencyDisplay(t, language, d);
+          return (
           <li
             key={d.id}
             style={{
@@ -90,8 +95,8 @@ function deficiencyGroup(
               background: "#fff",
             }}
           >
-            <div style={{ fontSize: 13, fontWeight: 600, color: "#0f172a" }}>{d.title}</div>
-            <div style={{ fontSize: 12, color: "#64748b", marginTop: 4 }}>{d.description}</div>
+            <div style={{ fontSize: 13, fontWeight: 600, color: "#0f172a" }}>{display.title}</div>
+            <div style={{ fontSize: 12, color: "#64748b", marginTop: 4 }}>{display.description}</div>
             <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 6 }}>
               {t(`edLifecycle.certification.role.${d.responsibleRole.toLowerCase()}`)}
               {" · "}
@@ -102,7 +107,8 @@ function deficiencyGroup(
                   : t("edLifecycle.certification.noClosureBlock")}
             </div>
           </li>
-        ))}
+          );
+        })}
       </ul>
     </section>
   );
@@ -379,10 +385,17 @@ export function EdClosedEncounterCertificationPanel({
         {deficiencyGroup(
           t("edLifecycle.certification.closeReview.closureBlockers"),
           establishedFindings.filter((d) => d.blockingClosure),
-          t
+          t,
+          language
         )}
         {stageAEnabled
-          ? deficiencyGroup(t("edLifecycle.certification.advisory.findingsTitle"), advisoryFindings, t, true)
+          ? deficiencyGroup(
+              t("edLifecycle.certification.advisory.findingsTitle"),
+              advisoryFindings,
+              t,
+              language,
+              true
+            )
           : null}
 
         <div style={{ marginTop: 20, display: "flex", flexWrap: "wrap", gap: 8 }}>

@@ -6351,6 +6351,48 @@ export default {
           ready_for_billing: "Prêt pour facturation",
         },
       },
+      stageA: {
+        codes: {
+          PROVIDER_NOTE_UNSIGNED: {
+            title: "Note médicale non signée",
+            description: "La documentation médicale existe mais n’est pas signée.",
+          },
+          DISCHARGE_RETURN_PRECAUTIONS_MISSING: {
+            title: "Précautions de retour manquantes",
+            description:
+              "Documentez les précautions et signes d’alarme (retour aux urgences) dans les consignes de sortie.",
+          },
+          ACTIVE_ORDERS_UNRESOLVED: {
+            title: "Ordres actifs non résolus",
+            description: "Les ordres diagnostiques ou de soins actifs doivent être terminés ou annulés.",
+          },
+          VITALS_MISSING: {
+            title: "Signes vitaux manquants",
+            description: "Aucun signe vital récent n’est documenté pour cette consultation.",
+          },
+          VITALS_STALE: {
+            title: "Signes vitaux obsolètes",
+            description:
+              "Les derniers signes vitaux sont plus anciens que la fenêtre de fraîcheur configurée.",
+          },
+          PHYSICAL_DEPARTURE_INCOMPLETE: {
+            title: "Départ physique incomplet",
+            description: "L’exécution de la disposition ou la passation n’est pas terminée.",
+          },
+          DEPARTURE_TIME_MISSING: {
+            title: "Heure de départ manquante",
+            description: "La date/heure de sortie (dischargedAt) n’est pas enregistrée.",
+          },
+          PROVIDER_DOCUMENTATION: {
+            title: "Documentation médicale manquante",
+            description: "La documentation médicale requise est incomplète pour cette consultation.",
+          },
+          NURSING_ASSESSMENT: {
+            title: "Évaluation infirmière manquante",
+            description: "La documentation d’évaluation infirmière requise est incomplète.",
+          },
+        },
+      },
       b1: {
         panelTitle: "Revue de certification du dossier",
         banner: "Revue de dossier consultative Stage B1 — couverture clinique partielle des modules",
@@ -6752,10 +6794,56 @@ export default {
             title: "Motif de refus MAR manquant",
             description: "Une dose refusée exige un motif de refus documenté.",
           },
+          MAR_NOT_AVAILABLE_ACTION_MISSING: {
+            title: "Action MAR indisponible manquante",
+            description:
+              "Une dose indisponible exige une escalade ou une action de suivi documentée.",
+          },
+          MAR_ADMINISTRATION_TIME_MISSING: {
+            title: "Heure d’administration MAR manquante",
+            description: "Une dose administrée exige une heure d’administration documentée.",
+          },
+          CONTROLLED_SUBSTANCE_WITNESS_MISSING: {
+            title: "Témoin de substance contrôlée manquant",
+            description:
+              "La documentation de destruction exige un témoin enregistré lorsque le modèle le prévoit.",
+          },
+          CONTROLLED_SUBSTANCE_QUANTITY_MISMATCH: {
+            title: "Écart de quantité de substance contrôlée",
+            description:
+              "Les quantités dispensées, administrées et détruites ne concordent pas.",
+          },
+          PRN_ADMINISTRATION_REASON_MISSING: {
+            title: "Motif d’administration PRN manquant",
+            description: "Une dose PRN administrée exige une indication/motif documenté.",
+          },
+          PRN_EFFECTIVENESS_REASSESSMENT_MISSING: {
+            title: "Réévaluation d’efficacité PRN manquante",
+            description:
+              "Un médicament PRN administré exige une réponse/efficacité documentée.",
+          },
           INFUSION_UNRESOLVED_AT_DISPOSITION: {
             title: "Perfusion non résolue à la disposition",
             description:
               "Une perfusion active doit être arrêtée, terminée ou transférée avant une sortie à domicile.",
+          },
+          INFUSION_NOT_STARTED: {
+            title: "Perfusion non démarrée",
+            description:
+              "Une perfusion ordonnée pour administration aux urgences n’a pas de documentation de démarrage.",
+          },
+          INFUSION_STOP_TIME_MISSING: {
+            title: "Heure d’arrêt de perfusion manquante",
+            description:
+              "Une perfusion démarrée exige une heure d’arrêt, de fin ou de passation.",
+          },
+          INFUSION_DISCONTINUATION_REASON_MISSING: {
+            title: "Motif d’arrêt de perfusion manquant",
+            description: "Une perfusion interrompue exige un motif documenté.",
+          },
+          INFUSION_HANDOFF_DOCUMENTED: {
+            title: "Passation de perfusion documentée",
+            description: "La poursuite de la perfusion a été passée au prochain lieu de soins.",
           },
           PROCEDURE_DOCUMENTATION_MISSING: {
             title: "Documentation de procédure manquante",
@@ -6765,10 +6853,66 @@ export default {
             title: "Note de procédure non signée",
             description: "La documentation de procédure existe mais n’est pas signée.",
           },
+          PROCEDURE_CONSENT_MISSING: {
+            title: "Consentement de procédure manquant",
+            description: "La documentation de consentement requise pour la procédure est manquante.",
+          },
+          PROCEDURE_TIMEOUT_MISSING: {
+            title: "Timeout de procédure manquant",
+            description: "La documentation de timeout requise pour la procédure est manquante.",
+          },
+          PROCEDURE_STATUS_CONFLICT: {
+            title: "Conflit de statut de procédure",
+            description: "Les sources de preuve de procédure sont en conflit et nécessitent une revue.",
+          },
           PAIN_REASSESSMENT_MISSING: {
             title: "Réévaluation de la douleur manquante",
             description:
               "L’administration d’un analgésique exige une réévaluation documentée de la douleur/réponse.",
+          },
+          POST_PROCEDURE_REASSESSMENT_MISSING: {
+            title: "Réévaluation post-procédure manquante",
+            description:
+              "Une procédure réalisée exige une réévaluation post-procédure documentée.",
+          },
+          MEDICATION_ORDER_DOSE_MISSING: {
+            title: "Dose d’ordonnance médicamenteuse manquante",
+            description: "Une ordonnance médicamenteuse aux urgences n’a pas de dose requise.",
+          },
+          MEDICATION_ORDER_UNIT_MISSING: {
+            title: "Unité d’ordonnance médicamenteuse manquante",
+            description: "Une ordonnance médicamenteuse aux urgences n’a pas d’unité de dose requise.",
+          },
+          MEDICATION_ORDER_ROUTE_MISSING: {
+            title: "Voie d’ordonnance médicamenteuse manquante",
+            description: "Une ordonnance médicamenteuse aux urgences n’a pas de voie requise.",
+          },
+          MEDICATION_ORDER_FREQUENCY_MISSING: {
+            title: "Fréquence d’ordonnance médicamenteuse manquante",
+            description:
+              "Une ordonnance médicamenteuse aux urgences n’a pas de fréquence ou de calendrier requis.",
+          },
+          MEDICATION_ORDER_PRN_INDICATION_MISSING: {
+            title: "Indication PRN d’ordonnance manquante",
+            description: "Une ordonnance PRN exige une indication documentée.",
+          },
+          MEDICATION_ORDER_HOLD_REASON_MISSING: {
+            title: "Motif de mise en attente manquant",
+            description: "Une ordonnance mise en attente exige un motif documenté.",
+          },
+          MEDICATION_ORDER_DISCONTINUE_REASON_MISSING: {
+            title: "Motif d’arrêt d’ordonnance manquant",
+            description: "Une ordonnance arrêtée exige un motif documenté.",
+          },
+          MEDICATION_ORDER_STATUS_CONFLICT: {
+            title: "Conflit de statut d’ordonnance médicamenteuse",
+            description:
+              "Les statuts du cycle de vie de l’ordonnance sont en conflit et nécessitent une revue.",
+          },
+          MEDICATION_ORDER_UNKNOWN_CLASSIFICATION: {
+            title: "Classification d’ordonnance inconnue",
+            description:
+              "L’ordonnance médicamenteuse n’a pas pu être classée pour l’évaluation de complétion du dossier.",
           },
           MEDICATION_RECONCILIATION_MODEL_NOT_DURABLE: {
             title: "Réconciliation médicamenteuse non modélisée durablement",

@@ -19,6 +19,8 @@ import {
   type EdDispositionLayoutMode,
 } from "@/features/emergency/edDispositionResponsiveLayout";
 import { isEnterpriseChartCertificationStageAEnabled } from "@/features/emergency/enterpriseChartCertificationStageAFlag";
+import { resolveCertificationDeficiencyDisplay } from "@/features/emergency/certificationDeficiencyDisplay";
+import type { SupportedLanguage } from "@/i18n/config";
 
 type Props = {
   certification: EdClosedEncounterCertificationResult;
@@ -79,11 +81,13 @@ function DeficiencyGroup({
   title,
   items,
   t,
+  language,
   advisory,
 }: {
   title: string;
   items: EdClosedEncounterCertificationResult["deficiencies"];
   t: (key: string) => string;
+  language: SupportedLanguage;
   advisory?: boolean;
 }) {
   if (items.length === 0) return null;
@@ -91,7 +95,9 @@ function DeficiencyGroup({
     <section style={{ marginTop: 14 }}>
       <h3 style={{ margin: "0 0 8px 0", fontSize: 13, fontWeight: 700, color: "#334155" }}>{title}</h3>
       <ul style={{ margin: 0, padding: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: 8 }}>
-        {items.map((d) => (
+        {items.map((d) => {
+          const display = resolveCertificationDeficiencyDisplay(t, language, d);
+          return (
           <li
             key={d.id}
             style={{
@@ -101,8 +107,8 @@ function DeficiencyGroup({
               background: "#fff",
             }}
           >
-            <div style={{ fontSize: 13, fontWeight: 600, color: "#0f172a" }}>{d.title}</div>
-            <div style={{ fontSize: 12, color: "#64748b", marginTop: 4 }}>{d.description}</div>
+            <div style={{ fontSize: 13, fontWeight: 600, color: "#0f172a" }}>{display.title}</div>
+            <div style={{ fontSize: 12, color: "#64748b", marginTop: 4 }}>{display.description}</div>
             <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 6 }}>
               {advisory || d.sourceAuthority === EdChartCertificationSourceAuthority.STAGE_A_ADVISORY
                 ? t("edLifecycle.certification.advisory.reviewSuggested")
@@ -111,7 +117,8 @@ function DeficiencyGroup({
                   : t("edLifecycle.certification.noClosureBlock")}
             </div>
           </li>
-        ))}
+          );
+        })}
       </ul>
     </section>
   );
@@ -127,7 +134,7 @@ export function EdEncounterCertificationReview({
   onCancel,
   onContinueClose,
 }: Props) {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   const stageAEnabled = isEnterpriseChartCertificationStageAEnabled();
   const groups = useMemo(() => groupCertificationDeficienciesForReview(certification), [certification]);
 
@@ -259,7 +266,7 @@ export function EdEncounterCertificationReview({
             <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13, color: "#451a03", lineHeight: 1.45 }}>
               {establishedBlockers.map((d) => (
                 <li key={d.id} style={{ marginBottom: 4 }}>
-                  {d.title}
+                  {resolveCertificationDeficiencyDisplay(t, language, d).title}
                 </li>
               ))}
             </ul>
@@ -271,6 +278,7 @@ export function EdEncounterCertificationReview({
             title={t("edLifecycle.certification.advisory.findingsTitle")}
             items={advisoryItems}
             t={t}
+            language={language}
             advisory
           />
         ) : null}
@@ -281,6 +289,7 @@ export function EdEncounterCertificationReview({
             (d) => d.sourceAuthority === EdChartCertificationSourceAuthority.ESTABLISHED_WORKFLOW
           )}
           t={t}
+          language={language}
         />
         <DeficiencyGroup
           title={t("edLifecycle.certification.nursingDeficiencies")}
@@ -288,6 +297,7 @@ export function EdEncounterCertificationReview({
             (d) => d.sourceAuthority === EdChartCertificationSourceAuthority.ESTABLISHED_WORKFLOW
           )}
           t={t}
+          language={language}
         />
 
         {showDispositionOverride ? (

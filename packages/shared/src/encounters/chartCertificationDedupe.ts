@@ -70,7 +70,30 @@ export function chartCertificationDedupeKey(input: {
 
 const ESTABLISHED = "ESTABLISHED_WORKFLOW";
 
-/** Prefer the first (higher-priority) deficiency when collapsing aliases. */
+const SOURCE_AUTHORITY_RANK: Record<string, number> = {
+  ESTABLISHED_WORKFLOW: 60,
+  STAGE_B3_AUTHORITATIVE: 55,
+  STAGE_B3_EVALUATED: 50,
+  STAGE_B3_ADVISORY: 50,
+  STAGE_B2_AUTHORITATIVE: 45,
+  STAGE_B2_EVALUATED: 40,
+  STAGE_B2_ADVISORY: 40,
+  STAGE_B1_AUTHORITATIVE: 35,
+  STAGE_B1_EVALUATED: 30,
+  STAGE_B1_ADVISORY: 30,
+  STAGE_A_ADVISORY: 20,
+  HEURISTIC_FALLBACK: 10,
+};
+
+function sourceAuthorityRank(authority: string | undefined): number {
+  if (!authority) return 0;
+  return SOURCE_AUTHORITY_RANK[authority] ?? 0;
+}
+
+/**
+ * Prefer one authoritative semantic finding (keys + English fallbacks together).
+ * Never keep title from one source and description from another.
+ */
 export function mergeChartCertificationDeficiencyFlags<
   T extends {
     blockingClosure: boolean;
@@ -79,12 +102,21 @@ export function mergeChartCertificationDeficiencyFlags<
     sourceAuthority?: string;
     suggestsClosureReview?: boolean;
     suggestsBillingReview?: boolean;
+    title?: string;
+    description?: string;
+    titleKey?: string;
+    descriptionKey?: string;
+    stableCode?: string;
+    remediationHint?: string;
   },
 >(existing: T, incoming: T): T {
   const severityRank = (s: string) =>
     s === "BLOCKER" ? 3 : s === "WARNING" ? 2 : s === "INFO" ? 1 : 0;
   const established =
     existing.sourceAuthority === ESTABLISHED || incoming.sourceAuthority === ESTABLISHED;
+  const preferIncomingSemantic =
+    sourceAuthorityRank(incoming.sourceAuthority) > sourceAuthorityRank(existing.sourceAuthority);
+  const semanticBase = preferIncomingSemantic ? incoming : existing;
   const existingSuggestsClosure =
     existing.suggestsClosureReview ?? existing.blockingClosure;
   const incomingSuggestsClosure =
@@ -95,6 +127,7 @@ export function mergeChartCertificationDeficiencyFlags<
     incoming.suggestsBillingReview ?? incoming.blockingBilling;
   return {
     ...existing,
+    ...semanticBase,
     sourceAuthority: established ? ESTABLISHED : existing.sourceAuthority ?? incoming.sourceAuthority,
     blockingClosure: established
       ? (existing.sourceAuthority === ESTABLISHED && existing.blockingClosure) ||
@@ -110,5 +143,11 @@ export function mergeChartCertificationDeficiencyFlags<
       severityRank(incoming.severity) > severityRank(existing.severity)
         ? incoming.severity
         : existing.severity,
+    title: semanticBase.title,
+    description: semanticBase.description,
+    titleKey: semanticBase.titleKey,
+    descriptionKey: semanticBase.descriptionKey,
+    stableCode: semanticBase.stableCode ?? existing.stableCode ?? incoming.stableCode,
+    remediationHint: semanticBase.remediationHint ?? existing.remediationHint ?? incoming.remediationHint,
   };
 }
