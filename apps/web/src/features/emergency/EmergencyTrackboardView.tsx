@@ -91,6 +91,8 @@ import {
 } from "@/features/emergency/edIncompleteChartsUiCleanup";
 import { shouldShowTrackboardBedStatusChip } from "@/features/emergency/edTrackboardBadgeCleanup";
 import { EdClosedEncounterCertificationPanel } from "@/features/emergency/EdClosedEncounterCertificationPanel";
+import { EdChartCertificationB1Panel } from "@/features/emergency/EdChartCertificationB1Panel";
+import { isEnterpriseChartCertificationStageB1Enabled } from "@/features/emergency/enterpriseChartCertificationStageB1Flag";
 import {
   fetchFacilityBedBoard,
   findBedBoardUnit,
@@ -1590,12 +1592,21 @@ export function EmergencyTrackboardView() {
         />
       ) : null}
       {certificationPanelEncounter && facilityId ? (
-        <EdClosedEncounterCertificationPanel
-          encounter={certificationPanelEncounter}
-          facilityId={facilityId}
-          facilityName={facilityName}
-          onClose={() => setCertificationPanelEncounter(null)}
-        />
+        isEnterpriseChartCertificationStageB1Enabled() ? (
+          <EdChartCertificationB1Panel
+            encounter={certificationPanelEncounter}
+            facilityId={facilityId}
+            facilityName={facilityName}
+            onClose={() => setCertificationPanelEncounter(null)}
+          />
+        ) : (
+          <EdClosedEncounterCertificationPanel
+            encounter={certificationPanelEncounter}
+            facilityId={facilityId}
+            facilityName={facilityName}
+            onClose={() => setCertificationPanelEncounter(null)}
+          />
+        )
       ) : null}
     </div>
   );

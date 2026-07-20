@@ -6376,6 +6376,205 @@ export default {
           ready_for_billing: "Ready for billing",
         },
       },
+      b1: {
+        panelTitle: "Chart certification review",
+        banner: "Stage B1 advisory chart review — partial clinical module coverage",
+        coveragePartial: "Coverage: partial Stage B1 (orders, MAR, procedures not evaluated)",
+        loadError: "Unable to load chart certification. This is not a completed certification.",
+        evaluationErrorsPresent: "Evaluation incomplete — results are not READY.",
+        authoritativeReadiness: "Authoritative readiness (existing workflow)",
+        evaluatedModules: "Stage B1 evaluated modules",
+        unevaluatedTitle: "Modules not yet evaluated",
+        findingsTitle: "Findings",
+        advisoryFinding: "Advisory finding (does not block actions)",
+        establishedFinding: "Established workflow finding",
+        openRemediation: "Open related section",
+        summary: { unknown: "UNKNOWN" },
+        modules: {
+          REGISTRATION: "Registration",
+          TRIAGE: "Triage",
+          NURSING: "Nursing",
+          PROVIDER: "Provider",
+          DISPOSITION_DOCUMENTATION: "Disposition documentation",
+          ORDERS: "Orders",
+          LAB_RESULTS: "Laboratory results",
+          IMAGING: "Imaging",
+          ECG: "ECG",
+          RESULT_ACKNOWLEDGMENT: "Result acknowledgment",
+          MEDICATION_ORDERS: "Medication orders",
+          MAR: "MAR",
+          INFUSIONS: "Infusions",
+          PROCEDURES: "Procedures",
+          CLINICAL_PATHWAYS: "Clinical pathways",
+          FULL_REASSESSMENT: "Full reassessment",
+        },
+        errors: {
+          dispositionReadinessLoadFailed: "Disposition readiness could not be loaded.",
+          staleEncounterVersion: "Encounter version is stale.",
+          staleEvaluation: "Certification became stale during evaluation.",
+          evaluatorThrew: "An evaluator failed.",
+          mergeFailed: "Certification merge failed.",
+          forced: "Forced evaluation error.",
+        },
+        codes: {
+          REGISTRATION_IDENTITY_INCOMPLETE: {
+            title: "Patient identity incomplete",
+            description: "First or last name is missing from registration.",
+          },
+          REGISTRATION_DOB_MISSING: {
+            title: "Date of birth missing",
+            description: "Patient date of birth is not recorded.",
+          },
+          REGISTRATION_DOB_EXCEPTION_ACCEPTED: {
+            title: "Date of birth exception accepted",
+            description: "Unknown or unable-to-provide date of birth was accepted as a valid exception.",
+          },
+          REGISTRATION_SEX_MISSING: {
+            title: "Sex at birth missing",
+            description: "Sex at birth may be needed for operational workflows.",
+          },
+          REGISTRATION_MRN_REVIEW: {
+            title: "MRN review",
+            description: "Medical record number is missing or incomplete.",
+          },
+          REGISTRATION_ARRIVAL_TIME_MISSING: {
+            title: "Arrival time missing",
+            description: "Encounter arrival timestamp is not recorded.",
+          },
+          REGISTRATION_ENCOUNTER_TYPE_MISSING: {
+            title: "Encounter type missing",
+            description: "Encounter type is required.",
+          },
+          REGISTRATION_INSURANCE_NOT_CLINICAL_GATE: {
+            title: "Insurance is not a clinical gate",
+            description: "Missing insurance or self-pay does not mark the clinical chart incomplete.",
+          },
+          TRIAGE_NOT_COMPLETED: {
+            title: "Triage not completed",
+            description: "Structured triage completion is missing.",
+          },
+          CHIEF_COMPLAINT_MISSING: {
+            title: "Chief complaint missing",
+            description: "No chief complaint is recorded in triage or the encounter.",
+          },
+          ACUITY_MISSING: {
+            title: "Acuity missing",
+            description: "ESI/acuity is not recorded.",
+          },
+          INITIAL_VITALS_MISSING: {
+            title: "Initial vitals missing",
+            description: "No active initial vital signs are recorded.",
+          },
+          INITIAL_VITALS_EXCEPTION_ACCEPTED: {
+            title: "Vitals exception accepted",
+            description: "A documented vitals refusal or unable-to-obtain exception was accepted.",
+          },
+          INFECTION_SCREENING_REVIEW: {
+            title: "Screening review",
+            description: "Stroke/sepsis screening may warrant review when applicable.",
+          },
+          NURSING_ASSESSMENT_INCOMPLETE: {
+            title: "Nursing assessment incomplete",
+            description: "No structured nursing assessment or equivalent documentation was found.",
+          },
+          PAIN_REASSESSMENT_MISSING: {
+            title: "Pain reassessment missing",
+            description: "Pain or analgesia is documented without a pain reassessment.",
+          },
+          FALL_PRECAUTIONS_REVIEW: {
+            title: "Fall precautions review",
+            description: "Fall risk is identified without documented precautions.",
+          },
+          FALL_PRECAUTIONS_DOCUMENTED: {
+            title: "Fall precautions documented",
+            description: "Fall precautions are documented for identified fall risk.",
+          },
+          NURSING_DISCHARGE_EDUCATION_MISSING: {
+            title: "Discharge education missing",
+            description: "Home/AMA discharge teaching or instructions appear incomplete.",
+          },
+          NURSING_HANDOFF_MISSING: {
+            title: "Nursing handoff review",
+            description: "Admission/transfer handoff may be incomplete.",
+          },
+          PROVIDER_DOCUMENTATION_MISSING: {
+            title: "Provider documentation missing",
+            description: "No provider note or structured evaluation content was found.",
+          },
+          PROVIDER_DOCUMENTATION_UNSIGNED: {
+            title: "Provider documentation unsigned",
+            description: "Provider documentation exists but is not signed.",
+          },
+          PROVIDER_HISTORY_INCOMPLETE: {
+            title: "History incomplete",
+            description: "History/HPI content was not detected in structured provider documentation.",
+          },
+          PROVIDER_PHYSICAL_EXAM_MISSING: {
+            title: "Physical examination missing",
+            description: "Physical examination content was not detected when expected.",
+          },
+          PROVIDER_MDM_INCOMPLETE: {
+            title: "MDM incomplete",
+            description: "Medical decision-making content may be incomplete.",
+          },
+          FINAL_DIAGNOSIS_MISSING: {
+            title: "Final diagnosis missing",
+            description: "No encounter diagnosis is recorded.",
+          },
+          SUPERVISING_ATTESTATION_MISSING: {
+            title: "Supervising attestation missing",
+            description: "A supervising attestation is required and not documented.",
+          },
+          PROVIDER_ROS_NOT_UNIVERSAL: {
+            title: "ROS is not universally required",
+            description: "Review of systems is not treated as a universal Stage B1 requirement.",
+          },
+          DISCHARGE_PACKET_INCOMPLETE: {
+            title: "Discharge packet incomplete",
+            description: "Home/AMA discharge documentation appears incomplete.",
+          },
+          AMA_SIGNATURE_OR_REFUSAL_REVIEW: {
+            title: "AMA signature or refusal review",
+            description: "AMA signature or documented refusal to sign should be reviewed.",
+          },
+          ADMISSION_EXCLUDES_HOME_DISCHARGE_RULES: {
+            title: "Admission excludes home-discharge rules",
+            description: "Home-discharge instructions are not required for admission.",
+          },
+          ADMISSION_DOCUMENTATION_INCOMPLETE: {
+            title: "Admission documentation incomplete",
+            description: "Admission summary content appears incomplete.",
+          },
+          TRANSFER_EXCLUDES_HOME_DISCHARGE_RULES: {
+            title: "Transfer excludes home-discharge rules",
+            description: "Home-discharge instructions are not required for transfer.",
+          },
+          TRANSFER_RECEIVING_FACILITY_MISSING: {
+            title: "Receiving facility missing",
+            description: "Transfer documentation lacks a receiving facility.",
+          },
+          LWBS_LIMITED_REQUIREMENTS: {
+            title: "LWBS limited requirements",
+            description: "LWBS applies limited documentation requirements based on care delivered.",
+          },
+          DECEASED_DOCUMENTATION_REVIEW: {
+            title: "Deceased documentation review",
+            description: "Pronouncement and notification documentation should be reviewed.",
+          },
+          DEPARTURE_INCOMPLETE: {
+            title: "Departure incomplete",
+            description: "Physical departure or handoff completion is not documented.",
+          },
+          DISPOSITION_PATH_NONE: {
+            title: "No disposition path selected",
+            description: "A disposition decision has not been documented yet.",
+          },
+          ESTABLISHED_DISPOSITION_BLOCKER: {
+            title: "Established disposition blocker",
+            description: "An existing disposition-readiness rule requires attention before close.",
+          },
+        },
+      },
     },
   },
   emergencyTrackboard: {

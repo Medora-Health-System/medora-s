@@ -6351,6 +6351,206 @@ export default {
           ready_for_billing: "Prêt pour facturation",
         },
       },
+      b1: {
+        panelTitle: "Revue de certification du dossier",
+        banner: "Revue de dossier consultative Stage B1 — couverture clinique partielle des modules",
+        coveragePartial: "Couverture : Stage B1 partiel (ordres, MAR, procédures non évalués)",
+        loadError: "Impossible de charger la certification. Ce n’est pas une certification complète.",
+        evaluationErrorsPresent: "Évaluation incomplète — les résultats ne sont pas PRÊTS.",
+        authoritativeReadiness: "État autoritatif (flux existant)",
+        evaluatedModules: "Modules évalués Stage B1",
+        unevaluatedTitle: "Modules non encore évalués",
+        findingsTitle: "Constats",
+        advisoryFinding: "Constat consultatif (ne bloque pas les actions)",
+        establishedFinding: "Constat du flux établi",
+        openRemediation: "Ouvrir la section concernée",
+        summary: { unknown: "INCONNU" },
+        modules: {
+          REGISTRATION: "Enregistrement",
+          TRIAGE: "Triage",
+          NURSING: "Soins infirmiers",
+          PROVIDER: "Médecin",
+          DISPOSITION_DOCUMENTATION: "Documentation de disposition",
+          ORDERS: "Ordres",
+          LAB_RESULTS: "Résultats de laboratoire",
+          IMAGING: "Imagerie",
+          ECG: "ECG",
+          RESULT_ACKNOWLEDGMENT: "Accusé de réception des résultats",
+          MEDICATION_ORDERS: "Ordres de médicaments",
+          MAR: "MAR",
+          INFUSIONS: "Perfusions",
+          PROCEDURES: "Procédures",
+          CLINICAL_PATHWAYS: "Parcours cliniques",
+          FULL_REASSESSMENT: "Réévaluation complète",
+        },
+        errors: {
+          dispositionReadinessLoadFailed: "Impossible de charger l’état de disposition.",
+          staleEncounterVersion: "La version de la rencontre est obsolète.",
+          staleEvaluation: "La certification est devenue obsolète pendant l’évaluation.",
+          evaluatorThrew: "Un évaluateur a échoué.",
+          mergeFailed: "La fusion de certification a échoué.",
+          forced: "Erreur d’évaluation forcée.",
+        },
+        codes: {
+          REGISTRATION_IDENTITY_INCOMPLETE: {
+            title: "Identité patient incomplète",
+            description: "Le prénom ou le nom est manquant à l’enregistrement.",
+          },
+          REGISTRATION_DOB_MISSING: {
+            title: "Date de naissance manquante",
+            description: "La date de naissance du patient n’est pas enregistrée.",
+          },
+          REGISTRATION_DOB_EXCEPTION_ACCEPTED: {
+            title: "Exception de date de naissance acceptée",
+            description:
+              "Date de naissance inconnue ou impossible à obtenir acceptée comme exception valide.",
+          },
+          REGISTRATION_SEX_MISSING: {
+            title: "Sexe à la naissance manquant",
+            description: "Le sexe à la naissance peut être requis pour certains flux.",
+          },
+          REGISTRATION_MRN_REVIEW: {
+            title: "Revue du MRN",
+            description: "Le numéro de dossier est manquant ou incomplet.",
+          },
+          REGISTRATION_ARRIVAL_TIME_MISSING: {
+            title: "Heure d’arrivée manquante",
+            description: "L’horodatage d’arrivée de la rencontre n’est pas enregistré.",
+          },
+          REGISTRATION_ENCOUNTER_TYPE_MISSING: {
+            title: "Type de rencontre manquant",
+            description: "Le type de rencontre est requis.",
+          },
+          REGISTRATION_INSURANCE_NOT_CLINICAL_GATE: {
+            title: "L’assurance n’est pas une porte clinique",
+            description: "L’absence d’assurance ou le paiement direct ne rend pas le dossier clinique incomplet.",
+          },
+          TRIAGE_NOT_COMPLETED: {
+            title: "Triage non terminé",
+            description: "La complétion structurée du triage est manquante.",
+          },
+          CHIEF_COMPLAINT_MISSING: {
+            title: "Motif de consultation manquant",
+            description: "Aucun motif n’est enregistré au triage ou sur la rencontre.",
+          },
+          ACUITY_MISSING: {
+            title: "Acuité manquante",
+            description: "L’ESI/acuité n’est pas enregistrée.",
+          },
+          INITIAL_VITALS_MISSING: {
+            title: "Signes vitaux initiaux manquants",
+            description: "Aucun signe vital initial actif n’est enregistré.",
+          },
+          INITIAL_VITALS_EXCEPTION_ACCEPTED: {
+            title: "Exception signes vitaux acceptée",
+            description: "Un refus ou une impossibilité d’obtenir les signes vitaux a été documenté.",
+          },
+          INFECTION_SCREENING_REVIEW: {
+            title: "Revue des dépistages",
+            description: "Les dépistages AVC/sepsis peuvent nécessiter une revue le cas échéant.",
+          },
+          NURSING_ASSESSMENT_INCOMPLETE: {
+            title: "Évaluation infirmière incomplète",
+            description: "Aucune évaluation infirmière structurée ou équivalente n’a été trouvée.",
+          },
+          PAIN_REASSESSMENT_MISSING: {
+            title: "Réévaluation de la douleur manquante",
+            description: "Douleur ou analgésie documentée sans réévaluation de la douleur.",
+          },
+          FALL_PRECAUTIONS_REVIEW: {
+            title: "Revue des précautions de chute",
+            description: "Risque de chute identifié sans précautions documentées.",
+          },
+          FALL_PRECAUTIONS_DOCUMENTED: {
+            title: "Précautions de chute documentées",
+            description: "Les précautions de chute sont documentées pour le risque identifié.",
+          },
+          NURSING_DISCHARGE_EDUCATION_MISSING: {
+            title: "Éducation de sortie manquante",
+            description: "L’enseignement ou les consignes de sortie domicile/LAMA semblent incomplets.",
+          },
+          NURSING_HANDOFF_MISSING: {
+            title: "Revue de la passation infirmière",
+            description: "La passation d’admission/transfert peut être incomplète.",
+          },
+          PROVIDER_DOCUMENTATION_MISSING: {
+            title: "Documentation médicale manquante",
+            description: "Aucune note médicale ou contenu d’évaluation structuré n’a été trouvé.",
+          },
+          PROVIDER_DOCUMENTATION_UNSIGNED: {
+            title: "Documentation médicale non signée",
+            description: "La documentation médicale existe mais n’est pas signée.",
+          },
+          PROVIDER_HISTORY_INCOMPLETE: {
+            title: "Histoire incomplète",
+            description: "Le contenu HPI/histoire n’a pas été détecté dans la documentation structurée.",
+          },
+          PROVIDER_PHYSICAL_EXAM_MISSING: {
+            title: "Examen physique manquant",
+            description: "Le contenu d’examen physique n’a pas été détecté alors qu’il est attendu.",
+          },
+          PROVIDER_MDM_INCOMPLETE: {
+            title: "MDM incomplet",
+            description: "Le contenu de décision médicale peut être incomplet.",
+          },
+          FINAL_DIAGNOSIS_MISSING: {
+            title: "Diagnostic final manquant",
+            description: "Aucun diagnostic de rencontre n’est enregistré.",
+          },
+          SUPERVISING_ATTESTATION_MISSING: {
+            title: "Attestation de supervision manquante",
+            description: "Une attestation de supervision est requise et non documentée.",
+          },
+          PROVIDER_ROS_NOT_UNIVERSAL: {
+            title: "Le ROS n’est pas universellement requis",
+            description: "La revue des systèmes n’est pas une exigence universelle Stage B1.",
+          },
+          DISCHARGE_PACKET_INCOMPLETE: {
+            title: "Dossier de sortie incomplet",
+            description: "La documentation de sortie domicile/LAMA semble incomplète.",
+          },
+          AMA_SIGNATURE_OR_REFUSAL_REVIEW: {
+            title: "Revue signature ou refus LAMA",
+            description: "La signature LAMA ou le refus documenté de signer doit être revu.",
+          },
+          ADMISSION_EXCLUDES_HOME_DISCHARGE_RULES: {
+            title: "L’admission exclut les règles de sortie à domicile",
+            description: "Les consignes de sortie à domicile ne sont pas requises pour l’admission.",
+          },
+          ADMISSION_DOCUMENTATION_INCOMPLETE: {
+            title: "Documentation d’admission incomplète",
+            description: "Le contenu du résumé d’admission semble incomplet.",
+          },
+          TRANSFER_EXCLUDES_HOME_DISCHARGE_RULES: {
+            title: "Le transfert exclut les règles de sortie à domicile",
+            description: "Les consignes de sortie à domicile ne sont pas requises pour le transfert.",
+          },
+          TRANSFER_RECEIVING_FACILITY_MISSING: {
+            title: "Établissement receveur manquant",
+            description: "La documentation de transfert n’indique pas l’établissement receveur.",
+          },
+          LWBS_LIMITED_REQUIREMENTS: {
+            title: "Exigences limitées LWBS",
+            description: "Le LWBS n’applique que les exigences adaptées aux soins réellement délivrés.",
+          },
+          DECEASED_DOCUMENTATION_REVIEW: {
+            title: "Revue documentation décès",
+            description: "La constatation et les notifications doivent être revues.",
+          },
+          DEPARTURE_INCOMPLETE: {
+            title: "Départ incomplet",
+            description: "Le départ physique ou la passation n’est pas documenté.",
+          },
+          DISPOSITION_PATH_NONE: {
+            title: "Aucun parcours de disposition",
+            description: "Aucune décision de disposition n’a encore été documentée.",
+          },
+          ESTABLISHED_DISPOSITION_BLOCKER: {
+            title: "Blocage de disposition établi",
+            description: "Une règle existante d’état de disposition nécessite une attention avant clôture.",
+          },
+        },
+      },
     },
   },
   emergencyTrackboard: {
