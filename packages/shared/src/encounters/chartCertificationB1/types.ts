@@ -73,6 +73,7 @@ export const STAGE_B1_UNEVALUATED_MODULES: readonly CertificationModule[] = [
 
 export const ChartCertificationSourceAuthority = {
   ESTABLISHED_WORKFLOW: "ESTABLISHED_WORKFLOW",
+  STAGE_B2_EVALUATED: "STAGE_B2_EVALUATED",
   STAGE_B1_EVALUATED: "STAGE_B1_EVALUATED",
   STAGE_A_ADVISORY: "STAGE_A_ADVISORY",
   HEURISTIC_FALLBACK: "HEURISTIC_FALLBACK",
@@ -83,7 +84,9 @@ export type ChartCertificationSourceAuthority =
 
 export const ChartCertificationModuleAuthority = {
   ESTABLISHED_AUTHORITATIVE: "ESTABLISHED_AUTHORITATIVE",
+  STAGE_B2_AUTHORITATIVE: "STAGE_B2_AUTHORITATIVE",
   STAGE_B1_AUTHORITATIVE: "STAGE_B1_AUTHORITATIVE",
+  STAGE_B2_ADVISORY: "STAGE_B2_ADVISORY",
   STAGE_B1_ADVISORY: "STAGE_B1_ADVISORY",
   PARTIALLY_EVALUATED: "PARTIALLY_EVALUATED",
   UNEVALUATED: "UNEVALUATED",
@@ -98,6 +101,8 @@ export const ChartCertificationOwner = {
   PROVIDER: "PROVIDER",
   DISPOSITION: "DISPOSITION",
   BILLING: "BILLING",
+  LABORATORY: "LABORATORY",
+  IMAGING: "IMAGING",
   SYSTEM: "SYSTEM",
 } as const;
 
@@ -190,6 +195,15 @@ export type ModuleCertificationSummary = {
   warningCount: number;
   evaluationErrorCount: number;
   executionTimeMs: number;
+  /** Stage B2 diagnostic entity tallies (optional). */
+  totalEntitiesEvaluated?: number;
+  completeCount?: number;
+  acceptablePendingCount?: number;
+  unresolvedCount?: number;
+  excludedCount?: number;
+  errorCount?: number;
+  oldestUnresolvedTimestamp?: string | null;
+  evaluatorVersion?: string;
 };
 
 export type ModuleCertificationResult = {
@@ -218,6 +232,12 @@ export type ChartCertificationEvaluatedReadiness = {
   nursingReady: boolean | null;
   providerReady: boolean | null;
   dispositionDocumentationReady: boolean | null;
+  /** Stage B2 diagnostic domains — null when B2 not evaluated. */
+  ordersReady?: boolean | null;
+  laboratoryReady?: boolean | null;
+  imagingReady?: boolean | null;
+  ecgReady?: boolean | null;
+  resultReviewReady?: boolean | null;
 };
 
 export type ChartCertificationAdvisoryReadiness = {
@@ -231,13 +251,16 @@ export type ChartCertificationAdvisoryReadiness = {
 export type ChartCertificationB1Result = {
   encounterId: string;
   facilityId: string;
-  certificationId: typeof CHART_CERTIFICATION_B1_ID;
+  /** B1 or B2 certification id depending on enabled stage. */
+  certificationId: string;
   certificationVersion: string;
-  certificationStage: typeof CHART_CERTIFICATION_B1_STAGE;
+  certificationStage: "B1" | "B2";
   certificationAuthority: ChartCertificationB1Authority;
   coverageStatus: ChartCertificationCoverageStatus;
   evaluatedAt: string;
   encounterVersion: number;
+  /** Deterministic diagnostic revision when B2 loads orders/results (not Encounter.version). */
+  diagnosticRevision?: string | null;
   authoritativeReadiness: ChartCertificationAuthoritativeReadiness;
   evaluatedReadiness: ChartCertificationEvaluatedReadiness;
   advisoryReadiness: ChartCertificationAdvisoryReadiness;

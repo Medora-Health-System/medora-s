@@ -75,7 +75,8 @@ export function makeDeficiency(input: {
 }
 
 export const SOURCE_AUTHORITY_RANK: Record<ChartCertificationSourceAuthority, number> = {
-  [ChartCertificationSourceAuthority.ESTABLISHED_WORKFLOW]: 4,
+  [ChartCertificationSourceAuthority.ESTABLISHED_WORKFLOW]: 5,
+  [ChartCertificationSourceAuthority.STAGE_B2_EVALUATED]: 4,
   [ChartCertificationSourceAuthority.STAGE_B1_EVALUATED]: 3,
   [ChartCertificationSourceAuthority.STAGE_A_ADVISORY]: 2,
   [ChartCertificationSourceAuthority.HEURISTIC_FALLBACK]: 1,
