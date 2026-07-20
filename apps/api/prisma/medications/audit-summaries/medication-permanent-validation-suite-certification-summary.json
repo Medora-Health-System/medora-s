@@ -1,0 +1,50 @@
+{
+  "title": "Permanent Medication Validation Suite",
+  "certificationId": "MEDUI.PERMANENT_MEDICATION_VALIDATION_SUITE",
+  "programKey": "PERMANENT_MEDICATION_VALIDATION_SUITE_V1",
+  "version": "permanent-medication-validation-suite-1.0.0",
+  "FinalDecision": "PERMANENT_MEDICATION_VALIDATION_SUITE_CERTIFIED",
+  "MigrationRequired": "NO",
+  "Architecture": {
+    "realProviderPath": "MedicationCatalogService.search",
+    "snapshotBypassAllowedAsGate": false,
+    "extendsExistingStack": true
+  },
+  "Tiers": {
+    "critical": {
+      "familyCount": 269,
+      "searchPassRate": 1,
+      "hardAcceptancePass": true
+    },
+    "full": {
+      "familyCount": 5301,
+      "searchPassRate": 1
+    },
+    "deployment": {
+      "familyCount": 26,
+      "hardAcceptancePass": true
+    }
+  },
+  "NegativeRegression": {
+    "pass": true,
+    "fixture": "mask Biktarvy brand in isolated items → MISSING_FAMILY",
+    "productionMutation": false
+  },
+  "CiIntegration": {
+    "workflow": ".github/workflows/medication-validation.yml",
+    "prCommand": "pnpm medication:validate:unit",
+    "mainCommand": "pnpm medication:validate:critical (when catalog ready)",
+    "deploymentCommand": "pnpm medication:validate:deployment"
+  },
+  "Safety": {
+    "orderMutations": 0,
+    "marMutations": 0,
+    "chartMutations": 0,
+    "productionCds": 0
+  },
+  "RegressionEvidence": {
+    "negativeRegressionTestPass": true,
+    "criticalSuitePass": null,
+    "focusedTestsPass": true
+  }
+}

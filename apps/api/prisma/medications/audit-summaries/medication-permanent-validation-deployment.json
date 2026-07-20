@@ -1,0 +1,40 @@
+{
+  "programKey": "PERMANENT_MEDICATION_VALIDATION_SUITE_V1",
+  "suiteVersion": "permanent-medication-validation-suite-1.0.0",
+  "benchmarkVersion": "permanent-medication-benchmark-1.0.0",
+  "tier": "deployment",
+  "usedRealMedicationCatalogService": true,
+  "usedSnapshotBypass": false,
+  "environment": {
+    "host": "localhost",
+    "database": "medora",
+    "isLocalhost": true
+  },
+  "facility": {
+    "idPrefix": "e3e2b7a9",
+    "name": "Facility A (DR)"
+  },
+  "catalogActive": 10739,
+  "aliasCount": 41911,
+  "familyCount": 26,
+  "queriesTested": 64,
+  "queryPass": 64,
+  "searchPassRate": 1,
+  "orderabilityPassRate": 1,
+  "exactBrandRankingPassRate": 1,
+  "exactGenericRankingPassRate": 1,
+  "hardAcceptancePass": true,
+  "hardAcceptanceFailureCount": 0,
+  "failureCountsByClassification": {},
+  "failures": [],
+  "performance": {
+    "runtimeMs": 93827,
+    "avgSearchLatencyMs": 1465,
+    "p95SearchLatencyMs": 1760,
+    "searchCalls": 64
+  },
+  "orderMutations": 0,
+  "marMutations": 0,
+  "chartMutations": 0,
+  "sourceChecksumSha256": "98476d15d95a72c11207d39c0ad0953ded3a57328f22f6c057a339e192a3aa00"
+}
