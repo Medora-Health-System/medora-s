@@ -21,6 +21,7 @@ describe("Interactive bed board integration (K.10B.10D)", () => {
     expect(trackboard).toContain("BedBoardAssignEncounterPicker");
     expect(trackboard).toContain("prefillFromBedBoard");
     expect(trackboard).toContain("setRoomAssignmentLaunch");
+    expect(trackboard).toContain("selectTreatmentBedAssignmentCandidates");
   });
 
   it("successful room save refreshes trackboard and bed board", () => {
