@@ -64,9 +64,24 @@ export function matchTierForQuery(
   const st = norm(row.searchText);
   const shortQuery = ql.length <= 3;
 
-  if (aliases.some((alias) => alias === ql)) return 0;
+  if (aliases.some((alias) => alias === ql)) {
+    // Exact alias is strong only when the brand also surfaces on the medication
+    // identity/searchText. Orphan alias rows (polluted APPLY) are demoted.
+    const identityHay = [code, name, den, dfr, generic, st].join(" ");
+    if (norm(identityHay).includes(ql) || tokenExactMatch(identityHay, ql)) return 0;
+    return 6;
+  }
 
   if (code === ql || name === ql || den === ql || dfr === ql || generic === ql) return 1;
+
+  // Multi-ingredient queries: require all tokens (amoxicillin+clavulanate, sacubitril+valsartan).
+  const qTokens = tokenize(ql).filter((t) => t.length >= 4);
+  if (qTokens.length >= 2) {
+    const identityHay = [code, name, den, dfr, generic, ...aliases].join(" ");
+    if (qTokens.every((t) => tokenPrefixMatch(identityHay, t) || norm(identityHay).includes(t))) {
+      return 1;
+    }
+  }
 
   if (aliases.some((alias) => alias.startsWith(ql) || tokenPrefixMatch(alias, ql))) return 2;
 
@@ -113,11 +128,33 @@ export function matchTierForQuery(
   return 9;
 }
 
+/**
+ * When tiers tie, prefer rows whose identity fields surface the query
+ * (exact brand in code/name/generic) over cocktail searchText collisions.
+ */
+export function identitySurfaceScore(q: string, row: CatalogRankableRow): number {
+  const ql = norm(q);
+  if (!ql || ql.length < 3) return 0;
+  let score = 0;
+  if (norm(row.code) === ql || norm(row.name) === ql || norm(row.genericName) === ql) score += 8;
+  if (norm(row.code).includes(ql)) score += 4;
+  if (norm(row.name).includes(ql) || norm(row.displayNameEn).includes(ql)) score += 3;
+  if (norm(row.genericName).includes(ql)) score += 2;
+  if (tokenExactMatch(`${row.code} ${row.name} ${row.genericName}`, ql)) score += 2;
+  return score;
+}
+
 export function compareCatalogRows(
-  a: { row: CatalogRankableRow; tier: number },
-  b: { row: CatalogRankableRow; tier: number }
+  a: { row: CatalogRankableRow; tier: number; query?: string },
+  b: { row: CatalogRankableRow; tier: number; query?: string }
 ): number {
   if (a.tier !== b.tier) return a.tier - b.tier;
+  const q = a.query || b.query;
+  if (q) {
+    const ia = identitySurfaceScore(q, a.row);
+    const ib = identitySurfaceScore(q, b.row);
+    if (ia !== ib) return ib - ia;
+  }
   if (a.row.isEssential !== b.row.isEssential) return a.row.isEssential ? -1 : 1;
   if (a.row.sortPriority !== b.row.sortPriority) return a.row.sortPriority - b.row.sortPriority;
   return a.row.name.localeCompare(b.row.name, "fr");

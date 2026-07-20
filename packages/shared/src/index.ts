@@ -197,6 +197,7 @@ export * from "./medication/medicationFormulationStrengthCompletion.js";
 export * from "./medication/medicationProviderClinicalCorpus.js";
 export * from "./medication/medicationUniversalCommonOrderability.js";
 export * from "./medication/medicationRuntimeProviderAvailability.js";
+export * from "./medication/permanentMedicationValidationSuite.js";
 export * from "./medication/medicationClinicalKnowledgeGovernance.js";
 export * from "./medication/medicationSafetyKnowledgeGovernance.js";
 export * from "./medication/medicationSafetyEvaluationGovernance.js";

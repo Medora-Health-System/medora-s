@@ -24,6 +24,7 @@ import {
   buildCatalogMedicationSearchWhere,
   buildCatalogMedicationAliasVisibilityWhere,
   buildCatalogMedicationVisibilityWhere,
+  expandCombinationSeparatorVariants,
   expandMedicationSearchQuery,
 } from "./medication-catalog-search.util";
 
@@ -186,21 +187,33 @@ export class MedicationCatalogService {
 
     const scored: ScoredMedicationRow[] = [];
     const aliasMatchedIds = new Set(byAliasCatalog.map((r) => r.id));
+    // Candidate discovery uses full synonym expansions; ranking must NOT — otherwise
+    // Biktarvy→bictegravir promotes single-ingredient rows over the brand combo.
+    // Separator variants (space/slash/hyphen) remain in the rank set for combo INN queries.
+    const rankTerms = [...new Set([q, ...expandCombinationSeparatorVariants(q)])];
     for (const row of candidateRows) {
       const aliases = aliasesByCatalogId.get(row.id) ?? [];
       const aliasOnlyMatch = aliasMatchedIds.has(row.id) && !byCatalog.some((r) => r.id === row.id);
-      const tier = matchTierForQuery(q, medicationToRankable(row), {
-        aliasOnlyMatch,
-        aliases,
-      });
+      const rankable = medicationToRankable(row);
+      let tier = 9;
+      for (const term of rankTerms) {
+        tier = Math.min(
+          tier,
+          matchTierForQuery(term, rankable, {
+            aliasOnlyMatch,
+            aliases,
+          })
+        );
+        if (tier === 0) break;
+      }
       if (tier >= 9) continue;
       scored.push({ row, tier });
     }
 
     scored.sort((a, b) =>
       compareCatalogRows(
-        { row: medicationToRankable(a.row), tier: a.tier },
-        { row: medicationToRankable(b.row), tier: b.tier }
+        { row: medicationToRankable(a.row), tier: a.tier, query: q },
+        { row: medicationToRankable(b.row), tier: b.tier, query: q }
       )
     );
 

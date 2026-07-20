@@ -7,6 +7,12 @@
     "packages/*"
   ],
   "scripts": {
+    "medication:validate:unit": "pnpm --filter @medora/shared build && pnpm --filter @medora/shared exec vitest run src/medication/permanentMedicationValidationSuite.test.ts && pnpm --filter @medora/api exec jest --config jest.config.cjs prisma/medications/permanent-validation/medication-permanent-validation-negative.spec.ts --runInBand",
+    "medication:validate:critical": "pnpm --filter @medora/shared build && pnpm --filter @medora/api exec ts-node --transpile-only prisma/medications/permanent-validation/run-medication-permanent-validation-cli.ts critical",
+    "medication:validate:full": "pnpm --filter @medora/shared build && pnpm --filter @medora/api exec ts-node --transpile-only prisma/medications/permanent-validation/run-medication-permanent-validation-cli.ts full",
+    "medication:validate:deployment": "pnpm --filter @medora/shared build && pnpm --filter @medora/api exec ts-node --transpile-only prisma/medications/permanent-validation/run-medication-permanent-validation-cli.ts deployment",
+    "medication:validate:certify": "pnpm --filter @medora/shared build && pnpm --filter @medora/api run medication:validate:certify",
+    "medication:validate:remediate": "pnpm --filter @medora/api exec ts-node --transpile-only prisma/medications/permanent-validation/run-medication-validation-release-remediation-cli.ts",
     "verify": "bash scripts/verify-stability.sh",
     "verify:shared": "pnpm --filter @medora/shared build",
     "verify:web": "pnpm --filter @medora/web exec tsc --noEmit",

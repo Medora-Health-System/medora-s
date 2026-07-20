@@ -1,0 +1,99 @@
+name: Medication Validation
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  schedule:
+    # Nightly full-suite reminder slot (DB-backed run only when secrets/catalog available)
+    - cron: "0 6 * * *"
+  workflow_dispatch:
+    inputs:
+      tier:
+        description: "critical | full | deployment | unit"
+        required: false
+        default: "unit"
+
+jobs:
+  unit-and-negative:
+    name: Permanent suite unit + negative regression
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.32.1
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build shared package
+        run: pnpm --filter @medora/shared build
+
+      - name: Shared permanent-suite unit tests
+        run: pnpm --filter @medora/shared exec vitest run src/medication/permanentMedicationValidationSuite.test.ts
+
+      - name: Controlled negative regression (isolated fixture)
+        working-directory: apps/api
+        run: pnpm exec jest --config jest.config.cjs prisma/medications/permanent-validation/medication-permanent-validation-negative.spec.ts --runInBand
+
+  critical-db:
+    name: Critical suite (DB-backed, skip if empty catalog)
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: medora_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U postgres -d medora_ci"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/medora_ci
+      MEDORA_MEDICATION_VALIDATE_ALLOW_SKIP: "1"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.32.1
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build shared package
+        run: pnpm --filter @medora/shared build
+
+      - name: Prisma generate + migrate
+        run: |
+          pnpm --filter @medora/api exec prisma generate
+          pnpm --filter @medora/api exec prisma migrate deploy
+
+      - name: Run critical medication validation (skips empty CI catalog)
+        run: pnpm medication:validate:critical
+
+      - name: Upload critical report if present
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: medication-permanent-validation-critical
+          path: apps/api/prisma/medications/audit-summaries/medication-permanent-validation-critical.*
+          if-no-files-found: ignore

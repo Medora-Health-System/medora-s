@@ -22,6 +22,21 @@ export const MEDICATION_SEARCH_QUERY_ALIASES: Record<string, readonly string[]> 
   jar: ["jardiance", "empagliflozin"],
   jard: ["empagliflozin", "jardiance"],
   jardiance: ["empagliflozin"],
+  "amoxicillin clavulanate": [
+    "amoxicillin/clavulanate",
+    "amoxicillin-clavulanate",
+    "amoxicillin / clavulanate",
+    "augmentin",
+  ],
+  "amoxicillin/clavulanate": ["amoxicillin clavulanate", "amoxicillin-clavulanate", "augmentin"],
+  "sacubitril valsartan": [
+    "sacubitril/valsartan",
+    "sacubitril-valsartan",
+    "sacubitril / valsartan",
+    "entresto",
+  ],
+  "sacubitril/valsartan": ["sacubitril valsartan", "sacubitril-valsartan", "entresto"],
+  erythropoietin: ["epoetin", "epoetin alfa", "epogen", "procrit"],
   bikt: ["biktarvy", "bictegravir", "emtricitabine", "tenofovir alafenamide"],
   biktarvy: [
     "bictegravir",
@@ -56,12 +71,37 @@ function normalizeSearchToken(value: string): string {
   return value.trim().toLowerCase().replace(/\s+/g, " ");
 }
 
+/**
+ * Expand multi-ingredient queries across clinically common separators
+ * (space / slash / hyphen). Does not invent doses or brand synonyms.
+ */
+export function expandCombinationSeparatorVariants(rawQuery: string): string[] {
+  const q = normalizeSearchToken(rawQuery);
+  if (!q) return [];
+  const out = new Set<string>([q]);
+  const hasSeparator = /[\/\-]/.test(q);
+  const parts = q
+    .split(/[\s\/\-]+/)
+    .map((p) => p.trim())
+    .filter((p) => p.length >= 2);
+  if (parts.length < 2 && !hasSeparator) return [...out];
+
+  const spaced = parts.join(" ");
+  const slashed = parts.join("/");
+  const hyphenated = parts.join("-");
+  const spacedSlash = parts.join(" / ");
+  for (const v of [spaced, slashed, hyphenated, spacedSlash]) {
+    if (v.length >= 3) out.add(normalizeSearchToken(v));
+  }
+  return [...out];
+}
+
 /** Expand user query with safe brand/generic aliases (no dose/route invention). */
 export function expandMedicationSearchQuery(rawQuery: string): string[] {
   const q = normalizeSearchToken(rawQuery);
   if (!q) return [];
 
-  const terms = new Set<string>([q]);
+  const terms = new Set<string>(expandCombinationSeparatorVariants(q));
 
   const aliasHits = MERGED_MEDICATION_SEARCH_ALIASES[q];
   if (aliasHits) {
@@ -71,6 +111,14 @@ export function expandMedicationSearchQuery(rawQuery: string): string[] {
   for (const [prefix, aliases] of Object.entries(MERGED_MEDICATION_SEARCH_ALIASES)) {
     if (q.startsWith(prefix) && q.length >= 3) {
       for (const alias of aliases) terms.add(normalizeSearchToken(alias));
+    }
+  }
+
+  // Separator variants only for the original query (and its direct synonym hits that
+  // already look like multi-ingredient strings). Do not explode panel expansions.
+  for (const term of [...terms]) {
+    if (term === q || /[\/\-]/.test(term) || term.split(/\s+/).length >= 2) {
+      for (const v of expandCombinationSeparatorVariants(term)) terms.add(v);
     }
   }
 

@@ -1,67 +1,61 @@
 import {
+  compareCatalogRows,
+  identitySurfaceScore,
   matchTierForQuery,
-  resolveMatchedBrandAlias,
-  tokenPrefixMatch,
 } from "./catalog-search-rank.util";
 
-describe("catalog search ranking (provider-facing)", () => {
-  it("treats jar as a token prefix of jardiance but not mounjaro", () => {
-    expect(tokenPrefixMatch("jardiance", "jar")).toBe(true);
-    expect(tokenPrefixMatch("mounjaro", "jar")).toBe(false);
-  });
+describe("catalog search ranking — brand identity preference", () => {
+  const sps = {
+    code: "KAYEXALATE_15_G_PER_60_ML_ORAL_SUSPENSION_ORAL",
+    name: "Kayexalate",
+    genericName: "Sodium Polystyrene Sulfonate",
+    searchText: "kayexalate sodium polystyrene sulfonate",
+    isEssential: false,
+    sortPriority: 100,
+  };
+  const dextrose = {
+    code: "DEXTROSE_5_500_ML_PERFUSION_INTRAVEINEUSE",
+    name: "Dextrose 5%",
+    genericName: "Dextrose",
+    searchText: "dextrose hyperk kayexalate protocol",
+    isEssential: true,
+    sortPriority: 1,
+  };
 
-  it("ranks jardiance alias above mid-string tirzepatide/mounjaro for jar", () => {
-    const jardianceTier = matchTierForQuery(
-      "jar",
-      {
-        code: "EMPAGLIFLOZIN_10_MG_TABLET_ORAL",
-        name: "Empagliflozin",
-        displayNameEn: "Empagliflozin",
-        genericName: "Empagliflozin",
-        searchText: "empagliflozin jardiance 10 mg",
-        isEssential: true,
-        sortPriority: 0,
-      },
-      { aliasOnlyMatch: false, aliases: ["jardiance", "jard"] }
+  it("scores Kayexalate identity above cocktail searchText collision", () => {
+    expect(identitySurfaceScore("kayexalate", sps)).toBeGreaterThan(
+      identitySurfaceScore("kayexalate", dextrose)
     );
-    const tirzepatideTier = matchTierForQuery(
-      "jar",
-      {
-        code: "TIRZEPATIDE_2_5_MG",
-        name: "Tirzepatide",
-        displayNameEn: "Tirzepatide",
-        genericName: "Tirzepatide",
-        searchText: "tirzepatide mounjaro 2.5 mg",
-        isEssential: false,
-        sortPriority: 10,
-      },
-      { aliasOnlyMatch: false, aliases: ["mounjaro"] }
+  });
+
+  it("ranks exact Kayexalate alias target above unrelated essential Dextrose at same tier", () => {
+    const cmp = compareCatalogRows(
+      { row: sps, tier: 0, query: "kayexalate" },
+      { row: dextrose, tier: 0, query: "kayexalate" }
     );
-    expect(jardianceTier).toBeLessThan(tirzepatideTier);
-    expect(tirzepatideTier).toBe(9);
+    expect(cmp).toBeLessThan(0);
   });
 
-  it("gives exact brand alias the top tier", () => {
-    expect(
-      matchTierForQuery(
-        "biktarvy",
-        {
-          code: "BICTEGRAVIR_COMBO",
-          name: "Bictegravir Emtricitabine Tenofovir Alafenamide",
-          displayNameEn: "Bictegravir Emtricitabine Tenofovir Alafenamide",
-          genericName: "Bictegravir Emtricitabine Tenofovir Alafenamide",
-          searchText: "biktarvy hiv",
-          isEssential: false,
-          sortPriority: 0,
-        },
-        { aliasOnlyMatch: false, aliases: ["biktarvy", "bikt"] }
-      )
-    ).toBe(0);
+  it("keeps exact brand alias at tier 0", () => {
+    expect(matchTierForQuery("kayexalate", sps, { aliasOnlyMatch: false, aliases: ["kayexalate"] })).toBe(
+      0
+    );
   });
 
-  it("resolves matched brand alias for display promotion", () => {
+  it("demotes orphan exact alias without identity surface", () => {
+    const orphan = {
+      code: "DEXTROSE_5",
+      name: "Dextrose 5%",
+      genericName: "Dextrose",
+      searchText: "dextrose infusion",
+      isEssential: true,
+      sortPriority: 1,
+    };
     expect(
-      resolveMatchedBrandAlias("jard", ["jardiance", "empagliflozin"], ["jard", "jardiance"])
-    ).toBe("jardiance");
+      matchTierForQuery("kayexalate", orphan, {
+        aliasOnlyMatch: false,
+        aliases: ["kayexalate"],
+      })
+    ).toBe(6);
   });
 });
