@@ -6275,7 +6275,7 @@ export default {
         not_reviewed: "Not reviewed",
       },
       actions: {
-        chart: "Chart",
+        chart: "View chart",
         demo: "Demo",
       },
     },
@@ -7058,6 +7058,18 @@ export default {
       DECEASED: "Confirm pronouncement and notification documentation before ending the encounter.",
       OTHER: "Review final documentation before ending the encounter.",
     },
+  },
+  emergencyClosedChart: {
+    pageTitle: "Closed Encounter Chart",
+    pageSubtitle: "Organized clinical summary — closed encounter, read-only archive.",
+    closedReadOnlyBadge: "CLOSED · READ ONLY",
+    readOnlyChip: "Read only",
+    readOnlyAria: "Closed encounter — read only",
+    archiveBanner: "Closed encounter — read only. Clinical content remains authoritative and legible.",
+    archiveReviewLabel: "Closed encounter archive",
+    backToAllEncounters: "← Back to All Encounters",
+    openBillingReview: "Open billing review",
+    adminControlledFullChart: "Admin — controlled full chart access",
   },
   patientDischargeInstructions: {
     cardTitle: "Patient discharge instructions",

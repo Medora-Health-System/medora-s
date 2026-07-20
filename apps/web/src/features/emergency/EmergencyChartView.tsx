@@ -63,6 +63,8 @@ import {
   emergencyTrackboardPath,
   genericEncounterPath,
 } from "@/features/emergency/emergencyRoutes";
+import { isEdEncounterClosedForArchive } from "@/features/emergency/edClosedChartDisplayMode";
+import { EmergencyClosedChartArchiveView } from "@/features/emergency/EmergencyClosedChartArchiveView";
 import { parseAdmissionSummaryForChart } from "@/components/patient-chart/patientChartHelpers";
 import { EncounterOperationalPanel } from "@/components/encounters/EncounterOperationalPanel";
 import { EncounterGovernedRoomChip } from "@/components/encounters/EncounterGovernedRoomChip";
@@ -488,6 +490,28 @@ export function EmergencyChartView() {
           </Link>
         </p>
       </div>
+    );
+  }
+
+  /** Closed / cancelled: organized clinical summary only (not active editable chart). */
+  if (isEdEncounterClosedForArchive(encounter.status)) {
+    const canViewBillingReview =
+      roles.includes("BILLING") || roles.includes("ADMIN") || roles.includes("PROVIDER");
+    return (
+      <EmergencyClosedChartArchiveView
+        encounter={encounter}
+        facilityId={fid}
+        facilityName={facilityName}
+        triageSnapshot={triageSnapshot}
+        resultsRefresh={resultsRefresh}
+        canEditNursingDischarge={canEditNursingDischarge}
+        canEditMedicalDischarge={canEditMedicalDischarge}
+        canViewBillingReview={canViewBillingReview}
+        canOpenAdminControlledFullChart={roles.includes("ADMIN")}
+        onReload={async () => {
+          await load();
+        }}
+      />
     );
   }
 

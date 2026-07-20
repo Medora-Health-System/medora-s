@@ -291,6 +291,8 @@ export type EncounterClinicalRecordSummaryViewProps = {
   resultsTabHref: string;
   diagnosticsTabHref: string;
   summaryReadOnly?: boolean;
+  /** CLOSED_READ_ONLY uses muted accents; clinical text stays high-contrast. */
+  summaryDisplayMode?: import("@/features/emergency/edClosedChartDisplayMode").EncounterClinicalSummaryDisplayMode;
   auditTimeline?: React.ReactNode;
   closureReadinessSlot?: React.ReactNode;
 };
@@ -300,12 +302,15 @@ export function EncounterClinicalRecordSummaryView({
   resultsTabHref,
   diagnosticsTabHref,
   summaryReadOnly = false,
+  summaryDisplayMode,
   auditTimeline,
   closureReadinessSlot,
 }: EncounterClinicalRecordSummaryViewProps) {
   const { t, language } = useI18n();
   const [auditOpen, setAuditOpen] = useState(false);
   const [timelineExpanded, setTimelineExpanded] = useState(false);
+  const isClosedReadOnly = summaryDisplayMode === "CLOSED_READ_ONLY";
+  const accentOverview = isClosedReadOnly ? "#71717a" : "#0f172a";
 
   const layout = useMemo(
     () => (record ? buildEnterpriseClinicalChartLayout(record) : null),
@@ -376,15 +381,20 @@ export function EncounterClinicalRecordSummaryView({
   };
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 10, width: "100%", minWidth: 0 }}>
-      <MedoraCard leftAccentColor="#0f172a" variant="default">
+    <div
+      data-testid="encounter-clinical-record-summary"
+      data-summary-display-mode={summaryDisplayMode ?? "ACTIVE_SUMMARY"}
+      data-summary-readonly={summaryReadOnly || isClosedReadOnly ? "true" : "false"}
+      style={{ display: "flex", flexDirection: "column", gap: 10, width: "100%", minWidth: 0 }}
+    >
+      <MedoraCard leftAccentColor={accentOverview} variant="default">
         <MedoraCardInner>
           <MedoraCardIdentity initials="S">
             <MedoraCardTitle
               title={t("encounterClinicalRecordSummary.cardTitle")}
               subline={
                 <p style={{ margin: 0, fontSize: 12, color: "#64748b", lineHeight: 1.45 }}>
-                  {summaryReadOnly
+                  {summaryReadOnly || isClosedReadOnly
                     ? t("encounterClinicalRecordSummary.readOnlySubline")
                     : t("encounterClinicalRecordSummary.cardSubline")}
                 </p>

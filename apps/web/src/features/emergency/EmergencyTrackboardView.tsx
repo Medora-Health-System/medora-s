@@ -2,6 +2,7 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import { assignNurseSelf, assignProviderSelf, fetchOpenEncounters } from "@/lib/clinicalWorklistApi";
 import { useI18n } from "@/lib/i18n";
@@ -319,6 +320,7 @@ function acuityLabelKey(tier: AcuityTier): "emergencyTrackboard.acuityCritical" 
 
 export function EmergencyTrackboardView() {
   const { t, language } = useI18n();
+  const searchParams = useSearchParams();
   const { facilityId: facilityIdFromHook, ready, roles, userId, facilities } = useFacilityAndRoles();
   const [facilityId, setFacilityId] = useState<string | null>(null);
   const [rows, setRows] = useState<OpenEncounterRow[]>([]);
@@ -349,6 +351,14 @@ export function EmergencyTrackboardView() {
    * the LOS column once per minute; this avoids any extra network traffic.
    */
   const [losTick, setLosTick] = useState(0);
+
+  useEffect(() => {
+    const board = (searchParams.get("board") ?? "").trim();
+    if (board === "allEncounters") {
+      setBoardViewMode("allEncounters");
+    }
+  }, [searchParams]);
+
   useEffect(() => {
     const id = window.setInterval(() => setLosTick((n) => (n + 1) % 1_000_000), 60_000);
     return () => clearInterval(id);

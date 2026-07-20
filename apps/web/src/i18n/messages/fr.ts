@@ -6249,7 +6249,7 @@ export default {
         not_reviewed: "Non évalué",
       },
       actions: {
-        chart: "Dossier",
+        chart: "Voir le dossier",
         demo: "Démo",
       },
     },
@@ -7048,6 +7048,19 @@ export default {
       DECEASED: "Confirmez la déclaration et la documentation de notification avant de terminer la consultation.",
       OTHER: "Vérifiez la documentation finale avant de terminer la consultation.",
     },
+  },
+  emergencyClosedChart: {
+    pageTitle: "Dossier de rencontre clôturée",
+    pageSubtitle: "Synthèse clinique organisée — rencontre clôturée, archive en lecture seule.",
+    closedReadOnlyBadge: "CLÔTURÉE · LECTURE SEULE",
+    readOnlyChip: "Lecture seule",
+    readOnlyAria: "Rencontre clôturée — lecture seule",
+    archiveBanner:
+      "Rencontre clôturée — lecture seule. Le contenu clinique reste autoritatif et lisible.",
+    archiveReviewLabel: "Archive de rencontre clôturée",
+    backToAllEncounters: "← Retour à Tous les dossiers",
+    openBillingReview: "Ouvrir la revue facturation",
+    adminControlledFullChart: "Admin — accès contrôlé au dossier complet",
   },
   patientDischargeInstructions: {
     cardTitle: "Instructions de sortie au patient",

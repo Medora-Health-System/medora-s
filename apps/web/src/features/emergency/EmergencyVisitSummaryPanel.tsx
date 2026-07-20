@@ -507,6 +507,7 @@ export function EmergencyVisitSummaryPanel({
   proceduresFetchEnabled = false,
   medicationMarSummaryEnabled = true,
   summaryReadOnly = false,
+  summaryDisplayMode,
   canOpenProcedureDocumentation = false,
   onOpenProcedureDocumentation,
 }: {
@@ -525,11 +526,15 @@ export function EmergencyVisitSummaryPanel({
   medicationMarSummaryEnabled?: boolean;
   /** Read-only Summary mode (e.g. ED technician) — suppresses edit affordances in child panels. */
   summaryReadOnly?: boolean;
+  /** Explicit ACTIVE_SUMMARY vs CLOSED_READ_ONLY presentation (same data contract). */
+  summaryDisplayMode?: import("@/features/emergency/edClosedChartDisplayMode").EncounterClinicalSummaryDisplayMode;
   /** MEDPROC.3 — may open existing procedure documentation launcher from order hints. */
   canOpenProcedureDocumentation?: boolean;
   onOpenProcedureDocumentation?: (step: ErProcedureLauncherStep) => void;
 }) {
   const { language, t } = useI18n();
+  const effectiveSummaryReadOnly =
+    summaryReadOnly || summaryDisplayMode === "CLOSED_READ_ONLY";
   const [resultsSnap, setResultsSnap] = useState<EncounterResultsLabRadSnapshot | null>(null);
 
   /**
@@ -792,7 +797,8 @@ export function EmergencyVisitSummaryPanel({
           record={clinicalRecord}
           resultsTabHref={resultsTabHref}
           diagnosticsTabHref={diagnosticsTabHref}
-          summaryReadOnly={summaryReadOnly}
+          summaryReadOnly={effectiveSummaryReadOnly}
+          summaryDisplayMode={summaryDisplayMode}
           auditTimeline={
             <EnterpriseEncounterCommandTimeline
               encounterId={encounterId}
@@ -829,7 +835,7 @@ export function EmergencyVisitSummaryPanel({
               title={t("emergencyVisitSummaryPanel.cardTitle")}
               subline={
                 <p style={{ margin: 0, fontSize: 12, color: "#64748b", lineHeight: 1.45 }}>
-                  {summaryReadOnly
+                  {effectiveSummaryReadOnly
                     ? t("emergencyVisitSummaryPanel.readOnlySummarySubline")
                     : t("emergencyVisitSummaryPanel.cardSubline")}
                 </p>

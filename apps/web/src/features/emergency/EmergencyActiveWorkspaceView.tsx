@@ -71,6 +71,7 @@ import { NursingDischargeExecutionSection } from "@/features/emergency/NursingDi
 import { EmergencyErNotesPanel } from "@/features/emergency/EmergencyErNotesPanel";
 import { EmergencyClinicalDataPanel } from "@/features/emergency/EmergencyClinicalDataPanel";
 import { emergencyChartPath, genericEncounterPath } from "@/features/emergency/emergencyRoutes";
+import { isEdEncounterClosedForArchive } from "@/features/emergency/edClosedChartDisplayMode";
 import {
   parseErWorkspaceSection,
   type ErWorkspaceSection,
@@ -431,6 +432,13 @@ export function EmergencyActiveWorkspaceView() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  /** Closed encounters must not open the active editable workspace for normal users. */
+  useEffect(() => {
+    if (!encounter?.id) return;
+    if (!isEdEncounterClosedForArchive(encounter.status)) return;
+    router.replace(emergencyChartPath(encounter.id));
+  }, [encounter, router]);
 
   const onEmbeddedEncounterUpdate = useCallback(async () => {
     await load();
@@ -843,6 +851,17 @@ export function EmergencyActiveWorkspaceView() {
             {t("emergencyWorkspace.backTrackboardLong")}
           </Link>
         </p>
+      </div>
+    );
+  }
+
+  if (isEdEncounterClosedForArchive(encounter.status)) {
+    return (
+      <div
+        data-testid="ed-active-workspace-closed-redirect"
+        style={{ padding: 24, fontSize: 14, color: "#64748b" }}
+      >
+        {t("common.loading")}
       </div>
     );
   }

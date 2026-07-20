@@ -130,6 +130,8 @@ export type EmergencyErSummaryClosureSurfaceProps = {
   proceduresFetchEnabled?: boolean;
   medicationMarSummaryEnabled?: boolean;
   summaryReadOnly?: boolean;
+  /** Explicit summary display mode (ACTIVE_SUMMARY vs CLOSED_READ_ONLY). */
+  summaryDisplayMode?: import("@/features/emergency/edClosedChartDisplayMode").EncounterClinicalSummaryDisplayMode;
   canOpenProcedureDocumentation?: boolean;
   onOpenProcedureDocumentation?: ComponentProps<typeof EmergencyVisitSummaryPanel>["onOpenProcedureDocumentation"];
 };
@@ -151,9 +153,11 @@ export function EmergencyErSummaryClosureSurface({
   proceduresFetchEnabled,
   medicationMarSummaryEnabled = true,
   summaryReadOnly = false,
+  summaryDisplayMode,
   canOpenProcedureDocumentation,
   onOpenProcedureDocumentation,
 }: EmergencyErSummaryClosureSurfaceProps) {
+  const isClosedReadOnlyArchive = summaryDisplayMode === "CLOSED_READ_ONLY";
   const canFetchIvAccess = ivAccessFetchEnabled ?? false;
   const canFetchProcedures = proceduresFetchEnabled ?? false;
   const { t, language } = useI18n();
@@ -639,7 +643,9 @@ export function EmergencyErSummaryClosureSurface({
         }}
       >
         <p style={{ margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", color: "#64748b" }}>
-          {t("emergencyErClosure.finalReviewLabel")}
+          {isClosedReadOnlyArchive
+            ? t("emergencyClosedChart.archiveReviewLabel")
+            : t("emergencyErClosure.finalReviewLabel")}
         </p>
         <p style={{ margin: "6px 0 0 0", fontSize: 15, fontWeight: 600, color: "#0f172a" }}>
           {facilityName?.trim() || t("emergencyErClosure.facilityFallback")}
@@ -666,7 +672,7 @@ export function EmergencyErSummaryClosureSurface({
           <p style={{ margin: "6px 0 0 0", fontSize: 14, fontWeight: 600, color: "#1e3a8a" }}>
             {dispositionLabel.trim() || dash}
           </p>
-          {showContext ? (
+          {showContext && !isClosedReadOnlyArchive ? (
             <p style={{ margin: "8px 0 0 0", fontSize: 12, color: "#475569", lineHeight: 1.45 }}>{contextLine}</p>
           ) : null}
         </div>
@@ -689,12 +695,13 @@ export function EmergencyErSummaryClosureSurface({
         ivAccessFetchEnabled={canFetchIvAccess}
         proceduresFetchEnabled={canFetchProcedures}
         medicationMarSummaryEnabled
-        summaryReadOnly={summaryReadOnly}
+        summaryReadOnly={summaryReadOnly || isClosedReadOnlyArchive}
+        summaryDisplayMode={summaryDisplayMode}
         canOpenProcedureDocumentation={canOpenProcedureDocumentation ?? false}
         onOpenProcedureDocumentation={onOpenProcedureDocumentation}
       />
 
-      {open ? (
+      {open && !isClosedReadOnlyArchive ? (
         <div style={{ marginTop: 2 }}>
           <DispositionReadinessBanner
             encounterId={encounterId}
@@ -705,7 +712,7 @@ export function EmergencyErSummaryClosureSurface({
         </div>
       ) : null}
 
-      {open ? (
+      {open && !isClosedReadOnlyArchive ? (
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center", padding: "0 4px" }}>
             <EdEncounterBillingReadinessBadge certification={closureCertification} />
