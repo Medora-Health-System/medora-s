@@ -96,9 +96,15 @@ describe("edIncompleteChartsFilter (MEDUI.ED.LIFECYCLE.5)", () => {
 
   it("includes READY_FOR_CLOSURE in incomplete charts workspace", () => {
     const row = {
-      ...departedIncompleteRow("e-ready"),
-      providerDocumentationStatus: "SIGNED",
-      dispositionSafetyReadiness: { canClose: true },
+      ...departedIncompleteRow("e-ready", {
+        providerDocumentationStatus: "SIGNED",
+        dispositionSafetyReadiness: { canClose: true },
+        dischargeSummaryJson: {
+          dischargeMode: ED_DISCHARGE_MODE_HOME,
+          instructions: "Return if worse",
+          followUp: "PCP in 2 days",
+        },
+      }),
     };
     expect(resolveIncompleteChartsEncounters([row]).map((r) => r.id)).toEqual(["e-ready"]);
     expect(resolveTrackboardEncounterLifecycleState(row)).toBe(
@@ -108,9 +114,15 @@ describe("edIncompleteChartsFilter (MEDUI.ED.LIFECYCLE.5)", () => {
 
   it("excludes READY_FOR_CLOSURE from active trackboard", () => {
     const row = {
-      ...departedIncompleteRow("e-ready"),
-      providerDocumentationStatus: "SIGNED",
-      dispositionSafetyReadiness: { canClose: true },
+      ...departedIncompleteRow("e-ready", {
+        providerDocumentationStatus: "SIGNED",
+        dispositionSafetyReadiness: { canClose: true },
+        dischargeSummaryJson: {
+          dischargeMode: ED_DISCHARGE_MODE_HOME,
+          instructions: "Return if worse",
+          followUp: "PCP in 2 days",
+        },
+      }),
     };
     expect(resolveActiveTrackboardEncounters([row])).toEqual([]);
     expect(resolveIncompleteChartsEncounters([row]).map((r) => r.id)).toEqual(["e-ready"]);

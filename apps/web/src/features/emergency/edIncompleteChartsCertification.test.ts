@@ -23,7 +23,11 @@ function readyForClosureRow(id: string) {
     chiefComplaint: "Pain",
     providerNote: "Note",
     providerDocumentationStatus: "SIGNED",
-    dischargeSummaryJson: { dischargeMode: ED_DISCHARGE_MODE_HOME },
+    dischargeSummaryJson: {
+      dischargeMode: ED_DISCHARGE_MODE_HOME,
+      instructions: "Return if worse",
+      followUp: "PCP in 2 days",
+    },
     nursingAssessment: {
       nursingEvalV1: { sections: { assessment: { text: "Done" } } },
       erDispositionExecutionV1: {

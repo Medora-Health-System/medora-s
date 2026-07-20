@@ -144,9 +144,9 @@ describe("edIncompleteChartsUiCleanup (MEDUI.ED.LIFECYCLE.6C)", () => {
 
   it("certification panel still renders deficiencies", () => {
     const panel = readSrc("features/emergency/EdClosedEncounterCertificationPanel.tsx");
-    expect(panel).toContain("providerDeficiencies");
-    expect(panel).toContain("nursingDeficiencies");
-    expect(panel).toContain("billingDeficiencies");
+    expect(panel).toContain("advisoryFindings");
+    expect(panel).toContain("establishedFindings");
+    expect(panel).toContain("edLifecycle.certification.advisory.findingsTitle");
     expect(panel).not.toContain("resolveIncompleteChartsVisibleBadgeKeys");
   });
 

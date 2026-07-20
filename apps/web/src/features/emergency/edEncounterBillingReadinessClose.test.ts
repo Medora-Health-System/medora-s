@@ -46,12 +46,39 @@ function readyEncounter() {
 
 describe("edEncounterBillingReadinessClose (MEDUI.ED.LIFECYCLE.6B)", () => {
   it("shows billing deficiencies when closure ready but billing not ready", () => {
-    const certification = buildEdClosedEncounterCertificationFromEncounter(readyEncounter(), {
-      dispositionReadiness: { canClose: true, blockers: [], warnings: [], activeOrderCounts: { lab: 0, imaging: 0, medication: 0, care: 0 } },
-      diagnosisCount: 0,
-    });
+    const certification = buildEdClosedEncounterCertificationFromEncounter(
+      {
+        ...readyEncounter(),
+        billingFinalizationStatus: "NOT_READY",
+        billingReadinessSnapshotJson: { isReady: false },
+      },
+      {
+        dispositionReadiness: {
+          canClose: true,
+          blockers: [],
+          warnings: [],
+          activeOrderCounts: { lab: 0, imaging: 0, medication: 0, care: 0 },
+        },
+        diagnosisCount: 1,
+      }
+    );
     expect(certification.closureReady).toBe(true);
     expect(certification.billingReady).toBe(false);
+    expect(resolveEdEncounterBillingReadinessTone(certification)).toBe("billing_deficiencies");
+  });
+
+  it("Stage A advisory diagnosis finding alone yields billing_deficiencies tone without established billing block", () => {
+    const certification = buildEdClosedEncounterCertificationFromEncounter(readyEncounter(), {
+      dispositionReadiness: {
+        canClose: true,
+        blockers: [],
+        warnings: [],
+        activeOrderCounts: { lab: 0, imaging: 0, medication: 0, care: 0 },
+      },
+      diagnosisCount: 0,
+    });
+    expect(certification.authoritativeReadiness.billingReady).toBe(true);
+    expect(certification.advisoryReadiness.billingReviewSuggested).toBe(true);
     expect(resolveEdEncounterBillingReadinessTone(certification)).toBe("billing_deficiencies");
   });
 
@@ -66,11 +93,27 @@ describe("edEncounterBillingReadinessClose (MEDUI.ED.LIFECYCLE.6B)", () => {
     expect(resolveEdEncounterBillingReadinessTone(certification)).toBe("ready_for_billing");
   });
 
-  it("shows closure blocked tone when closure blockers exist", () => {
-    const certification = buildEdClosedEncounterCertificationFromEncounter({
-      ...readyEncounter(),
-      providerDocumentationStatus: "DRAFT",
-    });
+  it("shows closure blocked tone when established closure blockers exist", () => {
+    const certification = buildEdClosedEncounterCertificationFromEncounter(
+      {
+        ...readyEncounter(),
+        providerDocumentationStatus: "DRAFT",
+      },
+      {
+        dispositionReadiness: {
+          canClose: false,
+          blockers: [
+            {
+              code: "PROVIDER_DOCUMENTATION_UNSIGNED",
+              severity: "error",
+              message: "unsigned",
+            },
+          ],
+          warnings: [],
+          activeOrderCounts: { lab: 0, imaging: 0, medication: 0, care: 0 },
+        },
+      }
+    );
     expect(resolveEdEncounterBillingReadinessTone(certification)).toBe("closure_blocked");
   });
 

@@ -51,10 +51,10 @@ function departedEncounter(overrides: Record<string, unknown> = {}) {
 }
 
 describe("edEncounterCertificationCloseWorkflow (MEDUI.ED.LIFECYCLE.6B)", () => {
-  it("closure blockers prevent certification readiness", () => {
+  it("Stage A advisory findings show review without authoritative closure block", () => {
     const certification = buildEdClosedEncounterCertificationFromEncounter(departedEncounter());
-    expect(certification.closureReady).toBe(false);
-    expect(certification.closureBlockers.length).toBeGreaterThan(0);
+    expect(certification.advisoryFindings.length).toBeGreaterThan(0);
+    expect(certification.authoritativeReadiness.clinicalClosureReady).toBe(true);
     expect(shouldShowCertificationReviewOnCloseRequest(certification)).toBe(true);
   });
 
@@ -67,11 +67,12 @@ describe("edEncounterCertificationCloseWorkflow (MEDUI.ED.LIFECYCLE.6B)", () => 
     expect(closure).not.toMatch(/setShowCloseModal\(false\)[\s\S]{0,120}void runCloseCheck\(\)/);
   });
 
-  it("certification review panel component exists with blocker messaging", () => {
+  it("certification review panel component exists with advisory boundary messaging", () => {
     const review = readSrc("features/emergency/EdEncounterCertificationReview.tsx");
     expect(review).toContain('data-testid="ed-encounter-certification-review"');
-    expect(review).toContain("edLifecycle.certification.closeReview.cannotCertify");
-    expect(review).toContain("closureBlockers");
+    expect(review).toContain("edLifecycle.certification.advisory.banner");
+    expect(review).toContain("establishedBlockers");
+    expect(review).toContain("ed-certification-continue-close");
   });
 
   it("close-check still runs only after certification review continue", () => {

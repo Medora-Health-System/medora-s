@@ -29,7 +29,11 @@ function baseOpenSnapshot(
         sections: { assessment: { text: "Nursing assessment documented" } },
       },
     },
-    dischargeSummaryJson: { dischargeMode: ED_DISCHARGE_MODE_HOME },
+    dischargeSummaryJson: {
+      dischargeMode: ED_DISCHARGE_MODE_HOME,
+      instructions: "Return if symptoms worsen",
+      followUp: "PCP in 48 hours",
+    },
     admissionSummaryJson: null,
     billingFinalizationStatus: "NOT_READY",
     ...overrides,

@@ -13,7 +13,8 @@ describe("EdClosedEncounterCertificationPanel (MEDUI.ED.LIFECYCLE.6)", () => {
     const panel = readSrc("features/emergency/EdClosedEncounterCertificationPanel.tsx");
     expect(panel).toContain('data-testid="ed-closed-encounter-certification-panel"');
     expect(panel).toContain("buildEdClosedEncounterCertificationFromTrackboardRow");
-    expect(panel).toContain("edLifecycle.certification.providerDeficiencies");
+    expect(panel).toContain("edLifecycle.certification.advisory.banner");
+    expect(panel).toContain("edLifecycle.certification.advisory.findingsTitle");
     expect(panel).toContain("edLifecycle.certification.actions.openChart");
   });
 

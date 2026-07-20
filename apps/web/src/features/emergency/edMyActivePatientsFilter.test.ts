@@ -81,7 +81,11 @@ describe("edMyActivePatientsFilter (MEDUI.ED.LIFECYCLE.5B)", () => {
         chiefComplaint: "Abdominal pain",
         providerNote: "Stable",
         providerDocumentationStatus: "SIGNED",
-        dischargeSummaryJson: { dischargeMode: ED_DISCHARGE_MODE_HOME },
+        dischargeSummaryJson: {
+          dischargeMode: ED_DISCHARGE_MODE_HOME,
+          instructions: "Return if worse",
+          followUp: "PCP in 2 days",
+        },
         nursingAssessment: {
           nursingEvalV1: { sections: { assessment: { text: "Nursing assessment documented" } } },
           erDispositionExecutionV1: {
