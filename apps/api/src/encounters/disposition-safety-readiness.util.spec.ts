@@ -106,6 +106,51 @@ describe("computeDispositionSafetyReadiness (closure discharge sync)", () => {
     expect(blockerCodes(result)).not.toContain("DISCHARGE_FOLLOW_UP_MISSING");
   });
 
+  it("screenshot-equivalent: structured follow-up + content present, communication unchecked → only NOT_GIVEN", () => {
+    const result = readiness({
+      dischargeMode: "Domicile",
+      dischargeDiagnosisSummary: "Chest pain evaluation",
+      dischargeInstructions: "Rest as needed.",
+      medicationInstructions: "Take as prescribed.",
+      returnPrecautions: "Return for worsening chest pain.",
+      workSchoolNote: "May return in 2 days.",
+      providerDischargeFollowUps: [
+        {
+          id: "fu-1",
+          specialty: "PRIMARY_CARE",
+          providerOrFacility: "Dr. Mauramcebaum",
+          timing: "within 1-2 days",
+          phone: "468-890-2345",
+        },
+      ],
+      // checkbox absent / false
+    });
+    const codes = blockerCodes(result);
+    expect(codes).not.toContain("DISCHARGE_FOLLOW_UP_MISSING");
+    expect(codes).not.toContain("DISCHARGE_INSTRUCTIONS_MISSING");
+    expect(codes).not.toContain("DISCHARGE_RETURN_PRECAUTIONS_MISSING");
+    expect(codes).toContain("DISCHARGE_INSTRUCTIONS_NOT_GIVEN");
+  });
+
+  it("does not apply home-discharge instruction/follow-up rules on admission", () => {
+    const result = readiness({
+      dischargeMode: "Admission / hospitalisation",
+    });
+    const codes = blockerCodes(result);
+    expect(codes).not.toContain("DISCHARGE_FOLLOW_UP_MISSING");
+    expect(codes).not.toContain("DISCHARGE_INSTRUCTIONS_MISSING");
+    expect(codes).not.toContain("DISCHARGE_INSTRUCTIONS_NOT_GIVEN");
+  });
+
+  it("does not apply home-discharge instruction/follow-up rules on transfer", () => {
+    const result = readiness({
+      dischargeMode: "Transfert vers un autre établissement",
+    });
+    const codes = blockerCodes(result);
+    expect(codes).not.toContain("DISCHARGE_FOLLOW_UP_MISSING");
+    expect(codes).not.toContain("DISCHARGE_INSTRUCTIONS_NOT_GIVEN");
+  });
+
   it("keeps provider signature blocker until documentation is signed", () => {
     const unsigned = readiness(providerDischargeSummary);
     expect(blockerCodes(unsigned)).toContain("PROVIDER_DOCUMENTATION_UNSIGNED");

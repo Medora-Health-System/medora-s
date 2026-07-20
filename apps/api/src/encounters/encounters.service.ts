@@ -162,27 +162,6 @@ function providerDocumentationWorkspaceMetadataFromNursingAssessment(raw: unknow
       };
 }
 
-/** Champs alignés sur encounterDischargeFieldsSchema — fusion à la clôture pour ne pas écraser un brouillon. */
-const DISCHARGE_SUMMARY_STRING_KEYS = [
-  "disposition",
-  "exitCondition",
-  "dischargeInstructions",
-  "medicationsGiven",
-  "followUp",
-  "returnIfWorse",
-  "patientDestination",
-  "dischargeMode",
-  "dischargeDiagnosisSummary",
-  "medicationInstructions",
-  "returnPrecautions",
-  "followUpInstructions",
-  "activityInstructions",
-  "woundCareInstructions",
-  "workSchoolNote",
-  "instructionsGivenBy",
-  "instructionsGivenAt",
-] as const;
-
 function admissionSummaryHasContent(data: Record<string, unknown>): boolean {
   return Object.values(data).some((v) => typeof v === "string" && v.trim().length > 0);
 }
@@ -236,44 +215,6 @@ function nursingAssessmentHasContent(raw: unknown): boolean {
   return false;
 }
 
-function mergeDischargeSummaryJson(
-  existing: unknown,
-  incoming: EncounterCloseDto["discharge"]
-): Record<string, unknown> | undefined {
-  const out: Record<string, unknown> = {};
-  if (existing && typeof existing === "object" && !Array.isArray(existing)) {
-    const o = existing as Record<string, unknown>;
-    for (const k of DISCHARGE_SUMMARY_STRING_KEYS) {
-      const v = o[k];
-      if (typeof v === "string" && v.trim()) {
-        out[k] = v.trim();
-      }
-    }
-    const g0 = o.patientInstructionsGiven;
-    if (typeof g0 === "boolean") {
-      out.patientInstructionsGiven = g0;
-    }
-  }
-  if (incoming) {
-    const inc = incoming as Record<string, unknown>;
-    for (const k of DISCHARGE_SUMMARY_STRING_KEYS) {
-      const v = inc[k];
-      if (v === undefined) continue;
-      if (typeof v === "string") {
-        if (v.trim() === "") delete out[k];
-        else out[k] = v.trim();
-      }
-    }
-    if (typeof inc.patientInstructionsGiven === "boolean") {
-      out.patientInstructionsGiven = inc.patientInstructionsGiven;
-      if (inc.patientInstructionsGiven === false) {
-        delete out.instructionsGivenBy;
-        delete out.instructionsGivenAt;
-      }
-    }
-  }
-  return Object.keys(out).length ? out : undefined;
-}
 import type { ListPatientEncountersQuery } from "./dto";
 import { toEncounterClinicResponse } from "./encounter-response.util";
 import {
@@ -284,6 +225,7 @@ import {
 import { resolveDefaultBillingClassification } from "@medora/shared";
 import { throwEncounterConcurrentModification } from "./encounter-concurrency.util";
 import { computeDispositionSafetyReadiness } from "./disposition-safety-readiness.util";
+import { mergeDischargeSummaryJson } from "./effective-discharge-summary.util";
 
 /** Aligné sur GET /encounters/:id — évite d’écraser le dossier patient côté client après PATCH. */
 const encounterDetailPatientSelect = {

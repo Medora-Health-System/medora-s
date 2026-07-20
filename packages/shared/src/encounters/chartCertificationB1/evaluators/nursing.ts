@@ -143,11 +143,11 @@ export function evaluateNursingModule(context: ChartCertificationB1Context): Mod
 
   if ((path === "HOME" || path === "AMA") && assessmentPresent) {
     const discharge = asObject(context.encounter.dischargeSummaryJson);
-    const teaching =
+    // Communication acknowledgment only — instruction *content* is a separate established rule.
+    const teachingCommunicated =
       Boolean(discharge?.patientInstructionsGiven) ||
-      Boolean(discharge?.educationCompleted) ||
-      typeof discharge?.instructions === "string" && discharge.instructions.trim().length > 0;
-    if (!teaching) {
+      Boolean(discharge?.educationCompleted);
+    if (!teachingCommunicated) {
       deficiencies.push(
         makeDeficiency({
           stableCode: "NURSING_DISCHARGE_EDUCATION_MISSING",
@@ -158,8 +158,13 @@ export function evaluateNursingModule(context: ChartCertificationB1Context): Mod
             suggestsNursingReview: true,
             suggestsDocumentationReview: true,
           }),
-          remediation: { route: "disposition", section: "dischargeTeaching", requiredRole: "RN" },
-          deduplicationKey: "DISCHARGE_INSTRUCTIONS_MISSING",
+          remediation: {
+            route: "disposition",
+            section: "instructions-explained",
+            requiredRole: "RN",
+          },
+          // Collapse with established DISCHARGE_INSTRUCTIONS_NOT_GIVEN when both fire.
+          deduplicationKey: "DISCHARGE_INSTRUCTIONS_NOT_COMMUNICATED",
         })
       );
     }

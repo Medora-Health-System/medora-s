@@ -6573,6 +6573,21 @@ export default {
             title: "Established disposition blocker",
             description: "An existing disposition-readiness rule requires attention before close.",
           },
+          DISCHARGE_FOLLOW_UP_MISSING: {
+            title: "Discharge follow-up missing",
+            description:
+              "Document structured follow-up (destination/provider, timeframe, and contact when applicable) in discharge planning.",
+          },
+          DISCHARGE_INSTRUCTIONS_CONTENT_MISSING: {
+            title: "Discharge instructions content missing",
+            description:
+              "Discharge instruction content is incomplete. Complete diagnosis description, clinical instructions, return precautions, or activity guidance as required.",
+          },
+          DISCHARGE_INSTRUCTIONS_NOT_COMMUNICATED: {
+            title: "Discharge instruction communication not documented",
+            description:
+              "Instruction content may be present, but the chart does not document that instructions were explained or provided to the patient or representative.",
+          },
         },
       },
       b2: {
@@ -16194,12 +16209,13 @@ export default {
       PROVIDER_DISPOSITION_INCOMPLETE:
         "Transfer requires provider disposition documentation (note, plan, or structured evaluation).",
       DISCHARGE_INSTRUCTIONS_MISSING:
-        "Home / AMA discharge requires structured patient instructions (complete at least two sections: discharge diagnosis, follow-up, activity, and medication instructions if discharge medications exist).",
+        "Discharge instruction content is incomplete (complete at least two sections: discharge diagnosis, clinical instructions, activity/work-school, and medication instructions when discharge medications exist).",
       DISCHARGE_RETURN_PRECAUTIONS_MISSING:
         "Record return precautions and warning signs in discharge instructions.",
-      DISCHARGE_FOLLOW_UP_MISSING: "Record follow-up and appointments in discharge instructions.",
+      DISCHARGE_FOLLOW_UP_MISSING:
+        "Document structured follow-up (destination/provider, timeframe, and contact when applicable) in discharge planning.",
       DISCHARGE_INSTRUCTIONS_NOT_GIVEN:
-        "Confirm that instructions were explained to the patient (discharge instructions checkbox).",
+        "Instruction content may be present, but documentation that instructions were explained or provided to the patient or representative is incomplete (checkbox).",
     },
     warnings: {
       VITALS_NOT_DOCUMENTED:

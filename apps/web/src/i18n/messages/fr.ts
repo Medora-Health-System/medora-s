@@ -6549,6 +6549,21 @@ export default {
             title: "Blocage de disposition établi",
             description: "Une règle existante d’état de disposition nécessite une attention avant clôture.",
           },
+          DISCHARGE_FOLLOW_UP_MISSING: {
+            title: "Suivi de sortie manquant",
+            description:
+              "Documentez le suivi structuré (destination/prestataire, délai et contact le cas échéant) dans la planification de sortie.",
+          },
+          DISCHARGE_INSTRUCTIONS_CONTENT_MISSING: {
+            title: "Contenu des consignes de sortie manquant",
+            description:
+              "Le contenu des consignes de sortie est incomplet. Complétez la description du diagnostic, les consignes cliniques, les précautions de retour ou les consignes d’activité selon les exigences.",
+          },
+          DISCHARGE_INSTRUCTIONS_NOT_COMMUNICATED: {
+            title: "Communication des consignes de sortie non documentée",
+            description:
+              "Le contenu des consignes peut être présent, mais le dossier ne documente pas qu’elles ont été expliquées ou remises au patient ou à son représentant.",
+          },
         },
       },
       b2: {
@@ -16235,13 +16250,13 @@ export default {
       PROVIDER_DISPOSITION_INCOMPLETE:
         "Le transfert exige une documentation médicale de disposition (impression, plan ou évaluation structurée).",
       DISCHARGE_INSTRUCTIONS_MISSING:
-        "La sortie à domicile / LAMA exige des instructions patient structurées (remplissez au moins deux sections : diagnostic de sortie, suivi, activité, et si des médicaments sont prévus la posologie).",
+        "Le contenu des consignes de sortie est incomplet (remplissez au moins deux sections : diagnostic de sortie, consignes cliniques, activité/travail-école, et posologie si des médicaments de sortie existent).",
       DISCHARGE_RETURN_PRECAUTIONS_MISSING:
         "Documentez les précautions et signes d’alarme (retour aux urgences) dans les instructions de sortie.",
       DISCHARGE_FOLLOW_UP_MISSING:
-        "Documentez le suivi et les rendez-vous dans les instructions de sortie.",
+        "Documentez le suivi structuré (destination/prestataire, délai et contact le cas échéant) dans la planification de sortie.",
       DISCHARGE_INSTRUCTIONS_NOT_GIVEN:
-        "Cochez la confirmation que les consignes ont été expliquées au patient (instructions de sortie).",
+        "Le contenu des consignes peut être présent, mais la documentation indiquant qu’elles ont été expliquées ou remises au patient (ou représentant) est incomplète (case à cocher).",
     },
     warnings: {
       VITALS_NOT_DOCUMENTED:

@@ -311,7 +311,7 @@ export function computeDispositionSafetyReadiness(input: {
         code: "DISCHARGE_INSTRUCTIONS_MISSING",
         severity: "error",
         message:
-          "La sortie à domicile / LAMA exige des instructions patient structurées (diagnostic de sortie, suivi, activité, etc.) — au moins deux sections doivent être renseignées.",
+          "Le contenu des consignes de sortie est incomplet (diagnostic, consignes cliniques, précautions ou activité) — au moins deux sections doivent être renseignées.",
       });
     }
     if (!hasClosureReturnPrecautionsDocumented(effectiveSummary)) {
@@ -326,7 +326,8 @@ export function computeDispositionSafetyReadiness(input: {
       blockers.push({
         code: "DISCHARGE_FOLLOW_UP_MISSING",
         severity: "error",
-        message: "Le suivi et les rendez-vous doivent être documentés dans les instructions de sortie.",
+        message:
+          "Le suivi structuré (type/destination, échéance et contact le cas échéant) doit être documenté dans la planification de sortie.",
       });
     }
     if (!patientInstructionsMarkedGiven(effectiveSummary)) {
@@ -334,7 +335,7 @@ export function computeDispositionSafetyReadiness(input: {
         code: "DISCHARGE_INSTRUCTIONS_NOT_GIVEN",
         severity: "error",
         message:
-          "Confirmez que les consignes ont été expliquées au patient (case « consignes données » dans les instructions de sortie).",
+          "Les consignes de sortie sont présentes ou en cours, mais la documentation indiquant qu’elles ont été expliquées ou remises au patient (ou représentant) est incomplète — cochez « consignes expliquées ».",
       });
     }
   }

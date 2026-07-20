@@ -56,6 +56,7 @@ export * from "./encounters/chartCertificationB2/index.js";
 export * from "./encounters/governedRoomLabel.js";
 export * from "./emergency/canDocumentEdTriage.js";
 export * from "./emergency/closureDischargeReadiness.js";
+export * from "./emergency/homeDischargeDocumentationState.js";
 export * from "./encounters/facilityBedGovernance.js";
 export * from "./encounters/bedAssignmentEligibility.js";
 export * from "./encounters/bedOperationalStatus.js";

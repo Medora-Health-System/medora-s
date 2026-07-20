@@ -490,6 +490,43 @@ export function buildChartCertificationB1BenchmarkCases(): ChartCertificationB1B
       expectedStableCodes: ["PROVIDER_DOCUMENTATION_UNSIGNED"],
     },
     {
+      id: "home-discharge-structured-followup-communication-unchecked",
+      description:
+        "Screenshot-equivalent: structured follow-up + instruction content present; communication unchecked → communication finding only (no false follow-up missing)",
+      context: baseContext({
+        encounter: {
+          dischargeSummaryJson: {
+            dischargeMode: ED_DISCHARGE_MODE_HOME,
+            dischargeDiagnosisSummary: "Chest pain evaluation",
+            dischargeInstructions: "Rest as needed.",
+            medicationInstructions: "Take as prescribed.",
+            returnPrecautions: "Return for worsening chest pain.",
+            workSchoolNote: "May return in 2 days.",
+            providerDischargeFollowUps: [
+              {
+                specialty: "PRIMARY_CARE",
+                providerOrFacility: "Dr. Mauramcebaum",
+                timing: "within 1-2 days",
+                phone: "468-890-2345",
+              },
+            ],
+            // patientInstructionsGiven intentionally omitted
+          },
+        },
+        established: {
+          dispositionCanClose: false,
+          dispositionBlockers: [
+            {
+              code: "DISCHARGE_INSTRUCTIONS_NOT_GIVEN",
+              message: "Communication not documented",
+            },
+          ],
+          physicalDepartureComplete: true,
+        },
+      }),
+      expectedStableCodes: ["DISCHARGE_INSTRUCTIONS_NOT_COMMUNICATED"],
+    },
+    {
       id: "evaluator-failure",
       description: "Evaluator failure must not READY",
       context: baseContext(),

@@ -879,7 +879,8 @@ export function mergeCanonicalErDispositionIntoDischargeJson(
     if (typeof raw === "string") {
       const v = raw.trim();
       if (v) out[key] = v;
-      else delete out[key];
+      // Do not delete non-empty provider rollups when the canonical form left the key empty
+      // (e.g. followUp is not synced onto DischargeFormState from structured rows).
     } else if (raw !== undefined && raw !== null) {
       out[key] = raw;
     }
@@ -902,7 +903,18 @@ export function applyProviderDischargeDocumentationToDischargeForm(
   providerForm: ProviderDischargeDocumentationForm
 ): DischargeFormState {
   const rollup = getPrimaryRollupDoc(providerForm);
-  if (!rollup) return dischargeForm;
+  const followUpRollup = followUpInstructionsRollup(providerForm.followUps);
+  if (!rollup) {
+    return {
+      ...dischargeForm,
+      followUp: followUpRollup || dischargeForm.followUp,
+      followUpInstructions: followUpRollup || dischargeForm.followUpInstructions,
+      returnPrecautions: providerForm.returnPrecautions || dischargeForm.returnPrecautions,
+      workSchoolNote: providerForm.returnWorkSchool || dischargeForm.workSchoolNote,
+      patientInstructionsGiven:
+        providerForm.patientInstructionsGiven === true || dischargeForm.patientInstructionsGiven,
+    };
+  }
   return {
     ...dischargeForm,
     disposition: rollup.description,
@@ -912,6 +924,9 @@ export function applyProviderDischargeDocumentationToDischargeForm(
     medicationInstructions: rollup.medicationTreatment,
     returnPrecautions: providerForm.returnPrecautions,
     workSchoolNote: providerForm.returnWorkSchool,
+    followUp: followUpRollup,
+    followUpInstructions: followUpRollup,
+    patientInstructionsGiven: providerForm.patientInstructionsGiven === true,
   };
 }
 

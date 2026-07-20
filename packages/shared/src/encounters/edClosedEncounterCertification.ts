@@ -289,7 +289,17 @@ const DISPOSITION_BLOCKER_CATEGORY: Record<
   VITALS_MISSING: EdClosedEncounterCertificationCategory.NURSING_DOCUMENTATION,
 };
 
+/** Prefer clinical semantics over raw code title-casing (content vs communication). */
+const DISPOSITION_BLOCKER_TITLES: Record<string, string> = {
+  DISCHARGE_INSTRUCTIONS_MISSING: "Discharge Instructions Content Missing",
+  DISCHARGE_INSTRUCTIONS_NOT_GIVEN: "Discharge Instruction Communication Not Documented",
+  DISCHARGE_FOLLOW_UP_MISSING: "Discharge Follow-Up Missing",
+  DISCHARGE_RETURN_PRECAUTIONS_MISSING: "Discharge Return Precautions Missing",
+  PROVIDER_DOCUMENTATION_UNSIGNED: "Provider Note Unsigned",
+};
+
 function deficiencyTitleForCode(code: string): string {
+  if (DISPOSITION_BLOCKER_TITLES[code]) return DISPOSITION_BLOCKER_TITLES[code]!;
   return code.replace(/_/g, " ").toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
 }
 

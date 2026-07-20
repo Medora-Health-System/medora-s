@@ -737,6 +737,8 @@ export function buildChartCertificationB2BenchmarkCases(): ChartCertificationB2B
               dischargeMode: ED_DISCHARGE_MODE_AMA,
               amaRefusalToSign: true,
               instructions: "risks",
+              // Communication acknowledgment distinct from instruction content / AMA refusal.
+              patientInstructionsGiven: true,
             },
           },
         }

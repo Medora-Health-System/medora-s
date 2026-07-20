@@ -58,21 +58,42 @@ export function evaluateDispositionDocumentationModule(
 
   // Project established disposition blockers (authoritative effects preserved).
   for (const blocker of context.established.dispositionBlockers) {
+    const isCommunication =
+      blocker.code === "DISCHARGE_INSTRUCTIONS_NOT_GIVEN" ||
+      blocker.code === "DISCHARGE_INSTRUCTIONS_NOT_COMMUNICATED";
+    const isInstructionContent =
+      blocker.code === "DISCHARGE_INSTRUCTIONS_MISSING" ||
+      blocker.code === "DISCHARGE_INSTRUCTIONS_INCOMPLETE";
     const dedupe =
       blocker.code === "PROVIDER_DOCUMENTATION_UNSIGNED"
         ? "PROVIDER_NOTE_UNSIGNED"
-        : blocker.code === "DISCHARGE_INSTRUCTIONS_MISSING" ||
-            blocker.code === "DISCHARGE_INSTRUCTIONS_NOT_GIVEN" ||
-            blocker.code === "DISCHARGE_INSTRUCTIONS_INCOMPLETE"
-          ? "DISCHARGE_INSTRUCTIONS_MISSING"
-          : blocker.code === "ACTIVE_ORDERS_UNRESOLVED"
-            ? "ACTIVE_ORDERS_UNRESOLVED"
-            : `ESTABLISHED_${blocker.code}`;
+        : isCommunication
+          ? "DISCHARGE_INSTRUCTIONS_NOT_COMMUNICATED"
+          : isInstructionContent
+            ? "DISCHARGE_INSTRUCTIONS_MISSING"
+            : blocker.code === "DISCHARGE_FOLLOW_UP_MISSING"
+              ? "DISCHARGE_FOLLOW_UP_MISSING"
+              : blocker.code === "ACTIVE_ORDERS_UNRESOLVED"
+                ? "ACTIVE_ORDERS_UNRESOLVED"
+                : `ESTABLISHED_${blocker.code}`;
+    const remediationSection = isCommunication
+      ? "instructions-explained"
+      : blocker.code === "DISCHARGE_FOLLOW_UP_MISSING"
+        ? "follow-up"
+        : isInstructionContent
+          ? "discharge-instructions"
+          : "readiness";
     const d = makeDeficiency({
       stableCode:
         blocker.code === "PROVIDER_DOCUMENTATION_UNSIGNED"
           ? "PROVIDER_DOCUMENTATION_UNSIGNED"
-          : "ESTABLISHED_DISPOSITION_BLOCKER",
+          : isCommunication
+            ? "DISCHARGE_INSTRUCTIONS_NOT_COMMUNICATED"
+            : isInstructionContent
+              ? "DISCHARGE_INSTRUCTIONS_CONTENT_MISSING"
+              : blocker.code === "DISCHARGE_FOLLOW_UP_MISSING"
+                ? "DISCHARGE_FOLLOW_UP_MISSING"
+                : "ESTABLISHED_DISPOSITION_BLOCKER",
       module: CertificationModule.DISPOSITION_DOCUMENTATION,
       owner: ChartCertificationOwner.DISPOSITION,
       severity: ChartCertificationSeverity.BLOCKING,
@@ -84,14 +105,34 @@ export function evaluateDispositionDocumentationModule(
         suggestsProviderReview: blocker.code.includes("PROVIDER"),
         suggestsNursingReview: !blocker.code.includes("PROVIDER"),
       }),
-      remediation: { route: "disposition", section: "readiness", requiredRole: "PROVIDER" },
+      remediation: {
+        route: "disposition",
+        section: remediationSection,
+        requiredRole: blocker.code.includes("PROVIDER") ? "PROVIDER" : "RN",
+      },
       deduplicationKey: dedupe,
       evidence: { status: blocker.code, structuredField: "dispositionReadiness" },
     });
+    const titleKey =
+      isCommunication
+        ? "edLifecycle.certification.b1.codes.DISCHARGE_INSTRUCTIONS_NOT_COMMUNICATED.title"
+        : isInstructionContent
+          ? "edLifecycle.certification.b1.codes.DISCHARGE_INSTRUCTIONS_CONTENT_MISSING.title"
+          : blocker.code === "DISCHARGE_FOLLOW_UP_MISSING"
+            ? "edLifecycle.certification.b1.codes.DISCHARGE_FOLLOW_UP_MISSING.title"
+            : "edLifecycle.certification.b1.codes.ESTABLISHED_DISPOSITION_BLOCKER.title";
+    const descriptionKey =
+      isCommunication
+        ? "edLifecycle.certification.b1.codes.DISCHARGE_INSTRUCTIONS_NOT_COMMUNICATED.description"
+        : isInstructionContent
+          ? "edLifecycle.certification.b1.codes.DISCHARGE_INSTRUCTIONS_CONTENT_MISSING.description"
+          : blocker.code === "DISCHARGE_FOLLOW_UP_MISSING"
+            ? "edLifecycle.certification.b1.codes.DISCHARGE_FOLLOW_UP_MISSING.description"
+            : "edLifecycle.certification.b1.codes.ESTABLISHED_DISPOSITION_BLOCKER.description";
     deficiencies.push({
       ...d,
-      titleKey: "edLifecycle.certification.b1.codes.ESTABLISHED_DISPOSITION_BLOCKER.title",
-      descriptionKey: "edLifecycle.certification.b1.codes.ESTABLISHED_DISPOSITION_BLOCKER.description",
+      titleKey,
+      descriptionKey,
     });
   }
 

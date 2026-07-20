@@ -6,6 +6,20 @@ import {
 } from "./chartCertificationDedupe.js";
 
 describe("chartCertificationDedupe", () => {
+  it("keeps instruction content and communication as distinct root causes", () => {
+    expect(
+      chartCertificationDedupeKey({ id: "disposition:DISCHARGE_INSTRUCTIONS_MISSING" })
+    ).toBe(CHART_CERTIFICATION_ROOT_CODES.DISCHARGE_INSTRUCTIONS_MISSING);
+    expect(
+      chartCertificationDedupeKey({ id: "disposition:DISCHARGE_INSTRUCTIONS_NOT_GIVEN" })
+    ).toBe(CHART_CERTIFICATION_ROOT_CODES.DISCHARGE_INSTRUCTIONS_NOT_COMMUNICATED);
+    expect(
+      chartCertificationDedupeKey({ id: "disposition:DISCHARGE_INSTRUCTIONS_MISSING" })
+    ).not.toBe(
+      chartCertificationDedupeKey({ id: "disposition:DISCHARGE_INSTRUCTIONS_NOT_GIVEN" })
+    );
+  });
+
   it("collapses provider unsigned aliases to one root key", () => {
     expect(chartCertificationDedupeKey({ id: "provider:unsigned" })).toBe(
       CHART_CERTIFICATION_ROOT_CODES.PROVIDER_NOTE_UNSIGNED
