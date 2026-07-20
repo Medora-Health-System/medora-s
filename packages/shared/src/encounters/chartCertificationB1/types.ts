@@ -41,9 +41,16 @@ export const CertificationModule = {
   MEDICATION_ORDERS: "MEDICATION_ORDERS",
   MAR: "MAR",
   INFUSIONS: "INFUSIONS",
+  MEDICATION_RECONCILIATION: "MEDICATION_RECONCILIATION",
   PROCEDURES: "PROCEDURES",
   CLINICAL_PATHWAYS: "CLINICAL_PATHWAYS",
   FULL_REASSESSMENT: "FULL_REASSESSMENT",
+  /** Advanced medication intelligence — always unevaluated in B3. */
+  ADVANCED_MEDICATION_SAFETY: "ADVANCED_MEDICATION_SAFETY",
+  DRUG_INTERACTIONS: "DRUG_INTERACTIONS",
+  RENAL_DOSING: "RENAL_DOSING",
+  HEPATIC_DOSING: "HEPATIC_DOSING",
+  PEDIATRIC_DOSING: "PEDIATRIC_DOSING",
 } as const;
 
 export type CertificationModule =
@@ -73,6 +80,7 @@ export const STAGE_B1_UNEVALUATED_MODULES: readonly CertificationModule[] = [
 
 export const ChartCertificationSourceAuthority = {
   ESTABLISHED_WORKFLOW: "ESTABLISHED_WORKFLOW",
+  STAGE_B3_EVALUATED: "STAGE_B3_EVALUATED",
   STAGE_B2_EVALUATED: "STAGE_B2_EVALUATED",
   STAGE_B1_EVALUATED: "STAGE_B1_EVALUATED",
   STAGE_A_ADVISORY: "STAGE_A_ADVISORY",
@@ -84,8 +92,10 @@ export type ChartCertificationSourceAuthority =
 
 export const ChartCertificationModuleAuthority = {
   ESTABLISHED_AUTHORITATIVE: "ESTABLISHED_AUTHORITATIVE",
+  STAGE_B3_AUTHORITATIVE: "STAGE_B3_AUTHORITATIVE",
   STAGE_B2_AUTHORITATIVE: "STAGE_B2_AUTHORITATIVE",
   STAGE_B1_AUTHORITATIVE: "STAGE_B1_AUTHORITATIVE",
+  STAGE_B3_ADVISORY: "STAGE_B3_ADVISORY",
   STAGE_B2_ADVISORY: "STAGE_B2_ADVISORY",
   STAGE_B1_ADVISORY: "STAGE_B1_ADVISORY",
   PARTIALLY_EVALUATED: "PARTIALLY_EVALUATED",
@@ -103,6 +113,7 @@ export const ChartCertificationOwner = {
   BILLING: "BILLING",
   LABORATORY: "LABORATORY",
   IMAGING: "IMAGING",
+  PHARMACY: "PHARMACY",
   SYSTEM: "SYSTEM",
 } as const;
 
@@ -238,6 +249,13 @@ export type ChartCertificationEvaluatedReadiness = {
   imagingReady?: boolean | null;
   ecgReady?: boolean | null;
   resultReviewReady?: boolean | null;
+  /** Stage B3 medication / procedure / reassessment domains. */
+  medicationOrdersReady?: boolean | null;
+  marReady?: boolean | null;
+  infusionsReady?: boolean | null;
+  medicationReconciliationReady?: boolean | null;
+  proceduresReady?: boolean | null;
+  reassessmentReady?: boolean | null;
 };
 
 export type ChartCertificationAdvisoryReadiness = {
@@ -254,13 +272,15 @@ export type ChartCertificationB1Result = {
   /** B1 or B2 certification id depending on enabled stage. */
   certificationId: string;
   certificationVersion: string;
-  certificationStage: "B1" | "B2";
+  certificationStage: "B1" | "B2" | "B3";
   certificationAuthority: ChartCertificationB1Authority;
   coverageStatus: ChartCertificationCoverageStatus;
   evaluatedAt: string;
   encounterVersion: number;
   /** Deterministic diagnostic revision when B2 loads orders/results (not Encounter.version). */
   diagnosticRevision?: string | null;
+  /** Deterministic medication/MAR/procedure/reassessment revision when B3 loads (not Encounter.version). */
+  medicationProcedureRevision?: string | null;
   authoritativeReadiness: ChartCertificationAuthoritativeReadiness;
   evaluatedReadiness: ChartCertificationEvaluatedReadiness;
   advisoryReadiness: ChartCertificationAdvisoryReadiness;
