@@ -124,12 +124,20 @@ function encounterHasSignableProviderContent(snapshot: EdEncounterLifecycleEncou
 function nursingAssessmentHasContent(raw: unknown): boolean {
   const o = asObject(raw);
   if (!o) return false;
+
+  // Common alternate / legacy nursing note shapes (avoid false "missing" when evalV1 absent).
+  for (const key of ["nursingNote", "assessment", "note", "nursingAssessmentText"]) {
+    const v = o[key];
+    if (typeof v === "string" && v.trim().length > 0) return true;
+  }
+
   const inner = o.nursingEvalV1;
   const ne = asObject(inner);
   if (!ne) return false;
   const sections = ne.sections;
   if (sections && typeof sections === "object") {
     for (const v of Object.values(sections as Record<string, unknown>)) {
+      if (typeof v === "string" && v.trim().length > 0) return true;
       const section = asObject(v);
       if (section && typeof section.text === "string" && section.text.trim().length > 0) return true;
     }
@@ -154,7 +162,16 @@ function admissionSummaryHasContent(raw: unknown): boolean {
 function dischargeSummaryHasPersistedContent(raw: unknown): boolean {
   const o = asObject(raw);
   if (!o) return false;
-  return Object.keys(o).length > 0;
+  // dischargeMode alone is disposition selection — not a completed discharge packet.
+  const keys = Object.keys(o).filter((k) => k !== "dischargeMode");
+  if (keys.length === 0) return false;
+  return keys.some((k) => {
+    const v = o[k];
+    if (typeof v === "string") return v.trim().length > 0;
+    if (Array.isArray(v)) return v.length > 0;
+    if (v && typeof v === "object") return Object.keys(v as object).length > 0;
+    return v != null && v !== false;
+  });
 }
 
 function hasErDispositionLwbsDocumented(nursingAssessment: unknown): boolean {
@@ -243,10 +260,19 @@ export function evaluateEdEncounterDocumentationDeficiencies(
   if (!nursingAssessmentHasContent(snapshot.nursingAssessment)) {
     deficiencies.push({ code: "NURSING_ASSESSMENT" });
   }
-  if (!dischargeSummaryHasPersistedContent(snapshot.dischargeSummaryJson)) {
+  // Discharge-summary documentation applies to home/AMA discharges only.
+  // Admission/transfer/deceased/LWBS must not inherit home-discharge requirements.
+  const dispositionPath = resolveEdDispositionPath(snapshot);
+  if (
+    (dispositionPath === "HOME" || dispositionPath === "AMA") &&
+    !dischargeSummaryHasPersistedContent(snapshot.dischargeSummaryJson)
+  ) {
     deficiencies.push({ code: "DISCHARGE_SUMMARY" });
   }
-  if ((snapshot.encounterType ?? "").trim() === "INPATIENT") {
+  if (
+    (snapshot.encounterType ?? "").trim() === "INPATIENT" ||
+    dispositionPath === "ADMISSION"
+  ) {
     if (!admissionSummaryHasContent(snapshot.admissionSummaryJson)) {
       deficiencies.push({ code: "ADMISSION_SUMMARY" });
     }

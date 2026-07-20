@@ -74,6 +74,8 @@ export type EmergencyEncountersArchiveApiRow = EdClosureCertificationEncounter &
     | "billingReady"
     | "closureReady"
     | "billingBlockers"
+    | "codingDeficiencies"
+    | "advisoryFindings"
   >;
 };
 
@@ -121,13 +123,50 @@ export function resolveEdArchiveEncounterStatusLabelKey(
   return certification.certifiedClosed ? "certified_closed" : "closed";
 }
 
+function hasArchiveCodingReviewNeeded(
+  certification: {
+    billingBlockers: EdClosedEncounterCertificationResult["billingBlockers"];
+    codingDeficiencies?: EdClosedEncounterCertificationResult["codingDeficiencies"];
+    advisoryFindings?: EdClosedEncounterCertificationResult["advisoryFindings"];
+  }
+): boolean {
+  if (
+    certification.billingBlockers.some(
+      (blocker) =>
+        blocker.responsibleRole === EdClosedEncounterCertificationResponsibleRole.CODING
+    )
+  ) {
+    return true;
+  }
+  const codingDefs = certification.codingDeficiencies ?? [];
+  if (codingDefs.some((d) => d.suggestsBillingReview || d.id === "billing:diagnosis-missing")) {
+    return true;
+  }
+  const advisory = certification.advisoryFindings ?? [];
+  return advisory.some(
+    (d) =>
+      d.responsibleRole === EdClosedEncounterCertificationResponsibleRole.CODING ||
+      d.id === "billing:diagnosis-missing"
+  );
+}
+
 export function resolveEdArchiveBillingStatusLabelKey(
   encounter: Pick<EdClosureCertificationEncounter, "billingReadinessSnapshotJson">,
-  certification: Pick<EdClosedEncounterCertificationResult, "billingReady" | "billingBlockers" | "status">
+  certification: Pick<
+    EdClosedEncounterCertificationResult,
+    | "billingReady"
+    | "billingBlockers"
+    | "status"
+    | "codingDeficiencies"
+    | "advisoryFindings"
+  >
 ): EdArchiveBillingStatusLabelKey {
   const snapshot = encounter.billingReadinessSnapshotJson;
   if (!snapshot || typeof snapshot !== "object" || Array.isArray(snapshot)) {
     return "not_reviewed";
+  }
+  if (hasArchiveCodingReviewNeeded(certification)) {
+    return "coding_review_needed";
   }
   if (certification.billingReady) {
     if (certification.status === EdClosedEncounterCertificationStatus.CERTIFIED_CLOSED) {
@@ -135,21 +174,21 @@ export function resolveEdArchiveBillingStatusLabelKey(
     }
     return "ready_for_coding";
   }
-  const hasCodingBlocker = certification.billingBlockers.some(
-    (blocker) =>
-      blocker.responsibleRole === EdClosedEncounterCertificationResponsibleRole.CODING
-  );
-  if (hasCodingBlocker) return "coding_review_needed";
   return "billing_not_ready";
 }
 
+/**
+ * Archive coding column — advisory coding findings may mark review needed for display.
+ * Does not independently block billing submission APIs.
+ */
 export function resolveEdArchiveCodingReady(
-  certification: Pick<EdClosedEncounterCertificationResult, "billingReady" | "billingBlockers">
+  certification: Pick<
+    EdClosedEncounterCertificationResult,
+    "billingReady" | "billingBlockers" | "codingDeficiencies" | "advisoryFindings"
+  >
 ): boolean {
-  if (!certification.billingReady) return false;
-  return !certification.billingBlockers.some(
-    (blocker) => blocker.responsibleRole === EdClosedEncounterCertificationResponsibleRole.CODING
-  );
+  if (hasArchiveCodingReviewNeeded(certification)) return false;
+  return certification.billingReady;
 }
 
 function formatPatientName(encounter: EmergencyEncountersArchiveApiRow): string {

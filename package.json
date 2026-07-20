@@ -7,6 +7,7 @@
     "packages/*"
   ],
   "scripts": {
+    "chart-certification:validate:unit": "pnpm --filter @medora/shared build && pnpm --filter @medora/shared exec vitest run src/encounters/edClosedEncounterCertification.test.ts src/encounters/edClosedEncounterCertification.advisoryBoundary.test.ts src/encounters/chartCertificationDedupe.test.ts src/encounters/chartCertificationBenchmark.test.ts src/encounters/edEncounterLifecycle.test.ts src/encounters/enterpriseChartCertificationStageAFeatureFlag.test.ts",
     "medication:validate:unit": "pnpm --filter @medora/shared build && pnpm --filter @medora/shared exec vitest run src/medication/permanentMedicationValidationSuite.test.ts && pnpm --filter @medora/api exec jest --config jest.config.cjs prisma/medications/permanent-validation/medication-permanent-validation-negative.spec.ts --runInBand",
     "medication:validate:critical": "pnpm --filter @medora/shared build && pnpm --filter @medora/api exec ts-node --transpile-only prisma/medications/permanent-validation/run-medication-permanent-validation-cli.ts critical",
     "medication:validate:full": "pnpm --filter @medora/shared build && pnpm --filter @medora/api exec ts-node --transpile-only prisma/medications/permanent-validation/run-medication-permanent-validation-cli.ts full",

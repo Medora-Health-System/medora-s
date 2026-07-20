@@ -68,6 +68,7 @@ import {
   resolveEdIncompleteChartBadgeKeys,
   resolveMyIncompleteChartsEncounters,
 } from "@/features/emergency/edIncompleteChartsFilter";
+import { isEnterpriseChartCertificationStageAEnabled } from "@/features/emergency/enterpriseChartCertificationStageAFlag";
 import { shouldReplaceEncounterRows } from "@/features/emergency/edTrackboardSilentRefresh";
 import { invalidateClinicalBoardGetCache } from "@/lib/invalidateClinicalBoardGetCache";
 import { logBedBoardMutationDebug } from "@/lib/bedBoardMutationDebug";
@@ -1060,8 +1061,14 @@ export function EmergencyTrackboardView() {
               const isAssignedToMe = isEncounterAssignedToCurrentUser(encounter, myPatientsFilterCtx);
               const incompleteChartsView = isMyIncompleteChartsBoardView(boardViewMode);
               const incompleteChartBadges = incompleteChartsView
-                ? resolveIncompleteChartsVisibleBadgeKeys(resolveEdIncompleteChartBadgeKeys(encounter))
-                : resolveEdIncompleteChartBadgeKeys(encounter);
+                ? resolveIncompleteChartsVisibleBadgeKeys(
+                    resolveEdIncompleteChartBadgeKeys(encounter, {
+                      stageAEnabled: isEnterpriseChartCertificationStageAEnabled(),
+                    })
+                  )
+                : resolveEdIncompleteChartBadgeKeys(encounter, {
+                    stageAEnabled: isEnterpriseChartCertificationStageAEnabled(),
+                  });
               const nirLine = patientNirDisplay(patient, dash);
               const arrivalDisplay = encounter.createdAt
                 ? formatEncounterChromeDateTime(encounter.createdAt, language)

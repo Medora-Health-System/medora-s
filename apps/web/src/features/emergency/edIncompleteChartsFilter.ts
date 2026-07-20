@@ -149,9 +149,16 @@ const CERT_STATUS_BADGE: Partial<Record<EdClosedEncounterCertificationStatus, Ed
       "edLifecycle.incompleteCharts.badge.readyForBilling",
   };
 
-/** Certification + lifecycle badges for incomplete-charts workspace cards. */
+/**
+ * Certification + lifecycle badges for incomplete-charts workspace cards.
+ *
+ * List inclusion is lifecycle-only (see resolveMyIncompleteChartsEncounters).
+ * Stage A advisory findings must never add or retain rows in My Incomplete Charts.
+ * When Stage A flag is off, skip Stage A certification-derived badge overlays.
+ */
 export function resolveEdIncompleteChartBadgeKeys(
-  encounter: EdTrackboardLifecycleEncounter
+  encounter: EdTrackboardLifecycleEncounter,
+  opts?: { stageAEnabled?: boolean }
 ): EdIncompleteChartBadgeKey[] {
   const state = resolveTrackboardEncounterLifecycleState(encounter);
   if (
@@ -161,22 +168,6 @@ export function resolveEdIncompleteChartBadgeKeys(
     return [];
   }
 
-  const certification = buildEdClosedEncounterCertification({
-    lifecycleSnapshot: buildEdTrackboardLifecycleSnapshot(encounter),
-    trackboardOps: encounter.trackboardOps ?? null,
-    billingReadinessSnapshot:
-      encounter.billingReadinessSnapshotJson &&
-      typeof encounter.billingReadinessSnapshotJson === "object" &&
-      !Array.isArray(encounter.billingReadinessSnapshotJson)
-        ? (encounter.billingReadinessSnapshotJson as Record<string, unknown>)
-        : null,
-    demographics: {
-      dob: encounter.patient?.dob ?? null,
-      sexAtBirth: encounter.patient?.sexAtBirth ?? null,
-      mrn: encounter.patient?.mrn ?? null,
-      phone: encounter.patient?.phone ?? null,
-    },
-  });
   const badges: EdIncompleteChartBadgeKey[] = [];
   const seen = new Set<string>();
 
@@ -186,15 +177,13 @@ export function resolveEdIncompleteChartBadgeKeys(
     badges.push(key);
   };
 
-  const statusBadge = CERT_STATUS_BADGE[certification.status];
-  if (statusBadge) push(statusBadge);
-  else push("edLifecycle.incompleteCharts.badge.incompleteChart");
-
-  if (!certification.billingReady) {
-    push("edLifecycle.incompleteCharts.badge.billingNotReady");
+  const snapshot = buildEdTrackboardLifecycleSnapshot(encounter);
+  if (state === EdEncounterLifecycleState.READY_FOR_CLOSURE) {
+    push("edLifecycle.incompleteCharts.badge.readyForClosure");
+  } else {
+    push("edLifecycle.incompleteCharts.badge.incompleteChart");
   }
 
-  const snapshot = buildEdTrackboardLifecycleSnapshot(encounter);
   if (!isEdProviderDocumentationSigned(snapshot)) {
     push("edLifecycle.incompleteCharts.badge.providerSignatureNeeded");
   }
@@ -212,8 +201,34 @@ export function resolveEdIncompleteChartBadgeKeys(
     push("edLifecycle.incompleteCharts.badge.missingDocumentation");
   }
 
-  if (certification.deficiencies.some((d) => d.id === "orders:open")) {
-    push("edLifecycle.incompleteCharts.badge.ordersNotReconciled");
+  if (opts?.stageAEnabled) {
+    const certification = buildEdClosedEncounterCertification({
+      lifecycleSnapshot: snapshot,
+      trackboardOps: encounter.trackboardOps ?? null,
+      billingReadinessSnapshot:
+        encounter.billingReadinessSnapshotJson &&
+        typeof encounter.billingReadinessSnapshotJson === "object" &&
+        !Array.isArray(encounter.billingReadinessSnapshotJson)
+          ? (encounter.billingReadinessSnapshotJson as Record<string, unknown>)
+          : null,
+      demographics: {
+        dob: encounter.patient?.dob ?? null,
+        sexAtBirth: encounter.patient?.sexAtBirth ?? null,
+        mrn: encounter.patient?.mrn ?? null,
+        phone: encounter.patient?.phone ?? null,
+      },
+    });
+    const statusBadge = CERT_STATUS_BADGE[certification.status];
+    if (statusBadge) push(statusBadge);
+    if (!certification.authoritativeReadiness.billingReady) {
+      push("edLifecycle.incompleteCharts.badge.billingNotReady");
+    }
+    if (
+      certification.advisoryFindings.some((d) => d.id === "orders:open") ||
+      certification.establishedFindings.some((d) => d.deduplicationKey === "ACTIVE_ORDERS_UNRESOLVED")
+    ) {
+      push("edLifecycle.incompleteCharts.badge.ordersNotReconciled");
+    }
   }
 
   return badges;

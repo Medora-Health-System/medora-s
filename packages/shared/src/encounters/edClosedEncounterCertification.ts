@@ -1,9 +1,16 @@
 /**
  * MEDUI.ED.LIFECYCLE.6 — Closed encounter certification (read-only projection).
- * Connects lifecycle closure readiness with billing/coding readiness signals.
+ *
+ * Stage A authority: ADVISORY only.
+ * - ESTABLISHED_WORKFLOW findings may inform authoritative readiness (disposition/departure).
+ * - STAGE_A_ADVISORY findings never independently block closure, discharge, signing, or billing.
  */
 
 import type { DispositionSafetyReadinessResponse } from "../schemas/patient.js";
+import {
+  chartCertificationDedupeKey,
+  mergeChartCertificationDeficiencyFlags,
+} from "./chartCertificationDedupe.js";
 import {
   EdEncounterLifecycleState,
   evaluateEdEncounterDocumentationDeficiencies,
@@ -12,6 +19,62 @@ import {
   resolveEdEncounterLifecycleState,
   type EdEncounterLifecycleEncounterSnapshot,
 } from "./edEncounterLifecycle.js";
+
+/** Stage A certification engine version (advisory shared projection). */
+export const ED_CHART_CERTIFICATION_ENGINE_VERSION =
+  "ed-chart-certification-engine-stage-a-1.1.0-advisory";
+
+export const ED_CHART_CERTIFICATION_STAGE = "A" as const;
+
+export const EdChartCertificationAuthority = {
+  ADVISORY: "ADVISORY",
+  AUTHORITATIVE: "AUTHORITATIVE",
+} as const;
+
+export type EdChartCertificationAuthority =
+  (typeof EdChartCertificationAuthority)[keyof typeof EdChartCertificationAuthority];
+
+export const EdChartCertificationCoverageStatus = {
+  PARTIAL: "PARTIAL",
+  FULL: "FULL",
+} as const;
+
+export type EdChartCertificationCoverageStatus =
+  (typeof EdChartCertificationCoverageStatus)[keyof typeof EdChartCertificationCoverageStatus];
+
+export const EdChartCertificationSourceAuthority = {
+  ESTABLISHED_WORKFLOW: "ESTABLISHED_WORKFLOW",
+  STAGE_A_ADVISORY: "STAGE_A_ADVISORY",
+} as const;
+
+export type EdChartCertificationSourceAuthority =
+  (typeof EdChartCertificationSourceAuthority)[keyof typeof EdChartCertificationSourceAuthority];
+
+export const STAGE_A_EVALUATED_MODULES = [
+  "lifecycle_snapshot_documentation",
+  "provider_signature_status",
+  "physical_departure",
+  "disposition_readiness_projection",
+  "trackboard_ops_overlay",
+  "billing_snapshot_projection",
+  "demographics_overlay",
+  "semantic_dedupe",
+] as const;
+
+export const STAGE_A_UNEVALUATED_MODULES = [
+  "orders_results_lifecycle",
+  "laboratory_result_lifecycle",
+  "imaging_lifecycle",
+  "ecg_lifecycle",
+  "mar_intelligence",
+  "procedures",
+  "clinical_pathways",
+  "contextual_vitals",
+  "mutation_wide_freshness",
+] as const;
+
+export const STAGE_A_BENCHMARK_STATUS =
+  "STAGE_A_SYNTHETIC_INSUFFICIENT_PRECISION_0_40" as const;
 
 export const EdClosedEncounterCertificationStatus = {
   INCOMPLETE: "INCOMPLETE",
@@ -62,14 +125,46 @@ export type EdClosedEncounterCertificationResponsibleRole =
 
 export type EdClosedEncounterCertificationDeficiency = {
   id: string;
+  /** Stable machine code for i18n / analytics (not primary UI title). */
+  stableCode?: string;
+  /** Root-cause collapse key (semantic dedupe across engines). */
+  deduplicationKey?: string;
   category: EdClosedEncounterCertificationCategory;
   severity: EdClosedEncounterCertificationSeverity;
   title: string;
   description: string;
   responsibleRole: EdClosedEncounterCertificationResponsibleRole;
+  /**
+   * Authoritative action block — true only for ESTABLISHED_WORKFLOW sources in Stage A.
+   * STAGE_A_ADVISORY findings must keep this false.
+   */
   blockingClosure: boolean;
+  /**
+   * Authoritative billing block — true only for ESTABLISHED_WORKFLOW sources in Stage A.
+   * STAGE_A_ADVISORY findings must keep this false.
+   */
   blockingBilling: boolean;
+  /** Advisory review suggestion (Stage A). Never an action gate by itself. */
+  suggestsClosureReview?: boolean;
+  /** Advisory billing review suggestion (Stage A). Never an action gate by itself. */
+  suggestsBillingReview?: boolean;
+  sourceAuthority: EdChartCertificationSourceAuthority;
   source: string;
+  remediationHint?: string;
+};
+
+export type EdChartCertificationAuthoritativeReadiness = {
+  clinicalClosureReady: boolean;
+  billingReady: boolean;
+  dispositionReady: boolean;
+};
+
+export type EdChartCertificationAdvisoryReadiness = {
+  providerReviewSuggested: boolean;
+  nursingReviewSuggested: boolean;
+  documentationReviewSuggested: boolean;
+  clinicalClosureReviewSuggested: boolean;
+  billingReviewSuggested: boolean;
 };
 
 export type EdClosedEncounterCertificationTrackboardOps = {
@@ -97,13 +192,42 @@ export type EdClosedEncounterCertificationInput = {
 export type EdClosedEncounterCertificationResult = {
   status: EdClosedEncounterCertificationStatus;
   lifecycleState: EdEncounterLifecycleState;
+  certificationVersion: string;
+  certificationStage: typeof ED_CHART_CERTIFICATION_STAGE;
+  certificationAuthority: EdChartCertificationAuthority;
+  coverageStatus: EdChartCertificationCoverageStatus;
+  evaluatedModules: readonly string[];
+  unevaluatedModules: readonly string[];
+  benchmarkStatus: typeof STAGE_A_BENCHMARK_STATUS;
+  /** ISO timestamp when this projection was built (panel freshness). */
+  evaluatedAt: string;
+  /**
+   * Stage A advisory aliases of authoritative readiness.
+   * Do not use as action gates — prefer authoritativeReadiness.
+   */
   closureReady: boolean;
+  /** @deprecated Stage A — use authoritativeReadiness.clinicalClosureReady */
+  clinicalClosureReady: boolean;
+  /** @deprecated Stage A — use authoritativeReadiness.billingReady */
   billingReady: boolean;
+  /** @deprecated Stage A — advisory; use advisoryReadiness.providerReviewSuggested */
+  providerReady: boolean;
+  /** @deprecated Stage A — advisory; use advisoryReadiness.nursingReviewSuggested */
+  nursingReady: boolean;
+  /** @deprecated Stage A — use authoritativeReadiness.dispositionReady */
+  dispositionReady: boolean;
+  authoritativeReadiness: EdChartCertificationAuthoritativeReadiness;
+  advisoryReadiness: EdChartCertificationAdvisoryReadiness;
   certifiedClosed: boolean;
   allEncountersEligible: boolean;
   deficiencies: EdClosedEncounterCertificationDeficiency[];
+  /** ESTABLISHED_WORKFLOW closure blockers only (may inform established gates). */
   closureBlockers: EdClosedEncounterCertificationDeficiency[];
+  /** ESTABLISHED_WORKFLOW billing blockers only. */
   billingBlockers: EdClosedEncounterCertificationDeficiency[];
+  /** Stage A advisory findings (non-blocking). */
+  advisoryFindings: EdClosedEncounterCertificationDeficiency[];
+  establishedFindings: EdClosedEncounterCertificationDeficiency[];
   providerDeficiencies: EdClosedEncounterCertificationDeficiency[];
   nursingDeficiencies: EdClosedEncounterCertificationDeficiency[];
   billingDeficiencies: EdClosedEncounterCertificationDeficiency[];
@@ -111,9 +235,14 @@ export type EdClosedEncounterCertificationResult = {
   summary: {
     closureLabel: "READY" | "NOT_READY";
     billingLabel: "READY" | "NOT_READY";
+    providerLabel: "READY" | "NOT_READY";
+    nursingLabel: "READY" | "NOT_READY";
+    dispositionLabel: "READY" | "NOT_READY";
+    advisoryChartReviewLabel: "CLEAR" | "FINDINGS_PRESENT";
     deficiencyCount: number;
     closureBlockerCount: number;
     billingBlockerCount: number;
+    advisoryFindingCount: number;
   };
 };
 
@@ -151,8 +280,13 @@ const DISPOSITION_BLOCKER_CATEGORY: Record<
   CRITICAL_RESULT_UNACKNOWLEDGED: EdClosedEncounterCertificationCategory.RESULTS_ACKNOWLEDGEMENT,
   MEDICATION_ADMINISTRATION_INCOMPLETE: EdClosedEncounterCertificationCategory.MEDICATION_RECONCILIATION,
   DISCHARGE_INSTRUCTIONS_INCOMPLETE: EdClosedEncounterCertificationCategory.NURSING_DOCUMENTATION,
+  DISCHARGE_INSTRUCTIONS_MISSING: EdClosedEncounterCertificationCategory.NURSING_DOCUMENTATION,
+  DISCHARGE_INSTRUCTIONS_NOT_GIVEN: EdClosedEncounterCertificationCategory.NURSING_DOCUMENTATION,
+  DISCHARGE_FOLLOW_UP_MISSING: EdClosedEncounterCertificationCategory.NURSING_DOCUMENTATION,
+  DISCHARGE_RETURN_PRECAUTIONS_MISSING: EdClosedEncounterCertificationCategory.NURSING_DOCUMENTATION,
   PROVIDER_DOCUMENTATION_UNSIGNED: EdClosedEncounterCertificationCategory.PROVIDER_DOCUMENTATION,
   VITALS_STALE: EdClosedEncounterCertificationCategory.NURSING_DOCUMENTATION,
+  VITALS_MISSING: EdClosedEncounterCertificationCategory.NURSING_DOCUMENTATION,
 };
 
 function deficiencyTitleForCode(code: string): string {
@@ -164,9 +298,22 @@ function pushDeficiency(
   seen: Set<string>,
   deficiency: EdClosedEncounterCertificationDeficiency
 ): void {
-  if (seen.has(deficiency.id)) return;
+  const dedupeKey =
+    deficiency.deduplicationKey ??
+    chartCertificationDedupeKey({
+      id: deficiency.id,
+      stableCode: deficiency.stableCode,
+    });
+  const enriched = { ...deficiency, deduplicationKey: dedupeKey, stableCode: deficiency.stableCode ?? deficiency.id };
+  const existingIndex = list.findIndex((d) => (d.deduplicationKey ?? d.id) === dedupeKey);
+  if (existingIndex >= 0) {
+    list[existingIndex] = mergeChartCertificationDeficiencyFlags(list[existingIndex]!, enriched);
+    return;
+  }
+  if (seen.has(dedupeKey) || seen.has(deficiency.id)) return;
+  seen.add(dedupeKey);
   seen.add(deficiency.id);
-  list.push(deficiency);
+  list.push(enriched);
 }
 
 function mapDocumentationDeficiencies(
@@ -175,34 +322,47 @@ function mapDocumentationDeficiencies(
   const out: EdClosedEncounterCertificationDeficiency[] = [];
   const seen = new Set<string>();
   const { deficiencies } = evaluateEdEncounterDocumentationDeficiencies(snapshot);
+  const providerContentMissing = deficiencies.some((d) => d.code === "PROVIDER_DOCUMENTATION");
   for (const d of deficiencies) {
     const mapped = DOC_CODE_CATEGORY[d.code] ?? {
       category: EdClosedEncounterCertificationCategory.PROVIDER_DOCUMENTATION,
       role: EdClosedEncounterCertificationResponsibleRole.PROVIDER,
     };
+    const suggestsBilling =
+      mapped.category === EdClosedEncounterCertificationCategory.DIAGNOSIS;
     pushDeficiency(out, seen, {
       id: `doc:${d.code}`,
+      stableCode: d.code,
       category: mapped.category,
-      severity: EdClosedEncounterCertificationSeverity.BLOCKER,
+      severity: EdClosedEncounterCertificationSeverity.WARNING,
       title: deficiencyTitleForCode(d.code),
       description: `Documentation deficiency: ${d.code}`,
       responsibleRole: mapped.role,
-      blockingClosure: true,
-      blockingBilling: mapped.category === EdClosedEncounterCertificationCategory.DIAGNOSIS,
+      blockingClosure: false,
+      blockingBilling: false,
+      suggestsClosureReview: true,
+      suggestsBillingReview: suggestsBilling,
+      sourceAuthority: EdChartCertificationSourceAuthority.STAGE_A_ADVISORY,
       source: "evaluateEdEncounterDocumentationDeficiencies",
     });
   }
-  if (!isEdProviderDocumentationSigned(snapshot)) {
+  // Unsigned signature only when provider content exists (avoid duplicate with missing-doc).
+  if (!providerContentMissing && !isEdProviderDocumentationSigned(snapshot)) {
     pushDeficiency(out, seen, {
       id: "provider:unsigned",
+      stableCode: "PROVIDER_NOTE_UNSIGNED",
       category: EdClosedEncounterCertificationCategory.PROVIDER_DOCUMENTATION,
-      severity: EdClosedEncounterCertificationSeverity.BLOCKER,
-      title: "Provider Signature Needed",
-      description: "Provider documentation is not signed.",
+      severity: EdClosedEncounterCertificationSeverity.WARNING,
+      title: "Provider Note Unsigned",
+      description: "Provider documentation exists but is not signed.",
       responsibleRole: EdClosedEncounterCertificationResponsibleRole.PROVIDER,
-      blockingClosure: true,
-      blockingBilling: true,
+      blockingClosure: false,
+      blockingBilling: false,
+      suggestsClosureReview: true,
+      suggestsBillingReview: true,
+      sourceAuthority: EdChartCertificationSourceAuthority.STAGE_A_ADVISORY,
       source: "providerDocumentationStatus",
+      remediationHint: "Open provider documentation and sign the note.",
     });
   }
   return out;
@@ -225,6 +385,9 @@ function mapDispositionDeficiencies(
       responsibleRole: EdClosedEncounterCertificationResponsibleRole.NURSE,
       blockingClosure: true,
       blockingBilling: false,
+      suggestsClosureReview: true,
+      suggestsBillingReview: false,
+      sourceAuthority: EdChartCertificationSourceAuthority.ESTABLISHED_WORKFLOW,
       source: "isEdPhysicalDepartureCompleted",
     });
   }
@@ -233,12 +396,15 @@ function mapDispositionDeficiencies(
     pushDeficiency(out, seen, {
       id: "timestamps:departure-missing",
       category: EdClosedEncounterCertificationCategory.TIMESTAMPS,
-      severity: EdClosedEncounterCertificationSeverity.WARNING,
+      severity: EdClosedEncounterCertificationSeverity.INFO,
       title: "Departure Time Missing",
       description: "Encounter dischargedAt is not recorded.",
       responsibleRole: EdClosedEncounterCertificationResponsibleRole.SYSTEM,
       blockingClosure: false,
       blockingBilling: false,
+      suggestsClosureReview: false,
+      suggestsBillingReview: false,
+      sourceAuthority: EdChartCertificationSourceAuthority.STAGE_A_ADVISORY,
       source: "dischargedAt",
     });
   }
@@ -256,15 +422,47 @@ function mapDispositionDeficiencies(
             : category === EdClosedEncounterCertificationCategory.RESULTS_ACKNOWLEDGEMENT
               ? EdClosedEncounterCertificationResponsibleRole.PROVIDER
               : EdClosedEncounterCertificationResponsibleRole.NURSE;
+      const blocksBilling =
+        blocker.code === "PROVIDER_DOCUMENTATION_UNSIGNED" ||
+        category === EdClosedEncounterCertificationCategory.ORDER_RECONCILIATION;
+      if (blocker.code === "PROVIDER_DOCUMENTATION_UNSIGNED") {
+        const missingDoc = out.find(
+          (d) => d.deduplicationKey === "PROVIDER_DOCUMENTATION_MISSING"
+        );
+        if (missingDoc) {
+          // Promote advisory missing-doc to established when disposition reports unsigned.
+          pushDeficiency(out, seen, {
+            ...missingDoc,
+            blockingClosure: true,
+            blockingBilling: true,
+            suggestsClosureReview: true,
+            suggestsBillingReview: true,
+            severity: EdClosedEncounterCertificationSeverity.BLOCKER,
+            sourceAuthority: EdChartCertificationSourceAuthority.ESTABLISHED_WORKFLOW,
+            source: `${missingDoc.source}+dispositionReadiness`,
+          });
+          continue;
+        }
+      }
       pushDeficiency(out, seen, {
         id: `disposition:${blocker.code}`,
+        stableCode: blocker.code,
         category,
         severity: EdClosedEncounterCertificationSeverity.BLOCKER,
-        title: deficiencyTitleForCode(blocker.code),
+        title:
+          blocker.code === "PROVIDER_DOCUMENTATION_UNSIGNED"
+            ? "Provider Note Unsigned"
+            : deficiencyTitleForCode(blocker.code),
         description: blocker.message,
-        responsibleRole: role,
+        responsibleRole:
+          blocker.code === "PROVIDER_DOCUMENTATION_UNSIGNED"
+            ? EdClosedEncounterCertificationResponsibleRole.PROVIDER
+            : role,
         blockingClosure: true,
-        blockingBilling: category === EdClosedEncounterCertificationCategory.ORDER_RECONCILIATION,
+        blockingBilling: blocksBilling,
+        suggestsClosureReview: true,
+        suggestsBillingReview: blocksBilling,
+        sourceAuthority: EdChartCertificationSourceAuthority.ESTABLISHED_WORKFLOW,
         source: "dispositionReadiness",
       });
     }
@@ -284,12 +482,15 @@ function mapTrackboardOpsDeficiencies(
     pushDeficiency(out, seen, {
       id: "orders:open",
       category: EdClosedEncounterCertificationCategory.ORDER_RECONCILIATION,
-      severity: EdClosedEncounterCertificationSeverity.BLOCKER,
+      severity: EdClosedEncounterCertificationSeverity.WARNING,
       title: "Orders Not Reconciled",
       description: `${ops.openOrderCount} open order line(s) remain on the encounter.`,
       responsibleRole: EdClosedEncounterCertificationResponsibleRole.PROVIDER,
-      blockingClosure: true,
-      blockingBilling: true,
+      blockingClosure: false,
+      blockingBilling: false,
+      suggestsClosureReview: true,
+      suggestsBillingReview: true,
+      sourceAuthority: EdChartCertificationSourceAuthority.STAGE_A_ADVISORY,
       source: "trackboardOps.openOrderCount",
     });
   }
@@ -298,12 +499,15 @@ function mapTrackboardOpsDeficiencies(
     pushDeficiency(out, seen, {
       id: "results:critical-unacked",
       category: EdClosedEncounterCertificationCategory.RESULTS_ACKNOWLEDGEMENT,
-      severity: EdClosedEncounterCertificationSeverity.BLOCKER,
+      severity: EdClosedEncounterCertificationSeverity.WARNING,
       title: "Critical Result Acknowledgement Needed",
       description: "A critical result requires provider acknowledgement.",
       responsibleRole: EdClosedEncounterCertificationResponsibleRole.PROVIDER,
-      blockingClosure: true,
+      blockingClosure: false,
       blockingBilling: false,
+      suggestsClosureReview: true,
+      suggestsBillingReview: false,
+      sourceAuthority: EdChartCertificationSourceAuthority.STAGE_A_ADVISORY,
       source: "trackboardOps.criticalResultUnacknowledged",
     });
   }
@@ -312,12 +516,15 @@ function mapTrackboardOpsDeficiencies(
     pushDeficiency(out, seen, {
       id: "results:pending",
       category: EdClosedEncounterCertificationCategory.RESULTS_ACKNOWLEDGEMENT,
-      severity: EdClosedEncounterCertificationSeverity.WARNING,
+      severity: EdClosedEncounterCertificationSeverity.INFO,
       title: "Pending Results",
       description: `${ops.resultsPendingCount} result(s) still pending verification.`,
       responsibleRole: EdClosedEncounterCertificationResponsibleRole.PROVIDER,
       blockingClosure: false,
       blockingBilling: false,
+      suggestsClosureReview: false,
+      suggestsBillingReview: false,
+      sourceAuthority: EdChartCertificationSourceAuthority.STAGE_A_ADVISORY,
       source: "trackboardOps.resultsPendingCount",
     });
   }
@@ -337,12 +544,15 @@ function mapBillingDeficiencies(
     pushDeficiency(out, seen, {
       id: "billing:diagnosis-missing",
       category: EdClosedEncounterCertificationCategory.BILLING_CODING,
-      severity: EdClosedEncounterCertificationSeverity.BLOCKER,
+      severity: EdClosedEncounterCertificationSeverity.WARNING,
       title: "Diagnosis Missing",
       description: "No encounter diagnoses are recorded for coding.",
       responsibleRole: EdClosedEncounterCertificationResponsibleRole.CODING,
       blockingClosure: false,
-      blockingBilling: true,
+      blockingBilling: false,
+      suggestsClosureReview: false,
+      suggestsBillingReview: true,
+      sourceAuthority: EdChartCertificationSourceAuthority.STAGE_A_ADVISORY,
       source: "diagnosisCount",
     });
   }
@@ -352,12 +562,15 @@ function mapBillingDeficiencies(
     pushDeficiency(out, seen, {
       id: "billing:not-ready",
       category: EdClosedEncounterCertificationCategory.BILLING_CODING,
-      severity: EdClosedEncounterCertificationSeverity.WARNING,
+      severity: EdClosedEncounterCertificationSeverity.BLOCKER,
       title: "Billing Not Ready",
       description: "Billing finalization status is NOT_READY.",
       responsibleRole: EdClosedEncounterCertificationResponsibleRole.BILLING,
       blockingClosure: false,
       blockingBilling: true,
+      suggestsClosureReview: false,
+      suggestsBillingReview: true,
+      sourceAuthority: EdChartCertificationSourceAuthority.ESTABLISHED_WORKFLOW,
       source: "billingFinalizationStatus",
     });
   }
@@ -375,6 +588,9 @@ function mapBillingDeficiencies(
         responsibleRole: EdClosedEncounterCertificationResponsibleRole.BILLING,
         blockingClosure: false,
         blockingBilling: true,
+        suggestsClosureReview: false,
+        suggestsBillingReview: true,
+        sourceAuthority: EdChartCertificationSourceAuthority.ESTABLISHED_WORKFLOW,
         source: "billingReadinessSnapshotJson",
       });
     } else if (requiresManual) {
@@ -387,6 +603,9 @@ function mapBillingDeficiencies(
         responsibleRole: EdClosedEncounterCertificationResponsibleRole.BILLING,
         blockingClosure: false,
         blockingBilling: true,
+        suggestsClosureReview: false,
+        suggestsBillingReview: true,
+        sourceAuthority: EdChartCertificationSourceAuthority.ESTABLISHED_WORKFLOW,
         source: "billingReadinessSnapshotJson",
       });
     }
@@ -404,6 +623,9 @@ function mapBillingDeficiencies(
             responsibleRole: EdClosedEncounterCertificationResponsibleRole.BILLING,
             blockingClosure: false,
             blockingBilling: true,
+            suggestsClosureReview: false,
+            suggestsBillingReview: true,
+            sourceAuthority: EdChartCertificationSourceAuthority.ESTABLISHED_WORKFLOW,
             source: "billingReadinessSnapshotJson",
           });
         }
@@ -430,7 +652,10 @@ function mapDemographicsDeficiencies(
       description: "Patient date of birth is required for billing workflows.",
       responsibleRole: EdClosedEncounterCertificationResponsibleRole.ADMIN,
       blockingClosure: false,
-      blockingBilling: true,
+      blockingBilling: false,
+      suggestsClosureReview: false,
+      suggestsBillingReview: true,
+      sourceAuthority: EdChartCertificationSourceAuthority.STAGE_A_ADVISORY,
       source: "demographics.dob",
     });
   }
@@ -445,6 +670,9 @@ function mapDemographicsDeficiencies(
       responsibleRole: EdClosedEncounterCertificationResponsibleRole.ADMIN,
       blockingClosure: false,
       blockingBilling: false,
+      suggestsClosureReview: false,
+      suggestsBillingReview: false,
+      sourceAuthority: EdChartCertificationSourceAuthority.STAGE_A_ADVISORY,
       source: "demographics.sexAtBirth",
     });
   }
@@ -453,9 +681,17 @@ function mapDemographicsDeficiencies(
 }
 
 function partitionDeficiencies(deficiencies: EdClosedEncounterCertificationDeficiency[]) {
+  const establishedFindings = deficiencies.filter(
+    (d) => d.sourceAuthority === EdChartCertificationSourceAuthority.ESTABLISHED_WORKFLOW
+  );
+  const advisoryFindings = deficiencies.filter(
+    (d) => d.sourceAuthority === EdChartCertificationSourceAuthority.STAGE_A_ADVISORY
+  );
   return {
-    closureBlockers: deficiencies.filter((d) => d.blockingClosure),
-    billingBlockers: deficiencies.filter((d) => d.blockingBilling),
+    closureBlockers: establishedFindings.filter((d) => d.blockingClosure),
+    billingBlockers: establishedFindings.filter((d) => d.blockingBilling),
+    establishedFindings,
+    advisoryFindings,
     providerDeficiencies: deficiencies.filter(
       (d) => d.responsibleRole === EdClosedEncounterCertificationResponsibleRole.PROVIDER
     ),
@@ -511,28 +747,108 @@ export function isEdAllEncountersEligible(
   return certification.allEncountersEligible;
 }
 
+/** Stage A never authorizes action blocking from advisory findings alone. */
+export function stageAAdvisoryDeficiencyCanBlockActions(
+  deficiency: Pick<EdClosedEncounterCertificationDeficiency, "sourceAuthority" | "blockingClosure" | "blockingBilling">
+): boolean {
+  if (deficiency.sourceAuthority === EdChartCertificationSourceAuthority.STAGE_A_ADVISORY) {
+    return false;
+  }
+  return deficiency.blockingClosure || deficiency.blockingBilling;
+}
+
 export function buildEdClosedEncounterCertification(
   input: EdClosedEncounterCertificationInput
 ): EdClosedEncounterCertificationResult {
   const snapshot = input.lifecycleSnapshot;
   const lifecycleState = resolveEdEncounterLifecycleState(snapshot);
+  const evaluatedAt = new Date().toISOString();
 
-  const deficiencies = [
+  const merged: EdClosedEncounterCertificationDeficiency[] = [];
+  const mergeSeen = new Set<string>();
+  for (const d of [
     ...mapDocumentationDeficiencies(snapshot),
     ...mapDispositionDeficiencies(snapshot, input.dispositionReadiness),
     ...mapTrackboardOpsDeficiencies(input.trackboardOps),
     ...mapBillingDeficiencies(snapshot, input.billingReadinessSnapshot, input.diagnosisCount),
     ...mapDemographicsDeficiencies(input.demographics),
-  ];
+  ]) {
+    pushDeficiency(merged, mergeSeen, d);
+  }
+  const deficiencies = merged;
 
   const partitioned = partitionDeficiencies(deficiencies);
-  const closureReady = partitioned.closureBlockers.length === 0;
-  const billingReady = partitioned.billingBlockers.length === 0;
+
+  const authoritativeClinicalClosureReady = partitioned.closureBlockers.length === 0;
+  const authoritativeBillingReady = partitioned.billingBlockers.length === 0;
+  const authoritativeDispositionReady =
+    input.dispositionReadiness != null
+      ? input.dispositionReadiness.canClose === true
+      : !partitioned.establishedFindings.some(
+          (d) =>
+            d.blockingClosure &&
+            (d.category === EdClosedEncounterCertificationCategory.DISPOSITION ||
+              d.id.startsWith("disposition:"))
+        );
+
+  const authoritativeReadiness: EdChartCertificationAuthoritativeReadiness = {
+    clinicalClosureReady: authoritativeClinicalClosureReady,
+    billingReady: authoritativeBillingReady,
+    dispositionReady: authoritativeDispositionReady,
+  };
+
+  const advisoryClinicalClosureReviewSuggested = deficiencies.some(
+    (d) => d.suggestsClosureReview === true
+  );
+  const advisoryBillingReviewSuggested = deficiencies.some(
+    (d) => d.suggestsBillingReview === true
+  );
+  const advisoryReadiness: EdChartCertificationAdvisoryReadiness = {
+    providerReviewSuggested: partitioned.providerDeficiencies.some(
+      (d) =>
+        d.sourceAuthority === EdChartCertificationSourceAuthority.STAGE_A_ADVISORY &&
+        (d.suggestsClosureReview || d.suggestsBillingReview)
+    ),
+    nursingReviewSuggested: partitioned.nursingDeficiencies.some(
+      (d) =>
+        d.sourceAuthority === EdChartCertificationSourceAuthority.STAGE_A_ADVISORY &&
+        (d.suggestsClosureReview || d.suggestsBillingReview)
+    ),
+    documentationReviewSuggested: deficiencies.some(
+      (d) =>
+        d.sourceAuthority === EdChartCertificationSourceAuthority.STAGE_A_ADVISORY &&
+        (d.category === EdClosedEncounterCertificationCategory.PROVIDER_DOCUMENTATION ||
+          d.category === EdClosedEncounterCertificationCategory.NURSING_DOCUMENTATION) &&
+        (d.suggestsClosureReview || d.suggestsBillingReview)
+    ),
+    clinicalClosureReviewSuggested: advisoryClinicalClosureReviewSuggested,
+    billingReviewSuggested: advisoryBillingReviewSuggested,
+  };
+
+  // Stage A: legacy readiness fields mirror authoritative readiness only (never advisory FP gates).
+  const closureReady = authoritativeReadiness.clinicalClosureReady;
+  const billingReady = authoritativeReadiness.billingReady;
+  const dispositionReady = authoritativeReadiness.dispositionReady;
+  const providerReady = !partitioned.providerDeficiencies.some(
+    (d) =>
+      d.sourceAuthority === EdChartCertificationSourceAuthority.ESTABLISHED_WORKFLOW &&
+      d.blockingClosure
+  );
+  const nursingReady = !partitioned.nursingDeficiencies.some(
+    (d) =>
+      d.sourceAuthority === EdChartCertificationSourceAuthority.ESTABLISHED_WORKFLOW &&
+      d.blockingClosure
+  );
+
   const isClosed = (snapshot.status ?? "").trim() === "CLOSED";
   const signed = isEdProviderDocumentationSigned(snapshot);
 
-  const certifiedClosed = isClosed && signed && closureReady && billingReady;
-
+  // Archive eligibility uses established closure + established billing readiness only.
+  const certifiedClosed =
+    isClosed &&
+    signed &&
+    authoritativeReadiness.clinicalClosureReady &&
+    authoritativeReadiness.billingReady;
   const allEncountersEligible = certifiedClosed;
 
   const status = resolveCertificationStatus({
@@ -544,18 +860,41 @@ export function buildEdClosedEncounterCertification(
   return {
     status,
     lifecycleState,
+    certificationVersion: ED_CHART_CERTIFICATION_ENGINE_VERSION,
+    certificationStage: ED_CHART_CERTIFICATION_STAGE,
+    certificationAuthority: EdChartCertificationAuthority.ADVISORY,
+    coverageStatus: EdChartCertificationCoverageStatus.PARTIAL,
+    evaluatedModules: STAGE_A_EVALUATED_MODULES,
+    unevaluatedModules: STAGE_A_UNEVALUATED_MODULES,
+    benchmarkStatus: STAGE_A_BENCHMARK_STATUS,
+    evaluatedAt,
     closureReady,
+    clinicalClosureReady: closureReady,
     billingReady,
+    providerReady,
+    nursingReady,
+    dispositionReady,
+    authoritativeReadiness,
+    advisoryReadiness,
     certifiedClosed,
     allEncountersEligible,
     deficiencies,
     ...partitioned,
     summary: {
-      closureLabel: closureReady ? "READY" : "NOT_READY",
-      billingLabel: billingReady ? "READY" : "NOT_READY",
+      closureLabel: authoritativeReadiness.clinicalClosureReady ? "READY" : "NOT_READY",
+      billingLabel: authoritativeReadiness.billingReady ? "READY" : "NOT_READY",
+      providerLabel: providerReady ? "READY" : "NOT_READY",
+      nursingLabel: nursingReady ? "READY" : "NOT_READY",
+      dispositionLabel: authoritativeReadiness.dispositionReady ? "READY" : "NOT_READY",
+      advisoryChartReviewLabel: partitioned.advisoryFindings.some(
+        (d) => d.suggestsClosureReview || d.suggestsBillingReview
+      )
+        ? "FINDINGS_PRESENT"
+        : "CLEAR",
       deficiencyCount: deficiencies.length,
       closureBlockerCount: partitioned.closureBlockers.length,
       billingBlockerCount: partitioned.billingBlockers.length,
+      advisoryFindingCount: partitioned.advisoryFindings.length,
     },
   };
 }

@@ -2,7 +2,7 @@
 
 import React, { useMemo } from "react";
 import {
-  EdClosedEncounterCertificationStatus,
+  EdChartCertificationSourceAuthority,
   type DispositionSafetyReadinessResponse,
   type EdClosedEncounterCertificationResult,
 } from "@medora/shared";
@@ -18,6 +18,7 @@ import {
   edDispositionTouchButtonStyle,
   type EdDispositionLayoutMode,
 } from "@/features/emergency/edDispositionResponsiveLayout";
+import { isEnterpriseChartCertificationStageAEnabled } from "@/features/emergency/enterpriseChartCertificationStageAFlag";
 
 type Props = {
   certification: EdClosedEncounterCertificationResult;
@@ -78,10 +79,12 @@ function DeficiencyGroup({
   title,
   items,
   t,
+  advisory,
 }: {
   title: string;
   items: EdClosedEncounterCertificationResult["deficiencies"];
   t: (key: string) => string;
+  advisory?: boolean;
 }) {
   if (items.length === 0) return null;
   return (
@@ -101,13 +104,11 @@ function DeficiencyGroup({
             <div style={{ fontSize: 13, fontWeight: 600, color: "#0f172a" }}>{d.title}</div>
             <div style={{ fontSize: 12, color: "#64748b", marginTop: 4 }}>{d.description}</div>
             <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 6 }}>
-              {d.blockingClosure
-                ? t("edLifecycle.certification.blocksClosure")
-                : t("edLifecycle.certification.noClosureBlock")}
-              {" · "}
-              {d.blockingBilling
-                ? t("edLifecycle.certification.blocksBilling")
-                : t("edLifecycle.certification.noBillingBlock")}
+              {advisory || d.sourceAuthority === EdChartCertificationSourceAuthority.STAGE_A_ADVISORY
+                ? t("edLifecycle.certification.advisory.reviewSuggested")
+                : d.blockingClosure
+                  ? t("edLifecycle.certification.blocksClosure")
+                  : t("edLifecycle.certification.noClosureBlock")}
             </div>
           </li>
         ))}
@@ -127,23 +128,33 @@ export function EdEncounterCertificationReview({
   onContinueClose,
 }: Props) {
   const { t } = useI18n();
+  const stageAEnabled = isEnterpriseChartCertificationStageAEnabled();
   const groups = useMemo(() => groupCertificationDeficienciesForReview(certification), [certification]);
 
+  const authoritative = certification.authoritativeReadiness ?? {
+    clinicalClosureReady: certification.closureReady,
+    billingReady: certification.billingReady,
+    dispositionReady: certification.dispositionReady ?? true,
+  };
+
+  const establishedBlockers = (certification.closureBlockers ?? []).filter(
+    (d) => d.sourceAuthority === EdChartCertificationSourceAuthority.ESTABLISHED_WORKFLOW
+  );
+
   const closureLevel = resolveEdCertificationReadinessLevel(
-    certification.closureReady,
-    certification.closureBlockers.length
+    authoritative.clinicalClosureReady,
+    establishedBlockers.length
   );
   const billingLevel = resolveEdCertificationReadinessLevel(
-    certification.billingReady,
-    certification.billingBlockers.length
+    authoritative.billingReady,
+    (certification.billingBlockers ?? []).length
   );
-  const certificationLevel: EdCertificationReadinessLevel = certification.certifiedClosed
-    ? "ready"
-    : certification.status === EdClosedEncounterCertificationStatus.READY_FOR_BILLING
-      ? "ready"
-      : certification.closureReady
-        ? "needs_attention"
-        : "blocked";
+
+  const chartReviewLevel: EdCertificationReadinessLevel =
+    certification.summary?.advisoryChartReviewLabel === "FINDINGS_PRESENT" ||
+    (certification.advisoryFindings?.length ?? 0) > 0
+      ? "needs_attention"
+      : "ready";
 
   const canContinue = canProceedToCloseCheckFromCertificationReview({
     certification,
@@ -153,12 +164,18 @@ export function EdEncounterCertificationReview({
 
   const showDispositionOverride = Boolean(dispositionReadiness && !dispositionReadiness.canClose);
 
+  const advisoryItems = stageAEnabled
+    ? groups.advisory
+    : groups.advisory.filter(() => false);
+
   return (
     <div
       role="dialog"
       aria-modal="true"
       aria-labelledby="ed-encounter-certification-review-title"
       data-testid="ed-encounter-certification-review"
+      data-certification-authority={certification.certificationAuthority ?? "ADVISORY"}
+      data-certification-stage={certification.certificationStage ?? "A"}
       style={{
         position: "fixed",
         inset: 0,
@@ -182,37 +199,65 @@ export function EdEncounterCertificationReview({
         <h2 id="ed-encounter-certification-review-title" style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "#0f172a" }}>
           {t("edLifecycle.certification.closeReview.title")}
         </h2>
-        {!certification.closureReady ? (
+
+        <p
+          data-testid="ed-certification-advisory-banner"
+          style={{
+            margin: "10px 0 0 0",
+            fontSize: 13,
+            color: "#92400e",
+            fontWeight: 600,
+            lineHeight: 1.45,
+            background: "#fffbeb",
+            border: "1px solid #fde68a",
+            borderRadius: 10,
+            padding: "8px 10px",
+          }}
+        >
+          {t("edLifecycle.certification.advisory.banner")}
+        </p>
+
+        {establishedBlockers.length > 0 ? (
           <p style={{ margin: "10px 0 0 0", fontSize: 14, color: "#991b1b", fontWeight: 600, lineHeight: 1.45 }}>
-            {t("edLifecycle.certification.closeReview.cannotCertify")}
+            {t("edLifecycle.certification.closeReview.establishedBlockersPresent")}
           </p>
         ) : null}
 
         <div style={{ marginTop: 16, display: "flex", gap: 12, flexWrap: "wrap" }}>
           <ReadinessSection
-            title={t("edLifecycle.certification.closure")}
+            title={t("edLifecycle.certification.closeReview.authoritativeClosure")}
             level={closureLevel}
             label={t(`edLifecycle.certification.closeReview.level.${closureLevel}`)}
           />
           <ReadinessSection
-            title={t("edLifecycle.certification.billing")}
+            title={t("edLifecycle.certification.closeReview.authoritativeBilling")}
             level={billingLevel}
             label={t(`edLifecycle.certification.closeReview.level.${billingLevel}`)}
           />
           <ReadinessSection
-            title={t("edLifecycle.certification.closeReview.certificationStatus")}
-            level={certificationLevel}
-            label={t(`edLifecycle.certification.status.${certification.status}`)}
+            title={t("edLifecycle.certification.closeReview.chartReview")}
+            level={chartReviewLevel}
+            label={
+              chartReviewLevel === "ready"
+                ? t("edLifecycle.certification.advisory.chartReviewClear")
+                : t("edLifecycle.certification.advisory.chartReviewFindings")
+            }
           />
         </div>
 
-        {certification.closureBlockers.length > 0 ? (
+        <p style={{ margin: "12px 0 0 0", fontSize: 12, color: "#64748b", lineHeight: 1.45 }}>
+          {t("edLifecycle.certification.advisory.coveragePartial")}
+          {" · "}
+          {t("edLifecycle.certification.advisory.stageLabel")}
+        </p>
+
+        {establishedBlockers.length > 0 ? (
           <section style={{ marginTop: 16 }}>
             <h3 style={{ margin: "0 0 8px 0", fontSize: 13, fontWeight: 700, color: "#334155" }}>
               {t("edLifecycle.certification.closeReview.closureBlockers")}
             </h3>
             <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13, color: "#451a03", lineHeight: 1.45 }}>
-              {certification.closureBlockers.map((d) => (
+              {establishedBlockers.map((d) => (
                 <li key={d.id} style={{ marginBottom: 4 }}>
                   {d.title}
                 </li>
@@ -221,24 +266,27 @@ export function EdEncounterCertificationReview({
           </section>
         ) : null}
 
+        {stageAEnabled ? (
+          <DeficiencyGroup
+            title={t("edLifecycle.certification.advisory.findingsTitle")}
+            items={advisoryItems}
+            t={t}
+            advisory
+          />
+        ) : null}
+
         <DeficiencyGroup
           title={t("edLifecycle.certification.providerDeficiencies")}
-          items={groups.provider}
+          items={groups.provider.filter(
+            (d) => d.sourceAuthority === EdChartCertificationSourceAuthority.ESTABLISHED_WORKFLOW
+          )}
           t={t}
         />
         <DeficiencyGroup
           title={t("edLifecycle.certification.nursingDeficiencies")}
-          items={groups.nursing}
-          t={t}
-        />
-        <DeficiencyGroup
-          title={t("edLifecycle.certification.billingDeficiencies")}
-          items={[...groups.billing, ...groups.coding]}
-          t={t}
-        />
-        <DeficiencyGroup
-          title={t("edLifecycle.certification.systemDeficiencies")}
-          items={groups.system}
+          items={groups.nursing.filter(
+            (d) => d.sourceAuthority === EdChartCertificationSourceAuthority.ESTABLISHED_WORKFLOW
+          )}
           t={t}
         />
 
@@ -288,6 +336,7 @@ export function EdEncounterCertificationReview({
           <button
             type="button"
             disabled={closing || !canContinue}
+            data-testid="ed-certification-continue-close"
             onClick={onContinueClose}
             style={edDispositionTouchButtonStyle(
               {
