@@ -52,6 +52,7 @@ export * from "./encounters/governedRoomLabel.js";
 export * from "./emergency/canDocumentEdTriage.js";
 export * from "./emergency/closureDischargeReadiness.js";
 export * from "./encounters/facilityBedGovernance.js";
+export * from "./encounters/bedAssignmentEligibility.js";
 export * from "./encounters/bedOperationalStatus.js";
 export * from "./encounters/bedBoardComposition.js";
 export * from "./encounters/bedBoardView.js";

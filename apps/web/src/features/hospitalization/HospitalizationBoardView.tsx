@@ -17,7 +17,10 @@ import {
 } from "@/lib/clinicalWorklistApi";
 import type { HospitalisationBoardEncounterRow } from "@/lib/hospitalisationBoardTypes";
 import type { ObservationOperationalSnapshot, EncounterBedUnitCode } from "@medora/shared";
-import { canReadFreestandingErObservationPatients } from "@medora/shared";
+import {
+  canReadFreestandingErObservationPatients,
+  selectTreatmentBedAssignmentCandidates,
+} from "@medora/shared";
 import type { EncounterRoomUpdateResponse } from "@/lib/roomAssignmentApi";
 import {
   dispatchEncounterRoomAssignmentRefresh,
@@ -862,9 +865,10 @@ export function HospitalizationBoardView() {
 
   const hospitalAssignCandidates = useMemo((): BedBoardAssignCandidate[] => {
     if (!assignPickerBed) return [];
-    return encounters
+    return selectTreatmentBedAssignmentCandidates(encounters, {
+      facilityId: effectiveFacilityId,
+    })
       .filter((row) => {
-        if ((row.roomLabel ?? "").trim()) return false;
         const unit = resolveEncounterRoomUnit({
           roomLabel: row.roomLabel,
           type: row.type,
@@ -879,7 +883,7 @@ export function HospitalizationBoardView() {
         type: row.type ?? "INPATIENT",
         admissionSummaryJson: row.admissionSummaryJson,
       }));
-  }, [assignPickerBed, encounters]);
+  }, [assignPickerBed, effectiveFacilityId, encounters]);
 
   const filteredEncounters = useMemo(() => {
     let list = encounters.filter((encounter) =>

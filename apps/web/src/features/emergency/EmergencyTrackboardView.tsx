@@ -35,6 +35,7 @@ import {
 import type { EncounterBedUnitCode } from "@medora/shared";
 import {
   erHandoffV1SatisfiesInpatientTransferConfirm,
+  selectTreatmentBedAssignmentCandidates,
   sortRowsByRoomLabel,
 } from "@medora/shared";
 import type { EncounterRoomUpdateResponse } from "@/lib/roomAssignmentApi";
@@ -580,16 +581,18 @@ export function EmergencyTrackboardView() {
   };
 
   const unassignedEdCandidates = useMemo((): BedBoardAssignCandidate[] => {
-    return activeTrackboardBase
-      .filter((row) => !(row.roomLabel ?? "").trim())
-      .map((row) => ({
-        id: row.id,
-        label: fullPatientName(row.patient, t("common.dash")),
-        roomLabel: row.roomLabel,
-        type: row.type ?? "EMERGENCY",
-        admissionSummaryJson: row.admissionSummaryJson,
-      }));
-  }, [activeTrackboardBase, t]);
+    // Waiting-room patients store WAITING_ROOM — not empty roomLabel. Eligibility uses
+    // canonical treatment-bed key (same truth as Bed Board occupancy).
+    return selectTreatmentBedAssignmentCandidates(activeTrackboardBase, {
+      facilityId,
+    }).map((row) => ({
+      id: row.id,
+      label: fullPatientName(row.patient, t("common.dash")),
+      roomLabel: row.roomLabel,
+      type: row.type ?? "EMERGENCY",
+      admissionSummaryJson: row.admissionSummaryJson,
+    }));
+  }, [activeTrackboardBase, facilityId, t]);
 
   const refreshEdBedBoard = useCallback(async () => {
     if (!facilityId) return;
@@ -1539,6 +1542,14 @@ export function EmergencyTrackboardView() {
           open
           bed={assignPickerBed}
           candidates={unassignedEdCandidates}
+          loadState={
+            isInitialLoading && !hasLoadedOnceRef.current
+              ? "loading"
+              : fetchError
+                ? "error"
+                : "ready"
+          }
+          onRetry={() => void loadEncounters()}
           onClose={() => setAssignPickerBed(null)}
           onSelect={(candidate) => {
             const encounter = emergencyOnly.find((row) => row.id === candidate.id);
