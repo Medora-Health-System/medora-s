@@ -24,7 +24,8 @@ import {
   observationDepartmentalFlagsFromProcessEnv,
   inpatientDocumentationEnabled,
   inpatientWorkspaceFlagsFromProcessEnv,
-  resolveDepartmentalEncounterContext,
+  resolveClinicalEncounterContext,
+  clinicalIdentityDeficiencyForUnknown,
 } from "@medora/shared";
 
 const ECG_12_LEAD_DOCUMENTATION_CARD_ID = "ecg_12_lead_documentation";
@@ -358,7 +359,8 @@ export class ChartCertificationB1Service {
       },
     });
     if (!enc) return result;
-    const context = resolveDepartmentalEncounterContext(enc);
+    // D3E.5 — canonical identity only (never admittedAt / short-stay heuristics).
+    const context = resolveClinicalEncounterContext(enc);
     const ordersReview =
       result.evaluatedReadiness.ordersReady === true ||
       result.evaluatedReadiness.laboratoryReady === true ||
@@ -385,9 +387,7 @@ export class ChartCertificationB1Service {
         complete: obs.complete,
         deficiencyCodes: obs.deficiencies,
       };
-    }
-
-    if (context === "INPATIENT") {
+    } else if (context === "INPATIENT") {
       const ip = evaluateInpatientChartCertification({
         hasHistoryAndPhysical: hasProviderNote,
         hasProgressNote: hasProviderNote,
@@ -402,6 +402,13 @@ export class ChartCertificationB1Service {
         enabled: ipDocsEnabled,
         complete: ip.complete,
         deficiencyCodes: ip.deficiencies,
+      };
+    } else if (context === "UNKNOWN") {
+      const deficiency = clinicalIdentityDeficiencyForUnknown();
+      inpatientClinicalAdvisory = {
+        enabled: false,
+        complete: false,
+        deficiencyCodes: [deficiency.code],
       };
     }
 
