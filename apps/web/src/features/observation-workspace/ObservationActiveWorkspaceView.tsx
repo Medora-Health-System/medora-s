@@ -25,10 +25,14 @@ type ObservationEncounterHeader = {
   governedRoomUnit?: string | null;
   assignedProviderName?: string | null;
   assignedNurseName?: string | null;
+  providerDocumentationStatus?: string | null;
   patient?: {
+    id?: string;
     firstName?: string | null;
     lastName?: string | null;
     mrn?: string | null;
+    dob?: string | null;
+    sexAtBirth?: string | null;
   } | null;
 };
 
@@ -62,34 +66,30 @@ export function ObservationActiveWorkspaceView() {
     [router, searchParams]
   );
 
-  useEffect(() => {
+  const loadEncounter = useCallback(async () => {
     if (!encounterId) {
-      setLoading(false);
       setError(t("observationD3d.workspace.missingId"));
+      setEncounter(null);
       return;
     }
-    let cancelled = false;
-    void (async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const raw = await apiFetch(`/encounters/${encounterId}`);
-        const obj = asApiObject<ObservationEncounterHeader>(raw);
-        if (!obj?.id) throw new Error("missing encounter");
-        if (!cancelled) setEncounter(obj);
-      } catch {
-        if (!cancelled) {
-          setEncounter(null);
-          setError(t("observationD3d.workspace.loadError"));
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
+    setLoading(true);
+    setError(null);
+    try {
+      const raw = await apiFetch(`/encounters/${encounterId}`);
+      const obj = asApiObject<ObservationEncounterHeader>(raw);
+      if (!obj?.id) throw new Error("missing encounter");
+      setEncounter(obj);
+    } catch {
+      setEncounter(null);
+      setError(t("observationD3d.workspace.loadError"));
+    } finally {
+      setLoading(false);
+    }
   }, [encounterId, t]);
+
+  useEffect(() => {
+    void loadEncounter();
+  }, [loadEncounter]);
 
   const dash = t("common.dash") || DISPLAY_DASH;
   const patientName = useMemo(() => {
@@ -246,7 +246,9 @@ export function ObservationActiveWorkspaceView() {
               <ObservationWorkspacePanel
                 section={section}
                 encounterId={encounterId}
+                encounter={encounter}
                 workspaceEnabled={workspaceEnabled}
+                onRefetchEncounter={loadEncounter}
               />
             </div>
           </>

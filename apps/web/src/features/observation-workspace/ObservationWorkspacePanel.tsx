@@ -1,26 +1,62 @@
 "use client";
 
 import { useI18n } from "@/lib/i18n";
+import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import {
   OBSERVATION_DISPOSITION_PATHWAYS,
-  OBSERVATION_NURSING_SURFACES,
-  OBSERVATION_PROVIDER_NOTE_KINDS,
   OBSERVATION_TIMELINE_KINDS,
 } from "@medora/shared";
+import { EmergencyErOrdersPanel } from "@/features/emergency/EmergencyErOrdersPanel";
+import { EmergencyResultsPanel } from "@/features/emergency/EmergencyResultsPanel";
+import { EmergencyErNotesPanel } from "@/features/emergency/EmergencyErNotesPanel";
+import { EmergencyNursingReassessmentPanel } from "@/features/emergency/EmergencyNursingReassessmentPanel";
+import { MedicationAdministrationTab } from "@/components/encounters/MedicationAdministrationTab";
 import type { ObservationWorkspaceSection } from "./observationWorkspaceSections";
-import { isObservationWorkspaceEnabledInBrowser } from "./observationWorkspacePaths";
+import {
+  isObservationDepartmentalOrdersEnabledInBrowser,
+  isObservationDocumentationEnabledInBrowser,
+  isObservationMarEnabledInBrowser,
+  isObservationWorkspaceEnabledInBrowser,
+} from "./observationWorkspacePaths";
+
+export type ObservationWorkspaceEncounterLite = {
+  id: string;
+  status?: string | null;
+  type?: string | null;
+  providerDocumentationStatus?: string | null;
+  patient?: {
+    id?: string;
+    firstName?: string | null;
+    lastName?: string | null;
+    mrn?: string | null;
+    dob?: string | Date | null;
+    sexAtBirth?: string | null;
+  } | null;
+};
 
 export function ObservationWorkspacePanel({
   section,
   encounterId,
+  encounter,
   workspaceEnabled,
+  onRefetchEncounter,
 }: {
   section: ObservationWorkspaceSection;
   encounterId: string;
+  encounter: ObservationWorkspaceEncounterLite | null;
   workspaceEnabled?: boolean;
+  onRefetchEncounter: () => Promise<void>;
 }) {
   const { t } = useI18n();
+  const { facilityId, roles, userId, facilityTimeZone } = useFacilityAndRoles();
   const enabled = workspaceEnabled ?? isObservationWorkspaceEnabledInBrowser();
+  const ordersLive = isObservationDepartmentalOrdersEnabledInBrowser();
+  const marLive = isObservationMarEnabledInBrowser();
+  const docsLive = isObservationDocumentationEnabledInBrowser();
+  const canPrescribe = roles.includes("PROVIDER") || roles.includes("ADMIN");
+  const canAck =
+    roles.includes("PROVIDER") || roles.includes("RN") || roles.includes("ADMIN");
+  const signed = (encounter?.providerDocumentationStatus ?? "").trim() === "SIGNED";
 
   if (!enabled) {
     return (
@@ -43,66 +79,144 @@ export function ObservationWorkspacePanel({
           <p style={{ margin: "10px 0 0", fontSize: 12, color: "#64748b" }}>
             {t("observationD3d.overview.encounterId")}: {encounterId}
           </p>
-        </div>
-      );
-    case "providerNotes":
-      return (
-        <ul data-testid="observation-panel-provider-notes" style={{ margin: 0, paddingLeft: 18 }}>
-          {OBSERVATION_PROVIDER_NOTE_KINDS.map((kind) => (
-            <li key={kind} style={{ marginBottom: 6, fontSize: 13, color: "#334155" }}>
-              {t(`observationD3d.providerNotes.kinds.${kind}`)}
-            </li>
-          ))}
-          <li style={{ marginTop: 8, fontSize: 12, color: "#64748b" }}>
-            {t("observationD3d.providerNotes.timelineHint")}
-          </li>
-        </ul>
-      );
-    case "nursing":
-      return (
-        <ul data-testid="observation-panel-nursing" style={{ margin: 0, paddingLeft: 18 }}>
-          {OBSERVATION_NURSING_SURFACES.map((surface) => (
-            <li key={surface} style={{ marginBottom: 6, fontSize: 13, color: "#334155" }}>
-              {t(`observationD3d.nursing.surfaces.${surface}`)}
-            </li>
-          ))}
-        </ul>
-      );
-    case "orders":
-      return (
-        <div data-testid="observation-panel-orders" style={{ fontSize: 13, color: "#334155" }}>
-          <p style={{ margin: "0 0 8px" }}>{t("observationD3d.orders.reuseEngine")}</p>
-          <ul style={{ margin: 0, paddingLeft: 18 }}>
-            <li>{t("observationD3d.orders.completedEd")}</li>
-            <li>{t("observationD3d.orders.activeObs")}</li>
-            <li>{t("observationD3d.orders.pendingObs")}</li>
-          </ul>
-        </div>
-      );
-    case "results":
-      return (
-        <ul data-testid="observation-panel-results" style={{ margin: 0, paddingLeft: 18 }}>
-          {["labs", "imaging", "ecg", "consults", "pending", "completed"].map((lane) => (
-            <li key={lane} style={{ marginBottom: 6, fontSize: 13, color: "#334155" }}>
-              {t(`observationD3d.results.${lane}`)}
-            </li>
-          ))}
-        </ul>
-      );
-    case "medications":
-      return (
-        <div data-testid="observation-panel-medications" style={{ fontSize: 13, color: "#334155" }}>
-          <p style={{ margin: 0 }}>{t("observationD3d.medications.separateMar")}</p>
-          <p style={{ margin: "8px 0 0", color: "#64748b" }}>
-            {t("observationD3d.medications.noAutoImport")}
+          <p style={{ margin: "8px 0 0", fontSize: 12, color: "#64748b" }}>
+            {t("observationD3da.sharedOrderEngineHint")}
           </p>
         </div>
       );
-    case "reassessment":
+    case "orders":
+      if (!ordersLive || !facilityId) {
+        return (
+          <p data-testid="observation-panel-orders-flag-off" style={{ fontSize: 13, color: "#64748b" }}>
+            {t("observationD3da.ordersFlagOff")}
+          </p>
+        );
+      }
       return (
-        <p data-testid="observation-panel-reassessment" style={{ margin: 0, fontSize: 13 }}>
-          {t("observationD3d.reassessment.body")}
-        </p>
+        <div data-testid="observation-panel-orders-live">
+          <p style={{ margin: "0 0 10px", fontSize: 12, color: "#64748b" }}>
+            {t("observationD3da.ordersOwnershipHint")}
+          </p>
+          <EmergencyErOrdersPanel
+            encounterId={encounterId}
+            facilityId={facilityId}
+            canPrescribe={canPrescribe}
+            encounterSigned={signed}
+            encounterForOrderModal={
+              encounter ? { patient: encounter.patient ?? null } : null
+            }
+            onRefetchEncounter={onRefetchEncounter}
+            encounterType={encounter?.type ?? "INPATIENT"}
+            roles={roles}
+          />
+        </div>
+      );
+    case "results":
+      if (!ordersLive || !facilityId) {
+        return (
+          <p data-testid="observation-panel-results-flag-off" style={{ fontSize: 13, color: "#64748b" }}>
+            {t("observationD3da.resultsFlagOff")}
+          </p>
+        );
+      }
+      return (
+        <div data-testid="observation-panel-results-live">
+          <EmergencyResultsPanel
+            encounterId={encounterId}
+            facilityId={facilityId}
+            refreshToken={0}
+            canAcknowledgeResults={canAck}
+            patient={
+              encounter?.patient
+                ? {
+                    firstName: encounter.patient.firstName ?? null,
+                    lastName: encounter.patient.lastName ?? null,
+                    mrn: encounter.patient.mrn ?? null,
+                    dob:
+                      encounter.patient.dob instanceof Date
+                        ? encounter.patient.dob.toISOString()
+                        : (encounter.patient.dob ?? null),
+                    sexAtBirth: encounter.patient.sexAtBirth ?? null,
+                  }
+                : null
+            }
+            encounterMeta={{
+              id: encounterId,
+              createdAt: new Date().toISOString(),
+            }}
+          />
+        </div>
+      );
+    case "medications":
+      if (!marLive || !facilityId || !userId) {
+        return (
+          <p data-testid="observation-panel-mar-flag-off" style={{ fontSize: 13, color: "#64748b" }}>
+            {t("observationD3da.marFlagOff")}
+          </p>
+        );
+      }
+      return (
+        <div data-testid="observation-panel-mar-live">
+          <p style={{ margin: "0 0 10px", fontSize: 12, color: "#64748b" }}>
+            {t("observationD3da.marSeparateHint")}
+          </p>
+          <MedicationAdministrationTab
+            encounterId={encounterId}
+            facilityId={facilityId}
+            currentUserId={userId}
+            encounterStatus={encounter?.status ?? "OPEN"}
+            providerDocumentationStatus={encounter?.providerDocumentationStatus}
+            roleCodes={roles}
+            facilityTimeZone={facilityTimeZone}
+            embeddedWorkspaceLayout
+          />
+        </div>
+      );
+    case "providerNotes":
+      if (!docsLive || !facilityId) {
+        return (
+          <p data-testid="observation-panel-notes-flag-off" style={{ fontSize: 13, color: "#64748b" }}>
+            {t("observationD3da.docsFlagOff")}
+          </p>
+        );
+      }
+      return (
+        <div data-testid="observation-panel-notes-live">
+          <EmergencyErNotesPanel
+            encounterId={encounterId}
+            facilityId={facilityId}
+            status={encounter?.status}
+            isLocked={signed}
+            roleCodes={roles}
+            onSaved={onRefetchEncounter}
+          />
+        </div>
+      );
+    case "nursing":
+    case "reassessment":
+      if (!docsLive || !facilityId) {
+        return (
+          <p data-testid="observation-panel-nursing-flag-off" style={{ fontSize: 13, color: "#64748b" }}>
+            {t("observationD3da.docsFlagOff")}
+          </p>
+        );
+      }
+      return (
+        <div data-testid="observation-panel-nursing-live">
+          <EmergencyNursingReassessmentPanel
+            encounterId={encounterId}
+            facilityId={facilityId}
+            encounter={{
+              id: encounterId,
+              status: encounter?.status ?? "OPEN",
+              type: encounter?.type ?? "INPATIENT",
+            }}
+            isLocked={signed}
+            onSaved={onRefetchEncounter}
+            nursingTabHref={`/app/hospitalisation/observation/active/${encounterId}?section=nursing`}
+            variant="observationEncounter"
+          />
+        </div>
       );
     case "carePlan":
       return (
@@ -134,6 +248,9 @@ export function ObservationWorkspacePanel({
               {t(`observationD3d.timeline.kinds.${kind}`)}
             </li>
           ))}
+          <li style={{ marginTop: 8, fontSize: 12, color: "#64748b" }}>
+            {t("observationD3da.timelineOrdersHint")}
+          </li>
         </ul>
       );
     default:
