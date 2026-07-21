@@ -1,6 +1,7 @@
 import { Module } from "@nestjs/common";
 import { EncountersController } from "./encounters.controller";
 import { InternalPlacementController } from "./internal-placement.controller";
+import { ObservationWorkspaceController } from "./observation-workspace.controller";
 import { EncountersService } from "./encounters.service";
 import { EncounterChartExportService } from "./chart-export.service";
 import { UnifiedEncounterTimelineService } from "./unified-encounter-timeline.service";
@@ -27,7 +28,11 @@ import { InternalPlacementService } from "./internal-placement.service";
 
 @Module({
   imports: [PrismaModule, DiagnosesModule, OrdersModule, TrackboardModule, FacilitiesModule],
-  controllers: [EncountersController, InternalPlacementController],
+  controllers: [
+    EncountersController,
+    InternalPlacementController,
+    ObservationWorkspaceController,
+  ],
   providers: [
     EncountersService,
     ChartCertificationB1Service,
