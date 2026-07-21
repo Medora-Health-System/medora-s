@@ -21,6 +21,8 @@ async function main(): Promise<void> {
           ok: report.ok,
           verdict: report.verdict,
           hospitalEpisodeFoundationEnabled: report.hospitalEpisodeFoundationEnabled,
+          internalPlacementWorkflowEnabled: report.internalPlacementWorkflowEnabled,
+          receivingEncounterFoundationEnabled: report.receivingEncounterFoundationEnabled,
           reasons: report.reasons,
           deploymentSha: report.deploymentSha,
           checkedAt: report.checkedAt,
@@ -36,6 +38,9 @@ async function main(): Promise<void> {
                 hospitalEpisodeCloseReasonEnumPresent:
                   report.presence.hospitalEpisodeCloseReasonEnumPresent,
                 d3bMigrationRecorded: report.presence.d3bMigrationRecorded,
+                internalPlacementTablePresent:
+                  report.presence.internalPlacementTablePresent,
+                d3cMigrationRecorded: report.presence.d3cMigrationRecorded,
                 appliedMigrationCount: report.presence.appliedMigrationCount,
                 latestAppliedMigration: report.presence.latestAppliedMigration,
               }

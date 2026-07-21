@@ -1,18 +1,22 @@
 /**
  * Deployment / startup schema compatibility checks (no PHI).
- * MEDORA.PROD.TRACKBOARD_PRISMA_500_2026_07_20
+ * MEDORA.PROD.TRACKBOARD_PRISMA_500_2026_07_20 + D3C placement foundation.
  *
  * Expand-and-contract rule:
  * - Required Trackboard columns must exist or the process is unhealthy.
- * - D3B HospitalEpisode objects are optional while the feature flag is OFF
- *   AND runtime Trackboard queries must not select those columns (enforced by
- *   TRACKBOARD_*_SELECT contracts).
+ * - D3B/D3C objects are optional while their feature flags are OFF
+ *   AND runtime Trackboard queries must not select those columns.
  */
 
-import { hospitalEpisodeFoundationEnabledFromProcessEnv } from "@medora/shared";
+import {
+  hospitalEpisodeFoundationEnabledFromProcessEnv,
+  internalPlacementWorkflowEnabledFromProcessEnv,
+  receivingEncounterFoundationEnabledFromProcessEnv,
+} from "@medora/shared";
 import type { PrismaClient } from "@prisma/client";
 
 export const D3B_MIGRATION_FOLDER = "20261024120000_hospital_episode_foundation_d3b";
+export const D3C_MIGRATION_FOLDER = "20261025120000_internal_placement_request_d3c";
 
 /** Scalar Encounter columns required by Trackboard explicit select (pre-D3B). */
 export const TRACKBOARD_REQUIRED_ENCOUNTER_COLUMNS = [
@@ -44,6 +48,13 @@ export const D3B_OPTIONAL_OBJECTS = {
   closeReasonEnum: "HospitalEpisodeCloseReason",
 } as const;
 
+export const D3C_OPTIONAL_OBJECTS = {
+  placementTable: "InternalPlacementRequest",
+  statusEnum: "InternalPlacementStatus",
+  requestedTypeEnum: "InternalPlacementRequestedEncounterType",
+  receivingLifecycleEnum: "ReceivingEncounterLifecycle",
+} as const;
+
 export type SchemaObjectPresence = {
   trackboardRequiredColumnsMissing: string[];
   hospitalEpisodeTablePresent: boolean;
@@ -51,6 +62,11 @@ export type SchemaObjectPresence = {
   hospitalEpisodeStatusEnumPresent: boolean;
   hospitalEpisodeCloseReasonEnumPresent: boolean;
   d3bMigrationRecorded: boolean;
+  internalPlacementTablePresent: boolean;
+  internalPlacementStatusEnumPresent: boolean;
+  internalPlacementRequestedTypeEnumPresent: boolean;
+  receivingEncounterLifecycleEnumPresent: boolean;
+  d3cMigrationRecorded: boolean;
   appliedMigrationCount: number;
   latestAppliedMigration: string | null;
 };
@@ -65,6 +81,8 @@ export type SchemaCompatibilityReport = {
   ok: boolean;
   verdict: SchemaCompatibilityVerdict;
   hospitalEpisodeFoundationEnabled: boolean;
+  internalPlacementWorkflowEnabled: boolean;
+  receivingEncounterFoundationEnabled: boolean;
   presence: SchemaObjectPresence | null;
   reasons: string[];
   deploymentSha: string | null;
@@ -128,10 +146,11 @@ async function readMigrationFingerprint(db: Queryable): Promise<{
   count: number;
   latest: string | null;
   d3bRecorded: boolean;
+  d3cRecorded: boolean;
 }> {
   const hasTable = await tableExists(db, "_prisma_migrations");
   if (!hasTable) {
-    return { count: 0, latest: null, d3bRecorded: false };
+    return { count: 0, latest: null, d3bRecorded: false, d3cRecorded: false };
   }
   const rows = await db.$queryRawUnsafe<
     Array<{ migration_name: string; finished_at: Date | null }>
@@ -147,6 +166,7 @@ async function readMigrationFingerprint(db: Queryable): Promise<{
     count: names.length,
     latest: names[0] ?? null,
     d3bRecorded: names.some((n) => n.includes("hospital_episode_foundation_d3b")),
+    d3cRecorded: names.some((n) => n.includes("internal_placement_request_d3c")),
   };
 }
 
@@ -159,6 +179,10 @@ export async function inspectSchemaObjectPresence(
     hospitalEpisodeIdColumnPresent,
     hospitalEpisodeStatusEnumPresent,
     hospitalEpisodeCloseReasonEnumPresent,
+    internalPlacementTablePresent,
+    internalPlacementStatusEnumPresent,
+    internalPlacementRequestedTypeEnumPresent,
+    receivingEncounterLifecycleEnumPresent,
     migrations,
   ] = await Promise.all([
     listMissingEncounterColumns(db, TRACKBOARD_REQUIRED_ENCOUNTER_COLUMNS),
@@ -166,6 +190,10 @@ export async function inspectSchemaObjectPresence(
     columnExists(db, "Encounter", D3B_OPTIONAL_OBJECTS.encounterColumn),
     enumExists(db, D3B_OPTIONAL_OBJECTS.statusEnum),
     enumExists(db, D3B_OPTIONAL_OBJECTS.closeReasonEnum),
+    tableExists(db, D3C_OPTIONAL_OBJECTS.placementTable),
+    enumExists(db, D3C_OPTIONAL_OBJECTS.statusEnum),
+    enumExists(db, D3C_OPTIONAL_OBJECTS.requestedTypeEnum),
+    enumExists(db, D3C_OPTIONAL_OBJECTS.receivingLifecycleEnum),
     readMigrationFingerprint(db),
   ]);
 
@@ -176,6 +204,11 @@ export async function inspectSchemaObjectPresence(
     hospitalEpisodeStatusEnumPresent,
     hospitalEpisodeCloseReasonEnumPresent,
     d3bMigrationRecorded: migrations.d3bRecorded,
+    internalPlacementTablePresent,
+    internalPlacementStatusEnumPresent,
+    internalPlacementRequestedTypeEnumPresent,
+    receivingEncounterLifecycleEnumPresent,
+    d3cMigrationRecorded: migrations.d3cRecorded,
     appliedMigrationCount: migrations.count,
     latestAppliedMigration: migrations.latest,
   };
@@ -183,11 +216,22 @@ export async function inspectSchemaObjectPresence(
 
 export function evaluateSchemaCompatibility(
   presence: SchemaObjectPresence,
-  options?: { hospitalEpisodeFoundationEnabled?: boolean; deploymentSha?: string | null }
+  options?: {
+    hospitalEpisodeFoundationEnabled?: boolean;
+    internalPlacementWorkflowEnabled?: boolean;
+    receivingEncounterFoundationEnabled?: boolean;
+    deploymentSha?: string | null;
+  }
 ): SchemaCompatibilityReport {
   const hospitalEpisodeFoundationEnabled =
     options?.hospitalEpisodeFoundationEnabled ??
     hospitalEpisodeFoundationEnabledFromProcessEnv();
+  const internalPlacementWorkflowEnabled =
+    options?.internalPlacementWorkflowEnabled ??
+    internalPlacementWorkflowEnabledFromProcessEnv();
+  const receivingEncounterFoundationEnabled =
+    options?.receivingEncounterFoundationEnabled ??
+    receivingEncounterFoundationEnabledFromProcessEnv();
   const reasons: string[] = [];
   const checkedAt = new Date().toISOString();
   const deploymentSha =
@@ -197,6 +241,12 @@ export function evaluateSchemaCompatibility(
     process.env.COMMIT_SHA?.trim() ??
     null;
 
+  const baseFlags = {
+    hospitalEpisodeFoundationEnabled,
+    internalPlacementWorkflowEnabled,
+    receivingEncounterFoundationEnabled,
+  };
+
   if (presence.trackboardRequiredColumnsMissing.length > 0) {
     reasons.push(
       `Missing required Encounter columns for Trackboard: ${presence.trackboardRequiredColumnsMissing.join(", ")}`
@@ -204,7 +254,7 @@ export function evaluateSchemaCompatibility(
     return {
       ok: false,
       verdict: "REQUIRED_SCHEMA_MISSING",
-      hospitalEpisodeFoundationEnabled,
+      ...baseFlags,
       presence,
       reasons,
       deploymentSha,
@@ -218,14 +268,65 @@ export function evaluateSchemaCompatibility(
     presence.hospitalEpisodeStatusEnumPresent &&
     presence.hospitalEpisodeCloseReasonEnumPresent;
 
+  const d3cComplete =
+    presence.internalPlacementTablePresent &&
+    presence.internalPlacementStatusEnumPresent &&
+    presence.internalPlacementRequestedTypeEnumPresent &&
+    presence.receivingEncounterLifecycleEnumPresent;
+
   if (hospitalEpisodeFoundationEnabled && !d3bComplete) {
     reasons.push(
-      "hospitalEpisodeFoundationEnabled is ON but D3B schema objects are incomplete (HospitalEpisode / hospitalEpisodeId / enums)."
+      "hospitalEpisodeFoundationEnabled is ON but D3B schema objects are incomplete."
     );
     return {
       ok: false,
       verdict: "FEATURE_ON_SCHEMA_MISSING",
-      hospitalEpisodeFoundationEnabled,
+      ...baseFlags,
+      presence,
+      reasons,
+      deploymentSha,
+      checkedAt,
+    };
+  }
+
+  if (internalPlacementWorkflowEnabled && !d3cComplete) {
+    reasons.push(
+      "internalPlacementWorkflowEnabled is ON but D3C InternalPlacementRequest schema is incomplete."
+    );
+    return {
+      ok: false,
+      verdict: "FEATURE_ON_SCHEMA_MISSING",
+      ...baseFlags,
+      presence,
+      reasons,
+      deploymentSha,
+      checkedAt,
+    };
+  }
+
+  if (internalPlacementWorkflowEnabled && !d3bComplete) {
+    reasons.push(
+      "internalPlacementWorkflowEnabled is ON but D3B HospitalEpisode schema is incomplete (required dependency)."
+    );
+    return {
+      ok: false,
+      verdict: "FEATURE_ON_SCHEMA_MISSING",
+      ...baseFlags,
+      presence,
+      reasons,
+      deploymentSha,
+      checkedAt,
+    };
+  }
+
+  if (receivingEncounterFoundationEnabled && !d3cComplete) {
+    reasons.push(
+      "receivingEncounterFoundationEnabled is ON but D3C schema is incomplete."
+    );
+    return {
+      ok: false,
+      verdict: "FEATURE_ON_SCHEMA_MISSING",
+      ...baseFlags,
       presence,
       reasons,
       deploymentSha,
@@ -241,10 +342,18 @@ export function evaluateSchemaCompatibility(
     reasons.push("D3B schema objects present.");
   }
 
+  if (!d3cComplete && !internalPlacementWorkflowEnabled && !receivingEncounterFoundationEnabled) {
+    reasons.push(
+      "D3C schema optional objects absent; placement flags OFF — OK when Trackboard does not query InternalPlacementRequest."
+    );
+  } else if (d3cComplete) {
+    reasons.push("D3C schema objects present.");
+  }
+
   return {
     ok: true,
     verdict: "COMPATIBLE",
-    hospitalEpisodeFoundationEnabled,
+    ...baseFlags,
     presence,
     reasons,
     deploymentSha,
@@ -259,6 +368,8 @@ export async function checkSchemaCompatibility(
   db: Queryable,
   options?: {
     hospitalEpisodeFoundationEnabled?: boolean;
+    internalPlacementWorkflowEnabled?: boolean;
+    receivingEncounterFoundationEnabled?: boolean;
     deploymentSha?: string | null;
     bypassCache?: boolean;
   }
@@ -282,6 +393,12 @@ export async function checkSchemaCompatibility(
       hospitalEpisodeFoundationEnabled:
         options?.hospitalEpisodeFoundationEnabled ??
         hospitalEpisodeFoundationEnabledFromProcessEnv(),
+      internalPlacementWorkflowEnabled:
+        options?.internalPlacementWorkflowEnabled ??
+        internalPlacementWorkflowEnabledFromProcessEnv(),
+      receivingEncounterFoundationEnabled:
+        options?.receivingEncounterFoundationEnabled ??
+        receivingEncounterFoundationEnabledFromProcessEnv(),
       presence: null,
       reasons: ["Could not inspect information_schema / _prisma_migrations"],
       deploymentSha:
