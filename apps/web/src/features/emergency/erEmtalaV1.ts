@@ -34,6 +34,7 @@ export const EMTALA_DISPOSITION_CATEGORY_VALUES = [
   "TRANSFER",
   "AMA",
   "LWBS",
+  "ELOPEMENT",
   "DECEASED",
   "OTHER",
 ] as const;

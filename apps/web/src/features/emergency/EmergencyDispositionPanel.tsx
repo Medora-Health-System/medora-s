@@ -3,8 +3,15 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   projectEdDispositionState,
+  readAmaDispositionV1,
+  readDeceasedDispositionV1,
   readEdDispositionDecisionFromNursingAssessment,
+  readElopementDispositionV1,
+  readLwbsDispositionV1,
+  readOtherDispositionV1,
   resolveEdDispositionPath,
+  resolveEdDispositionPrintKind,
+  shouldUseHomeDischargePrintLayout,
 } from "@medora/shared";
 import { apiFetch, parseApiResponse } from "@/lib/apiClient";
 import { normalizeUserFacingError } from "@/lib/userFacingError";
@@ -63,6 +70,22 @@ import {
   type DischargeMedicationSourceInput,
 } from "@/features/emergency/providerDischargeMedicationContext";
 import { EdDispositionPreviewPanel } from "@/features/emergency/EdDispositionPreviewPanel";
+import {
+  AmaDispositionBoard,
+  DeceasedDispositionBoard,
+  ElopementDispositionBoard,
+  GovernedOtherDispositionBoard,
+  HomeDischargeBoardMountNote,
+  LwbsDispositionBoard,
+} from "@/features/emergency/EdDispositionPathwayBoards";
+import {
+  emptyAmaDispositionForm,
+  emptyDeceasedDispositionForm,
+  emptyElopementDispositionForm,
+  emptyLwbsDispositionForm,
+  emptyOtherDispositionForm,
+  mergePathwayBoardsIntoNursingAssessment,
+} from "@/features/emergency/edDispositionPathwayPersist";
 import {
   edDispositionTouchButtonStyle,
   edDispositionWorkspaceStyle,
@@ -174,6 +197,7 @@ export function EmergencyDispositionPanel({
       { id: "TRANSFER", label: t("emergencyDisposition.outcomeTRANSFER") },
       { id: "AMA", label: t("emergencyDisposition.outcomeAMA") },
       { id: "LWBS", label: t("emergencyDisposition.outcomeLWBS") },
+      { id: "ELOPEMENT", label: t("emergencyDisposition.outcomeELOPEMENT") },
       { id: "DECEASED", label: t("emergencyDisposition.outcomeDECEASED") },
       { id: "OTHER", label: t("emergencyDisposition.outcomeOTHER") },
     ],
@@ -243,6 +267,11 @@ export function EmergencyDispositionPanel({
     null
   );
   const [pathwayChangeReason, setPathwayChangeReason] = useState("");
+  const [amaBoard, setAmaBoard] = useState(emptyAmaDispositionForm);
+  const [lwbsBoard, setLwbsBoard] = useState(emptyLwbsDispositionForm);
+  const [elopementBoard, setElopementBoard] = useState(emptyElopementDispositionForm);
+  const [deceasedBoard, setDeceasedBoard] = useState(emptyDeceasedDispositionForm);
+  const [otherBoard, setOtherBoard] = useState(emptyOtherDispositionForm);
   const hasSavedAdmission = useMemo(
     () => parseAdmissionSummaryForChart(encounter.admissionSummaryJson) != null,
     [encounter.admissionSummaryJson]
@@ -280,6 +309,11 @@ export function EmergencyDispositionPanel({
       d.dischargeMode.trim().length > 0 ? d.dischargeMode : outcomeUiToDischargeMode(inferred);
     setDischargeForm({ ...d, dischargeMode: dischargeModeSynced });
     setProviderDischargeDoc(hydrateProviderDischargeDocumentationForm(encounter.dischargeSummaryJson));
+    setAmaBoard(readAmaDispositionV1(encounter.nursingAssessment));
+    setLwbsBoard(readLwbsDispositionV1(encounter.nursingAssessment));
+    setElopementBoard(readElopementDispositionV1(encounter.nursingAssessment));
+    setDeceasedBoard(readDeceasedDispositionV1(encounter.nursingAssessment));
+    setOtherBoard(readOtherDispositionV1(encounter.nursingAssessment));
     setAdmissionForm(a);
     setSupplementForm(sup);
     setOutcomeUi(inferred);
@@ -416,6 +450,22 @@ export function EmergencyDispositionPanel({
   const handlePrintDischargeSummary = useCallback(() => {
     const p = encounter.patient;
     if (!p || !encounter.createdAt) return;
+    const resolvedPath = resolveEdDispositionPath({
+      dischargeSummaryJson: encounter.dischargeSummaryJson,
+      admissionSummaryJson: encounter.admissionSummaryJson,
+      nursingAssessment: encounter.nursingAssessment,
+    });
+    const pathForPrint = resolvedPath !== "NONE" ? resolvedPath : outcomeUi;
+    // D2.5 — Home Discharge print layout is HOME-only.
+    if (!shouldUseHomeDischargePrintLayout(pathForPrint)) {
+      const kind = resolveEdDispositionPrintKind(pathForPrint);
+      window.alert(
+        language === "en"
+          ? `Print routing: ${kind}. Dedicated pathway print layouts ship with closed-chart archive; Home Discharge layout is not used for this pathway.`
+          : `Routage d’impression : ${kind}. Les mises en page dédiées sont fournies via l’archive fermée ; la synthèse domicile n’est pas utilisée pour ce parcours.`
+      );
+      return;
+    }
     printDischarge({
       patient: p,
       encounter: {
@@ -433,6 +483,9 @@ export function EmergencyDispositionPanel({
     dischargeMedicationSources,
     encounter.createdAt,
     encounter.dischargeSummaryJson,
+    encounter.admissionSummaryJson,
+    encounter.nursingAssessment,
+    outcomeUi,
     encounter.patient,
     encounter.physicianAssigned,
     facilityName,
@@ -476,13 +529,8 @@ export function EmergencyDispositionPanel({
 
     const effectiveOutcome = outcomeOverride ?? outcomeUi;
 
-    const showProviderDischargeOnSave =
-      effectiveOutcome !== "ADMISSION" &&
-      (effectiveOutcome === "HOME" ||
-        effectiveOutcome === "AMA" ||
-        effectiveOutcome === "LWBS" ||
-        effectiveOutcome === "OTHER" ||
-        effectiveOutcome === "TRANSFER");
+    // D2.5 — Home discharge packet participates in validation/save for HOME only.
+    const showProviderDischargeOnSave = effectiveOutcome === "HOME";
 
     const homeStrict = effectiveOutcome === "HOME" && (mode === "SIGN" || canEditMedicalDischarge);
     if (
@@ -591,7 +639,7 @@ export function EmergencyDispositionPanel({
        * DISCHARGE_SUMMARY_SAVED timeline noise). Trackboard disposition uses admission packet + erDispositionV1.
        */
       if (mergedDischarge !== null && effectiveOutcome !== "ADMISSION") {
-        if (canEditMedicalDischarge) {
+        if (canEditMedicalDischarge && effectiveOutcome === "HOME") {
           body.dischargeSummaryJson = buildProviderDischargeJsonForSave(
             encounter.dischargeSummaryJson,
             providerDischargeDoc,
@@ -599,6 +647,7 @@ export function EmergencyDispositionPanel({
             mergedDischarge
           );
         } else {
+          // Non-HOME pathways: persist mode/shared nursing fields without Home discharge packet.
           body.dischargeSummaryJson = mergedDischarge;
         }
       }
@@ -616,7 +665,14 @@ export function EmergencyDispositionPanel({
         signature,
         decisionPersist
       );
-      body.nursingAssessment = applyEmtalaV1ComplementToNursingAssessment(naWithDisp, {
+      const naWithPathway = mergePathwayBoardsIntoNursingAssessment(naWithDisp, effectiveOutcome, {
+        ama: amaBoard,
+        lwbs: lwbsBoard,
+        elopement: elopementBoard,
+        deceased: deceasedBoard,
+        other: otherBoard,
+      });
+      body.nursingAssessment = applyEmtalaV1ComplementToNursingAssessment(naWithPathway, {
         outcome: effectiveOutcome,
         complement: emtalaComplement,
         dispositionDecidedAtIso: signature.savedAt,
@@ -719,13 +775,14 @@ export function EmergencyDispositionPanel({
     [encounter.nursingAssessment]
   );
   const showObservationHandoffStatus = showAdmissionFields && hasSavedAdmission;
-  const showProviderDischargeDocumentation =
-    outcomeUi !== "ADMISSION" && (outcomeUi === "HOME" || outcomeUi === "AMA" || outcomeUi === "LWBS" || outcomeUi === "OTHER" || outcomeUi === "TRANSFER");
+  // D2.5 — Home packet mounts for HOME only; other pathways use dedicated boards.
+  const showProviderDischargeDocumentation = outcomeUi === "HOME";
 
   const showTransferExtra = outcomeUi === "TRANSFER";
-  const showAmaExtra = outcomeUi === "AMA";
-  const showLwbsExtra = outcomeUi === "LWBS";
-  const showDeceasedExtra = outcomeUi === "DECEASED";
+  // Legacy thin textareas removed for AMA/LWBS/DECEASED — dedicated boards own those fields.
+  const showAmaExtra = false;
+  const showLwbsExtra = false;
+  const showDeceasedExtra = false;
 
   return (
     <>
@@ -812,10 +869,12 @@ export function EmergencyDispositionPanel({
                       : outcomeUi === "AMA"
                         ? "AMA"
                         : outcomeUi === "LWBS"
-                          ? "LWBS_ELOPEMENT"
-                          : outcomeUi === "DECEASED"
-                            ? "DECEASED"
-                            : "OTHER_GOVERNED"
+                          ? "LWBS"
+                          : outcomeUi === "ELOPEMENT"
+                            ? "ELOPEMENT"
+                            : outcomeUi === "DECEASED"
+                              ? "DECEASED"
+                              : "OTHER_GOVERNED"
               }
               data-disposition-workflow-state={dispositionState.workflowState}
               data-decision-status={dispositionState.decisionStatus}
@@ -942,18 +1001,61 @@ export function EmergencyDispositionPanel({
               </p>
             ) : null}
 
-            {showProviderDischargeDocumentation ?
-              <ProviderDischargeDocumentationSection
-                facilityId={facilityId}
-                patientId={encounter.patient?.id}
-                encounterId={encounterId}
-                providerForm={providerDischargeDoc}
-                onProviderFormChange={onProviderDischargeDocChange}
-                disabled={medDisabled}
-                validationErrors={providerDischargeValidationErrors}
-                layoutMode={layoutMode}
+            {showProviderDischargeDocumentation ? (
+              <>
+                <HomeDischargeBoardMountNote />
+                <ProviderDischargeDocumentationSection
+                  facilityId={facilityId}
+                  patientId={encounter.patient?.id}
+                  encounterId={encounterId}
+                  providerForm={providerDischargeDoc}
+                  onProviderFormChange={onProviderDischargeDocChange}
+                  disabled={medDisabled}
+                  validationErrors={providerDischargeValidationErrors}
+                  layoutMode={layoutMode}
+                />
+              </>
+            ) : null}
+
+            {outcomeUi === "AMA" ? (
+              <AmaDispositionBoard
+                value={amaBoard}
+                onChange={setAmaBoard}
+                nursingAssessment={encounter.nursingAssessment}
+                disabled={formDisabled}
               />
-            : null}
+            ) : null}
+            {outcomeUi === "LWBS" ? (
+              <LwbsDispositionBoard
+                value={lwbsBoard}
+                onChange={setLwbsBoard}
+                nursingAssessment={encounter.nursingAssessment}
+                disabled={formDisabled}
+              />
+            ) : null}
+            {outcomeUi === "ELOPEMENT" ? (
+              <ElopementDispositionBoard
+                value={elopementBoard}
+                onChange={setElopementBoard}
+                nursingAssessment={encounter.nursingAssessment}
+                disabled={formDisabled}
+              />
+            ) : null}
+            {outcomeUi === "DECEASED" ? (
+              <DeceasedDispositionBoard
+                value={deceasedBoard}
+                onChange={setDeceasedBoard}
+                nursingAssessment={encounter.nursingAssessment}
+                disabled={formDisabled}
+              />
+            ) : null}
+            {outcomeUi === "OTHER" ? (
+              <GovernedOtherDispositionBoard
+                value={otherBoard}
+                onChange={setOtherBoard}
+                disabled={formDisabled}
+              />
+            ) : null}
 
             {showAdmissionFields && canPrescribe ? (
               <div>

@@ -70,6 +70,7 @@ export type ErDispositionOutcomeUi =
   | "TRANSFER"
   | "AMA"
   | "LWBS"
+  | "ELOPEMENT"
   | "DECEASED"
   | "OTHER";
 
@@ -133,6 +134,10 @@ export const ER_DISCHARGE_MODE_ADMISSION = "Admission / hospitalisation";
 export const ER_DISCHARGE_MODE_AMA = "Contre avis médical (LAMA)";
 export const ER_DISCHARGE_MODE_DECEASED = "Décès";
 export const ER_DISCHARGE_MODE_OTHER = "Autre";
+/** D2.5 — first-class LWBS (aligned with shared ED_DISCHARGE_MODE_LWBS). */
+export const ER_DISCHARGE_MODE_LWBS = "Départ avant évaluation (LWBS)";
+/** D2.5 — distinct from LWBS. */
+export const ER_DISCHARGE_MODE_ELOPEMENT = "Fugue / départ non autorisé";
 
 export function outcomeUiToDischargeMode(outcome: ErDispositionOutcomeUi): string {
   switch (outcome) {
@@ -147,6 +152,9 @@ export function outcomeUiToDischargeMode(outcome: ErDispositionOutcomeUi): strin
     case "DECEASED":
       return ER_DISCHARGE_MODE_DECEASED;
     case "LWBS":
+      return ER_DISCHARGE_MODE_LWBS;
+    case "ELOPEMENT":
+      return ER_DISCHARGE_MODE_ELOPEMENT;
     case "OTHER":
       return ER_DISCHARGE_MODE_OTHER;
     default:
@@ -164,7 +172,10 @@ export function inferOutcomeUiFromForms(
   if (m === ER_DISCHARGE_MODE_TRANSFER) return "TRANSFER";
   if (m === ER_DISCHARGE_MODE_AMA) return "AMA";
   if (m === ER_DISCHARGE_MODE_DECEASED) return "DECEASED";
+  if (m === ER_DISCHARGE_MODE_LWBS) return "LWBS";
+  if (m === ER_DISCHARGE_MODE_ELOPEMENT) return "ELOPEMENT";
   if (m === ER_DISCHARGE_MODE_OTHER) {
+    // Legacy read: OTHER + lwbsNarrative → LWBS
     if (supplement.lwbsNarrative.trim()) return "LWBS";
     return "OTHER";
   }
@@ -186,6 +197,7 @@ export function localizedErDischargeModeLabel(
     TRANSFER: "outcomeTRANSFER",
     AMA: "outcomeAMA",
     LWBS: "outcomeLWBS",
+    ELOPEMENT: "outcomeELOPEMENT",
     DECEASED: "outcomeDECEASED",
     OTHER: "outcomeOTHER",
   };
