@@ -42,8 +42,12 @@ const PLACEMENT_SELECT = {
   requestedService: true,
   status: true,
   clinicalPriority: true,
+  admissionDiagnosisSummary: true,
+  reasonForPlacement: true,
   telemetryRequired: true,
   isolationRequired: true,
+  isolationType: true,
+  acceptingProviderNameSnapshot: true,
   assignedUnitCode: true,
   assignedRoomKey: true,
   assignedBedKey: true,
@@ -231,6 +235,100 @@ export class InternalPlacementService {
     return projectInternalPlacementState(created)!;
   }
 
+  /**
+   * Update clinical fields on DRAFT or SIGNED only (provider revision before REQUESTED).
+   */
+  async updateDraft(
+    facilityId: string,
+    requestId: string,
+    actorUserId: string,
+    input: ClinicalPlacementDraftInput,
+    options?: { featureFlagEnabled?: boolean; ip?: string; userAgent?: string }
+  ): Promise<InternalPlacementStateProjection> {
+    this.assertWorkflowEnabled(options);
+    const row = await this.prisma.internalPlacementRequest.findFirst({
+      where: { id: requestId, facilityId },
+      select: PLACEMENT_SELECT,
+    });
+    if (!row) throw new NotFoundException("Placement request not found");
+    if (
+      row.status !== InternalPlacementStatus.DRAFT &&
+      row.status !== InternalPlacementStatus.SIGNED
+    ) {
+      throw new BadRequestException("Only DRAFT or SIGNED placement requests can be edited");
+    }
+    if (input.expectedVersion != null && row.version !== input.expectedVersion) {
+      throw new ConflictException("Placement request version conflict");
+    }
+
+    const updated = await this.prisma.internalPlacementRequest.updateMany({
+      where: { id: row.id, facilityId, version: row.version },
+      data: {
+        requestedEncounterType: input.requestedEncounterType,
+        requestedLevelOfCare: input.requestedLevelOfCare?.trim() || null,
+        requestedService: input.requestedService?.trim() || null,
+        requestedSpecialty: input.requestedSpecialty?.trim() || null,
+        requestedUnitCode: input.requestedUnitCode?.trim() || null,
+        clinicalPriority: input.clinicalPriority?.trim() || null,
+        admissionDiagnosisSummary: input.admissionDiagnosisSummary?.trim() || null,
+        reasonForPlacement: input.reasonForPlacement?.trim() || null,
+        telemetryRequired: input.telemetryRequired === true,
+        isolationRequired: input.isolationRequired === true,
+        isolationType: input.isolationType?.trim() || null,
+        specialPlacementNeedsJson: input.specialPlacementNeedsJson ?? undefined,
+        acceptingProviderNameSnapshot: input.acceptingProviderNameSnapshot?.trim() || null,
+        updatedByUserId: actorUserId,
+        version: { increment: 1 },
+      },
+    });
+    if (updated.count !== 1) {
+      throw new ConflictException("Placement request version conflict");
+    }
+
+    const fresh = await this.prisma.internalPlacementRequest.findFirst({
+      where: { id: row.id, facilityId },
+      select: PLACEMENT_SELECT,
+    });
+    await this.audit.log(AuditAction.UPDATE, INTERNAL_PLACEMENT_ENTITY, {
+      userId: actorUserId,
+      facilityId,
+      patientId: row.patientId,
+      encounterId: row.originatingEncounterId,
+      entityId: row.id,
+      critical: true,
+      ip: options?.ip,
+      userAgent: options?.userAgent,
+      metadata: {
+        event: "INTERNAL_PLACEMENT_DRAFT_UPDATED",
+        status: fresh?.status,
+        version: fresh?.version,
+      },
+    });
+    return projectInternalPlacementState(fresh)!;
+  }
+
+  async signDraft(
+    facilityId: string,
+    requestId: string,
+    actorUserId: string,
+    options?: {
+      featureFlagEnabled?: boolean;
+      expectedVersion?: number;
+      ip?: string;
+      userAgent?: string;
+    }
+  ): Promise<InternalPlacementStateProjection> {
+    return this.transition(
+      facilityId,
+      requestId,
+      actorUserId,
+      InternalPlacementStatus.SIGNED,
+      InternalPlacementActorRole.PROVIDER,
+      { expectedVersion: options?.expectedVersion },
+      options
+    );
+  }
+
   async submitRequested(
     facilityId: string,
     requestId: string,
@@ -416,7 +514,11 @@ export class InternalPlacementService {
         data.departedEdAt = new Date();
         data.departureDocumentedByUserId = actorUserId;
       }
-      if (toStatus === InternalPlacementStatus.CANCELLED || toStatus === InternalPlacementStatus.DECLINED) {
+      if (
+        toStatus === InternalPlacementStatus.CANCELLED ||
+        toStatus === InternalPlacementStatus.DECLINED ||
+        toStatus === InternalPlacementStatus.EXPIRED
+      ) {
         data.cancellationReason = patch?.cancellationReason?.trim() || toStatus;
         data.cancelledAt = new Date();
         data.cancelledByUserId = actorUserId;

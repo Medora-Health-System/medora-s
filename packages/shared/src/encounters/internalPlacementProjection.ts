@@ -22,6 +22,10 @@ export type InternalPlacementStateProjection = {
   requestedService: string | null;
   status: string;
   clinicalPriority: string | null;
+  admissionDiagnosisSummary: string | null;
+  reasonForPlacement: string | null;
+  isolationType: string | null;
+  acceptingProviderNameSnapshot: string | null;
   telemetryRequired: boolean;
   isolationRequired: boolean;
   assignedUnitCode: string | null;
@@ -52,6 +56,10 @@ export type InternalPlacementRowForProjection = {
   requestedService: string | null;
   status: string;
   clinicalPriority: string | null;
+  admissionDiagnosisSummary?: string | null;
+  reasonForPlacement?: string | null;
+  isolationType?: string | null;
+  acceptingProviderNameSnapshot?: string | null;
   telemetryRequired: boolean;
   isolationRequired: boolean;
   assignedUnitCode: string | null;
@@ -88,6 +96,10 @@ export function projectInternalPlacementState(
     requestedService: row.requestedService,
     status: row.status,
     clinicalPriority: row.clinicalPriority,
+    admissionDiagnosisSummary: row.admissionDiagnosisSummary ?? null,
+    reasonForPlacement: row.reasonForPlacement ?? null,
+    isolationType: row.isolationType ?? null,
+    acceptingProviderNameSnapshot: row.acceptingProviderNameSnapshot ?? null,
     telemetryRequired: Boolean(row.telemetryRequired),
     isolationRequired: Boolean(row.isolationRequired),
     assignedUnitCode: row.assignedUnitCode,

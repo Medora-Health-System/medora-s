@@ -61,6 +61,16 @@ describe("internalPlacement status machine", () => {
     ).toBe(false);
   });
 
+  it("allows admin expire from REQUESTED", () => {
+    expect(
+      validateInternalPlacementTransition(
+        InternalPlacementStatus.REQUESTED,
+        InternalPlacementStatus.EXPIRED,
+        InternalPlacementActorRole.ADMIN
+      ).ok
+    ).toBe(true);
+  });
+
   it("never treats roomLabel/handoff as bed/arrival", () => {
     expect(placementBedAssignedFromRoomLabelAlone()).toBe(false);
     expect(placementArrivedFromHandoffAlone()).toBe(false);
@@ -109,9 +119,9 @@ describe("projection", () => {
 });
 
 describe("D3C benchmark", () => {
-  it("has at least 100 cases with exact-set 1.00 on measured signals", () => {
+  it("has at least 150 cases with exact-set 1.00 on measured signals", () => {
     const cases = buildInternalPlacementD3cBenchmarkCases();
-    expect(cases.length).toBeGreaterThanOrEqual(100);
+    expect(cases.length).toBeGreaterThanOrEqual(150);
     const report = evaluateInternalPlacementD3cBenchmark(cases);
     expect(report.exactSet).toBe(1);
     expect(report.precision).toBe(1);

@@ -89,15 +89,27 @@ const TRANSITIONS: Record<InternalPlacementStatus, TransitionRule[]> = {
     { to: InternalPlacementStatus.ACCEPTED, roles: [InternalPlacementActorRole.BED_MANAGEMENT, InternalPlacementActorRole.ADMIN] },
     { to: InternalPlacementStatus.DECLINED, roles: [InternalPlacementActorRole.BED_MANAGEMENT, InternalPlacementActorRole.ADMIN] },
     { to: InternalPlacementStatus.CANCELLED, roles: [InternalPlacementActorRole.PROVIDER, InternalPlacementActorRole.ADMIN] },
+    {
+      to: InternalPlacementStatus.EXPIRED,
+      roles: [InternalPlacementActorRole.ADMIN, InternalPlacementActorRole.SERVER],
+    },
   ],
   UNDER_REVIEW: [
     { to: InternalPlacementStatus.ACCEPTED, roles: [InternalPlacementActorRole.BED_MANAGEMENT, InternalPlacementActorRole.ADMIN] },
     { to: InternalPlacementStatus.DECLINED, roles: [InternalPlacementActorRole.BED_MANAGEMENT, InternalPlacementActorRole.ADMIN] },
     { to: InternalPlacementStatus.CANCELLED, roles: [InternalPlacementActorRole.PROVIDER, InternalPlacementActorRole.ADMIN] },
+    {
+      to: InternalPlacementStatus.EXPIRED,
+      roles: [InternalPlacementActorRole.ADMIN, InternalPlacementActorRole.SERVER],
+    },
   ],
   ACCEPTED: [
     { to: InternalPlacementStatus.BED_ASSIGNED, roles: [InternalPlacementActorRole.BED_MANAGEMENT, InternalPlacementActorRole.ADMIN] },
     { to: InternalPlacementStatus.CANCELLED, roles: [InternalPlacementActorRole.PROVIDER, InternalPlacementActorRole.BED_MANAGEMENT, InternalPlacementActorRole.ADMIN] },
+    {
+      to: InternalPlacementStatus.EXPIRED,
+      roles: [InternalPlacementActorRole.ADMIN, InternalPlacementActorRole.SERVER],
+    },
   ],
   BED_ASSIGNED: [
     { to: InternalPlacementStatus.READY_FOR_TRANSFER, roles: [InternalPlacementActorRole.ED_NURSE, InternalPlacementActorRole.ADMIN] },

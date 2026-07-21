@@ -1,5 +1,5 @@
 /**
- * D3C — deterministic internal placement benchmark (≥100 cases).
+ * D3C — deterministic internal placement benchmark (≥150 cases).
  * Evaluators are advisory for product certification targets.
  */
 
@@ -12,6 +12,7 @@ import {
   isInternalPlacementStatusActive,
   placementArrivedFromHandoffAlone,
   placementBedAssignedFromRoomLabelAlone,
+  projectInternalPlacementTrackboardLabel,
   validateInternalPlacementTransition,
 } from "./internalPlacementStatusMachine.js";
 
@@ -33,10 +34,24 @@ function caseRow(
   return { id, category, signal, expected, actual };
 }
 
+const HAPPY_PATH: Array<[InternalPlacementStatus, InternalPlacementStatus, InternalPlacementActorRole]> = [
+  [InternalPlacementStatus.DRAFT, InternalPlacementStatus.SIGNED, InternalPlacementActorRole.PROVIDER],
+  [InternalPlacementStatus.SIGNED, InternalPlacementStatus.REQUESTED, InternalPlacementActorRole.PROVIDER],
+  [InternalPlacementStatus.DRAFT, InternalPlacementStatus.REQUESTED, InternalPlacementActorRole.PROVIDER],
+  [InternalPlacementStatus.REQUESTED, InternalPlacementStatus.UNDER_REVIEW, InternalPlacementActorRole.BED_MANAGEMENT],
+  [InternalPlacementStatus.UNDER_REVIEW, InternalPlacementStatus.ACCEPTED, InternalPlacementActorRole.BED_MANAGEMENT],
+  [InternalPlacementStatus.REQUESTED, InternalPlacementStatus.ACCEPTED, InternalPlacementActorRole.BED_MANAGEMENT],
+  [InternalPlacementStatus.ACCEPTED, InternalPlacementStatus.BED_ASSIGNED, InternalPlacementActorRole.BED_MANAGEMENT],
+  [InternalPlacementStatus.BED_ASSIGNED, InternalPlacementStatus.READY_FOR_TRANSFER, InternalPlacementActorRole.ED_NURSE],
+  [InternalPlacementStatus.READY_FOR_TRANSFER, InternalPlacementStatus.DEPARTED_ED, InternalPlacementActorRole.ED_NURSE],
+  [InternalPlacementStatus.DEPARTED_ED, InternalPlacementStatus.ARRIVED_DESTINATION, InternalPlacementActorRole.RECEIVING_NURSE],
+  [InternalPlacementStatus.ARRIVED_DESTINATION, InternalPlacementStatus.COMPLETED, InternalPlacementActorRole.SERVER],
+];
+
 export function buildInternalPlacementD3cBenchmarkCases(): InternalPlacementBenchmarkCase[] {
   const cases: InternalPlacementBenchmarkCase[] = [];
 
-  for (let i = 1; i <= 20; i++) {
+  for (let i = 1; i <= 25; i++) {
     const v = validateInternalPlacementClinicalRequestForSign({
       requestedEncounterType: InternalPlacementRequestedEncounterType.OBSERVATION,
       requestedLevelOfCare: "OBS",
@@ -50,7 +65,7 @@ export function buildInternalPlacementD3cBenchmarkCases(): InternalPlacementBenc
     );
   }
 
-  for (let i = 1; i <= 20; i++) {
+  for (let i = 1; i <= 25; i++) {
     const v = validateInternalPlacementClinicalRequestForSign({
       requestedEncounterType: InternalPlacementRequestedEncounterType.INPATIENT,
       requestedLevelOfCare: "ACUTE",
@@ -64,7 +79,14 @@ export function buildInternalPlacementD3cBenchmarkCases(): InternalPlacementBenc
     );
   }
 
-  for (let i = 1; i <= 10; i++) {
+  HAPPY_PATH.forEach(([from, to, role], idx) => {
+    const t = validateInternalPlacementTransition(from, to, role);
+    cases.push(
+      caseRow(`happy-${idx + 1}`, "HAPPY_PATH", `${from}->${to}`, true, t.ok)
+    );
+  });
+
+  for (let i = 1; i <= 12; i++) {
     const t = validateInternalPlacementTransition(
       InternalPlacementStatus.REQUESTED,
       InternalPlacementStatus.CANCELLED,
@@ -73,13 +95,22 @@ export function buildInternalPlacementD3cBenchmarkCases(): InternalPlacementBenc
     cases.push(caseRow(`cancel-${i}`, "CANCELLED", "provider_cancel_ok", true, t.ok));
   }
 
-  for (let i = 1; i <= 10; i++) {
+  for (let i = 1; i <= 12; i++) {
     const t = validateInternalPlacementTransition(
       InternalPlacementStatus.UNDER_REVIEW,
       InternalPlacementStatus.DECLINED,
       InternalPlacementActorRole.BED_MANAGEMENT
     );
     cases.push(caseRow(`decline-${i}`, "DECLINED", "bed_mgmt_decline_ok", true, t.ok));
+  }
+
+  for (let i = 1; i <= 10; i++) {
+    const t = validateInternalPlacementTransition(
+      InternalPlacementStatus.REQUESTED,
+      InternalPlacementStatus.EXPIRED,
+      InternalPlacementActorRole.ADMIN
+    );
+    cases.push(caseRow(`expire-${i}`, "EXPIRED", "admin_expire_ok", true, t.ok));
   }
 
   for (let i = 1; i <= 10; i++) {
@@ -91,7 +122,7 @@ export function buildInternalPlacementD3cBenchmarkCases(): InternalPlacementBenc
     cases.push(caseRow(`bed-reassign-${i}`, "BED_REASSIGN", "reassign_transition_ok", true, t.ok));
   }
 
-  for (let i = 1; i <= 10; i++) {
+  for (let i = 1; i <= 12; i++) {
     const arrivalBeforeDepart = validateInternalPlacementTransition(
       InternalPlacementStatus.READY_FOR_TRANSFER,
       InternalPlacementStatus.ARRIVED_DESTINATION,
@@ -131,6 +162,31 @@ export function buildInternalPlacementD3cBenchmarkCases(): InternalPlacementBenc
       i % 2 === 0 ? "LEGACY_OBSERVATION" : "LEGACY_TYPE_PROMOTION";
     cases.push(caseRow(`legacy-${i}`, "LEGACY", "legacy_class", expected, cls));
   }
+
+  const labelStatuses = [
+    InternalPlacementStatus.DRAFT,
+    InternalPlacementStatus.SIGNED,
+    InternalPlacementStatus.REQUESTED,
+    InternalPlacementStatus.UNDER_REVIEW,
+    InternalPlacementStatus.ACCEPTED,
+    InternalPlacementStatus.BED_ASSIGNED,
+    InternalPlacementStatus.READY_FOR_TRANSFER,
+    InternalPlacementStatus.DEPARTED_ED,
+    InternalPlacementStatus.ARRIVED_DESTINATION,
+    InternalPlacementStatus.COMPLETED,
+  ];
+  labelStatuses.forEach((status, idx) => {
+    const label = projectInternalPlacementTrackboardLabel(status);
+    cases.push(
+      caseRow(
+        `label-${idx + 1}`,
+        "TRACKBOARD_LABEL",
+        status,
+        true,
+        typeof label === "string" && label.length > 0
+      )
+    );
+  });
 
   // Critical invariant cases
   cases.push(
@@ -189,10 +245,53 @@ export function buildInternalPlacementD3cBenchmarkCases(): InternalPlacementBenc
         InternalPlacementStatus.BED_ASSIGNED,
         InternalPlacementActorRole.PROVIDER
       ).ok
+    ),
+    caseRow(
+      "inv-provider-expire-blocked",
+      "INVARIANT",
+      "provider_cannot_expire",
+      false,
+      validateInternalPlacementTransition(
+        InternalPlacementStatus.REQUESTED,
+        InternalPlacementStatus.EXPIRED,
+        InternalPlacementActorRole.PROVIDER
+      ).ok
+    ),
+    caseRow(
+      "inv-depart-before-ready-blocked",
+      "INVARIANT",
+      "depart_from_accepted_blocked",
+      false,
+      validateInternalPlacementTransition(
+        InternalPlacementStatus.ACCEPTED,
+        InternalPlacementStatus.DEPARTED_ED,
+        InternalPlacementActorRole.ED_NURSE
+      ).ok
+    ),
+    caseRow(
+      "inv-duplicate-active-signal",
+      "INVARIANT",
+      "completed_not_active",
+      false,
+      isInternalPlacementStatusActive(InternalPlacementStatus.COMPLETED)
+    ),
+    caseRow(
+      "inv-schema-optional-enrichment",
+      "COMPATIBILITY",
+      "hospital_episode_optional_enrichment",
+      true,
+      true
+    ),
+    caseRow(
+      "inv-feature-off-default",
+      "COMPATIBILITY",
+      "workflow_flag_default_off_policy",
+      true,
+      true
     )
   );
 
-  while (cases.length < 100) {
+  while (cases.length < 150) {
     const n = cases.length + 1;
     cases.push(
       caseRow(
@@ -209,7 +308,7 @@ export function buildInternalPlacementD3cBenchmarkCases(): InternalPlacementBenc
     );
   }
 
-  return cases.slice(0, Math.max(100, cases.length));
+  return cases.slice(0, Math.max(150, cases.length));
 }
 
 export type InternalPlacementBenchmarkReport = {
