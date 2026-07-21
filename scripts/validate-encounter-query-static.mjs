@@ -23,6 +23,8 @@ const ALLOWLIST_FILES = new Set([
   "encounters/hospital-episode.service.spec.ts",
   "encounters/internal-placement.service.ts",
   "encounters/internal-placement.service.spec.ts",
+  // D3E.7 — direct admission may create/link HospitalEpisode when foundation flag ON
+  "encounters/inpatient-operations.service.ts",
   "trackboard/trackboard-encounter-select.ts",
   "trackboard/trackboard.service.ts",
   "prisma/schema-compatibility.ts",
