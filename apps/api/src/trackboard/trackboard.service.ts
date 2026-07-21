@@ -1,6 +1,11 @@
 import { Injectable } from "@nestjs/common";
 import { EncounterStatus, EncounterType, Prisma } from "@prisma/client";
-import { computeObservationOperationalSnapshot } from "@medora/shared";
+import {
+  computeObservationOperationalSnapshot,
+  internalPlacementWorkflowEnabledFromProcessEnv,
+  projectInternalPlacementState,
+  type InternalPlacementStateProjection,
+} from "@medora/shared";
 import { PrismaService } from "../prisma/prisma.service";
 import {
   emptyTrackboardOperationalAggregate,
@@ -8,6 +13,32 @@ import {
   type TrackboardOperationalAggregate,
 } from "./trackboard-operational.util";
 import { TRACKBOARD_ACTIVE_ENCOUNTER_SELECT } from "./trackboard-encounter-select";
+
+/** Explicit InternalPlacementRequest select — never joined into Encounter select. */
+const TRACKBOARD_PLACEMENT_SELECT = {
+  id: true,
+  facilityId: true,
+  patientId: true,
+  hospitalEpisodeId: true,
+  originatingEncounterId: true,
+  receivingEncounterId: true,
+  receivingEncounterLifecycle: true,
+  requestedEncounterType: true,
+  requestedLevelOfCare: true,
+  requestedService: true,
+  status: true,
+  clinicalPriority: true,
+  telemetryRequired: true,
+  isolationRequired: true,
+  assignedUnitCode: true,
+  assignedRoomKey: true,
+  assignedBedKey: true,
+  readyForTransferAt: true,
+  departedEdAt: true,
+  arrivedDestinationAt: true,
+  version: true,
+  revision: true,
+} satisfies Prisma.InternalPlacementRequestSelect;
 
 @Injectable()
 export class TrackboardService {
@@ -33,6 +64,7 @@ export class TrackboardService {
     /**
      * Explicit select (not bare `include`) — MEDORA.PROD.TRACKBOARD_PRISMA_500_2026_07_20.
      * Omits D3B `hospitalEpisodeId` so Trackboard stays compatible before that migration.
+     * D3C placement is a separate optional query when the workflow flag is ON.
      */
     const encounters = await this.prisma.encounter.findMany({
       where,
@@ -44,11 +76,15 @@ export class TrackboardService {
     });
 
     const encounterIds = encounters.map((e) => e.id);
-    const opMap = await this.getOperationalAggregatesForEncounterIds(facilityId, encounterIds);
+    const [opMap, placementMap] = await Promise.all([
+      this.getOperationalAggregatesForEncounterIds(facilityId, encounterIds),
+      this.getPlacementProjectionsForEncounterIds(facilityId, encounterIds),
+    ]);
     const merged = mergeOperationalIntoEncounters(encounters, opMap);
     const enriched = merged.map((e) => {
+      const internalPlacement = placementMap.get(e.id) ?? null;
       if (e.type !== EncounterType.INPATIENT) {
-        return { ...e, observationOps: null };
+        return { ...e, observationOps: null, internalPlacement };
       }
       const ops = e.trackboardOps;
       const observationOps = computeObservationOperationalSnapshot({
@@ -71,7 +107,7 @@ export class TrackboardService {
           lastTriageVitalsRecordedAt: ops.lastTriageVitalsRecordedAt,
         },
       });
-      return { ...e, observationOps };
+      return { ...e, observationOps, internalPlacement };
     });
 
     if (options?.observationPatientsOnly) {
@@ -79,6 +115,37 @@ export class TrackboardService {
     }
 
     return enriched;
+  }
+
+  /**
+   * D3C — optional placement projection. Skipped entirely when flag OFF so
+   * unapplied D3C migrations cannot break Trackboard SQL.
+   */
+  async getPlacementProjectionsForEncounterIds(
+    facilityId: string,
+    encounterIds: string[]
+  ): Promise<Map<string, InternalPlacementStateProjection>> {
+    const map = new Map<string, InternalPlacementStateProjection>();
+    if (!internalPlacementWorkflowEnabledFromProcessEnv() || encounterIds.length === 0) {
+      return map;
+    }
+    const rows = await this.prisma.internalPlacementRequest.findMany({
+      where: {
+        facilityId,
+        originatingEncounterId: { in: encounterIds },
+        status: {
+          notIn: ["CANCELLED", "DECLINED", "EXPIRED", "ERROR_REVIEW", "COMPLETED"],
+        },
+      },
+      select: TRACKBOARD_PLACEMENT_SELECT,
+      orderBy: { createdAt: "desc" },
+    });
+    for (const row of rows) {
+      if (map.has(row.originatingEncounterId)) continue;
+      const projected = projectInternalPlacementState(row);
+      if (projected) map.set(row.originatingEncounterId, projected);
+    }
+    return map;
   }
 
   /**

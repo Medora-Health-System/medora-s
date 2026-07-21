@@ -16,6 +16,9 @@ export const TRACKBOARD_ENCOUNTER_FORBIDDEN_SELECT_KEYS = [
   "hospitalEpisodeId",
   "hospitalEpisode",
   "hospitalEpisodesOriginated",
+  /** D3C — placement must be a separate optional query, never Encounter select. */
+  "internalPlacementRequestsOriginated",
+  "internalPlacementRequestsAsReceiving",
 ] as const;
 
 const patientSelect = {

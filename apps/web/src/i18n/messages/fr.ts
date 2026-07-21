@@ -18601,4 +18601,30 @@ export default {
       release: "Notes de version",
     },
   },
+  internalPlacementD3c: {
+    boardTitle: "Décision d’admission et d’observation",
+    boardHint:
+      "Choisissez Observation ou Hospitalisation. Signer une décision ne ferme pas la consultation aux urgences et ne signifie pas l’arrivée dans l’unité.",
+    step1Title: "1. Décision",
+    observation: "Observation",
+    inpatient: "Hospitalisation",
+    step3Title: "3. État du placement",
+    statusNone: "Aucune demande de placement durable pour le moment",
+    noFalseBedHint:
+      "Le libellé de salle aux urgences n’est pas une attribution de lit. La transmission seule n’est pas une arrivée.",
+    status: {
+      PLACEMENT_DRAFT: "Brouillon de demande",
+      ADMISSION_DECISION_SIGNED: "Décision d’admission signée",
+      PLACEMENT_REQUESTED: "Placement demandé",
+      UNDER_REVIEW: "En cours d’examen",
+      ACCEPTED_AWAITING_BED: "Accepté — en attente de lit",
+      BED_ASSIGNED: "Lit attribué",
+      READY_FOR_TRANSFER: "Prêt pour le transfert",
+      DEPARTED_ED: "Parti des urgences",
+      ARRIVED_DESTINATION: "Arrivé à destination",
+      PLACEMENT_COMPLETED: "Placement terminé",
+      PLACEMENT_CANCELLED: "Placement annulé",
+      PLACEMENT_DECLINED: "Placement refusé",
+    },
+  },
 };

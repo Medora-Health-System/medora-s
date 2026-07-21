@@ -2,6 +2,7 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
+  mapLegacyCareLevelToRequestedTypeHint,
   projectEdDispositionState,
   readAmaDispositionV1,
   readDeceasedDispositionV1,
@@ -31,6 +32,7 @@ import {
 } from "@/lib/encounterAdmission";
 import { parseAdmissionSummaryForChart } from "@/components/patient-chart/patientChartHelpers";
 import { MedoraCard, MedoraCardActions, MedoraCardIdentity, MedoraCardInner, MedoraCardTitle } from "@/components/medora-card";
+import { AdmissionObservationDecisionBoard } from "./AdmissionObservationDecisionBoard";
 import { printDischarge } from "@/components/encounters/DischargePrintLayout";
 import {
   buildErDispositionPreviewModel,
@@ -1059,6 +1061,18 @@ export function EmergencyDispositionPanel({
 
             {showAdmissionFields && canPrescribe ? (
               <div>
+                <AdmissionObservationDecisionBoard
+                  requestedEncounterType={
+                    mapLegacyCareLevelToRequestedTypeHint(admissionForm.careLevel) ??
+                    (admissionForm.careLevel ? "INPATIENT" : null)
+                  }
+                  onRequestedTypeChange={(type) =>
+                    patchAdmission({
+                      careLevel: type === "OBSERVATION" ? "Observation" : "Acute",
+                    })
+                  }
+                  disabled={medDisabled}
+                />
                 <p style={sectionHeading}>{t("emergencyDisposition.sectionAdmissionPhysician")}</p>
                 <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 8 }}>
                   <div>

@@ -18531,4 +18531,30 @@ export default {
       release: "Release notes",
     },
   },
+  internalPlacementD3c: {
+    boardTitle: "Admission & observation decision",
+    boardHint:
+      "Choose Observation or Inpatient. Signing a decision does not close the ED visit or mean the patient has arrived on the unit.",
+    step1Title: "1. Decision",
+    observation: "Observation",
+    inpatient: "Inpatient",
+    step3Title: "3. Placement status",
+    statusNone: "No durable placement request yet",
+    noFalseBedHint:
+      "An ED room label is not a bed assignment. Handoff alone is not arrival.",
+    status: {
+      PLACEMENT_DRAFT: "Draft request",
+      ADMISSION_DECISION_SIGNED: "Admission decision signed",
+      PLACEMENT_REQUESTED: "Placement requested",
+      UNDER_REVIEW: "Under review",
+      ACCEPTED_AWAITING_BED: "Accepted — awaiting bed",
+      BED_ASSIGNED: "Bed assigned",
+      READY_FOR_TRANSFER: "Ready for transfer",
+      DEPARTED_ED: "Departed ED",
+      ARRIVED_DESTINATION: "Arrived at destination",
+      PLACEMENT_COMPLETED: "Placement completed",
+      PLACEMENT_CANCELLED: "Placement cancelled",
+      PLACEMENT_DECLINED: "Placement declined",
+    },
+  },
 };
