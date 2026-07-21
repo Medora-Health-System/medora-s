@@ -185,7 +185,8 @@ export function evaluateDispositionDocumentationModule(
     });
   }
 
-  if (path === "HOME" || path === "AMA") {
+  // D2.5 — Home discharge packet is HOME-only; AMA uses dedicated pathway board.
+  if (path === "HOME") {
     if (!hasDischargePacketContent(context.encounter.dischargeSummaryJson)) {
       deficiencies.push(
         makeDeficiency({
@@ -202,19 +203,21 @@ export function evaluateDispositionDocumentationModule(
         })
       );
     }
-    if (path === "AMA") {
-      const packet = asObject(context.encounter.dischargeSummaryJson);
-      const amaSigned = packet?.amaSigned === true || packet?.amaRefusalToSign === true;
-      if (!amaSigned) {
-        warnings.push({
-          stableCode: "AMA_SIGNATURE_OR_REFUSAL_REVIEW",
-          module: CertificationModule.DISPOSITION_DOCUMENTATION,
-          titleKey: "edLifecycle.certification.b1.codes.AMA_SIGNATURE_OR_REFUSAL_REVIEW.title",
-          descriptionKey:
-            "edLifecycle.certification.b1.codes.AMA_SIGNATURE_OR_REFUSAL_REVIEW.description",
-          sourceAuthority: ChartCertificationSourceAuthority.STAGE_B1_EVALUATED,
-        });
-      }
+  }
+  if (path === "AMA") {
+    const ama = asObject(
+      asObject(context.encounter.nursingAssessment)?.erAmaDispositionV1
+    );
+    const sig = typeof ama?.signatureOrRefusal === "string" ? ama.signatureOrRefusal : "";
+    if (!sig) {
+      warnings.push({
+        stableCode: "AMA_SIGNATURE_OR_REFUSAL_REVIEW",
+        module: CertificationModule.DISPOSITION_DOCUMENTATION,
+        titleKey: "edLifecycle.certification.b1.codes.AMA_SIGNATURE_OR_REFUSAL_REVIEW.title",
+        descriptionKey:
+          "edLifecycle.certification.b1.codes.AMA_SIGNATURE_OR_REFUSAL_REVIEW.description",
+        sourceAuthority: ChartCertificationSourceAuthority.STAGE_B1_EVALUATED,
+      });
     }
   }
 

@@ -7,16 +7,15 @@ import {
   hasClosurePatientInstructionsExplained,
   hasClosureReturnPrecautionsDocumented,
   projectEdDispositionState,
+  resolveEdDispositionPath,
+  isHomeDischargeInstructionsPath,
+  evaluateDispositionPathwayReadinessBlockers,
   type MarClinicalAction,
 } from "@medora/shared";
 
 /** Canonical French values stored in `dischargeSummaryJson.dischargeMode` — keep aligned with `DISCHARGE_MODE_OPTIONS_FR` (web). */
 export const DISCHARGE_MODE_FR_ADMISSION = "Admission / hospitalisation";
 export const DISCHARGE_MODE_FR_TRANSFER = "Transfert vers un autre établissement";
-/** Aligné sur `ER_DISCHARGE_MODE_HOME` / `ER_DISCHARGE_MODE_AMA` (web `emergencyDispositionV1.ts`). */
-const DISCHARGE_MODE_FR_HOME = "Domicile";
-const DISCHARGE_MODE_FR_AMA = "Contre avis médical (LAMA)";
-
 const VITALS_RECENT_MS = 4 * 60 * 60 * 1000;
 
 const TERMINAL_ORDER_ITEM_STATUSES = new Set([
@@ -105,12 +104,6 @@ function encounterHasMedicationOrders(orders: OrderForSafety[]): boolean {
 
 function patientInstructionsMarkedGiven(summary: Record<string, unknown> | undefined): boolean {
   return hasClosurePatientInstructionsExplained(summary);
-}
-
-/** Sortie à domicile ou LAMA — pas admission/transfert/décès/autre. */
-function isDischargeHomeOrAmaDisposition(dischargeMode: string): boolean {
-  const m = dischargeMode.trim();
-  return m === DISCHARGE_MODE_FR_HOME || m === DISCHARGE_MODE_FR_AMA;
 }
 
 function latestMarAction(
@@ -317,7 +310,14 @@ export function computeDispositionSafetyReadiness(input: {
     }
   }
 
-  if (isErUc && isDischargeHomeOrAmaDisposition(dischargeMode)) {
+  const dispositionPath = resolveEdDispositionPath({
+    dischargeSummaryJson: effectiveSummary ?? encounter.dischargeSummaryJson,
+    admissionSummaryJson: encounter.admissionSummaryJson,
+    nursingAssessment: encounter.nursingAssessment,
+  });
+
+  // D2.5 — Home discharge instruction blockers apply to HOME only (not AMA).
+  if (isErUc && isHomeDischargeInstructionsPath(dispositionPath)) {
     const hasMeds = encounterHasMedicationOrders(input.orders);
     if (!hasClosureAdequateDischargeInstructions(effectiveSummary, hasMeds)) {
       blockers.push({
@@ -350,6 +350,16 @@ export function computeDispositionSafetyReadiness(input: {
         message:
           "Les consignes de sortie sont présentes ou en cours, mais la documentation indiquant qu’elles ont été expliquées ou remises au patient (ou représentant) est incomplète — cochez « consignes expliquées ».",
       });
+    }
+  }
+
+  if (isErUc) {
+    for (const b of evaluateDispositionPathwayReadinessBlockers({
+      path: dispositionPath,
+      nursingAssessment: encounter.nursingAssessment,
+      dischargeSummaryJson: effectiveSummary ?? encounter.dischargeSummaryJson,
+    })) {
+      blockers.push({ code: b.code, severity: "error", message: b.message });
     }
   }
 
