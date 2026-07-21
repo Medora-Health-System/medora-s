@@ -16,11 +16,14 @@ import {
   fetchHospitalisationEncounters,
 } from "@/lib/clinicalWorklistApi";
 import type { HospitalisationBoardEncounterRow } from "@/lib/hospitalisationBoardTypes";
-import type { ObservationOperationalSnapshot, EncounterBedUnitCode } from "@medora/shared";
 import {
   canReadFreestandingErObservationPatients,
+  resolveClinicalEncounterContext,
   selectTreatmentBedAssignmentCandidates,
+  type ObservationOperationalSnapshot,
+  type EncounterBedUnitCode,
 } from "@medora/shared";
+import { HOSPITAL_CARE_HOME } from "@/features/hospital-care/hospitalCarePaths";
 import type { EncounterRoomUpdateResponse } from "@/lib/roomAssignmentApi";
 import {
   dispatchEncounterRoomAssignmentRefresh,
@@ -772,6 +775,23 @@ export function HospitalizationBoardView() {
 
   const observationCensus = useMemo(() => computeObservationBoardCensus(encounters), [encounters]);
   const observationStaffing = useMemo(() => computeObservationBoardStaffingPressure(encounters), [encounters]);
+  /** D3E.6A — clinical identity for OBS vs IP counts (not bed labels / LOS). */
+  const clinicalCensusSplit = useMemo(() => {
+    let observation = 0;
+    let inpatient = 0;
+    for (const e of encounters) {
+      if (String(e.status ?? "").trim() !== "OPEN") continue;
+      const ctx = resolveClinicalEncounterContext({
+        type: e.type,
+        status: e.status,
+        billingClassification: (e as { billingClassification?: string | null }).billingClassification,
+        admissionSummaryJson: (e as { admissionSummaryJson?: unknown }).admissionSummaryJson,
+      });
+      if (ctx === "OBSERVATION") observation += 1;
+      else if (ctx === "INPATIENT") inpatient += 1;
+    }
+    return { observation, inpatient, total: observation + inpatient };
+  }, [encounters]);
 
   const hospitalBedBoardUnits = useMemo(() => {
     const units: EncounterBedUnitCode[] = ["MS", "ICU", "OBS"];
@@ -991,7 +1011,18 @@ export function HospitalizationBoardView() {
             <h1 style={{ margin: 0, fontSize: "clamp(1.35rem, 2.5vw, 1.65rem)", fontWeight: 600, color: "#0f172a" }}>
               {t("hospitalizationBoard.pageTitle")}
             </h1>
-            <p style={{ margin: "8px 0 0 0", fontSize: 14, color: "#64748b" }}>{t("hospitalizationBoard.pageSubtitle")}</p>
+            <p style={{ margin: "8px 0 0 0", fontSize: 14, color: "#64748b" }}>
+              {t("hospitalCareD3e6a.floorBoard.pageSubtitle")}
+            </p>
+            <p style={{ margin: "8px 0 0 0", fontSize: 12, color: "#0f766e" }}>
+              <Link href={HOSPITAL_CARE_HOME} style={{ color: "#0f766e", fontWeight: 600 }}>
+                {t("hospitalCareD3e6a.floorBoard.openHospitalCare")}
+              </Link>
+              {" · "}
+              {t("hospitalCareD3e6a.floorBoard.clinicalCensusHint")
+                .replace("{obs}", String(clinicalCensusSplit.observation))
+                .replace("{ip}", String(clinicalCensusSplit.inpatient))}
+            </p>
           </div>
         </header>
 
@@ -1004,7 +1035,7 @@ export function HospitalizationBoardView() {
               <ObservationOperationalStatChip
                 layoutMode={layoutMode}
                 label={t("hospitalizationBoard.operationalStatActive")}
-                value={observationCensus.activeObservationPatients}
+                value={clinicalCensusSplit.total}
               />
               <ObservationOperationalStatChip
                 layoutMode={layoutMode}

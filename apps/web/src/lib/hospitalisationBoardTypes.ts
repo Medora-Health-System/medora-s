@@ -49,6 +49,7 @@ export type HospitalisationBoardEncounterRow = {
   workflowState?: string | null;
   admittedAt?: string | null;
   admissionSummaryJson?: unknown;
+  billingClassification?: string | null;
   dischargedAt?: string | null;
   physicianAssignedUserId?: string | null;
   nurseAssignedUserId?: string | null;
