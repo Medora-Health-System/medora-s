@@ -43,7 +43,12 @@ export const EdDispositionBoardId = {
   ADMISSION_OBSERVATION: "ADMISSION_OBSERVATION",
   EXTERNAL_TRANSFER: "EXTERNAL_TRANSFER",
   AMA: "AMA",
-  LWBS_ELOPEMENT: "LWBS_ELOPEMENT",
+  /** D2.5 — dedicated pre-MSE departure board. */
+  LWBS: "LWBS",
+  /** @deprecated Use LWBS — retained for read compatibility with D1 board id. */
+  LWBS_ELOPEMENT: "LWBS",
+  /** D2.5 — post-evaluation unauthorized departure (distinct from LWBS). */
+  ELOPEMENT: "ELOPEMENT",
   DECEASED: "DECEASED",
   OTHER_GOVERNED: "OTHER_GOVERNED",
 } as const;
@@ -82,7 +87,9 @@ export function edDispositionPathToBoardId(path: EdDispositionPath): EdDispositi
     case "AMA":
       return EdDispositionBoardId.AMA;
     case "LWBS":
-      return EdDispositionBoardId.LWBS_ELOPEMENT;
+      return EdDispositionBoardId.LWBS;
+    case "ELOPEMENT":
+      return EdDispositionBoardId.ELOPEMENT;
     case "DECEASED":
       return EdDispositionBoardId.DECEASED;
     case "OTHER":

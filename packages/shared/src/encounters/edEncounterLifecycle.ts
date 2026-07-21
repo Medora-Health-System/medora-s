@@ -14,10 +14,23 @@ export const ED_DISCHARGE_MODE_ADMISSION = DISCHARGE_MODE_FR_ADMISSION;
 export const ED_DISCHARGE_MODE_AMA = "Contre avis médical (LAMA)";
 export const ED_DISCHARGE_MODE_DECEASED = "Décès";
 export const ED_DISCHARGE_MODE_OTHER = "Autre";
+/** D2.5 — first-class LWBS mode (legacy OTHER + lwbsNarrative still resolves to LWBS). */
+export const ED_DISCHARGE_MODE_LWBS = "Départ avant évaluation (LWBS)";
+/** D2.5 — distinct from LWBS (post-evaluation unauthorized departure). */
+export const ED_DISCHARGE_MODE_ELOPEMENT = "Fugue / départ non autorisé";
 
 export const ER_DISPOSITION_V1_KEY = "erDispositionV1" as const;
 
-export type EdDispositionPath = "HOME" | "ADMISSION" | "TRANSFER" | "AMA" | "DECEASED" | "LWBS" | "OTHER" | "NONE";
+export type EdDispositionPath =
+  | "HOME"
+  | "ADMISSION"
+  | "TRANSFER"
+  | "AMA"
+  | "DECEASED"
+  | "LWBS"
+  | "ELOPEMENT"
+  | "OTHER"
+  | "NONE";
 
 export const EdEncounterLifecycleState = {
   ACTIVE_ED: "ACTIVE_ED",
@@ -197,6 +210,9 @@ export function resolveEdDispositionPath(
   if (mode === ED_DISCHARGE_MODE_TRANSFER) return "TRANSFER";
   if (mode === ED_DISCHARGE_MODE_ADMISSION) return "ADMISSION";
   if (mode === ED_DISCHARGE_MODE_DECEASED) return "DECEASED";
+  if (mode === ED_DISCHARGE_MODE_LWBS) return "LWBS";
+  if (mode === ED_DISCHARGE_MODE_ELOPEMENT) return "ELOPEMENT";
+  // Legacy: LWBS stored as OTHER + lwbsNarrative before D2.5 first-class mode.
   if (mode === ED_DISCHARGE_MODE_OTHER && hasErDispositionLwbsDocumented(snapshot.nursingAssessment)) {
     return "LWBS";
   }
@@ -232,7 +248,7 @@ export function isEdPhysicalDepartureCompleted(
     return erHandoffV1SatisfiesInpatientTransferConfirm(snapshot.nursingAssessment);
   }
 
-  if (path === "DECEASED" || path === "LWBS") {
+  if (path === "DECEASED" || path === "LWBS" || path === "ELOPEMENT" || path === "OTHER") {
     return true;
   }
 
@@ -260,11 +276,11 @@ export function evaluateEdEncounterDocumentationDeficiencies(
   if (!nursingAssessmentHasContent(snapshot.nursingAssessment)) {
     deficiencies.push({ code: "NURSING_ASSESSMENT" });
   }
-  // Discharge-summary documentation applies to home/AMA discharges only.
-  // Admission/transfer/deceased/LWBS must not inherit home-discharge requirements.
+  // D2.5 — home discharge packet applies to HOME only (AMA uses dedicated board).
+  // Admission/transfer/deceased/LWBS/elopement/other must not inherit home-discharge requirements.
   const dispositionPath = resolveEdDispositionPath(snapshot);
   if (
-    (dispositionPath === "HOME" || dispositionPath === "AMA") &&
+    dispositionPath === "HOME" &&
     !dischargeSummaryHasPersistedContent(snapshot.dischargeSummaryJson)
   ) {
     deficiencies.push({ code: "DISCHARGE_SUMMARY" });

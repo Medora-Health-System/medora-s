@@ -12,7 +12,9 @@ describe("edDispositionStateMachine (D1)", () => {
     expect(edDispositionPathToBoardId("HOME")).toBe(EdDispositionBoardId.HOME_DISCHARGE);
     expect(edDispositionPathToBoardId("ADMISSION")).toBe(EdDispositionBoardId.ADMISSION_OBSERVATION);
     expect(edDispositionPathToBoardId("TRANSFER")).toBe(EdDispositionBoardId.EXTERNAL_TRANSFER);
-    expect(edDispositionPathToBoardId("LWBS")).toBe(EdDispositionBoardId.LWBS_ELOPEMENT);
+    expect(edDispositionPathToBoardId("LWBS")).toBe(EdDispositionBoardId.LWBS);
+    expect(edDispositionPathToBoardId("ELOPEMENT")).toBe(EdDispositionBoardId.ELOPEMENT);
+    expect(EdDispositionBoardId.LWBS_ELOPEMENT).toBe(EdDispositionBoardId.LWBS);
   });
 
   it("separates decision, departure, and closure — decision alone never closes", () => {
