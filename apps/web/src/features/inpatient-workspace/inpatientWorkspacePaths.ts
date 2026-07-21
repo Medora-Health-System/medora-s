@@ -30,3 +30,19 @@ export function isInpatientMarEnabledInBrowser(): boolean {
 export function isInpatientDocumentationEnabledInBrowser(): boolean {
   return truthyPublicFlag("NEXT_PUBLIC_INPATIENT_DOCUMENTATION_ENABLED");
 }
+
+export function isInpatientNursingEnabledInBrowser(): boolean {
+  return truthyPublicFlag("NEXT_PUBLIC_INPATIENT_NURSING_ENABLED");
+}
+
+export function isInpatientConsultsEnabledInBrowser(): boolean {
+  return truthyPublicFlag("NEXT_PUBLIC_INPATIENT_CONSULTS_ENABLED");
+}
+
+export function isInpatientCarePlanEnabledInBrowser(): boolean {
+  return truthyPublicFlag("NEXT_PUBLIC_INPATIENT_CARE_PLAN_ENABLED");
+}
+
+export function isInpatientDischargePlanningEnabledInBrowser(): boolean {
+  return truthyPublicFlag("NEXT_PUBLIC_INPATIENT_DISCHARGE_PLANNING_ENABLED");
+}

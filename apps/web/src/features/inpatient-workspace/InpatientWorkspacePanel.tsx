@@ -16,11 +16,16 @@ import { EmergencyErNotesPanel } from "@/features/emergency/EmergencyErNotesPane
 import { MedicationAdministrationTab } from "@/components/encounters/MedicationAdministrationTab";
 import type { InpatientWorkspaceSection } from "./inpatientWorkspaceSections";
 import {
+  isInpatientCarePlanEnabledInBrowser,
+  isInpatientConsultsEnabledInBrowser,
   isInpatientDepartmentalOrdersEnabledInBrowser,
+  isInpatientDischargePlanningEnabledInBrowser,
   isInpatientDocumentationEnabledInBrowser,
   isInpatientMarEnabledInBrowser,
+  isInpatientNursingEnabledInBrowser,
   isInpatientWorkspaceEnabledInBrowser,
 } from "./inpatientWorkspacePaths";
+import { InpatientClinicalOpsPanel } from "./InpatientClinicalOpsPanel";
 
 export type InpatientWorkspaceEncounterLite = {
   id: string;
@@ -77,6 +82,10 @@ export function InpatientWorkspacePanel({
   const ordersLive = isInpatientDepartmentalOrdersEnabledInBrowser();
   const marLive = isInpatientMarEnabledInBrowser();
   const docsLive = isInpatientDocumentationEnabledInBrowser();
+  const nursingLive = isInpatientNursingEnabledInBrowser();
+  const consultsLive = isInpatientConsultsEnabledInBrowser();
+  const carePlanLive = isInpatientCarePlanEnabledInBrowser();
+  const dischargeLive = isInpatientDischargePlanningEnabledInBrowser();
   const canPrescribe = roles.includes("PROVIDER") || roles.includes("ADMIN");
   const canAck =
     roles.includes("PROVIDER") || roles.includes("RN") || roles.includes("ADMIN");
@@ -106,6 +115,11 @@ export function InpatientWorkspacePanel({
           <p style={{ margin: "8px 0 0", fontSize: 12, color: "#64748b" }}>
             {t("inpatientD3e.sharedOrderEngineHint")}
           </p>
+          {docsLive ? (
+            <div style={{ marginTop: 12 }}>
+              <InpatientClinicalOpsPanel encounterId={encounterId} mode="overview" />
+            </div>
+          ) : null}
         </div>
       );
     case "historyPhysical":
@@ -138,18 +152,40 @@ export function InpatientWorkspacePanel({
         </div>
       );
     case "nursing":
+      if (!nursingLive || !facilityId) {
+        return (
+          <div data-testid="inpatient-panel-nursing">
+            <p style={{ margin: "0 0 8px", fontSize: 13, color: "#334155" }}>
+              {t("inpatientD3e.nursing.body")}
+            </p>
+            <ShellList
+              title={t("inpatientD3e.nursing.surfacesTitle")}
+              items={INPATIENT_NURSING_ASSESSMENT_KINDS.map((k) =>
+                t(`inpatientD3e.nursing.surfaces.${k}`)
+              )}
+              testId="inpatient-nursing-kinds"
+            />
+          </div>
+        );
+      }
       return (
-        <div data-testid="inpatient-panel-nursing">
-          <p style={{ margin: "0 0 8px", fontSize: 13, color: "#334155" }}>
-            {t("inpatientD3e.nursing.body")}
-          </p>
-          <ShellList
-            title={t("inpatientD3e.nursing.surfacesTitle")}
-            items={INPATIENT_NURSING_ASSESSMENT_KINDS.map((k) =>
-              t(`inpatientD3e.nursing.surfaces.${k}`)
-            )}
-            testId="inpatient-nursing-kinds"
-          />
+        <div data-testid="inpatient-panel-nursing-live">
+          <InpatientClinicalOpsPanel encounterId={encounterId} mode="nursing" />
+          {docsLive ? (
+            <div style={{ marginTop: 12 }}>
+              <p style={{ margin: "0 0 8px", fontSize: 12, color: "#64748b" }}>
+                {t("inpatientD3e7.ops.nursingNotesHint")}
+              </p>
+              <EmergencyErNotesPanel
+                encounterId={encounterId}
+                facilityId={facilityId}
+                status={encounter?.status}
+                isLocked={signed}
+                roleCodes={roles}
+                onSaved={onRefetchEncounter}
+              />
+            </div>
+          ) : null}
         </div>
       );
     case "orders":
@@ -228,47 +264,71 @@ export function InpatientWorkspacePanel({
           <p style={{ margin: "0 0 10px", fontSize: 12, color: "#64748b" }}>
             {t("inpatientD3e.medications.continuationHint")}
           </p>
-          <MedicationAdministrationTab
-            encounterId={encounterId}
-            facilityId={facilityId}
-            currentUserId={userId}
-            encounterStatus={encounter?.status ?? "OPEN"}
-            providerDocumentationStatus={encounter?.providerDocumentationStatus}
-            roleCodes={roles}
-            facilityTimeZone={facilityTimeZone}
-            embeddedWorkspaceLayout
-          />
+          <InpatientClinicalOpsPanel encounterId={encounterId} mode="medications" />
+          <div style={{ marginTop: 12 }}>
+            <MedicationAdministrationTab
+              encounterId={encounterId}
+              facilityId={facilityId}
+              currentUserId={userId}
+              encounterStatus={encounter?.status ?? "OPEN"}
+              providerDocumentationStatus={encounter?.providerDocumentationStatus}
+              roleCodes={roles}
+              facilityTimeZone={facilityTimeZone}
+              embeddedWorkspaceLayout
+            />
+          </div>
         </div>
       );
     case "consults":
+      if (!consultsLive) {
+        return (
+          <ShellList
+            title={t("inpatientD3e.consults.body")}
+            items={INPATIENT_CONSULT_SPECIALTIES.map((s) =>
+              t(`inpatientD3e.consults.specialties.${s}`)
+            )}
+            testId="inpatient-panel-consults"
+          />
+        );
+      }
       return (
-        <ShellList
-          title={t("inpatientD3e.consults.body")}
-          items={INPATIENT_CONSULT_SPECIALTIES.map((s) =>
-            t(`inpatientD3e.consults.specialties.${s}`)
-          )}
-          testId="inpatient-panel-consults"
-        />
+        <div data-testid="inpatient-panel-consults-live">
+          <InpatientClinicalOpsPanel encounterId={encounterId} mode="consults" />
+        </div>
       );
     case "carePlan":
+      if (!carePlanLive) {
+        return (
+          <ShellList
+            title={t("inpatientD3e.carePlan.body")}
+            items={INPATIENT_CARE_PLAN_DISCIPLINES.map((d) =>
+              t(`inpatientD3e.carePlan.disciplines.${d}`)
+            )}
+            testId="inpatient-panel-care-plan"
+          />
+        );
+      }
       return (
-        <ShellList
-          title={t("inpatientD3e.carePlan.body")}
-          items={INPATIENT_CARE_PLAN_DISCIPLINES.map((d) =>
-            t(`inpatientD3e.carePlan.disciplines.${d}`)
-          )}
-          testId="inpatient-panel-care-plan"
-        />
+        <div data-testid="inpatient-panel-care-plan-live">
+          <InpatientClinicalOpsPanel encounterId={encounterId} mode="carePlan" />
+        </div>
       );
     case "dischargePlanning":
+      if (!dischargeLive) {
+        return (
+          <ShellList
+            title={t("inpatientD3e.dischargePlanning.body")}
+            items={INPATIENT_DISCHARGE_DESTINATIONS.map((d) =>
+              t(`inpatientD3e.dischargePlanning.destinations.${d}`)
+            )}
+            testId="inpatient-panel-discharge"
+          />
+        );
+      }
       return (
-        <ShellList
-          title={t("inpatientD3e.dischargePlanning.body")}
-          items={INPATIENT_DISCHARGE_DESTINATIONS.map((d) =>
-            t(`inpatientD3e.dischargePlanning.destinations.${d}`)
-          )}
-          testId="inpatient-panel-discharge"
-        />
+        <div data-testid="inpatient-panel-discharge-live">
+          <InpatientClinicalOpsPanel encounterId={encounterId} mode="discharge" />
+        </div>
       );
     case "timeline":
       return (

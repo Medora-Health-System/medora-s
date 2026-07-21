@@ -18824,6 +18824,73 @@ export default {
       writersOff: "Les rédacteurs d’admission ne sont pas activés dans cet environnement.",
     },
   },
+  hospitalCareD3e7: {
+    placement: {
+      actionsOff:
+        "Les actions de placement sont désactivées. Activez NEXT_PUBLIC_PLACEMENT_ACTIONS_ENABLED pour des transitions gouvernées en environnement contrôlé.",
+      actionError: "Impossible d’appliquer cette action de placement. Actualisez puis réessayez.",
+      bedPlaceholder: "Identifiant lit",
+      actions: {
+        review: "Examiner",
+        accept: "Accepter",
+        decline: "Refuser",
+        clarify: "Demander une précision",
+        assignBed: "Assigner un lit",
+        markReady: "Prêt pour transfert",
+        markDeparted: "Parti de l’origine",
+        markArrived: "Arrivé à destination",
+        cancel: "Annuler",
+      },
+    },
+    admissions: {
+      formTitle: "Créer une admission en hospitalisation",
+      patientSearch: "Rechercher un patient",
+      diagnosis: "Diagnostic d’admission",
+      reason: "Motif d’admission",
+      service: "Service admettant",
+      unit: "Unité demandée",
+      level: "Niveau de soins demandé",
+      plannedAt: "Date/heure prévue",
+      submit: "Créer l’admission hospitalière",
+      submitError: "Impossible de créer l’admission hospitalière.",
+      fakePathwayError:
+        "Le serveur a refusé un faux parcours urgences/Observation. L’admission directe doit créer uniquement une hospitalisation.",
+    },
+  },
+  inpatientD3e7: {
+    ops: {
+      loadError: "Impossible de charger les opérations cliniques d’hospitalisation.",
+      saveError: "Impossible d’enregistrer les opérations cliniques d’hospitalisation.",
+      codeStatus: "Statut de code",
+      isolation: "Précautions d’isolement",
+      codeStatusAdvisory:
+        "Le statut de code n’est pas documenté — avis prioritaire (pas un blocage d’admission).",
+      setFullCode: "Définir code complet",
+      setContactIsolation: "Définir isolement contact",
+      nursingAdmission: "Évaluation d’admission infirmière",
+      complete: "Complète",
+      incomplete: "Incomplète",
+      markNursingAdmission: "Marquer l’évaluation d’admission infirmière comme complète",
+      nursingNotesHint:
+        "Les notes infirmières narratives utilisent le moteur de notes partagé de la consultation.",
+      noConsults: "Aucune demande de consultation pour le moment.",
+      ackConsult: "Accuser réception",
+      completeConsult: "Terminer",
+      consultReasonPlaceholder: "Motif de consultation",
+      requestConsult: "Demander une consultation",
+      noCarePlan: "Aucun élément de plan de soins pour le moment.",
+      carePlanGoalPlaceholder: "Objectif du plan de soins",
+      addCarePlanItem: "Ajouter un élément au plan de soins",
+      dischargeState: "Flux de sortie",
+      destination: "Destination",
+      startDischargePlanning: "Démarrer la planification de sortie (domicile)",
+      markDischargeReady: "Marquer prêt",
+      medReconHint:
+        "La réconciliation médicamenteuse exige des décisions explicites CONTINUER / SUSPENDRE / ARRÊTER. Les ordonnances antérieures ne sont jamais copiées automatiquement.",
+      noMedRecon: "Aucune décision de réconciliation pour le moment.",
+      medSourcePlaceholder: "Libellé source du médicament",
+    },
+  },
   observationD3da: {
     sharedOrderEngineHint:
       "Les ordonnances de laboratoire, d’imagerie et de médicaments utilisent le même moteur d’ordonnances Medora que les urgences. Les nouvelles ordonnances appartiennent à cette consultation Observation.",

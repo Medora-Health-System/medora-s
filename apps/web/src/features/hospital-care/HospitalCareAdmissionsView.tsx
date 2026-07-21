@@ -1,8 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type CSSProperties } from "react";
+import { useRouter } from "next/navigation";
 import { useI18n } from "@/lib/i18n";
 import { DISPLAY_DASH } from "@/lib/patientDisplay";
+import { apiFetch } from "@/lib/apiClient";
+import { inpatientActiveWorkspacePath } from "@/features/inpatient-workspace/inpatientWorkspacePaths";
 import { HospitalCareShell } from "./HospitalCareShell";
 import {
   fetchFacilityPlacementQueue,
@@ -11,13 +14,37 @@ import {
   type HospitalCarePlacementQueueRow,
   type PlacementQueueAvailability,
 } from "./hospitalCarePlacementApi";
+import { createDirectInpatientAdmission } from "./inpatientOperationsApi";
+
+type PatientHit = {
+  id: string;
+  firstName?: string | null;
+  lastName?: string | null;
+  mrn?: string | null;
+};
 
 export function HospitalCareAdmissionsView() {
   const { t } = useI18n();
+  const router = useRouter();
   const [rows, setRows] = useState<HospitalCarePlacementQueueRow[]>([]);
   const [availability, setAvailability] = useState<PlacementQueueAvailability | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const [formOpen, setFormOpen] = useState<"DIRECT" | "SCHEDULED" | "EXTERNAL_TRANSFER" | null>(
+    null
+  );
+  const [patientQuery, setPatientQuery] = useState("");
+  const [patientHits, setPatientHits] = useState<PatientHit[]>([]);
+  const [selectedPatient, setSelectedPatient] = useState<PatientHit | null>(null);
+  const [diagnosis, setDiagnosis] = useState("");
+  const [reason, setReason] = useState("");
+  const [service, setService] = useState("");
+  const [unit, setUnit] = useState("");
+  const [level, setLevel] = useState("");
+  const [plannedAt, setPlannedAt] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -49,6 +76,35 @@ export function HospitalCareAdmissionsView() {
     };
   }, [t]);
 
+  useEffect(() => {
+    if (!formOpen || patientQuery.trim().length < 2) {
+      setPatientHits([]);
+      return;
+    }
+    let cancelled = false;
+    const handle = window.setTimeout(() => {
+      void (async () => {
+        try {
+          const data = await apiFetch(
+            `/patients/search?q=${encodeURIComponent(patientQuery.trim())}&limit=8`
+          );
+          const items = Array.isArray(data)
+            ? data
+            : Array.isArray((data as { items?: unknown })?.items)
+              ? ((data as { items: PatientHit[] }).items)
+              : [];
+          if (!cancelled) setPatientHits(items as PatientHit[]);
+        } catch {
+          if (!cancelled) setPatientHits([]);
+        }
+      })();
+    }, 250);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(handle);
+    };
+  }, [formOpen, patientQuery]);
+
   const admissions = useMemo(
     () => rows.filter((r) => PLACEMENT_QUEUE_STATUS_SET.has(r.status)),
     [rows]
@@ -63,6 +119,38 @@ export function HospitalCareAdmissionsView() {
     String(process.env.NEXT_PUBLIC_DIRECT_INPATIENT_ADMISSION_ENABLED ?? "")
       .trim()
       .toLowerCase() === "1";
+
+  const submitDirect = async () => {
+    if (!selectedPatient || !formOpen) return;
+    setSubmitting(true);
+    setFormError(null);
+    try {
+      const result = await createDirectInpatientAdmission({
+        patientId: selectedPatient.id,
+        admissionSource: formOpen,
+        admissionDiagnosis: diagnosis.trim() || null,
+        reasonForAdmission: reason.trim() || null,
+        admittingService: service.trim() || null,
+        requestedUnit: unit.trim() || null,
+        requestedLevelOfCare: level.trim() || null,
+        plannedAt: formOpen === "SCHEDULED" ? plannedAt || null : null,
+      });
+      if (result.createdEdEncounter || result.createdObservationEncounter) {
+        setFormError(t("hospitalCareD3e7.admissions.fakePathwayError"));
+        return;
+      }
+      const encounterId = result.encounter?.id;
+      if (encounterId) {
+        router.push(inpatientActiveWorkspacePath(encounterId));
+        return;
+      }
+      setFormError(t("hospitalCareD3e7.admissions.submitError"));
+    } catch {
+      setFormError(t("hospitalCareD3e7.admissions.submitError"));
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   return (
     <HospitalCareShell
@@ -89,11 +177,11 @@ export function HospitalCareAdmissionsView() {
         <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 10 }}>
           {(
             [
-              "directInpatient",
-              "scheduledInpatient",
-              "transferIn",
+              ["directInpatient", "DIRECT"],
+              ["scheduledInpatient", "SCHEDULED"],
+              ["transferIn", "EXTERNAL_TRANSFER"],
             ] as const
-          ).map((key) => (
+          ).map(([key, source]) => (
             <button
               key={key}
               type="button"
@@ -111,7 +199,8 @@ export function HospitalCareAdmissionsView() {
               }}
               onClick={() => {
                 if (!directAdmissionFlagOn) return;
-                window.alert(t("hospitalCareD3e6.admissions.writersOff"));
+                setFormOpen(source);
+                setFormError(null);
               }}
             >
               {t(`hospitalCareD3e6.admissions.${key}`)}
@@ -122,6 +211,119 @@ export function HospitalCareAdmissionsView() {
           <p style={{ margin: "8px 0 0", fontSize: 12, color: "#94a3b8" }}>
             {t("hospitalCareD3e6.admissions.writersOff")}
           </p>
+        ) : null}
+
+        {formOpen && directAdmissionFlagOn ? (
+          <div
+            style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid #e2e8f0" }}
+            data-testid="hospital-care-direct-admission-form"
+          >
+            <p style={{ margin: "0 0 8px", fontSize: 12, fontWeight: 600 }}>
+              {t("hospitalCareD3e7.admissions.formTitle")} ({formOpen})
+            </p>
+            <label style={{ display: "block", fontSize: 12, marginBottom: 8 }}>
+              {t("hospitalCareD3e7.admissions.patientSearch")}
+              <input
+                value={patientQuery}
+                onChange={(e) => setPatientQuery(e.target.value)}
+                style={fieldStyle}
+              />
+            </label>
+            {patientHits.length > 0 ? (
+              <ul style={{ listStyle: "none", margin: "0 0 8px", padding: 0 }}>
+                {patientHits.map((p) => (
+                  <li key={p.id}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedPatient(p);
+                        setPatientQuery(`${p.lastName ?? ""} ${p.firstName ?? ""}`.trim());
+                        setPatientHits([]);
+                      }}
+                      style={{
+                        ...fieldStyle,
+                        textAlign: "left",
+                        cursor: "pointer",
+                        background: selectedPatient?.id === p.id ? "#ecfeff" : "#fff",
+                      }}
+                    >
+                      {`${p.lastName ?? ""} ${p.firstName ?? ""}`.trim()} — {p.mrn ?? dash}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+            <label style={{ display: "block", fontSize: 12, marginBottom: 8 }}>
+              {t("hospitalCareD3e7.admissions.diagnosis")}
+              <input value={diagnosis} onChange={(e) => setDiagnosis(e.target.value)} style={fieldStyle} />
+            </label>
+            <label style={{ display: "block", fontSize: 12, marginBottom: 8 }}>
+              {t("hospitalCareD3e7.admissions.reason")}
+              <input value={reason} onChange={(e) => setReason(e.target.value)} style={fieldStyle} />
+            </label>
+            <label style={{ display: "block", fontSize: 12, marginBottom: 8 }}>
+              {t("hospitalCareD3e7.admissions.service")}
+              <input value={service} onChange={(e) => setService(e.target.value)} style={fieldStyle} />
+            </label>
+            <label style={{ display: "block", fontSize: 12, marginBottom: 8 }}>
+              {t("hospitalCareD3e7.admissions.unit")}
+              <input value={unit} onChange={(e) => setUnit(e.target.value)} style={fieldStyle} />
+            </label>
+            <label style={{ display: "block", fontSize: 12, marginBottom: 8 }}>
+              {t("hospitalCareD3e7.admissions.level")}
+              <input value={level} onChange={(e) => setLevel(e.target.value)} style={fieldStyle} />
+            </label>
+            {formOpen === "SCHEDULED" ? (
+              <label style={{ display: "block", fontSize: 12, marginBottom: 8 }}>
+                {t("hospitalCareD3e7.admissions.plannedAt")}
+                <input
+                  type="datetime-local"
+                  value={plannedAt}
+                  onChange={(e) => setPlannedAt(e.target.value)}
+                  style={fieldStyle}
+                />
+              </label>
+            ) : null}
+            {formError ? (
+              <p style={{ color: "#b91c1c", fontSize: 12 }} role="alert">
+                {formError}
+              </p>
+            ) : null}
+            <div style={{ display: "flex", gap: 8 }}>
+              <button
+                type="button"
+                disabled={submitting || !selectedPatient}
+                data-testid="hospital-care-direct-admission-submit"
+                onClick={() => void submitDirect()}
+                style={{
+                  padding: "8px 12px",
+                  borderRadius: 10,
+                  border: "1px solid #0f766e",
+                  background: "#0f766e",
+                  color: "#fff",
+                  fontSize: 12,
+                  fontWeight: 600,
+                  cursor: submitting || !selectedPatient ? "not-allowed" : "pointer",
+                }}
+              >
+                {t("hospitalCareD3e7.admissions.submit")}
+              </button>
+              <button
+                type="button"
+                onClick={() => setFormOpen(null)}
+                style={{
+                  padding: "8px 12px",
+                  borderRadius: 10,
+                  border: "1px solid #cbd5e1",
+                  background: "#fff",
+                  fontSize: 12,
+                  fontWeight: 600,
+                }}
+              >
+                {t("common.cancel")}
+              </button>
+            </div>
+          </div>
         ) : null}
       </section>
 
@@ -205,3 +407,14 @@ export function HospitalCareAdmissionsView() {
     </HospitalCareShell>
   );
 }
+
+const fieldStyle: CSSProperties = {
+  display: "block",
+  width: "100%",
+  maxWidth: 420,
+  marginTop: 4,
+  padding: "8px 10px",
+  borderRadius: 10,
+  border: "1px solid #cbd5e1",
+  fontSize: 13,
+};
