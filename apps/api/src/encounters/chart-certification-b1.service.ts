@@ -19,8 +19,11 @@ import {
   PROVIDER_DOCUMENTATION_NAMESPACE_KEY,
   ER_NURSING_REASSESSMENT_V1_KEY,
   evaluateObservationChartCertification,
+  evaluateInpatientChartCertification,
   observationDocumentationEnabled,
   observationDepartmentalFlagsFromProcessEnv,
+  inpatientDocumentationEnabled,
+  inpatientWorkspaceFlagsFromProcessEnv,
   resolveDepartmentalEncounterContext,
 } from "@medora/shared";
 
@@ -329,7 +332,7 @@ export class ChartCertificationB1Service {
   }
 
   /**
-   * D3DA — attach advisory Observation completeness when encounter context is Observation.
+   * D3DA/D3E — attach advisory Observation / Inpatient completeness by departmental context.
    * Never mutates ED Stage B1–B3 readiness authority.
    */
   private async withObservationDepartmentalAdvisory(
@@ -337,8 +340,10 @@ export class ChartCertificationB1Service {
     encounterId: string,
     result: ChartCertificationB1Result
   ): Promise<ChartCertificationB1Result> {
-    const flags = observationDepartmentalFlagsFromProcessEnv(process.env);
-    const docsEnabled = observationDocumentationEnabled(flags);
+    const obsFlags = observationDepartmentalFlagsFromProcessEnv(process.env);
+    const ipFlags = inpatientWorkspaceFlagsFromProcessEnv(process.env);
+    const obsDocsEnabled = observationDocumentationEnabled(obsFlags);
+    const ipDocsEnabled = inpatientDocumentationEnabled(ipFlags);
     const enc = await this.prisma.encounter.findFirst({
       where: { id: encounterId, facilityId },
       select: {
@@ -354,27 +359,56 @@ export class ChartCertificationB1Service {
     });
     if (!enc) return result;
     const context = resolveDepartmentalEncounterContext(enc);
-    if (context !== "OBSERVATION") {
-      return { ...result, observationDepartmentalAdvisory: null };
-    }
-    const obs = evaluateObservationChartCertification({
-      hasProviderNote: typeof enc.providerNote === "string" && enc.providerNote.trim().length > 0,
-      hasReassessment: nursingAssessmentPresent(enc.nursingAssessment),
-      hasNursingDocumentation: nursingAssessmentPresent(enc.nursingAssessment),
-      hasOrdersReview:
-        result.evaluatedReadiness.ordersReady === true ||
-        result.evaluatedReadiness.laboratoryReady === true ||
-        result.evaluatedReadiness.imagingReady === true,
-      hasDischargeSummary: !!enc.dischargeSummaryJson,
-      dispositionPathway: null,
-    });
-    return {
-      ...result,
-      observationDepartmentalAdvisory: {
-        enabled: docsEnabled,
+    const ordersReview =
+      result.evaluatedReadiness.ordersReady === true ||
+      result.evaluatedReadiness.laboratoryReady === true ||
+      result.evaluatedReadiness.imagingReady === true;
+    const hasProviderNote =
+      typeof enc.providerNote === "string" && enc.providerNote.trim().length > 0;
+    const hasNursing = nursingAssessmentPresent(enc.nursingAssessment);
+
+    let observationDepartmentalAdvisory: ChartCertificationB1Result["observationDepartmentalAdvisory"] =
+      null;
+    let inpatientClinicalAdvisory: ChartCertificationB1Result["inpatientClinicalAdvisory"] = null;
+
+    if (context === "OBSERVATION") {
+      const obs = evaluateObservationChartCertification({
+        hasProviderNote,
+        hasReassessment: hasNursing,
+        hasNursingDocumentation: hasNursing,
+        hasOrdersReview: ordersReview,
+        hasDischargeSummary: !!enc.dischargeSummaryJson,
+        dispositionPathway: null,
+      });
+      observationDepartmentalAdvisory = {
+        enabled: obsDocsEnabled,
         complete: obs.complete,
         deficiencyCodes: obs.deficiencies,
-      },
+      };
+    }
+
+    if (context === "INPATIENT") {
+      const ip = evaluateInpatientChartCertification({
+        hasHistoryAndPhysical: hasProviderNote,
+        hasProgressNote: hasProviderNote,
+        hasNursingDocumentation: hasNursing,
+        hasOrdersReview: ordersReview,
+        hasMedicationReconciliation: !!enc.dischargeSummaryJson,
+        openConsultCount: 0,
+        hasDischargePlan: !!enc.dischargeSummaryJson,
+        dischargeInProgress: !!enc.dischargeSummaryJson,
+      });
+      inpatientClinicalAdvisory = {
+        enabled: ipDocsEnabled,
+        complete: ip.complete,
+        deficiencyCodes: ip.deficiencies,
+      };
+    }
+
+    return {
+      ...result,
+      observationDepartmentalAdvisory,
+      inpatientClinicalAdvisory,
     };
   }
 

@@ -301,6 +301,15 @@ export type ChartCertificationB1Result = {
     complete: boolean;
     deficiencyCodes: string[];
   } | null;
+  /**
+   * D3E — advisory Inpatient chart completeness (optional).
+   * Never authoritative; does not block ED Stage B1–B3 readiness.
+   */
+  inpatientClinicalAdvisory?: {
+    enabled: boolean;
+    complete: boolean;
+    deficiencyCodes: string[];
+  } | null;
 };
 
 /** PHI-safe structured snapshot for pure evaluators (no full note bodies). */
