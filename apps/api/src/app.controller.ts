@@ -50,6 +50,7 @@ export class AppController {
           reasons: report.reasons,
           deploymentSha: report.deploymentSha,
           hospitalEpisodeFoundationEnabled: report.hospitalEpisodeFoundationEnabled,
+          encounterQueryContractsSafe: report.encounterQueryContractsSafe,
         },
       });
     }
@@ -60,6 +61,7 @@ export class AppController {
         verdict: report.verdict,
         deploymentSha: report.deploymentSha,
         hospitalEpisodeFoundationEnabled: report.hospitalEpisodeFoundationEnabled,
+        encounterQueryContractsSafe: report.encounterQueryContractsSafe,
         d3bMigrationRecorded: report.presence?.d3bMigrationRecorded ?? null,
       },
     };

@@ -1,11 +1,13 @@
 /**
  * Deployment / startup schema compatibility checks (no PHI).
- * MEDORA.PROD.TRACKBOARD_PRISMA_500_2026_07_20 + D3C placement foundation.
+ * MEDORA.PROD.TRACKBOARD_PRISMA_500_2026_07_20
+ * MEDORA.P0.ENCOUNTER_SHARED_QUERY_HARDENING
  *
  * Expand-and-contract rule:
- * - Required Trackboard columns must exist or the process is unhealthy.
- * - D3B/D3C objects are optional while their feature flags are OFF
- *   AND runtime Trackboard queries must not select those columns.
+ * - Required Encounter columns for reviewed query contracts must exist.
+ * - D3B/D3C objects are optional while their feature flags are OFF.
+ * - Shared Encounter query contracts must never select unapplied D3 columns.
+ * - Feature flags alone are NOT sufficient — runtime contracts are validated too.
  */
 
 import {
@@ -14,6 +16,11 @@ import {
   receivingEncounterFoundationEnabledFromProcessEnv,
 } from "@medora/shared";
 import type { PrismaClient } from "@prisma/client";
+import {
+  assertAllEncounterQueryContractsExcludeD3,
+  ENCOUNTER_CORE_REQUIRED_COLUMNS,
+  ENCOUNTER_FORBIDDEN_SELECT_KEYS,
+} from "../encounters/encounter-query-contracts";
 
 export const D3B_MIGRATION_FOLDER = "20261024120000_hospital_episode_foundation_d3b";
 export const D3C_MIGRATION_FOLDER = "20261025120000_internal_placement_request_d3c";
@@ -57,6 +64,7 @@ export const D3C_OPTIONAL_OBJECTS = {
 
 export type SchemaObjectPresence = {
   trackboardRequiredColumnsMissing: string[];
+  encounterCoreColumnsMissing: string[];
   hospitalEpisodeTablePresent: boolean;
   hospitalEpisodeIdColumnPresent: boolean;
   hospitalEpisodeStatusEnumPresent: boolean;
@@ -75,6 +83,7 @@ export type SchemaCompatibilityVerdict =
   | "COMPATIBLE"
   | "REQUIRED_SCHEMA_MISSING"
   | "FEATURE_ON_SCHEMA_MISSING"
+  | "UNSAFE_RUNTIME_QUERY_CONTRACT"
   | "DATABASE_UNREACHABLE";
 
 export type SchemaCompatibilityReport = {
@@ -83,6 +92,7 @@ export type SchemaCompatibilityReport = {
   hospitalEpisodeFoundationEnabled: boolean;
   internalPlacementWorkflowEnabled: boolean;
   receivingEncounterFoundationEnabled: boolean;
+  encounterQueryContractsSafe: boolean;
   presence: SchemaObjectPresence | null;
   reasons: string[];
   deploymentSha: string | null;
@@ -170,11 +180,28 @@ async function readMigrationFingerprint(db: Queryable): Promise<{
   };
 }
 
+/**
+ * Validate shared Encounter query contracts at runtime.
+ * Returns null when safe; otherwise an error message.
+ */
+export function validateEncounterQueryContractsForDeployment(): string | null {
+  try {
+    assertAllEncounterQueryContractsExcludeD3();
+  } catch (err) {
+    return err instanceof Error ? err.message : String(err);
+  }
+  return null;
+}
+
 export async function inspectSchemaObjectPresence(
   db: Queryable
 ): Promise<SchemaObjectPresence> {
+  const requiredCore = Array.from(
+    new Set([...TRACKBOARD_REQUIRED_ENCOUNTER_COLUMNS, ...ENCOUNTER_CORE_REQUIRED_COLUMNS])
+  );
   const [
     trackboardRequiredColumnsMissing,
+    encounterCoreColumnsMissing,
     hospitalEpisodeTablePresent,
     hospitalEpisodeIdColumnPresent,
     hospitalEpisodeStatusEnumPresent,
@@ -186,6 +213,7 @@ export async function inspectSchemaObjectPresence(
     migrations,
   ] = await Promise.all([
     listMissingEncounterColumns(db, TRACKBOARD_REQUIRED_ENCOUNTER_COLUMNS),
+    listMissingEncounterColumns(db, ENCOUNTER_CORE_REQUIRED_COLUMNS),
     tableExists(db, D3B_OPTIONAL_OBJECTS.hospitalEpisodeTable),
     columnExists(db, "Encounter", D3B_OPTIONAL_OBJECTS.encounterColumn),
     enumExists(db, D3B_OPTIONAL_OBJECTS.statusEnum),
@@ -197,8 +225,11 @@ export async function inspectSchemaObjectPresence(
     readMigrationFingerprint(db),
   ]);
 
+  void requiredCore;
+
   return {
     trackboardRequiredColumnsMissing,
+    encounterCoreColumnsMissing,
     hospitalEpisodeTablePresent,
     hospitalEpisodeIdColumnPresent,
     hospitalEpisodeStatusEnumPresent,
@@ -221,6 +252,8 @@ export function evaluateSchemaCompatibility(
     internalPlacementWorkflowEnabled?: boolean;
     receivingEncounterFoundationEnabled?: boolean;
     deploymentSha?: string | null;
+    /** Injected for tests; default validates live contracts. */
+    encounterQueryContractError?: string | null;
   }
 ): SchemaCompatibilityReport {
   const hospitalEpisodeFoundationEnabled =
@@ -241,15 +274,44 @@ export function evaluateSchemaCompatibility(
     process.env.COMMIT_SHA?.trim() ??
     null;
 
+  const contractError =
+    options?.encounterQueryContractError !== undefined
+      ? options.encounterQueryContractError
+      : validateEncounterQueryContractsForDeployment();
+  const encounterQueryContractsSafe = contractError == null;
+
   const baseFlags = {
     hospitalEpisodeFoundationEnabled,
     internalPlacementWorkflowEnabled,
     receivingEncounterFoundationEnabled,
+    encounterQueryContractsSafe,
   };
 
-  if (presence.trackboardRequiredColumnsMissing.length > 0) {
+  if (!encounterQueryContractsSafe) {
     reasons.push(
-      `Missing required Encounter columns for Trackboard: ${presence.trackboardRequiredColumnsMissing.join(", ")}`
+      `Unsafe Encounter query contract: ${contractError}. Shared selects must not reference ${ENCOUNTER_FORBIDDEN_SELECT_KEYS.join(", ")} while expand-and-contract is active.`
+    );
+    return {
+      ok: false,
+      verdict: "UNSAFE_RUNTIME_QUERY_CONTRACT",
+      ...baseFlags,
+      presence,
+      reasons,
+      deploymentSha,
+      checkedAt,
+    };
+  }
+
+  const requiredMissing = Array.from(
+    new Set([
+      ...presence.trackboardRequiredColumnsMissing,
+      ...presence.encounterCoreColumnsMissing,
+    ])
+  );
+
+  if (requiredMissing.length > 0) {
+    reasons.push(
+      `Missing required Encounter columns for reviewed query contracts: ${requiredMissing.join(", ")}`
     );
     return {
       ok: false,
@@ -336,7 +398,7 @@ export function evaluateSchemaCompatibility(
 
   if (!d3bComplete && !hospitalEpisodeFoundationEnabled) {
     reasons.push(
-      "D3B schema optional objects absent; feature flag OFF — OK when Trackboard uses explicit pre-D3B select."
+      "D3B schema optional objects absent; feature flag OFF; shared Encounter contracts exclude hospitalEpisodeId — OK."
     );
   } else if (d3bComplete) {
     reasons.push("D3B schema objects present.");
@@ -349,6 +411,8 @@ export function evaluateSchemaCompatibility(
   } else if (d3cComplete) {
     reasons.push("D3C schema objects present.");
   }
+
+  reasons.push("Encounter query contracts validated (no unconditional D3B fields).");
 
   return {
     ok: true,
@@ -399,6 +463,7 @@ export async function checkSchemaCompatibility(
       receivingEncounterFoundationEnabled:
         options?.receivingEncounterFoundationEnabled ??
         receivingEncounterFoundationEnabledFromProcessEnv(),
+      encounterQueryContractsSafe: false,
       presence: null,
       reasons: ["Could not inspect information_schema / _prisma_migrations"],
       deploymentSha:

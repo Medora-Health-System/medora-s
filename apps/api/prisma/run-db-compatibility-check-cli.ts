@@ -23,6 +23,7 @@ async function main(): Promise<void> {
           hospitalEpisodeFoundationEnabled: report.hospitalEpisodeFoundationEnabled,
           internalPlacementWorkflowEnabled: report.internalPlacementWorkflowEnabled,
           receivingEncounterFoundationEnabled: report.receivingEncounterFoundationEnabled,
+          encounterQueryContractsSafe: report.encounterQueryContractsSafe,
           reasons: report.reasons,
           deploymentSha: report.deploymentSha,
           checkedAt: report.checkedAt,
@@ -30,6 +31,8 @@ async function main(): Promise<void> {
             ? {
                 trackboardRequiredColumnsMissing:
                   report.presence.trackboardRequiredColumnsMissing,
+                encounterCoreColumnsMissing:
+                  report.presence.encounterCoreColumnsMissing,
                 hospitalEpisodeTablePresent: report.presence.hospitalEpisodeTablePresent,
                 hospitalEpisodeIdColumnPresent:
                   report.presence.hospitalEpisodeIdColumnPresent,
