@@ -66,6 +66,36 @@ export async function fetchFacilityPlacementQueue(): Promise<FacilityPlacementQu
   return parseFacilityPlacementQueueResponse(body);
 }
 
+export type PlacementTransitionBody = {
+  toStatus: string;
+  acceptanceNotes?: string | null;
+  assignedUnitCode?: string | null;
+  assignedRoomKey?: string | null;
+  assignedBedKey?: string | null;
+  assignmentSourceSystem?: string | null;
+  cancellationReason?: string | null;
+  expectedVersion?: number;
+};
+
+/** D3E.7 — governed server transition (never invent status client-side). */
+export async function transitionPlacementRequest(
+  requestId: string,
+  body: PlacementTransitionBody
+): Promise<HospitalCarePlacementQueueRow> {
+  const result = await apiFetch(`/internal-placement/${encodeURIComponent(requestId)}/transitions`, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+  return result as HospitalCarePlacementQueueRow;
+}
+
+export function isPlacementActionsEnabledInBrowser(): boolean {
+  const v = String(process.env.NEXT_PUBLIC_PLACEMENT_ACTIONS_ENABLED ?? "")
+    .trim()
+    .toLowerCase();
+  return v === "1" || v === "true" || v === "yes" || v === "on";
+}
+
 export function isForbiddenApiError(error: unknown): boolean {
   return (
     typeof error === "object" &&
