@@ -74,6 +74,8 @@ model Facility {
   facilityFormularyItems                 FacilityFormularyItem[]
   facilityMedicationUsages               FacilityMedicationUsage[]
   followUps                              FollowUp[]
+  /// D3B — continuous facility stay identity (HospitalEpisode foundation).
+  hospitalEpisodes                       HospitalEpisode[]
   infusionSessions                       InfusionSession[]
   inventoryItems                         InventoryItem[]
   inventoryTransactions                  InventoryTransaction[]
@@ -223,6 +225,9 @@ model User {
   triageVitalsReadingsVoided                      TriageVitalsReading[]                  @relation("TriageVitalsReadingVoidedBy")
   providerAddendaCreated                          EncounterProviderAddendum[]
   followUpsCreated                                FollowUp[]
+  /// D3B — HospitalEpisode audit actors.
+  hospitalEpisodesCreated                         HospitalEpisode[]                      @relation("HospitalEpisodeCreatedBy")
+  hospitalEpisodesUpdated                         HospitalEpisode[]                      @relation("HospitalEpisodeUpdatedBy")
   inventoryTransactions                           InventoryTransaction[]
   medicationAdministrations                       MedicationAdministration[]
   medicationAdministrationCorrections             MedicationAdministrationCorrection[]   @relation("MedicationAdministrationCorrectionBy")
@@ -372,6 +377,8 @@ model Patient {
   encounterClinicalEvents      EncounterClinicalEvent[]
   encounterNotes               EncounterNote[]
   followUps                    FollowUp[]
+  /// D3B — continuous facility stay identity for this patient.
+  hospitalEpisodes             HospitalEpisode[]
   medicationAdministrations    MedicationAdministration[]
   medicationDispenses          MedicationDispense[]
   orders                       Order[]
@@ -564,6 +571,8 @@ model Encounter {
   billingClassificationAcknowledgedByUserId String?
   billingClassificationAcknowledgmentMethod String?
   billingClassificationTransitionJson       Json?
+  /// D3B — nullable link to continuous facility stay (HospitalEpisode). Absence is safe.
+  hospitalEpisodeId                         String?
   auditLogs                                 AuditLog[]                             @relation("EncounterAuditLogs")
   billingEvents                             BillingEvent[]
   billingReviewDecisions                    BillingReviewDecision[]
@@ -577,6 +586,10 @@ model Encounter {
   billingFinalizedBy                        User?                                  @relation("EncounterBillingFinalizedBy", fields: [billingFinalizedByUserId], references: [id])
   billingReopenedBy                         User?                                  @relation("EncounterBillingReopenedBy", fields: [billingReopenedByUserId], references: [id])
   facility                                  Facility                               @relation(fields: [facilityId], references: [id])
+  /// D3B — member encounters of a HospitalEpisode (nullable; one episode max per encounter).
+  hospitalEpisode                           HospitalEpisode?                       @relation("HospitalEpisodeEncounters", fields: [hospitalEpisodeId], references: [id], onDelete: SetNull)
+  /// D3B — episodes that originated from this encounter (at most one via unique originatingEncounterId).
+  hospitalEpisodesOriginated                HospitalEpisode[]                      @relation("HospitalEpisodeOriginatingEncounter")
   nurseAssigned                             User?                                  @relation("EncounterNurseAssigned", fields: [nurseAssignedUserId], references: [id])
   patient                                   Patient                                @relation(fields: [patientId], references: [id])
   physicianAssigned                         User?                                  @relation("EncounterPhysicianAssigned", fields: [physicianAssignedUserId], references: [id])
@@ -615,6 +628,41 @@ model Encounter {
   @@index([providerDocumentationSignedByUserId])
   @@index([billingFinalizationStatus])
   @@index([billingClassification])
+  @@index([hospitalEpisodeId])
+}
+
+/// D3B — one continuous facility stay spanning linked care-setting encounters.
+/// Partial unique (facilityId, patientId) WHERE status=ACTIVE is enforced in SQL migration only.
+model HospitalEpisode {
+  id                     String                     @id @default(uuid())
+  facilityId             String
+  patientId              String
+  status                 HospitalEpisodeStatus      @default(ACTIVE)
+  openedAt               DateTime                   @default(now())
+  closedAt               DateTime?
+  closeReason            HospitalEpisodeCloseReason?
+  /// First care-setting encounter that opened this stay (typically ED). Unique → no duplicate episode per origin.
+  originatingEncounterId String                     @unique
+  /// Optimistic locking — increment on successful mutating writes.
+  version                Int                        @default(1)
+  createdAt              DateTime                   @default(now())
+  updatedAt              DateTime                   @updatedAt
+  createdByUserId        String?
+  updatedByUserId        String?
+
+  facility               Facility                   @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  patient                Patient                    @relation(fields: [patientId], references: [id], onDelete: Restrict)
+  originatingEncounter   Encounter                  @relation("HospitalEpisodeOriginatingEncounter", fields: [originatingEncounterId], references: [id], onDelete: Restrict)
+  encounters             Encounter[]                @relation("HospitalEpisodeEncounters")
+  createdBy              User?                      @relation("HospitalEpisodeCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  updatedBy              User?                      @relation("HospitalEpisodeUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([facilityId])
+  @@index([patientId])
+  @@index([facilityId, patientId, status])
+  @@index([facilityId, status, openedAt])
+  @@index([createdByUserId])
+  @@index([updatedByUserId])
 }
 
 /// Optional mapping from clinical catalog / external codes to billable CPT/HCPCS (Phase 4.5 auto engine).
@@ -7061,6 +7109,28 @@ enum EncounterStatus {
   OPEN
   CLOSED
   CANCELLED
+}
+
+/// D3B — HospitalEpisode lifecycle status (server-owned).
+enum HospitalEpisodeStatus {
+  ACTIVE
+  CLOSED
+  CANCELLED
+  MERGED
+  ERROR_REVIEW
+}
+
+/// D3B — why a HospitalEpisode closed (null while ACTIVE).
+enum HospitalEpisodeCloseReason {
+  FACILITY_DISCHARGE
+  EXTERNAL_TRANSFER
+  AMA
+  LWBS
+  ELOPEMENT
+  DECEASED
+  ADMINISTRATIVE_CORRECTION
+  DUPLICATE_EPISODE
+  OTHER_GOVERNED
 }
 
 /// Explicit clinical / operational pathway (distinct from `EncounterStatus` lifecycle).
