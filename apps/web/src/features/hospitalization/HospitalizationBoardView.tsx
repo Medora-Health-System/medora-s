@@ -173,6 +173,7 @@ const OBS_DISP_OUTCOME_I18N: Record<ErDispositionOutcomeUi, string> = {
   TRANSFER: "emergencyDisposition.outcomeTRANSFER",
   AMA: "emergencyDisposition.outcomeAMA",
   LWBS: "emergencyDisposition.outcomeLWBS",
+  ELOPEMENT: "emergencyDisposition.outcomeELOPEMENT",
   DECEASED: "emergencyDisposition.outcomeDECEASED",
   OTHER: "emergencyDisposition.outcomeOTHER",
 };

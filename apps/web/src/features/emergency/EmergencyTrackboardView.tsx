@@ -306,6 +306,8 @@ function dispositionBadgeSoft(variant: ErDispositionBadgeVariant): PriorityBadge
       return { bg: "#f4f4f5", text: "#52525b", border: "#e4e4e7" };
     case "lwbs":
       return { bg: "#fef2f2", text: "#991b1b", border: "#fecaca" };
+    case "elopement":
+      return { bg: "#fff1f2", text: "#9f1239", border: "#fecdd3" };
     case "other":
     default:
       return { bg: "#f1f5f9", text: "#475569", border: "#cbd5e1" };

@@ -25,6 +25,8 @@ export function erDispositionBadgeDisplayLabel(
       return t("emergencyTrackboard.disposition.deceased");
     case "lwbs":
       return t("emergencyTrackboard.disposition.lwbs");
+    case "elopement":
+      return t("emergencyTrackboard.disposition.elopement");
     case "other":
     default:
       return t("emergencyTrackboard.disposition.other");

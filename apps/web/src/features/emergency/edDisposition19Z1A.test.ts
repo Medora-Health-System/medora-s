@@ -248,7 +248,6 @@ describe("edDisposition19Z1A — canonical disposition integrity guard", () => {
       const saved = saveWithOutcome("LWBS");
       const badge = erDispositionBadgeFromEncounterJson({
         dischargeSummaryJson: saved,
-        nursingAssessment: { erDispositionV1: { lwbsNarrative: "Left before provider eval" } },
       });
       expect(badge!.variant).toBe("lwbs");
       expect(badge!.shortLabel).toBe("LWBS");

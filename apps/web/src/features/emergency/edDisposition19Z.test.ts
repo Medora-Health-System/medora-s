@@ -9,6 +9,7 @@ import {
   ER_DISCHARGE_MODE_AMA,
   ER_DISCHARGE_MODE_DECEASED,
   ER_DISCHARGE_MODE_HOME,
+  ER_DISCHARGE_MODE_LWBS,
   ER_DISCHARGE_MODE_OTHER,
   ER_DISCHARGE_MODE_TRANSFER,
   mergeErDischargeForEncounterPatch,
@@ -136,7 +137,7 @@ describe("edDisposition19Z — canonical disposition sync / trackboard / preview
       nursingAssessment: { erDispositionV1: { lwbsNarrative: "Patient left before evaluation" } },
     });
     expect(badge?.variant).toBe("lwbs");
-    expect(saved.dischargeMode).toBe(ER_DISCHARGE_MODE_OTHER);
+    expect(saved.dischargeMode).toBe(ER_DISCHARGE_MODE_LWBS);
   });
 
   it("7. admission/observation decision appears in trackboard model", () => {

@@ -10,7 +10,16 @@ import {
   readDischargeSortieExecutionFromEncounter,
 } from "@/features/emergency/emergencyDispositionV1";
 
-export type ErDispositionBadgeVariant = "discharge" | "admit" | "observe" | "transfer" | "ama" | "deceased" | "other" | "lwbs";
+export type ErDispositionBadgeVariant =
+  | "discharge"
+  | "admit"
+  | "observe"
+  | "transfer"
+  | "ama"
+  | "deceased"
+  | "other"
+  | "lwbs"
+  | "elopement";
 
 export type ErDispositionBadgeModel = {
   shortLabel: string;
@@ -60,7 +69,15 @@ export function erDispositionBadgeFromEncounterJson(enc: {
   if (mode === "Décès") {
     return { shortLabel: "Décès", variant: "deceased", source: "dischargeMode" };
   }
+  // D2.5 first-class LWBS / Elopement modes
+  if (mode === "Départ avant évaluation (LWBS)") {
+    return { shortLabel: "LWBS", variant: "lwbs", source: "dischargeMode" };
+  }
+  if (mode === "Fugue / départ non autorisé") {
+    return { shortLabel: "Fugue", variant: "elopement", source: "dischargeMode" };
+  }
   if (mode === "Autre") {
+    // Legacy: LWBS stored as Autre + lwbsNarrative
     const sup = erDispositionSupplementFromEncounter(enc.nursingAssessment);
     if (sup.lwbsNarrative.trim()) {
       return { shortLabel: "LWBS", variant: "lwbs", source: "erDispositionV1" };

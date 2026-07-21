@@ -2968,6 +2968,7 @@ function EncounterDetailPageInner({ session }: { session: ReturnType<typeof useF
                       "AMA",
                       "DECEASED",
                       "LWBS",
+                      "ELOPEMENT",
                       "OTHER",
                       "ADMISSION",
                     ] as readonly ErDispositionOutcomeUi[]
@@ -3004,6 +3005,7 @@ function EncounterDetailPageInner({ session }: { session: ReturnType<typeof useF
                               TRANSFER: "emergencyDisposition.outcomeTRANSFER",
                               AMA: "emergencyDisposition.outcomeAMA",
                               LWBS: "emergencyDisposition.outcomeLWBS",
+                              ELOPEMENT: "emergencyDisposition.outcomeELOPEMENT",
                               DECEASED: "emergencyDisposition.outcomeDECEASED",
                               OTHER: "emergencyDisposition.outcomeOTHER",
                             } as const
