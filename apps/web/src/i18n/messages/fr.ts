@@ -18824,6 +18824,100 @@ export default {
       writersOff: "Les rédacteurs d’admission ne sont pas activés dans cet environnement.",
     },
   },
+  hospitalCareD3e6a: {
+    home: {
+      subtitle:
+        "Opérations hospitalières à l’échelle de l’établissement — un seul recensement Observation et hospitalisation.",
+    },
+    featureOffGuidance:
+      "Le flux de placement interne est désactivé. La file de placement et les indicateurs « en attente de lit » sont indisponibles. Les recensements Observation et hospitalisation actifs restent visibles.",
+    tiles: {
+      beds: {
+        secondary: "{count} disponibles",
+      },
+    },
+    snapshot: {
+      title: "Instantané opérationnel",
+      staffing: "Effectifs",
+      clinical: "Clinique",
+      flow: "Flux",
+      rnUnassigned: "IDE non assigné(e)",
+      mdUnassigned: "Médecin non assigné",
+      reassess: "Réévaluation en retard",
+      vitals: "Constantes obsolètes",
+      critical: "Résultats critiques",
+      awaitingBed: "En attente de lit",
+      los24: "DMS ≥24 h",
+      readyDc: "Prêt pour sortie",
+    },
+    patients: {
+      title: "Patients hospitaliers actifs",
+      subtitle: "Recensement canonique de l’établissement — consultations Observation et hospitalisation.",
+      attending: "Médecin responsable",
+      nurse: "Infirmier(ère)",
+      los: "DMS",
+      view: "Voir",
+      noBed: "Aucun lit assigné",
+    },
+    filters: {
+      search: "Rechercher des patients",
+      context: "Contexte de consultation",
+      contextAll: "Tous",
+      contextObs: "Observation",
+      contextIp: "Hospitalisation",
+      operational: "Filtre opérationnel",
+      opAll: "Tous les patients",
+      opRn: "Infirmier(ère) non assigné(e)",
+      opMd: "Médecin non assigné",
+      opReassess: "Réévaluation en retard",
+      opVitals: "Constantes obsolètes",
+      opCritical: "Résultats critiques",
+      opReadyDc: "Prêt pour sortie",
+      opLos: "DMS ≥24 h",
+    },
+    badge: {
+      observation: "Observation",
+      inpatient: "Hospitalisation",
+    },
+    empty: {
+      observation: "Aucune consultation Observation active pour cet établissement.",
+      inpatient: "Aucune consultation d’hospitalisation active pour cet établissement.",
+      hospital: "Aucun patient hospitalier actif ne correspond à ces filtres.",
+      placement: "Aucune demande de placement active.",
+    },
+    floorOverview: {
+      title: "Aperçu unités et lits",
+      subtitle: "Résumé compact de l’inventaire partagé du tableau des unités.",
+      occupied: "Occupés",
+      available: "Disponibles",
+      unavailable: "Nettoyage/bloqués",
+      openFull: "Ouvrir le tableau des unités complet",
+    },
+    beds: {
+      title: "Gestion des lits",
+      subtitle: "Disponibilité des chambres et lits, occupation, nettoyage et statut bloqué.",
+      body: "L’inventaire des lits appartient au tableau des unités. Les compteurs ci-dessous proviennent de cet inventaire partagé.",
+      total: "Total",
+      available: "Disponibles",
+      occupied: "Occupés",
+      cleaning: "Nettoyage",
+      blocked: "Bloqués",
+    },
+    observationTab: {
+      subtitle:
+        "Consultations Observation actives pour cet établissement. Les plans de lits sont sur le tableau des unités.",
+      count: "{count} consultation(s) Observation active(s)",
+    },
+    inpatientTab: {
+      subtitle: "Consultations d’hospitalisation actives, y compris les admissions directes.",
+      count: "{count} consultation(s) d’hospitalisation active(s)",
+    },
+    floorBoard: {
+      pageSubtitle: "Inventaire visuel des chambres et lits de l’établissement.",
+      openHospitalCare: "Ouvrir le tableau de bord Soins hospitaliers",
+      clinicalCensusHint: "Recensement clinique — Observation : {obs} · Hospitalisation : {ip}",
+    },
+  },
   hospitalCareD3e7: {
     placement: {
       actionsOff:

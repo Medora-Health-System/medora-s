@@ -18752,6 +18752,98 @@ export default {
       writersOff: "Admission writers are not enabled in this environment.",
     },
   },
+  hospitalCareD3e6a: {
+    home: {
+      subtitle: "Facility-wide hospital operations — one census for Observation and Inpatient.",
+    },
+    featureOffGuidance:
+      "Internal placement workflow is disabled. Placement queue and awaiting-bed metrics are unavailable. Active Observation and Inpatient census data remain visible.",
+    tiles: {
+      beds: {
+        secondary: "{count} available",
+      },
+    },
+    snapshot: {
+      title: "Operational snapshot",
+      staffing: "Staffing",
+      clinical: "Clinical",
+      flow: "Flow",
+      rnUnassigned: "RN unassigned",
+      mdUnassigned: "Physician unassigned",
+      reassess: "Reassessment overdue",
+      vitals: "Vitals stale",
+      critical: "Critical results",
+      awaitingBed: "Awaiting bed",
+      los24: "LOS ≥24h",
+      readyDc: "Ready discharge",
+    },
+    patients: {
+      title: "Active hospital patients",
+      subtitle: "Canonical facility census — Observation and Inpatient encounters.",
+      attending: "Attending",
+      nurse: "Nurse",
+      los: "LOS",
+      view: "View",
+      noBed: "No bed assigned",
+    },
+    filters: {
+      search: "Search patients",
+      context: "Encounter context",
+      contextAll: "All",
+      contextObs: "Observation",
+      contextIp: "Inpatient",
+      operational: "Operational filter",
+      opAll: "All patients",
+      opRn: "Unassigned nurse",
+      opMd: "Unassigned physician",
+      opReassess: "Reassessment overdue",
+      opVitals: "Vitals stale",
+      opCritical: "Critical results",
+      opReadyDc: "Ready for discharge",
+      opLos: "LOS ≥24h",
+    },
+    badge: {
+      observation: "Observation",
+      inpatient: "Inpatient",
+    },
+    empty: {
+      observation: "No active Observation encounters for this facility.",
+      inpatient: "No active Inpatient encounters for this facility.",
+      hospital: "No active hospital patients match these filters.",
+      placement: "No active placement requests.",
+    },
+    floorOverview: {
+      title: "Floor & bed overview",
+      subtitle: "Compact inventory summary from the shared Floor Board.",
+      occupied: "Occupied",
+      available: "Available",
+      unavailable: "Cleaning/blocked",
+      openFull: "Open full Floor Board",
+    },
+    beds: {
+      title: "Bed management",
+      subtitle: "Room and bed availability, occupancy, cleaning and blocked status.",
+      body: "Bed inventory is owned by the Floor Board. Counts below come from that shared inventory.",
+      total: "Total",
+      available: "Available",
+      occupied: "Occupied",
+      cleaning: "Cleaning",
+      blocked: "Blocked",
+    },
+    observationTab: {
+      subtitle: "Active Observation encounters for this facility. Bed maps live on the Floor Board.",
+      count: "{count} active Observation encounter(s)",
+    },
+    inpatientTab: {
+      subtitle: "Active Inpatient encounters, including direct admissions.",
+      count: "{count} active Inpatient encounter(s)",
+    },
+    floorBoard: {
+      pageSubtitle: "Visual room and bed inventory for the facility.",
+      openHospitalCare: "Open Hospital Care dashboard",
+      clinicalCensusHint: "Clinical census — Observation: {obs} · Inpatient: {ip}",
+    },
+  },
   hospitalCareD3e7: {
     placement: {
       actionsOff:
