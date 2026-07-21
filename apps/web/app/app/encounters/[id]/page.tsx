@@ -116,7 +116,7 @@ import {
   deriveObservationEncounterDisplayStatus,
   deriveObservationTemplateCareOpsIndicators,
   deriveObservationTemplateLineLifecyclePhase,
-  isObservationShortStayEncounter,
+  clinicalEncounterContextIsObservation,
   observationTemplateItemIdFromPersistedManualLabel,
   mergeObservationTrackboardOpsInput,
   OBSERVATION_ORDER_TEMPLATE_ITEMS,
@@ -599,11 +599,13 @@ function EncounterDetailPageInner({ session }: { session: ReturnType<typeof useF
     if (!showDischargeModal || !encounter) return;
     const base = hydrateDischargeFormFromEncounterJson(encounter.dischargeSummaryJson);
     const obsWorkflow = Boolean(
-      isObservationShortStayEncounter({
+      clinicalEncounterContextIsObservation({
         type: encounter.type,
         status: encounter.status,
         admittedAt: encounter.admittedAt,
         admissionSummaryJson: encounter.admissionSummaryJson,
+        billingClassification: (encounter as { billingClassification?: string | null })
+          .billingClassification,
       })
     );
     if (obsWorkflow) {
@@ -1146,11 +1148,13 @@ function EncounterDetailPageInner({ session }: { session: ReturnType<typeof useF
       }
       if (!encAfter) return;
       const parsedAfter = parseAdmissionSummaryForChart(encAfter.admissionSummaryJson);
-      const workflowAfter = isObservationShortStayEncounter({
+      const workflowAfter = clinicalEncounterContextIsObservation({
         type: encAfter.type,
         status: encAfter.status,
         admittedAt: encAfter.admittedAt,
         admissionSummaryJson: encAfter.admissionSummaryJson,
+        billingClassification: (encAfter as { billingClassification?: string | null })
+          .billingClassification,
       });
       const offerFromServerCare = shouldOfferObservationOrderTemplateCareLevel(parsedAfter?.careLevel);
       const offerFromLocalCare = shouldOfferObservationOrderTemplateCareLevel(admissionForm.careLevel);
@@ -1420,16 +1424,18 @@ function EncounterDetailPageInner({ session }: { session: ReturnType<typeof useF
     return cc;
   }, [encounter, admissionPreviewForChrome?.admissionReason]);
 
-  /** INPATIENT observation lane: do not gate on `careLevel` alone (see `isObservationShortStayEncounter`). */
+  /** D3E.5 — Observation chrome only for explicit Observation clinical identity. */
   const observationWorkflowActive = useMemo(
     () =>
       Boolean(
         encounter &&
-          isObservationShortStayEncounter({
+          clinicalEncounterContextIsObservation({
             type: encounter.type,
             status: encounter.status,
             admittedAt: encounter.admittedAt,
             admissionSummaryJson: encounter.admissionSummaryJson,
+            billingClassification: (encounter as { billingClassification?: string | null })
+              .billingClassification,
           })
       ),
     [encounter, encounter?.type, encounter?.status, encounter?.admittedAt, encounter?.admissionSummaryJson]

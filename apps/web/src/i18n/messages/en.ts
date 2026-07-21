@@ -203,6 +203,7 @@ export default {
         ed: "ED",
         observation: "Observation",
         inpatient: "Inpatient",
+        unknown: "Identity review",
         other: "Other",
       },
       actionQueuedNotice:

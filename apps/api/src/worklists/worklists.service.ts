@@ -1,5 +1,5 @@
 import { Injectable } from "@nestjs/common";
-import { resolveDepartmentalEncounterContext } from "@medora/shared";
+import { resolveClinicalEncounterContext, clinicalContextToWorklistBadge } from "@medora/shared";
 import { ENCOUNTER_NESTED_CORE_SELECT } from "../encounters/encounter-query-contracts";
 import { PrismaService } from "../prisma/prisma.service";
 import { MedicationFulfillmentIntent, OrderStatus, Prisma } from "@prisma/client";
@@ -42,8 +42,8 @@ export class WorklistsService {
   ) {}
 
   /**
-   * D3DA — annotate departmental worklist rows with ED / Observation / Inpatient context.
-   * Uses existing encounter scalars only (no placement SQL).
+   * D3DA / D3E.5 — annotate departmental worklist rows with ED / Observation / Inpatient / UNKNOWN.
+   * Canonical clinical identity only (never short-stay / admittedAt heuristics).
    */
   private annotateClinicalEncounterContext<T>(orders: T[]): Array<T & { clinicalEncounterContext: string }> {
     return orders.map((order) => {
@@ -59,13 +59,15 @@ export class WorklistsService {
         | undefined;
       return {
         ...order,
-        clinicalEncounterContext: resolveDepartmentalEncounterContext({
-          type: enc?.type,
-          status: enc?.status,
-          billingClassification: enc?.billingClassification,
-          admissionSummaryJson: enc?.admissionSummaryJson,
-          admittedAt: enc?.admittedAt,
-        }),
+        clinicalEncounterContext: clinicalContextToWorklistBadge(
+          resolveClinicalEncounterContext({
+            type: enc?.type,
+            status: enc?.status,
+            billingClassification: enc?.billingClassification,
+            admissionSummaryJson: enc?.admissionSummaryJson,
+            admittedAt: enc?.admittedAt,
+          })
+        ),
       };
     });
   }

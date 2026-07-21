@@ -85,6 +85,7 @@ export default {
         ed: "Urgences",
         observation: "Observation",
         inpatient: "Hospitalisation",
+        unknown: "Identité à revoir",
         other: "Autre",
       },
       actionQueuedNotice:

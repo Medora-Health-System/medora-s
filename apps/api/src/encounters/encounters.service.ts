@@ -71,7 +71,7 @@ import {
   admissionSummaryFieldsSchema,
   ER_HANDOFF_V1_KEY,
   erHandoffV1SatisfiesInpatientTransferConfirm,
-  isObservationShortStayEncounter,
+  clinicalEncounterContextIsObservation,
   type EncounterAdmissionCancelDto,
   type EncounterCloseDto,
   type EncounterCreateDto,
@@ -572,7 +572,7 @@ export class EncountersService {
     }
 
     if (
-      !isObservationShortStayEncounter({
+      !clinicalEncounterContextIsObservation({
         type: enc.type,
         status: enc.status,
         admittedAt: enc.admittedAt,
@@ -580,7 +580,7 @@ export class EncountersService {
       })
     ) {
       throw new BadRequestException(
-        "Observation reassessment is only available for an open observation or short-stay stay (admission recorded or packet on file)."
+        "Observation reassessment is only available for an explicit Observation encounter."
       );
     }
 
