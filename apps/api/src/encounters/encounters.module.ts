@@ -2,6 +2,7 @@ import { Module } from "@nestjs/common";
 import { EncountersController } from "./encounters.controller";
 import { InternalPlacementController } from "./internal-placement.controller";
 import { ObservationWorkspaceController } from "./observation-workspace.controller";
+import { InpatientWorkspaceController } from "./inpatient-workspace.controller";
 import { EncountersService } from "./encounters.service";
 import { EncounterChartExportService } from "./chart-export.service";
 import { UnifiedEncounterTimelineService } from "./unified-encounter-timeline.service";
@@ -32,6 +33,7 @@ import { InternalPlacementService } from "./internal-placement.service";
     EncountersController,
     InternalPlacementController,
     ObservationWorkspaceController,
+    InpatientWorkspaceController,
   ],
   providers: [
     EncountersService,

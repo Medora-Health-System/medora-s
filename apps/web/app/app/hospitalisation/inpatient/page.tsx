@@ -1,7 +1,7 @@
 "use client";
 
-import { HospitalCareCensusLaneView } from "@/features/hospital-care/HospitalCareCensusLaneView";
+import { InpatientCensusView } from "@/features/inpatient-workspace/InpatientCensusView";
 
 export default function HospitalCareInpatientPage() {
-  return <HospitalCareCensusLaneView lane="inpatient" requestedType="INPATIENT" />;
+  return <InpatientCensusView />;
 }
