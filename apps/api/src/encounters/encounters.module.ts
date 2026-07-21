@@ -21,6 +21,7 @@ import { ClaimAssemblyPreviewService } from "./claim-assembly-preview.service";
 import { EncounterNotesService } from "./encounter-notes.service";
 import { ClinicalDocumentationService } from "./clinical-documentation.service";
 import { ChartCertificationB1Service } from "./chart-certification-b1.service";
+import { HospitalEpisodeService } from "./hospital-episode.service";
 
 @Module({
   imports: [PrismaModule, DiagnosesModule, OrdersModule, TrackboardModule, FacilitiesModule],
@@ -28,6 +29,7 @@ import { ChartCertificationB1Service } from "./chart-certification-b1.service";
   providers: [
     EncountersService,
     ChartCertificationB1Service,
+    HospitalEpisodeService,
     EncounterChartExportService,
     UnifiedEncounterTimelineService,
     ObservationOrderTemplateService,
@@ -48,6 +50,7 @@ import { ChartCertificationB1Service } from "./chart-certification-b1.service";
     EncounterChartExportService,
     UnifiedEncounterTimelineService,
     FacilityBillingWorkflowService,
+    HospitalEpisodeService,
   ],
 })
 export class EncountersModule {}
