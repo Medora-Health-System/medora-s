@@ -1,4 +1,9 @@
-import { Controller, Get, Req, UseGuards } from "@nestjs/common";
+/**
+ * D3E.6A — Hospital Care operational dashboard + canonical census.
+ * Facility id always from JWT — never from client body.
+ */
+
+import { Controller, Get, Query, Req, UseGuards } from "@nestjs/common";
 import { AuthGuard } from "@nestjs/passport";
 import { RoleCode } from "@prisma/client";
 import {
@@ -15,23 +20,25 @@ import {
   observationClinicalWorkspaceEnabled,
   observationDepartmentalFlagsFromProcessEnv,
   receivingEncounterFoundationEnabledFromProcessEnv,
+  UNIFIED_HOSPITAL_CENSUS_CERTIFICATION_ID,
   type HospitalCareDashboardCapabilities,
+  type HospitalOperationalSnapshotV1,
 } from "@medora/shared";
 import { RolesGuard, RequireRoles } from "../common/guards/roles.guard";
 import { InternalPlacementService } from "./internal-placement.service";
+import { HospitalCensusService } from "./hospital-census.service";
 
 function facilityIdFromReq(req: { user?: { facilityId?: string } }): string {
   return String(req.user?.facilityId ?? "").trim();
 }
 
-/**
- * D3E.6 — Hospital Care operational dashboard + activation diagnostics.
- * Facility id always from JWT — never from client body.
- */
 @Controller("hospital-care")
 @UseGuards(AuthGuard("jwt"), RolesGuard)
 export class HospitalCareController {
-  constructor(private readonly placement: InternalPlacementService) {}
+  constructor(
+    private readonly placement: InternalPlacementService,
+    private readonly hospitalCensus: HospitalCensusService
+  ) {}
 
   @Get("meta")
   @RequireRoles(RoleCode.PROVIDER, RoleCode.RN, RoleCode.ADMIN, RoleCode.LAB, RoleCode.RADIOLOGY)
@@ -44,7 +51,7 @@ export class HospitalCareController {
     const ipEnv = inpatientWorkspaceFlagsFromProcessEnv();
     return {
       module: "HOSPITAL_CARE",
-      certification: "MEDUI.HOSPITAL_CARE_OPERATIONAL_ACTIVATION.D3E6",
+      certification: UNIFIED_HOSPITAL_CENSUS_CERTIFICATION_ID,
       facilityId: facilityIdFromReq(req),
       productionDefaultsOff: hospitalCareProductionDefaultsAreOff({}),
       flags: {
@@ -59,6 +66,22 @@ export class HospitalCareController {
       mismatches: pairs.filter((p) => p.mismatch),
       developmentDiagnosticsVisible: isDevelopmentRuntime(env),
     };
+  }
+
+  @Get("census")
+  @RequireRoles(RoleCode.PROVIDER, RoleCode.RN, RoleCode.ADMIN, RoleCode.LAB, RoleCode.RADIOLOGY)
+  async census(
+    @Req() req: { user?: { facilityId?: string } },
+    @Query("scope") scope?: string
+  ) {
+    const normalized = String(scope ?? "ALL_HOSPITAL_CARE")
+      .trim()
+      .toUpperCase();
+    const snapshotScope: HospitalOperationalSnapshotV1["scope"] =
+      normalized === "OBSERVATION" || normalized === "INPATIENT"
+        ? normalized
+        : "ALL_HOSPITAL_CARE";
+    return this.hospitalCensus.getHospitalCensus(facilityIdFromReq(req), { snapshotScope });
   }
 
   @Get("dashboard")
@@ -77,7 +100,7 @@ export class HospitalCareController {
     const capabilities: HospitalCareDashboardCapabilities = {
       emergencyDepartment: true,
       observation: obsOn,
-      inpatient: ipOn || placementOn,
+      inpatient: ipOn || placementOn || true,
       directAdmission: directOn,
       bedManagement: true,
       transfers: false,
@@ -85,7 +108,13 @@ export class HospitalCareController {
       receivingEncounters: receivingOn,
     };
 
-    const queue = await this.placement.listFacilityQueue(facilityId, { strict: false });
+    const [queue, clinicalCensus] = await Promise.all([
+      this.placement.listFacilityQueue(facilityId, { strict: false }),
+      this.hospitalCensus.getHospitalCensus(facilityId, {
+        snapshotScope: "ALL_HOSPITAL_CARE",
+      }),
+    ]);
+
     const summary = buildHospitalCareDashboardSummary({
       facilityId,
       placementAvailability: queue.availability,
@@ -105,19 +134,39 @@ export class HospitalCareController {
         patient: item.patient,
       })),
       capabilities,
+      clinicalCensus: {
+        activeObservation: clinicalCensus.summary.activeObservation,
+        activeInpatient: clinicalCensus.summary.activeInpatient,
+        admissionsToday: clinicalCensus.summary.admissionsToday,
+        bedsAvailable: clinicalCensus.summary.bedsAvailable,
+        bedsOccupied: clinicalCensus.summary.bedsOccupied,
+        bedsUnavailable:
+          clinicalCensus.summary.bedsCleaning != null ||
+          clinicalCensus.summary.bedsBlocked != null
+            ? (clinicalCensus.summary.bedsCleaning ?? 0) +
+              (clinicalCensus.summary.bedsBlocked ?? 0)
+            : null,
+      },
     });
 
     return {
       ...summary,
+      census: clinicalCensus,
       dashboardSoftEnabled: hospitalCareDashboardEnabled(env),
       diagnostics:
         isDevelopmentRuntime(env) && !placementOn
           ? {
               reason: "PLACEMENT_WORKFLOW_DISABLED",
-              hint: "Enable INTERNAL_PLACEMENT_WORKFLOW_ENABLED and NEXT_PUBLIC_INTERNAL_PLACEMENT_WORKFLOW_ENABLED for local operational data.",
+              hint: "Internal placement workflow is disabled. Placement queue and awaiting-bed metrics are unavailable. Active Observation and Inpatient census data remain visible.",
               mismatches: evaluateHospitalCareFlagPairs(env).filter((p) => p.mismatch),
             }
-          : null,
+          : clinicalCensus.diagnostics.length
+            ? {
+                reason: "CENSUS_CONSISTENCY",
+                hint: "Server-owned census/bed consistency diagnostics attached.",
+                censusDiagnostics: clinicalCensus.diagnostics,
+              }
+            : null,
     };
   }
 }

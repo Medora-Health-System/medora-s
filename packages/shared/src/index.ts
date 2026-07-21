@@ -97,6 +97,8 @@ export * from "./encounters/clinicalIdentityAdmissionPathwaysD3e5Benchmark.js";
 export * from "./encounters/hospitalCareDashboardSummaryV1.js";
 export * from "./encounters/hospitalCareActivationFlags.js";
 export * from "./encounters/hospitalCareOperationalActivationD3e6Benchmark.js";
+export * from "./encounters/hospitalCensusV1.js";
+export * from "./encounters/hospitalCensusD3e6aBenchmark.js";
 export * from "./encounters/inpatientClinicalOpsV1.js";
 export * from "./encounters/inpatientOperationsFeatureFlags.js";
 export * from "./encounters/inpatientClinicalOpsCertificationV1.js";

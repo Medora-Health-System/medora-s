@@ -117,8 +117,11 @@ function patientLabel(row: HospitalCareDashboardPlacementRow): string {
 }
 
 /**
- * Build operational dashboard from authenticated facility placement rows.
- * When placementAvailability is FEATURE_DISABLED, counts are zero (not placeholders).
+ * Build operational dashboard from placement rows + optional clinical census overrides.
+ *
+ * D3E.6A: When placementAvailability is FEATURE_DISABLED, only placement metrics
+ * zero out. Clinical activeObservation / activeInpatient come from clinicalCensus
+ * (open encounters) and remain visible.
  */
 export function buildHospitalCareDashboardSummary(input: {
   facilityId: string;
@@ -127,6 +130,15 @@ export function buildHospitalCareDashboardSummary(input: {
   rows: HospitalCareDashboardPlacementRow[];
   capabilities: HospitalCareDashboardCapabilities;
   now?: Date;
+  /** Canonical open-encounter census — authoritative for Observation/Inpatient tiles. */
+  clinicalCensus?: {
+    activeObservation: number;
+    activeInpatient: number;
+    admissionsToday?: number;
+    bedsAvailable?: number | null;
+    bedsOccupied?: number | null;
+    bedsUnavailable?: number | null;
+  } | null;
 }): HospitalCareDashboardSummary {
   const now = input.now ?? new Date();
   const facilityId = String(input.facilityId ?? "").trim();
@@ -137,8 +149,8 @@ export function buildHospitalCareDashboardSummary(input: {
   let placementAccepted = 0;
   let awaitingBed = 0;
   let readyForTransfer = 0;
-  let activeObservation = 0;
-  let activeInpatient = 0;
+  let placementDerivedObservation = 0;
+  let placementDerivedInpatient = 0;
   let admissionsToday = 0;
 
   const attentionMap = new Map<string, number>();
@@ -157,14 +169,23 @@ export function buildHospitalCareDashboardSummary(input: {
     if (s === "BED_ASSIGNED") awaitingBed += 0; // has bed
     if (s === "READY_FOR_TRANSFER") readyForTransfer += 1;
     if (s === "DEPARTED_ED") bump("DEPARTED_ED_AWAITING_ARRIVAL");
-    if (isArrived(row) && dest === "OBSERVATION") activeObservation += 1;
-    if (isArrived(row) && dest === "INPATIENT") activeInpatient += 1;
+    if (isArrived(row) && dest === "OBSERVATION") placementDerivedObservation += 1;
+    if (isArrived(row) && dest === "INPATIENT") placementDerivedInpatient += 1;
     if (
       isSameUtcDay(row.arrivedDestinationAt ?? row.requestedAt ?? row.createdAt, now) &&
       (dest === "OBSERVATION" || dest === "INPATIENT")
     ) {
       admissionsToday += 1;
     }
+  }
+
+  const clinical = input.clinicalCensus;
+  const activeObservation = clinical
+    ? clinical.activeObservation
+    : placementDerivedObservation;
+  const activeInpatient = clinical ? clinical.activeInpatient : placementDerivedInpatient;
+  if (clinical?.admissionsToday != null) {
+    admissionsToday = clinical.admissionsToday;
   }
 
   const attention: HospitalCareAttentionItem[] = [...attentionMap.entries()].map(
@@ -229,9 +250,9 @@ export function buildHospitalCareDashboardSummary(input: {
       activeInpatient,
       admissionsToday,
       dischargesToday: 0,
-      bedsAvailable: null,
-      bedsOccupied: null,
-      bedsUnavailable: null,
+      bedsAvailable: clinical?.bedsAvailable ?? null,
+      bedsOccupied: clinical?.bedsOccupied ?? null,
+      bedsUnavailable: clinical?.bedsUnavailable ?? null,
     },
     attention,
     recentActivity,
