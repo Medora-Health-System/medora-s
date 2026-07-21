@@ -47,8 +47,26 @@ jobs:
       - name: Prisma generate
         run: pnpm --filter @medora/api exec prisma generate
 
+      - name: Prisma validate
+        run: pnpm --filter @medora/api exec prisma validate
+
       - name: Prisma migrate deploy
         run: pnpm --filter @medora/api exec prisma migrate deploy
+
+      - name: Database compatibility check (post-migration)
+        run: pnpm db:compatibility:check
+
+      - name: Trackboard critical validation
+        run: pnpm trackboard:validate:critical
+
+      - name: Trackboard pre-/post-D3B schema smoke
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq postgresql-client
+          # Fresh DB for expand-and-contract proof (drop+recreate CI database)
+          PGPASSWORD=postgres psql -h localhost -U postgres -d postgres -c "DROP DATABASE IF EXISTS medora_ci_trackboard;"
+          PGPASSWORD=postgres psql -h localhost -U postgres -d postgres -c "CREATE DATABASE medora_ci_trackboard;"
+          DATABASE_URL=postgresql://postgres:postgres@localhost:5432/medora_ci_trackboard pnpm trackboard:smoke:pre-post-d3b
 
       - name: API typecheck
         run: pnpm --filter @medora/api exec tsc --noEmit -p tsconfig.build.json
