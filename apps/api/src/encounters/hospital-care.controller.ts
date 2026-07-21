@@ -27,6 +27,7 @@ import {
 import { RolesGuard, RequireRoles } from "../common/guards/roles.guard";
 import { InternalPlacementService } from "./internal-placement.service";
 import { HospitalCensusService } from "./hospital-census.service";
+import { HospitalUnitRegistryService } from "./hospital-unit-registry.service";
 
 function facilityIdFromReq(req: { user?: { facilityId?: string } }): string {
   return String(req.user?.facilityId ?? "").trim();
@@ -37,7 +38,8 @@ function facilityIdFromReq(req: { user?: { facilityId?: string } }): string {
 export class HospitalCareController {
   constructor(
     private readonly placement: InternalPlacementService,
-    private readonly hospitalCensus: HospitalCensusService
+    private readonly hospitalCensus: HospitalCensusService,
+    private readonly unitRegistry: HospitalUnitRegistryService
   ) {}
 
   @Get("meta")
@@ -66,6 +68,12 @@ export class HospitalCareController {
       mismatches: pairs.filter((p) => p.mismatch),
       developmentDiagnosticsVisible: isDevelopmentRuntime(env),
     };
+  }
+
+  @Get("units")
+  @RequireRoles(RoleCode.PROVIDER, RoleCode.RN, RoleCode.ADMIN, RoleCode.LAB, RoleCode.RADIOLOGY)
+  async units(@Req() req: { user?: { facilityId?: string } }) {
+    return this.unitRegistry.getUnitRegistry(facilityIdFromReq(req));
   }
 
   @Get("census")

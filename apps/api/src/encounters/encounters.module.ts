@@ -8,6 +8,7 @@ import { InpatientOperationsController } from "./inpatient-operations.controller
 import { EncountersService } from "./encounters.service";
 import { InpatientOperationsService } from "./inpatient-operations.service";
 import { HospitalCensusService } from "./hospital-census.service";
+import { HospitalUnitRegistryService } from "./hospital-unit-registry.service";
 import { EncounterChartExportService } from "./chart-export.service";
 import { UnifiedEncounterTimelineService } from "./unified-encounter-timeline.service";
 import { PrismaModule } from "../prisma/prisma.module";
@@ -45,6 +46,7 @@ import { InternalPlacementService } from "./internal-placement.service";
     EncountersService,
     InpatientOperationsService,
     HospitalCensusService,
+    HospitalUnitRegistryService,
     ChartCertificationB1Service,
     HospitalEpisodeService,
     InternalPlacementService,
