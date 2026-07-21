@@ -11,7 +11,7 @@ import {
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
-import { AuditAction, EncounterStatus, EncounterType, Prisma } from "@prisma/client";
+import { AuditAction, BillingClassification, EncounterStatus, EncounterType, Prisma } from "@prisma/client";
 import {
   internalPlacementWorkflowEnabledFromProcessEnv,
   projectInternalPlacementState,
@@ -21,6 +21,7 @@ import {
   InternalPlacementActorRole,
   InternalPlacementStatus,
   ReceivingEncounterLifecycle,
+  billingClassificationForPlacementDestination,
   type InternalPlacementStateProjection,
 } from "@medora/shared";
 import { AuditService } from "../common/services/audit.service";
@@ -629,6 +630,17 @@ export class InternalPlacementService {
 
         if (this.isReceivingFoundationEnabled() || options?.featureFlagEnabled === true) {
           if (!receivingEncounterId) {
+            const destType =
+              row.requestedEncounterType === "OBSERVATION" ||
+              row.requestedEncounterType === "INPATIENT"
+                ? row.requestedEncounterType
+                : null;
+            if (!destType) {
+              throw new BadRequestException(
+                "Placement destination context must be OBSERVATION or INPATIENT."
+              );
+            }
+            const billingClass = billingClassificationForPlacementDestination(destType);
             const created = await tx.encounter.create({
               data: {
                 facilityId: row.facilityId,
@@ -636,11 +648,18 @@ export class InternalPlacementService {
                 type: EncounterType.INPATIENT,
                 status: EncounterStatus.OPEN,
                 hospitalEpisodeId: row.hospitalEpisodeId,
+                billingClassification:
+                  billingClass === "OBSERVATION"
+                    ? BillingClassification.OBSERVATION
+                    : BillingClassification.INPATIENT,
                 admissionSummaryJson: {
                   d3cReceiving: true,
-                  requestedEncounterType: row.requestedEncounterType,
+                  requestedEncounterType: destType,
                   careLevel: row.requestedLevelOfCare,
                   fromInternalPlacementRequestId: row.id,
+                  admissionSource:
+                    destType === "INPATIENT" ? "EMERGENCY_DEPARTMENT" : "EMERGENCY_DEPARTMENT",
+                  clinicalDestinationContext: destType,
                 },
                 admittedAt: new Date(),
               },
