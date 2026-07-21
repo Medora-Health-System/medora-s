@@ -7,6 +7,7 @@ import {
   mergeOperationalIntoEncounters,
   type TrackboardOperationalAggregate,
 } from "./trackboard-operational.util";
+import { TRACKBOARD_ACTIVE_ENCOUNTER_SELECT } from "./trackboard-encounter-select";
 
 @Injectable()
 export class TrackboardService {
@@ -29,34 +30,13 @@ export class TrackboardService {
       where.type = { not: EncounterType.INPATIENT };
     }
 
+    /**
+     * Explicit select (not bare `include`) — MEDORA.PROD.TRACKBOARD_PRISMA_500_2026_07_20.
+     * Omits D3B `hospitalEpisodeId` so Trackboard stays compatible before that migration.
+     */
     const encounters = await this.prisma.encounter.findMany({
       where,
-      include: {
-        patient: {
-          select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            dob: true,
-            sexAtBirth: true,
-            mrn: true,
-          },
-        },
-        physicianAssigned: {
-          select: { id: true, firstName: true, lastName: true },
-        },
-        /** Phase 10A — RN currently responsible for the encounter (operational ownership). */
-        nurseAssigned: {
-          select: { id: true, firstName: true, lastName: true },
-        },
-        triage: {
-          select: {
-            esi: true,
-            chiefComplaint: true,
-            triageCompleteAt: true,
-          },
-        },
-      },
+      select: TRACKBOARD_ACTIVE_ENCOUNTER_SELECT,
       orderBy: {
         createdAt: "desc",
       },

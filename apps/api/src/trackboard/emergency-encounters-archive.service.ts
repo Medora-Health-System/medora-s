@@ -5,6 +5,7 @@ import {
 } from "@medora/shared";
 import { EncounterStatus, EncounterType, Prisma } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
+import { TRACKBOARD_ARCHIVE_ENCOUNTER_SELECT } from "./trackboard-encounter-select";
 
 export type EmergencyEncountersArchiveQuery = {
   facilityId: string;
@@ -117,26 +118,7 @@ export class EmergencyEncountersArchiveService {
     const [encounters, total] = await Promise.all([
       this.prisma.encounter.findMany({
         where,
-        include: {
-          patient: {
-            select: {
-              id: true,
-              firstName: true,
-              lastName: true,
-              dob: true,
-              sexAtBirth: true,
-              mrn: true,
-              phone: true,
-            },
-          },
-          triage: {
-            select: { chiefComplaint: true },
-          },
-          facility: {
-            select: { name: true },
-          },
-          _count: { select: { diagnoses: true } },
-        },
+        select: TRACKBOARD_ARCHIVE_ENCOUNTER_SELECT,
         orderBy: { createdAt: "desc" },
         take: limit,
         skip: offset,
