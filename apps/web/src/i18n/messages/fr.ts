@@ -18612,6 +18612,29 @@ export default {
     statusNone: "Aucune demande de placement durable pour le moment",
     noFalseBedHint:
       "Le libellé de salle aux urgences n’est pas une attribution de lit. La transmission seule n’est pas une arrivée.",
+    saveError: "Impossible d’enregistrer la demande de placement.",
+    fields: {
+      diagnosis: "Diagnostic d’admission",
+      service: "Service",
+      levelOfCare: "Niveau de soins",
+      clinicalReason: "Motif clinique",
+      priority: "Priorité",
+      acceptingProvider: "Médecin acceptant (facultatif)",
+      telemetry: "Télémétrie requise",
+      isolation: "Isolement requis",
+    },
+    priority: {
+      routine: "Routine",
+      urgent: "Urgent",
+      stat: "STAT",
+    },
+    actions: {
+      saveDraft: "Enregistrer le brouillon",
+      sign: "Signer la décision",
+      request: "Soumettre la demande de placement",
+    },
+    trackboardTooltip:
+      "État du placement interne (le patient reste sur le tableau des urgences jusqu’au départ)",
     status: {
       PLACEMENT_DRAFT: "Brouillon de demande",
       ADMISSION_DECISION_SIGNED: "Décision d’admission signée",

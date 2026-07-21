@@ -1062,16 +1062,21 @@ export function EmergencyDispositionPanel({
             {showAdmissionFields && canPrescribe ? (
               <div>
                 <AdmissionObservationDecisionBoard
-                  requestedEncounterType={
+                  encounterId={encounterId}
+                  initialRequestedType={
                     mapLegacyCareLevelToRequestedTypeHint(admissionForm.careLevel) ??
                     (admissionForm.careLevel ? "INPATIENT" : null)
                   }
-                  onRequestedTypeChange={(type) =>
-                    patchAdmission({
-                      careLevel: type === "OBSERVATION" ? "Observation" : "Acute",
-                    })
-                  }
                   disabled={medDisabled}
+                  onPlacementChange={(placement) => {
+                    if (!placement?.requestedEncounterType) return;
+                    patchAdmission({
+                      careLevel:
+                        placement.requestedEncounterType === "OBSERVATION"
+                          ? "Observation"
+                          : "Acute",
+                    });
+                  }}
                 />
                 <p style={sectionHeading}>{t("emergencyDisposition.sectionAdmissionPhysician")}</p>
                 <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 8 }}>

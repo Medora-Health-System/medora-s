@@ -3,18 +3,28 @@
 /**
  * D3C — Admission & Observation Decision Board (feature-flagged).
  * Does not create placement rows from the client identity; API derives facility/patient.
- * Behind INTERNAL_PLACEMENT_WORKFLOW — when OFF, legacy admission shell remains.
+ * Behind INTERNAL_PLACEMENT_WORKFLOW — when OFF, returns null (legacy admission shell remains).
  */
 
+import { useCallback, useEffect, useState, type CSSProperties } from "react";
 import { useI18n } from "@/lib/i18n";
 import { internalPlacementWorkflowEnabled } from "@medora/shared";
+import {
+  createInternalPlacementDraft,
+  fetchActiveInternalPlacement,
+  signInternalPlacement,
+  submitInternalPlacement,
+  updateInternalPlacementDraft,
+  type InternalPlacementProjectionDto,
+  type PlacementDraftPayload,
+} from "./internalPlacementApi";
 
 export type AdmissionObservationDecisionBoardProps = {
-  /** Current placement status label key from API projection, if any. */
-  placementTrackboardLabel?: string | null;
-  requestedEncounterType?: "OBSERVATION" | "INPATIENT" | null;
-  onRequestedTypeChange?: (type: "OBSERVATION" | "INPATIENT") => void;
+  encounterId: string;
+  /** Seeded from legacy admissionSummaryJson careLevel when no placement exists. */
+  initialRequestedType?: "OBSERVATION" | "INPATIENT" | null;
   disabled?: boolean;
+  onPlacementChange?: (placement: InternalPlacementProjectionDto | null) => void;
 };
 
 export function isInternalPlacementWorkflowUiEnabled(): boolean {
@@ -25,17 +35,150 @@ export function isInternalPlacementWorkflowUiEnabled(): boolean {
   });
 }
 
+const fieldStyle: CSSProperties = {
+  width: "100%",
+  padding: "8px 10px",
+  borderRadius: 10,
+  border: "1px solid #cbd5e1",
+  fontSize: 13,
+  boxSizing: "border-box",
+};
+
+const labelStyle: CSSProperties = {
+  display: "block",
+  fontSize: 12,
+  fontWeight: 600,
+  color: "#334155",
+  marginBottom: 4,
+};
+
 export function AdmissionObservationDecisionBoard({
-  placementTrackboardLabel,
-  requestedEncounterType,
-  onRequestedTypeChange,
+  encounterId,
+  initialRequestedType,
   disabled,
+  onPlacementChange,
 }: AdmissionObservationDecisionBoardProps) {
   const { t } = useI18n();
+  const [placement, setPlacement] = useState<InternalPlacementProjectionDto | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const [requestedEncounterType, setRequestedEncounterType] = useState<
+    "OBSERVATION" | "INPATIENT" | null
+  >(initialRequestedType ?? null);
+  const [admissionDiagnosisSummary, setAdmissionDiagnosisSummary] = useState("");
+  const [requestedService, setRequestedService] = useState("");
+  const [requestedLevelOfCare, setRequestedLevelOfCare] = useState("");
+  const [reasonForPlacement, setReasonForPlacement] = useState("");
+  const [clinicalPriority, setClinicalPriority] = useState("ROUTINE");
+  const [telemetryRequired, setTelemetryRequired] = useState(false);
+  const [isolationRequired, setIsolationRequired] = useState(false);
+  const [acceptingProviderNameSnapshot, setAcceptingProviderNameSnapshot] = useState("");
+
+  const applyPlacement = useCallback(
+    (next: InternalPlacementProjectionDto | null) => {
+      setPlacement(next);
+      onPlacementChange?.(next);
+      if (!next) return;
+      const type =
+        next.requestedEncounterType === "OBSERVATION" || next.requestedEncounterType === "INPATIENT"
+          ? next.requestedEncounterType
+          : null;
+      if (type) setRequestedEncounterType(type);
+      setRequestedLevelOfCare(next.requestedLevelOfCare ?? "");
+      setRequestedService(next.requestedService ?? "");
+      setClinicalPriority(next.clinicalPriority ?? "ROUTINE");
+      setAdmissionDiagnosisSummary(next.admissionDiagnosisSummary ?? "");
+      setReasonForPlacement(next.reasonForPlacement ?? "");
+      setTelemetryRequired(next.telemetryRequired === true);
+      setIsolationRequired(next.isolationRequired === true);
+      setAcceptingProviderNameSnapshot(next.acceptingProviderNameSnapshot ?? "");
+    },
+    [onPlacementChange]
+  );
+
+  useEffect(() => {
+    if (!isInternalPlacementWorkflowUiEnabled() || !encounterId) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const row = await fetchActiveInternalPlacement(encounterId);
+        if (!cancelled) applyPlacement(row);
+      } catch {
+        if (!cancelled) applyPlacement(null);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [encounterId, applyPlacement]);
 
   if (!isInternalPlacementWorkflowUiEnabled()) {
     return null;
   }
+
+  const formLocked =
+    disabled ||
+    busy ||
+    (placement != null &&
+      placement.status !== "DRAFT" &&
+      placement.status !== "SIGNED");
+
+  function buildPayload(): PlacementDraftPayload {
+    if (!requestedEncounterType) {
+      throw new Error("type_required");
+    }
+    return {
+      requestedEncounterType,
+      requestedLevelOfCare: requestedLevelOfCare.trim() || null,
+      requestedService: requestedService.trim() || null,
+      clinicalPriority: clinicalPriority.trim() || null,
+      admissionDiagnosisSummary: admissionDiagnosisSummary.trim() || null,
+      reasonForPlacement: reasonForPlacement.trim() || null,
+      telemetryRequired,
+      isolationRequired,
+      acceptingProviderNameSnapshot: acceptingProviderNameSnapshot.trim() || null,
+      expectedVersion: placement?.version,
+    };
+  }
+
+  async function runAction(action: "draft" | "sign" | "submit") {
+    setError(null);
+    setBusy(true);
+    try {
+      const payload = buildPayload();
+      let next: InternalPlacementProjectionDto;
+      if (!placement) {
+        next = await createInternalPlacementDraft(encounterId, payload);
+        if (action === "sign") {
+          next = await signInternalPlacement(next.id, next.version);
+        } else if (action === "submit") {
+          next = await submitInternalPlacement(next.id, next.version);
+        }
+      } else if (action === "draft") {
+        next = await updateInternalPlacementDraft(placement.id, payload);
+      } else if (action === "sign") {
+        next = await updateInternalPlacementDraft(placement.id, payload);
+        next = await signInternalPlacement(next.id, next.version);
+      } else {
+        next = await updateInternalPlacementDraft(placement.id, payload);
+        next = await submitInternalPlacement(next.id, next.version);
+      }
+      applyPlacement(next);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : t("internalPlacementD3c.saveError"));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const statusLabel = placement?.trackboardLabel
+    ? t(
+        `internalPlacementD3c.status.${placement.trackboardLabel}` as Parameters<
+          typeof t
+        >[0]
+      )
+    : t("internalPlacementD3c.statusNone");
 
   return (
     <section
@@ -59,7 +202,11 @@ export function AdmissionObservationDecisionBoard({
         {t("internalPlacementD3c.boardHint")}
       </p>
 
-      <div style={{ display: "flex", flexDirection: "column", gap: 8 }} role="radiogroup" aria-label={t("internalPlacementD3c.step1Title")}>
+      <div
+        style={{ display: "flex", flexDirection: "column", gap: 8 }}
+        role="radiogroup"
+        aria-label={t("internalPlacementD3c.step1Title")}
+      >
         <span style={{ fontSize: 12, fontWeight: 600, color: "#334155" }}>
           {t("internalPlacementD3c.step1Title")}
         </span>
@@ -77,38 +224,161 @@ export function AdmissionObservationDecisionBoard({
               gap: 8,
               fontSize: 13,
               color: "#0f172a",
-              cursor: disabled ? "not-allowed" : "pointer",
+              cursor: formLocked ? "not-allowed" : "pointer",
             }}
           >
             <input
               type="radio"
               name="d3c-requested-encounter-type"
               checked={requestedEncounterType === value}
-              disabled={disabled}
-              onChange={() => onRequestedTypeChange?.(value)}
+              disabled={formLocked}
+              onChange={() => setRequestedEncounterType(value)}
             />
             <span>{t(labelKey)}</span>
           </label>
         ))}
       </div>
 
+      <div
+        style={{
+          marginTop: 12,
+          display: "grid",
+          gridTemplateColumns: "1fr 1fr",
+          gap: 10,
+        }}
+      >
+        <div style={{ gridColumn: "1 / -1" }}>
+          <label style={labelStyle}>{t("internalPlacementD3c.fields.diagnosis")}</label>
+          <textarea
+            value={admissionDiagnosisSummary}
+            disabled={formLocked}
+            onChange={(e) => setAdmissionDiagnosisSummary(e.target.value)}
+            rows={2}
+            style={fieldStyle}
+          />
+        </div>
+        <div>
+          <label style={labelStyle}>{t("internalPlacementD3c.fields.service")}</label>
+          <input
+            value={requestedService}
+            disabled={formLocked}
+            onChange={(e) => setRequestedService(e.target.value)}
+            style={fieldStyle}
+          />
+        </div>
+        <div>
+          <label style={labelStyle}>{t("internalPlacementD3c.fields.levelOfCare")}</label>
+          <input
+            value={requestedLevelOfCare}
+            disabled={formLocked}
+            onChange={(e) => setRequestedLevelOfCare(e.target.value)}
+            style={fieldStyle}
+          />
+        </div>
+        <div style={{ gridColumn: "1 / -1" }}>
+          <label style={labelStyle}>{t("internalPlacementD3c.fields.clinicalReason")}</label>
+          <textarea
+            value={reasonForPlacement}
+            disabled={formLocked}
+            onChange={(e) => setReasonForPlacement(e.target.value)}
+            rows={2}
+            style={fieldStyle}
+          />
+        </div>
+        <div>
+          <label style={labelStyle}>{t("internalPlacementD3c.fields.priority")}</label>
+          <select
+            value={clinicalPriority}
+            disabled={formLocked}
+            onChange={(e) => setClinicalPriority(e.target.value)}
+            style={fieldStyle}
+          >
+            <option value="ROUTINE">{t("internalPlacementD3c.priority.routine")}</option>
+            <option value="URGENT">{t("internalPlacementD3c.priority.urgent")}</option>
+            <option value="STAT">{t("internalPlacementD3c.priority.stat")}</option>
+          </select>
+        </div>
+        <div>
+          <label style={labelStyle}>{t("internalPlacementD3c.fields.acceptingProvider")}</label>
+          <input
+            value={acceptingProviderNameSnapshot}
+            disabled={formLocked}
+            onChange={(e) => setAcceptingProviderNameSnapshot(e.target.value)}
+            style={fieldStyle}
+          />
+        </div>
+        <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13 }}>
+          <input
+            type="checkbox"
+            checked={telemetryRequired}
+            disabled={formLocked}
+            onChange={(e) => setTelemetryRequired(e.target.checked)}
+          />
+          {t("internalPlacementD3c.fields.telemetry")}
+        </label>
+        <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13 }}>
+          <input
+            type="checkbox"
+            checked={isolationRequired}
+            disabled={formLocked}
+            onChange={(e) => setIsolationRequired(e.target.checked)}
+          />
+          {t("internalPlacementD3c.fields.isolation")}
+        </label>
+      </div>
+
+      <div style={{ marginTop: 12, display: "flex", flexWrap: "wrap", gap: 8 }}>
+        <button
+          type="button"
+          disabled={formLocked || !requestedEncounterType}
+          onClick={() => void runAction("draft")}
+          style={actionBtnStyle}
+        >
+          {t("internalPlacementD3c.actions.saveDraft")}
+        </button>
+        <button
+          type="button"
+          disabled={formLocked || !requestedEncounterType}
+          onClick={() => void runAction("sign")}
+          style={actionBtnStyle}
+        >
+          {t("internalPlacementD3c.actions.sign")}
+        </button>
+        <button
+          type="button"
+          disabled={formLocked || !requestedEncounterType}
+          onClick={() => void runAction("submit")}
+          style={{ ...actionBtnStyle, background: "#0f766e", color: "#fff", borderColor: "#0f766e" }}
+        >
+          {t("internalPlacementD3c.actions.request")}
+        </button>
+      </div>
+
+      {error ? (
+        <p style={{ margin: "8px 0 0", fontSize: 12, color: "#b91c1c" }} role="alert">
+          {error}
+        </p>
+      ) : null}
+
       <div style={{ marginTop: 12 }}>
         <span style={{ fontSize: 12, fontWeight: 600, color: "#334155" }}>
           {t("internalPlacementD3c.step3Title")}
         </span>
-        <p style={{ margin: "4px 0 0", fontSize: 13, color: "#0f172a" }}>
-          {placementTrackboardLabel
-            ? t(
-                `internalPlacementD3c.status.${placementTrackboardLabel}` as Parameters<
-                  typeof t
-                >[0]
-              )
-            : t("internalPlacementD3c.statusNone")}
-        </p>
-        <p style={{ margin: "6px 0 0", fontSize: 11, color: "#64748b", lineHeight: 1.4 }}>
+        <p style={{ margin: "4px 0 0", fontSize: 13, color: "#0f172a" }}>{statusLabel}</p>
+        <p style={{ margin: "4px 0 0", fontSize: 11, color: "#64748b" }}>
           {t("internalPlacementD3c.noFalseBedHint")}
         </p>
       </div>
     </section>
   );
 }
+
+const actionBtnStyle: CSSProperties = {
+  padding: "8px 12px",
+  borderRadius: 10,
+  border: "1px solid #cbd5e1",
+  background: "#fff",
+  fontSize: 13,
+  fontWeight: 600,
+  cursor: "pointer",
+};

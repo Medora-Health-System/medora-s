@@ -18542,6 +18542,28 @@ export default {
     statusNone: "No durable placement request yet",
     noFalseBedHint:
       "An ED room label is not a bed assignment. Handoff alone is not arrival.",
+    saveError: "Unable to save the placement request.",
+    fields: {
+      diagnosis: "Admission diagnosis",
+      service: "Service",
+      levelOfCare: "Level of care",
+      clinicalReason: "Clinical reason",
+      priority: "Priority",
+      acceptingProvider: "Accepting provider (optional)",
+      telemetry: "Telemetry required",
+      isolation: "Isolation required",
+    },
+    priority: {
+      routine: "Routine",
+      urgent: "Urgent",
+      stat: "STAT",
+    },
+    actions: {
+      saveDraft: "Save draft",
+      sign: "Sign decision",
+      request: "Submit placement request",
+    },
+    trackboardTooltip: "Internal placement status (patient remains on the ED board until departure)",
     status: {
       PLACEMENT_DRAFT: "Draft request",
       ADMISSION_DECISION_SIGNED: "Admission decision signed",

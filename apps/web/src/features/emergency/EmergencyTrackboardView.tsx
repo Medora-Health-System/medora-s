@@ -255,6 +255,12 @@ type OpenEncounterRow = {
   nursingAssessment?: unknown;
   /** Phase 10B — read-only aggregates from `/trackboard` (no result text). */
   trackboardOps?: TrackboardOpsPayload | null;
+  /** D3C — optional placement projection (flag OFF → null / omitted). */
+  internalPlacement?: {
+    trackboardLabel?: string | null;
+    status?: string | null;
+    departedEdAt?: string | null;
+  } | null;
   governedRoomDisplay?: string | null;
   governedRoomUnit?: string | null;
   governedRoomHasAssignment?: boolean;
@@ -1385,6 +1391,20 @@ export function EmergencyTrackboardView() {
                                 <span title={t("emergencyTrackboard.transferPendingTooltip")}>
                                   <MedoraCardBadge compact={usesCompactCensus} soft={{ bg: "#fff7ed", text: "#c2410c", border: "#fed7aa" }}>
                                     {t("emergencyTrackboard.disposition.transferPending")}
+                                  </MedoraCardBadge>
+                                </span>
+                              ) : null}
+                              {encounter.internalPlacement?.trackboardLabel ? (
+                                <span title={t("internalPlacementD3c.trackboardTooltip")}>
+                                  <MedoraCardBadge
+                                    compact={usesCompactCensus}
+                                    soft={{ bg: "#e0f2fe", text: "#075985", border: "#7dd3fc" }}
+                                  >
+                                    {t(
+                                      `internalPlacementD3c.status.${encounter.internalPlacement.trackboardLabel}` as Parameters<
+                                        typeof t
+                                      >[0]
+                                    )}
                                   </MedoraCardBadge>
                                 </span>
                               ) : null}
