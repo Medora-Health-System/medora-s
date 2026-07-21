@@ -1,8 +1,9 @@
 # D3 Design Package — Hospital Episode, Placement Request, Linked Encounters
 
-**Status:** DESIGN ONLY — do not apply migration  
-**Certification context:** `MEDUI.ED_DISPOSITION_BOARD_ENTERPRISE_COMPLETION_PHASE_1`  
+**Status:** DESIGN PACKAGE — D3B foundation implemented separately
+**Certification context:** `MEDUI.ED_DISPOSITION_BOARD_ENTERPRISE_COMPLETION_PHASE_1`
 **Prerequisite:** D1/D2 landed on existing encounter JSON (no schema change)
+**D3B implementation:** see `docs/clinical/hospital-episode-foundation-d3b.md` (`MEDUI.HOSPITAL_EPISODE_FOUNDATION_D3B`) — migration generated, not applied; flag OFF
 
 This document prepares durable architecture for Observation and Hospital units.
 It must **not** be implemented via temporary JSON as the primary durable store.
