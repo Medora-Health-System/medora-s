@@ -18982,6 +18982,45 @@ export default {
       open: "Ouvrir la gestion des lits complète",
     },
   },
+  hospitalCareD3e6c: {
+    hub: {
+      subtitle:
+        "Sélectionnez un service clinique ou une unité pour ouvrir son tableau dédié. Navigation par ligne de service — pas par étage ni liste de chambres.",
+      summaryTitle: "Carte hospitalière d’hospitalisation",
+      serviceLines: "lignes de service",
+      openAllCensus: "Ouvrir le recensement toutes unités",
+      bedHint:
+        "Les chambres et lits sont gérés sur le tableau des unités — pas dans cette arborescence de navigation.",
+    },
+    tree: {
+      aria: "Arborescence graphique des lignes de service hospitalières",
+      title: "Carte des unités hospitalières",
+      search: "Rechercher des unités",
+      expandAll: "Tout développer",
+      collapseAll: "Tout réduire",
+      patients: "patients",
+      alerts: "alertes",
+      bedsAvailable: "lits disponibles",
+      openBoard: "Ouvrir le tableau",
+      viewAllUnits: "Voir les {count} unités",
+      legend:
+        "Les lignes de service regroupent les unités cliniques. Cliquez une unité pour ouvrir son tableau dédié. Les chambres et lits ne sont pas listés ici.",
+    },
+    counts: {
+      unavailable: "—",
+    },
+    board: {
+      backToTree: "Retour à l’arborescence d’hospitalisation",
+      serviceLine: "Ligne de service",
+      allTitle: "Toutes les unités hospitalières",
+      allSubtitle: "Recensement d’hospitalisation de l’établissement (tableau opérationnel agrégé).",
+      serviceLineSubtitle: "Unités configurées dans cette ligne de service clinique.",
+      unitSubtitle: "Tableau opérationnel dédié à l’unité — dossier d’entreprise partagé.",
+      unitNotFound: "Unité introuvable pour cet établissement.",
+      emptyPatients: "Aucun patient actif dans cette unité.",
+      bedSummary: "Résumé compact des lits",
+    },
+  },
 
   hospitalCareD3e7: {
     placement: {

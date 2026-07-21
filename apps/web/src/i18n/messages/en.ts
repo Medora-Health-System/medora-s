@@ -18907,6 +18907,44 @@ export default {
       open: "Open full Bed Management",
     },
   },
+  hospitalCareD3e6c: {
+    hub: {
+      subtitle:
+        "Select a clinical service or unit to open its dedicated board. Navigation is by service line — not by floor or room list.",
+      summaryTitle: "Hospital inpatient map",
+      serviceLines: "service lines",
+      openAllCensus: "Open all-units census",
+      bedHint: "Rooms and beds are managed on the Floor Board — not in this navigation tree.",
+    },
+    tree: {
+      aria: "Graphical hospital service-line tree",
+      title: "Hospital unit map",
+      search: "Search units",
+      expandAll: "Expand all",
+      collapseAll: "Collapse all",
+      patients: "patients",
+      alerts: "alerts",
+      bedsAvailable: "beds available",
+      openBoard: "Open board",
+      viewAllUnits: "View all {count} units",
+      legend:
+        "Service lines group clinical units. Click a unit to open its dedicated board. Rooms and beds are not listed here.",
+    },
+    counts: {
+      unavailable: "—",
+    },
+    board: {
+      backToTree: "Back to Inpatient unit tree",
+      serviceLine: "Service line",
+      allTitle: "All Hospital Units",
+      allSubtitle: "Facility-wide inpatient census (aggregate operational board).",
+      serviceLineSubtitle: "Configured units in this clinical service line.",
+      unitSubtitle: "Dedicated unit operational board — shared enterprise chart.",
+      unitNotFound: "Unit not found for this facility.",
+      emptyPatients: "No active patients in this unit.",
+      bedSummary: "Compact bed summary",
+    },
+  },
   hospitalCareD3e7: {
     placement: {
       actionsOff:
