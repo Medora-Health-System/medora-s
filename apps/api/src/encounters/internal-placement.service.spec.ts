@@ -182,4 +182,37 @@ describe("InternalPlacementService D3C", () => {
     );
     expect(src).toContain("InternalPlacementService");
   });
+
+  it("listFacilityQueue returns FEATURE_DISABLED envelope without Prisma when flag OFF", async () => {
+    delete process.env.INTERNAL_PLACEMENT_WORKFLOW_ENABLED;
+    const prisma = {
+      internalPlacementRequest: {
+        findMany: jest.fn(),
+      },
+    };
+    const svc = new InternalPlacementService(prisma as never, { log: jest.fn() } as never, {
+      createEpisodeForEncounter: jest.fn(),
+    } as never);
+    const result = await svc.listFacilityQueue("fac-1", { strict: false });
+    expect(result).toEqual({ availability: "FEATURE_DISABLED", items: [] });
+    expect(prisma.internalPlacementRequest.findMany).not.toHaveBeenCalled();
+  });
+
+  it("listFacilityQueue queries Prisma only when flag ON and does not swallow findMany errors", async () => {
+    process.env.INTERNAL_PLACEMENT_WORKFLOW_ENABLED = "true";
+    const prisma = {
+      internalPlacementRequest: {
+        findMany: jest.fn().mockRejectedValue(Object.assign(new Error("P2022"), { code: "P2022" })),
+      },
+    };
+    const svc = new InternalPlacementService(prisma as never, { log: jest.fn() } as never, {
+      createEpisodeForEncounter: jest.fn(),
+    } as never);
+    await expect(svc.listFacilityQueue("fac-1")).rejects.toThrow(/P2022/);
+    expect(prisma.internalPlacementRequest.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ facilityId: "fac-1" }),
+      })
+    );
+  });
 });
