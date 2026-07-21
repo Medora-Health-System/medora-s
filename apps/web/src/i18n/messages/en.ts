@@ -199,6 +199,12 @@ export default {
         "Orders created on this device have not been synchronized with the server yet.",
       syncPendingStatus: "Pending synchronization",
       orderCancelledBadge: "Canceled",
+      encounterContext: {
+        ed: "ED",
+        observation: "Observation",
+        inpatient: "Inpatient",
+        other: "Other",
+      },
       actionQueuedNotice:
         "Action saved on this device, pending synchronization. Not yet confirmed on the server.",
       searchPlaceholderLab: "Search by patient, ID, or test…",
@@ -18635,6 +18641,24 @@ export default {
         external: "External transfer",
       },
     },
+  },
+  observationD3da: {
+    sharedOrderEngineHint:
+      "Laboratory, imaging, and medication orders use the same Medora Order Engine as the Emergency Department. New orders are owned by this Observation encounter.",
+    ordersFlagOff:
+      "Observation departmental orders are not enabled. Enable OBSERVATION_DEPARTMENTAL_ORDERS_ENABLED in a controlled environment.",
+    resultsFlagOff:
+      "Observation results projection is not enabled until departmental orders are turned on.",
+    marFlagOff:
+      "Observation MAR is not enabled. Enable OBSERVATION_MAR_ENABLED in a controlled environment.",
+    docsFlagOff:
+      "Observation documentation writers are not enabled. Enable OBSERVATION_DOCUMENTATION_ENABLED in a controlled environment.",
+    ordersOwnershipHint:
+      "Active orders below belong to this Observation encounter. Historical ED orders remain read-only on the ED chart.",
+    marSeparateHint:
+      "Observation MAR is encounter-scoped. ED administrations are never copied automatically.",
+    timelineOrdersHint:
+      "Order and result events attach to the Observation encounter via the shared OrderEvent timeline.",
   },
   observationD3d: {
     sectionNavAria: "Observation workspace sections",

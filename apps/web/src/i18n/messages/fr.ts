@@ -81,6 +81,12 @@ export default {
         "Ordres créés sur cet appareil, non encore synchronisés avec le serveur.",
       syncPendingStatus: "En attente de synchronisation",
       orderCancelledBadge: "Annulée",
+      encounterContext: {
+        ed: "Urgences",
+        observation: "Observation",
+        inpatient: "Hospitalisation",
+        other: "Autre",
+      },
       actionQueuedNotice:
         "Action enregistrée sur cet appareil, en attente de synchronisation. Pas encore confirmée côté serveur.",
       searchPlaceholderLab: "Rechercher par patient, NIR ou analyse…",
@@ -18708,6 +18714,24 @@ export default {
         external: "Transfert externe",
       },
     },
+  },
+  observationD3da: {
+    sharedOrderEngineHint:
+      "Les ordonnances de laboratoire, d’imagerie et de médicaments utilisent le même moteur d’ordonnances Medora que les urgences. Les nouvelles ordonnances appartiennent à cette consultation Observation.",
+    ordersFlagOff:
+      "Les ordonnances départementales Observation ne sont pas activées. Activez OBSERVATION_DEPARTMENTAL_ORDERS_ENABLED en environnement contrôlé.",
+    resultsFlagOff:
+      "La projection des résultats Observation n’est pas activée tant que les ordonnances départementales ne le sont pas.",
+    marFlagOff:
+      "Le MAR Observation n’est pas activé. Activez OBSERVATION_MAR_ENABLED en environnement contrôlé.",
+    docsFlagOff:
+      "Les rédacteurs de documentation Observation ne sont pas activés. Activez OBSERVATION_DOCUMENTATION_ENABLED en environnement contrôlé.",
+    ordersOwnershipHint:
+      "Les ordonnances actives ci-dessous appartiennent à cette consultation Observation. Les ordonnances urgences historiques restent en lecture seule sur le dossier des urgences.",
+    marSeparateHint:
+      "Le MAR Observation est limité à cette consultation. Les administrations aux urgences ne sont jamais copiées automatiquement.",
+    timelineOrdersHint:
+      "Les événements d’ordonnances et de résultats s’attachent à la consultation Observation via la chronologie OrderEvent partagée.",
   },
   observationD3d: {
     sectionNavAria: "Sections de l’espace Observation",

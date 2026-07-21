@@ -566,6 +566,23 @@ export default function LabWorklistPage() {
                     }
                   />
                   <MedoraCardBadgeRow>
+                    {order.clinicalEncounterContext ? (
+                      <MedoraCardBadge
+                        soft={
+                          order.clinicalEncounterContext === "OBSERVATION"
+                            ? { bg: "#ccfbf1", text: "#0f766e", border: "#5eead4" }
+                            : order.clinicalEncounterContext === "ED"
+                              ? { bg: "#fee2e2", text: "#991b1b", border: "#fca5a5" }
+                              : { bg: "#f1f5f9", text: "#334155", border: "#cbd5e1" }
+                        }
+                      >
+                        {t(
+                          `worklistDepartments.shared.encounterContext.${String(order.clinicalEncounterContext).toLowerCase()}` as Parameters<
+                            typeof t
+                          >[0]
+                        )}
+                      </MedoraCardBadge>
+                    ) : null}
                     <MedoraCardBadge preset="neutral">
                       {t("common.labTest")} · {getOrderItemDisplayLabelFromLocale(item, language)}
                     </MedoraCardBadge>

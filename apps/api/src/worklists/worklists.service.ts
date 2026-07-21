@@ -1,4 +1,5 @@
 import { Injectable } from "@nestjs/common";
+import { resolveDepartmentalEncounterContext } from "@medora/shared";
 import { ENCOUNTER_NESTED_CORE_SELECT } from "../encounters/encounter-query-contracts";
 import { PrismaService } from "../prisma/prisma.service";
 import { MedicationFulfillmentIntent, OrderStatus, Prisma } from "@prisma/client";
@@ -39,6 +40,35 @@ export class WorklistsService {
     private readonly prisma: PrismaService,
     private readonly ordersService: OrdersService
   ) {}
+
+  /**
+   * D3DA — annotate departmental worklist rows with ED / Observation / Inpatient context.
+   * Uses existing encounter scalars only (no placement SQL).
+   */
+  private annotateClinicalEncounterContext<T>(orders: T[]): Array<T & { clinicalEncounterContext: string }> {
+    return orders.map((order) => {
+      const enc = (order as { encounter?: unknown }).encounter as
+        | {
+            type?: string | null;
+            status?: string | null;
+            billingClassification?: string | null;
+            admissionSummaryJson?: unknown;
+            admittedAt?: unknown;
+          }
+        | null
+        | undefined;
+      return {
+        ...order,
+        clinicalEncounterContext: resolveDepartmentalEncounterContext({
+          type: enc?.type,
+          status: enc?.status,
+          billingClassification: enc?.billingClassification,
+          admissionSummaryJson: enc?.admissionSummaryJson,
+          admittedAt: enc?.admittedAt,
+        }),
+      };
+    });
+  }
 
   async getLabWorklist(facilityId: string) {
     let orders;
@@ -142,7 +172,8 @@ export class WorklistsService {
     }
     const enriched = await this.ordersService.enrichOrderItemsForDisplaySafe(orders as unknown as OrderWithItems[]);
     const withAuthority = await this.ordersService.attachAuthorityToOrders(enriched);
-    return this.ordersService.attachAttributionToOrders(withAuthority);
+    const withAttribution = await this.ordersService.attachAttributionToOrders(withAuthority);
+    return this.annotateClinicalEncounterContext(withAttribution);
   }
 
   async getRadiologyWorklist(facilityId: string) {
@@ -247,7 +278,8 @@ export class WorklistsService {
     }
     const enriched = await this.ordersService.enrichOrderItemsForDisplaySafe(orders as unknown as OrderWithItems[]);
     const withAuthority = await this.ordersService.attachAuthorityToOrders(enriched);
-    return this.ordersService.attachAttributionToOrders(withAuthority);
+    const withAttribution = await this.ordersService.attachAttributionToOrders(withAuthority);
+    return this.annotateClinicalEncounterContext(withAttribution);
   }
 
   async getPharmacyWorklist(facilityId: string) {
@@ -302,7 +334,7 @@ export class WorklistsService {
     const withLifecycleDisplay = await this.ordersService.attachMedicationLifecycleDisplayOnOrders(withAttribution);
     const chartAdminLifecycleAlerts = await this.getPharmacyChartAdminLifecycleAlerts(facilityId);
     return {
-      dispenseOrders: withLifecycleDisplay,
+      dispenseOrders: this.annotateClinicalEncounterContext(withLifecycleDisplay),
       chartAdminLifecycleAlerts,
     };
   }
