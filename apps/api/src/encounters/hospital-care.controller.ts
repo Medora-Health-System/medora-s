@@ -76,6 +76,12 @@ export class HospitalCareController {
     return this.unitRegistry.getUnitRegistry(facilityIdFromReq(req));
   }
 
+  @Get("units/tree")
+  @RequireRoles(RoleCode.PROVIDER, RoleCode.RN, RoleCode.ADMIN, RoleCode.LAB, RoleCode.RADIOLOGY)
+  async unitsTree(@Req() req: { user?: { facilityId?: string } }) {
+    return this.unitRegistry.getServiceLineTree(facilityIdFromReq(req));
+  }
+
   @Get("census")
   @RequireRoles(RoleCode.PROVIDER, RoleCode.RN, RoleCode.ADMIN, RoleCode.LAB, RoleCode.RADIOLOGY)
   async census(

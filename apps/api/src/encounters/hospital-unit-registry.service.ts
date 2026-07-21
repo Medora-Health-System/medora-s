@@ -5,10 +5,12 @@
 
 import { Injectable } from "@nestjs/common";
 import {
+  buildGraphicalHospitalUnitTreeV1,
   buildHospitalUnitRegistryV1,
   hospitalCareActivationFlagsFromProcessEnv,
   isDevelopmentRuntime,
   type ComposedFacilityBedBoard,
+  type GraphicalHospitalUnitTreeV1,
   type HospitalUnitRegistryV1,
 } from "@medora/shared";
 import { HospitalCensusService } from "./hospital-census.service";
@@ -62,5 +64,10 @@ export class HospitalUnitRegistryService {
       bedBoard: composed,
       includeDevelopmentFixtures,
     });
+  }
+
+  async getServiceLineTree(facilityId: string): Promise<GraphicalHospitalUnitTreeV1> {
+    const registry = await this.getUnitRegistry(facilityId);
+    return buildGraphicalHospitalUnitTreeV1(registry);
   }
 }
