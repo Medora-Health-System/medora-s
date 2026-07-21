@@ -1136,12 +1136,19 @@ export class EncountersService {
         }
         /**
          * Phase 15F-D — observation admission from ER: same open encounter, level-of-care promotion.
-         * Do not require a separate `confirmInpatientTransfer` before board / observation workflow.
+         * D3C expand-and-contract: when internalPlacementWorkflowEnabled is ON, keep ED as EMERGENCY
+         * and use InternalPlacementRequest instead of immediate type flip.
          */
-        if (encounter.type === EncounterType.EMERGENCY) {
-          updateData.type = EncounterType.INPATIENT;
-        } else if (encounter.type !== EncounterType.INPATIENT) {
-          updateData.type = EncounterType.INPATIENT;
+        const d3cPlacementOn =
+          (process.env.INTERNAL_PLACEMENT_WORKFLOW_ENABLED ?? "").trim().toLowerCase() ===
+            "true" ||
+          (process.env.INTERNAL_PLACEMENT_WORKFLOW_ENABLED ?? "").trim() === "1";
+        if (!d3cPlacementOn) {
+          if (encounter.type === EncounterType.EMERGENCY) {
+            updateData.type = EncounterType.INPATIENT;
+          } else if (encounter.type !== EncounterType.INPATIENT) {
+            updateData.type = EncounterType.INPATIENT;
+          }
         }
       }
     }
@@ -1750,6 +1757,15 @@ export class EncountersService {
     }
 
     if (data.confirmInpatientTransfer === true) {
+      const d3cPlacementOn =
+        (process.env.INTERNAL_PLACEMENT_WORKFLOW_ENABLED ?? "").trim().toLowerCase() ===
+          "true" ||
+        (process.env.INTERNAL_PLACEMENT_WORKFLOW_ENABLED ?? "").trim() === "1";
+      if (d3cPlacementOn) {
+        throw new BadRequestException(
+          "Le parcours D3C est actif : utilisez la demande de placement interne (sans promotion immédiate du type de consultation)."
+        );
+      }
       if (encounter.status !== EncounterStatus.OPEN) {
         throw new BadRequestException(
           "Le transfert vers l'hospitalisation n'est possible que sur une consultation ouverte."
