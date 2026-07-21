@@ -809,6 +809,22 @@ export function EmergencyTrackboardView() {
           >
             {t("emergencyTrackboard.triageLink")}
           </Link>
+          <Link
+            href="/app/hospitalisation"
+            data-testid="emergency-trackboard-hospital-care-link"
+            style={erTrackboardCensusActionButtonStyle(
+              {
+                textDecoration: "none",
+                color: "#0f766e",
+                fontWeight: 600,
+                fontSize: 13,
+                padding: layoutMode === "compactStacked" ? "10px 12px" : undefined,
+              },
+              layoutMode
+            )}
+          >
+            {t("nav.hospitalisation")}
+          </Link>
         </header>
 
         <div style={erTrackboardFiltersRowStyle(layoutMode)} data-testid="emergency-trackboard-filters">

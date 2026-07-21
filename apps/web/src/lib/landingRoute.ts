@@ -168,7 +168,10 @@ const APP_ROUTE_RULES: RouteRule[] = [
   { prefix: "/app/nursing", roles: ["ADMIN", "PROVIDER", "RN"] },
   { prefix: "/app/trackboard", roles: ["ADMIN", "PROVIDER", "RN"] },
   { prefix: "/app/emergency", roles: ["ADMIN", "PROVIDER", "RN"] },
-  { prefix: "/app/hospitalisation", roles: ["ADMIN", "PROVIDER", "RN"] },
+  {
+    prefix: "/app/hospitalisation",
+    roles: ["ADMIN", "PROVIDER", "RN", "LAB", "RADIOLOGY"],
+  },
   { prefix: "/app/billing", roles: ["ADMIN", "BILLING", "FRONT_DESK"] },
   { prefix: "/app/fracture", roles: ["ADMIN"] },
   {

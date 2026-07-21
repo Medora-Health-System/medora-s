@@ -147,7 +147,7 @@ const SIDEBAR_NAV_DEFS: SidebarNavItemDef[] = [
     href: "/app/hospitalisation",
     labelKey: "nav.hospitalisation",
     roles: ["ADMIN", "PROVIDER", "RN", "LAB", "RADIOLOGY"],
-    group: "soins_dossiers",
+    group: "accueil",
     accent: "slate",
     navAreas: ["HOSPITAL"],
   },

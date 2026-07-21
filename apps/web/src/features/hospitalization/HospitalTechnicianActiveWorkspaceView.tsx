@@ -338,7 +338,7 @@ export function HospitalTechnicianActiveWorkspaceView() {
           {error ?? t("hospitalTechnicianWorkspace.errEncounterNotFound")}
         </p>
         <p style={{ margin: "16px 0 0 0" }}>
-          <Link href="/app/hospitalisation" style={{ color: "#2563eb", fontWeight: 600 }}>
+          <Link href="/app/hospitalisation/floor-board" style={{ color: "#2563eb", fontWeight: 600 }}>
             {t("hospitalTechnicianWorkspace.backBoard")}
           </Link>
         </p>
@@ -384,7 +384,7 @@ export function HospitalTechnicianActiveWorkspaceView() {
     >
       <header style={{ marginBottom: 16 }}>
         <Link
-          href="/app/hospitalisation"
+          href="/app/hospitalisation/floor-board"
           style={{ fontSize: 13, fontWeight: 600, color: "#2563eb", textDecoration: "none" }}
         >
           {t("hospitalTechnicianWorkspace.backBoard")}

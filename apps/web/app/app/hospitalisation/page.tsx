@@ -1,10 +1,10 @@
 "use client";
 
 import { Suspense } from "react";
-import { HospitalizationBoardView } from "@/features/hospitalization/HospitalizationBoardView";
+import { HospitalCareHomeView } from "@/features/hospital-care/HospitalCareHomeView";
 import { CommonSuspenseFallback } from "@/components/i18n/CommonSuspenseFallback";
 
-export default function HospitalisationBoardPage() {
+export default function HospitalCareHomePage() {
   return (
     <Suspense
       fallback={
@@ -22,7 +22,7 @@ export default function HospitalisationBoardPage() {
         </div>
       }
     >
-      <HospitalizationBoardView />
+      <HospitalCareHomeView />
     </Suspense>
   );
 }
