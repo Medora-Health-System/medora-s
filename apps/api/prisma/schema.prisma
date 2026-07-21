@@ -76,6 +76,8 @@ model Facility {
   followUps                              FollowUp[]
   /// D3B — continuous facility stay identity (HospitalEpisode foundation).
   hospitalEpisodes                       HospitalEpisode[]
+  /// D3C — internal ED→Obs/IP placement requests.
+  internalPlacementRequests              InternalPlacementRequest[]
   infusionSessions                       InfusionSession[]
   inventoryItems                         InventoryItem[]
   inventoryTransactions                  InventoryTransaction[]
@@ -228,6 +230,16 @@ model User {
   /// D3B — HospitalEpisode audit actors.
   hospitalEpisodesCreated                         HospitalEpisode[]                      @relation("HospitalEpisodeCreatedBy")
   hospitalEpisodesUpdated                         HospitalEpisode[]                      @relation("HospitalEpisodeUpdatedBy")
+  /// D3C — InternalPlacementRequest actor relations.
+  internalPlacementRequestsCreated                InternalPlacementRequest[]             @relation("InternalPlacementCreatedBy")
+  internalPlacementRequestsUpdated                InternalPlacementRequest[]             @relation("InternalPlacementUpdatedBy")
+  internalPlacementRequestsRequestedBy            InternalPlacementRequest[]             @relation("InternalPlacementRequestedBy")
+  internalPlacementRequestsAcceptedBy             InternalPlacementRequest[]             @relation("InternalPlacementAcceptedBy")
+  internalPlacementRequestsAcceptingProvider      InternalPlacementRequest[]             @relation("InternalPlacementAcceptingProvider")
+  internalPlacementRequestsAssignedBy             InternalPlacementRequest[]             @relation("InternalPlacementAssignedBy")
+  internalPlacementRequestsDepartureBy            InternalPlacementRequest[]             @relation("InternalPlacementDepartureBy")
+  internalPlacementRequestsArrivalBy              InternalPlacementRequest[]             @relation("InternalPlacementArrivalBy")
+  internalPlacementRequestsCancelledBy            InternalPlacementRequest[]             @relation("InternalPlacementCancelledBy")
   inventoryTransactions                           InventoryTransaction[]
   medicationAdministrations                       MedicationAdministration[]
   medicationAdministrationCorrections             MedicationAdministrationCorrection[]   @relation("MedicationAdministrationCorrectionBy")
@@ -379,6 +391,8 @@ model Patient {
   followUps                    FollowUp[]
   /// D3B — continuous facility stay identity for this patient.
   hospitalEpisodes             HospitalEpisode[]
+  /// D3C — internal placement requests for this patient.
+  internalPlacementRequests    InternalPlacementRequest[]
   medicationAdministrations    MedicationAdministration[]
   medicationDispenses          MedicationDispense[]
   orders                       Order[]
@@ -573,6 +587,10 @@ model Encounter {
   billingClassificationTransitionJson       Json?
   /// D3B — nullable link to continuous facility stay (HospitalEpisode). Absence is safe.
   hospitalEpisodeId                         String?
+  /// D3C — placement requests originated from this ED encounter.
+  internalPlacementRequestsOriginated       InternalPlacementRequest[]             @relation("InternalPlacementOriginatingEncounter")
+  /// D3C — placement requests whose receiving encounter is this chart (nullable until arrival).
+  internalPlacementRequestsAsReceiving       InternalPlacementRequest[]             @relation("InternalPlacementReceivingEncounter")
   auditLogs                                 AuditLog[]                             @relation("EncounterAuditLogs")
   billingEvents                             BillingEvent[]
   billingReviewDecisions                    BillingReviewDecision[]
@@ -654,6 +672,7 @@ model HospitalEpisode {
   patient                Patient                    @relation(fields: [patientId], references: [id], onDelete: Restrict)
   originatingEncounter   Encounter                  @relation("HospitalEpisodeOriginatingEncounter", fields: [originatingEncounterId], references: [id], onDelete: Restrict)
   encounters             Encounter[]                @relation("HospitalEpisodeEncounters")
+  internalPlacementRequests InternalPlacementRequest[]
   createdBy              User?                      @relation("HospitalEpisodeCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
   updatedBy              User?                      @relation("HospitalEpisodeUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: SetNull)
 
@@ -663,6 +682,90 @@ model HospitalEpisode {
   @@index([facilityId, status, openedAt])
   @@index([createdByUserId])
   @@index([updatedByUserId])
+}
+
+/// D3C — durable ED → Observation/Inpatient internal placement request.
+/// Partial unique active request per originatingEncounterId is SQL-only (see migration).
+model InternalPlacementRequest {
+  id                            String                                  @id @default(uuid())
+  facilityId                    String
+  patientId                     String
+  hospitalEpisodeId             String?
+  originatingEncounterId        String
+  receivingEncounterId          String?
+  receivingEncounterLifecycle   ReceivingEncounterLifecycle             @default(NONE)
+
+  requestedEncounterType        InternalPlacementRequestedEncounterType
+  requestedLevelOfCare          String?
+  requestedService              String?
+  requestedSpecialty            String?
+  requestedUnitCode             String?
+  requestedByUserId             String?
+  requestedAt                   DateTime?
+  clinicalPriority              String?
+  admissionDiagnosisSummary     String?
+  reasonForPlacement            String?
+
+  telemetryRequired             Boolean                                 @default(false)
+  isolationRequired             Boolean                                 @default(false)
+  isolationType                 String?
+  /// Bundled special needs (fallRisk, oxygen, bariatric, sitter, equipment, other) — no PHI narrative dumps.
+  specialPlacementNeedsJson     Json?
+
+  acceptingProviderUserId       String?
+  acceptingProviderNameSnapshot String?
+  acceptedAt                    DateTime?
+  acceptedByUserId              String?
+  acceptanceNotes               String?
+
+  assignedUnitCode              String?
+  assignedRoomKey               String?
+  assignedBedKey                String?
+  /// Interim bed-board integration boundary (e.g. FACILITY_ROOM_LABEL).
+  assignmentSourceSystem        String?
+  assignedAt                    DateTime?
+  assignedByUserId              String?
+
+  readyForTransferAt            DateTime?
+  departedEdAt                  DateTime?
+  arrivedDestinationAt          DateTime?
+  departureDocumentedByUserId   String?
+  arrivalDocumentedByUserId     String?
+
+  status                        InternalPlacementStatus                 @default(DRAFT)
+  cancellationReason            String?
+  cancelledAt                   DateTime?
+  cancelledByUserId             String?
+  /// Clinical revision counter (Obs↔IP changes, diagnosis edits after sign).
+  revision                      Int                                     @default(1)
+  /// Optimistic locking.
+  version                       Int                                     @default(1)
+  createdAt                     DateTime                                @default(now())
+  updatedAt                     DateTime                                @updatedAt
+  createdByUserId               String?
+  updatedByUserId               String?
+
+  facility                      Facility                                @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  patient                       Patient                                 @relation(fields: [patientId], references: [id], onDelete: Restrict)
+  hospitalEpisode               HospitalEpisode?                        @relation(fields: [hospitalEpisodeId], references: [id], onDelete: SetNull)
+  originatingEncounter          Encounter                               @relation("InternalPlacementOriginatingEncounter", fields: [originatingEncounterId], references: [id], onDelete: Restrict)
+  receivingEncounter            Encounter?                              @relation("InternalPlacementReceivingEncounter", fields: [receivingEncounterId], references: [id], onDelete: SetNull)
+  requestedBy                   User?                                   @relation("InternalPlacementRequestedBy", fields: [requestedByUserId], references: [id], onDelete: SetNull)
+  acceptingProvider             User?                                   @relation("InternalPlacementAcceptingProvider", fields: [acceptingProviderUserId], references: [id], onDelete: SetNull)
+  acceptedBy                    User?                                   @relation("InternalPlacementAcceptedBy", fields: [acceptedByUserId], references: [id], onDelete: SetNull)
+  assignedBy                    User?                                   @relation("InternalPlacementAssignedBy", fields: [assignedByUserId], references: [id], onDelete: SetNull)
+  departureDocumentedBy         User?                                   @relation("InternalPlacementDepartureBy", fields: [departureDocumentedByUserId], references: [id], onDelete: SetNull)
+  arrivalDocumentedBy           User?                                   @relation("InternalPlacementArrivalBy", fields: [arrivalDocumentedByUserId], references: [id], onDelete: SetNull)
+  cancelledBy                   User?                                   @relation("InternalPlacementCancelledBy", fields: [cancelledByUserId], references: [id], onDelete: SetNull)
+  createdBy                     User?                                   @relation("InternalPlacementCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  updatedBy                     User?                                   @relation("InternalPlacementUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([facilityId, status, requestedAt])
+  @@index([facilityId, patientId, status])
+  @@index([originatingEncounterId, status])
+  @@index([hospitalEpisodeId])
+  @@index([receivingEncounterId])
+  @@index([assignedUnitCode, assignedRoomKey, assignedBedKey])
 }
 
 /// Optional mapping from clinical catalog / external codes to billable CPT/HCPCS (Phase 4.5 auto engine).
@@ -7131,6 +7234,39 @@ enum HospitalEpisodeCloseReason {
   ADMINISTRATIVE_CORRECTION
   DUPLICATE_EPISODE
   OTHER_GOVERNED
+}
+
+/// D3C — explicit Observation vs Inpatient placement decision (not Encounter.type).
+enum InternalPlacementRequestedEncounterType {
+  OBSERVATION
+  INPATIENT
+}
+
+/// D3C — server-owned internal placement lifecycle.
+enum InternalPlacementStatus {
+  DRAFT
+  SIGNED
+  REQUESTED
+  UNDER_REVIEW
+  ACCEPTED
+  BED_ASSIGNED
+  READY_FOR_TRANSFER
+  DEPARTED_ED
+  ARRIVED_DESTINATION
+  COMPLETED
+  CANCELLED
+  DECLINED
+  EXPIRED
+  ERROR_REVIEW
+}
+
+/// D3C — receiving encounter activation (separate from Encounter.status OPEN/CLOSED).
+enum ReceivingEncounterLifecycle {
+  NONE
+  PLANNED
+  READY
+  ACTIVE
+  CANCELLED
 }
 
 /// Explicit clinical / operational pathway (distinct from `EncounterStatus` lifecycle).
