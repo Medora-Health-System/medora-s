@@ -1,8 +1,10 @@
 /**
  * Phase 10B — trackboard operational aggregates merged onto list rows.
+ * MEDORA.PROD.TRACKBOARD_PRISMA_500_2026_07_20 — explicit select contract.
  */
 
 import { TrackboardService } from "./trackboard.service";
+import { TRACKBOARD_ACTIVE_ENCOUNTER_SELECT } from "./trackboard-encounter-select";
 
 describe("TrackboardService — Phase 10B", () => {
   it("merges trackboardOps from parallel $queryRaw aggregates", async () => {
@@ -10,6 +12,9 @@ describe("TrackboardService — Phase 10B", () => {
       id: "enc-1",
       facilityId: "fac-1",
       patientId: "pat-1",
+      type: "EMERGENCY",
+      status: "OPEN",
+      workflowState: "ARRIVED",
       patient: { id: "pat-1", firstName: "A", lastName: "B", dob: null, sexAtBirth: null, mrn: "1" },
       physicianAssigned: null,
       nurseAssigned: null,
@@ -42,6 +47,18 @@ describe("TrackboardService — Phase 10B", () => {
     const svc = new TrackboardService(prisma);
     const rows = await svc.getActiveEncounters("fac-1", "OPEN");
 
+    expect(findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ facilityId: "fac-1" }),
+        select: TRACKBOARD_ACTIVE_ENCOUNTER_SELECT,
+        orderBy: { createdAt: "desc" },
+        take: 100,
+      })
+    );
+    expect(findMany.mock.calls[0][0]).not.toHaveProperty("include");
+    expect(findMany.mock.calls[0][0].select).not.toHaveProperty("hospitalEpisodeId");
+    expect(findMany.mock.calls[0][0].select).not.toHaveProperty("hospitalEpisode");
+
     expect(rows).toHaveLength(1);
     expect(rows[0].trackboardOps).toMatchObject({
       resultsPendingCount: 2,
@@ -53,5 +70,20 @@ describe("TrackboardService — Phase 10B", () => {
       firstDispositionDocAt: "2026-05-10T09:00:00.000Z",
     });
     expect(queryRaw).toHaveBeenCalledTimes(5);
+  });
+
+  it("does not treat empty list as success fallback when prisma fails", async () => {
+    const findMany = jest.fn().mockRejectedValue(
+      Object.assign(new Error("column does not exist"), {
+        name: "PrismaClientKnownRequestError",
+        code: "P2022",
+        meta: { column: "hospitalEpisodeId", modelName: "Encounter" },
+      })
+    );
+    const prisma = { encounter: { findMany }, $queryRaw: jest.fn() } as never;
+    const svc = new TrackboardService(prisma);
+    await expect(svc.getActiveEncounters("fac-1", "OPEN")).rejects.toMatchObject({
+      code: "P2022",
+    });
   });
 });
