@@ -6,6 +6,10 @@ import {
   HttpStatus,
 } from "@nestjs/common";
 import { createStructuredLogger } from "../logging/structured-logger";
+import {
+  prismaAlertGroupKey,
+  sanitizePrismaException,
+} from "../logging/prisma-error-sanitizer";
 
 const log = createStructuredLogger("AllExceptionsFilter");
 
@@ -67,10 +71,33 @@ export class AllExceptionsFilter implements ExceptionFilter {
         method: request.method,
       });
     } else if (exception instanceof Error) {
+      const prismaSanitized = sanitizePrismaException(exception);
+      const routePath =
+        typeof request.url === "string" ? request.url.split("?")[0] : undefined;
       log.error("non_http_exception", {
         name: exception.name,
         requestId: request.requestId,
         method: request.method,
+        route: routePath,
+        deploymentSha:
+          process.env.RAILWAY_GIT_COMMIT_SHA?.trim() ??
+          process.env.GIT_COMMIT_SHA?.trim() ??
+          null,
+        hospitalEpisodeFoundationEnabled:
+          (process.env.HOSPITAL_EPISODE_FOUNDATION_ENABLED ?? "")
+            .trim()
+            .toLowerCase() === "true",
+        ...(prismaSanitized
+          ? {
+              prismaCode: prismaSanitized.prismaCode,
+              prismaModel: prismaSanitized.modelName,
+              prismaClientVersion: prismaSanitized.clientVersion,
+              prismaMissingObject: prismaSanitized.missingDatabaseObject,
+              prismaMessageSummary: prismaSanitized.messageSummary,
+              prismaMeta: prismaSanitized.meta,
+              alertGroupKey: prismaAlertGroupKey(prismaSanitized, routePath),
+            }
+          : {}),
       });
     } else {
       log.error("non_http_exception_unknown_shape", {
