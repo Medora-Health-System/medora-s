@@ -3,6 +3,7 @@ import { EncountersController } from "./encounters.controller";
 import { InternalPlacementController } from "./internal-placement.controller";
 import { ObservationWorkspaceController } from "./observation-workspace.controller";
 import { InpatientWorkspaceController } from "./inpatient-workspace.controller";
+import { HospitalCareController } from "./hospital-care.controller";
 import { EncountersService } from "./encounters.service";
 import { EncounterChartExportService } from "./chart-export.service";
 import { UnifiedEncounterTimelineService } from "./unified-encounter-timeline.service";
@@ -34,6 +35,7 @@ import { InternalPlacementService } from "./internal-placement.service";
     InternalPlacementController,
     ObservationWorkspaceController,
     InpatientWorkspaceController,
+    HospitalCareController,
   ],
   providers: [
     EncountersService,

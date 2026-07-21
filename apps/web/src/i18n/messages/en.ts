@@ -18589,25 +18589,29 @@ export default {
     },
     placementQueue: {
       title: "Placement queue",
-      subtitle: "Read-only Internal Placement Requests (D3C). No new workflow.",
-      empty: "No active placement requests.",
+      subtitle: "Active internal placement requests from ED admit decisions.",
+      empty:
+        "No active placement requests. Patients appear here after an ED provider selects Admit to Inpatient or Place in Observation.",
     },
     observation: {
       title: "Observation",
-      subtitle: "Patients arrived for observation. Search and census only — no charting yet.",
-      empty: "No Observation patients.",
-      comingSoon: "Observation module coming in D3D.",
+      subtitle: "Explicit Observation encounters only — optional pathway.",
+      empty:
+        "No active Observation encounters. Observation is optional and only appears when specifically selected.",
+      comingSoon: "Open a card to enter the Observation workspace when arrived.",
     },
     inpatient: {
       title: "Inpatient",
-      subtitle: "Inpatient census and clinical workspace (D3E).",
-      empty: "No admitted patients.",
-      comingSoon: "Open the Inpatient census for unit, bed, and workspace links.",
+      subtitle: "Explicit Inpatient encounters — direct admit or ED-to-Inpatient.",
+      empty:
+        "No active Inpatient encounters. Patients appear here after direct admission, ED-to-Inpatient placement, scheduled admission, or transfer-in.",
+      comingSoon: "Open a card to enter the Inpatient workspace when arrived.",
     },
     admissions: {
       title: "Admissions",
-      subtitle: "Active internal placement requests — navigation only, no editing.",
-      empty: "No active admission placement requests.",
+      subtitle: "Active placement requests awaiting placement or arrival.",
+      empty:
+        "No admissions currently awaiting placement or arrival. Direct admission does not require Observation.",
       colPatient: "Patient",
       colType: "Requested type",
       colPriority: "Priority",
@@ -18619,19 +18623,21 @@ export default {
     },
     beds: {
       title: "Bed management",
-      subtitle: "Shell for units, rooms, beds, and occupancy. No operational assignment logic here.",
-      empty: "No bed board data in this shell.",
-      emptyTile: "Not configured yet",
+      subtitle: "Use the Floor Board for unit/room/bed inventory. Placement awaiting-bed counts are live.",
+      empty:
+        "Bed inventory operations use the Floor Board. Availability is never invented on this page.",
+      emptyTile: "See Floor Board",
       units: "Units",
       rooms: "Rooms",
       beds: "Beds",
       occupancy: "Occupancy",
-      floorBoardHint: "Existing facility bed tools remain on the",
+      floorBoardHint: "Open the operational bed tools on the",
     },
     transfers: {
       title: "Transfers",
-      subtitle: "Placeholder for future internal and external transfer destinations.",
-      empty: "Transfer workflows are not implemented in D3CA.",
+      subtitle: "Enterprise transfers are not activated in this phase.",
+      empty:
+        "Enterprise transfers (ICU, OR, PACU) are not activated. Use Placement Queue for Observation or Inpatient destinations.",
       future: {
         icu: "ICU",
         or: "OR",
@@ -18641,6 +18647,109 @@ export default {
         hospice: "Hospice",
         external: "External transfer",
       },
+    },
+  },
+  hospitalCareD3e6: {
+    home: {
+      title: "Hospital Care",
+      subtitle:
+        "Operational hospital workflow after the Emergency Department — placements, Observation, and Inpatient.",
+      edRemainsPrimary: "ED remains the primary workspace until destination arrival.",
+    },
+    loadError: "Unable to load the Hospital Care dashboard.",
+    featureOffGuidance:
+      "Internal placement is not enabled. Counts stay at zero until INTERNAL_PLACEMENT_WORKFLOW_ENABLED is turned on in a controlled environment. This is not fabricated census data.",
+    empty: {
+      dashboard:
+        "No active Hospital Care patients. Patients appear after Admit to Inpatient, Place in Observation, direct admission, or transfer-in. Observation is optional.",
+      placement:
+        "No active placement requests. Patients appear here after an ED provider selects Admit to Inpatient or Place in Observation.",
+      observation:
+        "No active Observation encounters. Observation is optional and only appears when specifically selected.",
+      inpatient:
+        "No active Inpatient encounters. Patients appear here after direct admission, ED-to-Inpatient placement, scheduled admission, or transfer-in.",
+      admissions:
+        "No admissions currently awaiting placement or arrival. Direct admission does not require Observation or an ED encounter.",
+      beds: "Bed inventory operations use the Floor Board. Awaiting-bed counts above come from active placements — availability is never invented.",
+      transfers:
+        "Enterprise transfers (ICU, OR, PACU) are not activated in this phase. Use Placement Queue for ED-to-Observation or ED-to-Inpatient destinations.",
+    },
+    tiles: {
+      placement: {
+        title: "Placement queue",
+        secondary: "{count} awaiting bed",
+        action: "Open placement queue",
+      },
+      observation: {
+        title: "Observation",
+        secondary: "Optional pathway",
+        action: "Open Observation census",
+      },
+      inpatient: {
+        title: "Inpatient",
+        secondary: "{count} admissions today",
+        action: "Open Inpatient census",
+      },
+      admissions: {
+        title: "Admissions",
+        secondary: "{count} placement requests",
+        action: "Open admissions",
+      },
+      beds: {
+        title: "Bed management",
+        secondary: "Use Floor Board for inventory",
+        action: "Open bed tools",
+      },
+      transfers: {
+        title: "Transfers",
+        secondary: "Future phase",
+        action: "View status",
+      },
+    },
+    status: {
+      live: "Live facility data",
+      placementOff: "Placement workflow off",
+      optionalOff: "Optional — flags off",
+      floorBoard: "Floor Board inventory",
+      future: "Not activated (D3F+)",
+    },
+    attention: {
+      title: "Attention required",
+      empty: "No attention items.",
+      awaitingReview: "{count} placement(s) awaiting review",
+      acceptedWithoutBed: "{count} accepted without bed",
+      departedAwaitingArrival: "{count} departed ED awaiting arrival",
+      generic: "{count} item(s) need review",
+    },
+    activity: {
+      title: "Recent hospital activity",
+      empty: "No recent placement activity.",
+      admissionRequested: "Admission requested",
+      placementAccepted: "Placement accepted",
+      bedAssigned: "Bed assigned",
+      departedEd: "Departed ED",
+      arrivedObservation: "Arrived Observation",
+      arrivedInpatient: "Arrived Inpatient",
+      placementUpdate: "Placement update",
+    },
+    diagnostics: {
+      title: "Hospital Care feature status (development)",
+      placement: "Placement",
+      observation: "Observation",
+      inpatient: "Inpatient",
+      directAdmission: "Direct admission",
+      on: "enabled",
+      off: "disabled",
+      mismatchHint: "Server/client flag mismatch detected — align NEXT_PUBLIC_* with server flags.",
+    },
+    admissions: {
+      directEntryTitle: "Direct admission entry points",
+      directEntryBody:
+        "Direct, scheduled, and transfer-in admissions create Inpatient pathways without a fake ED encounter. Enable DIRECT_INPATIENT_ADMISSION_ENABLED for writers in development.",
+      directInpatient: "Direct Inpatient",
+      scheduledInpatient: "Scheduled Inpatient",
+      transferIn: "Transfer-in",
+      writersOff: "Admission writers are not enabled in this environment.",
     },
   },
   observationD3da: {

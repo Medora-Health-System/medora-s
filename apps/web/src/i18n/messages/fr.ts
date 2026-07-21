@@ -18659,27 +18659,29 @@ export default {
     },
     placementQueue: {
       title: "File de placement",
-      subtitle: "Demandes de placement interne (D3C) en lecture seule. Aucun nouveau flux.",
-      empty: "Aucune demande de placement active.",
+      subtitle: "Demandes de placement interne actives issues des décisions d’admission aux urgences.",
+      empty:
+        "Aucune demande de placement active. Les patients apparaissent ici après « Admettre en hospitalisation » ou « Placer en Observation ».",
     },
     observation: {
       title: "Observation",
-      subtitle:
-        "Patients arrivés en observation. Recherche et recensement uniquement — pas de dossier clinique pour l’instant.",
-      empty: "Aucun patient en observation.",
-      comingSoon: "Le module Observation arrivera en D3D.",
+      subtitle: "Consultations Observation explicites uniquement — parcours optionnel.",
+      empty:
+        "Aucune consultation Observation active. L’Observation est optionnelle et n’apparaît que lorsqu’elle est choisie explicitement.",
+      comingSoon: "Ouvrez une carte pour entrer dans l’espace Observation à l’arrivée.",
     },
     inpatient: {
       title: "Hospitalisation",
-      subtitle: "Recensement et espace clinique d’hospitalisation (D3E).",
-      empty: "Aucun patient hospitalisé.",
-      comingSoon:
-        "Ouvrez le recensement d’hospitalisation pour l’unité, le lit et l’espace de travail.",
+      subtitle: "Consultations d’hospitalisation explicites — admission directe ou urgences.",
+      empty:
+        "Aucune consultation d’hospitalisation active. Les patients apparaissent après admission directe, placement urgences→hospitalisation, admission programmée ou transfert entrant.",
+      comingSoon: "Ouvrez une carte pour entrer dans l’espace hospitalisation à l’arrivée.",
     },
     admissions: {
       title: "Admissions",
-      subtitle: "Demandes de placement interne actives — navigation uniquement, sans modification.",
-      empty: "Aucune demande d’admission active.",
+      subtitle: "Demandes de placement actives en attente de lit ou d’arrivée.",
+      empty:
+        "Aucune admission en attente de placement ou d’arrivée. L’admission directe ne nécessite pas l’Observation.",
       colPatient: "Patient",
       colType: "Type demandé",
       colPriority: "Priorité",
@@ -18692,19 +18694,21 @@ export default {
     beds: {
       title: "Gestion des lits",
       subtitle:
-        "Coquille pour unités, chambres, lits et occupation. Aucune logique d’affectation ici.",
-      empty: "Aucune donnée de lit dans cette coquille.",
-      emptyTile: "Pas encore configuré",
+        "Utilisez le tableau des unités pour l’inventaire. Les comptes « en attente de lit » sont issus des placements.",
+      empty:
+        "Les opérations d’inventaire des lits utilisent le tableau des unités. La disponibilité n’est jamais inventée ici.",
+      emptyTile: "Voir le tableau des unités",
       units: "Unités",
       rooms: "Chambres",
       beds: "Lits",
       occupancy: "Occupation",
-      floorBoardHint: "Les outils lits existants restent sur le",
+      floorBoardHint: "Ouvrez les outils opérationnels sur le",
     },
     transfers: {
       title: "Transferts",
-      subtitle: "Espace réservé pour les destinations de transfert internes et externes.",
-      empty: "Les flux de transfert ne sont pas mis en œuvre en D3CA.",
+      subtitle: "Les transferts d’entreprise ne sont pas activés dans cette phase.",
+      empty:
+        "Les transferts d’entreprise (USI, bloc, SSPI) ne sont pas activés. Utilisez la file de placement pour Observation ou Hospitalisation.",
       future: {
         icu: "USI",
         or: "Bloc opératoire",
@@ -18714,6 +18718,110 @@ export default {
         hospice: "Soins palliatifs",
         external: "Transfert externe",
       },
+    },
+  },
+  hospitalCareD3e6: {
+    home: {
+      title: "Soins hospitaliers",
+      subtitle:
+        "Flux hospitalier opérationnel après les urgences — placements, Observation et hospitalisation.",
+      edRemainsPrimary: "Les urgences restent l’espace principal jusqu’à l’arrivée à destination.",
+    },
+    loadError: "Impossible de charger le tableau de bord des soins hospitaliers.",
+    featureOffGuidance:
+      "Le placement interne n’est pas activé. Les compteurs restent à zéro jusqu’à l’activation de INTERNAL_PLACEMENT_WORKFLOW_ENABLED en environnement contrôlé. Ce ne sont pas des données inventées.",
+    empty: {
+      dashboard:
+        "Aucun patient actif en soins hospitaliers. Les patients apparaissent après admission en hospitalisation, Observation, admission directe ou transfert entrant. L’Observation est optionnelle.",
+      placement:
+        "Aucune demande de placement active. Les patients apparaissent ici après « Admettre en hospitalisation » ou « Placer en Observation ».",
+      observation:
+        "Aucune consultation Observation active. L’Observation est optionnelle et n’apparaît que lorsqu’elle est choisie explicitement.",
+      inpatient:
+        "Aucune consultation d’hospitalisation active. Les patients apparaissent après admission directe, placement urgences→hospitalisation, admission programmée ou transfert entrant.",
+      admissions:
+        "Aucune admission en attente de placement ou d’arrivée. L’admission directe ne nécessite ni Observation ni consultation aux urgences.",
+      beds: "Les opérations d’inventaire utilisent le tableau des unités. Les comptes « en attente de lit » viennent des placements — la disponibilité n’est jamais inventée.",
+      transfers:
+        "Les transferts d’entreprise (USI, bloc, SSPI) ne sont pas activés. Utilisez la file de placement pour Observation ou Hospitalisation.",
+    },
+    tiles: {
+      placement: {
+        title: "File de placement",
+        secondary: "{count} en attente de lit",
+        action: "Ouvrir la file de placement",
+      },
+      observation: {
+        title: "Observation",
+        secondary: "Parcours optionnel",
+        action: "Ouvrir le recensement Observation",
+      },
+      inpatient: {
+        title: "Hospitalisation",
+        secondary: "{count} admissions aujourd’hui",
+        action: "Ouvrir le recensement hospitalisation",
+      },
+      admissions: {
+        title: "Admissions",
+        secondary: "{count} demandes de placement",
+        action: "Ouvrir les admissions",
+      },
+      beds: {
+        title: "Gestion des lits",
+        secondary: "Inventaire via le tableau des unités",
+        action: "Ouvrir les outils lits",
+      },
+      transfers: {
+        title: "Transferts",
+        secondary: "Phase future",
+        action: "Voir l’état",
+      },
+    },
+    status: {
+      live: "Données établissement en direct",
+      placementOff: "Flux de placement désactivé",
+      optionalOff: "Optionnel — indicateurs désactivés",
+      floorBoard: "Inventaire tableau des unités",
+      future: "Non activé (D3F+)",
+    },
+    attention: {
+      title: "Attention requise",
+      empty: "Aucun élément à traiter.",
+      awaitingReview: "{count} placement(s) en attente de revue",
+      acceptedWithoutBed: "{count} accepté(s) sans lit",
+      departedAwaitingArrival: "{count} parti(s) des urgences en attente d’arrivée",
+      generic: "{count} élément(s) à revoir",
+    },
+    activity: {
+      title: "Activité hospitalière récente",
+      empty: "Aucune activité de placement récente.",
+      admissionRequested: "Admission demandée",
+      placementAccepted: "Placement accepté",
+      bedAssigned: "Lit assigné",
+      departedEd: "Parti des urgences",
+      arrivedObservation: "Arrivé en Observation",
+      arrivedInpatient: "Arrivé en hospitalisation",
+      placementUpdate: "Mise à jour du placement",
+    },
+    diagnostics: {
+      title: "État des fonctionnalités Soins hospitaliers (développement)",
+      placement: "Placement",
+      observation: "Observation",
+      inpatient: "Hospitalisation",
+      directAdmission: "Admission directe",
+      on: "activé",
+      off: "désactivé",
+      mismatchHint:
+        "Décalage serveur/client détecté — alignez les indicateurs NEXT_PUBLIC_* avec le serveur.",
+    },
+    admissions: {
+      directEntryTitle: "Points d’entrée d’admission directe",
+      directEntryBody:
+        "Les admissions directe, programmée et transfert entrant créent des parcours d’hospitalisation sans fausse consultation aux urgences. Activez DIRECT_INPATIENT_ADMISSION_ENABLED pour les rédacteurs en développement.",
+      directInpatient: "Hospitalisation directe",
+      scheduledInpatient: "Hospitalisation programmée",
+      transferIn: "Transfert entrant",
+      writersOff: "Les rédacteurs d’admission ne sont pas activés dans cet environnement.",
     },
   },
   observationD3da: {
