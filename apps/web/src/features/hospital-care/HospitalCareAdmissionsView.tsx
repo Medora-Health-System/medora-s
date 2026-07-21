@@ -56,12 +56,75 @@ export function HospitalCareAdmissionsView() {
 
   const dash = t("common.dash") || DISPLAY_DASH;
 
+  const directAdmissionFlagOn =
+    String(process.env.NEXT_PUBLIC_DIRECT_INPATIENT_ADMISSION_ENABLED ?? "")
+      .trim()
+      .toLowerCase() === "true" ||
+    String(process.env.NEXT_PUBLIC_DIRECT_INPATIENT_ADMISSION_ENABLED ?? "")
+      .trim()
+      .toLowerCase() === "1";
+
   return (
     <HospitalCareShell
       active="admissions"
       title={t("hospitalCareD3ca.admissions.title")}
       subtitle={t("hospitalCareD3ca.admissions.subtitle")}
     >
+      <section
+        style={{
+          marginBottom: 14,
+          padding: 12,
+          borderRadius: 12,
+          border: "1px solid #e2e8f0",
+          background: "#f8fafc",
+        }}
+        data-testid="hospital-care-direct-admission-entry"
+      >
+        <h2 style={{ margin: 0, fontSize: 14, fontWeight: 700, color: "#0f172a" }}>
+          {t("hospitalCareD3e6.admissions.directEntryTitle")}
+        </h2>
+        <p style={{ margin: "6px 0 0", fontSize: 12, color: "#64748b", lineHeight: 1.45 }}>
+          {t("hospitalCareD3e6.admissions.directEntryBody")}
+        </p>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 10 }}>
+          {(
+            [
+              "directInpatient",
+              "scheduledInpatient",
+              "transferIn",
+            ] as const
+          ).map((key) => (
+            <button
+              key={key}
+              type="button"
+              disabled={!directAdmissionFlagOn}
+              data-testid={`hospital-care-admission-${key}`}
+              style={{
+                padding: "8px 12px",
+                borderRadius: 10,
+                border: "1px solid #cbd5e1",
+                background: directAdmissionFlagOn ? "#fff" : "#f1f5f9",
+                color: directAdmissionFlagOn ? "#0f172a" : "#94a3b8",
+                fontSize: 12,
+                fontWeight: 600,
+                cursor: directAdmissionFlagOn ? "pointer" : "not-allowed",
+              }}
+              onClick={() => {
+                if (!directAdmissionFlagOn) return;
+                window.alert(t("hospitalCareD3e6.admissions.writersOff"));
+              }}
+            >
+              {t(`hospitalCareD3e6.admissions.${key}`)}
+            </button>
+          ))}
+        </div>
+        {!directAdmissionFlagOn ? (
+          <p style={{ margin: "8px 0 0", fontSize: 12, color: "#94a3b8" }}>
+            {t("hospitalCareD3e6.admissions.writersOff")}
+          </p>
+        ) : null}
+      </section>
+
       {loading ? (
         <p style={{ fontSize: 13, color: "#64748b" }}>{t("common.loading")}</p>
       ) : error ? (
