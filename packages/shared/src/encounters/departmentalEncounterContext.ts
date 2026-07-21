@@ -1,65 +1,49 @@
 /**
- * D3DA — Shared departmental worklist encounter context (ED / Observation / Inpatient).
- * Computed from existing Encounter scalars — no InternalPlacement SQL.
+ * D3DA / D3E.5 — Shared departmental worklist encounter context.
+ *
+ * Delegates to canonical `resolveClinicalEncounterContext`.
+ * Short-stay / admittedAt heuristics are NOT used for identity.
  */
 
 import {
-  admissionSummaryJsonSuggestsObservationShortStay,
-  isObservationShortStayEncounter,
-} from "../observationShortStayEncounter.js";
+  clinicalContextToWorklistBadge,
+  resolveClinicalEncounterContext,
+  type ClinicalEncounterIdentityInput,
+} from "./clinicalEncounterIdentity.js";
 
 export const DEPARTMENTAL_ENCOUNTER_CONTEXTS = [
   "ED",
   "OBSERVATION",
   "INPATIENT",
+  "UNKNOWN",
   "OTHER",
 ] as const;
 
 export type DepartmentalEncounterContext = (typeof DEPARTMENTAL_ENCOUNTER_CONTEXTS)[number];
 
-export type DepartmentalEncounterContextInput = {
-  type?: string | null;
-  status?: string | null;
-  billingClassification?: string | null;
-  admissionSummaryJson?: unknown;
-  admittedAt?: unknown;
-};
+export type DepartmentalEncounterContextInput = ClinicalEncounterIdentityInput;
 
 /**
  * Resolve display context for Lab / Rad / Pharmacy worklists.
- * EMERGENCY → ED; INPATIENT + observation heuristics / OBSERVATION billing → OBSERVATION;
- * other INPATIENT → INPATIENT.
+ * Canonical identity only — never admittedAt / length-of-stay.
  */
 export function resolveDepartmentalEncounterContext(
   input: DepartmentalEncounterContextInput
 ): DepartmentalEncounterContext {
-  const type = String(input.type ?? "")
-    .trim()
-    .toUpperCase();
-  if (type === "EMERGENCY") return "ED";
-  if (type === "OUTPATIENT" || type === "URGENT_CARE") return "OTHER";
-  if (type === "INPATIENT") {
-    const billing = String(input.billingClassification ?? "")
-      .trim()
-      .toUpperCase();
-    if (billing === "OBSERVATION") return "OBSERVATION";
-    if (admissionSummaryJsonSuggestsObservationShortStay(input.admissionSummaryJson)) {
-      return "OBSERVATION";
-    }
-    // Treat open short-stay INPATIENT as Observation for departmental queues.
-    if (
-      isObservationShortStayEncounter({
-        type: "INPATIENT",
-        status: "OPEN",
-        admittedAt: input.admittedAt,
-        admissionSummaryJson: input.admissionSummaryJson,
-      })
-    ) {
-      return "OBSERVATION";
-    }
-    return "INPATIENT";
-  }
+  const clinical = resolveClinicalEncounterContext(input);
+  const badge = clinicalContextToWorklistBadge(clinical);
+  if (badge === "ED") return "ED";
+  if (badge === "OBSERVATION") return "OBSERVATION";
+  if (badge === "INPATIENT") return "INPATIENT";
+  if (badge === "UNKNOWN") return "UNKNOWN";
   return "OTHER";
+}
+
+/** @deprecated Prefer resolveDepartmentalEncounterContext / resolveClinicalEncounterContext. */
+export function resolveDepartmentalEncounterContextLegacyAlias(
+  input: DepartmentalEncounterContextInput
+): DepartmentalEncounterContext {
+  return resolveDepartmentalEncounterContext(input);
 }
 
 export function departmentalEncounterContextLabelKey(
@@ -72,6 +56,8 @@ export function departmentalEncounterContextLabelKey(
       return "worklistDepartments.shared.encounterContext.observation";
     case "INPATIENT":
       return "worklistDepartments.shared.encounterContext.inpatient";
+    case "UNKNOWN":
+      return "worklistDepartments.shared.encounterContext.unknown";
     default:
       return "worklistDepartments.shared.encounterContext.other";
   }

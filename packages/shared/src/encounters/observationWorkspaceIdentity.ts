@@ -27,18 +27,15 @@ export function isObservationPlacementLane(
 
 /**
  * Observation clinical chart is ready when the receiving encounter exists and is distinct
- * from the ED origin (or when a short-stay INPATIENT encounter is already the destination).
+ * from the ED origin, with an explicit Observation placement lane.
  */
 export function isObservationEncounterIndependentFromEd(input: ObservationIdentityInput): boolean {
   const obsId = String(input.observationEncounterId ?? input.receivingEncounterId ?? "").trim();
   const edId = String(input.originatingEdEncounterId ?? "").trim();
   if (!obsId) return false;
   if (edId && obsId === edId) return false;
-  if (!isObservationPlacementLane(input.requestedEncounterType)) {
-    // Legacy short-stay: open INPATIENT destination without placement type still allowed.
-    return String(input.encounterType ?? "").trim().toUpperCase() === "INPATIENT";
-  }
-  return true;
+  // D3E.5 — never treat bare INPATIENT as Observation without explicit placement lane.
+  return isObservationPlacementLane(input.requestedEncounterType);
 }
 
 /** ED medications/administrations must never auto-copy onto Observation MAR. */

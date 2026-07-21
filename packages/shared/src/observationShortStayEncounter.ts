@@ -1,7 +1,13 @@
 /**
- * Phase 14A — Central gate for observation / short-stay workflow UI on encounter detail.
- * Medora presents `EncounterType.INPATIENT` as observation & short stay; workflow must not
- * depend solely on admission `careLevel` string matching (production data may omit or vary).
+ * Phase 14A / D3E.5 — Observation / short-stay **utilization** helpers.
+ *
+ * IMPORTANT (D3E.5): These helpers must NOT determine clinical encounter identity,
+ * worklist badges, chart-certification domain, order routing, MAR ownership,
+ * census placement, or admission eligibility.
+ *
+ * Use `resolveClinicalEncounterContext` for clinical identity.
+ * These remain only for length-of-stay / operational analytics chrome that is
+ * explicitly gated by clinical identity first.
  */
 
 import { isObservationShortStayCareLevel } from "./observationAdmissionCareLevel.js";
@@ -56,10 +62,8 @@ export type ObservationShortStayEncounterInput = {
 };
 
 /**
- * Encounter should show observation / short-stay workflow chrome (INPATIENT lane, OPEN only).
- * - `admittedAt` set ⇒ active (matches promoted / admitted observation stays).
- * - Any populated admission summary field ⇒ active (packet exists even if careLevel omitted).
- * - Any admission field text matches observation heuristics ⇒ active (legacy / free-text paths).
+ * Utilization candidate for short-stay analytics — NOT clinical identity.
+ * Prefer `clinicalEncounterContextIsObservation` before using this for any UI chrome.
  */
 export function isObservationShortStayEncounter(input: ObservationShortStayEncounterInput): boolean {
   if (input.type !== "INPATIENT") return false;
@@ -68,4 +72,11 @@ export function isObservationShortStayEncounter(input: ObservationShortStayEncou
   if (hasAdmissionSummaryAnyPopulatedField(input.admissionSummaryJson)) return true;
   if (admissionSummaryJsonSuggestsObservationShortStay(input.admissionSummaryJson)) return true;
   return false;
+}
+
+/** Alias clarifying utilization-only role (D3E.5). */
+export function isObservationShortStayUtilizationCandidate(
+  input: ObservationShortStayEncounterInput
+): boolean {
+  return isObservationShortStayEncounter(input);
 }
