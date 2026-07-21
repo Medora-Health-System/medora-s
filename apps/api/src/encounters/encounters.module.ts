@@ -22,6 +22,7 @@ import { EncounterNotesService } from "./encounter-notes.service";
 import { ClinicalDocumentationService } from "./clinical-documentation.service";
 import { ChartCertificationB1Service } from "./chart-certification-b1.service";
 import { HospitalEpisodeService } from "./hospital-episode.service";
+import { InternalPlacementService } from "./internal-placement.service";
 
 @Module({
   imports: [PrismaModule, DiagnosesModule, OrdersModule, TrackboardModule, FacilitiesModule],
@@ -30,6 +31,7 @@ import { HospitalEpisodeService } from "./hospital-episode.service";
     EncountersService,
     ChartCertificationB1Service,
     HospitalEpisodeService,
+    InternalPlacementService,
     EncounterChartExportService,
     UnifiedEncounterTimelineService,
     ObservationOrderTemplateService,
@@ -51,6 +53,7 @@ import { HospitalEpisodeService } from "./hospital-episode.service";
     UnifiedEncounterTimelineService,
     FacilityBillingWorkflowService,
     HospitalEpisodeService,
+    InternalPlacementService,
   ],
 })
 export class EncountersModule {}

@@ -124,6 +124,11 @@ export class HospitalEpisodeService {
     options?: {
       /** Test-only override; production must rely on env flag. */
       featureFlagEnabled?: boolean;
+      /**
+       * D3C — when creating from InternalPlacementRequest → REQUESTED,
+       * disposition-sign eligibility may be deferred; still requires open ED + facility/patient match.
+       */
+      fromInternalPlacementRequest?: boolean;
       expectedPatientId?: string;
       ip?: string;
       userAgent?: string;
@@ -172,23 +177,31 @@ export class HospitalEpisodeService {
     }
 
     if (!eligibility.eligible) {
-      await this.audit.log(AuditAction.VIEW, HOSPITAL_EPISODE_ENTITY, {
-        userId: actorUserId,
-        facilityId,
-        patientId: encounter.patientId,
-        encounterId: encounter.id,
-        critical: false,
-        ip: options?.ip,
-        userAgent: options?.userAgent,
-        metadata: {
-          event: "HOSPITAL_EPISODE_CREATE_REJECTED",
-          denialReason: eligibility.denialReason,
-          sourceEncounterId: encounter.id,
-        },
-      });
-      throw new BadRequestException(
-        `Encounter not eligible for hospital episode: ${eligibility.denialReason ?? "UNKNOWN"}`
-      );
+      const placementBypassOk =
+        options?.fromInternalPlacementRequest === true &&
+        encounter.type === "EMERGENCY" &&
+        encounter.status === "OPEN" &&
+        eligibility.denialReason !== "PATIENT_FACILITY_MISMATCH" &&
+        eligibility.denialReason !== "ENCOUNTER_MISSING";
+      if (!placementBypassOk) {
+        await this.audit.log(AuditAction.VIEW, HOSPITAL_EPISODE_ENTITY, {
+          userId: actorUserId,
+          facilityId,
+          patientId: encounter.patientId,
+          encounterId: encounter.id,
+          critical: false,
+          ip: options?.ip,
+          userAgent: options?.userAgent,
+          metadata: {
+            event: "HOSPITAL_EPISODE_CREATE_REJECTED",
+            denialReason: eligibility.denialReason,
+            sourceEncounterId: encounter.id,
+          },
+        });
+        throw new BadRequestException(
+          `Encounter not eligible for hospital episode: ${eligibility.denialReason ?? "UNKNOWN"}`
+        );
+      }
     }
 
     try {
