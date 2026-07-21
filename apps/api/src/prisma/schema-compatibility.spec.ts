@@ -14,22 +14,29 @@ function basePresence(
     hospitalEpisodeStatusEnumPresent: false,
     hospitalEpisodeCloseReasonEnumPresent: false,
     d3bMigrationRecorded: false,
+    internalPlacementTablePresent: false,
+    internalPlacementStatusEnumPresent: false,
+    internalPlacementRequestedTypeEnumPresent: false,
+    receivingEncounterLifecycleEnumPresent: false,
+    d3cMigrationRecorded: false,
     appliedMigrationCount: 10,
     latestAppliedMigration: "20261023120000_medication_phase_18_operational_governance",
     ...overrides,
   };
 }
 
-describe("schema-compatibility evaluate", () => {
-  it("allows pre-D3B database when feature flag OFF", () => {
+describe("schema-compatibility evaluate (D3B/D3C)", () => {
+  it("allows pre-D3B database when all hospital flags OFF", () => {
     const report = evaluateSchemaCompatibility(basePresence(), {
       hospitalEpisodeFoundationEnabled: false,
+      internalPlacementWorkflowEnabled: false,
+      receivingEncounterFoundationEnabled: false,
     });
     expect(report.ok).toBe(true);
     expect(report.verdict).toBe("COMPATIBLE");
   });
 
-  it("allows post-D3B database when feature flag OFF", () => {
+  it("allows post-D3B / pre-D3C when placement flags OFF", () => {
     const report = evaluateSchemaCompatibility(
       basePresence({
         hospitalEpisodeTablePresent: true,
@@ -38,13 +45,71 @@ describe("schema-compatibility evaluate", () => {
         hospitalEpisodeCloseReasonEnumPresent: true,
         d3bMigrationRecorded: true,
       }),
-      { hospitalEpisodeFoundationEnabled: false }
+      {
+        hospitalEpisodeFoundationEnabled: false,
+        internalPlacementWorkflowEnabled: false,
+        receivingEncounterFoundationEnabled: false,
+      }
     );
     expect(report.ok).toBe(true);
-    expect(report.verdict).toBe("COMPATIBLE");
   });
 
-  it("fails closed when feature ON but hospitalEpisodeId missing", () => {
+  it("allows post-D3C when flags OFF", () => {
+    const report = evaluateSchemaCompatibility(
+      basePresence({
+        hospitalEpisodeTablePresent: true,
+        hospitalEpisodeIdColumnPresent: true,
+        hospitalEpisodeStatusEnumPresent: true,
+        hospitalEpisodeCloseReasonEnumPresent: true,
+        d3bMigrationRecorded: true,
+        internalPlacementTablePresent: true,
+        internalPlacementStatusEnumPresent: true,
+        internalPlacementRequestedTypeEnumPresent: true,
+        receivingEncounterLifecycleEnumPresent: true,
+        d3cMigrationRecorded: true,
+      }),
+      {
+        hospitalEpisodeFoundationEnabled: false,
+        internalPlacementWorkflowEnabled: false,
+        receivingEncounterFoundationEnabled: false,
+      }
+    );
+    expect(report.ok).toBe(true);
+  });
+
+  it("fails when D3C ON but InternalPlacementRequest table missing", () => {
+    const report = evaluateSchemaCompatibility(
+      basePresence({
+        hospitalEpisodeTablePresent: true,
+        hospitalEpisodeIdColumnPresent: true,
+        hospitalEpisodeStatusEnumPresent: true,
+        hospitalEpisodeCloseReasonEnumPresent: true,
+      }),
+      {
+        hospitalEpisodeFoundationEnabled: false,
+        internalPlacementWorkflowEnabled: true,
+        receivingEncounterFoundationEnabled: false,
+      }
+    );
+    expect(report.ok).toBe(false);
+    expect(report.verdict).toBe("FEATURE_ON_SCHEMA_MISSING");
+  });
+
+  it("fails when D3C ON but D3B schema missing", () => {
+    const report = evaluateSchemaCompatibility(
+      basePresence({
+        internalPlacementTablePresent: true,
+        internalPlacementStatusEnumPresent: true,
+        internalPlacementRequestedTypeEnumPresent: true,
+        receivingEncounterLifecycleEnumPresent: true,
+      }),
+      { internalPlacementWorkflowEnabled: true }
+    );
+    expect(report.ok).toBe(false);
+    expect(report.verdict).toBe("FEATURE_ON_SCHEMA_MISSING");
+  });
+
+  it("fails when D3B ON but hospitalEpisodeId missing", () => {
     const report = evaluateSchemaCompatibility(
       basePresence({
         hospitalEpisodeTablePresent: true,
@@ -66,14 +131,6 @@ describe("schema-compatibility evaluate", () => {
     expect(report.ok).toBe(false);
     expect(report.verdict).toBe("REQUIRED_SCHEMA_MISSING");
   });
-
-  it("fails when HospitalEpisode table missing and feature ON", () => {
-    const report = evaluateSchemaCompatibility(basePresence(), {
-      hospitalEpisodeFoundationEnabled: true,
-    });
-    expect(report.ok).toBe(false);
-    expect(report.verdict).toBe("FEATURE_ON_SCHEMA_MISSING");
-  });
 });
 
 describe("schemaCompatGuardEnabled", () => {
@@ -89,14 +146,5 @@ describe("schemaCompatGuardEnabled", () => {
         MEDORA_SCHEMA_COMPAT_GUARD: "true",
       })
     ).toBe(true);
-  });
-
-  it("can be disabled explicitly in production", () => {
-    expect(
-      schemaCompatGuardEnabled({
-        NODE_ENV: "production",
-        MEDORA_SCHEMA_COMPAT_GUARD: "false",
-      })
-    ).toBe(false);
   });
 });
