@@ -132,6 +132,15 @@ function parseDraftBody(body: Record<string, unknown>): ClinicalPlacementDraftIn
 export class InternalPlacementController {
   constructor(private readonly placement: InternalPlacementService) {}
 
+  /**
+   * D3CA — facility placement queue (read-only). Soft-empty when workflow flag OFF.
+   */
+  @Get("internal-placement")
+  @RequireRoles(RoleCode.PROVIDER, RoleCode.RN, RoleCode.ADMIN, RoleCode.LAB, RoleCode.RADIOLOGY)
+  async listFacilityQueue(@Req() req: any) {
+    return this.placement.listFacilityQueue(facilityIdFromReq(req), { strict: false });
+  }
+
   @Get("encounters/:encounterId/internal-placement")
   @RequireRoles(RoleCode.PROVIDER, RoleCode.RN, RoleCode.ADMIN)
   async getActive(@Param("encounterId") encounterId: string, @Req() req: any) {

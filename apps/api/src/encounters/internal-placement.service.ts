@@ -54,8 +54,36 @@ const PLACEMENT_SELECT = {
   readyForTransferAt: true,
   departedEdAt: true,
   arrivedDestinationAt: true,
+  requestedAt: true,
+  createdAt: true,
   version: true,
   revision: true,
+} satisfies Prisma.InternalPlacementRequestSelect;
+
+/** Facility placement queue / admissions board — still excludes terminal noise except recent arrivals. */
+const QUEUE_ACTIVE_STATUSES = [
+  InternalPlacementStatus.SIGNED,
+  InternalPlacementStatus.REQUESTED,
+  InternalPlacementStatus.UNDER_REVIEW,
+  InternalPlacementStatus.ACCEPTED,
+  InternalPlacementStatus.BED_ASSIGNED,
+  InternalPlacementStatus.READY_FOR_TRANSFER,
+  InternalPlacementStatus.DEPARTED_ED,
+  InternalPlacementStatus.ARRIVED_DESTINATION,
+] as const;
+
+const QUEUE_LIST_SELECT = {
+  ...PLACEMENT_SELECT,
+  patient: {
+    select: {
+      id: true,
+      firstName: true,
+      lastName: true,
+      mrn: true,
+      dob: true,
+      sexAtBirth: true,
+    },
+  },
 } satisfies Prisma.InternalPlacementRequestSelect;
 
 export type ClinicalPlacementDraftInput = {
@@ -95,6 +123,65 @@ export class InternalPlacementService {
     if (options?.featureFlagEnabled !== true && !this.isWorkflowEnabled()) {
       throw new ForbiddenException("Internal placement workflow is disabled");
     }
+  }
+
+  /**
+   * D3CA — read-only facility placement queue (no mutations).
+   * Flag OFF → empty list (UI shows empty states; does not throw for home widgets).
+   */
+  async listFacilityQueue(
+    facilityId: string,
+    options?: {
+      featureFlagEnabled?: boolean;
+      /** When true, throw if flag OFF (strict API). Default: soft-empty. */
+      strict?: boolean;
+      take?: number;
+    }
+  ): Promise<
+    Array<
+      NonNullable<InternalPlacementStateProjection> & {
+        patient: {
+          id: string;
+          firstName: string | null;
+          lastName: string | null;
+          mrn: string | null;
+          dob: Date | null;
+          sexAtBirth: string | null;
+        };
+        requestedAt: string | null;
+        createdAt: string;
+      }
+    >
+  > {
+    const enabled =
+      options?.featureFlagEnabled === true || this.isWorkflowEnabled();
+    if (!enabled) {
+      if (options?.strict) {
+        this.assertWorkflowEnabled(options);
+      }
+      return [];
+    }
+
+    const take = Math.min(Math.max(options?.take ?? 100, 1), 200);
+    const rows = await this.prisma.internalPlacementRequest.findMany({
+      where: {
+        facilityId,
+        status: { in: [...QUEUE_ACTIVE_STATUSES] },
+      },
+      select: QUEUE_LIST_SELECT,
+      orderBy: [{ requestedAt: "desc" }, { createdAt: "desc" }],
+      take,
+    });
+
+    return rows.map((row) => {
+      const projected = projectInternalPlacementState(row)!;
+      return {
+        ...projected,
+        patient: row.patient,
+        requestedAt: row.requestedAt ? row.requestedAt.toISOString() : null,
+        createdAt: row.createdAt.toISOString(),
+      };
+    });
   }
 
   async getActiveForEncounter(
