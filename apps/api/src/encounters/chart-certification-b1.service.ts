@@ -18,6 +18,10 @@ import {
   type EcgDocumentationSnapshot,
   PROVIDER_DOCUMENTATION_NAMESPACE_KEY,
   ER_NURSING_REASSESSMENT_V1_KEY,
+  evaluateObservationChartCertification,
+  observationDocumentationEnabled,
+  observationDepartmentalFlagsFromProcessEnv,
+  resolveDepartmentalEncounterContext,
 } from "@medora/shared";
 
 const ECG_12_LEAD_DOCUMENTATION_CARD_ID = "ecg_12_lead_documentation";
@@ -317,11 +321,61 @@ export class ChartCertificationB1Service {
             },
           };
         }
-        return retried;
+        return this.withObservationDepartmentalAdvisory(facilityId, encounterId, retried);
       }
     }
 
-    return result;
+    return this.withObservationDepartmentalAdvisory(facilityId, encounterId, result);
+  }
+
+  /**
+   * D3DA — attach advisory Observation completeness when encounter context is Observation.
+   * Never mutates ED Stage B1–B3 readiness authority.
+   */
+  private async withObservationDepartmentalAdvisory(
+    facilityId: string,
+    encounterId: string,
+    result: ChartCertificationB1Result
+  ): Promise<ChartCertificationB1Result> {
+    const flags = observationDepartmentalFlagsFromProcessEnv(process.env);
+    const docsEnabled = observationDocumentationEnabled(flags);
+    const enc = await this.prisma.encounter.findFirst({
+      where: { id: encounterId, facilityId },
+      select: {
+        type: true,
+        status: true,
+        billingClassification: true,
+        admissionSummaryJson: true,
+        admittedAt: true,
+        providerNote: true,
+        nursingAssessment: true,
+        dischargeSummaryJson: true,
+      },
+    });
+    if (!enc) return result;
+    const context = resolveDepartmentalEncounterContext(enc);
+    if (context !== "OBSERVATION") {
+      return { ...result, observationDepartmentalAdvisory: null };
+    }
+    const obs = evaluateObservationChartCertification({
+      hasProviderNote: typeof enc.providerNote === "string" && enc.providerNote.trim().length > 0,
+      hasReassessment: nursingAssessmentPresent(enc.nursingAssessment),
+      hasNursingDocumentation: nursingAssessmentPresent(enc.nursingAssessment),
+      hasOrdersReview:
+        result.evaluatedReadiness.ordersReady === true ||
+        result.evaluatedReadiness.laboratoryReady === true ||
+        result.evaluatedReadiness.imagingReady === true,
+      hasDischargeSummary: !!enc.dischargeSummaryJson,
+      dispositionPathway: null,
+    });
+    return {
+      ...result,
+      observationDepartmentalAdvisory: {
+        enabled: docsEnabled,
+        complete: obs.complete,
+        deficiencyCodes: obs.deficiencies,
+      },
+    };
   }
 
   private async evaluate(

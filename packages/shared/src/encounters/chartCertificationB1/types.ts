@@ -292,6 +292,15 @@ export type ChartCertificationB1Result = {
   unevaluatedModules: CertificationModule[];
   sourceFreshness: SourceFreshness[];
   evaluationErrors: CertificationEvaluationError[];
+  /**
+   * D3DA — advisory Observation departmental completeness (optional).
+   * Never authoritative; does not block ED Stage B1–B3 readiness.
+   */
+  observationDepartmentalAdvisory?: {
+    enabled: boolean;
+    complete: boolean;
+    deficiencyCodes: string[];
+  } | null;
 };
 
 /** PHI-safe structured snapshot for pure evaluators (no full note bodies). */
