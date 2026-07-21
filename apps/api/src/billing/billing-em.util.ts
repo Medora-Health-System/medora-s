@@ -35,7 +35,17 @@ export async function appendEmergencyEMBilling(prisma: PrismaService, facilityId
   try {
     const enc = await prisma.encounter.findFirst({
       where: { id: encounterId, facilityId },
-      include: { triage: true },
+      select: {
+        id: true,
+        patientId: true,
+        facilityId: true,
+        type: true,
+        status: true,
+        createdAt: true,
+        dischargedAt: true,
+        triageAcuity: true,
+        triage: { select: { esi: true, vitalsJson: true } },
+      },
     });
     if (!enc) return;
 

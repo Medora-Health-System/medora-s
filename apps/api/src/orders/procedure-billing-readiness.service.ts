@@ -7,6 +7,7 @@ import {
   type ResolveProcedureBillingReadinessOutput,
 } from "@medora/shared";
 import { PrismaService } from "../prisma/prisma.service";
+import { ENCOUNTER_NESTED_CORE_SELECT } from "../encounters/encounter-query-contracts";
 
 export type ProcedureBillingReadinessApiPayload = ResolveProcedureBillingReadinessOutput & {
   orderItemId: string;
@@ -30,7 +31,23 @@ export class ProcedureBillingReadinessService {
         order: {
           include: {
             encounter: {
-              include: { facility: true },
+              select: {
+                ...ENCOUNTER_NESTED_CORE_SELECT,
+                facility: {
+                  select: {
+                    id: true,
+                    name: true,
+                    billingLegalName: true,
+                    billingAddressLine1: true,
+                    billingCity: true,
+                    billingStateProvince: true,
+                    billingPostalCode: true,
+                    billingCountry: true,
+                    billingNpi: true,
+                    taxIdEin: true,
+                  },
+                },
+              },
             },
           },
         },

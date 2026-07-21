@@ -8,6 +8,7 @@ import type { FhirEncounter, FhirObservation, FhirPatient } from "../fhir-mapper
 import type { FhirBundle } from "./fhir-bundle.types";
 import type { ParsedFhirObservationSearch } from "./dto/fhir-read.schemas";
 import { parseFhirObservationOpaqueId } from "./fhir-observation-id";
+import { ENCOUNTER_CORE_SELECT, ENCOUNTER_NESTED_CORE_SELECT } from "../encounters/encounter-query-contracts";
 
 @Injectable()
 export class FhirResourceService {
@@ -37,6 +38,7 @@ export class FhirResourceService {
     userAgent: string | undefined
   ): Promise<FhirEncounter> {
     const encounter = await this.prisma.encounter.findFirst({
+      select: ENCOUNTER_CORE_SELECT,
       where: { id, facilityId },
     });
     if (!encounter) {
@@ -68,7 +70,8 @@ export class FhirResourceService {
 
     if (parsed.encounterId) {
       const encounter = await this.prisma.encounter.findFirst({
-        where: { id: parsed.encounterId, facilityId },
+      select: ENCOUNTER_CORE_SELECT,
+      where: { id: parsed.encounterId, facilityId },
       });
       if (!encounter) {
         throw new NotFoundException("Encounter not found");
@@ -141,7 +144,8 @@ export class FhirResourceService {
 
     if (parsed.kind === "encounter") {
       const encounter = await this.prisma.encounter.findFirst({
-        where: { id: parsed.encounterId, facilityId },
+      select: ENCOUNTER_CORE_SELECT,
+      where: { id: parsed.encounterId, facilityId },
       });
       if (!encounter) {
         throw new NotFoundException("Observation not found");

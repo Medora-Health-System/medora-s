@@ -3,6 +3,7 @@ import {
   NotFoundException,
   BadRequestException,
 } from "@nestjs/common";
+import { ENCOUNTER_CORE_SELECT, ENCOUNTER_NESTED_CORE_SELECT } from "../encounters/encounter-query-contracts";
 import { PrismaService } from "../prisma/prisma.service";
 import { AuditService } from "../common/services/audit.service";
 import { AuditAction, Prisma } from "@prisma/client";
@@ -52,7 +53,8 @@ export class FollowUpsService {
     }
     if (dto.encounterId) {
       const enc = await this.prisma.encounter.findFirst({
-        where: {
+      select: ENCOUNTER_CORE_SELECT,
+      where: {
           id: dto.encounterId,
           facilityId,
           patientId: dto.patientId,
@@ -202,7 +204,8 @@ export class FollowUpsService {
 
     if (existing.encounterId) {
       const enc = await this.prisma.encounter.findFirst({
-        where: {
+      select: ENCOUNTER_CORE_SELECT,
+      where: {
           id: existing.encounterId,
           facilityId,
           patientId: existing.patientId,
@@ -259,7 +262,8 @@ export class FollowUpsService {
 
     if (existing.encounterId) {
       const enc = await this.prisma.encounter.findFirst({
-        where: {
+      select: ENCOUNTER_CORE_SELECT,
+      where: {
           id: existing.encounterId,
           facilityId,
           patientId: existing.patientId,

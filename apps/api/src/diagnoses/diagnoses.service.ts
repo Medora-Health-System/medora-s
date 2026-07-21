@@ -3,6 +3,7 @@ import {
   NotFoundException,
   BadRequestException,
 } from "@nestjs/common";
+import { ENCOUNTER_CORE_SELECT, ENCOUNTER_NESTED_CORE_SELECT } from "../encounters/encounter-query-contracts";
 import { DiagnosisCodeSource, DiagnosisOnsetPrecision, Prisma, RoleCode } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
 import { logBreakGlassAccessIfApplicable } from "../common/break-glass/break-glass-audit.helper";
@@ -130,7 +131,10 @@ export class DiagnosesService {
   ) {
     const encounter = await this.prisma.encounter.findFirst({
       where: { id: encounterId, facilityId },
-      include: { patient: true },
+      select: {
+        ...ENCOUNTER_CORE_SELECT,
+        patient: { select: { id: true, firstName: true, lastName: true, mrn: true } },
+      },
     });
     if (!encounter) {
       throw new NotFoundException("Encounter not found");
@@ -400,6 +404,7 @@ export class DiagnosesService {
     }
 
     const enc = await this.prisma.encounter.findFirst({
+      select: ENCOUNTER_CORE_SELECT,
       where: { id: existing.encounterId, facilityId },
     });
     if (!enc) {
@@ -555,6 +560,7 @@ export class DiagnosesService {
     userAgent?: string
   ) {
     const enc = await this.prisma.encounter.findFirst({
+      select: ENCOUNTER_CORE_SELECT,
       where: { id: encounterId, facilityId },
     });
     if (!enc) {
@@ -636,6 +642,7 @@ export class DiagnosesService {
     }
 
     const enc = await this.prisma.encounter.findFirst({
+      select: ENCOUNTER_CORE_SELECT,
       where: { id: existing.encounterId, facilityId },
     });
     if (!enc) {
@@ -692,6 +699,7 @@ export class DiagnosesService {
     }
 
     const enc = await this.prisma.encounter.findFirst({
+      select: ENCOUNTER_CORE_SELECT,
       where: { id: existing.encounterId, facilityId },
     });
     if (!enc) {

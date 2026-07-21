@@ -28,10 +28,16 @@ function mapEncounterClass(type: EncounterType): { code: string; display: string
   }
 }
 
+/** Core fields only — must not require D3B columns (e.g. hospitalEpisodeId). */
+export type FhirEncounterSource = Pick<
+  Encounter,
+  "id" | "status" | "type" | "patientId" | "chiefComplaint" | "createdAt" | "dischargedAt"
+>;
+
 /**
  * Maps a Prisma `Encounter` row to a FHIR R4 Encounter resource (JSON).
  */
-export function mapEncounterToFhir(encounter: Encounter): FhirEncounter {
+export function mapEncounterToFhir(encounter: FhirEncounterSource): FhirEncounter {
   const ec = mapEncounterClass(encounter.type);
   const reason = encounter.chiefComplaint?.trim()
     ? [{ text: encounter.chiefComplaint }]

@@ -11,6 +11,7 @@ import {
   Prisma,
   RoleCode,
 } from "@prisma/client";
+import { ENCOUNTER_CORE_SELECT, ENCOUNTER_NESTED_CORE_SELECT } from "../encounters/encounter-query-contracts";
 import { assertEncounterNotSigned } from "../encounters/encounter-sign-lock.util";
 import { assertParentOrderNotCancelled } from "../common/workflow/order-cancelled.guard";
 import { assertCanTransition } from "../common/workflow/status.transitions";
@@ -76,8 +77,9 @@ export class QueuesService {
       },
       include: {
         encounter: {
-          include: {
-            patient: {
+            select: {
+              ...ENCOUNTER_NESTED_CORE_SELECT,
+              patient: {
               select: {
                 id: true,
                 firstName: true,
@@ -126,8 +128,9 @@ export class QueuesService {
       },
       include: {
         encounter: {
-          include: {
-            patient: {
+            select: {
+              ...ENCOUNTER_NESTED_CORE_SELECT,
+              patient: {
               select: {
                 id: true,
                 firstName: true,
@@ -176,8 +179,9 @@ export class QueuesService {
       },
       include: {
         encounter: {
-          include: {
-            patient: {
+            select: {
+              ...ENCOUNTER_NESTED_CORE_SELECT,
+              patient: {
               select: {
                 id: true,
                 firstName: true,
@@ -473,6 +477,7 @@ export class QueuesService {
 
   async finalizeEncounterBilling(facilityId: string, encounterId: string, userId?: string) {
     const enc = await this.prisma.encounter.findFirst({
+      select: ENCOUNTER_CORE_SELECT,
       where: { id: encounterId, facilityId },
     });
     if (!enc) {
@@ -501,6 +506,7 @@ export class QueuesService {
         billingReopenedAt: null,
         billingReopenedByUserId: null,
       },
+      select: ENCOUNTER_CORE_SELECT,
     });
     await this.audit.log(AuditAction.BILLING_FINALIZED, "ENCOUNTER", {
       userId,
@@ -520,6 +526,7 @@ export class QueuesService {
 
   async reopenEncounterBilling(facilityId: string, encounterId: string, userId?: string) {
     const enc = await this.prisma.encounter.findFirst({
+      select: ENCOUNTER_CORE_SELECT,
       where: { id: encounterId, facilityId },
     });
     if (!enc) {
@@ -545,6 +552,7 @@ export class QueuesService {
         billingReopenedByUserId: userId ?? null,
         billingReadinessSnapshotJson: snapshot as unknown as Prisma.InputJsonValue,
       },
+      select: ENCOUNTER_CORE_SELECT,
     });
     await this.audit.log(AuditAction.BILLING_REOPENED, "ENCOUNTER", {
       userId,
@@ -653,7 +661,7 @@ export class QueuesService {
         order: {
           include: {
             facility: { select: { facilityType: true } },
-            encounter: true,
+            encounter: { select: ENCOUNTER_NESTED_CORE_SELECT },
           },
         },
       },
@@ -700,8 +708,9 @@ export class QueuesService {
         order: {
           include: {
             encounter: {
-              include: {
-                patient: {
+            select: {
+              ...ENCOUNTER_NESTED_CORE_SELECT,
+              patient: {
                   select: {
                     id: true,
                     firstName: true,

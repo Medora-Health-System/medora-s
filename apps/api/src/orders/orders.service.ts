@@ -30,6 +30,10 @@ import {
   assertEncounterNotSigned,
   assertEncounterOpenForClinicalMutation,
 } from "../encounters/encounter-sign-lock.util";
+import {
+  ENCOUNTER_CORE_SELECT,
+  ENCOUNTER_NESTED_CORE_SELECT,
+} from "../encounters/encounter-query-contracts";
 import { queueMedoraAlert } from "../common/logging/medoraAlert";
 import { logError as medoraLogError, logInfo } from "../common/logging/medoraLogger";
 import {
@@ -1125,7 +1129,11 @@ export class OrdersService {
   ) {
     const encounter = await this.prisma.encounter.findFirst({
       where: { id: encounterId, facilityId },
-      include: { patient: true, triage: { select: { vitalsJson: true } } },
+      select: {
+        ...ENCOUNTER_CORE_SELECT,
+        patient: { select: { id: true, firstName: true, lastName: true, mrn: true } },
+        triage: { select: { vitalsJson: true } },
+      },
     });
 
     if (!encounter) {
@@ -1812,8 +1820,9 @@ export class OrdersService {
       where: { id: orderId, facilityId },
       include: {
         encounter: {
-          include: {
-            patient: { select: { id: true, firstName: true, lastName: true, mrn: true, dob: true } },
+            select: {
+              ...ENCOUNTER_NESTED_CORE_SELECT,
+              patient: { select: { id: true, firstName: true, lastName: true, mrn: true, dob: true } },
           },
         },
         pathwaySession: { select: { id: true, type: true, status: true } },
@@ -2083,7 +2092,7 @@ export class OrdersService {
   async update(facilityId: string, id: string, data: OrderUpdateDto, userId?: string, ip?: string, userAgent?: string) {
     const order = await this.prisma.order.findFirst({
       where: { id, facilityId },
-      include: { encounter: true },
+      include: { encounter: { select: ENCOUNTER_NESTED_CORE_SELECT } },
     });
 
     if (!order) {
@@ -2219,7 +2228,7 @@ export class OrdersService {
     const order = await this.prisma.order.findFirst({
       where: { id, facilityId },
       include: {
-        encounter: true,
+        encounter: { select: ENCOUNTER_NESTED_CORE_SELECT },
         items: {
           select: {
             id: true,
@@ -2450,7 +2459,12 @@ export class OrdersService {
       include: {
         order: {
           include: {
-            encounter: { include: { patient: true } },
+            encounter: {
+              select: {
+                ...ENCOUNTER_CORE_SELECT,
+                patient: { select: { id: true, firstName: true, lastName: true, mrn: true } },
+              },
+            },
           },
         },
       },
@@ -2686,7 +2700,12 @@ export class OrdersService {
         order: {
           include: {
             facility: { select: { facilityType: true } },
-            encounter: { include: { patient: true } },
+            encounter: {
+              select: {
+                ...ENCOUNTER_CORE_SELECT,
+                patient: { select: { id: true, firstName: true, lastName: true, mrn: true } },
+              },
+            },
             orderEvents: {
               where: { eventType: OrderEventType.CREATED },
               orderBy: { performedAt: "asc" },
@@ -2821,7 +2840,12 @@ export class OrdersService {
         order: {
           include: {
             facility: { select: { facilityType: true } },
-            encounter: { include: { patient: true } },
+            encounter: {
+              select: {
+                ...ENCOUNTER_CORE_SELECT,
+                patient: { select: { id: true, firstName: true, lastName: true, mrn: true } },
+              },
+            },
             orderEvents: {
               where: { eventType: OrderEventType.CREATED },
               orderBy: { performedAt: "asc" },
@@ -2979,7 +3003,12 @@ export class OrdersService {
         order: {
           include: {
             facility: { select: { facilityType: true } },
-            encounter: { include: { patient: true } },
+            encounter: {
+              select: {
+                ...ENCOUNTER_CORE_SELECT,
+                patient: { select: { id: true, firstName: true, lastName: true, mrn: true } },
+              },
+            },
             orderEvents: {
               where: { eventType: OrderEventType.CREATED },
               orderBy: { performedAt: "asc" },
@@ -3209,7 +3238,12 @@ export class OrdersService {
       include: {
         order: {
           include: {
-            encounter: { include: { patient: true } },
+            encounter: {
+              select: {
+                ...ENCOUNTER_CORE_SELECT,
+                patient: { select: { id: true, firstName: true, lastName: true, mrn: true } },
+              },
+            },
           },
         },
       },
@@ -3336,7 +3370,12 @@ export class OrdersService {
       include: {
         order: {
           include: {
-            encounter: { include: { patient: true } },
+            encounter: {
+              select: {
+                ...ENCOUNTER_CORE_SELECT,
+                patient: { select: { id: true, firstName: true, lastName: true, mrn: true } },
+              },
+            },
           },
         },
       },
@@ -3675,7 +3714,7 @@ export class OrdersService {
     const orderItem = await this.prisma.orderItem.findFirst({
       where: { id: orderItemId, order: { facilityId } },
       include: {
-        order: { include: { encounter: { include: { patient: true } } } },
+        order: { include: { encounter: { select: { ...ENCOUNTER_CORE_SELECT, patient: { select: { id: true, firstName: true, lastName: true, mrn: true } } } } } },
       },
     });
     if (!orderItem) {
@@ -3964,7 +4003,7 @@ export class OrdersService {
     const orderItem = await this.prisma.orderItem.findFirst({
       where: { id: orderItemId, order: { facilityId } },
       include: {
-        order: { include: { encounter: { include: { patient: true } } } },
+        order: { include: { encounter: { select: { ...ENCOUNTER_CORE_SELECT, patient: { select: { id: true, firstName: true, lastName: true, mrn: true } } } } } },
       },
     });
     if (!orderItem) {
@@ -4365,7 +4404,7 @@ export class OrdersService {
   ) {
     const orderItem = await this.prisma.orderItem.findFirst({
       where: { id: orderItemId, order: { facilityId } },
-      include: { order: { include: { encounter: true } } },
+      include: { order: { include: { encounter: { select: ENCOUNTER_NESTED_CORE_SELECT } } } },
     });
     if (!orderItem) throw new NotFoundException("Order item not found");
     assertEncounterOpenForClinicalMutation(orderItem.order.encounter);
@@ -4425,7 +4464,7 @@ export class OrdersService {
   ) {
     const orderItem = await this.prisma.orderItem.findFirst({
       where: { id: orderItemId, order: { facilityId } },
-      include: { order: { include: { encounter: true } } },
+      include: { order: { include: { encounter: { select: ENCOUNTER_NESTED_CORE_SELECT } } } },
     });
     if (!orderItem) throw new NotFoundException("Order item not found");
     assertEncounterOpenForClinicalMutation(orderItem.order.encounter);
@@ -4471,7 +4510,7 @@ export class OrdersService {
   ) {
     const orderItem = await this.prisma.orderItem.findFirst({
       where: { id: orderItemId, order: { facilityId } },
-      include: { order: { include: { encounter: true } } },
+      include: { order: { include: { encounter: { select: ENCOUNTER_NESTED_CORE_SELECT } } } },
     });
     if (!orderItem) throw new NotFoundException("Order item not found");
     assertEncounterOpenForClinicalMutation(orderItem.order.encounter);
@@ -4518,7 +4557,7 @@ export class OrdersService {
   ) {
     const orderItem = await this.prisma.orderItem.findFirst({
       where: { id: orderItemId, order: { facilityId } },
-      include: { order: { include: { encounter: true } } },
+      include: { order: { include: { encounter: { select: ENCOUNTER_NESTED_CORE_SELECT } } } },
     });
     if (!orderItem) throw new NotFoundException("Order item not found");
     assertEncounterOpenForClinicalMutation(orderItem.order.encounter);
@@ -4682,7 +4721,7 @@ export class OrdersService {
     const orderItem = await this.prisma.orderItem.findFirst({
       where: { id: orderItemId, order: { facilityId: input.facilityId } },
       include: {
-        order: { include: { encounter: { include: { patient: true } } } },
+        order: { include: { encounter: { select: { ...ENCOUNTER_CORE_SELECT, patient: { select: { id: true, firstName: true, lastName: true, mrn: true } } } } } },
       },
     });
     if (!orderItem) return;

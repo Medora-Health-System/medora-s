@@ -1,4 +1,5 @@
 import { Injectable } from "@nestjs/common";
+import { ENCOUNTER_NESTED_CORE_SELECT } from "../encounters/encounter-query-contracts";
 import { PrismaService } from "../prisma/prisma.service";
 import { MedicationFulfillmentIntent, OrderStatus, Prisma } from "@prisma/client";
 import { OrdersService } from "../orders/orders.service";
@@ -56,7 +57,8 @@ export class WorklistsService {
         },
         include: {
           encounter: {
-            include: {
+            select: {
+              ...ENCOUNTER_NESTED_CORE_SELECT,
               patient: {
                 select: {
                   id: true,
@@ -108,7 +110,8 @@ export class WorklistsService {
         },
         include: {
           encounter: {
-            include: {
+            select: {
+              ...ENCOUNTER_NESTED_CORE_SELECT,
               patient: {
                 select: {
                   id: true,
@@ -159,7 +162,8 @@ export class WorklistsService {
         },
         include: {
           encounter: {
-            include: {
+            select: {
+              ...ENCOUNTER_NESTED_CORE_SELECT,
               patient: {
                 select: {
                   id: true,
@@ -211,7 +215,8 @@ export class WorklistsService {
         },
         include: {
           encounter: {
-            include: {
+            select: {
+              ...ENCOUNTER_NESTED_CORE_SELECT,
               patient: {
                 select: {
                   id: true,
@@ -261,8 +266,9 @@ export class WorklistsService {
       },
       include: {
         encounter: {
-          include: {
-            patient: {
+            select: {
+              ...ENCOUNTER_NESTED_CORE_SELECT,
+              patient: {
               select: {
                 id: true,
                 firstName: true,
@@ -325,8 +331,9 @@ export class WorklistsService {
         order: {
           include: {
             encounter: {
-              include: {
-                patient: {
+            select: {
+              ...ENCOUNTER_NESTED_CORE_SELECT,
+              patient: {
                   select: {
                     id: true,
                     firstName: true,

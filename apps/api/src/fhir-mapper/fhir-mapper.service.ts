@@ -15,7 +15,8 @@ export class FhirMapperService {
     return mapPatientToFhir(patient);
   }
 
-  toFhirEncounter(encounter: Encounter): FhirEncounter {
+  /** Accepts core Encounter projections (may omit D3B-only columns such as hospitalEpisodeId). */
+  toFhirEncounter(encounter: Parameters<typeof mapEncounterToFhir>[0]): FhirEncounter {
     return mapEncounterToFhir(encounter);
   }
 

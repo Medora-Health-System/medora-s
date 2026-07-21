@@ -14,6 +14,7 @@ import {
   assertEncounterNotSigned,
   assertEncounterOpenForClinicalMutation,
 } from "../encounters/encounter-sign-lock.util";
+import { ENCOUNTER_CORE_SELECT, ENCOUNTER_NESTED_CORE_SELECT } from "../encounters/encounter-query-contracts";
 import { assertParentOrderNotCancelled } from "../common/workflow/order-cancelled.guard";
 import {
   encounterAnchorAt,
@@ -75,7 +76,7 @@ export class OrdersLabRadiologyEffectiveTimeService {
     const row = await this.prisma.orderItem.findFirst({
       where: { id: orderItemId, order: { facilityId } },
       include: {
-        order: { include: { encounter: true } },
+        order: { include: { encounter: { select: ENCOUNTER_NESTED_CORE_SELECT } } },
         result: true,
       },
     });

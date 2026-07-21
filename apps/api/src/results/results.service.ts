@@ -16,6 +16,7 @@ import {
   assertEncounterNotSigned,
   assertEncounterOpenForClinicalMutation,
 } from "../encounters/encounter-sign-lock.util";
+import { ENCOUNTER_NESTED_CORE_SELECT } from "../encounters/encounter-query-contracts";
 import {
   tryAutoImagingResultBillingAfterVerify,
   tryAutoLabResultBillingAfterVerify,
@@ -131,8 +132,9 @@ export class ResultsService {
         order: {
           include: {
             encounter: {
-              include: {
-                patient: true,
+            select: {
+              ...ENCOUNTER_NESTED_CORE_SELECT,
+              patient: true,
               },
             },
           },
@@ -361,7 +363,7 @@ export class ResultsService {
       include: {
         order: {
           include: {
-            encounter: true,
+            encounter: { select: ENCOUNTER_NESTED_CORE_SELECT },
           },
         },
         result: { select: ORDER_ITEM_RESULT_LIST_SELECT },
@@ -451,7 +453,7 @@ export class ResultsService {
       include: {
         order: {
           include: {
-            encounter: true,
+            encounter: { select: ENCOUNTER_NESTED_CORE_SELECT },
           },
         },
         result: { select: ORDER_ITEM_RESULT_LIST_SELECT },
@@ -544,8 +546,9 @@ export class ResultsService {
         order: {
           include: {
             encounter: {
-              include: {
-                patient: true,
+            select: {
+              ...ENCOUNTER_NESTED_CORE_SELECT,
+              patient: true,
               },
             },
           },

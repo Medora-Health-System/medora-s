@@ -6,6 +6,10 @@ import {
   assertEncounterOpenForClinicalMutation,
 } from "../encounters/encounter-sign-lock.util";
 import {
+  ENCOUNTER_CORE_SELECT,
+  ENCOUNTER_NESTED_CORE_SELECT,
+} from "../encounters/encounter-query-contracts";
+import {
   AuditAction,
   PathwayType,
   PathwayStatus,
@@ -58,7 +62,10 @@ export class PathwaysService {
     // Validate encounter is OPEN
     const encounter = await this.prisma.encounter.findFirst({
       where: { id: encounterId, facilityId, status: "OPEN" },
-      include: { patient: true },
+      select: {
+        ...ENCOUNTER_CORE_SELECT,
+        patient: { select: { id: true, firstName: true, lastName: true, mrn: true } },
+      },
     });
 
     if (!encounter) {
@@ -204,7 +211,7 @@ export class PathwaysService {
   async pause(pathwayId: string, facilityId: string, userId?: string, ip?: string, userAgent?: string) {
     const pathway = await this.prisma.pathwaySession.findFirst({
       where: { id: pathwayId, facilityId },
-      include: { encounter: true },
+      include: { encounter: { select: ENCOUNTER_NESTED_CORE_SELECT } },
     });
 
     if (!pathway) {
@@ -227,7 +234,9 @@ export class PathwaysService {
       include: {
         milestones: true,
         encounter: {
-          include: { patient: { select: { id: true, firstName: true, lastName: true, mrn: true } } },
+            select: {
+              ...ENCOUNTER_NESTED_CORE_SELECT,
+              patient: { select: { id: true, firstName: true, lastName: true, mrn: true } } },
         },
       },
     });
@@ -249,7 +258,7 @@ export class PathwaysService {
   async complete(pathwayId: string, facilityId: string, userId?: string, ip?: string, userAgent?: string) {
     const pathway = await this.prisma.pathwaySession.findFirst({
       where: { id: pathwayId, facilityId },
-      include: { encounter: true },
+      include: { encounter: { select: ENCOUNTER_NESTED_CORE_SELECT } },
     });
 
     if (!pathway) {
@@ -268,7 +277,9 @@ export class PathwaysService {
       include: {
         milestones: true,
         encounter: {
-          include: { patient: { select: { id: true, firstName: true, lastName: true, mrn: true } } },
+            select: {
+              ...ENCOUNTER_NESTED_CORE_SELECT,
+              patient: { select: { id: true, firstName: true, lastName: true, mrn: true } } },
         },
       },
     });
@@ -282,7 +293,9 @@ export class PathwaysService {
           orderBy: { targetMinutes: "asc" },
         },
         encounter: {
-          include: { patient: { select: { id: true, firstName: true, lastName: true, mrn: true } } },
+            select: {
+              ...ENCOUNTER_NESTED_CORE_SELECT,
+              patient: { select: { id: true, firstName: true, lastName: true, mrn: true } } },
         },
       },
     });
@@ -345,7 +358,7 @@ export class PathwaysService {
   ) {
     const pathway = await this.prisma.pathwaySession.findFirst({
       where: { id: pathwayId, facilityId },
-      include: { encounter: true },
+      include: { encounter: { select: ENCOUNTER_NESTED_CORE_SELECT } },
     });
 
     if (!pathway) {

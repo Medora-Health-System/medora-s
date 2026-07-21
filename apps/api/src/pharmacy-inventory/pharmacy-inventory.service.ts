@@ -3,6 +3,7 @@ import {
   NotFoundException,
   BadRequestException,
 } from "@nestjs/common";
+import { ENCOUNTER_CORE_SELECT, ENCOUNTER_NESTED_CORE_SELECT } from "../encounters/encounter-query-contracts";
 import { PrismaService } from "../prisma/prisma.service";
 import { AuditService } from "../common/services/audit.service";
 import { MedicationCatalogService } from "../medication-catalog/medication-catalog.service";
@@ -291,6 +292,7 @@ export class PharmacyInventoryService {
     }
 
     const encounter = await this.prisma.encounter.findFirst({
+      select: ENCOUNTER_CORE_SELECT,
       where: {
         id: dto.encounterId,
         facilityId,
@@ -434,7 +436,7 @@ export class PharmacyInventoryService {
       include: {
         order: {
           include: {
-            encounter: true,
+            encounter: { select: ENCOUNTER_NESTED_CORE_SELECT },
           },
         },
       },

@@ -29,6 +29,7 @@ import {
   assertEncounterNotSigned,
   assertEncounterOpenForClinicalMutation,
 } from "../encounters/encounter-sign-lock.util";
+import { ENCOUNTER_CORE_SELECT, ENCOUNTER_NESTED_CORE_SELECT } from "../encounters/encounter-query-contracts";
 import { assertParentOrderNotCancelled } from "../common/workflow/order-cancelled.guard";
 import {
   assertAckOrStartActor,
@@ -55,7 +56,7 @@ export class OrdersFluidBolusService {
     const orderItem = await this.prisma.orderItem.findFirst({
       where: { id: orderItemId, order: { facilityId } },
       include: {
-        order: { include: { encounter: { include: { patient: true } } } },
+        order: { include: { encounter: { select: { ...ENCOUNTER_CORE_SELECT, patient: { select: { id: true, firstName: true, lastName: true, mrn: true } } } } } },
       },
     });
     if (!orderItem) throw new NotFoundException("Order item not found");
