@@ -18918,6 +18918,71 @@ export default {
       clinicalCensusHint: "Recensement clinique — Observation : {obs} · Hospitalisation : {ip}",
     },
   },
+  hospitalCareD3e6b: {
+    inpatient: {
+      subtitle:
+        "Parcourir les unités cliniques configurées et le recensement d’hospitalisation partagé. Navigation par service clinique — pas par étage.",
+    },
+    placementOffBanner:
+      "Le flux de placement interne est désactivé. Les actions de placement peuvent être indisponibles. Les unités cliniques configurées et le recensement d’hospitalisation actif restent visibles.",
+    tree: {
+      aria: "Arborescence des unités cliniques",
+      title: "Sélectionner une unité clinique",
+      expandAll: "Tout développer",
+      collapseAll: "Tout réduire",
+      search: "Rechercher unités ou chambres",
+      allUnits: "Toutes les unités hospitalières",
+      allUnitsHint: "Recensement d’hospitalisation agrégé pour cet établissement",
+      awaitingAssignment: "En attente d’affectation d’unité",
+      patients: "patients",
+      occupied: "occupés",
+      available: "disponibles",
+      alerts: "alertes",
+      patientCount: "Patients actifs",
+      expandUnit: "Développer {name}",
+      collapseUnit: "Réduire {name}",
+      noRooms: "Aucune chambre configurée pour cette unité pour le moment.",
+      noFloorHint: "La navigation clinique utilise les unités et chambres — pas les étages du bâtiment.",
+      toggle: "Unités",
+    },
+    counts: {
+      unavailable: "—",
+    },
+    filters: {
+      search: "Rechercher par nom, NIP, prestataire, unité ou chambre",
+      unit: "Unité",
+    },
+    summary: {
+      selectUnit: "Sélectionnez une unité clinique pour voir ses patients et son état opérationnel.",
+      allHint: "Patients hospitalisés de l’établissement, y compris ceux en attente de lit.",
+      patients: "Patients actifs",
+      occupied: "Lits occupés",
+      available: "Lits disponibles",
+      rnUnassigned: "IDE non assigné(e)",
+      mdUnassigned: "Médecin non assigné",
+      reassess: "Réévaluation en retard",
+      vitals: "Constantes obsolètes",
+      critical: "Résultats critiques",
+      readyDc: "Prêt pour sortie",
+    },
+    patients: {
+      title: "Patients de l’unité",
+      viewChart: "Voir le dossier",
+    },
+    chartProfile: {
+      hint: "Profil de dossier : {profile} (ordonnances, résultats, MAR et chronologie partagés).",
+    },
+    empty: {
+      noUnits: "Aucune unité clinique d’hospitalisation n’est configurée pour cet établissement.",
+      configureUnits:
+        "Configurez les unités hospitalières dans l’administration de l’établissement lorsqu’elle est disponible.",
+    },
+    bedManagement: {
+      hint: "Les flux détaillés de nettoyage, de lits bloqués et réservés restent dans la gestion des lits.",
+      open: "Ouvrir la gestion des lits complète",
+    },
+  },
+
   hospitalCareD3e7: {
     placement: {
       actionsOff:

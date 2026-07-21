@@ -18844,6 +18844,69 @@ export default {
       clinicalCensusHint: "Clinical census — Observation: {obs} · Inpatient: {ip}",
     },
   },
+  hospitalCareD3e6b: {
+    inpatient: {
+      subtitle:
+        "Browse configured clinical units and the shared inpatient census. Navigation is by clinical service — not by floor.",
+    },
+    placementOffBanner:
+      "Internal placement workflow is disabled. Placement actions may be unavailable. Configured clinical units and active Inpatient census remain visible.",
+    tree: {
+      aria: "Clinical unit tree",
+      title: "Select a clinical unit",
+      expandAll: "Expand all",
+      collapseAll: "Collapse all",
+      search: "Search units or rooms",
+      allUnits: "All Hospital Units",
+      allUnitsHint: "Aggregate inpatient census for this facility",
+      awaitingAssignment: "Awaiting Unit Assignment",
+      patients: "patients",
+      occupied: "occupied",
+      available: "available",
+      alerts: "alerts",
+      patientCount: "Active patients",
+      expandUnit: "Expand {name}",
+      collapseUnit: "Collapse {name}",
+      noRooms: "No rooms configured for this unit yet.",
+      noFloorHint: "Clinical navigation uses units and rooms — not building floors.",
+      toggle: "Units",
+    },
+    counts: {
+      unavailable: "—",
+    },
+    filters: {
+      search: "Search by name, MRN, provider, unit, or room",
+      unit: "Unit",
+    },
+    summary: {
+      selectUnit: "Select a clinical unit to view its patients and operational status.",
+      allHint: "Facility-wide inpatient patients, including those awaiting a bed.",
+      patients: "Active patients",
+      occupied: "Occupied beds",
+      available: "Available beds",
+      rnUnassigned: "RN unassigned",
+      mdUnassigned: "Physician unassigned",
+      reassess: "Reassessment overdue",
+      vitals: "Vitals stale",
+      critical: "Critical results",
+      readyDc: "Ready discharge",
+    },
+    patients: {
+      title: "Unit patients",
+      viewChart: "View chart",
+    },
+    chartProfile: {
+      hint: "Chart profile: {profile} (shared Orders, Results, MAR, Timeline).",
+    },
+    empty: {
+      noUnits: "No inpatient clinical units are configured for this facility.",
+      configureUnits: "Configure hospital units in facility administration when available.",
+    },
+    bedManagement: {
+      hint: "Detailed cleaning, blocked, and reserved bed workflows stay on Bed Management.",
+      open: "Open full Bed Management",
+    },
+  },
   hospitalCareD3e7: {
     placement: {
       actionsOff:
