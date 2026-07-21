@@ -1,5 +1,4 @@
 import {
-  canReadFreestandingErObservationPatients,
   filterHrefListForFreestandingErRnProviderSidebar,
   getVisibleNavigationAreas,
   isNavigationAreaVisible,
@@ -10,7 +9,11 @@ import type { SidebarNavItem } from "@/components/app-shell/sidebarNavConfig";
 
 export type { NavigationArea, NavigationProfileInput };
 
-export const OBSERVATION_BOARD_HREF = "/app/hospitalisation";
+/** Canonical Hospital Care landing (module identity — not role-aliased). */
+export const HOSPITAL_CARE_NAV_HREF = "/app/hospitalisation";
+
+/** @deprecated Use HOSPITAL_CARE_NAV_HREF — kept for test imports during D3CA closure. */
+export const OBSERVATION_BOARD_HREF = HOSPITAL_CARE_NAV_HREF;
 
 export function buildNavigationProfileFromSession(input: {
   roleCodes: readonly string[];
@@ -34,39 +37,18 @@ export function filterSidebarNavItemsByNavigationAreas(
   profile: NavigationProfileInput
 ): SidebarNavItem[] {
   const visibleAreas = getVisibleNavigationAreas(profile);
-  const areaFiltered = items
-    .filter((item) => isNavigationAreaVisible(visibleAreas, item.navAreas))
-    .map((item) => applyObservationBoardNavLabel(item, profile));
+  const areaFiltered = items.filter((item) =>
+    isNavigationAreaVisible(visibleAreas, item.navAreas)
+  );
   return filterHrefListForFreestandingErRnProviderSidebar(areaFiltered, {
     roleCodes: profile.roleCodes,
     facilityType: profile.facilityType,
   });
 }
 
-/** Freestanding ER lab/rad technicians see "Observation" instead of hospitalisation label. */
-export function applyObservationBoardNavLabel(
-  item: SidebarNavItem,
-  profile: NavigationProfileInput
-): SidebarNavItem {
-  if (item.href !== OBSERVATION_BOARD_HREF) {
-    return item;
-  }
-  if (
-    canReadFreestandingErObservationPatients({
-      roleCodes: profile.roleCodes,
-      facilityType: profile.facilityType,
-      facilityServiceLines: profile.facilityServiceLines,
-      departmentCode: profile.departmentCode ?? profile.prismaDepartmentCode ?? null,
-    })
-  ) {
-    return { ...item, label: "nav.observation" };
-  }
-  return item;
-}
-
 /**
  * Mirrors `app/app/layout.tsx` role + navigation-area filtering for tests.
- * MEDUI.OBS.TECH.1 — ensures LAB/RAD technicians see observation board when eligible.
+ * D3CA.CLOSURE — Hospital Care label is always `nav.hospitalisation` (no Observation alias).
  */
 export function filterSidebarNavItemsForSession(
   items: SidebarNavItem[],

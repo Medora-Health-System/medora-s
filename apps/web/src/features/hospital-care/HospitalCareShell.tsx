@@ -3,8 +3,10 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { useI18n } from "@/lib/i18n";
+import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import { MEDORA_CARD_SHELL } from "@/components/medora-card/medoraCardTokens";
 import { HospitalCareSectionNav } from "./HospitalCareSectionNav";
+import { canAccessHospitalCareSection } from "./hospitalCareSectionAccess";
 import {
   HOSPITAL_CARE_HOME,
   type HospitalCareSectionId,
@@ -24,6 +26,9 @@ export function HospitalCareShell({
   actions?: ReactNode;
 }) {
   const { t } = useI18n();
+  const { roles, ready } = useFacilityAndRoles();
+  const denied =
+    ready && active !== "home" && !canAccessHospitalCareSection(active, roles);
 
   return (
     <div
@@ -100,7 +105,17 @@ export function HospitalCareShell({
             padding: 16,
           }}
         >
-          {children}
+          {denied ? (
+            <p
+              style={{ fontSize: 13, color: "#b91c1c" }}
+              role="alert"
+              data-testid="hospital-care-access-denied"
+            >
+              {t("hospitalCareD3ca.accessDenied")}
+            </p>
+          ) : (
+            children
+          )}
         </div>
       </div>
     </div>

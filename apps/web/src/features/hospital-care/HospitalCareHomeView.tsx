@@ -2,7 +2,9 @@
 
 import Link from "next/link";
 import { useI18n } from "@/lib/i18n";
+import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import { HospitalCareShell } from "./HospitalCareShell";
+import { filterHospitalCareHomeTilesForRoles } from "./hospitalCareSectionAccess";
 import {
   HOSPITAL_CARE_ADMISSIONS,
   HOSPITAL_CARE_BEDS,
@@ -11,43 +13,59 @@ import {
   HOSPITAL_CARE_OBSERVATION,
   HOSPITAL_CARE_PLACEMENT_QUEUE,
   HOSPITAL_CARE_TRANSFERS,
+  type HospitalCareSectionId,
 } from "./hospitalCarePaths";
 
-const TILES = [
+const TILES: Array<{
+  sectionId: HospitalCareSectionId;
+  href: string;
+  titleKey: string;
+  hintKey: string;
+}> = [
   {
+    sectionId: "placementQueue",
     href: HOSPITAL_CARE_PLACEMENT_QUEUE,
     titleKey: "hospitalCareD3ca.home.placementQueueTitle",
     hintKey: "hospitalCareD3ca.home.placementQueueHint",
   },
   {
+    sectionId: "observation",
     href: HOSPITAL_CARE_OBSERVATION,
     titleKey: "hospitalCareD3ca.home.observationTitle",
     hintKey: "hospitalCareD3ca.home.observationHint",
   },
   {
+    sectionId: "inpatient",
     href: HOSPITAL_CARE_INPATIENT,
     titleKey: "hospitalCareD3ca.home.inpatientTitle",
     hintKey: "hospitalCareD3ca.home.inpatientHint",
   },
   {
+    sectionId: "admissions",
     href: HOSPITAL_CARE_ADMISSIONS,
     titleKey: "hospitalCareD3ca.home.admissionsTitle",
     hintKey: "hospitalCareD3ca.home.admissionsHint",
   },
   {
+    sectionId: "beds",
     href: HOSPITAL_CARE_BEDS,
     titleKey: "hospitalCareD3ca.home.bedsTitle",
     hintKey: "hospitalCareD3ca.home.bedsHint",
   },
   {
+    sectionId: "transfers",
     href: HOSPITAL_CARE_TRANSFERS,
     titleKey: "hospitalCareD3ca.home.transfersTitle",
     hintKey: "hospitalCareD3ca.home.transfersHint",
   },
-] as const;
+];
 
 export function HospitalCareHomeView() {
   const { t } = useI18n();
+  const { roles, ready } = useFacilityAndRoles();
+  const tiles = ready
+    ? filterHospitalCareHomeTilesForRoles(TILES, roles)
+    : TILES;
 
   return (
     <HospitalCareShell
@@ -62,7 +80,7 @@ export function HospitalCareHomeView() {
           gap: 12,
         }}
       >
-        {TILES.map((tile) => (
+        {tiles.map((tile) => (
           <Link
             key={tile.href}
             href={tile.href}

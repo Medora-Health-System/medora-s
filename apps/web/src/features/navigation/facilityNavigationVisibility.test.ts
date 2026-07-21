@@ -10,7 +10,7 @@ const freestandingErProfile = {
 };
 
 describe("facility navigation visibility (MEDUI.OBS.TECH.1 + MEDUI.FSER.ROLE.1)", () => {
-  it("freestanding ER lab tech menu includes emergency, observation, and laboratory", () => {
+  it("freestanding ER lab tech menu includes emergency, Hospital Care, and laboratory", () => {
     const profile = {
       roleCodes: ["LAB"],
       prismaDepartmentCode: "LABORATORY",
@@ -23,11 +23,12 @@ describe("facility navigation visibility (MEDUI.OBS.TECH.1 + MEDUI.FSER.ROLE.1)"
     expect(filtered.some((item) => item.href === "/app/lab-worklist")).toBe(true);
     expect(filtered.some((item) => item.href === "/app/hospitalisation")).toBe(true);
     expect(filtered.some((item) => item.href === "/app/emergency/trackboard")).toBe(true);
-    const observationItem = filtered.find((item) => item.href === "/app/hospitalisation");
-    expect(observationItem?.label).toBe("nav.observation");
+    const hospitalCareItem = filtered.find((item) => item.href === "/app/hospitalisation");
+    expect(hospitalCareItem?.label).toBe("nav.hospitalisation");
+    expect(hospitalCareItem?.label).not.toBe("nav.observation");
   });
 
-  it("freestanding ER rad tech menu includes emergency, observation, and radiology", () => {
+  it("freestanding ER rad tech menu includes emergency, Hospital Care, and radiology", () => {
     const profile = {
       roleCodes: ["RADIOLOGY"],
       prismaDepartmentCode: "RADIOLOGY",
@@ -40,11 +41,12 @@ describe("facility navigation visibility (MEDUI.OBS.TECH.1 + MEDUI.FSER.ROLE.1)"
     expect(filtered.some((item) => item.href === "/app/rad-worklist")).toBe(true);
     expect(filtered.some((item) => item.href === "/app/hospitalisation")).toBe(true);
     expect(filtered.some((item) => item.href === "/app/emergency/trackboard")).toBe(true);
-    const observationItem = filtered.find((item) => item.href === "/app/hospitalisation");
-    expect(observationItem?.label).toBe("nav.observation");
+    const hospitalCareItem = filtered.find((item) => item.href === "/app/hospitalisation");
+    expect(hospitalCareItem?.label).toBe("nav.hospitalisation");
+    expect(hospitalCareItem?.label).not.toBe("nav.observation");
   });
 
-  it("freestanding ER dual lab/rad tech sees emergency, observation, laboratory, and radiology", () => {
+  it("freestanding ER dual lab/rad tech sees emergency, Hospital Care, laboratory, and radiology", () => {
     const profile = {
       roleCodes: ["LAB", "RADIOLOGY"],
       prismaDepartmentCode: "LABORATORY",

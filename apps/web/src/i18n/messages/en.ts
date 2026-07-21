@@ -9280,7 +9280,7 @@ export default {
   hospitalTechnicianWorkspace: {
     loading: "Loading…",
     pageTitle: "Hospital technician workspace",
-    backBoard: "← Hospital board",
+    backBoard: "← Floor Board",
     dashboardHeading: "Workspace",
     activeZoneAria: "Active area",
     linkFullChart: "Full encounter chart (reference)",
@@ -18535,6 +18535,9 @@ export default {
     sectionNavAria: "Hospital Care sections",
     backHome: "← Hospital Care home",
     loadError: "Unable to load placement data.",
+    featureUnavailable:
+      "Internal placement is not enabled for this facility. This is not an empty census.",
+    accessDenied: "You do not have access to this Hospital Care section.",
     searchPlaceholder: "Search by name, MRN, or status",
     noClinicalWorkflows:
       "No clinical documentation, orders, or MAR in this phase. Those modules arrive in D3D / D3E.",
@@ -18575,7 +18578,7 @@ export default {
       transfersTitle: "Transfers",
       transfersHint: "ICU, OR, PACU, and more — placeholder.",
       edRemainsPrimary: "ED remains the primary workspace until destination arrival.",
-      floorBoardLink: "Operational floor board",
+      floorBoardLink: "Floor Board",
     },
     placementQueue: {
       title: "Placement queue",

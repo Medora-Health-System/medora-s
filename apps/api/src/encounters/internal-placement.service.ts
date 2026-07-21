@@ -127,18 +127,21 @@ export class InternalPlacementService {
 
   /**
    * D3CA — read-only facility placement queue (no mutations).
-   * Flag OFF → empty list (UI shows empty states; does not throw for home widgets).
+   * Flag OFF → deliberate `{ availability: "FEATURE_DISABLED", items: [] }` **before** any
+   * InternalPlacementRequest Prisma access (no swallowed P2022 / unexpected DB errors).
+   * Flag ON → Prisma runs; errors propagate (never converted to empty lists).
    */
   async listFacilityQueue(
     facilityId: string,
     options?: {
       featureFlagEnabled?: boolean;
-      /** When true, throw if flag OFF (strict API). Default: soft-empty. */
+      /** When true, throw if flag OFF (strict API). Default: soft-empty envelope. */
       strict?: boolean;
       take?: number;
     }
-  ): Promise<
-    Array<
+  ): Promise<{
+    availability: "ENABLED" | "FEATURE_DISABLED";
+    items: Array<
       NonNullable<InternalPlacementStateProjection> & {
         patient: {
           id: string;
@@ -151,15 +154,15 @@ export class InternalPlacementService {
         requestedAt: string | null;
         createdAt: string;
       }
-    >
-  > {
+    >;
+  }> {
     const enabled =
       options?.featureFlagEnabled === true || this.isWorkflowEnabled();
     if (!enabled) {
       if (options?.strict) {
         this.assertWorkflowEnabled(options);
       }
-      return [];
+      return { availability: "FEATURE_DISABLED", items: [] };
     }
 
     const take = Math.min(Math.max(options?.take ?? 100, 1), 200);
@@ -173,15 +176,18 @@ export class InternalPlacementService {
       take,
     });
 
-    return rows.map((row) => {
-      const projected = projectInternalPlacementState(row)!;
-      return {
-        ...projected,
-        patient: row.patient,
-        requestedAt: row.requestedAt ? row.requestedAt.toISOString() : null,
-        createdAt: row.createdAt.toISOString(),
-      };
-    });
+    return {
+      availability: "ENABLED",
+      items: rows.map((row) => {
+        const projected = projectInternalPlacementState(row)!;
+        return {
+          ...projected,
+          patient: row.patient,
+          requestedAt: row.requestedAt ? row.requestedAt.toISOString() : null,
+          createdAt: row.createdAt.toISOString(),
+        };
+      }),
+    };
   }
 
   async getActiveForEncounter(

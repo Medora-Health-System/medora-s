@@ -6,13 +6,16 @@ import { HospitalCareShell } from "./HospitalCareShell";
 import { HospitalCarePatientCard } from "./HospitalCarePatientCard";
 import {
   fetchFacilityPlacementQueue,
+  isForbiddenApiError,
   PLACEMENT_QUEUE_STATUS_SET,
   type HospitalCarePlacementQueueRow,
+  type PlacementQueueAvailability,
 } from "./hospitalCarePlacementApi";
 
 export function HospitalCarePlacementQueueView() {
   const { t } = useI18n();
   const [rows, setRows] = useState<HospitalCarePlacementQueueRow[]>([]);
+  const [availability, setAvailability] = useState<PlacementQueueAvailability | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
@@ -24,11 +27,19 @@ export function HospitalCarePlacementQueueView() {
       setError(null);
       try {
         const data = await fetchFacilityPlacementQueue();
-        if (!cancelled) setRows(data);
-      } catch {
+        if (!cancelled) {
+          setRows(data.items);
+          setAvailability(data.availability);
+        }
+      } catch (err) {
         if (!cancelled) {
           setRows([]);
-          setError(t("hospitalCareD3ca.loadError"));
+          setAvailability(null);
+          setError(
+            isForbiddenApiError(err)
+              ? t("hospitalCareD3ca.accessDenied")
+              : t("hospitalCareD3ca.loadError")
+          );
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -83,6 +94,13 @@ export function HospitalCarePlacementQueueView() {
       ) : error ? (
         <p style={{ fontSize: 13, color: "#b91c1c" }} role="alert">
           {error}
+        </p>
+      ) : availability === "FEATURE_DISABLED" ? (
+        <p
+          style={{ fontSize: 13, color: "#64748b" }}
+          data-testid="hospital-care-placement-feature-off"
+        >
+          {t("hospitalCareD3ca.featureUnavailable")}
         </p>
       ) : queueRows.length === 0 ? (
         <p style={{ fontSize: 13, color: "#64748b" }} data-testid="hospital-care-placement-empty">

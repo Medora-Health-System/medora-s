@@ -2,10 +2,9 @@
 
 import Link from "next/link";
 import { useI18n } from "@/lib/i18n";
-import {
-  HOSPITAL_CARE_SECTIONS,
-  type HospitalCareSectionId,
-} from "./hospitalCarePaths";
+import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
+import { filterHospitalCareSectionsForRoles } from "./hospitalCareSectionAccess";
+import type { HospitalCareSectionId } from "./hospitalCarePaths";
 
 export function HospitalCareSectionNav({
   active,
@@ -13,6 +12,10 @@ export function HospitalCareSectionNav({
   active: HospitalCareSectionId;
 }) {
   const { t } = useI18n();
+  const { roles, ready } = useFacilityAndRoles();
+  const sections = ready
+    ? filterHospitalCareSectionsForRoles(roles)
+    : filterHospitalCareSectionsForRoles(["ADMIN", "PROVIDER", "RN", "LAB", "RADIOLOGY"]);
 
   return (
     <nav
@@ -25,7 +28,7 @@ export function HospitalCareSectionNav({
         marginBottom: 16,
       }}
     >
-      {HOSPITAL_CARE_SECTIONS.map((section) => {
+      {sections.map((section) => {
         const isActive = section.id === active;
         return (
           <Link

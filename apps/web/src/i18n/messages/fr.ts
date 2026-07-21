@@ -9273,7 +9273,7 @@ export default {
   hospitalTechnicianWorkspace: {
     loading: "Chargement…",
     pageTitle: "Espace technicien hospitalier",
-    backBoard: "← Plateau hospitalisation",
+    backBoard: "← Tableau des unités",
     dashboardHeading: "Espace de travail",
     activeZoneAria: "Zone active",
     linkFullChart: "Dossier consultation complet (référence)",
@@ -18605,6 +18605,9 @@ export default {
     sectionNavAria: "Sections Soins hospitaliers",
     backHome: "← Accueil Soins hospitaliers",
     loadError: "Impossible de charger les données de placement.",
+    featureUnavailable:
+      "Le placement interne n’est pas activé pour cet établissement. Ceci n’est pas un recensement vide.",
+    accessDenied: "Vous n’avez pas accès à cette section des Soins hospitaliers.",
     searchPlaceholder: "Rechercher par nom, NIR ou statut",
     noClinicalWorkflows:
       "Pas de documentation clinique, d’ordonnances ni de MAR dans cette phase. Ces modules arriveront en D3D / D3E.",
@@ -18645,7 +18648,7 @@ export default {
       transfersTitle: "Transferts",
       transfersHint: "USI, bloc, SSPI, et plus — espace réservé.",
       edRemainsPrimary: "Les urgences restent l’espace principal jusqu’à l’arrivée à destination.",
-      floorBoardLink: "Tableau opérationnel des lits",
+      floorBoardLink: "Tableau des unités",
     },
     placementQueue: {
       title: "File de placement",

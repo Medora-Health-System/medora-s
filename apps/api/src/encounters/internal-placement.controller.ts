@@ -133,7 +133,9 @@ export class InternalPlacementController {
   constructor(private readonly placement: InternalPlacementService) {}
 
   /**
-   * D3CA — facility placement queue (read-only). Soft-empty when workflow flag OFF.
+   * D3CA — facility placement queue (read-only).
+   * Soft-empty envelope `{ availability: "FEATURE_DISABLED", items: [] }` when workflow flag OFF
+   * (before Prisma). Facility-scoped via JWT facility id.
    */
   @Get("internal-placement")
   @RequireRoles(RoleCode.PROVIDER, RoleCode.RN, RoleCode.ADMIN, RoleCode.LAB, RoleCode.RADIOLOGY)

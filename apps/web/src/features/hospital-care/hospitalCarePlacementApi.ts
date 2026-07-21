@@ -33,9 +33,46 @@ export type HospitalCarePlacementQueueRow = {
   };
 };
 
-export async function fetchFacilityPlacementQueue(): Promise<HospitalCarePlacementQueueRow[]> {
-  const rows = await apiFetch("/internal-placement");
-  return Array.isArray(rows) ? (rows as HospitalCarePlacementQueueRow[]) : [];
+export type PlacementQueueAvailability = "ENABLED" | "FEATURE_DISABLED";
+
+export type FacilityPlacementQueueResponse = {
+  availability: PlacementQueueAvailability;
+  items: HospitalCarePlacementQueueRow[];
+};
+
+export function parseFacilityPlacementQueueResponse(
+  body: unknown
+): FacilityPlacementQueueResponse {
+  if (body && typeof body === "object" && !Array.isArray(body)) {
+    const o = body as { availability?: unknown; items?: unknown };
+    if (o.availability === "FEATURE_DISABLED") {
+      return { availability: "FEATURE_DISABLED", items: [] };
+    }
+    if (o.availability === "ENABLED" || Array.isArray(o.items)) {
+      return {
+        availability: "ENABLED",
+        items: Array.isArray(o.items) ? (o.items as HospitalCarePlacementQueueRow[]) : [],
+      };
+    }
+  }
+  if (Array.isArray(body)) {
+    return { availability: "ENABLED", items: body as HospitalCarePlacementQueueRow[] };
+  }
+  return { availability: "ENABLED", items: [] };
+}
+
+export async function fetchFacilityPlacementQueue(): Promise<FacilityPlacementQueueResponse> {
+  const body = await apiFetch("/internal-placement");
+  return parseFacilityPlacementQueueResponse(body);
+}
+
+export function isForbiddenApiError(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "status" in error &&
+    (error as { status?: number }).status === 403
+  );
 }
 
 /** Queue statuses shown on Placement Queue / Admissions (pre-arrival + transport). */
