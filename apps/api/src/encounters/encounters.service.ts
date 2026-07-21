@@ -224,18 +224,16 @@ import {
 } from "../patients/chart-audit-timeline.util";
 import { resolveDefaultBillingClassification } from "@medora/shared";
 import { throwEncounterConcurrentModification } from "./encounter-concurrency.util";
+import {
+  ENCOUNTER_ACCESS_SELECT,
+  ENCOUNTER_CORE_SELECT,
+  ENCOUNTER_DETAIL_SELECT,
+  ENCOUNTER_DISPOSITION_SELECT,
+  ENCOUNTER_LIST_SELECT,
+  ENCOUNTER_OPEN_EXISTENCE_SELECT,
+} from "./encounter-query-contracts";
 import { computeDispositionSafetyReadiness } from "./disposition-safety-readiness.util";
 import { mergeDischargeSummaryJson } from "./effective-discharge-summary.util";
-
-/** Aligné sur GET /encounters/:id — évite d’écraser le dossier patient côté client après PATCH. */
-const encounterDetailPatientSelect = {
-  id: true,
-  firstName: true,
-  lastName: true,
-  mrn: true,
-  dob: true,
-  sexAtBirth: true,
-} as const;
 
 @Injectable()
 export class EncountersService {
@@ -258,6 +256,7 @@ export class EncountersService {
 
     // Check for existing OPEN encounter
     const existingOpen = await this.prisma.encounter.findFirst({
+      select: ENCOUNTER_OPEN_EXISTENCE_SELECT,
       where: {
         patientId,
         facilityId,
@@ -327,9 +326,7 @@ export class EncountersService {
         physicianAssignedUserId,
         status: "OPEN",
       },
-      include: {
-        patient: { select: { id: true, firstName: true, lastName: true, mrn: true } },
-      },
+      select: ENCOUNTER_DETAIL_SELECT,
     });
 
     await this.audit.log(AuditAction.ENCOUNTER_CREATE, "ENCOUNTER", {
@@ -400,10 +397,7 @@ export class EncountersService {
       where,
       orderBy: { createdAt: "desc" },
       take: query?.limit,
-      include: {
-        patient: { select: { firstName: true, lastName: true, mrn: true } },
-        physicianAssigned: { select: { id: true, firstName: true, lastName: true } },
-      },
+      select: ENCOUNTER_LIST_SELECT,
     });
 
     await logBreakGlassAccessIfApplicable(this.audit, {
@@ -447,61 +441,7 @@ export class EncountersService {
   async findOne(facilityId: string, id: string, userId?: string, ip?: string, userAgent?: string) {
     const encounter = await this.prisma.encounter.findFirst({
       where: { id, facilityId },
-      include: {
-        patient: { select: encounterDetailPatientSelect },
-        physicianAssigned: { select: { id: true, firstName: true, lastName: true } },
-        providerDocumentationSignedBy: { select: { id: true, firstName: true, lastName: true } },
-        triage: { select: { vitalsJson: true } },
-        providerAddenda: {
-          orderBy: { createdAt: "asc" },
-          include: {
-            createdBy: { select: { firstName: true, lastName: true } },
-          },
-        },
-        encounterNotes: {
-          orderBy: { createdAt: "desc" },
-          select: {
-            id: true,
-            noteType: true,
-            body: true,
-            authorUserId: true,
-            authorDisplayNameSnapshot: true,
-            authorRoleSnapshot: true,
-            createdAt: true,
-            voidedAt: true,
-            voidedByUserId: true,
-            voidReasonCode: true,
-            isAmendment: true,
-            amendedFromNoteId: true,
-            amendmentReason: true,
-            requiresCosign: true,
-            cosignedAt: true,
-            cosignedByUserId: true,
-            cosignRoleSnapshot: true,
-          },
-        },
-        clinicalDocumentationEntries: {
-          orderBy: { createdAt: "asc" },
-          select: {
-            id: true,
-            encounterId: true,
-            patientId: true,
-            category: true,
-            cardId: true,
-            authorUserId: true,
-            authorDisplayNameSnapshot: true,
-            authorRoleSnapshot: true,
-            createdAt: true,
-            payloadJson: true,
-            voidedAt: true,
-            requiresWitnessSignature: true,
-            witnessedAt: true,
-            witnessedByUserId: true,
-            witnessDisplayNameSnapshot: true,
-            witnessRoleSnapshot: true,
-          },
-        },
-      },
+      select: ENCOUNTER_DETAIL_SELECT,
     });
 
     if (!encounter) {
@@ -698,6 +638,7 @@ export class EncountersService {
     }
 
     const encounter = await this.prisma.encounter.findFirst({
+      select: ENCOUNTER_CORE_SELECT,
       where: { id: encounterId, facilityId },
     });
 
@@ -764,6 +705,7 @@ export class EncountersService {
     }
 
     const encounter = await this.prisma.encounter.findFirst({
+      select: ENCOUNTER_CORE_SELECT,
       where: { id: encounterId, facilityId },
     });
 
@@ -833,11 +775,7 @@ export class EncountersService {
       });
       const row = await tx.encounter.findFirst({
         where: { id: encounterId, facilityId },
-        include: {
-          patient: { select: encounterDetailPatientSelect },
-          physicianAssigned: { select: { id: true, firstName: true, lastName: true } },
-          providerDocumentationSignedBy: { select: { id: true, firstName: true, lastName: true } },
-        },
+        select: ENCOUNTER_DETAIL_SELECT,
       });
       if (!row) {
         throw new NotFoundException("Encounter not found");
@@ -867,6 +805,7 @@ export class EncountersService {
     }
 
     const encounter = await this.prisma.encounter.findFirst({
+      select: ENCOUNTER_CORE_SELECT,
       where: { id: encounterId, facilityId },
     });
 
@@ -933,10 +872,7 @@ export class EncountersService {
       });
       const row = await tx.encounter.findFirst({
         where: { id: encounterId, facilityId },
-        include: {
-          patient: { select: encounterDetailPatientSelect },
-          physicianAssigned: { select: { id: true, firstName: true, lastName: true } },
-        },
+        select: ENCOUNTER_DETAIL_SELECT,
       });
       if (!row) {
         throw new NotFoundException("Encounter not found");
@@ -949,6 +885,7 @@ export class EncountersService {
 
   async update(facilityId: string, id: string, data: EncounterUpdateDto, userId?: string, ip?: string, userAgent?: string) {
     const encounter = await this.prisma.encounter.findFirst({
+      select: ENCOUNTER_CORE_SELECT,
       where: { id, facilityId },
     });
 
@@ -1025,10 +962,7 @@ export class EncountersService {
       if (Object.keys(updateData).length === 0) {
         const unchanged = await this.prisma.encounter.findFirst({
           where: { id, facilityId },
-          include: {
-            patient: { select: encounterDetailPatientSelect },
-            physicianAssigned: { select: { id: true, firstName: true, lastName: true } },
-          },
+          select: ENCOUNTER_DETAIL_SELECT,
         });
         if (!unchanged) {
           throw new NotFoundException("Encounter not found");
@@ -1055,10 +989,7 @@ export class EncountersService {
         if (u.count === 0) throwEncounterConcurrentModification();
         const row = await tx.encounter.findFirst({
           where: { id, facilityId },
-          include: {
-            patient: { select: encounterDetailPatientSelect },
-            physicianAssigned: { select: { id: true, firstName: true, lastName: true } },
-          },
+          select: ENCOUNTER_DETAIL_SELECT,
         });
         if (!row) {
           throw new NotFoundException("Encounter not found");
@@ -1278,10 +1209,7 @@ export class EncountersService {
       if (u.count === 0) throwEncounterConcurrentModification();
       const row = await tx.encounter.findFirst({
         where: { id, facilityId },
-        include: {
-          patient: { select: encounterDetailPatientSelect },
-          physicianAssigned: { select: { id: true, firstName: true, lastName: true } },
-        },
+        select: ENCOUNTER_DETAIL_SELECT,
       });
       if (!row) {
         throw new NotFoundException("Encounter not found");
@@ -1703,6 +1631,7 @@ export class EncountersService {
     userAgent?: string
   ) {
     const encounter = await this.prisma.encounter.findFirst({
+      select: ENCOUNTER_CORE_SELECT,
       where: { id, facilityId },
     });
     if (!encounter) {
@@ -1804,11 +1733,7 @@ export class EncountersService {
     if (Object.keys(updateData).length === 0) {
       const unchanged = await this.prisma.encounter.findFirst({
         where: { id, facilityId },
-        include: {
-          patient: { select: encounterDetailPatientSelect },
-          physicianAssigned: { select: { id: true, firstName: true, lastName: true } },
-          nurseAssigned: { select: { id: true, firstName: true, lastName: true } },
-        },
+        select: ENCOUNTER_DETAIL_SELECT,
       });
       if (!unchanged) {
         throw new NotFoundException("Encounter not found");
@@ -1825,11 +1750,7 @@ export class EncountersService {
     if (u.count === 0) throwEncounterConcurrentModification();
     const updated = await this.prisma.encounter.findFirst({
       where: { id, facilityId },
-      include: {
-        patient: { select: encounterDetailPatientSelect },
-        physicianAssigned: { select: { id: true, firstName: true, lastName: true } },
-        nurseAssigned: { select: { id: true, firstName: true, lastName: true } },
-      },
+      select: ENCOUNTER_DETAIL_SELECT,
     });
     if (!updated) {
       throw new NotFoundException("Encounter not found");
@@ -1865,6 +1786,7 @@ export class EncountersService {
     userAgent?: string
   ) {
     const encounter = await this.prisma.encounter.findFirst({
+      select: ENCOUNTER_CORE_SELECT,
       where: { id, facilityId },
     });
     if (!encounter) {
@@ -1961,11 +1883,7 @@ export class EncountersService {
 
     const updated = await this.prisma.encounter.findFirst({
       where: { id, facilityId },
-      include: {
-        patient: { select: encounterDetailPatientSelect },
-        physicianAssigned: { select: { id: true, firstName: true, lastName: true } },
-        nurseAssigned: { select: { id: true, firstName: true, lastName: true } },
-      },
+      select: ENCOUNTER_DETAIL_SELECT,
     });
     if (!updated) {
       throw new NotFoundException("Encounter not found");
@@ -2152,6 +2070,7 @@ export class EncountersService {
       throw new ForbiddenException("Authentication required.");
     }
     const encounter = await this.prisma.encounter.findFirst({
+      select: ENCOUNTER_CORE_SELECT,
       where: { id: encounterId, facilityId },
     });
     if (!encounter) {
@@ -2286,11 +2205,7 @@ export class EncountersService {
     if (previousUserId === actorUserId) {
       const unchanged = await this.prisma.encounter.findFirst({
         where: { id: encounterId, facilityId },
-        include: {
-          patient: { select: encounterDetailPatientSelect },
-          physicianAssigned: { select: { id: true, firstName: true, lastName: true } },
-          nurseAssigned: { select: { id: true, firstName: true, lastName: true } },
-        },
+        select: ENCOUNTER_DETAIL_SELECT,
       });
       if (!unchanged) throw new NotFoundException("Encounter not found");
       return toEncounterClinicResponse(unchanged);
@@ -2327,11 +2242,7 @@ export class EncountersService {
 
     const updated = await this.prisma.encounter.findFirst({
       where: { id: encounterId, facilityId },
-      include: {
-        patient: { select: encounterDetailPatientSelect },
-        physicianAssigned: { select: { id: true, firstName: true, lastName: true } },
-        nurseAssigned: { select: { id: true, firstName: true, lastName: true } },
-      },
+      select: ENCOUNTER_DETAIL_SELECT,
     });
     if (!updated) {
       throw new NotFoundException("Encounter not found");
@@ -3165,7 +3076,8 @@ export class EncountersService {
         throw new ForbiddenException("Authentication required.");
       }
       const encounter = await this.prisma.encounter.findFirst({
-        where: { id: encounterId, facilityId },
+      select: ENCOUNTER_CORE_SELECT,
+      where: { id: encounterId, facilityId },
       });
       if (!encounter) {
         throw new NotFoundException("Encounter not found");
@@ -3247,7 +3159,8 @@ export class EncountersService {
         throw new ForbiddenException("Authentication required.");
       }
       const encounter = await this.prisma.encounter.findFirst({
-        where: { id: encounterId, facilityId },
+      select: ENCOUNTER_CORE_SELECT,
+      where: { id: encounterId, facilityId },
       });
       if (!encounter) {
         throw new NotFoundException("Encounter not found");
@@ -3529,6 +3442,7 @@ export class EncountersService {
       throw new ForbiddenException("Authentication required.");
     }
     const encounter = await this.prisma.encounter.findFirst({
+      select: ENCOUNTER_CORE_SELECT,
       where: { id: encounterId, facilityId },
     });
     if (!encounter) {
@@ -3718,6 +3632,7 @@ export class EncountersService {
     discharge?: EncounterCloseDto["discharge"]
   ): Promise<EncounterCloseDocumentationCheckResult> {
     const encounter = await this.prisma.encounter.findFirst({
+      select: ENCOUNTER_CORE_SELECT,
       where: { id: encounterId, facilityId },
     });
 
@@ -3735,9 +3650,7 @@ export class EncountersService {
   ) {
     const encounter = await this.prisma.encounter.findFirst({
       where: { id: encounterId, facilityId },
-      include: {
-        patient: { select: { latestVitalsAt: true } },
-      },
+      select: ENCOUNTER_DISPOSITION_SELECT,
     });
 
     if (!encounter) {
@@ -3857,6 +3770,7 @@ export class EncountersService {
     userAgent?: string
   ) {
     const encounter = await this.prisma.encounter.findFirst({
+      select: ENCOUNTER_CORE_SELECT,
       where: { id, facilityId },
     });
 
@@ -4037,10 +3951,7 @@ export class EncountersService {
       }
       const row = await tx.encounter.findFirst({
         where: { id, facilityId },
-        include: {
-          patient: { select: encounterDetailPatientSelect },
-          physicianAssigned: { select: { id: true, firstName: true, lastName: true } },
-        },
+        select: ENCOUNTER_DETAIL_SELECT,
       });
       if (!row) {
         throw new NotFoundException("Encounter not found");
@@ -4075,6 +3986,7 @@ export class EncountersService {
     userAgent?: string
   ) {
     const encounter = await this.prisma.encounter.findFirst({
+      select: ENCOUNTER_CORE_SELECT,
       where: { id: encounterId, facilityId },
     });
     if (!encounter) {
@@ -4361,6 +4273,7 @@ export class EncountersService {
     }
 
     const encounter = await this.prisma.encounter.findFirst({
+      select: ENCOUNTER_CORE_SELECT,
       where: { id: encounterId, facilityId },
     });
     if (!encounter) {
@@ -4432,10 +4345,7 @@ export class EncountersService {
 
     const updated = await this.prisma.encounter.findFirst({
       where: { id: encounterId, facilityId },
-      include: {
-        patient: { select: encounterDetailPatientSelect },
-        physicianAssigned: { select: { id: true, firstName: true, lastName: true } },
-      },
+      select: ENCOUNTER_DETAIL_SELECT,
     });
     if (!updated) {
       throw new NotFoundException("Encounter not found");

@@ -15,6 +15,10 @@ import {
 } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
 import { AuditService } from "../common/services/audit.service";
+import {
+  ENCOUNTER_MEDICATION_SELECT,
+  ENCOUNTER_NESTED_CORE_SELECT,
+} from "../encounters/encounter-query-contracts";
 import type {
   MarClinicalAction,
   MedicationAdministrationCreateDto,
@@ -421,6 +425,7 @@ export class MedicationAdministrationService {
   async findByEncounter(encounterId: string, facilityId: string) {
     const encounter = await this.prisma.encounter.findFirst({
       where: { id: encounterId, facilityId },
+      select: ENCOUNTER_MEDICATION_SELECT,
     });
     if (!encounter) {
       throw new NotFoundException("Encounter not found");
@@ -487,7 +492,7 @@ export class MedicationAdministrationService {
   ) {
     const encounter = await this.prisma.encounter.findFirst({
       where: { id: encounterId, facilityId },
-      include: { triage: { select: { vitalsJson: true } } },
+      select: ENCOUNTER_MEDICATION_SELECT,
     });
     if (!encounter) {
       throw new NotFoundException("Encounter not found");
@@ -1849,7 +1854,7 @@ export class MedicationAdministrationService {
     const row = await this.prisma.medicationAdministration.findFirst({
       where: { id: medicationAdministrationId, encounterId, facilityId },
       include: {
-        encounter: true,
+        encounter: { select: ENCOUNTER_NESTED_CORE_SELECT },
         orderItem: {
           include: {
             order: true,
@@ -2075,7 +2080,7 @@ export class MedicationAdministrationService {
     const row = await this.prisma.medicationAdministration.findFirst({
       where: { id: medicationAdministrationId, encounterId, facilityId },
       include: {
-        encounter: true,
+        encounter: { select: ENCOUNTER_NESTED_CORE_SELECT },
         orderItem: { include: { order: true } },
       },
     });
@@ -2209,7 +2214,7 @@ export class MedicationAdministrationService {
     const row = await this.prisma.medicationAdministration.findFirst({
       where: { id: medicationAdministrationId, encounterId, facilityId },
       include: {
-        encounter: true,
+        encounter: { select: ENCOUNTER_NESTED_CORE_SELECT },
         orderItem: {
           select: {
             manualLabel: true,
@@ -2394,7 +2399,7 @@ export class MedicationAdministrationService {
     const row = await this.prisma.medicationAdministration.findFirst({
       where: { id: medicationAdministrationId, encounterId, facilityId },
       include: {
-        encounter: true,
+        encounter: { select: ENCOUNTER_NESTED_CORE_SELECT },
         orderItem: {
           select: {
             manualLabel: true,
@@ -2539,7 +2544,7 @@ export class MedicationAdministrationService {
 
     const row = await this.prisma.medicationAdministration.findFirst({
       where: { id: medicationAdministrationId, encounterId, facilityId },
-      include: { encounter: true },
+      include: { encounter: { select: ENCOUNTER_NESTED_CORE_SELECT } },
     });
     if (!row) {
       throw new NotFoundException("Administration introuvable.");

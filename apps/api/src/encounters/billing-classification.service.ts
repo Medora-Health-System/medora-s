@@ -5,6 +5,7 @@ import {
   Logger,
   NotFoundException,
 } from "@nestjs/common";
+import { ENCOUNTER_CORE_SELECT, ENCOUNTER_NESTED_CORE_SELECT } from "./encounter-query-contracts";
 import {
   type BillingClassification,
   type BillingClassificationTransitionEntry,
@@ -115,7 +116,9 @@ export class BillingClassificationService {
     const isAdmin = userRoles.includes(RoleCode.ADMIN) || userRoles.includes(RoleCode.MEDORA_SUPER_ADMIN);
 
     const [encounter, facility] = await Promise.all([
-      this.prisma.encounter.findFirst({ where: { id: encounterId, facilityId } }),
+      this.prisma.encounter.findFirst({
+      select: ENCOUNTER_CORE_SELECT,
+      where: { id: encounterId, facilityId } }),
       this.prisma.facility.findFirst({
         where: { id: facilityId },
         select: facilityBillingWorkflowSelect,
@@ -179,7 +182,8 @@ export class BillingClassificationService {
         billingClassificationTransitionJson: [...priorTransitions, entry],
         version: { increment: 1 },
       },
-      include: {
+      select: {
+        ...ENCOUNTER_CORE_SELECT,
         patient: { select: { id: true, firstName: true, lastName: true, mrn: true } },
       },
     });

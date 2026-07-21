@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
 import { AuditAction, EncounterStatus, EncounterType } from "@prisma/client";
+import { ENCOUNTER_CORE_SELECT } from "../encounters/encounter-query-contracts";
 import {
   buildTriageCarryForwardAuditMetadata,
   emptyTriageCarryForwardDraft,
@@ -219,7 +220,8 @@ export class TriageCarryForwardService {
         triage: { isNot: null },
       },
       orderBy: { createdAt: "desc" },
-      include: {
+      select: {
+        ...ENCOUNTER_CORE_SELECT,
         triage: {
           select: {
             vitalsJson: true,

@@ -141,6 +141,7 @@ function makeController(opts?: {
   const claimAssemblyPreviewService = {} as never;
   const encounterNotesService = {} as never;
   const clinicalDocumentationService = {} as never;
+  const chartCertificationB1Service = {} as never;
   const controller = new EncountersController(
     encountersService,
     diagnosesService,
@@ -157,6 +158,7 @@ function makeController(opts?: {
     claimAssemblyPreviewService,
     encounterNotesService,
     clinicalDocumentationService,
+    chartCertificationB1Service,
   );
   return { controller, chartExportService };
 }

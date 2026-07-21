@@ -4,6 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
+import { ENCOUNTER_CORE_SELECT, ENCOUNTER_NESTED_CORE_SELECT } from "./encounter-query-contracts";
 import { AuditAction, Prisma } from "@prisma/client";
 import {
   assertClinicalDocumentationAuditMetadataSafe,
@@ -153,6 +154,7 @@ export class ClinicalDocumentationService {
     }
 
     const encounter = await this.prisma.encounter.findFirst({
+      select: ENCOUNTER_CORE_SELECT,
       where: { id: encounterId, facilityId },
     });
     if (!encounter) throw new NotFoundException("Encounter not found");
@@ -303,6 +305,7 @@ export class ClinicalDocumentationService {
     }
 
     const encounter = await this.prisma.encounter.findFirst({
+      select: ENCOUNTER_CORE_SELECT,
       where: { id: encounterId, facilityId },
     });
     if (!encounter) throw new NotFoundException("Encounter not found");
@@ -442,6 +445,7 @@ export class ClinicalDocumentationService {
     }
 
     const encounter = await this.prisma.encounter.findFirst({
+      select: ENCOUNTER_CORE_SELECT,
       where: { id: encounterId, facilityId },
     });
     if (!encounter) throw new NotFoundException("Encounter not found");

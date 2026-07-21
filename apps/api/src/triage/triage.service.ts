@@ -28,6 +28,7 @@ import {
   resolveMeasuredAt,
 } from "../utils/vitals-measurement-context.util";
 import { throwTriageConcurrentModification } from "./triage-concurrency.util";
+import { ENCOUNTER_TRIAGE_SELECT } from "../encounters/encounter-query-contracts";
 
 @Injectable()
 export class TriageService {
@@ -40,6 +41,7 @@ export class TriageService {
   async getTriage(encounterId: string, facilityId: string) {
     const encounter = await this.prisma.encounter.findFirst({
       where: { id: encounterId, facilityId },
+      select: ENCOUNTER_TRIAGE_SELECT,
     });
 
     if (!encounter) {
@@ -196,7 +198,7 @@ export class TriageService {
   ) {
     const encounter = await this.prisma.encounter.findFirst({
       where: { id: encounterId, facilityId },
-      include: { patient: true },
+      select: ENCOUNTER_TRIAGE_SELECT,
     });
 
     if (!encounter) {

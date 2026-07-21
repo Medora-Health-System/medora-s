@@ -4,6 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
+import { ENCOUNTER_CORE_SELECT, ENCOUNTER_NESTED_CORE_SELECT } from "./encounter-query-contracts";
 import {
   AuditAction,
   EncounterNoteType as PrismaEncounterNoteType,
@@ -227,6 +228,7 @@ export class EncounterNotesService {
     }
 
     const encounter = await this.prisma.encounter.findFirst({
+      select: ENCOUNTER_CORE_SELECT,
       where: { id: encounterId, facilityId },
     });
     if (!encounter) throw new NotFoundException("Encounter not found");
@@ -301,6 +303,7 @@ export class EncounterNotesService {
     }
 
     const encounter = await this.prisma.encounter.findFirst({
+      select: ENCOUNTER_CORE_SELECT,
       where: { id: encounterId, facilityId },
     });
     if (!encounter) throw new NotFoundException("Encounter not found");
@@ -391,6 +394,7 @@ export class EncounterNotesService {
     }
 
     const encounter = await this.prisma.encounter.findFirst({
+      select: ENCOUNTER_CORE_SELECT,
       where: { id: encounterId, facilityId },
     });
     if (!encounter) throw new NotFoundException("Encounter not found");
@@ -458,6 +462,7 @@ export class EncounterNotesService {
     }
 
     const encounter = await this.prisma.encounter.findFirst({
+      select: ENCOUNTER_CORE_SELECT,
       where: { id: encounterId, facilityId },
     });
     if (!encounter) throw new NotFoundException("Encounter not found");
