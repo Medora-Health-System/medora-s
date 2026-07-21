@@ -1,0 +1,309 @@
+/**
+ * Deployment / startup schema compatibility checks (no PHI).
+ * MEDORA.PROD.TRACKBOARD_PRISMA_500_2026_07_20
+ *
+ * Expand-and-contract rule:
+ * - Required Trackboard columns must exist or the process is unhealthy.
+ * - D3B HospitalEpisode objects are optional while the feature flag is OFF
+ *   AND runtime Trackboard queries must not select those columns (enforced by
+ *   TRACKBOARD_*_SELECT contracts).
+ */
+
+import { hospitalEpisodeFoundationEnabledFromProcessEnv } from "@medora/shared";
+import type { PrismaClient } from "@prisma/client";
+
+export const D3B_MIGRATION_FOLDER = "20261024120000_hospital_episode_foundation_d3b";
+
+/** Scalar Encounter columns required by Trackboard explicit select (pre-D3B). */
+export const TRACKBOARD_REQUIRED_ENCOUNTER_COLUMNS = [
+  "id",
+  "patientId",
+  "facilityId",
+  "type",
+  "status",
+  "createdAt",
+  "updatedAt",
+  "chiefComplaint",
+  "roomLabel",
+  "workflowState",
+  "providerDocumentationStatus",
+  "admittedAt",
+  "dischargedAt",
+  "physicianAssignedUserId",
+  "nurseAssignedUserId",
+  "nursingAssessment",
+  "dischargeSummaryJson",
+  "admissionSummaryJson",
+  "billingReadinessSnapshotJson",
+] as const;
+
+export const D3B_OPTIONAL_OBJECTS = {
+  encounterColumn: "hospitalEpisodeId",
+  hospitalEpisodeTable: "HospitalEpisode",
+  statusEnum: "HospitalEpisodeStatus",
+  closeReasonEnum: "HospitalEpisodeCloseReason",
+} as const;
+
+export type SchemaObjectPresence = {
+  trackboardRequiredColumnsMissing: string[];
+  hospitalEpisodeTablePresent: boolean;
+  hospitalEpisodeIdColumnPresent: boolean;
+  hospitalEpisodeStatusEnumPresent: boolean;
+  hospitalEpisodeCloseReasonEnumPresent: boolean;
+  d3bMigrationRecorded: boolean;
+  appliedMigrationCount: number;
+  latestAppliedMigration: string | null;
+};
+
+export type SchemaCompatibilityVerdict =
+  | "COMPATIBLE"
+  | "REQUIRED_SCHEMA_MISSING"
+  | "FEATURE_ON_SCHEMA_MISSING"
+  | "DATABASE_UNREACHABLE";
+
+export type SchemaCompatibilityReport = {
+  ok: boolean;
+  verdict: SchemaCompatibilityVerdict;
+  hospitalEpisodeFoundationEnabled: boolean;
+  presence: SchemaObjectPresence | null;
+  reasons: string[];
+  deploymentSha: string | null;
+  checkedAt: string;
+};
+
+type Queryable = Pick<PrismaClient, "$queryRawUnsafe">;
+
+async function tableExists(db: Queryable, table: string): Promise<boolean> {
+  const rows = await db.$queryRawUnsafe<Array<{ exists: boolean }>>(
+    `SELECT EXISTS (
+      SELECT 1 FROM information_schema.tables
+      WHERE table_schema = 'public' AND table_name = $1
+    ) AS exists`,
+    table
+  );
+  return Boolean(rows[0]?.exists);
+}
+
+async function columnExists(
+  db: Queryable,
+  table: string,
+  column: string
+): Promise<boolean> {
+  const rows = await db.$queryRawUnsafe<Array<{ exists: boolean }>>(
+    `SELECT EXISTS (
+      SELECT 1 FROM information_schema.columns
+      WHERE table_schema = 'public' AND table_name = $1 AND column_name = $2
+    ) AS exists`,
+    table,
+    column
+  );
+  return Boolean(rows[0]?.exists);
+}
+
+async function enumExists(db: Queryable, enumName: string): Promise<boolean> {
+  const rows = await db.$queryRawUnsafe<Array<{ exists: boolean }>>(
+    `SELECT EXISTS (
+      SELECT 1 FROM pg_type t
+      JOIN pg_namespace n ON n.oid = t.typnamespace
+      WHERE n.nspname = 'public' AND t.typname = $1
+    ) AS exists`,
+    enumName
+  );
+  return Boolean(rows[0]?.exists);
+}
+
+async function listMissingEncounterColumns(
+  db: Queryable,
+  columns: readonly string[]
+): Promise<string[]> {
+  const missing: string[] = [];
+  for (const col of columns) {
+    const ok = await columnExists(db, "Encounter", col);
+    if (!ok) missing.push(col);
+  }
+  return missing;
+}
+
+async function readMigrationFingerprint(db: Queryable): Promise<{
+  count: number;
+  latest: string | null;
+  d3bRecorded: boolean;
+}> {
+  const hasTable = await tableExists(db, "_prisma_migrations");
+  if (!hasTable) {
+    return { count: 0, latest: null, d3bRecorded: false };
+  }
+  const rows = await db.$queryRawUnsafe<
+    Array<{ migration_name: string; finished_at: Date | null }>
+  >(
+    `SELECT migration_name, finished_at
+     FROM "_prisma_migrations"
+     WHERE finished_at IS NOT NULL
+     ORDER BY finished_at DESC
+     LIMIT 200`
+  );
+  const names = rows.map((r) => r.migration_name);
+  return {
+    count: names.length,
+    latest: names[0] ?? null,
+    d3bRecorded: names.some((n) => n.includes("hospital_episode_foundation_d3b")),
+  };
+}
+
+export async function inspectSchemaObjectPresence(
+  db: Queryable
+): Promise<SchemaObjectPresence> {
+  const [
+    trackboardRequiredColumnsMissing,
+    hospitalEpisodeTablePresent,
+    hospitalEpisodeIdColumnPresent,
+    hospitalEpisodeStatusEnumPresent,
+    hospitalEpisodeCloseReasonEnumPresent,
+    migrations,
+  ] = await Promise.all([
+    listMissingEncounterColumns(db, TRACKBOARD_REQUIRED_ENCOUNTER_COLUMNS),
+    tableExists(db, D3B_OPTIONAL_OBJECTS.hospitalEpisodeTable),
+    columnExists(db, "Encounter", D3B_OPTIONAL_OBJECTS.encounterColumn),
+    enumExists(db, D3B_OPTIONAL_OBJECTS.statusEnum),
+    enumExists(db, D3B_OPTIONAL_OBJECTS.closeReasonEnum),
+    readMigrationFingerprint(db),
+  ]);
+
+  return {
+    trackboardRequiredColumnsMissing,
+    hospitalEpisodeTablePresent,
+    hospitalEpisodeIdColumnPresent,
+    hospitalEpisodeStatusEnumPresent,
+    hospitalEpisodeCloseReasonEnumPresent,
+    d3bMigrationRecorded: migrations.d3bRecorded,
+    appliedMigrationCount: migrations.count,
+    latestAppliedMigration: migrations.latest,
+  };
+}
+
+export function evaluateSchemaCompatibility(
+  presence: SchemaObjectPresence,
+  options?: { hospitalEpisodeFoundationEnabled?: boolean; deploymentSha?: string | null }
+): SchemaCompatibilityReport {
+  const hospitalEpisodeFoundationEnabled =
+    options?.hospitalEpisodeFoundationEnabled ??
+    hospitalEpisodeFoundationEnabledFromProcessEnv();
+  const reasons: string[] = [];
+  const checkedAt = new Date().toISOString();
+  const deploymentSha =
+    options?.deploymentSha ??
+    process.env.RAILWAY_GIT_COMMIT_SHA?.trim() ??
+    process.env.GIT_COMMIT_SHA?.trim() ??
+    process.env.COMMIT_SHA?.trim() ??
+    null;
+
+  if (presence.trackboardRequiredColumnsMissing.length > 0) {
+    reasons.push(
+      `Missing required Encounter columns for Trackboard: ${presence.trackboardRequiredColumnsMissing.join(", ")}`
+    );
+    return {
+      ok: false,
+      verdict: "REQUIRED_SCHEMA_MISSING",
+      hospitalEpisodeFoundationEnabled,
+      presence,
+      reasons,
+      deploymentSha,
+      checkedAt,
+    };
+  }
+
+  const d3bComplete =
+    presence.hospitalEpisodeTablePresent &&
+    presence.hospitalEpisodeIdColumnPresent &&
+    presence.hospitalEpisodeStatusEnumPresent &&
+    presence.hospitalEpisodeCloseReasonEnumPresent;
+
+  if (hospitalEpisodeFoundationEnabled && !d3bComplete) {
+    reasons.push(
+      "hospitalEpisodeFoundationEnabled is ON but D3B schema objects are incomplete (HospitalEpisode / hospitalEpisodeId / enums)."
+    );
+    return {
+      ok: false,
+      verdict: "FEATURE_ON_SCHEMA_MISSING",
+      hospitalEpisodeFoundationEnabled,
+      presence,
+      reasons,
+      deploymentSha,
+      checkedAt,
+    };
+  }
+
+  if (!d3bComplete && !hospitalEpisodeFoundationEnabled) {
+    reasons.push(
+      "D3B schema optional objects absent; feature flag OFF — OK when Trackboard uses explicit pre-D3B select."
+    );
+  } else if (d3bComplete) {
+    reasons.push("D3B schema objects present.");
+  }
+
+  return {
+    ok: true,
+    verdict: "COMPATIBLE",
+    hospitalEpisodeFoundationEnabled,
+    presence,
+    reasons,
+    deploymentSha,
+    checkedAt,
+  };
+}
+
+let cachedReport: { at: number; report: SchemaCompatibilityReport } | null = null;
+const CACHE_TTL_MS = 30_000;
+
+export async function checkSchemaCompatibility(
+  db: Queryable,
+  options?: {
+    hospitalEpisodeFoundationEnabled?: boolean;
+    deploymentSha?: string | null;
+    bypassCache?: boolean;
+  }
+): Promise<SchemaCompatibilityReport> {
+  if (
+    !options?.bypassCache &&
+    cachedReport &&
+    Date.now() - cachedReport.at < CACHE_TTL_MS
+  ) {
+    return cachedReport.report;
+  }
+  try {
+    const presence = await inspectSchemaObjectPresence(db);
+    const report = evaluateSchemaCompatibility(presence, options);
+    cachedReport = { at: Date.now(), report };
+    return report;
+  } catch {
+    const report: SchemaCompatibilityReport = {
+      ok: false,
+      verdict: "DATABASE_UNREACHABLE",
+      hospitalEpisodeFoundationEnabled:
+        options?.hospitalEpisodeFoundationEnabled ??
+        hospitalEpisodeFoundationEnabledFromProcessEnv(),
+      presence: null,
+      reasons: ["Could not inspect information_schema / _prisma_migrations"],
+      deploymentSha:
+        options?.deploymentSha ??
+        process.env.RAILWAY_GIT_COMMIT_SHA?.trim() ??
+        process.env.GIT_COMMIT_SHA?.trim() ??
+        null,
+      checkedAt: new Date().toISOString(),
+    };
+    return report;
+  }
+}
+
+/** Test helper — clears readiness cache. */
+export function resetSchemaCompatibilityCache(): void {
+  cachedReport = null;
+}
+
+/** Whether startup should exit when compatibility check fails. */
+export function schemaCompatGuardEnabled(env: NodeJS.ProcessEnv = process.env): boolean {
+  const raw = (env.MEDORA_SCHEMA_COMPAT_GUARD ?? "").trim().toLowerCase();
+  if (raw === "false" || raw === "0" || raw === "off" || raw === "no") return false;
+  if (raw === "true" || raw === "1" || raw === "on" || raw === "yes") return true;
+  return (env.NODE_ENV ?? "").toLowerCase() === "production";
+}
