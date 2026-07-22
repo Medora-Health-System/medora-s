@@ -1,0 +1,49 @@
+---
+description: Non-negotiable one enterprise longitudinal clinical documentation foundation — specialties reuse/extend only, never duplicate
+alwaysApply: true
+---
+
+# Enterprise clinical documentation constitution (Medora)
+
+Medora SHALL maintain **ONE** enterprise longitudinal clinical documentation foundation shared by every clinical specialty.
+
+Creating a duplicate enterprise documentation domain is an **ARCHITECTURAL FAILURE**.
+
+## Enterprise-owned domains (never duplicate / fork / reimplement)
+
+Patient demographics · Medical history · Surgical history · Allergies · Home medications · Medication reconciliation foundation · Social / tobacco / alcohol / recreational drug history · Family history · Preferred language · Communication needs · Functional / mobility baseline · Existing devices · Existing wounds · Wound documentation · Skin documentation · Fall risk · Pain assessment foundation · Nutrition screening foundation · Elimination documentation foundation · Patient belongings · Cash / valuables · Advance directives · Code status · Care team identity · Clinical timeline · Clinical audit trail · Documentation draft framework · Clinical signature framework
+
+## Longitudinal ownership
+
+| Owner | Owns |
+|---|---|
+| **Patient** | Longitudinal history, allergies, medications, social/family history, communication preferences, baseline clinical information |
+| **Encounter** | Verification, admission/reassessment, interpretation, encounter & specialty findings, care plan, signatures, amendments |
+
+Example: ICU re-verifies the same shared history and adds ICU-specific assessments — it does **not** create a second Medical History.
+
+## Specialty engines (ICU, Surgery, PACU, Pediatrics, L&D, Observation, ED, future)
+
+**MAY:** extend, specialize, configure, add specialty-specific assessments/workflows/calculations/sections.
+
+**SHALL NOT:** create another Medical History, Allergy, Home Medication, Social History, Wound, Skin, Belongings, Draft, Signature, or Clinical Timeline engine.
+
+## Mandatory workflow before any specialty documentation work
+
+1. **Audit** the repository for an existing enterprise domain.
+2. If it exists → **REUSE**.
+3. If incomplete → **EXTEND** (patient-level history / EDOC / shared ops / draft+signature frameworks).
+4. Only create new durable structures when a true specialty-specific need cannot be represented safely on the shared foundation.
+5. Prefer zero-schema JSON / existing Prisma fields; do not invent parallel patient-history tables for enterprise domains.
+
+## Certification report requirement
+
+Every specialty / admission documentation certification **MUST** include:
+
+### ENTERPRISE DOMAIN AUDIT
+
+For each touched enterprise domain:
+
+| Domain | Existing Component | Reused | Extended | Duplicate Prevented |
+
+Mark ✔ / ✖. If Duplicate Prevented is ✖, stop and revise architecture before shipping.
