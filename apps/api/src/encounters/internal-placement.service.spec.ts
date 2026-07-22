@@ -3,7 +3,8 @@ import { AdmissionCorrelationService } from "./admission-correlation.service";
 import { InternalPlacementActorRole, InternalPlacementStatus } from "@medora/shared";
 
 function correlationSvc(prisma: unknown) {
-  return new AdmissionCorrelationService(prisma as never);
+  const audit = { log: async () => undefined };
+  return new AdmissionCorrelationService(prisma as never, audit as never);
 }
 
 function baseRow(overrides: Record<string, unknown> = {}) {

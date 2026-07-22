@@ -13,17 +13,20 @@ import {
 } from "@nestjs/common";
 import { AuditAction, BillingClassification, EncounterStatus, EncounterType, Prisma } from "@prisma/client";
 import {
+  applyAdmissionCorrelationMutation,
+  billingClassificationForPlacementDestination,
+  buildHospitalAdmissionCorrelationV1,
+  InternalPlacementActorRole,
+  InternalPlacementStatus,
   internalPlacementWorkflowEnabledFromProcessEnv,
+  mergeHospitalAdmissionCorrelationIntoSummary,
   projectInternalPlacementState,
+  readHospitalAdmissionCorrelation,
+  ReceivingEncounterLifecycle,
   receivingEncounterFoundationEnabledFromProcessEnv,
   validateInternalPlacementClinicalRequestForSign,
   validateInternalPlacementTransition,
-  InternalPlacementActorRole,
-  InternalPlacementStatus,
-  ReceivingEncounterLifecycle,
-  billingClassificationForPlacementDestination,
-  buildHospitalAdmissionCorrelationV1,
-  mergeHospitalAdmissionCorrelationIntoSummary,
+  type HospitalAdmissionCorrelationV1,
   type InternalPlacementStateProjection,
 } from "@medora/shared";
 import { AuditService } from "../common/services/audit.service";
@@ -264,9 +267,18 @@ export class InternalPlacementService {
     actorUserId: string,
     input: ClinicalPlacementDraftInput,
     options?: { featureFlagEnabled?: boolean; ip?: string; userAgent?: string }
-  ): Promise<InternalPlacementStateProjection> {
+  ): Promise<
+    InternalPlacementStateProjection & {
+      existingAdmissionIntent?: boolean;
+      admissionCorrelation?: HospitalAdmissionCorrelationV1 | null;
+      code?: "EXISTING_ADMISSION_INTENT";
+    }
+  > {
     this.assertWorkflowEnabled(options);
     const encounter = await this.loadEdEncounter(facilityId, originatingEncounterId);
+    const early =
+      this.admissionCorrelation.isEarlyAdmissionEnabled() &&
+      input.requestedEncounterType === "INPATIENT";
 
     const existing = await this.prisma.internalPlacementRequest.findFirst({
       where: {
@@ -285,7 +297,45 @@ export class InternalPlacementService {
       select: PLACEMENT_SELECT,
     });
     if (existing) {
+      if (early) {
+        const existingCorr = await this.admissionCorrelation.findExistingEdAdmissionIntent(
+          facilityId,
+          originatingEncounterId
+        );
+        if (existingCorr) {
+          return {
+            ...projectInternalPlacementState(existing)!,
+            existingAdmissionIntent: true,
+            admissionCorrelation: existingCorr,
+            code: "EXISTING_ADMISSION_INTENT",
+          };
+        }
+      }
       throw new ConflictException("An active internal placement request already exists");
+    }
+
+    if (early) {
+      const existingCorr = await this.admissionCorrelation.findExistingEdAdmissionIntent(
+        facilityId,
+        originatingEncounterId
+      );
+      if (existingCorr?.internalPlacementRequestId) {
+        const linked = await this.prisma.internalPlacementRequest.findFirst({
+          where: {
+            id: existingCorr.internalPlacementRequestId,
+            facilityId,
+          },
+          select: PLACEMENT_SELECT,
+        });
+        if (linked) {
+          return {
+            ...projectInternalPlacementState(linked)!,
+            existingAdmissionIntent: true,
+            admissionCorrelation: existingCorr,
+            code: "EXISTING_ADMISSION_INTENT",
+          };
+        }
+      }
     }
 
     const created = await this.prisma.internalPlacementRequest.create({
@@ -314,6 +364,23 @@ export class InternalPlacementService {
       select: PLACEMENT_SELECT,
     });
 
+    let admissionCorrelation: HospitalAdmissionCorrelationV1 | null = null;
+    if (early) {
+      const originated = await this.admissionCorrelation.originateEdAdmitWithPlacement({
+        facilityId,
+        sourceEncounterId: encounter.id,
+        placementId: created.id,
+        patientId: encounter.patientId,
+        hospitalEpisodeId: encounter.hospitalEpisodeId,
+        destinationUnitId: input.requestedUnitCode?.trim() || null,
+        specialPlacementNeedsJson: input.specialPlacementNeedsJson,
+        actorUserId,
+        ip: options?.ip,
+        userAgent: options?.userAgent,
+      });
+      admissionCorrelation = originated.correlation;
+    }
+
     await this.audit.log(AuditAction.CREATE, INTERNAL_PLACEMENT_ENTITY, {
       userId: actorUserId,
       facilityId,
@@ -327,10 +394,15 @@ export class InternalPlacementService {
         event: "INTERNAL_PLACEMENT_DRAFT_CREATED",
         status: created.status,
         requestedEncounterType: created.requestedEncounterType,
+        admissionCorrelationId: admissionCorrelation?.admissionCorrelationId ?? null,
+        earlyAdmissionCorrelation: early,
       },
     });
 
-    return projectInternalPlacementState(created)!;
+    return {
+      ...projectInternalPlacementState(created)!,
+      admissionCorrelation,
+    };
   }
 
   /**
@@ -644,7 +716,12 @@ export class InternalPlacementService {
                 "Placement destination context must be OBSERVATION or INPATIENT."
               );
             }
-            // D3E.6D/D3E.8 — reuse only a correlated receiving Inpatient (not any open IP).
+            // D3E.6D/D3E.8/D3E.8A — resume early ED correlation when present; never blind open-IP reuse.
+            const sourceEnc = await tx.encounter.findFirst({
+              where: { id: row.originatingEncounterId, facilityId: row.facilityId },
+              select: { id: true, admissionSummaryJson: true },
+            });
+            const earlyCorr = readHospitalAdmissionCorrelation(sourceEnc?.admissionSummaryJson);
             const openIps = await tx.encounter.findMany({
               where: {
                 facilityId: row.facilityId,
@@ -657,10 +734,11 @@ export class InternalPlacementService {
             const reuse = this.admissionCorrelation.resolveReuse({
               patientId: row.patientId,
               facilityId: row.facilityId,
-              admissionIntent: "PLACEMENT_RECEIVING",
+              admissionIntent: earlyCorr?.admissionIntent ?? "PLACEMENT_RECEIVING",
               hospitalEpisodeId: row.hospitalEpisodeId,
               sourceEncounterId: row.originatingEncounterId,
               internalPlacementRequestId: row.id,
+              admissionCorrelationId: earlyCorr?.admissionCorrelationId,
               placementReceivingEncounterId: row.receivingEncounterId,
               openInpatientCandidates: openIps,
             });
@@ -677,22 +755,38 @@ export class InternalPlacementService {
               if (!consistency.ok) {
                 throw new ConflictException(consistency.detail);
               }
-              const stamped = buildHospitalAdmissionCorrelationV1({
-                admissionCorrelationId: reuse.correlation?.admissionCorrelationId,
-                admissionIntent: "PLACEMENT_RECEIVING",
-                status: "ARRIVED",
-                patientId: row.patientId,
-                facilityId: row.facilityId,
-                admissionSource: "EMERGENCY_DEPARTMENT",
-                hospitalEpisodeId: row.hospitalEpisodeId,
-                sourceEncounterId: row.originatingEncounterId,
-                internalPlacementRequestId: row.id,
-                receivingEncounterId,
-                idempotencyKey: reuse.correlation?.idempotencyKey,
-                receivingUserId: actorUserId,
-                arrivedAt: new Date().toISOString(),
-                serverGeneratedId: this.admissionCorrelation.newServerCorrelationSeed(),
-              });
+              const base =
+                reuse.correlation ??
+                earlyCorr ??
+                buildHospitalAdmissionCorrelationV1({
+                  admissionIntent: "PLACEMENT_RECEIVING",
+                  patientId: row.patientId,
+                  facilityId: row.facilityId,
+                  sourceEncounterId: row.originatingEncounterId,
+                  internalPlacementRequestId: row.id,
+                  serverGeneratedId: this.admissionCorrelation.newServerCorrelationSeed(),
+                });
+              const arrivedMut = applyAdmissionCorrelationMutation(
+                base,
+                base.correlationVersion,
+                {
+                  status: "ARRIVED",
+                  receivingEncounterId,
+                  receivingUserId: actorUserId,
+                  arrivedAt: new Date().toISOString(),
+                  internalPlacementRequestId: row.id,
+                }
+              );
+              const stamped = arrivedMut.ok
+                ? arrivedMut.correlation
+                : {
+                    ...base,
+                    status: "ARRIVED" as const,
+                    receivingEncounterId,
+                    receivingUserId: actorUserId,
+                    arrivedAt: new Date().toISOString(),
+                    correlationVersion: base.correlationVersion + 1,
+                  };
               const prior = openIps.find((e) => e.id === receivingEncounterId);
               await tx.encounter.update({
                 where: { id: receivingEncounterId },
@@ -704,24 +798,57 @@ export class InternalPlacementService {
                   version: { increment: 1 },
                 },
               });
+              if (sourceEnc) {
+                await tx.encounter.update({
+                  where: { id: sourceEnc.id },
+                  data: {
+                    admissionSummaryJson: mergeHospitalAdmissionCorrelationIntoSummary(
+                      sourceEnc.admissionSummaryJson,
+                      stamped
+                    ) as Prisma.InputJsonValue,
+                    version: { increment: 1 },
+                  },
+                });
+              }
             } else {
               const billingClass = billingClassificationForPlacementDestination(destType);
-              const correlation = this.admissionCorrelation.createAdmissionIntent({
-                admissionIntent: "PLACEMENT_RECEIVING",
-                patientId: row.patientId,
-                facilityId: row.facilityId,
-                actorUserId,
-                admissionSource: "EMERGENCY_DEPARTMENT",
-                hospitalEpisodeId: row.hospitalEpisodeId,
-                sourceEncounterId: row.originatingEncounterId,
-                internalPlacementRequestId: row.id,
-              });
-              const arrivedCorr = {
-                ...correlation,
-                status: "ARRIVED" as const,
-                receivingUserId: actorUserId,
-                arrivedAt: new Date().toISOString(),
-              };
+              // Prefer resuming early ED correlation over creating a second correlation at arrival.
+              const correlation =
+                earlyCorr ??
+                this.admissionCorrelation.createAdmissionIntent({
+                  admissionIntent: "PLACEMENT_RECEIVING",
+                  patientId: row.patientId,
+                  facilityId: row.facilityId,
+                  actorUserId,
+                  admissionSource: "EMERGENCY_DEPARTMENT",
+                  hospitalEpisodeId: row.hospitalEpisodeId,
+                  sourceEncounterId: row.originatingEncounterId,
+                  internalPlacementRequestId: row.id,
+                });
+              let baseCorr: HospitalAdmissionCorrelationV1 = correlation;
+              if (correlation.internalPlacementRequestId !== row.id) {
+                const attachMut = applyAdmissionCorrelationMutation(
+                  correlation,
+                  correlation.correlationVersion,
+                  { internalPlacementRequestId: row.id }
+                );
+                baseCorr = attachMut.ok
+                  ? attachMut.correlation
+                  : { ...correlation, internalPlacementRequestId: row.id };
+              }
+
+              const createdMut = applyAdmissionCorrelationMutation(
+                baseCorr,
+                baseCorr.correlationVersion,
+                {
+                  status: "ENCOUNTER_CREATED",
+                  receivingUserId: actorUserId,
+                }
+              );
+              const preCreate = createdMut.ok
+                ? createdMut.correlation
+                : { ...baseCorr, status: "ENCOUNTER_CREATED" as const, receivingUserId: actorUserId };
+
               const summary = mergeHospitalAdmissionCorrelationIntoSummary(
                 {
                   d3cReceiving: true,
@@ -735,7 +862,7 @@ export class InternalPlacementService {
                   edEncounterClosed: false,
                   edEncounterMutated: false,
                 },
-                arrivedCorr
+                preCreate
               );
               const created = await tx.encounter.create({
                 data: {
@@ -754,17 +881,46 @@ export class InternalPlacementService {
                 select: { id: true },
               });
               receivingEncounterId = created.id;
+              const arrivedMut = applyAdmissionCorrelationMutation(
+                { ...preCreate, receivingEncounterId: created.id },
+                preCreate.correlationVersion,
+                {
+                  status: "ARRIVED",
+                  receivingEncounterId: created.id,
+                  arrivedAt: new Date().toISOString(),
+                }
+              );
+              const arrivedCorr = arrivedMut.ok
+                ? arrivedMut.correlation
+                : {
+                    ...preCreate,
+                    status: "ARRIVED" as const,
+                    receivingEncounterId: created.id,
+                    arrivedAt: new Date().toISOString(),
+                    correlationVersion: preCreate.correlationVersion + 1,
+                  };
               await tx.encounter.update({
                 where: { id: created.id },
                 data: {
-                  admissionSummaryJson: mergeHospitalAdmissionCorrelationIntoSummary(summary, {
-                    ...arrivedCorr,
-                    status: "ENCOUNTER_CREATED",
-                    receivingEncounterId: created.id,
-                  }) as Prisma.InputJsonValue,
+                  admissionSummaryJson: mergeHospitalAdmissionCorrelationIntoSummary(
+                    summary,
+                    arrivedCorr
+                  ) as Prisma.InputJsonValue,
                   version: { increment: 1 },
                 },
               });
+              if (sourceEnc) {
+                await tx.encounter.update({
+                  where: { id: sourceEnc.id },
+                  data: {
+                    admissionSummaryJson: mergeHospitalAdmissionCorrelationIntoSummary(
+                      sourceEnc.admissionSummaryJson,
+                      arrivedCorr
+                    ) as Prisma.InputJsonValue,
+                    version: { increment: 1 },
+                  },
+                });
+              }
             }
           }
           receivingEncounterLifecycle = ReceivingEncounterLifecycle.ACTIVE;
