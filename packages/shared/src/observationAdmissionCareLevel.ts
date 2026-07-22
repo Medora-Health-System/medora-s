@@ -10,6 +10,7 @@ export function isObservationShortStayCareLevel(careLevel: string | null | undef
   const raw = (careLevel ?? "").trim();
   if (!raw) return false;
   if (raw === OBSERVATION_SHORT_STAY_CARE_LEVEL_OPTION_FR) return true;
+  if (raw.toUpperCase() === "OBSERVATION" || raw.toUpperCase() === "OBS") return true;
   const lower = raw.toLowerCase();
   return (
     lower.includes("observation") ||

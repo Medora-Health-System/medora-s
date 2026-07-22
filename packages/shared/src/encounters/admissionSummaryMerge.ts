@@ -4,6 +4,8 @@
  */
 
 import type { AdmissionDiagnosesV1, AdmissionSummaryFields } from "../schemas/patient.js";
+import type { AdmissionPacketV1 } from "./smartAdmissionPacketD4a2.js";
+import { ADMISSION_PACKET_V1_KEY } from "./smartAdmissionPacketD4a2.js";
 
 const FLAT_ADMISSION_KEYS = [
   "admissionReason",
@@ -25,7 +27,8 @@ export function asAdmissionSummaryRecord(raw: unknown): Record<string, unknown> 
 export function mergeAdmissionSummaryFieldsPreservingNested(
   prior: unknown,
   fields: AdmissionSummaryFields,
-  admissionDiagnoses?: AdmissionDiagnosesV1 | null
+  admissionDiagnoses?: AdmissionDiagnosesV1 | null,
+  admissionPacket?: AdmissionPacketV1 | null
 ): Record<string, unknown> {
   const next = asAdmissionSummaryRecord(prior);
   for (const key of FLAT_ADMISSION_KEYS) {
@@ -46,6 +49,9 @@ export function mergeAdmissionSummaryFieldsPreservingNested(
       next.admissionDiagnosis = composed;
     }
   }
+  if (admissionPacket != null) {
+    next[ADMISSION_PACKET_V1_KEY] = admissionPacket;
+  }
   return next;
 }
 
@@ -56,12 +62,15 @@ export function flatAdmissionFieldsHaveContent(fields: AdmissionSummaryFields): 
   });
 }
 
-/** Infer placement encounter type from free-text care level (FR/EN heuristics). */
+/** Infer placement encounter type from care level code or free-text (FR/EN heuristics). */
 export function inferPlacementEncounterTypeFromCareLevel(
   careLevel: string | null | undefined
 ): "OBSERVATION" | "INPATIENT" {
-  const raw = String(careLevel ?? "").trim().toLowerCase();
+  const raw = String(careLevel ?? "").trim();
   if (!raw) return "INPATIENT";
-  if (raw.includes("observ") || raw === "obs") return "OBSERVATION";
+  const upper = raw.toUpperCase();
+  if (upper === "OBSERVATION" || upper === "OBS") return "OBSERVATION";
+  const lower = raw.toLowerCase();
+  if (lower.includes("observ") || lower === "obs") return "OBSERVATION";
   return "INPATIENT";
 }

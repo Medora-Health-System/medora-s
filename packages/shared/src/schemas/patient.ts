@@ -280,10 +280,27 @@ export type AdmissionDiagnosesV1 = z.infer<typeof admissionDiagnosesV1Schema>;
  * Preserves nested admissionSummaryJson keys (e.g. admissionCorrelation).
  * Does not close the ED encounter.
  */
+/** D4A.2 nested provenance packet — validated lightly; full shape in smartAdmissionPacketD4a2. */
+export const admissionPacketV1DtoSchema = z
+  .object({
+    version: z.literal(1).optional(),
+    admittingServiceCode: z.string().max(64).nullable().optional(),
+    admittingServiceOtherClarification: z.string().max(1000).nullable().optional(),
+    levelOfCareCode: z.string().max(64).nullable().optional(),
+    levelOfCareOtherClarification: z.string().max(1000).nullable().optional(),
+    requestedUnitCode: z.string().max(128).nullable().optional(),
+    conditionStatus: z.string().max(64).nullable().optional(),
+    fields: z.record(z.unknown()).optional(),
+    certification: z.string().max(128).optional(),
+  })
+  .passthrough();
+
 export const encounterAdmissionDecisionDtoSchema = z.object({
   mode: z.enum(["DRAFT", "SIGN"]).default("DRAFT"),
   admissionSummary: admissionSummaryFieldsSchema,
   admissionDiagnoses: admissionDiagnosesV1Schema.optional(),
+  /** D4A.2 provenanced smart packet (nested; preserves correlation siblings). */
+  admissionPacket: admissionPacketV1DtoSchema.optional().nullable(),
   /**
    * Placement destination type. When omitted, inferred from careLevel
    * (Observation → OBSERVATION, else INPATIENT).
