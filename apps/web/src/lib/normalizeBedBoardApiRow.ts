@@ -20,6 +20,8 @@ export function normalizeBedBoardApiRow(
     occupantPatientName: enriched.occupantPatientName,
     patientDisplay: enriched.patientDisplay ?? enriched.occupantPatientName,
     occupantMrn: enriched.occupantMrn,
+    occupantAgeYears: enriched.occupantAgeYears ?? null,
+    occupantSex: enriched.occupantSex ?? null,
     reasonCode: enriched.reasonCode,
     reasonText: enriched.reasonText,
     updatedAt: enriched.updatedAt,
