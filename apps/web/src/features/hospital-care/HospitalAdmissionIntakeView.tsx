@@ -454,11 +454,37 @@ export function HospitalAdmissionIntakeView() {
               </div>
             ) : null}
           </>
-        ) : (
-          <p style={{ fontSize: 12, color: "#64748b", margin: "0 0 12px" }}>
-            {t("hospitalAdmissionD4a0.steps.patientLocked")}
-          </p>
-        )}
+        ) : workspacePatient ? (
+          <div
+            style={{ ...confirmCard, marginBottom: 12 }}
+            data-testid="admission-confirmed-patient-summary"
+          >
+            <p style={{ margin: "0 0 8px", fontSize: 12, color: "#64748b" }}>
+              {t("hospitalAdmissionD4a0.steps.patientLocked")}
+            </p>
+            <p style={metaLine}>
+              <strong>
+                {`${workspacePatient.firstName ?? ""} ${workspacePatient.lastName ?? ""}`.trim() ||
+                  dash}
+              </strong>
+            </p>
+            <p style={metaLine}>
+              {t("hospitalAdmissionD4a0.search.mrn")}: {workspacePatient.mrn ?? dash}
+            </p>
+            <p style={metaLine}>
+              {t("hospitalAdmissionD4a0.search.dob")}:{" "}
+              {workspacePatient.dob ? String(workspacePatient.dob).slice(0, 10) : dash}
+            </p>
+            <button
+              type="button"
+              onClick={clearPatient}
+              data-testid="choose-different-patient-locked"
+              style={{ ...secondaryBtn, marginTop: 10 }}
+            >
+              {t("hospitalAdmissionD4a0.confirm.chooseDifferent")}
+            </button>
+          </div>
+        ) : null}
 
         {/* STEP 2 */}
         {selectedPatientId && workspacePatient && !demographicsConfirmed ? (
