@@ -24,6 +24,8 @@ export type FacilityBedBoardBedRow = {
   occupantPatientName: string | null;
   patientDisplay: string | null;
   occupantMrn: string | null;
+  occupantAgeYears?: number | null;
+  occupantSex?: string | null;
   reasonCode: string | null;
   reasonText: string | null;
   updatedAt: string | null;

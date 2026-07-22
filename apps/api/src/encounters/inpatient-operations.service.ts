@@ -53,11 +53,15 @@ import {
   placementActionsEnabled,
   inpatientDocumentationEnabled,
   inpatientWorkspaceFlagsFromProcessEnv,
+  BED_NO_LONGER_AVAILABLE_CODE,
+  validateConnectedAdmissionIntakeHardBlockers,
+  isBedSelectableForAdmissionIntake,
 } from "@medora/shared";
 import { PrismaService } from "../prisma/prisma.service";
 import { AuditService } from "../common/services/audit.service";
 import { ENCOUNTER_DETAIL_SELECT } from "./encounter-query-contracts";
 import { AdmissionCorrelationService } from "./admission-correlation.service";
+import { FacilityBedBoardService } from "../facilities/facility-bed-board.service";
 
 /** Observation is a clinical lane (billing / summary), not EncounterType.OBSERVATION. */
 function isExplicitObservationChart(enc: {
@@ -122,7 +126,8 @@ export class InpatientOperationsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
-    private readonly admissionCorrelation: AdmissionCorrelationService
+    private readonly admissionCorrelation: AdmissionCorrelationService,
+    private readonly bedBoardService: FacilityBedBoardService
   ) {}
 
   meta() {
@@ -195,6 +200,52 @@ export class InpatientOperationsService {
     });
     if (blockers.length) {
       throw new BadRequestException(blockers.join(", "));
+    }
+
+    const connectedBlockers = validateConnectedAdmissionIntakeHardBlockers({
+      selectedPatientId: body.patientId,
+      demographicsConfirmed: true,
+      admissionSource,
+      sourceEncounterId: body.sourceEdEncounterId ?? body.sourceObservationEncounterId,
+      admittedAt: body.admittedAt,
+      requestedUnit: body.requestedUnit,
+      assignedBedKey: body.assignedBedKey,
+      admissionDiagnosis: body.admissionDiagnosis,
+      reasonForAdmission: body.reasonForAdmission,
+      admittingService: body.admittingService,
+      requestedLevelOfCare: body.requestedLevelOfCare,
+      receivingNurseUserIdFromClient: null,
+    });
+    // Connected nurse intake (diagnosis/reason/bed/service present) enforces full D4A.0 gates.
+    const requireConnectedFields =
+      String(body.admissionDiagnosis ?? "").trim() !== "" ||
+      String(body.assignedBedKey ?? "").trim() !== "" ||
+      String(body.reasonForAdmission ?? "").trim() !== "" ||
+      String(body.admittingService ?? "").trim() !== "" ||
+      String(body.requestedLevelOfCare ?? "").trim() !== "";
+    if (requireConnectedFields) {
+      const must = connectedBlockers.filter((b) =>
+        [
+          "PATIENT_REQUIRED",
+          "REQUESTED_UNIT_REQUIRED",
+          "ASSIGNED_BED_REQUIRED",
+          "BED_UNIT_MISMATCH",
+          "BED_NOT_IN_POOL",
+          "ADMISSION_DIAGNOSIS_REQUIRED",
+          "REASON_FOR_ADMISSION_REQUIRED",
+          "ADMITTING_SERVICE_REQUIRED",
+          "ADMITTING_SERVICE_INVALID",
+          "LEVEL_OF_CARE_REQUIRED",
+          "LEVEL_OF_CARE_INVALID",
+          "LEVEL_OF_CARE_UNIT_INCOMPATIBLE",
+          "ADMITTED_AT_INVALID",
+          "ADMITTED_AT_FUTURE_PROHIBITED",
+          "CLIENT_RECEIVING_NURSE_FORBIDDEN",
+        ].includes(b)
+      );
+      if (must.length) {
+        throw new BadRequestException(must.join(", "));
+      }
     }
 
     const patient = await this.prisma.patient.findFirst({
@@ -409,6 +460,20 @@ export class InpatientOperationsService {
       if (requestedUnit && requestedUnit !== parsed.unit) {
         throw new BadRequestException("assignedBedKey does not belong to requestedUnit");
       }
+
+      const bedRow = await this.bedBoardService.getEffectiveBedRow(facilityId, bedKeyRaw);
+      if (!bedRow) {
+        throw new BadRequestException("assignedBedKey is not a valid facility bed");
+      }
+      if (!isBedSelectableForAdmissionIntake(bedRow.status) || bedRow.occupantEncounterId) {
+        throw new ConflictException(BED_NO_LONGER_AVAILABLE_CODE);
+      }
+      try {
+        this.bedBoardService.assertBedAssignableOrThrow({ bedRow });
+      } catch {
+        throw new ConflictException(BED_NO_LONGER_AVAILABLE_CODE);
+      }
+
       const occupants = await this.prisma.encounter.findMany({
         where: { facilityId, status: EncounterStatus.OPEN },
         select: {
@@ -425,7 +490,7 @@ export class InpatientOperationsService {
           admissionSummaryJson: row.admissionSummaryJson,
         });
         if (key === `${parsed.unit}:${parsed.room}`) {
-          throw new ConflictException("Selected bed is already occupied");
+          throw new ConflictException(BED_NO_LONGER_AVAILABLE_CODE);
         }
       }
       roomLabel = formatCanonicalBedDisplay(parsed.unit, parsed.room);
