@@ -282,15 +282,26 @@ export class InpatientOperationsService {
         ? body.admissionCorrelationId.trim() || null
         : null;
 
+    // Expand-and-contract: never select Encounter.hospitalEpisodeId while D3B is unapplied.
+    // Feature flags cannot suppress Prisma SQL generation (prod P2022 → 500).
+    const episodeFoundationOn = hospitalEpisodeFoundationEnabledFromProcessEnv();
+
     const openRows = await this.prisma.encounter.findMany({
       where: { patientId: patient.id, facilityId, status: EncounterStatus.OPEN },
-      select: {
-        id: true,
-        type: true,
-        status: true,
-        hospitalEpisodeId: true,
-        admissionSummaryJson: true,
-      },
+      select: episodeFoundationOn
+        ? {
+            id: true,
+            type: true,
+            status: true,
+            hospitalEpisodeId: true,
+            admissionSummaryJson: true,
+          }
+        : {
+            id: true,
+            type: true,
+            status: true,
+            admissionSummaryJson: true,
+          },
     });
 
     // Invariant: never close or mutate ED when starting Inpatient
@@ -319,14 +330,22 @@ export class InpatientOperationsService {
           patientId: patient.id,
           status: EncounterStatus.OPEN,
         },
-        select: {
-          id: true,
-          type: true,
-          status: true,
-          hospitalEpisodeId: true,
-          billingClassification: true,
-          admissionSummaryJson: true,
-        },
+        select: episodeFoundationOn
+          ? {
+              id: true,
+              type: true,
+              status: true,
+              hospitalEpisodeId: true,
+              billingClassification: true,
+              admissionSummaryJson: true,
+            }
+          : {
+              id: true,
+              type: true,
+              status: true,
+              billingClassification: true,
+              admissionSummaryJson: true,
+            },
       });
       if (!obs || !isExplicitObservationChart(obs)) {
         throw new BadRequestException(
@@ -334,7 +353,10 @@ export class InpatientOperationsService {
         );
       }
       sourceEncounterId = obs.id;
-      observationHospitalEpisodeId = obs.hospitalEpisodeId;
+      observationHospitalEpisodeId =
+        episodeFoundationOn && "hospitalEpisodeId" in obs
+          ? ((obs as { hospitalEpisodeId?: string | null }).hospitalEpisodeId ?? null)
+          : null;
       sourceEdEncounterId = null;
     } else {
       if (!sourceEdEncounterId && admissionSource === "EMERGENCY_DEPARTMENT") {
@@ -359,21 +381,22 @@ export class InpatientOperationsService {
     }
 
     let activeEpisodeId: string | null = null;
-    if (hospitalEpisodeFoundationEnabledFromProcessEnv()) {
+    if (episodeFoundationOn) {
       const active = await this.prisma.hospitalEpisode.findFirst({
         where: { facilityId, patientId: patient.id, status: "ACTIVE" },
         select: { id: true },
       });
       activeEpisodeId = active?.id ?? observationHospitalEpisodeId ?? null;
-    } else if (observationHospitalEpisodeId) {
-      activeEpisodeId = observationHospitalEpisodeId;
     }
 
     const openIpCandidates = openRows
       .filter((e) => e.type === EncounterType.INPATIENT)
       .map((e) => ({
         id: e.id,
-        hospitalEpisodeId: e.hospitalEpisodeId,
+        hospitalEpisodeId:
+          episodeFoundationOn && "hospitalEpisodeId" in e
+            ? ((e as { hospitalEpisodeId?: string | null }).hospitalEpisodeId ?? null)
+            : null,
         admissionSummaryJson: e.admissionSummaryJson,
       }));
 
@@ -617,15 +640,25 @@ export class InpatientOperationsService {
 
     const created = await this.prisma.$transaction(async (tx) => {
       // Re-check correlated reuse inside transaction (concurrency)
-      const openIps = await tx.encounter.findMany({
+      const openIpsRaw = await tx.encounter.findMany({
         where: {
           patientId: patient.id,
           facilityId,
           status: EncounterStatus.OPEN,
           type: EncounterType.INPATIENT,
         },
-        select: { id: true, hospitalEpisodeId: true, admissionSummaryJson: true },
+        select: episodeFoundationOn
+          ? { id: true, hospitalEpisodeId: true, admissionSummaryJson: true }
+          : { id: true, admissionSummaryJson: true },
       });
+      const openIps = openIpsRaw.map((row) => ({
+        id: row.id,
+        hospitalEpisodeId:
+          episodeFoundationOn && "hospitalEpisodeId" in row
+            ? ((row as { hospitalEpisodeId?: string | null }).hospitalEpisodeId ?? null)
+            : null,
+        admissionSummaryJson: row.admissionSummaryJson,
+      }));
       const txReuse = this.admissionCorrelation.resolveReuse({
         patientId: patient.id,
         facilityId,
@@ -650,9 +683,6 @@ export class InpatientOperationsService {
       }
 
       let hospitalEpisodeId: string | null = activeEpisodeId;
-      if (hospitalEpisodeFoundationEnabledFromProcessEnv() && !hospitalEpisodeId) {
-        // Episode created after encounter so originatingEncounterId can be set
-      }
 
       const encounter = await tx.encounter.create({
         data: {
@@ -672,7 +702,10 @@ export class InpatientOperationsService {
           admissionSummaryJson: admissionSummaryJson as Prisma.InputJsonValue,
           admittedAt,
           roomLabel: roomLabel ?? undefined,
-          hospitalEpisodeId: hospitalEpisodeId ?? undefined,
+          // Omit D3B column entirely when foundation OFF (pre-migration DBs).
+          ...(episodeFoundationOn && hospitalEpisodeId
+            ? { hospitalEpisodeId }
+            : {}),
         },
         select: { id: true },
       });
@@ -689,7 +722,7 @@ export class InpatientOperationsService {
         correlationFinal
       );
 
-      if (hospitalEpisodeFoundationEnabledFromProcessEnv()) {
+      if (episodeFoundationOn) {
         if (!hospitalEpisodeId) {
           const episode = await tx.hospitalEpisode.create({
             data: {
