@@ -1,27 +1,41 @@
 /**
- * D3E.8 — Admission correlation diagnostics / meta (read-oriented).
- * Correlation writes remain on admission/placement pathways.
+ * D3E.8 / D3E.8A — Admission correlation journey, cancel, and legacy reconciliation.
+ * Correlation writes also occur on placement/admission pathways.
  */
 
-import { Controller, Get, Param, Req, UseGuards } from "@nestjs/common";
+import {
+  BadRequestException,
+  Body,
+  Controller,
+  Get,
+  Param,
+  Post,
+  Req,
+  UseGuards,
+} from "@nestjs/common";
 import { AuthGuard } from "@nestjs/passport";
 import { RoleCode } from "@prisma/client";
 import { RolesGuard, RequireRoles } from "../common/guards/roles.guard";
 import { AdmissionCorrelationService } from "./admission-correlation.service";
-import { PrismaService } from "../prisma/prisma.service";
-import { readHospitalAdmissionCorrelation } from "@medora/shared";
 
-function facilityIdFromReq(req: any): string {
-  return String(req?.user?.facilityId ?? "").trim();
+function facilityIdFromReq(req: { user?: { facilityId?: string } }): string {
+  const facilityId = req.user?.facilityId;
+  if (!facilityId || typeof facilityId !== "string") {
+    throw new BadRequestException("Facility ID required");
+  }
+  return facilityId;
+}
+
+function userIdFromReq(req: { user?: { userId?: string; id?: string } }): string {
+  const userId = req.user?.userId || req.user?.id;
+  if (!userId) throw new BadRequestException("User ID required");
+  return userId;
 }
 
 @Controller("admission-correlation")
 @UseGuards(AuthGuard("jwt"), RolesGuard)
 export class AdmissionCorrelationController {
-  constructor(
-    private readonly correlation: AdmissionCorrelationService,
-    private readonly prisma: PrismaService
-  ) {}
+  constructor(private readonly correlation: AdmissionCorrelationService) {}
 
   @Get("meta")
   @RequireRoles(RoleCode.PROVIDER, RoleCode.RN, RoleCode.ADMIN)
@@ -32,50 +46,103 @@ export class AdmissionCorrelationController {
   @Get("encounters/:encounterId/journey")
   @RequireRoles(RoleCode.PROVIDER, RoleCode.RN, RoleCode.ADMIN)
   async journey(@Param("encounterId") encounterId: string, @Req() req: any) {
-    const facilityId = facilityIdFromReq(req);
-    const enc = await this.prisma.encounter.findFirst({
-      where: { id: encounterId, facilityId },
-      select: {
-        id: true,
-        patientId: true,
-        facilityId: true,
-        hospitalEpisodeId: true,
-        admissionSummaryJson: true,
-        admittedAt: true,
-        status: true,
-        type: true,
-      },
-    });
-    if (!enc) {
-      return { found: false, journey: null, findings: [] };
+    return this.correlation.buildJourney(facilityIdFromReq(req), encounterId);
+  }
+
+  @Post("encounters/:encounterId/cancel")
+  @RequireRoles(RoleCode.PROVIDER, RoleCode.RN, RoleCode.ADMIN)
+  async cancel(
+    @Param("encounterId") encounterId: string,
+    @Body() body: { expectedVersion?: number; reason?: string },
+    @Req() req: any
+  ) {
+    if (body?.expectedVersion == null || !Number.isFinite(Number(body.expectedVersion))) {
+      throw new BadRequestException("expectedVersion is required");
     }
-    const corr = readHospitalAdmissionCorrelation(enc.admissionSummaryJson);
-    const findings = this.correlation.diagnose({
-      correlation: corr,
-      receivingEncounter: {
-        id: enc.id,
-        patientId: enc.patientId,
-        facilityId: enc.facilityId,
-        hospitalEpisodeId: enc.hospitalEpisodeId,
-        admissionSummaryJson: enc.admissionSummaryJson,
-      },
+    return this.correlation.cancelAdmissionIntent({
+      facilityId: facilityIdFromReq(req),
+      sourceEncounterId: encounterId,
+      expectedVersion: Number(body.expectedVersion),
+      actorUserId: userIdFromReq(req),
+      reason: typeof body.reason === "string" ? body.reason : null,
+      ip: req.ip,
+      userAgent: req.headers?.["user-agent"],
     });
-    return {
-      found: true,
-      journey: {
-        admissionSource: corr?.admissionSource ?? null,
-        sourceEncounterId: corr?.sourceEncounterId ?? null,
-        placementRequestId: corr?.internalPlacementRequestId ?? null,
-        receivingStatus: corr?.status ?? null,
-        receivingUnit: corr?.destinationUnitId ?? null,
-        receivingEncounterStatus: enc.status,
-        arrivalTime: corr?.arrivedAt ?? enc.admittedAt?.toISOString() ?? null,
-        diagnostics: {
-          correlationStatus: corr?.status ?? null,
-          linkageHealthy: findings.every((f) => f.severity !== "HARD_ERROR"),
-        },
-      },
-      findings,
-    };
+  }
+
+  @Post("encounters/:encounterId/mutate")
+  @RequireRoles(RoleCode.PROVIDER, RoleCode.RN, RoleCode.ADMIN)
+  async mutate(
+    @Param("encounterId") encounterId: string,
+    @Body()
+    body: {
+      expectedVersion?: number;
+      patch?: Record<string, unknown>;
+      auditEvent?: string;
+    },
+    @Req() req: any
+  ) {
+    if (body?.expectedVersion == null || !Number.isFinite(Number(body.expectedVersion))) {
+      throw new BadRequestException("expectedVersion is required");
+    }
+    const patch = body.patch ?? {};
+    // Prohibit whole-object client replacement — only allow governed patch keys.
+    const allowed = [
+      "status",
+      "internalPlacementRequestId",
+      "receivingEncounterId",
+      "hospitalEpisodeId",
+      "destinationUnitId",
+      "requestedAdmissionAt",
+      "receivingStartedAt",
+      "arrivedAt",
+      "completedAt",
+      "receivingUserId",
+      "admissionSource",
+    ] as const;
+    const safePatch: Record<string, unknown> = {};
+    for (const key of allowed) {
+      if (key in patch) safePatch[key] = patch[key];
+    }
+    return this.correlation.mutateCorrelationOnEncounter({
+      facilityId: facilityIdFromReq(req),
+      encounterId,
+      expectedVersion: Number(body.expectedVersion),
+      patch: safePatch as never,
+      actorUserId: userIdFromReq(req),
+      auditEvent:
+        typeof body.auditEvent === "string" && body.auditEvent.trim()
+          ? body.auditEvent.trim()
+          : "ADMISSION_CORRELATION_MUTATED",
+      ip: req.ip,
+      userAgent: req.headers?.["user-agent"],
+    });
+  }
+
+  @Get("reconciliation/queue")
+  @RequireRoles(RoleCode.ADMIN)
+  async reconciliationQueue(@Req() req: any) {
+    return this.correlation.listReconciliationQueue(facilityIdFromReq(req));
+  }
+
+  @Post("reconciliation/correct")
+  @RequireRoles(RoleCode.ADMIN)
+  async reconciliationCorrect(@Body() body: Record<string, unknown>, @Req() req: any) {
+    const hostEncounterId = String(body.hostEncounterId ?? "").trim();
+    if (!hostEncounterId) throw new BadRequestException("hostEncounterId is required");
+    if (body.expectedVersion == null || !Number.isFinite(Number(body.expectedVersion))) {
+      throw new BadRequestException("expectedVersion is required");
+    }
+    return this.correlation.applyLegacyCorrection({
+      facilityId: facilityIdFromReq(req),
+      actorUserId: userIdFromReq(req),
+      reason: String(body.reason ?? ""),
+      expectedVersion: Number(body.expectedVersion),
+      hostEncounterId,
+      patch: (body.patch ?? {}) as never,
+      evidence: (body.evidence ?? {}) as never,
+      ip: req.ip,
+      userAgent: req.headers?.["user-agent"],
+    });
   }
 }
