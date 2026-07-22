@@ -72,6 +72,7 @@ import { EmergencyErNotesPanel } from "@/features/emergency/EmergencyErNotesPane
 import { EmergencyClinicalDataPanel } from "@/features/emergency/EmergencyClinicalDataPanel";
 import { emergencyChartPath, genericEncounterPath } from "@/features/emergency/emergencyRoutes";
 import { isEdEncounterClosedForArchive } from "@/features/emergency/edClosedChartDisplayMode";
+import { erDispositionBadgeFromEncounterJson } from "@/features/emergency/erTrackboardDispositionBadge";
 import {
   parseErWorkspaceSection,
   type ErWorkspaceSection,
@@ -349,6 +350,12 @@ export function EmergencyActiveWorkspaceView() {
   const canDocumentEncounterDiagnoses =
     roles.includes("RN") || roles.includes("PROVIDER") || roles.includes("ADMIN");
   const canRecordDischargeSortieExecution = roles.includes("RN") || roles.includes("ADMIN");
+  /** Phase A: hide HOME-only nursing execution when disposition is non-HOME. */
+  const showHomeNursingDischargeExecution = useMemo(() => {
+    if (!encounter) return false;
+    const badge = erDispositionBadgeFromEncounterJson(encounter);
+    return !badge || badge.variant === "discharge";
+  }, [encounter]);
 
   const canDocumentIvAccess =
     roles.includes("RN") ||
@@ -1631,7 +1638,7 @@ export function EmergencyActiveWorkspaceView() {
                 canEditMedicalDischarge={canEditMedicalDischarge}
                 facilityName={facilityName}
               />
-              {canRecordDischargeSortieExecution ?
+              {canRecordDischargeSortieExecution && showHomeNursingDischargeExecution ? (
                 <div style={{ marginTop: 10 }}>
                   <NursingDischargeExecutionSection
                     encounterId={encounterId}
@@ -1642,7 +1649,7 @@ export function EmergencyActiveWorkspaceView() {
                     canEdit={canRecordDischargeSortieExecution && encounter.status === "OPEN"}
                   />
                 </div>
-              : null}
+              ) : null}
             </>
           ) : null}
 

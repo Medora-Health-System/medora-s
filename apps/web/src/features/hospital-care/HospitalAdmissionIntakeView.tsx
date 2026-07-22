@@ -10,6 +10,7 @@ import {
   HOSPITAL_ADMITTING_SERVICES,
   HOSPITAL_REQUESTED_LEVELS_OF_CARE,
   isBedSelectableForAdmissionIntake,
+  isDirectAdmissionErrorCode,
   levelsOfCareForUnit,
   type PatientSearchHitV1,
 } from "@medora/shared";
@@ -341,8 +342,18 @@ export function HospitalAdmissionIntakeView() {
       }
       setFormError(t("hospitalCareD3e7.admissions.submitError"));
     } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      if (msg.includes(BED_NO_LONGER_AVAILABLE_CODE) || msg.includes("BED_NO_LONGER_AVAILABLE")) {
+      const e = err as Error & { errorCode?: string | null; body?: unknown; status?: number };
+      const msg = e instanceof Error ? e.message : String(err);
+      const code = e.errorCode ?? null;
+      const requestId =
+        e.body && typeof e.body === "object" && !Array.isArray(e.body)
+          ? String((e.body as { requestId?: string }).requestId ?? "")
+          : "";
+      if (
+        msg.includes(BED_NO_LONGER_AVAILABLE_CODE) ||
+        msg.includes("BED_NO_LONGER_AVAILABLE") ||
+        code === "BED_NO_LONGER_AVAILABLE"
+      ) {
         setBedKey("");
         setFormError(t("hospitalAdmissionD4a0.bed.noLongerAvailable"));
         // Reload beds
@@ -358,8 +369,18 @@ export function HospitalAdmissionIntakeView() {
             /* keep prior list */
           }
         }
+      } else if (code && isDirectAdmissionErrorCode(code)) {
+        let mapped = t(`hospitalAdmissionD4a0.errors.${code}`);
+        if (requestId) {
+          mapped = `${mapped} (${t("hospitalAdmissionD4a0.errors.requestId")}: ${requestId})`;
+        }
+        setFormError(mapped);
       } else {
-        setFormError(t("hospitalCareD3e7.admissions.submitError"));
+        let fallback = t("hospitalCareD3e7.admissions.submitError");
+        if (requestId) {
+          fallback = `${fallback} (${t("hospitalAdmissionD4a0.errors.requestId")}: ${requestId})`;
+        }
+        setFormError(fallback);
       }
     } finally {
       setSubmitting(false);

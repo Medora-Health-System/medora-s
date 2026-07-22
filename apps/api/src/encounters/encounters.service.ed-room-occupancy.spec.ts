@@ -7,6 +7,7 @@ import {
 } from "@medora/shared";
 import { EncountersService } from "./encounters.service";
 import { createMockBedBoardService } from "./encounters.service.test-bed-board.mock";
+import { createMockInternalPlacementService } from "./encounters.service.test-internal-placement.mock";
 
 const facilityId = "fac-a";
 const patientId = "pat-1";
@@ -81,7 +82,8 @@ describe("EncountersService — ED room occupancy enforcement (ROOMS.ED.2)", () 
       prisma as never,
       { log: auditLog } as never,
       {} as never,
-      createMockBedBoardService() as never
+      createMockBedBoardService() as never,
+      createMockInternalPlacementService() as never
     );
 
     await expect(
@@ -106,7 +108,8 @@ describe("EncountersService — ED room occupancy enforcement (ROOMS.ED.2)", () 
       prisma as never,
       { log: auditLog } as never,
       {} as never,
-      createMockBedBoardService() as never
+      createMockBedBoardService() as never,
+      createMockInternalPlacementService() as never
     );
 
     await svc.create(
@@ -155,7 +158,8 @@ describe("EncountersService — ED room occupancy enforcement (ROOMS.ED.2)", () 
       prisma as never,
       { log: auditLog } as never,
       {} as never,
-      createMockBedBoardService() as never
+      createMockBedBoardService() as never,
+      createMockInternalPlacementService() as never
     );
 
     await expect(
@@ -189,7 +193,8 @@ describe("EncountersService — ED room occupancy enforcement (ROOMS.ED.2)", () 
       prisma as never,
       { log: auditLog } as never,
       {} as never,
-      createMockBedBoardService() as never
+      createMockBedBoardService() as never,
+      createMockInternalPlacementService() as never
     );
 
     await svc.updateOperational(
@@ -219,7 +224,8 @@ describe("EncountersService — ED room occupancy enforcement (ROOMS.ED.2)", () 
       prisma as never,
       { log: auditLog } as never,
       {} as never,
-      createMockBedBoardService() as never
+      createMockBedBoardService() as never,
+      createMockInternalPlacementService() as never
     );
 
     await svc.create(

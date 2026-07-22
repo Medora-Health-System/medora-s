@@ -9,6 +9,7 @@ import {
 } from "@medora/shared";
 import { EncountersService } from "./encounters.service";
 import { createMockBedBoardService } from "./encounters.service.test-bed-board.mock";
+import { createMockInternalPlacementService } from "./encounters.service.test-internal-placement.mock";
 
 const facilityId = "fac-a";
 const encounterId = "enc-1";
@@ -94,7 +95,8 @@ function createService(prisma: unknown, auditLog: jest.Mock, bedBoardService?: u
     prisma as never,
     { log: auditLog } as never,
     {} as never,
-    (bedBoardService ?? createMockBedBoardService()) as never
+    (bedBoardService ?? createMockBedBoardService()) as never,
+    createMockInternalPlacementService() as never
   );
 }
 

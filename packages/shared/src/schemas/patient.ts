@@ -263,6 +263,39 @@ export const admissionSummaryFieldsSchema = z.object({
 
 export type AdmissionSummaryFields = z.infer<typeof admissionSummaryFieldsSchema>;
 
+/** Coded admission diagnoses — references existing encounter `Diagnosis` rows (no duplicate engine). */
+export const admissionDiagnosesV1Schema = z.object({
+  primaryDiagnosisId: z.string().uuid().nullable().optional(),
+  secondaryDiagnosisIds: z.array(z.string().uuid()).max(20).optional().default([]),
+  /** Denormalized display snapshot for chart/placement (code + description). */
+  primaryDisplay: z.string().max(4000).optional().nullable(),
+  secondaryDisplays: z.array(z.string().max(4000)).max(20).optional().default([]),
+  clarificationText: z.string().max(4000).optional().nullable(),
+});
+
+export type AdmissionDiagnosesV1 = z.infer<typeof admissionDiagnosesV1Schema>;
+
+/**
+ * POST /encounters/:id/admission/decision — governed admission decision writer.
+ * Preserves nested admissionSummaryJson keys (e.g. admissionCorrelation).
+ * Does not close the ED encounter.
+ */
+export const encounterAdmissionDecisionDtoSchema = z.object({
+  mode: z.enum(["DRAFT", "SIGN"]).default("DRAFT"),
+  admissionSummary: admissionSummaryFieldsSchema,
+  admissionDiagnoses: admissionDiagnosesV1Schema.optional(),
+  /**
+   * Placement destination type. When omitted, inferred from careLevel
+   * (Observation → OBSERVATION, else INPATIENT).
+   */
+  requestedEncounterType: z.enum(["OBSERVATION", "INPATIENT"]).optional(),
+  /** Optional unit code for placement (e.g. MS). */
+  requestedUnitCode: z.string().max(128).optional().nullable(),
+  clinicalPriority: z.string().max(256).optional().nullable(),
+});
+
+export type EncounterAdmissionDecisionDto = z.infer<typeof encounterAdmissionDecisionDtoSchema>;
+
 /** Full Prisma `EncounterWorkflowState` (read model / responses). */
 export const encounterWorkflowStateSchema = z.enum([
   "ARRIVED",

@@ -22,6 +22,7 @@ import { createDiagnosisDtoSchema, reorderDiagnosesDtoSchema } from "../diagnose
 import { appendProcedureCaptureDtoSchema } from "../billing-procedure-codes/dto/append-procedure-capture.dto";
 import {
   encounterAdmissionCancelDtoSchema,
+  encounterAdmissionDecisionDtoSchema,
   encounterCloseDtoSchema,
   encounterCloseCheckDtoSchema,
   encounterCreateDtoSchema,
@@ -1235,7 +1236,18 @@ export class EncountersController {
     }
 
     if (parsed.data.admissionSummaryJson !== undefined) {
-      if (req.userRole !== RoleCode.PROVIDER && req.userRole !== RoleCode.ADMIN) {
+      // Do not trust singleton req.userRole — dual-role users (RN+PROVIDER) may be tagged RN.
+      const actorUserId = req.user?.userId || req.user?.id;
+      if (!actorUserId) {
+        throw new ForbiddenException(
+          "Le dossier d'admission est réservé aux médecins et aux administrateurs."
+        );
+      }
+      const canWriteAdmission = await this.encountersService.actorHasProviderOrAdminAtFacility(
+        facilityId,
+        String(actorUserId)
+      );
+      if (!canWriteAdmission) {
         throw new ForbiddenException(
           "Le dossier d'admission est réservé aux médecins et aux administrateurs."
         );
@@ -1249,6 +1261,35 @@ export class EncountersController {
       req.user?.userId,
       req.ip,
       req.headers["user-agent"]
+    );
+  }
+
+  /**
+   * Governed admission decision (draft or sign). Prefer this over PATCH admissionSummaryJson.
+   * Does not close the ED encounter. Optionally creates/submits internal placement when enabled.
+   */
+  @Post("encounters/:id/admission/decision")
+  @RequireRoles(RoleCode.PROVIDER, RoleCode.ADMIN)
+  async recordAdmissionDecision(
+    @Param("id") id: string,
+    @Body() body: unknown,
+    @Req() req: any
+  ) {
+    const facilityId = req.user?.facilityId || req.headers["x-facility-id"];
+    if (!facilityId) {
+      throw new BadRequestException("Facility ID required");
+    }
+    const parsed = encounterAdmissionDecisionDtoSchema.safeParse(body);
+    if (!parsed.success) {
+      throw new BadRequestException("Invalid payload", { cause: parsed.error });
+    }
+    return this.encountersService.recordAdmissionDecision(
+      facilityId,
+      id,
+      parsed.data,
+      req.user?.userId,
+      req.ip,
+      req.headers?.["user-agent"]
     );
   }
 

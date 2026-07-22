@@ -2,6 +2,8 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
+  inferPlacementEncounterTypeFromCareLevel,
+  isDirectAdmissionErrorCode,
   mapLegacyCareLevelToRequestedTypeHint,
   projectEdDispositionState,
   readAmaDispositionV1,
@@ -17,6 +19,8 @@ import {
 import { apiFetch, parseApiResponse } from "@/lib/apiClient";
 import { normalizeUserFacingError } from "@/lib/userFacingError";
 import { useI18n } from "@/lib/i18n";
+import { useEncounterDiagnosisRows } from "./useEncounterDiagnosisRows";
+import type { EncounterDiagnosisApiRow } from "./encounterClinicalRecordAdapter";
 import {
   hydrateDischargeFormFromEncounterJson,
   emptyDischargeForm,
@@ -274,10 +278,38 @@ export function EmergencyDispositionPanel({
   const [elopementBoard, setElopementBoard] = useState(emptyElopementDispositionForm);
   const [deceasedBoard, setDeceasedBoard] = useState(emptyDeceasedDispositionForm);
   const [otherBoard, setOtherBoard] = useState(emptyOtherDispositionForm);
+  const [primaryDiagnosisId, setPrimaryDiagnosisId] = useState<string>("");
+  const [secondaryDiagnosisIds, setSecondaryDiagnosisIds] = useState<string[]>([]);
+  const encounterDiagnoses = useEncounterDiagnosisRows({
+    encounterId,
+    patientId: encounter.patient?.id,
+    facilityId,
+  });
   const hasSavedAdmission = useMemo(
     () => parseAdmissionSummaryForChart(encounter.admissionSummaryJson) != null,
     [encounter.admissionSummaryJson]
   );
+
+  useEffect(() => {
+    const raw = encounter.admissionSummaryJson;
+    if (!raw || typeof raw !== "object" || Array.isArray(raw)) return;
+    const dx = (raw as { admissionDiagnosesV1?: unknown }).admissionDiagnosesV1;
+    if (!dx || typeof dx !== "object" || Array.isArray(dx)) return;
+    const obj = dx as {
+      primaryDiagnosisId?: string | null;
+      secondaryDiagnosisIds?: string[];
+    };
+    if (obj.primaryDiagnosisId) setPrimaryDiagnosisId(obj.primaryDiagnosisId);
+    if (Array.isArray(obj.secondaryDiagnosisIds)) {
+      setSecondaryDiagnosisIds(obj.secondaryDiagnosisIds.filter(Boolean));
+    }
+  }, [encounter.admissionSummaryJson]);
+
+  const formatDxRow = useCallback((row: EncounterDiagnosisApiRow) => {
+    const code = String(row.code ?? "").trim();
+    const desc = String(row.description ?? "").trim();
+    return [code, desc].filter(Boolean).join(" — ") || desc || code || row.id;
+  }, []);
 
   const dispositionState = useMemo(
     () =>
@@ -635,6 +667,38 @@ export function EmergencyDispositionPanel({
 
       const admissionPayload = admissionFormToPayload(admissionForm);
 
+      // Governed writer for admission packet (avoids PATCH role singleton 403 + correlation wipe).
+      if (
+        effectiveOutcome === "ADMISSION" &&
+        canPrescribe &&
+        encounter.status === "OPEN" &&
+        Object.keys(admissionPayload).length > 0
+      ) {
+        const primaryRow = encounterDiagnoses.find((d) => d.id === primaryDiagnosisId);
+        const secondaryRows = encounterDiagnoses.filter((d) =>
+          secondaryDiagnosisIds.includes(d.id)
+        );
+        await apiFetch(`/encounters/${encounterId}/admission/decision`, {
+          method: "POST",
+          facilityId,
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            mode,
+            admissionSummary: admissionPayload,
+            requestedEncounterType: inferPlacementEncounterTypeFromCareLevel(
+              admissionForm.careLevel
+            ),
+            admissionDiagnoses: {
+              primaryDiagnosisId: primaryDiagnosisId || null,
+              secondaryDiagnosisIds,
+              primaryDisplay: primaryRow ? formatDxRow(primaryRow) : null,
+              secondaryDisplays: secondaryRows.map(formatDxRow),
+              clarificationText: admissionForm.admissionDiagnosis.trim() || null,
+            },
+          }),
+        });
+      }
+
       const body: Record<string, unknown> = {};
       /**
        * Phase 15F-D — observation admission must not PATCH discharge summary (avoids
@@ -652,14 +716,6 @@ export function EmergencyDispositionPanel({
           // Non-HOME pathways: persist mode/shared nursing fields without Home discharge packet.
           body.dischargeSummaryJson = mergedDischarge;
         }
-      }
-      if (
-        effectiveOutcome === "ADMISSION" &&
-        canPrescribe &&
-        encounter.status === "OPEN" &&
-        Object.keys(admissionPayload).length > 0
-      ) {
-        body.admissionSummaryJson = admissionPayload;
       }
       const naWithDisp = mergeErDispositionV1IntoNursingAssessment(
         encounter.nursingAssessment,
@@ -696,16 +752,35 @@ export function EmergencyDispositionPanel({
         queued
           ? t("emergencyDisposition.saveQueued")
           : mode === "SIGN"
-            ? t("emergencyDisposition.signDecisionOk")
+            ? effectiveOutcome === "ADMISSION"
+              ? t("emergencyDisposition.signAdmissionOk")
+              : t("emergencyDisposition.signDecisionOk")
             : effectiveOutcome === "ADMISSION"
               ? t("emergencyDisposition.saveOkObservationAdmission")
               : t("emergencyDisposition.saveOk")
       );
     } catch (e) {
       console.error(e);
-      setSaveInfo(
-        normalizeUserFacingError(e instanceof Error ? e.message : null, language) || t("emergencyDisposition.saveFailed")
-      );
+      const err = e as Error & { errorCode?: string | null; status?: number; body?: unknown };
+      const code = err.errorCode ?? null;
+      const requestId =
+        err.body && typeof err.body === "object" && !Array.isArray(err.body)
+          ? String((err.body as { requestId?: string }).requestId ?? "")
+          : "";
+      let msg =
+        normalizeUserFacingError(err instanceof Error ? err.message : null, language) ||
+        t("emergencyDisposition.saveFailed");
+      if (err.status === 403) {
+        msg = t("emergencyDisposition.errors.permissionDenied");
+      } else if (code && isDirectAdmissionErrorCode(code)) {
+        msg = t(`emergencyDisposition.errors.${code}`);
+      } else if (code === "PATIENT_NOT_FOUND_IN_FACILITY") {
+        msg = t("emergencyDisposition.errors.PATIENT_NOT_FOUND_IN_FACILITY");
+      }
+      if (requestId) {
+        msg = `${msg} (${t("emergencyDisposition.errors.requestId")}: ${requestId})`;
+      }
+      setSaveInfo(msg);
     } finally {
       setSaving(false);
     }
@@ -1095,7 +1170,68 @@ export function EmergencyDispositionPanel({
                     />
                   </div>
                   <div>
-                    <label style={labelStyle}>{t("emergencyDisposition.labelAdmissionDiagnosis")}</label>
+                    <label style={labelStyle}>{t("emergencyDisposition.labelAdmissionDiagnoses")}</label>
+                    {encounterDiagnoses.length === 0 ? (
+                      <p style={{ margin: "0 0 6px", fontSize: 12, color: "#64748b" }}>
+                        {t("emergencyDisposition.admissionDiagnosesEmpty")}{" "}
+                        <a href={`#diagnostics`} style={{ color: "#1d4ed8", fontWeight: 600 }}>
+                          {t("emergencyDisposition.openDiagnosesWorkflow")}
+                        </a>
+                      </p>
+                    ) : (
+                      <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 6 }}>
+                        <label style={{ ...labelStyle, fontWeight: 500 }}>
+                          {t("emergencyDisposition.primaryAdmissionDiagnosis")}
+                          <select
+                            value={primaryDiagnosisId}
+                            disabled={medDisabled}
+                            onChange={(e) => setPrimaryDiagnosisId(e.target.value)}
+                            style={{ ...inputBase, marginTop: 4 }}
+                            data-testid="admission-primary-diagnosis"
+                          >
+                            <option value="">—</option>
+                            {encounterDiagnoses.map((d) => (
+                              <option key={d.id} value={d.id}>
+                                {formatDxRow(d)}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                        <fieldset style={{ margin: 0, border: "1px solid #e2e8f0", borderRadius: 10, padding: 8 }}>
+                          <legend style={{ fontSize: 12, fontWeight: 600, color: "#475569", padding: "0 4px" }}>
+                            {t("emergencyDisposition.secondaryAdmissionDiagnoses")}
+                          </legend>
+                          {encounterDiagnoses.map((d) => (
+                            <label
+                              key={d.id}
+                              style={{
+                                display: "flex",
+                                gap: 8,
+                                alignItems: "flex-start",
+                                fontSize: 12,
+                                marginBottom: 4,
+                                color: "#334155",
+                              }}
+                            >
+                              <input
+                                type="checkbox"
+                                disabled={medDisabled || d.id === primaryDiagnosisId}
+                                checked={secondaryDiagnosisIds.includes(d.id)}
+                                onChange={(e) => {
+                                  setSecondaryDiagnosisIds((prev) =>
+                                    e.target.checked
+                                      ? [...prev.filter((x) => x !== d.id), d.id]
+                                      : prev.filter((x) => x !== d.id)
+                                  );
+                                }}
+                              />
+                              <span>{formatDxRow(d)}</span>
+                            </label>
+                          ))}
+                        </fieldset>
+                      </div>
+                    )}
+                    <label style={labelStyle}>{t("emergencyDisposition.labelAdmissionDiagnosisClarification")}</label>
                     {ta(2, admissionForm.admissionDiagnosis, (v) => patchAdmission({ admissionDiagnosis: v }), medDisabled)}
                   </div>
                   <div>
@@ -1405,7 +1541,11 @@ export function EmergencyDispositionPanel({
                   layoutMode
                 )}
               >
-                {saving ? t("emergencyDisposition.saveButtonSaving") : t("emergencyDisposition.saveDraftButton")}
+                {saving
+                  ? t("emergencyDisposition.saveButtonSaving")
+                  : outcomeUi === "ADMISSION"
+                    ? t("emergencyDisposition.saveAdmissionDraftButton")
+                    : t("emergencyDisposition.saveDraftButton")}
               </button>
               {(canEditMedicalDischarge || canPrescribe) && !formDisabled ? (
                 <button
@@ -1427,7 +1567,13 @@ export function EmergencyDispositionPanel({
                     layoutMode
                   )}
                 >
-                  {t("emergencyDisposition.signDecisionButton")}
+                  {outcomeUi === "ADMISSION"
+                    ? t("emergencyDisposition.signAdmissionButton")
+                    : outcomeUi === "TRANSFER"
+                      ? t("emergencyDisposition.signTransferButton")
+                      : outcomeUi === "AMA"
+                        ? t("emergencyDisposition.signAmaButton")
+                        : t("emergencyDisposition.signDecisionButton")}
                 </button>
               ) : null}
               <p style={{ margin: 0, fontSize: 11, color: "#64748b", flex: "1 1 220px" }}>

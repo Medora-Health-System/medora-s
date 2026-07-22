@@ -14280,11 +14280,37 @@ export default {
     saveQueued: "En attente de synchronisation.",
     saveOk: "Disposition enregistrée.",
     saveDraftButton: "Enregistrer le brouillon",
-    signDecisionButton: "Signer la décision de disposition",
+    saveAdmissionDraftButton: "Enregistrer le brouillon",
+    signDecisionButton: "Signer et terminer la disposition",
+    signAdmissionButton: "Signer et soumettre l'admission",
+    signTransferButton: "Signer la décision de transfert",
+    signAmaButton: "Signer la documentation LAMA",
     signDecisionOk:
       "Décision de disposition signée. Le départ physique et la clôture restent des étapes distinctes.",
+    signAdmissionOk:
+      "Admission signée et soumise. La rencontre urgences reste ouverte jusqu'au départ / transition gouvernée.",
     signDecisionUnauthorized: "Seuls les cliniciens autorisés peuvent signer la décision de disposition.",
     decisionDoesNotClose: "Signer la décision de disposition ne clôture pas la consultation.",
+    labelAdmissionDiagnoses: "Diagnostics d'admission (dossier)",
+    labelAdmissionDiagnosisClarification: "Précision clinique (texte libre optionnel)",
+    primaryAdmissionDiagnosis: "Diagnostic principal d'admission",
+    secondaryAdmissionDiagnoses: "Diagnostics secondaires",
+    admissionDiagnosesEmpty:
+      "Aucun diagnostic enregistré sur cette rencontre. Ajoutez-en via le parcours Diagnostics.",
+    openDiagnosesWorkflow: "Ouvrir les diagnostics",
+    errors: {
+      permissionDenied: "Vous n'avez pas l'autorisation de signer cette rencontre.",
+      requestId: "Réf. support",
+      PATIENT_NOT_FOUND_IN_FACILITY:
+        "Patient introuvable dans cet établissement. Vérifiez la sélection et le site de connexion.",
+      SOURCE_ED_ENCOUNTER_NOT_FOUND: "La rencontre urgences source est introuvable.",
+      ATTENDING_NOT_FOUND: "Le médecin traitant sélectionné n'est pas valide ici.",
+      BED_NOT_FOUND: "Le lit sélectionné est introuvable ou n'est plus disponible.",
+      UNIT_NOT_FOUND: "L'unité demandée est introuvable.",
+      ENCOUNTER_NOT_FOUND: "Rencontre introuvable.",
+      DIRECT_ADMISSION_ROUTE_NOT_DEPLOYED:
+        "L'API déployée ne prend pas en charge cette opération d'admission.",
+    },
     decisionSignedBadge: "Décision signée",
     decisionDraftBadge: "Brouillon",
     onePathwayVisible: "Un seul parcours affiché",

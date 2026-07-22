@@ -55,6 +55,7 @@ import {
   EncounterStatus,
   EncounterType,
   EncounterWorkflowState,
+  InternalPlacementStatus,
   Prisma,
   RoleCode,
 } from "@prisma/client";
@@ -69,10 +70,14 @@ import {
 } from "./encounter-sign-lock.util";
 import {
   admissionSummaryFieldsSchema,
+  flatAdmissionFieldsHaveContent,
+  inferPlacementEncounterTypeFromCareLevel,
+  mergeAdmissionSummaryFieldsPreservingNested,
   ER_HANDOFF_V1_KEY,
   erHandoffV1SatisfiesInpatientTransferConfirm,
   clinicalEncounterContextIsObservation,
   type EncounterAdmissionCancelDto,
+  type EncounterAdmissionDecisionDto,
   type EncounterCloseDto,
   type EncounterCreateDto,
   type EncounterOperationalUpdateDto,
@@ -126,6 +131,7 @@ import {
 } from "@medora/shared";
 import { throwRoomAlreadyOccupiedConflict } from "./ed-room-occupancy.util";
 import { FacilityBedBoardService } from "../facilities/facility-bed-board.service";
+import { InternalPlacementService } from "./internal-placement.service";
 import { handoffNursingEncounterPayload, handoffProviderEncounterPayload } from "../utils/clinical-event-handoff.util";
 import { observationReassessmentClinicalEventPayload } from "../utils/clinical-event-observation-reassessment.util";
 import { evaluateEncounterBillingReadinessFromData } from "../billing/billing-encounter-readiness.util";
@@ -241,7 +247,8 @@ export class EncountersService {
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
     private readonly trackboardService: TrackboardService,
-    private readonly bedBoardService: FacilityBedBoardService
+    private readonly bedBoardService: FacilityBedBoardService,
+    private readonly internalPlacement: InternalPlacementService
   ) {}
 
   async create(patientId: string, facilityId: string, data: EncounterCreateDto, userId?: string, ip?: string, userAgent?: string) {
@@ -1057,11 +1064,14 @@ export class EncountersService {
         if (!parsedAdmission.success) {
           throw new BadRequestException("Dossier d'admission invalide.");
         }
-        const asRecord = parsedAdmission.data as Record<string, unknown>;
-        if (!admissionSummaryHasContent(asRecord)) {
+        if (!flatAdmissionFieldsHaveContent(parsedAdmission.data)) {
           throw new BadRequestException("Renseignez au moins un champ du dossier d'admission.");
         }
-        updateData.admissionSummaryJson = parsedAdmission.data;
+        // Preserve nested keys (admissionCorrelation, diagnoses, clinical ops, …).
+        updateData.admissionSummaryJson = mergeAdmissionSummaryFieldsPreservingNested(
+          encounter.admissionSummaryJson,
+          parsedAdmission.data
+        ) as Prisma.InputJsonValue;
         if (!encounter.admittedAt) {
           updateData.admittedAt = new Date();
         }
@@ -3516,6 +3526,21 @@ export class EncountersService {
     return { ok: true as const };
   }
 
+  /** True if actor has active PROVIDER or ADMIN membership at facility (multi-role safe). */
+  async actorHasProviderOrAdminAtFacility(facilityId: string, userId: string): Promise<boolean> {
+    const ok = await this.prisma.userRole.findFirst({
+      where: {
+        facilityId,
+        userId,
+        isActive: true,
+        facility: { isActive: true },
+        role: { code: { in: [RoleCode.PROVIDER, RoleCode.ADMIN] } },
+      },
+      select: { id: true },
+    });
+    return Boolean(ok);
+  }
+
   private async assertProviderAtFacility(facilityId: string, userId: string | null | undefined) {
     if (userId === undefined || userId === null) return;
     const ok = await this.prisma.userRole.findFirst({
@@ -4234,6 +4259,272 @@ export class EncountersService {
       }
       throw err;
     }
+  }
+
+  /**
+   * Governed admission decision writer (draft or sign).
+   * - Merges flat packet into admissionSummaryJson without wiping nested correlation.
+   * - Resolves coded diagnoses from existing Diagnosis rows (no duplicate engine).
+   * - On SIGN + placement workflow ON: create/update placement draft → sign → submit to queue.
+   * - Never closes the ED encounter.
+   */
+  async recordAdmissionDecision(
+    facilityId: string,
+    encounterId: string,
+    dto: EncounterAdmissionDecisionDto,
+    userId: string | undefined,
+    ip?: string,
+    userAgent?: string
+  ) {
+    if (!userId) {
+      throw new ForbiddenException(
+        "Authentification requise pour enregistrer la décision d'admission."
+      );
+    }
+    await this.assertUserHasAnyClinicalRole(facilityId, userId, [
+      RoleCode.PROVIDER,
+      RoleCode.ADMIN,
+    ]);
+
+    if (!flatAdmissionFieldsHaveContent(dto.admissionSummary)) {
+      throw new BadRequestException("Renseignez au moins un champ du dossier d'admission.");
+    }
+
+    const encounter = await this.prisma.encounter.findFirst({
+      select: {
+        ...ENCOUNTER_CORE_SELECT,
+        patientId: true,
+      },
+      where: { id: encounterId, facilityId },
+    });
+    if (!encounter) {
+      throw new NotFoundException("Encounter not found");
+    }
+    assertEncounterNotSigned(encounter);
+    if (encounter.status !== EncounterStatus.OPEN) {
+      throw new BadRequestException(
+        "L'admission ne peut être modifiée que sur une consultation ouverte."
+      );
+    }
+
+    let admissionDiagnoses = dto.admissionDiagnoses ?? null;
+    const selectedDx = admissionDiagnoses;
+    if (
+      selectedDx &&
+      (selectedDx.primaryDiagnosisId || (selectedDx.secondaryDiagnosisIds?.length ?? 0) > 0)
+    ) {
+      const secondaryIds = selectedDx.secondaryDiagnosisIds ?? [];
+      const ids = [
+        selectedDx.primaryDiagnosisId,
+        ...secondaryIds,
+      ].filter((id): id is string => typeof id === "string" && id.trim().length > 0);
+      const rows = await this.prisma.diagnosis.findMany({
+        where: {
+          id: { in: ids },
+          facilityId,
+          patientId: encounter.patientId,
+          encounterId,
+          removedAt: null,
+        },
+        select: { id: true, code: true, description: true },
+      });
+      const byId = new Map(rows.map((r) => [r.id, r]));
+      for (const id of ids) {
+        if (!byId.has(id)) {
+          throw new BadRequestException(
+            "Un diagnostic d'admission sélectionné est introuvable sur cette rencontre."
+          );
+        }
+      }
+      const fmt = (id: string | null | undefined) => {
+        if (!id) return null;
+        const row = byId.get(id);
+        if (!row) return null;
+        const code = String(row.code ?? "").trim();
+        const desc = String(row.description ?? "").trim();
+        return [code, desc].filter(Boolean).join(" — ") || desc || code || id;
+      };
+      admissionDiagnoses = {
+        ...selectedDx,
+        secondaryDiagnosisIds: secondaryIds,
+        secondaryDisplays: secondaryIds.map((id) => fmt(id) || id),
+        primaryDisplay:
+          selectedDx.primaryDisplay?.trim() ||
+          fmt(selectedDx.primaryDiagnosisId) ||
+          null,
+      };
+    }
+
+    const mergedSummary = mergeAdmissionSummaryFieldsPreservingNested(
+      encounter.admissionSummaryJson,
+      dto.admissionSummary,
+      admissionDiagnoses
+    );
+    mergedSummary.admissionDecisionMode = dto.mode;
+    mergedSummary.admissionDecisionAt = new Date().toISOString();
+    mergedSummary.admissionDecisionByUserId = userId;
+
+    const u = await this.prisma.encounter.updateMany({
+      where: { id: encounterId, facilityId, version: encounter.version },
+      data: {
+        admissionSummaryJson: mergedSummary as Prisma.InputJsonValue,
+        admittedAt: encounter.admittedAt ?? new Date(),
+        version: { increment: 1 },
+      },
+    });
+    if (u.count === 0) throwEncounterConcurrentModification();
+
+    let placementResult: {
+      placementId?: string | null;
+      placementStatus?: string | null;
+      submittedToQueue?: boolean;
+      code?: string | null;
+    } = {};
+
+    const placementOn = this.internalPlacement.isWorkflowEnabled();
+    if (placementOn && encounter.type === EncounterType.EMERGENCY) {
+      const requestedType =
+        dto.requestedEncounterType ??
+        inferPlacementEncounterTypeFromCareLevel(dto.admissionSummary.careLevel);
+      const diagnosisSummary =
+        String(mergedSummary.admissionDiagnosis ?? "").trim() ||
+        String(dto.admissionSummary.admissionDiagnosis ?? "").trim() ||
+        "Admission depuis les urgences";
+      const reason =
+        String(dto.admissionSummary.admissionReason ?? "").trim() || diagnosisSummary;
+      const level =
+        String(dto.admissionSummary.careLevel ?? "").trim() ||
+        (requestedType === "OBSERVATION" ? "Observation" : "Medical/Surgical");
+      const service =
+        String(dto.admissionSummary.serviceUnit ?? "").trim() || "Hospital medicine";
+      const clinicalPriority = String(dto.clinicalPriority ?? "").trim() || "ROUTINE";
+      const draftInput = {
+        requestedEncounterType: requestedType,
+        requestedLevelOfCare: level,
+        requestedService: service,
+        requestedUnitCode: dto.requestedUnitCode?.trim() || null,
+        clinicalPriority,
+        admissionDiagnosisSummary: diagnosisSummary,
+        reasonForPlacement: reason,
+        acceptingProviderNameSnapshot:
+          dto.admissionSummary.responsiblePhysicianName?.trim() || null,
+      };
+
+      let active = await this.internalPlacement.getActiveForEncounter(facilityId, encounterId, {
+        featureFlagEnabled: true,
+      });
+      if (!active) {
+        const created = await this.internalPlacement.createDraft(
+          facilityId,
+          encounterId,
+          userId,
+          draftInput,
+          { featureFlagEnabled: true, ip, userAgent }
+        );
+        active = created;
+        if (created.code === "EXISTING_ADMISSION_INTENT") {
+          placementResult = {
+            placementId: created.id,
+            placementStatus: created.status,
+            submittedToQueue: false,
+            code: created.code,
+          };
+        }
+      } else if (
+        active.status === InternalPlacementStatus.DRAFT ||
+        active.status === "DRAFT"
+      ) {
+        active = await this.internalPlacement.updateDraft(
+          facilityId,
+          active.id,
+          userId,
+          { ...draftInput, expectedVersion: active.version },
+          { featureFlagEnabled: true, ip, userAgent }
+        );
+      }
+
+      if (dto.mode === "SIGN" && active?.id) {
+        const status = String(active.status ?? "");
+        if (status === InternalPlacementStatus.DRAFT || status === "DRAFT") {
+          active = await this.internalPlacement.signDraft(
+            facilityId,
+            active.id,
+            userId,
+            { expectedVersion: active.version, ip, userAgent }
+          );
+        }
+        const afterSign = String(active.status ?? "");
+        if (
+          afterSign === InternalPlacementStatus.SIGNED ||
+          afterSign === "SIGNED"
+        ) {
+          active = await this.internalPlacement.submitRequested(
+            facilityId,
+            active.id,
+            userId,
+            { expectedVersion: active.version, ip, userAgent }
+          );
+          placementResult = {
+            placementId: active.id,
+            placementStatus: active.status,
+            submittedToQueue: true,
+            code: null,
+          };
+        } else {
+          placementResult = {
+            placementId: active.id,
+            placementStatus: active.status,
+            submittedToQueue: false,
+            code: null,
+          };
+        }
+      } else if (active?.id) {
+        placementResult = {
+          placementId: active.id,
+          placementStatus: active.status,
+          submittedToQueue: false,
+          code: null,
+        };
+      }
+    }
+
+    const updated = await this.prisma.encounter.findFirst({
+      where: { id: encounterId, facilityId },
+      select: ENCOUNTER_DETAIL_SELECT,
+    });
+    if (!updated) {
+      throw new NotFoundException("Encounter not found");
+    }
+
+    await this.audit.log(AuditAction.ENCOUNTER_UPDATE, "ENCOUNTER", {
+      userId,
+      facilityId,
+      patientId: encounter.patientId,
+      encounterId,
+      entityId: encounterId,
+      critical: dto.mode === "SIGN",
+      ip,
+      userAgent,
+      metadata: {
+        event:
+          dto.mode === "SIGN"
+            ? "ED_ADMISSION_DECISION_SIGNED"
+            : "ED_ADMISSION_DECISION_DRAFT_SAVED",
+        mode: dto.mode,
+        placementId: placementResult.placementId ?? null,
+        placementStatus: placementResult.placementStatus ?? null,
+        submittedToQueue: placementResult.submittedToQueue === true,
+        edEncounterClosed: false,
+        edEncounterTypePreserved: updated.type,
+      },
+    });
+
+    return {
+      encounter: updated,
+      placement: placementResult,
+      mode: dto.mode,
+      edEncounterClosed: false as const,
+    };
   }
 
   /**

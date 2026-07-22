@@ -13,6 +13,7 @@ import { AuditAction, EncounterClinicalEventType } from "@prisma/client";
 import { OBSERVATION_REASSESSMENT_EVENT_SOURCE } from "@medora/shared";
 import { EncountersService } from "./encounters.service";
 import { createMockBedBoardService } from "./encounters.service.test-bed-board.mock";
+import { createMockInternalPlacementService } from "./encounters.service.test-internal-placement.mock";
 
 const facilityId = "fac-1";
 const encounterId = "enc-1";
@@ -77,7 +78,8 @@ describe("EncountersService.appendObservationReassessment (13G-B)", () => {
       prisma as never,
       audit as never,
       trackboard as never,
-      createMockBedBoardService() as never
+      createMockBedBoardService() as never,
+      createMockInternalPlacementService() as never
     );
 
     const res = await svc.appendObservationReassessment(facilityId, encounterId, baseDto, userId);
@@ -112,7 +114,8 @@ describe("EncountersService.appendObservationReassessment (13G-B)", () => {
       prisma as never,
       audit as never,
       trackboard as never,
-      createMockBedBoardService() as never
+      createMockBedBoardService() as never,
+      createMockInternalPlacementService() as never
     );
 
     await svc.appendObservationReassessment(
@@ -136,7 +139,8 @@ describe("EncountersService.appendObservationReassessment (13G-B)", () => {
       prisma as never,
       audit as never,
       trackboard as never,
-      createMockBedBoardService() as never
+      createMockBedBoardService() as never,
+      createMockInternalPlacementService() as never
     );
 
     await expect(svc.appendObservationReassessment(facilityId, encounterId, baseDto, userId)).rejects.toBeInstanceOf(
@@ -154,7 +158,8 @@ describe("EncountersService.appendObservationReassessment (13G-B)", () => {
       prisma as never,
       audit as never,
       trackboard as never,
-      createMockBedBoardService() as never
+      createMockBedBoardService() as never,
+      createMockInternalPlacementService() as never
     );
 
     await expect(svc.appendObservationReassessment(facilityId, encounterId, baseDto, userId)).rejects.toThrow(
@@ -176,7 +181,8 @@ describe("EncountersService.appendObservationReassessment (13G-B)", () => {
       prisma as never,
       audit as never,
       trackboard as never,
-      createMockBedBoardService() as never
+      createMockBedBoardService() as never,
+      createMockInternalPlacementService() as never
     );
 
     await expect(svc.appendObservationReassessment(facilityId, encounterId, baseDto, userId)).rejects.toThrow(
@@ -198,7 +204,8 @@ describe("EncountersService.appendObservationReassessment (13G-B)", () => {
       prisma as never,
       audit as never,
       trackboard as never,
-      createMockBedBoardService() as never
+      createMockBedBoardService() as never,
+      createMockInternalPlacementService() as never
     );
 
     await svc.appendObservationReassessment(facilityId, encounterId, baseDto, userId);
@@ -215,7 +222,8 @@ describe("EncountersService.appendObservationReassessment (13G-B)", () => {
       prisma as never,
       audit as never,
       trackboard as never,
-      createMockBedBoardService() as never
+      createMockBedBoardService() as never,
+      createMockInternalPlacementService() as never
     );
 
     await expect(
@@ -233,7 +241,8 @@ describe("EncountersService.appendObservationReassessment (13G-B)", () => {
       prisma as never,
       audit as never,
       trackboard as never,
-      createMockBedBoardService() as never
+      createMockBedBoardService() as never,
+      createMockInternalPlacementService() as never
     );
 
     await expect(svc.appendObservationReassessment(facilityId, encounterId, baseDto, userId)).rejects.toBeInstanceOf(
@@ -251,7 +260,8 @@ describe("EncountersService.appendObservationReassessment (13G-B)", () => {
       prisma as never,
       audit as never,
       trackboard as never,
-      createMockBedBoardService() as never
+      createMockBedBoardService() as never,
+      createMockInternalPlacementService() as never
     );
 
     await expect(svc.appendObservationReassessment(facilityId, encounterId, baseDto, undefined)).rejects.toThrow(
@@ -266,7 +276,8 @@ describe("EncountersService.appendObservationReassessment (13G-B)", () => {
       prisma as never,
       audit as never,
       trackboard as never,
-      createMockBedBoardService() as never
+      createMockBedBoardService() as never,
+      createMockInternalPlacementService() as never
     );
 
     await expect(svc.appendObservationReassessment(facilityId, encounterId, baseDto, userId)).rejects.toBeInstanceOf(
@@ -281,7 +292,8 @@ describe("EncountersService.appendObservationReassessment (13G-B)", () => {
       prisma as never,
       audit as never,
       trackboard as never,
-      createMockBedBoardService() as never
+      createMockBedBoardService() as never,
+      createMockInternalPlacementService() as never
     );
 
     await svc.appendObservationReassessment(facilityId, encounterId, baseDto, userId);

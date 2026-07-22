@@ -1,6 +1,7 @@
 import { AuditAction, EncounterType } from "@prisma/client";
 import { EncountersService } from "./encounters.service";
 import { createMockBedBoardService } from "./encounters.service.test-bed-board.mock";
+import { createMockInternalPlacementService } from "./encounters.service.test-internal-placement.mock";
 
 function buildUpdateRoomMocks(encounterRow: Record<string, unknown>, openRows: unknown[] = []) {
   const encounterUpdateMany = jest.fn().mockResolvedValue({ count: 1 });
@@ -27,7 +28,8 @@ function buildUpdateRoomMocks(encounterRow: Record<string, unknown>, openRows: u
     prisma as never,
     { log: auditLog } as never,
     {} as never,
-    createMockBedBoardService() as never
+    createMockBedBoardService() as never,
+    createMockInternalPlacementService() as never
   );
   return { service, auditLog, encounterUpdateMany, updatedRow };
 }
@@ -133,7 +135,8 @@ describe("EncountersService.updateRoom (K.10B.10)", () => {
     prisma as never,
     { log: auditLog } as never,
     {} as never,
-    createMockBedBoardService() as never
+    createMockBedBoardService() as never,
+    createMockInternalPlacementService() as never
   );
 
     const res = (await service.updateRoom(facilityId, "enc-1", {
@@ -166,7 +169,8 @@ describe("EncountersService.updateRoom (K.10B.10)", () => {
     prisma as never,
     { log: auditLog } as never,
     {} as never,
-    createMockBedBoardService() as never
+    createMockBedBoardService() as never,
+    createMockInternalPlacementService() as never
   );
 
     const res = (await service.updateRoom(facilityId, "enc-1", {

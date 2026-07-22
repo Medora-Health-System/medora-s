@@ -16,6 +16,7 @@ import { BadRequestException, NotFoundException } from "@nestjs/common";
 import { AuditAction } from "@prisma/client";
 import { EncountersService } from "./encounters.service";
 import { createMockBedBoardService } from "./encounters.service.test-bed-board.mock";
+import { createMockInternalPlacementService } from "./encounters.service.test-internal-placement.mock";
 
 type AnyMock = jest.Mock;
 
@@ -66,7 +67,8 @@ function makeService(prisma: unknown, audit: unknown) {
     prisma as never,
     audit as never,
     trackboard as never,
-    createMockBedBoardService() as never
+    createMockBedBoardService() as never,
+    createMockInternalPlacementService() as never
   );
 }
 

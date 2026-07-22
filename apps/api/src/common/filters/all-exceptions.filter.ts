@@ -137,10 +137,16 @@ export class AllExceptionsFilter implements ExceptionFilter {
       }
     }
 
+    const requestId =
+      typeof request?.requestId === "string" && request.requestId.trim()
+        ? request.requestId.trim()
+        : undefined;
+
     response.status(status).json({
       statusCode: status,
       timestamp: new Date().toISOString(),
       path: request.url,
+      ...(requestId ? { requestId } : {}),
       ...(typeof message === "object" ? message : { message }),
     });
   }

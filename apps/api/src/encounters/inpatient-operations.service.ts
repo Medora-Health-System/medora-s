@@ -80,6 +80,7 @@ import { AuditService } from "../common/services/audit.service";
 import { ENCOUNTER_DETAIL_SELECT } from "./encounter-query-contracts";
 import { AdmissionCorrelationService } from "./admission-correlation.service";
 import { FacilityBedBoardService } from "../facilities/facility-bed-board.service";
+import { directAdmissionNotFound } from "./direct-admission-api-errors.util";
 
 /** Observation is a clinical lane (billing / summary), not EncounterType.OBSERVATION. */
 function isExplicitObservationChart(enc: {
@@ -270,7 +271,9 @@ export class InpatientOperationsService {
       where: { id: body.patientId, facilityId },
       select: { id: true },
     });
-    if (!patient) throw new NotFoundException("Patient not found");
+    if (!patient) {
+      throw directAdmissionNotFound("PATIENT_NOT_FOUND_IN_FACILITY");
+    }
 
     const idempotencyKey = String(body.idempotencyKey ?? "").trim() || null;
     const placementRequestId =
@@ -372,7 +375,7 @@ export class InpatientOperationsService {
           },
           select: { id: true },
         });
-        if (!ed) throw new BadRequestException("sourceEdEncounterId is not a valid ED encounter");
+        if (!ed) throw directAdmissionNotFound("SOURCE_ED_ENCOUNTER_NOT_FOUND");
         sourceEncounterId = ed.id;
       } else {
         sourceEdEncounterId = null;
@@ -548,7 +551,7 @@ export class InpatientOperationsService {
         select: { id: true },
       });
       if (!membership) {
-        throw new BadRequestException("Attending provider is not valid at this facility");
+        throw directAdmissionNotFound("ATTENDING_NOT_FOUND");
       }
     }
 

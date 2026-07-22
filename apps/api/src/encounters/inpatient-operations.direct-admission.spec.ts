@@ -146,6 +146,62 @@ describe("createDirectAdmission expand-and-contract (D3B)", () => {
     expect(prisma.hospitalEpisode.create).not.toHaveBeenCalled();
   });
 
+  it("returns coded 404 PATIENT_NOT_FOUND_IN_FACILITY when patient is outside facility", async () => {
+    const prisma = {
+      patient: { findFirst: jest.fn().mockResolvedValue(null) },
+      encounter: {
+        findMany: jest.fn(),
+        findFirst: jest.fn(),
+        create: jest.fn(),
+        update: jest.fn(),
+      },
+      hospitalEpisode: { findFirst: jest.fn(), create: jest.fn() },
+      $transaction: jest.fn(),
+    };
+    const audit = { log: jest.fn() };
+    const admissionCorrelation = new AdmissionCorrelationService(prisma as never, audit as never);
+    const svc = new InpatientOperationsService(
+      prisma as never,
+      audit as never,
+      admissionCorrelation,
+      {
+        getEffectiveBedRow: jest.fn(),
+        assertBedAssignableOrThrow: jest.fn(),
+      } as never
+    );
+
+    try {
+      await svc.createDirectAdmission("fac-1", "user-rn-1", {
+        patientId: "pat-missing",
+        admissionSource: "DIRECT",
+        admissionDiagnosis: "Pneumonia",
+        reasonForAdmission: "IV antibiotics",
+        admittingService: "INTERNAL_MEDICINE",
+        requestedUnit: "MS",
+        requestedLevelOfCare: "MEDICAL_SURGICAL",
+        assignedBedKey: "MS:2",
+        admittedAt: new Date().toISOString(),
+        idempotencyKey: "idem-missing-patient",
+      });
+      throw new Error("expected NotFoundException");
+    } catch (e) {
+      const err = e as { getStatus?: () => number; getResponse?: () => unknown };
+      expect(err.getStatus?.()).toBe(404);
+      const body = err.getResponse?.() as { errorCode?: string; code?: string };
+      expect(body.errorCode ?? body.code).toBe("PATIENT_NOT_FOUND_IN_FACILITY");
+    }
+    expect(prisma.$transaction).not.toHaveBeenCalled();
+  });
+
+  it("registers POST direct-admission on InpatientOperationsController", async () => {
+    const { readFileSync } = await import("node:fs");
+    const { join } = await import("node:path");
+    const src = readFileSync(join(__dirname, "inpatient-operations.controller.ts"), "utf8");
+    expect(src).toContain('@Controller("inpatient-operations")');
+    expect(src).toContain('@Post("direct-admission")');
+    expect(src).toContain("async directAdmission(");
+  });
+
   it("rejects non-canonical assignedBedKey MS-2 with 400 (not 500)", async () => {
     const prisma = {
       patient: { findFirst: jest.fn().mockResolvedValue({ id: "pat-1" }) },

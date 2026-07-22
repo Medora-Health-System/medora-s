@@ -94,6 +94,18 @@ export const hospitalAdmissionD4a0Fr = {
     noLongerAvailable:
       "Ce lit n’est plus disponible. Conservez le patient sélectionné et choisissez un autre lit disponible.",
   },
+  errors: {
+    requestId: "Réf. support",
+    PATIENT_NOT_FOUND_IN_FACILITY:
+      "Patient introuvable dans cet établissement. Vérifiez la sélection et le site de connexion.",
+    SOURCE_ED_ENCOUNTER_NOT_FOUND: "La rencontre urgences source est introuvable.",
+    ATTENDING_NOT_FOUND: "Le médecin traitant sélectionné n’est pas valide ici.",
+    BED_NOT_FOUND: "Le lit sélectionné est introuvable ou n’est plus disponible.",
+    UNIT_NOT_FOUND: "L’unité demandée est introuvable.",
+    ENCOUNTER_NOT_FOUND: "Rencontre introuvable.",
+    DIRECT_ADMISSION_ROUTE_NOT_DEPLOYED:
+      "L’API déployée ne prend pas en charge cette opération d’admission.",
+  },
   receivingNurse: {
     label: "Infirmière d’accueil",
     authenticated: "Clinicien connecté (dérivé serveur)",

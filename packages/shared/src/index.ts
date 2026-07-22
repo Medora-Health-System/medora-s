@@ -121,6 +121,8 @@ export * from "./encounters/inpatientClinicalOpsV1.js";
 export * from "./encounters/hospitalAdmissionIntakeVocabV1.js";
 export * from "./encounters/connectedInpatientAdmissionIntakeD4a0.js";
 export * from "./encounters/connectedInpatientAdmissionIntakeD4a0Benchmark.js";
+export * from "./encounters/directAdmissionErrorCodes.js";
+export * from "./encounters/admissionSummaryMerge.js";
 export * from "./encounters/medSurgNursingAdmissionD4a1.js";
 export * from "./encounters/medSurgNursingAdmissionCompletionD4a1.js";
 export * from "./encounters/medSurgNursingAdmissionD4a1Benchmark.js";

@@ -93,6 +93,18 @@ export const hospitalAdmissionD4a0En = {
     noLongerAvailable:
       "This bed is no longer available. Keep the patient selected and choose another available bed.",
   },
+  errors: {
+    requestId: "Support ref",
+    PATIENT_NOT_FOUND_IN_FACILITY:
+      "Patient not found at this facility. Check selection and login site.",
+    SOURCE_ED_ENCOUNTER_NOT_FOUND: "The source ED encounter was not found.",
+    ATTENDING_NOT_FOUND: "The selected attending provider is not valid here.",
+    BED_NOT_FOUND: "The selected bed was not found or is no longer available.",
+    UNIT_NOT_FOUND: "The requested unit was not found.",
+    ENCOUNTER_NOT_FOUND: "Encounter not found.",
+    DIRECT_ADMISSION_ROUTE_NOT_DEPLOYED:
+      "The deployed API does not support this admission operation.",
+  },
   receivingNurse: {
     label: "Receiving nurse",
     authenticated: "Signed-in clinician (server-derived)",
