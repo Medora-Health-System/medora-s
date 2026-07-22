@@ -19037,6 +19037,56 @@ export default {
       loadError: "Impossible de charger le parcours d’admission.",
     },
   },
+  hospitalCareD3e8a: {
+    journey: {
+      requestedUnit: "Unité demandée",
+      destinationUnit: "Unité de destination",
+      bed: "Lit",
+      receivingNurse: "Infirmière d’accueil",
+      receivingNurseAssigned: "Assignée",
+      cancellation: "Annulation",
+      cancelled: "Admission annulée",
+      steps: {
+        admissionDecision: "Décision d’admission",
+        placementRequested: "Placement demandé",
+        placementAccepted: "Placement accepté",
+        bedAssigned: "Lit assigné",
+        receivingStarted: "Accueil commencé",
+        encounterCreated: "Rencontre d’hospitalisation créée",
+        arrivedOnUnit: "Arrivé dans l’unité",
+        activeAdmission: "Admission active",
+      },
+      actions: {
+        resume: "Reprendre l’admission",
+        startNew: "Démarrer une nouvelle admission",
+        openChart: "Ouvrir le dossier d’hospitalisation",
+        cancel: "Annuler l’admission",
+        cancelDone: "Admission annulée.",
+        cancelError: "Impossible d’annuler l’admission (version ou autorisation).",
+      },
+    },
+    reconciliation: {
+      title: "Réconciliation des liens d’admission",
+      subtitle:
+        "Console administrateur — les cas ambigus restent en revue ; aucun lien automatique.",
+      disabled: "La réconciliation des corrélations d’admission est désactivée.",
+      loadError: "Impossible de charger la file de réconciliation.",
+      empty: "Aucun dossier à réviser pour le moment.",
+      decision: "Décision",
+      inspect: "Inspecter",
+      selected: "Dossier sélectionné",
+      reason: "Motif de correction",
+      markNotRelated: "Marquer comme non lié",
+      rejectBlocked:
+        "Correction refusée sans preuve explicite — le dossier reste en revue obligatoire.",
+      noAutoLink:
+        "Preuves insuffisantes seules : même patient, même épisode, proximité horaire, même unité/lit.",
+    },
+    intake: {
+      resumeAdmission: "Reprendre l’admission",
+      startNewAdmission: "Démarrer une nouvelle admission",
+    },
+  },
   hospitalCareD3e6d: {
     bedBoard: {
       title: "Tableau des lits de l’unité",

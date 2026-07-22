@@ -34,7 +34,11 @@ export function HospitalAdmissionIntakeView() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const presetUnit = searchParams?.get("unit") ?? "";
+  const resumeMode = searchParams?.get("resume") === "1";
+  const resumeSourceEncounterId = searchParams?.get("sourceEncounterId") ?? "";
   const formId = useId();
+  const [resumeCorrelationId, setResumeCorrelationId] = useState<string | null>(null);
+  const [resumePlacementId, setResumePlacementId] = useState<string | null>(null);
 
   const [patientQuery, setPatientQuery] = useState("");
   const [patientHits, setPatientHits] = useState<PatientHit[]>([]);
@@ -75,6 +79,35 @@ export function HospitalAdmissionIntakeView() {
       }
     })();
   }, []);
+
+  useEffect(() => {
+    if (!resumeMode || !resumeSourceEncounterId) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const data = await apiFetch(
+          `/admission-correlation/encounters/${encodeURIComponent(resumeSourceEncounterId)}/journey`
+        );
+        if (cancelled) return;
+        const journey = (data as {
+          journey?: {
+            admissionCorrelationId?: string | null;
+            placementRequestId?: string | null;
+          } | null;
+        })?.journey;
+        setResumeCorrelationId(journey?.admissionCorrelationId?.trim() || null);
+        setResumePlacementId(journey?.placementRequestId?.trim() || null);
+      } catch {
+        if (!cancelled) {
+          setResumeCorrelationId(null);
+          setResumePlacementId(null);
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [resumeMode, resumeSourceEncounterId]);
 
   useEffect(() => {
     if (patientQuery.trim().length < 2) {
@@ -154,9 +187,11 @@ export function HospitalAdmissionIntakeView() {
         requestedUnit: unit.trim() || null,
         requestedLevelOfCare: level.trim() || null,
         assignedBedKey: bedKey.trim() || null,
-        sourceEdEncounterId: openEd?.id ?? null,
+        sourceEdEncounterId: openEd?.id ?? resumeSourceEncounterId ?? null,
         admittedAt: admittedIso,
         idempotencyKey,
+        admissionCorrelationId: resumeCorrelationId,
+        internalPlacementRequestId: resumePlacementId,
       });
       if (result.createdEdEncounter || result.createdObservationEncounter) {
         setFormError(t("hospitalCareD3e7.admissions.fakePathwayError"));
@@ -189,6 +224,18 @@ export function HospitalAdmissionIntakeView() {
       subtitle={t("hospitalCareD3e6d.admission.subtitle")}
     >
       <div style={{ ...panel, maxWidth: 720 }} data-testid="hospital-admission-intake">
+        {resumeMode ? (
+          <p
+            style={{ margin: "0 0 12px", fontSize: 13, fontWeight: 700, color: "#0f766e" }}
+            data-testid="admission-resume-banner"
+          >
+            {t("hospitalCareD3e8a.intake.resumeAdmission")}
+          </p>
+        ) : (
+          <p style={{ margin: "0 0 12px", fontSize: 12, color: "#64748b" }}>
+            {t("hospitalCareD3e8a.intake.startNewAdmission")}
+          </p>
+        )}
         <label style={labelStyle} htmlFor={`${formId}-search`}>
           {t("hospitalCareD3e7.admissions.patientSearch")}
           <input

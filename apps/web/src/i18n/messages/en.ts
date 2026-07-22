@@ -18960,6 +18960,56 @@ export default {
       loadError: "Unable to load the admission journey.",
     },
   },
+  hospitalCareD3e8a: {
+    journey: {
+      requestedUnit: "Requested unit",
+      destinationUnit: "Destination unit",
+      bed: "Bed",
+      receivingNurse: "Receiving nurse",
+      receivingNurseAssigned: "Assigned",
+      cancellation: "Cancellation",
+      cancelled: "Admission cancelled",
+      steps: {
+        admissionDecision: "Admission decision",
+        placementRequested: "Placement requested",
+        placementAccepted: "Placement accepted",
+        bedAssigned: "Bed assigned",
+        receivingStarted: "Receiving started",
+        encounterCreated: "Inpatient encounter created",
+        arrivedOnUnit: "Arrived on unit",
+        activeAdmission: "Active admission",
+      },
+      actions: {
+        resume: "Resume admission",
+        startNew: "Start new admission",
+        openChart: "Open inpatient chart",
+        cancel: "Cancel admission",
+        cancelDone: "Admission cancelled.",
+        cancelError: "Unable to cancel admission (version or authorization).",
+      },
+    },
+    reconciliation: {
+      title: "Admission linkage reconciliation",
+      subtitle:
+        "Admin console — ambiguous cases stay in review; no automatic linkage.",
+      disabled: "Admission correlation reconciliation is disabled.",
+      loadError: "Unable to load the reconciliation queue.",
+      empty: "No records require review right now.",
+      decision: "Decision",
+      inspect: "Inspect",
+      selected: "Selected record",
+      reason: "Correction reason",
+      markNotRelated: "Mark not related",
+      rejectBlocked:
+        "Correction refused without explicit evidence — record remains review-required.",
+      noAutoLink:
+        "Insufficient alone: same patient, same episode, time proximity, same unit/bed.",
+    },
+    intake: {
+      resumeAdmission: "Resume admission",
+      startNewAdmission: "Start new admission",
+    },
+  },
   hospitalCareD3e6d: {
     bedBoard: {
       title: "Unit bed board",

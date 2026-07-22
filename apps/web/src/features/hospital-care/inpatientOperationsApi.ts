@@ -28,6 +28,10 @@ export type DirectAdmissionPayload = {
   referringProviderOrFacility?: string | null;
   assignedBedKey?: string | null;
   sourceEdEncounterId?: string | null;
+  sourceObservationEncounterId?: string | null;
+  admissionCorrelationId?: string | null;
+  internalPlacementRequestId?: string | null;
+  medicationTransitionAction?: string | null;
   idempotencyKey?: string | null;
   admittedAt?: string | null;
 };
