@@ -2,6 +2,9 @@
  * D3E.6D — Context-aware open-encounter creation policy.
  * Replaces global "one open encounter per patient" for governed hospital admission.
  * ED + Inpatient may coexist. Duplicate active Inpatient for same admission is denied.
+ *
+ * Receiving-encounter reuse is driven by hospitalAdmissionCorrelationV1 — never by
+ * "any open Inpatient for the patient" alone.
  */
 
 export const UNIT_BED_BOARDS_ADMISSION_INTAKE_CERTIFICATION_ID =
@@ -31,6 +34,10 @@ export function normalizeEncounterTypeToken(raw: unknown): string {
 
 /**
  * Evaluate whether a new encounter may be created given existing OPEN rows.
+ *
+ * For admission pathways, pass `correlatedReceivingEncounterId` only when the
+ * admission correlation contract matched a receiving encounter. Blind reuse of
+ * the first open Inpatient is intentionally unsupported.
  */
 export function evaluateConcurrentEncounterCreate(input: {
   pathway: ConcurrentEncounterPathway;
@@ -39,12 +46,23 @@ export function evaluateConcurrentEncounterCreate(input: {
   /** When set and matches an existing open IP, treat as safe retry. */
   idempotencyKey?: string | null;
   existingIdempotentEncounterId?: string | null;
+  /** Correlated receiving IP from hospitalAdmissionCorrelationV1 — required for reuse. */
+  correlatedReceivingEncounterId?: string | null;
 }): ConcurrentEncounterDecision {
   if (input.existingIdempotentEncounterId?.trim()) {
     return {
       allowed: true,
       code: "IDEMPOTENT_REUSE",
       reuseEncounterId: input.existingIdempotentEncounterId.trim(),
+    };
+  }
+
+  const correlated = String(input.correlatedReceivingEncounterId ?? "").trim();
+  if (correlated) {
+    return {
+      allowed: true,
+      code: "IDEMPOTENT_REUSE",
+      reuseEncounterId: correlated,
     };
   }
 
@@ -77,13 +95,13 @@ export function evaluateConcurrentEncounterCreate(input: {
       input.pathway === "NURSE_ADMISSION_INTAKE") &&
     requested === "INPATIENT"
   ) {
-    // Duplicate prevention: reuse the existing open Inpatient receiving encounter
-    // (placement arrival + nurse intake / double-submit must not create a second IP).
     if (openIp.length > 0) {
+      // Uncorrelated open IP must not be silently reused (prevents wrong-chart attachment).
       return {
-        allowed: true,
-        code: "IDEMPOTENT_REUSE",
-        reuseEncounterId: openIp[0]!.id,
+        allowed: false,
+        code: "DUPLICATE_INPATIENT",
+        detail:
+          "Patient already has an open Inpatient encounter that is not correlated to this admission",
       };
     }
     // Open ED / Observation / outpatient — allow concurrent ED + Inpatient
