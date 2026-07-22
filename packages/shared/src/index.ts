@@ -120,6 +120,7 @@ export * from "./encounters/unitBedBoardsAdmissionIntakeD3e6dBenchmark.js";
 export * from "./encounters/connectedInpatientAdmissionIntakeD4a0.js";
 export * from "./encounters/hospitalAdmissionIntakeVocabV1.js";
 export * from "./encounters/medSurgNursingAdmissionD4a1.js";
+export * from "./encounters/medSurgNursingAdmissionCompletionD4a1.js";
 export * from "./patients/patientSearchAndSelectV1.js";
 export * from "./encounters/inpatientClinicalOpsV1.js";
 export * from "./encounters/inpatientOperationsFeatureFlags.js";
