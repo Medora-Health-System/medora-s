@@ -1,5 +1,10 @@
 import { InternalPlacementService } from "./internal-placement.service";
+import { AdmissionCorrelationService } from "./admission-correlation.service";
 import { InternalPlacementActorRole, InternalPlacementStatus } from "@medora/shared";
+
+function correlationSvc(prisma: unknown) {
+  return new AdmissionCorrelationService(prisma as never);
+}
 
 function baseRow(overrides: Record<string, unknown> = {}) {
   return {
@@ -61,9 +66,12 @@ describe("InternalPlacementService D3C", () => {
         create: jest.fn(),
       },
     };
-    const svc = new InternalPlacementService(prisma as never, { log: jest.fn() } as never, {
-      createEpisodeForEncounter: jest.fn(),
-    } as never);
+    const svc = new InternalPlacementService(
+      prisma as never,
+      { log: jest.fn() } as never,
+      { createEpisodeForEncounter: jest.fn() } as never,
+      correlationSvc(prisma) as never
+    );
     await expect(
       svc.createDraft("fac-1", "enc-ed", "user-1", {
         requestedEncounterType: "OBSERVATION",
@@ -91,9 +99,12 @@ describe("InternalPlacementService D3C", () => {
       },
     };
     const audit = { log: jest.fn() };
-    const svc = new InternalPlacementService(prisma as never, audit as never, {
-      createEpisodeForEncounter: jest.fn(),
-    } as never);
+    const svc = new InternalPlacementService(
+      prisma as never,
+      audit as never,
+      { createEpisodeForEncounter: jest.fn() } as never,
+      correlationSvc(prisma) as never
+    );
 
     const result = await svc.createDraft(
       "fac-1",
@@ -124,9 +135,12 @@ describe("InternalPlacementService D3C", () => {
         findFirst: jest.fn().mockResolvedValue(null),
       },
     };
-    const svc = new InternalPlacementService(prisma as never, { log: jest.fn() } as never, {
-      createEpisodeForEncounter: jest.fn(),
-    } as never);
+    const svc = new InternalPlacementService(
+      prisma as never,
+      { log: jest.fn() } as never,
+      { createEpisodeForEncounter: jest.fn() } as never,
+      correlationSvc(prisma) as never
+    );
     const result = await svc.getActiveForEncounter("fac-other", "enc-ed", {
       featureFlagEnabled: true,
     });
@@ -156,9 +170,12 @@ describe("InternalPlacementService D3C", () => {
         return fn(tx);
       }),
     };
-    const svc = new InternalPlacementService(prisma as never, { log: jest.fn() } as never, {
-      createEpisodeForEncounter: jest.fn(),
-    } as never);
+    const svc = new InternalPlacementService(
+      prisma as never,
+      { log: jest.fn() } as never,
+      { createEpisodeForEncounter: jest.fn() } as never,
+      correlationSvc(prisma) as never
+    );
 
     await expect(
       svc.transition(
@@ -190,9 +207,12 @@ describe("InternalPlacementService D3C", () => {
         findMany: jest.fn(),
       },
     };
-    const svc = new InternalPlacementService(prisma as never, { log: jest.fn() } as never, {
-      createEpisodeForEncounter: jest.fn(),
-    } as never);
+    const svc = new InternalPlacementService(
+      prisma as never,
+      { log: jest.fn() } as never,
+      { createEpisodeForEncounter: jest.fn() } as never,
+      correlationSvc(prisma) as never
+    );
     const result = await svc.listFacilityQueue("fac-1", { strict: false });
     expect(result).toEqual({ availability: "FEATURE_DISABLED", items: [] });
     expect(prisma.internalPlacementRequest.findMany).not.toHaveBeenCalled();
@@ -205,9 +225,12 @@ describe("InternalPlacementService D3C", () => {
         findMany: jest.fn().mockRejectedValue(Object.assign(new Error("P2022"), { code: "P2022" })),
       },
     };
-    const svc = new InternalPlacementService(prisma as never, { log: jest.fn() } as never, {
-      createEpisodeForEncounter: jest.fn(),
-    } as never);
+    const svc = new InternalPlacementService(
+      prisma as never,
+      { log: jest.fn() } as never,
+      { createEpisodeForEncounter: jest.fn() } as never,
+      correlationSvc(prisma) as never
+    );
     await expect(svc.listFacilityQueue("fac-1")).rejects.toThrow(/P2022/);
     expect(prisma.internalPlacementRequest.findMany).toHaveBeenCalledWith(
       expect.objectContaining({

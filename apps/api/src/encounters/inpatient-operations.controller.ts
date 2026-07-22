@@ -81,6 +81,12 @@ export class InpatientOperationsController {
         sourceEdEncounterId:
           typeof body.sourceEdEncounterId === "string" ? body.sourceEdEncounterId : null,
         idempotencyKey: typeof body.idempotencyKey === "string" ? body.idempotencyKey : null,
+        admissionCorrelationId:
+          typeof body.admissionCorrelationId === "string" ? body.admissionCorrelationId : null,
+        internalPlacementRequestId:
+          typeof body.internalPlacementRequestId === "string"
+            ? body.internalPlacementRequestId
+            : null,
         admittedAt: typeof body.admittedAt === "string" ? body.admittedAt : null,
       },
       { ip: req.ip, userAgent: req.headers?.["user-agent"] }

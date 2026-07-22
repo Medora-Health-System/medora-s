@@ -25,6 +25,9 @@ const ALLOWLIST_FILES = new Set([
   "encounters/internal-placement.service.spec.ts",
   // D3E.7 — direct admission may create/link HospitalEpisode when foundation flag ON
   "encounters/inpatient-operations.service.ts",
+  // D3E.8 — admission correlation resolver may read hospitalEpisodeId for continuity checks
+  "encounters/admission-correlation.service.ts",
+  "encounters/admission-correlation.controller.ts",
   "trackboard/trackboard-encounter-select.ts",
   "trackboard/trackboard.service.ts",
   "prisma/schema-compatibility.ts",

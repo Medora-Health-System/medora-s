@@ -31,6 +31,8 @@ import { ClinicalDocumentationService } from "./clinical-documentation.service";
 import { ChartCertificationB1Service } from "./chart-certification-b1.service";
 import { HospitalEpisodeService } from "./hospital-episode.service";
 import { InternalPlacementService } from "./internal-placement.service";
+import { AdmissionCorrelationService } from "./admission-correlation.service";
+import { AdmissionCorrelationController } from "./admission-correlation.controller";
 
 @Module({
   imports: [PrismaModule, DiagnosesModule, OrdersModule, TrackboardModule, FacilitiesModule],
@@ -41,10 +43,12 @@ import { InternalPlacementService } from "./internal-placement.service";
     InpatientWorkspaceController,
     HospitalCareController,
     InpatientOperationsController,
+    AdmissionCorrelationController,
   ],
   providers: [
     EncountersService,
     InpatientOperationsService,
+    AdmissionCorrelationService,
     HospitalCensusService,
     HospitalUnitRegistryService,
     ChartCertificationB1Service,
@@ -72,6 +76,7 @@ import { InternalPlacementService } from "./internal-placement.service";
     FacilityBillingWorkflowService,
     HospitalEpisodeService,
     InternalPlacementService,
+    AdmissionCorrelationService,
   ],
 })
 export class EncountersModule {}
