@@ -19021,6 +19021,41 @@ export default {
       bedSummary: "Résumé compact des lits",
     },
   },
+  hospitalCareD3e6d: {
+    bedBoard: {
+      title: "Tableau des lits de l’unité",
+      subtitle: "Lits visuels pour {unit} — même inventaire que le tableau des unités.",
+      noPool:
+        "Cette unité n’a pas encore de parc de lits dédié. Utilisez le tableau des unités complet pour la gestion des lits de l’établissement.",
+      loadError: "Impossible de charger le tableau des lits de l’unité.",
+      empty: "Aucun lit configuré pour cette unité.",
+      cleaning: "nettoyage/sale",
+      blocked: "bloqué",
+    },
+    admission: {
+      startAction: "Démarrer une admission hospitalière",
+      title: "Admission hospitalière",
+      subtitle:
+        "Recherchez un patient existant, choisissez l’unité d’accueil et démarrez une rencontre d’hospitalisation distincte. Un dossier des urgences ouvert ne bloque pas l’admission.",
+      searchPlaceholder: "Nom, NIP ou date de naissance",
+      openEdBadge: "RENCONTRE URGENCES OUVERTE",
+      openEdAdvisory:
+        "Ce patient a actuellement une rencontre aux urgences ouverte. Démarrer l’admission hospitalière crée une rencontre d’hospitalisation distincte et ne ferme ni ne modifie le dossier des urgences.",
+      confirmEd:
+        "Je comprends — poursuivre avec une rencontre d’hospitalisation distincte",
+      confirmEdRequired:
+        "Confirmez que la rencontre aux urgences reste distincte avant de continuer.",
+      source: "Source d’admission",
+      datetime: "Date et heure d’admission",
+      selectUnit: "Sélectionner l’unité clinique",
+      bedOptional: "Lit (optionnel jusqu’à l’affectation)",
+      receivingNurseHint:
+        "L’infirmière d’accueil est enregistrée automatiquement depuis votre compte — ne saisissez pas de nom.",
+      startEncounter: "Démarrer la rencontre d’hospitalisation",
+      edMutatedError:
+        "Le serveur a signalé une modification du dossier des urgences. L’admission a été interrompue pour protéger ce dossier.",
+    },
+  },
 
   hospitalCareD3e7: {
     placement: {
@@ -19306,6 +19341,7 @@ export default {
     },
     nav: {
       overview: "Vue d’ensemble",
+      admission: "Admission",
       historyPhysical: "H&P",
       progressNotes: "Notes d’évolution",
       nursing: "Soins infirmiers",
@@ -19321,6 +19357,22 @@ export default {
     overview: {
       body: "L’hospitalisation est l’espace clinique hospitalier principal. Il possède la consultation d’hospitalisation et consomme les ordonnances, résultats, MAR, pharmacie, laboratoire et imagerie partagés — sans les recréer.",
       encounterId: "Consultation d’hospitalisation",
+    },
+    admission: {
+      body: "Vue d’admission pour l’infirmière d’accueil. Les éléments de la liste de contrôle sont consultatifs sauf exigence stricte de l’établissement.",
+      checklistTitle: "Liste de contrôle d’admission",
+      reuseHint:
+        "L’admission infirmière réutilise les évaluations Medora existantes (risque de chute, peau/plaies, douleur, lignes/tubes, allergies, bilan médicamenteux) — pas un DPI distinct par unité.",
+      checklist: {
+        identity: "Identité vérifiée",
+        allergies: "Allergies revues",
+        medRec: "Bilan médicamenteux commencé/terminé",
+        codeStatus: "Statut de code revu",
+        isolation: "Isolement revu",
+        fallRisk: "Risque de chute complété",
+        nursingAssessment: "Évaluation infirmière d’admission complétée",
+        hp: "H&P médecin en attente/complété",
+      },
     },
     historyPhysical: {
       kindsTitle: "Types de notes",

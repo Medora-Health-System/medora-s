@@ -18945,6 +18945,39 @@ export default {
       bedSummary: "Compact bed summary",
     },
   },
+  hospitalCareD3e6d: {
+    bedBoard: {
+      title: "Unit bed board",
+      subtitle: "Visual beds for {unit} — same Floor Board inventory.",
+      noPool:
+        "This unit has no dedicated bed pool yet. Use the Full Floor Board for facility-wide bed management.",
+      loadError: "Unable to load the unit bed board.",
+      empty: "No beds configured for this unit.",
+      cleaning: "cleaning/dirty",
+      blocked: "blocked",
+    },
+    admission: {
+      startAction: "Start Hospital Admission",
+      title: "Hospital admission intake",
+      subtitle:
+        "Search an existing patient, choose the receiving unit, and start a separate Inpatient encounter. An open ED chart does not block admission.",
+      searchPlaceholder: "Name, MRN, or date of birth",
+      openEdBadge: "OPEN ED ENCOUNTER",
+      openEdAdvisory:
+        "This patient currently has an open Emergency Department encounter. Starting Hospital Admission creates a separate Inpatient encounter and does not close or modify the ED chart.",
+      confirmEd: "I understand — continue with a separate Inpatient encounter",
+      confirmEdRequired: "Confirm that the open ED encounter remains separate before continuing.",
+      source: "Admission source",
+      datetime: "Admission date and time",
+      selectUnit: "Select clinical unit",
+      bedOptional: "Bed (optional until assigned)",
+      receivingNurseHint:
+        "Receiving nurse is recorded automatically from your signed-in account — do not type a name.",
+      startEncounter: "Start Inpatient Encounter",
+      edMutatedError:
+        "Server reported an ED chart mutation. Admission was aborted to protect the ED record.",
+    },
+  },
   hospitalCareD3e7: {
     placement: {
       actionsOff:
@@ -19224,6 +19257,7 @@ export default {
     },
     nav: {
       overview: "Overview",
+      admission: "Admission",
       historyPhysical: "H&P",
       progressNotes: "Progress notes",
       nursing: "Nursing",
@@ -19239,6 +19273,22 @@ export default {
     overview: {
       body: "Inpatient is the primary hospital clinical workspace. It owns the Inpatient encounter and consumes shared Orders, Results, MAR, Pharmacy, Laboratory, and Radiology — it does not recreate them.",
       encounterId: "Inpatient encounter",
+    },
+    admission: {
+      body: "Admission overview for the receiving nurse. Checklist items are advisories unless your facility marks them as hard requirements.",
+      checklistTitle: "Admission checklist",
+      reuseHint:
+        "Nursing admission reuses existing Medora assessments (fall risk, skin/wounds, pain, lines/tubes, allergies, medication reconciliation) — not a separate unit EMR.",
+      checklist: {
+        identity: "Identity verified",
+        allergies: "Allergies reviewed",
+        medRec: "Medication reconciliation started/completed",
+        codeStatus: "Code status reviewed",
+        isolation: "Isolation reviewed",
+        fallRisk: "Fall risk completed",
+        nursingAssessment: "Nursing admission assessment completed",
+        hp: "Provider H&P pending/completed",
+      },
     },
     historyPhysical: {
       kindsTitle: "Note types",

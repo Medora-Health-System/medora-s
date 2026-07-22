@@ -19,6 +19,7 @@ import {
 } from "./inpatientUnitBoardPaths";
 import { inpatientActiveWorkspacePath } from "./inpatientWorkspacePaths";
 import { HOSPITAL_CARE_FLOOR_BOARD } from "@/features/hospital-care/hospitalCarePaths";
+import { UnitBedBoard } from "./UnitBedBoard";
 
 export type UnitBoardShellProps = {
   title: string;
@@ -34,6 +35,9 @@ export type UnitBoardShellProps = {
   emptyMessage?: string;
   /** When set, chart links use unit-scoped patient route. */
   useUnitPatientRoute?: boolean;
+  facilityId?: string | null;
+  showUnitBedBoard?: boolean;
+  showStartAdmission?: boolean;
 };
 
 export function UnitBoardShell({
@@ -49,6 +53,9 @@ export function UnitBoardShell({
   availableBeds = null,
   emptyMessage,
   useUnitPatientRoute = true,
+  facilityId = null,
+  showUnitBedBoard = true,
+  showStartAdmission = true,
 }: UnitBoardShellProps) {
   const { t } = useI18n();
   const [query, setQuery] = useState("");
@@ -117,11 +124,37 @@ export function UnitBoardShell({
         </p>
       </header>
 
+      {showStartAdmission ? (
+        <div style={{ marginBottom: 12 }}>
+          <Link
+            href="/app/hospitalisation/admissions/new"
+            data-testid="unit-board-start-admission"
+            style={{
+              display: "inline-block",
+              padding: "8px 12px",
+              borderRadius: 10,
+              border: "1px solid #2563eb",
+              background: "#eff6ff",
+              color: "#1e40af",
+              fontSize: 13,
+              fontWeight: 700,
+              textDecoration: "none",
+            }}
+          >
+            {t("hospitalCareD3e6d.admission.startAction")}
+          </Link>
+        </div>
+      ) : null}
+
       <UnitOperationalSnapshot
         snap={snap}
         occupiedBeds={occupiedBeds}
         availableBeds={availableBeds}
       />
+
+      {showUnitBedBoard ? (
+        <UnitBedBoard facilityId={facilityId} unitCode={unitCode} />
+      ) : null}
 
       <UnitPatientFilterBar
         query={query}

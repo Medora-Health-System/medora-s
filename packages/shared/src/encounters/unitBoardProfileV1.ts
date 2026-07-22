@@ -51,6 +51,7 @@ const BASE_FILTERS = ["search", "status", "attending", "nurse", "room", "operati
 
 const SHARED_TABS = [
   "overview",
+  "admission",
   "notes",
   "orders",
   "results",

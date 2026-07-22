@@ -108,6 +108,7 @@ export * from "./encounters/hospitalServiceLineNavigationV1.js";
 export * from "./encounters/unitBoardProfileV1.js";
 export * from "./encounters/graphicalHospitalUnitTreeFlags.js";
 export * from "./encounters/hospitalServiceLineTreeD3e6cBenchmark.js";
+export * from "./encounters/concurrentEncounterPolicyV1.js";
 export * from "./encounters/inpatientClinicalOpsV1.js";
 export * from "./encounters/inpatientOperationsFeatureFlags.js";
 export * from "./encounters/inpatientClinicalOpsCertificationV1.js";

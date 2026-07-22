@@ -6,7 +6,14 @@ import { apiFetch } from "@/lib/apiClient";
 
 export type DirectAdmissionPayload = {
   patientId: string;
-  admissionSource?: "DIRECT" | "CLINIC" | "SCHEDULED" | "EXTERNAL_TRANSFER" | "OTHER";
+  admissionSource?:
+    | "EMERGENCY_DEPARTMENT"
+    | "DIRECT"
+    | "CLINIC"
+    | "SCHEDULED"
+    | "EXTERNAL_TRANSFER"
+    | "OBSERVATION_CONVERSION"
+    | "OTHER";
   admittingService?: string | null;
   attendingProviderUserId?: string | null;
   admissionDiagnosis?: string | null;
@@ -19,6 +26,10 @@ export type DirectAdmissionPayload = {
   codeStatus?: string | null;
   notes?: string | null;
   referringProviderOrFacility?: string | null;
+  assignedBedKey?: string | null;
+  sourceEdEncounterId?: string | null;
+  idempotencyKey?: string | null;
+  admittedAt?: string | null;
 };
 
 export type DirectAdmissionResponse = {
@@ -27,6 +38,10 @@ export type DirectAdmissionResponse = {
   createdEdEncounter?: boolean;
   createdObservationEncounter?: boolean;
   clinicalContext?: string;
+  idempotentReuse?: boolean;
+  edEncounterMutated?: boolean;
+  edEncounterClosed?: boolean;
+  receivingNurseUserId?: string;
 };
 
 export async function createDirectInpatientAdmission(

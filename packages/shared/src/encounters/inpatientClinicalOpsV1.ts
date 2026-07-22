@@ -247,7 +247,14 @@ export function placementActionsForStatus(status: string): PlacementQueueAction[
 
 export type DirectAdmissionInput = {
   patientId: string;
-  admissionSource: "DIRECT" | "CLINIC" | "SCHEDULED" | "EXTERNAL_TRANSFER" | "OTHER";
+  admissionSource:
+    | "EMERGENCY_DEPARTMENT"
+    | "DIRECT"
+    | "CLINIC"
+    | "SCHEDULED"
+    | "EXTERNAL_TRANSFER"
+    | "OBSERVATION_CONVERSION"
+    | "OTHER";
   admittingService?: string | null;
   attendingProviderUserId?: string | null;
   admissionDiagnosis?: string | null;

@@ -45,7 +45,7 @@ export class InpatientOperationsController {
   }
 
   @Post("direct-admission")
-  @RequireRoles(RoleCode.PROVIDER, RoleCode.ADMIN)
+  @RequireRoles(RoleCode.PROVIDER, RoleCode.RN, RoleCode.ADMIN)
   async directAdmission(@Body() body: Record<string, unknown>, @Req() req: any) {
     const patientId = String(body?.patientId ?? "").trim();
     if (!patientId) throw new BadRequestException("patientId is required");
@@ -77,6 +77,11 @@ export class InpatientOperationsController {
           typeof body.referringProviderOrFacility === "string"
             ? body.referringProviderOrFacility
             : null,
+        assignedBedKey: typeof body.assignedBedKey === "string" ? body.assignedBedKey : null,
+        sourceEdEncounterId:
+          typeof body.sourceEdEncounterId === "string" ? body.sourceEdEncounterId : null,
+        idempotencyKey: typeof body.idempotencyKey === "string" ? body.idempotencyKey : null,
+        admittedAt: typeof body.admittedAt === "string" ? body.admittedAt : null,
       },
       { ip: req.ip, userAgent: req.headers?.["user-agent"] }
     );

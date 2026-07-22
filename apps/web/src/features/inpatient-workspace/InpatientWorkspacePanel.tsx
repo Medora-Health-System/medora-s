@@ -122,6 +122,36 @@ export function InpatientWorkspacePanel({
           ) : null}
         </div>
       );
+    case "admission":
+      return (
+        <div data-testid="inpatient-panel-admission">
+          <p style={{ margin: 0, fontSize: 13, color: "#334155", lineHeight: 1.45 }}>
+            {t("inpatientD3e.admission.body")}
+          </p>
+          <ShellList
+            title={t("inpatientD3e.admission.checklistTitle")}
+            items={[
+              t("inpatientD3e.admission.checklist.identity"),
+              t("inpatientD3e.admission.checklist.allergies"),
+              t("inpatientD3e.admission.checklist.medRec"),
+              t("inpatientD3e.admission.checklist.codeStatus"),
+              t("inpatientD3e.admission.checklist.isolation"),
+              t("inpatientD3e.admission.checklist.fallRisk"),
+              t("inpatientD3e.admission.checklist.nursingAssessment"),
+              t("inpatientD3e.admission.checklist.hp"),
+            ]}
+            testId="inpatient-admission-checklist"
+          />
+          <p style={{ margin: "10px 0 0", fontSize: 12, color: "#64748b" }}>
+            {t("inpatientD3e.admission.reuseHint")}
+          </p>
+          {nursingLive || docsLive ? (
+            <div style={{ marginTop: 12 }}>
+              <InpatientClinicalOpsPanel encounterId={encounterId} mode="nursing" />
+            </div>
+          ) : null}
+        </div>
+      );
     case "historyPhysical":
     case "progressNotes":
       if (!docsLive || !facilityId) {

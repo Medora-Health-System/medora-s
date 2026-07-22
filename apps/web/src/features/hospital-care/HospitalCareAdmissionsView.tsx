@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useI18n } from "@/lib/i18n";
 import { DISPLAY_DASH } from "@/lib/patientDisplay";
@@ -174,6 +175,25 @@ export function HospitalCareAdmissionsView() {
         <p style={{ margin: "6px 0 0", fontSize: 12, color: "#64748b", lineHeight: 1.45 }}>
           {t("hospitalCareD3e6.admissions.directEntryBody")}
         </p>
+        <div style={{ marginTop: 10 }}>
+          <Link
+            href="/app/hospitalisation/admissions/new"
+            data-testid="start-hospital-admission"
+            style={{
+              display: "inline-block",
+              padding: "8px 12px",
+              borderRadius: 10,
+              border: "1px solid #2563eb",
+              background: "#eff6ff",
+              color: "#1e40af",
+              fontSize: 13,
+              fontWeight: 700,
+              textDecoration: "none",
+            }}
+          >
+            {t("hospitalCareD3e6d.admission.startAction")}
+          </Link>
+        </div>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 10 }}>
           {(
             [

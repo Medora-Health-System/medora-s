@@ -1,6 +1,7 @@
 /** D3E — Inpatient clinical workspace tabs. */
 export type InpatientWorkspaceSection =
   | "overview"
+  | "admission"
   | "historyPhysical"
   | "progressNotes"
   | "nursing"
@@ -18,6 +19,7 @@ export const INPATIENT_WORKSPACE_SECTIONS: Array<{
   labelKey: string;
 }> = [
   { id: "overview", labelKey: "inpatientD3e.nav.overview" },
+  { id: "admission", labelKey: "inpatientD3e.nav.admission" },
   { id: "historyPhysical", labelKey: "inpatientD3e.nav.historyPhysical" },
   { id: "progressNotes", labelKey: "inpatientD3e.nav.progressNotes" },
   { id: "nursing", labelKey: "inpatientD3e.nav.nursing" },
@@ -44,6 +46,8 @@ export function parseInpatientWorkspaceSection(
   const lower = trimmed.toLowerCase().replace(/[_-]/g, "");
   const alias: Record<string, InpatientWorkspaceSection> = {
     overview: "overview",
+    admission: "admission",
+    nursingadmission: "admission",
     hp: "historyPhysical",
     historyphysical: "historyPhysical",
     handp: "historyPhysical",

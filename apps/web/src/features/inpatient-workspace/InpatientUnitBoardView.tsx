@@ -9,6 +9,7 @@ import {
   type HospitalClinicalUnitType,
 } from "@medora/shared";
 import { useI18n } from "@/lib/i18n";
+import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import { fetchHospitalCensus } from "@/features/hospital-care/hospitalCareCensusApi";
 import { fetchHospitalServiceLineTree } from "@/features/hospital-care/hospitalServiceLineTreeApi";
 import { isForbiddenApiError } from "@/features/hospital-care/hospitalCarePlacementApi";
@@ -25,6 +26,7 @@ type Mode =
 
 export function InpatientUnitBoardView({ mode }: { mode: Mode }) {
   const { t } = useI18n();
+  const { facilityId } = useFacilityAndRoles();
   const [patients, setPatients] = useState<HospitalCensusPatientRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -159,6 +161,9 @@ export function InpatientUnitBoardView({ mode }: { mode: Mode }) {
       occupiedBeds={shellProps.occupiedBeds}
       availableBeds={shellProps.availableBeds}
       useUnitPatientRoute={mode.kind === "unit"}
+      facilityId={facilityId}
+      showUnitBedBoard={mode.kind === "unit"}
+      showStartAdmission
     />
   );
 }

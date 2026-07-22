@@ -640,32 +640,48 @@ export class InternalPlacementService {
                 "Placement destination context must be OBSERVATION or INPATIENT."
               );
             }
-            const billingClass = billingClassificationForPlacementDestination(destType);
-            const created = await tx.encounter.create({
-              data: {
+            // D3E.6D — reuse nurse-intake / existing open Inpatient receiving encounter
+            const existingIp = await tx.encounter.findFirst({
+              where: {
                 facilityId: row.facilityId,
                 patientId: row.patientId,
-                type: EncounterType.INPATIENT,
                 status: EncounterStatus.OPEN,
-                hospitalEpisodeId: row.hospitalEpisodeId,
-                billingClassification:
-                  billingClass === "OBSERVATION"
-                    ? BillingClassification.OBSERVATION
-                    : BillingClassification.INPATIENT,
-                admissionSummaryJson: {
-                  d3cReceiving: true,
-                  requestedEncounterType: destType,
-                  careLevel: row.requestedLevelOfCare,
-                  fromInternalPlacementRequestId: row.id,
-                  admissionSource:
-                    destType === "INPATIENT" ? "EMERGENCY_DEPARTMENT" : "EMERGENCY_DEPARTMENT",
-                  clinicalDestinationContext: destType,
-                },
-                admittedAt: new Date(),
+                type: EncounterType.INPATIENT,
               },
               select: { id: true },
             });
-            receivingEncounterId = created.id;
+            if (existingIp) {
+              receivingEncounterId = existingIp.id;
+            } else {
+              const billingClass = billingClassificationForPlacementDestination(destType);
+              const created = await tx.encounter.create({
+                data: {
+                  facilityId: row.facilityId,
+                  patientId: row.patientId,
+                  type: EncounterType.INPATIENT,
+                  status: EncounterStatus.OPEN,
+                  hospitalEpisodeId: row.hospitalEpisodeId,
+                  billingClassification:
+                    billingClass === "OBSERVATION"
+                      ? BillingClassification.OBSERVATION
+                      : BillingClassification.INPATIENT,
+                  admissionSummaryJson: {
+                    d3cReceiving: true,
+                    d3e6dHospitalAdmissionIntake: true,
+                    requestedEncounterType: destType,
+                    careLevel: row.requestedLevelOfCare,
+                    fromInternalPlacementRequestId: row.id,
+                    admissionSource: "EMERGENCY_DEPARTMENT",
+                    clinicalDestinationContext: destType,
+                    edEncounterClosed: false,
+                    edEncounterMutated: false,
+                  },
+                  admittedAt: new Date(),
+                },
+                select: { id: true },
+              });
+              receivingEncounterId = created.id;
+            }
           }
           receivingEncounterLifecycle = ReceivingEncounterLifecycle.ACTIVE;
           data.receivingEncounterId = receivingEncounterId;

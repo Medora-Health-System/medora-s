@@ -26,6 +26,12 @@ import {
   readInpatientClinicalOpsFromAdmissionSummary,
   validateDirectAdmissionHardBlockers,
   validateMedReconDecision,
+  evaluateConcurrentEncounterCreate,
+  inpatientStartMustNotCloseEdEncounter,
+  formatCanonicalBedDisplay,
+  parseCanonicalBedKey,
+  validateBedInPool,
+  resolveEncounterCanonicalBedKey,
   INPATIENT_CODE_STATUSES,
   INPATIENT_ISOLATION_PRECAUTIONS,
   INPATIENT_DISCHARGE_WORKFLOW_STATES,
@@ -66,6 +72,14 @@ export type DirectAdmissionBody = {
   codeStatus?: string | null;
   notes?: string | null;
   referringProviderOrFacility?: string | null;
+  /** Optional governed bed key e.g. MS:2 — assigned atomically when available. */
+  assignedBedKey?: string | null;
+  /** Optional source ED encounter — linked, never closed/mutated. */
+  sourceEdEncounterId?: string | null;
+  /** Client retry key — safe reuse of existing receiving IP. */
+  idempotencyKey?: string | null;
+  /** Admission clock (ISO); defaults to now. */
+  admittedAt?: string | null;
 };
 
 @Injectable()
@@ -127,10 +141,12 @@ export class InpatientOperationsService {
       .trim()
       .toUpperCase();
     const allowedSources = new Set([
+      "EMERGENCY_DEPARTMENT",
       "DIRECT",
       "CLINIC",
       "SCHEDULED",
       "EXTERNAL_TRANSFER",
+      "OBSERVATION_CONVERSION",
       "OTHER",
     ]);
     if (!allowedSources.has(admissionSource)) {
@@ -151,12 +167,126 @@ export class InpatientOperationsService {
     });
     if (!patient) throw new NotFoundException("Patient not found");
 
-    const open = await this.prisma.encounter.findFirst({
+    const idempotencyKey = String(body.idempotencyKey ?? "").trim() || null;
+    if (idempotencyKey) {
+      const prior = await this.prisma.encounter.findFirst({
+        where: {
+          facilityId,
+          patientId: patient.id,
+          status: EncounterStatus.OPEN,
+          type: EncounterType.INPATIENT,
+          admissionSummaryJson: {
+            path: ["d3e6dIdempotencyKey"],
+            equals: idempotencyKey,
+          },
+        },
+        select: ENCOUNTER_DETAIL_SELECT,
+      });
+      if (prior) {
+        return {
+          encounter: prior,
+          hospitalEpisodeId: null,
+          createdEdEncounter: false,
+          createdObservationEncounter: false,
+          clinicalContext: "INPATIENT" as const,
+          idempotentReuse: true,
+          edEncounterMutated: false,
+          edEncounterClosed: false,
+        };
+      }
+    }
+
+    const openRows = await this.prisma.encounter.findMany({
       where: { patientId: patient.id, facilityId, status: EncounterStatus.OPEN },
-      select: { id: true, type: true },
+      select: { id: true, type: true, status: true },
     });
-    if (open) {
-      throw new ConflictException("Patient already has an open encounter");
+    const decision = evaluateConcurrentEncounterCreate({
+      pathway: "NURSE_ADMISSION_INTAKE",
+      requestedType: "INPATIENT",
+      existingOpen: openRows,
+    });
+    if (!decision.allowed) {
+      throw new ConflictException(decision.detail);
+    }
+    if (decision.code === "IDEMPOTENT_REUSE" && decision.reuseEncounterId) {
+      const prior = await this.prisma.encounter.findFirst({
+        where: {
+          id: decision.reuseEncounterId,
+          facilityId,
+          patientId: patient.id,
+          status: EncounterStatus.OPEN,
+          type: EncounterType.INPATIENT,
+        },
+        select: ENCOUNTER_DETAIL_SELECT,
+      });
+      if (prior) {
+        return {
+          encounter: prior,
+          hospitalEpisodeId: null,
+          createdEdEncounter: false,
+          createdObservationEncounter: false,
+          clinicalContext: "INPATIENT" as const,
+          idempotentReuse: true,
+          edEncounterMutated: false,
+          edEncounterClosed: false,
+          receivingNurseUserId: actorUserId,
+        };
+      }
+    }
+    // Invariant: never close or mutate ED when starting Inpatient
+    void inpatientStartMustNotCloseEdEncounter();
+
+    let sourceEdEncounterId: string | null =
+      typeof body.sourceEdEncounterId === "string" ? body.sourceEdEncounterId.trim() : "";
+    if (!sourceEdEncounterId && admissionSource === "EMERGENCY_DEPARTMENT") {
+      sourceEdEncounterId = openRows.find((e) => e.type === EncounterType.EMERGENCY)?.id ?? "";
+    }
+    if (sourceEdEncounterId) {
+      const ed = await this.prisma.encounter.findFirst({
+        where: {
+          id: sourceEdEncounterId,
+          facilityId,
+          patientId: patient.id,
+          type: EncounterType.EMERGENCY,
+        },
+        select: { id: true },
+      });
+      if (!ed) throw new BadRequestException("sourceEdEncounterId is not a valid ED encounter");
+    } else {
+      sourceEdEncounterId = null;
+    }
+
+    let roomLabel: string | null = null;
+    const bedKeyRaw = String(body.assignedBedKey ?? "").trim();
+    if (bedKeyRaw) {
+      const parsed = parseCanonicalBedKey(bedKeyRaw);
+      if (!parsed || !validateBedInPool(parsed.unit, parsed.room)) {
+        throw new BadRequestException("assignedBedKey is not a valid facility bed");
+      }
+      const requestedUnit = String(body.requestedUnit ?? "").trim().toUpperCase();
+      if (requestedUnit && requestedUnit !== parsed.unit) {
+        throw new BadRequestException("assignedBedKey does not belong to requestedUnit");
+      }
+      const occupants = await this.prisma.encounter.findMany({
+        where: { facilityId, status: EncounterStatus.OPEN },
+        select: {
+          id: true,
+          roomLabel: true,
+          type: true,
+          admissionSummaryJson: true,
+        },
+      });
+      for (const row of occupants) {
+        const key = resolveEncounterCanonicalBedKey({
+          roomLabel: row.roomLabel,
+          type: row.type,
+          admissionSummaryJson: row.admissionSummaryJson,
+        });
+        if (key === `${parsed.unit}:${parsed.room}`) {
+          throw new ConflictException("Selected bed is already occupied");
+        }
+      }
+      roomLabel = formatCanonicalBedDisplay(parsed.unit, parsed.room);
     }
 
     if (body.attendingProviderUserId) {
@@ -204,9 +334,17 @@ export class InpatientOperationsService {
       updatedAt: new Date().toISOString(),
     };
 
+    const admittedAt = body.admittedAt?.trim()
+      ? new Date(body.admittedAt)
+      : new Date();
+    if (!Number.isFinite(admittedAt.getTime())) {
+      throw new BadRequestException("admittedAt is invalid");
+    }
+
     const admissionSummaryJson = mergeInpatientClinicalOpsIntoAdmissionSummary(
       {
         d3e7DirectAdmission: true,
+        d3e6dHospitalAdmissionIntake: true,
         requestedEncounterType: "INPATIENT",
         clinicalDestinationContext: "INPATIENT",
         admissionSource,
@@ -217,14 +355,37 @@ export class InpatientOperationsService {
         serviceUnit: body.requestedUnit?.trim() || null,
         plannedAt: body.plannedAt?.trim() || null,
         referringProviderOrFacility: body.referringProviderOrFacility?.trim() || null,
-        // Never fabricate ED / Observation encounter identifiers
-        originatingEdEncounterId: null,
+        originatingEdEncounterId: sourceEdEncounterId,
         observationEncounterId: null,
+        receivingNurseUserId: actorUserId,
+        admissionInitiatedAt: new Date().toISOString(),
+        arrivalAt: admittedAt.toISOString(),
+        d3e6dIdempotencyKey: idempotencyKey,
+        assignedBedKey: bedKeyRaw || null,
+        // Explicit: ED chart is not closed or mutated by this writer
+        edEncounterClosed: false,
+        edEncounterMutated: false,
       },
       ops
     );
 
     const created = await this.prisma.$transaction(async (tx) => {
+      // Re-check open IP inside transaction (concurrency)
+      const openIp = await tx.encounter.findFirst({
+        where: {
+          patientId: patient.id,
+          facilityId,
+          status: EncounterStatus.OPEN,
+          type: EncounterType.INPATIENT,
+        },
+        select: { id: true },
+      });
+      if (openIp) {
+        throw new ConflictException(
+          "Patient already has an open Inpatient encounter at this facility"
+        );
+      }
+
       let hospitalEpisodeId: string | null = null;
       if (hospitalEpisodeFoundationEnabledFromProcessEnv()) {
         const active = await tx.hospitalEpisode.findFirst({
@@ -232,9 +393,10 @@ export class InpatientOperationsService {
           select: { id: true },
         });
         if (active) {
-          throw new ConflictException(
-            "Active hospital episode already exists for this patient at this facility"
-          );
+          // Reuse existing episode (e.g. from open ED) — do not create a second episode
+          hospitalEpisodeId = active.id;
+        } else {
+          // Episode created after encounter so originatingEncounterId can be set
         }
       }
 
@@ -247,35 +409,45 @@ export class InpatientOperationsService {
           billingClassification: BillingClassification.INPATIENT,
           providerId: actorUserId,
           physicianAssignedUserId: body.attendingProviderUserId?.trim() || null,
+          nurseAssignedUserId: actorUserId,
           chiefComplaint:
             body.reasonForAdmission?.trim() ||
             body.admissionDiagnosis?.trim() ||
-            "Admission directe en hospitalisation",
+            "Admission hospitalière",
           notes: body.notes?.trim() || undefined,
           admissionSummaryJson: admissionSummaryJson as Prisma.InputJsonValue,
-          admittedAt: new Date(),
+          admittedAt,
+          roomLabel: roomLabel ?? undefined,
+          hospitalEpisodeId: hospitalEpisodeId ?? undefined,
         },
         select: { id: true },
       });
 
       if (hospitalEpisodeFoundationEnabledFromProcessEnv()) {
-        const episode = await tx.hospitalEpisode.create({
-          data: {
-            facilityId,
-            patientId: patient.id,
-            status: "ACTIVE",
-            originatingEncounterId: encounter.id,
-            version: 1,
-            createdByUserId: actorUserId,
-            updatedByUserId: actorUserId,
-          },
-          select: { id: true },
-        });
-        hospitalEpisodeId = episode.id;
-        await tx.encounter.update({
-          where: { id: encounter.id },
-          data: { hospitalEpisodeId: episode.id, version: { increment: 1 } },
-        });
+        if (!hospitalEpisodeId) {
+          const episode = await tx.hospitalEpisode.create({
+            data: {
+              facilityId,
+              patientId: patient.id,
+              status: "ACTIVE",
+              originatingEncounterId: encounter.id,
+              version: 1,
+              createdByUserId: actorUserId,
+              updatedByUserId: actorUserId,
+            },
+            select: { id: true },
+          });
+          hospitalEpisodeId = episode.id;
+          await tx.encounter.update({
+            where: { id: encounter.id },
+            data: { hospitalEpisodeId: episode.id, version: { increment: 1 } },
+          });
+        } else {
+          await tx.encounter.update({
+            where: { id: encounter.id },
+            data: { hospitalEpisodeId, version: { increment: 1 } },
+          });
+        }
       }
 
       return { encounterId: encounter.id, hospitalEpisodeId };
@@ -291,12 +463,18 @@ export class InpatientOperationsService {
       ip: options?.ip,
       userAgent: options?.userAgent,
       metadata: {
-        event: "INPATIENT_DIRECT_ADMISSION_CREATED",
+        event: "INPATIENT_HOSPITAL_ADMISSION_CREATED",
         admissionSource,
         hospitalEpisodeId: created.hospitalEpisodeId,
         createdEdEncounter: false,
         createdObservationEncounter: false,
         encounterType: "INPATIENT",
+        receivingNurseUserId: actorUserId,
+        sourceEdEncounterId,
+        edEncounterClosed: false,
+        edEncounterMutated: false,
+        assignedBedKey: bedKeyRaw || null,
+        concurrentWithOpenEd: decision.code === "ALLOW_ED_PLUS_INPATIENT",
       },
     });
 
@@ -310,6 +488,10 @@ export class InpatientOperationsService {
       createdEdEncounter: false,
       createdObservationEncounter: false,
       clinicalContext: "INPATIENT" as const,
+      idempotentReuse: false,
+      edEncounterMutated: false,
+      edEncounterClosed: false,
+      receivingNurseUserId: actorUserId,
     };
   }
 
