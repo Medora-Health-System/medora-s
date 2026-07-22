@@ -118,18 +118,12 @@ export * from "./encounters/admissionIntentOriginationD3e8a.js";
 export * from "./encounters/admissionIntentOriginationD3e8aBenchmark.js";
 export * from "./encounters/unitBedBoardsAdmissionIntakeD3e6dBenchmark.js";
 export * from "./encounters/inpatientClinicalOpsV1.js";
-<<<<<<< HEAD
+export * from "./encounters/hospitalAdmissionIntakeVocabV1.js";
 export * from "./encounters/connectedInpatientAdmissionIntakeD4a0.js";
 export * from "./encounters/connectedInpatientAdmissionIntakeD4a0Benchmark.js";
-export * from "./encounters/hospitalAdmissionIntakeVocabV1.js";
 export * from "./encounters/medSurgNursingAdmissionD4a1.js";
 export * from "./encounters/medSurgNursingAdmissionCompletionD4a1.js";
 export * from "./encounters/medSurgNursingAdmissionD4a1Benchmark.js";
-=======
-export * from "./encounters/hospitalAdmissionIntakeVocabV1.js";
-export * from "./encounters/connectedInpatientAdmissionIntakeD4a0.js";
-export * from "./encounters/connectedInpatientAdmissionIntakeD4a0Benchmark.js";
->>>>>>> origin/main
 export * from "./patients/patientSearchAndSelectV1.js";
 export * from "./encounters/inpatientOperationsFeatureFlags.js";
 export * from "./encounters/inpatientClinicalOpsCertificationV1.js";

@@ -16,10 +16,7 @@ import { providerDocumentationToxicologyComplaintIntelFr } from "./providerDocum
 import { providerDocumentationObGynUrologyComplaintIntelFr } from "./providerDocumentationObGynUrologyComplaintIntel.fr";
 import { providerDocumentationPsychiatricBehavioralComplaintIntelFr } from "./providerDocumentationPsychiatricBehavioralComplaintIntel.fr";
 import { hospitalAdmissionD4a0Fr } from "./hospitalAdmissionD4a0.fr";
-<<<<<<< HEAD
 import { hospitalAdmissionD4a1Fr } from "./hospitalAdmissionD4a1.fr";
-=======
->>>>>>> origin/main
 import { providerDocumentationGuRenalComplaintIntel19Mdm5Fr } from "./providerDocumentationGuRenalComplaintIntel19Mdm5.fr";
 import { providerDocumentationInfectiousEntComplaintIntel19Mdm7Fr } from "./providerDocumentationInfectiousEntComplaintIntel19Mdm7.fr";
 import { providerDocumentationDentalOralComplaintIntelFr } from "./providerDocumentationDentalOralComplaintIntel.fr";
@@ -19092,11 +19089,8 @@ export default {
       startNewAdmission: "Démarrer une nouvelle admission",
     },
   },
-<<<<<<< HEAD
   hospitalAdmissionD4a1: hospitalAdmissionD4a1Fr,
 
-=======
->>>>>>> origin/main
   hospitalAdmissionD4a0: hospitalAdmissionD4a0Fr,
 
   hospitalCareD3e6d: {

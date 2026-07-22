@@ -1,6 +1,5 @@
 "use client";
 
-<<<<<<< HEAD
 import { useCallback, useEffect, useState, type CSSProperties } from "react";
 import {
   ADMISSION_HISTORY_VERIFICATION_STATUSES,
@@ -10,32 +9,17 @@ import {
   HOME_MEDICATION_RECON_STATUSES,
   INPATIENT_ADMISSION_CLINICAL_SECTIONS,
   MEDSURG_NURSING_ADMISSION_CERTIFICATION_ID,
-=======
-import { useMemo, useState, type CSSProperties } from "react";
-import {
-  ADMISSION_SECTION_COMPLETION_STATES,
-  BELONGINGS_CATEGORIES,
-  HOME_MEDICATION_RECON_STATUSES,
-  INPATIENT_ADMISSION_CLINICAL_SECTIONS,
-  admissionDocumentationSupportsSaveAndResume,
-  preloadedHistoryMustRetainProvenance,
-  preloadedHistoryRequiresVerification,
-  sumCashDenominationTotal,
->>>>>>> origin/main
   type AdmissionSectionCompletionState,
   type InpatientAdmissionClinicalSection,
 } from "@medora/shared";
 import { useI18n } from "@/lib/i18n";
 import { AdmissionJourneyPanel } from "@/features/hospital-care/AdmissionJourneyPanel";
-<<<<<<< HEAD
 import {
   fetchNursingAdmissionDocumentation,
   patchNursingAdmissionSection,
   signNursingAdmission,
   verifyNursingAdmissionPreloadItem,
 } from "@/features/hospital-care/inpatientOperationsApi";
-=======
->>>>>>> origin/main
 import { InpatientClinicalOpsPanel } from "./InpatientClinicalOpsPanel";
 
 function admissionCorrelationUiEnabled(): boolean {
@@ -45,7 +29,6 @@ function admissionCorrelationUiEnabled(): boolean {
   return v === "1" || v === "true" || v === "yes" || v === "on";
 }
 
-<<<<<<< HEAD
 type PreloadItem = {
   itemId: string;
   domain: string;
@@ -91,8 +74,6 @@ type NursingDoc = {
   wounds?: Array<{ presentOnAdmission?: boolean; anatomicalLocation?: string }>;
 };
 
-=======
->>>>>>> origin/main
 type Props = {
   encounterId: string;
   nursingLive?: boolean;
@@ -100,14 +81,8 @@ type Props = {
 };
 
 /**
-<<<<<<< HEAD
  * D4A.1 — Structured Med/Surg nursing admission clinical shell.
  * Longitudinal patient history is preloaded with provenance; encounter records verification only.
-=======
- * D4A.0 connected nursing admission clinical shell.
- * Establishes section checklist, provenance/verification gates, belongings/valuables/wound scaffolds.
- * Full Medical/Surgical clinical engine content belongs to later D4A phases.
->>>>>>> origin/main
  */
 export function InpatientAdmissionClinicalShell({
   encounterId,
@@ -116,7 +91,6 @@ export function InpatientAdmissionClinicalShell({
 }: Props) {
   const { t } = useI18n();
   const [active, setActive] = useState<InpatientAdmissionClinicalSection>("OVERVIEW");
-<<<<<<< HEAD
   const [doc, setDoc] = useState<NursingDoc | null>(null);
   const [completion, setCompletion] = useState<Record<string, unknown> | null>(null);
   const [draftNote, setDraftNote] = useState("");
@@ -228,45 +202,11 @@ export function InpatientAdmissionClinicalShell({
       </p>
       <p style={{ margin: "0 0 8px", fontSize: 13, color: "#334155", lineHeight: 1.45 }}>
         {t("hospitalAdmissionD4a1.intro")}
-=======
-  const [states, setStates] = useState<Record<string, AdmissionSectionCompletionState>>(() => {
-    const init: Record<string, AdmissionSectionCompletionState> = {};
-    for (const s of INPATIENT_ADMISSION_CLINICAL_SECTIONS) init[s] = "NOT_STARTED";
-    return init;
-  });
-  const [draftNote, setDraftNote] = useState("");
-  const [saveMsg, setSaveMsg] = useState<string | null>(null);
-
-  // Demo cash totals for shell contract (not persisted until D4A writers land).
-  const cashDemoTotal = useMemo(
-    () =>
-      sumCashDenominationTotal([
-        { currency: "USD", denomination: 100, quantity: 0 },
-        { currency: "USD", denomination: 20, quantity: 0 },
-      ]),
-    []
-  );
-
-  const setSectionState = (section: InpatientAdmissionClinicalSection, state: AdmissionSectionCompletionState) => {
-    setStates((prev) => ({ ...prev, [section]: state }));
-  };
-
-  const saveDraft = () => {
-    setSectionState(active, states[active] === "NOT_STARTED" ? "IN_PROGRESS" : states[active]!);
-    setSaveMsg(t("hospitalAdmissionD4a0.clinical.draftSaved"));
-  };
-
-  return (
-    <div data-testid="inpatient-admission-clinical-shell">
-      <p style={{ margin: "0 0 8px", fontSize: 13, color: "#334155", lineHeight: 1.45 }}>
-        {t("inpatientD3e.admission.body")}
->>>>>>> origin/main
       </p>
       {admissionCorrelationUiEnabled() ? (
         <AdmissionJourneyPanel encounterId={encounterId} />
       ) : null}
 
-<<<<<<< HEAD
       {loadError ? (
         <p style={{ color: "#b91c1c", fontSize: 12 }} role="alert">
           {loadError}
@@ -287,8 +227,6 @@ export function InpatientAdmissionClinicalShell({
         </div>
       ) : null}
 
-=======
->>>>>>> origin/main
       <div style={checklistBox} data-testid="inpatient-admission-checklist">
         <p style={{ margin: "0 0 8px", fontSize: 13, fontWeight: 700, color: "#0f172a" }}>
           {t("inpatientD3e.admission.checklistTitle")}
@@ -308,11 +246,7 @@ export function InpatientAdmissionClinicalShell({
               >
                 <span>{t(`hospitalAdmissionD4a0.clinical.sections.${section}`)}</span>
                 <span style={{ fontSize: 11, color: "#64748b" }}>
-<<<<<<< HEAD
                   {t(`hospitalAdmissionD4a0.clinical.state.${sectionState(section)}`)}
-=======
-                  {t(`hospitalAdmissionD4a0.clinical.state.${states[section] ?? "NOT_STARTED"}`)}
->>>>>>> origin/main
                 </span>
               </button>
             </li>
@@ -329,7 +263,6 @@ export function InpatientAdmissionClinicalShell({
           active === "SURGICAL_HISTORY" ||
           active === "HOME_MEDICATIONS" ||
           active === "SOCIAL_HISTORY" ||
-<<<<<<< HEAD
           active === "ALLERGIES" ||
           active === "IDENTITY_DEMOGRAPHICS") && (
           <div data-testid="admission-preload-panel">
@@ -406,30 +339,11 @@ export function InpatientAdmissionClinicalShell({
               {HOME_MEDICATION_RECON_STATUSES.join(", ")}
             </p>
           </div>
-=======
-          active === "ALLERGIES") && (
-          <p style={{ fontSize: 12, color: "#64748b", margin: "0 0 8px" }} data-testid="ed-preload-provenance">
-            {preloadedHistoryMustRetainProvenance() && preloadedHistoryRequiresVerification()
-              ? t("hospitalAdmissionD4a0.clinical.preloadProvenance")
-              : null}
-          </p>
-        )}
-
-        {active === "HOME_MEDICATIONS" ? (
-          <p style={{ fontSize: 12, color: "#475569" }}>
-            {t("hospitalAdmissionD4a0.clinical.homeMedStatuses")}:{" "}
-            {HOME_MEDICATION_RECON_STATUSES.join(", ")}
-          </p>
->>>>>>> origin/main
         ) : null}
 
         {active === "BELONGINGS_VALUABLES" ? (
           <div data-testid="belongings-valuables-shell">
-<<<<<<< HEAD
             <p style={{ fontSize: 12, color: "#475569" }}>
-=======
-            <p style={{ fontSize: 12, color: "#475569", margin: "0 0 6px" }}>
->>>>>>> origin/main
               {t("hospitalAdmissionD4a0.clinical.belongingsHint")}
             </p>
             <ul style={{ margin: 0, paddingLeft: 18, fontSize: 12, color: "#64748b" }}>
@@ -437,13 +351,8 @@ export function InpatientAdmissionClinicalShell({
                 <li key={c}>{t(`hospitalAdmissionD4a0.belongings.${c}`)}</li>
               ))}
             </ul>
-<<<<<<< HEAD
             <p style={{ fontSize: 12, marginTop: 6 }}>
               {t("hospitalAdmissionD4a1.cash.hint")}
-=======
-            <p style={{ fontSize: 12, color: "#475569", marginTop: 8 }}>
-              {t("hospitalAdmissionD4a0.clinical.cashTotalDemo")}: {cashDemoTotal}
->>>>>>> origin/main
             </p>
           </div>
         ) : null}
@@ -451,7 +360,6 @@ export function InpatientAdmissionClinicalShell({
         {active === "SKIN_WOUND" ? (
           <p style={{ fontSize: 12, color: "#475569" }} data-testid="wound-poa-shell">
             {t("hospitalAdmissionD4a0.clinical.woundPoaHint")}
-<<<<<<< HEAD
             {(doc?.wounds?.length ?? 0) > 0
               ? ` · ${doc?.wounds?.length} ${t("hospitalAdmissionD4a1.wounds.documented")}`
               : ""}
@@ -494,15 +402,6 @@ export function InpatientAdmissionClinicalShell({
               </p>
             )}
           </div>
-=======
-          </p>
-        ) : null}
-
-        {active === "PROVIDER_ADMISSION" ? (
-          <p style={{ fontSize: 12, color: "#475569" }} data-testid="provider-handoff-shell">
-            {t("hospitalAdmissionD4a0.clinical.providerHandoff")}
-          </p>
->>>>>>> origin/main
         ) : null}
 
         <label style={{ display: "block", marginTop: 10, fontSize: 12, fontWeight: 600 }}>
@@ -511,20 +410,7 @@ export function InpatientAdmissionClinicalShell({
             value={draftNote}
             onChange={(e) => setDraftNote(e.target.value)}
             rows={3}
-<<<<<<< HEAD
             style={textareaStyle}
-=======
-            style={{
-              display: "block",
-              width: "100%",
-              marginTop: 4,
-              borderRadius: 10,
-              border: "1px solid #cbd5e1",
-              padding: 8,
-              fontSize: 13,
-              boxSizing: "border-box",
-            }}
->>>>>>> origin/main
           />
         </label>
 
@@ -533,12 +419,8 @@ export function InpatientAdmissionClinicalShell({
             <button
               key={st}
               type="button"
-<<<<<<< HEAD
               disabled={busy}
               onClick={() => void saveDraft(st)}
-=======
-              onClick={() => setSectionState(active, st)}
->>>>>>> origin/main
               style={chipBtn}
             >
               {t(`hospitalAdmissionD4a0.clinical.state.${st}`)}
@@ -546,7 +428,6 @@ export function InpatientAdmissionClinicalShell({
           ))}
         </div>
 
-<<<<<<< HEAD
         <button
           type="button"
           disabled={busy}
@@ -569,13 +450,6 @@ export function InpatientAdmissionClinicalShell({
             : t("hospitalAdmissionD4a1.sign")}
         </button>
 
-=======
-        {admissionDocumentationSupportsSaveAndResume() ? (
-          <button type="button" onClick={saveDraft} style={saveBtn} data-testid="admission-save-draft">
-            {t("hospitalAdmissionD4a0.clinical.saveDraft")}
-          </button>
-        ) : null}
->>>>>>> origin/main
         {saveMsg ? (
           <p style={{ fontSize: 12, color: "#0f766e", marginTop: 6 }} role="status">
             {saveMsg}
@@ -643,7 +517,6 @@ const saveBtn: CSSProperties = {
   fontSize: 12,
   cursor: "pointer",
 };
-<<<<<<< HEAD
 
 const preloadCard: CSSProperties = {
   marginBottom: 8,
@@ -677,5 +550,3 @@ const textareaStyle: CSSProperties = {
   fontSize: 13,
   boxSizing: "border-box",
 };
-=======
->>>>>>> origin/main
