@@ -47,16 +47,24 @@ describe("D3E.6D unit bed boards & hospital admission intake (web)", () => {
     expect(inpatientStartMustNotCloseEdEncounter()).toBe(true);
   });
 
-  it("reuses existing open Inpatient for duplicate intake", () => {
-    const d = evaluateConcurrentEncounterCreate({
+  it("reuses only a correlated receiving Inpatient", () => {
+    const blind = evaluateConcurrentEncounterCreate({
       pathway: "PLACEMENT_RECEIVING",
       requestedType: "INPATIENT",
       existingOpen: [{ id: "ip-1", type: "INPATIENT", status: "OPEN" }],
     });
-    expect(d.allowed).toBe(true);
-    if (d.allowed) {
-      expect(d.code).toBe("IDEMPOTENT_REUSE");
-      expect(d.reuseEncounterId).toBe("ip-1");
+    expect(blind.allowed).toBe(false);
+
+    const correlated = evaluateConcurrentEncounterCreate({
+      pathway: "PLACEMENT_RECEIVING",
+      requestedType: "INPATIENT",
+      existingOpen: [{ id: "ip-1", type: "INPATIENT", status: "OPEN" }],
+      correlatedReceivingEncounterId: "ip-1",
+    });
+    expect(correlated.allowed).toBe(true);
+    if (correlated.allowed) {
+      expect(correlated.code).toBe("IDEMPOTENT_REUSE");
+      expect(correlated.reuseEncounterId).toBe("ip-1");
     }
   });
 

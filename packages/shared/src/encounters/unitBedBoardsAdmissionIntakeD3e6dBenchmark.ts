@@ -19,6 +19,12 @@ import {
   isHospitalAdmissionSource,
 } from "./concurrentEncounterPolicyV1.js";
 import {
+  admissionPathwaysMustAllowEdPlusInpatient,
+  buildHospitalAdmissionCorrelationV1,
+  mergeHospitalAdmissionCorrelationIntoSummary,
+  resolveReceivingEncounterReuse,
+} from "./hospitalAdmissionCorrelationV1.js";
+import {
   resolveUnitBoardProfile,
   unitBoardMovePreservesEnterpriseChart,
 } from "./unitBoardProfileV1.js";
@@ -168,20 +174,41 @@ export function buildUnitBedBoardsAdmissionIntakeD3e6dBenchmarkCases(): UnitBedB
     );
   }
 
-  // IDEMPOTENCY (≥120)
+  // IDEMPOTENCY (≥120) — reuse only via admission correlation / idempotency key
   for (let i = 1; i <= 60; i++) {
+    const corr = buildHospitalAdmissionCorrelationV1({
+      admissionIntent: "NURSE_ADMISSION_INTAKE",
+      patientId: `p-${i}`,
+      facilityId: "fac-1",
+      idempotencyKey: `idem-${i}`,
+      receivingEncounterId: `ip-${i}`,
+    });
+    const reuse = resolveReceivingEncounterReuse({
+      patientId: `p-${i}`,
+      facilityId: "fac-1",
+      admissionIntent: "NURSE_ADMISSION_INTAKE",
+      idempotencyKey: `idem-${i}`,
+      openInpatientCandidates: [
+        {
+          id: `ip-${i}`,
+          admissionSummaryJson: mergeHospitalAdmissionCorrelationIntoSummary({}, corr),
+        },
+      ],
+    });
     const d = evaluateConcurrentEncounterCreate({
       pathway: "NURSE_ADMISSION_INTAKE",
       requestedType: "INPATIENT",
       existingOpen: [{ id: `ip-${i}`, type: "INPATIENT", status: "OPEN" }],
+      correlatedReceivingEncounterId:
+        reuse.action === "REUSE" ? reuse.receivingEncounterId : null,
     });
     cases.push(
       row(
         `idemp-reuse-${i}`,
         "IDEMPOTENCY",
-        "reuse_open_ip",
+        "reuse_correlated_ip",
         true,
-        d.allowed && d.code === "IDEMPOTENT_REUSE"
+        reuse.action === "REUSE" && d.allowed && d.code === "IDEMPOTENT_REUSE"
       )
     );
     cases.push(
@@ -191,6 +218,52 @@ export function buildUnitBedBoardsAdmissionIntakeD3e6dBenchmarkCases(): UnitBedB
         "reuse_id",
         `ip-${i}`,
         d.allowed && d.code === "IDEMPOTENT_REUSE" ? (d.reuseEncounterId ?? "") : ""
+      )
+    );
+  }
+
+  // Correlation contract: unrelated open IP must not be reused
+  for (let i = 1; i <= 20; i++) {
+    const prior = buildHospitalAdmissionCorrelationV1({
+      admissionIntent: "DIRECT_ADMISSION",
+      patientId: `p-x-${i}`,
+      facilityId: "fac-1",
+      hospitalEpisodeId: `ep-old-${i}`,
+      sourceEncounterId: `ed-old-${i}`,
+      receivingEncounterId: `ip-old-${i}`,
+      idempotencyKey: `old-${i}`,
+    });
+    const deny = resolveReceivingEncounterReuse({
+      patientId: `p-x-${i}`,
+      facilityId: "fac-1",
+      admissionIntent: "NURSE_ADMISSION_INTAKE",
+      hospitalEpisodeId: `ep-new-${i}`,
+      sourceEncounterId: `ed-new-${i}`,
+      idempotencyKey: `new-${i}`,
+      openInpatientCandidates: [
+        {
+          id: `ip-old-${i}`,
+          hospitalEpisodeId: `ep-old-${i}`,
+          admissionSummaryJson: mergeHospitalAdmissionCorrelationIntoSummary({}, prior),
+        },
+      ],
+    });
+    cases.push(
+      row(
+        `corr-deny-${i}`,
+        "IDEMPOTENCY",
+        "no_unrelated_reuse",
+        true,
+        deny.action === "DENY"
+      )
+    );
+    cases.push(
+      row(
+        `corr-pathway-${i}`,
+        "CONCURRENT_ENCOUNTER",
+        "admission_allows_ed_plus_ip",
+        true,
+        admissionPathwaysMustAllowEdPlusInpatient("PLACEMENT_RECEIVING")
       )
     );
   }

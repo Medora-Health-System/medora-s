@@ -135,6 +135,8 @@ export function HospitalCareAdmissionsView() {
         requestedUnit: unit.trim() || null,
         requestedLevelOfCare: level.trim() || null,
         plannedAt: formOpen === "SCHEDULED" ? plannedAt || null : null,
+        // Durable correlation key — server also stamps a UUID; never reuse by patient alone.
+        idempotencyKey: `adm-${formOpen}-${selectedPatient.id}-${Date.now()}`,
       });
       if (result.createdEdEncounter || result.createdObservationEncounter) {
         setFormError(t("hospitalCareD3e7.admissions.fakePathwayError"));
