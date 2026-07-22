@@ -12,8 +12,16 @@ import {
 } from "./observationWorkspaceSections";
 
 describe("D3D Observation workspace UI contracts", () => {
-  it("keeps browser feature flag OFF by default", () => {
-    expect(isObservationWorkspaceEnabledInBrowser()).toBe(false);
+  it("keeps browser feature flag OFF when public env var is unset", () => {
+    const key = "NEXT_PUBLIC_OBSERVATION_WORKSPACE_ENABLED";
+    const prior = process.env[key];
+    try {
+      delete process.env[key];
+      expect(isObservationWorkspaceEnabledInBrowser()).toBe(false);
+    } finally {
+      if (prior === undefined) delete process.env[key];
+      else process.env[key] = prior;
+    }
   });
 
   it("census and active workspace routes are distinct", () => {

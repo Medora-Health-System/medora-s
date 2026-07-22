@@ -15,11 +15,26 @@ import en from "@/i18n/messages/en";
 import fr from "@/i18n/messages/fr";
 
 describe("D3E Inpatient clinical workspace UI contracts", () => {
-  it("keeps all Inpatient browser flags OFF by default", () => {
-    expect(isInpatientWorkspaceEnabledInBrowser()).toBe(false);
-    expect(isInpatientDepartmentalOrdersEnabledInBrowser()).toBe(false);
-    expect(isInpatientMarEnabledInBrowser()).toBe(false);
-    expect(isInpatientDocumentationEnabledInBrowser()).toBe(false);
+  it("keeps all Inpatient browser flags OFF when public env vars are unset", () => {
+    const keys = [
+      "NEXT_PUBLIC_INPATIENT_WORKSPACE_ENABLED",
+      "NEXT_PUBLIC_INPATIENT_DEPARTMENTAL_ORDERS_ENABLED",
+      "NEXT_PUBLIC_INPATIENT_MAR_ENABLED",
+      "NEXT_PUBLIC_INPATIENT_DOCUMENTATION_ENABLED",
+    ] as const;
+    const prior = Object.fromEntries(keys.map((k) => [k, process.env[k]]));
+    try {
+      for (const k of keys) delete process.env[k];
+      expect(isInpatientWorkspaceEnabledInBrowser()).toBe(false);
+      expect(isInpatientDepartmentalOrdersEnabledInBrowser()).toBe(false);
+      expect(isInpatientMarEnabledInBrowser()).toBe(false);
+      expect(isInpatientDocumentationEnabledInBrowser()).toBe(false);
+    } finally {
+      for (const k of keys) {
+        if (prior[k] === undefined) delete process.env[k];
+        else process.env[k] = prior[k];
+      }
+    }
   });
 
   it("exposes census and active workspace paths", () => {
