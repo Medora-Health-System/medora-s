@@ -286,7 +286,16 @@ export class FacilityBedBoardService {
         admissionSummaryJson: true,
         dischargeSummaryJson: true,
         nursingAssessment: true,
-        patient: { select: { firstName: true, lastName: true, mrn: true } },
+        patient: {
+          select: {
+            firstName: true,
+            lastName: true,
+            mrn: true,
+            dob: true,
+            sexAtBirth: true,
+            sex: true,
+          },
+        },
       },
     });
 
@@ -311,6 +320,9 @@ export class FacilityBedBoardService {
         patientFirstName: row.patient?.firstName ?? null,
         patientLastName: row.patient?.lastName ?? null,
         patientMrn: row.patient?.mrn ?? null,
+        patientDob: row.patient?.dob ?? null,
+        patientSexAtBirth: row.patient?.sexAtBirth ?? null,
+        patientSex: row.patient?.sex ?? null,
       }));
   }
 

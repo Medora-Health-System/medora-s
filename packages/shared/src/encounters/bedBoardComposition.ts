@@ -18,6 +18,9 @@ export type BedBoardOccupancyRow = BedOccupancyRow & {
   workflowState?: string | null;
   disposition?: string | null;
   patientMrn?: string | null;
+  patientDob?: string | Date | null;
+  patientSexAtBirth?: string | null;
+  patientSex?: string | null;
 };
 
 export type BedOperationalOverlayRecord = BedOperationalOverlayInput & {
@@ -39,10 +42,20 @@ export type ComposedBedBoardRow = {
   occupantEncounterId: string | null;
   occupantPatientName: string | null;
   occupantMrn: string | null;
+  /** Age in whole years when DOB known — display aid for occupied beds. */
+  occupantAgeYears?: number | null;
+  occupantSex?: string | null;
   reasonCode: string | null;
   reasonText: string | null;
   updatedAt: string | null;
 };
+
+function ageYearsFromDob(dob: string | Date | null | undefined): number | null {
+  if (dob == null) return null;
+  const birth = dob instanceof Date ? dob : new Date(dob);
+  if (Number.isNaN(birth.getTime()) || birth.getTime() > Date.now()) return null;
+  return Math.floor((Date.now() - birth.getTime()) / (1000 * 60 * 60 * 24 * 365.25));
+}
 
 export type ComposedBedBoardUnit = {
   unitCode: EncounterBedUnitCode;
@@ -114,6 +127,11 @@ export function composeUnitBedBoard(input: {
       occupantEncounterId: occupant?.id ?? null,
       occupantPatientName: occupant ? formatPatientName(occupant) : null,
       occupantMrn: occupant?.patientMrn ?? null,
+      occupantAgeYears: occupant ? ageYearsFromDob(occupant.patientDob) : null,
+      occupantSex:
+        occupant?.patientSexAtBirth?.trim() ||
+        occupant?.patientSex?.trim() ||
+        null,
       reasonCode: overlay?.reasonCode ?? null,
       reasonText: overlay?.reasonText ?? null,
       updatedAt: overlay?.updatedAt ?? null,

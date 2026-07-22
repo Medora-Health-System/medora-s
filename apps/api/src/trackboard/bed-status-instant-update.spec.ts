@@ -13,6 +13,8 @@ describe("bed-status-instant-update API response (MEDUI.ED.BEDBOARD.ROOM_MUTATIO
       occupantEncounterId: null,
       occupantPatientName: null,
       occupantMrn: null,
+      occupantAgeYears: null,
+      occupantSex: null,
       reasonCode: null,
       reasonText: null,
       updatedAt: "2026-06-03T10:00:00.000Z",

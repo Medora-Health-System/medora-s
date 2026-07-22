@@ -185,6 +185,16 @@ export function BedBoardGrid({
                   }}
                 >
                   {bed.patientDisplay ?? bed.occupantPatientName}
+                  {bed.occupantAgeYears != null || bed.occupantSex
+                    ? ` · ${[
+                        bed.occupantAgeYears != null
+                          ? `${bed.occupantAgeYears}${t("hospitalAdmissionD4a0.search.yearOldShort")}`
+                          : null,
+                        bed.occupantSex ?? null,
+                      ]
+                        .filter(Boolean)
+                        .join(" ")}`
+                    : ""}
                 </span>
               ) : null}
             </button>
