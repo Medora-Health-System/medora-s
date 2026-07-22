@@ -8,6 +8,7 @@ export const hospitalAdmissionD4a0En = {
     details: "STEP 3 — Complete admission details",
     unitBed: "STEP 4 — Assign unit and bed",
     patientLocked: "Patient confirmed. Choose a different patient to change identity.",
+    confirmedPatient: "Confirmed Patient",
   },
   search: {
     label: "Search existing patient",

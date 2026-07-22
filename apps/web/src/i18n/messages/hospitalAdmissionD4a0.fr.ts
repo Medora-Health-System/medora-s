@@ -9,6 +9,7 @@ export const hospitalAdmissionD4a0Fr = {
     unitBed: "ÉTAPE 4 — Assigner l’unité et le lit",
     patientLocked:
       "Patient confirmé. Choisissez un autre patient pour changer d’identité.",
+    confirmedPatient: "Patient confirmé",
   },
   search: {
     label: "Rechercher un patient existant",

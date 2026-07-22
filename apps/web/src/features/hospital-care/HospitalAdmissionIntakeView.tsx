@@ -459,9 +459,9 @@ export function HospitalAdmissionIntakeView() {
             style={{ ...confirmCard, marginBottom: 12 }}
             data-testid="admission-confirmed-patient-summary"
           >
-            <p style={{ margin: "0 0 8px", fontSize: 12, color: "#64748b" }}>
-              {t("hospitalAdmissionD4a0.steps.patientLocked")}
-            </p>
+            <h4 style={{ ...sectionHead, margin: "0 0 8px" }}>
+              {t("hospitalAdmissionD4a0.steps.confirmedPatient")}
+            </h4>
             <p style={metaLine}>
               <strong>
                 {`${workspacePatient.firstName ?? ""} ${workspacePatient.lastName ?? ""}`.trim() ||
