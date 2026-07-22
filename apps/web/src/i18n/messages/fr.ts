@@ -17,6 +17,7 @@ import { providerDocumentationObGynUrologyComplaintIntelFr } from "./providerDoc
 import { providerDocumentationPsychiatricBehavioralComplaintIntelFr } from "./providerDocumentationPsychiatricBehavioralComplaintIntel.fr";
 import { hospitalAdmissionD4a0Fr } from "./hospitalAdmissionD4a0.fr";
 import { hospitalAdmissionD4a1Fr } from "./hospitalAdmissionD4a1.fr";
+import { emergencyAdaptiveNursingFr } from "./emergencyAdaptiveNursing.fr";
 import { providerDocumentationGuRenalComplaintIntel19Mdm5Fr } from "./providerDocumentationGuRenalComplaintIntel19Mdm5.fr";
 import { providerDocumentationInfectiousEntComplaintIntel19Mdm7Fr } from "./providerDocumentationInfectiousEntComplaintIntel19Mdm7.fr";
 import { providerDocumentationDentalOralComplaintIntelFr } from "./providerDocumentationDentalOralComplaintIntel.fr";
@@ -14283,8 +14284,29 @@ export default {
     saveAdmissionDraftButton: "Enregistrer le brouillon",
     signDecisionButton: "Signer et terminer la disposition",
     signAdmissionButton: "Signer et soumettre l'admission",
+    signHomeDischargeButton: "Signer la décision de sortie",
     signTransferButton: "Signer la décision de transfert",
     signAmaButton: "Signer la documentation LAMA",
+    labelAdmittingService: "Service admettant",
+    labelServiceOtherClarification: "Précision du service (Autre)",
+    labelLocOtherClarification: "Précision du niveau de soins (Autre)",
+    labelConditionStatus: "État à l'admission (structuré)",
+    smartPacketProvenanceHint:
+      "Les propositions utilisent uniquement des faits documentés. Origine : fait importé, proposition système, ou texte modifié par le médecin.",
+    fieldOrigin: {
+      IMPORTED_CHART_FACT: "Fait importé du dossier",
+      SYSTEM_PROPOSAL: "Proposition système (modifiable)",
+      PHYSICIAN_EDITED: "Texte final modifié par le médecin",
+    },
+    conditionStatus: {
+      STABLE: "Stable",
+      GUARDED: "Réservé",
+      SERIOUS: "Sérieux",
+      CRITICAL: "Critique",
+      IMPROVED: "Amélioré",
+      UNCHANGED: "Inchangé",
+      OTHER: "Autre",
+    },
     signDecisionOk:
       "Décision de disposition signée. Le départ physique et la clôture restent des étapes distinctes.",
     signAdmissionOk:
@@ -14300,6 +14322,15 @@ export default {
     openDiagnosesWorkflow: "Ouvrir les diagnostics",
     errors: {
       permissionDenied: "Vous n'avez pas l'autorisation de signer cette rencontre.",
+      primaryDiagnosisRequired: "Sélectionnez un diagnostic principal avant de signer l'admission.",
+      ADMITTING_SERVICE_INVALID: "Service admettant invalide.",
+      ADMITTING_SERVICE_OTHER_CLARIFICATION_REQUIRED:
+        "Précisez le service lorsque « Autre » est sélectionné.",
+      LEVEL_OF_CARE_INVALID: "Niveau de soins invalide.",
+      LEVEL_OF_CARE_OTHER_CLARIFICATION_REQUIRED:
+        "Précisez le niveau de soins lorsque « Autre » est sélectionné.",
+      LEVEL_OF_CARE_UNIT_INCOMPATIBLE: "Niveau de soins incompatible avec l'unité demandée.",
+      SERVICE_LOC_INCOMPATIBLE: "Service et niveau de soins incompatibles.",
       requestId: "Réf. support",
       PATIENT_NOT_FOUND_IN_FACILITY:
         "Patient introuvable dans cet établissement. Vérifiez la sélection et le site de connexion.",
@@ -19118,6 +19149,7 @@ export default {
   hospitalAdmissionD4a1: hospitalAdmissionD4a1Fr,
 
   hospitalAdmissionD4a0: hospitalAdmissionD4a0Fr,
+  emergencyAdaptiveNursing: emergencyAdaptiveNursingFr,
 
   hospitalCareD3e6d: {
     bedBoard: {

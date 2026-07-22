@@ -149,6 +149,24 @@ describe("EncountersService.recordAdmissionDecision", () => {
     expect(updateMany).not.toHaveBeenCalled();
   });
 
+  it("requires primary diagnosis to SIGN", async () => {
+    const { svc, updateMany } = buildService({ roleCodes: ["PROVIDER"] });
+    const dto = {
+      ...baseDto("SIGN"),
+      admissionDiagnoses: {
+        primaryDiagnosisId: undefined,
+        secondaryDiagnosisIds: [] as string[],
+        primaryDisplay: null,
+        secondaryDisplays: [] as string[],
+        clarificationText: null,
+      },
+    };
+    await expect(
+      svc.recordAdmissionDecision(facilityId, encounterId, dto, userId)
+    ).rejects.toMatchObject({ status: 400 });
+    expect(updateMany).not.toHaveBeenCalled();
+  });
+
   it("creates and submits placement when workflow flag ON; does not close ED", async () => {
     const { svc, placement, updateMany } = buildService({
       roleCodes: ["PROVIDER"],

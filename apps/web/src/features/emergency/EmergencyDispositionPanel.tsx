@@ -2,10 +2,20 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
+  ADMISSION_CONDITION_STATUSES,
+  ED_ADMISSION_LEVEL_OF_CARE_OPTIONS,
+  HOSPITAL_ADMITTING_SERVICES,
+  applyProposalsToFlatFieldsIfEmpty,
+  buildSmartAdmissionProposals,
+  emptyAdmissionPacketV1,
   inferPlacementEncounterTypeFromCareLevel,
   isDirectAdmissionErrorCode,
+  isHospitalAdmittingService,
+  isHospitalRequestedLevelOfCare,
   mapLegacyCareLevelToRequestedTypeHint,
+  markFieldPhysicianEdited,
   projectEdDispositionState,
+  readAdmissionPacketV1,
   readAmaDispositionV1,
   readDeceasedDispositionV1,
   readEdDispositionDecisionFromNursingAssessment,
@@ -15,7 +25,12 @@ import {
   resolveEdDispositionPath,
   resolveEdDispositionPrintKind,
   shouldUseHomeDischargePrintLayout,
+  validateSmartAdmissionServiceLocCompatibility,
+  type AdmissionPacketV1,
+  type HospitalAdmittingService,
+  type HospitalRequestedLevelOfCare,
 } from "@medora/shared";
+import { buildSmartAdmissionChartContext } from "./smartAdmissionChartContext";
 import { apiFetch, parseApiResponse } from "@/lib/apiClient";
 import { normalizeUserFacingError } from "@/lib/userFacingError";
 import { useI18n } from "@/lib/i18n";
@@ -31,7 +46,6 @@ import {
   hydrateAdmissionFormFromEncounterJson,
   emptyAdmissionForm,
   formatPhysicianName,
-  CARE_LEVEL_OPTIONS_FR,
   type AdmissionFormState,
 } from "@/lib/encounterAdmission";
 import { parseAdmissionSummaryForChart } from "@/components/patient-chart/patientChartHelpers";
@@ -242,11 +256,6 @@ export function EmergencyDispositionPanel({
     [t]
   );
 
-  const careLevelDisplayOptions = useMemo(
-    () => t("emergencyDisposition.careLevelOptions").split("\n").filter(Boolean),
-    [t]
-  );
-
   const [dischargeForm, setDischargeForm] = useState<DischargeFormState>(() => emptyDischargeForm());
   const [admissionForm, setAdmissionForm] = useState<AdmissionFormState>(() => emptyAdmissionForm());
   const [supplementForm, setSupplementForm] = useState<ErDispositionSupplementForm>(() =>
@@ -280,6 +289,13 @@ export function EmergencyDispositionPanel({
   const [otherBoard, setOtherBoard] = useState(emptyOtherDispositionForm);
   const [primaryDiagnosisId, setPrimaryDiagnosisId] = useState<string>("");
   const [secondaryDiagnosisIds, setSecondaryDiagnosisIds] = useState<string[]>([]);
+  const [admissionPacket, setAdmissionPacket] = useState<AdmissionPacketV1>(() =>
+    emptyAdmissionPacketV1()
+  );
+  const [serviceOtherClarification, setServiceOtherClarification] = useState("");
+  const [locOtherClarification, setLocOtherClarification] = useState("");
+  const [conditionStatus, setConditionStatus] = useState<string>("");
+  const [proposalsApplied, setProposalsApplied] = useState(false);
   const encounterDiagnoses = useEncounterDiagnosisRows({
     encounterId,
     patientId: encounter.patient?.id,
@@ -289,7 +305,6 @@ export function EmergencyDispositionPanel({
     () => parseAdmissionSummaryForChart(encounter.admissionSummaryJson) != null,
     [encounter.admissionSummaryJson]
   );
-
   useEffect(() => {
     const raw = encounter.admissionSummaryJson;
     if (!raw || typeof raw !== "object" || Array.isArray(raw)) return;
@@ -301,15 +316,68 @@ export function EmergencyDispositionPanel({
     };
     if (obj.primaryDiagnosisId) setPrimaryDiagnosisId(obj.primaryDiagnosisId);
     if (Array.isArray(obj.secondaryDiagnosisIds)) {
-      setSecondaryDiagnosisIds(obj.secondaryDiagnosisIds.filter(Boolean));
+      setSecondaryDiagnosisIds(
+        obj.secondaryDiagnosisIds.filter((id) => id && id !== obj.primaryDiagnosisId)
+      );
     }
   }, [encounter.admissionSummaryJson]);
 
   const formatDxRow = useCallback((row: EncounterDiagnosisApiRow) => {
     const code = String(row.code ?? "").trim();
+    const system = String(row.diagnosisType ?? "ICD-10").trim() || "ICD-10";
     const desc = String(row.description ?? "").trim();
-    return [code, desc].filter(Boolean).join(" — ") || desc || code || row.id;
+    return [code && `${system} ${code}`, desc].filter(Boolean).join(" — ") || desc || code || row.id;
   }, []);
+
+  useEffect(() => {
+    const packet = readAdmissionPacketV1(encounter.admissionSummaryJson);
+    setAdmissionPacket(packet);
+    setServiceOtherClarification(packet.admittingServiceOtherClarification ?? "");
+    setLocOtherClarification(packet.levelOfCareOtherClarification ?? "");
+    setConditionStatus(packet.conditionStatus ?? "");
+    if (packet.admittingServiceCode) {
+      setAdmissionForm((prev) =>
+        prev.serviceUnit ? prev : { ...prev, serviceUnit: packet.admittingServiceCode ?? "" }
+      );
+    }
+    if (packet.levelOfCareCode) {
+      setAdmissionForm((prev) =>
+        prev.careLevel ? prev : { ...prev, careLevel: packet.levelOfCareCode ?? "" }
+      );
+    }
+  }, [encounter.admissionSummaryJson]);
+
+  // Apply smart proposals once when admission fields are empty (documented sources only).
+  useEffect(() => {
+    if (proposalsApplied || outcomeUi !== "ADMISSION" || !canPrescribe) return;
+    if (admissionForm.admissionReason.trim() || admissionForm.initialPlan.trim()) {
+      setProposalsApplied(true);
+      return;
+    }
+    const primaryRow = encounterDiagnoses.find((d) => d.id === primaryDiagnosisId);
+    const secondaryRows = encounterDiagnoses.filter((d) => secondaryDiagnosisIds.includes(d.id));
+    const ctx = buildSmartAdmissionChartContext({
+      encounter,
+      primaryDiagnosisDisplay: primaryRow ? formatDxRow(primaryRow) : null,
+      secondaryDiagnosisDisplays: secondaryRows.map(formatDxRow),
+    });
+    const proposed = buildSmartAdmissionProposals(ctx);
+    if (!proposed.fields.admissionReason && !proposed.fields.initialPlan) {
+      setProposalsApplied(true);
+      return;
+    }
+    setAdmissionPacket(proposed);
+    const flat = applyProposalsToFlatFieldsIfEmpty(admissionForm, proposed);
+    setAdmissionForm((prev) => ({ ...prev, ...flat }));
+    if (proposed.admittingServiceCode) {
+      setAdmissionForm((prev) => ({ ...prev, serviceUnit: proposed.admittingServiceCode ?? "" }));
+    }
+    if (proposed.levelOfCareCode) {
+      setAdmissionForm((prev) => ({ ...prev, careLevel: proposed.levelOfCareCode ?? "" }));
+    }
+    setProposalsApplied(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- one-shot proposal apply
+  }, [outcomeUi, canPrescribe, encounterDiagnoses, primaryDiagnosisId, proposalsApplied, formatDxRow]);
 
   const dispositionState = useMemo(
     () =>
@@ -674,23 +742,89 @@ export function EmergencyDispositionPanel({
         encounter.status === "OPEN" &&
         Object.keys(admissionPayload).length > 0
       ) {
+        if (mode === "SIGN" && !primaryDiagnosisId.trim()) {
+          setSaveInfo(t("emergencyDisposition.errors.primaryDiagnosisRequired"));
+          setSaving(false);
+          return;
+        }
+        const secondaryIds = secondaryDiagnosisIds.filter((id) => id !== primaryDiagnosisId);
         const primaryRow = encounterDiagnoses.find((d) => d.id === primaryDiagnosisId);
-        const secondaryRows = encounterDiagnoses.filter((d) =>
-          secondaryDiagnosisIds.includes(d.id)
-        );
+        const secondaryRows = encounterDiagnoses.filter((d) => secondaryIds.includes(d.id));
+        const serviceRaw = admissionForm.serviceUnit.trim().toUpperCase();
+        const locRaw = admissionForm.careLevel.trim().toUpperCase();
+        const serviceCode: HospitalAdmittingService | null | undefined = isHospitalAdmittingService(
+          serviceRaw
+        )
+          ? serviceRaw
+          : admissionPacket.admittingServiceCode;
+        const locCode: HospitalRequestedLevelOfCare | null | undefined =
+          isHospitalRequestedLevelOfCare(locRaw) ? locRaw : admissionPacket.levelOfCareCode;
+        const packetToSave: AdmissionPacketV1 = {
+          ...admissionPacket,
+          version: 1,
+          admittingServiceCode: serviceCode ?? null,
+          admittingServiceOtherClarification:
+            serviceCode === "OTHER" ? serviceOtherClarification.trim() || null : null,
+          levelOfCareCode: locCode ?? null,
+          levelOfCareOtherClarification:
+            locCode === "OTHER" ? locOtherClarification.trim() || null : null,
+          conditionStatus: (conditionStatus || null) as AdmissionPacketV1["conditionStatus"],
+          fields: {
+            ...admissionPacket.fields,
+            admissionReason: markFieldPhysicianEdited(
+              admissionPacket.fields.admissionReason,
+              admissionForm.admissionReason
+            ),
+            serviceUnit: markFieldPhysicianEdited(
+              admissionPacket.fields.serviceUnit,
+              admissionForm.serviceUnit
+            ),
+            careLevel: markFieldPhysicianEdited(
+              admissionPacket.fields.careLevel,
+              admissionForm.careLevel
+            ),
+            conditionAtAdmission: markFieldPhysicianEdited(
+              admissionPacket.fields.conditionAtAdmission,
+              admissionForm.conditionAtAdmission
+            ),
+            initialPlan: markFieldPhysicianEdited(
+              admissionPacket.fields.initialPlan,
+              admissionForm.initialPlan
+            ),
+          },
+        };
+        const compat = validateSmartAdmissionServiceLocCompatibility({
+          admittingServiceCode: packetToSave.admittingServiceCode,
+          admittingServiceOtherClarification: packetToSave.admittingServiceOtherClarification,
+          levelOfCareCode: packetToSave.levelOfCareCode,
+          levelOfCareOtherClarification: packetToSave.levelOfCareOtherClarification,
+        });
+        if (!compat.ok) {
+          setSaveInfo(
+            t(`emergencyDisposition.errors.${compat.errors[0]}`) ||
+              t("emergencyDisposition.saveFailed")
+          );
+          setSaving(false);
+          return;
+        }
         await apiFetch(`/encounters/${encounterId}/admission/decision`, {
           method: "POST",
           facilityId,
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             mode,
-            admissionSummary: admissionPayload,
+            admissionSummary: {
+              ...admissionPayload,
+              serviceUnit: serviceCode || admissionForm.serviceUnit,
+              careLevel: locCode || admissionForm.careLevel,
+            },
+            admissionPacket: packetToSave,
             requestedEncounterType: inferPlacementEncounterTypeFromCareLevel(
-              admissionForm.careLevel
+              locCode || admissionForm.careLevel
             ),
             admissionDiagnoses: {
               primaryDiagnosisId: primaryDiagnosisId || null,
-              secondaryDiagnosisIds,
+              secondaryDiagnosisIds: secondaryIds,
               primaryDisplay: primaryRow ? formatDxRow(primaryRow) : null,
               secondaryDisplays: secondaryRows.map(formatDxRow),
               clarificationText: admissionForm.admissionDiagnosis.trim() || null,
@@ -1148,26 +1282,71 @@ export function EmergencyDispositionPanel({
                     patchAdmission({
                       careLevel:
                         placement.requestedEncounterType === "OBSERVATION"
-                          ? "Observation"
-                          : "Acute",
+                          ? "OBSERVATION"
+                          : "MEDICAL_SURGICAL",
                     });
                   }}
                 />
                 <p style={sectionHeading}>{t("emergencyDisposition.sectionAdmissionPhysician")}</p>
+                <p style={{ margin: "4px 0 8px", fontSize: 11, color: "#64748b" }}>
+                  {t("emergencyDisposition.smartPacketProvenanceHint")}
+                </p>
                 <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 8 }}>
                   <div>
                     <label style={labelStyle}>{t("emergencyDisposition.labelAdmissionReason")}</label>
+                    {admissionPacket.fields.admissionReason?.origin ? (
+                      <p style={{ margin: "0 0 4px", fontSize: 11, color: "#0369a1" }}>
+                        {t(`emergencyDisposition.fieldOrigin.${admissionPacket.fields.admissionReason.origin}`)}
+                      </p>
+                    ) : null}
                     {ta(2, admissionForm.admissionReason, (v) => patchAdmission({ admissionReason: v }), medDisabled)}
+                    {(admissionPacket.fields.admissionReason?.sources?.length ?? 0) > 0 ? (
+                      <ul style={{ margin: "4px 0 0", paddingLeft: 18, fontSize: 11, color: "#64748b" }}>
+                        {admissionPacket.fields.admissionReason!.sources.map((s, i) => (
+                          <li key={`${s.kind}-${i}`}>
+                            {s.label}
+                            {s.excerpt ? `: ${s.excerpt}` : ""}
+                          </li>
+                        ))}
+                      </ul>
+                    ) : null}
                   </div>
                   <div>
-                    <label style={labelStyle}>{t("emergencyDisposition.labelServiceUnit")}</label>
-                    <input
-                      type="text"
-                      value={admissionForm.serviceUnit}
+                    <label style={labelStyle}>{t("emergencyDisposition.labelAdmittingService")}</label>
+                    <select
+                      value={
+                        isHospitalAdmittingService(admissionForm.serviceUnit)
+                          ? admissionForm.serviceUnit.trim().toUpperCase()
+                          : ""
+                      }
                       onChange={(e) => patchAdmission({ serviceUnit: e.target.value })}
                       disabled={medDisabled}
-                      style={{ ...inputBase, backgroundColor: medDisabled ? "#f8fafc" : "#fff" }}
-                    />
+                      data-testid="admission-admitting-service"
+                      style={{
+                        ...inputBase,
+                        cursor: medDisabled ? "not-allowed" : "pointer",
+                        backgroundColor: medDisabled ? "#f8fafc" : "#fff",
+                      }}
+                    >
+                      <option value="">—</option>
+                      {HOSPITAL_ADMITTING_SERVICES.map((code) => (
+                        <option key={code} value={code}>
+                          {t(`hospitalAdmissionD4a0.service.${code}`)}
+                        </option>
+                      ))}
+                    </select>
+                    {admissionForm.serviceUnit === "OTHER" ? (
+                      <div style={{ marginTop: 6 }}>
+                        <label style={labelStyle}>{t("emergencyDisposition.labelServiceOtherClarification")}</label>
+                        <input
+                          type="text"
+                          value={serviceOtherClarification}
+                          onChange={(e) => setServiceOtherClarification(e.target.value)}
+                          disabled={medDisabled}
+                          style={{ ...inputBase, backgroundColor: medDisabled ? "#f8fafc" : "#fff" }}
+                        />
+                      </div>
+                    ) : null}
                   </div>
                   <div>
                     <label style={labelStyle}>{t("emergencyDisposition.labelAdmissionDiagnoses")}</label>
@@ -1181,11 +1360,15 @@ export function EmergencyDispositionPanel({
                     ) : (
                       <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 6 }}>
                         <label style={{ ...labelStyle, fontWeight: 500 }}>
-                          {t("emergencyDisposition.primaryAdmissionDiagnosis")}
+                          {t("emergencyDisposition.primaryAdmissionDiagnosis")} *
                           <select
                             value={primaryDiagnosisId}
                             disabled={medDisabled}
-                            onChange={(e) => setPrimaryDiagnosisId(e.target.value)}
+                            onChange={(e) => {
+                              const next = e.target.value;
+                              setPrimaryDiagnosisId(next);
+                              setSecondaryDiagnosisIds((prev) => prev.filter((id) => id !== next));
+                            }}
                             style={{ ...inputBase, marginTop: 4 }}
                             data-testid="admission-primary-diagnosis"
                           >
@@ -1220,7 +1403,7 @@ export function EmergencyDispositionPanel({
                                 onChange={(e) => {
                                   setSecondaryDiagnosisIds((prev) =>
                                     e.target.checked
-                                      ? [...prev.filter((x) => x !== d.id), d.id]
+                                      ? [...prev.filter((x) => x !== d.id && x !== primaryDiagnosisId), d.id]
                                       : prev.filter((x) => x !== d.id)
                                   );
                                 }}
@@ -1237,9 +1420,14 @@ export function EmergencyDispositionPanel({
                   <div>
                     <label style={labelStyle}>{t("emergencyDisposition.labelCareLevel")}</label>
                     <select
-                      value={admissionForm.careLevel}
+                      value={
+                        isHospitalRequestedLevelOfCare(admissionForm.careLevel)
+                          ? admissionForm.careLevel.trim().toUpperCase()
+                          : ""
+                      }
                       onChange={(e) => patchAdmission({ careLevel: e.target.value })}
                       disabled={medDisabled}
+                      data-testid="admission-level-of-care"
                       style={{
                         ...inputBase,
                         cursor: medDisabled ? "not-allowed" : "pointer",
@@ -1247,20 +1435,68 @@ export function EmergencyDispositionPanel({
                       }}
                     >
                       <option value="">—</option>
-                      {CARE_LEVEL_OPTIONS_FR.map((o, i) => (
-                        <option key={o} value={o}>
-                          {careLevelDisplayOptions[i] ?? o}
+                      {ED_ADMISSION_LEVEL_OF_CARE_OPTIONS.map((code) => (
+                        <option key={code} value={code}>
+                          {t(`hospitalAdmissionD4a0.level.${code}`)}
                         </option>
                       ))}
                     </select>
+                    {admissionForm.careLevel === "OTHER" ? (
+                      <div style={{ marginTop: 6 }}>
+                        <label style={labelStyle}>{t("emergencyDisposition.labelLocOtherClarification")}</label>
+                        <input
+                          type="text"
+                          value={locOtherClarification}
+                          onChange={(e) => setLocOtherClarification(e.target.value)}
+                          disabled={medDisabled}
+                          style={{ ...inputBase, backgroundColor: medDisabled ? "#f8fafc" : "#fff" }}
+                        />
+                      </div>
+                    ) : null}
                   </div>
                   <div>
-                    <label style={labelStyle}>{t("emergencyDisposition.labelConditionAdmission")}</label>
+                    <label style={labelStyle}>{t("emergencyDisposition.labelConditionStatus")}</label>
+                    <select
+                      value={conditionStatus}
+                      onChange={(e) => setConditionStatus(e.target.value)}
+                      disabled={medDisabled}
+                      data-testid="admission-condition-status"
+                      style={{
+                        ...inputBase,
+                        cursor: medDisabled ? "not-allowed" : "pointer",
+                        backgroundColor: medDisabled ? "#f8fafc" : "#fff",
+                      }}
+                    >
+                      <option value="">—</option>
+                      {ADMISSION_CONDITION_STATUSES.map((code) => (
+                        <option key={code} value={code}>
+                          {t(`emergencyDisposition.conditionStatus.${code}`)}
+                        </option>
+                      ))}
+                    </select>
+                    <label style={{ ...labelStyle, marginTop: 8 }}>
+                      {t("emergencyDisposition.labelConditionAdmission")}
+                    </label>
                     {ta(2, admissionForm.conditionAtAdmission, (v) => patchAdmission({ conditionAtAdmission: v }), medDisabled)}
                   </div>
                   <div>
                     <label style={labelStyle}>{t("emergencyDisposition.labelInitialPlan")}</label>
+                    {admissionPacket.fields.initialPlan?.origin ? (
+                      <p style={{ margin: "0 0 4px", fontSize: 11, color: "#0369a1" }}>
+                        {t(`emergencyDisposition.fieldOrigin.${admissionPacket.fields.initialPlan.origin}`)}
+                      </p>
+                    ) : null}
                     {ta(2, admissionForm.initialPlan, (v) => patchAdmission({ initialPlan: v }), medDisabled)}
+                    {(admissionPacket.fields.initialPlan?.sources?.length ?? 0) > 0 ? (
+                      <ul style={{ margin: "4px 0 0", paddingLeft: 18, fontSize: 11, color: "#64748b" }}>
+                        {admissionPacket.fields.initialPlan!.sources.map((s, i) => (
+                          <li key={`${s.kind}-${i}`}>
+                            {s.label}
+                            {s.excerpt ? `: ${s.excerpt}` : ""}
+                          </li>
+                        ))}
+                      </ul>
+                    ) : null}
                   </div>
                   <div>
                     <label style={labelStyle}>{t("emergencyDisposition.labelResponsiblePhysician")}</label>
@@ -1543,9 +1779,7 @@ export function EmergencyDispositionPanel({
               >
                 {saving
                   ? t("emergencyDisposition.saveButtonSaving")
-                  : outcomeUi === "ADMISSION"
-                    ? t("emergencyDisposition.saveAdmissionDraftButton")
-                    : t("emergencyDisposition.saveDraftButton")}
+                  : t("emergencyDisposition.saveDraftButton")}
               </button>
               {(canEditMedicalDischarge || canPrescribe) && !formDisabled ? (
                 <button
@@ -1569,11 +1803,13 @@ export function EmergencyDispositionPanel({
                 >
                   {outcomeUi === "ADMISSION"
                     ? t("emergencyDisposition.signAdmissionButton")
-                    : outcomeUi === "TRANSFER"
-                      ? t("emergencyDisposition.signTransferButton")
-                      : outcomeUi === "AMA"
-                        ? t("emergencyDisposition.signAmaButton")
-                        : t("emergencyDisposition.signDecisionButton")}
+                    : outcomeUi === "HOME"
+                      ? t("emergencyDisposition.signHomeDischargeButton")
+                      : outcomeUi === "TRANSFER"
+                        ? t("emergencyDisposition.signTransferButton")
+                        : outcomeUi === "AMA"
+                          ? t("emergencyDisposition.signAmaButton")
+                          : t("emergencyDisposition.signDecisionButton")}
                 </button>
               ) : null}
               <p style={{ margin: 0, fontSize: 11, color: "#64748b", flex: "1 1 220px" }}>

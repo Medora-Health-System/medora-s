@@ -73,6 +73,9 @@ import {
   flatAdmissionFieldsHaveContent,
   inferPlacementEncounterTypeFromCareLevel,
   mergeAdmissionSummaryFieldsPreservingNested,
+  validateSmartAdmissionServiceLocCompatibility,
+  readAdmissionPacketV1,
+  type AdmissionPacketV1,
   ER_HANDOFF_V1_KEY,
   erHandoffV1SatisfiesInpatientTransferConfirm,
   clinicalEncounterContextIsObservation,
@@ -4308,12 +4311,22 @@ export class EncountersService {
     }
 
     let admissionDiagnoses = dto.admissionDiagnoses ?? null;
+    if (dto.mode === "SIGN") {
+      const primaryId = String(admissionDiagnoses?.primaryDiagnosisId ?? "").trim();
+      if (!primaryId) {
+        throw new BadRequestException(
+          "Un diagnostic principal d'admission est requis pour signer."
+        );
+      }
+    }
     const selectedDx = admissionDiagnoses;
     if (
       selectedDx &&
       (selectedDx.primaryDiagnosisId || (selectedDx.secondaryDiagnosisIds?.length ?? 0) > 0)
     ) {
-      const secondaryIds = selectedDx.secondaryDiagnosisIds ?? [];
+      const secondaryIds = (selectedDx.secondaryDiagnosisIds ?? []).filter(
+        (id) => id !== selectedDx.primaryDiagnosisId
+      );
       const ids = [
         selectedDx.primaryDiagnosisId,
         ...secondaryIds,
@@ -4355,10 +4368,38 @@ export class EncountersService {
       };
     }
 
+    let admissionPacket: AdmissionPacketV1 | null = null;
+    if (dto.admissionPacket && typeof dto.admissionPacket === "object") {
+      const priorPacket = readAdmissionPacketV1(encounter.admissionSummaryJson);
+      admissionPacket = {
+        ...priorPacket,
+        ...(dto.admissionPacket as AdmissionPacketV1),
+        version: 1,
+        certification: priorPacket.certification,
+        fields: {
+          ...priorPacket.fields,
+          ...((dto.admissionPacket as AdmissionPacketV1).fields ?? {}),
+        },
+      };
+      const compat = validateSmartAdmissionServiceLocCompatibility({
+        admittingServiceCode: admissionPacket.admittingServiceCode,
+        admittingServiceOtherClarification: admissionPacket.admittingServiceOtherClarification,
+        levelOfCareCode: admissionPacket.levelOfCareCode,
+        levelOfCareOtherClarification: admissionPacket.levelOfCareOtherClarification,
+        requestedUnitCode: dto.requestedUnitCode ?? admissionPacket.requestedUnitCode,
+      });
+      if (!compat.ok) {
+        throw new BadRequestException(
+          `Dossier d'admission incompatible: ${compat.errors.join(", ")}`
+        );
+      }
+    }
+
     const mergedSummary = mergeAdmissionSummaryFieldsPreservingNested(
       encounter.admissionSummaryJson,
       dto.admissionSummary,
-      admissionDiagnoses
+      admissionDiagnoses,
+      admissionPacket
     );
     mergedSummary.admissionDecisionMode = dto.mode;
     mergedSummary.admissionDecisionAt = new Date().toISOString();

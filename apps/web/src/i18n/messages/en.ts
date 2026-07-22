@@ -41,6 +41,7 @@ import { providerDocumentationToxicologyComplaintIntelEn } from "./providerDocum
 import { providerDocumentationObGynUrologyComplaintIntelEn } from "./providerDocumentationObGynUrologyComplaintIntel.en";
 import { providerDocumentationPsychiatricBehavioralComplaintIntelEn } from "./providerDocumentationPsychiatricBehavioralComplaintIntel.en";
 import { hospitalAdmissionD4a0En } from "./hospitalAdmissionD4a0.en";
+import { emergencyAdaptiveNursingEn } from "./emergencyAdaptiveNursing.en";
 import { hospitalAdmissionD4a1En } from "./hospitalAdmissionD4a1.en";
 
 export default {
@@ -14245,8 +14246,29 @@ export default {
     saveAdmissionDraftButton: "Save draft",
     signDecisionButton: "Sign & complete disposition",
     signAdmissionButton: "Sign & submit admission",
+    signHomeDischargeButton: "Sign discharge decision",
     signTransferButton: "Sign transfer decision",
     signAmaButton: "Sign AMA documentation",
+    labelAdmittingService: "Admitting service",
+    labelServiceOtherClarification: "Service clarification (Other)",
+    labelLocOtherClarification: "Level-of-care clarification (Other)",
+    labelConditionStatus: "Condition on admission (structured)",
+    smartPacketProvenanceHint:
+      "Proposals use documented facts only. Origin: imported chart fact, system proposal, or physician-edited final text.",
+    fieldOrigin: {
+      IMPORTED_CHART_FACT: "Imported chart fact",
+      SYSTEM_PROPOSAL: "System proposal (editable)",
+      PHYSICIAN_EDITED: "Physician-edited final text",
+    },
+    conditionStatus: {
+      STABLE: "Stable",
+      GUARDED: "Guarded",
+      SERIOUS: "Serious",
+      CRITICAL: "Critical",
+      IMPROVED: "Improved",
+      UNCHANGED: "Unchanged",
+      OTHER: "Other",
+    },
     signDecisionOk: "Disposition decision signed. Physical departure and closure remain separate steps.",
     signAdmissionOk:
       "Admission signed and submitted. The ED encounter stays open until the governed departure/transition.",
@@ -14261,6 +14283,15 @@ export default {
     openDiagnosesWorkflow: "Open diagnostics",
     errors: {
       permissionDenied: "You do not have permission to sign this encounter.",
+      primaryDiagnosisRequired: "Select a primary admission diagnosis before signing.",
+      ADMITTING_SERVICE_INVALID: "Invalid admitting service.",
+      ADMITTING_SERVICE_OTHER_CLARIFICATION_REQUIRED:
+        "Clarify the service when Other is selected.",
+      LEVEL_OF_CARE_INVALID: "Invalid level of care.",
+      LEVEL_OF_CARE_OTHER_CLARIFICATION_REQUIRED:
+        "Clarify the level of care when Other is selected.",
+      LEVEL_OF_CARE_UNIT_INCOMPATIBLE: "Level of care is incompatible with the requested unit.",
+      SERVICE_LOC_INCOMPATIBLE: "Service and level of care are incompatible.",
       requestId: "Support ref",
       PATIENT_NOT_FOUND_IN_FACILITY:
         "Patient not found at this facility. Check selection and login site.",
@@ -19041,6 +19072,7 @@ export default {
   hospitalAdmissionD4a1: hospitalAdmissionD4a1En,
 
   hospitalAdmissionD4a0: hospitalAdmissionD4a0En,
+  emergencyAdaptiveNursing: emergencyAdaptiveNursingEn,
 
   hospitalCareD3e6d: {
     bedBoard: {

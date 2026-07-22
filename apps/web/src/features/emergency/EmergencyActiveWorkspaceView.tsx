@@ -68,11 +68,16 @@ import { EmergencyTriagePanel } from "@/features/emergency/EmergencyTriagePanel"
 import { EmergencyErOrdersPanel } from "@/features/emergency/EmergencyErOrdersPanel";
 import { EmergencyErNursingHandoffPanel } from "@/features/emergency/EmergencyErNursingHandoffPanel";
 import { NursingDischargeExecutionSection } from "@/features/emergency/NursingDischargeExecutionSection";
+import { AdaptiveDispositionNursingSection } from "@/features/emergency/AdaptiveDispositionNursingSection";
 import { EmergencyErNotesPanel } from "@/features/emergency/EmergencyErNotesPanel";
 import { EmergencyClinicalDataPanel } from "@/features/emergency/EmergencyClinicalDataPanel";
 import { emergencyChartPath, genericEncounterPath } from "@/features/emergency/emergencyRoutes";
 import { isEdEncounterClosedForArchive } from "@/features/emergency/edClosedChartDisplayMode";
 import { erDispositionBadgeFromEncounterJson } from "@/features/emergency/erTrackboardDispositionBadge";
+import {
+  isHomeNursingForbiddenForPathway,
+  pathwayFromDispositionBadgeVariant,
+} from "@medora/shared";
 import {
   parseErWorkspaceSection,
   type ErWorkspaceSection,
@@ -350,12 +355,21 @@ export function EmergencyActiveWorkspaceView() {
   const canDocumentEncounterDiagnoses =
     roles.includes("RN") || roles.includes("PROVIDER") || roles.includes("ADMIN");
   const canRecordDischargeSortieExecution = roles.includes("RN") || roles.includes("ADMIN");
-  /** Phase A: hide HOME-only nursing execution when disposition is non-HOME. */
+  /** Phase A/D4A.2: hide HOME nursing when disposition is non-HOME. */
+  const dispositionNursingPathway = useMemo(() => {
+    if (!encounter) return "HOME" as const;
+    const badge = erDispositionBadgeFromEncounterJson(encounter);
+    return pathwayFromDispositionBadgeVariant(badge?.variant ?? null);
+  }, [encounter]);
   const showHomeNursingDischargeExecution = useMemo(() => {
     if (!encounter) return false;
-    const badge = erDispositionBadgeFromEncounterJson(encounter);
-    return !badge || badge.variant === "discharge";
-  }, [encounter]);
+    return !isHomeNursingForbiddenForPathway(dispositionNursingPathway);
+  }, [encounter, dispositionNursingPathway]);
+  const admissionDecisionSigned = useMemo(() => {
+    const raw = encounter?.admissionSummaryJson;
+    if (!raw || typeof raw !== "object" || Array.isArray(raw)) return false;
+    return String((raw as { admissionDecisionMode?: string }).admissionDecisionMode ?? "") === "SIGN";
+  }, [encounter?.admissionSummaryJson]);
 
   const canDocumentIvAccess =
     roles.includes("RN") ||
@@ -1645,6 +1659,19 @@ export function EmergencyActiveWorkspaceView() {
                     facilityId={fid}
                     patientId={patient?.id}
                     nursingAssessment={encounter.nursingAssessment}
+                    onSaved={onEmbeddedEncounterUpdate}
+                    canEdit={canRecordDischargeSortieExecution && encounter.status === "OPEN"}
+                  />
+                </div>
+              ) : null}
+              {canRecordDischargeSortieExecution &&
+              isHomeNursingForbiddenForPathway(dispositionNursingPathway) ? (
+                <div style={{ marginTop: 10 }}>
+                  <AdaptiveDispositionNursingSection
+                    encounterId={encounterId}
+                    facilityId={fid}
+                    encounter={encounter}
+                    admissionDecisionSigned={admissionDecisionSigned}
                     onSaved={onEmbeddedEncounterUpdate}
                     canEdit={canRecordDischargeSortieExecution && encounter.status === "OPEN"}
                   />

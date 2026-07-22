@@ -30,6 +30,7 @@ export function isHospitalAdmittingService(raw: unknown): raw is HospitalAdmitti
 }
 
 export const HOSPITAL_REQUESTED_LEVELS_OF_CARE = [
+  "OBSERVATION",
   "MEDICAL_SURGICAL",
   "TELEMETRY",
   "STEPDOWN",
@@ -39,6 +40,8 @@ export const HOSPITAL_REQUESTED_LEVELS_OF_CARE = [
   "PEDIATRIC_ACUTE_CARE",
   "LABOR_AND_DELIVERY",
   "POSTPARTUM",
+  "BEHAVIORAL_HEALTH",
+  "OTHER",
 ] as const;
 
 export type HospitalRequestedLevelOfCare =
@@ -56,15 +59,17 @@ export function isHospitalRequestedLevelOfCare(
 /** Compatible default levels by unit code (pilot). */
 export const UNIT_COMPATIBLE_LEVELS_OF_CARE: Record<string, readonly HospitalRequestedLevelOfCare[]> =
   {
-    MS: ["MEDICAL_SURGICAL", "TELEMETRY", "STEPDOWN", "INTERMEDIATE_CARE", "POSTOPERATIVE"],
-    ICU: ["INTENSIVE_CARE", "STEPDOWN"],
-    OBS: ["MEDICAL_SURGICAL", "TELEMETRY", "INTERMEDIATE_CARE"],
-    PED: ["PEDIATRIC_ACUTE_CARE", "MEDICAL_SURGICAL"],
-    PEDS: ["PEDIATRIC_ACUTE_CARE", "MEDICAL_SURGICAL"],
-    LD: ["LABOR_AND_DELIVERY", "POSTPARTUM"],
-    LND: ["LABOR_AND_DELIVERY", "POSTPARTUM"],
-    SURGERY: ["POSTOPERATIVE", "MEDICAL_SURGICAL"],
-    PACU: ["POSTOPERATIVE"],
+    MS: ["MEDICAL_SURGICAL", "TELEMETRY", "STEPDOWN", "INTERMEDIATE_CARE", "POSTOPERATIVE", "OTHER"],
+    ICU: ["INTENSIVE_CARE", "STEPDOWN", "OTHER"],
+    OBS: ["OBSERVATION", "MEDICAL_SURGICAL", "TELEMETRY", "INTERMEDIATE_CARE", "OTHER"],
+    PED: ["PEDIATRIC_ACUTE_CARE", "MEDICAL_SURGICAL", "OTHER"],
+    PEDS: ["PEDIATRIC_ACUTE_CARE", "MEDICAL_SURGICAL", "OTHER"],
+    LD: ["LABOR_AND_DELIVERY", "POSTPARTUM", "OTHER"],
+    LND: ["LABOR_AND_DELIVERY", "POSTPARTUM", "OTHER"],
+    BH: ["BEHAVIORAL_HEALTH", "OTHER"],
+    PSYCH: ["BEHAVIORAL_HEALTH", "OTHER"],
+    SURGERY: ["POSTOPERATIVE", "MEDICAL_SURGICAL", "OTHER"],
+    PACU: ["POSTOPERATIVE", "OTHER"],
   };
 
 export function levelsOfCareForUnit(unitCode: string | null | undefined): readonly HospitalRequestedLevelOfCare[] {
