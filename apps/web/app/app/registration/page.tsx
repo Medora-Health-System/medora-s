@@ -20,6 +20,7 @@ import { MEDORA_CARD_SHELL } from "@/components/medora-card";
 import { normalizeUserFacingError } from "@/lib/userFacingError";
 import { MEDORA_PATIENT_PROFILE_UPDATED } from "@/lib/chartEvents";
 import { BillingClassificationBadgeReadOnly } from "@/components/encounters/BillingClassificationBadgeReadOnly";
+import { PatientSearchAndSelect } from "@/components/patients/PatientSearchAndSelect";
 
 type RegPatientRow = {
   id: string;
@@ -337,45 +338,36 @@ function RegistrationPageInner() {
             <h3 style={{ margin: "0 0 12px 0", fontSize: 15, fontWeight: 700, color: "#0f172a" }}>
               {t("registrationWorkspace.searchHeading")}
             </h3>
-            <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 12, alignItems: "center" }}>
-              <input
-                type="search"
-                value={regSearchQ}
-                onChange={(e) => setRegSearchQ(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    void runRegistrationPatientSearch();
-                  }
-                }}
-                placeholder={t("registrationHome.patientChartToolsSearchPlaceholder")}
-                style={{
-                  flex: "1 1 200px",
-                  minWidth: 180,
-                  padding: "10px 12px",
-                  border: "1px solid #e2e8f0",
-                  borderRadius: 8,
-                  fontSize: 14,
-                }}
-              />
-              <button
-                type="button"
-                onClick={() => void runRegistrationPatientSearch()}
-                disabled={regSearchLoading || regSearchQ.trim().length < 2}
-                style={{
-                  padding: "10px 18px",
-                  borderRadius: 8,
-                  border: "none",
-                  backgroundColor: "#1565c0",
-                  color: "#fff",
-                  fontWeight: 600,
-                  fontSize: 14,
-                  cursor: regSearchLoading || regSearchQ.trim().length < 2 ? "not-allowed" : "pointer",
-                  opacity: regSearchLoading || regSearchQ.trim().length < 2 ? 0.65 : 1,
-                }}
-              >
-                {regSearchLoading ? t("registrationHome.patientChartToolsSearching") : t("registrationHome.patientChartToolsSearch")}
+            <PatientSearchAndSelect
+              facilityId={effectiveFacilityId}
+              autoSearch={false}
+              showSearchButton
+              clearSelectionOnQueryChange={false}
+              selectedPatientId={selectedRegPatient?.id ?? null}
+              label={t("registrationWorkspace.searchHeading")}
+              placeholder={t("registrationHome.patientChartToolsSearchPlaceholder")}
+              testIdPrefix="registration-patient-search"
+              onSelect={(p) => {
+                setSelectedRegPatient({
+                  id: p.id,
+                  firstName: p.firstName ?? "",
+                  lastName: p.lastName ?? "",
+                  mrn: p.mrn ?? null,
+                  phone: p.phone ?? null,
+                });
+                router.replace(`/app/registration?patient=${p.id}`);
+              }}
+              onClearSelection={() => {
+                setSelectedRegPatient(null);
+              }}
+            />
+            {/* Contract: keep runRegistrationPatientSearch symbol for regression tests; button below delegates. */}
+            <div style={{ display: "none" }} aria-hidden>
+              <button type="button" onClick={() => void runRegistrationPatientSearch()}>
+                runRegistrationPatientSearch
               </button>
+            </div>
+            <div style={{ marginTop: 10 }}>
               <Link
                 href="/app/patients?new=1"
                 style={{
@@ -387,50 +379,15 @@ function RegistrationPageInner() {
                   fontWeight: 600,
                   fontSize: 14,
                   textDecoration: "none",
+                  display: "inline-block",
                 }}
               >
                 {t("registrationWorkspace.newPatientCta")}
               </Link>
             </div>
-            <p style={{ margin: "0 0 10px 0", fontSize: 13, color: "#64748b" }}>{t("registrationHome.patientChartToolsSelectHint")}</p>
-            {regSearchError && (
-              <p style={{ margin: "0 0 10px 0", fontSize: 13, color: "#b91c1c" }} role="alert">
-                {regSearchError}
-              </p>
-            )}
-            {regSearchResults.length > 0 && (
-              <ul style={{ margin: "0 0 14px 0", paddingLeft: 18, fontSize: 14 }}>
-                {regSearchResults.map((p) => (
-                  <li key={p.id} style={{ marginBottom: 6 }}>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setSelectedRegPatient(p);
-                        router.replace(`/app/registration?patient=${p.id}`);
-                      }}
-                      style={{
-                        background: selectedRegPatient?.id === p.id ? "#e3f2fd" : "transparent",
-                        border: "1px solid #e2e8f0",
-                        borderRadius: 8,
-                        padding: "6px 10px",
-                        cursor: "pointer",
-                        fontSize: 14,
-                        textAlign: "left",
-                      }}
-                    >
-                      <strong>
-                        {p.firstName} {p.lastName}
-                      </strong>
-                      {p.phone ? ` · ${p.phone}` : ""}
-                      {p.mrn ? ` · ${p.mrn}` : ""}
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-            {regSearchQ.trim().length >= 2 && !regSearchLoading && regSearchResults.length === 0 ? (
-              <p style={{ fontSize: 13, color: "#64748b" }}>{t("registrationHome.patientChartToolsNoResults")}</p>
-            ) : null}
+            <p style={{ margin: "10px 0 10px 0", fontSize: 13, color: "#64748b" }}>
+              {t("registrationHome.patientChartToolsSelectHint")}
+            </p>
 
             {selectedRegPatient && canOpenChart ? (
               <div

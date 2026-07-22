@@ -78,3 +78,59 @@ export async function patchInpatientClinicalOps(
     }
   )) as { encounterId: string; ops: Record<string, unknown> };
 }
+
+/** D4A.1 nursing admission documentation client. */
+export async function fetchNursingAdmissionDocumentation(encounterId: string) {
+  return apiFetch(
+    `/inpatient-operations/encounters/${encodeURIComponent(encounterId)}/nursing-admission`
+  ) as Promise<{
+    certification: string;
+    documentation: Record<string, unknown>;
+    completion: Record<string, unknown>;
+  }>;
+}
+
+export async function patchNursingAdmissionSection(
+  encounterId: string,
+  body: {
+    sectionId: string;
+    draftText?: string | null;
+    completionState?: string | null;
+    expectedVersion: number;
+  }
+) {
+  return apiFetch(
+    `/inpatient-operations/encounters/${encodeURIComponent(encounterId)}/nursing-admission/sections`,
+    { method: "PATCH", body: JSON.stringify(body) }
+  ) as Promise<{ documentation: Record<string, unknown>; completion: Record<string, unknown> }>;
+}
+
+export async function verifyNursingAdmissionPreloadItem(
+  encounterId: string,
+  body: {
+    itemId: string;
+    status: string;
+    encounterNote?: string | null;
+    expectedVersion: number;
+  }
+) {
+  return apiFetch(
+    `/inpatient-operations/encounters/${encodeURIComponent(encounterId)}/nursing-admission/verify-preload`,
+    { method: "POST", body: JSON.stringify(body) }
+  ) as Promise<{ documentation: Record<string, unknown> }>;
+}
+
+export async function signNursingAdmission(
+  encounterId: string,
+  body: {
+    expectedVersion: number;
+    credentials?: string | null;
+    displayName?: string | null;
+    createProviderHandoff?: boolean;
+  }
+) {
+  return apiFetch(
+    `/inpatient-operations/encounters/${encodeURIComponent(encounterId)}/nursing-admission/sign`,
+    { method: "POST", body: JSON.stringify(body) }
+  ) as Promise<{ documentation: Record<string, unknown>; completion: Record<string, unknown> }>;
+}

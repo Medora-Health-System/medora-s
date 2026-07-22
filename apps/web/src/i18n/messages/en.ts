@@ -40,6 +40,8 @@ import { providerDocumentationEnvironmentalExposureComplaintIntelEn } from "./pr
 import { providerDocumentationToxicologyComplaintIntelEn } from "./providerDocumentationToxicologyComplaintIntel.en";
 import { providerDocumentationObGynUrologyComplaintIntelEn } from "./providerDocumentationObGynUrologyComplaintIntel.en";
 import { providerDocumentationPsychiatricBehavioralComplaintIntelEn } from "./providerDocumentationPsychiatricBehavioralComplaintIntel.en";
+import { hospitalAdmissionD4a0En } from "./hospitalAdmissionD4a0.en";
+import { hospitalAdmissionD4a1En } from "./hospitalAdmissionD4a1.en";
 
 export default {
   common: {
@@ -19010,6 +19012,10 @@ export default {
       startNewAdmission: "Start new admission",
     },
   },
+  hospitalAdmissionD4a1: hospitalAdmissionD4a1En,
+
+  hospitalAdmissionD4a0: hospitalAdmissionD4a0En,
+
   hospitalCareD3e6d: {
     bedBoard: {
       title: "Unit bed board",
@@ -19035,7 +19041,7 @@ export default {
       source: "Admission source",
       datetime: "Admission date and time",
       selectUnit: "Select clinical unit",
-      bedOptional: "Bed (optional until assigned)",
+      bedOptional: "Assigned bed",
       receivingNurseHint:
         "Receiving nurse is recorded automatically from your signed-in account — do not type a name.",
       startEncounter: "Start Inpatient Encounter",

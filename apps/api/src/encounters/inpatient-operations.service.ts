@@ -53,11 +53,33 @@ import {
   placementActionsEnabled,
   inpatientDocumentationEnabled,
   inpatientWorkspaceFlagsFromProcessEnv,
+  BED_NO_LONGER_AVAILABLE_CODE,
+  validateConnectedAdmissionIntakeHardBlockers,
+  isBedSelectableForAdmissionIntake,
+  buildAdmissionPreloadFromPatientProfile,
+  buildHomeMedReconLinesFromPreload,
+  emptyMedSurgNursingAdmissionDocV1,
+  readMedSurgNursingAdmissionFromSummary,
+  mergeMedSurgNursingAdmissionIntoSummary,
+  saveAdmissionSectionDraft,
+  applyHistoryVerification,
+  applyNurseAdmissionSignature,
+  createProviderAdmissionHandoff,
+  computeAdmissionCompletionSummary,
+  isAdmissionHistoryVerificationStatus,
+  isAdmissionCompletionState,
+  patientClinicalHistoryProfileFromJson,
+  MEDSURG_NURSING_ADMISSION_CERTIFICATION_ID,
+  type MedSurgNursingAdmissionDocV1,
+  type InpatientAdmissionClinicalSection,
+  type AdmissionHistoryVerificationStatus,
+  type AdmissionSectionCompletionState,
 } from "@medora/shared";
 import { PrismaService } from "../prisma/prisma.service";
 import { AuditService } from "../common/services/audit.service";
 import { ENCOUNTER_DETAIL_SELECT } from "./encounter-query-contracts";
 import { AdmissionCorrelationService } from "./admission-correlation.service";
+import { FacilityBedBoardService } from "../facilities/facility-bed-board.service";
 
 /** Observation is a clinical lane (billing / summary), not EncounterType.OBSERVATION. */
 function isExplicitObservationChart(enc: {
@@ -122,7 +144,8 @@ export class InpatientOperationsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
-    private readonly admissionCorrelation: AdmissionCorrelationService
+    private readonly admissionCorrelation: AdmissionCorrelationService,
+    private readonly bedBoardService: FacilityBedBoardService
   ) {}
 
   meta() {
@@ -195,6 +218,52 @@ export class InpatientOperationsService {
     });
     if (blockers.length) {
       throw new BadRequestException(blockers.join(", "));
+    }
+
+    const connectedBlockers = validateConnectedAdmissionIntakeHardBlockers({
+      selectedPatientId: body.patientId,
+      demographicsConfirmed: true,
+      admissionSource,
+      sourceEncounterId: body.sourceEdEncounterId ?? body.sourceObservationEncounterId,
+      admittedAt: body.admittedAt,
+      requestedUnit: body.requestedUnit,
+      assignedBedKey: body.assignedBedKey,
+      admissionDiagnosis: body.admissionDiagnosis,
+      reasonForAdmission: body.reasonForAdmission,
+      admittingService: body.admittingService,
+      requestedLevelOfCare: body.requestedLevelOfCare,
+      receivingNurseUserIdFromClient: null,
+    });
+    // Connected nurse intake (diagnosis/reason/bed/service present) enforces full D4A.0 gates.
+    const requireConnectedFields =
+      String(body.admissionDiagnosis ?? "").trim() !== "" ||
+      String(body.assignedBedKey ?? "").trim() !== "" ||
+      String(body.reasonForAdmission ?? "").trim() !== "" ||
+      String(body.admittingService ?? "").trim() !== "" ||
+      String(body.requestedLevelOfCare ?? "").trim() !== "";
+    if (requireConnectedFields) {
+      const must = connectedBlockers.filter((b) =>
+        [
+          "PATIENT_REQUIRED",
+          "REQUESTED_UNIT_REQUIRED",
+          "ASSIGNED_BED_REQUIRED",
+          "BED_UNIT_MISMATCH",
+          "BED_NOT_IN_POOL",
+          "ADMISSION_DIAGNOSIS_REQUIRED",
+          "REASON_FOR_ADMISSION_REQUIRED",
+          "ADMITTING_SERVICE_REQUIRED",
+          "ADMITTING_SERVICE_INVALID",
+          "LEVEL_OF_CARE_REQUIRED",
+          "LEVEL_OF_CARE_INVALID",
+          "LEVEL_OF_CARE_UNIT_INCOMPATIBLE",
+          "ADMITTED_AT_INVALID",
+          "ADMITTED_AT_FUTURE_PROHIBITED",
+          "CLIENT_RECEIVING_NURSE_FORBIDDEN",
+        ].includes(b)
+      );
+      if (must.length) {
+        throw new BadRequestException(must.join(", "));
+      }
     }
 
     const patient = await this.prisma.patient.findFirst({
@@ -409,6 +478,20 @@ export class InpatientOperationsService {
       if (requestedUnit && requestedUnit !== parsed.unit) {
         throw new BadRequestException("assignedBedKey does not belong to requestedUnit");
       }
+
+      const bedRow = await this.bedBoardService.getEffectiveBedRow(facilityId, bedKeyRaw);
+      if (!bedRow) {
+        throw new BadRequestException("assignedBedKey is not a valid facility bed");
+      }
+      if (!isBedSelectableForAdmissionIntake(bedRow.status) || bedRow.occupantEncounterId) {
+        throw new ConflictException(BED_NO_LONGER_AVAILABLE_CODE);
+      }
+      try {
+        this.bedBoardService.assertBedAssignableOrThrow({ bedRow });
+      } catch {
+        throw new ConflictException(BED_NO_LONGER_AVAILABLE_CODE);
+      }
+
       const occupants = await this.prisma.encounter.findMany({
         where: { facilityId, status: EncounterStatus.OPEN },
         select: {
@@ -425,7 +508,7 @@ export class InpatientOperationsService {
           admissionSummaryJson: row.admissionSummaryJson,
         });
         if (key === `${parsed.unit}:${parsed.room}`) {
-          throw new ConflictException("Selected bed is already occupied");
+          throw new ConflictException(BED_NO_LONGER_AVAILABLE_CODE);
         }
       }
       roomLabel = formatCanonicalBedDisplay(parsed.unit, parsed.room);
@@ -1167,6 +1250,292 @@ export class InpatientOperationsService {
       encounterId: enc.id,
       facilityId,
       ops: readInpatientClinicalOpsFromAdmissionSummary(nextSummary),
+    };
+  }
+
+  /**
+   * D4A.1 — Load or initialize Med/Surg nursing admission documentation with longitudinal preload.
+   * Patient history is preloaded with provenance; never treated as newly verified.
+   */
+  async getNursingAdmissionDocumentation(facilityId: string, encounterId: string) {
+    const enc = await this.loadOpenInpatient(facilityId, encounterId);
+    const existing = readMedSurgNursingAdmissionFromSummary(enc.admissionSummaryJson);
+    if (existing) {
+      return {
+        certification: MEDSURG_NURSING_ADMISSION_CERTIFICATION_ID,
+        documentation: existing,
+        completion: computeAdmissionCompletionSummary(existing),
+      };
+    }
+
+    const corr = readHospitalAdmissionCorrelation(enc.admissionSummaryJson);
+    const sourceEncounterId = corr?.sourceEncounterId ?? null;
+    const patient = await this.prisma.patient.findFirst({
+      where: { id: enc.patientId, facilityId },
+      select: { clinicalHistoryProfileJson: true },
+    });
+    const profile = patientClinicalHistoryProfileFromJson(
+      patient?.clinicalHistoryProfileJson ?? null
+    );
+    const preloadedItems = buildAdmissionPreloadFromPatientProfile({
+      profile,
+      sourceEncounterId,
+    });
+    const doc = emptyMedSurgNursingAdmissionDocV1({
+      patientId: enc.patientId,
+      facilityId,
+      encounterId: enc.id,
+      sourceEncounterId,
+    });
+    doc.preloadedItems = preloadedItems;
+    doc.homeMedicationLines = buildHomeMedReconLinesFromPreload(preloadedItems);
+
+    const nextSummary = mergeMedSurgNursingAdmissionIntoSummary(
+      enc.admissionSummaryJson,
+      doc
+    );
+    await this.prisma.encounter.update({
+      where: { id: enc.id },
+      data: {
+        admissionSummaryJson: nextSummary as Prisma.InputJsonValue,
+        version: { increment: 1 },
+      },
+      select: { id: true },
+    });
+
+    return {
+      certification: MEDSURG_NURSING_ADMISSION_CERTIFICATION_ID,
+      documentation: doc,
+      completion: computeAdmissionCompletionSummary(doc),
+    };
+  }
+
+  async patchNursingAdmissionSection(
+    facilityId: string,
+    encounterId: string,
+    actorUserId: string,
+    body: {
+      sectionId: string;
+      draftText?: string | null;
+      completionState?: string | null;
+      expectedVersion: number;
+    }
+  ) {
+    const enc = await this.loadOpenInpatient(facilityId, encounterId);
+    let doc =
+      readMedSurgNursingAdmissionFromSummary(enc.admissionSummaryJson) ??
+      (
+        await this.getNursingAdmissionDocumentation(facilityId, encounterId)
+      ).documentation;
+    // Re-read after possible init
+    const fresh = await this.loadOpenInpatient(facilityId, encounterId);
+    doc =
+      readMedSurgNursingAdmissionFromSummary(fresh.admissionSummaryJson) ?? doc;
+
+    const sectionId = String(body.sectionId ?? "").trim() as InpatientAdmissionClinicalSection;
+    const completionState = body.completionState
+      ? String(body.completionState).trim()
+      : null;
+    if (completionState && !isAdmissionCompletionState(completionState)) {
+      throw new BadRequestException("Invalid completionState");
+    }
+
+    const result = saveAdmissionSectionDraft({
+      doc,
+      sectionId,
+      draftText: body.draftText ?? null,
+      completionState: completionState as AdmissionSectionCompletionState | undefined,
+      clientExpectedVersion: Number(body.expectedVersion),
+      actorUserId,
+    });
+    if (!result.ok) {
+      throw new ConflictException(result.code);
+    }
+
+    const ops = readInpatientClinicalOpsFromAdmissionSummary(fresh.admissionSummaryJson);
+    const summary = computeAdmissionCompletionSummary(result.doc);
+    ops.nursing = {
+      ...(ops.nursing ?? {}),
+      admissionAssessmentComplete: summary.allRequiredComplete,
+    };
+    let nextSummary = mergeMedSurgNursingAdmissionIntoSummary(
+      fresh.admissionSummaryJson,
+      result.doc
+    );
+    nextSummary = mergeInpatientClinicalOpsIntoAdmissionSummary(nextSummary, ops);
+
+    await this.prisma.encounter.update({
+      where: { id: enc.id },
+      data: {
+        admissionSummaryJson: nextSummary as Prisma.InputJsonValue,
+        version: { increment: 1 },
+      },
+      select: { id: true },
+    });
+
+    await this.audit.log(AuditAction.ENCOUNTER_UPDATE, CLINICAL_OPS_ENTITY, {
+      userId: actorUserId,
+      facilityId,
+      patientId: enc.patientId,
+      entityId: enc.id,
+      metadata: {
+        event: "NURSING_ADMISSION_SECTION_DRAFT",
+        sectionId,
+        expectedVersion: result.doc.expectedVersion,
+      },
+    });
+
+    return {
+      documentation: result.doc,
+      completion: computeAdmissionCompletionSummary(result.doc),
+    };
+  }
+
+  async verifyNursingAdmissionPreloadItem(
+    facilityId: string,
+    encounterId: string,
+    actorUserId: string,
+    body: {
+      itemId: string;
+      status: string;
+      encounterNote?: string | null;
+      expectedVersion: number;
+    }
+  ) {
+    const enc = await this.loadOpenInpatient(facilityId, encounterId);
+    const boot = await this.getNursingAdmissionDocumentation(facilityId, encounterId);
+    const fresh = await this.loadOpenInpatient(facilityId, encounterId);
+    const doc =
+      readMedSurgNursingAdmissionFromSummary(fresh.admissionSummaryJson) ??
+      boot.documentation;
+
+    if (Number(body.expectedVersion) !== doc.expectedVersion) {
+      throw new ConflictException("EXPECTED_VERSION_CONFLICT");
+    }
+    if (!isAdmissionHistoryVerificationStatus(body.status)) {
+      throw new BadRequestException("Invalid verification status");
+    }
+    const idx = doc.preloadedItems.findIndex((i) => i.itemId === body.itemId);
+    if (idx < 0) throw new NotFoundException("Preload item not found");
+
+    const nextItems = [...doc.preloadedItems];
+    nextItems[idx] = applyHistoryVerification({
+      item: nextItems[idx]!,
+      status: body.status as AdmissionHistoryVerificationStatus,
+      actorUserId,
+      encounterNote: body.encounterNote ?? null,
+    });
+
+    const nextDoc: MedSurgNursingAdmissionDocV1 = {
+      ...doc,
+      preloadedItems: nextItems,
+      expectedVersion: doc.expectedVersion + 1,
+      updatedAt: new Date().toISOString(),
+      updatedByUserId: actorUserId,
+    };
+
+    const nextSummary = mergeMedSurgNursingAdmissionIntoSummary(
+      fresh.admissionSummaryJson,
+      nextDoc
+    );
+    await this.prisma.encounter.update({
+      where: { id: enc.id },
+      data: {
+        admissionSummaryJson: nextSummary as Prisma.InputJsonValue,
+        version: { increment: 1 },
+      },
+      select: { id: true },
+    });
+
+    await this.audit.log(AuditAction.ENCOUNTER_UPDATE, CLINICAL_OPS_ENTITY, {
+      userId: actorUserId,
+      facilityId,
+      patientId: enc.patientId,
+      entityId: enc.id,
+      metadata: {
+        event: "NURSING_ADMISSION_HISTORY_VERIFICATION",
+        itemId: body.itemId,
+        status: body.status,
+      },
+    });
+
+    return { documentation: nextDoc };
+  }
+
+  async signNursingAdmission(
+    facilityId: string,
+    encounterId: string,
+    actorUserId: string,
+    body: {
+      expectedVersion: number;
+      credentials?: string | null;
+      displayName?: string | null;
+      createProviderHandoff?: boolean;
+    }
+  ) {
+    const enc = await this.loadOpenInpatient(facilityId, encounterId);
+    await this.getNursingAdmissionDocumentation(facilityId, encounterId);
+    const fresh = await this.loadOpenInpatient(facilityId, encounterId);
+    const doc = readMedSurgNursingAdmissionFromSummary(fresh.admissionSummaryJson);
+    if (!doc) throw new NotFoundException("Nursing admission documentation not found");
+
+    const signed = applyNurseAdmissionSignature({
+      doc,
+      actorUserId,
+      credentials: body.credentials ?? "RN",
+      displayName: body.displayName ?? null,
+      clientExpectedVersion: Number(body.expectedVersion),
+    });
+    if (!signed.ok) {
+      if (signed.code === "EXPECTED_VERSION_CONFLICT") {
+        throw new ConflictException(signed.code);
+      }
+      throw new BadRequestException(signed.code);
+    }
+
+    let nextDoc = signed.doc;
+    if (body.createProviderHandoff !== false) {
+      nextDoc = createProviderAdmissionHandoff({
+        doc: nextDoc,
+        actorUserId,
+      });
+    }
+
+    const ops = readInpatientClinicalOpsFromAdmissionSummary(fresh.admissionSummaryJson);
+    ops.nursing = {
+      ...(ops.nursing ?? {}),
+      admissionAssessmentComplete: computeAdmissionCompletionSummary(nextDoc)
+        .allRequiredComplete,
+    };
+    let nextSummary = mergeMedSurgNursingAdmissionIntoSummary(
+      fresh.admissionSummaryJson,
+      nextDoc
+    );
+    nextSummary = mergeInpatientClinicalOpsIntoAdmissionSummary(nextSummary, ops);
+
+    await this.prisma.encounter.update({
+      where: { id: enc.id },
+      data: {
+        admissionSummaryJson: nextSummary as Prisma.InputJsonValue,
+        version: { increment: 1 },
+      },
+      select: { id: true },
+    });
+
+    await this.audit.log(AuditAction.ENCOUNTER_UPDATE, CLINICAL_OPS_ENTITY, {
+      userId: actorUserId,
+      facilityId,
+      patientId: enc.patientId,
+      entityId: enc.id,
+      metadata: {
+        event: "NURSING_ADMISSION_SIGNED",
+        providerHandoffId: nextDoc.providerHandoff?.taskId ?? null,
+      },
+    });
+
+    return {
+      documentation: nextDoc,
+      completion: computeAdmissionCompletionSummary(nextDoc),
     };
   }
 

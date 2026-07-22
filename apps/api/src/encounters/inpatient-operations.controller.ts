@@ -159,4 +159,89 @@ export class InpatientOperationsController {
       { ip: req.ip, userAgent: req.headers?.["user-agent"] }
     );
   }
+
+  /** D4A.1 — Med/Surg nursing admission documentation (longitudinal preload + verification). */
+  @Get("encounters/:encounterId/nursing-admission")
+  @RequireRoles(RoleCode.PROVIDER, RoleCode.RN, RoleCode.ADMIN)
+  async getNursingAdmission(@Param("encounterId") encounterId: string, @Req() req: any) {
+    return this.ops.getNursingAdmissionDocumentation(facilityIdFromReq(req), encounterId);
+  }
+
+  @Patch("encounters/:encounterId/nursing-admission/sections")
+  @RequireRoles(RoleCode.PROVIDER, RoleCode.RN, RoleCode.ADMIN)
+  async patchNursingAdmissionSection(
+    @Param("encounterId") encounterId: string,
+    @Body() body: Record<string, unknown>,
+    @Req() req: any
+  ) {
+    const sectionId = String(body.sectionId ?? "").trim();
+    if (!sectionId) throw new BadRequestException("sectionId is required");
+    const expectedVersion = Number(body.expectedVersion);
+    if (!Number.isFinite(expectedVersion)) {
+      throw new BadRequestException("expectedVersion is required");
+    }
+    return this.ops.patchNursingAdmissionSection(
+      facilityIdFromReq(req),
+      encounterId,
+      userIdFromReq(req),
+      {
+        sectionId,
+        draftText: typeof body.draftText === "string" ? body.draftText : null,
+        completionState: typeof body.completionState === "string" ? body.completionState : null,
+        expectedVersion,
+      }
+    );
+  }
+
+  @Post("encounters/:encounterId/nursing-admission/verify-preload")
+  @RequireRoles(RoleCode.PROVIDER, RoleCode.RN, RoleCode.ADMIN)
+  async verifyNursingAdmissionPreload(
+    @Param("encounterId") encounterId: string,
+    @Body() body: Record<string, unknown>,
+    @Req() req: any
+  ) {
+    const itemId = String(body.itemId ?? "").trim();
+    const status = String(body.status ?? "").trim();
+    const expectedVersion = Number(body.expectedVersion);
+    if (!itemId) throw new BadRequestException("itemId is required");
+    if (!status) throw new BadRequestException("status is required");
+    if (!Number.isFinite(expectedVersion)) {
+      throw new BadRequestException("expectedVersion is required");
+    }
+    return this.ops.verifyNursingAdmissionPreloadItem(
+      facilityIdFromReq(req),
+      encounterId,
+      userIdFromReq(req),
+      {
+        itemId,
+        status,
+        encounterNote: typeof body.encounterNote === "string" ? body.encounterNote : null,
+        expectedVersion,
+      }
+    );
+  }
+
+  @Post("encounters/:encounterId/nursing-admission/sign")
+  @RequireRoles(RoleCode.PROVIDER, RoleCode.RN, RoleCode.ADMIN)
+  async signNursingAdmission(
+    @Param("encounterId") encounterId: string,
+    @Body() body: Record<string, unknown>,
+    @Req() req: any
+  ) {
+    const expectedVersion = Number(body.expectedVersion);
+    if (!Number.isFinite(expectedVersion)) {
+      throw new BadRequestException("expectedVersion is required");
+    }
+    return this.ops.signNursingAdmission(
+      facilityIdFromReq(req),
+      encounterId,
+      userIdFromReq(req),
+      {
+        expectedVersion,
+        credentials: typeof body.credentials === "string" ? body.credentials : null,
+        displayName: typeof body.displayName === "string" ? body.displayName : null,
+        createProviderHandoff: body.createProviderHandoff !== false,
+      }
+    );
+  }
 }
