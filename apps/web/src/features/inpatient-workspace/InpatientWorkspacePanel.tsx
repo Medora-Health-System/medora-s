@@ -26,6 +26,14 @@ import {
   isInpatientWorkspaceEnabledInBrowser,
 } from "./inpatientWorkspacePaths";
 import { InpatientClinicalOpsPanel } from "./InpatientClinicalOpsPanel";
+import { AdmissionJourneyPanel } from "@/features/hospital-care/AdmissionJourneyPanel";
+
+function admissionCorrelationUiEnabled(): boolean {
+  const v = String(process.env.NEXT_PUBLIC_ADMISSION_CORRELATION_ENABLED ?? "")
+    .trim()
+    .toLowerCase();
+  return v === "1" || v === "true" || v === "yes" || v === "on";
+}
 
 export type InpatientWorkspaceEncounterLite = {
   id: string;
@@ -128,6 +136,9 @@ export function InpatientWorkspacePanel({
           <p style={{ margin: 0, fontSize: 13, color: "#334155", lineHeight: 1.45 }}>
             {t("inpatientD3e.admission.body")}
           </p>
+          {admissionCorrelationUiEnabled() ? (
+            <AdmissionJourneyPanel encounterId={encounterId} />
+          ) : null}
           <ShellList
             title={t("inpatientD3e.admission.checklistTitle")}
             items={[

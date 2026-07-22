@@ -18945,6 +18945,21 @@ export default {
       bedSummary: "Compact bed summary",
     },
   },
+  hospitalCareD3e8: {
+    journey: {
+      title: "Admission journey",
+      source: "Admission source",
+      placement: "Placement",
+      placementLinked: "Linked to placement request",
+      placementNone: "No placement request",
+      receiving: "Receiving status",
+      unit: "Receiving unit",
+      encounterStatus: "Encounter status",
+      arrival: "Arrival",
+      linkageReview: "Linkage needs review — contact a charge nurse or administrator.",
+      loadError: "Unable to load the admission journey.",
+    },
+  },
   hospitalCareD3e6d: {
     bedBoard: {
       title: "Unit bed board",

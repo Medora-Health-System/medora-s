@@ -19021,6 +19021,22 @@ export default {
       bedSummary: "Résumé compact des lits",
     },
   },
+  hospitalCareD3e8: {
+    journey: {
+      title: "Parcours d’admission",
+      source: "Source d’admission",
+      placement: "Placement",
+      placementLinked: "Lié à une demande de placement",
+      placementNone: "Aucune demande de placement",
+      receiving: "Statut d’accueil",
+      unit: "Unité d’accueil",
+      encounterStatus: "Statut de la rencontre",
+      arrival: "Arrivée",
+      linkageReview:
+        "Le lien d’admission nécessite une vérification — contactez l’infirmière responsable ou l’administrateur.",
+      loadError: "Impossible de charger le parcours d’admission.",
+    },
+  },
   hospitalCareD3e6d: {
     bedBoard: {
       title: "Tableau des lits de l’unité",
