@@ -29,6 +29,8 @@ import {
   evaluateConcurrentEncounterCreate,
   inpatientStartMustNotCloseEdEncounter,
   mergeHospitalAdmissionCorrelationIntoSummary,
+  readHospitalAdmissionCorrelation,
+  evaluateExistingAdmissionIntent,
   formatCanonicalBedDisplay,
   type HospitalAdmissionIntent,
   parseCanonicalBedKey,
@@ -57,6 +59,28 @@ import { AuditService } from "../common/services/audit.service";
 import { ENCOUNTER_DETAIL_SELECT } from "./encounter-query-contracts";
 import { AdmissionCorrelationService } from "./admission-correlation.service";
 
+/** Observation is a clinical lane (billing / summary), not EncounterType.OBSERVATION. */
+function isExplicitObservationChart(enc: {
+  billingClassification?: string | null;
+  admissionSummaryJson?: unknown;
+}): boolean {
+  if (String(enc.billingClassification ?? "").trim().toUpperCase() === "OBSERVATION") {
+    return true;
+  }
+  const root =
+    enc.admissionSummaryJson &&
+    typeof enc.admissionSummaryJson === "object" &&
+    !Array.isArray(enc.admissionSummaryJson)
+      ? (enc.admissionSummaryJson as Record<string, unknown>)
+      : null;
+  const lane = String(
+    root?.clinicalDestinationContext ?? root?.requestedEncounterType ?? ""
+  )
+    .trim()
+    .toUpperCase();
+  return lane === "OBSERVATION";
+}
+
 const DIRECT_ADMIT_ENTITY = "InpatientDirectAdmission" as const;
 const CLINICAL_OPS_ENTITY = "InpatientClinicalOps" as const;
 
@@ -79,6 +103,10 @@ export type DirectAdmissionBody = {
   assignedBedKey?: string | null;
   /** Optional source ED encounter — linked, never closed/mutated. */
   sourceEdEncounterId?: string | null;
+  /** Observation conversion — source Observation encounter (type never mutated). */
+  sourceObservationEncounterId?: string | null;
+  /** Explicit medication transition for Observation→Inpatient (CONTINUE|MODIFY|HOLD|DISCONTINUE|REPLACE). */
+  medicationTransitionAction?: string | null;
   /** Client retry key — safe reuse of existing receiving IP. */
   idempotencyKey?: string | null;
   /** Optional explicit admission correlation id. */
@@ -201,22 +229,64 @@ export class InpatientOperationsService {
 
     let sourceEdEncounterId: string | null =
       typeof body.sourceEdEncounterId === "string" ? body.sourceEdEncounterId.trim() : "";
-    if (!sourceEdEncounterId && admissionSource === "EMERGENCY_DEPARTMENT") {
-      sourceEdEncounterId = openRows.find((e) => e.type === EncounterType.EMERGENCY)?.id ?? "";
-    }
-    if (sourceEdEncounterId) {
-      const ed = await this.prisma.encounter.findFirst({
+    const sourceObservationEncounterId =
+      typeof body.sourceObservationEncounterId === "string"
+        ? body.sourceObservationEncounterId.trim()
+        : "";
+
+    let sourceEncounterId: string | null = null;
+    let observationHospitalEpisodeId: string | null = null;
+    if (admissionSource === "OBSERVATION_CONVERSION") {
+      const obsId = sourceObservationEncounterId || sourceEdEncounterId || "";
+      if (!obsId) {
+        throw new BadRequestException(
+          "sourceObservationEncounterId is required for observation conversion"
+        );
+      }
+      const obs = await this.prisma.encounter.findFirst({
         where: {
-          id: sourceEdEncounterId,
+          id: obsId,
           facilityId,
           patientId: patient.id,
-          type: EncounterType.EMERGENCY,
+          status: EncounterStatus.OPEN,
         },
-        select: { id: true },
+        select: {
+          id: true,
+          type: true,
+          status: true,
+          hospitalEpisodeId: true,
+          billingClassification: true,
+          admissionSummaryJson: true,
+        },
       });
-      if (!ed) throw new BadRequestException("sourceEdEncounterId is not a valid ED encounter");
-    } else {
+      if (!obs || !isExplicitObservationChart(obs)) {
+        throw new BadRequestException(
+          "sourceObservationEncounterId is not a valid Observation encounter"
+        );
+      }
+      sourceEncounterId = obs.id;
+      observationHospitalEpisodeId = obs.hospitalEpisodeId;
       sourceEdEncounterId = null;
+    } else {
+      if (!sourceEdEncounterId && admissionSource === "EMERGENCY_DEPARTMENT") {
+        sourceEdEncounterId = openRows.find((e) => e.type === EncounterType.EMERGENCY)?.id ?? "";
+      }
+      if (sourceEdEncounterId) {
+        const ed = await this.prisma.encounter.findFirst({
+          where: {
+            id: sourceEdEncounterId,
+            facilityId,
+            patientId: patient.id,
+            type: EncounterType.EMERGENCY,
+          },
+          select: { id: true },
+        });
+        if (!ed) throw new BadRequestException("sourceEdEncounterId is not a valid ED encounter");
+        sourceEncounterId = ed.id;
+      } else {
+        sourceEdEncounterId = null;
+        sourceEncounterId = null;
+      }
     }
 
     let activeEpisodeId: string | null = null;
@@ -225,7 +295,9 @@ export class InpatientOperationsService {
         where: { facilityId, patientId: patient.id, status: "ACTIVE" },
         select: { id: true },
       });
-      activeEpisodeId = active?.id ?? null;
+      activeEpisodeId = active?.id ?? observationHospitalEpisodeId ?? null;
+    } else if (observationHospitalEpisodeId) {
+      activeEpisodeId = observationHospitalEpisodeId;
     }
 
     const openIpCandidates = openRows
@@ -257,7 +329,7 @@ export class InpatientOperationsService {
       admissionSource,
       destinationUnitId: body.requestedUnit?.trim() || null,
       hospitalEpisodeId: activeEpisodeId,
-      sourceEncounterId: sourceEdEncounterId,
+      sourceEncounterId: sourceEncounterId,
       internalPlacementRequestId: placementRequestId,
       idempotencyKey,
       clientAdmissionCorrelationId: admissionCorrelationIdInput,
@@ -269,7 +341,7 @@ export class InpatientOperationsService {
       facilityId,
       admissionIntent,
       hospitalEpisodeId: activeEpisodeId,
-      sourceEncounterId: sourceEdEncounterId,
+      sourceEncounterId: sourceEncounterId,
       internalPlacementRequestId: placementRequestId,
       idempotencyKey,
       admissionCorrelationId: correlationIntent.admissionCorrelationId,
@@ -417,7 +489,7 @@ export class InpatientOperationsService {
       receivingUserId: actorUserId,
       receivingStartedAt: new Date().toISOString(),
       hospitalEpisodeId: activeEpisodeId,
-      sourceEncounterId: sourceEdEncounterId,
+      sourceEncounterId: sourceEncounterId,
       internalPlacementRequestId: placementRequestId,
       destinationUnitId: body.requestedUnit?.trim() || correlationIntent.destinationUnitId,
     };
@@ -438,15 +510,22 @@ export class InpatientOperationsService {
           plannedAt: body.plannedAt?.trim() || null,
           referringProviderOrFacility: body.referringProviderOrFacility?.trim() || null,
           originatingEdEncounterId: sourceEdEncounterId,
-          observationEncounterId: null,
+          observationEncounterId:
+            admissionSource === "OBSERVATION_CONVERSION" ? sourceEncounterId : null,
+          observationEncounterTypePreserved: admissionSource === "OBSERVATION_CONVERSION",
+          medicationTransitionAction:
+            typeof body.medicationTransitionAction === "string"
+              ? body.medicationTransitionAction.trim().toUpperCase()
+              : null,
           receivingNurseUserId: actorUserId,
           admissionInitiatedAt: new Date().toISOString(),
           arrivalAt: admittedAt.toISOString(),
           d3e6dIdempotencyKey: idempotencyKey,
           assignedBedKey: bedKeyRaw || null,
-          // Explicit: ED chart is not closed or mutated by this writer
+          // Explicit: ED/Observation chart is not closed or type-mutated by this writer
           edEncounterClosed: false,
           edEncounterMutated: false,
+          observationEncounterMutated: false,
         },
         ops
       ),
@@ -469,7 +548,7 @@ export class InpatientOperationsService {
         facilityId,
         admissionIntent,
         hospitalEpisodeId: activeEpisodeId,
-        sourceEncounterId: sourceEdEncounterId,
+        sourceEncounterId: sourceEncounterId,
         internalPlacementRequestId: placementRequestId,
         idempotencyKey,
         admissionCorrelationId: correlationDraft.admissionCorrelationId,
@@ -602,12 +681,54 @@ export class InpatientOperationsService {
           encounterType: "INPATIENT",
           receivingNurseUserId: actorUserId,
           sourceEdEncounterId,
+          sourceObservationEncounterId:
+            admissionSource === "OBSERVATION_CONVERSION" ? sourceEncounterId : null,
           edEncounterClosed: false,
           edEncounterMutated: false,
+          observationEncounterMutated: false,
           assignedBedKey: bedKeyRaw || null,
           concurrentWithOpenEd: decision.code === "ALLOW_ED_PLUS_INPATIENT",
         },
       });
+    }
+
+    // Stamp conversion correlation onto Observation without mutating Encounter.type.
+    if (
+      admissionSource === "OBSERVATION_CONVERSION" &&
+      sourceEncounterId &&
+      !created.idempotentReuse
+    ) {
+      const obs = await this.prisma.encounter.findFirst({
+        where: { id: sourceEncounterId, facilityId },
+        select: {
+          id: true,
+          type: true,
+          billingClassification: true,
+          admissionSummaryJson: true,
+        },
+      });
+      if (obs && isExplicitObservationChart(obs)) {
+        const priorType = obs.type;
+        const priorBilling = obs.billingClassification;
+        await this.prisma.encounter.update({
+          where: { id: obs.id },
+          data: {
+            // Identity preservation: never mutate type or billing classification.
+            type: priorType,
+            billingClassification: priorBilling,
+            admissionSummaryJson: mergeHospitalAdmissionCorrelationIntoSummary(
+              obs.admissionSummaryJson,
+              {
+                ...correlationIntent,
+                status: "ENCOUNTER_CREATED",
+                receivingEncounterId: created.encounterId,
+                hospitalEpisodeId: created.hospitalEpisodeId,
+              }
+            ) as Prisma.InputJsonValue,
+            version: { increment: 1 },
+          },
+        });
+      }
     }
 
     const detail = await this.prisma.encounter.findFirst({
@@ -623,8 +744,189 @@ export class InpatientOperationsService {
       idempotentReuse: created.idempotentReuse,
       edEncounterMutated: false,
       edEncounterClosed: false,
+      observationEncounterMutated: false,
       receivingNurseUserId: actorUserId,
       admissionCorrelationId: created.admissionCorrelationId,
+      sourceObservationEncounterId:
+        admissionSource === "OBSERVATION_CONVERSION" ? sourceEncounterId : null,
+    };
+  }
+
+  /**
+   * D3E.8A — Governed Observation → Inpatient conversion writer.
+   * Creates a new correlation + new Inpatient encounter; Observation type unchanged.
+   */
+  async convertObservationToInpatient(
+    facilityId: string,
+    actorUserId: string,
+    body: {
+      sourceObservationEncounterId: string;
+      requestedUnit?: string | null;
+      requestedLevelOfCare?: string | null;
+      admissionDiagnosis?: string | null;
+      reasonForAdmission?: string | null;
+      requestedAdmissionAt?: string | null;
+      assignedBedKey?: string | null;
+      idempotencyKey?: string | null;
+      medicationTransitionAction: string;
+      expectedVersion?: number | null;
+    },
+    options?: { ip?: string; userAgent?: string }
+  ) {
+    if (!this.admissionCorrelation.isObservationConversionEnabled()) {
+      throw new ForbiddenException("Observation inpatient conversion is disabled");
+    }
+    const obsId = String(body.sourceObservationEncounterId ?? "").trim();
+    if (!obsId) throw new BadRequestException("sourceObservationEncounterId is required");
+
+    const obs = await this.prisma.encounter.findFirst({
+      where: { id: obsId, facilityId },
+      select: {
+        id: true,
+        patientId: true,
+        type: true,
+        status: true,
+        hospitalEpisodeId: true,
+        billingClassification: true,
+        admissionSummaryJson: true,
+      },
+    });
+    if (!obs || !isExplicitObservationChart(obs)) {
+      throw new NotFoundException("Observation encounter not found");
+    }
+    if (obs.status !== EncounterStatus.OPEN) {
+      throw new ConflictException("Observation encounter is not eligible for conversion");
+    }
+    const observationTypeBefore = obs.type;
+    const observationBillingBefore = obs.billingClassification;
+
+    const priorCorr = readHospitalAdmissionCorrelation(obs.admissionSummaryJson);
+    if (priorCorr) {
+      const dup = evaluateExistingAdmissionIntent({
+        sourceEncounterId: obs.id,
+        destinationContext: "INPATIENT",
+        existingCorrelations: [priorCorr],
+      });
+      if (dup.code === "EXISTING_ADMISSION_INTENT") {
+        if (
+          body.expectedVersion != null &&
+          dup.correlation.correlationVersion !== body.expectedVersion
+        ) {
+          throw new ConflictException({
+            code: "ADMISSION_CORRELATION_VERSION_CONFLICT",
+            detail: "Stale expectedVersion for existing conversion intent",
+            currentVersion: dup.correlation.correlationVersion,
+          });
+        }
+        return {
+          code: "EXISTING_ADMISSION_INTENT" as const,
+          admissionCorrelation: dup.correlation,
+          observationEncounterId: obs.id,
+          observationEncounterType: "OBSERVATION" as const,
+          observationEncounterMutated: false,
+        };
+      }
+    }
+
+    const plan = this.admissionCorrelation.planObservationConversion({
+      patientId: obs.patientId,
+      facilityId,
+      sourceObservationEncounterId: obs.id,
+      // Clinical lane identity (not Prisma EncounterType — Observation has no EncounterType enum).
+      sourceEncounterType: "OBSERVATION",
+      medicationTransitionAction: String(body.medicationTransitionAction ?? "")
+        .trim()
+        .toUpperCase() as never,
+      destinationUnitId: body.requestedUnit?.trim() || null,
+      hospitalEpisodeId: obs.hospitalEpisodeId,
+      idempotencyKey: body.idempotencyKey?.trim() || null,
+      initiatedByUserId: actorUserId,
+    });
+    if ("ok" in plan && plan.ok === false) {
+      throw new BadRequestException({ code: plan.code, detail: plan.detail });
+    }
+    if (!("correlation" in plan)) {
+      throw new BadRequestException("Observation conversion plan failed");
+    }
+
+    // Persist INTENT_CREATED on Observation before receiving (type unchanged).
+    await this.prisma.encounter.update({
+      where: { id: obs.id },
+      data: {
+        admissionSummaryJson: mergeHospitalAdmissionCorrelationIntoSummary(
+          obs.admissionSummaryJson,
+          plan.correlation
+        ) as Prisma.InputJsonValue,
+        version: { increment: 1 },
+      },
+    });
+
+    const result = await this.createDirectAdmission(
+      facilityId,
+      actorUserId,
+      {
+        patientId: obs.patientId,
+        admissionSource: "OBSERVATION_CONVERSION",
+        sourceObservationEncounterId: obs.id,
+        requestedUnit: body.requestedUnit,
+        requestedLevelOfCare: body.requestedLevelOfCare,
+        admissionDiagnosis: body.admissionDiagnosis,
+        reasonForAdmission: body.reasonForAdmission,
+        admittedAt: body.requestedAdmissionAt,
+        assignedBedKey: body.assignedBedKey,
+        idempotencyKey: body.idempotencyKey,
+        admissionCorrelationId: plan.correlation.admissionCorrelationId,
+        medicationTransitionAction: body.medicationTransitionAction,
+      },
+      options
+    );
+
+    const obsAfter = await this.prisma.encounter.findFirst({
+      where: { id: obs.id, facilityId },
+      select: {
+        id: true,
+        type: true,
+        status: true,
+        billingClassification: true,
+        admissionSummaryJson: true,
+      },
+    });
+    if (
+      !obsAfter ||
+      obsAfter.type !== observationTypeBefore ||
+      obsAfter.billingClassification !== observationBillingBefore ||
+      !isExplicitObservationChart(obsAfter)
+    ) {
+      throw new ConflictException(
+        "Observation encounter identity must remain unchanged after conversion"
+      );
+    }
+
+    await this.audit.log(AuditAction.ENCOUNTER_UPDATE, DIRECT_ADMIT_ENTITY, {
+      userId: actorUserId,
+      facilityId,
+      patientId: obs.patientId,
+      encounterId: obs.id,
+      entityId: plan.correlation.admissionCorrelationId,
+      critical: true,
+      ip: options?.ip,
+      userAgent: options?.userAgent,
+      metadata: {
+        event: "OBSERVATION_CONVERSION_COMPLETED",
+        receivingEncounterId: result.encounter?.id ?? null,
+        observationEncounterTypePreserved: true,
+        medicationTransitionAction: body.medicationTransitionAction,
+      },
+    });
+
+    return {
+      ...result,
+      observationEncounterId: obs.id,
+      observationEncounterType: "OBSERVATION" as const,
+      observationEncounterPrismaType: obsAfter.type,
+      observationEncounterMutated: false,
+      admissionCorrelation: plan.correlation,
+      code: "OBSERVATION_CONVERSION_CREATED" as const,
     };
   }
 

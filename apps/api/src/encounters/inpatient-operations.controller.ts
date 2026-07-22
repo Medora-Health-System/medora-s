@@ -88,6 +88,51 @@ export class InpatientOperationsController {
             ? body.internalPlacementRequestId
             : null,
         admittedAt: typeof body.admittedAt === "string" ? body.admittedAt : null,
+        sourceObservationEncounterId:
+          typeof body.sourceObservationEncounterId === "string"
+            ? body.sourceObservationEncounterId
+            : null,
+        medicationTransitionAction:
+          typeof body.medicationTransitionAction === "string"
+            ? body.medicationTransitionAction
+            : null,
+      },
+      { ip: req.ip, userAgent: req.headers?.["user-agent"] }
+    );
+  }
+
+  @Post("observation/:encounterId/convert-to-inpatient")
+  @RequireRoles(RoleCode.PROVIDER, RoleCode.ADMIN)
+  async convertObservationToInpatient(
+    @Param("encounterId") encounterId: string,
+    @Body() body: Record<string, unknown>,
+    @Req() req: any
+  ) {
+    const medicationTransitionAction = String(body?.medicationTransitionAction ?? "").trim();
+    if (!medicationTransitionAction) {
+      throw new BadRequestException("medicationTransitionAction is required");
+    }
+    return this.ops.convertObservationToInpatient(
+      facilityIdFromReq(req),
+      userIdFromReq(req),
+      {
+        sourceObservationEncounterId: encounterId,
+        requestedUnit: typeof body.requestedUnit === "string" ? body.requestedUnit : null,
+        requestedLevelOfCare:
+          typeof body.requestedLevelOfCare === "string" ? body.requestedLevelOfCare : null,
+        admissionDiagnosis:
+          typeof body.admissionDiagnosis === "string" ? body.admissionDiagnosis : null,
+        reasonForAdmission:
+          typeof body.reasonForAdmission === "string" ? body.reasonForAdmission : null,
+        requestedAdmissionAt:
+          typeof body.requestedAdmissionAt === "string" ? body.requestedAdmissionAt : null,
+        assignedBedKey: typeof body.assignedBedKey === "string" ? body.assignedBedKey : null,
+        idempotencyKey: typeof body.idempotencyKey === "string" ? body.idempotencyKey : null,
+        medicationTransitionAction,
+        expectedVersion:
+          body.expectedVersion != null && Number.isFinite(Number(body.expectedVersion))
+            ? Number(body.expectedVersion)
+            : null,
       },
       { ip: req.ip, userAgent: req.headers?.["user-agent"] }
     );
