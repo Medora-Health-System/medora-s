@@ -41,7 +41,10 @@ import { providerDocumentationToxicologyComplaintIntelEn } from "./providerDocum
 import { providerDocumentationObGynUrologyComplaintIntelEn } from "./providerDocumentationObGynUrologyComplaintIntel.en";
 import { providerDocumentationPsychiatricBehavioralComplaintIntelEn } from "./providerDocumentationPsychiatricBehavioralComplaintIntel.en";
 import { hospitalAdmissionD4a0En } from "./hospitalAdmissionD4a0.en";
+<<<<<<< HEAD
 import { hospitalAdmissionD4a1En } from "./hospitalAdmissionD4a1.en";
+=======
+>>>>>>> origin/main
 
 export default {
   common: {
@@ -19012,8 +19015,11 @@ export default {
       startNewAdmission: "Start new admission",
     },
   },
+<<<<<<< HEAD
   hospitalAdmissionD4a1: hospitalAdmissionD4a1En,
 
+=======
+>>>>>>> origin/main
   hospitalAdmissionD4a0: hospitalAdmissionD4a0En,
 
   hospitalCareD3e6d: {

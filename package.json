@@ -71,8 +71,11 @@
     "inpatient-bed-assignment:validate": "pnpm inpatient-patient-search:validate",
     "inpatient-admission-handoff:validate": "pnpm inpatient-patient-search:validate",
     "inpatient-admission-clinical-shell:validate": "pnpm inpatient-patient-search:validate",
+<<<<<<< HEAD
     "medsurg-nursing-admission:validate": "pnpm --filter @medora/shared build && pnpm --filter @medora/shared exec vitest run src/encounters/medSurgNursingAdmissionD4a1Benchmark.test.ts && pnpm --filter @medora/web exec vitest run src/features/hospital-care/medSurgNursingAdmission.d4a1.test.ts",
     "nursing-admission:validate": "pnpm medsurg-nursing-admission:validate",
+=======
+>>>>>>> origin/main
     "admission-correlation:validate": "pnpm --filter @medora/shared build && pnpm --filter @medora/shared exec vitest run src/encounters/hospitalAdmissionCorrelationV1.test.ts src/encounters/admissionCorrelationD3e8Benchmark.test.ts src/encounters/admissionIntentOriginationD3e8aBenchmark.test.ts",
     "admission-intent-origination:validate": "pnpm --filter @medora/shared build && pnpm --filter @medora/shared exec vitest run src/encounters/admissionIntentOriginationD3e8aBenchmark.test.ts && pnpm --filter @medora/web exec vitest run src/features/hospital-care/admissionIntentOrigination.d3e8a.test.ts",
     "admission-correlation-versioning:validate": "pnpm admission-intent-origination:validate",
