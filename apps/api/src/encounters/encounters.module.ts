@@ -2,11 +2,13 @@ import { Module } from "@nestjs/common";
 import { EncountersController } from "./encounters.controller";
 import { InternalPlacementController } from "./internal-placement.controller";
 import { ObservationWorkspaceController } from "./observation-workspace.controller";
+import { ObservationOperationsController } from "./observation-operations.controller";
 import { InpatientWorkspaceController } from "./inpatient-workspace.controller";
 import { HospitalCareController } from "./hospital-care.controller";
 import { InpatientOperationsController } from "./inpatient-operations.controller";
 import { EncountersService } from "./encounters.service";
 import { InpatientOperationsService } from "./inpatient-operations.service";
+import { ObservationOperationsService } from "./observation-operations.service";
 import { InpatientLifecycleService } from "./inpatient-lifecycle.service";
 import { HospitalCensusService } from "./hospital-census.service";
 import { HospitalUnitRegistryService } from "./hospital-unit-registry.service";
@@ -47,6 +49,7 @@ import { OperationalGovernanceController } from "./operational-governance.contro
     EncountersController,
     InternalPlacementController,
     ObservationWorkspaceController,
+    ObservationOperationsController,
     InpatientWorkspaceController,
     HospitalCareController,
     InpatientOperationsController,
@@ -57,6 +60,7 @@ import { OperationalGovernanceController } from "./operational-governance.contro
   providers: [
     EncountersService,
     InpatientOperationsService,
+    ObservationOperationsService,
     InpatientLifecycleService,
     AdmissionCorrelationService,
     AdmissionCommandCenterService,

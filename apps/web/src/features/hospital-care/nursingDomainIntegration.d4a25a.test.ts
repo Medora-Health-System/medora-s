@@ -26,7 +26,7 @@ describe("D4A.2.5A nursing domain integration UI/API contracts", () => {
     );
   });
 
-  it("keeps nursing admission shell and embeds enterprise editors", () => {
+  it("keeps nursing admission shell and launches additional documentation (D4A.2.7C)", () => {
     const shell = readFileSync(
       join(webRoot, "features/inpatient-workspace/InpatientAdmissionClinicalShell.tsx"),
       "utf8"
@@ -42,8 +42,8 @@ describe("D4A.2.5A nursing domain integration UI/API contracts", () => {
       join(webRoot, "features/inpatient-workspace/NursingAdmissionDomainIntegrationPanel.tsx"),
       "utf8"
     );
-    expect(domain).toContain("ClinicalDocumentationHub");
-    expect(domain).toContain("careSetting=\"INPATIENT\"");
+    expect(domain).toContain("AdditionalClinicalDocumentationLauncher");
+    expect(domain).not.toContain("ClinicalDocumentationHub");
     expect(domain).toContain("nursing-demographics-readonly");
   });
 

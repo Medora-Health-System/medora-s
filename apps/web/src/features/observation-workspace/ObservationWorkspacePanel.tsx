@@ -182,6 +182,9 @@ export function ObservationWorkspacePanel({
       }
       return (
         <div data-testid="observation-panel-notes-live">
+          <p style={{ margin: "0 0 8px", fontSize: 12, color: "#64748b" }}>
+            {t("inpatientWorkspaceRecoveryD4a27b.notes.governedProgressOnly")}
+          </p>
           <EmergencyErNotesPanel
             encounterId={encounterId}
             facilityId={facilityId}
@@ -192,6 +195,30 @@ export function ObservationWorkspacePanel({
           />
         </div>
       );
+    case "problemsPlan":
+      return (
+        <p data-testid="observation-panel-problems" style={{ margin: 0, fontSize: 13 }}>
+          {t("inpatientRapidConvergenceD4a27c.observation.providerNav.problemsPlan")}
+        </p>
+      );
+    case "assessments":
+    case "vitals":
+    case "tasks":
+    case "education": {
+      const nursingLabelKey =
+        section === "assessments"
+          ? "inpatientRapidConvergenceD4a27c.observation.nursingNav.assessments"
+          : section === "vitals"
+            ? "inpatientRapidConvergenceD4a27c.observation.nursingNav.vitals"
+            : section === "tasks"
+              ? "inpatientRapidConvergenceD4a27c.observation.nursingNav.tasks"
+              : "inpatientRapidConvergenceD4a27c.observation.nursingNav.education";
+      return (
+        <div data-testid={`observation-panel-${section}`}>
+          <p style={{ margin: "0 0 8px", fontSize: 13 }}>{t(nursingLabelKey)}</p>
+        </div>
+      );
+    }
     case "nursing":
     case "reassessment":
       if (!docsLive || !facilityId) {

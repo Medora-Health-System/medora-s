@@ -5,7 +5,6 @@ import {
   domainRequiresPersistedEdocId,
   isPersistedEdocRecordId,
   isSyntheticDomainRecordId,
-  mapEdocCardIdToNursingDomain,
   nursingSectionIntegration,
   type InpatientAdmissionClinicalSection,
   type NursingAdmissionDomainKey,
@@ -13,10 +12,9 @@ import {
 } from "@medora/shared";
 import { useI18n } from "@/lib/i18n";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
-import { ClinicalDocumentationHub } from "@/features/clinical-documentation/ClinicalDocumentationHub";
-import type { ClinicalDocumentationEntryRow } from "@/lib/clinicalDocumentationApi";
 import { linkNursingAdmissionDomainReference } from "@/features/hospital-care/inpatientOperationsApi";
 import { DISPLAY_DASH } from "@/lib/patientDisplay";
+import { AdditionalClinicalDocumentationLauncher } from "./rapid-documentation/AdditionalClinicalDocumentationLauncher";
 
 type PatientLite = {
   id?: string;
@@ -130,21 +128,6 @@ export function NursingAdmissionDomainIntegrationPanel({
     } finally {
       setBusy(false);
     }
-  };
-
-  const onEdocSaved = (saved?: ClinicalDocumentationEntryRow) => {
-    if (!saved?.id || signed || !canLink) return;
-    const domain =
-      mapEdocCardIdToNursingDomain(saved.cardId) ??
-      (integration.authoritativeDomain !== "ADMISSION_OWNED"
-        ? (integration.authoritativeDomain as NursingAdmissionDomainKey)
-        : null);
-    if (!domain) return;
-    void linkAuthoritative({
-      recordId: saved.id,
-      domain,
-      cardId: saved.cardId,
-    });
   };
 
   return (
@@ -264,16 +247,15 @@ export function NursingAdmissionDomainIntegrationPanel({
       ) : null}
 
       {EDOC_SECTIONS.has(sectionId) && facilityId ? (
-        <div style={{ marginTop: 10 }} data-testid={`nursing-edoc-embed-${sectionId}`}>
-          <ClinicalDocumentationHub
-            careSetting="INPATIENT"
-            encounterId={encounterId}
-            facilityId={facilityId}
-            showHeader={false}
-            accessMode={signed ? "review" : "edit"}
-            focusedCardId={integration.edocFocusedCardId ?? null}
-            onEntriesChanged={onEdocSaved}
+        <div style={{ marginTop: 10 }} data-testid={`nursing-additional-docs-launcher-${sectionId}`}>
+          <AdditionalClinicalDocumentationLauncher
+            role="NURSING"
+            encounterType="INPATIENT"
+            compact
           />
+          <p style={{ margin: "6px 0 0", fontSize: 11, color: "#64748b" }}>
+            {t("inpatientRapidConvergenceD4a27c.rapid.openAdditionalDocs")}
+          </p>
         </div>
       ) : null}
 

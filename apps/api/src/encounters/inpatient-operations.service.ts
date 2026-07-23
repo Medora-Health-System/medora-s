@@ -72,6 +72,10 @@ import {
   isAdmissionHistoryVerificationStatus,
   isAdmissionCompletionState,
   patientClinicalHistoryProfileFromJson,
+  readTechnicianTasksDoc,
+  mergeTechnicianTasksIntoSummary,
+  emptyTechnicianTasksDoc,
+  type EnterpriseTechnicianTasksDocV1,
   MEDSURG_NURSING_ADMISSION_CERTIFICATION_ID,
   INPATIENT_LIFECYCLE_NURSING_ADMISSION_CERTIFICATION_ID,
   reviewNursingAdmission,
@@ -1218,6 +1222,69 @@ export class InpatientOperationsService {
     };
   }
 
+  /** D4A.2.7C — Technician tasks (JSON in admissionSummaryJson; zero migration). */
+  async getTechnicianTasks(facilityId: string, encounterId: string) {
+    const enc = await this.loadOpenInpatient(facilityId, encounterId);
+    const doc = readTechnicianTasksDoc(enc.admissionSummaryJson);
+    return {
+      encounterId: enc.id,
+      expectedVersion: doc.expectedVersion,
+      tasks: doc.tasks,
+      admissionSummaryJson:
+        enc.admissionSummaryJson &&
+        typeof enc.admissionSummaryJson === "object" &&
+        !Array.isArray(enc.admissionSummaryJson)
+          ? (enc.admissionSummaryJson as Record<string, unknown>)
+          : {},
+    };
+  }
+
+  async patchTechnicianTasks(
+    facilityId: string,
+    encounterId: string,
+    actorUserId: string,
+    body: { expectedVersion: number; doc: EnterpriseTechnicianTasksDocV1 },
+    options?: { ip?: string; userAgent?: string }
+  ) {
+    const enc = await this.loadOpenInpatient(facilityId, encounterId);
+    const current = readTechnicianTasksDoc(enc.admissionSummaryJson);
+    if (Number(body.expectedVersion) !== current.expectedVersion) {
+      throw new ConflictException("Technician tasks version conflict");
+    }
+    const nextDoc: EnterpriseTechnicianTasksDocV1 = {
+      ...emptyTechnicianTasksDoc(),
+      ...body.doc,
+      version: 1,
+      expectedVersion: current.expectedVersion + 1,
+      updatedAt: new Date().toISOString(),
+      tasks: Array.isArray(body.doc?.tasks) ? body.doc.tasks : [],
+    };
+    const merged = mergeTechnicianTasksIntoSummary(enc.admissionSummaryJson, nextDoc);
+    await this.prisma.encounter.update({
+      where: { id: enc.id },
+      data: { admissionSummaryJson: merged as Prisma.InputJsonValue },
+    });
+    await this.audit.log(AuditAction.ENCOUNTER_UPDATE, "TechnicianTasks", {
+      userId: actorUserId,
+      facilityId,
+      patientId: enc.patientId,
+      entityId: enc.id,
+      encounterId: enc.id,
+      ip: options?.ip,
+      userAgent: options?.userAgent,
+      metadata: {
+        event: "TECHNICIAN_TASKS_PATCHED",
+        taskCount: nextDoc.tasks.length,
+        expectedVersion: nextDoc.expectedVersion,
+      },
+    });
+    return {
+      encounterId: enc.id,
+      expectedVersion: nextDoc.expectedVersion,
+      tasks: nextDoc.tasks,
+    };
+  }
+
   /**
    * D4A.2.7B — Bounded hospital workspace bootstrap.
    * Validates encounter type before any writers. Emits chart-access audit.
@@ -1291,8 +1358,12 @@ export class InpatientOperationsService {
             dob: true,
             sexAtBirth: true,
             language: true,
+            clinicalHistoryProfileJson: true,
+            latestVitalsJson: true,
+            latestVitalsAt: true,
           },
         },
+        facility: { select: { name: true } },
       },
     });
 
@@ -1470,7 +1541,7 @@ export class InpatientOperationsService {
         attendingName,
         assignedRnName,
         residentOrAppName: null,
-        facilityName: null,
+        facilityName: enc.facility?.name ?? null,
         unit: unitHint,
         room: enc.roomLabel ?? null,
         bed: roomParts.length > 2 ? roomParts[2]! : null,
@@ -1480,7 +1551,114 @@ export class InpatientOperationsService {
         codeStatus: ops.codeStatus?.status ?? null,
         isolation: ops.isolation?.precautions ?? null,
         fallRisk: null,
-        allergiesSummary: null,
+        allergiesSummary: (() => {
+          try {
+            const profile = patientClinicalHistoryProfileFromJson(
+              enc.patient?.clinicalHistoryProfileJson ?? null
+            );
+            const note =
+              profile?.allergies?.allergyNote ??
+              profile?.allergies?.medicationAllergiesDetail ??
+              null;
+            return note ? String(note).slice(0, 240) : null;
+          } catch {
+            return null;
+          }
+        })(),
+        allergiesAvailability: (() => {
+          try {
+            const profile = patientClinicalHistoryProfileFromJson(
+              enc.patient?.clinicalHistoryProfileJson ?? null
+            );
+            const note =
+              profile?.allergies?.allergyNote ??
+              profile?.allergies?.medicationAllergiesDetail ??
+              null;
+            if (note) return "PRESENT" as const;
+            if (profile?.allergies) return "NOT_DOCUMENTED" as const;
+            return "SOURCE_UNAVAILABLE" as const;
+          } catch {
+            return "SOURCE_UNAVAILABLE" as const;
+          }
+        })(),
+        oxygenSupport: null,
+        dietNpo: null,
+        weightKg: null,
+        latestVitals: (() => {
+          const raw = enc.patient?.latestVitalsJson;
+          if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+            return {
+              availability: "NO_DATA_DOCUMENTED" as const,
+              recordedAt: enc.patient?.latestVitalsAt
+                ? new Date(enc.patient.latestVitalsAt).toISOString()
+                : null,
+              systolic: null,
+              diastolic: null,
+              heartRate: null,
+              spo2: null,
+              temperatureC: null,
+              respiratoryRate: null,
+            };
+          }
+          const v = raw as Record<string, unknown>;
+          const num = (k: string) => {
+            const n = Number(v[k]);
+            return Number.isFinite(n) ? n : null;
+          };
+          return {
+            availability: "AVAILABLE" as const,
+            recordedAt: enc.patient?.latestVitalsAt
+              ? new Date(enc.patient.latestVitalsAt).toISOString()
+              : null,
+            systolic: num("systolic") ?? num("sbp"),
+            diastolic: num("diastolic") ?? num("dbp"),
+            heartRate: num("heartRate") ?? num("hr") ?? num("pulse"),
+            spo2: num("spo2") ?? num("oxygenSaturation"),
+            temperatureC: num("temperatureC") ?? num("tempC") ?? num("temperature"),
+            respiratoryRate: num("respiratoryRate") ?? num("rr"),
+          };
+        })(),
+        indicators: [
+          {
+            code: "ISOLATION",
+            state: (ops.isolation?.precautions?.length ? "PRESENT" : "NOT_DOCUMENTED") as
+              | "PRESENT"
+              | "NOT_DOCUMENTED",
+            labelKey: "inpatientRapidConvergenceD4a27c.indicators.isolation",
+          },
+          {
+            code: "CODE_STATUS",
+            state: (ops.codeStatus?.status ? "PRESENT" : "NOT_DOCUMENTED") as
+              | "PRESENT"
+              | "NOT_DOCUMENTED",
+            labelKey: "inpatientRapidConvergenceD4a27c.indicators.codeStatus",
+          },
+          {
+            code: "PERIPHERAL_IV",
+            state: "SOURCE_UNAVAILABLE" as const,
+            labelKey: "inpatientRapidConvergenceD4a27c.indicators.peripheralIv",
+          },
+          {
+            code: "CENTRAL_LINE",
+            state: "SOURCE_UNAVAILABLE" as const,
+            labelKey: "inpatientRapidConvergenceD4a27c.indicators.centralLine",
+          },
+          {
+            code: "URINARY_CATHETER",
+            state: "SOURCE_UNAVAILABLE" as const,
+            labelKey: "inpatientRapidConvergenceD4a27c.indicators.urinaryCatheter",
+          },
+          {
+            code: "TELEMETRY",
+            state: "SOURCE_UNAVAILABLE" as const,
+            labelKey: "inpatientRapidConvergenceD4a27c.indicators.telemetry",
+          },
+          {
+            code: "CRITICAL_RESULT",
+            state: "SOURCE_UNAVAILABLE" as const,
+            labelKey: "inpatientRapidConvergenceD4a27c.indicators.criticalResult",
+          },
+        ],
       },
       readiness: {
         role,

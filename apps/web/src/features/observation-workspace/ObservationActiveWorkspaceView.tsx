@@ -1,87 +1,64 @@
 "use client";
 
+/**
+ * D4A.2.7C — Observation active workspace.
+ * Primary header from observation-operations bootstrap (not generic encounter GET).
+ */
+
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { apiFetch, asApiObject } from "@/lib/apiClient";
+import {
+  observationNursingNav,
+  observationProviderNav,
+  type HospitalWorkspaceBootstrapV1,
+} from "@medora/shared";
 import { useI18n } from "@/lib/i18n";
 import { MEDORA_CARD_SHELL } from "@/components/medora-card/medoraCardTokens";
-import { formatEncounterChromeDateTime } from "@/lib/encounterChromeI18n";
-import { DISPLAY_DASH } from "@/lib/patientDisplay";
 import { OBSERVATION_CENSUS_PATH, isObservationWorkspaceEnabledInBrowser } from "./observationWorkspacePaths";
 import {
   parseObservationWorkspaceSection,
-  OBSERVATION_WORKSPACE_SECTIONS,
   type ObservationWorkspaceSection,
 } from "./observationWorkspaceSections";
 import { ObservationWorkspaceSectionNav } from "./ObservationWorkspaceSectionNav";
 import { ObservationWorkspacePanel } from "./ObservationWorkspacePanel";
-
-type ObservationEncounterHeader = {
-  id: string;
-  status?: string | null;
-  type?: string | null;
-  admittedAt?: string | null;
-  roomLabel?: string | null;
-  governedRoomUnit?: string | null;
-  assignedProviderName?: string | null;
-  assignedNurseName?: string | null;
-  providerDocumentationStatus?: string | null;
-  patient?: {
-    id?: string;
-    firstName?: string | null;
-    lastName?: string | null;
-    mrn?: string | null;
-    dob?: string | null;
-    sexAtBirth?: string | null;
-  } | null;
-};
+import { EnterpriseHospitalPatientHeader } from "@/features/inpatient-workspace/EnterpriseHospitalPatientHeader";
+import { fetchObservationWorkspaceBootstrap } from "@/features/hospital-care/observationOperationsApi";
 
 export function ObservationActiveWorkspaceView({
   forcedAudience,
 }: {
   forcedAudience?: "PROVIDER" | "NURSING";
 } = {}) {
-  const { t, language } = useI18n();
+  const { t } = useI18n();
   const params = useParams();
   const router = useRouter();
   const searchParams = useSearchParams();
   const encounterId = String(params?.id ?? "").trim();
   const workspaceEnabled = isObservationWorkspaceEnabledInBrowser();
 
-  const providerNav: ObservationWorkspaceSection[] = [
-    "overview",
-    "providerNotes",
-    "orders",
-    "results",
-    "medications",
-    "reassessment",
-    "carePlan",
-    "disposition",
-    "timeline",
-    "summary",
-  ];
-  const nursingNav: ObservationWorkspaceSection[] = [
-    "overview",
-    "nursing",
-    "medications",
-    "reassessment",
-    "disposition",
-    "timeline",
-  ];
+  const providerNav = observationProviderNav() as ObservationWorkspaceSection[];
+  const nursingNav = observationNursingNav() as ObservationWorkspaceSection[];
   const allowed =
     forcedAudience === "PROVIDER"
       ? providerNav
       : forcedAudience === "NURSING"
         ? nursingNav
-        : OBSERVATION_WORKSPACE_SECTIONS.map((s) => s.id);
+        : [...new Set([...providerNav, ...nursingNav])];
+
+  const role =
+    forcedAudience === "PROVIDER"
+      ? "PROVIDER"
+      : forcedAudience === "NURSING"
+        ? "NURSING"
+        : "CHART";
 
   const initialSection =
     parseObservationWorkspaceSection(searchParams.get("section")) ?? allowed[0] ?? "overview";
   const [section, setSection] = useState<ObservationWorkspaceSection>(
     allowed.includes(initialSection) ? initialSection : allowed[0]!
   );
-  const [encounter, setEncounter] = useState<ObservationEncounterHeader | null>(null);
+  const [bootstrap, setBootstrap] = useState<HospitalWorkspaceBootstrapV1 | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -101,47 +78,64 @@ export function ObservationActiveWorkspaceView({
     [router, searchParams, allowed]
   );
 
-  const loadEncounter = useCallback(async () => {
+  const loadBootstrap = useCallback(async () => {
     if (!encounterId) {
       setError(t("observationD3d.workspace.missingId"));
-      setEncounter(null);
+      setBootstrap(null);
       return;
     }
     setLoading(true);
     setError(null);
     try {
-      const raw = await apiFetch(`/encounters/${encounterId}`);
-      const obj = asApiObject<ObservationEncounterHeader>(raw);
-      if (!obj?.id) throw new Error("missing encounter");
-      const type = String(obj.type ?? "").toUpperCase();
-      if (type === "EMERGENCY") {
-        setEncounter(null);
-        setError(t("inpatientWorkspaceRecoveryD4a27b.errors.ED_ENCOUNTER_REJECTED"));
+      const payload = await fetchObservationWorkspaceBootstrap(encounterId, role);
+      if (!payload.resolution.ok || !payload.header) {
+        setBootstrap(payload);
+        setError(
+          payload.resolution.ok
+            ? t("inpatientRapidConvergenceD4a27c.observation.bootstrapFailed")
+            : t(payload.resolution.messageCode) !== payload.resolution.messageCode
+              ? t(payload.resolution.messageCode)
+              : t("inpatientRapidConvergenceD4a27c.observation.bootstrapFailed")
+        );
         return;
       }
-      setEncounter(obj);
+      setBootstrap(payload);
     } catch {
-      setEncounter(null);
-      setError(t("observationD3d.workspace.loadError"));
+      setBootstrap(null);
+      setError(t("inpatientRapidConvergenceD4a27c.observation.bootstrapFailed"));
     } finally {
       setLoading(false);
     }
-  }, [encounterId, t]);
+  }, [encounterId, role, t]);
 
   useEffect(() => {
-    void loadEncounter();
-  }, [loadEncounter]);
+    void loadBootstrap();
+  }, [loadBootstrap]);
 
-  const dash = t("common.dash") || DISPLAY_DASH;
-  const patientName = useMemo(() => {
-    const first = encounter?.patient?.firstName?.trim() ?? "";
-    const last = encounter?.patient?.lastName?.trim() ?? "";
-    return `${first} ${last}`.trim() || dash;
-  }, [encounter, dash]);
-
-  const observationStarted = encounter?.admittedAt
-    ? formatEncounterChromeDateTime(encounter.admittedAt, language)
-    : dash;
+  const writersEnabled = Boolean(bootstrap?.writersEnabled && bootstrap.resolution.ok);
+  const encounterLite = useMemo(() => {
+    if (!bootstrap?.header) return null;
+    return {
+      id: bootstrap.header.encounterId,
+      status: bootstrap.header.encounterStatus,
+      type: bootstrap.header.encounterType,
+      admittedAt: bootstrap.header.admittedAt,
+      roomLabel: [bootstrap.header.unit, bootstrap.header.room, bootstrap.header.bed]
+        .filter(Boolean)
+        .join(" / "),
+      governedRoomUnit: bootstrap.header.unit,
+      assignedProviderName: bootstrap.header.attendingName,
+      assignedNurseName: bootstrap.header.assignedRnName,
+      patient: {
+        id: bootstrap.header.patientId,
+        firstName: bootstrap.header.patientName.split(/\s+/)[0] ?? null,
+        lastName: bootstrap.header.patientName.split(/\s+/).slice(1).join(" ") || null,
+        mrn: bootstrap.header.mrn,
+        dob: bootstrap.header.dateOfBirth,
+        sexAtBirth: bootstrap.header.sexAtBirth,
+      },
+    };
+  }, [bootstrap]);
 
   return (
     <div
@@ -187,93 +181,34 @@ export function ObservationActiveWorkspaceView({
 
         {loading ? (
           <p style={{ fontSize: 13, color: "#64748b" }}>{t("common.loading")}</p>
-        ) : error ? (
+        ) : error && !bootstrap?.header ? (
           <p style={{ fontSize: 13, color: "#b91c1c" }} role="alert">
             {error}
           </p>
         ) : (
           <>
-            <div
-              style={{
-                ...MEDORA_CARD_SHELL,
-                borderRadius: MEDORA_CARD_SHELL.radius,
-                border: MEDORA_CARD_SHELL.border,
-                background: MEDORA_CARD_SHELL.background,
-                boxShadow: MEDORA_CARD_SHELL.boxShadow,
-                padding: 14,
-                marginBottom: 12,
-              }}
-              data-testid="observation-workspace-header"
-            >
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))",
-                  gap: 10,
-                  fontSize: 13,
-                }}
+            {bootstrap?.header ? (
+              <EnterpriseHospitalPatientHeader
+                header={bootstrap.header}
+                role={role}
+                sticky
+              />
+            ) : null}
+
+            {!writersEnabled ? (
+              <p role="status" style={{ fontSize: 12, color: "#92400e", marginBottom: 10 }}>
+                {t("inpatientWorkspaceRecoveryD4a27b.unavailable.writersDisabled")}
+              </p>
+            ) : null}
+
+            {!workspaceEnabled ? (
+              <p
+                style={{ margin: "0 0 12px", fontSize: 12, color: "#92400e" }}
+                data-testid="observation-workspace-flag-off-banner"
               >
-                <div>
-                  <div style={{ color: "#64748b", fontSize: 11, fontWeight: 600 }}>
-                    {t("observationD3d.workspace.patient")}
-                  </div>
-                  <div style={{ fontWeight: 700, color: "#0f172a" }}>{patientName}</div>
-                </div>
-                <div>
-                  <div style={{ color: "#64748b", fontSize: 11, fontWeight: 600 }}>
-                    {t("observationD3d.workspace.mrn")}
-                  </div>
-                  <div>{encounter?.patient?.mrn?.trim() || dash}</div>
-                </div>
-                <div>
-                  <div style={{ color: "#64748b", fontSize: 11, fontWeight: 600 }}>
-                    {t("observationD3d.workspace.observationTime")}
-                  </div>
-                  <div>{observationStarted}</div>
-                </div>
-                <div>
-                  <div style={{ color: "#64748b", fontSize: 11, fontWeight: 600 }}>
-                    {t("observationD3d.workspace.unit")}
-                  </div>
-                  <div>{encounter?.governedRoomUnit?.trim() || dash}</div>
-                </div>
-                <div>
-                  <div style={{ color: "#64748b", fontSize: 11, fontWeight: 600 }}>
-                    {t("observationD3d.workspace.bed")}
-                  </div>
-                  <div>{encounter?.roomLabel?.trim() || dash}</div>
-                </div>
-                <div>
-                  <div style={{ color: "#64748b", fontSize: 11, fontWeight: 600 }}>
-                    {t("observationD3d.workspace.provider")}
-                  </div>
-                  <div>{encounter?.assignedProviderName?.trim() || dash}</div>
-                </div>
-                <div>
-                  <div style={{ color: "#64748b", fontSize: 11, fontWeight: 600 }}>
-                    {t("observationD3d.workspace.nurse")}
-                  </div>
-                  <div>{encounter?.assignedNurseName?.trim() || dash}</div>
-                </div>
-                <div>
-                  <div style={{ color: "#64748b", fontSize: 11, fontWeight: 600 }}>
-                    {t("observationD3d.workspace.status")}
-                  </div>
-                  <div>{encounter?.status?.trim() || dash}</div>
-                </div>
-              </div>
-              {!workspaceEnabled ? (
-                <p
-                  style={{ margin: "12px 0 0", fontSize: 12, color: "#92400e" }}
-                  data-testid="observation-workspace-flag-off-banner"
-                >
-                  {t("observationD3d.featureUnavailable")}
-                  <span style={{ display: "block", marginTop: 6, color: "#64748b" }}>
-                    {t("inpatientWorkspaceRecoveryD4a27b.states.NOT_CONFIGURED")}
-                  </span>
-                </p>
-              ) : null}
-            </div>
+                {t("observationD3d.featureUnavailable")}
+              </p>
+            ) : null}
 
             <ObservationWorkspaceSectionNav
               active={section}
@@ -294,9 +229,9 @@ export function ObservationActiveWorkspaceView({
               <ObservationWorkspacePanel
                 section={section}
                 encounterId={encounterId}
-                encounter={encounter}
-                workspaceEnabled={workspaceEnabled}
-                onRefetchEncounter={loadEncounter}
+                encounter={encounterLite}
+                workspaceEnabled={workspaceEnabled && writersEnabled}
+                onRefetchEncounter={loadBootstrap}
               />
             </div>
           </>

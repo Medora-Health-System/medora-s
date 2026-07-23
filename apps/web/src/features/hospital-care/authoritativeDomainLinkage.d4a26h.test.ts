@@ -33,7 +33,7 @@ describe("D4A.2.6H authoritative domain linkage UI/API", () => {
     );
     expect(panel).not.toContain("`edoc-${");
     expect(panel).not.toContain("`ref-${");
-    expect(panel).toContain("onEdocSaved");
+    expect(panel).toContain("AdditionalClinicalDocumentationLauncher");
     expect(panel).toContain("isPersistedEdocRecordId");
     expect(panel).toContain("isSyntheticDomainRecordId");
     expect(panel).toContain("authoritativeCodeStatus");

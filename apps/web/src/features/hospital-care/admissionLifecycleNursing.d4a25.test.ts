@@ -16,8 +16,8 @@ describe("D4A.2.5 inpatient lifecycle + nursing admission UI contracts", () => {
     );
     expect(shell).toContain("NursingAdmissionStructuredSectionForm");
     expect(shell).toContain("InpatientLifecycleActionsMenu");
-    expect(shell).toContain("admission-nav-");
-    expect(shell).toContain('position: "top" | "bottom"');
+    expect(shell).toContain("admission-sticky-footer");
+    expect(shell).toContain("nursing-admission-stage-rail");
     expect(shell).toContain("admission-save-state");
     expect(shell).toContain("createLatestWinsClinicalAutosaveScheduler");
     expect(shell).toContain("beforeunload");

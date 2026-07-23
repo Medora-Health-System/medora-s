@@ -9,6 +9,8 @@ import {
   type NursingSectionFieldDef,
 } from "@medora/shared";
 import { useI18n } from "@/lib/i18n";
+import { NursingAdmissionRapidSectionControls } from "./rapid-documentation/NursingAdmissionRapidSectionControls";
+import { sentenceCaseClinicalLabel } from "@medora/shared";
 
 type Props = {
   sectionId: InpatientAdmissionClinicalSection;
@@ -46,7 +48,11 @@ function FieldControl(props: {
   const options = field.optionsKey
     ? NURSING_ADMISSION_OPTION_CATALOGS[field.optionsKey] ?? []
     : [];
-  const label = t(`hospitalAdmissionD4a25.fields.${field.key}`);
+  const labelRaw = t(`hospitalAdmissionD4a25.fields.${field.key}`);
+  const label =
+    labelRaw === `hospitalAdmissionD4a25.fields.${field.key}`
+      ? sentenceCaseClinicalLabel(field.key)
+      : labelRaw;
   const commonLabel: CSSProperties = { display: "block", fontSize: 12, fontWeight: 600, marginBottom: 4 };
 
   if (field.control === "textarea") {
@@ -209,6 +215,12 @@ export function NursingAdmissionStructuredSectionForm({
 
   return (
     <div data-testid={`structured-section-${sectionId}`} style={{ display: "grid", gap: 10 }}>
+      <NursingAdmissionRapidSectionControls
+        sectionId={sectionId}
+        answers={answers}
+        readOnly={readOnly}
+        onChange={onChange}
+      />
       <p style={{ margin: 0, fontSize: 12, color: "#475569", lineHeight: 1.45 }}>
         <HelpTip helpKey={schema.helpKey} />{" "}
         {t(schema.helpKey)}
