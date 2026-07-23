@@ -42,6 +42,13 @@ import { EnterpriseCommandService } from "./enterprise-command.service";
 import { EnterpriseCommandController } from "./enterprise-command.controller";
 import { OperationalGovernanceService } from "./operational-governance.service";
 import { OperationalGovernanceController } from "./operational-governance.controller";
+import { EnterpriseWorkflowController } from "./enterprise-workflow/enterprise-workflow.controller";
+import { EnterpriseWorkflowOrchestrationService } from "./enterprise-workflow/enterprise-workflow-orchestration.service";
+import { EnterpriseTaskEngine } from "./enterprise-workflow/enterprise-task.engine";
+import { EnterpriseWorkflowEngine } from "./enterprise-workflow/enterprise-workflow.engine";
+import { ClinicalEventEngine } from "./enterprise-workflow/clinical-event.engine";
+import { EscalationEngine } from "./enterprise-workflow/escalation.engine";
+import { HospitalTimelineEngine } from "./enterprise-workflow/hospital-timeline.engine";
 
 @Module({
   imports: [PrismaModule, DiagnosesModule, OrdersModule, TrackboardModule, FacilitiesModule],
@@ -56,6 +63,7 @@ import { OperationalGovernanceController } from "./operational-governance.contro
     AdmissionCorrelationController,
     EnterpriseCommandController,
     OperationalGovernanceController,
+    EnterpriseWorkflowController,
   ],
   providers: [
     EncountersService,
@@ -67,6 +75,12 @@ import { OperationalGovernanceController } from "./operational-governance.contro
     ClinicalSynthesisService,
     EnterpriseCommandService,
     OperationalGovernanceService,
+    EnterpriseTaskEngine,
+    EnterpriseWorkflowEngine,
+    ClinicalEventEngine,
+    EscalationEngine,
+    HospitalTimelineEngine,
+    EnterpriseWorkflowOrchestrationService,
     HospitalCensusService,
     HospitalUnitRegistryService,
     ChartCertificationB1Service,
@@ -99,6 +113,7 @@ import { OperationalGovernanceController } from "./operational-governance.contro
     EnterpriseCommandService,
     OperationalGovernanceService,
     ClinicalSynthesisService,
+    EnterpriseWorkflowOrchestrationService,
   ],
 })
 export class EncountersModule {}

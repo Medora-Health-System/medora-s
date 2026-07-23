@@ -28,6 +28,7 @@ import {
 } from "@/features/hospital-care/inpatientOperationsApi";
 import { EncounterDiagnosticsPanel } from "@/components/encounters/EncounterDiagnosticsPanel";
 import { EnterpriseEncounterCommandTimeline } from "@/components/encounters/EnterpriseEncounterCommandTimeline";
+import { EnterpriseHospitalTimelinePanel } from "@/features/hospital-care/EnterpriseHospitalTimelinePanel";
 import type { InpatientWorkspaceSection } from "./inpatientWorkspaceSections";
 import { ProviderClinicalSynthesisOverview } from "./ProviderClinicalSynthesisOverview";
 import {
@@ -688,6 +689,9 @@ export function InpatientProviderWorkspacePanel({
           embedded
           defaultViewMode="COMPACT"
         />
+        <div style={{ marginTop: 16 }}>
+          <EnterpriseHospitalTimelinePanel encounterId={encounterId} />
+        </div>
       </div>
     );
   }
