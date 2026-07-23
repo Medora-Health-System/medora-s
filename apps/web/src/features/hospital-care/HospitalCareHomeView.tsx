@@ -20,6 +20,7 @@ import {
   HOSPITAL_CARE_ADMISSIONS,
   HOSPITAL_CARE_BEDS,
   HOSPITAL_CARE_ENTERPRISE_COMMAND,
+  HOSPITAL_CARE_ENTERPRISE_OPERATIONS,
   HOSPITAL_CARE_FLOOR_BOARD,
   HOSPITAL_CARE_INPATIENT,
   HOSPITAL_CARE_OBSERVATION,
@@ -419,6 +420,20 @@ export function HospitalCareHomeView() {
               }}
             >
               {t("enterpriseCommandD4a27.openLink")}
+            </Link>
+            <Link
+              href={HOSPITAL_CARE_ENTERPRISE_OPERATIONS}
+              data-testid="open-enterprise-operations"
+              style={{
+                display: "inline-block",
+                marginTop: 10,
+                marginLeft: 14,
+                fontSize: 12,
+                fontWeight: 600,
+                color: "#0f766e",
+              }}
+            >
+              {t("operationalGovernanceD4a27a.openLink")}
             </Link>
           </section>
 

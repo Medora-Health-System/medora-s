@@ -38,6 +38,8 @@ import { AdmissionCommandCenterService } from "./admission-command-center.servic
 import { ClinicalSynthesisService } from "./clinical-synthesis.service";
 import { EnterpriseCommandService } from "./enterprise-command.service";
 import { EnterpriseCommandController } from "./enterprise-command.controller";
+import { OperationalGovernanceService } from "./operational-governance.service";
+import { OperationalGovernanceController } from "./operational-governance.controller";
 
 @Module({
   imports: [PrismaModule, DiagnosesModule, OrdersModule, TrackboardModule, FacilitiesModule],
@@ -50,6 +52,7 @@ import { EnterpriseCommandController } from "./enterprise-command.controller";
     InpatientOperationsController,
     AdmissionCorrelationController,
     EnterpriseCommandController,
+    OperationalGovernanceController,
   ],
   providers: [
     EncountersService,
@@ -59,6 +62,7 @@ import { EnterpriseCommandController } from "./enterprise-command.controller";
     AdmissionCommandCenterService,
     ClinicalSynthesisService,
     EnterpriseCommandService,
+    OperationalGovernanceService,
     HospitalCensusService,
     HospitalUnitRegistryService,
     ChartCertificationB1Service,
@@ -89,6 +93,7 @@ import { EnterpriseCommandController } from "./enterprise-command.controller";
     AdmissionCorrelationService,
     AdmissionCommandCenterService,
     EnterpriseCommandService,
+    OperationalGovernanceService,
     ClinicalSynthesisService,
   ],
 })

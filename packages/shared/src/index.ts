@@ -143,6 +143,7 @@ export * from "./encounters/providerClinicalSynthesisD4a26a.js";
 export * from "./encounters/clinicalSynthesisServiceD4a26b.js";
 export * from "./encounters/providerLegalRecordD4a26b.js";
 export * from "./encounters/enterpriseCommandLayerD4a27.js";
+export * from "./encounters/operationalGovernanceD4a27a.js";
 export * from "./patients/patientSearchAndSelectV1.js";
 export * from "./encounters/inpatientOperationsFeatureFlags.js";
 export * from "./encounters/inpatientClinicalOpsCertificationV1.js";

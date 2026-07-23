@@ -27,6 +27,7 @@ import { emergencyAdaptiveNursingFr } from "./emergencyAdaptiveNursing.fr";
 import { admissionWorkflowVisibilityFr } from "./admissionWorkflowVisibility.fr";
 import { admissionCommandCenterFr } from "./admissionCommandCenter.fr";
 import { enterpriseCommandD4a27Fr } from "./enterpriseCommandD4a27.fr";
+import { operationalGovernanceD4a27aFr } from "./operationalGovernanceD4a27a.fr";
 import { providerDocumentationGuRenalComplaintIntel19Mdm5Fr } from "./providerDocumentationGuRenalComplaintIntel19Mdm5.fr";
 import { providerDocumentationInfectiousEntComplaintIntel19Mdm7Fr } from "./providerDocumentationInfectiousEntComplaintIntel19Mdm7.fr";
 import { providerDocumentationDentalOralComplaintIntelFr } from "./providerDocumentationDentalOralComplaintIntel.fr";
@@ -19226,6 +19227,7 @@ export default {
   admissionWorkflowVisibility: admissionWorkflowVisibilityFr,
   admissionCommandCenter: admissionCommandCenterFr,
   enterpriseCommandD4a27: enterpriseCommandD4a27Fr,
+  operationalGovernanceD4a27a: operationalGovernanceD4a27aFr,
 
   hospitalCareD3e6d: {
     bedBoard: {
