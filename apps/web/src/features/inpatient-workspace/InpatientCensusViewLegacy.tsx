@@ -14,6 +14,7 @@ import {
   type HospitalUnitSelection,
 } from "@medora/shared";
 import { useI18n } from "@/lib/i18n";
+import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import { MEDORA_CARD_SHELL } from "@/components/medora-card/medoraCardTokens";
 import { HospitalCareShell } from "@/features/hospital-care/HospitalCareShell";
 import { HospitalUnitTree } from "@/features/hospital-care/HospitalUnitTree";
@@ -34,6 +35,7 @@ import { inpatientActiveWorkspacePath } from "@/features/inpatient-workspace/inp
  */
 export function InpatientCensusViewLegacy() {
   const { t } = useI18n();
+  const { facilityId, ready } = useFacilityAndRoles();
   const [census, setCensus] = useState<HospitalCensusResponse | null>(null);
   const [registry, setRegistry] = useState<HospitalUnitRegistryResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -45,13 +47,19 @@ export function InpatientCensusViewLegacy() {
 
   useEffect(() => {
     let cancelled = false;
+    if (!ready || !facilityId?.trim()) {
+      setLoading(!ready);
+      return () => {
+        cancelled = true;
+      };
+    }
     void (async () => {
       setLoading(true);
       setError(null);
       try {
         const [censusData, unitsData] = await Promise.all([
-          fetchHospitalCensus("INPATIENT"),
-          fetchHospitalUnitRegistry(),
+          fetchHospitalCensus("INPATIENT", { facilityId }),
+          fetchHospitalUnitRegistry({ facilityId }),
         ]);
         if (!cancelled) {
           setCensus(censusData);
@@ -75,7 +83,7 @@ export function InpatientCensusViewLegacy() {
     return () => {
       cancelled = true;
     };
-  }, [t]);
+  }, [t, ready, facilityId]);
 
   const dropdownValue = unitDropdownValueFromSelection(selection);
 

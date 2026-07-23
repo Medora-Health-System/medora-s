@@ -51,8 +51,11 @@ export type HospitalCareDashboardResponse = {
   } | null;
 };
 
-export async function fetchHospitalCareDashboard(): Promise<HospitalCareDashboardResponse> {
-  return apiFetch("/hospital-care/dashboard") as Promise<HospitalCareDashboardResponse>;
+export async function fetchHospitalCareDashboard(options?: {
+  facilityId?: string | null;
+}): Promise<HospitalCareDashboardResponse> {
+  const facilityId = options?.facilityId?.trim() || undefined;
+  return apiFetch("/hospital-care/dashboard", { facilityId }) as Promise<HospitalCareDashboardResponse>;
 }
 
 export type HospitalCareMetaResponse = {
@@ -62,6 +65,9 @@ export type HospitalCareMetaResponse = {
   productionDefaultsOff: boolean;
 };
 
-export async function fetchHospitalCareMeta(): Promise<HospitalCareMetaResponse> {
-  return apiFetch("/hospital-care/meta") as Promise<HospitalCareMetaResponse>;
+export async function fetchHospitalCareMeta(options?: {
+  facilityId?: string | null;
+}): Promise<HospitalCareMetaResponse> {
+  const facilityId = options?.facilityId?.trim() || undefined;
+  return apiFetch("/hospital-care/meta", { facilityId }) as Promise<HospitalCareMetaResponse>;
 }

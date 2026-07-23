@@ -59,9 +59,13 @@ export type HospitalCareDashboardWithCensus = HospitalCareDashboardResponse & {
 };
 
 export async function fetchHospitalCensus(
-  scope: "ALL_HOSPITAL_CARE" | "OBSERVATION" | "INPATIENT" = "ALL_HOSPITAL_CARE"
+  scope: "ALL_HOSPITAL_CARE" | "OBSERVATION" | "INPATIENT" = "ALL_HOSPITAL_CARE",
+  options?: { facilityId?: string | null }
 ): Promise<HospitalCensusResponse> {
-  return apiFetch(`/hospital-care/census?scope=${encodeURIComponent(scope)}`) as Promise<HospitalCensusResponse>;
+  const facilityId = options?.facilityId?.trim() || undefined;
+  return apiFetch(`/hospital-care/census?scope=${encodeURIComponent(scope)}`, {
+    facilityId,
+  }) as Promise<HospitalCensusResponse>;
 }
 
 export { fetchHospitalCareDashboard, fetchHospitalCareMeta } from "./hospitalCareDashboardApi";

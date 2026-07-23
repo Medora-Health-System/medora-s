@@ -7,6 +7,7 @@ import {
   graphicalHospitalUnitTreeFlagsFromProcessEnv,
 } from "@medora/shared";
 import { useI18n } from "@/lib/i18n";
+import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import { MEDORA_CARD_SHELL } from "@/components/medora-card/medoraCardTokens";
 import { HospitalCareShell } from "@/features/hospital-care/HospitalCareShell";
 import { HospitalServiceLineTree } from "@/features/hospital-care/HospitalServiceLineTree";
@@ -38,17 +39,24 @@ export function InpatientGraphicalHubView() {
 
 function GraphicalHubBody() {
   const { t } = useI18n();
+  const { facilityId, ready } = useFacilityAndRoles();
   const [tree, setTree] = useState<GraphicalHospitalUnitTreeResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
+    if (!ready || !facilityId?.trim()) {
+      setLoading(!ready);
+      return () => {
+        cancelled = true;
+      };
+    }
     void (async () => {
       setLoading(true);
       setError(null);
       try {
-        const data = await fetchHospitalServiceLineTree();
+        const data = await fetchHospitalServiceLineTree({ facilityId });
         if (!cancelled) setTree(data);
       } catch (err) {
         if (!cancelled) {
@@ -66,7 +74,7 @@ function GraphicalHubBody() {
     return () => {
       cancelled = true;
     };
-  }, [t]);
+  }, [t, ready, facilityId]);
 
   return (
     <HospitalCareShell

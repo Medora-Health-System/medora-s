@@ -24,6 +24,7 @@ import { AppShell, type AppShellFacilityOption } from "@/components/app-shell/Ap
 import { PlatformAnnouncementGate } from "@/components/platform-announcement/PlatformAnnouncementGate";
 import { SIDEBAR_NAV_ITEMS, groupSidebarNavItems } from "@/components/app-shell/sidebarNavConfig";
 import { I18nProvider } from "@/i18n/provider";
+import { switchActiveFacility } from "@/lib/facilitySwitch";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -155,8 +156,14 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         if (cookieValue && facilityIds.includes(cookieValue)) {
           setActiveFacility(cookieValue);
         } else if (facilityIds.length > 0) {
-          setActiveFacility(facilityIds[0]);
-          document.cookie = `medora_facility_id=${facilityIds[0]}; path=/; max-age=${365 * 24 * 60 * 60}`;
+          // Prefer server-owned switch so httpOnly + readable cookies stay aligned (HF3).
+          // Fall back to readable cookie only for display until switch completes.
+          const fallbackId = facilityIds[0]!;
+          setActiveFacility(fallbackId);
+          void switchActiveFacility(fallbackId).then((result) => {
+            if (!result.ok || !isMountedRef.current) return;
+            setActiveFacility(result.facilityId);
+          });
         }
       } else if (msppRolesFromMe.length > 0 && d) {
         // MSPP-only session (no facility roles): optional path, does not affect facility hydration above.
@@ -438,9 +445,23 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         facilities={facilities}
         activeFacility={activeFacility}
         onFacilityChange={(newFacility) => {
-          setActiveFacility(newFacility);
-          document.cookie = `medora_facility_id=${newFacility}; path=/; max-age=${365 * 24 * 60 * 60}`;
-          window.location.reload();
+          // D4A.2.8-HF3 — server-owned switch updates httpOnly + readable cookies together.
+          // Do not mark UI active until the server confirms; never write httpOnly from JS.
+          void (async () => {
+            const requested = String(newFacility ?? "").trim();
+            if (!requested || requested === activeFacility) return;
+            const result = await switchActiveFacility(requested);
+            if (!result.ok) {
+              console.error("[facility-switch] denied or failed", {
+                code: result.code,
+                status: result.status,
+              });
+              return;
+            }
+            setActiveFacility(result.facilityId);
+            invalidateAuthMeSessionCache();
+            window.location.reload();
+          })();
         }}
         userFullName={user?.fullName ?? ""}
         userUsername={user?.username}

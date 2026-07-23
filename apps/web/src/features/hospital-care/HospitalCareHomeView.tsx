@@ -150,7 +150,7 @@ function SnapshotGroup({
 
 export function HospitalCareHomeView() {
   const { t } = useI18n();
-  const { roles, ready } = useFacilityAndRoles();
+  const { roles, ready, facilityId } = useFacilityAndRoles();
   const tiles = ready ? filterHospitalCareHomeTilesForRoles(TILES, roles) : TILES;
   const [dashboard, setDashboard] = useState<HospitalCareDashboardWithCensus | null>(null);
   const [meta, setMeta] = useState<HospitalCareMetaResponse | null>(null);
@@ -160,13 +160,19 @@ export function HospitalCareHomeView() {
 
   useEffect(() => {
     let cancelled = false;
+    if (!ready || !facilityId?.trim()) {
+      setLoading(!ready);
+      return () => {
+        cancelled = true;
+      };
+    }
     void (async () => {
       setLoading(true);
       setError(null);
       try {
         const [dash, m] = await Promise.all([
-          fetchHospitalCareDashboard() as Promise<HospitalCareDashboardWithCensus>,
-          fetchHospitalCareMeta().catch(() => null),
+          fetchHospitalCareDashboard({ facilityId }) as Promise<HospitalCareDashboardWithCensus>,
+          fetchHospitalCareMeta({ facilityId }).catch(() => null),
         ]);
         if (!cancelled) {
           setDashboard(dash);
@@ -188,7 +194,7 @@ export function HospitalCareHomeView() {
     return () => {
       cancelled = true;
     };
-  }, [t]);
+  }, [t, ready, facilityId]);
 
   const census: HospitalCensusResponse | null = dashboard?.census ?? null;
   const snap = census?.operationalSnapshot;

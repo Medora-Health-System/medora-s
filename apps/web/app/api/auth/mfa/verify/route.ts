@@ -66,6 +66,7 @@ export async function POST(request: NextRequest) {
     res.cookies.set("accessToken", json.accessToken, sessionCookieOpts);
     res.cookies.set("refreshToken", refresh, refreshTokenCookieOptions());
 
+    // D4A.2.8-HF3 — same deterministic lexicographic default as login (both cookies synced).
     const sortedRoles = [...(json.user?.facilityRoles ?? [])].sort((a, b) =>
       String(a.facilityId).localeCompare(String(b.facilityId), "en")
     );

@@ -113,6 +113,12 @@ export async function POST(request: NextRequest) {
 
     res.cookies.set("refreshToken", refreshFromCookie, refreshTokenCookieOptions());
 
+    /**
+     * D4A.2.8-HF3 — No primary/home facility field exists in schema yet.
+     * Deterministic default: lexicographically first facilityId among memberships
+     * (same rule as MFA verify + landingRoute.getDefaultSessionFacilityId).
+     * Multi-facility users must switch via POST /api/auth/facility so both cookies stay synced.
+     */
     const sortedRoles = [...(json.user?.facilityRoles ?? [])].sort((a, b) =>
       String(a.facilityId).localeCompare(String(b.facilityId), "en")
     );

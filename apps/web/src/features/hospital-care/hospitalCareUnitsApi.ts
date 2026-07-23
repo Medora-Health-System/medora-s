@@ -54,6 +54,9 @@ export type HospitalUnitRegistryResponse = {
   };
 };
 
-export async function fetchHospitalUnitRegistry(): Promise<HospitalUnitRegistryResponse> {
-  return apiFetch("/hospital-care/units") as Promise<HospitalUnitRegistryResponse>;
+export async function fetchHospitalUnitRegistry(options?: {
+  facilityId?: string | null;
+}): Promise<HospitalUnitRegistryResponse> {
+  const facilityId = options?.facilityId?.trim() || undefined;
+  return apiFetch("/hospital-care/units", { facilityId }) as Promise<HospitalUnitRegistryResponse>;
 }

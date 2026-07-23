@@ -3,6 +3,9 @@ import type { GraphicalHospitalUnitTreeV1 } from "@medora/shared";
 
 export type GraphicalHospitalUnitTreeResponse = GraphicalHospitalUnitTreeV1;
 
-export async function fetchHospitalServiceLineTree(): Promise<GraphicalHospitalUnitTreeResponse> {
-  return apiFetch("/hospital-care/units/tree") as Promise<GraphicalHospitalUnitTreeResponse>;
+export async function fetchHospitalServiceLineTree(options?: {
+  facilityId?: string | null;
+}): Promise<GraphicalHospitalUnitTreeResponse> {
+  const facilityId = options?.facilityId?.trim() || undefined;
+  return apiFetch("/hospital-care/units/tree", { facilityId }) as Promise<GraphicalHospitalUnitTreeResponse>;
 }
