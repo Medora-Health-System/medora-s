@@ -14351,6 +14351,10 @@ export default {
       ENCOUNTER_NOT_FOUND: "Encounter not found.",
       DIRECT_ADMISSION_ROUTE_NOT_DEPLOYED:
         "The deployed API does not support this admission operation.",
+      DIRECT_ADMISSION_SCHEMA_INCOMPATIBLE:
+        "The inpatient admission could not be created because the hospital database has not completed a required compatibility update. No admission was finalized. Contact system administration and provide the support reference.",
+      DIRECT_ADMISSION_DISABLED:
+        "Direct inpatient admission is disabled for this environment. Contact an administrator.",
     },
     decisionSignedBadge: "Decision signed",
     decisionDraftBadge: "Draft",

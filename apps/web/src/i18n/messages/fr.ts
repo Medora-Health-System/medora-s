@@ -14397,6 +14397,10 @@ export default {
       ENCOUNTER_NOT_FOUND: "Rencontre introuvable.",
       DIRECT_ADMISSION_ROUTE_NOT_DEPLOYED:
         "L'API déployée ne prend pas en charge cette opération d'admission.",
+      DIRECT_ADMISSION_SCHEMA_INCOMPATIBLE:
+        "L'admission hospitalière n'a pas pu être créée car la base de données de l'établissement n'a pas terminé une mise à jour de compatibilité requise. Aucune admission n'a été finalisée. Contactez l'administration système et fournissez la référence de support.",
+      DIRECT_ADMISSION_DISABLED:
+        "L'admission directe est désactivée pour cet environnement. Contactez un administrateur.",
     },
     decisionSignedBadge: "Décision signée",
     decisionDraftBadge: "Brouillon",

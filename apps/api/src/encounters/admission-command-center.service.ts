@@ -504,6 +504,7 @@ export class AdmissionCommandCenterService {
       data: {
         admissionSummaryJson: nextSummary as object,
       },
+      select: { id: true },
     });
 
     await this.audit.log(AuditAction.ENCOUNTER_UPDATE, "ENCOUNTER", {

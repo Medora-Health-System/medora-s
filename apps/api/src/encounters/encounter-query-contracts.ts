@@ -78,6 +78,19 @@ export const ENCOUNTER_CORE_SELECT = {
   billingClassificationTransitionJson: true,
 } satisfies Prisma.EncounterSelect;
 
+/**
+ * Safe write return projection for pre-D3B databases.
+ * Prisma `update`/`create` without `select` emits RETURNING of ALL schema scalars,
+ * including `hospitalEpisodeId` — which causes P2022 when D3B is unapplied.
+ */
+export const ENCOUNTER_ID_ONLY_SELECT = { id: true } as const;
+
+/** D3B-aware link select — only when HOSPITAL_EPISODE_FOUNDATION_ENABLED and D3B present. */
+export const ENCOUNTER_D3B_ID_SELECT = {
+  id: true,
+  hospitalEpisodeId: true,
+} as const;
+
 /** Minimal gate / existence / concurrency checks. */
 export const ENCOUNTER_ACCESS_SELECT = {
   id: true,

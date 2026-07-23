@@ -122,6 +122,8 @@ export const hospitalAdmissionD4a0En = {
     ENCOUNTER_NOT_FOUND: "Encounter not found.",
     DIRECT_ADMISSION_ROUTE_NOT_DEPLOYED:
       "The deployed API does not support this admission operation.",
+    DIRECT_ADMISSION_SCHEMA_INCOMPATIBLE:
+      "The inpatient admission could not be created because the hospital database has not completed a required compatibility update. No admission was finalized. Contact system administration and provide the support reference.",
   },
   receivingNurse: {
     label: "Receiving nurse",
