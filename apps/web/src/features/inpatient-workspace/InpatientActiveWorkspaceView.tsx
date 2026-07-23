@@ -146,6 +146,16 @@ export function InpatientActiveWorkspaceView() {
               {t("inpatientD3e.workspace.mrn")}: {encounter?.patient?.mrn?.trim() || DISPLAY_DASH}
             </span>
             <span>
+              {t("inpatientProviderD4a26.header.dob")}:{" "}
+              {encounter?.patient?.dob
+                ? formatEncounterChromeDateTime(encounter.patient.dob, language)
+                : DISPLAY_DASH}
+            </span>
+            <span>
+              {t("inpatientProviderD4a26.header.sex")}:{" "}
+              {encounter?.patient?.sexAtBirth?.trim() || DISPLAY_DASH}
+            </span>
+            <span>
               {t("inpatientD3e.workspace.hospitalDay")}:{" "}
               {hospitalDay != null ? String(hospitalDay) : DISPLAY_DASH}
             </span>
@@ -173,6 +183,11 @@ export function InpatientActiveWorkspaceView() {
                 ? formatEncounterChromeDateTime(encounter.admittedAt, language)
                 : DISPLAY_DASH}
             </span>
+            {!encounter?.assignedProviderName?.trim() ? (
+              <span role="status" style={{ color: "#9a3412", fontWeight: 600 }}>
+                ⚠ {t("inpatientProviderD4a26.alerts.noAttending")}
+              </span>
+            ) : null}
           </div>
         )}
       </header>
@@ -186,6 +201,7 @@ export function InpatientActiveWorkspaceView() {
           encounter={encounter}
           workspaceEnabled={workspaceEnabled}
           onRefetchEncounter={loadEncounter}
+          onNavigateSection={selectSection}
         />
       </section>
     </div>

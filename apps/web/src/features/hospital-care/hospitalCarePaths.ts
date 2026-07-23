@@ -15,6 +15,16 @@ export const HOSPITAL_CARE_BEDS = "/app/hospitalisation/beds";
 export const HOSPITAL_CARE_TRANSFERS = "/app/hospitalisation/transfers";
 /** Preserved operational floor board (pre-D3CA) — not clinical documentation. */
 export const HOSPITAL_CARE_FLOOR_BOARD = "/app/hospitalisation/floor-board";
+/** D4A.2.7 — Enterprise Clinical Command Layer (hospital operations platform). */
+export const HOSPITAL_CARE_ENTERPRISE_COMMAND = "/app/hospitalisation/enterprise-command";
+/** D4A.2.7A — Enterprise Operations Platform landing (ED vs Inpatient separated). */
+export const HOSPITAL_CARE_ENTERPRISE_OPERATIONS =
+  "/app/hospitalisation/enterprise-operations";
+/** D4A.2.7A — Inpatient Operational Dashboard (no ED logic). */
+export const HOSPITAL_CARE_INPATIENT_OPERATIONS =
+  "/app/hospitalisation/inpatient-operations";
+/** Existing ED operational dashboard — do not redesign from hospital-care. */
+export const EMERGENCY_DEPARTMENT_OPERATIONAL_DASHBOARD = "/app/trackboard";
 
 /** D4A.2.2 — post-SIGN admission package review (not census / placement board). */
 export function hospitalAdmissionReviewPath(encounterId: string): string {

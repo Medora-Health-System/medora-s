@@ -27,7 +27,8 @@ describe("edClinicalDataSavePath (MEDUI.ED.CLINICAL_DATA.4)", () => {
 
   it("23 — Provider save refreshes recent entries via onEntriesChanged", () => {
     expect(panel).toContain("onEntriesChanged={loadEntries}");
-    expect(hub).toContain("onEntriesChanged?.()");
+    // D4A.2.6H — hub passes the persisted entry so callers can link authoritative IDs.
+    expect(hub).toContain("onEntriesChanged?.(saved)");
   });
 
   it("24 — Save refresh updates summary projection through shared entries state", () => {

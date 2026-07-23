@@ -192,6 +192,10 @@ export type AdmissionSectionDocumentV1 = {
   completionState: AdmissionSectionCompletionState;
   expectedVersion: number;
   draftText?: string | null;
+  /** D4A.2.5 — structured field answers (additive; never auto-filled on open). */
+  answers?: Record<string, unknown> | null;
+  /** Required when completionState is UNABLE_TO_COMPLETE. */
+  unableReason?: string | null;
   updatedAt?: string | null;
   updatedByUserId?: string | null;
 };
@@ -214,6 +218,10 @@ export type MedSurgNursingAdmissionDocV1 = {
   headToToe: HeadToToeAssessmentEntryV1[];
   nurseSignature?: AdmissionNurseSignatureV1 | null;
   providerHandoff?: ProviderAdmissionHandoffV1 | null;
+  /** D4A.2.5A — stable references to enterprise domain records (not full copies). */
+  domainReferences?: unknown[];
+  /** D4A.2.5A — append-only post-sign amendments (original signature remains immutable). */
+  amendments?: unknown[];
   updatedAt: string;
   updatedByUserId?: string | null;
 };
@@ -469,15 +477,25 @@ export function saveAdmissionSectionDraft(input: {
   doc: MedSurgNursingAdmissionDocV1;
   sectionId: InpatientAdmissionClinicalSection;
   draftText?: string | null;
+  answers?: Record<string, unknown> | null;
+  unableReason?: string | null;
   completionState?: AdmissionSectionCompletionState;
   clientExpectedVersion: number;
   actorUserId: string;
   atIso?: string;
+  /** When true, refuse if nurse signature already present (use addendum path). */
+  blockIfSigned?: boolean;
 }):
   | { ok: true; doc: MedSurgNursingAdmissionDocV1 }
-  | { ok: false; code: "EXPECTED_VERSION_CONFLICT" } {
+  | {
+      ok: false;
+      code: "EXPECTED_VERSION_CONFLICT" | "NURSING_ADMISSION_ALREADY_SIGNED";
+    } {
   if (!admissionDocumentationSupportsSaveAndResume()) {
     return { ok: false, code: "EXPECTED_VERSION_CONFLICT" };
+  }
+  if (input.blockIfSigned !== false && input.doc.nurseSignature?.signed) {
+    return { ok: false, code: "NURSING_ADMISSION_ALREADY_SIGNED" };
   }
   const gate = validateSectionDraftSave({
     currentExpectedVersion: input.doc.expectedVersion,
@@ -495,11 +513,18 @@ export function saveAdmissionSectionDraft(input: {
     input.completionState ??
     (prev.completionState === "NOT_STARTED" ? "IN_PROGRESS" : prev.completionState);
   const nextVersion = input.doc.expectedVersion + 1;
+  const nextAnswers =
+    input.answers !== undefined ? input.answers : (prev.answers ?? null);
   const sections = {
     ...input.doc.sections,
     [input.sectionId]: {
       ...prev,
-      draftText: input.draftText ?? prev.draftText ?? null,
+      draftText: input.draftText !== undefined ? input.draftText : (prev.draftText ?? null),
+      answers: nextAnswers,
+      unableReason:
+        input.unableReason !== undefined
+          ? input.unableReason
+          : (prev.unableReason ?? null),
       completionState: nextState,
       expectedVersion: nextVersion,
       updatedAt: at,

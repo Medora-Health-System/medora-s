@@ -7,6 +7,7 @@ import { HospitalCareController } from "./hospital-care.controller";
 import { InpatientOperationsController } from "./inpatient-operations.controller";
 import { EncountersService } from "./encounters.service";
 import { InpatientOperationsService } from "./inpatient-operations.service";
+import { InpatientLifecycleService } from "./inpatient-lifecycle.service";
 import { HospitalCensusService } from "./hospital-census.service";
 import { HospitalUnitRegistryService } from "./hospital-unit-registry.service";
 import { EncounterChartExportService } from "./chart-export.service";
@@ -34,6 +35,11 @@ import { InternalPlacementService } from "./internal-placement.service";
 import { AdmissionCorrelationService } from "./admission-correlation.service";
 import { AdmissionCorrelationController } from "./admission-correlation.controller";
 import { AdmissionCommandCenterService } from "./admission-command-center.service";
+import { ClinicalSynthesisService } from "./clinical-synthesis.service";
+import { EnterpriseCommandService } from "./enterprise-command.service";
+import { EnterpriseCommandController } from "./enterprise-command.controller";
+import { OperationalGovernanceService } from "./operational-governance.service";
+import { OperationalGovernanceController } from "./operational-governance.controller";
 
 @Module({
   imports: [PrismaModule, DiagnosesModule, OrdersModule, TrackboardModule, FacilitiesModule],
@@ -45,12 +51,18 @@ import { AdmissionCommandCenterService } from "./admission-command-center.servic
     HospitalCareController,
     InpatientOperationsController,
     AdmissionCorrelationController,
+    EnterpriseCommandController,
+    OperationalGovernanceController,
   ],
   providers: [
     EncountersService,
     InpatientOperationsService,
+    InpatientLifecycleService,
     AdmissionCorrelationService,
     AdmissionCommandCenterService,
+    ClinicalSynthesisService,
+    EnterpriseCommandService,
+    OperationalGovernanceService,
     HospitalCensusService,
     HospitalUnitRegistryService,
     ChartCertificationB1Service,
@@ -80,6 +92,9 @@ import { AdmissionCommandCenterService } from "./admission-command-center.servic
     InternalPlacementService,
     AdmissionCorrelationService,
     AdmissionCommandCenterService,
+    EnterpriseCommandService,
+    OperationalGovernanceService,
+    ClinicalSynthesisService,
   ],
 })
 export class EncountersModule {}

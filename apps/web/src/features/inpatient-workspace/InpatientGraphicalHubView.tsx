@@ -16,6 +16,7 @@ import { HOSPITAL_CARE_FLOOR_BOARD } from "@/features/hospital-care/hospitalCare
 import { isForbiddenApiError } from "@/features/hospital-care/hospitalCarePlacementApi";
 import { InpatientCensusViewLegacy } from "./InpatientCensusViewLegacy";
 import { INPATIENT_ALL_UNITS_BOARD_PATH } from "./inpatientUnitBoardPaths";
+import { ProviderCensusBoard } from "./ProviderCensusBoard";
 
 /**
  * D3E.6C — Graphical service-line hub (primary).
@@ -113,6 +114,8 @@ function GraphicalHubBody() {
               {t("hospitalCareD3e6c.hub.openAllCensus")}
             </Link>
           </div>
+
+          <ProviderCensusBoard />
 
           {tree.serviceLines.length === 0 ? (
             <div style={{ ...MEDORA_CARD_SHELL, padding: 16 }}>

@@ -215,7 +215,8 @@ export function ClinicalDocumentationHub({
   skipEntriesFetch?: boolean;
   /** Per-card editable/review rules for Clinical Data workspace. */
   workspaceContext?: "clinicalData" | "default";
-  onEntriesChanged?: () => void;
+  /** D4A.2.6H — called after persist; receives the authoritative saved row when available. */
+  onEntriesChanged?: (saved?: ClinicalDocumentationEntryRow) => void;
   focusedCardId?: string | null;
 }) {
   const { t, language } = useI18n();
@@ -283,13 +284,17 @@ export function ClinicalDocumentationHub({
     if (focusedCardId) setExpandedCardId(focusedCardId);
   }, [focusedCardId]);
 
-  const refreshEntries = useCallback(async () => {
-    if (skipEntriesFetch) {
-      onEntriesChanged?.();
-      return;
-    }
-    await loadEntries();
-  }, [skipEntriesFetch, onEntriesChanged, loadEntries]);
+  const refreshEntries = useCallback(
+    async (saved?: ClinicalDocumentationEntryRow) => {
+      if (skipEntriesFetch) {
+        onEntriesChanged?.(saved);
+        return;
+      }
+      await loadEntries();
+      onEntriesChanged?.(saved);
+    },
+    [skipEntriesFetch, onEntriesChanged, loadEntries]
+  );
 
   const resolvedEntries = skipEntriesFetch ? (externalEntries ?? []) : entries;
   const resolvedLoadingEntries = skipEntriesFetch ? externalEntriesLoading : loadingEntries;
@@ -396,16 +401,20 @@ export function ClinicalDocumentationHub({
     setSaving(true);
     setSaveMessage(null);
     try {
-      await createClinicalDocumentationEntryWithWitness(encounterId, facilityId, {
-        category: immediateWitnessDraft.card.category,
-        cardId: immediateWitnessDraft.card.id,
-        payloadJson: immediateWitnessDraft.payload,
-        witnessUserId,
-      });
+      const saved = await createClinicalDocumentationEntryWithWitness(
+        encounterId,
+        facilityId,
+        {
+          category: immediateWitnessDraft.card.category,
+          cardId: immediateWitnessDraft.card.id,
+          payloadJson: immediateWitnessDraft.payload,
+          witnessUserId,
+        }
+      );
       setSaveMessage(t("clinicalDocumentation.saveOk"));
       setImmediateWitnessDraft(null);
       setExpandedCardId(null);
-      await refreshEntries();
+      await refreshEntries(saved);
     } catch {
       setSaveMessage(t("clinicalDocumentation.saveFailed"));
     } finally {
@@ -438,7 +447,7 @@ export function ClinicalDocumentationHub({
       });
       setSaveMessage(saveMessageForEntry(saved));
       setExpandedCardId(null);
-      await refreshEntries();
+      await refreshEntries(saved);
     } catch {
       setSaveMessage(t("clinicalDocumentation.saveFailed"));
     } finally {
@@ -466,7 +475,7 @@ export function ClinicalDocumentationHub({
       setSaveMessage(saveMessageForEntry(saved));
       setExpandedCardId(null);
       setBasicItems([{ key: "", value: "" }]);
-      await refreshEntries();
+      await refreshEntries(saved);
     } catch {
       setSaveMessage(t("clinicalDocumentation.saveFailed"));
     } finally {
