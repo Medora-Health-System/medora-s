@@ -18,6 +18,7 @@ import { providerDocumentationPsychiatricBehavioralComplaintIntelFr } from "./pr
 import { hospitalAdmissionD4a0Fr } from "./hospitalAdmissionD4a0.fr";
 import { hospitalAdmissionD4a1Fr } from "./hospitalAdmissionD4a1.fr";
 import { hospitalAdmissionD4a25Fr } from "./hospitalAdmissionD4a25.fr";
+import { hospitalAdmissionD4a25aFr } from "./hospitalAdmissionD4a25a.fr";
 import { inpatientProviderD4a26Fr } from "./inpatientProviderD4a26.fr";
 import { emergencyAdaptiveNursingFr } from "./emergencyAdaptiveNursing.fr";
 import { admissionWorkflowVisibilityFr } from "./admissionWorkflowVisibility.fr";
@@ -19210,6 +19211,7 @@ export default {
   },
   hospitalAdmissionD4a1: hospitalAdmissionD4a1Fr,
   hospitalAdmissionD4a25: hospitalAdmissionD4a25Fr,
+  hospitalAdmissionD4a25a: hospitalAdmissionD4a25aFr,
   inpatientProviderD4a26: inpatientProviderD4a26Fr,
 
   hospitalAdmissionD4a0: hospitalAdmissionD4a0Fr,

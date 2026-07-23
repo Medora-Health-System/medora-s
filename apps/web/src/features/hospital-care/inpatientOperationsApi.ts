@@ -202,6 +202,44 @@ export async function signNursingAdmission(
   ) as Promise<{ documentation: Record<string, unknown>; completion: Record<string, unknown> }>;
 }
 
+/** D4A.2.5A — Domain reference / amendments / print summary. */
+export async function linkNursingAdmissionDomainReference(
+  encounterId: string,
+  body: { reference: Record<string, unknown>; expectedVersion: number }
+) {
+  return apiFetch(
+    `/inpatient-operations/encounters/${encodeURIComponent(encounterId)}/nursing-admission/domain-references`,
+    { method: "POST", body: JSON.stringify(body) }
+  ) as Promise<{ documentation: Record<string, unknown>; projection?: Record<string, unknown> }>;
+}
+
+export async function createNursingAdmissionAmendment(
+  encounterId: string,
+  body: {
+    type: string;
+    clientRequestId: string;
+    reason: string;
+    note?: string | null;
+    sectionId?: string | null;
+    originalValue?: unknown;
+    correctedValue?: unknown;
+    expectedVersion: number;
+    expectedAmendmentVersion?: number;
+    credentials?: string | null;
+  }
+) {
+  return apiFetch(
+    `/inpatient-operations/encounters/${encodeURIComponent(encounterId)}/nursing-admission/amendments`,
+    { method: "POST", body: JSON.stringify(body) }
+  ) as Promise<{ documentation: Record<string, unknown>; amendment: Record<string, unknown> }>;
+}
+
+export async function fetchNursingAdmissionPrintSummary(encounterId: string) {
+  return apiFetch(
+    `/inpatient-operations/encounters/${encodeURIComponent(encounterId)}/nursing-admission/print-summary`
+  ) as Promise<Record<string, unknown>>;
+}
+
 /** D4A.2.6 — Provider clinical workspace client. */
 export async function fetchProviderWorkspace(encounterId: string) {
   return apiFetch(

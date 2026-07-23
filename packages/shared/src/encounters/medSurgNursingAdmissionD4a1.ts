@@ -218,6 +218,10 @@ export type MedSurgNursingAdmissionDocV1 = {
   headToToe: HeadToToeAssessmentEntryV1[];
   nurseSignature?: AdmissionNurseSignatureV1 | null;
   providerHandoff?: ProviderAdmissionHandoffV1 | null;
+  /** D4A.2.5A — stable references to enterprise domain records (not full copies). */
+  domainReferences?: unknown[];
+  /** D4A.2.5A — append-only post-sign amendments (original signature remains immutable). */
+  amendments?: unknown[];
   updatedAt: string;
   updatedByUserId?: string | null;
 };

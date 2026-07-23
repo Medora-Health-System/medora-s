@@ -264,6 +264,98 @@ export class InpatientOperationsController {
     );
   }
 
+  /** D4A.2.5A — Link enterprise domain record into nursing admission orchestration. */
+  @Post("encounters/:encounterId/nursing-admission/domain-references")
+  @RequireRoles(RoleCode.RN, RoleCode.ADMIN)
+  async linkNursingDomainReference(
+    @Param("encounterId") encounterId: string,
+    @Body() body: Record<string, unknown>,
+    @Req() req: any
+  ) {
+    const expectedVersion = Number(body.expectedVersion);
+    if (!Number.isFinite(expectedVersion)) {
+      throw new BadRequestException("expectedVersion is required");
+    }
+    const reference = body.reference;
+    if (!reference || typeof reference !== "object" || Array.isArray(reference)) {
+      throw new BadRequestException("reference is required");
+    }
+    return this.ops.linkNursingAdmissionDomainReference(
+      facilityIdFromReq(req),
+      encounterId,
+      userIdFromReq(req),
+      { reference: reference as any, expectedVersion }
+    );
+  }
+
+  /** D4A.2.5A — Post-sign addendum / correction / entered-in-error (RN only). */
+  @Post("encounters/:encounterId/nursing-admission/amendments")
+  @RequireRoles(RoleCode.RN)
+  async createNursingAmendment(
+    @Param("encounterId") encounterId: string,
+    @Body() body: Record<string, unknown>,
+    @Req() req: any
+  ) {
+    const expectedVersion = Number(body.expectedVersion);
+    const clientRequestId = String(body.clientRequestId ?? "").trim();
+    const type = String(body.type ?? "").trim();
+    const reason = String(body.reason ?? "").trim();
+    if (!Number.isFinite(expectedVersion)) {
+      throw new BadRequestException("expectedVersion is required");
+    }
+    if (!clientRequestId) throw new BadRequestException("clientRequestId is required");
+    if (!type) throw new BadRequestException("type is required");
+    if (!reason) throw new BadRequestException("reason is required");
+    const roles = Array.isArray(req.user?.roles)
+      ? req.user.roles.map((r: unknown) => String(r))
+      : Array.isArray(req.user?.roleCodes)
+        ? req.user.roleCodes.map((r: unknown) => String(r))
+        : ["RN"];
+    return this.ops.createNursingAdmissionAmendment(
+      facilityIdFromReq(req),
+      encounterId,
+      userIdFromReq(req),
+      roles,
+      {
+        type,
+        clientRequestId,
+        reason,
+        note: typeof body.note === "string" ? body.note : null,
+        sectionId: typeof body.sectionId === "string" ? body.sectionId : null,
+        originalValue: body.originalValue,
+        correctedValue: body.correctedValue,
+        linkedDomainRecordIds: Array.isArray(body.linkedDomainRecordIds)
+          ? body.linkedDomainRecordIds.map(String)
+          : [],
+        expectedVersion,
+        expectedAmendmentVersion:
+          body.expectedAmendmentVersion != null
+            ? Number(body.expectedAmendmentVersion)
+            : undefined,
+        credentials: typeof body.credentials === "string" ? body.credentials : null,
+      }
+    );
+  }
+
+  /** D4A.2.5A — Dedicated Nursing Admission Summary (authoritative server load + audit). */
+  @Get("encounters/:encounterId/nursing-admission/print-summary")
+  @RequireRoles(RoleCode.PROVIDER, RoleCode.RN, RoleCode.ADMIN)
+  async nursingAdmissionPrintSummary(
+    @Param("encounterId") encounterId: string,
+    @Req() req: any
+  ) {
+    const requestId =
+      typeof req.headers?.["x-request-id"] === "string"
+        ? req.headers["x-request-id"]
+        : null;
+    return this.ops.getNursingAdmissionPrintSummary(
+      facilityIdFromReq(req),
+      encounterId,
+      userIdFromReq(req),
+      requestId
+    );
+  }
+
   @Get("encounters/:encounterId/lifecycle")
   @RequireRoles(RoleCode.PROVIDER, RoleCode.RN, RoleCode.ADMIN)
   async getLifecycle(@Param("encounterId") encounterId: string, @Req() req: any) {

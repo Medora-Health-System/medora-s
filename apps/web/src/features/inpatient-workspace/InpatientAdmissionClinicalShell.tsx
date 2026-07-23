@@ -8,14 +8,18 @@ import {
   INPATIENT_ADMISSION_CLINICAL_SECTIONS,
   INPATIENT_LIFECYCLE_NURSING_ADMISSION_CERTIFICATION_ID,
   MEDSURG_NURSING_ADMISSION_CERTIFICATION_ID,
+  NURSING_DOMAIN_INTEGRATION_CERTIFICATION_ID,
   type AdmissionSectionCompletionState,
   type InpatientAdmissionClinicalSection,
+  type NursingAdmissionDomainReferenceV1,
 } from "@medora/shared";
 import {
   createLatestWinsClinicalAutosaveScheduler,
   shouldRunClinicalAutosave,
 } from "@/lib/clinicalAutosave";
 import { useI18n } from "@/lib/i18n";
+import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
+import { apiFetch, asApiObject } from "@/lib/apiClient";
 import { AdmissionJourneyPanel } from "@/features/hospital-care/AdmissionJourneyPanel";
 import {
   fetchNursingAdmissionDocumentation,
@@ -27,6 +31,9 @@ import {
 import { InpatientClinicalOpsPanel } from "./InpatientClinicalOpsPanel";
 import { NursingAdmissionStructuredSectionForm } from "./NursingAdmissionStructuredSectionForm";
 import { InpatientLifecycleActionsMenu } from "./InpatientLifecycleActionsMenu";
+import { NursingAdmissionDomainIntegrationPanel } from "./NursingAdmissionDomainIntegrationPanel";
+import { NursingAdmissionPrintSummaryModal } from "./NursingAdmissionPrintSummaryModal";
+import { NursingAdmissionAmendmentDialog } from "./NursingAdmissionAmendmentDialog";
 
 function admissionCorrelationUiEnabled(): boolean {
   const v = String(process.env.NEXT_PUBLIC_ADMISSION_CORRELATION_ENABLED ?? "")
@@ -69,6 +76,14 @@ type NursingDoc = {
   } | null;
   providerHandoff?: { taskId?: string; status?: string } | null;
   wounds?: unknown[];
+  domainReferences?: NursingAdmissionDomainReferenceV1[];
+  amendments?: Array<{
+    amendmentId: string;
+    type: string;
+    reason: string;
+    sectionId?: string | null;
+    createdAt: string;
+  }>;
 };
 
 type SaveUiState = "unsaved" | "saving" | "saved" | "failed";
@@ -91,6 +106,7 @@ export function InpatientAdmissionClinicalShell({
   canAdmin = false,
 }: Props) {
   const { t, language } = useI18n();
+  const { roles } = useFacilityAndRoles();
   const [active, setActive] = useState<InpatientAdmissionClinicalSection>("OVERVIEW");
   const [doc, setDoc] = useState<NursingDoc | null>(null);
   const [completion, setCompletion] = useState<Record<string, unknown> | null>(null);
@@ -102,9 +118,24 @@ export function InpatientAdmissionClinicalShell({
   const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [review, setReview] = useState<Record<string, unknown> | null>(null);
+  const [patient, setPatient] = useState<{
+    id?: string;
+    firstName?: string | null;
+    lastName?: string | null;
+    mrn?: string | null;
+    dob?: string | null;
+    sexAtBirth?: string | null;
+    preferredName?: string | null;
+  } | null>(null);
+  const [printOpen, setPrintOpen] = useState(false);
+  const [amendMode, setAmendMode] = useState<
+    null | "ADDENDUM" | "CORRECTION" | "ENTERED_IN_ERROR"
+  >(null);
   const panelRef = useRef<HTMLDivElement | null>(null);
   const expectedVersionRef = useRef(0);
   const dirtyRef = useRef(false);
+  const canAmend = roles.includes("RN");
+  const canLinkDomain = roles.includes("RN") || roles.includes("ADMIN");
 
   const sectionIndex = INPATIENT_ADMISSION_CLINICAL_SECTIONS.indexOf(active);
   const isFirst = sectionIndex <= 0;
@@ -142,6 +173,32 @@ export function InpatientAdmissionClinicalShell({
   useEffect(() => {
     void reload();
   }, [reload]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const raw = await apiFetch(`/encounters/${encounterId}`);
+        const obj = asApiObject<{
+          patient?: {
+            id?: string;
+            firstName?: string | null;
+            lastName?: string | null;
+            mrn?: string | null;
+            dob?: string | null;
+            sexAtBirth?: string | null;
+            preferredName?: string | null;
+          } | null;
+        }>(raw);
+        if (!cancelled) setPatient(obj?.patient ?? null);
+      } catch {
+        if (!cancelled) setPatient(null);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [encounterId]);
 
   useEffect(() => {
     const sec = doc?.sections?.[active];
@@ -356,13 +413,15 @@ export function InpatientAdmissionClinicalShell({
     </div>
   );
 
-  const printSummary = () => {
-    window.print();
+  const openPrintSummary = () => {
+    // Always load authoritative server summary — never print unsaved local state.
+    setPrintOpen(true);
   };
 
   return (
     <div data-testid="inpatient-admission-clinical-shell">
       <p style={{ margin: "0 0 6px", fontSize: 12, color: "#64748b" }} data-testid="d4a25-cert">
+        {NURSING_DOMAIN_INTEGRATION_CERTIFICATION_ID} ·{" "}
         {INPATIENT_LIFECYCLE_NURSING_ADMISSION_CERTIFICATION_ID} · {MEDSURG_NURSING_ADMISSION_CERTIFICATION_ID}
       </p>
       <p style={{ margin: "0 0 8px", fontSize: 13, color: "#334155", lineHeight: 1.45 }}>
@@ -455,6 +514,19 @@ export function InpatientAdmissionClinicalShell({
             {t(`hospitalAdmissionD4a0.clinical.sections.${active}`)}
           </h4>
           <NavControls position="top" />
+
+          <NursingAdmissionDomainIntegrationPanel
+            sectionId={active}
+            encounterId={encounterId}
+            expectedVersion={expectedVersionRef.current}
+            domainReferences={doc?.domainReferences ?? []}
+            patient={patient}
+            signed={signed}
+            canLink={canLinkDomain}
+            onLinked={(documentation) => {
+              applyPayload({ documentation: documentation as NursingDoc, completion: completion ?? undefined });
+            }}
+          />
 
           {(active === "MEDICAL_HISTORY" ||
             active === "SURGICAL_HISTORY" ||
@@ -551,19 +623,89 @@ export function InpatientAdmissionClinicalShell({
 
           <NavControls position="bottom" />
 
-          <button type="button" style={{ ...chipBtn, marginTop: 8 }} onClick={printSummary}>
-            {t("hospitalAdmissionD4a25.nav.print")}
+          <button
+            type="button"
+            style={{ ...chipBtn, marginTop: 8 }}
+            onClick={openPrintSummary}
+            data-testid="nursing-admission-open-print"
+          >
+            {t("hospitalAdmissionD4a25a.print.open")}
           </button>
         </div>
       </div>
+
+      {signed ? (
+        <div data-testid="nursing-admission-amendments" style={{ ...panel, marginTop: 12 }}>
+          <h4 style={{ margin: "0 0 6px" }}>{t("hospitalAdmissionD4a25a.amendments.title")}</h4>
+          <p style={{ margin: "0 0 8px", fontSize: 12, color: "#64748b" }}>
+            {t("hospitalAdmissionD4a25a.amendments.lockedHint")}{" "}
+            {t("hospitalAdmissionD4a25a.amendments.noUnlock")}
+          </p>
+          {!canAmend ? (
+            <p style={{ fontSize: 12 }}>{t("hospitalAdmissionD4a25a.amendments.providerViewOnly")}</p>
+          ) : (
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 8 }}>
+              <button type="button" style={chipBtn} onClick={() => setAmendMode("ADDENDUM")}>
+                {t("hospitalAdmissionD4a25a.amendments.addAddendum")}
+              </button>
+              <button type="button" style={chipBtn} onClick={() => setAmendMode("CORRECTION")}>
+                {t("hospitalAdmissionD4a25a.amendments.addCorrection")}
+              </button>
+              <button type="button" style={chipBtn} onClick={() => setAmendMode("ENTERED_IN_ERROR")}>
+                {t("hospitalAdmissionD4a25a.amendments.enteredInError")}
+              </button>
+            </div>
+          )}
+          <h5 style={{ margin: "0 0 6px", fontSize: 13 }}>
+            {t("hospitalAdmissionD4a25a.amendments.history")}
+          </h5>
+          {(doc?.amendments ?? []).length === 0 ? (
+            <p style={{ fontSize: 12 }}>{t("hospitalAdmissionD4a25a.amendments.empty")}</p>
+          ) : (
+            <ul style={{ margin: 0, paddingLeft: 18, fontSize: 12 }}>
+              {(doc?.amendments ?? []).map((a) => (
+                <li key={a.amendmentId}>
+                  {a.type} · {a.sectionId || "—"} · {a.reason} · {a.createdAt}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      ) : null}
 
       {review ? (
         <div style={panel} data-testid="nursing-admission-review">
           <h4 style={{ margin: "0 0 8px" }}>{t("hospitalAdmissionD4a25.review.title")}</h4>
           <p style={{ fontSize: 12 }}>{t("hospitalAdmissionD4a25.review.attestation")}</p>
+          <p style={{ fontSize: 12, color: "#0f766e" }}>
+            {t("hospitalAdmissionD4a25a.review.providerHpNotRequired")}{" "}
+            {t("hospitalAdmissionD4a25a.review.handoffMayRemainPending")}
+          </p>
+          <ul style={{ fontSize: 12 }}>
+            {Array.isArray(review.sections)
+              ? (review.sections as Array<Record<string, unknown>>).map((s) => (
+                  <li key={String(s.sectionId)}>
+                    {t(`hospitalAdmissionD4a0.clinical.sections.${String(s.sectionId)}`)}
+                    {" — "}
+                    {t("hospitalAdmissionD4a25a.review.projected")}: {String(s.projectedState ?? s.completionState)}
+                    {" · "}
+                    {t("hospitalAdmissionD4a25a.review.domainColumn")}: {String(s.authoritativeDomain ?? "—")}
+                    {" · "}
+                    {t("hospitalAdmissionD4a25a.review.linked")}: {String(s.domainRefCount ?? 0)}
+                    {" · "}
+                    {t("hospitalAdmissionD4a25a.review.amendments")}: {String(s.amendmentCount ?? 0)}
+                  </li>
+                ))
+              : null}
+          </ul>
           <ul style={{ fontSize: 12 }}>
             {Array.isArray(review.warnings)
-              ? (review.warnings as string[]).map((w) => <li key={w}>{w}</li>)
+              ? (review.warnings as string[]).map((w) => (
+                  <li key={w}>
+                    <span aria-hidden="true">⚠ </span>
+                    {w}
+                  </li>
+                ))
               : null}
           </ul>
         </div>
@@ -574,6 +716,23 @@ export function InpatientAdmissionClinicalShell({
           <InpatientClinicalOpsPanel encounterId={encounterId} mode="nursing" />
         </div>
       ) : null}
+
+      <NursingAdmissionPrintSummaryModal
+        encounterId={encounterId}
+        open={printOpen}
+        onClose={() => setPrintOpen(false)}
+      />
+      <NursingAdmissionAmendmentDialog
+        encounterId={encounterId}
+        expectedVersion={expectedVersionRef.current}
+        expectedAmendmentVersion={(doc?.amendments ?? []).length}
+        open={amendMode != null}
+        mode={amendMode ?? "ADDENDUM"}
+        onClose={() => setAmendMode(null)}
+        onSaved={(documentation) => {
+          applyPayload({ documentation: documentation as NursingDoc, completion: completion ?? undefined });
+        }}
+      />
     </div>
   );
 }
