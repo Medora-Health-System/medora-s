@@ -705,4 +705,127 @@ export class InpatientOperationsController {
       kind
     );
   }
+
+  @Get("encounters/:encounterId/command-center-clinical-synthesis")
+  @RequireRoles(RoleCode.PROVIDER, RoleCode.RN, RoleCode.ADMIN)
+  async commandCenterClinicalSynthesis(
+    @Param("encounterId") encounterId: string,
+    @Req() req: any
+  ) {
+    return this.ops.getCommandCenterClinicalSynthesis(
+      facilityIdFromReq(req),
+      encounterId
+    );
+  }
+
+  @Get("provider-census/facets")
+  @RequireRoles(RoleCode.PROVIDER, RoleCode.RN, RoleCode.ADMIN)
+  providerCensusFacets() {
+    return this.ops.getProviderCensusFacets();
+  }
+
+  @Post("encounters/:encounterId/provider-workspace/amendments")
+  @RequireRoles(RoleCode.PROVIDER, RoleCode.ADMIN)
+  async appendProviderAmendment(
+    @Param("encounterId") encounterId: string,
+    @Body() body: Record<string, unknown>,
+    @Req() req: any
+  ) {
+    const clientRequestId = String(body.clientRequestId ?? "").trim();
+    const type = String(body.type ?? "").trim();
+    const target = String(body.target ?? "").trim();
+    const reason = String(body.reason ?? "").trim();
+    const expectedVersion = Number(body.expectedVersion);
+    if (!clientRequestId) throw new BadRequestException("clientRequestId is required");
+    if (!type) throw new BadRequestException("type is required");
+    if (!target) throw new BadRequestException("target is required");
+    if (!reason) throw new BadRequestException("reason is required");
+    if (!Number.isFinite(expectedVersion)) {
+      throw new BadRequestException("expectedVersion is required");
+    }
+    return this.ops.appendProviderAmendment(
+      facilityIdFromReq(req),
+      encounterId,
+      userIdFromReq(req),
+      {
+        type,
+        target,
+        clientRequestId,
+        reason,
+        note: typeof body.note === "string" ? body.note : null,
+        targetNoteId: typeof body.targetNoteId === "string" ? body.targetNoteId : null,
+        sectionKey: typeof body.sectionKey === "string" ? body.sectionKey : null,
+        originalValue: body.originalValue,
+        correctedValue: body.correctedValue,
+        expectedVersion,
+        expectedAmendmentVersion:
+          body.expectedAmendmentVersion != null
+            ? Number(body.expectedAmendmentVersion)
+            : undefined,
+        credentials: typeof body.credentials === "string" ? body.credentials : null,
+        role: typeof body.role === "string" ? body.role : null,
+      }
+    );
+  }
+
+  @Patch("encounters/:encounterId/provider-workspace/handoff")
+  @RequireRoles(RoleCode.PROVIDER, RoleCode.ADMIN)
+  async saveProviderHandoff(
+    @Param("encounterId") encounterId: string,
+    @Body() body: Record<string, unknown>,
+    @Req() req: any
+  ) {
+    const expectedVersion = Number(body.expectedVersion);
+    const handoff = body.handoff;
+    if (!Number.isFinite(expectedVersion)) {
+      throw new BadRequestException("expectedVersion is required");
+    }
+    if (!handoff || typeof handoff !== "object" || Array.isArray(handoff)) {
+      throw new BadRequestException("handoff is required");
+    }
+    return this.ops.saveProviderHandoffDoc(
+      facilityIdFromReq(req),
+      encounterId,
+      userIdFromReq(req),
+      { handoff: handoff as any, expectedVersion }
+    );
+  }
+
+  @Post("encounters/:encounterId/provider-workspace/handoff/sign")
+  @RequireRoles(RoleCode.PROVIDER, RoleCode.ADMIN)
+  async signProviderHandoff(
+    @Param("encounterId") encounterId: string,
+    @Body() body: Record<string, unknown>,
+    @Req() req: any
+  ) {
+    const expectedVersion = Number(body.expectedVersion);
+    if (!Number.isFinite(expectedVersion)) {
+      throw new BadRequestException("expectedVersion is required");
+    }
+    return this.ops.signProviderHandoffDoc(
+      facilityIdFromReq(req),
+      encounterId,
+      userIdFromReq(req),
+      { expectedVersion }
+    );
+  }
+
+  @Post("encounters/:encounterId/provider-workspace/handoff/acknowledge")
+  @RequireRoles(RoleCode.PROVIDER, RoleCode.ADMIN)
+  async acknowledgeProviderHandoff(
+    @Param("encounterId") encounterId: string,
+    @Body() body: Record<string, unknown>,
+    @Req() req: any
+  ) {
+    const expectedVersion = Number(body.expectedVersion);
+    if (!Number.isFinite(expectedVersion)) {
+      throw new BadRequestException("expectedVersion is required");
+    }
+    return this.ops.acknowledgeProviderHandoffDoc(
+      facilityIdFromReq(req),
+      encounterId,
+      userIdFromReq(req),
+      { expectedVersion }
+    );
+  }
 }

@@ -35,6 +35,7 @@ import { InternalPlacementService } from "./internal-placement.service";
 import { AdmissionCorrelationService } from "./admission-correlation.service";
 import { AdmissionCorrelationController } from "./admission-correlation.controller";
 import { AdmissionCommandCenterService } from "./admission-command-center.service";
+import { ClinicalSynthesisService } from "./clinical-synthesis.service";
 
 @Module({
   imports: [PrismaModule, DiagnosesModule, OrdersModule, TrackboardModule, FacilitiesModule],
@@ -53,6 +54,7 @@ import { AdmissionCommandCenterService } from "./admission-command-center.servic
     InpatientLifecycleService,
     AdmissionCorrelationService,
     AdmissionCommandCenterService,
+    ClinicalSynthesisService,
     HospitalCensusService,
     HospitalUnitRegistryService,
     ChartCertificationB1Service,

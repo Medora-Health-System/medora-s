@@ -527,12 +527,36 @@ export function InpatientProviderWorkspacePanel({
             {t("inpatientProviderD4a26.progress.newSincePrior")}
           </p>
           {saveState === "conflict" ? (
-            <p role="alert" style={{ fontSize: 12, color: "#b91c1c" }}>
-              {t("providerClinicalSynthesisD4a26a.concurrency.stale")}
-              <button type="button" style={{ marginLeft: 8 }} onClick={() => void load()}>
-                {t("common.retry") !== "common.retry" ? t("common.retry") : "Retry"}
-              </button>
-            </p>
+            <div
+              role="alert"
+              style={{
+                marginBottom: 10,
+                padding: 10,
+                border: "1px solid #f59e0b",
+                borderRadius: 10,
+                background: "#fffbeb",
+                fontSize: 12,
+              }}
+              data-testid="provider-conflict-banner"
+            >
+              <strong>{t("providerLegalRecordD4a26b.conflict")}</strong>
+              <p style={{ margin: "6px 0" }}>
+                {t("providerClinicalSynthesisD4a26a.concurrency.stale")}
+              </p>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                <button type="button" onClick={() => void load()}>
+                  {t("providerLegalRecordD4a26b.reload")}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    void navigator.clipboard?.writeText(progressText);
+                  }}
+                >
+                  {t("providerLegalRecordD4a26b.copyLocal")}
+                </button>
+              </div>
+            </div>
           ) : null}
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 8 }}>
             <button type="button" disabled={!canProviderWrite} onClick={() => void createProgressDraft()}>

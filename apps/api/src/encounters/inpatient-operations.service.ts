@@ -102,9 +102,12 @@ import {
   type ResolvedDomainRecordLite,
   INPATIENT_PROVIDER_WORKSPACE_CERTIFICATION_ID,
   PROVIDER_CLINICAL_SYNTHESIS_CERTIFICATION_ID,
+  PROVIDER_LEGAL_RECORD_SYNTHESIS_CERTIFICATION_ID,
   PROVIDER_EVENT_ACK_STATUSES,
   PROVIDER_HP_SECTION_KEYS,
   PROVIDER_PRINT_PACKAGE_KINDS,
+  PROVIDER_AMENDMENT_TYPES,
+  PROVIDER_AMENDMENT_TARGETS,
   emptyInpatientProviderWorkspaceV1,
   readInpatientProviderWorkspace,
   mergeInpatientProviderWorkspaceIntoSummary,
@@ -113,20 +116,16 @@ import {
   saveProviderHpDraft,
   signProviderHpDraft,
   deriveProviderTasksFromOps,
-  computeProviderHospitalDay,
-  computeProviderLosHours,
-  projectProviderVitals,
-  projectIntakeOutputSynthesis,
-  projectLabLines,
-  projectRadiologyStudies,
-  projectMedicationSnapshot,
-  projectDischargeReadiness,
-  attachWorkspaceSlices,
-  emptyProviderClinicalSynthesis,
   buildProviderPrintPackage,
   saveProviderProgressNoteDraft,
   signProviderProgressNote,
   buildProgressNoteCarryForward,
+  appendProviderDocumentAmendment,
+  saveProviderHandoffDraft,
+  signProviderHandoff,
+  acknowledgeProviderHandoff,
+  classifyPrintPackage,
+  providerDocumentMatrix,
   type MedSurgNursingAdmissionDocV1,
   type InpatientAdmissionClinicalSection,
   type AdmissionHistoryVerificationStatus,
@@ -136,6 +135,10 @@ import {
   type ProviderProblemPlanItemV1,
   type ProviderPrintPackageKind,
   type ProviderProgressNoteDraftV1,
+  type ProviderAmendmentType,
+  type ProviderAmendmentTarget,
+  type ProviderHandoffDraftV1,
+  type ProviderDocumentAmendmentV1,
 } from "@medora/shared";
 import { PrismaService } from "../prisma/prisma.service";
 import { AuditService } from "../common/services/audit.service";
@@ -151,6 +154,7 @@ import {
   isPrismaMissingHospitalEpisodeIdColumn,
 } from "./direct-admission-api-errors.util";
 import { sanitizePrismaException } from "../common/logging/prisma-error-sanitizer";
+import { ClinicalSynthesisService } from "./clinical-synthesis.service";
 
 /** Observation is a clinical lane (billing / summary), not EncounterType.OBSERVATION. */
 function isExplicitObservationChart(enc: {
@@ -218,7 +222,8 @@ export class InpatientOperationsService {
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
     private readonly admissionCorrelation: AdmissionCorrelationService,
-    private readonly bedBoardService: FacilityBedBoardService
+    private readonly bedBoardService: FacilityBedBoardService,
+    private readonly clinicalSynthesis: ClinicalSynthesisService
   ) {}
 
   /** Map Prisma P2022 on Encounter.hospitalEpisodeId to a coded clinical-safe error. */
@@ -2580,430 +2585,20 @@ export class InpatientOperationsService {
   }
 
   /**
-   * D4A.2.6A — Enterprise provider clinical synthesis.
-   * Composes authoritative enterprise readers; does not create second engines.
+   * D4A.2.6B — Provider workspace consumes reusable ClinicalSynthesisService.
    */
   async getProviderClinicalSynthesis(facilityId: string, encounterId: string) {
-    const enc = await this.prisma.encounter.findFirst({
-      where: { id: encounterId, facilityId },
-      select: {
-        id: true,
-        facilityId: true,
-        patientId: true,
-        type: true,
-        status: true,
-        admittedAt: true,
-        roomLabel: true,
-        physicianAssignedUserId: true,
-        admissionSummaryJson: true,
-        chiefComplaint: true,
-        physicianAssigned: {
-          select: { id: true, firstName: true, lastName: true },
-        },
-      },
+    return this.clinicalSynthesis.buildProviderProjection(facilityId, encounterId, {
+      audience: "PROVIDER",
     });
-    if (!enc) throw new NotFoundException("Encounter not found");
-    if (enc.type !== EncounterType.INPATIENT) {
-      throw new BadRequestException("Provider synthesis requires an Inpatient encounter");
-    }
+  }
 
-    const ops = readInpatientClinicalOpsFromAdmissionSummary(enc.admissionSummaryJson);
-    const workspace =
-      readInpatientProviderWorkspace(enc.admissionSummaryJson) ??
-      emptyInpatientProviderWorkspaceV1();
-    const nowIso = new Date().toISOString();
-    const displayName = (u: { firstName?: string | null; lastName?: string | null } | null) =>
-      u ? [u.firstName, u.lastName].filter(Boolean).join(" ").trim() || null : null;
+  async getCommandCenterClinicalSynthesis(facilityId: string, encounterId: string) {
+    return this.clinicalSynthesis.buildCommandCenterProjection(facilityId, encounterId);
+  }
 
-    const [vitalsRows, ioEntries, orders, diagnoses] = await Promise.all([
-      this.prisma.triageVitalsReading.findMany({
-        where: { facilityId, encounterId: enc.id, status: "ACTIVE" },
-        orderBy: [{ measuredAt: "desc" }, { recordedAt: "desc" }],
-        take: 48,
-        select: { measuredAt: true, vitalsJson: true },
-      }),
-      this.prisma.encounterClinicalDocumentationEntry.findMany({
-        where: {
-          facilityId,
-          encounterId: enc.id,
-          voidedAt: null,
-          OR: [
-            { cardId: { contains: "intake" } },
-            { cardId: { contains: "output" } },
-            { cardId: { contains: "io-" } },
-          ],
-        },
-        orderBy: { createdAt: "desc" },
-        take: 200,
-        select: { cardId: true, createdAt: true, voidedAt: true, payloadJson: true },
-      }),
-      this.prisma.order.findMany({
-        where: { facilityId, encounterId: enc.id, cancelledAt: null },
-        orderBy: { createdAt: "desc" },
-        take: 120,
-        select: {
-          id: true,
-          type: true,
-          status: true,
-          orderedBy: true,
-          prescriberName: true,
-          createdAt: true,
-          items: {
-            select: {
-              id: true,
-              catalogItemType: true,
-              manualLabel: true,
-              status: true,
-              route: true,
-              strength: true,
-              notes: true,
-              createdAt: true,
-              completedAt: true,
-              medicationLifecycleStatus: true,
-              result: {
-                select: {
-                  resultText: true,
-                  resultData: true,
-                  criticalValue: true,
-                  acknowledgedByProviderAt: true,
-                  verifiedAt: true,
-                  updatedAt: true,
-                  verifiedByUserId: true,
-                },
-              },
-            },
-          },
-        },
-      }),
-      this.prisma.diagnosis.findMany({
-        where: {
-          facilityId,
-          encounterId: enc.id,
-          status: "ACTIVE",
-        },
-        orderBy: [{ sortOrder: "asc" }, { createdAt: "desc" }],
-        take: 20,
-        select: {
-          id: true,
-          code: true,
-          description: true,
-          sortOrder: true,
-          status: true,
-        },
-      }),
-    ]);
-
-    const vitals = projectProviderVitals({
-      readings: vitalsRows.map((r) => ({
-        measuredAt: r.measuredAt.toISOString(),
-        vitals:
-          r.vitalsJson && typeof r.vitalsJson === "object" && !Array.isArray(r.vitalsJson)
-            ? (r.vitalsJson as Record<string, unknown>)
-            : {},
-      })),
-      nowIso,
-    });
-
-    const intakeOutput = projectIntakeOutputSynthesis({
-      nowIso,
-      entries: ioEntries.map((e) => ({
-        cardId: e.cardId,
-        createdAt: e.createdAt.toISOString(),
-        voidedAt: e.voidedAt ? e.voidedAt.toISOString() : null,
-        payloadJson: e.payloadJson,
-      })),
-    });
-
-    const labItems: Array<{
-      orderItemId: string;
-      orderId: string;
-      label: string;
-      status: string;
-      resultText?: string | null;
-      criticalValue?: boolean;
-      acknowledgedByProviderAt?: string | null;
-      resultUpdatedAt?: string | null;
-    }> = [];
-    const radItems: Array<{
-      orderItemId: string;
-      orderId: string;
-      label: string;
-      status: string;
-      impression?: string | null;
-      radiologist?: string | null;
-      timestamp?: string | null;
-      criticalValue?: boolean;
-      acknowledgedByProviderAt?: string | null;
-    }> = [];
-    const medItems: Array<{
-      orderItemId: string;
-      orderId: string;
-      label: string;
-      dose?: string | null;
-      route?: string | null;
-      frequency?: string | null;
-      start?: string | null;
-      stop?: string | null;
-      indication?: string | null;
-      responsibleProvider?: string | null;
-      held?: boolean;
-      recentlyChanged?: boolean;
-    }> = [];
-
-    for (const order of orders) {
-      for (const item of order.items) {
-        const label = item.manualLabel?.trim() || item.catalogItemType;
-        const cat = String(item.catalogItemType ?? order.type ?? "").toUpperCase();
-        if (cat.includes("LAB")) {
-          labItems.push({
-            orderItemId: item.id,
-            orderId: order.id,
-            label,
-            status: String(item.status ?? order.status),
-            resultText: item.result?.resultText ?? null,
-            criticalValue: item.result?.criticalValue ?? false,
-            acknowledgedByProviderAt: item.result?.acknowledgedByProviderAt
-              ? item.result.acknowledgedByProviderAt.toISOString()
-              : null,
-            resultUpdatedAt: item.result?.updatedAt
-              ? item.result.updatedAt.toISOString()
-              : null,
-          });
-        } else if (cat.includes("IMAGING") || cat.includes("RAD")) {
-          const resultData =
-            item.result?.resultData &&
-            typeof item.result.resultData === "object" &&
-            !Array.isArray(item.result.resultData)
-              ? (item.result.resultData as Record<string, unknown>)
-              : {};
-          radItems.push({
-            orderItemId: item.id,
-            orderId: order.id,
-            label,
-            status: String(item.status ?? order.status),
-            impression:
-              item.result?.resultText?.trim() ||
-              (typeof resultData.impression === "string" ? resultData.impression : null),
-            radiologist:
-              typeof resultData.radiologist === "string" ? resultData.radiologist : null,
-            timestamp: item.result?.verifiedAt
-              ? item.result.verifiedAt.toISOString()
-              : item.result?.updatedAt
-                ? item.result.updatedAt.toISOString()
-                : null,
-            criticalValue: item.result?.criticalValue ?? false,
-            acknowledgedByProviderAt: item.result?.acknowledgedByProviderAt
-              ? item.result.acknowledgedByProviderAt.toISOString()
-              : null,
-          });
-        } else if (cat.includes("MED")) {
-          const held =
-            String(item.medicationLifecycleStatus ?? "").toUpperCase() === "HOLD" ||
-            /HOLD|HELD|CANCEL/i.test(String(item.status));
-          medItems.push({
-            orderItemId: item.id,
-            orderId: order.id,
-            label,
-            dose: item.strength ?? null,
-            route: item.route ?? null,
-            frequency: item.notes ?? null,
-            start: item.createdAt.toISOString(),
-            stop: item.completedAt ? item.completedAt.toISOString() : null,
-            indication: item.notes ?? null,
-            responsibleProvider: order.prescriberName ?? order.orderedBy ?? null,
-            held,
-            recentlyChanged:
-              Date.now() - item.createdAt.getTime() < 24 * 60 * 60 * 1000 || held,
-          });
-        }
-      }
-    }
-
-    // Seed critical-result inbox events when unacknowledged critical labs/imaging exist.
-    const criticalUnacked = [...labItems, ...radItems].filter(
-      (x) => x.criticalValue && !x.acknowledgedByProviderAt
-    );
-    let events = [...(workspace.events ?? [])];
-    for (const c of criticalUnacked.slice(0, 10)) {
-      const eventId = `crit-${c.orderItemId}`;
-      if (events.some((e) => e.eventId === eventId)) continue;
-      const occurredAt =
-        "resultUpdatedAt" in c && c.resultUpdatedAt
-          ? c.resultUpdatedAt
-          : "timestamp" in c && c.timestamp
-            ? c.timestamp
-            : nowIso;
-      events.push({
-        eventId,
-        type: "CRITICAL_RESULT",
-        severity: "CRITICAL",
-        summary: `Critical result — ${c.label}`,
-        source: "ENTERPRISE_RESULTS",
-        occurredAt,
-        status: "NEW",
-        relatedObjectId: c.orderItemId,
-      });
-    }
-    for (const consult of ops.consults ?? []) {
-      if (consult.status !== "COMPLETED") continue;
-      const eventId = `consult-done-${consult.consultId}`;
-      if (events.some((e) => e.eventId === eventId)) continue;
-      events.push({
-        eventId,
-        type: "CONSULT_COMPLETED",
-        severity: "INFO",
-        summary: `Consult completed — ${consult.specialty}`,
-        source: "CLINICAL_OPS",
-        occurredAt: consult.completedAt ?? consult.requestedAt,
-        status: "NEW",
-        relatedObjectId: consult.consultId,
-      });
-    }
-
-    const code = resolveAuthoritativeCodeStatus(ops);
-    const isolation = resolveAuthoritativeIsolation(ops);
-    const dxLabel = (d: { code: string; description: string | null }) =>
-      d.description?.trim() || d.code;
-    const primaryDx =
-      (diagnoses[0] ? dxLabel(diagnoses[0]) : null) ??
-      workspace.problemPlans.find((p) => p.priority === "PRIMARY")?.displayLabel ??
-      null;
-    const secondary = [
-      ...diagnoses.slice(1).map(dxLabel).filter(Boolean),
-      ...workspace.problemPlans
-        .filter((p) => p.priority !== "PRIMARY")
-        .map((p) => p.displayLabel),
-    ].slice(0, 12);
-
-    const careTeam = ops.careTeamHistory ?? [];
-    const resident =
-      careTeam.find((c) => /RESIDENT/i.test(c.role) && !c.endAt)?.assigneeUserId ?? null;
-    const app =
-      careTeam.find((c) => /APP|NP|PA/i.test(c.role) && !c.endAt)?.assigneeUserId ?? null;
-
-    const admissionPainRef = (() => {
-      const nursing = readMedSurgNursingAdmissionFromSummary(enc.admissionSummaryJson);
-      const sections = nursing?.sections ?? {};
-      for (const section of Object.values(sections)) {
-        if (!section) continue;
-        const answers = section.answers;
-        if (!answers || typeof answers !== "object") continue;
-        const a = answers as Record<string, unknown>;
-        const score = a.painScore ?? a.painIntensity ?? a.score ?? a.PAIN_SCORE;
-        if (score != null && String(score).trim()) return String(score);
-      }
-      return null;
-    })();
-    const currentPainVital = vitals.find((v) => v.key === "PAIN")?.current ?? null;
-    const providerPainAssessment =
-      workspace.problemPlans.find((p) => /pain/i.test(p.displayLabel))?.assessment ?? null;
-
-    let synthesis = emptyProviderClinicalSynthesis({
-      encounterId: enc.id,
-      patientId: enc.patientId,
-      facilityId,
-      expectedVersion: workspace.expectedVersion,
-      atIso: nowIso,
-    });
-
-    synthesis = {
-      ...synthesis,
-      overview: {
-        hospitalDay: computeProviderHospitalDay(enc.admittedAt?.toISOString() ?? null, nowIso),
-        currentStatus: String(enc.status),
-        codeStatus: code.documented ? code.value : null,
-        isolation: isolation.documented ? isolation.value : null,
-        attending: displayName(enc.physicianAssigned),
-        consultServices: (ops.consults ?? [])
-          .filter((c) => c.status !== "CANCELLED" && c.status !== "DECLINED")
-          .map((c) => c.specialty),
-        primaryDiagnosis: primaryDx,
-        secondaryProblems: secondary,
-        currentBed: (() => {
-          const key = resolveEncounterCanonicalBedKey({
-            roomLabel: enc.roomLabel,
-            type: enc.type,
-            admissionSummaryJson: enc.admissionSummaryJson,
-          });
-          return key ?? enc.roomLabel ?? null;
-        })(),
-        currentUnit: (() => {
-          const key = resolveEncounterCanonicalBedKey({
-            roomLabel: enc.roomLabel,
-            type: enc.type,
-            admissionSummaryJson: enc.admissionSummaryJson,
-          });
-          if (!key) return null;
-          return parseCanonicalBedKey(key)?.unit ?? null;
-        })(),
-        admissionDate: enc.admittedAt?.toISOString() ?? null,
-        lengthOfStayHours: computeProviderLosHours(enc.admittedAt?.toISOString() ?? null, nowIso),
-        estimatedDischarge: ops.dischargePlanning?.anticipatedDischargeDate ?? null,
-        provider: displayName(enc.physicianAssigned),
-        resident,
-        app,
-      },
-      vitals,
-      intakeOutput,
-      laboratories: projectLabLines({ items: labItems }),
-      radiology: projectRadiologyStudies({ items: radItems }),
-      medications: projectMedicationSnapshot({ items: medItems }),
-      dischargeReadiness: projectDischargeReadiness({
-        workflowState: ops.dischargePlanning?.workflowState ?? null,
-        estimatedDischargeDate: ops.dischargePlanning?.anticipatedDischargeDate ?? null,
-        destination: ops.dischargePlanning?.destination ?? null,
-        barriersText: ops.dischargePlanning?.barriers ?? null,
-        pendingConsultCount: (ops.consults ?? []).filter(
-          (c) => c.status === "REQUESTED" || c.status === "IN_PROGRESS" || c.status === "ACKNOWLEDGED"
-        ).length,
-        pendingPt: /PT|PHYSIOTHERAPY/i.test(String(ops.dischargePlanning?.barriers ?? "")),
-        pendingOt: /OT|OCCUPATIONAL/i.test(String(ops.dischargePlanning?.barriers ?? "")),
-        medReconIncomplete: (ops.medicationReconciliation?.length ?? 0) === 0,
-        hpUnsigned: workspace.hpDraft?.status !== "SIGNED",
-      }),
-      currentVsAdmission: {
-        admissionPain: admissionPainRef,
-        currentPain: currentPainVital,
-        providerAssessment: providerPainAssessment,
-        conceptsSeparated: true,
-      },
-    };
-
-    // Attach workspace slices (problems/events/tasks) — events enriched above.
-    const workspaceForAttach = { ...workspace, events };
-    synthesis = attachWorkspaceSlices(synthesis, workspaceForAttach);
-
-    // Persist newly derived critical/consult events when workspace was empty of them.
-    if (events.length !== (workspace.events?.length ?? 0)) {
-      const nextDoc = {
-        ...workspace,
-        events,
-        expectedVersion: workspace.expectedVersion + 1,
-        updatedAt: nowIso,
-      };
-      await this.prisma.encounter.update({
-        where: { id: enc.id },
-        data: {
-          admissionSummaryJson: mergeInpatientProviderWorkspaceIntoSummary(
-            enc.admissionSummaryJson,
-            nextDoc
-          ) as Prisma.InputJsonValue,
-        },
-        select: { id: true },
-      });
-      synthesis = { ...synthesis, expectedVersion: nextDoc.expectedVersion, events };
-    }
-
-    return {
-      certification: PROVIDER_CLINICAL_SYNTHESIS_CERTIFICATION_ID,
-      synthesis,
-      boundary: {
-        synthesisNotDomainEngine: true,
-        reusesOrdersResultsMarTimeline: true,
-        neverAutoAcknowledge: true,
-        currentVsAdmissionSeparated: true,
-      },
-    };
+  async getProviderCensusFacets() {
+    return this.clinicalSynthesis.describeCensusFacets();
   }
 
   async saveProviderProgressNote(
@@ -3242,12 +2837,51 @@ export class InpatientOperationsService {
       });
     }
 
+    const printClass = classifyPrintPackage(kind);
+    if (printClass === "CLINICAL_SYNTHESIS") {
+      sections.unshift({
+        heading: "NOTICE",
+        body: "UNSIGNED CLINICAL SYNTHESIS — not a signed provider note. Generated from authoritative enterprise domains at the timestamp below.",
+      });
+    } else {
+      sections.unshift({
+        heading: "LEGAL RECORD",
+        body: "Signed provider documentation (exact revision). Amendments and corrections are append-only.",
+      });
+      const amendments = (workspace.amendments ?? []) as ProviderDocumentAmendmentV1[];
+      if (amendments.length) {
+        sections.push({
+          heading: "Amendments",
+          body: amendments
+            .map(
+              (a) =>
+                `${a.type}${a.postDischarge ? " (post-discharge)" : ""} — ${a.reason}${
+                  a.type === "CORRECTION"
+                    ? ` | original: ${JSON.stringify(a.originalValue)} → corrected: ${JSON.stringify(a.correctedValue)}`
+                    : a.note
+                      ? ` | ${a.note}`
+                      : ""
+                }${a.type === "ENTERED_IN_ERROR" ? " [ENTERED IN ERROR]" : ""}`
+            )
+            .join("\n"),
+        });
+      }
+    }
+
     const pkg = buildProviderPrintPackage({
       kind,
       title: kind.replace(/_/g, " "),
-      signed: workspace.hpDraft?.status === "SIGNED" || kind === "PROVIDER_ROUNDING_SUMMARY",
+      signed:
+        printClass === "LEGAL_RECORD" &&
+        (workspace.hpDraft?.status === "SIGNED" ||
+          (workspace.progressNotes ?? []).some((n) => n.status === "SIGNED") ||
+          (workspace as { handoff?: { status?: string } }).handoff?.status === "SIGNED" ||
+          (workspace as { handoff?: { status?: string } }).handoff?.status === "ACKNOWLEDGED"),
       revision: workspace.expectedVersion,
-      providerSigned: workspace.hpDraft?.status === "SIGNED",
+      providerSigned:
+        printClass === "LEGAL_RECORD" &&
+        (workspace.hpDraft?.status === "SIGNED" ||
+          (workspace.progressNotes ?? []).some((n) => n.status === "SIGNED")),
       sections,
     });
 
@@ -3256,10 +2890,216 @@ export class InpatientOperationsService {
       facilityId,
       patientId: s.patientId,
       entityId: encounterId,
-      metadata: { event: pkg.auditEvent, kind, revision: pkg.revision },
+      metadata: {
+        event:
+          printClass === "LEGAL_RECORD"
+            ? "PROVIDER_LEGAL_RECORD_PRINT_GENERATED"
+            : "PROVIDER_CLINICAL_SYNTHESIS_PRINT_GENERATED",
+        kind,
+        printClass,
+        revision: pkg.revision,
+        amendmentCount: Array.isArray(workspace.amendments) ? workspace.amendments.length : 0,
+      },
     });
 
-    return { certification: PROVIDER_CLINICAL_SYNTHESIS_CERTIFICATION_ID, package: pkg };
+    return {
+      certification: PROVIDER_LEGAL_RECORD_SYNTHESIS_CERTIFICATION_ID,
+      printClass,
+      package: pkg,
+      documentMatrix: providerDocumentMatrix(),
+    };
+  }
+
+  async appendProviderAmendment(
+    facilityId: string,
+    encounterId: string,
+    actorUserId: string,
+    body: {
+      type: string;
+      target: string;
+      clientRequestId: string;
+      reason: string;
+      note?: string | null;
+      targetNoteId?: string | null;
+      sectionKey?: string | null;
+      originalValue?: unknown;
+      correctedValue?: unknown;
+      expectedVersion: number;
+      expectedAmendmentVersion?: number;
+      credentials?: string | null;
+      role?: string | null;
+    }
+  ) {
+    const enc = await this.loadEncounterForNursingRead(facilityId, encounterId);
+    const type = String(body.type).toUpperCase() as ProviderAmendmentType;
+    const target = String(body.target).toUpperCase() as ProviderAmendmentTarget;
+    if (!(PROVIDER_AMENDMENT_TYPES as readonly string[]).includes(type)) {
+      throw new BadRequestException("Invalid amendment type");
+    }
+    if (!(PROVIDER_AMENDMENT_TARGETS as readonly string[]).includes(target)) {
+      throw new BadRequestException("Invalid amendment target");
+    }
+    const fresh = await this.loadEncounterForNursingRead(facilityId, encounterId);
+    const doc =
+      readInpatientProviderWorkspace(fresh.admissionSummaryJson) ??
+      emptyInpatientProviderWorkspaceV1();
+    // Seed empty workspace JSON only when missing; do not require OPEN for amendments.
+    const result = appendProviderDocumentAmendment({
+      doc,
+      type,
+      target,
+      clientRequestId: String(body.clientRequestId).trim(),
+      reason: body.reason,
+      note: body.note,
+      targetNoteId: body.targetNoteId,
+      sectionKey: body.sectionKey,
+      originalValue: body.originalValue,
+      correctedValue: body.correctedValue,
+      actorUserId,
+      credentials: body.credentials,
+      role: body.role,
+      clientExpectedVersion: Number(body.expectedVersion),
+      expectedAmendmentVersion: body.expectedAmendmentVersion,
+      encounterStatus: enc.status,
+    });
+    if (!result.ok) throw new ConflictException(result.code);
+    await this.prisma.encounter.update({
+      where: { id: enc.id },
+      data: {
+        admissionSummaryJson: mergeInpatientProviderWorkspaceIntoSummary(
+          fresh.admissionSummaryJson,
+          result.doc
+        ) as Prisma.InputJsonValue,
+        version: { increment: 1 },
+      },
+      select: { id: true },
+    });
+    await this.audit.log(AuditAction.ENCOUNTER_UPDATE, CLINICAL_OPS_ENTITY, {
+      userId: actorUserId,
+      facilityId,
+      patientId: enc.patientId,
+      entityId: enc.id,
+      metadata: {
+        event:
+          type === "ADDENDUM"
+            ? "PROVIDER_ADDENDUM_CREATED"
+            : type === "CORRECTION"
+              ? "PROVIDER_CORRECTION_CREATED"
+              : "PROVIDER_NOTE_ENTERED_IN_ERROR",
+        target,
+        amendmentId: result.amendment.amendmentId,
+        postDischarge: result.amendment.postDischarge === true,
+      },
+    });
+    return { documentation: result.doc, amendment: result.amendment };
+  }
+
+  async saveProviderHandoffDoc(
+    facilityId: string,
+    encounterId: string,
+    actorUserId: string,
+    body: { handoff: ProviderHandoffDraftV1; expectedVersion: number }
+  ) {
+    const enc = await this.loadOpenInpatient(facilityId, encounterId);
+    const boot = await this.getProviderWorkspace(facilityId, encounterId);
+    const fresh = await this.loadOpenInpatient(facilityId, encounterId);
+    const doc =
+      readInpatientProviderWorkspace(fresh.admissionSummaryJson) ?? boot.documentation;
+    const result = saveProviderHandoffDraft({
+      doc,
+      handoff: body.handoff,
+      clientExpectedVersion: Number(body.expectedVersion),
+      actorUserId,
+    });
+    if (!result.ok) throw new ConflictException(result.code);
+    await this.prisma.encounter.update({
+      where: { id: enc.id },
+      data: {
+        admissionSummaryJson: mergeInpatientProviderWorkspaceIntoSummary(
+          fresh.admissionSummaryJson,
+          result.doc
+        ) as Prisma.InputJsonValue,
+        version: { increment: 1 },
+      },
+      select: { id: true },
+    });
+    return { documentation: result.doc };
+  }
+
+  async signProviderHandoffDoc(
+    facilityId: string,
+    encounterId: string,
+    actorUserId: string,
+    body: { expectedVersion: number }
+  ) {
+    const enc = await this.loadOpenInpatient(facilityId, encounterId);
+    const boot = await this.getProviderWorkspace(facilityId, encounterId);
+    const fresh = await this.loadOpenInpatient(facilityId, encounterId);
+    const doc =
+      readInpatientProviderWorkspace(fresh.admissionSummaryJson) ?? boot.documentation;
+    const result = signProviderHandoff({
+      doc,
+      actorUserId,
+      clientExpectedVersion: Number(body.expectedVersion),
+    });
+    if (!result.ok) throw new ConflictException(result.code);
+    await this.prisma.encounter.update({
+      where: { id: enc.id },
+      data: {
+        admissionSummaryJson: mergeInpatientProviderWorkspaceIntoSummary(
+          fresh.admissionSummaryJson,
+          result.doc
+        ) as Prisma.InputJsonValue,
+        version: { increment: 1 },
+      },
+      select: { id: true },
+    });
+    await this.audit.log(AuditAction.ENCOUNTER_UPDATE, CLINICAL_OPS_ENTITY, {
+      userId: actorUserId,
+      facilityId,
+      patientId: enc.patientId,
+      entityId: enc.id,
+      metadata: { event: "PROVIDER_HANDOFF_SIGNED" },
+    });
+    return { documentation: result.doc };
+  }
+
+  async acknowledgeProviderHandoffDoc(
+    facilityId: string,
+    encounterId: string,
+    actorUserId: string,
+    body: { expectedVersion: number }
+  ) {
+    const enc = await this.loadOpenInpatient(facilityId, encounterId);
+    const boot = await this.getProviderWorkspace(facilityId, encounterId);
+    const fresh = await this.loadOpenInpatient(facilityId, encounterId);
+    const doc =
+      readInpatientProviderWorkspace(fresh.admissionSummaryJson) ?? boot.documentation;
+    const result = acknowledgeProviderHandoff({
+      doc,
+      actorUserId,
+      clientExpectedVersion: Number(body.expectedVersion),
+    });
+    if (!result.ok) throw new ConflictException(result.code);
+    await this.prisma.encounter.update({
+      where: { id: enc.id },
+      data: {
+        admissionSummaryJson: mergeInpatientProviderWorkspaceIntoSummary(
+          fresh.admissionSummaryJson,
+          result.doc
+        ) as Prisma.InputJsonValue,
+        version: { increment: 1 },
+      },
+      select: { id: true },
+    });
+    await this.audit.log(AuditAction.ENCOUNTER_UPDATE, CLINICAL_OPS_ENTITY, {
+      userId: actorUserId,
+      facilityId,
+      patientId: enc.patientId,
+      entityId: enc.id,
+      metadata: { event: "PROVIDER_HANDOFF_ACKNOWLEDGED" },
+    });
+    return { documentation: result.doc };
   }
 
   private async loadOpenInpatient(facilityId: string, encounterId: string) {

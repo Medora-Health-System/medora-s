@@ -50,6 +50,7 @@ import { hospitalAdmissionD4a25aEn } from "./hospitalAdmissionD4a25a.en";
 import { hospitalAdmissionD4a26hEn } from "./hospitalAdmissionD4a26h.en";
 import { inpatientProviderD4a26En } from "./inpatientProviderD4a26.en";
 import { providerClinicalSynthesisD4a26aEn } from "./providerClinicalSynthesisD4a26a.en";
+import { providerLegalRecordD4a26bEn } from "./providerLegalRecordD4a26b.en";
 
 export default {
   common: {
@@ -19133,6 +19134,7 @@ export default {
   hospitalAdmissionD4a26h: hospitalAdmissionD4a26hEn,
   inpatientProviderD4a26: inpatientProviderD4a26En,
   providerClinicalSynthesisD4a26a: providerClinicalSynthesisD4a26aEn,
+  providerLegalRecordD4a26b: providerLegalRecordD4a26bEn,
 
   hospitalAdmissionD4a0: hospitalAdmissionD4a0En,
   emergencyAdaptiveNursing: emergencyAdaptiveNursingEn,

@@ -195,6 +195,10 @@ export type InpatientProviderWorkspaceV1 = {
   hpDraft?: ProviderHpDraftV1 | null;
   /** D4A.2.6A — Daily progress notes (draft/sign/amend/carry-forward). */
   progressNotes?: ProviderProgressNoteItemV1[];
+  /** D4A.2.6B — Append-only legal-record amendments (never mutate signed bodies). */
+  amendments?: unknown[];
+  /** D4A.2.6B — Provider handoff draft/sign/ack. */
+  handoff?: unknown;
   lastProviderReviewAt?: string | null;
   lastProviderReviewByUserId?: string | null;
   roundingModeStep?: ProviderRoundingModeStep | null;

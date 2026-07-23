@@ -352,5 +352,64 @@ export async function carryForwardProviderProgressNote(
 export async function fetchProviderPrintPackage(encounterId: string, kind: string) {
   return apiFetch(
     `/inpatient-operations/encounters/${encodeURIComponent(encounterId)}/provider-print-package/${encodeURIComponent(kind)}`
-  ) as Promise<{ certification: string; package: Record<string, unknown> }>;
+  ) as Promise<{
+    certification: string;
+    printClass?: string;
+    package: Record<string, unknown>;
+    documentMatrix?: unknown;
+  }>;
+}
+
+export async function fetchCommandCenterClinicalSynthesis(encounterId: string) {
+  return apiFetch(
+    `/inpatient-operations/encounters/${encodeURIComponent(encounterId)}/command-center-clinical-synthesis`
+  ) as Promise<Record<string, unknown>>;
+}
+
+export async function fetchProviderCensusFacets() {
+  return apiFetch(`/inpatient-operations/provider-census/facets`) as Promise<{
+    certification: string;
+    supported: string[];
+    unsupported: string[];
+  }>;
+}
+
+export async function appendProviderAmendment(
+  encounterId: string,
+  body: Record<string, unknown>
+) {
+  return apiFetch(
+    `/inpatient-operations/encounters/${encodeURIComponent(encounterId)}/provider-workspace/amendments`,
+    { method: "POST", body: JSON.stringify(body) }
+  ) as Promise<{ documentation: Record<string, unknown>; amendment: Record<string, unknown> }>;
+}
+
+export async function saveProviderHandoff(
+  encounterId: string,
+  body: { handoff: Record<string, unknown>; expectedVersion: number }
+) {
+  return apiFetch(
+    `/inpatient-operations/encounters/${encodeURIComponent(encounterId)}/provider-workspace/handoff`,
+    { method: "PATCH", body: JSON.stringify(body) }
+  ) as Promise<{ documentation: Record<string, unknown> }>;
+}
+
+export async function signProviderHandoffApi(
+  encounterId: string,
+  body: { expectedVersion: number }
+) {
+  return apiFetch(
+    `/inpatient-operations/encounters/${encodeURIComponent(encounterId)}/provider-workspace/handoff/sign`,
+    { method: "POST", body: JSON.stringify(body) }
+  ) as Promise<{ documentation: Record<string, unknown> }>;
+}
+
+export async function acknowledgeProviderHandoffApi(
+  encounterId: string,
+  body: { expectedVersion: number }
+) {
+  return apiFetch(
+    `/inpatient-operations/encounters/${encodeURIComponent(encounterId)}/provider-workspace/handoff/acknowledge`,
+    { method: "POST", body: JSON.stringify(body) }
+  ) as Promise<{ documentation: Record<string, unknown> }>;
 }

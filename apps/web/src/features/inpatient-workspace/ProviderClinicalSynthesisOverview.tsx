@@ -191,7 +191,12 @@ export function ProviderClinicalSynthesisOverview({
     try {
       const res = await fetchProviderPrintPackage(encounterId, kind);
       const pkg = res.package as { title?: string; revision?: number };
-      setPrintMsg(`${pkg.title ?? kind} · rev ${pkg.revision ?? "—"}`);
+      const printClass = String((res as { printClass?: string }).printClass ?? "");
+      const label =
+        printClass === "CLINICAL_SYNTHESIS"
+          ? t("providerLegalRecordD4a26b.unsignedSynthesisReport")
+          : t("providerLegalRecordD4a26b.legalRecordPrint");
+      setPrintMsg(`${label}: ${pkg.title ?? kind} · rev ${pkg.revision ?? "—"}`);
     } catch {
       setPrintMsg(t("inpatientProviderD4a26.rounding.failed"));
     }
@@ -220,7 +225,8 @@ export function ProviderClinicalSynthesisOverview({
   return (
     <div data-testid="provider-clinical-synthesis-overview">
       <p style={{ margin: "0 0 8px", fontSize: 12, color: "#64748b" }}>
-        {t("providerClinicalSynthesisD4a26a.safety.noAuto")}
+        {t("providerClinicalSynthesisD4a26a.safety.noAuto")}{" "}
+        {t("providerLegalRecordD4a26b.neverAutoAck")}
       </p>
 
       <Section title={t("providerClinicalSynthesisD4a26a.overview.title")} testId="provider-overview-live">

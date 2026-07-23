@@ -5,6 +5,7 @@ import Link from "next/link";
 import {
   filterProviderCensusRows,
   sortProviderCensusRows,
+  PROVIDER_CENSUS_UNSUPPORTED_FACETS,
   type ProviderCensusSort,
 } from "@medora/shared";
 import { useI18n } from "@/lib/i18n";
@@ -86,6 +87,11 @@ export function ProviderCensusBoard() {
       <h2 style={{ margin: "0 0 8px", fontSize: 14, fontWeight: 700 }}>
         {t("providerClinicalSynthesisD4a26a.census.title")}
       </h2>
+      <p style={{ margin: "0 0 8px", fontSize: 11, color: "#64748b" }} data-testid="census-unsupported-facets">
+        {t("providerLegalRecordD4a26b.facetUnsupported")}:{" "}
+        {PROVIDER_CENSUS_UNSUPPORTED_FACETS.slice(0, 8).join(", ")}
+        {PROVIDER_CENSUS_UNSUPPORTED_FACETS.length > 8 ? "…" : ""}
+      </p>
       <div
         style={{
           display: "flex",
