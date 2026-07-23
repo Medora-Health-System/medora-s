@@ -76,24 +76,28 @@ async function getFacilityId(
   accessToken: string | null,
   apiUrl: string
 ): Promise<string | null> {
+  const { resolveProxyFacilityId, logFacilityContextEvent, defaultFacilityIdFromRoles } = await import(
+    "@/lib/server/facilityContextSync"
+  );
+
   const headerFacilityId = req.headers.get("x-facility-id");
-  if (headerFacilityId) return headerFacilityId;
-
-  const fromReqFacility =
-    req.cookies.get("facilityId")?.value?.trim() ?? req.cookies.get("medora_facility_id")?.value?.trim() ?? null;
-  if (fromReqFacility) return fromReqFacility;
-
   const cookieHeader = req.headers.get("cookie");
-  const facilityFromHeader =
-    parseCookieHeader(cookieHeader, "facilityId") ??
-    parseCookieHeader(cookieHeader, "medora_facility_id");
-  if (facilityFromHeader) return facilityFromHeader;
-
   const cookieStore = await cookies();
-  const cookieFacilityId = cookieStore.get("facilityId")?.value ?? cookieStore.get("medora_facility_id")?.value;
-  if (cookieFacilityId) return cookieFacilityId;
 
-  if (accessToken) {
+  const httpOnlyFacilityId =
+    req.cookies.get("facilityId")?.value?.trim() ||
+    parseCookieHeader(cookieHeader, "facilityId") ||
+    cookieStore.get("facilityId")?.value?.trim() ||
+    null;
+
+  const readableFacilityId =
+    req.cookies.get("medora_facility_id")?.value?.trim() ||
+    parseCookieHeader(cookieHeader, "medora_facility_id") ||
+    cookieStore.get("medora_facility_id")?.value?.trim() ||
+    null;
+
+  let authDefaultFacilityId: string | null = null;
+  if (!headerFacilityId && !httpOnlyFacilityId && !readableFacilityId && accessToken) {
     try {
       const requestId = req.headers.get("x-request-id")?.trim();
       const meHeaders: Record<string, string> = {
@@ -106,15 +110,40 @@ async function getFacilityId(
       });
       if (meResponse.ok) {
         const userData = await meResponse.json();
-        const firstFacilityId = userData?.facilityRoles?.[0]?.facilityId;
-        if (firstFacilityId) return firstFacilityId;
+        authDefaultFacilityId = defaultFacilityIdFromRoles(userData?.facilityRoles ?? []);
       }
     } catch (e) {
       console.error("Failed to fetch facilityId from /auth/me:", e);
     }
   }
 
-  return null;
+  const resolved = resolveProxyFacilityId({
+    headerFacilityId,
+    httpOnlyFacilityId,
+    readableFacilityId,
+    authDefaultFacilityId,
+  });
+
+  if (resolved.cookieMismatch) {
+    logFacilityContextEvent("facility_cookie_mismatch", {
+      previousFacilityId: resolved.previousHttpOnlyFacilityId,
+      requestedFacilityId: resolved.previousReadableFacilityId,
+      resolvedFacilityId: resolved.facilityId,
+      route: req.nextUrl.pathname,
+      source: resolved.source,
+    });
+  }
+
+  if (resolved.facilityId) {
+    logFacilityContextEvent("facility_context_forwarded", {
+      resolvedFacilityId: resolved.facilityId,
+      route: req.nextUrl.pathname,
+      source: resolved.source,
+      cookieMismatch: resolved.cookieMismatch,
+    });
+  }
+
+  return resolved.facilityId;
 }
 
 /**

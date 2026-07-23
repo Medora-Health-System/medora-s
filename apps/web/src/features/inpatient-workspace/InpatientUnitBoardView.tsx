@@ -48,9 +48,17 @@ export function InpatientUnitBoardView({ mode }: { mode: Mode }) {
       setLoading(true);
       setError(null);
       try {
+        if (!facilityId?.trim()) {
+          if (!cancelled) {
+            setPatients([]);
+            setMeta(null);
+            setLoading(false);
+          }
+          return;
+        }
         const [census, tree] = await Promise.all([
-          fetchHospitalCensus("INPATIENT"),
-          fetchHospitalServiceLineTree(),
+          fetchHospitalCensus("INPATIENT", { facilityId }),
+          fetchHospitalServiceLineTree({ facilityId }),
         ]);
         if (cancelled) return;
 
@@ -130,7 +138,7 @@ export function InpatientUnitBoardView({ mode }: { mode: Mode }) {
     return () => {
       cancelled = true;
     };
-  }, [mode, t]);
+  }, [mode, t, facilityId]);
 
   const shellProps = useMemo(() => meta, [meta]);
 

@@ -81,7 +81,7 @@ export function InpatientActiveWorkspaceView({
   const router = useRouter();
   const pathname = usePathname() ?? "";
   const searchParams = useSearchParams();
-  const { roles, ready: authReady } = useFacilityAndRoles();
+  const { roles, ready: authReady, facilityId } = useFacilityAndRoles();
   const encounterId = String(params?.id ?? "").trim();
   const workspaceEnabled = isInpatientWorkspaceEnabledInBrowser();
 
@@ -152,7 +152,7 @@ export function InpatientActiveWorkspaceView({
     setLoading(true);
     setErrorCategory(null);
     try {
-      const data = await fetchInpatientWorkspaceBootstrap(encounterId, role);
+      const data = await fetchInpatientWorkspaceBootstrap(encounterId, role, { facilityId });
       setBootstrap(data);
       if (!data.resolution.ok) {
         setErrorCategory(data.resolution.category);
@@ -175,7 +175,7 @@ export function InpatientActiveWorkspaceView({
     } finally {
       setLoading(false);
     }
-  }, [encounterId, role, router]);
+  }, [encounterId, role, router, facilityId]);
 
   useEffect(() => {
     void loadBootstrap();

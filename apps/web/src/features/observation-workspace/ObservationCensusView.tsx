@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useI18n } from "@/lib/i18n";
+import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import { HospitalCareShell } from "@/features/hospital-care/HospitalCareShell";
 import { HospitalCareActivePatientsSection } from "@/features/hospital-care/HospitalCareActivePatientsSection";
 import {
@@ -16,17 +17,24 @@ import { isForbiddenApiError } from "@/features/hospital-care/hospitalCarePlacem
  */
 export function ObservationCensusView() {
   const { t } = useI18n();
+  const { facilityId, ready } = useFacilityAndRoles();
   const [census, setCensus] = useState<HospitalCensusResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
+    if (!ready || !facilityId?.trim()) {
+      setLoading(!ready);
+      return () => {
+        cancelled = true;
+      };
+    }
     void (async () => {
       setLoading(true);
       setError(null);
       try {
-        const data = await fetchHospitalCensus("OBSERVATION");
+        const data = await fetchHospitalCensus("OBSERVATION", { facilityId });
         if (!cancelled) setCensus(data);
       } catch (err) {
         if (!cancelled) {
@@ -44,7 +52,7 @@ export function ObservationCensusView() {
     return () => {
       cancelled = true;
     };
-  }, [t]);
+  }, [t, ready, facilityId]);
 
   return (
     <HospitalCareShell

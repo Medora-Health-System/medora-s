@@ -14,6 +14,7 @@ import {
   type HospitalWorkspaceBootstrapV1,
 } from "@medora/shared";
 import { useI18n } from "@/lib/i18n";
+import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import { MEDORA_CARD_SHELL } from "@/components/medora-card/medoraCardTokens";
 import { OBSERVATION_CENSUS_PATH, isObservationWorkspaceEnabledInBrowser } from "./observationWorkspacePaths";
 import {
@@ -34,6 +35,7 @@ export function ObservationActiveWorkspaceView({
   const params = useParams();
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { facilityId } = useFacilityAndRoles();
   const encounterId = String(params?.id ?? "").trim();
   const workspaceEnabled = isObservationWorkspaceEnabledInBrowser();
 
@@ -87,7 +89,7 @@ export function ObservationActiveWorkspaceView({
     setLoading(true);
     setError(null);
     try {
-      const payload = await fetchObservationWorkspaceBootstrap(encounterId, role);
+      const payload = await fetchObservationWorkspaceBootstrap(encounterId, role, { facilityId });
       if (!payload.resolution.ok || !payload.header) {
         setBootstrap(payload);
         setError(
@@ -106,7 +108,7 @@ export function ObservationActiveWorkspaceView({
     } finally {
       setLoading(false);
     }
-  }, [encounterId, role, t]);
+  }, [encounterId, role, t, facilityId]);
 
   useEffect(() => {
     void loadBootstrap();

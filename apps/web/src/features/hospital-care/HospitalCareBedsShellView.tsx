@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useI18n } from "@/lib/i18n";
+import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import { HospitalCareShell } from "./HospitalCareShell";
 import { HOSPITAL_CARE_FLOOR_BOARD } from "./hospitalCarePaths";
 import {
@@ -17,14 +18,20 @@ import { isForbiddenApiError } from "./hospitalCarePlacementApi";
  */
 export function HospitalCareBedsShellView() {
   const { t } = useI18n();
+  const { facilityId, ready } = useFacilityAndRoles();
   const [census, setCensus] = useState<HospitalCensusResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
+    if (!ready || !facilityId?.trim()) {
+      return () => {
+        cancelled = true;
+      };
+    }
     void (async () => {
       try {
-        const data = await fetchHospitalCensus();
+        const data = await fetchHospitalCensus("ALL_HOSPITAL_CARE", { facilityId });
         if (!cancelled) setCensus(data);
       } catch (err) {
         if (!cancelled) {
@@ -40,7 +47,7 @@ export function HospitalCareBedsShellView() {
     return () => {
       cancelled = true;
     };
-  }, [t]);
+  }, [t, ready, facilityId]);
 
   const s = census?.summary;
   const tiles: Array<[string, string, number | null]> = [

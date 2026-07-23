@@ -249,11 +249,14 @@ export async function fetchAuthoritativeClinicalProjection(encounterId: string) 
 /** D4A.2.7B — Type-gated hospital workspace bootstrap. */
 export async function fetchInpatientWorkspaceBootstrap(
   encounterId: string,
-  role?: string
+  role?: string,
+  options?: { facilityId?: string | null }
 ) {
   const qs = role ? `?role=${encodeURIComponent(role)}` : "";
+  const facilityId = options?.facilityId?.trim() || undefined;
   return apiFetch(
-    `/inpatient-operations/encounters/${encodeURIComponent(encounterId)}/workspace-bootstrap${qs}`
+    `/inpatient-operations/encounters/${encodeURIComponent(encounterId)}/workspace-bootstrap${qs}`,
+    { facilityId }
   ) as Promise<import("@medora/shared").HospitalWorkspaceBootstrapV1>;
 }
 

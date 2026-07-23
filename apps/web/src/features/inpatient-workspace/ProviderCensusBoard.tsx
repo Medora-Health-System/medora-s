@@ -9,6 +9,7 @@ import {
   type ProviderCensusSort,
 } from "@medora/shared";
 import { useI18n } from "@/lib/i18n";
+import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import { MEDORA_CARD_SHELL } from "@/components/medora-card/medoraCardTokens";
 import {
   fetchHospitalCensus,
@@ -21,6 +22,7 @@ import { inpatientActiveWorkspacePath } from "./inpatientWorkspacePaths";
  */
 export function ProviderCensusBoard() {
   const { t } = useI18n();
+  const { facilityId, ready } = useFacilityAndRoles();
   const [rows, setRows] = useState<HospitalCensusPatientRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -35,11 +37,17 @@ export function ProviderCensusBoard() {
 
   useEffect(() => {
     let cancelled = false;
+    if (!ready || !facilityId?.trim()) {
+      setLoading(!ready);
+      return () => {
+        cancelled = true;
+      };
+    }
     void (async () => {
       setLoading(true);
       setError(null);
       try {
-        const census = await fetchHospitalCensus("ALL_HOSPITAL_CARE");
+        const census = await fetchHospitalCensus("ALL_HOSPITAL_CARE", { facilityId });
         if (!cancelled) setRows(census.allHospitalPatients ?? []);
       } catch {
         if (!cancelled) {
@@ -53,7 +61,7 @@ export function ProviderCensusBoard() {
     return () => {
       cancelled = true;
     };
-  }, [t]);
+  }, [t, ready, facilityId]);
 
   const visible = useMemo(() => {
     const filtered = filterProviderCensusRows(rows, {
