@@ -1,24 +1,27 @@
 /**
- * D3E.6A — Server-owned canonical hospital census.
- * Facility always from JWT. Clinical identity via resolveClinicalEncounterContext.
+ * D3E.6A / D4A.2.8-HF1 — Server-owned canonical hospital census.
+ * Facility always from JWT. Encounter-authoritative via compatibility-aware repo.
+ * Missing optional Encounter.hospitalEpisodeId must never empty the census.
  */
 
-import { Injectable } from "@nestjs/common";
+import { Injectable, Logger } from "@nestjs/common";
 import {
   buildHospitalCensusV1,
   type HospitalCensusV1,
   type HospitalOperationalSnapshotV1,
 } from "@medora/shared";
 import { InternalPlacementService } from "./internal-placement.service";
-import { TrackboardService } from "../trackboard/trackboard.service";
 import { FacilityBedBoardService } from "../facilities/facility-bed-board.service";
+import { SchemaCompatibleEncounterRepository } from "./schema-compatible-encounter.repository";
 
 @Injectable()
 export class HospitalCensusService {
+  private readonly logger = new Logger(HospitalCensusService.name);
+
   constructor(
     private readonly placement: InternalPlacementService,
-    private readonly trackboard: TrackboardService,
-    private readonly bedBoard: FacilityBedBoardService
+    private readonly bedBoard: FacilityBedBoardService,
+    private readonly encounters: SchemaCompatibleEncounterRepository
   ) {}
 
   async getHospitalCensus(
@@ -27,17 +30,25 @@ export class HospitalCensusService {
   ): Promise<HospitalCensusV1> {
     const fid = String(facilityId ?? "").trim();
 
+    // Placement is optional operational overlay — never let it empty clinical census.
     const [activeEncounters, queue, bedView] = await Promise.all([
-      this.trackboard.getActiveEncounters(fid, "OPEN", "INPATIENT"),
+      this.encounters.findOpenHospitalEncountersForCensus(fid),
       this.placement.listFacilityQueue(fid, { strict: false }),
-      this.bedBoard.getBedBoard(fid).catch(() => null),
+      this.bedBoard.getBedBoard(fid).catch((err: unknown) => {
+        this.logger.warn(
+          `bed_board_unavailable_for_census facilityId=${fid} err=${
+            err instanceof Error ? err.name : typeof err
+          }`
+        );
+        return null;
+      }),
     ]);
 
     const encounters = activeEncounters.map((e) => ({
       id: e.id,
       facilityId: e.facilityId,
-      type: e.type,
-      status: e.status,
+      type: String(e.type),
+      status: String(e.status),
       billingClassification: e.billingClassification ?? null,
       admissionSummaryJson: e.admissionSummaryJson,
       admittedAt: e.admittedAt ?? null,
@@ -68,14 +79,11 @@ export class HospitalCensusService {
             lastName: e.nurseAssigned.lastName,
           }
         : null,
-      observationOps: e.observationOps ?? null,
-      trackboardOps: e.trackboardOps
-        ? {
-            resultsPendingCount: e.trackboardOps.resultsPendingCount,
-            criticalResultUnacknowledged: e.trackboardOps.criticalResultUnacknowledged,
-          }
-        : null,
+      observationOps: null,
+      trackboardOps: null,
     }));
+
+    const censusEncounterIds = new Set(encounters.map((e) => e.id));
 
     let bedSummary: {
       total: number;
@@ -84,6 +92,8 @@ export class HospitalCensusService {
       cleaning: number;
       blocked: number;
     } | null = null;
+    const occupiedBedKeysWithoutEncounter: string[] = [];
+
     if (bedView?.units?.length) {
       let available = 0;
       let occupied = 0;
@@ -94,6 +104,17 @@ export class HospitalCensusService {
         occupied += unit.summary.occupied ?? 0;
         cleaning += unit.summary.cleaning ?? 0;
         blocked += unit.summary.blocked ?? 0;
+        for (const bed of unit.beds ?? []) {
+          const isOccupied =
+            String(bed.status ?? "").toUpperCase() === "OCCUPIED" ||
+            Boolean(bed.occupantEncounterId) ||
+            Boolean(bed.occupantPatientName);
+          if (!isOccupied) continue;
+          const occupantId = String(bed.occupantEncounterId ?? "").trim();
+          if (!occupantId || !censusEncounterIds.has(occupantId)) {
+            occupiedBedKeysWithoutEncounter.push(String(bed.bedKey ?? bed.display ?? ""));
+          }
+        }
       }
       bedSummary = {
         total: available + occupied + cleaning + blocked,
@@ -121,6 +142,7 @@ export class HospitalCensusService {
       })),
       bedSummary,
       snapshotScope: options?.snapshotScope ?? "ALL_HOSPITAL_CARE",
+      occupiedBedKeysWithoutEncounter: occupiedBedKeysWithoutEncounter.filter(Boolean),
     });
   }
 }

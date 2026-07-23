@@ -12,6 +12,7 @@ import { ObservationOperationsService } from "./observation-operations.service";
 import { InpatientLifecycleService } from "./inpatient-lifecycle.service";
 import { HospitalCensusService } from "./hospital-census.service";
 import { HospitalUnitRegistryService } from "./hospital-unit-registry.service";
+import { SchemaCompatibleEncounterRepository } from "./schema-compatible-encounter.repository";
 import { EncounterChartExportService } from "./chart-export.service";
 import { UnifiedEncounterTimelineService } from "./unified-encounter-timeline.service";
 import { PrismaModule } from "../prisma/prisma.module";
@@ -81,6 +82,7 @@ import { HospitalTimelineEngine } from "./enterprise-workflow/hospital-timeline.
     EscalationEngine,
     HospitalTimelineEngine,
     EnterpriseWorkflowOrchestrationService,
+    SchemaCompatibleEncounterRepository,
     HospitalCensusService,
     HospitalUnitRegistryService,
     ChartCertificationB1Service,

@@ -21,6 +21,7 @@ import {
 } from "@medora/shared";
 import { PrismaService } from "../prisma/prisma.service";
 import { AuditService } from "../common/services/audit.service";
+import { SchemaCompatibleEncounterRepository } from "./schema-compatible-encounter.repository";
 
 @Injectable()
 export class ObservationOperationsService {
@@ -28,7 +29,8 @@ export class ObservationOperationsService {
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly audit: AuditService
+    private readonly audit: AuditService,
+    private readonly compatibleEncounters: SchemaCompatibleEncounterRepository
   ) {}
 
   async getWorkspaceBootstrap(
@@ -69,44 +71,11 @@ export class ObservationOperationsService {
       };
     }
 
-    const enc = await this.prisma.encounter.findFirst({
-      where: { id: requested, facilityId },
-      select: {
-        id: true,
-        facilityId: true,
-        patientId: true,
-        type: true,
-        status: true,
-        admittedAt: true,
-        roomLabel: true,
-        chiefComplaint: true,
-        hospitalEpisodeId: true,
-        admissionSummaryJson: true,
-        billingClassification: true,
-        providerDocumentationStatus: true,
-        physicianAssigned: {
-          select: { firstName: true, lastName: true },
-        },
-        nurseAssigned: {
-          select: { firstName: true, lastName: true },
-        },
-        patient: {
-          select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            mrn: true,
-            dob: true,
-            sexAtBirth: true,
-            language: true,
-            clinicalHistoryProfileJson: true,
-            latestVitalsJson: true,
-            latestVitalsAt: true,
-          },
-        },
-        facility: { select: { name: true } },
-      },
-    });
+    // D4A.2.8-HF1: compatibility-aware projection — never select hospitalEpisodeId when foundation OFF.
+    const enc = await this.compatibleEncounters.findFacilityEncounterForWorkspace(
+      facilityId,
+      requested
+    );
 
     if (!enc) {
       await this.audit.log(AuditAction.CHART_ACCESS, "ObservationWorkspace", {
@@ -179,7 +148,7 @@ export class ObservationOperationsService {
           requestedEncounterId: requested,
           category: gate.category,
           writersEnabled: false,
-          actualEncounterType: enc.type,
+          actualEncounterType: String(enc.type),
           messageCode,
         },
         generatedAt,
@@ -257,8 +226,8 @@ export class ObservationOperationsService {
         clinicalContext: "OBSERVATION",
         facilityId: enc.facilityId,
         patientId: enc.patientId,
-        status: enc.status,
-        hospitalEpisodeId: enc.hospitalEpisodeId ?? null,
+        status: String(enc.status),
+        hospitalEpisodeId: enc.hospitalEpisodeId,
         writersEnabled: true,
       },
       generatedAt,
@@ -292,7 +261,7 @@ export class ObservationOperationsService {
         room: roomParts[1] ?? roomParts[0] ?? null,
         bed: roomParts.length > 2 ? roomParts[2]! : null,
         levelOfCare: "OBSERVATION",
-        encounterStatus: enc.status,
+        encounterStatus: String(enc.status),
         chiefConcern: enc.chiefComplaint ?? null,
         codeStatus: ops.codeStatus?.status ?? null,
         isolation: ops.isolation?.precautions ?? null,

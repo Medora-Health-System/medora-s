@@ -139,6 +139,24 @@ export class AllExceptionsFilter implements ExceptionFilter {
         code,
         errorCode: code,
       };
+    } else if (
+      isPrismaMissingHospitalEpisodeIdColumn(exception) &&
+      typeof request.url === "string" &&
+      (request.url.includes("/workspace-bootstrap") ||
+        request.url.includes("/hospital-care/census") ||
+        request.url.includes("/hospital-care/dashboard") ||
+        request.url.includes("/hospital-care/units"))
+    ) {
+      // D4A.2.8-HF1 belt-and-suspenders — preferred path never selects the column.
+      status = HttpStatus.SERVICE_UNAVAILABLE;
+      const code = "SCHEMA_COMPATIBILITY" as const;
+      message = {
+        statusCode: status,
+        message:
+          "Compatibilité du schéma hospitalier indisponible. Contactez un administrateur.",
+        code,
+        errorCode: code,
+      };
     } else {
       status = HttpStatus.INTERNAL_SERVER_ERROR;
       if (isDev) {

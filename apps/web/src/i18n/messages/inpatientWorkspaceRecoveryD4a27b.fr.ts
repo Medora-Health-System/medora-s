@@ -47,13 +47,20 @@ export const inpatientWorkspaceRecoveryD4a27bFr = {
     FACILITY_MISMATCH: "Cette rencontre appartient à un autre établissement.",
     WRONG_ENCOUNTER_TYPE:
       "Cette rencontre n’est pas un dossier d’hospitalisation. La rédaction reste bloquée.",
+    ENCOUNTER_TYPE_MISMATCH:
+      "Le type de rencontre ne correspond pas à l’espace d’hospitalisation. La rédaction reste bloquée.",
     ED_ENCOUNTER_REJECTED:
       "Une rencontre des urgences ne peut pas être ouverte comme espace d’hospitalisation.",
     OBSERVATION_ENCOUNTER_REJECTED:
       "Cette rencontre d’observation doit être ouverte dans l’espace Observation.",
     UNAUTHORIZED: "Accès restreint pour ce dossier d’hospitalisation.",
+    FORBIDDEN: "Vous n’avez pas l’autorisation d’ouvrir ce dossier d’hospitalisation.",
     FEATURE_DISABLED:
       "L’espace clinique d’hospitalisation n’est pas configuré pour cet établissement.",
+    SCHEMA_COMPATIBILITY:
+      "Problème de compatibilité du schéma hospitalier. Contactez un administrateur. La rédaction reste bloquée.",
+    SERVER_ERROR:
+      "Erreur serveur lors de l’ouverture du dossier d’hospitalisation. Réessayez ou contactez le support.",
     NETWORK: "Temporairement indisponible. Vérifiez la connexion et réessayez.",
     UNKNOWN:
       "Impossible de résoudre la rencontre d’hospitalisation active pour cet épisode hospitalier.",

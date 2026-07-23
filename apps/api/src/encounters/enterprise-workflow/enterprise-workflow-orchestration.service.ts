@@ -17,6 +17,7 @@ import {
   ENTERPRISE_WORKFLOW_ENGINE_CERTIFICATION_ID,
   aggregateAdminDashboard,
   buildDepartmentWorklist,
+  hospitalEpisodeFoundationEnabledFromProcessEnv,
   mergeEnterpriseWorkflowOrchestrationIntoSummary,
   readEnterpriseWorkflowOrchestrationDoc,
   type EnterpriseTaskV1,
@@ -53,18 +54,33 @@ export class EnterpriseWorkflowOrchestrationService {
   ) {}
 
   private async loadEncounterBag(facilityId: string, encounterId: string) {
+    // D4A.2.8-HF1: never select Encounter.hospitalEpisodeId when foundation OFF (P2022).
+    const foundationOn = hospitalEpisodeFoundationEnabledFromProcessEnv();
     const enc = await this.prisma.encounter.findFirst({
       where: { id: encounterId, facilityId },
-      select: {
-        id: true,
-        patientId: true,
-        facilityId: true,
-        hospitalEpisodeId: true,
-        admissionSummaryJson: true,
-      },
+      select: foundationOn
+        ? {
+            id: true,
+            patientId: true,
+            facilityId: true,
+            hospitalEpisodeId: true,
+            admissionSummaryJson: true,
+          }
+        : {
+            id: true,
+            patientId: true,
+            facilityId: true,
+            admissionSummaryJson: true,
+          },
     });
     if (!enc) throw new NotFoundException("Encounter not found");
-    return enc;
+    return {
+      ...enc,
+      hospitalEpisodeId:
+        foundationOn && "hospitalEpisodeId" in enc
+          ? ((enc as { hospitalEpisodeId?: string | null }).hospitalEpisodeId ?? null)
+          : null,
+    };
   }
 
   private async persistDoc(

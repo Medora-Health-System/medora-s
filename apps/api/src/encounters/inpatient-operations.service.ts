@@ -167,6 +167,7 @@ import {
 } from "./direct-admission-api-errors.util";
 import { sanitizePrismaException } from "../common/logging/prisma-error-sanitizer";
 import { ClinicalSynthesisService } from "./clinical-synthesis.service";
+import { SchemaCompatibleEncounterRepository } from "./schema-compatible-encounter.repository";
 
 /** Observation is a clinical lane (billing / summary), not EncounterType.OBSERVATION. */
 function isExplicitObservationChart(enc: {
@@ -235,7 +236,8 @@ export class InpatientOperationsService {
     private readonly audit: AuditService,
     private readonly admissionCorrelation: AdmissionCorrelationService,
     private readonly bedBoardService: FacilityBedBoardService,
-    private readonly clinicalSynthesis: ClinicalSynthesisService
+    private readonly clinicalSynthesis: ClinicalSynthesisService,
+    private readonly compatibleEncounters: SchemaCompatibleEncounterRepository
   ) {}
 
   /** Map Prisma P2022 on Encounter.hospitalEpisodeId to a coded clinical-safe error. */
@@ -1328,44 +1330,11 @@ export class InpatientOperationsService {
       };
     }
 
-    const enc = await this.prisma.encounter.findFirst({
-      where: { id: requested, facilityId },
-      select: {
-        id: true,
-        facilityId: true,
-        patientId: true,
-        type: true,
-        status: true,
-        admittedAt: true,
-        roomLabel: true,
-        chiefComplaint: true,
-        hospitalEpisodeId: true,
-        admissionSummaryJson: true,
-        providerDocumentationStatus: true,
-        physicianAssigned: {
-          select: { firstName: true, lastName: true },
-        },
-        nurseAssigned: {
-          select: { firstName: true, lastName: true },
-        },
-        patient: {
-          select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            middleName: true,
-            mrn: true,
-            dob: true,
-            sexAtBirth: true,
-            language: true,
-            clinicalHistoryProfileJson: true,
-            latestVitalsJson: true,
-            latestVitalsAt: true,
-          },
-        },
-        facility: { select: { name: true } },
-      },
-    });
+    // D4A.2.8-HF1: compatibility-aware projection — never select hospitalEpisodeId when foundation OFF.
+    const enc = await this.compatibleEncounters.findFacilityEncounterForWorkspace(
+      facilityId,
+      requested
+    );
 
     if (!enc) {
       await this.audit.log(AuditAction.CHART_ACCESS, "InpatientWorkspace", {
@@ -1404,7 +1373,7 @@ export class InpatientOperationsService {
       };
     }
 
-    if (enc.type !== EncounterType.INPATIENT) {
+    if (String(enc.type) !== EncounterType.INPATIENT) {
       const mismatch = buildEncounterMismatchResolution({
         requestedEncounterId: requested,
         actualType: String(enc.type),
@@ -1504,8 +1473,10 @@ export class InpatientOperationsService {
         event: "INPATIENT_WORKSPACE_OPENED",
         workspace: options?.workspace ?? "inpatient",
         role,
-        hospitalEpisodeId: enc.hospitalEpisodeId ?? null,
+        hospitalEpisodeId: enc.hospitalEpisodeId,
         accessKind: "OPEN",
+        hospitalEpisodeFoundationEnabled:
+          this.compatibleEncounters.isHospitalEpisodeFoundationEnabled(),
       },
     });
 
@@ -1518,8 +1489,8 @@ export class InpatientOperationsService {
         clinicalContext: "INPATIENT",
         facilityId: enc.facilityId,
         patientId: enc.patientId,
-        status: enc.status,
-        hospitalEpisodeId: enc.hospitalEpisodeId ?? null,
+        status: String(enc.status),
+        hospitalEpisodeId: enc.hospitalEpisodeId,
         writersEnabled: true,
       },
       generatedAt,
@@ -1534,7 +1505,7 @@ export class InpatientOperationsService {
         sexAtBirth: enc.patient?.sexAtBirth ?? null,
         preferredLanguage: enc.patient?.language ?? null,
         interpreterRequired: null,
-        encounterType: enc.type,
+        encounterType: String(enc.type),
         hospitalDay: computeHospitalDay(enc.admittedAt),
         admittedAt: enc.admittedAt ? new Date(enc.admittedAt).toISOString() : null,
         admissionSource: null,
@@ -1546,7 +1517,7 @@ export class InpatientOperationsService {
         room: enc.roomLabel ?? null,
         bed: roomParts.length > 2 ? roomParts[2]! : null,
         levelOfCare: null,
-        encounterStatus: enc.status,
+        encounterStatus: String(enc.status),
         chiefConcern: enc.chiefComplaint ?? null,
         codeStatus: ops.codeStatus?.status ?? null,
         isolation: ops.isolation?.precautions ?? null,

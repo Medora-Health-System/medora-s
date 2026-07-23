@@ -12,6 +12,7 @@ import {
   providerPrimaryNav,
   nursingPrimaryNav,
   technicianPrimaryNav,
+  type EncounterResolutionFailureCategory,
   type HospitalWorkspaceBootstrapV1,
   type InpatientWorkspaceRole,
 } from "@medora/shared";
@@ -37,6 +38,7 @@ import { InpatientEncounterUnavailablePanel } from "./InpatientEncounterUnavaila
 import { fetchInpatientWorkspaceBootstrap } from "@/features/hospital-care/inpatientOperationsApi";
 import { emergencyActiveWorkspacePath } from "@/features/emergency/emergencyRoutes";
 import { observationActiveWorkspacePath } from "@/features/observation-workspace/observationWorkspacePaths";
+import { classifyInpatientBootstrapClientError } from "./inpatientBootstrapClientErrors";
 
 function roleFromPath(pathname: string): InpatientWorkspaceRole {
   if (pathname.endsWith("/provider")) return "PROVIDER";
@@ -119,7 +121,9 @@ export function InpatientActiveWorkspaceView({
   );
   const [bootstrap, setBootstrap] = useState<HospitalWorkspaceBootstrapV1 | null>(null);
   const [loading, setLoading] = useState(true);
-  const [errorCategory, setErrorCategory] = useState<string | null>(null);
+  const [errorCategory, setErrorCategory] = useState<
+    EncounterResolutionFailureCategory | string | null
+  >(null);
 
   useEffect(() => {
     const fromUrl = parseInpatientWorkspaceSection(searchParams.get("section"));
@@ -152,9 +156,9 @@ export function InpatientActiveWorkspaceView({
       if (!data.resolution.ok) {
         setErrorCategory(data.resolution.category);
       }
-    } catch {
+    } catch (err) {
       setBootstrap(null);
-      setErrorCategory("NETWORK");
+      setErrorCategory(classifyInpatientBootstrapClientError(err));
     } finally {
       setLoading(false);
     }
