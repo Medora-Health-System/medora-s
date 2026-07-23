@@ -47,12 +47,18 @@ export const inpatientWorkspaceRecoveryD4a27bEn = {
     FACILITY_MISMATCH: "This encounter belongs to another facility.",
     WRONG_ENCOUNTER_TYPE:
       "This encounter is not an Inpatient chart. Writers remain blocked.",
+    ENCOUNTER_TYPE_MISMATCH:
+      "This encounter type does not match the Inpatient workspace. Writers remain blocked.",
     ED_ENCOUNTER_REJECTED:
       "An Emergency Department encounter cannot be opened as the Inpatient workspace.",
     OBSERVATION_ENCOUNTER_REJECTED:
       "This Observation encounter must be opened in the Observation workspace.",
     UNAUTHORIZED: "Access restricted for this Inpatient chart.",
+    FORBIDDEN: "You do not have permission to open this Inpatient chart.",
     FEATURE_DISABLED: "The Inpatient clinical workspace is not configured for this facility.",
+    SCHEMA_COMPATIBILITY:
+      "Hospital schema compatibility issue. Contact an administrator. Writers remain blocked.",
+    SERVER_ERROR: "Server error while opening the Inpatient chart. Retry or contact support.",
     NETWORK: "Temporarily unavailable. Check the connection and retry.",
     UNKNOWN: "We could not resolve the active Inpatient encounter for this hospital episode.",
   },

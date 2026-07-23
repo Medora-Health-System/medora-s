@@ -143,11 +143,19 @@ describe("createDirectAdmission expand-and-contract (D3B)", () => {
       assertBedAssignableOrThrow: jest.fn(),
     };
 
+    const clinicalSynthesis = {} as never;
+    const compatibleEncounters = {
+      isHospitalEpisodeFoundationEnabled: jest.fn().mockReturnValue(false),
+      findFacilityEncounterForWorkspace: jest.fn(),
+      findOpenHospitalEncountersForCensus: jest.fn(),
+    };
     const svc = new InpatientOperationsService(
       prisma as never,
       audit as never,
       admissionCorrelation,
-      bedBoardService as never
+      bedBoardService as never,
+      clinicalSynthesis,
+      compatibleEncounters as never
     );
     return { svc, prisma, encounterCreate, encounterUpdate, findMany, audit };
   }
@@ -284,6 +292,12 @@ describe("createDirectAdmission expand-and-contract (D3B)", () => {
           occupantEncounterId: null,
         }),
         assertBedAssignableOrThrow: jest.fn(),
+      } as never,
+      {} as never,
+      {
+        isHospitalEpisodeFoundationEnabled: jest.fn().mockReturnValue(true),
+        findFacilityEncounterForWorkspace: jest.fn(),
+        findOpenHospitalEncountersForCensus: jest.fn(),
       } as never
     );
 
