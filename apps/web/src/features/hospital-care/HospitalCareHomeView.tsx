@@ -6,7 +6,6 @@ import { useI18n } from "@/lib/i18n";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import { MEDORA_CARD_SHELL } from "@/components/medora-card/medoraCardTokens";
 import { HospitalCareShell } from "./HospitalCareShell";
-import { HospitalCareActivePatientsSection } from "./HospitalCareActivePatientsSection";
 import { filterHospitalCareHomeTilesForRoles } from "./hospitalCareSectionAccess";
 import {
   fetchHospitalCareDashboard,
@@ -316,8 +315,8 @@ export function HospitalCareHomeView() {
             </section>
           ) : null}
 
-          {/* SECTION 4–5 — Filters + patients */}
-          {census ? <HospitalCareActivePatientsSection census={census} /> : null}
+          {/* D4A.2.8-HF4 — Active Hospital Patients removed from Home (executive overview only).
+              Patient lists remain on Observation / Inpatient / unit boards / Bed Management. */}
 
           {/* SECTION 6 — Attention */}
           {dashboard.attention.length > 0 ? (
