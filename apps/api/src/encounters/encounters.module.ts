@@ -7,6 +7,7 @@ import { HospitalCareController } from "./hospital-care.controller";
 import { InpatientOperationsController } from "./inpatient-operations.controller";
 import { EncountersService } from "./encounters.service";
 import { InpatientOperationsService } from "./inpatient-operations.service";
+import { InpatientLifecycleService } from "./inpatient-lifecycle.service";
 import { HospitalCensusService } from "./hospital-census.service";
 import { HospitalUnitRegistryService } from "./hospital-unit-registry.service";
 import { EncounterChartExportService } from "./chart-export.service";
@@ -49,6 +50,7 @@ import { AdmissionCommandCenterService } from "./admission-command-center.servic
   providers: [
     EncountersService,
     InpatientOperationsService,
+    InpatientLifecycleService,
     AdmissionCorrelationService,
     AdmissionCommandCenterService,
     HospitalCensusService,

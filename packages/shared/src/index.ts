@@ -135,6 +135,8 @@ export * from "./encounters/adaptiveEdNursingExecutionD4a2.js";
 export * from "./encounters/medSurgNursingAdmissionD4a1.js";
 export * from "./encounters/medSurgNursingAdmissionCompletionD4a1.js";
 export * from "./encounters/medSurgNursingAdmissionD4a1Benchmark.js";
+export * from "./encounters/inpatientLifecycleNursingAdmissionD4a25.js";
+export * from "./encounters/inpatientProviderWorkspaceD4a26.js";
 export * from "./patients/patientSearchAndSelectV1.js";
 export * from "./encounters/inpatientOperationsFeatureFlags.js";
 export * from "./encounters/inpatientClinicalOpsCertificationV1.js";

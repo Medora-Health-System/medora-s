@@ -1,16 +1,17 @@
-/** D3E — Inpatient clinical workspace tabs. */
+/** D3E / D4A.2.6 — Inpatient clinical workspace tabs (provider-first chrome). */
 export type InpatientWorkspaceSection =
   | "overview"
-  | "admission"
   | "historyPhysical"
+  | "problemsPlan"
   | "progressNotes"
-  | "nursing"
   | "orders"
   | "results"
   | "medications"
   | "consults"
   | "carePlan"
   | "dischargePlanning"
+  | "admission"
+  | "nursing"
   | "timeline"
   | "summary";
 
@@ -18,19 +19,20 @@ export const INPATIENT_WORKSPACE_SECTIONS: Array<{
   id: InpatientWorkspaceSection;
   labelKey: string;
 }> = [
-  { id: "overview", labelKey: "inpatientD3e.nav.overview" },
-  { id: "admission", labelKey: "inpatientD3e.nav.admission" },
-  { id: "historyPhysical", labelKey: "inpatientD3e.nav.historyPhysical" },
-  { id: "progressNotes", labelKey: "inpatientD3e.nav.progressNotes" },
-  { id: "nursing", labelKey: "inpatientD3e.nav.nursing" },
-  { id: "orders", labelKey: "inpatientD3e.nav.orders" },
-  { id: "results", labelKey: "inpatientD3e.nav.results" },
-  { id: "medications", labelKey: "inpatientD3e.nav.medications" },
-  { id: "consults", labelKey: "inpatientD3e.nav.consults" },
-  { id: "carePlan", labelKey: "inpatientD3e.nav.carePlan" },
-  { id: "dischargePlanning", labelKey: "inpatientD3e.nav.dischargePlanning" },
-  { id: "timeline", labelKey: "inpatientD3e.nav.timeline" },
-  { id: "summary", labelKey: "inpatientD3e.nav.summary" },
+  { id: "overview", labelKey: "inpatientProviderD4a26.nav.overview" },
+  { id: "historyPhysical", labelKey: "inpatientProviderD4a26.nav.historyPhysical" },
+  { id: "problemsPlan", labelKey: "inpatientProviderD4a26.nav.problemsPlan" },
+  { id: "progressNotes", labelKey: "inpatientProviderD4a26.nav.progressNotes" },
+  { id: "orders", labelKey: "inpatientProviderD4a26.nav.orders" },
+  { id: "results", labelKey: "inpatientProviderD4a26.nav.results" },
+  { id: "medications", labelKey: "inpatientProviderD4a26.nav.medications" },
+  { id: "consults", labelKey: "inpatientProviderD4a26.nav.consults" },
+  { id: "carePlan", labelKey: "inpatientProviderD4a26.nav.carePlan" },
+  { id: "dischargePlanning", labelKey: "inpatientProviderD4a26.nav.discharge" },
+  { id: "admission", labelKey: "inpatientProviderD4a26.nav.nursingAdmission" },
+  { id: "nursing", labelKey: "inpatientProviderD4a26.nav.nursing" },
+  { id: "timeline", labelKey: "inpatientProviderD4a26.nav.timeline" },
+  { id: "summary", labelKey: "inpatientProviderD4a26.nav.summary" },
 ];
 
 const SECTION_SET = new Set(INPATIENT_WORKSPACE_SECTIONS.map((s) => s.id));
@@ -51,6 +53,9 @@ export function parseInpatientWorkspaceSection(
     hp: "historyPhysical",
     historyphysical: "historyPhysical",
     handp: "historyPhysical",
+    problems: "problemsPlan",
+    problemsplan: "problemsPlan",
+    plan: "problemsPlan",
     progress: "progressNotes",
     progressnotes: "progressNotes",
     nursing: "nursing",
@@ -64,6 +69,7 @@ export function parseInpatientWorkspaceSection(
     dischargeplanning: "dischargePlanning",
     timeline: "timeline",
     summary: "summary",
+    rounding: "overview",
   };
   return alias[lower] ?? null;
 }

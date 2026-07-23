@@ -49,6 +49,7 @@ describe("D3E Inpatient clinical workspace UI contracts", () => {
     for (const required of [
       "overview",
       "historyPhysical",
+      "problemsPlan",
       "progressNotes",
       "nursing",
       "orders",

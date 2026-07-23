@@ -71,10 +71,27 @@ import {
   isAdmissionCompletionState,
   patientClinicalHistoryProfileFromJson,
   MEDSURG_NURSING_ADMISSION_CERTIFICATION_ID,
+  INPATIENT_LIFECYCLE_NURSING_ADMISSION_CERTIFICATION_ID,
+  reviewNursingAdmission,
+  validateSectionAnswersForCompletion,
+  INPATIENT_PROVIDER_WORKSPACE_CERTIFICATION_ID,
+  PROVIDER_EVENT_ACK_STATUSES,
+  PROVIDER_HP_SECTION_KEYS,
+  emptyInpatientProviderWorkspaceV1,
+  readInpatientProviderWorkspace,
+  mergeInpatientProviderWorkspaceIntoSummary,
+  acknowledgeProviderEvent,
+  upsertProviderProblemPlan,
+  saveProviderHpDraft,
+  signProviderHpDraft,
+  deriveProviderTasksFromOps,
   type MedSurgNursingAdmissionDocV1,
   type InpatientAdmissionClinicalSection,
   type AdmissionHistoryVerificationStatus,
   type AdmissionSectionCompletionState,
+  type ProviderEventAckStatus,
+  type ProviderHpSectionKey,
+  type ProviderProblemPlanItemV1,
 } from "@medora/shared";
 import { PrismaService } from "../prisma/prisma.service";
 import { AuditService } from "../common/services/audit.service";
@@ -1432,6 +1449,16 @@ export class InpatientOperationsService {
     };
   }
 
+  async reviewNursingAdmissionDocumentation(facilityId: string, encounterId: string) {
+    const payload = await this.getNursingAdmissionDocumentation(facilityId, encounterId);
+    return {
+      certification: INPATIENT_LIFECYCLE_NURSING_ADMISSION_CERTIFICATION_ID,
+      review: reviewNursingAdmission(payload.documentation),
+      completion: payload.completion,
+      documentation: payload.documentation,
+    };
+  }
+
   async patchNursingAdmissionSection(
     facilityId: string,
     encounterId: string,
@@ -1439,6 +1466,8 @@ export class InpatientOperationsService {
     body: {
       sectionId: string;
       draftText?: string | null;
+      answers?: Record<string, unknown> | null;
+      unableReason?: string | null;
       completionState?: string | null;
       expectedVersion: number;
     }
@@ -1462,10 +1491,31 @@ export class InpatientOperationsService {
       throw new BadRequestException("Invalid completionState");
     }
 
+    const answers =
+      body.answers && typeof body.answers === "object" && !Array.isArray(body.answers)
+        ? body.answers
+        : undefined;
+    if (completionState === "COMPLETE" || completionState === "UNABLE_TO_COMPLETE") {
+      const validation = validateSectionAnswersForCompletion({
+        sectionId,
+        answers: answers ?? (doc.sections[sectionId]?.answers as Record<string, unknown>) ?? {},
+        completionState: completionState as AdmissionSectionCompletionState,
+        unableReason: body.unableReason ?? doc.sections[sectionId]?.unableReason,
+      });
+      if (!validation.ok) {
+        throw new BadRequestException({
+          code: "SECTION_VALIDATION_FAILED",
+          missing: validation.missing,
+        });
+      }
+    }
+
     const result = saveAdmissionSectionDraft({
       doc,
       sectionId,
-      draftText: body.draftText ?? null,
+      draftText: body.draftText,
+      answers,
+      unableReason: body.unableReason,
       completionState: completionState as AdmissionSectionCompletionState | undefined,
       clientExpectedVersion: Number(body.expectedVersion),
       actorUserId,
@@ -1659,6 +1709,220 @@ export class InpatientOperationsService {
       documentation: nextDoc,
       completion: computeAdmissionCompletionSummary(nextDoc),
     };
+  }
+
+  /** D4A.2.6 — Provider workspace durable JSON (events, problem plans, H&P draft, tasks). */
+  async getProviderWorkspace(facilityId: string, encounterId: string) {
+    const enc = await this.loadOpenInpatient(facilityId, encounterId);
+    let doc = readInpatientProviderWorkspace(enc.admissionSummaryJson);
+    if (!doc) {
+      doc = emptyInpatientProviderWorkspaceV1();
+      // Seed a sample critical event only when empty — never auto-acknowledged.
+      doc.events = [
+        {
+          eventId: `evt-seed-${enc.id.slice(0, 8)}`,
+          type: "ADMISSION",
+          severity: "INFO",
+          summary: "Inpatient encounter open — provider review pending",
+          source: "SYSTEM",
+          occurredAt: new Date().toISOString(),
+          status: "NEW",
+        },
+      ];
+      const ops = readInpatientClinicalOpsFromAdmissionSummary(enc.admissionSummaryJson);
+      doc.tasks = deriveProviderTasksFromOps({
+        codeStatusPresent: Boolean(ops.codeStatus?.status),
+        medReconComplete: (ops.medicationReconciliation?.length ?? 0) > 0,
+        hpSigned: doc.hpDraft?.status === "SIGNED",
+        dischargeWorkflowState: ops.dischargePlanning?.workflowState ?? null,
+      });
+      const nextSummary = mergeInpatientProviderWorkspaceIntoSummary(
+        enc.admissionSummaryJson,
+        doc
+      );
+      await this.prisma.encounter.update({
+        where: { id: enc.id },
+        data: {
+          admissionSummaryJson: nextSummary as Prisma.InputJsonValue,
+          version: { increment: 1 },
+        },
+        select: { id: true },
+      });
+    }
+    const ops = readInpatientClinicalOpsFromAdmissionSummary(enc.admissionSummaryJson);
+    return {
+      certification: INPATIENT_PROVIDER_WORKSPACE_CERTIFICATION_ID,
+      documentation: doc,
+      clinicalOps: ops,
+      boundary: {
+        providerWorkspaceNotNursingWorkspace: true,
+        sharesInpatientEncounter: true,
+        noSecondOrderEngine: true,
+      },
+    };
+  }
+
+  async acknowledgeProviderWorkspaceEvent(
+    facilityId: string,
+    encounterId: string,
+    actorUserId: string,
+    body: {
+      eventId: string;
+      status: string;
+      actionTaken?: string | null;
+      expectedVersion: number;
+    }
+  ) {
+    const enc = await this.loadOpenInpatient(facilityId, encounterId);
+    const boot = await this.getProviderWorkspace(facilityId, encounterId);
+    const fresh = await this.loadOpenInpatient(facilityId, encounterId);
+    const doc =
+      readInpatientProviderWorkspace(fresh.admissionSummaryJson) ?? boot.documentation;
+    const status = String(body.status ?? "").trim().toUpperCase() as ProviderEventAckStatus;
+    if (!(PROVIDER_EVENT_ACK_STATUSES as readonly string[]).includes(status) || status === "NEW") {
+      throw new BadRequestException("Invalid provider event acknowledgment status");
+    }
+    const result = acknowledgeProviderEvent({
+      doc,
+      eventId: String(body.eventId ?? "").trim(),
+      actorUserId,
+      status,
+      actionTaken: body.actionTaken ?? null,
+      clientExpectedVersion: Number(body.expectedVersion),
+    });
+    if (!result.ok) throw new ConflictException(result.code);
+    await this.prisma.encounter.update({
+      where: { id: enc.id },
+      data: {
+        admissionSummaryJson: mergeInpatientProviderWorkspaceIntoSummary(
+          fresh.admissionSummaryJson,
+          result.doc
+        ) as Prisma.InputJsonValue,
+        version: { increment: 1 },
+      },
+      select: { id: true },
+    });
+    await this.audit.log(AuditAction.ENCOUNTER_UPDATE, CLINICAL_OPS_ENTITY, {
+      userId: actorUserId,
+      facilityId,
+      patientId: enc.patientId,
+      entityId: enc.id,
+      metadata: { event: "PROVIDER_EVENT_ACKNOWLEDGED", eventId: body.eventId, status },
+    });
+    return { documentation: result.doc };
+  }
+
+  async upsertProviderProblemPlanItem(
+    facilityId: string,
+    encounterId: string,
+    actorUserId: string,
+    body: { item: ProviderProblemPlanItemV1; expectedVersion: number }
+  ) {
+    const enc = await this.loadOpenInpatient(facilityId, encounterId);
+    const boot = await this.getProviderWorkspace(facilityId, encounterId);
+    const fresh = await this.loadOpenInpatient(facilityId, encounterId);
+    const doc =
+      readInpatientProviderWorkspace(fresh.admissionSummaryJson) ?? boot.documentation;
+    const result = upsertProviderProblemPlan({
+      doc,
+      item: body.item,
+      clientExpectedVersion: Number(body.expectedVersion),
+      actorUserId,
+    });
+    if (!result.ok) throw new ConflictException(result.code);
+    await this.prisma.encounter.update({
+      where: { id: enc.id },
+      data: {
+        admissionSummaryJson: mergeInpatientProviderWorkspaceIntoSummary(
+          fresh.admissionSummaryJson,
+          result.doc
+        ) as Prisma.InputJsonValue,
+        version: { increment: 1 },
+      },
+      select: { id: true },
+    });
+    return { documentation: result.doc };
+  }
+
+  async saveProviderHpSectionDraft(
+    facilityId: string,
+    encounterId: string,
+    actorUserId: string,
+    body: {
+      sectionKey: string;
+      text?: string | null;
+      structured?: Record<string, unknown> | null;
+      expectedVersion: number;
+    }
+  ) {
+    const enc = await this.loadOpenInpatient(facilityId, encounterId);
+    const boot = await this.getProviderWorkspace(facilityId, encounterId);
+    const fresh = await this.loadOpenInpatient(facilityId, encounterId);
+    const doc =
+      readInpatientProviderWorkspace(fresh.admissionSummaryJson) ?? boot.documentation;
+    const sectionKey = String(body.sectionKey).trim() as ProviderHpSectionKey;
+    if (!(PROVIDER_HP_SECTION_KEYS as readonly string[]).includes(sectionKey)) {
+      throw new BadRequestException("Invalid H&P sectionKey");
+    }
+    const result = saveProviderHpDraft({
+      doc,
+      sectionKey,
+      text: body.text,
+      structured: body.structured,
+      clientExpectedVersion: Number(body.expectedVersion),
+      actorUserId,
+    });
+    if (!result.ok) throw new ConflictException(result.code);
+    await this.prisma.encounter.update({
+      where: { id: enc.id },
+      data: {
+        admissionSummaryJson: mergeInpatientProviderWorkspaceIntoSummary(
+          fresh.admissionSummaryJson,
+          result.doc
+        ) as Prisma.InputJsonValue,
+        version: { increment: 1 },
+      },
+      select: { id: true },
+    });
+    return { documentation: result.doc };
+  }
+
+  async signProviderHp(
+    facilityId: string,
+    encounterId: string,
+    actorUserId: string,
+    body: { expectedVersion: number }
+  ) {
+    const enc = await this.loadOpenInpatient(facilityId, encounterId);
+    const boot = await this.getProviderWorkspace(facilityId, encounterId);
+    const fresh = await this.loadOpenInpatient(facilityId, encounterId);
+    const doc =
+      readInpatientProviderWorkspace(fresh.admissionSummaryJson) ?? boot.documentation;
+    const result = signProviderHpDraft({
+      doc,
+      actorUserId,
+      clientExpectedVersion: Number(body.expectedVersion),
+    });
+    if (!result.ok) throw new ConflictException(result.code);
+    await this.prisma.encounter.update({
+      where: { id: enc.id },
+      data: {
+        admissionSummaryJson: mergeInpatientProviderWorkspaceIntoSummary(
+          fresh.admissionSummaryJson,
+          result.doc
+        ) as Prisma.InputJsonValue,
+        version: { increment: 1 },
+      },
+      select: { id: true },
+    });
+    await this.audit.log(AuditAction.ENCOUNTER_UPDATE, CLINICAL_OPS_ENTITY, {
+      userId: actorUserId,
+      facilityId,
+      patientId: enc.patientId,
+      entityId: enc.id,
+      metadata: { event: "PROVIDER_HP_SIGNED" },
+    });
+    return { documentation: result.doc };
   }
 
   private async loadOpenInpatient(facilityId: string, encounterId: string) {

@@ -1,26 +1,32 @@
 "use client";
 
-import { useCallback, useEffect, useState, type CSSProperties } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import {
   ADMISSION_HISTORY_VERIFICATION_STATUSES,
   ADMISSION_SECTION_COMPLETION_STATES,
-  BELONGINGS_CATEGORIES,
   HEAD_TO_TOE_SYSTEM_KEYS,
-  HOME_MEDICATION_RECON_STATUSES,
   INPATIENT_ADMISSION_CLINICAL_SECTIONS,
+  INPATIENT_LIFECYCLE_NURSING_ADMISSION_CERTIFICATION_ID,
   MEDSURG_NURSING_ADMISSION_CERTIFICATION_ID,
   type AdmissionSectionCompletionState,
   type InpatientAdmissionClinicalSection,
 } from "@medora/shared";
+import {
+  createLatestWinsClinicalAutosaveScheduler,
+  shouldRunClinicalAutosave,
+} from "@/lib/clinicalAutosave";
 import { useI18n } from "@/lib/i18n";
 import { AdmissionJourneyPanel } from "@/features/hospital-care/AdmissionJourneyPanel";
 import {
   fetchNursingAdmissionDocumentation,
+  fetchNursingAdmissionReview,
   patchNursingAdmissionSection,
   signNursingAdmission,
   verifyNursingAdmissionPreloadItem,
 } from "@/features/hospital-care/inpatientOperationsApi";
 import { InpatientClinicalOpsPanel } from "./InpatientClinicalOpsPanel";
+import { NursingAdmissionStructuredSectionForm } from "./NursingAdmissionStructuredSectionForm";
+import { InpatientLifecycleActionsMenu } from "./InpatientLifecycleActionsMenu";
 
 function admissionCorrelationUiEnabled(): boolean {
   const v = String(process.env.NEXT_PUBLIC_ADMISSION_CORRELATION_ENABLED ?? "")
@@ -38,82 +44,96 @@ type PreloadItem = {
     sourceType?: string;
     sourceEncounterId?: string | null;
     verified?: boolean;
-    verifiedByUserId?: string | null;
-    verifiedAt?: string | null;
-    verificationStatus?: string;
   };
 };
 
 type NursingDoc = {
   expectedVersion?: number;
   preloadedItems?: PreloadItem[];
-  homeMedicationLines?: Array<{
-    lineId: string;
-    medicationLabel: string;
-    status: string;
-    createsInpatientOrder?: boolean;
-  }>;
+  homeMedicationLines?: Array<{ lineId: string; medicationLabel: string; status: string }>;
   sections?: Record<
     string,
-    { completionState?: string; draftText?: string | null; expectedVersion?: number }
+    {
+      completionState?: string;
+      draftText?: string | null;
+      answers?: Record<string, unknown> | null;
+      unableReason?: string | null;
+      expectedVersion?: number;
+    }
   >;
-  headToToe?: Array<{ system: string; status?: string; reuseDomain?: string }>;
+  headToToe?: Array<{ system: string; reuseDomain?: string }>;
   nurseSignature?: {
     signed?: boolean;
     signedAt?: string | null;
     signedByUserId?: string | null;
-    credentials?: string | null;
   } | null;
-  providerHandoff?: {
-    taskId?: string;
-    status?: string;
-    outstandingSectionIds?: string[];
-  } | null;
-  belongings?: unknown[];
-  cashDenominations?: unknown[];
-  wounds?: Array<{ presentOnAdmission?: boolean; anatomicalLocation?: string }>;
+  providerHandoff?: { taskId?: string; status?: string } | null;
+  wounds?: unknown[];
 };
+
+type SaveUiState = "unsaved" | "saving" | "saved" | "failed";
 
 type Props = {
   encounterId: string;
   nursingLive?: boolean;
   docsLive?: boolean;
+  canAdmin?: boolean;
 };
 
 /**
- * D4A.1 — Structured Med/Surg nursing admission clinical shell.
- * Longitudinal patient history is preloaded with provenance; encounter records verification only.
+ * D4A.2.5 — Durable nursing admission workspace:
+ * structured sections, Prev/Next, autosave, review/sign, lifecycle actions.
  */
 export function InpatientAdmissionClinicalShell({
   encounterId,
   nursingLive = false,
   docsLive = false,
+  canAdmin = false,
 }: Props) {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   const [active, setActive] = useState<InpatientAdmissionClinicalSection>("OVERVIEW");
   const [doc, setDoc] = useState<NursingDoc | null>(null);
   const [completion, setCompletion] = useState<Record<string, unknown> | null>(null);
+  const [answers, setAnswers] = useState<Record<string, unknown>>({});
+  const [unableReason, setUnableReason] = useState("");
   const [draftNote, setDraftNote] = useState("");
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [saveMsg, setSaveMsg] = useState<string | null>(null);
+  const [saveState, setSaveState] = useState<SaveUiState>("saved");
+  const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [review, setReview] = useState<Record<string, unknown> | null>(null);
+  const panelRef = useRef<HTMLDivElement | null>(null);
+  const expectedVersionRef = useRef(0);
+  const dirtyRef = useRef(false);
 
-  const applyPayload = useCallback((payload: {
-    documentation?: NursingDoc;
-    completion?: Record<string, unknown>;
-  }) => {
-    const d = (payload.documentation ?? null) as NursingDoc | null;
-    setDoc(d);
-    setCompletion(payload.completion ?? null);
-    const sectionDraft = d?.sections?.[active]?.draftText;
-    setDraftNote(typeof sectionDraft === "string" ? sectionDraft : "");
-  }, [active]);
+  const sectionIndex = INPATIENT_ADMISSION_CLINICAL_SECTIONS.indexOf(active);
+  const isFirst = sectionIndex <= 0;
+  const isLast = sectionIndex >= INPATIENT_ADMISSION_CLINICAL_SECTIONS.length - 1;
+  const signed = Boolean(doc?.nurseSignature?.signed);
+
+  const applyPayload = useCallback(
+    (payload: { documentation?: NursingDoc; completion?: Record<string, unknown> }, sectionId?: InpatientAdmissionClinicalSection) => {
+      const d = (payload.documentation ?? null) as NursingDoc | null;
+      setDoc(d);
+      setCompletion(payload.completion ?? null);
+      expectedVersionRef.current = Number(d?.expectedVersion ?? 0);
+      const sid = sectionId ?? active;
+      const sec = d?.sections?.[sid];
+      setAnswers((sec?.answers as Record<string, unknown>) ?? {});
+      setUnableReason(typeof sec?.unableReason === "string" ? sec.unableReason : "");
+      setDraftNote(typeof sec?.draftText === "string" ? sec.draftText : "");
+      dirtyRef.current = false;
+      setSaveState("saved");
+    },
+    [active]
+  );
 
   const reload = useCallback(async () => {
     setLoadError(null);
     try {
       const payload = await fetchNursingAdmissionDocumentation(encounterId);
       applyPayload(payload as never);
+      setLastSavedAt(new Date().toISOString());
     } catch {
       setLoadError(t("hospitalAdmissionD4a1.loadError"));
     }
@@ -124,68 +144,161 @@ export function InpatientAdmissionClinicalShell({
   }, [reload]);
 
   useEffect(() => {
-    const sectionDraft = doc?.sections?.[active]?.draftText;
-    setDraftNote(typeof sectionDraft === "string" ? sectionDraft : "");
+    const sec = doc?.sections?.[active];
+    setAnswers((sec?.answers as Record<string, unknown>) ?? {});
+    setUnableReason(typeof sec?.unableReason === "string" ? sec.unableReason : "");
+    setDraftNote(typeof sec?.draftText === "string" ? sec.draftText : "");
+    dirtyRef.current = false;
+    setSaveState("saved");
+    panelRef.current?.focus();
   }, [active, doc?.sections]);
 
-  const expectedVersion = Number(doc?.expectedVersion ?? 0);
+  useEffect(() => {
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (!dirtyRef.current || signed) return;
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => window.removeEventListener("beforeunload", onBeforeUnload);
+  }, [signed]);
 
-  const saveDraft = async (completionState?: AdmissionSectionCompletionState) => {
-    if (!doc) return;
+  const persistSection = useCallback(
+    async (completionState?: AdmissionSectionCompletionState) => {
+      if (!doc || signed) return;
+      setSaveState("saving");
+      setBusy(true);
+      try {
+        const payload = await patchNursingAdmissionSection(encounterId, {
+          sectionId: active,
+          draftText: draftNote,
+          answers,
+          unableReason: unableReason || null,
+          completionState: completionState ?? undefined,
+          expectedVersion: expectedVersionRef.current,
+        });
+        applyPayload(payload as never, active);
+        dirtyRef.current = false;
+        setSaveState("saved");
+        setLastSavedAt(new Date().toISOString());
+      } catch {
+        setSaveState("failed");
+      } finally {
+        setBusy(false);
+      }
+    },
+    [active, answers, applyPayload, doc, draftNote, encounterId, signed, unableReason]
+  );
+
+  const autosave = useMemo(
+    () =>
+      createLatestWinsClinicalAutosaveScheduler({
+        debounceMs: 1500,
+        getSnapshot: () => ({
+          signature: JSON.stringify({ active, answers, unableReason, draftNote }),
+          payload: { active, answers, unableReason, draftNote },
+        }),
+        save: async () => {
+          if (
+            !shouldRunClinicalAutosave({
+              currentSignature: JSON.stringify({ active, answers, unableReason, draftNote }),
+              lastSavedSignature: "",
+              mode: "server",
+              hasContent: dirtyRef.current,
+              signedOrFinalized: signed,
+              saving: busy,
+            })
+          ) {
+            return;
+          }
+          await persistSection();
+        },
+      }),
+    [active, answers, busy, draftNote, persistSection, signed, unableReason]
+  );
+
+  const markDirty = (nextAnswers: Record<string, unknown>) => {
+    setAnswers(nextAnswers);
+    dirtyRef.current = true;
+    setSaveState("unsaved");
+    autosave.schedule();
+  };
+
+  const goTo = (id: InpatientAdmissionClinicalSection) => {
+    if (dirtyRef.current && !signed) {
+      void persistSection().then(() => setActive(id));
+      return;
+    }
+    setActive(id);
+  };
+
+  const goPrev = () => {
+    if (isFirst) return;
+    goTo(INPATIENT_ADMISSION_CLINICAL_SECTIONS[sectionIndex - 1]!);
+  };
+  const goNext = () => {
+    if (isLast) return;
+    goTo(INPATIENT_ADMISSION_CLINICAL_SECTIONS[sectionIndex + 1]!);
+  };
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.altKey && e.key === "ArrowRight") {
+        e.preventDefault();
+        goNext();
+      }
+      if (e.altKey && e.key === "ArrowLeft") {
+        e.preventDefault();
+        goPrev();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sectionIndex, dirtyRef.current, signed]);
+
+  const verifyItem = async (itemId: string, status: string) => {
+    if (!doc || signed) return;
     setBusy(true);
-    setSaveMsg(null);
     try {
-      const payload = await patchNursingAdmissionSection(encounterId, {
-        sectionId: active,
-        draftText: draftNote,
-        completionState: completionState ?? undefined,
-        expectedVersion,
+      await verifyNursingAdmissionPreloadItem(encounterId, {
+        itemId,
+        status,
+        expectedVersion: expectedVersionRef.current,
       });
-      applyPayload(payload as never);
-      setSaveMsg(t("hospitalAdmissionD4a0.clinical.draftSaved"));
-    } catch {
-      setSaveMsg(t("hospitalAdmissionD4a1.saveConflict"));
       await reload();
+    } catch {
+      setSaveState("failed");
     } finally {
       setBusy(false);
     }
   };
 
-  const verifyItem = async (itemId: string, status: string) => {
-    if (!doc) return;
-    setBusy(true);
+  const openReview = async () => {
+    if (dirtyRef.current) await persistSection();
     try {
-      const payload = await verifyNursingAdmissionPreloadItem(encounterId, {
-        itemId,
-        status,
-        expectedVersion,
-      });
-      applyPayload({
-        documentation: payload.documentation as NursingDoc,
-        completion: completion ?? undefined,
-      });
-      await reload();
+      const payload = await fetchNursingAdmissionReview(encounterId);
+      setReview(payload.review as Record<string, unknown>);
+      applyPayload(payload as never);
     } catch {
-      setSaveMsg(t("hospitalAdmissionD4a1.saveConflict"));
-      await reload();
-    } finally {
-      setBusy(false);
+      setSaveState("failed");
     }
   };
 
   const signAdmission = async () => {
-    if (!doc) return;
+    if (!doc || signed) return;
+    if (dirtyRef.current) await persistSection();
     setBusy(true);
     try {
       const payload = await signNursingAdmission(encounterId, {
-        expectedVersion,
+        expectedVersion: expectedVersionRef.current,
         credentials: "RN",
         createProviderHandoff: true,
       });
       applyPayload(payload as never);
-      setSaveMsg(t("hospitalAdmissionD4a1.signed"));
+      await openReview();
     } catch {
-      setSaveMsg(t("hospitalAdmissionD4a1.signError"));
+      setSaveState("failed");
       await reload();
     } finally {
       setBusy(false);
@@ -195,23 +308,101 @@ export function InpatientAdmissionClinicalShell({
   const sectionState = (id: string) =>
     (doc?.sections?.[id]?.completionState as AdmissionSectionCompletionState) ?? "NOT_STARTED";
 
+  const sectionLabel = t("hospitalAdmissionD4a25.sectionOf")
+    .replace("{current}", String(sectionIndex + 1))
+    .replace("{total}", String(INPATIENT_ADMISSION_CLINICAL_SECTIONS.length));
+
+  const NavControls = ({ position }: { position: "top" | "bottom" }) => (
+    <div
+      style={navRow}
+      data-testid={`admission-nav-${position}`}
+    >
+      {!isFirst ? (
+        <button type="button" style={navBtn} onClick={goPrev} disabled={busy}>
+          {t("hospitalAdmissionD4a25.nav.previous")}
+        </button>
+      ) : (
+        <span />
+      )}
+      <button
+        type="button"
+        style={navBtnPrimary}
+        disabled={busy || signed}
+        onClick={() => void persistSection()}
+        data-testid={`admission-save-draft-${position}`}
+      >
+        {t("hospitalAdmissionD4a25.nav.saveDraft")}
+      </button>
+      {!isLast ? (
+        <button type="button" style={navBtn} onClick={goNext} disabled={busy}>
+          {t("hospitalAdmissionD4a25.nav.next")}
+        </button>
+      ) : (
+        <>
+          <button type="button" style={navBtn} onClick={() => void openReview()} disabled={busy}>
+            {t("hospitalAdmissionD4a25.nav.review")}
+          </button>
+          <button
+            type="button"
+            style={{ ...navBtnPrimary, background: "#0f766e" }}
+            disabled={busy || signed}
+            onClick={() => void signAdmission()}
+            data-testid="admission-nurse-sign"
+          >
+            {signed ? t("hospitalAdmissionD4a1.alreadySigned") : t("hospitalAdmissionD4a25.nav.sign")}
+          </button>
+        </>
+      )}
+    </div>
+  );
+
+  const printSummary = () => {
+    window.print();
+  };
+
   return (
     <div data-testid="inpatient-admission-clinical-shell">
-      <p style={{ margin: "0 0 6px", fontSize: 12, color: "#64748b" }} data-testid="d4a1-cert">
-        {MEDSURG_NURSING_ADMISSION_CERTIFICATION_ID}
+      <p style={{ margin: "0 0 6px", fontSize: 12, color: "#64748b" }} data-testid="d4a25-cert">
+        {INPATIENT_LIFECYCLE_NURSING_ADMISSION_CERTIFICATION_ID} · {MEDSURG_NURSING_ADMISSION_CERTIFICATION_ID}
       </p>
       <p style={{ margin: "0 0 8px", fontSize: 13, color: "#334155", lineHeight: 1.45 }}>
         {t("hospitalAdmissionD4a1.intro")}
       </p>
-      {admissionCorrelationUiEnabled() ? (
-        <AdmissionJourneyPanel encounterId={encounterId} />
-      ) : null}
+
+      <InpatientLifecycleActionsMenu encounterId={encounterId} canAdmin={canAdmin} />
+
+      {admissionCorrelationUiEnabled() ? <AdmissionJourneyPanel encounterId={encounterId} /> : null}
 
       {loadError ? (
         <p style={{ color: "#b91c1c", fontSize: 12 }} role="alert">
           {loadError}
         </p>
       ) : null}
+
+      <div style={saveBar} data-testid="admission-save-state" role="status">
+        <strong>
+          {saveState === "unsaved"
+            ? t("hospitalAdmissionD4a25.saveState.unsaved")
+            : saveState === "saving"
+              ? t("hospitalAdmissionD4a25.saveState.saving")
+              : saveState === "failed"
+                ? t("hospitalAdmissionD4a25.saveState.failed")
+                : t("hospitalAdmissionD4a25.saveState.saved")}
+        </strong>
+        {lastSavedAt ? (
+          <span>
+            {t("hospitalAdmissionD4a25.saveState.lastSaved").replace(
+              "{time}",
+              new Date(lastSavedAt).toLocaleTimeString(language === "fr" ? "fr-FR" : "en-US")
+            )}
+          </span>
+        ) : null}
+        {saveState === "failed" ? (
+          <button type="button" style={chipBtn} onClick={() => void persistSection()}>
+            {t("hospitalAdmissionD4a25.saveState.retry")}
+          </button>
+        ) : null}
+      </div>
 
       {completion ? (
         <div style={completionBar} data-testid="admission-completion-dashboard">
@@ -220,242 +411,163 @@ export function InpatientAdmissionClinicalShell({
             {t("hospitalAdmissionD4a1.completion.complete")}: {String(completion.complete ?? 0)} /{" "}
             {String(completion.total ?? 0)}
           </span>
-          <span>
-            {t("hospitalAdmissionD4a1.completion.inProgress")}:{" "}
-            {String(completion.inProgress ?? 0)}
-          </span>
+          <span data-testid="admission-section-position">{sectionLabel}</span>
         </div>
       ) : null}
 
-      <div style={checklistBox} data-testid="inpatient-admission-checklist">
-        <p style={{ margin: "0 0 8px", fontSize: 13, fontWeight: 700, color: "#0f172a" }}>
-          {t("inpatientD3e.admission.checklistTitle")}
-        </p>
-        <ul style={{ margin: 0, padding: 0, listStyle: "none" }}>
-          {INPATIENT_ADMISSION_CLINICAL_SECTIONS.map((section) => (
-            <li key={section} style={{ marginBottom: 4 }}>
-              <button
-                type="button"
-                onClick={() => setActive(section)}
-                data-testid={`admission-section-${section}`}
-                style={{
-                  ...sectionBtn,
-                  background: active === section ? "#ecfeff" : "#fff",
-                  borderColor: active === section ? "#0891b2" : "#e2e8f0",
-                }}
-              >
-                <span>{t(`hospitalAdmissionD4a0.clinical.sections.${section}`)}</span>
-                <span style={{ fontSize: 11, color: "#64748b" }}>
-                  {t(`hospitalAdmissionD4a0.clinical.state.${sectionState(section)}`)}
-                </span>
-              </button>
-            </li>
-          ))}
-        </ul>
-      </div>
-
-      <div style={panel} data-testid={`admission-section-panel-${active}`}>
-        <h4 style={{ margin: "0 0 8px", fontSize: 14, color: "#0f172a" }}>
-          {t(`hospitalAdmissionD4a0.clinical.sections.${active}`)}
-        </h4>
-
-        {(active === "MEDICAL_HISTORY" ||
-          active === "SURGICAL_HISTORY" ||
-          active === "HOME_MEDICATIONS" ||
-          active === "SOCIAL_HISTORY" ||
-          active === "ALLERGIES" ||
-          active === "IDENTITY_DEMOGRAPHICS") && (
-          <div data-testid="admission-preload-panel">
-            <p style={{ fontSize: 12, color: "#64748b", margin: "0 0 8px" }}>
-              {t("hospitalAdmissionD4a0.clinical.preloadProvenance")}
-            </p>
-            {(doc?.preloadedItems ?? [])
-              .filter((item) => {
-                if (active === "MEDICAL_HISTORY") return item.domain === "MEDICAL_HISTORY";
-                if (active === "SURGICAL_HISTORY") return item.domain === "SURGICAL_HISTORY";
-                if (active === "ALLERGIES") return item.domain === "ALLERGIES";
-                if (active === "HOME_MEDICATIONS") return item.domain === "HOME_MEDICATIONS";
-                if (active === "SOCIAL_HISTORY")
-                  return ["SMOKING", "ALCOHOL", "RECREATIONAL_DRUGS"].includes(item.domain);
-                return true;
-              })
-              .map((item) => (
-                <div key={item.itemId} style={preloadCard} data-testid={`preload-${item.itemId}`}>
-                  <div style={{ fontWeight: 700, fontSize: 12 }}>{item.displayLabel}</div>
-                  <div style={{ fontSize: 12, color: "#334155" }}>{item.valueText}</div>
-                  <div style={{ fontSize: 11, color: "#64748b", marginTop: 4 }}>
-                    {t("hospitalAdmissionD4a1.provenance.source")}:{" "}
-                    {item.provenance?.sourceType ?? "—"}
-                    {item.provenance?.sourceEncounterId
-                      ? ` · ${item.provenance.sourceEncounterId}`
-                      : ""}
-                    {" · "}
-                    {t("hospitalAdmissionD4a1.provenance.verified")}:{" "}
-                    {item.provenance?.verified
-                      ? t("common.yes")
-                      : t("common.no")}
-                  </div>
-                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 6 }}>
-                    {ADMISSION_HISTORY_VERIFICATION_STATUSES.map((st) => (
-                      <button
-                        key={st}
-                        type="button"
-                        disabled={busy}
-                        onClick={() => void verifyItem(item.itemId, st)}
-                        style={chipBtn}
-                        data-testid={`verify-${item.itemId}-${st}`}
-                      >
-                        {t(`hospitalAdmissionD4a1.verify.${st}`)}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            {(doc?.preloadedItems ?? []).length === 0 ? (
-              <p style={{ fontSize: 12, color: "#64748b" }}>
-                {t("hospitalAdmissionD4a1.preloadEmpty")}
-              </p>
-            ) : null}
-          </div>
-        )}
-
-        {active === "HOME_MEDICATIONS" ? (
-          <div data-testid="home-med-recon-panel" style={{ marginTop: 8 }}>
-            <p style={{ fontSize: 12, color: "#475569" }}>
-              {t("hospitalAdmissionD4a1.homeMeds.noOrders")}
-            </p>
-            <ul style={{ margin: 0, paddingLeft: 18, fontSize: 12 }}>
-              {(doc?.homeMedicationLines ?? []).map((line) => (
-                <li key={line.lineId}>
-                  {line.medicationLabel} — {line.status}
-                  {line.createsInpatientOrder === false
-                    ? ` · ${t("hospitalAdmissionD4a1.homeMeds.notOrder")}`
-                    : ""}
-                </li>
-              ))}
-            </ul>
-            <p style={{ fontSize: 11, color: "#64748b" }}>
-              {t("hospitalAdmissionD4a0.clinical.homeMedStatuses")}:{" "}
-              {HOME_MEDICATION_RECON_STATUSES.join(", ")}
-            </p>
-          </div>
-        ) : null}
-
-        {active === "BELONGINGS_VALUABLES" ? (
-          <div data-testid="belongings-valuables-shell">
-            <p style={{ fontSize: 12, color: "#475569" }}>
-              {t("hospitalAdmissionD4a0.clinical.belongingsHint")}
-            </p>
-            <ul style={{ margin: 0, paddingLeft: 18, fontSize: 12, color: "#64748b" }}>
-              {BELONGINGS_CATEGORIES.slice(0, 8).map((c) => (
-                <li key={c}>{t(`hospitalAdmissionD4a0.belongings.${c}`)}</li>
-              ))}
-            </ul>
-            <p style={{ fontSize: 12, marginTop: 6 }}>
-              {t("hospitalAdmissionD4a1.cash.hint")}
-            </p>
-          </div>
-        ) : null}
-
-        {active === "SKIN_WOUND" ? (
-          <p style={{ fontSize: 12, color: "#475569" }} data-testid="wound-poa-shell">
-            {t("hospitalAdmissionD4a0.clinical.woundPoaHint")}
-            {(doc?.wounds?.length ?? 0) > 0
-              ? ` · ${doc?.wounds?.length} ${t("hospitalAdmissionD4a1.wounds.documented")}`
-              : ""}
+      <div style={layout}>
+        <nav style={checklistBox} data-testid="inpatient-admission-checklist" aria-label={t("inpatientD3e.admission.checklistTitle")}>
+          <p style={{ margin: "0 0 8px", fontSize: 13, fontWeight: 700, color: "#0f172a" }}>
+            {t("inpatientD3e.admission.checklistTitle")}
           </p>
-        ) : null}
+          <ul style={{ margin: 0, padding: 0, listStyle: "none" }}>
+            {INPATIENT_ADMISSION_CLINICAL_SECTIONS.map((section, idx) => (
+              <li key={section} style={{ marginBottom: 4 }}>
+                <button
+                  type="button"
+                  onClick={() => goTo(section)}
+                  data-testid={`admission-section-${section}`}
+                  style={{
+                    ...sectionBtn,
+                    background: active === section ? "#ecfeff" : "#fff",
+                    borderColor: active === section ? "#0891b2" : "#e2e8f0",
+                  }}
+                >
+                  <span>
+                    {idx + 1}. {t(`hospitalAdmissionD4a0.clinical.sections.${section}`)}
+                  </span>
+                  <span style={{ fontSize: 11, color: "#64748b" }}>
+                    {t(`hospitalAdmissionD4a0.clinical.state.${sectionState(section)}`)}
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </nav>
 
-        {active === "NURSING_ADMISSION_ASSESSMENT" ? (
-          <div data-testid="head-to-toe-shell">
-            <p style={{ fontSize: 12, color: "#475569", marginBottom: 6 }}>
-              {t("hospitalAdmissionD4a1.headToToe.hint")}
-            </p>
-            <ul style={{ margin: 0, paddingLeft: 18, fontSize: 12 }}>
-              {(doc?.headToToe ??
-                HEAD_TO_TOE_SYSTEM_KEYS.map((s) => ({
-                  system: s,
-                  reuseDomain: undefined as string | undefined,
-                }))).map((row) => (
-                  <li key={row.system}>
-                    {t(`hospitalAdmissionD4a1.headToToe.${row.system}`)}
-                    {"reuseDomain" in row && row.reuseDomain ? ` · ${row.reuseDomain}` : ""}
-                  </li>
+        <div
+          ref={panelRef}
+          tabIndex={-1}
+          style={panel}
+          data-testid={`admission-section-panel-${active}`}
+        >
+          <h4 style={{ margin: "0 0 8px", fontSize: 14, color: "#0f172a" }}>
+            {t(`hospitalAdmissionD4a0.clinical.sections.${active}`)}
+          </h4>
+          <NavControls position="top" />
+
+          {(active === "MEDICAL_HISTORY" ||
+            active === "SURGICAL_HISTORY" ||
+            active === "HOME_MEDICATIONS" ||
+            active === "SOCIAL_HISTORY" ||
+            active === "ALLERGIES" ||
+            active === "IDENTITY_DEMOGRAPHICS") && (
+            <div data-testid="admission-preload-panel" style={{ marginBottom: 10 }}>
+              <p style={{ fontSize: 12, color: "#64748b", margin: "0 0 8px" }}>
+                {t("hospitalAdmissionD4a0.clinical.preloadProvenance")}
+              </p>
+              {(doc?.preloadedItems ?? [])
+                .filter((item) => {
+                  if (active === "MEDICAL_HISTORY") return item.domain === "MEDICAL_HISTORY";
+                  if (active === "SURGICAL_HISTORY") return item.domain === "SURGICAL_HISTORY";
+                  if (active === "ALLERGIES") return item.domain === "ALLERGIES";
+                  if (active === "HOME_MEDICATIONS") return item.domain === "HOME_MEDICATIONS";
+                  if (active === "SOCIAL_HISTORY")
+                    return ["SMOKING", "ALCOHOL", "RECREATIONAL_DRUGS"].includes(item.domain);
+                  return true;
+                })
+                .map((item) => (
+                  <div key={item.itemId} style={preloadCard} data-testid={`preload-${item.itemId}`}>
+                    <div style={{ fontWeight: 700, fontSize: 12 }}>{item.displayLabel}</div>
+                    <div style={{ fontSize: 12, color: "#334155" }}>{item.valueText}</div>
+                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 6 }}>
+                      {ADMISSION_HISTORY_VERIFICATION_STATUSES.map((st) => (
+                        <button
+                          key={st}
+                          type="button"
+                          disabled={busy || signed}
+                          onClick={() => void verifyItem(item.itemId, st)}
+                          style={chipBtn}
+                        >
+                          {t(`hospitalAdmissionD4a1.verify.${st}`)}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 ))}
-            </ul>
-          </div>
-        ) : null}
+            </div>
+          )}
 
-        {active === "PROVIDER_ADMISSION" ? (
-          <div data-testid="provider-handoff-shell">
-            <p style={{ fontSize: 12, color: "#475569" }}>
-              {t("hospitalAdmissionD4a0.clinical.providerHandoff")}
+          {active === "NURSING_ADMISSION_ASSESSMENT" ? (
+            <p style={{ fontSize: 11, color: "#64748b" }} data-testid="head-to-toe-shell">
+              {t("hospitalAdmissionD4a1.headToToe.hint")} ·{" "}
+              {HEAD_TO_TOE_SYSTEM_KEYS.length} systems
             </p>
-            {doc?.providerHandoff ? (
-              <p style={{ fontSize: 12, color: "#0f766e" }} data-testid="provider-handoff-task">
-                {t("hospitalAdmissionD4a1.handoff.task")}: {doc.providerHandoff.taskId} (
-                {doc.providerHandoff.status})
-              </p>
-            ) : (
-              <p style={{ fontSize: 12, color: "#64748b" }}>
-                {t("hospitalAdmissionD4a1.handoff.pendingSign")}
-              </p>
-            )}
-          </div>
-        ) : null}
+          ) : null}
 
-        <label style={{ display: "block", marginTop: 10, fontSize: 12, fontWeight: 600 }}>
-          {t("hospitalAdmissionD4a0.clinical.sectionNotes")}
-          <textarea
-            value={draftNote}
-            onChange={(e) => setDraftNote(e.target.value)}
-            rows={3}
-            style={textareaStyle}
+          <NursingAdmissionStructuredSectionForm
+            sectionId={active}
+            answers={answers}
+            unableReason={unableReason}
+            readOnly={signed}
+            onChange={markDirty}
+            onUnableReasonChange={(r) => {
+              setUnableReason(r);
+              dirtyRef.current = true;
+              setSaveState("unsaved");
+              autosave.schedule();
+            }}
           />
-        </label>
 
-        <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
-          {ADMISSION_SECTION_COMPLETION_STATES.map((st) => (
-            <button
-              key={st}
-              type="button"
-              disabled={busy}
-              onClick={() => void saveDraft(st)}
-              style={chipBtn}
-            >
-              {t(`hospitalAdmissionD4a0.clinical.state.${st}`)}
-            </button>
-          ))}
+          <label style={{ display: "block", marginTop: 10, fontSize: 12, fontWeight: 600 }}>
+            {t("hospitalAdmissionD4a0.clinical.sectionNotes")}
+            <textarea
+              value={draftNote}
+              disabled={signed}
+              onChange={(e) => {
+                setDraftNote(e.target.value);
+                dirtyRef.current = true;
+                setSaveState("unsaved");
+                autosave.schedule();
+              }}
+              rows={2}
+              style={textareaStyle}
+            />
+          </label>
+
+          <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
+            {ADMISSION_SECTION_COMPLETION_STATES.map((st) => (
+              <button
+                key={st}
+                type="button"
+                disabled={busy || signed}
+                onClick={() => void persistSection(st)}
+                style={chipBtn}
+              >
+                {t(`hospitalAdmissionD4a0.clinical.state.${st}`)}
+              </button>
+            ))}
+          </div>
+
+          <NavControls position="bottom" />
+
+          <button type="button" style={{ ...chipBtn, marginTop: 8 }} onClick={printSummary}>
+            {t("hospitalAdmissionD4a25.nav.print")}
+          </button>
         </div>
-
-        <button
-          type="button"
-          disabled={busy}
-          onClick={() => void saveDraft()}
-          style={saveBtn}
-          data-testid="admission-save-draft"
-        >
-          {t("hospitalAdmissionD4a0.clinical.saveDraft")}
-        </button>
-
-        <button
-          type="button"
-          disabled={busy || Boolean(doc?.nurseSignature?.signed)}
-          onClick={() => void signAdmission()}
-          style={{ ...saveBtn, background: "#0f766e", marginLeft: 8 }}
-          data-testid="admission-nurse-sign"
-        >
-          {doc?.nurseSignature?.signed
-            ? t("hospitalAdmissionD4a1.alreadySigned")
-            : t("hospitalAdmissionD4a1.sign")}
-        </button>
-
-        {saveMsg ? (
-          <p style={{ fontSize: 12, color: "#0f766e", marginTop: 6 }} role="status">
-            {saveMsg}
-          </p>
-        ) : null}
       </div>
+
+      {review ? (
+        <div style={panel} data-testid="nursing-admission-review">
+          <h4 style={{ margin: "0 0 8px" }}>{t("hospitalAdmissionD4a25.review.title")}</h4>
+          <p style={{ fontSize: 12 }}>{t("hospitalAdmissionD4a25.review.attestation")}</p>
+          <ul style={{ fontSize: 12 }}>
+            {Array.isArray(review.warnings)
+              ? (review.warnings as string[]).map((w) => <li key={w}>{w}</li>)
+              : null}
+          </ul>
+        </div>
+      ) : null}
 
       {nursingLive || docsLive ? (
         <div style={{ marginTop: 12 }}>
@@ -466,16 +578,25 @@ export function InpatientAdmissionClinicalShell({
   );
 }
 
+const layout: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "minmax(220px, 280px) 1fr",
+  gap: 12,
+  alignItems: "start",
+};
+
 const checklistBox: CSSProperties = {
-  marginTop: 10,
+  position: "sticky",
+  top: 8,
   padding: 10,
   borderRadius: 12,
   border: "1px solid #e2e8f0",
   background: "#fff",
+  maxHeight: "70vh",
+  overflow: "auto",
 };
 
 const panel: CSSProperties = {
-  marginTop: 10,
   padding: 12,
   borderRadius: 12,
   border: "1px solid #e2e8f0",
@@ -506,16 +627,30 @@ const chipBtn: CSSProperties = {
   cursor: "pointer",
 };
 
-const saveBtn: CSSProperties = {
-  marginTop: 10,
+const navRow: CSSProperties = {
+  display: "flex",
+  gap: 8,
+  flexWrap: "wrap",
+  justifyContent: "space-between",
+  margin: "8px 0",
+};
+
+const navBtn: CSSProperties = {
   padding: "8px 12px",
   borderRadius: 10,
+  border: "1px solid #cbd5e1",
+  background: "#fff",
+  fontSize: 12,
+  fontWeight: 600,
+  cursor: "pointer",
+};
+
+const navBtnPrimary: CSSProperties = {
+  ...navBtn,
   border: "none",
   background: "#1d4ed8",
   color: "#fff",
   fontWeight: 700,
-  fontSize: 12,
-  cursor: "pointer",
 };
 
 const preloadCard: CSSProperties = {
@@ -538,6 +673,20 @@ const completionBar: CSSProperties = {
   border: "1px solid #a5f3fc",
   fontSize: 12,
   color: "#155e75",
+};
+
+const saveBar: CSSProperties = {
+  display: "flex",
+  gap: 10,
+  flexWrap: "wrap",
+  alignItems: "center",
+  marginBottom: 8,
+  padding: "6px 10px",
+  borderRadius: 10,
+  background: "#fff7ed",
+  border: "1px solid #fed7aa",
+  fontSize: 12,
+  color: "#9a3412",
 };
 
 const textareaStyle: CSSProperties = {

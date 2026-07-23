@@ -27,6 +27,7 @@ import {
 } from "./inpatientWorkspacePaths";
 import { InpatientClinicalOpsPanel } from "./InpatientClinicalOpsPanel";
 import { InpatientAdmissionClinicalShell } from "./InpatientAdmissionClinicalShell";
+import { InpatientProviderWorkspacePanel } from "./InpatientProviderWorkspacePanel";
 
 export type InpatientWorkspaceEncounterLite = {
   id: string;
@@ -70,12 +71,14 @@ export function InpatientWorkspacePanel({
   encounter,
   workspaceEnabled,
   onRefetchEncounter,
+  onNavigateSection,
 }: {
   section: InpatientWorkspaceSection;
   encounterId: string;
   encounter: InpatientWorkspaceEncounterLite | null;
   workspaceEnabled?: boolean;
   onRefetchEncounter: () => Promise<void>;
+  onNavigateSection?: (section: InpatientWorkspaceSection) => void;
 }) {
   const { t } = useI18n();
   const { facilityId, roles, userId, facilityTimeZone } = useFacilityAndRoles();
@@ -88,6 +91,7 @@ export function InpatientWorkspacePanel({
   const carePlanLive = isInpatientCarePlanEnabledInBrowser();
   const dischargeLive = isInpatientDischargePlanningEnabledInBrowser();
   const canPrescribe = roles.includes("PROVIDER") || roles.includes("ADMIN");
+  const canProviderWrite = roles.includes("PROVIDER") || roles.includes("ADMIN");
   const canAck =
     roles.includes("PROVIDER") || roles.includes("RN") || roles.includes("ADMIN");
   const signed = (encounter?.providerDocumentationStatus ?? "").trim() === "SIGNED";
@@ -105,17 +109,25 @@ export function InpatientWorkspacePanel({
 
   switch (section) {
     case "overview":
+      if (!facilityId) {
+        return (
+          <p data-testid="inpatient-panel-overview" style={{ fontSize: 13, color: "#64748b" }}>
+            {t("inpatientD3e.featureUnavailable")}
+          </p>
+        );
+      }
       return (
         <div data-testid="inpatient-panel-overview">
-          <p style={{ margin: 0, fontSize: 13, color: "#334155", lineHeight: 1.45 }}>
-            {t("inpatientD3e.overview.body")}
-          </p>
-          <p style={{ margin: "10px 0 0", fontSize: 12, color: "#64748b" }}>
-            {t("inpatientD3e.overview.encounterId")}: {encounterId}
-          </p>
-          <p style={{ margin: "8px 0 0", fontSize: 12, color: "#64748b" }}>
-            {t("inpatientD3e.sharedOrderEngineHint")}
-          </p>
+          <InpatientProviderWorkspacePanel
+            mode="overview"
+            encounterId={encounterId}
+            facilityId={facilityId}
+            patientId={encounter?.patient?.id}
+            canProviderWrite={canProviderWrite}
+            canDocumentDiagnoses={canPrescribe}
+            isLocked={signed}
+            onNavigateSection={onNavigateSection}
+          />
           {docsLive ? (
             <div style={{ marginTop: 12 }}>
               <InpatientClinicalOpsPanel encounterId={encounterId} mode="overview" />
@@ -129,9 +141,64 @@ export function InpatientWorkspacePanel({
           encounterId={encounterId}
           nursingLive={nursingLive}
           docsLive={docsLive}
+          canAdmin={roles.includes("ADMIN")}
+        />
+      );
+    case "problemsPlan":
+      if (!facilityId) {
+        return (
+          <p style={{ fontSize: 13, color: "#64748b" }}>{t("inpatientD3e.featureUnavailable")}</p>
+        );
+      }
+      return (
+        <InpatientProviderWorkspacePanel
+          mode="problemsPlan"
+          encounterId={encounterId}
+          facilityId={facilityId}
+          patientId={encounter?.patient?.id}
+          canProviderWrite={canProviderWrite}
+          canDocumentDiagnoses={canPrescribe}
+          isLocked={signed}
+          onNavigateSection={onNavigateSection}
         />
       );
     case "historyPhysical":
+      if (!facilityId) {
+        return (
+          <div data-testid="inpatient-panel-historyPhysical-flag-off">
+            <p style={{ fontSize: 13, color: "#64748b" }}>{t("inpatientD3e.docsFlagOff")}</p>
+          </div>
+        );
+      }
+      return (
+        <div data-testid="inpatient-panel-historyPhysical-live">
+          <InpatientProviderWorkspacePanel
+            mode="historyPhysical"
+            encounterId={encounterId}
+            facilityId={facilityId}
+            patientId={encounter?.patient?.id}
+            canProviderWrite={canProviderWrite}
+            canDocumentDiagnoses={canPrescribe}
+            isLocked={signed}
+            onNavigateSection={onNavigateSection}
+          />
+          {docsLive ? (
+            <div style={{ marginTop: 12 }}>
+              <p style={{ margin: "0 0 10px", fontSize: 12, color: "#64748b" }}>
+                {t("inpatientD3e.historyPhysical.reuseNotesHint")}
+              </p>
+              <EmergencyErNotesPanel
+                encounterId={encounterId}
+                facilityId={facilityId}
+                status={encounter?.status}
+                isLocked={signed}
+                roleCodes={roles}
+                onSaved={onRefetchEncounter}
+              />
+            </div>
+          ) : null}
+        </div>
+      );
     case "progressNotes":
       if (!docsLive || !facilityId) {
         return (
@@ -148,7 +215,10 @@ export function InpatientWorkspacePanel({
       return (
         <div data-testid={`inpatient-panel-${section}-live`}>
           <p style={{ margin: "0 0 10px", fontSize: 12, color: "#64748b" }}>
-            {t("inpatientD3e.historyPhysical.reuseNotesHint")}
+            {t("inpatientProviderD4a26.progress.reuseNotes")}
+          </p>
+          <p style={{ margin: "0 0 10px", fontSize: 12, color: "#64748b" }}>
+            {t("inpatientProviderD4a26.progress.newSincePrior")}
           </p>
           <EmergencyErNotesPanel
             encounterId={encounterId}
@@ -340,20 +410,48 @@ export function InpatientWorkspacePanel({
         </div>
       );
     case "timeline":
+      if (!facilityId) {
+        return (
+          <ShellList
+            title={t("inpatientD3e.timeline.body")}
+            items={INPATIENT_TIMELINE_EVENT_KINDS.map((k) =>
+              t(`inpatientD3e.timeline.kinds.${k}`)
+            )}
+            testId="inpatient-panel-timeline"
+          />
+        );
+      }
       return (
-        <ShellList
-          title={t("inpatientD3e.timeline.body")}
-          items={INPATIENT_TIMELINE_EVENT_KINDS.map((k) =>
-            t(`inpatientD3e.timeline.kinds.${k}`)
-          )}
-          testId="inpatient-panel-timeline"
+        <InpatientProviderWorkspacePanel
+          mode="timeline"
+          encounterId={encounterId}
+          facilityId={facilityId}
+          patientId={encounter?.patient?.id}
+          canProviderWrite={canProviderWrite}
+          canDocumentDiagnoses={canPrescribe}
+          isLocked={signed}
+          onNavigateSection={onNavigateSection}
         />
       );
     case "summary":
+      if (!facilityId) {
+        return (
+          <p data-testid="inpatient-panel-summary" style={{ fontSize: 13, color: "#334155" }}>
+            {t("inpatientD3e.summary.body")}
+          </p>
+        );
+      }
       return (
-        <p data-testid="inpatient-panel-summary" style={{ fontSize: 13, color: "#334155" }}>
-          {t("inpatientD3e.summary.body")}
-        </p>
+        <InpatientProviderWorkspacePanel
+          mode="summary"
+          encounterId={encounterId}
+          facilityId={facilityId}
+          patientId={encounter?.patient?.id}
+          canProviderWrite={canProviderWrite}
+          canDocumentDiagnoses={canPrescribe}
+          isLocked={signed}
+          onNavigateSection={onNavigateSection}
+        />
       );
     default:
       return null;

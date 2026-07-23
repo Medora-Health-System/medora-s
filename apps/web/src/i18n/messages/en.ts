@@ -45,6 +45,8 @@ import { emergencyAdaptiveNursingEn } from "./emergencyAdaptiveNursing.en";
 import { admissionWorkflowVisibilityEn } from "./admissionWorkflowVisibility.en";
 import { admissionCommandCenterEn } from "./admissionCommandCenter.en";
 import { hospitalAdmissionD4a1En } from "./hospitalAdmissionD4a1.en";
+import { hospitalAdmissionD4a25En } from "./hospitalAdmissionD4a25.en";
+import { inpatientProviderD4a26En } from "./inpatientProviderD4a26.en";
 
 export default {
   common: {
@@ -19123,6 +19125,8 @@ export default {
     },
   },
   hospitalAdmissionD4a1: hospitalAdmissionD4a1En,
+  hospitalAdmissionD4a25: hospitalAdmissionD4a25En,
+  inpatientProviderD4a26: inpatientProviderD4a26En,
 
   hospitalAdmissionD4a0: hospitalAdmissionD4a0En,
   emergencyAdaptiveNursing: emergencyAdaptiveNursingEn,

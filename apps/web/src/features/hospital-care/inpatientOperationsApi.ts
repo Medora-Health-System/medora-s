@@ -99,6 +99,8 @@ export async function patchNursingAdmissionSection(
   body: {
     sectionId: string;
     draftText?: string | null;
+    answers?: Record<string, unknown> | null;
+    unableReason?: string | null;
     completionState?: string | null;
     expectedVersion: number;
   }
@@ -107,6 +109,67 @@ export async function patchNursingAdmissionSection(
     `/inpatient-operations/encounters/${encodeURIComponent(encounterId)}/nursing-admission/sections`,
     { method: "PATCH", body: JSON.stringify(body) }
   ) as Promise<{ documentation: Record<string, unknown>; completion: Record<string, unknown> }>;
+}
+
+export async function fetchNursingAdmissionReview(encounterId: string) {
+  return apiFetch(
+    `/inpatient-operations/encounters/${encodeURIComponent(encounterId)}/nursing-admission/review`
+  ) as Promise<{
+    certification: string;
+    review: Record<string, unknown>;
+    completion: Record<string, unknown>;
+    documentation: Record<string, unknown>;
+  }>;
+}
+
+export async function editInpatientAdmissionDetails(
+  encounterId: string,
+  body: Record<string, unknown>
+) {
+  return apiFetch(
+    `/inpatient-operations/encounters/${encodeURIComponent(encounterId)}/lifecycle/edit-admission`,
+    { method: "POST", body: JSON.stringify(body) }
+  );
+}
+
+export async function transferInpatientBed(
+  encounterId: string,
+  body: { toBedKey: string; reason: string; effectiveAt?: string | null }
+) {
+  return apiFetch(
+    `/inpatient-operations/encounters/${encodeURIComponent(encounterId)}/lifecycle/transfer-bed`,
+    { method: "POST", body: JSON.stringify(body) }
+  );
+}
+
+export async function dischargeInpatientEncounter(
+  encounterId: string,
+  body: Record<string, unknown>
+) {
+  return apiFetch(
+    `/inpatient-operations/encounters/${encodeURIComponent(encounterId)}/lifecycle/discharge`,
+    { method: "POST", body: JSON.stringify(body) }
+  );
+}
+
+export async function cancelInpatientAdmission(
+  encounterId: string,
+  body: { reasonCode: string; explanation: string }
+) {
+  return apiFetch(
+    `/inpatient-operations/encounters/${encodeURIComponent(encounterId)}/lifecycle/cancel-admission`,
+    { method: "POST", body: JSON.stringify(body) }
+  );
+}
+
+export async function voidInpatientEncounter(
+  encounterId: string,
+  body: { reason: string; confirm: boolean; adminOverride?: boolean }
+) {
+  return apiFetch(
+    `/inpatient-operations/encounters/${encodeURIComponent(encounterId)}/lifecycle/void-encounter`,
+    { method: "POST", body: JSON.stringify(body) }
+  );
 }
 
 export async function verifyNursingAdmissionPreloadItem(
@@ -137,4 +200,66 @@ export async function signNursingAdmission(
     `/inpatient-operations/encounters/${encodeURIComponent(encounterId)}/nursing-admission/sign`,
     { method: "POST", body: JSON.stringify(body) }
   ) as Promise<{ documentation: Record<string, unknown>; completion: Record<string, unknown> }>;
+}
+
+/** D4A.2.6 — Provider clinical workspace client. */
+export async function fetchProviderWorkspace(encounterId: string) {
+  return apiFetch(
+    `/inpatient-operations/encounters/${encodeURIComponent(encounterId)}/provider-workspace`
+  ) as Promise<{
+    certification: string;
+    documentation: Record<string, unknown>;
+    clinicalOps: Record<string, unknown>;
+    boundary: Record<string, unknown>;
+  }>;
+}
+
+export async function acknowledgeProviderWorkspaceEvent(
+  encounterId: string,
+  body: {
+    eventId: string;
+    status: string;
+    actionTaken?: string | null;
+    expectedVersion: number;
+  }
+) {
+  return apiFetch(
+    `/inpatient-operations/encounters/${encodeURIComponent(encounterId)}/provider-workspace/events/acknowledge`,
+    { method: "POST", body: JSON.stringify(body) }
+  ) as Promise<{ documentation: Record<string, unknown> }>;
+}
+
+export async function upsertProviderProblemPlan(
+  encounterId: string,
+  body: { item: Record<string, unknown>; expectedVersion: number }
+) {
+  return apiFetch(
+    `/inpatient-operations/encounters/${encodeURIComponent(encounterId)}/provider-workspace/problem-plans`,
+    { method: "POST", body: JSON.stringify(body) }
+  ) as Promise<{ documentation: Record<string, unknown> }>;
+}
+
+export async function saveProviderHpDraft(
+  encounterId: string,
+  body: {
+    sectionKey: string;
+    text?: string | null;
+    structured?: Record<string, unknown> | null;
+    expectedVersion: number;
+  }
+) {
+  return apiFetch(
+    `/inpatient-operations/encounters/${encodeURIComponent(encounterId)}/provider-workspace/hp`,
+    { method: "PATCH", body: JSON.stringify(body) }
+  ) as Promise<{ documentation: Record<string, unknown> }>;
+}
+
+export async function signProviderHp(
+  encounterId: string,
+  body: { expectedVersion: number }
+) {
+  return apiFetch(
+    `/inpatient-operations/encounters/${encodeURIComponent(encounterId)}/provider-workspace/hp/sign`,
+    { method: "POST", body: JSON.stringify(body) }
+  ) as Promise<{ documentation: Record<string, unknown> }>;
 }
