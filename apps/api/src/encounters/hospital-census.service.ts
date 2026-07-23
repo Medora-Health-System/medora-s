@@ -13,6 +13,7 @@ import {
 import { InternalPlacementService } from "./internal-placement.service";
 import { FacilityBedBoardService } from "../facilities/facility-bed-board.service";
 import { SchemaCompatibleEncounterRepository } from "./schema-compatible-encounter.repository";
+import { HospitalEncounterAuthorityService } from "./hospital-encounter-authority.service";
 
 @Injectable()
 export class HospitalCensusService {
@@ -21,7 +22,8 @@ export class HospitalCensusService {
   constructor(
     private readonly placement: InternalPlacementService,
     private readonly bedBoard: FacilityBedBoardService,
-    private readonly encounters: SchemaCompatibleEncounterRepository
+    private readonly encounters: SchemaCompatibleEncounterRepository,
+    private readonly encounterAuthority: HospitalEncounterAuthorityService
   ) {}
 
   async getHospitalCensus(
@@ -125,7 +127,7 @@ export class HospitalCensusService {
       };
     }
 
-    return buildHospitalCensusV1({
+    const census = buildHospitalCensusV1({
       facilityId: fid,
       placementAvailability: queue.availability,
       encounters,
@@ -144,5 +146,19 @@ export class HospitalCensusService {
       snapshotScope: options?.snapshotScope ?? "ALL_HOSPITAL_CARE",
       occupiedBedKeysWithoutEncounter: occupiedBedKeysWithoutEncounter.filter(Boolean),
     });
+
+    if (occupiedBedKeysWithoutEncounter.length > 0) {
+      this.logger.warn(
+        JSON.stringify({
+          event: "hospital_census_reconciliation_warning",
+          facilityId: fid,
+          code: "OCCUPIED_BED_WITHOUT_ACTIVE_ENCOUNTER",
+          bedKeys: occupiedBedKeysWithoutEncounter.filter(Boolean),
+          authorityCertification: this.encounterAuthority.certification(),
+        })
+      );
+    }
+
+    return census;
   }
 }

@@ -226,6 +226,31 @@ export class SchemaCompatibleEncounterRepository {
   }
 
   /**
+   * D4A.2.8-HF2 — Load by primary key only (no facility filter).
+   * Required so FACILITY_MISMATCH is never collapsed into NOT_FOUND.
+   */
+  async findEncounterByIdForAuthority(
+    encounterId: string
+  ): Promise<CompatibleEncounterProjection | null> {
+    const eid = String(encounterId ?? "").trim();
+    if (!eid) return null;
+
+    const foundationOn = this.isHospitalEpisodeFoundationEnabled();
+    const select = buildWorkspaceBootstrapEncounterSelect(foundationOn);
+    assertSelectExcludesHospitalEpisodeIdWhenDisabled(
+      select as Record<string, unknown>,
+      foundationOn
+    );
+
+    const row = await this.prisma.encounter.findUnique({
+      where: { id: eid },
+      select,
+    });
+    if (!row) return null;
+    return mapRowToProjection(row as unknown as Record<string, unknown>, foundationOn);
+  }
+
+  /**
    * Open hospital (type=INPATIENT) encounters for census / units / dashboard.
    * Encounter-authoritative; omits hospitalEpisodeId when foundation OFF.
    */

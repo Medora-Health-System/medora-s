@@ -96,10 +96,17 @@ describe("HospitalCensusService D4A.2.8-HF1", () => {
         ],
       }),
     };
+    const encounterAuthority = {
+      certification: jest
+        .fn()
+        .mockReturnValue("MEDUI.AUTHORITATIVE_HOSPITAL_CENSUS_LINEAGE_RECOVERY.D4A2_8_HF2"),
+      getFacilityReconciliationReport: jest.fn(),
+    };
     const svc = new HospitalCensusService(
       placement as never,
       bedBoard as never,
-      encounters as never
+      encounters as never,
+      encounterAuthority as never
     );
     return { svc, encounters, placement, bedBoard };
   }

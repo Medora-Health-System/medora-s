@@ -91,6 +91,7 @@
     "icd10:convert-cms": "ts-node --transpile-only scripts/convert-cms-icd10-to-medora-csv.ts",
     "export:ed-diagnosis-shadow": "ts-node --transpile-only scripts/export-ed-diagnosis-shadow-audit.ts",
     "audit:production-db-seed-parity": "pnpm --filter @medora/shared build && ts-node --transpile-only scripts/production-db-seed-parity-audit.ts",
+    "audit:hospital-census-lineage": "ts-node --transpile-only scripts/audit-hospital-census-lineage.ts",
     "diagnose:ed-diagnosis-export": "ts-node --transpile-only scripts/diagnose-ed-diagnosis-export.ts",
     "import:billing-procedure-codes": "ts-node --transpile-only scripts/import-billing-procedure-codes.ts",
     "import:medication-billing-catalog": "ts-node --transpile-only scripts/import-medication-billing-catalog.ts",

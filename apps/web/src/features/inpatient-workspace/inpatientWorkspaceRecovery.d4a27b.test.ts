@@ -57,7 +57,7 @@ describe("MEDUI.INPATIENT_WORKSPACE_RECOVERY.D4A2_7B boundary", () => {
     expect(panel).toContain("governedNursingOnly");
   });
 
-  it("API exposes workspace-bootstrap and service rejects non-inpatient", () => {
+  it("API exposes workspace-bootstrap and HF2 authority resolves mismatches", () => {
     const ctl = readFileSync(
       join(root, "../../../../api/src/encounters/inpatient-operations.controller.ts"),
       "utf8"
@@ -66,11 +66,42 @@ describe("MEDUI.INPATIENT_WORKSPACE_RECOVERY.D4A2_7B boundary", () => {
       join(root, "../../../../api/src/encounters/inpatient-operations.service.ts"),
       "utf8"
     );
+    const authority = readFileSync(
+      join(root, "../../../../api/src/encounters/hospital-encounter-authority.service.ts"),
+      "utf8"
+    );
+    const sharedAuthority = readFileSync(
+      join(
+        root,
+        "../../../../../packages/shared/src/encounters/hospitalEncounterAuthorityD4a28Hf2.ts"
+      ),
+      "utf8"
+    );
+    const clientErrors = read("inpatientBootstrapClientErrors.ts");
+    const view = read("InpatientActiveWorkspaceView.tsx");
+
     expect(ctl).toContain("workspace-bootstrap");
     expect(svc).toContain("getWorkspaceBootstrap");
-    expect(svc).toContain("buildEncounterMismatchResolution");
+    // D4A.2.8-HF2: authoritative resolver replaces buildEncounterMismatchResolution wiring
+    expect(svc).toContain("encounterAuthority.resolveRequestedEncounter");
+    expect(svc).toContain("FACILITY_MISMATCH");
+    expect(svc).toContain("redirectedFromEncounterId");
+    expect(svc).toContain("writersEnabled: false");
     expect(svc).toContain("INPATIENT_WORKSPACE_OPENED");
     expect(svc).not.toContain("enablePlacement");
+    expect(svc).not.toContain("buildEncounterMismatchResolution");
+
+    expect(authority).toContain("resolveHospitalEncounterAuthority");
+    expect(authority).toContain("findEncounterByIdForAuthority");
+    expect(authority).toContain("allowLineageRedirect");
+    expect(sharedAuthority).toContain("export function resolveHospitalEncounterAuthority");
+    expect(sharedAuthority).toContain('category: "FACILITY_MISMATCH"');
+    expect(sharedAuthority).toContain('category: "ED_ENCOUNTER_REJECTED"');
+    expect(sharedAuthority).toContain('category: "WRONG_ENCOUNTER_TYPE"');
+
+    expect(clientErrors).toContain('code === "FACILITY_MISMATCH"');
+    expect(view).toContain("redirectedFromEncounterId");
+    expect(view).toContain("writersEnabled");
   });
 
   it("unit bed board uses hospitalOccupantChartPath", () => {

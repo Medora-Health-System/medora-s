@@ -104,7 +104,6 @@ import {
   readInpatientLifecycleMeta,
   computeHospitalDay,
   INPATIENT_WORKSPACE_RECOVERY_CERTIFICATION_ID,
-  buildEncounterMismatchResolution,
   type NursingAdmissionDomainReferenceV1,
   type NursingAdmissionDomainKey,
   type NursingAmendmentType,
@@ -168,6 +167,7 @@ import {
 import { sanitizePrismaException } from "../common/logging/prisma-error-sanitizer";
 import { ClinicalSynthesisService } from "./clinical-synthesis.service";
 import { SchemaCompatibleEncounterRepository } from "./schema-compatible-encounter.repository";
+import { HospitalEncounterAuthorityService } from "./hospital-encounter-authority.service";
 
 /** Observation is a clinical lane (billing / summary), not EncounterType.OBSERVATION. */
 function isExplicitObservationChart(enc: {
@@ -237,7 +237,8 @@ export class InpatientOperationsService {
     private readonly admissionCorrelation: AdmissionCorrelationService,
     private readonly bedBoardService: FacilityBedBoardService,
     private readonly clinicalSynthesis: ClinicalSynthesisService,
-    private readonly compatibleEncounters: SchemaCompatibleEncounterRepository
+    private readonly compatibleEncounters: SchemaCompatibleEncounterRepository,
+    private readonly encounterAuthority: HospitalEncounterAuthorityService
   ) {}
 
   /** Map Prisma P2022 on Encounter.hospitalEpisodeId to a coded clinical-safe error. */
@@ -1330,27 +1331,79 @@ export class InpatientOperationsService {
       };
     }
 
-    // D4A.2.8-HF1: compatibility-aware projection — never select hospitalEpisodeId when foundation OFF.
-    const enc = await this.compatibleEncounters.findFacilityEncounterForWorkspace(
+    // D4A.2.8-HF2: authority resolves by ID first (FACILITY_MISMATCH ≠ NOT_FOUND),
+    // optional unambiguous lineage redirect, pre-D3B-safe projection (HF1).
+    const authority = await this.encounterAuthority.resolveRequestedEncounter(
       facilityId,
-      requested
+      requested,
+      { workspace: "INPATIENT", allowLineageRedirect: true }
     );
 
-    if (!enc) {
+    if (!authority.ok) {
+      const mappedCategory =
+        authority.category === "CROSS_FACILITY_LINEAGE"
+          ? ("FACILITY_MISMATCH" as const)
+          : authority.category === "CROSS_PATIENT_LINEAGE" ||
+              authority.category === "LINEAGE_AMBIGUOUS"
+            ? ("LINEAGE_AMBIGUOUS" as const)
+            : authority.category;
       await this.audit.log(AuditAction.CHART_ACCESS, "InpatientWorkspace", {
         userId: actorUserId,
         facilityId,
+        patientId: authority.patientId ?? undefined,
         entityId: requested,
         encounterId: requested,
         ip: options?.ip,
         userAgent: options?.userAgent,
         metadata: {
-          event: "INPATIENT_WORKSPACE_BOOTSTRAP_FAILED",
-          category: "NOT_FOUND",
+          event:
+            mappedCategory === "FACILITY_MISMATCH"
+              ? "INPATIENT_WORKSPACE_BOOTSTRAP_FACILITY_MISMATCH"
+              : mappedCategory === "NOT_FOUND" || mappedCategory === "MISSING_ID"
+                ? "INPATIENT_WORKSPACE_BOOTSTRAP_FAILED"
+                : "INPATIENT_WORKSPACE_BOOTSTRAP_REJECTED_TYPE",
+          category: mappedCategory,
+          actualType: authority.actualEncounterType ?? null,
+          actualFacilityId: authority.actualFacilityId ?? null,
           workspace: options?.workspace ?? "inpatient",
           accessKind: "OPEN",
         },
       });
+      return {
+        certification: INPATIENT_WORKSPACE_RECOVERY_CERTIFICATION_ID,
+        resolution: {
+          ok: false,
+          requestedEncounterId: requested,
+          category: mappedCategory,
+          writersEnabled: false,
+          actualEncounterType: authority.actualEncounterType ?? null,
+          actualFacilityId: authority.actualFacilityId ?? null,
+          messageCode: authority.messageCode,
+        },
+        generatedAt,
+        header: null,
+        readiness: {
+          role,
+          encounterResolved: false,
+          roleAuthorized: true,
+          modules: {
+            bootstrap:
+              mappedCategory === "NOT_FOUND" || mappedCategory === "MISSING_ID"
+                ? "SOURCE_UNAVAILABLE"
+                : "ENCOUNTER_MISMATCH",
+          },
+        },
+        alertCounts: { criticalResults: null, pendingTasks: null, escalations: null },
+        writersEnabled: false,
+      };
+    }
+
+    const enc = await this.compatibleEncounters.findFacilityEncounterForWorkspace(
+      facilityId,
+      authority.resolvedEncounterId
+    );
+    if (!enc) {
+      // Should be unreachable after authority ok — treat as NOT_FOUND safely
       return {
         certification: INPATIENT_WORKSPACE_RECOVERY_CERTIFICATION_ID,
         resolution: {
@@ -1367,43 +1420,6 @@ export class InpatientOperationsService {
           encounterResolved: false,
           roleAuthorized: true,
           modules: { bootstrap: "SOURCE_UNAVAILABLE" },
-        },
-        alertCounts: { criticalResults: null, pendingTasks: null, escalations: null },
-        writersEnabled: false,
-      };
-    }
-
-    if (String(enc.type) !== EncounterType.INPATIENT) {
-      const mismatch = buildEncounterMismatchResolution({
-        requestedEncounterId: requested,
-        actualType: String(enc.type),
-      });
-      await this.audit.log(AuditAction.CHART_ACCESS, "InpatientWorkspace", {
-        userId: actorUserId,
-        facilityId,
-        patientId: enc.patientId,
-        entityId: enc.id,
-        encounterId: enc.id,
-        ip: options?.ip,
-        userAgent: options?.userAgent,
-        metadata: {
-          event: "INPATIENT_WORKSPACE_BOOTSTRAP_REJECTED_TYPE",
-          category: !mismatch.ok ? mismatch.category : "WRONG_ENCOUNTER_TYPE",
-          actualType: enc.type,
-          workspace: options?.workspace ?? "inpatient",
-          accessKind: "OPEN",
-        },
-      });
-      return {
-        certification: INPATIENT_WORKSPACE_RECOVERY_CERTIFICATION_ID,
-        resolution: mismatch,
-        generatedAt,
-        header: null,
-        readiness: {
-          role,
-          encounterResolved: false,
-          roleAuthorized: true,
-          modules: { bootstrap: "ENCOUNTER_MISMATCH" },
         },
         alertCounts: { criticalResults: null, pendingTasks: null, escalations: null },
         writersEnabled: false,
@@ -1492,6 +1508,8 @@ export class InpatientOperationsService {
         status: String(enc.status),
         hospitalEpisodeId: enc.hospitalEpisodeId,
         writersEnabled: true,
+        requestedEncounterId: requested,
+        redirectedFromEncounterId: authority.redirected ? requested : null,
       },
       generatedAt,
       header: {

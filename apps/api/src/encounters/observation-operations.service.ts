@@ -22,6 +22,7 @@ import {
 import { PrismaService } from "../prisma/prisma.service";
 import { AuditService } from "../common/services/audit.service";
 import { SchemaCompatibleEncounterRepository } from "./schema-compatible-encounter.repository";
+import { HospitalEncounterAuthorityService } from "./hospital-encounter-authority.service";
 
 @Injectable()
 export class ObservationOperationsService {
@@ -30,7 +31,8 @@ export class ObservationOperationsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
-    private readonly compatibleEncounters: SchemaCompatibleEncounterRepository
+    private readonly compatibleEncounters: SchemaCompatibleEncounterRepository,
+    private readonly encounterAuthority: HospitalEncounterAuthorityService
   ) {}
 
   async getWorkspaceBootstrap(
@@ -71,26 +73,86 @@ export class ObservationOperationsService {
       };
     }
 
-    // D4A.2.8-HF1: compatibility-aware projection — never select hospitalEpisodeId when foundation OFF.
-    const enc = await this.compatibleEncounters.findFacilityEncounterForWorkspace(
+    // D4A.2.8-HF2: resolve by ID first so FACILITY_MISMATCH is never hidden as NOT_FOUND.
+    const authority = await this.encounterAuthority.resolveRequestedEncounter(
       facilityId,
-      requested
+      requested,
+      { workspace: "OBSERVATION", allowLineageRedirect: true }
     );
 
-    if (!enc) {
+    if (!authority.ok) {
+      const mappedCategory =
+        authority.category === "CROSS_FACILITY_LINEAGE"
+          ? ("FACILITY_MISMATCH" as const)
+          : authority.category === "CROSS_PATIENT_LINEAGE"
+            ? ("LINEAGE_AMBIGUOUS" as const)
+            : authority.category === "WRONG_ENCOUNTER_TYPE"
+              ? ("WRONG_ENCOUNTER_TYPE" as const)
+              : authority.category;
       await this.audit.log(AuditAction.CHART_ACCESS, "ObservationWorkspace", {
         userId: actorUserId,
         facilityId,
+        patientId: authority.patientId ?? undefined,
         entityId: requested,
         encounterId: requested,
         ip: options?.ip,
         userAgent: options?.userAgent,
         metadata: {
-          event: "OBSERVATION_WORKSPACE_BOOTSTRAP_FAILED",
-          category: "NOT_FOUND",
+          event:
+            mappedCategory === "FACILITY_MISMATCH"
+              ? "OBSERVATION_WORKSPACE_BOOTSTRAP_FACILITY_MISMATCH"
+              : mappedCategory === "NOT_FOUND" || mappedCategory === "MISSING_ID"
+                ? "OBSERVATION_WORKSPACE_BOOTSTRAP_FAILED"
+                : "OBSERVATION_WORKSPACE_BOOTSTRAP_REJECTED_TYPE",
+          category: mappedCategory,
+          actualType: authority.actualEncounterType ?? null,
+          actualFacilityId: authority.actualFacilityId ?? null,
           accessKind: "OPEN",
         },
       });
+      const messageCode =
+        mappedCategory === "ED_ENCOUNTER_REJECTED"
+          ? "inpatientWorkspaceRecovery.errors.ED_ENCOUNTER_REJECTED"
+          : mappedCategory === "FACILITY_MISMATCH"
+            ? "inpatientWorkspaceRecovery.errors.FACILITY_MISMATCH"
+            : mappedCategory === "NOT_FOUND" || mappedCategory === "MISSING_ID"
+              ? `inpatientWorkspaceRecovery.errors.${mappedCategory}`
+              : "inpatientRapidConvergenceD4a27c.observation.wrongType";
+      return {
+        certification: INPATIENT_WORKSPACE_RECOVERY_CERTIFICATION_ID,
+        observationCertification: INPATIENT_RAPID_CONVERGENCE_CERTIFICATION_ID,
+        resolution: {
+          ok: false,
+          requestedEncounterId: requested,
+          category: mappedCategory,
+          writersEnabled: false,
+          actualEncounterType: authority.actualEncounterType ?? null,
+          actualFacilityId: authority.actualFacilityId ?? null,
+          messageCode,
+        },
+        generatedAt,
+        header: null,
+        readiness: {
+          role,
+          encounterResolved: false,
+          roleAuthorized: true,
+          modules: {
+            bootstrap:
+              mappedCategory === "NOT_FOUND" || mappedCategory === "MISSING_ID"
+                ? "SOURCE_UNAVAILABLE"
+                : "ENCOUNTER_MISMATCH",
+          },
+        },
+        alertCounts: { criticalResults: null, pendingTasks: null, escalations: null },
+        writersEnabled: false,
+      };
+    }
+
+    const enc = await this.compatibleEncounters.findFacilityEncounterForWorkspace(
+      facilityId,
+      authority.resolvedEncounterId
+    );
+    if (!enc) {
       return {
         certification: INPATIENT_WORKSPACE_RECOVERY_CERTIFICATION_ID,
         observationCertification: INPATIENT_RAPID_CONVERGENCE_CERTIFICATION_ID,
@@ -114,32 +176,13 @@ export class ObservationOperationsService {
       };
     }
 
+    // Defense-in-depth: keep legacy gate aligned with authority OBSERVATION workspace.
     const gate = observationBootstrapRejectsEdAndInpatient({
       type: enc.type,
       billingClassification: enc.billingClassification,
       admissionSummaryJson: enc.admissionSummaryJson,
     });
-
     if (!gate.ok) {
-      await this.audit.log(AuditAction.CHART_ACCESS, "ObservationWorkspace", {
-        userId: actorUserId,
-        facilityId,
-        patientId: enc.patientId,
-        entityId: enc.id,
-        encounterId: enc.id,
-        ip: options?.ip,
-        userAgent: options?.userAgent,
-        metadata: {
-          event: "OBSERVATION_WORKSPACE_BOOTSTRAP_REJECTED_TYPE",
-          category: gate.category,
-          actualType: enc.type,
-          accessKind: "OPEN",
-        },
-      });
-      const messageCode =
-        gate.category === "ED_ENCOUNTER_REJECTED"
-          ? "inpatientWorkspaceRecovery.errors.ED_ENCOUNTER_REJECTED"
-          : "inpatientRapidConvergenceD4a27c.observation.wrongType";
       return {
         certification: INPATIENT_WORKSPACE_RECOVERY_CERTIFICATION_ID,
         observationCertification: INPATIENT_RAPID_CONVERGENCE_CERTIFICATION_ID,
@@ -149,7 +192,10 @@ export class ObservationOperationsService {
           category: gate.category,
           writersEnabled: false,
           actualEncounterType: String(enc.type),
-          messageCode,
+          messageCode:
+            gate.category === "ED_ENCOUNTER_REJECTED"
+              ? "inpatientWorkspaceRecovery.errors.ED_ENCOUNTER_REJECTED"
+              : "inpatientRapidConvergenceD4a27c.observation.wrongType",
         },
         generatedAt,
         header: null,
