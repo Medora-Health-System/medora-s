@@ -4,13 +4,17 @@ import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties }
 import {
   ADMISSION_HISTORY_VERIFICATION_STATUSES,
   ADMISSION_SECTION_COMPLETION_STATES,
+  AUTHORITATIVE_DOMAIN_LINKAGE_CERTIFICATION_ID,
   HEAD_TO_TOE_SYSTEM_KEYS,
   INPATIENT_ADMISSION_CLINICAL_SECTIONS,
   INPATIENT_LIFECYCLE_NURSING_ADMISSION_CERTIFICATION_ID,
   MEDSURG_NURSING_ADMISSION_CERTIFICATION_ID,
   NURSING_DOMAIN_INTEGRATION_CERTIFICATION_ID,
+  resolveAuthoritativeCodeStatus,
+  resolveAuthoritativeIsolation,
   type AdmissionSectionCompletionState,
   type InpatientAdmissionClinicalSection,
+  type InpatientClinicalOpsV1,
   type NursingAdmissionDomainReferenceV1,
 } from "@medora/shared";
 import {
@@ -22,6 +26,7 @@ import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import { apiFetch, asApiObject } from "@/lib/apiClient";
 import { AdmissionJourneyPanel } from "@/features/hospital-care/AdmissionJourneyPanel";
 import {
+  fetchInpatientClinicalOps,
   fetchNursingAdmissionDocumentation,
   fetchNursingAdmissionReview,
   patchNursingAdmissionSection,
@@ -128,6 +133,7 @@ export function InpatientAdmissionClinicalShell({
     preferredName?: string | null;
   } | null>(null);
   const [printOpen, setPrintOpen] = useState(false);
+  const [clinicalOps, setClinicalOps] = useState<InpatientClinicalOpsV1 | null>(null);
   const [amendMode, setAmendMode] = useState<
     null | "ADDENDUM" | "CORRECTION" | "ENTERED_IN_ERROR"
   >(null);
@@ -165,10 +171,19 @@ export function InpatientAdmissionClinicalShell({
       const payload = await fetchNursingAdmissionDocumentation(encounterId);
       applyPayload(payload as never);
       setLastSavedAt(new Date().toISOString());
+      try {
+        const opsPayload = await fetchInpatientClinicalOps(encounterId);
+        setClinicalOps((opsPayload.ops as InpatientClinicalOpsV1) ?? null);
+      } catch {
+        setClinicalOps(null);
+      }
     } catch {
       setLoadError(t("hospitalAdmissionD4a1.loadError"));
     }
   }, [applyPayload, encounterId, t]);
+
+  const codeStatus = resolveAuthoritativeCodeStatus(clinicalOps);
+  const isolation = resolveAuthoritativeIsolation(clinicalOps);
 
   useEffect(() => {
     void reload();
@@ -421,7 +436,7 @@ export function InpatientAdmissionClinicalShell({
   return (
     <div data-testid="inpatient-admission-clinical-shell">
       <p style={{ margin: "0 0 6px", fontSize: 12, color: "#64748b" }} data-testid="d4a25-cert">
-        {NURSING_DOMAIN_INTEGRATION_CERTIFICATION_ID} ·{" "}
+        {AUTHORITATIVE_DOMAIN_LINKAGE_CERTIFICATION_ID} · {NURSING_DOMAIN_INTEGRATION_CERTIFICATION_ID} ·{" "}
         {INPATIENT_LIFECYCLE_NURSING_ADMISSION_CERTIFICATION_ID} · {MEDSURG_NURSING_ADMISSION_CERTIFICATION_ID}
       </p>
       <p style={{ margin: "0 0 8px", fontSize: 13, color: "#334155", lineHeight: 1.45 }}>
@@ -523,6 +538,8 @@ export function InpatientAdmissionClinicalShell({
             patient={patient}
             signed={signed}
             canLink={canLinkDomain}
+            authoritativeCodeStatus={codeStatus}
+            authoritativeIsolation={isolation}
             onLinked={(documentation) => {
               applyPayload({ documentation: documentation as NursingDoc, completion: completion ?? undefined });
             }}

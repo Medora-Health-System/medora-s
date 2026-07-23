@@ -2,13 +2,19 @@
 
 import { useMemo, useState } from "react";
 import {
+  domainRequiresPersistedEdocId,
+  isPersistedEdocRecordId,
+  isSyntheticDomainRecordId,
+  mapEdocCardIdToNursingDomain,
   nursingSectionIntegration,
   type InpatientAdmissionClinicalSection,
+  type NursingAdmissionDomainKey,
   type NursingAdmissionDomainReferenceV1,
 } from "@medora/shared";
 import { useI18n } from "@/lib/i18n";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import { ClinicalDocumentationHub } from "@/features/clinical-documentation/ClinicalDocumentationHub";
+import type { ClinicalDocumentationEntryRow } from "@/lib/clinicalDocumentationApi";
 import { linkNursingAdmissionDomainReference } from "@/features/hospital-care/inpatientOperationsApi";
 import { DISPLAY_DASH } from "@/lib/patientDisplay";
 
@@ -40,6 +46,8 @@ export function NursingAdmissionDomainIntegrationPanel({
   patient,
   signed,
   canLink,
+  authoritativeCodeStatus,
+  authoritativeIsolation,
   onLinked,
 }: {
   sectionId: InpatientAdmissionClinicalSection;
@@ -49,6 +57,8 @@ export function NursingAdmissionDomainIntegrationPanel({
   patient?: PatientLite | null;
   signed: boolean;
   canLink: boolean;
+  authoritativeCodeStatus?: { value: string | null; documented: boolean } | null;
+  authoritativeIsolation?: { value: string | null; documented: boolean } | null;
   onLinked: (documentation: Record<string, unknown>) => void;
 }) {
   const { t } = useI18n();
@@ -56,6 +66,7 @@ export function NursingAdmissionDomainIntegrationPanel({
   const integration = useMemo(() => nursingSectionIntegration(sectionId), [sectionId]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [linkNotice, setLinkNotice] = useState<string | null>(null);
 
   const sectionRefs = domainReferences.filter(
     (r) =>
@@ -63,6 +74,12 @@ export function NursingAdmissionDomainIntegrationPanel({
       (integration.authoritativeDomain !== "ADMISSION_OWNED" &&
         r.domain === integration.authoritativeDomain)
   );
+  const authoritativeCount = sectionRefs.filter(
+    (r) => !isSyntheticDomainRecordId(r.recordId) && r.source !== "LEGACY_SYNTHETIC"
+  ).length;
+  const legacyCount = sectionRefs.filter(
+    (r) => isSyntheticDomainRecordId(r.recordId) || r.source === "LEGACY_SYNTHETIC"
+  ).length;
 
   const badgeLabel = t(`hospitalAdmissionD4a25a.badges.${integration.badgeKey}`);
 
@@ -75,30 +92,59 @@ export function NursingAdmissionDomainIntegrationPanel({
             sectionId === "SURGICAL_HISTORY" ||
             sectionId === "SOCIAL_HISTORY"
           ? t("hospitalAdmissionD4a25a.domain.helpHistory")
-          : t("hospitalAdmissionD4a25a.domain.helpAddendum");
+          : t("hospitalAdmissionD4a26h.help.authoritativeLink");
 
-  const linkDomain = async (recordId: string) => {
+  const linkAuthoritative = async (input: {
+    recordId: string;
+    domain: NursingAdmissionDomainKey;
+    cardId?: string | null;
+  }) => {
     if (!canLink || signed) return;
-    if (integration.authoritativeDomain === "ADMISSION_OWNED") return;
+    if (isSyntheticDomainRecordId(input.recordId)) {
+      setError(t("hospitalAdmissionD4a26h.errors.syntheticRejected"));
+      return;
+    }
+    if (domainRequiresPersistedEdocId(input.domain) && !isPersistedEdocRecordId(input.recordId)) {
+      setError(t("hospitalAdmissionD4a26h.errors.syntheticRejected"));
+      return;
+    }
     setBusy(true);
     setError(null);
+    setLinkNotice(null);
     try {
       const res = await linkNursingAdmissionDomainReference(encounterId, {
         expectedVersion,
         reference: {
-          domain: integration.authoritativeDomain,
-          recordId,
+          domain: input.domain,
+          recordId: input.recordId,
           status: "LINKED",
           sectionId,
-          source: "NURSING_ADMISSION",
+          source: "ENTERPRISE_DOMAIN",
+          cardId: input.cardId ?? null,
         },
       });
       onLinked(res.documentation);
+      setLinkNotice(t("hospitalAdmissionD4a26h.status.linkedAuthoritative"));
     } catch {
-      setError(t("common.loadError"));
+      setError(t("hospitalAdmissionD4a26h.errors.linkFailed"));
     } finally {
       setBusy(false);
     }
+  };
+
+  const onEdocSaved = (saved?: ClinicalDocumentationEntryRow) => {
+    if (!saved?.id || signed || !canLink) return;
+    const domain =
+      mapEdocCardIdToNursingDomain(saved.cardId) ??
+      (integration.authoritativeDomain !== "ADMISSION_OWNED"
+        ? (integration.authoritativeDomain as NursingAdmissionDomainKey)
+        : null);
+    if (!domain) return;
+    void linkAuthoritative({
+      recordId: saved.id,
+      domain,
+      cardId: saved.cardId,
+    });
   };
 
   return (
@@ -144,13 +190,51 @@ export function NursingAdmissionDomainIntegrationPanel({
         >
           ?
         </span>
-        <span style={{ fontSize: 12, color: "#64748b" }}>
-          {t("hospitalAdmissionD4a25a.domain.linkedCount").replace(
+        <span style={{ fontSize: 12, color: "#64748b" }} data-testid="nursing-domain-auth-count">
+          {t("hospitalAdmissionD4a26h.status.authoritativeCount").replace(
             "{count}",
-            String(sectionRefs.length)
+            String(authoritativeCount)
           )}
         </span>
+        {legacyCount > 0 ? (
+          <span
+            role="status"
+            style={{ fontSize: 12, color: "#9a3412", fontWeight: 600 }}
+            data-testid="nursing-domain-legacy-warning"
+          >
+            ⚠{" "}
+            {t("hospitalAdmissionD4a26h.status.legacySyntheticCount").replace(
+              "{count}",
+              String(legacyCount)
+            )}
+          </span>
+        ) : null}
       </div>
+
+      {sectionId === "OVERVIEW" ? (
+        <div data-testid="nursing-ops-code-isolation" style={{ marginTop: 10, fontSize: 13 }}>
+          <p style={{ margin: "0 0 4px" }}>
+            <strong>{t("hospitalAdmissionD4a26h.codeStatus.label")}</strong>:{" "}
+            {authoritativeCodeStatus?.documented
+              ? authoritativeCodeStatus.value
+              : t("hospitalAdmissionD4a26h.codeStatus.notDocumented")}
+            <span style={{ color: "#64748b" }}>
+              {" "}
+              ({t("hospitalAdmissionD4a26h.codeStatus.source")})
+            </span>
+          </p>
+          <p style={{ margin: 0 }}>
+            <strong>{t("hospitalAdmissionD4a26h.isolation.label")}</strong>:{" "}
+            {authoritativeIsolation?.documented
+              ? authoritativeIsolation.value
+              : t("hospitalAdmissionD4a26h.isolation.notDocumented")}
+            <span style={{ color: "#64748b" }}>
+              {" "}
+              ({t("hospitalAdmissionD4a26h.isolation.source")})
+            </span>
+          </p>
+        </div>
+      ) : null}
 
       {sectionId === "IDENTITY_DEMOGRAPHICS" ? (
         <div data-testid="nursing-demographics-readonly" style={{ marginTop: 10, fontSize: 13 }}>
@@ -188,48 +272,49 @@ export function NursingAdmissionDomainIntegrationPanel({
             showHeader={false}
             accessMode={signed ? "review" : "edit"}
             focusedCardId={integration.edocFocusedCardId ?? null}
-            onEntriesChanged={() => {
-              if (!signed && canLink && integration.edocFocusedCardId) {
-                void linkDomain(`edoc-${integration.edocFocusedCardId}-${Date.now()}`);
-              }
-            }}
+            onEntriesChanged={onEdocSaved}
           />
         </div>
       ) : null}
 
-      {!EDOC_SECTIONS.has(sectionId) &&
-      integration.authoritativeDomain !== "ADMISSION_OWNED" &&
-      canLink &&
-      !signed ? (
-        <button
-          type="button"
-          disabled={busy}
-          style={{ marginTop: 8 }}
-          onClick={() =>
-            void linkDomain(
-              `ref-${String(integration.authoritativeDomain).toLowerCase()}-${Date.now()}`
-            )
-          }
-        >
-          {t("hospitalAdmissionD4a25a.domain.linkRecord")}
-        </button>
-      ) : null}
-
       {sectionRefs.length ? (
         <ul style={{ margin: "8px 0 0", paddingLeft: 18, fontSize: 12, color: "#334155" }}>
-          {sectionRefs.map((r) => (
-            <li key={`${r.domain}-${r.recordId}`}>
-              {r.domain} · {r.recordId} ·{" "}
-              {t(`hospitalAdmissionD4a25a.statuses.${r.status}`)}
-            </li>
-          ))}
+          {sectionRefs.map((r) => {
+            const legacy =
+              isSyntheticDomainRecordId(r.recordId) || r.source === "LEGACY_SYNTHETIC";
+            return (
+              <li key={`${r.domain}-${r.recordId}`}>
+                {legacy ? (
+                  <span role="status" style={{ color: "#9a3412", fontWeight: 600 }}>
+                    ⚠ {t("hospitalAdmissionD4a26h.status.legacySynthetic")}
+                  </span>
+                ) : (
+                  <span>{t("hospitalAdmissionD4a26h.status.authoritativeRecord")}</span>
+                )}{" "}
+                · {r.domain} · {legacy ? t("hospitalAdmissionD4a26h.status.idHidden") : r.status}
+                {legacy && canLink && !signed ? (
+                  <span style={{ display: "block", color: "#64748b" }}>
+                    {t("hospitalAdmissionD4a26h.status.replaceLegacy")}
+                  </span>
+                ) : null}
+              </li>
+            );
+          })}
         </ul>
       ) : null}
 
+      {linkNotice ? (
+        <p role="status" style={{ margin: "8px 0 0", fontSize: 12, color: "#0f766e" }}>
+          {linkNotice}
+        </p>
+      ) : null}
       {error ? (
         <p role="alert" style={{ margin: "8px 0 0", fontSize: 12, color: "#b91c1c" }}>
           {error}
         </p>
+      ) : null}
+      {busy ? (
+        <p style={{ margin: "8px 0 0", fontSize: 12, color: "#64748b" }}>{t("common.saving")}</p>
       ) : null}
     </div>
   );
