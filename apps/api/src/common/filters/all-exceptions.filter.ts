@@ -5,11 +5,13 @@ import {
   HttpException,
   HttpStatus,
 } from "@nestjs/common";
+import { DIRECT_ADMISSION_ERROR_MESSAGES_FR } from "@medora/shared";
 import { createStructuredLogger } from "../logging/structured-logger";
 import {
   prismaAlertGroupKey,
   sanitizePrismaException,
 } from "../logging/prisma-error-sanitizer";
+import { isPrismaMissingHospitalEpisodeIdColumn } from "../../encounters/direct-admission-api-errors.util";
 
 const log = createStructuredLogger("AllExceptionsFilter");
 
@@ -123,6 +125,20 @@ export class AllExceptionsFilter implements ExceptionFilter {
         exception instanceof Error
           ? { error: exception.name, message: exception.message }
           : "Bad Request";
+    } else if (
+      isPrismaMissingHospitalEpisodeIdColumn(exception) &&
+      typeof request.url === "string" &&
+      request.url.includes("/inpatient-operations/direct-admission")
+    ) {
+      // Belt-and-suspenders: map escaped P2022 to coded 503 (service also maps).
+      status = HttpStatus.SERVICE_UNAVAILABLE;
+      const code = "DIRECT_ADMISSION_SCHEMA_INCOMPATIBLE" as const;
+      message = {
+        statusCode: status,
+        message: DIRECT_ADMISSION_ERROR_MESSAGES_FR[code],
+        code,
+        errorCode: code,
+      };
     } else {
       status = HttpStatus.INTERNAL_SERVER_ERROR;
       if (isDev) {

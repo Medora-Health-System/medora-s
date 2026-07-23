@@ -38,6 +38,7 @@ import {
   evaluateExistingAdmissionIntent,
   evaluateLegacyAdmissionLinkage,
   evaluateLegacyReconciliationEvidence,
+  hospitalEpisodeFoundationEnabledFromProcessEnv,
   mergeHospitalAdmissionCorrelationIntoSummary,
   observationInpatientConversionEnabled,
   planCancelAdmissionBeforeArrival,
@@ -58,6 +59,7 @@ import {
 } from "@medora/shared";
 import { AuditService } from "../common/services/audit.service";
 import { PrismaService } from "../prisma/prisma.service";
+import { ENCOUNTER_ID_ONLY_SELECT } from "./encounter-query-contracts";
 
 export const ADMISSION_CORRELATION_ENTITY = "AdmissionCorrelation" as const;
 
@@ -203,6 +205,7 @@ export class AdmissionCorrelationService {
           ) as Prisma.InputJsonValue,
           version: { increment: 1 },
         },
+        select: ENCOUNTER_ID_ONLY_SELECT,
       });
 
       await this.audit.log(AuditAction.UPDATE, ADMISSION_CORRELATION_ENTITY, {
@@ -303,6 +306,7 @@ export class AdmissionCorrelationService {
           ) as Prisma.InputJsonValue,
           version: { increment: 1 },
         },
+        select: ENCOUNTER_ID_ONLY_SELECT,
       });
 
       await tx.internalPlacementRequest.update({
@@ -415,6 +419,7 @@ export class AdmissionCorrelationService {
             ) as Prisma.InputJsonValue,
             version: { increment: 1 },
           },
+          select: ENCOUNTER_ID_ONLY_SELECT,
         });
 
         if (current.receivingEncounterId) {
@@ -440,6 +445,7 @@ export class AdmissionCorrelationService {
                 ) as Prisma.InputJsonValue,
                 version: { increment: 1 },
               },
+              select: ENCOUNTER_ID_ONLY_SELECT,
             });
           }
         }
@@ -491,6 +497,7 @@ export class AdmissionCorrelationService {
             ) as Prisma.InputJsonValue,
             version: { increment: 1 },
           },
+          select: ENCOUNTER_ID_ONLY_SELECT,
         });
 
         if (current.internalPlacementRequestId) {
@@ -537,19 +544,31 @@ export class AdmissionCorrelationService {
   }
 
   async buildJourney(facilityId: string, encounterId: string) {
+    const episodeFoundationOn = hospitalEpisodeFoundationEnabledFromProcessEnv();
     const enc = await this.prisma.encounter.findFirst({
       where: { id: encounterId, facilityId },
-      select: {
-        id: true,
-        patientId: true,
-        facilityId: true,
-        hospitalEpisodeId: true,
-        admissionSummaryJson: true,
-        admittedAt: true,
-        status: true,
-        type: true,
-        roomLabel: true,
-      },
+      select: episodeFoundationOn
+        ? {
+            id: true,
+            patientId: true,
+            facilityId: true,
+            hospitalEpisodeId: true,
+            admissionSummaryJson: true,
+            admittedAt: true,
+            status: true,
+            type: true,
+            roomLabel: true,
+          }
+        : {
+            id: true,
+            patientId: true,
+            facilityId: true,
+            admissionSummaryJson: true,
+            admittedAt: true,
+            status: true,
+            type: true,
+            roomLabel: true,
+          },
     });
     if (!enc) {
       return { found: false as const, journey: null, findings: [], lifecycleSteps: [] };
@@ -611,7 +630,9 @@ export class AdmissionCorrelationService {
         id: enc.id,
         patientId: enc.patientId,
         facilityId: enc.facilityId,
-        hospitalEpisodeId: enc.hospitalEpisodeId,
+        hospitalEpisodeId: episodeFoundationOn && "hospitalEpisodeId" in enc
+          ? ((enc as { hospitalEpisodeId?: string | null }).hospitalEpisodeId ?? null)
+          : null,
         admissionSummaryJson: enc.admissionSummaryJson,
       },
       placement: placement
@@ -726,7 +747,6 @@ export class AdmissionCorrelationService {
         receivingEncounterId: true,
         status: true,
         specialPlacementNeedsJson: true,
-        hospitalEpisodeId: true,
       },
       take: 100,
       orderBy: { createdAt: "desc" },
@@ -760,18 +780,25 @@ export class AdmissionCorrelationService {
       }
     }
 
+    const episodeFoundationOn = hospitalEpisodeFoundationEnabledFromProcessEnv();
     const openIps = await this.prisma.encounter.findMany({
       where: {
         facilityId,
         status: EncounterStatus.OPEN,
         type: EncounterType.INPATIENT,
       },
-      select: {
-        id: true,
-        patientId: true,
-        hospitalEpisodeId: true,
-        admissionSummaryJson: true,
-      },
+      select: episodeFoundationOn
+        ? {
+            id: true,
+            patientId: true,
+            hospitalEpisodeId: true,
+            admissionSummaryJson: true,
+          }
+        : {
+            id: true,
+            patientId: true,
+            admissionSummaryJson: true,
+          },
       take: 100,
       orderBy: { createdAt: "desc" },
     });
@@ -894,6 +921,7 @@ export class AdmissionCorrelationService {
   }
 
   async listOpenInpatientCandidates(facilityId: string, patientId: string) {
+    const episodeFoundationOn = hospitalEpisodeFoundationEnabledFromProcessEnv();
     return this.prisma.encounter.findMany({
       where: {
         facilityId,
@@ -901,7 +929,9 @@ export class AdmissionCorrelationService {
         status: EncounterStatus.OPEN,
         type: EncounterType.INPATIENT,
       },
-      select: { id: true, hospitalEpisodeId: true, admissionSummaryJson: true },
+      select: episodeFoundationOn
+        ? { id: true, hospitalEpisodeId: true, admissionSummaryJson: true }
+        : { id: true, admissionSummaryJson: true },
     });
   }
 

@@ -398,7 +398,7 @@ export function evaluateSchemaCompatibility(
 
   if (!d3bComplete && !hospitalEpisodeFoundationEnabled) {
     reasons.push(
-      "D3B schema optional objects absent; feature flag OFF; shared Encounter contracts exclude hospitalEpisodeId — OK."
+      "D3B schema optional objects absent; feature flag OFF; shared Encounter contracts exclude hospitalEpisodeId; feature-OFF writers must use explicit pre-D3B selects (no RETURNING of hospitalEpisodeId) — OK."
     );
   } else if (d3bComplete) {
     reasons.push("D3B schema objects present.");
