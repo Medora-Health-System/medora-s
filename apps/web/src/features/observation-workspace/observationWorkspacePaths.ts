@@ -13,6 +13,14 @@ export function observationActiveWorkspacePath(encounterId: string): string {
   return `/app/hospitalisation/observation/active/${encodeURIComponent(encounterId)}`;
 }
 
+export function observationProviderWorkspacePath(encounterId: string): string {
+  return `/app/hospitalisation/observation/active/${encodeURIComponent(encounterId)}/provider`;
+}
+
+export function observationNursingWorkspacePath(encounterId: string): string {
+  return `/app/hospitalisation/observation/active/${encodeURIComponent(encounterId)}/nursing`;
+}
+
 export function isObservationWorkspaceEnabledInBrowser(): boolean {
   return isTruthyNextPublicFlag(process.env.NEXT_PUBLIC_OBSERVATION_WORKSPACE_ENABLED);
 }

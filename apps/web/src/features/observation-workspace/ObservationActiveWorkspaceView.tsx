@@ -11,6 +11,7 @@ import { DISPLAY_DASH } from "@/lib/patientDisplay";
 import { OBSERVATION_CENSUS_PATH, isObservationWorkspaceEnabledInBrowser } from "./observationWorkspacePaths";
 import {
   parseObservationWorkspaceSection,
+  OBSERVATION_WORKSPACE_SECTIONS,
   type ObservationWorkspaceSection,
 } from "./observationWorkspaceSections";
 import { ObservationWorkspaceSectionNav } from "./ObservationWorkspaceSectionNav";
@@ -36,7 +37,11 @@ type ObservationEncounterHeader = {
   } | null;
 };
 
-export function ObservationActiveWorkspaceView() {
+export function ObservationActiveWorkspaceView({
+  forcedAudience,
+}: {
+  forcedAudience?: "PROVIDER" | "NURSING";
+} = {}) {
   const { t, language } = useI18n();
   const params = useParams();
   const router = useRouter();
@@ -44,26 +49,56 @@ export function ObservationActiveWorkspaceView() {
   const encounterId = String(params?.id ?? "").trim();
   const workspaceEnabled = isObservationWorkspaceEnabledInBrowser();
 
+  const providerNav: ObservationWorkspaceSection[] = [
+    "overview",
+    "providerNotes",
+    "orders",
+    "results",
+    "medications",
+    "reassessment",
+    "carePlan",
+    "disposition",
+    "timeline",
+    "summary",
+  ];
+  const nursingNav: ObservationWorkspaceSection[] = [
+    "overview",
+    "nursing",
+    "medications",
+    "reassessment",
+    "disposition",
+    "timeline",
+  ];
+  const allowed =
+    forcedAudience === "PROVIDER"
+      ? providerNav
+      : forcedAudience === "NURSING"
+        ? nursingNav
+        : OBSERVATION_WORKSPACE_SECTIONS.map((s) => s.id);
+
   const initialSection =
-    parseObservationWorkspaceSection(searchParams.get("section")) ?? "overview";
-  const [section, setSection] = useState<ObservationWorkspaceSection>(initialSection);
+    parseObservationWorkspaceSection(searchParams.get("section")) ?? allowed[0] ?? "overview";
+  const [section, setSection] = useState<ObservationWorkspaceSection>(
+    allowed.includes(initialSection) ? initialSection : allowed[0]!
+  );
   const [encounter, setEncounter] = useState<ObservationEncounterHeader | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const fromUrl = parseObservationWorkspaceSection(searchParams.get("section"));
-    if (fromUrl) setSection(fromUrl);
-  }, [searchParams]);
+    if (fromUrl && allowed.includes(fromUrl)) setSection(fromUrl);
+  }, [searchParams, allowed]);
 
   const selectSection = useCallback(
     (next: ObservationWorkspaceSection) => {
+      if (!allowed.includes(next)) return;
       setSection(next);
       const qs = new URLSearchParams(searchParams.toString());
       qs.set("section", next);
       router.replace(`?${qs.toString()}`, { scroll: false });
     },
-    [router, searchParams]
+    [router, searchParams, allowed]
   );
 
   const loadEncounter = useCallback(async () => {
@@ -78,6 +113,12 @@ export function ObservationActiveWorkspaceView() {
       const raw = await apiFetch(`/encounters/${encounterId}`);
       const obj = asApiObject<ObservationEncounterHeader>(raw);
       if (!obj?.id) throw new Error("missing encounter");
+      const type = String(obj.type ?? "").toUpperCase();
+      if (type === "EMERGENCY") {
+        setEncounter(null);
+        setError(t("inpatientWorkspaceRecoveryD4a27b.errors.ED_ENCOUNTER_REJECTED"));
+        return;
+      }
       setEncounter(obj);
     } catch {
       setEncounter(null);
@@ -227,11 +268,18 @@ export function ObservationActiveWorkspaceView() {
                   data-testid="observation-workspace-flag-off-banner"
                 >
                   {t("observationD3d.featureUnavailable")}
+                  <span style={{ display: "block", marginTop: 6, color: "#64748b" }}>
+                    {t("inpatientWorkspaceRecoveryD4a27b.states.NOT_CONFIGURED")}
+                  </span>
                 </p>
               ) : null}
             </div>
 
-            <ObservationWorkspaceSectionNav active={section} onSelect={selectSection} />
+            <ObservationWorkspaceSectionNav
+              active={section}
+              onSelect={selectSection}
+              allowedSections={allowed}
+            />
 
             <div
               style={{

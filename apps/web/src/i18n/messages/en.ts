@@ -46,6 +46,7 @@ import { admissionWorkflowVisibilityEn } from "./admissionWorkflowVisibility.en"
 import { admissionCommandCenterEn } from "./admissionCommandCenter.en";
 import { enterpriseCommandD4a27En } from "./enterpriseCommandD4a27.en";
 import { operationalGovernanceD4a27aEn } from "./operationalGovernanceD4a27a.en";
+import { inpatientWorkspaceRecoveryD4a27bEn } from "./inpatientWorkspaceRecoveryD4a27b.en";
 import { hospitalAdmissionD4a1En } from "./hospitalAdmissionD4a1.en";
 import { hospitalAdmissionD4a25En } from "./hospitalAdmissionD4a25.en";
 import { hospitalAdmissionD4a25aEn } from "./hospitalAdmissionD4a25a.en";
@@ -19144,6 +19145,7 @@ export default {
   admissionCommandCenter: admissionCommandCenterEn,
   enterpriseCommandD4a27: enterpriseCommandD4a27En,
   operationalGovernanceD4a27a: operationalGovernanceD4a27aEn,
+  inpatientWorkspaceRecoveryD4a27b: inpatientWorkspaceRecoveryD4a27bEn,
 
   hospitalCareD3e6d: {
     bedBoard: {

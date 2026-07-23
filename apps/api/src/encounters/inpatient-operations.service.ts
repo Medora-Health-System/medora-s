@@ -54,6 +54,8 @@ import {
   placementActionsEnabled,
   inpatientDocumentationEnabled,
   inpatientWorkspaceFlagsFromProcessEnv,
+  inpatientDepartmentalOrdersEnabled,
+  inpatientMarEnabled,
   BED_NO_LONGER_AVAILABLE_CODE,
   validateConnectedAdmissionIntakeHardBlockers,
   isBedSelectableForAdmissionIntake,
@@ -96,10 +98,16 @@ import {
   buildProviderDomainProjection,
   nursingDocDomainReferences,
   readInpatientLifecycleMeta,
+  computeHospitalDay,
+  INPATIENT_WORKSPACE_RECOVERY_CERTIFICATION_ID,
+  buildEncounterMismatchResolution,
   type NursingAdmissionDomainReferenceV1,
   type NursingAdmissionDomainKey,
   type NursingAmendmentType,
   type ResolvedDomainRecordLite,
+  type ClinicalAvailabilityState,
+  type InpatientWorkspaceRole,
+  type HospitalWorkspaceBootstrapV1,
   INPATIENT_PROVIDER_WORKSPACE_CERTIFICATION_ID,
   PROVIDER_CLINICAL_SYNTHESIS_CERTIFICATION_ID,
   PROVIDER_LEGAL_RECORD_SYNTHESIS_CERTIFICATION_ID,
@@ -1207,6 +1215,285 @@ export class InpatientOperationsService {
       encounterId: enc.id,
       facilityId: enc.facilityId,
       ops: readInpatientClinicalOpsFromAdmissionSummary(enc.admissionSummaryJson),
+    };
+  }
+
+  /**
+   * D4A.2.7B — Bounded hospital workspace bootstrap.
+   * Validates encounter type before any writers. Emits chart-access audit.
+   * Never treats ED/Observation as Inpatient.
+   */
+  async getWorkspaceBootstrap(
+    facilityId: string,
+    encounterId: string,
+    actorUserId: string,
+    options?: {
+      role?: InpatientWorkspaceRole;
+      ip?: string;
+      userAgent?: string;
+      workspace?: string;
+    }
+  ): Promise<HospitalWorkspaceBootstrapV1> {
+    const requested = String(encounterId ?? "").trim();
+    const role: InpatientWorkspaceRole = options?.role ?? "CHART";
+    const generatedAt = new Date().toISOString();
+
+    if (!requested) {
+      return {
+        certification: INPATIENT_WORKSPACE_RECOVERY_CERTIFICATION_ID,
+        resolution: {
+          ok: false,
+          requestedEncounterId: null,
+          category: "MISSING_ID",
+          writersEnabled: false,
+          messageCode: "inpatientWorkspaceRecovery.errors.MISSING_ID",
+        },
+        generatedAt,
+        header: null,
+        readiness: {
+          role,
+          encounterResolved: false,
+          roleAuthorized: true,
+          modules: { bootstrap: "ENCOUNTER_MISMATCH" },
+        },
+        alertCounts: { criticalResults: null, pendingTasks: null, escalations: null },
+        writersEnabled: false,
+      };
+    }
+
+    const enc = await this.prisma.encounter.findFirst({
+      where: { id: requested, facilityId },
+      select: {
+        id: true,
+        facilityId: true,
+        patientId: true,
+        type: true,
+        status: true,
+        admittedAt: true,
+        roomLabel: true,
+        chiefComplaint: true,
+        hospitalEpisodeId: true,
+        admissionSummaryJson: true,
+        providerDocumentationStatus: true,
+        physicianAssigned: {
+          select: { firstName: true, lastName: true },
+        },
+        nurseAssigned: {
+          select: { firstName: true, lastName: true },
+        },
+        patient: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            middleName: true,
+            mrn: true,
+            dob: true,
+            sexAtBirth: true,
+            language: true,
+          },
+        },
+      },
+    });
+
+    if (!enc) {
+      await this.audit.log(AuditAction.CHART_ACCESS, "InpatientWorkspace", {
+        userId: actorUserId,
+        facilityId,
+        entityId: requested,
+        encounterId: requested,
+        ip: options?.ip,
+        userAgent: options?.userAgent,
+        metadata: {
+          event: "INPATIENT_WORKSPACE_BOOTSTRAP_FAILED",
+          category: "NOT_FOUND",
+          workspace: options?.workspace ?? "inpatient",
+          accessKind: "OPEN",
+        },
+      });
+      return {
+        certification: INPATIENT_WORKSPACE_RECOVERY_CERTIFICATION_ID,
+        resolution: {
+          ok: false,
+          requestedEncounterId: requested,
+          category: "NOT_FOUND",
+          writersEnabled: false,
+          messageCode: "inpatientWorkspaceRecovery.errors.NOT_FOUND",
+        },
+        generatedAt,
+        header: null,
+        readiness: {
+          role,
+          encounterResolved: false,
+          roleAuthorized: true,
+          modules: { bootstrap: "SOURCE_UNAVAILABLE" },
+        },
+        alertCounts: { criticalResults: null, pendingTasks: null, escalations: null },
+        writersEnabled: false,
+      };
+    }
+
+    if (enc.type !== EncounterType.INPATIENT) {
+      const mismatch = buildEncounterMismatchResolution({
+        requestedEncounterId: requested,
+        actualType: String(enc.type),
+      });
+      await this.audit.log(AuditAction.CHART_ACCESS, "InpatientWorkspace", {
+        userId: actorUserId,
+        facilityId,
+        patientId: enc.patientId,
+        entityId: enc.id,
+        encounterId: enc.id,
+        ip: options?.ip,
+        userAgent: options?.userAgent,
+        metadata: {
+          event: "INPATIENT_WORKSPACE_BOOTSTRAP_REJECTED_TYPE",
+          category: !mismatch.ok ? mismatch.category : "WRONG_ENCOUNTER_TYPE",
+          actualType: enc.type,
+          workspace: options?.workspace ?? "inpatient",
+          accessKind: "OPEN",
+        },
+      });
+      return {
+        certification: INPATIENT_WORKSPACE_RECOVERY_CERTIFICATION_ID,
+        resolution: mismatch,
+        generatedAt,
+        header: null,
+        readiness: {
+          role,
+          encounterResolved: false,
+          roleAuthorized: true,
+          modules: { bootstrap: "ENCOUNTER_MISMATCH" },
+        },
+        alertCounts: { criticalResults: null, pendingTasks: null, escalations: null },
+        writersEnabled: false,
+      };
+    }
+
+    const ops = readInpatientClinicalOpsFromAdmissionSummary(enc.admissionSummaryJson);
+    const flags = inpatientWorkspaceFlagsFromProcessEnv();
+    const opsFlags = inpatientOperationsFlagsFromProcessEnv();
+    const docsOn = inpatientDocumentationEnabled(flags);
+    const nursingOn = inpatientNursingOpsEnabled(opsFlags);
+    const ordersOn = inpatientDepartmentalOrdersEnabled(flags);
+    const marOn = inpatientMarEnabled(flags);
+    const avail = (on: boolean): ClinicalAvailabilityState =>
+      on ? "AVAILABLE" : "NOT_CONFIGURED";
+
+    const patientName =
+      `${enc.patient?.firstName ?? ""} ${enc.patient?.lastName ?? ""}`.trim() || "—";
+    const attendingName = enc.physicianAssigned
+      ? `${enc.physicianAssigned.firstName ?? ""} ${enc.physicianAssigned.lastName ?? ""}`.trim() ||
+        null
+      : null;
+    const assignedRnName = enc.nurseAssigned
+      ? `${enc.nurseAssigned.firstName ?? ""} ${enc.nurseAssigned.lastName ?? ""}`.trim() || null
+      : null;
+    let ageYears: number | null = null;
+    if (enc.patient?.dob) {
+      const dob = new Date(enc.patient.dob);
+      if (Number.isFinite(dob.getTime())) {
+        const now = new Date();
+        ageYears = now.getUTCFullYear() - dob.getUTCFullYear();
+      }
+    }
+    const roomParts = String(enc.roomLabel ?? "")
+      .split(/[-:]/)
+      .map((x) => x.trim())
+      .filter(Boolean);
+    const unitHint = roomParts[0] ?? null;
+
+    const modules: Record<string, ClinicalAvailabilityState> = {
+      header: "AVAILABLE",
+      overview: "AVAILABLE",
+      historyPhysical: avail(docsOn),
+      problemsPlan: avail(docsOn),
+      progressNotes: avail(docsOn),
+      orders: avail(ordersOn),
+      results: avail(ordersOn),
+      medications: avail(marOn),
+      consults: avail(inpatientConsultsOpsEnabled(opsFlags)),
+      carePlan: avail(inpatientCarePlanOpsEnabled(opsFlags)),
+      dischargePlanning: avail(inpatientDischargePlanningOpsEnabled(opsFlags)),
+      admission: avail(nursingOn),
+      nursing: avail(nursingOn),
+      timeline: "AVAILABLE",
+      summary: "AVAILABLE",
+    };
+
+    await this.audit.log(AuditAction.CHART_OPEN, "InpatientWorkspace", {
+      userId: actorUserId,
+      facilityId,
+      patientId: enc.patientId,
+      entityId: enc.id,
+      encounterId: enc.id,
+      ip: options?.ip,
+      userAgent: options?.userAgent,
+      metadata: {
+        event: "INPATIENT_WORKSPACE_OPENED",
+        workspace: options?.workspace ?? "inpatient",
+        role,
+        hospitalEpisodeId: enc.hospitalEpisodeId ?? null,
+        accessKind: "OPEN",
+      },
+    });
+
+    return {
+      certification: INPATIENT_WORKSPACE_RECOVERY_CERTIFICATION_ID,
+      resolution: {
+        ok: true,
+        encounterId: enc.id,
+        encounterType: "INPATIENT",
+        clinicalContext: "INPATIENT",
+        facilityId: enc.facilityId,
+        patientId: enc.patientId,
+        status: enc.status,
+        hospitalEpisodeId: enc.hospitalEpisodeId ?? null,
+        writersEnabled: true,
+      },
+      generatedAt,
+      header: {
+        encounterId: enc.id,
+        patientId: enc.patientId,
+        patientName,
+        preferredName: null,
+        mrn: enc.patient?.mrn ?? null,
+        dateOfBirth: enc.patient?.dob ? new Date(enc.patient.dob).toISOString() : null,
+        ageYears,
+        sexAtBirth: enc.patient?.sexAtBirth ?? null,
+        preferredLanguage: enc.patient?.language ?? null,
+        interpreterRequired: null,
+        encounterType: enc.type,
+        hospitalDay: computeHospitalDay(enc.admittedAt),
+        admittedAt: enc.admittedAt ? new Date(enc.admittedAt).toISOString() : null,
+        admissionSource: null,
+        attendingName,
+        assignedRnName,
+        residentOrAppName: null,
+        facilityName: null,
+        unit: unitHint,
+        room: enc.roomLabel ?? null,
+        bed: roomParts.length > 2 ? roomParts[2]! : null,
+        levelOfCare: null,
+        encounterStatus: enc.status,
+        chiefConcern: enc.chiefComplaint ?? null,
+        codeStatus: ops.codeStatus?.status ?? null,
+        isolation: ops.isolation?.precautions ?? null,
+        fallRisk: null,
+        allergiesSummary: null,
+      },
+      readiness: {
+        role,
+        encounterResolved: true,
+        roleAuthorized: true,
+        modules,
+      },
+      alertCounts: {
+        criticalResults: null,
+        pendingTasks: null,
+        escalations: null,
+      },
+      writersEnabled: true,
     };
   }
 

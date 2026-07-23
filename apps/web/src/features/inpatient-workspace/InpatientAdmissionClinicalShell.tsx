@@ -4,12 +4,9 @@ import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties }
 import {
   ADMISSION_HISTORY_VERIFICATION_STATUSES,
   ADMISSION_SECTION_COMPLETION_STATES,
-  AUTHORITATIVE_DOMAIN_LINKAGE_CERTIFICATION_ID,
   HEAD_TO_TOE_SYSTEM_KEYS,
   INPATIENT_ADMISSION_CLINICAL_SECTIONS,
-  INPATIENT_LIFECYCLE_NURSING_ADMISSION_CERTIFICATION_ID,
-  MEDSURG_NURSING_ADMISSION_CERTIFICATION_ID,
-  NURSING_DOMAIN_INTEGRATION_CERTIFICATION_ID,
+  NURSING_ADMISSION_STAGES,
   resolveAuthoritativeCodeStatus,
   resolveAuthoritativeIsolation,
   type AdmissionSectionCompletionState,
@@ -435,12 +432,11 @@ export function InpatientAdmissionClinicalShell({
 
   return (
     <div data-testid="inpatient-admission-clinical-shell">
-      <p style={{ margin: "0 0 6px", fontSize: 12, color: "#64748b" }} data-testid="d4a25-cert">
-        {AUTHORITATIVE_DOMAIN_LINKAGE_CERTIFICATION_ID} · {NURSING_DOMAIN_INTEGRATION_CERTIFICATION_ID} ·{" "}
-        {INPATIENT_LIFECYCLE_NURSING_ADMISSION_CERTIFICATION_ID} · {MEDSURG_NURSING_ADMISSION_CERTIFICATION_ID}
-      </p>
-      <p style={{ margin: "0 0 8px", fontSize: 13, color: "#334155", lineHeight: 1.45 }}>
+      <p style={{ margin: "0 0 8px", fontSize: 13, color: "#334155", lineHeight: 1.45 }} data-testid="d4a25-admission-intro">
         {t("hospitalAdmissionD4a1.intro")}
+      </p>
+      <p style={{ margin: "0 0 10px", fontSize: 12, color: "#64748b" }} data-testid="nursing-admission-stages-hint">
+        {NURSING_ADMISSION_STAGES.map((s) => s.id.replace(/_/g, " ").toLowerCase()).join(" → ")}
       </p>
 
       <InpatientLifecycleActionsMenu encounterId={encounterId} canAdmin={canAdmin} />

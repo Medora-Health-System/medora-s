@@ -9,11 +9,16 @@ import {
 export function ObservationWorkspaceSectionNav({
   active,
   onSelect,
+  allowedSections,
 }: {
   active: ObservationWorkspaceSection;
   onSelect: (section: ObservationWorkspaceSection) => void;
+  allowedSections?: readonly ObservationWorkspaceSection[];
 }) {
   const { t } = useI18n();
+  const sections = allowedSections?.length
+    ? OBSERVATION_WORKSPACE_SECTIONS.filter((s) => allowedSections.includes(s.id))
+    : OBSERVATION_WORKSPACE_SECTIONS;
 
   return (
     <nav
@@ -21,7 +26,7 @@ export function ObservationWorkspaceSectionNav({
       data-testid="observation-workspace-section-nav"
       style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 12 }}
     >
-      {OBSERVATION_WORKSPACE_SECTIONS.map((section) => {
+      {sections.map((section) => {
         const isActive = section.id === active;
         return (
           <button

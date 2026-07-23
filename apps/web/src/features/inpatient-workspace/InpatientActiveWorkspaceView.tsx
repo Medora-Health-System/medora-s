@@ -1,17 +1,30 @@
 "use client";
 
+/**
+ * D4A.2.7B — Inpatient active workspace shell.
+ * Bootstrap via inpatient-operations (type-gated). Blocks writers when unresolved.
+ */
+
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { computeHospitalDay } from "@medora/shared";
-import { apiFetch, asApiObject } from "@/lib/apiClient";
+import { useParams, usePathname, useRouter, useSearchParams } from "next/navigation";
+import {
+  providerPrimaryNav,
+  nursingPrimaryNav,
+  technicianPrimaryNav,
+  type HospitalWorkspaceBootstrapV1,
+  type InpatientWorkspaceRole,
+} from "@medora/shared";
 import { useI18n } from "@/lib/i18n";
+import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import { MEDORA_CARD_SHELL } from "@/components/medora-card/medoraCardTokens";
-import { formatEncounterChromeDateTime } from "@/lib/encounterChromeI18n";
-import { DISPLAY_DASH } from "@/lib/patientDisplay";
 import {
   INPATIENT_CENSUS_PATH,
   isInpatientWorkspaceEnabledInBrowser,
+  inpatientNursingWorkspacePath,
+  inpatientProviderWorkspacePath,
+  inpatientSharedChartPath,
+  inpatientTechnicianWorkspacePath,
 } from "./inpatientWorkspacePaths";
 import {
   parseInpatientWorkspaceSection,
@@ -19,191 +32,231 @@ import {
 } from "./inpatientWorkspaceSections";
 import { InpatientWorkspaceSectionNav } from "./InpatientWorkspaceSectionNav";
 import { InpatientWorkspacePanel } from "./InpatientWorkspacePanel";
+import { EnterpriseHospitalPatientHeader } from "./EnterpriseHospitalPatientHeader";
+import { InpatientEncounterUnavailablePanel } from "./InpatientEncounterUnavailablePanel";
+import { fetchInpatientWorkspaceBootstrap } from "@/features/hospital-care/inpatientOperationsApi";
+import { emergencyActiveWorkspacePath } from "@/features/emergency/emergencyRoutes";
+import { observationActiveWorkspacePath } from "@/features/observation-workspace/observationWorkspacePaths";
 
-type InpatientEncounterHeader = {
-  id: string;
-  status?: string | null;
-  type?: string | null;
-  admittedAt?: string | null;
-  roomLabel?: string | null;
-  governedRoomUnit?: string | null;
-  assignedProviderName?: string | null;
-  assignedNurseName?: string | null;
-  providerDocumentationStatus?: string | null;
-  patient?: {
-    id?: string;
-    firstName?: string | null;
-    lastName?: string | null;
-    mrn?: string | null;
-    dob?: string | null;
-    sexAtBirth?: string | null;
-  } | null;
-};
+function roleFromPath(pathname: string): InpatientWorkspaceRole {
+  if (pathname.endsWith("/provider")) return "PROVIDER";
+  if (pathname.endsWith("/nursing")) return "NURSING";
+  if (pathname.endsWith("/technician")) return "TECHNICIAN";
+  if (pathname.endsWith("/chart")) return "CHART";
+  return "CHART";
+}
 
-export function InpatientActiveWorkspaceView() {
-  const { t, language } = useI18n();
+function defaultRoleFromAuth(roles: string[]): InpatientWorkspaceRole {
+  const set = new Set(roles.map((r) => r.toUpperCase()));
+  if (set.has("PROVIDER")) return "PROVIDER";
+  if (set.has("RN")) return "NURSING";
+  if (set.has("LAB") || set.has("RADIOLOGY")) return "TECHNICIAN";
+  return "CHART";
+}
+
+function filterSectionsForRole(
+  role: InpatientWorkspaceRole
+): InpatientWorkspaceSection[] {
+  const list =
+    role === "PROVIDER"
+      ? providerPrimaryNav()
+      : role === "NURSING"
+        ? nursingPrimaryNav()
+        : role === "TECHNICIAN"
+          ? technicianPrimaryNav()
+          : providerPrimaryNav();
+  return list as InpatientWorkspaceSection[];
+}
+
+export function InpatientActiveWorkspaceView({
+  forcedRole,
+}: {
+  forcedRole?: InpatientWorkspaceRole;
+}) {
+  const { t } = useI18n();
   const params = useParams();
   const router = useRouter();
+  const pathname = usePathname() ?? "";
   const searchParams = useSearchParams();
+  const { roles, ready: authReady } = useFacilityAndRoles();
   const encounterId = String(params?.id ?? "").trim();
   const workspaceEnabled = isInpatientWorkspaceEnabledInBrowser();
 
+  const pathRole = forcedRole ?? roleFromPath(pathname);
+  const [role, setRole] = useState<InpatientWorkspaceRole>(pathRole);
+
+  useEffect(() => {
+    if (forcedRole) {
+      setRole(forcedRole);
+      return;
+    }
+    if (pathname.match(/\/(provider|nursing|technician|chart)$/)) {
+      setRole(roleFromPath(pathname));
+      return;
+    }
+    if (authReady) {
+      const preferred = defaultRoleFromAuth(roles);
+      setRole(preferred);
+      const target =
+        preferred === "PROVIDER"
+          ? inpatientProviderWorkspacePath(encounterId)
+          : preferred === "NURSING"
+            ? inpatientNursingWorkspacePath(encounterId)
+            : preferred === "TECHNICIAN"
+              ? inpatientTechnicianWorkspacePath(encounterId)
+              : inpatientSharedChartPath(encounterId);
+      if (encounterId && !pathname.endsWith(`/${preferred.toLowerCase()}`) && !pathname.endsWith("/chart")) {
+        router.replace(target);
+      }
+    }
+  }, [forcedRole, pathname, authReady, roles, encounterId, router]);
+
+  const allowed = filterSectionsForRole(role);
   const initialSection =
-    parseInpatientWorkspaceSection(searchParams.get("section")) ?? "overview";
-  const [section, setSection] = useState<InpatientWorkspaceSection>(initialSection);
-  const [encounter, setEncounter] = useState<InpatientEncounterHeader | null>(null);
+    parseInpatientWorkspaceSection(searchParams.get("section")) ?? allowed[0] ?? "overview";
+  const [section, setSection] = useState<InpatientWorkspaceSection>(
+    allowed.includes(initialSection) ? initialSection : allowed[0] ?? "overview"
+  );
+  const [bootstrap, setBootstrap] = useState<HospitalWorkspaceBootstrapV1 | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [errorCategory, setErrorCategory] = useState<string | null>(null);
 
   useEffect(() => {
     const fromUrl = parseInpatientWorkspaceSection(searchParams.get("section"));
-    if (fromUrl) setSection(fromUrl);
-  }, [searchParams]);
+    if (fromUrl && allowed.includes(fromUrl)) setSection(fromUrl);
+  }, [searchParams, allowed]);
 
   const selectSection = useCallback(
     (next: InpatientWorkspaceSection) => {
+      if (!allowed.includes(next)) return;
       setSection(next);
       const qs = new URLSearchParams(searchParams.toString());
       qs.set("section", next);
       router.replace(`?${qs.toString()}`, { scroll: false });
     },
-    [router, searchParams]
+    [router, searchParams, allowed]
   );
 
-  const loadEncounter = useCallback(async () => {
+  const loadBootstrap = useCallback(async () => {
     if (!encounterId) {
-      setError(t("inpatientD3e.workspace.missingId"));
-      setEncounter(null);
+      setBootstrap(null);
+      setErrorCategory("MISSING_ID");
+      setLoading(false);
       return;
     }
     setLoading(true);
-    setError(null);
+    setErrorCategory(null);
     try {
-      const raw = await apiFetch(`/encounters/${encounterId}`);
-      const obj = asApiObject<InpatientEncounterHeader>(raw);
-      if (!obj?.id) throw new Error("missing encounter");
-      setEncounter(obj);
+      const data = await fetchInpatientWorkspaceBootstrap(encounterId, role);
+      setBootstrap(data);
+      if (!data.resolution.ok) {
+        setErrorCategory(data.resolution.category);
+      }
     } catch {
-      setEncounter(null);
-      setError(t("inpatientD3e.workspace.loadError"));
+      setBootstrap(null);
+      setErrorCategory("NETWORK");
     } finally {
       setLoading(false);
     }
-  }, [encounterId, t]);
+  }, [encounterId, role]);
 
   useEffect(() => {
-    void loadEncounter();
-  }, [loadEncounter]);
+    void loadBootstrap();
+  }, [loadBootstrap]);
 
-  const patientName = useMemo(() => {
-    const p = encounter?.patient;
-    if (!p) return DISPLAY_DASH;
-    const name = `${p.firstName ?? ""} ${p.lastName ?? ""}`.trim();
-    return name || DISPLAY_DASH;
-  }, [encounter]);
+  const writersEnabled = Boolean(bootstrap?.writersEnabled && bootstrap.resolution.ok);
+  const header = bootstrap?.header ?? null;
 
-  const hospitalDay = computeHospitalDay(encounter?.admittedAt ?? null);
+  const encounterLite = useMemo(() => {
+    if (!header || !bootstrap?.resolution.ok) return null;
+    return {
+      id: header.encounterId,
+      status: header.encounterStatus,
+      type: header.encounterType,
+      providerDocumentationStatus: null,
+      patient: {
+        id: header.patientId,
+        firstName: header.patientName.split(/\s+/)[0] ?? null,
+        lastName: header.patientName.split(/\s+/).slice(1).join(" ") || null,
+        mrn: header.mrn,
+        dob: header.dateOfBirth,
+        sexAtBirth: header.sexAtBirth,
+      },
+    };
+  }, [header, bootstrap]);
+
+  const sourceHref = useMemo(() => {
+    if (!bootstrap || bootstrap.resolution.ok) return null;
+    const actual = bootstrap.resolution.actualEncounterType;
+    if (!actual || !encounterId) return null;
+    const upper = String(actual).toUpperCase();
+    if (upper === "EMERGENCY") return emergencyActiveWorkspacePath(encounterId);
+    if (upper.includes("OBS")) return observationActiveWorkspacePath(encounterId);
+    return null;
+  }, [bootstrap, encounterId]);
 
   return (
     <div style={{ padding: "12px 16px 24px", maxWidth: 1100, margin: "0 auto" }}>
-      <div style={{ marginBottom: 10 }}>
+      <div style={{ marginBottom: 10, display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center" }}>
         <Link href={INPATIENT_CENSUS_PATH} style={{ fontSize: 13, color: "#0f766e", fontWeight: 600 }}>
           {t("inpatientD3e.workspace.backCensus")}
         </Link>
+        <span style={{ fontSize: 12, color: "#64748b" }}>
+          {t("inpatientWorkspaceRecoveryD4a27b.roleLabel")}:{" "}
+          <strong>{t(`inpatientWorkspaceRecoveryD4a27b.roles.${role}`)}</strong>
+        </span>
       </div>
 
-      <header
-        style={{ ...MEDORA_CARD_SHELL, padding: "12px 14px", marginBottom: 12 }}
-        data-testid="inpatient-workspace-header"
-      >
-        <h1 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "#0f172a" }}>
-          {t("inpatientD3e.workspace.title")}
-        </h1>
-        <p style={{ margin: "4px 0 0", fontSize: 13, color: "#64748b" }}>
-          {t("inpatientD3e.workspace.subtitle")}
-        </p>
-        {loading ? (
-          <p style={{ margin: "10px 0 0", fontSize: 13, color: "#64748b" }}>{t("common.loading")}</p>
-        ) : error ? (
-          <p style={{ margin: "10px 0 0", fontSize: 13, color: "#b91c1c" }} role="alert">
-            {error}
-          </p>
-        ) : (
-          <div
-            style={{
-              display: "flex",
-              flexWrap: "wrap",
-              gap: "8px 16px",
-              marginTop: 10,
-              fontSize: 12,
-              color: "#334155",
-            }}
-          >
-            <span>
-              {t("inpatientD3e.workspace.patient")}: <strong>{patientName}</strong>
-            </span>
-            <span>
-              {t("inpatientD3e.workspace.mrn")}: {encounter?.patient?.mrn?.trim() || DISPLAY_DASH}
-            </span>
-            <span>
-              {t("inpatientProviderD4a26.header.dob")}:{" "}
-              {encounter?.patient?.dob
-                ? formatEncounterChromeDateTime(encounter.patient.dob, language)
-                : DISPLAY_DASH}
-            </span>
-            <span>
-              {t("inpatientProviderD4a26.header.sex")}:{" "}
-              {encounter?.patient?.sexAtBirth?.trim() || DISPLAY_DASH}
-            </span>
-            <span>
-              {t("inpatientD3e.workspace.hospitalDay")}:{" "}
-              {hospitalDay != null ? String(hospitalDay) : DISPLAY_DASH}
-            </span>
-            <span>
-              {t("inpatientD3e.workspace.unit")}:{" "}
-              {encounter?.governedRoomUnit?.trim() || DISPLAY_DASH}
-            </span>
-            <span>
-              {t("inpatientD3e.workspace.roomBed")}: {encounter?.roomLabel?.trim() || DISPLAY_DASH}
-            </span>
-            <span>
-              {t("inpatientD3e.workspace.attending")}:{" "}
-              {encounter?.assignedProviderName?.trim() || DISPLAY_DASH}
-            </span>
-            <span>
-              {t("inpatientD3e.workspace.nurse")}:{" "}
-              {encounter?.assignedNurseName?.trim() || DISPLAY_DASH}
-            </span>
-            <span>
-              {t("inpatientD3e.workspace.status")}: {encounter?.status?.trim() || DISPLAY_DASH}
-            </span>
-            <span>
-              {t("inpatientD3e.workspace.admittedAt")}:{" "}
-              {encounter?.admittedAt
-                ? formatEncounterChromeDateTime(encounter.admittedAt, language)
-                : DISPLAY_DASH}
-            </span>
-            {!encounter?.assignedProviderName?.trim() ? (
-              <span role="status" style={{ color: "#9a3412", fontWeight: 600 }}>
-                ⚠ {t("inpatientProviderD4a26.alerts.noAttending")}
-              </span>
-            ) : null}
-          </div>
-        )}
-      </header>
-
-      <InpatientWorkspaceSectionNav active={section} onSelect={selectSection} />
-
-      <section style={{ ...MEDORA_CARD_SHELL, padding: "12px 14px" }}>
-        <InpatientWorkspacePanel
-          section={section}
-          encounterId={encounterId}
-          encounter={encounter}
-          workspaceEnabled={workspaceEnabled}
-          onRefetchEncounter={loadEncounter}
-          onNavigateSection={selectSection}
+      {loading ? (
+        <p style={{ fontSize: 13, color: "#64748b" }}>{t("common.loading")}</p>
+      ) : errorCategory || !writersEnabled || !header ? (
+        <InpatientEncounterUnavailablePanel
+          category={errorCategory ?? "UNKNOWN"}
+          requestedEncounterId={encounterId}
+          actualEncounterType={
+            bootstrap && !bootstrap.resolution.ok
+              ? bootstrap.resolution.actualEncounterType
+              : null
+          }
+          onRetry={() => void loadBootstrap()}
+          sourceEncounterHref={sourceHref}
+          showTechnical={roles.includes("ADMIN")}
         />
-      </section>
+      ) : (
+        <>
+          <EnterpriseHospitalPatientHeader
+            header={header}
+            onOpenOrders={() => selectSection("orders")}
+            onOpenMar={() => selectSection("medications")}
+            onOpenResults={() => selectSection("results")}
+          />
+
+          <InpatientWorkspaceSectionNav
+            active={section}
+            onSelect={selectSection}
+            allowedSections={allowed}
+          />
+
+          <section style={{ ...MEDORA_CARD_SHELL, padding: "12px 14px" }}>
+            {!workspaceEnabled ? (
+              <p style={{ fontSize: 13, color: "#64748b" }}>
+                {t("inpatientWorkspaceRecoveryD4a27b.states.NOT_CONFIGURED")}
+              </p>
+            ) : (
+              <InpatientWorkspacePanel
+                section={section}
+                encounterId={encounterId}
+                encounter={encounterLite}
+                workspaceEnabled={workspaceEnabled}
+                writersEnabled={writersEnabled}
+                workspaceRole={role}
+                onRefetchEncounter={loadBootstrap}
+                onNavigateSection={selectSection}
+              />
+            )}
+          </section>
+        </>
+      )}
     </div>
   );
 }

@@ -13,7 +13,7 @@ import {
   type FacilityBedBoardUnit,
 } from "@/lib/bedBoardApi";
 import type { BedBoardStatusFilterId } from "@/lib/bedBoardFilters";
-import { inpatientActiveWorkspacePath } from "./inpatientWorkspacePaths";
+import { hospitalOccupantChartPath } from "./inpatientWorkspacePaths";
 import { HOSPITAL_CARE_FLOOR_BOARD } from "@/features/hospital-care/hospitalCarePaths";
 
 const BED_UNITS = new Set<string>(["ED", "OBS", "MS", "ICU"]);
@@ -156,7 +156,12 @@ export function UnitBedBoard({ facilityId, unitCode, title }: Props) {
             beds={unitView.beds as FacilityBedBoardBedRow[]}
             statusFilter={statusFilter}
             facilityId={facilityId}
-            encounterChartPath={(encounterId) => inpatientActiveWorkspacePath(encounterId)}
+            encounterChartPath={(encounterId) =>
+              hospitalOccupantChartPath({
+                encounterId,
+                unitCode: bedUnit,
+              })
+            }
           />
         </div>
       ) : (
