@@ -49,6 +49,7 @@ import { operationalGovernanceD4a27aEn } from "./operationalGovernanceD4a27a.en"
 import { inpatientWorkspaceRecoveryD4a27bEn } from "./inpatientWorkspaceRecoveryD4a27b.en";
 import { inpatientRapidConvergenceD4a27cEn } from "./inpatientRapidConvergenceD4a27c.en";
 import { enterpriseWorkflowD4a28En } from "./enterpriseWorkflowD4a28.en";
+import { enterpriseClinicalRulesD4a28aEn } from "./enterpriseClinicalRulesD4a28a.en";
 import { hospitalAdmissionD4a1En } from "./hospitalAdmissionD4a1.en";
 import { hospitalAdmissionD4a25En } from "./hospitalAdmissionD4a25.en";
 import { hospitalAdmissionD4a25aEn } from "./hospitalAdmissionD4a25a.en";
@@ -2191,6 +2192,7 @@ export default {
     revenueClaimSubmissionLink: "Claim Submission",
     revenuePaymentLink: "Payments & ERA",
     enterpriseWorkflowLink: "Enterprise workflow dashboard",
+    enterpriseClinicalRulesLink: "Clinical rules builder",
   },
   revenueCycle: {
     title: "Revenue Cycle",
@@ -19151,6 +19153,7 @@ export default {
   inpatientWorkspaceRecoveryD4a27b: inpatientWorkspaceRecoveryD4a27bEn,
   inpatientRapidConvergenceD4a27c: inpatientRapidConvergenceD4a27cEn,
   enterpriseWorkflowD4a28: enterpriseWorkflowD4a28En,
+  enterpriseClinicalRulesD4a28a: enterpriseClinicalRulesD4a28aEn,
 
   hospitalCareD3e6d: {
     bedBoard: {

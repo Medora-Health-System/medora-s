@@ -22,6 +22,7 @@ import {
   HOSPITAL_CARE_ENTERPRISE_COMMAND,
   HOSPITAL_CARE_ENTERPRISE_OPERATIONS,
   HOSPITAL_CARE_ENTERPRISE_WORKFLOW,
+  HOSPITAL_CARE_ENTERPRISE_CLINICAL_RULES,
   HOSPITAL_CARE_FLOOR_BOARD,
   HOSPITAL_CARE_INPATIENT,
   HOSPITAL_CARE_OBSERVATION,
@@ -449,6 +450,20 @@ export function HospitalCareHomeView() {
               }}
             >
               {t("enterpriseWorkflowD4a28.openLink")}
+            </Link>
+            <Link
+              href={HOSPITAL_CARE_ENTERPRISE_CLINICAL_RULES}
+              data-testid="open-enterprise-clinical-rules"
+              style={{
+                display: "inline-block",
+                marginTop: 10,
+                marginLeft: 14,
+                fontSize: 12,
+                fontWeight: 600,
+                color: "#0f766e",
+              }}
+            >
+              {t("enterpriseClinicalRulesD4a28a.openLink")}
             </Link>
           </section>
 

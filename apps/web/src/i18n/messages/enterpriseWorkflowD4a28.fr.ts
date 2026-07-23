@@ -2,15 +2,17 @@
 export const enterpriseWorkflowD4a28Fr = {
   title: "Flux et tâches d’entreprise",
   subtitle:
-    "Orchestration des flux cliniques pilotée par définitions. Les règles de politique hospitalière sont réservées à une phase ultérieure.",
+    "Orchestration des flux cliniques pilotée par définitions. Les règles cliniques d’entreprise (8A) évaluent la politique hospitalière.",
   openLink: "Flux et tâches",
   adminLink: "Tableau de bord des flux",
   loading: "Chargement des flux…",
   loadError: "Impossible de charger les flux d’entreprise.",
   refresh: "Actualiser",
   rulesOff: "Moteur de règles non activé",
+  rulesOn: "Moteur de règles activé",
   placementOff: "Placement non activé",
   definitionDriven: "Génération automatique : modèles par définition",
+  definitionAndRules: "Génération automatique : définitions + règles cliniques",
   worklist: {
     title: "Liste de travail du service",
     department: "Service",

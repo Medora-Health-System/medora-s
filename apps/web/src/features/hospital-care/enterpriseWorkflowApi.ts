@@ -24,9 +24,9 @@ export async function fetchWorkflowDefinitions(): Promise<{
   certification: string;
   definitions: WorkflowDefinitionV1[];
   escalationTemplates: EscalationChainTemplateV1[];
-  rulesEngineEnabled: false;
+  rulesEngineEnabled: boolean;
   placementEnabled: false;
-  autoGenerationMode: "DEFINITION_DRIVEN";
+  autoGenerationMode: "DEFINITION_DRIVEN" | "DEFINITION_AND_RULES";
 }> {
   return apiFetch(`${BASE}/definitions`);
 }

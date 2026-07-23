@@ -15,8 +15,11 @@ export const ENTERPRISE_WORKFLOW_ORCHESTRATION_V1_KEY =
 /** Explicit phase boundary — D4A.3 Placement must remain unstarted. */
 export const ENTERPRISE_WORKFLOW_PLACEMENT_STARTED = false as const;
 
-/** Explicit phase boundary — D4A.2.8A Rules Engine must not begin here. */
-export const ENTERPRISE_WORKFLOW_RULES_ENGINE_STARTED = false as const;
+/**
+ * D4A.2.8A consumed: Rules Engine may evaluate policy hooks after definition-driven ingest.
+ * Placement remains unstarted.
+ */
+export const ENTERPRISE_WORKFLOW_RULES_ENGINE_STARTED = true as const;
 
 export const ENTERPRISE_WORKFLOW_DEPARTMENTS = [
   "RN",
@@ -196,7 +199,10 @@ export type WorkflowDefinitionV1 = {
   definitionCode: EnterpriseWorkflowTemplateCode | string;
   title: string;
   version: 1;
-  /** Policy hooks reserved for 8A — generators ignore hard-coded hospital rules. */
+  /**
+   * Policy hooks reserved for / consumed by D4A.2.8A Rules Engine.
+   * Generators stay definition-driven; hospital policy evaluates via 8A.
+   */
   policyHooksReservedFor8A: true;
   tasks: WorkflowTaskDefinitionV1[];
   startOnEventTypes: ClinicalOrchestrationEventType[];
@@ -362,9 +368,9 @@ export type EnterpriseWorkflowAdminDashboardV1 = {
     failureCount: MetricAvailability<number>;
     completionCount: MetricAvailability<number>;
   };
-  rulesEngineEnabled: false;
+  rulesEngineEnabled: boolean;
   placementEnabled: false;
-  autoGenerationMode: "DEFINITION_DRIVEN";
+  autoGenerationMode: "DEFINITION_DRIVEN" | "DEFINITION_AND_RULES";
 };
 
 export type DepartmentWorklistItemV1 = {
@@ -1456,9 +1462,9 @@ export function aggregateAdminDashboard(
         failureCount: unavailable("SOURCE_UNAVAILABLE"),
         completionCount: unavailable("SOURCE_UNAVAILABLE"),
       },
-      rulesEngineEnabled: false,
+      rulesEngineEnabled: true,
       placementEnabled: false,
-      autoGenerationMode: "DEFINITION_DRIVEN",
+      autoGenerationMode: "DEFINITION_AND_RULES",
     };
   }
 
@@ -1565,9 +1571,9 @@ export function aggregateAdminDashboard(
       failureCount: available(failures),
       completionCount: available(completions),
     },
-    rulesEngineEnabled: false,
+    rulesEngineEnabled: true,
     placementEnabled: false,
-    autoGenerationMode: "DEFINITION_DRIVEN",
+    autoGenerationMode: "DEFINITION_AND_RULES",
   };
 }
 
@@ -1604,8 +1610,13 @@ export function timelineHasNoDuplicateDedupeKeys(
 }
 
 /** Certification helpers */
+/** @deprecated D4A.2.8A starts the Rules Engine — prefer enterpriseWorkflowRulesEngineStarted(). */
 export function enterpriseWorkflowMustNotStartRulesEngine(): boolean {
-  return ENTERPRISE_WORKFLOW_RULES_ENGINE_STARTED === false;
+  return !ENTERPRISE_WORKFLOW_RULES_ENGINE_STARTED;
+}
+
+export function enterpriseWorkflowRulesEngineStarted(): boolean {
+  return ENTERPRISE_WORKFLOW_RULES_ENGINE_STARTED === true;
 }
 
 export function enterpriseWorkflowMustNotStartPlacement(): boolean {

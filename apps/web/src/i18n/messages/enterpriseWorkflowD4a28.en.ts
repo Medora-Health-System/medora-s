@@ -2,15 +2,17 @@
 export const enterpriseWorkflowD4a28En = {
   title: "Enterprise workflow & tasks",
   subtitle:
-    "Definition-driven clinical workflow orchestration. Hospital policy rules are reserved for a later phase.",
+    "Definition-driven clinical workflow orchestration. Hospital policy rules are evaluated by the clinical rules engine (8A).",
   openLink: "Workflow & tasks",
   adminLink: "Workflow dashboard",
   loading: "Loading workflow…",
   loadError: "Unable to load enterprise workflow.",
   refresh: "Refresh",
   rulesOff: "Rules engine not enabled",
+  rulesOn: "Rules engine enabled",
   placementOff: "Placement not enabled",
   definitionDriven: "Auto-generation: definition-driven templates",
+  definitionAndRules: "Auto-generation: definitions + clinical rules",
   worklist: {
     title: "Department worklist",
     department: "Department",

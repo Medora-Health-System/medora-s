@@ -40,7 +40,8 @@ describe("MEDUI.ENTERPRISE_WORKFLOW_ENGINE.D4A2_8 shared", () => {
     expect(ENTERPRISE_WORKFLOW_ENGINE_CERTIFICATION_ID).toBe(
       "MEDUI.ENTERPRISE_WORKFLOW_ENGINE.D4A2_8"
     );
-    expect(enterpriseWorkflowMustNotStartRulesEngine()).toBe(true);
+    // D4A.2.8A consumes policy hooks — rules engine started; placement still blocked.
+    expect(enterpriseWorkflowMustNotStartRulesEngine()).toBe(false);
     expect(enterpriseWorkflowMustNotStartPlacement()).toBe(true);
     expect(enterpriseWorkflowAutoGenerationIsDefinitionDriven()).toBe(true);
   });
@@ -325,7 +326,7 @@ describe("MEDUI.ENTERPRISE_WORKFLOW_ENGINE.D4A2_8 shared", () => {
     const dash = aggregateAdminDashboard([created.doc], "fac-1", NOW);
     expect(dash.volumeActiveWorkflows.availability).toBe("AVAILABLE");
     expect(dash.volumeActiveWorkflows.value).toBeGreaterThan(0);
-    expect(dash.rulesEngineEnabled).toBe(false);
+    expect(dash.rulesEngineEnabled).toBe(true);
     expect(dash.placementEnabled).toBe(false);
 
     const unavailable = aggregateAdminDashboard([], "fac-1", NOW, {

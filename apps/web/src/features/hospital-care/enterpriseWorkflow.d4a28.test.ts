@@ -23,7 +23,8 @@ describe("MEDUI.ENTERPRISE_WORKFLOW_ENGINE.D4A2_8 web", () => {
     expect(ENTERPRISE_WORKFLOW_ENGINE_CERTIFICATION_ID).toBe(
       "MEDUI.ENTERPRISE_WORKFLOW_ENGINE.D4A2_8"
     );
-    expect(enterpriseWorkflowMustNotStartRulesEngine()).toBe(true);
+    // D4A.2.8A starts Rules Engine; Placement remains blocked.
+    expect(enterpriseWorkflowMustNotStartRulesEngine()).toBe(false);
     expect(enterpriseWorkflowMustNotStartPlacement()).toBe(true);
   });
 

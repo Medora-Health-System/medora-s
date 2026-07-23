@@ -7,8 +7,9 @@ dist
 .next
 coverage
 
-apps/api/prisma/dev.db
-apps/api/prisma/dev.db-journal
+# D4A.2.8A — facility clinical rules catalog (zero-migration file store)
+apps/api/var/
+
 
 .pnpm-store/
 *.tsbuildinfo

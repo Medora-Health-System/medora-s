@@ -50,6 +50,10 @@ import { EnterpriseWorkflowEngine } from "./enterprise-workflow/enterprise-workf
 import { ClinicalEventEngine } from "./enterprise-workflow/clinical-event.engine";
 import { EscalationEngine } from "./enterprise-workflow/escalation.engine";
 import { HospitalTimelineEngine } from "./enterprise-workflow/hospital-timeline.engine";
+import { ClinicalRulesController } from "./enterprise-workflow/clinical-rules.controller";
+import { ClinicalRulesEngine } from "./enterprise-workflow/clinical-rules.engine";
+import { ClinicalRulesActionAdapter } from "./enterprise-workflow/clinical-rules-action.adapter";
+import { ClinicalRulesOrchestrationService } from "./enterprise-workflow/clinical-rules-orchestration.service";
 
 @Module({
   imports: [PrismaModule, DiagnosesModule, OrdersModule, TrackboardModule, FacilitiesModule],
@@ -65,6 +69,7 @@ import { HospitalTimelineEngine } from "./enterprise-workflow/hospital-timeline.
     EnterpriseCommandController,
     OperationalGovernanceController,
     EnterpriseWorkflowController,
+    ClinicalRulesController,
   ],
   providers: [
     EncountersService,
@@ -81,6 +86,9 @@ import { HospitalTimelineEngine } from "./enterprise-workflow/hospital-timeline.
     ClinicalEventEngine,
     EscalationEngine,
     HospitalTimelineEngine,
+    ClinicalRulesEngine,
+    ClinicalRulesActionAdapter,
+    ClinicalRulesOrchestrationService,
     EnterpriseWorkflowOrchestrationService,
     SchemaCompatibleEncounterRepository,
     HospitalCensusService,
@@ -116,6 +124,7 @@ import { HospitalTimelineEngine } from "./enterprise-workflow/hospital-timeline.
     OperationalGovernanceService,
     ClinicalSynthesisService,
     EnterpriseWorkflowOrchestrationService,
+    ClinicalRulesOrchestrationService,
   ],
 })
 export class EncountersModule {}
