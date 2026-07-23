@@ -131,6 +131,7 @@ import {
   validateBedInPool,
   formatCanonicalBedDisplay,
   resolveBedAssignmentForSave,
+  resolveEncounterCanonicalBedKey,
   ED_CANONICAL_WAITING_ROOM_LABEL,
   isEdWaitingRoomLabel,
   type EdRoomOccupancyRow,
@@ -1690,6 +1691,23 @@ export class EncountersService {
       });
       if (!resolved.ok) {
         throwRoomAlreadyOccupiedConflict(resolved.conflict);
+      }
+      // D4A.2.8-HF2 — ED charts must not occupy hospital beds (census/bed divergence).
+      const assignedKey = resolveEncounterCanonicalBedKey({
+        roomLabel: resolved.roomLabel,
+        type: encounter.type,
+        admissionSummaryJson: encounter.admissionSummaryJson,
+      });
+      if (
+        String(encounter.type).toUpperCase() === "EMERGENCY" &&
+        assignedKey &&
+        !assignedKey.startsWith("ED:")
+      ) {
+        throw new BadRequestException({
+          code: "SOURCE_ED_ENCOUNTER",
+          message:
+            "Une rencontre des urgences ne peut pas occuper un lit d’hospitalisation. Utilisez l’admission hospitalière.",
+        });
       }
       updateData.roomLabel = resolved.roomLabel;
     }

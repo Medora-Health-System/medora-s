@@ -89,7 +89,7 @@ describe("SchemaCompatibleEncounterRepository D4A.2.8-HF1", () => {
       },
       facility: { name: "Clinic" },
     });
-    const prisma = { encounter: { findFirst, findMany: jest.fn() } };
+    const prisma = { encounter: { findFirst, findMany: jest.fn(), findUnique: jest.fn() } };
     const repo = new SchemaCompatibleEncounterRepository(prisma as never);
     const row = await repo.findFacilityEncounterForWorkspace(
       "fac-1",
@@ -101,6 +101,44 @@ describe("SchemaCompatibleEncounterRepository D4A.2.8-HF1", () => {
     expect(row?.type).toBe("INPATIENT");
     expect(row?.hospitalEpisodeId).toBeNull();
     expect(row?.roomLabel).toBe("MS-1-A");
+  });
+
+  it("4b HF2: findEncounterByIdForAuthority has no facility filter and omits hospitalEpisodeId when OFF", async () => {
+    delete process.env.HOSPITAL_EPISODE_FOUNDATION_ENABLED;
+    const findUnique = jest.fn().mockResolvedValue({
+      id: "8ad88df5-68e0-4fc8-9ca6-2eb116d32ced",
+      facilityId: "other-fac",
+      patientId: "pat-1",
+      type: "INPATIENT",
+      status: "OPEN",
+      admittedAt: null,
+      createdAt: new Date(),
+      roomLabel: "MS-1",
+      chiefComplaint: null,
+      admissionSummaryJson: {},
+      billingClassification: null,
+      providerDocumentationStatus: null,
+      physicianAssignedUserId: null,
+      nurseAssignedUserId: null,
+      workflowState: null,
+      physicianAssigned: null,
+      nurseAssigned: null,
+      patient: { id: "pat-1", firstName: "A", lastName: "B", mrn: null, dob: null, sexAtBirth: null },
+      facility: { name: "Other" },
+    });
+    const prisma = { encounter: { findFirst: jest.fn(), findMany: jest.fn(), findUnique } };
+    const repo = new SchemaCompatibleEncounterRepository(prisma as never);
+    const row = await repo.findEncounterByIdForAuthority("8ad88df5-68e0-4fc8-9ca6-2eb116d32ced");
+    expect(findUnique).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: "8ad88df5-68e0-4fc8-9ca6-2eb116d32ced" },
+      })
+    );
+    const args = findUnique.mock.calls[0][0];
+    expect(args.where).not.toHaveProperty("facilityId");
+    expect(args.select).not.toHaveProperty("hospitalEpisodeId");
+    expect(row?.facilityId).toBe("other-fac");
+    expect(row?.hospitalEpisodeId).toBeNull();
   });
 
   it("5: findOpenHospitalEncountersForCensus never selects hospitalEpisodeId when OFF", async () => {

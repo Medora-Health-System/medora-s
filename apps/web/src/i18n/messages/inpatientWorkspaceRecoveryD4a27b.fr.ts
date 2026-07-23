@@ -53,6 +53,8 @@ export const inpatientWorkspaceRecoveryD4a27bFr = {
       "Une rencontre des urgences ne peut pas être ouverte comme espace d’hospitalisation.",
     OBSERVATION_ENCOUNTER_REJECTED:
       "Cette rencontre d’observation doit être ouverte dans l’espace Observation.",
+    LINEAGE_AMBIGUOUS:
+      "Plusieurs dossiers hospitaliers liés ont été trouvés. Ouvrez le bon dossier depuis le recensement ou le tableau des lits.",
     UNAUTHORIZED: "Accès restreint pour ce dossier d’hospitalisation.",
     FORBIDDEN: "Vous n’avez pas l’autorisation d’ouvrir ce dossier d’hospitalisation.",
     FEATURE_DISABLED:

@@ -31,6 +31,12 @@ export function classifyInpatientBootstrapClientError(
 
   if (status === 401 || code === "UNAUTHORIZED") return "UNAUTHORIZED";
   if (status === 403 || code === "FORBIDDEN") return "FORBIDDEN";
+  if (code === "FACILITY_MISMATCH" || msg.includes("FACILITY_MISMATCH")) {
+    return "FACILITY_MISMATCH";
+  }
+  if (code === "LINEAGE_AMBIGUOUS" || msg.includes("LINEAGE_AMBIGUOUS")) {
+    return "LINEAGE_AMBIGUOUS";
+  }
   if (status === 404 || code === "NOT_FOUND") return "NOT_FOUND";
   if (
     status === 409 ||

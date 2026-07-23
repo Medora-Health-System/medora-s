@@ -22,6 +22,7 @@ import { MEDORA_CARD_SHELL } from "@/components/medora-card/medoraCardTokens";
 import {
   INPATIENT_CENSUS_PATH,
   isInpatientWorkspaceEnabledInBrowser,
+  inpatientActiveWorkspacePath,
   inpatientNursingWorkspacePath,
   inpatientProviderWorkspacePath,
   inpatientSharedChartPath,
@@ -155,6 +156,18 @@ export function InpatientActiveWorkspaceView({
       setBootstrap(data);
       if (!data.resolution.ok) {
         setErrorCategory(data.resolution.category);
+      } else if (
+        data.resolution.redirectedFromEncounterId &&
+        data.resolution.encounterId &&
+        data.resolution.encounterId !== encounterId
+      ) {
+        // Server-authoritative same-patient/same-facility lineage redirect only.
+        const dest = data.resolution.encounterId;
+        if (role === "PROVIDER") router.replace(inpatientProviderWorkspacePath(dest));
+        else if (role === "NURSING") router.replace(inpatientNursingWorkspacePath(dest));
+        else if (role === "TECHNICIAN") router.replace(inpatientTechnicianWorkspacePath(dest));
+        else if (role === "CHART") router.replace(inpatientSharedChartPath(dest));
+        else router.replace(inpatientActiveWorkspacePath(dest));
       }
     } catch (err) {
       setBootstrap(null);
@@ -162,7 +175,7 @@ export function InpatientActiveWorkspaceView({
     } finally {
       setLoading(false);
     }
-  }, [encounterId, role]);
+  }, [encounterId, role, router]);
 
   useEffect(() => {
     void loadBootstrap();

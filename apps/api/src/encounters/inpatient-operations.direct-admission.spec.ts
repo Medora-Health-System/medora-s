@@ -149,13 +149,20 @@ describe("createDirectAdmission expand-and-contract (D3B)", () => {
       findFacilityEncounterForWorkspace: jest.fn(),
       findOpenHospitalEncountersForCensus: jest.fn(),
     };
+    const encounterAuthority = {
+      resolveRequestedEncounter: jest.fn(),
+      certification: jest.fn().mockReturnValue(
+        "MEDUI.AUTHORITATIVE_HOSPITAL_CENSUS_LINEAGE_RECOVERY.D4A2_8_HF2"
+      ),
+    };
     const svc = new InpatientOperationsService(
       prisma as never,
       audit as never,
       admissionCorrelation,
       bedBoardService as never,
       clinicalSynthesis,
-      compatibleEncounters as never
+      compatibleEncounters as never,
+      encounterAuthority as never
     );
     return { svc, prisma, encounterCreate, encounterUpdate, findMany, audit };
   }
@@ -298,6 +305,10 @@ describe("createDirectAdmission expand-and-contract (D3B)", () => {
         isHospitalEpisodeFoundationEnabled: jest.fn().mockReturnValue(true),
         findFacilityEncounterForWorkspace: jest.fn(),
         findOpenHospitalEncountersForCensus: jest.fn(),
+      } as never,
+      {
+        resolveRequestedEncounter: jest.fn(),
+        certification: jest.fn(),
       } as never
     );
 

@@ -33,6 +33,7 @@ import { InternalPlacementService } from "./internal-placement.service";
 import { HospitalCensusService } from "./hospital-census.service";
 import { HospitalUnitRegistryService } from "./hospital-unit-registry.service";
 import { AdmissionCommandCenterService } from "./admission-command-center.service";
+import { HospitalEncounterAuthorityService } from "./hospital-encounter-authority.service";
 
 function facilityIdFromReq(req: { user?: { facilityId?: string } }): string {
   return String(req.user?.facilityId ?? "").trim();
@@ -45,7 +46,8 @@ export class HospitalCareController {
     private readonly placement: InternalPlacementService,
     private readonly hospitalCensus: HospitalCensusService,
     private readonly unitRegistry: HospitalUnitRegistryService,
-    private readonly admissionCommandCenter: AdmissionCommandCenterService
+    private readonly admissionCommandCenter: AdmissionCommandCenterService,
+    private readonly encounterAuthority: HospitalEncounterAuthorityService
   ) {}
 
   @Get("meta")
@@ -102,6 +104,15 @@ export class HospitalCareController {
         ? normalized
         : "ALL_HOSPITAL_CARE";
     return this.hospitalCensus.getHospitalCensus(facilityIdFromReq(req), { snapshotScope });
+  }
+
+  /**
+   * D4A.2.8-HF2 — Admin-only read-only census/bed/lineage reconciliation (counts, no PHI).
+   */
+  @Get("census/reconciliation")
+  @RequireRoles(RoleCode.ADMIN)
+  async censusReconciliation(@Req() req: { user?: { facilityId?: string } }) {
+    return this.encounterAuthority.getFacilityReconciliationReport(facilityIdFromReq(req));
   }
 
   /**

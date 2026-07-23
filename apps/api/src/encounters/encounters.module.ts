@@ -13,6 +13,7 @@ import { InpatientLifecycleService } from "./inpatient-lifecycle.service";
 import { HospitalCensusService } from "./hospital-census.service";
 import { HospitalUnitRegistryService } from "./hospital-unit-registry.service";
 import { SchemaCompatibleEncounterRepository } from "./schema-compatible-encounter.repository";
+import { HospitalEncounterAuthorityService } from "./hospital-encounter-authority.service";
 import { EncounterChartExportService } from "./chart-export.service";
 import { UnifiedEncounterTimelineService } from "./unified-encounter-timeline.service";
 import { PrismaModule } from "../prisma/prisma.module";
@@ -91,6 +92,7 @@ import { ClinicalRulesOrchestrationService } from "./enterprise-workflow/clinica
     ClinicalRulesOrchestrationService,
     EnterpriseWorkflowOrchestrationService,
     SchemaCompatibleEncounterRepository,
+    HospitalEncounterAuthorityService,
     HospitalCensusService,
     HospitalUnitRegistryService,
     ChartCertificationB1Service,
@@ -118,6 +120,7 @@ import { ClinicalRulesOrchestrationService } from "./enterprise-workflow/clinica
     FacilityBillingWorkflowService,
     HospitalEpisodeService,
     InternalPlacementService,
+    HospitalEncounterAuthorityService,
     AdmissionCorrelationService,
     AdmissionCommandCenterService,
     EnterpriseCommandService,

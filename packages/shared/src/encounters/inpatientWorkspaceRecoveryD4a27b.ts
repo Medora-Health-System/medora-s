@@ -41,6 +41,7 @@ export const ENCOUNTER_RESOLUTION_FAILURE_CATEGORIES = [
   "ENCOUNTER_TYPE_MISMATCH",
   "ED_ENCOUNTER_REJECTED",
   "OBSERVATION_ENCOUNTER_REJECTED",
+  "LINEAGE_AMBIGUOUS",
   "UNAUTHORIZED",
   "FORBIDDEN",
   "FEATURE_DISABLED",
@@ -64,6 +65,9 @@ export type EncounterResolutionResultV1 =
       status: string;
       hospitalEpisodeId: string | null;
       writersEnabled: true;
+      /** D4A.2.8-HF2 — set when server redirected source→destination lineage (same patient/facility). */
+      redirectedFromEncounterId?: string | null;
+      requestedEncounterId?: string | null;
     }
   | {
       ok: false;
@@ -71,6 +75,8 @@ export type EncounterResolutionResultV1 =
       category: EncounterResolutionFailureCategory;
       writersEnabled: false;
       actualEncounterType?: string | null;
+      /** D4A.2.8-HF2 — when category is FACILITY_MISMATCH */
+      actualFacilityId?: string | null;
       messageCode: string;
     };
 

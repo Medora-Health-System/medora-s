@@ -53,6 +53,8 @@ export const inpatientWorkspaceRecoveryD4a27bEn = {
       "An Emergency Department encounter cannot be opened as the Inpatient workspace.",
     OBSERVATION_ENCOUNTER_REJECTED:
       "This Observation encounter must be opened in the Observation workspace.",
+    LINEAGE_AMBIGUOUS:
+      "Multiple linked hospital charts were found. Open the correct chart from the census or bed board.",
     UNAUTHORIZED: "Access restricted for this Inpatient chart.",
     FORBIDDEN: "You do not have permission to open this Inpatient chart.",
     FEATURE_DISABLED: "The Inpatient clinical workspace is not configured for this facility.",
