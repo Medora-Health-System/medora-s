@@ -7,12 +7,14 @@ import {
   HEAD_TO_TOE_SYSTEM_KEYS,
   INPATIENT_ADMISSION_CLINICAL_SECTIONS,
   NURSING_ADMISSION_STAGES,
+  nursingAdmissionStageForSection,
   resolveAuthoritativeCodeStatus,
   resolveAuthoritativeIsolation,
   type AdmissionSectionCompletionState,
   type InpatientAdmissionClinicalSection,
   type InpatientClinicalOpsV1,
   type NursingAdmissionDomainReferenceV1,
+  type NursingAdmissionStageId,
 } from "@medora/shared";
 import {
   createLatestWinsClinicalAutosaveScheduler,
@@ -36,6 +38,8 @@ import { InpatientLifecycleActionsMenu } from "./InpatientLifecycleActionsMenu";
 import { NursingAdmissionDomainIntegrationPanel } from "./NursingAdmissionDomainIntegrationPanel";
 import { NursingAdmissionPrintSummaryModal } from "./NursingAdmissionPrintSummaryModal";
 import { NursingAdmissionAmendmentDialog } from "./NursingAdmissionAmendmentDialog";
+import { ClinicalSaveStatus } from "./rapid-documentation/ClinicalRapidControls";
+import { AdditionalClinicalDocumentationLauncher } from "./rapid-documentation/AdditionalClinicalDocumentationLauncher";
 
 function admissionCorrelationUiEnabled(): boolean {
   const v = String(process.env.NEXT_PUBLIC_ADMISSION_CORRELATION_ENABLED ?? "")
@@ -88,7 +92,15 @@ type NursingDoc = {
   }>;
 };
 
-type SaveUiState = "unsaved" | "saving" | "saved" | "failed";
+type SaveUiState =
+  | "NOT_SAVED"
+  | "SAVING"
+  | "SAVED"
+  | "SAVE_FAILED"
+  | "CONFLICT_DETECTED"
+  | "READ_ONLY"
+  | "SIGNED"
+  | "AMENDED";
 
 type Props = {
   encounterId: string;
@@ -98,8 +110,7 @@ type Props = {
 };
 
 /**
- * D4A.2.5 — Durable nursing admission workspace:
- * structured sections, Prev/Next, autosave, review/sign, lifecycle actions.
+ * D4A.2.7C — Six-stage nursing admission presentation over 20 durable sections.
  */
 export function InpatientAdmissionClinicalShell({
   encounterId,
@@ -116,7 +127,7 @@ export function InpatientAdmissionClinicalShell({
   const [unableReason, setUnableReason] = useState("");
   const [draftNote, setDraftNote] = useState("");
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [saveState, setSaveState] = useState<SaveUiState>("saved");
+  const [saveState, setSaveState] = useState<SaveUiState>("SAVED");
   const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [review, setReview] = useState<Record<string, unknown> | null>(null);
@@ -134,6 +145,7 @@ export function InpatientAdmissionClinicalShell({
   const [amendMode, setAmendMode] = useState<
     null | "ADDENDUM" | "CORRECTION" | "ENTERED_IN_ERROR"
   >(null);
+  const [localDraftBackup, setLocalDraftBackup] = useState<Record<string, unknown> | null>(null);
   const panelRef = useRef<HTMLDivElement | null>(null);
   const expectedVersionRef = useRef(0);
   const dirtyRef = useRef(false);
@@ -144,6 +156,11 @@ export function InpatientAdmissionClinicalShell({
   const isFirst = sectionIndex <= 0;
   const isLast = sectionIndex >= INPATIENT_ADMISSION_CLINICAL_SECTIONS.length - 1;
   const signed = Boolean(doc?.nurseSignature?.signed);
+  const activeStage = nursingAdmissionStageForSection(active);
+  const stageId = (activeStage?.id ?? "ARRIVAL_IDENTITY") as NursingAdmissionStageId;
+  const stageIndex = NURSING_ADMISSION_STAGES.findIndex((s) => s.id === stageId);
+  const stageSections = (activeStage?.sectionKeys ?? []) as InpatientAdmissionClinicalSection[];
+
 
   const applyPayload = useCallback(
     (payload: { documentation?: NursingDoc; completion?: Record<string, unknown> }, sectionId?: InpatientAdmissionClinicalSection) => {
@@ -157,7 +174,7 @@ export function InpatientAdmissionClinicalShell({
       setUnableReason(typeof sec?.unableReason === "string" ? sec.unableReason : "");
       setDraftNote(typeof sec?.draftText === "string" ? sec.draftText : "");
       dirtyRef.current = false;
-      setSaveState("saved");
+      setSaveState("SAVED");
     },
     [active]
   );
@@ -218,7 +235,7 @@ export function InpatientAdmissionClinicalShell({
     setUnableReason(typeof sec?.unableReason === "string" ? sec.unableReason : "");
     setDraftNote(typeof sec?.draftText === "string" ? sec.draftText : "");
     dirtyRef.current = false;
-    setSaveState("saved");
+    setSaveState("SAVED");
     panelRef.current?.focus();
   }, [active, doc?.sections]);
 
@@ -235,7 +252,7 @@ export function InpatientAdmissionClinicalShell({
   const persistSection = useCallback(
     async (completionState?: AdmissionSectionCompletionState) => {
       if (!doc || signed) return;
-      setSaveState("saving");
+      setSaveState("SAVING");
       setBusy(true);
       try {
         const payload = await patchNursingAdmissionSection(encounterId, {
@@ -248,10 +265,10 @@ export function InpatientAdmissionClinicalShell({
         });
         applyPayload(payload as never, active);
         dirtyRef.current = false;
-        setSaveState("saved");
+        setSaveState("SAVED");
         setLastSavedAt(new Date().toISOString());
       } catch {
-        setSaveState("failed");
+        setSaveState("SAVE_FAILED");
       } finally {
         setBusy(false);
       }
@@ -289,7 +306,7 @@ export function InpatientAdmissionClinicalShell({
   const markDirty = (nextAnswers: Record<string, unknown>) => {
     setAnswers(nextAnswers);
     dirtyRef.current = true;
-    setSaveState("unsaved");
+    setSaveState("NOT_SAVED");
     autosave.schedule();
   };
 
@@ -337,7 +354,7 @@ export function InpatientAdmissionClinicalShell({
       });
       await reload();
     } catch {
-      setSaveState("failed");
+      setSaveState("SAVE_FAILED");
     } finally {
       setBusy(false);
     }
@@ -350,7 +367,7 @@ export function InpatientAdmissionClinicalShell({
       setReview(payload.review as Record<string, unknown>);
       applyPayload(payload as never);
     } catch {
-      setSaveState("failed");
+      setSaveState("SAVE_FAILED");
     }
   };
 
@@ -367,7 +384,7 @@ export function InpatientAdmissionClinicalShell({
       applyPayload(payload as never);
       await openReview();
     } catch {
-      setSaveState("failed");
+      setSaveState("SAVE_FAILED");
       await reload();
     } finally {
       setBusy(false);
@@ -377,52 +394,79 @@ export function InpatientAdmissionClinicalShell({
   const sectionState = (id: string) =>
     (doc?.sections?.[id]?.completionState as AdmissionSectionCompletionState) ?? "NOT_STARTED";
 
-  const sectionLabel = t("hospitalAdmissionD4a25.sectionOf")
-    .replace("{current}", String(sectionIndex + 1))
-    .replace("{total}", String(INPATIENT_ADMISSION_CLINICAL_SECTIONS.length));
+  const sectionLabel = t("inpatientRapidConvergenceD4a27c.stages.progress")
+    .replace("{current}", String(stageIndex + 1))
+    .replace("{total}", String(NURSING_ADMISSION_STAGES.length));
 
-  const NavControls = ({ position }: { position: "top" | "bottom" }) => (
-    <div
-      style={navRow}
-      data-testid={`admission-nav-${position}`}
+  const effectiveSaveCode = signed ? "SIGNED" : saveState;
+
+  const StickyFooter = () => (
+    <footer
+      style={{
+        position: "sticky",
+        bottom: 0,
+        zIndex: 25,
+        marginTop: 12,
+        padding: "10px 12px",
+        borderTop: "1px solid #e2e8f0",
+        background: "rgba(248,250,252,0.97)",
+        display: "flex",
+        flexWrap: "wrap",
+        gap: 8,
+        alignItems: "center",
+        justifyContent: "space-between",
+      }}
+      data-testid="admission-sticky-footer"
     >
-      {!isFirst ? (
-        <button type="button" style={navBtn} onClick={goPrev} disabled={busy}>
-          {t("hospitalAdmissionD4a25.nav.previous")}
-        </button>
-      ) : (
-        <span />
-      )}
-      <button
-        type="button"
-        style={navBtnPrimary}
-        disabled={busy || signed}
-        onClick={() => void persistSection()}
-        data-testid={`admission-save-draft-${position}`}
-      >
-        {t("hospitalAdmissionD4a25.nav.saveDraft")}
-      </button>
-      {!isLast ? (
-        <button type="button" style={navBtn} onClick={goNext} disabled={busy}>
-          {t("hospitalAdmissionD4a25.nav.next")}
-        </button>
-      ) : (
-        <>
-          <button type="button" style={navBtn} onClick={() => void openReview()} disabled={busy}>
-            {t("hospitalAdmissionD4a25.nav.review")}
+      <ClinicalSaveStatus code={effectiveSaveCode} savedAt={lastSavedAt} language={language} />
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+        {!isFirst ? (
+          <button type="button" style={navBtn} onClick={goPrev} disabled={busy}>
+            {t("inpatientRapidConvergenceD4a27c.nav.previous")}
           </button>
-          <button
-            type="button"
-            style={{ ...navBtnPrimary, background: "#0f766e" }}
-            disabled={busy || signed}
-            onClick={() => void signAdmission()}
-            data-testid="admission-nurse-sign"
-          >
-            {signed ? t("hospitalAdmissionD4a1.alreadySigned") : t("hospitalAdmissionD4a25.nav.sign")}
-          </button>
-        </>
-      )}
-    </div>
+        ) : null}
+        <button
+          type="button"
+          style={navBtnPrimary}
+          disabled={busy || signed}
+          onClick={() => void persistSection()}
+          data-testid="admission-save"
+        >
+          {t("inpatientRapidConvergenceD4a27c.nav.save")}
+        </button>
+        {!isLast ? (
+          <>
+            <button
+              type="button"
+              style={navBtn}
+              disabled={busy || signed}
+              onClick={() => void persistSection().then(() => goNext())}
+              data-testid="admission-save-continue"
+            >
+              {t("inpatientRapidConvergenceD4a27c.nav.saveContinue")}
+            </button>
+            <button type="button" style={navBtn} onClick={goNext} disabled={busy}>
+              {t("inpatientRapidConvergenceD4a27c.nav.next")}
+            </button>
+          </>
+        ) : (
+          <>
+            <button type="button" style={navBtn} onClick={() => void openReview()} disabled={busy}>
+              {t("inpatientRapidConvergenceD4a27c.nav.review")}
+            </button>
+            <button
+              type="button"
+              style={{ ...navBtnPrimary, background: "#0f766e" }}
+              disabled={busy || signed}
+              onClick={() => void signAdmission()}
+              data-testid="admission-nurse-sign"
+            >
+              {signed ? t("hospitalAdmissionD4a1.alreadySigned") : t("inpatientRapidConvergenceD4a27c.nav.sign")}
+            </button>
+          </>
+        )}
+      </div>
+    </footer>
   );
 
   const openPrintSummary = () => {
@@ -430,13 +474,52 @@ export function InpatientAdmissionClinicalShell({
     setPrintOpen(true);
   };
 
+  const goToStage = (id: NursingAdmissionStageId) => {
+    const stage = NURSING_ADMISSION_STAGES.find((s) => s.id === id);
+    const first = stage?.sectionKeys[0] as InpatientAdmissionClinicalSection | undefined;
+    if (first) goTo(first);
+  };
+
   return (
     <div data-testid="inpatient-admission-clinical-shell">
       <p style={{ margin: "0 0 8px", fontSize: 13, color: "#334155", lineHeight: 1.45 }} data-testid="d4a25-admission-intro">
         {t("hospitalAdmissionD4a1.intro")}
       </p>
+
+      <nav
+        aria-label={t("inpatientRapidConvergenceD4a27c.stages.ARRIVAL_IDENTITY")}
+        data-testid="nursing-admission-stage-rail"
+        style={{
+          display: "flex",
+          flexWrap: "wrap",
+          gap: 6,
+          marginBottom: 10,
+          position: "sticky",
+          top: 0,
+          zIndex: 24,
+          background: "rgba(248,250,252,0.96)",
+          padding: "8px 0",
+        }}
+      >
+        {NURSING_ADMISSION_STAGES.map((s, idx) => (
+          <button
+            key={s.id}
+            type="button"
+            data-testid={`admission-stage-${s.id}`}
+            onClick={() => goToStage(s.id)}
+            style={{
+              ...chipBtn,
+              fontWeight: s.id === stageId ? 700 : 500,
+              borderColor: s.id === stageId ? "#0f766e" : "#e2e8f0",
+              background: s.id === stageId ? "#ccfbf1" : "#fff",
+            }}
+          >
+            {idx + 1}. {t(`inpatientRapidConvergenceD4a27c.stages.${s.id}`)}
+          </button>
+        ))}
+      </nav>
       <p style={{ margin: "0 0 10px", fontSize: 12, color: "#64748b" }} data-testid="nursing-admission-stages-hint">
-        {NURSING_ADMISSION_STAGES.map((s) => s.id.replace(/_/g, " ").toLowerCase()).join(" → ")}
+        {sectionLabel}
       </p>
 
       <InpatientLifecycleActionsMenu encounterId={encounterId} canAdmin={canAdmin} />
@@ -449,29 +532,68 @@ export function InpatientAdmissionClinicalShell({
         </p>
       ) : null}
 
+      {saveState === "CONFLICT_DETECTED" || saveState === "SAVE_FAILED" ? (
+        <div
+          role="alert"
+          data-testid="admission-conflict-banner"
+          style={{
+            marginBottom: 10,
+            padding: 10,
+            border: "1px solid #f59e0b",
+            borderRadius: 10,
+            background: "#fffbeb",
+            fontSize: 12,
+          }}
+        >
+          <strong>{t("inpatientRapidConvergenceD4a27c.conflict.title")}</strong>
+          <p style={{ margin: "6px 0" }}>{t("inpatientRapidConvergenceD4a27c.conflict.body")}</p>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+            <button
+              type="button"
+              style={chipBtn}
+              onClick={() => {
+                setLocalDraftBackup({ answers, unableReason, draftNote });
+                void reload();
+              }}
+            >
+              {t("inpatientRapidConvergenceD4a27c.conflict.reload")}
+            </button>
+            <button
+              type="button"
+              style={chipBtn}
+              onClick={() => {
+                if (localDraftBackup) {
+                  setAnswers((localDraftBackup.answers as Record<string, unknown>) ?? answers);
+                  setUnableReason(String(localDraftBackup.unableReason ?? unableReason));
+                  setDraftNote(String(localDraftBackup.draftNote ?? draftNote));
+                  dirtyRef.current = true;
+                  setSaveState("NOT_SAVED");
+                }
+              }}
+            >
+              {t("inpatientRapidConvergenceD4a27c.conflict.preserve")}
+            </button>
+            <button type="button" style={chipBtn} onClick={() => void persistSection()}>
+              {t("inpatientRapidConvergenceD4a27c.conflict.retry")}
+            </button>
+            <button
+              type="button"
+              style={chipBtn}
+              onClick={() => {
+                if (window.confirm(t("inpatientRapidConvergenceD4a27c.conflict.discardConfirm"))) {
+                  dirtyRef.current = false;
+                  void reload();
+                }
+              }}
+            >
+              {t("inpatientRapidConvergenceD4a27c.conflict.discard")}
+            </button>
+          </div>
+        </div>
+      ) : null}
+
       <div style={saveBar} data-testid="admission-save-state" role="status">
-        <strong>
-          {saveState === "unsaved"
-            ? t("hospitalAdmissionD4a25.saveState.unsaved")
-            : saveState === "saving"
-              ? t("hospitalAdmissionD4a25.saveState.saving")
-              : saveState === "failed"
-                ? t("hospitalAdmissionD4a25.saveState.failed")
-                : t("hospitalAdmissionD4a25.saveState.saved")}
-        </strong>
-        {lastSavedAt ? (
-          <span>
-            {t("hospitalAdmissionD4a25.saveState.lastSaved").replace(
-              "{time}",
-              new Date(lastSavedAt).toLocaleTimeString(language === "fr" ? "fr-FR" : "en-US")
-            )}
-          </span>
-        ) : null}
-        {saveState === "failed" ? (
-          <button type="button" style={chipBtn} onClick={() => void persistSection()}>
-            {t("hospitalAdmissionD4a25.saveState.retry")}
-          </button>
-        ) : null}
+        <ClinicalSaveStatus code={effectiveSaveCode} savedAt={lastSavedAt} language={language} />
       </div>
 
       {completion ? (
@@ -488,10 +610,10 @@ export function InpatientAdmissionClinicalShell({
       <div style={layout}>
         <nav style={checklistBox} data-testid="inpatient-admission-checklist" aria-label={t("inpatientD3e.admission.checklistTitle")}>
           <p style={{ margin: "0 0 8px", fontSize: 13, fontWeight: 700, color: "#0f172a" }}>
-            {t("inpatientD3e.admission.checklistTitle")}
+            {t(`inpatientRapidConvergenceD4a27c.stages.${stageId}`)}
           </p>
           <ul style={{ margin: 0, padding: 0, listStyle: "none" }}>
-            {INPATIENT_ADMISSION_CLINICAL_SECTIONS.map((section, idx) => (
+            {stageSections.map((section, idx) => (
               <li key={section} style={{ marginBottom: 4 }}>
                 <button
                   type="button"
@@ -513,6 +635,33 @@ export function InpatientAdmissionClinicalShell({
               </li>
             ))}
           </ul>
+          <details style={{ marginTop: 10 }}>
+            <summary style={{ fontSize: 12, cursor: "pointer", color: "#64748b" }}>
+              {t("inpatientD3e.admission.checklistTitle")} ({INPATIENT_ADMISSION_CLINICAL_SECTIONS.length})
+            </summary>
+            <ul style={{ margin: "8px 0 0", padding: 0, listStyle: "none" }}>
+              {INPATIENT_ADMISSION_CLINICAL_SECTIONS.map((section, idx) => (
+                <li key={section} style={{ marginBottom: 4 }}>
+                  <button
+                    type="button"
+                    onClick={() => goTo(section)}
+                    style={{
+                      ...sectionBtn,
+                      background: active === section ? "#ecfeff" : "#fff",
+                      borderColor: active === section ? "#0891b2" : "#e2e8f0",
+                    }}
+                  >
+                    <span>
+                      {idx + 1}. {t(`hospitalAdmissionD4a0.clinical.sections.${section}`)}
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </details>
+          <div style={{ marginTop: 10 }}>
+            <AdditionalClinicalDocumentationLauncher role="NURSING" encounterType="INPATIENT" compact />
+          </div>
         </nav>
 
         <div
@@ -524,7 +673,6 @@ export function InpatientAdmissionClinicalShell({
           <h4 style={{ margin: "0 0 8px", fontSize: 14, color: "#0f172a" }}>
             {t(`hospitalAdmissionD4a0.clinical.sections.${active}`)}
           </h4>
-          <NavControls position="top" />
 
           <NursingAdmissionDomainIntegrationPanel
             sectionId={active}
@@ -599,7 +747,7 @@ export function InpatientAdmissionClinicalShell({
             onUnableReasonChange={(r) => {
               setUnableReason(r);
               dirtyRef.current = true;
-              setSaveState("unsaved");
+              setSaveState("NOT_SAVED");
               autosave.schedule();
             }}
           />
@@ -612,7 +760,7 @@ export function InpatientAdmissionClinicalShell({
               onChange={(e) => {
                 setDraftNote(e.target.value);
                 dirtyRef.current = true;
-                setSaveState("unsaved");
+                setSaveState("NOT_SAVED");
                 autosave.schedule();
               }}
               rows={2}
@@ -634,8 +782,6 @@ export function InpatientAdmissionClinicalShell({
             ))}
           </div>
 
-          <NavControls position="bottom" />
-
           <button
             type="button"
             style={{ ...chipBtn, marginTop: 8 }}
@@ -644,6 +790,8 @@ export function InpatientAdmissionClinicalShell({
           >
             {t("hospitalAdmissionD4a25a.print.open")}
           </button>
+
+          <StickyFooter />
         </div>
       </div>
 

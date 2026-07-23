@@ -5,6 +5,10 @@ import {
   PROVIDER_HP_SECTION_KEYS,
   PROVIDER_PROBLEM_PLAN_STATUSES,
   PROVIDER_ROUNDING_MODE_STEPS,
+  PLAN_STICKY_OPTIONS,
+  PROVIDER_INTERVAL_EVENT_OPTIONS,
+  EXAM_SYSTEM_CODES,
+  ROS_SYSTEM_CODES,
   type ProviderEventAckStatus,
   type ProviderHpSectionKey,
   type ProviderRoundingModeStep,
@@ -26,6 +30,11 @@ import { EncounterDiagnosticsPanel } from "@/components/encounters/EncounterDiag
 import { EnterpriseEncounterCommandTimeline } from "@/components/encounters/EnterpriseEncounterCommandTimeline";
 import type { InpatientWorkspaceSection } from "./inpatientWorkspaceSections";
 import { ProviderClinicalSynthesisOverview } from "./ProviderClinicalSynthesisOverview";
+import {
+  ClinicalMultiSelectChips,
+  ClinicalNormalExceptionSelector,
+  ClinicalStickyNotePicker,
+} from "./rapid-documentation/ClinicalRapidControls";
 
 type ProviderDoc = {
   expectedVersion?: number;
@@ -189,6 +198,10 @@ export function InpatientProviderWorkspacePanel({
   const [progressText, setProgressText] = useState("");
   const [activeProgressNoteId, setActiveProgressNoteId] = useState<string | null>(null);
   const [dirtyProgress, setDirtyProgress] = useState(false);
+  const [intervalEvents, setIntervalEvents] = useState<string[]>([]);
+  const [planSticky, setPlanSticky] = useState<string[]>([]);
+  const [rosBySystem, setRosBySystem] = useState<Record<string, string | null>>({});
+  const [examBySystem, setExamBySystem] = useState<Record<string, string | null>>({});
 
   const expectedVersion = Number(doc?.expectedVersion ?? 0);
 
@@ -526,6 +539,30 @@ export function InpatientProviderWorkspacePanel({
           <p style={{ margin: "0 0 8px", fontSize: 12, color: "#64748b" }}>
             {t("inpatientProviderD4a26.progress.newSincePrior")}
           </p>
+          <div style={{ marginBottom: 12 }} data-testid="provider-progress-interval-events">
+            <ClinicalMultiSelectChips
+              label={t("inpatientRapidConvergenceD4a27c.hp.intervalEvents")}
+              options={PROVIDER_INTERVAL_EVENT_OPTIONS}
+              value={intervalEvents}
+              onChange={(next) => {
+                setIntervalEvents(next);
+                setDirtyProgress(true);
+              }}
+              readOnly={signed || !canProviderWrite}
+            />
+          </div>
+          <div style={{ marginBottom: 12 }}>
+            <ClinicalStickyNotePicker
+              label={t("inpatientRapidConvergenceD4a27c.hp.planSticky")}
+              options={PLAN_STICKY_OPTIONS}
+              value={planSticky}
+              onChange={(next) => {
+                setPlanSticky(next);
+                setDirtyProgress(true);
+              }}
+              readOnly={signed || !canProviderWrite}
+            />
+          </div>
           {saveState === "conflict" ? (
             <div
               role="alert"
@@ -793,6 +830,24 @@ export function InpatientProviderWorkspacePanel({
                   style={{ display: "block", width: "100%", marginTop: 4 }}
                 />
               </label>
+              <ClinicalStickyNotePicker
+                label={t("inpatientRapidConvergenceD4a27c.hp.planSticky")}
+                options={PLAN_STICKY_OPTIONS}
+                value={planSticky}
+                onChange={(next) => {
+                  setPlanSticky(next);
+                  if (next.length) {
+                    const labels = PLAN_STICKY_OPTIONS.filter((o) => next.includes(o.code)).map(
+                      (o) => o.display
+                    );
+                    setProblemPlan((prev) =>
+                      prev
+                        ? `${prev}\n${labels.join("; ")}`
+                        : labels.join("; ")
+                    );
+                  }
+                }}
+              />
               <button type="button" onClick={() => void saveProblem()}>
                 {t("inpatientProviderD4a26.problems.save")}
               </button>
@@ -828,11 +883,53 @@ export function InpatientProviderWorkspacePanel({
             >
               {PROVIDER_HP_SECTION_KEYS.map((k) => (
                 <option key={k} value={k}>
-                  {k}
+                  {t(`inpatientProviderD4a26.hp.sections.${k}`) !==
+                  `inpatientProviderD4a26.hp.sections.${k}`
+                    ? t(`inpatientProviderD4a26.hp.sections.${k}`)
+                    : k.replace(/_/g, " ")}
                 </option>
               ))}
             </select>
           </label>
+          {hpSection === "ROS" ? (
+            <div data-testid="provider-hp-ros-rapid" style={{ display: "grid", gap: 10, marginBottom: 12 }}>
+              <strong style={{ fontSize: 13 }}>{t("inpatientRapidConvergenceD4a27c.hp.ros")}</strong>
+              {ROS_SYSTEM_CODES.map((sys) => (
+                <ClinicalNormalExceptionSelector
+                  key={sys}
+                  label={sys.replace(/_/g, " ").toLowerCase().replace(/^\w/, (c) => c.toUpperCase())}
+                  value={rosBySystem[sys] ?? null}
+                  onChange={(next) => setRosBySystem((prev) => ({ ...prev, [sys]: next }))}
+                  readOnly={hpSigned || !canProviderWrite}
+                />
+              ))}
+            </div>
+          ) : null}
+          {hpSection === "PHYSICAL_EXAM" ? (
+            <div data-testid="provider-hp-exam-rapid" style={{ display: "grid", gap: 10, marginBottom: 12 }}>
+              <strong style={{ fontSize: 13 }}>{t("inpatientRapidConvergenceD4a27c.hp.exam")}</strong>
+              {EXAM_SYSTEM_CODES.map((sys) => (
+                <ClinicalNormalExceptionSelector
+                  key={sys}
+                  label={sys.replace(/_/g, " ").toLowerCase().replace(/^\w/, (c) => c.toUpperCase())}
+                  value={examBySystem[sys] ?? null}
+                  onChange={(next) => setExamBySystem((prev) => ({ ...prev, [sys]: next }))}
+                  readOnly={hpSigned || !canProviderWrite}
+                />
+              ))}
+            </div>
+          ) : null}
+          {hpSection === "ASSESSMENT_PLAN" ? (
+            <div style={{ marginBottom: 12 }}>
+              <ClinicalStickyNotePicker
+                label={t("inpatientRapidConvergenceD4a27c.hp.planSticky")}
+                options={PLAN_STICKY_OPTIONS}
+                value={planSticky}
+                onChange={setPlanSticky}
+                readOnly={hpSigned || !canProviderWrite}
+              />
+            </div>
+          ) : null}
           <label style={{ fontSize: 12, display: "block" }}>
             {t("inpatientProviderD4a26.hp.draftText")}
             <textarea

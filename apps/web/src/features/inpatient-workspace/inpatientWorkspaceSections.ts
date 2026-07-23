@@ -13,7 +13,8 @@ export type InpatientWorkspaceSection =
   | "admission"
   | "nursing"
   | "timeline"
-  | "summary";
+  | "summary"
+  | "tasks";
 
 export const INPATIENT_WORKSPACE_SECTIONS: Array<{
   id: InpatientWorkspaceSection;
@@ -31,6 +32,7 @@ export const INPATIENT_WORKSPACE_SECTIONS: Array<{
   { id: "dischargePlanning", labelKey: "inpatientProviderD4a26.nav.discharge" },
   { id: "admission", labelKey: "inpatientProviderD4a26.nav.nursingAdmission" },
   { id: "nursing", labelKey: "inpatientProviderD4a26.nav.nursing" },
+  { id: "tasks", labelKey: "inpatientRapidConvergenceD4a27c.actions.tasks" },
   { id: "timeline", labelKey: "inpatientProviderD4a26.nav.timeline" },
   { id: "summary", labelKey: "inpatientProviderD4a26.nav.summary" },
 ];
@@ -70,6 +72,8 @@ export function parseInpatientWorkspaceSection(
     timeline: "timeline",
     summary: "summary",
     rounding: "overview",
+    tasks: "tasks",
+    technician: "tasks",
   };
   return alias[lower] ?? null;
 }

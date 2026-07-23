@@ -28,6 +28,8 @@ import {
 import { InpatientClinicalOpsPanel } from "./InpatientClinicalOpsPanel";
 import { InpatientAdmissionClinicalShell } from "./InpatientAdmissionClinicalShell";
 import { InpatientProviderWorkspacePanel } from "./InpatientProviderWorkspacePanel";
+import { InpatientTechnicianTasksPanel } from "./InpatientTechnicianTasksPanel";
+import { NursingRapidReassessmentPanel } from "./NursingRapidReassessmentPanel";
 import { ClinicalAvailabilityBanner } from "./rapid-documentation/ClinicalRapidControls";
 
 export type InpatientWorkspaceEncounterLite = {
@@ -247,15 +249,31 @@ export function InpatientWorkspacePanel({
               )}
               testId="inpatient-nursing-kinds"
             />
+            <div style={{ marginTop: 12 }}>
+              <NursingRapidReassessmentPanel encounterId={encounterId} readOnly={signed} />
+            </div>
           </div>
         );
       }
       return (
         <div data-testid="inpatient-panel-nursing-live">
           <InpatientClinicalOpsPanel encounterId={encounterId} mode="nursing" />
+          <div style={{ marginTop: 12 }}>
+            <NursingRapidReassessmentPanel encounterId={encounterId} readOnly={signed} />
+          </div>
           <p style={{ margin: "12px 0 0", fontSize: 12, color: "#64748b" }}>
             {t("inpatientWorkspaceRecoveryD4a27b.notes.governedNursingOnly")}
           </p>
+        </div>
+      );
+    case "tasks":
+      return (
+        <div data-testid="inpatient-panel-tasks">
+          <InpatientTechnicianTasksPanel
+            encounterId={encounterId}
+            canTechnicianWrite={roles.includes("LAB") || roles.includes("RADIOLOGY") || roles.includes("ADMIN")}
+            canValidateRn={roles.includes("RN") || roles.includes("ADMIN")}
+          />
         </div>
       );
     case "orders":

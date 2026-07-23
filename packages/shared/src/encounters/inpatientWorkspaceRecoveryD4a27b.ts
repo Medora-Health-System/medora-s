@@ -136,49 +136,71 @@ export const ENTERPRISE_NOTE_TYPE_REGISTRY = [
 
 export type EnterpriseNoteTypeCode = (typeof ENTERPRISE_NOTE_TYPE_REGISTRY)[number]["code"];
 
-/** Nursing admission UX stages — persistence remains section-level (20 sections). */
+/**
+ * Nursing admission UX stages — persistence remains section-level (20 sections).
+ * Keys MUST match INPATIENT_ADMISSION_CLINICAL_SECTIONS (D4A.0 / D4A.1).
+ */
 export const NURSING_ADMISSION_STAGES = [
   {
     id: "ARRIVAL_IDENTITY",
-    sectionKeys: ["admissionOverview", "patientIdentity", "sourceHandoff"],
+    sectionKeys: ["OVERVIEW", "IDENTITY_DEMOGRAPHICS", "SOURCE_ENCOUNTER_SUMMARY"],
   },
   {
     id: "IMMEDIATE_ASSESSMENT",
-    sectionKeys: ["initialNursingAssessment", "safetyConcerns", "pain", "vitalSignVerification"],
+    sectionKeys: ["NURSING_ADMISSION_ASSESSMENT", "PAIN"],
   },
   {
     id: "HISTORY_RECONCILIATION",
     sectionKeys: [
-      "medicalHistory",
-      "surgicalHistory",
-      "medications",
-      "allergies",
-      "socialHistory",
+      "MEDICAL_HISTORY",
+      "SURGICAL_HISTORY",
+      "HOME_MEDICATIONS",
+      "ALLERGIES",
+      "SOCIAL_HISTORY",
     ],
   },
   {
     id: "SAFETY_PHYSICAL",
     sectionKeys: [
-      "belongings",
-      "skinWounds",
-      "linesDrainsDevices",
-      "fallScreening",
-      "mobility",
-      "nutrition",
-      "elimination",
+      "BELONGINGS_VALUABLES",
+      "SKIN_WOUND",
+      "LINES_DRAINS_DEVICES",
+      "FALL_SAFETY",
+      "FUNCTIONAL_MOBILITY",
+      "NUTRITION",
+      "ELIMINATION",
     ],
   },
   {
     id: "PSYCHOSOCIAL_EDUCATION",
-    sectionKeys: ["psychosocial", "educationCommunication"],
+    sectionKeys: ["PSYCHOSOCIAL", "EDUCATION_COMMUNICATION"],
   },
   {
     id: "HANDOFF_COMPLETION",
-    sectionKeys: ["providerHandoff", "unresolvedItems", "admissionCompletion"],
+    sectionKeys: ["PROVIDER_ADMISSION"],
   },
 ] as const;
 
 export type NursingAdmissionStageId = (typeof NURSING_ADMISSION_STAGES)[number]["id"];
+
+export function nursingAdmissionStageForSection(
+  sectionId: string
+): (typeof NURSING_ADMISSION_STAGES)[number] | null {
+  return NURSING_ADMISSION_STAGES.find((s) =>
+    (s.sectionKeys as readonly string[]).includes(sectionId)
+  ) ?? null;
+}
+
+export function nursingAdmissionSectionsForStage(
+  stageId: NursingAdmissionStageId
+): readonly string[] {
+  const stage = NURSING_ADMISSION_STAGES.find((s) => s.id === stageId);
+  return stage?.sectionKeys ?? [];
+}
+
+export function allNursingAdmissionStageSectionIds(): string[] {
+  return NURSING_ADMISSION_STAGES.flatMap((s) => [...s.sectionKeys]);
+}
 
 export type HospitalWorkspaceBootstrapV1 = {
   certification: typeof INPATIENT_WORKSPACE_RECOVERY_CERTIFICATION_ID;
@@ -213,6 +235,26 @@ export type HospitalWorkspaceBootstrapV1 = {
     isolation: string[] | null;
     fallRisk: string | null;
     allergiesSummary: string | null;
+    /** D4A.2.7C enrichment — never infer devices; use SOURCE_UNAVAILABLE when unknown. */
+    allergiesAvailability?: "PRESENT" | "NOT_PRESENT" | "UNKNOWN" | "NOT_DOCUMENTED" | "SOURCE_UNAVAILABLE";
+    oxygenSupport?: string | null;
+    dietNpo?: string | null;
+    weightKg?: number | null;
+    latestVitals?: {
+      availability: "AVAILABLE" | "NO_DATA_DOCUMENTED" | "SOURCE_UNAVAILABLE";
+      recordedAt: string | null;
+      systolic: number | null;
+      diastolic: number | null;
+      heartRate: number | null;
+      spo2: number | null;
+      temperatureC: number | null;
+      respiratoryRate: number | null;
+    };
+    indicators?: Array<{
+      code: string;
+      state: "PRESENT" | "NOT_PRESENT" | "UNKNOWN" | "NOT_DOCUMENTED" | "SOURCE_UNAVAILABLE";
+      labelKey: string;
+    }>;
   } | null;
   readiness: {
     role: InpatientWorkspaceRole;
@@ -310,7 +352,7 @@ export function nursingPrimaryNav(): readonly string[] {
 }
 
 export function technicianPrimaryNav(): readonly string[] {
-  return ["overview", "nursing", "timeline", "summary"] as const;
+  return ["overview", "nursing", "tasks", "timeline", "summary"] as const;
 }
 
 /** Humanize camelCase / compressed keys for clinical UI (fallback only — prefer i18n). */

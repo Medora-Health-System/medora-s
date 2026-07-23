@@ -145,6 +145,7 @@ export * from "./encounters/providerLegalRecordD4a26b.js";
 export * from "./encounters/enterpriseCommandLayerD4a27.js";
 export * from "./encounters/operationalGovernanceD4a27a.js";
 export * from "./encounters/inpatientWorkspaceRecoveryD4a27b.js";
+export * from "./encounters/inpatientRapidConvergenceD4a27c.js";
 export * from "./patients/patientSearchAndSelectV1.js";
 export * from "./encounters/inpatientOperationsFeatureFlags.js";
 export * from "./encounters/inpatientClinicalOpsCertificationV1.js";

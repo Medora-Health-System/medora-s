@@ -1,11 +1,16 @@
 /**
- * D4A.2.7B — Rapid clinical documentation primitives.
- * Structured codes + localized labels. No uncontrolled free-text as primary UX.
+ * D4A.2.7C — Rapid clinical documentation primitives.
+ * Structured codes + localized labels via i18n. No silent confirmation defaults.
  */
 
 "use client";
 
-import type { CSSProperties, ReactNode } from "react";
+import { useMemo, useState, type CSSProperties, type ReactNode } from "react";
+import {
+  applyMutuallyExclusiveSelection,
+  type ClinicalRapidOptionV1,
+} from "@medora/shared";
+import { useI18n } from "@/lib/i18n";
 
 const chipBase: CSSProperties = {
   display: "inline-flex",
@@ -29,41 +34,68 @@ const chipSelected: CSSProperties = {
   fontWeight: 600,
 };
 
+const chipDisabled: CSSProperties = {
+  ...chipBase,
+  opacity: 0.55,
+  cursor: "not-allowed",
+};
+
 export type ClinicalOption = { code: string; label: string };
 
-export function ClinicalYesNoUnknown({
+function optionLabel(opt: ClinicalRapidOptionV1 | ClinicalOption, language: string): string {
+  if ("displayFr" in opt && "display" in opt) {
+    return String(language ?? "").toLowerCase().startsWith("fr") ? opt.displayFr : opt.display;
+  }
+  return opt.label;
+}
+
+function toClinicalOptions(
+  options: readonly (ClinicalRapidOptionV1 | ClinicalOption)[],
+  language: string
+): ClinicalOption[] {
+  return options.map((o) => ({ code: o.code, label: optionLabel(o, language) }));
+}
+
+export function ClinicalSingleSelect({
   label,
+  options,
   value,
   onChange,
   disabled,
-  name,
+  readOnly,
 }: {
   label: string;
-  value: "YES" | "NO" | "UNKNOWN" | null;
-  onChange: (next: "YES" | "NO" | "UNKNOWN") => void;
+  options: readonly (ClinicalRapidOptionV1 | ClinicalOption)[];
+  value: string | null;
+  onChange: (next: string | null) => void;
   disabled?: boolean;
-  name?: string;
+  readOnly?: boolean;
 }) {
-  const opts: Array<"YES" | "NO" | "UNKNOWN"> = ["YES", "NO", "UNKNOWN"];
+  const { language } = useI18n();
+  const opts = toClinicalOptions(options, language);
+  const locked = disabled || readOnly;
   return (
-    <fieldset style={{ border: "none", margin: 0, padding: 0 }} disabled={disabled}>
+    <fieldset style={{ border: "none", margin: 0, padding: 0 }} disabled={locked}>
       <legend style={{ fontSize: 13, fontWeight: 600, color: "#334155", marginBottom: 6 }}>
         {label}
       </legend>
       <div role="radiogroup" aria-label={label} style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-        {opts.map((o) => (
-          <button
-            key={o}
-            type="button"
-            name={name}
-            role="radio"
-            aria-checked={value === o}
-            onClick={() => onChange(o)}
-            style={value === o ? chipSelected : chipBase}
-          >
-            {o === "YES" ? "Oui / Yes" : o === "NO" ? "Non / No" : "Inconnu / Unknown"}
-          </button>
-        ))}
+        {opts.map((opt) => {
+          const on = value === opt.code;
+          return (
+            <button
+              key={opt.code}
+              type="button"
+              role="radio"
+              aria-checked={on}
+              disabled={locked}
+              onClick={() => onChange(on ? null : opt.code)}
+              style={locked ? chipDisabled : on ? chipSelected : chipBase}
+            >
+              {opt.label}
+            </button>
+          );
+        })}
       </div>
     </fieldset>
   );
@@ -75,31 +107,50 @@ export function ClinicalMultiSelectChips({
   value,
   onChange,
   disabled,
+  readOnly,
+  respectMutualExclusion = true,
 }: {
   label: string;
-  options: readonly ClinicalOption[];
+  options: readonly (ClinicalRapidOptionV1 | ClinicalOption)[];
   value: readonly string[];
   onChange: (next: string[]) => void;
   disabled?: boolean;
+  readOnly?: boolean;
+  respectMutualExclusion?: boolean;
 }) {
+  const { language } = useI18n();
+  const opts = toClinicalOptions(options, language);
+  const locked = disabled || readOnly;
   const selected = new Set(value);
   return (
     <div>
       <div style={{ fontSize: 13, fontWeight: 600, color: "#334155", marginBottom: 6 }}>{label}</div>
       <div role="group" aria-label={label} style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-        {options.map((opt) => {
+        {opts.map((opt) => {
           const on = selected.has(opt.code);
           return (
             <button
               key={opt.code}
               type="button"
-              disabled={disabled}
+              disabled={locked}
               aria-pressed={on}
               onClick={() => {
-                if (on) onChange(value.filter((c) => c !== opt.code));
-                else onChange([...value, opt.code]);
+                if (locked) return;
+                if (respectMutualExclusion && options.some((o) => "mutuallyExclusiveWith" in o)) {
+                  onChange(
+                    applyMutuallyExclusiveSelection(
+                      options as readonly ClinicalRapidOptionV1[],
+                      value,
+                      opt.code
+                    )
+                  );
+                } else if (on) {
+                  onChange(value.filter((c) => c !== opt.code));
+                } else {
+                  onChange([...value, opt.code]);
+                }
               }}
-              style={on ? chipSelected : chipBase}
+              style={locked ? chipDisabled : on ? chipSelected : chipBase}
             >
               {opt.label}
             </button>
@@ -117,13 +168,15 @@ export function ClinicalStickyNotePicker({
   onChange,
   multi = true,
   disabled,
+  readOnly,
 }: {
   label: string;
-  options: readonly ClinicalOption[];
+  options: readonly (ClinicalRapidOptionV1 | ClinicalOption)[];
   value: readonly string[];
   onChange: (next: string[]) => void;
   multi?: boolean;
   disabled?: boolean;
+  readOnly?: boolean;
 }) {
   if (multi) {
     return (
@@ -133,29 +186,343 @@ export function ClinicalStickyNotePicker({
         value={value}
         onChange={onChange}
         disabled={disabled}
+        readOnly={readOnly}
       />
     );
   }
   return (
+    <ClinicalSingleSelect
+      label={label}
+      options={options}
+      value={value[0] ?? null}
+      onChange={(code) => onChange(code ? [code] : [])}
+      disabled={disabled}
+      readOnly={readOnly}
+    />
+  );
+}
+
+export function ClinicalYesNoUnknown({
+  label,
+  value,
+  onChange,
+  disabled,
+  readOnly,
+  name,
+}: {
+  label: string;
+  value: "YES" | "NO" | "UNKNOWN" | null;
+  onChange: (next: "YES" | "NO" | "UNKNOWN") => void;
+  disabled?: boolean;
+  readOnly?: boolean;
+  name?: string;
+}) {
+  const { t } = useI18n();
+  const locked = disabled || readOnly;
+  const opts: Array<"YES" | "NO" | "UNKNOWN"> = ["YES", "NO", "UNKNOWN"];
+  const labels = {
+    YES: t("inpatientRapidConvergenceD4a27c.yes"),
+    NO: t("inpatientRapidConvergenceD4a27c.no"),
+    UNKNOWN: t("inpatientRapidConvergenceD4a27c.unknown"),
+  };
+  return (
+    <fieldset style={{ border: "none", margin: 0, padding: 0 }} disabled={locked}>
+      <legend style={{ fontSize: 13, fontWeight: 600, color: "#334155", marginBottom: 6 }}>
+        {label}
+      </legend>
+      <div role="radiogroup" aria-label={label} style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+        {opts.map((o) => (
+          <button
+            key={o}
+            type="button"
+            name={name}
+            role="radio"
+            aria-checked={value === o}
+            disabled={locked}
+            onClick={() => onChange(o)}
+            style={locked ? chipDisabled : value === o ? chipSelected : chipBase}
+          >
+            {labels[o]}
+          </button>
+        ))}
+      </div>
+    </fieldset>
+  );
+}
+
+export function ClinicalNormalExceptionSelector({
+  label,
+  value,
+  onChange,
+  exceptionText,
+  onExceptionTextChange,
+  disabled,
+  readOnly,
+}: {
+  label: string;
+  value: string | null;
+  onChange: (next: string | null) => void;
+  exceptionText?: string;
+  onExceptionTextChange?: (text: string) => void;
+  disabled?: boolean;
+  readOnly?: boolean;
+}) {
+  const { t } = useI18n();
+  const codes = [
+    "WITHIN_EXPECTED_LIMITS",
+    "NO_ACUTE_CONCERN",
+    "DENIES",
+    "NOT_PRESENT",
+    "NO_CHANGE_FROM_PRIOR",
+    "EXCEPTION",
+    "UNABLE_TO_ASSESS",
+    "NOT_APPLICABLE",
+  ] as const;
+  return (
+    <div>
+      <ClinicalSingleSelect
+        label={label}
+        options={codes.map((code) => ({
+          code,
+          label: t(`inpatientRapidConvergenceD4a27c.normalException.${code}`),
+        }))}
+        value={value}
+        onChange={onChange}
+        disabled={disabled}
+        readOnly={readOnly}
+      />
+      {value === "EXCEPTION" && onExceptionTextChange ? (
+        <ClinicalConditionalText
+          label={t("inpatientRapidConvergenceD4a27c.exceptionDetail")}
+          value={exceptionText ?? ""}
+          onChange={onExceptionTextChange}
+          disabled={disabled || readOnly}
+          visible
+        />
+      ) : null}
+    </div>
+  );
+}
+
+export function ClinicalStatusSelector({
+  label,
+  options,
+  value,
+  onChange,
+  disabled,
+  readOnly,
+}: {
+  label: string;
+  options: readonly (ClinicalRapidOptionV1 | ClinicalOption)[];
+  value: string | null;
+  onChange: (next: string | null) => void;
+  disabled?: boolean;
+  readOnly?: boolean;
+}) {
+  return (
+    <ClinicalSingleSelect
+      label={label}
+      options={options}
+      value={value}
+      onChange={onChange}
+      disabled={disabled}
+      readOnly={readOnly}
+    />
+  );
+}
+
+export function ClinicalDateTimeField({
+  label,
+  value,
+  onChange,
+  disabled,
+  readOnly,
+  mode = "datetime",
+}: {
+  label: string;
+  value: string;
+  onChange: (next: string) => void;
+  disabled?: boolean;
+  readOnly?: boolean;
+  mode?: "date" | "datetime";
+}) {
+  return (
+    <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#334155" }}>
+      {label}
+      <input
+        type={mode === "date" ? "date" : "datetime-local"}
+        value={value}
+        disabled={disabled || readOnly}
+        onChange={(e) => onChange(e.target.value)}
+        style={{
+          display: "block",
+          marginTop: 6,
+          maxWidth: 280,
+          fontSize: 13,
+          padding: "7px 10px",
+          borderRadius: 10,
+          border: "1px solid #cbd5e1",
+        }}
+      />
+    </label>
+  );
+}
+
+export function ClinicalNumericField({
+  label,
+  value,
+  onChange,
+  disabled,
+  readOnly,
+  min,
+  max,
+  step,
+  unit,
+}: {
+  label: string;
+  value: number | null;
+  onChange: (next: number | null) => void;
+  disabled?: boolean;
+  readOnly?: boolean;
+  min?: number;
+  max?: number;
+  step?: number;
+  unit?: string;
+}) {
+  return (
+    <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#334155" }}>
+      {label}
+      {unit ? <span style={{ fontWeight: 500, color: "#64748b" }}> ({unit})</span> : null}
+      <input
+        type="number"
+        value={value ?? ""}
+        min={min}
+        max={max}
+        step={step}
+        disabled={disabled || readOnly}
+        onChange={(e) => onChange(e.target.value === "" ? null : Number(e.target.value))}
+        style={{
+          display: "block",
+          marginTop: 6,
+          maxWidth: 160,
+          fontSize: 13,
+          padding: "7px 10px",
+          borderRadius: 10,
+          border: "1px solid #cbd5e1",
+        }}
+      />
+    </label>
+  );
+}
+
+export function ClinicalSearchSelect({
+  label,
+  options,
+  value,
+  onChange,
+  disabled,
+  readOnly,
+  placeholder,
+}: {
+  label: string;
+  options: readonly (ClinicalRapidOptionV1 | ClinicalOption)[];
+  value: string | null;
+  onChange: (next: string | null) => void;
+  disabled?: boolean;
+  readOnly?: boolean;
+  placeholder?: string;
+}) {
+  const { language, t } = useI18n();
+  const [q, setQ] = useState("");
+  const opts = toClinicalOptions(options, language);
+  const filtered = useMemo(() => {
+    const needle = q.trim().toLowerCase();
+    if (!needle) return opts.slice(0, 40);
+    return opts.filter(
+      (o) => o.label.toLowerCase().includes(needle) || o.code.toLowerCase().includes(needle)
+    );
+  }, [opts, q]);
+  const selected = opts.find((o) => o.code === value);
+  const locked = disabled || readOnly;
+  return (
     <div>
       <div style={{ fontSize: 13, fontWeight: 600, color: "#334155", marginBottom: 6 }}>{label}</div>
-      <div role="radiogroup" aria-label={label} style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-        {options.map((opt) => {
-          const on = value[0] === opt.code;
-          return (
-            <button
-              key={opt.code}
-              type="button"
-              disabled={disabled}
-              role="radio"
-              aria-checked={on}
-              onClick={() => onChange([opt.code])}
-              style={on ? chipSelected : chipBase}
-            >
-              {opt.label}
+      {selected ? (
+        <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 6 }}>
+          <span style={chipSelected}>{selected.label}</span>
+          {!locked ? (
+            <button type="button" style={chipBase} onClick={() => onChange(null)}>
+              {t("inpatientRapidConvergenceD4a27c.clear")}
             </button>
-          );
-        })}
+          ) : null}
+        </div>
+      ) : null}
+      {!locked ? (
+        <>
+          <input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder={placeholder ?? t("inpatientRapidConvergenceD4a27c.search")}
+            style={{
+              width: "100%",
+              maxWidth: 420,
+              fontSize: 13,
+              padding: "7px 10px",
+              borderRadius: 10,
+              border: "1px solid #cbd5e1",
+              marginBottom: 6,
+            }}
+          />
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6, maxHeight: 160, overflow: "auto" }}>
+            {filtered.map((opt) => (
+              <button
+                key={opt.code}
+                type="button"
+                onClick={() => {
+                  onChange(opt.code);
+                  setQ("");
+                }}
+                style={chipBase}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+        </>
+      ) : null}
+    </div>
+  );
+}
+
+export function ClinicalQuickPhrasePicker({
+  label,
+  phrases,
+  onInsert,
+  disabled,
+  readOnly,
+}: {
+  label: string;
+  phrases: readonly { code: string; label: string }[];
+  onInsert: (phrase: string) => void;
+  disabled?: boolean;
+  readOnly?: boolean;
+}) {
+  const locked = disabled || readOnly;
+  return (
+    <div>
+      <div style={{ fontSize: 13, fontWeight: 600, color: "#334155", marginBottom: 6 }}>{label}</div>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+        {phrases.map((p) => (
+          <button
+            key={p.code}
+            type="button"
+            disabled={locked}
+            onClick={() => onInsert(p.label)}
+            style={locked ? chipDisabled : chipBase}
+          >
+            {p.label}
+          </button>
+        ))}
       </div>
     </div>
   );
@@ -169,6 +536,7 @@ export function ClinicalUnableToAssess({
   onReasonChange,
   reasonRequired,
   disabled,
+  readOnly,
 }: {
   label: string;
   active: boolean;
@@ -177,29 +545,35 @@ export function ClinicalUnableToAssess({
   onReasonChange: (reason: string) => void;
   reasonRequired?: boolean;
   disabled?: boolean;
+  readOnly?: boolean;
 }) {
+  const { t } = useI18n();
+  const locked = disabled || readOnly;
   return (
     <div>
       <button
         type="button"
-        disabled={disabled}
+        disabled={locked}
         aria-pressed={active}
         onClick={() => onToggle(!active)}
-        style={active ? chipSelected : chipBase}
+        style={locked ? chipDisabled : active ? chipSelected : chipBase}
       >
-        {label}
+        {label || t("inpatientRapidConvergenceD4a27c.unableToAssess")}
       </button>
       {active ? (
         <div style={{ marginTop: 8 }}>
           <label style={{ fontSize: 12, color: "#64748b", display: "block" }}>
             {reasonRequired ? "* " : ""}
+            {t("inpatientRapidConvergenceD4a27c.unableReason")}
             <input
               value={reason}
               onChange={(e) => onReasonChange(e.target.value)}
-              disabled={disabled}
+              disabled={locked}
               style={{
+                display: "block",
                 width: "100%",
                 maxWidth: 420,
+                marginTop: 4,
                 fontSize: 13,
                 padding: "7px 10px",
                 borderRadius: 10,
@@ -218,22 +592,65 @@ export function ClinicalNotApplicable({
   active,
   onToggle,
   disabled,
+  readOnly,
 }: {
   label: string;
   active: boolean;
   onToggle: (next: boolean) => void;
   disabled?: boolean;
+  readOnly?: boolean;
 }) {
+  const { t } = useI18n();
+  const locked = disabled || readOnly;
   return (
     <button
       type="button"
-      disabled={disabled}
+      disabled={locked}
       aria-pressed={active}
       onClick={() => onToggle(!active)}
-      style={active ? chipSelected : chipBase}
+      style={locked ? chipDisabled : active ? chipSelected : chipBase}
     >
-      {label}
+      {label || t("inpatientRapidConvergenceD4a27c.notApplicable")}
     </button>
+  );
+}
+
+export function ClinicalConditionalText({
+  label,
+  value,
+  onChange,
+  visible,
+  disabled,
+  rows = 2,
+}: {
+  label: string;
+  value: string;
+  onChange: (next: string) => void;
+  visible: boolean;
+  disabled?: boolean;
+  rows?: number;
+}) {
+  if (!visible) return null;
+  return (
+    <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#334155", marginTop: 8 }}>
+      {label}
+      <textarea
+        value={value}
+        disabled={disabled}
+        rows={rows}
+        onChange={(e) => onChange(e.target.value)}
+        style={{
+          display: "block",
+          width: "100%",
+          maxWidth: 520,
+          marginTop: 6,
+          fontSize: 13,
+          padding: "7px 10px",
+          borderRadius: 10,
+          border: "1px solid #cbd5e1",
+        }}
+      />
+    </label>
   );
 }
 
@@ -256,6 +673,7 @@ export function ClinicalCompletionFooter({
 }) {
   return (
     <footer
+      data-testid="clinical-completion-footer"
       style={{
         position: "sticky",
         bottom: 0,
@@ -272,7 +690,7 @@ export function ClinicalCompletionFooter({
       }}
     >
       <span style={{ fontSize: 12, color: "#64748b" }}>{statusLabel}</span>
-      <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+      <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
         {children}
         {secondaryLabel && onSecondary ? (
           <button
@@ -297,6 +715,118 @@ export function ClinicalCompletionFooter({
   );
 }
 
+export function ClinicalSectionSummary({
+  title,
+  items,
+}: {
+  title: string;
+  items: readonly { label: string; value: string }[];
+}) {
+  return (
+    <div
+      data-testid="clinical-section-summary"
+      style={{
+        border: "1px solid #e2e8f0",
+        borderRadius: 12,
+        padding: "10px 12px",
+        background: "#fff",
+        marginBottom: 10,
+      }}
+    >
+      <div style={{ fontSize: 13, fontWeight: 700, color: "#0f172a", marginBottom: 6 }}>{title}</div>
+      <ul style={{ margin: 0, paddingLeft: 18, fontSize: 12, color: "#334155" }}>
+        {items.map((it) => (
+          <li key={it.label}>
+            <strong>{it.label}</strong>: {it.value}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+export function ClinicalCarryForwardReview({
+  priorLabel,
+  priorValue,
+  currentLabel,
+  currentValue,
+  confirmed,
+  onConfirm,
+  disabled,
+  readOnly,
+}: {
+  priorLabel: string;
+  priorValue: string;
+  currentLabel: string;
+  currentValue: string;
+  confirmed: boolean;
+  onConfirm: (next: boolean) => void;
+  disabled?: boolean;
+  readOnly?: boolean;
+}) {
+  const { t } = useI18n();
+  const locked = disabled || readOnly;
+  return (
+    <div
+      data-testid="clinical-carry-forward-review"
+      style={{
+        border: "1px solid #fde68a",
+        background: "#fffbeb",
+        borderRadius: 12,
+        padding: "10px 12px",
+        marginBottom: 10,
+      }}
+    >
+      <p style={{ margin: "0 0 6px", fontSize: 12, color: "#92400e" }}>
+        {t("inpatientRapidConvergenceD4a27c.carryForward.noSilent")}
+      </p>
+      <p style={{ margin: "0 0 4px", fontSize: 12 }}>
+        <strong>{priorLabel}</strong>: {priorValue}
+      </p>
+      <p style={{ margin: "0 0 8px", fontSize: 12 }}>
+        <strong>{currentLabel}</strong>: {currentValue}
+      </p>
+      <label style={{ fontSize: 12, display: "inline-flex", gap: 6, alignItems: "center" }}>
+        <input
+          type="checkbox"
+          checked={confirmed}
+          disabled={locked}
+          onChange={(e) => onConfirm(e.target.checked)}
+        />
+        {t("inpatientRapidConvergenceD4a27c.carryForward.confirm")}
+      </label>
+    </div>
+  );
+}
+
+export function ClinicalExceptionList({
+  title,
+  items,
+  emptyLabel,
+}: {
+  title: string;
+  items: readonly string[];
+  emptyLabel?: string;
+}) {
+  const { t } = useI18n();
+  return (
+    <div data-testid="clinical-exception-list">
+      <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6 }}>{title}</div>
+      {items.length === 0 ? (
+        <p style={{ margin: 0, fontSize: 12, color: "#64748b" }}>
+          {emptyLabel ?? t("inpatientRapidConvergenceD4a27c.noExceptions")}
+        </p>
+      ) : (
+        <ul style={{ margin: 0, paddingLeft: 18, fontSize: 12 }}>
+          {items.map((it) => (
+            <li key={it}>{it}</li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 export function ClinicalAvailabilityBanner({
   state,
   message,
@@ -316,5 +846,29 @@ export function ClinicalAvailabilityBanner({
     <p role="status" style={{ fontSize: 13, color, margin: "8px 0" }}>
       {message}
     </p>
+  );
+}
+
+export function ClinicalSaveStatus({
+  code,
+  savedAt,
+  language,
+}: {
+  code: string;
+  savedAt?: string | null;
+  language?: string;
+}) {
+  const { t } = useI18n();
+  const time =
+    savedAt &&
+    new Date(savedAt).toLocaleTimeString(language?.startsWith("fr") ? "fr-FR" : "en-US");
+  const label =
+    code === "SAVED" && time
+      ? t("inpatientRapidConvergenceD4a27c.saveStatus.SAVED_AT").replace("{time}", time)
+      : t(`inpatientRapidConvergenceD4a27c.saveStatus.${code}`);
+  return (
+    <span data-testid="clinical-save-status" style={{ fontSize: 12, color: "#64748b" }}>
+      {label}
+    </span>
   );
 }

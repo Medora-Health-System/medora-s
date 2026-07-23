@@ -191,6 +191,38 @@ export class InpatientOperationsController {
     );
   }
 
+  /** D4A.2.7C — Technician task lifecycle (JSON persistence). */
+  @Get("encounters/:encounterId/technician-tasks")
+  @RequireRoles(RoleCode.PROVIDER, RoleCode.RN, RoleCode.ADMIN, RoleCode.LAB, RoleCode.RADIOLOGY)
+  async getTechnicianTasks(@Param("encounterId") encounterId: string, @Req() req: any) {
+    return this.ops.getTechnicianTasks(facilityIdFromReq(req), encounterId);
+  }
+
+  @Patch("encounters/:encounterId/technician-tasks")
+  @RequireRoles(RoleCode.PROVIDER, RoleCode.RN, RoleCode.ADMIN, RoleCode.LAB, RoleCode.RADIOLOGY)
+  async patchTechnicianTasks(
+    @Param("encounterId") encounterId: string,
+    @Body() body: Record<string, unknown>,
+    @Req() req: any
+  ) {
+    const expectedVersion = Number(body.expectedVersion);
+    if (!Number.isFinite(expectedVersion)) {
+      throw new BadRequestException("expectedVersion is required");
+    }
+    const doc =
+      body.doc && typeof body.doc === "object" && !Array.isArray(body.doc)
+        ? (body.doc as never)
+        : null;
+    if (!doc) throw new BadRequestException("doc is required");
+    return this.ops.patchTechnicianTasks(
+      facilityIdFromReq(req),
+      encounterId,
+      userIdFromReq(req),
+      { expectedVersion, doc },
+      { ip: req.ip, userAgent: req.headers?.["user-agent"] }
+    );
+  }
+
   /** D4A.1 — Med/Surg nursing admission documentation (longitudinal preload + verification). */
   @Get("encounters/:encounterId/nursing-admission")
   @RequireRoles(RoleCode.PROVIDER, RoleCode.RN, RoleCode.ADMIN)
