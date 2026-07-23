@@ -1,19 +1,18 @@
 "use client";
 
 /**
- * D4A.2 — Disposition-specific nursing execution (non-HOME pathways).
+ * D4A.2 / D4A.2.1 — Disposition-specific nursing execution (non-HOME pathways).
  */
 
-import { useEffect, useMemo, useState, type CSSProperties } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import {
-  admissionNursingDepartureRequirementsMet,
   emptyAdaptiveEdNursingExecution,
+  evaluateAdaptiveNursingCompletion,
   mergeAdaptiveEdNursingIntoNursingAssessment,
   nursingSectionsForPathway,
   pathwayFromDispositionBadgeVariant,
   pathwayFromDispositionOutcomeUi,
   readAdaptiveEdNursingExecution,
-  validateAdaptiveNursingAgainstDisposition,
   type AdaptiveNursingPathway,
 } from "@medora/shared";
 import { useI18n } from "@/lib/i18n";
@@ -58,6 +57,7 @@ export function AdaptiveDispositionNursingSection({
     admissionSummaryJson?: unknown;
     dischargeSummaryJson?: unknown;
     status?: string | null;
+    version?: number | null;
   };
   outcomeUi?: string | null;
   admissionDecisionSigned: boolean;
@@ -81,6 +81,8 @@ export function AdaptiveDispositionNursingSection({
   );
   const [saving, setSaving] = useState(false);
   const [info, setInfo] = useState<string | null>(null);
+  const [firstInvalidId, setFirstInvalidId] = useState<string | null>(null);
+  const fieldRefs = useRef<Record<string, HTMLTextAreaElement | null>>({});
 
   useEffect(() => {
     const next = readAdaptiveEdNursingExecution(encounter.nursingAssessment);
@@ -90,6 +92,18 @@ export function AdaptiveDispositionNursingSection({
       ) as Record<string, string>
     );
   }, [encounter.nursingAssessment]);
+
+  const completion = useMemo(
+    () =>
+      evaluateAdaptiveNursingCompletion({
+        pathway,
+        sections,
+        physicianPathway: pathway,
+        admissionDecisionSigned,
+        completing: false,
+      }),
+    [pathway, sections, admissionDecisionSigned]
+  );
 
   if (pathway === "HOME" || pathway === "OTHER" || sectionIds.length === 0) {
     return null;
@@ -103,36 +117,41 @@ export function AdaptiveDispositionNursingSection({
     if (!canEdit || saving) return;
     setSaving(true);
     setInfo(null);
+    setFirstInvalidId(null);
     try {
-      if (
-        (pathway === "ADMISSION" || pathway === "OBSERVATION") &&
-        !admissionDecisionSigned
-      ) {
-        setInfo(t("emergencyAdaptiveNursing.errors.ADMISSION_NURSING_WITHOUT_SIGNED_DECISION"));
+      const evaluation = evaluateAdaptiveNursingCompletion({
+        pathway,
+        sections,
+        physicianPathway: pathway,
+        admissionDecisionSigned,
+        completing: complete,
+      });
+      if (complete && !evaluation.ok) {
+        const firstMissing = evaluation.items.find(
+          (i) => i.required && i.status !== "COMPLETE"
+        )?.fieldId;
+        setFirstInvalidId(firstMissing ?? null);
+        if (firstMissing && fieldRefs.current[firstMissing]) {
+          fieldRefs.current[firstMissing]?.focus();
+        }
+        const missingLabels = evaluation.missingCodes
+          .map((code) => {
+            const fieldId = code.replace(/^NURSING_MISSING_/, "");
+            return t(sectionLabelKey(pathway, fieldId));
+          })
+          .filter(Boolean);
+        setInfo(
+          missingLabels.length > 0
+            ? `${t("emergencyAdaptiveNursing.errors.NURSING_COMPLETION_INCOMPLETE")}: ${missingLabels.join(", ")}`
+            : t(`emergencyAdaptiveNursing.errors.${evaluation.errors[0]}`) ||
+                t("emergencyAdaptiveNursing.errors.NURSING_COMPLETION_INCOMPLETE")
+        );
         return;
       }
-      if (complete) {
-        const safety = validateAdaptiveNursingAgainstDisposition({
-          physicianPathway: pathway,
-          nursingPathway: pathway,
-          admissionDecisionSigned,
-          acceptingFacility: sections.acceptingFacility,
-          homeNursingPresent: false,
-        });
-        if (!safety.ok) {
-          setInfo(t(`emergencyAdaptiveNursing.errors.${safety.errors[0]}`));
-          return;
-        }
-        if (
-          (pathway === "ADMISSION" || pathway === "OBSERVATION") &&
-          !admissionNursingDepartureRequirementsMet(sections)
-        ) {
-          setInfo(t("emergencyAdaptiveNursing.errors.DEPARTURE_REQUIREMENTS_INCOMPLETE"));
-          return;
-        }
-      }
+      const prior = readAdaptiveEdNursingExecution(encounter.nursingAssessment);
       const payload = emptyAdaptiveEdNursingExecution(pathway);
       payload.sections = { ...sections };
+      payload.revision = (prior?.revision ?? 0) + 1;
       if (complete) {
         payload.completedAt = new Date().toISOString();
         payload.completedByDisplayName = t("emergencyAdaptiveNursing.completedByNurse");
@@ -154,11 +173,18 @@ export function AdaptiveDispositionNursingSection({
           : t("emergencyAdaptiveNursing.saveDraftOk")
       );
     } catch (e) {
+      // Preserve entered values — do not reset form on failure.
       setInfo(e instanceof Error ? e.message : t("emergencyAdaptiveNursing.saveFailed"));
     } finally {
       setSaving(false);
     }
   };
+
+  const overallStatus = completion.complete
+    ? "COMPLETE"
+    : completion.items.some((i) => i.required && i.status !== "COMPLETE")
+      ? "INCOMPLETE"
+      : "INCOMPLETE";
 
   return (
     <div
@@ -172,29 +198,91 @@ export function AdaptiveDispositionNursingSection({
       <p style={{ margin: "0 0 12px", fontSize: 12, color: "#64748b" }}>
         {t("emergencyAdaptiveNursing.subtitle")}
       </p>
+
+      <div
+        data-testid="adaptive-nursing-completion-summary"
+        style={{
+          marginBottom: 12,
+          padding: 10,
+          borderRadius: 10,
+          border: "1px solid #e2e8f0",
+          background: "#f8fafc",
+          fontSize: 12,
+        }}
+        aria-live="polite"
+      >
+        <p style={{ margin: "0 0 6px", fontWeight: 700, color: "#0f172a" }}>
+          {t("emergencyAdaptiveNursing.completionSummaryTitle")}:{" "}
+          <span>
+            {t(`emergencyAdaptiveNursing.completionStatus.${overallStatus}`)}
+          </span>
+        </p>
+        {(pathway === "ADMISSION" || pathway === "OBSERVATION") ? (
+          <ul style={{ margin: "0 0 6px", paddingLeft: 18, color: "#475569" }}>
+            <li>
+              {t("emergencyAdaptiveNursing.lanes.physicianDecision")}:{" "}
+              {admissionDecisionSigned
+                ? t("emergencyAdaptiveNursing.lanes.signed")
+                : t("emergencyAdaptiveNursing.lanes.unsigned")}
+            </li>
+            <li>{t("emergencyAdaptiveNursing.lanes.placementOffNote")}</li>
+            <li>{t("emergencyAdaptiveNursing.lanes.nursingDeparture")}</li>
+          </ul>
+        ) : null}
+        <ul style={{ margin: 0, paddingLeft: 18 }}>
+          {completion.items
+            .filter((i) => i.required)
+            .map((item) => (
+              <li key={item.fieldId} style={{ marginBottom: 2 }}>
+                <span style={{ fontWeight: 600 }}>
+                  {t(sectionLabelKey(pathway, item.fieldId))}
+                </span>
+                {" — "}
+                <span>
+                  {t(`emergencyAdaptiveNursing.completionStatus.${item.status}`)}
+                </span>
+              </li>
+            ))}
+        </ul>
+      </div>
+
       {(pathway === "ADMISSION" || pathway === "OBSERVATION") && !admissionDecisionSigned ? (
         <p style={{ margin: "0 0 10px", fontSize: 12, color: "#b45309", fontWeight: 600 }}>
           {t("emergencyAdaptiveNursing.awaitingSignedAdmission")}
         </p>
       ) : null}
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-        {sectionIds.map((id) => (
-          <div key={id}>
-            <label style={labelStyle}>{t(sectionLabelKey(pathway, id))}</label>
-            <textarea
-              rows={id.includes("handoff") || id.includes("Note") ? 3 : 2}
-              value={sections[id] ?? ""}
-              disabled={!canEdit || saving}
-              onChange={(e) => patch(id, e.target.value)}
-              style={{
-                ...inputBase,
-                resize: "vertical",
-                backgroundColor: canEdit ? "#fff" : "#f8fafc",
-              }}
-              data-testid={`adaptive-nursing-${id}`}
-            />
-          </div>
-        ))}
+        {sectionIds.map((id) => {
+          const item = completion.items.find((i) => i.fieldId === id);
+          const invalid = firstInvalidId === id;
+          return (
+            <div key={id}>
+              <label htmlFor={`adaptive-nursing-field-${id}`} style={labelStyle}>
+                {t(sectionLabelKey(pathway, id))}
+                {item?.required ? " *" : ""}
+              </label>
+              <textarea
+                id={`adaptive-nursing-field-${id}`}
+                ref={(el) => {
+                  fieldRefs.current[id] = el;
+                }}
+                rows={id.includes("handoff") || id.includes("Note") ? 3 : 2}
+                value={sections[id] ?? ""}
+                disabled={!canEdit || saving}
+                aria-invalid={invalid || undefined}
+                aria-required={item?.required || undefined}
+                onChange={(e) => patch(id, e.target.value)}
+                style={{
+                  ...inputBase,
+                  resize: "vertical",
+                  backgroundColor: canEdit ? "#fff" : "#f8fafc",
+                  borderColor: invalid ? "#dc2626" : "#cbd5e1",
+                }}
+                data-testid={`adaptive-nursing-${id}`}
+              />
+            </div>
+          );
+        })}
       </div>
       <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
         <button
@@ -233,7 +321,7 @@ export function AdaptiveDispositionNursingSection({
         </button>
       </div>
       {info ? (
-        <p style={{ margin: "10px 0 0", fontSize: 12, color: "#334155" }} role="status">
+        <p style={{ margin: "10px 0 0", fontSize: 12, color: "#334155" }} role="alert">
           {info}
         </p>
       ) : null}

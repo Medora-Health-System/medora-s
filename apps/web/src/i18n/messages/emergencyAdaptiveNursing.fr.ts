@@ -1,4 +1,4 @@
-/** D4A.2 — Exécution infirmière adaptative par disposition (FR). */
+/** D4A.2 / D4A.2.1 — Exécution infirmière adaptative par disposition (FR). */
 export const emergencyAdaptiveNursingFr = {
   subtitle:
     "Documentez uniquement les étapes de départ gouvernées pour cette disposition — pas le formulaire de sortie à domicile.",
@@ -10,6 +10,22 @@ export const emergencyAdaptiveNursingFr = {
   saveCompleteOk: "Départ documenté. La clôture du dossier urgences reste une étape distincte.",
   saveFailed: "Impossible d’enregistrer l’exécution infirmière.",
   completedByNurse: "Infirmier(ère)",
+  completionSummaryTitle: "État d’achèvement",
+  completionStatus: {
+    COMPLETE: "Complet",
+    INCOMPLETE: "Incomplet",
+    NOT_APPLICABLE: "Non applicable",
+    UNABLE_TO_VERIFY: "Impossible à vérifier",
+    REQUIRED_BEFORE_DEPARTURE: "Requis avant le départ",
+  },
+  lanes: {
+    physicianDecision: "Décision médicale d’admission",
+    signed: "Signée",
+    unsigned: "Non signée",
+    placementOffNote:
+      "L’activation de la file de placement est indisponible tant que les indicateurs placement sont OFF — ne supposez pas qu’une demande de lit a été soumise.",
+    nursingDeparture: "Documentation infirmière du départ des urgences",
+  },
   title: {
     ADMISSION: "Exécution infirmière — Admission",
     OBSERVATION: "Exécution infirmière — Observation",
@@ -24,9 +40,15 @@ export const emergencyAdaptiveNursingFr = {
     ADMISSION_NURSING_WITHOUT_SIGNED_DECISION:
       "Signez d’abord la décision d’admission avant de documenter l’exécution d’admission.",
     TRANSFER_WITHOUT_ACCEPTING_FACILITY: "Indiquez l’établissement accueillant.",
+    TRANSFER_UNDER_AMA_DECISION:
+      "L’exécution d’un transfert n’est pas autorisée sous une décision LAMA.",
     NURSING_PATHWAY_MISMATCH: "Le parcours infirmier ne correspond pas à la disposition médicale.",
     DEPARTURE_REQUIREMENTS_INCOMPLETE:
       "Complétez passation, transport, unité d’accueil, état au départ et horodatage.",
+    NURSING_COMPLETION_INCOMPLETE: "Éléments infirmiers requis manquants avant le départ",
+    NURSING_DISPOSITION_STALE:
+      "La documentation infirmière a été modifiée ailleurs. Actualisez et réessayez.",
+    DEPARTURE_ALREADY_COMPLETED: "Le départ des urgences est déjà documenté comme terminé.",
   },
   sections: {
     ADMISSION: {
@@ -65,9 +87,11 @@ export const emergencyAdaptiveNursingFr = {
       acceptingFacility: "Établissement accueillant",
       acceptingPhysician: "Médecin accueillant",
       emtala: "Documentation EMTALA",
+      mseStatus: "État de l’examen médical de dépistage (MSE)",
       stabilization: "Stabilisation",
-      consent: "Consentement",
-      transport: "Transport",
+      risksBenefits: "Risques et bénéfices",
+      consent: "Consentement ou exception d’urgence",
+      transport: "Agence / mode de transport",
       documentationSent: "Documents transmis",
       handoff: "Passation",
       departureTime: "Heure de départ",
@@ -81,14 +105,17 @@ export const emergencyAdaptiveNursingFr = {
       refusal: "Refus documenté",
       signatureOrRefusalToSign: "Signature / refus de signer",
       returnPrecautions: "Précautions de retour",
+      departureTime: "Horodatage du départ",
     },
     LWBS: {
+      pathwayClassification: "Classification du parcours",
       lastKnownStatus: "Dernier état connu",
       attemptsToLocate: "Tentatives de localisation",
       notifications: "Notifications",
       departureTime: "Heure de départ applicable",
     },
     ELOPEMENT: {
+      pathwayClassification: "Classification du parcours",
       lastKnownStatus: "Dernier état connu",
       attemptsToLocate: "Tentatives de localisation",
       notifications: "Notifications",

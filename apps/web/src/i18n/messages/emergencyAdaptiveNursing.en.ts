@@ -1,4 +1,4 @@
-/** D4A.2 — Disposition-adaptive nursing execution (EN). */
+/** D4A.2 / D4A.2.1 — Disposition-adaptive nursing execution (EN). */
 export const emergencyAdaptiveNursingEn = {
   subtitle:
     "Document only the governed departure steps for this disposition — not the home discharge form.",
@@ -10,6 +10,22 @@ export const emergencyAdaptiveNursingEn = {
   saveCompleteOk: "Departure documented. ED chart close remains a separate step.",
   saveFailed: "Unable to save nursing execution.",
   completedByNurse: "Nurse",
+  completionSummaryTitle: "Completion status",
+  completionStatus: {
+    COMPLETE: "Complete",
+    INCOMPLETE: "Incomplete",
+    NOT_APPLICABLE: "Not applicable",
+    UNABLE_TO_VERIFY: "Unable to verify",
+    REQUIRED_BEFORE_DEPARTURE: "Required before departure",
+  },
+  lanes: {
+    physicianDecision: "Physician admission decision",
+    signed: "Signed",
+    unsigned: "Not signed",
+    placementOffNote:
+      "Placement queue activation is unavailable while placement flags are OFF — do not assume a bed request was submitted.",
+    nursingDeparture: "Nursing ED departure documentation",
+  },
   title: {
     ADMISSION: "Nursing execution — Admission",
     OBSERVATION: "Nursing execution — Observation",
@@ -24,9 +40,13 @@ export const emergencyAdaptiveNursingEn = {
     ADMISSION_NURSING_WITHOUT_SIGNED_DECISION:
       "Sign the admission decision before documenting admission execution.",
     TRANSFER_WITHOUT_ACCEPTING_FACILITY: "Enter the accepting facility.",
+    TRANSFER_UNDER_AMA_DECISION: "Transfer execution is not allowed under an AMA decision.",
     NURSING_PATHWAY_MISMATCH: "Nursing pathway does not match the physician disposition.",
     DEPARTURE_REQUIREMENTS_INCOMPLETE:
       "Complete handoff, transport, receiving unit, departure condition, and timestamp.",
+    NURSING_COMPLETION_INCOMPLETE: "Required nursing items are missing before departure",
+    NURSING_DISPOSITION_STALE: "Nursing documentation was updated elsewhere. Refresh and retry.",
+    DEPARTURE_ALREADY_COMPLETED: "ED departure is already documented as complete.",
   },
   sections: {
     ADMISSION: {
@@ -65,9 +85,11 @@ export const emergencyAdaptiveNursingEn = {
       acceptingFacility: "Accepting facility",
       acceptingPhysician: "Accepting physician",
       emtala: "EMTALA documentation",
+      mseStatus: "Medical screening exam (MSE) status",
       stabilization: "Stabilization",
-      consent: "Consent",
-      transport: "Transport",
+      risksBenefits: "Risks and benefits",
+      consent: "Consent or emergency exception",
+      transport: "Transport agency / mode",
       documentationSent: "Documentation sent",
       handoff: "Handoff",
       departureTime: "Departure time",
@@ -81,14 +103,17 @@ export const emergencyAdaptiveNursingEn = {
       refusal: "Refusal documented",
       signatureOrRefusalToSign: "Signature / refusal to sign",
       returnPrecautions: "Return precautions",
+      departureTime: "Departure timestamp",
     },
     LWBS: {
+      pathwayClassification: "Pathway classification",
       lastKnownStatus: "Last known status",
       attemptsToLocate: "Attempts to locate",
       notifications: "Notifications",
       departureTime: "Applicable departure time",
     },
     ELOPEMENT: {
+      pathwayClassification: "Pathway classification",
       lastKnownStatus: "Last known status",
       attemptsToLocate: "Attempts to locate",
       notifications: "Notifications",

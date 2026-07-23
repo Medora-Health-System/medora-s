@@ -63,6 +63,13 @@ export function HospitalAdmissionIntakeView() {
   const resumeMode = searchParams?.get("resume") === "1";
   const resumeSourceEncounterId = searchParams?.get("sourceEncounterId") ?? "";
   const formId = useId();
+  /** Browser twin of DIRECT_INPATIENT_ADMISSION_ENABLED — static env for Next inline. */
+  const directAdmissionWriterEnabled = (() => {
+    const v = String(process.env.NEXT_PUBLIC_DIRECT_INPATIENT_ADMISSION_ENABLED ?? "")
+      .trim()
+      .toLowerCase();
+    return v === "1" || v === "true" || v === "yes" || v === "on";
+  })();
 
   const [resumeCorrelationId, setResumeCorrelationId] = useState<string | null>(null);
   const [resumePlacementId, setResumePlacementId] = useState<string | null>(null);
@@ -76,6 +83,8 @@ export function HospitalAdmissionIntakeView() {
 
   const [selectedPatientId, setSelectedPatientId] = useState<string | null>(null);
   const [workspacePatient, setWorkspacePatient] = useState<WorkspacePatient | null>(null);
+  /** Set when patient id cannot be loaded under active JWT facility (cross-facility / missing). */
+  const [patientFacilityMismatch, setPatientFacilityMismatch] = useState(false);
   const [insurance, setInsurance] = useState<InsuranceRow[]>([]);
   const [demographicsConfirmed, setDemographicsConfirmed] = useState(false);
   const [openEncounters, setOpenEncounters] = useState<OpenEncounterHit[]>([]);
@@ -122,6 +131,8 @@ export function HospitalAdmissionIntakeView() {
   }, [unit]);
 
   const canSubmit =
+    directAdmissionWriterEnabled &&
+    Boolean(facilityId?.trim()) &&
     canStartInpatientEncounterFromIntake({
       selectedPatientId,
       demographicsConfirmed,
@@ -210,6 +221,7 @@ export function HospitalAdmissionIntakeView() {
   useEffect(() => {
     if (!selectedPatientId || !facilityId) {
       setWorkspacePatient(null);
+      setPatientFacilityMismatch(false);
       setInsurance([]);
       setOpenEncounters([]);
       setDemographicsConfirmed(false);
@@ -233,6 +245,7 @@ export function HospitalAdmissionIntakeView() {
           }).catch(() => []),
         ]);
         if (cancelled) return;
+        setPatientFacilityMismatch(false);
         setWorkspacePatient(p as WorkspacePatient);
         const items = Array.isArray(encs)
           ? encs
@@ -244,6 +257,8 @@ export function HospitalAdmissionIntakeView() {
       } catch {
         if (!cancelled) {
           setWorkspacePatient(null);
+          setPatientFacilityMismatch(true);
+          setDemographicsConfirmed(false);
           setOpenEncounters([]);
           setInsurance([]);
         }
@@ -293,6 +308,7 @@ export function HospitalAdmissionIntakeView() {
   const clearPatient = () => {
     setSelectedPatientId(null);
     setWorkspacePatient(null);
+    setPatientFacilityMismatch(false);
     setDemographicsConfirmed(false);
     setOpenEncounters([]);
     setSourceEdId("");
@@ -302,6 +318,14 @@ export function HospitalAdmissionIntakeView() {
 
   const submit = async () => {
     if (!selectedPatientId || !canSubmit) return;
+    if (!directAdmissionWriterEnabled) {
+      setFormError(t("hospitalAdmissionD4a0.errors.DIRECT_ADMISSION_DISABLED"));
+      return;
+    }
+    if (!facilityId?.trim() || patientFacilityMismatch || !workspacePatient) {
+      setFormError(t("hospitalAdmissionD4a0.errors.PATIENT_NOT_FOUND_IN_FACILITY"));
+      return;
+    }
     setSubmitting(true);
     setFormError(null);
     try {
@@ -312,21 +336,24 @@ export function HospitalAdmissionIntakeView() {
         source === "EMERGENCY_DEPARTMENT"
           ? sourceEdId || openEdCandidates[0]?.id || resumeSourceEncounterId || null
           : resumeSourceEncounterId || null;
-      const result = await createDirectInpatientAdmission({
-        patientId: selectedPatientId,
-        admissionSource: source as "EMERGENCY_DEPARTMENT",
-        admissionDiagnosis: diagnosis.trim(),
-        reasonForAdmission: reason.trim(),
-        admittingService: service.trim(),
-        requestedUnit: unit.trim(),
-        requestedLevelOfCare: level.trim(),
-        assignedBedKey: bedKey.trim(),
-        sourceEdEncounterId: edLink,
-        admittedAt: admittedIso,
-        idempotencyKey,
-        admissionCorrelationId: resumeCorrelationId,
-        internalPlacementRequestId: resumePlacementId,
-      });
+      const result = await createDirectInpatientAdmission(
+        {
+          patientId: selectedPatientId,
+          admissionSource: source as "EMERGENCY_DEPARTMENT",
+          admissionDiagnosis: diagnosis.trim(),
+          reasonForAdmission: reason.trim(),
+          admittingService: service.trim(),
+          requestedUnit: unit.trim(),
+          requestedLevelOfCare: level.trim(),
+          assignedBedKey: bedKey.trim(),
+          sourceEdEncounterId: edLink,
+          admittedAt: admittedIso,
+          idempotencyKey,
+          admissionCorrelationId: resumeCorrelationId,
+          internalPlacementRequestId: resumePlacementId,
+        },
+        { facilityId }
+      );
       if (result.createdEdEncounter || result.createdObservationEncounter) {
         setFormError(t("hospitalCareD3e7.admissions.fakePathwayError"));
         return;
@@ -369,12 +396,20 @@ export function HospitalAdmissionIntakeView() {
             /* keep prior list */
           }
         }
+      } else if (
+        e.status === 403 ||
+        msg.toLowerCase().includes("direct inpatient admission is disabled")
+      ) {
+        setFormError(t("hospitalAdmissionD4a0.errors.DIRECT_ADMISSION_DISABLED"));
       } else if (code && isDirectAdmissionErrorCode(code)) {
         let mapped = t(`hospitalAdmissionD4a0.errors.${code}`);
         if (requestId) {
           mapped = `${mapped} (${t("hospitalAdmissionD4a0.errors.requestId")}: ${requestId})`;
         }
         setFormError(mapped);
+      } else if (e.status === 404 && !code) {
+        // Bare Nest route 404 (stale deploy) vs coded patient miss — distinguish for ops.
+        setFormError(t("hospitalAdmissionD4a0.errors.DIRECT_ADMISSION_ROUTE_NOT_DEPLOYED"));
       } else {
         let fallback = t("hospitalCareD3e7.admissions.submitError");
         if (requestId) {
@@ -416,6 +451,31 @@ export function HospitalAdmissionIntakeView() {
             {t("hospitalCareD3e8a.intake.startNewAdmission")}
           </p>
         )}
+
+        <p
+          style={{ margin: "0 0 10px", fontSize: 12, color: "#475569" }}
+          data-testid="admission-facility-scope"
+        >
+          <strong>{t("hospitalAdmissionD4a0.facilityScope.activeFacility")}:</strong>{" "}
+          {facilityId?.trim() || dash}
+          <br />
+          <span style={{ color: "#64748b" }}>
+            {t("hospitalAdmissionD4a0.facilityScope.searchScopedHint")}
+          </span>
+        </p>
+
+        {!directAdmissionWriterEnabled ? (
+          <div
+            style={{ ...warnBox, marginBottom: 12 }}
+            data-testid="direct-admission-writer-disabled"
+            role="status"
+          >
+            <strong>{t("hospitalAdmissionD4a0.writerDisabled.title")}</strong>
+            <p style={{ margin: "6px 0 0", fontSize: 12 }}>
+              {t("hospitalAdmissionD4a0.writerDisabled.body")}
+            </p>
+          </div>
+        ) : null}
 
         {existingAdmissionBanner?.receivingEncounterId ? (
           <div style={warnBox} data-testid="existing-admission-banner">
@@ -474,6 +534,28 @@ export function HospitalAdmissionIntakeView() {
                 </Link>
               </div>
             ) : null}
+            {selectedPatientId && patientFacilityMismatch ? (
+              <div
+                style={{ ...warnBox, marginTop: 10 }}
+                data-testid="admission-patient-facility-mismatch"
+                role="alert"
+              >
+                <strong>
+                  {t("hospitalAdmissionD4a0.facilityScope.registeredAtAnotherFacility")}
+                </strong>
+                <p style={{ margin: "6px 0 0", fontSize: 12 }}>
+                  {t("hospitalAdmissionD4a0.errors.PATIENT_NOT_FOUND_IN_FACILITY")}
+                </p>
+                <button
+                  type="button"
+                  onClick={clearPatient}
+                  data-testid="clear-mismatched-patient"
+                  style={{ ...secondaryBtn, marginTop: 10 }}
+                >
+                  {t("hospitalAdmissionD4a0.confirm.chooseDifferent")}
+                </button>
+              </div>
+            ) : null}
           </>
         ) : workspacePatient ? (
           <div
@@ -483,6 +565,12 @@ export function HospitalAdmissionIntakeView() {
             <h4 style={{ ...sectionHead, margin: "0 0 8px" }}>
               {t("hospitalAdmissionD4a0.steps.confirmedPatient")}
             </h4>
+            <p
+              style={{ margin: "0 0 8px", fontSize: 11, fontWeight: 700, color: "#0f766e" }}
+              data-testid="admission-patient-facility-eligible"
+            >
+              {t("hospitalAdmissionD4a0.facilityScope.eligibleAtFacility")}
+            </p>
             <p style={metaLine}>
               <strong>
                 {`${workspacePatient.firstName ?? ""} ${workspacePatient.lastName ?? ""}`.trim() ||

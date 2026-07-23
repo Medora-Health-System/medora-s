@@ -49,10 +49,14 @@ export type DirectAdmissionResponse = {
 };
 
 export async function createDirectInpatientAdmission(
-  payload: DirectAdmissionPayload
+  payload: DirectAdmissionPayload,
+  options?: { facilityId?: string | null }
 ): Promise<DirectAdmissionResponse> {
+  const facilityId = options?.facilityId?.trim() || undefined;
   return (await apiFetch("/inpatient-operations/direct-admission", {
     method: "POST",
+    // Align x-facility-id with the same facility used for patient search (never trust body facility).
+    facilityId,
     body: JSON.stringify(payload),
   })) as DirectAdmissionResponse;
 }

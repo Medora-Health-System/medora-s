@@ -18,6 +18,8 @@ import { providerDocumentationPsychiatricBehavioralComplaintIntelFr } from "./pr
 import { hospitalAdmissionD4a0Fr } from "./hospitalAdmissionD4a0.fr";
 import { hospitalAdmissionD4a1Fr } from "./hospitalAdmissionD4a1.fr";
 import { emergencyAdaptiveNursingFr } from "./emergencyAdaptiveNursing.fr";
+import { admissionWorkflowVisibilityFr } from "./admissionWorkflowVisibility.fr";
+import { admissionCommandCenterFr } from "./admissionCommandCenter.fr";
 import { providerDocumentationGuRenalComplaintIntel19Mdm5Fr } from "./providerDocumentationGuRenalComplaintIntel19Mdm5.fr";
 import { providerDocumentationInfectiousEntComplaintIntel19Mdm7Fr } from "./providerDocumentationInfectiousEntComplaintIntel19Mdm7.fr";
 import { providerDocumentationDentalOralComplaintIntelFr } from "./providerDocumentationDentalOralComplaintIntel.fr";
@@ -13078,6 +13080,19 @@ export default {
       initialPlan: "Plan initial",
       admittingPhysician: "Médecin admettant / acceptant",
       admissionNoStructured: "Aucune synthèse d'admission structurée n'est encore enregistrée pour cette consultation.",
+      admissionDraftWatermark: "BROUILLON — pas une synthèse d'admission signée",
+      admissionProvenance: "Provenance du champ",
+      provenance: {
+        IMPORTED_FROM_CHART: "Importé du dossier",
+        SUGGESTED_FROM_DOCUMENTED_CHART: "Suggéré à partir d’informations documentées",
+        EDITED_BY_PHYSICIAN: "Modifié par le médecin",
+      },
+      conditionStatus: "État structuré",
+      structuredPlanItems: "Éléments structurés du plan",
+      planActiveOrder: "Ordonnance active",
+      planOnly: "Plan seulement",
+      decisionTimestamp: "Horodatage de la décision",
+      nursingDepartureSummary: "Départ / passation infirmière",
       sectionTransferClinical: "Transfert (synthèse clinique)",
       handoffSummary: "Synthèse de transmission",
       transferReason: "Motif du transfert",
@@ -14293,6 +14308,22 @@ export default {
     labelConditionStatus: "État à l'admission (structuré)",
     smartPacketProvenanceHint:
       "Les propositions utilisent uniquement des faits documentés. Origine : fait importé, proposition système, ou texte modifié par le médecin.",
+    sourcesUsed: "Sources utilisées",
+    newerProposalAvailable:
+      "Une proposition plus récente est disponible à partir de la documentation mise à jour.",
+    keepPhysicianText: "Conserver le texte du médecin",
+    replaceWithUpdatedProposal: "Remplacer par la proposition mise à jour",
+    structuredPlanTitle: "Éléments structurés du plan initial",
+    planStatus: {
+      activeOrder: "Ordonnance active",
+      planOnly: "Plan seulement",
+      discontinued: "Arrêtée",
+    },
+    provenanceDisplay: {
+      IMPORTED_FROM_CHART: "Importé du dossier",
+      SUGGESTED_FROM_DOCUMENTED_CHART: "Suggéré à partir d’informations documentées",
+      EDITED_BY_PHYSICIAN: "Modifié par le médecin",
+    },
     fieldOrigin: {
       IMPORTED_CHART_FACT: "Fait importé du dossier",
       SYSTEM_PROPOSAL: "Proposition système (modifiable)",
@@ -14310,7 +14341,9 @@ export default {
     signDecisionOk:
       "Décision de disposition signée. Le départ physique et la clôture restent des étapes distinctes.",
     signAdmissionOk:
-      "Admission signée et soumise. La rencontre urgences reste ouverte jusqu'au départ / transition gouvernée.",
+      "Décision d’admission signée. Le patient reste aux Urgences. Aucune rencontre hospitalière n’a été créée. Le parcours de placement est actuellement indisponible. Le paquet d’admission a été enregistré avec succès.",
+    signAdmissionOkPlacementOn:
+      "Décision d’admission signée. Demande de placement créée. En attente d’assignation de lit.",
     signDecisionUnauthorized: "Seuls les cliniciens autorisés peuvent signer la décision de disposition.",
     decisionDoesNotClose: "Signer la décision de disposition ne clôture pas la consultation.",
     labelAdmissionDiagnoses: "Diagnostics d'admission (dossier)",
@@ -14323,14 +14356,37 @@ export default {
     errors: {
       permissionDenied: "Vous n'avez pas l'autorisation de signer cette rencontre.",
       primaryDiagnosisRequired: "Sélectionnez un diagnostic principal avant de signer l'admission.",
+      ADMISSION_PRIMARY_DIAGNOSIS_REQUIRED:
+        "Sélectionnez un diagnostic principal avant de signer l'admission.",
+      ADMISSION_DIAGNOSIS_NOT_ON_ENCOUNTER:
+        "Un diagnostic d'admission sélectionné est introuvable sur cette rencontre.",
+      ADMISSION_DUPLICATE_DIAGNOSIS_SELECTION:
+        "Le même diagnostic ne peut pas être à la fois principal et secondaire.",
+      ADMITTING_SERVICE_REQUIRED: "Sélectionnez un service d'admission avant de signer.",
       ADMITTING_SERVICE_INVALID: "Service admettant invalide.",
       ADMITTING_SERVICE_OTHER_CLARIFICATION_REQUIRED:
         "Précisez le service lorsque « Autre » est sélectionné.",
+      LEVEL_OF_CARE_REQUIRED: "Sélectionnez un niveau de soins avant de signer.",
       LEVEL_OF_CARE_INVALID: "Niveau de soins invalide.",
       LEVEL_OF_CARE_OTHER_CLARIFICATION_REQUIRED:
         "Précisez le niveau de soins lorsque « Autre » est sélectionné.",
       LEVEL_OF_CARE_UNIT_INCOMPATIBLE: "Niveau de soins incompatible avec l'unité demandée.",
+      INVALID_SERVICE_LEVEL_OF_CARE_COMBINATION:
+        "Cette combinaison service / niveau de soins n'est pas autorisée.",
       SERVICE_LOC_INCOMPATIBLE: "Service et niveau de soins incompatibles.",
+      REASON_FOR_ADMISSION_REQUIRED: "Le motif d'admission est requis pour signer.",
+      CONDITION_ON_ADMISSION_REQUIRED: "L'état à l'admission est requis pour signer.",
+      INITIAL_PLAN_REQUIRED:
+        "Le plan initial (narratif ou éléments structurés) est requis pour signer.",
+      ADMISSION_PROVIDER_NOT_AUTHORIZED:
+        "Seul un médecin (PROVIDER) ou administrateur peut signer l'admission.",
+      ADMISSION_DECISION_STALE:
+        "Le dossier d'admission a été modifié ailleurs. Actualisez et réessayez.",
+      ADMISSION_ALREADY_SIGNED: "La décision d'admission est déjà signée.",
+      ENCOUNTER_NOT_EDITABLE:
+        "La rencontre n'est plus modifiable pour une décision d'admission.",
+      ADMISSION_SIGNATURE_METADATA_REQUIRED:
+        "Le médecin responsable est requis pour signer.",
       requestId: "Réf. support",
       PATIENT_NOT_FOUND_IN_FACILITY:
         "Patient introuvable dans cet établissement. Vérifiez la sélection et le site de connexion.",
@@ -19150,6 +19206,8 @@ export default {
 
   hospitalAdmissionD4a0: hospitalAdmissionD4a0Fr,
   emergencyAdaptiveNursing: emergencyAdaptiveNursingFr,
+  admissionWorkflowVisibility: admissionWorkflowVisibilityFr,
+  admissionCommandCenter: admissionCommandCenterFr,
 
   hospitalCareD3e6d: {
     bedBoard: {

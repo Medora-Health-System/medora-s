@@ -31,8 +31,9 @@ describe("D4A.2 smart admission proposals", () => {
     expect(packet.fields.admissionReason?.sources.some((s) => s.kind === "CHIEF_COMPLAINT")).toBe(
       true
     );
-    expect(packet.fields.initialPlan?.value).toContain("ordonnances actives");
+    expect(packet.fields.initialPlan?.value).toContain("Active order");
     expect(packet.fields.initialPlan?.value).toContain("Aspirin");
+    expect(packet.structuredInitialPlan?.items.some((i) => i.status === "ACTIVE_ORDER")).toBe(true);
     expect(packet.conditionStatus).toBeNull();
   });
 
@@ -107,7 +108,8 @@ describe("D4A.2 adaptive nursing", () => {
     expect(nursingSectionsForPathway("TRANSFER")).toContain("acceptingFacility");
     expect(nursingSectionsForPathway("AMA")).toContain("risksExplained");
     expect(nursingSectionsForPathway("LWBS")).toContain("attemptsToLocate");
-    expect(nursingSectionsForPathway("HOME")).toEqual([]);
+    // D4A.2.1 — HOME completion contract fields exist for evaluators; UI still hides HOME form for non-HOME.
+    expect(nursingSectionsForPathway("HOME")).toContain("dischargeVitals");
   });
 
   it("blocks contradictory nursing states", () => {
@@ -137,15 +139,10 @@ describe("D4A.2 adaptive nursing", () => {
   });
 
   it("requires admission departure fields before completion", () => {
-    expect(
-      admissionNursingDepartureRequirementsMet({
-        handoff: "done",
-        transportMethod: "stretcher",
-        receivingUnit: "MS",
-        conditionLeavingEd: "stable",
-        edDepartureAt: "2026-07-22T12:00",
-      })
-    ).toBe(true);
+    const filled = Object.fromEntries(
+      nursingSectionsForPathway("ADMISSION").map((id) => [id, "documented"])
+    );
+    expect(admissionNursingDepartureRequirementsMet(filled)).toBe(true);
     expect(admissionNursingDepartureRequirementsMet({ handoff: "x" })).toBe(false);
   });
 });

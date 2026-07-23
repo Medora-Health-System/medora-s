@@ -75,6 +75,11 @@ import {
   mergeAdmissionSummaryFieldsPreservingNested,
   validateSmartAdmissionServiceLocCompatibility,
   readAdmissionPacketV1,
+  evaluateAdmissionSignRequirements,
+  packetStructuredPlanItemCount,
+  evaluateAdaptiveNursingCompletion,
+  readAdaptiveEdNursingExecution,
+  pathwayFromDispositionOutcomeUi,
   type AdmissionPacketV1,
   ER_HANDOFF_V1_KEY,
   erHandoffV1SatisfiesInpatientTransferConfirm,
@@ -233,6 +238,10 @@ import {
 } from "../patients/chart-audit-timeline.util";
 import { resolveDefaultBillingClassification } from "@medora/shared";
 import { throwEncounterConcurrentModification } from "./encounter-concurrency.util";
+import {
+  ADMISSION_ERROR_MESSAGES_FR,
+  throwAdmissionDecisionError,
+} from "./admission-decision-errors.util";
 import {
   ENCOUNTER_ACCESS_SELECT,
   ENCOUNTER_CORE_SELECT,
@@ -940,6 +949,11 @@ export class EncountersService {
 
     if (data.nursingAssessment !== undefined) {
       await this.validateErHandoffReceivingNurseUserId(facilityId, data.nursingAssessment);
+      this.assertAdaptiveNursingCompletionIfPresent(
+        encounter,
+        data.nursingAssessment,
+        undefined
+      );
     }
 
     const allowedWhenSigned: (keyof EncounterUpdateDto)[] = [
@@ -3595,6 +3609,85 @@ export class EncountersService {
     await this.assertRnAtFacility(facilityId, id);
   }
 
+  /**
+   * D4A.2.1 — When adaptive nursing marks completion, enforce pathway completion contracts.
+   * Draft nursing (no completedAt) remains permissive. Does not close the ED encounter.
+   */
+  private assertAdaptiveNursingCompletionIfPresent(
+    encounter: {
+      admissionSummaryJson?: unknown;
+      dischargeSummaryJson?: unknown;
+      nursingAssessment?: unknown;
+      status?: string;
+    },
+    nextNursingAssessment: unknown,
+    requestId?: string | null
+  ) {
+    const next = readAdaptiveEdNursingExecution(nextNursingAssessment);
+    if (!next) return;
+    const prior = readAdaptiveEdNursingExecution(encounter.nursingAssessment);
+    const completing = Boolean(next.completedAt);
+    if (!completing) return;
+
+    if (prior?.completedAt && prior.completedAt === next.completedAt) {
+      return; // idempotent replay of same completion
+    }
+    if (prior?.completedAt && prior.completedAt !== next.completedAt) {
+      throwAdmissionDecisionError(
+        "DEPARTURE_ALREADY_COMPLETED",
+        ADMISSION_ERROR_MESSAGES_FR.DEPARTURE_ALREADY_COMPLETED,
+        { status: HttpStatus.CONFLICT, requestId }
+      );
+    }
+    if (
+      prior?.revision != null &&
+      next.revision != null &&
+      Number(next.revision) < Number(prior.revision)
+    ) {
+      throwAdmissionDecisionError(
+        "NURSING_DISPOSITION_STALE",
+        ADMISSION_ERROR_MESSAGES_FR.NURSING_DISPOSITION_STALE,
+        { status: HttpStatus.CONFLICT, requestId }
+      );
+    }
+
+    const summary =
+      encounter.admissionSummaryJson && typeof encounter.admissionSummaryJson === "object"
+        ? (encounter.admissionSummaryJson as Record<string, unknown>)
+        : {};
+    const admissionSigned = String(summary.admissionDecisionMode ?? "").toUpperCase() === "SIGN";
+    const physicianPathway = pathwayFromDispositionOutcomeUi(
+      String(
+        (encounter.dischargeSummaryJson as { dischargeMode?: string } | null)?.dischargeMode ??
+          (next.pathway === "ADMISSION" || next.pathway === "OBSERVATION"
+            ? "ADMISSION"
+            : next.pathway)
+      )
+    );
+    // Prefer adaptive pathway when admission signed.
+    const effectivePhysician =
+      admissionSigned && (next.pathway === "ADMISSION" || next.pathway === "OBSERVATION")
+        ? next.pathway
+        : physicianPathway;
+
+    const evaluation = evaluateAdaptiveNursingCompletion({
+      pathway: next.pathway,
+      sections: next.sections,
+      physicianPathway: effectivePhysician,
+      admissionDecisionSigned: admissionSigned,
+      completing: true,
+    });
+    if (!evaluation.ok) {
+      const code = evaluation.errors[0] ?? evaluation.missingCodes[0] ?? "NURSING_COMPLETION_INCOMPLETE";
+      throwAdmissionDecisionError(
+        code,
+        ADMISSION_ERROR_MESSAGES_FR[code] ??
+          ADMISSION_ERROR_MESSAGES_FR.NURSING_COMPLETION_INCOMPLETE,
+        { requestId }
+      );
+    }
+  }
+
   private evaluateEncounterDocumentationDeficiencies(
     encounter: {
       chiefComplaint: string | null;
@@ -4277,17 +4370,31 @@ export class EncountersService {
     dto: EncounterAdmissionDecisionDto,
     userId: string | undefined,
     ip?: string,
-    userAgent?: string
+    userAgent?: string,
+    requestId?: string | null
   ) {
     if (!userId) {
       throw new ForbiddenException(
         "Authentification requise pour enregistrer la décision d'admission."
       );
     }
-    await this.assertUserHasAnyClinicalRole(facilityId, userId, [
-      RoleCode.PROVIDER,
-      RoleCode.ADMIN,
-    ]);
+    try {
+      await this.assertUserHasAnyClinicalRole(facilityId, userId, [
+        RoleCode.PROVIDER,
+        RoleCode.ADMIN,
+      ]);
+    } catch (err) {
+      if (err instanceof ForbiddenException) {
+        throw new ForbiddenException({
+          statusCode: HttpStatus.FORBIDDEN,
+          code: "ADMISSION_PROVIDER_NOT_AUTHORIZED",
+          errorCode: "ADMISSION_PROVIDER_NOT_AUTHORIZED",
+          message: ADMISSION_ERROR_MESSAGES_FR.ADMISSION_PROVIDER_NOT_AUTHORIZED,
+          requestId: requestId ?? null,
+        });
+      }
+      throw err;
+    }
 
     if (!flatAdmissionFieldsHaveContent(dto.admissionSummary)) {
       throw new BadRequestException("Renseignez au moins un champ du dossier d'admission.");
@@ -4303,23 +4410,74 @@ export class EncountersService {
     if (!encounter) {
       throw new NotFoundException("Encounter not found");
     }
-    assertEncounterNotSigned(encounter);
+    try {
+      assertEncounterNotSigned(encounter);
+    } catch {
+      throwAdmissionDecisionError(
+        "ENCOUNTER_NOT_EDITABLE",
+        ADMISSION_ERROR_MESSAGES_FR.ENCOUNTER_NOT_EDITABLE,
+        { requestId }
+      );
+    }
     if (encounter.status !== EncounterStatus.OPEN) {
-      throw new BadRequestException(
-        "L'admission ne peut être modifiée que sur une consultation ouverte."
+      throwAdmissionDecisionError(
+        "ENCOUNTER_NOT_EDITABLE",
+        ADMISSION_ERROR_MESSAGES_FR.ENCOUNTER_NOT_EDITABLE,
+        { requestId }
       );
     }
 
-    let admissionDiagnoses = dto.admissionDiagnoses ?? null;
-    if (dto.mode === "SIGN") {
-      const primaryId = String(admissionDiagnoses?.primaryDiagnosisId ?? "").trim();
-      if (!primaryId) {
-        throw new BadRequestException(
-          "Un diagnostic principal d'admission est requis pour signer."
-        );
-      }
+    if (
+      dto.expectedVersion != null &&
+      Number(dto.expectedVersion) !== Number(encounter.version)
+    ) {
+      throwAdmissionDecisionError(
+        "ADMISSION_DECISION_STALE",
+        ADMISSION_ERROR_MESSAGES_FR.ADMISSION_DECISION_STALE,
+        { status: HttpStatus.CONFLICT, requestId }
+      );
     }
+
+    const priorSummary =
+      encounter.admissionSummaryJson && typeof encounter.admissionSummaryJson === "object"
+        ? (encounter.admissionSummaryJson as Record<string, unknown>)
+        : {};
+    const priorMode = String(priorSummary.admissionDecisionMode ?? "").toUpperCase();
+    const priorClientRequestId = String(priorSummary.admissionDecisionClientRequestId ?? "");
+    // Idempotent SIGN: same clientRequestId after already SIGNED → return current without re-audit.
+    if (
+      dto.mode === "SIGN" &&
+      priorMode === "SIGN" &&
+      dto.clientRequestId &&
+      priorClientRequestId &&
+      priorClientRequestId === String(dto.clientRequestId)
+    ) {
+      const existing = await this.prisma.encounter.findFirst({
+        where: { id: encounterId, facilityId },
+        select: ENCOUNTER_DETAIL_SELECT,
+      });
+      if (!existing) throw new NotFoundException("Encounter not found");
+      return {
+        encounter: existing,
+        placement: {
+          placementId: null,
+          placementStatus: null,
+          submittedToQueue: false,
+          code: null,
+        },
+        mode: "SIGN" as const,
+        edEncounterClosed: false as const,
+        idempotentReplay: true as const,
+      };
+    }
+    if (dto.mode === "SIGN" && priorMode === "SIGN" && !dto.clientRequestId) {
+      // Allow re-sign updates of the same open ED admission packet (clinical amendment path),
+      // but reject when expectedVersion indicates a concurrent superseding write.
+    }
+
+    let admissionDiagnoses = dto.admissionDiagnoses ?? null;
     const selectedDx = admissionDiagnoses;
+    let resolvedDiagnosisIds: Set<string> | null = null;
     if (
       selectedDx &&
       (selectedDx.primaryDiagnosisId || (selectedDx.secondaryDiagnosisIds?.length ?? 0) > 0)
@@ -4327,6 +4485,12 @@ export class EncountersService {
       const secondaryIds = (selectedDx.secondaryDiagnosisIds ?? []).filter(
         (id) => id !== selectedDx.primaryDiagnosisId
       );
+      if (
+        selectedDx.primaryDiagnosisId &&
+        (selectedDx.secondaryDiagnosisIds ?? []).includes(selectedDx.primaryDiagnosisId)
+      ) {
+        // Strip duplicate for persistence; SIGN validation still flags if raw payload had both.
+      }
       const ids = [
         selectedDx.primaryDiagnosisId,
         ...secondaryIds,
@@ -4342,10 +4506,13 @@ export class EncountersService {
         select: { id: true, code: true, description: true },
       });
       const byId = new Map(rows.map((r) => [r.id, r]));
+      resolvedDiagnosisIds = new Set(rows.map((r) => r.id));
       for (const id of ids) {
         if (!byId.has(id)) {
-          throw new BadRequestException(
-            "Un diagnostic d'admission sélectionné est introuvable sur cette rencontre."
+          throwAdmissionDecisionError(
+            "ADMISSION_DIAGNOSIS_NOT_ON_ENCOUNTER",
+            ADMISSION_ERROR_MESSAGES_FR.ADMISSION_DIAGNOSIS_NOT_ON_ENCOUNTER,
+            { field: "admissionDiagnoses", requestId }
           );
         }
       }
@@ -4371,7 +4538,7 @@ export class EncountersService {
     let admissionPacket: AdmissionPacketV1 | null = null;
     if (dto.admissionPacket && typeof dto.admissionPacket === "object") {
       const priorPacket = readAdmissionPacketV1(encounter.admissionSummaryJson);
-      admissionPacket = {
+      const mergedPacket: AdmissionPacketV1 = {
         ...priorPacket,
         ...(dto.admissionPacket as AdmissionPacketV1),
         version: 1,
@@ -4380,17 +4547,68 @@ export class EncountersService {
           ...priorPacket.fields,
           ...((dto.admissionPacket as AdmissionPacketV1).fields ?? {}),
         },
+        structuredInitialPlan:
+          (dto.admissionPacket as AdmissionPacketV1).structuredInitialPlan ??
+          priorPacket.structuredInitialPlan,
       };
-      const compat = validateSmartAdmissionServiceLocCompatibility({
-        admittingServiceCode: admissionPacket.admittingServiceCode,
-        admittingServiceOtherClarification: admissionPacket.admittingServiceOtherClarification,
-        levelOfCareCode: admissionPacket.levelOfCareCode,
-        levelOfCareOtherClarification: admissionPacket.levelOfCareOtherClarification,
-        requestedUnitCode: dto.requestedUnitCode ?? admissionPacket.requestedUnitCode,
+      admissionPacket = mergedPacket;
+      // Draft may keep incomplete service/LOC; SIGN validates via evaluateAdmissionSignRequirements.
+      if (dto.mode === "DRAFT") {
+        const service = mergedPacket.admittingServiceCode;
+        const loc = mergedPacket.levelOfCareCode;
+        if (service && loc) {
+          const compat = validateSmartAdmissionServiceLocCompatibility({
+            admittingServiceCode: service,
+            admittingServiceOtherClarification: mergedPacket.admittingServiceOtherClarification,
+            levelOfCareCode: loc,
+            levelOfCareOtherClarification: mergedPacket.levelOfCareOtherClarification,
+            requestedUnitCode: dto.requestedUnitCode ?? mergedPacket.requestedUnitCode,
+          });
+          if (!compat.ok) {
+            throwAdmissionDecisionError(
+              compat.errors[0] ?? "SERVICE_LOC_INCOMPATIBLE",
+              ADMISSION_ERROR_MESSAGES_FR[compat.errors[0] ?? ""] ??
+                `Dossier d'admission incompatible: ${compat.errors.join(", ")}`,
+              { requestId }
+            );
+          }
+        }
+      }
+    }
+
+    if (dto.mode === "SIGN") {
+      const packet = admissionPacket ?? readAdmissionPacketV1(encounter.admissionSummaryJson);
+      const serviceCode =
+        packet.admittingServiceCode ||
+        String(dto.admissionSummary.serviceUnit ?? "").trim() ||
+        null;
+      const locCode =
+        packet.levelOfCareCode || String(dto.admissionSummary.careLevel ?? "").trim() || null;
+      const signCheck = evaluateAdmissionSignRequirements({
+        mode: "SIGN",
+        dispositionOutcome: "ADMISSION",
+        primaryDiagnosisId: admissionDiagnoses?.primaryDiagnosisId,
+        secondaryDiagnosisIds: dto.admissionDiagnoses?.secondaryDiagnosisIds ?? [],
+        resolvedDiagnosisIds,
+        admittingServiceCode: serviceCode,
+        admittingServiceOtherClarification: packet.admittingServiceOtherClarification,
+        levelOfCareCode: locCode,
+        levelOfCareOtherClarification: packet.levelOfCareOtherClarification,
+        requestedUnitCode: dto.requestedUnitCode ?? packet.requestedUnitCode,
+        conditionStatus: packet.conditionStatus,
+        reasonForAdmission: dto.admissionSummary.admissionReason,
+        initialPlanNarrative: dto.admissionSummary.initialPlan,
+        structuredPlanItemCount: packetStructuredPlanItemCount(packet),
+        responsiblePhysicianName: dto.admissionSummary.responsiblePhysicianName,
+        encounterEditable: true,
+        actorAuthorized: true,
       });
-      if (!compat.ok) {
-        throw new BadRequestException(
-          `Dossier d'admission incompatible: ${compat.errors.join(", ")}`
+      if (!signCheck.ok) {
+        const code = signCheck.errors[0] ?? "ADMISSION_PRIMARY_DIAGNOSIS_REQUIRED";
+        throwAdmissionDecisionError(
+          code,
+          ADMISSION_ERROR_MESSAGES_FR[code] ?? code,
+          { field: code, requestId }
         );
       }
     }
@@ -4404,6 +4622,13 @@ export class EncountersService {
     mergedSummary.admissionDecisionMode = dto.mode;
     mergedSummary.admissionDecisionAt = new Date().toISOString();
     mergedSummary.admissionDecisionByUserId = userId;
+    const clientRequestId =
+      "clientRequestId" in dto && typeof (dto as { clientRequestId?: unknown }).clientRequestId === "string"
+        ? String((dto as { clientRequestId: string }).clientRequestId)
+        : null;
+    if (clientRequestId) {
+      mergedSummary.admissionDecisionClientRequestId = clientRequestId.slice(0, 128);
+    }
 
     const u = await this.prisma.encounter.updateMany({
       where: { id: encounterId, facilityId, version: encounter.version },
@@ -4413,7 +4638,13 @@ export class EncountersService {
         version: { increment: 1 },
       },
     });
-    if (u.count === 0) throwEncounterConcurrentModification();
+    if (u.count === 0) {
+      throwAdmissionDecisionError(
+        "ADMISSION_DECISION_STALE",
+        ADMISSION_ERROR_MESSAGES_FR.ADMISSION_DECISION_STALE,
+        { status: HttpStatus.CONFLICT, requestId }
+      );
+    }
 
     let placementResult: {
       placementId?: string | null;

@@ -97,10 +97,25 @@ export const hospitalAdmissionD4a0Fr = {
     noLongerAvailable:
       "Ce lit n’est plus disponible. Conservez le patient sélectionné et choisissez un autre lit disponible.",
   },
+  facilityScope: {
+    activeFacility: "Établissement actif pour cette admission",
+    searchScopedHint:
+      "La recherche n’affiche que les patients enregistrés dans votre établissement actif. L’admission inter-établissements est interdite.",
+    eligibleAtFacility: "Admissible dans cet établissement",
+    registeredAtAnotherFacility:
+      "Enregistré dans un autre établissement — non admissible pour une admission sous la session de votre établissement actif.",
+  },
+  writerDisabled: {
+    title: "L’admission directe n’est pas activée",
+    body:
+      "Le formulaire est consultable, mais la création d’une rencontre d’hospitalisation est bloquée tant que DIRECT_INPATIENT_ADMISSION_ENABLED n’est pas activé pour cet environnement.",
+  },
   errors: {
     requestId: "Réf. support",
+    DIRECT_ADMISSION_DISABLED:
+      "L’admission directe est désactivée pour cet environnement. Contactez un administrateur — ne réessayez pas avec un autre patient.",
     PATIENT_NOT_FOUND_IN_FACILITY:
-      "Patient introuvable dans cet établissement. Vérifiez la sélection et le site de connexion.",
+      "Patient introuvable dans votre établissement actif. Resélectionnez le patient via la recherche (limitée à l’établissement) ou basculez vers l’établissement où le patient est enregistré. L’admission inter-établissements est interdite.",
     SOURCE_ED_ENCOUNTER_NOT_FOUND: "La rencontre urgences source est introuvable.",
     ATTENDING_NOT_FOUND: "Le médecin traitant sélectionné n’est pas valide ici.",
     BED_NOT_FOUND: "Le lit sélectionné est introuvable ou n’est plus disponible.",

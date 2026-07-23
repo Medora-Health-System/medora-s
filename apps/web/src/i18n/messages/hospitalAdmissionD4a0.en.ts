@@ -96,10 +96,25 @@ export const hospitalAdmissionD4a0En = {
     noLongerAvailable:
       "This bed is no longer available. Keep the patient selected and choose another available bed.",
   },
+  facilityScope: {
+    activeFacility: "Active facility for this admission",
+    searchScopedHint:
+      "Search shows only patients registered at your active facility. Cross-facility admission is not allowed.",
+    eligibleAtFacility: "Eligible at this facility",
+    registeredAtAnotherFacility:
+      "Registered at another facility — not eligible for admission under your active facility session.",
+  },
+  writerDisabled: {
+    title: "Direct inpatient admission is not enabled",
+    body:
+      "The admission form is available for review, but creating an inpatient encounter is blocked until DIRECT_INPATIENT_ADMISSION_ENABLED is turned on for this environment.",
+  },
   errors: {
     requestId: "Support ref",
+    DIRECT_ADMISSION_DISABLED:
+      "Direct inpatient admission is disabled for this environment. Contact an administrator — do not retry with another patient.",
     PATIENT_NOT_FOUND_IN_FACILITY:
-      "Patient not found at this facility. Check selection and login site.",
+      "Patient not found at your active facility. Re-select the patient from search (facility-scoped only) or switch to the facility where the patient is registered. Cross-facility admission is not allowed.",
     SOURCE_ED_ENCOUNTER_NOT_FOUND: "The source ED encounter was not found.",
     ATTENDING_NOT_FOUND: "The selected attending provider is not valid here.",
     BED_NOT_FOUND: "The selected bed was not found or is no longer available.",

@@ -6,6 +6,7 @@
 import { erHandoffV1SatisfiesInpatientTransferConfirm } from "../erHandoffV1.js";
 import { DISCHARGE_MODE_FR_ADMISSION } from "./observationAdmissionDischargeRouting.js";
 import { readEdDischargeSortieExecutionFromNursingAssessment } from "./edDispositionExecutionV1.js";
+import { adaptiveNursingDepartureSatisfied } from "./adaptiveEdNursingExecutionD4a2.js";
 
 /** Canonical French discharge mode labels (aligned with web + API). */
 export const ED_DISCHARGE_MODE_HOME = "Domicile";
@@ -229,7 +230,7 @@ export function isEdDispositionOrdered(snapshot: EdEncounterLifecycleEncounterSn
 
 /**
  * Audit-derived physical departure completion (HOME, AMA, TRANSFER, ADMISSION).
- * Read-only — uses erDispositionExecutionV1 and erHandoffV1 only.
+ * Read-only — uses erDispositionExecutionV1, erHandoffV1, and (D4A.2.1) adaptive nursing completion.
  */
 export function isEdPhysicalDepartureCompleted(
   snapshot: Pick<
@@ -245,7 +246,11 @@ export function isEdPhysicalDepartureCompleted(
   }
 
   if (path === "TRANSFER" || path === "ADMISSION") {
-    return erHandoffV1SatisfiesInpatientTransferConfirm(snapshot.nursingAssessment);
+    // Legacy handoff OR D4A.2.1 adaptive nursing departure completion (either satisfies).
+    return (
+      erHandoffV1SatisfiesInpatientTransferConfirm(snapshot.nursingAssessment) ||
+      adaptiveNursingDepartureSatisfied(snapshot.nursingAssessment)
+    );
   }
 
   if (path === "DECEASED" || path === "LWBS" || path === "ELOPEMENT" || path === "OTHER") {
