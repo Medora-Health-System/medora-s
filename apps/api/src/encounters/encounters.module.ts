@@ -36,6 +36,8 @@ import { AdmissionCorrelationService } from "./admission-correlation.service";
 import { AdmissionCorrelationController } from "./admission-correlation.controller";
 import { AdmissionCommandCenterService } from "./admission-command-center.service";
 import { ClinicalSynthesisService } from "./clinical-synthesis.service";
+import { EnterpriseCommandService } from "./enterprise-command.service";
+import { EnterpriseCommandController } from "./enterprise-command.controller";
 
 @Module({
   imports: [PrismaModule, DiagnosesModule, OrdersModule, TrackboardModule, FacilitiesModule],
@@ -47,6 +49,7 @@ import { ClinicalSynthesisService } from "./clinical-synthesis.service";
     HospitalCareController,
     InpatientOperationsController,
     AdmissionCorrelationController,
+    EnterpriseCommandController,
   ],
   providers: [
     EncountersService,
@@ -55,6 +58,7 @@ import { ClinicalSynthesisService } from "./clinical-synthesis.service";
     AdmissionCorrelationService,
     AdmissionCommandCenterService,
     ClinicalSynthesisService,
+    EnterpriseCommandService,
     HospitalCensusService,
     HospitalUnitRegistryService,
     ChartCertificationB1Service,
@@ -84,6 +88,8 @@ import { ClinicalSynthesisService } from "./clinical-synthesis.service";
     InternalPlacementService,
     AdmissionCorrelationService,
     AdmissionCommandCenterService,
+    EnterpriseCommandService,
+    ClinicalSynthesisService,
   ],
 })
 export class EncountersModule {}

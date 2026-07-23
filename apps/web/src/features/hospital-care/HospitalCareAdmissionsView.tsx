@@ -16,7 +16,7 @@ import {
   type PlacementQueueAvailability,
 } from "./hospitalCarePlacementApi";
 import { createDirectInpatientAdmission } from "./inpatientOperationsApi";
-import { HOSPITAL_CARE_ADMISSION_COMMAND_CENTER } from "./hospitalCarePaths";
+import { HOSPITAL_CARE_ADMISSION_COMMAND_CENTER, HOSPITAL_CARE_ENTERPRISE_COMMAND } from "./hospitalCarePaths";
 
 type PatientHit = {
   id: string;
@@ -162,22 +162,41 @@ export function HospitalCareAdmissionsView() {
       title={t("hospitalCareD3ca.admissions.title")}
       subtitle={t("hospitalCareD3ca.admissions.subtitle")}
       actions={
-        <Link
-          href={HOSPITAL_CARE_ADMISSION_COMMAND_CENTER}
-          data-testid="open-admission-command-center"
-          style={{
-            fontSize: 13,
-            fontWeight: 600,
-            color: "#0f766e",
-            textDecoration: "none",
-            border: "1px solid #99f6e4",
-            background: "#f0fdfa",
-            borderRadius: 10,
-            padding: "8px 12px",
-          }}
-        >
-          {t("admissionCommandCenter.title")}
-        </Link>
+        <>
+          <Link
+            href={HOSPITAL_CARE_ENTERPRISE_COMMAND}
+            data-testid="open-enterprise-command"
+            style={{
+              fontSize: 13,
+              fontWeight: 600,
+              color: "#0f766e",
+              textDecoration: "none",
+              border: "1px solid #99f6e4",
+              background: "#f0fdfa",
+              borderRadius: 10,
+              padding: "8px 12px",
+              marginRight: 8,
+            }}
+          >
+            {t("enterpriseCommandD4a27.openLink")}
+          </Link>
+          <Link
+            href={HOSPITAL_CARE_ADMISSION_COMMAND_CENTER}
+            data-testid="open-admission-command-center"
+            style={{
+              fontSize: 13,
+              fontWeight: 600,
+              color: "#0f766e",
+              textDecoration: "none",
+              border: "1px solid #99f6e4",
+              background: "#f0fdfa",
+              borderRadius: 10,
+              padding: "8px 12px",
+            }}
+          >
+            {t("admissionCommandCenter.title")}
+          </Link>
+        </>
       }
     >
       <section

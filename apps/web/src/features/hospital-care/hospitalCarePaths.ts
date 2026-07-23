@@ -15,6 +15,8 @@ export const HOSPITAL_CARE_BEDS = "/app/hospitalisation/beds";
 export const HOSPITAL_CARE_TRANSFERS = "/app/hospitalisation/transfers";
 /** Preserved operational floor board (pre-D3CA) — not clinical documentation. */
 export const HOSPITAL_CARE_FLOOR_BOARD = "/app/hospitalisation/floor-board";
+/** D4A.2.7 — Enterprise Clinical Command Layer (hospital operations platform). */
+export const HOSPITAL_CARE_ENTERPRISE_COMMAND = "/app/hospitalisation/enterprise-command";
 
 /** D4A.2.2 — post-SIGN admission package review (not census / placement board). */
 export function hospitalAdmissionReviewPath(encounterId: string): string {

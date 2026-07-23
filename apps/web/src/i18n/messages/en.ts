@@ -44,6 +44,7 @@ import { hospitalAdmissionD4a0En } from "./hospitalAdmissionD4a0.en";
 import { emergencyAdaptiveNursingEn } from "./emergencyAdaptiveNursing.en";
 import { admissionWorkflowVisibilityEn } from "./admissionWorkflowVisibility.en";
 import { admissionCommandCenterEn } from "./admissionCommandCenter.en";
+import { enterpriseCommandD4a27En } from "./enterpriseCommandD4a27.en";
 import { hospitalAdmissionD4a1En } from "./hospitalAdmissionD4a1.en";
 import { hospitalAdmissionD4a25En } from "./hospitalAdmissionD4a25.en";
 import { hospitalAdmissionD4a25aEn } from "./hospitalAdmissionD4a25a.en";
@@ -19140,6 +19141,7 @@ export default {
   emergencyAdaptiveNursing: emergencyAdaptiveNursingEn,
   admissionWorkflowVisibility: admissionWorkflowVisibilityEn,
   admissionCommandCenter: admissionCommandCenterEn,
+  enterpriseCommandD4a27: enterpriseCommandD4a27En,
 
   hospitalCareD3e6d: {
     bedBoard: {
