@@ -21,6 +21,7 @@ import { DiagnosesService } from "../diagnoses/diagnoses.service";
 import { createDiagnosisDtoSchema, reorderDiagnosesDtoSchema } from "../diagnoses/dto";
 import { appendProcedureCaptureDtoSchema } from "../billing-procedure-codes/dto/append-procedure-capture.dto";
 import {
+  admissionOperationalActionDtoSchema,
   encounterAdmissionCancelDtoSchema,
   encounterAdmissionDecisionDtoSchema,
   encounterCloseDtoSchema,
@@ -71,6 +72,7 @@ import {
 } from "@medora/shared";
 import type { Response } from "express";
 import { renderEncounterChartExportHtml } from "./chart-export-html.util";
+import { AdmissionCommandCenterService } from "./admission-command-center.service";
 
 @Controller()
 @UseGuards(AuthGuard("jwt"), RolesGuard)
@@ -92,6 +94,7 @@ export class EncountersController {
     private readonly encounterNotesService: EncounterNotesService,
     private readonly clinicalDocumentationService: ClinicalDocumentationService,
     private readonly chartCertificationB1Service: ChartCertificationB1Service,
+    private readonly admissionCommandCenterService: AdmissionCommandCenterService
   ) {}
 
   /** MEDNOTE.1 — list append-only encounter notes (+ optional legacy erNotesV1 read-only). */
@@ -1289,7 +1292,8 @@ export class EncountersController {
       parsed.data,
       req.user?.userId,
       req.ip,
-      req.headers?.["user-agent"]
+      req.headers?.["user-agent"],
+      typeof req.requestId === "string" ? req.requestId : null
     );
   }
 
@@ -1320,6 +1324,37 @@ export class EncountersController {
       req.user?.userId,
       req.ip,
       req.headers["user-agent"]
+    );
+  }
+
+  /**
+   * D4A.2.3 — Multidisciplinary operational admission acceptance (not clinical SIGN).
+   * Authorized via active facility membership (ADMIN | PROVIDER | RN), not singleton req.userRole.
+   * Does not create inpatient encounters; does not mutate clinical admission packet fields.
+   */
+  @Post("encounters/:id/admission/operational-action")
+  @RequireRoles(RoleCode.PROVIDER, RoleCode.RN, RoleCode.ADMIN)
+  async recordAdmissionOperationalAction(
+    @Param("id") id: string,
+    @Body() body: unknown,
+    @Req() req: any
+  ) {
+    const facilityId = req.user?.facilityId;
+    if (!facilityId) {
+      throw new BadRequestException("Facility ID required");
+    }
+    const parsed = admissionOperationalActionDtoSchema.safeParse(body);
+    if (!parsed.success) {
+      throw new BadRequestException("Invalid payload", { cause: parsed.error });
+    }
+    return this.admissionCommandCenterService.recordOperationalAction(
+      facilityId,
+      id,
+      parsed.data,
+      req.user?.userId,
+      req.ip,
+      req.headers?.["user-agent"],
+      typeof req.requestId === "string" ? req.requestId : null
     );
   }
 

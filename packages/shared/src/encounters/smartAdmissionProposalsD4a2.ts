@@ -1,6 +1,6 @@
 /**
- * D4A.2 — Build editable admission proposals from documented chart facts only.
- * Never fabricate severity or undocumented clinical claims.
+ * D4A.2 / D4A.2.1 — Build editable admission proposals from documented chart facts only.
+ * Never fabricate severity or undocumented clinical claims. proposalMethod is always RULE_BASED.
  */
 
 import type { HospitalAdmittingService, HospitalRequestedLevelOfCare } from "./hospitalAdmissionIntakeVocabV1.js";
@@ -8,8 +8,11 @@ import type {
   AdmissionPacketV1,
   AdmissionProposalSourceRef,
   AdmissionProvenancedFieldV1,
+  InitialPlanItemCategory,
+  StructuredInitialPlanItemV1,
 } from "./smartAdmissionPacketD4a2.js";
 import { emptyAdmissionPacketV1 } from "./smartAdmissionPacketD4a2.js";
+import { buildNarrativeFromStructuredPlanItems } from "./smartAdmissionClinicalHardeningD4a21.js";
 
 export type SmartAdmissionChartContextV1 = {
   chiefComplaint?: string | null;
@@ -17,22 +20,26 @@ export type SmartAdmissionChartContextV1 = {
   providerAssessment?: string | null;
   providerPlan?: string | null;
   primaryDiagnosisDisplay?: string | null;
+  primaryDiagnosisId?: string | null;
   secondaryDiagnosisDisplays?: string[];
-  abnormalResultLines?: string[];
+  abnormalResultLines?: Array<string | { id?: string; label?: string; text: string; recordedAt?: string }>;
   failedEdTherapyLines?: string[];
   continuedTreatmentNeeds?: string[];
   monitoringNeeds?: string[];
-  consultantRecommendationLines?: string[];
-  activeMedicationOrderLines?: string[];
-  ivFluidOrderLines?: string[];
-  dietOrderLines?: string[];
-  oxygenOrderLines?: string[];
-  monitoringOrderLines?: string[];
-  consultOrderLines?: string[];
-  labOrderLines?: string[];
-  imagingOrderLines?: string[];
-  procedureOrderLines?: string[];
+  consultantRecommendationLines?: Array<
+    string | { id?: string; label?: string; text: string; recordedAt?: string }
+  >;
+  activeMedicationOrderLines?: Array<string | { id?: string; text: string; status?: string }>;
+  ivFluidOrderLines?: Array<string | { id?: string; text: string; status?: string }>;
+  dietOrderLines?: Array<string | { id?: string; text: string; status?: string }>;
+  oxygenOrderLines?: Array<string | { id?: string; text: string; status?: string }>;
+  monitoringOrderLines?: Array<string | { id?: string; text: string; status?: string }>;
+  consultOrderLines?: Array<string | { id?: string; text: string; status?: string }>;
+  labOrderLines?: Array<string | { id?: string; text: string; status?: string }>;
+  imagingOrderLines?: Array<string | { id?: string; text: string; status?: string }>;
+  procedureOrderLines?: Array<string | { id?: string; text: string; status?: string }>;
   precautionLines?: string[];
+  discontinuedOrderLines?: Array<string | { id?: string; text: string }>;
 };
 
 function trim(s: unknown, max = 800): string {
@@ -41,15 +48,33 @@ function trim(s: unknown, max = 800): string {
     .slice(0, max);
 }
 
+function lineText(line: string | { text: string }): string {
+  return typeof line === "string" ? trim(line) : trim(line.text);
+}
+
+function lineId(line: string | { id?: string; text: string }): string | null {
+  return typeof line === "string" ? null : typeof line.id === "string" ? line.id : null;
+}
+
 function pushSource(
   sources: AdmissionProposalSourceRef[],
-  kind: string,
+  sourceType: string,
   label: string,
-  excerpt?: string | null
+  displayText?: string | null,
+  sourceId?: string | null,
+  recordedAt?: string | null
 ) {
-  const ex = trim(excerpt, 240);
+  const ex = trim(displayText, 240);
   if (!ex && !label.trim()) return;
-  sources.push({ kind, label, excerpt: ex || null });
+  sources.push({
+    kind: sourceType,
+    sourceType,
+    sourceId: sourceId ?? null,
+    label,
+    displayText: ex || null,
+    excerpt: ex || null,
+    recordedAt: recordedAt ?? null,
+  });
 }
 
 function joinUnique(parts: string[], sep = "; "): string {
@@ -72,13 +97,58 @@ function proposedField(
 ): AdmissionProvenancedFieldV1 | undefined {
   const v = trim(value, 4000);
   if (!v || sources.length === 0) return undefined;
+  const generatedAt = new Date().toISOString();
   return {
     value: v,
     origin: "SYSTEM_PROPOSAL",
+    provenance: "SYSTEM_PROPOSAL",
+    proposalMethod: "RULE_BASED",
     sources,
     proposedValue: v,
     physicianConfirmed: false,
+    generatedAt,
   };
+}
+
+function planItemId(category: string, sourceId: string | null, display: string, index: number): string {
+  const base = sourceId || `${category}:${display.slice(0, 40)}:${index}`;
+  return `plan-${base}`.replace(/\s+/g, "_").slice(0, 120);
+}
+
+function addOrderItems(
+  items: StructuredInitialPlanItemV1[],
+  seen: Set<string>,
+  category: InitialPlanItemCategory,
+  lines: Array<string | { id?: string; text: string; status?: string }> | undefined,
+  defaultStatus: "ACTIVE_ORDER" | "DISCONTINUED" = "ACTIVE_ORDER"
+) {
+  let i = 0;
+  for (const line of lines ?? []) {
+    const display = lineText(line);
+    if (!display) continue;
+    const sourceId = lineId(line);
+    const statusRaw =
+      typeof line === "object" && typeof line.status === "string"
+        ? line.status.toUpperCase()
+        : defaultStatus;
+    const status =
+      statusRaw === "DISCONTINUED" || statusRaw === "COMPLETED" || statusRaw === "PLANNED"
+        ? statusRaw
+        : defaultStatus;
+    const id = planItemId(category, sourceId, display, i++);
+    if (seen.has(id) || seen.has(display.toLowerCase())) continue;
+    seen.add(id);
+    seen.add(display.toLowerCase());
+    items.push({
+      id,
+      category,
+      sourceType: status === "ACTIVE_ORDER" ? "ACTIVE_ORDER" : "SYSTEM_PROPOSAL",
+      sourceId,
+      display,
+      status,
+      selectedForNarrative: status === "ACTIVE_ORDER" || status === "PLANNED",
+    });
+  }
 }
 
 /** Recommend service only from weak, documented cues — otherwise null. */
@@ -96,7 +166,13 @@ export function recommendAdmittingServiceFromContext(
   ).toLowerCase();
   const sources: AdmissionProposalSourceRef[] = [];
   if (ctx.primaryDiagnosisDisplay) {
-    pushSource(sources, "DIAGNOSIS", "Primary admission diagnosis", ctx.primaryDiagnosisDisplay);
+    pushSource(
+      sources,
+      "DIAGNOSIS",
+      "Primary admission diagnosis",
+      ctx.primaryDiagnosisDisplay,
+      ctx.primaryDiagnosisId ?? null
+    );
   }
   if (!blob) return { code: null, sources: [] };
 
@@ -130,7 +206,6 @@ export function recommendAdmittingServiceFromContext(
   if (/\b(septic shock|intubat|vasopressor|icu|critical)/.test(blob)) {
     return { code: "CRITICAL_CARE", sources };
   }
-  // Default medical admission when diagnosis/CC present — hospital medicine.
   if (sources.length > 0) {
     return { code: "HOSPITAL_MEDICINE", sources };
   }
@@ -145,7 +220,7 @@ export function recommendLevelOfCareFromContext(
       ctx.providerPlan ?? "",
       ctx.providerAssessment ?? "",
       ...(ctx.monitoringNeeds ?? []),
-      ...(ctx.oxygenOrderLines ?? []),
+      ...(ctx.oxygenOrderLines ?? []).map(lineText),
     ],
     " "
   ).toLowerCase();
@@ -179,7 +254,13 @@ export function recommendLevelOfCareFromContext(
   }
   if (sources.length > 0 || ctx.primaryDiagnosisDisplay) {
     if (ctx.primaryDiagnosisDisplay) {
-      pushSource(sources, "DIAGNOSIS", "Primary diagnosis", ctx.primaryDiagnosisDisplay);
+      pushSource(
+        sources,
+        "DIAGNOSIS",
+        "Primary diagnosis",
+        ctx.primaryDiagnosisDisplay,
+        ctx.primaryDiagnosisId ?? null
+      );
     }
     return { code: "MEDICAL_SURGICAL", sources };
   }
@@ -191,7 +272,6 @@ export function buildSmartAdmissionProposals(
 ): AdmissionPacketV1 {
   const packet = emptyAdmissionPacketV1();
 
-  // Reason for admission — only from documented elements.
   const reasonSources: AdmissionProposalSourceRef[] = [];
   const reasonParts: string[] = [];
   if (trim(ctx.chiefComplaint) || trim(ctx.visitReason)) {
@@ -201,12 +281,28 @@ export function buildSmartAdmissionProposals(
   }
   if (trim(ctx.primaryDiagnosisDisplay)) {
     reasonParts.push(`Diagnostic d'admission: ${trim(ctx.primaryDiagnosisDisplay)}`);
-    pushSource(reasonSources, "DIAGNOSIS", "Selected admission diagnosis", ctx.primaryDiagnosisDisplay);
+    pushSource(
+      reasonSources,
+      "DIAGNOSIS",
+      "Selected admission diagnosis",
+      ctx.primaryDiagnosisDisplay,
+      ctx.primaryDiagnosisId ?? null
+    );
   }
   for (const line of ctx.abnormalResultLines ?? []) {
-    if (!trim(line)) continue;
-    reasonParts.push(`Résultat anormal documenté: ${trim(line)}`);
-    pushSource(reasonSources, "ABNORMAL_RESULT", "Abnormal diagnostic result", line);
+    const text = lineText(line);
+    if (!text) continue;
+    reasonParts.push(`Résultat anormal documenté: ${text}`);
+    const label =
+      typeof line === "object" && line.label ? line.label : "Abnormal diagnostic result";
+    pushSource(
+      reasonSources,
+      "ABNORMAL_RESULT",
+      label,
+      text,
+      lineId(line),
+      typeof line === "object" ? line.recordedAt ?? null : null
+    );
   }
   for (const line of ctx.failedEdTherapyLines ?? []) {
     if (!trim(line)) continue;
@@ -224,9 +320,12 @@ export function buildSmartAdmissionProposals(
     pushSource(reasonSources, "MONITORING_NEED", "Monitoring need", line);
   }
   for (const line of ctx.consultantRecommendationLines ?? []) {
-    if (!trim(line)) continue;
-    reasonParts.push(`Recommandation de consultation: ${trim(line)}`);
-    pushSource(reasonSources, "CONSULT_REC", "Consultant recommendation", line);
+    const text = lineText(line);
+    if (!text) continue;
+    reasonParts.push(`Recommandation de consultation: ${text}`);
+    const label =
+      typeof line === "object" && line.label ? line.label : "Consultant recommendation";
+    pushSource(reasonSources, "CONSULT_REC", label, text, lineId(line));
   }
   if (trim(ctx.providerAssessment)) {
     reasonParts.push(`Évaluation médecin: ${trim(ctx.providerAssessment, 500)}`);
@@ -247,8 +346,7 @@ export function buildSmartAdmissionProposals(
     packet.fields.careLevel = proposedField(locRec.code, locRec.sources);
   }
 
-  // Condition — never auto-assign status from diagnosis alone; leave status null.
-  // Optional narrative from documented assessment only.
+  // Condition — never auto-assign status from diagnosis alone.
   if (trim(ctx.providerAssessment)) {
     const condSources: AdmissionProposalSourceRef[] = [];
     pushSource(condSources, "PROVIDER_ASSESSMENT", "Provider assessment", ctx.providerAssessment);
@@ -256,30 +354,48 @@ export function buildSmartAdmissionProposals(
     if (condField) packet.fields.conditionAtAdmission = condField;
   }
 
-  // Initial plan — active orders vs narrative recommendations clearly labeled.
-  const planSources: AdmissionProposalSourceRef[] = [];
-  const planParts: string[] = [];
-  const addOrderBlock = (title: string, kind: string, lines?: string[]) => {
-    const cleaned = (lines ?? []).map((l) => trim(l)).filter(Boolean);
-    if (cleaned.length === 0) return;
-    planParts.push(`${title} (ordonnances actives): ${cleaned.join("; ")}`);
-    pushSource(planSources, kind, title, cleaned.join("; "));
-  };
-  addOrderBlock("Médicaments", "ACTIVE_MED_ORDER", ctx.activeMedicationOrderLines);
-  addOrderBlock("Solutés IV", "IV_FLUID_ORDER", ctx.ivFluidOrderLines);
-  addOrderBlock("Diète / NPO", "DIET_ORDER", ctx.dietOrderLines);
-  addOrderBlock("Oxygène", "OXYGEN_ORDER", ctx.oxygenOrderLines);
-  addOrderBlock("Surveillance", "MONITORING_ORDER", ctx.monitoringOrderLines);
-  addOrderBlock("Consultations", "CONSULT_ORDER", ctx.consultOrderLines);
-  addOrderBlock("Laboratoire", "LAB_ORDER", ctx.labOrderLines);
-  addOrderBlock("Imagerie", "IMAGING_ORDER", ctx.imagingOrderLines);
-  addOrderBlock("Procédures", "PROCEDURE_ORDER", ctx.procedureOrderLines);
-  addOrderBlock("Précautions", "PRECAUTION", ctx.precautionLines);
+  const items: StructuredInitialPlanItemV1[] = [];
+  const seen = new Set<string>();
+  addOrderItems(items, seen, "MEDICATION", ctx.activeMedicationOrderLines);
+  addOrderItems(items, seen, "IV_FLUID", ctx.ivFluidOrderLines);
+  addOrderItems(items, seen, "DIET", ctx.dietOrderLines);
+  addOrderItems(items, seen, "OTHER", ctx.oxygenOrderLines);
+  addOrderItems(items, seen, "MONITORING", ctx.monitoringOrderLines);
+  addOrderItems(items, seen, "CONSULT", ctx.consultOrderLines);
+  addOrderItems(items, seen, "LAB", ctx.labOrderLines);
+  addOrderItems(items, seen, "IMAGING", ctx.imagingOrderLines);
+  addOrderItems(items, seen, "PROCEDURE", ctx.procedureOrderLines);
+  addOrderItems(items, seen, "PRECAUTION", ctx.precautionLines?.map((t) => ({ text: t })));
+  addOrderItems(items, seen, "OTHER", ctx.discontinuedOrderLines, "DISCONTINUED");
   if (trim(ctx.providerPlan)) {
-    planParts.push(`Plan médecin (narratif): ${trim(ctx.providerPlan, 1500)}`);
-    pushSource(planSources, "PROVIDER_PLAN", "ED provider plan (narrative)", ctx.providerPlan);
+    const id = planItemId("OTHER", null, "provider-plan", items.length);
+    if (!seen.has(id)) {
+      items.push({
+        id,
+        category: "OTHER",
+        sourceType: "PROVIDER_PLAN",
+        sourceId: null,
+        display: trim(ctx.providerPlan, 1500),
+        status: "PLANNED",
+        selectedForNarrative: true,
+      });
+    }
   }
-  const planField = proposedField(joinUnique(planParts, "\n"), planSources);
+  packet.structuredInitialPlan = { items };
+
+  const planSources: AdmissionProposalSourceRef[] = [];
+  for (const item of items) {
+    if (!item.selectedForNarrative) continue;
+    pushSource(
+      planSources,
+      item.sourceType,
+      item.status === "ACTIVE_ORDER" ? `Active order — ${item.category}` : `Plan — ${item.category}`,
+      item.display,
+      item.sourceId
+    );
+  }
+  const narrativeFromItems = buildNarrativeFromStructuredPlanItems(items);
+  const planField = proposedField(narrativeFromItems, planSources);
   if (planField) packet.fields.initialPlan = planField;
 
   return packet;

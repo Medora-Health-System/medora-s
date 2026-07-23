@@ -51,7 +51,12 @@ import {
   type ErPrintProviderDocumentationSection,
 } from "@/features/emergency/erProviderDocumentationSummary";
 import type { EdClinicalTimelineEntry } from "@medora/shared";
-import { readErHandoffV1FromNursingAssessment } from "@medora/shared";
+import {
+  provenanceDisplayKey,
+  readAdmissionPacketV1,
+  readAdaptiveEdNursingExecution,
+  readErHandoffV1FromNursingAssessment,
+} from "@medora/shared";
 import { buildProviderDischargeDocumentationSummaryBlock } from "@/features/emergency/providerDischargeDocumentationSummary";
 import { buildPatientSpecificDischargeContextFromDischargeJson } from "@/features/emergency/providerDischargePatientSpecificAdditions";
 import {
@@ -432,14 +437,72 @@ export function getErPrintPacketHtml(params: {
 
   if (outcome === "ADMISSION") {
     body.push(h2(language, "printOutput.erPacket.sectionAdmissionClinical"));
+    const packet = readAdmissionPacketV1(encounter.admissionSummaryJson);
+    const summaryRoot =
+      encounter.admissionSummaryJson && typeof encounter.admissionSummaryJson === "object"
+        ? (encounter.admissionSummaryJson as Record<string, unknown>)
+        : {};
+    const decisionMode = String(summaryRoot.admissionDecisionMode ?? "").toUpperCase();
+    const isDraft = decisionMode !== "SIGN";
+    if (isDraft) {
+      body.push(
+        `<p style="margin: 8px 0; font-size: 13px; font-weight: 700; color: #92400e;">${esc(
+          printT(language, "printOutput.erPacket.admissionDraftWatermark")
+        )}</p>`
+      );
+    }
     if (adm) {
       body.push(line(printT(language, "printOutput.erPacket.admissionReason"), adm.admissionReason ?? null));
+      if (packet.fields.admissionReason?.origin) {
+        const provKey = provenanceDisplayKey(packet.fields.admissionReason.origin);
+        body.push(
+          line(
+            printT(language, "printOutput.erPacket.admissionProvenance"),
+            printT(language, `printOutput.erPacket.provenance.${provKey}`)
+          )
+        );
+      }
       body.push(line(printT(language, "printOutput.erPacket.admittingService"), adm.serviceUnit ?? null));
       body.push(line(printT(language, "printOutput.erPacket.admissionDiagnosis"), adm.admissionDiagnosis ?? null));
       body.push(line(printT(language, "printOutput.erPacket.careLevel"), adm.careLevel ?? null));
+      if (packet.conditionStatus) {
+        body.push(
+          line(printT(language, "printOutput.erPacket.conditionStatus"), packet.conditionStatus)
+        );
+      }
       body.push(line(printT(language, "printOutput.erPacket.conditionAtAdmission"), adm.conditionAtAdmission ?? null));
       body.push(line(printT(language, "printOutput.erPacket.initialPlan"), adm.initialPlan ?? null));
+      const planItems = packet.structuredInitialPlan?.items ?? [];
+      if (planItems.length > 0) {
+        body.push(
+          `<p style="margin: 8px 0 4px; font-size: 13px; font-weight: 600;">${esc(
+            printT(language, "printOutput.erPacket.structuredPlanItems")
+          )}</p><ul style="margin: 0 0 8px; padding-left: 18px; font-size: 13px;">`
+        );
+        for (const item of planItems.filter((i) => i.selectedForNarrative)) {
+          const statusLabel =
+            item.status === "ACTIVE_ORDER"
+              ? printT(language, "printOutput.erPacket.planActiveOrder")
+              : printT(language, "printOutput.erPacket.planOnly");
+          body.push(`<li>${esc(`[${statusLabel}] ${item.display}`)}</li>`);
+        }
+        body.push(`</ul>`);
+      }
       body.push(line(printT(language, "printOutput.erPacket.admittingPhysician"), adm.responsiblePhysicianName ?? null));
+      if (typeof summaryRoot.admissionDecisionAt === "string") {
+        body.push(
+          line(printT(language, "printOutput.erPacket.decisionTimestamp"), summaryRoot.admissionDecisionAt)
+        );
+      }
+      const nursingExec = readAdaptiveEdNursingExecution(encounter.nursingAssessment);
+      if (nursingExec?.completedAt) {
+        body.push(
+          line(
+            printT(language, "printOutput.erPacket.nursingDepartureSummary"),
+            `${nursingExec.pathway} — ${nursingExec.completedAt}`
+          )
+        );
+      }
     } else {
       body.push(
         `<p style="margin: 8px 0; font-size: 13px; color: #444;">${esc(

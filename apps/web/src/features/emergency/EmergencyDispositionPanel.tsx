@@ -1,6 +1,8 @@
 "use client";
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   ADMISSION_CONDITION_STATUSES,
   ED_ADMISSION_LEVEL_OF_CARE_OPTIONS,
@@ -14,6 +16,9 @@ import {
   isHospitalRequestedLevelOfCare,
   mapLegacyCareLevelToRequestedTypeHint,
   markFieldPhysicianEdited,
+  mergeProposalFieldWithoutOverwrite,
+  replaceFieldWithUpdatedProposal,
+  buildNarrativeFromStructuredPlanItems,
   projectEdDispositionState,
   readAdmissionPacketV1,
   readAmaDispositionV1,
@@ -31,9 +36,12 @@ import {
   type HospitalRequestedLevelOfCare,
 } from "@medora/shared";
 import { buildSmartAdmissionChartContext } from "./smartAdmissionChartContext";
+import { ProposalSourcesDisclosure } from "./ProposalSourcesDisclosure";
 import { apiFetch, parseApiResponse } from "@/lib/apiClient";
 import { normalizeUserFacingError } from "@/lib/userFacingError";
 import { useI18n } from "@/lib/i18n";
+import { hospitalAdmissionReviewPath } from "@/features/hospital-care/hospitalCarePaths";
+import { isInternalPlacementWorkflowUiEnabled } from "./AdmissionObservationDecisionBoard";
 import { useEncounterDiagnosisRows } from "./useEncounterDiagnosisRows";
 import type { EncounterDiagnosisApiRow } from "./encounterClinicalRecordAdapter";
 import {
@@ -133,6 +141,7 @@ type EncounterLite = {
   status?: string | null;
   type?: string | null;
   createdAt?: string | null;
+  version?: number | null;
   patient?: PatientLite | null;
   nursingAssessment?: unknown;
   dischargeSummaryJson?: unknown;
@@ -208,7 +217,9 @@ export function EmergencyDispositionPanel({
   facilityName?: string | null;
 }) {
   const { t, language } = useI18n();
+  const router = useRouter();
   const dateLocale = language === "en" ? "en-US" : "fr-FR";
+  const placementWorkflowUiEnabled = isInternalPlacementWorkflowUiEnabled();
 
   const OUTCOME_OPTIONS = useMemo(
     (): { id: ErDispositionOutcomeUi; label: string }[] => [
@@ -347,13 +358,13 @@ export function EmergencyDispositionPanel({
     }
   }, [encounter.admissionSummaryJson]);
 
+  const [newerProposalAvailable, setNewerProposalAvailable] = useState(false);
+  const [pendingProposal, setPendingProposal] = useState<AdmissionPacketV1 | null>(null);
+
   // Apply smart proposals once when admission fields are empty (documented sources only).
+  // Never overwrite PHYSICIAN_EDITED — surface newer proposal availability instead.
   useEffect(() => {
-    if (proposalsApplied || outcomeUi !== "ADMISSION" || !canPrescribe) return;
-    if (admissionForm.admissionReason.trim() || admissionForm.initialPlan.trim()) {
-      setProposalsApplied(true);
-      return;
-    }
+    if (outcomeUi !== "ADMISSION" || !canPrescribe) return;
     const primaryRow = encounterDiagnoses.find((d) => d.id === primaryDiagnosisId);
     const secondaryRows = encounterDiagnoses.filter((d) => secondaryDiagnosisIds.includes(d.id));
     const ctx = buildSmartAdmissionChartContext({
@@ -366,18 +377,41 @@ export function EmergencyDispositionPanel({
       setProposalsApplied(true);
       return;
     }
-    setAdmissionPacket(proposed);
-    const flat = applyProposalsToFlatFieldsIfEmpty(admissionForm, proposed);
-    setAdmissionForm((prev) => ({ ...prev, ...flat }));
-    if (proposed.admittingServiceCode) {
-      setAdmissionForm((prev) => ({ ...prev, serviceUnit: proposed.admittingServiceCode ?? "" }));
+    if (!proposalsApplied) {
+      if (admissionForm.admissionReason.trim() || admissionForm.initialPlan.trim()) {
+        const reasonMerge = mergeProposalFieldWithoutOverwrite(
+          admissionPacket.fields.admissionReason,
+          proposed.fields.admissionReason
+        );
+        if (reasonMerge.newerProposalAvailable) {
+          setNewerProposalAvailable(true);
+          setPendingProposal(proposed);
+        }
+        setProposalsApplied(true);
+        return;
+      }
+      setAdmissionPacket(proposed);
+      const flat = applyProposalsToFlatFieldsIfEmpty(admissionForm, proposed);
+      setAdmissionForm((prev) => ({ ...prev, ...flat }));
+      if (proposed.admittingServiceCode) {
+        setAdmissionForm((prev) => ({ ...prev, serviceUnit: proposed.admittingServiceCode ?? "" }));
+      }
+      if (proposed.levelOfCareCode) {
+        setAdmissionForm((prev) => ({ ...prev, careLevel: proposed.levelOfCareCode ?? "" }));
+      }
+      setProposalsApplied(true);
+      return;
     }
-    if (proposed.levelOfCareCode) {
-      setAdmissionForm((prev) => ({ ...prev, careLevel: proposed.levelOfCareCode ?? "" }));
+    const reasonMerge = mergeProposalFieldWithoutOverwrite(
+      admissionPacket.fields.admissionReason,
+      proposed.fields.admissionReason
+    );
+    if (reasonMerge.newerProposalAvailable) {
+      setNewerProposalAvailable(true);
+      setPendingProposal(proposed);
     }
-    setProposalsApplied(true);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- one-shot proposal apply
-  }, [outcomeUi, canPrescribe, encounterDiagnoses, primaryDiagnosisId, proposalsApplied, formatDxRow]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- proposal refresh without overwrite
+  }, [outcomeUi, canPrescribe, encounterDiagnoses, primaryDiagnosisId, formatDxRow]);
 
   const dispositionState = useMemo(
     () =>
@@ -807,12 +841,19 @@ export function EmergencyDispositionPanel({
           setSaving(false);
           return;
         }
+        const clientRequestId =
+          mode === "SIGN"
+            ? `adm-sign-${encounterId}-${typeof encounter.version === "number" ? encounter.version : "v"}`
+            : null;
         await apiFetch(`/encounters/${encounterId}/admission/decision`, {
           method: "POST",
           facilityId,
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             mode,
+            expectedVersion:
+              typeof encounter.version === "number" ? encounter.version : undefined,
+            clientRequestId,
             admissionSummary: {
               ...admissionPayload,
               serviceUnit: serviceCode || admissionForm.serviceUnit,
@@ -882,13 +923,21 @@ export function EmergencyDispositionPanel({
       await onSaved();
       setPathwayChangeConfirm(null);
       setPathwayChangeReason("");
+      if (mode === "SIGN" && effectiveOutcome === "ADMISSION") {
+        setSaveInfo(
+          placementWorkflowUiEnabled
+            ? t("emergencyDisposition.signAdmissionOkPlacementOn")
+            : t("emergencyDisposition.signAdmissionOk")
+        );
+        // D4A.2.2 — authoritative post-SIGN view is Admission Review (not census/IP/placement).
+        router.push(hospitalAdmissionReviewPath(encounterId));
+        return;
+      }
       setSaveInfo(
         queued
           ? t("emergencyDisposition.saveQueued")
           : mode === "SIGN"
-            ? effectiveOutcome === "ADMISSION"
-              ? t("emergencyDisposition.signAdmissionOk")
-              : t("emergencyDisposition.signDecisionOk")
+            ? t("emergencyDisposition.signDecisionOk")
             : effectiveOutcome === "ADMISSION"
               ? t("emergencyDisposition.saveOkObservationAdmission")
               : t("emergencyDisposition.saveOk")
@@ -1028,19 +1077,40 @@ export function EmergencyDispositionPanel({
         ) : null}
 
         {saveInfo ? (
-          <p
-            style={{
-              margin: "10px 0 0 0",
-              fontSize: 13,
-              color:
-                saveInfo.toLowerCase().includes("impossible") || saveInfo.toLowerCase().includes("unable")
-                  ? "#b91c1c"
-                  : "#15803d",
-              lineHeight: 1.45,
-            }}
-          >
-            {saveInfo}
-          </p>
+          <div style={{ margin: "10px 0 0 0" }}>
+            <p
+              data-testid="emergency-disposition-save-info"
+              style={{
+                margin: 0,
+                fontSize: 13,
+                color:
+                  saveInfo.toLowerCase().includes("impossible") ||
+                  saveInfo.toLowerCase().includes("unable")
+                    ? "#b91c1c"
+                    : "#15803d",
+                lineHeight: 1.45,
+              }}
+            >
+              {saveInfo}
+            </p>
+            {outcomeUi === "ADMISSION" &&
+            (saveInfo === t("emergencyDisposition.signAdmissionOk") ||
+              saveInfo === t("emergencyDisposition.signAdmissionOkPlacementOn")) ? (
+              <Link
+                href={hospitalAdmissionReviewPath(encounterId)}
+                data-testid="emergency-disposition-open-admission-review"
+                style={{
+                  display: "inline-block",
+                  marginTop: 8,
+                  fontSize: 13,
+                  fontWeight: 600,
+                  color: "#0f766e",
+                }}
+              >
+                {t("admissionWorkflowVisibility.dispositionSuccess.openReview")}
+              </Link>
+            ) : null}
+          </div>
         ) : null}
 
         {showObservationHandoffStatus ? (
@@ -1291,25 +1361,96 @@ export function EmergencyDispositionPanel({
                 <p style={{ margin: "4px 0 8px", fontSize: 11, color: "#64748b" }}>
                   {t("emergencyDisposition.smartPacketProvenanceHint")}
                 </p>
+                {newerProposalAvailable && pendingProposal ? (
+                  <div
+                    role="status"
+                    data-testid="newer-proposal-available"
+                    style={{
+                      marginBottom: 8,
+                      padding: 10,
+                      borderRadius: 10,
+                      border: "1px solid #fcd34d",
+                      background: "#fffbeb",
+                      fontSize: 12,
+                      color: "#92400e",
+                    }}
+                  >
+                    <p style={{ margin: "0 0 8px", fontWeight: 600 }}>
+                      {t("emergencyDisposition.newerProposalAvailable")}
+                    </p>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setNewerProposalAvailable(false);
+                          setPendingProposal(null);
+                        }}
+                        style={{
+                          padding: "6px 10px",
+                          borderRadius: 8,
+                          border: "1px solid #d97706",
+                          background: "#fff",
+                          fontWeight: 600,
+                          cursor: "pointer",
+                        }}
+                      >
+                        {t("emergencyDisposition.keepPhysicianText")}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const fresh = pendingProposal;
+                          if (!fresh?.fields.admissionReason) return;
+                          setAdmissionPacket((prev) => ({
+                            ...prev,
+                            fields: {
+                              ...prev.fields,
+                              admissionReason: replaceFieldWithUpdatedProposal(
+                                prev.fields.admissionReason,
+                                fresh.fields.admissionReason!
+                              ),
+                              initialPlan: fresh.fields.initialPlan
+                                ? replaceFieldWithUpdatedProposal(
+                                    prev.fields.initialPlan,
+                                    fresh.fields.initialPlan
+                                  )
+                                : prev.fields.initialPlan,
+                            },
+                            structuredInitialPlan:
+                              fresh.structuredInitialPlan ?? prev.structuredInitialPlan,
+                          }));
+                          setAdmissionForm((prev) => ({
+                            ...prev,
+                            admissionReason: fresh.fields.admissionReason?.value ?? prev.admissionReason,
+                            initialPlan: fresh.fields.initialPlan?.value ?? prev.initialPlan,
+                          }));
+                          setNewerProposalAvailable(false);
+                          setPendingProposal(null);
+                        }}
+                        style={{
+                          padding: "6px 10px",
+                          borderRadius: 8,
+                          border: "1px solid #1d4ed8",
+                          background: "#1d4ed8",
+                          color: "#fff",
+                          fontWeight: 600,
+                          cursor: "pointer",
+                        }}
+                      >
+                        {t("emergencyDisposition.replaceWithUpdatedProposal")}
+                      </button>
+                    </div>
+                  </div>
+                ) : null}
                 <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 8 }}>
                   <div>
                     <label style={labelStyle}>{t("emergencyDisposition.labelAdmissionReason")}</label>
-                    {admissionPacket.fields.admissionReason?.origin ? (
-                      <p style={{ margin: "0 0 4px", fontSize: 11, color: "#0369a1" }}>
-                        {t(`emergencyDisposition.fieldOrigin.${admissionPacket.fields.admissionReason.origin}`)}
-                      </p>
-                    ) : null}
+                    <ProposalSourcesDisclosure
+                      origin={admissionPacket.fields.admissionReason?.origin}
+                      sources={admissionPacket.fields.admissionReason?.sources}
+                      testId="admission-reason-sources"
+                    />
                     {ta(2, admissionForm.admissionReason, (v) => patchAdmission({ admissionReason: v }), medDisabled)}
-                    {(admissionPacket.fields.admissionReason?.sources?.length ?? 0) > 0 ? (
-                      <ul style={{ margin: "4px 0 0", paddingLeft: 18, fontSize: 11, color: "#64748b" }}>
-                        {admissionPacket.fields.admissionReason!.sources.map((s, i) => (
-                          <li key={`${s.kind}-${i}`}>
-                            {s.label}
-                            {s.excerpt ? `: ${s.excerpt}` : ""}
-                          </li>
-                        ))}
-                      </ul>
-                    ) : null}
                   </div>
                   <div>
                     <label style={labelStyle}>{t("emergencyDisposition.labelAdmittingService")}</label>
@@ -1481,21 +1622,97 @@ export function EmergencyDispositionPanel({
                   </div>
                   <div>
                     <label style={labelStyle}>{t("emergencyDisposition.labelInitialPlan")}</label>
-                    {admissionPacket.fields.initialPlan?.origin ? (
-                      <p style={{ margin: "0 0 4px", fontSize: 11, color: "#0369a1" }}>
-                        {t(`emergencyDisposition.fieldOrigin.${admissionPacket.fields.initialPlan.origin}`)}
-                      </p>
-                    ) : null}
+                    <ProposalSourcesDisclosure
+                      origin={admissionPacket.fields.initialPlan?.origin}
+                      sources={admissionPacket.fields.initialPlan?.sources}
+                      testId="initial-plan-sources"
+                    />
                     {ta(2, admissionForm.initialPlan, (v) => patchAdmission({ initialPlan: v }), medDisabled)}
-                    {(admissionPacket.fields.initialPlan?.sources?.length ?? 0) > 0 ? (
-                      <ul style={{ margin: "4px 0 0", paddingLeft: 18, fontSize: 11, color: "#64748b" }}>
-                        {admissionPacket.fields.initialPlan!.sources.map((s, i) => (
-                          <li key={`${s.kind}-${i}`}>
-                            {s.label}
-                            {s.excerpt ? `: ${s.excerpt}` : ""}
-                          </li>
-                        ))}
-                      </ul>
+                    {(admissionPacket.structuredInitialPlan?.items?.length ?? 0) > 0 ? (
+                      <fieldset
+                        style={{
+                          margin: "8px 0 0",
+                          border: "1px solid #e2e8f0",
+                          borderRadius: 10,
+                          padding: 8,
+                        }}
+                        data-testid="structured-initial-plan"
+                      >
+                        <legend style={{ fontSize: 12, fontWeight: 600, color: "#475569", padding: "0 4px" }}>
+                          {t("emergencyDisposition.structuredPlanTitle")}
+                        </legend>
+                        <ul style={{ margin: 0, padding: 0, listStyle: "none" }}>
+                          {admissionPacket.structuredInitialPlan!.items.map((item) => (
+                            <li
+                              key={item.id}
+                              style={{
+                                display: "flex",
+                                gap: 8,
+                                alignItems: "flex-start",
+                                marginBottom: 6,
+                                fontSize: 12,
+                                color: "#334155",
+                              }}
+                            >
+                              <input
+                                type="checkbox"
+                                id={`plan-item-${item.id}`}
+                                disabled={medDisabled}
+                                checked={item.selectedForNarrative}
+                                aria-label={item.display}
+                                onChange={(e) => {
+                                  const selected = e.target.checked;
+                                  setAdmissionPacket((prev) => {
+                                    const items = (prev.structuredInitialPlan?.items ?? []).map((row) =>
+                                      row.id === item.id ? { ...row, selectedForNarrative: selected } : row
+                                    );
+                                    const narrative = buildNarrativeFromStructuredPlanItems(items);
+                                    setAdmissionForm((f) =>
+                                      f.initialPlan.trim() &&
+                                      f.initialPlan !== (prev.fields.initialPlan?.value ?? "")
+                                        ? f
+                                        : { ...f, initialPlan: narrative }
+                                    );
+                                    return {
+                                      ...prev,
+                                      structuredInitialPlan: { items },
+                                      fields: {
+                                        ...prev.fields,
+                                        initialPlan: markFieldPhysicianEdited(
+                                          prev.fields.initialPlan,
+                                          narrative
+                                        ),
+                                      },
+                                    };
+                                  });
+                                }}
+                              />
+                              <label htmlFor={`plan-item-${item.id}`} style={{ flex: 1, cursor: "pointer" }}>
+                                <span
+                                  style={{
+                                    display: "inline-block",
+                                    marginRight: 6,
+                                    padding: "1px 8px",
+                                    borderRadius: 9999,
+                                    fontSize: 10,
+                                    fontWeight: 700,
+                                    background:
+                                      item.status === "ACTIVE_ORDER" ? "#dbeafe" : "#f1f5f9",
+                                    color: item.status === "ACTIVE_ORDER" ? "#1e40af" : "#475569",
+                                  }}
+                                >
+                                  {item.status === "ACTIVE_ORDER"
+                                    ? t("emergencyDisposition.planStatus.activeOrder")
+                                    : item.status === "DISCONTINUED"
+                                      ? t("emergencyDisposition.planStatus.discontinued")
+                                      : t("emergencyDisposition.planStatus.planOnly")}
+                                </span>
+                                {item.display}
+                              </label>
+                            </li>
+                          ))}
+                        </ul>
+                      </fieldset>
                     ) : null}
                   </div>
                   <div>

@@ -33,6 +33,7 @@ import { HospitalEpisodeService } from "./hospital-episode.service";
 import { InternalPlacementService } from "./internal-placement.service";
 import { AdmissionCorrelationService } from "./admission-correlation.service";
 import { AdmissionCorrelationController } from "./admission-correlation.controller";
+import { AdmissionCommandCenterService } from "./admission-command-center.service";
 
 @Module({
   imports: [PrismaModule, DiagnosesModule, OrdersModule, TrackboardModule, FacilitiesModule],
@@ -49,6 +50,7 @@ import { AdmissionCorrelationController } from "./admission-correlation.controll
     EncountersService,
     InpatientOperationsService,
     AdmissionCorrelationService,
+    AdmissionCommandCenterService,
     HospitalCensusService,
     HospitalUnitRegistryService,
     ChartCertificationB1Service,
@@ -77,6 +79,7 @@ import { AdmissionCorrelationController } from "./admission-correlation.controll
     HospitalEpisodeService,
     InternalPlacementService,
     AdmissionCorrelationService,
+    AdmissionCommandCenterService,
   ],
 })
 export class EncountersModule {}

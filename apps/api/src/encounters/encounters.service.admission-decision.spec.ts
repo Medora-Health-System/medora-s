@@ -33,9 +33,9 @@ function baseDto(mode: "DRAFT" | "SIGN" = "SIGN") {
     mode,
     admissionSummary: {
       admissionReason: "Needs inpatient care",
-      serviceUnit: "Hospital medicine",
+      serviceUnit: "HOSPITAL_MEDICINE",
       admissionDiagnosis: "Pneumonia",
-      careLevel: "Medical/Surgical",
+      careLevel: "MEDICAL_SURGICAL",
       conditionAtAdmission: "Stable",
       initialPlan: "IV Abx",
       responsiblePhysicianName: "Dr Dual",
@@ -46,6 +46,25 @@ function baseDto(mode: "DRAFT" | "SIGN" = "SIGN") {
       primaryDisplay: "J18.9 — Pneumonia",
       secondaryDisplays: ["I10 — HTN"],
       clarificationText: null,
+    },
+    admissionPacket: {
+      version: 1 as const,
+      admittingServiceCode: "HOSPITAL_MEDICINE",
+      levelOfCareCode: "MEDICAL_SURGICAL",
+      conditionStatus: "STABLE",
+      fields: {
+        admissionReason: {
+          value: "Needs inpatient care",
+          origin: "PHYSICIAN_EDITED",
+          sources: [],
+        },
+        initialPlan: {
+          value: "IV Abx",
+          origin: "PHYSICIAN_EDITED",
+          sources: [],
+        },
+      },
+      structuredInitialPlan: { items: [] },
     },
     requestedEncounterType: "INPATIENT" as const,
   };
@@ -192,5 +211,57 @@ describe("EncountersService.recordAdmissionDecision", () => {
     const ok = await svc.actorHasProviderOrAdminAtFacility(facilityId, userId);
     expect(ok).toBe(true);
     expect(prisma.userRole.findFirst).toHaveBeenCalled();
+  });
+
+  it("rejects SIGN without condition status (D4A.2.1)", async () => {
+    const { svc, updateMany } = buildService({ roleCodes: ["PROVIDER"] });
+    const dto = {
+      ...baseDto("SIGN"),
+      admissionPacket: {
+        ...baseDto("SIGN").admissionPacket,
+        conditionStatus: null,
+      },
+    };
+    await expect(
+      svc.recordAdmissionDecision(facilityId, encounterId, dto as never, userId)
+    ).rejects.toMatchObject({ response: { code: "CONDITION_ON_ADMISSION_REQUIRED" } });
+    expect(updateMany).not.toHaveBeenCalled();
+  });
+
+  it("rejects stale expectedVersion (D4A.2.1)", async () => {
+    const { svc, updateMany } = buildService({ roleCodes: ["PROVIDER"] });
+    await expect(
+      svc.recordAdmissionDecision(
+        facilityId,
+        encounterId,
+        { ...baseDto("DRAFT"), expectedVersion: 1 } as never,
+        userId
+      )
+    ).rejects.toMatchObject({ response: { code: "ADMISSION_DECISION_STALE" } });
+    expect(updateMany).not.toHaveBeenCalled();
+  });
+
+  it("idempotent SIGN replay with same clientRequestId does not double-audit", async () => {
+    const signedEncounter = {
+      ...openEdEncounter,
+      admissionSummaryJson: {
+        ...openEdEncounter.admissionSummaryJson,
+        admissionDecisionMode: "SIGN",
+        admissionDecisionClientRequestId: "idem-1",
+      },
+    };
+    const { svc, updateMany, audit } = buildService({
+      roleCodes: ["PROVIDER"],
+      encounter: signedEncounter,
+    });
+    const res = await svc.recordAdmissionDecision(
+      facilityId,
+      encounterId,
+      { ...baseDto("SIGN"), clientRequestId: "idem-1" } as never,
+      userId
+    );
+    expect(res.idempotentReplay).toBe(true);
+    expect(updateMany).not.toHaveBeenCalled();
+    expect(audit.log).not.toHaveBeenCalled();
   });
 });

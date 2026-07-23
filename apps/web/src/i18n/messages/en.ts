@@ -42,6 +42,8 @@ import { providerDocumentationObGynUrologyComplaintIntelEn } from "./providerDoc
 import { providerDocumentationPsychiatricBehavioralComplaintIntelEn } from "./providerDocumentationPsychiatricBehavioralComplaintIntel.en";
 import { hospitalAdmissionD4a0En } from "./hospitalAdmissionD4a0.en";
 import { emergencyAdaptiveNursingEn } from "./emergencyAdaptiveNursing.en";
+import { admissionWorkflowVisibilityEn } from "./admissionWorkflowVisibility.en";
+import { admissionCommandCenterEn } from "./admissionCommandCenter.en";
 import { hospitalAdmissionD4a1En } from "./hospitalAdmissionD4a1.en";
 
 export default {
@@ -13051,6 +13053,19 @@ export default {
       initialPlan: "Initial plan",
       admittingPhysician: "Admitting / accepting physician",
       admissionNoStructured: "No structured admission summary is recorded in the encounter yet.",
+      admissionDraftWatermark: "DRAFT — not a signed admission summary",
+      admissionProvenance: "Field provenance",
+      provenance: {
+        IMPORTED_FROM_CHART: "Imported from chart",
+        SUGGESTED_FROM_DOCUMENTED_CHART: "Suggested from documented chart information",
+        EDITED_BY_PHYSICIAN: "Edited by physician",
+      },
+      conditionStatus: "Condition status",
+      structuredPlanItems: "Structured plan items",
+      planActiveOrder: "Active order",
+      planOnly: "Plan only",
+      decisionTimestamp: "Decision timestamp",
+      nursingDepartureSummary: "Nursing departure / handoff",
       sectionTransferClinical: "Transfer (clinical summary)",
       handoffSummary: "Handoff summary",
       transferReason: "Transfer reason",
@@ -14255,6 +14270,21 @@ export default {
     labelConditionStatus: "Condition on admission (structured)",
     smartPacketProvenanceHint:
       "Proposals use documented facts only. Origin: imported chart fact, system proposal, or physician-edited final text.",
+    sourcesUsed: "Sources used",
+    newerProposalAvailable: "A newer proposal is available from updated chart documentation.",
+    keepPhysicianText: "Keep physician text",
+    replaceWithUpdatedProposal: "Replace with updated proposal",
+    structuredPlanTitle: "Structured initial plan items",
+    planStatus: {
+      activeOrder: "Active order",
+      planOnly: "Plan only",
+      discontinued: "Discontinued",
+    },
+    provenanceDisplay: {
+      IMPORTED_FROM_CHART: "Imported from chart",
+      SUGGESTED_FROM_DOCUMENTED_CHART: "Suggested from documented chart information",
+      EDITED_BY_PHYSICIAN: "Edited by physician",
+    },
     fieldOrigin: {
       IMPORTED_CHART_FACT: "Imported chart fact",
       SYSTEM_PROPOSAL: "System proposal (editable)",
@@ -14271,7 +14301,9 @@ export default {
     },
     signDecisionOk: "Disposition decision signed. Physical departure and closure remain separate steps.",
     signAdmissionOk:
-      "Admission signed and submitted. The ED encounter stays open until the governed departure/transition.",
+      "Admission Decision Signed. The patient remains in the Emergency Department. No inpatient encounter has been created. Placement workflow is currently unavailable. The admission package has been saved successfully.",
+    signAdmissionOkPlacementOn:
+      "Admission Decision Signed. Placement Request Created. Waiting for Bed Assignment.",
     signDecisionUnauthorized: "Only authorized clinicians may sign the disposition decision.",
     decisionDoesNotClose: "Signing the disposition decision does not close the encounter.",
     labelAdmissionDiagnoses: "Admission diagnoses (chart)",
@@ -14284,14 +14316,31 @@ export default {
     errors: {
       permissionDenied: "You do not have permission to sign this encounter.",
       primaryDiagnosisRequired: "Select a primary admission diagnosis before signing.",
+      ADMISSION_PRIMARY_DIAGNOSIS_REQUIRED: "Select a primary admission diagnosis before signing.",
+      ADMISSION_DIAGNOSIS_NOT_ON_ENCOUNTER:
+        "A selected admission diagnosis is not on this encounter.",
+      ADMISSION_DUPLICATE_DIAGNOSIS_SELECTION:
+        "The same diagnosis cannot be both primary and secondary.",
+      ADMITTING_SERVICE_REQUIRED: "Select an admitting service before signing.",
       ADMITTING_SERVICE_INVALID: "Invalid admitting service.",
       ADMITTING_SERVICE_OTHER_CLARIFICATION_REQUIRED:
         "Clarify the service when Other is selected.",
+      LEVEL_OF_CARE_REQUIRED: "Select a level of care before signing.",
       LEVEL_OF_CARE_INVALID: "Invalid level of care.",
       LEVEL_OF_CARE_OTHER_CLARIFICATION_REQUIRED:
         "Clarify the level of care when Other is selected.",
       LEVEL_OF_CARE_UNIT_INCOMPATIBLE: "Level of care is incompatible with the requested unit.",
+      INVALID_SERVICE_LEVEL_OF_CARE_COMBINATION:
+        "This service and level-of-care combination is not permitted.",
       SERVICE_LOC_INCOMPATIBLE: "Service and level of care are incompatible.",
+      REASON_FOR_ADMISSION_REQUIRED: "Reason for admission is required to sign.",
+      CONDITION_ON_ADMISSION_REQUIRED: "Condition on admission is required to sign.",
+      INITIAL_PLAN_REQUIRED: "Initial plan narrative or structured items are required to sign.",
+      ADMISSION_PROVIDER_NOT_AUTHORIZED: "Only a provider or admin may sign admission.",
+      ADMISSION_DECISION_STALE: "Admission documentation changed elsewhere. Refresh and retry.",
+      ADMISSION_ALREADY_SIGNED: "Admission decision is already signed.",
+      ENCOUNTER_NOT_EDITABLE: "This encounter is no longer editable for admission.",
+      ADMISSION_SIGNATURE_METADATA_REQUIRED: "Responsible physician is required to sign.",
       requestId: "Support ref",
       PATIENT_NOT_FOUND_IN_FACILITY:
         "Patient not found at this facility. Check selection and login site.",
@@ -19073,6 +19122,8 @@ export default {
 
   hospitalAdmissionD4a0: hospitalAdmissionD4a0En,
   emergencyAdaptiveNursing: emergencyAdaptiveNursingEn,
+  admissionWorkflowVisibility: admissionWorkflowVisibilityEn,
+  admissionCommandCenter: admissionCommandCenterEn,
 
   hospitalCareD3e6d: {
     bedBoard: {

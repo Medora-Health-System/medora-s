@@ -3,10 +3,12 @@
  * Facility id always from JWT — never from client body.
  */
 
-import { Controller, Get, Query, Req, UseGuards } from "@nestjs/common";
+import { Controller, Get, Param, Query, Req, UseGuards } from "@nestjs/common";
 import { AuthGuard } from "@nestjs/passport";
 import { RoleCode } from "@prisma/client";
 import {
+  ADMISSION_COMMAND_CENTER_FILTERS,
+  ADMISSION_COMMAND_CENTER_SORTS,
   buildHospitalCareDashboardSummary,
   directInpatientAdmissionEnabled,
   evaluateHospitalCareFlagPairs,
@@ -21,6 +23,8 @@ import {
   observationDepartmentalFlagsFromProcessEnv,
   receivingEncounterFoundationEnabledFromProcessEnv,
   UNIFIED_HOSPITAL_CENSUS_CERTIFICATION_ID,
+  type AdmissionCommandCenterFilter,
+  type AdmissionCommandCenterSort,
   type HospitalCareDashboardCapabilities,
   type HospitalOperationalSnapshotV1,
 } from "@medora/shared";
@@ -28,6 +32,7 @@ import { RolesGuard, RequireRoles } from "../common/guards/roles.guard";
 import { InternalPlacementService } from "./internal-placement.service";
 import { HospitalCensusService } from "./hospital-census.service";
 import { HospitalUnitRegistryService } from "./hospital-unit-registry.service";
+import { AdmissionCommandCenterService } from "./admission-command-center.service";
 
 function facilityIdFromReq(req: { user?: { facilityId?: string } }): string {
   return String(req.user?.facilityId ?? "").trim();
@@ -39,7 +44,8 @@ export class HospitalCareController {
   constructor(
     private readonly placement: InternalPlacementService,
     private readonly hospitalCensus: HospitalCensusService,
-    private readonly unitRegistry: HospitalUnitRegistryService
+    private readonly unitRegistry: HospitalUnitRegistryService,
+    private readonly admissionCommandCenter: AdmissionCommandCenterService
   ) {}
 
   @Get("meta")
@@ -96,6 +102,58 @@ export class HospitalCareController {
         ? normalized
         : "ALL_HOSPITAL_CARE";
     return this.hospitalCensus.getHospitalCensus(facilityIdFromReq(req), { snapshotScope });
+  }
+
+  /**
+   * D4A.2.3 — Facility-scoped Admission Command Center (operational read model).
+   * JWT facility is authoritative; client facilityId is ignored.
+   */
+  @Get("admission-command-center")
+  @RequireRoles(RoleCode.PROVIDER, RoleCode.RN, RoleCode.ADMIN)
+  async admissionCommandCenterList(
+    @Req() req: { user?: { facilityId?: string } },
+    @Query("filter") filter?: string,
+    @Query("sort") sort?: string,
+    @Query("service") service?: string,
+    @Query("unit") unit?: string,
+    @Query("levelOfCare") levelOfCare?: string,
+    @Query("unassignedOnly") unassignedOnly?: string
+  ) {
+    const facilityId = facilityIdFromReq(req);
+    const filterNorm = String(filter ?? "ALL_PENDING").trim().toUpperCase();
+    const sortNorm = String(sort ?? "LONGEST_WAITING").trim().toUpperCase();
+    const safeFilter = (
+      ADMISSION_COMMAND_CENTER_FILTERS as readonly string[]
+    ).includes(filterNorm)
+      ? (filterNorm as AdmissionCommandCenterFilter)
+      : "ALL_PENDING";
+    const safeSort = (ADMISSION_COMMAND_CENTER_SORTS as readonly string[]).includes(
+      sortNorm
+    )
+      ? (sortNorm as AdmissionCommandCenterSort)
+      : "LONGEST_WAITING";
+    return this.admissionCommandCenter.listCommandCenter(facilityId, {
+      filter: safeFilter,
+      sort: safeSort,
+      service,
+      unit,
+      levelOfCare,
+      unassignedOnly:
+        unassignedOnly === "1" ||
+        String(unassignedOnly ?? "").toLowerCase() === "true",
+    });
+  }
+
+  @Get("admission-command-center/:encounterId")
+  @RequireRoles(RoleCode.PROVIDER, RoleCode.RN, RoleCode.ADMIN)
+  async admissionCommandCenterDetail(
+    @Param("encounterId") encounterId: string,
+    @Req() req: { user?: { facilityId?: string } }
+  ) {
+    return this.admissionCommandCenter.getCommandCenterDetail(
+      facilityIdFromReq(req),
+      encounterId
+    );
   }
 
   @Get("dashboard")

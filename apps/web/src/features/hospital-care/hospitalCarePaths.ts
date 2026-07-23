@@ -8,10 +8,24 @@ export const HOSPITAL_CARE_PLACEMENT_QUEUE = "/app/hospitalisation/placement-que
 export const HOSPITAL_CARE_OBSERVATION = "/app/hospitalisation/observation";
 export const HOSPITAL_CARE_INPATIENT = "/app/hospitalisation/inpatient";
 export const HOSPITAL_CARE_ADMISSIONS = "/app/hospitalisation/admissions";
+/** D4A.2.3 — facility-scoped operational admission command center. */
+export const HOSPITAL_CARE_ADMISSION_COMMAND_CENTER =
+  "/app/hospitalisation/admissions/command-center";
 export const HOSPITAL_CARE_BEDS = "/app/hospitalisation/beds";
 export const HOSPITAL_CARE_TRANSFERS = "/app/hospitalisation/transfers";
 /** Preserved operational floor board (pre-D3CA) — not clinical documentation. */
 export const HOSPITAL_CARE_FLOOR_BOARD = "/app/hospitalisation/floor-board";
+
+/** D4A.2.2 — post-SIGN admission package review (not census / placement board). */
+export function hospitalAdmissionReviewPath(encounterId: string): string {
+  return `/app/hospitalisation/admissions/review/${encodeURIComponent(encounterId)}`;
+}
+
+/** D4A.2.3 — deep-link a signed admission in the command center. */
+export function hospitalAdmissionCommandCenterPath(encounterId?: string): string {
+  if (!encounterId?.trim()) return HOSPITAL_CARE_ADMISSION_COMMAND_CENTER;
+  return `${HOSPITAL_CARE_ADMISSION_COMMAND_CENTER}?encounterId=${encodeURIComponent(encounterId)}`;
+}
 
 export type HospitalCareSectionId =
   | "home"

@@ -280,7 +280,7 @@ export type AdmissionDiagnosesV1 = z.infer<typeof admissionDiagnosesV1Schema>;
  * Preserves nested admissionSummaryJson keys (e.g. admissionCorrelation).
  * Does not close the ED encounter.
  */
-/** D4A.2 nested provenance packet — validated lightly; full shape in smartAdmissionPacketD4a2. */
+/** D4A.2 / D4A.2.1 nested provenance packet — validated lightly; full shape in smartAdmissionPacketD4a2. */
 export const admissionPacketV1DtoSchema = z
   .object({
     version: z.literal(1).optional(),
@@ -291,6 +291,13 @@ export const admissionPacketV1DtoSchema = z
     requestedUnitCode: z.string().max(128).nullable().optional(),
     conditionStatus: z.string().max(64).nullable().optional(),
     fields: z.record(z.unknown()).optional(),
+    structuredInitialPlan: z
+      .object({
+        items: z.array(z.record(z.unknown())).max(200).optional(),
+      })
+      .passthrough()
+      .optional()
+      .nullable(),
     certification: z.string().max(128).optional(),
   })
   .passthrough();
@@ -309,6 +316,10 @@ export const encounterAdmissionDecisionDtoSchema = z.object({
   /** Optional unit code for placement (e.g. MS). */
   requestedUnitCode: z.string().max(128).optional().nullable(),
   clinicalPriority: z.string().max(256).optional().nullable(),
+  /** D4A.2.1 — encounter.version for stale-write protection. */
+  expectedVersion: z.number().int().nonnegative().optional(),
+  /** Client idempotency key for repeated SIGN clicks (PHI-safe opaque string). */
+  clientRequestId: z.string().max(128).optional().nullable(),
 });
 
 export type EncounterAdmissionDecisionDto = z.infer<typeof encounterAdmissionDecisionDtoSchema>;
