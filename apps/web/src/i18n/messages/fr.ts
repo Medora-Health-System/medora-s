@@ -30,6 +30,7 @@ import { enterpriseCommandD4a27Fr } from "./enterpriseCommandD4a27.fr";
 import { operationalGovernanceD4a27aFr } from "./operationalGovernanceD4a27a.fr";
 import { inpatientWorkspaceRecoveryD4a27bFr } from "./inpatientWorkspaceRecoveryD4a27b.fr";
 import { inpatientRapidConvergenceD4a27cFr } from "./inpatientRapidConvergenceD4a27c.fr";
+import { enterpriseWorkflowD4a28Fr } from "./enterpriseWorkflowD4a28.fr";
 import { providerDocumentationGuRenalComplaintIntel19Mdm5Fr } from "./providerDocumentationGuRenalComplaintIntel19Mdm5.fr";
 import { providerDocumentationInfectiousEntComplaintIntel19Mdm7Fr } from "./providerDocumentationInfectiousEntComplaintIntel19Mdm7.fr";
 import { providerDocumentationDentalOralComplaintIntelFr } from "./providerDocumentationDentalOralComplaintIntel.fr";
@@ -2141,6 +2142,7 @@ export default {
     revenueCycleLink: "Cycle de revenus",
     revenueClaimSubmissionLink: "Soumission des réclamations",
     revenuePaymentLink: "Paiements et ERA",
+    enterpriseWorkflowLink: "Tableau de bord des flux d’entreprise",
   },
   revenueCycle: {
     title: "Cycle de revenus",
@@ -19232,6 +19234,7 @@ export default {
   operationalGovernanceD4a27a: operationalGovernanceD4a27aFr,
   inpatientWorkspaceRecoveryD4a27b: inpatientWorkspaceRecoveryD4a27bFr,
   inpatientRapidConvergenceD4a27c: inpatientRapidConvergenceD4a27cFr,
+  enterpriseWorkflowD4a28: enterpriseWorkflowD4a28Fr,
 
   hospitalCareD3e6d: {
     bedBoard: {

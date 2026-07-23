@@ -23,6 +23,12 @@ export const HOSPITAL_CARE_ENTERPRISE_OPERATIONS =
 /** D4A.2.7A — Inpatient Operational Dashboard (no ED logic). */
 export const HOSPITAL_CARE_INPATIENT_OPERATIONS =
   "/app/hospitalisation/inpatient-operations";
+/** D4A.2.8 — Enterprise Workflow & Task worklists (not ED dashboard). */
+export const HOSPITAL_CARE_ENTERPRISE_WORKFLOW =
+  "/app/hospitalisation/enterprise-workflow";
+/** D4A.2.8 — Admin enterprise workflow dashboard. */
+export const HOSPITAL_CARE_ENTERPRISE_WORKFLOW_ADMIN =
+  "/app/hospitalisation/enterprise-workflow/admin";
 /** Existing ED operational dashboard — do not redesign from hospital-care. */
 export const EMERGENCY_DEPARTMENT_OPERATIONAL_DASHBOARD = "/app/trackboard";
 
