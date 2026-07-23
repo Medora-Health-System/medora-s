@@ -9,11 +9,16 @@ import {
 export function InpatientWorkspaceSectionNav({
   active,
   onSelect,
+  allowedSections,
 }: {
   active: InpatientWorkspaceSection;
   onSelect: (section: InpatientWorkspaceSection) => void;
+  allowedSections?: readonly InpatientWorkspaceSection[];
 }) {
   const { t } = useI18n();
+  const sections = allowedSections?.length
+    ? INPATIENT_WORKSPACE_SECTIONS.filter((s) => allowedSections.includes(s.id))
+    : INPATIENT_WORKSPACE_SECTIONS;
   return (
     <nav
       aria-label={t("inpatientD3e.sectionNavAria")}
@@ -24,7 +29,7 @@ export function InpatientWorkspaceSectionNav({
         marginBottom: 12,
       }}
     >
-      {INPATIENT_WORKSPACE_SECTIONS.map((s) => {
+      {sections.map((s) => {
         const isActive = s.id === active;
         return (
           <button

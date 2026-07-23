@@ -11,6 +11,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   Req,
   UseGuards,
 } from "@nestjs/common";
@@ -146,6 +147,32 @@ export class InpatientOperationsController {
   @RequireRoles(RoleCode.PROVIDER, RoleCode.RN, RoleCode.ADMIN)
   async getClinicalOps(@Param("encounterId") encounterId: string, @Req() req: any) {
     return this.ops.getClinicalOps(facilityIdFromReq(req), encounterId);
+  }
+
+  /** D4A.2.7B — Hospital workspace bootstrap (type-gated; chart-access audit). */
+  @Get("encounters/:encounterId/workspace-bootstrap")
+  @RequireRoles(RoleCode.PROVIDER, RoleCode.RN, RoleCode.ADMIN, RoleCode.LAB, RoleCode.RADIOLOGY)
+  async getWorkspaceBootstrap(
+    @Param("encounterId") encounterId: string,
+    @Query("role") role: string | undefined,
+    @Req() req: any
+  ) {
+    const roleNorm = String(role ?? "CHART")
+      .trim()
+      .toUpperCase();
+    const safeRole =
+      roleNorm === "PROVIDER" ||
+      roleNorm === "NURSING" ||
+      roleNorm === "TECHNICIAN" ||
+      roleNorm === "CHART"
+        ? roleNorm
+        : "CHART";
+    return this.ops.getWorkspaceBootstrap(facilityIdFromReq(req), encounterId, userIdFromReq(req), {
+      role: safeRole,
+      ip: req.ip,
+      userAgent: req.headers?.["user-agent"],
+      workspace: "inpatient",
+    });
   }
 
   @Patch("encounters/:encounterId/clinical-ops")

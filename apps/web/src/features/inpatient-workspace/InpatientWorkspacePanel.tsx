@@ -12,9 +12,9 @@ import {
 } from "@medora/shared";
 import { EmergencyErOrdersPanel } from "@/features/emergency/EmergencyErOrdersPanel";
 import { EmergencyResultsPanel } from "@/features/emergency/EmergencyResultsPanel";
-import { EmergencyErNotesPanel } from "@/features/emergency/EmergencyErNotesPanel";
 import { MedicationAdministrationTab } from "@/components/encounters/MedicationAdministrationTab";
 import type { InpatientWorkspaceSection } from "./inpatientWorkspaceSections";
+import type { InpatientWorkspaceRole } from "@medora/shared";
 import {
   isInpatientCarePlanEnabledInBrowser,
   isInpatientConsultsEnabledInBrowser,
@@ -28,6 +28,7 @@ import {
 import { InpatientClinicalOpsPanel } from "./InpatientClinicalOpsPanel";
 import { InpatientAdmissionClinicalShell } from "./InpatientAdmissionClinicalShell";
 import { InpatientProviderWorkspacePanel } from "./InpatientProviderWorkspacePanel";
+import { ClinicalAvailabilityBanner } from "./rapid-documentation/ClinicalRapidControls";
 
 export type InpatientWorkspaceEncounterLite = {
   id: string;
@@ -70,6 +71,8 @@ export function InpatientWorkspacePanel({
   encounterId,
   encounter,
   workspaceEnabled,
+  writersEnabled = true,
+  workspaceRole = "CHART",
   onRefetchEncounter,
   onNavigateSection,
 }: {
@@ -77,6 +80,8 @@ export function InpatientWorkspacePanel({
   encounterId: string;
   encounter: InpatientWorkspaceEncounterLite | null;
   workspaceEnabled?: boolean;
+  writersEnabled?: boolean;
+  workspaceRole?: InpatientWorkspaceRole;
   onRefetchEncounter: () => Promise<void>;
   onNavigateSection?: (section: InpatientWorkspaceSection) => void;
 }) {
@@ -90,11 +95,27 @@ export function InpatientWorkspacePanel({
   const consultsLive = isInpatientConsultsEnabledInBrowser();
   const carePlanLive = isInpatientCarePlanEnabledInBrowser();
   const dischargeLive = isInpatientDischargePlanningEnabledInBrowser();
-  const canPrescribe = roles.includes("PROVIDER") || roles.includes("ADMIN");
-  const canProviderWrite = roles.includes("PROVIDER") || roles.includes("ADMIN");
+  const canPrescribe =
+    writersEnabled &&
+    (workspaceRole === "PROVIDER" || workspaceRole === "CHART") &&
+    (roles.includes("PROVIDER") || roles.includes("ADMIN"));
+  const canProviderWrite =
+    writersEnabled &&
+    (workspaceRole === "PROVIDER" || workspaceRole === "CHART") &&
+    (roles.includes("PROVIDER") || roles.includes("ADMIN"));
   const canAck =
-    roles.includes("PROVIDER") || roles.includes("RN") || roles.includes("ADMIN");
+    writersEnabled &&
+    (roles.includes("PROVIDER") || roles.includes("RN") || roles.includes("ADMIN"));
   const signed = (encounter?.providerDocumentationStatus ?? "").trim() === "SIGNED";
+
+  if (!writersEnabled) {
+    return (
+      <ClinicalAvailabilityBanner
+        state="ENCOUNTER_MISMATCH"
+        message={t("inpatientWorkspaceRecoveryD4a27b.unavailable.writersDisabled")}
+      />
+    );
+  }
 
   if (!enabled) {
     return (
@@ -182,21 +203,9 @@ export function InpatientWorkspacePanel({
             isLocked={signed}
             onNavigateSection={onNavigateSection}
           />
-          {docsLive ? (
-            <div style={{ marginTop: 12 }}>
-              <p style={{ margin: "0 0 10px", fontSize: 12, color: "#64748b" }}>
-                {t("inpatientD3e.historyPhysical.reuseNotesHint")}
-              </p>
-              <EmergencyErNotesPanel
-                encounterId={encounterId}
-                facilityId={facilityId}
-                status={encounter?.status}
-                isLocked={signed}
-                roleCodes={roles}
-                onSaved={onRefetchEncounter}
-              />
-            </div>
-          ) : null}
+          <p style={{ margin: "12px 0 0", fontSize: 12, color: "#64748b" }}>
+            {t("inpatientWorkspaceRecoveryD4a27b.notes.governedHpOnly")}
+          </p>
         </div>
       );
     case "progressNotes":
@@ -219,21 +228,9 @@ export function InpatientWorkspacePanel({
             isLocked={signed}
             onNavigateSection={onNavigateSection}
           />
-          {docsLive ? (
-            <div style={{ marginTop: 12 }}>
-              <p style={{ margin: "0 0 10px", fontSize: 12, color: "#64748b" }}>
-                {t("inpatientProviderD4a26.progress.reuseNotes")}
-              </p>
-              <EmergencyErNotesPanel
-                encounterId={encounterId}
-                facilityId={facilityId}
-                status={encounter?.status}
-                isLocked={signed}
-                roleCodes={roles}
-                onSaved={onRefetchEncounter}
-              />
-            </div>
-          ) : null}
+          <p style={{ margin: "12px 0 0", fontSize: 12, color: "#64748b" }}>
+            {t("inpatientWorkspaceRecoveryD4a27b.notes.governedProgressOnly")}
+          </p>
         </div>
       );
     case "nursing":
@@ -256,21 +253,9 @@ export function InpatientWorkspacePanel({
       return (
         <div data-testid="inpatient-panel-nursing-live">
           <InpatientClinicalOpsPanel encounterId={encounterId} mode="nursing" />
-          {docsLive ? (
-            <div style={{ marginTop: 12 }}>
-              <p style={{ margin: "0 0 8px", fontSize: 12, color: "#64748b" }}>
-                {t("inpatientD3e7.ops.nursingNotesHint")}
-              </p>
-              <EmergencyErNotesPanel
-                encounterId={encounterId}
-                facilityId={facilityId}
-                status={encounter?.status}
-                isLocked={signed}
-                roleCodes={roles}
-                onSaved={onRefetchEncounter}
-              />
-            </div>
-          ) : null}
+          <p style={{ margin: "12px 0 0", fontSize: 12, color: "#64748b" }}>
+            {t("inpatientWorkspaceRecoveryD4a27b.notes.governedNursingOnly")}
+          </p>
         </div>
       );
     case "orders":

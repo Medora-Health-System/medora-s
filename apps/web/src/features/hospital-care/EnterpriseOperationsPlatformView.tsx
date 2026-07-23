@@ -21,6 +21,7 @@ import {
   EMERGENCY_DEPARTMENT_OPERATIONAL_DASHBOARD,
   HOSPITAL_CARE_ENTERPRISE_COMMAND,
   HOSPITAL_CARE_INPATIENT_OPERATIONS,
+  HOSPITAL_CARE_OBSERVATION,
 } from "./hospitalCarePaths";
 import {
   fetchAuditCenter,
@@ -172,6 +173,16 @@ export function EnterpriseOperationsPlatformView() {
           </span>
           <Link href={HOSPITAL_CARE_INPATIENT_OPERATIONS} style={{ fontWeight: 600, color: "#0f766e" }}>
             {t("operationalGovernanceD4a27a.platform.inpatientOpen")}
+          </Link>
+        </article>
+
+        <article style={cardStyle} data-testid="ops-observation-card">
+          <strong>{t("inpatientWorkspaceRecoveryD4a27b.admin.observationOperations")}</strong>
+          <span style={{ fontSize: 12, color: "#64748b" }}>
+            {t("operationalGovernanceD4a27a.platform.separationBanner")}
+          </span>
+          <Link href={HOSPITAL_CARE_OBSERVATION} style={{ fontWeight: 600, color: "#0f766e" }}>
+            {t("inpatientWorkspaceRecoveryD4a27b.admin.observationOperations")}
           </Link>
         </article>
 
