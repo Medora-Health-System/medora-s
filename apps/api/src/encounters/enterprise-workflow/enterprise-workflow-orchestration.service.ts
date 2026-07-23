@@ -35,6 +35,7 @@ import { EnterpriseWorkflowEngine } from "./enterprise-workflow.engine";
 import { ClinicalEventEngine } from "./clinical-event.engine";
 import { EscalationEngine } from "./escalation.engine";
 import { HospitalTimelineEngine } from "./hospital-timeline.engine";
+import { ClinicalRulesOrchestrationService } from "./clinical-rules-orchestration.service";
 
 const CENSUS_SCAN_LIMIT = 120;
 
@@ -50,7 +51,8 @@ export class EnterpriseWorkflowOrchestrationService {
     private readonly workflowEngine: EnterpriseWorkflowEngine,
     private readonly eventEngine: ClinicalEventEngine,
     private readonly escalationEngine: EscalationEngine,
-    private readonly timelineEngine: HospitalTimelineEngine
+    private readonly timelineEngine: HospitalTimelineEngine,
+    private readonly clinicalRules: ClinicalRulesOrchestrationService
   ) {}
 
   private async loadEncounterBag(facilityId: string, encounterId: string) {
@@ -152,9 +154,9 @@ export class EnterpriseWorkflowOrchestrationService {
       certification: ENTERPRISE_WORKFLOW_ENGINE_CERTIFICATION_ID,
       definitions: this.workflowEngine.listDefinitions(),
       escalationTemplates: this.escalationEngine.listTemplates(),
-      rulesEngineEnabled: false as const,
+      rulesEngineEnabled: true as const,
       placementEnabled: false as const,
-      autoGenerationMode: "DEFINITION_DRIVEN" as const,
+      autoGenerationMode: "DEFINITION_AND_RULES" as const,
     };
   }
 
@@ -386,8 +388,49 @@ export class EnterpriseWorkflowOrchestrationService {
       nowIso
     );
     if (!result.ok) this.throwOnFail(result);
+
+    let finalDoc = result.doc;
+    let rulesMeta: {
+      matchedRuleIds: string[];
+      appliedActionTypes: string[];
+    } | null = null;
+
     if (!result.idempotentReplay) {
-      await this.persistDoc(enc, result.doc);
+      // D4A.2.8A — policy hooks: evaluate clinical rules after definition-driven generation.
+      try {
+        const rulesResult = await this.clinicalRules.evaluateAndApplyForOrchestrationEvent({
+          facilityId,
+          encounterId: enc.id,
+          patientId: enc.patientId,
+          hospitalEpisodeId: enc.hospitalEpisodeId,
+          actorUserId,
+          eventType: result.event.type,
+          eventId: result.event.eventId,
+          occurredAt: result.event.occurredAt,
+          payload: body.payload,
+          orchestrationDoc: result.doc,
+          admissionSummaryJson: enc.admissionSummaryJson,
+        });
+        finalDoc = rulesResult.orchestrationDoc;
+        rulesMeta = {
+          matchedRuleIds: rulesResult.evaluation.matchedRuleIds,
+          appliedActionTypes: rulesResult.appliedActionTypes,
+        };
+        await this.prisma.encounter.update({
+          where: { id: enc.id },
+          data: {
+            admissionSummaryJson: rulesResult.admissionSummaryJson as Prisma.InputJsonValue,
+            version: { increment: 1 },
+          },
+          select: { id: true },
+        });
+      } catch (err) {
+        this.logger.warn(
+          `clinical_rules_eval_failed encounter=${enc.id} err=${String(err)}`
+        );
+        await this.persistDoc(enc, result.doc);
+      }
+
       await this.audit.log(AuditAction.ENCOUNTER_UPDATE, "EnterpriseClinicalEvent", {
         userId: actorUserId,
         facilityId,
@@ -401,6 +444,8 @@ export class EnterpriseWorkflowOrchestrationService {
           idempotencyKey: result.event.idempotencyKey,
           appliedDefinitionCodes: result.event.appliedDefinitionCodes,
           generatedTaskIds: result.event.generatedTaskIds,
+          rulesMatched: rulesMeta?.matchedRuleIds ?? [],
+          rulesActions: rulesMeta?.appliedActionTypes ?? [],
         },
       });
     }
@@ -408,9 +453,11 @@ export class EnterpriseWorkflowOrchestrationService {
       certification: ENTERPRISE_WORKFLOW_ENGINE_CERTIFICATION_ID,
       event: result.event,
       idempotentReplay: result.idempotentReplay,
-      doc: result.doc,
-      autoGenerationMode: "DEFINITION_DRIVEN" as const,
-      rulesEngineEnabled: false as const,
+      doc: finalDoc,
+      autoGenerationMode: "DEFINITION_AND_RULES" as const,
+      rulesEngineEnabled: true as const,
+      rulesMatched: rulesMeta?.matchedRuleIds ?? [],
+      rulesActions: rulesMeta?.appliedActionTypes ?? [],
     };
   }
 

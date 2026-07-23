@@ -54,6 +54,31 @@ describe("EnterpriseWorkflowOrchestrationService D4A.2.8", () => {
 
   let service: EnterpriseWorkflowOrchestrationService;
 
+  const clinicalRules = {
+    evaluateAndApplyForOrchestrationEvent: jest.fn(
+      async (input: {
+        orchestrationDoc: ReturnType<typeof readEnterpriseWorkflowOrchestrationDoc>;
+        admissionSummaryJson: unknown;
+      }) => {
+        const admissionSummaryJson = mergeEnterpriseWorkflowOrchestrationIntoSummary(
+          input.admissionSummaryJson,
+          input.orchestrationDoc
+        );
+        return {
+          evaluation: {
+            matchedRuleIds: [],
+            actions: [],
+            executions: [],
+          },
+          orchestrationDoc: input.orchestrationDoc,
+          admissionSummaryJson,
+          appliedActionTypes: [],
+          skipped: [],
+        };
+      }
+    ),
+  };
+
   beforeEach(() => {
     admissionSummaryJson = {};
     auditCalls = [];
@@ -66,7 +91,8 @@ describe("EnterpriseWorkflowOrchestrationService D4A.2.8", () => {
       new EnterpriseWorkflowEngine(),
       new ClinicalEventEngine(),
       new EscalationEngine(),
-      new HospitalTimelineEngine()
+      new HospitalTimelineEngine(),
+      clinicalRules as never
     );
   });
 
@@ -139,7 +165,7 @@ describe("EnterpriseWorkflowOrchestrationService D4A.2.8", () => {
     const dash = await service.getAdminDashboard(facilityId, "admin-1");
     expect(dash.volumeActiveWorkflows.availability).toBe("AVAILABLE");
     expect(dash.placementEnabled).toBe(false);
-    expect(dash.rulesEngineEnabled).toBe(false);
+    expect(dash.rulesEngineEnabled).toBe(true);
   });
 
   it("persists via admissionSummaryJson bag helpers", () => {

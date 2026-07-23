@@ -13,7 +13,10 @@ import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import { HospitalCareShell } from "./HospitalCareShell";
 import { fetchWorkflowAdminDashboard } from "./enterpriseWorkflowApi";
 import { isForbiddenApiError } from "./hospitalCarePlacementApi";
-import { HOSPITAL_CARE_ENTERPRISE_WORKFLOW } from "./hospitalCarePaths";
+import {
+  HOSPITAL_CARE_ENTERPRISE_WORKFLOW,
+  HOSPITAL_CARE_ENTERPRISE_CLINICAL_RULES,
+} from "./hospitalCarePaths";
 
 const metricBox: CSSProperties = {
   display: "grid",
@@ -75,17 +78,25 @@ export function EnterpriseWorkflowAdminDashboardView() {
       title={t("enterpriseWorkflowD4a28.dashboard.title")}
       subtitle={t("enterpriseWorkflowD4a28.dashboard.subtitle")}
       actions={
-        <Link
-          href={HOSPITAL_CARE_ENTERPRISE_WORKFLOW}
-          style={{ fontSize: 13, fontWeight: 600, color: "#0f766e" }}
-        >
-          {t("enterpriseWorkflowD4a28.openLink")}
-        </Link>
+        <div style={{ display: "flex", gap: 12 }}>
+          <Link
+            href={HOSPITAL_CARE_ENTERPRISE_WORKFLOW}
+            style={{ fontSize: 13, fontWeight: 600, color: "#0f766e" }}
+          >
+            {t("enterpriseWorkflowD4a28.openLink")}
+          </Link>
+          <Link
+            href={HOSPITAL_CARE_ENTERPRISE_CLINICAL_RULES}
+            style={{ fontSize: 13, fontWeight: 600, color: "#0f766e" }}
+          >
+            {t("enterpriseClinicalRulesD4a28a.openLink")}
+          </Link>
+        </div>
       }
     >
       <p style={{ fontSize: 12, color: "#64748b", marginTop: 0 }}>
-        {t("enterpriseWorkflowD4a28.definitionDriven")} ·{" "}
-        {t("enterpriseWorkflowD4a28.rulesOff")} ·{" "}
+        {t("enterpriseWorkflowD4a28.definitionAndRules")} ·{" "}
+        {t("enterpriseWorkflowD4a28.rulesOn")} ·{" "}
         {t("enterpriseWorkflowD4a28.placementOff")}
       </p>
       <button

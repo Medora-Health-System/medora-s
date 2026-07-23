@@ -29,6 +29,11 @@ export const HOSPITAL_CARE_ENTERPRISE_WORKFLOW =
 /** D4A.2.8 — Admin enterprise workflow dashboard. */
 export const HOSPITAL_CARE_ENTERPRISE_WORKFLOW_ADMIN =
   "/app/hospitalisation/enterprise-workflow/admin";
+/** D4A.2.8A — Enterprise Clinical Rules Builder. */
+export const HOSPITAL_CARE_ENTERPRISE_CLINICAL_RULES =
+  "/app/hospitalisation/enterprise-clinical-rules";
+/** D4A.2.8A — Admin clinical rules builder (same view). */
+export const ADMIN_ENTERPRISE_CLINICAL_RULES = "/app/admin/enterprise-clinical-rules";
 /** Existing ED operational dashboard — do not redesign from hospital-care. */
 export const EMERGENCY_DEPARTMENT_OPERATIONAL_DASHBOARD = "/app/trackboard";
 
