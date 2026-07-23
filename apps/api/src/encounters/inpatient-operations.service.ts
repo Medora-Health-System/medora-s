@@ -75,6 +75,7 @@ import {
   reviewNursingAdmission,
   validateSectionAnswersForCompletion,
   NURSING_DOMAIN_INTEGRATION_CERTIFICATION_ID,
+  AUTHORITATIVE_DOMAIN_LINKAGE_CERTIFICATION_ID,
   INPATIENT_ADMISSION_CLINICAL_SECTIONS,
   reviewNursingAdmissionWithDomains,
   linkNursingDomainReference,
@@ -82,11 +83,28 @@ import {
   buildNursingAdmissionPrintSummary,
   nursingSectionIntegration,
   projectNursingSectionCompletion,
+  projectAuthoritativeSectionCompletion,
+  assertReferenceIsLinkable,
+  isSyntheticDomainRecordId,
+  isPersistedEdocRecordId,
+  domainRequiresPersistedEdocId,
+  buildAuthoritativeReferenceFromEdoc,
+  classifyDomainReference,
+  nursingAmendmentPolicyForEncounterState,
+  resolveAuthoritativeCodeStatus,
+  resolveAuthoritativeIsolation,
+  buildProviderDomainProjection,
+  nursingDocDomainReferences,
+  readInpatientLifecycleMeta,
   type NursingAdmissionDomainReferenceV1,
+  type NursingAdmissionDomainKey,
   type NursingAmendmentType,
+  type ResolvedDomainRecordLite,
   INPATIENT_PROVIDER_WORKSPACE_CERTIFICATION_ID,
+  PROVIDER_CLINICAL_SYNTHESIS_CERTIFICATION_ID,
   PROVIDER_EVENT_ACK_STATUSES,
   PROVIDER_HP_SECTION_KEYS,
+  PROVIDER_PRINT_PACKAGE_KINDS,
   emptyInpatientProviderWorkspaceV1,
   readInpatientProviderWorkspace,
   mergeInpatientProviderWorkspaceIntoSummary,
@@ -95,6 +113,20 @@ import {
   saveProviderHpDraft,
   signProviderHpDraft,
   deriveProviderTasksFromOps,
+  computeProviderHospitalDay,
+  computeProviderLosHours,
+  projectProviderVitals,
+  projectIntakeOutputSynthesis,
+  projectLabLines,
+  projectRadiologyStudies,
+  projectMedicationSnapshot,
+  projectDischargeReadiness,
+  attachWorkspaceSlices,
+  emptyProviderClinicalSynthesis,
+  buildProviderPrintPackage,
+  saveProviderProgressNoteDraft,
+  signProviderProgressNote,
+  buildProgressNoteCarryForward,
   type MedSurgNursingAdmissionDocV1,
   type InpatientAdmissionClinicalSection,
   type AdmissionHistoryVerificationStatus,
@@ -102,6 +134,8 @@ import {
   type ProviderEventAckStatus,
   type ProviderHpSectionKey,
   type ProviderProblemPlanItemV1,
+  type ProviderPrintPackageKind,
+  type ProviderProgressNoteDraftV1,
 } from "@medora/shared";
 import { PrismaService } from "../prisma/prisma.service";
 import { AuditService } from "../common/services/audit.service";
@@ -1475,7 +1509,10 @@ export class InpatientOperationsService {
     };
   }
 
-  /** D4A.2.5A — Link enterprise domain record without copying domain payload. */
+  /**
+   * D4A.2.5A / D4A.2.6H — Link enterprise domain record without copying payload.
+   * Rejects synthetic IDs; resolves EDOC rows for encounter/patient/facility match.
+   */
   async linkNursingAdmissionDomainReference(
     facilityId: string,
     encounterId: string,
@@ -1491,9 +1528,106 @@ export class InpatientOperationsService {
     const doc =
       readMedSurgNursingAdmissionFromSummary(fresh.admissionSummaryJson) ??
       boot.documentation;
+
+    const incoming = body.reference;
+    const gate = assertReferenceIsLinkable(incoming);
+    if (!gate.ok) {
+      await this.audit.log(AuditAction.ENCOUNTER_UPDATE, CLINICAL_OPS_ENTITY, {
+        userId: actorUserId,
+        facilityId,
+        patientId: enc.patientId,
+        entityId: enc.id,
+        metadata: {
+          event: "NURSING_DOMAIN_SYNTHETIC_REFERENCE_REJECTED",
+          domain: incoming.domain,
+          code: gate.code,
+        },
+      });
+      throw new BadRequestException(gate.code);
+    }
+
+    const domain = String(incoming.domain ?? "").trim() as NursingAdmissionDomainKey;
+    let referenceToStore: NursingAdmissionDomainReferenceV1 = {
+      ...incoming,
+      domain,
+      source: "ENTERPRISE_DOMAIN",
+    };
+
+    if (domainRequiresPersistedEdocId(domain)) {
+      if (!isPersistedEdocRecordId(incoming.recordId)) {
+        throw new BadRequestException("DOMAIN_REFERENCE_SYNTHETIC");
+      }
+      const row = await this.prisma.encounterClinicalDocumentationEntry.findFirst({
+        where: { id: String(incoming.recordId).trim(), facilityId },
+        select: {
+          id: true,
+          facilityId: true,
+          encounterId: true,
+          patientId: true,
+          category: true,
+          cardId: true,
+          createdAt: true,
+          voidedAt: true,
+          authorUserId: true,
+          authorDisplayNameSnapshot: true,
+        },
+      });
+      const resolved: ResolvedDomainRecordLite | null = row
+        ? {
+            id: row.id,
+            facilityId: row.facilityId,
+            encounterId: row.encounterId,
+            patientId: row.patientId,
+            category: row.category,
+            cardId: row.cardId,
+            createdAt: row.createdAt.toISOString(),
+            voidedAt: row.voidedAt ? row.voidedAt.toISOString() : null,
+            authorUserId: row.authorUserId,
+            authorDisplayName: row.authorDisplayNameSnapshot,
+          }
+        : null;
+      const classification = classifyDomainReference({
+        reference: incoming,
+        expectedEncounterId: enc.id,
+        expectedPatientId: enc.patientId,
+        expectedFacilityId: facilityId,
+        resolved,
+        expectedDomain: domain,
+      });
+      if (!classification.authoritative || !resolved) {
+        await this.audit.log(AuditAction.ENCOUNTER_UPDATE, CLINICAL_OPS_ENTITY, {
+          userId: actorUserId,
+          facilityId,
+          patientId: enc.patientId,
+          entityId: enc.id,
+          metadata: {
+            event: "NURSING_DOMAIN_REFERENCE_RESOLUTION_FAILED",
+            state: classification.state,
+            reasons: classification.reasons,
+          },
+        });
+        throw new BadRequestException(
+          classification.reasons[0] ?? "DOMAIN_REFERENCE_UNRESOLVED"
+        );
+      }
+      referenceToStore = buildAuthoritativeReferenceFromEdoc({
+        domain,
+        sectionId: (incoming.sectionId ?? "OVERVIEW") as InpatientAdmissionClinicalSection,
+        row: resolved,
+        actorUserId,
+        status: incoming.status ?? "LINKED",
+      });
+    }
+
+    const priorSynthetic = nursingDocDomainReferences(doc).some(
+      (r) =>
+        r.sectionId === referenceToStore.sectionId &&
+        isSyntheticDomainRecordId(r.recordId)
+    );
+
     const result = linkNursingDomainReference({
       doc,
-      reference: body.reference,
+      reference: referenceToStore,
       clientExpectedVersion: Number(body.expectedVersion),
       actorUserId,
     });
@@ -1515,19 +1649,28 @@ export class InpatientOperationsService {
       patientId: enc.patientId,
       entityId: enc.id,
       metadata: {
-        event: "NURSING_ADMISSION_DOMAIN_LINKED",
-        domain: body.reference.domain,
-        recordId: body.reference.recordId,
-        sectionId: body.reference.sectionId ?? null,
+        event: priorSynthetic
+          ? "NURSING_DOMAIN_LEGACY_REFERENCE_REPLACED"
+          : "NURSING_ADMISSION_DOMAIN_LINKED",
+        domain: referenceToStore.domain,
+        recordId: referenceToStore.recordId,
+        sectionId: referenceToStore.sectionId ?? null,
+        source: "ENTERPRISE_DOMAIN",
+        certification: AUTHORITATIVE_DOMAIN_LINKAGE_CERTIFICATION_ID,
       },
     });
+    const sectionId = (referenceToStore.sectionId ??
+      "OVERVIEW") as InpatientAdmissionClinicalSection;
     return {
-      certification: NURSING_DOMAIN_INTEGRATION_CERTIFICATION_ID,
+      certification: AUTHORITATIVE_DOMAIN_LINKAGE_CERTIFICATION_ID,
       documentation: result.doc,
       completion: computeAdmissionCompletionSummary(result.doc),
-      projection: projectNursingSectionCompletion({
+      projection: projectAuthoritativeSectionCompletion({
         doc: result.doc,
-        sectionId: (body.reference.sectionId ?? "OVERVIEW") as InpatientAdmissionClinicalSection,
+        sectionId,
+        expectedEncounterId: enc.id,
+        expectedPatientId: enc.patientId,
+        expectedFacilityId: facilityId,
       }),
     };
   }
@@ -1559,12 +1702,22 @@ export class InpatientOperationsService {
     if (!isRn) {
       throw new ForbiddenException("NURSING_ADMISSION_AMENDMENT_NOT_AUTHORIZED");
     }
-    const enc = await this.loadOpenInpatient(facilityId, encounterId);
-    const boot = await this.getNursingAdmissionDocumentation(facilityId, encounterId);
-    const fresh = await this.loadOpenInpatient(facilityId, encounterId);
-    const doc =
-      readMedSurgNursingAdmissionFromSummary(fresh.admissionSummaryJson) ??
-      boot.documentation;
+    const enc = await this.loadEncounterForNursingAmendment(facilityId, encounterId);
+    const lifecycle = readInpatientLifecycleMeta(enc.admissionSummaryJson);
+    const doc = readMedSurgNursingAdmissionFromSummary(enc.admissionSummaryJson);
+    if (!doc) throw new NotFoundException("Nursing admission documentation not found");
+    const policy = nursingAmendmentPolicyForEncounterState({
+      encounterStatus: String(enc.status),
+      voided: Boolean(lifecycle?.voidedAt),
+      cancelled: Boolean(lifecycle?.cancelledAt),
+      nursingSigned: Boolean(doc.nurseSignature?.signed),
+    });
+    if (policy === "DENY" || policy === "READ_ONLY") {
+      throw new ForbiddenException("AMENDMENT_NOT_ALLOWED_FOR_ENCOUNTER_STATE");
+    }
+    if (policy === "ADMINISTRATIVE_ONLY" && String(body.type).toUpperCase() !== "ENTERED_IN_ERROR") {
+      throw new ForbiddenException("AMENDMENT_NOT_ALLOWED_FOR_ENCOUNTER_STATE");
+    }
     const type = String(body.type ?? "").trim().toUpperCase() as NursingAmendmentType;
     const result = appendNursingAdmissionAmendment({
       doc,
@@ -1599,7 +1752,7 @@ export class InpatientOperationsService {
       where: { id: enc.id },
       data: {
         admissionSummaryJson: mergeMedSurgNursingAdmissionIntoSummary(
-          fresh.admissionSummaryJson,
+          enc.admissionSummaryJson,
           result.doc
         ) as Prisma.InputJsonValue,
         version: { increment: 1 },
@@ -1617,29 +1770,38 @@ export class InpatientOperationsService {
             ? "NURSING_ADMISSION_CORRECTION_CREATED"
             : type === "ENTERED_IN_ERROR"
               ? "NURSING_ADMISSION_ENTERED_IN_ERROR"
-              : "NURSING_ADMISSION_ADDENDUM_CREATED",
+              : enc.status !== EncounterStatus.OPEN
+                ? "NURSING_ADMISSION_ADDENDUM_AFTER_DISCHARGE"
+                : "NURSING_ADMISSION_ADDENDUM_CREATED",
         amendmentId: result.amendment.amendmentId,
         type,
         sectionId: result.amendment.sectionId ?? null,
         documentRevision: result.amendment.documentRevisionAtCreate,
+        encounterStatus: enc.status,
       },
     });
     return {
-      certification: NURSING_DOMAIN_INTEGRATION_CERTIFICATION_ID,
+      certification: AUTHORITATIVE_DOMAIN_LINKAGE_CERTIFICATION_ID,
       documentation: result.doc,
       amendment: result.amendment,
     };
   }
 
-  /** D4A.2.5A — Authoritative print summary (never trust unsaved client state). */
+  /** D4A.2.5A / D4A.2.6H — Authoritative print summary (never trust unsaved client state). */
   async getNursingAdmissionPrintSummary(
     facilityId: string,
     encounterId: string,
     actorUserId: string,
     requestId?: string | null
   ) {
-    const enc = await this.loadOpenInpatient(facilityId, encounterId);
-    const payload = await this.getNursingAdmissionDocumentation(facilityId, encounterId);
+    const enc = await this.loadEncounterForNursingRead(facilityId, encounterId);
+    const documentation =
+      readMedSurgNursingAdmissionFromSummary(enc.admissionSummaryJson) ??
+      emptyMedSurgNursingAdmissionDocV1({
+        patientId: enc.patientId,
+        facilityId,
+        encounterId: enc.id,
+      });
     const printEnc = await this.prisma.encounter.findFirst({
       where: { id: encounterId, facilityId },
       select: {
@@ -1671,20 +1833,98 @@ export class InpatientOperationsService {
       where: { id: facilityId },
       select: { id: true, name: true },
     });
+
+    const refs = nursingDocDomainReferences(documentation);
+    const edocIds = refs
+      .map((r) => r.recordId)
+      .filter((id) => isPersistedEdocRecordId(id));
+    const edocRows =
+      edocIds.length > 0
+        ? await this.prisma.encounterClinicalDocumentationEntry.findMany({
+            where: { facilityId, id: { in: edocIds } },
+            select: {
+              id: true,
+              facilityId: true,
+              encounterId: true,
+              patientId: true,
+              category: true,
+              cardId: true,
+              createdAt: true,
+              voidedAt: true,
+              authorUserId: true,
+              authorDisplayNameSnapshot: true,
+            },
+          })
+        : [];
+    const resolvedByRecordId: Record<string, ResolvedDomainRecordLite | null> = {};
+    for (const id of edocIds) resolvedByRecordId[id] = null;
+    for (const row of edocRows) {
+      resolvedByRecordId[row.id] = {
+        id: row.id,
+        facilityId: row.facilityId,
+        encounterId: row.encounterId,
+        patientId: row.patientId,
+        category: row.category,
+        cardId: row.cardId,
+        createdAt: row.createdAt.toISOString(),
+        voidedAt: row.voidedAt ? row.voidedAt.toISOString() : null,
+        authorUserId: row.authorUserId,
+        authorDisplayName: row.authorDisplayNameSnapshot,
+      };
+    }
+
     const domainLoadErrors: Partial<Record<InpatientAdmissionClinicalSection, string>> = {};
+    const resolvedRefMeta: Array<{
+      sectionId: string;
+      recordId: string;
+      state: string;
+      clinicalTimestamp: string | null;
+    }> = [];
     for (const sectionId of INPATIENT_ADMISSION_CLINICAL_SECTIONS) {
       const integration = nursingSectionIntegration(sectionId);
       if (integration.writeMode !== "EMBED_CANONICAL_EDITOR") continue;
-      const projection = projectNursingSectionCompletion({
-        doc: payload.documentation,
+      const projection = projectAuthoritativeSectionCompletion({
+        doc: documentation,
         sectionId,
+        expectedEncounterId: enc.id,
+        expectedPatientId: enc.patientId,
+        expectedFacilityId: facilityId,
+        resolvedByRecordId,
       });
-      if (projection.requiresDomainRecord && projection.domainRefCount === 0) {
-        domainLoadErrors[sectionId] = `Unable to load ${sectionId} at print time`;
+      if (projection.requiresDomainRecord && projection.authoritativeLinkedCount === 0) {
+        domainLoadErrors[sectionId] =
+          projection.legacySyntheticCount > 0
+            ? `Legacy synthetic reference — Unable to load ${sectionId} at print time`
+            : `Authoritative ${sectionId} assessment unavailable`;
+      }
+      for (const ref of refs.filter((r) => r.sectionId === sectionId)) {
+        const resolved = resolvedByRecordId[ref.recordId] ?? null;
+        const c = classifyDomainReference({
+          reference: ref,
+          expectedEncounterId: enc.id,
+          expectedPatientId: enc.patientId,
+          expectedFacilityId: facilityId,
+          resolved,
+          expectedDomain:
+            integration.authoritativeDomain === "ADMISSION_OWNED"
+              ? null
+              : (integration.authoritativeDomain as NursingAdmissionDomainKey),
+        });
+        resolvedRefMeta.push({
+          sectionId,
+          recordId: isSyntheticDomainRecordId(ref.recordId) ? "REDACTED_SYNTHETIC" : ref.recordId,
+          state: c.state,
+          clinicalTimestamp: resolved?.createdAt ?? null,
+        });
       }
     }
+
+    const ops = readInpatientClinicalOpsFromAdmissionSummary(enc.admissionSummaryJson);
+    const codeStatus = resolveAuthoritativeCodeStatus(ops);
+    const isolation = resolveAuthoritativeIsolation(ops);
+
     const summary = buildNursingAdmissionPrintSummary({
-      doc: payload.documentation,
+      doc: documentation,
       facility: { id: facilityId, name: facility?.name ?? null },
       patient: {
         id: enc.patientId,
@@ -1715,9 +1955,140 @@ export class InpatientOperationsService {
         printType: "NURSING_ADMISSION_SUMMARY",
         printStatus: summary.printStatus,
         requestId: requestId ?? null,
+        unresolvedReferenceCount: Object.keys(domainLoadErrors).length,
+        referencedDomainCount: resolvedRefMeta.length,
+        referencedDomains: resolvedRefMeta,
+        codeStatusDocumented: codeStatus.documented,
+        isolationDocumented: isolation.documented,
+        certification: AUTHORITATIVE_DOMAIN_LINKAGE_CERTIFICATION_ID,
       },
     });
-    return summary;
+    return {
+      ...summary,
+      certification: AUTHORITATIVE_DOMAIN_LINKAGE_CERTIFICATION_ID,
+      authoritativeCodeStatus: codeStatus,
+      authoritativeIsolation: isolation,
+      referenceResolution: resolvedRefMeta,
+    };
+  }
+
+  /** D4A.2.6H — Provider projection over authoritative domain records only. */
+  async getInpatientAuthoritativeClinicalProjection(
+    facilityId: string,
+    encounterId: string
+  ) {
+    const enc = await this.loadEncounterForNursingRead(facilityId, encounterId);
+    const documentation =
+      readMedSurgNursingAdmissionFromSummary(enc.admissionSummaryJson) ??
+      emptyMedSurgNursingAdmissionDocV1({
+        patientId: enc.patientId,
+        facilityId,
+        encounterId: enc.id,
+      });
+    const ops = readInpatientClinicalOpsFromAdmissionSummary(enc.admissionSummaryJson);
+    const refs = nursingDocDomainReferences(documentation);
+    const edocIds = refs.map((r) => r.recordId).filter((id) => isPersistedEdocRecordId(id));
+    const edocRows =
+      edocIds.length > 0
+        ? await this.prisma.encounterClinicalDocumentationEntry.findMany({
+            where: { facilityId, id: { in: edocIds } },
+            select: {
+              id: true,
+              facilityId: true,
+              encounterId: true,
+              patientId: true,
+              category: true,
+              cardId: true,
+              createdAt: true,
+              voidedAt: true,
+              authorUserId: true,
+              authorDisplayNameSnapshot: true,
+            },
+          })
+        : [];
+    const resolvedByRecordId: Record<string, ResolvedDomainRecordLite | null> = {};
+    for (const row of edocRows) {
+      resolvedByRecordId[row.id] = {
+        id: row.id,
+        facilityId: row.facilityId,
+        encounterId: row.encounterId,
+        patientId: row.patientId,
+        category: row.category,
+        cardId: row.cardId,
+        createdAt: row.createdAt.toISOString(),
+        voidedAt: row.voidedAt ? row.voidedAt.toISOString() : null,
+        authorUserId: row.authorUserId,
+        authorDisplayName: row.authorDisplayNameSnapshot,
+      };
+    }
+    const currentPain = await this.prisma.encounterClinicalDocumentationEntry.findFirst({
+      where: {
+        facilityId,
+        encounterId: enc.id,
+        voidedAt: null,
+        cardId: { contains: "pain" },
+      },
+      orderBy: { createdAt: "desc" },
+      select: {
+        id: true,
+        facilityId: true,
+        encounterId: true,
+        patientId: true,
+        category: true,
+        cardId: true,
+        createdAt: true,
+        voidedAt: true,
+        authorUserId: true,
+        authorDisplayNameSnapshot: true,
+      },
+    });
+    const toLite = (row: typeof currentPain): ResolvedDomainRecordLite | null =>
+      row
+        ? {
+            id: row.id,
+            facilityId: row.facilityId,
+            encounterId: row.encounterId,
+            patientId: row.patientId,
+            category: row.category,
+            cardId: row.cardId,
+            createdAt: row.createdAt.toISOString(),
+            voidedAt: row.voidedAt ? row.voidedAt.toISOString() : null,
+            authorUserId: row.authorUserId,
+            authorDisplayName: row.authorDisplayNameSnapshot,
+          }
+        : null;
+
+    return {
+      certification: AUTHORITATIVE_DOMAIN_LINKAGE_CERTIFICATION_ID,
+      encounterId: enc.id,
+      codeStatus: resolveAuthoritativeCodeStatus(ops),
+      isolation: resolveAuthoritativeIsolation(ops),
+      pain: buildProviderDomainProjection({
+        domain: "PAIN_EDOC13",
+        admissionRefs: refs,
+        resolvedByRecordId,
+        expectedEncounterId: enc.id,
+        expectedPatientId: enc.patientId,
+        expectedFacilityId: facilityId,
+        currentRecord: toLite(currentPain),
+      }),
+      fallRisk: buildProviderDomainProjection({
+        domain: "FALL_SAFETY_EDOC14",
+        admissionRefs: refs,
+        resolvedByRecordId,
+        expectedEncounterId: enc.id,
+        expectedPatientId: enc.patientId,
+        expectedFacilityId: facilityId,
+      }),
+      wounds: buildProviderDomainProjection({
+        domain: "SKIN_WOUND_EDOC20",
+        admissionRefs: refs,
+        resolvedByRecordId,
+        expectedEncounterId: enc.id,
+        expectedPatientId: enc.patientId,
+        expectedFacilityId: facilityId,
+      }),
+    };
   }
 
   async patchNursingAdmissionSection(
@@ -1785,17 +2156,24 @@ export class InpatientOperationsService {
       throw new ConflictException(result.code);
     }
 
-    // D4A.2.5A — domain projection gate: EDOC sections need a linked record to stay COMPLETE.
+    // D4A.2.6H — EDOC sections need an authoritative (non-synthetic) linked record.
     if (completionState === "COMPLETE") {
-      const projection = projectNursingSectionCompletion({
+      const projection = projectAuthoritativeSectionCompletion({
         doc: result.doc,
         sectionId,
+        expectedEncounterId: enc.id,
+        expectedPatientId: enc.patientId,
+        expectedFacilityId: facilityId,
       });
-      if (projection.warnings.includes("DOMAIN_RECORD_REQUIRED")) {
+      if (
+        projection.requiresDomainRecord &&
+        projection.authoritativeLinkedCount === 0
+      ) {
         throw new BadRequestException({
-          code: "DOMAIN_RECORD_REQUIRED",
+          code: "AUTHORITATIVE_DOMAIN_RECORD_REQUIRED",
           sectionId,
           authoritativeDomain: projection.authoritativeDomain,
+          reasons: projection.reasons,
         });
       }
     }
@@ -2201,7 +2579,699 @@ export class InpatientOperationsService {
     return { documentation: result.doc };
   }
 
+  /**
+   * D4A.2.6A — Enterprise provider clinical synthesis.
+   * Composes authoritative enterprise readers; does not create second engines.
+   */
+  async getProviderClinicalSynthesis(facilityId: string, encounterId: string) {
+    const enc = await this.prisma.encounter.findFirst({
+      where: { id: encounterId, facilityId },
+      select: {
+        id: true,
+        facilityId: true,
+        patientId: true,
+        type: true,
+        status: true,
+        admittedAt: true,
+        roomLabel: true,
+        physicianAssignedUserId: true,
+        admissionSummaryJson: true,
+        chiefComplaint: true,
+        physicianAssigned: {
+          select: { id: true, firstName: true, lastName: true },
+        },
+      },
+    });
+    if (!enc) throw new NotFoundException("Encounter not found");
+    if (enc.type !== EncounterType.INPATIENT) {
+      throw new BadRequestException("Provider synthesis requires an Inpatient encounter");
+    }
+
+    const ops = readInpatientClinicalOpsFromAdmissionSummary(enc.admissionSummaryJson);
+    const workspace =
+      readInpatientProviderWorkspace(enc.admissionSummaryJson) ??
+      emptyInpatientProviderWorkspaceV1();
+    const nowIso = new Date().toISOString();
+    const displayName = (u: { firstName?: string | null; lastName?: string | null } | null) =>
+      u ? [u.firstName, u.lastName].filter(Boolean).join(" ").trim() || null : null;
+
+    const [vitalsRows, ioEntries, orders, diagnoses] = await Promise.all([
+      this.prisma.triageVitalsReading.findMany({
+        where: { facilityId, encounterId: enc.id, status: "ACTIVE" },
+        orderBy: [{ measuredAt: "desc" }, { recordedAt: "desc" }],
+        take: 48,
+        select: { measuredAt: true, vitalsJson: true },
+      }),
+      this.prisma.encounterClinicalDocumentationEntry.findMany({
+        where: {
+          facilityId,
+          encounterId: enc.id,
+          voidedAt: null,
+          OR: [
+            { cardId: { contains: "intake" } },
+            { cardId: { contains: "output" } },
+            { cardId: { contains: "io-" } },
+          ],
+        },
+        orderBy: { createdAt: "desc" },
+        take: 200,
+        select: { cardId: true, createdAt: true, voidedAt: true, payloadJson: true },
+      }),
+      this.prisma.order.findMany({
+        where: { facilityId, encounterId: enc.id, cancelledAt: null },
+        orderBy: { createdAt: "desc" },
+        take: 120,
+        select: {
+          id: true,
+          type: true,
+          status: true,
+          orderedBy: true,
+          prescriberName: true,
+          createdAt: true,
+          items: {
+            select: {
+              id: true,
+              catalogItemType: true,
+              manualLabel: true,
+              status: true,
+              route: true,
+              strength: true,
+              notes: true,
+              createdAt: true,
+              completedAt: true,
+              medicationLifecycleStatus: true,
+              result: {
+                select: {
+                  resultText: true,
+                  resultData: true,
+                  criticalValue: true,
+                  acknowledgedByProviderAt: true,
+                  verifiedAt: true,
+                  updatedAt: true,
+                  verifiedByUserId: true,
+                },
+              },
+            },
+          },
+        },
+      }),
+      this.prisma.diagnosis.findMany({
+        where: {
+          facilityId,
+          encounterId: enc.id,
+          status: "ACTIVE",
+        },
+        orderBy: [{ sortOrder: "asc" }, { createdAt: "desc" }],
+        take: 20,
+        select: {
+          id: true,
+          code: true,
+          description: true,
+          sortOrder: true,
+          status: true,
+        },
+      }),
+    ]);
+
+    const vitals = projectProviderVitals({
+      readings: vitalsRows.map((r) => ({
+        measuredAt: r.measuredAt.toISOString(),
+        vitals:
+          r.vitalsJson && typeof r.vitalsJson === "object" && !Array.isArray(r.vitalsJson)
+            ? (r.vitalsJson as Record<string, unknown>)
+            : {},
+      })),
+      nowIso,
+    });
+
+    const intakeOutput = projectIntakeOutputSynthesis({
+      nowIso,
+      entries: ioEntries.map((e) => ({
+        cardId: e.cardId,
+        createdAt: e.createdAt.toISOString(),
+        voidedAt: e.voidedAt ? e.voidedAt.toISOString() : null,
+        payloadJson: e.payloadJson,
+      })),
+    });
+
+    const labItems: Array<{
+      orderItemId: string;
+      orderId: string;
+      label: string;
+      status: string;
+      resultText?: string | null;
+      criticalValue?: boolean;
+      acknowledgedByProviderAt?: string | null;
+      resultUpdatedAt?: string | null;
+    }> = [];
+    const radItems: Array<{
+      orderItemId: string;
+      orderId: string;
+      label: string;
+      status: string;
+      impression?: string | null;
+      radiologist?: string | null;
+      timestamp?: string | null;
+      criticalValue?: boolean;
+      acknowledgedByProviderAt?: string | null;
+    }> = [];
+    const medItems: Array<{
+      orderItemId: string;
+      orderId: string;
+      label: string;
+      dose?: string | null;
+      route?: string | null;
+      frequency?: string | null;
+      start?: string | null;
+      stop?: string | null;
+      indication?: string | null;
+      responsibleProvider?: string | null;
+      held?: boolean;
+      recentlyChanged?: boolean;
+    }> = [];
+
+    for (const order of orders) {
+      for (const item of order.items) {
+        const label = item.manualLabel?.trim() || item.catalogItemType;
+        const cat = String(item.catalogItemType ?? order.type ?? "").toUpperCase();
+        if (cat.includes("LAB")) {
+          labItems.push({
+            orderItemId: item.id,
+            orderId: order.id,
+            label,
+            status: String(item.status ?? order.status),
+            resultText: item.result?.resultText ?? null,
+            criticalValue: item.result?.criticalValue ?? false,
+            acknowledgedByProviderAt: item.result?.acknowledgedByProviderAt
+              ? item.result.acknowledgedByProviderAt.toISOString()
+              : null,
+            resultUpdatedAt: item.result?.updatedAt
+              ? item.result.updatedAt.toISOString()
+              : null,
+          });
+        } else if (cat.includes("IMAGING") || cat.includes("RAD")) {
+          const resultData =
+            item.result?.resultData &&
+            typeof item.result.resultData === "object" &&
+            !Array.isArray(item.result.resultData)
+              ? (item.result.resultData as Record<string, unknown>)
+              : {};
+          radItems.push({
+            orderItemId: item.id,
+            orderId: order.id,
+            label,
+            status: String(item.status ?? order.status),
+            impression:
+              item.result?.resultText?.trim() ||
+              (typeof resultData.impression === "string" ? resultData.impression : null),
+            radiologist:
+              typeof resultData.radiologist === "string" ? resultData.radiologist : null,
+            timestamp: item.result?.verifiedAt
+              ? item.result.verifiedAt.toISOString()
+              : item.result?.updatedAt
+                ? item.result.updatedAt.toISOString()
+                : null,
+            criticalValue: item.result?.criticalValue ?? false,
+            acknowledgedByProviderAt: item.result?.acknowledgedByProviderAt
+              ? item.result.acknowledgedByProviderAt.toISOString()
+              : null,
+          });
+        } else if (cat.includes("MED")) {
+          const held =
+            String(item.medicationLifecycleStatus ?? "").toUpperCase() === "HOLD" ||
+            /HOLD|HELD|CANCEL/i.test(String(item.status));
+          medItems.push({
+            orderItemId: item.id,
+            orderId: order.id,
+            label,
+            dose: item.strength ?? null,
+            route: item.route ?? null,
+            frequency: item.notes ?? null,
+            start: item.createdAt.toISOString(),
+            stop: item.completedAt ? item.completedAt.toISOString() : null,
+            indication: item.notes ?? null,
+            responsibleProvider: order.prescriberName ?? order.orderedBy ?? null,
+            held,
+            recentlyChanged:
+              Date.now() - item.createdAt.getTime() < 24 * 60 * 60 * 1000 || held,
+          });
+        }
+      }
+    }
+
+    // Seed critical-result inbox events when unacknowledged critical labs/imaging exist.
+    const criticalUnacked = [...labItems, ...radItems].filter(
+      (x) => x.criticalValue && !x.acknowledgedByProviderAt
+    );
+    let events = [...(workspace.events ?? [])];
+    for (const c of criticalUnacked.slice(0, 10)) {
+      const eventId = `crit-${c.orderItemId}`;
+      if (events.some((e) => e.eventId === eventId)) continue;
+      const occurredAt =
+        "resultUpdatedAt" in c && c.resultUpdatedAt
+          ? c.resultUpdatedAt
+          : "timestamp" in c && c.timestamp
+            ? c.timestamp
+            : nowIso;
+      events.push({
+        eventId,
+        type: "CRITICAL_RESULT",
+        severity: "CRITICAL",
+        summary: `Critical result — ${c.label}`,
+        source: "ENTERPRISE_RESULTS",
+        occurredAt,
+        status: "NEW",
+        relatedObjectId: c.orderItemId,
+      });
+    }
+    for (const consult of ops.consults ?? []) {
+      if (consult.status !== "COMPLETED") continue;
+      const eventId = `consult-done-${consult.consultId}`;
+      if (events.some((e) => e.eventId === eventId)) continue;
+      events.push({
+        eventId,
+        type: "CONSULT_COMPLETED",
+        severity: "INFO",
+        summary: `Consult completed — ${consult.specialty}`,
+        source: "CLINICAL_OPS",
+        occurredAt: consult.completedAt ?? consult.requestedAt,
+        status: "NEW",
+        relatedObjectId: consult.consultId,
+      });
+    }
+
+    const code = resolveAuthoritativeCodeStatus(ops);
+    const isolation = resolveAuthoritativeIsolation(ops);
+    const dxLabel = (d: { code: string; description: string | null }) =>
+      d.description?.trim() || d.code;
+    const primaryDx =
+      (diagnoses[0] ? dxLabel(diagnoses[0]) : null) ??
+      workspace.problemPlans.find((p) => p.priority === "PRIMARY")?.displayLabel ??
+      null;
+    const secondary = [
+      ...diagnoses.slice(1).map(dxLabel).filter(Boolean),
+      ...workspace.problemPlans
+        .filter((p) => p.priority !== "PRIMARY")
+        .map((p) => p.displayLabel),
+    ].slice(0, 12);
+
+    const careTeam = ops.careTeamHistory ?? [];
+    const resident =
+      careTeam.find((c) => /RESIDENT/i.test(c.role) && !c.endAt)?.assigneeUserId ?? null;
+    const app =
+      careTeam.find((c) => /APP|NP|PA/i.test(c.role) && !c.endAt)?.assigneeUserId ?? null;
+
+    const admissionPainRef = (() => {
+      const nursing = readMedSurgNursingAdmissionFromSummary(enc.admissionSummaryJson);
+      const sections = nursing?.sections ?? {};
+      for (const section of Object.values(sections)) {
+        if (!section) continue;
+        const answers = section.answers;
+        if (!answers || typeof answers !== "object") continue;
+        const a = answers as Record<string, unknown>;
+        const score = a.painScore ?? a.painIntensity ?? a.score ?? a.PAIN_SCORE;
+        if (score != null && String(score).trim()) return String(score);
+      }
+      return null;
+    })();
+    const currentPainVital = vitals.find((v) => v.key === "PAIN")?.current ?? null;
+    const providerPainAssessment =
+      workspace.problemPlans.find((p) => /pain/i.test(p.displayLabel))?.assessment ?? null;
+
+    let synthesis = emptyProviderClinicalSynthesis({
+      encounterId: enc.id,
+      patientId: enc.patientId,
+      facilityId,
+      expectedVersion: workspace.expectedVersion,
+      atIso: nowIso,
+    });
+
+    synthesis = {
+      ...synthesis,
+      overview: {
+        hospitalDay: computeProviderHospitalDay(enc.admittedAt?.toISOString() ?? null, nowIso),
+        currentStatus: String(enc.status),
+        codeStatus: code.documented ? code.value : null,
+        isolation: isolation.documented ? isolation.value : null,
+        attending: displayName(enc.physicianAssigned),
+        consultServices: (ops.consults ?? [])
+          .filter((c) => c.status !== "CANCELLED" && c.status !== "DECLINED")
+          .map((c) => c.specialty),
+        primaryDiagnosis: primaryDx,
+        secondaryProblems: secondary,
+        currentBed: (() => {
+          const key = resolveEncounterCanonicalBedKey({
+            roomLabel: enc.roomLabel,
+            type: enc.type,
+            admissionSummaryJson: enc.admissionSummaryJson,
+          });
+          return key ?? enc.roomLabel ?? null;
+        })(),
+        currentUnit: (() => {
+          const key = resolveEncounterCanonicalBedKey({
+            roomLabel: enc.roomLabel,
+            type: enc.type,
+            admissionSummaryJson: enc.admissionSummaryJson,
+          });
+          if (!key) return null;
+          return parseCanonicalBedKey(key)?.unit ?? null;
+        })(),
+        admissionDate: enc.admittedAt?.toISOString() ?? null,
+        lengthOfStayHours: computeProviderLosHours(enc.admittedAt?.toISOString() ?? null, nowIso),
+        estimatedDischarge: ops.dischargePlanning?.anticipatedDischargeDate ?? null,
+        provider: displayName(enc.physicianAssigned),
+        resident,
+        app,
+      },
+      vitals,
+      intakeOutput,
+      laboratories: projectLabLines({ items: labItems }),
+      radiology: projectRadiologyStudies({ items: radItems }),
+      medications: projectMedicationSnapshot({ items: medItems }),
+      dischargeReadiness: projectDischargeReadiness({
+        workflowState: ops.dischargePlanning?.workflowState ?? null,
+        estimatedDischargeDate: ops.dischargePlanning?.anticipatedDischargeDate ?? null,
+        destination: ops.dischargePlanning?.destination ?? null,
+        barriersText: ops.dischargePlanning?.barriers ?? null,
+        pendingConsultCount: (ops.consults ?? []).filter(
+          (c) => c.status === "REQUESTED" || c.status === "IN_PROGRESS" || c.status === "ACKNOWLEDGED"
+        ).length,
+        pendingPt: /PT|PHYSIOTHERAPY/i.test(String(ops.dischargePlanning?.barriers ?? "")),
+        pendingOt: /OT|OCCUPATIONAL/i.test(String(ops.dischargePlanning?.barriers ?? "")),
+        medReconIncomplete: (ops.medicationReconciliation?.length ?? 0) === 0,
+        hpUnsigned: workspace.hpDraft?.status !== "SIGNED",
+      }),
+      currentVsAdmission: {
+        admissionPain: admissionPainRef,
+        currentPain: currentPainVital,
+        providerAssessment: providerPainAssessment,
+        conceptsSeparated: true,
+      },
+    };
+
+    // Attach workspace slices (problems/events/tasks) — events enriched above.
+    const workspaceForAttach = { ...workspace, events };
+    synthesis = attachWorkspaceSlices(synthesis, workspaceForAttach);
+
+    // Persist newly derived critical/consult events when workspace was empty of them.
+    if (events.length !== (workspace.events?.length ?? 0)) {
+      const nextDoc = {
+        ...workspace,
+        events,
+        expectedVersion: workspace.expectedVersion + 1,
+        updatedAt: nowIso,
+      };
+      await this.prisma.encounter.update({
+        where: { id: enc.id },
+        data: {
+          admissionSummaryJson: mergeInpatientProviderWorkspaceIntoSummary(
+            enc.admissionSummaryJson,
+            nextDoc
+          ) as Prisma.InputJsonValue,
+        },
+        select: { id: true },
+      });
+      synthesis = { ...synthesis, expectedVersion: nextDoc.expectedVersion, events };
+    }
+
+    return {
+      certification: PROVIDER_CLINICAL_SYNTHESIS_CERTIFICATION_ID,
+      synthesis,
+      boundary: {
+        synthesisNotDomainEngine: true,
+        reusesOrdersResultsMarTimeline: true,
+        neverAutoAcknowledge: true,
+        currentVsAdmissionSeparated: true,
+      },
+    };
+  }
+
+  async saveProviderProgressNote(
+    facilityId: string,
+    encounterId: string,
+    actorUserId: string,
+    body: {
+      note: ProviderProgressNoteDraftV1;
+      expectedVersion: number;
+    }
+  ) {
+    const enc = await this.loadOpenInpatient(facilityId, encounterId);
+    const boot = await this.getProviderWorkspace(facilityId, encounterId);
+    const fresh = await this.loadOpenInpatient(facilityId, encounterId);
+    const doc =
+      readInpatientProviderWorkspace(fresh.admissionSummaryJson) ?? boot.documentation;
+    const result = saveProviderProgressNoteDraft({
+      notes: (doc.progressNotes ?? []) as ProviderProgressNoteDraftV1[],
+      note: body.note,
+      clientExpectedVersion: Number(body.expectedVersion),
+      documentExpectedVersion: doc.expectedVersion,
+    });
+    if (!result.ok) throw new ConflictException(result.code);
+    const nextDoc = {
+      ...doc,
+      progressNotes: result.notes,
+      expectedVersion: result.nextDocumentVersion,
+      updatedAt: new Date().toISOString(),
+      updatedByUserId: actorUserId,
+    };
+    await this.prisma.encounter.update({
+      where: { id: enc.id },
+      data: {
+        admissionSummaryJson: mergeInpatientProviderWorkspaceIntoSummary(
+          fresh.admissionSummaryJson,
+          nextDoc
+        ) as Prisma.InputJsonValue,
+        version: { increment: 1 },
+      },
+      select: { id: true },
+    });
+    return { documentation: nextDoc };
+  }
+
+  async signProviderProgressNoteDoc(
+    facilityId: string,
+    encounterId: string,
+    actorUserId: string,
+    body: { noteId: string; expectedVersion: number }
+  ) {
+    const enc = await this.loadOpenInpatient(facilityId, encounterId);
+    const boot = await this.getProviderWorkspace(facilityId, encounterId);
+    const fresh = await this.loadOpenInpatient(facilityId, encounterId);
+    const doc =
+      readInpatientProviderWorkspace(fresh.admissionSummaryJson) ?? boot.documentation;
+    const result = signProviderProgressNote({
+      notes: (doc.progressNotes ?? []) as ProviderProgressNoteDraftV1[],
+      noteId: String(body.noteId),
+      actorUserId,
+      clientExpectedVersion: Number(body.expectedVersion),
+      documentExpectedVersion: doc.expectedVersion,
+    });
+    if (!result.ok) throw new ConflictException(result.code);
+    const nextDoc = {
+      ...doc,
+      progressNotes: result.notes,
+      expectedVersion: result.nextDocumentVersion,
+      updatedAt: new Date().toISOString(),
+      updatedByUserId: actorUserId,
+    };
+    await this.prisma.encounter.update({
+      where: { id: enc.id },
+      data: {
+        admissionSummaryJson: mergeInpatientProviderWorkspaceIntoSummary(
+          fresh.admissionSummaryJson,
+          nextDoc
+        ) as Prisma.InputJsonValue,
+        version: { increment: 1 },
+      },
+      select: { id: true },
+    });
+    await this.audit.log(AuditAction.ENCOUNTER_UPDATE, CLINICAL_OPS_ENTITY, {
+      userId: actorUserId,
+      facilityId,
+      patientId: enc.patientId,
+      entityId: enc.id,
+      metadata: { event: "PROVIDER_PROGRESS_NOTE_SIGNED", noteId: body.noteId },
+    });
+    return { documentation: nextDoc };
+  }
+
+  async carryForwardProviderProgressNote(
+    facilityId: string,
+    encounterId: string,
+    actorUserId: string,
+    body: { fromNoteId: string; serviceDate: string; expectedVersion: number }
+  ) {
+    const enc = await this.loadOpenInpatient(facilityId, encounterId);
+    const boot = await this.getProviderWorkspace(facilityId, encounterId);
+    const fresh = await this.loadOpenInpatient(facilityId, encounterId);
+    const doc =
+      readInpatientProviderWorkspace(fresh.admissionSummaryJson) ?? boot.documentation;
+    if (Number(body.expectedVersion) !== doc.expectedVersion) {
+      throw new ConflictException("PROVIDER_DOCUMENT_STALE");
+    }
+    const from = (doc.progressNotes ?? []).find((n) => n.noteId === body.fromNoteId);
+    if (!from) throw new NotFoundException("Progress note not found");
+    const carried = buildProgressNoteCarryForward({
+      from: from as ProviderProgressNoteDraftV1,
+      actorUserId,
+      serviceDate: String(body.serviceDate),
+    });
+    const nextDoc = {
+      ...doc,
+      progressNotes: [...(doc.progressNotes ?? []), carried],
+      expectedVersion: doc.expectedVersion + 1,
+      updatedAt: new Date().toISOString(),
+      updatedByUserId: actorUserId,
+    };
+    await this.prisma.encounter.update({
+      where: { id: enc.id },
+      data: {
+        admissionSummaryJson: mergeInpatientProviderWorkspaceIntoSummary(
+          fresh.admissionSummaryJson,
+          nextDoc
+        ) as Prisma.InputJsonValue,
+        version: { increment: 1 },
+      },
+      select: { id: true },
+    });
+    return { documentation: nextDoc, note: carried };
+  }
+
+  async getProviderPrintPackage(
+    facilityId: string,
+    encounterId: string,
+    actorUserId: string,
+    kindRaw: string
+  ) {
+    const kind = String(kindRaw ?? "").trim().toUpperCase() as ProviderPrintPackageKind;
+    if (!(PROVIDER_PRINT_PACKAGE_KINDS as readonly string[]).includes(kind)) {
+      throw new BadRequestException("Invalid provider print package kind");
+    }
+    const syn = await this.getProviderClinicalSynthesis(facilityId, encounterId);
+    const s = syn.synthesis;
+    const workspace =
+      readInpatientProviderWorkspace(
+        (
+          await this.prisma.encounter.findFirst({
+            where: { id: encounterId, facilityId },
+            select: { admissionSummaryJson: true },
+          })
+        )?.admissionSummaryJson
+      ) ?? emptyInpatientProviderWorkspaceV1();
+
+    const sections: Array<{ heading: string; body: string }> = [];
+    if (kind === "HISTORY_PHYSICAL" || kind === "PROVIDER_ROUNDING_SUMMARY") {
+      sections.push({
+        heading: "Overview",
+        body: [
+          `Hospital day: ${s.overview.hospitalDay ?? "—"}`,
+          `Code status: ${s.overview.codeStatus ?? "—"}`,
+          `Isolation: ${s.overview.isolation ?? "—"}`,
+          `Attending: ${s.overview.attending ?? "—"}`,
+          `Primary dx: ${s.overview.primaryDiagnosis ?? "—"}`,
+          `Bed/Unit: ${s.overview.currentBed ?? "—"} / ${s.overview.currentUnit ?? "—"}`,
+        ].join("\n"),
+      });
+    }
+    if (kind === "PROBLEM_LIST" || kind === "PROVIDER_ROUNDING_SUMMARY" || kind === "DAILY_PROGRESS_NOTE") {
+      sections.push({
+        heading: "Problems",
+        body:
+          s.problems.length > 0
+            ? s.problems
+                .map(
+                  (p) =>
+                    `${p.displayLabel} [${p.status}] — ${p.assessment ?? "—"} / ${p.plan ?? "—"}`
+                )
+                .join("\n")
+            : "—",
+      });
+    }
+    if (kind === "DAILY_PROGRESS_NOTE") {
+      const notes = workspace.progressNotes ?? [];
+      const latest = notes[notes.length - 1];
+      sections.push({
+        heading: "Progress note",
+        body: latest?.text ?? "—",
+      });
+    }
+    if (kind === "HISTORY_PHYSICAL") {
+      const hp = workspace.hpDraft;
+      sections.push({
+        heading: "H&P",
+        body: hp
+          ? Object.entries(hp.sections ?? {})
+              .map(([k, v]) => `${k}: ${v?.text ?? ""}`)
+              .join("\n")
+          : "—",
+      });
+    }
+    if (kind === "DISCHARGE_SUMMARY" || kind === "PROVIDER_HANDOFF") {
+      sections.push({
+        heading: "Discharge readiness",
+        body: [
+          `State: ${s.dischargeReadiness.workflowState ?? "—"}`,
+          `EDD: ${s.dischargeReadiness.estimatedDischargeDate ?? "—"}`,
+          `Destination: ${s.dischargeReadiness.destination ?? "—"}`,
+          `Barriers: ${s.dischargeReadiness.barriers.map((b) => b.label).join("; ") || "—"}`,
+        ].join("\n"),
+      });
+      sections.push({
+        heading: "Medications snapshot",
+        body: Object.entries(s.medications.groups)
+          .map(
+            ([g, lines]) =>
+              `${g}: ${(lines ?? []).map((l) => l.drug).join(", ") || "—"}`
+          )
+          .join("\n") || "—",
+      });
+    }
+    if (kind === "PROVIDER_ROUNDING_SUMMARY") {
+      sections.push({
+        heading: "Vitals",
+        body: s.vitals
+          .map((v) => `${v.label}: ${v.current ?? "—"} (${v.trend24h}${v.abnormal ? " ABX" : ""})`)
+          .join("\n"),
+      });
+      sections.push({
+        heading: "Critical results",
+        body:
+          [...s.laboratories.critical, ...s.radiology.critical]
+            .map((x) => ("label" in x ? x.label : ""))
+            .join("; ") || "—",
+      });
+    }
+
+    const pkg = buildProviderPrintPackage({
+      kind,
+      title: kind.replace(/_/g, " "),
+      signed: workspace.hpDraft?.status === "SIGNED" || kind === "PROVIDER_ROUNDING_SUMMARY",
+      revision: workspace.expectedVersion,
+      providerSigned: workspace.hpDraft?.status === "SIGNED",
+      sections,
+    });
+
+    await this.audit.log(AuditAction.ENCOUNTER_UPDATE, CLINICAL_OPS_ENTITY, {
+      userId: actorUserId,
+      facilityId,
+      patientId: s.patientId,
+      entityId: encounterId,
+      metadata: { event: pkg.auditEvent, kind, revision: pkg.revision },
+    });
+
+    return { certification: PROVIDER_CLINICAL_SYNTHESIS_CERTIFICATION_ID, package: pkg };
+  }
+
   private async loadOpenInpatient(facilityId: string, encounterId: string) {
+    const enc = await this.loadEncounterForNursingRead(facilityId, encounterId);
+    if (enc.status !== EncounterStatus.OPEN) {
+      throw new BadRequestException("Encounter is not open");
+    }
+    return enc;
+  }
+
+  /** Read nursing/print/projection for open or discharged inpatient encounters. */
+  private async loadEncounterForNursingRead(facilityId: string, encounterId: string) {
     const enc = await this.prisma.encounter.findFirst({
       where: { id: encounterId, facilityId },
       select: {
@@ -2214,12 +3284,17 @@ export class InpatientOperationsService {
       },
     });
     if (!enc) throw new NotFoundException("Encounter not found");
-    if (enc.status !== EncounterStatus.OPEN) {
-      throw new BadRequestException("Encounter is not open");
-    }
     if (enc.type !== EncounterType.INPATIENT) {
       throw new BadRequestException("Clinical ops require an Inpatient encounter");
     }
     return enc;
+  }
+
+  /**
+   * Amendments allowed on open or discharged inpatient encounters.
+   * Voided encounters are loaded so policy can return ADMINISTRATIVE_ONLY.
+   */
+  private async loadEncounterForNursingAmendment(facilityId: string, encounterId: string) {
+    return this.loadEncounterForNursingRead(facilityId, encounterId);
   }
 }

@@ -16,6 +16,7 @@ import { HOSPITAL_CARE_FLOOR_BOARD } from "@/features/hospital-care/hospitalCare
 import { isForbiddenApiError } from "@/features/hospital-care/hospitalCarePlacementApi";
 import { InpatientCensusViewLegacy } from "./InpatientCensusViewLegacy";
 import { INPATIENT_ALL_UNITS_BOARD_PATH } from "./inpatientUnitBoardPaths";
+import { ProviderCensusBoard } from "./ProviderCensusBoard";
 
 /**
  * D3E.6C — Graphical service-line hub (primary).
@@ -114,36 +115,7 @@ function GraphicalHubBody() {
             </Link>
           </div>
 
-          <div
-            style={{
-              ...MEDORA_CARD_SHELL,
-              padding: "8px 12px",
-              marginBottom: 12,
-              fontSize: 12,
-              color: "#475569",
-            }}
-            data-testid="provider-census-views"
-            aria-label={t("inpatientProviderD4a26.census.title")}
-          >
-            <strong style={{ color: "#0f172a" }}>
-              {t("inpatientProviderD4a26.census.title")}
-            </strong>
-            {": "}
-            {[
-              t("inpatientProviderD4a26.census.myPatients"),
-              t("inpatientProviderD4a26.census.myService"),
-              t("inpatientProviderD4a26.census.covering"),
-              t("inpatientProviderD4a26.census.newAdmissions"),
-              t("inpatientProviderD4a26.census.possibleDischarges"),
-              t("inpatientProviderD4a26.census.consults"),
-              t("inpatientProviderD4a26.census.resultsReview"),
-              t("inpatientProviderD4a26.census.unassigned"),
-            ].join(" · ")}
-            {" — "}
-            <Link href={INPATIENT_ALL_UNITS_BOARD_PATH} style={{ color: "#0f766e", fontWeight: 600 }}>
-              {t("hospitalCareD3e6c.hub.openAllCensus")}
-            </Link>
-          </div>
+          <ProviderCensusBoard />
 
           {tree.serviceLines.length === 0 ? (
             <div style={{ ...MEDORA_CARD_SHELL, padding: 16 }}>

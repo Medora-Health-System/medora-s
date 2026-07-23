@@ -240,6 +240,12 @@ export async function fetchNursingAdmissionPrintSummary(encounterId: string) {
   ) as Promise<Record<string, unknown>>;
 }
 
+export async function fetchAuthoritativeClinicalProjection(encounterId: string) {
+  return apiFetch(
+    `/inpatient-operations/encounters/${encodeURIComponent(encounterId)}/authoritative-clinical-projection`
+  ) as Promise<Record<string, unknown>>;
+}
+
 /** D4A.2.6 — Provider clinical workspace client. */
 export async function fetchProviderWorkspace(encounterId: string) {
   return apiFetch(
@@ -300,4 +306,51 @@ export async function signProviderHp(
     `/inpatient-operations/encounters/${encodeURIComponent(encounterId)}/provider-workspace/hp/sign`,
     { method: "POST", body: JSON.stringify(body) }
   ) as Promise<{ documentation: Record<string, unknown> }>;
+}
+
+/** D4A.2.6A — Live enterprise provider clinical synthesis. */
+export async function fetchProviderClinicalSynthesis(encounterId: string) {
+  return apiFetch(
+    `/inpatient-operations/encounters/${encodeURIComponent(encounterId)}/provider-clinical-synthesis`
+  ) as Promise<{
+    certification: string;
+    synthesis: Record<string, unknown>;
+    boundary: Record<string, unknown>;
+  }>;
+}
+
+export async function saveProviderProgressNote(
+  encounterId: string,
+  body: { note: Record<string, unknown>; expectedVersion: number }
+) {
+  return apiFetch(
+    `/inpatient-operations/encounters/${encodeURIComponent(encounterId)}/provider-workspace/progress-notes`,
+    { method: "PATCH", body: JSON.stringify(body) }
+  ) as Promise<{ documentation: Record<string, unknown> }>;
+}
+
+export async function signProviderProgressNote(
+  encounterId: string,
+  body: { noteId: string; expectedVersion: number }
+) {
+  return apiFetch(
+    `/inpatient-operations/encounters/${encodeURIComponent(encounterId)}/provider-workspace/progress-notes/sign`,
+    { method: "POST", body: JSON.stringify(body) }
+  ) as Promise<{ documentation: Record<string, unknown> }>;
+}
+
+export async function carryForwardProviderProgressNote(
+  encounterId: string,
+  body: { fromNoteId: string; serviceDate: string; expectedVersion: number }
+) {
+  return apiFetch(
+    `/inpatient-operations/encounters/${encodeURIComponent(encounterId)}/provider-workspace/progress-notes/carry-forward`,
+    { method: "POST", body: JSON.stringify(body) }
+  ) as Promise<{ documentation: Record<string, unknown>; note: Record<string, unknown> }>;
+}
+
+export async function fetchProviderPrintPackage(encounterId: string, kind: string) {
+  return apiFetch(
+    `/inpatient-operations/encounters/${encodeURIComponent(encounterId)}/provider-print-package/${encodeURIComponent(kind)}`
+  ) as Promise<{ certification: string; package: Record<string, unknown> }>;
 }

@@ -200,34 +200,40 @@ export function InpatientWorkspacePanel({
         </div>
       );
     case "progressNotes":
-      if (!docsLive || !facilityId) {
+      if (!facilityId) {
         return (
           <div data-testid={`inpatient-panel-${section}-flag-off`}>
-            <p style={{ fontSize: 13, color: "#64748b" }}>{t("inpatientD3e.docsFlagOff")}</p>
-            <ShellList
-              title={t("inpatientD3e.historyPhysical.kindsTitle")}
-              items={INPATIENT_NOTE_KINDS.map((k) => t(`inpatientD3e.historyPhysical.kinds.${k}`))}
-              testId="inpatient-hp-kinds-shell"
-            />
+            <p style={{ fontSize: 13, color: "#64748b" }}>{t("inpatientD3e.featureUnavailable")}</p>
           </div>
         );
       }
       return (
         <div data-testid={`inpatient-panel-${section}-live`}>
-          <p style={{ margin: "0 0 10px", fontSize: 12, color: "#64748b" }}>
-            {t("inpatientProviderD4a26.progress.reuseNotes")}
-          </p>
-          <p style={{ margin: "0 0 10px", fontSize: 12, color: "#64748b" }}>
-            {t("inpatientProviderD4a26.progress.newSincePrior")}
-          </p>
-          <EmergencyErNotesPanel
+          <InpatientProviderWorkspacePanel
+            mode="progressNotes"
             encounterId={encounterId}
             facilityId={facilityId}
-            status={encounter?.status}
+            patientId={encounter?.patient?.id}
+            canProviderWrite={canProviderWrite}
+            canDocumentDiagnoses={canPrescribe}
             isLocked={signed}
-            roleCodes={roles}
-            onSaved={onRefetchEncounter}
+            onNavigateSection={onNavigateSection}
           />
+          {docsLive ? (
+            <div style={{ marginTop: 12 }}>
+              <p style={{ margin: "0 0 10px", fontSize: 12, color: "#64748b" }}>
+                {t("inpatientProviderD4a26.progress.reuseNotes")}
+              </p>
+              <EmergencyErNotesPanel
+                encounterId={encounterId}
+                facilityId={facilityId}
+                status={encounter?.status}
+                isLocked={signed}
+                roleCodes={roles}
+                onSaved={onRefetchEncounter}
+              />
+            </div>
+          ) : null}
         </div>
       );
     case "nursing":

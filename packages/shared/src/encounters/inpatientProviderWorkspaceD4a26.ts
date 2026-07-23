@@ -118,10 +118,21 @@ export type ProviderProblemPlanItemV1 = {
   status: ProviderProblemPlanStatus;
   priority: "PRIMARY" | "SECONDARY" | "OTHER";
   assessment?: string | null;
+  /** Supporting evidence narrative — never auto-written. */
+  supportingEvidence?: string | null;
+  relatedOrderIds?: string[];
+  relatedResultIds?: string[];
+  relatedConsultIds?: string[];
+  goals?: string | null;
+  dispositionBarrier?: string | null;
   plan?: string | null;
   lastReviewedAt?: string | null;
   lastReviewedByUserId?: string | null;
   resolvedAt?: string | null;
+  history?: Array<{ at: string; byUserId?: string | null; summary: string }>;
+  hospitalProblem?: boolean;
+  chronic?: boolean;
+  monitoring?: boolean;
 };
 
 export type ProviderTaskItemV1 = {
@@ -154,6 +165,27 @@ export type ProviderHpDraftV1 = {
   lastSavedAt?: string | null;
 };
 
+/** D4A.2.6A — Daily progress note drafts (provider-owned; never auto-generated). */
+export type ProviderProgressNoteItemV1 = {
+  noteId: string;
+  expectedVersion: number;
+  status: "DRAFT" | "REVIEW" | "SIGNED" | "AMENDED" | "CORRECTED";
+  text: string;
+  carryForwardFromNoteId?: string | null;
+  carryForwardDiff?: {
+    yesterday: string;
+    today: string;
+    changed: string[];
+    removed: string[];
+    new: string[];
+  } | null;
+  signedAt?: string | null;
+  signedByUserId?: string | null;
+  amendedAt?: string | null;
+  lastSavedAt?: string | null;
+  serviceDate: string;
+};
+
 export type InpatientProviderWorkspaceV1 = {
   version: 1;
   expectedVersion: number;
@@ -161,6 +193,8 @@ export type InpatientProviderWorkspaceV1 = {
   problemPlans: ProviderProblemPlanItemV1[];
   tasks: ProviderTaskItemV1[];
   hpDraft?: ProviderHpDraftV1 | null;
+  /** D4A.2.6A — Daily progress notes (draft/sign/amend/carry-forward). */
+  progressNotes?: ProviderProgressNoteItemV1[];
   lastProviderReviewAt?: string | null;
   lastProviderReviewByUserId?: string | null;
   roundingModeStep?: ProviderRoundingModeStep | null;
@@ -181,6 +215,7 @@ export function emptyInpatientProviderWorkspaceV1(nowIso?: string): InpatientPro
       sections: {},
       lastSavedAt: null,
     },
+    progressNotes: [],
     lastProviderReviewAt: null,
     lastProviderReviewByUserId: null,
     roundingModeStep: null,

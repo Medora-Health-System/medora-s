@@ -55,9 +55,11 @@ describe("D4A.2.6 inpatient provider workspace UI", () => {
     const provider = readFileSync(join(root, "InpatientProviderWorkspacePanel.tsx"), "utf8");
     expect(provider).toContain("EncounterDiagnosticsPanel");
     expect(provider).toContain("EnterpriseEncounterCommandTimeline");
-    expect(provider).toContain("overview.noAutoAck");
+    expect(provider).toContain("ProviderClinicalSynthesisOverview");
     expect(provider).toContain("hp.noAutoRos");
     expect(provider).toContain("hp.noAutoExam");
+    const synthesis = readFileSync(join(root, "ProviderClinicalSynthesisOverview.tsx"), "utf8");
+    expect(synthesis).toContain("neverAutoAck");
 
     const admission = readFileSync(join(root, "InpatientAdmissionClinicalShell.tsx"), "utf8");
     expect(admission).toContain("NursingAdmissionStructuredSectionForm");

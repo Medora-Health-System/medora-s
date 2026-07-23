@@ -138,6 +138,8 @@ export * from "./encounters/medSurgNursingAdmissionD4a1Benchmark.js";
 export * from "./encounters/inpatientLifecycleNursingAdmissionD4a25.js";
 export * from "./encounters/inpatientProviderWorkspaceD4a26.js";
 export * from "./encounters/nursingAdmissionDomainIntegrationD4a25a.js";
+export * from "./encounters/authoritativeDomainLinkageD4a26h.js";
+export * from "./encounters/providerClinicalSynthesisD4a26a.js";
 export * from "./patients/patientSearchAndSelectV1.js";
 export * from "./encounters/inpatientOperationsFeatureFlags.js";
 export * from "./encounters/inpatientClinicalOpsCertificationV1.js";

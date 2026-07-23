@@ -356,6 +356,19 @@ export class InpatientOperationsController {
     );
   }
 
+  /** D4A.2.6H — Provider/nursing authoritative clinical projection (no synthetic sources). */
+  @Get("encounters/:encounterId/authoritative-clinical-projection")
+  @RequireRoles(RoleCode.PROVIDER, RoleCode.RN, RoleCode.ADMIN)
+  async authoritativeClinicalProjection(
+    @Param("encounterId") encounterId: string,
+    @Req() req: any
+  ) {
+    return this.ops.getInpatientAuthoritativeClinicalProjection(
+      facilityIdFromReq(req),
+      encounterId
+    );
+  }
+
   @Get("encounters/:encounterId/lifecycle")
   @RequireRoles(RoleCode.PROVIDER, RoleCode.RN, RoleCode.ADMIN)
   async getLifecycle(@Param("encounterId") encounterId: string, @Req() req: any) {
@@ -598,6 +611,98 @@ export class InpatientOperationsController {
       encounterId,
       userIdFromReq(req),
       { expectedVersion }
+    );
+  }
+
+  /** D4A.2.6A — Live enterprise provider clinical synthesis (read projection). */
+  @Get("encounters/:encounterId/provider-clinical-synthesis")
+  @RequireRoles(RoleCode.PROVIDER, RoleCode.RN, RoleCode.ADMIN)
+  async getProviderClinicalSynthesis(
+    @Param("encounterId") encounterId: string,
+    @Req() req: any
+  ) {
+    return this.ops.getProviderClinicalSynthesis(facilityIdFromReq(req), encounterId);
+  }
+
+  @Patch("encounters/:encounterId/provider-workspace/progress-notes")
+  @RequireRoles(RoleCode.PROVIDER, RoleCode.ADMIN)
+  async saveProviderProgressNote(
+    @Param("encounterId") encounterId: string,
+    @Body() body: Record<string, unknown>,
+    @Req() req: any
+  ) {
+    const expectedVersion = Number(body.expectedVersion);
+    if (!Number.isFinite(expectedVersion)) {
+      throw new BadRequestException("expectedVersion is required");
+    }
+    const note = body.note;
+    if (!note || typeof note !== "object" || Array.isArray(note)) {
+      throw new BadRequestException("note is required");
+    }
+    return this.ops.saveProviderProgressNote(
+      facilityIdFromReq(req),
+      encounterId,
+      userIdFromReq(req),
+      { note: note as any, expectedVersion }
+    );
+  }
+
+  @Post("encounters/:encounterId/provider-workspace/progress-notes/sign")
+  @RequireRoles(RoleCode.PROVIDER, RoleCode.ADMIN)
+  async signProviderProgressNote(
+    @Param("encounterId") encounterId: string,
+    @Body() body: Record<string, unknown>,
+    @Req() req: any
+  ) {
+    const noteId = String(body.noteId ?? "").trim();
+    const expectedVersion = Number(body.expectedVersion);
+    if (!noteId) throw new BadRequestException("noteId is required");
+    if (!Number.isFinite(expectedVersion)) {
+      throw new BadRequestException("expectedVersion is required");
+    }
+    return this.ops.signProviderProgressNoteDoc(
+      facilityIdFromReq(req),
+      encounterId,
+      userIdFromReq(req),
+      { noteId, expectedVersion }
+    );
+  }
+
+  @Post("encounters/:encounterId/provider-workspace/progress-notes/carry-forward")
+  @RequireRoles(RoleCode.PROVIDER, RoleCode.ADMIN)
+  async carryForwardProviderProgressNote(
+    @Param("encounterId") encounterId: string,
+    @Body() body: Record<string, unknown>,
+    @Req() req: any
+  ) {
+    const fromNoteId = String(body.fromNoteId ?? "").trim();
+    const serviceDate = String(body.serviceDate ?? "").trim();
+    const expectedVersion = Number(body.expectedVersion);
+    if (!fromNoteId) throw new BadRequestException("fromNoteId is required");
+    if (!serviceDate) throw new BadRequestException("serviceDate is required");
+    if (!Number.isFinite(expectedVersion)) {
+      throw new BadRequestException("expectedVersion is required");
+    }
+    return this.ops.carryForwardProviderProgressNote(
+      facilityIdFromReq(req),
+      encounterId,
+      userIdFromReq(req),
+      { fromNoteId, serviceDate, expectedVersion }
+    );
+  }
+
+  @Get("encounters/:encounterId/provider-print-package/:kind")
+  @RequireRoles(RoleCode.PROVIDER, RoleCode.ADMIN)
+  async getProviderPrintPackage(
+    @Param("encounterId") encounterId: string,
+    @Param("kind") kind: string,
+    @Req() req: any
+  ) {
+    return this.ops.getProviderPrintPackage(
+      facilityIdFromReq(req),
+      encounterId,
+      userIdFromReq(req),
+      kind
     );
   }
 }
