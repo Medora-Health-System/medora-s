@@ -45,6 +45,10 @@ export function EnterpriseHospitalPatientHeader({
   onOpenAssessments,
   onOpenTasks,
   onOpenHandoff,
+  /** D4A.3.0 — hospital bag assign/remove (no navigate away). */
+  onAssignToMe,
+  onRemoveAssignment,
+  assignmentBusy = false,
 }: {
   header: HeaderData;
   sticky?: boolean;
@@ -60,6 +64,9 @@ export function EnterpriseHospitalPatientHeader({
   onOpenAssessments?: () => void;
   onOpenTasks?: () => void;
   onOpenHandoff?: () => void;
+  onAssignToMe?: () => void;
+  onRemoveAssignment?: () => void;
+  assignmentBusy?: boolean;
 }) {
   const { t, language } = useI18n();
   const [expanded, setExpanded] = useState(false);
@@ -191,12 +198,12 @@ export function EnterpriseHospitalPatientHeader({
           </div>
           <div style={metaRow}>
             <span>
-              {t("inpatientWorkspaceRecoveryD4a27b.header.attending")}:{" "}
-              {header.attendingName?.trim() || DISPLAY_DASH}
+              {t("enterpriseHospitalAssignmentD4a30.provider")}:{" "}
+              {header.attendingName?.trim() || t("enterpriseHospitalAssignmentD4a30.unassigned")}
             </span>
             <span>
-              {t("inpatientWorkspaceRecoveryD4a27b.header.rn")}:{" "}
-              {header.assignedRnName?.trim() || DISPLAY_DASH}
+              {t("enterpriseHospitalAssignmentD4a30.nurse")}:{" "}
+              {header.assignedRnName?.trim() || t("enterpriseHospitalAssignmentD4a30.unassigned")}
             </span>
             {header.residentOrAppName ? (
               <span>
@@ -324,6 +331,30 @@ export function EnterpriseHospitalPatientHeader({
         {role === "TECHNICIAN" && onOpenTasks ? (
           <button type="button" onClick={onOpenTasks} style={actionBtn}>
             {t("inpatientRapidConvergenceD4a27c.actions.tasks")}
+          </button>
+        ) : null}
+        {onAssignToMe ? (
+          <button
+            type="button"
+            onClick={onAssignToMe}
+            disabled={assignmentBusy}
+            style={actionBtn}
+            data-testid="hospital-header-assign-me"
+          >
+            {assignmentBusy
+              ? t("enterpriseHospitalAssignmentD4a30.assignSubmitting")
+              : t("enterpriseHospitalAssignmentD4a30.assignToMe")}
+          </button>
+        ) : null}
+        {onRemoveAssignment ? (
+          <button
+            type="button"
+            onClick={onRemoveAssignment}
+            disabled={assignmentBusy}
+            style={actionBtn}
+            data-testid="hospital-header-remove-assignment"
+          >
+            {t("enterpriseHospitalAssignmentD4a30.removeAssignment")}
           </button>
         ) : null}
         <Link href={`/app/patients/${encodeURIComponent(header.patientId)}`} style={actionLink}>

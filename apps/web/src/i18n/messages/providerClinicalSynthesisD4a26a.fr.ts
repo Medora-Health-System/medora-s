@@ -121,7 +121,7 @@ export const providerClinicalSynthesisD4a26aFr = {
     completed: "Terminées",
   },
   census: {
-    title: "Recensement médecin",
+    title: "Mes patients",
     filterAttending: "Médecin responsable",
     filterUnit: "Unité / étage",
     filterQuery: "Recherche",

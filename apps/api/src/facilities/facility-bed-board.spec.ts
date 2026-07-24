@@ -8,6 +8,8 @@ import {
 } from "@medora/shared";
 import { FacilityBedBoardService } from "./facility-bed-board.service";
 import { EncountersService } from "../encounters/encounters.service";
+import { createMockInternalPlacementService } from "../encounters/encounters.service.test-internal-placement.mock";
+import { createMockEnterpriseAssignmentService } from "../encounters/encounters.service.test-enterprise-assignment.mock";
 
 const facilityId = "fac-1";
 
@@ -248,7 +250,9 @@ function buildUpdateRoomWithBedBoardMocks(input: {
     prisma as never,
     { log: auditLog } as never,
     {} as never,
-    bedBoardService as never
+    bedBoardService as never,
+    createMockInternalPlacementService() as never,
+    createMockEnterpriseAssignmentService() as never
   );
   return { service, encounterUpdateMany, auditLog };
 }
@@ -357,7 +361,9 @@ describe("EncountersService.updateRoom — bed status enforcement (K.10B.10C)", 
       prisma as never,
       { log: auditLog } as never,
       {} as never,
-      bedBoardService as never
+      bedBoardService as never,
+      createMockInternalPlacementService() as never,
+      createMockEnterpriseAssignmentService() as never
     );
 
     await expect(

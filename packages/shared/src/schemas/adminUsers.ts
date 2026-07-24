@@ -10,6 +10,7 @@ export const ADMIN_ASSIGNABLE_ROLE_CODES = [
   "LAB",
   "RADIOLOGY",
   "BILLING",
+  "PATIENT_CARE_TECH",
 ] as const;
 
 export type AdminAssignableRoleCode = (typeof ADMIN_ASSIGNABLE_ROLE_CODES)[number];

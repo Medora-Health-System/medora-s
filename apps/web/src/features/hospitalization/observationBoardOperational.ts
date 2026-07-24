@@ -1,4 +1,8 @@
-import type { ObservationOperationalSnapshot } from "@medora/shared";
+import {
+  projectHospitalBoardAssignments,
+  readHospitalAssignmentBag,
+  type ObservationOperationalSnapshot,
+} from "@medora/shared";
 
 /** Minimal row shape for board analytics (trackboard INPATIENT list). */
 export type ObservationBoardRowInput = {
@@ -15,6 +19,8 @@ export type ObservationBoardRowInput = {
   patient?: { firstName?: string | null; lastName?: string | null } | null;
   physicianAssignedUserId?: string | null;
   nurseAssignedUserId?: string | null;
+  /** D4A.3.0 — hospital bag preferred over ED columns when present. */
+  admissionSummaryJson?: unknown;
 };
 
 export type ObservationBoardCensusSummary = {
@@ -76,12 +82,20 @@ function snapshot(row: ObservationBoardRowInput): ObservationOperationalSnapshot
 }
 
 export function observationBoardRnAssignmentGap(row: ObservationBoardRowInput): boolean {
+  const bag = readHospitalAssignmentBag(row.admissionSummaryJson);
+  if (bag) {
+    return projectHospitalBoardAssignments(bag).nurseUnassigned;
+  }
   const o = snapshot(row);
   if (o) return o.flags.assignRnGap;
   return !((row.nurseAssignedUserId ?? "").trim());
 }
 
 export function observationBoardProviderAssignmentGap(row: ObservationBoardRowInput): boolean {
+  const bag = readHospitalAssignmentBag(row.admissionSummaryJson);
+  if (bag) {
+    return projectHospitalBoardAssignments(bag).providerUnassigned;
+  }
   const o = snapshot(row);
   if (o) return o.flags.assignPhysicianGap;
   return !((row.physicianAssignedUserId ?? "").trim());

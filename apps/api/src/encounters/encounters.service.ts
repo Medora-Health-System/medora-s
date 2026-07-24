@@ -261,7 +261,8 @@ export class EncountersService {
     private readonly audit: AuditService,
     private readonly trackboardService: TrackboardService,
     private readonly bedBoardService: FacilityBedBoardService,
-    private readonly internalPlacement: InternalPlacementService
+    private readonly internalPlacement: InternalPlacementService,
+    private readonly enterpriseAssignment: import("./enterprise-assignment.service").EnterpriseAssignmentService
   ) {}
 
   async create(patientId: string, facilityId: string, data: EncounterCreateDto, userId?: string, ip?: string, userAgent?: string) {
@@ -2210,81 +2211,15 @@ export class EncountersService {
     ip?: string,
     userAgent?: string
   ) {
-    const encounter = await this.prisma.encounter.findFirst({
-      where: { id: encounterId, facilityId },
-      select: {
-        id: true,
-        patientId: true,
-        status: true,
-        workflowState: true,
-        version: true,
-        physicianAssignedUserId: true,
-        nurseAssignedUserId: true,
-      },
+    // D4A.3.0 — ED self-assign goes through shared Enterprise Assignment Engine.
+    await this.enterpriseAssignment.mutateEmergencySelfAssignment({
+      kind,
+      facilityId,
+      encounterId,
+      actorUserId,
+      ip,
+      userAgent,
     });
-    if (!encounter) {
-      throw new NotFoundException("Encounter not found");
-    }
-    if (encounter.status !== EncounterStatus.OPEN) {
-      throw new BadRequestException(
-        "L'attribution n'est possible que sur une consultation ouverte."
-      );
-    }
-    if (encounter.workflowState === EncounterWorkflowState.CLOSED) {
-      throw new BadRequestException(
-        "L'attribution n'est possible que sur une consultation ouverte."
-      );
-    }
-
-    if (kind === "provider") {
-      await this.assertProviderAtFacility(facilityId, actorUserId);
-    } else {
-      await this.assertRnAtFacility(facilityId, actorUserId);
-    }
-
-    const previousUserId =
-      kind === "provider"
-        ? encounter.physicianAssignedUserId ?? null
-        : encounter.nurseAssignedUserId ?? null;
-
-    if (previousUserId === actorUserId) {
-      const unchanged = await this.prisma.encounter.findFirst({
-        where: { id: encounterId, facilityId },
-        select: ENCOUNTER_DETAIL_SELECT,
-      });
-      if (!unchanged) throw new NotFoundException("Encounter not found");
-      return toEncounterClinicResponse(unchanged);
-    }
-
-    const now = new Date();
-    /**
-     * IMPORTANT — `updateMany` does not support nested relation writes
-     * (e.g. `physicianAssigned: { connect: { id } }`). That form is only valid
-     * for `update` / `EncounterUpdateInput` and triggers a runtime
-     * `PrismaClientValidationError` when passed to `updateMany`.
-     *
-     * Use the unchecked input shape so we can write the FK scalar columns
-     * directly while keeping the optimistic-locking `where: { version }` guard.
-     */
-    const updateData: Prisma.EncounterUncheckedUpdateManyInput =
-      kind === "provider"
-        ? {
-            physicianAssignedUserId: actorUserId,
-            physicianAssignedAt: now,
-            version: { increment: 1 },
-          }
-        : {
-            nurseAssignedUserId: actorUserId,
-            nurseAssignedAt: now,
-            version: { increment: 1 },
-          };
-
-    const u = await this.prisma.encounter.updateMany({
-      where: { id: encounterId, facilityId, version: encounter.version },
-      data: updateData,
-    });
-    if (u.count === 0) throwEncounterConcurrentModification();
-
     const updated = await this.prisma.encounter.findFirst({
       where: { id: encounterId, facilityId },
       select: ENCOUNTER_DETAIL_SELECT,
@@ -2292,43 +2227,6 @@ export class EncountersService {
     if (!updated) {
       throw new NotFoundException("Encounter not found");
     }
-
-    /**
-     * PHI-safe audit metadata. We only persist:
-     *   - the new and previous owner IDs
-     *   - the source ("SELF_ASSIGN")
-     *   - the assignment kind
-     * No patient name, MRN, complaint, or clinical text.
-     */
-    await this.audit.log(
-      kind === "provider"
-        ? AuditAction.ENCOUNTER_ASSIGN_PROVIDER
-        : AuditAction.ENCOUNTER_ASSIGN_NURSE,
-      "ENCOUNTER",
-      {
-        userId: actorUserId,
-        facilityId,
-        patientId: encounter.patientId,
-        encounterId: encounter.id,
-        entityId: encounter.id,
-        ip,
-        userAgent,
-        metadata: {
-          source: "SELF_ASSIGN" as const,
-          kind,
-          ...(kind === "provider"
-            ? {
-                assignedProviderUserId: actorUserId,
-                previousProviderUserId: previousUserId,
-              }
-            : {
-                assignedNurseUserId: actorUserId,
-                previousNurseUserId: previousUserId,
-              }),
-        },
-      }
-    );
-
     return toEncounterClinicResponse(updated);
   }
 

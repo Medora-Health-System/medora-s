@@ -6921,6 +6921,8 @@ enum RoleCode {
   MEDICATION_REVIEWER
   /// Phase 6 — medication governance admin (review ops + pilot configuration; non-clinical).
   MEDICATION_ADMIN
+  /// D4A.3.0-H1 — hospital / unit patient-care technician (PCT, CNA, unit tech). Not LAB/RADIOLOGY.
+  PATIENT_CARE_TECH
 }
 
 enum DepartmentCode {

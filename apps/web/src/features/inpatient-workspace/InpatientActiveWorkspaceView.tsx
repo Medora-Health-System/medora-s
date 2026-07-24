@@ -37,6 +37,10 @@ import { InpatientWorkspacePanel } from "./InpatientWorkspacePanel";
 import { EnterpriseHospitalPatientHeader } from "./EnterpriseHospitalPatientHeader";
 import { InpatientEncounterUnavailablePanel } from "./InpatientEncounterUnavailablePanel";
 import { fetchInpatientWorkspaceBootstrap } from "@/features/hospital-care/inpatientOperationsApi";
+import {
+  assignHospitalRoleToMe,
+  unassignHospitalRole,
+} from "@/features/hospital-care/hospitalAssignmentApi";
 import { emergencyActiveWorkspacePath } from "@/features/emergency/emergencyRoutes";
 import { observationActiveWorkspacePath } from "@/features/observation-workspace/observationWorkspacePaths";
 import { classifyInpatientBootstrapClientError } from "./inpatientBootstrapClientErrors";
@@ -122,6 +126,7 @@ export function InpatientActiveWorkspaceView({
   );
   const [bootstrap, setBootstrap] = useState<HospitalWorkspaceBootstrapV1 | null>(null);
   const [loading, setLoading] = useState(true);
+  const [assignmentBusy, setAssignmentBusy] = useState(false);
   const [errorCategory, setErrorCategory] = useState<
     EncounterResolutionFailureCategory | string | null
   >(null);
@@ -243,9 +248,47 @@ export function InpatientActiveWorkspaceView({
         <>
           <EnterpriseHospitalPatientHeader
             header={header}
+            role={role}
+            assignmentBusy={assignmentBusy}
             onOpenOrders={() => selectSection("orders")}
             onOpenMar={() => selectSection("medications")}
             onOpenResults={() => selectSection("results")}
+            onAssignToMe={
+              facilityId && (role === "PROVIDER" || role === "NURSING" || role === "TECHNICIAN")
+                ? () => {
+                    const slot =
+                      role === "PROVIDER"
+                        ? ("PROVIDER" as const)
+                        : role === "NURSING"
+                          ? ("NURSE" as const)
+                          : ("TECHNICIAN" as const);
+                    setAssignmentBusy(true);
+                    void assignHospitalRoleToMe(facilityId, encounterId, slot)
+                      .then(() => loadBootstrap())
+                      .finally(() => setAssignmentBusy(false));
+                  }
+                : undefined
+            }
+            onRemoveAssignment={
+              facilityId &&
+              (role === "PROVIDER" || role === "NURSING" || role === "TECHNICIAN") &&
+              ((role === "PROVIDER" && header.attendingName) ||
+                (role === "NURSING" && header.assignedRnName) ||
+                role === "TECHNICIAN")
+                ? () => {
+                    const slot =
+                      role === "PROVIDER"
+                        ? ("PROVIDER" as const)
+                        : role === "NURSING"
+                          ? ("NURSE" as const)
+                          : ("TECHNICIAN" as const);
+                    setAssignmentBusy(true);
+                    void unassignHospitalRole(facilityId, encounterId, slot)
+                      .then(() => loadBootstrap())
+                      .finally(() => setAssignmentBusy(false));
+                  }
+                : undefined
+            }
           />
 
           <InpatientWorkspaceSectionNav

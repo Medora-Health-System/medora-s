@@ -8,6 +8,7 @@ import {
 import { EncountersService } from "./encounters.service";
 import { createMockBedBoardService } from "./encounters.service.test-bed-board.mock";
 import { createMockInternalPlacementService } from "./encounters.service.test-internal-placement.mock";
+import { createMockEnterpriseAssignmentService } from "./encounters.service.test-enterprise-assignment.mock";
 
 const facilityId = "fac-a";
 const patientId = "pat-1";
@@ -83,8 +84,9 @@ describe("EncountersService — ED room occupancy enforcement (ROOMS.ED.2)", () 
       { log: auditLog } as never,
       {} as never,
       createMockBedBoardService() as never,
-      createMockInternalPlacementService() as never
-    );
+      createMockInternalPlacementService() as never,
+    createMockEnterpriseAssignmentService() as never
+  );
 
     await expect(
       svc.create(patientId, facilityId, { type: "EMERGENCY", roomLabel: "4" }, "user-1")
@@ -109,8 +111,9 @@ describe("EncountersService — ED room occupancy enforcement (ROOMS.ED.2)", () 
       { log: auditLog } as never,
       {} as never,
       createMockBedBoardService() as never,
-      createMockInternalPlacementService() as never
-    );
+      createMockInternalPlacementService() as never,
+    createMockEnterpriseAssignmentService() as never
+  );
 
     await svc.create(
       patientId,
@@ -159,8 +162,9 @@ describe("EncountersService — ED room occupancy enforcement (ROOMS.ED.2)", () 
       { log: auditLog } as never,
       {} as never,
       createMockBedBoardService() as never,
-      createMockInternalPlacementService() as never
-    );
+      createMockInternalPlacementService() as never,
+    createMockEnterpriseAssignmentService() as never
+  );
 
     await expect(
       svc.updateOperational(facilityId, encounterId, { roomLabel: "4" }, "user-1")
@@ -194,8 +198,9 @@ describe("EncountersService — ED room occupancy enforcement (ROOMS.ED.2)", () 
       { log: auditLog } as never,
       {} as never,
       createMockBedBoardService() as never,
-      createMockInternalPlacementService() as never
-    );
+      createMockInternalPlacementService() as never,
+    createMockEnterpriseAssignmentService() as never
+  );
 
     await svc.updateOperational(
       facilityId,
@@ -225,8 +230,9 @@ describe("EncountersService — ED room occupancy enforcement (ROOMS.ED.2)", () 
       { log: auditLog } as never,
       {} as never,
       createMockBedBoardService() as never,
-      createMockInternalPlacementService() as never
-    );
+      createMockInternalPlacementService() as never,
+    createMockEnterpriseAssignmentService() as never
+  );
 
     await svc.create(
       patientId,

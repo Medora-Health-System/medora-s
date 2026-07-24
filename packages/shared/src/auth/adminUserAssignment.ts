@@ -20,9 +20,9 @@ export const ADMIN_PROFESSION_CODES = [
 
 export type AdminProfessionCode = (typeof ADMIN_PROFESSION_CODES)[number];
 
-export type TechnicianTypeCode = "LAB" | "RADIOLOGY";
+export type TechnicianTypeCode = "LAB" | "RADIOLOGY" | "PATIENT_CARE";
 
-export const TECHNICIAN_TYPE_CODES = ["LAB", "RADIOLOGY"] as const;
+export const TECHNICIAN_TYPE_CODES = ["LAB", "RADIOLOGY", "PATIENT_CARE"] as const;
 
 export type AdminUserAssignmentInput = {
   facilityId: string;
@@ -60,6 +60,9 @@ export function resolveRoleCodeFromProfession(input: {
       if (type === "LAB" || type === "RADIOLOGY") {
         return { ok: true, roleCode: type };
       }
+      if (type === "PATIENT_CARE") {
+        return { ok: true, roleCode: "PATIENT_CARE_TECH" };
+      }
       return { ok: false, errorKey: "adminUsers.valTechnicianTypeRequired" };
     }
     default:
@@ -85,6 +88,8 @@ export function resolveProfessionFromRoleCode(roleCode: string): {
       return { profession: "TECHNICIAN", technicianType: "LAB" };
     case "RADIOLOGY":
       return { profession: "TECHNICIAN", technicianType: "RADIOLOGY" };
+    case "PATIENT_CARE_TECH":
+      return { profession: "TECHNICIAN", technicianType: "PATIENT_CARE" };
     case "PHARMACY":
       return { profession: "PHARMACY" };
     case "BILLING":

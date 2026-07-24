@@ -151,7 +151,7 @@ export const inpatientProviderD4a26Fr = {
     reuse: "Même chronologie d’entreprise que les soins infirmiers et ordonnances.",
   },
   census: {
-    title: "Vues de liste des patients (médecin)",
+    title: "Mes patients",
     myPatients: "Mes patients",
     myService: "Mon service",
     covering: "Patients en couverture",

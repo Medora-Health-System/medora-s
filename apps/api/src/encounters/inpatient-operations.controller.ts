@@ -20,6 +20,8 @@ import { RoleCode } from "@prisma/client";
 import { RolesGuard, RequireRoles } from "../common/guards/roles.guard";
 import { InpatientOperationsService } from "./inpatient-operations.service";
 import { InpatientLifecycleService } from "./inpatient-lifecycle.service";
+import { EnterpriseAssignmentService } from "./enterprise-assignment.service";
+import type { EnterpriseHospitalBoardAssignmentRole } from "@medora/shared";
 
 function facilityIdFromReq(req: { user?: { facilityId?: string } }): string {
   const facilityId = req.user?.facilityId;
@@ -40,7 +42,8 @@ function userIdFromReq(req: { user?: { userId?: string; id?: string } }): string
 export class InpatientOperationsController {
   constructor(
     private readonly ops: InpatientOperationsService,
-    private readonly lifecycle: InpatientLifecycleService
+    private readonly lifecycle: InpatientLifecycleService,
+    private readonly enterpriseAssignment: EnterpriseAssignmentService
   ) {}
 
   @Get("meta")
@@ -886,5 +889,61 @@ export class InpatientOperationsController {
       userIdFromReq(req),
       { expectedVersion }
     );
+  }
+
+  /** D4A.3.0-H1 — Hospital assignment board projection (bag only; never ED columns). */
+  @Get("encounters/:encounterId/hospital-assignment")
+  @RequireRoles(
+    RoleCode.PROVIDER,
+    RoleCode.RN,
+    RoleCode.ADMIN,
+    RoleCode.PATIENT_CARE_TECH
+  )
+  async getHospitalAssignment(
+    @Param("encounterId") encounterId: string,
+    @Req() req: any
+  ) {
+    return this.enterpriseAssignment.getHospitalBoardProjection(
+      facilityIdFromReq(req),
+      encounterId
+    );
+  }
+
+  /**
+   * D4A.3.0-H1 — Hospital assign / unassign / reassign for PROVIDER | NURSE | TECHNICIAN.
+   * TECHNICIAN board slot requires PATIENT_CARE_TECH (never LAB/RADIOLOGY).
+   * Assignment never grants chart access.
+   */
+  @Post("encounters/:encounterId/hospital-assignment")
+  @RequireRoles(
+    RoleCode.PROVIDER,
+    RoleCode.RN,
+    RoleCode.ADMIN,
+    RoleCode.PATIENT_CARE_TECH
+  )
+  async mutateHospitalAssignment(
+    @Param("encounterId") encounterId: string,
+    @Body() body: Record<string, unknown>,
+    @Req() req: any
+  ) {
+    const roleRaw = String(body?.role ?? "").trim().toUpperCase();
+    const actionRaw = String(body?.action ?? "").trim().toUpperCase();
+    const roleOk =
+      roleRaw === "PROVIDER" || roleRaw === "NURSE" || roleRaw === "TECHNICIAN";
+    const actionOk =
+      actionRaw === "ASSIGN_ME" || actionRaw === "UNASSIGN" || actionRaw === "REASSIGN";
+    if (!roleOk) throw new BadRequestException("role must be PROVIDER | NURSE | TECHNICIAN");
+    if (!actionOk) throw new BadRequestException("action must be ASSIGN_ME | UNASSIGN | REASSIGN");
+    return this.enterpriseAssignment.mutateHospitalAssignment({
+      facilityId: facilityIdFromReq(req),
+      encounterId,
+      actorUserId: userIdFromReq(req),
+      role: roleRaw as EnterpriseHospitalBoardAssignmentRole,
+      action: actionRaw as "ASSIGN_ME" | "UNASSIGN" | "REASSIGN",
+      targetUserId:
+        typeof body?.targetUserId === "string" ? body.targetUserId : null,
+      ip: req?.ip,
+      userAgent: req?.headers?.["user-agent"],
+    });
   }
 }

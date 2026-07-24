@@ -1,18 +1,32 @@
 "use client";
 
-import { useMemo, useState, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from "react";
 import Link from "next/link";
 import {
   filterCensusByUnitSelection,
   filterHospitalCensusPatients,
+  filterMyIncompleteChartsEncountersEnterprise,
+  filterMyPatientsEncountersEnterprise,
+  filterUnassignedHospitalEncountersEnterprise,
   HOSPITAL_SERVICE_LINE_COLOR_CSS,
   resolveUnitBoardProfile,
   type HospitalServiceLineColorToken,
   type HospitalCensusPatientRow,
 } from "@medora/shared";
 import { useI18n } from "@/lib/i18n";
+import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import { MEDORA_CARD_SHELL } from "@/components/medora-card/medoraCardTokens";
 import { HospitalCareShell } from "@/features/hospital-care/HospitalCareShell";
+import {
+  assignHospitalRoleToMe,
+  unassignHospitalRole,
+} from "@/features/hospital-care/hospitalAssignmentApi";
+import {
+  HOSPITAL_BOARD_VIEW_TABS,
+  isHospitalCareTechAssigner,
+  resolveHospitalUnassignedBoardRole,
+  type HospitalBoardViewTab,
+} from "@/features/hospitalization/hospitalMyPatientsFilter";
 import {
   INPATIENT_UNIT_TREE_PATH,
   inpatientUnitPatientWorkspacePath,
@@ -58,9 +72,18 @@ export function UnitBoardShell({
   showStartAdmission = true,
 }: UnitBoardShellProps) {
   const { t } = useI18n();
+  const { userId, roles } = useFacilityAndRoles();
   const [query, setQuery] = useState("");
   const [operational, setOperational] = useState("");
+  const [boardTab, setBoardTab] = useState<HospitalBoardViewTab>("myPatients");
+  const [assigningId, setAssigningId] = useState<string | null>(null);
+  const [assignError, setAssignError] = useState<string | null>(null);
+  const [localPatients, setLocalPatients] = useState(patients);
   const colors = HOSPITAL_SERVICE_LINE_COLOR_CSS[colorToken];
+
+  useEffect(() => {
+    setLocalPatients(patients);
+  }, [patients]);
 
   const profile = useMemo(() => {
     if (!unitCode || !unitType) return null;
@@ -72,15 +95,76 @@ export function UnitBoardShell({
     });
   }, [unitCode, unitType, unitId, title]);
 
+  const filterCtx = useMemo(
+    () => ({ currentUserId: userId ?? "", roles: (roles ?? []) as string[] }),
+    [userId, roles]
+  );
+  const isProvider = (roles ?? []).includes("PROVIDER") || (roles ?? []).includes("ADMIN");
+  const isNurse = (roles ?? []).includes("RN") || (roles ?? []).includes("ADMIN");
+  const isTech = isHospitalCareTechAssigner(roles ?? []);
+
+  const tabPatients = useMemo(() => {
+    if (boardTab === "allPatients") return localPatients;
+    if (boardTab === "myPatients") {
+      return filterMyPatientsEncountersEnterprise(localPatients, filterCtx);
+    }
+    if (boardTab === "unassignedPatients") {
+      return filterUnassignedHospitalEncountersEnterprise(
+        localPatients,
+        resolveHospitalUnassignedBoardRole(roles ?? [])
+      );
+    }
+    if (boardTab === "incompleteCharts") {
+      return filterMyIncompleteChartsEncountersEnterprise(localPatients, filterCtx);
+    }
+    return localPatients;
+  }, [localPatients, boardTab, filterCtx, roles]);
+
   const rows = useMemo(
     () =>
-      filterHospitalCensusPatients(patients, {
+      filterHospitalCensusPatients(tabPatients, {
         query,
         clinicalContext: "INPATIENT",
         operational,
       }),
-    [patients, query, operational]
+    [tabPatients, query, operational]
   );
+
+  const onAssign = async (
+    encounterId: string,
+    role: "PROVIDER" | "NURSE" | "TECHNICIAN",
+    action: "ASSIGN_ME" | "UNASSIGN"
+  ) => {
+    if (!facilityId?.trim()) return;
+    setAssigningId(encounterId);
+    setAssignError(null);
+    try {
+      const res =
+        action === "ASSIGN_ME"
+          ? await assignHospitalRoleToMe(facilityId, encounterId, role)
+          : await unassignHospitalRole(facilityId, encounterId, role);
+      const p = res.projection;
+      setLocalPatients((prev) =>
+        prev.map((row) =>
+          row.encounterId === encounterId
+            ? {
+                ...row,
+                attendingName: p.providerName,
+                nurseName: p.nurseName,
+                technicianName: p.technicianName,
+                providerUserId: p.providerUserId,
+                nurseUserId: p.nurseUserId,
+                technicianUserId: p.technicianUserId,
+              }
+            : row
+        )
+      );
+    } catch {
+      setAssignError(t("enterpriseHospitalAssignmentD4a30.assignError"));
+    } finally {
+      setAssigningId(null);
+    }
+  };
 
   const snap = useMemo(() => {
     const countAlert = (code: string) =>
@@ -156,6 +240,41 @@ export function UnitBoardShell({
         <UnitBedBoard facilityId={facilityId} unitCode={unitCode} />
       ) : null}
 
+      <div
+        style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 10 }}
+        role="tablist"
+        aria-label={t("enterpriseHospitalAssignmentD4a30.tabsLabel")}
+        data-testid="unit-board-assignment-tabs"
+      >
+        {HOSPITAL_BOARD_VIEW_TABS.map((view) => (
+          <button
+            key={view}
+            type="button"
+            role="tab"
+            aria-selected={boardTab === view}
+            onClick={() => setBoardTab(view)}
+            style={{
+              padding: "4px 10px",
+              borderRadius: 9999,
+              border: boardTab === view ? "1px solid #2563eb" : "1px solid #cbd5e1",
+              background: boardTab === view ? "#eff6ff" : "#fff",
+              color: boardTab === view ? "#1e40af" : "#334155",
+              fontSize: 12,
+              fontWeight: 600,
+              cursor: "pointer",
+            }}
+          >
+            {t(`enterpriseHospitalAssignmentD4a30.tabs.${view}`)}
+          </button>
+        ))}
+      </div>
+
+      {assignError ? (
+        <p role="alert" style={{ fontSize: 12, color: "#b91c1c", marginBottom: 8 }}>
+          {assignError}
+        </p>
+      ) : null}
+
       <UnitPatientFilterBar
         query={query}
         onQuery={setQuery}
@@ -168,6 +287,12 @@ export function UnitBoardShell({
         emptyMessage={emptyMessage ?? t("hospitalCareD3e6c.board.emptyPatients")}
         unitSlug={unitCode?.toLowerCase()}
         useUnitPatientRoute={useUnitPatientRoute}
+        currentUserId={userId}
+        isProvider={isProvider}
+        isNurse={isNurse}
+        isTech={isTech}
+        assigningId={assigningId}
+        onAssign={onAssign}
       />
 
       <UnitBedSummary occupied={occupiedBeds} available={availableBeds} />
@@ -283,11 +408,27 @@ export function UnitPatientCardList({
   emptyMessage,
   unitSlug,
   useUnitPatientRoute,
+  currentUserId,
+  isProvider,
+  isNurse,
+  isTech,
+  assigningId,
+  onAssign,
 }: {
   rows: HospitalCensusPatientRow[];
   emptyMessage: string;
   unitSlug?: string;
   useUnitPatientRoute?: boolean;
+  currentUserId?: string;
+  isProvider?: boolean;
+  isNurse?: boolean;
+  isTech?: boolean;
+  assigningId?: string | null;
+  onAssign?: (
+    encounterId: string,
+    role: "PROVIDER" | "NURSE" | "TECHNICIAN",
+    action: "ASSIGN_ME" | "UNASSIGN"
+  ) => void;
 }) {
   const { t } = useI18n();
   if (rows.length === 0) {
@@ -307,6 +448,9 @@ export function UnitPatientCardList({
           useUnitPatientRoute && unitSlug
             ? inpatientUnitPatientWorkspacePath(unitSlug, row.encounterId)
             : inpatientActiveWorkspacePath(row.encounterId);
+        const mineProvider = Boolean(currentUserId && row.providerUserId === currentUserId);
+        const mineNurse = Boolean(currentUserId && row.nurseUserId === currentUserId);
+        const mineTech = Boolean(currentUserId && row.technicianUserId === currentUserId);
         return (
           <li
             key={row.encounterId}
@@ -317,13 +461,78 @@ export function UnitPatientCardList({
               display: "flex",
               justifyContent: "space-between",
               gap: 10,
+              alignItems: "flex-start",
             }}
           >
-            <div>
+            <div style={{ minWidth: 0, flex: 1 }}>
               <div style={{ fontWeight: 700, fontSize: 13 }}>{row.patientName}</div>
               <div style={{ fontSize: 11, color: "#64748b" }}>
                 {row.mrn ?? "—"} · {row.unitRoomBed || t("hospitalCareD3e6a.patients.noBed")}
               </div>
+              <div style={{ fontSize: 11, color: "#475569", marginTop: 4 }}>
+                {t("enterpriseHospitalAssignmentD4a30.provider")}:{" "}
+                {row.attendingName?.trim() || t("enterpriseHospitalAssignmentD4a30.unassigned")}
+                {" · "}
+                {t("enterpriseHospitalAssignmentD4a30.nurse")}:{" "}
+                {row.nurseName?.trim() || t("enterpriseHospitalAssignmentD4a30.unassigned")}
+                {" · "}
+                {t("enterpriseHospitalAssignmentD4a30.technician")}:{" "}
+                {row.technicianName?.trim() || t("enterpriseHospitalAssignmentD4a30.unassigned")}
+              </div>
+              {onAssign ? (
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginTop: 6 }}>
+                  {isProvider ? (
+                    <button
+                      type="button"
+                      disabled={assigningId === row.encounterId}
+                      onClick={() =>
+                        onAssign(
+                          row.encounterId,
+                          "PROVIDER",
+                          mineProvider ? "UNASSIGN" : "ASSIGN_ME"
+                        )
+                      }
+                      style={unitAssignBtn}
+                    >
+                      {mineProvider
+                        ? t("enterpriseHospitalAssignmentD4a30.removeAssignment")
+                        : t("enterpriseHospitalAssignmentD4a30.assignToMe")}
+                    </button>
+                  ) : null}
+                  {isNurse ? (
+                    <button
+                      type="button"
+                      disabled={assigningId === row.encounterId}
+                      onClick={() =>
+                        onAssign(row.encounterId, "NURSE", mineNurse ? "UNASSIGN" : "ASSIGN_ME")
+                      }
+                      style={unitAssignBtn}
+                    >
+                      {mineNurse
+                        ? t("enterpriseHospitalAssignmentD4a30.removeAssignment")
+                        : t("enterpriseHospitalAssignmentD4a30.assignToMe")}
+                    </button>
+                  ) : null}
+                  {isTech ? (
+                    <button
+                      type="button"
+                      disabled={assigningId === row.encounterId}
+                      onClick={() =>
+                        onAssign(
+                          row.encounterId,
+                          "TECHNICIAN",
+                          mineTech ? "UNASSIGN" : "ASSIGN_ME"
+                        )
+                      }
+                      style={unitAssignBtn}
+                    >
+                      {mineTech
+                        ? t("enterpriseHospitalAssignmentD4a30.removeAssignment")
+                        : t("enterpriseHospitalAssignmentD4a30.assignToMe")}
+                    </button>
+                  ) : null}
+                </div>
+              ) : null}
             </div>
             <Link href={href} style={{ fontSize: 12, fontWeight: 600, color: "#2563eb" }}>
               {t("hospitalCareD3e6b.patients.viewChart")}
@@ -334,6 +543,16 @@ export function UnitPatientCardList({
     </ul>
   );
 }
+
+const unitAssignBtn: CSSProperties = {
+  padding: "2px 8px",
+  borderRadius: 8,
+  border: "1px solid #cbd5e1",
+  background: "#fff",
+  fontSize: 11,
+  fontWeight: 600,
+  cursor: "pointer",
+};
 
 export function UnitBedSummary({
   occupied,

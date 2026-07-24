@@ -55,6 +55,7 @@ import { ClinicalRulesController } from "./enterprise-workflow/clinical-rules.co
 import { ClinicalRulesEngine } from "./enterprise-workflow/clinical-rules.engine";
 import { ClinicalRulesActionAdapter } from "./enterprise-workflow/clinical-rules-action.adapter";
 import { ClinicalRulesOrchestrationService } from "./enterprise-workflow/clinical-rules-orchestration.service";
+import { EnterpriseAssignmentService } from "./enterprise-assignment.service";
 
 @Module({
   imports: [PrismaModule, DiagnosesModule, OrdersModule, TrackboardModule, FacilitiesModule],
@@ -73,6 +74,7 @@ import { ClinicalRulesOrchestrationService } from "./enterprise-workflow/clinica
     ClinicalRulesController,
   ],
   providers: [
+    EnterpriseAssignmentService,
     EncountersService,
     InpatientOperationsService,
     ObservationOperationsService,
@@ -114,6 +116,7 @@ import { ClinicalRulesOrchestrationService } from "./enterprise-workflow/clinica
     AuditService,
   ],
   exports: [
+    EnterpriseAssignmentService,
     EncountersService,
     EncounterChartExportService,
     UnifiedEncounterTimelineService,

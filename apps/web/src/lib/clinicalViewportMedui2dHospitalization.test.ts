@@ -104,7 +104,11 @@ describe("MEDUI.2D hospitalization / observation tablet census", () => {
   it("does not change board workflow or routing", () => {
     const board = readWebSource("src/features/hospitalization/HospitalizationBoardView.tsx");
     expect(board).toContain("fetchHospitalisationEncounters");
-    expect(board).toContain("claimSelf(encounter.id");
+    // Multiline-safe: prettier may break claimSelf(encounter.id, …) across lines.
+    // Invariant: Provider / Nurse / Technician self-assign remains on the board (no tablet APIs).
+    expect(board).toMatch(/claimSelf\s*\(\s*encounter\.id[\s\S]*?["']PROVIDER["']/);
+    expect(board).toMatch(/claimSelf\s*\(\s*encounter\.id[\s\S]*?["']NURSE["']/);
+    expect(board).toMatch(/claimSelf\s*\(\s*encounter\.id[\s\S]*?["']TECHNICIAN["']/);
     expect(board).not.toMatch(/fetchHospitalisationEncountersTablet/i);
     expect(board).not.toMatch(/\/tablet/i);
   });

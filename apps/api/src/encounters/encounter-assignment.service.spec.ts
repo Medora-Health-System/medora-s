@@ -15,6 +15,7 @@
 import { BadRequestException, NotFoundException } from "@nestjs/common";
 import { AuditAction } from "@prisma/client";
 import { EncountersService } from "./encounters.service";
+import { EnterpriseAssignmentService } from "./enterprise-assignment.service";
 import { createMockBedBoardService } from "./encounters.service.test-bed-board.mock";
 import { createMockInternalPlacementService } from "./encounters.service.test-internal-placement.mock";
 
@@ -26,7 +27,8 @@ function buildPrismaMock(opts: {
   updateManyCount?: number;
 }) {
   const encounter = opts.encounter === null ? null : { ...defaultEncounter, ...(opts.encounter ?? {}) };
-  const findFirst = jest.fn().mockResolvedValueOnce(encounter).mockResolvedValueOnce(encounter);
+  // EnterpriseAssignmentService + EncountersService post-read each call encounter.findFirst.
+  const findFirst = jest.fn().mockResolvedValue(encounter);
   const updateMany = jest.fn().mockResolvedValue({ count: opts.updateManyCount ?? 1 });
   return {
     encounter: {
@@ -63,12 +65,18 @@ function makeService(prisma: unknown, audit: unknown) {
   const trackboard = {
     getOperationalAggregatesForEncounterIds: jest.fn().mockResolvedValue(new Map()),
   };
+  // D4A.3.0 — real EnterpriseAssignmentService so updateMany/audit assertions still pass.
+  const enterpriseAssignment = new EnterpriseAssignmentService(
+    prisma as never,
+    audit as never
+  );
   return new EncountersService(
     prisma as never,
     audit as never,
     trackboard as never,
     createMockBedBoardService() as never,
-    createMockInternalPlacementService() as never
+    createMockInternalPlacementService() as never,
+    enterpriseAssignment
   );
 }
 
