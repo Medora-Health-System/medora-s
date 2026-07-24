@@ -9,8 +9,11 @@ import {
   PROVIDER_INTERVAL_EVENT_OPTIONS,
   EXAM_SYSTEM_CODES,
   ROS_SYSTEM_CODES,
+  PROVIDER_PRINT_PACKAGE_KINDS,
+  type InpatientWorkspaceRole,
   type ProviderEventAckStatus,
   type ProviderHpSectionKey,
+  type ProviderPrintPackageKind,
   type ProviderRoundingModeStep,
 } from "@medora/shared";
 import { useI18n } from "@/lib/i18n";
@@ -19,6 +22,8 @@ import {
   acknowledgeProviderWorkspaceEvent,
   carryForwardProviderProgressNote,
   fetchAuthoritativeClinicalProjection,
+  fetchProviderClinicalSynthesis,
+  fetchProviderPrintPackage,
   fetchProviderWorkspace,
   saveProviderHpDraft,
   saveProviderProgressNote,
@@ -30,7 +35,8 @@ import { EncounterDiagnosticsPanel } from "@/components/encounters/EncounterDiag
 import { EnterpriseEncounterCommandTimeline } from "@/components/encounters/EnterpriseEncounterCommandTimeline";
 import { EnterpriseHospitalTimelinePanel } from "@/features/hospital-care/EnterpriseHospitalTimelinePanel";
 import type { InpatientWorkspaceSection } from "./inpatientWorkspaceSections";
-import { ProviderClinicalSynthesisOverview } from "./ProviderClinicalSynthesisOverview";
+import { InpatientOverviewView } from "./InpatientOverviewView";
+import { projectInpatientOverview } from "./projectInpatientOverview";
 import {
   ClinicalMultiSelectChips,
   ClinicalNormalExceptionSelector,
@@ -98,6 +104,43 @@ type ClinicalOpsLite = {
     expectedDischargeDate?: string | null;
     destination?: string | null;
   } | null;
+  nursing?: {
+    admissionAssessmentComplete?: boolean | null;
+    lastShiftAssessmentAt?: string | null;
+  } | null;
+};
+
+type SynthesisLite = {
+  overview?: Record<string, unknown>;
+  vitals?: Array<{
+    key: string;
+    label: string;
+    current: string | null;
+    previous: string | null;
+    trend24h: string;
+    abnormal: boolean;
+  }>;
+  intakeOutput?: Record<string, unknown>;
+  laboratories?: Record<string, unknown>;
+  radiology?: Record<string, unknown>;
+  medications?: Record<string, unknown>;
+  tasks?: Record<string, unknown>;
+  dischargeReadiness?: Record<string, unknown>;
+  currentVsAdmission?: Record<string, unknown>;
+  events?: Array<{
+    eventId: string;
+    type: string;
+    severity: string;
+    summary: string;
+    status: string;
+    occurredAt: string;
+  }>;
+  problems?: Array<{
+    problemId: string;
+    displayLabel: string;
+    status: string;
+    assessment?: string | null;
+  }>;
 };
 
 const card: CSSProperties = {
@@ -157,6 +200,7 @@ export function InpatientProviderWorkspacePanel({
   canProviderWrite,
   canDocumentDiagnoses,
   isLocked,
+  workspaceRole = "PROVIDER",
   onNavigateSection,
 }: {
   mode:
@@ -173,6 +217,7 @@ export function InpatientProviderWorkspacePanel({
   canProviderWrite: boolean;
   canDocumentDiagnoses: boolean;
   isLocked: boolean;
+  workspaceRole?: InpatientWorkspaceRole;
   onNavigateSection?: (section: InpatientWorkspaceSection) => void;
 }) {
   const { t } = useI18n();
@@ -196,6 +241,8 @@ export function InpatientProviderWorkspacePanel({
   const [problemGoals, setProblemGoals] = useState("");
   const [problemBarrier, setProblemBarrier] = useState("");
   const [authProjection, setAuthProjection] = useState<Record<string, unknown> | null>(null);
+  const [synthesis, setSynthesis] = useState<SynthesisLite | null>(null);
+  const [printMsg, setPrintMsg] = useState<string | null>(null);
   const [progressText, setProgressText] = useState("");
   const [activeProgressNoteId, setActiveProgressNoteId] = useState<string | null>(null);
   const [dirtyProgress, setDirtyProgress] = useState(false);
@@ -219,13 +266,21 @@ export function InpatientProviderWorkspacePanel({
       } catch {
         setAuthProjection(null);
       }
+      if (mode === "overview") {
+        try {
+          const synRes = await fetchProviderClinicalSynthesis(encounterId);
+          setSynthesis((synRes.synthesis ?? null) as SynthesisLite);
+        } catch {
+          setSynthesis(null);
+        }
+      }
     } catch {
       setError(t("inpatientD3e.workspace.loadError"));
       setDoc(null);
     } finally {
       setLoading(false);
     }
-  }, [encounterId, t]);
+  }, [encounterId, mode, t]);
 
   useEffect(() => {
     void load();
@@ -968,27 +1023,50 @@ export function InpatientProviderWorkspacePanel({
     );
   }
 
-  // overview (+ optional rounding mode) — live enterprise synthesis
+  // overview — projected shared clinical landing (MEDUI.D4A.3.4)
+  const overviewProjection = projectInpatientOverview({
+    role: workspaceRole,
+    emptyClinicianLabel: t("inpatientOverviewD4a34.notAssigned"),
+    alerts,
+    synthesis: synthesis as Parameters<typeof projectInpatientOverview>[0]["synthesis"],
+    authProjection,
+    nursingOps: ops?.nursing ?? null,
+    canProviderWrite,
+  });
+
+  const printPackage = async (kind: ProviderPrintPackageKind) => {
+    setPrintMsg(null);
+    try {
+      const res = await fetchProviderPrintPackage(encounterId, kind);
+      const pkg = res.package as { title?: string; revision?: number };
+      const printClass = String((res as { printClass?: string }).printClass ?? "");
+      const label =
+        printClass === "CLINICAL_SYNTHESIS"
+          ? t("providerLegalRecordD4a26b.unsignedSynthesisReport")
+          : t("providerLegalRecordD4a26b.legalRecordPrint");
+      setPrintMsg(`${label}: ${pkg.title ?? kind} · rev ${pkg.revision ?? "—"}`);
+    } catch {
+      setPrintMsg(t("inpatientProviderD4a26.rounding.failed"));
+    }
+  };
+
   return (
     <div data-testid="inpatient-panel-overview-provider">
-      <p style={{ margin: "0 0 8px", fontSize: 12, color: "#64748b" }}>
-        {t("inpatientProviderD4a26.boundary.providerNotNursing")}{" "}
-        {t("inpatientProviderD4a26.boundary.sharedEncounter")}
-      </p>
+      {overviewProjection.showRoundingMode ? (
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 10 }}>
+          <button
+            type="button"
+            onClick={() => setRounding((v) => !v)}
+            data-testid="provider-rounding-toggle"
+          >
+            {rounding
+              ? t("inpatientProviderD4a26.overview.exitRounding")
+              : t("inpatientProviderD4a26.overview.enterRounding")}
+          </button>
+        </div>
+      ) : null}
 
-      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 10 }}>
-        <button
-          type="button"
-          onClick={() => setRounding((v) => !v)}
-          data-testid="provider-rounding-toggle"
-        >
-          {rounding
-            ? t("inpatientProviderD4a26.overview.exitRounding")
-            : t("inpatientProviderD4a26.overview.enterRounding")}
-        </button>
-      </div>
-
-      {rounding ? (
+      {overviewProjection.showRoundingMode && rounding ? (
         <>
           {roundingNav}
           <p style={{ fontSize: 12, color: "#64748b" }}>
@@ -998,55 +1076,31 @@ export function InpatientProviderWorkspacePanel({
         </>
       ) : null}
 
-      {alerts.length ? (
-        <SectionCard title={t("inpatientProviderD4a26.alerts.title")} testId="provider-alerts">
-          <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13, color: "#9a3412" }}>
-            {alerts.map((a) => (
-              <li key={a}>
-                <span aria-hidden="true">⚠ </span>
-                {a}
-              </li>
-            ))}
-          </ul>
-        </SectionCard>
-      ) : null}
-
-      {authProjection ? (
-        <SectionCard
-          title={t("hospitalAdmissionD4a26h.status.currentState")}
-          testId="provider-authoritative-projection"
-        >
-          {(["pain", "fallRisk", "wounds"] as const).map((key) => {
-            const item = authProjection?.[key] as
-              | {
-                  state?: string;
-                  summary?: string | null;
-                  clinicalTimestamp?: string | null;
-                  admissionTimeRecordId?: string | null;
-                  currentRecordId?: string | null;
-                }
-              | undefined;
-            const state = item?.state ?? "MISSING";
-            return (
-              <p key={key} style={{ margin: "0 0 6px", fontSize: 13 }}>
-                <strong>{key}</strong>:{" "}
-                {state === "RESOLVED"
-                  ? `${item?.summary ?? key} · ${item?.clinicalTimestamp ?? ""}`
-                  : state === "UNRESOLVED_SYNTHETIC"
-                    ? t("hospitalAdmissionD4a26h.status.legacySynthetic")
-                    : t("hospitalAdmissionD4a26h.status.unresolved")}
-              </p>
-            );
-          })}
-        </SectionCard>
-      ) : null}
-
-      <ProviderClinicalSynthesisOverview
-        encounterId={encounterId}
-        canProviderWrite={canProviderWrite}
+      <InpatientOverviewView
+        projection={overviewProjection}
         onNavigateSection={onNavigateSection}
         onAckEvent={(eventId, status) => void ackEvent(eventId, status as ProviderEventAckStatus)}
       />
+
+      {workspaceRole === "PROVIDER" && canProviderWrite ? (
+        <SectionCard
+          title={t("providerClinicalSynthesisD4a26a.print.title")}
+          testId="provider-print-packages"
+        >
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+            {PROVIDER_PRINT_PACKAGE_KINDS.map((kind) => (
+              <button key={kind} type="button" onClick={() => void printPackage(kind)}>
+                {t(`providerClinicalSynthesisD4a26a.print.kinds.${kind}`)}
+              </button>
+            ))}
+          </div>
+          {printMsg ? (
+            <p role="status" style={{ margin: "8px 0 0", fontSize: 12, color: "#0f766e" }}>
+              {printMsg}
+            </p>
+          ) : null}
+        </SectionCard>
+      ) : null}
     </div>
   );
 }

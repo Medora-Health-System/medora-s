@@ -171,13 +171,9 @@ export function InpatientWorkspacePanel({
             canProviderWrite={canProviderWrite}
             canDocumentDiagnoses={canPrescribe}
             isLocked={signed}
+            workspaceRole={workspaceRole}
             onNavigateSection={onNavigateSection}
           />
-          {docsLive ? (
-            <div style={{ marginTop: 12 }}>
-              <InpatientClinicalOpsPanel encounterId={encounterId} mode="overview" />
-            </div>
-          ) : null}
         </div>
       );
     case "admission":
