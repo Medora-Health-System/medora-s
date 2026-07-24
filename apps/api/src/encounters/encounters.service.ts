@@ -141,6 +141,7 @@ import {
 import { throwRoomAlreadyOccupiedConflict } from "./ed-room-occupancy.util";
 import { FacilityBedBoardService } from "../facilities/facility-bed-board.service";
 import { InternalPlacementService } from "./internal-placement.service";
+import { EnterpriseAssignmentService } from "./enterprise-assignment.service";
 import { handoffNursingEncounterPayload, handoffProviderEncounterPayload } from "../utils/clinical-event-handoff.util";
 import { observationReassessmentClinicalEventPayload } from "../utils/clinical-event-observation-reassessment.util";
 import { evaluateEncounterBillingReadinessFromData } from "../billing/billing-encounter-readiness.util";
@@ -262,7 +263,7 @@ export class EncountersService {
     private readonly trackboardService: TrackboardService,
     private readonly bedBoardService: FacilityBedBoardService,
     private readonly internalPlacement: InternalPlacementService,
-    private readonly enterpriseAssignment: import("./enterprise-assignment.service").EnterpriseAssignmentService
+    private readonly enterpriseAssignment: EnterpriseAssignmentService
   ) {}
 
   async create(patientId: string, facilityId: string, data: EncounterCreateDto, userId?: string, ip?: string, userAgent?: string) {
