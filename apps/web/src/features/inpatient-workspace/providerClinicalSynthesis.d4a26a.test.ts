@@ -12,7 +12,10 @@ describe("D4A.2.6A provider clinical synthesis workspace", () => {
     const workspace = readFileSync(join(root, "InpatientWorkspacePanel.tsx"), "utf8");
     const hub = readFileSync(join(root, "InpatientGraphicalHubView.tsx"), "utf8");
 
-    expect(panel).toContain("ProviderClinicalSynthesisOverview");
+    // D4A.3.4 — overview mounts projected InpatientOverviewView; legacy synthesis component retained.
+    expect(panel).toContain("InpatientOverviewView");
+    expect(panel).toContain("projectInpatientOverview");
+    expect(panel).toContain("fetchProviderClinicalSynthesis");
     expect(panel).toContain('mode === "progressNotes"');
     expect(panel).toContain("saveProviderProgressNote");
     expect(panel).toContain("carryForwardProviderProgressNote");
@@ -26,6 +29,7 @@ describe("D4A.2.6A provider clinical synthesis workspace", () => {
     expect(overview).toContain("provider-current-vs-admission");
     expect(overview).toContain("neverAutoAck");
     expect(overview).toContain("fetchProviderPrintPackage");
+    expect(panel).toContain("fetchProviderPrintPackage");
     expect(census).toContain("filterProviderCensusRows");
     expect(census).toContain("sortProviderCensusRows");
     expect(hub).toContain("ProviderCensusBoard");

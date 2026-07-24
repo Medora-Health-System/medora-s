@@ -79,7 +79,8 @@ describe("MEDUI.D4A.3.3A final hardening", () => {
     expect(header).toContain("InteractiveStatusButton");
     expect(header).toContain("inpatientHeaderNursingD4a33.clickToEdit");
     expect(header).toContain("onKeyDown");
-    expect(header).toContain('maxWidth: 118');
+    expect(header).toContain("maxWidth: 210");
+    expect(header).toContain("maxWidth: 200");
   });
 
   it("longitudinal overview remains deleted; nursing sticky has no Timeline/Summary", () => {

@@ -66,6 +66,8 @@ describe("D4A.2.6H authoritative domain linkage UI/API", () => {
       "utf8"
     );
     expect(provider).toContain("fetchAuthoritativeClinicalProjection");
-    expect(provider).toContain("provider-authoritative-projection");
+    // D4A.3.4 — authoritative projection feeds projectInpatientOverview clinicalState module
+    expect(provider).toContain("projectInpatientOverview");
+    expect(provider).toContain("authProjection");
   });
 });
