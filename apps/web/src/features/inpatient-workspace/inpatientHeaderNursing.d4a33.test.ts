@@ -20,12 +20,12 @@ function read(rel: string) {
 }
 
 describe("MEDUI.D4A.3.3 inpatient header + nursing consolidation", () => {
-  it("compacts IV/allergy/code/isolation on one nowrap clinical-cards row", () => {
+  it("keeps allergies/code/isolation interactive; IV is syringe control (D4A.3.4)", () => {
     const src = read("EnterpriseHospitalPatientHeader.tsx");
-    expect(src).toContain('flexWrap: "nowrap"');
-    expect(src).toContain("ivCompactCard");
-    expect(src).toContain("statusChipCard");
-    expect(src).toContain("inpatientHeaderNursingD4a33.iv.activeIv");
+    expect(src).toContain("inpatient-header-status-row");
+    expect(src).toContain("inpatient-header-iv-syringe");
+    expect(src).not.toContain("ivCompactCard");
+    expect(src).not.toContain("inpatient-header-iv-card");
     expect(src).toContain("inpatient-header-isolation-card");
     expect(src).not.toContain("ivActive.slice");
   });

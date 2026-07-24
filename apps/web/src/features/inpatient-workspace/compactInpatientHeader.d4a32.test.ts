@@ -45,13 +45,14 @@ describe("MEDUI.D4A.3.2 compact inpatient header", () => {
     expect(src).not.toContain("arrival");
   });
 
-  it("includes Room tile, ESI, vitals/IV/allergies/code/isolation cards", () => {
+  it("includes Room tile, ESI, vitals/allergies/code/isolation + IV syringe (no IV card)", () => {
     const src = read("EnterpriseHospitalPatientHeader.tsx");
     expect(src).toContain("EncounterGovernedRoomChip");
     expect(src).toContain("inpatient-header-room");
     expect(src).toContain("inpatient-header-esi");
     expect(src).toContain("EmergencyWorkspaceVitalsCard");
-    expect(src).toContain("inpatient-header-iv-card");
+    expect(src).not.toContain("inpatient-header-iv-card");
+    expect(src).toContain("inpatient-header-iv-syringe");
     expect(src).toContain("EmergencyWorkspaceAllergiesCard");
     expect(src).toContain("inpatient-header-code-card");
     expect(src).toContain("inpatient-header-isolation-card");
@@ -60,8 +61,9 @@ describe("MEDUI.D4A.3.2 compact inpatient header", () => {
   it("uses governed empty states instead of Source unavailable", () => {
     const src = read("EnterpriseHospitalPatientHeader.tsx");
     expect(src).toContain("noVitalsDocumented");
-    expect(src).toContain("noActiveIv");
     expect(src).toContain("notDocumented");
+    // D4A.3.4 — IV card removed; syringe uses active-state aria, not noActiveIv card copy
+    expect(src).toContain("inpatientOverviewD4a34.ivInactiveAria");
     expect(en.inpatientCompactHeaderD4a32.noVitalsDocumented).not.toMatch(/source unavailable/i);
     expect(fr.inpatientCompactHeaderD4a32.noVitalsDocumented).not.toMatch(/indisponible/i);
   });

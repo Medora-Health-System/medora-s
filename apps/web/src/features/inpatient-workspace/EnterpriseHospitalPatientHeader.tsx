@@ -1,15 +1,18 @@
 "use client";
 
 /**
- * MEDUI.D4A.3.2 — Compact enterprise hospital patient header.
- * Visual/behavioral reference: ED Active Workspace header.
- * Consumes bootstrap projection; never fabricates clinical values.
+ * MEDUI.D4A.3.4 — Final inpatient header placement.
+ * Left: identity + admission + vitals. Right: room + Allergies | Code | Isolation.
+ * IV is a compact syringe control (not a card). Display labels only — no raw enums.
  */
 
 import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from "react";
 import { useI18n } from "@/lib/i18n";
 import { DISPLAY_DASH } from "@/lib/patientDisplay";
-import { formatEncounterChromeDateTime } from "@/lib/encounterChromeI18n";
+import {
+  formatEncounterChromeDate,
+  formatEncounterChromeDateTime,
+} from "@/lib/encounterChromeI18n";
 import { MEDORA_CARD_SHELL } from "@/components/medora-card/medoraCardTokens";
 import { EncounterGovernedRoomChip } from "@/components/encounters/EncounterGovernedRoomChip";
 import {
@@ -25,6 +28,10 @@ import {
 import { apiFetch } from "@/lib/apiClient";
 import type { HospitalWorkspaceBootstrapV1, InpatientWorkspaceRole } from "@medora/shared";
 import { buildInpatientHeaderVitalPairs } from "./inpatientHeaderVitalsPairs";
+import {
+  formatInpatientCodeStatusDisplay,
+  formatInpatientIsolationDisplay,
+} from "./inpatientClinicalDisplayLabels";
 
 type HeaderData = NonNullable<HospitalWorkspaceBootstrapV1["header"]>;
 
@@ -58,26 +65,38 @@ function parseIvActive(raw: unknown): IvActiveRow[] {
   return out;
 }
 
-/** MEDUI.D4A.3.3A — further narrowed chips (~25% vs 3.3) for one desktop row. */
-const statusChipCard: CSSProperties = {
-  padding: "5px 7px",
+/** MEDUI.D4A.3.4 — status cards sized for one desktop row with breathing room. */
+const allergyCard: CSSProperties = {
+  padding: 0,
   borderRadius: 10,
   boxSizing: "border-box",
   alignSelf: "stretch",
-  minWidth: 88,
-  maxWidth: 118,
-  flex: "0 1 104px",
+  minWidth: 180,
+  maxWidth: 210,
+  minHeight: 80,
+  flex: "0 1 195px",
 };
 
-/** Compact IV status chip. */
-const ivCompactCard: CSSProperties = {
-  padding: "5px 7px",
+const codeStatusCard: CSSProperties = {
+  padding: "10px 12px",
   borderRadius: 10,
   boxSizing: "border-box",
   alignSelf: "stretch",
-  minWidth: 92,
-  maxWidth: 124,
-  flex: "0 1 110px",
+  minWidth: 170,
+  maxWidth: 200,
+  minHeight: 80,
+  flex: "0 1 185px",
+};
+
+const isolationCard: CSSProperties = {
+  padding: "10px 12px",
+  borderRadius: 10,
+  boxSizing: "border-box",
+  alignSelf: "stretch",
+  minWidth: 180,
+  maxWidth: 210,
+  minHeight: 80,
+  flex: "0 1 195px",
 };
 
 const interactiveTransition: CSSProperties = {
@@ -134,7 +153,6 @@ function InteractiveStatusButton({
           : clickable
             ? "0 1px 2px rgba(15,23,42,0.06)"
             : "none",
-        filter: clickable && !pressed ? undefined : undefined,
       }}
       onMouseEnter={(e) => {
         if (!clickable) return;
@@ -231,10 +249,9 @@ export function EnterpriseHospitalPatientHeader({
     return t("inpatientCompactHeaderD4a32.notDocumented");
   }, [header.allergiesSummary, header.allergiesAvailability, t]);
 
-  const codeStatusText = header.codeStatus?.trim() || t("inpatientCompactHeaderD4a32.notDocumented");
-  const isolationText = header.isolation?.length
-    ? header.isolation.join(", ")
-    : t("inpatientCompactHeaderD4a32.notDocumented");
+  const notDoc = t("inpatientCompactHeaderD4a32.notDocumented");
+  const codeStatusText = formatInpatientCodeStatusDisplay(header.codeStatus, t, notDoc);
+  const isolationText = formatInpatientIsolationDisplay(header.isolation, t, notDoc);
 
   const admissionDx =
     header.chiefConcern?.trim() || t("inpatientCompactHeaderD4a32.notDocumented");
@@ -277,6 +294,14 @@ export function EnterpriseHospitalPatientHeader({
     };
   }, [facilityId, header.encounterId, ivRefreshToken]);
 
+  const hasActiveIv = ivActive.length > 0;
+  const ivAria = hasActiveIv
+    ? t("inpatientOverviewD4a34.ivActiveAria")
+    : t("inpatientOverviewD4a34.ivInactiveAria");
+
+  const demoLabel: CSSProperties = { fontWeight: 500, color: "#475569" };
+  const demoValue: CSSProperties = { fontWeight: 700, color: "#0f172a" };
+
   return (
     <header
       data-testid="enterprise-hospital-patient-header"
@@ -298,7 +323,6 @@ export function EnterpriseHospitalPatientHeader({
           alignItems: "flex-start",
         }}
       >
-        {/* Single initials avatar + ESI under it (ED pattern) */}
         <div
           style={{
             display: "flex",
@@ -340,27 +364,23 @@ export function EnterpriseHospitalPatientHeader({
             ) : null}
           </h1>
           <p style={{ margin: "4px 0 0", fontSize: 12, color: "#64748b", lineHeight: 1.4 }}>
-            <span style={{ fontWeight: 600, color: "#475569" }}>
-              {t("inpatientWorkspaceRecoveryD4a27b.header.mrn")}
-            </span>{" "}
-            {header.mrn?.trim() || DISPLAY_DASH}
+            <span style={demoLabel}>{t("inpatientWorkspaceRecoveryD4a27b.header.mrn")}</span>{" "}
+            <span style={demoValue}>{header.mrn?.trim() || DISPLAY_DASH}</span>
             {" · "}
-            <span style={{ fontWeight: 600, color: "#475569" }}>
-              {t("inpatientWorkspaceRecoveryD4a27b.header.dob")}
-            </span>{" "}
-            {header.dateOfBirth
-              ? formatEncounterChromeDateTime(header.dateOfBirth, language)
-              : DISPLAY_DASH}
+            <span style={demoLabel}>{t("inpatientWorkspaceRecoveryD4a27b.header.dob")}</span>{" "}
+            <span style={demoValue} data-testid="inpatient-header-dob">
+              {header.dateOfBirth
+                ? formatEncounterChromeDate(header.dateOfBirth, language)
+                : DISPLAY_DASH}
+            </span>
             {" · "}
-            <span style={{ fontWeight: 600, color: "#475569" }}>
-              {t("inpatientWorkspaceRecoveryD4a27b.header.age")}
-            </span>{" "}
-            {header.ageYears != null ? String(header.ageYears) : DISPLAY_DASH}
+            <span style={demoLabel}>{t("inpatientWorkspaceRecoveryD4a27b.header.age")}</span>{" "}
+            <span style={demoValue}>
+              {header.ageYears != null ? String(header.ageYears) : DISPLAY_DASH}
+            </span>
             {" · "}
-            <span style={{ fontWeight: 600, color: "#475569" }}>
-              {t("inpatientWorkspaceRecoveryD4a27b.header.sex")}
-            </span>{" "}
-            {header.sexAtBirth?.trim() || DISPLAY_DASH}
+            <span style={demoLabel}>{t("inpatientWorkspaceRecoveryD4a27b.header.sex")}</span>{" "}
+            <span style={demoValue}>{header.sexAtBirth?.trim() || DISPLAY_DASH}</span>
           </p>
           <p style={{ margin: "6px 0 0", fontSize: 13, color: "#334155", lineHeight: 1.4 }}>
             <span style={{ fontWeight: 600, color: "#64748b", fontSize: 11 }}>
@@ -393,16 +413,14 @@ export function EnterpriseHospitalPatientHeader({
       <div
         style={{
           display: "flex",
-          flexWrap: "nowrap",
-          gap: 6,
+          flexWrap: "wrap",
+          gap: 16,
           marginTop: 10,
           alignItems: "stretch",
-          overflowX: "auto",
-          WebkitOverflowScrolling: "touch",
         }}
         data-testid="inpatient-header-clinical-cards"
       >
-        <div style={{ flex: "1 1 200px", minWidth: 180, maxWidth: 280 }}>
+        <div style={{ flex: "1 1 220px", minWidth: 200, maxWidth: 340 }}>
           <EmergencyWorkspaceVitalsCard
             vitalPairs={vitalPairs}
             loading={false}
@@ -421,141 +439,157 @@ export function EnterpriseHospitalPatientHeader({
           ) : null}
         </div>
 
-        <InteractiveStatusButton
-          testId="inpatient-header-iv-card"
-          onClick={onOpenIvAccess}
-          disabled={!onOpenIvAccess}
-          ariaLabel={t("inpatientCompactHeaderD4a32.ivAccessOpenAria")}
-          title={t("inpatientHeaderNursingD4a33.clickToEdit")}
+        <div
           style={{
-            ...ivCompactCard,
-            border: "1px solid #e9d5ff",
-            background: "#faf5ff",
-            textAlign: "left",
-            font: "inherit",
+            flex: "1 1 420px",
+            display: "flex",
+            flexWrap: "wrap",
+            gap: 14,
+            justifyContent: "flex-end",
+            alignItems: "stretch",
+            minWidth: 0,
           }}
+          data-testid="inpatient-header-status-row"
         >
-          <p
+          <InteractiveStatusButton
+            testId="inpatient-header-allergies-card"
+            onClick={onOpenAllergies}
+            disabled={!onOpenAllergies}
+            ariaLabel={t("inpatientCompactHeaderD4a32.allergiesOpenAria")}
+            title={t("inpatientHeaderNursingD4a33.clickToEdit")}
             style={{
-              margin: 0,
-              fontSize: 9,
-              fontWeight: 700,
-              letterSpacing: "0.06em",
-              textTransform: "uppercase",
-              color: "#6b21a8",
+              border: "none",
+              background: "transparent",
+              ...allergyCard,
+              textAlign: "left",
             }}
           >
-            💉 {t("inpatientCompactHeaderD4a32.ivAccessTitle")}
-          </p>
-          {ivLoading ? (
-            <p style={{ margin: "4px 0 0", fontSize: 12, color: "#64748b" }}>{t("common.loading")}</p>
-          ) : (
-            <p style={{ margin: "4px 0 0", fontSize: 12, fontWeight: 600, color: "#6b21a8" }}>
-              {ivActive.length === 0
-                ? t("inpatientCompactHeaderD4a32.noActiveIv")
-                : t("inpatientHeaderNursingD4a33.iv.activeIv")}
+            <EmergencyWorkspaceAllergiesCard allergySummary={allergyText} loading={false} />
+          </InteractiveStatusButton>
+
+          <InteractiveStatusButton
+            testId="inpatient-header-code-card"
+            onClick={onOpenCodeStatus}
+            disabled={!onOpenCodeStatus}
+            ariaLabel={t("inpatientCompactHeaderD4a32.codeStatusOpenAria")}
+            title={t("inpatientHeaderNursingD4a33.clickToEdit")}
+            style={{
+              ...codeStatusCard,
+              border: "1px solid #fde68a",
+              background: "#fffbeb",
+              font: "inherit",
+              textAlign: "left",
+            }}
+          >
+            <p
+              style={{
+                margin: 0,
+                fontSize: 9,
+                fontWeight: 700,
+                letterSpacing: "0.06em",
+                textTransform: "uppercase",
+                color: "#92400e",
+              }}
+            >
+              ⚕️ {t("inpatientCompactHeaderD4a32.codeStatusTitle")}
             </p>
-          )}
-        </InteractiveStatusButton>
+            <p
+              style={{
+                margin: "8px 0 0",
+                fontSize: 13,
+                fontWeight: 700,
+                color: "#78350f",
+                lineHeight: 1.3,
+              }}
+              data-testid="inpatient-header-code-value"
+            >
+              {codeStatusText}
+            </p>
+          </InteractiveStatusButton>
 
-        <InteractiveStatusButton
-          testId="inpatient-header-allergies-card"
-          onClick={onOpenAllergies}
-          disabled={!onOpenAllergies}
-          ariaLabel={t("inpatientCompactHeaderD4a32.allergiesOpenAria")}
-          title={t("inpatientHeaderNursingD4a33.clickToEdit")}
+          <InteractiveStatusButton
+            testId="inpatient-header-isolation-card"
+            onClick={onOpenIsolation}
+            disabled={!onOpenIsolation}
+            ariaLabel={t("inpatientCompactHeaderD4a32.isolationOpenAria")}
+            title={t("inpatientHeaderNursingD4a33.clickToEdit")}
+            style={{
+              ...isolationCard,
+              border: "1px solid #fecaca",
+              background: "#fff1f2",
+              font: "inherit",
+              textAlign: "left",
+            }}
+          >
+            <p
+              style={{
+                margin: 0,
+                fontSize: 9,
+                fontWeight: 700,
+                letterSpacing: "0.06em",
+                textTransform: "uppercase",
+                color: "#9f1239",
+              }}
+            >
+              ☣️ {t("inpatientCompactHeaderD4a32.isolationTitle")}
+            </p>
+            <p
+              style={{
+                margin: "8px 0 0",
+                fontSize: 13,
+                fontWeight: 700,
+                color: "#881337",
+                lineHeight: 1.3,
+              }}
+              data-testid="inpatient-header-isolation-value"
+            >
+              {isolationText}
+            </p>
+          </InteractiveStatusButton>
+        </div>
+      </div>
+
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "flex-end",
+          marginTop: 8,
+        }}
+      >
+        <button
+          type="button"
+          data-testid="inpatient-header-iv-syringe"
+          onClick={onOpenIvAccess}
+          disabled={!onOpenIvAccess || ivLoading}
+          aria-label={ivAria}
+          title={t("inpatientOverviewD4a34.manageIvAccess")}
+          aria-pressed={hasActiveIv}
+          onKeyDown={(e) => {
+            if (!onOpenIvAccess) return;
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              onOpenIvAccess();
+            }
+          }}
           style={{
-            border: "none",
-            padding: 0,
-            background: "transparent",
-            ...statusChipCard,
-            textAlign: "left",
+            ...interactiveTransition,
+            width: 36,
+            height: 36,
+            borderRadius: 10,
+            border: hasActiveIv ? "1px solid #7c3aed" : "1px solid #e9d5ff",
+            background: hasActiveIv ? "#7c3aed" : "#faf5ff",
+            color: hasActiveIv ? "#fff" : "#6b21a8",
+            cursor: onOpenIvAccess ? "pointer" : "default",
+            fontSize: 18,
+            lineHeight: 1,
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+            boxShadow: hasActiveIv ? "0 1px 3px rgba(124,58,237,0.35)" : "none",
           }}
         >
-          <EmergencyWorkspaceAllergiesCard allergySummary={allergyText} loading={false} />
-        </InteractiveStatusButton>
-
-        <InteractiveStatusButton
-          testId="inpatient-header-code-card"
-          onClick={onOpenCodeStatus}
-          disabled={!onOpenCodeStatus}
-          ariaLabel={t("inpatientCompactHeaderD4a32.codeStatusOpenAria")}
-          title={t("inpatientHeaderNursingD4a33.clickToEdit")}
-          style={{
-            ...statusChipCard,
-            border: "1px solid #fde68a",
-            background: "#fffbeb",
-            font: "inherit",
-            textAlign: "left",
-          }}
-        >
-          <p
-            style={{
-              margin: 0,
-              fontSize: 9,
-              fontWeight: 700,
-              letterSpacing: "0.06em",
-              textTransform: "uppercase",
-              color: "#92400e",
-            }}
-          >
-            ⚕️ {t("inpatientCompactHeaderD4a32.codeStatusTitle")}
-          </p>
-          <p
-            style={{
-              margin: "4px 0 0",
-              fontSize: 12,
-              fontWeight: 700,
-              color: "#78350f",
-              whiteSpace: "nowrap",
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-            }}
-          >
-            {codeStatusText}
-          </p>
-        </InteractiveStatusButton>
-
-        <InteractiveStatusButton
-          testId="inpatient-header-isolation-card"
-          onClick={onOpenIsolation}
-          disabled={!onOpenIsolation}
-          ariaLabel={t("inpatientCompactHeaderD4a32.isolationOpenAria")}
-          title={t("inpatientHeaderNursingD4a33.clickToEdit")}
-          style={{
-            ...statusChipCard,
-            border: "1px solid #fecaca",
-            background: "#fff1f2",
-            font: "inherit",
-            textAlign: "left",
-          }}
-        >
-          <p
-            style={{
-              margin: 0,
-              fontSize: 9,
-              fontWeight: 700,
-              letterSpacing: "0.06em",
-              textTransform: "uppercase",
-              color: "#9f1239",
-            }}
-          >
-            ☣️ {t("inpatientCompactHeaderD4a32.isolationTitle")}
-          </p>
-          <p
-            style={{
-              margin: "4px 0 0",
-              fontSize: 12,
-              fontWeight: 700,
-              color: "#881337",
-              whiteSpace: "nowrap",
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-            }}
-          >
-            {isolationText}
-          </p>
-        </InteractiveStatusButton>
+          <span aria-hidden>💉</span>
+        </button>
       </div>
 
       {showAssignmentActions && (onAssignToMe || onRemoveAssignment) ? (
