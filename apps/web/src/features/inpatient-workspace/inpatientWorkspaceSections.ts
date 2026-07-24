@@ -37,6 +37,27 @@ export const INPATIENT_WORKSPACE_SECTIONS: Array<{
   { id: "summary", labelKey: "inpatientProviderD4a26.nav.summary" },
 ];
 
+/**
+ * MEDUI.D4A.3.2 — Single sticky horizontal menu (tabs + Review Orders / MAR / Review Results).
+ * Route key for MAR remains `medications` for back-compat.
+ */
+export const INPATIENT_STICKY_NAV_SECTIONS: Array<{
+  id: InpatientWorkspaceSection;
+  labelKey: string;
+  icon: string;
+}> = [
+  { id: "overview", labelKey: "inpatientProviderD4a26.nav.overview", icon: "📋" },
+  { id: "orders", labelKey: "inpatientCompactHeaderD4a32.nav.reviewOrders", icon: "📝" },
+  { id: "medications", labelKey: "inpatientCompactHeaderD4a32.nav.mar", icon: "💊" },
+  { id: "results", labelKey: "inpatientCompactHeaderD4a32.nav.reviewResults", icon: "🧪" },
+  { id: "carePlan", labelKey: "inpatientProviderD4a26.nav.carePlan", icon: "🗂️" },
+  { id: "dischargePlanning", labelKey: "inpatientProviderD4a26.nav.discharge", icon: "🚪" },
+  { id: "admission", labelKey: "inpatientProviderD4a26.nav.nursingAdmission", icon: "🏥" },
+  { id: "nursing", labelKey: "inpatientProviderD4a26.nav.nursing", icon: "🩺" },
+  { id: "timeline", labelKey: "inpatientProviderD4a26.nav.timeline", icon: "⏱️" },
+  { id: "summary", labelKey: "inpatientProviderD4a26.nav.summary", icon: "📄" },
+];
+
 const SECTION_SET = new Set(INPATIENT_WORKSPACE_SECTIONS.map((s) => s.id));
 
 export function parseInpatientWorkspaceSection(

@@ -7,7 +7,7 @@ export const inpatientProviderD4a26En = {
     progressNotes: "Progress Notes",
     orders: "Orders",
     results: "Results",
-    medications: "Medications",
+    medications: "MAR",
     consults: "Consults",
     carePlan: "Care Plan",
     discharge: "Discharge",

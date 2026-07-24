@@ -7,7 +7,7 @@ export const inpatientProviderD4a26Fr = {
     progressNotes: "Notes d’évolution",
     orders: "Ordonnances",
     results: "Résultats",
-    medications: "Médicaments",
+    medications: "MAR",
     consults: "Consultations",
     carePlan: "Plan de soins",
     discharge: "Sortie",

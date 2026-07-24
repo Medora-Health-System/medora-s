@@ -28,7 +28,7 @@ export const inpatientWorkspaceRecoveryD4a27bFr = {
     actions: {
       vitals: "Documenter les signes vitaux",
       orders: "Revoir les ordonnances",
-      mar: "Ouvrir le MAR",
+      mar: "MAR",
       results: "Revoir les résultats",
       fullChart: "Ouvrir le dossier complet",
     },

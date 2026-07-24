@@ -1,51 +1,94 @@
 "use client";
 
 /**
- * D4A.2.7C — Enterprise hospital patient header (complete).
- * Consumes bootstrap projection only. Never infers devices.
+ * MEDUI.D4A.3.2 — Compact enterprise hospital patient header.
+ * Visual/behavioral reference: ED Active Workspace header.
+ * Consumes bootstrap projection; never fabricates clinical values.
  */
 
-import { useState, type CSSProperties, type ReactNode } from "react";
-import Link from "next/link";
+import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from "react";
 import { useI18n } from "@/lib/i18n";
 import { DISPLAY_DASH } from "@/lib/patientDisplay";
 import { formatEncounterChromeDateTime } from "@/lib/encounterChromeI18n";
 import { MEDORA_CARD_SHELL } from "@/components/medora-card/medoraCardTokens";
+import { EncounterGovernedRoomChip } from "@/components/encounters/EncounterGovernedRoomChip";
+import {
+  EmergencyWorkspaceAllergiesCard,
+  EmergencyWorkspaceVitalsCard,
+} from "@/features/emergency/EmergencyWorkspaceClinicalStrip";
+import {
+  EMERGENCY_AVATAR_CIRCLE_STYLE,
+  esiDisplayChar,
+  esiLevelFromUnknown,
+  esiUnderAvatarNumberStyle,
+} from "@/features/emergency/emergencyEsiDisplay";
+import { apiFetch } from "@/lib/apiClient";
 import type { HospitalWorkspaceBootstrapV1, InpatientWorkspaceRole } from "@medora/shared";
-
-const metaRow: CSSProperties = {
-  display: "flex",
-  flexWrap: "wrap",
-  gap: "6px 14px",
-  marginTop: 6,
-  fontSize: 12,
-  color: "#334155",
-};
+import {
+  buildInpatientHeaderVitalPairs,
+  initialsFromDisplayName,
+} from "./inpatientHeaderVitalsPairs";
 
 type HeaderData = NonNullable<HospitalWorkspaceBootstrapV1["header"]>;
 
-function indicatorStyle(state: string): CSSProperties {
-  if (state === "PRESENT") return { background: "#fef2f2", color: "#991b1b", border: "1px solid #fecaca" };
-  if (state === "NOT_PRESENT") return { background: "#ecfdf5", color: "#065f46", border: "1px solid #a7f3d0" };
-  return { background: "#f8fafc", color: "#64748b", border: "1px solid #e2e8f0" };
+type IvActiveRow = {
+  insertionEventId: string;
+  site: string;
+  gauge: string;
+  insertedAt: string;
+  recordedByDisplayName: string | null;
+};
+
+function parseIvActive(raw: unknown): IvActiveRow[] {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return [];
+  const a = (raw as { active?: unknown }).active;
+  if (!Array.isArray(a)) return [];
+  const out: IvActiveRow[] = [];
+  for (const row of a) {
+    if (!row || typeof row !== "object") continue;
+    const x = row as Record<string, unknown>;
+    const id = typeof x.insertionEventId === "string" ? x.insertionEventId : "";
+    if (!id) continue;
+    out.push({
+      insertionEventId: id,
+      site: typeof x.site === "string" ? x.site : "",
+      gauge: typeof x.gauge === "string" ? x.gauge : "",
+      insertedAt: typeof x.insertedAt === "string" ? x.insertedAt : "",
+      recordedByDisplayName:
+        typeof x.recordedByDisplayName === "string" ? x.recordedByDisplayName : null,
+    });
+  }
+  return out;
 }
+
+const compactCard: CSSProperties = {
+  padding: "8px 10px",
+  borderRadius: 10,
+  boxSizing: "border-box",
+  alignSelf: "stretch",
+  minWidth: 150,
+  maxWidth: 190,
+  flex: "0 1 170px",
+};
 
 export function EnterpriseHospitalPatientHeader({
   header,
-  sticky = true,
-  role = "CHART",
+  sticky = false,
+  role: _role = "CHART",
   actions,
+  facilityId,
+  esiLevel,
   onDocumentVitals,
-  onOpenOrders,
-  onOpenMar,
-  onOpenResults,
-  onOpenHp,
-  onOpenProgress,
-  onOpenAdmission,
-  onOpenAssessments,
-  onOpenTasks,
-  onOpenHandoff,
-  /** D4A.3.0 — hospital bag assign/remove (no navigate away). */
+  onOpenIvAccess,
+  onOpenAllergies,
+  onOpenCodeStatus,
+  onOpenIsolation,
+  ivRefreshToken = 0,
+  /**
+   * Explicit opt-in for hospital assignment chrome (Observation workspace).
+   * Inpatient must leave this false/omitted — do not restore assignment globally.
+   */
+  showAssignmentActions = false,
   onAssignToMe,
   onRemoveAssignment,
   assignmentBusy = false,
@@ -54,22 +97,22 @@ export function EnterpriseHospitalPatientHeader({
   sticky?: boolean;
   role?: InpatientWorkspaceRole;
   actions?: ReactNode;
+  facilityId?: string | null;
+  /** Optional ESI from triage when available — never fabricated. */
+  esiLevel?: string | number | null;
   onDocumentVitals?: () => void;
-  onOpenOrders?: () => void;
-  onOpenMar?: () => void;
-  onOpenResults?: () => void;
-  onOpenHp?: () => void;
-  onOpenProgress?: () => void;
-  onOpenAdmission?: () => void;
-  onOpenAssessments?: () => void;
-  onOpenTasks?: () => void;
-  onOpenHandoff?: () => void;
+  onOpenIvAccess?: () => void;
+  onOpenAllergies?: () => void;
+  onOpenCodeStatus?: () => void;
+  onOpenIsolation?: () => void;
+  ivRefreshToken?: number;
+  showAssignmentActions?: boolean;
   onAssignToMe?: () => void;
   onRemoveAssignment?: () => void;
   assignmentBusy?: boolean;
 }) {
+  void _role;
   const { t, language } = useI18n();
-  const [expanded, setExpanded] = useState(false);
   const initials = header.patientName
     .split(/\s+/)
     .filter(Boolean)
@@ -77,296 +120,410 @@ export function EnterpriseHospitalPatientHeader({
     .map((p) => p[0]?.toUpperCase() ?? "")
     .join("");
 
+  const esi = esiLevelFromUnknown(esiLevel);
   const vitals = header.latestVitals;
-  const vitalsLine =
-    vitals?.availability === "AVAILABLE"
-      ? [
-          vitals.systolic != null && vitals.diastolic != null
-            ? `${vitals.systolic}/${vitals.diastolic}`
-            : null,
-          vitals.heartRate != null ? `HR ${vitals.heartRate}` : null,
-          vitals.spo2 != null ? `SpO₂ ${vitals.spo2}%` : null,
-          vitals.temperatureC != null ? `${vitals.temperatureC}°C` : null,
-          vitals.respiratoryRate != null ? `RR ${vitals.respiratoryRate}` : null,
-        ]
-          .filter(Boolean)
-          .join(" · ") || DISPLAY_DASH
-      : vitals?.availability === "NO_DATA_DOCUMENTED"
-        ? t("inpatientRapidConvergenceD4a27c.header.noVitals")
-        : t("inpatientRapidConvergenceD4a27c.header.sourceUnavailable");
+  const vitalsEmpty =
+    !vitals ||
+    vitals.availability === "NO_DATA_DOCUMENTED" ||
+    vitals.availability === "SOURCE_UNAVAILABLE";
+  const vitalPairs = useMemo(
+    () =>
+      buildInpatientHeaderVitalPairs(
+        vitals?.availability === "SOURCE_UNAVAILABLE"
+          ? { ...vitals, availability: "NO_DATA_DOCUMENTED" }
+          : vitals,
+        language,
+        DISPLAY_DASH
+      ),
+    [vitals, language]
+  );
+
+  const allergyText = useMemo(() => {
+    if (header.allergiesSummary?.trim()) return header.allergiesSummary.trim();
+    if (
+      header.allergiesAvailability === "NOT_DOCUMENTED" ||
+      header.allergiesAvailability === "SOURCE_UNAVAILABLE" ||
+      header.allergiesAvailability === "UNKNOWN"
+    ) {
+      return t("inpatientCompactHeaderD4a32.notDocumented");
+    }
+    if (header.allergiesAvailability === "NOT_PRESENT") {
+      return t("inpatientCompactHeaderD4a32.nkda");
+    }
+    return t("inpatientCompactHeaderD4a32.notDocumented");
+  }, [header.allergiesSummary, header.allergiesAvailability, t]);
+
+  const codeStatusText = header.codeStatus?.trim() || t("inpatientCompactHeaderD4a32.notDocumented");
+  const isolationText = header.isolation?.length
+    ? header.isolation.join(", ")
+    : t("inpatientCompactHeaderD4a32.notDocumented");
+
+  const admissionDx =
+    header.chiefConcern?.trim() || t("inpatientCompactHeaderD4a32.notDocumented");
+
+  const roomEncounter = {
+    roomLabel: header.room,
+    type: header.encounterType,
+    unitCode: (header.unit?.trim() || null) as
+      | "MS"
+      | "ICU"
+      | "ED"
+      | "OBS"
+      | null,
+  };
+
+  const [ivActive, setIvActive] = useState<IvActiveRow[]>([]);
+  const [ivLoading, setIvLoading] = useState(false);
+
+  useEffect(() => {
+    if (!facilityId || !header.encounterId) {
+      setIvActive([]);
+      return;
+    }
+    let cancelled = false;
+    setIvLoading(true);
+    void (async () => {
+      try {
+        const data = await apiFetch(`/encounters/${header.encounterId}/iv-access`, {
+          facilityId,
+        });
+        if (!cancelled) setIvActive(parseIvActive(data));
+      } catch {
+        if (!cancelled) setIvActive([]);
+      } finally {
+        if (!cancelled) setIvLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [facilityId, header.encounterId, ivRefreshToken]);
 
   return (
     <header
       data-testid="enterprise-hospital-patient-header"
       style={{
         ...MEDORA_CARD_SHELL,
-        padding: "12px 14px",
-        marginBottom: 12,
+        padding: "10px 12px",
+        marginBottom: 8,
         position: sticky ? "sticky" : "relative",
         top: sticky ? 0 : undefined,
-        zIndex: sticky ? 30 : undefined,
+        zIndex: sticky ? 28 : undefined,
         background: "#fff",
       }}
     >
-      <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
+      <div
+        style={{
+          display: "flex",
+          flexWrap: "wrap",
+          gap: 10,
+          alignItems: "flex-start",
+        }}
+      >
+        {/* Single initials avatar + ESI under it (ED pattern) */}
         <div
-          aria-hidden
           style={{
-            width: 44,
-            height: 44,
-            borderRadius: 12,
-            background: "#ecfeff",
-            border: "1px solid #99f6e4",
-            display: "grid",
-            placeItems: "center",
-            fontWeight: 700,
-            color: "#0f766e",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: 3,
             flexShrink: 0,
+            width: 48,
           }}
+          data-testid="inpatient-header-avatar"
         >
-          {initials || "—"}
+          <div style={EMERGENCY_AVATAR_CIRCLE_STYLE} aria-hidden>
+            {initials || "—"}
+          </div>
+          <span
+            style={{
+              fontSize: 8,
+              fontWeight: 700,
+              letterSpacing: "0.08em",
+              color: "#64748b",
+              textTransform: "uppercase",
+            }}
+          >
+            {t("inpatientCompactHeaderD4a32.esiLabel")}
+          </span>
+          <span style={esiUnderAvatarNumberStyle(esi)} data-testid="inpatient-header-esi">
+            {esiDisplayChar(esi)}
+          </span>
         </div>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <h1 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "#0f172a" }}>
+
+        <div style={{ flex: "1 1 220px", minWidth: 0 }}>
+          <h1 style={{ margin: 0, fontSize: 17, fontWeight: 700, color: "#0f172a", lineHeight: 1.25 }}>
             {header.patientName}
             {header.preferredName ? (
-              <span style={{ fontWeight: 500, color: "#64748b", fontSize: 14 }}>
+              <span style={{ fontWeight: 500, color: "#64748b", fontSize: 13 }}>
                 {" "}
                 ({header.preferredName})
               </span>
             ) : null}
           </h1>
-          <div style={metaRow}>
-            <span>
-              {t("inpatientWorkspaceRecoveryD4a27b.header.mrn")}:{" "}
-              <strong>{header.mrn?.trim() || DISPLAY_DASH}</strong>
+          <p style={{ margin: "4px 0 0", fontSize: 12, color: "#64748b", lineHeight: 1.4 }}>
+            <span style={{ fontWeight: 600, color: "#475569" }}>
+              {t("inpatientWorkspaceRecoveryD4a27b.header.mrn")}
+            </span>{" "}
+            {header.mrn?.trim() || DISPLAY_DASH}
+            {" · "}
+            <span style={{ fontWeight: 600, color: "#475569" }}>
+              {t("inpatientWorkspaceRecoveryD4a27b.header.dob")}
+            </span>{" "}
+            {header.dateOfBirth
+              ? formatEncounterChromeDateTime(header.dateOfBirth, language)
+              : DISPLAY_DASH}
+            {" · "}
+            <span style={{ fontWeight: 600, color: "#475569" }}>
+              {t("inpatientWorkspaceRecoveryD4a27b.header.age")}
+            </span>{" "}
+            {header.ageYears != null ? String(header.ageYears) : DISPLAY_DASH}
+            {" · "}
+            <span style={{ fontWeight: 600, color: "#475569" }}>
+              {t("inpatientWorkspaceRecoveryD4a27b.header.sex")}
+            </span>{" "}
+            {header.sexAtBirth?.trim() || DISPLAY_DASH}
+          </p>
+          <p style={{ margin: "6px 0 0", fontSize: 13, color: "#334155", lineHeight: 1.4 }}>
+            <span style={{ fontWeight: 600, color: "#64748b", fontSize: 11 }}>
+              {t("inpatientCompactHeaderD4a32.admissionDiagnosis")}
             </span>
-            <span>
-              {t("inpatientWorkspaceRecoveryD4a27b.header.dob")}:{" "}
-              {header.dateOfBirth
-                ? formatEncounterChromeDateTime(header.dateOfBirth, language)
-                : DISPLAY_DASH}
-            </span>
-            <span>
-              {t("inpatientWorkspaceRecoveryD4a27b.header.age")}:{" "}
-              {header.ageYears != null ? String(header.ageYears) : DISPLAY_DASH}
-            </span>
-            <span>
-              {t("inpatientWorkspaceRecoveryD4a27b.header.sex")}:{" "}
-              {header.sexAtBirth?.trim() || DISPLAY_DASH}
-            </span>
-            <span>
-              {t("inpatientWorkspaceRecoveryD4a27b.header.language")}:{" "}
-              {header.preferredLanguage?.trim() || DISPLAY_DASH}
-            </span>
-            {header.interpreterRequired != null ? (
-              <span>
-                {t("inpatientRapidConvergenceD4a27c.header.interpreter")}:{" "}
-                {header.interpreterRequired
-                  ? t("inpatientRapidConvergenceD4a27c.yes")
-                  : t("inpatientRapidConvergenceD4a27c.no")}
-              </span>
-            ) : null}
-          </div>
-          <div style={metaRow}>
-            <span>
-              {t("inpatientWorkspaceRecoveryD4a27b.header.encounterType")}:{" "}
-              <strong>{header.encounterType}</strong>
-            </span>
-            <span>
-              {t("inpatientWorkspaceRecoveryD4a27b.header.hospitalDay")}:{" "}
-              {header.hospitalDay != null ? String(header.hospitalDay) : DISPLAY_DASH}
-            </span>
-            <span>
-              {t("inpatientWorkspaceRecoveryD4a27b.header.admittedAt")}:{" "}
-              {header.admittedAt
-                ? formatEncounterChromeDateTime(header.admittedAt, language)
-                : DISPLAY_DASH}
-            </span>
-            <span>
-              {t("inpatientRapidConvergenceD4a27c.header.facility")}:{" "}
-              {header.facilityName?.trim() || DISPLAY_DASH}
-            </span>
-            <span>
-              {t("inpatientWorkspaceRecoveryD4a27b.header.unitRoomBed")}:{" "}
-              {[header.unit, header.room, header.bed].filter(Boolean).join(" / ") || DISPLAY_DASH}
-            </span>
-            <span>
-              {t("inpatientWorkspaceRecoveryD4a27b.header.status")}:{" "}
-              {header.encounterStatus?.trim() || DISPLAY_DASH}
-            </span>
-          </div>
-          <div style={metaRow}>
-            <span>
-              {t("enterpriseHospitalAssignmentD4a30.provider")}:{" "}
-              {header.attendingName?.trim() || t("enterpriseHospitalAssignmentD4a30.unassigned")}
-            </span>
-            <span>
-              {t("enterpriseHospitalAssignmentD4a30.nurse")}:{" "}
-              {header.assignedRnName?.trim() || t("enterpriseHospitalAssignmentD4a30.unassigned")}
-            </span>
-            {header.residentOrAppName ? (
-              <span>
-                {t("inpatientRapidConvergenceD4a27c.header.residentApp")}: {header.residentOrAppName}
-              </span>
-            ) : null}
-          </div>
-          <div style={metaRow}>
-            <span>
-              {t("inpatientWorkspaceRecoveryD4a27b.header.chiefConcern")}:{" "}
-              {header.chiefConcern?.trim() || DISPLAY_DASH}
-            </span>
-            <span>
-              {t("inpatientWorkspaceRecoveryD4a27b.header.codeStatus")}:{" "}
-              {header.codeStatus?.trim() || DISPLAY_DASH}
-            </span>
-            <span>
-              {t("inpatientWorkspaceRecoveryD4a27b.header.isolation")}:{" "}
-              {header.isolation?.length ? header.isolation.join(", ") : DISPLAY_DASH}
-            </span>
-            <span>
-              {t("inpatientWorkspaceRecoveryD4a27b.header.allergies")}:{" "}
-              {header.allergiesSummary?.trim() ||
-                (header.allergiesAvailability === "SOURCE_UNAVAILABLE"
-                  ? t("inpatientRapidConvergenceD4a27c.header.sourceUnavailable")
-                  : header.allergiesAvailability === "NOT_DOCUMENTED"
-                    ? t("inpatientRapidConvergenceD4a27c.header.notDocumented")
-                    : DISPLAY_DASH)}
-            </span>
-            <span>
-              {t("inpatientRapidConvergenceD4a27c.header.vitals")}: {vitalsLine}
-            </span>
-          </div>
-
-          {(expanded || (header.indicators?.length ?? 0) > 0) && (
-            <div
-              style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8 }}
-              aria-label={t("inpatientRapidConvergenceD4a27c.header.indicators")}
-            >
-              {(header.indicators ?? []).map((ind) => (
-                <span
-                  key={ind.code}
-                  title={`${ind.code}: ${ind.state}`}
-                  style={{
-                    ...indicatorStyle(ind.state),
-                    fontSize: 11,
-                    fontWeight: 600,
-                    padding: "4px 8px",
-                    borderRadius: 9999,
-                  }}
-                >
-                  {t(ind.labelKey)}: {t(`inpatientRapidConvergenceD4a27c.indicatorStates.${ind.state}`)}
-                </span>
-              ))}
-            </div>
-          )}
+            {" — "}
+            {admissionDx}
+          </p>
+          <p style={{ margin: "4px 0 0", fontSize: 12, color: "#64748b" }}>
+            <span style={{ fontWeight: 600, color: "#475569" }}>
+              {t("inpatientCompactHeaderD4a32.admissionLabel")}
+            </span>{" "}
+            {header.admittedAt
+              ? formatEncounterChromeDateTime(header.admittedAt, language)
+              : DISPLAY_DASH}
+          </p>
         </div>
-        <button
-          type="button"
-          onClick={() => setExpanded((v) => !v)}
-          style={{
-            fontSize: 12,
-            border: "1px solid #cbd5e1",
-            background: "#fff",
-            borderRadius: 8,
-            padding: "4px 8px",
-            cursor: "pointer",
-          }}
-        >
-          {expanded
-            ? t("inpatientRapidConvergenceD4a27c.header.collapse")
-            : t("inpatientRapidConvergenceD4a27c.header.expand")}
-        </button>
+
+        <div style={{ marginLeft: "auto", flexShrink: 0 }} data-testid="inpatient-header-room">
+          <EncounterGovernedRoomChip
+            encounter={roomEncounter}
+            clickable={false}
+            compact
+            alignSelf="flex-start"
+            labelKey="printOutput.patientChart.room"
+          />
+        </div>
       </div>
 
       <div
-        style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 10 }}
-        aria-label={t("inpatientWorkspaceRecoveryD4a27b.header.quickActions")}
+        style={{
+          display: "flex",
+          flexWrap: "wrap",
+          gap: 8,
+          marginTop: 10,
+          alignItems: "stretch",
+        }}
+        data-testid="inpatient-header-clinical-cards"
       >
-        {(role === "NURSING" || role === "TECHNICIAN" || role === "CHART") && onDocumentVitals ? (
-          <button type="button" onClick={onDocumentVitals} style={actionBtn}>
-            {t("inpatientWorkspaceRecoveryD4a27b.header.actions.vitals")}
-          </button>
-        ) : null}
-        {(role === "PROVIDER" || role === "CHART") && onOpenHp ? (
-          <button type="button" onClick={onOpenHp} style={actionBtn}>
-            {t("inpatientRapidConvergenceD4a27c.actions.hp")}
-          </button>
-        ) : null}
-        {(role === "PROVIDER" || role === "CHART") && onOpenProgress ? (
-          <button type="button" onClick={onOpenProgress} style={actionBtn}>
-            {t("inpatientRapidConvergenceD4a27c.actions.progress")}
-          </button>
-        ) : null}
-        {(role === "PROVIDER" || role === "CHART" || role === "NURSING") && onOpenOrders ? (
-          <button type="button" onClick={onOpenOrders} style={actionBtn}>
-            {t("inpatientWorkspaceRecoveryD4a27b.header.actions.orders")}
-          </button>
-        ) : null}
-        {(role === "NURSING" || role === "PROVIDER" || role === "CHART") && onOpenMar ? (
-          <button type="button" onClick={onOpenMar} style={actionBtn}>
-            {t("inpatientWorkspaceRecoveryD4a27b.header.actions.mar")}
-          </button>
-        ) : null}
-        {(role === "PROVIDER" || role === "NURSING" || role === "CHART") && onOpenResults ? (
-          <button type="button" onClick={onOpenResults} style={actionBtn}>
-            {t("inpatientWorkspaceRecoveryD4a27b.header.actions.results")}
-          </button>
-        ) : null}
-        {role === "NURSING" && onOpenAdmission ? (
-          <button type="button" onClick={onOpenAdmission} style={actionBtn}>
-            {t("inpatientRapidConvergenceD4a27c.actions.admission")}
-          </button>
-        ) : null}
-        {role === "NURSING" && onOpenAssessments ? (
-          <button type="button" onClick={onOpenAssessments} style={actionBtn}>
-            {t("inpatientRapidConvergenceD4a27c.actions.assessments")}
-          </button>
-        ) : null}
-        {role === "NURSING" && onOpenHandoff ? (
-          <button type="button" onClick={onOpenHandoff} style={actionBtn}>
-            {t("inpatientRapidConvergenceD4a27c.actions.handoff")}
-          </button>
-        ) : null}
-        {role === "TECHNICIAN" && onOpenTasks ? (
-          <button type="button" onClick={onOpenTasks} style={actionBtn}>
-            {t("inpatientRapidConvergenceD4a27c.actions.tasks")}
-          </button>
-        ) : null}
-        {onAssignToMe ? (
-          <button
-            type="button"
-            onClick={onAssignToMe}
-            disabled={assignmentBusy}
-            style={actionBtn}
-            data-testid="hospital-header-assign-me"
+        <div style={{ flex: "1 1 320px", minWidth: 280, maxWidth: 420 }}>
+          <EmergencyWorkspaceVitalsCard
+            vitalPairs={vitalPairs}
+            loading={false}
+            editable={Boolean(onDocumentVitals)}
+            onEditClick={onDocumentVitals}
+            editAriaLabel={t("inpatientCompactHeaderD4a32.vitalsEditAria")}
+            displayMode="desktopDense"
+          />
+          {vitalsEmpty ? (
+            <p
+              style={{ margin: "4px 0 0", fontSize: 11, color: "#64748b" }}
+              data-testid="inpatient-header-no-vitals"
+            >
+              {t("inpatientCompactHeaderD4a32.noVitalsDocumented")}
+            </p>
+          ) : null}
+        </div>
+
+        <button
+          type="button"
+          data-testid="inpatient-header-iv-card"
+          onClick={onOpenIvAccess}
+          disabled={!onOpenIvAccess}
+          aria-label={t("inpatientCompactHeaderD4a32.ivAccessOpenAria")}
+          style={{
+            ...compactCard,
+            flex: "1 1 280px",
+            minWidth: 240,
+            maxWidth: 420,
+            border: "1px solid #e9d5ff",
+            background: "#faf5ff",
+            textAlign: "left",
+            cursor: onOpenIvAccess ? "pointer" : "default",
+            font: "inherit",
+          }}
+        >
+          <p
+            style={{
+              margin: 0,
+              fontSize: 9,
+              fontWeight: 700,
+              letterSpacing: "0.06em",
+              textTransform: "uppercase",
+              color: "#6b21a8",
+            }}
           >
-            {assignmentBusy
-              ? t("enterpriseHospitalAssignmentD4a30.assignSubmitting")
-              : t("enterpriseHospitalAssignmentD4a30.assignToMe")}
-          </button>
-        ) : null}
-        {onRemoveAssignment ? (
-          <button
-            type="button"
-            onClick={onRemoveAssignment}
-            disabled={assignmentBusy}
-            style={actionBtn}
-            data-testid="hospital-header-remove-assignment"
+            💉 {t("inpatientCompactHeaderD4a32.ivAccessTitle")}
+          </p>
+          {ivLoading ? (
+            <p style={{ margin: "4px 0 0", fontSize: 12, color: "#64748b" }}>{t("common.loading")}</p>
+          ) : ivActive.length === 0 ? (
+            <p style={{ margin: "4px 0 0", fontSize: 12, fontWeight: 600, color: "#6b21a8" }}>
+              {t("inpatientCompactHeaderD4a32.noActiveIv")}
+            </p>
+          ) : (
+            <ul
+              style={{
+                margin: "4px 0 0",
+                paddingLeft: 16,
+                fontSize: 12,
+                color: "#581c87",
+                lineHeight: 1.35,
+              }}
+            >
+              {ivActive.slice(0, 3).map((row) => (
+                <li key={row.insertionEventId}>
+                  {[row.gauge, row.site].filter(Boolean).join(" ") || DISPLAY_DASH}
+                  {row.insertedAt
+                    ? ` · ${formatEncounterChromeDateTime(row.insertedAt, language)}`
+                    : ""}
+                  {` · ${initialsFromDisplayName(row.recordedByDisplayName)}`}
+                </li>
+              ))}
+            </ul>
+          )}
+        </button>
+
+        <button
+          type="button"
+          data-testid="inpatient-header-allergies-card"
+          onClick={onOpenAllergies}
+          disabled={!onOpenAllergies}
+          aria-label={t("inpatientCompactHeaderD4a32.allergiesOpenAria")}
+          style={{
+            border: "none",
+            padding: 0,
+            background: "transparent",
+            cursor: onOpenAllergies ? "pointer" : "default",
+            flex: "0 1 170px",
+            minWidth: 150,
+            maxWidth: 190,
+            textAlign: "left",
+          }}
+        >
+          <EmergencyWorkspaceAllergiesCard allergySummary={allergyText} loading={false} />
+        </button>
+
+        <button
+          type="button"
+          data-testid="inpatient-header-code-card"
+          onClick={onOpenCodeStatus}
+          disabled={!onOpenCodeStatus}
+          aria-label={t("inpatientCompactHeaderD4a32.codeStatusOpenAria")}
+          style={{
+            ...compactCard,
+            border: "1px solid #fde68a",
+            background: "#fffbeb",
+            cursor: onOpenCodeStatus ? "pointer" : "default",
+            font: "inherit",
+            textAlign: "left",
+          }}
+        >
+          <p
+            style={{
+              margin: 0,
+              fontSize: 9,
+              fontWeight: 700,
+              letterSpacing: "0.06em",
+              textTransform: "uppercase",
+              color: "#92400e",
+            }}
           >
-            {t("enterpriseHospitalAssignmentD4a30.removeAssignment")}
-          </button>
-        ) : null}
-        <Link href={`/app/patients/${encodeURIComponent(header.patientId)}`} style={actionLink}>
-          {t("inpatientWorkspaceRecoveryD4a27b.header.actions.fullChart")}
-        </Link>
-        {actions}
+            ⚕️ {t("inpatientCompactHeaderD4a32.codeStatusTitle")}
+          </p>
+          <p style={{ margin: "4px 0 0", fontSize: 12, fontWeight: 700, color: "#78350f" }}>
+            {codeStatusText}
+          </p>
+        </button>
+
+        <button
+          type="button"
+          data-testid="inpatient-header-isolation-card"
+          onClick={onOpenIsolation}
+          disabled={!onOpenIsolation}
+          aria-label={t("inpatientCompactHeaderD4a32.isolationOpenAria")}
+          style={{
+            ...compactCard,
+            border: "1px solid #fecaca",
+            background: "#fff1f2",
+            cursor: onOpenIsolation ? "pointer" : "default",
+            font: "inherit",
+            textAlign: "left",
+          }}
+        >
+          <p
+            style={{
+              margin: 0,
+              fontSize: 9,
+              fontWeight: 700,
+              letterSpacing: "0.06em",
+              textTransform: "uppercase",
+              color: "#9f1239",
+            }}
+          >
+            🛡️ {t("inpatientCompactHeaderD4a32.isolationTitle")}
+          </p>
+          <p style={{ margin: "4px 0 0", fontSize: 12, fontWeight: 700, color: "#881337" }}>
+            {isolationText}
+          </p>
+        </button>
       </div>
+
+      {showAssignmentActions && (onAssignToMe || onRemoveAssignment) ? (
+        <div
+          style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 10 }}
+          data-testid="hospital-header-assignment-actions"
+          aria-label={t("enterpriseHospitalAssignmentD4a30.provider")}
+        >
+          {onAssignToMe ? (
+            <button
+              type="button"
+              onClick={onAssignToMe}
+              disabled={assignmentBusy}
+              style={assignmentActionBtn}
+              data-testid="hospital-header-assign-me"
+            >
+              {assignmentBusy
+                ? t("enterpriseHospitalAssignmentD4a30.assignSubmitting")
+                : t("enterpriseHospitalAssignmentD4a30.assignToMe")}
+            </button>
+          ) : null}
+          {onRemoveAssignment ? (
+            <button
+              type="button"
+              onClick={onRemoveAssignment}
+              disabled={assignmentBusy}
+              style={assignmentActionBtn}
+              data-testid="hospital-header-remove-assignment"
+            >
+              {t("enterpriseHospitalAssignmentD4a30.removeAssignment")}
+            </button>
+          ) : null}
+        </div>
+      ) : null}
+
+      {actions ? <div style={{ marginTop: 8 }}>{actions}</div> : null}
     </header>
   );
 }
 
-const actionBtn: CSSProperties = {
+const assignmentActionBtn: CSSProperties = {
   fontSize: 12,
   fontWeight: 600,
   padding: "7px 10px",
@@ -375,11 +532,4 @@ const actionBtn: CSSProperties = {
   background: "#f0fdfa",
   color: "#0f766e",
   cursor: "pointer",
-};
-
-const actionLink: CSSProperties = {
-  ...actionBtn,
-  textDecoration: "none",
-  display: "inline-flex",
-  alignItems: "center",
 };

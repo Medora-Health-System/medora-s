@@ -35,11 +35,13 @@ describe("D4A.2.7C inpatient rapid convergence (web)", () => {
     expect(src).toContain("AdditionalClinicalDocumentationLauncher");
   });
 
-  it("header never shows Not present for SOURCE_UNAVAILABLE devices", () => {
+  it("compact header maps SOURCE_UNAVAILABLE to governed empty (never Source unavailable chips)", () => {
     const src = readFileSync(join(root, "EnterpriseHospitalPatientHeader.tsx"), "utf8");
-    expect(src).toContain("indicatorStates");
     expect(src).toContain("SOURCE_UNAVAILABLE");
-    expect(src).toContain("inpatientRapidConvergenceD4a27c");
+    expect(src).toContain("inpatientCompactHeaderD4a32.notDocumented");
+    expect(src).toContain("inpatientCompactHeaderD4a32.noVitalsDocumented");
+    expect(src).not.toContain("sourceUnavailable");
+    expect(src).not.toContain("indicatorStates");
   });
 
   it("rapid controls use i18n for Yes/No/Unknown", () => {
@@ -60,6 +62,8 @@ describe("D4A.2.7C inpatient rapid convergence (web)", () => {
     );
     expect(src).toContain("fetchObservationWorkspaceBootstrap");
     expect(src).toContain("EnterpriseHospitalPatientHeader");
+    expect(src).toContain("showAssignmentActions");
+    expect(src).toContain("assignHospitalRoleToMe");
     expect(src).not.toMatch(/apiFetch\(`\/encounters\/\$\{encounterId\}`\)/);
   });
 

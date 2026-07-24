@@ -24,6 +24,7 @@ import { inpatientProviderD4a26Fr } from "./inpatientProviderD4a26.fr";
 import { providerClinicalSynthesisD4a26aFr } from "./providerClinicalSynthesisD4a26a.fr";
 import { providerLegalRecordD4a26bFr } from "./providerLegalRecordD4a26b.fr";
 import { enterpriseHospitalAssignmentD4a30Fr } from "./enterpriseHospitalAssignmentD4a30.fr";
+import { inpatientCompactHeaderD4a32Fr } from "./inpatientCompactHeaderD4a32.fr";
 import { emergencyAdaptiveNursingFr } from "./emergencyAdaptiveNursing.fr";
 import { admissionWorkflowVisibilityFr } from "./admissionWorkflowVisibility.fr";
 import { admissionCommandCenterFr } from "./admissionCommandCenter.fr";
@@ -19248,6 +19249,7 @@ export default {
   providerClinicalSynthesisD4a26a: providerClinicalSynthesisD4a26aFr,
   providerLegalRecordD4a26b: providerLegalRecordD4a26bFr,
   enterpriseHospitalAssignmentD4a30: enterpriseHospitalAssignmentD4a30Fr,
+  inpatientCompactHeaderD4a32: inpatientCompactHeaderD4a32Fr,
 
   hospitalAdmissionD4a0: hospitalAdmissionD4a0Fr,
   emergencyAdaptiveNursing: emergencyAdaptiveNursingFr,

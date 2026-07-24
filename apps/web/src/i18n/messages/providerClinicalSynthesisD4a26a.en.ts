@@ -69,7 +69,7 @@ export const providerClinicalSynthesisD4a26aEn = {
   },
   meds: {
     title: "Medication clinical snapshot",
-    deepLink: "Open Medication Intelligence",
+    deepLink: "Open MAR",
     held: "Held",
     changes: "Recent changes",
     groups: {

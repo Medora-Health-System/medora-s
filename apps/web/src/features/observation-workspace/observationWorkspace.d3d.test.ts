@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import en from "@/i18n/messages/en";
 import fr from "@/i18n/messages/fr";
 import {
@@ -10,6 +12,8 @@ import {
   OBSERVATION_WORKSPACE_SECTIONS,
   parseObservationWorkspaceSection,
 } from "./observationWorkspaceSections";
+
+const root = join(__dirname);
 
 describe("D3D Observation workspace UI contracts", () => {
   it("keeps browser feature flag OFF when public env var is unset", () => {
@@ -61,5 +65,23 @@ describe("D3D Observation workspace UI contracts", () => {
     expect(fr.observationD3d.census.title).toBe("Observation");
     expect(en.observationD3d.workspace.title).toBe("Observation workspace");
     expect(fr.observationD3d.workspace.title).toBe("Espace Observation");
+  });
+
+  it("retains Observation header assignment actions via shared header opt-in", () => {
+    const obs = readFileSync(join(root, "ObservationActiveWorkspaceView.tsx"), "utf8");
+    const header = readFileSync(
+      join(root, "../inpatient-workspace/EnterpriseHospitalPatientHeader.tsx"),
+      "utf8"
+    );
+    expect(obs).toContain("showAssignmentActions");
+    expect(obs).toContain("onAssignToMe");
+    expect(obs).toContain("onRemoveAssignment");
+    expect(obs).toContain("assignHospitalRoleToMe");
+    expect(obs).toContain("unassignHospitalRole");
+    expect(obs).toContain("assignmentBusy");
+    expect(obs).toContain("loadBootstrap()");
+    expect(header).toContain('data-testid="hospital-header-assign-me"');
+    expect(header).toContain('data-testid="hospital-header-remove-assignment"');
+    expect(header).toContain("showAssignmentActions");
   });
 });

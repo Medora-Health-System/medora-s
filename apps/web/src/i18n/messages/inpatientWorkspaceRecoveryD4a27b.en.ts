@@ -28,7 +28,7 @@ export const inpatientWorkspaceRecoveryD4a27bEn = {
     actions: {
       vitals: "Document vital signs",
       orders: "Review orders",
-      mar: "Open MAR",
+      mar: "MAR",
       results: "Review results",
       fullChart: "Open full chart",
     },
