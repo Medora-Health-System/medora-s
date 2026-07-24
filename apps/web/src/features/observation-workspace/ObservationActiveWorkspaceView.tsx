@@ -198,7 +198,9 @@ export function ObservationActiveWorkspaceView({
               <EnterpriseHospitalPatientHeader
                 header={bootstrap.header}
                 role={role}
-                sticky
+                sticky={false}
+                facilityId={facilityId}
+                showAssignmentActions
                 assignmentBusy={assignmentBusy}
                 onAssignToMe={
                   facilityId && (role === "PROVIDER" || role === "NURSING")

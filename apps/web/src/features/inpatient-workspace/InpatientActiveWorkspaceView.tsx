@@ -1,8 +1,9 @@
 "use client";
 
 /**
- * D4A.2.7B — Inpatient active workspace shell.
+ * D4A.2.7B / MEDUI.D4A.3.2 — Inpatient active workspace shell.
  * Bootstrap via inpatient-operations (type-gated). Blocks writers when unresolved.
+ * Compact header + unified sticky nav; vitals/IV reuse shared encounter panels.
  */
 
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -19,6 +20,24 @@ import {
 import { useI18n } from "@/lib/i18n";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import { MEDORA_CARD_SHELL } from "@/components/medora-card/medoraCardTokens";
+import { apiFetch } from "@/lib/apiClient";
+import {
+  snapshotsToVitalSummaryReadings,
+  VitalSummaryPanel,
+  vitalSummaryInitials,
+  type VitalSummaryReading,
+} from "@/components/patients/VitalSummaryPanel";
+import type { PatientTriageVitalsSnapshot } from "@/lib/patientVitals";
+import {
+  parseVitalsHistoryEntries,
+  type VitalsHistoryEntry,
+} from "@/lib/encounterClinicalSafetyUi";
+import { EncounterVitalsPanel } from "@/features/encounters/EncounterVitalsPanel";
+import { EncounterIvAccessPanel } from "@/features/encounters/EncounterIvAccessPanel";
+import {
+  VitalReadingEditModal,
+  VitalReadingVoidModal,
+} from "@/features/emergency/VitalReadingGovernanceModals";
 import {
   INPATIENT_CENSUS_PATH,
   isInpatientWorkspaceEnabledInBrowser,
@@ -29,6 +48,7 @@ import {
   inpatientTechnicianWorkspacePath,
 } from "./inpatientWorkspacePaths";
 import {
+  INPATIENT_STICKY_NAV_SECTIONS,
   parseInpatientWorkspaceSection,
   type InpatientWorkspaceSection,
 } from "./inpatientWorkspaceSections";
@@ -36,11 +56,8 @@ import { InpatientWorkspaceSectionNav } from "./InpatientWorkspaceSectionNav";
 import { InpatientWorkspacePanel } from "./InpatientWorkspacePanel";
 import { EnterpriseHospitalPatientHeader } from "./EnterpriseHospitalPatientHeader";
 import { InpatientEncounterUnavailablePanel } from "./InpatientEncounterUnavailablePanel";
+import { InpatientLongitudinalOverviewStrip } from "./InpatientLongitudinalOverviewStrip";
 import { fetchInpatientWorkspaceBootstrap } from "@/features/hospital-care/inpatientOperationsApi";
-import {
-  assignHospitalRoleToMe,
-  unassignHospitalRole,
-} from "@/features/hospital-care/hospitalAssignmentApi";
 import { emergencyActiveWorkspacePath } from "@/features/emergency/emergencyRoutes";
 import { observationActiveWorkspacePath } from "@/features/observation-workspace/observationWorkspacePaths";
 import { classifyInpatientBootstrapClientError } from "./inpatientBootstrapClientErrors";
@@ -61,9 +78,7 @@ function defaultRoleFromAuth(roles: string[]): InpatientWorkspaceRole {
   return "CHART";
 }
 
-function filterSectionsForRole(
-  role: InpatientWorkspaceRole
-): InpatientWorkspaceSection[] {
+function filterSectionsForRole(role: InpatientWorkspaceRole): InpatientWorkspaceSection[] {
   const list =
     role === "PROVIDER"
       ? providerPrimaryNav()
@@ -75,12 +90,45 @@ function filterSectionsForRole(
   return list as InpatientWorkspaceSection[];
 }
 
+/** Sticky chrome sections for role — includes Review Orders / MAR / Review Results. */
+function stickySectionsForRole(role: InpatientWorkspaceRole): InpatientWorkspaceSection[] {
+  const stickyIds = INPATIENT_STICKY_NAV_SECTIONS.map((s) => s.id);
+  if (role === "TECHNICIAN") {
+    return stickyIds.filter((id) =>
+      (["overview", "nursing", "timeline", "summary"] as InpatientWorkspaceSection[]).includes(id)
+    );
+  }
+  return stickyIds;
+}
+
+function asApiObject<T extends Record<string, unknown>>(raw: unknown): T | null {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  return raw as T;
+}
+
+function vitalsHistoryToSnapshots(
+  entries: VitalsHistoryEntry[],
+  encounterType: string
+): PatientTriageVitalsSnapshot[] {
+  return [...entries]
+    .sort((a, b) => new Date(b.recordedAt).getTime() - new Date(a.recordedAt).getTime())
+    .map((entry, idx) => ({
+      encounterId: "",
+      encounterType,
+      triageId: `vh-${idx}-${entry.recordedAt}`,
+      vitalsJson: entry.vitals,
+      updatedAt: entry.recordedAt,
+      triageCompleteAt: entry.recordedAt,
+      measuredAt: entry.recordedAt,
+    }));
+}
+
 export function InpatientActiveWorkspaceView({
   forcedRole,
 }: {
   forcedRole?: InpatientWorkspaceRole;
 }) {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   const params = useParams();
   const router = useRouter();
   const pathname = usePathname() ?? "";
@@ -118,7 +166,12 @@ export function InpatientActiveWorkspaceView({
     }
   }, [forcedRole, pathname, authReady, roles, encounterId, router]);
 
-  const allowed = filterSectionsForRole(role);
+  const stickyAllowed = stickySectionsForRole(role);
+  const allowed = useMemo(() => {
+    const base = filterSectionsForRole(role);
+    return Array.from(new Set([...base, ...stickyAllowed]));
+  }, [role, stickyAllowed]);
+
   const initialSection =
     parseInpatientWorkspaceSection(searchParams.get("section")) ?? allowed[0] ?? "overview";
   const [section, setSection] = useState<InpatientWorkspaceSection>(
@@ -126,10 +179,20 @@ export function InpatientActiveWorkspaceView({
   );
   const [bootstrap, setBootstrap] = useState<HospitalWorkspaceBootstrapV1 | null>(null);
   const [loading, setLoading] = useState(true);
-  const [assignmentBusy, setAssignmentBusy] = useState(false);
   const [errorCategory, setErrorCategory] = useState<
     EncounterResolutionFailureCategory | string | null
   >(null);
+
+  const [showQuickVitals, setShowQuickVitals] = useState(false);
+  const [showVitalsHistory, setShowVitalsHistory] = useState(false);
+  const [triageSnapshot, setTriageSnapshot] = useState<Record<string, unknown> | null>(null);
+  const [esiLevel, setEsiLevel] = useState<string | number | null>(null);
+  const [vitalsHistory, setVitalsHistory] = useState<VitalsHistoryEntry[]>([]);
+  const [vitalsRefresh, setVitalsRefresh] = useState(0);
+  const [editVitalReading, setEditVitalReading] = useState<VitalSummaryReading | null>(null);
+  const [voidVitalReading, setVoidVitalReading] = useState<VitalSummaryReading | null>(null);
+  const [showIvAccessModal, setShowIvAccessModal] = useState(false);
+  const [ivRefreshToken, setIvRefreshToken] = useState(0);
 
   useEffect(() => {
     const fromUrl = parseInpatientWorkspaceSection(searchParams.get("section"));
@@ -166,7 +229,6 @@ export function InpatientActiveWorkspaceView({
         data.resolution.encounterId &&
         data.resolution.encounterId !== encounterId
       ) {
-        // Server-authoritative same-patient/same-facility lineage redirect only.
         const dest = data.resolution.encounterId;
         if (role === "PROVIDER") router.replace(inpatientProviderWorkspacePath(dest));
         else if (role === "NURSING") router.replace(inpatientNursingWorkspacePath(dest));
@@ -185,6 +247,29 @@ export function InpatientActiveWorkspaceView({
   useEffect(() => {
     void loadBootstrap();
   }, [loadBootstrap]);
+
+  const loadTriageAndVitals = useCallback(async () => {
+    if (!encounterId || !facilityId) return;
+    try {
+      const [triageRaw, historyRaw] = await Promise.all([
+        apiFetch(`/encounters/${encounterId}/triage`, { facilityId }).catch(() => null),
+        apiFetch(`/encounters/${encounterId}/vitals-history`, { facilityId }).catch(() => null),
+      ]);
+      const triage = asApiObject(triageRaw);
+      setTriageSnapshot(triage);
+      const esi = triage && "esi" in triage ? (triage.esi as string | number | null) : null;
+      setEsiLevel(esi ?? null);
+      setVitalsHistory(parseVitalsHistoryEntries(historyRaw));
+    } catch {
+      setTriageSnapshot(null);
+      setEsiLevel(null);
+      setVitalsHistory([]);
+    }
+  }, [encounterId, facilityId]);
+
+  useEffect(() => {
+    void loadTriageAndVitals();
+  }, [loadTriageAndVitals, vitalsRefresh]);
 
   const writersEnabled = Boolean(bootstrap?.writersEnabled && bootstrap.resolution.ok);
   const header = bootstrap?.header ?? null;
@@ -216,6 +301,37 @@ export function InpatientActiveWorkspaceView({
     if (upper.includes("OBS")) return observationActiveWorkspacePath(encounterId);
     return null;
   }, [bootstrap, encounterId]);
+
+  const encounterVitalSummaryReadings = useMemo(() => {
+    const sortedHistory = [...vitalsHistory].sort(
+      (a, b) => new Date(b.recordedAt).getTime() - new Date(a.recordedAt).getTime()
+    );
+    const snapshots = vitalsHistoryToSnapshots(sortedHistory, header?.encounterType ?? "INPATIENT");
+    const readings = snapshotsToVitalSummaryReadings(snapshots, language, t);
+    return readings.map((row, idx) => {
+      const displayName = sortedHistory[idx]?.recordedBy?.displayName ?? null;
+      if (!displayName) return row;
+      return { ...row, byInitials: vitalSummaryInitials({ displayName }) };
+    });
+  }, [vitalsHistory, language, t, header?.encounterType]);
+
+  const canDocumentVitals =
+    writersEnabled &&
+    Boolean(facilityId) &&
+    (role === "NURSING" || role === "TECHNICIAN" || role === "CHART" || role === "PROVIDER");
+  const canDocumentIv =
+    writersEnabled &&
+    Boolean(facilityId) &&
+    (roles.includes("RN") ||
+      roles.includes("PROVIDER") ||
+      roles.includes("ADMIN") ||
+      role === "NURSING" ||
+      role === "CHART");
+
+  const openVitalsBoard = () => {
+    setShowQuickVitals(true);
+    setShowVitalsHistory(true);
+  };
 
   return (
     <div style={{ padding: "12px 16px 24px", maxWidth: 1100, margin: "0 auto" }}>
@@ -249,53 +365,94 @@ export function InpatientActiveWorkspaceView({
           <EnterpriseHospitalPatientHeader
             header={header}
             role={role}
-            assignmentBusy={assignmentBusy}
-            onOpenOrders={() => selectSection("orders")}
-            onOpenMar={() => selectSection("medications")}
-            onOpenResults={() => selectSection("results")}
-            onAssignToMe={
-              facilityId && (role === "PROVIDER" || role === "NURSING" || role === "TECHNICIAN")
-                ? () => {
-                    const slot =
-                      role === "PROVIDER"
-                        ? ("PROVIDER" as const)
-                        : role === "NURSING"
-                          ? ("NURSE" as const)
-                          : ("TECHNICIAN" as const);
-                    setAssignmentBusy(true);
-                    void assignHospitalRoleToMe(facilityId, encounterId, slot)
-                      .then(() => loadBootstrap())
-                      .finally(() => setAssignmentBusy(false));
-                  }
-                : undefined
-            }
-            onRemoveAssignment={
-              facilityId &&
-              (role === "PROVIDER" || role === "NURSING" || role === "TECHNICIAN") &&
-              ((role === "PROVIDER" && header.attendingName) ||
-                (role === "NURSING" && header.assignedRnName) ||
-                role === "TECHNICIAN")
-                ? () => {
-                    const slot =
-                      role === "PROVIDER"
-                        ? ("PROVIDER" as const)
-                        : role === "NURSING"
-                          ? ("NURSE" as const)
-                          : ("TECHNICIAN" as const);
-                    setAssignmentBusy(true);
-                    void unassignHospitalRole(facilityId, encounterId, slot)
-                      .then(() => loadBootstrap())
-                      .finally(() => setAssignmentBusy(false));
-                  }
-                : undefined
-            }
+            sticky={false}
+            facilityId={facilityId}
+            esiLevel={esiLevel}
+            ivRefreshToken={ivRefreshToken}
+            onDocumentVitals={canDocumentVitals ? openVitalsBoard : undefined}
+            onOpenIvAccess={canDocumentIv ? () => setShowIvAccessModal(true) : undefined}
+            onOpenAllergies={() => selectSection("overview")}
+            onOpenCodeStatus={() => selectSection("overview")}
+            onOpenIsolation={() => selectSection("overview")}
           />
 
           <InpatientWorkspaceSectionNav
             active={section}
             onSelect={selectSection}
-            allowedSections={allowed}
+            allowedSections={stickyAllowed}
           />
+
+          {(showVitalsHistory || showQuickVitals) && facilityId ? (
+            <div
+              style={{ ...MEDORA_CARD_SHELL, padding: "10px 12px", marginBottom: 12 }}
+              data-testid="inpatient-vitals-board"
+            >
+              <VitalSummaryPanel
+                readings={encounterVitalSummaryReadings}
+                latestReadingId={encounterVitalSummaryReadings[0]?.id}
+                onClose={() => {
+                  setShowVitalsHistory(false);
+                  if (!canDocumentVitals) setShowQuickVitals(false);
+                }}
+                actionsEnabled={canDocumentVitals && header.encounterStatus === "OPEN"}
+                onEditReading={canDocumentVitals ? (r) => setEditVitalReading(r) : undefined}
+                onVoidReading={canDocumentVitals ? (r) => setVoidVitalReading(r) : undefined}
+              />
+            </div>
+          ) : null}
+
+          {showQuickVitals && canDocumentVitals && facilityId ? (
+            <EncounterVitalsPanel
+              open={showQuickVitals}
+              onClose={() => setShowQuickVitals(false)}
+              encounterId={encounterId}
+              facilityId={facilityId}
+              patientId={header.patientId}
+              triageSnapshot={triageSnapshot}
+              onSaved={async () => {
+                setVitalsRefresh((r) => r + 1);
+                setShowVitalsHistory(true);
+                await loadBootstrap();
+              }}
+            />
+          ) : null}
+
+          {showIvAccessModal && facilityId ? (
+            <EncounterIvAccessPanel
+              open={showIvAccessModal}
+              onClose={() => setShowIvAccessModal(false)}
+              encounterId={encounterId}
+              facilityId={facilityId}
+              onRecorded={() => {
+                setIvRefreshToken((n) => n + 1);
+              }}
+            />
+          ) : null}
+
+          {facilityId ? (
+            <>
+              <VitalReadingEditModal
+                open={Boolean(editVitalReading)}
+                reading={editVitalReading}
+                encounterId={encounterId}
+                facilityId={facilityId}
+                onClose={() => setEditVitalReading(null)}
+                onDone={async () => {
+                  setVitalsRefresh((r) => r + 1);
+                }}
+              />
+              <VitalReadingVoidModal
+                open={Boolean(voidVitalReading)}
+                reading={voidVitalReading}
+                encounterId={encounterId}
+                facilityId={facilityId}
+                onClose={() => setVoidVitalReading(null)}
+                onDone={async () => {
+                  setVitalsRefresh((r) => r + 1);
+                }}
+              />
+            </>
+          ) : null}
 
           <section style={{ ...MEDORA_CARD_SHELL, padding: "12px 14px" }}>
             {!workspaceEnabled ? (
@@ -303,16 +460,25 @@ export function InpatientActiveWorkspaceView({
                 {t("inpatientWorkspaceRecoveryD4a27b.states.NOT_CONFIGURED")}
               </p>
             ) : (
-              <InpatientWorkspacePanel
-                section={section}
-                encounterId={encounterId}
-                encounter={encounterLite}
-                workspaceEnabled={workspaceEnabled}
-                writersEnabled={writersEnabled}
-                workspaceRole={role}
-                onRefetchEncounter={loadBootstrap}
-                onNavigateSection={selectSection}
-              />
+              <>
+                {section === "overview" ? (
+                  <InpatientLongitudinalOverviewStrip
+                    header={header}
+                    onNavigateSection={selectSection}
+                    onOpenVitals={canDocumentVitals ? openVitalsBoard : undefined}
+                  />
+                ) : null}
+                <InpatientWorkspacePanel
+                  section={section}
+                  encounterId={encounterId}
+                  encounter={encounterLite}
+                  workspaceEnabled={workspaceEnabled}
+                  writersEnabled={writersEnabled}
+                  workspaceRole={role}
+                  onRefetchEncounter={loadBootstrap}
+                  onNavigateSection={selectSection}
+                />
+              </>
             )}
           </section>
         </>

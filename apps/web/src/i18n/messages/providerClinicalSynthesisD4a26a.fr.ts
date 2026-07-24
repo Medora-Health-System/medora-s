@@ -69,7 +69,7 @@ export const providerClinicalSynthesisD4a26aFr = {
   },
   meds: {
     title: "Instantané médicamenteux",
-    deepLink: "Ouvrir Intelligence médicamenteuse",
+    deepLink: "Ouvrir le MAR",
     held: "Suspendus",
     changes: "Changements récents",
     groups: {
