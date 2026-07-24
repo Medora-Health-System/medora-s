@@ -59,6 +59,7 @@ import { providerClinicalSynthesisD4a26aEn } from "./providerClinicalSynthesisD4
 import { providerLegalRecordD4a26bEn } from "./providerLegalRecordD4a26b.en";
 import { enterpriseHospitalAssignmentD4a30En } from "./enterpriseHospitalAssignmentD4a30.en";
 import { inpatientCompactHeaderD4a32En } from "./inpatientCompactHeaderD4a32.en";
+import { inpatientHeaderNursingD4a33En } from "./inpatientHeaderNursingD4a33.en";
 
 export default {
   common: {
@@ -14614,6 +14615,9 @@ export default {
     cardSubline: "",
     cardTitleObservationEncounter: "Nursing reassessment (observation)",
     cardSublineObservationEncounter: "",
+    cardTitleInpatientEncounter: "Nursing reassessment (inpatient)",
+    cardSublineInpatientEncounter:
+      "Shared enterprise nursing assessment — same documentation engine as ED, scoped to this inpatient encounter.",
     openNursingTab: "Open nursing assessment (chart)",
     esiRoomLabel: "ESI (triage)",
     vitalsStripLabel: "Vital signs (triage)",
@@ -19166,6 +19170,7 @@ export default {
   providerLegalRecordD4a26b: providerLegalRecordD4a26bEn,
   enterpriseHospitalAssignmentD4a30: enterpriseHospitalAssignmentD4a30En,
   inpatientCompactHeaderD4a32: inpatientCompactHeaderD4a32En,
+  inpatientHeaderNursingD4a33: inpatientHeaderNursingD4a33En,
 
   hospitalAdmissionD4a0: hospitalAdmissionD4a0En,
   emergencyAdaptiveNursing: emergencyAdaptiveNursingEn,

@@ -2,7 +2,7 @@
 
 import { useI18n } from "@/lib/i18n";
 import {
-  INPATIENT_STICKY_NAV_SECTIONS,
+  INPATIENT_NURSING_STICKY_NAV_SECTIONS,
   type InpatientWorkspaceSection,
 } from "./inpatientWorkspaceSections";
 
@@ -10,15 +10,21 @@ export function InpatientWorkspaceSectionNav({
   active,
   onSelect,
   allowedSections,
+  stickySections = INPATIENT_NURSING_STICKY_NAV_SECTIONS,
 }: {
   active: InpatientWorkspaceSection;
   onSelect: (section: InpatientWorkspaceSection) => void;
   allowedSections?: readonly InpatientWorkspaceSection[];
+  stickySections?: ReadonlyArray<{
+    id: InpatientWorkspaceSection;
+    labelKey: string;
+    icon: string;
+  }>;
 }) {
   const { t } = useI18n();
   const sections = allowedSections?.length
-    ? INPATIENT_STICKY_NAV_SECTIONS.filter((s) => allowedSections.includes(s.id))
-    : INPATIENT_STICKY_NAV_SECTIONS;
+    ? stickySections.filter((s) => allowedSections.includes(s.id))
+    : stickySections;
 
   return (
     <nav

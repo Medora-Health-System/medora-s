@@ -24,6 +24,9 @@ export const INPATIENT_ISOLATION_PRECAUTIONS = [
   "ENTERIC",
   "PROTECTIVE",
   "ENHANCED_RESPIRATORY",
+  /** D4A.3.3A — first-class hospital isolation types (no enum folding). */
+  "ENHANCED_CONTACT",
+  "COVID",
 ] as const;
 
 export type InpatientIsolationPrecaution = (typeof INPATIENT_ISOLATION_PRECAUTIONS)[number];

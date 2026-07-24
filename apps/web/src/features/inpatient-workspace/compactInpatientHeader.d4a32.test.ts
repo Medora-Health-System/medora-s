@@ -1,5 +1,6 @@
 /**
  * MEDUI.D4A.3.2 — Compact inpatient header, sticky nav, shared vitals/IV panels.
+ * Updated assertions remain compatible with D4A.3.3 nursing sticky nav.
  */
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
@@ -7,6 +8,7 @@ import { join } from "node:path";
 import en from "@/i18n/messages/en";
 import fr from "@/i18n/messages/fr";
 import {
+  INPATIENT_NURSING_STICKY_NAV_SECTIONS,
   INPATIENT_STICKY_NAV_SECTIONS,
   parseInpatientWorkspaceSection,
 } from "./inpatientWorkspaceSections";
@@ -64,24 +66,14 @@ describe("MEDUI.D4A.3.2 compact inpatient header", () => {
     expect(fr.inpatientCompactHeaderD4a32.noVitalsDocumented).not.toMatch(/indisponible/i);
   });
 
-  it("sticky nav order merges Review Orders, MAR, Review Results into one row", () => {
+  it("sticky nav order merges Review Orders, MAR, Review Results into one nursing row", () => {
     const ids = INPATIENT_STICKY_NAV_SECTIONS.map((s) => s.id);
-    expect(ids).toEqual([
-      "overview",
-      "orders",
-      "medications",
-      "results",
-      "carePlan",
-      "dischargePlanning",
-      "admission",
-      "nursing",
-      "timeline",
-      "summary",
-    ]);
+    expect(ids).toEqual(INPATIENT_NURSING_STICKY_NAV_SECTIONS.map((s) => s.id));
+    expect(ids.slice(0, 4)).toEqual(["overview", "orders", "medications", "results"]);
     const nav = read("InpatientWorkspaceSectionNav.tsx");
     expect(nav).toContain("inpatient-sticky-section-nav");
     expect(nav).toContain('position: "sticky"');
-    expect(nav).toContain("flexWrap: \"nowrap\"");
+    expect(nav).toContain('flexWrap: "nowrap"');
     expect(nav).toContain("overflowX: \"auto\"");
   });
 
@@ -128,14 +120,9 @@ describe("MEDUI.D4A.3.2 compact inpatient header", () => {
     expect(ivPanel).toContain("EmergencyIvAccessModal as EncounterIvAccessPanel");
   });
 
-  it("overview includes longitudinal strip with deep-links", () => {
-    const strip = read("InpatientLongitudinalOverviewStrip.tsx");
-    expect(strip).toContain("inpatient-longitudinal-overview");
-    expect(strip).toContain("openMar");
-    expect(strip).toContain("openOrders");
-    expect(strip).toContain("openResults");
+  it("overview no longer mounts longitudinal strip (removed in D4A.3.3)", () => {
     const active = read("InpatientActiveWorkspaceView.tsx");
-    expect(active).toContain("InpatientLongitudinalOverviewStrip");
+    expect(active).not.toContain("InpatientLongitudinalOverviewStrip");
   });
 
   it("mirrors compact header i18n keys EN/FR", () => {
@@ -149,7 +136,15 @@ describe("MEDUI.D4A.3.2 compact inpatient header", () => {
 
   it("vital pairs helper never fabricates when unavailable", () => {
     const pairs = buildInpatientHeaderVitalPairs(
-      { availability: "NO_DATA_DOCUMENTED", systolic: null, diastolic: null, heartRate: null, spo2: null, temperatureC: null, respiratoryRate: null },
+      {
+        availability: "NO_DATA_DOCUMENTED",
+        systolic: null,
+        diastolic: null,
+        heartRate: null,
+        spo2: null,
+        temperatureC: null,
+        respiratoryRate: null,
+      },
       "en",
       "—"
     );

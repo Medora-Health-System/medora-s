@@ -25,6 +25,7 @@ import { providerClinicalSynthesisD4a26aFr } from "./providerClinicalSynthesisD4
 import { providerLegalRecordD4a26bFr } from "./providerLegalRecordD4a26b.fr";
 import { enterpriseHospitalAssignmentD4a30Fr } from "./enterpriseHospitalAssignmentD4a30.fr";
 import { inpatientCompactHeaderD4a32Fr } from "./inpatientCompactHeaderD4a32.fr";
+import { inpatientHeaderNursingD4a33Fr } from "./inpatientHeaderNursingD4a33.fr";
 import { emergencyAdaptiveNursingFr } from "./emergencyAdaptiveNursing.fr";
 import { admissionWorkflowVisibilityFr } from "./admissionWorkflowVisibility.fr";
 import { admissionCommandCenterFr } from "./admissionCommandCenter.fr";
@@ -14670,6 +14671,9 @@ export default {
     cardTitleObservationEncounter: "Réévaluation infirmière (observation)",
     cardSublineObservationEncounter:
       "Même grille que les urgences — enregistrée avec cette consultation. Utilisez l'onglet Synthèse pour un aperçu rapide du dossier.",
+    cardTitleInpatientEncounter: "Réévaluation infirmière (hospitalisation)",
+    cardSublineInpatientEncounter:
+      "Évaluation infirmière d’entreprise partagée — même moteur de documentation que les urgences, dans le contexte de cette hospitalisation.",
     openNursingTab: "Ouvrir l'évaluation infirmière (dossier)",
     esiRoomLabel: "ESI (triage)",
     vitalsStripLabel: "Signes vitaux (triage)",
@@ -19250,6 +19254,7 @@ export default {
   providerLegalRecordD4a26b: providerLegalRecordD4a26bFr,
   enterpriseHospitalAssignmentD4a30: enterpriseHospitalAssignmentD4a30Fr,
   inpatientCompactHeaderD4a32: inpatientCompactHeaderD4a32Fr,
+  inpatientHeaderNursingD4a33: inpatientHeaderNursingD4a33Fr,
 
   hospitalAdmissionD4a0: hospitalAdmissionD4a0Fr,
   emergencyAdaptiveNursing: emergencyAdaptiveNursingFr,

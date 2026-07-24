@@ -18,16 +18,24 @@ import {
 } from "@medora/shared";
 import { ClinicalUserRoleAutocomplete } from "@/components/clinical/ClinicalUserRoleAutocomplete";
 
-const ED_HANDOFF_ENCOUNTER_TYPES = new Set(["EMERGENCY", "URGENT_CARE"]);
+const HANDOFF_ENCOUNTER_TYPES = new Set([
+  "EMERGENCY",
+  "URGENT_CARE",
+  "INPATIENT",
+  "OBSERVATION",
+  "HOSPITAL",
+]);
 
-/** Nursing handoff (erHandoffV1) block: all ED-type encounters, not only when admission packet exists. */
+/** Nursing handoff (erHandoffV1) block: ED + inpatient/observation reuse (shared engine). */
 export function shouldShowErHandoffV1InNursing(encounter: {
   type?: string | null;
   status?: string | null;
   admissionSummaryJson?: unknown;
   nursingAssessment?: unknown;
 }): boolean {
-  return ED_HANDOFF_ENCOUNTER_TYPES.has((encounter.type ?? "").trim());
+  const type = (encounter.type ?? "").trim().toUpperCase();
+  if (HANDOFF_ENCOUNTER_TYPES.has(type)) return true;
+  return type.includes("INPATIENT") || type.includes("HOSP");
 }
 
 /** Operational panel (read-only): show handoff subsection when any persisted handoff info exists. */

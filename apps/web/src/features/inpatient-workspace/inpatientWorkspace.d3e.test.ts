@@ -58,6 +58,7 @@ describe("D3E Inpatient clinical workspace UI contracts", () => {
       "consults",
       "carePlan",
       "dischargePlanning",
+      "notes",
       "timeline",
       "summary",
     ]) {
@@ -65,6 +66,8 @@ describe("D3E Inpatient clinical workspace UI contracts", () => {
     }
     expect(parseInpatientWorkspaceSection("hp")).toBe("historyPhysical");
     expect(parseInpatientWorkspaceSection("mar")).toBe("medications");
+    expect(parseInpatientWorkspaceSection("notes")).toBe("notes");
+    expect(parseInpatientWorkspaceSection("nursingAssessment")).toBe("nursing");
   });
 
   it("mirrors inpatientD3e keys between EN and FR", () => {

@@ -551,7 +551,11 @@ export function EmergencyNursingReassessmentPanel({
   isLocked,
   onSaved,
   nursingTabHref,
-  /** Same ED reassessment grid; observation short-stay uses localized card copy and hides the legacy “open nursing tab” link. */
+  /**
+   * Same ED reassessment grid.
+   * - observationEncounter: localized card copy; Clinical Documentation hub gated off.
+   * - inpatientEncounter: localized card copy; hub opens with careSetting INPATIENT.
+   */
   variant = "edEmbedded",
 }: {
   encounterId: string;
@@ -561,17 +565,23 @@ export function EmergencyNursingReassessmentPanel({
   onSaved: () => void | Promise<void>;
   /** Lien vers l&apos;onglet évaluation infirmière du dossier (référence complète). */
   nursingTabHref: string;
-  variant?: "edEmbedded" | "observationEncounter";
+  variant?: "edEmbedded" | "observationEncounter" | "inpatientEncounter";
 }) {
   const { t, language } = useI18n();
   const dateLocale = language === "en" ? "en-US" : "fr-FR";
   const isObservationEncounter = variant === "observationEncounter";
+  const isInpatientEncounter = variant === "inpatientEncounter";
+  const hubCareSetting = isInpatientEncounter ? "INPATIENT" : "ED";
   const cardTitle = isObservationEncounter
     ? t("emergencyNursingReassessment.cardTitleObservationEncounter")
-    : t("emergencyNursingReassessment.cardTitle");
+    : isInpatientEncounter
+      ? t("emergencyNursingReassessment.cardTitleInpatientEncounter")
+      : t("emergencyNursingReassessment.cardTitle");
   const cardSubline = isObservationEncounter
     ? t("emergencyNursingReassessment.cardSublineObservationEncounter")
-    : t("emergencyNursingReassessment.cardSubline");
+    : isInpatientEncounter
+      ? t("emergencyNursingReassessment.cardSublineInpatientEncounter")
+      : t("emergencyNursingReassessment.cardSubline");
 
   const applyAbcStableFillEmpty = useCallback(() => {
     setForm((f) => ({
@@ -1526,7 +1536,7 @@ export function EmergencyNursingReassessmentPanel({
 
         {clinicalDocHubOpen && !isObservationEncounter ? (
           <ClinicalDocumentationHub
-            careSetting="ED"
+            careSetting={hubCareSetting}
             encounterId={encounterId}
             facilityId={facilityId}
             onClose={() => setClinicalDocHubOpen(false)}
