@@ -14,6 +14,8 @@ import {
   INPATIENT_RAPID_CONVERGENCE_CERTIFICATION_ID,
   observationBootstrapRejectsEdAndInpatient,
   patientClinicalHistoryProfileFromJson,
+  projectHospitalBoardAssignments,
+  readHospitalAssignmentBag,
   readInpatientClinicalOpsFromAdmissionSummary,
   type ClinicalAvailabilityState,
   type HospitalWorkspaceBootstrapV1,
@@ -229,13 +231,12 @@ export class ObservationOperationsService {
     const ops = readInpatientClinicalOpsFromAdmissionSummary(enc.admissionSummaryJson);
     const patientName =
       `${enc.patient?.firstName ?? ""} ${enc.patient?.lastName ?? ""}`.trim() || "—";
-    const attendingName = enc.physicianAssigned
-      ? `${enc.physicianAssigned.firstName ?? ""} ${enc.physicianAssigned.lastName ?? ""}`.trim() ||
-        null
-      : null;
-    const assignedRnName = enc.nurseAssigned
-      ? `${enc.nurseAssigned.firstName ?? ""} ${enc.nurseAssigned.lastName ?? ""}`.trim() || null
-      : null;
+    // D4A.3.0 — hospital care team from independent bag only (never ED columns).
+    const hospitalAssignment = projectHospitalBoardAssignments(
+      readHospitalAssignmentBag(enc.admissionSummaryJson)
+    );
+    const attendingName = hospitalAssignment.providerName;
+    const assignedRnName = hospitalAssignment.nurseName;
     let ageYears: number | null = null;
     if (enc.patient?.dob) {
       const dob = new Date(enc.patient.dob);

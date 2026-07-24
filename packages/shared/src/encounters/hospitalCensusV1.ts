@@ -6,6 +6,10 @@
 
 import { resolveClinicalEncounterContext } from "./clinicalEncounterIdentity.js";
 import type { ClinicalEncounterContext } from "./clinicalEncounterIdentity.js";
+import {
+  projectHospitalBoardAssignments,
+  readHospitalAssignmentBag,
+} from "./enterpriseAssignmentEngineD4a30.js";
 
 export const UNIFIED_HOSPITAL_CENSUS_CERTIFICATION_ID =
   "MEDUI.UNIFIED_HOSPITAL_CENSUS_DASHBOARD.D3E6A" as const;
@@ -88,6 +92,12 @@ export type HospitalCensusPatientRow = {
   chiefComplaint: string | null;
   attendingName: string | null;
   nurseName: string | null;
+  /** D4A.3.0 — hospital-lane technician display (never ED). */
+  technicianName?: string | null;
+  /** D4A.3.0 — hospital-lane assignment IDs for My Patients filters. */
+  providerUserId?: string | null;
+  nurseUserId?: string | null;
+  technicianUserId?: string | null;
   admittedAt: string | null;
   losHours: number | null;
   alerts: Array<{ code: string; severity: "urgent" | "warning" | "info" }>;
@@ -218,6 +228,10 @@ export function buildHospitalCensusPatientRow(
 
   const alerts: HospitalCensusPatientRow["alerts"] = [];
   const ops = enc.observationOps;
+  // D4A.3.0 — hospital active care team from independent bag only (ED columns are historical).
+  const hospitalBoard = projectHospitalBoardAssignments(
+    readHospitalAssignmentBag(enc.admissionSummaryJson)
+  );
   if (ops?.flags?.criticalLabsUnacked || enc.trackboardOps?.criticalResultUnacknowledged) {
     alerts.push({ code: "CRITICAL_RESULTS", severity: "urgent" });
   }
@@ -227,10 +241,10 @@ export function buildHospitalCensusPatientRow(
   if (ops?.vitalsStale) {
     alerts.push({ code: "VITALS_STALE", severity: "warning" });
   }
-  if (ops?.flags?.assignRnGap || !(enc.nurseAssignedUserId ?? "").trim()) {
+  if (hospitalBoard.nurseUnassigned) {
     alerts.push({ code: "RN_UNASSIGNED", severity: "info" });
   }
-  if (ops?.flags?.assignPhysicianGap || !(enc.physicianAssignedUserId ?? "").trim()) {
+  if (hospitalBoard.providerUnassigned) {
     alerts.push({ code: "PHYSICIAN_UNASSIGNED", severity: "info" });
   }
   if (ops?.flags?.readyForDischarge) {
@@ -251,12 +265,12 @@ export function buildHospitalCensusPatientRow(
       : null,
     unitRoomBed: enc.roomLabel?.trim() || null,
     chiefComplaint: enc.chiefComplaint?.trim() || null,
-    attendingName: displayName(
-      enc.physicianAssigned?.firstName,
-      enc.physicianAssigned?.lastName,
-      null
-    ),
-    nurseName: displayName(enc.nurseAssigned?.firstName, enc.nurseAssigned?.lastName, null),
+    attendingName: hospitalBoard.providerName,
+    nurseName: hospitalBoard.nurseName,
+    technicianName: hospitalBoard.technicianName,
+    providerUserId: hospitalBoard.providerUserId,
+    nurseUserId: hospitalBoard.nurseUserId,
+    technicianUserId: hospitalBoard.technicianUserId,
     admittedAt: enc.admittedAt
       ? new Date(enc.admittedAt).toISOString()
       : enc.createdAt

@@ -29,6 +29,15 @@ export async function assignNurseSelf(facilityId: string, encounterId: string): 
   });
 }
 
+/** D4A.3.0 — hospital-lane assignment (Observation/Inpatient bag). Re-export for worklists. */
+export {
+  assignHospitalRoleToMe,
+  unassignHospitalRole,
+  reassignHospitalRole,
+  fetchHospitalAssignmentProjection,
+  mutateHospitalAssignment,
+} from "@/features/hospital-care/hospitalAssignmentApi";
+
 /** Orders for one encounter (same payload as OrdersTab). */
 export async function fetchOrdersForEncounter(facilityId: string, encounterId: string): Promise<unknown[]> {
   const pending = await getPendingCreateOrdersForEncounter(facilityId, encounterId).catch(() => [] as Record<string, unknown>[]);

@@ -15,9 +15,10 @@ describe("professionResolver (MEDUI.AUTH.ROLE.1)", () => {
     expect(resolveProfessionGroup({ roleCodes: ["RN"] })).toBe("RN");
   });
 
-  it("maps LAB and RADIOLOGY to TECHNICIAN", () => {
+  it("maps LAB, RADIOLOGY, and PATIENT_CARE_TECH to TECHNICIAN", () => {
     expect(resolveProfessionGroup({ roleCodes: ["LAB"] })).toBe("TECHNICIAN");
     expect(resolveProfessionGroup({ roleCodes: ["RADIOLOGY"] })).toBe("TECHNICIAN");
+    expect(resolveProfessionGroup({ roleCodes: ["PATIENT_CARE_TECH"] })).toBe("TECHNICIAN");
   });
 
   it("maps PHARMACY, BILLING, FRONT_DESK", () => {

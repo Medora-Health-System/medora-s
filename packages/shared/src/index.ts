@@ -149,6 +149,8 @@ export * from "./encounters/inpatientRapidConvergenceD4a27c.js";
 export * from "./encounters/enterpriseWorkflowEngineD4a28.js";
 export * from "./encounters/enterpriseClinicalRulesEngineD4a28a.js";
 export * from "./encounters/hospitalEncounterAuthorityD4a28Hf2.js";
+export * from "./encounters/enterpriseAssignmentEngineD4a30.js";
+export * from "./encounters/enterpriseAssignmentCompletionD4a30.js";
 export * from "./patients/patientSearchAndSelectV1.js";
 export * from "./encounters/inpatientOperationsFeatureFlags.js";
 export * from "./encounters/inpatientClinicalOpsCertificationV1.js";

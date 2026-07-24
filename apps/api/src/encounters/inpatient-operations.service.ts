@@ -103,6 +103,9 @@ import {
   nursingDocDomainReferences,
   readInpatientLifecycleMeta,
   computeHospitalDay,
+  ensureEmptyHospitalAssignmentOnAdmission,
+  projectHospitalBoardAssignments,
+  readHospitalAssignmentBag,
   INPATIENT_WORKSPACE_RECOVERY_CERTIFICATION_ID,
   type NursingAdmissionDomainReferenceV1,
   type NursingAdmissionDomainKey,
@@ -731,42 +734,46 @@ export class InpatientOperationsService {
       destinationUnitId: body.requestedUnit?.trim() || correlationIntent.destinationUnitId,
     };
 
-    const admissionSummaryJson = mergeHospitalAdmissionCorrelationIntoSummary(
-      mergeInpatientClinicalOpsIntoAdmissionSummary(
-        {
-          d3e7DirectAdmission: true,
-          d3e6dHospitalAdmissionIntake: true,
-          requestedEncounterType: "INPATIENT",
-          clinicalDestinationContext: "INPATIENT",
-          admissionSource,
-          admittingService: body.admittingService?.trim() || null,
-          admissionDiagnosis: body.admissionDiagnosis?.trim() || null,
-          admissionReason: body.reasonForAdmission?.trim() || null,
-          careLevel: body.requestedLevelOfCare?.trim() || null,
-          serviceUnit: body.requestedUnit?.trim() || null,
-          plannedAt: body.plannedAt?.trim() || null,
-          referringProviderOrFacility: body.referringProviderOrFacility?.trim() || null,
-          originatingEdEncounterId: sourceEdEncounterId,
-          observationEncounterId:
-            admissionSource === "OBSERVATION_CONVERSION" ? sourceEncounterId : null,
-          observationEncounterTypePreserved: admissionSource === "OBSERVATION_CONVERSION",
-          medicationTransitionAction:
-            typeof body.medicationTransitionAction === "string"
-              ? body.medicationTransitionAction.trim().toUpperCase()
-              : null,
-          receivingNurseUserId: actorUserId,
-          admissionInitiatedAt: new Date().toISOString(),
-          arrivalAt: admittedAt.toISOString(),
-          d3e6dIdempotencyKey: idempotencyKey,
-          assignedBedKey: bedKeyRaw || null,
-          // Explicit: ED/Observation chart is not closed or type-mutated by this writer
-          edEncounterClosed: false,
-          edEncounterMutated: false,
-          observationEncounterMutated: false,
-        },
-        ops
+    // D4A.3.0 — hospital active team starts empty (never copy ED provider/RN/tech or attending into bag).
+    const admissionSummaryJson = ensureEmptyHospitalAssignmentOnAdmission(
+      mergeHospitalAdmissionCorrelationIntoSummary(
+        mergeInpatientClinicalOpsIntoAdmissionSummary(
+          {
+            d3e7DirectAdmission: true,
+            d3e6dHospitalAdmissionIntake: true,
+            requestedEncounterType: "INPATIENT",
+            clinicalDestinationContext: "INPATIENT",
+            admissionSource,
+            admittingService: body.admittingService?.trim() || null,
+            admissionDiagnosis: body.admissionDiagnosis?.trim() || null,
+            admissionReason: body.reasonForAdmission?.trim() || null,
+            careLevel: body.requestedLevelOfCare?.trim() || null,
+            serviceUnit: body.requestedUnit?.trim() || null,
+            plannedAt: body.plannedAt?.trim() || null,
+            referringProviderOrFacility: body.referringProviderOrFacility?.trim() || null,
+            originatingEdEncounterId: sourceEdEncounterId,
+            observationEncounterId:
+              admissionSource === "OBSERVATION_CONVERSION" ? sourceEncounterId : null,
+            observationEncounterTypePreserved: admissionSource === "OBSERVATION_CONVERSION",
+            medicationTransitionAction:
+              typeof body.medicationTransitionAction === "string"
+                ? body.medicationTransitionAction.trim().toUpperCase()
+                : null,
+            receivingNurseUserId: actorUserId,
+            admissionInitiatedAt: new Date().toISOString(),
+            arrivalAt: admittedAt.toISOString(),
+            d3e6dIdempotencyKey: idempotencyKey,
+            assignedBedKey: bedKeyRaw || null,
+            // Explicit: ED/Observation chart is not closed or type-mutated by this writer
+            edEncounterClosed: false,
+            edEncounterMutated: false,
+            observationEncounterMutated: false,
+          },
+          ops
+        ),
+        correlationDraft
       ),
-      correlationDraft
+      "INPATIENT"
     );
 
     let created: {
@@ -1438,13 +1445,12 @@ export class InpatientOperationsService {
 
     const patientName =
       `${enc.patient?.firstName ?? ""} ${enc.patient?.lastName ?? ""}`.trim() || "—";
-    const attendingName = enc.physicianAssigned
-      ? `${enc.physicianAssigned.firstName ?? ""} ${enc.physicianAssigned.lastName ?? ""}`.trim() ||
-        null
-      : null;
-    const assignedRnName = enc.nurseAssigned
-      ? `${enc.nurseAssigned.firstName ?? ""} ${enc.nurseAssigned.lastName ?? ""}`.trim() || null
-      : null;
+    // D4A.3.0 — hospital care team from independent bag only (never ED physician/nurse columns).
+    const hospitalAssignment = projectHospitalBoardAssignments(
+      readHospitalAssignmentBag(enc.admissionSummaryJson)
+    );
+    const attendingName = hospitalAssignment.providerName;
+    const assignedRnName = hospitalAssignment.nurseName;
     let ageYears: number | null = null;
     if (enc.patient?.dob) {
       const dob = new Date(enc.patient.dob);

@@ -25,6 +25,10 @@ import { ObservationWorkspaceSectionNav } from "./ObservationWorkspaceSectionNav
 import { ObservationWorkspacePanel } from "./ObservationWorkspacePanel";
 import { EnterpriseHospitalPatientHeader } from "@/features/inpatient-workspace/EnterpriseHospitalPatientHeader";
 import { fetchObservationWorkspaceBootstrap } from "@/features/hospital-care/observationOperationsApi";
+import {
+  assignHospitalRoleToMe,
+  unassignHospitalRole,
+} from "@/features/hospital-care/hospitalAssignmentApi";
 
 export function ObservationActiveWorkspaceView({
   forcedAudience,
@@ -38,6 +42,7 @@ export function ObservationActiveWorkspaceView({
   const { facilityId } = useFacilityAndRoles();
   const encounterId = String(params?.id ?? "").trim();
   const workspaceEnabled = isObservationWorkspaceEnabledInBrowser();
+  const [assignmentBusy, setAssignmentBusy] = useState(false);
 
   const providerNav = observationProviderNav() as ObservationWorkspaceSection[];
   const nursingNav = observationNursingNav() as ObservationWorkspaceSection[];
@@ -194,6 +199,31 @@ export function ObservationActiveWorkspaceView({
                 header={bootstrap.header}
                 role={role}
                 sticky
+                assignmentBusy={assignmentBusy}
+                onAssignToMe={
+                  facilityId && (role === "PROVIDER" || role === "NURSING")
+                    ? () => {
+                        const slot = role === "PROVIDER" ? ("PROVIDER" as const) : ("NURSE" as const);
+                        setAssignmentBusy(true);
+                        void assignHospitalRoleToMe(facilityId, encounterId, slot)
+                          .then(() => loadBootstrap())
+                          .finally(() => setAssignmentBusy(false));
+                      }
+                    : undefined
+                }
+                onRemoveAssignment={
+                  facilityId &&
+                  ((role === "PROVIDER" && bootstrap.header.attendingName) ||
+                    (role === "NURSING" && bootstrap.header.assignedRnName))
+                    ? () => {
+                        const slot = role === "PROVIDER" ? ("PROVIDER" as const) : ("NURSE" as const);
+                        setAssignmentBusy(true);
+                        void unassignHospitalRole(facilityId, encounterId, slot)
+                          .then(() => loadBootstrap())
+                          .finally(() => setAssignmentBusy(false));
+                      }
+                    : undefined
+                }
               />
             ) : null}
 

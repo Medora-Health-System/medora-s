@@ -271,7 +271,9 @@ export function InpatientWorkspacePanel({
         <div data-testid="inpatient-panel-tasks">
           <InpatientTechnicianTasksPanel
             encounterId={encounterId}
-            canTechnicianWrite={roles.includes("LAB") || roles.includes("RADIOLOGY") || roles.includes("ADMIN")}
+            canTechnicianWrite={
+              roles.includes("PATIENT_CARE_TECH") || roles.includes("ADMIN")
+            }
             canValidateRn={roles.includes("RN") || roles.includes("ADMIN")}
           />
         </div>

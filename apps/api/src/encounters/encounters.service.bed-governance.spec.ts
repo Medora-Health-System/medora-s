@@ -4,6 +4,7 @@ import { ROOM_ALREADY_OCCUPIED_CODE } from "@medora/shared";
 import { EncountersService } from "./encounters.service";
 import { createMockBedBoardService } from "./encounters.service.test-bed-board.mock";
 import { createMockInternalPlacementService } from "./encounters.service.test-internal-placement.mock";
+import { createMockEnterpriseAssignmentService } from "./encounters.service.test-enterprise-assignment.mock";
 
 const facilityId = "fac-1";
 const patientId = "pat-1";
@@ -40,7 +41,8 @@ function buildUpdateRoomMocks(
     { log: auditLog } as never,
     {} as never,
     createMockBedBoardService() as never,
-    createMockInternalPlacementService() as never
+    createMockInternalPlacementService() as never,
+    createMockEnterpriseAssignmentService() as never
   );
   return { service, auditLog, encounterUpdateMany, encounterFindFirst, updatedRow };
 }
@@ -361,7 +363,8 @@ describe("EncountersService.updateRoom — bed governance (K.10B.10B M2)", () =>
     { log: auditLog } as never,
     {} as never,
     createMockBedBoardService() as never,
-    createMockInternalPlacementService() as never
+    createMockInternalPlacementService() as never,
+    createMockEnterpriseAssignmentService() as never
   );
 
     await service.updateRoom(facilityId, "enc-new", {

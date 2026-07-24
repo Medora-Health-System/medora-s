@@ -19,7 +19,8 @@ export type ResolveProfessionGroupInput = {
   canAdministerMedication?: boolean;
 };
 
-const TECHNICIAN_ROLE_CODES = new Set<string>(["LAB", "RADIOLOGY"]);
+/** Ancillary + patient-care tech RoleCodes → TECHNICIAN profession group. */
+const TECHNICIAN_ROLE_CODES = new Set<string>(["LAB", "RADIOLOGY", "PATIENT_CARE_TECH"]);
 
 function normalizeRoleCodes(roleCodes: readonly string[] | undefined): string[] {
   return (roleCodes ?? []).map((code) => code.trim().toUpperCase()).filter(Boolean);

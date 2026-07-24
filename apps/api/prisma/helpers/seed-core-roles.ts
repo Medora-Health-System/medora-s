@@ -16,6 +16,10 @@ export async function seedCoreRoles(prisma: PrismaClient) {
         { code: RoleCode.BILLING, name: "Billing" },
         { code: RoleCode.MEDICATION_REVIEWER, name: "Medication reviewer (RxNorm)" },
         { code: RoleCode.MEDICATION_ADMIN, name: "Medication admin (governance)" },
+        {
+          code: RoleCode.PATIENT_CARE_TECH,
+          name: "Patient care technician",
+        },
       ] as const
     ).map((r) =>
       prisma.role.upsert({

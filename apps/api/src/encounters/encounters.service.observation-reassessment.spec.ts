@@ -14,6 +14,7 @@ import { OBSERVATION_REASSESSMENT_EVENT_SOURCE } from "@medora/shared";
 import { EncountersService } from "./encounters.service";
 import { createMockBedBoardService } from "./encounters.service.test-bed-board.mock";
 import { createMockInternalPlacementService } from "./encounters.service.test-internal-placement.mock";
+import { createMockEnterpriseAssignmentService } from "./encounters.service.test-enterprise-assignment.mock";
 
 const facilityId = "fac-1";
 const encounterId = "enc-1";
@@ -38,7 +39,7 @@ const openInpatientObservationEncounter = {
   status: "OPEN",
   workflowState: "IN_TREATMENT",
   admittedAt: null as Date | null,
-  admissionSummaryJson: { careLevel: "Observation" } as unknown,
+  admissionSummaryJson: { requestedEncounterType: "OBSERVATION" } as unknown,
 };
 
 function buildMocks(encounterRow: typeof openInpatientObservationEncounter | null, userRoleCodes: string[]) {
@@ -79,7 +80,8 @@ describe("EncountersService.appendObservationReassessment (13G-B)", () => {
       audit as never,
       trackboard as never,
       createMockBedBoardService() as never,
-      createMockInternalPlacementService() as never
+      createMockInternalPlacementService() as never,
+      createMockEnterpriseAssignmentService() as never
     );
 
     const res = await svc.appendObservationReassessment(facilityId, encounterId, baseDto, userId);
@@ -115,7 +117,8 @@ describe("EncountersService.appendObservationReassessment (13G-B)", () => {
       audit as never,
       trackboard as never,
       createMockBedBoardService() as never,
-      createMockInternalPlacementService() as never
+      createMockInternalPlacementService() as never,
+      createMockEnterpriseAssignmentService() as never
     );
 
     await svc.appendObservationReassessment(
@@ -140,7 +143,8 @@ describe("EncountersService.appendObservationReassessment (13G-B)", () => {
       audit as never,
       trackboard as never,
       createMockBedBoardService() as never,
-      createMockInternalPlacementService() as never
+      createMockInternalPlacementService() as never,
+      createMockEnterpriseAssignmentService() as never
     );
 
     await expect(svc.appendObservationReassessment(facilityId, encounterId, baseDto, userId)).rejects.toBeInstanceOf(
@@ -159,7 +163,8 @@ describe("EncountersService.appendObservationReassessment (13G-B)", () => {
       audit as never,
       trackboard as never,
       createMockBedBoardService() as never,
-      createMockInternalPlacementService() as never
+      createMockInternalPlacementService() as never,
+      createMockEnterpriseAssignmentService() as never
     );
 
     await expect(svc.appendObservationReassessment(facilityId, encounterId, baseDto, userId)).rejects.toThrow(
@@ -168,7 +173,7 @@ describe("EncountersService.appendObservationReassessment (13G-B)", () => {
     expect(encounterClinicalEventCreate).not.toHaveBeenCalled();
   });
 
-  it("rejects when encounter is not in an observation / short-stay workflow lane (no anchor, empty packet)", async () => {
+  it("rejects when encounter lacks explicit Observation identity (empty admission summary)", async () => {
     const { prisma, audit, trackboard, encounterClinicalEventCreate } = buildMocks(
       {
         ...openInpatientObservationEncounter,
@@ -182,16 +187,17 @@ describe("EncountersService.appendObservationReassessment (13G-B)", () => {
       audit as never,
       trackboard as never,
       createMockBedBoardService() as never,
-      createMockInternalPlacementService() as never
+      createMockInternalPlacementService() as never,
+      createMockEnterpriseAssignmentService() as never
     );
 
     await expect(svc.appendObservationReassessment(facilityId, encounterId, baseDto, userId)).rejects.toThrow(
-      /Observation reassessment is only available for an open observation or short-stay stay/i
+      /Observation reassessment is only available for an explicit Observation encounter/i
     );
     expect(encounterClinicalEventCreate).not.toHaveBeenCalled();
   });
 
-  it("allows PROVIDER when admittedAt is set even if careLevel is not observation wording", async () => {
+  it("rejects when only admittedAt is set without explicit Observation identity", async () => {
     const { prisma, audit, trackboard, encounterClinicalEventCreate } = buildMocks(
       {
         ...openInpatientObservationEncounter,
@@ -205,12 +211,14 @@ describe("EncountersService.appendObservationReassessment (13G-B)", () => {
       audit as never,
       trackboard as never,
       createMockBedBoardService() as never,
-      createMockInternalPlacementService() as never
+      createMockInternalPlacementService() as never,
+      createMockEnterpriseAssignmentService() as never
     );
 
-    await svc.appendObservationReassessment(facilityId, encounterId, baseDto, userId);
-
-    expect(encounterClinicalEventCreate).toHaveBeenCalledTimes(1);
+    await expect(svc.appendObservationReassessment(facilityId, encounterId, baseDto, userId)).rejects.toThrow(
+      /Observation reassessment is only available for an explicit Observation encounter/i
+    );
+    expect(encounterClinicalEventCreate).not.toHaveBeenCalled();
   });
 
   it("rejects RN dto when caller is only PROVIDER", async () => {
@@ -223,7 +231,8 @@ describe("EncountersService.appendObservationReassessment (13G-B)", () => {
       audit as never,
       trackboard as never,
       createMockBedBoardService() as never,
-      createMockInternalPlacementService() as never
+      createMockInternalPlacementService() as never,
+      createMockEnterpriseAssignmentService() as never
     );
 
     await expect(
@@ -242,7 +251,8 @@ describe("EncountersService.appendObservationReassessment (13G-B)", () => {
       audit as never,
       trackboard as never,
       createMockBedBoardService() as never,
-      createMockInternalPlacementService() as never
+      createMockInternalPlacementService() as never,
+      createMockEnterpriseAssignmentService() as never
     );
 
     await expect(svc.appendObservationReassessment(facilityId, encounterId, baseDto, userId)).rejects.toBeInstanceOf(
@@ -261,7 +271,8 @@ describe("EncountersService.appendObservationReassessment (13G-B)", () => {
       audit as never,
       trackboard as never,
       createMockBedBoardService() as never,
-      createMockInternalPlacementService() as never
+      createMockInternalPlacementService() as never,
+      createMockEnterpriseAssignmentService() as never
     );
 
     await expect(svc.appendObservationReassessment(facilityId, encounterId, baseDto, undefined)).rejects.toThrow(
@@ -277,7 +288,8 @@ describe("EncountersService.appendObservationReassessment (13G-B)", () => {
       audit as never,
       trackboard as never,
       createMockBedBoardService() as never,
-      createMockInternalPlacementService() as never
+      createMockInternalPlacementService() as never,
+      createMockEnterpriseAssignmentService() as never
     );
 
     await expect(svc.appendObservationReassessment(facilityId, encounterId, baseDto, userId)).rejects.toBeInstanceOf(
@@ -293,7 +305,8 @@ describe("EncountersService.appendObservationReassessment (13G-B)", () => {
       audit as never,
       trackboard as never,
       createMockBedBoardService() as never,
-      createMockInternalPlacementService() as never
+      createMockInternalPlacementService() as never,
+      createMockEnterpriseAssignmentService() as never
     );
 
     await svc.appendObservationReassessment(facilityId, encounterId, baseDto, userId);

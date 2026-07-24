@@ -121,7 +121,7 @@ export const providerClinicalSynthesisD4a26aEn = {
     completed: "Completed",
   },
   census: {
-    title: "Provider census",
+    title: "My Patients",
     filterAttending: "Attending",
     filterUnit: "Unit / floor",
     filterQuery: "Search",

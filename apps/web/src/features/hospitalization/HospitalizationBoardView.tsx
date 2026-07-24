@@ -11,13 +11,15 @@ import { formatAgeYearsSexForLocale, DISPLAY_DASH } from "@/lib/patientDisplay";
 import { encounterBcp47 } from "@/lib/encounterChromeI18n";
 import { useI18n } from "@/lib/i18n";
 import {
-  assignNurseSelf,
-  assignProviderSelf,
+  assignHospitalRoleToMe,
+  unassignHospitalRole,
   fetchHospitalisationEncounters,
 } from "@/lib/clinicalWorklistApi";
 import type { HospitalisationBoardEncounterRow } from "@/lib/hospitalisationBoardTypes";
 import {
   canReadFreestandingErObservationPatients,
+  projectHospitalBoardAssignments,
+  readHospitalAssignmentBag,
   resolveClinicalEncounterContext,
   selectTreatmentBedAssignmentCandidates,
   type ObservationOperationalSnapshot,
@@ -153,16 +155,25 @@ function fullPatientName(p: HospitalisationBoardEncounterRow["patient"]): string
   return `${(p?.firstName ?? "").trim()} ${(p?.lastName ?? "").trim()}`.trim() || DISPLAY_DASH;
 }
 
+/** D4A.3.0 — hospital bag only (never ED physicianAssigned / nurseAssigned columns). */
+function hospitalAssignmentFromRow(enc: HospitalisationBoardEncounterRow) {
+  return projectHospitalBoardAssignments(
+    readHospitalAssignmentBag(
+      (enc as { admissionSummaryJson?: unknown }).admissionSummaryJson
+    )
+  );
+}
+
 function physicianLabel(enc: HospitalisationBoardEncounterRow): string {
-  const p = enc.physicianAssigned;
-  if (!p) return "";
-  return `${(p.firstName ?? "").trim()} ${(p.lastName ?? "").trim()}`.trim();
+  return hospitalAssignmentFromRow(enc).providerName?.trim() || "";
 }
 
 function nurseLabel(enc: HospitalisationBoardEncounterRow): string {
-  const p = enc.nurseAssigned;
-  if (!p) return "";
-  return `${(p.firstName ?? "").trim()} ${(p.lastName ?? "").trim()}`.trim();
+  return hospitalAssignmentFromRow(enc).nurseName?.trim() || "";
+}
+
+function technicianLabel(enc: HospitalisationBoardEncounterRow): string {
+  return hospitalAssignmentFromRow(enc).technicianName?.trim() || "";
 }
 
 const OBS_SOFT = { bg: "#f8fafc", text: "#334155", border: "#e2e8f0" } as const;
@@ -660,18 +671,67 @@ export function HospitalizationBoardView() {
   }, [facilityId, mockMode, t]);
 
   const claimSelf = useCallback(
-    async (encounterId: string, kind: "provider" | "nurse") => {
+    async (
+      encounterId: string,
+      kind: "PROVIDER" | "NURSE" | "TECHNICIAN",
+      action: "ASSIGN_ME" | "UNASSIGN" = "ASSIGN_ME"
+    ) => {
       const fid = effectiveFacilityId;
       if (!fid || mockMode === "error" || mockMode === "empty") return;
       setAssigningId(encounterId);
       setAssignError(null);
       try {
         const updated =
-          kind === "provider"
-            ? await assignProviderSelf(fid, encounterId)
-            : await assignNurseSelf(fid, encounterId);
+          action === "ASSIGN_ME"
+            ? await assignHospitalRoleToMe(fid, encounterId, kind)
+            : await unassignHospitalRole(fid, encounterId, kind);
+        const projection = updated.projection;
         setEncounters((prev) =>
-          prev.map((r) => (r.id === encounterId ? mergeHospitalisationRowAfterAssign(r, updated) : r))
+          prev.map((r) => {
+            if (r.id !== encounterId) return r;
+            const summary =
+              r.admissionSummaryJson &&
+              typeof r.admissionSummaryJson === "object" &&
+              !Array.isArray(r.admissionSummaryJson)
+                ? { ...(r.admissionSummaryJson as Record<string, unknown>) }
+                : {};
+            // Keep bag fields in local summary for immediate UI refresh.
+            summary.enterpriseHospitalAssignmentV1 = {
+              v: 1,
+              careSetting: "OBSERVATION",
+              slots: {
+                PROVIDER: projection.providerUserId
+                  ? {
+                      userId: projection.providerUserId,
+                      assignedAt: new Date().toISOString(),
+                      source: "SELF_ASSIGN",
+                      displayName: projection.providerName,
+                    }
+                  : null,
+                NURSE: projection.nurseUserId
+                  ? {
+                      userId: projection.nurseUserId,
+                      assignedAt: new Date().toISOString(),
+                      source: "SELF_ASSIGN",
+                      displayName: projection.nurseName,
+                    }
+                  : null,
+                TECHNICIAN: projection.technicianUserId
+                  ? {
+                      userId: projection.technicianUserId,
+                      assignedAt: new Date().toISOString(),
+                      source: "SELF_ASSIGN",
+                      displayName: projection.technicianName,
+                    }
+                  : null,
+              },
+              history: [],
+            };
+            return mergeHospitalisationRowAfterAssign(r, {
+              ...r,
+              admissionSummaryJson: summary,
+            });
+          })
         );
         await loadEncounters({ silent: true });
       } catch (err) {
@@ -682,7 +742,7 @@ export function HospitalizationBoardView() {
             ? t("emergencyTrackboard.assignErrorClosed")
             : lc.includes("rôle") || lc.includes("role") || lc.includes("infirm") || lc.includes("médecin")
               ? t("emergencyTrackboard.assignErrorRole")
-              : t("emergencyTrackboard.assignErrorGeneric");
+              : t("enterpriseHospitalAssignmentD4a30.assignError");
         setAssignError({ id: encounterId, message });
       } finally {
         setAssigningId(null);
@@ -1460,14 +1520,21 @@ export function HospitalizationBoardView() {
                   },
                   bedIndex
                 )?.status ?? null;
+              const hospitalAssign = hospitalAssignmentFromRow(encounter);
               const physName = physicianLabel(encounter);
               const nurseName = nurseLabel(encounter);
+              const techName = technicianLabel(encounter);
               const physLine = physName || t("emergencyTrackboard.unassignedDash");
               const nurseLine = nurseName || t("emergencyTrackboard.unassignedDash");
-              const physId = (encounter.physicianAssigned?.id ?? "").trim();
-              const nurseId = (encounter.nurseAssigned?.id ?? "").trim();
+              const techLine = techName || t("emergencyTrackboard.unassignedDash");
+              const physId = (hospitalAssign.providerUserId ?? "").trim();
+              const nurseId = (hospitalAssign.nurseUserId ?? "").trim();
+              const techId = (hospitalAssign.technicianUserId ?? "").trim();
               const isPhysMine = Boolean(userId && physId && physId === userId);
               const isNurseMine = Boolean(userId && nurseId && nurseId === userId);
+              const isTechMine = Boolean(userId && techId && techId === userId);
+              const isTechRole =
+                roles.includes("PATIENT_CARE_TECH") || roles.includes("ADMIN");
               const obs = encounter.observationOps ?? null;
               const resultsPendingCount = encounter.trackboardOps?.resultsPendingCount ?? 0;
               return (
@@ -1509,6 +1576,17 @@ export function HospitalizationBoardView() {
                               </span>
                               <span style={{ color: nurseName ? "#0f172a" : "#94a3b8", fontWeight: nurseName ? 600 : 500 }}>
                                 {nurseLine}
+                              </span>
+                            </p>
+                            <p
+                              style={observationBoardPersonnelLineStyle(layoutMode)}
+                              title={techName || undefined}
+                            >
+                              <span style={{ color: "#94a3b8", marginRight: 4 }}>
+                                {t("enterpriseHospitalAssignmentD4a30.technician")}:
+                              </span>
+                              <span style={{ color: techName ? "#0f172a" : "#94a3b8", fontWeight: techName ? 600 : 500 }}>
+                                {techLine}
                               </span>
                             </p>
                           </div>
@@ -1600,18 +1678,23 @@ export function HospitalizationBoardView() {
                               {isProvider ? (
                                 <button
                                   type="button"
-                                  onClick={() => void claimSelf(encounter.id, "provider")}
+                                  onClick={() =>
+                                    void claimSelf(
+                                      encounter.id,
+                                      "PROVIDER",
+                                      isPhysMine ? "UNASSIGN" : "ASSIGN_ME"
+                                    )
+                                  }
                                   disabled={
                                     assigningId === encounter.id ||
-                                    isPhysMine ||
                                     mockMode === "error" ||
                                     mockMode === "empty" ||
                                     !effectiveFacilityId
                                   }
                                   title={
                                     isPhysMine
-                                      ? t("emergencyTrackboard.assignProviderMine")
-                                      : t("emergencyTrackboard.assignProviderMe")
+                                      ? t("enterpriseHospitalAssignmentD4a30.removeAssignment")
+                                      : t("enterpriseHospitalAssignmentD4a30.assignToMe")
                                   }
                                   style={observationBoardCensusActionButtonStyle(
                                     {
@@ -1627,7 +1710,6 @@ export function HospitalizationBoardView() {
                                       fontWeight: 600,
                                       cursor:
                                         assigningId === encounter.id ||
-                                        isPhysMine ||
                                         mockMode === "error" ||
                                         mockMode === "empty" ||
                                         !effectiveFacilityId
@@ -1638,27 +1720,32 @@ export function HospitalizationBoardView() {
                                   )}
                                 >
                                   {isPhysMine
-                                    ? t("emergencyTrackboard.assignProviderMine")
+                                    ? t("enterpriseHospitalAssignmentD4a30.removeAssignment")
                                     : assigningId === encounter.id
-                                      ? t("emergencyTrackboard.assignSubmitting")
-                                      : t("emergencyTrackboard.assignProviderMeShort")}
+                                      ? t("enterpriseHospitalAssignmentD4a30.assignSubmitting")
+                                      : t("enterpriseHospitalAssignmentD4a30.assignToMe")}
                                 </button>
                               ) : null}
                               {isNurse ? (
                                 <button
                                   type="button"
-                                  onClick={() => void claimSelf(encounter.id, "nurse")}
+                                  onClick={() =>
+                                    void claimSelf(
+                                      encounter.id,
+                                      "NURSE",
+                                      isNurseMine ? "UNASSIGN" : "ASSIGN_ME"
+                                    )
+                                  }
                                   disabled={
                                     assigningId === encounter.id ||
-                                    isNurseMine ||
                                     mockMode === "error" ||
                                     mockMode === "empty" ||
                                     !effectiveFacilityId
                                   }
                                   title={
                                     isNurseMine
-                                      ? t("emergencyTrackboard.assignNurseMine")
-                                      : t("emergencyTrackboard.assignNurseMe")
+                                      ? t("enterpriseHospitalAssignmentD4a30.removeAssignment")
+                                      : t("enterpriseHospitalAssignmentD4a30.assignToMe")
                                   }
                                   style={observationBoardCensusActionButtonStyle(
                                     {
@@ -1674,7 +1761,6 @@ export function HospitalizationBoardView() {
                                       fontWeight: 600,
                                       cursor:
                                         assigningId === encounter.id ||
-                                        isNurseMine ||
                                         mockMode === "error" ||
                                         mockMode === "empty" ||
                                         !effectiveFacilityId
@@ -1685,10 +1771,61 @@ export function HospitalizationBoardView() {
                                   )}
                                 >
                                   {isNurseMine
-                                    ? t("emergencyTrackboard.assignNurseMine")
+                                    ? t("enterpriseHospitalAssignmentD4a30.removeAssignment")
                                     : assigningId === encounter.id
-                                      ? t("emergencyTrackboard.assignSubmitting")
-                                      : t("emergencyTrackboard.assignNurseMeShort")}
+                                      ? t("enterpriseHospitalAssignmentD4a30.assignSubmitting")
+                                      : t("enterpriseHospitalAssignmentD4a30.assignToMe")}
+                                </button>
+                              ) : null}
+                              {isTechRole ? (
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    void claimSelf(
+                                      encounter.id,
+                                      "TECHNICIAN",
+                                      isTechMine ? "UNASSIGN" : "ASSIGN_ME"
+                                    )
+                                  }
+                                  disabled={
+                                    assigningId === encounter.id ||
+                                    mockMode === "error" ||
+                                    mockMode === "empty" ||
+                                    !effectiveFacilityId
+                                  }
+                                  title={
+                                    isTechMine
+                                      ? t("enterpriseHospitalAssignmentD4a30.removeAssignment")
+                                      : t("enterpriseHospitalAssignmentD4a30.assignToMe")
+                                  }
+                                  style={observationBoardCensusActionButtonStyle(
+                                    {
+                                      display: "inline-flex",
+                                      alignItems: "center",
+                                      justifyContent: "center",
+                                      padding: "4px 10px",
+                                      borderRadius: 8,
+                                      border: isTechMine ? "1px solid #6ee7b7" : "1px solid #cbd5e1",
+                                      backgroundColor: isTechMine ? "#d1fae5" : "#fff",
+                                      color: isTechMine ? "#065f46" : "#0f172a",
+                                      fontSize: 12,
+                                      fontWeight: 600,
+                                      cursor:
+                                        assigningId === encounter.id ||
+                                        mockMode === "error" ||
+                                        mockMode === "empty" ||
+                                        !effectiveFacilityId
+                                          ? "default"
+                                          : "pointer",
+                                    },
+                                    layoutMode
+                                  )}
+                                >
+                                  {isTechMine
+                                    ? t("enterpriseHospitalAssignmentD4a30.removeAssignment")
+                                    : assigningId === encounter.id
+                                      ? t("enterpriseHospitalAssignmentD4a30.assignSubmitting")
+                                      : t("enterpriseHospitalAssignmentD4a30.assignToMe")}
                                 </button>
                               ) : null}
                               {!obs ? (

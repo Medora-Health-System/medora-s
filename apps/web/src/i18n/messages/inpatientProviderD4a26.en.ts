@@ -150,8 +150,8 @@ export const inpatientProviderD4a26En = {
     reuse: "Same enterprise timeline as nursing and orders.",
   },
   census: {
-    title: "Provider census views",
-    myPatients: "My patients",
+    title: "My Patients",
+    myPatients: "My Patients",
     myService: "My service",
     covering: "Covering patients",
     newAdmissions: "New admissions",
