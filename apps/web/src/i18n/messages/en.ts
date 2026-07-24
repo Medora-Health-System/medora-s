@@ -19057,6 +19057,25 @@ export default {
       legend:
         "Service lines group clinical units. Click a unit to open its dedicated board. Rooms and beds are not listed here.",
     },
+    map: {
+      rootSubtitle: "Entire Inpatient Census",
+      lines: {
+        medicalSurgical: "Medical/Surgical",
+        criticalCare: "Critical Care",
+        pediatric: "Pediatric",
+        obgyn: "OBGYN",
+        behavioralHealth: "Behavioral Health",
+        otherSpecialty: "Other Specialty",
+      },
+      units: {
+        medicalSurgical: "Medical/Surgical Unit",
+        intensiveCare: "Intensive Care Unit",
+        pediatric: "Pediatric Unit",
+        motherBaby: "Mother/Baby Unit",
+        behavioralHealth: "Behavioral Health Unit",
+        observation: "Observation Unit",
+      },
+    },
     counts: {
       unavailable: "—",
     },

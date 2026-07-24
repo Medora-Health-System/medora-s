@@ -19140,6 +19140,25 @@ export default {
       legend:
         "Les lignes de service regroupent les unités cliniques. Cliquez une unité pour ouvrir son tableau dédié. Les chambres et lits ne sont pas listés ici.",
     },
+    map: {
+      rootSubtitle: "Recensement d’hospitalisation complet",
+      lines: {
+        medicalSurgical: "Médical/Chirurgical",
+        criticalCare: "Soins critiques",
+        pediatric: "Pédiatrie",
+        obgyn: "Obstétrique-gynécologie",
+        behavioralHealth: "Santé mentale",
+        otherSpecialty: "Autre spécialité",
+      },
+      units: {
+        medicalSurgical: "Unité médico-chirurgicale",
+        intensiveCare: "Unité de soins intensifs",
+        pediatric: "Unité pédiatrique",
+        motherBaby: "Unité mère-enfant",
+        behavioralHealth: "Unité de santé mentale",
+        observation: "Unité d’observation",
+      },
+    },
     counts: {
       unavailable: "—",
     },
