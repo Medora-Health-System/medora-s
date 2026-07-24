@@ -5,6 +5,16 @@
 
 export const ER_HANDOFF_V1_KEY = "erHandoffV1" as const;
 
+export type ErHandoffHistoryEntry = {
+  at: string;
+  byDisplayName?: string;
+  receivingNurseName?: string;
+  receivingUnit?: string;
+  reportGivenTo?: string;
+  careTransferred?: boolean;
+  notePreview?: string;
+};
+
 export type ErHandoffV1Stored = {
   reportGiven?: boolean;
   /** ISO 8601 timestamp string */
@@ -21,6 +31,14 @@ export type ErHandoffV1Stored = {
   /** ISO 8601 — last explicit handoff save (additive accountability). */
   handoffLastSavedAt?: string;
   handoffLastSavedByDisplayName?: string;
+  /** D4A.3.3A — receiving unit / report given to / care transferred / e-signature. */
+  receivingUnit?: string;
+  reportGivenTo?: string;
+  careTransferred?: boolean;
+  electronicSignatureName?: string;
+  electronicSignatureAt?: string;
+  /** Append-only handoff history snapshots (max 40). */
+  history?: ErHandoffHistoryEntry[];
 };
 
 const MAX_NOTE = 2000;
@@ -87,6 +105,35 @@ export function readErHandoffV1FromNursingAssessment(nursingAssessment: unknown)
   if (hlsa) out.handoffLastSavedAt = hlsa;
   const hlsn = trimStr(o.handoffLastSavedByDisplayName, MAX_DISPLAY);
   if (hlsn) out.handoffLastSavedByDisplayName = hlsn;
+  const unit = trimStr(o.receivingUnit, MAX_NAME);
+  if (unit) out.receivingUnit = unit;
+  const givenTo = trimStr(o.reportGivenTo, MAX_NAME);
+  if (givenTo) out.reportGivenTo = givenTo;
+  const ct = readBool(o.careTransferred);
+  if (ct !== undefined) out.careTransferred = ct;
+  const sig = trimStr(o.electronicSignatureName, MAX_DISPLAY);
+  if (sig) out.electronicSignatureName = sig;
+  const sigAt = trimStr(o.electronicSignatureAt, MAX_ISO);
+  if (sigAt) out.electronicSignatureAt = sigAt;
+  if (Array.isArray(o.history)) {
+    const history: ErHandoffHistoryEntry[] = [];
+    for (const row of o.history.slice(0, 40)) {
+      if (!row || typeof row !== "object" || Array.isArray(row)) continue;
+      const h = row as Record<string, unknown>;
+      const at = trimStr(h.at, MAX_ISO);
+      if (!at) continue;
+      history.push({
+        at,
+        byDisplayName: trimStr(h.byDisplayName, MAX_DISPLAY),
+        receivingNurseName: trimStr(h.receivingNurseName, MAX_NAME),
+        receivingUnit: trimStr(h.receivingUnit, MAX_NAME),
+        reportGivenTo: trimStr(h.reportGivenTo, MAX_NAME),
+        careTransferred: readBool(h.careTransferred),
+        notePreview: trimStr(h.notePreview, 180),
+      });
+    }
+    if (history.length) out.history = history;
+  }
 
   return out;
 }
@@ -121,7 +168,49 @@ function sanitizeForPersist(form: ErHandoffV1Stored): Record<string, unknown> {
   if (hlsa) out.handoffLastSavedAt = hlsa;
   const hlsn = trimStr(form.handoffLastSavedByDisplayName, MAX_DISPLAY);
   if (hlsn) out.handoffLastSavedByDisplayName = hlsn;
+  const unit = trimStr(form.receivingUnit, MAX_NAME);
+  if (unit) out.receivingUnit = unit;
+  const givenTo = trimStr(form.reportGivenTo, MAX_NAME);
+  if (givenTo) out.reportGivenTo = givenTo;
+  if (form.careTransferred === true || form.careTransferred === false) {
+    out.careTransferred = form.careTransferred;
+  }
+  const sig = trimStr(form.electronicSignatureName, MAX_DISPLAY);
+  if (sig) out.electronicSignatureName = sig;
+  const sigAt = trimStr(form.electronicSignatureAt, MAX_ISO);
+  if (sigAt) out.electronicSignatureAt = sigAt;
+  if (Array.isArray(form.history) && form.history.length) {
+    out.history = form.history.slice(0, 40).map((h) => ({
+      at: String(h.at ?? "").slice(0, MAX_ISO),
+      byDisplayName: h.byDisplayName,
+      receivingNurseName: h.receivingNurseName,
+      receivingUnit: h.receivingUnit,
+      reportGivenTo: h.reportGivenTo,
+      careTransferred: h.careTransferred,
+      notePreview: h.notePreview,
+    }));
+  }
   return out;
+}
+
+/** Append a history snapshot when saving a handoff (keeps last 40). */
+export function appendErHandoffHistory(
+  previous: ErHandoffV1Stored,
+  next: ErHandoffV1Stored,
+  byDisplayName?: string | null
+): ErHandoffV1Stored {
+  const at = next.handoffLastSavedAt || next.reportGivenAt || new Date().toISOString();
+  const entry: ErHandoffHistoryEntry = {
+    at,
+    byDisplayName: byDisplayName?.trim() || next.handoffLastSavedByDisplayName,
+    receivingNurseName: next.receivingNurseName,
+    receivingUnit: next.receivingUnit,
+    reportGivenTo: next.reportGivenTo,
+    careTransferred: next.careTransferred,
+    notePreview: next.handoffNote?.trim().slice(0, 180),
+  };
+  const history = [...(previous.history ?? []), entry].slice(-40);
+  return { ...next, history };
 }
 
 /**

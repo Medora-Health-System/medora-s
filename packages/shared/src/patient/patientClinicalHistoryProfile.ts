@@ -13,6 +13,7 @@ import {
   type TriageCarryForwardMeta,
   type TriageCarryForwardSectionKey,
 } from "../triage/triageCarryForward.js";
+import type { EnterpriseAllergyEntry } from "./enterpriseAllergyRecord.js";
 
 export const PATIENT_CLINICAL_HISTORY_PROFILE_VERSION = "19T.3" as const;
 
@@ -43,6 +44,9 @@ export type PatientClinicalHistoryAllergies = {
   foodAllergiesDetail?: string;
   additionalAllergyInfo?: string;
   allergyDetailSelections?: string[];
+  /** D4A.3.3A structured enterprise allergy rows (active/inactive lifecycle). */
+  entries?: EnterpriseAllergyEntry[];
+  nkda?: boolean;
 };
 
 export type PatientClinicalHistoryHomeMedications = {

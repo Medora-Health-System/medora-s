@@ -53,7 +53,11 @@ describe("MEDUI.INPATIENT_WORKSPACE_RECOVERY.D4A2_7B shared", () => {
     expect(provider).toContain("historyPhysical");
     expect(provider).not.toContain("admission");
     expect(nursing).toContain("admission");
+    expect(nursing).toContain("notes");
+    expect(nursing).toContain("nursing");
     expect(nursing).not.toContain("historyPhysical");
+    expect(nursing).not.toContain("timeline");
+    expect(nursing).not.toContain("summary");
     expect(tech).not.toContain("historyPhysical");
     expect(tech).not.toContain("admission");
   });

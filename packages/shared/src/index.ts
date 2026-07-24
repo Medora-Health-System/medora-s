@@ -118,6 +118,7 @@ export * from "./encounters/admissionIntentOriginationD3e8a.js";
 export * from "./encounters/admissionIntentOriginationD3e8aBenchmark.js";
 export * from "./encounters/unitBedBoardsAdmissionIntakeD3e6dBenchmark.js";
 export * from "./encounters/inpatientClinicalOpsV1.js";
+export * from "./encounters/inpatientDischargeSynthesisD4a33a.js";
 export * from "./encounters/hospitalAdmissionIntakeVocabV1.js";
 export * from "./encounters/connectedInpatientAdmissionIntakeD4a0.js";
 export * from "./encounters/connectedInpatientAdmissionIntakeD4a0Benchmark.js";
@@ -663,5 +664,6 @@ export * from "./procedures/enterpriseProcedureBillableReview.js";
 export * from "./procedures/enterpriseProcedureRevenueReviewTypes.js";
 export * from "./procedures/enterpriseProcedureRevenueReview.js";
 export * from "./patient/patientClinicalHistoryProfile.js";
+export * from "./patient/enterpriseAllergyRecord.js";
 export * from "./clinicalHistory/surgicalHistoryCatalog.js";
 

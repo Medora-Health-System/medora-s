@@ -48,7 +48,8 @@ import {
   inpatientTechnicianWorkspacePath,
 } from "./inpatientWorkspacePaths";
 import {
-  INPATIENT_STICKY_NAV_SECTIONS,
+  INPATIENT_NURSING_STICKY_NAV_SECTIONS,
+  INPATIENT_PROVIDER_STICKY_NAV_SECTIONS,
   parseInpatientWorkspaceSection,
   type InpatientWorkspaceSection,
 } from "./inpatientWorkspaceSections";
@@ -56,7 +57,11 @@ import { InpatientWorkspaceSectionNav } from "./InpatientWorkspaceSectionNav";
 import { InpatientWorkspacePanel } from "./InpatientWorkspacePanel";
 import { EnterpriseHospitalPatientHeader } from "./EnterpriseHospitalPatientHeader";
 import { InpatientEncounterUnavailablePanel } from "./InpatientEncounterUnavailablePanel";
-import { InpatientLongitudinalOverviewStrip } from "./InpatientLongitudinalOverviewStrip";
+import {
+  InpatientAllergyEditorModal,
+  InpatientCodeStatusEditorModal,
+  InpatientIsolationEditorModal,
+} from "./InpatientClinicalStatusEditors";
 import { fetchInpatientWorkspaceBootstrap } from "@/features/hospital-care/inpatientOperationsApi";
 import { emergencyActiveWorkspacePath } from "@/features/emergency/emergencyRoutes";
 import { observationActiveWorkspacePath } from "@/features/observation-workspace/observationWorkspacePaths";
@@ -90,15 +95,32 @@ function filterSectionsForRole(role: InpatientWorkspaceRole): InpatientWorkspace
   return list as InpatientWorkspaceSection[];
 }
 
-/** Sticky chrome sections for role — includes Review Orders / MAR / Review Results. */
-function stickySectionsForRole(role: InpatientWorkspaceRole): InpatientWorkspaceSection[] {
-  const stickyIds = INPATIENT_STICKY_NAV_SECTIONS.map((s) => s.id);
+/** Sticky chrome sections for role — Nursing has no Timeline/Summary (D4A.3.3). */
+function stickyNavForRole(role: InpatientWorkspaceRole) {
+  if (role === "NURSING") return INPATIENT_NURSING_STICKY_NAV_SECTIONS;
   if (role === "TECHNICIAN") {
-    return stickyIds.filter((id) =>
-      (["overview", "nursing", "timeline", "summary"] as InpatientWorkspaceSection[]).includes(id)
-    );
+    const techIds = new Set<InpatientWorkspaceSection>([
+      "overview",
+      "nursing",
+      "timeline",
+      "summary",
+    ]);
+    const catalog = [
+      ...INPATIENT_NURSING_STICKY_NAV_SECTIONS,
+      ...INPATIENT_PROVIDER_STICKY_NAV_SECTIONS,
+    ];
+    const seen = new Set<InpatientWorkspaceSection>();
+    return catalog.filter((s) => {
+      if (!techIds.has(s.id) || seen.has(s.id)) return false;
+      seen.add(s.id);
+      return true;
+    });
   }
-  return stickyIds;
+  return INPATIENT_PROVIDER_STICKY_NAV_SECTIONS;
+}
+
+function stickySectionsForRole(role: InpatientWorkspaceRole): InpatientWorkspaceSection[] {
+  return stickyNavForRole(role).map((s) => s.id);
 }
 
 function asApiObject<T extends Record<string, unknown>>(raw: unknown): T | null {
@@ -166,6 +188,7 @@ export function InpatientActiveWorkspaceView({
     }
   }, [forcedRole, pathname, authReady, roles, encounterId, router]);
 
+  const stickyNav = stickyNavForRole(role);
   const stickyAllowed = stickySectionsForRole(role);
   const allowed = useMemo(() => {
     const base = filterSectionsForRole(role);
@@ -193,6 +216,9 @@ export function InpatientActiveWorkspaceView({
   const [voidVitalReading, setVoidVitalReading] = useState<VitalSummaryReading | null>(null);
   const [showIvAccessModal, setShowIvAccessModal] = useState(false);
   const [ivRefreshToken, setIvRefreshToken] = useState(0);
+  const [showAllergyEditor, setShowAllergyEditor] = useState(false);
+  const [showCodeStatusEditor, setShowCodeStatusEditor] = useState(false);
+  const [showIsolationEditor, setShowIsolationEditor] = useState(false);
 
   useEffect(() => {
     const fromUrl = parseInpatientWorkspaceSection(searchParams.get("section"));
@@ -371,15 +397,16 @@ export function InpatientActiveWorkspaceView({
             ivRefreshToken={ivRefreshToken}
             onDocumentVitals={canDocumentVitals ? openVitalsBoard : undefined}
             onOpenIvAccess={canDocumentIv ? () => setShowIvAccessModal(true) : undefined}
-            onOpenAllergies={() => selectSection("overview")}
-            onOpenCodeStatus={() => selectSection("overview")}
-            onOpenIsolation={() => selectSection("overview")}
+            onOpenAllergies={writersEnabled ? () => setShowAllergyEditor(true) : undefined}
+            onOpenCodeStatus={writersEnabled ? () => setShowCodeStatusEditor(true) : undefined}
+            onOpenIsolation={writersEnabled ? () => setShowIsolationEditor(true) : undefined}
           />
 
           <InpatientWorkspaceSectionNav
             active={section}
             onSelect={selectSection}
             allowedSections={stickyAllowed}
+            stickySections={stickyNav}
           />
 
           {(showVitalsHistory || showQuickVitals) && facilityId ? (
@@ -429,6 +456,35 @@ export function InpatientActiveWorkspaceView({
             />
           ) : null}
 
+          {showAllergyEditor && facilityId ? (
+            <InpatientAllergyEditorModal
+              open={showAllergyEditor}
+              onClose={() => setShowAllergyEditor(false)}
+              encounterId={encounterId}
+              facilityId={facilityId}
+              patientId={header.patientId}
+              onSaved={loadBootstrap}
+            />
+          ) : null}
+          {showCodeStatusEditor ? (
+            <InpatientCodeStatusEditorModal
+              open={showCodeStatusEditor}
+              onClose={() => setShowCodeStatusEditor(false)}
+              encounterId={encounterId}
+              currentStatus={header.codeStatus}
+              onSaved={loadBootstrap}
+            />
+          ) : null}
+          {showIsolationEditor ? (
+            <InpatientIsolationEditorModal
+              open={showIsolationEditor}
+              onClose={() => setShowIsolationEditor(false)}
+              encounterId={encounterId}
+              currentPrecautions={header.isolation}
+              onSaved={loadBootstrap}
+            />
+          ) : null}
+
           {facilityId ? (
             <>
               <VitalReadingEditModal
@@ -460,25 +516,24 @@ export function InpatientActiveWorkspaceView({
                 {t("inpatientWorkspaceRecoveryD4a27b.states.NOT_CONFIGURED")}
               </p>
             ) : (
-              <>
-                {section === "overview" ? (
-                  <InpatientLongitudinalOverviewStrip
-                    header={header}
-                    onNavigateSection={selectSection}
-                    onOpenVitals={canDocumentVitals ? openVitalsBoard : undefined}
-                  />
-                ) : null}
-                <InpatientWorkspacePanel
-                  section={section}
-                  encounterId={encounterId}
-                  encounter={encounterLite}
-                  workspaceEnabled={workspaceEnabled}
-                  writersEnabled={writersEnabled}
-                  workspaceRole={role}
-                  onRefetchEncounter={loadBootstrap}
-                  onNavigateSection={selectSection}
-                />
-              </>
+              <InpatientWorkspacePanel
+                section={section}
+                encounterId={encounterId}
+                encounter={encounterLite}
+                workspaceEnabled={workspaceEnabled}
+                writersEnabled={writersEnabled}
+                workspaceRole={role}
+                onRefetchEncounter={loadBootstrap}
+                onNavigateSection={selectSection}
+                assignedRnName={header.assignedRnName}
+                assignedPctName={header.assignedPctName}
+                attendingName={header.attendingName}
+                admissionDiagnosis={header.chiefConcern}
+                admittedAt={header.admittedAt}
+                room={header.room}
+                codeStatus={header.codeStatus}
+                isolation={header.isolation}
+              />
             )}
           </section>
         </>

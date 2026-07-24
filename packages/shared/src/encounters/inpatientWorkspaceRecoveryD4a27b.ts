@@ -233,6 +233,8 @@ export type HospitalWorkspaceBootstrapV1 = {
     admissionSource: string | null;
     attendingName: string | null;
     assignedRnName: string | null;
+    /** D4A.3.3A — PCT from enterprise hospital assignment bag. */
+    assignedPctName?: string | null;
     residentOrAppName: string | null;
     facilityName: string | null;
     unit: string | null;
@@ -348,16 +350,18 @@ export function providerPrimaryNav(): readonly string[] {
   ] as const;
 }
 
+/** MEDUI.D4A.3.3 — Nursing primary nav (no Timeline / Summary; Notes + Assessment). */
 export function nursingPrimaryNav(): readonly string[] {
   return [
     "overview",
+    "orders",
+    "medications",
+    "results",
+    "carePlan",
     "admission",
     "nursing",
-    "medications",
-    "carePlan",
+    "notes",
     "dischargePlanning",
-    "timeline",
-    "summary",
   ] as const;
 }
 

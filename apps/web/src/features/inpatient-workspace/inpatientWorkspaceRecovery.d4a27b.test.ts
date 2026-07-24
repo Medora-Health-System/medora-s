@@ -49,12 +49,14 @@ describe("MEDUI.INPATIENT_WORKSPACE_RECOVERY.D4A2_7B boundary", () => {
     expect(view).not.toContain('apiFetch(`/encounters/${encounterId}`)');
   });
 
-  it("removes duplicated generic note writers from H&P / progress / nursing", () => {
+  it("keeps H&P / progress governed; Notes tab reuses ED notes engine (D4A.3.3)", () => {
     const panel = read("InpatientWorkspacePanel.tsx");
-    expect(panel).not.toContain("EmergencyErNotesPanel");
     expect(panel).toContain("governedHpOnly");
     expect(panel).toContain("governedProgressOnly");
-    expect(panel).toContain("governedNursingOnly");
+    expect(panel).toContain("EmergencyErNotesPanel");
+    expect(panel).toContain('case "notes"');
+    expect(panel).toContain("InpatientNursingAssessmentSection");
+    expect(panel).not.toContain("NursingRapidReassessmentPanel");
   });
 
   it("API exposes workspace-bootstrap and HF2 authority resolves mismatches", () => {

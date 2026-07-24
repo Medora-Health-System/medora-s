@@ -164,6 +164,39 @@ export class PatientsController {
     return this.patientClinicalHistoryService.getProfile(id, facilityId);
   }
 
+  /** MEDUI.D4A.3.3A — enterprise allergy lifecycle write (patient SSoT). */
+  @Patch(":id/clinical-history-profile/allergies")
+  @AllowBreakGlassForPatientParam("id")
+  @RequireRoles(RoleCode.RN, RoleCode.PROVIDER, RoleCode.ADMIN)
+  async patchClinicalHistoryAllergies(
+    @Param("id") id: string,
+    @Body() body: Record<string, unknown>,
+    @Req() req: any
+  ) {
+    const facilityId = req.user?.facilityId || req.headers["x-facility-id"];
+    if (!facilityId) {
+      throw new BadRequestException("Établissement requis");
+    }
+    const actorUserId = req.user?.userId as string | undefined;
+    if (!actorUserId) throw new BadRequestException("Authentication required");
+    return this.patientClinicalHistoryService.patchAllergies({
+      patientId: id,
+      facilityId,
+      actorUserId,
+      allergies: body?.allergies ?? body,
+      encounterId: typeof body?.encounterId === "string" ? body.encounterId : null,
+      originModule: typeof body?.originModule === "string" ? body.originModule : null,
+      workstationId:
+        typeof body?.workstationId === "string"
+          ? body.workstationId
+          : typeof req.headers["x-workstation-id"] === "string"
+            ? req.headers["x-workstation-id"]
+            : null,
+      ip: req.ip,
+      userAgent: req.headers["user-agent"],
+    });
+  }
+
   @Get(":id/chart-summary")
   @AllowBreakGlassForPatientParam("id")
   @RequireRoles(RoleCode.RN, RoleCode.PROVIDER, RoleCode.ADMIN)

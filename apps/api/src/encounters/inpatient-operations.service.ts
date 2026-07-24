@@ -71,6 +71,7 @@ import {
   computeAdmissionCompletionSummary,
   isAdmissionHistoryVerificationStatus,
   isAdmissionCompletionState,
+  activeAllergiesSummary,
   patientClinicalHistoryProfileFromJson,
   readTechnicianTasksDoc,
   mergeTechnicianTasksIntoSummary,
@@ -1451,6 +1452,7 @@ export class InpatientOperationsService {
     );
     const attendingName = hospitalAssignment.providerName;
     const assignedRnName = hospitalAssignment.nurseName;
+    const assignedPctName = hospitalAssignment.technicianName ?? null;
     let ageYears: number | null = null;
     if (enc.patient?.dob) {
       const dob = new Date(enc.patient.dob);
@@ -1535,6 +1537,7 @@ export class InpatientOperationsService {
         admissionSource: null,
         attendingName,
         assignedRnName,
+        assignedPctName,
         residentOrAppName: null,
         facilityName: enc.facility?.name ?? null,
         unit: unitHint,
@@ -1551,11 +1554,7 @@ export class InpatientOperationsService {
             const profile = patientClinicalHistoryProfileFromJson(
               enc.patient?.clinicalHistoryProfileJson ?? null
             );
-            const note =
-              profile?.allergies?.allergyNote ??
-              profile?.allergies?.medicationAllergiesDetail ??
-              null;
-            return note ? String(note).slice(0, 240) : null;
+            return activeAllergiesSummary(profile?.allergies ?? null).summary;
           } catch {
             return null;
           }
@@ -1565,13 +1564,8 @@ export class InpatientOperationsService {
             const profile = patientClinicalHistoryProfileFromJson(
               enc.patient?.clinicalHistoryProfileJson ?? null
             );
-            const note =
-              profile?.allergies?.allergyNote ??
-              profile?.allergies?.medicationAllergiesDetail ??
-              null;
-            if (note) return "PRESENT" as const;
-            if (profile?.allergies) return "NOT_DOCUMENTED" as const;
-            return "SOURCE_UNAVAILABLE" as const;
+            if (!profile) return "SOURCE_UNAVAILABLE" as const;
+            return activeAllergiesSummary(profile.allergies ?? null).availability;
           } catch {
             return "SOURCE_UNAVAILABLE" as const;
           }
@@ -1723,6 +1717,10 @@ export class InpatientOperationsService {
     const enc = await this.loadOpenInpatient(facilityId, encounterId);
     const ops = readInpatientClinicalOpsFromAdmissionSummary(enc.admissionSummaryJson);
     const now = new Date().toISOString();
+    const previousCodeStatus = ops.codeStatus?.status ?? null;
+    const previousIsolation = ops.isolation?.precautions ?? null;
+    let nextCodeStatus: string | null = previousCodeStatus;
+    let nextIsolation: string[] | null = previousIsolation;
 
     if (patch.setCodeStatus) {
       const status = String(patch.setCodeStatus.status ?? "")
@@ -1737,6 +1735,7 @@ export class InpatientOperationsService {
         documentedByUserId: actorUserId,
         comments: patch.setCodeStatus.comments ?? null,
       };
+      nextCodeStatus = status;
     }
 
     if (patch.setIsolation) {
@@ -1752,6 +1751,7 @@ export class InpatientOperationsService {
         startedAt: now,
         orderedByUserId: actorUserId,
       };
+      nextIsolation = precautions;
     }
 
     if (patch.appendCarePlanItem) {
@@ -1891,6 +1891,13 @@ export class InpatientOperationsService {
       metadata: {
         event: "INPATIENT_CLINICAL_OPS_PATCHED",
         keys: Object.keys(patch),
+        originModule: "inpatientClinicalOps",
+        ...(patch.setCodeStatus
+          ? { codeStatus: { previous: previousCodeStatus, next: nextCodeStatus } }
+          : {}),
+        ...(patch.setIsolation
+          ? { isolation: { previous: previousIsolation, next: nextIsolation } }
+          : {}),
       },
     });
 

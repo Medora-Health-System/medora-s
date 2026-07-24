@@ -1,13 +1,17 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
+import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
 import { AuditAction, Prisma } from "@prisma/client";
 import {
+  allergySectionAuditSnapshot,
   buildPatientHistoryReconciliationAuditMetadata,
   emptyTriageCarryForwardDraft,
+  PATIENT_CLINICAL_HISTORY_PROFILE_VERSION,
   patientClinicalHistoryProfileFromJson,
   profileHasClinicalContent,
   profilePrimaryProvenance,
   profileToCarryForwardExtraction,
   reconcileEncounterHistoryIntoPatientProfile,
+  sanitizeEnterpriseAllergiesSection,
+  syncLegacyAllergyTextFields,
   triageCarryForwardMetaFromVitalsJson,
   type PatientClinicalHistoryProfile,
   type PatientHistoryReconciliationResult,
@@ -122,5 +126,87 @@ export class PatientClinicalHistoryService {
     }
 
     return result;
+  }
+
+  /**
+   * MEDUI.D4A.3.3A — Direct enterprise allergy section write on patient clinical history profile.
+   * Zero migration: merges into clinicalHistoryProfileJson.allergies with provenance + audit.
+   */
+  async patchAllergies(input: {
+    patientId: string;
+    facilityId: string;
+    actorUserId: string;
+    allergies: unknown;
+    encounterId?: string | null;
+    originModule?: string | null;
+    workstationId?: string | null;
+    ip?: string;
+    userAgent?: string;
+  }): Promise<{ profile: PatientClinicalHistoryProfile }> {
+    const patient = await this.prisma.patient.findFirst({
+      where: { id: input.patientId, facilityId: input.facilityId },
+      select: { id: true, clinicalHistoryProfileJson: true },
+    });
+    if (!patient) throw new NotFoundException("Patient not found");
+
+    const current = patientClinicalHistoryProfileFromJson(patient.clinicalHistoryProfileJson);
+    const previousAllergies = current?.allergies ?? null;
+    const sanitized = syncLegacyAllergyTextFields(sanitizeEnterpriseAllergiesSection(input.allergies));
+    if (
+      !sanitized.nkda &&
+      !(sanitized.entries?.length) &&
+      !sanitized.medicationAllergiesDetail &&
+      !sanitized.allergyNote
+    ) {
+      throw new BadRequestException("Allergy payload empty");
+    }
+
+    const now = new Date().toISOString();
+    const nextProfile: PatientClinicalHistoryProfile = {
+      version: PATIENT_CLINICAL_HISTORY_PROFILE_VERSION,
+      updatedAt: now,
+      updatedBy: input.actorUserId,
+      allergies: sanitized,
+      homeMedications: current?.homeMedications,
+      medicalHistory: current?.medicalHistory,
+      surgicalHistory: current?.surgicalHistory,
+      socialHistory: current?.socialHistory,
+      provenance: {
+        ...(current?.provenance ?? {}),
+        allergies: {
+          sourceEncounterId: input.encounterId ?? undefined,
+          sourceFacilityId: input.facilityId,
+          sourceType: "manually_entered",
+          lastReviewedAt: now,
+          reviewerId: input.actorUserId,
+        },
+      },
+    };
+
+    await this.prisma.patient.update({
+      where: { id: input.patientId },
+      data: {
+        clinicalHistoryProfileJson: nextProfile as unknown as Prisma.InputJsonValue,
+      },
+    });
+
+    await this.audit.log(AuditAction.PATIENT_UPDATE, "PatientClinicalHistoryProfile", {
+      facilityId: input.facilityId,
+      userId: input.actorUserId,
+      patientId: input.patientId,
+      entityId: input.patientId,
+      encounterId: input.encounterId ?? undefined,
+      ip: input.ip,
+      userAgent: input.userAgent,
+      metadata: {
+        event: "ENTERPRISE_ALLERGIES_PATCHED",
+        originModule: input.originModule ?? "inpatientHeaderAllergyEditor",
+        workstationId: input.workstationId ?? null,
+        previous: allergySectionAuditSnapshot(previousAllergies),
+        next: allergySectionAuditSnapshot(sanitized),
+      },
+    });
+
+    return { profile: nextProfile };
   }
 }

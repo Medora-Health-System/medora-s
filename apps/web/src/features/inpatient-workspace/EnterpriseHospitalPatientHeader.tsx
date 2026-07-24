@@ -24,10 +24,7 @@ import {
 } from "@/features/emergency/emergencyEsiDisplay";
 import { apiFetch } from "@/lib/apiClient";
 import type { HospitalWorkspaceBootstrapV1, InpatientWorkspaceRole } from "@medora/shared";
-import {
-  buildInpatientHeaderVitalPairs,
-  initialsFromDisplayName,
-} from "./inpatientHeaderVitalsPairs";
+import { buildInpatientHeaderVitalPairs } from "./inpatientHeaderVitalsPairs";
 
 type HeaderData = NonNullable<HospitalWorkspaceBootstrapV1["header"]>;
 
@@ -61,15 +58,96 @@ function parseIvActive(raw: unknown): IvActiveRow[] {
   return out;
 }
 
-const compactCard: CSSProperties = {
-  padding: "8px 10px",
+/** MEDUI.D4A.3.3A — further narrowed chips (~25% vs 3.3) for one desktop row. */
+const statusChipCard: CSSProperties = {
+  padding: "5px 7px",
   borderRadius: 10,
   boxSizing: "border-box",
   alignSelf: "stretch",
-  minWidth: 150,
-  maxWidth: 190,
-  flex: "0 1 170px",
+  minWidth: 88,
+  maxWidth: 118,
+  flex: "0 1 104px",
 };
+
+/** Compact IV status chip. */
+const ivCompactCard: CSSProperties = {
+  padding: "5px 7px",
+  borderRadius: 10,
+  boxSizing: "border-box",
+  alignSelf: "stretch",
+  minWidth: 92,
+  maxWidth: 124,
+  flex: "0 1 110px",
+};
+
+const interactiveTransition: CSSProperties = {
+  transition: "transform 120ms ease, box-shadow 120ms ease, filter 120ms ease",
+};
+
+function InteractiveStatusButton({
+  testId,
+  onClick,
+  disabled,
+  ariaLabel,
+  title,
+  style,
+  children,
+}: {
+  testId: string;
+  onClick?: () => void;
+  disabled?: boolean;
+  ariaLabel: string;
+  title: string;
+  style: CSSProperties;
+  children: ReactNode;
+}) {
+  const [pressed, setPressed] = useState(false);
+  const [focused, setFocused] = useState(false);
+  const clickable = Boolean(onClick) && !disabled;
+  return (
+    <button
+      type="button"
+      data-testid={testId}
+      onClick={onClick}
+      disabled={!clickable}
+      aria-label={ariaLabel}
+      title={clickable ? title : undefined}
+      onMouseDown={() => clickable && setPressed(true)}
+      onMouseUp={() => setPressed(false)}
+      onMouseLeave={() => setPressed(false)}
+      onFocus={() => setFocused(true)}
+      onBlur={() => setFocused(false)}
+      onKeyDown={(e) => {
+        if (!clickable) return;
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onClick?.();
+        }
+      }}
+      style={{
+        ...interactiveTransition,
+        ...style,
+        cursor: clickable ? "pointer" : "default",
+        transform: pressed ? "scale(0.97)" : "scale(1)",
+        boxShadow: focused
+          ? "0 0 0 2px #0f766e55"
+          : clickable
+            ? "0 1px 2px rgba(15,23,42,0.06)"
+            : "none",
+        filter: clickable && !pressed ? undefined : undefined,
+      }}
+      onMouseEnter={(e) => {
+        if (!clickable) return;
+        (e.currentTarget as HTMLButtonElement).style.filter = "brightness(0.98)";
+      }}
+      onMouseOut={(e) => {
+        (e.currentTarget as HTMLButtonElement).style.filter = "none";
+      }}
+    >
+      {children}
+    </button>
+  );
+}
 
 export function EnterpriseHospitalPatientHeader({
   header,
@@ -315,14 +393,16 @@ export function EnterpriseHospitalPatientHeader({
       <div
         style={{
           display: "flex",
-          flexWrap: "wrap",
-          gap: 8,
+          flexWrap: "nowrap",
+          gap: 6,
           marginTop: 10,
           alignItems: "stretch",
+          overflowX: "auto",
+          WebkitOverflowScrolling: "touch",
         }}
         data-testid="inpatient-header-clinical-cards"
       >
-        <div style={{ flex: "1 1 320px", minWidth: 280, maxWidth: 420 }}>
+        <div style={{ flex: "1 1 200px", minWidth: 180, maxWidth: 280 }}>
           <EmergencyWorkspaceVitalsCard
             vitalPairs={vitalPairs}
             loading={false}
@@ -341,21 +421,17 @@ export function EnterpriseHospitalPatientHeader({
           ) : null}
         </div>
 
-        <button
-          type="button"
-          data-testid="inpatient-header-iv-card"
+        <InteractiveStatusButton
+          testId="inpatient-header-iv-card"
           onClick={onOpenIvAccess}
           disabled={!onOpenIvAccess}
-          aria-label={t("inpatientCompactHeaderD4a32.ivAccessOpenAria")}
+          ariaLabel={t("inpatientCompactHeaderD4a32.ivAccessOpenAria")}
+          title={t("inpatientHeaderNursingD4a33.clickToEdit")}
           style={{
-            ...compactCard,
-            flex: "1 1 280px",
-            minWidth: 240,
-            maxWidth: 420,
+            ...ivCompactCard,
             border: "1px solid #e9d5ff",
             background: "#faf5ff",
             textAlign: "left",
-            cursor: onOpenIvAccess ? "pointer" : "default",
             font: "inherit",
           }}
         >
@@ -373,64 +449,42 @@ export function EnterpriseHospitalPatientHeader({
           </p>
           {ivLoading ? (
             <p style={{ margin: "4px 0 0", fontSize: 12, color: "#64748b" }}>{t("common.loading")}</p>
-          ) : ivActive.length === 0 ? (
-            <p style={{ margin: "4px 0 0", fontSize: 12, fontWeight: 600, color: "#6b21a8" }}>
-              {t("inpatientCompactHeaderD4a32.noActiveIv")}
-            </p>
           ) : (
-            <ul
-              style={{
-                margin: "4px 0 0",
-                paddingLeft: 16,
-                fontSize: 12,
-                color: "#581c87",
-                lineHeight: 1.35,
-              }}
-            >
-              {ivActive.slice(0, 3).map((row) => (
-                <li key={row.insertionEventId}>
-                  {[row.gauge, row.site].filter(Boolean).join(" ") || DISPLAY_DASH}
-                  {row.insertedAt
-                    ? ` · ${formatEncounterChromeDateTime(row.insertedAt, language)}`
-                    : ""}
-                  {` · ${initialsFromDisplayName(row.recordedByDisplayName)}`}
-                </li>
-              ))}
-            </ul>
+            <p style={{ margin: "4px 0 0", fontSize: 12, fontWeight: 600, color: "#6b21a8" }}>
+              {ivActive.length === 0
+                ? t("inpatientCompactHeaderD4a32.noActiveIv")
+                : t("inpatientHeaderNursingD4a33.iv.activeIv")}
+            </p>
           )}
-        </button>
+        </InteractiveStatusButton>
 
-        <button
-          type="button"
-          data-testid="inpatient-header-allergies-card"
+        <InteractiveStatusButton
+          testId="inpatient-header-allergies-card"
           onClick={onOpenAllergies}
           disabled={!onOpenAllergies}
-          aria-label={t("inpatientCompactHeaderD4a32.allergiesOpenAria")}
+          ariaLabel={t("inpatientCompactHeaderD4a32.allergiesOpenAria")}
+          title={t("inpatientHeaderNursingD4a33.clickToEdit")}
           style={{
             border: "none",
             padding: 0,
             background: "transparent",
-            cursor: onOpenAllergies ? "pointer" : "default",
-            flex: "0 1 170px",
-            minWidth: 150,
-            maxWidth: 190,
+            ...statusChipCard,
             textAlign: "left",
           }}
         >
           <EmergencyWorkspaceAllergiesCard allergySummary={allergyText} loading={false} />
-        </button>
+        </InteractiveStatusButton>
 
-        <button
-          type="button"
-          data-testid="inpatient-header-code-card"
+        <InteractiveStatusButton
+          testId="inpatient-header-code-card"
           onClick={onOpenCodeStatus}
           disabled={!onOpenCodeStatus}
-          aria-label={t("inpatientCompactHeaderD4a32.codeStatusOpenAria")}
+          ariaLabel={t("inpatientCompactHeaderD4a32.codeStatusOpenAria")}
+          title={t("inpatientHeaderNursingD4a33.clickToEdit")}
           style={{
-            ...compactCard,
+            ...statusChipCard,
             border: "1px solid #fde68a",
             background: "#fffbeb",
-            cursor: onOpenCodeStatus ? "pointer" : "default",
             font: "inherit",
             textAlign: "left",
           }}
@@ -447,22 +501,31 @@ export function EnterpriseHospitalPatientHeader({
           >
             ⚕️ {t("inpatientCompactHeaderD4a32.codeStatusTitle")}
           </p>
-          <p style={{ margin: "4px 0 0", fontSize: 12, fontWeight: 700, color: "#78350f" }}>
+          <p
+            style={{
+              margin: "4px 0 0",
+              fontSize: 12,
+              fontWeight: 700,
+              color: "#78350f",
+              whiteSpace: "nowrap",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+            }}
+          >
             {codeStatusText}
           </p>
-        </button>
+        </InteractiveStatusButton>
 
-        <button
-          type="button"
-          data-testid="inpatient-header-isolation-card"
+        <InteractiveStatusButton
+          testId="inpatient-header-isolation-card"
           onClick={onOpenIsolation}
           disabled={!onOpenIsolation}
-          aria-label={t("inpatientCompactHeaderD4a32.isolationOpenAria")}
+          ariaLabel={t("inpatientCompactHeaderD4a32.isolationOpenAria")}
+          title={t("inpatientHeaderNursingD4a33.clickToEdit")}
           style={{
-            ...compactCard,
+            ...statusChipCard,
             border: "1px solid #fecaca",
             background: "#fff1f2",
-            cursor: onOpenIsolation ? "pointer" : "default",
             font: "inherit",
             textAlign: "left",
           }}
@@ -477,12 +540,22 @@ export function EnterpriseHospitalPatientHeader({
               color: "#9f1239",
             }}
           >
-            🛡️ {t("inpatientCompactHeaderD4a32.isolationTitle")}
+            ☣️ {t("inpatientCompactHeaderD4a32.isolationTitle")}
           </p>
-          <p style={{ margin: "4px 0 0", fontSize: 12, fontWeight: 700, color: "#881337" }}>
+          <p
+            style={{
+              margin: "4px 0 0",
+              fontSize: 12,
+              fontWeight: 700,
+              color: "#881337",
+              whiteSpace: "nowrap",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+            }}
+          >
             {isolationText}
           </p>
-        </button>
+        </InteractiveStatusButton>
       </div>
 
       {showAssignmentActions && (onAssignToMe || onRemoveAssignment) ? (

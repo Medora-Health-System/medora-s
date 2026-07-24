@@ -9,12 +9,17 @@ import {
   INPATIENT_NURSING_ASSESSMENT_KINDS,
   INPATIENT_NOTE_KINDS,
   INPATIENT_TIMELINE_EVENT_KINDS,
+  hasMeaningfulDischargeSummary,
+  synthesizeInpatientDischargeSummaryDraft,
+  type InpatientWorkspaceRole,
 } from "@medora/shared";
 import { EmergencyErOrdersPanel } from "@/features/emergency/EmergencyErOrdersPanel";
 import { EmergencyResultsPanel } from "@/features/emergency/EmergencyResultsPanel";
+import { EmergencyErNotesPanel } from "@/features/emergency/EmergencyErNotesPanel";
 import { MedicationAdministrationTab } from "@/components/encounters/MedicationAdministrationTab";
+import { printDischarge } from "@/components/encounters/DischargePrintLayout";
 import type { InpatientWorkspaceSection } from "./inpatientWorkspaceSections";
-import type { InpatientWorkspaceRole } from "@medora/shared";
+import { apiFetch, asApiObject } from "@/lib/apiClient";
 import {
   isInpatientCarePlanEnabledInBrowser,
   isInpatientConsultsEnabledInBrowser,
@@ -24,12 +29,13 @@ import {
   isInpatientMarEnabledInBrowser,
   isInpatientNursingEnabledInBrowser,
   isInpatientWorkspaceEnabledInBrowser,
+  inpatientNursingWorkspacePath,
 } from "./inpatientWorkspacePaths";
 import { InpatientClinicalOpsPanel } from "./InpatientClinicalOpsPanel";
 import { InpatientAdmissionClinicalShell } from "./InpatientAdmissionClinicalShell";
 import { InpatientProviderWorkspacePanel } from "./InpatientProviderWorkspacePanel";
 import { InpatientTechnicianTasksPanel } from "./InpatientTechnicianTasksPanel";
-import { NursingRapidReassessmentPanel } from "./NursingRapidReassessmentPanel";
+import { InpatientNursingAssessmentSection } from "./InpatientNursingAssessmentSection";
 import { ClinicalAvailabilityBanner } from "./rapid-documentation/ClinicalRapidControls";
 
 export type InpatientWorkspaceEncounterLite = {
@@ -77,6 +83,14 @@ export function InpatientWorkspacePanel({
   workspaceRole = "CHART",
   onRefetchEncounter,
   onNavigateSection,
+  assignedRnName,
+  assignedPctName,
+  attendingName,
+  admissionDiagnosis,
+  admittedAt,
+  room,
+  codeStatus,
+  isolation,
 }: {
   section: InpatientWorkspaceSection;
   encounterId: string;
@@ -86,8 +100,16 @@ export function InpatientWorkspacePanel({
   workspaceRole?: InpatientWorkspaceRole;
   onRefetchEncounter: () => Promise<void>;
   onNavigateSection?: (section: InpatientWorkspaceSection) => void;
+  assignedRnName?: string | null;
+  assignedPctName?: string | null;
+  attendingName?: string | null;
+  admissionDiagnosis?: string | null;
+  admittedAt?: string | null;
+  room?: string | null;
+  codeStatus?: string | null;
+  isolation?: string[] | null;
 }) {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   const { facilityId, roles, userId, facilityTimeZone } = useFacilityAndRoles();
   const enabled = workspaceEnabled ?? isInpatientWorkspaceEnabledInBrowser();
   const ordersLive = isInpatientDepartmentalOrdersEnabledInBrowser();
@@ -249,21 +271,44 @@ export function InpatientWorkspacePanel({
               )}
               testId="inpatient-nursing-kinds"
             />
-            <div style={{ marginTop: 12 }}>
-              <NursingRapidReassessmentPanel encounterId={encounterId} readOnly={signed} />
-            </div>
           </div>
         );
       }
       return (
-        <div data-testid="inpatient-panel-nursing-live">
-          <InpatientClinicalOpsPanel encounterId={encounterId} mode="nursing" />
-          <div style={{ marginTop: 12 }}>
-            <NursingRapidReassessmentPanel encounterId={encounterId} readOnly={signed} />
-          </div>
-          <p style={{ margin: "12px 0 0", fontSize: 12, color: "#64748b" }}>
-            {t("inpatientWorkspaceRecoveryD4a27b.notes.governedNursingOnly")}
+        <InpatientNursingAssessmentSection
+          encounterId={encounterId}
+          facilityId={facilityId}
+          encounter={encounter}
+          isLocked={signed}
+          canEditHandoff={
+            writersEnabled && (roles.includes("RN") || roles.includes("ADMIN") || workspaceRole === "NURSING")
+          }
+          assignedRnName={assignedRnName}
+          assignedPctName={assignedPctName}
+          attendingName={attendingName}
+          nursingTabHref={`${inpatientNursingWorkspacePath(encounterId)}?section=nursing`}
+          onRefetch={onRefetchEncounter}
+          onNavigateSection={onNavigateSection}
+        />
+      );
+    case "notes":
+      if (!facilityId) {
+        return (
+          <p data-testid="inpatient-panel-notes-flag-off" style={{ fontSize: 13, color: "#64748b" }}>
+            {t("inpatientD3e.featureUnavailable")}
           </p>
+        );
+      }
+      return (
+        <div data-testid="inpatient-panel-notes-live">
+          <EmergencyErNotesPanel
+            encounterId={encounterId}
+            facilityId={facilityId}
+            status={encounter?.status}
+            isLocked={signed}
+            roleCodes={roles}
+            onSaved={onRefetchEncounter}
+          />
         </div>
       );
     case "tasks":
@@ -418,6 +463,87 @@ export function InpatientWorkspacePanel({
       return (
         <div data-testid="inpatient-panel-discharge-live">
           <InpatientClinicalOpsPanel encounterId={encounterId} mode="discharge" />
+          <div style={{ marginTop: 12 }}>
+            <button
+              type="button"
+              data-testid="inpatient-print-discharge-summary"
+              style={{
+                padding: "8px 12px",
+                borderRadius: 10,
+                border: "1px solid #0f766e",
+                background: "#f0fdfa",
+                color: "#115e59",
+                fontSize: 13,
+                fontWeight: 700,
+                cursor: "pointer",
+              }}
+              onClick={() => {
+                void (async () => {
+                  try {
+                    const patient = encounter?.patient;
+                    const enc = asApiObject<{
+                      createdAt?: string;
+                      dischargeSummaryJson?: unknown;
+                      physicianAssigned?: {
+                        firstName?: string | null;
+                        lastName?: string | null;
+                      } | null;
+                    }>(
+                      await apiFetch(`/encounters/${encodeURIComponent(encounterId)}`, {
+                        facilityId: facilityId ?? undefined,
+                      }).catch(() => null)
+                    );
+                    let dischargeSummaryJson = enc?.dischargeSummaryJson ?? null;
+                    if (!hasMeaningfulDischargeSummary(dischargeSummaryJson)) {
+                      const draft = synthesizeInpatientDischargeSummaryDraft({
+                        patientName: [patient?.firstName, patient?.lastName].filter(Boolean).join(" "),
+                        mrn: patient?.mrn,
+                        admissionDiagnosis,
+                        admittedAt,
+                        room,
+                        codeStatus,
+                        isolation,
+                        attendingName,
+                        assignedRnName,
+                        language: language === "en" ? "en" : "fr",
+                      });
+                      await apiFetch(`/encounters/${encodeURIComponent(encounterId)}`, {
+                        method: "PATCH",
+                        facilityId: facilityId ?? undefined,
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ dischargeSummaryJson: draft }),
+                      });
+                      dischargeSummaryJson = draft;
+                      await onRefetchEncounter();
+                    }
+                    printDischarge({
+                      patient: {
+                        firstName: patient?.firstName ?? null,
+                        lastName: patient?.lastName ?? null,
+                        mrn: patient?.mrn ?? null,
+                        dob:
+                          patient?.dob instanceof Date
+                            ? patient.dob.toISOString()
+                            : (patient?.dob ?? null),
+                        sexAtBirth: patient?.sexAtBirth ?? null,
+                      },
+                      encounter: {
+                        createdAt: enc?.createdAt ?? admittedAt ?? new Date().toISOString(),
+                        dischargeSummaryJson,
+                        physicianAssigned: enc?.physicianAssigned ?? null,
+                      },
+                      primaryDiagnosis: admissionDiagnosis ?? null,
+                      language,
+                    });
+                  } catch {
+                    window.alert(t("inpatientHeaderNursingD4a33.discharge.printError"));
+                  }
+                })();
+              }}
+            >
+              {t("inpatientHeaderNursingD4a33.discharge.printSummary")}
+            </button>
+          </div>
         </div>
       );
     case "timeline":
