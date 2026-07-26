@@ -153,6 +153,7 @@ export * from "./encounters/hospitalEncounterAuthorityD4a28Hf2.js";
 export * from "./encounters/enterpriseAssignmentEngineD4a30.js";
 export * from "./encounters/enterpriseAssignmentCompletionD4a30.js";
 export * from "./encounters/enterpriseEncounterOwnershipResolverD4a41.js";
+export * from "./encounters/enterpriseMarOwnershipD4a42.js";
 export * from "./patients/patientSearchAndSelectV1.js";
 export * from "./encounters/inpatientOperationsFeatureFlags.js";
 export * from "./encounters/inpatientClinicalOpsCertificationV1.js";

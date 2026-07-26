@@ -306,6 +306,12 @@ export function FacilityMarShiftTimeline({
             </h2>
             <p
               data-testid="mar-shift-timeline-assigned-nurse"
+              aria-label={interpolateMessage(t("marShiftTimeline.assignedNurseLine"), {
+                name: assignedNurseName,
+              })}
+              data-mar-nurse-assignment={
+                data?.assignedNurse?.userId ? "assigned" : "unassigned"
+              }
               style={{ margin: "4px 0 0", fontSize: 13, color: "#475569", lineHeight: 1.35 }}
             >
               {t("marShiftTimeline.assignedNurseLabel")}:{" "}

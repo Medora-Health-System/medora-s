@@ -73,12 +73,12 @@ Resolver answers **active operational ownership** only. It must not reinterpret 
 
 ## 10. Deferred migrations (D4A.4.2–4.5)
 
-- MAR timeline
-- Medication-pass queue
+- ~~MAR timeline~~ → **D4A.4.2 done** (`enterprise-mar-ownership-generalization`)
+- ~~Medication-pass queue~~ → **D4A.4.2 done**
 - Order-cancel policy
 - Observation assignment gaps
 - Inpatient creation dual-write removal
 - Attending lifecycle writes
 - Billing attribution
 - Covering / break workflow APIs
-- FacilityMarShiftTimeline UI patch
+- FacilityMarShiftTimeline UI patch (not required — backend ownership boundary)

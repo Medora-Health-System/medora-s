@@ -25,6 +25,20 @@ describe("medication pass queue dose select", () => {
       })
     );
   });
+
+  it("includes D4A.4.2 ownership resolve fields on encounter", () => {
+    expect(MEDICATION_PASS_QUEUE_DOSE_SELECT.encounter).toEqual(
+      expect.objectContaining({
+        select: expect.objectContaining({
+          type: true,
+          billingClassification: true,
+          admissionSummaryJson: true,
+          physicianAssignedUserId: true,
+          nurseAssignedUserId: true,
+        }),
+      })
+    );
+  });
 });
 
 describe("medication pass queue read limits", () => {

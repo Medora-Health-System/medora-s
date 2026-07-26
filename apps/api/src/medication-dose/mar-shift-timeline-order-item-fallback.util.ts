@@ -49,6 +49,7 @@ import { getMedicationSchedulingFeatureFlagsFromEnv } from "../medication-schedu
 import { loadMarShiftTimelineAdministrationEnrichment } from "./mar-shift-timeline-admin-enrichment.util";
 import type { MarShiftTimelineCellItem } from "./mar-shift-timeline.service";
 import type { MedicationPassQueueDoseRow } from "./medication-pass-queue-dose.select";
+import { resolveMarAssignedNurseUserIdFromEncounter } from "./mar-enterprise-ownership.util";
 
 const ORDER_ITEM_FALLBACK_SELECT = {
   id: true,
@@ -77,8 +78,10 @@ const ORDER_ITEM_FALLBACK_SELECT = {
         select: {
           id: true,
           type: true,
+          billingClassification: true,
           roomLabel: true,
           admissionSummaryJson: true,
+          physicianAssignedUserId: true,
           nurseAssignedUserId: true,
           status: true,
           patient: {
@@ -120,8 +123,10 @@ type OrderItemFallbackRow = {
     encounter: {
       id: string;
       type: string;
+      billingClassification?: string | null;
       roomLabel: string | null;
       admissionSummaryJson: unknown;
+      physicianAssignedUserId: string | null;
       nurseAssignedUserId: string | null;
       status: string;
       patient: {
@@ -283,6 +288,9 @@ export async function loadMarShiftTimelineOrderItemFallbackPlacements(input: {
   facilityTimeZone: string;
   displayLocale: "en" | "fr";
   encounterId?: string;
+  /** D4A.4.2: pre-resolved encounter ids for facility assignee filter (null = no filter). */
+  assigneeEncounterIds?: string[] | null;
+  /** @deprecated Prefer assigneeEncounterIds — retained for call-site clarity only. */
   assignedToUserId?: string;
   includeCompleted: boolean;
   orderItemIdsWithDoseInstances: ReadonlySet<string>;
@@ -291,6 +299,14 @@ export async function loadMarShiftTimelineOrderItemFallbackPlacements(input: {
   lastPrnAdminByOrderItemId?: Map<string, { administeredAt: Date }>;
   referenceAt?: Date;
 }): Promise<MarShiftTimelineOrderItemFallbackPlacement[]> {
+  if (
+    !input.encounterId?.trim() &&
+    input.assigneeEncounterIds &&
+    input.assigneeEncounterIds.length === 0
+  ) {
+    return [];
+  }
+
   const featureFlags = getMedicationSchedulingFeatureFlagsFromEnv();
   const excludedOrderStatuses: OrderStatus[] = [OrderStatus.CANCELLED];
 
@@ -304,13 +320,11 @@ export async function loadMarShiftTimelineOrderItemFallbackPlacements(input: {
         type: "MEDICATION",
         status: { notIn: excludedOrderStatuses },
         encounter: {
-          ...(input.encounterId ? { id: input.encounterId } : { status: "OPEN" }),
-          ...(() => {
-            const assigned = input.encounterId?.trim()
-              ? undefined
-              : input.assignedToUserId?.trim() || undefined;
-            return assigned ? { nurseAssignedUserId: assigned } : {};
-          })(),
+          ...(input.encounterId
+            ? { id: input.encounterId }
+            : input.assigneeEncounterIds
+              ? { id: { in: input.assigneeEncounterIds }, status: "OPEN" }
+              : { status: "OPEN" }),
         },
       },
     },
@@ -851,7 +865,7 @@ export async function loadMarShiftTimelineOrderItemFallbackPlacements(input: {
       roomLabel: encounter.roomLabel,
       encounterType: encounter.type,
       admissionSummaryJson: encounter.admissionSummaryJson,
-      assignedNurseUserId: encounter.nurseAssignedUserId,
+      assignedNurseUserId: resolveMarAssignedNurseUserIdFromEncounter(encounter),
       item: {
         type: "MEDICATION",
         medicationDoseInstanceId: "",

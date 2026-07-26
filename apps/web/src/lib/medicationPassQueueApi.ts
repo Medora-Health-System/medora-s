@@ -40,7 +40,7 @@ export type MedicationPassQueueItem = {
   doseSnapshot: MedicationPassQueueDoseSnapshot | null;
   highAlertSummary: MedicationPassQueueHighAlertSummary | null;
   responseDueAt: string | null;
-  nurseAssignedUserId: string | null;
+  nurseAssignedUserId: string | null; // D4A.4.2: active MAR nursing ownership (not raw ED column for IP/OBS)
 };
 
 export type MedicationPassQueueResponse = {
