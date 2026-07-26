@@ -11,6 +11,7 @@ describe("encounterNote (MEDNOTE.1)", () => {
     expect(defaultEncounterNoteTypeForRole("PROVIDER")).toBe("PROVIDER");
     expect(defaultEncounterNoteTypeForRole("RN")).toBe("NURSING");
     expect(defaultEncounterNoteTypeForRole("LAB")).toBe("TECHNICIAN");
+    expect(defaultEncounterNoteTypeForRole("PATIENT_CARE_TECH")).toBe("TECHNICIAN");
     expect(defaultEncounterNoteTypeForRole("FRONT_DESK")).toBe("OTHER");
   });
 

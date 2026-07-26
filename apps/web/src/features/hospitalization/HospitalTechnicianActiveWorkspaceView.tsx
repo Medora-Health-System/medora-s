@@ -51,6 +51,12 @@ import {
 } from "./HospitalTechnicianSectionNav";
 import { resolveHospitalTechnicianWorkspace } from "./hospitalTechnicianWorkspace";
 import { getLandingRouteForRoles } from "@/lib/landingRoute";
+import { EnterpriseTechnicianNursingAssistantWorkspaceD4b3 } from "@/features/clinical-documentation/EnterpriseTechnicianNursingAssistantWorkspaceD4b3";
+import { InpatientTechnicianTasksPanel } from "@/features/inpatient-workspace/InpatientTechnicianTasksPanel";
+import {
+  classifyEncounterTypeToTechnicianCareSetting,
+  resolveTechnicianRoleProfile,
+} from "@medora/shared";
 
 type EncounterShell = {
   id: string;
@@ -302,6 +308,8 @@ export function HospitalTechnicianActiveWorkspaceView() {
   const isLocked = encounter ? isEncounterLocked(encounter) : false;
   const vitalsQuickEditEnabled =
     permissions.canDocumentVitals && encounter?.status === "OPEN" && !isLocked;
+  const technicianCareSetting = classifyEncounterTypeToTechnicianCareSetting(encounter?.type);
+  const technicianRoleProfile = resolveTechnicianRoleProfile(roles);
 
   const onEmbeddedUpdate = useCallback(async () => {
     setVitalsRefresh((r) => r + 1);
@@ -446,6 +454,80 @@ export function HospitalTechnicianActiveWorkspaceView() {
           </div>
         </MedoraCardInner>
       </MedoraCard>
+
+      {fid && patient?.id ? (
+        <EnterpriseTechnicianNursingAssistantWorkspaceD4b3
+          encounterId={encounterId}
+          patientId={patient.id}
+          facilityId={fid}
+          careSetting={technicianCareSetting}
+          roleCodes={roles}
+          roleProfile={technicianRoleProfile}
+          isLocked={isLocked}
+          vitalsSlot={
+            <div data-testid="etnaw-host-vitals" style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              {vitalsQuickEditEnabled ? (
+                <button
+                  type="button"
+                  onClick={() => setShowQuickVitals((v) => !v)}
+                  style={{
+                    alignSelf: "flex-start",
+                    padding: "8px 12px",
+                    borderRadius: 10,
+                    border: "1px solid #bae6fd",
+                    backgroundColor: "#eff6ff",
+                    color: "#1d4ed8",
+                    fontSize: 13,
+                    fontWeight: 600,
+                    cursor: "pointer",
+                  }}
+                >
+                  {showQuickVitals
+                    ? t("hospitalTechnicianWorkspace.vitalsHideEntry")
+                    : t("hospitalTechnicianWorkspace.vitalsShowEntry")}
+                </button>
+              ) : null}
+              {showQuickVitals && vitalsQuickEditEnabled ? (
+                <div style={{ ...MEDORA_CARD_SHELL, padding: "12px 14px" }}>
+                  <EmergencyQuickVitalsEditor
+                    open={showQuickVitals}
+                    onClose={() => setShowQuickVitals(false)}
+                    encounterId={encounterId}
+                    facilityId={fid}
+                    patientId={patient?.id}
+                    triageSnapshot={triageSnapshot}
+                    onSaved={async () => {
+                      await onEmbeddedUpdate();
+                    }}
+                  />
+                </div>
+              ) : null}
+              <VitalSummaryPanel
+                readings={encounterVitalSummaryReadings}
+                latestReadingId={encounterVitalSummaryReadings[0]?.id}
+                onClose={() => setShowQuickVitals(false)}
+              />
+            </div>
+          }
+          tasksSlot={
+            <InpatientTechnicianTasksPanel
+              encounterId={encounterId}
+              canValidateRn={false}
+              canTechnicianWrite={!isLocked}
+            />
+          }
+          notesSlot={
+            <EmergencyErNotesPanel
+              encounterId={encounterId}
+              facilityId={fid}
+              status={encounter?.status}
+              isLocked={isLocked}
+              roleCodes={roles}
+              onSaved={onEmbeddedUpdate}
+            />
+          }
+        />
+      ) : null}
 
       <HospitalTechnicianSectionNav
         tiles={dashboardTiles}
