@@ -10,6 +10,7 @@ import {
   filterUnassignedHospitalEncountersEnterprise,
   HOSPITAL_SERVICE_LINE_COLOR_CSS,
   resolveUnitBoardProfile,
+  dedupeCensusRowsByEncounterId,
   type HospitalServiceLineColorToken,
   type HospitalCensusPatientRow,
 } from "@medora/shared";
@@ -82,7 +83,7 @@ export function UnitBoardShell({
   const colors = HOSPITAL_SERVICE_LINE_COLOR_CSS[colorToken];
 
   useEffect(() => {
-    setLocalPatients(patients);
+    setLocalPatients(dedupeCensusRowsByEncounterId(patients));
   }, [patients]);
 
   const profile = useMemo(() => {

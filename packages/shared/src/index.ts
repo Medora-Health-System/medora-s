@@ -98,6 +98,7 @@ export * from "./encounters/hospitalCareDashboardSummaryV1.js";
 export * from "./encounters/hospitalCareActivationFlags.js";
 export * from "./encounters/hospitalCareOperationalActivationD3e6Benchmark.js";
 export * from "./encounters/hospitalCensusV1.js";
+export * from "./encounters/hospitalCensusDuplicatePreventionD4a42a.js";
 export * from "./encounters/hospitalCensusD3e6aBenchmark.js";
 export * from "./encounters/hospitalClinicalUnitTaxonomy.js";
 export * from "./encounters/hospitalUnitRegistryV1.js";

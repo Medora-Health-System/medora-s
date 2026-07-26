@@ -10,6 +10,10 @@ import {
   projectHospitalBoardAssignments,
   readHospitalAssignmentBag,
 } from "./enterpriseAssignmentEngineD4a30.js";
+import {
+  filterCensusRowsToCanonicalEncounterSet,
+  projectCanonicalCensusEncounterIds,
+} from "./hospitalCensusDuplicatePreventionD4a42a.js";
 
 export const UNIFIED_HOSPITAL_CENSUS_CERTIFICATION_ID =
   "MEDUI.UNIFIED_HOSPITAL_CENSUS_DASHBOARD.D3E6A" as const;
@@ -84,6 +88,8 @@ export type HospitalCensusBedSummaryInput = {
 
 export type HospitalCensusPatientRow = {
   encounterId: string;
+  /** Patient id for diagnostics / defensive grouping — never sole census identity. */
+  patientId?: string | null;
   clinicalContext: ClinicalEncounterContext;
   patientName: string;
   mrn: string | null;
@@ -253,6 +259,7 @@ export function buildHospitalCensusPatientRow(
 
   return {
     encounterId: enc.id,
+    patientId: enc.patient?.id?.trim() || null,
     clinicalContext,
     patientName: displayName(
       enc.patient?.firstName,
@@ -416,16 +423,36 @@ export function buildHospitalCensusV1(input: {
 }): HospitalCensusV1 {
   const now = input.now ?? new Date();
   const facilityId = String(input.facilityId ?? "").trim();
-  const openHospital = input.encounters.filter(
+  const openHospitalRaw = input.encounters.filter(
     (e) =>
       String(e.facilityId) === facilityId &&
       String(e.status ?? "").toUpperCase() === "OPEN" &&
       String(e.type ?? "").toUpperCase() === "INPATIENT"
   );
 
-  const patients = openHospital
+  // Build rows from source, then project to canonical encounter set (D4A.4.2A).
+  const patientsRaw = openHospitalRaw
     .map((e) => buildHospitalCensusPatientRow(e, now))
     .filter((r): r is HospitalCensusPatientRow => r != null);
+
+  const clinicalContextByEncounterId = new Map<string, "OBSERVATION" | "INPATIENT">();
+  for (const row of patientsRaw) {
+    if (row.clinicalContext === "OBSERVATION" || row.clinicalContext === "INPATIENT") {
+      clinicalContextByEncounterId.set(row.encounterId, row.clinicalContext);
+    }
+  }
+
+  const canonical = projectCanonicalCensusEncounterIds({
+    encounters: openHospitalRaw,
+    clinicalContextByEncounterId,
+  });
+  const patients = filterCensusRowsToCanonicalEncounterSet(
+    patientsRaw,
+    canonical.retainedEncounterIds
+  );
+  const openHospital = openHospitalRaw.filter((e) =>
+    canonical.retainedEncounterIds.has(e.id)
+  );
 
   const observationPatients = patients.filter((p) => p.clinicalContext === "OBSERVATION");
   const inpatientPatients = patients.filter((p) => p.clinicalContext === "INPATIENT");
@@ -449,11 +476,11 @@ export function buildHospitalCensusV1(input: {
     if (s === "READY_FOR_TRANSFER") readyForTransfer += 1;
   }
 
-  /** Admissions today from open hospital encounters (canonical). */
-  const admissionsToday = patients.filter((p) => isSameUtcDay(p.admittedAt, now)).length
+  /** Admissions today from canonical open hospital census rows. */
+  const admissionsToday = patients.filter((p) => isSameUtcDay(p.admittedAt, now)).length;
 
-  const diagnostics: HospitalCensusConsistencyDiagnostic[] = [];
-  const patientIds = new Set(patients.map((p) => p.encounterId));
+  const diagnostics: HospitalCensusConsistencyDiagnostic[] = [...canonical.diagnostics];
+  const retainedIds = new Set(patients.map((p) => p.encounterId));
   const dual = new Set(
     observationPatients
       .filter((o) => inpatientPatients.some((i) => i.encounterId === o.encounterId))
@@ -478,7 +505,7 @@ export function buildHospitalCensusV1(input: {
   }
 
   for (const p of patients) {
-    if (!patientIds.has(p.encounterId)) {
+    if (!retainedIds.has(p.encounterId)) {
       diagnostics.push({
         code: "ACTIVE_ENCOUNTER_MISSING_CENSUS_ROW",
         severity: "critical",
