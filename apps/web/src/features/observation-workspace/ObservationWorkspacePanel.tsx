@@ -10,6 +10,7 @@ import { EmergencyErOrdersPanel } from "@/features/emergency/EmergencyErOrdersPa
 import { EmergencyResultsPanel } from "@/features/emergency/EmergencyResultsPanel";
 import { EmergencyErNotesPanel } from "@/features/emergency/EmergencyErNotesPanel";
 import { EmergencyNursingReassessmentPanel } from "@/features/emergency/EmergencyNursingReassessmentPanel";
+import { EnterpriseNursingClinicalWorkspaceD4b2 } from "@/features/clinical-documentation/EnterpriseNursingClinicalWorkspaceD4b2";
 import { MedicationAdministrationTab } from "@/components/encounters/MedicationAdministrationTab";
 import type { ObservationWorkspaceSection } from "./observationWorkspaceSections";
 import {
@@ -229,19 +230,28 @@ export function ObservationWorkspacePanel({
         );
       }
       return (
-        <div data-testid="observation-panel-nursing-live">
-          <EmergencyNursingReassessmentPanel
+        <div data-testid="observation-panel-nursing-live" style={{ display: "grid", gap: 12 }}>
+          <EnterpriseNursingClinicalWorkspaceD4b2
             encounterId={encounterId}
+            patientId={encounter?.patient?.id ?? "unknown-patient"}
             facilityId={facilityId}
-            encounter={{
-              id: encounterId,
-              status: encounter?.status ?? "OPEN",
-              type: encounter?.type ?? "INPATIENT",
-            }}
+            careSetting="OBSERVATION"
             isLocked={signed}
-            onSaved={onRefetchEncounter}
-            nursingTabHref={`/app/hospitalisation/observation/active/${encounterId}?section=nursing`}
-            variant="observationEncounter"
+            liveEngineSlot={
+              <EmergencyNursingReassessmentPanel
+                encounterId={encounterId}
+                facilityId={facilityId}
+                encounter={{
+                  id: encounterId,
+                  status: encounter?.status ?? "OPEN",
+                  type: encounter?.type ?? "INPATIENT",
+                }}
+                isLocked={signed}
+                onSaved={onRefetchEncounter}
+                nursingTabHref={`/app/hospitalisation/observation/active/${encounterId}?section=nursing`}
+                variant="observationEncounter"
+              />
+            }
           />
         </div>
       );

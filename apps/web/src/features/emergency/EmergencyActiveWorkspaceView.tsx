@@ -59,6 +59,7 @@ import {
 } from "@/features/emergency/EmergencyWorkspaceClinicalStrip";
 import { MedicationAdministrationTab } from "@/components/encounters/MedicationAdministrationTab";
 import { EmergencyNursingReassessmentPanel } from "@/features/emergency/EmergencyNursingReassessmentPanel";
+import { EnterpriseNursingClinicalWorkspaceD4b2 } from "@/features/clinical-documentation/EnterpriseNursingClinicalWorkspaceD4b2";
 import { EmergencyProviderMsePanel } from "@/features/emergency/EmergencyProviderMsePanel";
 import { EmergencyDispositionPanel } from "@/features/emergency/EmergencyDispositionPanel";
 import { EmergencyErSummaryClosureSurface } from "@/features/emergency/EmergencyErSummaryClosureSurface";
@@ -1556,33 +1557,48 @@ export function EmergencyActiveWorkspaceView() {
           ) : null}
 
           {activeSection === "nursing" && showNursingTab ? (
-            <>
-              <EmergencyNursingReassessmentPanel
+            <div data-testid="emergency-nursing-workspace-d4b2" style={{ display: "grid", gap: 12 }}>
+              <EnterpriseNursingClinicalWorkspaceD4b2
                 encounterId={encounterId}
+                patientId={encounter.patient?.id ?? "unknown-patient"}
                 facilityId={fid}
-                encounter={encounter}
+                careSetting="EMERGENCY"
                 isLocked={isLocked}
-                onSaved={onEmbeddedEncounterUpdate}
-                nursingTabHref={tabHref("nursing")}
+                liveEngineSlot={
+                  <EmergencyNursingReassessmentPanel
+                    encounterId={encounterId}
+                    facilityId={fid}
+                    encounter={encounter}
+                    isLocked={isLocked}
+                    onSaved={onEmbeddedEncounterUpdate}
+                    nursingTabHref={tabHref("nursing")}
+                  />
+                }
+                handoffSlot={
+                  <ErHandoffV1NursingSection
+                    encounter={encounter}
+                    encounterId={encounterId}
+                    facilityId={fid}
+                    isLocked={isLocked}
+                    canEditErHandoff={canEditOperationalEncounter && encounter.status === "OPEN"}
+                    onUpdated={onEmbeddedEncounterUpdate}
+                  />
+                }
+                dischargeSlot={
+                  <>
+                    <EmergencyErNursingHandoffPanel
+                      encounter={encounter}
+                      encounterId={encounterId}
+                      facilityId={fid}
+                      onSaved={onEmbeddedEncounterUpdate}
+                      canRecordDischargeSortieExecution={canRecordDischargeSortieExecution}
+                      onSummaryClosureClick={goToErSummaryClosure}
+                      facilityName={facilityName}
+                    />
+                  </>
+                }
               />
-              <ErHandoffV1NursingSection
-                encounter={encounter}
-                encounterId={encounterId}
-                facilityId={fid}
-                isLocked={isLocked}
-                canEditErHandoff={canEditOperationalEncounter && encounter.status === "OPEN"}
-                onUpdated={onEmbeddedEncounterUpdate}
-              />
-              <EmergencyErNursingHandoffPanel
-                encounter={encounter}
-                encounterId={encounterId}
-                facilityId={fid}
-                onSaved={onEmbeddedEncounterUpdate}
-                canRecordDischargeSortieExecution={canRecordDischargeSortieExecution}
-                onSummaryClosureClick={goToErSummaryClosure}
-                facilityName={facilityName}
-              />
-            </>
+            </div>
           ) : null}
 
           {activeSection === "nursing" && !showNursingTab ? (
