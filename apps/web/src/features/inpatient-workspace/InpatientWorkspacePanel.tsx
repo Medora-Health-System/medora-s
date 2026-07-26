@@ -37,6 +37,7 @@ import { InpatientProviderWorkspacePanel } from "./InpatientProviderWorkspacePan
 import { InpatientTechnicianTasksPanel } from "./InpatientTechnicianTasksPanel";
 import { InpatientNursingAssessmentSection } from "./InpatientNursingAssessmentSection";
 import { EnterpriseInterdisciplinaryCarePlansD4b6 } from "@/features/clinical-documentation/EnterpriseInterdisciplinaryCarePlansD4b6";
+import { EnterpriseCaseManagementDischargePlanningD4b7 } from "@/features/clinical-documentation/EnterpriseCaseManagementDischargePlanningD4b7";
 import { ClinicalAvailabilityBanner } from "./rapid-documentation/ClinicalRapidControls";
 
 export type InpatientWorkspaceEncounterLite = {
@@ -455,7 +456,7 @@ export function InpatientWorkspacePanel({
         </div>
       );
     case "dischargePlanning":
-      if (!dischargeLive) {
+      if (!facilityId) {
         return (
           <ShellList
             title={t("inpatientD3e.dischargePlanning.body")}
@@ -467,89 +468,102 @@ export function InpatientWorkspacePanel({
         );
       }
       return (
-        <div data-testid="inpatient-panel-discharge-live">
-          <InpatientClinicalOpsPanel encounterId={encounterId} mode="discharge" />
-          <div style={{ marginTop: 12 }}>
-            <button
-              type="button"
-              data-testid="inpatient-print-discharge-summary"
-              style={{
-                padding: "8px 12px",
-                borderRadius: 10,
-                border: "1px solid #0f766e",
-                background: "#f0fdfa",
-                color: "#115e59",
-                fontSize: 13,
-                fontWeight: 700,
-                cursor: "pointer",
-              }}
-              onClick={() => {
-                void (async () => {
-                  try {
-                    const patient = encounter?.patient;
-                    const enc = asApiObject<{
-                      createdAt?: string;
-                      dischargeSummaryJson?: unknown;
-                      physicianAssigned?: {
-                        firstName?: string | null;
-                        lastName?: string | null;
-                      } | null;
-                    }>(
-                      await apiFetch(`/encounters/${encodeURIComponent(encounterId)}`, {
-                        facilityId: facilityId ?? undefined,
-                      }).catch(() => null)
-                    );
-                    let dischargeSummaryJson = enc?.dischargeSummaryJson ?? null;
-                    if (!hasMeaningfulDischargeSummary(dischargeSummaryJson)) {
-                      const draft = synthesizeInpatientDischargeSummaryDraft({
-                        patientName: [patient?.firstName, patient?.lastName].filter(Boolean).join(" "),
-                        mrn: patient?.mrn,
-                        admissionDiagnosis,
-                        admittedAt,
-                        room,
-                        codeStatus,
-                        isolation,
-                        attendingName,
-                        assignedRnName,
-                        language: language === "en" ? "en" : "fr",
-                      });
-                      await apiFetch(`/encounters/${encodeURIComponent(encounterId)}`, {
-                        method: "PATCH",
-                        facilityId: facilityId ?? undefined,
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ dischargeSummaryJson: draft }),
-                      });
-                      dischargeSummaryJson = draft;
-                      await onRefetchEncounter();
-                    }
-                    printDischarge({
-                      patient: {
-                        firstName: patient?.firstName ?? null,
-                        lastName: patient?.lastName ?? null,
-                        mrn: patient?.mrn ?? null,
-                        dob:
-                          patient?.dob instanceof Date
-                            ? patient.dob.toISOString()
-                            : (patient?.dob ?? null),
-                        sexAtBirth: patient?.sexAtBirth ?? null,
-                      },
-                      encounter: {
-                        createdAt: enc?.createdAt ?? admittedAt ?? new Date().toISOString(),
-                        dischargeSummaryJson,
-                        physicianAssigned: enc?.physicianAssigned ?? null,
-                      },
-                      primaryDiagnosis: admissionDiagnosis ?? null,
-                      language,
-                    });
-                  } catch {
-                    window.alert(t("inpatientHeaderNursingD4a33.discharge.printError"));
-                  }
-                })();
-              }}
-            >
-              {t("inpatientHeaderNursingD4a33.discharge.printSummary")}
-            </button>
-          </div>
+        <div data-testid="inpatient-panel-discharge-live" style={{ display: "grid", gap: 12 }}>
+          <EnterpriseCaseManagementDischargePlanningD4b7
+            encounterId={encounterId}
+            patientId={encounter?.patient?.id ?? "unknown-patient"}
+            facilityId={facilityId}
+            careSetting="INPATIENT"
+            roleCodes={roles}
+          />
+          {dischargeLive ? (
+            <>
+              <InpatientClinicalOpsPanel encounterId={encounterId} mode="discharge" />
+              <div style={{ marginTop: 12 }}>
+                <button
+                  type="button"
+                  data-testid="inpatient-print-discharge-summary"
+                  style={{
+                    padding: "8px 12px",
+                    borderRadius: 10,
+                    border: "1px solid #0f766e",
+                    background: "#f0fdfa",
+                    color: "#115e59",
+                    fontSize: 13,
+                    fontWeight: 700,
+                    cursor: "pointer",
+                  }}
+                  onClick={() => {
+                    void (async () => {
+                      try {
+                        const patient = encounter?.patient;
+                        const enc = asApiObject<{
+                          createdAt?: string;
+                          dischargeSummaryJson?: unknown;
+                          physicianAssigned?: {
+                            firstName?: string | null;
+                            lastName?: string | null;
+                          } | null;
+                        }>(
+                          await apiFetch(`/encounters/${encodeURIComponent(encounterId)}`, {
+                            facilityId: facilityId ?? undefined,
+                          }).catch(() => null)
+                        );
+                        let dischargeSummaryJson = enc?.dischargeSummaryJson ?? null;
+                        if (!hasMeaningfulDischargeSummary(dischargeSummaryJson)) {
+                          const draft = synthesizeInpatientDischargeSummaryDraft({
+                            patientName: [patient?.firstName, patient?.lastName]
+                              .filter(Boolean)
+                              .join(" "),
+                            mrn: patient?.mrn,
+                            admissionDiagnosis,
+                            admittedAt,
+                            room,
+                            codeStatus,
+                            isolation,
+                            attendingName,
+                            assignedRnName,
+                            language: language === "en" ? "en" : "fr",
+                          });
+                          await apiFetch(`/encounters/${encodeURIComponent(encounterId)}`, {
+                            method: "PATCH",
+                            facilityId: facilityId ?? undefined,
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ dischargeSummaryJson: draft }),
+                          });
+                          dischargeSummaryJson = draft;
+                          await onRefetchEncounter();
+                        }
+                        printDischarge({
+                          patient: {
+                            firstName: patient?.firstName ?? null,
+                            lastName: patient?.lastName ?? null,
+                            mrn: patient?.mrn ?? null,
+                            dob:
+                              patient?.dob instanceof Date
+                                ? patient.dob.toISOString()
+                                : (patient?.dob ?? null),
+                            sexAtBirth: patient?.sexAtBirth ?? null,
+                          },
+                          encounter: {
+                            createdAt: enc?.createdAt ?? admittedAt ?? new Date().toISOString(),
+                            dischargeSummaryJson,
+                            physicianAssigned: enc?.physicianAssigned ?? null,
+                          },
+                          primaryDiagnosis: admissionDiagnosis ?? null,
+                          language,
+                        });
+                      } catch {
+                        window.alert(t("inpatientHeaderNursingD4a33.discharge.printError"));
+                      }
+                    })();
+                  }}
+                >
+                  {t("inpatientHeaderNursingD4a33.discharge.printSummary")}
+                </button>
+              </div>
+            </>
+          ) : null}
         </div>
       );
     case "timeline":

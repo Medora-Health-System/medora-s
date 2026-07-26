@@ -90,6 +90,17 @@ export const enterpriseClinicalDocumentD4b1Fr = {
     carePlanCompletion: "Clôture du plan de soins",
     carePlanDiscontinuation: "Interruption du plan de soins",
     carePlanEnteredInError: "Plan de soins saisi par erreur",
+    cmInitialAssessment: "Évaluation initiale — gestion de cas",
+    cmProgressNote: "Note de progrès — gestion de cas",
+    cmDischargePlanningNote: "Note de planification de sortie — gestion de cas",
+    swPsychosocialAssessment: "Évaluation psychosociale — travail social",
+    swProgressNote: "Note de progrès — travail social",
+    swBarrierNote: "Note d’obstacle — travail social",
+    urAdmissionReview: "Revue d’utilisation — admission",
+    urContinuedStayReview: "Revue d’utilisation — séjour continu",
+    urMedicalNecessityDocumentation: "Revue d’utilisation — nécessité médicale",
+    careCoordTransitionPlan: "Plan de transition — coordination des soins",
+    careCoordReadinessProjection: "Projection de préparation — coordination des soins",
   },
   legal: {
     footer:
