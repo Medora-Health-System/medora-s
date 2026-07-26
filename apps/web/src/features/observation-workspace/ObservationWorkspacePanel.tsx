@@ -14,6 +14,7 @@ import { EnterpriseNursingClinicalWorkspaceD4b2 } from "@/features/clinical-docu
 import { EnterpriseRespiratoryTherapyWorkspaceD4b4 } from "@/features/clinical-documentation/EnterpriseRespiratoryTherapyWorkspaceD4b4";
 import { EnterpriseRehabilitationWorkspacesD4b5 } from "@/features/clinical-documentation/EnterpriseRehabilitationWorkspacesD4b5";
 import { EnterpriseInterdisciplinaryCarePlansD4b6 } from "@/features/clinical-documentation/EnterpriseInterdisciplinaryCarePlansD4b6";
+import { EnterpriseCaseManagementDischargePlanningD4b7 } from "@/features/clinical-documentation/EnterpriseCaseManagementDischargePlanningD4b7";
 import { MedicationAdministrationTab } from "@/components/encounters/MedicationAdministrationTab";
 import type { ObservationWorkspaceSection } from "./observationWorkspaceSections";
 import {
@@ -301,14 +302,35 @@ export function ObservationWorkspacePanel({
         </p>
       );
     case "disposition":
+      if (!facilityId) {
+        return (
+          <ul data-testid="observation-panel-disposition" style={{ margin: 0, paddingLeft: 18 }}>
+            {OBSERVATION_DISPOSITION_PATHWAYS.map((pathway) => (
+              <li key={pathway} style={{ marginBottom: 6, fontSize: 13, color: "#334155" }}>
+                {t(`observationD3d.disposition.pathways.${pathway}`)}
+              </li>
+            ))}
+          </ul>
+        );
+      }
       return (
-        <ul data-testid="observation-panel-disposition" style={{ margin: 0, paddingLeft: 18 }}>
-          {OBSERVATION_DISPOSITION_PATHWAYS.map((pathway) => (
-            <li key={pathway} style={{ marginBottom: 6, fontSize: 13, color: "#334155" }}>
-              {t(`observationD3d.disposition.pathways.${pathway}`)}
-            </li>
-          ))}
-        </ul>
+        <div data-testid="observation-panel-disposition" style={{ display: "grid", gap: 12 }}>
+          <EnterpriseCaseManagementDischargePlanningD4b7
+            encounterId={encounterId}
+            patientId={encounter?.patient?.id ?? "unknown-patient"}
+            facilityId={facilityId}
+            careSetting="OBSERVATION"
+            roleCodes={roles}
+            isLocked={signed}
+          />
+          <ul style={{ margin: 0, paddingLeft: 18 }}>
+            {OBSERVATION_DISPOSITION_PATHWAYS.map((pathway) => (
+              <li key={pathway} style={{ marginBottom: 6, fontSize: 13, color: "#334155" }}>
+                {t(`observationD3d.disposition.pathways.${pathway}`)}
+              </li>
+            ))}
+          </ul>
+        </div>
       );
     case "timeline":
       return (
