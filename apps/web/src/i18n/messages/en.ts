@@ -4,6 +4,7 @@ import { enterpriseNursingClinicalWorkspaceD4b2En } from "./enterpriseNursingCli
 import { enterpriseTechnicianNursingAssistantWorkspaceD4b3En } from "./enterpriseTechnicianNursingAssistantWorkspaceD4b3.en";
 import { enterpriseRespiratoryTherapyWorkspaceD4b4En } from "./enterpriseRespiratoryTherapyWorkspaceD4b4.en";
 import { enterpriseRehabilitationWorkspacesD4b5En } from "./enterpriseRehabilitationWorkspacesD4b5.en";
+import { enterpriseInterdisciplinaryCarePlansD4b6En } from "./enterpriseInterdisciplinaryCarePlansD4b6.en";
 import { providerDischargeDocumentation19YEn } from "./providerDischargeDocumentation19Y.en";
 import { nursingDischargeVitalsEn } from "./nursingDischargeVitals.en";
 import { nursingDischargeNotesEn } from "./nursingDischargeNotes.en";
@@ -9568,6 +9569,7 @@ export default {
   enterpriseTechnicianNursingAssistantWorkspaceD4b3: enterpriseTechnicianNursingAssistantWorkspaceD4b3En,
   enterpriseRespiratoryTherapyWorkspaceD4b4: enterpriseRespiratoryTherapyWorkspaceD4b4En,
   enterpriseRehabilitationWorkspacesD4b5: enterpriseRehabilitationWorkspacesD4b5En,
+  enterpriseInterdisciplinaryCarePlansD4b6: enterpriseInterdisciplinaryCarePlansD4b6En,
   erMseSmartAssist: {
     traumaLevels: {
       LEVEL_1: "Level 1",

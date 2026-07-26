@@ -13,6 +13,7 @@ import { EmergencyNursingReassessmentPanel } from "@/features/emergency/Emergenc
 import { EnterpriseNursingClinicalWorkspaceD4b2 } from "@/features/clinical-documentation/EnterpriseNursingClinicalWorkspaceD4b2";
 import { EnterpriseRespiratoryTherapyWorkspaceD4b4 } from "@/features/clinical-documentation/EnterpriseRespiratoryTherapyWorkspaceD4b4";
 import { EnterpriseRehabilitationWorkspacesD4b5 } from "@/features/clinical-documentation/EnterpriseRehabilitationWorkspacesD4b5";
+import { EnterpriseInterdisciplinaryCarePlansD4b6 } from "@/features/clinical-documentation/EnterpriseInterdisciplinaryCarePlansD4b6";
 import { MedicationAdministrationTab } from "@/components/encounters/MedicationAdministrationTab";
 import type { ObservationWorkspaceSection } from "./observationWorkspaceSections";
 import {
@@ -274,10 +275,24 @@ export function ObservationWorkspacePanel({
         </div>
       );
     case "carePlan":
+      if (!facilityId) {
+        return (
+          <p data-testid="observation-panel-care-plan" style={{ margin: 0, fontSize: 13 }}>
+            {t("observationD3d.carePlan.body")}
+          </p>
+        );
+      }
       return (
-        <p data-testid="observation-panel-care-plan" style={{ margin: 0, fontSize: 13 }}>
-          {t("observationD3d.carePlan.body")}
-        </p>
+        <div data-testid="observation-panel-care-plan">
+          <EnterpriseInterdisciplinaryCarePlansD4b6
+            encounterId={encounterId}
+            patientId={encounter?.patient?.id ?? "unknown-patient"}
+            facilityId={facilityId}
+            careSetting="OBSERVATION"
+            roleCodes={roles}
+            isLocked={signed}
+          />
+        </div>
       );
     case "summary":
       return (

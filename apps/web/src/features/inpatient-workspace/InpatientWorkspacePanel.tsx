@@ -36,6 +36,7 @@ import { InpatientAdmissionClinicalShell } from "./InpatientAdmissionClinicalShe
 import { InpatientProviderWorkspacePanel } from "./InpatientProviderWorkspacePanel";
 import { InpatientTechnicianTasksPanel } from "./InpatientTechnicianTasksPanel";
 import { InpatientNursingAssessmentSection } from "./InpatientNursingAssessmentSection";
+import { EnterpriseInterdisciplinaryCarePlansD4b6 } from "@/features/clinical-documentation/EnterpriseInterdisciplinaryCarePlansD4b6";
 import { ClinicalAvailabilityBanner } from "./rapid-documentation/ClinicalRapidControls";
 
 export type InpatientWorkspaceEncounterLite = {
@@ -428,7 +429,7 @@ export function InpatientWorkspacePanel({
         </div>
       );
     case "carePlan":
-      if (!carePlanLive) {
+      if (!facilityId) {
         return (
           <ShellList
             title={t("inpatientD3e.carePlan.body")}
@@ -440,8 +441,17 @@ export function InpatientWorkspacePanel({
         );
       }
       return (
-        <div data-testid="inpatient-panel-care-plan-live">
-          <InpatientClinicalOpsPanel encounterId={encounterId} mode="carePlan" />
+        <div data-testid="inpatient-panel-care-plan-live" style={{ display: "grid", gap: 12 }}>
+          <EnterpriseInterdisciplinaryCarePlansD4b6
+            encounterId={encounterId}
+            patientId={encounter?.patient?.id ?? "unknown-patient"}
+            facilityId={facilityId}
+            careSetting="INPATIENT"
+            roleCodes={roles}
+          />
+          {carePlanLive ? (
+            <InpatientClinicalOpsPanel encounterId={encounterId} mode="carePlan" />
+          ) : null}
         </div>
       );
     case "dischargePlanning":

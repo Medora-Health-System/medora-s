@@ -83,6 +83,13 @@ export const enterpriseClinicalDocumentD4b1Fr = {
     slpEducation: "Éducation — orthophonie",
     slpHandoff: "Transmission — orthophonie",
     slpDischargeRecommendation: "Recommandation de sortie — orthophonie",
+    carePlanActivation: "Activation du plan de soins",
+    carePlanProgressEvaluation: "Évaluation de progrès du plan de soins",
+    carePlanReview: "Révision du plan de soins",
+    carePlanRevision: "Modification du plan de soins",
+    carePlanCompletion: "Clôture du plan de soins",
+    carePlanDiscontinuation: "Interruption du plan de soins",
+    carePlanEnteredInError: "Plan de soins saisi par erreur",
   },
   legal: {
     footer:

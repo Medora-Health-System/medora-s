@@ -83,6 +83,13 @@ export const enterpriseClinicalDocumentD4b1En = {
     slpEducation: "Speech-language education",
     slpHandoff: "Speech-language handoff",
     slpDischargeRecommendation: "Speech-language discharge recommendation",
+    carePlanActivation: "Care plan activation",
+    carePlanProgressEvaluation: "Care plan progress evaluation",
+    carePlanReview: "Care plan review",
+    carePlanRevision: "Care plan revision",
+    carePlanCompletion: "Care plan completion",
+    carePlanDiscontinuation: "Care plan discontinuation",
+    carePlanEnteredInError: "Care plan entered in error",
   },
   legal: {
     footer: "Medora clinical document — status and authorship shown for legal chart use.",
