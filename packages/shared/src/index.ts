@@ -674,4 +674,5 @@ export * from "./clinicalDocumentation/enterpriseClinicalDocumentFoundationD4b1.
 export * from "./clinicalDocumentation/enterpriseNursingClinicalWorkspaceD4b2.js";
 export * from "./clinicalDocumentation/enterpriseTechnicianNursingAssistantWorkspaceD4b3.js";
 export * from "./clinicalDocumentation/enterpriseRespiratoryTherapyWorkspaceD4b4.js";
+export * from "./clinicalDocumentation/enterpriseRehabilitationWorkspacesD4b5.js";
 

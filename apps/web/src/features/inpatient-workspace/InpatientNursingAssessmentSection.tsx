@@ -18,6 +18,7 @@ import { apiFetch, asApiObject } from "@/lib/apiClient";
 import { EmergencyNursingReassessmentPanel } from "@/features/emergency/EmergencyNursingReassessmentPanel";
 import { EnterpriseNursingClinicalWorkspaceD4b2 } from "@/features/clinical-documentation/EnterpriseNursingClinicalWorkspaceD4b2";
 import { EnterpriseRespiratoryTherapyWorkspaceD4b4 } from "@/features/clinical-documentation/EnterpriseRespiratoryTherapyWorkspaceD4b4";
+import { EnterpriseRehabilitationWorkspacesD4b5 } from "@/features/clinical-documentation/EnterpriseRehabilitationWorkspacesD4b5";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import { InpatientNursingHandoffPanel } from "./InpatientNursingHandoffPanel";
 import { InpatientNursingTeamExecutionPanel } from "./InpatientNursingTeamExecutionPanel";
@@ -183,6 +184,15 @@ export function InpatientNursingAssessmentSection({
       />
 
       <EnterpriseRespiratoryTherapyWorkspaceD4b4
+        encounterId={encounterId}
+        patientId={patientId}
+        facilityId={facilityId}
+        careSetting="INPATIENT"
+        roleCodes={roles}
+        isLocked={isLocked}
+      />
+
+      <EnterpriseRehabilitationWorkspacesD4b5
         encounterId={encounterId}
         patientId={patientId}
         facilityId={facilityId}
