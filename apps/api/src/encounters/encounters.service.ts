@@ -3,6 +3,7 @@ import {
   NotFoundException,
   BadRequestException,
   ForbiddenException,
+  ConflictException,
   HttpException,
   HttpStatus,
 } from "@nestjs/common";
@@ -137,6 +138,7 @@ import {
   type EdRoomOccupancyRow,
   type EncounterRoomUpdateDto,
   type EncounterCareUnitCode,
+  evaluateConcurrentEncounterCreate,
 } from "@medora/shared";
 import { throwRoomAlreadyOccupiedConflict } from "./ed-room-occupancy.util";
 import { FacilityBedBoardService } from "../facilities/facility-bed-board.service";
@@ -1106,8 +1108,10 @@ export class EncountersService {
           (process.env.INTERNAL_PLACEMENT_WORKFLOW_ENABLED ?? "").trim() === "1";
         if (!d3cPlacementOn) {
           if (encounter.type === EncounterType.EMERGENCY) {
+            await this.assertInpatientTypePromotionAllowed(facilityId, encounter);
             updateData.type = EncounterType.INPATIENT;
           } else if (encounter.type !== EncounterType.INPATIENT) {
+            await this.assertInpatientTypePromotionAllowed(facilityId, encounter);
             updateData.type = EncounterType.INPATIENT;
           }
         }
@@ -1774,6 +1778,7 @@ export class EncountersService {
           "Documentation de transmission (urgences) requise : indiquez qu'un compte rendu a été donné ou cochez « prêt pour le transfert » avant la confirmation."
         );
       }
+      await this.assertInpatientTypePromotionAllowed(facilityId, encounter);
       updateData.type = EncounterType.INPATIENT;
     }
 
@@ -3473,6 +3478,39 @@ export class EncountersService {
       select: { id: true },
     });
     return Boolean(ok);
+  }
+
+  /**
+   * MEDUI.D4A.4.2A — Legacy ED→IP type promotion must not create a second OPEN INPATIENT
+   * when the patient already has an uncorrelated open hospital chart.
+   * Projection-safe: blocks create/flip only; never deletes existing rows.
+   */
+  private async assertInpatientTypePromotionAllowed(
+    facilityId: string,
+    encounter: { id: string; patientId: string; type: EncounterType | string }
+  ): Promise<void> {
+    if (String(encounter.type).toUpperCase() === "INPATIENT") return;
+
+    const openRows = await this.prisma.encounter.findMany({
+      where: {
+        facilityId,
+        patientId: encounter.patientId,
+        status: EncounterStatus.OPEN,
+      },
+      select: { id: true, type: true, status: true },
+    });
+    const others = openRows.filter((r) => r.id !== encounter.id);
+    const decision = evaluateConcurrentEncounterCreate({
+      pathway: "DIRECT_ADMISSION",
+      requestedType: "INPATIENT",
+      existingOpen: others,
+    });
+    if (!decision.allowed) {
+      throw new ConflictException(
+        decision.detail ||
+          "Le patient a déjà une consultation d'hospitalisation ouverte. Impossible de promouvoir ce dossier sans corrélation d'admission."
+      );
+    }
   }
 
   private async assertProviderAtFacility(facilityId: string, userId: string | null | undefined) {

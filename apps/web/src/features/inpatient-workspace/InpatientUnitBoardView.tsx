@@ -6,6 +6,7 @@ import {
   findUnitInTree,
   HOSPITAL_SERVICE_LINE_DEFINITIONS,
   serviceLineForUnitType,
+  dedupeCensusRowsByEncounterId,
   type HospitalClinicalUnitType,
 } from "@medora/shared";
 import { useI18n } from "@/lib/i18n";
@@ -63,7 +64,7 @@ export function InpatientUnitBoardView({ mode }: { mode: Mode }) {
         if (cancelled) return;
 
         if (mode.kind === "all") {
-          setPatients(census.inpatientPatients);
+          setPatients(dedupeCensusRowsByEncounterId(census.inpatientPatients));
           setMeta({
             title: t("hospitalCareD3e6c.board.allTitle"),
             subtitle: t("hospitalCareD3e6c.board.allSubtitle"),
@@ -87,7 +88,9 @@ export function InpatientUnitBoardView({ mode }: { mode: Mode }) {
             scopeInpatientPatientsToUnit(census.inpatientPatients, u.code)
           );
           const byId = new Map<string, HospitalCensusPatientRow>();
-          for (const p of [...scoped, ...fromUnits]) byId.set(p.encounterId, p);
+          for (const p of dedupeCensusRowsByEncounterId([...scoped, ...fromUnits])) {
+            byId.set(p.encounterId, p);
+          }
           setPatients(Array.from(byId.values()));
           setMeta({
             title: def?.name ?? mode.slug,
@@ -108,7 +111,11 @@ export function InpatientUnitBoardView({ mode }: { mode: Mode }) {
           });
           return;
         }
-        setPatients(scopeInpatientPatientsToUnit(census.inpatientPatients, unit.code));
+        setPatients(
+          dedupeCensusRowsByEncounterId(
+            scopeInpatientPatientsToUnit(census.inpatientPatients, unit.code)
+          )
+        );
         const sl = HOSPITAL_SERVICE_LINE_DEFINITIONS.find(
           (d) => d.code === serviceLineForUnitType(unit.unitType as HospitalClinicalUnitType)
         );

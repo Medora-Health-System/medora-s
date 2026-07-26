@@ -159,6 +159,24 @@ export class HospitalCensusService {
       );
     }
 
+    const duplicateDiagnostics = census.diagnostics.filter(
+      (d) =>
+        d.code === "DUPLICATE_OPEN_INPATIENT_ON_CENSUS" ||
+        d.code === "DUPLICATE_ENCOUNTER_ID_IN_CENSUS_SOURCE"
+    );
+    if (duplicateDiagnostics.length > 0) {
+      this.logger.warn(
+        JSON.stringify({
+          event: "hospital_census_duplicate_prevention",
+          facilityId: fid,
+          certification: "MEDUI.D4A.4.2A.INPATIENT_CENSUS_DUPLICATE_PREVENTION",
+          count: duplicateDiagnostics.length,
+          codes: duplicateDiagnostics.map((d) => d.code),
+          encounterIds: duplicateDiagnostics.map((d) => d.encounterId).filter(Boolean),
+        })
+      );
+    }
+
     return census;
   }
 }
