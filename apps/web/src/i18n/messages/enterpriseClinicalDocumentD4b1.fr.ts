@@ -47,6 +47,18 @@ export const enterpriseClinicalDocumentD4b1Fr = {
     edocStructuredEntry: "Entrée de documentation clinique structurée",
     providerDocumentationShell: "Documentation médecin",
     nursingAdmission: "Évaluation d’admission infirmière",
+    rtInitialAssessment: "Évaluation initiale — thérapie respiratoire",
+    rtReassessment: "Réévaluation — thérapie respiratoire",
+    rtTreatmentResponse: "Réponse au traitement — thérapie respiratoire",
+    rtOxygenDevice: "Évaluation du dispositif d’oxygène",
+    rtAirway: "Évaluation des voies aériennes",
+    rtVentilator: "Vérification du ventilateur",
+    rtNiv: "Vérification de la ventilation non invasive",
+    rtBedsideMeasurement: "Mesure respiratoire au chevet",
+    rtEducation: "Éducation respiratoire",
+    rtCarePlan: "Contribution au plan de soins respiratoire",
+    rtHandoff: "Transmission respiratoire",
+    rtDischargeRecommendation: "Recommandation de sortie — respiratoire",
   },
   legal: {
     footer:

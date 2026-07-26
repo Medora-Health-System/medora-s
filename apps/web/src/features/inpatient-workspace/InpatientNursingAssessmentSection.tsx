@@ -17,6 +17,8 @@ import { useI18n } from "@/lib/i18n";
 import { apiFetch, asApiObject } from "@/lib/apiClient";
 import { EmergencyNursingReassessmentPanel } from "@/features/emergency/EmergencyNursingReassessmentPanel";
 import { EnterpriseNursingClinicalWorkspaceD4b2 } from "@/features/clinical-documentation/EnterpriseNursingClinicalWorkspaceD4b2";
+import { EnterpriseRespiratoryTherapyWorkspaceD4b4 } from "@/features/clinical-documentation/EnterpriseRespiratoryTherapyWorkspaceD4b4";
+import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import { InpatientNursingHandoffPanel } from "./InpatientNursingHandoffPanel";
 import { InpatientNursingTeamExecutionPanel } from "./InpatientNursingTeamExecutionPanel";
 import type { InpatientWorkspaceSection } from "./inpatientWorkspaceSections";
@@ -95,6 +97,7 @@ export function InpatientNursingAssessmentSection({
   onNavigateSection?: (section: InpatientWorkspaceSection) => void;
 }) {
   const { t } = useI18n();
+  const { roles } = useFacilityAndRoles();
   const [nursingAssessment, setNursingAssessment] = useState<unknown>(null);
 
   const loadNursingAssessment = useCallback(async () => {
@@ -177,6 +180,15 @@ export function InpatientNursingAssessmentSection({
           if (section === "carePlan") onNavigateSection?.("carePlan");
           if (section === "nursing") onNavigateSection?.("nursing");
         }}
+      />
+
+      <EnterpriseRespiratoryTherapyWorkspaceD4b4
+        encounterId={encounterId}
+        patientId={patientId}
+        facilityId={facilityId}
+        careSetting="INPATIENT"
+        roleCodes={roles}
+        isLocked={isLocked}
       />
 
       <InpatientNursingTeamExecutionPanel
