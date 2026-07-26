@@ -361,6 +361,8 @@ describe("computeObservationOperationalSnapshot", () => {
       createdAt: "2024-06-01T06:00:00.000Z",
       physicianAssignedUserId: null,
       nurseAssignedUserId: "",
+      admissionSummaryJson: {},
+      billingClassification: "OBSERVATION",
       providerDocumentationStatus: "DRAFT",
       providerDocumentationSignedAt: null,
       trackboardOps: emptyOps,
@@ -368,6 +370,29 @@ describe("computeObservationOperationalSnapshot", () => {
     });
     expect(snap?.flags.assignPhysicianGap).toBe(true);
     expect(snap?.flags.assignRnGap).toBe(true);
+  });
+
+  it("D4A.4.3: ED columns alone do not clear hospital assign gaps (STRICT)", () => {
+    const t = new Date("2024-06-01T12:00:00.000Z").getTime();
+    const snap = computeObservationOperationalSnapshot({
+      encounterType: "INPATIENT",
+      status: "OPEN",
+      workflowState: "IN_TREATMENT",
+      admittedAt: new Date(t - 3600_000).toISOString(),
+      createdAt: "2024-06-01T06:00:00.000Z",
+      physicianAssignedUserId: "ed-md",
+      nurseAssignedUserId: "ed-rn",
+      admissionSummaryJson: {},
+      billingClassification: "OBSERVATION",
+      providerDocumentationStatus: "DRAFT",
+      providerDocumentationSignedAt: null,
+      trackboardOps: emptyOps,
+      nowMs: t,
+    });
+    expect(snap?.flags.assignPhysicianGap).toBe(true);
+    expect(snap?.flags.assignRnGap).toBe(true);
+    expect(snap?.operationalBlockers.some((b) => b.id === "NO_PROVIDER_ASSIGNED")).toBe(true);
+    expect(snap?.operationalBlockers.some((b) => b.id === "NO_RN_ASSIGNED")).toBe(true);
   });
 
   it("13G-C: operational blockers sort critical before vitals and pending results", () => {

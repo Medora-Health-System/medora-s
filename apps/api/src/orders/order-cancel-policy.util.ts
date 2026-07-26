@@ -14,6 +14,12 @@ export type OrderCancelPolicyContext = {
   /** Parent-order cancel: every line must match for dept-wide cancel authority. */
   allItemCatalogTypes?: string[];
   lifecycleState?: OrderItemLifecycleState;
+  /**
+   * Operational ownership assignee ids for cancel match (D4A.4.3).
+   * Callers MUST pass values from `resolveOrderCancelOperationalAssignees`
+   * (PRIMARY_PROVIDER / PRIMARY_RN) — not raw ED columns for OBS/IP.
+   * Assignment match ≠ chart ACL / role authorization.
+   */
   encounter?: {
     physicianAssignedUserId: string | null;
     nurseAssignedUserId: string | null;
