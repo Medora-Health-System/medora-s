@@ -2,8 +2,11 @@ import { BadRequestException, NotFoundException } from "@nestjs/common";
 import { AuditAction, RoleCode } from "@prisma/client";
 import {
   ENTERPRISE_HOSPITAL_ASSIGNMENT_ENGINE_CERTIFICATION_ID,
+  ENTERPRISE_ENCOUNTER_OWNERSHIP_RESOLVER_CERTIFICATION_ID,
   applyClinicalAttendingMutation,
+  applyHospitalAssignmentMutation,
   emptyHospitalAssignmentBag,
+  mergeHospitalAssignmentBagIntoSummary,
   readHospitalAssignmentBag,
 } from "@medora/shared";
 import { EnterpriseAssignmentService } from "./enterprise-assignment.service";
@@ -11,6 +14,7 @@ import { EnterpriseAssignmentService } from "./enterprise-assignment.service";
 describe("EnterpriseAssignmentService — D4A.3.0-H1", () => {
   function buildPrisma(opts: {
     encounter?: Record<string, unknown> | null;
+    encounters?: Record<string, unknown>[];
     membership?: { role: { code: string } } | null;
     membershipByCode?: Record<string, { role: { code: string } } | null>;
     updateManyCount?: number;
@@ -25,6 +29,7 @@ describe("EnterpriseAssignmentService — D4A.3.0-H1", () => {
             workflowState: "IN_TREATMENT",
             type: "INPATIENT",
             version: 1,
+            billingClassification: "INPATIENT",
             admissionSummaryJson: {
               requestedEncounterType: "INPATIENT",
             },
@@ -35,6 +40,7 @@ describe("EnterpriseAssignmentService — D4A.3.0-H1", () => {
     return {
       encounter: {
         findFirst: jest.fn().mockResolvedValue(encounter),
+        findMany: jest.fn().mockResolvedValue(opts.encounters ?? (encounter ? [encounter] : [])),
         updateMany: jest.fn().mockResolvedValue({ count: opts.updateManyCount ?? 1 }),
       },
       userRole: {
@@ -299,5 +305,198 @@ describe("EnterpriseAssignmentService — D4A.3.0-H1", () => {
     expect(bag?.slots.PROVIDER).toBeNull();
     expect(bag?.workflow.PRIMARY_PROVIDER).toBeNull();
     expect(bag?.clinical.attendingProviderUserId).toBeNull();
+  });
+});
+
+describe("EnterpriseAssignmentService — D4A.4.1 ownership resolver", () => {
+  function buildPrisma(opts: {
+    encounter?: Record<string, unknown> | null;
+    encounters?: Record<string, unknown>[];
+  }) {
+    const encounter =
+      opts.encounter === null
+        ? null
+        : {
+            id: "enc-own-1",
+            type: "INPATIENT",
+            billingClassification: "INPATIENT",
+            physicianAssignedUserId: "ed-md",
+            nurseAssignedUserId: "ed-rn",
+            admissionSummaryJson: { requestedEncounterType: "INPATIENT" },
+            ...(opts.encounter ?? {}),
+          };
+    return {
+      encounter: {
+        findFirst: jest.fn().mockResolvedValue(encounter),
+        findMany: jest.fn().mockResolvedValue(opts.encounters ?? (encounter ? [encounter] : [])),
+        updateMany: jest.fn(),
+      },
+      userRole: { findFirst: jest.fn() },
+      user: { findUnique: jest.fn() },
+    };
+  }
+
+  it("selects ownership fields and projects Emergency from ED columns without audit/writes", async () => {
+    const prisma = buildPrisma({
+      encounter: {
+        id: "enc-ed",
+        type: "EMERGENCY",
+        billingClassification: "URGENT_CARE",
+        physicianAssignedUserId: "md-1",
+        nurseAssignedUserId: "rn-1",
+        admissionSummaryJson: null,
+      },
+    });
+    const audit = { log: jest.fn() };
+    const svc = new EnterpriseAssignmentService(prisma as never, audit as never);
+    const res = await svc.resolveActiveEncounterOwnership({
+      facilityId: "fac-1",
+      encounterId: "enc-ed",
+    });
+    expect(res.certification).toBe(ENTERPRISE_ENCOUNTER_OWNERSHIP_RESOLVER_CERTIFICATION_ID);
+    expect(res.projection.careSetting).toBe("EMERGENCY");
+    expect(res.projection.primaryNurse.userId).toBe("rn-1");
+    expect(res.projection.primaryProvider.source).toBe("ED_ENCOUNTER_COLUMNS");
+    expect(prisma.encounter.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: "enc-ed", facilityId: "fac-1" },
+        select: expect.objectContaining({
+          physicianAssignedUserId: true,
+          nurseAssignedUserId: true,
+          admissionSummaryJson: true,
+        }),
+      })
+    );
+    expect(audit.log).not.toHaveBeenCalled();
+    expect(prisma.encounter.updateMany).not.toHaveBeenCalled();
+  });
+
+  it("projects Inpatient ownership from hospital bag; ED columns do not win", async () => {
+    let bag = emptyHospitalAssignmentBag("INPATIENT");
+    bag = applyHospitalAssignmentMutation(bag, {
+      role: "NURSE",
+      actorUserId: "ip-rn",
+      nextUserId: "ip-rn",
+      source: "SELF_ASSIGN",
+    });
+    bag = applyHospitalAssignmentMutation(bag, {
+      role: "PROVIDER",
+      actorUserId: "ip-md",
+      nextUserId: "ip-md",
+      source: "SELF_ASSIGN",
+    });
+    const prisma = buildPrisma({
+      encounter: {
+        admissionSummaryJson: mergeHospitalAssignmentBagIntoSummary(
+          { requestedEncounterType: "INPATIENT" },
+          bag
+        ),
+      },
+    });
+    const audit = { log: jest.fn() };
+    const svc = new EnterpriseAssignmentService(prisma as never, audit as never);
+    const res = await svc.resolveActiveEncounterOwnership({
+      facilityId: "fac-1",
+      encounterId: "enc-own-1",
+    });
+    expect(res.projection.careSetting).toBe("INPATIENT");
+    expect(res.projection.primaryNurse.userId).toBe("ip-rn");
+    expect(res.projection.primaryProvider.userId).toBe("ip-md");
+    expect(res.projection.authoritySource).toBe("HOSPITAL_ASSIGNMENT_BAG");
+    expect(audit.log).not.toHaveBeenCalled();
+  });
+
+  it("projects Observation from bag careSetting when type is INPATIENT", async () => {
+    let bag = emptyHospitalAssignmentBag("OBSERVATION");
+    bag = applyHospitalAssignmentMutation(bag, {
+      role: "NURSE",
+      actorUserId: "obs-rn",
+      nextUserId: "obs-rn",
+      source: "SELF_ASSIGN",
+    });
+    const prisma = buildPrisma({
+      encounter: {
+        type: "INPATIENT",
+        billingClassification: "OBSERVATION",
+        admissionSummaryJson: mergeHospitalAssignmentBagIntoSummary(
+          { requestedEncounterType: "OBSERVATION" },
+          bag
+        ),
+      },
+    });
+    const audit = { log: jest.fn() };
+    const svc = new EnterpriseAssignmentService(prisma as never, audit as never);
+    const res = await svc.resolveActiveEncounterOwnership({
+      facilityId: "fac-1",
+      encounterId: "enc-own-1",
+    });
+    expect(res.projection.careSetting).toBe("OBSERVATION");
+    expect(res.projection.primaryNurse.userId).toBe("obs-rn");
+  });
+
+  it("LEGACY_COMPATIBILITY labels ED fallback without writes", async () => {
+    const prisma = buildPrisma({
+      encounter: {
+        admissionSummaryJson: mergeHospitalAssignmentBagIntoSummary(
+          { requestedEncounterType: "INPATIENT" },
+          emptyHospitalAssignmentBag("INPATIENT")
+        ),
+      },
+    });
+    const audit = { log: jest.fn() };
+    const svc = new EnterpriseAssignmentService(prisma as never, audit as never);
+    const res = await svc.resolveActiveEncounterOwnership({
+      facilityId: "fac-1",
+      encounterId: "enc-own-1",
+      compatibilityMode: "LEGACY_COMPATIBILITY",
+    });
+    expect(res.projection.primaryNurse.isLegacyFallback).toBe(true);
+    expect(res.projection.primaryNurse.userId).toBe("ed-rn");
+    expect(audit.log).not.toHaveBeenCalled();
+    expect(prisma.encounter.updateMany).not.toHaveBeenCalled();
+  });
+
+  it("batch resolve uses findMany once and skips audit", async () => {
+    const ed = {
+      id: "enc-ed",
+      type: "EMERGENCY",
+      billingClassification: "URGENT_CARE",
+      physicianAssignedUserId: "md-1",
+      nurseAssignedUserId: "rn-1",
+      admissionSummaryJson: null,
+    };
+    const ip = {
+      id: "enc-ip",
+      type: "INPATIENT",
+      billingClassification: "INPATIENT",
+      physicianAssignedUserId: "x",
+      nurseAssignedUserId: "y",
+      admissionSummaryJson: mergeHospitalAssignmentBagIntoSummary(
+        { requestedEncounterType: "INPATIENT" },
+        emptyHospitalAssignmentBag("INPATIENT")
+      ),
+    };
+    const prisma = buildPrisma({ encounter: ed, encounters: [ed, ip] });
+    const audit = { log: jest.fn() };
+    const svc = new EnterpriseAssignmentService(prisma as never, audit as never);
+    const res = await svc.resolveActiveEncounterOwnershipBatch({
+      facilityId: "fac-1",
+      encounterIds: ["enc-ed", "enc-ip"],
+    });
+    expect(prisma.encounter.findMany).toHaveBeenCalledTimes(1);
+    expect(res.results).toHaveLength(2);
+    expect(res.results[0]!.projection.careSetting).toBe("EMERGENCY");
+    expect(res.results[1]!.projection.primaryNurse.userId).toBeNull();
+    expect(audit.log).not.toHaveBeenCalled();
+  });
+
+  it("throws NotFound when encounter missing at facility", async () => {
+    const prisma = buildPrisma({ encounter: null });
+    const audit = { log: jest.fn() };
+    const svc = new EnterpriseAssignmentService(prisma as never, audit as never);
+    await expect(
+      svc.resolveActiveEncounterOwnership({ facilityId: "fac-1", encounterId: "missing" })
+    ).rejects.toBeInstanceOf(NotFoundException);
+    expect(audit.log).not.toHaveBeenCalled();
   });
 });
