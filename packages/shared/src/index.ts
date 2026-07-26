@@ -671,4 +671,5 @@ export * from "./patient/patientClinicalHistoryProfile.js";
 export * from "./patient/enterpriseAllergyRecord.js";
 export * from "./clinicalHistory/surgicalHistoryCatalog.js";
 export * from "./clinicalDocumentation/enterpriseClinicalDocumentFoundationD4b1.js";
+export * from "./clinicalDocumentation/enterpriseNursingClinicalWorkspaceD4b2.js";
 
