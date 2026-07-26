@@ -1,5 +1,6 @@
 import { labels } from "@/lib/uiLabels";
 import { erTriageMessagesFr } from "./erTriage.fr";
+import { enterpriseClinicalDocumentD4b1Fr } from "./enterpriseClinicalDocumentD4b1.fr";
 import { providerDischargeDocumentation19YFr } from "./providerDischargeDocumentation19Y.fr";
 import { nursingDischargeVitalsFr } from "./nursingDischargeVitals.fr";
 import { nursingDischargeNotesFr } from "./nursingDischargeNotes.fr";
@@ -9553,6 +9554,7 @@ export default {
     },
   },
   erTriage: erTriageMessagesFr,
+  enterpriseClinicalDocumentD4b1: enterpriseClinicalDocumentD4b1Fr,
   erMseSmartAssist: {
     traumaLevels: {
       LEVEL_1: "Niveau 1",
