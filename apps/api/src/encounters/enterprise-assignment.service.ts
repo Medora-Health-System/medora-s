@@ -1,7 +1,8 @@
 /**
  * D4A.3.0 / D4A.3.0-H1 — Enterprise Assignment Engine (Nest).
+ * D4A.4.1 — Read-only enterprise encounter ownership resolver adapter.
  * Shared service for ED (Encounter columns adapter) and Hospital (independent JSON bag).
- * Assignment never grants chart access.
+ * Assignment never grants chart access. Ownership resolve never audits.
  *
  * Hospital TECHNICIAN / PATIENT_CARE_TECH slot: RoleCode.PATIENT_CARE_TECH only
  * (never LAB / RADIOLOGY).
@@ -21,6 +22,7 @@ import {
 } from "@prisma/client";
 import {
   ENTERPRISE_HOSPITAL_ASSIGNMENT_ENGINE_CERTIFICATION_ID,
+  ENTERPRISE_ENCOUNTER_OWNERSHIP_RESOLVER_CERTIFICATION_ID,
   applyHospitalAssignmentMutation,
   applyHospitalWorkflowAssignmentMutation,
   emptyHospitalAssignmentBag,
@@ -28,15 +30,30 @@ import {
   mergeHospitalAssignmentBagIntoSummary,
   projectHospitalBoardAssignments,
   readHospitalAssignmentBag,
+  resolveActiveEncounterOwnership,
+  resolveActiveEncounterOwnershipBatch,
+  type ActiveEncounterOwnershipProjection,
   type EnterpriseAssignmentCareSetting,
   type EnterpriseHospitalBoardAssignmentRole,
   type EnterpriseHospitalAssignmentBagV1,
   type EnterpriseWorkflowAssignmentSlot,
+  type OwnershipCompatibilityMode,
+  type ResolveActiveEncounterOwnershipInput,
 } from "@medora/shared";
 import { PrismaService } from "../prisma/prisma.service";
 import { AuditService } from "../common/services/audit.service";
 
 export type EnterpriseAssignmentAction = "ASSIGN_ME" | "UNASSIGN" | "REASSIGN";
+
+/** Prisma select for ownership resolve — keep narrow for batch lists. */
+const OWNERSHIP_RESOLVE_SELECT = {
+  id: true,
+  type: true,
+  billingClassification: true,
+  physicianAssignedUserId: true,
+  nurseAssignedUserId: true,
+  admissionSummaryJson: true,
+} as const;
 
 @Injectable()
 export class EnterpriseAssignmentService {
@@ -47,6 +64,113 @@ export class EnterpriseAssignmentService {
 
   certification() {
     return ENTERPRISE_HOSPITAL_ASSIGNMENT_ENGINE_CERTIFICATION_ID;
+  }
+
+  ownershipResolverCertification() {
+    return ENTERPRISE_ENCOUNTER_OWNERSHIP_RESOLVER_CERTIFICATION_ID;
+  }
+
+  /**
+   * D4A.4.1 — Read-only active ownership resolve.
+   * SECURITY: Does not grant chart access. Assignment ≠ authorization.
+   * AUDIT: Never logs — resolution is not a clinical write.
+   * PERFORMANCE: Prefer resolveActiveEncounterOwnershipBatch for lists.
+   */
+  async resolveActiveEncounterOwnership(input: {
+    facilityId: string;
+    encounterId: string;
+    compatibilityMode?: OwnershipCompatibilityMode;
+  }): Promise<{
+    certification: typeof ENTERPRISE_ENCOUNTER_OWNERSHIP_RESOLVER_CERTIFICATION_ID;
+    encounterId: string;
+    projection: ActiveEncounterOwnershipProjection;
+  }> {
+    const facilityId = String(input.facilityId ?? "").trim();
+    const encounterId = String(input.encounterId ?? "").trim();
+    const enc = await this.prisma.encounter.findFirst({
+      where: { id: encounterId, facilityId },
+      select: OWNERSHIP_RESOLVE_SELECT,
+    });
+    if (!enc) throw new NotFoundException("Encounter not found");
+    // No audit.log — ownership resolve is read-only.
+    const projection = resolveActiveEncounterOwnership(
+      this.toOwnershipInput(enc, input.compatibilityMode)
+    );
+    return {
+      certification: ENTERPRISE_ENCOUNTER_OWNERSHIP_RESOLVER_CERTIFICATION_ID,
+      encounterId: enc.id,
+      projection,
+    };
+  }
+
+  /**
+   * Batch-compatible ownership resolve for future MAR / task-center consumers.
+   * Pattern: one facility-scoped findMany → shared pure map (no N+1, no audit).
+   */
+  async resolveActiveEncounterOwnershipBatch(input: {
+    facilityId: string;
+    encounterIds: readonly string[];
+    compatibilityMode?: OwnershipCompatibilityMode;
+  }): Promise<{
+    certification: typeof ENTERPRISE_ENCOUNTER_OWNERSHIP_RESOLVER_CERTIFICATION_ID;
+    results: Array<{
+      encounterId: string;
+      projection: ActiveEncounterOwnershipProjection;
+    }>;
+  }> {
+    const facilityId = String(input.facilityId ?? "").trim();
+    const ids = [...new Set(input.encounterIds.map((id) => String(id ?? "").trim()).filter(Boolean))];
+    if (ids.length === 0) {
+      return {
+        certification: ENTERPRISE_ENCOUNTER_OWNERSHIP_RESOLVER_CERTIFICATION_ID,
+        results: [],
+      };
+    }
+    const rows = await this.prisma.encounter.findMany({
+      where: { facilityId, id: { in: ids } },
+      select: OWNERSHIP_RESOLVE_SELECT,
+    });
+    // No audit.log — batch ownership resolve is read-only.
+    const byId = new Map(rows.map((r) => [r.id, r]));
+    const projections = resolveActiveEncounterOwnershipBatch(
+      ids.map((id) => {
+        const row = byId.get(id);
+        if (!row) {
+          return {
+            type: null,
+            compatibilityMode: input.compatibilityMode,
+          } satisfies ResolveActiveEncounterOwnershipInput;
+        }
+        return this.toOwnershipInput(row, input.compatibilityMode);
+      })
+    );
+    return {
+      certification: ENTERPRISE_ENCOUNTER_OWNERSHIP_RESOLVER_CERTIFICATION_ID,
+      results: ids.map((encounterId, i) => ({
+        encounterId,
+        projection: projections[i]!,
+      })),
+    };
+  }
+
+  private toOwnershipInput(
+    enc: {
+      type: string;
+      billingClassification?: string | null;
+      physicianAssignedUserId: string | null;
+      nurseAssignedUserId: string | null;
+      admissionSummaryJson: unknown;
+    },
+    compatibilityMode?: OwnershipCompatibilityMode
+  ): ResolveActiveEncounterOwnershipInput {
+    return {
+      type: enc.type,
+      billingClassification: enc.billingClassification ?? null,
+      physicianAssignedUserId: enc.physicianAssignedUserId,
+      nurseAssignedUserId: enc.nurseAssignedUserId,
+      admissionSummaryJson: enc.admissionSummaryJson,
+      compatibilityMode,
+    };
   }
 
   /**
