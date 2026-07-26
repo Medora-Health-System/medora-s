@@ -687,6 +687,8 @@ export class ChartSummaryService {
               createdAt: e.createdAt,
               physicianAssignedUserId: e.physicianAssignedUserId,
               nurseAssignedUserId: e.nurseAssignedUserId,
+              admissionSummaryJson: e.admissionSummaryJson,
+              billingClassification: e.billingClassification,
               providerDocumentationStatus: e.providerDocumentationStatus,
               providerDocumentationSignedAt: e.providerDocumentationSignedAt,
               trackboardOps: opsAgg,

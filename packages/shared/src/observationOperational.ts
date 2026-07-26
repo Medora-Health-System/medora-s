@@ -2,7 +2,12 @@
  * Phase 13B / 13C — Observation / short-stay operational snapshot and stay summaries (computed only).
  * No persistence, no billing codes, no disposition string changes.
  * Safe for INPATIENT (observation board) rows; returns null for other types where noted.
+ *
+ * D4A.4.3 — assignPhysicianGap / assignRnGap use certified enterprise ownership
+ * (hospital bag PRIMARY_*); never ED columns as active OBS/IP care team under STRICT.
  */
+
+import { resolveObservationAssignmentGaps } from "./encounters/enterpriseOperationalOwnershipCompletionD4a43.js";
 
 export const OBSERVATION_REASSESSMENT_DUE_MS = 2 * 60 * 60 * 1000;
 export const OBSERVATION_REASSESSMENT_OVERDUE_MS = 4 * 60 * 60 * 1000;
@@ -319,6 +324,9 @@ export function computeObservationOperationalSnapshot(input: {
   createdAt: unknown;
   physicianAssignedUserId?: string | null;
   nurseAssignedUserId?: string | null;
+  /** D4A.4.3 — required for hospital ownership authority (bag). */
+  admissionSummaryJson?: unknown;
+  billingClassification?: string | null;
   providerDocumentationStatus?: string | null;
   providerDocumentationSignedAt?: unknown;
   trackboardOps: ObservationTrackboardOpsInput;
@@ -374,8 +382,16 @@ export function computeObservationOperationalSnapshot(input: {
   const readyForDischarge = ws === "DISCHARGE_READY";
   const dispositionPhase = ws === "DISPOSITION";
 
-  const assignPhysicianGap = !((input.physicianAssignedUserId ?? "").trim());
-  const assignRnGap = !((input.nurseAssignedUserId ?? "").trim());
+  // D4A.4.3 — operational ownership gaps from certified resolver (STRICT bag for OBS/IP).
+  const assignmentGaps = resolveObservationAssignmentGaps({
+    type: input.encounterType,
+    billingClassification: input.billingClassification,
+    admissionSummaryJson: input.admissionSummaryJson,
+    physicianAssignedUserId: input.physicianAssignedUserId,
+    nurseAssignedUserId: input.nurseAssignedUserId,
+  });
+  const assignPhysicianGap = assignmentGaps.assignPhysicianGap;
+  const assignRnGap = assignmentGaps.assignRnGap;
 
   const resultsPending = (input.trackboardOps.resultsPendingCount ?? 0) > 0;
   const criticalLabsUnacked = Boolean(input.trackboardOps.criticalResultUnacknowledged);

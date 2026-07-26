@@ -82,6 +82,7 @@ import {
   type CareProcedureEffectiveTimeValidationCode,
   isIdempotentLifecycleAction,
   type OrderItemLifecycleAction,
+  resolveOrderCancelOperationalAssignees,
 } from "@medora/shared";
 import { appendBillingCaptureCandidate } from "../billing/billing-capture.append.util";
 import { tryEnterpriseProcedureBillableReviewEvent } from "../billing/enterprise-procedure-billable-review.util";
@@ -2168,17 +2169,31 @@ export class OrdersService {
       items: Array<{ catalogItemType: string }>;
     },
     encounter: {
+      type?: string | null;
+      billingClassification?: string | null;
+      admissionSummaryJson?: unknown;
       physicianAssignedUserId: string | null;
       nurseAssignedUserId: string | null;
     },
     requestorRoleCodes: RoleCode[],
     userId: string
   ): CancelPolicyActor {
+    // D4A.4.3 — cancel assignee match uses certified operational ownership (not raw ED columns on OBS/IP).
+    const assignees = resolveOrderCancelOperationalAssignees({
+      type: encounter.type,
+      billingClassification: encounter.billingClassification,
+      admissionSummaryJson: encounter.admissionSummaryJson,
+      physicianAssignedUserId: encounter.physicianAssignedUserId,
+      nurseAssignedUserId: encounter.nurseAssignedUserId,
+    });
     return resolveOrderCancelPolicyActor(
       {
         order,
         allItemCatalogTypes: order.items.map((item) => item.catalogItemType),
-        encounter,
+        encounter: {
+          physicianAssignedUserId: assignees.physicianAssignedUserId,
+          nurseAssignedUserId: assignees.nurseAssignedUserId,
+        },
       },
       requestorRoleCodes,
       userId
@@ -2194,18 +2209,31 @@ export class OrdersService {
     },
     item: { catalogItemType: string; lifecycleState: OrderItemLifecycleState },
     encounter: {
+      type?: string | null;
+      billingClassification?: string | null;
+      admissionSummaryJson?: unknown;
       physicianAssignedUserId: string | null;
       nurseAssignedUserId: string | null;
     },
     requestorRoleCodes: RoleCode[],
     userId: string
   ): CancelPolicyActor {
+    const assignees = resolveOrderCancelOperationalAssignees({
+      type: encounter.type,
+      billingClassification: encounter.billingClassification,
+      admissionSummaryJson: encounter.admissionSummaryJson,
+      physicianAssignedUserId: encounter.physicianAssignedUserId,
+      nurseAssignedUserId: encounter.nurseAssignedUserId,
+    });
     return resolveOrderCancelPolicyActor(
       {
         order,
         catalogItemType: item.catalogItemType,
         lifecycleState: item.lifecycleState,
-        encounter,
+        encounter: {
+          physicianAssignedUserId: assignees.physicianAssignedUserId,
+          nurseAssignedUserId: assignees.nurseAssignedUserId,
+        },
       },
       requestorRoleCodes,
       userId
@@ -2277,6 +2305,9 @@ export class OrdersService {
     const cancelPolicyActor = this.assertCanCancelOrder(
       order,
       {
+        type: order.encounter.type,
+        billingClassification: order.encounter.billingClassification,
+        admissionSummaryJson: order.encounter.admissionSummaryJson,
         physicianAssignedUserId: order.encounter.physicianAssignedUserId,
         nurseAssignedUserId: order.encounter.nurseAssignedUserId,
       },
@@ -2485,6 +2516,9 @@ export class OrdersService {
     assertOrderItemCancelAllowedByState(orderItem);
 
     const encounterCtx = {
+      type: orderItem.order.encounter.type,
+      billingClassification: orderItem.order.encounter.billingClassification,
+      admissionSummaryJson: orderItem.order.encounter.admissionSummaryJson,
       physicianAssignedUserId: orderItem.order.encounter.physicianAssignedUserId,
       nurseAssignedUserId: orderItem.order.encounter.nurseAssignedUserId,
     };

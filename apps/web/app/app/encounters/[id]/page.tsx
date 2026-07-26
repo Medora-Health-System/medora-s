@@ -73,7 +73,7 @@ import { useI18n } from "@/lib/i18n";
 import { normalizeUserFacingError, USER_FACING_ENCOUNTER_NOT_FOUND_FR } from "@/lib/userFacingError";
 import type { DispositionSafetyReadinessResponse } from "@medora/shared";
 import { calculateAge } from "@/lib/patientDisplay";
-import { formatEncounterProviderAssigned } from "@/lib/encounterDisplay";
+import { formatActiveEncounterProviderAssigned } from "@/lib/encounterDisplay";
 import { getCachedRecord, setCachedRecord } from "@/lib/offline/offlineCache";
 import { getPendingCreateOrdersForEncounter, mergeOrders } from "@/lib/offline/pendingEncounterOrders";
 import { EncounterDiagnosticsPanel } from "@/components/encounters/EncounterDiagnosticsPanel";
@@ -1538,6 +1538,8 @@ function EncounterDetailPageInner({ session }: { session: ReturnType<typeof useF
       createdAt: encounter.createdAt,
       physicianAssignedUserId: encounter.physicianAssignedUserId ?? null,
       nurseAssignedUserId: encounter.nurseAssignedUserId ?? null,
+      admissionSummaryJson: encounter.admissionSummaryJson,
+      billingClassification: encounter.billingClassification ?? null,
       providerDocumentationStatus: encounter.providerDocumentationStatus,
       providerDocumentationSignedAt: encounter.providerDocumentationSignedAt,
       trackboardOps: observationTrackboardOpsInput,
@@ -1551,6 +1553,8 @@ function EncounterDetailPageInner({ session }: { session: ReturnType<typeof useF
     encounter?.createdAt,
     encounter?.physicianAssignedUserId,
     encounter?.nurseAssignedUserId,
+    encounter?.admissionSummaryJson,
+    encounter?.billingClassification,
     encounter?.providerDocumentationStatus,
     encounter?.providerDocumentationSignedAt,
     observationTrackboardOpsInput,
@@ -2206,7 +2210,7 @@ function EncounterDetailPageInner({ session }: { session: ReturnType<typeof useF
                   )}
                   <div>
                     <span style={{ color: "#64748b" }}>{t("encounterChrome.labelAssignedPhysician")}:</span>{" "}
-                    {formatEncounterProviderAssigned(encounter)}
+                    {formatActiveEncounterProviderAssigned(encounter)}
                   </div>
                   <div>
                     <span style={{ color: "#64748b" }}>{t("encounterChrome.labelOpenedAt")}:</span>{" "}
@@ -3792,7 +3796,7 @@ function EncounterSummaryTab({
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, fontSize: 14, color: "#334155", marginTop: 16 }}>
           <div style={{ gridColumn: "1 / -1" }}>
             <strong style={{ color: "#0f172a" }}>{t("encounterChrome.summaryTab.assignedPhysician")}:</strong>{" "}
-            {formatEncounterProviderAssigned(encounter)}
+            {formatActiveEncounterProviderAssigned(encounter)}
           </div>
           {reason && (
             <div style={{ gridColumn: "1 / -1" }}>

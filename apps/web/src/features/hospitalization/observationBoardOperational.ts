@@ -1,6 +1,5 @@
 import {
-  projectHospitalBoardAssignments,
-  readHospitalAssignmentBag,
+  resolveActiveEncounterOwnership,
   type ObservationOperationalSnapshot,
 } from "@medora/shared";
 
@@ -10,6 +9,9 @@ export type ObservationBoardRowInput = {
   status: string;
   /** For "recent first" sort (trackboard row). */
   createdAt?: string | null;
+  /** D4A.4.3 — ownership care-setting inputs (defaults to INPATIENT when omitted). */
+  type?: string | null;
+  billingClassification?: string | null;
   observationOps?: ObservationOperationalSnapshot | null;
   trackboardOps?: {
     resultsPendingCount?: number;
@@ -19,7 +21,7 @@ export type ObservationBoardRowInput = {
   patient?: { firstName?: string | null; lastName?: string | null } | null;
   physicianAssignedUserId?: string | null;
   nurseAssignedUserId?: string | null;
-  /** D4A.3.0 — hospital bag preferred over ED columns when present. */
+  /** Hospital bag — authoritative for OBS/IP under D4A.4.1/4.3. */
   admissionSummaryJson?: unknown;
 };
 
@@ -81,24 +83,32 @@ function snapshot(row: ObservationBoardRowInput): ObservationOperationalSnapshot
   return row.observationOps ?? null;
 }
 
-export function observationBoardRnAssignmentGap(row: ObservationBoardRowInput): boolean {
-  const bag = readHospitalAssignmentBag(row.admissionSummaryJson);
-  if (bag) {
-    return projectHospitalBoardAssignments(bag).nurseUnassigned;
-  }
-  const o = snapshot(row);
-  if (o) return o.flags.assignRnGap;
-  return !((row.nurseAssignedUserId ?? "").trim());
+function resolveBoardOwnership(row: ObservationBoardRowInput) {
+  return resolveActiveEncounterOwnership({
+    type: row.type ?? "INPATIENT",
+    billingClassification: row.billingClassification,
+    admissionSummaryJson: row.admissionSummaryJson,
+    physicianAssignedUserId: row.physicianAssignedUserId,
+    nurseAssignedUserId: row.nurseAssignedUserId,
+  });
 }
 
+/** D4A.4.3 — PRIMARY_RN gap via certified ownership (STRICT; never ED fallback). */
+export function observationBoardRnAssignmentGap(row: ObservationBoardRowInput): boolean {
+  const ownership = resolveBoardOwnership(row);
+  return !(
+    ownership.primaryNurse.assignmentStatus === "ASSIGNED" &&
+    Boolean(ownership.primaryNurse.userId?.trim())
+  );
+}
+
+/** D4A.4.3 — PRIMARY_PROVIDER gap via certified ownership (STRICT; never ED fallback). */
 export function observationBoardProviderAssignmentGap(row: ObservationBoardRowInput): boolean {
-  const bag = readHospitalAssignmentBag(row.admissionSummaryJson);
-  if (bag) {
-    return projectHospitalBoardAssignments(bag).providerUnassigned;
-  }
-  const o = snapshot(row);
-  if (o) return o.flags.assignPhysicianGap;
-  return !((row.physicianAssignedUserId ?? "").trim());
+  const ownership = resolveBoardOwnership(row);
+  return !(
+    ownership.primaryProvider.assignmentStatus === "ASSIGNED" &&
+    Boolean(ownership.primaryProvider.userId?.trim())
+  );
 }
 
 function patientDisplayName(row: ObservationBoardRowInput): string {
@@ -215,8 +225,10 @@ export function computeObservationBoardStaffingPressure(
 
   for (const row of rows) {
     if ((row.status ?? "").trim() !== "OPEN") continue;
-    const rnId = (row.nurseAssignedUserId ?? "").trim();
-    const mdId = (row.physicianAssignedUserId ?? "").trim();
+    // D4A.4.3 — staffing counts use ownership-resolved PRIMARY_* (not ED columns).
+    const ownership = resolveBoardOwnership(row);
+    const rnId = (ownership.primaryNurse.userId ?? "").trim();
+    const mdId = (ownership.primaryProvider.userId ?? "").trim();
     if (rnId) {
       patientsWithAssignedRn += 1;
       rnCounts.set(rnId, (rnCounts.get(rnId) ?? 0) + 1);

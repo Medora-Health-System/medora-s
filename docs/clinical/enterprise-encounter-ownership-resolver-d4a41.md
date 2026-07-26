@@ -75,10 +75,11 @@ Resolver answers **active operational ownership** only. It must not reinterpret 
 
 - ~~MAR timeline~~ → **D4A.4.2 done** (`enterprise-mar-ownership-generalization`)
 - ~~Medication-pass queue~~ → **D4A.4.2 done**
-- Order-cancel policy
-- Observation assignment gaps
+- ~~Order-cancel policy~~ → **D4A.4.3 done** (`enterprise-operational-ownership-completion`)
+- ~~Observation assignment gaps~~ → **D4A.4.3 done**
 - Inpatient creation dual-write removal
 - Attending lifecycle writes
 - Billing attribution
 - Covering / break workflow APIs
 - FacilityMarShiftTimeline UI patch (not required — backend ownership boundary)
+- Optional pure-resolver wrap of already-STRICT hospital bag board projectors
