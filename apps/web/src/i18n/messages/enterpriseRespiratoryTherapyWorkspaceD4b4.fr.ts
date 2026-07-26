@@ -1,0 +1,121 @@
+/**
+ * MEDUI.D4B.4 — French strings for enterprise respiratory therapy workspace.
+ */
+export const enterpriseRespiratoryTherapyWorkspaceD4b4Fr = {
+  title: "Espace thérapie respiratoire",
+  subtitle:
+    "Évaluation respiratoire, dispositifs et réponse au traitement selon le contexte de soins",
+  careSetting: {
+    EMERGENCY: "Urgences",
+    OBSERVATION: "Observation",
+    INPATIENT: "Hospitalisation",
+  },
+  loading: "Chargement de l’espace thérapie respiratoire…",
+  empty: "Aucun document de thérapie respiratoire pour cette rencontre.",
+  emptyOrders: "Aucun ordre respiratoire actif dans cette vue.",
+  emptyMar: "Aucune réponse respiratoire MAR liée pour le moment.",
+  emptyTech: "Aucune mesure respiratoire technicien projetée pour le moment.",
+  error: "Impossible de charger la projection thérapie respiratoire.",
+  deferred:
+    "Section différée — utilisez les ordres, les cartes EDOC respiratoires ou les flux laboratoire existants. La télémétrie des appareils n’est pas intégrée.",
+  foundationBanner:
+    "Utilise le fondement de documentation clinique d’entreprise (D4B.1). Ne remplace pas l’évaluation infirmière, les ordres médicaux ni le MAR. Une recommandation n’est pas un ordre.",
+  nursingBoundary:
+    "L’évaluation respiratoire infirmière reste attribuée aux soins infirmiers. Les surfaces RT n’écrasent pas les documents infirmiers.",
+  techBoundary:
+    "La SpO₂ et les signes vitaux technicien restent attribués au technicien (D4B.3). La revue RT ne réécrit pas l’exécutant d’origine.",
+  marBoundary:
+    "Le MAR reste le dossier d’administration des médicaments faisant autorité. Cet espace lie uniquement la réponse clinique au traitement.",
+  ventManualEntry:
+    "Les vérifications ventilateur sont des observations EDOC manuelles. Les réglages ordonnés, observés et recommandés doivent rester distincts. L’intégration appareil est différée.",
+  sections: {
+    overview: "Vue d’ensemble",
+    activeOrders: "Ordres respiratoires actifs",
+    assessment: "Évaluation respiratoire",
+    reassessment: "Réévaluation",
+    oxygen: "Oxygène et dispositifs",
+    aerosol: "Aérosols et traitements inhalés",
+    treatmentResponse: "Réponse au traitement",
+    airway: "Voies aériennes",
+    artificialAirway: "Voie artificielle et trachéotomie",
+    ventilator: "Ventilation mécanique",
+    niv: "Ventilation non invasive",
+    highFlow: "Haut débit",
+    suctioning: "Aspiration et sécrétions",
+    airwayClearance: "Désencombrement bronchique",
+    bedsideMeasurements: "Mesures au chevet",
+    bloodGas: "Prélèvement gaz du sang",
+    specimens: "Prélèvements respiratoires",
+    education: "Éducation",
+    carePlan: "Contributions au plan de soins",
+    handoff: "Transmission",
+    dischargeRecommendations: "Recommandations de sortie",
+    technicianMeasurements: "Mesures technicien",
+    documentationHistory: "Historique de documentation",
+  },
+  capabilities: {
+    assessment: "Évaluation thérapie respiratoire",
+    reassessment: "Réévaluation respiratoire",
+    oxygen: "Gestion du dispositif d’oxygène",
+    aerosol: "Flux de traitement aérosol",
+    treatmentResponse: "Documentation de la réponse au traitement",
+    airway: "Évaluation des voies aériennes",
+    artificialAirway: "Vérification de voie artificielle",
+    ventilator: "Vérification du ventilateur",
+    niv: "Vérification VNI",
+    highFlow: "Vérification haut débit",
+    suctioning: "Aspiration et gestion des sécrétions",
+    airwayClearance: "Désencombrement bronchique",
+    bedsideMeasurement: "Mesure respiratoire au chevet",
+    abg: "Prélèvement GDS",
+    specimen: "Prélèvement respiratoire",
+    education: "Éducation respiratoire",
+    carePlan: "Contribution au plan de soins",
+    handoff: "Transmission respiratoire",
+    dischargeRecommendation: "Recommandation de sortie",
+    viewTechMeasurements: "Voir les mesures technicien",
+    viewMarResponse: "Voir la réponse respiratoire MAR",
+    viewOrders: "Voir les ordres respiratoires actifs",
+  },
+  activities: {
+    initialAssessment: "Évaluation initiale RT",
+    reassessment: "Réévaluation RT",
+    treatmentNote: "Note de traitement RT",
+    treatmentResponse: "Réponse au traitement RT",
+    oxygenDevice: "Évaluation dispositif oxygène",
+    airway: "Évaluation des voies aériennes",
+    artificialAirway: "Vérification voie artificielle",
+    tracheostomy: "Soins de trachéotomie",
+    ventilator: "Vérification ventilateur",
+    niv: "Vérification VNI",
+    highFlow: "Vérification haut débit",
+    suctioning: "Événement d’aspiration",
+    airwayClearance: "Événement de désencombrement",
+    bedsideMeasurement: "Mesure au chevet",
+    abg: "Prélèvement GDS",
+    specimen: "Prélèvement respiratoire",
+    education: "Note d’éducation",
+    carePlan: "Contribution au plan de soins",
+    handoff: "Transmission respiratoire",
+    dischargeRecommendation: "Recommandation de sortie",
+  },
+  overview: {
+    sectionsHint:
+      "Sélectionnez une section pour documenter les soins respiratoires ou consulter les ordres et réponses liés.",
+    documentsHeading: "Documents respiratoires",
+    ordersHeading: "Ordres actifs",
+    openLiveEngine: "Ouvrir le panneau actif",
+  },
+  ops: {
+    aerosolHint:
+      "Les aérosols suivent les ordres médicaux et l’administration MAR. Documentez ici la réponse clinique ; ne dupliquez pas l’enregistrement de dose.",
+    orderHint:
+      "Les ordres sont affichés pour le lien uniquement. Cet espace ne crée pas d’ordres médicaux.",
+    recommendationHint:
+      "Les recommandations de sortie n’autorisent pas la sortie et ne prescrivent pas l’oxygène à domicile.",
+  },
+  history: {
+    heading: "Historique de documentation respiratoire",
+    empty: "Aucun document de thérapie respiratoire pour cette rencontre.",
+  },
+};

@@ -60,6 +60,7 @@ import {
 import { MedicationAdministrationTab } from "@/components/encounters/MedicationAdministrationTab";
 import { EmergencyNursingReassessmentPanel } from "@/features/emergency/EmergencyNursingReassessmentPanel";
 import { EnterpriseNursingClinicalWorkspaceD4b2 } from "@/features/clinical-documentation/EnterpriseNursingClinicalWorkspaceD4b2";
+import { EnterpriseRespiratoryTherapyWorkspaceD4b4 } from "@/features/clinical-documentation/EnterpriseRespiratoryTherapyWorkspaceD4b4";
 import { EmergencyProviderMsePanel } from "@/features/emergency/EmergencyProviderMsePanel";
 import { EmergencyDispositionPanel } from "@/features/emergency/EmergencyDispositionPanel";
 import { EmergencyErSummaryClosureSurface } from "@/features/emergency/EmergencyErSummaryClosureSurface";
@@ -1597,6 +1598,14 @@ export function EmergencyActiveWorkspaceView() {
                     />
                   </>
                 }
+              />
+              <EnterpriseRespiratoryTherapyWorkspaceD4b4
+                encounterId={encounterId}
+                patientId={encounter.patient?.id ?? "unknown-patient"}
+                facilityId={fid}
+                careSetting="EMERGENCY"
+                roleCodes={roles}
+                isLocked={isLocked}
               />
             </div>
           ) : null}

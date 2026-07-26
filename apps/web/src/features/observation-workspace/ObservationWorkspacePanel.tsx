@@ -11,6 +11,7 @@ import { EmergencyResultsPanel } from "@/features/emergency/EmergencyResultsPane
 import { EmergencyErNotesPanel } from "@/features/emergency/EmergencyErNotesPanel";
 import { EmergencyNursingReassessmentPanel } from "@/features/emergency/EmergencyNursingReassessmentPanel";
 import { EnterpriseNursingClinicalWorkspaceD4b2 } from "@/features/clinical-documentation/EnterpriseNursingClinicalWorkspaceD4b2";
+import { EnterpriseRespiratoryTherapyWorkspaceD4b4 } from "@/features/clinical-documentation/EnterpriseRespiratoryTherapyWorkspaceD4b4";
 import { MedicationAdministrationTab } from "@/components/encounters/MedicationAdministrationTab";
 import type { ObservationWorkspaceSection } from "./observationWorkspaceSections";
 import {
@@ -252,6 +253,14 @@ export function ObservationWorkspacePanel({
                 variant="observationEncounter"
               />
             }
+          />
+          <EnterpriseRespiratoryTherapyWorkspaceD4b4
+            encounterId={encounterId}
+            patientId={encounter?.patient?.id ?? "unknown-patient"}
+            facilityId={facilityId}
+            careSetting="OBSERVATION"
+            roleCodes={roles}
+            isLocked={signed}
           />
         </div>
       );
