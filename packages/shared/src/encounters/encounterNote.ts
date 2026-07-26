@@ -13,7 +13,14 @@ export function defaultEncounterNoteTypeForRole(roleCode: string | null | undefi
   const code = String(roleCode ?? "").trim().toUpperCase();
   if (code === "PROVIDER" || code === "ADMIN") return "PROVIDER";
   if (code === "RN") return "NURSING";
-  if (code === "LAB" || code === "RADIOLOGY" || code === "PHARMACY") return "TECHNICIAN";
+  if (
+    code === "LAB" ||
+    code === "RADIOLOGY" ||
+    code === "PHARMACY" ||
+    code === "PATIENT_CARE_TECH"
+  ) {
+    return "TECHNICIAN";
+  }
   return "OTHER";
 }
 

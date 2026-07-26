@@ -196,13 +196,27 @@ export class InpatientOperationsController {
 
   /** D4A.2.7C — Technician task lifecycle (JSON persistence). */
   @Get("encounters/:encounterId/technician-tasks")
-  @RequireRoles(RoleCode.PROVIDER, RoleCode.RN, RoleCode.ADMIN, RoleCode.LAB, RoleCode.RADIOLOGY)
+  @RequireRoles(
+    RoleCode.PROVIDER,
+    RoleCode.RN,
+    RoleCode.ADMIN,
+    RoleCode.LAB,
+    RoleCode.RADIOLOGY,
+    RoleCode.PATIENT_CARE_TECH
+  )
   async getTechnicianTasks(@Param("encounterId") encounterId: string, @Req() req: any) {
     return this.ops.getTechnicianTasks(facilityIdFromReq(req), encounterId);
   }
 
   @Patch("encounters/:encounterId/technician-tasks")
-  @RequireRoles(RoleCode.PROVIDER, RoleCode.RN, RoleCode.ADMIN, RoleCode.LAB, RoleCode.RADIOLOGY)
+  @RequireRoles(
+    RoleCode.PROVIDER,
+    RoleCode.RN,
+    RoleCode.ADMIN,
+    RoleCode.LAB,
+    RoleCode.RADIOLOGY,
+    RoleCode.PATIENT_CARE_TECH
+  )
   async patchTechnicianTasks(
     @Param("encounterId") encounterId: string,
     @Body() body: Record<string, unknown>,

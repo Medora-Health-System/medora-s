@@ -1,6 +1,7 @@
 import { erTriageMessagesEn } from "./erTriage.en";
 import { enterpriseClinicalDocumentD4b1En } from "./enterpriseClinicalDocumentD4b1.en";
 import { enterpriseNursingClinicalWorkspaceD4b2En } from "./enterpriseNursingClinicalWorkspaceD4b2.en";
+import { enterpriseTechnicianNursingAssistantWorkspaceD4b3En } from "./enterpriseTechnicianNursingAssistantWorkspaceD4b3.en";
 import { providerDischargeDocumentation19YEn } from "./providerDischargeDocumentation19Y.en";
 import { nursingDischargeVitalsEn } from "./nursingDischargeVitals.en";
 import { nursingDischargeNotesEn } from "./nursingDischargeNotes.en";
@@ -9562,6 +9563,7 @@ export default {
   erTriage: erTriageMessagesEn,
   enterpriseClinicalDocumentD4b1: enterpriseClinicalDocumentD4b1En,
   enterpriseNursingClinicalWorkspaceD4b2: enterpriseNursingClinicalWorkspaceD4b2En,
+  enterpriseTechnicianNursingAssistantWorkspaceD4b3: enterpriseTechnicianNursingAssistantWorkspaceD4b3En,
   erMseSmartAssist: {
     traumaLevels: {
       LEVEL_1: "Level 1",
