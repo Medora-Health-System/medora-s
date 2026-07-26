@@ -60,6 +60,7 @@ import {
   type ParsedRespiratoryMedicationResponse,
   isMedicationDoseMarActionableForLifecycle,
   resolveMedicationOrderLifecycleStatus,
+  resolveMarNursingOwnership,
 } from "@medora/shared";
 import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
 import { getMedicationSchedulingFeatureFlagsFromEnv } from "../medication-scheduling/medication-scheduling-feature-flags.util";
@@ -75,6 +76,12 @@ import { loadMarShiftTimelineOrderItemFallbackPlacements } from "./mar-shift-tim
 import { loadMarShiftTimelineCanceledPlacements } from "./mar-shift-timeline-canceled.util";
 import { resolveMarTimelineFluidEnrichment } from "./mar-shift-timeline-fluid-enrichment.util";
 import { resolveMarAssignedNurseFilter } from "./mar-assigned-nurse-query.util";
+import {
+  resolveMarAssigneeEncounterIds,
+  resolveMarAssignedNurseUserIdFromEncounter,
+  toMarOwnershipEncounterFields,
+  MAR_OWNERSHIP_ENCOUNTER_SELECT,
+} from "./mar-enterprise-ownership.util";
 import {
   appendMarShiftTimelineCellItem,
   collectVisiblePrnOrderItemIds,
@@ -403,12 +410,39 @@ export class MarShiftTimelineService {
     );
 
     const assignedNurseFilter = resolveMarAssignedNurseFilter(query);
+    const assigneeEncounterIds = assignedNurseFilter
+      ? await resolveMarAssigneeEncounterIds(this.prisma, facilityId, assignedNurseFilter)
+      : null;
+    if (assigneeEncounterIds && assigneeEncounterIds.length === 0) {
+      return {
+        enabled: true,
+        facility: { id: facility.id, name: facility.name, timeZone: shiftWindow.facilityTimeZone },
+        title: buildMarShiftTimelineTitle(facility.name),
+        viewer,
+        assignedNurse: null,
+        shift: {
+          code: shiftWindow.code,
+          label: shiftWindow.label,
+          startAt: shiftWindow.startAt.toISOString(),
+          endAt: shiftWindow.endAt.toISOString(),
+          timeZone: shiftWindow.facilityTimeZone,
+          columns,
+        },
+        rows: [],
+        locale: displayLocale,
+      };
+    }
+
     const excludedStatuses = ["CANCELLED", "SUPERSEDED"];
     const doses: MedicationPassQueueDoseRow[] = await this.prisma.medicationDoseInstance.findMany({
       where: {
         facilityId,
         doseStatus: { notIn: excludedStatuses },
-        ...(query.encounterId ? { encounterId: query.encounterId } : {}),
+        ...(query.encounterId
+          ? { encounterId: query.encounterId }
+          : assigneeEncounterIds
+            ? { encounterId: { in: assigneeEncounterIds } }
+            : {}),
         OR: [
           {
             dueWindowStartAt: { lt: shiftWindow.endAt },
@@ -423,7 +457,6 @@ export class MarShiftTimelineService {
           },
         ],
         encounter: {
-          ...(assignedNurseFilter ? { nurseAssignedUserId: assignedNurseFilter } : {}),
           ...(!query.encounterId ? { status: "OPEN" } : {}),
         },
       },
@@ -1054,7 +1087,7 @@ export class MarShiftTimelineService {
         roomLabel: dose.encounter.roomLabel,
         encounterType: dose.encounter.type,
         admissionSummaryJson: dose.encounter.admissionSummaryJson,
-        assignedNurseUserId: dose.encounter.nurseAssignedUserId,
+        assignedNurseUserId: resolveMarAssignedNurseUserIdFromEncounter(dose.encounter),
       };
       const { scheduled, prn } = ensureRowMaps(rowMeta);
       const targetRow = isPrnBand ? prn : scheduled;
@@ -1076,7 +1109,7 @@ export class MarShiftTimelineService {
       facilityTimeZone: shiftWindow.facilityTimeZone,
       displayLocale,
       encounterId: query.encounterId,
-      assignedToUserId: assignedNurseFilter,
+      assigneeEncounterIds,
       includeCompleted,
       orderItemIdsWithDoseInstances,
       visiblePrnOrderItemIds,
@@ -1121,7 +1154,7 @@ export class MarShiftTimelineService {
       facilityTimeZone: shiftWindow.facilityTimeZone,
       displayLocale,
       encounterId: query.encounterId,
-      assignedToUserId: assignedNurseFilter,
+      assigneeEncounterIds,
       governanceByCatalogId,
     });
 
@@ -1171,8 +1204,10 @@ export class MarShiftTimelineService {
                 select: {
                   id: true,
                   type: true,
+                  billingClassification: true,
                   roomLabel: true,
                   admissionSummaryJson: true,
+                  physicianAssignedUserId: true,
                   nurseAssignedUserId: true,
                   patient: { select: { id: true, firstName: true, lastName: true } },
                 },
@@ -1227,7 +1262,7 @@ export class MarShiftTimelineService {
           roomLabel: encounter.roomLabel,
           encounterType: encounter.type,
           admissionSummaryJson: encounter.admissionSummaryJson,
-          assignedNurseUserId: encounter.nurseAssignedUserId,
+          assignedNurseUserId: resolveMarAssignedNurseUserIdFromEncounter(encounter),
         });
 
         const catalogRow = orderItem.catalogItemId
@@ -1343,11 +1378,13 @@ export class MarShiftTimelineService {
     if (!encounterId?.trim()) return null;
     const encounter = await this.prisma.encounter.findFirst({
       where: { id: encounterId, facilityId },
-      select: { nurseAssignedUserId: true },
+      select: MAR_OWNERSHIP_ENCOUNTER_SELECT,
     });
-    if (!encounter?.nurseAssignedUserId) return null;
+    if (!encounter) return null;
+    const mar = resolveMarNursingOwnership(toMarOwnershipEncounterFields(encounter));
+    if (!mar.assignedNurseUserId) return null;
     try {
-      return await this.resolveViewer(facilityId, encounter.nurseAssignedUserId);
+      return await this.resolveViewer(facilityId, mar.assignedNurseUserId);
     } catch {
       return null;
     }

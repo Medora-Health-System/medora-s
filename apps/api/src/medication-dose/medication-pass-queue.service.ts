@@ -24,6 +24,10 @@ import { MEDICATION_PASS_QUEUE_DOSE_SELECT, type MedicationPassQueueDoseRow } fr
 import { loadMedicationSafetyGovernanceByCatalogIdSafe } from "../medication-safety/medication-governance-enrichment.util";
 import { PrismaService } from "../prisma/prisma.service";
 import { resolveMarAssignedNurseFilter } from "./mar-assigned-nurse-query.util";
+import {
+  resolveMarAssigneeEncounterIds,
+  resolveMarAssignedNurseUserIdFromEncounter,
+} from "./mar-enterprise-ownership.util";
 
 export type MedicationPassQueueQuery = {
   encounterId?: string;
@@ -63,6 +67,7 @@ export type MedicationPassQueueItem = {
   doseSnapshot: MedicationOrderedDoseSnapshotJson | null;
   highAlertSummary: MedicationPassQueueHighAlertSummary | null;
   responseDueAt: string | null;
+  /** Active MAR nursing ownership (D4A.4.2) — not raw ED column for hospital encounters. */
   nurseAssignedUserId: string | null;
   infusionSessionId: string | null;
   terminalMedicationAdministrationId: string | null;
@@ -188,11 +193,22 @@ export class MedicationPassQueueService {
           : null;
 
     const assignedNurseFilter = resolveMarAssignedNurseFilter(query);
+    const assigneeEncounterIds = assignedNurseFilter
+      ? await resolveMarAssigneeEncounterIds(this.prisma, facilityId, assignedNurseFilter)
+      : null;
+    if (assigneeEncounterIds && assigneeEncounterIds.length === 0) {
+      return { enabled: true, at: at.toISOString(), count: 0, items: [] };
+    }
+
     const doses: MedicationPassQueueDoseRow[] = await this.prisma.medicationDoseInstance.findMany({
       where: {
         facilityId,
         doseStatus: { in: statusFilter },
-        ...(query.encounterId ? { encounterId: query.encounterId } : {}),
+        ...(query.encounterId
+          ? { encounterId: query.encounterId }
+          : assigneeEncounterIds
+            ? { encounterId: { in: assigneeEncounterIds } }
+            : {}),
         ...(shiftWindow
           ? {
               dueWindowStartAt: { lt: shiftWindow.shiftEnd },
@@ -200,7 +216,6 @@ export class MedicationPassQueueService {
             }
           : {}),
         encounter: {
-          ...(assignedNurseFilter ? { nurseAssignedUserId: assignedNurseFilter } : {}),
           ...(!query.encounterId ? { status: "OPEN" } : {}),
         },
       },
@@ -322,7 +337,7 @@ export class MedicationPassQueueService {
         doseSnapshot: orderedSnapshot,
         highAlertSummary: toHighAlertSummary(governance),
         responseDueAt: dose.responseDueAt?.toISOString() ?? null,
-        nurseAssignedUserId: dose.encounter.nurseAssignedUserId,
+        nurseAssignedUserId: resolveMarAssignedNurseUserIdFromEncounter(dose.encounter),
         infusionSessionId: dose.infusionSessionId ?? null,
         terminalMedicationAdministrationId: null,
         queueBadge: isIvpbSession ? MEDICATION_PASS_QUEUE_IVPB_BADGE : null,

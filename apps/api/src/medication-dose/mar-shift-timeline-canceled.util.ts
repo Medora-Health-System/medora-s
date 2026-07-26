@@ -20,6 +20,7 @@ import {
   resolveMarShiftTimelinePrnColumnKey,
 } from "./mar-shift-timeline-prn.util";
 import type { MarShiftTimelineCellItem } from "./mar-shift-timeline.service";
+import { resolveMarAssignedNurseUserIdFromEncounter } from "./mar-enterprise-ownership.util";
 
 const CANCELED_ORDER_ITEM_SELECT = {
   id: true,
@@ -56,8 +57,10 @@ const CANCELED_ORDER_ITEM_SELECT = {
         select: {
           id: true,
           type: true,
+          billingClassification: true,
           roomLabel: true,
           admissionSummaryJson: true,
+          physicianAssignedUserId: true,
           nurseAssignedUserId: true,
           status: true,
           patient: {
@@ -105,8 +108,10 @@ type CanceledOrderItemRow = {
     encounter: {
       id: string;
       type: string;
+      billingClassification?: string | null;
       roomLabel: string | null;
       admissionSummaryJson: unknown;
+      physicianAssignedUserId: string | null;
       nurseAssignedUserId: string | null;
       status: string;
       patient: {
@@ -157,9 +162,20 @@ export async function loadMarShiftTimelineCanceledPlacements(input: {
   facilityTimeZone: string;
   displayLocale: "en" | "fr";
   encounterId?: string;
+  /** D4A.4.2: pre-resolved encounter ids for facility assignee filter (null = no filter). */
+  assigneeEncounterIds?: string[] | null;
+  /** @deprecated Prefer assigneeEncounterIds. */
   assignedToUserId?: string;
   governanceByCatalogId: Map<string, MedicationSafetyGovernanceSnapshot>;
 }): Promise<MarShiftTimelineCanceledPlacement[]> {
+  if (
+    !input.encounterId?.trim() &&
+    input.assigneeEncounterIds &&
+    input.assigneeEncounterIds.length === 0
+  ) {
+    return [];
+  }
+
   const orderItems = await input.prisma.orderItem.findMany({
     where: {
       catalogItemType: "MEDICATION",
@@ -168,13 +184,11 @@ export async function loadMarShiftTimelineCanceledPlacements(input: {
         facilityId: input.facilityId,
         type: "MEDICATION",
         encounter: {
-          ...(input.encounterId ? { id: input.encounterId } : { status: "OPEN" }),
-          ...(() => {
-            const assigned = input.encounterId?.trim()
-              ? undefined
-              : input.assignedToUserId?.trim() || undefined;
-            return assigned ? { nurseAssignedUserId: assigned } : {};
-          })(),
+          ...(input.encounterId
+            ? { id: input.encounterId }
+            : input.assigneeEncounterIds
+              ? { id: { in: input.assigneeEncounterIds }, status: "OPEN" }
+              : { status: "OPEN" }),
         },
       },
       OR: [
@@ -408,7 +422,9 @@ export async function loadMarShiftTimelineCanceledPlacements(input: {
       roomLabel: orderItem.order.encounter.roomLabel,
       encounterType: orderItem.order.encounter.type,
       admissionSummaryJson: orderItem.order.encounter.admissionSummaryJson,
-      assignedNurseUserId: orderItem.order.encounter.nurseAssignedUserId,
+      assignedNurseUserId: resolveMarAssignedNurseUserIdFromEncounter(
+        orderItem.order.encounter
+      ),
       columnKey,
       item,
     });

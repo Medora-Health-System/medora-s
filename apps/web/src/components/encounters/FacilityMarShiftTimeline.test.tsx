@@ -77,6 +77,8 @@ describe("FacilityMarShiftTimeline (M1.8B.7K.2)", () => {
     expect(timeline).toContain('data-testid="mar-shift-timeline-assigned-nurse"');
     expect(timeline).toContain('data-testid="mar-shift-timeline-assigned-nurse-name"');
     expect(timeline).toContain('t("marShiftTimeline.assignedNurseLabel")');
+    expect(timeline).toContain("marShiftTimeline.assignedNurseLine");
+    expect(timeline).toContain("data-mar-nurse-assignment");
     expect(timeline).toContain('data-testid="mar-shift-timeline-viewer"');
     expect(timeline).toContain('fontWeight: 700');
     expect(timeline).toContain('assignedToUserId: encounterId?.trim() ? undefined : assignedToUserId');
