@@ -64,6 +64,7 @@ import { EnterpriseRespiratoryTherapyWorkspaceD4b4 } from "@/features/clinical-d
 import { EnterpriseRehabilitationWorkspacesD4b5 } from "@/features/clinical-documentation/EnterpriseRehabilitationWorkspacesD4b5";
 import { EnterpriseInterdisciplinaryCarePlansD4b6 } from "@/features/clinical-documentation/EnterpriseInterdisciplinaryCarePlansD4b6";
 import { EnterpriseCaseManagementDischargePlanningD4b7 } from "@/features/clinical-documentation/EnterpriseCaseManagementDischargePlanningD4b7";
+import { EnterpriseProviderClinicalWorkspaceD4b8 } from "@/features/clinical-documentation/EnterpriseProviderClinicalWorkspaceD4b8";
 import { EmergencyProviderMsePanel } from "@/features/emergency/EmergencyProviderMsePanel";
 import { EmergencyDispositionPanel } from "@/features/emergency/EmergencyDispositionPanel";
 import { EmergencyErSummaryClosureSurface } from "@/features/emergency/EmergencyErSummaryClosureSurface";
@@ -1627,6 +1628,14 @@ export function EmergencyActiveWorkspaceView() {
                 isLocked={isLocked}
               />
               <EnterpriseCaseManagementDischargePlanningD4b7
+                encounterId={encounterId}
+                patientId={encounter.patient?.id ?? "unknown-patient"}
+                facilityId={fid}
+                careSetting="EMERGENCY"
+                roleCodes={roles}
+                isLocked={isLocked}
+              />
+              <EnterpriseProviderClinicalWorkspaceD4b8
                 encounterId={encounterId}
                 patientId={encounter.patient?.id ?? "unknown-patient"}
                 facilityId={fid}

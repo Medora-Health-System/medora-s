@@ -677,4 +677,5 @@ export * from "./clinicalDocumentation/enterpriseRespiratoryTherapyWorkspaceD4b4
 export * from "./clinicalDocumentation/enterpriseRehabilitationWorkspacesD4b5.js";
 export * from "./clinicalDocumentation/enterpriseInterdisciplinaryCarePlansD4b6.js";
 export * from "./clinicalDocumentation/enterpriseCaseManagementDischargePlanningD4b7.js";
+export * from "./clinicalDocumentation/enterpriseProviderClinicalWorkspaceD4b8.js";
 

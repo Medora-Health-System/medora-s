@@ -15,6 +15,7 @@ import { EnterpriseRespiratoryTherapyWorkspaceD4b4 } from "@/features/clinical-d
 import { EnterpriseRehabilitationWorkspacesD4b5 } from "@/features/clinical-documentation/EnterpriseRehabilitationWorkspacesD4b5";
 import { EnterpriseInterdisciplinaryCarePlansD4b6 } from "@/features/clinical-documentation/EnterpriseInterdisciplinaryCarePlansD4b6";
 import { EnterpriseCaseManagementDischargePlanningD4b7 } from "@/features/clinical-documentation/EnterpriseCaseManagementDischargePlanningD4b7";
+import { EnterpriseProviderClinicalWorkspaceD4b8 } from "@/features/clinical-documentation/EnterpriseProviderClinicalWorkspaceD4b8";
 import { MedicationAdministrationTab } from "@/components/encounters/MedicationAdministrationTab";
 import type { ObservationWorkspaceSection } from "./observationWorkspaceSections";
 import {
@@ -186,8 +187,17 @@ export function ObservationWorkspacePanel({
         );
       }
       return (
-        <div data-testid="observation-panel-notes-live">
-          <p style={{ margin: "0 0 8px", fontSize: 12, color: "#64748b" }}>
+        <div data-testid="observation-panel-notes-live" style={{ display: "grid", gap: 12 }}>
+          <EnterpriseProviderClinicalWorkspaceD4b8
+            encounterId={encounterId}
+            patientId={encounter?.patient?.id ?? "unknown-patient"}
+            facilityId={facilityId}
+            careSetting="OBSERVATION"
+            roleCodes={roles}
+            isLocked={signed}
+            initialSection="progressNotes"
+          />
+          <p style={{ margin: 0, fontSize: 12, color: "#64748b" }}>
             {t("inpatientWorkspaceRecoveryD4a27b.notes.governedProgressOnly")}
           </p>
           <EmergencyErNotesPanel

@@ -38,6 +38,7 @@ import { InpatientTechnicianTasksPanel } from "./InpatientTechnicianTasksPanel";
 import { InpatientNursingAssessmentSection } from "./InpatientNursingAssessmentSection";
 import { EnterpriseInterdisciplinaryCarePlansD4b6 } from "@/features/clinical-documentation/EnterpriseInterdisciplinaryCarePlansD4b6";
 import { EnterpriseCaseManagementDischargePlanningD4b7 } from "@/features/clinical-documentation/EnterpriseCaseManagementDischargePlanningD4b7";
+import { EnterpriseProviderClinicalWorkspaceD4b8 } from "@/features/clinical-documentation/EnterpriseProviderClinicalWorkspaceD4b8";
 import { ClinicalAvailabilityBanner } from "./rapid-documentation/ClinicalRapidControls";
 
 export type InpatientWorkspaceEncounterLite = {
@@ -164,7 +165,16 @@ export function InpatientWorkspacePanel({
         );
       }
       return (
-        <div data-testid="inpatient-panel-overview">
+        <div data-testid="inpatient-panel-overview" style={{ display: "grid", gap: 12 }}>
+          <EnterpriseProviderClinicalWorkspaceD4b8
+            encounterId={encounterId}
+            patientId={encounter?.patient?.id ?? "unknown-patient"}
+            facilityId={facilityId}
+            careSetting="INPATIENT"
+            roleCodes={roles}
+            isLocked={signed}
+            initialSection="overview"
+          />
           <InpatientProviderWorkspacePanel
             mode="overview"
             encounterId={encounterId}
@@ -214,7 +224,16 @@ export function InpatientWorkspacePanel({
         );
       }
       return (
-        <div data-testid="inpatient-panel-historyPhysical-live">
+        <div data-testid="inpatient-panel-historyPhysical-live" style={{ display: "grid", gap: 12 }}>
+          <EnterpriseProviderClinicalWorkspaceD4b8
+            encounterId={encounterId}
+            patientId={encounter?.patient?.id ?? "unknown-patient"}
+            facilityId={facilityId}
+            careSetting="INPATIENT"
+            roleCodes={roles}
+            isLocked={signed}
+            initialSection="historyPhysical"
+          />
           <InpatientProviderWorkspacePanel
             mode="historyPhysical"
             encounterId={encounterId}
@@ -225,7 +244,7 @@ export function InpatientWorkspacePanel({
             isLocked={signed}
             onNavigateSection={onNavigateSection}
           />
-          <p style={{ margin: "12px 0 0", fontSize: 12, color: "#64748b" }}>
+          <p style={{ margin: 0, fontSize: 12, color: "#64748b" }}>
             {t("inpatientWorkspaceRecoveryD4a27b.notes.governedHpOnly")}
           </p>
         </div>
@@ -239,7 +258,16 @@ export function InpatientWorkspacePanel({
         );
       }
       return (
-        <div data-testid={`inpatient-panel-${section}-live`}>
+        <div data-testid={`inpatient-panel-${section}-live`} style={{ display: "grid", gap: 12 }}>
+          <EnterpriseProviderClinicalWorkspaceD4b8
+            encounterId={encounterId}
+            patientId={encounter?.patient?.id ?? "unknown-patient"}
+            facilityId={facilityId}
+            careSetting="INPATIENT"
+            roleCodes={roles}
+            isLocked={signed}
+            initialSection="progressNotes"
+          />
           <InpatientProviderWorkspacePanel
             mode="progressNotes"
             encounterId={encounterId}
@@ -250,7 +278,7 @@ export function InpatientWorkspacePanel({
             isLocked={signed}
             onNavigateSection={onNavigateSection}
           />
-          <p style={{ margin: "12px 0 0", fontSize: 12, color: "#64748b" }}>
+          <p style={{ margin: 0, fontSize: 12, color: "#64748b" }}>
             {t("inpatientWorkspaceRecoveryD4a27b.notes.governedProgressOnly")}
           </p>
         </div>

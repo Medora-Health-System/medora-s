@@ -101,6 +101,17 @@ export const enterpriseClinicalDocumentD4b1Fr = {
     urMedicalNecessityDocumentation: "Revue d’utilisation — nécessité médicale",
     careCoordTransitionPlan: "Plan de transition — coordination des soins",
     careCoordReadinessProjection: "Projection de préparation — coordination des soins",
+    providerHistoryAndPhysical: "Histoire et examen physique — médecin",
+    providerProgressNote: "Note d’évolution — médecin",
+    providerConsultNote: "Note de consultation — médecin",
+    providerAssessmentPlan: "Évaluation et plan — médecin",
+    providerCrossCover: "Note de couverture — médecin",
+    providerEventNote: "Note d’événement — médecin",
+    providerAttestation: "Attestation — médecin",
+    providerAddendum: "Addendum — médecin",
+    providerAmendment: "Amendement — médecin",
+    providerCorrection: "Correction — médecin",
+    providerEnteredInError: "Saisie en erreur — médecin",
   },
   legal: {
     footer:
