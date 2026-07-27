@@ -10,8 +10,11 @@ export type MedoraFacilityType =
   | "OUTSIDE_RADIOLOGY"
   | "OUTSIDE_PHARMACY";
 
-/** Service line = clinical department code or pharmacy line. */
-export type MedoraServiceLine = ClinicalDepartmentCode | "PHARMACY";
+/**
+ * Service line = clinical department code, pharmacy, or ambulatory Clinic/UC lines (MEDUI.D4C.1).
+ * Ambulatory lines are config-driven tokens — never hard-coded facility names.
+ */
+export type MedoraServiceLine = ClinicalDepartmentCode | "PHARMACY" | "CLINIC" | "URGENT_CARE";
 
 export type MedoraFacilityTypeRegistryEntry = {
   code: MedoraFacilityType;
@@ -49,13 +52,15 @@ export const MEDORA_FACILITY_TYPE_REGISTRY: readonly MedoraFacilityTypeRegistryE
     code: "URGENT_CARE",
     labelEn: "Urgent Care",
     labelFr: "Soins urgents",
-    defaultServiceLines: ["EMERGENCY", "OBSERVATION", "LABORATORY", "RADIOLOGY"],
+    /** MEDUI.D4C.1 — ambulatory UC defaults (not ED/Observation hospital presentation). */
+    defaultServiceLines: ["URGENT_CARE", "LABORATORY", "RADIOLOGY"],
   },
   {
     code: "CLINIC",
     labelEn: "Clinic",
     labelFr: "Clinique",
-    defaultServiceLines: ["OBSERVATION", "LABORATORY"],
+    /** MEDUI.D4C.1 — ambulatory Clinic Care (replaces Observation→Hospital mapping). */
+    defaultServiceLines: ["CLINIC", "LABORATORY"],
   },
   {
     code: "OUTSIDE_LABORATORY",
@@ -114,7 +119,7 @@ export function getDefaultServiceLinesForFacilityType(
   facilityType: MedoraFacilityType | string | null | undefined
 ): MedoraServiceLine[] {
   const normalized = normalizeFacilityType(facilityType);
-  return [...(REGISTRY_BY_CODE.get(normalized)?.defaultServiceLines ?? ["OBSERVATION", "LABORATORY"])];
+  return [...(REGISTRY_BY_CODE.get(normalized)?.defaultServiceLines ?? ["CLINIC", "LABORATORY"])];
 }
 
 export function facilityTypeSupportsServiceLine(
@@ -131,8 +136,27 @@ const SERVICE_LINE_ALIASES: Record<string, MedoraServiceLine> = {
   RAD: "RADIOLOGY",
   INPATIENT: "MEDSURG",
   PHARM: "PHARMACY",
-  PRIMARY_CARE: "OBSERVATION",
+  /** MEDUI.D4C.1 — primary care aliases to ambulatory Clinic service line (not Observation). */
+  PRIMARY_CARE: "CLINIC",
+  CLINIC_CARE: "CLINIC",
+  UC: "URGENT_CARE",
 };
+
+const ALL_KNOWN_SERVICE_LINES: readonly MedoraServiceLine[] = [
+  "EMERGENCY",
+  "ICU",
+  "MEDSURG",
+  "OBSERVATION",
+  "OBGYN",
+  "PEDIATRICS",
+  "BEHAVIORAL_HEALTH",
+  "TELEMETRY",
+  "LABORATORY",
+  "RADIOLOGY",
+  "PHARMACY",
+  "CLINIC",
+  "URGENT_CARE",
+];
 
 export function normalizeServiceLineToken(
   value: string | null | undefined
@@ -144,8 +168,7 @@ export function normalizeServiceLineToken(
   if (code in SERVICE_LINE_ALIASES) {
     return SERVICE_LINE_ALIASES[code]!;
   }
-  const defaults = MEDORA_FACILITY_TYPE_REGISTRY.flatMap((entry) => entry.defaultServiceLines);
-  if (defaults.includes(code as MedoraServiceLine)) {
+  if (ALL_KNOWN_SERVICE_LINES.includes(code as MedoraServiceLine)) {
     return code as MedoraServiceLine;
   }
   return null;

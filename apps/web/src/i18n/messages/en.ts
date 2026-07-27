@@ -157,6 +157,7 @@ export default {
     emergency: "Emergency Department",
     emergencyTriage: "ED triage",
     registration: "Registration",
+    clinicCare: "Clinic Care",
     nursing: "Nursing",
     provider: "Provider",
     patients: "Patients",
@@ -4826,6 +4827,8 @@ export default {
     serviceLineLaboratory: "Laboratory",
     serviceLineRadiology: "Radiology",
     serviceLinePharmacy: "Pharmacy",
+    serviceLineClinic: "Clinic",
+    serviceLineUrgentCare: "Urgent Care",
     defaultLanguageLabel: "Default language *",
     langFr: "French",
     langEn: "English",
@@ -9573,6 +9576,15 @@ export default {
   enterpriseRehabilitationWorkspacesD4b5: enterpriseRehabilitationWorkspacesD4b5En,
   enterpriseInterdisciplinaryCarePlansD4b6: enterpriseInterdisciplinaryCarePlansD4b6En,
   enterpriseCaseManagementDischargePlanningD4b7: enterpriseCaseManagementDischargePlanningD4b7En,
+
+  clinicCareD4c1: {
+    title: "Clinic Care",
+    subtitle: "Ambulatory clinic and urgent care foundation. The color clinical trackboard ships in D4C.2.",
+    placeholderBody:
+      "This shell reserves Clinic Care navigation. Visit metrics (Today's visits, Waiting, In progress, Results pending, Ready for discharge, Follow-ups due) are contracted for D4C.2.",
+    deferredNote: "Full trackboard UI deferred to MEDUI.D4C.2.",
+  },
+
   enterpriseProviderClinicalWorkspaceD4b8: enterpriseProviderClinicalWorkspaceD4b8En,
   erMseSmartAssist: {
     traumaLevels: {

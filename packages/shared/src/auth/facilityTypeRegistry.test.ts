@@ -37,7 +37,15 @@ describe("facilityTypeRegistry (MEDUI.FACILITY.TYPE.1)", () => {
   });
 
   it("clinic defaults", () => {
-    expect(getDefaultServiceLinesForFacilityType("CLINIC")).toEqual(["OBSERVATION", "LABORATORY"]);
+    expect(getDefaultServiceLinesForFacilityType("CLINIC")).toEqual(["CLINIC", "LABORATORY"]);
+  });
+
+  it("urgent care ambulatory defaults (MEDUI.D4C.1)", () => {
+    expect(getDefaultServiceLinesForFacilityType("URGENT_CARE")).toEqual([
+      "URGENT_CARE",
+      "LABORATORY",
+      "RADIOLOGY",
+    ]);
   });
 
   it("outside lab/rad/pharmacy defaults", () => {

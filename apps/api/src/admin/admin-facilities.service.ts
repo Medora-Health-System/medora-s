@@ -5,14 +5,27 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import type { CreateFacilityDto, FacilityBillingIdentityPatchDto, FacilityBillingWorkflowPatchDto, UpdateFacilityServiceConfigDto, MedoraServiceLine } from "@medora/shared";
-import { mapBillingClassificationModeToSiteType, parseStoredFacilityServiceLines, resolveFacilityServiceLines } from "@medora/shared";
+import {
+  mapBillingClassificationModeToSiteType,
+  parseStoredFacilityServiceLines,
+  resolveFacilityServiceLines,
+  getDefaultBillingClassificationModeForProfile,
+  projectFacilityPrintIdentity,
+  resolveFacilityCareProfile,
+  resolveFacilityModuleCapabilitiesD4c1,
+} from "@medora/shared";
 import { PrismaService } from "../prisma/prisma.service";
-import { FacilityType, RoleCode } from "@prisma/client";
+import { AuditAction, FacilityType, RoleCode } from "@prisma/client";
 import { randomBytes } from "crypto";
 import { isPlatformPrincipalAdminEmail } from "../auth/platform-principal";
 import { BillingIdentityService } from "../billing/billing-identity.service";
 import { FacilityBillingWorkflowService } from "../encounters/facility-billing-workflow.service";
 import { ensureFacilityClinicalDepartments, ensureFacilityServiceLineDepartments } from "./facility-department-seed.util";
+import {
+  buildCareProfileJsonFromDto,
+  mergeCareProfileJson,
+  resolveServiceLinesForCareConfig,
+} from "./facility-care-profile.util";
 
 /** Valeurs par défaut — le schéma Prisma exige country et timezone ; non exposés sur POST minimal (nom seul). */
 const DEFAULT_NEW_FACILITY_COUNTRY = "Haiti";
@@ -30,6 +43,23 @@ const FACILITY_BILLING_KEYS = [
   "billingCountry",
   "billingFacilityTypeLabel",
 ] as const;
+
+const CLIENT_ESCALATION_KEYS = [
+  "ownerUserId",
+  "capabilities",
+  "isPlatformAdmin",
+  "roleCodes",
+  "facilityId",
+] as const;
+
+function assertNoClientEscalation(dto: object) {
+  const record = dto as Record<string, unknown>;
+  for (const key of CLIENT_ESCALATION_KEYS) {
+    if (key in record && record[key] !== undefined) {
+      throw new BadRequestException(`Champ non autorisé: ${key}`);
+    }
+  }
+}
 
 function pickFacilityBillingFromCreateDto(dto: CreateFacilityDto): Partial<FacilityBillingIdentityPatchDto> {
   const out: Partial<FacilityBillingIdentityPatchDto> = {};
@@ -67,18 +97,39 @@ function mapFacilityRowForClient(row: {
   isActive?: boolean;
   facilityType: FacilityType;
   serviceLinesJson: unknown;
+  facilityCareProfileJson?: unknown;
+  timezone?: string;
 }) {
   const serviceLines = resolveFacilityServiceLines({
     facilityType: row.facilityType,
     configuredServiceLines: parseStoredFacilityServiceLines(row.serviceLinesJson),
+  });
+  const careProfile = resolveFacilityCareProfile({
+    facilityType: row.facilityType,
+    careProfileJson: row.facilityCareProfileJson,
+    serviceLines,
+  });
+  const capabilities = resolveFacilityModuleCapabilitiesD4c1({
+    facilityType: row.facilityType,
+    careProfileJson: row.facilityCareProfileJson,
+    serviceLines,
+  });
+  const printIdentity = projectFacilityPrintIdentity({
+    facilityName: row.name,
+    careProfileJson: row.facilityCareProfileJson,
   });
   return {
     id: row.id,
     name: row.name,
     defaultLanguage: row.defaultLanguage as "fr" | "en",
     ...(row.isActive !== undefined ? { isActive: row.isActive } : {}),
+    ...(row.timezone !== undefined ? { timezone: row.timezone } : {}),
     facilityType: row.facilityType,
     serviceLines,
+    careProfile,
+    moduleCapabilities: capabilities,
+    printIdentity,
+    facilityCareProfileJson: row.facilityCareProfileJson ?? null,
   };
 }
 
@@ -91,6 +142,7 @@ export class AdminFacilitiesService {
   ) {}
 
   async create(dto: CreateFacilityDto, userId: string) {
+    assertNoClientEscalation(dto);
     const actor = await this.prisma.user.findUnique({
       where: { id: userId },
       select: { email: true },
@@ -103,9 +155,23 @@ export class AdminFacilitiesService {
     const code = `FAC-${randomBytes(6).toString("hex")}`;
     const billingFragment = pickFacilityBillingFromCreateDto(dto);
     const hasBillingInput = Object.keys(billingFragment).length > 0;
-    const workflowMode = dto.billingClassificationMode ?? null;
     const facilityType = toFacilityTypeEnum(dto.facilityType ?? "CLINIC");
-    const serviceLines = serializeServiceLinesForStorage(facilityType, dto.serviceLines ?? null);
+    const careProfileJson = buildCareProfileJsonFromDto(dto, facilityType);
+    const serviceLines = serializeServiceLinesForStorage(
+      facilityType,
+      resolveServiceLinesForCareConfig({
+        facilityType,
+        dto,
+      })
+    );
+    const profile = resolveFacilityCareProfile({
+      facilityType,
+      careProfileJson,
+      serviceLines,
+    });
+    const workflowMode =
+      dto.billingClassificationMode ?? getDefaultBillingClassificationModeForProfile(profile);
+    const timezone = dto.timezone?.trim() || DEFAULT_NEW_FACILITY_TIMEZONE;
 
     return this.prisma.$transaction(async (tx) => {
       const facility = await tx.facility.create({
@@ -113,10 +179,11 @@ export class AdminFacilitiesService {
           code,
           name: trimmed,
           country: DEFAULT_NEW_FACILITY_COUNTRY,
-          timezone: DEFAULT_NEW_FACILITY_TIMEZONE,
+          timezone,
           defaultLanguage: dto.defaultLanguage ?? "fr",
           facilityType,
           serviceLinesJson: serviceLines,
+          facilityCareProfileJson: careProfileJson,
           ...(hasBillingInput ? billingFragment : {}),
           ...(workflowMode
             ? {
@@ -155,6 +222,22 @@ export class AdminFacilitiesService {
         facilityType: facility.facilityType,
         serviceLines,
         defaultLanguage: (facility.defaultLanguage as "fr" | "en") ?? "fr",
+      });
+
+      await tx.auditLog.create({
+        data: {
+          facilityId: facility.id,
+          userId,
+          action: AuditAction.FACILITY_CARE_PROFILE_UPDATED,
+          entityType: "Facility",
+          entityId: facility.id,
+          metadata: {
+            event: "FACILITY_CREATED",
+            facilityType: facility.facilityType,
+            careProfile: profile,
+            serviceLines,
+          },
+        },
       });
 
       return mapFacilityRowForClient(facility);
@@ -296,6 +379,8 @@ export class AdminFacilitiesService {
           defaultLanguage: true,
           facilityType: true,
           serviceLinesJson: true,
+          facilityCareProfileJson: true,
+          timezone: true,
         },
       }).then((rows) => rows.map((row) => mapFacilityRowForClient(row)));
     }
@@ -313,6 +398,8 @@ export class AdminFacilitiesService {
           defaultLanguage: true,
           facilityType: true,
           serviceLinesJson: true,
+          facilityCareProfileJson: true,
+          timezone: true,
         },
       }).then((rows) => rows.map((row) => mapFacilityRowForClient(row)));
     }
@@ -336,11 +423,14 @@ export class AdminFacilitiesService {
         defaultLanguage: true,
         facilityType: true,
         serviceLinesJson: true,
+        facilityCareProfileJson: true,
+        timezone: true,
       },
     }).then((rows) => rows.map((row) => mapFacilityRowForClient(row)));
   }
 
   async updateFacilityServiceConfig(id: string, dto: UpdateFacilityServiceConfigDto, userId: string) {
+    assertNoClientEscalation(dto);
     const actor = await this.prisma.user.findUnique({
       where: { id: userId },
       select: { email: true },
@@ -351,32 +441,76 @@ export class AdminFacilitiesService {
 
     const existing = await this.prisma.facility.findUnique({
       where: { id },
-      select: { id: true, defaultLanguage: true, facilityType: true, serviceLinesJson: true },
-    });
-    if (!existing) {
-      throw new NotFoundException("Établissement introuvable.");
-    }
-
-    const nextType = dto.facilityType ? toFacilityTypeEnum(dto.facilityType) : existing.facilityType;
-    const nextServiceLines =
-      dto.serviceLines === undefined
-        ? parseStoredFacilityServiceLines(existing.serviceLinesJson)
-        : dto.serviceLines;
-    const serialized = serializeServiceLinesForStorage(nextType, nextServiceLines);
-
-    const updated = await this.prisma.facility.update({
-      where: { id },
-      data: {
-        facilityType: nextType,
-        serviceLinesJson: serialized,
-      },
       select: {
         id: true,
         name: true,
         defaultLanguage: true,
         facilityType: true,
         serviceLinesJson: true,
+        facilityCareProfileJson: true,
+        timezone: true,
       },
+    });
+    if (!existing) {
+      throw new NotFoundException("Établissement introuvable.");
+    }
+
+    const nextType = dto.facilityType ? toFacilityTypeEnum(dto.facilityType) : existing.facilityType;
+    const existingLines = parseStoredFacilityServiceLines(existing.serviceLinesJson);
+    const nextServiceLines = resolveServiceLinesForCareConfig({
+      facilityType: nextType,
+      dto,
+      existingServiceLines: existingLines,
+      existingCareProfileJson: existing.facilityCareProfileJson,
+    });
+    const serialized = serializeServiceLinesForStorage(nextType, nextServiceLines);
+    const careProfileJson = mergeCareProfileJson(existing.facilityCareProfileJson, dto, nextType);
+    const profile = resolveFacilityCareProfile({
+      facilityType: nextType,
+      careProfileJson,
+      serviceLines: serialized,
+    });
+
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const row = await tx.facility.update({
+        where: { id },
+        data: {
+          facilityType: nextType,
+          serviceLinesJson: serialized,
+          facilityCareProfileJson: careProfileJson,
+          ...(dto.timezone != null && String(dto.timezone).trim()
+            ? { timezone: String(dto.timezone).trim() }
+            : {}),
+        },
+        select: {
+          id: true,
+          name: true,
+          defaultLanguage: true,
+          facilityType: true,
+          serviceLinesJson: true,
+          facilityCareProfileJson: true,
+          timezone: true,
+        },
+      });
+
+      await tx.auditLog.create({
+        data: {
+          facilityId: id,
+          userId,
+          action: AuditAction.FACILITY_CARE_PROFILE_UPDATED,
+          entityType: "Facility",
+          entityId: id,
+          metadata: {
+            event: "FACILITY_CARE_PROFILE_UPDATED",
+            facilityType: nextType,
+            careProfile: profile,
+            serviceLines: serialized,
+            resetToTypeDefaults: dto.resetToTypeDefaults === true,
+          },
+        },
+      });
+
+      return row;
     });
 
     await ensureFacilityServiceLineDepartments(this.prisma, id, {

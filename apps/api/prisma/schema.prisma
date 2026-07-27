@@ -46,6 +46,8 @@ model Facility {
   facilityType                           FacilityType                           @default(CLINIC)
   /// Optional override of default service lines for this facility type (JSON string array).
   serviceLinesJson                       Json?
+  /// MEDUI.D4C.1 — ambulatory care profile, optional modules, operational address / print identity (additive JSON).
+  facilityCareProfileJson                Json?
   auditLogs                              AuditLog[]
   billingEvents                          BillingEvent[]
   billingReviewDecisions                 BillingReviewDecision[]
@@ -7061,6 +7063,8 @@ enum AuditAction {
   UC_TO_ED_CONVERSION_COMPLETED
   /// Phase 19UCED.2 — patient acknowledgment captured for UC→ED conversion (PHI-safe metadata).
   UC_TO_ED_PATIENT_ACKNOWLEDGED
+  /// MEDUI.D4C.1 — facility care profile / service-line / operational address update (PHI-safe metadata only).
+  FACILITY_CARE_PROFILE_UPDATED
   /// MEDNOTE.2 — encounter note governance (PHI-safe metadata only).
   ENCOUNTER_NOTE_AMENDED
   ENCOUNTER_NOTE_VOIDED
