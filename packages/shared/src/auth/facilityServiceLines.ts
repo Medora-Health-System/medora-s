@@ -67,6 +67,9 @@ function dedupePreserveOrder(lines: MedoraServiceLine[]): MedoraServiceLine[] {
 function orderServiceLines(lines: MedoraServiceLine[]): MedoraServiceLine[] {
   const orderIndex = new Map<MedoraServiceLine, number>();
   let index = 0;
+  /** Ambulatory Clinic/UC lines lead for D4C.1 presentation stability. */
+  orderIndex.set("CLINIC", index++);
+  orderIndex.set("URGENT_CARE", index++);
   for (const entry of CLINICAL_DEPARTMENT_REGISTRY) {
     orderIndex.set(entry.code, index++);
   }
@@ -147,12 +150,14 @@ export function facilitySupportsObservationAccessForTechnician(
 export function mapServiceLineToClinicalDepartmentCode(
   line: MedoraServiceLine
 ): ClinicalDepartmentCode | null {
-  if (line === "PHARMACY") return null;
+  if (line === "PHARMACY" || line === "CLINIC" || line === "URGENT_CARE") return null;
   if (isClinicalDepartmentCode(line)) return line;
   return null;
 }
 
 export function mapServiceLineToPrismaDepartmentCodes(line: MedoraServiceLine): string[] {
   if (line === "PHARMACY") return ["PHARM"];
+  /** Ambulatory Clinic/UC lines seed legacy PRIMARY_CARE department (no new Prisma enum). */
+  if (line === "CLINIC" || line === "URGENT_CARE") return ["PRIMARY_CARE"];
   return [line];
 }

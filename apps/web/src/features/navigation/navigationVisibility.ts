@@ -43,6 +43,7 @@ export function filterSidebarNavItemsByNavigationAreas(
   return filterHrefListForFreestandingErRnProviderSidebar(areaFiltered, {
     roleCodes: profile.roleCodes,
     facilityType: profile.facilityType,
+    facilityServiceLines: profile.facilityServiceLines,
   });
 }
 

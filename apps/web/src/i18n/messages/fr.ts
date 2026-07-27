@@ -4794,6 +4794,8 @@ export default {
     serviceLineLaboratory: "Laboratoire",
     serviceLineRadiology: "Radiologie",
     serviceLinePharmacy: "Pharmacie",
+    serviceLineClinic: "Clinique",
+    serviceLineUrgentCare: "Soins urgents",
     defaultLanguageLabel: "Langue par défaut *",
     langFr: "Français",
     langEn: "English",
@@ -9568,6 +9570,15 @@ export default {
   enterpriseRehabilitationWorkspacesD4b5: enterpriseRehabilitationWorkspacesD4b5Fr,
   enterpriseInterdisciplinaryCarePlansD4b6: enterpriseInterdisciplinaryCarePlansD4b6Fr,
   enterpriseCaseManagementDischargePlanningD4b7: enterpriseCaseManagementDischargePlanningD4b7Fr,
+
+  clinicCareD4c1: {
+    title: "Soins cliniques",
+    subtitle: "Fondation clinique et soins urgents ambulatoires. Le tableau de suivi coloré arrive en D4C.2.",
+    placeholderBody:
+      "Cette coquille réserve la navigation Soins cliniques. Les indicateurs (Visites du jour, En attente, En cours, Résultats en attente, Prêt pour la sortie, Suivis à faire) sont contractés pour D4C.2.",
+    deferredNote: "Interface complète du tableau de suivi reportée à MEDUI.D4C.2.",
+  },
+
   enterpriseProviderClinicalWorkspaceD4b8: enterpriseProviderClinicalWorkspaceD4b8Fr,
   erMseSmartAssist: {
     traumaLevels: {

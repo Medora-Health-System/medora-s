@@ -30,6 +30,8 @@ const medoraServiceLineSchema = z.enum([
   "LABORATORY",
   "RADIOLOGY",
   "PHARMACY",
+  "CLINIC",
+  "URGENT_CARE",
 ]);
 
 export const MEDORA_FACILITY_TYPE_CODES = MEDORA_FACILITY_TYPE_REGISTRY.map((entry) => entry.code);
@@ -49,6 +51,58 @@ const optStr = (max: number) =>
     .optional()
     .nullable()
     .transform((s) => (s == null || String(s).trim() === "" ? null : String(s).trim()));
+
+const facilityOptionalModulesSchema = z.object({
+  laboratory: z.boolean().optional(),
+  radiology: z.boolean().optional(),
+  pharmacy: z.boolean().optional(),
+  publicHealth: z.boolean().optional(),
+  billing: z.boolean().optional(),
+});
+
+const facilityOperationalAddressSchema = z
+  .object({
+    line1: optStr(512),
+    line2: optStr(512),
+    city: optStr(256),
+    stateProvince: optStr(128),
+    postalCode: optStr(32),
+    country: optStr(128),
+    phone: optStr(64),
+  })
+  .partial();
+
+/** MEDUI.D4C.1 — ambulatory care profile + operational address / print identity. */
+const facilityCareProfileFieldsSchema = z.object({
+  careProfile: z
+    .enum([
+      "CLINIC",
+      "URGENT_CARE",
+      "CLINIC_AND_URGENT_CARE",
+      "FREESTANDING_ER",
+      "HOSPITAL",
+      "OUTSIDE_DIAGNOSTIC",
+    ])
+    .optional()
+    .nullable(),
+  ambulatoryOperatingMode: z
+    .enum(["CLINIC", "URGENT_CARE", "CLINIC_AND_URGENT_CARE"])
+    .optional()
+    .nullable(),
+  ambulatorySubtype: z
+    .enum([
+      "PRIMARY_CARE_CLINIC",
+      "SPECIALTY_CLINIC",
+      "URGENT_CARE_CENTER",
+      "HYBRID_CLINIC_UC",
+    ])
+    .optional()
+    .nullable(),
+  optionalModules: facilityOptionalModulesSchema.optional().nullable(),
+  operationalAddress: facilityOperationalAddressSchema.optional().nullable(),
+  printDisplayName: optStr(512),
+  timezone: optStr(64),
+});
 
 function refineFacilityBillingNpi(d: { billingNpi?: string | null }, ctx: z.RefinementCtx) {
   if (d.billingNpi && !/^\d{10}$/.test(d.billingNpi)) {
@@ -88,13 +142,17 @@ export const createFacilityDtoSchema = z
   })
   .merge(facilityBillingIdentityFieldsSchema.partial())
   .merge(facilityBillingWorkflowCreateFieldsSchema.partial())
+  .merge(facilityCareProfileFieldsSchema.partial())
   .superRefine(refineFacilityBillingNpi);
 
-/** PATCH /admin/facilities/:id/service-config — facility type and service lines (MEDUI.FACILITY.TYPE.1). */
-export const updateFacilityServiceConfigDtoSchema = z.object({
-  facilityType: medoraFacilityTypeSchema.optional(),
-  serviceLines: z.array(medoraServiceLineSchema).optional().nullable(),
-});
+/** PATCH /admin/facilities/:id/service-config — facility type, service lines, D4C.1 care profile. */
+export const updateFacilityServiceConfigDtoSchema = z
+  .object({
+    facilityType: medoraFacilityTypeSchema.optional(),
+    serviceLines: z.array(medoraServiceLineSchema).optional().nullable(),
+    resetToTypeDefaults: z.boolean().optional(),
+  })
+  .merge(facilityCareProfileFieldsSchema.partial());
 
 export const facilityDtoSchema = z.object({
   id: z.string().uuid(),

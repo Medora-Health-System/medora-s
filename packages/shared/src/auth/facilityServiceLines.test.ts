@@ -56,8 +56,23 @@ describe("facilityServiceLines (MEDUI.FACILITY.TYPE.1)", () => {
 
   it("unknown facility type uses clinic defaults", () => {
     expect(resolveFacilityServiceLines({ facilityType: "NOT_REAL" })).toEqual([
-      "OBSERVATION",
+      "CLINIC",
       "LABORATORY",
+    ]);
+  });
+
+  it("clinic type defaults are ambulatory Clinic + Laboratory (MEDUI.D4C.1)", () => {
+    expect(resolveFacilityServiceLines({ facilityType: "CLINIC" })).toEqual([
+      "CLINIC",
+      "LABORATORY",
+    ]);
+  });
+
+  it("urgent care type defaults are ambulatory (MEDUI.D4C.1)", () => {
+    expect(resolveFacilityServiceLines({ facilityType: "URGENT_CARE" })).toEqual([
+      "URGENT_CARE",
+      "LABORATORY",
+      "RADIOLOGY",
     ]);
   });
 

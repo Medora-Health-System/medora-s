@@ -13,6 +13,8 @@ import { useI18n } from "@/lib/i18n";
 const PHARMACY_LINE: MedoraServiceLine = "PHARMACY";
 
 const SERVICE_LINE_OPTIONS: MedoraServiceLine[] = [
+  "CLINIC",
+  "URGENT_CARE",
   ...CLINICAL_DEPARTMENT_REGISTRY.map((entry) => entry.code),
   PHARMACY_LINE,
 ];
@@ -50,6 +52,8 @@ function facilityTypeLabelKey(code: MedoraFacilityType): string {
 
 function serviceLineLabelKey(line: MedoraServiceLine): string {
   if (line === "PHARMACY") return "adminUsers.serviceLinePharmacy";
+  if (line === "CLINIC") return "adminUsers.serviceLineClinic";
+  if (line === "URGENT_CARE") return "adminUsers.serviceLineUrgentCare";
   return `adminUsers.serviceLine${line
     .split("_")
     .map((part) => part.charAt(0) + part.slice(1).toLowerCase())

@@ -5,7 +5,6 @@ import { resolveProfessionGroup } from "./professionResolver.js";
 
 const FREESTANDING_OPERATIONAL_FACILITY_TYPES = new Set<MedoraFacilityType>([
   "FREESTANDING_ER",
-  "URGENT_CARE",
 ]);
 
 /** MEDUI.ED.PROCEDURE.TECH.1A / MEDUI.FSER.ROLE.1 — FSER RN/Provider operational sidebar (routes unchanged). */
@@ -21,9 +20,17 @@ export type FreestandingErRnProviderSidebarHref =
   (typeof FREESTANDING_ER_RN_PROVIDER_SIDEBAR_HREFS)[number];
 
 export function isFreestandingErOperationalFacilityType(
-  facilityType: MedoraFacilityType | string | null | undefined
+  facilityType: MedoraFacilityType | string | null | undefined,
+  facilityServiceLines?: readonly string[] | null
 ): boolean {
-  return FREESTANDING_OPERATIONAL_FACILITY_TYPES.has(normalizeFacilityType(facilityType));
+  const type = normalizeFacilityType(facilityType);
+  if (FREESTANDING_OPERATIONAL_FACILITY_TYPES.has(type)) return true;
+  /** Hybrid UC+ED only when EMERGENCY line is explicitly configured (MEDUI.D4C.1). */
+  if (type === "URGENT_CARE") {
+    const lines = (facilityServiceLines ?? []).map((l) => String(l).trim().toUpperCase());
+    return lines.includes("EMERGENCY");
+  }
+  return false;
 }
 
 function normalizeRoleCodes(roleCodes: readonly string[] | undefined): string[] {
@@ -37,12 +44,13 @@ function normalizeRoleCodes(roleCodes: readonly string[] | undefined): string[] 
 export function shouldApplyFreestandingErRnProviderSidebarAllowlist(input: {
   roleCodes: readonly string[];
   facilityType?: MedoraFacilityType | string | null;
+  facilityServiceLines?: readonly string[] | null;
 }): boolean {
   const profession = resolveProfessionGroup({ roleCodes: input.roleCodes });
   if (profession !== "RN" && profession !== "PROVIDER") {
     return false;
   }
-  return isFreestandingErOperationalFacilityType(input.facilityType);
+  return isFreestandingErOperationalFacilityType(input.facilityType, input.facilityServiceLines);
 }
 
 /** Resolve allowed sidebar hrefs for FSER RN/Provider; radiology worklist only when user has RADIOLOGY role. */
@@ -62,6 +70,7 @@ export function filterHrefListForFreestandingErRnProviderSidebar<T extends { hre
   input: {
     roleCodes: readonly string[];
     facilityType?: MedoraFacilityType | string | null;
+    facilityServiceLines?: readonly string[] | null;
     professionGroup?: ProfessionGroup;
   }
 ): T[] {

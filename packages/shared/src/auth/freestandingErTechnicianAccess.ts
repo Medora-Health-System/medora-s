@@ -16,7 +16,7 @@ export type FreestandingErTechnicianAccessInput = {
   encounterDepartmentCode?: string | null;
 };
 
-const FREESTANDING_FACILITY_TYPES = new Set<MedoraFacilityType>(["FREESTANDING_ER", "URGENT_CARE"]);
+const FREESTANDING_FACILITY_TYPES = new Set<MedoraFacilityType>(["FREESTANDING_ER"]);
 const TECHNICIAN_ROLE_CODES = new Set(["LAB", "RADIOLOGY"]);
 const STANDARD_TRACKBOARD_ROLES = new Set([
   "FRONT_DESK",
@@ -30,8 +30,20 @@ function normalizeRoleCodes(roleCodes: readonly string[] | undefined): string[] 
   return (roleCodes ?? []).map((code) => code.trim().toUpperCase()).filter(Boolean);
 }
 
-function isFreestandingErOrUrgentCareFacility(facilityType: MedoraFacilityType | string | null | undefined): boolean {
-  return FREESTANDING_FACILITY_TYPES.has(normalizeFacilityType(facilityType));
+function isFreestandingErOrUrgentCareFacility(
+  facilityType: MedoraFacilityType | string | null | undefined,
+  facilityServiceLines?: readonly string[] | null
+): boolean {
+  const type = normalizeFacilityType(facilityType);
+  if (FREESTANDING_FACILITY_TYPES.has(type)) return true;
+  if (type === "URGENT_CARE") {
+    const lines = resolveFacilityServiceLines({
+      facilityType: type,
+      configuredServiceLines: facilityServiceLines ?? null,
+    });
+    return lines.includes("EMERGENCY");
+  }
+  return false;
 }
 
 function isLabOrRadTechnicianRole(roleCodes: readonly string[]): boolean {
@@ -82,7 +94,7 @@ function baseFreestandingErTechnicianEligible(input: FreestandingErTechnicianAcc
   if (!departmentAllowsFreestandingErTechnicianRead(input.departmentCode)) {
     return false;
   }
-  if (!isFreestandingErOrUrgentCareFacility(input.facilityType)) {
+  if (!isFreestandingErOrUrgentCareFacility(input.facilityType, input.facilityServiceLines)) {
     return false;
   }
   return true;

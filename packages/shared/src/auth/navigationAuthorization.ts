@@ -18,6 +18,7 @@ export type NavigationArea =
   | "REGISTRATION"
   | "EMERGENCY"
   | "HOSPITAL"
+  | "CLINIC_CARE"
   | "LABORATORY"
   | "RADIOLOGY"
   | "PHARMACY"
@@ -29,6 +30,7 @@ export const NAVIGATION_AREAS: readonly NavigationArea[] = [
   "REGISTRATION",
   "EMERGENCY",
   "HOSPITAL",
+  "CLINIC_CARE",
   "LABORATORY",
   "RADIOLOGY",
   "PHARMACY",
@@ -40,8 +42,9 @@ const NAVIGATION_AREA_ORDER: NavigationArea[] = [...NAVIGATION_AREAS];
 
 const FREESTANDING_OPERATIONAL_FACILITY_TYPES = new Set<MedoraFacilityType>([
   "FREESTANDING_ER",
-  "URGENT_CARE",
 ]);
+
+const AMBULATORY_FACILITY_TYPES = new Set<MedoraFacilityType>(["CLINIC", "URGENT_CARE"]);
 
 const ALL_NAVIGATION_AREAS: NavigationArea[] = [...NAVIGATION_AREAS];
 
@@ -88,9 +91,25 @@ function normalizeRoleCodes(roleCodes: readonly string[] | undefined): string[] 
 }
 
 function isFreestandingErOperationalFacility(
+  facilityType?: MedoraFacilityType | string | null,
+  facilityServiceLines?: readonly MedoraServiceLine[] | null
+): boolean {
+  const type = normalizeFacilityType(facilityType);
+  if (FREESTANDING_OPERATIONAL_FACILITY_TYPES.has(type)) return true;
+  /**
+   * MEDUI.D4C.1 — URGENT_CARE is ambulatory by default.
+   * Hybrid UC+ED only when EMERGENCY service line is explicitly configured.
+   */
+  if (type === "URGENT_CARE" && facilityServiceLines?.includes("EMERGENCY")) {
+    return true;
+  }
+  return false;
+}
+
+function isAmbulatoryOperationalFacility(
   facilityType?: MedoraFacilityType | string | null
 ): boolean {
-  return FREESTANDING_OPERATIONAL_FACILITY_TYPES.has(normalizeFacilityType(facilityType));
+  return AMBULATORY_FACILITY_TYPES.has(normalizeFacilityType(facilityType));
 }
 
 function sortNavigationAreas(areas: readonly NavigationArea[]): NavigationArea[] {
@@ -111,7 +130,7 @@ function supplementFreestandingErRnProviderNavigationAreas(
     roleCodes: readonly string[];
   }
 ): NavigationArea[] {
-  if (!isFreestandingErOperationalFacility(input.facilityType)) {
+  if (!isFreestandingErOperationalFacility(input.facilityType, input.facilityServiceLines)) {
     return areas;
   }
   if (input.professionGroup !== "RN" && input.professionGroup !== "PROVIDER") {
@@ -139,6 +158,64 @@ function supplementFreestandingErRnProviderNavigationAreas(
   return sortNavigationAreas([...result]);
 }
 
+/**
+ * MEDUI.D4C.1 — Clinic / Urgent Care ambulatory operational menus.
+ * Registration + Clinic Care without ED/Hospital unless hybrid lines present.
+ */
+function supplementClinicCareNavigationAreas(
+  areas: NavigationArea[],
+  input: {
+    professionGroup: ProfessionGroup;
+    facilityType?: MedoraFacilityType | string | null;
+    facilityServiceLines: readonly MedoraServiceLine[];
+    roleCodes: readonly string[];
+  }
+): NavigationArea[] {
+  if (!isAmbulatoryOperationalFacility(input.facilityType)) {
+    return areas;
+  }
+
+  const lineSet = new Set(input.facilityServiceLines);
+  const hasAmbulatoryLine = lineSet.has("CLINIC") || lineSet.has("URGENT_CARE");
+  if (!hasAmbulatoryLine) {
+    return areas;
+  }
+
+  const result = new Set(areas);
+  const roles = normalizeRoleCodes(input.roleCodes);
+
+  if (
+    input.professionGroup === "RN" ||
+    input.professionGroup === "PROVIDER" ||
+    input.professionGroup === "FRONT_DESK" ||
+    input.professionGroup === "ADMIN"
+  ) {
+    result.add("REGISTRATION");
+    result.add("CLINIC_CARE");
+  }
+
+  // Authorized technicians may access Clinic Care shell + trackboard/Today's Visits projections
+  // at ambulatory Clinic / UC. Shell visibility ≠ provider/nursing source authority.
+  if (input.professionGroup === "TECHNICIAN") {
+    result.add("CLINIC_CARE");
+    if (roles.includes("LAB") && lineSet.has("LABORATORY")) {
+      result.add("LABORATORY");
+    }
+    if (roles.includes("RADIOLOGY") && lineSet.has("RADIOLOGY")) {
+      result.add("RADIOLOGY");
+    }
+  }
+
+  if (input.professionGroup === "RN" || input.professionGroup === "PROVIDER") {
+    if (lineSet.has("LABORATORY")) result.add("LABORATORY");
+    if (roles.includes("RADIOLOGY") && lineSet.has("RADIOLOGY")) {
+      result.add("RADIOLOGY");
+    }
+  }
+
+  return sortNavigationAreas([...result]);
+}
+
 function serviceLineToNavigationArea(line: MedoraServiceLine): NavigationArea | null {
   switch (line) {
     case "EMERGENCY":
@@ -149,6 +226,9 @@ function serviceLineToNavigationArea(line: MedoraServiceLine): NavigationArea | 
       return "RADIOLOGY";
     case "PHARMACY":
       return "PHARMACY";
+    case "CLINIC":
+    case "URGENT_CARE":
+      return "CLINIC_CARE";
     case "OBSERVATION":
     case "ICU":
     case "MEDSURG":
@@ -303,6 +383,13 @@ function applyFacilityServiceLineNavigationFilter(
     roleCodes: input.roleCodes,
   });
 
+  filtered = supplementClinicCareNavigationAreas(filtered, {
+    professionGroup: input.professionGroup,
+    facilityType: input.facilityType,
+    facilityServiceLines: serviceLines,
+    roleCodes: input.roleCodes,
+  });
+
   return filtered;
 }
 
@@ -326,7 +413,7 @@ export function resolveNavigationAreas(input: ResolveNavigationAreasInput): Navi
   } else if (professionGroup === "BILLING") {
     baseAreas = ["DASHBOARD", "BILLING"];
   } else if (professionGroup === "FRONT_DESK") {
-    baseAreas = ["DASHBOARD"];
+    baseAreas = ["DASHBOARD", "REGISTRATION"];
   } else if (professionGroup === "PROVIDER" || professionGroup === "RN") {
     if (department === "EMERGENCY" || department == null) {
       baseAreas = ["DASHBOARD", "EMERGENCY"];
@@ -409,6 +496,7 @@ export const NAVIGATION_AREA_LANDING_PATH: Record<NavigationArea, string> = {
   REGISTRATION: "/app/registration",
   EMERGENCY: "/app/emergency/trackboard",
   HOSPITAL: "/app/hospitalisation",
+  CLINIC_CARE: "/app/clinic-care",
   LABORATORY: "/app/lab-worklist",
   RADIOLOGY: "/app/rad-worklist",
   PHARMACY: "/app/pharmacy",
@@ -417,6 +505,7 @@ export const NAVIGATION_AREA_LANDING_PATH: Record<NavigationArea, string> = {
 };
 
 const LANDING_PRIORITY: NavigationArea[] = [
+  "CLINIC_CARE",
   "EMERGENCY",
   "HOSPITAL",
   "LABORATORY",
