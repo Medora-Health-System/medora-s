@@ -137,7 +137,7 @@ Reuses 19UCED workflow engine.
 | `WAITING` | `ARRIVED` / `TRIAGE` open |
 | `IN_PROGRESS` | `IN_TREATMENT` / `DISPOSITION` open |
 | `RESULTS_PENDING` | `RESULTS_PENDING` ± pending diagnostic orders |
-| `READY_FOR_DISCHARGE` | `DISCHARGE_READY` / `FINALIZED` open |
+| `DISCHARGE_PENDING` (ambulatory KPI; private legacy alias READY_FOR_COMPLETION) | `DISCHARGE_READY` / `FINALIZED` open |
 | `FOLLOW_UPS_DUE` | Open `FollowUp` due today |
 
 ---

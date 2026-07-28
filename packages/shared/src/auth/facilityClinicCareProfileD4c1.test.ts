@@ -153,7 +153,8 @@ describe("MEDUI.D4C.1 facility clinic care profile", () => {
     expect(tech.canAccessTechnicianSafeNursingMaProjection).toBe(true);
     expect(tech.canAccessProviderDocumentation).toBe(false);
     expect(front.canAccessRegistration).toBe(true);
-    expect(front.canAccessClinicCareShell).toBe(false);
+    expect(front.canAccessClinicCareShell).toBe(true);
+    expect(front.canAccessClinicTrackboardProjection).toBe(true);
     expect(front.canAuthorProviderDocumentation).toBe(false);
     expect(front.canAuthorIndependentNursingAssessment).toBe(false);
   });
@@ -296,36 +297,92 @@ describe("MEDUI.D4C.1 facility clinic care profile", () => {
     expect(hybrid.areas).toContain("CLINIC_CARE");
   });
 
-  it("8. Front Desk still does not gain clinical documentation authority", () => {
+  it("8. Front Desk gains Clinic Care shell without clinical documentation authority", () => {
     const caps = resolveFacilityModuleCapabilitiesD4c1({ facilityType: "CLINIC" });
     const front = resolveClinicCareWorkspaceRoleAccess({
       professionGroup: "FRONT_DESK",
       moduleCapabilities: caps,
       roleCodes: ["FRONT_DESK"],
     });
-    expect(front.canAccessClinicCareShell).toBe(false);
+    expect(front.canAccessClinicCareShell).toBe(true);
+    expect(front.canAccessClinicTrackboardProjection).toBe(true);
+    expect(front.canAccessTodaysVisitsProjection).toBe(true);
+    expect(front.canAccessPatients).toBe(true);
+    expect(front.canAccessEncounters).toBe(true);
+    expect(front.canAccessFollowUps).toBe(false);
     expect(front.canAccessProviderDocumentation).toBe(false);
     expect(front.canAccessNursingMa).toBe(false);
     expect(front.canAuthorProviderDocumentation).toBe(false);
     expect(front.canAuthorIndependentNursingAssessment).toBe(false);
     expect(front.canMutateDiagnosesOrProblemList).toBe(false);
     expect(front.canPrescribe).toBe(false);
+    expect(front.canIssueProviderOrders).toBe(false);
+    expect(front.canCompleteDispositionOrEncounter).toBe(false);
+    expect(front.canSignAsNurseOrProvider).toBe(false);
     expect(front.canAccessRegistration).toBe(true);
   });
 
-  it("defines six D4C.2 trackboard metric contracts without hard-coded facility names", () => {
+  it("9. Billing gains Clinic Care shell without clinical authority", () => {
+    const caps = resolveFacilityModuleCapabilitiesD4c1({ facilityType: "CLINIC" });
+    const billing = resolveClinicCareWorkspaceRoleAccess({
+      professionGroup: "BILLING",
+      moduleCapabilities: caps,
+      roleCodes: ["BILLING"],
+    });
+    expect(billing.canAccessClinicCareShell).toBe(true);
+    expect(billing.canAccessClinicTrackboardProjection).toBe(true);
+    expect(billing.canAccessBilling).toBe(true);
+    expect(billing.canAccessPatients).toBe(true);
+    expect(billing.canAccessEncounters).toBe(true);
+    expect(billing.canAuthorProviderDocumentation).toBe(false);
+    expect(billing.canIssueProviderOrders).toBe(false);
+    expect(billing.canPrescribe).toBe(false);
+    expect(billing.canCompleteDispositionOrEncounter).toBe(false);
+  });
+
+  it("10. Pharmacy Clinic Care shell requires clinic + pharmacy module", () => {
+    const clinicNoPharm = resolveFacilityModuleCapabilitiesD4c1({ facilityType: "CLINIC" });
+    expect(clinicNoPharm.pharmacyEnabled).toBe(false);
+    const denied = resolveClinicCareWorkspaceRoleAccess({
+      professionGroup: "PHARMACY",
+      moduleCapabilities: clinicNoPharm,
+      roleCodes: ["PHARMACY"],
+    });
+    expect(denied.canAccessClinicCareShell).toBe(false);
+    expect(denied.canAccessPharmacy).toBe(false);
+
+    const withPharm = resolveFacilityModuleCapabilitiesD4c1({
+      facilityType: "CLINIC",
+      careProfileJson: {
+        schemaVersion: 1,
+        optionalModules: { pharmacy: true },
+      },
+    });
+    expect(withPharm.pharmacyEnabled).toBe(true);
+    const allowed = resolveClinicCareWorkspaceRoleAccess({
+      professionGroup: "PHARMACY",
+      moduleCapabilities: withPharm,
+      roleCodes: ["PHARMACY"],
+    });
+    expect(allowed.canAccessClinicCareShell).toBe(true);
+    expect(allowed.canAccessPharmacy).toBe(true);
+    expect(allowed.canAuthorProviderDocumentation).toBe(false);
+  });
+
+  it("defines metric contracts with six primary KPIs including Discharge Pending", () => {
     expect(CLINIC_CARE_TRACKBOARD_METRIC_IDS).toHaveLength(6);
     expect(CLINIC_CARE_TRACKBOARD_METRIC_CONTRACTS.map((c) => c.id)).toEqual([
       "TODAYS_VISITS",
       "WAITING",
       "IN_PROGRESS",
       "RESULTS_PENDING",
-      "READY_FOR_DISCHARGE",
+      "DISCHARGE_PENDING",
       "FOLLOW_UPS_DUE",
     ]);
     const blob = JSON.stringify(CLINIC_CARE_TRACKBOARD_METRIC_CONTRACTS);
     expect(blob.toLowerCase()).not.toContain("rapid city");
     expect(blob.toLowerCase()).not.toContain("wayne");
+    expect(blob).not.toContain("READY_FOR_COMPLETION");
   });
 
   it("clinic RN visible areas do not include emergency", () => {
