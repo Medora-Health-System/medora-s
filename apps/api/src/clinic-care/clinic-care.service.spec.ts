@@ -367,3 +367,125 @@ describe("MEDUI.D4C.2 ClinicCareService projection", () => {
     expect(result.providerProductivity?.[0]?.providerDisplayName).toContain("Ada");
   });
 });
+
+describe("MEDUI.D4C.6 ambulatory orders board / results inbox", () => {
+  it("A. orders board queries ambulatory encounter types only", async () => {
+    const prisma = {
+      order: {
+        findMany: jest.fn().mockResolvedValue([]),
+      },
+    };
+    const service = new ClinicCareService(prisma as never, {
+      getOperationalAggregatesForEncounterIds: jest.fn(),
+    } as never);
+    const access = clinicAccess("PROVIDER");
+    const result = await service.getAmbulatoryOrdersBoardProjection({
+      facilityId: "fac-1",
+      facility: { name: "Clinic", timezone: "America/Port-au-Prince" },
+      access,
+      professionGroup: "PROVIDER",
+    });
+    expect(result.careSettingProjection).toBe("AMBULATORY");
+    expect(result.ambulatoryEncounterTypes).toEqual(["OUTPATIENT", "URGENT_CARE"]);
+    expect(result.authority.noClinicOrderEntity).toBe(true);
+    const where = prisma.order.findMany.mock.calls[0][0].where;
+    expect(where.facilityId).toBe("fac-1");
+    expect(where.encounter.type.in).toEqual(["OUTPATIENT", "URGENT_CARE"]);
+  });
+
+  it("B. front desk forbidden from orders board", async () => {
+    const service = new ClinicCareService({ order: { findMany: jest.fn() } } as never, {
+      getOperationalAggregatesForEncounterIds: jest.fn(),
+    } as never);
+    await expect(
+      service.getAmbulatoryOrdersBoardProjection({
+        facilityId: "fac-1",
+        facility: { name: "Clinic", timezone: "UTC" },
+        access: clinicAccess("FRONT_DESK"),
+        professionGroup: "FRONT_DESK",
+      })
+    ).rejects.toThrow(/denied/i);
+  });
+
+  it("C. results inbox classifies critical and defers ack comment", async () => {
+    const prisma = {
+      orderItem: {
+        findMany: jest.fn().mockResolvedValue([
+          {
+            id: "item-1",
+            status: "RESULTED",
+            catalogItemType: "LAB_TEST",
+            manualLabel: "Potassium",
+            manualSecondaryText: null,
+            result: {
+              id: "r1",
+              resultText: "7.2 CRITICAL",
+              criticalValue: true,
+              verifiedAt: new Date("2026-07-28T10:00:00.000Z"),
+              acknowledgedByProviderAt: null,
+              acknowledgedByUserId: null,
+            },
+            order: {
+              id: "ord-1",
+              type: "LAB",
+              status: "RESULTED",
+              priority: "STAT",
+              encounterId: "enc-1",
+              encounter: {
+                id: "enc-1",
+                type: "OUTPATIENT",
+                status: "OPEN",
+                patientId: "p1",
+                patient: { id: "p1", firstName: "Jean", lastName: "Test", mrn: "MRN1" },
+              },
+            },
+          },
+        ]),
+      },
+    };
+    const service = new ClinicCareService(prisma as never, {
+      getOperationalAggregatesForEncounterIds: jest.fn(),
+    } as never);
+    const result = await service.getAmbulatoryResultsInboxProjection({
+      facilityId: "fac-1",
+      facility: { name: "Clinic", timezone: "UTC" },
+      access: clinicAccess("PROVIDER"),
+      professionGroup: "PROVIDER",
+      roleCodes: ["PROVIDER"],
+    });
+    expect(result.rows).toHaveLength(1);
+    expect(result.rows[0]!.critical).toBe(true);
+    expect(result.rows[0]!.primaryGroup).toBe("CRITICAL");
+    expect(result.authority.acknowledgeEndpoint).toBe("POST /orders/:id/result/acknowledge");
+    expect(result.authority.acknowledgeCommentDeferred).toBe(true);
+    expect(result.authority.noClinicResultEntity).toBe(true);
+    expect(result.groupCounts.CRITICAL).toBe(1);
+  });
+
+  it("D. technician may view results tech-safe without place/ack escalation on orders", async () => {
+    const prisma = {
+      order: { findMany: jest.fn().mockResolvedValue([]) },
+      orderItem: { findMany: jest.fn().mockResolvedValue([]) },
+    };
+    const service = new ClinicCareService(prisma as never, {
+      getOperationalAggregatesForEncounterIds: jest.fn(),
+    } as never);
+    const access = clinicAccess("TECHNICIAN");
+    const orders = await service.getAmbulatoryOrdersBoardProjection({
+      facilityId: "fac-1",
+      facility: { name: "Clinic", timezone: "UTC" },
+      access,
+      professionGroup: "TECHNICIAN",
+    });
+    expect(orders.access.techSafeOnly).toBe(true);
+    expect(orders.access.canPlaceOrders).toBe(false);
+    const results = await service.getAmbulatoryResultsInboxProjection({
+      facilityId: "fac-1",
+      facility: { name: "Clinic", timezone: "UTC" },
+      access,
+      professionGroup: "TECHNICIAN",
+      roleCodes: ["PATIENT_CARE_TECH"],
+    });
+    expect(results.access.canAcknowledgeResults).toBe(false);
+  });
+});

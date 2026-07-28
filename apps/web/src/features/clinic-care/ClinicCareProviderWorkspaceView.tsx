@@ -11,6 +11,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import {
   clinicCareAmbulatoryProviderChartPath,
+  clinicCareAmbulatoryResultsChartPath,
   clinicCareRowMatchesView,
   facilityLocalDayUtcBounds,
   projectClinicCareProviderQueueGroup,
@@ -283,9 +284,21 @@ export function ClinicCareProviderWorkspaceView() {
                             ))}
                         </td>
                         <td style={td}>
-                          <Link href={href} style={compactBtn}>
-                            {t("clinicCareD4c5.openDocumentation")}
-                          </Link>
+                          <div style={{ display: "inline-flex", flexWrap: "wrap", gap: 6 }}>
+                            <Link href={href} style={compactBtn}>
+                              {t("clinicCareD4c5.openDocumentation")}
+                            </Link>
+                            {group === "RESULTS_PENDING" || row.resultsPendingCount > 0 ? (
+                              <Link
+                                href={clinicCareAmbulatoryResultsChartPath(row.encounterId)}
+                                style={compactBtn}
+                                data-testid={`clinic-care-provider-results-${row.encounterId}`}
+                              >
+                                {t("clinicCareD4c6.openResultsShort")}
+                                {row.resultsPendingCount > 0 ? ` (${row.resultsPendingCount})` : ""}
+                              </Link>
+                            ) : null}
+                          </div>
                         </td>
                       </tr>
                     );

@@ -889,7 +889,20 @@ export function ClinicCareTrackboardView({
                       {visibility.showOpenOrderCount ? (
                         <td style={tdStyle}>
                           {row.openOrderCount > 0 ? (
-                            <span style={countChip("#ea580c")}>{row.openOrderCount}</span>
+                            <span
+                              style={countChip("#ea580c")}
+                              title={t("clinicCareD4c6.visitBadges.openOrders").replace(
+                                "{count}",
+                                String(row.openOrderCount)
+                              )}
+                              aria-label={t("clinicCareD4c6.visitBadges.openOrders").replace(
+                                "{count}",
+                                String(row.openOrderCount)
+                              )}
+                              data-testid={`clinic-visit-open-orders-${row.encounterId}`}
+                            >
+                              {row.openOrderCount}
+                            </span>
                           ) : (
                             dash
                           )}
@@ -898,7 +911,20 @@ export function ClinicCareTrackboardView({
                       {visibility.showResultsPendingCount ? (
                         <td style={tdStyle}>
                           {row.resultsPendingCount > 0 ? (
-                            <span style={countChip("#9333ea")}>{row.resultsPendingCount}</span>
+                            <span
+                              style={countChip("#9333ea")}
+                              title={t("clinicCareD4c6.visitBadges.resultsPending").replace(
+                                "{count}",
+                                String(row.resultsPendingCount)
+                              )}
+                              aria-label={t("clinicCareD4c6.visitBadges.resultsPending").replace(
+                                "{count}",
+                                String(row.resultsPendingCount)
+                              )}
+                              data-testid={`clinic-visit-results-pending-${row.encounterId}`}
+                            >
+                              {row.resultsPendingCount}
+                            </span>
                           ) : (
                             dash
                           )}

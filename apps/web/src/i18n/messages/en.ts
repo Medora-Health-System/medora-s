@@ -9931,6 +9931,92 @@ export default {
     },
   },
 
+  clinicCareD4c6: {
+    nav: {
+      orders: "Orders",
+      results: "Results",
+    },
+    ordersTitle: "Ambulatory order board",
+    ordersSubtitle:
+      "Facility + ambulatory projection over the shared order engine — no ClinicOrder.",
+    resultsTitle: "Results inbox",
+    resultsSubtitle:
+      "Ambulatory lab/imaging results — acknowledge via the enterprise acknowledgement engine.",
+    categoryFilters: "Category filters",
+    statusFilters: "Status filters",
+    groupFilters: "Result groups",
+    ordersSearchPlaceholder: "Search patient, MRN, or study…",
+    ordersEmpty: "No ambulatory orders match this filter.",
+    resultsEmpty: "No ambulatory results in this group.",
+    placementHint:
+      "To place an order, open the chart (Orders tab) — enterprise composer and catalog only.",
+    techSafeOrdersNote:
+      "Tech-safe view: queue visibility only. No prescribing or clinical acknowledgement.",
+    techSafeResultsNote:
+      "Tech-safe view: read only. Clinical acknowledgement is reserved for provider / RN.",
+    ackCommentDeferred:
+      "Acknowledgement comment deferred (no Result comment column — no Prisma migration).",
+    openOrder: "View order",
+    placeOrder: "Orders (chart)",
+    openResult: "View result",
+    openResultsShort: "Results",
+    acknowledge: "Acknowledge",
+    noLineItems: "No line items",
+    truncatedHint: "List truncated — refine filters or open the patient chart.",
+    ackMeta: "Acknowledged {time} · user {user}",
+    categories: {
+      all: "All",
+      lab: "Lab",
+      imaging: "Imaging",
+      medication: "Medications",
+      care: "Care / procedures",
+    },
+    statuses: {
+      all: "All",
+      active: "Active",
+      pending: "Pending",
+      placed: "Placed",
+      signed: "Signed",
+      acknowledged: "Acknowledged",
+      in_progress: "In progress",
+      completed: "Completed",
+      resulted: "Resulted",
+      verified: "Verified",
+      cancelled: "Cancelled",
+    },
+    groups: {
+      critical: "Critical",
+      abnormal: "Abnormal",
+      newFinal: "New final",
+      preliminary: "Preliminary",
+      acknowledged: "Acknowledged",
+      all: "All",
+    },
+    badges: {
+      critical: "CRITICAL",
+      abnormal: "ABNORMAL",
+      preliminary: "Preliminary",
+      acknowledged: "Acknowledged",
+    },
+    visitBadges: {
+      openOrders: "Open orders: {count}",
+      resultsPending: "Results pending: {count}",
+      critical: "Critical result unacknowledged",
+    },
+    insights: {
+      criticalUnacked: "{count} critical result(s) unacknowledged (ambulatory).",
+      resultsPending: "{count} result(s) pending (ambulatory).",
+      openOrders: "{count} open order(s) (ambulatory).",
+    },
+    errors: {
+      ordersLoadFailed: "Unable to load the ambulatory order board.",
+      resultsLoadFailed: "Unable to load the ambulatory results inbox.",
+      ordersAccessDenied: "Access denied to the ambulatory order board.",
+      resultsAccessDenied: "Access denied to the ambulatory results inbox.",
+      ackFailed: "Acknowledgement failed.",
+    },
+  },
+
   clinicCareD4c3: {
     title: "Clinic registration",
     subtitle: "Search or register a patient, check in a scheduled appointment, or start a walk-in visit.",

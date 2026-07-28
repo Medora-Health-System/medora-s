@@ -9929,6 +9929,92 @@ export default {
     },
   },
 
+  clinicCareD4c6: {
+    nav: {
+      orders: "Ordonnances",
+      results: "Résultats",
+    },
+    ordersTitle: "Tableau des ordonnances ambulatoires",
+    ordersSubtitle:
+      "Projection établissement + ambulatoire sur le moteur d’ordonnances partagé — pas de ClinicOrder.",
+    resultsTitle: "Boîte de réception des résultats",
+    resultsSubtitle:
+      "Résultats labo / imagerie ambulatoires — accusés via le moteur d’accusé de réception entreprise.",
+    categoryFilters: "Filtres par catégorie",
+    statusFilters: "Filtres par statut",
+    groupFilters: "Groupes de résultats",
+    ordersSearchPlaceholder: "Rechercher patient, MRN ou examen…",
+    ordersEmpty: "Aucune ordonnance ambulatoire ne correspond à ce filtre.",
+    resultsEmpty: "Aucun résultat ambulatoire dans ce groupe.",
+    placementHint:
+      "Pour poser une ordonnance, ouvrez le dossier (onglet Ordonnances) — composer et catalogue entreprise uniquement.",
+    techSafeOrdersNote:
+      "Vue technique sécurisée : consultation des files. Pas de prescription ni d’accusé clinique.",
+    techSafeResultsNote:
+      "Vue technique sécurisée : consultation uniquement. L’accusé de réception clinique est réservé au médecin / IDE.",
+    ackCommentDeferred:
+      "Commentaire d’accusé : reporté (pas de colonne commentaire sur Result — pas de migration Prisma).",
+    openOrder: "Voir l’ordonnance",
+    placeOrder: "Ordonnances (dossier)",
+    openResult: "Voir le résultat",
+    openResultsShort: "Résultats",
+    acknowledge: "Accuser réception",
+    noLineItems: "Sans lignes",
+    truncatedHint: "Liste tronquée — affinez les filtres ou ouvrez le dossier patient.",
+    ackMeta: "Accusé le {time} · utilisateur {user}",
+    categories: {
+      all: "Toutes",
+      lab: "Labo",
+      imaging: "Imagerie",
+      medication: "Médicaments",
+      care: "Soins / actes",
+    },
+    statuses: {
+      all: "Tous",
+      active: "Actives",
+      pending: "En attente",
+      placed: "Placées",
+      signed: "Signées",
+      acknowledged: "Accusées",
+      in_progress: "En cours",
+      completed: "Terminées",
+      resulted: "Résultats",
+      verified: "Vérifiées",
+      cancelled: "Annulées",
+    },
+    groups: {
+      critical: "Critiques",
+      abnormal: "Anormaux",
+      newFinal: "Nouveaux finals",
+      preliminary: "Préliminaires",
+      acknowledged: "Accusés",
+      all: "Tous",
+    },
+    badges: {
+      critical: "CRITIQUE",
+      abnormal: "ANORMAL",
+      preliminary: "Préliminaire",
+      acknowledged: "Accusé",
+    },
+    visitBadges: {
+      openOrders: "Ordonnances ouvertes : {count}",
+      resultsPending: "Résultats en attente : {count}",
+      critical: "Résultat critique non accusé",
+    },
+    insights: {
+      criticalUnacked: "{count} résultat(s) critique(s) non accusé(s) (ambulatoire).",
+      resultsPending: "{count} résultat(s) en attente (ambulatoire).",
+      openOrders: "{count} ordonnance(s) ouverte(s) (ambulatoire).",
+    },
+    errors: {
+      ordersLoadFailed: "Impossible de charger le tableau des ordonnances.",
+      resultsLoadFailed: "Impossible de charger la boîte de résultats.",
+      ordersAccessDenied: "Accès refusé au tableau des ordonnances ambulatoires.",
+      resultsAccessDenied: "Accès refusé à la boîte de résultats ambulatoires.",
+      ackFailed: "Accusé de réception impossible.",
+    },
+  },
+
   clinicCareD4c3: {
     title: "Inscription clinique",
     subtitle:

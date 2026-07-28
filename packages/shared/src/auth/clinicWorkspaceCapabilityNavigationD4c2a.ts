@@ -21,6 +21,10 @@ import {
   type FacilityNavigationResolution,
   type ResolveFacilityNavigationInput,
 } from "./facilityClinicCareProfileD4c1.js";
+import {
+  isClinicCareAmbulatoryOrdersNavVisible,
+  isClinicCareAmbulatoryResultsNavVisible,
+} from "./clinicCareAmbulatoryOrdersResultsD4c6.js";
 
 /** Typed Clinic workspace destinations (route-backed; nested under `/app/clinic-care`). */
 export const CLINIC_WORKSPACE_NAV_IDS = [
@@ -29,6 +33,8 @@ export const CLINIC_WORKSPACE_NAV_IDS = [
   "todaysVisits",
   "nursing",
   "provider",
+  "orders",
+  "results",
   "patients",
   "encounters",
   "followUp",
@@ -101,6 +107,22 @@ export const CLINIC_WORKSPACE_NAV_REGISTRY: readonly ClinicWorkspaceNavItem[] = 
     placement: "top",
     topTab: true,
     isVisible: (a) => a.canAccessProviderDocumentation && a.canAuthorProviderDocumentation,
+  },
+  {
+    id: "orders",
+    href: "/app/clinic-care/orders",
+    labelKey: "clinicCareD4c6.nav.orders",
+    placement: "top",
+    topTab: true,
+    isVisible: (a) => isClinicCareAmbulatoryOrdersNavVisible(a),
+  },
+  {
+    id: "results",
+    href: "/app/clinic-care/results",
+    labelKey: "clinicCareD4c6.nav.results",
+    placement: "top",
+    topTab: true,
+    isVisible: (a) => isClinicCareAmbulatoryResultsNavVisible(a),
   },
   {
     id: "patients",
@@ -375,6 +397,8 @@ export function resolveClinicWorkspaceActiveNavId(
     "todays-visits": "todaysVisits",
     nursing: "nursing",
     provider: "provider",
+    orders: "orders",
+    results: "results",
     patients: "patients",
     encounters: "encounters",
     "follow-up": "followUp",
