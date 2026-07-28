@@ -67,7 +67,7 @@ export type EnterpriseNursingWorkspaceSectionDefinition = {
   id: EnterpriseNursingWorkspaceSectionId;
   titleKey: string;
   /** Care settings where the section appears in sticky nav. */
-  visibleIn: ReadonlyArray<"EMERGENCY" | "OBSERVATION" | "INPATIENT">;
+  visibleIn: ReadonlyArray<"EMERGENCY" | "OBSERVATION" | "INPATIENT" | "AMBULATORY">;
   mode: EnterpriseNursingWorkspaceSectionMode;
   /** Logical nursing document type(s) projected into this section. */
   documentTypeIds: ReadonlyArray<string>;
@@ -94,7 +94,7 @@ export const ENTERPRISE_NURSING_WORKSPACE_SECTIONS: ReadonlyArray<EnterpriseNurs
     {
       id: "overview",
       titleKey: "enterpriseNursingClinicalWorkspaceD4b2.sections.overview",
-      visibleIn: ["EMERGENCY", "OBSERVATION", "INPATIENT"],
+      visibleIn: ["EMERGENCY", "OBSERVATION", "INPATIENT", "AMBULATORY"],
       mode: "PROJECTION",
       documentTypeIds: [],
       authoritativeSource: "NONE_DEFERRED",
@@ -110,7 +110,7 @@ export const ENTERPRISE_NURSING_WORKSPACE_SECTIONS: ReadonlyArray<EnterpriseNurs
     {
       id: "systems",
       titleKey: "enterpriseNursingClinicalWorkspaceD4b2.sections.systems",
-      visibleIn: ["EMERGENCY", "OBSERVATION", "INPATIENT"],
+      visibleIn: ["EMERGENCY", "OBSERVATION", "INPATIENT", "AMBULATORY"],
       mode: "LIVE_ENGINE",
       documentTypeIds: ["nursing.systems_assessment", "nursing.reassessment"],
       edocCategoryHint: "NURSING_ADMISSION_CARE_PLAN",
@@ -128,7 +128,7 @@ export const ENTERPRISE_NURSING_WORKSPACE_SECTIONS: ReadonlyArray<EnterpriseNurs
     {
       id: "pain",
       titleKey: "enterpriseNursingClinicalWorkspaceD4b2.sections.pain",
-      visibleIn: ["EMERGENCY", "OBSERVATION", "INPATIENT"],
+      visibleIn: ["EMERGENCY", "OBSERVATION", "INPATIENT", "AMBULATORY"],
       mode: "EDOC_HUB",
       documentTypeIds: ["nursing.pain_assessment"],
       edocCategoryHint: "PAIN_ASSESSMENT",
@@ -137,7 +137,7 @@ export const ENTERPRISE_NURSING_WORKSPACE_SECTIONS: ReadonlyArray<EnterpriseNurs
     {
       id: "neurological",
       titleKey: "enterpriseNursingClinicalWorkspaceD4b2.sections.neurological",
-      visibleIn: ["EMERGENCY", "OBSERVATION", "INPATIENT"],
+      visibleIn: ["EMERGENCY", "OBSERVATION", "INPATIENT", "AMBULATORY"],
       mode: "EDOC_HUB",
       documentTypeIds: ["nursing.neurological_assessment"],
       edocCategoryHint: "NEUROLOGICAL_ASSESSMENT",
@@ -146,7 +146,7 @@ export const ENTERPRISE_NURSING_WORKSPACE_SECTIONS: ReadonlyArray<EnterpriseNurs
     {
       id: "respiratory",
       titleKey: "enterpriseNursingClinicalWorkspaceD4b2.sections.respiratory",
-      visibleIn: ["EMERGENCY", "OBSERVATION", "INPATIENT"],
+      visibleIn: ["EMERGENCY", "OBSERVATION", "INPATIENT", "AMBULATORY"],
       mode: "EDOC_HUB",
       documentTypeIds: ["nursing.respiratory_assessment"],
       edocCategoryHint: "RESPIRATORY_ASSESSMENT",
@@ -155,7 +155,7 @@ export const ENTERPRISE_NURSING_WORKSPACE_SECTIONS: ReadonlyArray<EnterpriseNurs
     {
       id: "cardiovascular",
       titleKey: "enterpriseNursingClinicalWorkspaceD4b2.sections.cardiovascular",
-      visibleIn: ["EMERGENCY", "OBSERVATION", "INPATIENT"],
+      visibleIn: ["EMERGENCY", "OBSERVATION", "INPATIENT", "AMBULATORY"],
       mode: "EDOC_HUB",
       documentTypeIds: ["nursing.cardiovascular_assessment"],
       edocCategoryHint: "CARDIAC_MONITORING",
@@ -164,7 +164,7 @@ export const ENTERPRISE_NURSING_WORKSPACE_SECTIONS: ReadonlyArray<EnterpriseNurs
     {
       id: "gastrointestinal",
       titleKey: "enterpriseNursingClinicalWorkspaceD4b2.sections.gastrointestinal",
-      visibleIn: ["OBSERVATION", "INPATIENT"],
+      visibleIn: ["OBSERVATION", "INPATIENT", "AMBULATORY"],
       mode: "LIVE_ENGINE",
       documentTypeIds: ["nursing.systems_assessment"],
       authoritativeSource: "ED_REASSESSMENT_ENGINE",
@@ -172,7 +172,7 @@ export const ENTERPRISE_NURSING_WORKSPACE_SECTIONS: ReadonlyArray<EnterpriseNurs
     {
       id: "genitourinary",
       titleKey: "enterpriseNursingClinicalWorkspaceD4b2.sections.genitourinary",
-      visibleIn: ["OBSERVATION", "INPATIENT"],
+      visibleIn: ["OBSERVATION", "INPATIENT", "AMBULATORY"],
       mode: "LIVE_ENGINE",
       documentTypeIds: ["nursing.systems_assessment"],
       authoritativeSource: "ED_REASSESSMENT_ENGINE",
@@ -180,7 +180,7 @@ export const ENTERPRISE_NURSING_WORKSPACE_SECTIONS: ReadonlyArray<EnterpriseNurs
     {
       id: "skinWounds",
       titleKey: "enterpriseNursingClinicalWorkspaceD4b2.sections.skinWounds",
-      visibleIn: ["EMERGENCY", "OBSERVATION", "INPATIENT"],
+      visibleIn: ["EMERGENCY", "OBSERVATION", "INPATIENT", "AMBULATORY"],
       mode: "EDOC_HUB",
       documentTypeIds: ["nursing.skin_wound_assessment"],
       edocCategoryHint: "SKIN_WOUND_PRESSURE_INJURY",
@@ -189,7 +189,7 @@ export const ENTERPRISE_NURSING_WORKSPACE_SECTIONS: ReadonlyArray<EnterpriseNurs
     {
       id: "fallMobility",
       titleKey: "enterpriseNursingClinicalWorkspaceD4b2.sections.fallMobility",
-      visibleIn: ["EMERGENCY", "OBSERVATION", "INPATIENT"],
+      visibleIn: ["EMERGENCY", "OBSERVATION", "INPATIENT", "AMBULATORY"],
       mode: "EDOC_HUB",
       documentTypeIds: ["nursing.fall_mobility_assessment"],
       edocCategoryHint: "FALL_RISK_SAFETY",
@@ -198,7 +198,7 @@ export const ENTERPRISE_NURSING_WORKSPACE_SECTIONS: ReadonlyArray<EnterpriseNurs
     {
       id: "devices",
       titleKey: "enterpriseNursingClinicalWorkspaceD4b2.sections.devices",
-      visibleIn: ["EMERGENCY", "OBSERVATION", "INPATIENT"],
+      visibleIn: ["EMERGENCY", "OBSERVATION", "INPATIENT", "AMBULATORY"],
       mode: "EDOC_HUB",
       documentTypeIds: ["nursing.device_assessment"],
       edocCategoryHint: "DEVICE_LINE_TUBE_DRAIN_MONITORING",
@@ -207,7 +207,7 @@ export const ENTERPRISE_NURSING_WORKSPACE_SECTIONS: ReadonlyArray<EnterpriseNurs
     {
       id: "safety",
       titleKey: "enterpriseNursingClinicalWorkspaceD4b2.sections.safety",
-      visibleIn: ["EMERGENCY", "OBSERVATION", "INPATIENT"],
+      visibleIn: ["EMERGENCY", "OBSERVATION", "INPATIENT", "AMBULATORY"],
       mode: "EDOC_HUB",
       documentTypeIds: ["nursing.safety_precautions"],
       edocCategoryHint: "SAFETY_DOCUMENTATION",
@@ -242,7 +242,7 @@ export const ENTERPRISE_NURSING_WORKSPACE_SECTIONS: ReadonlyArray<EnterpriseNurs
     {
       id: "education",
       titleKey: "enterpriseNursingClinicalWorkspaceD4b2.sections.education",
-      visibleIn: ["EMERGENCY", "OBSERVATION", "INPATIENT"],
+      visibleIn: ["EMERGENCY", "OBSERVATION", "INPATIENT", "AMBULATORY"],
       mode: "EDOC_HUB",
       documentTypeIds: ["nursing.education_note"],
       edocCategoryHint: "PATIENT_EDUCATION_DISCHARGE_TEACHING",
@@ -269,7 +269,7 @@ export const ENTERPRISE_NURSING_WORKSPACE_SECTIONS: ReadonlyArray<EnterpriseNurs
     {
       id: "discharge",
       titleKey: "enterpriseNursingClinicalWorkspaceD4b2.sections.discharge",
-      visibleIn: ["EMERGENCY", "OBSERVATION", "INPATIENT"],
+      visibleIn: ["EMERGENCY", "OBSERVATION", "INPATIENT", "AMBULATORY"],
       mode: "LIVE_ENGINE",
       documentTypeIds: ["nursing.discharge_note"],
       authoritativeSource: "DISCHARGE_NURSING_ED",
@@ -277,7 +277,7 @@ export const ENTERPRISE_NURSING_WORKSPACE_SECTIONS: ReadonlyArray<EnterpriseNurs
     {
       id: "documentationHistory",
       titleKey: "enterpriseNursingClinicalWorkspaceD4b2.sections.documentationHistory",
-      visibleIn: ["EMERGENCY", "OBSERVATION", "INPATIENT"],
+      visibleIn: ["EMERGENCY", "OBSERVATION", "INPATIENT", "AMBULATORY"],
       mode: "PROJECTION",
       documentTypeIds: ["encounter_note.nursing", "edoc.structured_entry"],
       authoritativeSource: "ENCOUNTER_NOTE",
@@ -564,7 +564,7 @@ export function isNursingDocumentTypeAllowedForCareSetting(
 }
 
 export function nursingWorkspaceSectionsForCareSetting(
-  careSetting: "EMERGENCY" | "OBSERVATION" | "INPATIENT"
+  careSetting: "EMERGENCY" | "OBSERVATION" | "INPATIENT" | "AMBULATORY"
 ): EnterpriseNursingWorkspaceSectionDefinition[] {
   return ENTERPRISE_NURSING_WORKSPACE_SECTIONS.filter((s) => s.visibleIn.includes(careSetting));
 }
@@ -665,18 +665,28 @@ export function nursingDocumentEligibility(input: {
 
 /** Map hub careSetting prop ↔ enterprise care setting. */
 export function toClinicalDocumentationHubCareSetting(
-  careSetting: "EMERGENCY" | "OBSERVATION" | "INPATIENT"
-): "ED" | "OBSERVATION" | "INPATIENT" {
+  careSetting: "EMERGENCY" | "OBSERVATION" | "INPATIENT" | "AMBULATORY"
+): "ED" | "OBSERVATION" | "INPATIENT" | "CLINIC" {
   if (careSetting === "EMERGENCY") return "ED";
+  if (careSetting === "AMBULATORY") return "CLINIC";
+  return careSetting;
+}
+
+/** Map nursing IA care setting → D4B.1 foundation care setting (AMBULATORY → OUTPATIENT). */
+export function toEnterpriseClinicalDocumentCareSetting(
+  careSetting: "EMERGENCY" | "OBSERVATION" | "INPATIENT" | "AMBULATORY"
+): EnterpriseClinicalDocumentCareSetting {
+  if (careSetting === "AMBULATORY") return "OUTPATIENT";
   return careSetting;
 }
 
 export function classifyEncounterTypeToNursingCareSetting(
   encounterType: string | null | undefined
-): "EMERGENCY" | "OBSERVATION" | "INPATIENT" {
+): "EMERGENCY" | "OBSERVATION" | "INPATIENT" | "AMBULATORY" {
   const t = String(encounterType ?? "").toUpperCase();
   if (t === "ER" || t === "ED" || t === "EMERGENCY") return "EMERGENCY";
   if (t === "OBSERVATION" || t === "OBS") return "OBSERVATION";
+  if (t === "CLINIC" || t === "AMBULATORY" || t === "OUTPATIENT" || t === "URGENT_CARE") return "AMBULATORY";
   return "INPATIENT";
 }
 
@@ -829,7 +839,7 @@ export type EnterpriseNursingWorkspaceSummaryInput = {
   encounterId: string;
   patientId: string;
   facilityId: string;
-  careSetting: "EMERGENCY" | "OBSERVATION" | "INPATIENT";
+  careSetting: "EMERGENCY" | "OBSERVATION" | "INPATIENT" | "AMBULATORY";
   hospitalEpisodeId?: string | null;
   admission?: NursingAdmissionAdapterInput | null;
   reassessment?: NursingReassessmentProjectionInput | null;
@@ -841,7 +851,7 @@ export type EnterpriseNursingWorkspaceSummaryInput = {
 export type EnterpriseNursingWorkspaceSummary = {
   contractVersion: typeof ENTERPRISE_NURSING_CLINICAL_WORKSPACE_CONTRACT_VERSION;
   certificationId: typeof ENTERPRISE_NURSING_CLINICAL_WORKSPACE_CERTIFICATION_ID;
-  careSetting: "EMERGENCY" | "OBSERVATION" | "INPATIENT";
+  careSetting: "EMERGENCY" | "OBSERVATION" | "INPATIENT" | "AMBULATORY";
   sections: EnterpriseNursingWorkspaceSectionDefinition[];
   documents: EnterpriseClinicalDocument[];
   nursingDocumentTypeCount: number;
@@ -857,11 +867,12 @@ export function buildEnterpriseNursingWorkspaceSummary(
   input: EnterpriseNursingWorkspaceSummaryInput
 ): EnterpriseNursingWorkspaceSummary {
   const documents: EnterpriseClinicalDocument[] = [];
+  const docCareSetting = toEnterpriseClinicalDocumentCareSetting(input.careSetting);
   if (input.admission) {
     documents.push(
       adaptNursingAdmissionToEnterpriseClinicalDocument({
         ...input.admission,
-        careSetting: input.careSetting,
+        careSetting: docCareSetting,
         hospitalEpisodeId: input.hospitalEpisodeId,
       })
     );
@@ -870,7 +881,7 @@ export function buildEnterpriseNursingWorkspaceSummary(
     documents.push(
       adaptNursingReassessmentToEnterpriseClinicalDocument({
         ...input.reassessment,
-        careSetting: input.careSetting,
+        careSetting: docCareSetting,
         hospitalEpisodeId: input.hospitalEpisodeId,
       })
     );
@@ -879,7 +890,7 @@ export function buildEnterpriseNursingWorkspaceSummary(
     documents.push(
       adaptNursingHandoffToEnterpriseClinicalDocument({
         ...input.handoff,
-        careSetting: input.careSetting,
+        careSetting: docCareSetting,
         hospitalEpisodeId: input.hospitalEpisodeId,
       })
     );
@@ -889,7 +900,7 @@ export function buildEnterpriseNursingWorkspaceSummary(
     documents.push(
       adaptEncounterNoteToEnterpriseClinicalDocument({
         ...note,
-        careSetting: input.careSetting,
+        careSetting: docCareSetting,
         hospitalEpisodeId: input.hospitalEpisodeId,
       })
     );
@@ -898,7 +909,7 @@ export function buildEnterpriseNursingWorkspaceSummary(
     documents.push(
       adaptEdocEntryToEnterpriseClinicalDocument({
         ...entry,
-        careSetting: input.careSetting,
+        careSetting: docCareSetting,
         hospitalEpisodeId: input.hospitalEpisodeId,
       })
     );

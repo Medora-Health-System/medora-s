@@ -201,6 +201,7 @@ export function ClinicalDocumentationHub({
   workspaceContext = "default",
   onEntriesChanged,
   focusedCardId = null,
+  documentCardFilter,
 }: {
   careSetting?: "ED" | "OBSERVATION" | "INPATIENT" | "ICU" | "TELEMETRY" | "CLINIC" | "URGENT_CARE";
   encounterId?: string;
@@ -218,6 +219,8 @@ export function ClinicalDocumentationHub({
   /** D4A.2.6H — called after persist; receives the authoritative saved row when available. */
   onEntriesChanged?: (saved?: ClinicalDocumentationEntryRow) => void;
   focusedCardId?: string | null;
+  /** Optional registry-level card filter (ambulatory / Haiti ED-only hide). */
+  documentCardFilter?: (card: ClinicalDocumentationCard) => boolean;
 }) {
   const { t, language } = useI18n();
   const { userId, roles } = useFacilityAndRoles();
@@ -312,8 +315,9 @@ export function ClinicalDocumentationHub({
     } else {
       cards = listClinicalDocumentationCardsByCategory(selectedCategory, careSetting);
     }
-    return filterClinicalDocumentationCardsByRole(cards, selectedRoleFilter);
-  }, [careSetting, locale, search, selectedCategory, selectedRoleFilter]);
+    const roleFiltered = filterClinicalDocumentationCardsByRole(cards, selectedRoleFilter);
+    return documentCardFilter ? roleFiltered.filter(documentCardFilter) : roleFiltered;
+  }, [careSetting, locale, search, selectedCategory, selectedRoleFilter, documentCardFilter]);
 
   const intakeOutputTotals = useMemo(() => {
     const ioEntries = resolvedEntries

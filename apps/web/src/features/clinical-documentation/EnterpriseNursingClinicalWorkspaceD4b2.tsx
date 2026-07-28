@@ -30,7 +30,7 @@ export type EnterpriseNursingClinicalWorkspaceProps = {
   encounterId: string;
   patientId: string;
   facilityId: string;
-  careSetting: "EMERGENCY" | "OBSERVATION" | "INPATIENT";
+  careSetting: "EMERGENCY" | "OBSERVATION" | "INPATIENT" | "AMBULATORY";
   isLocked?: boolean;
   /** Optional already-projected documents (notes/EDOC/admission/handoff/reassessment). */
   documents?: ReadonlyArray<EnterpriseClinicalDocument>;

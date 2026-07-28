@@ -71,6 +71,8 @@ export function ClinicCareAmbulatoryPatientHeader({
   onRoomClick,
   roomClickable = false,
   providerName,
+  workflowStateLabel,
+  followUpDateLabel,
   language,
   t,
   children,
@@ -88,6 +90,8 @@ export function ClinicCareAmbulatoryPatientHeader({
   onRoomClick?: () => void;
   roomClickable?: boolean;
   providerName?: string | null;
+  workflowStateLabel?: string | null;
+  followUpDateLabel?: string | null;
   language: SupportedLanguage;
   t: (key: string) => string;
   /** Workflow action buttons slot. */
@@ -96,7 +100,17 @@ export function ClinicCareAmbulatoryPatientHeader({
   const dash = t("common.dash");
   const fullName = `${(patient?.firstName ?? "").trim()} ${(patient?.lastName ?? "").trim()}`.trim() || dash;
   const status = (statusKey ?? "").trim() || "OPEN";
-  const hasVitals = Array.isArray(vitalPairs) && vitalPairs.length > 0;
+  const notDocumented = t("clinicCareD4c5b2.empty.notDocumented");
+  const displayVitalPairs =
+    Array.isArray(vitalPairs) && vitalPairs.length > 0
+      ? vitalPairs
+      : [
+          { label: "TA", value: notDocumented },
+          { label: "FC", value: notDocumented },
+          { label: "FR", value: notDocumented },
+          { label: "T°", value: notDocumented },
+          { label: "SpO₂", value: notDocumented },
+        ];
 
   return (
     <div data-testid="clinic-care-ambulatory-patient-header">
@@ -119,16 +133,36 @@ export function ClinicCareAmbulatoryPatientHeader({
               {t("clinicCareD4c5b.header.motif")}
             </span>
             {" — "}
-            {(chiefComplaint ?? "").trim() || dash}
+            {(chiefComplaint ?? "").trim() || notDocumented}
           </p>
           <p style={{ margin: "6px 0 0 0", fontSize: 12, color: "#64748b" }}>
             <span style={{ fontWeight: 600, color: "#475569" }}>{t("clinicCareD4c5b.header.arrived")}</span>{" "}
-            {arrivedAt ? formatEncounterChromeDateTime(arrivedAt, language) : dash}
+            {arrivedAt ? formatEncounterChromeDateTime(arrivedAt, language) : notDocumented}
             {providerName ? (
               <>
                 {" · "}
                 <span style={{ fontWeight: 600, color: "#475569" }}>{t("clinicCareD4c5b.header.provider")}</span>{" "}
                 {providerName}
+              </>
+            ) : (
+              <>
+                {" · "}
+                <span style={{ fontWeight: 600, color: "#475569" }}>{t("clinicCareD4c5b.header.provider")}</span>{" "}
+                {notDocumented}
+              </>
+            )}
+            {workflowStateLabel ? (
+              <>
+                {" · "}
+                <span style={{ fontWeight: 600, color: "#475569" }}>{t("clinicCareD4c5b.header.status")}</span>{" "}
+                {workflowStateLabel}
+              </>
+            ) : null}
+            {followUpDateLabel ? (
+              <>
+                {" · "}
+                <span style={{ fontWeight: 600, color: "#475569" }}>{t("clinicCareD4c5b2.header.followUp")}</span>{" "}
+                {followUpDateLabel}
               </>
             ) : null}
           </p>
@@ -144,11 +178,9 @@ export function ClinicCareAmbulatoryPatientHeader({
             alignItems: "stretch",
           }}
         >
-          {hasVitals || vitalsLoading ? (
-            <EmergencyWorkspaceVitalsCard vitalPairs={vitalPairs ?? []} loading={vitalsLoading} />
-          ) : null}
+          <EmergencyWorkspaceVitalsCard vitalPairs={displayVitalPairs} loading={vitalsLoading} />
           <EmergencyWorkspaceAllergiesCard
-            allergySummary={(allergyText ?? "").trim()}
+            allergySummary={(allergyText ?? "").trim() || t("clinicCareD4c5b.header.allergiesUnknown")}
             loading={allergiesLoading}
           />
         </div>

@@ -18,7 +18,8 @@ import {
 describe("clinicCareAmbulatoryEncounterWorkspaceD4c5b", () => {
   it("exports certification + sections", () => {
     expect(CLINIC_CARE_AMBULATORY_ENCOUNTER_WORKSPACE_CERTIFICATION_ID).toBe("MEDUI.D4C.5B");
-    expect(CLINIC_CARE_AMBULATORY_WORKSPACE_SECTIONS).toHaveLength(11);
+    expect(CLINIC_CARE_AMBULATORY_WORKSPACE_SECTIONS).toHaveLength(12);
+    expect(CLINIC_CARE_AMBULATORY_WORKSPACE_SECTIONS).toContain("prescriptions");
     expect(clinicCareAmbulatoryActiveWorkspacePath("x", "orders")).toContain("section=orders");
   });
 
@@ -34,7 +35,8 @@ describe("clinicCareAmbulatoryEncounterWorkspaceD4c5b", () => {
     expect(isAmbulatoryClinicalDataDocumentAllowed({ typeId: "COWS", careSettings: ["ED"] })).toBe(
       false
     );
-    expect(getVisibleClinicCareAmbulatoryWorkspaceSections(["PROVIDER"]).length).toBe(11);
+    expect(getVisibleClinicCareAmbulatoryWorkspaceSections(["PROVIDER"]).length).toBe(12);
+    expect(getVisibleClinicCareAmbulatoryWorkspaceSections(["PROVIDER"])).toContain("prescriptions");
     expect(
       shouldSuppressGlobalDashboardForClinicCare({
         ambulatoryFacility: true,

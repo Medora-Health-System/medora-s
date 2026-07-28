@@ -24,6 +24,7 @@ export const CLINIC_CARE_AMBULATORY_WORKSPACE_SECTIONS = [
   "intake",
   "medical-evaluation",
   "orders",
+  "prescriptions",
   "medications",
   "results",
   "diagnoses",
@@ -45,6 +46,7 @@ export const CLINIC_CARE_AMBULATORY_WORKSPACE_TILE_ABBREV: Record<
   intake: "I",
   "medical-evaluation": "ME",
   orders: "O",
+  prescriptions: "Rx",
   medications: "M",
   results: "R",
   diagnoses: "Dx",
@@ -63,6 +65,7 @@ export const CLINIC_CARE_AMBULATORY_WORKSPACE_TILE_ACCENT: Record<
   intake: "#0d9488",
   "medical-evaluation": "#2563eb",
   orders: "#7c3aed",
+  prescriptions: "#c026d3",
   medications: "#db2777",
   results: "#0891b2",
   diagnoses: "#ea580c",
@@ -81,6 +84,7 @@ export const CLINIC_CARE_AMBULATORY_WORKSPACE_TILE_LABEL_KEY: Record<
   intake: "clinicCareD4c5b.tiles.intake",
   "medical-evaluation": "clinicCareD4c5b.tiles.medicalEvaluation",
   orders: "clinicCareD4c5b.tiles.orders",
+  prescriptions: "clinicCareD4c5b.tiles.prescriptions",
   medications: "clinicCareD4c5b.tiles.medications",
   results: "clinicCareD4c5b.tiles.results",
   diagnoses: "clinicCareD4c5b.tiles.diagnoses",
@@ -102,6 +106,9 @@ const SECTION_ALIASES: Record<string, ClinicCareAmbulatoryWorkspaceSection> = {
   clinic: "medical-evaluation",
   providermse: "medical-evaluation",
   orders: "orders",
+  prescriptions: "prescriptions",
+  rx: "prescriptions",
+  prescription: "prescriptions",
   medications: "medications",
   mar: "medications",
   meds: "medications",
@@ -286,6 +293,7 @@ export type ClinicCareAmbulatoryWorkspaceRoleGroup =
   | "TECH"
   | "ADMIN"
   | "FRONT_DESK"
+  | "PHARMACIST"
   | "UNKNOWN";
 
 export function resolveClinicCareAmbulatoryWorkspaceRoleGroup(
@@ -295,6 +303,7 @@ export function resolveClinicCareAmbulatoryWorkspaceRoleGroup(
   if (roles.includes("ADMIN") || roles.includes("MEDORA_SUPER_ADMIN")) return "ADMIN";
   if (roles.includes("PROVIDER")) return "PROVIDER";
   if (roles.includes("RN")) return "RN";
+  if (roles.includes("PHARMACIST")) return "PHARMACIST";
   if (roles.includes("PATIENT_CARE_TECH") || roles.includes("TECHNICIAN")) return "TECH";
   if (roles.includes("FRONT_DESK")) return "FRONT_DESK";
   return "UNKNOWN";
@@ -311,6 +320,7 @@ const ROLE_TILES: Record<
   RN: [
     "intake",
     "orders",
+    "prescriptions",
     "medications",
     "results",
     "clinical-data",
@@ -319,6 +329,7 @@ const ROLE_TILES: Record<
     "follow-up",
     "summary",
   ],
+  PHARMACIST: ["prescriptions", "medications", "orders", "summary"],
   TECH: ["intake", "orders", "results", "nursing", "summary"],
   FRONT_DESK: ["intake", "follow-up", "summary"],
   UNKNOWN: ["summary"],
@@ -343,6 +354,8 @@ export function getDefaultClinicCareAmbulatoryWorkspaceSection(
     case "RN":
     case "TECH":
       return "intake";
+    case "PHARMACIST":
+      return "prescriptions";
     case "FRONT_DESK":
       return "follow-up";
     default:

@@ -8,6 +8,7 @@ export const enterpriseNursingClinicalWorkspaceD4b2Fr = {
     EMERGENCY: "Urgences",
     OBSERVATION: "Observation",
     INPATIENT: "Hospitalisation",
+    AMBULATORY: "Ambulatoire",
   },
   loading: "Chargement de l’espace infirmier…",
   empty: "Aucun document infirmier pour cette rencontre.",

@@ -9948,13 +9948,14 @@ export default {
     tilesHeading: "Sections cliniques",
     tiles: {
       intake: "Évaluation",
-      medicalEvaluation: "Évaluation médicale",
+      medicalEvaluation: "Éval. médicale",
       orders: "Ordonnances",
+      prescriptions: "Ordonnance Rx",
       medications: "Médicaments",
       results: "Résultats",
       diagnoses: "Diagnostics",
       clinicalData: "Données cliniques",
-      nursing: "Soins infirmiers / MA",
+      nursing: "Infirmier / MA",
       notes: "Notes",
       followUp: "Suivi / sortie",
       summary: "Résumé",
@@ -10006,6 +10007,66 @@ export default {
       "Les tableaux Ordonnances / Résultats restent disponibles dans les onglets Soins cliniques ; les tuiles réutilisent les mêmes moteurs.",
     saved: "Enregistré.",
     saveFailed: "Enregistrement impossible.",
+  },
+
+  clinicCareD4c5b2: {
+    empty: {
+      notDocumented: "non documenté",
+    },
+    header: {
+      followUp: "Suivi",
+      rnMa: "IDE / MA",
+      medsSummary: "Médicaments",
+      weight: "Poids",
+      height: "Taille",
+      bmi: "IMC",
+      pain: "Douleur",
+    },
+    intake: {
+      hint: "Accueil ambulatoire complet — signes vitaux, allergies, médicaments domicile, antécédents et affectation via moteurs partagés.",
+    },
+    rx: {
+      title: "Ordonnance (Rx)",
+      hint: "Prescription ambulatoire via le catalogue et le moteur d’ordonnances partagés — pas de ClinicPrescription.",
+      newPrescription: "Nouvelle ordonnance",
+      empty: "Aucune ordonnance médicamenteuse pour cette visite.",
+      untitled: "Ordonnance",
+    },
+    nursing: {
+      title: "Espace infirmier ambulatoire",
+      subtitle: "Documentation infirmière / MA rapide pour la consultation — pas le catalogue Observation.",
+    },
+    followUp: {
+      checkoutTitle: "Suivi / sortie",
+      dischargeTitle: "Sortie de la consultation",
+    },
+    summary: {
+      title: "Résumé de la consultation",
+      subtitle: "Dossier médical enregistré de la visite (lecture seule) — pas un catalogue de formulaires.",
+    },
+    orderStatus: {
+      placed: "Prescrite / Placée",
+      active: "Active",
+      pending: "En attente",
+      completed: "Terminée",
+      cancelled: "Annulée",
+      resultPending: "Résultat en attente",
+      signed: "Signée",
+      acknowledged: "Accusée",
+      inProgress: "En cours",
+      resulted: "Résultaté",
+      verified: "Vérifiée",
+    },
+    orderPriority: {
+      routine: "Routine",
+      urgent: "Urgent",
+    },
+    orderBoard: {
+      status: "Statut",
+      provider: "Médecin",
+      orderedBy: "Prescrite par",
+      priority: "Priorité",
+    },
   },
 
   clinicCareD4c6: {

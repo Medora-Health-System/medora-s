@@ -8,6 +8,7 @@ export const enterpriseNursingClinicalWorkspaceD4b2En = {
     EMERGENCY: "Emergency",
     OBSERVATION: "Observation",
     INPATIENT: "Inpatient",
+    AMBULATORY: "Ambulatory",
   },
   loading: "Loading nursing workspace…",
   empty: "No nursing documents yet for this encounter.",

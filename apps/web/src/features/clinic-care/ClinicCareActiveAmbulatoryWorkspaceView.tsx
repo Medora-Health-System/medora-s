@@ -57,6 +57,7 @@ type EncounterShell = {
   providerNote?: string | null;
   treatmentPlan?: string | null;
   followUpDate?: string | null;
+  dischargeSummaryJson?: unknown;
   nursingAssessment?: unknown;
   providerDocumentationStatus?: string | null;
   providerDocumentationSignedAt?: string | null;
@@ -94,7 +95,7 @@ export function ClinicCareActiveAmbulatoryWorkspaceView() {
   const searchParams = useSearchParams();
   const { t, language } = useI18n();
   const encounterId = params?.id as string;
-  const { facilityId, roles, ready: rolesReady, userId, canPrescribe, facilityTimeZone } =
+  const { facilityId, roles, ready: rolesReady, userId, canPrescribe, facilityTimeZone, facilityCountry } =
     useFacilityAndRoles();
 
   const [encounter, setEncounter] = useState<EncounterShell | null>(null);
@@ -155,9 +156,14 @@ export function ClinicCareActiveAmbulatoryWorkspaceView() {
 
   const clinicalStrip = useMemo(() => {
     const parsed = triagePreviewSliceFromTriageGet(triageSnapshot, language);
-    if (!parsed) return { pairs: undefined, allergyText: undefined };
+    if (!parsed) return { pairs: undefined as { label: string; value: string }[] | undefined, allergyText: undefined as string | undefined };
+    const pairs = buildErWorkspaceVitalPairs(parsed.slice, language);
+    const pain = parsed.slice.painScore?.trim();
+    if (pain) {
+      pairs.push({ label: language === "en" ? "Pain" : "Douleur", value: pain });
+    }
     return {
-      pairs: buildErWorkspaceVitalPairs(parsed.slice, language),
+      pairs,
       allergyText: buildAllergyStripSummary(parsed.slice, parsed.er, language),
     };
   }, [triageSnapshot, language]);
@@ -284,6 +290,7 @@ export function ClinicCareActiveAmbulatoryWorkspaceView() {
   return (
     <div
       data-testid="clinic-care-active-ambulatory-workspace"
+      data-care-setting="AMBULATORY"
       style={{ padding: "20px 20px 40px", maxWidth: 1180, margin: "0 auto", boxSizing: "border-box" }}
     >
       <p style={{ margin: "0 0 10px 0", fontSize: 13 }}>
@@ -322,6 +329,12 @@ export function ClinicCareActiveAmbulatoryWorkspaceView() {
             governedRoomHasAssignment: encounter.governedRoomHasAssignment,
           }}
           providerName={providerName}
+          workflowStateLabel={encounter.workflowState ?? null}
+          followUpDateLabel={
+            encounter.followUpDate
+              ? new Date(encounter.followUpDate).toLocaleDateString(language === "en" ? "en-US" : "fr-FR")
+              : null
+          }
           language={language}
           t={t}
         >
@@ -357,11 +370,13 @@ export function ClinicCareActiveAmbulatoryWorkspaceView() {
           encounter={encounter}
           facilityId={facilityId}
           facilityTimeZone={facilityTimeZone}
+          facilityCountry={facilityCountry}
           roles={roles}
           userId={userId}
           canPrescribe={canPrescribe}
           isLocked={isLocked}
           resultsRefresh={resultsRefresh}
+          triageSnapshot={triageSnapshot}
           onUpdate={async () => {
             await load();
             await loadTriage();

@@ -42,11 +42,13 @@ export type ClinicCareAmbulatoryMedicalEvaluationEncounter = {
 export function ClinicCareAmbulatoryMedicalEvaluationPanel({
   encounter,
   facilityId,
+  facilityCountry,
   roles,
   onUpdate,
 }: {
   encounter: ClinicCareAmbulatoryMedicalEvaluationEncounter;
   facilityId: string;
+  facilityCountry?: string | null;
   roles: readonly string[];
   onUpdate: () => void | Promise<void>;
 }) {
@@ -172,6 +174,7 @@ export function ClinicCareAmbulatoryMedicalEvaluationPanel({
       <ProviderDocumentationWorkspace
         encounterId={encounter.id}
         encounterMode="AMBULATORY"
+        facilityCountry={facilityCountry}
         value={value}
         onChange={setValue}
         onSave={save}
