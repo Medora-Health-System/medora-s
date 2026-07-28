@@ -72,8 +72,9 @@ export function extractApiErrorMeta(json: {
   error?: string;
   code?: string;
   errorCode?: string;
-  blockers?: string[];
-  blockingReasons?: string[];
+  blockers?: unknown;
+  blockingReasons?: unknown;
+  nonOverridable?: unknown;
 }): { message: string; errorCode: string | null } {
   let message = "";
   const m = json.message;
@@ -88,10 +89,21 @@ export function extractApiErrorMeta(json: {
   } else if (typeof json.error === "string") {
     message = json.error;
   }
-  const blockers = json.blockers ?? json.blockingReasons;
+  const formatBlocker = (b: unknown): string | null => {
+    if (typeof b === "string" && b.trim()) return b.trim();
+    if (b && typeof b === "object" && !Array.isArray(b)) {
+      const o = b as Record<string, unknown>;
+      if (typeof o.message === "string" && o.message.trim()) return o.message.trim();
+      if (typeof o.code === "string" && o.code.trim()) return o.code.trim();
+    }
+    return null;
+  };
+  const blockers = json.blockers ?? json.blockingReasons ?? json.nonOverridable;
   if (Array.isArray(blockers) && blockers.length > 0) {
-    const joined = blockers.join(", ");
-    message = message ? `${message}: ${joined}` : joined;
+    const joined = blockers.map(formatBlocker).filter((x): x is string => Boolean(x)).join(", ");
+    if (joined) {
+      message = message ? `${message}: ${joined}` : joined;
+    }
   }
   const rawCode =
     typeof json.errorCode === "string" && json.errorCode.trim()

@@ -52,6 +52,9 @@ export async function closeAmbulatoryEncounterViaEnterprise(
   body?: {
     acknowledgeDeficiencies?: boolean;
     acknowledgeDispositionSafety?: boolean;
+    acknowledgePendingItems?: boolean;
+    acknowledgementVersion?: string;
+    pendingItemsOverrideReason?: string;
     dischargeStatus?: string;
   }
 ): Promise<unknown> {

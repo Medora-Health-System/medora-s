@@ -24,6 +24,13 @@ const SAFE_METADATA_KEYS = new Set([
   "rowCount",
   "documentationGapOverride",
   "dispositionSafetyOverride",
+  "pendingItemsOverride",
+  "acknowledgePendingItems",
+  "acknowledgementVersion",
+  "pendingItemCategories",
+  "pendingItemIds",
+  "pendingItemCounts",
+  "pendingItemsOverrideReason",
   "deficiencyCodes",
   "workflowTransition",
   "procedureCapture",
@@ -137,7 +144,11 @@ export function auditHighlightTags(input: {
   if (entityType === "EXTERNAL_BILLING_AUTO_EXPORT") tags.add("billing_auto_export");
 
   if (action === "ENCOUNTER_CLOSE") {
-    if (meta.documentationGapOverride === true || meta.dispositionSafetyOverride === true) {
+    if (
+      meta.documentationGapOverride === true ||
+      meta.dispositionSafetyOverride === true ||
+      meta.pendingItemsOverride === true
+    ) {
       tags.add("close_override");
     }
   }
