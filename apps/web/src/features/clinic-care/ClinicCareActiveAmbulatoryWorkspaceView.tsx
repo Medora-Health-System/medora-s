@@ -95,7 +95,7 @@ export function ClinicCareActiveAmbulatoryWorkspaceView() {
   const searchParams = useSearchParams();
   const { t, language } = useI18n();
   const encounterId = params?.id as string;
-  const { facilityId, roles, ready: rolesReady, userId, canPrescribe, facilityTimeZone, facilityCountry } =
+  const { facilityId, roles, ready: rolesReady, userId, canPrescribe, facilityTimeZone, facilityCountry, facilities } =
     useFacilityAndRoles();
 
   const [encounter, setEncounter] = useState<EncounterShell | null>(null);
@@ -371,6 +371,7 @@ export function ClinicCareActiveAmbulatoryWorkspaceView() {
           facilityId={facilityId}
           facilityTimeZone={facilityTimeZone}
           facilityCountry={facilityCountry}
+          facilityDisplayName={facilities.find((f) => f.id === facilityId)?.name ?? facilityId}
           roles={roles}
           userId={userId}
           canPrescribe={canPrescribe}

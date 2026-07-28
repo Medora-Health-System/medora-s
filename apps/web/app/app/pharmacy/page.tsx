@@ -1,8 +1,10 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { apiFetch } from "@/lib/apiClient";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
+import { filterAmbulatoryPharmacyQueueOrders } from "@medora/shared";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import { PharmacyAlertsCard } from "@/components/pharmacy/PharmacyAlertsCard";
 import { PharmacyFavorites } from "@/components/pharmacy/PharmacyFavorites";
@@ -53,6 +55,8 @@ const linkStyle: React.CSSProperties = {
 
 export default function PharmacyPage() {
   const { t, language } = useI18n();
+  const searchParams = useSearchParams();
+  const ambulatoryOnly = searchParams?.get("ambulatory") === "1";
   const { facilityId: facilityIdFromHook, ready, canViewPharmacy } =
     useFacilityAndRoles();
   const { isOffline } = useConnectivityStatus();
@@ -70,6 +74,24 @@ export default function PharmacyPage() {
   }, []);
 
   const effectiveFacilityId = facilityId || facilityIdFromHook || "";
+
+  const displayedQueue = useMemo(() => {
+    const rows = Array.isArray(queue) ? queue : [];
+    if (!ambulatoryOnly || !effectiveFacilityId) return rows;
+    return filterAmbulatoryPharmacyQueueOrders(
+      rows as Array<{
+        facilityId?: string | null;
+        createdAt?: string | Date | null;
+        orderedByUserId?: string | null;
+        encounter?: { type?: string | null; patientId?: string | null } | null;
+        items?: Array<{
+          medicationFulfillmentIntent?: string | null;
+          pharmacyVerificationStatus?: string | null;
+        }> | null;
+      }>,
+      { facilityId: effectiveFacilityId, ambulatoryOnly: true }
+    );
+  }, [ambulatoryOnly, effectiveFacilityId, queue]);
 
   useEffect(() => {
     if (!ready || !facilityId) return;
@@ -152,9 +174,14 @@ export default function PharmacyPage() {
       )}
 
       <p>{t("pharmacyHomePage.intro")}</p>
-      {loading && (queue as unknown[]).length === 0 && pendingLocal.length === 0 ? (
+      {ambulatoryOnly ? (
+        <p style={{ marginTop: -8, marginBottom: 12, fontSize: 13, color: "#0d9488", fontWeight: 600 }}>
+          {t("clinicCareD4c7.pharmacy.ambulatoryFilter")}
+        </p>
+      ) : null}
+      {loading && displayedQueue.length === 0 && pendingLocal.length === 0 ? (
         <p>{t("common.loading")}</p>
-      ) : (queue as unknown[]).length === 0 && pendingLocal.length === 0 ? (
+      ) : displayedQueue.length === 0 && pendingLocal.length === 0 ? (
         <div
           style={{
             marginTop: 24,
@@ -168,7 +195,7 @@ export default function PharmacyPage() {
         </div>
       ) : (
         <div style={{ marginTop: 24 }}>
-          {(queue as unknown[]).length > 0 ? (
+          {displayedQueue.length > 0 ? (
             <table
               style={{
                 width: "100%",
@@ -189,7 +216,7 @@ export default function PharmacyPage() {
                 </tr>
               </thead>
               <tbody>
-                {(queue as { items?: { id: string; status: string; catalogItemId: string }[]; encounterId: string; priority: string; encounter?: { patient?: { id?: string; firstName: string; lastName: string; mrn?: string } } }[]).map(
+                {(displayedQueue as { items?: { id: string; status: string; catalogItemId: string }[]; encounterId: string; priority: string; encounter?: { patient?: { id?: string; firstName: string; lastName: string; mrn?: string } } }[]).map(
                   (order) =>
                     order.items?.map(
                       (item: {
@@ -261,7 +288,7 @@ export default function PharmacyPage() {
             </table>
           ) : null}
           {pendingLocal.length > 0 ? (
-            <div style={{ marginTop: (queue as unknown[]).length > 0 ? 28 : 0 }}>
+            <div style={{ marginTop: displayedQueue.length > 0 ? 28 : 0 }}>
               <h2 style={{ fontSize: 16, marginBottom: 8 }}>{t("worklistDepartments.shared.syncPendingTitle")}</h2>
               <p style={{ fontSize: 13, color: "#856404", marginBottom: 12 }}>
                 {t("worklistDepartments.shared.syncPendingDescription")}

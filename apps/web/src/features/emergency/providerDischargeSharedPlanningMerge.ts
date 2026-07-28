@@ -14,6 +14,8 @@ import {
   type ProviderDischargeTemplateLocale,
 } from "./providerDischargeTemplateLocale";
 import { localizeProviderDischargeFollowUpRows } from "./providerDischargeFollowUpTimingLocale";
+import type { DischargeInstructionCareSettingContext } from "@medora/shared";
+import { adaptDischargeSuggestedTextBodyForCareSetting } from "@medora/shared";
 
 export type TemplateSharedFields = {
   returnPrecautions: string;
@@ -75,9 +77,14 @@ export function mergeSharedReturnWorkSchool(existing: string, additions: string[
 
 export function extractSharedFieldsFromTemplate(
   template: ProviderDischargeTemplate,
-  locale: ProviderDischargeTemplateLocale
+  locale: ProviderDischargeTemplateLocale,
+  careSettingContext?: DischargeInstructionCareSettingContext | null
 ): TemplateSharedFields {
-  const text = getProviderDischargeSuggestedTextBody(template, locale);
+  let text = getProviderDischargeSuggestedTextBody(template, locale);
+  if (careSettingContext && careSettingContext.careSetting !== "ED") {
+    const localizedCtx = { ...careSettingContext, locale };
+    text = adaptDischargeSuggestedTextBodyForCareSetting(text, localizedCtx);
+  }
   return {
     returnPrecautions: text.returnPrecautions,
     returnWorkSchool: text.returnWorkSchool,

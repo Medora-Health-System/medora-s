@@ -21,6 +21,11 @@ import {
   type ProviderDischargeTemplateSuggestedText,
 } from "./providerDischargeTemplateLocale";
 import {
+  ensureGoldStandardReturnPrecautions,
+} from "./providerDischargeTemplateGoldStandard";
+import type { DischargeInstructionCareSettingContext } from "@medora/shared";
+import { adaptDischargeSuggestedTextBodyForCareSetting } from "@medora/shared";
+import {
   BEHAVIORAL_HEALTH_ALCOHOL_INTOXICATION_FOLLOW_UP_SUGGESTED_TEXT,
   BEHAVIORAL_HEALTH_ALCOHOL_WITHDRAWAL_PRECAUTIONS_SUGGESTED_TEXT,
   BEHAVIORAL_HEALTH_ANXIETY_PANIC_SYMPTOMS_SUGGESTED_TEXT,
@@ -7923,6 +7928,7 @@ export type BuildProviderDischargeCardBaseInput = {
   displayOrder: number;
   isPrimaryDiagnosis: boolean;
   actor?: { displayName?: string; appliedAt?: string };
+  careSettingContext?: DischargeInstructionCareSettingContext | null;
 };
 
 export type BuildProviderDischargeCardInput =
@@ -7978,6 +7984,7 @@ export function buildProviderDischargeCardFromDiagnosis(
     actor: input.actor,
     providerConfirmed: false,
     overwriteExisting: false,
+    careSettingContext: input.careSettingContext,
   });
 }
 
@@ -7989,16 +7996,33 @@ export function applyProviderDischargeTemplateToCard(
     actor?: { displayName?: string; appliedAt?: string };
     overwriteExisting?: boolean;
     providerConfirmed?: boolean;
+    /** MEDUI.D4C.7 — typed care-setting context for Clinic / UC narratives. */
+    careSettingContext?: DischargeInstructionCareSettingContext | null;
   }
 ): ProviderDischargeDiagnosisCard {
   const { template, matchLevel } = resolved;
   const overwrite = options.overwriteExisting === true;
   const locale = options.locale;
   const rawText = getProviderDischargeSuggestedTextBody(template, locale);
-  const text =
+  let text =
     template.id === GENERIC_PROVIDER_DISCHARGE_TEMPLATE_ID ?
       personalizeGenericDischargeTemplateBody(rawText, card.displayName, locale)
     : rawText;
+
+  const careCtx = options.careSettingContext;
+  if (careCtx && careCtx.careSetting !== "ED") {
+    const localizedCtx: DischargeInstructionCareSettingContext = { ...careCtx, locale };
+    text = adaptDischargeSuggestedTextBodyForCareSetting(text, localizedCtx);
+    text = {
+      ...text,
+      returnPrecautions: ensureGoldStandardReturnPrecautions(
+        text.returnPrecautions,
+        locale,
+        localizedCtx
+      ),
+    };
+  }
+
   const sourceReferences = template.sourceReferences.map((r) => r.label);
 
   const next: ProviderDischargeDiagnosisCard = { ...card };
