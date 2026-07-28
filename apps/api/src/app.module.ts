@@ -12,8 +12,8 @@ import { OrdersModule } from "./orders/orders.module";
 import { QueuesModule } from "./queues/queues.module";
 import { RegistrationModule } from "./registration/registration.module";
 import { TrackboardModule } from "./trackboard/trackboard.module";
-import { TriageModule } from "./triage/triage.module";
-import { WorklistsModule } from "./worklists/worklists.module";
+import { ClinicCareModule } from "./clinic-care/clinic-care.module";
+import { TriageModule } from "./triage/triage.module";import { WorklistsModule } from "./worklists/worklists.module";
 import { ResultsModule } from "./results/results.module";
 import { PathwaysModule } from "./pathways/pathways.module";
 import { PharmacyInventoryModule } from "./pharmacy-inventory/pharmacy-inventory.module";
@@ -76,6 +76,7 @@ const imports = [
   QueuesModule,
   RegistrationModule,
   TrackboardModule,
+  ClinicCareModule,
   TriageModule,
   WorklistsModule,
   ResultsModule,

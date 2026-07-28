@@ -11,6 +11,7 @@ export * from "./auth/freestandingErRnProviderNavigation.js";
 export * from "./auth/workspaceAuthorization.js";
 export * from "./auth/adminUserAssignment.js";
 export * from "./auth/facilityClinicCareProfileD4c1.js";
+export * from "./auth/clinicCareTrackboardProjectionD4c2.js";
 export * from "./auth/navigationAuthorization.js";
 
 export * from "./password-policy.js";

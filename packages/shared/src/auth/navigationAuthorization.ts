@@ -194,6 +194,18 @@ function supplementClinicCareNavigationAreas(
     result.add("CLINIC_CARE");
   }
 
+  // Authorized Billing at ambulatory Clinic/UC may access Clinic Care shell + operational trackboard.
+  if (input.professionGroup === "BILLING") {
+    result.add("CLINIC_CARE");
+    result.add("BILLING");
+  }
+
+  // Pharmacy gets Clinic Care shell only when ambulatory lines present AND Pharmacy service line on.
+  if (input.professionGroup === "PHARMACY" && lineSet.has("PHARMACY")) {
+    result.add("CLINIC_CARE");
+    result.add("PHARMACY");
+  }
+
   // Authorized technicians may access Clinic Care shell + trackboard/Today's Visits projections
   // at ambulatory Clinic / UC. Shell visibility ≠ provider/nursing source authority.
   if (input.professionGroup === "TECHNICIAN") {

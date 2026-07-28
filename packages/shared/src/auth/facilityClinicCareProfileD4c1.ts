@@ -109,16 +109,40 @@ export type FacilityModuleCapabilitiesD4c1 = {
   registrationEnabled: boolean;
 };
 
-/** D4C.2 trackboard metric ids — typed contracts only (UI deferred). */
+/**
+ * Six mandatory primary KPI metric ids (D4C.2).
+ * DISCHARGE_PENDING is required (not optional). READY_FOR_COMPLETION is not a
+ * user-facing KPI — see private source-state helper in D4C.2 projection.
+ */
+export const CLINIC_CARE_PRIMARY_TRACKBOARD_METRIC_IDS = [
+  "TODAYS_VISITS",
+  "WAITING",
+  "IN_PROGRESS",
+  "RESULTS_PENDING",
+  "DISCHARGE_PENDING",
+  "FOLLOW_UPS_DUE",
+] as const;
+
+/**
+ * No user-facing secondary KPIs in D4C.2 final contract.
+ * Kept as empty const so callers that imported the secondary list remain type-safe.
+ */
+export const CLINIC_CARE_SECONDARY_TRACKBOARD_METRIC_IDS = [] as const;
+
+/** Full metric contract ids (six mandatory primaries). */
 export const CLINIC_CARE_TRACKBOARD_METRIC_IDS = [
   "TODAYS_VISITS",
   "WAITING",
   "IN_PROGRESS",
   "RESULTS_PENDING",
-  "READY_FOR_DISCHARGE",
+  "DISCHARGE_PENDING",
   "FOLLOW_UPS_DUE",
 ] as const;
 export type ClinicCareTrackboardMetricId = (typeof CLINIC_CARE_TRACKBOARD_METRIC_IDS)[number];
+export type ClinicCarePrimaryTrackboardMetricId =
+  (typeof CLINIC_CARE_PRIMARY_TRACKBOARD_METRIC_IDS)[number];
+export type ClinicCareSecondaryTrackboardMetricId =
+  (typeof CLINIC_CARE_SECONDARY_TRACKBOARD_METRIC_IDS)[number];
 
 /**
  * Maps D4C.2 summary tiles onto audited encounter / order / follow-up states.
@@ -191,9 +215,14 @@ export const CLINIC_CARE_TRACKBOARD_METRIC_CONTRACTS: readonly ClinicCareTrackbo
       scope: "FACILITY_OPEN_PIPELINE",
     },
     {
-      id: "READY_FOR_DISCHARGE",
-      labelKeyEn: "Ready for discharge / complete",
-      labelKeyFr: "Prêt pour la sortie / terminé",
+      id: "DISCHARGE_PENDING",
+      labelKeyEn: "Discharge Pending",
+      labelKeyFr: "Sorties en attente",
+      /**
+       * Reuses enterprise EncounterWorkflowState — no ClinicDischarge table.
+       * Provider pathway advanced to DISCHARGE_READY / FINALIZED while still OPEN
+       * (outstanding completion steps remain; leave KPI when CLOSED).
+       */
       encounterWorkflowStates: ["DISCHARGE_READY", "FINALIZED"],
       encounterStatuses: ["OPEN"],
       includeFollowUpsDue: false,
@@ -211,6 +240,41 @@ export const CLINIC_CARE_TRACKBOARD_METRIC_CONTRACTS: readonly ClinicCareTrackbo
       scope: "FACILITY_LOCAL_TODAY",
     },
   ] as const;
+
+/**
+ * Haiti public-health jurisdiction tokens accepted on Facility.country.
+ * Jurisdiction is regulatory destination — never inferred from UI language alone.
+ */
+export const HAITI_PUBLIC_HEALTH_JURISDICTION_TOKENS = ["HT", "HTI", "HAITI"] as const;
+
+/**
+ * True when facility country denotes Haiti MSPP jurisdiction.
+ * Accepts ISO-ish codes (HT / HTI) and common country name "Haiti".
+ * Language / locale alone must never return true.
+ */
+export function isHaitiPublicHealthJurisdiction(
+  facilityCountry: string | null | undefined
+): boolean {
+  const n = String(facilityCountry ?? "")
+    .trim()
+    .toUpperCase()
+    .replace(/\./g, "");
+  if (!n) return false;
+  if ((HAITI_PUBLIC_HEALTH_JURISDICTION_TOKENS as readonly string[]).includes(n)) return true;
+  // Explicit non-matches for common false friends (language ≠ jurisdiction).
+  if (n === "FR" || n === "FRA" || n === "FRANCE" || n === "CA" || n === "CANADA") return false;
+  return false;
+}
+
+/**
+ * Language / locale is labels-only — never a regulatory jurisdiction signal.
+ * Always returns false so callers cannot accidentally treat `fr` as Haiti MSPP.
+ */
+export function isHaitiJurisdictionFromLanguageAlone(
+  _languageOrLocale: string | null | undefined
+): boolean {
+  return false;
+}
 
 export const EMPTY_FACILITY_OPERATIONAL_ADDRESS: FacilityOperationalAddress = {
   line1: null,
@@ -423,6 +487,8 @@ export function resolveFacilityOptionalModules(input: {
   facilityType?: MedoraFacilityType | string | null;
   careProfileJson?: unknown;
   serviceLines?: readonly string[] | null;
+  /** Facility.country — Haiti jurisdiction enables publicHealth preset when unset. */
+  facilityCountry?: string | null;
 }): FacilityOptionalModules {
   const profile = resolveFacilityCareProfile(input);
   const defaults = getDefaultOptionalModulesForProfile(profile);
@@ -431,18 +497,22 @@ export function resolveFacilityOptionalModules(input: {
     facilityType: input.facilityType,
     configuredServiceLines: input.serviceLines ?? null,
   });
+  // Haiti Clinic Care preset: public health on by default when jurisdiction is Haiti
+  // and optionalModules.publicHealth is not explicitly stored. Language alone never triggers this.
+  const haitiPreset = isHaitiPublicHealthJurisdiction(input.facilityCountry);
+  const publicHealthDefault = haitiPreset ? true : defaults.publicHealth;
   const fromLines: FacilityOptionalModules = {
     laboratory: lines.includes("LABORATORY"),
     radiology: lines.includes("RADIOLOGY"),
     pharmacy: lines.includes("PHARMACY"),
-    publicHealth: defaults.publicHealth,
+    publicHealth: publicHealthDefault,
     billing: defaults.billing,
   };
   return {
     laboratory: stored?.optionalModules?.laboratory ?? fromLines.laboratory,
     radiology: stored?.optionalModules?.radiology ?? fromLines.radiology,
     pharmacy: stored?.optionalModules?.pharmacy ?? fromLines.pharmacy,
-    publicHealth: stored?.optionalModules?.publicHealth ?? defaults.publicHealth,
+    publicHealth: stored?.optionalModules?.publicHealth ?? publicHealthDefault,
     billing: stored?.optionalModules?.billing ?? defaults.billing,
   };
 }
@@ -451,6 +521,7 @@ export function resolveFacilityModuleCapabilitiesD4c1(input: {
   facilityType?: MedoraFacilityType | string | null;
   careProfileJson?: unknown;
   serviceLines?: readonly string[] | null;
+  facilityCountry?: string | null;
 }): FacilityModuleCapabilitiesD4c1 {
   const profile = resolveFacilityCareProfile(input);
   const lines = resolveFacilityServiceLines({
@@ -601,6 +672,12 @@ export type ClinicCareWorkspaceRoleAccess = {
   canAccessAssignedTechnicianTasks: boolean;
   canAccessProviderDocumentation: boolean;
   canAccessRegistration: boolean;
+  /** Patients list / lookup when Clinic Care shell authorized. */
+  canAccessPatients: boolean;
+  /** Encounters list (operational; not clinical authorship). */
+  canAccessEncounters: boolean;
+  /** Follow-up module — only when separately authorized (Provider/RN/Admin). */
+  canAccessFollowUps: boolean;
   /** Facility Lab module ON and user Lab-authorized. */
   canAccessLaboratory: boolean;
   /** Facility Rad module ON and user Radiology-authorized. */
@@ -610,7 +687,24 @@ export type ClinicCareWorkspaceRoleAccess = {
   canAccessPharmacy: boolean;
   canAccessBilling: boolean;
   canAccessAdministration: boolean;
-  /** Source-authority denials (shell visibility must never flip these on for tech / front desk). */
+  /**
+   * Public Health shell links (existing /app/public-health/* routes).
+   * Requires Clinic Care + publicHealth module (+ Haiti preset when applicable) + Provider/RN/Admin.
+   * Does not invent ClinicVaccine; reuses VaccineAdministration / DiseaseCaseReport engines.
+   */
+  canAccessPublicHealth: boolean;
+  /** Immunizations view/record per existing professional PH auth (Provider/RN/Admin). */
+  canAccessPublicHealthImmunizations: boolean;
+  /** Disease reporting view/create per existing professional PH auth. */
+  canAccessPublicHealthDiseaseReporting: boolean;
+  /**
+   * Haiti MSPP pathway exposure (DiseaseCaseReport → MSPP review / export).
+   * Jurisdiction by Facility.country — never language alone. Non-Haiti: false.
+   */
+  canAccessMsppHaitiPathway: boolean;
+  /** Vaccine administration write — Provider/RN/Admin only; Front Desk/Billing/Pharmacy/Tech denied. */
+  canAdministerVaccines: boolean;
+  /** Source-authority denials (shell visibility must never flip these on for tech / front desk / billing). */
   canAuthorProviderDocumentation: boolean;
   canMutateDiagnosesOrProblemList: boolean;
   canIssueProviderOrders: boolean;
@@ -641,6 +735,63 @@ const CLINIC_CARE_AUTHORITY_DENIED: Pick<
   canCompleteDispositionOrEncounter: false,
   canSignAsNurseOrProvider: false,
 };
+
+const CLINIC_CARE_PH_DENIED: Pick<
+  ClinicCareWorkspaceRoleAccess,
+  | "canAccessPublicHealth"
+  | "canAccessPublicHealthImmunizations"
+  | "canAccessPublicHealthDiseaseReporting"
+  | "canAccessMsppHaitiPathway"
+  | "canAdministerVaccines"
+> = {
+  canAccessPublicHealth: false,
+  canAccessPublicHealthImmunizations: false,
+  canAccessPublicHealthDiseaseReporting: false,
+  canAccessMsppHaitiPathway: false,
+  canAdministerVaccines: false,
+};
+
+/**
+ * Clinic Care Public Health exposure over existing PH engines.
+ * - Jurisdiction = Facility.country (Haiti), not UI language.
+ * - MSPP pathway only when Haiti jurisdiction.
+ * - General immunizations/disease reporting when PH module on (Haiti preset or explicit).
+ * - Does not auto-grant MSPP approver roles to Nurses.
+ * - MA is not a silent RN substitute (no MA RoleCode → denied here).
+ */
+export function resolveClinicCarePublicHealthAccess(input: {
+  professionGroup: ProfessionGroup | string;
+  clinicOrUrgentCareEnabled: boolean;
+  publicHealthEnabled: boolean;
+  facilityCountry?: string | null;
+}): Pick<
+  ClinicCareWorkspaceRoleAccess,
+  | "canAccessPublicHealth"
+  | "canAccessPublicHealthImmunizations"
+  | "canAccessPublicHealthDiseaseReporting"
+  | "canAccessMsppHaitiPathway"
+  | "canAdministerVaccines"
+> {
+  const p = String(input.professionGroup ?? "")
+    .trim()
+    .toUpperCase();
+  const haiti = isHaitiPublicHealthJurisdiction(input.facilityCountry);
+  const phOn = input.publicHealthEnabled === true;
+  const clinicOn = input.clinicOrUrgentCareEnabled === true;
+  const clinicalPhRole = p === "PROVIDER" || p === "RN" || p === "ADMIN";
+
+  if (!clinicOn || !phOn || !clinicalPhRole) {
+    return { ...CLINIC_CARE_PH_DENIED };
+  }
+
+  return {
+    canAccessPublicHealth: true,
+    canAccessPublicHealthImmunizations: true,
+    canAccessPublicHealthDiseaseReporting: true,
+    canAccessMsppHaitiPathway: haiti,
+    canAdministerVaccines: true,
+  };
+}
 
 const PROVIDER_CLINIC_AUTHORITY: typeof CLINIC_CARE_AUTHORITY_DENIED = {
   canAuthorProviderDocumentation: true,
@@ -681,12 +832,20 @@ export function resolveClinicCareWorkspaceRoleAccess(input: {
   moduleCapabilities: FacilityModuleCapabilitiesD4c1;
   /** Role codes used for Lab/Rad user authorization (facility module eligibility still required). */
   roleCodes?: readonly string[];
+  /** Facility.country for Haiti PH jurisdiction (not language). */
+  facilityCountry?: string | null;
 }): ClinicCareWorkspaceRoleAccess {
   const { professionGroup: p, moduleCapabilities: caps } = input;
   const roles = normalizeClinicCareRoleCodes(input.roleCodes);
   const clinicOn = caps.clinicCareEnabled || caps.urgentCareEnabled;
   const labOn = caps.laboratoryEnabled;
   const radOn = caps.radiologyEnabled;
+  const phAccess = resolveClinicCarePublicHealthAccess({
+    professionGroup: p,
+    clinicOrUrgentCareEnabled: clinicOn,
+    publicHealthEnabled: caps.publicHealthEnabled,
+    facilityCountry: input.facilityCountry,
+  });
 
   if (p === "ADMIN") {
     return {
@@ -698,12 +857,16 @@ export function resolveClinicCareWorkspaceRoleAccess(input: {
       canAccessAssignedTechnicianTasks: clinicOn,
       canAccessProviderDocumentation: clinicOn,
       canAccessRegistration: caps.registrationEnabled,
+      canAccessPatients: clinicOn,
+      canAccessEncounters: clinicOn,
+      canAccessFollowUps: clinicOn,
       canAccessLaboratory: labOn,
       canAccessRadiology: radOn,
       canAccessDiagnosticsWorklists: labOn || radOn,
       canAccessPharmacy: caps.pharmacyEnabled,
       canAccessBilling: caps.billingEnabled,
       canAccessAdministration: true,
+      ...phAccess,
       ...PROVIDER_CLINIC_AUTHORITY,
       canAuthorIndependentNursingAssessment: true,
       canAdministerMedicationsUnrestricted: true,
@@ -720,12 +883,16 @@ export function resolveClinicCareWorkspaceRoleAccess(input: {
       canAccessAssignedTechnicianTasks: false,
       canAccessProviderDocumentation: clinicOn,
       canAccessRegistration: false,
+      canAccessPatients: clinicOn,
+      canAccessEncounters: clinicOn,
+      canAccessFollowUps: clinicOn,
       canAccessLaboratory: labOn,
       canAccessRadiology: radOn,
       canAccessDiagnosticsWorklists: labOn || radOn,
       canAccessPharmacy: false,
       canAccessBilling: false,
       canAccessAdministration: false,
+      ...phAccess,
       ...PROVIDER_CLINIC_AUTHORITY,
     };
   }
@@ -740,32 +907,42 @@ export function resolveClinicCareWorkspaceRoleAccess(input: {
       canAccessAssignedTechnicianTasks: false,
       canAccessProviderDocumentation: false,
       canAccessRegistration: caps.registrationEnabled,
+      canAccessPatients: clinicOn,
+      canAccessEncounters: clinicOn,
+      canAccessFollowUps: clinicOn,
       canAccessLaboratory: labOn,
       canAccessRadiology: radOn && roles.includes("RADIOLOGY"),
       canAccessDiagnosticsWorklists: labOn || (radOn && roles.includes("RADIOLOGY")),
       canAccessPharmacy: false,
       canAccessBilling: false,
       canAccessAdministration: false,
+      ...phAccess,
       ...RN_CLINIC_AUTHORITY,
     };
   }
 
   if (p === "FRONT_DESK") {
+    // Authorized Front Desk / Registration at Clinic Care-enabled facility may use the shell +
+    // operational trackboard. Clinical authorship remains denied.
     return {
-      canAccessClinicCareShell: false,
-      canAccessClinicTrackboardProjection: false,
-      canAccessTodaysVisitsProjection: false,
+      canAccessClinicCareShell: clinicOn,
+      canAccessClinicTrackboardProjection: clinicOn,
+      canAccessTodaysVisitsProjection: clinicOn,
       canAccessNursingMa: false,
       canAccessTechnicianSafeNursingMaProjection: false,
       canAccessAssignedTechnicianTasks: false,
       canAccessProviderDocumentation: false,
       canAccessRegistration: caps.registrationEnabled,
+      canAccessPatients: clinicOn,
+      canAccessEncounters: clinicOn,
+      canAccessFollowUps: false,
       canAccessLaboratory: false,
       canAccessRadiology: false,
       canAccessDiagnosticsWorklists: false,
       canAccessPharmacy: false,
       canAccessBilling: caps.billingEnabled,
       canAccessAdministration: false,
+      ...CLINIC_CARE_PH_DENIED,
       ...CLINIC_CARE_AUTHORITY_DENIED,
     };
   }
@@ -787,52 +964,69 @@ export function resolveClinicCareWorkspaceRoleAccess(input: {
       canAccessAssignedTechnicianTasks: shellOn || diagnosticsOnlyWithoutClinic,
       canAccessProviderDocumentation: false,
       canAccessRegistration: false,
+      canAccessPatients: shellOn,
+      canAccessEncounters: shellOn,
+      canAccessFollowUps: false,
       canAccessLaboratory: labAuthorized,
       canAccessRadiology: radAuthorized,
       canAccessDiagnosticsWorklists: labAuthorized || radAuthorized,
       canAccessPharmacy: false,
       canAccessBilling: false,
       canAccessAdministration: false,
+      ...CLINIC_CARE_PH_DENIED,
       ...CLINIC_CARE_AUTHORITY_DENIED,
     };
   }
 
   if (p === "PHARMACY") {
+    // Clinic Care shell only when Clinic Care enabled AND Pharmacy module enabled
+    // AND user has Pharmacy authorization (this profession branch).
+    const pharmacyShell = clinicOn && caps.pharmacyEnabled;
     return {
-      canAccessClinicCareShell: false,
-      canAccessClinicTrackboardProjection: false,
-      canAccessTodaysVisitsProjection: false,
+      canAccessClinicCareShell: pharmacyShell,
+      canAccessClinicTrackboardProjection: pharmacyShell,
+      canAccessTodaysVisitsProjection: pharmacyShell,
       canAccessNursingMa: false,
       canAccessTechnicianSafeNursingMaProjection: false,
       canAccessAssignedTechnicianTasks: false,
       canAccessProviderDocumentation: false,
       canAccessRegistration: false,
+      canAccessPatients: pharmacyShell,
+      canAccessEncounters: pharmacyShell,
+      canAccessFollowUps: false,
       canAccessLaboratory: false,
       canAccessRadiology: false,
       canAccessDiagnosticsWorklists: false,
       canAccessPharmacy: caps.pharmacyEnabled,
       canAccessBilling: false,
       canAccessAdministration: false,
+      ...CLINIC_CARE_PH_DENIED,
       ...CLINIC_CARE_AUTHORITY_DENIED,
     };
   }
 
   if (p === "BILLING") {
+    // Authorized Billing at Clinic Care-enabled facility may use the shell + operational trackboard
+    // and billing/facture. Clinical authorship remains denied.
     return {
-      canAccessClinicCareShell: false,
-      canAccessClinicTrackboardProjection: false,
-      canAccessTodaysVisitsProjection: false,
+      canAccessClinicCareShell: clinicOn,
+      canAccessClinicTrackboardProjection: clinicOn,
+      canAccessTodaysVisitsProjection: clinicOn,
       canAccessNursingMa: false,
       canAccessTechnicianSafeNursingMaProjection: false,
       canAccessAssignedTechnicianTasks: false,
       canAccessProviderDocumentation: false,
       canAccessRegistration: false,
+      canAccessPatients: clinicOn,
+      canAccessEncounters: clinicOn,
+      canAccessFollowUps: false,
       canAccessLaboratory: false,
       canAccessRadiology: false,
       canAccessDiagnosticsWorklists: false,
       canAccessPharmacy: false,
       canAccessBilling: caps.billingEnabled,
       canAccessAdministration: false,
+      ...CLINIC_CARE_PH_DENIED,
       ...CLINIC_CARE_AUTHORITY_DENIED,
     };
   }
@@ -846,12 +1040,16 @@ export function resolveClinicCareWorkspaceRoleAccess(input: {
     canAccessAssignedTechnicianTasks: false,
     canAccessProviderDocumentation: false,
     canAccessRegistration: false,
+    canAccessPatients: false,
+    canAccessEncounters: false,
+    canAccessFollowUps: false,
     canAccessLaboratory: false,
     canAccessRadiology: false,
     canAccessDiagnosticsWorklists: false,
     canAccessPharmacy: false,
     canAccessBilling: false,
     canAccessAdministration: false,
+    ...CLINIC_CARE_PH_DENIED,
     ...CLINIC_CARE_AUTHORITY_DENIED,
   };
 }
