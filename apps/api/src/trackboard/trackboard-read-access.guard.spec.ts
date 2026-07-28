@@ -104,19 +104,38 @@ describe("TrackboardReadAccessGuard (MEDUI.ED.TECH.3)", () => {
     );
   });
 
-  it("still allows RN at any facility", async () => {
+  it("still allows RN at hospital/ED-capable facility", async () => {
     const prisma = prismaMock([
       {
         role: { code: RoleCode.RN },
         department: null,
         facility: {
-          facilityType: FacilityType.CLINIC,
-          serviceLinesJson: ["OBSERVATION", "LABORATORY"],
+          facilityType: FacilityType.HOSPITAL,
+          serviceLinesJson: ["EMERGENCY", "OBSERVATION", "LABORATORY"],
         },
       },
     ]);
     const guard = new TrackboardReadAccessGuard(prisma as never);
     await expect(guard.canActivate(buildContext({ status: "OPEN" }) as never)).resolves.toBe(true);
+  });
+
+  it("MEDUI.D4C.2A — denies Admin ED trackboard at Clinic-only facility", async () => {
+    const prisma = prismaMock([
+      {
+        role: { code: RoleCode.ADMIN },
+        department: null,
+        facility: {
+          facilityType: FacilityType.CLINIC,
+          serviceLinesJson: ["CLINIC", "LABORATORY"],
+          facilityCareProfileJson: null,
+          country: null,
+        },
+      },
+    ]);
+    const guard = new TrackboardReadAccessGuard(prisma as never);
+    await expect(guard.canActivate(buildContext({ status: "OPEN" }) as never)).rejects.toBeInstanceOf(
+      ForbiddenException
+    );
   });
 
   it("denies LAB tech without facility membership", async () => {

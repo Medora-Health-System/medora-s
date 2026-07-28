@@ -50,6 +50,10 @@ export function useFacilityAndRoles() {
   const [facilityType, setFacilityType] = useState<string | null>(null);
   /** Active facility service lines from `/auth/me`. */
   const [facilityServiceLines, setFacilityServiceLines] = useState<string[]>([]);
+  /** MEDUI.D4C.2A — additive facility care profile JSON from `/auth/me`. */
+  const [careProfileJson, setCareProfileJson] = useState<unknown>(null);
+  /** Facility.country for Haiti PH jurisdiction. */
+  const [facilityCountry, setFacilityCountry] = useState<string | null>(null);
 
   const applySessionFromMe = useCallback((d: Record<string, unknown>) => {
     const meId = typeof d.id === "string" ? d.id : "";
@@ -81,6 +85,8 @@ export function useFacilityAndRoles() {
       setDepartmentCode(null);
       setFacilityType(null);
       setFacilityServiceLines([]);
+      setCareProfileJson(null);
+      setFacilityCountry(null);
       setReady(true);
       return;
     }
@@ -99,6 +105,8 @@ export function useFacilityAndRoles() {
         departmentCode?: string | null;
         facilityType?: string | null;
         serviceLines?: string[] | null;
+        careProfileJson?: unknown;
+        facilityCountry?: string | null;
       }[]) ?? [];
     setIsPlatformOperator(frsTyped.some((fr) => fr.role === "MEDORA_SUPER_ADMIN"));
     const r =
@@ -121,6 +129,9 @@ export function useFacilityAndRoles() {
     setFacilityType(typeof activeFacilityType === "string" && activeFacilityType.trim() ? activeFacilityType : null);
     const lines = activePolicyRow?.serviceLines;
     setFacilityServiceLines(Array.isArray(lines) ? lines.filter((x): x is string => typeof x === "string") : []);
+    setCareProfileJson(activePolicyRow?.careProfileJson ?? null);
+    const country = activePolicyRow?.facilityCountry;
+    setFacilityCountry(typeof country === "string" && country.trim() ? country : null);
     const map = new Map<string, string>();
     for (const fr of (d.facilityRoles as { facilityId?: string; facilityName?: string }[]) ?? []) {
       const id = String(fr.facilityId);
@@ -226,6 +237,10 @@ export function useFacilityAndRoles() {
     facilityType,
     /** Resolved service lines for active facility (`/auth/me`). */
     facilityServiceLines,
+    /** MEDUI.D4C.2A — care profile JSON for capability navigation. */
+    careProfileJson,
+    /** Facility.country for Haiti PH jurisdiction. */
+    facilityCountry,
     /**
      * True when planned-administration defaults may use facility wall-clock (K.10B.4).
      * False while session loads; true with no facilityId when user has no active facility.

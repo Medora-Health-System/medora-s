@@ -4,6 +4,21 @@ import { filterSidebarNavItemsForSession } from "@/features/navigation/navigatio
 import { CLINIC_CARE_TRACKBOARD_METRIC_CONTRACTS } from "@medora/shared";
 
 describe("MEDUI.D4C.1 clinic care navigation visibility", () => {
+  it("shows Clinic Care and hides ED/Hospital for clinic Admin (MEDUI.D4C.2A)", () => {
+    const filtered = filterSidebarNavItemsForSession(SIDEBAR_NAV_ITEMS, {
+      roleCodes: ["ADMIN"],
+      profile: {
+        roleCodes: ["ADMIN"],
+        facilityType: "CLINIC",
+        facilityServiceLines: null,
+      },
+    });
+    const hrefs = filtered.map((item) => item.href);
+    expect(hrefs).toContain("/app/clinic-care");
+    expect(hrefs).not.toContain("/app/emergency/trackboard");
+    expect(hrefs).not.toContain("/app/hospitalisation");
+  });
+
   it("shows Clinic Care and hides ED/Hospital for clinic RN", () => {
     const filtered = filterSidebarNavItemsForSession(SIDEBAR_NAV_ITEMS, {
       roleCodes: ["RN"],

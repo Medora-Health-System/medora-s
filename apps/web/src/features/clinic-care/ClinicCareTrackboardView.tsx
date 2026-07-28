@@ -100,80 +100,9 @@ type ShellNavItem = {
   placeholder?: boolean;
 };
 
-const SHELL_NAV: ShellNavItem[] = [
-  {
-    id: "trackboard",
-    href: null,
-    labelKey: "clinicCareD4c2.nav.trackboard",
-    visible: () => true,
-  },
-  {
-    id: "registration",
-    href: "/app/clinic-care/registration",
-    labelKey: "clinicCareD4c2.nav.registration",
-    visible: (a) => a.canAccessRegistration,
-  },
-  {
-    id: "todaysVisits",
-    href: null,
-    labelKey: "clinicCareD4c2.nav.todaysVisits",
-    visible: () => true,
-  },
-  {
-    id: "nursing",
-    href: "/app/nursing",
-    labelKey: "clinicCareD4c2.nav.nursingMa",
-    visible: (a) => a.canAccessNursingMa || a.canAccessTechnicianSafeNursingMaProjection,
-  },
-  {
-    id: "provider",
-    href: "/app/provider",
-    labelKey: "clinicCareD4c2.nav.provider",
-    visible: (a) => a.canAccessProviderDocumentation && a.canAuthorProviderDocumentation,
-  },
-  {
-    id: "patients",
-    href: "/app/patients",
-    labelKey: "clinicCareD4c2.nav.patients",
-    visible: (a) => a.canAccessPatients !== false,
-  },
-  {
-    id: "encounters",
-    href: "/app/encounters",
-    labelKey: "clinicCareD4c2.nav.encounters",
-    visible: (a) => a.canAccessEncounters === true,
-  },
-  {
-    id: "followUps",
-    href: "/app/follow-ups",
-    labelKey: "clinicCareD4c2.nav.followUps",
-    visible: (a) => a.canAccessFollowUps === true,
-  },
-  {
-    id: "immunizations",
-    href: "/app/public-health/vaccinations",
-    labelKey: "clinicCareD4c2.nav.immunizations",
-    visible: (a) => a.canAccessPublicHealthImmunizations === true,
-  },
-  {
-    id: "diseaseReporting",
-    href: "/app/public-health/disease-reports",
-    labelKey: "clinicCareD4c2.nav.diseaseReporting",
-    visible: (a) => a.canAccessPublicHealthDiseaseReporting === true,
-  },
-  {
-    id: "billing",
-    href: "/app/billing",
-    labelKey: "clinicCareD4c2.nav.billing",
-    visible: (a) => a.canAccessBilling,
-  },
-  {
-    id: "pharmacy",
-    href: "/app/pharmacy",
-    labelKey: "clinicCareD4c2.nav.pharmacy",
-    visible: (a) => a.canAccessPharmacy,
-  },
-];
+/** @deprecated MEDUI.D4C.2A — top tabs live in ClinicCareTopNav / CLINIC_WORKSPACE_NAV_REGISTRY. */
+const SHELL_NAV: ShellNavItem[] = [];
+void SHELL_NAV;
 
 function metricLabelKey(id: ClinicCareTrackboardMetricId): string {
   switch (id) {
@@ -294,7 +223,12 @@ const inputStyle: React.CSSProperties = {
   boxSizing: "border-box",
 };
 
-export function ClinicCareTrackboardView() {
+export function ClinicCareTrackboardView({
+  mode = "trackboard",
+}: {
+  /** MEDUI.D4C.2A — route-backed Today's Visits vs operational trackboard. */
+  mode?: "trackboard" | "todaysVisits";
+}) {
   const { t, language } = useI18n();
   const locale = language === "en" ? "en-US" : "fr-FR";
   const { facilityId, roles, ready, facilityTimeZone } = useFacilityAndRoles();
@@ -310,10 +244,11 @@ export function ClinicCareTrackboardView() {
   const [filterProvider, setFilterProvider] = useState("");
   const [filterRoom, setFilterRoom] = useState("");
   const [view, setView] = useState<ClinicCareTrackboardView>(
-    defaultClinicCareTrackboardViewForProfession(profession)
+    mode === "todaysVisits" ? "ALL_TODAY" : defaultClinicCareTrackboardViewForProfession(profession)
   );
   const [sortKey, setSortKey] = useState<"arrival" | "patient" | "status">("arrival");
-  const [activeShell, setActiveShell] = useState("trackboard");
+  const activeShell = mode === "todaysVisits" ? "todaysVisits" : "trackboard";
+  void activeShell;
 
   const load = useCallback(async () => {
     if (!facilityId) return;
@@ -323,7 +258,11 @@ export function ClinicCareTrackboardView() {
     try {
       const payload = (await apiFetch("/clinic-care/trackboard", { facilityId })) as ClinicCareProjection;
       setData(payload);
-      if (payload.defaultView) setView(payload.defaultView);
+      if (mode === "todaysVisits") {
+        setView("ALL_TODAY");
+      } else if (payload.defaultView) {
+        setView(payload.defaultView);
+      }
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       if (/403|denied|forbidden/i.test(message)) {
@@ -335,7 +274,7 @@ export function ClinicCareTrackboardView() {
     } finally {
       setLoading(false);
     }
-  }, [facilityId, t]);
+  }, [facilityId, t, mode]);
 
   useEffect(() => {
     if (!ready || !facilityId) return;
@@ -343,8 +282,12 @@ export function ClinicCareTrackboardView() {
   }, [ready, facilityId, load]);
 
   useEffect(() => {
+    if (mode === "todaysVisits") {
+      setView("ALL_TODAY");
+      return;
+    }
     setView(defaultClinicCareTrackboardViewForProfession(profession));
-  }, [profession]);
+  }, [profession, mode]);
 
   const dayBounds = useMemo(() => {
     const tz = data?.facilityTimeZone || facilityTimeZone || "America/Chicago";
@@ -417,20 +360,17 @@ export function ClinicCareTrackboardView() {
 
   if (!ready) {
     return (
-      <main style={{ padding: 16 }}>
-        <p style={{ color: "#64748b" }}>{t("clinicCareD4c2.loading")}</p>
-      </main>
+      <div>
+        <p style={{ color: "#64748b", margin: 0 }}>{t("clinicCareD4c2.loading")}</p>
+      </div>
     );
   }
 
   if (denied) {
     return (
-      <main style={{ padding: 16, maxWidth: 720 }}>
-        <section style={{ ...MEDORA_CARD_SHELL, padding: 16 }}>
-          <h1 style={{ margin: "0 0 8px", fontSize: 20 }}>{t("clinicCareD4c2.title")}</h1>
-          <p style={{ margin: 0, color: "#64748b" }}>{t("clinicCareD4c2.errors.accessDenied")}</p>
-        </section>
-      </main>
+      <div>
+        <p style={{ margin: 0, color: "#64748b" }}>{t("clinicCareD4c2.errors.accessDenied")}</p>
+      </div>
     );
   }
 
@@ -443,88 +383,41 @@ export function ClinicCareTrackboardView() {
     visibility.showDischargeActions === true && access?.canCompleteDispositionOrEncounter === true;
 
   return (
-    <div style={{ minHeight: "calc(100vh - 48px)", background: CLINIC_CARE_SHELL.canvas, padding: "12px 16px 24px" }}>
-      <div style={{ maxWidth: 1280, margin: "0 auto" }}>
-        <header style={{ marginBottom: 14 }}>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "baseline", justifyContent: "space-between" }}>
-            <div>
-              <h1 style={{ margin: 0, fontSize: "clamp(1.25rem, 2.2vw, 1.55rem)", fontWeight: 700, color: "#0f172a" }}>
-                {t("clinicCareD4c2.title")}
-              </h1>
-              <p style={{ margin: "4px 0 0", fontSize: 13, color: "#64748b" }}>
-                {data?.facilityName ? `${data.facilityName} · ` : ""}
-                {t(operatingModeLabelKey(data?.operatingMode ?? null))}
-                {data?.localDateKey ? ` · ${data.localDateKey}` : ""}
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={() => void load()}
-              style={{
-                height: 36,
-                borderRadius: 10,
-                border: `1px solid ${CLINIC_CARE_SHELL.border}`,
-                background: "#fff",
-                padding: "0 14px",
-                fontSize: 13,
-                fontWeight: 600,
-                cursor: "pointer",
-                color: "#0f172a",
-              }}
-            >
-              {t("clinicCareD4c2.refresh")}
-            </button>
-          </div>
-        </header>
-
-        <nav
-          aria-label={t("clinicCareD4c2.shellNavLabel")}
+    <div data-testid="clinic-care-trackboard-panel">
+        <div
           style={{
             display: "flex",
             flexWrap: "wrap",
-            gap: 6,
-            marginBottom: 14,
+            gap: 8,
+            alignItems: "center",
+            justifyContent: "space-between",
+            marginBottom: 12,
           }}
         >
-          {(access ? SHELL_NAV.filter((item) => item.visible(access)) : SHELL_NAV.slice(0, 1)).map((item) => {
-            const active = activeShell === item.id || (item.id === "trackboard" && activeShell === "trackboard");
-            const baseStyle: React.CSSProperties = {
-              display: "inline-flex",
-              alignItems: "center",
-              height: 32,
-              padding: "0 12px",
-              borderRadius: 999,
-              fontSize: 12,
+          <p style={{ margin: 0, fontSize: 13, color: "#64748b" }}>
+            {data?.facilityName ? `${data.facilityName} · ` : ""}
+            {t(operatingModeLabelKey(data?.operatingMode ?? null))}
+            {data?.localDateKey ? ` · ${data.localDateKey}` : ""}
+            {mode === "todaysVisits" ? ` · ${t("clinicCareD4c2.nav.todaysVisits")}` : ""}
+          </p>
+          <button
+            type="button"
+            onClick={() => void load()}
+            style={{
+              height: 36,
+              borderRadius: 10,
+              border: `1px solid ${CLINIC_CARE_SHELL.border}`,
+              background: "#fff",
+              padding: "0 14px",
+              fontSize: 13,
               fontWeight: 600,
-              textDecoration: "none",
-              border: `1px solid ${active ? "#0d9488" : CLINIC_CARE_SHELL.border}`,
-              background: active ? "rgba(13,148,136,0.12)" : "#fff",
-              color: active ? "#0f766e" : "#334155",
               cursor: "pointer",
-            };
-            if (item.href) {
-              return (
-                <Link key={item.id} href={item.href} style={baseStyle}>
-                  {t(item.labelKey)}
-                </Link>
-              );
-            }
-            return (
-              <button
-                key={item.id}
-                type="button"
-                style={baseStyle}
-                onClick={() => {
-                  setActiveShell(item.id);
-                  if (item.id === "todaysVisits") setView("ALL_TODAY");
-                  if (item.id === "trackboard") setView(data?.defaultView ?? "ALL_TODAY");
-                }}
-              >
-                {t(item.labelKey)}
-              </button>
-            );
-          })}
-        </nav>
+              color: "#0f172a",
+            }}
+          >
+            {t("clinicCareD4c2.refresh")}
+          </button>
+        </div>
 
         {access?.canAccessTechnicianSafeNursingMaProjection && !access.canAuthorProviderDocumentation ? (
           <p
@@ -579,6 +472,7 @@ export function ClinicCareTrackboardView() {
 
         <section
           aria-label={t("clinicCareD4c2.kpiSectionLabel")}
+          data-testid="clinic-care-kpi-tiles"
           style={{
             display: "grid",
             gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",
@@ -600,7 +494,6 @@ export function ClinicCareTrackboardView() {
                   else if (id === "FOLLOW_UPS_DUE") setView("FOLLOW_UP_DUE");
                   else if (id === "TODAYS_VISITS") setView("ALL_TODAY");
                   else if (id === "IN_PROGRESS") setView("PROVIDER");
-                  setActiveShell("trackboard");
                 }}
                 style={{
                   textAlign: "left",
@@ -907,7 +800,6 @@ export function ClinicCareTrackboardView() {
         </section>
 
         <p style={{ marginTop: 10, fontSize: 11, color: "#94a3b8" }}>{t("clinicCareD4c2.footerDeferral")}</p>
-      </div>
     </div>
   );
 }

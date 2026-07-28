@@ -11,7 +11,9 @@
 
 import {
   getLandingRouteForNavigationProfile,
-  getVisibleNavigationAreas,
+  isFacilityCareSettingPathAllowed,
+  resolveCapabilityAwareNavigationAreas,
+  resolveFacilityAwareLandingPath,
   type NavigationArea,
   type NavigationProfileInput,
 } from "@medora/shared";
@@ -172,6 +174,20 @@ const APP_ROUTE_RULES: RouteRule[] = [
     prefix: "/app/hospitalisation",
     roles: ["ADMIN", "PROVIDER", "RN", "LAB", "RADIOLOGY"],
   },
+  {
+    prefix: "/app/clinic-care",
+    roles: [
+      "ADMIN",
+      "PROVIDER",
+      "RN",
+      "FRONT_DESK",
+      "LAB",
+      "RADIOLOGY",
+      "PHARMACY",
+      "BILLING",
+      "PATIENT_CARE_TECH",
+    ],
+  },
   { prefix: "/app/billing", roles: ["ADMIN", "BILLING", "FRONT_DESK"] },
   { prefix: "/app/fracture", roles: ["ADMIN"] },
   {
@@ -259,14 +275,29 @@ function pathMatchesRule(pathname: string, rule: RouteRule): boolean {
 /** MEDUI.NAV.ROLE.1 — path prefixes allowed when navigation area is visible (UI route guard only). */
 const NAVIGATION_AREA_ROUTE_PREFIXES: Partial<Record<NavigationArea, readonly string[]>> = {
   DASHBOARD: ["/app/trackboard", "/app/provider", "/app/nursing"],
-  REGISTRATION: ["/app/registration", "/app/patients"],
+  REGISTRATION: ["/app/registration", "/app/patients", "/app/clinic-care/registration"],
   EMERGENCY: ["/app/emergency"],
   HOSPITAL: ["/app/hospitalisation"],
-  LABORATORY: ["/app/lab-worklist", "/app/lab"],
-  RADIOLOGY: ["/app/rad-worklist", "/app/radiology", "/app/imaging"],
-  PHARMACY: ["/app/pharmacy", "/app/pharmacy-worklist"],
-  BILLING: ["/app/billing"],
-  ADMINISTRATION: ["/app/admin"],
+  CLINIC_CARE: [
+    "/app/clinic-care",
+    "/app/clinic-care/todays-visits",
+    "/app/clinic-care/nursing",
+    "/app/clinic-care/provider",
+    "/app/clinic-care/patients",
+    "/app/clinic-care/encounters",
+    "/app/clinic-care/follow-up",
+    "/app/clinic-care/billing",
+    "/app/clinic-care/laboratory",
+    "/app/clinic-care/radiology",
+    "/app/clinic-care/pharmacy",
+    "/app/clinic-care/public-health",
+    "/app/clinic-care/administration",
+  ],
+  LABORATORY: ["/app/lab-worklist", "/app/lab", "/app/clinic-care/laboratory"],
+  RADIOLOGY: ["/app/rad-worklist", "/app/radiology", "/app/imaging", "/app/clinic-care/radiology"],
+  PHARMACY: ["/app/pharmacy", "/app/pharmacy-worklist", "/app/clinic-care/pharmacy"],
+  BILLING: ["/app/billing", "/app/clinic-care/billing"],
+  ADMINISTRATION: ["/app/admin", "/app/clinic-care/administration"],
 };
 
 function pathMatchesNavigationAreaPrefix(pathname: string, area: NavigationArea): boolean {
@@ -279,9 +310,13 @@ function pathMatchesNavigationAreaPrefix(pathname: string, area: NavigationArea)
 /** Allows floor/lab/rad technicians to open routes tied to their navigation areas. */
 function isAppPathAllowedForNavigationProfile(
   pathname: string,
-  profile: NavigationProfileInput
+  profile: NavigationProfileInput & { careProfileJson?: unknown; facilityCountry?: string | null }
 ): boolean {
-  const visibleAreas = getVisibleNavigationAreas(profile);
+  /** MEDUI.D4C.2A — facility capabilities gate care-setting paths before area allow-list. */
+  if (!isFacilityCareSettingPathAllowed(pathname, profile)) {
+    return false;
+  }
+  const visibleAreas = resolveCapabilityAwareNavigationAreas(profile);
   return visibleAreas.some((area) => pathMatchesNavigationAreaPrefix(pathname, area));
 }
 
@@ -340,6 +375,13 @@ export function getLandingRouteForRoles(
     return "/app/mspp/dashboard";
   }
   if (options?.navigationProfile && hasFacilityAppRole) {
+    /** MEDUI.D4C.2A — ambulatory Clinic Care role landings when facility enables Clinic. */
+    if (
+      options.navigationProfile.facilityType === "CLINIC" ||
+      options.navigationProfile.facilityType === "URGENT_CARE"
+    ) {
+      return resolveFacilityAwareLandingPath(options.navigationProfile);
+    }
     return getLandingRouteForNavigationProfile(options.navigationProfile);
   }
   if (hasTrackboardDefaultLanding(set)) {
@@ -360,11 +402,24 @@ export function getLandingRouteForRoles(
 export function isAppPathAllowedForRoles(
   pathname: string,
   roles: string[],
-  options?: { canCreateFacilities?: boolean; navigationProfile?: NavigationProfileInput }
+  options?: {
+    canCreateFacilities?: boolean;
+    navigationProfile?: NavigationProfileInput & {
+      careProfileJson?: unknown;
+      facilityCountry?: string | null;
+    };
+  }
 ): boolean {
   if (!pathname.startsWith("/app")) return false;
   const pathForRules = normalizeAppPathnameForRouteRules(pathname);
   const set = normalizeRoleSet(roles);
+  /** MEDUI.D4C.2A — facility capability gate (Admin included; no override of absent modules). */
+  if (
+    options?.navigationProfile &&
+    !isFacilityCareSettingPathAllowed(pathForRules, options.navigationProfile)
+  ) {
+    return false;
+  }
   if (
     options?.navigationProfile &&
     isAppPathAllowedForNavigationProfile(pathForRules, options.navigationProfile)
@@ -387,7 +442,15 @@ export function isAppPathAllowedForRoles(
   ) {
     if (set.has("MSPP_ADMIN")) return true;
   }
-  if (set.has("ADMIN")) return true;
+  if (set.has("ADMIN")) {
+    if (
+      options?.navigationProfile &&
+      !isFacilityCareSettingPathAllowed(pathForRules, options.navigationProfile)
+    ) {
+      return false;
+    }
+    return true;
+  }
   if (pathname === "/app/mspp" || pathname.startsWith("/app/mspp/")) {
     return MSPP_OPERATIONAL_ROLE_CODES.some((r) => set.has(r));
   }
@@ -424,7 +487,16 @@ export function getRouteGuardRedirect(
   if (isPlatformOperatorOnlyAppPath(pathForRules) && !set.has("MEDORA_SUPER_ADMIN")) {
     return getLandingRouteForRoles(roles);
   }
-  if (set.has("ADMIN")) return null;
+  /** MEDUI.D4C.2A — Admin still redirected off care settings disabled for the facility. */
+  if (set.has("ADMIN")) {
+    if (
+      options?.navigationProfile &&
+      !isFacilityCareSettingPathAllowed(pathForRules, options.navigationProfile)
+    ) {
+      return getLandingRouteForRoles(roles, options);
+    }
+    return null;
+  }
   if (!isAppPathAllowedForRoles(pathname, roles, options)) return getLandingRouteForRoles(roles, options);
   return null;
 }
@@ -466,8 +538,11 @@ export type AuthFacilityRole = {
 
 export type LandingRouteOptions = {
   canCreateFacilities?: boolean;
-  /** MEDUI.NAV.ROLE.1 — profession + department landing for `/app` root only. */
-  navigationProfile?: NavigationProfileInput;
+  /** MEDUI.NAV.ROLE.1 / D4C.2A — profession + facility capability landing for `/app` root. */
+  navigationProfile?: NavigationProfileInput & {
+    careProfileJson?: unknown;
+    facilityCountry?: string | null;
+  };
 };
 
 /** Tri stable (identique au tri côté API) pour choisir l’établissement de session. */

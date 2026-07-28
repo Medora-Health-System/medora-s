@@ -283,6 +283,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     departmentCode?: string | null;
     facilityType?: string | null;
     serviceLines?: readonly string[] | null;
+    careProfileJson?: unknown;
+    facilityCountry?: string | null;
   } | null => {
     if (!user || !activeFacility) return null;
     const rows = (
@@ -291,6 +293,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         departmentCode?: string | null;
         facilityType?: string | null;
         serviceLines?: readonly string[] | null;
+        careProfileJson?: unknown;
+        facilityCountry?: string | null;
       }[]
     ).filter((fr) => fr.facilityId === activeFacility);
     return rows[0] ?? null;
@@ -304,6 +308,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       prismaDepartmentCode: activeRoleRow?.departmentCode ?? null,
       facilityType: activeRoleRow?.facilityType ?? null,
       facilityServiceLines: activeRoleRow?.serviceLines ?? null,
+      careProfileJson: activeRoleRow?.careProfileJson,
+      facilityCountry: activeRoleRow?.facilityCountry ?? null,
     });
   };
 
