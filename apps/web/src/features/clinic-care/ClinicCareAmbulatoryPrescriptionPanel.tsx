@@ -1,7 +1,8 @@
 /**
- * MEDUI.D4C.5B.3 — Ambulatory Rx tile: take-home / external prescriptions ONLY.
+ * MEDUI.D4C.5B.3 / D4C.7E — Ambulatory Rx tile: take-home / external prescriptions ONLY.
  * Filters OrderItem.medicationFulfillmentIntent === PHARMACY_DISPENSE + MEDICATION.
  * Reuses CreateOrderModal + getRxPrintHtml — enterprise prescription path only.
+ * External pharmacy selection is destination-only (not internal Pharmacy worklist).
  */
 
 "use client";
@@ -18,10 +19,15 @@ import {
   ambulatoryMedicationRouteDisplayKey,
   ambulatoryRxListFilterDisplayKey,
   canPrintAmbulatoryExternalPrescriptions,
+  externalPharmacySendStatusDisplayKey,
   filterAmbulatoryExternalPrescriptionOrders,
   localizeAmbulatoryMedicationSigForFrenchDisplay,
   matchesAmbulatoryRxListFilter,
+  projectPersistedOutpatientPrescriptionPrintLines,
+  resolveExternalPharmacySendStatus,
+  validateOutpatientPrescriptionPrintProjection,
   type D4c5b3RxListFilter,
+  type D4c7ePersistedOrderItemLike,
 } from "@medora/shared";
 
 type MedOrderRow = {
@@ -108,6 +114,9 @@ export function ClinicCareAmbulatoryPrescriptionPanel({
   const [showModal, setShowModal] = useState(false);
   const [filter, setFilter] = useState<D4c5b3RxListFilter>("ALL_MEDICATIONS");
   const [printError, setPrintError] = useState<string | null>(null);
+  const [pharmacyQuery, setPharmacyQuery] = useState("");
+  const [selectedPharmacy, setSelectedPharmacy] = useState("");
+  const [showPharmacyBoard, setShowPharmacyBoard] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -136,37 +145,48 @@ export function ClinicCareAmbulatoryPrescriptionPanel({
     [rxOrders, filter]
   );
 
+  const sendStatus = resolveExternalPharmacySendStatus({
+    pharmacySelected: selectedPharmacy.trim().length > 0,
+    ePrescribingConnectorAvailable: false,
+  });
+
   const canOpen = canPrescribe && !isLocked && (encounter.status ?? "") === "OPEN";
 
   const handlePrint = () => {
     setPrintError(null);
     const gate = canPrintAmbulatoryExternalPrescriptions(rxOrders);
     if (!gate.ok) {
-      setPrintError(t(gate.reasonKey));
+      setPrintError(t("clinicCareD4c7e.rx.printBlockedEmpty"));
       return;
     }
     const first = rxOrders[0];
     if (!first) {
-      setPrintError(t("clinicCareD4c5b3.rx.printBlockedEmpty"));
+      setPrintError(t("clinicCareD4c7e.rx.printBlockedEmpty"));
       return;
     }
-    const printItems = rxOrders.flatMap((row) =>
+    const persistedItems = rxOrders.flatMap((row) =>
       (row.items ?? []).map((it) => ({
-        catalogItemId: undefined,
-        manualLabel: itemLabel(it, language) || null,
-        strength: it.strength ?? it.catalogMedication?.strength ?? null,
-        route: it.route ?? it.catalogMedication?.route ?? null,
+        ...it,
+        displayLabel: itemLabel(it, language) || it.displayLabel,
+      }))
+    ) as D4c7ePersistedOrderItemLike[];
+    const lang = language === "en" ? "en" : "fr";
+    const projection = validateOutpatientPrescriptionPrintProjection(persistedItems, lang);
+    if (!projection.ok) {
+      setPrintError(t(projection.reasonKey));
+      return;
+    }
+    const printItems = projectPersistedOutpatientPrescriptionPrintLines(persistedItems, lang).map(
+      (it) => ({
+        ...it,
         notes:
           language === "fr"
             ? localizeAmbulatoryMedicationSigForFrenchDisplay(it.notes) || it.notes || null
             : it.notes ?? null,
-        quantity: it.quantity ?? null,
-        refillCount: it.refillCount ?? null,
-        catalogMedication: it.catalogMedication ?? null,
-      }))
+      })
     );
     if (printItems.length === 0) {
-      setPrintError(t("clinicCareD4c5b3.rx.printBlockedEmpty"));
+      setPrintError(t("clinicCareD4c7e.rx.printBlockedEmpty"));
       return;
     }
     const html = getRxPrintHtml({
@@ -266,7 +286,109 @@ export function ClinicCareAmbulatoryPrescriptionPanel({
         >
           {t("clinicCareD4c5b3.rx.print")}
         </button>
+        <button
+          type="button"
+          data-testid="clinic-care-ambulatory-rx-pharmacy-board"
+          onClick={() => setShowPharmacyBoard((v) => !v)}
+          style={{
+            padding: "10px 16px",
+            borderRadius: 10,
+            border: "1px solid #e2e8f0",
+            background: showPharmacyBoard ? "rgba(15,23,42,0.06)" : "#fff",
+            color: "#0f172a",
+            fontSize: 13,
+            fontWeight: 600,
+            cursor: "pointer",
+            minHeight: 40,
+          }}
+        >
+          {t("clinicCareD4c7e.externalPharmacy.title")}
+        </button>
       </div>
+
+      {showPharmacyBoard ? (
+        <div
+          data-testid="clinic-care-ambulatory-external-pharmacy-board"
+          style={{
+            marginBottom: 12,
+            padding: "12px 14px",
+            borderRadius: 10,
+            border: "1px solid #e2e8f0",
+            background: "#f8fafc",
+          }}
+        >
+          <p style={{ margin: "0 0 8px", fontSize: 12, color: "#64748b" }}>
+            {t("clinicCareD4c7e.externalPharmacy.hint")}
+          </p>
+          <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#334155", marginBottom: 4 }}>
+            {t("clinicCareD4c7e.externalPharmacy.preferredLabel")}
+          </label>
+          <input
+            type="search"
+            value={pharmacyQuery}
+            onChange={(e) => setPharmacyQuery(e.target.value)}
+            placeholder={t("clinicCareD4c7e.externalPharmacy.searchPlaceholder")}
+            style={{
+              width: "100%",
+              maxWidth: 420,
+              height: 36,
+              padding: "0 10px",
+              borderRadius: 10,
+              border: "1px solid #cbd5e1",
+              fontSize: 13,
+              marginBottom: 8,
+            }}
+          />
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 8 }}>
+            <button
+              type="button"
+              onClick={() => {
+                const next = pharmacyQuery.trim();
+                if (next) setSelectedPharmacy(next);
+              }}
+              style={{
+                padding: "8px 12px",
+                borderRadius: 8,
+                border: "none",
+                background: "#0f172a",
+                color: "#fff",
+                fontSize: 12,
+                fontWeight: 600,
+                cursor: "pointer",
+              }}
+            >
+              {t("clinicCareD4c7e.externalPharmacy.confirm")}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setSelectedPharmacy("");
+                setPharmacyQuery("");
+              }}
+              style={{
+                padding: "8px 12px",
+                borderRadius: 8,
+                border: "1px solid #e2e8f0",
+                background: "#fff",
+                color: "#334155",
+                fontSize: 12,
+                fontWeight: 600,
+                cursor: "pointer",
+              }}
+            >
+              {t("clinicCareD4c7e.externalPharmacy.clear")}
+            </button>
+          </div>
+          {selectedPharmacy ? (
+            <p style={{ margin: "0 0 6px", fontSize: 13, fontWeight: 600, color: "#0f172a" }}>
+              {selectedPharmacy}
+            </p>
+          ) : null}
+          <p role="status" style={{ margin: 0, fontSize: 12, color: "#b45309" }}>
+            {t(externalPharmacySendStatusDisplayKey(sendStatus))}
+          </p>
+        </div>
+      ) : null}
 
       {printError ? (
         <p role="alert" style={{ margin: "0 0 10px", fontSize: 13, color: "#b91c1c" }}>

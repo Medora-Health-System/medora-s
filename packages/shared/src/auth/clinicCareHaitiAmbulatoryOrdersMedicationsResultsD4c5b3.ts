@@ -166,12 +166,15 @@ export function isNonPrescriptionClinicalOrderItem(it: D4c5b3OrderItemLike): boo
 
 /**
  * Rx tile eligibility: MEDICATION + PHARMACY_DISPENSE only.
- * Excludes lab/imaging/protocols/procedures/onsite ADMINISTER_CHART / IV chart-admin.
+ * Excludes lab/imaging/protocols/procedures/onsite ADMINISTER_CHART / IV/infusion
+ * (defense-in-depth even if a line is mis-tagged PHARMACY_DISPENSE — D4C.7E).
  */
 export function isAmbulatoryExternalPrescriptionItem(it: D4c5b3OrderItemLike): boolean {
   if (isNonPrescriptionClinicalOrderItem(it)) return false;
   if (itemCatalogType(it) !== "MEDICATION" && itemCatalogType(it) !== "") return false;
   if (!isExternalPharmacyDispenseIntent(it.medicationFulfillmentIntent)) return false;
+  const route = it.route ?? it.catalogMedication?.route;
+  if (isIvOrInfusionRoute(route)) return false;
   return true;
 }
 

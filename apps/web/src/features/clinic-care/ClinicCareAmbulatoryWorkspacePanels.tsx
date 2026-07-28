@@ -10,7 +10,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import type { ClinicCareAmbulatoryWorkspaceSection } from "@medora/shared";
 import {
   filterHaitiAmbulatoryClinicalDataCards,
-  haitiAmbulatoryOrdersMedicationMode,
+  clinicAmbulatoryFacilityMedicationOrderMode,
   isHaitiPublicHealthJurisdiction,
   resolveHaitiAmbulatoryIntakePresentation,
   shouldHideMarShiftTimelineForHaitiAmbulatory,
@@ -312,8 +312,8 @@ export function ClinicCareAmbulatoryWorkspacePanels({
     facilityCountry,
     ambulatoryCareSetting: true,
   });
-  const ordersMedicationMode = haitiAmbulatoryOrdersMedicationMode({
-    facilityCountry,
+  // D4C.7E: all Clinic ambulatory Orders → facility-admin (MAR); Rx tile stays DEFAULT.
+  const ordersMedicationMode = clinicAmbulatoryFacilityMedicationOrderMode({
     ambulatoryCareSetting: true,
   });
 

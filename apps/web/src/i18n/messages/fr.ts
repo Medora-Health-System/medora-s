@@ -10316,6 +10316,49 @@ export default {
     },
   },
 
+  clinicCareD4c7e: {
+    intent: {
+      facilityAdministration: "Administration en établissement",
+      outpatientPrescription: "Ordonnance externe",
+      homeMedicationHistory: "Antécédent médicamenteux à domicile",
+    },
+    orders: {
+      facilityMedHint:
+        "Médicaments à administrer pendant la visite — vérification pharmacie si requise, puis MAR pour l'administration infirmière.",
+    },
+    mar: {
+      emptyFacility:
+        "Aucun médicament d'établissement à administrer pour cette visite. Posez un ordre depuis Ordonnances (pas Ordonnance Rx).",
+    },
+    rx: {
+      printBlockedEmpty: "Impression bloquée : aucune ligne d'ordonnance externe signée à imprimer.",
+      printBlockedFacilityOnly:
+        "Impression bloquée : ces lignes sont des médicaments à administrer sur place (MAR), pas une ordonnance externe.",
+      printBlockedUnsignedVerbal:
+        "Impression bloquée : un ordre verbal non cosigné ne peut pas être imprimé comme ordonnance du médecin.",
+    },
+    externalPharmacy: {
+      title: "Pharmacie externe de destination",
+      hint: "Choisissez une pharmacie pour les prescriptions à emporter. Ce n'est pas la file pharmacie interne de l'établissement.",
+      searchPlaceholder: "Rechercher une pharmacie par nom ou ville…",
+      preferredLabel: "Pharmacie préférée / sélectionnée",
+      confirm: "Confirmer la destination",
+      clear: "Effacer la sélection",
+      status: {
+        unsentNoConnector:
+          "Non envoyée électroniquement — aucun connecteur d'e-prescription n'est configuré. Imprimez ou faxez manuellement.",
+        selectedManual:
+          "Pharmacie sélectionnée — l'envoi reste manuel tant qu'aucun connecteur d'e-prescription n'est disponible.",
+        sent: "Envoyée à la pharmacie externe.",
+        failed: "Échec de l'envoi à la pharmacie externe.",
+      },
+    },
+    errors: {
+      marRejectsRxId: "Cet identifiant correspond à une ordonnance externe, pas à un ordre MAR.",
+      rxRejectsMarOrderId: "Cet identifiant correspond à un ordre médicamenteux d'établissement, pas à une ordonnance externe.",
+    },
+  },
+
   clinicCareD4c6: {
     nav: {
       orders: "Ordonnances",
@@ -14131,6 +14174,7 @@ export default {
       colRefills: "Renouvellements",
       footerPrinted: "Medora-S — Ordonnance imprimée le {date}",
       medicationFallback: "Médicament (libellé non renseigné)",
+      emptyBlocked: "Impression bloquée : aucune ligne de médicament à imprimer.",
     },
     patientChart: {
       htmlTitlePrefix: "Aperçu du dossier patient",
