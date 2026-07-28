@@ -9756,9 +9756,9 @@ export default {
     nursingTitle: "Nursing / MA workspace",
     nursingSubtitle: "Ambulatory intake queue — shared clinical engines, no second Clinic sidebar.",
     providerTitle: "Provider worklist",
-    providerSubtitle: "Ambulatory visits ready for provider evaluation. SOAP documentation continues in D4C.5.",
+    providerSubtitle: "Ambulatory visits ready for provider evaluation. H&P documentation via the shared chart.",
     providerEmpty: "No ambulatory visits in the provider lane right now.",
-    soapDeferred: "Provider SOAP documentation is deferred to MEDUI.D4C.5.",
+    soapDeferred: "Provider SOAP documentation is available in MEDUI.D4C.5.",
     assignMe: "Assign me",
     assignMeProvider: "Assign me",
     roomSelectAria: "Assign room",
@@ -9808,6 +9808,37 @@ export default {
       workflowFailed: "Unable to update visit pathway.",
       saveFailed: "Unable to save.",
     },
+  },
+
+  clinicCareD4c5: {
+    providerTitle: "Ambulatory provider workspace",
+    providerSubtitle:
+      "Worklist → chart → rapid H&P → A&P → save / sign — shared clinical engines.",
+    providerEmpty: "No ambulatory visits in the provider lane right now.",
+    openDocumentation: "Document",
+    workflowHint:
+      "Open the chart to review intake, document HPI / ROS / exam, set A&P, then save or sign.",
+    groupInProgress: "In evaluation",
+    groupResultsPending: "Results pending",
+    groupDischargePending: "Discharge pending",
+    clinicalSummaryTitle: "Clinical summary",
+    clinicalSummarySubtitle: "Encounter longitudinal projection (shared engine).",
+    rapidHpTitle: "Ambulatory rapid H&P",
+    providerDocReadOnly:
+      "Provider documentation is read-only for your role. Only Provider and Admin may author or sign.",
+    encountersTitle: "Ambulatory encounters",
+    encountersSubtitle: "Encounter list via enterprise authority — ambulatory filter by default.",
+    encountersSearchPlaceholder: "Search patient, MRN, or encounter…",
+    ambulatoryFilter: "Ambulatory only",
+    encountersEmpty: "No encounters match this filter.",
+    encountersFilterHint: "Ambulatory types: {types}. Uncheck to include all open facility encounters.",
+    patientsTitle: "Patients",
+    patientsSubtitle: "Enterprise search — opens longitudinal patient chart (no ClinicPatientChart).",
+    patientsSearchPlaceholder: "Search patient (name or MRN)…",
+    patientsSearchHint: "Enter at least 2 characters to search.",
+    patientsEmpty: "No patients found.",
+    openPatientChart: "Open chart",
+    dateOfBirth: "Date of birth",
   },
 
   clinicCareD4c3: {
@@ -9909,6 +9940,7 @@ export default {
   providerDocumentationWorkspace: {
     titleEd: "Provider documentation (ED)",
     titleObservation: "Provider documentation (Observation)",
+    titleAmbulatory: "Provider documentation (Ambulatory)",
     subtitle: "",
     templates: "Templates",
     templateSearchPlaceholder: "Search templates, e.g. chest pain, stroke, abdominal…",

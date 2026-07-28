@@ -44,8 +44,15 @@ import { ProcedureOrderDocumentationLinkage } from "@/components/clinical/Proced
 import {
   documentationTemplateIdToLauncherStep,
   resolveProcedureDocumentationLinkage,
+  isClinicCareAmbulatoryEncounterType,
   type EnterpriseProcedureDocumentationTemplateId,
 } from "@medora/shared";
+import {
+  filterEncounterTabsForAmbulatoryAdapter,
+  isAmbulatoryWorkspaceQuery,
+  resolveAmbulatoryProviderDocumentationMode,
+} from "@/features/clinic-care/clinicCareAmbulatoryChartAdapter";
+import { ClinicCareAmbulatoryClinicalSummaryPanel } from "@/features/clinic-care/ClinicCareAmbulatoryClinicalSummaryPanel";
 import { parseEncounterDocumentedProcedureTypes } from "@/lib/procedureOrderDocumentationLinkageUi";
 import type { OrderModalTab } from "@/components/orders/createOrderModal/types";
 import { printRx } from "@/components/pharmacy/RxPrintLayout";
@@ -1441,6 +1448,24 @@ function EncounterDetailPageInner({ session }: { session: ReturnType<typeof useF
     [encounter, encounter?.type, encounter?.status, encounter?.admittedAt, encounter?.admissionSummaryJson]
   );
 
+  /** MEDUI.D4C.5 — ambulatory adapter: query flag or ambulatory encounter type. */
+  const ambulatoryProviderWorkspaceActive = useMemo(() => {
+    if (!encounter) return false;
+    if (observationWorkflowActive) return false;
+    const fromQuery =
+      typeof window !== "undefined" ? isAmbulatoryWorkspaceQuery(window.location.search) : false;
+    return fromQuery || isClinicCareAmbulatoryEncounterType(encounter.type);
+  }, [encounter, encounter?.type, observationWorkflowActive]);
+
+  const providerDocumentationEncounterMode = useMemo(
+    () =>
+      resolveAmbulatoryProviderDocumentationMode({
+        encounterType: encounter?.type,
+        observationWorkflowActive,
+      }),
+    [encounter?.type, observationWorkflowActive]
+  );
+
   const observationDisplayStatus = useMemo(
     () =>
       encounter
@@ -1468,8 +1493,8 @@ function EncounterDetailPageInner({ session }: { session: ReturnType<typeof useF
 
   /** Tab list depends on observation lane — defined after `observationWorkflowActive` (React #310 safe). */
   const tabs = useMemo(
-    () =>
-      isReadOnlyTechnicianViewer
+    () => {
+      const raw = isReadOnlyTechnicianViewer
         ? [
             { id: "summary", label: t("encounterChrome.tabs.summary") },
             { id: "triage", label: t("encounterChrome.tabs.triage") },
@@ -1503,8 +1528,17 @@ function EncounterDetailPageInner({ session }: { session: ReturnType<typeof useF
             { id: "notes", label: t("encounterChrome.tabs.notes") },
             { id: "pathways", label: t("encounterChrome.tabs.pathways") },
             { id: "history", label: t("encounterChrome.tabs.history") },
-          ],
-    [t, showNursingTab, canFetchMarTab, isReadOnlyTechnicianViewer, observationWorkflowActive]
+          ];
+      return filterEncounterTabsForAmbulatoryAdapter(raw, ambulatoryProviderWorkspaceActive);
+    },
+    [
+      t,
+      showNursingTab,
+      canFetchMarTab,
+      isReadOnlyTechnicianViewer,
+      observationWorkflowActive,
+      ambulatoryProviderWorkspaceActive,
+    ]
   );
 
   useEffect(() => {
@@ -2611,7 +2645,11 @@ function EncounterDetailPageInner({ session }: { session: ReturnType<typeof useF
               facilityId={facilityId}
               onUpdate={loadEncounter}
               canSignProviderDocumentation={isProviderLike}
+              canAuthorProviderDocumentation={isProviderLike}
               observationMdmGuidanceActive={observationWorkflowActive}
+              providerDocumentationEncounterMode={providerDocumentationEncounterMode}
+              ambulatoryLayout={ambulatoryProviderWorkspaceActive}
+              facilityTimeZone={session.facilityTimeZone}
             />
           )}
           {activeTab === "triage" && (
@@ -4135,13 +4173,21 @@ function ClinicVisitTab({
   facilityId,
   onUpdate,
   canSignProviderDocumentation,
+  canAuthorProviderDocumentation = false,
   observationMdmGuidanceActive = false,
+  providerDocumentationEncounterMode = "ED",
+  ambulatoryLayout = false,
+  facilityTimeZone,
 }: {
   encounter: any;
   facilityId: string;
   onUpdate: () => void;
   canSignProviderDocumentation: boolean;
+  canAuthorProviderDocumentation?: boolean;
   observationMdmGuidanceActive?: boolean;
+  providerDocumentationEncounterMode?: "ED" | "OBSERVATION" | "AMBULATORY";
+  ambulatoryLayout?: boolean;
+  facilityTimeZone?: string | null;
 }) {
   const { t, language } = useI18n();
   const dateLocale = language === "en" ? "en-US" : "fr-FR";
@@ -4191,7 +4237,8 @@ function ClinicVisitTab({
   const [message, setMessage] = useState<{ type: "ok" | "queued" | "err"; text: string } | null>(null);
   const readOnly = encounter.status !== "OPEN";
   const docSigned = isEncounterLocked(encounter);
-  const fieldsLocked = readOnly || docSigned;
+  const authorLocked = !canAuthorProviderDocumentation;
+  const fieldsLocked = readOnly || docSigned || authorLocked;
   const showLegacyProviderDocumentation = false;
 
   const providerWorkspaceValue = providerWorkspaceDraft;
@@ -4356,6 +4403,7 @@ function ClinicVisitTab({
   };
 
   const save = async () => {
+    if (!canAuthorProviderDocumentation) return;
     setMessage(null);
     setSaving(true);
     try {
@@ -4374,7 +4422,7 @@ function ClinicVisitTab({
         previousNursingAssessment: encounter.nursingAssessment,
         state: providerWorkspaceValue,
         metadata: buildProviderDocumentationMetadata({
-          encounterMode: "OBSERVATION",
+          encounterMode: providerDocumentationEncounterMode,
           savedAt: new Date().toISOString(),
           savedBy: savedByDisplayName,
           activeTemplateId: providerWorkspaceValue.activeTemplateId,
@@ -4457,15 +4505,47 @@ function ClinicVisitTab({
   };
 
   return (
-    <div style={{ maxWidth: "none", display: "flex", flexDirection: "column", gap: 16 }}>
+    <div
+      style={{
+        maxWidth: "none",
+        display: ambulatoryLayout ? "grid" : "flex",
+        flexDirection: ambulatoryLayout ? undefined : "column",
+        gridTemplateColumns: ambulatoryLayout ? "minmax(0, 1fr) minmax(280px, 340px)" : undefined,
+        gap: 16,
+        alignItems: ambulatoryLayout ? "start" : undefined,
+      }}
+      data-testid={ambulatoryLayout ? "clinic-care-ambulatory-provider-doc" : undefined}
+    >
+      <div style={{ display: "flex", flexDirection: "column", gap: 16, minWidth: 0 }}>
+      {authorLocked && !readOnly && !docSigned ? (
+        <p
+          role="status"
+          style={{
+            margin: 0,
+            padding: "10px 12px",
+            borderRadius: 10,
+            background: "#fff7ed",
+            border: "1px solid #fed7aa",
+            color: "#9a3412",
+            fontSize: 13,
+          }}
+          data-testid="clinic-care-provider-doc-read-only-banner"
+        >
+          {t("clinicCareD4c5.providerDocReadOnly")}
+        </p>
+      ) : null}
       <ProviderDocumentationWorkspace
         encounterId={encounter.id}
-        encounterMode="OBSERVATION"
+        encounterMode={providerDocumentationEncounterMode}
         value={providerWorkspaceValue}
         onChange={setProviderWorkspaceValue}
         onSave={save}
         onSign={canSignProviderDocumentation && !readOnly ? handleSignDocumentation : undefined}
-        onClear={() => setProviderWorkspaceValue(emptyProviderDocumentationWorkspaceState())}
+        onClear={
+          canAuthorProviderDocumentation && !fieldsLocked
+            ? () => setProviderWorkspaceValue(emptyProviderDocumentationWorkspaceState())
+            : undefined
+        }
         saving={saving}
         signing={signingDoc}
         readOnly={fieldsLocked}
@@ -4474,7 +4554,9 @@ function ClinicVisitTab({
             ? t("erMseProviderPanel.lockedDocumentation")
             : readOnly
               ? t("erMseProviderPanel.readOnlyEncounter")
-              : null
+              : authorLocked
+                ? t("clinicCareD4c5.providerDocReadOnly")
+                : null
         }
         saveMessage={
           message
@@ -4485,9 +4567,11 @@ function ClinicVisitTab({
             : null
         }
         keyInformation={[
-          observationMdmGuidanceActive
-            ? t("encounterClinicTab.observationMdmGuidanceTitle")
-            : t("encounterClinicTab.title"),
+          ambulatoryLayout
+            ? t("clinicCareD4c5.rapidHpTitle")
+            : observationMdmGuidanceActive
+              ? t("encounterClinicTab.observationMdmGuidanceTitle")
+              : t("encounterClinicTab.title"),
         ]}
         encounterSummary={[
           encounter.type ? tEncounterType(t, encounter.type) : t("common.dash"),
@@ -5029,6 +5113,14 @@ function ClinicVisitTab({
             </div>
           </div>
         </div>
+      ) : null}
+      </div>
+      {ambulatoryLayout ? (
+        <ClinicCareAmbulatoryClinicalSummaryPanel
+          encounterId={encounter.id}
+          facilityId={facilityId}
+          facilityTimeZone={facilityTimeZone}
+        />
       ) : null}
     </div>
   );
