@@ -39,6 +39,12 @@ type ClinicCareRow = {
   openOrderCount: number;
   resultsPendingCount: number;
   hasOpenFollowUpDue: boolean;
+  visitOrigin?: string | null;
+  visitOriginDisplay?: string;
+  scheduledStartAt?: string | null;
+  arrivedAt?: string | null;
+  checkedInAt?: string | null;
+  registrationCompletenessStatus?: string | null;
 };
 
 type ClinicCareAccess = {
@@ -103,7 +109,7 @@ const SHELL_NAV: ShellNavItem[] = [
   },
   {
     id: "registration",
-    href: "/app/registration",
+    href: "/app/clinic-care/registration",
     labelKey: "clinicCareD4c2.nav.registration",
     visible: (a) => a.canAccessRegistration,
   },
@@ -253,6 +259,11 @@ function encounterTypeLabelKey(type: string): string {
   if (u === "URGENT_CARE") return "clinicCareD4c2.encounterTypes.urgentCare";
   if (u === "OUTPATIENT") return "clinicCareD4c2.encounterTypes.outpatient";
   return "clinicCareD4c2.encounterTypes.other";
+}
+
+function visitOriginLabelKey(token: string | null | undefined): string {
+  const u = String(token || "LEGACY").toUpperCase();
+  return `clinicCareD4c2.visitOrigins.${u}`;
 }
 
 function formatArrivalTime(iso: string, timeZone: string, locale: string, dash: string): string {
@@ -736,8 +747,11 @@ export function ClinicCareTrackboardView() {
               <thead>
                 <tr style={{ background: "#f8fafc", textAlign: "left" }}>
                   <th style={thStyle}>{t("clinicCareD4c2.columns.patient")}</th>
+                  <th style={thStyle}>{t("clinicCareD4c2.columns.visitOrigin")}</th>
                   <th style={thStyle}>{t("clinicCareD4c2.columns.visitType")}</th>
+                  <th style={thStyle}>{t("clinicCareD4c2.columns.scheduled")}</th>
                   <th style={thStyle}>{t("clinicCareD4c2.columns.arrival")}</th>
+                  <th style={thStyle}>{t("clinicCareD4c2.columns.checkIn")}</th>
                   <th style={thStyle}>{t("clinicCareD4c2.columns.status")}</th>
                   <th style={thStyle}>{t("clinicCareD4c2.columns.room")}</th>
                   {visibility.showProviderName ? (
@@ -790,9 +804,37 @@ export function ClinicCareTrackboardView() {
                             : ""}
                         </div>
                       </td>
+                      <td style={tdStyle}>
+                        {t(visitOriginLabelKey(row.visitOriginDisplay || row.visitOrigin || "LEGACY"))}
+                      </td>
                       <td style={tdStyle}>{t(encounterTypeLabelKey(row.encounterType))}</td>
                       <td style={tdStyle}>
-                        {formatArrivalTime(row.createdAt, data?.facilityTimeZone || "America/Chicago", locale, dash)}
+                        {row.scheduledStartAt
+                          ? formatArrivalTime(
+                              row.scheduledStartAt,
+                              data?.facilityTimeZone || "America/Chicago",
+                              locale,
+                              dash
+                            )
+                          : dash}
+                      </td>
+                      <td style={tdStyle}>
+                        {formatArrivalTime(
+                          row.arrivedAt || row.createdAt,
+                          data?.facilityTimeZone || "America/Chicago",
+                          locale,
+                          dash
+                        )}
+                      </td>
+                      <td style={tdStyle}>
+                        {row.checkedInAt
+                          ? formatArrivalTime(
+                              row.checkedInAt,
+                              data?.facilityTimeZone || "America/Chicago",
+                              locale,
+                              dash
+                            )
+                          : dash}
                       </td>
                       <td style={tdStyle}>
                         <span
