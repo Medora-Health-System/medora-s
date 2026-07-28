@@ -1,10 +1,12 @@
 "use client";
 
 import React from "react";
+import { resolveSidebarNavIconPathname } from "@medora/shared";
 
 /**
  * Sidebar marks: Twemoji SVG for most routes (`public/twemoji/`, see ATTRIBUTION.txt).
  * MSPP routes use the official brand mark + stroke SVGs (no playful emoji) for a calmer executive look.
+ * MEDUI.D4C.7F — resolve icons by pathname (strip query) + Clinic Care aliases.
  */
 
 const HREF_TWEMOJI_SVG: Record<string, string> = {
@@ -170,7 +172,8 @@ export function SidebarNavIcon({ href }: { href: string }) {
     return <IconMsppAccessAdmin />;
   }
 
-  const file = HREF_TWEMOJI_SVG[href] ?? "2753.svg";
+  const iconKey = resolveSidebarNavIconPathname(href);
+  const file = HREF_TWEMOJI_SVG[iconKey] ?? HREF_TWEMOJI_SVG[href] ?? "2753.svg";
   return (
     <img
       src={`/twemoji/${file}`}

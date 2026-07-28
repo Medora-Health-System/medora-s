@@ -10359,6 +10359,60 @@ export default {
     },
   },
 
+  clinicCareD4c7f: {
+    closure: {
+      pendingTitle: "Des éléments cliniques sont encore en attente",
+      pendingBody:
+        "Cette rencontre contient encore des éléments non résolus. Vous pouvez retourner au dossier pour les traiter ou poursuivre la clôture après confirmation.",
+      preserveWarning:
+        "La clôture ne supprimera ni n’annulera ces éléments. Ils demeureront dans le dossier du patient et dans les files de suivi appropriées.",
+      acknowledgement:
+        "Je reconnais les éléments en attente et je souhaite tout de même clôturer la rencontre.",
+      returnToChart: "Retourner au dossier",
+      cancel: "Annuler",
+      confirmDespite: "Clôturer malgré les éléments en attente",
+      hardBlockTitle: "Cette rencontre ne peut pas être clôturée pour le moment.",
+      overrideDenied:
+        "Vous n’êtes pas autorisé à clôturer malgré des éléments cliniques en attente. Demandez à un médecin.",
+      counts: {
+        laboratory: "Ordres de laboratoire en attente",
+        imaging: "Ordres d’imagerie en attente",
+        medications: "Médicaments à administrer",
+        procedures: "Soins ou procédures en attente",
+        results: "Résultats non finalisés",
+        criticalResults: "Résultats critiques non reconnus",
+        followUps: "Suivis ouverts",
+      },
+    },
+    pending: {
+      startIntake: "Démarrage…",
+      readyForProvider: "Mise à jour…",
+      startConsultation: "Mise à jour…",
+      readyForCheckout: "Préparation de la sortie…",
+      closing: "Clôture en cours…",
+      updating: "Mise à jour…",
+    },
+    success: {
+      closed: "Rencontre clôturée",
+    },
+    errors: {
+      closeFailed: "Impossible de clôturer la rencontre.",
+      alreadyClosed: "Cette rencontre a déjà été clôturée.",
+      stateChanged: "L’état de la rencontre a changé. Les données ont été actualisées.",
+      safetyMustResolve: "Certaines conditions de sécurité doivent être résolues avant la clôture.",
+    },
+    pharmacy: {
+      group: "Pharmacie",
+      worklist: "Liste de travail",
+      inventory: "Inventaire",
+      dispense: "Délivrer",
+      lowStock: "Stock faible",
+      expiring: "Expiration prochaine",
+      alerts: "Alertes de pharmacie",
+      verification: "Vérification pharmaceutique",
+    },
+  },
+
   clinicCareD4c6: {
     nav: {
       orders: "Ordonnances",

@@ -5,6 +5,7 @@ import {
   resolveFacilityModuleCapabilitiesD4c1,
   resolveClinicCareAwareSidebarHref,
   resolveClinicCareLabRadSidebarHref,
+  resolveClinicCareAwarePharmacySidebarHref,
   type NavigationArea,
   type NavigationProfileInput,
 } from "@medora/shared";
@@ -48,7 +49,7 @@ export function buildNavigationProfileFromSession(input: {
  * Uses `resolveFacilityNavigation` (via capability resolver); Admin cannot restore absent care settings.
  */
 /**
- * MEDUI.D4C.7B / D4C.7C — rewrite Consultations / Pharmacy / Lab / Rad
+ * MEDUI.D4C.7B / D4C.7C / D4C.7F — rewrite Consultations / Pharmacy / Lab / Rad
  * hrefs onto ambulatory Clinic Care destinations when facility capabilities allow.
  */
 export function applyClinicCareAwareSidebarHrefs(
@@ -63,7 +64,8 @@ export function applyClinicCareAwareSidebarHrefs(
   });
   return items.map((item) => {
     const after7b = resolveClinicCareAwareSidebarHref(item.href, caps);
-    const nextHref = resolveClinicCareLabRadSidebarHref(after7b, caps);
+    const after7c = resolveClinicCareLabRadSidebarHref(after7b, caps);
+    const nextHref = resolveClinicCareAwarePharmacySidebarHref(after7c, caps);
     return nextHref === item.href ? item : { ...item, href: nextHref };
   });
 }

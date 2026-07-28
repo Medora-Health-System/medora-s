@@ -496,6 +496,13 @@ export const encounterCloseDtoSchema = z.object({
   acknowledgeDeficiencies: z.boolean().optional(),
   /** S11 — forcer la clôture malgré les blocages sécurité disposition (contrôle explicite côté client). */
   acknowledgeDispositionSafety: z.boolean().optional(),
+  /**
+   * MEDUI.D4C.7F — acknowledge overridable pending clinical items (orders/results/follow-up).
+   * Does not authorize non-overridable safety blockers (e.g. active infusion).
+   */
+  acknowledgePendingItems: z.boolean().optional(),
+  acknowledgementVersion: z.string().trim().max(64).optional(),
+  pendingItemsOverrideReason: z.string().trim().max(120).optional(),
   dischargeStatus: encounterDischargeStatusSchema.optional(),
 });
 

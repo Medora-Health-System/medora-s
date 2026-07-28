@@ -10356,6 +10356,60 @@ export default {
     },
   },
 
+  clinicCareD4c7f: {
+    closure: {
+      pendingTitle: "Clinical items are still pending",
+      pendingBody:
+        "This encounter still has unresolved items. You can return to the chart to complete them, or continue closing after confirmation.",
+      preserveWarning:
+        "Closing will not delete or cancel these items. They will remain on the patient record and in the appropriate follow-up queues.",
+      acknowledgement:
+        "I acknowledge the pending items and still want to close the encounter.",
+      returnToChart: "Return to chart",
+      cancel: "Cancel",
+      confirmDespite: "Close despite pending items",
+      hardBlockTitle: "This encounter cannot be closed right now.",
+      overrideDenied:
+        "You are not authorized to close despite pending clinical items. Ask a provider.",
+      counts: {
+        laboratory: "Pending laboratory orders",
+        imaging: "Pending imaging orders",
+        medications: "Medications to administer",
+        procedures: "Pending care or procedures",
+        results: "Results not finalized",
+        criticalResults: "Critical results not acknowledged",
+        followUps: "Open follow-ups",
+      },
+    },
+    pending: {
+      startIntake: "Starting…",
+      readyForProvider: "Updating…",
+      startConsultation: "Updating…",
+      readyForCheckout: "Preparing checkout…",
+      closing: "Closing…",
+      updating: "Updating…",
+    },
+    success: {
+      closed: "Encounter closed",
+    },
+    errors: {
+      closeFailed: "Unable to close the encounter.",
+      alreadyClosed: "This encounter is already closed.",
+      stateChanged: "The encounter state changed. Data was refreshed.",
+      safetyMustResolve: "Some safety conditions must be resolved before closing.",
+    },
+    pharmacy: {
+      group: "Pharmacy",
+      worklist: "Worklist",
+      inventory: "Inventory",
+      dispense: "Dispense",
+      lowStock: "Low stock",
+      expiring: "Expiring soon",
+      alerts: "Pharmacy alerts",
+      verification: "Pharmacy verification",
+    },
+  },
+
   clinicCareD4c6: {
     nav: {
       orders: "Orders",

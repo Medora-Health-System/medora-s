@@ -28,6 +28,7 @@ export * from "./auth/clinicCarePharmacyConsultationsNavigationD4c7b.js";
 export * from "./auth/clinicCareLaboratoryRadiologyResultsCorrectionD4c7c.js";
 export * from "./auth/enterpriseAmbulatoryEncounterLifecycleSynchronizationD4c7d.js";
 export * from "./auth/enterpriseClinicMedicationOrdersMarRxSeparationD4c7e.js";
+export * from "./auth/enterpriseClinicEncounterTransitionClosurePharmacyNavigationD4c7f.js";
 export * from "./auth/navigationAuthorization.js";
 
 export * from "./password-policy.js";

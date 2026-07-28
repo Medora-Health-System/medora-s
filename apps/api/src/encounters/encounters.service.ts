@@ -139,6 +139,12 @@ import {
   type EncounterRoomUpdateDto,
   type EncounterCareUnitCode,
   evaluateConcurrentEncounterCreate,
+  canOverrideAmbulatoryPendingClosureItems,
+  totalD4c7fPendingItems,
+  D4C7F_ENCOUNTER_PENDING_ITEMS_CODE,
+  D4C7F_ENCOUNTER_NON_OVERRIDABLE_BLOCKERS_CODE,
+  D4C7F_PENDING_ITEMS_ACK_VERSION,
+  D4C7F_PENDING_ITEMS_OVERRIDE_REASON,
 } from "@medora/shared";
 import { throwRoomAlreadyOccupiedConflict } from "./ed-room-occupancy.util";
 import { FacilityBedBoardService } from "../facilities/facility-bed-board.service";
@@ -3752,8 +3758,8 @@ export class EncountersService {
               pharmacyDispenseRecord: { select: { id: true } },
               medicationAdministrations: {
                 orderBy: { administeredAt: "desc" },
-                take: 1,
-                select: { marAction: true, notes: true },
+                take: 5,
+                select: { marAction: true, notes: true, infusionPhase: true },
               },
             },
           },
@@ -3793,6 +3799,7 @@ export class EncountersService {
         status: o.status,
         type: o.type,
         items: o.items.map((it) => ({
+          id: it.id,
           status: it.status,
           catalogItemType: it.catalogItemType,
           medicationFulfillmentIntent: it.medicationFulfillmentIntent,
@@ -3810,7 +3817,8 @@ export class EncountersService {
     data: EncounterCloseDto | undefined,
     userId?: string,
     ip?: string,
-    userAgent?: string
+    userAgent?: string,
+    actorRoleCodes?: readonly string[] | null
   ) {
     logInfo("encounter_close_attempt", {
       userId: userId ?? null,
@@ -3819,9 +3827,18 @@ export class EncountersService {
       action: "encounter.close.attempt",
       acknowledgeDeficiencies: data?.acknowledgeDeficiencies === true,
       acknowledgeDispositionSafety: data?.acknowledgeDispositionSafety === true,
+      acknowledgePendingItems: data?.acknowledgePendingItems === true,
     });
     try {
-      return await this.executeEncounterClose(facilityId, id, data, userId, ip, userAgent);
+      return await this.executeEncounterClose(
+        facilityId,
+        id,
+        data,
+        userId,
+        ip,
+        userAgent,
+        actorRoleCodes
+      );
     } catch (err: unknown) {
       if (err instanceof HttpException) {
         throw err;
@@ -3850,7 +3867,8 @@ export class EncountersService {
     data: EncounterCloseDto | undefined,
     userId?: string,
     ip?: string,
-    userAgent?: string
+    userAgent?: string,
+    actorRoleCodes?: readonly string[] | null
   ) {
     const encounter = await this.prisma.encounter.findFirst({
       select: ENCOUNTER_CORE_SELECT,
@@ -3891,20 +3909,78 @@ export class EncountersService {
     }
 
     const safetyReadiness = await this.getDispositionSafetyReadiness(facilityId, id, data?.discharge);
-    if (!safetyReadiness.canClose && !data?.acknowledgeDispositionSafety) {
+    const pendingTotal = totalD4c7fPendingItems(safetyReadiness.pendingItems);
+    const nonOverridable = safetyReadiness.nonOverridableBlockers ?? [];
+
+    // MEDUI.D4C.7F — true safety blockers are never overridable via pending-item acknowledgement.
+    if (nonOverridable.length > 0) {
       const detail =
-        safetyReadiness.blockers.map((b) => b.message).join(" ") ||
+        nonOverridable.map((b) => b.message).join(" ") ||
+        "Cette rencontre ne peut pas être clôturée pour le moment.";
+      throw new HttpException(
+        {
+          statusCode: HttpStatus.BAD_REQUEST,
+          message: detail,
+          code: D4C7F_ENCOUNTER_NON_OVERRIDABLE_BLOCKERS_CODE,
+          nonOverridable: nonOverridable.map((b) => ({ code: b.code, message: b.message })),
+          blockers: nonOverridable.map((b) => ({ code: b.code, message: b.message })),
+        },
+        HttpStatus.BAD_REQUEST
+      );
+    }
+
+    const dispositionBlockers = (safetyReadiness.blockers ?? []).filter(
+      (b) => b.code !== "ACTIVE_INFUSION_RUNNING"
+    );
+    if (dispositionBlockers.length > 0 && !data?.acknowledgeDispositionSafety) {
+      const detail =
+        dispositionBlockers.map((b) => b.message).join(" ") ||
         "Clôture bloquée par les contrôles de sécurité disposition.";
       throw new HttpException(
         {
           statusCode: HttpStatus.BAD_REQUEST,
           message: detail,
           code: "ENCOUNTER_CLOSE_DISPOSITION_SAFETY_BLOCKED",
-          readiness: safetyReadiness,
-          blockers: safetyReadiness.blockers,
+          readiness: {
+            canClose: false,
+            blockers: dispositionBlockers,
+            warnings: safetyReadiness.warnings,
+            activeOrderCounts: safetyReadiness.activeOrderCounts,
+            pendingItems: safetyReadiness.pendingItems,
+          },
+          blockers: dispositionBlockers.map((b) => ({ code: b.code, message: b.message })),
         },
         HttpStatus.BAD_REQUEST
       );
+    }
+
+    const pendingAck =
+      data?.acknowledgePendingItems === true || data?.acknowledgeDispositionSafety === true;
+    if (pendingTotal > 0 && !pendingAck) {
+      throw new HttpException(
+        {
+          statusCode: HttpStatus.BAD_REQUEST,
+          message:
+            "Des éléments cliniques sont encore en attente. Confirmez acknowledgePendingItems pour clôturer sans les supprimer.",
+          code: D4C7F_ENCOUNTER_PENDING_ITEMS_CODE,
+          messageKey: "clinicCareD4c7f.closure.pendingTitle",
+          pending: safetyReadiness.pendingItems,
+          pendingItemIds: safetyReadiness.pendingItemIds,
+          overrideAllowed: canOverrideAmbulatoryPendingClosureItems(actorRoleCodes),
+          nonOverridable: [],
+          acknowledgementVersion: D4C7F_PENDING_ITEMS_ACK_VERSION,
+        },
+        HttpStatus.BAD_REQUEST
+      );
+    }
+
+    if (pendingTotal > 0 && data?.acknowledgePendingItems === true) {
+      const roles = actorRoleCodes && actorRoleCodes.length > 0 ? actorRoleCodes : [];
+      if (!canOverrideAmbulatoryPendingClosureItems(roles)) {
+        throw new ForbiddenException(
+          "Seul un médecin (PROVIDER) peut clôturer malgré des éléments cliniques en attente."
+        );
+      }
     }
 
     const closePayload: Record<string, unknown> = {
@@ -4008,9 +4084,26 @@ export class EncountersService {
         closeMetadata.deficiencyCodes = docCheck.deficiencies.map((d) => d.code);
         closeMetadata.missingItems = docCheck.deficiencies.map((d) => d.code);
       }
-      if (!safetyReadiness.canClose && data?.acknowledgeDispositionSafety) {
+      if (dispositionBlockers.length > 0 && data?.acknowledgeDispositionSafety) {
         closeMetadata.dispositionSafetyOverride = true;
-        closeMetadata.dispositionSafetyBlockerCodes = safetyReadiness.blockers.map((b) => b.code);
+        closeMetadata.dispositionSafetyBlockerCodes = dispositionBlockers.map((b) => b.code);
+      }
+      if (pendingTotal > 0 && pendingAck) {
+        closeMetadata.pendingItemsOverride = true;
+        closeMetadata.acknowledgePendingItems = data?.acknowledgePendingItems === true;
+        closeMetadata.acknowledgementVersion =
+          data?.acknowledgementVersion?.trim() || D4C7F_PENDING_ITEMS_ACK_VERSION;
+        closeMetadata.pendingItemsOverrideReason =
+          data?.pendingItemsOverrideReason?.trim() || D4C7F_PENDING_ITEMS_OVERRIDE_REASON;
+        closeMetadata.pendingItemCategories = safetyReadiness.pendingItems;
+        closeMetadata.pendingItemIds = safetyReadiness.pendingItemIds;
+        closeMetadata.pendingItemCounts = safetyReadiness.pendingItems;
+        closeMetadata.actorRole = Array.isArray(actorRoleCodes)
+          ? [...actorRoleCodes]
+          : actorRoleCodes ?? null;
+        closeMetadata.workflowStateBeforeClose = encounter.workflowState;
+        closeMetadata.previousStatus = encounter.status;
+        closeMetadata.newStatus = "CLOSED";
       }
 
       await this.audit.log(AuditAction.ENCOUNTER_CLOSE, "ENCOUNTER", {
@@ -4062,7 +4155,8 @@ export class EncountersService {
       facilityId,
       action: "encounter.close.completed",
       documentationGapOverride: docCheck.hasDeficiencies && data?.acknowledgeDeficiencies === true,
-      dispositionSafetyOverride: !safetyReadiness.canClose && data?.acknowledgeDispositionSafety === true,
+      dispositionSafetyOverride: dispositionBlockers.length > 0 && data?.acknowledgeDispositionSafety === true,
+      pendingItemsOverride: pendingTotal > 0 && pendingAck,
     });
 
     if (encounter.roomLabel) {

@@ -10,6 +10,10 @@ import {
   resolveEdDispositionPath,
   isHomeDischargeInstructionsPath,
   evaluateDispositionPathwayReadinessBlockers,
+  isActiveInfusionFromAdministrations,
+  EMPTY_D4C7F_PENDING_ITEM_COUNTS,
+  totalD4c7fPendingItems,
+  type D4c7fPendingItemCounts,
   type MarClinicalAction,
 } from "@medora/shared";
 
@@ -47,15 +51,28 @@ export type DispositionSafetyReadinessResult = {
   activeOrderCounts: DispositionSafetyActiveOrderCounts;
   /** D1 server-owned disposition state projection (non-authoritative for close). */
   dispositionState?: import("@medora/shared").EdDispositionStateProjection;
+  /**
+   * MEDUI.D4C.7F — overridable pending clinical items (not hard blockers).
+   * Active infusion is excluded here and surfaced as ACTIVE_INFUSION_RUNNING.
+   */
+  pendingItems: D4c7fPendingItemCounts;
+  pendingItemIds: string[];
+  /** True safety blockers that must never be overridden via pending-item ack. */
+  nonOverridableBlockers: DispositionSafetyIssue[];
 };
 
 type OrderItemForSafety = {
+  id?: string;
   status: string;
   catalogItemType: string | null;
   medicationFulfillmentIntent: string | null;
   result: { verifiedAt: Date | null } | null;
   pharmacyDispenseRecord: { id: string } | null;
-  medicationAdministrations: Array<{ marAction: string | null; notes: string | null }>;
+  medicationAdministrations: Array<{
+    marAction: string | null;
+    notes: string | null;
+    infusionPhase?: string | null;
+  }>;
 };
 
 type OrderForSafety = {
@@ -182,7 +199,10 @@ export function computeDispositionSafetyReadiness(input: {
   const now = input.now ?? new Date();
   const blockers: DispositionSafetyIssue[] = [];
   const warnings: DispositionSafetyIssue[] = [];
+  const nonOverridableBlockers: DispositionSafetyIssue[] = [];
   const counts: DispositionSafetyActiveOrderCounts = { lab: 0, imaging: 0, medication: 0, care: 0 };
+  const pendingItems: D4c7fPendingItemCounts = { ...EMPTY_D4C7F_PENDING_ITEM_COUNTS };
+  const pendingItemIds: string[] = [];
 
   const { encounter } = input;
   const dispositionStateBase = {
@@ -197,6 +217,9 @@ export function computeDispositionSafetyReadiness(input: {
       blockers: [],
       warnings: [],
       activeOrderCounts: counts,
+      pendingItems,
+      pendingItemIds: [],
+      nonOverridableBlockers: [],
       dispositionState: projectEdDispositionState({
         ...dispositionStateBase,
         dispositionSafetyCanClose: true,
@@ -257,24 +280,67 @@ export function computeDispositionSafetyReadiness(input: {
   }
 
   let hasUnresolvedOrder = false;
+  let hasActiveInfusion = false;
   for (const order of input.orders) {
     const parentCancelled = order.status === "CANCELLED";
     if (parentCancelled) continue;
     const bucket = countBucketForType(order.type);
     for (const item of order.items) {
+      if (
+        item.catalogItemType === "MEDICATION" &&
+        isActiveInfusionFromAdministrations(item.medicationAdministrations ?? [])
+      ) {
+        hasActiveInfusion = true;
+        continue;
+      }
       if (isOrderItemClinicallyUnresolved(item, parentCancelled)) {
         hasUnresolvedOrder = true;
         if (bucket) counts[bucket] += 1;
+        if (item.id) pendingItemIds.push(item.id);
+        if (bucket === "lab") {
+          if (item.result && !item.result.verifiedAt) pendingItems.results += 1;
+          else pendingItems.laboratory += 1;
+        } else if (bucket === "imaging") {
+          if (item.result && !item.result.verifiedAt) pendingItems.results += 1;
+          else pendingItems.imaging += 1;
+        } else if (bucket === "medication") {
+          pendingItems.medications += 1;
+        } else if (bucket === "care") {
+          pendingItems.procedures += 1;
+        }
       }
     }
   }
 
-  if (hasUnresolvedOrder) {
-    blockers.push({
-      code: "ACTIVE_ORDERS_UNRESOLVED",
+  if (hasActiveInfusion) {
+    const infusionBlocker: DispositionSafetyIssue = {
+      code: "ACTIVE_INFUSION_RUNNING",
       severity: "error",
-      message: `Des ordres actifs ne sont pas résolus (labo: ${counts.lab}, imagerie: ${counts.imaging}, médicaments: ${counts.medication}, soins: ${counts.care}). Terminez ou annulez les lignes concernées.`,
-    });
+      message: "Une perfusion est toujours en cours. Arrêtez la perfusion avant la clôture.",
+    };
+    nonOverridableBlockers.push(infusionBlocker);
+    blockers.push(infusionBlocker);
+  }
+
+  // MEDUI.D4C.7F — unresolved orders:
+  // - Always counted in pendingItems (typed ambulatory override path).
+  // - ER/UC keep ACTIVE_ORDERS_UNRESOLVED as disposition blockers (existing ED cert/UI).
+  // - Ambulatory: overridable pending warning only (not an unconditional hard blocker).
+  if (hasUnresolvedOrder) {
+    const orderMsg = `Des ordres actifs ne sont pas résolus (labo: ${counts.lab}, imagerie: ${counts.imaging}, médicaments: ${counts.medication}, soins: ${counts.care}).`;
+    if (isErUc) {
+      blockers.push({
+        code: "ACTIVE_ORDERS_UNRESOLVED",
+        severity: "error",
+        message: `${orderMsg} Terminez ou annulez les lignes concernées, ou confirmez la clôture explicitement.`,
+      });
+    } else {
+      warnings.push({
+        code: "ACTIVE_ORDERS_UNRESOLVED",
+        severity: "warning",
+        message: `${orderMsg} Vous pouvez clôturer après acknowledgement explicite — les éléments resteront en file.`,
+      });
+    }
   }
 
   if (isErUc && (isAdmissionPath || isTransferPath)) {
@@ -363,13 +429,18 @@ export function computeDispositionSafetyReadiness(input: {
     }
   }
 
-  const canClose = blockers.length === 0;
+  const pendingTotal = totalD4c7fPendingItems(pendingItems);
+  // ER/UC: blockers (incl. ACTIVE_ORDERS) drive canClose. Ambulatory: pending items also block until ack.
+  const canClose = blockers.length === 0 && (isErUc || pendingTotal === 0);
   return {
     canClose,
     blockers,
     warnings,
     ...(lastVitalsAt ? { lastVitalsAt } : {}),
     activeOrderCounts: counts,
+    pendingItems,
+    pendingItemIds,
+    nonOverridableBlockers,
     dispositionState: projectEdDispositionState({
       ...dispositionStateBase,
       dispositionSafetyCanClose: canClose,

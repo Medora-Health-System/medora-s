@@ -22,8 +22,15 @@ import {
   projectAmbulatoryLifecycleHeader,
   resolveClinicCareAmbulatoryWorkflowTarget,
   shouldShowAmbulatoryCompleteVisitAction,
+  ambulatoryWorkflowPendingLabelKey,
+  D4C7F_ENCOUNTER_PENDING_ITEMS_CODE,
+  D4C7F_ENCOUNTER_NON_OVERRIDABLE_BLOCKERS_CODE,
+  D4C7F_PENDING_ITEMS_ACK_VERSION,
+  D4C7F_PENDING_ITEMS_OVERRIDE_REASON,
+  EMPTY_D4C7F_PENDING_ITEM_COUNTS,
   type ClinicCareAmbulatoryWorkflowAction,
   type ClinicCareAmbulatoryWorkspaceSection,
+  type D4c7fPendingItemCounts,
 } from "@medora/shared";
 import { apiFetch, asApiObject } from "@/lib/apiClient";
 import { normalizeUserFacingError } from "@/lib/userFacingError";
@@ -45,6 +52,7 @@ import { CLINIC_CARE_HOME, CLINIC_CARE_TODAYS_VISITS } from "@/features/clinic-c
 import { ClinicCareAmbulatoryPatientHeader } from "@/features/clinic-care/ClinicCareAmbulatoryPatientHeader";
 import { ClinicCareAmbulatoryWorkspaceSectionNav } from "@/features/clinic-care/ClinicCareAmbulatoryWorkspaceSectionNav";
 import { ClinicCareAmbulatoryWorkspacePanels } from "@/features/clinic-care/ClinicCareAmbulatoryWorkspacePanels";
+import { ClinicCareAmbulatoryClosurePendingModal } from "@/features/clinic-care/ClinicCareAmbulatoryClosurePendingModal";
 
 type EncounterShell = {
   id: string;
@@ -116,6 +124,13 @@ export function ClinicCareActiveAmbulatoryWorkspaceView() {
   const [workflowBusy, setWorkflowBusy] = useState<ClinicCareAmbulatoryWorkflowAction | null>(null);
   const [workflowError, setWorkflowError] = useState<string | null>(null);
   const [closeSuccess, setCloseSuccess] = useState(false);
+  const [pendingModalOpen, setPendingModalOpen] = useState(false);
+  const [pendingCounts, setPendingCounts] = useState<D4c7fPendingItemCounts>({
+    ...EMPTY_D4C7F_PENDING_ITEM_COUNTS,
+  });
+  const [pendingOverrideAllowed, setPendingOverrideAllowed] = useState(false);
+  const [pendingAck, setPendingAck] = useState(false);
+  const [hardBlockMessage, setHardBlockMessage] = useState<string | null>(null);
 
   const fromParam = searchParams?.get("from");
   const backHref = fromParam === "todays-visits" ? CLINIC_CARE_TODAYS_VISITS : CLINIC_CARE_HOME;
@@ -259,50 +274,113 @@ export function ClinicCareActiveAmbulatoryWorkspaceView() {
     return out;
   }, [encounter, isRnOrAdmin, isProviderOrAdmin, roles]);
 
+  const applyCloseProjection = useCallback(
+    (closed: unknown) => {
+      const projection = projectAmbulatoryEnterpriseCloseResponse(closed);
+      if (projection && projection.status !== "CLOSED") {
+        throw new Error(t("clinicCareD4c7d.messages.closeFailed"));
+      }
+      if (projection) {
+        setEncounter((prev) =>
+          prev
+            ? {
+                ...prev,
+                status: projection.status,
+                workflowState: projection.workflowState,
+                providerDocumentationStatus: projection.providerDocumentationStatus,
+                roomLabel: projection.roomLabel,
+              }
+            : prev
+        );
+      }
+      invalidateClinicCareAmbulatoryLifecycleCache({
+        facilityId: facilityId!,
+        encounterId: encounter!.id,
+      });
+      setCloseSuccess(true);
+      setPendingModalOpen(false);
+      setPendingAck(false);
+    },
+    [encounter, facilityId, t]
+  );
+
   const runWorkflowAction = useCallback(
     async (action: ClinicCareAmbulatoryWorkflowAction, target: string) => {
       if (!facilityId || !encounter) return;
+      if (workflowBusy) return;
       setWorkflowBusy(action);
       setWorkflowError(null);
+      setHardBlockMessage(null);
+      setCloseSuccess(false);
       try {
         if (isAmbulatoryEnterpriseCloseTarget(target) || action === "COMPLETE_VISIT") {
-          // Thin ambulatory adapter → EncountersService.close (canonical terminal authority).
           let closed: unknown;
           try {
             closed = await closeAmbulatoryEncounterViaEnterprise(facilityId, encounter.id, {
               dischargeStatus: "DISCHARGED",
             });
           } catch (firstErr) {
-            const msg = firstErr instanceof Error ? firstErr.message : String(firstErr ?? "");
+            const err = firstErr as Error & { errorCode?: string | null; body?: unknown };
+            const code = err.errorCode ?? null;
+            const body = err.body && typeof err.body === "object" ? (err.body as Record<string, unknown>) : null;
+            const msg = err instanceof Error ? err.message : String(firstErr ?? "");
+
+            if (code === D4C7F_ENCOUNTER_NON_OVERRIDABLE_BLOCKERS_CODE) {
+              setHardBlockMessage(
+                normalizeUserFacingError(msg, language) || t("clinicCareD4c7f.closure.hardBlockTitle")
+              );
+              throw firstErr;
+            }
+
+            if (code === D4C7F_ENCOUNTER_PENDING_ITEMS_CODE || body?.code === D4C7F_ENCOUNTER_PENDING_ITEMS_CODE) {
+              const pending =
+                body?.pending && typeof body.pending === "object"
+                  ? ({ ...EMPTY_D4C7F_PENDING_ITEM_COUNTS, ...(body.pending as object) } as D4c7fPendingItemCounts)
+                  : { ...EMPTY_D4C7F_PENDING_ITEM_COUNTS };
+              setPendingCounts(pending);
+              setPendingOverrideAllowed(body?.overrideAllowed === true);
+              setPendingAck(false);
+              setPendingModalOpen(true);
+              return;
+            }
+
             const needsDocAck =
+              code === "ENCOUNTER_CLOSE_DEFICIENCIES_NOT_ACKNOWLEDGED" ||
               msg.includes("acknowledgeDeficiencies") ||
               msg.includes("ENCOUNTER_CLOSE_DEFICIENCIES") ||
               msg.includes("documentation est incomplète");
             const needsSafetyAck =
+              code === "ENCOUNTER_CLOSE_DISPOSITION_SAFETY_BLOCKED" ||
               msg.includes("acknowledgeDispositionSafety") ||
               msg.includes("ENCOUNTER_CLOSE_DISPOSITION_SAFETY") ||
               msg.includes("sécurité disposition");
             if (!needsDocAck && !needsSafetyAck) throw firstErr;
+            // Deficiencies / other disposition safety — explicit ack only for docs path; do not silent-ack pending.
+            if (needsSafetyAck && !needsDocAck) {
+              setWorkflowError(
+                normalizeUserFacingError(msg, language) || t("clinicCareD4c7f.errors.safetyMustResolve")
+              );
+              return;
+            }
             closed = await closeAmbulatoryEncounterViaEnterprise(facilityId, encounter.id, {
               dischargeStatus: "DISCHARGED",
               acknowledgeDeficiencies: needsDocAck,
-              acknowledgeDispositionSafety: needsSafetyAck,
             });
           }
-          const projection = projectAmbulatoryEnterpriseCloseResponse(closed);
-          if (projection && projection.status !== "CLOSED") {
-            throw new Error(t("clinicCareD4c7d.messages.closeFailed"));
+          applyCloseProjection(closed);
+          await load();
+          return;
+        }
+        if (target !== encounter.workflowState) {
+          const patched = await patchEncounterWorkflowState(facilityId, encounter.id, target);
+          const next = asApiObject<EncounterShell>(patched);
+          if (next?.workflowState || next?.status) {
+            setEncounter((prev) => (prev ? { ...prev, ...next } : next));
           }
           invalidateClinicCareAmbulatoryLifecycleCache({
             facilityId,
             encounterId: encounter.id,
           });
-          setCloseSuccess(true);
-          await load();
-          return;
-        }
-        if (target !== encounter.workflowState) {
-          await patchEncounterWorkflowState(facilityId, encounter.id, target);
           await load();
         }
         if (action === "START_CONSULTATION") {
@@ -318,8 +396,32 @@ export function ClinicCareActiveAmbulatoryWorkspaceView() {
         setWorkflowBusy(null);
       }
     },
-    [facilityId, encounter, load, language, goToSection, t]
+    [facilityId, encounter, load, language, goToSection, t, workflowBusy, applyCloseProjection]
   );
+
+  const confirmPendingOverrideClose = useCallback(async () => {
+    if (!facilityId || !encounter || !pendingAck) return;
+    setWorkflowBusy("COMPLETE_VISIT");
+    setWorkflowError(null);
+    try {
+      const closed = await closeAmbulatoryEncounterViaEnterprise(facilityId, encounter.id, {
+        dischargeStatus: "DISCHARGED",
+        acknowledgePendingItems: true,
+        acknowledgementVersion: D4C7F_PENDING_ITEMS_ACK_VERSION,
+        pendingItemsOverrideReason: D4C7F_PENDING_ITEMS_OVERRIDE_REASON,
+      });
+      applyCloseProjection(closed);
+      await load();
+    } catch (e) {
+      setCloseSuccess(false);
+      setWorkflowError(
+        normalizeUserFacingError(e instanceof Error ? e.message : null, language) ||
+          t("clinicCareD4c7d.messages.closeFailed")
+      );
+    } finally {
+      setWorkflowBusy(null);
+    }
+  }, [facilityId, encounter, pendingAck, applyCloseProjection, load, language, t]);
 
   if (!rolesReady || (!encounter && loading)) {
     return (
@@ -411,16 +513,26 @@ export function ClinicCareActiveAmbulatoryWorkspaceView() {
             <button
               key={action}
               type="button"
-              disabled={workflowBusy === action || encounter.status === "CLOSED"}
+              disabled={Boolean(workflowBusy) || encounter.status === "CLOSED"}
               onClick={() => void runWorkflowAction(action, target)}
+              aria-busy={workflowBusy === action}
               style={{ ...compactBtn, opacity: workflowBusy === action ? 0.6 : 1 }}
             >
-              {action === "COMPLETE_VISIT"
-                ? t("clinicCareD4c7d.actions.closeEncounter")
-                : t(clinicCareAmbulatoryWorkflowActionLabelKey(action))}
+              {workflowBusy === action
+                ? t(ambulatoryWorkflowPendingLabelKey(action))
+                : encounter.status === "CLOSED"
+                  ? t("clinicCareD4c7f.success.closed")
+                  : action === "COMPLETE_VISIT"
+                    ? t("clinicCareD4c7d.actions.closeEncounter")
+                    : t(clinicCareAmbulatoryWorkflowActionLabelKey(action))}
             </button>
           ))}
         </ClinicCareAmbulatoryPatientHeader>
+        {hardBlockMessage ? (
+          <p role="alert" style={{ margin: "8px 0 0", fontSize: 12, color: "#b91c1c" }}>
+            {t("clinicCareD4c7f.closure.hardBlockTitle")} {hardBlockMessage}
+          </p>
+        ) : null}
         {closeSuccess ? (
           <p role="status" style={{ margin: "8px 0 0", fontSize: 12, color: "#047857" }}>
             {t("clinicCareD4c7d.messages.closed")}
@@ -432,6 +544,25 @@ export function ClinicCareActiveAmbulatoryWorkspaceView() {
           </p>
         ) : null}
       </div>
+
+      <ClinicCareAmbulatoryClosurePendingModal
+        open={pendingModalOpen}
+        pending={pendingCounts}
+        acknowledged={pendingAck}
+        onAcknowledgedChange={setPendingAck}
+        closing={workflowBusy === "COMPLETE_VISIT"}
+        overrideAllowed={pendingOverrideAllowed}
+        onReturnToChart={() => {
+          setPendingModalOpen(false);
+          setPendingAck(false);
+        }}
+        onCancel={() => {
+          setPendingModalOpen(false);
+          setPendingAck(false);
+        }}
+        onConfirm={() => void confirmPendingOverrideClose()}
+        t={t}
+      />
 
       <ClinicCareAmbulatoryWorkspaceSectionNav
         sections={visibleSections}

@@ -1387,13 +1387,20 @@ export class EncountersController {
       throw new BadRequestException("Invalid payload", { cause: parsed.error });
     }
 
+    const actorRoleCodes = [
+      typeof req.userRole === "string" ? req.userRole : null,
+      ...(Array.isArray(req.user?.roleCodes) ? req.user.roleCodes : []),
+      ...(Array.isArray(req.user?.roles) ? req.user.roles : []),
+    ].filter((r): r is string => typeof r === "string" && r.trim().length > 0);
+
     return this.encountersService.close(
       facilityId,
       id,
       parsed.data,
       req.user?.userId,
       req.ip,
-      req.headers["user-agent"]
+      req.headers["user-agent"],
+      actorRoleCodes
     );
   }
 }
