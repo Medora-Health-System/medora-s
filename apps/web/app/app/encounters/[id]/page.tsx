@@ -2678,6 +2678,7 @@ function EncounterDetailPageInner({ session }: { session: ReturnType<typeof useF
               providerDocumentationEncounterMode={providerDocumentationEncounterMode}
               ambulatoryLayout={ambulatoryProviderWorkspaceActive}
               facilityTimeZone={session.facilityTimeZone}
+              facilityCountry={session.facilityCountry}
             />
           )}
           {activeTab === "triage" && (
@@ -4206,6 +4207,7 @@ function ClinicVisitTab({
   providerDocumentationEncounterMode = "ED",
   ambulatoryLayout = false,
   facilityTimeZone,
+  facilityCountry = null,
 }: {
   encounter: any;
   facilityId: string;
@@ -4216,6 +4218,7 @@ function ClinicVisitTab({
   providerDocumentationEncounterMode?: "ED" | "OBSERVATION" | "AMBULATORY";
   ambulatoryLayout?: boolean;
   facilityTimeZone?: string | null;
+  facilityCountry?: string | null;
 }) {
   const { t, language } = useI18n();
   const dateLocale = language === "en" ? "en-US" : "fr-FR";
@@ -4565,6 +4568,8 @@ function ClinicVisitTab({
       <ProviderDocumentationWorkspace
         encounterId={encounter.id}
         encounterMode={providerDocumentationEncounterMode}
+        facilityCountry={facilityCountry}
+        authoredDocumentLocale={language === "fr" ? "fr" : "en"}
         value={providerWorkspaceValue}
         onChange={setProviderWorkspaceValue}
         onSave={save}

@@ -519,7 +519,6 @@ export const D4C7_CLINIC_DISCHARGE_WORKFLOW_REQUIREMENTS = [
   "applyRefreshSuggestion",
   "careSettingAwareLanguage",
   "facilityDisplayName",
-  "PatientDischargeInstructionsClosureCard",
   "printSignedFinalOnly",
   "EmergencyVisitSummaryPanel",
 ] as const;

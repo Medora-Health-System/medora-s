@@ -1,4 +1,12 @@
+import {
+  isAmbulatoryHiddenMdmPresentationField,
+  resolveAmbulatoryHighValueMdmTargetField,
+  resolveMdmHighValueFragmentKey,
+  shouldHideAmbulatoryRoutineMedEvalMdmChromeFields,
+  type D4c7aProviderDocumentationEncounterMode,
+} from "@medora/shared";
 import type {
+  ProviderDocumentationEncounterMode,
   ProviderDocumentationTemplateDefinition,
   ProviderDocumentationTemplateStringField,
   ProviderDocumentationWorkspaceState,
@@ -114,21 +122,38 @@ export const HIGH_VALUE_MDM_TEMPLATES: Array<{
 ];
 
 export function buildMdmTemplateDropdownOptions(
-  template: ProviderDocumentationTemplateDefinition | null
+  template: ProviderDocumentationTemplateDefinition | null,
+  encounterMode: ProviderDocumentationEncounterMode | D4c7aProviderDocumentationEncounterMode = "ED"
 ): MdmTemplateOption[] {
-  const highValue: MdmTemplateOption[] = HIGH_VALUE_MDM_TEMPLATES.map((item) => ({
-    id: item.id,
-    group: "highValue",
-    labelKey: item.labelKey,
-    field: item.field,
-    fragmentKey: item.fragmentKey,
-    highValue: true,
-  }));
+  const highValue: MdmTemplateOption[] = HIGH_VALUE_MDM_TEMPLATES.map((item) => {
+    const field = resolveAmbulatoryHighValueMdmTargetField({
+      templateId: item.id,
+      defaultField: item.field,
+      encounterMode,
+    }) as ProviderDocumentationTemplateStringField;
+    const fragmentKey = resolveMdmHighValueFragmentKey({
+      fragmentKey: item.fragmentKey,
+      encounterMode,
+    });
+    return {
+      id: item.id,
+      group: "highValue" as const,
+      labelKey: item.labelKey,
+      field,
+      fragmentKey,
+      highValue: true,
+    };
+  });
+
+  const hideAmbulatoryMdmChrome = shouldHideAmbulatoryRoutineMedEvalMdmChromeFields({
+    encounterMode,
+  });
 
   const existing: MdmTemplateOption[] = [];
   const seen = new Set<string>();
 
   const add = (field: ProviderDocumentationTemplateStringField, fragmentKey: string) => {
+    if (hideAmbulatoryMdmChrome && isAmbulatoryHiddenMdmPresentationField(field)) return;
     const dedupeKey = `${field}::${fragmentKey}`;
     if (seen.has(dedupeKey)) return;
     seen.add(dedupeKey);

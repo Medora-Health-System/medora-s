@@ -22,7 +22,6 @@ import { useI18n } from "@/lib/i18n";
 import { normalizeUserFacingError } from "@/lib/userFacingError";
 import { printDischarge } from "@/components/encounters/DischargePrintLayout";
 import { MEDORA_CARD_SHELL } from "@/components/medora-card/medoraCardTokens";
-import { PatientDischargeInstructionsClosureCard } from "@/features/emergency/PatientDischargeInstructionsClosureCard";
 import {
   ProviderDischargeDocumentationSection,
   buildProviderDischargeJsonForSave,
@@ -269,6 +268,9 @@ export function ClinicCareAmbulatoryDischargeWorkflow({
         <p style={{ margin: "0 0 12px", fontSize: 12, color: "#64748b" }}>
           {t("clinicCareD4c7.discharge.sharedEngineHint")}
         </p>
+        <p style={{ margin: "0 0 12px", fontSize: 11, color: "#94a3b8" }}>
+          {t("clinicCareD4c7a.discharge.singleEngineHint")}
+        </p>
         <ProviderDischargeDocumentationSection
           facilityId={facilityId}
           patientId={patientId}
@@ -319,19 +321,6 @@ export function ClinicCareAmbulatoryDischargeWorkflow({
           ) : null}
           {printError ? <span style={{ fontSize: 12, color: "#b91c1c" }}>{printError}</span> : null}
         </div>
-      </div>
-
-      <div data-testid="clinic-care-ambulatory-discharge-engine">
-        <PatientDischargeInstructionsClosureCard
-          encounterId={encounterId}
-          facilityId={facilityId}
-          dischargeSummaryJson={dischargeSummaryJson}
-          encounterStatus={encounterStatus}
-          canEditNursingDischarge={canEditNursing}
-          canEditMedicalDischarge={canEditMedical}
-          onSaved={onSaved}
-          formDisabled={formDisabled}
-        />
       </div>
 
       <div style={sectionShell} data-testid="clinic-care-d4c7-public-health-links">

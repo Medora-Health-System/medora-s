@@ -3,7 +3,13 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   filterHaitiAmbulatoryProviderTemplates,
+  shouldHideAmbulatoryRoutineMedEvalMdmChromeFields,
   shouldHideHaitiAmbulatoryRoutineMedEvalFields,
+  detectLegacyEnglishMdmInFrenchDraft,
+  applyExplicitFrenchMdmFragmentRefresh,
+  resolveAuthoredDocumentLocale,
+  omitEmptyAmbulatoryHiddenMdmFields,
+  MDM_HIGH_VALUE_TEMPLATE_SUFFIXES,
 } from "@medora/shared";
 import {
   PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS,
@@ -132,6 +138,11 @@ export type ProviderDocumentationWorkspaceProps = {
   encounterMode: ProviderDocumentationEncounterMode;
   /** Facility.country — Haiti ambulatory hides ED/trauma defaults (never locale alone). */
   facilityCountry?: string | null;
+  /**
+   * Authored-document language for MDM inserts (locale ≠ jurisdiction).
+   * When omitted, inferred from French UI chrome via `t()`.
+   */
+  authoredDocumentLocale?: "en" | "fr" | null;
   providerUserId?: string | null;
   value: ProviderDocumentationWorkspaceState;
   onChange: (next: ProviderDocumentationWorkspaceState) => void;
@@ -436,6 +447,7 @@ export function ProviderDocumentationWorkspace({
   encounterId,
   encounterMode,
   facilityCountry = null,
+  authoredDocumentLocale = null,
   providerUserId = null,
   value,
   onChange,
@@ -459,6 +471,9 @@ export function ProviderDocumentationWorkspace({
 }: ProviderDocumentationWorkspaceProps) {
   const hideHaitiRoutineMedEval = shouldHideHaitiAmbulatoryRoutineMedEvalFields({
     facilityCountry,
+    encounterMode,
+  });
+  const hideAmbulatoryMdmChrome = shouldHideAmbulatoryRoutineMedEvalMdmChromeFields({
     encounterMode,
   });
   const allowedTemplates = useMemo(
@@ -507,9 +522,107 @@ export function ProviderDocumentationWorkspace({
     [value.activeTemplateId]
   );
   const mdmTemplateOptions = useMemo(
-    () => buildMdmTemplateDropdownOptions(activeTemplate),
-    [activeTemplate]
+    () => buildMdmTemplateDropdownOptions(activeTemplate, encounterMode),
+    [activeTemplate, encounterMode]
   );
+  const inferredAuthoredLocale = resolveAuthoredDocumentLocale({
+    authoredDocumentLocale,
+    appLocale:
+      t("providerDocumentationWorkspace.mdmApplySelected") === "Appliquer la sélection" ? "fr" : "en",
+  });
+  const englishHighValueFragments = useMemo(
+    () =>
+      MDM_HIGH_VALUE_TEMPLATE_SUFFIXES.map((suffix) =>
+        // ED English catalog — used only to detect legacy English inserts in French drafts.
+        t(`providerDocumentationMdmHighValue.${suffix}`)
+      ).filter((text) => text && !text.startsWith("providerDocumentationMdmHighValue.")),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: English catalog keys via t when locale switches
+    [t, inferredAuthoredLocale]
+  );
+  const frenchAmbulatoryHighValueFragments = useMemo(
+    () =>
+      MDM_HIGH_VALUE_TEMPLATE_SUFFIXES.map((suffix) =>
+        t(`providerDocumentationMdmHighValueAmbulatory.${suffix}`)
+      ),
+    [t]
+  );
+  const legacyEnglishMdmDetect = useMemo(
+    () =>
+      detectLegacyEnglishMdmInFrenchDraft({
+        authoredLocale: inferredAuthoredLocale,
+        fieldTexts: [
+          value.mdmWorkingAssessment,
+          value.mdmDifferentialSynthesis,
+          value.mdmDataReviewed,
+          value.mdmClinicalRationale,
+          value.mdmPlanSummary,
+          value.mdmImmediateActionsRationale,
+          value.mdmConsultsDiscussed,
+          value.mdmAdmitObserveDischarge,
+        ],
+        englishFragments: englishHighValueFragments,
+        signedOrFinalized,
+      }),
+    [
+      englishHighValueFragments,
+      inferredAuthoredLocale,
+      signedOrFinalized,
+      value.mdmAdmitObserveDischarge,
+      value.mdmClinicalRationale,
+      value.mdmConsultsDiscussed,
+      value.mdmDataReviewed,
+      value.mdmDifferentialSynthesis,
+      value.mdmImmediateActionsRationale,
+      value.mdmPlanSummary,
+      value.mdmWorkingAssessment,
+    ]
+  );
+  const [mdmLocaleRefreshMessage, setMdmLocaleRefreshMessage] = useState<string | null>(null);
+  const applyFrenchMdmRefresh = () => {
+    if (readOnly || signedOrFinalized) return;
+    const fields: Array<
+      | "mdmWorkingAssessment"
+      | "mdmDifferentialSynthesis"
+      | "mdmDataReviewed"
+      | "mdmClinicalRationale"
+      | "mdmPlanSummary"
+      | "mdmImmediateActionsRationale"
+      | "mdmConsultsDiscussed"
+      | "mdmAdmitObserveDischarge"
+    > = [
+      "mdmWorkingAssessment",
+      "mdmDifferentialSynthesis",
+      "mdmDataReviewed",
+      "mdmClinicalRationale",
+      "mdmPlanSummary",
+      "mdmImmediateActionsRationale",
+      "mdmConsultsDiscussed",
+      "mdmAdmitObserveDischarge",
+    ];
+    const replacements = MDM_HIGH_VALUE_TEMPLATE_SUFFIXES.map((suffix, index) => ({
+      english: englishHighValueFragments[index] ?? "",
+      french: frenchAmbulatoryHighValueFragments[index] ?? "",
+    })).filter((row) => row.english && row.french);
+    const patchValue: Partial<ProviderDocumentationWorkspaceState> = {};
+    let total = 0;
+    for (const field of fields) {
+      const { nextText, replacedCount } = applyExplicitFrenchMdmFragmentRefresh({
+        fieldText: String(value[field] ?? ""),
+        replacements,
+        signedOrFinalized,
+      });
+      if (replacedCount > 0) {
+        patchValue[field] = nextText;
+        total += replacedCount;
+      }
+    }
+    if (total > 0) {
+      onChange({ ...value, ...patchValue });
+      setMdmLocaleRefreshMessage(t("clinicCareD4c7a.mdm.applyFrenchDone"));
+    } else {
+      setMdmLocaleRefreshMessage(t("clinicCareD4c7a.mdm.applyFrenchNone"));
+    }
+  };
   const dynamicClusters = useMemo(
     () =>
       getProviderDocumentationDynamicClinicalClusters({
@@ -1343,14 +1456,20 @@ export function ProviderDocumentationWorkspace({
   };
   const complaintIntelligenceMdmChipPanels = (template: ProviderDocumentationTemplateDefinition | null) => (
     <>
-      {complaintIntelligenceMdmChipBindingsForTemplate(template).map((binding) =>
-        complaintIntelligenceFieldChips(
+      {complaintIntelligenceMdmChipBindingsForTemplate(template).map((binding) => {
+        const workspaceField =
+          hideAmbulatoryMdmChrome &&
+          (binding.workspaceField === "mdmClinicalRationale" ||
+            binding.workspaceField === "mdmImmediateActionsRationale")
+            ? ("mdmWorkingAssessment" as const)
+            : binding.workspaceField;
+        return complaintIntelligenceFieldChips(
           template,
           binding.intelField,
           binding.titleKey,
-          binding.workspaceField
-        )
-      )}
+          workspaceField
+        );
+      })}
     </>
   );
   const complaintIntelligenceExamChips = (template: ProviderDocumentationTemplateDefinition | null) => {
@@ -2075,6 +2194,52 @@ export function ProviderDocumentationWorkspace({
               onToggleField={toggleField}
               onApplyFieldPatches={patch}
             />
+            {hideAmbulatoryMdmChrome &&
+            legacyEnglishMdmDetect.needsExplicitFrenchRefresh &&
+            !signedOrFinalized ? (
+              <div
+                data-testid="provider-documentation-mdm-apply-french-refresh"
+                style={{
+                  marginTop: 10,
+                  padding: "10px 12px",
+                  borderRadius: 10,
+                  border: "1px solid #fcd34d",
+                  background: "#fffbeb",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 8,
+                }}
+              >
+                <p style={{ margin: 0, fontSize: 12, color: "#92400e", lineHeight: 1.45 }}>
+                  {t("clinicCareD4c7a.mdm.legacyEnglishBanner")}
+                </p>
+                <p style={{ margin: 0, fontSize: 11, color: "#78716c", lineHeight: 1.4 }}>
+                  {t("clinicCareD4c7a.mdm.applyFrenchRefreshHint")}
+                </p>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
+                  <button
+                    type="button"
+                    disabled={readOnly}
+                    onClick={applyFrenchMdmRefresh}
+                    style={{
+                      padding: "8px 12px",
+                      borderRadius: 10,
+                      border: "1px solid #d97706",
+                      background: "#f59e0b",
+                      color: "#fff",
+                      fontSize: 12,
+                      fontWeight: 700,
+                      cursor: readOnly ? "not-allowed" : "pointer",
+                    }}
+                  >
+                    {t("clinicCareD4c7a.mdm.applyFrenchRefresh")}
+                  </button>
+                  {mdmLocaleRefreshMessage ? (
+                    <span style={{ fontSize: 12, color: "#166534" }}>{mdmLocaleRefreshMessage}</span>
+                  ) : null}
+                </div>
+              </div>
+            ) : null}
             {complaintIntelligenceMdmChipPanels(activeTemplate)}
             {dynamicClusters.length > 0 ? (
               <ProviderDocumentationChipPanel title={t("providerDocumentationWorkspace.dynamicClustersTitle")}>
@@ -2258,9 +2423,13 @@ export function ProviderDocumentationWorkspace({
                   <option value="High">{t("providerDocumentationWorkspace.riskHigh")}</option>
                 </select>
               </Field>
+              {!hideAmbulatoryMdmChrome ? (
               <Field label={t("providerDocumentationWorkspace.clinicalRationale")} voiceReadyLabel={t("providerDocumentationWorkspace.voiceReadyField")} dictationTargetId={PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.mdmClinicalRationale} dictationLabel={t("providerDocumentationWorkspace.dictationFocusField")} readOnly={readOnly} readOnlyLabel={t("providerDocumentationWorkspace.dictationReadOnlyField")}>{ta("mdmClinicalRationale", 2, PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.mdmClinicalRationale)}</Field>
+              ) : null}
               <Field label={t("providerDocumentationWorkspace.planSummary")} voiceReadyLabel={t("providerDocumentationWorkspace.voiceReadyField")} dictationTargetId={PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.mdmPlanSummary} dictationLabel={t("providerDocumentationWorkspace.dictationFocusField")} readOnly={readOnly} readOnlyLabel={t("providerDocumentationWorkspace.dictationReadOnlyField")}>{ta("mdmPlanSummary", 2, PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.mdmPlanSummary)}</Field>
+              {!hideAmbulatoryMdmChrome ? (
               <Field label={t("providerDocumentationWorkspace.immediateActions")} voiceReadyLabel={t("providerDocumentationWorkspace.voiceReadyField")} dictationTargetId={PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.mdmImmediateActionsRationale} dictationLabel={t("providerDocumentationWorkspace.dictationFocusField")} readOnly={readOnly} readOnlyLabel={t("providerDocumentationWorkspace.dictationReadOnlyField")}>{ta("mdmImmediateActionsRationale", 2, PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.mdmImmediateActionsRationale)}</Field>
+              ) : null}
               <Field label={t("providerDocumentationWorkspace.consults")} voiceReadyLabel={t("providerDocumentationWorkspace.voiceReadyField")} dictationTargetId={PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.mdmConsultsDiscussed} dictationLabel={t("providerDocumentationWorkspace.dictationFocusField")} readOnly={readOnly} readOnlyLabel={t("providerDocumentationWorkspace.dictationReadOnlyField")}>{ta("mdmConsultsDiscussed", 2, PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.mdmConsultsDiscussed)}</Field>
               {!hideHaitiRoutineMedEval ? (
               <Field label={t("providerDocumentationWorkspace.admitObserveDischarge")} voiceReadyLabel={t("providerDocumentationWorkspace.voiceReadyField")} dictationTargetId={PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.mdmAdmitObserveDischarge} dictationLabel={t("providerDocumentationWorkspace.dictationFocusField")} readOnly={readOnly} readOnlyLabel={t("providerDocumentationWorkspace.dictationReadOnlyField")}>{ta("mdmAdmitObserveDischarge", 2, PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.mdmAdmitObserveDischarge)}</Field>

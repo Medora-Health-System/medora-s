@@ -39,8 +39,8 @@ describe("MEDUI.D4C.5B.2 Haiti ambulatory web mounts", () => {
     const panels = read("ClinicCareAmbulatoryWorkspacePanels.tsx");
     const workflow = read("ClinicCareAmbulatoryDischargeWorkflow.tsx");
     expect(panels).toContain("ClinicCareAmbulatoryDischargeWorkflow");
-    expect(workflow).toContain("PatientDischargeInstructionsClosureCard");
-    expect(workflow).toContain("clinic-care-ambulatory-discharge-engine");
+    expect(workflow).toContain("ProviderDischargeDocumentationSection");
+    expect(workflow).not.toContain("PatientDischargeInstructionsClosureCard");
     expect(existsSync(join(featureDir, "ClinicDischarge.tsx"))).toBe(false);
   });
 

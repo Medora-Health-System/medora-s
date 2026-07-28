@@ -10212,6 +10212,22 @@ export default {
     },
   },
 
+  clinicCareD4c7a: {
+    mdm: {
+      legacyEnglishBanner:
+        "This unsigned draft still contains English MDM template text while the authored document language is French.",
+      applyFrenchRefresh: "Apply French / Refresh",
+      applyFrenchRefreshHint:
+        "Replaces known English MDM template fragments with French ambulatory text. Free-text edits are preserved. Signed notes are never changed.",
+      applyFrenchDone: "French MDM fragments applied.",
+      applyFrenchNone: "No matching English MDM fragments to refresh.",
+    },
+    discharge: {
+      singleEngineHint:
+        "Diagnosis-driven ambulatory discharge only (D4C.7 shared engine). Flat patient-instruction duplicate removed.",
+    },
+  },
+
   clinicCareD4c6: {
     nav: {
       orders: "Orders",
@@ -11283,6 +11299,20 @@ export default {
     smokingCessation:
       "The patient was counseled on smoking cessation, including e-cigarettes and vaping; less than or equal to 10 minutes spent on discussion.",
     pmpReviewed: "State prescription monitoring program reviewed.",
+  },
+  /** Ambulatory Clinic high-value MDM inserts — no ED / emergency-department boilerplate. */
+  providerDocumentationMdmHighValueAmbulatory: {
+    standardMdm:
+      "The patient lives at home with family and has good family/social support.\n\nI have considered the above differential diagnoses as the potential cause of the patient's condition. I have based my consideration on a limited patient encounter, and my considerations may not be all-inclusive. History, physical examination, and/or diagnostic studies, in combination with medical judgment, have been used in determining the final diagnosis.\n\nDiagnostic tests were ordered, analyzed and reviewed by me and used in my medical decision making for this patient.\n\nI explained at length the nature of the workup, presumed diagnosis, treatment plan and the patient verbalized understanding. They have been given instructions to follow with a primary care provider within 48 hours and or a specialist if needed. They are invited to return promptly for re-evaluation if there is any change in status concerning acute deterioration. All questions were answered and they are safe to leave the clinic visit at this time.",
+    patientConcern:
+      "The patient was substantially concerned that their symptoms were potentially risking their life and that immediate medical evaluation was required.",
+    ekgNormal:
+      "The EKG showed normal sinus rhythm, normal QT, normal QRS morphology, and no ischemic changes of the ST/T segment — interpretation by me: Normal EKG.",
+    diagnosticStudiesReview:
+      "Diagnostic studies, laboratory testing, imaging, and other clinically indicated evaluations were ordered, reviewed, and incorporated into the medical decision-making process for this patient.\n\nThe evaluation, differential considerations, treatment plan, disposition, and follow-up recommendations were discussed extensively with the patient and/or caregiver, who verbalized understanding and agreement with the plan of care. The patient was advised to follow up with a primary care provider and/or specialist as appropriate. Strict return precautions were discussed in detail, including instructions to return promptly for re-evaluation for any worsening symptoms, change in condition, or other concerns. All questions were addressed prior to leaving the clinic visit.",
+    smokingCessation:
+      "The patient was counseled on smoking cessation, including e-cigarettes and vaping; less than or equal to 10 minutes spent on discussion.",
+    pmpReviewed: "Prescription monitoring program reviewed when available.",
   },
   providerDocumentationSmartSentences: {
     reassessedAfterAnalgesia: "Patient reassessed after analgesia with interval improvement on exam",
