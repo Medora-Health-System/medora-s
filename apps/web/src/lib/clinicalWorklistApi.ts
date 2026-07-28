@@ -42,6 +42,40 @@ export async function patchEncounterWorkflowState(
   });
 }
 
+/**
+ * MEDUI.D4C.7D — thin ambulatory adapter: delegates 100% to enterprise
+ * `POST /encounters/:id/close` (EncountersService.close). No Clinic-local status write.
+ */
+export async function closeAmbulatoryEncounterViaEnterprise(
+  facilityId: string,
+  encounterId: string,
+  body?: {
+    acknowledgeDeficiencies?: boolean;
+    acknowledgeDispositionSafety?: boolean;
+    dischargeStatus?: string;
+  }
+): Promise<unknown> {
+  return apiFetch(`/encounters/${encounterId}/close`, {
+    method: "POST",
+    facilityId,
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body ?? {}),
+  });
+}
+
+export async function closeCheckAmbulatoryEncounter(
+  facilityId: string,
+  encounterId: string,
+  body?: Record<string, unknown>
+): Promise<unknown> {
+  return apiFetch(`/encounters/${encounterId}/close-check`, {
+    method: "POST",
+    facilityId,
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body ?? {}),
+  });
+}
+
 /** D4A.3.0 — hospital-lane assignment (Observation/Inpatient bag). Re-export for worklists. */
 export {
   assignHospitalRoleToMe,

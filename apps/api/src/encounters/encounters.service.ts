@@ -3861,6 +3861,18 @@ export class EncountersService {
       throw new NotFoundException("Encounter not found");
     }
 
+    // MEDUI.D4C.7D — idempotent close: already CLOSED returns canonical projection (no status regression).
+    if (encounter.status === EncounterStatus.CLOSED) {
+      const already = await this.prisma.encounter.findFirst({
+        where: { id, facilityId },
+        select: ENCOUNTER_DETAIL_SELECT,
+      });
+      if (!already) {
+        throw new NotFoundException("Encounter not found");
+      }
+      return toEncounterClinicResponse(already);
+    }
+
     // Validate status transition
     assertCanTransitionEncounter(encounter.status, "CLOSED");
 

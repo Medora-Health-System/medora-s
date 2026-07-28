@@ -263,7 +263,12 @@ export function resolveClinicCareAmbulatoryWorkflowTarget(
       if (wf === "DISPOSITION") return "DISCHARGE_READY";
       return null;
     case "COMPLETE_VISIT":
-      return wf === "DISCHARGE_READY" ? "FINALIZED" : null;
+      // MEDUI.D4C.7D — COMPLETE_VISIT invokes enterprise EncountersService.close
+      // (not workflow FINALIZED alone). Sentinel consumed by Active Ambulatory Workspace.
+      if (wf === "DISCHARGE_READY" || wf === "FINALIZED") {
+        return "ENTERPRISE_CLOSE";
+      }
+      return null;
     default:
       return null;
   }

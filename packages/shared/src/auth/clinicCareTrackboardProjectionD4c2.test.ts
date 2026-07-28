@@ -546,7 +546,7 @@ describe("MEDUI.D4C.2 clinic care trackboard projection", () => {
         dayStartUtc: day.startUtc,
         dayEndExclusiveUtc: day.endExclusiveUtc,
       })
-    ).toBe(false);
+    ).toBe(true); // MEDUI.D4C.5B — PROVIDER view includes WAITING (arrived/ready)
     expect(
       clinicCareRowMatchesView({
         view: "DISCHARGE_PENDING",
