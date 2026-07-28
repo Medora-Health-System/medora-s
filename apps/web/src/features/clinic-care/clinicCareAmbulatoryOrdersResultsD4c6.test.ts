@@ -62,9 +62,9 @@ describe("MEDUI.D4C.6 clinicCareAmbulatoryOrdersResults web", () => {
   });
 
   it("E. chart deep links use enterprise encounter + ambulatory workspace", () => {
-    expect(clinicCareAmbulatoryOrdersChartPath("abc")).toContain("tab=orders");
+    expect(clinicCareAmbulatoryOrdersChartPath("abc")).toContain("section=orders");
     expect(clinicCareAmbulatoryOrdersChartPath("abc")).toContain("workspace=ambulatory");
-    expect(clinicCareAmbulatoryResultsChartPath("abc")).toContain("tab=results");
+    expect(clinicCareAmbulatoryResultsChartPath("abc")).toContain("section=results");
   });
 
   it("F. order filters reuse enterprise categories", () => {
@@ -151,7 +151,7 @@ describe("MEDUI.D4C.6 clinicCareAmbulatoryOrdersResults web", () => {
   it("L. results detail path reuses enterprise results tab", () => {
     const path = clinicCareAmbulatoryResultsChartPath("enc");
     expect(path).toContain("/app/encounters/");
-    expect(path).toContain("tab=results");
+    expect(path).toContain("section=results");
     expect(path).not.toContain("ClinicResult");
   });
 });

@@ -130,10 +130,10 @@ describe("MEDUI.D4C.6 clinicCareAmbulatoryOrdersResultsD4c6", () => {
   /** E — chart deep links (orders / results + ambulatory workspace) */
   it("E. builds canonical ambulatory chart paths for orders and results", () => {
     expect(clinicCareAmbulatoryOrdersChartPath("enc-1")).toBe(
-      "/app/encounters/enc-1?tab=orders&workspace=ambulatory"
+      "/app/encounters/enc-1?workspace=ambulatory&section=orders"
     );
     expect(clinicCareAmbulatoryResultsChartPath("enc-2")).toBe(
-      "/app/encounters/enc-2?tab=results&workspace=ambulatory"
+      "/app/encounters/enc-2?workspace=ambulatory&section=results"
     );
     expect(clinicCareAmbulatoryOrderDetailPath({ encounterId: "e", orderId: "o1" })).toContain(
       "orderId=o1"

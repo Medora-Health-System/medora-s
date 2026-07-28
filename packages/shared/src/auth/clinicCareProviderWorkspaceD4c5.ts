@@ -12,8 +12,12 @@ import {
 export const CLINIC_CARE_PROVIDER_WORKSPACE_CERTIFICATION_ID =
   "MEDUI.D4C.5" as const;
 
-/** Provider worklist group buckets (canonical clinic stages). */
+/**
+ * Provider worklist group buckets (canonical clinic stages).
+ * MEDUI.D4C.5B — includes WAITING so assigned ARRIVED / ready patients are not excluded.
+ */
 export const CLINIC_CARE_PROVIDER_QUEUE_GROUPS = [
+  "WAITING",
   "IN_PROGRESS",
   "RESULTS_PENDING",
   "DISCHARGE_PENDING",
@@ -64,31 +68,33 @@ export function projectClinicCareProviderQueueGroup(
   const s = String(stageId ?? "")
     .trim()
     .toUpperCase();
+  if (s === "WAITING") return "WAITING";
   if (s === "IN_PROGRESS") return "IN_PROGRESS";
   if (s === "RESULTS_PENDING") return "RESULTS_PENDING";
   if (s === "DISCHARGE_PENDING") return "DISCHARGE_PENDING";
   return null;
 }
 
-/** Sort groups for display: ready evaluation → results → discharge. */
+/** Sort groups for display: waiting/ready → evaluation → results → checkout. */
 export function sortClinicCareProviderQueueGroups(
   groups: readonly ClinicCareProviderQueueGroup[]
 ): ClinicCareProviderQueueGroup[] {
   const order: Record<ClinicCareProviderQueueGroup, number> = {
-    IN_PROGRESS: 0,
-    RESULTS_PENDING: 1,
-    DISCHARGE_PENDING: 2,
+    WAITING: 0,
+    IN_PROGRESS: 1,
+    RESULTS_PENDING: 2,
+    DISCHARGE_PENDING: 3,
   };
   return [...groups].sort((a, b) => order[a] - order[b]);
 }
 
 /**
- * Enterprise encounter chart path with ambulatory documentation-first hints.
- * Does not fork a ClinicPatientChart route.
+ * Enterprise encounter chart path with ambulatory Active Workspace hints.
+ * MEDUI.D4C.5B — opens unified workspace (Medical Evaluation), not a ClinicPatientChart.
  */
 export function clinicCareAmbulatoryProviderChartPath(encounterId: string): string {
   const id = encodeURIComponent(encounterId);
-  return `/app/encounters/${id}?tab=clinic&workspace=${CLINIC_CARE_AMBULATORY_WORKSPACE_QUERY}`;
+  return `/app/encounters/${id}?workspace=${CLINIC_CARE_AMBULATORY_WORKSPACE_QUERY}&section=medical-evaluation`;
 }
 
 /**

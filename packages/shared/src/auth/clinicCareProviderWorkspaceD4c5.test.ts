@@ -24,8 +24,10 @@ describe("clinicCareProviderWorkspaceD4c5", () => {
 
   it("projects and sorts provider queue groups", () => {
     expect(projectClinicCareProviderQueueGroup("RESULTS_PENDING")).toBe("RESULTS_PENDING");
-    expect(CLINIC_CARE_PROVIDER_QUEUE_GROUPS).toHaveLength(3);
-    expect(sortClinicCareProviderQueueGroups(["DISCHARGE_PENDING", "RESULTS_PENDING", "IN_PROGRESS"])).toEqual([
+    expect(projectClinicCareProviderQueueGroup("WAITING")).toBe("WAITING");
+    expect(CLINIC_CARE_PROVIDER_QUEUE_GROUPS).toHaveLength(4);
+    expect(sortClinicCareProviderQueueGroups(["DISCHARGE_PENDING", "RESULTS_PENDING", "WAITING", "IN_PROGRESS"])).toEqual([
+      "WAITING",
       "IN_PROGRESS",
       "RESULTS_PENDING",
       "DISCHARGE_PENDING",
@@ -34,6 +36,7 @@ describe("clinicCareProviderWorkspaceD4c5", () => {
 
   it("builds ambulatory chart path and filters rows", () => {
     expect(clinicCareAmbulatoryProviderChartPath("x")).toContain("workspace=ambulatory");
+    expect(clinicCareAmbulatoryProviderChartPath("x")).toContain("section=medical-evaluation");
     expect(filterAmbulatoryEncounterRows([{ type: "OUTPATIENT" }, { type: "INPATIENT" }])).toHaveLength(1);
     expect(CLINIC_CARE_AMBULATORY_PROVIDER_TAB_IDS).toContain("clinic");
     expect(canAuthorAmbulatoryProviderDocumentation(["RN"])).toBe(false);

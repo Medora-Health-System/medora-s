@@ -9,6 +9,7 @@ import React from "react";
 
 const HREF_TWEMOJI_SVG: Record<string, string> = {
   "/app/trackboard": "1f4ca.svg",
+  "/app/clinic-care": "1f4ca.svg",
   "/app/emergency/trackboard": "1f6a8.svg",
   "/app/emergency/triage": "1f4cb.svg",
   "/app/registration": "1f3e0.svg",

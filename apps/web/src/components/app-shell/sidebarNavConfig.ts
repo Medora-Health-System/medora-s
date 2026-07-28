@@ -121,6 +121,14 @@ export type SidebarNavItem = {
 type SidebarNavItemDef = Omit<SidebarNavItem, "label"> & { labelKey: string };
 
 const SIDEBAR_NAV_DEFS: SidebarNavItemDef[] = [
+  {
+    href: "/app/clinic-care",
+    labelKey: "nav.clinicCare",
+    roles: ["ADMIN", "PROVIDER", "RN", "LAB", "RADIOLOGY", "PATIENT_CARE_TECH"],
+    group: "accueil",
+    accent: "teal",
+    navAreas: ["CLINIC_CARE"],
+  },
   { href: "/app/trackboard", labelKey: "nav.trackboard", roles: ["ADMIN", "PROVIDER", "RN"], group: "accueil", accent: "slate", navAreas: ["DASHBOARD"] },
   {
     href: "/app/emergency/trackboard",
@@ -139,14 +147,6 @@ const SIDEBAR_NAV_DEFS: SidebarNavItemDef[] = [
     navAreas: ["EMERGENCY"],
   },
   { href: "/app/registration", labelKey: "nav.registration", roles: ["FRONT_DESK", "ADMIN", "RN", "PROVIDER"], group: "accueil", accent: "slate", navAreas: ["REGISTRATION"] },
-  {
-    href: "/app/clinic-care",
-    labelKey: "nav.clinicCare",
-    roles: ["ADMIN", "PROVIDER", "RN", "LAB", "RADIOLOGY", "PATIENT_CARE_TECH"],
-    group: "accueil",
-    accent: "teal",
-    navAreas: ["CLINIC_CARE"],
-  },
   { href: "/app/nursing", labelKey: "nav.nursing", roles: ["RN", "PROVIDER", "ADMIN"], group: "soins_dossiers", accent: "teal", navAreas: ["EMERGENCY", "HOSPITAL", "CLINIC_CARE"] },
   { href: "/app/provider", labelKey: "nav.provider", roles: ["RN", "PROVIDER", "ADMIN"], group: "soins_dossiers", accent: "blue", navAreas: ["EMERGENCY", "HOSPITAL", "CLINIC_CARE"] },
   { href: "/app/patients", labelKey: "nav.patients", roles: ["RN", "PROVIDER", "ADMIN", "FRONT_DESK"], group: "soins_dossiers", accent: "slate", navAreas: ["DASHBOARD", "EMERGENCY", "HOSPITAL", "CLINIC_CARE"] },
