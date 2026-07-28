@@ -76,6 +76,8 @@ model Facility {
   facilityFormularyItems                 FacilityFormularyItem[]
   facilityMedicationUsages               FacilityMedicationUsage[]
   followUps                              FollowUp[]
+  /// MEDUI.D4C.3 — enterprise ambulatory appointments (not Clinic-specific).
+  appointments                           Appointment[]
   /// D3B — continuous facility stay identity (HospitalEpisode foundation).
   hospitalEpisodes                       HospitalEpisode[]
   /// D3C — internal ED→Obs/IP placement requests.
@@ -160,8 +162,10 @@ model Department {
   isActive   Boolean        @default(true)
   createdAt  DateTime       @default(now())
   updatedAt  DateTime       @updatedAt
-  facility   Facility       @relation(fields: [facilityId], references: [id])
-  userRoles  UserRole[]
+  facility     Facility      @relation(fields: [facilityId], references: [id])
+  userRoles    UserRole[]
+  /// MEDUI.D4C.3 — optional clinic/department location on appointments.
+  appointments Appointment[]
 
   @@unique([facilityId, code])
 }
@@ -229,6 +233,9 @@ model User {
   triageVitalsReadingsVoided                      TriageVitalsReading[]                  @relation("TriageVitalsReadingVoidedBy")
   providerAddendaCreated                          EncounterProviderAddendum[]
   followUpsCreated                                FollowUp[]
+  /// MEDUI.D4C.3 — appointment provider / creator attribution.
+  appointmentsAsProvider                          Appointment[]                          @relation("AppointmentProvider")
+  appointmentsCreated                             Appointment[]                          @relation("AppointmentCreatedBy")
   /// D3B — HospitalEpisode audit actors.
   hospitalEpisodesCreated                         HospitalEpisode[]                      @relation("HospitalEpisodeCreatedBy")
   hospitalEpisodesUpdated                         HospitalEpisode[]                      @relation("HospitalEpisodeUpdatedBy")
@@ -391,6 +398,8 @@ model Patient {
   encounterClinicalEvents      EncounterClinicalEvent[]
   encounterNotes               EncounterNote[]
   followUps                    FollowUp[]
+  /// MEDUI.D4C.3 — enterprise appointments for this patient.
+  appointments                 Appointment[]
   /// D3B — continuous facility stay identity for this patient.
   hospitalEpisodes             HospitalEpisode[]
   /// D3C — internal placement requests for this patient.
@@ -589,6 +598,9 @@ model Encounter {
   billingClassificationTransitionJson       Json?
   /// D3B — nullable link to continuous facility stay (HospitalEpisode). Absence is safe.
   hospitalEpisodeId                         String?
+  /// MEDUI.D4C.3 — durable ambulatory visit origin (SCHEDULED | WALK_IN | …). Null = legacy/unknown.
+  /// Do not overload Encounter.type or EncounterIntake.modeOfArrival for this meaning.
+  visitOrigin                               EncounterVisitOrigin?
   /// D3C — placement requests originated from this ED encounter.
   internalPlacementRequestsOriginated       InternalPlacementRequest[]             @relation("InternalPlacementOriginatingEncounter")
   /// D3C — placement requests whose receiving encounter is this chart (nullable until arrival).
@@ -621,6 +633,8 @@ model Encounter {
   encounterNotes                            EncounterNote[]
   providerAddenda                           EncounterProviderAddendum[]
   followUps                                 FollowUp[]
+  /// MEDUI.D4C.3 — inverse of Appointment.encounterId (FK lives on Appointment only).
+  appointment                               Appointment?
   infusionSessions                          InfusionSession[]
   medicationAdministrations                 MedicationAdministration[]
   medicationAdministrationOverrides         MedicationAdministrationOverride[]
@@ -649,6 +663,7 @@ model Encounter {
   @@index([billingFinalizationStatus])
   @@index([billingClassification])
   @@index([hospitalEpisodeId])
+  @@index([facilityId, visitOrigin, createdAt])
 }
 
 /// D3B — one continuous facility stay spanning linked care-setting encounters.
@@ -6526,6 +6541,41 @@ model FollowUp {
   @@index([facilityId, status, dueDate])
 }
 
+/// MEDUI.D4C.3 — enterprise Appointment authority (ambulatory scheduling / check-in).
+/// Not ClinicAppointment. FK to Encounter lives here only (nullable unique until check-in).
+model Appointment {
+  id               String            @id @default(uuid())
+  facilityId       String
+  patientId        String
+  status           AppointmentStatus @default(SCHEDULED)
+  scheduledStartAt DateTime
+  scheduledEndAt   DateTime?
+  arrivedAt        DateTime?
+  checkedInAt      DateTime?
+  completedAt      DateTime?
+  cancelledAt      DateTime?
+  /// Linked ambulatory encounter after successful check-in (at most one).
+  encounterId      String?           @unique
+  providerId       String?
+  departmentId     String?
+  reason           String?
+  createdByUserId  String?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  facility         Facility          @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  patient          Patient           @relation(fields: [patientId], references: [id], onDelete: Restrict)
+  encounter        Encounter?        @relation(fields: [encounterId], references: [id], onDelete: Restrict)
+  provider         User?             @relation("AppointmentProvider", fields: [providerId], references: [id], onDelete: SetNull)
+  department       Department?       @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  createdBy        User?             @relation("AppointmentCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+
+  @@index([facilityId, scheduledStartAt])
+  @@index([facilityId, status, scheduledStartAt])
+  @@index([facilityId, patientId, scheduledStartAt])
+  @@index([providerId, scheduledStartAt])
+  @@index([departmentId, scheduledStartAt])
+}
+
 /// MSPP-style review record. Phase 1: optional `diseaseCaseReportId` without FK to `DiseaseCaseReport` until relations are confirmed.
 model DiseaseCaseReview {
   id                       String                      @id @default(uuid())
@@ -7065,6 +7115,13 @@ enum AuditAction {
   UC_TO_ED_PATIENT_ACKNOWLEDGED
   /// MEDUI.D4C.1 — facility care profile / service-line / operational address update (PHI-safe metadata only).
   FACILITY_CARE_PROFILE_UPDATED
+  /// MEDUI.D4C.3 — appointment lifecycle (PHI-safe metadata only).
+  APPOINTMENT_CREATE
+  APPOINTMENT_ARRIVE
+  APPOINTMENT_CHECK_IN
+  APPOINTMENT_CANCEL
+  /// Walk-in ambulatory encounter created with durable visitOrigin=WALK_IN.
+  AMBULATORY_WALK_IN_CREATE
   /// MEDNOTE.2 — encounter note governance (PHI-safe metadata only).
   ENCOUNTER_NOTE_AMENDED
   ENCOUNTER_NOTE_VOIDED
@@ -7212,6 +7269,27 @@ enum EncounterType {
   INPATIENT
   EMERGENCY
   URGENT_CARE
+}
+
+/// MEDUI.D4C.3 — durable ambulatory visit origin (not Encounter.type / care setting).
+enum EncounterVisitOrigin {
+  SCHEDULED
+  WALK_IN
+  FOLLOW_UP
+  REFERRAL
+  TRANSFER_IN
+  OTHER
+}
+
+/// MEDUI.D4C.3 — enterprise appointment lifecycle (ARRIVED ≠ CHECKED_IN).
+enum AppointmentStatus {
+  SCHEDULED
+  CONFIRMED
+  ARRIVED
+  CHECKED_IN
+  COMPLETED
+  CANCELLED
+  NO_SHOW
 }
 
 enum EncounterStatus {

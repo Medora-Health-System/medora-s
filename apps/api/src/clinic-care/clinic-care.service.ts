@@ -4,12 +4,15 @@ import {
   CLINIC_CARE_AMBULATORY_ENCOUNTER_TYPES,
   CLINIC_CARE_TRACKBOARD_METRIC_CONTRACTS,
   clinicCareNextStepHint,
+  clinicCareVisitOriginDisplayToken,
   countClinicCareMetricsFromEncounters,
   defaultClinicCareTrackboardViewForProfession,
   facilityLocalDayUtcBounds,
   filterClinicCareTrackboardRowForRole,
   isClinicCareFollowUpDue,
+  isHaitiPublicHealthJurisdiction,
   projectClinicCareStage,
+  projectRegistrationCompleteness,
   resolveAmbulatoryOperatingMode,
   resolveClinicCareTrackboardFieldVisibility,
   resolveFacilityCareProfile,
@@ -25,6 +28,25 @@ import { TrackboardService } from "../trackboard/trackboard.service";
 import { TRACKBOARD_ACTIVE_ENCOUNTER_SELECT } from "../trackboard/trackboard-encounter-select";
 
 const CLINIC_CARE_ROW_LIMIT = 250;
+
+const CLINIC_CARE_ENCOUNTER_SELECT = {
+  ...TRACKBOARD_ACTIVE_ENCOUNTER_SELECT,
+  visitOrigin: true,
+  appointment: {
+    select: {
+      id: true,
+      scheduledStartAt: true,
+      arrivedAt: true,
+      checkedInAt: true,
+      status: true,
+    },
+  },
+  intake: {
+    select: {
+      arrivalAt: true,
+    },
+  },
+} as const;
 
 export type ClinicCareTrackboardRowDto = {
   encounterId: string;
@@ -44,6 +66,13 @@ export type ClinicCareTrackboardRowDto = {
   openOrderCount: number;
   resultsPendingCount: number;
   hasOpenFollowUpDue: boolean;
+  /** D4C.3 — durable origin token; LEGACY when null. */
+  visitOrigin: string | null;
+  visitOriginDisplay: ReturnType<typeof clinicCareVisitOriginDisplayToken>;
+  scheduledStartAt: string | null;
+  arrivedAt: string | null;
+  checkedInAt: string | null;
+  registrationCompletenessStatus: string | null;
 };
 
 export type ClinicCareTrackboardProjectionDto = {
@@ -115,6 +144,7 @@ export class ClinicCareService {
       facilityType?: string | null;
       serviceLinesJson?: unknown;
       facilityCareProfileJson?: unknown;
+      country?: string | null;
     };
     serviceLines: readonly string[];
     access: ClinicCareWorkspaceRoleAccess;
@@ -191,13 +221,13 @@ export class ClinicCareService {
     const [openRows, todayClosedRows] = await Promise.all([
       this.prisma.encounter.findMany({
         where: openWhere,
-        select: TRACKBOARD_ACTIVE_ENCOUNTER_SELECT,
+        select: CLINIC_CARE_ENCOUNTER_SELECT,
         orderBy: { createdAt: "desc" },
         take: CLINIC_CARE_ROW_LIMIT,
       }),
       this.prisma.encounter.findMany({
         where: todayClosedWhere,
-        select: TRACKBOARD_ACTIVE_ENCOUNTER_SELECT,
+        select: CLINIC_CARE_ENCOUNTER_SELECT,
         orderBy: { createdAt: "desc" },
         take: 100,
       }),
@@ -235,6 +265,7 @@ export class ClinicCareService {
       dayEndExclusiveUtc: day.endExclusiveUtc,
     });
 
+    const haiti = isHaitiPublicHealthJurisdiction(input.facility.country ?? null);
     const rows: ClinicCareTrackboardRowDto[] = encounters.map((e) => {
       const ops = opMap.get(e.id);
       const resultsPendingCount = ops?.resultsPendingCount ?? 0;
@@ -245,6 +276,23 @@ export class ClinicCareService {
       });
       const chief =
         (e.triage?.chiefComplaint ?? e.chiefComplaint ?? "").trim() || null;
+      const appt = e.appointment ?? null;
+      const visitOrigin = e.visitOrigin ?? null;
+      const arrivedAt =
+        appt?.arrivedAt?.toISOString() ??
+        e.intake?.arrivalAt?.toISOString() ??
+        (visitOrigin === "WALK_IN" ? e.createdAt.toISOString() : null);
+      const completeness = projectRegistrationCompleteness({
+        patient: {
+          firstName: e.patient?.firstName,
+          lastName: e.patient?.lastName,
+          dob: e.patient?.dob ?? null,
+          sexAtBirth: e.patient?.sexAtBirth ?? null,
+        },
+        insuranceRequired: !haiti,
+        visitOrigin,
+        hasAppointmentLink: Boolean(appt?.id),
+      });
       const fullRow: ClinicCareTrackboardRowDto = {
         encounterId: e.id,
         patientId: e.patientId,
@@ -263,6 +311,12 @@ export class ClinicCareService {
         openOrderCount: ops?.openOrderCount ?? 0,
         resultsPendingCount,
         hasOpenFollowUpDue: followUpSet.has(e.id),
+        visitOrigin,
+        visitOriginDisplay: clinicCareVisitOriginDisplayToken(visitOrigin),
+        scheduledStartAt: appt?.scheduledStartAt?.toISOString() ?? null,
+        arrivedAt,
+        checkedInAt: appt?.checkedInAt?.toISOString() ?? null,
+        registrationCompletenessStatus: completeness.overallStatus,
       };
       return filterClinicCareTrackboardRowForRole(fullRow, fieldVisibility);
     });

@@ -9591,8 +9591,17 @@ export default {
     techSafeBanner:
       "Vue technicien sécurisée : documentation médecin, diagnostic, prescriptions et ordonnances restent indisponibles.",
     footerDeferral:
-      "L’orchestration de l’inscription, le typage rendez-vous / sans rendez-vous et les workflows de documentation se poursuivent dans les phases Soins cliniques suivantes.",
+      "La documentation infirmière/MA, le SOAP médecin, la prescription et la facturation avancée se poursuivent dans les phases Soins cliniques suivantes.",
     mrnPrefix: "NIP",
+    visitOrigins: {
+      SCHEDULED: "Sur rendez-vous",
+      WALK_IN: "Sans rendez-vous",
+      FOLLOW_UP: "Suivi",
+      REFERRAL: "Référence",
+      TRANSFER_IN: "Transfert entrant",
+      OTHER: "Autre",
+      LEGACY: "Inconnu / historique",
+    },
     modes: {
       clinic: "Clinique",
       urgentCare: "Soins urgents",
@@ -9671,7 +9680,10 @@ export default {
     columns: {
       patient: "Patient",
       visitType: "Type de visite",
+      visitOrigin: "Origine de visite",
+      scheduled: "Rendez-vous",
       arrival: "Arrivée",
+      checkIn: "Enregistrement",
       status: "Statut",
       room: "Salle",
       provider: "Médecin",
@@ -9679,6 +9691,7 @@ export default {
       results: "Résultats",
       nextStep: "Prochaine étape",
       actions: "Actions",
+      completeness: "Inscription",
     },
     encounterTypes: {
       outpatient: "Consultation externe",
@@ -9692,6 +9705,55 @@ export default {
     errors: {
       loadFailed: "Impossible de charger le tableau clinique.",
       accessDenied: "Vous n’avez pas accès à la coquille Soins cliniques pour cet établissement.",
+    },
+  },
+
+  clinicCareD4c3: {
+    title: "Inscription clinique",
+    subtitle:
+      "Rechercher ou enregistrer un patient, enregistrer un rendez-vous, ou démarrer une visite sans rendez-vous.",
+    backToTrackboard: "Retour au tableau",
+    tabs: {
+      search: "Trouver un patient",
+      walkIn: "Sans rendez-vous",
+      appointments: "Rendez-vous du jour",
+      followUp: "Planifier un suivi",
+    },
+    selectedPatient: "Patient sélectionné",
+    clearPatient: "Changer de patient",
+    visitReason: "Motif de visite",
+    encounterType: "Type de rencontre",
+    outpatient: "Consultation externe / clinique",
+    urgentCare: "Soins urgents",
+    startWalkIn: "Démarrer la visite sans rendez-vous",
+    walkInSuccess: "Visite sans rendez-vous démarrée. Le patient apparaît sur le tableau clinique.",
+    openConflict:
+      "Ce patient a déjà une rencontre ouverte. Ouvrez la visite existante plutôt que d’en créer une autre.",
+    scheduleAppointment: "Planifier un rendez-vous",
+    scheduledStart: "Début prévu",
+    appointmentReason: "Motif du rendez-vous",
+    createAppointment: "Créer le rendez-vous",
+    appointmentCreated: "Rendez-vous planifié.",
+    markArrived: "Marquer arrivé",
+    checkIn: "Enregistrer",
+    checkedIn: "Enregistrement effectué — rencontre créée.",
+    arrived: "Arrivée enregistrée.",
+    noAppointments: "Aucun rendez-vous prévu aujourd’hui.",
+    completenessTitle: "Complétude de l’inscription",
+    completenessComplete: "Complet",
+    completenessIncomplete: "Incomplet",
+    completenessNeedsReview: "À revoir",
+    completenessNotRequired: "Non requis",
+    followUpHint:
+      "Crée un rendez-vous de suivi (autorité Appointment). L’enregistrement ultérieur utilise le même parcours.",
+    insuranceLink: "Assurance / fiche patient",
+    documentsLink: "Documents d’inscription",
+    enterpriseRegistrationLink: "Espace d’inscription complet",
+    errors: {
+      loadFailed: "Impossible de charger les rendez-vous.",
+      actionFailed: "Action échouée.",
+      selectPatient: "Sélectionnez d’abord un patient.",
+      needStart: "Indiquez l’heure de début prévue.",
     },
   },
 
