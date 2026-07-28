@@ -63,6 +63,7 @@ export function ClinicCareAmbulatoryPatientHeader({
   chiefComplaint,
   arrivedAt,
   statusKey,
+  statusLabel,
   vitalPairs,
   vitalsLoading = false,
   allergyText,
@@ -81,6 +82,8 @@ export function ClinicCareAmbulatoryPatientHeader({
   chiefComplaint?: string | null;
   arrivedAt?: string | null;
   statusKey?: string | null;
+  /** MEDUI.D4C.7D — French lifecycle badge (never raw FINALIZED / CLOSED enums). */
+  statusLabel?: string | null;
   /** Optional — some sections (e.g. Intake, before vitals captured) may have none yet. */
   vitalPairs?: { label: string; value: string }[];
   vitalsLoading?: boolean;
@@ -100,6 +103,7 @@ export function ClinicCareAmbulatoryPatientHeader({
   const dash = t("common.dash");
   const fullName = `${(patient?.firstName ?? "").trim()} ${(patient?.lastName ?? "").trim()}`.trim() || dash;
   const status = (statusKey ?? "").trim() || "OPEN";
+  const badgeText = (statusLabel ?? "").trim() || tEncounterStatus(t, status);
   const notDocumented = t("clinicCareD4c5b2.empty.notDocumented");
   const displayVitalPairs =
     Array.isArray(vitalPairs) && vitalPairs.length > 0
@@ -201,7 +205,7 @@ export function ClinicCareAmbulatoryPatientHeader({
             labelKey="printOutput.patientChart.room"
           />
           <MedoraCardBadgeRow marginTop={0}>
-            <MedoraCardBadge soft={statusSoft(status)}>{tEncounterStatus(t, status)}</MedoraCardBadge>
+            <MedoraCardBadge soft={statusSoft(status)}>{badgeText}</MedoraCardBadge>
             <MedoraCardBadge soft={{ bg: "#eff6ff", text: "#1e40af", border: "#bfdbfe" }}>
               {t("clinicCareD4c5b.careSetting")}
             </MedoraCardBadge>

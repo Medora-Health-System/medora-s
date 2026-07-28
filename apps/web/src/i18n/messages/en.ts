@@ -10274,6 +10274,45 @@ export default {
     },
   },
 
+  clinicCareD4c7d: {
+    lifecycle: {
+      open: "Open",
+      waiting: "Waiting",
+      inProgress: "In progress",
+      readyForCheckout: "Ready for checkout",
+      dischargeDone: "Discharged",
+      docsToFinalize: "Documentation to finalize",
+      readyToClose: "Ready to close",
+      terminated: "Completed",
+      closed: "Closed",
+      cancelled: "Cancelled",
+    },
+    workflow: {
+      arrived: "Arrived",
+      triage: "Intake / triage",
+      inTreatment: "In treatment",
+      resultsPending: "Results pending",
+      disposition: "Disposition",
+    },
+    actions: {
+      closeEncounter: "Close encounter",
+      finalizeVisit: "Finalize visit",
+      performDischarge: "Complete discharge",
+      finalizeDocumentation: "Finalize documentation",
+      reopenEncounter: "Reopen encounter",
+      reopenReason: "Reopen reason",
+    },
+    messages: {
+      closed: "The visit has been closed.",
+      alreadyClosed: "The visit is already closed.",
+      dischargeRequired: "Discharge must be completed before closure.",
+      docsRequired: "Required documentation must be finalized.",
+      tasksRequired: "Some clinical tasks must be resolved before closure.",
+      closeFailed: "Unable to close the visit.",
+      refreshed: "Data has been refreshed.",
+    },
+  },
+
   clinicCareD4c6: {
     nav: {
       orders: "Orders",

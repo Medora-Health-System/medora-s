@@ -11,14 +11,17 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import {
-  CLINIC_CARE_AMBULATORY_WORKFLOW_ACTIONS,
   CLINIC_CARE_AMBULATORY_WORKSPACE_QUERY,
   canAccessClinicCareAmbulatoryWorkspaceSection,
   clinicCareAmbulatoryWorkflowActionLabelKey,
   getDefaultClinicCareAmbulatoryWorkspaceSection,
   getVisibleClinicCareAmbulatoryWorkspaceSections,
+  isAmbulatoryEnterpriseCloseTarget,
   parseClinicCareAmbulatoryWorkspaceSection,
+  projectAmbulatoryEnterpriseCloseResponse,
+  projectAmbulatoryLifecycleHeader,
   resolveClinicCareAmbulatoryWorkflowTarget,
+  shouldShowAmbulatoryCompleteVisitAction,
   type ClinicCareAmbulatoryWorkflowAction,
   type ClinicCareAmbulatoryWorkspaceSection,
 } from "@medora/shared";
@@ -26,7 +29,11 @@ import { apiFetch, asApiObject } from "@/lib/apiClient";
 import { normalizeUserFacingError } from "@/lib/userFacingError";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import { useI18n } from "@/lib/i18n";
-import { patchEncounterWorkflowState } from "@/lib/clinicalWorklistApi";
+import {
+  closeAmbulatoryEncounterViaEnterprise,
+  patchEncounterWorkflowState,
+} from "@/lib/clinicalWorklistApi";
+import { invalidateClinicCareAmbulatoryLifecycleCache } from "@/lib/invalidateClinicCareAmbulatoryLifecycleCache";
 import { isEncounterLocked } from "@/lib/encounterLock";
 import {
   buildAllergyStripSummary,
@@ -108,6 +115,7 @@ export function ClinicCareActiveAmbulatoryWorkspaceView() {
   );
   const [workflowBusy, setWorkflowBusy] = useState<ClinicCareAmbulatoryWorkflowAction | null>(null);
   const [workflowError, setWorkflowError] = useState<string | null>(null);
+  const [closeSuccess, setCloseSuccess] = useState(false);
 
   const fromParam = searchParams?.get("from");
   const backHref = fromParam === "todays-visits" ? CLINIC_CARE_TODAYS_VISITS : CLINIC_CARE_HOME;
@@ -203,6 +211,16 @@ export function ClinicCareActiveAmbulatoryWorkspaceView() {
   const isRnOrAdmin = roles.includes("RN") || roles.includes("ADMIN");
   const isProviderOrAdmin = roles.includes("PROVIDER") || roles.includes("ADMIN");
 
+  const lifecycleHeader = useMemo(
+    () =>
+      projectAmbulatoryLifecycleHeader({
+        encounterStatus: encounter?.status,
+        workflowState: encounter?.workflowState,
+        providerDocumentationStatus: encounter?.providerDocumentationStatus,
+      }),
+    [encounter]
+  );
+
   const workflowButtons = useMemo(() => {
     const wf = encounter?.workflowState ?? null;
     const out: { action: ClinicCareAmbulatoryWorkflowAction; target: string }[] = [];
@@ -215,7 +233,8 @@ export function ClinicCareActiveAmbulatoryWorkspaceView() {
         seen.add(action);
       }
     };
-    if (encounter?.status === "OPEN" && !isEncounterLocked(encounter)) {
+    const locked = encounter ? isEncounterLocked(encounter) : true;
+    if (encounter?.status === "OPEN" && !locked) {
       if (isRnOrAdmin) {
         consider("START_INTAKE");
         consider("READY_FOR_PROVIDER");
@@ -225,11 +244,20 @@ export function ClinicCareActiveAmbulatoryWorkspaceView() {
       }
       if (isRnOrAdmin || isProviderOrAdmin) {
         consider("READY_FOR_CHECKOUT");
-        consider("COMPLETE_VISIT");
       }
     }
+    // MEDUI.D4C.7D — COMPLETE_VISIT → enterprise close remains available after docs lock.
+    if (
+      shouldShowAmbulatoryCompleteVisitAction({
+        encounterStatus: encounter?.status,
+        workflowState: encounter?.workflowState,
+        roleCodes: roles,
+      })
+    ) {
+      consider("COMPLETE_VISIT");
+    }
     return out;
-  }, [encounter, isRnOrAdmin, isProviderOrAdmin]);
+  }, [encounter, isRnOrAdmin, isProviderOrAdmin, roles]);
 
   const runWorkflowAction = useCallback(
     async (action: ClinicCareAmbulatoryWorkflowAction, target: string) => {
@@ -237,6 +265,42 @@ export function ClinicCareActiveAmbulatoryWorkspaceView() {
       setWorkflowBusy(action);
       setWorkflowError(null);
       try {
+        if (isAmbulatoryEnterpriseCloseTarget(target) || action === "COMPLETE_VISIT") {
+          // Thin ambulatory adapter → EncountersService.close (canonical terminal authority).
+          let closed: unknown;
+          try {
+            closed = await closeAmbulatoryEncounterViaEnterprise(facilityId, encounter.id, {
+              dischargeStatus: "DISCHARGED",
+            });
+          } catch (firstErr) {
+            const msg = firstErr instanceof Error ? firstErr.message : String(firstErr ?? "");
+            const needsDocAck =
+              msg.includes("acknowledgeDeficiencies") ||
+              msg.includes("ENCOUNTER_CLOSE_DEFICIENCIES") ||
+              msg.includes("documentation est incomplète");
+            const needsSafetyAck =
+              msg.includes("acknowledgeDispositionSafety") ||
+              msg.includes("ENCOUNTER_CLOSE_DISPOSITION_SAFETY") ||
+              msg.includes("sécurité disposition");
+            if (!needsDocAck && !needsSafetyAck) throw firstErr;
+            closed = await closeAmbulatoryEncounterViaEnterprise(facilityId, encounter.id, {
+              dischargeStatus: "DISCHARGED",
+              acknowledgeDeficiencies: needsDocAck,
+              acknowledgeDispositionSafety: needsSafetyAck,
+            });
+          }
+          const projection = projectAmbulatoryEnterpriseCloseResponse(closed);
+          if (projection && projection.status !== "CLOSED") {
+            throw new Error(t("clinicCareD4c7d.messages.closeFailed"));
+          }
+          invalidateClinicCareAmbulatoryLifecycleCache({
+            facilityId,
+            encounterId: encounter.id,
+          });
+          setCloseSuccess(true);
+          await load();
+          return;
+        }
         if (target !== encounter.workflowState) {
           await patchEncounterWorkflowState(facilityId, encounter.id, target);
           await load();
@@ -245,12 +309,16 @@ export function ClinicCareActiveAmbulatoryWorkspaceView() {
           goToSection("medical-evaluation");
         }
       } catch (e) {
-        setWorkflowError(normalizeUserFacingError(e instanceof Error ? e.message : null, language));
+        setCloseSuccess(false);
+        setWorkflowError(
+          normalizeUserFacingError(e instanceof Error ? e.message : null, language) ||
+            t("clinicCareD4c7d.messages.closeFailed")
+        );
       } finally {
         setWorkflowBusy(null);
       }
     },
-    [facilityId, encounter, load, language, goToSection]
+    [facilityId, encounter, load, language, goToSection, t]
   );
 
   if (!rolesReady || (!encounter && loading)) {
@@ -317,7 +385,8 @@ export function ClinicCareActiveAmbulatoryWorkspaceView() {
           patient={encounter.patient}
           chiefComplaint={encounter.chiefComplaint || encounter.visitReason}
           arrivedAt={encounter.createdAt}
-          statusKey={encounter.status}
+          statusKey={lifecycleHeader.badgeStatusKey}
+          statusLabel={t(lifecycleHeader.badgeLabelKey)}
           vitalPairs={clinicalStrip.pairs}
           allergyText={clinicalStrip.allergyText}
           encounterRoom={{
@@ -329,7 +398,7 @@ export function ClinicCareActiveAmbulatoryWorkspaceView() {
             governedRoomHasAssignment: encounter.governedRoomHasAssignment,
           }}
           providerName={providerName}
-          workflowStateLabel={encounter.workflowState ?? null}
+          workflowStateLabel={t(lifecycleHeader.metaLabelKey)}
           followUpDateLabel={
             encounter.followUpDate
               ? new Date(encounter.followUpDate).toLocaleDateString(language === "en" ? "en-US" : "fr-FR")
@@ -342,14 +411,21 @@ export function ClinicCareActiveAmbulatoryWorkspaceView() {
             <button
               key={action}
               type="button"
-              disabled={workflowBusy === action}
+              disabled={workflowBusy === action || encounter.status === "CLOSED"}
               onClick={() => void runWorkflowAction(action, target)}
               style={{ ...compactBtn, opacity: workflowBusy === action ? 0.6 : 1 }}
             >
-              {t(clinicCareAmbulatoryWorkflowActionLabelKey(action))}
+              {action === "COMPLETE_VISIT"
+                ? t("clinicCareD4c7d.actions.closeEncounter")
+                : t(clinicCareAmbulatoryWorkflowActionLabelKey(action))}
             </button>
           ))}
         </ClinicCareAmbulatoryPatientHeader>
+        {closeSuccess ? (
+          <p role="status" style={{ margin: "8px 0 0", fontSize: 12, color: "#047857" }}>
+            {t("clinicCareD4c7d.messages.closed")}
+          </p>
+        ) : null}
         {workflowError ? (
           <p role="alert" style={{ margin: "8px 0 0", fontSize: 12, color: "#b91c1c" }}>
             {workflowError}
