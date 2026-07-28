@@ -1,10 +1,13 @@
 import {
+  isAmbulatoryOnsiteMarMedicationItem,
   shouldSkipOrderLineCompletionForMar,
 } from "@medora/shared";
 
 /**
- * RN medication line workload — MAR-eligible MEDICATION lines (any fulfillment intent)
- * that are not yet terminal on the order line. MAR links lifecycle to `OrderItem.status`.
+ * RN medication line workload — MAR-eligible MEDICATION lines with chart-admin
+ * fulfillment (ADMINISTER_CHART or legacy empty). External PHARMACY_DISPENSE
+ * prescriptions stay on the Rx / pharmacy path — not the MAR task list
+ * (MEDUI.D4C.5B.3 reconciliation).
  *
  * Repeating PRN / ON_DEMAND lines remain actionable even when a prior MAR incorrectly
  * marked the line COMPLETED (MEDUI.ED.MAR.H2).
@@ -18,6 +21,15 @@ export function isOrderItemPendingNurseMedication(it: {
   route?: string | null;
 }): boolean {
   if (it.catalogItemType !== "MEDICATION") return false;
+  if (
+    !isAmbulatoryOnsiteMarMedicationItem({
+      catalogItemType: it.catalogItemType,
+      medicationFulfillmentIntent: it.medicationFulfillmentIntent,
+      route: it.route,
+    })
+  ) {
+    return false;
+  }
   if (it.status === "CANCELLED") return false;
   if (it.status !== "COMPLETED") return true;
 

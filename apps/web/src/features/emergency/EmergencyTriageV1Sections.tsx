@@ -279,6 +279,8 @@ export type EmergencyTriageV1SectionsProps = {
   carryForwardMeta?: TriageCarryForwardMeta | null;
   onConfirmCarryForwardSection?: (section: TriageCarryForwardSectionKey) => void;
   onClearCarryForwardSection?: (section: TriageCarryForwardSectionKey) => void;
+  /** D4C.5B.3 — hide trauma / safety / travel / preferred pharmacy for Haiti ambulatory. */
+  hideEdTriageChrome?: boolean;
 };
 
 export function EmergencyTriageV1Sections({
@@ -294,6 +296,7 @@ export function EmergencyTriageV1Sections({
   carryForwardMeta,
   onConfirmCarryForwardSection,
   onClearCarryForwardSection,
+  hideEdTriageChrome = false,
 }: EmergencyTriageV1SectionsProps) {
   const { t, language } = useI18n();
 
@@ -689,6 +692,7 @@ export function EmergencyTriageV1Sections({
               </ErTriageDocChipRow>
             </div>
           </div>
+{!hideEdTriageChrome ? (
           <div
             style={{
               padding: "12px 14px",
@@ -831,6 +835,7 @@ export function EmergencyTriageV1Sections({
               </div>
             )}
           </div>
+          ) : null}
           <div>
             <label style={labelStyle}>{t("erTriage.v1.exceptions")}</label>
             <textarea
@@ -846,6 +851,7 @@ export function EmergencyTriageV1Sections({
         </div>
       </details>
 
+      {!hideEdTriageChrome ? (
       <details style={detailsShell}>
         <summary style={summaryRow}>
           <span>{t("erTriage.v1.safetyRoutingTitle")}</span>
@@ -953,6 +959,7 @@ export function EmergencyTriageV1Sections({
           </div>
         ) : null}
       </details>
+      ) : null}
 
       <details style={detailsShell}>
         <summary style={summaryRow}>
@@ -1138,6 +1145,7 @@ export function EmergencyTriageV1Sections({
               })}
             </ErTriageDocChipRow>
           </div>
+{!hideEdTriageChrome ? (
           <div style={grid2}>
             <div style={{ gridColumn: "1 / -1" }}>
               <label style={labelStyle}>{t("erTriage.v1.preferredPharmacy")}</label>
@@ -1150,6 +1158,7 @@ export function EmergencyTriageV1Sections({
               />
             </div>
           </div>
+          ) : null}
           <div style={{ marginTop: 10 }}>
             <label style={labelStyle}>{t("erTriage.v1.immuStatus")}</label>
             <input

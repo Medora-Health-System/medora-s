@@ -1,5 +1,5 @@
 /**
- * MEDUI.D4C.5B / D4C.5B.2 — Active Clinic Workspace section mounts.
+ * MEDUI.D4C.5B / D4C.5B.2 / D4C.5B.3 — Active Clinic Workspace section mounts.
  * Every tile reuses an existing enterprise / ED-shared engine — no ClinicIntake,
  * ClinicOrder, ClinicResult, ClinicPrescription, ClinicDischarge, or ClinicSummary.
  */
@@ -10,8 +10,11 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import type { ClinicCareAmbulatoryWorkspaceSection } from "@medora/shared";
 import {
   filterHaitiAmbulatoryClinicalDataCards,
+  haitiAmbulatoryOrdersMedicationMode,
   isHaitiPublicHealthJurisdiction,
+  resolveHaitiAmbulatoryIntakePresentation,
   shouldHideMarShiftTimelineForHaitiAmbulatory,
+  clinicCareAmbulatoryActiveWorkspacePath,
 } from "@medora/shared";
 import { apiFetch } from "@/lib/apiClient";
 import { useI18n } from "@/lib/i18n";
@@ -34,7 +37,6 @@ import { EncounterDiagnosticsPanel } from "@/components/encounters/EncounterDiag
 import { EnterpriseNursingClinicalWorkspaceD4b2 } from "@/features/clinical-documentation/EnterpriseNursingClinicalWorkspaceD4b2";
 import { ClinicCareAmbulatoryMedicalEvaluationPanel } from "@/features/clinic-care/ClinicCareAmbulatoryMedicalEvaluationPanel";
 import { ClinicCareAmbulatoryPrescriptionPanel } from "@/features/clinic-care/ClinicCareAmbulatoryPrescriptionPanel";
-import { clinicCareAmbulatoryActiveWorkspacePath } from "@medora/shared";
 
 export type ClinicCareAmbulatoryWorkspaceEncounter = {
   id: string;
@@ -301,12 +303,24 @@ export function ClinicCareAmbulatoryWorkspacePanels({
     facilityCountry,
     ambulatoryCareSetting: true,
   });
+  const intakePresentation = resolveHaitiAmbulatoryIntakePresentation({
+    facilityCountry,
+    ambulatoryCareSetting: true,
+  });
+  const ordersMedicationMode = haitiAmbulatoryOrdersMedicationMode({
+    facilityCountry,
+    ambulatoryCareSetting: true,
+  });
 
   switch (section) {
     case "intake":
       return (
         <div data-testid="clinic-care-ambulatory-intake">
-          <p style={{ margin: "0 0 10px", fontSize: 12, color: "#64748b" }}>{t("clinicCareD4c5b2.intake.hint")}</p>
+          <p style={{ margin: "0 0 10px", fontSize: 12, color: "#64748b" }}>
+            {intakePresentation.presentationMode === "SIMPLE_CLINIC_INTAKE"
+              ? t("clinicCareD4c5b3.intake.hint")
+              : t("clinicCareD4c5b2.intake.hint")}
+          </p>
           <EmergencyTriagePanel
             encounterId={encounter.id}
             facilityId={facilityId}
@@ -315,6 +329,7 @@ export function ClinicCareAmbulatoryWorkspacePanels({
             encounterTriageTabHref={clinicCareAmbulatoryActiveWorkspacePath(encounter.id, "intake")}
             patientChartHref={patientId ? `/app/patients/${encodeURIComponent(patientId)}` : undefined}
             onSaved={onUpdate}
+            presentationMode={intakePresentation.presentationMode}
           />
         </div>
       );
@@ -339,7 +354,7 @@ export function ClinicCareAmbulatoryWorkspacePanels({
             canPrescribe={canPrescribe}
             encounterSigned={encounter.providerDocumentationStatus === "SIGNED" || isLocked}
             encounterForOrderModal={{ patient: encounter.patient }}
-            medicationOrderMode="DEFAULT"
+            medicationOrderMode={ordersMedicationMode}
             hideTraumaProtocolAssist={haitiAmbulatory}
             onRefetchEncounter={async () => {
               await onUpdate();

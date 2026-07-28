@@ -21,6 +21,7 @@ export * from "./auth/clinicFollowUpProjectionD4c5b1.js";
 export * from "./auth/clinicCareAmbulatoryOrdersResultsD4c6.js";
 export * from "./auth/clinicCareAmbulatoryEncounterWorkspaceD4c5b.js";
 export * from "./auth/clinicCareHaitiAmbulatoryWorkspaceD4c5b2.js";
+export * from "./auth/clinicCareHaitiAmbulatoryOrdersMedicationsResultsD4c5b3.js";
 export * from "./auth/navigationAuthorization.js";
 
 export * from "./password-policy.js";

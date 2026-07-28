@@ -10069,6 +10069,104 @@ export default {
     },
   },
 
+  clinicCareD4c5b3: {
+    intake: {
+      title: "Évaluation d'accueil",
+      subtitle: "Accueil clinique ambulatoire",
+      hint: "Accueil léger — signes vitaux, allergies, médicaments à domicile et antécédents. Pas de triage d’urgences.",
+    },
+    rx: {
+      title: "Ordonnance (Rx)",
+      hint: "Prescriptions à emporter / externes uniquement — pas de labo, imagerie, perfusions ni médicaments sur place.",
+      newPrescription: "Nouvelle ordonnance",
+      empty: "Aucune prescription externe pour cette visite.",
+      untitled: "Ordonnance",
+      print: "Imprimer l’ordonnance",
+      printBlockedEmpty: "Impression bloquée : aucune ligne de prescription signée à imprimer.",
+      printPopupBlocked: "Impossible d’ouvrir la fenêtre d’impression. Autorisez les pop-ups.",
+      filters: {
+        medications: "Médicaments",
+        active: "Actives",
+        sent: "Envoyées",
+        printed: "Imprimées",
+        cancelled: "Annulées",
+      },
+    },
+    destination: {
+      onsite: "Sur place",
+      externalRx: "Prescription externe",
+      diagnostic: "Diagnostic",
+      other: "Autre",
+      onsiteOrRx: "Sur place / Rx",
+    },
+    route: {
+      po: "Voie orale (PO)",
+      im: "Intramusculaire (IM)",
+      iv: "Intraveineux (IV)",
+      ivp: "IV push",
+      ivpb: "IV piggyback",
+      sq: "Sous-cutané (SC)",
+      inh: "Inhalation",
+      neb: "Nébulisation",
+      mdi: "Aérosol-doseur",
+      dpi: "Inhalateur de poudre",
+      topical: "Voie cutanée",
+      pr: "Voie rectale",
+      sl: "Sublingual",
+      other: "Voie",
+    },
+    form: {
+      tablet: "comprimé",
+      capsule: "gélule",
+      solution: "solution",
+      injection: "injection",
+      topical: "forme topique",
+      drops: "gouttes",
+      inhalation: "inhalation",
+      infusion: "perfusion",
+      other: "forme",
+    },
+    pharmacyStatus: {
+      placed: "Prescrite / Placée",
+      pending: "En attente",
+      inProgress: "En cours",
+      verified: "Vérifiée",
+      dispensed: "Dispensée",
+      completed: "Terminée",
+      cancelled: "Annulée",
+      held: "Retenue",
+      administered: "Administrée",
+    },
+    role: {
+      provider: "Médecin",
+      rn: "Infirmier(ère)",
+      pharmacist: "Pharmacien(ne)",
+      admin: "Administrateur",
+      other: "Utilisateur",
+    },
+    results: {
+      deniedFacilityRnLabPolicy:
+        "Saisie refusée : politique établissement (allowRnLabResultSubmission) — l’IDE n’est pas autorisé(e) à saisir les résultats labo ici.",
+      deniedRnImagingEntry:
+        "Saisie refusée : la politique infirmière autorise uniquement les résultats de laboratoire (pas l’imagerie).",
+      deniedRoleEnter:
+        "Saisie refusée : rôle insuffisant (LAB / RADIOLOGY / RN avec politique / ADMIN requis pour ENTER).",
+      deniedRoleFinalize:
+        "Finalisation refusée : rôle insuffisant pour FINALIZE.",
+      deniedRoleAcknowledge:
+        "Accusé de réception refusé : rôle insuffisant (PROVIDER / RN / ADMIN).",
+      deniedRoleVerify:
+        "Vérification refusée : rôle insuffisant pour VERIFY.",
+      deniedRoleCollect:
+        "Collecte / réception refusée : rôle insuffisant.",
+      marReconciliationError:
+        "Échec de projection MAR : réconciliation ordonnance → médicaments sur place requise.",
+    },
+    mar: {
+      reconciliationError: "Erreur de réconciliation MAR — les médicaments sur place n’ont pas pu être projetés.",
+    },
+  },
+
   clinicCareD4c6: {
     nav: {
       orders: "Ordonnances",

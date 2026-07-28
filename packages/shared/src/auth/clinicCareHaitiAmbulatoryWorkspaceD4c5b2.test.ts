@@ -27,11 +27,15 @@ describe("MEDUI.D4C.5B.2 Haiti ambulatory workspace completion", () => {
   it("A — certification id + Rx section in tile order", () => {
     expect(CLINIC_CARE_HAITI_AMBULATORY_WORKSPACE_CERTIFICATION_ID).toBe("MEDUI.D4C.5B.2");
     expect(CLINIC_CARE_AMBULATORY_WORKSPACE_SECTIONS).toContain("prescriptions");
+    // D4C.5B.3 moves Rx near follow-up/sortie (after notes), not between orders and meds.
     expect(CLINIC_CARE_AMBULATORY_WORKSPACE_SECTIONS.indexOf("orders")).toBeLessThan(
+      CLINIC_CARE_AMBULATORY_WORKSPACE_SECTIONS.indexOf("medications")
+    );
+    expect(CLINIC_CARE_AMBULATORY_WORKSPACE_SECTIONS.indexOf("medications")).toBeLessThan(
       CLINIC_CARE_AMBULATORY_WORKSPACE_SECTIONS.indexOf("prescriptions")
     );
     expect(CLINIC_CARE_AMBULATORY_WORKSPACE_SECTIONS.indexOf("prescriptions")).toBeLessThan(
-      CLINIC_CARE_AMBULATORY_WORKSPACE_SECTIONS.indexOf("medications")
+      CLINIC_CARE_AMBULATORY_WORKSPACE_SECTIONS.indexOf("follow-up")
     );
     expect(parseClinicCareAmbulatoryWorkspaceSection("rx")).toBe("prescriptions");
   });
