@@ -15,10 +15,18 @@ import {
   type ClinicCareTrackboardMetricId,
   type ClinicCareTrackboardView,
 } from "@medora/shared";
+import { RoomAssignmentModal } from "@/components/encounters/RoomAssignmentModal";
 import { apiFetch } from "@/lib/apiClient";
+import { assignNurseSelf, assignProviderSelf } from "@/lib/clinicalWorklistApi";
+import { canAssignEncounterRoom } from "@/lib/governedRoomDisplay";
+import { assignHospitalRoleToMe } from "@/features/hospital-care/hospitalAssignmentApi";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import { useI18n } from "@/lib/i18n";
 import { MEDORA_CARD_SHELL } from "@/components/medora-card/medoraCardTokens";
+import {
+  resolveClinicBoardActionHref,
+  resolveClinicBoardPatientNameHref,
+} from "./clinicCareBoardRoutes";
 import { clinicCareMetricToken, clinicCareStageToken, CLINIC_CARE_SHELL } from "./clinicCareTokens";
 
 type ClinicCareRow = {
@@ -231,12 +239,17 @@ export function ClinicCareTrackboardView({
 }) {
   const { t, language } = useI18n();
   const locale = language === "en" ? "en-US" : "fr-FR";
-  const { facilityId, roles, ready, facilityTimeZone } = useFacilityAndRoles();
+  const { facilityId, roles, ready, facilityTimeZone, userId } = useFacilityAndRoles();
   const profession = resolveProfessionGroup({ roleCodes: roles });
+  const isProvider = roles.includes("PROVIDER") || roles.includes("ADMIN");
+  const isNurse = roles.includes("RN") || roles.includes("ADMIN");
+  const isMaTech = roles.includes("PATIENT_CARE_TECH");
+  const canAssignRoom = canAssignEncounterRoom(roles);
 
   const [data, setData] = useState<ClinicCareProjection | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [schemaMiss, setSchemaMiss] = useState(false);
   const [denied, setDenied] = useState(false);
   const [search, setSearch] = useState("");
   const [filterStage, setFilterStage] = useState<"" | ClinicCareStageId>("");
@@ -247,13 +260,18 @@ export function ClinicCareTrackboardView({
     mode === "todaysVisits" ? "ALL_TODAY" : defaultClinicCareTrackboardViewForProfession(profession)
   );
   const [sortKey, setSortKey] = useState<"arrival" | "patient" | "status">("arrival");
+  const [roomEncounter, setRoomEncounter] = useState<ClinicCareRow | null>(null);
+  const [assigningId, setAssigningId] = useState<string | null>(null);
+  const [assignError, setAssignError] = useState<{ id: string; message: string } | null>(null);
   const activeShell = mode === "todaysVisits" ? "todaysVisits" : "trackboard";
   void activeShell;
+  void userId;
 
   const load = useCallback(async () => {
     if (!facilityId) return;
     setLoading(true);
     setError(null);
+    setSchemaMiss(false);
     setDenied(false);
     try {
       const payload = (await apiFetch("/clinic-care/trackboard", { facilityId })) as ClinicCareProjection;
@@ -265,16 +283,51 @@ export function ClinicCareTrackboardView({
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
+      // Never treat API failure as an empty board — clear rows only on auth denial.
       if (/403|denied|forbidden/i.test(message)) {
         setDenied(true);
         setData(null);
       } else {
-        setError(t("clinicCareD4c2.errors.loadFailed"));
+        const miss =
+          /CLINIC_CARE_SCHEMA_MISS|visitOrigin|P2021|P2022|schema not deployed|503/i.test(message);
+        setSchemaMiss(miss);
+        setError(
+          miss ? t("clinicCareD4c2.errors.schemaMiss") : t("clinicCareD4c2.errors.loadFailed")
+        );
+        // Keep prior data for retry UX; do not replace with [].
       }
     } finally {
       setLoading(false);
     }
   }, [facilityId, t, mode]);
+
+  const claimSelf = useCallback(
+    async (encounterId: string, kind: "provider" | "nurse" | "ma") => {
+      if (!facilityId) return;
+      setAssigningId(encounterId);
+      setAssignError(null);
+      try {
+        if (kind === "provider") {
+          await assignProviderSelf(facilityId, encounterId);
+        } else if (kind === "nurse") {
+          await assignNurseSelf(facilityId, encounterId);
+        } else {
+          // Enterprise hospital TECHNICIAN / PATIENT_CARE_TECH slot — no parallel clinic user-assignment table.
+          await assignHospitalRoleToMe(facilityId, encounterId, "TECHNICIAN");
+        }
+        await load();
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        setAssignError({
+          id: encounterId,
+          message: message || t("clinicCareD4c2.errors.assignFailed"),
+        });
+      } finally {
+        setAssigningId(null);
+      }
+    },
+    [facilityId, load, t]
+  );
 
   useEffect(() => {
     if (!ready || !facilityId) return;
@@ -509,7 +562,7 @@ export function ClinicCareTrackboardView({
                   {t(metricLabelKey(id))}
                 </div>
                 <div style={{ marginTop: 6, fontSize: 28, fontWeight: 750, color: token.accent, lineHeight: 1 }}>
-                  {loading && count == null ? "…" : count ?? 0}
+                  {loading && count == null ? "…" : error && count == null ? "—" : count ?? 0}
                 </div>
               </button>
             );
@@ -621,9 +674,41 @@ export function ClinicCareTrackboardView({
         </section>
 
         {error ? (
-          <p role="alert" style={{ color: "#b91c1c", marginBottom: 12 }}>
-            {error}
-          </p>
+          <div
+            role="alert"
+            data-testid="clinic-care-trackboard-error"
+            style={{
+              marginBottom: 12,
+              padding: "12px 14px",
+              borderRadius: 10,
+              border: "1px solid #fecaca",
+              background: "#fef2f2",
+              color: "#991b1b",
+            }}
+          >
+            <p style={{ margin: 0, fontWeight: 650 }}>{error}</p>
+            {schemaMiss ? (
+              <p style={{ margin: "6px 0 0", fontSize: 12 }}>{t("clinicCareD4c2.errors.schemaMissHint")}</p>
+            ) : null}
+            <button
+              type="button"
+              data-testid="clinic-care-trackboard-retry"
+              onClick={() => void load()}
+              style={{
+                marginTop: 10,
+                height: 32,
+                borderRadius: 8,
+                border: "1px solid #fca5a5",
+                background: "#fff",
+                padding: "0 12px",
+                fontWeight: 600,
+                cursor: "pointer",
+                color: "#991b1b",
+              }}
+            >
+              {t("clinicCareD4c2.retry")}
+            </button>
+          </div>
         ) : null}
 
         {data?.truncated ? (
@@ -633,8 +718,20 @@ export function ClinicCareTrackboardView({
         <section style={{ ...MEDORA_CARD_SHELL, padding: 0, overflow: "auto" }}>
           {loading && !data ? (
             <p style={{ padding: 16, color: "#64748b", margin: 0 }}>{t("clinicCareD4c2.loading")}</p>
+          ) : error && !data ? (
+            <p
+              style={{ padding: 16, color: "#64748b", margin: 0 }}
+              data-testid="clinic-care-trackboard-error-empty"
+            >
+              {t("clinicCareD4c2.errors.loadBlockedEmpty")}
+            </p>
           ) : filteredRows.length === 0 ? (
-            <p style={{ padding: 16, color: "#64748b", margin: 0 }}>{t("clinicCareD4c2.empty")}</p>
+            <p
+              style={{ padding: 16, color: "#64748b", margin: 0 }}
+              data-testid="clinic-care-trackboard-true-empty"
+            >
+              {t("clinicCareD4c2.empty")}
+            </p>
           ) : (
             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
               <thead>
@@ -647,9 +744,7 @@ export function ClinicCareTrackboardView({
                   <th style={thStyle}>{t("clinicCareD4c2.columns.checkIn")}</th>
                   <th style={thStyle}>{t("clinicCareD4c2.columns.status")}</th>
                   <th style={thStyle}>{t("clinicCareD4c2.columns.room")}</th>
-                  {visibility.showProviderName ? (
-                    <th style={thStyle}>{t("clinicCareD4c2.columns.provider")}</th>
-                  ) : null}
+                  <th style={thStyle}>{t("clinicCareD4c2.columns.team")}</th>
                   {visibility.showOpenOrderCount ? (
                     <th style={thStyle}>{t("clinicCareD4c2.columns.orders")}</th>
                   ) : null}
@@ -665,31 +760,53 @@ export function ClinicCareTrackboardView({
               <tbody>
                 {filteredRows.map((row) => {
                   const stageTok = clinicCareStageToken(row.stageId);
-                  const openHref =
-                    row.stageId === "DISCHARGE_PENDING" && allowDischargeActions
-                      ? access?.canAuthorProviderDocumentation
-                        ? `/app/provider?encounterId=${encodeURIComponent(row.encounterId)}`
-                        : `/app/nursing?encounterId=${encodeURIComponent(row.encounterId)}`
-                      : visibility.showClinicalActionLinks && access?.canAuthorProviderDocumentation
-                        ? `/app/provider?encounterId=${encodeURIComponent(row.encounterId)}`
-                        : visibility.showClinicalActionLinks &&
-                            (access?.canAccessNursingMa || access?.canAccessTechnicianSafeNursingMaProjection)
-                          ? `/app/nursing?encounterId=${encodeURIComponent(row.encounterId)}`
-                          : access?.canAccessEncounters
-                            ? `/app/encounters`
-                            : access?.canAccessPatients
-                              ? `/app/patients`
-                              : `/app/clinic-care`;
+                  const chartHref = resolveClinicBoardPatientNameHref({
+                    encounterId: row.encounterId,
+                    patientId: row.patientId,
+                    status: row.status,
+                    workflowState: row.workflowState,
+                    facilityId,
+                  });
+                  const openHref = resolveClinicBoardActionHref({
+                    encounterId: row.encounterId,
+                    stageId: row.stageId,
+                    canAuthorProviderDocumentation: access?.canAuthorProviderDocumentation,
+                    canAccessNursingMa: access?.canAccessNursingMa,
+                    canAccessTechnicianSafeNursingMaProjection:
+                      access?.canAccessTechnicianSafeNursingMaProjection,
+                    canAccessEncounters: access?.canAccessEncounters,
+                    canAccessPatients: access?.canAccessPatients,
+                    showClinicalActionLinks: visibility.showClinicalActionLinks,
+                    allowDischargeActions,
+                  });
                   const actionLabel =
                     (row.stageId === "DISCHARGE_PENDING" && allowDischargeActions) ||
                     (visibility.showClinicalActionLinks &&
                       (access?.canAuthorProviderDocumentation || access?.canAccessNursingMa))
                       ? t("clinicCareD4c2.actions.open")
                       : t("clinicCareD4c2.actions.view");
+                  const showAssignProvider = isProvider && row.status === "OPEN";
+                  const showAssignNurse = isNurse && row.status === "OPEN";
+                  const showAssignMa = isMaTech && row.status === "OPEN";
                   return (
                     <tr key={row.encounterId} style={{ borderTop: `1px solid ${CLINIC_CARE_SHELL.border}` }}>
                       <td style={tdStyle}>
-                        <div style={{ fontWeight: 650, color: "#0f172a" }}>{row.patientName}</div>
+                        <Link
+                          href={chartHref}
+                          data-testid={`clinic-care-patient-name-${row.encounterId}`}
+                          aria-label={t("clinicCareD4c2.actions.openPatientChartAria").replace(
+                            "{{name}}",
+                            row.patientName
+                          )}
+                          style={{
+                            fontWeight: 650,
+                            color: "#0f766e",
+                            textDecoration: "underline",
+                            textUnderlineOffset: 2,
+                          }}
+                        >
+                          {row.patientName}
+                        </Link>
                         <div style={{ fontSize: 11, color: "#64748b" }}>
                           {row.mrn ? `${t("clinicCareD4c2.mrnPrefix")} ${row.mrn}` : dash}
                           {visibility.showChiefComplaint && row.chiefComplaint
@@ -747,9 +864,20 @@ export function ClinicCareTrackboardView({
                         </span>
                       </td>
                       <td style={tdStyle}>{row.roomLabel || dash}</td>
-                      {visibility.showProviderName ? (
-                        <td style={tdStyle}>{row.providerName || dash}</td>
-                      ) : null}
+                      <td style={tdStyle}>
+                        <div style={{ fontSize: 12 }}>
+                          {visibility.showProviderName !== false ? (
+                            <div>
+                              <span style={{ color: "#64748b" }}>{t("clinicCareD4c2.team.provider")}: </span>
+                              {row.providerName || dash}
+                            </div>
+                          ) : null}
+                          <div>
+                            <span style={{ color: "#64748b" }}>{t("clinicCareD4c2.team.nurse")}: </span>
+                            {row.nurseName || dash}
+                          </div>
+                        </div>
+                      </td>
                       {visibility.showOpenOrderCount ? (
                         <td style={tdStyle}>
                           {row.openOrderCount > 0 ? (
@@ -772,24 +900,71 @@ export function ClinicCareTrackboardView({
                         <td style={tdStyle}>{t(nextStepLabelKey(row.nextStepHint))}</td>
                       ) : null}
                       <td style={tdStyle}>
-                        <Link
-                          href={openHref}
+                        <div
                           style={{
-                            display: "inline-flex",
-                            height: 28,
+                            display: "flex",
+                            flexWrap: "wrap",
+                            gap: 6,
                             alignItems: "center",
-                            padding: "0 10px",
-                            borderRadius: 8,
-                            border: `1px solid ${CLINIC_CARE_SHELL.border}`,
-                            background: "#fff",
-                            color: "#0f172a",
-                            textDecoration: "none",
-                            fontWeight: 600,
-                            fontSize: 12,
                           }}
                         >
-                          {actionLabel}
-                        </Link>
+                          <Link
+                            href={openHref}
+                            data-testid={`clinic-care-action-chart-${row.encounterId}`}
+                            style={actionBtnStyle}
+                          >
+                            {actionLabel}
+                          </Link>
+                          {canAssignRoom && row.status === "OPEN" ? (
+                            <button
+                              type="button"
+                              data-testid={`clinic-care-assign-room-${row.encounterId}`}
+                              onClick={() => setRoomEncounter(row)}
+                              style={{ ...actionBtnStyle, cursor: "pointer" }}
+                            >
+                              {t("clinicCareD4c2.actions.assignRoom")}
+                            </button>
+                          ) : null}
+                          {showAssignProvider ? (
+                            <button
+                              type="button"
+                              data-testid={`clinic-care-assign-provider-${row.encounterId}`}
+                              disabled={assigningId === row.encounterId}
+                              onClick={() => void claimSelf(row.encounterId, "provider")}
+                              style={{ ...actionBtnStyle, cursor: "pointer" }}
+                            >
+                              {t("clinicCareD4c2.actions.assignProviderMe")}
+                            </button>
+                          ) : null}
+                          {showAssignNurse ? (
+                            <button
+                              type="button"
+                              data-testid={`clinic-care-assign-nurse-${row.encounterId}`}
+                              disabled={assigningId === row.encounterId}
+                              onClick={() => void claimSelf(row.encounterId, "nurse")}
+                              style={{ ...actionBtnStyle, cursor: "pointer" }}
+                            >
+                              {t("clinicCareD4c2.actions.assignNurseMe")}
+                            </button>
+                          ) : null}
+                          {showAssignMa ? (
+                            <button
+                              type="button"
+                              data-testid={`clinic-care-assign-ma-${row.encounterId}`}
+                              disabled={assigningId === row.encounterId}
+                              onClick={() => void claimSelf(row.encounterId, "ma")}
+                              style={{ ...actionBtnStyle, cursor: "pointer" }}
+                              title={t("clinicCareD4c2.actions.assignMaHint")}
+                            >
+                              {t("clinicCareD4c2.actions.assignMaMe")}
+                            </button>
+                          ) : null}
+                        </div>
+                        {assignError && assignError.id === row.encounterId ? (
+                          <p role="alert" style={{ margin: "4px 0 0", fontSize: 11, color: "#b91c1c" }}>
+                            {assignError.message}
+                          </p>
+                        ) : null}
                       </td>
                     </tr>
                   );
@@ -800,9 +975,40 @@ export function ClinicCareTrackboardView({
         </section>
 
         <p style={{ marginTop: 10, fontSize: 11, color: "#94a3b8" }}>{t("clinicCareD4c2.footerDeferral")}</p>
+
+      {facilityId && roomEncounter ? (
+        <RoomAssignmentModal
+          open
+          facilityId={facilityId}
+          encounter={{
+            id: roomEncounter.encounterId,
+            roomLabel: roomEncounter.roomLabel,
+            type: roomEncounter.encounterType,
+          }}
+          onClose={() => setRoomEncounter(null)}
+          onSaved={async () => {
+            setRoomEncounter(null);
+            await load();
+          }}
+        />
+      ) : null}
     </div>
   );
 }
+
+const actionBtnStyle: React.CSSProperties = {
+  display: "inline-flex",
+  height: 28,
+  alignItems: "center",
+  padding: "0 10px",
+  borderRadius: 8,
+  border: `1px solid ${CLINIC_CARE_SHELL.border}`,
+  background: "#fff",
+  color: "#0f172a",
+  textDecoration: "none",
+  fontWeight: 600,
+  fontSize: 12,
+};
 
 const thStyle: React.CSSProperties = {
   padding: "10px 12px",

@@ -13,12 +13,12 @@ import { useI18n } from "@/lib/i18n";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import { MEDORA_CARD_SHELL } from "@/components/medora-card/medoraCardTokens";
 import { ClinicCareTopNav } from "./ClinicCareTopNav";
-import { ClinicCareSideNav } from "./ClinicCareSideNav";
 import { CLINIC_CARE_SHELL } from "./clinicCareTokens";
 
 /**
- * MEDUI.D4C.2A — persistent Clinic Care workspace shell.
- * Subroutes replace the center panel only; top/side nav stay mounted via layout.
+ * MEDUI.D4C.2A.1 — Clinic Care workspace shell (one-sidebar architecture).
+ * Header + top tabs + full-width main outlet. Global Medora sidebar remains
+ * outside this shell; the former in-shell clinic side nav is intentionally not mounted.
  */
 export function ClinicCareShell({
   children,
@@ -88,9 +88,11 @@ export function ClinicCareShell({
         minHeight: "calc(100vh - 48px)",
         background: CLINIC_CARE_SHELL.canvas,
         padding: "12px 16px 24px",
+        width: "100%",
+        boxSizing: "border-box",
       }}
     >
-      <div style={{ maxWidth: 1280, margin: "0 auto" }}>
+      <div style={{ width: "100%", maxWidth: "100%", margin: 0 }}>
         <header
           style={{
             display: "flex",
@@ -131,33 +133,31 @@ export function ClinicCareShell({
           </div>
         ) : null}
 
-        <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
-          <ClinicCareSideNav active={active} />
-          <div
-            style={{
-              ...MEDORA_CARD_SHELL,
-              borderRadius: MEDORA_CARD_SHELL.radius,
-              border: MEDORA_CARD_SHELL.border,
-              background: MEDORA_CARD_SHELL.background,
-              boxShadow: MEDORA_CARD_SHELL.boxShadow,
-              padding: 12,
-              flex: 1,
-              minWidth: 0,
-            }}
-            data-testid="clinic-care-main-panel"
-          >
-            {denied ? (
-              <p
-                style={{ fontSize: 13, color: "#b91c1c", margin: 0 }}
-                role="alert"
-                data-testid="clinic-care-access-denied"
-              >
-                {t("clinicCareD4c2.errors.accessDenied")}
-              </p>
-            ) : (
-              children
-            )}
-          </div>
+        <div
+          style={{
+            ...MEDORA_CARD_SHELL,
+            borderRadius: MEDORA_CARD_SHELL.radius,
+            border: MEDORA_CARD_SHELL.border,
+            background: MEDORA_CARD_SHELL.background,
+            boxShadow: MEDORA_CARD_SHELL.boxShadow,
+            padding: 12,
+            width: "100%",
+            minWidth: 0,
+            boxSizing: "border-box",
+          }}
+          data-testid="clinic-care-main-panel"
+        >
+          {denied ? (
+            <p
+              style={{ fontSize: 13, color: "#b91c1c", margin: 0 }}
+              role="alert"
+              data-testid="clinic-care-access-denied"
+            >
+              {t("clinicCareD4c2.errors.accessDenied")}
+            </p>
+          ) : (
+            children
+          )}
         </div>
       </div>
     </div>

@@ -9692,6 +9692,7 @@ export default {
       nextStep: "Prochaine étape",
       actions: "Actions",
       completeness: "Inscription",
+      team: "Équipe",
     },
     encounterTypes: {
       outpatient: "Consultation externe",
@@ -9701,16 +9702,36 @@ export default {
     actions: {
       open: "Ouvrir",
       view: "Voir",
+      assignRoom: "Affecter salle",
+      assignProviderMe: "M’affecter (médecin)",
+      assignNurseMe: "M’affecter (IDE)",
+      assignMaMe: "M’affecter (MA)",
+      assignMaHint:
+        "Réutilise le moteur d’affectation entreprise (créneau TECHNICIAN / PATIENT_CARE_TECH).",
+      openPatientChartAria: "Ouvrir le dossier de {{name}}",
     },
+    team: {
+      provider: "Médecin",
+      nurse: "IDE / MA",
+    },
+    retry: "Réessayer",
     errors: {
       loadFailed: "Impossible de charger le tableau clinique.",
+      loadBlockedEmpty:
+        "Le tableau n’a pas pu être chargé. Ce n’est pas une file vide — réessayez ou vérifiez le déploiement.",
+      schemaMiss:
+        "Schéma clinique non déployé (Appointment / visitOrigin manquants). Appliquer la migration D4C.3.",
+      schemaMissHint:
+        "Exécuter prisma migrate deploy pour 20261028120000_enterprise_appointment_visit_origin_d4c3, puis réessayer.",
+      assignFailed: "Affectation impossible.",
       accessDenied: "Vous n’avez pas accès à la coquille Soins cliniques pour cet établissement.",
     },
   },
 
   clinicCareD4c2a: {
     workspaceSubtitle: "Espace clinique unifié — navigation par capacités de l’établissement",
-    sideNavLabel: "Navigation latérale Soins cliniques",
+    topNavOnlyNote: "Barre latérale Medora globale + onglets Clinic (pas de second menu latéral).",
+    sideNavLabel: "Navigation latérale Soins cliniques (retirée — D4C.2A.1)",
     nav: {
       laboratory: "Laboratoire",
       radiology: "Radiologie",

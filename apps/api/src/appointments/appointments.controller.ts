@@ -7,6 +7,7 @@ import {
   Post,
   Query,
   Req,
+  ServiceUnavailableException,
   UseGuards,
 } from "@nestjs/common";
 import { AuthGuard } from "@nestjs/passport";
@@ -17,6 +18,10 @@ import {
   appointmentCreateDtoSchema,
 } from "@medora/shared";
 import { RolesGuard, RequireRoles } from "../common/guards/roles.guard";
+import {
+  CLINIC_CARE_SCHEMA_MISS_MESSAGE,
+  isPrismaSchemaMissError,
+} from "../clinic-care/clinic-care-schema-miss";
 import { AppointmentsService } from "./appointments.service";
 
 @Controller()
@@ -49,7 +54,19 @@ export class AppointmentsController {
   @Get("appointments/today")
   @RequireRoles(RoleCode.FRONT_DESK, RoleCode.ADMIN, RoleCode.PROVIDER, RoleCode.RN, RoleCode.BILLING)
   async listToday(@Req() req: any) {
-    return this.appointmentsService.listToday(this.facilityId(req));
+    try {
+      return await this.appointmentsService.listToday(this.facilityId(req));
+    } catch (err) {
+      // MEDUI.D4C.2A.1 — missing Appointment table must not look like an empty day.
+      if (isPrismaSchemaMissError(err)) {
+        throw new ServiceUnavailableException({
+          message: CLINIC_CARE_SCHEMA_MISS_MESSAGE,
+          code: "CLINIC_CARE_SCHEMA_MISS",
+          migration: "20261028120000_enterprise_appointment_visit_origin_d4c3",
+        });
+      }
+      throw err;
+    }
   }
 
   @Post("appointments/:id/arrive")

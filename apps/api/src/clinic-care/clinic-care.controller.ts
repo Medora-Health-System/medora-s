@@ -1,6 +1,17 @@
-import { BadRequestException, Controller, Get, Req, UseGuards } from "@nestjs/common";
+import {
+  BadRequestException,
+  Controller,
+  Get,
+  Req,
+  ServiceUnavailableException,
+  UseGuards,
+} from "@nestjs/common";
 import { AuthGuard } from "@nestjs/passport";
 import { ClinicCareReadAccessGuard } from "./clinic-care-read-access.guard";
+import {
+  CLINIC_CARE_SCHEMA_MISS_MESSAGE,
+  isPrismaSchemaMissError,
+} from "./clinic-care-schema-miss";
 import { ClinicCareService } from "./clinic-care.service";
 
 @Controller("clinic-care")
@@ -11,6 +22,7 @@ export class ClinicCareController {
   /**
    * MEDUI.D4C.2 — ambulatory Clinic Care trackboard projection (metrics + rows).
    * Facility-scoped; real counts only; no parallel clinical engines.
+   * MEDUI.D4C.2A.1 — Prisma schema-miss (P2021/P2022) → 503, never empty [].
    */
   @Get("trackboard")
   @UseGuards(ClinicCareReadAccessGuard)
@@ -41,13 +53,24 @@ export class ClinicCareController {
       throw new BadRequestException("Clinic Care context required");
     }
 
-    return this.clinicCareService.getTrackboardProjection({
-      facilityId,
-      facility: req.clinicCareFacility,
-      serviceLines: req.clinicCareServiceLines,
-      access: req.clinicCareAccess,
-      professionGroup: req.clinicCareProfessionGroup,
-      moduleCapabilities: req.clinicCareModuleCapabilities,
-    });
+    try {
+      return await this.clinicCareService.getTrackboardProjection({
+        facilityId,
+        facility: req.clinicCareFacility,
+        serviceLines: req.clinicCareServiceLines,
+        access: req.clinicCareAccess,
+        professionGroup: req.clinicCareProfessionGroup,
+        moduleCapabilities: req.clinicCareModuleCapabilities,
+      });
+    } catch (err) {
+      if (isPrismaSchemaMissError(err)) {
+        throw new ServiceUnavailableException({
+          message: CLINIC_CARE_SCHEMA_MISS_MESSAGE,
+          code: "CLINIC_CARE_SCHEMA_MISS",
+          migration: "20261028120000_enterprise_appointment_visit_origin_d4c3",
+        });
+      }
+      throw err;
+    }
   }
 }
