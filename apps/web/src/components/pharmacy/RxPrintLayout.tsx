@@ -181,6 +181,10 @@ export function printRx(params: {
   facilityName?: string;
   language: SupportedLanguage;
 }): void {
+  if (!params.order.items || params.order.items.length === 0) {
+    alert(printT(params.language, "printOutput.rx.emptyBlocked"));
+    return;
+  }
   const win = window.open("", "_blank");
   if (!win) {
     alert(printT(params.language, "printOutput.common.popupBlocked"));

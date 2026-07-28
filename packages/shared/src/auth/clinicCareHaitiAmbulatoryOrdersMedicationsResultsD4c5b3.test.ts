@@ -123,6 +123,14 @@ describe("MEDUI.D4C.5B.3 Haiti ambulatory orders/meds/results", () => {
         route: "IV",
       })
     ).toBe("ONSITE");
+    // Defense-in-depth (D4C.7E): mis-tagged IV PHARMACY_DISPENSE still excluded from Rx.
+    expect(
+      isAmbulatoryExternalPrescriptionItem({
+        catalogItemType: "MEDICATION",
+        medicationFulfillmentIntent: "PHARMACY_DISPENSE",
+        route: "IVPB",
+      })
+    ).toBe(false);
     expect(ambulatoryOrderDestinationDisplayKey("ONSITE")).toContain("onsite");
     expect(ambulatoryOrderDestinationDisplayKey("EXTERNAL_RX")).toContain("externalRx");
   });

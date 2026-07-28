@@ -26,10 +26,12 @@ import {
   buildEnterpriseOrderSetApplyContext,
   buildVerbalOrderAttestation,
   requiresVerbalOrderAttestationForRole,
+  validateOutpatientPrescriptionPrintProjection,
   type EnterpriseOrderSetApplyContext,
   type EnterpriseOrderSetAuthority,
   type EnterpriseOrderSetCategory,
   type OxygenTherapyDraft,
+  type D4c7ePersistedOrderItemLike,
 } from "@medora/shared";
 import { SharedCatalogAutocomplete } from "@/components/catalog/SharedCatalogAutocomplete";
 import { printRx } from "@/components/pharmacy/RxPrintLayout";
@@ -364,9 +366,11 @@ export function CreateOrderModal({
     authority?: unknown;
     createdByDisplay?: unknown;
     lastActionDisplay?: unknown;
+    items?: D4c7ePersistedOrderItemLike[];
   } | null>(null);
   /** After multi-domain submit, RX success UI uses these lines instead of `formData.items` (active tab may differ). */
   const [rxIntentDisplayItems, setRxIntentDisplayItems] = useState<CreateOrderLineItem[] | null>(null);
+  const [printRxError, setPrintRxError] = useState<string | null>(null);
   const [bulkCreateProgress, setBulkCreateProgress] = useState<string | null>(null);
   const [lastBatchAllStagedSuccess, setLastBatchAllStagedSuccess] = useState(false);
   const [stagedItems, setStagedItems] = useState<Record<OrderTypeKey, CreateOrderLineItem[]>>(() => ({
@@ -1001,6 +1005,8 @@ export function CreateOrderModal({
     createdByDisplay?: unknown;
     lastActionDisplay?: unknown;
     queued?: boolean;
+    /** Persisted enriched lines from POST /orders (D4C.7E print projection). */
+    items?: D4c7ePersistedOrderItemLike[];
   };
 
   const postOrderDomainApi = async (
@@ -1544,6 +1550,9 @@ export function CreateOrderModal({
       }
 
       const res = await postOrderDomainApi(submittedType, formData.items, summaryAtSubmit);
+      /** Snapshot before clearing form — D4C.7E print must not depend on emptied form state. */
+      const medItemsSnapshot =
+        submittedType === "MEDICATION" ? ([...formData.items] as CreateOrderLineItem[]) : null;
 
       const nextStagedItems = { ...stagedItems, [submittedType]: [] };
       const nextReviewTab =
@@ -1583,14 +1592,17 @@ export function CreateOrderModal({
         });
       }
 
-      setRxIntentDisplayItems(null);
+      setPrintRxError(null);
       if ((res as OrderCreateResponse)?.queued) {
+        setRxIntentDisplayItems(null);
         setQueuedSync(true);
         setOrderSuccess(true);
       } else if (submittedType === "MEDICATION") {
         setCreatedOrder(res);
+        setRxIntentDisplayItems(medItemsSnapshot);
         setRxSuccess(true);
       } else {
+        setRxIntentDisplayItems(null);
         setOrderSuccess(true);
       }
     } catch (err) {
@@ -1907,14 +1919,18 @@ export function CreateOrderModal({
         {rxSuccess && createdOrder && (
           <div style={{ marginBottom: 20 }}>
             {(() => {
-              const items = rxIntentDisplayItems ?? formData.items;
-              const intents = items.map(
+              const snapshotItems = (rxIntentDisplayItems ?? formData.items) as D4c7ePersistedOrderItemLike[];
+              const persistedItems =
+                Array.isArray(createdOrder.items) && createdOrder.items.length > 0
+                  ? (createdOrder.items as D4c7ePersistedOrderItemLike[])
+                  : snapshotItems;
+              const intents = snapshotItems.map(
                 (it) => it.medicationFulfillmentIntent ?? "PHARMACY_DISPENSE"
               );
               const allAdminister =
-                items.length > 0 && intents.every((x) => x === "ADMINISTER_CHART");
+                snapshotItems.length > 0 && intents.every((x) => x === "ADMINISTER_CHART");
               const allPharmacy =
-                items.length > 0 && intents.every((x) => x === "PHARMACY_DISPENSE");
+                snapshotItems.length > 0 && intents.every((x) => x === "PHARMACY_DISPENSE");
               return (
                 <>
                   <p style={{ fontSize: 15, color: "#1b5e20", margin: "0 0 16px" }}>
@@ -1924,10 +1940,23 @@ export function CreateOrderModal({
                         ? t("createOrderModal.rxAllPharmacyLine")
                         : t("createOrderModal.rxMixedLine")}
                   </p>
+                  {printRxError ? (
+                    <p role="alert" style={{ margin: "0 0 12px", fontSize: 13, color: "#b91c1c" }}>
+                      {printRxError}
+                    </p>
+                  ) : null}
                   <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+              {!allAdminister ? (
               <button
                 type="button"
                 onClick={() => {
+                  setPrintRxError(null);
+                  const lang = language === "en" ? "en" : "fr";
+                  const gate = validateOutpatientPrescriptionPrintProjection(persistedItems, lang);
+                  if (!gate.ok) {
+                    setPrintRxError(t(gate.reasonKey));
+                    return;
+                  }
                   const patient = encounter?.patient ?? {};
                   printRx({
                     order: {
@@ -1938,22 +1967,7 @@ export function CreateOrderModal({
                       authority: createdOrder.authority as any,
                       createdByDisplay: createdOrder.createdByDisplay as any,
                       lastActionDisplay: createdOrder.lastActionDisplay as any,
-                      items: items.map((it) => ({
-                        catalogItemId: it.catalogItemId,
-                        manualLabel: it.isManual ? it.manualLabel ?? it._label : undefined,
-                        strength: it.strength ?? null,
-                        route: it.route ?? null,
-                        notes: it.notes ?? null,
-                        quantity: it.quantity ?? null,
-                        refillCount: it.refillCount ?? 0,
-                        catalogMedication: {
-                          displayNameFr: it._label ?? null,
-                          name: it._label ?? undefined,
-                          strength: it.strength ?? undefined,
-                          dosageForm: it._dosageForm ?? undefined,
-                          route: it._route ?? undefined,
-                        },
-                      })),
+                      items: gate.lines,
                     },
                     patient,
                     language,
@@ -1971,6 +1985,7 @@ export function CreateOrderModal({
               >
                 {t("createOrderModal.printRx")}
               </button>
+              ) : null}
               {!allAdminister ? (
               <Link
                 href="/app/pharmacy-worklist"
@@ -1999,6 +2014,7 @@ export function CreateOrderModal({
                   setCreatedOrder(null);
                   setSubmittedOrderType(null);
                   setRxIntentDisplayItems(null);
+                  setPrintRxError(null);
                   setLastBatchAllStagedSuccess(false);
                   clearMedicationOrderLocalState();
                   onSuccess();
@@ -2007,7 +2023,8 @@ export function CreateOrderModal({
                   padding: "10px 18px",
                   border: "1px solid #ddd",
                   borderRadius: 4,
-                  backgroundColor: "#f5f5f5",
+                  backgroundColor: allAdminister ? "#1a1a1a" : "#f5f5f5",
+                  color: allAdminister ? "#fff" : undefined,
                   cursor: "pointer",
                   fontSize: 14,
                 }}

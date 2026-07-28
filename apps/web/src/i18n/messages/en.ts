@@ -10313,6 +10313,49 @@ export default {
     },
   },
 
+  clinicCareD4c7e: {
+    intent: {
+      facilityAdministration: "Facility administration",
+      outpatientPrescription: "Outpatient prescription",
+      homeMedicationHistory: "Home medication history",
+    },
+    orders: {
+      facilityMedHint:
+        "Facility medications for this visit — routed to Pharmacy verification when required and to the MAR for nursing administration.",
+    },
+    mar: {
+      emptyFacility:
+        "No facility medications to administer for this visit. Place an order from Orders (not Ordonnance Rx).",
+    },
+    rx: {
+      printBlockedEmpty: "Print blocked: no signed outpatient prescription lines to print.",
+      printBlockedFacilityOnly:
+        "Print blocked: these lines are facility-administered medications (MAR), not an outpatient prescription.",
+      printBlockedUnsignedVerbal:
+        "Print blocked: unsigned verbal order cannot print as a provider outpatient prescription.",
+    },
+    externalPharmacy: {
+      title: "External pharmacy destination",
+      hint: "Select a destination pharmacy for take-home prescriptions. This is not the internal facility Pharmacy worklist.",
+      searchPlaceholder: "Search pharmacy by name or city…",
+      preferredLabel: "Preferred / selected pharmacy",
+      confirm: "Confirm destination",
+      clear: "Clear selection",
+      status: {
+        unsentNoConnector:
+          "Not sent electronically — no e-prescribing connector is configured. Print or fax manually.",
+        selectedManual:
+          "Pharmacy selected — send remains manual until an e-prescribing connector is available.",
+        sent: "Sent to external pharmacy.",
+        failed: "Send to external pharmacy failed.",
+      },
+    },
+    errors: {
+      marRejectsRxId: "This identifier is an outpatient prescription, not a MAR medication order.",
+      rxRejectsMarOrderId: "This identifier is a facility medication order, not an outpatient prescription.",
+    },
+  },
+
   clinicCareD4c6: {
     nav: {
       orders: "Orders",
@@ -14093,6 +14136,7 @@ export default {
       colRefills: "Refills",
       footerPrinted: "Medora-S — Prescription printed on {date}",
       medicationFallback: "Medication (label not set)",
+      emptyBlocked: "Print blocked: no medication lines to print.",
     },
     patientChart: {
       htmlTitlePrefix: "Patient chart preview",

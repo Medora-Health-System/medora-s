@@ -17,12 +17,13 @@ describe("MEDUI.D4C.5B.3 Haiti ambulatory web mounts", () => {
     const panels = read("ClinicCareAmbulatoryWorkspacePanels.tsx");
     expect(panels).toContain("resolveHaitiAmbulatoryIntakePresentation");
     expect(panels).toContain("presentationMode={intakePresentation.presentationMode}");
-    expect(panels).toContain("haitiAmbulatoryOrdersMedicationMode");
+    expect(panels).toContain("clinicAmbulatoryFacilityMedicationOrderMode");
   });
 
-  it("B — Orders uses Haiti chart-admin medication mode (not global ED change)", () => {
+  it("B — Orders uses clinic ambulatory chart-admin medication mode (not hardcoded literal)", () => {
     const panels = read("ClinicCareAmbulatoryWorkspacePanels.tsx");
     expect(panels).toContain("medicationOrderMode={ordersMedicationMode}");
+    expect(panels).toContain("clinicAmbulatoryFacilityMedicationOrderMode");
     expect(panels).not.toMatch(/medicationOrderMode=\{"ER_ADMINISTER_ONLY"\}/);
   });
 
