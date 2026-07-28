@@ -267,4 +267,103 @@ describe("MEDUI.D4C.2 ClinicCareService projection", () => {
     const service = new ClinicCareService({} as any, {} as any);
     expect(service).toBeInstanceOf(ClinicCareService);
   });
+
+  it("D4C.5A dashboard omits provider productivity for non-ADMIN and returns five KPIs", async () => {
+    const prisma = {
+      followUp: { findMany: jest.fn().mockResolvedValue([]) },
+      encounter: { findMany: jest.fn().mockResolvedValue([]) },
+      appointment: { findMany: jest.fn().mockResolvedValue([]) },
+    };
+    const trackboard = {
+      getOperationalAggregatesForEncounterIds: jest.fn().mockResolvedValue(new Map()),
+    };
+    const service = new ClinicCareService(prisma as never, trackboard as never);
+    const access = clinicAccess("PROVIDER");
+    const caps = resolveFacilityModuleCapabilitiesD4c1({ facilityType: "CLINIC" });
+
+    const result = await service.getDashboardProjection({
+      facilityId: "fac-dash",
+      facility: {
+        name: "Dash Clinic",
+        timezone: "America/Port-au-Prince",
+        facilityType: "CLINIC",
+        serviceLinesJson: ["CLINIC"],
+        facilityCareProfileJson: null,
+      },
+      serviceLines: ["CLINIC"],
+      access,
+      professionGroup: "PROVIDER",
+      moduleCapabilities: caps,
+      period: "WEEK",
+      now: new Date("2026-07-27T18:00:00.000Z"),
+    });
+
+    expect(result.providerProductivity).toBeNull();
+    expect(result.access.canViewProviderProductivity).toBe(false);
+    expect(result.kpis).toHaveLength(5);
+    expect(result.kpis.map((k) => k.id)).not.toContain("REVENUE_TODAY");
+    expect(result.missedAppointments.statusSource).toBe("NO_SHOW");
+    expect(result.period).toBe("WEEK");
+    expect(prisma.appointment.findMany).toHaveBeenCalled();
+  });
+
+  it("D4C.5A dashboard includes provider productivity for ADMIN", async () => {
+    const prisma = {
+      followUp: { findMany: jest.fn().mockResolvedValue([]) },
+      encounter: {
+        findMany: jest.fn().mockResolvedValue([
+          {
+            id: "e1",
+            status: "CLOSED",
+            type: "OUTPATIENT",
+            workflowState: "CLOSED",
+            createdAt: new Date("2026-07-27T14:00:00.000Z"),
+            dischargedAt: new Date("2026-07-27T15:00:00.000Z"),
+            visitOrigin: "SCHEDULED",
+            physicianAssignedUserId: "u1",
+            physicianAssignedAt: new Date("2026-07-27T14:20:00.000Z"),
+            physicianAssigned: { id: "u1", firstName: "Ada", lastName: "Lovelace" },
+            appointment: {
+              arrivedAt: new Date("2026-07-27T14:00:00.000Z"),
+              checkedInAt: new Date("2026-07-27T14:05:00.000Z"),
+              status: "CHECKED_IN",
+            },
+            intake: null,
+            followUpDate: null,
+          },
+        ]),
+      },
+      appointment: { findMany: jest.fn().mockResolvedValue([]) },
+    };
+    const service = new ClinicCareService(prisma as never, {
+      getOperationalAggregatesForEncounterIds: jest.fn(),
+    } as never);
+    const caps = resolveFacilityModuleCapabilitiesD4c1({ facilityType: "CLINIC" });
+    const access = resolveClinicCareWorkspaceRoleAccess({
+      professionGroup: "ADMIN",
+      moduleCapabilities: caps,
+      roleCodes: ["ADMIN"],
+    });
+
+    const result = await service.getDashboardProjection({
+      facilityId: "fac-admin",
+      facility: {
+        name: "Admin Clinic",
+        timezone: "UTC",
+        facilityType: "CLINIC",
+        serviceLinesJson: ["CLINIC"],
+        facilityCareProfileJson: null,
+      },
+      serviceLines: ["CLINIC"],
+      access,
+      professionGroup: "ADMIN",
+      moduleCapabilities: caps,
+      period: "TODAY",
+      now: new Date("2026-07-27T18:00:00.000Z"),
+    });
+
+    expect(result.access.canViewProviderProductivity).toBe(true);
+    expect(result.providerProductivity).not.toBeNull();
+    expect(result.providerProductivity?.[0]?.providerDisplayName).toContain("Ada");
+  });
 });

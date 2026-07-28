@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Controller,
   Get,
+  Query,
   Req,
   ServiceUnavailableException,
   UseGuards,
@@ -61,6 +62,63 @@ export class ClinicCareController {
         access: req.clinicCareAccess,
         professionGroup: req.clinicCareProfessionGroup,
         moduleCapabilities: req.clinicCareModuleCapabilities,
+      });
+    } catch (err) {
+      if (isPrismaSchemaMissError(err)) {
+        throw new ServiceUnavailableException({
+          message: CLINIC_CARE_SCHEMA_MISS_MESSAGE,
+          code: "CLINIC_CARE_SCHEMA_MISS",
+          migration: "20261028120000_enterprise_appointment_visit_origin_d4c3",
+        });
+      }
+      throw err;
+    }
+  }
+
+  /**
+   * MEDUI.D4C.5A — Clinic Clinical Board operational analytics.
+   * Facility-scoped AMBULATORY; role-aware (provider productivity omitted for non-ADMIN).
+   * Schema miss → 503 (never empty success with fake zeros).
+   */
+  @Get("dashboard")
+  @UseGuards(ClinicCareReadAccessGuard)
+  async getDashboard(
+    @Req()
+    req: {
+      facilityId?: string;
+      clinicCareAccess?: Parameters<ClinicCareService["getDashboardProjection"]>[0]["access"];
+      clinicCareProfessionGroup?: string;
+      clinicCareFacility?: Parameters<ClinicCareService["getDashboardProjection"]>[0]["facility"];
+      clinicCareModuleCapabilities?: Parameters<
+        ClinicCareService["getDashboardProjection"]
+      >[0]["moduleCapabilities"];
+      clinicCareServiceLines?: readonly string[];
+    },
+    @Query("period") period?: string
+  ) {
+    const facilityId = req.facilityId;
+    if (!facilityId) {
+      throw new BadRequestException("Facility ID required");
+    }
+    if (
+      !req.clinicCareAccess ||
+      !req.clinicCareFacility ||
+      !req.clinicCareModuleCapabilities ||
+      !req.clinicCareServiceLines ||
+      !req.clinicCareProfessionGroup
+    ) {
+      throw new BadRequestException("Clinic Care context required");
+    }
+
+    try {
+      return await this.clinicCareService.getDashboardProjection({
+        facilityId,
+        facility: req.clinicCareFacility,
+        serviceLines: req.clinicCareServiceLines,
+        access: req.clinicCareAccess,
+        professionGroup: req.clinicCareProfessionGroup,
+        moduleCapabilities: req.clinicCareModuleCapabilities,
+        period,
       });
     } catch (err) {
       if (isPrismaSchemaMissError(err)) {

@@ -16,6 +16,7 @@ export * from "./auth/clinicRegistrationAppointmentD4c3.js";
 export * from "./auth/clinicWorkspaceCapabilityNavigationD4c2a.js";
 export * from "./auth/clinicCareNursingQueueD4c4.js";
 export * from "./auth/clinicCareProviderWorkspaceD4c5.js";
+export * from "./auth/clinicCareClinicalBoardAnalyticsD4c5a.js";
 export * from "./auth/navigationAuthorization.js";
 
 export * from "./password-policy.js";
