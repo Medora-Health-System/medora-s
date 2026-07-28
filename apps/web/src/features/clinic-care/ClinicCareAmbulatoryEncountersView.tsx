@@ -7,10 +7,16 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import {
   CLINIC_CARE_AMBULATORY_ENCOUNTER_TYPES,
+  bucketClinicCareVisitType,
   clinicCareAmbulatoryProviderChartPath,
   isClinicCareAmbulatoryEncounterType,
+  localDateKeyForInstant,
+  projectClinicCarePatientFlowStage,
+  type ClinicCarePatientFlowStage,
+  type ClinicCareVisitTypeBucket,
 } from "@medora/shared";
 import { apiFetch } from "@/lib/apiClient";
 import { fetchOpenEncounters } from "@/lib/clinicalWorklistApi";
@@ -27,6 +33,8 @@ type EncounterRow = {
   encounterType?: string;
   status?: string;
   createdAt?: string;
+  workflowState?: string | null;
+  visitOrigin?: string | null;
   roomLabel?: string | null;
   patientName?: string | null;
   mrn?: string | null;
@@ -39,6 +47,7 @@ type EncounterRow = {
 };
 
 type ClinicCareProjection = {
+  facilityTimeZone?: string;
   rows: Array<{
     encounterId: string;
     patientId: string;
@@ -46,6 +55,9 @@ type ClinicCareProjection = {
     mrn: string | null;
     encounterType: string;
     status: string;
+    createdAt?: string;
+    workflowState?: string | null;
+    visitOrigin?: string | null;
     roomLabel: string | null;
   }>;
 };
@@ -72,8 +84,15 @@ function normalizeRow(raw: EncounterRow): EncounterRow {
 
 export function ClinicCareAmbulatoryEncountersView() {
   const { t } = useI18n();
-  const { facilityId, ready } = useFacilityAndRoles();
+  const searchParams = useSearchParams();
+  const dateFilter = searchParams?.get("date")?.trim() || null;
+  const flowFilter = (searchParams?.get("flow")?.trim().toUpperCase() ||
+    null) as ClinicCarePatientFlowStage | null;
+  const visitTypeFilter = (searchParams?.get("visitType")?.trim().toUpperCase() ||
+    null) as ClinicCareVisitTypeBucket | null;
+  const { facilityId, ready, facilityTimeZone } = useFacilityAndRoles();
   const [rows, setRows] = useState<EncounterRow[]>([]);
+  const [boardTz, setBoardTz] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
@@ -88,6 +107,7 @@ export function ClinicCareAmbulatoryEncountersView() {
         const payload = (await apiFetch("/clinic-care/trackboard", {
           facilityId,
         })) as ClinicCareProjection;
+        setBoardTz(payload.facilityTimeZone ?? null);
         setRows(
           (payload.rows ?? []).map((r) =>
             normalizeRow({
@@ -96,6 +116,9 @@ export function ClinicCareAmbulatoryEncountersView() {
               type: r.encounterType,
               encounterType: r.encounterType,
               status: r.status,
+              createdAt: r.createdAt,
+              workflowState: r.workflowState,
+              visitOrigin: r.visitOrigin,
               roomLabel: r.roomLabel,
               patientName: r.patientName,
               mrn: r.mrn,
@@ -104,6 +127,7 @@ export function ClinicCareAmbulatoryEncountersView() {
         );
       } else {
         const data = await fetchOpenEncounters(facilityId);
+        setBoardTz(null);
         setRows((Array.isArray(data) ? data : []).map((r) => normalizeRow(r as EncounterRow)));
       }
     } catch (err) {
@@ -119,16 +143,43 @@ export function ClinicCareAmbulatoryEncountersView() {
     void load();
   }, [ready, facilityId, load]);
 
+  const tz = boardTz || facilityTimeZone || undefined;
+
   const filtered = useMemo(() => {
+    let list = rows;
+    if (dateFilter) {
+      list = list.filter((r) => {
+        if (!r.createdAt) return false;
+        return localDateKeyForInstant(r.createdAt, tz) === dateFilter;
+      });
+    }
+    if (flowFilter) {
+      list = list.filter((r) => {
+        const stage = projectClinicCarePatientFlowStage({
+          encounterStatus: r.status,
+          workflowState: r.workflowState,
+        });
+        return stage === flowFilter;
+      });
+    }
+    if (visitTypeFilter) {
+      list = list.filter(
+        (r) =>
+          bucketClinicCareVisitType({
+            visitOrigin: r.visitOrigin,
+            encounterType: r.type || r.encounterType,
+          }) === visitTypeFilter
+      );
+    }
     const q = query.trim().toLowerCase();
-    if (!q) return rows;
-    return rows.filter((r) => {
+    if (!q) return list;
+    return list.filter((r) => {
       const name =
         (r.patientName ?? `${r.patient?.firstName ?? ""} ${r.patient?.lastName ?? ""}`).toLowerCase();
       const mrn = (r.mrn ?? r.patient?.mrn ?? "").toLowerCase();
       return name.includes(q) || mrn.includes(q) || r.id.toLowerCase().includes(q);
     });
-  }, [rows, query]);
+  }, [rows, query, dateFilter, flowFilter, visitTypeFilter, tz]);
 
   if (!ready) {
     return <p style={{ margin: 0, color: "#64748b" }}>{t("clinicCareD4c2.loading")}</p>;
@@ -150,6 +201,7 @@ export function ClinicCareAmbulatoryEncountersView() {
           <h2 style={{ margin: 0, fontSize: 15, fontWeight: 700 }}>{t("clinicCareD4c5.encountersTitle")}</h2>
           <p style={{ margin: "2px 0 0", fontSize: 12, color: "#64748b" }}>
             {t("clinicCareD4c5.encountersSubtitle")}
+            {dateFilter ? ` · ${dateFilter}` : ""}
           </p>
         </div>
         <button type="button" onClick={() => void load()} style={compactBtn}>

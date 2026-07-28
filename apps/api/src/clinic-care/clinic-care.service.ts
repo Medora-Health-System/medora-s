@@ -1,16 +1,32 @@
-import { Injectable } from "@nestjs/common";
-import { EncounterStatus, EncounterType, FollowUpStatus, Prisma } from "@prisma/client";
+import { ForbiddenException, Injectable } from "@nestjs/common";
+import {
+  AppointmentStatus,
+  EncounterStatus,
+  EncounterType,
+  FollowUpStatus,
+  Prisma,
+} from "@prisma/client";
 import {
   CLINIC_CARE_AMBULATORY_ENCOUNTER_TYPES,
   CLINIC_CARE_TRACKBOARD_METRIC_CONTRACTS,
+  DeterministicClinicInsightsProvider,
+  averageNullable,
+  buildClinicCareMissedAppointments,
+  buildClinicCarePatientFlow,
+  buildClinicCareVisitTypeSlices,
+  buildClinicCareVisitsByDaySeries,
   clinicCareNextStepHint,
   clinicCareVisitOriginDisplayToken,
+  computeClinicCareWaitMinutes,
   countClinicCareMetricsFromEncounters,
   defaultClinicCareTrackboardViewForProfession,
   facilityLocalDayUtcBounds,
+  facilityLocalPeriodUtcBounds,
   filterClinicCareTrackboardRowForRole,
   isClinicCareFollowUpDue,
   isHaitiPublicHealthJurisdiction,
+  localDateKeyForInstant,
+  percentChange,
   projectClinicCareIntakeStatus,
   projectClinicCareNursingQueueStage,
   projectClinicCareStage,
@@ -18,14 +34,24 @@ import {
   projectRegistrationCompleteness,
   readHospitalAssignmentBag,
   resolveAmbulatoryOperatingMode,
+  resolveClinicCareDashboardAccess,
   resolveClinicCareTrackboardFieldVisibility,
   resolveFacilityCareProfile,
+  type ClinicCareAnalyticsKpiValue,
+  type ClinicCareDashboardPeriod,
+  type ClinicCareDeterministicInsight,
   type ClinicCareIntakeStatusProjection,
   type ClinicCareMetricCountMap,
+  type ClinicCareMissedAppointmentsSummary,
   type ClinicCareNursingQueueStage,
+  type ClinicCarePatientFlowSlice,
+  type ClinicCareProviderProductivityRow,
   type ClinicCareStageId,
   type ClinicCareTrackboardFieldVisibility,
   type ClinicCareTrackboardView,
+  type ClinicCareVisitTypeSlice,
+  type ClinicCareVisitsByDayPoint,
+  type ClinicCareWaitTrendPoint,
   type ClinicCareWorkspaceRoleAccess,
   type FacilityModuleCapabilitiesD4c1,
 } from "@medora/shared";
@@ -423,7 +449,492 @@ export class ClinicCareService {
       generatedAt: now.toISOString(),
     };
   }
+
+  /**
+   * MEDUI.D4C.5A — facility-scoped ambulatory operational analytics dashboard.
+   * Role-aware: provider productivity / financial fields omitted server-side for non-ADMIN.
+   * Schema miss → throw (controller maps to 503). Failure ≠ empty fake zeros.
+   */
+  async getDashboardProjection(input: {
+    facilityId: string;
+    facility: {
+      name?: string | null;
+      timezone?: string | null;
+      facilityType?: string | null;
+      serviceLinesJson?: unknown;
+      facilityCareProfileJson?: unknown;
+      country?: string | null;
+    };
+    serviceLines: readonly string[];
+    access: ClinicCareWorkspaceRoleAccess;
+    professionGroup: string;
+    moduleCapabilities: FacilityModuleCapabilitiesD4c1;
+    period?: ClinicCareDashboardPeriod | string;
+    now?: Date;
+  }): Promise<ClinicCareDashboardProjectionDto> {
+    const now = input.now ?? new Date();
+    const periodRaw = String(input.period ?? "TODAY")
+      .trim()
+      .toUpperCase();
+    const period: ClinicCareDashboardPeriod =
+      periodRaw === "WEEK" || periodRaw === "MONTH" ? periodRaw : "TODAY";
+
+    const dashAccess = resolveClinicCareDashboardAccess({
+      canAccessClinicCareShell: input.access.canAccessClinicCareShell,
+      professionGroup: input.professionGroup,
+    });
+    if (!dashAccess.canViewDashboard) {
+      throw new ForbiddenException("Clinic Care dashboard access denied for this role.");
+    }
+
+    const careProfile = resolveFacilityCareProfile({
+      facilityType: input.facility.facilityType,
+      careProfileJson: input.facility.facilityCareProfileJson,
+      serviceLines: input.serviceLines,
+    });
+    const operatingMode = resolveAmbulatoryOperatingMode({
+      facilityType: input.facility.facilityType,
+      careProfileJson: input.facility.facilityCareProfileJson,
+      serviceLines: input.serviceLines,
+    });
+
+    const periodBounds = facilityLocalPeriodUtcBounds(now, input.facility.timezone, period);
+    const today = facilityLocalDayUtcBounds(now, input.facility.timezone);
+    const priorDay = facilityLocalDayUtcBounds(
+      new Date(today.startUtc.getTime() - 60_000),
+      input.facility.timezone
+    );
+    const weekBounds = facilityLocalPeriodUtcBounds(now, input.facility.timezone, "WEEK");
+
+    const ambulatoryTypes = [
+      EncounterType.OUTPATIENT,
+      EncounterType.URGENT_CARE,
+    ] as EncounterType[];
+
+    const encounterSelect = {
+      id: true,
+      status: true,
+      type: true,
+      workflowState: true,
+      createdAt: true,
+      dischargedAt: true,
+      visitOrigin: true,
+      physicianAssignedUserId: true,
+      physicianAssignedAt: true,
+      physicianAssigned: {
+        select: { id: true, firstName: true, lastName: true },
+      },
+      appointment: {
+        select: {
+          arrivedAt: true,
+          checkedInAt: true,
+          status: true,
+        },
+      },
+      intake: { select: { arrivalAt: true } },
+      followUpDate: true,
+    } as const;
+
+    const [
+      periodEncounters,
+      openEncounters,
+      todayEncounters,
+      priorDayEncounters,
+      followUpCandidates,
+      noShowAppointments,
+    ] = await Promise.all([
+      this.prisma.encounter.findMany({
+        where: {
+          facilityId: input.facilityId,
+          type: { in: ambulatoryTypes },
+          createdAt: { gte: periodBounds.startUtc, lt: periodBounds.endExclusiveUtc },
+        },
+        select: encounterSelect,
+        take: 5000,
+      }),
+      this.prisma.encounter.findMany({
+        where: {
+          facilityId: input.facilityId,
+          status: EncounterStatus.OPEN,
+          type: { in: ambulatoryTypes },
+        },
+        select: encounterSelect,
+        take: 1000,
+      }),
+      this.prisma.encounter.findMany({
+        where: {
+          facilityId: input.facilityId,
+          type: { in: ambulatoryTypes },
+          OR: [
+            { createdAt: { gte: today.startUtc, lt: today.endExclusiveUtc } },
+            {
+              status: EncounterStatus.CLOSED,
+              dischargedAt: { gte: today.startUtc, lt: today.endExclusiveUtc },
+            },
+          ],
+        },
+        select: encounterSelect,
+        take: 2000,
+      }),
+      this.prisma.encounter.findMany({
+        where: {
+          facilityId: input.facilityId,
+          type: { in: ambulatoryTypes },
+          OR: [
+            { createdAt: { gte: priorDay.startUtc, lt: priorDay.endExclusiveUtc } },
+            {
+              status: EncounterStatus.CLOSED,
+              dischargedAt: { gte: priorDay.startUtc, lt: priorDay.endExclusiveUtc },
+            },
+          ],
+        },
+        select: encounterSelect,
+        take: 2000,
+      }),
+      this.prisma.followUp.findMany({
+        where: {
+          facilityId: input.facilityId,
+          status: FollowUpStatus.OPEN,
+          dueDate: { lt: today.endExclusiveUtc },
+        },
+        select: {
+          id: true,
+          facilityId: true,
+          status: true,
+          dueDate: true,
+          encounterId: true,
+          encounter: { select: { type: true } },
+        },
+        take: 1000,
+      }),
+      this.prisma.appointment.findMany({
+        where: {
+          facilityId: input.facilityId,
+          status: AppointmentStatus.NO_SHOW,
+          scheduledStartAt: { gte: weekBounds.startUtc, lt: weekBounds.endExclusiveUtc },
+        },
+        select: { status: true, scheduledStartAt: true },
+        take: 2000,
+      }),
+    ]);
+
+    // Prescription counts require a durable ambulatory Rx rollup — omit rather than fabricate.
+    const prescriptionCount: number | null = null;
+    const followUpsDue = followUpCandidates.filter((fu) =>
+      isClinicCareFollowUpDue({
+        authenticatedFacilityId: input.facilityId,
+        followUpFacilityId: fu.facilityId,
+        status: fu.status,
+        dueDate: fu.dueDate,
+        dayEndExclusiveUtc: today.endExclusiveUtc,
+        linkedEncounterType: fu.encounter?.type ?? null,
+      })
+    ).length;
+
+    const todayById = new Map<string, (typeof todayEncounters)[number]>();
+    for (const e of todayEncounters) todayById.set(e.id, e);
+    const todayList = [...todayById.values()];
+
+    const priorById = new Map<string, (typeof priorDayEncounters)[number]>();
+    for (const e of priorDayEncounters) priorById.set(e.id, e);
+    const priorList = [...priorById.values()];
+
+    const todaysVisits = todayList.filter(
+      (e) =>
+        (e.status === EncounterStatus.OPEN || e.status === EncounterStatus.CLOSED) &&
+        e.createdAt >= today.startUtc &&
+        e.createdAt < today.endExclusiveUtc
+    ).length;
+
+    const priorTodaysVisits = priorList.filter(
+      (e) =>
+        (e.status === EncounterStatus.OPEN || e.status === EncounterStatus.CLOSED) &&
+        e.createdAt >= priorDay.startUtc &&
+        e.createdAt < priorDay.endExclusiveUtc
+    ).length;
+
+    const completedToday = todayList.filter((e) => {
+      if (e.status !== EncounterStatus.CLOSED) return false;
+      const closedAt = e.dischargedAt ?? e.createdAt;
+      return closedAt >= today.startUtc && closedAt < today.endExclusiveUtc;
+    }).length;
+
+    const priorCompleted = priorList.filter((e) => {
+      if (e.status !== EncounterStatus.CLOSED) return false;
+      const closedAt = e.dischargedAt ?? e.createdAt;
+      return closedAt >= priorDay.startUtc && closedAt < priorDay.endExclusiveUtc;
+    }).length;
+
+    const waitingNow = openEncounters.filter((e) => {
+      const wf = String(e.workflowState ?? "")
+        .trim()
+        .toUpperCase();
+      return wf === "ARRIVED" || wf === "TRIAGE";
+    }).length;
+
+    const waitMinutesToday = todayList.map((e) =>
+      computeClinicCareWaitMinutes({
+        arrivedAt:
+          e.appointment?.arrivedAt ??
+          e.intake?.arrivalAt ??
+          (e.visitOrigin === "WALK_IN" ? e.createdAt : null),
+        checkedInAt: e.appointment?.checkedInAt ?? null,
+        physicianAssignedAt: e.physicianAssignedAt,
+      })
+    );
+    const waitAgg = averageNullable(waitMinutesToday);
+
+    const waitMinutesPrior = priorList.map((e) =>
+      computeClinicCareWaitMinutes({
+        arrivedAt:
+          e.appointment?.arrivedAt ??
+          e.intake?.arrivalAt ??
+          (e.visitOrigin === "WALK_IN" ? e.createdAt : null),
+        checkedInAt: e.appointment?.checkedInAt ?? null,
+        physicianAssignedAt: e.physicianAssignedAt,
+      })
+    );
+    const priorWaitAgg = averageNullable(waitMinutesPrior);
+
+    const sparkFromPeriod = buildClinicCareVisitsByDaySeries({
+      dayKeys: periodBounds.dayKeys,
+      encounters: periodEncounters,
+      facilityTimeZone: periodBounds.timeZone,
+    });
+
+    const visitsSpark = sparkFromPeriod.map((p) => p.total);
+    const completedSpark = sparkFromPeriod.map((p) => p.completed);
+    const waitingSpark = sparkFromPeriod.map((p) => p.waiting);
+
+    const waitTrend: ClinicCareWaitTrendPoint[] = periodBounds.dayKeys.map((localDateKey) => {
+      const dayEnc = periodEncounters.filter(
+        (e) => localDateKeyForInstant(e.createdAt, periodBounds.timeZone) === localDateKey
+      );
+      const mins = dayEnc.map((e) =>
+        computeClinicCareWaitMinutes({
+          arrivedAt:
+            e.appointment?.arrivedAt ??
+            e.intake?.arrivalAt ??
+            (e.visitOrigin === "WALK_IN" ? e.createdAt : null),
+          checkedInAt: e.appointment?.checkedInAt ?? null,
+          physicianAssignedAt: e.physicianAssignedAt,
+        })
+      );
+      const agg = averageNullable(mins);
+      return {
+        localDateKey,
+        averageWaitMinutes: agg.average,
+        included: agg.included,
+        eligible: agg.eligible,
+      };
+    });
+
+    const waitSpark = waitTrend.map((p) => p.averageWaitMinutes).filter((v): v is number => v != null);
+
+    function visitComparison(current: number, prior: number) {
+      const pct = percentChange(current, prior);
+      if (!pct) return null;
+      return {
+        delta: pct.delta,
+        direction: pct.direction,
+        priorValue: prior,
+        labelKey: "vsYesterday",
+      };
+    }
+
+    function waitComparison() {
+      if (waitAgg.average == null || priorWaitAgg.average == null) return null;
+      if (waitAgg.included < 1 || priorWaitAgg.included < 1) return null;
+      const raw = waitAgg.average - priorWaitAgg.average;
+      const direction = raw > 0 ? ("up" as const) : raw < 0 ? ("down" as const) : ("flat" as const);
+      return {
+        delta: Math.abs(Math.round(raw)),
+        direction,
+        priorValue: priorWaitAgg.average,
+        labelKey: "vsYesterdayMinutes",
+      };
+    }
+
+    const kpis: ClinicCareAnalyticsKpiValue[] = [
+      {
+        id: "TODAYS_VISITS",
+        value: todaysVisits,
+        comparison: visitComparison(todaysVisits, priorTodaysVisits),
+        sparkline: visitsSpark,
+        unit: "count",
+        coverage: null,
+      },
+      {
+        id: "COMPLETED_VISITS",
+        value: completedToday,
+        comparison: visitComparison(completedToday, priorCompleted),
+        sparkline: completedSpark,
+        unit: "count",
+        coverage: null,
+      },
+      {
+        id: "WAITING",
+        value: waitingNow,
+        comparison: null,
+        sparkline: waitingSpark,
+        unit: "count",
+        coverage: null,
+      },
+      {
+        id: "AVERAGE_WAIT_MINUTES",
+        value: waitAgg.average,
+        comparison: waitComparison(),
+        sparkline: waitSpark,
+        unit: "minutes",
+        coverage: { included: waitAgg.included, eligible: waitAgg.eligible },
+      },
+      {
+        id: "FOLLOW_UPS_TO_SCHEDULE",
+        value: followUpsDue,
+        comparison: null,
+        sparkline: [],
+        unit: "patients",
+        coverage: null,
+      },
+    ];
+
+    const visitsByDay = buildClinicCareVisitsByDaySeries({
+      dayKeys: periodBounds.dayKeys,
+      encounters: periodEncounters,
+      facilityTimeZone: periodBounds.timeZone,
+    });
+
+    const visitTypes = buildClinicCareVisitTypeSlices(
+      periodEncounters.map((e) => ({
+        visitOrigin: e.visitOrigin,
+        encounterType: e.type,
+      }))
+    );
+
+    const flowSource =
+      period === "TODAY"
+        ? [...openEncounters, ...todayList.filter((e) => e.status === EncounterStatus.CLOSED)]
+        : periodEncounters;
+    const patientFlow = buildClinicCarePatientFlow(
+      flowSource.map((e) => ({
+        status: e.status,
+        workflowState: e.workflowState,
+      }))
+    );
+
+    const missed = buildClinicCareMissedAppointments({
+      appointments: noShowAppointments,
+      facilityTimeZone: periodBounds.timeZone,
+      todayKey: today.localDateKey,
+      weekDayKeys: weekBounds.dayKeys,
+    });
+
+    let providerProductivity: ClinicCareProviderProductivityRow[] | null = null;
+    if (dashAccess.canViewProviderProductivity) {
+      const byProvider = new Map<string, ClinicCareProviderProductivityRow>();
+      for (const e of periodEncounters) {
+        if (e.status !== EncounterStatus.CLOSED) continue;
+        const uid = e.physicianAssignedUserId;
+        if (!uid) continue;
+        const name = personName(e.physicianAssigned) ?? "—";
+        const row = byProvider.get(uid) ?? {
+          providerUserId: uid,
+          providerDisplayName: name,
+          completedVisitCount: 0,
+        };
+        row.completedVisitCount += 1;
+        byProvider.set(uid, row);
+      }
+      providerProductivity = [...byProvider.values()].sort(
+        (a, b) => b.completedVisitCount - a.completedVisitCount
+      );
+    }
+
+    const closedWithFollowUpPlan = todayList.filter(
+      (e) => e.status === EncounterStatus.CLOSED && Boolean(e.followUpDate)
+    ).length;
+    const followUpPlanningRatePercent =
+      completedToday > 0 ? (closedWithFollowUpPlan / completedToday) * 100 : null;
+
+    const insightsProvider = new DeterministicClinicInsightsProvider();
+    const insights = insightsProvider.buildInsights({
+      period,
+      kpis,
+      visitsByDay,
+      visitTypes,
+      patientFlow,
+      waitTrend,
+      missed,
+      providerProductivity,
+      canViewFinancialInsights: dashAccess.canViewFinancialInsights,
+      prescriptionsToday: typeof prescriptionCount === "number" ? prescriptionCount : null,
+      followUpPlanningRatePercent,
+    });
+
+    return {
+      facilityId: input.facilityId,
+      facilityName: input.facility.name?.trim() || null,
+      facilityTimeZone: periodBounds.timeZone,
+      localDateKey: today.localDateKey,
+      period,
+      periodStartUtc: periodBounds.startUtc.toISOString(),
+      periodEndExclusiveUtc: periodBounds.endExclusiveUtc.toISOString(),
+      careProfile,
+      operatingMode,
+      kpis,
+      visitsByDay,
+      visitTypes,
+      patientFlow,
+      waitTrend,
+      missedAppointments: missed,
+      providerProductivity,
+      insights,
+      access: {
+        canViewDashboard: dashAccess.canViewDashboard,
+        canViewProviderProductivity: dashAccess.canViewProviderProductivity,
+        canViewFinancialInsights: dashAccess.canViewFinancialInsights,
+      },
+      classificationNotes: {
+        visitsByDay:
+          "Exclusive priority CANCELLED→COMPLETED→TELECONSULTATION→WAITING→NEW; TELECONSULTATION always 0 (no durable modality).",
+        waitTime:
+          "providerStart proxy = physicianAssignedAt; arrival = checkedInAt ?? arrivedAt ?? walk-in createdAt; missing excluded.",
+        missedAppointments: "AppointmentStatus.NO_SHOW only.",
+        followUpsToSchedule: "Open FollowUp due today/overdue via isClinicCareFollowUpDue.",
+        revenue: "Shared Revenue KPI forbidden; financial insights ADMIN-only and deferred (no rollup).",
+      },
+      generatedAt: now.toISOString(),
+    };
+  }
 }
+
+export type ClinicCareDashboardProjectionDto = {
+  facilityId: string;
+  facilityName: string | null;
+  facilityTimeZone: string;
+  localDateKey: string;
+  period: ClinicCareDashboardPeriod;
+  periodStartUtc: string;
+  periodEndExclusiveUtc: string;
+  careProfile: string;
+  operatingMode: string | null;
+  kpis: ClinicCareAnalyticsKpiValue[];
+  visitsByDay: ClinicCareVisitsByDayPoint[];
+  visitTypes: ClinicCareVisitTypeSlice[];
+  patientFlow: ClinicCarePatientFlowSlice[];
+  waitTrend: ClinicCareWaitTrendPoint[];
+  missedAppointments: ClinicCareMissedAppointmentsSummary;
+  /** null when caller is not ADMIN — never send then hide client-side. */
+  providerProductivity: ClinicCareProviderProductivityRow[] | null;
+  insights: ClinicCareDeterministicInsight[];
+  access: {
+    canViewDashboard: boolean;
+    canViewProviderProductivity: boolean;
+    canViewFinancialInsights: boolean;
+  };
+  classificationNotes: Record<string, string>;
+  generatedAt: string;
+};
 
 /** Exported for unit tests — ambulatory type list matches shared contract. */
 export function clinicCareAmbulatoryTypesForQuery(): string[] {

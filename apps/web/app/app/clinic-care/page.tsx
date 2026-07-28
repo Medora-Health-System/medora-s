@@ -1,11 +1,11 @@
 "use client";
 
-import { ClinicCareTrackboardView } from "@/features/clinic-care/ClinicCareTrackboardView";
+import { ClinicCareClinicalBoardAnalyticsView } from "@/features/clinic-care/ClinicCareClinicalBoardAnalyticsView";
 
 /**
- * MEDUI.D4C.2 — Clinic Care shell + color clinical trackboard.
- * Ambulatory projection over Medora One shared core (no parallel clinical engines).
+ * MEDUI.D4C.5A — Clinic Clinical Board = operational analytics landing.
+ * Today's Visits (`/todays-visits`) keeps the patient trackboard.
  */
 export default function ClinicCarePage() {
-  return <ClinicCareTrackboardView />;
+  return <ClinicCareClinicalBoardAnalyticsView />;
 }
