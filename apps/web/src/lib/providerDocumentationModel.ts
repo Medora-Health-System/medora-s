@@ -1,4 +1,5 @@
-export type ProviderDocumentationEncounterMode = "ED" | "OBSERVATION";
+/** AMBULATORY reuses INITIAL_PROVIDER_NOTE durability (no parallel Clinic note engine). */
+export type ProviderDocumentationEncounterMode = "ED" | "OBSERVATION" | "AMBULATORY";
 
 export type ProviderDocumentationDocumentType =
   | "INITIAL_PROVIDER_NOTE"
@@ -505,25 +506,25 @@ export const PROVIDER_DOCUMENTATION_REQUIRED_SECTION_IDS = [
 export function documentTypeForEncounterMode(
   encounterMode: ProviderDocumentationEncounterMode
 ): ProviderDocumentationDocumentType {
-  return encounterMode === "ED"
-    ? "INITIAL_PROVIDER_NOTE"
-    : "OBSERVATION_PROVIDER_PROGRESS_NOTE";
+  return encounterMode === "OBSERVATION"
+    ? "OBSERVATION_PROVIDER_PROGRESS_NOTE"
+    : "INITIAL_PROVIDER_NOTE";
 }
 
 export function providerDocumentationTitleKey(
   encounterMode: ProviderDocumentationEncounterMode
 ): string {
-  return encounterMode === "ED"
-    ? "providerDocumentationWorkspace.titleEd"
-    : "providerDocumentationWorkspace.titleObservation";
+  if (encounterMode === "AMBULATORY") return "providerDocumentationWorkspace.titleAmbulatory";
+  if (encounterMode === "OBSERVATION") return "providerDocumentationWorkspace.titleObservation";
+  return "providerDocumentationWorkspace.titleEd";
 }
 
 export function providerDocumentationTimelineLabel(
   encounterMode: ProviderDocumentationEncounterMode
 ): string {
-  return encounterMode === "ED"
-    ? "ED provider documentation saved"
-    : "Observation provider progress note saved";
+  if (encounterMode === "AMBULATORY") return "Ambulatory provider documentation saved";
+  if (encounterMode === "OBSERVATION") return "Observation provider progress note saved";
+  return "ED provider documentation saved";
 }
 
 export type ProviderDocumentationSectionStatus = "complete" | "missing" | "recommended" | "saved";
@@ -872,6 +873,13 @@ export function buildProviderDocumentationWarnings(
     if (!hasText(state.mdmWorkingAssessment, state.mdmPlanSummary)) {
       add({ id: "edMdmRecommendedBeforeFinalization", messageKey: "providerDocumentationWorkspace.warningEdMdmBeforeFinalization", severity: "critical" });
     }
+  } else if (encounterMode === "AMBULATORY") {
+    if (!hasText(state.chiefComplaint, state.reasonForVisit)) {
+      add({ id: "edMissingChiefComplaint", messageKey: "providerDocumentationWorkspace.warningEdMissingChiefComplaint", severity: "warning" });
+    }
+    if (!hasText(state.mdmWorkingAssessment, state.mdmPlanSummary, state.clinicalImpression, state.treatmentPlan)) {
+      add({ id: "edMdmRecommendedBeforeFinalization", messageKey: "providerDocumentationWorkspace.warningEdMdmBeforeFinalization", severity: "critical" });
+    }
   } else {
     if (!hasText(state.hpi, state.rosFocusedImpression)) {
       add({ id: "observationMissingIntervalStatus", messageKey: "providerDocumentationWorkspace.warningObsIntervalStatus", severity: "warning" });
@@ -968,9 +976,9 @@ export function buildProviderDocumentationSignReadiness(
 export function providerDocumentationSignedTimelineLabel(
   encounterMode: ProviderDocumentationEncounterMode
 ): string {
-  return encounterMode === "OBSERVATION"
-    ? "Observation provider progress note signed"
-    : "ED provider documentation signed";
+  if (encounterMode === "AMBULATORY") return "Ambulatory provider documentation signed";
+  if (encounterMode === "OBSERVATION") return "Observation provider progress note signed";
+  return "ED provider documentation signed";
 }
 
 export function providerDocumentationCanSubmitSignature(input: {
@@ -1256,6 +1264,7 @@ const PROVIDER_DOCUMENTATION_DISPLAY_LABELS: Record<
   {
     titleEd: string;
     titleObservation: string;
+    titleAmbulatory: string;
     hpi: string;
     ros: string;
     physicalExam: string;
@@ -1267,6 +1276,7 @@ const PROVIDER_DOCUMENTATION_DISPLAY_LABELS: Record<
   en: {
     titleEd: "ED provider documentation",
     titleObservation: "Observation provider progress note",
+    titleAmbulatory: "Ambulatory provider visit note",
     hpi: "HPI",
     ros: "ROS",
     physicalExam: "Physical Exam",
@@ -1277,6 +1287,7 @@ const PROVIDER_DOCUMENTATION_DISPLAY_LABELS: Record<
   fr: {
     titleEd: "Documentation médecin urgences",
     titleObservation: "Note d'évolution médecin observation",
+    titleAmbulatory: "Note de visite médecin ambulatoire",
     hpi: "HPI",
     ros: "Revue ciblée",
     physicalExam: "Examen physique",
@@ -1344,7 +1355,9 @@ function providerDocumentationDisplayTitle(
   locale: ProviderDocumentationDisplayLocale
 ): string {
   const labels = PROVIDER_DOCUMENTATION_DISPLAY_LABELS[locale];
-  return encounterMode === "OBSERVATION" ? labels.titleObservation : labels.titleEd;
+  if (encounterMode === "AMBULATORY") return labels.titleAmbulatory;
+  if (encounterMode === "OBSERVATION") return labels.titleObservation;
+  return labels.titleEd;
 }
 
 export function readProviderDocumentationWorkspaceMetadata(
@@ -1354,7 +1367,14 @@ export function readProviderDocumentationWorkspaceMetadata(
   const stored = asObject(root?.[PROVIDER_DOCUMENTATION_NAMESPACE_KEY]);
   const meta = asObject(stored?.workspaceMetadata);
   if (meta?.source !== PROVIDER_DOCUMENTATION_WORKSPACE_SOURCE) return null;
-  const encounterMode = meta.encounterMode === "OBSERVATION" ? "OBSERVATION" : meta.encounterMode === "ED" ? "ED" : null;
+  const encounterMode =
+    meta.encounterMode === "OBSERVATION"
+      ? "OBSERVATION"
+      : meta.encounterMode === "AMBULATORY"
+        ? "AMBULATORY"
+        : meta.encounterMode === "ED"
+          ? "ED"
+          : null;
   const documentType =
     meta.documentType === "OBSERVATION_PROVIDER_PROGRESS_NOTE" || meta.documentType === "INITIAL_PROVIDER_NOTE"
       ? meta.documentType

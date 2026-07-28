@@ -9753,9 +9753,9 @@ export default {
       "File d’attente d’accueil ambulatoire — moteurs cliniques partagés, sans second menu latéral Clinic.",
     providerTitle: "File médecin",
     providerSubtitle:
-      "Visites ambulatoires prêtes pour l’évaluation médicale. La documentation SOAP continue en D4C.5.",
+      "Visites ambulatoires prêtes pour l’évaluation médicale. Documentation H&P via le dossier partagé.",
     providerEmpty: "Aucune visite ambulatoire dans la file médecin pour le moment.",
-    soapDeferred: "La documentation SOAP médecin est reportée à MEDUI.D4C.5.",
+    soapDeferred: "La documentation SOAP médecin est disponible dans MEDUI.D4C.5.",
     assignMe: "M’affecter",
     assignMeProvider: "M’affecter",
     roomSelectAria: "Affecter la salle",
@@ -9806,6 +9806,37 @@ export default {
       workflowFailed: "Impossible de mettre à jour le parcours de visite.",
       saveFailed: "Enregistrement impossible.",
     },
+  },
+
+  clinicCareD4c5: {
+    providerTitle: "Espace médecin ambulatoire",
+    providerSubtitle:
+      "File d’attente → dossier → H&P rapide → A&P → enregistrer / signer — moteurs cliniques partagés.",
+    providerEmpty: "Aucune visite ambulatoire dans la file médecin pour le moment.",
+    openDocumentation: "Documenter",
+    workflowHint:
+      "Ouvrez le dossier pour revoir l’accueil, documenter HPI / ROS / examen, poser l’A&P, puis enregistrer ou signer.",
+    groupInProgress: "En évaluation",
+    groupResultsPending: "Résultats en attente",
+    groupDischargePending: "Sortie en attente",
+    clinicalSummaryTitle: "Résumé clinique",
+    clinicalSummarySubtitle: "Projection longitudinale de la rencontre (moteur partagé).",
+    rapidHpTitle: "H&P rapide ambulatoire",
+    providerDocReadOnly:
+      "La documentation médecin est en lecture seule pour votre rôle. Seuls le médecin et l’administrateur peuvent rédiger ou signer.",
+    encountersTitle: "Rencontres ambulatoires",
+    encountersSubtitle: "Liste des rencontres via l’autorité entreprise — filtre ambulatoire par défaut.",
+    encountersSearchPlaceholder: "Rechercher patient, MRN ou rencontre…",
+    ambulatoryFilter: "Ambulatoire uniquement",
+    encountersEmpty: "Aucune rencontre ne correspond à ce filtre.",
+    encountersFilterHint: "Types ambulatoires : {types}. Décochez pour élargir aux rencontres ouvertes du site.",
+    patientsTitle: "Patients",
+    patientsSubtitle: "Recherche entreprise — ouverture du dossier longitudinal patient (pas de ClinicPatientChart).",
+    patientsSearchPlaceholder: "Rechercher un patient (nom ou MRN)…",
+    patientsSearchHint: "Saisissez au moins 2 caractères pour rechercher.",
+    patientsEmpty: "Aucun patient trouvé.",
+    openPatientChart: "Ouvrir le dossier",
+    dateOfBirth: "Date de naissance",
   },
 
   clinicCareD4c3: {
@@ -9912,6 +9943,7 @@ export default {
   providerDocumentationWorkspace: {
     titleEd: "Documentation médecin (urgences)",
     titleObservation: "Documentation médecin (observation)",
+    titleAmbulatory: "Documentation médecin (ambulatoire)",
     subtitle: "Documentation médecin structurée — enregistrée dans le dossier.",
     templates: "Modèles",
     templateSearchPlaceholder:

@@ -112,7 +112,7 @@ describe("MEDUI.D4C.2A.1 clinic workspace regression correction", () => {
         patientId: "pat-1",
         status: "OPEN",
       })
-    ).toBe("/app/encounters/enc-1");
+    ).toBe("/app/encounters/enc-1?tab=clinic&workspace=ambulatory");
     expect(
       resolveClinicBoardPatientNameHref({
         encounterId: "enc-2",

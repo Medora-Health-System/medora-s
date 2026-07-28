@@ -158,7 +158,7 @@ import { logError, logInfo } from "../common/logging/medoraLogger";
 import type { AppendProcedureCaptureDto } from "../billing-procedure-codes/dto/append-procedure-capture.dto";
 
 function providerDocumentationWorkspaceMetadataFromNursingAssessment(raw: unknown): {
-  encounterMode: "ED" | "OBSERVATION";
+  encounterMode: "ED" | "OBSERVATION" | "AMBULATORY";
   documentType: "INITIAL_PROVIDER_NOTE" | "OBSERVATION_PROVIDER_PROGRESS_NOTE";
 } {
   const nursing = raw && typeof raw === "object" && !Array.isArray(raw) ? (raw as Record<string, unknown>) : null;
@@ -166,18 +166,25 @@ function providerDocumentationWorkspaceMetadataFromNursingAssessment(raw: unknow
   const storedObj = stored && typeof stored === "object" && !Array.isArray(stored) ? (stored as Record<string, unknown>) : null;
   const meta = storedObj?.workspaceMetadata;
   const metaObj = meta && typeof meta === "object" && !Array.isArray(meta) ? (meta as Record<string, unknown>) : null;
-  const observation =
+  if (
     metaObj?.encounterMode === "OBSERVATION" ||
-    metaObj?.documentType === "OBSERVATION_PROVIDER_PROGRESS_NOTE";
-  return observation
-    ? {
-        encounterMode: "OBSERVATION",
-        documentType: "OBSERVATION_PROVIDER_PROGRESS_NOTE",
-      }
-    : {
-        encounterMode: "ED",
-        documentType: "INITIAL_PROVIDER_NOTE",
-      };
+    metaObj?.documentType === "OBSERVATION_PROVIDER_PROGRESS_NOTE"
+  ) {
+    return {
+      encounterMode: "OBSERVATION",
+      documentType: "OBSERVATION_PROVIDER_PROGRESS_NOTE",
+    };
+  }
+  if (metaObj?.encounterMode === "AMBULATORY") {
+    return {
+      encounterMode: "AMBULATORY",
+      documentType: "INITIAL_PROVIDER_NOTE",
+    };
+  }
+  return {
+    encounterMode: "ED",
+    documentType: "INITIAL_PROVIDER_NOTE",
+  };
 }
 
 function admissionSummaryHasContent(data: Record<string, unknown>): boolean {

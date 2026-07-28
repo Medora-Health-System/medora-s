@@ -94,8 +94,9 @@ describe("MEDUI.D4C.4 ambulatory nursing / MA workspace", () => {
     expect(page).toContain("ClinicCareProviderWorkspaceView");
     expect(page).not.toContain("ClinicCareEmbeddedModule");
     const provider = read("ClinicCareProviderWorkspaceView.tsx");
-    expect(provider).toContain("soapDeferred");
     expect(provider).toContain("assignProviderSelf");
+    expect(provider).toContain("clinicCareAmbulatoryProviderChartPath");
+    expect(provider).not.toContain("soapDeferred");
     expect(provider).not.toContain("SOAP editor");
   });
 
@@ -104,8 +105,6 @@ describe("MEDUI.D4C.4 ambulatory nursing / MA workspace", () => {
     expect(redirect).toContain("router.replace");
     expect(redirect).toContain("clinic-care-direct-redirect");
     for (const route of [
-      "patients",
-      "encounters",
       "follow-up",
       "billing",
       "laboratory",
@@ -118,6 +117,12 @@ describe("MEDUI.D4C.4 ambulatory nursing / MA workspace", () => {
       expect(page).toContain("ClinicCareDirectCanonicalRedirect");
       expect(page).not.toContain("ClinicCareEmbeddedModule");
     }
+    const encounters = readFileSync(join(clinicCareAppDir, "encounters/page.tsx"), "utf8");
+    expect(encounters).toContain("ClinicCareAmbulatoryEncountersView");
+    expect(encounters).not.toContain("ClinicCareEmbeddedModule");
+    const patients = readFileSync(join(clinicCareAppDir, "patients/page.tsx"), "utf8");
+    expect(patients).toContain("ClinicCareAmbulatoryPatientsView");
+    expect(patients).not.toContain("ClinicCareEmbeddedModule");
   });
 
   it("F — room + provider assignment reuse enterprise APIs (no ClinicRoom* / ClinicUserAssignment*)", () => {

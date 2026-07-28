@@ -1,12 +1,7 @@
 "use client";
 
-import { ClinicCareDirectCanonicalRedirect } from "@/features/clinic-care/ClinicCareDirectCanonicalRedirect";
+import { ClinicCareAmbulatoryEncountersView } from "@/features/clinic-care/ClinicCareAmbulatoryEncountersView";
 
 export default function ClinicCareEncountersPage() {
-  return (
-    <ClinicCareDirectCanonicalRedirect
-      href="/app/encounters"
-      labelKey="clinicCareD4c4.redirectingEncounters"
-    />
-  );
+  return <ClinicCareAmbulatoryEncountersView />;
 }
