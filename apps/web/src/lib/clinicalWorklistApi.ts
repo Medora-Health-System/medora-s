@@ -29,6 +29,19 @@ export async function assignNurseSelf(facilityId: string, encounterId: string): 
   });
 }
 
+/** Enterprise encounter workflow transition (ARRIVED→TRIAGE, TRIAGE→IN_TREATMENT, …). Audited via PATCH. */
+export async function patchEncounterWorkflowState(
+  facilityId: string,
+  encounterId: string,
+  workflowState: string
+): Promise<unknown> {
+  return apiFetch(`/encounters/${encounterId}`, {
+    method: "PATCH",
+    facilityId,
+    body: JSON.stringify({ workflowState }),
+  });
+}
+
 /** D4A.3.0 — hospital-lane assignment (Observation/Inpatient bag). Re-export for worklists. */
 export {
   assignHospitalRoleToMe,

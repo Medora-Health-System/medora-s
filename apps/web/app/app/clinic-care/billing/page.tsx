@@ -1,14 +1,12 @@
 "use client";
 
-import { ClinicCareEmbeddedModule } from "@/features/clinic-care/ClinicCareEmbeddedModule";
+import { ClinicCareDirectCanonicalRedirect } from "@/features/clinic-care/ClinicCareDirectCanonicalRedirect";
 
 export default function ClinicCareBillingPage() {
   return (
-    <ClinicCareEmbeddedModule
-      titleKey="clinicCareD4c2.nav.billing"
-      descriptionKey="clinicCareD4c2a.module.billingDesc"
+    <ClinicCareDirectCanonicalRedirect
       href="/app/billing"
-      hrefLabelKey="clinicCareD4c2a.module.openBilling"
+      labelKey="clinicCareD4c4.redirectingBilling"
     />
   );
 }

@@ -1,14 +1,12 @@
 "use client";
 
-import { ClinicCareEmbeddedModule } from "@/features/clinic-care/ClinicCareEmbeddedModule";
+import { ClinicCareDirectCanonicalRedirect } from "@/features/clinic-care/ClinicCareDirectCanonicalRedirect";
 
 export default function ClinicCareFollowUpPage() {
   return (
-    <ClinicCareEmbeddedModule
-      titleKey="clinicCareD4c2.nav.followUps"
-      descriptionKey="clinicCareD4c2a.module.followUpDesc"
+    <ClinicCareDirectCanonicalRedirect
       href="/app/follow-ups"
-      hrefLabelKey="clinicCareD4c2a.module.openFollowUp"
+      labelKey="clinicCareD4c4.redirectingFollowUp"
     />
   );
 }

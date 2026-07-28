@@ -1,14 +1,12 @@
 "use client";
 
-import { ClinicCareEmbeddedModule } from "@/features/clinic-care/ClinicCareEmbeddedModule";
+import { ClinicCareDirectCanonicalRedirect } from "@/features/clinic-care/ClinicCareDirectCanonicalRedirect";
 
 export default function ClinicCareLaboratoryPage() {
   return (
-    <ClinicCareEmbeddedModule
-      titleKey="clinicCareD4c2a.nav.laboratory"
-      descriptionKey="clinicCareD4c2a.module.laboratoryDesc"
+    <ClinicCareDirectCanonicalRedirect
       href="/app/lab-worklist"
-      hrefLabelKey="clinicCareD4c2a.module.openLaboratory"
+      labelKey="clinicCareD4c4.redirectingLaboratory"
     />
   );
 }
