@@ -11,7 +11,7 @@ import { useSearchParams } from "next/navigation";
 import {
   CLINIC_CARE_AMBULATORY_ENCOUNTER_TYPES,
   bucketClinicCareVisitType,
-  clinicCareAmbulatoryProviderChartPath,
+  clinicCareAmbulatoryOpenWorkspacePathForRole,
   isClinicCareAmbulatoryEncounterType,
   localDateKeyForInstant,
   projectClinicCarePatientFlowStage,
@@ -19,7 +19,6 @@ import {
   type ClinicCareVisitTypeBucket,
 } from "@medora/shared";
 import { apiFetch } from "@/lib/apiClient";
-import { fetchOpenEncounters } from "@/lib/clinicalWorklistApi";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import { useI18n } from "@/lib/i18n";
 import { tEncounterStatus, tEncounterType } from "@/lib/encounterChromeI18n";
@@ -90,7 +89,7 @@ export function ClinicCareAmbulatoryEncountersView() {
     null) as ClinicCarePatientFlowStage | null;
   const visitTypeFilter = (searchParams?.get("visitType")?.trim().toUpperCase() ||
     null) as ClinicCareVisitTypeBucket | null;
-  const { facilityId, ready, facilityTimeZone } = useFacilityAndRoles();
+  const { facilityId, ready, facilityTimeZone, roles } = useFacilityAndRoles();
   const [rows, setRows] = useState<EncounterRow[]>([]);
   const [boardTz, setBoardTz] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -103,35 +102,38 @@ export function ClinicCareAmbulatoryEncountersView() {
     setLoading(true);
     setError(null);
     try {
+      // Always use Clinic Care ambulatory trackboard — never ED-gated /trackboard.
+      const payload = (await apiFetch("/clinic-care/trackboard", {
+        facilityId,
+      })) as ClinicCareProjection;
+      setBoardTz(payload.facilityTimeZone ?? null);
+      let next = (payload.rows ?? []).map((r) =>
+        normalizeRow({
+          id: r.encounterId,
+          encounterId: r.encounterId,
+          type: r.encounterType,
+          encounterType: r.encounterType,
+          status: r.status,
+          createdAt: r.createdAt,
+          workflowState: r.workflowState,
+          visitOrigin: r.visitOrigin,
+          roomLabel: r.roomLabel,
+          patientName: r.patientName,
+          mrn: r.mrn,
+        })
+      );
       if (ambulatoryOnly) {
-        const payload = (await apiFetch("/clinic-care/trackboard", {
-          facilityId,
-        })) as ClinicCareProjection;
-        setBoardTz(payload.facilityTimeZone ?? null);
-        setRows(
-          (payload.rows ?? []).map((r) =>
-            normalizeRow({
-              id: r.encounterId,
-              encounterId: r.encounterId,
-              type: r.encounterType,
-              encounterType: r.encounterType,
-              status: r.status,
-              createdAt: r.createdAt,
-              workflowState: r.workflowState,
-              visitOrigin: r.visitOrigin,
-              roomLabel: r.roomLabel,
-              patientName: r.patientName,
-              mrn: r.mrn,
-            })
-          )
+        next = next.filter((r) =>
+          isClinicCareAmbulatoryEncounterType(r.type || r.encounterType)
         );
-      } else {
-        const data = await fetchOpenEncounters(facilityId);
-        setBoardTz(null);
-        setRows((Array.isArray(data) ? data : []).map((r) => normalizeRow(r as EncounterRow)));
       }
+      setRows(next);
     } catch (err) {
-      setError(err instanceof Error ? err.message : t("clinicCareD4c2.errors.loadFailed"));
+      setError(
+        err instanceof Error && err.message.trim()
+          ? err.message
+          : t("clinicCareD4c5.encountersLoadError")
+      );
       setRows([]);
     } finally {
       setLoading(false);
@@ -238,9 +240,12 @@ export function ClinicCareAmbulatoryEncountersView() {
       </div>
 
       {error ? (
-        <p role="alert" style={{ color: "#991b1b", fontSize: 13 }}>
-          {error}
-        </p>
+        <div role="alert" style={{ marginBottom: 10 }}>
+          <p style={{ color: "#991b1b", fontSize: 13, margin: "0 0 8px" }}>{error}</p>
+          <button type="button" onClick={() => void load()} style={compactBtn}>
+            {t("clinicCareD4c5.encountersRetry")}
+          </button>
+        </div>
       ) : null}
 
       <section style={{ ...MEDORA_CARD_SHELL, padding: 0, overflow: "auto" }}>
@@ -269,7 +274,10 @@ export function ClinicCareAmbulatoryEncountersView() {
                   t("common.dash");
                 const encType = row.type || row.encounterType;
                 const href = isClinicCareAmbulatoryEncounterType(encType)
-                  ? clinicCareAmbulatoryProviderChartPath(row.id)
+                  ? clinicCareAmbulatoryOpenWorkspacePathForRole(row.id, {
+                      roleCodes: roles,
+                      from: "consultations",
+                    })
                   : `/app/encounters/${encodeURIComponent(row.id)}`;
                 return (
                   <tr

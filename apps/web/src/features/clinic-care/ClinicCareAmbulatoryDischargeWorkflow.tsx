@@ -12,6 +12,7 @@ import {
   CLINIC_AMBULATORY_CHECKOUT_I18N_KEYS,
   CLINIC_AMBULATORY_CHECKOUT_STATES,
   buildClinicCarePublicHealthDeepLink,
+  buildClinicPharmacyEntryHref,
   clinicDischargePrintBlockedReason,
   dischargeNarrativeContainsEdOnlyWording,
   type ClinicAmbulatoryCheckoutState,
@@ -335,7 +336,7 @@ export function ClinicCareAmbulatoryDischargeWorkflow({
           <Link href={diseaseReportsHref} style={{ color: "#0d9488", fontWeight: 600 }}>
             {t("clinicCareD4c7.publicHealth.diseaseReports")}
           </Link>
-          <Link href="/app/pharmacy?ambulatory=1" style={{ color: "#0d9488", fontWeight: 600 }}>
+          <Link href={buildClinicPharmacyEntryHref()} style={{ color: "#0d9488", fontWeight: 600 }}>
             {t("clinicCareD4c7.pharmacy.openEnterprise")}
           </Link>
         </div>

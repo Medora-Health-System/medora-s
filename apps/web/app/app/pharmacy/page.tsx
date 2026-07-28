@@ -56,8 +56,10 @@ const linkStyle: React.CSSProperties = {
 export default function PharmacyPage() {
   const { t, language } = useI18n();
   const searchParams = useSearchParams();
-  const ambulatoryOnly = searchParams?.get("ambulatory") === "1";
-  const { facilityId: facilityIdFromHook, ready, canViewPharmacy } =
+  const ambulatoryOnly =
+    searchParams?.get("ambulatory") === "1" ||
+    searchParams?.get("source") === "clinic-care";
+  const { facilityId: facilityIdFromHook, ready, canViewPharmacy, canManagePharmacy } =
     useFacilityAndRoles();
   const { isOffline } = useConnectivityStatus();
   const [facilityId, setFacilityId] = useState<string | null>(null);
@@ -134,7 +136,7 @@ export default function PharmacyPage() {
 
   return (
     <div>
-      {ready && canViewPharmacy && effectiveFacilityId && (
+      {ready && canManagePharmacy && effectiveFacilityId && (
         <PharmacyAlertsCard facilityId={effectiveFacilityId} />
       )}
 

@@ -350,7 +350,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     "/app/follow-ups",
     "/app/billing",
   ]);
-  const pharmacyNavHrefs = new Set([
+  const pharmacyNavPathnames = new Set([
     "/app/pharmacy",
     "/app/pharmacy-worklist",
     "/app/pharmacy/inventory",
@@ -358,6 +358,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     "/app/pharmacy/low-stock",
     "/app/pharmacy/expiring",
   ]);
+  const pharmacyHrefPathname = (href: string) => href.split("?")[0] || href;
 
   let navItems = SIDEBAR_NAV_ITEMS.filter((item) => {
     if (item.platformAdminOnly) {
@@ -375,7 +376,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   if (!hasNationalMsppRoles && isFrontDeskNavRestricted) {
     navItems = navItems.filter((item) => registrationNavHrefs.has(item.href));
   } else if (!hasNationalMsppRoles && isPharmacyOnly) {
-    navItems = navItems.filter((item) => pharmacyNavHrefs.has(item.href));
+    navItems = navItems.filter((item) => pharmacyNavPathnames.has(pharmacyHrefPathname(item.href)));
   }
 
   if (!hasNationalMsppRoles && !isFrontDeskNavRestricted) {

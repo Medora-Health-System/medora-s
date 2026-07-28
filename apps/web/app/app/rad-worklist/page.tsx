@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import { apiFetch } from "@/lib/apiClient";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import { tOrderItemStatusForWorklist, tOrderPriority, tPathwayType } from "@/lib/encounterChromeI18n";
 import { useI18n } from "@/lib/i18n";
@@ -38,7 +39,7 @@ import {
   workflowActionFailureMessageKey,
 } from "@/lib/orderItemWorkflowUi";
 import { DeptWorklistReadOnlyNotice } from "@/components/worklists/DeptWorklistReadOnlyNotice";
-import { summarizeLabRadWorklistOperational, type LabRadWorklistSortMode } from "@medora/shared";
+import { summarizeLabRadWorklistOperational, type LabRadWorklistSortMode, filterAmbulatoryLabRadWorklistOrders } from "@medora/shared";
 import {
   analyzeLabRadWorklistOperationalRow,
   type LabRadWorklistOperationalRow,
@@ -232,6 +233,10 @@ function PendingEncounterPatientBlock({
 
 export default function RadWorklistPage() {
   const { t, language } = useI18n();
+  const searchParams = useSearchParams();
+  const ambulatoryOnly =
+    searchParams?.get("ambulatory") === "1" ||
+    searchParams?.get("source") === "clinic-care";
   const { facilityId: facilityIdFromHook, ready, roles } = useFacilityAndRoles();
   const [facilityId, setFacilityId] = useState<string | null>(null);
   const [queue, setQueue] = useState<any[]>([]);
@@ -258,6 +263,15 @@ export default function RadWorklistPage() {
   });
 
   const isRadTechActor = isRadiologyWorkflowActor(roles);
+
+  const displayedQueue = useMemo(() => {
+    const rows = Array.isArray(queue) ? queue : [];
+    if (!ambulatoryOnly || !facilityId) return rows;
+    return filterAmbulatoryLabRadWorklistOrders(rows, {
+      facilityId,
+      ambulatoryOnly: true,
+    });
+  }, [ambulatoryOnly, facilityId, queue]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -318,7 +332,7 @@ export default function RadWorklistPage() {
 
   const filteredQueuePairs = useMemo(() => {
     const out: { order: any; item: any }[] = [];
-    for (const order of Array.isArray(queue) ? queue : []) {
+    for (const order of Array.isArray(displayedQueue) ? displayedQueue : []) {
       if (!Array.isArray(order.items)) continue;
       const pc = String(order.priority ?? "ROUTINE");
       for (const item of order.items) {
@@ -337,7 +351,7 @@ export default function RadWorklistPage() {
       }
     }
     return out;
-  }, [queue, searchQuery, t, language]);
+  }, [displayedQueue, searchQuery, t, language]);
 
   const filteredPendingLocal = useMemo(() => {
     return pendingLocal.filter((row) => {
@@ -569,7 +583,9 @@ export default function RadWorklistPage() {
                             ? { bg: "#ccfbf1", text: "#0f766e", border: "#5eead4" }
                             : order.clinicalEncounterContext === "ED"
                               ? { bg: "#fee2e2", text: "#991b1b", border: "#fca5a5" }
-                              : { bg: "#f1f5f9", text: "#334155", border: "#cbd5e1" }
+                              : order.clinicalEncounterContext === "AMBULATORY"
+                                ? { bg: "#e0e7ff", text: "#3730a3", border: "#a5b4fc" }
+                                : { bg: "#f1f5f9", text: "#334155", border: "#cbd5e1" }
                         }
                       >
                         {t(
@@ -661,9 +677,22 @@ export default function RadWorklistPage() {
           <p style={{ margin: "8px 0 0 0", fontSize: 14, color: "#64748b", maxWidth: 720, lineHeight: 1.55 }}>
             {t("worklistDepartments.radiology.subtitle")}
           </p>
+          {ambulatoryOnly ? (
+            <p
+              style={{
+                margin: "10px 0 0 0",
+                fontSize: 13,
+                color: "#3730a3",
+                fontWeight: 500,
+              }}
+              data-testid="rad-worklist-ambulatory-filter"
+            >
+              {t("clinicCareD4c7c.rad.ambulatoryFilter")}
+            </p>
+          ) : null}
         </header>
 
-        {!loading && (queue.length > 0 || pendingLocal.length > 0) ? (
+        {!loading && (displayedQueue.length > 0 || pendingLocal.length > 0) ? (
           <>
             {refreshing ? (
               <p style={{ margin: "0 0 8px 0", fontSize: 12, color: "#64748b" }}>{t("common.refreshing")}</p>
@@ -711,7 +740,7 @@ export default function RadWorklistPage() {
           </div>
         ) : null}
 
-        {loading && queue.length === 0 && pendingLocal.length === 0 ? (
+        {loading && displayedQueue.length === 0 && pendingLocal.length === 0 ? (
           <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 24 }}>
             {[0, 1, 2].map((i) => (
               <div
@@ -735,7 +764,7 @@ export default function RadWorklistPage() {
               </div>
             ))}
           </div>
-        ) : queue.length === 0 && pendingLocal.length === 0 ? (
+        ) : displayedQueue.length === 0 && pendingLocal.length === 0 ? (
           <div
             style={{
               marginTop: 24,
@@ -747,14 +776,16 @@ export default function RadWorklistPage() {
               boxShadow: "0 1px 2px rgba(15, 23, 42, 0.05)",
             }}
           >
-            <p style={{ margin: 0, fontSize: 16, fontWeight: 600, color: "#334155" }}>{t("worklistDepartments.radiology.empty")}</p>
+            <p style={{ margin: 0, fontSize: 16, fontWeight: 600, color: "#334155" }}>{ambulatoryOnly
+                ? t("clinicCareD4c7c.rad.emptyAmbulatory")
+                : t("worklistDepartments.radiology.empty")}</p>
           </div>
         ) : (
           <div style={{ marginTop: 24 }}>
             {searchQuery.trim() &&
             filteredQueuePairs.length === 0 &&
             filteredPendingLocal.length === 0 &&
-            (queue.length > 0 || pendingLocal.length > 0) ? (
+            (displayedQueue.length > 0 || pendingLocal.length > 0) ? (
               <div
                 style={{
                   borderRadius: 16,
