@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   Controller,
+  ForbiddenException,
   Get,
   Query,
   Req,
@@ -121,6 +122,93 @@ export class ClinicCareController {
         period,
       });
     } catch (err) {
+      if (isPrismaSchemaMissError(err)) {
+        throw new ServiceUnavailableException({
+          message: CLINIC_CARE_SCHEMA_MISS_MESSAGE,
+          code: "CLINIC_CARE_SCHEMA_MISS",
+          migration: "20261028120000_enterprise_appointment_visit_origin_d4c3",
+        });
+      }
+      throw err;
+    }
+  }
+
+  /**
+   * MEDUI.D4C.6 — ambulatory order board (enterprise Order projection).
+   */
+  @Get("orders-board")
+  @UseGuards(ClinicCareReadAccessGuard)
+  async getOrdersBoard(
+    @Req()
+    req: {
+      facilityId?: string;
+      clinicCareAccess?: Parameters<ClinicCareService["getAmbulatoryOrdersBoardProjection"]>[0]["access"];
+      clinicCareProfessionGroup?: string;
+      clinicCareFacility?: Parameters<ClinicCareService["getAmbulatoryOrdersBoardProjection"]>[0]["facility"];
+    }
+  ) {
+    const facilityId = req.facilityId;
+    if (!facilityId) {
+      throw new BadRequestException("Facility ID required");
+    }
+    if (!req.clinicCareAccess || !req.clinicCareFacility || !req.clinicCareProfessionGroup) {
+      throw new BadRequestException("Clinic Care context required");
+    }
+
+    try {
+      return await this.clinicCareService.getAmbulatoryOrdersBoardProjection({
+        facilityId,
+        facility: req.clinicCareFacility,
+        access: req.clinicCareAccess,
+        professionGroup: req.clinicCareProfessionGroup,
+      });
+    } catch (err) {
+      if (err instanceof ForbiddenException) throw err;
+      if (isPrismaSchemaMissError(err)) {
+        throw new ServiceUnavailableException({
+          message: CLINIC_CARE_SCHEMA_MISS_MESSAGE,
+          code: "CLINIC_CARE_SCHEMA_MISS",
+          migration: "20261028120000_enterprise_appointment_visit_origin_d4c3",
+        });
+      }
+      throw err;
+    }
+  }
+
+  /**
+   * MEDUI.D4C.6 — ambulatory results inbox (enterprise Result projection).
+   * Acknowledge remains POST /orders/:id/result/acknowledge.
+   */
+  @Get("results-inbox")
+  @UseGuards(ClinicCareReadAccessGuard)
+  async getResultsInbox(
+    @Req()
+    req: {
+      facilityId?: string;
+      clinicCareAccess?: Parameters<ClinicCareService["getAmbulatoryResultsInboxProjection"]>[0]["access"];
+      clinicCareProfessionGroup?: string;
+      clinicCareFacility?: Parameters<ClinicCareService["getAmbulatoryResultsInboxProjection"]>[0]["facility"];
+      clinicCareRoleCodes?: readonly string[];
+    }
+  ) {
+    const facilityId = req.facilityId;
+    if (!facilityId) {
+      throw new BadRequestException("Facility ID required");
+    }
+    if (!req.clinicCareAccess || !req.clinicCareFacility || !req.clinicCareProfessionGroup) {
+      throw new BadRequestException("Clinic Care context required");
+    }
+
+    try {
+      return await this.clinicCareService.getAmbulatoryResultsInboxProjection({
+        facilityId,
+        facility: req.clinicCareFacility,
+        access: req.clinicCareAccess,
+        professionGroup: req.clinicCareProfessionGroup,
+        roleCodes: req.clinicCareRoleCodes,
+      });
+    } catch (err) {
+      if (err instanceof ForbiddenException) throw err;
       if (isPrismaSchemaMissError(err)) {
         throw new ServiceUnavailableException({
           message: CLINIC_CARE_SCHEMA_MISS_MESSAGE,

@@ -15,6 +15,7 @@ import {
   buildClinicCarePatientFlow,
   buildClinicCareVisitTypeSlices,
   buildClinicCareVisitsByDaySeries,
+  classifyClinicCareAmbulatoryResult,
   clinicCareNextStepHint,
   clinicCareVisitOriginDisplayToken,
   computeClinicCareWaitMinutes,
@@ -27,6 +28,7 @@ import {
   isHaitiPublicHealthJurisdiction,
   localDateKeyForInstant,
   percentChange,
+  projectClinicCareAmbulatoryOrderCategory,
   projectClinicCareIntakeStatus,
   projectClinicCareNursingQueueStage,
   projectClinicCareStage,
@@ -34,6 +36,8 @@ import {
   projectRegistrationCompleteness,
   readHospitalAssignmentBag,
   resolveAmbulatoryOperatingMode,
+  resolveClinicCareAmbulatoryOrdersBoardAccess,
+  resolveClinicCareAmbulatoryResultsInboxAccess,
   resolveClinicCareDashboardAccess,
   resolveClinicCareTrackboardFieldVisibility,
   resolveFacilityCareProfile,
@@ -906,7 +910,404 @@ export class ClinicCareService {
       generatedAt: now.toISOString(),
     };
   }
+
+  /**
+   * MEDUI.D4C.6 — ambulatory order board projection over enterprise Order rows.
+   * Facility + OUTPATIENT|URGENT_CARE only. No ClinicOrder* persistence.
+   */
+  async getAmbulatoryOrdersBoardProjection(input: {
+    facilityId: string;
+    facility: {
+      name?: string | null;
+      timezone?: string | null;
+    };
+    access: ClinicCareWorkspaceRoleAccess;
+    professionGroup: string;
+    now?: Date;
+  }): Promise<ClinicCareAmbulatoryOrdersBoardDto> {
+    const boardAccess = resolveClinicCareAmbulatoryOrdersBoardAccess({
+      professionGroup: input.professionGroup,
+      access: input.access,
+    });
+    if (!boardAccess.canViewBoard) {
+      throw new ForbiddenException("Clinic Care ambulatory orders board access denied for this role.");
+    }
+
+    const now = input.now ?? new Date();
+    const ambulatoryTypes = [
+      EncounterType.OUTPATIENT,
+      EncounterType.URGENT_CARE,
+    ] as EncounterType[];
+
+    const orders = await this.prisma.order.findMany({
+      where: {
+        facilityId: input.facilityId,
+        encounter: {
+          facilityId: input.facilityId,
+          type: { in: ambulatoryTypes },
+        },
+      },
+      select: {
+        id: true,
+        type: true,
+        status: true,
+        priority: true,
+        createdAt: true,
+        encounterId: true,
+        encounter: {
+          select: {
+            id: true,
+            type: true,
+            status: true,
+            patientId: true,
+            patient: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                mrn: true,
+              },
+            },
+          },
+        },
+        items: {
+          select: {
+            id: true,
+            status: true,
+            catalogItemType: true,
+            manualLabel: true,
+            manualSecondaryText: true,
+          },
+          take: 12,
+        },
+      },
+      orderBy: [{ createdAt: "desc" }],
+      take: CLINIC_CARE_ORDERS_BOARD_LIMIT,
+    });
+
+    const rows: ClinicCareAmbulatoryOrderBoardRowDto[] = orders.map((order) => {
+      const patient = order.encounter?.patient;
+      const patientName = personName(patient) ?? "—";
+      const itemSummaries = order.items.map((it) => ({
+        id: it.id,
+        status: it.status,
+        catalogItemType: it.catalogItemType,
+        label:
+          it.manualLabel?.trim() ||
+          it.manualSecondaryText?.trim() ||
+          it.catalogItemType ||
+          "—",
+      }));
+      return {
+        orderId: order.id,
+        encounterId: order.encounterId,
+        patientId: order.encounter?.patientId ?? patient?.id ?? "",
+        patientName,
+        mrn: patient?.mrn ?? null,
+        encounterType: order.encounter?.type ?? null,
+        encounterStatus: order.encounter?.status ?? null,
+        orderType: order.type,
+        category: projectClinicCareAmbulatoryOrderCategory(order.type),
+        status: order.status,
+        priority: order.priority,
+        createdAt: order.createdAt.toISOString(),
+        itemCount: order.items.length,
+        itemSummaries,
+        careSettingProjection: "AMBULATORY" as const,
+      };
+    });
+
+    return {
+      facilityId: input.facilityId,
+      facilityName: input.facility.name ?? null,
+      facilityTimeZone: input.facility.timezone ?? "UTC",
+      careSettingProjection: "AMBULATORY",
+      ambulatoryEncounterTypes: [...CLINIC_CARE_AMBULATORY_ENCOUNTER_TYPES],
+      rows,
+      rowLimit: CLINIC_CARE_ORDERS_BOARD_LIMIT,
+      truncated: rows.length >= CLINIC_CARE_ORDERS_BOARD_LIMIT,
+      access: boardAccess,
+      authority: {
+        orderEngine: "OrdersService",
+        placement: "POST /encounters/:id/orders via CreateOrderModal",
+        detail: "enterprise encounter orders tab",
+        noClinicOrderEntity: true,
+      },
+      generatedAt: now.toISOString(),
+    };
+  }
+
+  /**
+   * MEDUI.D4C.6 — ambulatory results inbox projection over enterprise Result rows.
+   * Acknowledge remains POST /orders/:id/result/acknowledge (no ClinicResult*).
+   */
+  async getAmbulatoryResultsInboxProjection(input: {
+    facilityId: string;
+    facility: {
+      name?: string | null;
+      timezone?: string | null;
+    };
+    access: ClinicCareWorkspaceRoleAccess;
+    professionGroup: string;
+    roleCodes?: readonly string[];
+    now?: Date;
+  }): Promise<ClinicCareAmbulatoryResultsInboxDto> {
+    const inboxAccess = resolveClinicCareAmbulatoryResultsInboxAccess({
+      professionGroup: input.professionGroup,
+      access: input.access,
+      roleCodes: input.roleCodes,
+    });
+    if (!inboxAccess.canViewInbox) {
+      throw new ForbiddenException("Clinic Care ambulatory results inbox access denied for this role.");
+    }
+
+    const now = input.now ?? new Date();
+    const ambulatoryTypes = [
+      EncounterType.OUTPATIENT,
+      EncounterType.URGENT_CARE,
+    ] as EncounterType[];
+
+    const items = await this.prisma.orderItem.findMany({
+      where: {
+        catalogItemType: { in: ["LAB_TEST", "IMAGING_STUDY"] },
+        OR: [
+          { status: { in: ["RESULTED", "VERIFIED", "COMPLETED", "IN_PROGRESS"] } },
+          { result: { isNot: null } },
+        ],
+        order: {
+          facilityId: input.facilityId,
+          encounter: {
+            facilityId: input.facilityId,
+            type: { in: ambulatoryTypes },
+          },
+        },
+      },
+      select: {
+        id: true,
+        status: true,
+        catalogItemType: true,
+        manualLabel: true,
+        manualSecondaryText: true,
+        result: {
+          select: {
+            id: true,
+            resultText: true,
+            criticalValue: true,
+            verifiedAt: true,
+            acknowledgedByProviderAt: true,
+            acknowledgedByUserId: true,
+          },
+        },
+        order: {
+          select: {
+            id: true,
+            type: true,
+            status: true,
+            priority: true,
+            encounterId: true,
+            encounter: {
+              select: {
+                id: true,
+                type: true,
+                status: true,
+                patientId: true,
+                patient: {
+                  select: {
+                    id: true,
+                    firstName: true,
+                    lastName: true,
+                    mrn: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+      orderBy: [{ updatedAt: "desc" }],
+      take: CLINIC_CARE_RESULTS_INBOX_LIMIT,
+    });
+
+    const rows: ClinicCareAmbulatoryResultInboxRowDto[] = items
+      .filter((it) => {
+        const r = it.result;
+        const hasContent =
+          Boolean(r?.resultText?.trim()) ||
+          Boolean(r?.verifiedAt) ||
+          Boolean(r?.criticalValue) ||
+          it.status === "RESULTED" ||
+          it.status === "VERIFIED" ||
+          it.status === "COMPLETED" ||
+          it.status === "IN_PROGRESS";
+        return hasContent;
+      })
+      .map((it) => {
+        const patient = it.order.encounter?.patient;
+        const classification = classifyClinicCareAmbulatoryResult({
+          catalogItemType: it.catalogItemType,
+          status: it.status,
+          resultText: it.result?.resultText ?? null,
+          criticalValue: it.result?.criticalValue ?? null,
+          acknowledgedByProviderAt: it.result?.acknowledgedByProviderAt ?? null,
+          verifiedAt: it.result?.verifiedAt ?? null,
+        });
+        return {
+          orderItemId: it.id,
+          orderId: it.order.id,
+          encounterId: it.order.encounterId,
+          patientId: it.order.encounter?.patientId ?? patient?.id ?? "",
+          patientName: personName(patient) ?? "—",
+          mrn: patient?.mrn ?? null,
+          encounterType: it.order.encounter?.type ?? null,
+          catalogItemType: it.catalogItemType,
+          orderType: it.order.type,
+          status: it.status,
+          priority: it.order.priority,
+          label:
+            it.manualLabel?.trim() ||
+            it.manualSecondaryText?.trim() ||
+            it.catalogItemType ||
+            "—",
+          critical: classification.critical,
+          abnormal: classification.abnormal,
+          preliminary: classification.preliminary,
+          finalLike: classification.finalLike,
+          acknowledged: classification.acknowledged,
+          primaryGroup: classification.primaryGroup,
+          groups: classification.groups,
+          acknowledgedByProviderAt: it.result?.acknowledgedByProviderAt
+            ? it.result.acknowledgedByProviderAt.toISOString()
+            : null,
+          acknowledgedByUserId: it.result?.acknowledgedByUserId ?? null,
+          verifiedAt: it.result?.verifiedAt ? it.result.verifiedAt.toISOString() : null,
+          resultPreview: (it.result?.resultText ?? "").trim().slice(0, 160) || null,
+          careSettingProjection: "AMBULATORY" as const,
+        };
+      });
+
+    const groupCounts = {
+      CRITICAL: rows.filter((r) => r.groups.includes("CRITICAL")).length,
+      ABNORMAL: rows.filter((r) => r.groups.includes("ABNORMAL")).length,
+      NEW_FINAL: rows.filter((r) => r.groups.includes("NEW_FINAL")).length,
+      PRELIMINARY: rows.filter((r) => r.groups.includes("PRELIMINARY")).length,
+      ACKNOWLEDGED: rows.filter((r) => r.groups.includes("ACKNOWLEDGED")).length,
+      ALL: rows.length,
+    };
+
+    return {
+      facilityId: input.facilityId,
+      facilityName: input.facility.name ?? null,
+      facilityTimeZone: input.facility.timezone ?? "UTC",
+      careSettingProjection: "AMBULATORY",
+      ambulatoryEncounterTypes: [...CLINIC_CARE_AMBULATORY_ENCOUNTER_TYPES],
+      rows,
+      groupCounts,
+      rowLimit: CLINIC_CARE_RESULTS_INBOX_LIMIT,
+      truncated: rows.length >= CLINIC_CARE_RESULTS_INBOX_LIMIT,
+      access: inboxAccess,
+      authority: {
+        resultEngine: "ResultsService",
+        acknowledgeEndpoint: "POST /orders/:id/result/acknowledge",
+        acknowledgeMetadata: ["acknowledgedByUserId", "acknowledgedByProviderAt"],
+        acknowledgeCommentDeferred: true,
+        detail: "ClinicalResultViewer / EncounterResultsTab",
+        noClinicResultEntity: true,
+      },
+      generatedAt: now.toISOString(),
+    };
+  }
 }
+
+export type ClinicCareAmbulatoryOrderBoardRowDto = {
+  orderId: string;
+  encounterId: string;
+  patientId: string;
+  patientName: string;
+  mrn: string | null;
+  encounterType: string | null;
+  encounterStatus: string | null;
+  orderType: string;
+  category: string;
+  status: string;
+  priority: string;
+  createdAt: string;
+  itemCount: number;
+  itemSummaries: Array<{
+    id: string;
+    status: string;
+    catalogItemType: string | null;
+    label: string;
+  }>;
+  careSettingProjection: "AMBULATORY";
+};
+
+export type ClinicCareAmbulatoryOrdersBoardDto = {
+  facilityId: string;
+  facilityName: string | null;
+  facilityTimeZone: string;
+  careSettingProjection: "AMBULATORY";
+  ambulatoryEncounterTypes: string[];
+  rows: ClinicCareAmbulatoryOrderBoardRowDto[];
+  rowLimit: number;
+  truncated: boolean;
+  access: ReturnType<typeof resolveClinicCareAmbulatoryOrdersBoardAccess>;
+  authority: {
+    orderEngine: string;
+    placement: string;
+    detail: string;
+    noClinicOrderEntity: true;
+  };
+  generatedAt: string;
+};
+
+export type ClinicCareAmbulatoryResultInboxRowDto = {
+  orderItemId: string;
+  orderId: string;
+  encounterId: string;
+  patientId: string;
+  patientName: string;
+  mrn: string | null;
+  encounterType: string | null;
+  catalogItemType: string;
+  orderType: string;
+  status: string;
+  priority: string;
+  label: string;
+  critical: boolean;
+  abnormal: boolean;
+  preliminary: boolean;
+  finalLike: boolean;
+  acknowledged: boolean;
+  primaryGroup: string;
+  groups: string[];
+  acknowledgedByProviderAt: string | null;
+  acknowledgedByUserId: string | null;
+  verifiedAt: string | null;
+  resultPreview: string | null;
+  careSettingProjection: "AMBULATORY";
+};
+
+export type ClinicCareAmbulatoryResultsInboxDto = {
+  facilityId: string;
+  facilityName: string | null;
+  facilityTimeZone: string;
+  careSettingProjection: "AMBULATORY";
+  ambulatoryEncounterTypes: string[];
+  rows: ClinicCareAmbulatoryResultInboxRowDto[];
+  groupCounts: Record<string, number>;
+  rowLimit: number;
+  truncated: boolean;
+  access: ReturnType<typeof resolveClinicCareAmbulatoryResultsInboxAccess>;
+  authority: {
+    resultEngine: string;
+    acknowledgeEndpoint: string;
+    acknowledgeMetadata: string[];
+    acknowledgeCommentDeferred: true;
+    detail: string;
+    noClinicResultEntity: true;
+  };
+  generatedAt: string;
+};
 
 export type ClinicCareDashboardProjectionDto = {
   facilityId: string;
@@ -941,4 +1342,7 @@ export function clinicCareAmbulatoryTypesForQuery(): string[] {
   return [...CLINIC_CARE_AMBULATORY_ENCOUNTER_TYPES];
 }
 
-export { CLINIC_CARE_ROW_LIMIT };
+const CLINIC_CARE_ORDERS_BOARD_LIMIT = 200;
+const CLINIC_CARE_RESULTS_INBOX_LIMIT = 200;
+
+export { CLINIC_CARE_ROW_LIMIT, CLINIC_CARE_ORDERS_BOARD_LIMIT, CLINIC_CARE_RESULTS_INBOX_LIMIT };
