@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import {
   fetchUpcomingFollowUps,
@@ -14,6 +15,7 @@ import { encounterBcp47, tFollowUpStatus } from "@/lib/encounterChromeI18n";
 import { useI18n } from "@/lib/i18n";
 import { getCachedRecord, setCachedRecord } from "@/lib/offline/offlineCache";
 import { useConnectivityStatus } from "@/lib/offline/useConnectivityStatus";
+import { invalidateClinicFollowUpProjectionCache } from "@/lib/invalidateClinicFollowUpProjectionCache";
 
 function formatDate(d: string | null | undefined, locale: string, emptyDash: string) {
   return d ? new Date(d).toLocaleDateString(locale) : emptyDash;
@@ -72,18 +74,46 @@ function canManageFollowUpStatusRole(roles: string[]) {
   return roles.includes("RN") || roles.includes("PROVIDER") || roles.includes("ADMIN");
 }
 
+function readInitialFilters(sp: URLSearchParams) {
+  const dateFrom = sp.get("dateFrom") || sp.get("from");
+  const dateTo = sp.get("dateTo") || sp.get("to");
+  const status = sp.get("status");
+  const actionable = sp.get("actionable") === "1" || sp.get("actionable") === "true";
+  const endExclusive = sp.get("endExclusive");
+  const statusFilter =
+    status === "OPEN" || status === "COMPLETED" || status === "CANCELLED"
+      ? status
+      : actionable
+        ? "OPEN"
+        : "ALL";
+  return {
+    fromDate: dateFrom && /^\d{4}-\d{2}-\d{2}$/.test(dateFrom) ? dateFrom : getDefaultFrom(),
+    toDate: dateTo && /^\d{4}-\d{2}-\d{2}$/.test(dateTo) ? dateTo : getDefaultTo(),
+    statusFilter: statusFilter as "ALL" | "OPEN" | "COMPLETED" | "CANCELLED",
+    actionable,
+    endExclusive: endExclusive && !Number.isNaN(Date.parse(endExclusive)) ? endExclusive : null,
+  };
+}
+
 export default function FollowUpsPage() {
   const { t, language } = useI18n();
   const dateLocale = encounterBcp47(language);
   const dash = t("common.dash");
+  const searchParams = useSearchParams();
+  const initial = useMemo(() => readInitialFilters(searchParams), [searchParams]);
   const { facilityId, roles, ready: rolesReady } = useFacilityAndRoles();
   const { isOffline } = useConnectivityStatus();
   const [items, setItems] = useState<FollowUpRow[]>([]);
   const [loading, setLoading] = useState(false);
-  const [fromDate, setFromDate] = useState(getDefaultFrom);
-  const [toDate, setToDate] = useState(getDefaultTo);
+  const [loadFailed, setLoadFailed] = useState(false);
+  const [fromDate, setFromDate] = useState(initial.fromDate);
+  const [toDate, setToDate] = useState(initial.toDate);
   const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState<"ALL" | "OPEN" | "COMPLETED" | "CANCELLED">("ALL");
+  const [statusFilter, setStatusFilter] = useState<"ALL" | "OPEN" | "COMPLETED" | "CANCELLED">(
+    initial.statusFilter
+  );
+  const [actionableMode, setActionableMode] = useState(initial.actionable);
+  const [endExclusive, setEndExclusive] = useState<string | null>(initial.endExclusive);
   const [actionId, setActionId] = useState<string | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [toast, setToast] = useState<{ type: "ok" | "err"; message: string } | null>(null);
@@ -101,29 +131,52 @@ export default function FollowUpsPage() {
     return () => clearTimeout(toastHideTimer);
   }, [toast]);
 
+  useEffect(() => {
+    const next = readInitialFilters(searchParams);
+    setFromDate(next.fromDate);
+    setToDate(next.toDate);
+    setStatusFilter(next.statusFilter);
+    setActionableMode(next.actionable);
+    setEndExclusive(next.endExclusive);
+  }, [searchParams]);
+
   const load = useCallback(async () => {
     if (!facilityId) return;
     setLoading(true);
-    const cacheKey = `followups:${facilityId}:${fromDate}:${toDate}`;
+    setLoadFailed(false);
+    const cacheKey = `followups:${facilityId}:${fromDate}:${toDate}:${actionableMode}:${endExclusive ?? ""}`;
     try {
       const res = await fetchUpcomingFollowUps(facilityId, {
-        from: fromDate,
+        from: actionableMode ? undefined : fromDate,
         to: toDate,
-        limit: 100,
+        endExclusive: actionableMode && endExclusive ? endExclusive : undefined,
+        actionable: actionableMode,
+        status: statusFilter === "ALL" ? undefined : statusFilter,
+        limit: 200,
       });
       setItems(res.items ?? []);
       void setCachedRecord("followups", cacheKey, res.items ?? [], { facilityId });
     } catch (e) {
       console.error("Failed to load follow-ups:", e);
+      setLoadFailed(true);
       const cached = await getCachedRecord<FollowUpRow[]>("followups", cacheKey);
-      setItems(cached?.data ?? []);
+      if (cached?.data) {
+        setItems(cached.data);
+      } else {
+        setItems([]);
+      }
     } finally {
       setLoading(false);
     }
-  }, [facilityId, fromDate, toDate]);
+  }, [facilityId, fromDate, toDate, actionableMode, endExclusive, statusFilter]);
 
   useEffect(() => {
-    if (facilityId) load();
+    if (facilityId) void load();
+  }, [facilityId, load]);
+
+  const afterMutation = useCallback(async () => {
+    if (facilityId) invalidateClinicFollowUpProjectionCache(facilityId);
+    await load();
   }, [facilityId, load]);
 
   const handleComplete = async (id: string) => {
@@ -131,8 +184,8 @@ export default function FollowUpsPage() {
     setActionId(id);
     try {
       const res = await completeFollowUp(facilityId, id);
-      await load();
-      if ((res as any)?.queued) {
+      await afterMutation();
+      if ((res as { queued?: boolean })?.queued) {
         showToast("ok", t("followUpsPage.toastOfflineSaved"));
       } else {
         showToast("ok", t("followUpsPage.toastCompleteOk"));
@@ -150,8 +203,8 @@ export default function FollowUpsPage() {
     setActionId(id);
     try {
       const res = await cancelFollowUp(facilityId, id);
-      await load();
-      if ((res as any)?.queued) {
+      await afterMutation();
+      if ((res as { queued?: boolean })?.queued) {
         showToast("ok", t("followUpsPage.toastOfflineSaved"));
       } else {
         showToast("ok", t("followUpsPage.toastCancelOk"));
@@ -169,7 +222,7 @@ export default function FollowUpsPage() {
       if (statusFilter !== "ALL" && fu.status !== statusFilter) return false;
       const q = searchQuery.trim().toLowerCase();
       if (!q) return true;
-      const hay = `${fu.patient?.firstName ?? ""} ${fu.patient?.lastName ?? ""} ${fu.patient?.mrn ?? ""} ${fu.reason ?? ""}`.toLowerCase();
+      const hay = `${fu.patient?.firstName ?? ""} ${fu.patient?.lastName ?? ""} ${fu.patient?.mrn ?? ""} ${fu.reason ?? ""} ${fu.createdBy?.firstName ?? ""} ${fu.createdBy?.lastName ?? ""}`.toLowerCase();
       return hay.includes(q);
     })
     .sort((a, b) => {
@@ -237,9 +290,12 @@ export default function FollowUpsPage() {
       <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "flex-start", gap: 16, marginBottom: 8 }}>
         <div>
           <h1 style={{ margin: "0 0 8px 0" }}>{t("followUpsPage.title")}</h1>
-          <p style={{ fontSize: 14, color: "#666", margin: 0 }}>
-            {t("followUpsPage.intro")}
-          </p>
+          <p style={{ fontSize: 14, color: "#666", margin: 0 }}>{t("followUpsPage.intro")}</p>
+          {actionableMode ? (
+            <p style={{ fontSize: 12, color: "#0f766e", margin: "8px 0 0 0" }}>
+              {t("followUpsPage.actionableFilterNote")}
+            </p>
+          ) : null}
           {isOffline && (
             <p style={{ fontSize: 12, color: "#8a4b08", margin: "8px 0 0 0" }}>
               {t("followUpsPage.offlineCacheNote")}
@@ -268,7 +324,11 @@ export default function FollowUpsPage() {
           <span style={{ fontSize: 14 }}>{t("followUpsPage.statusLabel")}</span>
           <select
             value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value as "ALL" | "OPEN" | "COMPLETED" | "CANCELLED")}
+            onChange={(e) => {
+              setActionableMode(false);
+              setEndExclusive(null);
+              setStatusFilter(e.target.value as "ALL" | "OPEN" | "COMPLETED" | "CANCELLED");
+            }}
             style={{ padding: "8px 10px", fontSize: 14, border: "1px solid #ccc", borderRadius: 4 }}
           >
             <option value="ALL">{t("followUpsPage.statusAll")}</option>
@@ -282,7 +342,11 @@ export default function FollowUpsPage() {
           <input
             type="date"
             value={fromDate}
-            onChange={(e) => setFromDate(e.target.value)}
+            onChange={(e) => {
+              setActionableMode(false);
+              setEndExclusive(null);
+              setFromDate(e.target.value);
+            }}
             style={{ padding: "8px 10px", fontSize: 14, border: "1px solid #ccc", borderRadius: 4 }}
           />
         </label>
@@ -291,16 +355,30 @@ export default function FollowUpsPage() {
           <input
             type="date"
             value={toDate}
-            onChange={(e) => setToDate(e.target.value)}
+            onChange={(e) => {
+              setActionableMode(false);
+              setEndExclusive(null);
+              setToDate(e.target.value);
+            }}
             style={{ padding: "8px 10px", fontSize: 14, border: "1px solid #ccc", borderRadius: 4 }}
           />
         </label>
-        <button type="button" style={{ ...btnSecondary, fontWeight: 600 }} onClick={load} disabled={loading}>
+        <button type="button" style={{ ...btnSecondary, fontWeight: 600 }} onClick={() => void load()} disabled={loading}>
           {loading ? t("common.loading") : t("common.apply")}
         </button>
       </div>
 
-      {loading && !filteredSorted.length ? (
+      {loadFailed && !items.length ? (
+        <div
+          role="alert"
+          style={{ padding: 24, backgroundColor: "#fef2f2", border: "1px solid #fecaca", borderRadius: 8, color: "#991b1b" }}
+        >
+          {t("followUpsPage.loadFailed")}
+          <button type="button" style={{ ...btnSecondary, marginLeft: 12 }} onClick={() => void load()}>
+            {t("followUpsPage.retry")}
+          </button>
+        </div>
+      ) : loading && !filteredSorted.length ? (
         <div style={{ padding: 40, textAlign: "center", color: "#666" }}>{t("followUpsPage.loadingList")}</div>
       ) : filteredSorted.length === 0 ? (
         <div style={{ padding: 24, backgroundColor: "#fafafa", border: "1px solid #eee", borderRadius: 8, color: "#555" }}>
@@ -308,7 +386,7 @@ export default function FollowUpsPage() {
           {canCreate ? ` ${t("followUpsPage.emptyHintCreate")}` : null}
         </div>
       ) : (
-        <table style={tableStyles.table}>
+        <table style={tableStyles.table} data-testid="follow-ups-list-table">
           <thead>
             <tr>
               <th style={tableStyles.th}>{t("followUpsPage.colPatient")}</th>
@@ -368,26 +446,34 @@ export default function FollowUpsPage() {
                     <Link href={`/app/patients/${fu.patientId}`} style={{ ...btnSecondary, textDecoration: "none", display: "inline-block" }}>
                       {t("followUpsPage.openChart")}
                     </Link>
-                  {fu.status === "OPEN" && canCompleteCancel && (
-                    <>
-                      <button
-                        type="button"
-                        style={btnSecondary}
-                        onClick={() => handleComplete(fu.id)}
-                        disabled={actionId !== null}
+                    {fu.encounterId ? (
+                      <Link
+                        href={`/app/encounters/${fu.encounterId}`}
+                        style={{ ...btnSecondary, textDecoration: "none", display: "inline-block" }}
                       >
-                        {actionId === fu.id ? "…" : t("followUpsPage.markComplete")}
-                      </button>
-                      <button
-                        type="button"
-                        style={{ ...btnSecondary, color: "#c62828", borderColor: "#c62828" }}
-                        onClick={() => handleCancel(fu.id)}
-                        disabled={actionId !== null}
-                      >
-                        {t("followUpsPage.cancelFollowUp")}
-                      </button>
-                    </>
-                  )}
+                        {t("followUpsPage.openEncounter")}
+                      </Link>
+                    ) : null}
+                    {fu.status === "OPEN" && canCompleteCancel && (
+                      <>
+                        <button
+                          type="button"
+                          style={btnSecondary}
+                          onClick={() => void handleComplete(fu.id)}
+                          disabled={actionId !== null}
+                        >
+                          {actionId === fu.id ? "…" : t("followUpsPage.markComplete")}
+                        </button>
+                        <button
+                          type="button"
+                          style={btnSecondary}
+                          onClick={() => void handleCancel(fu.id)}
+                          disabled={actionId !== null}
+                        >
+                          {actionId === fu.id ? "…" : t("followUpsPage.cancelFollowUp")}
+                        </button>
+                      </>
+                    )}
                   </span>
                 </td>
               </tr>
@@ -396,20 +482,17 @@ export default function FollowUpsPage() {
         </table>
       )}
 
-      {showAddModal && facilityId && (
+      {showAddModal && facilityId ? (
         <CreateFollowUpModal
           facilityId={facilityId}
           onClose={() => setShowAddModal(false)}
           onSuccess={() => {
             setShowAddModal(false);
+            if (facilityId) invalidateClinicFollowUpProjectionCache(facilityId);
             void load();
-            showToast(
-              "ok",
-              isOffline ? t("followUpsPage.successAddOffline") : t("followUpsPage.successAddOnline")
-            );
           }}
         />
-      )}
+      ) : null}
     </div>
   );
 }

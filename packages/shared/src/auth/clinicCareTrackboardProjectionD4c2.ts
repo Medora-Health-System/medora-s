@@ -188,12 +188,9 @@ export function facilityLocalDayUtcBounds(
 
 /**
  * FOLLOW_UPS_DUE inclusion (due today + overdue; tomorrow excluded).
- * - authenticated facility match
- * - ambulatory care (unlinked at clinic facility, or linked ambulatory encounter)
- * - unresolved/open
- * - due on or before end of facility-local current day
- * - not completed/canceled
- * - valid due date
+ * Equivalent to D4C.5B.1 `projectClinicFollowUpStatus` with periodEnd = today end
+ * (see clinicFollowUpProjectionD4c5b1 — keep semantics aligned; tests assert equivalence).
+ * Closed encounters do not drop valid follow-ups (encounter status unused).
  */
 export function isClinicCareFollowUpDue(input: {
   authenticatedFacilityId: string;
@@ -203,14 +200,19 @@ export function isClinicCareFollowUpDue(input: {
   dayEndExclusiveUtc: Date;
   /** When linked, encounter must be ambulatory; null/undefined = unlinked (allowed at facility). */
   linkedEncounterType?: string | null;
+  encounterFacilityId?: string | null;
+  appointmentFacilityId?: string | null;
 }): boolean {
-  if (
-    !input.authenticatedFacilityId ||
-    !input.followUpFacilityId ||
-    input.authenticatedFacilityId !== input.followUpFacilityId
-  ) {
-    return false;
-  }
+  const auth = String(input.authenticatedFacilityId ?? "").trim();
+  if (!auth) return false;
+  const scopeIds = [
+    input.followUpFacilityId,
+    input.encounterFacilityId,
+    input.appointmentFacilityId,
+  ]
+    .map((x) => String(x ?? "").trim())
+    .filter(Boolean);
+  if (!scopeIds.some((id) => id === auth)) return false;
 
   const status = String(input.status ?? "")
     .trim()

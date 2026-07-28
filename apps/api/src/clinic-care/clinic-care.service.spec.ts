@@ -307,6 +307,71 @@ describe("MEDUI.D4C.2 ClinicCareService projection", () => {
     expect(prisma.appointment.findMany).toHaveBeenCalled();
   });
 
+  it("D4C.5B.1 WEEK follow-up KPI counts mid-week OPEN due (not today-only)", async () => {
+    const now = new Date("2026-07-27T18:00:00.000Z");
+    const day = facilityLocalDayUtcBounds(now, "America/Port-au-Prince");
+    const midWeekDue = new Date(day.startUtc.getTime() + 3 * 86_400_000 + 12 * 3_600_000);
+    const prisma = {
+      followUp: {
+        findMany: jest.fn().mockResolvedValue([
+          {
+            id: "fu-mid",
+            facilityId: "fac-dash",
+            status: "OPEN",
+            dueDate: midWeekDue,
+            encounterId: null,
+            encounter: null,
+          },
+          {
+            id: "fu-done",
+            facilityId: "fac-dash",
+            status: "COMPLETED",
+            dueDate: midWeekDue,
+            encounterId: null,
+            encounter: null,
+          },
+        ]),
+      },
+      encounter: { findMany: jest.fn().mockResolvedValue([]) },
+      appointment: { findMany: jest.fn().mockResolvedValue([]) },
+    };
+    const service = new ClinicCareService(prisma as never, {
+      getOperationalAggregatesForEncounterIds: jest.fn().mockResolvedValue(new Map()),
+    } as never);
+    const access = clinicAccess("PROVIDER");
+    const caps = resolveFacilityModuleCapabilitiesD4c1({ facilityType: "CLINIC" });
+
+    const result = await service.getDashboardProjection({
+      facilityId: "fac-dash",
+      facility: {
+        name: "Dash Clinic",
+        timezone: "America/Port-au-Prince",
+        facilityType: "CLINIC",
+        serviceLinesJson: ["CLINIC"],
+        facilityCareProfileJson: null,
+      },
+      serviceLines: ["CLINIC"],
+      access,
+      professionGroup: "PROVIDER",
+      moduleCapabilities: caps,
+      period: "WEEK",
+      now,
+    });
+
+    const fuKpi = result.kpis.find((k) => k.id === "FOLLOW_UPS_TO_SCHEDULE");
+    expect(fuKpi?.value).toBe(1);
+    expect(result.followUpDrillDownHref).toContain("/app/clinic-care/follow-up?");
+    expect(result.followUpDrillDownHref).toContain("actionable=1");
+    expect(result.followUpDrillDownHref).toContain("endExclusive=");
+    expect(isClinicCareFollowUpDue({
+      authenticatedFacilityId: "fac-dash",
+      followUpFacilityId: "fac-dash",
+      status: "OPEN",
+      dueDate: midWeekDue,
+      dayEndExclusiveUtc: day.endExclusiveUtc,
+    })).toBe(false);
+  });
+
   it("D4C.5A dashboard includes provider productivity for ADMIN", async () => {
     const prisma = {
       followUp: { findMany: jest.fn().mockResolvedValue([]) },

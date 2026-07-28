@@ -1236,6 +1236,11 @@ export default {
     successAddOffline: "Suivi enregistré hors ligne",
     successAddOnline: "Suivi ajouté",
     noUpcoming14Days: "Aucun suivi à venir sur les 14 prochains jours.",
+    loadFailed: "Impossible de charger les suivis.",
+    openEncounter: "Ouvrir la consultation",
+    actionableFilterNote:
+      "Suivis ouverts à traiter jusqu’à la fin de la période (y compris en retard) — aligné sur le tableau clinique.",
+    retry: "Réessayer",
   },
   observationBoard: {
     readAccessDenied:
@@ -9855,7 +9860,7 @@ export default {
       completedVisits: "Visites terminées",
       waiting: "En attente",
       averageWait: "Temps d’attente moyen",
-      followUpsToSchedule: "Suivis à planifier",
+      followUpsToSchedule: "Suivis ouverts (période)",
       minutesValue: "{value} min",
       patientsValue: "{value} patients",
       pctUp: "↑ {percent} % vs hier",
@@ -9868,6 +9873,7 @@ export default {
       waitingShare: "{percent} % des visites",
       waitCoverage: "{included}/{eligible} avec horaires",
       unavailable: "Indisponible",
+      followUpsHint: "Suivis ouverts à traiter jusqu’à la fin de la période (y compris en retard).",
     },
     chart: {
       visitsByDay: "Visites par jour",
@@ -9920,7 +9926,7 @@ export default {
       topProviderCompleted: "{providerName} a terminé {count} visites.",
       prescriptionsToday: "{count} prescriptions aujourd’hui.",
       followUpPlanningRate: "Taux de planification des suivis : {percent} %.",
-      followUpsToSchedule: "{count} suivis à planifier.",
+      followUpsToSchedule: "{count} suivis ouverts sur la période.",
       missedAppointments: "{today} manqués aujourd’hui · {week} cette semaine.",
       patientsWaiting: "{count} patients en attente.",
     },
