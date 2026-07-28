@@ -10166,6 +10166,52 @@ export default {
     },
   },
 
+  clinicCareD4c7: {
+    checkout: {
+      title: "Visit checkout",
+      subtitle: "Clinic checkout — not ED disposition.",
+      home: "Return home",
+      clinicFollowUp: "Clinic follow-up",
+      referral: "Referral",
+      transferEd: "Transfer to ED",
+      ama: "Left against medical advice",
+      other: "Other",
+    },
+    discharge: {
+      sharedEngineHint:
+        "Shared diagnosis-driven discharge instructions — Apply/refresh suggestions, edit, then save. Facility name is used in Clinic wording (never Emergency Department).",
+      saveProvider: "Save discharge instructions",
+      saved: "Discharge instructions saved.",
+      saveFailed: "Unable to save discharge instructions.",
+      print: "Print discharge instructions",
+      patientLeftClinic: "Date/time patient left the clinic",
+    },
+    print: {
+      blockedEmpty: "Print blocked: no discharge instruction content.",
+      blockedUnsigned: "Print blocked: explain and confirm instructions before printing the final copy.",
+      blockedEdWording: "Print blocked: Clinic instructions still contain Emergency Department wording.",
+    },
+    publicHealth: {
+      title: "Public health",
+      hint: "Enterprise Santé publique — Vaccinations and disease reports (no Clinic* duplicate).",
+      vaccinations: "Vaccinations",
+      diseaseReports: "Disease reports",
+    },
+    pharmacy: {
+      openEnterprise: "Pharmacy (enterprise)",
+      verification: {
+        notRequired: "Verification not required",
+        pending: "Pending verification",
+        verified: "Verified",
+        rejected: "Rejected",
+        overridden: "Overridden",
+      },
+      ambulatoryFilter: "Ambulatory only",
+      fulfillmentRx: "External dispense",
+      fulfillmentChart: "Onsite administer",
+    },
+  },
+
   clinicCareD4c6: {
     nav: {
       orders: "Orders",

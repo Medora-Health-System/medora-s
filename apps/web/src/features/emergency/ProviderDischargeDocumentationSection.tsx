@@ -41,6 +41,8 @@ import {
   edDispositionTouchButtonStyle,
   type EdDispositionLayoutMode,
 } from "./edDispositionResponsiveLayout";
+import type { DischargeInstructionCareSettingContext } from "@medora/shared";
+import { resolveDischargeVisitFramingPhrases } from "@medora/shared";
 
 const labelStyle: React.CSSProperties = {
   display: "block",
@@ -538,6 +540,7 @@ export function ProviderDischargeDocumentationSection({
   diagnosticsTabHref,
   validationErrors,
   layoutMode = "desktopSplit",
+  careSettingContext = null,
 }: {
   facilityId: string;
   patientId: string | null | undefined;
@@ -548,11 +551,17 @@ export function ProviderDischargeDocumentationSection({
   diagnosticsTabHref?: string;
   validationErrors?: ProviderDischargeValidationErrors | null;
   layoutMode?: EdDispositionLayoutMode;
+  /** MEDUI.D4C.7 — when CLINIC/URGENT_CARE, suggestions use facility-aware language. */
+  careSettingContext?: DischargeInstructionCareSettingContext | null;
 }) {
   const { t, language } = useI18n();
   const [encounterDiagnoses, setEncounterDiagnoses] = useState<DxRow[]>([]);
   const [diagnosesLoaded, setDiagnosesLoaded] = useState(false);
   const patientLeftEdLocal = isoToDatetimeLocal(providerForm.patientLeftEdAt);
+  const leftFacilityLabelKey =
+    careSettingContext && careSettingContext.careSetting !== "ED" ?
+      resolveDischargeVisitFramingPhrases({ ...careSettingContext, locale: language }).leftFacilityLabelKey
+    : "providerDischargeDocumentation19Y.patientLeftEd";
 
   useEffect(() => {
     if (!patientId) {
@@ -645,10 +654,11 @@ export function ProviderDischargeDocumentationSection({
         forceOverwrite: overwriteExisting,
         providerConfirmed,
         actor: { appliedAt: new Date().toISOString() },
+        careSettingContext,
       });
       const sharedPatch = mergeTemplateSharedFieldsIntoForm(
         providerForm,
-        extractSharedFieldsFromTemplate(resolved.template, language),
+        extractSharedFieldsFromTemplate(resolved.template, language, careSettingContext),
         {
           overwriteExisting,
         }
@@ -658,7 +668,7 @@ export function ProviderDischargeDocumentationSection({
         ...sharedPatch,
       });
     },
-    [language, patchProvider, providerForm]
+    [careSettingContext, language, patchProvider, providerForm]
   );
 
   const ensureDocForRow = useCallback(
@@ -674,9 +684,10 @@ export function ProviderDischargeDocumentationSection({
         locale: language,
         isPrimary,
         displayOrder: row.sortOrder,
+        careSettingContext,
       });
     },
-    [language, providerForm]
+    [careSettingContext, language, providerForm]
   );
 
   const mergeSharedFromSelectedDiagnoses = useCallback(
@@ -684,7 +695,7 @@ export function ProviderDischargeDocumentationSection({
       const templates = getSelectedDiagnosisDocs(form)
         .map((doc) => resolveProviderDischargeTemplateForDiagnosis({ code: doc.code, displayName: doc.displayName }))
         .filter((r) => r.matchLevel !== "generic")
-        .map((r) => extractSharedFieldsFromTemplate(r.template, locale));
+        .map((r) => extractSharedFieldsFromTemplate(r.template, locale, careSettingContext));
       if (!templates.length) return form;
       const overwriteSharedLocale = getSelectedDiagnosisDocs(form).some((doc) =>
         providerDischargeCardNeedsLocaleReapply(doc, locale)
@@ -696,7 +707,7 @@ export function ProviderDischargeDocumentationSection({
         }),
       };
     },
-    []
+    [careSettingContext]
   );
 
   const autoPopulatePrimary = useCallback(() => {
@@ -771,7 +782,7 @@ export function ProviderDischargeDocumentationSection({
 
       <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 10 }}>
         <div>
-          <label style={labelStyle}>{t("providerDischargeDocumentation19Y.patientLeftEd")}</label>
+          <label style={labelStyle}>{t(leftFacilityLabelKey)}</label>
           <input
             type="datetime-local"
             value={patientLeftEdLocal}

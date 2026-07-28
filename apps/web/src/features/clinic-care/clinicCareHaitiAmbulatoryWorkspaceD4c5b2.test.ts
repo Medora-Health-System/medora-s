@@ -37,8 +37,10 @@ describe("MEDUI.D4C.5B.2 Haiti ambulatory web mounts", () => {
 
   it("D — follow-up mounts shared discharge engine", () => {
     const panels = read("ClinicCareAmbulatoryWorkspacePanels.tsx");
-    expect(panels).toContain("PatientDischargeInstructionsClosureCard");
-    expect(panels).toContain("clinic-care-ambulatory-discharge-engine");
+    const workflow = read("ClinicCareAmbulatoryDischargeWorkflow.tsx");
+    expect(panels).toContain("ClinicCareAmbulatoryDischargeWorkflow");
+    expect(workflow).toContain("PatientDischargeInstructionsClosureCard");
+    expect(workflow).toContain("clinic-care-ambulatory-discharge-engine");
     expect(existsSync(join(featureDir, "ClinicDischarge.tsx"))).toBe(false);
   });
 

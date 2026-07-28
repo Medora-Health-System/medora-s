@@ -22,6 +22,7 @@ import {
   type ProviderDischargeDiagnosisRef,
   type ProviderDischargeDocumentationForm,
 } from "./providerDischargeDocumentationModel";
+import type { DischargeInstructionCareSettingContext } from "@medora/shared";
 
 export { PROVIDER_DISCHARGE_CARD_TEMPLATE_SYNC_VERSION };
 
@@ -143,6 +144,8 @@ export type SyncProviderDischargeCardOptions = {
   actor?: { displayName?: string; appliedAt?: string };
   /** Explicit refresh from UI — still respects providerConfirmed unless forceOverwrite. */
   forceOverwrite?: boolean;
+  /** MEDUI.D4C.7 — Clinic / UC care-setting narrative context. */
+  careSettingContext?: DischargeInstructionCareSettingContext | null;
 };
 
 function resolveSyncLocale(options: SyncProviderDischargeCardOptions): ProviderDischargeTemplateLocale {
@@ -192,6 +195,7 @@ export function syncProviderDischargeCardWithRef(
     overwriteExisting: overwrite,
     providerConfirmed: withCreationIdentity.templateMeta?.providerConfirmed ?? false,
     actor: options.actor,
+    careSettingContext: options.careSettingContext,
   });
 }
 
@@ -225,6 +229,7 @@ export function ensureProviderDischargeCardForRef(
       }
     : { applyTemplateSuggestion: false as const }),
     actor: options.actor,
+    careSettingContext: options.careSettingContext,
   });
 
   return stampNewProviderDischargeCardCreationIdentity(created, ref);
@@ -239,6 +244,7 @@ export function applyProviderDischargeTemplateToCardByDiagnosis(
     providerConfirmed?: boolean;
     ref?: ProviderDischargeDiagnosisRef;
     actor?: { displayName?: string; appliedAt?: string };
+    careSettingContext?: DischargeInstructionCareSettingContext | null;
   }
 ): ProviderDischargeDiagnosisCard {
   const withIdentity = options.ref ?
@@ -279,6 +285,7 @@ export function applyProviderDischargeTemplateToCardByDiagnosis(
     overwriteExisting: overwrite,
     providerConfirmed: options.providerConfirmed ?? withIdentity.templateMeta?.providerConfirmed ?? false,
     actor: options.actor,
+    careSettingContext: options.careSettingContext,
   });
 
   return {

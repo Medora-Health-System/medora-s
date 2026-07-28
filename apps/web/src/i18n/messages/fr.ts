@@ -10167,6 +10167,54 @@ export default {
     },
   },
 
+  clinicCareD4c7: {
+    checkout: {
+      title: "Sortie de la consultation",
+      subtitle: "Sortie / suivi en clinique — pas la disposition des urgences.",
+      home: "Retour à domicile",
+      clinicFollowUp: "Suivi en clinique",
+      referral: "Référence",
+      transferEd: "Transfert aux urgences",
+      ama: "Départ contre avis médical",
+      other: "Autre",
+    },
+    discharge: {
+      sharedEngineHint:
+        "Instructions de sortie pilotées par les diagnostics (moteur partagé) — Appliquer / actualiser, modifier, puis enregistrer. Le nom de l’établissement est utilisé pour la clinique (jamais « service d’urgence »).",
+      saveProvider: "Enregistrer les instructions de sortie",
+      saved: "Instructions de sortie enregistrées.",
+      saveFailed: "Impossible d’enregistrer les instructions de sortie.",
+      print: "Imprimer les instructions de sortie",
+      patientLeftClinic: "Date/heure de sortie de la consultation",
+    },
+    print: {
+      blockedEmpty: "Impression bloquée : aucune consigne de sortie.",
+      blockedUnsigned:
+        "Impression bloquée : expliquez et confirmez les consignes avant d’imprimer la version finale.",
+      blockedEdWording:
+        "Impression bloquée : les consignes cliniques contiennent encore un libellé d’urgence.",
+    },
+    publicHealth: {
+      title: "Santé publique",
+      hint: "Santé publique entreprise — Vaccinations et déclarations de maladies (pas de doublon Clinic*).",
+      vaccinations: "Vaccinations",
+      diseaseReports: "Déclarations maladies",
+    },
+    pharmacy: {
+      openEnterprise: "Pharmacie (entreprise)",
+      verification: {
+        notRequired: "Vérification non requise",
+        pending: "Vérification en attente",
+        verified: "Vérifiée",
+        rejected: "Rejetée",
+        overridden: "Contournée",
+      },
+      ambulatoryFilter: "Ambulatoire uniquement",
+      fulfillmentRx: "Délivrance externe",
+      fulfillmentChart: "Administration sur place",
+    },
+  },
+
   clinicCareD4c6: {
     nav: {
       orders: "Ordonnances",

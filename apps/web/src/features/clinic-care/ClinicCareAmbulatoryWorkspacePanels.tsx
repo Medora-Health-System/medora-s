@@ -31,7 +31,7 @@ import { EmergencyClinicalDataPanel } from "@/features/emergency/EmergencyClinic
 import { EmergencyErNotesPanel } from "@/features/emergency/EmergencyErNotesPanel";
 import { EmergencyTriagePanel } from "@/features/emergency/EmergencyTriagePanel";
 import { EmergencyVisitSummaryPanel } from "@/features/emergency/EmergencyVisitSummaryPanel";
-import { PatientDischargeInstructionsClosureCard } from "@/features/emergency/PatientDischargeInstructionsClosureCard";
+import { ClinicCareAmbulatoryDischargeWorkflow } from "@/features/clinic-care/ClinicCareAmbulatoryDischargeWorkflow";
 import { MedicationAdministrationTab } from "@/components/encounters/MedicationAdministrationTab";
 import { EncounterDiagnosticsPanel } from "@/components/encounters/EncounterDiagnosticsPanel";
 import { EnterpriseNursingClinicalWorkspaceD4b2 } from "@/features/clinical-documentation/EnterpriseNursingClinicalWorkspaceD4b2";
@@ -124,6 +124,8 @@ function ClinicalDataSection({
 function FollowUpSection({
   encounter,
   facilityId,
+  facilityDisplayName,
+  facilityCountry,
   canEdit,
   roles,
   isLocked,
@@ -131,6 +133,8 @@ function FollowUpSection({
 }: {
   encounter: ClinicCareAmbulatoryWorkspaceEncounter;
   facilityId: string;
+  facilityDisplayName: string;
+  facilityCountry?: string | null;
   canEdit: boolean;
   roles: string[];
   isLocked: boolean;
@@ -241,21 +245,20 @@ function FollowUpSection({
         </p>
       </div>
 
-      <div data-testid="clinic-care-ambulatory-discharge-engine">
-        <h3 style={{ margin: "0 0 8px", fontSize: 14, fontWeight: 700, color: "#0f172a" }}>
-          {t("clinicCareD4c5b2.followUp.dischargeTitle")}
-        </h3>
-        <PatientDischargeInstructionsClosureCard
-          encounterId={encounter.id}
-          facilityId={facilityId}
-          dischargeSummaryJson={encounter.dischargeSummaryJson}
-          encounterStatus={encounter.status}
-          canEditNursingDischarge={roles.includes("RN") || roles.includes("ADMIN")}
-          canEditMedicalDischarge={roles.includes("PROVIDER") || roles.includes("ADMIN")}
-          onSaved={onUpdate}
-          formDisabled={isLocked || encounter.status !== "OPEN"}
-        />
-      </div>
+      <ClinicCareAmbulatoryDischargeWorkflow
+        encounterId={encounter.id}
+        facilityId={facilityId}
+        facilityDisplayName={facilityDisplayName}
+        facilityCountry={facilityCountry}
+        patientId={encounter.patient?.id}
+        patient={encounter.patient}
+        encounterCreatedAt={encounter.createdAt ?? encounter.admittedAt ?? null}
+        dischargeSummaryJson={encounter.dischargeSummaryJson}
+        encounterStatus={encounter.status}
+        roles={roles}
+        isLocked={isLocked}
+        onSaved={onUpdate}
+      />
     </div>
   );
 }
@@ -266,6 +269,7 @@ export function ClinicCareAmbulatoryWorkspacePanels({
   facilityId,
   facilityTimeZone,
   facilityCountry,
+  facilityDisplayName,
   roles,
   userId,
   canPrescribe,
@@ -279,6 +283,7 @@ export function ClinicCareAmbulatoryWorkspacePanels({
   facilityId: string;
   facilityTimeZone?: string | null;
   facilityCountry?: string | null;
+  facilityDisplayName?: string | null;
   roles: string[];
   userId: string;
   canPrescribe: boolean;
@@ -459,6 +464,8 @@ export function ClinicCareAmbulatoryWorkspacePanels({
         <FollowUpSection
           encounter={encounter}
           facilityId={facilityId}
+          facilityDisplayName={facilityDisplayName?.trim() || facilityId}
+          facilityCountry={facilityCountry}
           canEdit={canEditFollowUp && encounter.status === "OPEN" && !isLocked}
           roles={roles}
           isLocked={isLocked}

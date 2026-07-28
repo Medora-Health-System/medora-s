@@ -1,7 +1,10 @@
 /**
  * MEDUI.ED.DISCHARGE.DIAGNOSIS_INSTRUCTIONS.2 — gold-standard discharge instruction language.
+ * MEDUI.D4C.7 — care-setting-aware return suffixes via typed DischargeInstructionCareSettingContext.
  */
 
+import type { DischargeInstructionCareSettingContext } from "@medora/shared";
+import { resolveDischargeVisitFramingPhrases } from "@medora/shared";
 import type {
   ProviderDischargeTemplateLocale,
   ProviderDischargeTemplateSuggestedTextBody,
@@ -20,6 +23,19 @@ export const ED_DISCHARGE_UNIVERSAL_RETURN_SUFFIX_EN =
 export const ED_DISCHARGE_UNIVERSAL_RETURN_SUFFIX_FR =
   "Retournez aux urgences immédiatement si les symptômes s'aggravent, si de nouveaux signes inquiétants apparaissent ou si vous ne vous sentez pas en sécurité à domicile.";
 
+/** Resolve universal return suffix for the active care setting (typed context — not string-replace). */
+export function resolveUniversalReturnSuffixForCareSetting(
+  locale: "en" | "fr",
+  careSettingContext?: DischargeInstructionCareSettingContext | null
+): string {
+  if (!careSettingContext || careSettingContext.careSetting === "ED") {
+    return locale === "fr" ? ED_DISCHARGE_UNIVERSAL_RETURN_SUFFIX_FR : ED_DISCHARGE_UNIVERSAL_RETURN_SUFFIX_EN;
+  }
+  return resolveDischargeVisitFramingPhrases({
+    ...careSettingContext,
+    locale,
+  }).returnImmediatelySuffix;
+}
 export const ED_DISCHARGE_PCP_FOLLOW_UP_PHRASE_EN =
   "Follow up with your primary care provider or the recommended specialist within 1–2 days.";
 
@@ -112,17 +128,25 @@ function includesUniversalReturnSuffix(text: string, locale: "en" | "fr"): boole
   );
 }
 
-/** Append universal ED return language when template-specific red flags omit it. */
+/** Append universal return language when template-specific red flags omit it (care-setting aware). */
 export function ensureGoldStandardReturnPrecautions(
   text: string,
-  locale: "en" | "fr"
+  locale: "en" | "fr",
+  careSettingContext?: DischargeInstructionCareSettingContext | null
 ): string {
   const trimmed = text.trim();
-  if (!trimmed) {
-    return locale === "fr" ? ED_DISCHARGE_UNIVERSAL_RETURN_SUFFIX_FR : ED_DISCHARGE_UNIVERSAL_RETURN_SUFFIX_EN;
+  const suffix = resolveUniversalReturnSuffixForCareSetting(locale, careSettingContext);
+  if (!trimmed) return suffix;
+  if (careSettingContext?.careSetting === "ED" || !careSettingContext) {
+    if (includesUniversalReturnSuffix(trimmed, locale)) return trimmed;
+  } else {
+    // Clinic / UC: treat either ED or facility-aware return language as already present.
+    if (includesUniversalReturnSuffix(trimmed, locale)) return trimmed;
+    const facility = careSettingContext.facilityDisplayName.trim().toLowerCase();
+    if (facility && trimmed.toLowerCase().includes(facility) && /immédiatement|immediately/i.test(trimmed)) {
+      return trimmed;
+    }
   }
-  if (includesUniversalReturnSuffix(trimmed, locale)) return trimmed;
-  const suffix = locale === "fr" ? ED_DISCHARGE_UNIVERSAL_RETURN_SUFFIX_FR : ED_DISCHARGE_UNIVERSAL_RETURN_SUFFIX_EN;
   return `${trimmed} ${suffix}`;
 }
 
@@ -138,12 +162,17 @@ export function ensureGoldStandardMedicationTreatment(text: string, locale: "en"
 export function applyGoldStandardToSuggestedTextBody(
   templateId: string,
   body: ProviderDischargeTemplateSuggestedTextBody,
-  locale: ProviderDischargeTemplateLocale
+  locale: ProviderDischargeTemplateLocale,
+  careSettingContext?: DischargeInstructionCareSettingContext | null
 ): ProviderDischargeTemplateSuggestedTextBody {
   if (templateId === "generic_ed_discharge_v1") return body;
   return {
     ...body,
     medicationTreatment: ensureGoldStandardMedicationTreatment(body.medicationTreatment, locale),
-    returnPrecautions: ensureGoldStandardReturnPrecautions(body.returnPrecautions, locale),
+    returnPrecautions: ensureGoldStandardReturnPrecautions(
+      body.returnPrecautions,
+      locale,
+      careSettingContext
+    ),
   };
 }

@@ -5,7 +5,7 @@ import { ClinicCareDirectCanonicalRedirect } from "@/features/clinic-care/Clinic
 export default function ClinicCarePharmacyPage() {
   return (
     <ClinicCareDirectCanonicalRedirect
-      href="/app/pharmacy"
+      href="/app/pharmacy?ambulatory=1"
       labelKey="clinicCareD4c4.redirectingPharmacy"
     />
   );
