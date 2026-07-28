@@ -1,14 +1,18 @@
 /**
- * MEDUI.D4C.5B — Active Clinic Workspace section mounts.
+ * MEDUI.D4C.5B / D4C.5B.2 — Active Clinic Workspace section mounts.
  * Every tile reuses an existing enterprise / ED-shared engine — no ClinicIntake,
- * ClinicOrder, ClinicResult, or parallel clinical documentation system.
+ * ClinicOrder, ClinicResult, ClinicPrescription, ClinicDischarge, or ClinicSummary.
  */
 
 "use client";
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import type { ClinicCareAmbulatoryWorkspaceSection } from "@medora/shared";
-import { filterAmbulatoryClinicalDataDocuments } from "@medora/shared";
+import {
+  filterHaitiAmbulatoryClinicalDataCards,
+  isHaitiPublicHealthJurisdiction,
+  shouldHideMarShiftTimelineForHaitiAmbulatory,
+} from "@medora/shared";
 import { apiFetch } from "@/lib/apiClient";
 import { useI18n } from "@/lib/i18n";
 import { normalizeUserFacingError } from "@/lib/userFacingError";
@@ -22,11 +26,15 @@ import { EmergencyErOrdersPanel } from "@/features/emergency/EmergencyErOrdersPa
 import { EmergencyResultsPanel } from "@/features/emergency/EmergencyResultsPanel";
 import { EmergencyClinicalDataPanel } from "@/features/emergency/EmergencyClinicalDataPanel";
 import { EmergencyErNotesPanel } from "@/features/emergency/EmergencyErNotesPanel";
+import { EmergencyTriagePanel } from "@/features/emergency/EmergencyTriagePanel";
+import { EmergencyVisitSummaryPanel } from "@/features/emergency/EmergencyVisitSummaryPanel";
+import { PatientDischargeInstructionsClosureCard } from "@/features/emergency/PatientDischargeInstructionsClosureCard";
 import { MedicationAdministrationTab } from "@/components/encounters/MedicationAdministrationTab";
 import { EncounterDiagnosticsPanel } from "@/components/encounters/EncounterDiagnosticsPanel";
 import { EnterpriseNursingClinicalWorkspaceD4b2 } from "@/features/clinical-documentation/EnterpriseNursingClinicalWorkspaceD4b2";
-import { ClinicCareAmbulatoryClinicalSummaryPanel } from "@/features/clinic-care/ClinicCareAmbulatoryClinicalSummaryPanel";
 import { ClinicCareAmbulatoryMedicalEvaluationPanel } from "@/features/clinic-care/ClinicCareAmbulatoryMedicalEvaluationPanel";
+import { ClinicCareAmbulatoryPrescriptionPanel } from "@/features/clinic-care/ClinicCareAmbulatoryPrescriptionPanel";
+import { clinicCareAmbulatoryActiveWorkspacePath } from "@medora/shared";
 
 export type ClinicCareAmbulatoryWorkspaceEncounter = {
   id: string;
@@ -38,10 +46,13 @@ export type ClinicCareAmbulatoryWorkspaceEncounter = {
   providerNote?: string | null;
   treatmentPlan?: string | null;
   followUpDate?: string | null;
+  dischargeSummaryJson?: unknown;
   nursingAssessment?: unknown;
   providerDocumentationStatus?: string | null;
   providerDocumentationSignedAt?: string | null;
   providerDocumentationSignedByDisplayFr?: string | null;
+  createdAt?: string | null;
+  admittedAt?: string | null;
   patient?: { id?: string; firstName?: string | null; lastName?: string | null; mrn?: string | null } | null;
 };
 
@@ -49,103 +60,6 @@ const sectionShell: React.CSSProperties = {
   ...MEDORA_CARD_SHELL,
   padding: "14px 16px",
 };
-
-function IntakeSection({
-  encounter,
-  facilityId,
-  canEdit,
-  onUpdate,
-}: {
-  encounter: ClinicCareAmbulatoryWorkspaceEncounter;
-  facilityId: string;
-  canEdit: boolean;
-  onUpdate: () => void | Promise<void>;
-}) {
-  const { t, language } = useI18n();
-  const [chiefComplaint, setChiefComplaint] = useState(
-    encounter.chiefComplaint || encounter.visitReason || ""
-  );
-  const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState<{ error: boolean; text: string } | null>(null);
-
-  useEffect(() => {
-    setChiefComplaint(encounter.chiefComplaint || encounter.visitReason || "");
-  }, [encounter.id, encounter.chiefComplaint, encounter.visitReason]);
-
-  const save = useCallback(async () => {
-    setMessage(null);
-    setSaving(true);
-    try {
-      await apiFetch(`/encounters/${encounter.id}`, {
-        method: "PATCH",
-        facilityId,
-        body: JSON.stringify({ chiefComplaint: chiefComplaint.trim() }),
-      });
-      setMessage({ error: false, text: t("clinicCareD4c5b.saved") });
-      await onUpdate();
-    } catch (e) {
-      setMessage({
-        error: true,
-        text: normalizeUserFacingError(e instanceof Error ? e.message : null, language) || t("clinicCareD4c5b.saveFailed"),
-      });
-    } finally {
-      setSaving(false);
-    }
-  }, [encounter.id, facilityId, chiefComplaint, onUpdate, t, language]);
-
-  return (
-    <div style={sectionShell} data-testid="clinic-care-ambulatory-intake">
-      <h3 style={{ margin: "0 0 4px", fontSize: 15, fontWeight: 700, color: "#0f172a" }}>
-        {t("clinicCareD4c5b.intake.title")}
-      </h3>
-      <p style={{ margin: "0 0 12px", fontSize: 12, color: "#64748b" }}>{t("clinicCareD4c5b.intake.hint")}</p>
-      <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#475569", marginBottom: 6 }}>
-        {t("clinicCareD4c5b.intake.chiefComplaint")}
-      </label>
-      <textarea
-        value={chiefComplaint}
-        onChange={(e) => setChiefComplaint(e.target.value)}
-        disabled={!canEdit || saving}
-        rows={3}
-        style={{
-          width: "100%",
-          boxSizing: "border-box",
-          padding: "10px 12px",
-          border: "1px solid #e2e8f0",
-          borderRadius: 10,
-          fontSize: 14,
-          color: "#0f172a",
-          backgroundColor: !canEdit ? "#f8fafc" : "#fff",
-          resize: "vertical",
-        }}
-      />
-      {canEdit ? (
-        <div style={{ marginTop: 10, display: "flex", alignItems: "center", gap: 10 }}>
-          <button
-            type="button"
-            onClick={() => void save()}
-            disabled={saving}
-            style={{
-              padding: "8px 16px",
-              borderRadius: 10,
-              border: "none",
-              background: "#0d9488",
-              color: "#fff",
-              fontSize: 13,
-              fontWeight: 600,
-              cursor: saving ? "wait" : "pointer",
-            }}
-          >
-            {saving ? t("common.saving") : t("common.save")}
-          </button>
-          {message ? (
-            <span style={{ fontSize: 12, color: message.error ? "#b91c1c" : "#166534" }}>{message.text}</span>
-          ) : null}
-        </div>
-      ) : null}
-    </div>
-  );
-}
 
 function ClinicalDataSection({
   encounterId,
@@ -176,8 +90,13 @@ function ClinicalDataSection({
 
   const ambulatoryEntries = useMemo(
     () =>
-      filterAmbulatoryClinicalDataDocuments(
-        entries.map((e) => ({ id: e.id, typeId: e.cardId, category: e.category }))
+      filterHaitiAmbulatoryClinicalDataCards(
+        entries.map((e) => ({
+          id: e.id,
+          typeId: e.cardId,
+          category: e.category,
+          title: e.cardTitleEn || e.cardTitleFr,
+        }))
       ),
     [entries]
   );
@@ -192,6 +111,9 @@ function ClinicalDataSection({
         encounterId={encounterId}
         facilityId={facilityId}
         facilityTimeZone={facilityTimeZone}
+        careSetting="CLINIC"
+        filterDocumentCards
+        hideCatalogCards={false}
       />
     </div>
   );
@@ -201,11 +123,15 @@ function FollowUpSection({
   encounter,
   facilityId,
   canEdit,
+  roles,
+  isLocked,
   onUpdate,
 }: {
   encounter: ClinicCareAmbulatoryWorkspaceEncounter;
   facilityId: string;
   canEdit: boolean;
+  roles: string[];
+  isLocked: boolean;
   onUpdate: () => void | Promise<void>;
 }) {
   const { t, language } = useI18n();
@@ -253,63 +179,81 @@ function FollowUpSection({
   );
 
   return (
-    <div style={sectionShell} data-testid="clinic-care-ambulatory-follow-up">
-      <h3 style={{ margin: "0 0 4px", fontSize: 15, fontWeight: 700, color: "#0f172a" }}>
-        {t("clinicCareD4c5b.followUp.title")}
-      </h3>
-      <p style={{ margin: "0 0 12px", fontSize: 12, color: "#64748b" }}>{t("clinicCareD4c5b.followUp.completeHint")}</p>
+    <div data-testid="clinic-care-ambulatory-follow-up" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      <div style={sectionShell}>
+        <h3 style={{ margin: "0 0 4px", fontSize: 15, fontWeight: 700, color: "#0f172a" }}>
+          {t("clinicCareD4c5b2.followUp.checkoutTitle")}
+        </h3>
+        <p style={{ margin: "0 0 12px", fontSize: 12, color: "#64748b" }}>{t("clinicCareD4c5b.followUp.completeHint")}</p>
 
-      <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#475569", marginBottom: 6 }}>
-        {t("clinicCareD4c5b.followUp.followUpSet")}
-      </label>
-      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
-        <input
-          type="date"
-          value={followUp}
-          disabled={!canEdit || saving}
-          onChange={(e) => setFollowUp(e.target.value)}
-          style={{
-            padding: "8px 12px",
-            border: "1px solid #e2e8f0",
-            borderRadius: 10,
-            fontSize: 14,
-            backgroundColor: !canEdit ? "#f8fafc" : "#fff",
-          }}
-        />
-        {canEdit ? (
-          <button
-            type="button"
-            onClick={() => void save()}
-            disabled={saving}
+        <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#475569", marginBottom: 6 }}>
+          {t("clinicCareD4c5b.followUp.followUpSet")}
+        </label>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
+          <input
+            type="date"
+            value={followUp}
+            disabled={!canEdit || saving}
+            onChange={(e) => setFollowUp(e.target.value)}
             style={{
-              padding: "8px 16px",
+              padding: "8px 12px",
+              border: "1px solid #e2e8f0",
               borderRadius: 10,
-              border: "none",
-              background: "#0d9488",
-              color: "#fff",
-              fontSize: 13,
-              fontWeight: 600,
-              cursor: saving ? "wait" : "pointer",
+              fontSize: 14,
+              backgroundColor: !canEdit ? "#f8fafc" : "#fff",
             }}
-          >
-            {saving ? t("common.saving") : t("common.save")}
-          </button>
-        ) : null}
-        {message ? (
-          <span style={{ fontSize: 12, color: message.error ? "#b91c1c" : "#166534" }}>{message.text}</span>
-        ) : null}
+          />
+          {canEdit ? (
+            <button
+              type="button"
+              onClick={() => void save()}
+              disabled={saving}
+              style={{
+                padding: "8px 16px",
+                borderRadius: 10,
+                border: "none",
+                background: "#0d9488",
+                color: "#fff",
+                fontSize: 13,
+                fontWeight: 600,
+                cursor: saving ? "wait" : "pointer",
+              }}
+            >
+              {saving ? t("common.saving") : t("common.save")}
+            </button>
+          ) : null}
+          {message ? (
+            <span style={{ fontSize: 12, color: message.error ? "#b91c1c" : "#166534" }}>{message.text}</span>
+          ) : null}
+        </div>
+
+        <h4 style={{ margin: "0 0 8px", fontSize: 12, fontWeight: 700, color: "#475569" }}>
+          {t("clinicCareD4c5b.followUp.checklist")}
+        </h4>
+        <ul style={{ margin: 0, padding: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: 6 }}>
+          {checklistItem(t("clinicCareD4c5b.followUp.document"), hasDocumentation)}
+          {checklistItem(t("clinicCareD4c5b.followUp.followUpSet"), Boolean(followUp))}
+        </ul>
+        <p style={{ margin: "12px 0 0", fontSize: 11, color: "#94a3b8" }}>
+          {formatEncounterChromeDateTime(new Date().toISOString(), language)}
+        </p>
       </div>
 
-      <h4 style={{ margin: "0 0 8px", fontSize: 12, fontWeight: 700, color: "#475569" }}>
-        {t("clinicCareD4c5b.followUp.checklist")}
-      </h4>
-      <ul style={{ margin: 0, padding: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: 6 }}>
-        {checklistItem(t("clinicCareD4c5b.followUp.document"), hasDocumentation)}
-        {checklistItem(t("clinicCareD4c5b.followUp.followUpSet"), Boolean(followUp))}
-      </ul>
-      <p style={{ margin: "12px 0 0", fontSize: 11, color: "#94a3b8" }}>
-        {formatEncounterChromeDateTime(new Date().toISOString(), language)}
-      </p>
+      <div data-testid="clinic-care-ambulatory-discharge-engine">
+        <h3 style={{ margin: "0 0 8px", fontSize: 14, fontWeight: 700, color: "#0f172a" }}>
+          {t("clinicCareD4c5b2.followUp.dischargeTitle")}
+        </h3>
+        <PatientDischargeInstructionsClosureCard
+          encounterId={encounter.id}
+          facilityId={facilityId}
+          dischargeSummaryJson={encounter.dischargeSummaryJson}
+          encounterStatus={encounter.status}
+          canEditNursingDischarge={roles.includes("RN") || roles.includes("ADMIN")}
+          canEditMedicalDischarge={roles.includes("PROVIDER") || roles.includes("ADMIN")}
+          onSaved={onUpdate}
+          formDisabled={isLocked || encounter.status !== "OPEN"}
+        />
+      </div>
     </div>
   );
 }
@@ -319,38 +263,60 @@ export function ClinicCareAmbulatoryWorkspacePanels({
   encounter,
   facilityId,
   facilityTimeZone,
+  facilityCountry,
   roles,
   userId,
   canPrescribe,
   isLocked,
   resultsRefresh = 0,
+  triageSnapshot = null,
   onUpdate,
 }: {
   section: ClinicCareAmbulatoryWorkspaceSection;
   encounter: ClinicCareAmbulatoryWorkspaceEncounter;
   facilityId: string;
   facilityTimeZone?: string | null;
+  facilityCountry?: string | null;
   roles: string[];
   userId: string;
   canPrescribe: boolean;
   isLocked: boolean;
   resultsRefresh?: number;
+  triageSnapshot?: Record<string, unknown> | null;
   onUpdate: () => void | Promise<void>;
 }) {
-  const canEditIntake = roles.includes("RN") || roles.includes("FRONT_DESK") || roles.includes("PROVIDER") || roles.includes("ADMIN");
+  const { t } = useI18n();
+  const canEditIntake =
+    roles.includes("RN") ||
+    roles.includes("FRONT_DESK") ||
+    roles.includes("PROVIDER") ||
+    roles.includes("ADMIN") ||
+    roles.includes("PATIENT_CARE_TECH") ||
+    roles.includes("TECHNICIAN");
   const canDocumentDiagnoses = roles.includes("RN") || roles.includes("PROVIDER") || roles.includes("ADMIN");
   const canEditFollowUp = roles.includes("RN") || roles.includes("PROVIDER") || roles.includes("ADMIN");
   const patientId = encounter.patient?.id ?? "";
+  const haitiAmbulatory = isHaitiPublicHealthJurisdiction(facilityCountry ?? null);
+  const hideShiftTimeline = shouldHideMarShiftTimelineForHaitiAmbulatory({
+    facilityCountry,
+    ambulatoryCareSetting: true,
+  });
 
   switch (section) {
     case "intake":
       return (
-        <IntakeSection
-          encounter={encounter}
-          facilityId={facilityId}
-          canEdit={canEditIntake && encounter.status === "OPEN" && !isLocked}
-          onUpdate={onUpdate}
-        />
+        <div data-testid="clinic-care-ambulatory-intake">
+          <p style={{ margin: "0 0 10px", fontSize: 12, color: "#64748b" }}>{t("clinicCareD4c5b2.intake.hint")}</p>
+          <EmergencyTriagePanel
+            encounterId={encounter.id}
+            facilityId={facilityId}
+            encounter={encounter}
+            isLocked={isLocked || !canEditIntake || encounter.status !== "OPEN"}
+            encounterTriageTabHref={clinicCareAmbulatoryActiveWorkspacePath(encounter.id, "intake")}
+            patientChartHref={patientId ? `/app/patients/${encodeURIComponent(patientId)}` : undefined}
+            onSaved={onUpdate}
+          />
+        </div>
       );
 
     case "medical-evaluation":
@@ -358,6 +324,7 @@ export function ClinicCareAmbulatoryWorkspacePanels({
         <ClinicCareAmbulatoryMedicalEvaluationPanel
           encounter={encounter}
           facilityId={facilityId}
+          facilityCountry={facilityCountry}
           roles={roles}
           onUpdate={onUpdate}
         />
@@ -372,12 +339,26 @@ export function ClinicCareAmbulatoryWorkspacePanels({
             canPrescribe={canPrescribe}
             encounterSigned={encounter.providerDocumentationStatus === "SIGNED" || isLocked}
             encounterForOrderModal={{ patient: encounter.patient }}
+            medicationOrderMode="DEFAULT"
+            hideTraumaProtocolAssist={haitiAmbulatory}
             onRefetchEncounter={async () => {
               await onUpdate();
             }}
             roles={roles}
           />
         </div>
+      );
+
+    case "prescriptions":
+      return (
+        <ClinicCareAmbulatoryPrescriptionPanel
+          encounterId={encounter.id}
+          facilityId={facilityId}
+          canPrescribe={canPrescribe}
+          encounter={encounter}
+          isLocked={isLocked}
+          onUpdate={onUpdate}
+        />
       );
 
     case "medications":
@@ -391,6 +372,7 @@ export function ClinicCareAmbulatoryWorkspacePanels({
           roleCodes={roles}
           facilityTimeZone={facilityTimeZone}
           embeddedWorkspaceLayout
+          showFacilityMarShiftTimeline={!hideShiftTimeline}
         />
       );
 
@@ -431,16 +413,15 @@ export function ClinicCareAmbulatoryWorkspacePanels({
     case "nursing":
       return (
         <div data-testid="clinic-care-ambulatory-nursing">
-          {/*
-            AMBULATORY is not yet a supported EnterpriseNursingClinicalWorkspaceD4b2 careSetting.
-            OBSERVATION is used as the closest non-ED, non-trauma document set for the ambulatory
-            MVP (no liveEngineSlot — avoids pulling in ED/trauma reassessment forms).
-          */}
+          <h3 style={{ margin: "0 0 4px", fontSize: 15, fontWeight: 700, color: "#0f172a" }}>
+            {t("clinicCareD4c5b2.nursing.title")}
+          </h3>
+          <p style={{ margin: "0 0 12px", fontSize: 12, color: "#64748b" }}>{t("clinicCareD4c5b2.nursing.subtitle")}</p>
           <EnterpriseNursingClinicalWorkspaceD4b2
             encounterId={encounter.id}
             patientId={patientId || "unknown-patient"}
             facilityId={facilityId}
-            careSetting="OBSERVATION"
+            careSetting="AMBULATORY"
             isLocked={isLocked}
           />
         </div>
@@ -464,17 +445,33 @@ export function ClinicCareAmbulatoryWorkspacePanels({
           encounter={encounter}
           facilityId={facilityId}
           canEdit={canEditFollowUp && encounter.status === "OPEN" && !isLocked}
+          roles={roles}
+          isLocked={isLocked}
           onUpdate={onUpdate}
         />
       );
 
     case "summary":
       return (
-        <ClinicCareAmbulatoryClinicalSummaryPanel
-          encounterId={encounter.id}
-          facilityId={facilityId}
-          facilityTimeZone={facilityTimeZone}
-        />
+        <div data-testid="clinic-care-ambulatory-clinical-summary">
+          <h3 style={{ margin: "0 0 4px", fontSize: 15, fontWeight: 700, color: "#0f172a" }}>
+            {t("clinicCareD4c5b2.summary.title")}
+          </h3>
+          <p style={{ margin: "0 0 12px", fontSize: 12, color: "#64748b" }}>{t("clinicCareD4c5b2.summary.subtitle")}</p>
+          <EmergencyVisitSummaryPanel
+            encounterId={encounter.id}
+            facilityId={facilityId}
+            encounter={encounter as never}
+            triageSnapshot={triageSnapshot}
+            resultsRefresh={resultsRefresh}
+            resultsTabHref={clinicCareAmbulatoryActiveWorkspacePath(encounter.id, "results")}
+            diagnosticsTabHref={clinicCareAmbulatoryActiveWorkspacePath(encounter.id, "diagnoses")}
+            ivAccessFetchEnabled={false}
+            proceduresFetchEnabled={false}
+            medicationMarSummaryEnabled
+            summaryReadOnly
+          />
+        </div>
       );
 
     default:

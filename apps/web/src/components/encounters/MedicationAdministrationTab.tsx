@@ -494,6 +494,7 @@ export function MedicationAdministrationTab({
   encounterAllergySource = null,
   facilityTimeZone = null,
   embeddedWorkspaceLayout = false,
+  showFacilityMarShiftTimeline = true,
 }: {
   encounterId: string;
   facilityId: string;
@@ -509,6 +510,11 @@ export function MedicationAdministrationTab({
   facilityTimeZone?: string | null;
   /** Flatter MAR timeline when nested in ED workspace card. */
   embeddedWorkspaceLayout?: boolean;
+  /**
+   * When false, hide inpatient FacilityMarShiftTimeline chrome (Haiti ambulatory day visits).
+   * MAR administer / verify / allergy paths remain available.
+   */
+  showFacilityMarShiftTimeline?: boolean;
 }) {
   const { t, language } = useI18n();
   const clinicalData = useEncounterClinicalDataOptional();
@@ -2547,6 +2553,7 @@ export function MedicationAdministrationTab({
         onToday={() => handleMarSelectedDateChange(resolveFacilityLocalToday(clinicalTz))}
       />
 
+      {showFacilityMarShiftTimeline ? (
       <div
         data-testid="mar-workspace-timeline"
         style={{
@@ -2576,6 +2583,7 @@ export function MedicationAdministrationTab({
           }}
         />
       </div>
+      ) : null}
 
       {MAR_TAB_SHOW_LEGACY_SECTIONS ? (
       <>

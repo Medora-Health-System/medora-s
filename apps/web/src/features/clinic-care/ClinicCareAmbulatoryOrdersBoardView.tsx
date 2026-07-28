@@ -11,6 +11,8 @@ import Link from "next/link";
 import {
   CLINIC_CARE_AMBULATORY_ORDER_CATEGORIES,
   CLINIC_CARE_AMBULATORY_ORDER_STATUS_FILTERS,
+  ambulatoryOrderPriorityDisplayKey,
+  ambulatoryOrderStatusDisplayKey,
   clinicCareAmbulatoryOrderDetailPath,
   clinicCareAmbulatoryOrderMatchesFilters,
   clinicCareAmbulatoryOrdersChartPath,
@@ -319,8 +321,12 @@ export function ClinicCareAmbulatoryOrdersBoardView() {
                 >
                   {t(categoryLabelKey(row.category as ClinicCareAmbulatoryOrderCategory))}
                 </span>
-                <span style={{ fontSize: 11, color: "#475569", fontWeight: 600 }}>{row.status}</span>
-                <span style={{ fontSize: 11, color: "#64748b" }}>{row.priority}</span>
+                <span style={{ fontSize: 11, color: "#475569", fontWeight: 600 }}>
+                  {t(ambulatoryOrderStatusDisplayKey(row.status))}
+                </span>
+                <span style={{ fontSize: 11, color: "#64748b" }}>
+                  {t(ambulatoryOrderPriorityDisplayKey(row.priority))}
+                </span>
                 <span style={{ fontSize: 11, color: "#94a3b8" }}>
                   {new Date(row.createdAt).toLocaleString(locale, { timeZone: tz })}
                 </span>

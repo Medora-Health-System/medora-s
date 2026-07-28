@@ -19,7 +19,7 @@ export type NursingWorkspaceProjectionInput = {
   patientId: string;
   facilityId: string;
   encounterType?: string | null;
-  careSetting?: "EMERGENCY" | "OBSERVATION" | "INPATIENT";
+  careSetting?: "EMERGENCY" | "OBSERVATION" | "INPATIENT" | "AMBULATORY";
   hospitalEpisodeId?: string | null;
   admission?: NursingAdmissionAdapterInput | null;
   reassessment?: NursingReassessmentProjectionInput | null;

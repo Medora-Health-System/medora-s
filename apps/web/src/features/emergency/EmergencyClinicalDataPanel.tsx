@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { filterHaitiAmbulatoryClinicalDataCards } from "@medora/shared";
 import { useI18n } from "@/lib/i18n";
 import { ClinicalDocumentationHub } from "@/features/clinical-documentation/ClinicalDocumentationHub";
 import {
@@ -20,12 +21,21 @@ export type EmergencyClinicalDataPanelProps = {
   encounterId: string;
   facilityId: string;
   facilityTimeZone?: string | null;
+  /** Hub care setting — CLINIC for ambulatory (default ED for emergency mounts). */
+  careSetting?: "ED" | "OBSERVATION" | "INPATIENT" | "ICU" | "TELEMETRY" | "CLINIC" | "URGENT_CARE";
+  /** When true, apply Haiti/ambulatory ED-only blocklist at registry query level. */
+  filterDocumentCards?: boolean;
+  /** When true, hide the catalog hub and show saved entries only (Summary-style). */
+  hideCatalogCards?: boolean;
 };
 
 export function EmergencyClinicalDataPanel({
   encounterId,
   facilityId,
   facilityTimeZone,
+  careSetting = "ED",
+  filterDocumentCards = false,
+  hideCatalogCards = false,
 }: EmergencyClinicalDataPanelProps) {
   const { t } = useI18n();
   const [entries, setEntries] = useState<ClinicalDocumentationEntryRow[]>([]);
@@ -100,9 +110,10 @@ export function EmergencyClinicalDataPanel({
             </>
           )}
 
+          {!hideCatalogCards ? (
           <div style={{ marginTop: 12 }}>
             <ClinicalDocumentationHub
-              careSetting="ED"
+              careSetting={careSetting}
               encounterId={encounterId}
               facilityId={facilityId}
               showHeader={false}
@@ -113,8 +124,23 @@ export function EmergencyClinicalDataPanel({
               workspaceContext="clinicalData"
               onEntriesChanged={loadEntries}
               focusedCardId={focusedCardId}
+              documentCardFilter={
+                filterDocumentCards
+                  ? (card) =>
+                      filterHaitiAmbulatoryClinicalDataCards([
+                        {
+                          id: card.id,
+                          typeId: card.id,
+                          careSettings: card.careSettings,
+                          category: card.category,
+                          title: card.titleEn ?? card.titleFr ?? card.id,
+                        },
+                      ]).length > 0
+                  : undefined
+              }
             />
           </div>
+          ) : null}
         </MedoraCardInner>
       </MedoraCard>
 

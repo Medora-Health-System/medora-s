@@ -2,6 +2,10 @@
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
+  filterHaitiAmbulatoryProviderTemplates,
+  shouldHideHaitiAmbulatoryRoutineMedEvalFields,
+} from "@medora/shared";
+import {
   PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS,
   PROVIDER_DOCUMENTATION_DICTATION_SECTION_TARGETS,
   PROVIDER_DOCUMENTATION_EXAM_SECTION_IDS,
@@ -126,6 +130,8 @@ type PreviewSectionId = ReturnType<typeof buildProviderDocumentationPreviewSecti
 export type ProviderDocumentationWorkspaceProps = {
   encounterId: string;
   encounterMode: ProviderDocumentationEncounterMode;
+  /** Facility.country — Haiti ambulatory hides ED/trauma defaults (never locale alone). */
+  facilityCountry?: string | null;
   providerUserId?: string | null;
   value: ProviderDocumentationWorkspaceState;
   onChange: (next: ProviderDocumentationWorkspaceState) => void;
@@ -429,6 +435,7 @@ const DICTATION_NAV_TARGETS = PROVIDER_DOCUMENTATION_DICTATION_SECTION_TARGETS.m
 export function ProviderDocumentationWorkspace({
   encounterId,
   encounterMode,
+  facilityCountry = null,
   providerUserId = null,
   value,
   onChange,
@@ -450,6 +457,17 @@ export function ProviderDocumentationWorkspace({
   quickActions = null,
   t,
 }: ProviderDocumentationWorkspaceProps) {
+  const hideHaitiRoutineMedEval = shouldHideHaitiAmbulatoryRoutineMedEvalFields({
+    facilityCountry,
+    encounterMode,
+  });
+  const allowedTemplates = useMemo(
+    () =>
+      hideHaitiRoutineMedEval
+        ? filterHaitiAmbulatoryProviderTemplates(PROVIDER_DOCUMENTATION_TEMPLATES)
+        : PROVIDER_DOCUMENTATION_TEMPLATES,
+    [hideHaitiRoutineMedEval]
+  );
   const [layoutMode, setLayoutMode] = useState<ProviderDocumentationLayoutMode>("desktopSplit");
   const [showPreview, setShowPreview] = useState(false);
   const [showTemplates, setShowTemplates] = useState(false);
@@ -473,7 +491,7 @@ export function ProviderDocumentationWorkspace({
   const restoredDraftKeyRef = useRef<string | null>(null);
   const previewSections = useMemo(() => buildProviderDocumentationPreviewSections(value), [value]);
   const activeTemplate = useMemo(
-    () => PROVIDER_DOCUMENTATION_TEMPLATES.find((template) => template.id === value.activeTemplateId) ?? null,
+    () => allowedTemplates.find((template) => template.id === value.activeTemplateId) ?? null,
     [value.activeTemplateId]
   );
   const hpiChipGroups = useMemo(
@@ -578,8 +596,13 @@ export function ProviderDocumentationWorkspace({
     [templateSearchQuery, t]
   );
   const filteredTemplates = useMemo(
-    () => (templateSearchActive ? filterProviderDocumentationTemplates(templateSearchQuery, t) : null),
-    [templateSearchActive, templateSearchQuery, t]
+    () =>
+      templateSearchActive
+        ? filterProviderDocumentationTemplates(templateSearchQuery, t).filter((tpl) =>
+            allowedTemplates.some((a) => a.id === tpl.id)
+          )
+        : null,
+    [templateSearchActive, templateSearchQuery, t, allowedTemplates]
   );
   useEffect(() => {
     if (!showTemplates) setTemplateSearchQuery("");
@@ -1682,7 +1705,7 @@ export function ProviderDocumentationWorkspace({
             >
               {PROVIDER_DOCUMENTATION_MAJOR_GROUP_KEYS.map((majorGroup) => {
                 const templates = (
-                  filteredTemplates ?? PROVIDER_DOCUMENTATION_TEMPLATES.filter((template) => template.majorGroup === majorGroup)
+                  filteredTemplates ?? allowedTemplates.filter((template) => template.majorGroup === majorGroup)
                 ).filter((template) => template.majorGroup === majorGroup);
                 if (!templates.length) return null;
                 const accent = TEMPLATE_PICKER_COLUMN_ACCENT[majorGroup];
@@ -2239,7 +2262,9 @@ export function ProviderDocumentationWorkspace({
               <Field label={t("providerDocumentationWorkspace.planSummary")} voiceReadyLabel={t("providerDocumentationWorkspace.voiceReadyField")} dictationTargetId={PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.mdmPlanSummary} dictationLabel={t("providerDocumentationWorkspace.dictationFocusField")} readOnly={readOnly} readOnlyLabel={t("providerDocumentationWorkspace.dictationReadOnlyField")}>{ta("mdmPlanSummary", 2, PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.mdmPlanSummary)}</Field>
               <Field label={t("providerDocumentationWorkspace.immediateActions")} voiceReadyLabel={t("providerDocumentationWorkspace.voiceReadyField")} dictationTargetId={PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.mdmImmediateActionsRationale} dictationLabel={t("providerDocumentationWorkspace.dictationFocusField")} readOnly={readOnly} readOnlyLabel={t("providerDocumentationWorkspace.dictationReadOnlyField")}>{ta("mdmImmediateActionsRationale", 2, PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.mdmImmediateActionsRationale)}</Field>
               <Field label={t("providerDocumentationWorkspace.consults")} voiceReadyLabel={t("providerDocumentationWorkspace.voiceReadyField")} dictationTargetId={PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.mdmConsultsDiscussed} dictationLabel={t("providerDocumentationWorkspace.dictationFocusField")} readOnly={readOnly} readOnlyLabel={t("providerDocumentationWorkspace.dictationReadOnlyField")}>{ta("mdmConsultsDiscussed", 2, PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.mdmConsultsDiscussed)}</Field>
+              {!hideHaitiRoutineMedEval ? (
               <Field label={t("providerDocumentationWorkspace.admitObserveDischarge")} voiceReadyLabel={t("providerDocumentationWorkspace.voiceReadyField")} dictationTargetId={PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.mdmAdmitObserveDischarge} dictationLabel={t("providerDocumentationWorkspace.dictationFocusField")} readOnly={readOnly} readOnlyLabel={t("providerDocumentationWorkspace.dictationReadOnlyField")}>{ta("mdmAdmitObserveDischarge", 2, PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.mdmAdmitObserveDischarge)}</Field>
+              ) : null}
             </div>
           </ProviderDocumentationAccordionSection>
 
@@ -2273,10 +2298,14 @@ export function ProviderDocumentationWorkspace({
                 gap: 10,
               }}
             >
+              {!hideHaitiRoutineMedEval ? (
               <Field label={t("providerDocumentationWorkspace.clinicalImpression")} voiceReadyLabel={t("providerDocumentationWorkspace.voiceReadyField")} dictationTargetId={PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.clinicalImpression} dictationLabel={t("providerDocumentationWorkspace.dictationFocusField")} readOnly={readOnly} readOnlyLabel={t("providerDocumentationWorkspace.dictationReadOnlyField")}>{ta("clinicalImpression", 2, PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.clinicalImpression)}</Field>
+              ) : null}
               <Field label={t("providerDocumentationWorkspace.treatmentPlan")} voiceReadyLabel={t("providerDocumentationWorkspace.voiceReadyField")} dictationTargetId={PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.treatmentPlan} dictationLabel={t("providerDocumentationWorkspace.dictationFocusField")} readOnly={readOnly} readOnlyLabel={t("providerDocumentationWorkspace.dictationReadOnlyField")}>{ta("treatmentPlan", 2, PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.treatmentPlan)}</Field>
               <Field label={t("providerDocumentationWorkspace.followUpDisposition")} voiceReadyLabel={t("providerDocumentationWorkspace.voiceReadyField")} dictationTargetId={PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.followUpDisposition} dictationLabel={t("providerDocumentationWorkspace.dictationFocusField")} readOnly={readOnly} readOnlyLabel={t("providerDocumentationWorkspace.dictationReadOnlyField")}>{ta("followUpDisposition", 2, PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.followUpDisposition)}</Field>
+              {!hideHaitiRoutineMedEval ? (
               <Field label={t("providerDocumentationWorkspace.providerAddendum")} voiceReadyLabel={t("providerDocumentationWorkspace.voiceReadyField")} dictationTargetId={PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.providerAddendum} dictationLabel={t("providerDocumentationWorkspace.dictationFocusField")} readOnly={readOnly} readOnlyLabel={t("providerDocumentationWorkspace.dictationReadOnlyField")}>{ta("providerAddendum", 2, PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.providerAddendum)}</Field>
+              ) : null}
             </div>
           </ProviderDocumentationAccordionSection>
 

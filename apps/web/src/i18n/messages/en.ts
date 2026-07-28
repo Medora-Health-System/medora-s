@@ -9950,8 +9950,9 @@ export default {
     tilesHeading: "Clinic sections",
     tiles: {
       intake: "Intake",
-      medicalEvaluation: "Medical evaluation",
+      medicalEvaluation: "Med eval",
       orders: "Orders",
+      prescriptions: "Rx",
       medications: "Medications",
       results: "Results",
       diagnoses: "Diagnoses",
@@ -10008,6 +10009,66 @@ export default {
       "Orders/Results boards remain available under Clinic Care top tabs; tile mounts reuse the same engines.",
     saved: "Saved.",
     saveFailed: "Unable to save.",
+  },
+
+  clinicCareD4c5b2: {
+    empty: {
+      notDocumented: "not documented",
+    },
+    header: {
+      followUp: "Follow-up",
+      rnMa: "RN / MA",
+      medsSummary: "Medications",
+      weight: "Weight",
+      height: "Height",
+      bmi: "BMI",
+      pain: "Pain",
+    },
+    intake: {
+      hint: "Complete ambulatory intake — vitals, allergies, home meds, history, and assignment via shared engines.",
+    },
+    rx: {
+      title: "Prescription (Rx)",
+      hint: "Ambulatory prescribe via shared catalog and order engine — no ClinicPrescription.",
+      newPrescription: "New prescription",
+      empty: "No medication prescriptions for this visit.",
+      untitled: "Prescription",
+    },
+    nursing: {
+      title: "Ambulatory nursing workspace",
+      subtitle: "Fast RN / MA documentation for clinic visits — not the Observation catalog.",
+    },
+    followUp: {
+      checkoutTitle: "Follow-up / checkout",
+      dischargeTitle: "Visit discharge",
+    },
+    summary: {
+      title: "Visit summary",
+      subtitle: "Saved encounter medical record (read-only) — not a form catalog.",
+    },
+    orderStatus: {
+      placed: "Placed",
+      active: "Active",
+      pending: "Pending",
+      completed: "Completed",
+      cancelled: "Cancelled",
+      resultPending: "Result pending",
+      signed: "Signed",
+      acknowledged: "Acknowledged",
+      inProgress: "In progress",
+      resulted: "Resulted",
+      verified: "Verified",
+    },
+    orderPriority: {
+      routine: "Routine",
+      urgent: "Urgent",
+    },
+    orderBoard: {
+      status: "Status",
+      provider: "Provider",
+      orderedBy: "Ordered by",
+      priority: "Priority",
+    },
   },
 
   clinicCareD4c6: {

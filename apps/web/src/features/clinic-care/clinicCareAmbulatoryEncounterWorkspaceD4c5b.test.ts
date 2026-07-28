@@ -40,14 +40,16 @@ function read(rel: string): string {
 }
 
 describe("MEDUI.D4C.5B unified ambulatory encounter workspace", () => {
-  it("A — certification id + eleven inline sections with abbreviations", () => {
+  it("A — certification id + twelve inline sections with abbreviations", () => {
     expect(CLINIC_CARE_AMBULATORY_ENCOUNTER_WORKSPACE_CERTIFICATION_ID).toBe("MEDUI.D4C.5B");
-    expect(CLINIC_CARE_AMBULATORY_WORKSPACE_SECTIONS).toHaveLength(11);
+    expect(CLINIC_CARE_AMBULATORY_WORKSPACE_SECTIONS).toHaveLength(12);
     expect(CLINIC_CARE_AMBULATORY_WORKSPACE_SECTIONS).toContain("medical-evaluation");
     expect(CLINIC_CARE_AMBULATORY_WORKSPACE_SECTIONS).toContain("orders");
+    expect(CLINIC_CARE_AMBULATORY_WORKSPACE_SECTIONS).toContain("prescriptions");
     expect(CLINIC_CARE_AMBULATORY_WORKSPACE_SECTIONS).toContain("results");
     expect(parseClinicCareAmbulatoryWorkspaceSection("clinic")).toBe("medical-evaluation");
     expect(parseClinicCareAmbulatoryWorkspaceSection("mar")).toBe("medications");
+    expect(parseClinicCareAmbulatoryWorkspaceSection("rx")).toBe("prescriptions");
   });
 
   it("B — Active Workspace path is canonical encounter route (no ClinicPatientChart)", () => {

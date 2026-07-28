@@ -629,6 +629,8 @@ export function EmergencyErOrdersPanel({
   roles,
   cdsIntent,
   onConsumeIntent,
+  medicationOrderMode = "ER_ADMINISTER_ONLY",
+  hideTraumaProtocolAssist = false,
 }: {
   encounterId: string;
   facilityId: string;
@@ -645,6 +647,10 @@ export function EmergencyErOrdersPanel({
   /** CDS v2 — one-shot preselect intent (workspace only). */
   cdsIntent?: string | null;
   onConsumeIntent?: () => void;
+  /** Ambulatory Clinic uses DEFAULT outpatient Rx; ED workspace keeps ER_ADMINISTER_ONLY. */
+  medicationOrderMode?: "DEFAULT" | "ER_ADMINISTER_ONLY";
+  /** Haiti ambulatory: hide trauma protocol assist without removing it from ED. */
+  hideTraumaProtocolAssist?: boolean;
 }) {
   const { t, language } = useI18n();
   const { userId: currentUserId, facilityTimeZone, facilityType } = useFacilityAndRoles();
@@ -1310,7 +1316,7 @@ export function EmergencyErOrdersPanel({
     <MedoraCard leftAccentColor="#7c3aed" variant="default">
       <MedoraCardInner>
         <div data-testid="er-orders-panel-layout" data-layout-mode={layoutMode}>
-        {roles !== undefined && canOpenOrderQuickActions ? (
+        {roles !== undefined && canOpenOrderQuickActions && !hideTraumaProtocolAssist ? (
           <TraumaProtocolAssistPanel
             encounterId={encounterId}
             facilityId={facilityId}
@@ -2898,7 +2904,7 @@ export function EmergencyErOrdersPanel({
               : undefined
           }
           initialOrderTab={createModalInitialTab}
-          medicationOrderMode="ER_ADMINISTER_ONLY"
+          medicationOrderMode={medicationOrderMode}
           onClose={() => setShowCreateModal(false)}
           onRefetchEncounter={onRefetchEncounter}
           onOpenEkgProcedureDocumentation={() => {

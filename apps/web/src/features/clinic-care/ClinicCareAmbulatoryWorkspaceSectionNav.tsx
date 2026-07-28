@@ -1,6 +1,6 @@
 /**
  * MEDUI.D4C.5B — Active Clinic Workspace section tile row.
- * Compact circular/tile row (density rule) — no ED layout-mode / bottom-rail machinery.
+ * Modestly larger touch targets (D4C.5B.2) — wrap labels, no clip.
  */
 
 "use client";
@@ -33,8 +33,8 @@ export function ClinicCareAmbulatoryWorkspaceSectionNav({
       style={{
         display: "flex",
         flexWrap: "wrap",
-        gap: 8,
-        padding: "2px 0 4px",
+        gap: 10,
+        padding: "2px 0 6px",
       }}
     >
       {sections.map((section) => {
@@ -57,9 +57,11 @@ export function ClinicCareAmbulatoryWorkspaceSectionNav({
               display: "flex",
               flexDirection: "column",
               alignItems: "center",
-              gap: 3,
-              minWidth: 58,
-              padding: "6px 4px 5px",
+              justifyContent: "flex-start",
+              gap: 4,
+              minWidth: 76,
+              minHeight: 64,
+              padding: "8px 8px 7px",
               border: `1px solid ${selected ? accent : "#e2e8f0"}`,
               borderRadius: 12,
               background: selected ? `${accent}1a` : "#fff",
@@ -72,12 +74,12 @@ export function ClinicCareAmbulatoryWorkspaceSectionNav({
                 display: "inline-flex",
                 alignItems: "center",
                 justifyContent: "center",
-                width: 30,
-                height: 30,
+                width: 36,
+                height: 36,
                 borderRadius: "50%",
                 background: selected ? accent : "#f1f5f9",
                 color: selected ? "#fff" : "#475569",
-                fontSize: 11,
+                fontSize: 12,
                 fontWeight: 700,
                 lineHeight: 1,
               }}
@@ -86,15 +88,15 @@ export function ClinicCareAmbulatoryWorkspaceSectionNav({
             </span>
             <span
               style={{
-                fontSize: 9,
+                fontSize: 10,
                 fontWeight: 600,
                 color: selected ? accent : "#64748b",
                 textAlign: "center",
-                lineHeight: 1.15,
-                maxWidth: 68,
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-                whiteSpace: "nowrap",
+                lineHeight: 1.2,
+                maxWidth: 88,
+                whiteSpace: "normal",
+                overflowWrap: "anywhere",
+                wordBreak: "break-word",
               }}
             >
               {label}
