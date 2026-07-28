@@ -1,0 +1,262 @@
+/**
+ * MEDUI.D4C.4 — Ambulatory provider worklist inside Clinic Care shell.
+ * Functional queue immediately (no Open card). SOAP documentation deferred to D4C.5.
+ */
+
+"use client";
+
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { useSearchParams } from "next/navigation";
+import { clinicCareRowMatchesView, facilityLocalDayUtcBounds, type ClinicCareStageId } from "@medora/shared";
+import { apiFetch } from "@/lib/apiClient";
+import { assignProviderSelf } from "@/lib/clinicalWorklistApi";
+import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
+import { useI18n } from "@/lib/i18n";
+import { MEDORA_CARD_SHELL } from "@/components/medora-card/medoraCardTokens";
+import { resolveClinicBoardPatientNameHref } from "./clinicCareBoardRoutes";
+import { clinicCareStageToken, CLINIC_CARE_SHELL } from "./clinicCareTokens";
+
+type ClinicCareRow = {
+  encounterId: string;
+  patientId: string;
+  patientName: string;
+  mrn: string | null;
+  status: string;
+  workflowState: string | null;
+  stageId: ClinicCareStageId;
+  createdAt: string;
+  roomLabel: string | null;
+  chiefComplaint: string | null;
+  providerName: string | null;
+  resultsPendingCount: number;
+  arrivedAt?: string | null;
+};
+
+type ClinicCareProjection = {
+  facilityTimeZone: string;
+  rows: ClinicCareRow[];
+};
+
+const compactBtn: React.CSSProperties = {
+  display: "inline-flex",
+  height: 26,
+  alignItems: "center",
+  padding: "0 10px",
+  borderRadius: 6,
+  border: `1px solid ${CLINIC_CARE_SHELL.border}`,
+  background: "#fff",
+  color: "#0f172a",
+  fontWeight: 600,
+  fontSize: 12,
+  cursor: "pointer",
+  textDecoration: "none",
+};
+
+export function ClinicCareProviderWorkspaceView() {
+  const { t, language } = useI18n();
+  const locale = language === "en" ? "en-US" : "fr-FR";
+  const searchParams = useSearchParams();
+  const focusEncounterId = searchParams?.get("encounterId") ?? null;
+  const { facilityId, roles, ready, facilityTimeZone } = useFacilityAndRoles();
+  const isProvider = roles.includes("PROVIDER") || roles.includes("ADMIN");
+
+  const [data, setData] = useState<ClinicCareProjection | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [assigningId, setAssigningId] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    if (!facilityId) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const payload = (await apiFetch("/clinic-care/trackboard", { facilityId })) as ClinicCareProjection;
+      setData(payload);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      const miss = /CLINIC_CARE_SCHEMA_MISS|503/i.test(message);
+      setError(miss ? t("clinicCareD4c2.errors.schemaMiss") : t("clinicCareD4c2.errors.loadFailed"));
+    } finally {
+      setLoading(false);
+    }
+  }, [facilityId, t]);
+
+  useEffect(() => {
+    if (!ready || !facilityId) return;
+    void load();
+  }, [ready, facilityId, load]);
+
+  const dayBounds = useMemo(() => {
+    const tz = data?.facilityTimeZone || facilityTimeZone || "America/Chicago";
+    return facilityLocalDayUtcBounds(new Date(), tz);
+  }, [data?.facilityTimeZone, facilityTimeZone]);
+
+  const rows = useMemo(() => {
+    return (data?.rows ?? []).filter((row) =>
+      clinicCareRowMatchesView({
+        view: "PROVIDER",
+        stageId: row.stageId,
+        createdAt: row.createdAt,
+        dayStartUtc: dayBounds.startUtc,
+        dayEndExclusiveUtc: dayBounds.endExclusiveUtc,
+        hasOpenFollowUpDue: false,
+      })
+    );
+  }, [data?.rows, dayBounds]);
+
+  const claim = useCallback(
+    async (encounterId: string) => {
+      if (!facilityId || !isProvider) return;
+      setAssigningId(encounterId);
+      try {
+        await assignProviderSelf(facilityId, encounterId);
+        await load();
+      } finally {
+        setAssigningId(null);
+      }
+    },
+    [facilityId, isProvider, load]
+  );
+
+  const dash = t("common.dash");
+
+  if (!ready) {
+    return <p style={{ margin: 0, color: "#64748b" }}>{t("clinicCareD4c2.loading")}</p>;
+  }
+
+  return (
+    <div data-testid="clinic-care-provider-workspace">
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          gap: 8,
+          marginBottom: 10,
+          flexWrap: "wrap",
+        }}
+      >
+        <div>
+          <h2 style={{ margin: 0, fontSize: 15, fontWeight: 700 }}>{t("clinicCareD4c4.providerTitle")}</h2>
+          <p style={{ margin: "2px 0 0", fontSize: 12, color: "#64748b" }}>
+            {t("clinicCareD4c4.providerSubtitle")}
+          </p>
+        </div>
+        <button type="button" onClick={() => void load()} style={compactBtn}>
+          {t("clinicCareD4c2.refresh")}
+        </button>
+      </div>
+
+      {error ? (
+        <p role="alert" style={{ color: "#991b1b", fontSize: 13 }}>
+          {error}
+        </p>
+      ) : null}
+
+      <section style={{ ...MEDORA_CARD_SHELL, padding: 0, overflow: "auto" }}>
+        {loading && !data ? (
+          <p style={{ padding: 12, margin: 0, color: "#64748b" }}>{t("clinicCareD4c2.loading")}</p>
+        ) : rows.length === 0 ? (
+          <p style={{ padding: 12, margin: 0, color: "#64748b" }} data-testid="clinic-care-provider-empty">
+            {t("clinicCareD4c4.providerEmpty")}
+          </p>
+        ) : (
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+            <thead style={{ position: "sticky", top: 0, zIndex: 1 }}>
+              <tr style={{ background: "#f8fafc", textAlign: "left" }}>
+                <th style={th}>{t("clinicCareD4c2.columns.patient")}</th>
+                <th style={th}>{t("clinicCareD4c2.columns.status")}</th>
+                <th style={th}>{t("clinicCareD4c2.columns.room")}</th>
+                <th style={th}>{t("clinicCareD4c2.columns.provider")}</th>
+                <th style={th}>{t("clinicCareD4c2.columns.actions")}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((row) => {
+                const tok = clinicCareStageToken(row.stageId);
+                const href = resolveClinicBoardPatientNameHref({
+                  encounterId: row.encounterId,
+                  patientId: row.patientId,
+                  status: row.status,
+                  workflowState: row.workflowState,
+                  facilityId,
+                });
+                const highlight = focusEncounterId === row.encounterId;
+                return (
+                  <tr
+                    key={row.encounterId}
+                    data-testid={`clinic-care-provider-row-${row.encounterId}`}
+                    style={{
+                      borderTop: `1px solid ${CLINIC_CARE_SHELL.border}`,
+                      background: highlight ? "#f0fdfa" : undefined,
+                    }}
+                  >
+                    <td style={td}>
+                      <Link href={href} style={{ fontWeight: 650, color: "#0f766e" }}>
+                        {row.patientName}
+                      </Link>
+                      <div style={{ fontSize: 10, color: "#64748b" }}>
+                        {row.chiefComplaint || dash}
+                      </div>
+                    </td>
+                    <td style={td}>
+                      <span
+                        style={{
+                          display: "inline-flex",
+                          padding: "1px 8px",
+                          borderRadius: 999,
+                          fontSize: 10,
+                          fontWeight: 700,
+                          background: tok.bg,
+                          color: tok.text,
+                          border: `1px solid ${tok.border}`,
+                        }}
+                      >
+                        {row.stageId}
+                      </span>
+                    </td>
+                    <td style={td}>{row.roomLabel || dash}</td>
+                    <td style={td}>
+                      {row.providerName ||
+                        (isProvider && row.status === "OPEN" ? (
+                          <button
+                            type="button"
+                            style={compactBtn}
+                            disabled={assigningId === row.encounterId}
+                            onClick={() => void claim(row.encounterId)}
+                          >
+                            {t("clinicCareD4c4.assignMe")}
+                          </button>
+                        ) : (
+                          dash
+                        ))}
+                    </td>
+                    <td style={td}>
+                      <Link href={href} style={compactBtn}>
+                        {t("clinicCareD4c4.openChart")}
+                      </Link>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        )}
+      </section>
+      <p style={{ marginTop: 8, fontSize: 11, color: "#94a3b8" }}>{t("clinicCareD4c4.soapDeferred")}</p>
+    </div>
+  );
+}
+
+const th: React.CSSProperties = {
+  padding: "6px 8px",
+  fontSize: 10,
+  fontWeight: 700,
+  color: "#64748b",
+  background: "#f8fafc",
+};
+
+const td: React.CSSProperties = {
+  padding: "6px 8px",
+  verticalAlign: "middle",
+};

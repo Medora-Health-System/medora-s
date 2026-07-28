@@ -135,14 +135,14 @@ describe("MEDUI.D4C.2A.1 clinic workspace regression correction", () => {
 
   it("F — room + assign user reuse enterprise engines (no ClinicRoom*/ClinicUserAssignment)", () => {
     const view = readFileSync(join(featureDir, "ClinicCareTrackboardView.tsx"), "utf8");
-    expect(view).toContain("RoomAssignmentModal");
+    const roomSelect = readFileSync(join(featureDir, "ClinicCareInlineRoomSelect.tsx"), "utf8");
+    expect(roomSelect).toContain("updateEncounterRoomAssignment");
+    expect(view).toContain("ClinicCareInlineRoomSelect");
     expect(view).toContain("assignProviderSelf");
-    expect(view).toContain("assignNurseSelf");
-    expect(view).toContain("assignHospitalRoleToMe");
-    expect(view).toContain("clinic-care-assign-room-");
     expect(view).toContain("clinic-care-assign-provider-");
-    expect(view).toContain("clinic-care-assign-nurse-");
-    expect(view).toContain("clinic-care-assign-ma-");
+    expect(view).not.toContain("clinic-care-assign-room-");
+    expect(view).not.toContain("clinic-care-assign-nurse-");
+    expect(view).not.toContain("assignNurseSelf");
     expect(view).not.toMatch(/\bClinicRoomAssignment\b/);
     expect(view).not.toMatch(/\bClinicUserAssignment\b/);
     expect(existsSync(join(featureDir, "ClinicRoomAssignmentModal.tsx"))).toBe(false);

@@ -15,11 +15,9 @@ import {
   type ClinicCareTrackboardMetricId,
   type ClinicCareTrackboardView,
 } from "@medora/shared";
-import { RoomAssignmentModal } from "@/components/encounters/RoomAssignmentModal";
 import { apiFetch } from "@/lib/apiClient";
-import { assignNurseSelf, assignProviderSelf } from "@/lib/clinicalWorklistApi";
+import { assignProviderSelf } from "@/lib/clinicalWorklistApi";
 import { canAssignEncounterRoom } from "@/lib/governedRoomDisplay";
-import { assignHospitalRoleToMe } from "@/features/hospital-care/hospitalAssignmentApi";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import { useI18n } from "@/lib/i18n";
 import { MEDORA_CARD_SHELL } from "@/components/medora-card/medoraCardTokens";
@@ -27,6 +25,7 @@ import {
   resolveClinicBoardActionHref,
   resolveClinicBoardPatientNameHref,
 } from "./clinicCareBoardRoutes";
+import { ClinicCareInlineRoomSelect } from "./ClinicCareInlineRoomSelect";
 import { clinicCareMetricToken, clinicCareStageToken, CLINIC_CARE_SHELL } from "./clinicCareTokens";
 
 type ClinicCareRow = {
@@ -216,12 +215,12 @@ function formatArrivalTime(iso: string, timeZone: string, locale: string, dash: 
 }
 
 const selectStyle: React.CSSProperties = {
-  height: 36,
-  borderRadius: 10,
+  height: 30,
+  borderRadius: 8,
   border: `1px solid ${CLINIC_CARE_SHELL.border}`,
   background: "#fff",
-  padding: "0 10px",
-  fontSize: 13,
+  padding: "0 8px",
+  fontSize: 12,
   color: "#0f172a",
 };
 
@@ -242,8 +241,6 @@ export function ClinicCareTrackboardView({
   const { facilityId, roles, ready, facilityTimeZone, userId } = useFacilityAndRoles();
   const profession = resolveProfessionGroup({ roleCodes: roles });
   const isProvider = roles.includes("PROVIDER") || roles.includes("ADMIN");
-  const isNurse = roles.includes("RN") || roles.includes("ADMIN");
-  const isMaTech = roles.includes("PATIENT_CARE_TECH");
   const canAssignRoom = canAssignEncounterRoom(roles);
 
   const [data, setData] = useState<ClinicCareProjection | null>(null);
@@ -260,7 +257,6 @@ export function ClinicCareTrackboardView({
     mode === "todaysVisits" ? "ALL_TODAY" : defaultClinicCareTrackboardViewForProfession(profession)
   );
   const [sortKey, setSortKey] = useState<"arrival" | "patient" | "status">("arrival");
-  const [roomEncounter, setRoomEncounter] = useState<ClinicCareRow | null>(null);
   const [assigningId, setAssigningId] = useState<string | null>(null);
   const [assignError, setAssignError] = useState<{ id: string; message: string } | null>(null);
   const activeShell = mode === "todaysVisits" ? "todaysVisits" : "trackboard";
@@ -301,20 +297,13 @@ export function ClinicCareTrackboardView({
     }
   }, [facilityId, t, mode]);
 
-  const claimSelf = useCallback(
-    async (encounterId: string, kind: "provider" | "nurse" | "ma") => {
+  const claimProviderSelf = useCallback(
+    async (encounterId: string) => {
       if (!facilityId) return;
       setAssigningId(encounterId);
       setAssignError(null);
       try {
-        if (kind === "provider") {
-          await assignProviderSelf(facilityId, encounterId);
-        } else if (kind === "nurse") {
-          await assignNurseSelf(facilityId, encounterId);
-        } else {
-          // Enterprise hospital TECHNICIAN / PATIENT_CARE_TECH slot — no parallel clinic user-assignment table.
-          await assignHospitalRoleToMe(facilityId, encounterId, "TECHNICIAN");
-        }
+        await assignProviderSelf(facilityId, encounterId);
         await load();
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
@@ -528,9 +517,9 @@ export function ClinicCareTrackboardView({
           data-testid="clinic-care-kpi-tiles"
           style={{
             display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",
-            gap: 10,
-            marginBottom: 14,
+            gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))",
+            gap: 8,
+            marginBottom: 10,
           }}
         >
           {CLINIC_CARE_PRIMARY_TRACKBOARD_METRIC_IDS.map((id) => {
@@ -550,18 +539,18 @@ export function ClinicCareTrackboardView({
                 }}
                 style={{
                   textAlign: "left",
-                  borderRadius: CLINIC_CARE_SHELL.radius,
+                  borderRadius: 10,
                   border: `1px solid ${token.border}`,
                   background: token.bg,
-                  padding: "12px 14px",
+                  padding: "8px 10px",
                   cursor: "pointer",
                   boxShadow: "0 1px 2px rgba(15,23,42,0.04)",
                 }}
               >
-                <div style={{ fontSize: 11, fontWeight: 700, color: token.text, letterSpacing: "0.02em" }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: token.text, letterSpacing: "0.02em" }}>
                   {t(metricLabelKey(id))}
                 </div>
-                <div style={{ marginTop: 6, fontSize: 28, fontWeight: 750, color: token.accent, lineHeight: 1 }}>
+                <div style={{ marginTop: 4, fontSize: 22, fontWeight: 750, color: token.accent, lineHeight: 1 }}>
                   {loading && count == null ? "…" : error && count == null ? "—" : count ?? 0}
                 </div>
               </button>
@@ -569,18 +558,12 @@ export function ClinicCareTrackboardView({
           })}
         </section>
 
-        <section
-          style={{
-            ...MEDORA_CARD_SHELL,
-            padding: 12,
-            marginBottom: 12,
-          }}
-        >
+        <section style={{ ...MEDORA_CARD_SHELL, padding: 8, marginBottom: 8 }}>
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "minmax(180px, 1.4fr) repeat(auto-fit, minmax(120px, 1fr))",
-              gap: 8,
+              gridTemplateColumns: "minmax(160px, 1.4fr) repeat(auto-fit, minmax(100px, 1fr))",
+              gap: 6,
               alignItems: "end",
             }}
           >
@@ -715,26 +698,28 @@ export function ClinicCareTrackboardView({
           <p style={{ fontSize: 12, color: "#92400e", marginBottom: 8 }}>{t("clinicCareD4c2.truncatedNotice")}</p>
         ) : null}
 
-        <section style={{ ...MEDORA_CARD_SHELL, padding: 0, overflow: "auto" }}>
+        <section
+          style={{ ...MEDORA_CARD_SHELL, padding: 0, overflow: "auto", maxHeight: "calc(100vh - 280px)" }}
+        >
           {loading && !data ? (
-            <p style={{ padding: 16, color: "#64748b", margin: 0 }}>{t("clinicCareD4c2.loading")}</p>
+            <p style={{ padding: 12, color: "#64748b", margin: 0 }}>{t("clinicCareD4c2.loading")}</p>
           ) : error && !data ? (
             <p
-              style={{ padding: 16, color: "#64748b", margin: 0 }}
+              style={{ padding: 12, color: "#64748b", margin: 0 }}
               data-testid="clinic-care-trackboard-error-empty"
             >
               {t("clinicCareD4c2.errors.loadBlockedEmpty")}
             </p>
           ) : filteredRows.length === 0 ? (
             <p
-              style={{ padding: 16, color: "#64748b", margin: 0 }}
+              style={{ padding: 12, color: "#64748b", margin: 0 }}
               data-testid="clinic-care-trackboard-true-empty"
             >
               {t("clinicCareD4c2.empty")}
             </p>
           ) : (
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
-              <thead>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+              <thead style={{ position: "sticky", top: 0, zIndex: 1 }}>
                 <tr style={{ background: "#f8fafc", textAlign: "left" }}>
                   <th style={thStyle}>{t("clinicCareD4c2.columns.patient")}</th>
                   <th style={thStyle}>{t("clinicCareD4c2.columns.visitOrigin")}</th>
@@ -744,7 +729,7 @@ export function ClinicCareTrackboardView({
                   <th style={thStyle}>{t("clinicCareD4c2.columns.checkIn")}</th>
                   <th style={thStyle}>{t("clinicCareD4c2.columns.status")}</th>
                   <th style={thStyle}>{t("clinicCareD4c2.columns.room")}</th>
-                  <th style={thStyle}>{t("clinicCareD4c2.columns.team")}</th>
+                  <th style={thStyle}>{t("clinicCareD4c2.columns.provider")}</th>
                   {visibility.showOpenOrderCount ? (
                     <th style={thStyle}>{t("clinicCareD4c2.columns.orders")}</th>
                   ) : null}
@@ -779,15 +764,12 @@ export function ClinicCareTrackboardView({
                     showClinicalActionLinks: visibility.showClinicalActionLinks,
                     allowDischargeActions,
                   });
-                  const actionLabel =
+                  const showOpenAction =
                     (row.stageId === "DISCHARGE_PENDING" && allowDischargeActions) ||
-                    (visibility.showClinicalActionLinks &&
-                      (access?.canAuthorProviderDocumentation || access?.canAccessNursingMa))
-                      ? t("clinicCareD4c2.actions.open")
-                      : t("clinicCareD4c2.actions.view");
-                  const showAssignProvider = isProvider && row.status === "OPEN";
-                  const showAssignNurse = isNurse && row.status === "OPEN";
-                  const showAssignMa = isMaTech && row.status === "OPEN";
+                    (visibility.showClinicalActionLinks === true &&
+                      row.stageId === "DISCHARGE_PENDING");
+                  const showAssignProvider =
+                    isProvider && row.status === "OPEN" && !row.providerName;
                   return (
                     <tr key={row.encounterId} style={{ borderTop: `1px solid ${CLINIC_CARE_SHELL.border}` }}>
                       <td style={tdStyle}>
@@ -807,7 +789,7 @@ export function ClinicCareTrackboardView({
                         >
                           {row.patientName}
                         </Link>
-                        <div style={{ fontSize: 11, color: "#64748b" }}>
+                        <div style={{ fontSize: 10, color: "#64748b" }}>
                           {row.mrn ? `${t("clinicCareD4c2.mrnPrefix")} ${row.mrn}` : dash}
                           {visibility.showChiefComplaint && row.chiefComplaint
                             ? ` · ${row.chiefComplaint}`
@@ -851,9 +833,9 @@ export function ClinicCareTrackboardView({
                           style={{
                             display: "inline-flex",
                             alignItems: "center",
-                            padding: "2px 10px",
+                            padding: "1px 8px",
                             borderRadius: 999,
-                            fontSize: 11,
+                            fontSize: 10,
                             fontWeight: 700,
                             background: stageTok.bg,
                             color: stageTok.text,
@@ -863,20 +845,46 @@ export function ClinicCareTrackboardView({
                           {t(stageLabelKey(row.stageId))}
                         </span>
                       </td>
-                      <td style={tdStyle}>{row.roomLabel || dash}</td>
                       <td style={tdStyle}>
-                        <div style={{ fontSize: 12 }}>
-                          {visibility.showProviderName !== false ? (
-                            <div>
-                              <span style={{ color: "#64748b" }}>{t("clinicCareD4c2.team.provider")}: </span>
-                              {row.providerName || dash}
-                            </div>
-                          ) : null}
-                          <div>
-                            <span style={{ color: "#64748b" }}>{t("clinicCareD4c2.team.nurse")}: </span>
-                            {row.nurseName || dash}
+                        {canAssignRoom && row.status === "OPEN" && facilityId ? (
+                          <ClinicCareInlineRoomSelect
+                            facilityId={facilityId}
+                            encounterId={row.encounterId}
+                            encounterType={row.encounterType}
+                            roomLabel={row.roomLabel}
+                            onSaved={load}
+                          />
+                        ) : (
+                          row.roomLabel || dash
+                        )}
+                      </td>
+                      <td style={tdStyle}>
+                        {visibility.showProviderName !== false ? (
+                          <div style={{ fontSize: 12 }} data-testid={`clinic-care-provider-cell-${row.encounterId}`}>
+                            {row.providerName ? (
+                              row.providerName
+                            ) : showAssignProvider ? (
+                              <button
+                                type="button"
+                                data-testid={`clinic-care-assign-provider-${row.encounterId}`}
+                                disabled={assigningId === row.encounterId}
+                                onClick={() => void claimProviderSelf(row.encounterId)}
+                                style={{ ...actionBtnStyle, cursor: "pointer", height: 24, fontSize: 11 }}
+                              >
+                                {t("clinicCareD4c4.assignMeProvider")}
+                              </button>
+                            ) : (
+                              dash
+                            )}
                           </div>
-                        </div>
+                        ) : (
+                          dash
+                        )}
+                        {assignError && assignError.id === row.encounterId ? (
+                          <p role="alert" style={{ margin: "2px 0 0", fontSize: 10, color: "#b91c1c" }}>
+                            {assignError.message}
+                          </p>
+                        ) : null}
                       </td>
                       {visibility.showOpenOrderCount ? (
                         <td style={tdStyle}>
@@ -900,71 +908,17 @@ export function ClinicCareTrackboardView({
                         <td style={tdStyle}>{t(nextStepLabelKey(row.nextStepHint))}</td>
                       ) : null}
                       <td style={tdStyle}>
-                        <div
-                          style={{
-                            display: "flex",
-                            flexWrap: "wrap",
-                            gap: 6,
-                            alignItems: "center",
-                          }}
-                        >
+                        {showOpenAction ? (
                           <Link
                             href={openHref}
                             data-testid={`clinic-care-action-chart-${row.encounterId}`}
                             style={actionBtnStyle}
                           >
-                            {actionLabel}
+                            {t("clinicCareD4c2.actions.open")}
                           </Link>
-                          {canAssignRoom && row.status === "OPEN" ? (
-                            <button
-                              type="button"
-                              data-testid={`clinic-care-assign-room-${row.encounterId}`}
-                              onClick={() => setRoomEncounter(row)}
-                              style={{ ...actionBtnStyle, cursor: "pointer" }}
-                            >
-                              {t("clinicCareD4c2.actions.assignRoom")}
-                            </button>
-                          ) : null}
-                          {showAssignProvider ? (
-                            <button
-                              type="button"
-                              data-testid={`clinic-care-assign-provider-${row.encounterId}`}
-                              disabled={assigningId === row.encounterId}
-                              onClick={() => void claimSelf(row.encounterId, "provider")}
-                              style={{ ...actionBtnStyle, cursor: "pointer" }}
-                            >
-                              {t("clinicCareD4c2.actions.assignProviderMe")}
-                            </button>
-                          ) : null}
-                          {showAssignNurse ? (
-                            <button
-                              type="button"
-                              data-testid={`clinic-care-assign-nurse-${row.encounterId}`}
-                              disabled={assigningId === row.encounterId}
-                              onClick={() => void claimSelf(row.encounterId, "nurse")}
-                              style={{ ...actionBtnStyle, cursor: "pointer" }}
-                            >
-                              {t("clinicCareD4c2.actions.assignNurseMe")}
-                            </button>
-                          ) : null}
-                          {showAssignMa ? (
-                            <button
-                              type="button"
-                              data-testid={`clinic-care-assign-ma-${row.encounterId}`}
-                              disabled={assigningId === row.encounterId}
-                              onClick={() => void claimSelf(row.encounterId, "ma")}
-                              style={{ ...actionBtnStyle, cursor: "pointer" }}
-                              title={t("clinicCareD4c2.actions.assignMaHint")}
-                            >
-                              {t("clinicCareD4c2.actions.assignMaMe")}
-                            </button>
-                          ) : null}
-                        </div>
-                        {assignError && assignError.id === row.encounterId ? (
-                          <p role="alert" style={{ margin: "4px 0 0", fontSize: 11, color: "#b91c1c" }}>
-                            {assignError.message}
-                          </p>
-                        ) : null}
+                        ) : (
+                          <span style={{ color: "#94a3b8", fontSize: 11 }}>—</span>
+                        )}
                       </td>
                     </tr>
                   );
@@ -973,69 +927,52 @@ export function ClinicCareTrackboardView({
             </table>
           )}
         </section>
-
-        <p style={{ marginTop: 10, fontSize: 11, color: "#94a3b8" }}>{t("clinicCareD4c2.footerDeferral")}</p>
-
-      {facilityId && roomEncounter ? (
-        <RoomAssignmentModal
-          open
-          facilityId={facilityId}
-          encounter={{
-            id: roomEncounter.encounterId,
-            roomLabel: roomEncounter.roomLabel,
-            type: roomEncounter.encounterType,
-          }}
-          onClose={() => setRoomEncounter(null)}
-          onSaved={async () => {
-            setRoomEncounter(null);
-            await load();
-          }}
-        />
-      ) : null}
     </div>
   );
 }
 
 const actionBtnStyle: React.CSSProperties = {
   display: "inline-flex",
-  height: 28,
+  height: 24,
   alignItems: "center",
-  padding: "0 10px",
-  borderRadius: 8,
+  padding: "0 8px",
+  borderRadius: 6,
   border: `1px solid ${CLINIC_CARE_SHELL.border}`,
   background: "#fff",
   color: "#0f172a",
   textDecoration: "none",
   fontWeight: 600,
-  fontSize: 12,
+  fontSize: 11,
 };
 
 const thStyle: React.CSSProperties = {
-  padding: "10px 12px",
-  fontSize: 11,
+  padding: "6px 8px",
+  fontSize: 10,
   fontWeight: 700,
   color: "#64748b",
   whiteSpace: "nowrap",
+  background: "#f8fafc",
+  borderBottom: `1px solid ${CLINIC_CARE_SHELL.border}`,
 };
 
 const tdStyle: React.CSSProperties = {
-  padding: "10px 12px",
-  verticalAlign: "top",
+  padding: "6px 8px",
+  verticalAlign: "middle",
   color: "#0f172a",
 };
 
 function countChip(color: string): React.CSSProperties {
   return {
     display: "inline-flex",
-    minWidth: 22,
-    height: 22,
+    minWidth: 18,
+    height: 18,
     alignItems: "center",
     justifyContent: "center",
     borderRadius: 999,
     background: color,
     color: "#fff",
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: 700,
-    padding: "0 6px",
+    padding: "0 5px",
   };
 }

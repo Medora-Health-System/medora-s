@@ -1,14 +1,12 @@
 "use client";
 
-import { ClinicCareEmbeddedModule } from "@/features/clinic-care/ClinicCareEmbeddedModule";
+import { ClinicCareDirectCanonicalRedirect } from "@/features/clinic-care/ClinicCareDirectCanonicalRedirect";
 
 export default function ClinicCarePublicHealthPage() {
   return (
-    <ClinicCareEmbeddedModule
-      titleKey="clinicCareD4c2a.nav.publicHealth"
-      descriptionKey="clinicCareD4c2a.module.publicHealthDesc"
+    <ClinicCareDirectCanonicalRedirect
       href="/app/public-health/summary"
-      hrefLabelKey="clinicCareD4c2a.module.openPublicHealth"
+      labelKey="clinicCareD4c4.redirectingPublicHealth"
     />
   );
 }

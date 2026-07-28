@@ -1,14 +1,12 @@
 "use client";
 
-import { ClinicCareEmbeddedModule } from "@/features/clinic-care/ClinicCareEmbeddedModule";
+import { ClinicCareDirectCanonicalRedirect } from "@/features/clinic-care/ClinicCareDirectCanonicalRedirect";
 
 export default function ClinicCareRadiologyPage() {
   return (
-    <ClinicCareEmbeddedModule
-      titleKey="clinicCareD4c2a.nav.radiology"
-      descriptionKey="clinicCareD4c2a.module.radiologyDesc"
+    <ClinicCareDirectCanonicalRedirect
       href="/app/rad-worklist"
-      hrefLabelKey="clinicCareD4c2a.module.openRadiology"
+      labelKey="clinicCareD4c4.redirectingRadiology"
     />
   );
 }

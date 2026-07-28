@@ -1,14 +1,12 @@
 "use client";
 
-import { ClinicCareEmbeddedModule } from "@/features/clinic-care/ClinicCareEmbeddedModule";
+import { ClinicCareDirectCanonicalRedirect } from "@/features/clinic-care/ClinicCareDirectCanonicalRedirect";
 
 export default function ClinicCarePatientsPage() {
   return (
-    <ClinicCareEmbeddedModule
-      titleKey="clinicCareD4c2.nav.patients"
-      descriptionKey="clinicCareD4c2a.module.patientsDesc"
+    <ClinicCareDirectCanonicalRedirect
       href="/app/patients"
-      hrefLabelKey="clinicCareD4c2a.module.openPatients"
+      labelKey="clinicCareD4c4.redirectingPatients"
     />
   );
 }

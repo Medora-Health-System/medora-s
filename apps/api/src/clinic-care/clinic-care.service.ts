@@ -11,12 +11,18 @@ import {
   filterClinicCareTrackboardRowForRole,
   isClinicCareFollowUpDue,
   isHaitiPublicHealthJurisdiction,
+  projectClinicCareIntakeStatus,
+  projectClinicCareNursingQueueStage,
   projectClinicCareStage,
+  projectHospitalBoardAssignments,
   projectRegistrationCompleteness,
+  readHospitalAssignmentBag,
   resolveAmbulatoryOperatingMode,
   resolveClinicCareTrackboardFieldVisibility,
   resolveFacilityCareProfile,
+  type ClinicCareIntakeStatusProjection,
   type ClinicCareMetricCountMap,
+  type ClinicCareNursingQueueStage,
   type ClinicCareStageId,
   type ClinicCareTrackboardFieldVisibility,
   type ClinicCareTrackboardView,
@@ -32,6 +38,27 @@ const CLINIC_CARE_ROW_LIMIT = 250;
 const CLINIC_CARE_ENCOUNTER_SELECT = {
   ...TRACKBOARD_ACTIVE_ENCOUNTER_SELECT,
   visitOrigin: true,
+  admissionSummaryJson: true,
+  patient: {
+    select: {
+      id: true,
+      firstName: true,
+      lastName: true,
+      dob: true,
+      sexAtBirth: true,
+      mrn: true,
+      latestVitalsAt: true,
+      clinicalHistoryProfileJson: true,
+    },
+  },
+  triage: {
+    select: {
+      esi: true,
+      chiefComplaint: true,
+      triageCompleteAt: true,
+      vitalsJson: true,
+    },
+  },
   appointment: {
     select: {
       id: true,
@@ -73,6 +100,12 @@ export type ClinicCareTrackboardRowDto = {
   arrivedAt: string | null;
   checkedInAt: string | null;
   registrationCompletenessStatus: string | null;
+  /** MEDUI.D4C.4 — nursing queue stage projection (presentation-only). */
+  nursingQueueStage: ClinicCareNursingQueueStage;
+  /** MEDUI.D4C.4 — intake / vitals / allergy / med-rec flags from enterprise fields. */
+  intakeStatus: ClinicCareIntakeStatusProjection;
+  /** MEDUI.D4C.4 — MA / PATIENT_CARE_TECH display from hospital TECHNICIAN adapter bag. */
+  maName: string | null;
 };
 
 export type ClinicCareTrackboardProjectionDto = {
@@ -317,6 +350,20 @@ export class ClinicCareService {
         arrivedAt,
         checkedInAt: appt?.checkedInAt?.toISOString() ?? null,
         registrationCompletenessStatus: completeness.overallStatus,
+        nursingQueueStage: projectClinicCareNursingQueueStage({
+          workflowState: e.workflowState,
+          encounterStatus: e.status,
+          resultsPendingCount,
+        }),
+        intakeStatus: projectClinicCareIntakeStatus({
+          encounterVitals: e.vitals,
+          triageCompleteAt: e.triage?.triageCompleteAt ?? null,
+          patientLatestVitalsAt: e.patient?.latestVitalsAt ?? null,
+          clinicalHistoryProfileJson: e.patient?.clinicalHistoryProfileJson ?? null,
+        }),
+        maName:
+          projectHospitalBoardAssignments(readHospitalAssignmentBag(e.admissionSummaryJson))
+            .technicianName ?? null,
       };
       return filterClinicCareTrackboardRowForRole(fullRow, fieldVisibility);
     });
