@@ -187,7 +187,7 @@ function PharmacyInventoryPageContent() {
   return (
     <div>
       <h1 style={{ marginTop: 0 }}>{t("pharmacyInventoryPage.title")}</h1>
-      {facilityId && (
+      {facilityId && canManagePharmacy && (
         <PharmacyAlertsCard facilityId={facilityId} onRefreshInventory={load} />
       )}
 

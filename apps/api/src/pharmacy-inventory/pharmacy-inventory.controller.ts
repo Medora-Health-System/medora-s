@@ -85,14 +85,14 @@ export class PharmacyInventoryController {
   }
 
   @Get("inventory-low-stock")
-  @RequireRoles(RoleCode.PHARMACY, RoleCode.ADMIN, RoleCode.PROVIDER, RoleCode.RN)
+  @RequireRoles(RoleCode.PHARMACY, RoleCode.ADMIN)
   async listLowStock(@Req() req: any) {
     const facilityId = this.getFacilityId(req);
     return this.pharmacyInventoryService.listLowStockItems(facilityId);
   }
 
   @Get("inventory-expiring")
-  @RequireRoles(RoleCode.PHARMACY, RoleCode.ADMIN, RoleCode.PROVIDER, RoleCode.RN)
+  @RequireRoles(RoleCode.PHARMACY, RoleCode.ADMIN)
   async listExpiring(
     @Query("withinDays") withinDaysStr: string | undefined,
     @Req() req: any

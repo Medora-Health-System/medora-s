@@ -114,6 +114,7 @@ export default {
         ed: "Urgences",
         observation: "Observation",
         inpatient: "Hospitalisation",
+        ambulatory: "Ambulatoire",
         unknown: "Identité à revoir",
         other: "Autre",
       },
@@ -1090,19 +1091,19 @@ export default {
     subtitle: "La gestion des médicaments sera disponible ici.",
   },
   pharmacyHomePage: {
-    title: "File pharmacie",
+    title: "Pharmacie",
     shortcuts: "Raccourcis :",
     offlineListNote: "Hors ligne : liste pharmacie affichée depuis le cache.",
     linkInventory: "Inventaire",
-    linkDispense: "Dispensation",
+    linkDispense: "Délivrer",
     linkLowStock: "Stock faible",
-    linkExpiring: "Expire bientôt",
-    linkWorklist: "Liste pharmacie (détails)",
-    intro: "Ordres de médicaments à vérifier et dispenser.",
+    linkExpiring: "Expiration prochaine",
+    linkWorklist: "Liste de travail",
+    intro: "Ordres de médicaments à vérifier et délivrer.",
     empty: "Aucun ordre de médicament en file.",
     verify: "Vérifier",
-    dispense: "Dispenser",
-    dispenseContext: "Contexte de dispensation",
+    dispense: "Délivrer",
+    dispenseContext: "Contexte de délivrance",
   },
   pharmacyInventoryPage: {
     title: "Inventaire pharmacie",
@@ -5810,12 +5811,15 @@ export default {
   },
   orderItemStatus: {
     PENDING: "En attente",
+    PLACED: "Transmise",
+    SIGNED: "Signée",
     ACKNOWLEDGED: "Reçu",
     IN_PROGRESS: "En cours",
     COMPLETED: "Terminée",
     CANCELLED: "Annulée",
     RESULTED: "Terminée",
     VERIFIED: "Terminée",
+    DRAFT: "Brouillon",
   },
   msppBulletinPage: {
     pageTitle: "MSPP — Bulletin épidémiologique hebdomadaire",
@@ -9829,11 +9833,14 @@ export default {
     rapidHpTitle: "H&P rapide ambulatoire",
     providerDocReadOnly:
       "La documentation médecin est en lecture seule pour votre rôle. Seuls le médecin et l’administrateur peuvent rédiger ou signer.",
-    encountersTitle: "Rencontres ambulatoires",
-    encountersSubtitle: "Liste des rencontres via l’autorité entreprise — filtre ambulatoire par défaut.",
-    encountersSearchPlaceholder: "Rechercher patient, MRN ou rencontre…",
+    encountersTitle: "Consultations ambulatoires",
+    encountersSubtitle: "Liste des consultations via l’autorité entreprise — filtre ambulatoire par défaut.",
+    encountersSearchPlaceholder: "Rechercher patient, MRN ou consultation…",
     ambulatoryFilter: "Ambulatoire uniquement",
-    encountersEmpty: "Aucune rencontre ne correspond à ce filtre.",
+    encountersEmpty: "Aucune consultation ambulatoire ne correspond à cette vue.",
+    encountersLoadError: "Impossible de charger les consultations.",
+    encountersUnauthorized: "Accès non autorisé",
+    encountersRetry: "Réessayer",
     encountersFilterHint: "Types ambulatoires : {types}. Décochez pour élargir aux rencontres ouvertes du site.",
     patientsTitle: "Patients",
     patientsSubtitle: "Recherche entreprise — ouverture du dossier longitudinal patient (pas de ClinicPatientChart).",
@@ -10228,6 +10235,45 @@ export default {
     discharge: {
       singleEngineHint:
         "Sortie ambulatoire pilotée par les diagnostics uniquement (moteur partagé D4C.7). Doublon d’instructions patient plates retiré.",
+    },
+  },
+
+  clinicCareD4c7b: {
+    pharmacyNavLabel: "Pharmacie",
+    pharmacyEntryHint: "File pharmacie entreprise — filtre ambulatoire Clinic Care.",
+    consultationsNavHint: "Consultations ambulatoires — espace clinique actif.",
+    adminInventoryAlertDeferred:
+      "Widget d’alertes stock/péremption sur tableau Admin privé reporté (D4C.8).",
+  },
+
+  clinicCareD4c7c: {
+    nav: {
+      groupLabImaging: "Laboratoire et imagerie",
+      labList: "Liste laboratoire",
+      radList: "Radiologie",
+    },
+    lab: {
+      ambulatoryFilter: "Filtre ambulatoire Clinic Care — file laboratoire entreprise.",
+      emptyAmbulatory: "Aucune ordonnance de laboratoire ambulatoire dans cette file.",
+      deniedFacilityRnLabPolicy:
+        "Cet établissement n'autorise pas la saisie de résultats de laboratoire par les infirmiers.",
+      deniedFrontDeskBilling: "Saisie de résultats non autorisée pour l’accueil / facturation.",
+    },
+    rad: {
+      ambulatoryFilter: "Filtre ambulatoire Clinic Care — file imagerie entreprise.",
+      emptyAmbulatory: "Aucune ordonnance d’imagerie ambulatoire dans cette file.",
+      capabilityRequired:
+        "La radiologie n’est pas activée pour cet établissement (ligne de service / module).",
+    },
+    results: {
+      openCanonicalViewer: "Ouvrir le résultat (visionneuse entreprise)",
+      acknowledgeHint: "L’accusé de réception n’est pas une saisie ni une finalisation.",
+      abnormalCriticalPreserved: "Anormal / critique — standards Medora inchangés en ambulatoire.",
+    },
+    errors: {
+      loadFailed: "Impossible de charger la file laboratoire / imagerie.",
+      retry: "Réessayer",
+      unauthorized: "Accès non autorisé à cette file.",
     },
   },
 
@@ -14214,13 +14260,13 @@ export default {
     ageYearSuffix: "ans",
   },
   pharmacyAlertsCard: {
-    title: "Alertes pharmacie",
+    title: "Alertes de pharmacie",
     loading: "Chargement…",
     loadFailed: "Impossible de charger les alertes",
     retry: "Réessayer",
     linkLowStock: "Stock faible",
-    linkExpiring: "À péremption",
-    linkInventory: "Stock",
+    linkExpiring: "Expiration prochaine",
+    linkInventory: "Inventaire",
     refresh: "Actualiser",
     lowStockHeading: "Stock faible",
     expiringHeading: "Péremption sous {days} jours",

@@ -167,7 +167,7 @@ export default {
     followUps: "Follow-up",
     radWorklist: "Radiology worklist",
     labWorklist: "Lab worklist",
-    pharmacyQueue: "Pharmacy queue",
+    pharmacyQueue: "Pharmacy",
     pharmacyWorklist: "Pharmacy worklist",
     pharmacyInventory: "Inventory",
     pharmacyDispense: "Dispense",
@@ -233,6 +233,7 @@ export default {
         ed: "ED",
         observation: "Observation",
         inpatient: "Inpatient",
+        ambulatory: "Ambulatory",
         unknown: "Identity review",
         other: "Other",
       },
@@ -1190,14 +1191,14 @@ export default {
     subtitle: "Medication management will be available here.",
   },
   pharmacyHomePage: {
-    title: "Pharmacy queue",
+    title: "Pharmacy",
     shortcuts: "Shortcuts:",
     offlineListNote: "Offline: pharmacy list shown from cache.",
     linkInventory: "Inventory",
     linkDispense: "Dispense",
     linkLowStock: "Low stock",
     linkExpiring: "Expiring soon",
-    linkWorklist: "Pharmacy worklist (details)",
+    linkWorklist: "Pharmacy worklist",
     intro: "Medication orders to verify and dispense.",
     empty: "No medication orders in the queue.",
     verify: "Verify",
@@ -5837,12 +5838,15 @@ export default {
   },
   orderItemStatus: {
     PENDING: "Pending",
+    PLACED: "Placed",
+    SIGNED: "Signed",
     ACKNOWLEDGED: "Acknowledged",
     IN_PROGRESS: "In progress",
     COMPLETED: "Completed",
     CANCELLED: "Canceled",
     RESULTED: "Completed",
     VERIFIED: "Completed",
+    DRAFT: "Draft",
   },
   msppBulletinPage: {
     pageTitle: "MSPP — Weekly epidemiologic bulletin",
@@ -9831,11 +9835,14 @@ export default {
     rapidHpTitle: "Ambulatory rapid H&P",
     providerDocReadOnly:
       "Provider documentation is read-only for your role. Only Provider and Admin may author or sign.",
-    encountersTitle: "Ambulatory encounters",
+    encountersTitle: "Ambulatory consultations",
     encountersSubtitle: "Encounter list via enterprise authority — ambulatory filter by default.",
-    encountersSearchPlaceholder: "Search patient, MRN, or encounter…",
+    encountersSearchPlaceholder: "Search patient, MRN, or consultation…",
     ambulatoryFilter: "Ambulatory only",
-    encountersEmpty: "No encounters match this filter.",
+    encountersEmpty: "No ambulatory consultations match this view.",
+    encountersLoadError: "Unable to load consultations.",
+    encountersUnauthorized: "Access denied",
+    encountersRetry: "Retry",
     encountersFilterHint: "Ambulatory types: {types}. Uncheck to include all open facility encounters.",
     patientsTitle: "Patients",
     patientsSubtitle: "Enterprise search — opens longitudinal patient chart (no ClinicPatientChart).",
@@ -10225,6 +10232,45 @@ export default {
     discharge: {
       singleEngineHint:
         "Diagnosis-driven ambulatory discharge only (D4C.7 shared engine). Flat patient-instruction duplicate removed.",
+    },
+  },
+
+  clinicCareD4c7b: {
+    pharmacyNavLabel: "Pharmacy",
+    pharmacyEntryHint: "Enterprise pharmacy board — Clinic Care ambulatory filter.",
+    consultationsNavHint: "Ambulatory consultations — Active Clinic Workspace.",
+    adminInventoryAlertDeferred:
+      "Private Admin inventory/expiration alert widget deferred (D4C.8).",
+  },
+
+  clinicCareD4c7c: {
+    nav: {
+      groupLabImaging: "Laboratory and imaging",
+      labList: "Lab worklist",
+      radList: "Radiology",
+    },
+    lab: {
+      ambulatoryFilter: "Clinic Care ambulatory filter — enterprise laboratory worklist.",
+      emptyAmbulatory: "No ambulatory laboratory orders in this queue.",
+      deniedFacilityRnLabPolicy:
+        "This facility does not authorize nurses to enter laboratory results.",
+      deniedFrontDeskBilling: "Result entry is not authorized for front desk / billing.",
+    },
+    rad: {
+      ambulatoryFilter: "Clinic Care ambulatory filter — enterprise imaging worklist.",
+      emptyAmbulatory: "No ambulatory imaging orders in this queue.",
+      capabilityRequired:
+        "Radiology is not enabled for this facility (service line / module).",
+    },
+    results: {
+      openCanonicalViewer: "Open result (enterprise viewer)",
+      acknowledgeHint: "Acknowledgement is not result entry or finalization.",
+      abnormalCriticalPreserved: "Abnormal / critical — Medora standards unchanged for ambulatory.",
+    },
+    errors: {
+      loadFailed: "Unable to load the laboratory / imaging worklist.",
+      retry: "Retry",
+      unauthorized: "Not authorized for this worklist.",
     },
   },
 

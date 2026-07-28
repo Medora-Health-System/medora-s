@@ -74,7 +74,8 @@ describe("MEDUI.D4C.7 Clinic Care public health / pharmacy / discharge mounts", 
       "utf8"
     );
     const pharmacyPage = readFileSync(join(featureDir, "../../../app/app/pharmacy/page.tsx"), "utf8");
-    expect(pharmacyRedirect).toContain("ambulatory=1");
+    expect(pharmacyRedirect).toContain("buildClinicPharmacyEntryHref");
+    expect(pharmacyRedirect).toContain("ClinicCareDirectCanonicalRedirect");
     expect(pharmacyPage).toContain("filterAmbulatoryPharmacyQueueOrders");
     expect(existsSync(join(featureDir, "ClinicPharmacy.tsx"))).toBe(false);
   });

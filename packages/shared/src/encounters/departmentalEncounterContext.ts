@@ -10,11 +10,13 @@ import {
   resolveClinicalEncounterContext,
   type ClinicalEncounterIdentityInput,
 } from "./clinicalEncounterIdentity.js";
+import { resolveAmbulatoryWorklistCareSettingBadge } from "../auth/clinicCareLaboratoryRadiologyResultsCorrectionD4c7c.js";
 
 export const DEPARTMENTAL_ENCOUNTER_CONTEXTS = [
   "ED",
   "OBSERVATION",
   "INPATIENT",
+  "AMBULATORY",
   "UNKNOWN",
   "OTHER",
 ] as const;
@@ -26,10 +28,17 @@ export type DepartmentalEncounterContextInput = ClinicalEncounterIdentityInput;
 /**
  * Resolve display context for Lab / Rad / Pharmacy worklists.
  * Canonical identity only — never admittedAt / length-of-stay.
+ * MEDUI.D4C.7C — OUTPATIENT / URGENT_CARE project as AMBULATORY (care-setting badge).
+ * Does not mutate D3E.5 ClinicalEncounterContext (still UNKNOWN for outpatient).
  */
 export function resolveDepartmentalEncounterContext(
   input: DepartmentalEncounterContextInput
 ): DepartmentalEncounterContext {
+  const ambulatory = resolveAmbulatoryWorklistCareSettingBadge({
+    encounterType: input.type,
+  });
+  if (ambulatory === "AMBULATORY") return "AMBULATORY";
+
   const clinical = resolveClinicalEncounterContext(input);
   const badge = clinicalContextToWorklistBadge(clinical);
   if (badge === "ED") return "ED";
@@ -56,6 +65,8 @@ export function departmentalEncounterContextLabelKey(
       return "worklistDepartments.shared.encounterContext.observation";
     case "INPATIENT":
       return "worklistDepartments.shared.encounterContext.inpatient";
+    case "AMBULATORY":
+      return "worklistDepartments.shared.encounterContext.ambulatory";
     case "UNKNOWN":
       return "worklistDepartments.shared.encounterContext.unknown";
     default:

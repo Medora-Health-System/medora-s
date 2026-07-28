@@ -11,11 +11,13 @@ export class WorklistsController {
 
   @Get("lab")
   /**
-   * RN and other clinical roles may browse the lab queue. LAB_TEST workflow
-   * ack/start/complete is enforced in `assertDepartmentRoleForItem` (clinical roles).
-   * Lab result finalize remains separately gated on PUT /orders/:id/result.
+   * LAB / RN / PROVIDER / ADMIN may browse the lab queue (sidebar-aligned).
+   * LAB_TEST workflow ack/start/complete is enforced in `assertDepartmentRoleForItem`.
+   * Lab result finalize remains separately gated on PUT /orders/:id/result
+   * (RN requires Facility.allowRnLabResultSubmission).
+   * MEDUI.D4C.7C — PROVIDER browse aligned with nav; Front Desk / Billing excluded.
    */
-  @RequireRoles(RoleCode.LAB, RoleCode.RN, RoleCode.ADMIN)
+  @RequireRoles(RoleCode.LAB, RoleCode.RN, RoleCode.PROVIDER, RoleCode.ADMIN)
   async getLabWorklist(@Req() req: any) {
     const facilityId = req.user?.facilityId || req.headers["x-facility-id"];
     if (!facilityId) {

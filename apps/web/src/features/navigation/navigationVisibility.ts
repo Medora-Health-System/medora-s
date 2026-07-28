@@ -2,6 +2,9 @@ import {
   filterHrefListForFreestandingErRnProviderSidebar,
   isNavigationAreaVisible,
   resolveCapabilityAwareNavigationAreas,
+  resolveFacilityModuleCapabilitiesD4c1,
+  resolveClinicCareAwareSidebarHref,
+  resolveClinicCareLabRadSidebarHref,
   type NavigationArea,
   type NavigationProfileInput,
 } from "@medora/shared";
@@ -44,6 +47,27 @@ export function buildNavigationProfileFromSession(input: {
  * MEDUI.D4C.2A — filter sidebar by facility capabilities ∩ role areas.
  * Uses `resolveFacilityNavigation` (via capability resolver); Admin cannot restore absent care settings.
  */
+/**
+ * MEDUI.D4C.7B / D4C.7C — rewrite Consultations / Pharmacy / Lab / Rad
+ * hrefs onto ambulatory Clinic Care destinations when facility capabilities allow.
+ */
+export function applyClinicCareAwareSidebarHrefs(
+  items: SidebarNavItem[],
+  profile: CapabilityNavigationProfileInput
+): SidebarNavItem[] {
+  const caps = resolveFacilityModuleCapabilitiesD4c1({
+    facilityType: profile.facilityType,
+    careProfileJson: profile.careProfileJson,
+    serviceLines: profile.facilityServiceLines,
+    facilityCountry: profile.facilityCountry,
+  });
+  return items.map((item) => {
+    const after7b = resolveClinicCareAwareSidebarHref(item.href, caps);
+    const nextHref = resolveClinicCareLabRadSidebarHref(after7b, caps);
+    return nextHref === item.href ? item : { ...item, href: nextHref };
+  });
+}
+
 export function filterSidebarNavItemsByNavigationAreas(
   items: SidebarNavItem[],
   profile: CapabilityNavigationProfileInput
@@ -52,11 +76,15 @@ export function filterSidebarNavItemsByNavigationAreas(
   const areaFiltered = items.filter((item) =>
     isNavigationAreaVisible(visibleAreas, item.navAreas)
   );
-  return filterHrefListForFreestandingErRnProviderSidebar(areaFiltered, {
-    roleCodes: profile.roleCodes,
-    facilityType: profile.facilityType,
-    facilityServiceLines: profile.facilityServiceLines,
-  });
+  const freestandingFiltered = filterHrefListForFreestandingErRnProviderSidebar(
+    areaFiltered,
+    {
+      roleCodes: profile.roleCodes,
+      facilityType: profile.facilityType,
+      facilityServiceLines: profile.facilityServiceLines,
+    }
+  );
+  return applyClinicCareAwareSidebarHrefs(freestandingFiltered, profile);
 }
 
 /**
