@@ -175,6 +175,22 @@ function isSecretagogueLine(line: AdvancedMedicationSafetyLine): boolean {
 
 function isVasopressorLine(line: AdvancedMedicationSafetyLine): boolean {
   const h = hay(line);
+  // D4C.5B.3 — do not treat acetaminophen/paracetamol as vasopressors via class mis-tags.
+  if (
+    h.includes(" acetaminophen ") ||
+    h.includes(" paracetamol ") ||
+    h.includes(" acetaminophene ")
+  ) {
+    const realPressor =
+      h.includes(" norepinephrine ") ||
+      h.includes(" epinephrine ") ||
+      h.includes(" phenylephrine ") ||
+      h.includes(" dopamine ") ||
+      h.includes(" dobutamine ") ||
+      h.includes(" vasopressin ") ||
+      h.includes(" adrenaline ");
+    if (!realPressor) return false;
+  }
   const toks = [
     "norepinephrine",
     "epinephrine",
@@ -212,6 +228,7 @@ function therapeuticClassNormalized(tc: string | null | undefined): string {
 
 function isHighRiskTherapeuticClassNorm(norm: string): boolean {
   if (!norm) return false;
+  const analgesicFamily = norm.includes("acetaminophen") || norm.includes("paracetamol");
   const needles = [
     "anticoagul",
     "opioid",
@@ -219,12 +236,15 @@ function isHighRiskTherapeuticClassNorm(norm: string): boolean {
     "sedative",
     "benzodiazepin",
     "potassium",
-    "vasopressor",
     "thrombolyt",
     "antithrombot",
     "heparin",
     "analgesic opioid",
   ];
+  // D4C.5B.3 — acetaminophen class tags must not inherit vasopressor high-risk.
+  if (!analgesicFamily) {
+    needles.push("vasopressor");
+  }
   return needles.some((n) => norm.includes(n));
 }
 

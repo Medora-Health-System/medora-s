@@ -67,6 +67,7 @@ import {
 import { fetchAuthMeSession } from "@/lib/authSessionMe";
 import { vitalSummaryInitials } from "@/components/patients/VitalSummaryPanel";
 import {
+  emptyErTraumaActivationForm,
   emptyErTriageV1Form,
   erTriageV1FormFromVitalsJson,
   normalizeErTriageV1Form,
@@ -268,6 +269,11 @@ export function EmergencyTriagePanel({
   onSaved,
   /** When set, shows a non-blocking control to open procedure documentation (e.g. ECG). */
   onRequestDocumentEcg,
+  /**
+   * MEDUI.D4C.5B.3 — Haiti ambulatory simple clinic intake hides ED triage chrome.
+   * Does not change U.S. ED behavior when omitted / FULL_ED_TRIAGE.
+   */
+  presentationMode = "FULL_ED_TRIAGE",
 }: {
   encounterId: string;
   facilityId: string;
@@ -278,8 +284,10 @@ export function EmergencyTriagePanel({
   patientChartHref?: string;
   onSaved: () => void | Promise<void>;
   onRequestDocumentEcg?: () => void;
+  presentationMode?: "SIMPLE_CLINIC_INTAKE" | "FULL_ED_TRIAGE";
 }) {
   const { t, language } = useI18n();
+  const simpleClinicIntake = presentationMode === "SIMPLE_CLINIC_INTAKE";
   const [triage, setTriage] = useState<Record<string, unknown> | null>(null);
   const [formData, setFormData] = useState<TriageFormState>(emptyForm);
   const [loading, setLoading] = useState(true);
@@ -618,15 +626,32 @@ export function EmergencyTriagePanel({
     setSaveInfo(null);
     setTemplateAppliedHint(null);
 
-    const strokeJson = strokeScreenFormToJson(formData.strokeScreen, triage?.strokeScreen);
-    const sepsisJson = sepsisScreenFormToJson(formData.sepsisScreen, triage?.sepsisScreen);
+    const strokeJson = simpleClinicIntake
+      ? {}
+      : strokeScreenFormToJson(formData.strokeScreen, triage?.strokeScreen);
+    const sepsisJson = simpleClinicIntake
+      ? {}
+      : sepsisScreenFormToJson(formData.sepsisScreen, triage?.sepsisScreen);
     const strokeScreenParsed = Object.keys(strokeJson).length > 0 ? strokeJson : null;
     const sepsisScreenParsed = Object.keys(sepsisJson).length > 0 ? sepsisJson : null;
 
     try {
       const vitalsMerged = mergeVitalsJsonForSave(
         triage?.vitalsJson,
-        formData,
+        simpleClinicIntake
+          ? {
+              ...formData,
+              erV1: {
+                ...formData.erV1,
+                traumaActivation: emptyErTraumaActivationForm(),
+                preferredPharmacy: "",
+                travelOutsideCountry14d: "",
+                travelDestinationCountry: "",
+                travelDateOrReturn: "",
+                feelsSafeAtHome: "",
+              },
+            }
+          : formData,
         normalizeCarryForwardMetaFromForm(carryForwardMeta, formData)
       );
       // Only newly submitted meaningful form vitals create a reading. Empty/context-only drafts
@@ -654,7 +679,8 @@ export function EmergencyTriagePanel({
       const payload: Record<string, unknown> = {
         chiefComplaint: safeTrim(formData.chiefComplaint) || null,
         onsetAt: formData.onsetAt ? new Date(formData.onsetAt).toISOString() : null,
-        esi: formData.esi ? parseInt(formData.esi, 10) : null,
+        // D4C.5B.3 — do not persist hidden ED ESI defaults as documented for simple clinic intake.
+        esi: simpleClinicIntake ? null : formData.esi ? parseInt(formData.esi, 10) : null,
         vitalsJson: vitalsForSave,
         strokeScreen: strokeScreenParsed,
         sepsisScreen: sepsisScreenParsed,
@@ -1047,9 +1073,20 @@ export function EmergencyTriagePanel({
     : { minWidth: 0 };
 
   return (
-    <MedoraCard leftAccentColor="#b91c1c" variant="default">
+    <MedoraCard leftAccentColor={simpleClinicIntake ? "#0d9488" : "#b91c1c"} variant="default">
       <MedoraCardInner>
-        <MedoraCardTitle title={t("erTriage.panel.title")} />
+        <MedoraCardTitle
+          title={
+            simpleClinicIntake
+              ? t("clinicCareD4c5b3.intake.title")
+              : t("erTriage.panel.title")
+          }
+        />
+        {simpleClinicIntake ? (
+          <p style={{ margin: "6px 0 0", fontSize: 12, color: "#64748b", lineHeight: 1.4 }}>
+            {t("clinicCareD4c5b3.intake.subtitle")}
+          </p>
+        ) : null}
 
         {loading ? (
           <p style={{ margin: "12px 0 0 0", fontSize: 14, color: "#64748b" }}>{t("common.loading")}</p>
@@ -1282,22 +1319,24 @@ export function EmergencyTriagePanel({
                     ) : null}
                   </div>
                   <div style={grid2}>
-                    <div>
-                      <label style={labelStyle}>{t("erTriage.panel.esiLabel")}</label>
-                      <select
-                        value={formData.esi}
-                        onChange={(e) => setFormData((f) => ({ ...f, esi: e.target.value }))}
-                        disabled={formDisabled}
-                        style={{ ...inputBase, cursor: formDisabled ? "not-allowed" : "pointer" }}
-                      >
-                        <option value="">{t("erTriage.preview.emptyOption")}</option>
-                        <option value="1">{t("erTriage.panel.esi1")}</option>
-                        <option value="2">{t("erTriage.panel.esi2")}</option>
-                        <option value="3">{t("erTriage.panel.esi3")}</option>
-                        <option value="4">{t("erTriage.panel.esi4")}</option>
-                        <option value="5">{t("erTriage.panel.esi5")}</option>
-                      </select>
-                    </div>
+                    {!simpleClinicIntake ? (
+                      <div>
+                        <label style={labelStyle}>{t("erTriage.panel.esiLabel")}</label>
+                        <select
+                          value={formData.esi}
+                          onChange={(e) => setFormData((f) => ({ ...f, esi: e.target.value }))}
+                          disabled={formDisabled}
+                          style={{ ...inputBase, cursor: formDisabled ? "not-allowed" : "pointer" }}
+                        >
+                          <option value="">{t("erTriage.preview.emptyOption")}</option>
+                          <option value="1">{t("erTriage.panel.esi1")}</option>
+                          <option value="2">{t("erTriage.panel.esi2")}</option>
+                          <option value="3">{t("erTriage.panel.esi3")}</option>
+                          <option value="4">{t("erTriage.panel.esi4")}</option>
+                          <option value="5">{t("erTriage.panel.esi5")}</option>
+                        </select>
+                      </div>
+                    ) : null}
                     <div>
                       <label style={labelStyle}>{t("erTriage.panel.onsetAt")}</label>
                       <input
@@ -1372,10 +1411,12 @@ export function EmergencyTriagePanel({
                     carryForwardMeta={carryForwardMeta}
                     onConfirmCarryForwardSection={handleConfirmCarryForwardSection}
                     onClearCarryForwardSection={handleClearCarryForwardSection}
+                    hideEdTriageChrome={simpleClinicIntake}
                   />
                 </div>
               </div>
 
+              {!simpleClinicIntake ? (
               <details style={{ border: "1px solid #e2e8f0", borderRadius: 10, padding: "10px 12px", backgroundColor: "#fff" }}>
                 <summary style={{ cursor: formDisabled ? "default" : "pointer", fontWeight: 600, fontSize: 13, color: "#334155" }}>
                   {t("erTriage.panel.sectionScreenings")}
@@ -1645,6 +1686,7 @@ export function EmergencyTriagePanel({
                   </div>
                 </div>
               </details>
+              ) : null}
               </div>
 
               <div style={resumeColumnStyle}>

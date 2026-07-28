@@ -5,6 +5,10 @@
  * Reuses enterprise encounter shell (`/app/encounters/:id`) with
  * `workspace=ambulatory` + `section=` — no ClinicPatientChart /
  * ClinicEncounterChart / ClinicEncounterStatus / parallel clinical engines.
+ *
+ * Tile order (D4C.5B.3): Eval → Med Eval → Orders → Meds → Results → Dx →
+ * Clinical Data → Nursing/MA → Notes → Rx → Follow-up/Checkout → Summary.
+ * Rx sits near Suivi/sortie (not between Orders and Medications).
  */
 
 import { CLINIC_CARE_AMBULATORY_WORKSPACE_QUERY } from "./clinicCareProviderWorkspaceD4c5.js";
@@ -24,13 +28,13 @@ export const CLINIC_CARE_AMBULATORY_WORKSPACE_SECTIONS = [
   "intake",
   "medical-evaluation",
   "orders",
-  "prescriptions",
   "medications",
   "results",
   "diagnoses",
   "clinical-data",
   "nursing",
   "notes",
+  "prescriptions",
   "follow-up",
   "summary",
 ] as const;
@@ -320,16 +324,16 @@ const ROLE_TILES: Record<
   RN: [
     "intake",
     "orders",
-    "prescriptions",
     "medications",
     "results",
     "clinical-data",
     "nursing",
     "notes",
+    "prescriptions",
     "follow-up",
     "summary",
   ],
-  PHARMACIST: ["prescriptions", "medications", "orders", "summary"],
+  PHARMACIST: ["medications", "orders", "prescriptions", "summary"],
   TECH: ["intake", "orders", "results", "nursing", "summary"],
   FRONT_DESK: ["intake", "follow-up", "summary"],
   UNKNOWN: ["summary"],

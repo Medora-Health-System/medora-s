@@ -3,6 +3,8 @@
  * UI maps `ruleId` to locale-specific copy; no blocking logic here.
  */
 
+import { shouldSuppressFalseVasopressorAlertForAnalgesic } from "./auth/clinicCareHaitiAmbulatoryOrdersMedicationsResultsD4c5b3.js";
+
 export type MedicationSafetyWarningCategory =
   | "HIGH_RISK"
   | "CONTROLLED_SUBSTANCE"
@@ -196,11 +198,13 @@ export function getMedicationSafetyWarnings(
   }
 
   for (const tok of VASOPRESSOR_TOKENS) {
-    if (tokens.has(tok)) {
-      pushDeduped(out, seen, { category: "HIGH_RISK", ruleId: "high_risk_vasopressor" });
-      pushDeduped(out, seen, { category: "VASOPRESSOR_HIGH_ALERT", ruleId: "vasopressor_pressor" });
-      break;
-    }
+    if (!tokens.has(tok)) continue;
+    // D4C.5B.3 — acetaminophen/paracetamol must not inherit false vasopressor class alerts
+    // when therapeuticClass / aliases are mis-tagged.
+    if (shouldSuppressFalseVasopressorAlertForAnalgesic(med)) break;
+    pushDeduped(out, seen, { category: "HIGH_RISK", ruleId: "high_risk_vasopressor" });
+    pushDeduped(out, seen, { category: "VASOPRESSOR_HIGH_ALERT", ruleId: "vasopressor_pressor" });
+    break;
   }
 
   for (const tok of ANTICOAG_TOKENS) {

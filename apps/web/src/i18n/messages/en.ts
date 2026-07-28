@@ -10071,6 +10071,101 @@ export default {
     },
   },
 
+  clinicCareD4c5b3: {
+    intake: {
+      title: "Intake evaluation",
+      subtitle: "Ambulatory clinic intake",
+      hint: "Lightweight intake — vitals, allergies, home meds, and history. No emergency triage chrome.",
+    },
+    rx: {
+      title: "Prescription (Rx)",
+      hint: "Take-home / external prescriptions only — no lab, imaging, infusions, or onsite medications.",
+      newPrescription: "New prescription",
+      empty: "No external prescriptions for this visit.",
+      untitled: "Prescription",
+      print: "Print prescription",
+      printBlockedEmpty: "Print blocked: no signed prescription lines to print.",
+      printPopupBlocked: "Unable to open the print window. Allow pop-ups.",
+      filters: {
+        medications: "Medications",
+        active: "Active",
+        sent: "Sent",
+        printed: "Printed",
+        cancelled: "Cancelled",
+      },
+    },
+    destination: {
+      onsite: "On site",
+      externalRx: "External prescription",
+      diagnostic: "Diagnostic",
+      other: "Other",
+      onsiteOrRx: "On site / Rx",
+    },
+    route: {
+      po: "Oral (PO)",
+      im: "Intramuscular (IM)",
+      iv: "Intravenous (IV)",
+      ivp: "IV push",
+      ivpb: "IV piggyback",
+      sq: "Subcutaneous (SQ)",
+      inh: "Inhalation",
+      neb: "Nebulization",
+      mdi: "Metered-dose inhaler",
+      dpi: "Dry-powder inhaler",
+      topical: "Topical",
+      pr: "Rectal",
+      sl: "Sublingual",
+      other: "Route",
+    },
+    form: {
+      tablet: "tablet",
+      capsule: "capsule",
+      solution: "solution",
+      injection: "injection",
+      topical: "topical form",
+      drops: "drops",
+      inhalation: "inhalation",
+      infusion: "infusion",
+      other: "form",
+    },
+    pharmacyStatus: {
+      placed: "Placed",
+      pending: "Pending",
+      inProgress: "In progress",
+      verified: "Verified",
+      dispensed: "Dispensed",
+      completed: "Completed",
+      cancelled: "Cancelled",
+      held: "Held",
+      administered: "Administered",
+    },
+    role: {
+      provider: "Provider",
+      rn: "Nurse",
+      pharmacist: "Pharmacist",
+      admin: "Admin",
+      other: "User",
+    },
+    results: {
+      deniedFacilityRnLabPolicy:
+        "Entry denied: facility policy (allowRnLabResultSubmission) — RN lab result entry is not enabled here.",
+      deniedRnImagingEntry:
+        "Entry denied: RN policy allows laboratory results only (not imaging).",
+      deniedRoleEnter:
+        "Entry denied: insufficient role (LAB / RADIOLOGY / RN with policy / ADMIN required for ENTER).",
+      deniedRoleFinalize: "Finalize denied: insufficient role for FINALIZE.",
+      deniedRoleAcknowledge:
+        "Acknowledge denied: insufficient role (PROVIDER / RN / ADMIN).",
+      deniedRoleVerify: "Verify denied: insufficient role for VERIFY.",
+      deniedRoleCollect: "Collect / receive denied: insufficient role.",
+      marReconciliationError:
+        "MAR projection failure: order → onsite medication reconciliation required.",
+    },
+    mar: {
+      reconciliationError: "MAR reconciliation error — onsite medications could not be projected.",
+    },
+  },
+
   clinicCareD4c6: {
     nav: {
       orders: "Orders",

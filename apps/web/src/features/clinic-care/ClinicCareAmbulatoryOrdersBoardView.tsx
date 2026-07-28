@@ -325,6 +325,14 @@ export function ClinicCareAmbulatoryOrdersBoardView() {
                   {t(ambulatoryOrderStatusDisplayKey(row.status))}
                 </span>
                 <span style={{ fontSize: 11, color: "#64748b" }}>
+                  {t("clinicCareD4c5b2.orderBoard.provider")}
+                </span>
+                <span style={{ fontSize: 11, color: "#0f766e", fontWeight: 600 }}>
+                  {row.category === "MEDICATION"
+                    ? t("clinicCareD4c5b3.destination.onsiteOrRx")
+                    : t("clinicCareD4c5b3.destination.diagnostic")}
+                </span>
+                <span style={{ fontSize: 11, color: "#64748b" }}>
                   {t(ambulatoryOrderPriorityDisplayKey(row.priority))}
                 </span>
                 <span style={{ fontSize: 11, color: "#94a3b8" }}>
