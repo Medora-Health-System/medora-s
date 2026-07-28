@@ -153,20 +153,42 @@ export class FollowUpsService {
     ip?: string,
     userAgent?: string,
   ) {
-    const from = query.from ?? new Date();
-    const to = query.to ?? (() => {
-      const t = new Date();
-      t.setDate(t.getDate() + 90);
-      return t;
-    })();
+    const actionable = query.actionable === true;
+    const endExclusive =
+      query.endExclusive ??
+      query.to ??
+      (() => {
+        const t = new Date();
+        t.setDate(t.getDate() + 90);
+        return t;
+      })();
+    const from = query.from ?? (actionable ? undefined : new Date());
     const take = query.limit ?? 100;
 
+    const where: Prisma.FollowUpWhereInput = {
+      facilityId,
+    };
+
+    if (actionable) {
+      where.status = "OPEN";
+      // Half-open dueDate < endExclusive — matches countClinicFollowUpsForPeriod.
+      where.dueDate = { lt: endExclusive };
+    } else {
+      if (query.status !== undefined && isFollowUpStatus(query.status)) {
+        where.status = query.status;
+      } else {
+        where.status = "OPEN";
+      }
+      const toInclusive = query.to ?? endExclusive;
+      if (from) {
+        where.dueDate = { gte: from, lte: toInclusive };
+      } else {
+        where.dueDate = { lte: toInclusive };
+      }
+    }
+
     const items = await this.prisma.followUp.findMany({
-      where: {
-        facilityId,
-        status: "OPEN",
-        dueDate: { gte: from, lte: to },
-      },
+      where,
       orderBy: { dueDate: "asc" },
       take,
       include: followUpInclude,
@@ -177,10 +199,15 @@ export class FollowUpsService {
       facilityId,
       ip,
       userAgent,
-      metadata: { upcoming: true, from: from.toISOString(), to: to.toISOString() },
+      metadata: {
+        upcoming: true,
+        actionable,
+        from: from?.toISOString() ?? null,
+        endExclusive: endExclusive.toISOString(),
+      },
     });
 
-    return { items };
+    return { items, total: items.length };
   }
 
   async complete(

@@ -3,6 +3,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { apiFetch } from "@/lib/apiClient";
 import { createFollowUp } from "@/lib/followUpsApi";
+import { invalidateClinicFollowUpProjectionCache } from "@/lib/invalidateClinicFollowUpProjectionCache";
 import { encounterBcp47, tEncounterType, tFollowUpStatus } from "@/lib/encounterChromeI18n";
 import { useI18n } from "@/lib/i18n";
 import { normalizeUserFacingError } from "@/lib/userFacingError";
@@ -145,6 +146,7 @@ export function CreateFollowUpModal({
       });
       if ((res as any)?.queued) setQueued(true);
       setSuccess(true);
+      invalidateClinicFollowUpProjectionCache(facilityId);
       setTimeout(() => onSuccess(), 600);
     } catch (err: unknown) {
       setError(

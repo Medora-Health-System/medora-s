@@ -19,7 +19,9 @@ import {
   clinicCareNextStepHint,
   clinicCareVisitOriginDisplayToken,
   computeClinicCareWaitMinutes,
+  clinicCareFollowUpDrillDownHref,
   countClinicCareMetricsFromEncounters,
+  countClinicFollowUpsForPeriod,
   defaultClinicCareTrackboardViewForProfession,
   facilityLocalDayUtcBounds,
   facilityLocalPeriodUtcBounds,
@@ -32,6 +34,7 @@ import {
   projectClinicCareIntakeStatus,
   projectClinicCareNursingQueueStage,
   projectClinicCareStage,
+  resolveClinicFollowUpPeriod,
   projectHospitalBoardAssignments,
   projectRegistrationCompleteness,
   readHospitalAssignmentBag,
@@ -274,6 +277,7 @@ export class ClinicCareService {
         dueDate: fu.dueDate,
         dayEndExclusiveUtc: day.endExclusiveUtc,
         linkedEncounterType: fu.encounter?.type ?? null,
+        encounterFacilityId: fu.encounter?.facilityId ?? null,
       })
     );
     const followUpsDue = followUpsDueRows.length;
@@ -509,6 +513,8 @@ export class ClinicCareService {
       input.facility.timezone
     );
     const weekBounds = facilityLocalPeriodUtcBounds(now, input.facility.timezone, "WEEK");
+    /** Forward-looking follow-up window (distinct from visit rolling-past periodBounds). */
+    const followUpPeriod = resolveClinicFollowUpPeriod(now, input.facility.timezone, period);
 
     const ambulatoryTypes = [
       EncounterType.OUTPATIENT,
@@ -598,8 +604,9 @@ export class ClinicCareService {
       this.prisma.followUp.findMany({
         where: {
           facilityId: input.facilityId,
-          status: FollowUpStatus.OPEN,
-          dueDate: { lt: today.endExclusiveUtc },
+          // Candidate window: anything due before forward period end (includes overdue).
+          // Final inclusion via countClinicFollowUpsForPeriod (OPEN + ambulatory + scope).
+          dueDate: { lt: followUpPeriod.endExclusiveUtc },
         },
         select: {
           id: true,
@@ -607,9 +614,9 @@ export class ClinicCareService {
           status: true,
           dueDate: true,
           encounterId: true,
-          encounter: { select: { type: true } },
+          encounter: { select: { type: true, facilityId: true } },
         },
-        take: 1000,
+        take: 2000,
       }),
       this.prisma.appointment.findMany({
         where: {
@@ -624,16 +631,20 @@ export class ClinicCareService {
 
     // Prescription counts require a durable ambulatory Rx rollup — omit rather than fabricate.
     const prescriptionCount: number | null = null;
-    const followUpsDue = followUpCandidates.filter((fu) =>
-      isClinicCareFollowUpDue({
-        authenticatedFacilityId: input.facilityId,
-        followUpFacilityId: fu.facilityId,
+    const followUpCounts = countClinicFollowUpsForPeriod({
+      authenticatedFacilityId: input.facilityId,
+      records: followUpCandidates.map((fu) => ({
+        facilityId: fu.facilityId,
         status: fu.status,
         dueDate: fu.dueDate,
-        dayEndExclusiveUtc: today.endExclusiveUtc,
         linkedEncounterType: fu.encounter?.type ?? null,
-      })
-    ).length;
+        encounterFacilityId: fu.encounter?.facilityId ?? null,
+      })),
+      periodEndExclusiveUtc: followUpPeriod.endExclusiveUtc,
+      todayStartUtc: today.startUtc,
+      todayEndExclusiveUtc: today.endExclusiveUtc,
+    });
+    const followUpsActionable = followUpCounts.actionable;
 
     const todayById = new Map<string, (typeof todayEncounters)[number]>();
     for (const e of todayEncounters) todayById.set(e.id, e);
@@ -794,7 +805,7 @@ export class ClinicCareService {
       },
       {
         id: "FOLLOW_UPS_TO_SCHEDULE",
-        value: followUpsDue,
+        value: followUpsActionable,
         comparison: null,
         sparkline: [],
         unit: "patients",
@@ -861,6 +872,14 @@ export class ClinicCareService {
       completedToday > 0 ? (closedWithFollowUpPlan / completedToday) * 100 : null;
 
     const insightsProvider = new DeterministicClinicInsightsProvider();
+    const followUpDrillHref = clinicCareFollowUpDrillDownHref({
+      period,
+      dateFromKey: followUpPeriod.dateFromKey,
+      dateToKey: followUpPeriod.dateToKey,
+      endExclusiveIso: followUpPeriod.endExclusiveUtc.toISOString(),
+      actionable: true,
+      status: "OPEN",
+    });
     const insights = insightsProvider.buildInsights({
       period,
       kpis,
@@ -873,6 +892,7 @@ export class ClinicCareService {
       canViewFinancialInsights: dashAccess.canViewFinancialInsights,
       prescriptionsToday: typeof prescriptionCount === "number" ? prescriptionCount : null,
       followUpPlanningRatePercent,
+      followUpDrillDownHref: followUpDrillHref,
     });
 
     return {
@@ -883,6 +903,9 @@ export class ClinicCareService {
       period,
       periodStartUtc: periodBounds.startUtc.toISOString(),
       periodEndExclusiveUtc: periodBounds.endExclusiveUtc.toISOString(),
+      followUpPeriodStartUtc: followUpPeriod.startUtc.toISOString(),
+      followUpPeriodEndExclusiveUtc: followUpPeriod.endExclusiveUtc.toISOString(),
+      followUpDrillDownHref: followUpDrillHref,
       careProfile,
       operatingMode,
       kpis,
@@ -904,7 +927,8 @@ export class ClinicCareService {
         waitTime:
           "providerStart proxy = physicianAssignedAt; arrival = checkedInAt ?? arrivedAt ?? walk-in createdAt; missing excluded.",
         missedAppointments: "AppointmentStatus.NO_SHOW only.",
-        followUpsToSchedule: "Open FollowUp due today/overdue via isClinicCareFollowUpDue.",
+        followUpsToSchedule:
+          "D4C.5B.1: OPEN FollowUp with dueDate < forward period end (TODAY=+1d, WEEK=+7d, MONTH=+30d from facility-local today) via countClinicFollowUpsForPeriod; includes overdue; excludes COMPLETED/CANCELLED; ambulatory-safe; facility-scoped. Distinct from visit rolling-past periodBounds and from Today's Visits FOLLOW_UPS_DUE (today+overdue only).",
         revenue: "Shared Revenue KPI forbidden; financial insights ADMIN-only and deferred (no rollup).",
       },
       generatedAt: now.toISOString(),
@@ -1317,6 +1341,10 @@ export type ClinicCareDashboardProjectionDto = {
   period: ClinicCareDashboardPeriod;
   periodStartUtc: string;
   periodEndExclusiveUtc: string;
+  /** Forward-looking follow-up window (D4C.5B.1) — distinct from visit rolling-past period. */
+  followUpPeriodStartUtc: string;
+  followUpPeriodEndExclusiveUtc: string;
+  followUpDrillDownHref: string;
   careProfile: string;
   operatingMode: string | null;
   kpis: ClinicCareAnalyticsKpiValue[];

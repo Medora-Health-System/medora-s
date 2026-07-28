@@ -25,6 +25,18 @@ export function invalidateGetRequestDedupeForPath(path: string, facilityId?: str
   invalidateGetRequestDedupeKey(buildGetDedupeKey(path, facilityId));
 }
 
+/** Drop all dedupe entries whose key matches the predicate (path prefix / facility). */
+export function invalidateGetRequestDedupeMatching(predicate: (key: string) => boolean): number {
+  let n = 0;
+  for (const key of [...entries.keys()]) {
+    if (predicate(key)) {
+      entries.delete(key);
+      n += 1;
+    }
+  }
+  return n;
+}
+
 /** Verification helper — true when a fresh GET would return cached payload. */
 export function hasGetDedupeCachedResult(
   key: string,

@@ -540,6 +540,8 @@ export type ClinicCareInsightsInput = {
   /** Prescription count when available from ops; null → skip insight. */
   prescriptionsToday: number | null;
   followUpPlanningRatePercent: number | null;
+  /** Typed Follow-up list drill-down matching period KPI (D4C.5B.1). */
+  followUpDrillDownHref?: string | null;
 };
 
 export class DeterministicClinicInsightsProvider implements ClinicInsightsProvider {
@@ -621,7 +623,7 @@ export class DeterministicClinicInsightsProvider implements ClinicInsightsProvid
         id: "follow-up-rate",
         messageKey: "followUpPlanningRate",
         params: { percent: Math.round(input.followUpPlanningRatePercent) },
-        href: "/app/clinic-care/follow-up",
+        href: input.followUpDrillDownHref ?? "/app/clinic-care/follow-up",
         severity: input.followUpPlanningRatePercent < 70 ? "attention" : "positive",
         period,
       });
@@ -633,7 +635,7 @@ export class DeterministicClinicInsightsProvider implements ClinicInsightsProvid
         id: "follow-ups-due",
         messageKey: "followUpsToSchedule",
         params: { count: followUps.value },
-        href: "/app/clinic-care/follow-up",
+        href: input.followUpDrillDownHref ?? "/app/clinic-care/follow-up",
         severity: "attention",
         period,
       });

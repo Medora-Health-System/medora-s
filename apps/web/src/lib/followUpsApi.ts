@@ -36,17 +36,27 @@ export async function fetchPatientFollowUps(
 
 export async function fetchUpcomingFollowUps(
   facilityId: string,
-  params?: { from?: string; to?: string; limit?: number }
-): Promise<{ items: FollowUpRow[] }> {
+  params?: {
+    from?: string;
+    to?: string;
+    endExclusive?: string;
+    status?: string;
+    actionable?: boolean;
+    limit?: number;
+  }
+): Promise<{ items: FollowUpRow[]; total?: number }> {
   const q = new URLSearchParams();
   if (params?.from) q.set("from", params.from);
   if (params?.to) q.set("to", params.to);
+  if (params?.endExclusive) q.set("endExclusive", params.endExclusive);
+  if (params?.status) q.set("status", params.status);
+  if (params?.actionable) q.set("actionable", "1");
   if (params?.limit != null) q.set("limit", String(params.limit));
   const query = q.toString();
   return apiFetch(
     `/follow-ups/upcoming${query ? `?${query}` : ""}`,
     { facilityId }
-  ) as Promise<{ items: FollowUpRow[] }>;
+  ) as Promise<{ items: FollowUpRow[]; total?: number }>;
 }
 
 export async function createFollowUp(

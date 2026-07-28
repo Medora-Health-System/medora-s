@@ -1300,6 +1300,11 @@ export default {
     successAddOffline: "Follow-up saved offline",
     successAddOnline: "Follow-up added",
     noUpcoming14Days: "No follow-ups in the next 14 days.",
+    loadFailed: "Unable to load follow-ups.",
+    openEncounter: "Open encounter",
+    actionableFilterNote:
+      "Showing open follow-ups due through the selected period (includes overdue) — matches Clinical Board.",
+    retry: "Retry",
   },
   observationBoard: {
     readAccessDenied:
@@ -9857,7 +9862,7 @@ export default {
       completedVisits: "Completed visits",
       waiting: "Waiting",
       averageWait: "Average wait time",
-      followUpsToSchedule: "Follow-ups to schedule",
+      followUpsToSchedule: "Open follow-ups (period)",
       minutesValue: "{value} min",
       patientsValue: "{value} patients",
       pctUp: "↑ {percent}% vs yesterday",
@@ -9870,6 +9875,7 @@ export default {
       waitingShare: "{percent}% of visits",
       waitCoverage: "{included}/{eligible} with times",
       unavailable: "Unavailable",
+      followUpsHint: "Open FollowUp rows due through the selected period (includes overdue).",
     },
     chart: {
       visitsByDay: "Visits by day",
@@ -9922,7 +9928,7 @@ export default {
       topProviderCompleted: "{providerName} completed {count} visits.",
       prescriptionsToday: "{count} prescriptions today.",
       followUpPlanningRate: "Follow-up planning rate {percent}%.",
-      followUpsToSchedule: "{count} follow-ups to schedule.",
+      followUpsToSchedule: "{count} open follow-ups in the selected period.",
       missedAppointments: "{today} missed today · {week} this week.",
       patientsWaiting: "{count} patients waiting now.",
     },

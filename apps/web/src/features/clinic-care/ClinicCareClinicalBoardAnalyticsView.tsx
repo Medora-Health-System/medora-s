@@ -45,6 +45,7 @@ type DashboardPayload = {
   facilityTimeZone: string;
   localDateKey: string;
   period: ClinicCareDashboardPeriod;
+  followUpDrillDownHref?: string | null;
   kpis: ClinicCareAnalyticsKpiValue[];
   visitsByDay: ClinicCareVisitsByDayPoint[];
   visitTypes: ClinicCareVisitTypeSlice[];
@@ -361,18 +362,52 @@ export function ClinicCareClinicalBoardAnalyticsView() {
                         ? "#22c55e"
                         : "#3b82f6";
               const display =
-                kpi?.value == null
-                  ? "—"
-                  : id === "AVERAGE_WAIT_MINUTES"
-                    ? formatMessage(t("clinicCareD4c5a.kpis.minutesValue"), { value: kpi.value })
-                    : id === "FOLLOW_UPS_TO_SCHEDULE"
-                      ? formatMessage(t("clinicCareD4c5a.kpis.patientsValue"), { value: kpi.value })
-                      : String(kpi.value);
+                loading && !data
+                  ? "…"
+                  : kpi?.value == null
+                    ? "—"
+                    : id === "AVERAGE_WAIT_MINUTES"
+                      ? formatMessage(t("clinicCareD4c5a.kpis.minutesValue"), { value: kpi.value })
+                      : id === "FOLLOW_UPS_TO_SCHEDULE"
+                        ? formatMessage(t("clinicCareD4c5a.kpis.patientsValue"), { value: kpi.value })
+                        : String(kpi.value);
+              const followUpHref =
+                data?.followUpDrillDownHref ??
+                `/app/clinic-care/follow-up?period=${encodeURIComponent(period)}&status=OPEN&actionable=1`;
+              const clickable = id === "FOLLOW_UPS_TO_SCHEDULE" && !loading && !error;
               return (
                 <div
                   key={id}
                   data-testid={`clinic-care-analytics-kpi-${id}`}
-                  style={{ ...panelStyle, padding: "10px 12px" }}
+                  role={clickable ? "button" : undefined}
+                  tabIndex={clickable ? 0 : undefined}
+                  onClick={
+                    clickable
+                      ? () => {
+                          router.push(followUpHref);
+                        }
+                      : undefined
+                  }
+                  onKeyDown={
+                    clickable
+                      ? (e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            router.push(followUpHref);
+                          }
+                        }
+                      : undefined
+                  }
+                  style={{
+                    ...panelStyle,
+                    padding: "10px 12px",
+                    cursor: clickable ? "pointer" : undefined,
+                  }}
+                  title={
+                    id === "FOLLOW_UPS_TO_SCHEDULE"
+                      ? t("clinicCareD4c5a.kpis.followUpsHint")
+                      : undefined
+                  }
                 >
                   <div style={{ fontSize: 11, fontWeight: 600, color: "#64748b", marginBottom: 4 }}>
                     {t(kpiLabelKey(id))}
