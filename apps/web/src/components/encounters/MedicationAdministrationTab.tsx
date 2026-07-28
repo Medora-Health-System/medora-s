@@ -131,6 +131,7 @@ import {
 import { appendMedicationDoseInstanceIdToMarCreateBody } from "@/features/mar/medicationPassQueueMarIntegration";
 import { adjustMarMedicationSchedule } from "@/lib/medicationDoseScheduleAdjustmentApi";
 import { MAR_TAB_SHOW_LEGACY_SECTIONS } from "@/features/mar/marTabUnifiedTimeline";
+import { shouldShowAmbulatoryPendingMarOrderItemFallback } from "@medora/shared";
 import { MedicationPassQueuePanel } from "@/components/encounters/MedicationPassQueuePanel";
 import { FacilityMarShiftTimeline } from "@/components/encounters/FacilityMarShiftTimeline";
 import { MarHistoricalDateNavigationBar } from "@/components/mar/MarHistoricalDateNavigationBar";
@@ -2585,8 +2586,12 @@ export function MedicationAdministrationTab({
       </div>
       ) : null}
 
-      {MAR_TAB_SHOW_LEGACY_SECTIONS ? (
+      {shouldShowAmbulatoryPendingMarOrderItemFallback({
+        showFacilityMarShiftTimeline,
+        marTabShowLegacySections: MAR_TAB_SHOW_LEGACY_SECTIONS,
+      }) ? (
       <>
+      {MAR_TAB_SHOW_LEGACY_SECTIONS ? (
       <MedicationPassQueuePanel
         enabled={passQueue.enabled}
         items={passQueue.items}
@@ -2594,14 +2599,34 @@ export function MedicationAdministrationTab({
         actionsDisabled={!isOpen}
         compact={marCompact}
       />
+      ) : null}
 
-      <h3 style={{ margin: marCompact ? "0 0 6px 0" : "0 0 8px 0", fontSize: marCompact ? 15 : 16 }}>{t("marTab.title")}</h3>
+      <h3
+        style={{ margin: marCompact ? "0 0 6px 0" : "0 0 8px 0", fontSize: marCompact ? 15 : 16 }}
+        data-testid="mar-ambulatory-pending-tasks-title"
+      >
+        {t("marTab.title")}
+      </h3>
+      {!showFacilityMarShiftTimeline && !MAR_TAB_SHOW_LEGACY_SECTIONS ? (
+        <p
+          style={{ margin: "0 0 10px 0", fontSize: 12, color: "#64748b" }}
+          data-testid="mar-ambulatory-pending-fallback-hint"
+        >
+          {t("clinicCareD4c7g.mar.ambulatoryPendingHint")}
+        </p>
+      ) : null}
       {!isOpen ? <p style={{ margin: "0 0 12px 0", fontSize: 13, color: "#616161" }}>{t("marTab.closedHint")}</p> : null}
 
       {loading ? (
         <p>{t("common.loading")}</p>
       ) : taskRows.length === 0 ? (
-        <p style={{ color: "#666", fontSize: 14 }}>{t("marTab.emptyTasks")}</p>
+        <p style={{ color: "#666", fontSize: 14 }} data-testid="mar-ambulatory-empty-tasks">
+          {t(
+            !showFacilityMarShiftTimeline
+              ? "clinicCareD4c7e.mar.emptyFacility"
+              : "marTab.emptyTasks"
+          )}
+        </p>
       ) : (
         <div
           style={{

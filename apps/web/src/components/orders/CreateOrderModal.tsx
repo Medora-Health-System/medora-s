@@ -119,7 +119,7 @@ import { useClinicalBeforeUnloadWarning } from "@/lib/useClinicalBeforeUnloadWar
 
 type OrderTypeKey = OrderModalTab;
 type OrderAuthorityFormSource = OrderSource | "";
-type MedicationOrderMode = "DEFAULT" | "ER_ADMINISTER_ONLY";
+type MedicationOrderMode = "DEFAULT" | "ER_ADMINISTER_ONLY" | "OUTPATIENT_RX_ONLY";
 const ORDER_DRAFT_VERSION = "orders-drafting-v2";
 const UNKNOWN_CLINICAL_DRAFT_USER_ID = "unknown-user";
 
@@ -203,6 +203,7 @@ function catalogItemToOrderLine(
 
   if (item.type === "MEDICATION") {
     const erAdministerOnly = medicationOrderMode === "ER_ADMINISTER_ONLY";
+    const outpatientRxOnly = medicationOrderMode === "OUTPATIENT_RX_ONLY";
     return applyDefaultPlannedAdministrationIfNeeded({
       _lineId: newOrderLineId(),
       isManual: false,
@@ -232,7 +233,7 @@ function catalogItemToOrderLine(
         therapeuticClass: item.metadata?.therapeuticClass,
         commonAliases: item.metadata?.commonAliases,
       },
-    }, facilityTimeZone);
+    }, outpatientRxOnly ? null : facilityTimeZone);
   }
 
   return null;
@@ -281,7 +282,9 @@ export function CreateOrderModal({
   const { language, t } = useI18n();
   const { facilityTimeZone, facilityClinicalTimeZoneReady, roles, userId } = useFacilityAndRoles();
   const hasRnStandingOrderAuthority = canUseRnOrderAuthority;
-  const plannedAdminFacilityTimeZone = facilityClinicalTimeZoneReady ? facilityTimeZone : null;
+  const outpatientRxOnlyMedication = medicationOrderMode === "OUTPATIENT_RX_ONLY";
+  const plannedAdminFacilityTimeZone =
+    outpatientRxOnlyMedication || !facilityClinicalTimeZoneReady ? null : facilityTimeZone;
   const [carePickerQuery, setCarePickerQuery] = useState("");
   const [careCategoryFilter, setCareCategoryFilter] = useState<"" | CanonicalCareProcedureCategory>("");
   const [careApiMatches, setCareApiMatches] = useState<CareProcedurePickerRow[]>([]);
@@ -313,8 +316,9 @@ export function CreateOrderModal({
   const careSearchActive =
     carePickerQuery.trim().length >= 2 || Boolean(careCategoryFilter);
   const erAdministerOnlyMedication = medicationOrderMode === "ER_ADMINISTER_ONLY";
-  const firstTab: OrderModalTab =
-    !canUseMedicationCareTabs && (initialOrderTab === "MEDICATION" || initialOrderTab === "CARE")
+  const firstTab: OrderModalTab = outpatientRxOnlyMedication
+    ? "MEDICATION"
+    : !canUseMedicationCareTabs && (initialOrderTab === "MEDICATION" || initialOrderTab === "CARE")
       ? "LAB"
       : initialOrderTab;
 
@@ -396,9 +400,11 @@ export function CreateOrderModal({
   const careHasEkgWorkflowLine = formData.items.some((i) => i._careQuickKey === "ekg_workflow");
   const careHasLacerationKitLine = formData.items.some((i) => i._careQuickKey === "laceration_kit");
 
-  const orderTypes: CreateOrderModalTab[] = canUseMedicationCareTabs
-    ? ["ORDER_SET", "LAB", "IMAGING", "MEDICATION", "CARE"]
-    : ["ORDER_SET", "LAB", "IMAGING"];
+  const orderTypes: CreateOrderModalTab[] = outpatientRxOnlyMedication
+    ? ["MEDICATION"]
+    : canUseMedicationCareTabs
+      ? ["ORDER_SET", "LAB", "IMAGING", "MEDICATION", "CARE"]
+      : ["ORDER_SET", "LAB", "IMAGING"];
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [queuedSync, setQueuedSync] = useState(false);
@@ -1047,6 +1053,11 @@ export function CreateOrderModal({
         items:
           erAdministerOnlyMedication && type === "MEDICATION"
             ? items.map((item) => ({ ...item, medicationFulfillmentIntent: "ADMINISTER_CHART" as const }))
+            : outpatientRxOnlyMedication && type === "MEDICATION"
+              ? items.map((item) => ({
+                  ...item,
+                  medicationFulfillmentIntent: "PHARMACY_DISPENSE" as const,
+                }))
             : items,
         authority: authorityPayloadFieldsForType(type),
         safetyAcknowledgedMedicationAllergies: allergyAckForApi ? true : undefined,
@@ -1396,6 +1407,8 @@ export function CreateOrderModal({
     let nextLine =
       erAdministerOnlyMedication && line.catalogItemType === "MEDICATION"
         ? { ...line, quantity: line.quantity ?? 1, medicationFulfillmentIntent: "ADMINISTER_CHART" as const }
+        : outpatientRxOnlyMedication && line.catalogItemType === "MEDICATION"
+          ? { ...line, medicationFulfillmentIntent: "PHARMACY_DISPENSE" as const }
         : line;
     if (nextLine.catalogItemType === "MEDICATION") {
       nextLine = prepareMedicationOrderLinePlannedAdmin(nextLine, plannedAdminFacilityTimeZone);
@@ -1428,6 +1441,8 @@ export function CreateOrderModal({
       );
       if (erAdministerOnlyMedication) {
         patched = { ...patched, medicationFulfillmentIntent: "ADMINISTER_CHART" as const };
+      } else if (outpatientRxOnlyMedication) {
+        patched = { ...patched, medicationFulfillmentIntent: "PHARMACY_DISPENSE" as const };
       }
       next[idx] = patched;
       return { ...fd, items: next };
@@ -2068,6 +2083,7 @@ export function CreateOrderModal({
             ) : null}
             <div
               role="tablist"
+              data-testid={outpatientRxOnlyMedication ? "create-order-modal-rx-only-tabs" : "create-order-modal-tabs"}
               style={{
                 display: "flex",
                 gap: 6,
@@ -2077,6 +2093,11 @@ export function CreateOrderModal({
                 flexWrap: "wrap",
               }}
             >
+              {outpatientRxOnlyMedication ? (
+                <p style={{ margin: 0, fontSize: 13, color: "#475569", fontWeight: 600 }}>
+                  {t("clinicCareD4c7g.rx.composerTitle")}
+                </p>
+              ) : null}
               {orderTypes.map((tab) => {
                 const active = activeTab === tab;
                 return (
@@ -2095,6 +2116,9 @@ export function CreateOrderModal({
                       borderRadius: 4,
                       fontSize: 13,
                       fontWeight: active ? 600 : 500,
+                      ...(outpatientRxOnlyMedication
+                        ? { display: orderTypes.length === 1 ? "none" : undefined }
+                        : {}),
                     }}
                   >
                     {tabLabel(tab)}
@@ -2102,6 +2126,14 @@ export function CreateOrderModal({
                 );
               })}
             </div>
+            {outpatientRxOnlyMedication ? (
+              <p
+                style={{ margin: "0 0 12px", fontSize: 12, color: "#64748b", lineHeight: 1.45 }}
+                data-testid="create-order-modal-rx-only-hint"
+              >
+                {t("clinicCareD4c7g.rx.composerHint")}
+              </p>
+            ) : null}
 
             {!canUseMedicationCareTabs && isRn ? (
               <p style={{ margin: "0 0 10px", fontSize: 12, color: "#64748b", lineHeight: 1.45 }}>
@@ -2898,7 +2930,11 @@ export function CreateOrderModal({
                       limit={activeTab === "MEDICATION" ? 40 : 20}
                     />
                     {!(erAdministerOnlyMedication && activeTab === "MEDICATION") ? (
-                      <ManualOrderEntry tab={activeTab} onAdd={handleAddManualLine} />
+                      <ManualOrderEntry
+                        tab={activeTab}
+                        onAdd={handleAddManualLine}
+                        medicationOrderMode={medicationOrderMode}
+                      />
                     ) : null}
                   </>
                 )}

@@ -79,7 +79,7 @@ export function SelectedMedicationItems({
   items: CreateOrderLineItem[];
   onPatch: (index: number, patch: Partial<CreateOrderLineItem>) => void;
   onRemove: (index: number) => void;
-  medicationOrderMode?: "DEFAULT" | "ER_ADMINISTER_ONLY";
+  medicationOrderMode?: "DEFAULT" | "ER_ADMINISTER_ONLY" | "OUTPATIENT_RX_ONLY";
   facilityClinicalTimeZoneReady?: boolean;
   ivRouteConfirmations?: Record<string, boolean>;
   erQuantityConfirmations?: Record<string, boolean>;
@@ -89,6 +89,7 @@ export function SelectedMedicationItems({
   const { t, language } = useI18n();
   const directionsListIdPrefix = useId();
   const erAdministerOnly = medicationOrderMode === "ER_ADMINISTER_ONLY";
+  const outpatientRxOnly = medicationOrderMode === "OUTPATIENT_RX_ONLY";
 
   if (items.length === 0) return null;
 
@@ -163,6 +164,11 @@ export function SelectedMedicationItems({
               <div style={{ marginBottom: 10, fontSize: 13, color: "#475569" }}>
                 <span style={{ marginRight: 12, fontWeight: 500 }}>{t("createOrderModal.selectedMedDestination")}</span>
                 {t("createOrderModal.selectedMedIntentAdminister")}
+              </div>
+            ) : outpatientRxOnly ? (
+              <div style={{ marginBottom: 10, fontSize: 13, color: "#475569" }} data-testid="selected-med-rx-external-destination">
+                <span style={{ marginRight: 12, fontWeight: 500 }}>{t("createOrderModal.selectedMedDestination")}</span>
+                {t("clinicCareD4c7g.rx.externalPharmacyDestination")}
               </div>
             ) : (
               <div style={{ marginBottom: 10, fontSize: 13 }}>

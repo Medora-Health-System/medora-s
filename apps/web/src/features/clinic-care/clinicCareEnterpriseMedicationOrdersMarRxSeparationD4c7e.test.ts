@@ -36,7 +36,7 @@ describe("MEDUI.D4C.7E clinic medication orders/MAR/Rx web mounts", () => {
     expect(rx).toContain("projectPersistedOutpatientPrescriptionPrintLines");
     expect(rx).toContain("resolveExternalPharmacySendStatus");
     expect(rx).toContain("clinic-care-ambulatory-external-pharmacy-board");
-    expect(rx).toContain('medicationOrderMode="DEFAULT"');
+    expect(rx).toContain('medicationOrderMode="OUTPATIENT_RX_ONLY"');
   });
 
   it("D — CreateOrderModal snapshots med lines for print (no empty post-clear print)", () => {

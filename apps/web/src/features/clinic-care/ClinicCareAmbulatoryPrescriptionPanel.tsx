@@ -1,7 +1,7 @@
 /**
- * MEDUI.D4C.5B.3 / D4C.7E — Ambulatory Rx tile: take-home / external prescriptions ONLY.
+ * MEDUI.D4C.5B.3 / D4C.7E / D4C.7G — Ambulatory Rx tile: take-home / external prescriptions ONLY.
  * Filters OrderItem.medicationFulfillmentIntent === PHARMACY_DISPENSE + MEDICATION.
- * Reuses CreateOrderModal + getRxPrintHtml — enterprise prescription path only.
+ * Strict OUTPATIENT_RX_ONLY CreateOrderModal mode — no Protocols/Lab/Imaging/Soins / administer.
  * External pharmacy selection is destination-only (not internal Pharmacy worklist).
  */
 
@@ -456,7 +456,7 @@ export function ClinicCareAmbulatoryPrescriptionPanel({
               : undefined
           }
           initialOrderTab="MEDICATION"
-          medicationOrderMode="DEFAULT"
+          medicationOrderMode="OUTPATIENT_RX_ONLY"
           onClose={() => setShowModal(false)}
           onSuccess={async () => {
             setShowModal(false);

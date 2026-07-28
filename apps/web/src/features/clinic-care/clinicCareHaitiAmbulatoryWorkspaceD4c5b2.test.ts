@@ -54,7 +54,7 @@ describe("MEDUI.D4C.5B.2 Haiti ambulatory web mounts", () => {
   it("F — Rx tile panel exists without ClinicPrescription", () => {
     expect(existsSync(join(featureDir, "ClinicCareAmbulatoryPrescriptionPanel.tsx"))).toBe(true);
     const rx = read("ClinicCareAmbulatoryPrescriptionPanel.tsx");
-    expect(rx).toContain('medicationOrderMode="DEFAULT"');
+    expect(rx).toContain('medicationOrderMode="OUTPATIENT_RX_ONLY"');
     expect(rx).toContain("CreateOrderModal");
     expect(existsSync(join(featureDir, "ClinicPrescription.tsx"))).toBe(false);
   });

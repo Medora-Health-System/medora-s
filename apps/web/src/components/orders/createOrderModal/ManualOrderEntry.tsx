@@ -40,11 +40,14 @@ const inputStyle: React.CSSProperties = {
 export function ManualOrderEntry({
   tab,
   onAdd,
+  medicationOrderMode = "DEFAULT",
 }: {
   tab: OrderModalTab;
   onAdd: (line: CreateOrderLineItem) => void;
+  medicationOrderMode?: "DEFAULT" | "ER_ADMINISTER_ONLY" | "OUTPATIENT_RX_ONLY";
 }) {
   const { t } = useI18n();
+  const outpatientRxOnly = medicationOrderMode === "OUTPATIENT_RX_ONLY";
   const [open, setOpen] = useState(false);
   const [labLabel, setLabLabel] = useState("");
   const [labNotes, setLabNotes] = useState("");
@@ -55,7 +58,9 @@ export function ManualOrderEntry({
   const [medDosage, setMedDosage] = useState("");
   const [medPoso, setMedPoso] = useState("");
   const [medQty, setMedQty] = useState(30);
-  const [medIntent, setMedIntent] = useState<"ADMINISTER_CHART" | "PHARMACY_DISPENSE">("PHARMACY_DISPENSE");
+  const [medIntent, setMedIntent] = useState<"ADMINISTER_CHART" | "PHARMACY_DISPENSE">(
+    outpatientRxOnly ? "PHARMACY_DISPENSE" : "PHARMACY_DISPENSE"
+  );
 
   const addLab = () => {
     const label = labLabel.trim();
@@ -108,7 +113,7 @@ export function ManualOrderEntry({
       notes: medPoso.trim() || undefined,
       quantity: medQty,
       refillCount: 0,
-      medicationFulfillmentIntent: medIntent,
+      medicationFulfillmentIntent: outpatientRxOnly ? "PHARMACY_DISPENSE" : medIntent,
       _label: name,
     });
     setMedName("");
@@ -265,24 +270,32 @@ export function ManualOrderEntry({
               />
               <div style={{ marginBottom: 12, fontSize: 13 }}>
                 <span style={{ fontWeight: 600, marginRight: 12 }}>{t("createOrderModal.manualDestinationLabel")}</span>
-                <label style={{ marginRight: 12, cursor: "pointer" }}>
-                  <input
-                    type="radio"
-                    name="manual-intent"
-                    checked={medIntent === "ADMINISTER_CHART"}
-                    onChange={() => setMedIntent("ADMINISTER_CHART")}
-                  />{" "}
-                  {t("createOrderModal.manualIntentAdminister")}
-                </label>
-                <label style={{ cursor: "pointer" }}>
-                  <input
-                    type="radio"
-                    name="manual-intent"
-                    checked={medIntent === "PHARMACY_DISPENSE"}
-                    onChange={() => setMedIntent("PHARMACY_DISPENSE")}
-                  />{" "}
-                  {t("createOrderModal.manualIntentPharmacy")}
-                </label>
+                {outpatientRxOnly ? (
+                  <span data-testid="manual-rx-external-destination">
+                    {t("clinicCareD4c7g.rx.externalPharmacyDestination")}
+                  </span>
+                ) : (
+                  <>
+                    <label style={{ marginRight: 12, cursor: "pointer" }}>
+                      <input
+                        type="radio"
+                        name="manual-intent"
+                        checked={medIntent === "ADMINISTER_CHART"}
+                        onChange={() => setMedIntent("ADMINISTER_CHART")}
+                      />{" "}
+                      {t("createOrderModal.manualIntentAdminister")}
+                    </label>
+                    <label style={{ cursor: "pointer" }}>
+                      <input
+                        type="radio"
+                        name="manual-intent"
+                        checked={medIntent === "PHARMACY_DISPENSE"}
+                        onChange={() => setMedIntent("PHARMACY_DISPENSE")}
+                      />{" "}
+                      {t("createOrderModal.manualIntentPharmacy")}
+                    </label>
+                  </>
+                )}
               </div>
               <button
                 type="button"

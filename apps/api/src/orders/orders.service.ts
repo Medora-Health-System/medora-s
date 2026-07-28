@@ -76,6 +76,7 @@ import {
   validatePilotOrderPlacement,
   isActiveTranche1PilotMedication,
   isExemptFromTranche1PilotOrderGate,
+  shouldSkipPilotScopeForOutpatientRxCreate,
   validateProviderOrderPlacementForCatalogCode,
   type PilotScopeInput,
   validateCareProcedureEffectiveClinicalTime,
@@ -1016,6 +1017,17 @@ export class OrdersService {
     pilotScope: PilotScopeInput
   ): Promise<void> {
     if (data.type !== "MEDICATION") return;
+    // D4C.7G: pure outpatient Rx (all PHARMACY_DISPENSE) must not depend on
+    // tranche-1 pilot / facility inventory scope — external print/fill only.
+    if (shouldSkipPilotScopeForOutpatientRxCreate(data)) {
+      logInfo("outpatient_rx_pilot_scope_not_applicable", {
+        facilityId,
+        userId: pilotScope.userId ?? null,
+        errorCode: "OUTPATIENT_RX_PILOT_SCOPE_NOT_APPLICABLE",
+        itemCount: data.items.length,
+      });
+      return;
+    }
     const catalogIds = [
       ...new Set(
         data.items

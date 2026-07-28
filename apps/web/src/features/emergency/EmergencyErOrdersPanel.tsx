@@ -648,7 +648,7 @@ export function EmergencyErOrdersPanel({
   cdsIntent?: string | null;
   onConsumeIntent?: () => void;
   /** Ambulatory Clinic uses DEFAULT outpatient Rx; ED workspace keeps ER_ADMINISTER_ONLY. */
-  medicationOrderMode?: "DEFAULT" | "ER_ADMINISTER_ONLY";
+  medicationOrderMode?: "DEFAULT" | "ER_ADMINISTER_ONLY" | "OUTPATIENT_RX_ONLY";
   /** Haiti ambulatory: hide trauma protocol assist without removing it from ED. */
   hideTraumaProtocolAssist?: boolean;
 }) {
