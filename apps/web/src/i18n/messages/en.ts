@@ -10356,6 +10356,31 @@ export default {
     },
   },
 
+  clinicCareD4c7g: {
+    mar: {
+      ambulatoryPendingHint:
+        "Facility medications to administer during this visit (same MAR authority as emergency).",
+      projectionFailed:
+        "MAR projection unavailable for this facility medication order. Check intent and status — do not chart as administered outside MAR.",
+    },
+    rx: {
+      composerTitle: "Outpatient prescription (medications only)",
+      composerHint:
+        "Take-home / external pharmacy prescription only. No onsite administration, laboratory, imaging, or protocols.",
+      externalPharmacyDestination: "External pharmacy (print / send outside the facility)",
+      pilotNotApplicable:
+        "This outpatient prescription is not subject to facility-administration pilot scope.",
+    },
+    errors: {
+      facilityMarProjectionFailed:
+        "Facility medication MAR projection failed (FACILITY_MEDICATION_MAR_PROJECTION_FAILED).",
+      outpatientRxFacilityAdminForbidden:
+        "Facility-administration destination is forbidden on the outpatient prescription workspace.",
+      outpatientRxNonMedicationForbidden:
+        "Only medications are allowed in the outpatient prescription workspace.",
+    },
+  },
+
   clinicCareD4c7f: {
     closure: {
       pendingTitle: "Clinical items are still pending",

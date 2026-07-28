@@ -10359,6 +10359,31 @@ export default {
     },
   },
 
+  clinicCareD4c7g: {
+    mar: {
+      ambulatoryPendingHint:
+        "Médicaments d'établissement à administrer pendant la visite (même autorité MAR que les urgences).",
+      projectionFailed:
+        "Projection MAR indisponible pour cet ordre d'établissement. Vérifiez l'intention et le statut — ne pas marquer comme administré hors MAR.",
+    },
+    rx: {
+      composerTitle: "Ordonnance externe (médicaments uniquement)",
+      composerHint:
+        "Prescription à emporter / pharmacie externe uniquement. Pas d'administration sur place, pas de laboratoire, imagerie ni protocoles.",
+      externalPharmacyDestination: "Pharmacie externe (impression / envoi hors établissement)",
+      pilotNotApplicable:
+        "Cette ordonnance externe n'est pas soumise au périmètre pilote d'administration en établissement.",
+    },
+    errors: {
+      facilityMarProjectionFailed:
+        "Échec de projection MAR pour un médicament d'établissement (FACILITY_MEDICATION_MAR_PROJECTION_FAILED).",
+      outpatientRxFacilityAdminForbidden:
+        "Destination d'administration en établissement interdite sur l'ordonnance externe.",
+      outpatientRxNonMedicationForbidden:
+        "Seuls les médicaments sont autorisés dans l'espace ordonnance externe.",
+    },
+  },
+
   clinicCareD4c7f: {
     closure: {
       pendingTitle: "Des éléments cliniques sont encore en attente",

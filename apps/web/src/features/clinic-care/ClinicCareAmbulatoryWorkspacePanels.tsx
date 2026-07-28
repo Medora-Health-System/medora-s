@@ -312,7 +312,7 @@ export function ClinicCareAmbulatoryWorkspacePanels({
     facilityCountry,
     ambulatoryCareSetting: true,
   });
-  // D4C.7E: all Clinic ambulatory Orders → facility-admin (MAR); Rx tile stays DEFAULT.
+  // D4C.7E/7G: Clinic ambulatory Orders → facility-admin (MAR); Rx tile = OUTPATIENT_RX_ONLY.
   const ordersMedicationMode = clinicAmbulatoryFacilityMedicationOrderMode({
     ambulatoryCareSetting: true,
   });
