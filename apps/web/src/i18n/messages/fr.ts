@@ -10215,6 +10215,22 @@ export default {
     },
   },
 
+  clinicCareD4c7a: {
+    mdm: {
+      legacyEnglishBanner:
+        "Ce brouillon non signé contient encore du texte MDM en anglais alors que la langue du document rédigé est le français.",
+      applyFrenchRefresh: "Appliquer le français / Actualiser",
+      applyFrenchRefreshHint:
+        "Remplace les fragments MDM anglais connus par le texte ambulatoire français. Les saisies libres sont conservées. Les notes signées ne sont jamais modifiées.",
+      applyFrenchDone: "Fragments MDM français appliqués.",
+      applyFrenchNone: "Aucun fragment MDM anglais correspondant à actualiser.",
+    },
+    discharge: {
+      singleEngineHint:
+        "Sortie ambulatoire pilotée par les diagnostics uniquement (moteur partagé D4C.7). Doublon d’instructions patient plates retiré.",
+    },
+  },
+
   clinicCareD4c6: {
     nav: {
       orders: "Ordonnances",
@@ -11300,6 +11316,20 @@ export default {
     smokingCessation:
       "The patient was counseled on smoking cessation, including e-cigarettes and vaping; less than or equal to 10 minutes spent on discussion.",
     pmpReviewed: "State prescription monitoring program reviewed.",
+  },
+  /** Modèles MDM ambulatoires — français clinique, sans formulations ED / service d'urgence. */
+  providerDocumentationMdmHighValueAmbulatory: {
+    standardMdm:
+      "Le patient vit à domicile avec sa famille et bénéficie d'un bon soutien familial et social.\n\nJ'ai envisagé les diagnostics différentiels ci-dessus comme causes possibles de l'état du patient. Cette analyse repose sur une rencontre clinique limitée et peut ne pas être exhaustive. L'anamnèse, l'examen physique et/ou les examens complémentaires, associés au jugement clinique, ont permis d'établir le diagnostic final.\n\nDes examens diagnostiques ont été prescrits, analysés et revus par moi, et ont contribué à ma décision médicale pour ce patient.\n\nJ'ai expliqué en détail la nature du bilan, le diagnostic présumé et le plan de traitement ; le patient a verbalisé sa compréhension. Des consignes de suivi avec un médecin de premier recours sous 48 heures et/ou un spécialiste si besoin ont été données. Le patient est invité à reconsulter rapidement en cas d'aggravation ou de nouveaux symptômes préoccupants. Toutes les questions ont été répondues et le patient peut quitter la consultation en sécurité à ce stade.",
+    patientConcern:
+      "Le patient était fortement préoccupé que ses symptômes mettent potentiellement sa vie en danger et qu'une évaluation médicale immédiate soit nécessaire.",
+    ekgNormal:
+      "L'ECG montrait un rythme sinusal normal, un QT normal, une morphologie QRS normale, sans modification ischémique du segment ST/T — interprétation par moi : ECG normal.",
+    diagnosticStudiesReview:
+      "Des examens diagnostiques, analyses de laboratoire, imagerie et autres évaluations cliniquement indiquées ont été prescrits, revus et intégrés au processus de décision médicale pour ce patient.\n\nL'évaluation, le différentiel, le plan de traitement, la disposition et les recommandations de suivi ont été discutés en détail avec le patient et/ou l'accompagnant, qui ont verbalisé leur compréhension et leur accord. Un suivi avec un médecin de premier recours et/ou un spécialiste a été conseillé selon le besoin. Des consignes strictes de reconsultation ont été précisées, notamment de reconsulter rapidement en cas d'aggravation, de changement d'état ou d'autres préoccupations. Toutes les questions ont été abordées avant la sortie de consultation.",
+    smokingCessation:
+      "Le patient a reçu un conseil de sevrage tabagique, y compris cigarettes électroniques et vapotage ; dix minutes ou moins consacrées à la discussion.",
+    pmpReviewed: "Programme de surveillance des prescriptions consulté lorsque disponible.",
   },
   providerDocumentationSmartSentences: {
     reassessedAfterAnalgesia: "Patient réévalué·e après analgésie avec amélioration intervalle selon l'examen",

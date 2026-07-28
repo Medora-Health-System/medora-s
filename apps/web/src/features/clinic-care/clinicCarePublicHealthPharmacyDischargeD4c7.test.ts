@@ -32,11 +32,12 @@ describe("MEDUI.D4C.7 Clinic Care public health / pharmacy / discharge mounts", 
     expect(panels).toContain("facilityCountry");
   });
 
-  it("C — PatientDischargeInstructionsClosureCard retained (no blank-only boxes)", () => {
+  it("C — PatientDischargeInstructionsClosureCard removed from ambulatory Suivi/sortie (D4C.7A)", () => {
     const workflow = read("ClinicCareAmbulatoryDischargeWorkflow.tsx");
-    expect(workflow).toContain("PatientDischargeInstructionsClosureCard");
+    expect(workflow).not.toContain("PatientDischargeInstructionsClosureCard");
     expect(workflow).toContain("clinic-care-d4c7-discharge-workflow");
     expect(workflow).toContain("ProviderDischargeDocumentationSection");
+    expect(workflow).toContain("clinicCareD4c7a.discharge.singleEngineHint");
   });
 
   it("D — PH deep links to enterprise Vaccinations / Déclarations (no Open PH gateway card)", () => {

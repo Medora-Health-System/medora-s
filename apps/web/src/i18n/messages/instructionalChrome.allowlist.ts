@@ -18,6 +18,7 @@ export type InstructionalChromeAllowlistEntry = {
 export const INSTRUCTIONAL_CHROME_MESSAGE_PREFIX_ALLOWLIST = [
   "providerDocumentationComplaintIntel.",
   "providerDocumentationMdmHighValue.",
+  "providerDocumentationMdmHighValueAmbulatory.",
   "providerDocumentationSmartSentences.",
   "providerDocumentationPromptReminders.",
   "erMseMdmChips.",

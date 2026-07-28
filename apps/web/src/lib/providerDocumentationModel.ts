@@ -1,4 +1,6 @@
 /** AMBULATORY reuses INITIAL_PROVIDER_NOTE durability (no parallel Clinic note engine). */
+import { omitEmptyAmbulatoryHiddenMdmFields } from "@medora/shared";
+
 export type ProviderDocumentationEncounterMode = "ED" | "OBSERVATION" | "AMBULATORY";
 
 export type ProviderDocumentationDocumentType =
@@ -1193,8 +1195,13 @@ export function buildProviderDocumentationSavePayload(input: {
   };
   stored.workspaceMetadata = workspaceMetadata;
 
+  const storedForPersist = omitEmptyAmbulatoryHiddenMdmFields(
+    stored,
+    input.metadata.encounterMode
+  );
+
   if (providerDocumentationStateHasContent(s)) {
-    nursingAssessment[PROVIDER_DOCUMENTATION_NAMESPACE_KEY] = stored;
+    nursingAssessment[PROVIDER_DOCUMENTATION_NAMESPACE_KEY] = storedForPersist;
   } else {
     delete nursingAssessment[PROVIDER_DOCUMENTATION_NAMESPACE_KEY];
   }

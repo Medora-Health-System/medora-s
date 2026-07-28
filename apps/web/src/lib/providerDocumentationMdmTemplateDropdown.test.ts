@@ -253,13 +253,21 @@ describe("providerDocumentationMdmTemplateDropdown — safety", () => {
     expect(workspaceSource).toContain("runManualSave");
   });
 
-  it("keeps English clinical fragments in French locale messages", () => {
+  it("keeps English clinical fragments in French locale ED catalog; ambulatory French catalog is separate", () => {
     expect(frMessages).toContain("providerDocumentationMdmHighValue");
     expect(frMessages).toContain("The patient lives at home with family");
     expect(frMessages).toContain("Diagnostic studies, laboratory testing, imaging");
     expect(frMessages).toContain('mdmHighValueTemplatesGroup: "Modèles à haute valeur"');
     expect(frMessages).toContain('mdmApplySelected: "Appliquer la sélection"');
-    expect(frMessages).not.toMatch(/providerDocumentationMdmHighValue[\s\S]{0,200}Le patient vit/);
+    expect(frMessages).toContain("providerDocumentationMdmHighValueAmbulatory");
+    expect(frMessages).toContain("Le patient vit à domicile avec sa famille");
+    expect(frMessages).toContain("reconsulter rapidement");
+    expect(frMessages).not.toMatch(
+      /providerDocumentationMdmHighValueAmbulatory[\s\S]{0,400}return to the ED/i
+    );
+    expect(frMessages).not.toMatch(
+      /providerDocumentationMdmHighValueAmbulatory[\s\S]{0,800}emergency department/i
+    );
   });
 
   it("exposes aria-pressed on selected template chips", () => {

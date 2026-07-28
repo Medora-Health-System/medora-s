@@ -175,6 +175,7 @@ export function ClinicCareAmbulatoryMedicalEvaluationPanel({
         encounterId={encounter.id}
         encounterMode="AMBULATORY"
         facilityCountry={facilityCountry}
+        authoredDocumentLocale={language === "fr" ? "fr" : "en"}
         value={value}
         onChange={setValue}
         onSave={save}
