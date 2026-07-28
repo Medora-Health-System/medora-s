@@ -751,6 +751,7 @@ export function ClinicCareTrackboardView({
                     status: row.status,
                     workflowState: row.workflowState,
                     facilityId,
+                    fromTodaysVisits: mode === "todaysVisits",
                   });
                   const openHref = resolveClinicBoardActionHref({
                     encounterId: row.encounterId,

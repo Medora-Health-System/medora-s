@@ -516,7 +516,9 @@ export function clinicCareRowMatchesView(input: {
     case "NURSING_MA":
       return input.stageId === "WAITING" || input.stageId === "IN_PROGRESS";
     case "PROVIDER":
+      // MEDUI.D4C.5B — include WAITING so assigned ARRIVED / ready patients are not excluded.
       return (
+        input.stageId === "WAITING" ||
         input.stageId === "IN_PROGRESS" ||
         input.stageId === "RESULTS_PENDING" ||
         input.stageId === "DISCHARGE_PENDING"

@@ -1126,9 +1126,20 @@ export function resolveFacilityNavigation(
     }
   }
 
-  const clinicCareVisible = areas.includes("CLINIC_CARE");
+  let clinicCareVisible = areas.includes("CLINIC_CARE");
   const edVisible = areas.includes("EMERGENCY");
   const hospitalVisible = areas.includes("HOSPITAL");
+
+  // MEDUI.D4C.5B — suppress duplicate global Tableau de bord when Clinic Care owns ambulatory landing.
+  if (
+    ambulatory &&
+    clinicCareVisible &&
+    !edVisible &&
+    !hospitalVisible
+  ) {
+    areas = areas.filter((a) => a !== "DASHBOARD");
+  }
+  clinicCareVisible = areas.includes("CLINIC_CARE");
 
   const landingPath = ambulatory && clinicCareVisible
     ? "/app/clinic-care"

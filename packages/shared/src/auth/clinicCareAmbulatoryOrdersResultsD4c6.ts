@@ -375,16 +375,21 @@ export function clinicCareAmbulatoryResultMatchesGroup(
   return classification.groups.includes(group);
 }
 
-/** Canonical chart path — orders tab + ambulatory workspace adapter. */
+/**
+ * Canonical chart path — Orders tile on Active Clinic Workspace (D4C.5B / D4C.6).
+ * Legacy `tab=orders` is accepted as a section alias by the ambulatory workspace shell.
+ */
 export function clinicCareAmbulatoryOrdersChartPath(encounterId: string): string {
   const id = encodeURIComponent(encounterId);
-  return `/app/encounters/${id}?tab=orders&workspace=${CLINIC_CARE_AMBULATORY_WORKSPACE_QUERY}`;
+  return `/app/encounters/${id}?workspace=${CLINIC_CARE_AMBULATORY_WORKSPACE_QUERY}&section=orders`;
 }
 
-/** Canonical chart path — results tab + ambulatory workspace adapter. */
+/**
+ * Canonical chart path — Results tile on Active Clinic Workspace (D4C.5B / D4C.6).
+ */
 export function clinicCareAmbulatoryResultsChartPath(encounterId: string): string {
   const id = encodeURIComponent(encounterId);
-  return `/app/encounters/${id}?tab=results&workspace=${CLINIC_CARE_AMBULATORY_WORKSPACE_QUERY}`;
+  return `/app/encounters/${id}?workspace=${CLINIC_CARE_AMBULATORY_WORKSPACE_QUERY}&section=results`;
 }
 
 /** Order detail deep-link stays on enterprise encounter orders tab (no ClinicOrderDetail). */

@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
-import { useParams, useRouter } from "next/navigation";
+import React, { Suspense, useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { apiFetch, asApiObject, parseApiResponse } from "@/lib/apiClient";
 import { MEDORA_PATIENT_VITALS_UPDATED, hasVitalsJson, type PatientTriageVitalsSnapshot } from "@/lib/patientVitals";
@@ -53,6 +53,7 @@ import {
   resolveAmbulatoryProviderDocumentationMode,
 } from "@/features/clinic-care/clinicCareAmbulatoryChartAdapter";
 import { ClinicCareAmbulatoryClinicalSummaryPanel } from "@/features/clinic-care/ClinicCareAmbulatoryClinicalSummaryPanel";
+import { ClinicCareActiveAmbulatoryWorkspaceView } from "@/features/clinic-care/ClinicCareActiveAmbulatoryWorkspaceView";
 import { parseEncounterDocumentedProcedureTypes } from "@/lib/procedureOrderDocumentationLinkageUi";
 import type { OrderModalTab } from "@/components/orders/createOrderModal/types";
 import { printRx } from "@/components/pharmacy/RxPrintLayout";
@@ -372,11 +373,22 @@ const ENCOUNTER_PAGE_SHELL: React.CSSProperties = {
 };
 
 export default function EncounterDetailPage() {
+  return (
+    <Suspense fallback={null}>
+      <EncounterDetailPageContent />
+    </Suspense>
+  );
+}
+
+function EncounterDetailPageContent() {
   const params = useParams();
   const encounterId = params.id as string;
   const session = useFacilityAndRoles();
   const { facilityId, roles, ready: rolesReady } = session;
   const { t } = useI18n();
+  const searchParams = useSearchParams();
+  const ambulatoryWorkspace =
+    searchParams?.get("workspace") === "ambulatory";
 
   const canFetchEncounterOrders =
     roles.includes("RN") ||
@@ -399,6 +411,22 @@ export default function EncounterDetailPage() {
       <div style={{ ...ENCOUNTER_PAGE_SHELL, display: "flex", alignItems: "center", justifyContent: "center" }}>
         <div style={{ fontSize: 15, color: "#475569" }}>{t("common.loading")}</div>
       </div>
+    );
+  }
+
+  if (ambulatoryWorkspace) {
+    return (
+      <EncounterClinicalDataProvider
+        encounterId={encounterId}
+        facilityId={facilityId}
+        canFetchOrders={canFetchEncounterOrders}
+        canFetchMarData={canFetchMarTab}
+        prefetchPassQueue={false}
+        pendingSyncFirstName={t("marTab.pendingSyncFirstName")}
+        pendingSyncLastName={t("marTab.pendingSyncLastName")}
+      >
+        <ClinicCareActiveAmbulatoryWorkspaceView />
+      </EncounterClinicalDataProvider>
     );
   }
 

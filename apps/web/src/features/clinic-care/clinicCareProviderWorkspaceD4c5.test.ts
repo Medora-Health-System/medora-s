@@ -50,13 +50,15 @@ describe("MEDUI.D4C.5 ambulatory provider workspace", () => {
     expect(provider).toContain("assignProviderSelf");
     expect(provider).not.toContain("soapDeferred");
     expect(CLINIC_CARE_PROVIDER_QUEUE_GROUPS).toEqual([
+      "WAITING",
       "IN_PROGRESS",
       "RESULTS_PENDING",
       "DISCHARGE_PENDING",
     ]);
     expect(projectClinicCareProviderQueueGroup("IN_PROGRESS")).toBe("IN_PROGRESS");
-    expect(projectClinicCareProviderQueueGroup("WAITING")).toBeNull();
-    expect(sortClinicCareProviderQueueGroups(["DISCHARGE_PENDING", "IN_PROGRESS"])).toEqual([
+    expect(projectClinicCareProviderQueueGroup("WAITING")).toBe("WAITING");
+    expect(sortClinicCareProviderQueueGroups(["DISCHARGE_PENDING", "WAITING", "IN_PROGRESS"])).toEqual([
+      "WAITING",
       "IN_PROGRESS",
       "DISCHARGE_PENDING",
     ]);
@@ -65,8 +67,9 @@ describe("MEDUI.D4C.5 ambulatory provider workspace", () => {
   it("B — chart path reuses enterprise encounter + patient engines (no ClinicPatientChart)", () => {
     const path = clinicCareAmbulatoryProviderChartPath("enc-1");
     expect(path).toContain("/app/encounters/enc-1");
-    expect(path).toContain("tab=clinic");
+    expect(path).toContain("section=medical-evaluation");
     expect(path).toContain("workspace=ambulatory");
+    expect(path).not.toContain("tab=clinic");
     expect(clinicCareAmbulatoryPatientChartPath("pat-1")).toBe("/app/patients/pat-1");
     expect(existsSync(join(featureDir, "ClinicPatientChart.tsx"))).toBe(false);
     expect(existsSync(join(featureDir, "ClinicHpi.tsx"))).toBe(false);

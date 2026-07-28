@@ -64,6 +64,8 @@ const compactBtn: React.CSSProperties = {
 
 function groupLabelKey(group: ClinicCareProviderQueueGroup): string {
   switch (group) {
+    case "WAITING":
+      return "clinicCareD4c5b.groupWaiting";
     case "IN_PROGRESS":
       return "clinicCareD4c5.groupInProgress";
     case "RESULTS_PENDING":

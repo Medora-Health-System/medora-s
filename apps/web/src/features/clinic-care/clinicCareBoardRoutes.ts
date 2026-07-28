@@ -1,11 +1,9 @@
-/**
- * MEDUI.D4C.2A.1 / D4C.5 — ambulatory board patient-name → chart navigation.
- * Mirrors ED `resolveEdBoardPatientNameHref` pattern (encounter-scoped primary dest)
- * without forking ED emergency routes into Clinic.
- */
-
 import { genericEncounterPath } from "@/features/emergency/emergencyRoutes";
-import { clinicCareAmbulatoryProviderChartPath } from "@medora/shared";
+import {
+  clinicCareAmbulatoryOpenWorkspacePath,
+  clinicCareAmbulatoryProviderChartPath,
+} from "@medora/shared";
+import { CLINIC_CARE_TODAYS_VISITS } from "./clinicCarePaths";
 
 /** Patient longitudinal chart (enterprise patient engine — no ClinicPatientChart). */
 export function clinicPatientChartPath(patientId: string): string {
@@ -14,7 +12,7 @@ export function clinicPatientChartPath(patientId: string): string {
 
 /**
  * Primary patient-name destination from Clinic Care trackboard / provider worklist.
- * Closed → patient chart; open → generic encounter chart with ambulatory adapter query.
+ * Closed → patient chart; open → Active Clinic Workspace (D4C.5B).
  * `facilityId` is session-scoped (x-facility-id), same as ED boards.
  */
 export function resolveClinicBoardPatientNameHref(input: {
@@ -24,6 +22,7 @@ export function resolveClinicBoardPatientNameHref(input: {
   workflowState?: string | null;
   facilityId?: string | null;
   ambulatoryProviderChart?: boolean;
+  fromTodaysVisits?: boolean;
 }): string {
   void input.facilityId;
   const closed =
@@ -34,10 +33,21 @@ export function resolveClinicBoardPatientNameHref(input: {
     return clinicPatientChartPath(input.patientId);
   }
   if (input.ambulatoryProviderChart !== false) {
-    return clinicCareAmbulatoryProviderChartPath(input.encounterId);
+    const base = clinicCareAmbulatoryOpenWorkspacePath(input.encounterId);
+    if (input.fromTodaysVisits) {
+      return `${base}&from=todays-visits`;
+    }
+    return base;
   }
   return genericEncounterPath(input.encounterId);
 }
+
+/** @deprecated Prefer resolveClinicBoardPatientNameHref — retained for D4C.5 imports. */
+export function clinicCareBoardAmbulatoryHref(encounterId: string): string {
+  return clinicCareAmbulatoryProviderChartPath(encounterId);
+}
+
+export { CLINIC_CARE_TODAYS_VISITS };
 
 /** Role-gated clinical action link inside Clinic workspace hubs when possible. */
 export function resolveClinicBoardActionHref(input: {

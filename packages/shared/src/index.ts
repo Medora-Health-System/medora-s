@@ -18,6 +18,7 @@ export * from "./auth/clinicCareNursingQueueD4c4.js";
 export * from "./auth/clinicCareProviderWorkspaceD4c5.js";
 export * from "./auth/clinicCareClinicalBoardAnalyticsD4c5a.js";
 export * from "./auth/clinicCareAmbulatoryOrdersResultsD4c6.js";
+export * from "./auth/clinicCareAmbulatoryEncounterWorkspaceD4c5b.js";
 export * from "./auth/navigationAuthorization.js";
 
 export * from "./password-policy.js";
