@@ -1,7 +1,7 @@
 import {
   filterHrefListForFreestandingErRnProviderSidebar,
-  getVisibleNavigationAreas,
   isNavigationAreaVisible,
+  resolveCapabilityAwareNavigationAreas,
   type NavigationArea,
   type NavigationProfileInput,
 } from "@medora/shared";
@@ -15,28 +15,40 @@ export const HOSPITAL_CARE_NAV_HREF = "/app/hospitalisation";
 /** @deprecated Use HOSPITAL_CARE_NAV_HREF — kept for test imports during D3CA closure. */
 export const OBSERVATION_BOARD_HREF = HOSPITAL_CARE_NAV_HREF;
 
+export type CapabilityNavigationProfileInput = NavigationProfileInput & {
+  careProfileJson?: unknown;
+  facilityCountry?: string | null;
+};
+
 export function buildNavigationProfileFromSession(input: {
   roleCodes: readonly string[];
   departmentCode?: string | null;
   prismaDepartmentCode?: string | null;
   facilityType?: string | null;
   facilityServiceLines?: readonly string[] | null;
-}): NavigationProfileInput {
+  careProfileJson?: unknown;
+  facilityCountry?: string | null;
+}): CapabilityNavigationProfileInput {
   return {
     roleCodes: input.roleCodes,
     departmentCode: input.departmentCode ?? null,
     prismaDepartmentCode: input.prismaDepartmentCode ?? null,
     facilityType: input.facilityType ?? null,
     facilityServiceLines: input.facilityServiceLines ?? null,
+    careProfileJson: input.careProfileJson,
+    facilityCountry: input.facilityCountry ?? null,
   };
 }
 
-/** MEDUI.NAV.ROLE.1 — filter sidebar entries by profession + department areas (routes unchanged). */
+/**
+ * MEDUI.D4C.2A — filter sidebar by facility capabilities ∩ role areas.
+ * Uses `resolveFacilityNavigation` (via capability resolver); Admin cannot restore absent care settings.
+ */
 export function filterSidebarNavItemsByNavigationAreas(
   items: SidebarNavItem[],
-  profile: NavigationProfileInput
+  profile: CapabilityNavigationProfileInput
 ): SidebarNavItem[] {
-  const visibleAreas = getVisibleNavigationAreas(profile);
+  const visibleAreas = resolveCapabilityAwareNavigationAreas(profile);
   const areaFiltered = items.filter((item) =>
     isNavigationAreaVisible(visibleAreas, item.navAreas)
   );
@@ -55,7 +67,7 @@ export function filterSidebarNavItemsForSession(
   items: SidebarNavItem[],
   input: {
     roleCodes: readonly string[];
-    profile: NavigationProfileInput;
+    profile: CapabilityNavigationProfileInput;
   }
 ): SidebarNavItem[] {
   const roleSet = new Set(input.roleCodes.map((code) => code.trim().toUpperCase()));
@@ -63,7 +75,7 @@ export function filterSidebarNavItemsForSession(
   return filterSidebarNavItemsByNavigationAreas(roleFiltered, input.profile);
 }
 
-/** Ensures shared navigation resolver is wired (import guard for tests). */
+/** Ensures shared capability navigation resolver is wired (import guard for tests). */
 export function navigationVisibilityUsesSharedResolver(): boolean {
-  return typeof getVisibleNavigationAreas === "function";
+  return typeof resolveCapabilityAwareNavigationAreas === "function";
 }

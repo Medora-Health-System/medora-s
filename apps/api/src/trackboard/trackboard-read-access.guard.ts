@@ -7,11 +7,12 @@ import {
 } from "@nestjs/common";
 import { RoleCode } from "@prisma/client";
 import {
+  resolveFacilityModuleCapabilitiesD4c1,
+  parseStoredFacilityServiceLines,
+  resolveFacilityServiceLines,
   canReadFreestandingErObservationPatients,
   canReadFreestandingErTrackboard,
   hasStandardTrackboardClinicalRole,
-  parseStoredFacilityServiceLines,
-  resolveFacilityServiceLines,
 } from "@medora/shared";
 import { PrismaService } from "../prisma/prisma.service";
 
@@ -58,6 +59,8 @@ export class TrackboardReadAccessGuard implements CanActivate {
           select: {
             facilityType: true,
             serviceLinesJson: true,
+            facilityCareProfileJson: true,
+            country: true,
           },
         },
       },
@@ -75,6 +78,26 @@ export class TrackboardReadAccessGuard implements CanActivate {
       facilityType,
       configuredServiceLines: parseStoredFacilityServiceLines(facility?.serviceLinesJson),
     });
+    /** MEDUI.D4C.2A — ED trackboard requires edEnabled (Admin cannot override Clinic-only). */
+    const capabilities = resolveFacilityModuleCapabilitiesD4c1({
+      facilityType,
+      careProfileJson: facility?.facilityCareProfileJson,
+      serviceLines: facilityServiceLines,
+      facilityCountry: facility?.country ?? null,
+    });
+    const encounterTypeQuery = String(request.query?.type ?? "")
+      .trim()
+      .toUpperCase();
+    const inpatientBoard = encounterTypeQuery === "INPATIENT";
+    if (inpatientBoard) {
+      if (!capabilities.observationEnabled && !capabilities.inpatientEnabled) {
+        throw new ForbiddenException(
+          "Hospital / Observation trackboard is not enabled for this facility."
+        );
+      }
+    } else if (!capabilities.edEnabled) {
+      throw new ForbiddenException("Emergency trackboard is not enabled for this facility.");
+    }
 
     const departmentCode =
       memberships.find((row) => row.department?.code)?.department?.code ?? null;
@@ -101,11 +124,6 @@ export class TrackboardReadAccessGuard implements CanActivate {
       facilityServiceLines,
       departmentCode,
     };
-
-    const encounterTypeQuery = String(request.query?.type ?? "")
-      .trim()
-      .toUpperCase();
-    const inpatientBoard = encounterTypeQuery === "INPATIENT";
 
     const allowed = inpatientBoard
       ? canReadFreestandingErObservationPatients(technicianInput)

@@ -24,4 +24,5 @@ export const CLINIC_CARE_SHELL = {
   border: "#e2e8f0",
   radius: 16,
   panelBg: "#ffffff",
+  accent: "#0d9488",
 } as const;

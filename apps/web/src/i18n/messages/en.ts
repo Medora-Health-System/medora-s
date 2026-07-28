@@ -9713,6 +9713,44 @@ export default {
     },
   },
 
+  clinicCareD4c2a: {
+    workspaceSubtitle: "Unified clinic workspace — facility capability navigation",
+    sideNavLabel: "Clinic Care side navigation",
+    nav: {
+      laboratory: "Laboratory",
+      radiology: "Radiology",
+      publicHealth: "Public health",
+      administration: "Administration",
+    },
+    module: {
+      nursingDesc:
+        "Nursing / MA queue for ambulatory visits. Clinical documentation remains on the shared Medora engine.",
+      providerDesc:
+        "Provider workspace for ambulatory visits. SOAP documentation and orders remain on the shared engine.",
+      patientsDesc: "Shared patient search and chart (no duplicate clinical chart).",
+      encountersDesc: "Facility encounter list within the clinic pathway.",
+      followUpDesc: "Due and scheduled follow-ups for ambulatory patients.",
+      billingDesc: "Billing when the facility module is enabled.",
+      laboratoryDesc: "Laboratory worklist (facility module + role).",
+      radiologyDesc: "Radiology worklist (facility module + role).",
+      pharmacyDesc: "Pharmacy when the facility module is enabled.",
+      publicHealthDesc:
+        "Public health / immunizations / disease reports when module and jurisdiction allow.",
+      administrationDesc: "Facility administration (Admin roles).",
+      openNursing: "Open nursing queue",
+      openProvider: "Open provider workspace",
+      openPatients: "Open patients",
+      openEncounters: "Open encounters",
+      openFollowUp: "Open follow-ups",
+      openBilling: "Open billing",
+      openLaboratory: "Open laboratory",
+      openRadiology: "Open radiology",
+      openPharmacy: "Open pharmacy",
+      openPublicHealth: "Open public health",
+      openAdministration: "Open administration",
+    },
+  },
+
   clinicCareD4c3: {
     title: "Clinic registration",
     subtitle: "Search or register a patient, check in a scheduled appointment, or start a walk-in visit.",

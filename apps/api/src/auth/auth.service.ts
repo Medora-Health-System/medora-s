@@ -156,6 +156,8 @@ export class AuthService {
                 allowRnLabResultSubmission: true,
                 facilityType: true,
                 serviceLinesJson: true,
+                facilityCareProfileJson: true,
+                country: true,
               },
             },
           },
@@ -202,6 +204,9 @@ export class AuthService {
         facilityType: ur.facility?.facilityType ?? "CLINIC",
         configuredServiceLines: parseStoredFacilityServiceLines(ur.facility?.serviceLinesJson),
       }),
+      /** MEDUI.D4C.2A — additive care profile JSON for capability-aware navigation (no schema change). */
+      careProfileJson: ur.facility?.facilityCareProfileJson ?? null,
+      facilityCountry: ur.facility?.country ?? null,
       /**
        * Phase 1 — facility-scoped clinical policy mirror. Frontend uses this to gate the
        * RN lab-result entry UI; backend (`ResultsService.updateResult`) is still the sole
@@ -231,6 +236,8 @@ export class AuthService {
         departmentName: null,
         facilityType: base.facilityType,
         serviceLines: base.serviceLines,
+        careProfileJson: base.careProfileJson,
+        facilityCountry: base.facilityCountry,
         allowRnLabResultSubmission: base.allowRnLabResultSubmission,
       });
     }

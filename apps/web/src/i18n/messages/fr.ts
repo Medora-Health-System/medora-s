@@ -9708,6 +9708,44 @@ export default {
     },
   },
 
+  clinicCareD4c2a: {
+    workspaceSubtitle: "Espace clinique unifié — navigation par capacités de l’établissement",
+    sideNavLabel: "Navigation latérale Soins cliniques",
+    nav: {
+      laboratory: "Laboratoire",
+      radiology: "Radiologie",
+      publicHealth: "Santé publique",
+      administration: "Administration",
+    },
+    module: {
+      nursingDesc:
+        "File d’attente infirmière / MA pour les visites ambulatoires. La documentation clinique reste dans le moteur partagé Medora.",
+      providerDesc:
+        "Espace médecin pour les visites ambulatoires. La documentation SOAP et les ordonnances restent dans le moteur partagé.",
+      patientsDesc: "Recherche et dossier patient partagés (pas de double dossier clinique).",
+      encountersDesc: "Liste des rencontres de l’établissement dans le parcours clinique.",
+      followUpDesc: "Suivis dus et planifiés pour les patients ambulatoires.",
+      billingDesc: "Facturation lorsque le module est activé pour l’établissement.",
+      laboratoryDesc: "Liste de travail laboratoire (module établissement + rôle).",
+      radiologyDesc: "Liste de travail radiologie (module établissement + rôle).",
+      pharmacyDesc: "Pharmacie lorsque le module est activé pour l’établissement.",
+      publicHealthDesc:
+        "Santé publique / vaccinations / déclarations lorsque le module et la juridiction le permettent.",
+      administrationDesc: "Administration de l’établissement (rôles Admin).",
+      openNursing: "Ouvrir la file infirmière",
+      openProvider: "Ouvrir l’espace médecin",
+      openPatients: "Ouvrir les patients",
+      openEncounters: "Ouvrir les rencontres",
+      openFollowUp: "Ouvrir les suivis",
+      openBilling: "Ouvrir la facturation",
+      openLaboratory: "Ouvrir le laboratoire",
+      openRadiology: "Ouvrir la radiologie",
+      openPharmacy: "Ouvrir la pharmacie",
+      openPublicHealth: "Ouvrir la santé publique",
+      openAdministration: "Ouvrir l’administration",
+    },
+  },
+
   clinicCareD4c3: {
     title: "Inscription clinique",
     subtitle:
