@@ -9697,6 +9697,7 @@ export default {
       nextStep: "Next step",
       actions: "Actions",
       completeness: "Registration",
+      team: "Team",
     },
     encounterTypes: {
       outpatient: "Outpatient",
@@ -9706,16 +9707,36 @@ export default {
     actions: {
       open: "Open",
       view: "View",
+      assignRoom: "Assign room",
+      assignProviderMe: "Assign me (provider)",
+      assignNurseMe: "Assign me (RN)",
+      assignMaMe: "Assign me (MA)",
+      assignMaHint:
+        "Reuses the enterprise assignment engine (TECHNICIAN / PATIENT_CARE_TECH slot).",
+      openPatientChartAria: "Open chart for {{name}}",
     },
+    team: {
+      provider: "Provider",
+      nurse: "RN / MA",
+    },
+    retry: "Retry",
     errors: {
       loadFailed: "Unable to load the Clinic Care trackboard.",
+      loadBlockedEmpty:
+        "The board could not be loaded. This is not an empty queue — retry or check deployment.",
+      schemaMiss:
+        "Clinic Care schema not deployed (missing Appointment / visitOrigin). Apply the D4C.3 migration.",
+      schemaMissHint:
+        "Run prisma migrate deploy for 20261028120000_enterprise_appointment_visit_origin_d4c3, then retry.",
+      assignFailed: "Assignment failed.",
       accessDenied: "You do not have access to the Clinic Care shell for this facility.",
     },
   },
 
   clinicCareD4c2a: {
     workspaceSubtitle: "Unified clinic workspace — facility capability navigation",
-    sideNavLabel: "Clinic Care side navigation",
+    topNavOnlyNote: "Global Medora sidebar + Clinic top tabs (no second in-shell side nav).",
+    sideNavLabel: "Clinic Care side navigation (removed — D4C.2A.1)",
     nav: {
       laboratory: "Laboratory",
       radiology: "Radiology",

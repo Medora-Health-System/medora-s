@@ -97,7 +97,7 @@ describe("MEDUI.D4C.2A unified clinic workspace capability navigation", () => {
     expect(tabs.some((t) => t.id === "nursing")).toBe(false);
   });
 
-  it("G — nested layout + shell files exist for unified Clinic workspace", () => {
+  it("G — nested layout + shell files exist for unified Clinic workspace (no side nav)", () => {
     const layout = readFileSync(
       join(__dirname, "../../../app/app/clinic-care/layout.tsx"),
       "utf8"
@@ -109,6 +109,7 @@ describe("MEDUI.D4C.2A unified clinic workspace capability navigation", () => {
     expect(layout).toContain("ClinicCareShell");
     expect(shell).toContain("clinic-care-shell");
     expect(shell).toContain("ClinicCareTopNav");
-    expect(shell).toContain("ClinicCareSideNav");
+    expect(shell).not.toMatch(/import\s*\{[^}]*ClinicCareSideNav/);
+    expect(shell).not.toContain("<ClinicCareSideNav");
   });
 });

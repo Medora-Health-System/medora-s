@@ -57,15 +57,16 @@ export type ClinicWorkspaceNavItem = {
 };
 
 /**
- * Single typed Clinic navigation registry for top + side nav.
- * Top tabs stay operational; side nav adds ancillary modules (lab/rad/pharmacy/PH/admin).
+ * Single typed Clinic navigation registry (MEDUI.D4C.2A.1 — one sidebar architecture).
+ * Global Medora sidebar + Clinic top tabs only; no in-shell ClinicCareSideNav.
+ * Ancillary modules (lab/rad/pharmacy/PH/admin) are capability-gated top tabs.
  */
 export const CLINIC_WORKSPACE_NAV_REGISTRY: readonly ClinicWorkspaceNavItem[] = [
   {
     id: "trackboard",
     href: "/app/clinic-care",
     labelKey: "clinicCareD4c2.nav.trackboard",
-    placement: "both",
+    placement: "top",
     topTab: true,
     isVisible: (a) => a.canAccessClinicCareShell,
   },
@@ -73,7 +74,7 @@ export const CLINIC_WORKSPACE_NAV_REGISTRY: readonly ClinicWorkspaceNavItem[] = 
     id: "registration",
     href: "/app/clinic-care/registration",
     labelKey: "clinicCareD4c2.nav.registration",
-    placement: "both",
+    placement: "top",
     topTab: true,
     isVisible: (a) => a.canAccessRegistration,
   },
@@ -81,7 +82,7 @@ export const CLINIC_WORKSPACE_NAV_REGISTRY: readonly ClinicWorkspaceNavItem[] = 
     id: "todaysVisits",
     href: "/app/clinic-care/todays-visits",
     labelKey: "clinicCareD4c2.nav.todaysVisits",
-    placement: "both",
+    placement: "top",
     topTab: true,
     isVisible: (a) => a.canAccessTodaysVisitsProjection,
   },
@@ -89,7 +90,7 @@ export const CLINIC_WORKSPACE_NAV_REGISTRY: readonly ClinicWorkspaceNavItem[] = 
     id: "nursing",
     href: "/app/clinic-care/nursing",
     labelKey: "clinicCareD4c2.nav.nursingMa",
-    placement: "both",
+    placement: "top",
     topTab: true,
     isVisible: (a) => a.canAccessNursingMa || a.canAccessTechnicianSafeNursingMaProjection,
   },
@@ -97,7 +98,7 @@ export const CLINIC_WORKSPACE_NAV_REGISTRY: readonly ClinicWorkspaceNavItem[] = 
     id: "provider",
     href: "/app/clinic-care/provider",
     labelKey: "clinicCareD4c2.nav.provider",
-    placement: "both",
+    placement: "top",
     topTab: true,
     isVisible: (a) => a.canAccessProviderDocumentation && a.canAuthorProviderDocumentation,
   },
@@ -105,7 +106,7 @@ export const CLINIC_WORKSPACE_NAV_REGISTRY: readonly ClinicWorkspaceNavItem[] = 
     id: "patients",
     href: "/app/clinic-care/patients",
     labelKey: "clinicCareD4c2.nav.patients",
-    placement: "both",
+    placement: "top",
     topTab: true,
     isVisible: (a) => a.canAccessPatients,
   },
@@ -113,7 +114,7 @@ export const CLINIC_WORKSPACE_NAV_REGISTRY: readonly ClinicWorkspaceNavItem[] = 
     id: "encounters",
     href: "/app/clinic-care/encounters",
     labelKey: "clinicCareD4c2.nav.encounters",
-    placement: "both",
+    placement: "top",
     topTab: true,
     isVisible: (a) => a.canAccessEncounters,
   },
@@ -121,7 +122,7 @@ export const CLINIC_WORKSPACE_NAV_REGISTRY: readonly ClinicWorkspaceNavItem[] = 
     id: "followUp",
     href: "/app/clinic-care/follow-up",
     labelKey: "clinicCareD4c2.nav.followUps",
-    placement: "both",
+    placement: "top",
     topTab: true,
     isVisible: (a) => a.canAccessFollowUps,
   },
@@ -129,7 +130,7 @@ export const CLINIC_WORKSPACE_NAV_REGISTRY: readonly ClinicWorkspaceNavItem[] = 
     id: "billing",
     href: "/app/clinic-care/billing",
     labelKey: "clinicCareD4c2.nav.billing",
-    placement: "both",
+    placement: "top",
     topTab: true,
     isVisible: (a) => a.canAccessBilling,
   },
@@ -137,40 +138,40 @@ export const CLINIC_WORKSPACE_NAV_REGISTRY: readonly ClinicWorkspaceNavItem[] = 
     id: "laboratory",
     href: "/app/clinic-care/laboratory",
     labelKey: "clinicCareD4c2a.nav.laboratory",
-    placement: "side",
-    topTab: false,
+    placement: "top",
+    topTab: true,
     isVisible: (a) => a.canAccessLaboratory,
   },
   {
     id: "radiology",
     href: "/app/clinic-care/radiology",
     labelKey: "clinicCareD4c2a.nav.radiology",
-    placement: "side",
-    topTab: false,
+    placement: "top",
+    topTab: true,
     isVisible: (a) => a.canAccessRadiology,
   },
   {
     id: "pharmacy",
     href: "/app/clinic-care/pharmacy",
     labelKey: "clinicCareD4c2.nav.pharmacy",
-    placement: "side",
-    topTab: false,
+    placement: "top",
+    topTab: true,
     isVisible: (a) => a.canAccessPharmacy,
   },
   {
     id: "publicHealth",
     href: "/app/clinic-care/public-health",
     labelKey: "clinicCareD4c2a.nav.publicHealth",
-    placement: "side",
-    topTab: false,
+    placement: "top",
+    topTab: true,
     isVisible: (a) => a.canAccessPublicHealth === true,
   },
   {
     id: "administration",
     href: "/app/clinic-care/administration",
     labelKey: "clinicCareD4c2a.nav.administration",
-    placement: "side",
-    topTab: false,
+    placement: "top",
+    topTab: true,
     isVisible: (a) => a.canAccessAdministration,
   },
 ] as const;
@@ -253,14 +254,14 @@ export function resolveVisibleClinicTopTabs(
   return CLINIC_WORKSPACE_NAV_REGISTRY.filter((item) => item.topTab && item.isVisible(access));
 }
 
-/** Visible Clinic side-nav items (includes ancillary modules). */
+/**
+ * @deprecated MEDUI.D4C.2A.1 — Clinic in-shell side nav removed.
+ * Kept for test/compat; returns [] (ancillary modules are top tabs).
+ */
 export function resolveVisibleClinicSideNav(
-  access: ClinicCareWorkspaceRoleAccess
+  _access: ClinicCareWorkspaceRoleAccess
 ): ClinicWorkspaceNavItem[] {
-  return CLINIC_WORKSPACE_NAV_REGISTRY.filter(
-    (item) =>
-      (item.placement === "side" || item.placement === "both") && item.isVisible(access)
-  );
+  return [];
 }
 
 /**

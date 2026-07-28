@@ -157,7 +157,7 @@ describe("MEDUI.D4C.2A capability-based navigation", () => {
     ).not.toBe("/app/clinic-care/registration");
   });
 
-  it("side nav exposes lab/pharmacy only when role ∩ capability allow", () => {
+  it("ancillary modules surface as top tabs when role ∩ capability allow (no side nav)", () => {
     const capsOff = resolveClinicWorkspaceAccess({
       roleCodes: ["ADMIN"],
       facilityType: "CLINIC",
@@ -174,13 +174,32 @@ describe("MEDUI.D4C.2A capability-based navigation", () => {
       facilityServiceLines: ["CLINIC"],
     });
     const side = resolveVisibleClinicSideNav(capsOff.access);
-    expect(side.some((i) => i.id === "laboratory")).toBe(false);
-    expect(side.some((i) => i.id === "pharmacy")).toBe(false);
-    expect(side.some((i) => i.id === "billing")).toBe(true);
+    expect(side).toEqual([]);
 
     const top = resolveVisibleClinicTopTabs(capsOff.access);
     expect(top.some((i) => i.id === "trackboard")).toBe(true);
     expect(top.some((i) => i.id === "billing")).toBe(true);
+    expect(top.some((i) => i.id === "laboratory")).toBe(false);
+    expect(top.some((i) => i.id === "pharmacy")).toBe(false);
+
+    const capsOn = resolveClinicWorkspaceAccess({
+      roleCodes: ["ADMIN"],
+      facilityType: "CLINIC",
+      careProfileJson: {
+        schemaVersion: 1,
+        optionalModules: {
+          laboratory: true,
+          radiology: true,
+          pharmacy: true,
+          publicHealth: false,
+          billing: true,
+        },
+      },
+      facilityServiceLines: ["CLINIC", "LABORATORY", "PHARMACY"],
+    });
+    const topOn = resolveVisibleClinicTopTabs(capsOn.access);
+    expect(topOn.some((i) => i.id === "laboratory")).toBe(true);
+    expect(topOn.some((i) => i.id === "pharmacy")).toBe(true);
   });
 
   it("registry has unique ids and stable count", () => {
