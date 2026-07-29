@@ -49,6 +49,7 @@ export type ClinicCareAmbulatoryWorkspaceEncounter = {
   treatmentPlan?: string | null;
   followUpDate?: string | null;
   dischargeSummaryJson?: unknown;
+  vitals?: unknown;
   nursingAssessment?: unknown;
   providerDocumentationStatus?: string | null;
   providerDocumentationSignedAt?: string | null;
@@ -270,6 +271,7 @@ export function ClinicCareAmbulatoryWorkspacePanels({
   facilityTimeZone,
   facilityCountry,
   facilityDisplayName,
+  facilityCareProfileJson = null,
   roles,
   userId,
   canPrescribe,
@@ -284,6 +286,7 @@ export function ClinicCareAmbulatoryWorkspacePanels({
   facilityTimeZone?: string | null;
   facilityCountry?: string | null;
   facilityDisplayName?: string | null;
+  facilityCareProfileJson?: unknown;
   roles: string[];
   userId: string;
   canPrescribe: boolean;
@@ -374,6 +377,8 @@ export function ClinicCareAmbulatoryWorkspacePanels({
         <ClinicCareAmbulatoryPrescriptionPanel
           encounterId={encounter.id}
           facilityId={facilityId}
+          facilityDisplayName={facilityDisplayName}
+          facilityCareProfileJson={facilityCareProfileJson}
           canPrescribe={canPrescribe}
           encounter={encounter}
           isLocked={isLocked}
@@ -393,6 +398,11 @@ export function ClinicCareAmbulatoryWorkspacePanels({
           facilityTimeZone={facilityTimeZone}
           embeddedWorkspaceLayout
           showFacilityMarShiftTimeline={!hideShiftTimeline}
+          encounterAllergySource={{
+            vitals: encounter.vitals ?? null,
+            nursingAssessment: encounter.nursingAssessment ?? null,
+            triage: triageSnapshot,
+          }}
         />
       );
 

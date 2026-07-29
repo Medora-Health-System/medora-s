@@ -74,6 +74,7 @@ type EncounterShell = {
   followUpDate?: string | null;
   dischargeSummaryJson?: unknown;
   nursingAssessment?: unknown;
+  vitals?: unknown;
   providerDocumentationStatus?: string | null;
   providerDocumentationSignedAt?: string | null;
   providerDocumentationSignedByDisplayFr?: string | null;
@@ -110,7 +111,7 @@ export function ClinicCareActiveAmbulatoryWorkspaceView() {
   const searchParams = useSearchParams();
   const { t, language } = useI18n();
   const encounterId = params?.id as string;
-  const { facilityId, roles, ready: rolesReady, userId, canPrescribe, facilityTimeZone, facilityCountry, facilities } =
+  const { facilityId, roles, ready: rolesReady, userId, canPrescribe, facilityTimeZone, facilityCountry, facilities, careProfileJson } =
     useFacilityAndRoles();
 
   const [encounter, setEncounter] = useState<EncounterShell | null>(null);
@@ -579,6 +580,7 @@ export function ClinicCareActiveAmbulatoryWorkspaceView() {
           facilityTimeZone={facilityTimeZone}
           facilityCountry={facilityCountry}
           facilityDisplayName={facilities.find((f) => f.id === facilityId)?.name ?? facilityId}
+          facilityCareProfileJson={careProfileJson}
           roles={roles}
           userId={userId}
           canPrescribe={canPrescribe}

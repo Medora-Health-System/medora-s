@@ -10384,6 +10384,28 @@ export default {
     },
   },
 
+  clinicCareD4c7h: {
+    rx: {
+      printProjectionNotFound: "Impossible de préparer l’ordonnance pour impression.",
+      printNoLines: "L’ordonnance ne contient aucune ligne de médicament.",
+      printFacilityIdentityMissing:
+        "L’identité de l’établissement est incomplète. Ajoutez l’adresse et les coordonnées de l’établissement avant d’imprimer l’ordonnance.",
+      printDocumentEmpty: "Le document d’impression est vide.",
+      printWindowBlocked:
+        "Impossible d’ouvrir la fenêtre d’impression : les pop-ups sont peut-être bloqués. Autorisez les pop-ups et réessayez.",
+      printRenderFailed: "Impossible de préparer l’ordonnance pour impression. Réessayez.",
+      retry: "Réessayer",
+      printAction: "Imprimer l’ordonnance",
+      copyLabel: "Copie de l’ordonnance",
+      cancelledLabel: "Ordonnance annulée",
+    },
+    mar: {
+      allergyReviewRequired: "Vérification des allergies requise",
+      medicationAllergyConflict: "Allergie médicamenteuse potentielle",
+      overrideReason: "Motif de dérogation",
+    },
+  },
+
   clinicCareD4c7f: {
     closure: {
       pendingTitle: "Des éléments cliniques sont encore en attente",
@@ -14245,6 +14267,13 @@ export default {
       license: "N° licence / RPPS",
       contact: "Contact",
       facility: "Établissement",
+      phone: "Téléphone",
+      fax: "Télécopieur",
+      cancelledWatermark: "Ordonnance annulée",
+      facilityIdentityMissing:
+        "L’identité de l’établissement est incomplète. Ajoutez le nom et les coordonnées de l’établissement avant d’imprimer l’ordonnance.",
+      documentEmpty: "Le document d’impression est vide.",
+      renderFailed: "Impossible de préparer l’ordonnance pour impression.",
       colMedication: "Médicament",
       colStrength: "Dosage",
       colRoute: "Voie",
@@ -16452,13 +16481,19 @@ export default {
     pendingSyncFirstName: "En attente",
     pendingSyncLastName: "de synchronisation",
     allergyDocTitle: "Allergies documentées",
-    allergyAckLabel: "Je confirme avoir vérifié les allergies documentées.",
+    allergyAckLabel:
+      "Je confirme avoir vérifié les allergies et intolérances documentées avant d’administrer ce médicament.",
+    allergyAckLabelNkda: "Je confirme avoir vérifié le statut allergique du patient.",
+    allergyAckLabelUnknown:
+      "Le statut allergique n’est pas documenté. Je confirme avoir vérifié cette information avant de poursuivre.",
     errAllergyAckRequired:
-      "Cochez la confirmation concernant les allergies documentées avant d’enregistrer l’administration.",
+      "Impossible d’enregistrer l’administration sans vérification des allergies. Cochez la confirmation requise.",
     highRiskMarAckLabel:
       "J’ai relu l’alerte médicament à haut risque et je confirme que cette administration est volontaire.",
     allergyTopBannerLead:
       "Des allergies ou intolérances sont documentées dans le dossier — vérifiez-les avant toute administration.",
+    allergyBannerNkda: "Aucune allergie connue documentée — confirmez la vérification du statut allergique.",
+    allergyBannerUnknown: "Statut allergique non vérifié — confirmez avant d’administrer.",
     vaccine: {
       sectionTitle: "Documentation vaccinale",
       lotNumber: "Numéro de lot",

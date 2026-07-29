@@ -10381,6 +10381,28 @@ export default {
     },
   },
 
+  clinicCareD4c7h: {
+    rx: {
+      printProjectionNotFound: "Unable to prepare the prescription for printing.",
+      printNoLines: "The prescription contains no medication lines.",
+      printFacilityIdentityMissing:
+        "Facility identity is incomplete. Add the facility address and contact details before printing the prescription.",
+      printDocumentEmpty: "The print document is empty.",
+      printWindowBlocked:
+        "Unable to open the print window: pop-ups may be blocked. Allow pop-ups and try again.",
+      printRenderFailed: "Unable to prepare the prescription for printing. Try again.",
+      retry: "Retry",
+      printAction: "Print prescription",
+      copyLabel: "Prescription copy",
+      cancelledLabel: "Cancelled prescription",
+    },
+    mar: {
+      allergyReviewRequired: "Allergy verification required",
+      medicationAllergyConflict: "Potential medication allergy conflict",
+      overrideReason: "Override reason",
+    },
+  },
+
   clinicCareD4c7f: {
     closure: {
       pendingTitle: "Clinical items are still pending",
@@ -14207,6 +14229,13 @@ export default {
       license: "License / ID",
       contact: "Contact",
       facility: "Facility",
+      phone: "Phone",
+      fax: "Fax",
+      cancelledWatermark: "Cancelled prescription",
+      facilityIdentityMissing:
+        "Facility identity is incomplete. Add the facility name and contact details before printing the prescription.",
+      documentEmpty: "The print document is empty.",
+      renderFailed: "Unable to prepare the prescription for printing.",
       colMedication: "Medication",
       colStrength: "Strength",
       colRoute: "Route",
@@ -16377,13 +16406,19 @@ export default {
     pendingSyncFirstName: "Pending",
     pendingSyncLastName: "sync",
     allergyDocTitle: "Documented allergies",
-    allergyAckLabel: "I confirm I reviewed documented allergies.",
+    allergyAckLabel:
+      "I confirm I reviewed the documented allergies and intolerances before administering this medication.",
+    allergyAckLabelNkda: "I confirm I reviewed the patient’s allergy status.",
+    allergyAckLabelUnknown:
+      "Allergy status is not documented. I confirm I reviewed this information before continuing.",
     errAllergyAckRequired:
-      "Confirm documented allergies before recording this administration.",
+      "Unable to record administration without allergy verification. Check the required confirmation.",
     highRiskMarAckLabel:
       "I reviewed the high-risk medication warning and confirm this administration is intentional.",
     allergyTopBannerLead:
       "Allergies or intolerances are documented on the chart — review them before any administration.",
+    allergyBannerNkda: "No known allergies documented — confirm allergy status review.",
+    allergyBannerUnknown: "Allergy status not verified — confirm before administering.",
     vaccine: {
       sectionTitle: "Vaccine documentation",
       lotNumber: "Lot number",
