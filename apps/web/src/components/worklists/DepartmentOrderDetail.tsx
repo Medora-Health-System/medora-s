@@ -6,7 +6,7 @@ import { useSearchParams } from "next/navigation";
 import { apiFetch, asApiObject } from "@/lib/apiClient";
 import { normalizeUserFacingError } from "@/lib/userFacingError";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
-import { printRx } from "@/components/pharmacy/RxPrintLayout";
+import { buildRxPrintFacilityIdentity, printRx } from "@/components/pharmacy/RxPrintLayout";
 import { getOrderItemDisplayLabelFromLocale } from "@/lib/orderItemDisplayFr";
 import { careOrderClinicalDetailLines } from "@/lib/careOrderDisplayUi";
 import { sanitizeOrderItemNotesForDisplay } from "@medora/shared";
@@ -162,7 +162,7 @@ export default function DepartmentOrderDetail({
   const dateLocale = encounterBcp47(language);
   const searchParams = useSearchParams();
   const highlightLineId = searchParams.get("ligne") || "";
-  const { roles, userId, allowRnLabResultSubmission, facilityTimeZone } = useFacilityAndRoles();
+  const { roles, userId, allowRnLabResultSubmission, facilityTimeZone, facilities, careProfileJson } = useFacilityAndRoles();
 
   /**
    * Acteur autorisé aux actions worklist (accusé / démarrage / clôture). Labo / imagerie :
@@ -550,6 +550,7 @@ export default function DepartmentOrderDetail({
               printRx({
                 order: {
                   createdAt: order.createdAt,
+                  status: order.status ?? null,
                   prescriberName: order.prescriberName,
                   prescriberLicense: order.prescriberLicense,
                   prescriberContact: order.prescriberContact,
@@ -559,7 +560,12 @@ export default function DepartmentOrderDetail({
                   items: order.items || [],
                 },
                 patient: patient ?? {},
+                facilityIdentity: buildRxPrintFacilityIdentity({
+                  facilityName: facilities.find((f) => f.id === facilityId)?.name ?? null,
+                  careProfileJson,
+                }),
                 language,
+                requireFacilityIdentity: false,
               })
             }
             style={{ padding: "8px 14px", cursor: "pointer" }}

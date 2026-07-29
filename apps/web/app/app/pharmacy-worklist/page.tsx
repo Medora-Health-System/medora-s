@@ -4,7 +4,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { apiFetch } from "@/lib/apiClient";
 import Link from "next/link";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
-import { printRx } from "@/components/pharmacy/RxPrintLayout";
+import { buildRxPrintFacilityIdentity, printRx } from "@/components/pharmacy/RxPrintLayout";
 import { getOrderItemDisplayLabelForLanguage } from "@/lib/orderItemDisplayFr";
 import {
   formatEncounterChromeDateTime,
@@ -197,7 +197,7 @@ function normalizePharmacyWorklistResponse(data: unknown): {
 
 export default function PharmacyWorklistPage() {
   const { language, t } = useI18n();
-  const { facilityId: facilityIdFromHook, ready } = useFacilityAndRoles();
+  const { facilityId: facilityIdFromHook, ready, facilities, careProfileJson } = useFacilityAndRoles();
   const [facilityId, setFacilityId] = useState<string | null>(null);
   const [queue, setQueue] = useState<any[]>([]);
   const [chartAdminLifecycleAlerts, setChartAdminLifecycleAlerts] = useState<
@@ -329,9 +329,14 @@ export default function PharmacyWorklistPage() {
   };
 
   const handlePrintRx = (order: any) => {
+    const facilityIdentity = buildRxPrintFacilityIdentity({
+      facilityName: facilities.find((f) => f.id === facilityIdFromHook)?.name ?? null,
+      careProfileJson,
+    });
     printRx({
       order: {
         createdAt: order.createdAt,
+        status: order.status ?? null,
         prescriberName: order.prescriberName,
         prescriberLicense: order.prescriberLicense,
         prescriberContact: order.prescriberContact,
@@ -341,7 +346,9 @@ export default function PharmacyWorklistPage() {
         items: order.items || [],
       },
       patient: order.encounter?.patient ?? {},
+      facilityIdentity,
       language,
+      requireFacilityIdentity: false,
     });
   };
 

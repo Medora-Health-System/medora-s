@@ -56,7 +56,7 @@ import { ClinicCareAmbulatoryClinicalSummaryPanel } from "@/features/clinic-care
 import { ClinicCareActiveAmbulatoryWorkspaceView } from "@/features/clinic-care/ClinicCareActiveAmbulatoryWorkspaceView";
 import { parseEncounterDocumentedProcedureTypes } from "@/lib/procedureOrderDocumentationLinkageUi";
 import type { OrderModalTab } from "@/components/orders/createOrderModal/types";
-import { printRx } from "@/components/pharmacy/RxPrintLayout";
+import { buildRxPrintFacilityIdentity, printRx } from "@/components/pharmacy/RxPrintLayout";
 import { printDischarge } from "@/components/encounters/DischargePrintLayout";
 import { printEncounterChartLivePreview } from "@/components/encounters/EncounterChartLivePreview";
 import { getOrderItemChartLabel, isOrderItemDoneForChart } from "@/constants/orderStatusLabels";
@@ -450,7 +450,7 @@ function EncounterDetailPageInner({ session }: { session: ReturnType<typeof useF
   const router = useRouter();
   const { t, language } = useI18n();
   const encounterId = params.id as string;
-  const { facilityId, userId, canPrescribe, roles, ready: rolesReady, facilities } = session;
+  const { facilityId, userId, canPrescribe, roles, ready: rolesReady, facilities, careProfileJson } = session;
   const encounterDetailPath = `/app/encounters/${encounterId}`;
   const [encounter, setEncounter] = useState<any>(null);
   const [encounterFetchError, setEncounterFetchError] = useState<string | null>(null);
@@ -2747,6 +2747,8 @@ function EncounterDetailPageInner({ session }: { session: ReturnType<typeof useF
               encounterId={encounterId}
               encounter={encounter}
               facilityId={facilityId}
+              facilityDisplayName={facilities.find((f) => f.id === facilityId)?.name ?? null}
+              facilityCareProfileJson={careProfileJson}
               canPrescribe={canPrescribe}
               roles={roles}
               medicationModalRequestTick={medicationModalRequestTick}
@@ -6261,6 +6263,8 @@ function OrdersTab({
   encounterId,
   encounter,
   facilityId,
+  facilityDisplayName = null,
+  facilityCareProfileJson = null,
   canPrescribe,
   roles,
   medicationModalRequestTick = 0,
@@ -6272,6 +6276,8 @@ function OrdersTab({
   encounterId: string;
   encounter: any;
   facilityId: string;
+  facilityDisplayName?: string | null;
+  facilityCareProfileJson?: unknown;
   canPrescribe: boolean;
   roles: string[];
   medicationModalRequestTick?: number;
@@ -6325,6 +6331,7 @@ function OrdersTab({
     printRx({
       order: {
         createdAt: order.createdAt,
+        status: order.status ?? null,
         prescriberName: order.prescriberName,
         prescriberLicense: order.prescriberLicense,
         prescriberContact: order.prescriberContact,
@@ -6334,7 +6341,12 @@ function OrdersTab({
         items: order.items || [],
       },
       patient: encounter?.patient ?? {},
+      facilityIdentity: buildRxPrintFacilityIdentity({
+        facilityName: facilityDisplayName,
+        careProfileJson: facilityCareProfileJson,
+      }),
       language,
+      requireFacilityIdentity: false,
     });
   };
 

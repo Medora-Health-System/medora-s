@@ -65,7 +65,9 @@ import { useEncounterClinicalDataOptional } from "@/hooks/EncounterClinicalDataP
 import { perfClinicalDataLog } from "@/hooks/encounterClinicalDataPerf";
 import {
   resolveMedicationMarActionFromStorage,
-  getEncounterAllergyDocumentationSummary,
+  evaluateMarAllergySafetyForAdministration,
+  isMarAllergyAcknowledgementServerMessage,
+  type MarAllergySafetyCategory,
   getMedicationSafetyWarnings,
   medicationWarningsRequireMarHighRiskAck,
   evaluateMedicationTimingSafety,
@@ -593,6 +595,8 @@ export function MedicationAdministrationTab({
   const [vaccineUnderstandingConfirmed, setVaccineUnderstandingConfirmed] = useState(false);
   const [vaccineAmountWasted, setVaccineAmountWasted] = useState("");
   const [marAllergyDocSummary, setMarAllergyDocSummary] = useState<string | null>(null);
+  const [marAllergyCategory, setMarAllergyCategory] = useState<MarAllergySafetyCategory>("NONE");
+  const [marAllergyAckForcedByServer, setMarAllergyAckForcedByServer] = useState(false);
   const [marAllergySafetyAck, setMarAllergySafetyAck] = useState(false);
   const [marTimingOverrideAck, setMarTimingOverrideAck] = useState(false);
   const [marScheduleTimingReason, setMarScheduleTimingReason] = useState("");
@@ -855,16 +859,69 @@ export function MedicationAdministrationTab({
     [orderItemById, language, t]
   );
 
+  const applyMarAllergyEvaluation = useCallback(
+    (input: { vitals?: unknown; nursingAssessment?: unknown; triageVitalsJson?: unknown }) => {
+      const evaluation = evaluateMarAllergySafetyForAdministration(input);
+      setMarAllergyDocSummary(evaluation.summary);
+      setMarAllergyCategory(evaluation.category);
+    },
+    []
+  );
+
   useEffect(() => {
-    if (!encounterAllergySource) return;
-    setMarAllergyDocSummary(
-      getEncounterAllergyDocumentationSummary({
+    if (encounterAllergySource) {
+      applyMarAllergyEvaluation({
         vitals: encounterAllergySource.vitals,
         nursingAssessment: encounterAllergySource.nursingAssessment,
         triageVitalsJson: encounterAllergySource.triage?.vitalsJson ?? null,
-      })
-    );
-  }, [encounterAllergySource]);
+      });
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      try {
+        const encRaw = await apiFetch(`/encounters/${encounterId}`, { facilityId });
+        if (cancelled) return;
+        const encObj = asApiObject(encRaw) as {
+          vitals?: unknown;
+          nursingAssessment?: unknown;
+          triage?: { vitalsJson?: unknown } | null;
+        } | null;
+        applyMarAllergyEvaluation({
+          vitals: encObj?.vitals,
+          nursingAssessment: encObj?.nursingAssessment,
+          triageVitalsJson: encObj?.triage?.vitalsJson ?? null,
+        });
+      } catch {
+        if (!cancelled) {
+          setMarAllergyDocSummary(null);
+          setMarAllergyCategory("NONE");
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [encounterAllergySource, encounterId, facilityId, applyMarAllergyEvaluation]);
+
+  const marAllergyAcknowledgementRequired =
+    marAllergyAckForcedByServer ||
+    marAllergyCategory !== "NONE" ||
+    Boolean(marAllergyDocSummary);
+
+  const marAllergyAckLabelKey =
+    marAllergyCategory === "NO_KNOWN_ALLERGIES"
+      ? "marTab.allergyAckLabelNkda"
+      : marAllergyCategory === "STATUS_UNKNOWN"
+        ? "marTab.allergyAckLabelUnknown"
+        : "marTab.allergyAckLabel";
+
+  const marAllergyBannerLeadKey =
+    marAllergyCategory === "NO_KNOWN_ALLERGIES"
+      ? "marTab.allergyBannerNkda"
+      : marAllergyCategory === "STATUS_UNKNOWN"
+        ? "marTab.allergyBannerUnknown"
+        : "marTab.allergyTopBannerLead";
 
   const loadAllStandalone = useCallback(async () => {
     setLoading(true);
@@ -900,13 +957,11 @@ export function MedicationAdministrationTab({
           nursingAssessment?: unknown;
           triage?: { vitalsJson?: unknown } | null;
         } | null;
-        setMarAllergyDocSummary(
-          getEncounterAllergyDocumentationSummary({
-            vitals: encObj?.vitals,
-            nursingAssessment: encObj?.nursingAssessment,
-            triageVitalsJson: encObj?.triage?.vitalsJson ?? null,
-          })
-        );
+        applyMarAllergyEvaluation({
+          vitals: encObj?.vitals,
+          nursingAssessment: encObj?.nursingAssessment,
+          triageVitalsJson: encObj?.triage?.vitalsJson ?? null,
+        });
       }
 
       setOrders(mergeOrders(serverOrders, pendingOrders));
@@ -918,12 +973,15 @@ export function MedicationAdministrationTab({
       setOrders(mergeOrders([], pendingOrders));
       setAdmins(pendingAdmins);
       setOrderEventsRaw([]);
-      if (!encounterAllergySource) setMarAllergyDocSummary(null);
+      if (!encounterAllergySource) {
+        setMarAllergyDocSummary(null);
+        setMarAllergyCategory("NONE");
+      }
       setPassQueue({ enabled: false, at: new Date().toISOString(), count: 0, items: [] });
     } finally {
       setLoading(false);
     }
-  }, [encounterId, facilityId, encounterAllergySource, t]);
+  }, [encounterId, facilityId, encounterAllergySource, t, applyMarAllergyEvaluation]);
 
   const reloadMarData = useCallback(async () => {
     if (useSharedClinicalData && clinicalData) {
@@ -1631,6 +1689,7 @@ export function MedicationAdministrationTab({
     setModalBillingQty("");
     setModalNdc(row.ndcHint);
     setMarAllergySafetyAck(false);
+    setMarAllergyAckForcedByServer(false);
     setMarTimingOverrideAck(false);
     setMarHighRiskSafetyAck(false);
     setMarControlledForm({
@@ -1908,7 +1967,7 @@ export function MedicationAdministrationTab({
     }
     if (
       modalAction === "administered" &&
-      marAllergyDocSummary &&
+      marAllergyAcknowledgementRequired &&
       !marAllergySafetyAck
     ) {
       setModalSubmitError(t("marTab.errAllergyAckRequired"));
@@ -2333,7 +2392,7 @@ export function MedicationAdministrationTab({
               ...(marPainLocation.trim() ? { painLocation: marPainLocation.trim() } : {}),
             }
           : {}),
-        ...(modalAction === "administered" && marAllergyDocSummary && marAllergySafetyAck
+        ...(modalAction === "administered" && marAllergyAcknowledgementRequired && marAllergySafetyAck
           ? { safetyAcknowledgedMedicationAllergies: true }
           : {}),
         ...(effectiveFields ?? {}),
@@ -2465,6 +2524,14 @@ export function MedicationAdministrationTab({
       setModalSubmitError(
         extractMarSaveErrorMessage(err, language, t("marTab.saveFailed"))
       );
+      const serverMsg = extractMarSaveErrorMessage(err, language, "");
+      if (isMarAllergyAcknowledgementServerMessage(serverMsg)) {
+        setMarAllergyAckForcedByServer(true);
+        setMarAllergySafetyAck(false);
+        if (marAllergyCategory === "NONE") {
+          setMarAllergyCategory("KNOWN_ALLERGY_OR_INTOLERANCE");
+        }
+      }
     } finally {
       setSubmitting(false);
     }
@@ -4129,31 +4196,6 @@ export function MedicationAdministrationTab({
               ))}
             </div>
 
-            {modalAction === "administered" && marAllergyDocSummary ? (
-              <div
-                style={{
-                  marginBottom: 14,
-                  padding: "10px 12px",
-                  borderRadius: 8,
-                  border: "1px solid #fecaca",
-                  backgroundColor: "#fef2f2",
-                  fontSize: 13,
-                  color: "#991b1b",
-                  lineHeight: 1.45,
-                }}
-              >
-                <label style={{ display: "flex", gap: 8, alignItems: "flex-start", cursor: "pointer", fontWeight: 600 }}>
-                  <input
-                    type="checkbox"
-                    checked={marAllergySafetyAck}
-                    disabled={submitting}
-                    onChange={(e) => setMarAllergySafetyAck(e.target.checked)}
-                  />
-                  <span>{t("marTab.allergyAckLabel")}</span>
-                </label>
-              </div>
-            ) : null}
-
             {modalAction === "administered" &&
             modalItem &&
             medicationWarningsRequireMarHighRiskAck(modalItem.softSafetyWarnings) ? (
@@ -4391,6 +4433,54 @@ export function MedicationAdministrationTab({
               </div>
             ) : null}
 
+            {modalAction === "administered" && marAllergyAcknowledgementRequired ? (
+              <div
+                data-testid="mar-allergy-acknowledgement"
+                style={{
+                  marginBottom: 14,
+                  marginTop: 4,
+                  padding: "10px 12px",
+                  borderRadius: 8,
+                  border: "1px solid #fecaca",
+                  backgroundColor: "#fef2f2",
+                  fontSize: 13,
+                  color: "#991b1b",
+                  lineHeight: 1.45,
+                }}
+              >
+                <p style={{ margin: "0 0 8px", fontWeight: 700 }}>{t("marTab.allergyDocTitle")}</p>
+                <p style={{ margin: "0 0 8px", fontWeight: 600 }}>{t(marAllergyBannerLeadKey)}</p>
+                {marAllergyDocSummary ? (
+                  <p
+                    style={{ margin: "0 0 10px", fontWeight: 500, color: "#7f1d1d" }}
+                    data-testid="mar-allergy-summary-text"
+                  >
+                    {marAllergyDocSummary}
+                  </p>
+                ) : null}
+                <label
+                  htmlFor="mar-allergy-safety-ack"
+                  style={{
+                    display: "flex",
+                    gap: 8,
+                    alignItems: "flex-start",
+                    cursor: submitting ? "default" : "pointer",
+                    fontWeight: 600,
+                  }}
+                >
+                  <input
+                    id="mar-allergy-safety-ack"
+                    type="checkbox"
+                    data-testid="mar-allergy-safety-ack"
+                    checked={marAllergySafetyAck}
+                    disabled={submitting}
+                    onChange={(e) => setMarAllergySafetyAck(e.target.checked)}
+                  />
+                  <span>{t(marAllergyAckLabelKey)}</span>
+                </label>
+              </div>
+            ) : null}
+
             <div
               style={{
                 display: "flex",
@@ -4443,7 +4533,7 @@ export function MedicationAdministrationTab({
                   ) {
                     return true;
                   }
-                  if (marAllergyDocSummary && !marAllergySafetyAck) return true;
+                  if (marAllergyAcknowledgementRequired && !marAllergySafetyAck) return true;
                   if (
                     medicationWarningsRequireMarHighRiskAck(modalItem.softSafetyWarnings) &&
                     !marHighRiskSafetyAck

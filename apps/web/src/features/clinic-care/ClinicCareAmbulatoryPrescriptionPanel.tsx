@@ -9,7 +9,7 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { CreateOrderModal } from "@/components/orders";
-import { getRxPrintHtml } from "@/components/pharmacy/RxPrintLayout";
+import { buildRxPrintFacilityIdentity, printRx } from "@/components/pharmacy/RxPrintLayout";
 import { apiFetch } from "@/lib/apiClient";
 import { useI18n } from "@/lib/i18n";
 import { MEDORA_CARD_SHELL } from "@/components/medora-card/medoraCardTokens";
@@ -89,6 +89,8 @@ function itemLabel(
 export function ClinicCareAmbulatoryPrescriptionPanel({
   encounterId,
   facilityId,
+  facilityDisplayName = null,
+  facilityCareProfileJson = null,
   canPrescribe,
   encounter,
   isLocked,
@@ -96,6 +98,8 @@ export function ClinicCareAmbulatoryPrescriptionPanel({
 }: {
   encounterId: string;
   facilityId: string;
+  facilityDisplayName?: string | null;
+  facilityCareProfileJson?: unknown;
   canPrescribe: boolean;
   encounter: {
     status?: string | null;
@@ -186,12 +190,17 @@ export function ClinicCareAmbulatoryPrescriptionPanel({
       })
     );
     if (printItems.length === 0) {
-      setPrintError(t("clinicCareD4c7e.rx.printBlockedEmpty"));
+      setPrintError(t("clinicCareD4c7h.rx.printNoLines"));
       return;
     }
-    const html = getRxPrintHtml({
+    const facilityIdentity = buildRxPrintFacilityIdentity({
+      facilityName: facilityDisplayName,
+      careProfileJson: facilityCareProfileJson,
+    });
+    const result = printRx({
       order: {
         createdAt: first.createdAt ?? new Date().toISOString(),
+        status: first.status ?? null,
         prescriberName: first.prescriberName ?? null,
         prescriberLicense: first.prescriberLicense ?? null,
         items: printItems,
@@ -201,17 +210,13 @@ export function ClinicCareAmbulatoryPrescriptionPanel({
         lastName: encounter.patient?.lastName,
         mrn: encounter.patient?.mrn,
       },
+      facilityIdentity,
       language: language === "en" ? "en" : "fr",
+      requireFacilityIdentity: true,
     });
-    const w = window.open("", "_blank", "noopener,noreferrer");
-    if (!w) {
-      setPrintError(t("clinicCareD4c5b3.rx.printPopupBlocked"));
-      return;
+    if (!result.ok) {
+      setPrintError(t(result.messageKey));
     }
-    w.document.write(html);
-    w.document.close();
-    w.focus();
-    w.print();
   };
 
   return (

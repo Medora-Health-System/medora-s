@@ -37,6 +37,8 @@ import {
   inferMedicationAdministrationCorrectionReasonCodeForEffectiveTime,
   planMedicationAdministrationClinicalCorrection,
   getEncounterAllergyDocumentationSummary,
+  classifyMarAllergyDocumentationSummary,
+  MAR_ALLERGY_ACKNOWLEDGEMENT_VERSION,
   INFUSION_START_MAR_NOTE_PREFIX,
   medicationAdministrationRowIsInfusionStart,
   medicationAdministrationRowIsInfusionStop,
@@ -1282,6 +1284,12 @@ export class MedicationAdministrationService {
     if (data.injectionSite) marAuditMetadata.injectionSite = data.injectionSite;
     if (data.safetyAcknowledgedMedicationAllergies === true) {
       marAuditMetadata.safetyAcknowledgedMedicationAllergies = true;
+      marAuditMetadata.allergyAcknowledgementVersion = MAR_ALLERGY_ACKNOWLEDGEMENT_VERSION;
+      if (allergySummaryForGate) {
+        marAuditMetadata.allergyDocumentationSummaryPresent = true;
+        marAuditMetadata.allergyStatusCategory =
+          classifyMarAllergyDocumentationSummary(allergySummaryForGate);
+      }
     }
     Object.assign(marAuditMetadata, effectiveCreate.auditExtras);
 

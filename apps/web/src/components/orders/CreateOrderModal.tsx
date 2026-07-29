@@ -34,7 +34,7 @@ import {
   type D4c7ePersistedOrderItemLike,
 } from "@medora/shared";
 import { SharedCatalogAutocomplete } from "@/components/catalog/SharedCatalogAutocomplete";
-import { printRx } from "@/components/pharmacy/RxPrintLayout";
+import { buildRxPrintFacilityIdentity, printRx } from "@/components/pharmacy/RxPrintLayout";
 import { searchCatalog, searchProcedureCatalog } from "@/lib/catalogSearchApi";
 import {
   resolveEnterpriseOrderSetItems,
@@ -280,7 +280,7 @@ export function CreateOrderModal({
   onOpenEkgProcedureDocumentation?: () => void;
 }) {
   const { language, t } = useI18n();
-  const { facilityTimeZone, facilityClinicalTimeZoneReady, roles, userId } = useFacilityAndRoles();
+  const { facilityTimeZone, facilityClinicalTimeZoneReady, roles, userId, facilities, careProfileJson } = useFacilityAndRoles();
   const hasRnStandingOrderAuthority = canUseRnOrderAuthority;
   const outpatientRxOnlyMedication = medicationOrderMode === "OUTPATIENT_RX_ONLY";
   const plannedAdminFacilityTimeZone =
@@ -1973,7 +1973,11 @@ export function CreateOrderModal({
                     return;
                   }
                   const patient = encounter?.patient ?? {};
-                  printRx({
+                  const facilityIdentity = buildRxPrintFacilityIdentity({
+                    facilityName: facilities.find((f) => f.id === facilityId)?.name ?? null,
+                    careProfileJson,
+                  });
+                  const printResult = printRx({
                     order: {
                       createdAt: createdOrder.createdAt,
                       prescriberName: formData.prescriberName || createdOrder.prescriberName,
@@ -1985,8 +1989,13 @@ export function CreateOrderModal({
                       items: gate.lines,
                     },
                     patient,
+                    facilityIdentity,
                     language,
+                    requireFacilityIdentity: true,
                   });
+                  if (!printResult.ok) {
+                    setPrintRxError(t(printResult.messageKey));
+                  }
                 }}
                 style={{
                   padding: "10px 18px",

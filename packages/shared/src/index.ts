@@ -30,6 +30,7 @@ export * from "./auth/enterpriseAmbulatoryEncounterLifecycleSynchronizationD4c7d
 export * from "./auth/enterpriseClinicMedicationOrdersMarRxSeparationD4c7e.js";
 export * from "./auth/enterpriseClinicEncounterTransitionClosurePharmacyNavigationD4c7f.js";
 export * from "./auth/enterpriseMarAuthorityClinicOrderRxD4c7g.js";
+export * from "./auth/enterpriseMarSafetyAckRxPrintAuthorityD4c7h.js";
 export * from "./auth/navigationAuthorization.js";
 
 export * from "./password-policy.js";
