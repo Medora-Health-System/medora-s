@@ -32,6 +32,7 @@ export * from "./auth/enterpriseClinicEncounterTransitionClosurePharmacyNavigati
 export * from "./auth/enterpriseMarAuthorityClinicOrderRxD4c7g.js";
 export * from "./auth/enterpriseMarSafetyAckRxPrintAuthorityD4c7h.js";
 export * from "./auth/enterpriseFacilityIdentityOnboardingPrintProjectionD4c7i.js";
+export * from "./auth/enterpriseEncounterClosureAdvisoryOverrideD4c7j.js";
 export * from "./auth/navigationAuthorization.js";
 
 export * from "./password-policy.js";

@@ -56,6 +56,11 @@ export async function closeAmbulatoryEncounterViaEnterprise(
     acknowledgementVersion?: string;
     pendingItemsOverrideReason?: string;
     dischargeStatus?: string;
+    /** MEDUI.D4C.7J — canonical advisory acknowledgement + duplicate-request correlation. */
+    acknowledgePendingClinicalItems?: boolean;
+    acknowledgementReason?: string;
+    clientRequestId?: string;
+    expectedVersion?: number;
   }
 ): Promise<unknown> {
   return apiFetch(`/encounters/${encounterId}/close`, {

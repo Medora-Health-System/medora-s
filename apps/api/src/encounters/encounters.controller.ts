@@ -74,6 +74,22 @@ import type { Response } from "express";
 import { renderEncounterChartExportHtml } from "./chart-export-html.util";
 import { AdmissionCommandCenterService } from "./admission-command-center.service";
 
+/**
+ * MEDUI.D4C.7J — actor roles for server-side closure authorization. Collected from every
+ * shape the JWT/guard layer may expose so a credentialed provider is never misread as
+ * unauthorized (a role alias miss previously denied legitimate closures).
+ */
+function resolveActorRoleCodes(req: {
+  userRole?: unknown;
+  user?: { roleCodes?: unknown; roles?: unknown };
+}): string[] {
+  return [
+    typeof req.userRole === "string" ? req.userRole : null,
+    ...(Array.isArray(req.user?.roleCodes) ? (req.user?.roleCodes as unknown[]) : []),
+    ...(Array.isArray(req.user?.roles) ? (req.user?.roles as unknown[]) : []),
+  ].filter((r): r is string => typeof r === "string" && r.trim().length > 0);
+}
+
 @Controller()
 @UseGuards(AuthGuard("jwt"), RolesGuard)
 export class EncountersController {
@@ -1371,7 +1387,18 @@ export class EncountersController {
       throw new BadRequestException("Invalid payload", { cause: parsed.error });
     }
 
-    return this.encountersService.getCloseDocumentationCheck(facilityId, id, parsed.data.discharge);
+    const [documentation, closePreflight] = await Promise.all([
+      this.encountersService.getCloseDocumentationCheck(facilityId, id, parsed.data.discharge),
+      /** MEDUI.D4C.7J — typed advisory preflight reuses the same request (no extra round-trip). */
+      this.encountersService.getEncounterClosePreflight(
+        facilityId,
+        id,
+        parsed.data.discharge,
+        resolveActorRoleCodes(req)
+      ),
+    ]);
+
+    return { ...documentation, closePreflight };
   }
 
   @Post("encounters/:id/close")
@@ -1387,12 +1414,6 @@ export class EncountersController {
       throw new BadRequestException("Invalid payload", { cause: parsed.error });
     }
 
-    const actorRoleCodes = [
-      typeof req.userRole === "string" ? req.userRole : null,
-      ...(Array.isArray(req.user?.roleCodes) ? req.user.roleCodes : []),
-      ...(Array.isArray(req.user?.roles) ? req.user.roles : []),
-    ].filter((r): r is string => typeof r === "string" && r.trim().length > 0);
-
     return this.encountersService.close(
       facilityId,
       id,
@@ -1400,7 +1421,8 @@ export class EncountersController {
       req.user?.userId,
       req.ip,
       req.headers["user-agent"],
-      actorRoleCodes
+      resolveActorRoleCodes(req),
+      typeof req.requestId === "string" ? req.requestId : null
     );
   }
 }

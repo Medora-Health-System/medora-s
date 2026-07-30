@@ -504,6 +504,17 @@ export const encounterCloseDtoSchema = z.object({
   acknowledgementVersion: z.string().trim().max(64).optional(),
   pendingItemsOverrideReason: z.string().trim().max(120).optional(),
   dischargeStatus: encounterDischargeStatusSchema.optional(),
+  /**
+   * MEDUI.D4C.7J — canonical advisory acknowledgement. Pending clinical work is advisory:
+   * an authorized treating provider acknowledges it and closes. Nothing is completed,
+   * cancelled, finalized, or administered by closing.
+   */
+  acknowledgePendingClinicalItems: z.boolean().optional(),
+  acknowledgementReason: z.string().trim().max(240).optional(),
+  /** Client-generated id so a repeated submission is recognizable in audit/observability. */
+  clientRequestId: z.string().trim().max(64).optional(),
+  /** Optimistic-concurrency guard: reject when the encounter changed under the provider. */
+  expectedVersion: z.coerce.number().int().nonnegative().optional(),
 });
 
 export type EncounterCloseDto = z.infer<typeof encounterCloseDtoSchema>;

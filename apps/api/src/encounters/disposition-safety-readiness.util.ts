@@ -57,8 +57,17 @@ export type DispositionSafetyReadinessResult = {
    */
   pendingItems: D4c7fPendingItemCounts;
   pendingItemIds: string[];
-  /** True safety blockers that must never be overridden via pending-item ack. */
+  /**
+   * Pre-D4C.7J classification retained for ED/hospital readiness banners.
+   * MEDUI.D4C.7J — closure no longer treats these as permanent blockers: an authorized
+   * treating provider acknowledges them (see `enterpriseEncounterClosureAdvisoryOverrideD4c7j`).
+   */
   nonOverridableBlockers: DispositionSafetyIssue[];
+  /** MEDUI.D4C.7J — advisory-only result counts (never blockers). */
+  advisoryCounts: {
+    unacknowledgedResults: number;
+    criticalUnacknowledgedResults: number;
+  };
 };
 
 type OrderItemForSafety = {
@@ -66,7 +75,11 @@ type OrderItemForSafety = {
   status: string;
   catalogItemType: string | null;
   medicationFulfillmentIntent: string | null;
-  result: { verifiedAt: Date | null } | null;
+  result: {
+    verifiedAt: Date | null;
+    criticalValue?: boolean | null;
+    acknowledgedByProviderAt?: Date | null;
+  } | null;
   pharmacyDispenseRecord: { id: string } | null;
   medicationAdministrations: Array<{
     marAction: string | null;
@@ -203,6 +216,7 @@ export function computeDispositionSafetyReadiness(input: {
   const counts: DispositionSafetyActiveOrderCounts = { lab: 0, imaging: 0, medication: 0, care: 0 };
   const pendingItems: D4c7fPendingItemCounts = { ...EMPTY_D4C7F_PENDING_ITEM_COUNTS };
   const pendingItemIds: string[] = [];
+  const advisoryCounts = { unacknowledgedResults: 0, criticalUnacknowledgedResults: 0 };
 
   const { encounter } = input;
   const dispositionStateBase = {
@@ -220,6 +234,7 @@ export function computeDispositionSafetyReadiness(input: {
       pendingItems,
       pendingItemIds: [],
       nonOverridableBlockers: [],
+      advisoryCounts,
       dispositionState: projectEdDispositionState({
         ...dispositionStateBase,
         dispositionSafetyCanClose: true,
@@ -286,6 +301,17 @@ export function computeDispositionSafetyReadiness(input: {
     if (parentCancelled) continue;
     const bucket = countBucketForType(order.type);
     for (const item of order.items) {
+      /**
+       * MEDUI.D4C.7J — a verified result that no provider acknowledged is advisory follow-up
+       * work: the order line itself is resolved, so it is counted separately from pending orders.
+       */
+      if (item.result?.verifiedAt && !item.result.acknowledgedByProviderAt) {
+        advisoryCounts.unacknowledgedResults += 1;
+        if (item.result.criticalValue === true) {
+          advisoryCounts.criticalUnacknowledgedResults += 1;
+          pendingItems.criticalResults += 1;
+        }
+      }
       if (
         item.catalogItemType === "MEDICATION" &&
         isActiveInfusionFromAdministrations(item.medicationAdministrations ?? [])
@@ -441,6 +467,7 @@ export function computeDispositionSafetyReadiness(input: {
     pendingItems,
     pendingItemIds,
     nonOverridableBlockers,
+    advisoryCounts,
     dispositionState: projectEdDispositionState({
       ...dispositionStateBase,
       dispositionSafetyCanClose: canClose,
