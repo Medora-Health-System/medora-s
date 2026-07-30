@@ -56,6 +56,7 @@ const fr = {
     emergencyTriage: "Accueil urgences",
     registration: "Accueil",
     clinicCare: "Soins cliniques",
+    dentalCare: "Soins dentaires",
     nursing: "Soins infirmiers",
     provider: "Médecin",
     patients: "Patients",

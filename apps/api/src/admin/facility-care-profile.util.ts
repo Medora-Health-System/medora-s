@@ -3,6 +3,7 @@ import {
   buildFacilityCareProfileJson,
   getDefaultOptionalModulesForProfile,
   getTypeDefaultServiceLinesForCareProfile,
+  parseDentalSpecialtiesConfig,
   parseFacilityCareProfileJson,
   resolveFacilityCareProfile,
   type FacilityCareProfile,
@@ -39,6 +40,10 @@ export function buildCareProfileJsonFromDto(
     publicHealth: dto.optionalModules?.publicHealth ?? defaults.publicHealth,
     billing: dto.optionalModules?.billing ?? defaults.billing,
   };
+  const dentalSpecialties =
+    "dentalSpecialties" in dto && dto.dentalSpecialties != null
+      ? parseDentalSpecialtiesConfig(dto.dentalSpecialties)
+      : null;
   return buildFacilityCareProfileJson({
     profile,
     operatingMode: dto.ambulatoryOperatingMode ?? null,
@@ -47,6 +52,7 @@ export function buildCareProfileJsonFromDto(
     address: dto.operationalAddress ?? null,
     printDisplayName: dto.printDisplayName ?? null,
     legalName: "legalName" in dto ? dto.legalName ?? null : null,
+    dentalSpecialties,
   });
 }
 
@@ -115,5 +121,9 @@ export function mergeCareProfileJson(
     address: next.address ?? prev?.address ?? null,
     printDisplayName: next.printDisplayName ?? prev?.printDisplayName ?? null,
     legalName: next.legalName ?? prev?.legalName ?? null,
+    dentalSpecialties:
+      next.dentalSpecialties != null
+        ? next.dentalSpecialties
+        : prev?.dentalSpecialties ?? null,
   };
 }

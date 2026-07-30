@@ -17,8 +17,21 @@ describe("FacilityTypeServiceLineFields (MEDUI.FACILITY.TYPE.1)", () => {
       facilityType: "FREESTANDING_ER",
       serviceLines: ["EMERGENCY", "OBSERVATION", "LABORATORY", "RADIOLOGY"],
       serviceLinesTouched: true,
+      dentalSpecialties: [],
     });
     expect(dto.facilityType).toBe("FREESTANDING_ER");
     expect(dto.serviceLines).toContain("OBSERVATION");
+    expect(dto.dentalSpecialties).toEqual([]);
+  });
+
+  it("includes dental specialties only when DENTAL service line is enabled", () => {
+    const dto = facilityTypeServiceLineFormToDto({
+      facilityType: "CLINIC",
+      serviceLines: ["CLINIC", "DENTAL", "LABORATORY"],
+      serviceLinesTouched: true,
+      dentalSpecialties: ["GENERAL_DENTISTRY", "ORTHODONTICS"],
+    });
+    expect(dto.serviceLines).toContain("DENTAL");
+    expect(dto.dentalSpecialties).toEqual(["GENERAL_DENTISTRY", "ORTHODONTICS"]);
   });
 });

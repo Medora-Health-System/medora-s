@@ -129,6 +129,14 @@ const SIDEBAR_NAV_DEFS: SidebarNavItemDef[] = [
     accent: "teal",
     navAreas: ["CLINIC_CARE"],
   },
+  {
+    href: "/app/dental",
+    labelKey: "nav.dentalCare",
+    roles: ["ADMIN", "PROVIDER", "RN", "FRONT_DESK", "BILLING"],
+    group: "accueil",
+    accent: "indigo",
+    navAreas: ["DENTAL_CARE"],
+  },
   { href: "/app/trackboard", labelKey: "nav.trackboard", roles: ["ADMIN", "PROVIDER", "RN"], group: "accueil", accent: "slate", navAreas: ["DASHBOARD"] },
   {
     href: "/app/emergency/trackboard",

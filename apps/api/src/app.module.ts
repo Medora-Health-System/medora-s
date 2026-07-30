@@ -13,6 +13,7 @@ import { QueuesModule } from "./queues/queues.module";
 import { RegistrationModule } from "./registration/registration.module";
 import { TrackboardModule } from "./trackboard/trackboard.module";
 import { ClinicCareModule } from "./clinic-care/clinic-care.module";
+import { DentalCareModule } from "./dental-care/dental-care.module";
 import { AppointmentsModule } from "./appointments/appointments.module";
 import { TriageModule } from "./triage/triage.module";import { WorklistsModule } from "./worklists/worklists.module";
 import { ResultsModule } from "./results/results.module";
@@ -78,6 +79,7 @@ const imports = [
   RegistrationModule,
   TrackboardModule,
   ClinicCareModule,
+  DentalCareModule,
   AppointmentsModule,
   TriageModule,
   WorklistsModule,

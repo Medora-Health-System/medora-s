@@ -32,6 +32,19 @@ const medoraServiceLineSchema = z.enum([
   "PHARMACY",
   "CLINIC",
   "URGENT_CARE",
+  /** MEDUI.D5A.2 — enterprise Dental Care service line. */
+  "DENTAL",
+]);
+
+const dentalSpecialtySchema = z.enum([
+  "GENERAL_DENTISTRY",
+  "ORTHODONTICS",
+  "PEDIATRIC_DENTISTRY",
+  "ENDODONTICS",
+  "PERIODONTICS",
+  "PROSTHODONTICS",
+  "ORAL_SURGERY",
+  "ORAL_MEDICINE",
 ]);
 
 export const MEDORA_FACILITY_TYPE_CODES = MEDORA_FACILITY_TYPE_REGISTRY.map((entry) => entry.code);
@@ -103,6 +116,8 @@ const facilityCareProfileFieldsSchema = z.object({
     .optional()
     .nullable(),
   optionalModules: facilityOptionalModulesSchema.optional().nullable(),
+  /** MEDUI.D5A.2 — Dental specialty configuration (no clinical engines). */
+  dentalSpecialties: z.array(dentalSpecialtySchema).optional().nullable(),
   operationalAddress: facilityOperationalAddressSchema.optional().nullable(),
   printDisplayName: optStr(512),
   legalName: optStr(512),

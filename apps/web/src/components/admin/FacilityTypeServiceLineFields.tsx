@@ -2,8 +2,10 @@
 
 import {
   CLINICAL_DEPARTMENT_REGISTRY,
+  D5A2_DENTAL_SPECIALTIES,
   getDefaultServiceLinesForFacilityType,
   MEDORA_FACILITY_TYPE_REGISTRY,
+  type D5a2DentalSpecialty,
   type MedoraFacilityType,
   type MedoraServiceLine,
 } from "@medora/shared";
@@ -11,10 +13,12 @@ import { useEffect, useMemo, useState } from "react";
 import { useI18n } from "@/lib/i18n";
 
 const PHARMACY_LINE: MedoraServiceLine = "PHARMACY";
+const DENTAL_LINE: MedoraServiceLine = "DENTAL";
 
 const SERVICE_LINE_OPTIONS: MedoraServiceLine[] = [
   "CLINIC",
   "URGENT_CARE",
+  DENTAL_LINE,
   ...CLINICAL_DEPARTMENT_REGISTRY.map((entry) => entry.code),
   PHARMACY_LINE,
 ];
@@ -23,6 +27,8 @@ export type FacilityTypeServiceLineFormState = {
   facilityType: MedoraFacilityType;
   serviceLines: MedoraServiceLine[];
   serviceLinesTouched: boolean;
+  /** MEDUI.D5A.2 — Dental specialty configuration (care profile). */
+  dentalSpecialties: D5a2DentalSpecialty[];
 };
 
 export function emptyFacilityTypeServiceLineForm(): FacilityTypeServiceLineFormState {
@@ -30,16 +36,19 @@ export function emptyFacilityTypeServiceLineForm(): FacilityTypeServiceLineFormS
     facilityType: "CLINIC",
     serviceLines: getDefaultServiceLinesForFacilityType("CLINIC"),
     serviceLinesTouched: false,
+    dentalSpecialties: [],
   };
 }
 
 export function facilityTypeServiceLineFormToDto(state: FacilityTypeServiceLineFormState): {
   facilityType: MedoraFacilityType;
   serviceLines: MedoraServiceLine[];
+  dentalSpecialties: D5a2DentalSpecialty[];
 } {
   return {
     facilityType: state.facilityType,
     serviceLines: state.serviceLines,
+    dentalSpecialties: state.serviceLines.includes("DENTAL") ? state.dentalSpecialties : [],
   };
 }
 
@@ -54,10 +63,15 @@ function serviceLineLabelKey(line: MedoraServiceLine): string {
   if (line === "PHARMACY") return "adminUsers.serviceLinePharmacy";
   if (line === "CLINIC") return "adminUsers.serviceLineClinic";
   if (line === "URGENT_CARE") return "adminUsers.serviceLineUrgentCare";
+  if (line === "DENTAL") return "adminUsers.serviceLineDental";
   return `adminUsers.serviceLine${line
     .split("_")
     .map((part) => part.charAt(0) + part.slice(1).toLowerCase())
     .join("")}`;
+}
+
+function dentalSpecialtyLabelKey(specialty: D5a2DentalSpecialty): string {
+  return `dentalCareD5a2.specialties.${specialty}`;
 }
 
 export function FacilityTypeServiceLineFields({
@@ -79,6 +93,8 @@ export function FacilityTypeServiceLineFields({
     [local.facilityType]
   );
 
+  const dentalEnabled = local.serviceLines.includes("DENTAL");
+
   const setState = (next: FacilityTypeServiceLineFormState) => {
     setLocal(next);
     onChange(next);
@@ -91,6 +107,7 @@ export function FacilityTypeServiceLineFields({
         ? local.serviceLines
         : getDefaultServiceLinesForFacilityType(facilityType),
       serviceLinesTouched: local.serviceLinesTouched,
+      dentalSpecialties: local.dentalSpecialties,
     });
   };
 
@@ -103,7 +120,16 @@ export function FacilityTypeServiceLineFields({
       ...local,
       serviceLines,
       serviceLinesTouched: true,
+      dentalSpecialties: serviceLines.includes("DENTAL") ? local.dentalSpecialties : [],
     });
+  };
+
+  const toggleSpecialty = (specialty: D5a2DentalSpecialty) => {
+    const has = local.dentalSpecialties.includes(specialty);
+    const dentalSpecialties = has
+      ? local.dentalSpecialties.filter((s) => s !== specialty)
+      : [...local.dentalSpecialties, specialty];
+    setState({ ...local, dentalSpecialties });
   };
 
   const resetDefaults = () => {
@@ -111,6 +137,7 @@ export function FacilityTypeServiceLineFields({
       ...local,
       serviceLines: defaultsForType,
       serviceLinesTouched: false,
+      dentalSpecialties: [],
     });
   };
 
@@ -166,6 +193,45 @@ export function FacilityTypeServiceLineFields({
           ))}
         </div>
       </div>
+      {dentalEnabled ? (
+        <div style={{ marginBottom: 16 }} data-testid="facility-dental-specialties">
+          <label style={{ fontWeight: 600, fontSize: 13, display: "block", marginBottom: 8 }}>
+            {t("dentalCareD5a2.admin.specialtiesLabel")}
+          </label>
+          <p style={{ margin: "0 0 8px", fontSize: 12, color: "#64748b" }}>
+            {t("dentalCareD5a2.admin.specialtiesHint")}
+          </p>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))",
+              gap: 8,
+            }}
+          >
+            {D5A2_DENTAL_SPECIALTIES.map((specialty) => (
+              <label
+                key={specialty}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                  fontSize: 13,
+                  padding: "6px 8px",
+                  border: "1px solid #e2e8f0",
+                  borderRadius: 6,
+                }}
+              >
+                <input
+                  type="checkbox"
+                  checked={local.dentalSpecialties.includes(specialty)}
+                  onChange={() => toggleSpecialty(specialty)}
+                />
+                {t(dentalSpecialtyLabelKey(specialty))}
+              </label>
+            ))}
+          </div>
+        </div>
+      ) : null}
     </>
   );
 }
