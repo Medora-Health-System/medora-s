@@ -172,13 +172,17 @@ export class AdminFacilitiesService {
     const workflowMode =
       dto.billingClassificationMode ?? getDefaultBillingClassificationModeForProfile(profile);
     const timezone = dto.timezone?.trim() || DEFAULT_NEW_FACILITY_TIMEZONE;
+    const countryFromDto =
+      dto.operationalAddress?.country?.trim() ||
+      dto.country?.trim() ||
+      DEFAULT_NEW_FACILITY_COUNTRY;
 
     return this.prisma.$transaction(async (tx) => {
       const facility = await tx.facility.create({
         data: {
           code,
           name: trimmed,
-          country: DEFAULT_NEW_FACILITY_COUNTRY,
+          country: countryFromDto,
           timezone,
           defaultLanguage: dto.defaultLanguage ?? "fr",
           facilityType,
@@ -431,13 +435,7 @@ export class AdminFacilitiesService {
 
   async updateFacilityServiceConfig(id: string, dto: UpdateFacilityServiceConfigDto, userId: string) {
     assertNoClientEscalation(dto);
-    const actor = await this.prisma.user.findUnique({
-      where: { id: userId },
-      select: { email: true },
-    });
-    if (!actor?.email || !isPlatformPrincipalAdminEmail(actor.email)) {
-      throw new ForbiddenException("Modification de l’établissement non autorisée pour ce compte.");
-    }
+    await this.assertCanManageFacilityBilling(userId, id);
 
     const existing = await this.prisma.facility.findUnique({
       where: { id },
@@ -449,6 +447,7 @@ export class AdminFacilitiesService {
         serviceLinesJson: true,
         facilityCareProfileJson: true,
         timezone: true,
+        country: true,
       },
     });
     if (!existing) {
@@ -470,6 +469,8 @@ export class AdminFacilitiesService {
       careProfileJson,
       serviceLines: serialized,
     });
+    const nextCountry =
+      dto.operationalAddress?.country?.trim() || dto.country?.trim() || null;
 
     const updated = await this.prisma.$transaction(async (tx) => {
       const row = await tx.facility.update({
@@ -481,6 +482,7 @@ export class AdminFacilitiesService {
           ...(dto.timezone != null && String(dto.timezone).trim()
             ? { timezone: String(dto.timezone).trim() }
             : {}),
+          ...(nextCountry ? { country: nextCountry } : {}),
         },
         select: {
           id: true,
@@ -506,6 +508,8 @@ export class AdminFacilitiesService {
             careProfile: profile,
             serviceLines: serialized,
             resetToTypeDefaults: dto.resetToTypeDefaults === true,
+            operationalIdentityUpdated:
+              dto.operationalAddress != null || dto.printDisplayName != null || dto.legalName != null,
           },
         },
       });

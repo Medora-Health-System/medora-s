@@ -10,6 +10,13 @@ import {
   type CreateFacilityDto,
 } from "@medora/shared";
 import { FacilityBillingIdentityModal } from "@/components/admin/FacilityBillingIdentityModal";
+import { FacilityOperationalIdentityModal } from "@/components/admin/FacilityOperationalIdentityModal";
+import {
+  FacilityOperationalIdentityFields,
+  emptyFacilityOperationalIdentityForm,
+  facilityOperationalIdentityFormToDto,
+  type FacilityOperationalIdentityFormState,
+} from "@/components/admin/FacilityOperationalIdentityFields";
 import {
   FacilityTypeServiceLineFields,
   emptyFacilityTypeServiceLineForm,
@@ -90,6 +97,7 @@ export default function AdminUsersPage() {
   const [toast, setToast] = useState<{ message: string; ok: boolean } | null>(null);
   const [showAddFacility, setShowAddFacility] = useState(false);
   const [showFacilityBilling, setShowFacilityBilling] = useState(false);
+  const [showFacilityOperationalIdentity, setShowFacilityOperationalIdentity] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
   const [editUser, setEditUser] = useState<AdminUserRow | null>(null);
   const [profileUser, setProfileUser] = useState<AdminUserRow | null>(null);
@@ -259,9 +267,27 @@ export default function AdminUsersPage() {
               fontWeight: 600,
               cursor: "pointer",
               fontSize: 13,
+              marginRight: 8,
             }}
           >
             {t("adminUsers.openFacilityBilling")}
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowFacilityOperationalIdentity(true)}
+            data-testid="open-facility-operational-identity"
+            style={{
+              padding: "8px 14px",
+              border: "1px solid #0d9488",
+              borderRadius: 4,
+              background: "#fff",
+              fontWeight: 600,
+              cursor: "pointer",
+              fontSize: 13,
+              color: "#0f766e",
+            }}
+          >
+            {t("facilityIdentityD4c7i.editButton")}
           </button>
         </div>
       ) : null}
@@ -528,6 +554,26 @@ export default function AdminUsersPage() {
         />
       ) : null}
 
+      {showFacilityOperationalIdentity && facilityId && isFacilityOrPlatformAdmin ? (
+        <FacilityOperationalIdentityModal
+          headerFacilityId={facilityId}
+          targetFacilityId={facilityId}
+          facilityDisplayName={currentFacilityName}
+          onClose={() => setShowFacilityOperationalIdentity(false)}
+          onSuccess={async () => {
+            setShowFacilityOperationalIdentity(false);
+            try {
+              await refreshFromMe();
+            } catch {
+              /* session may be unchanged */
+            }
+            window.dispatchEvent(new Event("medora:session-refresh"));
+            setToast({ message: t("facilityIdentityD4c7i.saveSuccess"), ok: true });
+          }}
+          onError={(m) => setToast({ message: m, ok: false })}
+        />
+      ) : null}
+
       {resetPasswordUser && facilityId && isFacilityOrPlatformAdmin && (
         <ResetPasswordModal
           facilityId={facilityId}
@@ -576,12 +622,28 @@ function AddFacilityModal({
   const [facilityTypeConfig, setFacilityTypeConfig] = useState<FacilityTypeServiceLineFormState>(
     emptyFacilityTypeServiceLineForm(),
   );
+  const [operationalIdentity, setOperationalIdentity] = useState<FacilityOperationalIdentityFormState>(
+    emptyFacilityOperationalIdentityForm(),
+  );
   const [submitting, setSubmitting] = useState(false);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) {
       onError(t("adminUsers.valFacilityNameRequired"));
+      return;
+    }
+    const identityDto = facilityOperationalIdentityFormToDto({
+      ...operationalIdentity,
+      printDisplayName: operationalIdentity.printDisplayName.trim() || name.trim(),
+    });
+    if (
+      !identityDto.operationalAddress.country ||
+      !identityDto.operationalAddress.line1 ||
+      !identityDto.operationalAddress.city ||
+      !identityDto.operationalAddress.phone
+    ) {
+      onError(t("facilityIdentityD4c7i.errIncomplete"));
       return;
     }
     if (showOptionalBilling && billingNpi.trim()) {
@@ -598,6 +660,10 @@ function AddFacilityModal({
         defaultLanguage,
         ...facilityTypeServiceLineFormToDto(facilityTypeConfig),
         ...workflowFormToPatch(billingWorkflow),
+        printDisplayName: identityDto.printDisplayName,
+        legalName: identityDto.legalName,
+        country: identityDto.country,
+        operationalAddress: identityDto.operationalAddress,
       };
       if (showOptionalBilling) {
         const trim = (s: string) => (s.trim() === "" ? undefined : s.trim());
@@ -683,6 +749,11 @@ function AddFacilityModal({
             </select>
           </div>
           <FacilityTypeServiceLineFields value={facilityTypeConfig} onChange={setFacilityTypeConfig} />
+          <FacilityOperationalIdentityFields
+            value={operationalIdentity}
+            onChange={setOperationalIdentity}
+            disabled={submitting}
+          />
           <FacilityBillingWorkflowFields form={billingWorkflow} onChange={setBillingWorkflow} disabled={submitting} />
           <label
             style={{

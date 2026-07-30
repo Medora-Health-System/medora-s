@@ -16,6 +16,7 @@ import {
 } from "@/lib/encounterChromeI18n";
 import { BillingClassificationBadgeInteractive } from "@/components/encounters/BillingClassificationBadgeInteractive";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
+import { printFacilityInfoFromEnterpriseSource } from "@/lib/printFacilityHeader";
 import { canDocumentEdTriage } from "@medora/shared";
 import { getCachedRecord, setCachedRecord } from "@/lib/offline/offlineCache";
 import type { PatientTriageVitalsResponse } from "@/lib/patientVitals";
@@ -252,6 +253,8 @@ export function EmergencyActiveWorkspaceView() {
     canPrescribe,
     userId,
     facilityTimeZone,
+    careProfileJson,
+    facilityCountry,
   } = useFacilityAndRoles();
   const [facilityId, setFacilityId] = useState<string | null>(null);
   /** Bumped after embedded saves so les résultats embarqués se rechargent (même idée que l’onglet consultation). */
@@ -1399,6 +1402,8 @@ export function EmergencyActiveWorkspaceView() {
               encounterId={encounterId}
               facilityId={fid}
               facilityName={facilityName}
+              facilityCareProfileJson={careProfileJson}
+              facilityCountry={facilityCountry}
               encounter={encounter}
               triageSnapshot={triageSnapshot}
               resultsRefresh={resultsRefresh}
@@ -1478,6 +1483,11 @@ export function EmergencyActiveWorkspaceView() {
                   : null
               }
               facilityName={facilityName}
+              facility={printFacilityInfoFromEnterpriseSource({
+                facilityName,
+                facilityCountry,
+                careProfileJson,
+              })}
             />
           ) : null}
 

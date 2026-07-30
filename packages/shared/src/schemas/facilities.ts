@@ -69,10 +69,14 @@ const facilityOperationalAddressSchema = z
     postalCode: optStr(32),
     country: optStr(128),
     phone: optStr(64),
+    phoneSecondary: optStr(64),
+    fax: optStr(64),
+    email: optStr(256),
+    website: optStr(512),
   })
   .partial();
 
-/** MEDUI.D4C.1 — ambulatory care profile + operational address / print identity. */
+/** MEDUI.D4C.1 / D4C.7I — ambulatory care profile + operational address / print identity. */
 const facilityCareProfileFieldsSchema = z.object({
   careProfile: z
     .enum([
@@ -101,7 +105,10 @@ const facilityCareProfileFieldsSchema = z.object({
   optionalModules: facilityOptionalModulesSchema.optional().nullable(),
   operationalAddress: facilityOperationalAddressSchema.optional().nullable(),
   printDisplayName: optStr(512),
+  legalName: optStr(512),
   timezone: optStr(64),
+  /** Schema `Facility.country` — international; defaults to Haiti when omitted on create. */
+  country: optStr(128),
 });
 
 function refineFacilityBillingNpi(d: { billingNpi?: string | null }, ctx: z.RefinementCtx) {
@@ -132,6 +139,70 @@ const facilityBillingIdentityFieldsSchema = z.object({
   billingFacilityTypeLabel: optStr(256),
 });
 
+function refineFacilityOperationalIdentityOnCreate(
+  d: {
+    name?: string;
+    printDisplayName?: string | null;
+    operationalAddress?: {
+      line1?: string | null;
+      city?: string | null;
+      country?: string | null;
+      phone?: string | null;
+      email?: string | null;
+      website?: string | null;
+    } | null;
+    country?: string | null;
+  },
+  ctx: z.RefinementCtx
+) {
+  const addr = d.operationalAddress ?? {};
+  const country = (addr.country ?? d.country ?? "").trim();
+  if (!country) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Le pays est requis.",
+      path: ["operationalAddress", "country"],
+    });
+  }
+  if (!(addr.line1 ?? "").trim()) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "L’adresse est requise.",
+      path: ["operationalAddress", "line1"],
+    });
+  }
+  if (!(addr.city ?? "").trim()) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "La ville / commune est requise.",
+      path: ["operationalAddress", "city"],
+    });
+  }
+  if (!(addr.phone ?? "").trim()) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Le téléphone est requis.",
+      path: ["operationalAddress", "phone"],
+    });
+  }
+  const email = (addr.email ?? "").trim();
+  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Courriel invalide.",
+      path: ["operationalAddress", "email"],
+    });
+  }
+  const website = (addr.website ?? "").trim();
+  if (website && /\s/.test(website)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Site Web invalide.",
+      path: ["operationalAddress", "website"],
+    });
+  }
+}
+
 /** POST /admin/facilities — optional billing identity (same source of truth as PATCH billing/facility-identity). */
 export const createFacilityDtoSchema = z
   .object({
@@ -143,7 +214,8 @@ export const createFacilityDtoSchema = z
   .merge(facilityBillingIdentityFieldsSchema.partial())
   .merge(facilityBillingWorkflowCreateFieldsSchema.partial())
   .merge(facilityCareProfileFieldsSchema.partial())
-  .superRefine(refineFacilityBillingNpi);
+  .superRefine(refineFacilityBillingNpi)
+  .superRefine(refineFacilityOperationalIdentityOnCreate);
 
 /** PATCH /admin/facilities/:id/service-config — facility type, service lines, D4C.1 care profile. */
 export const updateFacilityServiceConfigDtoSchema = z
@@ -152,7 +224,24 @@ export const updateFacilityServiceConfigDtoSchema = z
     serviceLines: z.array(medoraServiceLineSchema).optional().nullable(),
     resetToTypeDefaults: z.boolean().optional(),
   })
-  .merge(facilityCareProfileFieldsSchema.partial());
+  .merge(facilityCareProfileFieldsSchema.partial())
+  .superRefine((d, ctx) => {
+    /** When operational identity is patched, require the same onboarding core fields. */
+    if (d.operationalAddress == null && d.printDisplayName == null && d.legalName == null) {
+      return;
+    }
+    if (d.operationalAddress != null) {
+      refineFacilityOperationalIdentityOnCreate(
+        {
+          name: d.printDisplayName ?? "facility",
+          printDisplayName: d.printDisplayName,
+          operationalAddress: d.operationalAddress,
+          country: d.country,
+        },
+        ctx
+      );
+    }
+  });
 
 export const facilityDtoSchema = z.object({
   id: z.string().uuid(),

@@ -12,6 +12,7 @@ import {
   tEncounterType,
 } from "@/lib/encounterChromeI18n";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
+import { printFacilityInfoFromEnterpriseSource } from "@/lib/printFacilityHeader";
 import { canDocumentEdTriage } from "@medora/shared";
 import { useI18n } from "@/lib/i18n";
 import { getCachedRecord, setCachedRecord } from "@/lib/offline/offlineCache";
@@ -202,6 +203,8 @@ export function EmergencyChartView() {
     canPrescribe,
     userId,
     facilityTimeZone,
+    careProfileJson,
+    facilityCountry,
   } = useFacilityAndRoles();
   const [facilityId, setFacilityId] = useState<string | null>(null);
   const [resultsRefresh, setResultsRefresh] = useState(0);
@@ -968,6 +971,11 @@ export function EmergencyChartView() {
                   : null
               }
               facilityName={facilityName}
+              facility={printFacilityInfoFromEnterpriseSource({
+                facilityName,
+                facilityCountry,
+                careProfileJson,
+              })}
             />
           </section>
 

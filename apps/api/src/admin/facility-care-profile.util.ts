@@ -46,6 +46,7 @@ export function buildCareProfileJsonFromDto(
     optionalModules: modules,
     address: dto.operationalAddress ?? null,
     printDisplayName: dto.printDisplayName ?? null,
+    legalName: "legalName" in dto ? dto.legalName ?? null : null,
   });
 }
 
@@ -113,5 +114,6 @@ export function mergeCareProfileJson(
     optionalModules: next.optionalModules ?? prev?.optionalModules ?? null,
     address: next.address ?? prev?.address ?? null,
     printDisplayName: next.printDisplayName ?? prev?.printDisplayName ?? null,
+    legalName: next.legalName ?? prev?.legalName ?? null,
   };
 }

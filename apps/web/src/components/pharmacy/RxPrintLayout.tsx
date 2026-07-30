@@ -116,7 +116,7 @@ export function buildRxPrintFacilityIdentity(input: {
     postalCode: projected.address.postalCode,
     country: projected.address.country,
     phone: projected.address.phone,
-    fax: null,
+    fax: projected.address.fax,
   };
 }
 

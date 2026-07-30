@@ -75,6 +75,11 @@ export type FacilityOperationalAddress = {
   postalCode: string | null;
   country: string | null;
   phone: string | null;
+  /** MEDUI.D4C.7I — optional contact extensions (careProfileJson only; no migration). */
+  phoneSecondary: string | null;
+  fax: string | null;
+  email: string | null;
+  website: string | null;
 };
 
 /** Print-identity projection inputs (facility display name + operational address). */
@@ -93,6 +98,8 @@ export type FacilityCareProfileJson = {
   optionalModules?: Partial<FacilityOptionalModules> | null;
   address?: Partial<FacilityOperationalAddress> | null;
   printDisplayName?: string | null;
+  /** MEDUI.D4C.7I — optional legal name for letterhead (distinct from billingLegalName column). */
+  legalName?: string | null;
 };
 
 export type FacilityModuleCapabilitiesD4c1 = {
@@ -284,6 +291,10 @@ export const EMPTY_FACILITY_OPERATIONAL_ADDRESS: FacilityOperationalAddress = {
   postalCode: null,
   country: null,
   phone: null,
+  phoneSecondary: null,
+  fax: null,
+  email: null,
+  website: null,
 };
 
 export const DEFAULT_CLINIC_OPTIONAL_MODULES: FacilityOptionalModules = {
@@ -341,6 +352,7 @@ export function parseFacilityCareProfileJson(raw: unknown): FacilityCareProfileJ
         : null,
     printDisplayName:
       typeof obj.printDisplayName === "string" ? obj.printDisplayName.trim() || null : null,
+    legalName: typeof obj.legalName === "string" ? obj.legalName.trim() || null : null,
   };
 }
 
@@ -561,6 +573,10 @@ export function normalizeFacilityOperationalAddress(
     postalCode: trimOrNull(partial?.postalCode),
     country: trimOrNull(partial?.country),
     phone: trimOrNull(partial?.phone),
+    phoneSecondary: trimOrNull(partial?.phoneSecondary),
+    fax: trimOrNull(partial?.fax),
+    email: trimOrNull(partial?.email),
+    website: trimOrNull(partial?.website),
   };
 }
 
@@ -586,7 +602,11 @@ export function projectFacilityPrintIdentity(input: {
       operational.city ||
       operational.stateProvince ||
       operational.postalCode ||
-      operational.phone
+      operational.phone ||
+      operational.phoneSecondary ||
+      operational.fax ||
+      operational.email ||
+      operational.website
   );
   return {
     displayName: trimOrNull(stored?.printDisplayName) ?? trimOrNull(input.facilityName),
@@ -601,6 +621,7 @@ export function buildFacilityCareProfileJson(input: {
   optionalModules?: Partial<FacilityOptionalModules> | null;
   address?: Partial<FacilityOperationalAddress> | null;
   printDisplayName?: string | null;
+  legalName?: string | null;
 }): FacilityCareProfileJson {
   const ambulatory =
     input.profile != null && isAmbulatoryFacilityProfile(input.profile)
@@ -617,6 +638,7 @@ export function buildFacilityCareProfileJson(input: {
     optionalModules: input.optionalModules ?? null,
     address: input.address ? normalizeFacilityOperationalAddress(input.address) : null,
     printDisplayName: trimOrNull(input.printDisplayName),
+    legalName: trimOrNull(input.legalName),
   };
 }
 
