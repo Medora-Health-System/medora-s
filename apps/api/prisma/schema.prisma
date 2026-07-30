@@ -67,6 +67,7 @@ model Facility {
   registrationDisclosureConfig           FacilityRegistrationDisclosureConfig?
   diseaseCaseReports                     DiseaseCaseReport[]
   encounters                             Encounter[]
+  encounterLifecycleTransitions          EncounterLifecycleTransition[]
   encounterChartExports                  EncounterChartExport[]
   clinicalDocumentationEntries           EncounterClinicalDocumentationEntry[]
   encounterClinicalEvents                EncounterClinicalEvent[]
@@ -217,6 +218,9 @@ model User {
   encountersBillingClassificationChangedBy        Encounter[]                            @relation("EncounterBillingClassificationChangedBy")
   encountersBillingFinalizedBy                    Encounter[]                            @relation("EncounterBillingFinalizedBy")
   encountersBillingReopenedBy                     Encounter[]                            @relation("EncounterBillingReopenedBy")
+  encountersClosedBy                              Encounter[]                            @relation("EncounterClosedBy")
+  encountersReopenedBy                            Encounter[]                            @relation("EncounterReopenedBy")
+  encounterLifecycleTransitionsAsActor            EncounterLifecycleTransition[]        @relation("EncounterLifecycleTransitionActor")
   encountersAsAssignedNurse                       Encounter[]                            @relation("EncounterNurseAssigned")
   encountersAsAssignedPhysician                   Encounter[]                            @relation("EncounterPhysicianAssigned")
   encountersSignedByProvider                      Encounter[]                            @relation("EncounterSignedBy")
@@ -393,6 +397,7 @@ model Patient {
   diagnoses                    Diagnosis[]
   diseaseCaseReports           DiseaseCaseReport[]
   encounters                   Encounter[]
+  encounterLifecycleTransitions EncounterLifecycleTransition[]
   encounterChartExports        EncounterChartExport[]
   clinicalDocumentationEntries EncounterClinicalDocumentationEntry[]
   encounterClinicalEvents      EncounterClinicalEvent[]
@@ -572,6 +577,15 @@ model Encounter {
   billingCaptureJson                        Json?
   /// Optimistic locking — increment on every successful mutating write.
   version                                   Int                                    @default(1)
+  /// MEDUI.D4C.7K — enterprise encounter closure timestamp (distinct from dischargedAt).
+  closedAt                                  DateTime?
+  closedByUserId                            String?
+  /// MEDUI.D4C.7K — latest reopen metadata (append-only history lives in EncounterLifecycleTransition).
+  reopenedAt                                DateTime?
+  reopenedByUserId                          String?
+  reopenReason                              String?
+  reopenReasonCode                          String?
+  reopenCount                               Int                                    @default(0)
   workflowState                             EncounterWorkflowState                 @default(ARRIVED)
   /// Phase 3 — billing finalization for claim assembly (no submission in this phase).
   billingFinalizationStatus                 EncounterBillingFinalizationStatus     @default(NOT_READY)
@@ -617,6 +631,8 @@ model Encounter {
   billingClassificationChangedBy            User?                                  @relation("EncounterBillingClassificationChangedBy", fields: [billingClassificationChangedByUserId], references: [id])
   billingFinalizedBy                        User?                                  @relation("EncounterBillingFinalizedBy", fields: [billingFinalizedByUserId], references: [id])
   billingReopenedBy                         User?                                  @relation("EncounterBillingReopenedBy", fields: [billingReopenedByUserId], references: [id])
+  closedBy                                  User?                                  @relation("EncounterClosedBy", fields: [closedByUserId], references: [id])
+  reopenedBy                                User?                                  @relation("EncounterReopenedBy", fields: [reopenedByUserId], references: [id])
   facility                                  Facility                               @relation(fields: [facilityId], references: [id])
   /// D3B — member encounters of a HospitalEpisode (nullable; one episode max per encounter).
   hospitalEpisode                           HospitalEpisode?                       @relation("HospitalEpisodeEncounters", fields: [hospitalEpisodeId], references: [id], onDelete: SetNull)
@@ -652,6 +668,8 @@ model Encounter {
   vaccineAdministrations                    VaccineAdministration[]
   enterpriseDocuments                       EnterpriseDocument[]
   enterpriseDocPacketSources                EnterpriseDocumentPacketSource[] @relation("PacketSourceEncounter")
+  /// MEDUI.D4C.7K — append-only enterprise encounter lifecycle timeline.
+  lifecycleTransitions                      EncounterLifecycleTransition[]
 
   @@index([facilityId])
   @@index([patientId])
@@ -664,6 +682,45 @@ model Encounter {
   @@index([billingClassification])
   @@index([hospitalEpisodeId])
   @@index([facilityId, visitOrigin, createdAt])
+  @@index([closedAt])
+  @@index([reopenedAt])
+  @@index([closedByUserId])
+  @@index([reopenedByUserId])
+}
+
+/// MEDUI.D4C.7K — append-only enterprise encounter lifecycle transition timeline.
+/// Do not UPDATE or DELETE rows in normal workflow. Operational status remains Encounter.status.
+model EncounterLifecycleTransition {
+  id                 String   @id @default(uuid())
+  encounterId        String
+  facilityId         String
+  patientId          String?
+  careSetting        String?
+  transitionType     String
+  previousState      String?
+  newState           String?
+  actorUserId        String?
+  actorRoleCodesJson Json?
+  reason             String?
+  reasonCode         String?
+  clientRequestId    String?
+  requestId          String?
+  supportOverride    Boolean  @default(false)
+  metadataJson       Json?
+  sequence           Int
+  createdAt          DateTime @default(now())
+
+  encounter Encounter @relation(fields: [encounterId], references: [id], onDelete: Restrict)
+  facility  Facility  @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  patient   Patient?  @relation(fields: [patientId], references: [id], onDelete: SetNull)
+  actor     User?     @relation("EncounterLifecycleTransitionActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@unique([encounterId, sequence])
+  @@index([facilityId, encounterId, createdAt])
+  @@index([encounterId, createdAt])
+  @@index([facilityId, transitionType, createdAt])
+  @@index([clientRequestId])
+  @@index([actorUserId])
 }
 
 /// D3B — one continuous facility stay spanning linked care-setting encounters.
@@ -7050,6 +7107,8 @@ enum AuditAction {
   ENCOUNTER_CREATE
   ENCOUNTER_UPDATE
   ENCOUNTER_CLOSE
+  /// MEDUI.D4C.7K — administrative reopen of a CLOSED encounter (does not unlock signed docs / billing).
+  ENCOUNTER_REOPEN
   ENCOUNTER_VIEW
   ORDER_CREATE
   ORDER_CANCEL

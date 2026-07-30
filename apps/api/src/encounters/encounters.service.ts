@@ -143,12 +143,15 @@ import {
   D4C7J_CLOSE_CODES,
   D4C7J_ACKNOWLEDGEMENT_VERSION,
   buildD4c7jCloseAuditMetadata,
-  canAcknowledgeD4c7jClosure,
+  buildD4c7kPlatformActionContext,
+  canCloseEncounter,
   classifyD4c7jClosureAdvisory,
+  D4C7K_REOPEN_CODES,
   isD4c7jSupportOverrideOnly,
   projectD4c7jClosePreflight,
   projectD4c7jCloseResult,
   resolveD4c7jAcknowledgement,
+  shouldSetDischargedAtOnEnterpriseClose,
   type D4c7jAdvisoryClassification,
   type D4c7jClosePreflight,
 } from "@medora/shared";
@@ -156,6 +159,7 @@ import { throwRoomAlreadyOccupiedConflict } from "./ed-room-occupancy.util";
 import { FacilityBedBoardService } from "../facilities/facility-bed-board.service";
 import { InternalPlacementService } from "./internal-placement.service";
 import { EnterpriseAssignmentService } from "./enterprise-assignment.service";
+import { EnterpriseEncounterLifecycleService } from "./enterprise-encounter-lifecycle.service";
 import { handoffNursingEncounterPayload, handoffProviderEncounterPayload } from "../utils/clinical-event-handoff.util";
 import { observationReassessmentClinicalEventPayload } from "../utils/clinical-event-observation-reassessment.util";
 import { evaluateEncounterBillingReadinessFromData } from "../billing/billing-encounter-readiness.util";
@@ -276,6 +280,20 @@ import {
 import { computeDispositionSafetyReadiness } from "./disposition-safety-readiness.util";
 import { mergeDischargeSummaryJson } from "./effective-discharge-summary.util";
 
+/**
+ * MEDUI.D4C.7K — keep the published D4C.7D concurrency contract on `POST /encounters/:id/close`
+ * while the lifecycle authority owns the optimistic-concurrency check.
+ */
+function isEnterpriseLifecycleVersionConflict(err: unknown): boolean {
+  if (!(err instanceof HttpException)) return false;
+  const payload = err.getResponse();
+  return (
+    typeof payload === "object" &&
+    payload !== null &&
+    (payload as { code?: unknown }).code === D4C7K_REOPEN_CODES.VERSION_CONFLICT
+  );
+}
+
 @Injectable()
 export class EncountersService {
   constructor(
@@ -284,7 +302,9 @@ export class EncountersService {
     private readonly trackboardService: TrackboardService,
     private readonly bedBoardService: FacilityBedBoardService,
     private readonly internalPlacement: InternalPlacementService,
-    private readonly enterpriseAssignment: EnterpriseAssignmentService
+    private readonly enterpriseAssignment: EnterpriseAssignmentService,
+    /** MEDUI.D4C.7K — required: every enterprise close routes through the lifecycle authority. */
+    private readonly enterpriseLifecycle: EnterpriseEncounterLifecycleService
   ) {}
 
   async create(patientId: string, facilityId: string, data: EncounterCreateDto, userId?: string, ip?: string, userAgent?: string) {
@@ -3827,7 +3847,9 @@ export class EncountersService {
     ip?: string,
     userAgent?: string,
     actorRoleCodes?: readonly string[] | null,
-    requestId?: string | null
+    requestId?: string | null,
+    /** MEDUI.D4C.7K — RolesGuard-resolved platform support context (audit metadata only). */
+    platformContext?: { platformPrincipal?: boolean; hasFacilityMembership?: boolean }
   ) {
     const startedAtMs = Date.now();
     const acknowledgementProbe = resolveD4c7jAcknowledgement(data);
@@ -3859,7 +3881,9 @@ export class EncountersService {
         ip,
         userAgent,
         actorRoleCodes,
-        startedAtMs
+        startedAtMs,
+        requestId,
+        platformContext
       );
     } catch (err: unknown) {
       if (err instanceof HttpException) {
@@ -3912,7 +3936,9 @@ export class EncountersService {
     ip?: string,
     userAgent?: string,
     actorRoleCodes?: readonly string[] | null,
-    closeStartedAtMs: number = Date.now()
+    closeStartedAtMs: number = Date.now(),
+    requestId?: string | null,
+    platformContext?: { platformPrincipal?: boolean; hasFacilityMembership?: boolean }
   ) {
     const encounter = await this.prisma.encounter.findFirst({
       select: ENCOUNTER_CORE_SELECT,
@@ -3947,8 +3973,8 @@ export class EncountersService {
         closeResult: projectD4c7jCloseResult({
           encounterId: id,
           previousStatus: EncounterStatus.CLOSED,
-          closedAt: encounter.dischargedAt ?? null,
-          closedByUserId: null,
+          closedAt: (encounter as { closedAt?: Date | null }).closedAt ?? encounter.dischargedAt ?? null,
+          closedByUserId: (encounter as { closedByUserId?: string | null }).closedByUserId ?? null,
           idempotent: true,
           acknowledged: acknowledgement.acknowledged,
           acknowledgementVersion: acknowledgement.acknowledged
@@ -4026,7 +4052,7 @@ export class EncountersService {
           /** D4C.7F-compatible fields so already-deployed clients keep rendering the modal. */
           pending: safetyReadiness.pendingItems,
           pendingItemIds: safetyReadiness.pendingItemIds,
-          overrideAllowed: canAcknowledgeD4c7jClosure(actorRoleCodes),
+          overrideAllowed: canCloseEncounter(actorRoleCodes),
           nonOverridable: [],
           acknowledgementVersion: D4C7J_ACKNOWLEDGEMENT_VERSION,
         },
@@ -4036,21 +4062,36 @@ export class EncountersService {
 
     if (advisory.requiresAcknowledgement && acknowledgement.acknowledged) {
       const roles = actorRoleCodes && actorRoleCodes.length > 0 ? actorRoleCodes : [];
-      if (!canAcknowledgeD4c7jClosure(roles)) {
+      if (!canCloseEncounter(roles)) {
         throw new ForbiddenException({
           statusCode: HttpStatus.FORBIDDEN,
           message: "Vous n’êtes pas autorisé à clôturer cette rencontre.",
           code: D4C7J_CLOSE_CODES.UNAUTHORIZED,
         });
       }
+    } else if (!canCloseEncounter(actorRoleCodes)) {
+      // MEDUI.D4C.7K — close without advisory still requires CLOSE_ENCOUNTER.
+      throw new ForbiddenException({
+        statusCode: HttpStatus.FORBIDDEN,
+        message: "Vous n’êtes pas autorisé à clôturer cette rencontre.",
+        code: D4C7J_CLOSE_CODES.UNAUTHORIZED,
+      });
     }
 
-    const closePayload: Record<string, unknown> = {
-      status: "CLOSED",
-      workflowState: EncounterWorkflowState.CLOSED,
-      dischargedAt: new Date(),
-      roomLabel: null,
-    };
+    const closedAtNow = new Date();
+    /**
+     * MEDUI.D4C.7K — `dischargedAt` belongs to the discharge workflows. A generic close only
+     * writes it when this request carries an explicit discharge payload.
+     */
+    const hasExplicitDischargePayload =
+      !!data?.discharge || data?.dischargeStatus !== undefined || !!data?.dischargeStatus;
+    const writeDischargedAt = shouldSetDischargedAtOnEnterpriseClose({
+      encounterType: encounter.type,
+      hasExplicitDischargePayload,
+    });
+
+    /** Care-setting fields merged by the lifecycle authority (it owns status / closedAt / version). */
+    const closePayload: Record<string, unknown> = {};
     const mergedDischarge = mergeDischargeSummaryJson(encounter.dischargeSummaryJson, data?.discharge);
     if (mergedDischarge) {
       closePayload.dischargeSummaryJson = mergedDischarge;
@@ -4059,7 +4100,7 @@ export class EncountersService {
       closePayload.dischargeStatus = data.dischargeStatus;
     }
 
-    const closedAtIso = new Date().toISOString();
+    const closedAtIso = closedAtNow.toISOString();
     const dispositionCandidate = buildEncounterDispositionCandidate({
       encounterId: encounter.id,
       patientId: encounter.patientId,
@@ -4129,14 +4170,44 @@ export class EncountersService {
         source: "encounter_close",
         at: new Date().toISOString(),
       };
-      const um = await tx.encounter.updateMany({
-        where: { id, facilityId, version: encounter.version },
-        data: {
-          ...(closePayload as Prisma.EncounterUpdateInput),
-          version: { increment: 1 },
-        },
-      });
-      if (um.count === 0) throwEncounterConcurrentModification();
+      /**
+       * MEDUI.D4C.7K — the enterprise lifecycle authority performs the status transition and owns
+       * closedAt / closedByUserId / lifecycle version / the append-only timeline event. No legacy
+       * close path remains here.
+       */
+      const reopenCountBefore = Number((encounter as { reopenCount?: number }).reopenCount ?? 0) || 0;
+      try {
+        await this.enterpriseLifecycle.applyCloseTransition(tx, {
+          facilityId,
+          encounterId: encounter.id,
+          patientId: encounter.patientId,
+          previousStatus: encounter.status,
+          encounterType: encounter.type,
+          actorUserId: userId ?? null,
+          actorRoleCodes,
+          now: closedAtNow,
+          hasExplicitDischargePayload,
+          expectedVersion: encounter.version,
+          reopenCountBeforeClose: reopenCountBefore,
+          extraData: closePayload as Prisma.EncounterUpdateInput,
+          reason: acknowledgement.acknowledged ? acknowledgement.acknowledgementReason : null,
+          reasonCode: acknowledgement.acknowledged ? "D4C7J_ACKNOWLEDGEMENT" : null,
+          clientRequestId: acknowledgement.clientRequestId,
+          requestId: requestId ?? null,
+          platformPrincipal: platformContext?.platformPrincipal,
+          hasFacilityMembership: platformContext?.hasFacilityMembership,
+          metadata: {
+            permission: "CLOSE_ENCOUNTER",
+            closedAt: closedAtIso,
+            pendingClinicalItemsPreserved: true,
+          },
+        });
+      } catch (err: unknown) {
+        if (isEnterpriseLifecycleVersionConflict(err)) {
+          throwEncounterConcurrentModification();
+        }
+        throw err;
+      }
       /**
        * MEDUI.D4C.7J — exactly one close audit event carrying the advisory summary and the
        * provider's acknowledgement. Repeated requests take the idempotent branch above and
@@ -4163,6 +4234,17 @@ export class EncountersService {
       if (advisory.pendingTotal > 0 && acknowledgement.acknowledged) {
         closeMetadata.pendingItemsOverrideReason = acknowledgement.acknowledgementReason;
       }
+      /** MEDUI.D4C.7K — platform support / cross-facility context for the close audit trail. */
+      const closePlatformContext = buildD4c7kPlatformActionContext({
+        facilityId,
+        platformPrincipal: platformContext?.platformPrincipal,
+        hasFacilityMembership: platformContext?.hasFacilityMembership,
+        actorRoleCodes,
+      });
+      closeMetadata.dischargedAtWritten = writeDischargedAt;
+      closeMetadata.platformPrincipal = closePlatformContext.platformPrincipal;
+      closeMetadata.crossFacilitySupportAction = closePlatformContext.crossFacilitySupportAction;
+      closeMetadata.facilityContextId = closePlatformContext.facilityContextId;
 
       await this.audit.log(AuditAction.ENCOUNTER_CLOSE, "ENCOUNTER", {
         userId,

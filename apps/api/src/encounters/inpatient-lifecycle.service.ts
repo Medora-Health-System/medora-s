@@ -27,6 +27,7 @@ import {
 import { PrismaService } from "../prisma/prisma.service";
 import { AuditService } from "../common/services/audit.service";
 import { FacilityBedBoardService } from "../facilities/facility-bed-board.service";
+import { EnterpriseEncounterLifecycleService } from "./enterprise-encounter-lifecycle.service";
 
 const ENTITY = "InpatientLifecycle" as const;
 
@@ -35,7 +36,8 @@ export class InpatientLifecycleService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
-    private readonly bedBoardService: FacilityBedBoardService
+    private readonly bedBoardService: FacilityBedBoardService,
+    private readonly enterpriseLifecycle: EnterpriseEncounterLifecycleService
   ) {}
 
   meta() {
@@ -74,6 +76,7 @@ export class InpatientLifecycleService {
         nurseAssignedUserId: true,
         admissionSummaryJson: true,
         version: true,
+        reopenCount: true,
       },
     });
     if (!enc) throw new NotFoundException("Encounter not found");
@@ -373,17 +376,39 @@ export class InpatientLifecycleService {
     };
     const summary = mergeInpatientLifecycleMeta(enc.admissionSummaryJson, meta);
 
-    await this.prisma.encounter.update({
-      where: { id: enc.id },
-      data: {
-        status: EncounterStatus.CLOSED,
+    /**
+     * MEDUI.D4C.7K — inpatient discharge keeps discharge-specific metadata here, then routes the
+     * authoritative encounter close (status, closedAt, workflow, timeline) through
+     * EnterpriseEncounterLifecycleService. Bed release remains an inpatient adapter concern.
+     */
+    await this.prisma.$transaction(async (tx) => {
+      await this.enterpriseLifecycle.applyCloseTransition(tx, {
+        facilityId,
+        encounterId: enc.id,
+        patientId: enc.patientId,
+        previousStatus: enc.status,
+        encounterType: enc.type,
+        actorUserId,
+        actorRoleCodes: ["RN", "PROVIDER", "ADMIN"],
+        now: dischargedAt,
+        forceDischargedAt: true,
         dischargedAt,
-        disposition,
-        roomLabel: null,
-        admissionSummaryJson: summary as Prisma.InputJsonValue,
-        version: { increment: 1 },
-      },
-      select: { id: true },
+        clearRoomLabel: true,
+        careSetting: "INPATIENT",
+        reason: disposition,
+        reasonCode: "INPATIENT_DISCHARGE",
+        expectedVersion: enc.version,
+        reopenCountBeforeClose: Number((enc as { reopenCount?: number }).reopenCount ?? 0) || 0,
+        extraData: {
+          disposition,
+          admissionSummaryJson: summary as Prisma.InputJsonValue,
+        },
+        metadata: {
+          event: "INPATIENT_ENCOUNTER_DISCHARGED",
+          bedReleased: true,
+          source: "InpatientLifecycleService.dischargeEncounter",
+        },
+      });
     });
 
     await this.audit.log(AuditAction.ENCOUNTER_UPDATE, ENTITY, {
@@ -399,6 +424,7 @@ export class InpatientLifecycleService {
         event: "INPATIENT_ENCOUNTER_DISCHARGED",
         disposition,
         bedReleased: true,
+        enterpriseLifecycleClose: true,
       },
     });
 

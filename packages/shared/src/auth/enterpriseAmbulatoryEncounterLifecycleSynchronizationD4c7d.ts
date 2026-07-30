@@ -44,8 +44,10 @@ export const D4C7D_ENTERPRISE_ENCOUNTER_CLOSE_CHECK_PATH = (encounterId: string)
  * - Discharge summary save alone does NOT close.
  * - Provider documentation SIGNED / “finalized” does NOT close.
  * - Workflow FINALIZED does NOT close.
- * - Only `EncountersService.close` sets Encounter.status=CLOSED (+ dischargedAt,
- *   workflowState=CLOSED, roomLabel cleared) — atomic enterprise transition.
+ * - Only `EncountersService.close` closes, and it delegates the transition to the
+ *   MEDUI.D4C.7K lifecycle authority (status=CLOSED, closedAt, workflowState=CLOSED,
+ *   roomLabel cleared) — atomic enterprise transition. `dischargedAt` stays owned by the
+ *   discharge workflows and is written only for an explicit discharge.
  * - Ambulatory COMPLETE_VISIT (DISCHARGE_READY | FINALIZED) must invoke that close.
  * - Active operational queues / KPIs / header badge use Encounter.status.
  * - Follow-up OPEN is independent of encounter CLOSED.

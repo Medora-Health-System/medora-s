@@ -76,6 +76,13 @@ export const ENCOUNTER_CORE_SELECT = {
   billingClassificationAcknowledgedByUserId: true,
   billingClassificationAcknowledgmentMethod: true,
   billingClassificationTransitionJson: true,
+  closedAt: true,
+  closedByUserId: true,
+  reopenedAt: true,
+  reopenedByUserId: true,
+  reopenReason: true,
+  reopenReasonCode: true,
+  reopenCount: true,
 } satisfies Prisma.EncounterSelect;
 
 /**

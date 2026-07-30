@@ -49,6 +49,7 @@ export function classifyAuditUiCategory(action: AuditAction, entityType: string)
     action === AuditAction.ORDER_START ||
     action === AuditAction.ORDER_COMPLETE ||
     action === AuditAction.ENCOUNTER_CLOSE ||
+    action === AuditAction.ENCOUNTER_REOPEN ||
     action === AuditAction.ENCOUNTER_CREATE ||
     action === AuditAction.ENCOUNTER_UPDATE ||
     action === AuditAction.ENCOUNTER_BILLING_CLASSIFICATION_CHANGED ||

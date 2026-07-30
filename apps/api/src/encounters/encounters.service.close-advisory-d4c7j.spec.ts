@@ -10,6 +10,7 @@
 
 import { ForbiddenException } from "@nestjs/common";
 import { EncountersService } from "./encounters.service";
+import { EnterpriseEncounterLifecycleService } from "./enterprise-encounter-lifecycle.service";
 import { createMockBedBoardService } from "./encounters.service.test-bed-board.mock";
 import { createMockInternalPlacementService } from "./encounters.service.test-internal-placement.mock";
 import { createMockEnterpriseAssignmentService } from "./encounters.service.test-enterprise-assignment.mock";
@@ -87,6 +88,7 @@ function buildService(opts: {
   encounterExists?: boolean;
   updateManyCount?: number;
   providerNote?: string | null;
+  type?: string;
 }) {
   const status = opts.status ?? "OPEN";
   const providerSigned = opts.providerSigned !== false;
@@ -94,7 +96,7 @@ function buildService(opts: {
     id: encounterId,
     patientId: "pat-1",
     facilityId,
-    type: "OUTPATIENT",
+    type: opts.type ?? "OUTPATIENT",
     status,
     version: opts.version ?? 4,
     workflowState: "IN_TREATMENT",
@@ -123,6 +125,7 @@ function buildService(opts: {
   };
 
   const updateMany = jest.fn().mockResolvedValue({ count: opts.updateManyCount ?? 1 });
+  const lifecycleTransitionCreate = jest.fn().mockResolvedValue({ id: "lt-1" });
   const auditLog = jest.fn().mockResolvedValue(undefined);
   const followUpCount = jest.fn().mockResolvedValue(opts.openFollowUps ?? 0);
   const orderFindMany = jest.fn().mockResolvedValue(opts.orders ?? []);
@@ -143,6 +146,11 @@ function buildService(opts: {
     orderItem: { findFirst: jest.fn().mockResolvedValue(null) },
     encounterClinicalEvent: { create: jest.fn().mockResolvedValue({ id: "ev-1" }) },
     user: { findFirst: jest.fn().mockResolvedValue(null) },
+    /** MEDUI.D4C.7K — append-only lifecycle timeline written by the lifecycle authority. */
+    encounterLifecycleTransition: {
+      create: lifecycleTransitionCreate,
+      findFirst: jest.fn().mockResolvedValue(null),
+    },
   };
 
   const prisma = {
@@ -171,16 +179,36 @@ function buildService(opts: {
     $transaction: jest.fn().mockImplementation(async (cb: (tx: unknown) => Promise<unknown>) => cb(txStub)),
   };
 
+  /**
+   * MEDUI.D4C.7K — the real lifecycle authority is used here: `close()` has no legacy fallback,
+   * so the enterprise close transition and its timeline row are exercised end to end.
+   */
+  const lifecycle = new EnterpriseEncounterLifecycleService(prisma as never, {
+    log: auditLog,
+  } as never);
+
   const svc = new EncountersService(
     prisma as never,
     { log: auditLog } as never,
     {} as never,
     createMockBedBoardService() as never,
     createMockInternalPlacementService() as never,
-    createMockEnterpriseAssignmentService() as never
+    createMockEnterpriseAssignmentService() as never,
+    lifecycle
   );
 
-  return { svc, prisma, txStub, updateMany, auditLog, orderFindMany, followUpCount, encounter };
+  return {
+    svc,
+    prisma,
+    txStub,
+    updateMany,
+    auditLog,
+    orderFindMany,
+    followUpCount,
+    encounter,
+    lifecycle,
+    lifecycleTransitionCreate,
+  };
 }
 
 function ackBody(extra: Record<string, unknown> = {}) {
@@ -486,7 +514,7 @@ describe("MEDUI.D4C.7J — E. authorization", () => {
     expect(meta.supportPolicyOverride).toBe(true);
   });
 
-  for (const role of ["ADMIN", "PHARMACY", "BILLING", "FRONT_DESK", "PATIENT_CARE_TECH"]) {
+  for (const role of ["PHARMACY", "BILLING", "FRONT_DESK", "PATIENT_CARE_TECH"]) {
     it(`${role} may not acknowledge pending clinical items`, async () => {
       const { svc, updateMany } = buildService({ orders: [pendingMedicationOrders] });
       await expect(
@@ -495,6 +523,13 @@ describe("MEDUI.D4C.7J — E. authorization", () => {
       expect(updateMany).not.toHaveBeenCalled();
     });
   }
+
+  it("ADMIN may acknowledge pending clinical items (MEDUI.D4C.7K CLOSE_ENCOUNTER)", async () => {
+    const { svc, updateMany, auditLog } = buildService({ orders: [pendingMedicationOrders] });
+    await svc.close(facilityId, encounterId, ackBody(), userId, undefined, undefined, ["ADMIN"]);
+    expect(updateMany).toHaveBeenCalled();
+    expect(auditLog).toHaveBeenCalled();
+  });
 
   it("an encounter in another facility is not found (facility isolation)", async () => {
     const { svc, updateMany } = buildService({ orders: [], encounterExists: false });
@@ -532,7 +567,114 @@ describe("MEDUI.D4C.7J — F. concurrency", () => {
     const { svc, auditLog } = buildService({ orders: [], updateManyCount: 0 });
     await expect(
       svc.close(facilityId, encounterId, ackBody(), userId, undefined, undefined, ["PROVIDER"])
-    ).rejects.toMatchObject({ status: 409 });
+    ).rejects.toMatchObject({ status: 409, response: { code: "ENCOUNTER_CONCURRENT_MODIFICATION" } });
     expect(auditLog).not.toHaveBeenCalled();
+  });
+});
+
+describe("MEDUI.D4C.7K — G. required lifecycle authority", () => {
+  it("EncountersService requires the lifecycle service (no optional injection)", () => {
+    expect(EncountersService.length).toBe(7);
+  });
+
+  it("every close writes the append-only lifecycle transition row", async () => {
+    const { svc, lifecycleTransitionCreate } = buildService({ orders: [] });
+    await svc.close(facilityId, encounterId, {} as never, userId, undefined, undefined, ["PROVIDER"]);
+    expect(lifecycleTransitionCreate).toHaveBeenCalledTimes(1);
+    const row = (lifecycleTransitionCreate.mock.calls[0]![0] as any).data as Record<string, unknown>;
+    expect(row.transitionType).toBe("ENCOUNTER_CLOSED");
+    expect(row.previousState).toBe("OPEN");
+    expect(row.newState).toBe("CLOSED");
+  });
+
+  it("records ENCOUNTER_CLOSED_AGAIN after a prior reopen cycle", async () => {
+    const { svc, lifecycleTransitionCreate, encounter } = buildService({ orders: [] });
+    (encounter as unknown as { reopenCount: number }).reopenCount = 1;
+    await svc.close(facilityId, encounterId, {} as never, userId, undefined, undefined, ["PROVIDER"]);
+    const row = (lifecycleTransitionCreate.mock.calls[0]![0] as any).data as Record<string, unknown>;
+    expect(row.transitionType).toBe("ENCOUNTER_CLOSED_AGAIN");
+  });
+
+  it("no legacy close path executes when the lifecycle service is missing", async () => {
+    const { prisma, txStub, updateMany, auditLog } = buildService({ orders: [] });
+    const withoutLifecycle = new EncountersService(
+      prisma as never,
+      { log: auditLog } as never,
+      {} as never,
+      createMockBedBoardService() as never,
+      createMockInternalPlacementService() as never,
+      createMockEnterpriseAssignmentService() as never,
+      undefined as never
+    );
+    await expect(
+      withoutLifecycle.close(facilityId, encounterId, {} as never, userId, undefined, undefined, [
+        "PROVIDER",
+      ])
+    ).rejects.toBeTruthy();
+    expect(updateMany).not.toHaveBeenCalled();
+    expect(txStub.encounterLifecycleTransition.create).not.toHaveBeenCalled();
+    expect(auditLog).not.toHaveBeenCalled();
+  });
+
+  it("close records the platform support context in audit metadata", async () => {
+    const { svc, auditLog } = buildService({ orders: [] });
+    await svc.close(
+      facilityId,
+      encounterId,
+      {} as never,
+      userId,
+      undefined,
+      undefined,
+      ["MEDORA_SUPER_ADMIN"],
+      "req-1",
+      { platformPrincipal: true, hasFacilityMembership: false }
+    );
+    const meta = (auditLog.mock.calls[0]![2] as any).metadata as Record<string, unknown>;
+    expect(meta.platformPrincipal).toBe(true);
+    expect(meta.crossFacilitySupportAction).toBe(true);
+    expect(meta.facilityContextId).toBe(facilityId);
+  });
+
+  it("facility ADMIN close is not flagged as a platform action", async () => {
+    const { svc, auditLog } = buildService({ orders: [] });
+    await svc.close(facilityId, encounterId, {} as never, userId, undefined, undefined, ["ADMIN"]);
+    const meta = (auditLog.mock.calls[0]![2] as any).metadata as Record<string, unknown>;
+    expect(meta.platformPrincipal).toBe(false);
+    expect(meta.crossFacilitySupportAction).toBe(false);
+  });
+});
+
+describe("MEDUI.D4C.7K — H. dischargedAt ownership", () => {
+  it("generic ambulatory close does not write dischargedAt", async () => {
+    const { svc, updateMany } = buildService({ orders: [] });
+    await svc.close(facilityId, encounterId, {} as never, userId, undefined, undefined, ["PROVIDER"]);
+    const written = (updateMany.mock.calls[0]![0] as any).data as Record<string, unknown>;
+    expect(written.status).toBe("CLOSED");
+    expect(written.closedAt).toBeInstanceOf(Date);
+    expect(written.closedByUserId).toBe(userId);
+    expect(Object.keys(written)).not.toContain("dischargedAt");
+  });
+
+  it("generic emergency close does not write dischargedAt either", async () => {
+    const { svc, updateMany } = buildService({ orders: [], type: "EMERGENCY" });
+    await svc.close(facilityId, encounterId, ackBody(), userId, undefined, undefined, ["PROVIDER"]);
+    const written = (updateMany.mock.calls[0]![0] as any).data as Record<string, unknown>;
+    expect(Object.keys(written)).not.toContain("dischargedAt");
+  });
+
+  it("explicit discharge workflow writes dischargedAt", async () => {
+    const { svc, updateMany } = buildService({ orders: [] });
+    await svc.close(
+      facilityId,
+      encounterId,
+      { dischargeStatus: "DISCHARGED" } as never,
+      userId,
+      undefined,
+      undefined,
+      ["PROVIDER"]
+    );
+    const written = (updateMany.mock.calls[0]![0] as any).data as Record<string, unknown>;
+    expect(written.dischargedAt).toBeInstanceOf(Date);
+    expect(written.dischargeStatus).toBe("DISCHARGED");
   });
 });

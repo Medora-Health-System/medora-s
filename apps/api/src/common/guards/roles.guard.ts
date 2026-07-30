@@ -2,15 +2,19 @@ import { Injectable, CanActivate, ExecutionContext, ForbiddenException, BadReque
 import { Reflector } from "@nestjs/core";
 import { PrismaService } from "../../prisma/prisma.service";
 import { MsppRoleCode, RoleCode } from "@prisma/client";
+import { resolvePlatformPrincipalAccess } from "../../auth/platform-principal";
 import {
   BREAK_GLASS_PATIENT_PARAM_KEY,
   MSPP_ROLES_KEY,
+  PLATFORM_PRINCIPAL_FACILITY_CONTEXT_KEY,
 } from "./roles.decorators";
 
 export {
   BREAK_GLASS_PATIENT_PARAM_KEY,
   AllowBreakGlassForPatientParam,
+  AllowPlatformPrincipalWithFacilityContext,
   MSPP_ROLES_KEY,
+  PLATFORM_PRINCIPAL_FACILITY_CONTEXT_KEY,
   RequireRoles,
   RequireClinicalOrMspp,
 } from "./roles.decorators";
@@ -77,7 +81,29 @@ export class RolesGuard implements CanActivate {
       request.facilityId = facilityId;
       request.user = request.user || {};
       request.user.facilityId = facilityId;
+      request.platformPrincipal = membershipSatisfying.role.code === RoleCode.MEDORA_SUPER_ADMIN;
+      request.platformFacilityMembership = true;
       request.breakGlassSessionId = undefined;
+      return true;
+    }
+
+    /**
+     * MEDUI.D4C.7K — authoritative Medora platform administration.
+     *
+     * Only routes that opt in (`AllowPlatformPrincipalWithFacilityContext`) *and* declare
+     * `RoleCode.MEDORA_SUPER_ADMIN` may be reached without a facility `UserRole`, and only inside an
+     * explicit, active facility context. Authentication and tenant isolation are unchanged: handlers
+     * still resolve records scoped to `facilityId`.
+     */
+    const platformPrincipalRouteAllowed =
+      (this.reflector.get<boolean>(PLATFORM_PRINCIPAL_FACILITY_CONTEXT_KEY, handler) ??
+        this.reflector.get<boolean>(PLATFORM_PRINCIPAL_FACILITY_CONTEXT_KEY, context.getClass())) ===
+      true;
+    if (
+      platformPrincipalRouteAllowed &&
+      requiredRoles.includes(RoleCode.MEDORA_SUPER_ADMIN) &&
+      (await this.tryPlatformPrincipal(request, facilityId, userId))
+    ) {
       return true;
     }
 
@@ -135,6 +161,55 @@ export class RolesGuard implements CanActivate {
     request.user.facilityId = facilityId;
     request.breakGlassSessionId = undefined;
 
+    return true;
+  }
+
+  /**
+   * Platform-principal access for lifecycle routes (close / reopen / lifecycle timeline).
+   * Returns false when the caller is not the authoritative platform principal so the normal
+   * facility denial applies.
+   */
+  private async tryPlatformPrincipal(
+    request: {
+      user?: Record<string, unknown>;
+      userRole?: string;
+      facilityId?: string;
+      platformPrincipal?: boolean;
+      platformFacilityMembership?: boolean;
+      breakGlassSessionId?: string;
+    },
+    facilityId: string,
+    userId: string
+  ): Promise<boolean> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { email: true, isActive: true },
+    });
+    const decision = resolvePlatformPrincipalAccess({
+      email: user?.email,
+      isActive: user?.isActive,
+      facilityId,
+    });
+    if (!decision.granted) {
+      return false;
+    }
+
+    const facility = await this.prisma.facility.findFirst({
+      where: { id: facilityId, isActive: true },
+      select: { id: true },
+    });
+    if (!facility) {
+      throw new ForbiddenException("Access denied for this facility.");
+    }
+
+    request.userRole = RoleCode.MEDORA_SUPER_ADMIN;
+    request.facilityId = facilityId;
+    request.user = request.user || {};
+    request.user.facilityId = facilityId;
+    request.user.canCreateFacilities = true;
+    request.platformPrincipal = true;
+    request.platformFacilityMembership = false;
+    request.breakGlassSessionId = undefined;
     return true;
   }
 

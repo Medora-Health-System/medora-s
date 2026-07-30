@@ -27,12 +27,29 @@ describe("InpatientLifecycleService D4A.2.5", () => {
       encounter: {
         findFirst: jest.fn().mockResolvedValue(encounter),
         update: jest.fn().mockResolvedValue({ id: "enc-1" }),
+        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+      },
+      encounterLifecycleTransition: {
+        create: jest.fn().mockResolvedValue({ id: "lt-1" }),
+        findFirst: jest.fn().mockResolvedValue(null),
       },
       order: { count: jest.fn().mockResolvedValue(overrides?.orderCount ?? 0) },
       medicationAdministration: {
         count: jest.fn().mockResolvedValue(overrides?.marCount ?? 0),
       },
       encounterNote: { count: jest.fn().mockResolvedValue(overrides?.noteCount ?? 0) },
+      $transaction: jest.fn().mockImplementation(async (cb: (tx: unknown) => Promise<unknown>) =>
+        cb({
+          encounter: {
+            updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+            findFirst: jest.fn().mockResolvedValue(encounter),
+          },
+          encounterLifecycleTransition: {
+            create: jest.fn().mockResolvedValue({ id: "lt-1" }),
+            findFirst: jest.fn().mockResolvedValue(null),
+          },
+        })
+      ),
     };
     const audit = { log: jest.fn().mockResolvedValue(undefined) };
     const bedBoardService = {
@@ -42,12 +59,21 @@ describe("InpatientLifecycleService D4A.2.5", () => {
         occupantEncounterId: null,
       }),
     };
+    const enterpriseLifecycle = {
+      applyCloseTransition: jest.fn().mockResolvedValue({
+        closedAt: new Date(),
+        transitionType: "ENCOUNTER_CLOSED",
+        sequence: 1,
+      }),
+      recordLifecycleTransition: jest.fn().mockResolvedValue(1),
+    };
     const svc = new InpatientLifecycleService(
       prisma as never,
       audit as never,
-      bedBoardService as never
+      bedBoardService as never,
+      enterpriseLifecycle as never
     );
-    return { svc, prisma, audit, bedBoardService };
+    return { svc, prisma, audit, bedBoardService, enterpriseLifecycle };
   }
 
   it("edit admission details retains prior values in lifecycle audit history", async () => {
@@ -85,16 +111,18 @@ describe("InpatientLifecycleService D4A.2.5", () => {
     expect(data.admissionSummaryJson.assignedBedKey).toBe("MS:3");
   });
 
-  it("discharge closes encounter and clears roomLabel without deleting chart", async () => {
-    const { svc, prisma } = build();
+  it("discharge closes encounter via enterprise lifecycle authority without deleting chart", async () => {
+    const { svc, prisma, enterpriseLifecycle } = build();
     const res = await svc.dischargeEncounter("fac-1", "enc-1", "rn-1", {
       disposition: "HOME",
     });
     expect(res.status).toBe("CLOSED");
-    const data = prisma.encounter.update.mock.calls[0][0].data;
-    expect(data.status).toBe("CLOSED");
-    expect(data.roomLabel).toBeNull();
-    expect(data.admissionSummaryJson.inpatientLifecycleV1.discharge.disposition).toBe("HOME");
+    expect(enterpriseLifecycle.applyCloseTransition).toHaveBeenCalled();
+    expect(prisma.$transaction).toHaveBeenCalled();
+    const closeArg = enterpriseLifecycle.applyCloseTransition.mock.calls[0][1];
+    expect(closeArg.forceDischargedAt).toBe(true);
+    expect(closeArg.clearRoomLabel).toBe(true);
+    expect(closeArg.extraData.disposition).toBe("HOME");
   });
 
   it("cancel admission retains record and rejects substantial clinical activity", async () => {

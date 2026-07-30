@@ -13,7 +13,11 @@ import {
   ForbiddenException,
 } from "@nestjs/common";
 import { AuthGuard } from "@nestjs/passport";
-import { RolesGuard, RequireRoles } from "../common/guards/roles.guard";
+import {
+  RolesGuard,
+  RequireRoles,
+  AllowPlatformPrincipalWithFacilityContext,
+} from "../common/guards/roles.guard";
 import { EncountersService } from "./encounters.service";
 import { EncounterChartExportService } from "./chart-export.service";
 import { UnifiedEncounterTimelineService } from "./unified-encounter-timeline.service";
@@ -26,6 +30,7 @@ import {
   encounterAdmissionDecisionDtoSchema,
   encounterCloseDtoSchema,
   encounterCloseCheckDtoSchema,
+  encounterReopenDtoSchema,
   encounterCreateDtoSchema,
   encounterIntakeUpsertDtoSchema,
   encounterOperationalUpdateDtoSchema,
@@ -73,21 +78,87 @@ import {
 import type { Response } from "express";
 import { renderEncounterChartExportHtml } from "./chart-export-html.util";
 import { AdmissionCommandCenterService } from "./admission-command-center.service";
+import { EnterpriseEncounterLifecycleService } from "./enterprise-encounter-lifecycle.service";
 
 /**
- * MEDUI.D4C.7J — actor roles for server-side closure authorization. Collected from every
- * shape the JWT/guard layer may expose so a credentialed provider is never misread as
- * unauthorized (a role alias miss previously denied legitimate closures).
+ * MEDUI.D4C.7J / D4C.7K — actor roles for server-side closure/reopen authorization.
+ * Prefer complete facility role set from JWT (`facilityRoles`) over the single RolesGuard stamp.
  */
 function resolveActorRoleCodes(req: {
   userRole?: unknown;
-  user?: { roleCodes?: unknown; roles?: unknown };
+  user?: {
+    roleCodes?: unknown;
+    roles?: unknown;
+    facilityRoles?: unknown;
+    canCreateFacilities?: unknown;
+  };
+  facilityId?: unknown;
+  headers?: Record<string, unknown>;
 }): string[] {
-  return [
-    typeof req.userRole === "string" ? req.userRole : null,
-    ...(Array.isArray(req.user?.roleCodes) ? (req.user?.roleCodes as unknown[]) : []),
-    ...(Array.isArray(req.user?.roles) ? (req.user?.roles as unknown[]) : []),
-  ].filter((r): r is string => typeof r === "string" && r.trim().length > 0);
+  const out: string[] = [];
+  const seen = new Set<string>();
+  const push = (raw: unknown) => {
+    const r = typeof raw === "string" ? raw.trim().toUpperCase() : "";
+    if (!r || seen.has(r)) return;
+    seen.add(r);
+    out.push(r);
+  };
+
+  push(req.userRole);
+  if (Array.isArray(req.user?.roleCodes)) {
+    for (const r of req.user!.roleCodes as unknown[]) push(r);
+  }
+  if (Array.isArray(req.user?.roles)) {
+    for (const r of req.user!.roles as unknown[]) {
+      if (typeof r === "string") push(r);
+      else if (r && typeof r === "object" && typeof (r as { code?: unknown }).code === "string") {
+        push((r as { code: string }).code);
+      }
+    }
+  }
+
+  const facilityIdRaw =
+    (typeof req.facilityId === "string" && req.facilityId) ||
+    (typeof req.user && typeof (req.user as { facilityId?: unknown }).facilityId === "string"
+      ? (req.user as { facilityId: string }).facilityId
+      : null) ||
+    req.headers?.["x-facility-id"];
+  const facilityId =
+    typeof facilityIdRaw === "string"
+      ? facilityIdRaw
+      : Array.isArray(facilityIdRaw)
+        ? String(facilityIdRaw[0] ?? "")
+        : "";
+
+  if (Array.isArray(req.user?.facilityRoles)) {
+    for (const fr of req.user!.facilityRoles as unknown[]) {
+      if (!fr || typeof fr !== "object") continue;
+      const row = fr as { facilityId?: unknown; role?: unknown; isActive?: unknown };
+      if (row.isActive === false) continue;
+      if (facilityId && typeof row.facilityId === "string" && row.facilityId !== facilityId) continue;
+      push(row.role);
+    }
+  }
+
+  if (req.user?.canCreateFacilities === true) {
+    push("MEDORA_SUPER_ADMIN");
+  }
+
+  return out;
+}
+
+/**
+ * MEDUI.D4C.7K — platform support context stamped by `RolesGuard`.
+ * Recorded in lifecycle audit / timeline metadata; never used to widen authorization.
+ */
+function resolvePlatformActionContext(req: {
+  platformPrincipal?: unknown;
+  platformFacilityMembership?: unknown;
+}): { platformPrincipal: boolean; hasFacilityMembership: boolean } {
+  return {
+    platformPrincipal: req.platformPrincipal === true,
+    hasFacilityMembership: req.platformFacilityMembership !== false,
+  };
 }
 
 @Controller()
@@ -110,7 +181,8 @@ export class EncountersController {
     private readonly encounterNotesService: EncounterNotesService,
     private readonly clinicalDocumentationService: ClinicalDocumentationService,
     private readonly chartCertificationB1Service: ChartCertificationB1Service,
-    private readonly admissionCommandCenterService: AdmissionCommandCenterService
+    private readonly admissionCommandCenterService: AdmissionCommandCenterService,
+    private readonly enterpriseLifecycle: EnterpriseEncounterLifecycleService
   ) {}
 
   /** MEDNOTE.1 — list append-only encounter notes (+ optional legacy erNotesV1 read-only). */
@@ -1375,7 +1447,8 @@ export class EncountersController {
   }
 
   @Post("encounters/:id/close-check")
-  @RequireRoles(RoleCode.RN, RoleCode.PROVIDER, RoleCode.ADMIN)
+  @RequireRoles(RoleCode.RN, RoleCode.PROVIDER, RoleCode.ADMIN, RoleCode.MEDORA_SUPER_ADMIN)
+  @AllowPlatformPrincipalWithFacilityContext()
   async closeDocumentationCheck(@Param("id") id: string, @Body() body: unknown, @Req() req: any) {
     const facilityId = req.user?.facilityId || req.headers["x-facility-id"];
     if (!facilityId) {
@@ -1402,7 +1475,8 @@ export class EncountersController {
   }
 
   @Post("encounters/:id/close")
-  @RequireRoles(RoleCode.RN, RoleCode.PROVIDER, RoleCode.ADMIN)
+  @RequireRoles(RoleCode.RN, RoleCode.PROVIDER, RoleCode.ADMIN, RoleCode.MEDORA_SUPER_ADMIN)
+  @AllowPlatformPrincipalWithFacilityContext()
   async close(@Param("id") id: string, @Body() body: unknown, @Req() req: any) {
     const facilityId = req.user?.facilityId || req.headers["x-facility-id"];
     if (!facilityId) {
@@ -1422,7 +1496,57 @@ export class EncountersController {
       req.ip,
       req.headers["user-agent"],
       resolveActorRoleCodes(req),
-      typeof req.requestId === "string" ? req.requestId : null
+      typeof req.requestId === "string" ? req.requestId : null,
+      resolvePlatformActionContext(req)
+    );
+  }
+
+  /** MEDUI.D4C.7K — administrative reopen (Facility ADMIN / platform admin only). */
+  @Post("encounters/:id/reopen")
+  @RequireRoles(RoleCode.ADMIN, RoleCode.MEDORA_SUPER_ADMIN)
+  @AllowPlatformPrincipalWithFacilityContext()
+  async reopen(@Param("id") id: string, @Body() body: unknown, @Req() req: any) {
+    const facilityId = req.user?.facilityId || req.headers["x-facility-id"];
+    if (!facilityId) {
+      throw new BadRequestException("Facility ID required");
+    }
+    const parsed = encounterReopenDtoSchema.safeParse(body ?? {});
+    if (!parsed.success) {
+      throw new BadRequestException("Invalid payload", { cause: parsed.error });
+    }
+    return this.enterpriseLifecycle.reopenEncounter(
+      facilityId,
+      id,
+      parsed.data,
+      req.user?.userId,
+      resolveActorRoleCodes(req),
+      {
+        ip: req.ip,
+        userAgent: req.headers["user-agent"],
+        requestId: typeof req.requestId === "string" ? req.requestId : null,
+        ...resolvePlatformActionContext(req),
+      }
+    );
+  }
+
+  /** MEDUI.D4C.7K — append-only encounter lifecycle timeline. */
+  @Get("encounters/:id/lifecycle-timeline")
+  @RequireRoles(RoleCode.RN, RoleCode.PROVIDER, RoleCode.ADMIN, RoleCode.MEDORA_SUPER_ADMIN)
+  @AllowPlatformPrincipalWithFacilityContext()
+  async lifecycleTimeline(
+    @Param("id") id: string,
+    @Query("limit") limit: string | undefined,
+    @Req() req: any
+  ) {
+    const facilityId = req.user?.facilityId || req.headers["x-facility-id"];
+    if (!facilityId) {
+      throw new BadRequestException("Facility ID required");
+    }
+    const limitNum = limit != null && limit !== "" ? Number(limit) : undefined;
+    return this.enterpriseLifecycle.listLifecycleTimeline(
+      facilityId,
+      id,
+      Number.isFinite(limitNum) ? limitNum : undefined
     );
   }
 }

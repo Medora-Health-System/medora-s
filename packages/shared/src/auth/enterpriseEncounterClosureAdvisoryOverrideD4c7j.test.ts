@@ -126,7 +126,8 @@ describe("enterpriseEncounterClosureAdvisoryOverrideD4c7j (MEDUI.D4C.7J)", () =>
   });
 
   it("role matrix — non-treating roles may not acknowledge", () => {
-    expect(canAcknowledgeD4c7jClosure(["ADMIN"])).toBe(false);
+    /** MEDUI.D4C.7K — Facility ADMIN may acknowledge advisory close. */
+    expect(canAcknowledgeD4c7jClosure(["ADMIN"])).toBe(true);
     expect(canAcknowledgeD4c7jClosure(["PHARMACY"])).toBe(false);
     expect(canAcknowledgeD4c7jClosure(["BILLING"])).toBe(false);
     expect(canAcknowledgeD4c7jClosure(["FRONT_DESK"])).toBe(false);

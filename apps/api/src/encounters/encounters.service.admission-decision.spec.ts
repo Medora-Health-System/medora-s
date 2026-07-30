@@ -8,6 +8,7 @@ import { EncountersService } from "./encounters.service";
 import { createMockBedBoardService } from "./encounters.service.test-bed-board.mock";
 import { createMockInternalPlacementService } from "./encounters.service.test-internal-placement.mock";
 import { createMockEnterpriseAssignmentService } from "./encounters.service.test-enterprise-assignment.mock";
+import { createMockEnterpriseLifecycleService } from "./encounters.service.test-enterprise-lifecycle.mock";
 
 const facilityId = "fac-1";
 const encounterId = "enc-ed-1";
@@ -128,7 +129,8 @@ function buildService(opts: {
     {} as never,
     createMockBedBoardService() as never,
     placement as never,
-    createMockEnterpriseAssignmentService() as never
+    createMockEnterpriseAssignmentService() as never,
+    createMockEnterpriseLifecycleService() as never
   );
   return { svc, prisma, audit, placement, updateMany, diagnosisFindMany };
 }

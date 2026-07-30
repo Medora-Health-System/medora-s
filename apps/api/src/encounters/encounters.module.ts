@@ -55,6 +55,7 @@ import { ClinicalRulesController } from "./enterprise-workflow/clinical-rules.co
 import { ClinicalRulesEngine } from "./enterprise-workflow/clinical-rules.engine";
 import { ClinicalRulesActionAdapter } from "./enterprise-workflow/clinical-rules-action.adapter";
 import { ClinicalRulesOrchestrationService } from "./enterprise-workflow/clinical-rules-orchestration.service";
+import { EnterpriseEncounterLifecycleService } from "./enterprise-encounter-lifecycle.service";
 import { EnterpriseAssignmentService } from "./enterprise-assignment.service";
 
 @Module({
@@ -75,6 +76,7 @@ import { EnterpriseAssignmentService } from "./enterprise-assignment.service";
   ],
   providers: [
     EnterpriseAssignmentService,
+    EnterpriseEncounterLifecycleService,
     EncountersService,
     InpatientOperationsService,
     ObservationOperationsService,
@@ -117,6 +119,7 @@ import { EnterpriseAssignmentService } from "./enterprise-assignment.service";
   ],
   exports: [
     EnterpriseAssignmentService,
+    EnterpriseEncounterLifecycleService,
     EncountersService,
     EncounterChartExportService,
     UnifiedEncounterTimelineService,

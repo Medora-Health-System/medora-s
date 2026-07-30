@@ -10482,6 +10482,28 @@ export default {
       retry: "Retry",
     },
   },
+
+  enterpriseEncounterLifecycleD4c7k: {
+    reopen: {
+      action: "Reopen Encounter",
+      dialogBody:
+        "Reopening is an administrative correction. It does not erase the original closure and does not automatically unlock documentation, billing, or prescriptions.",
+      preservesCloseHistory: "The original closure remains in history.",
+      signedNotesRemain: "Signed notes remain signed.",
+      billingUnchanged: "Billing is not automatically reopened.",
+      prescriptionsUnchanged: "Prescriptions do not become editable.",
+      roomBedNotRestored: "The previous room or bed is not restored.",
+      reasonLabel: "Reopen reason (required)",
+      reasonPlaceholder: "Explain why this encounter must be reopened",
+      reasonRequired: "A reopen reason of at least 3 characters is required.",
+      cancel: "Cancel",
+      confirm: "Confirm reopen",
+      submitting: "Reopening…",
+      failed: "Unable to reopen the encounter.",
+      success: "Encounter reopened. Room, billing, prescriptions, and signed notes were not changed.",
+    },
+  },
+
   clinicCareD4c7f: {
     closure: {
       pendingTitle: "Clinical items are still pending",

@@ -18,6 +18,7 @@ import { EncountersService } from "./encounters.service";
 import { EnterpriseAssignmentService } from "./enterprise-assignment.service";
 import { createMockBedBoardService } from "./encounters.service.test-bed-board.mock";
 import { createMockInternalPlacementService } from "./encounters.service.test-internal-placement.mock";
+import { createMockEnterpriseLifecycleService } from "./encounters.service.test-enterprise-lifecycle.mock";
 
 type AnyMock = jest.Mock;
 
@@ -76,7 +77,8 @@ function makeService(prisma: unknown, audit: unknown) {
     trackboard as never,
     createMockBedBoardService() as never,
     createMockInternalPlacementService() as never,
-    enterpriseAssignment
+    enterpriseAssignment,
+    createMockEnterpriseLifecycleService() as never
   );
 }
 

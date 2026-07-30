@@ -10485,6 +10485,28 @@ export default {
       retry: "Réessayer",
     },
   },
+
+  enterpriseEncounterLifecycleD4c7k: {
+    reopen: {
+      action: "Rouvrir la rencontre",
+      dialogBody:
+        "La réouverture est une correction administrative. Elle ne supprime pas la clôture d’origine et ne déverrouille pas automatiquement la documentation, la facturation ou les prescriptions.",
+      preservesCloseHistory: "La clôture d’origine demeure dans l’historique.",
+      signedNotesRemain: "Les notes signées restent signées.",
+      billingUnchanged: "La facturation n’est pas rouverte automatiquement.",
+      prescriptionsUnchanged: "Les prescriptions ne deviennent pas modifiables.",
+      roomBedNotRestored: "La chambre ou le lit précédent n’est pas restauré.",
+      reasonLabel: "Motif de réouverture (obligatoire)",
+      reasonPlaceholder: "Expliquer pourquoi cette rencontre doit être rouverte",
+      reasonRequired: "Un motif de réouverture d’au moins 3 caractères est obligatoire.",
+      cancel: "Annuler",
+      confirm: "Confirmer la réouverture",
+      submitting: "Réouverture en cours…",
+      failed: "Impossible de rouvrir la rencontre.",
+      success: "Rencontre rouverte. Chambre, facturation, prescriptions et notes signées inchangées.",
+    },
+  },
+
   clinicCareD4c7f: {
     closure: {
       pendingTitle: "Des éléments cliniques sont encore en attente",

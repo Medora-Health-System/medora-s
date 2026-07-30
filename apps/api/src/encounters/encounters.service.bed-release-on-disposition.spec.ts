@@ -11,6 +11,7 @@ import { EncountersService } from "./encounters.service";
 import { createMockBedBoardService } from "./encounters.service.test-bed-board.mock";
 import { createMockInternalPlacementService } from "./encounters.service.test-internal-placement.mock";
 import { createMockEnterpriseAssignmentService } from "./encounters.service.test-enterprise-assignment.mock";
+import { createMockEnterpriseLifecycleService } from "./encounters.service.test-enterprise-lifecycle.mock";
 
 const facilityId = "fac-a";
 const encounterId = "enc-1";
@@ -98,7 +99,8 @@ function createService(prisma: unknown, auditLog: jest.Mock, bedBoardService?: u
     {} as never,
     (bedBoardService ?? createMockBedBoardService()) as never,
     createMockInternalPlacementService() as never,
-    createMockEnterpriseAssignmentService() as never
+    createMockEnterpriseAssignmentService() as never,
+    createMockEnterpriseLifecycleService() as never
   );
 }
 

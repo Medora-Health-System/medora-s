@@ -163,6 +163,11 @@ export function auditHighlightTags(input: {
     }
   }
 
+  if (action === "ENCOUNTER_REOPEN") {
+    tags.add("encounter_reopen");
+    if (meta.supportPolicyOverride === true) tags.add("support_override");
+  }
+
   if (action === "ORDER_CREATE") tags.add("order_create");
 
   if (meta.procedureCapture === true) tags.add("procedure_capture");

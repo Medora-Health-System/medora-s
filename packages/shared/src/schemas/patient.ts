@@ -520,6 +520,24 @@ export const encounterCloseDtoSchema = z.object({
 export type EncounterCloseDto = z.infer<typeof encounterCloseDtoSchema>;
 
 /**
+ * MEDUI.D4C.7K — POST /encounters/:id/reopen
+ * Administrative correction: restores OPEN; never erases the original close event.
+ */
+export const encounterReopenDtoSchema = z.object({
+  reason: z
+    .string()
+    .trim()
+    .min(3, "Le motif de réouverture doit comporter au moins 3 caractères.")
+    .max(500, "Le motif de réouverture est limité à 500 caractères."),
+  reasonCode: z.string().trim().max(64).optional(),
+  expectedVersion: z.coerce.number().int().nonnegative().optional(),
+  clientRequestId: z.string().trim().max(64).optional(),
+  facilityId: z.string().trim().uuid().optional(),
+});
+
+export type EncounterReopenDto = z.infer<typeof encounterReopenDtoSchema>;
+
+/**
  * POST /encounters/:id/admission/cancel — clinical cancellation of a saved admission decision
  * (clears `admissionSummaryJson` + `admittedAt`). Reason is mandatory and persisted in the audit log.
  * No record is deleted; encounter status / type are not changed by this endpoint.

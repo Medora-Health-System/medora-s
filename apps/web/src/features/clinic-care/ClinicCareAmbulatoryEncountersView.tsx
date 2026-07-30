@@ -23,6 +23,7 @@ import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import { useI18n } from "@/lib/i18n";
 import { tEncounterStatus, tEncounterType } from "@/lib/encounterChromeI18n";
 import { MEDORA_CARD_SHELL } from "@/components/medora-card/medoraCardTokens";
+import { EnterpriseReopenEncounterAction } from "@/components/encounters/EnterpriseReopenEncounterAction";
 import { CLINIC_CARE_SHELL } from "./clinicCareTokens";
 
 type EncounterRow = {
@@ -31,6 +32,7 @@ type EncounterRow = {
   type?: string;
   encounterType?: string;
   status?: string;
+  version?: number;
   createdAt?: string;
   workflowState?: string | null;
   visitOrigin?: string | null;
@@ -297,9 +299,23 @@ export function ClinicCareAmbulatoryEncountersView() {
                     <td style={td}>{row.status ? tEncounterStatus(t, row.status) : t("common.dash")}</td>
                     <td style={td}>{row.roomLabel || t("common.dash")}</td>
                     <td style={td}>
-                      <Link href={href} style={compactBtn}>
-                        {t("clinicCareD4c4.openChart")}
-                      </Link>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <Link href={href} style={compactBtn}>
+                          {t("clinicCareD4c4.openChart")}
+                        </Link>
+                        <EnterpriseReopenEncounterAction
+                          facilityId={facilityId}
+                          encounterId={row.id}
+                          encounterStatus={row.status}
+                          roleCodes={roles}
+                          expectedVersion={
+                            typeof row.version === "number" ? row.version : undefined
+                          }
+                          onSuccess={() => {
+                            void load();
+                          }}
+                        />
+                      </div>
                     </td>
                   </tr>
                 );
