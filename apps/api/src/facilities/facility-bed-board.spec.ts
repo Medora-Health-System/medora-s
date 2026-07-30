@@ -10,6 +10,7 @@ import { FacilityBedBoardService } from "./facility-bed-board.service";
 import { EncountersService } from "../encounters/encounters.service";
 import { createMockInternalPlacementService } from "../encounters/encounters.service.test-internal-placement.mock";
 import { createMockEnterpriseAssignmentService } from "../encounters/encounters.service.test-enterprise-assignment.mock";
+import { createMockEnterpriseLifecycleService } from "../encounters/encounters.service.test-enterprise-lifecycle.mock";
 
 const facilityId = "fac-1";
 
@@ -252,7 +253,8 @@ function buildUpdateRoomWithBedBoardMocks(input: {
     {} as never,
     bedBoardService as never,
     createMockInternalPlacementService() as never,
-    createMockEnterpriseAssignmentService() as never
+    createMockEnterpriseAssignmentService() as never,
+    createMockEnterpriseLifecycleService() as never
   );
   return { service, encounterUpdateMany, auditLog };
 }
@@ -363,7 +365,8 @@ describe("EncountersService.updateRoom — bed status enforcement (K.10B.10C)", 
       {} as never,
       bedBoardService as never,
       createMockInternalPlacementService() as never,
-      createMockEnterpriseAssignmentService() as never
+      createMockEnterpriseAssignmentService() as never,
+      createMockEnterpriseLifecycleService() as never
     );
 
     await expect(

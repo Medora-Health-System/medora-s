@@ -3,6 +3,7 @@ import { EncountersService } from "./encounters.service";
 import { createMockBedBoardService } from "./encounters.service.test-bed-board.mock";
 import { createMockInternalPlacementService } from "./encounters.service.test-internal-placement.mock";
 import { createMockEnterpriseAssignmentService } from "./encounters.service.test-enterprise-assignment.mock";
+import { createMockEnterpriseLifecycleService } from "./encounters.service.test-enterprise-lifecycle.mock";
 
 function buildUpdateRoomMocks(encounterRow: Record<string, unknown>, openRows: unknown[] = []) {
   const encounterUpdateMany = jest.fn().mockResolvedValue({ count: 1 });
@@ -31,7 +32,8 @@ function buildUpdateRoomMocks(encounterRow: Record<string, unknown>, openRows: u
     {} as never,
     createMockBedBoardService() as never,
     createMockInternalPlacementService() as never,
-    createMockEnterpriseAssignmentService() as never
+    createMockEnterpriseAssignmentService() as never,
+    createMockEnterpriseLifecycleService() as never
   );
   return { service, auditLog, encounterUpdateMany, updatedRow };
 }
@@ -139,7 +141,8 @@ describe("EncountersService.updateRoom (K.10B.10)", () => {
     {} as never,
     createMockBedBoardService() as never,
     createMockInternalPlacementService() as never,
-    createMockEnterpriseAssignmentService() as never
+    createMockEnterpriseAssignmentService() as never,
+    createMockEnterpriseLifecycleService() as never
   );
 
     const res = (await service.updateRoom(facilityId, "enc-1", {
@@ -174,7 +177,8 @@ describe("EncountersService.updateRoom (K.10B.10)", () => {
     {} as never,
     createMockBedBoardService() as never,
     createMockInternalPlacementService() as never,
-    createMockEnterpriseAssignmentService() as never
+    createMockEnterpriseAssignmentService() as never,
+    createMockEnterpriseLifecycleService() as never
   );
 
     const res = (await service.updateRoom(facilityId, "enc-1", {

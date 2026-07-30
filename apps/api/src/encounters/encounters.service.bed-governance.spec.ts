@@ -5,6 +5,7 @@ import { EncountersService } from "./encounters.service";
 import { createMockBedBoardService } from "./encounters.service.test-bed-board.mock";
 import { createMockInternalPlacementService } from "./encounters.service.test-internal-placement.mock";
 import { createMockEnterpriseAssignmentService } from "./encounters.service.test-enterprise-assignment.mock";
+import { createMockEnterpriseLifecycleService } from "./encounters.service.test-enterprise-lifecycle.mock";
 
 const facilityId = "fac-1";
 const patientId = "pat-1";
@@ -42,7 +43,8 @@ function buildUpdateRoomMocks(
     {} as never,
     createMockBedBoardService() as never,
     createMockInternalPlacementService() as never,
-    createMockEnterpriseAssignmentService() as never
+    createMockEnterpriseAssignmentService() as never,
+    createMockEnterpriseLifecycleService() as never
   );
   return { service, auditLog, encounterUpdateMany, encounterFindFirst, updatedRow };
 }
@@ -364,7 +366,8 @@ describe("EncountersService.updateRoom — bed governance (K.10B.10B M2)", () =>
     {} as never,
     createMockBedBoardService() as never,
     createMockInternalPlacementService() as never,
-    createMockEnterpriseAssignmentService() as never
+    createMockEnterpriseAssignmentService() as never,
+    createMockEnterpriseLifecycleService() as never
   );
 
     await service.updateRoom(facilityId, "enc-new", {

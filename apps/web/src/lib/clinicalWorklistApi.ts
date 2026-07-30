@@ -71,6 +71,53 @@ export async function closeAmbulatoryEncounterViaEnterprise(
   });
 }
 
+/**
+ * MEDUI.D4C.7K — enterprise reopen. Administrator-only; never unlocks signed docs / billing / rooms.
+ */
+export async function reopenEncounterViaEnterprise(
+  facilityId: string,
+  encounterId: string,
+  body: {
+    reason: string;
+    reasonCode?: string;
+    expectedVersion?: number;
+    clientRequestId?: string;
+  }
+): Promise<{
+  encounterId: string;
+  previousStatus: string;
+  status: string;
+  transitionType: string;
+  reopenedAt: string;
+  workspaceTarget?: string;
+  warnings?: string[];
+  roomAssignmentRestored?: boolean;
+  billingReopened?: boolean;
+  signedDocumentationUnlocked?: boolean;
+  prescriptionsUnlocked?: boolean;
+  idempotent?: boolean;
+}> {
+  return apiFetch(`/encounters/${encounterId}/reopen`, {
+    method: "POST",
+    facilityId,
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  }) as Promise<{
+    encounterId: string;
+    previousStatus: string;
+    status: string;
+    transitionType: string;
+    reopenedAt: string;
+    workspaceTarget?: string;
+    warnings?: string[];
+    roomAssignmentRestored?: boolean;
+    billingReopened?: boolean;
+    signedDocumentationUnlocked?: boolean;
+    prescriptionsUnlocked?: boolean;
+    idempotent?: boolean;
+  }>;
+}
+
 export async function closeCheckAmbulatoryEncounter(
   facilityId: string,
   encounterId: string,

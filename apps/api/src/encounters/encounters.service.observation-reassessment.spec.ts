@@ -15,6 +15,7 @@ import { EncountersService } from "./encounters.service";
 import { createMockBedBoardService } from "./encounters.service.test-bed-board.mock";
 import { createMockInternalPlacementService } from "./encounters.service.test-internal-placement.mock";
 import { createMockEnterpriseAssignmentService } from "./encounters.service.test-enterprise-assignment.mock";
+import { createMockEnterpriseLifecycleService } from "./encounters.service.test-enterprise-lifecycle.mock";
 
 const facilityId = "fac-1";
 const encounterId = "enc-1";
@@ -81,7 +82,8 @@ describe("EncountersService.appendObservationReassessment (13G-B)", () => {
       trackboard as never,
       createMockBedBoardService() as never,
       createMockInternalPlacementService() as never,
-      createMockEnterpriseAssignmentService() as never
+      createMockEnterpriseAssignmentService() as never,
+      createMockEnterpriseLifecycleService() as never
     );
 
     const res = await svc.appendObservationReassessment(facilityId, encounterId, baseDto, userId);
@@ -118,7 +120,8 @@ describe("EncountersService.appendObservationReassessment (13G-B)", () => {
       trackboard as never,
       createMockBedBoardService() as never,
       createMockInternalPlacementService() as never,
-      createMockEnterpriseAssignmentService() as never
+      createMockEnterpriseAssignmentService() as never,
+      createMockEnterpriseLifecycleService() as never
     );
 
     await svc.appendObservationReassessment(
@@ -144,7 +147,8 @@ describe("EncountersService.appendObservationReassessment (13G-B)", () => {
       trackboard as never,
       createMockBedBoardService() as never,
       createMockInternalPlacementService() as never,
-      createMockEnterpriseAssignmentService() as never
+      createMockEnterpriseAssignmentService() as never,
+      createMockEnterpriseLifecycleService() as never
     );
 
     await expect(svc.appendObservationReassessment(facilityId, encounterId, baseDto, userId)).rejects.toBeInstanceOf(
@@ -164,7 +168,8 @@ describe("EncountersService.appendObservationReassessment (13G-B)", () => {
       trackboard as never,
       createMockBedBoardService() as never,
       createMockInternalPlacementService() as never,
-      createMockEnterpriseAssignmentService() as never
+      createMockEnterpriseAssignmentService() as never,
+      createMockEnterpriseLifecycleService() as never
     );
 
     await expect(svc.appendObservationReassessment(facilityId, encounterId, baseDto, userId)).rejects.toThrow(
@@ -188,7 +193,8 @@ describe("EncountersService.appendObservationReassessment (13G-B)", () => {
       trackboard as never,
       createMockBedBoardService() as never,
       createMockInternalPlacementService() as never,
-      createMockEnterpriseAssignmentService() as never
+      createMockEnterpriseAssignmentService() as never,
+      createMockEnterpriseLifecycleService() as never
     );
 
     await expect(svc.appendObservationReassessment(facilityId, encounterId, baseDto, userId)).rejects.toThrow(
@@ -212,7 +218,8 @@ describe("EncountersService.appendObservationReassessment (13G-B)", () => {
       trackboard as never,
       createMockBedBoardService() as never,
       createMockInternalPlacementService() as never,
-      createMockEnterpriseAssignmentService() as never
+      createMockEnterpriseAssignmentService() as never,
+      createMockEnterpriseLifecycleService() as never
     );
 
     await expect(svc.appendObservationReassessment(facilityId, encounterId, baseDto, userId)).rejects.toThrow(
@@ -232,7 +239,8 @@ describe("EncountersService.appendObservationReassessment (13G-B)", () => {
       trackboard as never,
       createMockBedBoardService() as never,
       createMockInternalPlacementService() as never,
-      createMockEnterpriseAssignmentService() as never
+      createMockEnterpriseAssignmentService() as never,
+      createMockEnterpriseLifecycleService() as never
     );
 
     await expect(
@@ -252,7 +260,8 @@ describe("EncountersService.appendObservationReassessment (13G-B)", () => {
       trackboard as never,
       createMockBedBoardService() as never,
       createMockInternalPlacementService() as never,
-      createMockEnterpriseAssignmentService() as never
+      createMockEnterpriseAssignmentService() as never,
+      createMockEnterpriseLifecycleService() as never
     );
 
     await expect(svc.appendObservationReassessment(facilityId, encounterId, baseDto, userId)).rejects.toBeInstanceOf(
@@ -272,7 +281,8 @@ describe("EncountersService.appendObservationReassessment (13G-B)", () => {
       trackboard as never,
       createMockBedBoardService() as never,
       createMockInternalPlacementService() as never,
-      createMockEnterpriseAssignmentService() as never
+      createMockEnterpriseAssignmentService() as never,
+      createMockEnterpriseLifecycleService() as never
     );
 
     await expect(svc.appendObservationReassessment(facilityId, encounterId, baseDto, undefined)).rejects.toThrow(
@@ -289,7 +299,8 @@ describe("EncountersService.appendObservationReassessment (13G-B)", () => {
       trackboard as never,
       createMockBedBoardService() as never,
       createMockInternalPlacementService() as never,
-      createMockEnterpriseAssignmentService() as never
+      createMockEnterpriseAssignmentService() as never,
+      createMockEnterpriseLifecycleService() as never
     );
 
     await expect(svc.appendObservationReassessment(facilityId, encounterId, baseDto, userId)).rejects.toBeInstanceOf(
@@ -306,7 +317,8 @@ describe("EncountersService.appendObservationReassessment (13G-B)", () => {
       trackboard as never,
       createMockBedBoardService() as never,
       createMockInternalPlacementService() as never,
-      createMockEnterpriseAssignmentService() as never
+      createMockEnterpriseAssignmentService() as never,
+      createMockEnterpriseLifecycleService() as never
     );
 
     await svc.appendObservationReassessment(facilityId, encounterId, baseDto, userId);

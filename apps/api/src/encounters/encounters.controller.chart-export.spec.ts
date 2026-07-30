@@ -142,6 +142,8 @@ function makeController(opts?: {
   const encounterNotesService = {} as never;
   const clinicalDocumentationService = {} as never;
   const chartCertificationB1Service = {} as never;
+  const admissionCommandCenterService = {} as never;
+  const enterpriseLifecycle = {} as never;
   const controller = new EncountersController(
     encountersService,
     diagnosesService,
@@ -159,6 +161,8 @@ function makeController(opts?: {
     encounterNotesService,
     clinicalDocumentationService,
     chartCertificationB1Service,
+    admissionCommandCenterService,
+    enterpriseLifecycle,
   );
   return { controller, chartExportService };
 }

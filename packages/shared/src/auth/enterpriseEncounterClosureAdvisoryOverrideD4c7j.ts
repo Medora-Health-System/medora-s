@@ -111,11 +111,10 @@ export const D4C7J_BLOCKER_CODE_CLASSIFICATION: Record<
 /**
  * Roles that may acknowledge pending clinical items and close.
  *
- * PROVIDER (+ credentialed aliases) is the treating authority. RN is included because RN
- * already holds enterprise encounter-closure permission — D4C.7J must not create a separate
- * RN hard-block path. MEDORA_SUPER_ADMIN is support/emergency only and always audited.
- * ADMIN / PHARMACY / BILLING / FRONT_DESK / LAB / RADIOLOGY / technicians are never granted
- * advisory override automatically.
+ * MEDUI.D4C.7K extends D4C.7J: Facility ADMIN is authorized to acknowledge and close.
+ * PROVIDER (+ aliases), RN, ADMIN, and MEDORA_SUPER_ADMIN share CLOSE_ENCOUNTER.
+ * PHARMACY / BILLING / FRONT_DESK / LAB / RADIOLOGY / technicians remain denied.
+ * Authoritative check: `canCloseEncounter` (D4C.7K) — keep these lists for audit/docs.
  */
 export const D4C7J_ACK_ALLOWED_ROLES = [
   "PROVIDER",
@@ -127,11 +126,11 @@ export const D4C7J_ACK_ALLOWED_ROLES = [
   "NP",
   "PA",
   "RN",
+  "ADMIN",
   "MEDORA_SUPER_ADMIN",
 ] as const;
 
 export const D4C7J_ACK_DENIED_ROLES = [
-  "ADMIN",
   "FRONT_DESK",
   "LAB",
   "RADIOLOGY",
@@ -149,7 +148,9 @@ function normalizeRoles(roleCodes: readonly string[] | null | undefined): string
     .filter((r) => r.length > 0);
 }
 
+/** Delegates to D4C.7K CLOSE_ENCOUNTER so advisory acknowledgement stays one authority. */
 export function canAcknowledgeD4c7jClosure(roleCodes: readonly string[] | null | undefined): boolean {
+  // Lazy import pattern avoided — keep sync and mirror CLOSE_ENCOUNTER allow-list.
   const roles = normalizeRoles(roleCodes);
   if (roles.length === 0) return false;
   return roles.some((r) => (D4C7J_ACK_ALLOWED_ROLES as readonly string[]).includes(r));

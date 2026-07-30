@@ -14,6 +14,16 @@ export const AllowBreakGlassForPatientParam = (paramName = "id") =>
  */
 export const MSPP_ROLES_KEY = "msppRoles";
 
+/**
+ * MEDUI.D4C.7K — metadata key: route accepts the authoritative Medora platform principal
+ * without a facility `UserRole`, provided an explicit active facility context is supplied.
+ * The route must still declare `RoleCode.MEDORA_SUPER_ADMIN` in `RequireRoles`.
+ */
+export const PLATFORM_PRINCIPAL_FACILITY_CONTEXT_KEY = "platformPrincipalFacilityContext";
+
+export const AllowPlatformPrincipalWithFacilityContext = () =>
+  SetMetadata(PLATFORM_PRINCIPAL_FACILITY_CONTEXT_KEY, true);
+
 export const RequireRoles = (...roles: RoleCode[]) => {
   return (target: any, propertyKey?: string, descriptor?: PropertyDescriptor) => {
     if (descriptor) {

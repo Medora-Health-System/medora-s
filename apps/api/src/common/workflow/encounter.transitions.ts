@@ -1,6 +1,10 @@
+/**
+ * MEDUI.D4C.7K — single enterprise encounter status transition map.
+ * CLOSED → OPEN is reopen only (REOPEN_ENCOUNTER). CANCELLED remains terminal.
+ */
 export const ENCOUNTER_TRANSITIONS: Record<string, string[]> = {
   OPEN: ["CLOSED", "CANCELLED"],
-  CLOSED: [],
+  CLOSED: ["OPEN"],
   CANCELLED: [],
 };
 

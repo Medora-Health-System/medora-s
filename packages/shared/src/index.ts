@@ -33,6 +33,7 @@ export * from "./auth/enterpriseMarAuthorityClinicOrderRxD4c7g.js";
 export * from "./auth/enterpriseMarSafetyAckRxPrintAuthorityD4c7h.js";
 export * from "./auth/enterpriseFacilityIdentityOnboardingPrintProjectionD4c7i.js";
 export * from "./auth/enterpriseEncounterClosureAdvisoryOverrideD4c7j.js";
+export * from "./auth/enterpriseEncounterLifecycleAuthorityD4c7k.js";
 export * from "./auth/enterpriseDentalOrthodonticsArchitectureD5a1.js";
 export * from "./auth/enterpriseDentalServiceLineNavigationD5a2.js";
 export * from "./auth/navigationAuthorization.js";
