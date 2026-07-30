@@ -215,6 +215,10 @@ export const FACILITY_CARE_SETTING_ROUTE_GATES: readonly {
     prefixes: ["/app/clinic-care"],
     required: "clinicCareEnabled",
   },
+  {
+    prefixes: ["/app/dental"],
+    required: "dentalCareEnabled",
+  },
 ];
 
 export type ResolveCapabilityAwareNavigationInput = ResolveFacilityNavigationInput;
@@ -358,6 +362,9 @@ export function resolveFacilityCapabilityForPath(
     }
     if (gate.required === "clinicCareEnabled") {
       return capabilities.clinicCareEnabled || capabilities.urgentCareEnabled;
+    }
+    if (gate.required === "dentalCareEnabled") {
+      return capabilities.dentalCareEnabled === true;
     }
     return Boolean(capabilities[gate.required]);
   }

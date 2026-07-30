@@ -100,6 +100,11 @@ export type FacilityCareProfileJson = {
   printDisplayName?: string | null;
   /** MEDUI.D4C.7I — optional legal name for letterhead (distinct from billingLegalName column). */
   legalName?: string | null;
+  /**
+   * MEDUI.D5A.2 — Dental specialty configuration tokens only.
+   * No odontogram / OrthodonticCase / treatment-plan persistence in this field.
+   */
+  dentalSpecialties?: readonly string[] | null;
 };
 
 export type FacilityModuleCapabilitiesD4c1 = {
@@ -114,6 +119,8 @@ export type FacilityModuleCapabilitiesD4c1 = {
   publicHealthEnabled: boolean;
   billingEnabled: boolean;
   registrationEnabled: boolean;
+  /** MEDUI.D5A.2 — Dental Care service line enabled on this facility. */
+  dentalCareEnabled: boolean;
 };
 
 /**
@@ -353,6 +360,11 @@ export function parseFacilityCareProfileJson(raw: unknown): FacilityCareProfileJ
     printDisplayName:
       typeof obj.printDisplayName === "string" ? obj.printDisplayName.trim() || null : null,
     legalName: typeof obj.legalName === "string" ? obj.legalName.trim() || null : null,
+    dentalSpecialties: Array.isArray(obj.dentalSpecialties)
+      ? (obj.dentalSpecialties as unknown[])
+          .map((v) => String(v ?? "").trim().toUpperCase())
+          .filter((v) => v.length > 0)
+      : null,
   };
 }
 
@@ -559,6 +571,8 @@ export function resolveFacilityModuleCapabilitiesD4c1(input: {
     publicHealthEnabled: modules.publicHealth,
     billingEnabled: modules.billing,
     registrationEnabled: ambulatory || profile === "FREESTANDING_ER" || profile === "HOSPITAL",
+    /** MEDUI.D5A.2 — any facility type may enable Dental as a service line. */
+    dentalCareEnabled: lines.includes("DENTAL"),
   };
 }
 
@@ -622,6 +636,8 @@ export function buildFacilityCareProfileJson(input: {
   address?: Partial<FacilityOperationalAddress> | null;
   printDisplayName?: string | null;
   legalName?: string | null;
+  /** MEDUI.D5A.2 */
+  dentalSpecialties?: readonly string[] | null;
 }): FacilityCareProfileJson {
   const ambulatory =
     input.profile != null && isAmbulatoryFacilityProfile(input.profile)
@@ -639,6 +655,7 @@ export function buildFacilityCareProfileJson(input: {
     address: input.address ? normalizeFacilityOperationalAddress(input.address) : null,
     printDisplayName: trimOrNull(input.printDisplayName),
     legalName: trimOrNull(input.legalName),
+    dentalSpecialties: input.dentalSpecialties ?? null,
   };
 }
 
@@ -1090,6 +1107,8 @@ export type FacilityNavigationResolution = {
   edVisible: boolean;
   hospitalVisible: boolean;
   clinicCareVisible: boolean;
+  /** MEDUI.D5A.2 — Dental Care service line visible in navigation. */
+  dentalCareVisible: boolean;
 };
 
 /**
@@ -1163,6 +1182,12 @@ export function resolveFacilityNavigation(
   }
   clinicCareVisible = areas.includes("CLINIC_CARE");
 
+  // MEDUI.D5A.2 — Dental Care is capability-gated (Admin cannot restore absent service line).
+  if (!capabilities.dentalCareEnabled) {
+    areas = areas.filter((a) => a !== "DENTAL_CARE");
+  }
+  const dentalCareVisible = areas.includes("DENTAL_CARE");
+
   const landingPath = ambulatory && clinicCareVisible
     ? "/app/clinic-care"
     : getLandingRouteForNavigationProfile({
@@ -1179,6 +1204,7 @@ export function resolveFacilityNavigation(
     edVisible,
     hospitalVisible,
     clinicCareVisible,
+    dentalCareVisible,
   };
 }
 

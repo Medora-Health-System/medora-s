@@ -19,6 +19,7 @@ export type NavigationArea =
   | "EMERGENCY"
   | "HOSPITAL"
   | "CLINIC_CARE"
+  | "DENTAL_CARE"
   | "LABORATORY"
   | "RADIOLOGY"
   | "PHARMACY"
@@ -31,6 +32,7 @@ export const NAVIGATION_AREAS: readonly NavigationArea[] = [
   "EMERGENCY",
   "HOSPITAL",
   "CLINIC_CARE",
+  "DENTAL_CARE",
   "LABORATORY",
   "RADIOLOGY",
   "PHARMACY",
@@ -228,6 +230,36 @@ function supplementClinicCareNavigationAreas(
   return sortNavigationAreas([...result]);
 }
 
+/**
+ * MEDUI.D5A.2 — Dental Care navigation when the DENTAL service line is enabled.
+ * Parallel to Clinic Care / Emergency / Hospital — not a Clinic Care duplicate.
+ */
+function supplementDentalCareNavigationAreas(
+  areas: NavigationArea[],
+  input: {
+    professionGroup: ProfessionGroup;
+    facilityServiceLines: readonly MedoraServiceLine[];
+  }
+): NavigationArea[] {
+  const lineSet = new Set(input.facilityServiceLines);
+  if (!lineSet.has("DENTAL")) {
+    return areas;
+  }
+
+  const result = new Set(areas);
+  if (
+    input.professionGroup === "RN" ||
+    input.professionGroup === "PROVIDER" ||
+    input.professionGroup === "FRONT_DESK" ||
+    input.professionGroup === "ADMIN" ||
+    input.professionGroup === "BILLING"
+  ) {
+    result.add("DENTAL_CARE");
+  }
+
+  return sortNavigationAreas([...result]);
+}
+
 function serviceLineToNavigationArea(line: MedoraServiceLine): NavigationArea | null {
   switch (line) {
     case "EMERGENCY":
@@ -241,6 +273,8 @@ function serviceLineToNavigationArea(line: MedoraServiceLine): NavigationArea | 
     case "CLINIC":
     case "URGENT_CARE":
       return "CLINIC_CARE";
+    case "DENTAL":
+      return "DENTAL_CARE";
     case "OBSERVATION":
     case "ICU":
     case "MEDSURG":
@@ -402,6 +436,11 @@ function applyFacilityServiceLineNavigationFilter(
     roleCodes: input.roleCodes,
   });
 
+  filtered = supplementDentalCareNavigationAreas(filtered, {
+    professionGroup: input.professionGroup,
+    facilityServiceLines: serviceLines,
+  });
+
   return filtered;
 }
 
@@ -509,6 +548,7 @@ export const NAVIGATION_AREA_LANDING_PATH: Record<NavigationArea, string> = {
   EMERGENCY: "/app/emergency/trackboard",
   HOSPITAL: "/app/hospitalisation",
   CLINIC_CARE: "/app/clinic-care",
+  DENTAL_CARE: "/app/dental",
   LABORATORY: "/app/lab-worklist",
   RADIOLOGY: "/app/rad-worklist",
   PHARMACY: "/app/pharmacy",
@@ -518,6 +558,7 @@ export const NAVIGATION_AREA_LANDING_PATH: Record<NavigationArea, string> = {
 
 const LANDING_PRIORITY: NavigationArea[] = [
   "CLINIC_CARE",
+  "DENTAL_CARE",
   "EMERGENCY",
   "HOSPITAL",
   "LABORATORY",

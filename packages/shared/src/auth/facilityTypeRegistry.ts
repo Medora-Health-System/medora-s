@@ -14,7 +14,16 @@ export type MedoraFacilityType =
  * Service line = clinical department code, pharmacy, or ambulatory Clinic/UC lines (MEDUI.D4C.1).
  * Ambulatory lines are config-driven tokens — never hard-coded facility names.
  */
-export type MedoraServiceLine = ClinicalDepartmentCode | "PHARMACY" | "CLINIC" | "URGENT_CARE";
+/**
+ * Service line = clinical department code, pharmacy, ambulatory Clinic/UC, or Dental (MEDUI.D5A.2).
+ * Ambulatory / Dental lines are config-driven tokens — never hard-coded facility names.
+ */
+export type MedoraServiceLine =
+  | ClinicalDepartmentCode
+  | "PHARMACY"
+  | "CLINIC"
+  | "URGENT_CARE"
+  | "DENTAL";
 
 export type MedoraFacilityTypeRegistryEntry = {
   code: MedoraFacilityType;
@@ -140,6 +149,9 @@ const SERVICE_LINE_ALIASES: Record<string, MedoraServiceLine> = {
   PRIMARY_CARE: "CLINIC",
   CLINIC_CARE: "CLINIC",
   UC: "URGENT_CARE",
+  /** MEDUI.D5A.2 — Dental Care aliases (not a separate facility type). */
+  DENTAL_CARE: "DENTAL",
+  SOINS_DENTAIRES: "DENTAL",
 };
 
 const ALL_KNOWN_SERVICE_LINES: readonly MedoraServiceLine[] = [
@@ -156,6 +168,7 @@ const ALL_KNOWN_SERVICE_LINES: readonly MedoraServiceLine[] = [
   "PHARMACY",
   "CLINIC",
   "URGENT_CARE",
+  "DENTAL",
 ];
 
 export function normalizeServiceLineToken(
