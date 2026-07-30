@@ -279,6 +279,11 @@ export type AdminFacilityRow = {
   name: string;
   isActive?: boolean;
   defaultLanguage?: "fr" | "en";
+  facilityCareProfileJson?: unknown;
+  printIdentity?: {
+    displayName?: string | null;
+    address?: Record<string, string | null>;
+  } | null;
 };
 
 /** GET /admin/facilities — liste globale (plateforme ou ADMIN à l’établissement actif). */
@@ -292,6 +297,20 @@ export async function fetchAdminFacilities(
     ...(facilityId ? { facilityId } : {}),
   });
   return Array.isArray(data) ? (data as AdminFacilityRow[]) : [];
+}
+
+/** PATCH /admin/facilities/:id/service-config — type, service lines, D4C.1/D4C.7I care profile + operational identity. */
+export async function patchAdminFacilityServiceConfig(
+  headerFacilityId: string,
+  targetFacilityId: string,
+  body: import("@medora/shared").UpdateFacilityServiceConfigDto
+): Promise<AdminFacilityRow> {
+  return adminApiFetch(`/facilities/${targetFacilityId}/service-config`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+    facilityId: headerFacilityId,
+  }) as Promise<AdminFacilityRow>;
 }
 
 /** PATCH /admin/facilities/:id — activation contractuelle (compte principal plateforme uniquement côté API). */

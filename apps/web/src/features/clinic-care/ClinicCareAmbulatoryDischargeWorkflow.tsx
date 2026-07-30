@@ -22,6 +22,7 @@ import { apiFetch } from "@/lib/apiClient";
 import { useI18n } from "@/lib/i18n";
 import { normalizeUserFacingError } from "@/lib/userFacingError";
 import { printDischarge } from "@/components/encounters/DischargePrintLayout";
+import { printFacilityInfoFromEnterpriseSource } from "@/lib/printFacilityHeader";
 import { MEDORA_CARD_SHELL } from "@/components/medora-card/medoraCardTokens";
 import {
   ProviderDischargeDocumentationSection,
@@ -67,6 +68,7 @@ export function ClinicCareAmbulatoryDischargeWorkflow({
   facilityId,
   facilityDisplayName,
   facilityCountry,
+  facilityCareProfileJson = null,
   patientId,
   patient,
   encounterCreatedAt,
@@ -81,6 +83,7 @@ export function ClinicCareAmbulatoryDischargeWorkflow({
   facilityId: string;
   facilityDisplayName: string;
   facilityCountry?: string | null;
+  facilityCareProfileJson?: unknown;
   patientId?: string | null;
   patient?: {
     id?: string;
@@ -213,11 +216,18 @@ export function ClinicCareAmbulatoryDischargeWorkflow({
         physicianAssigned: null,
       },
       facilityName: careSettingContext.facilityDisplayName,
+      facility: printFacilityInfoFromEnterpriseSource({
+        facilityName: careSettingContext.facilityDisplayName,
+        facilityCountry,
+        careProfileJson: facilityCareProfileJson,
+      }),
       primaryDiagnosis: null,
       language,
     });
   }, [
     careSettingContext.facilityDisplayName,
+    facilityCountry,
+    facilityCareProfileJson,
     checkoutState,
     dischargeSummaryJson,
     documentedByDisplayName,

@@ -10403,6 +10403,37 @@ export default {
     },
   },
 
+  facilityIdentityD4c7i: {
+    sectionTitle: "Facility address and contact",
+    sectionHint:
+      "These details appear on prescriptions, discharge documents, results, and other printed materials.",
+    printDisplayName: "Display name (letterhead)",
+    legalName: "Legal / registered name",
+    country: "Country",
+    line1: "Address",
+    line2: "Address line 2",
+    cityGeneric: "City",
+    cityHaiti: "City / commune",
+    regionGeneric: "State / department / province",
+    regionUs: "State",
+    regionHaiti: "Department",
+    postalCode: "Postal code",
+    phone: "Phone",
+    phoneSecondary: "Secondary phone",
+    fax: "Fax",
+    email: "Email",
+    website: "Website",
+    optional: "optional",
+    editButton: "Address and contact",
+    editTitle: "Edit address and contact",
+    saveSuccess: "Address and contact saved.",
+    errIncomplete: "Complete country, address, city/commune, and phone.",
+    errEmail: "Invalid email.",
+    errWebsite: "Invalid website.",
+    documentFacilityMismatch:
+      "The document facility differs from the selected facility. The header uses the document facility.",
+  },
+
   clinicCareD4c7f: {
     closure: {
       pendingTitle: "Clinical items are still pending",

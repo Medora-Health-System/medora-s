@@ -58,6 +58,7 @@ import { parseEncounterDocumentedProcedureTypes } from "@/lib/procedureOrderDocu
 import type { OrderModalTab } from "@/components/orders/createOrderModal/types";
 import { buildRxPrintFacilityIdentity, printRx } from "@/components/pharmacy/RxPrintLayout";
 import { printDischarge } from "@/components/encounters/DischargePrintLayout";
+import { printFacilityInfoFromEnterpriseSource } from "@/lib/printFacilityHeader";
 import { printEncounterChartLivePreview } from "@/components/encounters/EncounterChartLivePreview";
 import { getOrderItemChartLabel, isOrderItemDoneForChart } from "@/constants/orderStatusLabels";
 import {
@@ -450,7 +451,7 @@ function EncounterDetailPageInner({ session }: { session: ReturnType<typeof useF
   const router = useRouter();
   const { t, language } = useI18n();
   const encounterId = params.id as string;
-  const { facilityId, userId, canPrescribe, roles, ready: rolesReady, facilities, careProfileJson } = session;
+  const { facilityId, userId, canPrescribe, roles, ready: rolesReady, facilities, careProfileJson, facilityCountry } = session;
   const encounterDetailPath = `/app/encounters/${encounterId}`;
   const [encounter, setEncounter] = useState<any>(null);
   const [encounterFetchError, setEncounterFetchError] = useState<string | null>(null);
@@ -1097,7 +1098,8 @@ function EncounterDetailPageInner({ session }: { session: ReturnType<typeof useF
 
   const handlePrintDischarge = useCallback(() => {
     if (!encounter?.patient) return;
-    const facilityName = facilities.find((f) => f.id === facilityId)?.name;
+    const facilityRow = facilities.find((f) => f.id === facilityId);
+    const facilityName = facilityRow?.name;
     const dischargeSummaryJsonForPrint =
       pendingDischarge != null && Object.keys(pendingDischarge).length > 0
         ? pendingDischarge
@@ -1110,10 +1112,24 @@ function EncounterDetailPageInner({ session }: { session: ReturnType<typeof useF
         physicianAssigned: encounter.physicianAssigned ?? null,
       },
       facilityName: facilityName ?? null,
+      facility: printFacilityInfoFromEnterpriseSource({
+        facilityName: facilityName ?? null,
+        facilityCountry: facilityRow?.country ?? facilityCountry,
+        careProfileJson: facilityRow?.careProfileJson ?? careProfileJson,
+      }),
       primaryDiagnosis: quickPrimaryDiagnosis,
       language,
     });
-  }, [encounter, facilityId, facilities, quickPrimaryDiagnosis, pendingDischarge, language]);
+  }, [
+    encounter,
+    facilityId,
+    facilities,
+    facilityCountry,
+    careProfileJson,
+    quickPrimaryDiagnosis,
+    pendingDischarge,
+    language,
+  ]);
 
   /**
    * Phase 5C — encounter-level live chart preview. Composes a printable view
@@ -2780,6 +2796,15 @@ function EncounterDetailPageInner({ session }: { session: ReturnType<typeof useF
               facilityId={facilityId}
               refreshToken={encounterResultsRefresh}
               canAcknowledgeResults={canAcknowledgeResults}
+              facilityName={facilities.find((f) => f.id === facilityId)?.name ?? null}
+              facility={printFacilityInfoFromEnterpriseSource({
+                facilityName: facilities.find((f) => f.id === facilityId)?.name ?? null,
+                facilityCountry:
+                  facilities.find((f) => f.id === facilityId)?.country ?? facilityCountry,
+                careProfileJson:
+                  facilities.find((f) => f.id === facilityId)?.careProfileJson ?? careProfileJson,
+              })}
+              enableResultPrint
             />
           )}
           {activeTab === "observation_summary" && observationWorkflowActive && observationOpsClient ? (

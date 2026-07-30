@@ -329,9 +329,14 @@ export default function PharmacyWorklistPage() {
   };
 
   const handlePrintRx = (order: any) => {
+    const documentFacilityId =
+      typeof order?.facilityId === "string" && order.facilityId.trim()
+        ? order.facilityId.trim()
+        : facilityId;
+    const docFacility = facilities.find((f) => f.id === documentFacilityId);
     const facilityIdentity = buildRxPrintFacilityIdentity({
-      facilityName: facilities.find((f) => f.id === facilityIdFromHook)?.name ?? null,
-      careProfileJson,
+      facilityName: docFacility?.name ?? facilities.find((f) => f.id === facilityIdFromHook)?.name ?? null,
+      careProfileJson: docFacility?.careProfileJson ?? careProfileJson,
     });
     printRx({
       order: {

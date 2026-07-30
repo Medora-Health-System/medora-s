@@ -32,6 +32,7 @@ import { EmergencyErNotesPanel } from "@/features/emergency/EmergencyErNotesPane
 import { EmergencyTriagePanel } from "@/features/emergency/EmergencyTriagePanel";
 import { EmergencyVisitSummaryPanel } from "@/features/emergency/EmergencyVisitSummaryPanel";
 import { ClinicCareAmbulatoryDischargeWorkflow } from "@/features/clinic-care/ClinicCareAmbulatoryDischargeWorkflow";
+import { printFacilityInfoFromEnterpriseSource } from "@/lib/printFacilityHeader";
 import { MedicationAdministrationTab } from "@/components/encounters/MedicationAdministrationTab";
 import { EncounterDiagnosticsPanel } from "@/components/encounters/EncounterDiagnosticsPanel";
 import { EnterpriseNursingClinicalWorkspaceD4b2 } from "@/features/clinical-documentation/EnterpriseNursingClinicalWorkspaceD4b2";
@@ -127,6 +128,7 @@ function FollowUpSection({
   facilityId,
   facilityDisplayName,
   facilityCountry,
+  facilityCareProfileJson = null,
   canEdit,
   roles,
   isLocked,
@@ -136,6 +138,7 @@ function FollowUpSection({
   facilityId: string;
   facilityDisplayName: string;
   facilityCountry?: string | null;
+  facilityCareProfileJson?: unknown;
   canEdit: boolean;
   roles: string[];
   isLocked: boolean;
@@ -251,6 +254,7 @@ function FollowUpSection({
         facilityId={facilityId}
         facilityDisplayName={facilityDisplayName}
         facilityCountry={facilityCountry}
+        facilityCareProfileJson={facilityCareProfileJson}
         patientId={encounter.patient?.id}
         patient={encounter.patient}
         encounterCreatedAt={encounter.createdAt ?? encounter.admittedAt ?? null}
@@ -416,6 +420,26 @@ export function ClinicCareAmbulatoryWorkspacePanels({
             canAcknowledgeResults={
               roles.includes("RN") || roles.includes("PROVIDER") || roles.includes("ADMIN")
             }
+            patient={
+              encounter.patient
+                ? {
+                    firstName: encounter.patient.firstName ?? null,
+                    lastName: encounter.patient.lastName ?? null,
+                    mrn: encounter.patient.mrn ?? null,
+                  }
+                : null
+            }
+            encounterMeta={{
+              id: encounter.id,
+              createdAt: encounter.createdAt ?? encounter.admittedAt ?? new Date().toISOString(),
+              physicianAssigned: null,
+            }}
+            facilityName={facilityDisplayName}
+            facility={printFacilityInfoFromEnterpriseSource({
+              facilityName: facilityDisplayName,
+              facilityCountry,
+              careProfileJson: facilityCareProfileJson,
+            })}
           />
         </div>
       );
@@ -476,6 +500,7 @@ export function ClinicCareAmbulatoryWorkspacePanels({
           facilityId={facilityId}
           facilityDisplayName={facilityDisplayName?.trim() || facilityId}
           facilityCountry={facilityCountry}
+          facilityCareProfileJson={facilityCareProfileJson}
           canEdit={canEditFollowUp && encounter.status === "OPEN" && !isLocked}
           roles={roles}
           isLocked={isLocked}

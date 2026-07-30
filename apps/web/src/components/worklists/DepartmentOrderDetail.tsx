@@ -562,7 +562,8 @@ export default function DepartmentOrderDetail({
                 patient: patient ?? {},
                 facilityIdentity: buildRxPrintFacilityIdentity({
                   facilityName: facilities.find((f) => f.id === facilityId)?.name ?? null,
-                  careProfileJson,
+                  careProfileJson:
+                    facilities.find((f) => f.id === facilityId)?.careProfileJson ?? careProfileJson,
                 }),
                 language,
                 requireFacilityIdentity: false,

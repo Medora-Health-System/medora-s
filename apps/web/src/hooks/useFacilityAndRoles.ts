@@ -4,7 +4,13 @@ import { useState, useEffect, useCallback } from "react";
 import { resolveFacilityTimezone } from "@medora/shared";
 import { fetchAuthMeSession } from "@/lib/authSessionMe";
 
-export type UserFacilityOption = { id: string; name: string };
+/** Session facility option — includes identity for document-header projection (D4C.7I). */
+export type UserFacilityOption = {
+  id: string;
+  name: string;
+  careProfileJson?: unknown;
+  country?: string | null;
+};
 
 function parseMsppContextFromMe(
   d: Record<string, unknown>,
@@ -132,14 +138,29 @@ export function useFacilityAndRoles() {
     setCareProfileJson(activePolicyRow?.careProfileJson ?? null);
     const country = activePolicyRow?.facilityCountry;
     setFacilityCountry(typeof country === "string" && country.trim() ? country : null);
-    const map = new Map<string, string>();
-    for (const fr of (d.facilityRoles as { facilityId?: string; facilityName?: string }[]) ?? []) {
+    const map = new Map<string, UserFacilityOption>();
+    for (const fr of (d.facilityRoles as {
+      facilityId?: string;
+      facilityName?: string;
+      careProfileJson?: unknown;
+      facilityCountry?: string | null;
+    }[]) ?? []) {
       const id = String(fr.facilityId);
+      if (map.has(id)) continue;
       const name =
         typeof fr.facilityName === "string" && fr.facilityName.trim() ? String(fr.facilityName).trim() : id;
-      if (!map.has(id)) map.set(id, name);
+      const country =
+        typeof fr.facilityCountry === "string" && fr.facilityCountry.trim()
+          ? fr.facilityCountry.trim()
+          : null;
+      map.set(id, {
+        id,
+        name,
+        careProfileJson: fr.careProfileJson ?? null,
+        country,
+      });
     }
-    setFacilities([...map.entries()].map(([id, name]) => ({ id, name })));
+    setFacilities([...map.values()]);
     setReady(true);
   }, []);
 

@@ -54,6 +54,7 @@ import {
 } from "@/lib/encounterDischarge";
 import { parseDischargeSummaryForChart } from "@/components/patient-chart/patientChartHelpers";
 import { printDischarge } from "@/components/encounters/DischargePrintLayout";
+import { printFacilityInfoFromEnterpriseSource } from "@/lib/printFacilityHeader";
 import {
   erDispositionSupplementFromEncounter,
   inferOutcomeUiFromForms,
@@ -116,6 +117,9 @@ export type EmergencyErSummaryClosureSurfaceProps = {
   encounterId: string;
   facilityId: string;
   facilityName: string | null;
+  /** MEDUI.D4C.7I — enterprise operational identity for print headers. */
+  facilityCareProfileJson?: unknown;
+  facilityCountry?: string | null;
   encounter: ErClosureEncounter;
   triageSnapshot: Record<string, unknown> | null;
   resultsRefresh: number;
@@ -140,6 +144,8 @@ export function EmergencyErSummaryClosureSurface({
   encounterId,
   facilityId,
   facilityName,
+  facilityCareProfileJson = null,
+  facilityCountry = null,
   encounter,
   triageSnapshot,
   resultsRefresh,
@@ -477,6 +483,11 @@ export function EmergencyErSummaryClosureSurface({
         providerAddenda: encounter.providerAddenda,
       },
       facilityName: facilityName ?? null,
+      facility: printFacilityInfoFromEnterpriseSource({
+        facilityName,
+        facilityCountry,
+        careProfileJson: facilityCareProfileJson,
+      }),
       primaryDiagnosis: null,
       triageSnapshot,
       language,
@@ -499,7 +510,7 @@ export function EmergencyErSummaryClosureSurface({
       clinicalRecord,
       useClinicalRecordV2,
     });
-  }, [encounter, encounterId, facilityId, facilityName, language, triageSnapshot, t, mappedEncounterDiagnoses]);
+  }, [encounter, encounterId, facilityId, facilityName, facilityCountry, facilityCareProfileJson, language, triageSnapshot, t, mappedEncounterDiagnoses]);
 
   const handlePrintDischargeSummary = useCallback(() => {
     const p = encounter.patient;
@@ -512,10 +523,15 @@ export function EmergencyErSummaryClosureSurface({
         physicianAssigned: encounter.physicianAssigned ?? null,
       },
       facilityName: facilityName ?? null,
+      facility: printFacilityInfoFromEnterpriseSource({
+        facilityName,
+        facilityCountry,
+        careProfileJson: facilityCareProfileJson,
+      }),
       primaryDiagnosis: null,
       language,
     });
-  }, [encounter, facilityName, language]);
+  }, [encounter, facilityName, facilityCountry, facilityCareProfileJson, language]);
 
   const executeClose = useCallback(
     async (acknowledgeDeficiencies: boolean, acknowledgeDispositionSafetyOverride?: boolean) => {

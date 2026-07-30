@@ -10406,6 +10406,37 @@ export default {
     },
   },
 
+  facilityIdentityD4c7i: {
+    sectionTitle: "Adresse et coordonnées de l’établissement",
+    sectionHint:
+      "Ces informations apparaissent sur les ordonnances, documents de sortie, résultats et autres impressions.",
+    printDisplayName: "Nom d’affichage (en-tête)",
+    legalName: "Raison sociale / nom légal",
+    country: "Pays",
+    line1: "Adresse",
+    line2: "Complément d’adresse",
+    cityGeneric: "Ville",
+    cityHaiti: "Ville / commune",
+    regionGeneric: "État / département / province",
+    regionUs: "État",
+    regionHaiti: "Département",
+    postalCode: "Code postal",
+    phone: "Téléphone",
+    phoneSecondary: "Téléphone secondaire",
+    fax: "Télécopieur",
+    email: "Courriel",
+    website: "Site Web",
+    optional: "optionnel",
+    editButton: "Adresse et coordonnées",
+    editTitle: "Modifier l’adresse et les coordonnées",
+    saveSuccess: "Adresse et coordonnées enregistrées.",
+    errIncomplete: "Complétez le pays, l’adresse, la ville/commune et le téléphone.",
+    errEmail: "Courriel invalide.",
+    errWebsite: "Site Web invalide.",
+    documentFacilityMismatch:
+      "L’établissement du document diffère de l’établissement sélectionné. L’en-tête utilise l’établissement du document.",
+  },
+
   clinicCareD4c7f: {
     closure: {
       pendingTitle: "Des éléments cliniques sont encore en attente",
