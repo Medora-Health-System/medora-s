@@ -56,6 +56,7 @@ import {
   EncounterStatus,
   EncounterType,
   EncounterWorkflowState,
+  FollowUpStatus,
   InternalPlacementStatus,
   Prisma,
   RoleCode,
@@ -139,12 +140,17 @@ import {
   type EncounterRoomUpdateDto,
   type EncounterCareUnitCode,
   evaluateConcurrentEncounterCreate,
-  canOverrideAmbulatoryPendingClosureItems,
-  totalD4c7fPendingItems,
-  D4C7F_ENCOUNTER_PENDING_ITEMS_CODE,
-  D4C7F_ENCOUNTER_NON_OVERRIDABLE_BLOCKERS_CODE,
-  D4C7F_PENDING_ITEMS_ACK_VERSION,
-  D4C7F_PENDING_ITEMS_OVERRIDE_REASON,
+  D4C7J_CLOSE_CODES,
+  D4C7J_ACKNOWLEDGEMENT_VERSION,
+  buildD4c7jCloseAuditMetadata,
+  canAcknowledgeD4c7jClosure,
+  classifyD4c7jClosureAdvisory,
+  isD4c7jSupportOverrideOnly,
+  projectD4c7jClosePreflight,
+  projectD4c7jCloseResult,
+  resolveD4c7jAcknowledgement,
+  type D4c7jAdvisoryClassification,
+  type D4c7jClosePreflight,
 } from "@medora/shared";
 import { throwRoomAlreadyOccupiedConflict } from "./ed-room-occupancy.util";
 import { FacilityBedBoardService } from "../facilities/facility-bed-board.service";
@@ -3754,7 +3760,9 @@ export class EncountersService {
         include: {
           items: {
             include: {
-              result: { select: { verifiedAt: true } },
+              result: {
+                select: { verifiedAt: true, criticalValue: true, acknowledgedByProviderAt: true },
+              },
               pharmacyDispenseRecord: { select: { id: true } },
               medicationAdministrations: {
                 orderBy: { administeredAt: "desc" },
@@ -3818,16 +3826,29 @@ export class EncountersService {
     userId?: string,
     ip?: string,
     userAgent?: string,
-    actorRoleCodes?: readonly string[] | null
+    actorRoleCodes?: readonly string[] | null,
+    requestId?: string | null
   ) {
-    logInfo("encounter_close_attempt", {
+    const startedAtMs = Date.now();
+    const acknowledgementProbe = resolveD4c7jAcknowledgement(data);
+    /**
+     * MEDUI.D4C.7J observability — one structured line per close request. Counts and codes only;
+     * never medication names or clinical narrative.
+     */
+    logInfo("encounter_close_request", {
+      event: "encounter.close.request",
+      requestId: requestId ?? null,
       userId: userId ?? null,
       encounterId: id,
       facilityId,
-      action: "encounter.close.attempt",
-      acknowledgeDeficiencies: data?.acknowledgeDeficiencies === true,
-      acknowledgeDispositionSafety: data?.acknowledgeDispositionSafety === true,
-      acknowledgePendingItems: data?.acknowledgePendingItems === true,
+      actorRole: [...(actorRoleCodes ?? [])],
+      acknowledgementPresent: acknowledgementProbe.acknowledged,
+      acknowledgementVersion: acknowledgementProbe.acknowledged
+        ? acknowledgementProbe.acknowledgementVersion
+        : null,
+      acknowledgementSource: acknowledgementProbe.source,
+      clientRequestId: acknowledgementProbe.clientRequestId,
+      expectedVersion: data?.expectedVersion ?? null,
     });
     try {
       return await this.executeEncounterClose(
@@ -3837,10 +3858,30 @@ export class EncountersService {
         userId,
         ip,
         userAgent,
-        actorRoleCodes
+        actorRoleCodes,
+        startedAtMs
       );
     } catch (err: unknown) {
       if (err instanceof HttpException) {
+        const status = err.getStatus();
+        const payload = err.getResponse();
+        const rejectionCode =
+          payload && typeof payload === "object" && typeof (payload as { code?: unknown }).code === "string"
+            ? (payload as { code: string }).code
+            : `HTTP_${status}`;
+        logInfo("encounter_close_rejected", {
+          event: "encounter.close.rejected",
+          requestId: requestId ?? null,
+          userId: userId ?? null,
+          encounterId: id,
+          facilityId,
+          actorRole: [...(actorRoleCodes ?? [])],
+          status,
+          rejectionCode,
+          acknowledgementPresent: acknowledgementProbe.acknowledged,
+          clientRequestId: acknowledgementProbe.clientRequestId,
+          durationMs: Date.now() - startedAtMs,
+        });
         throw err;
       }
       logError("encounter_close_failed", {
@@ -3848,6 +3889,8 @@ export class EncountersService {
         encounterId: id,
         facilityId,
         action: "encounter.close",
+        rejectionCode: D4C7J_CLOSE_CODES.TRANSACTION_FAILED,
+        durationMs: Date.now() - startedAtMs,
         errorName: err instanceof Error ? err.name : typeof err,
       });
       queueMedoraAlert({
@@ -3868,7 +3911,8 @@ export class EncountersService {
     userId?: string,
     ip?: string,
     userAgent?: string,
-    actorRoleCodes?: readonly string[] | null
+    actorRoleCodes?: readonly string[] | null,
+    closeStartedAtMs: number = Date.now()
   ) {
     const encounter = await this.prisma.encounter.findFirst({
       select: ENCOUNTER_CORE_SELECT,
@@ -3879,7 +3923,9 @@ export class EncountersService {
       throw new NotFoundException("Encounter not found");
     }
 
-    // MEDUI.D4C.7D — idempotent close: already CLOSED returns canonical projection (no status regression).
+    const acknowledgement = resolveD4c7jAcknowledgement(data);
+
+    // MEDUI.D4C.7D/7J — idempotent close: already CLOSED returns canonical projection + no new audit.
     if (encounter.status === EncounterStatus.CLOSED) {
       const already = await this.prisma.encounter.findFirst({
         where: { id, facilityId },
@@ -3888,98 +3934,114 @@ export class EncountersService {
       if (!already) {
         throw new NotFoundException("Encounter not found");
       }
-      return toEncounterClinicResponse(already);
+      logInfo("encounter_close_idempotent", {
+        userId: userId ?? null,
+        encounterId: id,
+        facilityId,
+        action: "encounter.close.idempotent",
+        acknowledgementPresent: acknowledgement.acknowledged,
+        clientRequestId: acknowledgement.clientRequestId,
+      });
+      return {
+        ...toEncounterClinicResponse(already),
+        closeResult: projectD4c7jCloseResult({
+          encounterId: id,
+          previousStatus: EncounterStatus.CLOSED,
+          closedAt: encounter.dischargedAt ?? null,
+          closedByUserId: null,
+          idempotent: true,
+          acknowledged: acknowledgement.acknowledged,
+          acknowledgementVersion: acknowledgement.acknowledged
+            ? acknowledgement.acknowledgementVersion
+            : null,
+          updatedAt: encounter.updatedAt ?? null,
+          version: typeof encounter.version === "number" ? encounter.version : null,
+        }),
+      };
     }
 
     // Validate status transition
     assertCanTransitionEncounter(encounter.status, "CLOSED");
 
+    /**
+     * MEDUI.D4C.7J — optimistic concurrency is checked before any clinical evaluation so a
+     * provider closing a stale view gets a typed conflict instead of a confusing advisory.
+     */
+    if (
+      typeof data?.expectedVersion === "number" &&
+      typeof encounter.version === "number" &&
+      data.expectedVersion !== encounter.version
+    ) {
+      throw new HttpException(
+        {
+          statusCode: HttpStatus.CONFLICT,
+          message: "L’état de la rencontre a changé. Les données ont été actualisées.",
+          code: D4C7J_CLOSE_CODES.STALE_VERSION,
+          expectedVersion: data.expectedVersion,
+          currentVersion: encounter.version,
+        },
+        HttpStatus.CONFLICT
+      );
+    }
+
     const docCheck = this.evaluateEncounterDocumentationDeficiencies(encounter, data?.discharge);
-    if (docCheck.hasDeficiencies && !data?.acknowledgeDeficiencies) {
-      throw new HttpException(
-        {
-          statusCode: HttpStatus.BAD_REQUEST,
-          message:
-            "La documentation est incomplète. Indiquez acknowledgeDeficiencies: true pour clôturer malgré les lacunes, ou complétez la documentation.",
-          deficiencies: docCheck.deficiencies,
-          code: "ENCOUNTER_CLOSE_DEFICIENCIES_NOT_ACKNOWLEDGED",
-        },
-        HttpStatus.BAD_REQUEST
-      );
-    }
-
     const safetyReadiness = await this.getDispositionSafetyReadiness(facilityId, id, data?.discharge);
-    const pendingTotal = totalD4c7fPendingItems(safetyReadiness.pendingItems);
-    const nonOverridable = safetyReadiness.nonOverridableBlockers ?? [];
 
-    // MEDUI.D4C.7F — true safety blockers are never overridable via pending-item acknowledgement.
-    if (nonOverridable.length > 0) {
-      const detail =
-        nonOverridable.map((b) => b.message).join(" ") ||
-        "Cette rencontre ne peut pas être clôturée pour le moment.";
+    /**
+     * MEDUI.D4C.7J — one advisory classification replaces the previous three sequential hard
+     * gates (documentation deficiencies, non-overridable safety blockers, disposition blockers).
+     * Nothing clinical blocks closure permanently: an authorized treating provider acknowledges
+     * the advisory summary and the encounter closes with every pending item preserved.
+     */
+    const advisory = await this.classifyEncounterCloseAdvisory({
+      facilityId,
+      encounterId: id,
+      safetyReadiness,
+      documentationDeficiencyCount: docCheck.hasDeficiencies ? docCheck.deficiencies.length : 0,
+    });
+
+    if (advisory.requiresAcknowledgement && !acknowledgement.acknowledged) {
+      logInfo("encounter_close_advisory_required", {
+        userId: userId ?? null,
+        encounterId: id,
+        facilityId,
+        action: "encounter.close.advisory",
+        rejectionCode: D4C7J_CLOSE_CODES.PENDING_CLINICAL_ITEMS,
+        pendingCounts: advisory.pendingSummary,
+        priorityCategories: advisory.priorityCategories,
+      });
       throw new HttpException(
         {
-          statusCode: HttpStatus.BAD_REQUEST,
-          message: detail,
-          code: D4C7F_ENCOUNTER_NON_OVERRIDABLE_BLOCKERS_CODE,
-          nonOverridable: nonOverridable.map((b) => ({ code: b.code, message: b.message })),
-          blockers: nonOverridable.map((b) => ({ code: b.code, message: b.message })),
-        },
-        HttpStatus.BAD_REQUEST
-      );
-    }
-
-    const dispositionBlockers = (safetyReadiness.blockers ?? []).filter(
-      (b) => b.code !== "ACTIVE_INFUSION_RUNNING"
-    );
-    if (dispositionBlockers.length > 0 && !data?.acknowledgeDispositionSafety) {
-      const detail =
-        dispositionBlockers.map((b) => b.message).join(" ") ||
-        "Clôture bloquée par les contrôles de sécurité disposition.";
-      throw new HttpException(
-        {
-          statusCode: HttpStatus.BAD_REQUEST,
-          message: detail,
-          code: "ENCOUNTER_CLOSE_DISPOSITION_SAFETY_BLOCKED",
-          readiness: {
-            canClose: false,
-            blockers: dispositionBlockers,
-            warnings: safetyReadiness.warnings,
-            activeOrderCounts: safetyReadiness.activeOrderCounts,
-            pendingItems: safetyReadiness.pendingItems,
-          },
-          blockers: dispositionBlockers.map((b) => ({ code: b.code, message: b.message })),
-        },
-        HttpStatus.BAD_REQUEST
-      );
-    }
-
-    const pendingAck =
-      data?.acknowledgePendingItems === true || data?.acknowledgeDispositionSafety === true;
-    if (pendingTotal > 0 && !pendingAck) {
-      throw new HttpException(
-        {
-          statusCode: HttpStatus.BAD_REQUEST,
+          statusCode: HttpStatus.CONFLICT,
           message:
-            "Des éléments cliniques sont encore en attente. Confirmez acknowledgePendingItems pour clôturer sans les supprimer.",
-          code: D4C7F_ENCOUNTER_PENDING_ITEMS_CODE,
-          messageKey: "clinicCareD4c7f.closure.pendingTitle",
+            "Des éléments cliniques sont encore en attente. Cette rencontre peut être clôturée après confirmation.",
+          code: D4C7J_CLOSE_CODES.PENDING_CLINICAL_ITEMS,
+          messageKey: "clinicCareD4c7j.closure.pendingTitle",
+          preflight: projectD4c7jClosePreflight({
+            encounterId: id,
+            currentStatus: encounter.status,
+            classification: advisory,
+            roleCodes: actorRoleCodes,
+          }),
+          /** D4C.7F-compatible fields so already-deployed clients keep rendering the modal. */
           pending: safetyReadiness.pendingItems,
           pendingItemIds: safetyReadiness.pendingItemIds,
-          overrideAllowed: canOverrideAmbulatoryPendingClosureItems(actorRoleCodes),
+          overrideAllowed: canAcknowledgeD4c7jClosure(actorRoleCodes),
           nonOverridable: [],
-          acknowledgementVersion: D4C7F_PENDING_ITEMS_ACK_VERSION,
+          acknowledgementVersion: D4C7J_ACKNOWLEDGEMENT_VERSION,
         },
-        HttpStatus.BAD_REQUEST
+        HttpStatus.CONFLICT
       );
     }
 
-    if (pendingTotal > 0 && data?.acknowledgePendingItems === true) {
+    if (advisory.requiresAcknowledgement && acknowledgement.acknowledged) {
       const roles = actorRoleCodes && actorRoleCodes.length > 0 ? actorRoleCodes : [];
-      if (!canOverrideAmbulatoryPendingClosureItems(roles)) {
-        throw new ForbiddenException(
-          "Seul un médecin (PROVIDER) peut clôturer malgré des éléments cliniques en attente."
-        );
+      if (!canAcknowledgeD4c7jClosure(roles)) {
+        throw new ForbiddenException({
+          statusCode: HttpStatus.FORBIDDEN,
+          message: "Vous n’êtes pas autorisé à clôturer cette rencontre.",
+          code: D4C7J_CLOSE_CODES.UNAUTHORIZED,
+        });
       }
     }
 
@@ -4075,35 +4137,31 @@ export class EncountersService {
         },
       });
       if (um.count === 0) throwEncounterConcurrentModification();
-      const closeMetadata: Record<string, unknown> = {
+      /**
+       * MEDUI.D4C.7J — exactly one close audit event carrying the advisory summary and the
+       * provider's acknowledgement. Repeated requests take the idempotent branch above and
+       * therefore never duplicate this event.
+       */
+      const closeMetadata: Record<string, unknown> = buildD4c7jCloseAuditMetadata({
+        previousStatus: encounter.status,
+        classification: advisory,
+        acknowledgement,
+        actorRoleCodes,
+        pendingItemIds: safetyReadiness.pendingItemIds,
         workflowStateBeforeClose: encounter.workflowState,
-      };
-      if (docCheck.hasDeficiencies && data?.acknowledgeDeficiencies) {
-        closeMetadata.documentationGapOverride = true;
-        closeMetadata.deficienciesAcknowledged = true;
+      });
+      if (docCheck.hasDeficiencies) {
         closeMetadata.deficiencyCodes = docCheck.deficiencies.map((d) => d.code);
-        closeMetadata.missingItems = docCheck.deficiencies.map((d) => d.code);
+        if (acknowledgement.acknowledged) {
+          closeMetadata.documentationGapOverride = true;
+          closeMetadata.deficienciesAcknowledged = true;
+        }
       }
-      if (dispositionBlockers.length > 0 && data?.acknowledgeDispositionSafety) {
-        closeMetadata.dispositionSafetyOverride = true;
-        closeMetadata.dispositionSafetyBlockerCodes = dispositionBlockers.map((b) => b.code);
+      if (isD4c7jSupportOverrideOnly(actorRoleCodes) && acknowledgement.acknowledged) {
+        closeMetadata.supportPolicyOverride = true;
       }
-      if (pendingTotal > 0 && pendingAck) {
-        closeMetadata.pendingItemsOverride = true;
-        closeMetadata.acknowledgePendingItems = data?.acknowledgePendingItems === true;
-        closeMetadata.acknowledgementVersion =
-          data?.acknowledgementVersion?.trim() || D4C7F_PENDING_ITEMS_ACK_VERSION;
-        closeMetadata.pendingItemsOverrideReason =
-          data?.pendingItemsOverrideReason?.trim() || D4C7F_PENDING_ITEMS_OVERRIDE_REASON;
-        closeMetadata.pendingItemCategories = safetyReadiness.pendingItems;
-        closeMetadata.pendingItemIds = safetyReadiness.pendingItemIds;
-        closeMetadata.pendingItemCounts = safetyReadiness.pendingItems;
-        closeMetadata.actorRole = Array.isArray(actorRoleCodes)
-          ? [...actorRoleCodes]
-          : actorRoleCodes ?? null;
-        closeMetadata.workflowStateBeforeClose = encounter.workflowState;
-        closeMetadata.previousStatus = encounter.status;
-        closeMetadata.newStatus = "CLOSED";
+      if (advisory.pendingTotal > 0 && acknowledgement.acknowledged) {
+        closeMetadata.pendingItemsOverrideReason = acknowledgement.acknowledgementReason;
       }
 
       await this.audit.log(AuditAction.ENCOUNTER_CLOSE, "ENCOUNTER", {
@@ -4154,16 +4212,119 @@ export class EncountersService {
       encounterId: id,
       facilityId,
       action: "encounter.close.completed",
-      documentationGapOverride: docCheck.hasDeficiencies && data?.acknowledgeDeficiencies === true,
-      dispositionSafetyOverride: dispositionBlockers.length > 0 && data?.acknowledgeDispositionSafety === true,
-      pendingItemsOverride: pendingTotal > 0 && pendingAck,
+      actorRole: [...(actorRoleCodes ?? [])],
+      previousStatus: encounter.status,
+      acknowledgementPresent: acknowledgement.acknowledged,
+      acknowledgementVersion: acknowledgement.acknowledged
+        ? acknowledgement.acknowledgementVersion
+        : null,
+      clientRequestId: acknowledgement.clientRequestId,
+      pendingCounts: advisory.pendingSummary,
+      priorityCategories: advisory.priorityCategories,
+      pendingItemsPreserved: true,
+      closeResult: "CLOSED",
+      idempotent: false,
+      durationMs: Date.now() - closeStartedAtMs,
     });
 
     if (encounter.roomLabel) {
       void this.markBedDirtyOnRelease(facilityId, encounter.roomLabel, userId);
     }
 
-    return toEncounterClinicResponse(updated);
+    return {
+      ...toEncounterClinicResponse(updated),
+      closeResult: projectD4c7jCloseResult({
+        encounterId: id,
+        previousStatus: encounter.status,
+        closedAt: closedAtIso,
+        closedByUserId: userId ?? null,
+        pendingSummary: advisory.pendingSummary,
+        priorityCategories: advisory.priorityCategories,
+        acknowledged: acknowledgement.acknowledged,
+        acknowledgementVersion: acknowledgement.acknowledged
+          ? acknowledgement.acknowledgementVersion
+          : null,
+        idempotent: false,
+        updatedAt: updated.updatedAt ?? null,
+        version: typeof updated.version === "number" ? updated.version : null,
+      }),
+    };
+  }
+
+  /**
+   * MEDUI.D4C.7J — single advisory classification for close and close-preflight.
+   *
+   * Folds the existing readiness projection (pending orders, priority safety codes, unsigned
+   * documentation) plus open follow-ups into the enterprise advisory summary. Read-only:
+   * classification never mutates a clinical item.
+   */
+  private async classifyEncounterCloseAdvisory(input: {
+    facilityId: string;
+    encounterId: string;
+    safetyReadiness: Awaited<ReturnType<EncountersService["getDispositionSafetyReadiness"]>>;
+    documentationDeficiencyCount: number;
+  }): Promise<D4c7jAdvisoryClassification> {
+    const { safetyReadiness } = input;
+    const openFollowUps = await this.prisma.followUp.count({
+      where: {
+        facilityId: input.facilityId,
+        encounterId: input.encounterId,
+        status: FollowUpStatus.OPEN,
+      },
+    });
+    const blockerCodes = [
+      ...(safetyReadiness.blockers ?? []).map((b) => b.code),
+      ...(safetyReadiness.nonOverridableBlockers ?? []).map((b) => b.code),
+    ];
+    if ((safetyReadiness.advisoryCounts?.criticalUnacknowledgedResults ?? 0) > 0) {
+      blockerCodes.push("CRITICAL_RESULT_UNACKNOWLEDGED");
+    }
+    return classifyD4c7jClosureAdvisory({
+      pendingSummary: {
+        laboratory: safetyReadiness.pendingItems.laboratory,
+        imaging: safetyReadiness.pendingItems.imaging,
+        medications: safetyReadiness.pendingItems.medications,
+        procedures: safetyReadiness.pendingItems.procedures,
+        results: safetyReadiness.pendingItems.results,
+        unacknowledgedResults: safetyReadiness.advisoryCounts?.unacknowledgedResults ?? 0,
+        followUps: openFollowUps,
+      },
+      blockerCodes,
+      documentationDeficiencyCount: input.documentationDeficiencyCount,
+    });
+  }
+
+  /**
+   * MEDUI.D4C.7J — typed close preflight. Returns advisory information only; it never contains
+   * a clinical blocker that prevents an authorized provider from closing.
+   */
+  async getEncounterClosePreflight(
+    facilityId: string,
+    encounterId: string,
+    discharge?: EncounterCloseDto["discharge"],
+    actorRoleCodes?: readonly string[] | null
+  ): Promise<D4c7jClosePreflight> {
+    const encounter = await this.prisma.encounter.findFirst({
+      where: { id: encounterId, facilityId },
+      select: { id: true, status: true },
+    });
+    if (!encounter) {
+      throw new NotFoundException("Encounter not found");
+    }
+    const docCheck = await this.getCloseDocumentationCheck(facilityId, encounterId, discharge);
+    const safetyReadiness = await this.getDispositionSafetyReadiness(facilityId, encounterId, discharge);
+    const advisory = await this.classifyEncounterCloseAdvisory({
+      facilityId,
+      encounterId,
+      safetyReadiness,
+      documentationDeficiencyCount: docCheck.hasDeficiencies ? docCheck.deficiencies.length : 0,
+    });
+    return projectD4c7jClosePreflight({
+      encounterId,
+      currentStatus: encounter.status,
+      classification: advisory,
+      roleCodes: actorRoleCodes,
+    });
   }
 
   async upsertEncounterIntake(

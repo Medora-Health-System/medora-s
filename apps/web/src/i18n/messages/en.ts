@@ -10434,6 +10434,52 @@ export default {
       "The document facility differs from the selected facility. The header uses the document facility.",
   },
 
+  clinicCareD4c7j: {
+    closure: {
+      pendingTitle: "Clinical items are still pending",
+      pendingBody:
+        "This encounter contains items that are not finished. Closing does not delete, cancel, or finalize them. They stay available in the patient record and in the appropriate follow-up queues.",
+      canCloseAfterConfirmation: "This encounter can be closed after confirmation.",
+      preserveWarning: "Closing does not delete or cancel these items.",
+      acknowledgement: "I have reviewed the pending items and I want to close this encounter.",
+      priorityTitle: "Priority attention",
+      priorityReasonLabel: "Reason for closing with priority items",
+      priorityReasonPlaceholder: "Clinical reason (optional)",
+      returnToChart: "Return to chart",
+      cancel: "Cancel",
+      confirmClose: "Close encounter",
+      closing: "Closing the encounter…",
+      notAuthorized: "You are not authorized to close this encounter.",
+      counts: {
+        laboratory: "Pending laboratory tests",
+        imaging: "Pending imaging",
+        medications: "Medications not administered",
+        procedures: "Care or procedures not completed",
+        results: "Pending results",
+        unacknowledgedResults: "Unacknowledged results",
+        followUps: "Open follow-ups",
+        referrals: "Pending referrals",
+        documentation: "Pending documentation",
+      },
+      priority: {
+        activeInfusion: "Infusion still running",
+        highAlertMedication: "High-alert medication still active",
+        criticalResult: "Unacknowledged critical result",
+        severeAllergyUnresolved: "Unresolved severe allergy alert",
+        activeBloodProduct: "Blood product still running",
+        emergencyTransferRecommended: "Emergency transfer recommended",
+      },
+    },
+    success: {
+      closed: "Encounter closed",
+    },
+    errors: {
+      unauthorized: "You are not authorized to close this encounter.",
+      staleState: "The encounter state changed. Data has been refreshed.",
+      technical: "The encounter could not be closed because of a technical problem.",
+      retry: "Retry",
+    },
+  },
   clinicCareD4c7f: {
     closure: {
       pendingTitle: "Clinical items are still pending",

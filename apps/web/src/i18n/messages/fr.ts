@@ -10437,6 +10437,53 @@ export default {
       "L’établissement du document diffère de l’établissement sélectionné. L’en-tête utilise l’établissement du document.",
   },
 
+  clinicCareD4c7j: {
+    closure: {
+      pendingTitle: "Des éléments cliniques sont encore en attente",
+      pendingBody:
+        "Cette rencontre contient des éléments qui ne sont pas encore terminés. La clôture ne supprimera, n’annulera ni ne finalisera ces éléments. Ils demeureront accessibles dans le dossier du patient et dans les files de suivi appropriées.",
+      canCloseAfterConfirmation: "Cette rencontre peut être clôturée après confirmation.",
+      preserveWarning: "La clôture ne supprimera ni n’annulera ces éléments.",
+      acknowledgement:
+        "J’ai pris connaissance des éléments en attente et je souhaite clôturer cette rencontre.",
+      priorityTitle: "Attention prioritaire",
+      priorityReasonLabel: "Motif de la clôture avec éléments prioritaires",
+      priorityReasonPlaceholder: "Motif clinique (facultatif)",
+      returnToChart: "Retourner au dossier",
+      cancel: "Annuler",
+      confirmClose: "Clôturer la rencontre",
+      closing: "Clôture de la rencontre en cours…",
+      notAuthorized: "Vous n’êtes pas autorisé à clôturer cette rencontre.",
+      counts: {
+        laboratory: "Analyses de laboratoire en attente",
+        imaging: "Imagerie en attente",
+        medications: "Médicaments non administrés",
+        procedures: "Soins ou procédures non terminés",
+        results: "Résultats en attente",
+        unacknowledgedResults: "Résultats non reconnus",
+        followUps: "Suivis ouverts",
+        referrals: "Références en attente",
+        documentation: "Documentation en attente",
+      },
+      priority: {
+        activeInfusion: "Perfusion encore active",
+        highAlertMedication: "Médicament à haut risque encore actif",
+        criticalResult: "Résultat critique non reconnu",
+        severeAllergyUnresolved: "Alerte d’allergie grave non résolue",
+        activeBloodProduct: "Produit sanguin encore en cours",
+        emergencyTransferRecommended: "Transfert d’urgence recommandé",
+      },
+    },
+    success: {
+      closed: "Rencontre clôturée",
+    },
+    errors: {
+      unauthorized: "Vous n’êtes pas autorisé à clôturer cette rencontre.",
+      staleState: "L’état de la rencontre a changé. Les données ont été actualisées.",
+      technical: "Impossible de clôturer la rencontre en raison d’un problème technique.",
+      retry: "Réessayer",
+    },
+  },
   clinicCareD4c7f: {
     closure: {
       pendingTitle: "Des éléments cliniques sont encore en attente",

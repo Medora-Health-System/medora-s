@@ -35,11 +35,15 @@ describe("MEDUI.D4C.7F web guards (transition / closure / icons / pharmacy)", ()
     }
   });
 
+  /**
+   * B / E keep the D4C.7F intent (acknowledgement modal, no silent disposition ack, one request
+   * per click) against the D4C.7J acknowledgement contract that superseded the field names.
+   */
   it("B — ambulatory closure uses pending modal (no silent disposition ack)", () => {
     const view = readClinic("ClinicCareActiveAmbulatoryWorkspaceView.tsx");
     expect(view).toContain("ClinicCareAmbulatoryClosurePendingModal");
-    expect(view).toContain("acknowledgePendingItems");
-    expect(view).toContain("D4C7F_ENCOUNTER_PENDING_ITEMS_CODE");
+    expect(view).toContain("acknowledgePendingClinicalItems");
+    expect(view).toContain("ADVISORY_RECEIVED");
     expect(view).not.toMatch(/acknowledgeDispositionSafety:\s*needsSafetyAck/);
     expect(D4C7F_ENCOUNTER_PENDING_ITEMS_CODE).toBe("ENCOUNTER_PENDING_ITEMS");
   });
@@ -49,6 +53,7 @@ describe("MEDUI.D4C.7F web guards (transition / closure / icons / pharmacy)", ()
     expect(view).toContain("ambulatoryWorkflowPendingLabelKey");
     expect(view).toContain("if (workflowBusy) return");
     expect(view).toContain("disabled={Boolean(workflowBusy)");
+    expect(view).toContain("canDispatchD4c7jClose");
     expect(view).toContain("invalidateClinicCareAmbulatoryLifecycleCache");
   });
 

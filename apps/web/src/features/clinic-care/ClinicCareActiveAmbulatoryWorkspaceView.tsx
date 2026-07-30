@@ -7,7 +7,7 @@
 
 "use client";
 
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import {
@@ -23,14 +23,10 @@ import {
   resolveClinicCareAmbulatoryWorkflowTarget,
   shouldShowAmbulatoryCompleteVisitAction,
   ambulatoryWorkflowPendingLabelKey,
-  D4C7F_ENCOUNTER_PENDING_ITEMS_CODE,
-  D4C7F_ENCOUNTER_NON_OVERRIDABLE_BLOCKERS_CODE,
-  D4C7F_PENDING_ITEMS_ACK_VERSION,
-  D4C7F_PENDING_ITEMS_OVERRIDE_REASON,
-  EMPTY_D4C7F_PENDING_ITEM_COUNTS,
+  D4C7J_ACKNOWLEDGEMENT_VERSION,
+  D4C7J_ACKNOWLEDGEMENT_REASON,
   type ClinicCareAmbulatoryWorkflowAction,
   type ClinicCareAmbulatoryWorkspaceSection,
-  type D4c7fPendingItemCounts,
 } from "@medora/shared";
 import { apiFetch, asApiObject } from "@/lib/apiClient";
 import { normalizeUserFacingError } from "@/lib/userFacingError";
@@ -53,6 +49,13 @@ import { ClinicCareAmbulatoryPatientHeader } from "@/features/clinic-care/Clinic
 import { ClinicCareAmbulatoryWorkspaceSectionNav } from "@/features/clinic-care/ClinicCareAmbulatoryWorkspaceSectionNav";
 import { ClinicCareAmbulatoryWorkspacePanels } from "@/features/clinic-care/ClinicCareAmbulatoryWorkspacePanels";
 import { ClinicCareAmbulatoryClosurePendingModal } from "@/features/clinic-care/ClinicCareAmbulatoryClosurePendingModal";
+import {
+  INITIAL_D4C7J_CLOSURE_STATE,
+  canDispatchD4c7jClose,
+  classifyD4c7jCloseError,
+  d4c7jCloseErrorMessageKey,
+  d4c7jClosureReducer,
+} from "@/features/clinic-care/clinicCareClosureAdvisoryStateMachineD4c7j";
 
 type EncounterShell = {
   id: string;
@@ -125,13 +128,10 @@ export function ClinicCareActiveAmbulatoryWorkspaceView() {
   const [workflowBusy, setWorkflowBusy] = useState<ClinicCareAmbulatoryWorkflowAction | null>(null);
   const [workflowError, setWorkflowError] = useState<string | null>(null);
   const [closeSuccess, setCloseSuccess] = useState(false);
-  const [pendingModalOpen, setPendingModalOpen] = useState(false);
-  const [pendingCounts, setPendingCounts] = useState<D4c7fPendingItemCounts>({
-    ...EMPTY_D4C7F_PENDING_ITEM_COUNTS,
-  });
-  const [pendingOverrideAllowed, setPendingOverrideAllowed] = useState(false);
-  const [pendingAck, setPendingAck] = useState(false);
-  const [hardBlockMessage, setHardBlockMessage] = useState<string | null>(null);
+  /** MEDUI.D4C.7J — explicit closure state machine: one confirmation → one close request. */
+  const [closure, dispatchClosure] = useReducer(d4c7jClosureReducer, INITIAL_D4C7J_CLOSURE_STATE);
+  const closureStateRef = useRef(closure);
+  closureStateRef.current = closure;
 
   const fromParam = searchParams?.get("from");
   const backHref = fromParam === "todays-visits" ? CLINIC_CARE_TODAYS_VISITS : CLINIC_CARE_HOME;
@@ -299,8 +299,6 @@ export function ClinicCareActiveAmbulatoryWorkspaceView() {
         encounterId: encounter!.id,
       });
       setCloseSuccess(true);
-      setPendingModalOpen(false);
-      setPendingAck(false);
     },
     [encounter, facilityId, t]
   );
@@ -311,65 +309,50 @@ export function ClinicCareActiveAmbulatoryWorkspaceView() {
       if (workflowBusy) return;
       setWorkflowBusy(action);
       setWorkflowError(null);
-      setHardBlockMessage(null);
       setCloseSuccess(false);
       try {
         if (isAmbulatoryEnterpriseCloseTarget(target) || action === "COMPLETE_VISIT") {
-          let closed: unknown;
+          /**
+           * MEDUI.D4C.7J — exactly one close request per deliberate click. A pending-item
+           * response opens the acknowledgement modal; there is no implicit retry with a
+           * different body (the previous retry produced paired 400s in production).
+           */
+          if (!canDispatchD4c7jClose(closureStateRef.current)) return;
+          const clientRequestId = `close-${encounter.id}-${Date.now()}`;
+          dispatchClosure({ type: "CLOSE_REQUESTED", clientRequestId });
           try {
-            closed = await closeAmbulatoryEncounterViaEnterprise(facilityId, encounter.id, {
+            const closed = await closeAmbulatoryEncounterViaEnterprise(facilityId, encounter.id, {
               dischargeStatus: "DISCHARGED",
+              clientRequestId,
             });
-          } catch (firstErr) {
-            const err = firstErr as Error & { errorCode?: string | null; body?: unknown };
-            const code = err.errorCode ?? null;
-            const body = err.body && typeof err.body === "object" ? (err.body as Record<string, unknown>) : null;
-            const msg = err instanceof Error ? err.message : String(firstErr ?? "");
-
-            if (code === D4C7F_ENCOUNTER_NON_OVERRIDABLE_BLOCKERS_CODE) {
-              setHardBlockMessage(
-                normalizeUserFacingError(msg, language) || t("clinicCareD4c7f.closure.hardBlockTitle")
-              );
-              throw firstErr;
-            }
-
-            if (code === D4C7F_ENCOUNTER_PENDING_ITEMS_CODE || body?.code === D4C7F_ENCOUNTER_PENDING_ITEMS_CODE) {
-              const pending =
-                body?.pending && typeof body.pending === "object"
-                  ? ({ ...EMPTY_D4C7F_PENDING_ITEM_COUNTS, ...(body.pending as object) } as D4c7fPendingItemCounts)
-                  : { ...EMPTY_D4C7F_PENDING_ITEM_COUNTS };
-              setPendingCounts(pending);
-              setPendingOverrideAllowed(body?.overrideAllowed === true);
-              setPendingAck(false);
-              setPendingModalOpen(true);
+            dispatchClosure({ type: "CLOSE_SUCCEEDED" });
+            applyCloseProjection(closed);
+            await load();
+          } catch (closeErr) {
+            const classified = classifyD4c7jCloseError(closeErr);
+            if (classified.kind === "advisory") {
+              dispatchClosure({
+                type: "ADVISORY_RECEIVED",
+                pending: classified.pending,
+                priorityCategories: classified.priorityCategories,
+                canCloseAfterAcknowledgement: classified.canCloseAfterAcknowledgement,
+              });
               return;
             }
-
-            const needsDocAck =
-              code === "ENCOUNTER_CLOSE_DEFICIENCIES_NOT_ACKNOWLEDGED" ||
-              msg.includes("acknowledgeDeficiencies") ||
-              msg.includes("ENCOUNTER_CLOSE_DEFICIENCIES") ||
-              msg.includes("documentation est incomplète");
-            const needsSafetyAck =
-              code === "ENCOUNTER_CLOSE_DISPOSITION_SAFETY_BLOCKED" ||
-              msg.includes("acknowledgeDispositionSafety") ||
-              msg.includes("ENCOUNTER_CLOSE_DISPOSITION_SAFETY") ||
-              msg.includes("sécurité disposition");
-            if (!needsDocAck && !needsSafetyAck) throw firstErr;
-            // Deficiencies / other disposition safety — explicit ack only for docs path; do not silent-ack pending.
-            if (needsSafetyAck && !needsDocAck) {
-              setWorkflowError(
-                normalizeUserFacingError(msg, language) || t("clinicCareD4c7f.errors.safetyMustResolve")
-              );
-              return;
-            }
-            closed = await closeAmbulatoryEncounterViaEnterprise(facilityId, encounter.id, {
-              dischargeStatus: "DISCHARGED",
-              acknowledgeDeficiencies: needsDocAck,
+            dispatchClosure({
+              type: "CLOSE_FAILED",
+              kind: classified.kind,
+              message: normalizeUserFacingError(
+                closeErr instanceof Error ? closeErr.message : null,
+                language
+              ),
             });
+            setWorkflowError(
+              normalizeUserFacingError(closeErr instanceof Error ? closeErr.message : null, language) ||
+                t(d4c7jCloseErrorMessageKey(classified.kind))
+            );
+            if (classified.kind === "stale") await load();
           }
-          applyCloseProjection(closed);
-          await load();
           return;
         }
         if (target !== encounter.workflowState) {
@@ -400,29 +383,45 @@ export function ClinicCareActiveAmbulatoryWorkspaceView() {
     [facilityId, encounter, load, language, goToSection, t, workflowBusy, applyCloseProjection]
   );
 
-  const confirmPendingOverrideClose = useCallback(async () => {
-    if (!facilityId || !encounter || !pendingAck) return;
+  /**
+   * MEDUI.D4C.7J — acknowledged close. Sends the acknowledgement in the same enterprise close
+   * contract; the server preserves every pending item and records one audit event.
+   */
+  const confirmAcknowledgedClose = useCallback(async () => {
+    const current = closureStateRef.current;
+    if (!facilityId || !encounter) return;
+    if (current.phase !== "AWAITING_ACKNOWLEDGEMENT" || !current.acknowledged) return;
+    dispatchClosure({ type: "CONFIRM_CLOSE" });
     setWorkflowBusy("COMPLETE_VISIT");
     setWorkflowError(null);
     try {
       const closed = await closeAmbulatoryEncounterViaEnterprise(facilityId, encounter.id, {
         dischargeStatus: "DISCHARGED",
-        acknowledgePendingItems: true,
-        acknowledgementVersion: D4C7F_PENDING_ITEMS_ACK_VERSION,
-        pendingItemsOverrideReason: D4C7F_PENDING_ITEMS_OVERRIDE_REASON,
+        acknowledgePendingClinicalItems: true,
+        acknowledgementVersion: D4C7J_ACKNOWLEDGEMENT_VERSION,
+        acknowledgementReason: current.reason.trim() || D4C7J_ACKNOWLEDGEMENT_REASON,
+        clientRequestId: current.clientRequestId ?? `close-${encounter.id}-${Date.now()}`,
       });
+      dispatchClosure({ type: "CLOSE_SUCCEEDED" });
       applyCloseProjection(closed);
       await load();
     } catch (e) {
+      const classified = classifyD4c7jCloseError(e);
+      dispatchClosure({
+        type: "CLOSE_FAILED",
+        kind: classified.kind,
+        message: normalizeUserFacingError(e instanceof Error ? e.message : null, language),
+      });
       setCloseSuccess(false);
       setWorkflowError(
         normalizeUserFacingError(e instanceof Error ? e.message : null, language) ||
-          t("clinicCareD4c7d.messages.closeFailed")
+          t(d4c7jCloseErrorMessageKey(classified.kind))
       );
+      if (classified.kind === "stale") await load();
     } finally {
       setWorkflowBusy(null);
     }
-  }, [facilityId, encounter, pendingAck, applyCloseProjection, load, language, t]);
+  }, [facilityId, encounter, applyCloseProjection, load, language, t]);
 
   if (!rolesReady || (!encounter && loading)) {
     return (
@@ -452,6 +451,10 @@ export function ClinicCareActiveAmbulatoryWorkspaceView() {
       </div>
     );
   }
+
+  /** MEDUI.D4C.7J — synchronous disable while a close mutation is in flight (duplicate-click guard). */
+  const closureBusy = (action: ClinicCareAmbulatoryWorkflowAction) =>
+    action === "COMPLETE_VISIT" && closure.phase === "CLOSING";
 
   const isLocked = isEncounterLocked(encounter);
   const providerName = encounter.physicianAssigned
@@ -514,7 +517,7 @@ export function ClinicCareActiveAmbulatoryWorkspaceView() {
             <button
               key={action}
               type="button"
-              disabled={Boolean(workflowBusy) || encounter.status === "CLOSED"}
+              disabled={Boolean(workflowBusy) || encounter.status === "CLOSED" || closureBusy(action)}
               onClick={() => void runWorkflowAction(action, target)}
               aria-busy={workflowBusy === action}
               style={{ ...compactBtn, opacity: workflowBusy === action ? 0.6 : 1 }}
@@ -522,18 +525,13 @@ export function ClinicCareActiveAmbulatoryWorkspaceView() {
               {workflowBusy === action
                 ? t(ambulatoryWorkflowPendingLabelKey(action))
                 : encounter.status === "CLOSED"
-                  ? t("clinicCareD4c7f.success.closed")
+                  ? t("clinicCareD4c7j.success.closed")
                   : action === "COMPLETE_VISIT"
                     ? t("clinicCareD4c7d.actions.closeEncounter")
                     : t(clinicCareAmbulatoryWorkflowActionLabelKey(action))}
             </button>
           ))}
         </ClinicCareAmbulatoryPatientHeader>
-        {hardBlockMessage ? (
-          <p role="alert" style={{ margin: "8px 0 0", fontSize: 12, color: "#b91c1c" }}>
-            {t("clinicCareD4c7f.closure.hardBlockTitle")} {hardBlockMessage}
-          </p>
-        ) : null}
         {closeSuccess ? (
           <p role="status" style={{ margin: "8px 0 0", fontSize: 12, color: "#047857" }}>
             {t("clinicCareD4c7d.messages.closed")}
@@ -547,21 +545,21 @@ export function ClinicCareActiveAmbulatoryWorkspaceView() {
       </div>
 
       <ClinicCareAmbulatoryClosurePendingModal
-        open={pendingModalOpen}
-        pending={pendingCounts}
-        acknowledged={pendingAck}
-        onAcknowledgedChange={setPendingAck}
-        closing={workflowBusy === "COMPLETE_VISIT"}
-        overrideAllowed={pendingOverrideAllowed}
-        onReturnToChart={() => {
-          setPendingModalOpen(false);
-          setPendingAck(false);
-        }}
-        onCancel={() => {
-          setPendingModalOpen(false);
-          setPendingAck(false);
-        }}
-        onConfirm={() => void confirmPendingOverrideClose()}
+        open={
+          closure.phase === "AWAITING_ACKNOWLEDGEMENT" ||
+          (closure.phase === "CLOSING" && closure.acknowledged)
+        }
+        pending={closure.pending}
+        priorityCategories={closure.priorityCategories}
+        acknowledged={closure.acknowledged}
+        onAcknowledgedChange={(v) => dispatchClosure({ type: "ACKNOWLEDGEMENT_CHANGED", acknowledged: v })}
+        reason={closure.reason}
+        onReasonChange={(v) => dispatchClosure({ type: "REASON_CHANGED", reason: v })}
+        closing={closure.phase === "CLOSING"}
+        canCloseAfterAcknowledgement={closure.canCloseAfterAcknowledgement}
+        onReturnToChart={() => dispatchClosure({ type: "DISMISSED" })}
+        onCancel={() => dispatchClosure({ type: "DISMISSED" })}
+        onConfirm={() => void confirmAcknowledgedClose()}
         t={t}
       />
 
