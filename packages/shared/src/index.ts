@@ -32,7 +32,11 @@ export * from "./auth/enterpriseClinicEncounterTransitionClosurePharmacyNavigati
 export * from "./auth/enterpriseMarAuthorityClinicOrderRxD4c7g.js";
 export * from "./auth/enterpriseMarSafetyAckRxPrintAuthorityD4c7h.js";
 export * from "./auth/enterpriseFacilityIdentityOnboardingPrintProjectionD4c7i.js";
+<<<<<<< HEAD
 export * from "./auth/enterpriseEncounterClosureAdvisoryOverrideD4c7j.js";
+=======
+export * from "./auth/enterpriseDentalOrthodonticsArchitectureD5a1.js";
+>>>>>>> 47036cf94 (docs(dental): certify enterprise dental and orthodontics architecture D5A.1)
 export * from "./auth/navigationAuthorization.js";
 
 export * from "./password-policy.js";
