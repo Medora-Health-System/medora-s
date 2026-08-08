@@ -7,7 +7,7 @@ import { randomUUID, randomBytes } from "crypto";
 import { createStructuredLogger } from "../common/logging/structured-logger";
 import { PrismaService } from "../prisma/prisma.service";
 import type { AuthUserDto, JwtPayload } from "./types";
-import { isPlatformPrincipalAdminEmail } from "./platform-principal";
+import { resolvePlatformAuthority } from "./platform-principal";
 import { FailedLoginTracker } from "./failed-login-tracker";
 import { isMfaRequiredForRoles } from "./mfa/mfa-required-roles.util";
 
@@ -215,12 +215,11 @@ export class AuthService {
       allowRnLabResultSubmission: ur.facility?.allowRnLabResultSubmission ?? false,
     }));
 
-    /**
-     * Safe bootstrap: guarantee platform principal visibility even if the DB role row
-     * was not assigned yet. This stays strictly scoped to the known principal email.
-     */
+    const platformAuthority = await resolvePlatformAuthority(this.prisma, user.id);
+
+    /** Project the authoritative global role into an available active facility context. */
     if (
-      isPlatformPrincipalAdminEmail(user.email) &&
+      platformAuthority.granted &&
       facilityRoles.length > 0 &&
       !facilityRoles.some((fr) => fr.role === "MEDORA_SUPER_ADMIN")
     ) {
@@ -247,7 +246,7 @@ export class AuthService {
       username: user.email,
       fullName: `${user.firstName} ${user.lastName}`.trim(),
       preferredLang: "fr",
-      canCreateFacilities: isPlatformPrincipalAdminEmail(user.email),
+      canCreateFacilities: platformAuthority.granted,
       facilityRoles,
       msppRoles,
       msppContext: {

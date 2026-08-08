@@ -17,7 +17,7 @@ import {
 import { PrismaService } from "../prisma/prisma.service";
 import { AuditAction, FacilityType, RoleCode } from "@prisma/client";
 import { randomBytes } from "crypto";
-import { isPlatformPrincipalAdminEmail } from "../auth/platform-principal";
+import { resolvePlatformAuthority } from "../auth/platform-principal";
 import { BillingIdentityService } from "../billing/billing-identity.service";
 import { FacilityBillingWorkflowService } from "../encounters/facility-billing-workflow.service";
 import { ensureFacilityClinicalDepartments, ensureFacilityServiceLineDepartments } from "./facility-department-seed.util";
@@ -141,13 +141,13 @@ export class AdminFacilitiesService {
     private readonly facilityBillingWorkflow: FacilityBillingWorkflowService,
   ) {}
 
+  private async isPlatformPrincipal(userId: string): Promise<boolean> {
+    return (await resolvePlatformAuthority(this.prisma, userId)).granted;
+  }
+
   async create(dto: CreateFacilityDto, userId: string) {
     assertNoClientEscalation(dto);
-    const actor = await this.prisma.user.findUnique({
-      where: { id: userId },
-      select: { email: true },
-    });
-    if (!actor?.email || !isPlatformPrincipalAdminEmail(actor.email)) {
+    if (!(await this.isPlatformPrincipal(userId))) {
       throw new ForbiddenException("Création d’établissement non autorisée pour ce compte.");
     }
 
@@ -310,11 +310,7 @@ export class AdminFacilitiesService {
   }
 
   private async assertCanManageFacilityBilling(actorUserId: string, facilityId: string) {
-    const actor = await this.prisma.user.findUnique({
-      where: { id: actorUserId },
-      select: { email: true },
-    });
-    if (actor?.email && isPlatformPrincipalAdminEmail(actor.email)) {
+    if (await this.isPlatformPrincipal(actorUserId)) {
       return;
     }
     const adminHere = await this.prisma.userRole.findFirst({
@@ -332,15 +328,11 @@ export class AdminFacilitiesService {
   }
 
   /**
-   * Platform principal (`atranchant@medora.local`) may list all facilities without per-facility ADMIN.
+   * An authoritative platform principal may list all facilities without per-facility ADMIN.
    * Facility-level ADMIN at the active `x-facility-id` retains the previous list access (global rows).
    */
   async assertCanListFacilities(userId: string, facilityIdHeader: string | undefined) {
-    const user = await this.prisma.user.findUnique({
-      where: { id: userId },
-      select: { email: true },
-    });
-    if (user?.email && isPlatformPrincipalAdminEmail(user.email)) {
+    if (await this.isPlatformPrincipal(userId)) {
       return;
     }
 
@@ -367,11 +359,7 @@ export class AdminFacilitiesService {
    */
   async list(userId: string, includeInactive: boolean) {
     if (includeInactive) {
-      const user = await this.prisma.user.findUnique({
-        where: { id: userId },
-        select: { email: true },
-      });
-      if (!user?.email || !isPlatformPrincipalAdminEmail(user.email)) {
+      if (!(await this.isPlatformPrincipal(userId))) {
         throw new ForbiddenException("Liste complète des établissements non autorisée pour ce compte.");
       }
       return this.prisma.facility.findMany({
@@ -388,11 +376,7 @@ export class AdminFacilitiesService {
         },
       }).then((rows) => rows.map((row) => mapFacilityRowForClient(row)));
     }
-    const principal = await this.prisma.user.findUnique({
-      where: { id: userId },
-      select: { email: true },
-    });
-    if (principal?.email && isPlatformPrincipalAdminEmail(principal.email)) {
+    if (await this.isPlatformPrincipal(userId)) {
       return this.prisma.facility.findMany({
         where: { isActive: true },
         orderBy: { name: "asc" },
@@ -527,11 +511,7 @@ export class AdminFacilitiesService {
   }
 
   async setFacilityLanguage(id: string, defaultLanguage: "fr" | "en", userId: string) {
-    const actor = await this.prisma.user.findUnique({
-      where: { id: userId },
-      select: { email: true },
-    });
-    if (!actor?.email || !isPlatformPrincipalAdminEmail(actor.email)) {
+    if (!(await this.isPlatformPrincipal(userId))) {
       throw new ForbiddenException("Modification de l’établissement non autorisée pour ce compte.");
     }
 
@@ -551,11 +531,7 @@ export class AdminFacilitiesService {
   }
 
   async setFacilityActive(id: string, isActive: boolean, userId: string) {
-    const actor = await this.prisma.user.findUnique({
-      where: { id: userId },
-      select: { email: true },
-    });
-    if (!actor?.email || !isPlatformPrincipalAdminEmail(actor.email)) {
+    if (!(await this.isPlatformPrincipal(userId))) {
       throw new ForbiddenException("Modification de l’établissement non autorisée pour ce compte.");
     }
 

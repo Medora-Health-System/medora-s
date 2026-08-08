@@ -2,7 +2,10 @@ import { Injectable, CanActivate, ExecutionContext, ForbiddenException, BadReque
 import { Reflector } from "@nestjs/core";
 import { PrismaService } from "../../prisma/prisma.service";
 import { MsppRoleCode, RoleCode } from "@prisma/client";
-import { resolvePlatformPrincipalAccess } from "../../auth/platform-principal";
+import {
+  resolvePlatformAuthority,
+  resolvePlatformPrincipalAccess,
+} from "../../auth/platform-principal";
 import {
   BREAK_GLASS_PATIENT_PARAM_KEY,
   MSPP_ROLES_KEY,
@@ -77,6 +80,12 @@ export class RolesGuard implements CanActivate {
     });
 
     if (membershipSatisfying) {
+      if (
+        membershipSatisfying.role.code === RoleCode.MEDORA_SUPER_ADMIN &&
+        !(await resolvePlatformAuthority(this.prisma, userId)).granted
+      ) {
+        throw new ForbiddenException("Platform authority assignment is not active.");
+      }
       request.userRole = membershipSatisfying.role.code;
       request.facilityId = facilityId;
       request.user = request.user || {};
@@ -181,13 +190,8 @@ export class RolesGuard implements CanActivate {
     facilityId: string,
     userId: string
   ): Promise<boolean> {
-    const user = await this.prisma.user.findUnique({
-      where: { id: userId },
-      select: { email: true, isActive: true },
-    });
-    const decision = resolvePlatformPrincipalAccess({
-      email: user?.email,
-      isActive: user?.isActive,
+    const decision = await resolvePlatformPrincipalAccess(this.prisma, {
+      userId,
       facilityId,
     });
     if (!decision.granted) {

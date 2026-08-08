@@ -17,7 +17,6 @@ import {
   RequireRoles,
   RolesGuard,
 } from "./roles.guard";
-import { PLATFORM_PRINCIPAL_ADMIN_EMAIL } from "../../auth/platform-principal";
 
 const facilityId = "facility-1";
 const otherFacilityId = "facility-2";
@@ -42,7 +41,8 @@ class LifecycleRoutes {
 }
 
 function buildGuard(opts: {
-  email?: string;
+  platformAuthority?: boolean;
+  canCreateFacilities?: boolean;
   isActive?: boolean;
   membershipRole?: RoleCode | null;
   facilityFound?: boolean;
@@ -62,8 +62,10 @@ function buildGuard(opts: {
     },
     user: {
       findUnique: jest.fn().mockResolvedValue({
-        email: opts.email ?? "nurse@clinic.local",
+        id: userId,
         isActive: opts.isActive ?? true,
+        canCreateFacilities: opts.canCreateFacilities ?? opts.platformAuthority === true,
+        userRoles: opts.platformAuthority === true ? [{ id: "super-role" }] : [],
       }),
     },
     facility: {
@@ -91,7 +93,7 @@ function platformRequest(headers: Record<string, unknown> = { "x-facility-id": f
 
 describe("MEDUI.D4C.7K — platform administrator lifecycle route access", () => {
   it("reaches the close route with explicit facility context", async () => {
-    const { guard } = buildGuard({ email: PLATFORM_PRINCIPAL_ADMIN_EMAIL });
+    const { guard } = buildGuard({ platformAuthority: true });
     const request = platformRequest();
     await expect(guard.canActivate(context(LifecycleRoutes.prototype.close, request))).resolves.toBe(
       true
@@ -103,7 +105,7 @@ describe("MEDUI.D4C.7K — platform administrator lifecycle route access", () =>
   });
 
   it("reaches the reopen route with explicit facility context", async () => {
-    const { guard } = buildGuard({ email: PLATFORM_PRINCIPAL_ADMIN_EMAIL });
+    const { guard } = buildGuard({ platformAuthority: true });
     const request = platformRequest();
     await expect(
       guard.canActivate(context(LifecycleRoutes.prototype.reopen, request))
@@ -112,7 +114,7 @@ describe("MEDUI.D4C.7K — platform administrator lifecycle route access", () =>
   });
 
   it("reaches the lifecycle-timeline route with explicit facility context", async () => {
-    const { guard } = buildGuard({ email: PLATFORM_PRINCIPAL_ADMIN_EMAIL });
+    const { guard } = buildGuard({ platformAuthority: true });
     const request = platformRequest();
     await expect(
       guard.canActivate(context(LifecycleRoutes.prototype.lifecycleTimeline, request))
@@ -120,7 +122,7 @@ describe("MEDUI.D4C.7K — platform administrator lifecycle route access", () =>
   });
 
   it("is denied without facility context", async () => {
-    const { guard, prisma } = buildGuard({ email: PLATFORM_PRINCIPAL_ADMIN_EMAIL });
+    const { guard, prisma } = buildGuard({ platformAuthority: true });
     await expect(
       guard.canActivate(context(LifecycleRoutes.prototype.reopen, { user: { userId }, headers: {} }))
     ).rejects.toBeInstanceOf(BadRequestException);
@@ -129,7 +131,7 @@ describe("MEDUI.D4C.7K — platform administrator lifecycle route access", () =>
 
   it("is denied with a mismatched or inactive facility context", async () => {
     const { guard } = buildGuard({
-      email: PLATFORM_PRINCIPAL_ADMIN_EMAIL,
+      platformAuthority: true,
       facilityFound: false,
     });
     await expect(
@@ -143,21 +145,21 @@ describe("MEDUI.D4C.7K — platform administrator lifecycle route access", () =>
   });
 
   it("is denied for an inactive platform account", async () => {
-    const { guard } = buildGuard({ email: PLATFORM_PRINCIPAL_ADMIN_EMAIL, isActive: false });
+    const { guard } = buildGuard({ platformAuthority: true, isActive: false });
     await expect(
       guard.canActivate(context(LifecycleRoutes.prototype.reopen, platformRequest()))
     ).rejects.toBeInstanceOf(ForbiddenException);
   });
 
   it("does not grant generic access on routes that did not opt in", async () => {
-    const { guard } = buildGuard({ email: PLATFORM_PRINCIPAL_ADMIN_EMAIL });
+    const { guard } = buildGuard({ platformAuthority: true });
     await expect(
       guard.canActivate(context(LifecycleRoutes.prototype.otherAdminRoute, platformRequest()))
     ).rejects.toBeInstanceOf(ForbiddenException);
   });
 
   it("does not grant access to a non-platform account without facility membership", async () => {
-    const { guard } = buildGuard({ email: "admin@clinic.local" });
+    const { guard } = buildGuard({});
     await expect(
       guard.canActivate(context(LifecycleRoutes.prototype.reopen, platformRequest()))
     ).rejects.toBeInstanceOf(ForbiddenException);
@@ -165,7 +167,6 @@ describe("MEDUI.D4C.7K — platform administrator lifecycle route access", () =>
 
   it("keeps facility ADMIN facility-scoped (no platform stamp)", async () => {
     const { guard, prisma } = buildGuard({
-      email: "admin@clinic.local",
       membershipRole: RoleCode.ADMIN,
     });
     const request = platformRequest();
@@ -181,7 +182,7 @@ describe("MEDUI.D4C.7K — platform administrator lifecycle route access", () =>
 
   it("keeps facility Provider and RN close authorization unchanged", async () => {
     for (const role of [RoleCode.PROVIDER, RoleCode.RN]) {
-      const { guard } = buildGuard({ email: "clinician@clinic.local", membershipRole: role });
+      const { guard } = buildGuard({ membershipRole: role });
       const request = platformRequest();
       await expect(
         guard.canActivate(context(LifecycleRoutes.prototype.close, request))
@@ -192,7 +193,7 @@ describe("MEDUI.D4C.7K — platform administrator lifecycle route access", () =>
   });
 
   it("denies a facility role that is not authorized for reopen", async () => {
-    const { guard } = buildGuard({ email: "clinician@clinic.local", membershipRole: RoleCode.RN });
+    const { guard } = buildGuard({ membershipRole: RoleCode.RN });
     await expect(
       guard.canActivate(context(LifecycleRoutes.prototype.reopen, platformRequest()))
     ).rejects.toBeInstanceOf(ForbiddenException);

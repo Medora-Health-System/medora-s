@@ -14,6 +14,7 @@ import { toDataURL as qrcodeToDataURL } from "qrcode";
 
 import { PrismaService } from "../../prisma/prisma.service";
 import { AuditService } from "../../common/services/audit.service";
+import { resolvePlatformAuthority } from "../platform-principal";
 import { createStructuredLogger } from "../../common/logging/structured-logger";
 
 import {
@@ -548,6 +549,26 @@ export class MfaService {
       },
     });
     if (!target) throw new NotFoundException("Utilisateur introuvable.");
+
+    const targetAuthority = await resolvePlatformAuthority(this.prisma, targetUserId);
+    if (targetAuthority.granted) {
+      const actorAuthority = await resolvePlatformAuthority(this.prisma, actor.userId);
+      if (!actorAuthority.granted) {
+        await this.audit.log(AuditAction.UPDATE, "PLATFORM_PRINCIPAL_PROTECTION", {
+          userId: actor.userId,
+          facilityId: actor.facilityId,
+          entityId: targetUserId,
+          critical: true,
+          metadata: {
+            event: "PROTECTED_PLATFORM_PRINCIPAL_MUTATION_DENIED",
+            mutation: "MFA_RESET",
+          },
+        });
+        throw new ForbiddenException(
+          "Un administrateur d’établissement ne peut pas réinitialiser la MFA d’un administrateur plateforme."
+        );
+      }
+    }
 
     if (actor.role === RoleCode.ADMIN) {
       const sharesFacility = target.userRoles.some(

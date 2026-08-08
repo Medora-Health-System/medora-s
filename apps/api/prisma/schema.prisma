@@ -190,7 +190,7 @@ model User {
   isActive                                        Boolean                                @default(true)
   createdAt                                       DateTime                               @default(now())
   updatedAt                                       DateTime                               @updatedAt
-  /// Plateforme : réservé au compte principal unique (`atranchant@medora.local`); tenir aligné avec les migrations (index unique partiel).
+  /// Plateforme : défense en profondeur; autorité effective = compte actif + affectation MEDORA_SUPER_ADMIN active + ce flag (index unique partiel).
   canCreateFacilities                             Boolean                                @default(false)
   /// Phase 7 — 10-digit NPI for professional claim rendering (optional).
   billingNpi                                      String?

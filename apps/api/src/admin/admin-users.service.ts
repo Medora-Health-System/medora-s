@@ -4,10 +4,14 @@ import {
   ConflictException,
   ForbiddenException,
   NotFoundException,
+  Optional,
 } from "@nestjs/common";
 import * as argon2 from "argon2";
 import { PrismaService } from "../prisma/prisma.service";
 import { RoleCode } from "@prisma/client";
+import { AuditAction } from "@prisma/client";
+import { resolvePlatformAuthority } from "../auth/platform-principal";
+import { AuditService } from "../common/services/audit.service";
 import {
   dedupeAdminUserAssignments,
   findDuplicateRoleCodeDepartmentConflict,
@@ -28,12 +32,48 @@ type ResolvedUserRoleAssignment = {
 
 @Injectable()
 export class AdminUsersService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Optional() private readonly audit?: AuditService
+  ) {}
+
+  private async assertMayMutateTarget(
+    actorUserId: string,
+    targetUserId: string,
+    mutation: string
+  ): Promise<void> {
+    const targetAuthority = await resolvePlatformAuthority(this.prisma, targetUserId);
+    if (!targetAuthority.granted) return;
+    const actorAuthority = await resolvePlatformAuthority(this.prisma, actorUserId);
+    if (actorAuthority.granted) return;
+    await this.audit?.log(AuditAction.UPDATE, "PLATFORM_PRINCIPAL_PROTECTION", {
+      userId: actorUserId,
+      entityId: targetUserId,
+      critical: true,
+      metadata: { event: "PROTECTED_PLATFORM_PRINCIPAL_MUTATION_DENIED", mutation },
+    });
+    throw new ForbiddenException(
+      "Un administrateur d’établissement ne peut pas modifier un administrateur plateforme."
+    );
+  }
+
+  private assertNoPlatformRoleAssignment(assignments: ResolvedUserRoleAssignment[]): void {
+    if (assignments.some((a) => a.roleCode === RoleCode.MEDORA_SUPER_ADMIN)) {
+      throw new ForbiddenException(
+        "L’autorité administrateur plateforme ne peut pas être gérée depuis un établissement."
+      );
+    }
+  }
 
   async listForFacility(facilityId: string) {
     const users = await this.prisma.user.findMany({
       where: {
         userRoles: { some: { facilityId } },
+        NOT: {
+          isActive: true,
+          canCreateFacilities: true,
+          userRoles: { some: { isActive: true, role: { code: RoleCode.MEDORA_SUPER_ADMIN } } },
+        },
       },
       include: {
         userRoles: {
@@ -62,6 +102,7 @@ export class AdminUsersService {
 
     const passwordHash = await argon2.hash(dto.password);
     const resolvedAssignments = await this.resolveAssignmentsForFacility(facilityIdHeader, dto);
+    this.assertNoPlatformRoleAssignment(resolvedAssignments);
 
     const roleRows = await this.prisma.role.findMany({
       where: { code: { in: resolvedAssignments.map((a) => a.roleCode) } },
@@ -114,6 +155,7 @@ export class AdminUsersService {
     dto: UpdateAdminUserDto,
     _actorUserId: string
   ) {
+    await this.assertMayMutateTarget(_actorUserId, userId, "PROFILE");
     const user = await this.prisma.user.findFirst({
       where: {
         id: userId,
@@ -152,6 +194,7 @@ export class AdminUsersService {
     dto: UpdateAdminUserRolesDto,
     _actorUserId: string
   ) {
+    await this.assertMayMutateTarget(_actorUserId, userId, "ROLES");
     if (dto.facilityId !== facilityIdHeader) {
       throw new BadRequestException("L’établissement doit correspondre à l’établissement actif.");
     }
@@ -173,6 +216,7 @@ export class AdminUsersService {
     const hadActiveSuperAdmin = activeAtFacility.some((ur) => ur.role.code === RoleCode.MEDORA_SUPER_ADMIN);
 
     const resolvedAssignments = await this.resolveAssignmentsForFacility(facilityIdHeader, dto);
+    this.assertNoPlatformRoleAssignment(resolvedAssignments);
 
     const mergedAssignments: ResolvedUserRoleAssignment[] = [...resolvedAssignments];
     const mergedRoleCodes: RoleCode[] = mergedAssignments.map((a) => a.roleCode);
@@ -247,6 +291,7 @@ export class AdminUsersService {
     dto: UpdateAdminUserStatusDto,
     actorUserId: string
   ) {
+    await this.assertMayMutateTarget(actorUserId, userId, "GLOBAL_STATUS");
     if (userId === actorUserId && dto.isActive === false) {
       throw new ForbiddenException("Vous ne pouvez pas désactiver votre propre compte.");
     }
@@ -299,6 +344,7 @@ export class AdminUsersService {
     newPassword: string,
     actorUserId: string
   ) {
+    await this.assertMayMutateTarget(actorUserId, userId, "PASSWORD_RESET");
     if (userId === actorUserId) {
       throw new ForbiddenException("Utilisez le changement de mot de passe personnel.");
     }
@@ -349,6 +395,7 @@ export class AdminUsersService {
     dto: UserBillingIdentityPatchDto,
     _actorUserId: string
   ) {
+    await this.assertMayMutateTarget(_actorUserId, userId, "BILLING_IDENTITY");
     const exists = await this.prisma.user.findFirst({
       where: {
         id: userId,
