@@ -46,6 +46,7 @@ import {
 } from "./mfa-challenge.util";
 import { MFA_GRANT_INVALID } from "./mfa-error-codes";
 import { isMfaRequiredForRoles } from "./mfa-required-roles.util";
+import { assertFacilityAdminMayMutateUser } from "../../admin/user-mutation-boundary";
 
 const log = createStructuredLogger("MfaService");
 
@@ -537,6 +538,15 @@ export class MfaService {
     ) {
       throw new ForbiddenException("Action réservée aux administrateurs.");
     }
+
+    await assertFacilityAdminMayMutateUser({
+      prisma: this.prisma,
+      audit: this.audit,
+      actorUserId: actor.userId,
+      targetUserId,
+      facilityId: actor.facilityId,
+      mutationClass: "GLOBAL_SECURITY",
+    });
 
     const target = await this.prisma.user.findUnique({
       where: { id: targetUserId },

@@ -2,8 +2,7 @@
  * Phase 9 — Admin MFA reset endpoint.
  *
  * RBAC
- *   * Facility ADMIN may reset MFA only for users sharing their facility (the
- *     service enforces this in addition to `RolesGuard`).
+ *   * Facility ADMIN cannot reset globally-scoped MFA state.
  *   * MEDORA_SUPER_ADMIN may reset any user.
  *
  * Side-effects (per `MfaService.adminReset`)
