@@ -20,4 +20,4 @@ Tenant clinical/customer data remains facility-bound. Only routes explicitly dec
 
 ## Database and production constraints
 
-No schema migration is required. The required immutable ID, role assignment, active flags, and defense-in-depth flag already exist. No production seed, repair, email change, user mutation, deployment, or merge is part of D4SEC.1A.
+The initial assessment expected no schema migration because the required columns and relations already exist. P1 deployment review identified an upgrade-order gap: installations may have the unique capability principal but no later role assignment. Review remediation therefore requires a data-only, idempotent migration keyed by the existing immutable `User.id`; it must fail closed rather than invent facility membership. No production seed, repair, email change, user mutation, deployment, or merge is performed by this implementation work.

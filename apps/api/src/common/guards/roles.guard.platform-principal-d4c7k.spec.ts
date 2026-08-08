@@ -45,19 +45,23 @@ function buildGuard(opts: {
   canCreateFacilities?: boolean;
   isActive?: boolean;
   membershipRole?: RoleCode | null;
+  membershipRoles?: RoleCode[];
   facilityFound?: boolean;
 }) {
-  const membership =
-    opts.membershipRole != null
-      ? { role: { code: opts.membershipRole }, facilityId, userId }
-      : null;
+  const memberships = (opts.membershipRoles ?? (opts.membershipRole ? [opts.membershipRole] : []))
+    .map((role) => ({ role: { code: role }, facilityId, userId }));
   const prisma = {
     userRole: {
-      findFirst: jest.fn().mockImplementation(async (args: any) => {
-        if (!membership) return null;
+      findMany: jest.fn().mockImplementation(async (args: any) => {
         const wanted = args?.where?.role?.code?.in as RoleCode[] | undefined;
-        if (wanted && !wanted.includes(membership.role.code as RoleCode)) return null;
-        return membership;
+        return memberships
+          .filter((membership) => !wanted || wanted.includes(membership.role.code))
+          .sort((a, b) => a.role.code.localeCompare(b.role.code));
+      }),
+      findFirst: jest.fn().mockImplementation(async (args: any) => {
+        if (memberships.length === 0) return null;
+        const wanted = args?.where?.role?.code?.in as RoleCode[] | undefined;
+        return memberships.find((membership) => !wanted || wanted.includes(membership.role.code)) ?? null;
       }),
     },
     user: {
@@ -177,7 +181,7 @@ describe("MEDUI.D4C.7K — platform administrator lifecycle route access", () =>
     expect(request.platformPrincipal).toBe(false);
     expect(request.platformFacilityMembership).toBe(true);
     expect(prisma.user.findUnique).not.toHaveBeenCalled();
-    expect((prisma.userRole.findFirst.mock.calls[0]![0] as any).where.facilityId).toBe(facilityId);
+    expect((prisma.userRole.findMany.mock.calls[0]![0] as any).where.facilityId).toBe(facilityId);
   });
 
   it("keeps facility Provider and RN close authorization unchanged", async () => {
@@ -194,6 +198,48 @@ describe("MEDUI.D4C.7K — platform administrator lifecycle route access", () =>
 
   it("denies a facility role that is not authorized for reopen", async () => {
     const { guard } = buildGuard({ membershipRole: RoleCode.RN });
+    await expect(
+      guard.canActivate(context(LifecycleRoutes.prototype.reopen, platformRequest()))
+    ).rejects.toBeInstanceOf(ForbiddenException);
+  });
+
+  it("allows MEDORA_SUPER_ADMIN-only membership only with valid platform authority", async () => {
+    const valid = buildGuard({
+      membershipRoles: [RoleCode.MEDORA_SUPER_ADMIN],
+      platformAuthority: true,
+    });
+    const validRequest = platformRequest();
+    await expect(
+      valid.guard.canActivate(context(LifecycleRoutes.prototype.reopen, validRequest))
+    ).resolves.toBe(true);
+    expect(validRequest.platformPrincipal).toBe(true);
+
+    const invalid = buildGuard({ membershipRoles: [RoleCode.MEDORA_SUPER_ADMIN] });
+    await expect(
+      invalid.guard.canActivate(context(LifecycleRoutes.prototype.reopen, platformRequest()))
+    ).rejects.toBeInstanceOf(ForbiddenException);
+  });
+
+  it("prefers independent ADMIN access over invalid platform authority deterministically", async () => {
+    for (const roles of [
+      [RoleCode.MEDORA_SUPER_ADMIN, RoleCode.ADMIN],
+      [RoleCode.ADMIN, RoleCode.MEDORA_SUPER_ADMIN],
+    ]) {
+      const { guard, prisma } = buildGuard({ membershipRoles: roles });
+      const request = platformRequest();
+      await expect(
+        guard.canActivate(context(LifecycleRoutes.prototype.reopen, request))
+      ).resolves.toBe(true);
+      expect(request.userRole).toBe(RoleCode.ADMIN);
+      expect(request.platformPrincipal).toBe(false);
+      expect(prisma.user.findUnique).not.toHaveBeenCalled();
+    }
+  });
+
+  it("does not use an unrelated facility role to rescue invalid platform authority", async () => {
+    const { guard } = buildGuard({
+      membershipRoles: [RoleCode.MEDORA_SUPER_ADMIN, RoleCode.RN],
+    });
     await expect(
       guard.canActivate(context(LifecycleRoutes.prototype.reopen, platformRequest()))
     ).rejects.toBeInstanceOf(ForbiddenException);
