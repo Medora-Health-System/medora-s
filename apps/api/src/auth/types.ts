@@ -42,7 +42,7 @@ export type AuthUserDto = {
   facilityRoles: FacilityRoleDto[];
   /** Rôles portail MSPP national (`MsppUserRoleAssignment`), distincts des rôles par établissement. */
   msppRoles: string[];
-  /** Plateforme : création d’établissements — vrai uniquement pour le compte principal fixe (`atranchant@medora.local`). */
+  /** Plateforme : dérivé de l’état DB actif (capability + affectation MEDORA_SUPER_ADMIN), jamais de l’e-mail. */
   canCreateFacilities: boolean;
   /** Contexte MSPP national (dérivé de `msppRoles` / `facilityRoles`). */
   msppContext: MsppContextDto;
@@ -53,4 +53,3 @@ export type AuthUserDto = {
     required: boolean;
   };
 };
-

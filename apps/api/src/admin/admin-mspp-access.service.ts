@@ -8,7 +8,7 @@ import {
 import * as argon2 from "argon2";
 import { MsppRoleCode } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
-import { isPlatformPrincipalAdminEmail } from "../auth/platform-principal";
+import { resolvePlatformAuthority } from "../auth/platform-principal";
 import type { CreateMsppAccessDto, MsppOnboardDto, PatchMsppAccessDto } from "./dto/admin-mspp-access.dto";
 
 function resolvedGeoIdForRole(role: MsppRoleCode, geoDepartmentId: string | null | undefined): string | null {
@@ -23,11 +23,7 @@ export class AdminMsppAccessService {
   constructor(private readonly prisma: PrismaService) {}
 
   private async isPlatformPrincipal(userId: string): Promise<boolean> {
-    const actor = await this.prisma.user.findUnique({
-      where: { id: userId },
-      select: { email: true },
-    });
-    return actor?.email != null && isPlatformPrincipalAdminEmail(actor.email);
+    return (await resolvePlatformAuthority(this.prisma, userId)).granted;
   }
 
   private async hasActiveMsppAdminRole(userId: string): Promise<boolean> {
@@ -38,7 +34,7 @@ export class AdminMsppAccessService {
     return Boolean(row);
   }
 
-  /** Platform principal (`atranchant@medora.local`) or active `MSPP_ADMIN` assignment. */
+  /** Authoritative platform principal or active `MSPP_ADMIN` assignment. */
   private async assertCanManageMsppAccess(actorId: string): Promise<void> {
     if (await this.isPlatformPrincipal(actorId)) return;
     if (await this.hasActiveMsppAdminRole(actorId)) return;
@@ -50,11 +46,7 @@ export class AdminMsppAccessService {
   /** Delegated MSPP admins must not mutate assignments for platform principal accounts. */
   private async assertDelegatedMayTouchTargetUser(actorId: string, targetUserId: string): Promise<void> {
     if (await this.isPlatformPrincipal(actorId)) return;
-    const target = await this.prisma.user.findUnique({
-      where: { id: targetUserId },
-      select: { email: true },
-    });
-    if (target?.email && isPlatformPrincipalAdminEmail(target.email)) {
+    if (await this.isPlatformPrincipal(targetUserId)) {
       throw new ForbiddenException(
         "Les comptes administrateurs plateforme ne peuvent pas être modifiés par un délégué MSPP."
       );
@@ -197,7 +189,7 @@ export class AdminMsppAccessService {
           );
 
     return {
-      items: rows.map((r) => ({
+      items: await Promise.all(rows.map(async (r) => ({
         id: r.id,
         userId: r.userId,
         userEmail: r.user.email,
@@ -210,10 +202,10 @@ export class AdminMsppAccessService {
         geoDepartmentName: r.geoDepartmentId ? geoById.get(r.geoDepartmentId)?.name ?? null : null,
         geoDepartmentCode: r.geoDepartmentId ? geoById.get(r.geoDepartmentId)?.code ?? null : null,
         isActive: r.isActive,
-        userIsPlatformPrincipal: isPlatformPrincipalAdminEmail(r.user.email),
+        userIsPlatformPrincipal: await this.isPlatformPrincipal(r.userId),
         createdAt: r.createdAt.toISOString(),
         updatedAt: r.updatedAt.toISOString(),
-      })),
+      }))),
     };
   }
 

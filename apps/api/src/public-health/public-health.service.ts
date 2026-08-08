@@ -16,7 +16,7 @@ import {
   Prisma,
 } from "@prisma/client";
 import { patientFullNameFromPatient, patientPrimaryIdentifierFromPatient } from "../common/patient-identity";
-import { isPlatformPrincipalAdminEmail } from "../auth/platform-principal";
+import { resolvePlatformAuthority } from "../auth/platform-principal";
 import {
   assertEncounterNotSigned,
   assertEncounterOpenForClinicalMutation,
@@ -64,16 +64,12 @@ export class PublicHealthService {
 
   /**
    * Facility disease-report list: patient identity (name + NIR/MRN/global dossier) is revealed only when allowed.
-   * - Platform principal (`atranchant@medora.local`) — operational oversight (same boundary as `canCreateFacilities` on `/auth/me`).
+   * - Authoritative platform principal — operational oversight (same boundary as `canCreateFacilities` on `/auth/me`).
    * - Active MSPP assignments for national disease surveillance / validation (not generic clinical facility roles).
    * Pure Medora clinical roles at the facility without the above receive redacted list rows (see `listDiseaseCaseReports`).
    */
   async userMayViewPatientIdentityOnFacilityDiseaseReportList(userId: string): Promise<boolean> {
-    const user = await this.prisma.user.findUnique({
-      where: { id: userId },
-      select: { email: true },
-    });
-    if (user?.email && isPlatformPrincipalAdminEmail(user.email)) {
+    if ((await resolvePlatformAuthority(this.prisma, userId)).granted) {
       return true;
     }
     const rows = await this.prisma.msppUserRoleAssignment.findMany({

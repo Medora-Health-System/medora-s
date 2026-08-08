@@ -10,7 +10,7 @@
  *   * Admin reset clears state, revokes sessions, audits critical event
  */
 
-import { ConflictException, UnauthorizedException } from "@nestjs/common";
+import { ConflictException, ForbiddenException, UnauthorizedException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { JwtService } from "@nestjs/jwt";
 import { AuditAction, RoleCode } from "@prisma/client";
@@ -38,6 +38,7 @@ type FakeUser = {
   id: string;
   email: string;
   isActive: boolean;
+  canCreateFacilities: boolean;
   mfaEnabled: boolean;
   mfaSecretEncrypted: string | null;
   mfaEnabledAt: Date | null;
@@ -53,6 +54,7 @@ function makeFakeUser(overrides: Partial<FakeUser> = {}): FakeUser {
     id: "u-1",
     email: "u@example.com",
     isActive: true,
+    canCreateFacilities: false,
     mfaEnabled: false,
     mfaSecretEncrypted: null,
     mfaEnabledAt: null,
@@ -298,6 +300,24 @@ describe("MfaService", () => {
     await expect(
       svc.adminReset({ userId: user.id, facilityId: "f-1", role: RoleCode.ADMIN }, user.id)
     ).rejects.toThrow(/sa propre/);
+  });
+
+  it("adminReset blocks a facility ADMIN from resetting an authoritative platform principal", async () => {
+    const { svc, prisma, audit, user } = makeService();
+    user.canCreateFacilities = true;
+    user.userRoles = [
+      { facilityId: "f-1", role: { code: RoleCode.MEDORA_SUPER_ADMIN } },
+    ];
+    await expect(
+      svc.adminReset({ userId: "facility-admin", facilityId: "f-1", role: RoleCode.ADMIN }, user.id)
+    ).rejects.toBeInstanceOf(ForbiddenException);
+    expect(prisma.authSession.updateMany).not.toHaveBeenCalled();
+    expect(prisma.user.update).not.toHaveBeenCalled();
+    expect(audit.log).toHaveBeenCalledWith(
+      AuditAction.UPDATE,
+      "PLATFORM_PRINCIPAL_PROTECTION",
+      expect.objectContaining({ critical: true, entityId: user.id })
+    );
   });
 
   it("adminReset by ADMIN refuses cross-facility targets", async () => {

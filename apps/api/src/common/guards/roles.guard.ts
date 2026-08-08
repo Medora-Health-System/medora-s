@@ -2,7 +2,10 @@ import { Injectable, CanActivate, ExecutionContext, ForbiddenException, BadReque
 import { Reflector } from "@nestjs/core";
 import { PrismaService } from "../../prisma/prisma.service";
 import { MsppRoleCode, RoleCode } from "@prisma/client";
-import { resolvePlatformPrincipalAccess } from "../../auth/platform-principal";
+import {
+  resolvePlatformAuthority,
+  resolvePlatformPrincipalAccess,
+} from "../../auth/platform-principal";
 import {
   BREAK_GLASS_PATIENT_PARAM_KEY,
   MSPP_ROLES_KEY,
@@ -60,10 +63,10 @@ export class RolesGuard implements CanActivate {
 
     /**
      * Un utilisateur peut avoir plusieurs `UserRole` pour le même établissement (ex. ADMIN + PROVIDER).
-     * `findFirst` sans filtre sur le rôle peut renvoyer une ligne arbitraire et refuser à tort l’accès ADMIN.
-     * On vérifie d’abord s’il existe une ligne dont le rôle est dans `requiredRoles`.
+     * Charger tous les rôles acceptés évite qu'une ligne arbitraire masque une autorisation
+     * établissement indépendante, puis permet une sélection déterministe ci-dessous.
      */
-    const membershipSatisfying = await this.prisma.userRole.findFirst({
+    const membershipsSatisfying = await this.prisma.userRole.findMany({
       where: {
         userId,
         facilityId,
@@ -74,9 +77,22 @@ export class RolesGuard implements CanActivate {
       include: {
         role: true,
       },
+      orderBy: { role: { code: "asc" } },
     });
 
-    if (membershipSatisfying) {
+    if (membershipsSatisfying.length > 0) {
+      // An accepted ordinary facility role is independent of global platform authority. Prefer it
+      // deterministically so a stale/unauthorized MEDORA_SUPER_ADMIN row cannot mask valid ADMIN,
+      // PROVIDER, RN, or other route-specific access.
+      const membershipSatisfying =
+        membershipsSatisfying.find(
+          (membership) => membership.role.code !== RoleCode.MEDORA_SUPER_ADMIN
+        ) ?? membershipsSatisfying[0]!;
+      if (membershipSatisfying.role.code === RoleCode.MEDORA_SUPER_ADMIN) {
+        if (!(await resolvePlatformAuthority(this.prisma, userId)).granted) {
+          throw new ForbiddenException("Platform authority assignment is not active.");
+        }
+      }
       request.userRole = membershipSatisfying.role.code;
       request.facilityId = facilityId;
       request.user = request.user || {};
@@ -181,13 +197,8 @@ export class RolesGuard implements CanActivate {
     facilityId: string,
     userId: string
   ): Promise<boolean> {
-    const user = await this.prisma.user.findUnique({
-      where: { id: userId },
-      select: { email: true, isActive: true },
-    });
-    const decision = resolvePlatformPrincipalAccess({
-      email: user?.email,
-      isActive: user?.isActive,
+    const decision = await resolvePlatformPrincipalAccess(this.prisma, {
+      userId,
       facilityId,
     });
     if (!decision.granted) {

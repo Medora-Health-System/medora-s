@@ -1,5 +1,5 @@
 import "reflect-metadata";
-import { BadRequestException } from "@nestjs/common";
+import { BadRequestException, ForbiddenException } from "@nestjs/common";
 import { RoleCode } from "@prisma/client";
 import { AdminUsersService } from "./admin-users.service";
 
@@ -132,6 +132,27 @@ describe("AdminUsersService (MEDUI.AUTH.ROLE.2)", () => {
         "actor"
       )
     ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it.each([
+    ["profile", (service: AdminUsersService) => service.updateProfile(facilityId, userId, { firstName: "Changed" }, "facility-admin")],
+    ["password", (service: AdminUsersService) => service.resetPassword(facilityId, userId, "NewPassword123!", "facility-admin")],
+    ["status", (service: AdminUsersService) => service.updateStatus(facilityId, userId, { isActive: false }, "facility-admin")],
+    ["roles", (service: AdminUsersService) => service.updateRoles(facilityId, userId, { facilityId, roles: [RoleCode.ADMIN] }, "facility-admin")],
+    ["billing", (service: AdminUsersService) => service.updateUserBillingIdentity(facilityId, userId, {
+      billingNpi: null,
+      billingTaxonomyCode: null,
+      billingNameOverride: null,
+    }, "facility-admin")],
+  ])("blocks facility-admin %s mutation of an authoritative platform administrator", async (_name, mutate) => {
+    const { service, prisma } = makeService();
+    prisma.user.findUnique.mockImplementation(({ where }: { where: { id: string } }) =>
+      where.id === userId
+        ? { id: userId, isActive: true, canCreateFacilities: true, userRoles: [{ id: "super" }] }
+        : { id: where.id, isActive: true, canCreateFacilities: false, userRoles: [] }
+    );
+    await expect(mutate(service)).rejects.toBeInstanceOf(ForbiddenException);
+    expect(prisma.user.update).not.toHaveBeenCalled();
   });
 
   it("still supports legacy roles[] payload without departmentId", async () => {
