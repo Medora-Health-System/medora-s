@@ -15110,6 +15110,8 @@ export default {
     colReason: "Motif",
     colAction: "Action",
     openEncounter: "Ouvrir la consultation",
+    closedEncounterLock: "Consultation fermée — verrouillée",
+    closedAt: "Fermée le {datetime}",
     create: {
       title: "Démarrer une consultation",
       hint: "Choisissez le type de visite ; les libellés correspondent aux circuits habituels.",

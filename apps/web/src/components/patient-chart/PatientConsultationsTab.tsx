@@ -8,6 +8,16 @@ import { encounterBcp47, tEncounterStatus, tEncounterType } from "@/lib/encounte
 import { useI18n } from "@/lib/i18n";
 import { DEFAULT_ENCOUNTER_ROOM_LABEL, ENCOUNTER_ROOM_OPTIONS } from "@/lib/encounterRoomOptions";
 import { BillingClassificationBadgeReadOnly } from "@/components/encounters/BillingClassificationBadgeReadOnly";
+import { projectEncounterListLifecycle } from "./encounterListProjection";
+
+function EncounterLockIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M7 11V8a5 5 0 0 1 10 0v3" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+      <rect x="5" y="11" width="14" height="10" rx="2" stroke="currentColor" strokeWidth="1.8" />
+    </svg>
+  );
+}
 
 function CreateEncounterModal({
   patientId,
@@ -347,8 +357,10 @@ export function PatientConsultationsTab({
                 </tr>
               </thead>
               <tbody>
-                {encounters.map((encounter) => (
-                  <tr key={encounter.id} style={{ borderTop: "1px solid #eee" }}>
+                {encounters.map((encounter) => {
+                  const lifecycle = projectEncounterListLifecycle(encounter);
+                  return (
+                    <tr key={encounter.id} style={{ borderTop: "1px solid #eee" }}>
                     <td style={{ padding: "10px 12px", whiteSpace: "nowrap" }}>
                       {new Date(encounter.createdAt).toLocaleString(dateLocale, {
                         dateStyle: "short",
@@ -370,7 +382,40 @@ export function PatientConsultationsTab({
                           {tEncounterStatus(t, encounter.status)}
                         </span>
                         <BillingClassificationBadgeReadOnly classification={encounter.billingClassification} />
+                        {lifecycle.isClosed ? (
+                          <span
+                            role="status"
+                            aria-label={t("patientConsultationsTab.closedEncounterLock")}
+                            title={t("patientConsultationsTab.closedEncounterLock")}
+                            style={{
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: 4,
+                              padding: "4px 8px",
+                              borderRadius: 999,
+                              border: "1px solid #cbd5e1",
+                              backgroundColor: "#f8fafc",
+                              color: "#475569",
+                              fontSize: 12,
+                              fontWeight: 600,
+                            }}
+                          >
+                            <EncounterLockIcon />
+                            <span>{t("patientConsultationsTab.closedEncounterLock")}</span>
+                          </span>
+                        ) : null}
                       </div>
+                      {lifecycle.closedAt ? (
+                        <div style={{ marginTop: 5, color: "#64748b", fontSize: 12 }}>
+                          {t("patientConsultationsTab.closedAt").replace(
+                            "{datetime}",
+                            new Date(lifecycle.closedAt).toLocaleString(dateLocale, {
+                              dateStyle: "short",
+                              timeStyle: "short",
+                            })
+                          )}
+                        </div>
+                      ) : null}
                     </td>
                     <td style={{ padding: "10px 12px" }}>{encounter.roomLabel?.trim() || t("common.dash")}</td>
                     <td style={{ padding: "10px 12px" }}>
@@ -385,7 +430,7 @@ export function PatientConsultationsTab({
                     <td style={{ padding: "10px 12px" }}>
                       {canOpenEncounterDetail ? (
                         <Link
-                          href={`/app/encounters/${encounter.id}`}
+                          href={lifecycle.href}
                           style={{
                             display: "inline-block",
                             padding: "6px 12px",
@@ -403,8 +448,9 @@ export function PatientConsultationsTab({
                         <span style={{ fontSize: 12, color: "#9e9e9e" }}>{t("common.dash")}</span>
                       )}
                     </td>
-                  </tr>
-                ))}
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

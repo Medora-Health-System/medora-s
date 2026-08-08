@@ -15068,6 +15068,8 @@ export default {
     colReason: "Reason",
     colAction: "Action",
     openEncounter: "Open encounter",
+    closedEncounterLock: "Closed encounter — locked",
+    closedAt: "Closed {datetime}",
     create: {
       title: "Start encounter",
       hint: "Choose visit type; labels follow standard workflows.",
