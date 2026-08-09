@@ -26,6 +26,32 @@ describe("D4SEC.1C.2B security admin audit", () => {
     ).toThrow("SECURITY_AUDIT_FORBIDDEN_METADATA_KEY");
   });
 
+  it.each([
+    ["newPassword", { newPassword: "do-not-store" }],
+    ["currentPassword nested", { nested: { currentPassword: "do-not-store" } }],
+    ["temporaryPassword array", { rows: [{ temporaryPassword: "do-not-store" }] }],
+    ["PLAINTEXT_PASSWORD canonicalized", { PLAINTEXT_PASSWORD: "do-not-store" }],
+    ["BearerToken mixed case", { BeArErToKeN: "do-not-store" }],
+    ["idToken nested array", { nested: [{ ID_TOKEN: "do-not-store" }] }],
+    ["clientSecret", { clientSecret: "do-not-store" }],
+    ["recoveryCodes", { RECOVERY_CODES: ["do-not-store"] }],
+    ["mfaRecoveryCode", { nested: { MfaRecoveryCode: "do-not-store" } }],
+  ])("rejects realistic sensitive alias: %s", (_label, metadata) => {
+    expect(() => assertSecurityAuditMetadataSafe(metadata)).toThrow(
+      "SECURITY_AUDIT_FORBIDDEN_METADATA_KEY",
+    );
+  });
+
+  it("accepts approved non-secret semantic evidence", () => {
+    expect(() =>
+      assertSecurityAuditMetadataSafe({
+        passwordCredentialChanged: true,
+        sessionsRevoked: true,
+        nested: [{ mfaReset: true }],
+      }),
+    ).not.toThrow();
+  });
+
   it("writes exact immutable actor, authoritative facility and normalized semantics once", async () => {
     const audit = { log: jest.fn().mockResolvedValue(undefined) };
     const tx = {} as never;
