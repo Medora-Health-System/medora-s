@@ -21,7 +21,7 @@ describe("AdminUsersService (MEDUI.AUTH.ROLE.2)", () => {
       },
       user: {
         findUnique: jest.fn(),
-        findFirst: jest.fn(),
+        findFirst: jest.fn().mockResolvedValue({ id: "membership" }),
         create: jest.fn(),
         update: jest.fn(),
       },

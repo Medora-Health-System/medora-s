@@ -36,7 +36,7 @@ export class AdminUsersController {
   @Get("users")
   @RequireRoles(...FACILITY_OR_PLATFORM_ADMIN_ROLES)
   async list(@Req() req: any) {
-    return this.adminUsers.listForFacility(facilityIdFromReq(req));
+    return this.adminUsers.listForFacility(facilityIdFromReq(req), req.user.userId);
   }
 
   @Post("users")
@@ -97,7 +97,7 @@ export class AdminUsersController {
   @RequireRoles(...FACILITY_OR_PLATFORM_ADMIN_ROLES)
   async getBillingIdentity(@Param("id") id: string, @Req() req: any) {
     const facilityId = facilityIdFromReq(req);
-    return this.adminUsers.getUserBillingIdentity(facilityId, id);
+    return this.adminUsers.getUserBillingIdentity(facilityId, id, req.user.userId);
   }
 
   @Patch("users/:id/billing-identity")
