@@ -56,6 +56,7 @@ import { PlatformAnnouncementsModule } from "./platform-announcements/platform-a
 import { AuditContextInterceptor } from "./common/audit/audit-context.interceptor";
 import { RequestLoggerMiddleware } from "./common/middleware/request-logger.middleware";
 import { RecentHttpErrorMetricsModule } from "./common/metrics/recent-http-error-metrics.module";
+import { PlatformAuditModule } from "./platform-audit/platform-audit.module";
 
 const imports = [
   ConfigModule.forRoot({ isGlobal: true }),
@@ -120,6 +121,7 @@ const imports = [
   RoiModule,
   FacilitiesModule,
   PlatformAnnouncementsModule,
+  PlatformAuditModule,
 ];
 
 @Module({
@@ -135,4 +137,3 @@ export class AppModule implements NestModule {
     consumer.apply(RequestLoggerMiddleware).forRoutes("*");
   }
 }
-
