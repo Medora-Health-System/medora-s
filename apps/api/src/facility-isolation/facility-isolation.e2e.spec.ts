@@ -272,11 +272,15 @@ describe("Facility isolation (e2e)", () => {
         await prisma.userRole.deleteMany({
           where: { facilityId: { in: [facilityIdA, facilityIdB] } },
         });
-        await prisma.user.deleteMany({
+        // Requests in this suite create authoritative AuditLog rows. Preserve their immutable
+        // actor/facility attribution and close the unique, disposable fixtures by deactivation.
+        await prisma.user.updateMany({
           where: { email: { contains: `+${suffix}@fi-test.local` } },
+          data: { isActive: false },
         });
-        await prisma.facility.deleteMany({
+        await prisma.facility.updateMany({
           where: { id: { in: [facilityIdA, facilityIdB] } },
+          data: { isActive: false },
         });
       }
     } finally {

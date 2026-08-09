@@ -157,10 +157,18 @@ describe("RBAC (e2e)", () => {
       if (prisma && facilityId) {
         await prisma.userRole.deleteMany({ where: { facilityId } });
         if (createdUserIds.length > 0) {
-          await prisma.user.deleteMany({ where: { id: { in: createdUserIds } } });
+          // Authenticated requests may have durable AuditLog actor references. Deactivation is the
+          // production lifecycle invariant; CI uses unique identities in a disposable database.
+          await prisma.user.updateMany({
+            where: { id: { in: createdUserIds } },
+            data: { isActive: false },
+          });
         }
         await prisma.patient.deleteMany({ where: { facilityId } });
-        await prisma.facility.delete({ where: { id: facilityId } });
+        await prisma.facility.update({
+          where: { id: facilityId },
+          data: { isActive: false },
+        });
       }
     } finally {
       await closeE2eApp({ app, moduleRef, prisma });
