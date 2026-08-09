@@ -69,7 +69,12 @@ export async function assertFacilityAdminMayMutateUser(options: {
   }
 
   const targetMembership = await prisma.userRole.findFirst({
-    where: { userId: targetUserId, facilityId },
+    where: {
+      userId: targetUserId,
+      facilityId,
+      isActive: true,
+      facility: { isActive: true },
+    },
     select: { id: true },
   });
   if (!targetMembership) {

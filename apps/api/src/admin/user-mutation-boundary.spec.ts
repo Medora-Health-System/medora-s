@@ -13,11 +13,21 @@ function platform(id: string) {
   return { id, isActive: true, canCreateFacilities: true, userRoles: [{ id: "msa" }] };
 }
 
-function store(options: { platformActor?: boolean; actorMembership?: boolean; targetMembership?: boolean } = {}) {
+function store(options: {
+  platformActor?: boolean;
+  platformTarget?: boolean;
+  actorMembership?: boolean;
+  targetMembership?: boolean;
+} = {}) {
   const prisma = {
     user: {
       findUnique: jest.fn(({ where }: { where: { id: string } }) =>
-        Promise.resolve(options.platformActor && where.id === actorUserId ? platform(where.id) : ordinary(where.id))
+        Promise.resolve(
+          (options.platformActor && where.id === actorUserId) ||
+          (options.platformTarget && where.id === targetUserId)
+            ? platform(where.id)
+            : ordinary(where.id)
+        )
       ),
     },
     userRole: {
@@ -47,13 +57,47 @@ describe("D4SEC.1C.1 user mutation boundary", () => {
   );
 
   it("allows ordinary facility-local membership administration at the exact facility", async () => {
+    const prisma = store();
     await expect(assertFacilityAdminMayMutateUser({
-      prisma: store() as never,
+      prisma: prisma as never,
       actorUserId,
       targetUserId,
       facilityId,
       mutationClass: "FACILITY_MEMBERSHIP",
     })).resolves.toBeUndefined();
+    expect(prisma.userRole.findFirst).toHaveBeenNthCalledWith(2, {
+      where: {
+        userId: targetUserId,
+        facilityId,
+        isActive: true,
+        facility: { isActive: true },
+      },
+      select: { id: true },
+    });
+  });
+
+  it("rejects an inactive target membership with tenant-scoped not-found behavior", async () => {
+    await expect(assertFacilityAdminMayMutateUser({
+      prisma: store({ targetMembership: false }) as never,
+      actorUserId,
+      targetUserId,
+      facilityId,
+      mutationClass: "FACILITY_MEMBERSHIP",
+    })).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it("rejects a target membership at an inactive facility with tenant-scoped not-found behavior", async () => {
+    const prisma = store({ targetMembership: false });
+    await expect(assertFacilityAdminMayMutateUser({
+      prisma: prisma as never,
+      actorUserId,
+      targetUserId,
+      facilityId,
+      mutationClass: "FACILITY_MEMBERSHIP",
+    })).rejects.toBeInstanceOf(NotFoundException);
+    expect(prisma.userRole.findFirst).toHaveBeenNthCalledWith(2, expect.objectContaining({
+      where: expect.objectContaining({ facility: { isActive: true } }),
+    }));
   });
 
   it("fails closed without an authoritative actor membership", async () => {
@@ -94,5 +138,15 @@ describe("D4SEC.1C.1 user mutation boundary", () => {
       facilityId,
       mutationClass: "GLOBAL_SECURITY",
     })).resolves.toBeUndefined();
+  });
+
+  it("continues to deny facility-local mutation of a platform principal", async () => {
+    await expect(assertFacilityAdminMayMutateUser({
+      prisma: store({ platformTarget: true }) as never,
+      actorUserId,
+      targetUserId,
+      facilityId,
+      mutationClass: "FACILITY_MEMBERSHIP",
+    })).rejects.toBeInstanceOf(ForbiddenException);
   });
 });
