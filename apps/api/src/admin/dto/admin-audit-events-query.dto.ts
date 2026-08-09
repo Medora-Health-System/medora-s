@@ -20,6 +20,6 @@ export const adminAuditEventsQuerySchema = z.object({
   preset: auditPresetSchema.optional(),
   limit: z.coerce.number().int().min(1).max(200).optional().default(50),
   cursor: z.string().trim().min(1).max(512).optional(),
-});
+}).strict();
 
 export type AdminAuditEventsQueryDto = z.infer<typeof adminAuditEventsQuerySchema>;

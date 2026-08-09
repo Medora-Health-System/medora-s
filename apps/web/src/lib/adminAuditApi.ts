@@ -62,7 +62,8 @@ export type AdminAuditEventRow = {
   auditCategory?: string;
   actionLabelKey?: string;
   entityLabelKey?: string;
-  actor: { userId: string | null; displayName: string; roleHint: string | null };
+  /** Deliberately excludes raw actor User.id from the customer-facing projection. */
+  actor: { displayName: string; roleHint: string | null };
   facilityId: string | null;
   encounterId: string | null;
   metadataSummary: Record<string, string | number | boolean>;
