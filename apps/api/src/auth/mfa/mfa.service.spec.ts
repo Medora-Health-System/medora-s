@@ -72,6 +72,9 @@ function makePrisma(user: FakeUser) {
   const prisma: any = {
     user: {
       findUnique: jest.fn(async ({ where, select }: any) => {
+        if (where?.id === "platform-admin") {
+          return { id: "platform-admin", isActive: true, canCreateFacilities: true, userRoles: [{ id: "msa" }] };
+        }
         if (where?.id !== user.id) return null;
         if (!select) return { ...user };
         const out: any = {};
@@ -106,6 +109,7 @@ function makePrisma(user: FakeUser) {
     },
     _sessions: sessions,
   };
+  prisma.$transaction = jest.fn(async (fn: (tx: unknown) => Promise<unknown>) => fn(prisma));
   return prisma;
 }
 
@@ -129,6 +133,8 @@ function makeService() {
 }
 
 describe("MfaService", () => {
+  // Argon2 intentionally uses production-strength parameters; slower CI runners can exceed Jest's 5s default.
+  jest.setTimeout(15_000);
   it("encryption key is loadable from env (round-trip)", () => {
     const k = getMfaEncryptionKey(process.env);
     expect(k).toBeInstanceOf(Buffer);
@@ -276,7 +282,7 @@ describe("MfaService", () => {
     prisma._sessions.push({ id: "s2", userId: user.id, revokedAt: null });
 
     const out = await svc.adminReset(
-      { userId: "admin-1", facilityId: "f-1", role: RoleCode.ADMIN },
+      { userId: "platform-admin", facilityId: "f-1", role: RoleCode.MEDORA_SUPER_ADMIN },
       user.id
     );
     expect(out).toEqual({ reset: true, sessionsRevoked: 2 });
@@ -315,8 +321,14 @@ describe("MfaService", () => {
     expect(prisma.user.update).not.toHaveBeenCalled();
     expect(audit.log).toHaveBeenCalledWith(
       AuditAction.UPDATE,
-      "PLATFORM_PRINCIPAL_PROTECTION",
-      expect.objectContaining({ critical: true, entityId: user.id })
+      "User",
+      expect.objectContaining({
+        critical: true,
+        entityId: user.id,
+        metadata: expect.objectContaining({
+          denialReason: "GLOBAL_MUTATION_REQUIRES_PLATFORM_AUTHORITY",
+        }),
+      })
     );
   });
 
@@ -327,7 +339,7 @@ describe("MfaService", () => {
         { userId: "admin-1", facilityId: "OTHER_FAC", role: RoleCode.ADMIN },
         user.id
       )
-    ).rejects.toThrow(/établissement/);
+    ).rejects.toThrow(/autorité plateforme/);
   });
 
   it("issueChallengeToken / verifyChallengeToken round-trip; wrong type rejected", () => {

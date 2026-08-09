@@ -1,6 +1,7 @@
 import { AuditAction, RoleCode } from "@prisma/client";
 import { ForbiddenException, NotFoundException } from "@nestjs/common";
 import { resolvePlatformAuthority } from "../auth/platform-principal";
+import { logSecurityAdminAudit } from "../common/services/security-admin-audit";
 
 export type UserMutationClass =
   | "FACILITY_MEMBERSHIP"
@@ -17,7 +18,7 @@ type BoundaryPrisma = Parameters<typeof resolvePlatformAuthority>[0] & {
 export async function assertFacilityAdminFacilityScope(
   prisma: BoundaryPrisma,
   actorUserId: string,
-  facilityId: string
+  facilityId: string,
 ): Promise<void> {
   const actorAuthority = await resolvePlatformAuthority(prisma, actorUserId);
   if (actorAuthority.granted) return;
@@ -37,25 +38,46 @@ export async function assertFacilityAdminFacilityScope(
 /** The single policy gate for tenant-admin mutations of an existing user. */
 export async function assertFacilityAdminMayMutateUser(options: {
   prisma: BoundaryPrisma;
-  audit?: { log(action: AuditAction, entityType: string, data: unknown): Promise<unknown> };
+  audit?: {
+    log(
+      action: AuditAction,
+      entityType: string,
+      data: unknown,
+    ): Promise<unknown>;
+  };
   actorUserId: string;
   targetUserId: string;
   facilityId: string;
   mutationClass: UserMutationClass;
 }): Promise<void> {
-  const { prisma, audit, actorUserId, targetUserId, facilityId, mutationClass } = options;
+  const {
+    prisma,
+    audit,
+    actorUserId,
+    targetUserId,
+    facilityId,
+    mutationClass,
+  } = options;
   const actorAuthority = await resolvePlatformAuthority(prisma, actorUserId);
   if (actorAuthority.granted) return;
 
   const deny = async (reason: string) => {
-    await audit?.log(AuditAction.UPDATE, "USER_MUTATION_BOUNDARY", {
-      userId: actorUserId,
-      facilityId,
-      entityId: targetUserId,
-      critical: true,
-      metadata: { event: "TENANT_GLOBAL_USER_MUTATION_DENIED", mutationClass, reason },
-    });
-    throw new ForbiddenException("Cette modification globale exige une autorité plateforme.");
+    if (audit)
+      await logSecurityAdminAudit(audit as never, AuditAction.UPDATE, {
+        event: "SECURITY_ADMIN_MUTATION_DENIED",
+        actorUserId,
+        facilityId,
+        entityType: "User",
+        entityId: targetUserId,
+        severity: "HIGH",
+        outcome: "DENIED",
+        sourceOperation: mutationClass,
+        denialReason: reason,
+        evidence: { mutationClass },
+      });
+    throw new ForbiddenException(
+      "Cette modification globale exige une autorité plateforme.",
+    );
   };
 
   if (mutationClass !== "FACILITY_MEMBERSHIP") {
@@ -79,7 +101,22 @@ export async function assertFacilityAdminMayMutateUser(options: {
   });
   if (!targetMembership) {
     // Tenant-scoped lookups deliberately do not reveal whether the global user exists.
-    throw new NotFoundException("Utilisateur introuvable pour cet établissement.");
+    if (audit)
+      await logSecurityAdminAudit(audit as never, AuditAction.UPDATE, {
+        event: "SECURITY_ADMIN_MUTATION_DENIED",
+        actorUserId,
+        facilityId,
+        entityType: "User",
+        entityId: targetUserId,
+        severity: "HIGH",
+        outcome: "DENIED",
+        sourceOperation: mutationClass,
+        denialReason: "CROSS_TENANT_TARGET",
+        evidence: { mutationClass },
+      });
+    throw new NotFoundException(
+      "Utilisateur introuvable pour cet établissement.",
+    );
   }
 
   if (actorUserId === targetUserId) {

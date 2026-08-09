@@ -14,6 +14,7 @@ import { toDataURL as qrcodeToDataURL } from "qrcode";
 
 import { PrismaService } from "../../prisma/prisma.service";
 import { AuditService } from "../../common/services/audit.service";
+import { logSecurityAdminAudit } from "../../common/services/security-admin-audit";
 import { resolvePlatformAuthority } from "../platform-principal";
 import { createStructuredLogger } from "../../common/logging/structured-logger";
 
@@ -50,7 +51,8 @@ import { assertFacilityAdminMayMutateUser } from "../../admin/user-mutation-boun
 
 const log = createStructuredLogger("MfaService");
 
-export const MFA_REQUIRED_BUT_NOT_ENROLLED = "MFA_REQUIRED_BUT_NOT_ENROLLED" as const;
+export const MFA_REQUIRED_BUT_NOT_ENROLLED =
+  "MFA_REQUIRED_BUT_NOT_ENROLLED" as const;
 export const MFA_NOT_ENABLED = "MFA_NOT_ENABLED" as const;
 export const MFA_ALREADY_ENABLED = "MFA_ALREADY_ENABLED" as const;
 export const MFA_INVALID_CODE = "MFA_INVALID_CODE" as const;
@@ -81,7 +83,7 @@ export class MfaService {
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
     private readonly config: ConfigService,
-    private readonly jwt: JwtService
+    private readonly jwt: JwtService,
   ) {}
 
   /* ---------- Configuration helpers ---------- */
@@ -97,7 +99,11 @@ export class MfaService {
   }
 
   private nodeEnv(): string {
-    return this.config.get<string>("NODE_ENV") ?? process.env.NODE_ENV ?? "development";
+    return (
+      this.config.get<string>("NODE_ENV") ??
+      process.env.NODE_ENV ??
+      "development"
+    );
   }
 
   /* ---------- Public read helpers ---------- */
@@ -130,7 +136,10 @@ export class MfaService {
    *   * `mfa_challenge` — issue MFA verify token
    *   * `mfa_enrollment` — force enrollment because role requires MFA
    */
-  decideLoginPath(user: Pick<User, "id" | "email" | "mfaEnabled">, roles: RoleCode[]): {
+  decideLoginPath(
+    user: Pick<User, "id" | "email" | "mfaEnabled">,
+    roles: RoleCode[],
+  ): {
     next: "full" | "mfa_challenge" | "mfa_enrollment";
   } {
     const required = isMfaRequiredForRoles(roles.map((r) => ({ role: r })));
@@ -150,7 +159,7 @@ export class MfaService {
         jti: cryptoRandomJti(),
       },
       this.refreshSecret(),
-      MFA_CHALLENGE_TTL
+      MFA_CHALLENGE_TTL,
     );
   }
 
@@ -165,7 +174,7 @@ export class MfaService {
         jti: cryptoRandomJti(),
       },
       this.refreshSecret(),
-      MFA_ENROLLMENT_TTL
+      MFA_ENROLLMENT_TTL,
     );
   }
 
@@ -179,10 +188,16 @@ export class MfaService {
 
   private safeVerifyGrant(
     token: string,
-    expected: typeof MFA_CHALLENGE_TYPE | typeof MFA_ENROLLMENT_TYPE
+    expected: typeof MFA_CHALLENGE_TYPE | typeof MFA_ENROLLMENT_TYPE,
   ): MfaGrantPayload {
     try {
-      return verifyMfaGrant(this.jwt, token, this.refreshSecret(), this.issuer(), expected);
+      return verifyMfaGrant(
+        this.jwt,
+        token,
+        this.refreshSecret(),
+        this.issuer(),
+        expected,
+      );
     } catch {
       throw new UnauthorizedException(MFA_GRANT_INVALID);
     }
@@ -193,7 +208,7 @@ export class MfaService {
   async auditMfaEvent(
     action: AuditAction,
     meta: MfaAuditMeta,
-    options: { critical?: boolean } = {}
+    options: { critical?: boolean } = {},
   ): Promise<void> {
     await this.audit.log(action, "USER_MFA", {
       userId: meta.userId,
@@ -216,7 +231,7 @@ export class MfaService {
     const key = getMfaEncryptionKey(process.env);
     if (key) return key;
     throw new InternalServerErrorException(
-      "MFA encryption key is not configured. Set MFA_SECRET_ENCRYPTION_KEY."
+      "MFA encryption key is not configured. Set MFA_SECRET_ENCRYPTION_KEY.",
     );
   }
 
@@ -260,7 +275,9 @@ export class MfaService {
     });
 
     const otpauthUri = buildOtpAuthUri(user.email, secret);
-    const qrCodeDataUrl = await qrcodeToDataURL(otpauthUri, { errorCorrectionLevel: "M" });
+    const qrCodeDataUrl = await qrcodeToDataURL(otpauthUri, {
+      errorCorrectionLevel: "M",
+    });
 
     return {
       otpauthUri,
@@ -272,14 +289,19 @@ export class MfaService {
 
   async confirmEnrollment(
     userId: string,
-    code: string
+    code: string,
   ): Promise<{
     enabled: true;
     recoveryCodes: string[];
   }> {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
-      select: { id: true, mfaEnabled: true, mfaSecretEncrypted: true, isActive: true },
+      select: {
+        id: true,
+        mfaEnabled: true,
+        mfaSecretEncrypted: true,
+        isActive: true,
+      },
     });
     if (!user || !user.isActive) {
       throw new UnauthorizedException("USER_INVALID");
@@ -296,7 +318,9 @@ export class MfaService {
     try {
       secret = decryptMfaSecret(key, user.mfaSecretEncrypted);
     } catch {
-      throw new InternalServerErrorException("Impossible de lire le secret MFA.");
+      throw new InternalServerErrorException(
+        "Impossible de lire le secret MFA.",
+      );
     }
     const step = verifyTotpAndGetStep(secret, code);
     if (step == null) {
@@ -337,7 +361,7 @@ export class MfaService {
   async verifyLoginChallenge(
     userId: string,
     code: string | undefined,
-    recoveryCode: string | undefined
+    recoveryCode: string | undefined,
   ): Promise<{ method: "totp" | "recovery_code" }> {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
@@ -399,7 +423,9 @@ export class MfaService {
     try {
       secret = decryptMfaSecret(key, user.mfaSecretEncrypted);
     } catch {
-      throw new InternalServerErrorException("Impossible de lire le secret MFA.");
+      throw new InternalServerErrorException(
+        "Impossible de lire le secret MFA.",
+      );
     }
     const step = verifyTotpAndGetStep(secret, code);
     if (step == null) {
@@ -411,7 +437,8 @@ export class MfaService {
       });
       throw new UnauthorizedException(MFA_INVALID_CODE);
     }
-    const last = user.mfaLastUsedStep == null ? null : Number(user.mfaLastUsedStep);
+    const last =
+      user.mfaLastUsedStep == null ? null : Number(user.mfaLastUsedStep);
     if (last != null && step <= last) {
       await this.auditMfaEvent(AuditAction.MFA_LOGIN_FAILURE, {
         userId: user.id,
@@ -463,7 +490,8 @@ export class MfaService {
       });
       throw new UnauthorizedException(MFA_INVALID_CODE);
     }
-    const last = user.mfaLastUsedStep == null ? null : Number(user.mfaLastUsedStep);
+    const last =
+      user.mfaLastUsedStep == null ? null : Number(user.mfaLastUsedStep);
     if (last != null && step <= last) {
       throw new UnauthorizedException(MFA_REPLAY_DETECTED);
     }
@@ -486,7 +514,10 @@ export class MfaService {
     return { disabled: true };
   }
 
-  async regenerateRecoveryCodes(userId: string, code: string): Promise<{ recoveryCodes: string[] }> {
+  async regenerateRecoveryCodes(
+    userId: string,
+    code: string,
+  ): Promise<{ recoveryCodes: string[] }> {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
       select: {
@@ -503,8 +534,10 @@ export class MfaService {
     const secret = decryptMfaSecret(key, user.mfaSecretEncrypted);
     const step = verifyTotpAndGetStep(secret, code);
     if (step == null) throw new UnauthorizedException(MFA_INVALID_CODE);
-    const last = user.mfaLastUsedStep == null ? null : Number(user.mfaLastUsedStep);
-    if (last != null && step <= last) throw new UnauthorizedException(MFA_REPLAY_DETECTED);
+    const last =
+      user.mfaLastUsedStep == null ? null : Number(user.mfaLastUsedStep);
+    if (last != null && step <= last)
+      throw new UnauthorizedException(MFA_REPLAY_DETECTED);
 
     const codes = generateRecoveryCodes();
     const hashed: StoredRecoveryCode[] = await hashRecoveryCodes(codes);
@@ -527,10 +560,12 @@ export class MfaService {
 
   async adminReset(
     actor: { userId: string; facilityId: string; role: RoleCode },
-    targetUserId: string
+    targetUserId: string,
   ): Promise<{ reset: true; sessionsRevoked: number }> {
     if (actor.userId === targetUserId) {
-      throw new ForbiddenException("Un administrateur ne peut pas réinitialiser sa propre MFA.");
+      throw new ForbiddenException(
+        "Un administrateur ne peut pas réinitialiser sa propre MFA.",
+      );
     }
     if (
       actor.role !== RoleCode.ADMIN &&
@@ -560,66 +595,80 @@ export class MfaService {
     });
     if (!target) throw new NotFoundException("Utilisateur introuvable.");
 
-    const targetAuthority = await resolvePlatformAuthority(this.prisma, targetUserId);
+    const targetAuthority = await resolvePlatformAuthority(
+      this.prisma,
+      targetUserId,
+    );
     if (targetAuthority.granted) {
-      const actorAuthority = await resolvePlatformAuthority(this.prisma, actor.userId);
+      const actorAuthority = await resolvePlatformAuthority(
+        this.prisma,
+        actor.userId,
+      );
       if (!actorAuthority.granted) {
-        await this.audit.log(AuditAction.UPDATE, "PLATFORM_PRINCIPAL_PROTECTION", {
-          userId: actor.userId,
-          facilityId: actor.facilityId,
-          entityId: targetUserId,
-          critical: true,
-          metadata: {
-            event: "PROTECTED_PLATFORM_PRINCIPAL_MUTATION_DENIED",
-            mutation: "MFA_RESET",
+        await this.audit.log(
+          AuditAction.UPDATE,
+          "PLATFORM_PRINCIPAL_PROTECTION",
+          {
+            userId: actor.userId,
+            facilityId: actor.facilityId,
+            entityId: targetUserId,
+            critical: true,
+            metadata: {
+              event: "PROTECTED_PLATFORM_PRINCIPAL_MUTATION_DENIED",
+              mutation: "MFA_RESET",
+            },
           },
-        });
+        );
         throw new ForbiddenException(
-          "Un administrateur d’établissement ne peut pas réinitialiser la MFA d’un administrateur plateforme."
+          "Un administrateur d’établissement ne peut pas réinitialiser la MFA d’un administrateur plateforme.",
         );
       }
     }
 
     if (actor.role === RoleCode.ADMIN) {
       const sharesFacility = target.userRoles.some(
-        (ur) => ur.facilityId === actor.facilityId
+        (ur) => ur.facilityId === actor.facilityId,
       );
       if (!sharesFacility) {
         throw new ForbiddenException(
-          "Réinitialisation MFA uniquement pour les utilisateurs de votre établissement."
+          "Réinitialisation MFA uniquement pour les utilisateurs de votre établissement.",
         );
       }
     }
 
-    const revoked = await this.prisma.authSession.updateMany({
-      where: { userId: targetUserId, revokedAt: null },
-      data: { revokedAt: new Date(), revokedReason: "mfa_reset_by_admin" },
-    });
-    await this.prisma.user.update({
-      where: { id: targetUserId },
-      data: {
-        mfaEnabled: false,
-        mfaSecretEncrypted: null,
-        mfaEnabledAt: null,
-        mfaRecoveryCodesHash: null as unknown as object,
-        mfaLastUsedStep: null,
-        mfaLastVerifiedAt: null,
-        refreshTokenHash: null,
-      },
-    });
-
-    await this.audit.log(AuditAction.MFA_RESET_BY_ADMIN, "USER_MFA", {
-      userId: actor.userId,
-      facilityId: actor.facilityId,
-      entityId: targetUserId,
-      critical: true,
-      metadata: {
+    const revoked = await this.prisma.$transaction(async (tx) => {
+      const result = await tx.authSession.updateMany({
+        where: { userId: targetUserId, revokedAt: null },
+        data: { revokedAt: new Date(), revokedReason: "mfa_reset_by_admin" },
+      });
+      await tx.user.update({
+        where: { id: targetUserId },
+        data: {
+          mfaEnabled: false,
+          mfaSecretEncrypted: null,
+          mfaEnabledAt: null,
+          mfaRecoveryCodesHash: null as unknown as object,
+          mfaLastUsedStep: null,
+          mfaLastVerifiedAt: null,
+          refreshTokenHash: null,
+        },
+      });
+      await logSecurityAdminAudit(this.audit, AuditAction.MFA_RESET_BY_ADMIN, {
+        event: "ADMIN_USER_MFA_RESET",
         actorUserId: actor.userId,
-        actorRole: actor.role,
-        targetUserId,
-        sessionsRevoked: revoked.count,
-        targetRoles: target.userRoles.map((ur) => ur.role.code),
-      },
+        entityType: "User",
+        entityId: targetUserId,
+        severity: "CRITICAL",
+        outcome: "SUCCESS",
+        sourceOperation: "MfaService.adminReset",
+        evidence: {
+          mfaReset: true,
+          sessionsRevoked: true,
+          revokedSessionCount: result.count,
+        },
+        tx,
+      });
+      return result;
     });
 
     log.warn("mfa_reset_by_admin", {
