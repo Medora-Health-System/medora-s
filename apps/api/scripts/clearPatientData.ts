@@ -1,30 +1,46 @@
 /**
- * Destructive: removes ALL patient-related rows while keeping users, roles, facilities, catalogs.
+ * LOCAL DEVELOPMENT ONLY: removes patient-domain rows while preserving every AuditLog row.
  *
  * Usage (from repo root):
- *   CONFIRM_RESET=true pnpm --filter @medora/api run db:clear:patients
+ *   NODE_ENV=development CONFIRM_RESET=true \
+ *   CONFIRM_AUDIT_PRESERVING_PATIENT_RESET=D4SEC_1C2C1_LOCAL_ONLY \
+ *   npm run db:clear:patients --workspace=@medora/api
  *
  * Or from apps/api:
- *   CONFIRM_RESET=true pnpm run db:clear:patients
- *
- * Requires DATABASE_URL (same as Prisma).
+ * Requires a DATABASE_URL whose hostname is localhost, 127.0.0.1, or ::1. AuditLog rows are never
+ * deleted; nullable patient/encounter/order relations follow their existing FK lifecycle.
  */
 
 import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
-function requireConfirm(): void {
-  if (process.env.CONFIRM_RESET !== "true") {
-    console.error(
-      "[clearPatientData] Refusé : définissez CONFIRM_RESET=true pour exécuter cette opération destructive."
-    );
-    process.exit(1);
+const LOCAL_DATABASE_HOSTS = new Set(["localhost", "127.0.0.1", "::1"]);
+const LOCAL_RESET_CONFIRMATION = "D4SEC_1C2C1_LOCAL_ONLY";
+
+export function requireLocalAuditPreservingReset(environment: NodeJS.ProcessEnv): void {
+  if (environment.NODE_ENV !== "development" && environment.NODE_ENV !== "test") {
+    throw new Error("LOCAL_PATIENT_RESET_REQUIRES_DEVELOPMENT_OR_TEST_ENVIRONMENT");
+  }
+  if (environment.CONFIRM_RESET !== "true") {
+    throw new Error("LOCAL_PATIENT_RESET_REQUIRES_CONFIRM_RESET");
+  }
+  if (environment.CONFIRM_AUDIT_PRESERVING_PATIENT_RESET !== LOCAL_RESET_CONFIRMATION) {
+    throw new Error("LOCAL_PATIENT_RESET_REQUIRES_EXPLICIT_AUDIT_PRESERVATION_CONFIRMATION");
+  }
+  let databaseUrl: URL;
+  try {
+    databaseUrl = new URL(environment.DATABASE_URL ?? "");
+  } catch {
+    throw new Error("LOCAL_PATIENT_RESET_REQUIRES_VALID_DATABASE_URL");
+  }
+  if (!LOCAL_DATABASE_HOSTS.has(databaseUrl.hostname)) {
+    throw new Error("LOCAL_PATIENT_RESET_REFUSES_NON_LOCAL_DATABASE");
   }
 }
 
 async function main(): Promise<void> {
-  requireConfirm();
+  requireLocalAuditPreservingReset(process.env);
 
   console.log("[clearPatientData] Démarrage (transaction)…");
   console.log("[clearPatientData] Tables préservées : User, UserRole, Role, Facility, Department, PasswordResetToken, catalogues, inventaire (hors liens patient).");
@@ -54,16 +70,8 @@ async function main(): Promise<void> {
       });
       console.log(`[clearPatientData] InventoryTransaction (liens patient/consultation) : ${inv.count} ligne(s) supprimée(s).`);
 
-      const audit = await tx.auditLog.deleteMany({
-        where: {
-          OR: [
-            { patientId: { not: null } },
-            { encounterId: { not: null } },
-            { orderId: { not: null } },
-          ],
-        },
-      });
-      console.log(`[clearPatientData] AuditLog (références patient/consultation/commande) : ${audit.count} ligne(s) supprimée(s).`);
+      // AuditLog is authoritative history and is deliberately not deleted. Existing nullable
+      // clinical FKs clear their links as the referenced development fixtures are removed.
 
       // 2 — Résultats puis lignes de commande puis commandes (ordre explicite, cohérent avec les FK)
       const res = await tx.result.deleteMany({});
@@ -102,11 +110,13 @@ async function main(): Promise<void> {
   console.log("[clearPatientData] Terminé avec succès.");
 }
 
-main()
-  .catch((e) => {
-    console.error("[clearPatientData] Erreur :", e);
-    process.exit(1);
-  })
-  .finally(async () => {
-    await prisma.$disconnect();
-  });
+if (require.main === module) {
+  main()
+    .catch((e) => {
+      console.error("[clearPatientData] Erreur :", e);
+      process.exit(1);
+    })
+    .finally(async () => {
+      await prisma.$disconnect();
+    });
+}

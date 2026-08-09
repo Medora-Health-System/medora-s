@@ -442,10 +442,10 @@ model AuditLog {
   encounterId String?
   orderId     String?
   encounter   Encounter?  @relation("EncounterAuditLogs", fields: [encounterId], references: [id])
-  facility    Facility?   @relation(fields: [facilityId], references: [id])
+  facility    Facility?   @relation(fields: [facilityId], references: [id], onDelete: Restrict)
   order       Order?      @relation("OrderAuditLogs", fields: [orderId], references: [id])
   patient     Patient?    @relation(fields: [patientId], references: [id])
-  user        User?       @relation(fields: [userId], references: [id])
+  user        User?       @relation(fields: [userId], references: [id], onDelete: Restrict)
 
   @@index([userId])
   @@index([facilityId])
