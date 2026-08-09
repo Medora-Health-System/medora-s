@@ -1,8 +1,14 @@
-import { BadRequestException, Injectable } from "@nestjs/common";
+import { BadRequestException, ForbiddenException, Injectable } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 import type { AdminAuditEventsQueryDto } from "./dto/admin-audit-events-query.dto";
 import { auditHighlightTags, summarizeAuditMetadata } from "./audit-metadata-summary.util";
 import { auditPresetWhere, classifyAuditUiCategory, type AuditPreset } from "./audit-category.util";
+import { assertFacilityAdminFacilityScope } from "./user-mutation-boundary";
+import { resolvePlatformAuthority } from "../auth/platform-principal";
+
+const PLATFORM_ACTOR_DISPLAY_NAME = "Medora Platform Administration";
+const SYSTEM_ACTOR_DISPLAY_NAME = "System";
+const FACILITY_ACTOR_DISPLAY_NAME = "Facility user";
 
 function parseTimeBoundary(raw: string | undefined, endOfDay: boolean): Date | undefined {
   if (!raw?.trim()) return undefined;
@@ -37,19 +43,25 @@ function decodeCursor(raw: string): { createdAt: Date; id: string } {
 function actorDisplayName(u: {
   firstName: string | null;
   lastName: string | null;
-  email: string | null;
 } | null): string {
-  if (!u) return "";
+  if (!u) return FACILITY_ACTOR_DISPLAY_NAME;
   const n = `${u.firstName ?? ""} ${u.lastName ?? ""}`.trim();
-  if (n) return n;
-  return u.email?.trim() ?? "";
+  return n || FACILITY_ACTOR_DISPLAY_NAME;
 }
 
 @Injectable()
 export class AdminAuditService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async listEvents(facilityId: string, query: AdminAuditEventsQueryDto) {
+  /** Customer projection: authorization is performed here, adjacent to the tenant-scoped query. */
+  async listCustomerEvents(actorUserId: string, facilityId: string, query: AdminAuditEventsQueryDto) {
+    const activeFacility = await this.prisma.facility.findFirst({
+      where: { id: facilityId, isActive: true },
+      select: { id: true },
+    });
+    if (!activeFacility) throw new ForbiddenException("Établissement non autorisé.");
+    await assertFacilityAdminFacilityScope(this.prisma, actorUserId, facilityId);
+
     const now = new Date();
     const from = parseTimeBoundary(query.from, false) ?? new Date(now.getTime() - 7 * 86400_000);
     const to = parseTimeBoundary(query.to, true) ?? now;
@@ -93,14 +105,17 @@ export class AdminAuditService {
         facilityId: true,
         encounterId: true,
         metadata: true,
-        user: { select: { firstName: true, lastName: true, email: true } },
+        user: { select: { firstName: true, lastName: true } },
       },
     });
 
     const hasNext = rows.length > take;
     const page = hasNext ? rows.slice(0, take) : rows;
     const userIds = [...new Set(page.map((r) => r.userId).filter((x): x is string => Boolean(x)))];
-    const roleByUser = await this.loadRoleHints(facilityId, userIds);
+    const [roleByUser, platformActorIds] = await Promise.all([
+      this.loadRoleHints(facilityId, userIds),
+      this.loadPlatformActorIds(userIds),
+    ]);
 
     const events = page.map((r) => {
       const metaSummary = summarizeAuditMetadata(r.metadata);
@@ -119,9 +134,14 @@ export class AdminAuditService {
         actionLabelKey: r.action,
         entityLabelKey: r.entityType,
         actor: {
-          userId: r.userId,
-          displayName: actorDisplayName(r.user),
-          roleHint: r.userId ? roleByUser.get(r.userId) ?? null : null,
+          displayName: !r.userId
+            ? SYSTEM_ACTOR_DISPLAY_NAME
+            : platformActorIds.has(r.userId)
+              ? PLATFORM_ACTOR_DISPLAY_NAME
+              : actorDisplayName(r.user),
+          roleHint: r.userId && !platformActorIds.has(r.userId)
+            ? roleByUser.get(r.userId) ?? null
+            : null,
         },
         facilityId: r.facilityId,
         encounterId: r.encounterId,
@@ -134,6 +154,13 @@ export class AdminAuditService {
     const nextCursor = hasNext && last ? encodeCursor(last.createdAt, last.id) : null;
 
     return { events, nextCursor };
+  }
+
+  private async loadPlatformActorIds(userIds: string[]): Promise<Set<string>> {
+    const decisions = await Promise.all(
+      userIds.map(async (userId) => ({ userId, decision: await resolvePlatformAuthority(this.prisma, userId) }))
+    );
+    return new Set(decisions.filter(({ decision }) => decision.granted).map(({ userId }) => userId));
   }
 
   private async loadRoleHints(facilityId: string, userIds: string[]): Promise<Map<string, string>> {

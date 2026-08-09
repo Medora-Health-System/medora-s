@@ -1,4 +1,4 @@
-import { BadRequestException, Controller, Get, Query, Req, UseGuards } from "@nestjs/common";
+import { BadRequestException, Controller, ForbiddenException, Get, Query, Req, UseGuards } from "@nestjs/common";
 import { AuthGuard } from "@nestjs/passport";
 import { FACILITY_OR_PLATFORM_ADMIN_ROLES } from "../common/auth/platform-operator-roles";
 import { RolesGuard, RequireRoles } from "../common/guards/roles.guard";
@@ -38,6 +38,8 @@ export class AdminAuditController {
       });
     }
     const facilityId = facilityIdFromReq(req);
-    return this.adminAudit.listEvents(facilityId, parsed.data);
+    const actorUserId = typeof req.user?.userId === "string" ? req.user.userId.trim() : "";
+    if (!actorUserId) throw new ForbiddenException("Authentication required");
+    return this.adminAudit.listCustomerEvents(actorUserId, facilityId, parsed.data);
   }
 }
