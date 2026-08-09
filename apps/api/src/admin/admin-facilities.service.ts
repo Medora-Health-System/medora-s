@@ -3,8 +3,15 @@ import {
   ForbiddenException,
   Injectable,
   NotFoundException,
+  Optional,
 } from "@nestjs/common";
-import type { CreateFacilityDto, FacilityBillingIdentityPatchDto, FacilityBillingWorkflowPatchDto, UpdateFacilityServiceConfigDto, MedoraServiceLine } from "@medora/shared";
+import type {
+  CreateFacilityDto,
+  FacilityBillingIdentityPatchDto,
+  FacilityBillingWorkflowPatchDto,
+  UpdateFacilityServiceConfigDto,
+  MedoraServiceLine,
+} from "@medora/shared";
 import {
   mapBillingClassificationModeToSiteType,
   parseStoredFacilityServiceLines,
@@ -20,7 +27,12 @@ import { randomBytes } from "crypto";
 import { resolvePlatformAuthority } from "../auth/platform-principal";
 import { BillingIdentityService } from "../billing/billing-identity.service";
 import { FacilityBillingWorkflowService } from "../encounters/facility-billing-workflow.service";
-import { ensureFacilityClinicalDepartments, ensureFacilityServiceLineDepartments } from "./facility-department-seed.util";
+import {
+  ensureFacilityClinicalDepartments,
+  ensureFacilityServiceLineDepartments,
+} from "./facility-department-seed.util";
+import { AuditService } from "../common/services/audit.service";
+import { logSecurityAdminAudit } from "../common/services/security-admin-audit";
 import {
   buildCareProfileJsonFromDto,
   mergeCareProfileJson,
@@ -61,7 +73,9 @@ function assertNoClientEscalation(dto: object) {
   }
 }
 
-function pickFacilityBillingFromCreateDto(dto: CreateFacilityDto): Partial<FacilityBillingIdentityPatchDto> {
+function pickFacilityBillingFromCreateDto(
+  dto: CreateFacilityDto,
+): Partial<FacilityBillingIdentityPatchDto> {
   const out: Partial<FacilityBillingIdentityPatchDto> = {};
   for (const k of FACILITY_BILLING_KEYS) {
     const v = dto[k];
@@ -73,7 +87,9 @@ function pickFacilityBillingFromCreateDto(dto: CreateFacilityDto): Partial<Facil
 }
 
 function toFacilityTypeEnum(value: string | undefined | null): FacilityType {
-  const code = String(value ?? "CLINIC").trim().toUpperCase();
+  const code = String(value ?? "CLINIC")
+    .trim()
+    .toUpperCase();
   if (Object.values(FacilityType).includes(code as FacilityType)) {
     return code as FacilityType;
   }
@@ -82,7 +98,7 @@ function toFacilityTypeEnum(value: string | undefined | null): FacilityType {
 
 function serializeServiceLinesForStorage(
   facilityType: FacilityType,
-  serviceLines: readonly string[] | null | undefined
+  serviceLines: readonly string[] | null | undefined,
 ): MedoraServiceLine[] {
   return resolveFacilityServiceLines({
     facilityType,
@@ -102,7 +118,9 @@ function mapFacilityRowForClient(row: {
 }) {
   const serviceLines = resolveFacilityServiceLines({
     facilityType: row.facilityType,
-    configuredServiceLines: parseStoredFacilityServiceLines(row.serviceLinesJson),
+    configuredServiceLines: parseStoredFacilityServiceLines(
+      row.serviceLinesJson,
+    ),
   });
   const careProfile = resolveFacilityCareProfile({
     facilityType: row.facilityType,
@@ -139,7 +157,13 @@ export class AdminFacilitiesService {
     private readonly prisma: PrismaService,
     private readonly billingIdentity: BillingIdentityService,
     private readonly facilityBillingWorkflow: FacilityBillingWorkflowService,
+    @Optional() private readonly audit?: AuditService,
   ) {}
+
+  private get requiredAudit(): AuditService {
+    if (!this.audit) throw new Error("SECURITY_ADMIN_AUDIT_SERVICE_REQUIRED");
+    return this.audit;
+  }
 
   private async isPlatformPrincipal(userId: string): Promise<boolean> {
     return (await resolvePlatformAuthority(this.prisma, userId)).granted;
@@ -148,7 +172,9 @@ export class AdminFacilitiesService {
   async create(dto: CreateFacilityDto, userId: string) {
     assertNoClientEscalation(dto);
     if (!(await this.isPlatformPrincipal(userId))) {
-      throw new ForbiddenException("Création d’établissement non autorisée pour ce compte.");
+      throw new ForbiddenException(
+        "Création d’établissement non autorisée pour ce compte.",
+      );
     }
 
     const trimmed = dto.name.trim();
@@ -162,7 +188,7 @@ export class AdminFacilitiesService {
       resolveServiceLinesForCareConfig({
         facilityType,
         dto,
-      })
+      }),
     );
     const profile = resolveFacilityCareProfile({
       facilityType,
@@ -170,7 +196,8 @@ export class AdminFacilitiesService {
       serviceLines,
     });
     const workflowMode =
-      dto.billingClassificationMode ?? getDefaultBillingClassificationModeForProfile(profile);
+      dto.billingClassificationMode ??
+      getDefaultBillingClassificationModeForProfile(profile);
     const timezone = dto.timezone?.trim() || DEFAULT_NEW_FACILITY_TIMEZONE;
     const countryFromDto =
       dto.operationalAddress?.country?.trim() ||
@@ -192,15 +219,20 @@ export class AdminFacilitiesService {
           ...(workflowMode
             ? {
                 billingClassificationMode: workflowMode,
-                billingSiteType: mapBillingClassificationModeToSiteType(workflowMode),
+                billingSiteType:
+                  mapBillingClassificationModeToSiteType(workflowMode),
                 allowUrgentCareToEmergencyUpgrade:
                   dto.allowUrgentCareToEmergencyUpgrade ??
-                  (workflowMode === "HYBRID_UC_ED" || workflowMode === "HOSPITAL_ENTERPRISE"),
-                requireUcToEdPatientAcknowledgement: dto.requireUcToEdPatientAcknowledgement ?? true,
+                  (workflowMode === "HYBRID_UC_ED" ||
+                    workflowMode === "HOSPITAL_ENTERPRISE"),
+                requireUcToEdPatientAcknowledgement:
+                  dto.requireUcToEdPatientAcknowledgement ?? true,
                 showEncounterBillingControls:
                   dto.showEncounterBillingControls ??
-                  (workflowMode === "HYBRID_UC_ED" || workflowMode === "HOSPITAL_ENTERPRISE"),
-                allowedEncounterBillingClassifications: dto.allowedEncounterBillingClassifications ?? [],
+                  (workflowMode === "HYBRID_UC_ED" ||
+                    workflowMode === "HOSPITAL_ENTERPRISE"),
+                allowedEncounterBillingClassifications:
+                  dto.allowedEncounterBillingClassifications ?? [],
               }
             : {}),
         },
@@ -228,28 +260,36 @@ export class AdminFacilitiesService {
         defaultLanguage: (facility.defaultLanguage as "fr" | "en") ?? "fr",
       });
 
-      await tx.auditLog.create({
-        data: {
+      await logSecurityAdminAudit(
+        this.requiredAudit,
+        AuditAction.FACILITY_CARE_PROFILE_UPDATED,
+        {
+          event: "FACILITY_CREATED",
+          actorUserId: userId,
           facilityId: facility.id,
-          userId,
-          action: AuditAction.FACILITY_CARE_PROFILE_UPDATED,
           entityType: "Facility",
           entityId: facility.id,
-          metadata: {
-            event: "FACILITY_CREATED",
+          severity: "HIGH",
+          outcome: "SUCCESS",
+          sourceOperation: "AdminFacilitiesService.create",
+          evidence: {
             facilityType: facility.facilityType,
             careProfile: profile,
             serviceLines,
           },
+          tx,
         },
-      });
+      );
 
       return mapFacilityRowForClient(facility);
     });
   }
 
   /** Platform principal or facility ADMIN — same data as GET billing/facility-identity for `id`. */
-  async getFacilityBillingIdentityForAdmin(actorUserId: string, facilityId: string) {
+  async getFacilityBillingIdentityForAdmin(
+    actorUserId: string,
+    facilityId: string,
+  ) {
     await this.assertCanManageFacilityBilling(actorUserId, facilityId);
     return this.billingIdentity.getFacilityBillingIdentity(facilityId);
   }
@@ -257,13 +297,16 @@ export class AdminFacilitiesService {
   async updateFacilityBillingIdentityForAdmin(
     actorUserId: string,
     facilityId: string,
-    dto: FacilityBillingIdentityPatchDto
+    dto: FacilityBillingIdentityPatchDto,
   ) {
     await this.assertCanManageFacilityBilling(actorUserId, facilityId);
     return this.billingIdentity.updateFacilityBillingIdentity(facilityId, dto);
   }
 
-  async getFacilityBillingWorkflowForAdmin(actorUserId: string, facilityId: string) {
+  async getFacilityBillingWorkflowForAdmin(
+    actorUserId: string,
+    facilityId: string,
+  ) {
     await this.assertCanManageFacilityBilling(actorUserId, facilityId);
     return this.facilityBillingWorkflow.getForFacility(facilityId);
   }
@@ -271,7 +314,7 @@ export class AdminFacilitiesService {
   async updateFacilityBillingWorkflowForAdmin(
     actorUserId: string,
     facilityId: string,
-    dto: FacilityBillingWorkflowPatchDto
+    dto: FacilityBillingWorkflowPatchDto,
   ) {
     await this.assertCanManageFacilityBilling(actorUserId, facilityId);
     return this.facilityBillingWorkflow.updateForFacility(facilityId, dto);
@@ -297,7 +340,9 @@ export class AdminFacilitiesService {
     if (facilityConfig) {
       await ensureFacilityServiceLineDepartments(this.prisma, facilityId, {
         facilityType: facilityConfig.facilityType,
-        serviceLines: parseStoredFacilityServiceLines(facilityConfig.serviceLinesJson),
+        serviceLines: parseStoredFacilityServiceLines(
+          facilityConfig.serviceLinesJson,
+        ),
         defaultLanguage: (facility.defaultLanguage as "fr" | "en") ?? "fr",
       });
     }
@@ -309,7 +354,10 @@ export class AdminFacilitiesService {
     return { items };
   }
 
-  private async assertCanManageFacilityBilling(actorUserId: string, facilityId: string) {
+  private async assertCanManageFacilityBilling(
+    actorUserId: string,
+    facilityId: string,
+  ) {
     if (await this.isPlatformPrincipal(actorUserId)) {
       return;
     }
@@ -324,14 +372,19 @@ export class AdminFacilitiesService {
     if (adminHere) {
       return;
     }
-    throw new ForbiddenException("Profil de facturation établissement : accès refusé.");
+    throw new ForbiddenException(
+      "Profil de facturation établissement : accès refusé.",
+    );
   }
 
   /**
    * An authoritative platform principal may list all facilities without per-facility ADMIN.
    * Facility-level ADMIN at the active `x-facility-id` retains the previous list access (global rows).
    */
-  async assertCanListFacilities(userId: string, facilityIdHeader: string | undefined) {
+  async assertCanListFacilities(
+    userId: string,
+    facilityIdHeader: string | undefined,
+  ) {
     if (await this.isPlatformPrincipal(userId)) {
       return;
     }
@@ -349,7 +402,9 @@ export class AdminFacilitiesService {
       },
     });
     if (!hasAdminHere) {
-      throw new ForbiddenException("Liste des établissements non autorisée pour ce compte.");
+      throw new ForbiddenException(
+        "Liste des établissements non autorisée pour ce compte.",
+      );
     }
   }
 
@@ -360,36 +415,42 @@ export class AdminFacilitiesService {
   async list(userId: string, includeInactive: boolean) {
     if (includeInactive) {
       if (!(await this.isPlatformPrincipal(userId))) {
-        throw new ForbiddenException("Liste complète des établissements non autorisée pour ce compte.");
+        throw new ForbiddenException(
+          "Liste complète des établissements non autorisée pour ce compte.",
+        );
       }
-      return this.prisma.facility.findMany({
-        orderBy: { name: "asc" },
-        select: {
-          id: true,
-          name: true,
-          isActive: true,
-          defaultLanguage: true,
-          facilityType: true,
-          serviceLinesJson: true,
-          facilityCareProfileJson: true,
-          timezone: true,
-        },
-      }).then((rows) => rows.map((row) => mapFacilityRowForClient(row)));
+      return this.prisma.facility
+        .findMany({
+          orderBy: { name: "asc" },
+          select: {
+            id: true,
+            name: true,
+            isActive: true,
+            defaultLanguage: true,
+            facilityType: true,
+            serviceLinesJson: true,
+            facilityCareProfileJson: true,
+            timezone: true,
+          },
+        })
+        .then((rows) => rows.map((row) => mapFacilityRowForClient(row)));
     }
     if (await this.isPlatformPrincipal(userId)) {
-      return this.prisma.facility.findMany({
-        where: { isActive: true },
-        orderBy: { name: "asc" },
-        select: {
-          id: true,
-          name: true,
-          defaultLanguage: true,
-          facilityType: true,
-          serviceLinesJson: true,
-          facilityCareProfileJson: true,
-          timezone: true,
-        },
-      }).then((rows) => rows.map((row) => mapFacilityRowForClient(row)));
+      return this.prisma.facility
+        .findMany({
+          where: { isActive: true },
+          orderBy: { name: "asc" },
+          select: {
+            id: true,
+            name: true,
+            defaultLanguage: true,
+            facilityType: true,
+            serviceLinesJson: true,
+            facilityCareProfileJson: true,
+            timezone: true,
+          },
+        })
+        .then((rows) => rows.map((row) => mapFacilityRowForClient(row)));
     }
     const roles = await this.prisma.userRole.findMany({
       where: {
@@ -399,25 +460,31 @@ export class AdminFacilitiesService {
       select: { facilityId: true },
     });
     const facilityIds = roles.map((r) => r.facilityId);
-    return this.prisma.facility.findMany({
-      where: {
-        isActive: true,
-        id: { in: facilityIds },
-      },
-      orderBy: { name: "asc" },
-      select: {
-        id: true,
-        name: true,
-        defaultLanguage: true,
-        facilityType: true,
-        serviceLinesJson: true,
-        facilityCareProfileJson: true,
-        timezone: true,
-      },
-    }).then((rows) => rows.map((row) => mapFacilityRowForClient(row)));
+    return this.prisma.facility
+      .findMany({
+        where: {
+          isActive: true,
+          id: { in: facilityIds },
+        },
+        orderBy: { name: "asc" },
+        select: {
+          id: true,
+          name: true,
+          defaultLanguage: true,
+          facilityType: true,
+          serviceLinesJson: true,
+          facilityCareProfileJson: true,
+          timezone: true,
+        },
+      })
+      .then((rows) => rows.map((row) => mapFacilityRowForClient(row)));
   }
 
-  async updateFacilityServiceConfig(id: string, dto: UpdateFacilityServiceConfigDto, userId: string) {
+  async updateFacilityServiceConfig(
+    id: string,
+    dto: UpdateFacilityServiceConfigDto,
+    userId: string,
+  ) {
     assertNoClientEscalation(dto);
     await this.assertCanManageFacilityBilling(userId, id);
 
@@ -438,16 +505,27 @@ export class AdminFacilitiesService {
       throw new NotFoundException("Établissement introuvable.");
     }
 
-    const nextType = dto.facilityType ? toFacilityTypeEnum(dto.facilityType) : existing.facilityType;
-    const existingLines = parseStoredFacilityServiceLines(existing.serviceLinesJson);
+    const nextType = dto.facilityType
+      ? toFacilityTypeEnum(dto.facilityType)
+      : existing.facilityType;
+    const existingLines = parseStoredFacilityServiceLines(
+      existing.serviceLinesJson,
+    );
     const nextServiceLines = resolveServiceLinesForCareConfig({
       facilityType: nextType,
       dto,
       existingServiceLines: existingLines,
       existingCareProfileJson: existing.facilityCareProfileJson,
     });
-    const serialized = serializeServiceLinesForStorage(nextType, nextServiceLines);
-    const careProfileJson = mergeCareProfileJson(existing.facilityCareProfileJson, dto, nextType);
+    const serialized = serializeServiceLinesForStorage(
+      nextType,
+      nextServiceLines,
+    );
+    const careProfileJson = mergeCareProfileJson(
+      existing.facilityCareProfileJson,
+      dto,
+      nextType,
+    );
     const profile = resolveFacilityCareProfile({
       facilityType: nextType,
       careProfileJson,
@@ -493,7 +571,9 @@ export class AdminFacilitiesService {
             serviceLines: serialized,
             resetToTypeDefaults: dto.resetToTypeDefaults === true,
             operationalIdentityUpdated:
-              dto.operationalAddress != null || dto.printDisplayName != null || dto.legalName != null,
+              dto.operationalAddress != null ||
+              dto.printDisplayName != null ||
+              dto.legalName != null,
           },
         },
       });
@@ -510,9 +590,15 @@ export class AdminFacilitiesService {
     return mapFacilityRowForClient(updated);
   }
 
-  async setFacilityLanguage(id: string, defaultLanguage: "fr" | "en", userId: string) {
+  async setFacilityLanguage(
+    id: string,
+    defaultLanguage: "fr" | "en",
+    userId: string,
+  ) {
     if (!(await this.isPlatformPrincipal(userId))) {
-      throw new ForbiddenException("Modification de l’établissement non autorisée pour ce compte.");
+      throw new ForbiddenException(
+        "Modification de l’établissement non autorisée pour ce compte.",
+      );
     }
 
     const existing = await this.prisma.facility.findUnique({
@@ -532,21 +618,41 @@ export class AdminFacilitiesService {
 
   async setFacilityActive(id: string, isActive: boolean, userId: string) {
     if (!(await this.isPlatformPrincipal(userId))) {
-      throw new ForbiddenException("Modification de l’établissement non autorisée pour ce compte.");
+      throw new ForbiddenException(
+        "Modification de l’établissement non autorisée pour ce compte.",
+      );
     }
 
     const existing = await this.prisma.facility.findUnique({
       where: { id },
-      select: { id: true },
+      select: { id: true, isActive: true },
     });
     if (!existing) {
       throw new NotFoundException("Établissement introuvable.");
     }
 
-    return this.prisma.facility.update({
-      where: { id },
-      data: { isActive },
-      select: { id: true, name: true, isActive: true, defaultLanguage: true },
+    return this.prisma.$transaction(async (tx) => {
+      const updated = await tx.facility.update({
+        where: { id },
+        data: { isActive },
+        select: { id: true, name: true, isActive: true, defaultLanguage: true },
+      });
+      await logSecurityAdminAudit(this.requiredAudit, AuditAction.UPDATE, {
+        event: isActive ? "FACILITY_ACTIVATED" : "FACILITY_DEACTIVATED",
+        actorUserId: userId,
+        facilityId: id,
+        entityType: "Facility",
+        entityId: id,
+        severity: "CRITICAL",
+        outcome: "SUCCESS",
+        sourceOperation: "AdminFacilitiesService.setFacilityActive",
+        evidence: {
+          before: { isActive: existing.isActive },
+          after: { isActive },
+        },
+        tx,
+      });
+      return updated;
     });
   }
 }

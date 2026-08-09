@@ -29,7 +29,7 @@ describe("AdminUsersService (MEDUI.AUTH.ROLE.2)", () => {
         create: jest.fn(),
         updateMany: jest.fn(),
         findMany: jest.fn(),
-        findFirst: jest.fn(),
+        findFirst: jest.fn().mockResolvedValue({ id: "membership" }),
         update: jest.fn(),
         count: jest.fn().mockResolvedValue(1),
       },
@@ -41,50 +41,64 @@ describe("AdminUsersService (MEDUI.AUTH.ROLE.2)", () => {
           userRole: {
             create: jest.fn(),
           },
-        })
+        }),
       ),
       ...overrides,
     };
-    return { service: new AdminUsersService(prisma as never), prisma };
+    const audit = { log: jest.fn().mockResolvedValue(undefined) };
+    return {
+      service: new AdminUsersService(prisma as never, audit as never),
+      prisma,
+      audit,
+    };
   }
 
   it("creates user with departmentId on UserRole", async () => {
     const { service, prisma } = makeService();
     prisma.user.findUnique.mockResolvedValue(null);
-    prisma.role.findMany.mockResolvedValue([{ id: "role-lab", code: RoleCode.LAB }]);
+    prisma.role.findMany.mockResolvedValue([
+      { id: "role-lab", code: RoleCode.LAB },
+    ]);
 
     const txUserRoleCreate = jest.fn();
-    prisma.$transaction.mockImplementation(async (fn: (tx: unknown) => Promise<unknown>) =>
-      fn({
-        user: {
-          create: jest.fn().mockResolvedValue({ id: userId }),
-        },
-        userRole: {
-          create: txUserRoleCreate,
-        },
-      })
+    prisma.$transaction.mockImplementation(
+      async (fn: (tx: unknown) => Promise<unknown>) =>
+        fn({
+          user: {
+            create: jest.fn().mockResolvedValue({ id: userId }),
+          },
+          userRole: {
+            create: txUserRoleCreate,
+          },
+        }),
     );
 
-    prisma.user.findUnique.mockImplementation(({ where }: { where: { id?: string } }) => {
-      if (where.id === userId) {
-        return {
-          id: userId,
-          email: "tech@example.com",
-          firstName: "Tech",
-          lastName: "User",
-          isActive: true,
-          userRoles: [
-            {
-              isActive: true,
-              departmentId,
-              role: { code: RoleCode.LAB },
-              department: { id: departmentId, code: "LAB", name: "Laboratoire" },
-            },
-          ],
-        };
-      }
-      return null;
-    });
+    prisma.user.findUnique.mockImplementation(
+      ({ where }: { where: { id?: string } }) => {
+        if (where.id === userId) {
+          return {
+            id: userId,
+            email: "tech@example.com",
+            firstName: "Tech",
+            lastName: "User",
+            isActive: true,
+            userRoles: [
+              {
+                isActive: true,
+                departmentId,
+                role: { code: RoleCode.LAB },
+                department: {
+                  id: departmentId,
+                  code: "LAB",
+                  name: "Laboratoire",
+                },
+              },
+            ],
+          };
+        }
+        return null;
+      },
+    );
 
     await service.create(
       facilityId,
@@ -97,7 +111,7 @@ describe("AdminUsersService (MEDUI.AUTH.ROLE.2)", () => {
         isActive: true,
         assignments: [{ roleCode: "LAB", departmentId }],
       },
-      "actor"
+      "actor",
     );
 
     expect(prisma.department.count).toHaveBeenCalledWith({
@@ -129,69 +143,133 @@ describe("AdminUsersService (MEDUI.AUTH.ROLE.2)", () => {
           isActive: true,
           assignments: [{ roleCode: "LAB", departmentId }],
         },
-        "actor"
-      )
+        "actor",
+      ),
     ).rejects.toBeInstanceOf(BadRequestException);
   });
 
   it.each([
-    ["profile", (service: AdminUsersService) => service.updateProfile(facilityId, userId, { firstName: "Changed" }, "facility-admin")],
-    ["password", (service: AdminUsersService) => service.resetPassword(facilityId, userId, "NewPassword123!", "facility-admin")],
-    ["status", (service: AdminUsersService) => service.updateStatus(facilityId, userId, { isActive: false }, "facility-admin")],
-    ["roles", (service: AdminUsersService) => service.updateRoles(facilityId, userId, { facilityId, roles: [RoleCode.ADMIN] }, "facility-admin")],
-    ["billing", (service: AdminUsersService) => service.updateUserBillingIdentity(facilityId, userId, {
-      billingNpi: null,
-      billingTaxonomyCode: null,
-      billingNameOverride: null,
-    }, "facility-admin")],
-  ])("blocks facility-admin %s mutation of an authoritative platform administrator", async (_name, mutate) => {
-    const { service, prisma } = makeService();
-    prisma.user.findUnique.mockImplementation(({ where }: { where: { id: string } }) =>
-      where.id === userId
-        ? { id: userId, isActive: true, canCreateFacilities: true, userRoles: [{ id: "super" }] }
-        : { id: where.id, isActive: true, canCreateFacilities: false, userRoles: [] }
-    );
-    await expect(mutate(service)).rejects.toBeInstanceOf(ForbiddenException);
-    expect(prisma.user.update).not.toHaveBeenCalled();
-  });
+    [
+      "profile",
+      (service: AdminUsersService) =>
+        service.updateProfile(
+          facilityId,
+          userId,
+          { firstName: "Changed" },
+          "facility-admin",
+        ),
+    ],
+    [
+      "password",
+      (service: AdminUsersService) =>
+        service.resetPassword(
+          facilityId,
+          userId,
+          "NewPassword123!",
+          "facility-admin",
+        ),
+    ],
+    [
+      "status",
+      (service: AdminUsersService) =>
+        service.updateStatus(
+          facilityId,
+          userId,
+          { isActive: false },
+          "facility-admin",
+        ),
+    ],
+    [
+      "roles",
+      (service: AdminUsersService) =>
+        service.updateRoles(
+          facilityId,
+          userId,
+          { facilityId, roles: [RoleCode.ADMIN] },
+          "facility-admin",
+        ),
+    ],
+    [
+      "billing",
+      (service: AdminUsersService) =>
+        service.updateUserBillingIdentity(
+          facilityId,
+          userId,
+          {
+            billingNpi: null,
+            billingTaxonomyCode: null,
+            billingNameOverride: null,
+          },
+          "facility-admin",
+        ),
+    ],
+  ])(
+    "blocks facility-admin %s mutation of an authoritative platform administrator",
+    async (_name, mutate) => {
+      const { service, prisma } = makeService();
+      prisma.user.findUnique.mockImplementation(
+        ({ where }: { where: { id: string } }) =>
+          where.id === userId
+            ? {
+                id: userId,
+                isActive: true,
+                canCreateFacilities: true,
+                userRoles: [{ id: "super" }],
+              }
+            : {
+                id: where.id,
+                isActive: true,
+                canCreateFacilities: false,
+                userRoles: [],
+              },
+      );
+      await expect(mutate(service)).rejects.toBeInstanceOf(ForbiddenException);
+      expect(prisma.user.update).not.toHaveBeenCalled();
+    },
+  );
 
   it("still supports legacy roles[] payload without departmentId", async () => {
     const { service, prisma } = makeService();
     prisma.user.findUnique.mockResolvedValue(null);
-    prisma.role.findMany.mockResolvedValue([{ id: "role-rn", code: RoleCode.RN }]);
+    prisma.role.findMany.mockResolvedValue([
+      { id: "role-rn", code: RoleCode.RN },
+    ]);
 
     const txUserRoleCreate = jest.fn();
-    prisma.$transaction.mockImplementation(async (fn: (tx: unknown) => Promise<unknown>) =>
-      fn({
-        user: {
-          create: jest.fn().mockResolvedValue({ id: userId }),
-        },
-        userRole: {
-          create: txUserRoleCreate,
-        },
-      })
+    prisma.$transaction.mockImplementation(
+      async (fn: (tx: unknown) => Promise<unknown>) =>
+        fn({
+          user: {
+            create: jest.fn().mockResolvedValue({ id: userId }),
+          },
+          userRole: {
+            create: txUserRoleCreate,
+          },
+        }),
     );
 
-    prisma.user.findUnique.mockImplementation(({ where }: { where: { id?: string } }) => {
-      if (where.id === userId) {
-        return {
-          id: userId,
-          email: "rn@example.com",
-          firstName: "RN",
-          lastName: "User",
-          isActive: true,
-          userRoles: [
-            {
-              isActive: true,
-              departmentId: null,
-              role: { code: RoleCode.RN },
-              department: null,
-            },
-          ],
-        };
-      }
-      return null;
-    });
+    prisma.user.findUnique.mockImplementation(
+      ({ where }: { where: { id?: string } }) => {
+        if (where.id === userId) {
+          return {
+            id: userId,
+            email: "rn@example.com",
+            firstName: "RN",
+            lastName: "User",
+            isActive: true,
+            userRoles: [
+              {
+                isActive: true,
+                departmentId: null,
+                role: { code: RoleCode.RN },
+                department: null,
+              },
+            ],
+          };
+        }
+        return null;
+      },
+    );
 
     await service.create(
       facilityId,
@@ -204,7 +282,7 @@ describe("AdminUsersService (MEDUI.AUTH.ROLE.2)", () => {
         isActive: true,
         roles: ["RN"],
       },
-      "actor"
+      "actor",
     );
 
     expect(prisma.department.count).not.toHaveBeenCalled();
@@ -219,19 +297,24 @@ describe("AdminUsersService (MEDUI.AUTH.ROLE.2)", () => {
     const { service, prisma } = makeService();
     prisma.user.findFirst.mockResolvedValue({ id: userId });
     prisma.userRole.findMany.mockResolvedValue([]);
-    prisma.role.findMany.mockResolvedValue([{ id: "role-lab", code: RoleCode.LAB }]);
+    prisma.role.findMany.mockResolvedValue([
+      { id: "role-lab", code: RoleCode.LAB },
+    ]);
     prisma.userRole.findFirst.mockResolvedValue({ id: "ur-1" });
 
     const txUpdate = jest.fn();
-    prisma.$transaction.mockImplementation(async (fn: (tx: unknown) => Promise<unknown>) =>
-      fn({
-        userRole: {
-          updateMany: jest.fn(),
-          findFirst: jest.fn().mockResolvedValue({ id: "ur-1" }),
-          update: txUpdate,
-          create: jest.fn(),
-        },
-      })
+    prisma.$transaction.mockImplementation(
+      async (fn: (tx: unknown) => Promise<unknown>) =>
+        fn({
+          userRole: {
+            updateMany: jest.fn(),
+            findFirst: jest.fn().mockResolvedValue({ id: "ur-1" }),
+            update: txUpdate,
+            create: jest.fn(),
+            count: jest.fn().mockResolvedValue(1),
+          },
+          user: { update: jest.fn() },
+        }),
     );
 
     prisma.user.findUnique.mockResolvedValue({
@@ -257,7 +340,7 @@ describe("AdminUsersService (MEDUI.AUTH.ROLE.2)", () => {
         facilityId,
         assignments: [{ roleCode: "LAB", departmentId }],
       },
-      "actor"
+      "actor",
     );
 
     expect(txUpdate).toHaveBeenCalledWith({
@@ -278,12 +361,18 @@ describe("AdminUsersService (MEDUI.AUTH.ROLE.2)", () => {
         {
           facilityId,
           assignments: [
-            { roleCode: "LAB", departmentId: "44444444-4444-4444-8444-444444444444" },
-            { roleCode: "LAB", departmentId: "55555555-5555-4555-8555-555555555555" },
+            {
+              roleCode: "LAB",
+              departmentId: "44444444-4444-4444-8444-444444444444",
+            },
+            {
+              roleCode: "LAB",
+              departmentId: "55555555-5555-4555-8555-555555555555",
+            },
           ],
         },
-        "actor"
-      )
+        "actor",
+      ),
     ).rejects.toBeInstanceOf(BadRequestException);
   });
 });
