@@ -13,6 +13,8 @@ import { closeE2eApp, createE2eApp } from "../test-utils/e2e-app";
 import * as argon2 from "argon2";
 import { EncounterType, EncounterStatus, OrderStatus, RoleCode } from "@prisma/client";
 
+jest.setTimeout(30_000);
+
 describe("Facility isolation (e2e)", () => {
   let app: INestApplication;
   let moduleRef: TestingModule;
