@@ -4,7 +4,7 @@ import { resolvePlatformAuthority } from "../auth/platform-principal";
 import { AuditService } from "../common/services/audit.service";
 import { logSecurityAdminAudit } from "../common/services/security-admin-audit";
 import { PrismaService } from "../prisma/prisma.service";
-import type { PlatformCapabilityCode } from "./platform-capabilities";
+import { PERSONA_CAPABILITY_TEMPLATES, type MedoraStaffPersonaCode, type PlatformCapabilityCode } from "./platform-capabilities";
 
 @Injectable()
 export class PlatformStaffService {
@@ -13,7 +13,7 @@ export class PlatformStaffService {
   listCapabilities() { return this.prisma.platformCapability.findMany({ orderBy: { code: "asc" } }); }
   listStaff() {
     return this.prisma.medoraStaffProfile.findMany({
-      select: { id: true, userId: true, isActive: true, classifiedAt: true, deactivatedAt: true, user: { select: { firstName: true, lastName: true, isActive: true } } }, orderBy: { classifiedAt: "desc" },
+      select: { id: true, userId: true, persona: true, isActive: true, classifiedAt: true, deactivatedAt: true, user: { select: { firstName: true, lastName: true, isActive: true } } }, orderBy: { classifiedAt: "desc" },
     });
   }
   async getStaff(userId: string) {
@@ -21,9 +21,58 @@ export class PlatformStaffService {
       user: { select: { id: true, firstName: true, lastName: true, isActive: true, mfaEnabled: true } },
     } });
     if (!profile) throw new NotFoundException("Medora staff profile not found");
-    const grants = await this.prisma.platformCapabilityGrant.findMany({ where: { userId }, include: { capability: true }, orderBy: { grantedAt: "desc" } });
-    return { ...profile, grants };
+    const [grants, lifecycle] = await Promise.all([
+      this.prisma.platformCapabilityGrant.findMany({ where: { userId }, include: { capability: true }, orderBy: { grantedAt: "desc" } }),
+      this.prisma.medoraStaffLifecycleEvent.findMany({ where: { staffProfileId: profile.id }, select: { eventType: true, oldPersona: true, newPersona: true, oldIsActive: true, newIsActive: true, actorUserId: true, reason: true, ticketReference: true, createdAt: true }, orderBy: { createdAt: "asc" } }),
+    ]);
+    return { ...profile, grants, lifecycle };
   }
+
+  private async reconcile(tx: any, actorUserId: string, targetUserId: string, persona: MedoraStaffPersonaCode, reason: string, ticketReference?: string) {
+    const expected = new Set(PERSONA_CAPABILITY_TEMPLATES[persona]);
+    const capabilities = await tx.platformCapability.findMany({ where: { code: { in: [...expected] }, isActive: true } });
+    if (capabilities.length !== expected.size) throw new Error("PERSONA_TEMPLATE_CATALOG_MISMATCH");
+    if (capabilities.some((capability: any) => capability.riskLevel === "CRITICAL")) throw new Error("PERSONA_TEMPLATE_CRITICAL_CAPABILITY");
+    const active = await tx.platformCapabilityGrant.findMany({ where: { userId: targetUserId, isActive: true }, include: { capability: { select: { code: true } } } });
+    const added: string[] = [];
+    for (const capability of capabilities) {
+      if (active.some((grant: any) => grant.capabilityId === capability.id)) continue;
+      await tx.platformCapabilityGrant.create({ data: { userId: targetUserId, capabilityId: capability.id, grantedByUserId: actorUserId, grantReason: reason, ticketReference, provenance: "PERSONA", managedPersona: persona } });
+      added.push(capability.code);
+    }
+    const obsolete = active.filter((grant: any) => grant.provenance === "PERSONA" && !expected.has(grant.capability.code));
+    for (const grant of obsolete) await tx.platformCapabilityGrant.update({ where: { id: grant.id }, data: { isActive: false, revokedAt: new Date(), revokedByUserId: actorUserId, revokeReason: reason } });
+    return { added: added.sort(), revoked: obsolete.map((grant: any) => grant.capability.code).sort() };
+  }
+
+  private async lifecycle(actorUserId: string, targetUserId: string, eventType: "PROVISION" | "ACTIVATE" | "DEACTIVATE" | "PERSONA_CHANGE", persona: MedoraStaffPersonaCode | undefined, reason: string, ticketReference?: string) {
+    await this.requirePrincipal(actorUserId);
+    if (actorUserId === targetUserId) { await this.denied("STAFF_MUTATION_DENIED", actorUserId, targetUserId, undefined, "SELF_MUTATION_PROHIBITED"); throw new ForbiddenException("Self staff mutation is prohibited"); }
+    const target = await this.prisma.user.findUnique({ where: { id: targetUserId }, select: { isActive: true } });
+    if (!target) throw new NotFoundException("Target user not found");
+    if (!target.isActive) throw new BadRequestException("Target user must be active");
+    const existing = await this.prisma.medoraStaffProfile.findUnique({ where: { userId: targetUserId } });
+    if (eventType !== "PROVISION" && !existing) throw new NotFoundException("Medora staff profile not found");
+    if (eventType === "PROVISION" && existing?.persona) throw new BadRequestException("Staff is already provisioned");
+    const nextPersona = persona ?? existing?.persona;
+    if (!nextPersona) throw new BadRequestException("Staff persona is required");
+    const nextActive = eventType !== "DEACTIVATE";
+    return this.prisma.$transaction(async (tx) => {
+      const profile = existing
+        ? await tx.medoraStaffProfile.update({ where: { userId: targetUserId }, data: { persona: nextPersona, isActive: nextActive, ...(nextActive ? { deactivatedAt: null, deactivatedByUserId: null, deactivationReason: null } : { deactivatedAt: new Date(), deactivatedByUserId: actorUserId, deactivationReason: reason }) } })
+        : await tx.medoraStaffProfile.create({ data: { userId: targetUserId, persona: nextPersona, isActive: true, classifiedByUserId: actorUserId, classificationReason: reason } });
+      const changes = nextActive ? await this.reconcile(tx, actorUserId, targetUserId, nextPersona as MedoraStaffPersonaCode, reason, ticketReference) : { added: [], revoked: [] };
+      await tx.medoraStaffLifecycleEvent.create({ data: { staffProfileId: profile.id, actorUserId, eventType, oldPersona: existing?.persona, newPersona: nextPersona, oldIsActive: existing?.isActive, newIsActive: nextActive, reason, ticketReference } });
+      const event = ({ PROVISION: "STAFF_PROVISIONED", ACTIVATE: "STAFF_ACTIVATED", DEACTIVATE: "STAFF_DEACTIVATED", PERSONA_CHANGE: "STAFF_PERSONA_CHANGED" } as const)[eventType];
+      await logSecurityAdminAudit(this.audit, eventType === "PROVISION" ? AuditAction.CREATE : AuditAction.UPDATE, { event, actorUserId, entityType: "MedoraStaffProfile", entityId: profile.id, severity: "CRITICAL", outcome: "SUCCESS", sourceOperation: `platform.staff.${eventType.toLowerCase()}`, evidence: { targetUserId, oldPersona: existing?.persona ?? null, newPersona: nextPersona, oldIsActive: existing?.isActive ?? null, newIsActive: nextActive, capabilitiesAdded: changes.added, capabilitiesRevoked: changes.revoked, reason, ...(ticketReference ? { ticketReference } : {}), result: "SUCCESS" }, tx });
+      return { ...profile, capabilityChanges: changes };
+    });
+  }
+
+  provision(actor: string, target: string, persona: MedoraStaffPersonaCode, reason: string, ticket?: string) { return this.lifecycle(actor, target, "PROVISION", persona, reason, ticket); }
+  activate(actor: string, target: string, reason: string, ticket?: string) { return this.lifecycle(actor, target, "ACTIVATE", undefined, reason, ticket); }
+  deactivate(actor: string, target: string, reason: string, ticket?: string) { return this.lifecycle(actor, target, "DEACTIVATE", undefined, reason, ticket); }
+  changePersona(actor: string, target: string, persona: MedoraStaffPersonaCode, reason: string, ticket?: string) { return this.lifecycle(actor, target, "PERSONA_CHANGE", persona, reason, ticket); }
 
   private async requirePrincipal(actorUserId: string) {
     if (!(await resolvePlatformAuthority(this.prisma, actorUserId)).granted) throw new ForbiddenException("Authoritative platform principal required");

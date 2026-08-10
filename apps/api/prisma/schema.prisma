@@ -303,6 +303,7 @@ model User {
   platformCapabilityGrants                        PlatformCapabilityGrant[]               @relation("PlatformCapabilityGrantTarget")
   platformCapabilityGrantsMade                    PlatformCapabilityGrant[]               @relation("PlatformCapabilityGrantedBy")
   platformCapabilityRevocationsMade               PlatformCapabilityGrant[]               @relation("PlatformCapabilityRevokedBy")
+  staffLifecycleEventsMade                        MedoraStaffLifecycleEvent[]              @relation("MedoraStaffLifecycleActor")
   vaccineAdministrations                          VaccineAdministration[]
 }
 
@@ -370,6 +371,7 @@ model MedoraStaffProfile {
   id                    String    @id @default(uuid())
   userId                String    @unique
   isActive              Boolean   @default(true)
+  persona               MedoraStaffPersona?
   classifiedByUserId    String
   classifiedAt          DateTime  @default(now())
   classificationReason  String?
@@ -380,8 +382,29 @@ model MedoraStaffProfile {
   user                  User      @relation("MedoraStaffUser", fields: [userId], references: [id], onDelete: Restrict)
   classifiedBy          User      @relation("MedoraStaffClassifiedBy", fields: [classifiedByUserId], references: [id], onDelete: Restrict)
   deactivatedBy         User?     @relation("MedoraStaffDeactivatedBy", fields: [deactivatedByUserId], references: [id], onDelete: Restrict)
+  lifecycleEvents       MedoraStaffLifecycleEvent[]
 
   @@index([isActive])
+}
+
+/// Append-only attribution for authoritative staff lifecycle transitions.
+model MedoraStaffLifecycleEvent {
+  id              String                        @id @default(uuid())
+  staffProfileId  String
+  actorUserId     String
+  eventType       MedoraStaffLifecycleEventType
+  oldPersona      MedoraStaffPersona?
+  newPersona      MedoraStaffPersona?
+  oldIsActive     Boolean?
+  newIsActive     Boolean
+  reason          String
+  ticketReference String?
+  createdAt       DateTime                      @default(now())
+  staffProfile    MedoraStaffProfile            @relation(fields: [staffProfileId], references: [id], onDelete: Restrict)
+  actor           User                          @relation("MedoraStaffLifecycleActor", fields: [actorUserId], references: [id], onDelete: Restrict)
+
+  @@index([staffProfileId, createdAt])
+  @@index([actorUserId])
 }
 
 model PlatformCapability {
@@ -411,6 +434,8 @@ model PlatformCapabilityGrant {
   revokedByUserId String?
   revokedAt       DateTime?
   revokeReason    String?
+  provenance      PlatformCapabilityGrantProvenance @default(MANUAL)
+  managedPersona  MedoraStaffPersona?
   capability      PlatformCapability @relation(fields: [capabilityId], references: [id], onDelete: Restrict)
   user            User               @relation("PlatformCapabilityGrantTarget", fields: [userId], references: [id], onDelete: Restrict)
   grantedBy       User               @relation("PlatformCapabilityGrantedBy", fields: [grantedByUserId], references: [id], onDelete: Restrict)
@@ -7281,6 +7306,26 @@ enum AuditAction {
   PHARMACY_VERIFICATION_REJECTED
   /// M1.3F.7 — pharmacy verification override at MAR (PHI-safe metadata only).
   PHARMACY_VERIFICATION_OVERRIDE
+}
+
+enum MedoraStaffPersona {
+  IMPLEMENTATION
+  SUPPORT
+  BILLING_OPERATIONS
+  COMPLIANCE_SECURITY
+  PLATFORM_OPERATIONS
+}
+
+enum MedoraStaffLifecycleEventType {
+  PROVISION
+  ACTIVATE
+  DEACTIVATE
+  PERSONA_CHANGE
+}
+
+enum PlatformCapabilityGrantProvenance {
+  MANUAL
+  PERSONA
 }
 
 enum PlatformCapabilityRiskLevel {
