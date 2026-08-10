@@ -42,7 +42,7 @@ describe("D4SEC.1C.4B persona/lifecycle foundation", () => {
   });
 
   it("schema provenance is explicit and lifecycle history uses restrictive attribution", () => {
-    const migration = fs.readFileSync(path.join(process.cwd(), "prisma/migrations/20260810150000_staff_persona_lifecycle_foundation/migration.sql"), "utf8");
+    const migration = fs.readFileSync(path.join(process.cwd(), "prisma/migrations/20261103120000_d4sec_1c4b_staff_persona_lifecycle_foundation/migration.sql"), "utf8");
     expect(migration).toContain('DEFAULT \'MANUAL\'');
     expect(migration).toContain('PlatformCapabilityGrant_persona_provenance_check');
     expect(migration.match(/ON DELETE RESTRICT/g)).toHaveLength(2);

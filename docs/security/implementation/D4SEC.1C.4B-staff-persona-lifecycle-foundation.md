@@ -12,7 +12,7 @@ Safe list/detail projections contain staff identity IDs, names, activation/perso
 
 ## Deployment
 
-Migration directory: `apps/api/prisma/migrations/20260810150000_staff_persona_lifecycle_foundation`.
+Migration directory: `apps/api/prisma/migrations/20261103120000_d4sec_1c4b_staff_persona_lifecycle_foundation`.
 
 Local: `npm exec --workspace=@medora/api -- prisma migrate deploy`
 
