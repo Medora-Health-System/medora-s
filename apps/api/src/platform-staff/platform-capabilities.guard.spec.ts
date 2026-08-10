@@ -41,6 +41,15 @@ describe("D4SEC.1C.3 centralized mutation denial audit", () => {
     expect(audit.log.mock.calls[0][2].metadata).toEqual(expect.objectContaining({ event: "MEDORA_STAFF_CLASSIFICATION_DENIED", targetUserId: targetId }));
     expect(JSON.stringify(audit.log.mock.calls[0])).not.toContain("untrusted");
   });
+  it("audits unauthorized staff lifecycle mutation with immutable identity and authoritative operation", async () => {
+    const requirement: PlatformCapabilityRequirement = { codes: [], mode: "ALL", allowPlatformPrincipal: true, requireRecentMfa: true, denialAudit: { event: "STAFF_MUTATION_DENIED", sourceOperation: "platform.staff.provision", requestedCapabilityFrom: "NONE" } };
+    const { guard, audit } = make({ id: actorId, isActive: true, canCreateFacilities: false, userRoles: [] }, requirement);
+    await expect(guard.canActivate(context({ user: { userId: actorId, email: "ignored@example.test" }, params: { id: targetId }, body: { reason: "untrusted" } }))).rejects.toBeInstanceOf(ForbiddenException);
+    expect(audit.log.mock.calls[0][1]).toBe("MedoraStaffProfile");
+    expect(audit.log.mock.calls[0][2]).toEqual(expect.objectContaining({ userId: actorId, entityId: targetId, metadata: expect.objectContaining({ event: "STAFF_MUTATION_DENIED", sourceOperation: "platform.staff.provision", targetUserId: targetId }) }));
+    expect(JSON.stringify(audit.log.mock.calls[0])).not.toContain("ignored@example.test");
+    expect(JSON.stringify(audit.log.mock.calls[0])).not.toContain("untrusted");
+  });
   it("rejects a missing authenticated identity without denial-audit noise", async () => {
     const { guard, audit, prisma } = make(null);
     await expect(guard.canActivate(context({ user: undefined, params: { id: targetId } }))).rejects.toBeInstanceOf(ForbiddenException);

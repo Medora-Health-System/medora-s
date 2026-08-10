@@ -26,7 +26,7 @@ export class PlatformCapabilitiesGuard implements CanActivate {
     await logSecurityAdminAudit(this.audit, AuditAction.UPDATE, {
       event: policy.event,
       actorUserId,
-      entityType: policy.event === "MEDORA_STAFF_CLASSIFICATION_DENIED" ? "MedoraStaffProfile" : "PlatformCapabilityGrant",
+      entityType: policy.event === "MEDORA_STAFF_CLASSIFICATION_DENIED" || policy.event === "STAFF_MUTATION_DENIED" ? "MedoraStaffProfile" : "PlatformCapabilityGrant",
       entityId: targetUserId ?? actorUserId,
       severity: "CRITICAL",
       outcome: "DENIED",

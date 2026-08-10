@@ -1,5 +1,5 @@
-import fs from "node:fs";
-import path from "node:path";
+import * as fs from "node:fs";
+import * as path from "node:path";
 import { changePersonaSchema, provisionStaffSchema, staffLifecycleSchema } from "./dto/platform-staff.dto";
 import { MEDORA_STAFF_PERSONAS, PERSONA_CAPABILITY_TEMPLATES } from "./platform-capabilities";
 import { resolvePlatformCapabilities } from "./platform-capability.resolver";
