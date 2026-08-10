@@ -363,7 +363,8 @@ export class AuthService {
       username: user.email,
       iss: this.issuer(),
       type: "access",
-      jti: randomUUID()
+      jti: randomUUID(),
+      sid: sessionId
     };
 
     const refreshPayload: JwtPayload = {
@@ -424,7 +425,7 @@ export class AuthService {
    * (login challenge OK, or first-time enrollment verification OK). Mirrors the
    * post-password-success branch of `login()` but takes a userId directly.
    */
-  async completeAuthAfterMfa(userId: string): Promise<{
+  async completeAuthAfterMfa(userId: string, mfaMethod: "totp" | "recovery_code" = "totp"): Promise<{
     accessToken: string;
     refreshToken: string;
     user: AuthUserDto;
@@ -445,6 +446,7 @@ export class AuthService {
       iss: this.issuer(),
       type: "access",
       jti: randomUUID(),
+      sid: sessionId,
     };
 
     const refreshPayload: JwtPayload = {
@@ -471,6 +473,8 @@ export class AuthService {
         refreshTokenHash: refreshHash,
         expiresAt,
         lastUsedAt: new Date(),
+        mfaVerifiedAt: new Date(),
+        mfaMethod,
       },
     });
 
@@ -500,15 +504,6 @@ export class AuthService {
       throw new UnauthorizedException("Refresh not allowed");
     }
 
-    const newAccessPayload: JwtPayload = {
-      sub: user.id,
-      username: user.email,
-      iss: this.issuer(),
-      type: "access",
-      jti: randomUUID()
-    };
-    const accessToken = this.signToken(newAccessPayload, this.accessSecret(), this.accessTtl());
-
     if (payload.sid) {
       const session = await this.prisma.authSession.findFirst({
         where: { id: payload.sid, userId: user.id },
@@ -530,6 +525,11 @@ export class AuthService {
         jti: randomUUID(),
         sid: session.id
       };
+      const newAccessPayload: JwtPayload = {
+        sub: user.id, username: user.email, iss: this.issuer(), type: "access",
+        jti: randomUUID(), sid: session.id,
+      };
+      const accessToken = this.signToken(newAccessPayload, this.accessSecret(), this.accessTtl());
       const newRefreshToken = this.signToken(newRefreshPayload, this.refreshSecret(), this.refreshTtl());
       const newExpiresAt = this.expiryFromSignedJwt(newRefreshToken);
       const newHash = await argon2.hash(newRefreshToken);
@@ -558,6 +558,10 @@ export class AuthService {
     await this.revokeAllUserSessions(user.id, "legacy_token_migrated");
 
     const sessionId = randomUUID();
+    const accessToken = this.signToken({
+      sub: user.id, username: user.email, iss: this.issuer(), type: "access",
+      jti: randomUUID(), sid: sessionId,
+    }, this.accessSecret(), this.accessTtl());
     const newRefreshPayload: JwtPayload = {
       sub: user.id,
       username: user.email,
@@ -582,6 +586,14 @@ export class AuthService {
 
     const userDto = await this.buildAuthUserDto(user.id);
     return { accessToken, refreshToken: newRefreshToken, user: userDto };
+  }
+
+  /** Mint a replacement access token after MFA proof without rotating or widening the session. */
+  issueAccessTokenForSession(userId: string, email: string, sessionId: string): string {
+    return this.signToken({
+      sub: userId, username: email, iss: this.issuer(), type: "access",
+      jti: randomUUID(), sid: sessionId,
+    }, this.accessSecret(), this.accessTtl());
   }
 
   /**

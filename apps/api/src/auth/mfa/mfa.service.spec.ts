@@ -133,6 +133,19 @@ function makeService() {
 }
 
 describe("MfaService", () => {
+  it("binds step-up only through an active, unexpired user/session ownership predicate", async () => {
+    const { svc, prisma, user } = makeService();
+    prisma.authSession.updateMany.mockResolvedValueOnce({ count: 0 });
+    const verifiedAt = new Date();
+    await expect(svc.bindVerificationToSession(user.id, "session-a", verifiedAt)).resolves.toBe(false);
+    expect(prisma.authSession.updateMany).toHaveBeenCalledWith({
+      where: {
+        id: "session-a", userId: user.id, revokedAt: null,
+        expiresAt: { gt: verifiedAt },
+      },
+      data: { mfaVerifiedAt: verifiedAt, mfaMethod: "totp" },
+    });
+  });
   // Argon2 intentionally uses production-strength parameters; slower CI runners can exceed Jest's 5s default.
   jest.setTimeout(15_000);
   it("encryption key is loadable from env (round-trip)", () => {
@@ -252,7 +265,7 @@ describe("MfaService", () => {
   });
 
   it("disable requires a fresh TOTP and clears state on success", async () => {
-    const { svc, user } = makeService();
+    const { svc, user, prisma } = makeService();
     await svc.beginEnrollment(user.id);
     const k = getMfaEncryptionKey(process.env)!;
     const secret = decryptMfaSecret(k, user.mfaSecretEncrypted!);
@@ -268,6 +281,10 @@ describe("MfaService", () => {
     expect(user.mfaEnabled).toBe(false);
     expect(user.mfaSecretEncrypted).toBeNull();
     expect(user.mfaRecoveryCodesHash).toBeNull();
+    expect(prisma.authSession.updateMany).toHaveBeenCalledWith({
+      where: { userId: user.id, revokedAt: null },
+      data: { revokedAt: expect.any(Date), revokedReason: "mfa_disabled" },
+    });
   });
 
   it("adminReset clears MFA, revokes sessions, and writes critical audit (with PHI-safe metadata)", async () => {
