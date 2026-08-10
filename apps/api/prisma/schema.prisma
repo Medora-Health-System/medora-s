@@ -304,6 +304,11 @@ model User {
   platformCapabilityGrantsMade                    PlatformCapabilityGrant[]               @relation("PlatformCapabilityGrantedBy")
   platformCapabilityRevocationsMade               PlatformCapabilityGrant[]               @relation("PlatformCapabilityRevokedBy")
   staffLifecycleEventsMade                        MedoraStaffLifecycleEvent[]              @relation("MedoraStaffLifecycleActor")
+  privilegedActionRequestsMade                   PrivilegedActionRequest[]                @relation("PrivilegedActionRequester")
+  privilegedActionRequestsTargeted               PrivilegedActionRequest[]                @relation("PrivilegedActionTarget")
+  privilegedActionRequestsApproved               PrivilegedActionRequest[]                @relation("PrivilegedActionApprover")
+  privilegedActionRequestsClosed                 PrivilegedActionRequest[]                @relation("PrivilegedActionClosedBy")
+  privilegedActionRequestsExecuted               PrivilegedActionRequest[]                @relation("PrivilegedActionExecutor")
   vaccineAdministrations                          VaccineAdministration[]
 }
 
@@ -445,6 +450,40 @@ model PlatformCapabilityGrant {
   @@index([capabilityId, isActive])
   @@index([grantedByUserId])
   @@index([revokedByUserId])
+}
+
+/// D4SEC.1C.4C immutable-scope, short-lived dual-control authorization record.
+model PrivilegedActionRequest {
+  id                  String                        @id @default(uuid())
+  operationType       PrivilegedActionOperationType
+  status              PrivilegedActionRequestStatus @default(PENDING)
+  requesterUserId     String
+  requesterSessionId  String
+  targetUserId        String
+  scope                Json
+  scopeDigest          String
+  reason               String
+  ticketReference      String?
+  requestedAt          DateTime                      @default(now())
+  expiresAt            DateTime
+  approverUserId       String?
+  approverSessionId    String?
+  approvedAt           DateTime?
+  closedByUserId       String?
+  closedAt             DateTime?
+  executionActorUserId String?
+  executedAt           DateTime?
+  failureCode          String?
+  requester            User                          @relation("PrivilegedActionRequester", fields: [requesterUserId], references: [id], onDelete: Restrict)
+  target               User                          @relation("PrivilegedActionTarget", fields: [targetUserId], references: [id], onDelete: Restrict)
+  approver             User?                         @relation("PrivilegedActionApprover", fields: [approverUserId], references: [id], onDelete: Restrict)
+  closedBy             User?                         @relation("PrivilegedActionClosedBy", fields: [closedByUserId], references: [id], onDelete: Restrict)
+  executionActor       User?                         @relation("PrivilegedActionExecutor", fields: [executionActorUserId], references: [id], onDelete: Restrict)
+
+  @@index([status, expiresAt])
+  @@index([requesterUserId, requestedAt])
+  @@index([approverUserId, requestedAt])
+  @@index([targetUserId, requestedAt])
 }
 
 /// Demographics: date of birth is `dob` only (age is always derived). `sex` is canonical; `sexAtBirth` kept for legacy/API parity.
@@ -7333,6 +7372,21 @@ enum PlatformCapabilityRiskLevel {
   MODERATE
   HIGH
   CRITICAL
+}
+
+enum PrivilegedActionOperationType {
+  STAFF_PROVISION
+  STAFF_GRANT_CAPABILITY
+}
+
+enum PrivilegedActionRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+  EXPIRED
+  EXECUTED
+  FAILED
 }
 
 /// Phase 5G — category of external / formal record release request.

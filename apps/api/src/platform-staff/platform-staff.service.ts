@@ -5,6 +5,7 @@ import { AuditService } from "../common/services/audit.service";
 import { logSecurityAdminAudit } from "../common/services/security-admin-audit";
 import { PrismaService } from "../prisma/prisma.service";
 import { PERSONA_CAPABILITY_TEMPLATES, type MedoraStaffPersonaCode, type PlatformCapabilityCode } from "./platform-capabilities";
+import { hasRequiredCapabilities, resolvePlatformCapabilities } from "./platform-capability.resolver";
 
 @Injectable()
 export class PlatformStaffService {
@@ -46,7 +47,8 @@ export class PlatformStaffService {
   }
 
   private async lifecycle(actorUserId: string, targetUserId: string, eventType: "PROVISION" | "ACTIVATE" | "DEACTIVATE" | "PERSONA_CHANGE", persona: MedoraStaffPersonaCode | undefined, reason: string, ticketReference?: string) {
-    await this.requirePrincipal(actorUserId);
+    if (eventType === "DEACTIVATE") await this.requirePrincipalOrCapability(actorUserId, "STAFF_PROVISION");
+    else await this.requirePrincipal(actorUserId);
     if (actorUserId === targetUserId) { await this.denied("STAFF_MUTATION_DENIED", actorUserId, targetUserId, undefined, "SELF_MUTATION_PROHIBITED"); throw new ForbiddenException("Self staff mutation is prohibited"); }
     const target = await this.prisma.user.findUnique({ where: { id: targetUserId }, select: { isActive: true } });
     if (!target) throw new NotFoundException("Target user not found");
@@ -76,6 +78,10 @@ export class PlatformStaffService {
 
   private async requirePrincipal(actorUserId: string) {
     if (!(await resolvePlatformAuthority(this.prisma, actorUserId)).granted) throw new ForbiddenException("Authoritative platform principal required");
+  }
+  private async requirePrincipalOrCapability(actorUserId: string, code: PlatformCapabilityCode) {
+    if ((await resolvePlatformAuthority(this.prisma, actorUserId)).granted) return;
+    if (!hasRequiredCapabilities(await resolvePlatformCapabilities(this.prisma, actorUserId), [code], "ALL")) throw new ForbiddenException("Required platform capability missing");
   }
   private async denied(event: string, actorUserId: string, targetUserId: string, code: string | undefined, reason: string) {
     await logSecurityAdminAudit(this.audit, AuditAction.UPDATE, { event, actorUserId, entityType: "PlatformCapabilityGrant", entityId: targetUserId,
@@ -124,7 +130,7 @@ export class PlatformStaffService {
   }
 
   async revoke(actorUserId: string, targetUserId: string, code: PlatformCapabilityCode, reason: string) {
-    await this.requirePrincipal(actorUserId);
+    await this.requirePrincipalOrCapability(actorUserId, "STAFF_REVOKE_CAPABILITIES");
     const grant = await this.prisma.platformCapabilityGrant.findFirst({ where: { userId: targetUserId, isActive: true, capability: { code } } });
     if (!grant) { await this.denied("PLATFORM_CAPABILITY_REVOKE_DENIED", actorUserId, targetUserId, code, "ACTIVE_GRANT_NOT_FOUND"); throw new NotFoundException("Active capability grant not found"); }
     return this.prisma.$transaction(async (tx) => {

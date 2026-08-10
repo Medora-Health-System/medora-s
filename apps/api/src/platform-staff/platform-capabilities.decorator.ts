@@ -13,7 +13,7 @@ export type PlatformCapabilityRequirement = {
   requireRecentMfa?: boolean;
   denialAudit?: PlatformMutationDenialAudit;
 };
-export const RequirePlatformCapabilities = (codes: PlatformCapabilityCode[], options: { mode?: "ANY" | "ALL"; allowPlatformPrincipal?: boolean } = {}) =>
-  SetMetadata(PLATFORM_CAPABILITIES_METADATA, { codes, mode: options.mode ?? "ANY", allowPlatformPrincipal: options.allowPlatformPrincipal ?? true } satisfies PlatformCapabilityRequirement);
+export const RequirePlatformCapabilities = (codes: PlatformCapabilityCode[], options: { mode?: "ANY" | "ALL"; allowPlatformPrincipal?: boolean; requireRecentMfa?: boolean; denialAudit?: PlatformMutationDenialAudit } = {}) =>
+  SetMetadata(PLATFORM_CAPABILITIES_METADATA, { codes, mode: options.mode ?? "ANY", allowPlatformPrincipal: options.allowPlatformPrincipal ?? true, requireRecentMfa: options.requireRecentMfa, denialAudit: options.denialAudit } satisfies PlatformCapabilityRequirement);
 export const RequirePlatformPrincipal = (denialAudit?: PlatformMutationDenialAudit) =>
   SetMetadata(PLATFORM_CAPABILITIES_METADATA, { codes: [], mode: "ALL", allowPlatformPrincipal: true, requireRecentMfa: true, denialAudit } satisfies PlatformCapabilityRequirement);
