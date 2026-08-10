@@ -5,6 +5,7 @@ import { RequirePlatformCapabilities, RequirePlatformPrincipal } from "./platfor
 import { PlatformCapabilitiesGuard } from "./platform-capabilities.guard";
 import type { MedoraStaffPersonaCode, PlatformCapabilityCode } from "./platform-capabilities";
 import { PlatformStaffService } from "./platform-staff.service";
+import { PLATFORM_CAPABILITY_CODES } from "./platform-capabilities";
 
 @Controller("platform")
 @UseGuards(AuthGuard("jwt"), PlatformCapabilitiesGuard)
@@ -12,6 +13,12 @@ export class PlatformStaffController {
   constructor(private readonly staff: PlatformStaffService) {}
   private actor(req: any): string { return String(req.user?.userId ?? ""); }
   private parse<T>(schema: { safeParse(v: unknown): any }, body: unknown): T { const parsed = schema.safeParse(body); if (!parsed.success) throw new BadRequestException(parsed.error.issues[0]?.message ?? "Invalid request"); return parsed.data; }
+
+  @Get("context") @RequirePlatformCapabilities([...PLATFORM_CAPABILITY_CODES], { mode: "ANY" })
+  context(@Req() req: any) { return this.staff.getWorkspaceContext(this.actor(req)); }
+
+  @Get("facilities") @RequirePlatformCapabilities(["FACILITY_CREATE", "FACILITY_CONFIGURE", "FACILITY_ACTIVATE", "FACILITY_HEALTH_VIEW"], { mode: "ANY" })
+  listFacilities() { return this.staff.listPlatformFacilities(); }
 
   @Get("staff") @RequirePlatformCapabilities(["STAFF_VIEW"], { requireRecentMfa: true })
   listStaff() { return this.staff.listStaff(); }

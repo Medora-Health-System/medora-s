@@ -42,7 +42,7 @@ export function middleware(request: NextRequest) {
   }
 
   // Protect /app routes - redirect to /login if no session
-  if (pathname.startsWith("/app")) {
+  if (pathname.startsWith("/app") || pathname.startsWith("/platform")) {
     if (!sessionCookie) {
       const loginUrl = new URL("/login", request.url);
       loginUrl.searchParams.set("redirect", pathname);
@@ -62,6 +62,7 @@ export const config = {
     "/icons/:path*",
     "/api/backend/:path*",
     "/app/:path*",
+    "/platform/:path*",
     "/login",
     "/mot-de-passe-oublie",
     "/reinitialiser-mot-de-passe",
