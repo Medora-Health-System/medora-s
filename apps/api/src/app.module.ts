@@ -57,6 +57,7 @@ import { AuditContextInterceptor } from "./common/audit/audit-context.intercepto
 import { RequestLoggerMiddleware } from "./common/middleware/request-logger.middleware";
 import { RecentHttpErrorMetricsModule } from "./common/metrics/recent-http-error-metrics.module";
 import { PlatformAuditModule } from "./platform-audit/platform-audit.module";
+import { PlatformStaffModule } from "./platform-staff/platform-staff.module";
 
 const imports = [
   ConfigModule.forRoot({ isGlobal: true }),
@@ -122,6 +123,7 @@ const imports = [
   FacilitiesModule,
   PlatformAnnouncementsModule,
   PlatformAuditModule,
+  PlatformStaffModule,
 ];
 
 @Module({
