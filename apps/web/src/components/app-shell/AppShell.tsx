@@ -20,6 +20,7 @@ import {
   resolveAppShellNavLayout,
 } from "./appShellNavHelpers";
 import { resolveAppShellShowAuthRecovery } from "@/lib/authShellRecovery";
+import { MedoraWordmark } from "@/components/brand/MedoraWordmark";
 
 const SIDEBAR_COLLAPSED_STORAGE_KEY = "medora_sidebar_collapsed";
 const SIDEBAR_WIDTH_EXPANDED = 244;
@@ -111,8 +112,10 @@ export function AppShell({
 }: AppShellProps) {
   /** Évite écart SSR/hydratation sur le style « actif » lié à `pathname`. */
   const [mounted, setMounted] = useState(false);
+  const [platformAuthorized,setPlatformAuthorized]=useState(false);
   useEffect(() => {
     setMounted(true);
+    fetch("/api/backend/platform/context",{credentials:"include",cache:"no-store"}).then(r=>setPlatformAuthorized(r.ok)).catch(()=>setPlatformAuthorized(false));
   }, []);
 
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -239,8 +242,7 @@ export function AppShell({
           ) : null}
 
           <h1 className="m-0 shrink-0 select-none text-base font-bold leading-none tracking-tight md:text-lg">
-            <span className="text-blue-400">Medora</span>
-            <span className="text-teal-400">-S</span>
+            <MedoraWordmark />
           </h1>
 
           {mobileDrawerNav && activeSectionTitle ? (
@@ -288,6 +290,8 @@ export function AppShell({
               >
                 {t("common.settings")}
               </Link>
+
+              {platformAuthorized ? <Link href="/platform" className="block border-t border-slate-700/80 px-4 py-3 text-sm font-semibold text-teal-300 no-underline transition-colors hover:bg-slate-800/90">MEDORA PLATFORM ADMIN</Link> : null}
 
               <button
                 type="button"

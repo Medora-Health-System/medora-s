@@ -49,6 +49,8 @@ import { RevenueCyclePaymentsController } from "../billing/revenue-cycle-payment
     BillingAutoMappingService,
     ExternalBillingExportService,
     ExternalBillingAutomationService,
+    RevenueCycleClaimsService,
+    RevenueCyclePaymentsService,
     ClaimBuilderService,
     ClaimExportService,
     X12837GeneratorService,
@@ -84,4 +86,3 @@ import { RevenueCyclePaymentsController } from "../billing/revenue-cycle-payment
   ],
 })
 export class QueuesModule {}
-

@@ -1,2 +1,2 @@
-import "./platform.css";import {PlatformContextProvider} from "@/features/platform/PlatformContext";import {PlatformShell} from "@/features/platform/PlatformShell";
-export default function Layout({children}:{children:React.ReactNode}){return <PlatformContextProvider><PlatformShell>{children}</PlatformShell></PlatformContextProvider>}
+import "./platform.css";import {PlatformContextProvider} from "@/features/platform/PlatformContext";import {PlatformShell} from "@/features/platform/PlatformShell";import {PlatformStepUpProvider} from "@/features/platform/PlatformStepUp";
+export default function Layout({children}:{children:React.ReactNode}){return <PlatformContextProvider><PlatformStepUpProvider><PlatformShell>{children}</PlatformShell></PlatformStepUpProvider></PlatformContextProvider>}

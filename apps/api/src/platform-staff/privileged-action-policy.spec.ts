@@ -11,6 +11,14 @@ describe("D4SEC.1C.4C authoritative high-risk policy", () => {
     expect(scopeDigest(a)).toMatch(/^[0-9a-f]{64}$/); expect(scopeDigest(a)).not.toBe(scopeDigest({...a,targetUserId:"target-b"})); expect(scopeDigest(a)).not.toBe(scopeDigest({...a,capabilityCode:"STAFF_PROVISION"}));
     expect(canonicalScope(a)).toBe('{"capabilityCode":"STAFF_VIEW","operationType":"STAFF_GRANT_CAPABILITY","targetUserId":"target-a"}');
   });
+  it("binds facility lifecycle state and MFA recovery targets immutably",()=>{
+    const facility:any={operationType:"FACILITY_ACTIVATION_CHANGE",targetFacilityId:"facility-a",isActive:false};
+    expect(canonicalScope(facility)).toBe('{"isActive":false,"operationType":"FACILITY_ACTIVATION_CHANGE","targetFacilityId":"facility-a"}');
+    expect(scopeDigest(facility)).not.toBe(scopeDigest({...facility,isActive:true}));
+    expect(scopeDigest(facility)).not.toBe(scopeDigest({...facility,targetFacilityId:"facility-b"}));
+    const mfa:any={operationType:"MFA_RESET",targetUserId:"user-a"};
+    expect(scopeDigest(mfa)).not.toBe(scopeDigest({...mfa,targetUserId:"user-b"}));
+  });
   it("accepts only fresh assurance belonging to the queried authoritative session", () => {
     const now=new Date(); expect(hasFreshMfa({mfaVerifiedAt:now,mfaMethod:"totp",expiresAt:new Date(now.getTime()+1000)},now)).toBe(true);
     expect(hasFreshMfa({mfaVerifiedAt:null,mfaMethod:null,expiresAt:new Date(now.getTime()+1000)},now)).toBe(false);

@@ -7,13 +7,15 @@ import { PrismaService } from "../prisma/prisma.service";
 import { hasRequiredCapabilities, resolvePlatformCapabilities } from "./platform-capability.resolver";
 import { PERSONA_CAPABILITY_TEMPLATES, type MedoraStaffPersonaCode, type PlatformCapabilityCode } from "./platform-capabilities";
 import { OPERATION_POLICY, PRIVILEGED_ACTION_TTL_MS, hasFreshMfa, scopeDigest, type GovernedOperation, type PrivilegedScope } from "./privileged-action-policy";
+import { AdminFacilitiesService } from "../admin/admin-facilities.service";
+import { MfaService } from "../auth/mfa/mfa.service";
 
 type Actor = { userId: string; sessionId: string };
-type CreateInput = { operationType: GovernedOperation; targetUserId: string; reason: string; ticketReference?: string; persona?: MedoraStaffPersonaCode; capabilityCode?: PlatformCapabilityCode };
+type CreateInput = { operationType: GovernedOperation; targetUserId?: string; targetFacilityId?: string; isActive?: boolean; reason: string; ticketReference?: string; persona?: MedoraStaffPersonaCode; capabilityCode?: PlatformCapabilityCode };
 
 @Injectable()
 export class PrivilegedActionService {
-  constructor(private readonly prisma: PrismaService, private readonly audit: AuditService) {}
+  constructor(private readonly prisma: PrismaService, private readonly audit: AuditService, private readonly facilities: AdminFacilitiesService, private readonly mfa: MfaService) {}
 
   private async principal(userId: string, tx: any = this.prisma) { return (await resolvePlatformAuthority(tx, userId)).granted; }
   private async has(userId: string, code: PlatformCapabilityCode, tx: any = this.prisma) {
@@ -28,27 +30,30 @@ export class PrivilegedActionService {
     await logSecurityAdminAudit(this.audit, AuditAction.UPDATE, { event, actorUserId, entityType: "PrivilegedActionRequest", entityId: requestId, severity: "CRITICAL", outcome, sourceOperation: `platform.privileged-action.${event.toLowerCase()}`, denialReason, evidence, tx });
   }
   private scope(input: CreateInput): PrivilegedScope {
-    if (input.operationType === "STAFF_PROVISION") return { operationType: input.operationType, targetUserId: input.targetUserId, persona: input.persona! };
-    return { operationType: input.operationType, targetUserId: input.targetUserId, capabilityCode: input.capabilityCode! };
+    if (input.operationType === "STAFF_PROVISION") return { operationType: input.operationType, targetUserId: input.targetUserId!, persona: input.persona! };
+    if (input.operationType === "STAFF_GRANT_CAPABILITY") return { operationType: input.operationType, targetUserId: input.targetUserId!, capabilityCode: input.capabilityCode! };
+    if (input.operationType === "MFA_RESET") return { operationType: input.operationType, targetUserId: input.targetUserId! };
+    return { operationType: input.operationType, targetFacilityId: input.targetFacilityId!, isActive: input.isActive! };
   }
 
   async create(actor: Actor, input: CreateInput) {
     const policy = OPERATION_POLICY[input.operationType];
     await this.requireFreshSession(actor);
     if (!(await this.has(actor.userId, policy.authority))) return this.deny(actor.userId, actor.userId, "REQUESTER_AUTHORITY_REQUIRED");
-    if (actor.userId === input.targetUserId) return this.deny(actor.userId, actor.userId, "SELF_PRIVILEGE_ELEVATION_PROHIBITED");
-    const target = await this.prisma.user.findUnique({ where: { id: input.targetUserId }, select: { isActive: true, medoraStaffProfile: { select: { isActive: true, persona: true } } } });
-    if (!target?.isActive) throw new BadRequestException("Target user must be active");
-    if (input.operationType === "STAFF_PROVISION" && target.medoraStaffProfile?.persona) throw new BadRequestException("Staff is already provisioned");
+    if (input.targetUserId && actor.userId === input.targetUserId) return this.deny(actor.userId, actor.userId, "SELF_PRIVILEGE_ELEVATION_PROHIBITED");
+    const target = input.targetUserId ? await this.prisma.user.findUnique({ where: { id: input.targetUserId }, select: { isActive: true, medoraStaffProfile: { select: { isActive: true, persona: true } } } }) : null;
+    if (input.targetUserId && !target?.isActive) throw new BadRequestException("Target user must be active");
+    if (input.targetFacilityId && !(await this.prisma.facility.findUnique({where:{id:input.targetFacilityId},select:{id:true}}))) throw new BadRequestException("Target facility not found");
+    if (input.operationType === "STAFF_PROVISION" && target?.medoraStaffProfile?.persona) throw new BadRequestException("Staff is already provisioned");
     if (input.operationType === "STAFF_GRANT_CAPABILITY") {
-      if (!target.medoraStaffProfile?.isActive) throw new BadRequestException("Target must be active Medora staff");
+      if (!target?.medoraStaffProfile?.isActive) throw new BadRequestException("Target must be active Medora staff");
       const capability = await this.prisma.platformCapability.findUnique({ where: { code: input.capabilityCode! }, select: { isActive: true } });
       if (!capability?.isActive) throw new BadRequestException("Capability must exist and be active");
     }
     const scope = this.scope(input); const now = new Date();
     return this.prisma.$transaction(async (tx) => {
-      const request = await tx.privilegedActionRequest.create({ data: { operationType: input.operationType, requesterUserId: actor.userId, requesterSessionId: actor.sessionId, targetUserId: input.targetUserId, scope: scope as any, scopeDigest: scopeDigest(scope), reason: input.reason, ticketReference: input.ticketReference, expiresAt: new Date(now.getTime() + PRIVILEGED_ACTION_TTL_MS) } });
-      await this.event(tx, "PRIVILEGED_ACTION_REQUESTED", actor.userId, request.id, "SUCCESS", { operationType: input.operationType, targetUserId: input.targetUserId, scopeDigest: request.scopeDigest, expiresAt: request.expiresAt.toISOString(), ...(input.ticketReference ? { ticketReference: input.ticketReference } : {}) });
+      const request = await tx.privilegedActionRequest.create({ data: { operationType: input.operationType, requesterUserId: actor.userId, requesterSessionId: actor.sessionId, targetUserId: input.targetUserId, targetFacilityId: input.targetFacilityId, scope: scope as any, scopeDigest: scopeDigest(scope), reason: input.reason, ticketReference: input.ticketReference, expiresAt: new Date(now.getTime() + PRIVILEGED_ACTION_TTL_MS) } });
+      await this.event(tx, "PRIVILEGED_ACTION_REQUESTED", actor.userId, request.id, "SUCCESS", { operationType: input.operationType, targetUserId: input.targetUserId, targetFacilityId: input.targetFacilityId, scopeDigest: request.scopeDigest, expiresAt: request.expiresAt.toISOString(), ...(input.ticketReference ? { ticketReference: input.ticketReference } : {}) });
       return request;
     });
   }
@@ -61,7 +66,7 @@ export class PrivilegedActionService {
   async one(actorUserId: string, id: string) { const r = await this.get(id); if (r.requesterUserId !== actorUserId && r.targetUserId !== actorUserId && !(await this.has(actorUserId, "PRIVILEGED_ACTION_APPROVE"))) throw new NotFoundException("Privileged action request not found"); const { requesterSessionId, approverSessionId, scopeDigest: _digest, ...safe } = r; return safe; }
   async approve(actor: Actor, id: string) {
     await this.requireFreshSession(actor); if (!(await this.has(actor.userId, "PRIVILEGED_ACTION_APPROVE"))) return this.deny(actor.userId, id, "APPROVAL_AUTHORITY_REQUIRED");
-    const r = await this.get(id); if (r.requesterUserId === actor.userId) return this.deny(actor.userId, id, "SELF_APPROVAL_PROHIBITED"); if (r.targetUserId === actor.userId) return this.deny(actor.userId, id, "TARGET_APPROVAL_PROHIBITED");
+    const r = await this.get(id); if (r.requesterUserId === actor.userId) return this.deny(actor.userId, id, "SELF_APPROVAL_PROHIBITED"); if (r.targetUserId && r.targetUserId === actor.userId) return this.deny(actor.userId, id, "TARGET_APPROVAL_PROHIBITED");
     if (r.status !== "PENDING") throw new BadRequestException("Request is not pending"); if (r.expiresAt <= new Date()) return this.expire(actor.userId, id);
     return this.prisma.$transaction(async tx => { const changed = await tx.privilegedActionRequest.updateMany({ where: { id, status: "PENDING", expiresAt: { gt: new Date() } }, data: { status: "APPROVED", approverUserId: actor.userId, approverSessionId: actor.sessionId, approvedAt: new Date() } }); if (changed.count !== 1) throw new BadRequestException("Request transition conflict"); await this.event(tx, "PRIVILEGED_ACTION_APPROVED", actor.userId, id, "SUCCESS", { requesterUserId: r.requesterUserId, targetUserId: r.targetUserId, operationType: r.operationType }); return tx.privilegedActionRequest.findUnique({ where: { id } }); });
   }
@@ -73,14 +78,16 @@ export class PrivilegedActionService {
   async execute(actor: Actor, id: string) {
     const original = await this.get(id); if (original.requesterUserId !== actor.userId && !(await this.principal(actor.userId))) return this.deny(actor.userId,id,"EXECUTION_AUTHORITY_REQUIRED");
     if (original.status !== "APPROVED") throw new BadRequestException("Request is not approved"); if (original.expiresAt <= new Date()) return this.expire(actor.userId,id);
-    const scope = original.scope as unknown as PrivilegedScope; if (scopeDigest(scope) !== original.scopeDigest || scope.operationType !== original.operationType || scope.targetUserId !== original.targetUserId) return this.deny(actor.userId,id,"SCOPE_INTEGRITY_FAILURE");
+    const scope = original.scope as unknown as PrivilegedScope; const targetMatches=scope.operationType==="FACILITY_ACTIVATION_CHANGE"?scope.targetFacilityId===original.targetFacilityId:scope.targetUserId===original.targetUserId; if (scopeDigest(scope) !== original.scopeDigest || scope.operationType !== original.operationType || !targetMatches) return this.deny(actor.userId,id,"SCOPE_INTEGRITY_FAILURE");
     try { return await this.prisma.$transaction(async tx => {
       const claimed=await tx.privilegedActionRequest.updateMany({where:{id,status:"APPROVED",expiresAt:{gt:new Date()}},data:{status:"EXECUTED",executionActorUserId:actor.userId,executedAt:new Date()}}); if(claimed.count!==1) throw new BadRequestException("Request already claimed");
       await this.requireFreshSession({userId:original.requesterUserId,sessionId:original.requesterSessionId},tx); await this.requireFreshSession({userId:original.approverUserId!,sessionId:original.approverSessionId!},tx);
       const policy=OPERATION_POLICY[original.operationType]; if(!(await this.has(original.requesterUserId,policy.authority,tx)) || !(await this.has(original.approverUserId!,"PRIVILEGED_ACTION_APPROVE",tx))) throw new ForbiddenException("AUTHORITY_REVALIDATION_FAILED");
-      const target=await tx.user.findUnique({where:{id:original.targetUserId},select:{isActive:true,medoraStaffProfile:{select:{id:true,isActive:true,persona:true}}}}); if(!target?.isActive) throw new ForbiddenException("TARGET_STATE_CHANGED");
+      const target=original.targetUserId?await tx.user.findUnique({where:{id:original.targetUserId},select:{isActive:true,medoraStaffProfile:{select:{id:true,isActive:true,persona:true}}}}):null; if(original.targetUserId&&!target?.isActive) throw new ForbiddenException("TARGET_STATE_CHANGED");
       if(scope.operationType==="STAFF_GRANT_CAPABILITY") await this.executeGrant(tx,original.requesterUserId,scope,original.reason,original.ticketReference);
-      else await this.executeProvision(tx,original.requesterUserId,scope,original.reason,original.ticketReference,target);
+      else if(scope.operationType==="STAFF_PROVISION") await this.executeProvision(tx,original.requesterUserId,scope,original.reason,original.ticketReference,target);
+      else if(scope.operationType==="FACILITY_ACTIVATION_CHANGE") await this.facilities.setActiveForPrivilegedAction(scope.targetFacilityId,scope.isActive,original.requesterUserId,tx);
+      else await this.mfa.resetForPrivilegedAction(original.requesterUserId,scope.targetUserId,tx);
       await this.event(tx,"PRIVILEGED_ACTION_EXECUTED",actor.userId,id,"SUCCESS",{operationType:original.operationType,targetUserId:original.targetUserId,scopeDigest:original.scopeDigest}); return tx.privilegedActionRequest.findUnique({where:{id}});
     }); } catch(error) { if(error instanceof BadRequestException && error.message==="Request already claimed") throw error; await this.event(undefined,"PRIVILEGED_ACTION_EXECUTION_FAILED",actor.userId,id,"DENIED",{operationType:original.operationType},error instanceof Error ? error.message.slice(0,100) : "EXECUTION_FAILED"); throw error; }
   }

@@ -4,6 +4,7 @@ import React, { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { getPostLoginDestinationForAuthUser } from "@/lib/landingRoute";
+import {resolvePostLoginWorkspace} from "@/features/platform/operations";
 import { normalizeUserFacingError } from "@/lib/userFacingError";
 import { parseApiResponse } from "@/lib/apiClient";
 import { invalidateAuthMeSessionCache } from "@/lib/authSessionMe";
@@ -54,7 +55,7 @@ function LoginForm() {
     }
   };
 
-  const navigateAfterAuth = (user?: AuthUserShape) => {
+  const navigateAfterAuth = async (user?: AuthUserShape) => {
     invalidateAuthMeSessionCache();
     notifyAuthSessionRestored();
     const facilityRoles = (user?.facilityRoles ?? []) as { facilityId: string; role?: string }[];
@@ -62,11 +63,19 @@ function LoginForm() {
     const msppRoles = Array.isArray(msppRolesRaw)
       ? msppRolesRaw.filter((x): x is string => typeof x === "string")
       : [];
-    const dest = getPostLoginDestinationForAuthUser(
+    let dest = getPostLoginDestinationForAuthUser(
       facilityRoles.map((fr) => ({ facilityId: String(fr.facilityId), role: String(fr.role ?? "") })),
       searchParams.get("redirect"),
       msppRoles
     );
+    // Platform authority is resolved only by the backend capability engine. A
+    // successful bounded context read permits platform landing and redirects;
+    // facility roles and legacy role strings are intentionally ignored here.
+    const requested = searchParams.get("redirect");
+    try {
+      const platform = await fetch("/api/backend/platform/context", { credentials: "include", cache: "no-store" });
+      dest = resolvePostLoginWorkspace(dest, requested, platform.ok);
+    } catch { /* retain the facility-aware destination */ }
     router.push(dest);
     router.refresh();
   };
@@ -122,7 +131,7 @@ function LoginForm() {
         return;
       }
 
-      navigateAfterAuth(data?.user);
+      await navigateAfterAuth(data?.user);
     } catch {
       setError(t("auth.login.errorNetwork"));
       setLoading(false);
