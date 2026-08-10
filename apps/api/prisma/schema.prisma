@@ -297,6 +297,12 @@ model User {
   enterpriseDocSignatures                          EnterpriseDocumentSignature[]           @relation("EnterpriseDocSignatureUser")
   enterpriseDocPacketSources                       EnterpriseDocumentPacketSource[]        @relation("PacketSourceCreatedBy")
   userRoles                                       UserRole[]
+  medoraStaffProfile                              MedoraStaffProfile?                    @relation("MedoraStaffUser")
+  staffClassificationsMade                        MedoraStaffProfile[]                    @relation("MedoraStaffClassifiedBy")
+  staffDeactivationsMade                          MedoraStaffProfile[]                    @relation("MedoraStaffDeactivatedBy")
+  platformCapabilityGrants                        PlatformCapabilityGrant[]               @relation("PlatformCapabilityGrantTarget")
+  platformCapabilityGrantsMade                    PlatformCapabilityGrant[]               @relation("PlatformCapabilityGrantedBy")
+  platformCapabilityRevocationsMade               PlatformCapabilityGrant[]               @relation("PlatformCapabilityRevokedBy")
   vaccineAdministrations                          VaccineAdministration[]
 }
 
@@ -352,6 +358,63 @@ model UserRole {
   @@index([facilityId])
   @@index([facilityId, roleId])
   @@index([departmentId])
+}
+
+/// D4SEC.1C.3 authoritative, global Medora employee classification. It confers no facility or clinical access.
+model MedoraStaffProfile {
+  id                    String    @id @default(uuid())
+  userId                String    @unique
+  isActive              Boolean   @default(true)
+  classifiedByUserId    String
+  classifiedAt          DateTime  @default(now())
+  classificationReason  String?
+  deactivatedByUserId   String?
+  deactivatedAt         DateTime?
+  deactivationReason    String?
+  updatedAt             DateTime  @updatedAt
+  user                  User      @relation("MedoraStaffUser", fields: [userId], references: [id], onDelete: Restrict)
+  classifiedBy          User      @relation("MedoraStaffClassifiedBy", fields: [classifiedByUserId], references: [id], onDelete: Restrict)
+  deactivatedBy         User?     @relation("MedoraStaffDeactivatedBy", fields: [deactivatedByUserId], references: [id], onDelete: Restrict)
+
+  @@index([isActive])
+}
+
+model PlatformCapability {
+  id          String                         @id @default(uuid())
+  code        String                         @unique
+  name        String
+  description String
+  riskLevel   PlatformCapabilityRiskLevel
+  isActive    Boolean                        @default(true)
+  createdAt   DateTime                       @default(now())
+  updatedAt   DateTime                       @updatedAt
+  grants      PlatformCapabilityGrant[]
+
+  @@index([isActive])
+}
+
+/// Immutable grant attribution; revoked rows remain as security history. A partial unique index enforces one active grant.
+model PlatformCapabilityGrant {
+  id              String             @id @default(uuid())
+  userId          String
+  capabilityId    String
+  isActive        Boolean            @default(true)
+  grantedByUserId String
+  grantedAt       DateTime           @default(now())
+  grantReason     String?
+  ticketReference String?
+  revokedByUserId String?
+  revokedAt       DateTime?
+  revokeReason    String?
+  capability      PlatformCapability @relation(fields: [capabilityId], references: [id], onDelete: Restrict)
+  user            User               @relation("PlatformCapabilityGrantTarget", fields: [userId], references: [id], onDelete: Restrict)
+  grantedBy       User               @relation("PlatformCapabilityGrantedBy", fields: [grantedByUserId], references: [id], onDelete: Restrict)
+  revokedBy       User?              @relation("PlatformCapabilityRevokedBy", fields: [revokedByUserId], references: [id], onDelete: Restrict)
+
+  @@index([userId, isActive])
+  @@index([capabilityId, isActive])
+  @@index([grantedByUserId])
+  @@index([revokedByUserId])
 }
 
 /// Demographics: date of birth is `dob` only (age is always derived). `sex` is canonical; `sexAtBirth` kept for legacy/API parity.
@@ -7213,6 +7276,13 @@ enum AuditAction {
   PHARMACY_VERIFICATION_REJECTED
   /// M1.3F.7 — pharmacy verification override at MAR (PHI-safe metadata only).
   PHARMACY_VERIFICATION_OVERRIDE
+}
+
+enum PlatformCapabilityRiskLevel {
+  LOW
+  MODERATE
+  HIGH
+  CRITICAL
 }
 
 /// Phase 5G — category of external / formal record release request.
