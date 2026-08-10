@@ -2,7 +2,7 @@ import { SetMetadata } from "@nestjs/common";
 import type { PlatformCapabilityCode } from "./platform-capabilities";
 export const PLATFORM_CAPABILITIES_METADATA = "platform-capabilities";
 export type PlatformMutationDenialAudit = {
-  event: "PLATFORM_CAPABILITY_GRANT_DENIED" | "PLATFORM_CAPABILITY_REVOKE_DENIED" | "MEDORA_STAFF_CLASSIFICATION_DENIED";
+  event: "PLATFORM_CAPABILITY_GRANT_DENIED" | "PLATFORM_CAPABILITY_REVOKE_DENIED" | "MEDORA_STAFF_CLASSIFICATION_DENIED" | "STAFF_MUTATION_DENIED";
   sourceOperation: string;
   requestedCapabilityFrom: "BODY" | "ROUTE" | "NONE";
 };
