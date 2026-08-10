@@ -14,12 +14,14 @@ The source audit verified JWT `sid` issuance, database-backed `sid`/`sub` owners
 
 Certification remediation rejects inactive users in `JwtStrategy` and makes successful MFA disable atomically revoke all active sessions. Tests add direct session-validation, failed-step-up, ownership-predicate, cross-session/header-forgery, freshness, audit-redaction, and MFA-disable revocation evidence.
 
+PR #95 review remediation additionally rejects every sid-less access JWT with `SESSION_BOUND_TOKEN_REQUIRED`. The legacy-token policy is immediate reauthentication with no compatibility window. The repository production default is an eight-hour access-token lifetime, making strict rejection necessary to close the revocation gap. Fresh password login, MFA-completed login, ordinary refresh, legacy refresh migration, and step-up replacement all issue or preserve authoritative `sid` values.
+
 Executed source suites:
 
-* D4SEC.1C.4A authentication/MFA/guard set: **4 suites, 46 tests passed** after the added ownership test.
+* D4SEC.1C.4A authentication/MFA/guard set: **5 suites, 54 tests passed**, including strict sid-less rejection and every access-token issuance path.
 * D4SEC.1A, D4SEC.1C.1, D4SEC.1C.2 security-admin/audit integrity/enterprise audit, and D4SEC.1C.3 capability regression set: **12 suites, 121 tests passed**.
 * MFA encryption, policy, recovery-code, and TOTP utility regressions: **4 suites, 32 tests passed**.
-* Total targeted source evidence: **20 suites, 199 tests passed**.
+* Total targeted source evidence: **21 suites, 207 tests passed**.
 
 Prisma Client generation, Prisma schema validation, shared/API builds, API lint placeholder, and `git diff --check` pass. No web code or contract changed, so a web build is not required. No seed is expected or executed.
 
@@ -47,5 +49,5 @@ No production system or credentials were accessed. No deployment or merge was pe
 ## Residual risks
 
 * The full migration chain still requires disposable/staging execution and status verification.
-* Existing access JWTs issued before `sid` support remain valid for non-step-up routes until their normal expiry, but cannot satisfy recent-session MFA because they expose no session assurance.
+* Deployment will sign out users whose current access token predates session binding; they must authenticate again to receive a sid-bearing token.
 * Dual approval, ticket workflow, delegation, and purpose-bound support/PHI access remain explicitly outside D4SEC.1C.4A.

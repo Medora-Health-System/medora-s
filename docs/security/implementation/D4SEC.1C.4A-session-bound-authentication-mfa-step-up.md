@@ -6,4 +6,6 @@ Session assurance is persisted on `AuthSession` and keyed by the `sid` shared by
 
 The centralized platform capability guard enforces a five-minute default freshness window before authoritative staff classification and capability mutations. The window can be shortened or lengthened with the positive numeric `MFA_STEP_UP_MAX_AGE_SECONDS` value; invalid values retain the safe default. Session revocation and expiry invalidate both normal JWT validation and step-up assurance.
 
+Access authentication is strictly session-bound. `JwtStrategy` rejects sid-less access tokens with `SESSION_BOUND_TOKEN_REQUIRED`; it never reads a session identifier from headers, cookies, body, or query. Deploying this transition invalidates existing legacy access tokens and requires affected users to log in again. The configured production-default access lifetime is eight hours, so no temporary compatibility path is retained.
+
 Database deployment requires migration `20260810120000_session_bound_mfa_step_up` before the updated API starts.

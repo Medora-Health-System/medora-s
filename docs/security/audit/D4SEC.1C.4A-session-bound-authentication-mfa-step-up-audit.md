@@ -4,6 +4,8 @@
 
 Source commit `a65fce6755d01d0044a23f1bc17bfe51bab4d0d5` was audited directly. Access JWT issuance and refresh carry the persistent `AuthSession.id` as `sid`. `JwtStrategy` constrains the lookup by `sid`, JWT `sub`, `revokedAt: null`, and `expiresAt > now`; a missing match fails authentication before platform authority is evaluated. Assurance is read from that database row, not from claims, headers, `User.mfaLastVerifiedAt`, email, facility context, `canCreateFacilities` alone, or a role alone.
 
+PR #95 follow-up makes the transition strict: every access JWT without `sid` fails with `SESSION_BOUND_TOKEN_REQUIRED`. There is no compatibility cutoff, fabricated session, or client-controlled fallback. Repository production configuration defaults access JWTs to **8 hours** (`apps/api/.env.example` and `AuthService.accessTtl`). Consequently users holding pre-deployment sid-less access tokens must log in again after deployment; normal password and MFA-completed login both create an `AuthSession` and issue a matching sid-bearing access token. Reauthentication is intentionally preferred over preserving an eight-hour revocation gap.
+
 The authenticated and throttled `POST /auth/mfa/step-up` accepts only a normalized six-digit TOTP. Existing replay prevention runs before the conditional session update. The update repeats the user/session ownership, active, and expiry predicates; failure creates no token or assurance. Recovery codes cannot be submitted to this route. The centralized platform guard enforces a positive configured `MFA_STEP_UP_MAX_AGE_SECONDS`, falling back to 300 seconds, after D4SEC.1A authority/capability resolution and before the protected mutation.
 
 Two genuine gaps were found during certification:

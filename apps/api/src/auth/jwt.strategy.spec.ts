@@ -24,6 +24,25 @@ function make(overrides: { user?: any; session?: any } = {}) {
 }
 
 describe("D4SEC.1C.4A access-token session validation", () => {
+  it("rejects a sid-less access JWT before user or platform authority lookup", async () => {
+    const { strategy, prisma } = make();
+    await expect(strategy.validate({ ...payload, sid: undefined })).rejects.toThrow("SESSION_BOUND_TOKEN_REQUIRED");
+    expect(prisma.user.findUnique).not.toHaveBeenCalled();
+    expect(prisma.authSession.findFirst).not.toHaveBeenCalled();
+  });
+
+  it("does not let a platform principal bypass a missing sid", async () => {
+    const { strategy } = make();
+    await expect(strategy.validate({ ...payload, sid: undefined })).rejects.toThrow("SESSION_BOUND_TOKEN_REQUIRED");
+  });
+
+  it("does not derive sid from client-controlled headers", async () => {
+    const { strategy, prisma } = make();
+    await expect(strategy.validate({ ...payload, sid: undefined, headers: { "x-session-id": "session-a" } } as any))
+      .rejects.toThrow("SESSION_BOUND_TOKEN_REQUIRED");
+    expect(prisma.authSession.findFirst).not.toHaveBeenCalled();
+  });
+
   it("accepts a live session owned by sub and returns only DB assurance", async () => {
     const verifiedAt = new Date();
     const { strategy, prisma } = make({ session: { id: "session-a", mfaVerifiedAt: verifiedAt, mfaMethod: "totp" } });
