@@ -1,0 +1,25 @@
+export type PlatformCapability =
+  | "FACILITY_CREATE" | "FACILITY_CONFIGURE" | "FACILITY_ACTIVATE" | "FACILITY_HEALTH_VIEW"
+  | "STAFF_VIEW" | "STAFF_PROVISION" | "STAFF_GRANT_CAPABILITIES" | "STAFF_REVOKE_CAPABILITIES" | "PRIVILEGED_ACTION_APPROVE"
+  | "SECURITY_ACCESS_VIEW" | "SECURITY_MFA_RECOVERY" | "SECURITY_PRIVILEGED_ACTIONS" | "SECURITY_AUDIT_VIEW"
+  | "COMPLIANCE_AUDIT_VIEW" | "COMPLIANCE_ROI_MONITOR" | "COMPLIANCE_EXPORT_MONITOR" | "COMPLIANCE_CONTROLS_MANAGE"
+  | "BILLING_RCM_VIEW" | "BILLING_RCM_MANAGE" | "CATALOG_CONFIG_VIEW" | "CATALOG_CONFIG_MANAGE"
+  | "SYSTEM_HEALTH_VIEW" | "SYSTEM_BACKUP_READINESS_VIEW" | "SYSTEM_GOLIVE_MONITOR" | "AUDIT_EXPORT";
+export type PlatformContext = { platformPrincipal: boolean; staff: { persona: string | null; isActive: boolean } | null; capabilities: PlatformCapability[] };
+export type StaffSummary = { id:string; userId:string; persona:string|null; isActive:boolean; classifiedAt:string; deactivatedAt:string|null; user:{firstName:string;lastName:string;isActive:boolean} };
+export type FacilitySummary = { id:string; name:string; code:string; isActive:boolean; facilityType:string; country:string; timezone:string };
+export type PrivilegedAction = { id:string; operationType:string; status:string; requesterUserId:string; targetUserId:string; scope:Record<string,string>; reason:string; ticketReference:string|null; requestedAt:string; expiresAt:string; approverUserId:string|null; approvedAt:string|null; executedAt:string|null; failureCode:string|null };
+export type AuditEvent = { id:string; timestamp:string; action:string; entity:{type:string;id:string|null}; facility:{facilityId:string|null;displayName:string|null;isActive:boolean|null}; actor:{userId:string|null;displayName:string|null;isActive:boolean|null;attribution:string}; event:string|null; outcome:string|null; severity:string|null; sourceOperation:string|null };
+
+export class PlatformApiError extends Error { constructor(message:string, public status:number, public code?:string){super(message);} }
+async function request<T>(path:string, init?:RequestInit):Promise<T>{
+  const response=await fetch(`/api/backend${path}`,{...init,credentials:"include",headers:{"content-type":"application/json",...(init?.headers||{})}});
+  if(!response.ok){let message="The platform service could not complete this request.";let code:string|undefined;try{const body=await response.json();message=Array.isArray(body?.message)?body.message[0]:body?.message||message;code=body?.code;}catch{}throw new PlatformApiError(message,response.status,code);}
+  return response.json();
+}
+export const platformContextApi={get:()=>request<PlatformContext>("/platform/context")};
+export const platformStaffApi={list:()=>request<StaffSummary[]>("/platform/staff"), detail:(id:string)=>request(`/platform/staff/${encodeURIComponent(id)}`)};
+export const platformCapabilitiesApi={list:()=>request<Array<{code:string;riskLevel:string;description?:string}>>("/platform/capabilities")};
+export const platformFacilitiesApi={list:()=>request<FacilitySummary[]>("/platform/facilities")};
+export const platformPrivilegedActionsApi={create:(body:Record<string,string>)=>request<PrivilegedAction>("/platform/privileged-action-requests",{method:"POST",body:JSON.stringify(body)}),list:(status?:string)=>request<PrivilegedAction[]>(`/platform/privileged-action-requests${status?`?status=${encodeURIComponent(status)}`:""}`),approve:(id:string)=>request(`/platform/privileged-action-requests/${id}/approve`,{method:"POST"}),execute:(id:string)=>request(`/platform/privileged-action-requests/${id}/execute`,{method:"POST"}),reject:(id:string,reason:string)=>request(`/platform/privileged-action-requests/${id}/reject`,{method:"POST",body:JSON.stringify({reason})})};
+export const platformAuditApi={list:(query:URLSearchParams)=>request<{events:AuditEvent[];nextCursor?:string|null}>(`/platform/audit/events?${query}`)};

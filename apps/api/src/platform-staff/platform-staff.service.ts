@@ -11,6 +11,29 @@ import { hasRequiredCapabilities, resolvePlatformCapabilities } from "./platform
 export class PlatformStaffService {
   constructor(private readonly prisma: PrismaService, private readonly audit: AuditService) {}
 
+  async getWorkspaceContext(userId: string) {
+    const [principal, resolved, profile] = await Promise.all([
+      resolvePlatformAuthority(this.prisma, userId),
+      resolvePlatformCapabilities(this.prisma, userId),
+      this.prisma.medoraStaffProfile.findUnique({
+        where: { userId },
+        select: { persona: true, isActive: true },
+      }),
+    ]);
+    return {
+      platformPrincipal: principal.granted,
+      staff: profile ? { persona: profile.persona, isActive: profile.isActive } : null,
+      capabilities: [...resolved.capabilities].sort(),
+    };
+  }
+
+  listPlatformFacilities() {
+    return this.prisma.facility.findMany({
+      select: { id: true, name: true, code: true, isActive: true, facilityType: true, country: true, timezone: true },
+      orderBy: { name: "asc" },
+    });
+  }
+
   listCapabilities() { return this.prisma.platformCapability.findMany({ orderBy: { code: "asc" } }); }
   listStaff() {
     return this.prisma.medoraStaffProfile.findMany({
