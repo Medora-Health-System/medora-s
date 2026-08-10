@@ -60,11 +60,18 @@ export class PlatformStaffService {
     if (!target?.isActive || !target.medoraStaffProfile?.isActive) { await this.denied("PLATFORM_CAPABILITY_GRANT_DENIED", actorUserId, targetUserId, code, "TARGET_NOT_ACTIVE_STAFF"); throw new BadRequestException("Target must be active Medora staff"); }
     if (!capability?.isActive) { await this.denied("PLATFORM_CAPABILITY_GRANT_DENIED", actorUserId, targetUserId, code, "CAPABILITY_NOT_ACTIVE"); throw new BadRequestException("Capability must exist and be active"); }
     if (existing) return { ...existing, idempotent: true };
-    return this.prisma.$transaction(async (tx) => {
-      const grant = await tx.platformCapabilityGrant.create({ data: { userId: targetUserId, capabilityId: capability.id, grantedByUserId: actorUserId, grantReason: reason, ticketReference } });
-      await logSecurityAdminAudit(this.audit, AuditAction.CREATE, { event: "PLATFORM_CAPABILITY_GRANTED", actorUserId, entityType: "PlatformCapabilityGrant", entityId: grant.id, severity: "CRITICAL", outcome: "SUCCESS", sourceOperation: "platform.staff.capability.grant", evidence: { targetUserId, capabilityCode: code, result: "GRANTED", reason, ...(ticketReference ? { ticketReference } : {}) }, tx });
-      return { ...grant, idempotent: false };
-    });
+    try {
+      return await this.prisma.$transaction(async (tx) => {
+        const grant = await tx.platformCapabilityGrant.create({ data: { userId: targetUserId, capabilityId: capability.id, grantedByUserId: actorUserId, grantReason: reason, ticketReference } });
+        await logSecurityAdminAudit(this.audit, AuditAction.CREATE, { event: "PLATFORM_CAPABILITY_GRANTED", actorUserId, entityType: "PlatformCapabilityGrant", entityId: grant.id, severity: "CRITICAL", outcome: "SUCCESS", sourceOperation: "platform.staff.capability.grant", evidence: { targetUserId, capabilityCode: code, result: "GRANTED", reason, ...(ticketReference ? { ticketReference } : {}) }, tx });
+        return { ...grant, idempotent: false };
+      });
+    } catch (error) {
+      if ((error as { code?: string })?.code !== "P2002") throw error;
+      const concurrentGrant = await this.prisma.platformCapabilityGrant.findFirst({ where: { userId: targetUserId, capabilityId: capability.id, isActive: true } });
+      if (!concurrentGrant) throw error;
+      return { ...concurrentGrant, idempotent: true };
+    }
   }
 
   async revoke(actorUserId: string, targetUserId: string, code: PlatformCapabilityCode, reason: string) {

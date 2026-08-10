@@ -19,6 +19,10 @@ One additive migration creates the staff/profile/grant schema, restrictive histo
 
 Successful grants/revokes and classification write one critical audit event in the same transaction. Denied self-grant, invalid target/definition and missing-revoke paths emit safe semantic denied events. Evidence includes actor attribution through AuditLog, target id, capability code, result/reason and optional ticket; no credentials, tokens, MFA material or PHI.
 
+Security-significant bootstrap routes also attach a fixed denial-audit policy to the existing capability metadata. `PlatformCapabilitiesGuard` evaluates the sole D4SEC.1A resolver and, before denying an authenticated non-principal mutation, emits the route's fixed grant, revoke, or classification denial event. It accepts actor identity only from authenticated `req.user.userId`; target UUID and catalog-listed capability code are recorded only as non-authoritative safe semantics. It never copies arbitrary bodies, headers, emails, reasons, credentials, or PHI. Read denials and missing authenticated identities do not emit these CRITICAL events.
+
+The active-grant partial unique index remains the concurrency authority. A preflight duplicate returns idempotently; if two requests race after that check, Prisma `P2002` is caught, the committed active winner is re-read, and the loser returns the same deterministic `idempotent: true` disposition. Other database errors, and a collision without a matching active winner, still fail closed.
+
 ## Boundaries and deferrals
 
 Platform capabilities do not create UserRole, do not satisfy RolesGuard, and cannot supply facility context. There is no new patient/encounter/chart route or query. Profile deactivation endpoint, staff account provisioning, persona templates/delegation, recent-MFA enforcement, dual approval and purpose-bound support/PHI access are D4SEC.1C.4+ work.

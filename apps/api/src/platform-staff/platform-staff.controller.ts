@@ -19,10 +19,10 @@ export class PlatformStaffController {
   getStaff(@Param("id") id: string) { return this.staff.getStaff(id); }
   @Get("capabilities") @RequirePlatformCapabilities(["STAFF_VIEW", "STAFF_GRANT_CAPABILITIES"], { mode: "ANY" })
   listCapabilities() { return this.staff.listCapabilities(); }
-  @Post("staff/:id/classification") @RequirePlatformPrincipal()
+  @Post("staff/:id/classification") @RequirePlatformPrincipal({ event: "MEDORA_STAFF_CLASSIFICATION_DENIED", sourceOperation: "platform.staff.classify", requestedCapabilityFrom: "NONE" })
   classify(@Req() req: any, @Param("id") id: string, @Body() body: unknown) { const dto = this.parse<{reason:string}>(classifyStaffSchema, body); return this.staff.classify(this.actor(req), id, dto.reason); }
-  @Post("staff/:id/capabilities") @RequirePlatformPrincipal()
+  @Post("staff/:id/capabilities") @RequirePlatformPrincipal({ event: "PLATFORM_CAPABILITY_GRANT_DENIED", sourceOperation: "platform.staff.capability.grant", requestedCapabilityFrom: "BODY" })
   grant(@Req() req: any, @Param("id") id: string, @Body() body: unknown) { const dto = this.parse<{code:PlatformCapabilityCode;reason:string;ticketReference?:string}>(grantCapabilitySchema, body); return this.staff.grant(this.actor(req), id, dto.code, dto.reason, dto.ticketReference); }
-  @Delete("staff/:id/capabilities/:code") @RequirePlatformPrincipal()
+  @Delete("staff/:id/capabilities/:code") @RequirePlatformPrincipal({ event: "PLATFORM_CAPABILITY_REVOKE_DENIED", sourceOperation: "platform.staff.capability.revoke", requestedCapabilityFrom: "ROUTE" })
   revoke(@Req() req: any, @Param("id") id: string, @Param("code") code: PlatformCapabilityCode, @Body() body: unknown) { const dto = this.parse<{reason:string}>(revokeCapabilitySchema, body); return this.staff.revoke(this.actor(req), id, code, dto.reason); }
 }

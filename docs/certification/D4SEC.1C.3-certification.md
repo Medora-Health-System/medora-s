@@ -24,6 +24,10 @@ The tests plus schema/service review cover the requested invariants: customer AD
 * `DATABASE_URL=postgresql://x:x@localhost:5432/x npm exec --workspace=@medora/api -- prisma validate` — PASS.
 * `git diff --check` — PASS.
 
+## PR #94 security-review remediation
+
+The centralized guard now writes authoritative denial evidence for authenticated unauthorized grant, revoke, and staff-classification escalation attempts without auditing ordinary reads or missing JWT identities. Focused resolver/guard/service coverage passed 27/27 tests; the requested combined platform-principal, tenant-boundary, security-audit, platform-audit, and platform-staff regression run passed 95/95 tests across 9 suites. Concurrent duplicate grants now convert the partial-unique `P2002` loser into a deterministic idempotent result after re-reading the active winner. The original migration and Prisma schema were unchanged by this remediation.
+
 ## Release gate
 
 Before production: review migration SQL; run `npm exec --workspace=@medora/api prisma migrate deploy` in a controlled pre-production environment; execute authenticated endpoint integration tests against disposable PostgreSQL; verify exact audit row counts and immediate post-revoke authorization. No general seed is needed: migration deploy installs catalog rows idempotently and no grants.
