@@ -2,7 +2,7 @@
 
 ## Result: PASS with environment limitation
 
-The implementation satisfies the approved backend governance scope and preserves the customer boundary. Focused unit tests cover authoritative grant/denial combinations, substitution resistance, strict controls, historical/null attribution, secret/PHI omission, bounded deterministic pagination, query-bound cursor, one access event, no returned payload, non-recursion structure and successful-read audit-write failure. Existing D4SEC.1A, D4SEC.1C.1, D4SEC.1C.2A, D4SEC.1C.2B and D4SEC.1C.2C.1 focused regressions pass.
+The implementation satisfies the approved backend governance scope and preserves the customer boundary. Focused unit tests cover authoritative grant/denial combinations, substitution resistance, strict controls, historical/null attribution, secret/PHI omission, bounded deterministic pagination, resolved-effective-window cursor continuity under a deterministic advancing clock, explicit date pagination, rejection after every filter/limit alteration, malformed cursors, cursor non-authority, one access event per successful read, no returned payload, non-recursion structure and successful-read audit-write failure. Existing D4SEC.1A, D4SEC.1C.1, D4SEC.1C.2A, D4SEC.1C.2B and D4SEC.1C.2C.1 focused regressions pass.
 
 Database-backed HTTP E2E was not run because the environment has no `docker` executable; this is not represented as passing. The controller/service contract changes HTTP authorization and should receive database-backed integration verification in CI/review with PostgreSQL.
 

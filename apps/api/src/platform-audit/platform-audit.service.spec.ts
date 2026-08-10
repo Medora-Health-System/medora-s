@@ -80,10 +80,68 @@ describe("PlatformAuditService D4SEC.1C.2C.2", () => {
     await expect(failedAudit.service.listEvents("principal", baseQuery)).rejects.toThrow("write failed");
   });
 
-  it("uses deterministic ordering and rejects a cursor replayed with a different filter", async () => {
+  it("binds an omitted-date cursor to the resolved default window across wall-clock changes", async () => {
+    jest.useFakeTimers().setSystemTime(new Date("2026-08-09T12:00:00.000Z"));
+    try {
+      const h = harness({ rows: [event(), event({ id: "event-0", createdAt: new Date("2026-07-31T00:00:00Z") })] });
+      const first = await h.service.listEvents("principal", { limit: 1 });
+      const payload = JSON.parse(Buffer.from(first.nextCursor!, "base64url").toString("utf8"));
+      expect(payload[2]).toMatchObject({
+        from: "2026-08-02T12:00:00.000Z",
+        to: "2026-08-09T12:00:00.000Z",
+        limit: 1,
+      });
+
+      jest.setSystemTime(new Date("2026-08-10T12:00:00.000Z"));
+      await h.service.listEvents("principal", { limit: 1, cursor: first.nextCursor! });
+      const secondWhere = h.tx.auditLog.findMany.mock.calls[1][0].where;
+      expect(secondWhere.createdAt).toEqual({
+        gte: new Date("2026-08-02T12:00:00.000Z"),
+        lte: new Date("2026-08-09T12:00:00.000Z"),
+      });
+      expect(h.audit.log).toHaveBeenCalledTimes(2);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it("keeps explicit from/to pagination on its exact effective scope", async () => {
+    const h = harness({ rows: [event(), event({ id: "event-0" })] });
+    const query = { limit: 1, from: "2026-07-01T00:00:00.000Z", to: "2026-08-01T00:00:00.000Z" };
+    const first = await h.service.listEvents("principal", query);
+    await expect(h.service.listEvents("principal", { ...query, cursor: first.nextCursor! })).resolves.toBeDefined();
+  });
+
+  it.each([
+    ["facilityId", { facilityId: "00000000-0000-4000-8000-000000000001" }],
+    ["actorUserId", { actorUserId: "00000000-0000-4000-8000-000000000002" }],
+    ["action", { action: AuditAction.UPDATE }],
+    ["entityType", { entityType: "Encounter" }],
+    ["entityId", { entityId: "different-entity" }],
+    ["outcome", { outcome: "DENIED" }],
+    ["severity", { severity: "CRITICAL" }],
+    ["limit", { limit: 2 }],
+  ])("rejects a cursor when %s changes", async (_field, change) => {
+    const h = harness({ rows: [event(), event({ id: "event-0" })] });
+    const first = await h.service.listEvents("principal", { limit: 1 });
+    await expect(h.service.listEvents("principal", { limit: 1, cursor: first.nextCursor!, ...change } as any))
+      .rejects.toMatchObject({ status: 400 });
+  });
+
+  it("uses deterministic ordering and rejects malformed cursors", async () => {
     const h = harness({ rows: [event(), event({ id: "event-0", createdAt: new Date("2026-07-31T00:00:00Z") })] });
-    const first = await h.service.listEvents("principal", { limit: 1, action: AuditAction.VIEW });
+    await h.service.listEvents("principal", { limit: 1, action: AuditAction.VIEW });
     expect(h.tx.auditLog.findMany).toHaveBeenCalledWith(expect.objectContaining({ orderBy: [{ createdAt: "desc" }, { id: "desc" }], take: 2 }));
-    await expect(h.service.listEvents("principal", { limit: 1, action: AuditAction.UPDATE, cursor: first.nextCursor! })).rejects.toMatchObject({ status: 400 });
+    await expect(h.service.listEvents("principal", { limit: 1, cursor: "not-a-valid-cursor" })).rejects.toMatchObject({ status: 400 });
+  });
+
+  it("never treats cursor possession as authority", async () => {
+    const authorized = harness({ rows: [event(), event({ id: "event-0" })] });
+    const first = await authorized.service.listEvents("principal", { limit: 1 });
+    const denied = harness({ principalState: null });
+    await expect(denied.service.listEvents("not-authorized", { limit: 1, cursor: first.nextCursor! }))
+      .rejects.toMatchObject({ status: 403 });
+    expect(denied.prisma.$transaction).not.toHaveBeenCalled();
+    expect(denied.audit.log).toHaveBeenCalledTimes(1);
   });
 });

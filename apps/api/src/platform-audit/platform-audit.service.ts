@@ -11,22 +11,60 @@ import { projectEnterpriseAuditMetadata } from "./enterprise-audit-projection";
 const ACCESS_EVENT = "ENTERPRISE_AUDIT_ACCESSED";
 const DENIED_EVENT = "ENTERPRISE_AUDIT_ACCESS_DENIED";
 
-function queryFingerprint(query: PlatformAuditEventsQueryDto): string {
-  const { cursor: _cursor, ...scope } = query;
+type EffectiveQueryScope = {
+  from: string;
+  to: string;
+  facilityId: string | null;
+  actorUserId: string | null;
+  action: AuditAction | null;
+  entityType: string | null;
+  entityId: string | null;
+  outcome: "SUCCESS" | "DENIED" | null;
+  severity: "CRITICAL" | "HIGH" | "MEDIUM" | null;
+  limit: number;
+};
+
+function normalizeEffectiveScope(
+  query: PlatformAuditEventsQueryDto,
+  from: Date,
+  to: Date,
+): EffectiveQueryScope {
+  return {
+    from: from.toISOString(),
+    to: to.toISOString(),
+    facilityId: query.facilityId ?? null,
+    actorUserId: query.actorUserId ?? null,
+    action: query.action ?? null,
+    entityType: query.entityType ?? null,
+    entityId: query.entityId ?? null,
+    outcome: query.outcome ?? null,
+    severity: query.severity ?? null,
+    limit: query.limit,
+  };
+}
+
+function queryFingerprint(scope: EffectiveQueryScope): string {
   return createHash("sha256").update(JSON.stringify(scope)).digest("base64url");
 }
 
-function encodeCursor(createdAt: Date, id: string, fingerprint: string): string {
-  return Buffer.from(JSON.stringify([createdAt.toISOString(), id, fingerprint])).toString("base64url");
+function encodeCursor(createdAt: Date, id: string, scope: EffectiveQueryScope): string {
+  return Buffer.from(JSON.stringify([createdAt.toISOString(), id, scope, queryFingerprint(scope)])).toString("base64url");
 }
 
-function decodeCursor(raw: string, expectedFingerprint: string): { createdAt: Date; id: string } {
+function decodeCursor(raw: string): { createdAt: Date; id: string; scope: EffectiveQueryScope; fingerprint: string } {
   try {
     const decoded = JSON.parse(Buffer.from(raw, "base64url").toString("utf8"));
-    if (!Array.isArray(decoded) || decoded.length !== 3 || decoded[2] !== expectedFingerprint) throw new Error();
+    if (!Array.isArray(decoded) || decoded.length !== 4 || !decoded[2] || typeof decoded[2] !== "object") throw new Error();
     const createdAt = new Date(decoded[0]);
-    if (Number.isNaN(createdAt.getTime()) || typeof decoded[1] !== "string" || !decoded[1]) throw new Error();
-    return { createdAt, id: decoded[1] };
+    const scope = decoded[2] as EffectiveQueryScope;
+    const fingerprint = decoded[3];
+    if (
+      Number.isNaN(createdAt.getTime()) || typeof decoded[1] !== "string" || !decoded[1]
+      || typeof fingerprint !== "string" || queryFingerprint(scope) !== fingerprint
+      || typeof scope.from !== "string" || Number.isNaN(new Date(scope.from).getTime())
+      || typeof scope.to !== "string" || Number.isNaN(new Date(scope.to).getTime())
+    ) throw new Error();
+    return { createdAt, id: decoded[1], scope, fingerprint };
   } catch {
     throw new BadRequestException("Invalid or query-mismatched pagination cursor.");
   }
@@ -58,15 +96,21 @@ export class PlatformAuditService {
       throw new ForbiddenException("Enterprise audit authority required.");
     }
 
+    const decodedCursor = query.cursor ? decodeCursor(query.cursor) : null;
     const now = new Date();
-    const from = query.from ? new Date(query.from) : new Date(now.getTime() - 7 * 86_400_000);
-    const to = query.to ? new Date(query.to) : now;
+    const from = query.from
+      ? new Date(query.from)
+      : decodedCursor ? new Date(decodedCursor.scope.from) : new Date(now.getTime() - 7 * 86_400_000);
+    const to = query.to ? new Date(query.to) : decodedCursor ? new Date(decodedCursor.scope.to) : now;
     if (from > to) throw new BadRequestException("Invalid date range.");
     if (to.getTime() - from.getTime() > 366 * 86_400_000) {
       throw new BadRequestException("Date range must not exceed 366 days.");
     }
-    const fingerprint = queryFingerprint(query);
-    const cursor = query.cursor ? decodeCursor(query.cursor, fingerprint) : null;
+    const effectiveScope = normalizeEffectiveScope(query, from, to);
+    if (decodedCursor && queryFingerprint(effectiveScope) !== decodedCursor.fingerprint) {
+      throw new BadRequestException("Invalid or query-mismatched pagination cursor.");
+    }
+    const cursor = decodedCursor;
     const metadataFilters: Prisma.AuditLogWhereInput[] = [];
     if (query.outcome) metadataFilters.push({ metadata: { path: ["outcome"], equals: query.outcome } });
     if (query.severity) metadataFilters.push({ metadata: { path: ["severity"], equals: query.severity } });
@@ -117,7 +161,7 @@ export class PlatformAuditService {
         entity: { type: row.entityType, id: row.entityId },
       }));
       const last = page[page.length - 1];
-      const nextCursor = hasNext && last ? encodeCursor(last.createdAt, last.id, fingerprint) : null;
+      const nextCursor = hasNext && last ? encodeCursor(last.createdAt, last.id, effectiveScope) : null;
       const filterClasses = ["from", "to", "facilityId", "actorUserId", "action", "entityType", "entityId", "outcome", "severity"]
         .filter((key) => query[key as keyof PlatformAuditEventsQueryDto] !== undefined);
 
