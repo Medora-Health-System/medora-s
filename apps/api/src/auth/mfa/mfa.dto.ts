@@ -36,6 +36,10 @@ export const mfaLoginVerifyDtoSchema = z
   });
 export type MfaLoginVerifyDto = z.infer<typeof mfaLoginVerifyDtoSchema>;
 
+/** Logged-in step-up deliberately requires the authenticator, not a recovery code. */
+export const mfaStepUpDtoSchema = z.object({ code: totpCodeSchema });
+export type MfaStepUpDto = z.infer<typeof mfaStepUpDtoSchema>;
+
 export const mfaDisableDtoSchema = z.object({
   code: totpCodeSchema,
 });

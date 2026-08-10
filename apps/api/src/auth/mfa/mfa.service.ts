@@ -9,7 +9,7 @@ import {
 } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { JwtService } from "@nestjs/jwt";
-import { AuditAction, RoleCode, type User } from "@prisma/client";
+import { AuditAction, RoleCode, type Prisma, type User } from "@prisma/client";
 import { toDataURL as qrcodeToDataURL } from "qrcode";
 
 import { PrismaService } from "../../prisma/prisma.service";
@@ -208,13 +208,14 @@ export class MfaService {
   async auditMfaEvent(
     action: AuditAction,
     meta: MfaAuditMeta,
-    options: { critical?: boolean } = {},
+    options: { critical?: boolean; tx?: Prisma.TransactionClient } = {},
   ): Promise<void> {
     await this.audit.log(action, "USER_MFA", {
       userId: meta.userId,
       facilityId: meta.facilityId,
       entityId: meta.userId,
       critical: options.critical ?? false,
+      tx: options.tx,
       metadata: {
         userId: meta.userId,
         method: meta.method,
@@ -495,21 +496,28 @@ export class MfaService {
     if (last != null && step <= last) {
       throw new UnauthorizedException(MFA_REPLAY_DETECTED);
     }
-    await this.prisma.user.update({
-      where: { id: user.id },
-      data: {
-        mfaEnabled: false,
-        mfaSecretEncrypted: null,
-        mfaEnabledAt: null,
-        mfaRecoveryCodesHash: null as unknown as object,
-        mfaLastUsedStep: null,
-        mfaLastVerifiedAt: null,
-      },
-    });
-    await this.auditMfaEvent(AuditAction.MFA_DISABLED, {
-      userId: user.id,
-      method: "totp",
-      success: true,
+    await this.prisma.$transaction(async (tx) => {
+      await tx.user.update({
+        where: { id: user.id },
+        data: {
+          mfaEnabled: false,
+          mfaSecretEncrypted: null,
+          mfaEnabledAt: null,
+          mfaRecoveryCodesHash: null as unknown as object,
+          mfaLastUsedStep: null,
+          mfaLastVerifiedAt: null,
+          refreshTokenHash: null,
+        },
+      });
+      await tx.authSession.updateMany({
+        where: { userId: user.id, revokedAt: null },
+        data: { revokedAt: new Date(), revokedReason: "mfa_disabled" },
+      });
+      await this.auditMfaEvent(AuditAction.MFA_DISABLED, {
+        userId: user.id,
+        method: "totp",
+        success: true,
+      }, { tx });
     });
     return { disabled: true };
   }
@@ -557,6 +565,15 @@ export class MfaService {
   }
 
   /* ---------- Admin reset ---------- */
+
+  /** Persist assurance on the exact active session; never promote another device. */
+  async bindVerificationToSession(userId: string, sessionId: string, verifiedAt: Date): Promise<boolean> {
+    const result = await this.prisma.authSession.updateMany({
+      where: { id: sessionId, userId, revokedAt: null, expiresAt: { gt: verifiedAt } },
+      data: { mfaVerifiedAt: verifiedAt, mfaMethod: "totp" },
+    });
+    return result.count === 1;
+  }
 
   async adminReset(
     actor: { userId: string; facilityId: string; role: RoleCode },

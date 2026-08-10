@@ -36,19 +36,38 @@ export class PlatformCapabilitiesGuard implements CanActivate {
     });
   }
 
+  private async enforceRecentMfa(requirement: PlatformCapabilityRequirement, request: any, userId: string): Promise<void> {
+    if (!requirement.requireRecentMfa) return;
+    const verifiedAt = request.user?.mfaVerifiedAt instanceof Date
+      ? request.user.mfaVerifiedAt
+      : request.user?.mfaVerifiedAt ? new Date(request.user.mfaVerifiedAt) : null;
+    const configuredSeconds = Number(process.env.MFA_STEP_UP_MAX_AGE_SECONDS ?? "300");
+    const maxAgeMs = Number.isFinite(configuredSeconds) && configuredSeconds > 0
+      ? configuredSeconds * 1000 : 300_000;
+    if (!request.user?.sessionId || !verifiedAt || !Number.isFinite(verifiedAt.getTime()) || Date.now() - verifiedAt.getTime() > maxAgeMs) {
+      await this.auditMutationDenial(requirement, request, userId, "RECENT_SESSION_MFA_REQUIRED");
+      throw new ForbiddenException("RECENT_SESSION_MFA_REQUIRED");
+    }
+  }
+
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const requirement = this.reflector.getAllAndOverride<PlatformCapabilityRequirement>(PLATFORM_CAPABILITIES_METADATA, [context.getHandler(), context.getClass()]);
     if (!requirement) throw new ForbiddenException("Platform authorization policy is required");
     const userId = String(context.switchToHttp().getRequest().user?.userId ?? "").trim();
     if (!userId) throw new ForbiddenException("Authentication required");
+    const request = context.switchToHttp().getRequest();
     const platformAuthority = requirement.allowPlatformPrincipal ? await resolvePlatformAuthority(this.prisma, userId) : null;
-    if (platformAuthority?.granted) return true;
+    if (platformAuthority?.granted) {
+      await this.enforceRecentMfa(requirement, request, userId);
+      return true;
+    }
     if (!requirement.codes.length) {
       await this.auditMutationDenial(requirement, context.switchToHttp().getRequest(), userId, platformAuthority?.reason ?? "PLATFORM_PRINCIPAL_REQUIRED");
       throw new ForbiddenException("Authoritative platform principal required");
     }
     const resolved = await resolvePlatformCapabilities(this.prisma, userId);
     if (!hasRequiredCapabilities(resolved, requirement.codes, requirement.mode)) throw new ForbiddenException("Required platform capability missing");
+    await this.enforceRecentMfa(requirement, request, userId);
     return true;
   }
 }

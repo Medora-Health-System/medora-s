@@ -29,6 +29,9 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     if (!payload || payload.type !== "access") {
       throw new UnauthorizedException("Invalid token type");
     }
+    if (!payload.sid) {
+      throw new UnauthorizedException("SESSION_BOUND_TOKEN_REQUIRED");
+    }
 
     // Load user with facility roles
     const user = await this.prisma.user.findUnique({
@@ -41,9 +44,15 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       }
     });
 
-    if (!user) {
-      throw new UnauthorizedException("User not found");
+    if (!user || !user.isActive) {
+      throw new UnauthorizedException("User not active");
     }
+
+    const session = await this.prisma.authSession.findFirst({
+      where: { id: payload.sid, userId: payload.sub, revokedAt: null, expiresAt: { gt: new Date() } },
+      select: { id: true, mfaVerifiedAt: true, mfaMethod: true },
+    });
+    if (!session) throw new UnauthorizedException("Session not active");
 
     if (process.env.NODE_ENV !== "production") {
       log.log("jwt_validate_called", {
@@ -56,6 +65,9 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     return {
       userId: payload.sub,
       username: payload.username,
+      sessionId: session.id,
+      mfaVerifiedAt: session.mfaVerifiedAt,
+      mfaMethod: session.mfaMethod,
       facilityRoles: user.userRoles.map((ur) => ({
         facilityId: ur.facilityId,
         role: ur.role.code,
@@ -64,4 +76,3 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     };
   }
 }
-

@@ -10,9 +10,10 @@ export type PlatformCapabilityRequirement = {
   codes: PlatformCapabilityCode[];
   mode: "ANY" | "ALL";
   allowPlatformPrincipal: boolean;
+  requireRecentMfa?: boolean;
   denialAudit?: PlatformMutationDenialAudit;
 };
 export const RequirePlatformCapabilities = (codes: PlatformCapabilityCode[], options: { mode?: "ANY" | "ALL"; allowPlatformPrincipal?: boolean } = {}) =>
   SetMetadata(PLATFORM_CAPABILITIES_METADATA, { codes, mode: options.mode ?? "ANY", allowPlatformPrincipal: options.allowPlatformPrincipal ?? true } satisfies PlatformCapabilityRequirement);
 export const RequirePlatformPrincipal = (denialAudit?: PlatformMutationDenialAudit) =>
-  SetMetadata(PLATFORM_CAPABILITIES_METADATA, { codes: [], mode: "ALL", allowPlatformPrincipal: true, denialAudit } satisfies PlatformCapabilityRequirement);
+  SetMetadata(PLATFORM_CAPABILITIES_METADATA, { codes: [], mode: "ALL", allowPlatformPrincipal: true, requireRecentMfa: true, denialAudit } satisfies PlatformCapabilityRequirement);

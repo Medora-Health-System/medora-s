@@ -319,11 +319,16 @@ model AuthSession {
   revokedReason    String?
   userAgent        String?
   ipAddress        String?
+  /// D4SEC.1C.4A — last MFA proof for this exact session. Never inferred from the user-global MFA timestamp.
+  mfaVerifiedAt    DateTime?
+  /// Authentication method used for the session-bound proof (currently `totp`).
+  mfaMethod        String?
   user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([expiresAt])
   @@index([userId, revokedAt])
+  @@index([userId, mfaVerifiedAt])
 }
 
 model PasswordResetToken {

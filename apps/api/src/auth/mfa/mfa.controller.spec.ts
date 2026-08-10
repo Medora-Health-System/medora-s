@@ -63,6 +63,12 @@ describe("MfaController metadata", () => {
     );
   });
 
+  it("step-up requires a standard session JWT and throttling", () => {
+    expect(getMethodGuards(MfaController, "stepUp")).toEqual(
+      expect.arrayContaining([AuthGuard("jwt"), ThrottlerGuard])
+    );
+  });
+
   it("disable / regenerate require standard JWT + throttler", () => {
     expect(getMethodGuards(MfaController, "disable")).toEqual(
       expect.arrayContaining([AuthGuard("jwt"), ThrottlerGuard])
@@ -70,6 +76,23 @@ describe("MfaController metadata", () => {
     expect(getMethodGuards(MfaController, "regenerateRecoveryCodes")).toEqual(
       expect.arrayContaining([AuthGuard("jwt"), ThrottlerGuard])
     );
+  });
+});
+
+describe("MfaController step-up behavior", () => {
+  it("does not bind assurance or mint a token after an invalid TOTP", async () => {
+    const mfa = {
+      verifyLoginChallenge: jest.fn().mockRejectedValue(new Error("MFA_INVALID_CODE")),
+      bindVerificationToSession: jest.fn(),
+    };
+    const auth = { issueAccessTokenForSession: jest.fn() };
+    const controller = new MfaController(mfa as any, auth as any);
+    await expect(controller.stepUp(
+      { code: "123456" },
+      { user: { userId: "user-a", username: "a@example.test", sessionId: "session-a" } } as any,
+    )).rejects.toThrow("MFA_INVALID_CODE");
+    expect(mfa.bindVerificationToSession).not.toHaveBeenCalled();
+    expect(auth.issueAccessTokenForSession).not.toHaveBeenCalled();
   });
 });
 

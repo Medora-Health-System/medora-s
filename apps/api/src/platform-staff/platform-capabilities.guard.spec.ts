@@ -53,3 +53,43 @@ describe("D4SEC.1C.3 centralized mutation denial audit", () => {
     expect(audit.log).not.toHaveBeenCalled();
   });
 });
+
+describe("D4SEC.1C.4A session-bound MFA assurance", () => {
+  const steppedPolicy: PlatformCapabilityRequirement = { ...grantPolicy, requireRecentMfa: true };
+  const principal = { id: actorId, isActive: true, canCreateFacilities: true, userRoles: [{ id: "assignment" }] };
+
+  it("allows a fresh proof on the authenticated session", async () => {
+    const { guard } = make(principal, steppedPolicy);
+    await expect(guard.canActivate(context(deniedRequest({
+      user: { userId: actorId, sessionId: "session-a", mfaVerifiedAt: new Date() },
+    })))).resolves.toBe(true);
+  });
+
+  it.each([
+    ["missing session", { userId: actorId, mfaVerifiedAt: new Date() }],
+    ["missing proof", { userId: actorId, sessionId: "session-a" }],
+    ["stale proof", { userId: actorId, sessionId: "session-a", mfaVerifiedAt: new Date(Date.now() - 301_000) }],
+  ])("denies and audits %s", async (_label, user) => {
+    const { guard, audit, prisma } = make(principal, steppedPolicy);
+    await expect(guard.canActivate(context(deniedRequest({ user })))).rejects.toThrow("RECENT_SESSION_MFA_REQUIRED");
+    expect(audit.log.mock.calls[0][2].metadata).toEqual(expect.objectContaining({
+      outcome: "DENIED", denialReason: "RECENT_SESSION_MFA_REQUIRED",
+    }));
+    expect(prisma.user.findUnique).toHaveBeenCalled();
+  });
+
+  it("does not let Session A assurance or client headers fabricate proof for Session B", async () => {
+    const { guard, audit } = make(principal, steppedPolicy);
+    await expect(guard.canActivate(context(deniedRequest({
+      user: { userId: actorId, sessionId: "session-b", mfaVerifiedAt: null },
+      headers: {
+        "x-mfa-verified-at": new Date().toISOString(),
+        "x-mfa-session-id": "session-a",
+        authorization: "Bearer redacted-test-token",
+      },
+    })))).rejects.toThrow("RECENT_SESSION_MFA_REQUIRED");
+    const auditPayload = JSON.stringify(audit.log.mock.calls);
+    expect(auditPayload).not.toContain("redacted-test-token");
+    expect(auditPayload).not.toContain("x-mfa-verified-at");
+  });
+});

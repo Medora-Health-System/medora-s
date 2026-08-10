@@ -27,11 +27,12 @@ import {
   mfaEnrollVerifyDtoSchema,
   mfaLoginVerifyDtoSchema,
   mfaRegenerateRecoveryCodesDtoSchema,
+  mfaStepUpDtoSchema,
 } from "./mfa.dto";
 import { MfaService } from "./mfa.service";
 
 type ReqWithUser = Request & {
-  user?: { userId: string; username?: string; viaMfaGrant?: string | null };
+  user?: { userId: string; username?: string; sessionId?: string | null; viaMfaGrant?: string | null };
 };
 
 const TOTP_VERIFY_THROTTLE = { default: { limit: 10, ttl: 60_000 } };
@@ -101,7 +102,7 @@ export class MfaController {
     }
     const userId = userIdFromReq(req);
     const enroll = await this.mfa.confirmEnrollment(userId, parsed.data.code);
-    const session = await this.auth.completeAuthAfterMfa(userId);
+    const session = await this.auth.completeAuthAfterMfa(userId, "totp");
     res.cookie(REFRESH_TOKEN_COOKIE_NAME, session.refreshToken, refreshTokenCookieOptions());
     return {
       enabled: enroll.enabled,
@@ -135,12 +136,35 @@ export class MfaController {
       parsed.data.code,
       parsed.data.recoveryCode
     );
-    const session = await this.auth.completeAuthAfterMfa(userId);
+    const session = await this.auth.completeAuthAfterMfa(userId, verify.method);
     res.cookie(REFRESH_TOKEN_COOKIE_NAME, session.refreshToken, refreshTokenCookieOptions());
     return {
       method: verify.method,
       accessToken: session.accessToken,
       user: session.user,
+    };
+  }
+
+  /** Bind a fresh authenticator proof to the current, active browser session. */
+  @Post("step-up")
+  @UseGuards(AuthGuard("jwt"), ThrottlerGuard)
+  @Throttle(TOTP_VERIFY_THROTTLE)
+  @HttpCode(HttpStatus.OK)
+  async stepUp(@Body() body: unknown, @Req() req: ReqWithUser) {
+    const parsed = mfaStepUpDtoSchema.safeParse(body);
+    if (!parsed.success) {
+      throw new BadRequestException(parsed.error.errors?.[0]?.message ?? "INVALID_REQUEST_BODY");
+    }
+    const userId = userIdFromReq(req);
+    const sessionId = req.user?.sessionId;
+    if (!sessionId) throw new UnauthorizedException("SESSION_BOUND_MFA_REQUIRED");
+    await this.mfa.verifyLoginChallenge(userId, parsed.data.code, undefined);
+    const verifiedAt = new Date();
+    const updated = await this.mfa.bindVerificationToSession(userId, sessionId, verifiedAt);
+    if (!updated) throw new UnauthorizedException("SESSION_NOT_ACTIVE");
+    return {
+      accessToken: this.auth.issueAccessTokenForSession(userId, req.user?.username ?? "", sessionId),
+      mfaVerifiedAt: verifiedAt.toISOString(),
     };
   }
 
