@@ -1,0 +1,9 @@
+export const inpatientNursingAssessmentInp1bFr = {
+  title: "Évaluation infirmière", subtitle: "Documentation infirmière structurée en hospitalisation", save: "Enregistrer l’évaluation",
+  saving: "Enregistrement…", saved: "Évaluation enregistrée", loadError: "Impossible de charger la documentation infirmière.", history: "Évaluations antérieures",
+  noHistory: "Aucune évaluation antérieure", narrative: "Note narrative infirmière", status: "Statut", findings: "Constatations", author: "Auteur",
+  longitudinal: "Antécédents longitudinaux du patient", updateHistory: "Mettre à jour", allergies: "Allergies", notDocumented: "Non documenté",
+  domains: { general: "Apparence générale", neurologic: "Neurologique", mental: "État mental", orientation: "Orientation", pain: "Score de douleur", airway: "Voies respiratoires / oxygène", respiratory: "Respiratoire", cardiac: "Cardiovasculaire", gi: "Gastro-intestinal", gu: "Génito-urinaire", mobility: "Mobilité", musculoskeletal: "Musculosquelettique", skin: "Peau / plaies", fall: "Risque de chute / sécurité", devices: "Lignes / tubes / drains / dispositifs", safety: "Psychosocial / sécurité" },
+  historySections: { medicalHistory: "Antécédents médicaux", surgicalHistory: "Antécédents chirurgicaux", homeMedications: "Médicaments à domicile", tobacco: "Tabac", alcohol: "Alcool", substances: "Consommation de substances", socialHistory: "Autres antécédents sociaux" },
+  options: { select: "Sélectionner…", normal: "Normal", concern: "Problème identifié", alert: "Alerte", drowsy: "Somnolent", confused: "Confus", clear: "Clair", diminished: "Diminué", labored: "Laborieux", regular: "Régulier", irregular: "Irrégulier", soft: "Souple / indolore", impaired: "Altéré", intact: "Intact", independent: "Autonome", assisted: "Aide requise", low: "Faible", moderate: "Modéré", high: "Élevé", none: "Aucun" }
+} as const;

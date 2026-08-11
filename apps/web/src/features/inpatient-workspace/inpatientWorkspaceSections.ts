@@ -22,6 +22,7 @@ export const INPATIENT_WORKSPACE_SECTIONS: Array<{
   labelKey: string;
 }> = [
   { id: "overview", labelKey: "inpatientProviderD4a26.nav.overview" },
+  { id: "nursing", labelKey: "inpatientHeaderNursingD4a33.nav.nursingAssessment" },
   { id: "historyPhysical", labelKey: "inpatientProviderD4a26.nav.historyPhysical" },
   { id: "problemsPlan", labelKey: "inpatientProviderD4a26.nav.problemsPlan" },
   { id: "progressNotes", labelKey: "inpatientProviderD4a26.nav.progressNotes" },
@@ -32,7 +33,6 @@ export const INPATIENT_WORKSPACE_SECTIONS: Array<{
   { id: "carePlan", labelKey: "inpatientProviderD4a26.nav.carePlan" },
   { id: "dischargePlanning", labelKey: "inpatientProviderD4a26.nav.discharge" },
   { id: "admission", labelKey: "inpatientProviderD4a26.nav.nursingAdmission" },
-  { id: "nursing", labelKey: "inpatientHeaderNursingD4a33.nav.nursingAssessment" },
   { id: "notes", labelKey: "inpatientHeaderNursingD4a33.nav.notes" },
   { id: "tasks", labelKey: "inpatientRapidConvergenceD4a27c.actions.tasks" },
   { id: "timeline", labelKey: "inpatientProviderD4a26.nav.timeline" },
@@ -50,8 +50,8 @@ export const INPATIENT_NURSING_STICKY_NAV_SECTIONS: Array<{
   icon: string;
 }> = [
   { id: "overview", labelKey: "inpatientProviderD4a26.nav.overview", icon: "📋" },
-  { id: "admission", labelKey: "inpatientProviderD4a26.nav.nursingAdmission", icon: "🏥" },
   { id: "nursing", labelKey: "inpatientHeaderNursingD4a33.nav.nursingAssessment", icon: "🩺" },
+  { id: "admission", labelKey: "inpatientProviderD4a26.nav.nursingAdmission", icon: "🏥" },
   { id: "orders", labelKey: "inpatientCompactHeaderD4a32.nav.reviewOrders", icon: "📝" },
   { id: "medications", labelKey: "inpatientCompactHeaderD4a32.nav.mar", icon: "💊" },
   { id: "results", labelKey: "inpatientCompactHeaderD4a32.nav.reviewResults", icon: "🧪" },

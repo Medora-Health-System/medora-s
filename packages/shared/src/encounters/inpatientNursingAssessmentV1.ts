@@ -10,6 +10,7 @@ const codedText = z.object({ code: text(80), note: text(1000).optional() }).stri
 /** Client-authored clinical content only. Identity and time are deliberately absent. */
 export const inpatientNursingAssessmentSaveSchema = z.object({
   status: z.enum(["DRAFT", "SAVED", "SIGNED", "FINAL"]),
+  generalAppearance: codedText.optional(),
   mentalStatus: codedText.optional(),
   orientation: z.array(text(80)).max(12).optional(),
   speech: codedText.optional(),

@@ -1,0 +1,9 @@
+export const inpatientNursingAssessmentInp1bEn = {
+  title: "Nursing Assessment", subtitle: "Structured inpatient nursing documentation", save: "Save assessment",
+  saving: "Saving…", saved: "Assessment saved", loadError: "Unable to load nursing documentation.", history: "Previous assessments",
+  noHistory: "No previous assessments", narrative: "Nursing narrative", status: "Status", findings: "Findings", author: "Author",
+  longitudinal: "Patient longitudinal history", updateHistory: "Update history", allergies: "Allergies", notDocumented: "Not documented",
+  domains: { general: "General appearance", neurologic: "Neurological", mental: "Mental status", orientation: "Orientation", pain: "Pain score", airway: "Airway / oxygen", respiratory: "Respiratory", cardiac: "Cardiovascular", gi: "Gastrointestinal", gu: "Genitourinary", mobility: "Mobility", musculoskeletal: "Musculoskeletal", skin: "Skin / wounds", fall: "Fall / safety risk", devices: "Lines / tubes / drains / devices", safety: "Psychosocial / safety" },
+  historySections: { medicalHistory: "Past medical history", surgicalHistory: "Past surgical history", homeMedications: "Home medication history", tobacco: "Tobacco", alcohol: "Alcohol", substances: "Substance use", socialHistory: "Other social history" },
+  options: { select: "Select…", normal: "Normal", concern: "Concern identified", alert: "Alert", drowsy: "Drowsy", confused: "Confused", clear: "Clear", diminished: "Diminished", labored: "Labored", regular: "Regular", irregular: "Irregular", soft: "Soft / non-tender", impaired: "Impaired", intact: "Intact", independent: "Independent", assisted: "Assistance required", low: "Low", moderate: "Moderate", high: "High", none: "None" }
+} as const;
