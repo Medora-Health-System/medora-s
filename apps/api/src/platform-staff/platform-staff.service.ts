@@ -44,16 +44,16 @@ export class PlatformStaffService {
         ...(term ? { OR: [
           { firstName: { contains: term, mode: "insensitive" } },
           { lastName: { contains: term, mode: "insensitive" } },
-          { username: { contains: term, mode: "insensitive" } },
+          { email: { contains: term, mode: "insensitive" } },
         ] } : {}),
       },
-      select: { id: true, firstName: true, lastName: true, username: true, isActive: true, mfaEnabled: true },
+      select: { id: true, firstName: true, lastName: true, email: true, isActive: true, mfaEnabled: true },
       orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
       take: 50,
     });
   }
   listSecurityUsers(query = "") {
-    const term=query.trim().slice(0,80);return this.prisma.user.findMany({where:{isActive:true,...(term?{OR:[{firstName:{contains:term,mode:"insensitive"}},{lastName:{contains:term,mode:"insensitive"}},{username:{contains:term,mode:"insensitive"}}]}:{})},select:{id:true,firstName:true,lastName:true,username:true,isActive:true,mfaEnabled:true},orderBy:[{lastName:"asc"},{firstName:"asc"}],take:50});
+    const term=query.trim().slice(0,80);return this.prisma.user.findMany({where:{isActive:true,...(term?{OR:[{firstName:{contains:term,mode:"insensitive"}},{lastName:{contains:term,mode:"insensitive"}},{email:{contains:term,mode:"insensitive"}}]}:{})},select:{id:true,firstName:true,lastName:true,email:true,isActive:true,mfaEnabled:true},orderBy:[{lastName:"asc"},{firstName:"asc"}],take:50});
   }
 
   async getPlatformFacility(id: string) {

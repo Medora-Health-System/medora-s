@@ -8,7 +8,7 @@ export type PlatformCapability =
 export type PlatformContext = { platformPrincipal: boolean; staff: { persona: string | null; isActive: boolean } | null; capabilities: PlatformCapability[] };
 export type StaffSummary = { id:string; userId:string; persona:string|null; isActive:boolean; classifiedAt:string; deactivatedAt:string|null; user:{firstName:string;lastName:string;isActive:boolean} };
 export type FacilitySummary = { id:string; name:string; code:string; isActive:boolean; facilityType:string; country:string; timezone:string };
-export type EligibleUser = {id:string;firstName:string;lastName:string;username:string;isActive:boolean;mfaEnabled:boolean};
+export type EligibleUser = {id:string;firstName:string;lastName:string;email:string;isActive:boolean;mfaEnabled:boolean};
 export type PrivilegedAction = { id:string; operationType:string; status:string; requesterUserId:string; targetUserId:string|null; targetFacilityId?:string|null; scope:Record<string,string|boolean>; reason:string; ticketReference:string|null; requestedAt:string; expiresAt:string; approverUserId:string|null; approvedAt:string|null; executedAt:string|null; failureCode:string|null };
 export type AuditEvent = { id:string; timestamp:string; action:string; entity:{type:string;id:string|null}; facility:{facilityId:string|null;displayName:string|null;isActive:boolean|null}; actor:{userId:string|null;displayName:string|null;isActive:boolean|null;attribution:string}; event:string|null; outcome:string|null; severity:string|null; sourceOperation:string|null };
 
