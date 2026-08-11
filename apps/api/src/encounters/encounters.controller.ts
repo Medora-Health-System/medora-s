@@ -53,6 +53,7 @@ import {
   observationReassessmentV1BodySchema,
   encounterBillingClassificationPatchDtoSchema,
   rosterClinicalUserRoleQuerySchema,
+  inpatientNursingAssessmentSaveSchema,
 } from "@medora/shared";
 import { listPatientEncountersQuerySchema } from "./dto";
 import { RoleCode } from "@prisma/client";
@@ -984,6 +985,25 @@ export class EncountersController {
       throw new BadRequestException("Facility ID required");
     }
     return this.encountersService.listNursingReassessmentEvents(facilityId, id);
+  }
+
+  @Post("encounters/:id/inpatient-nursing-assessments")
+  @RequireRoles(RoleCode.RN, RoleCode.PROVIDER, RoleCode.ADMIN)
+  async saveInpatientNursingAssessment(@Param("id") id: string, @Body() body: unknown, @Req() req: any) {
+    const facilityId = req.user?.facilityId || req.headers["x-facility-id"];
+    const actorUserId = req.user?.userId;
+    if (!facilityId || !actorUserId) throw new BadRequestException("Authentication and facility required");
+    const parsed = inpatientNursingAssessmentSaveSchema.safeParse(body);
+    if (!parsed.success) throw new BadRequestException("Invalid inpatient nursing assessment", { cause: parsed.error });
+    return this.encountersService.saveInpatientNursingAssessment(facilityId, id, parsed.data, actorUserId);
+  }
+
+  @Get("encounters/:id/inpatient-nursing-assessment-events")
+  @RequireRoles(RoleCode.RN, RoleCode.PROVIDER, RoleCode.ADMIN)
+  async listInpatientNursingAssessmentEvents(@Param("id") id: string, @Req() req: any) {
+    const facilityId = req.user?.facilityId || req.headers["x-facility-id"];
+    if (!facilityId) throw new BadRequestException("Facility ID required");
+    return this.encountersService.listInpatientNursingAssessmentEvents(facilityId, id);
   }
 
   @Post("encounters/:id/procedures/document")

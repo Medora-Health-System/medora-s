@@ -22,7 +22,8 @@ export const INPATIENT_NURSING_ASSESSMENT_KINDS = [
 export type InpatientNursingAssessmentKind =
   (typeof INPATIENT_NURSING_ASSESSMENT_KINDS)[number];
 
-export type InpatientNursingAssessmentV1 = {
+/** @deprecated D3E planning shell; not a persistence authority. */
+export type LegacyInpatientNursingAssessmentShellV1 = {
   assessmentId: string;
   encounterId: string;
   kind: InpatientNursingAssessmentKind;
