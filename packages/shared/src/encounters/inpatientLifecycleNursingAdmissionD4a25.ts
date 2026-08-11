@@ -101,10 +101,14 @@ export const NURSING_ADMISSION_OPTION_CATALOGS: Record<string, readonly string[]
     "AMBULATORY",
     "WHEELCHAIR",
     "STRETCHER",
-    "EMS",
-    "PRIVATE_VEHICLE",
-    "INTERFACILITY_TRANSPORT",
+    "EMS_STRETCHER",
+    "BED",
     "OTHER",
+  ],
+  admissionSource: [
+    "EMERGENCY_DEPARTMENT", "OBSERVATION", "DIRECT_ADMISSION",
+    "OUTSIDE_HOSPITAL_TRANSFER", "PROCEDURAL_AREA", "CLINIC",
+    "LONG_TERM_CARE", "HOME", "OTHER",
   ],
   conditionOnArrival: ["STABLE", "GUARDED", "SERIOUS", "CRITICAL", "UNABLE_TO_DETERMINE"],
   generalAppearance: [
@@ -243,7 +247,9 @@ export const NURSING_ADMISSION_SECTION_SCHEMAS: Record<
     helpKey: "hospitalAdmissionD4a25.help.sections.OVERVIEW",
     domainReuse: ["ADMISSION_SUMMARY"],
     fields: [
-      f("admissionSource", "select", "hospitalAdmissionD4a25.help.fields.admissionSource"),
+      f("admissionSource", "select", "hospitalAdmissionD4a25.help.fields.admissionSource", {
+        optionsKey: "admissionSource",
+      }),
       f("arrivalAt", "datetime", "hospitalAdmissionD4a25.help.fields.arrivalAt", { required: true }),
       f("modeOfArrival", "select", "hospitalAdmissionD4a25.help.fields.modeOfArrival", {
         optionsKey: "modeOfArrival",

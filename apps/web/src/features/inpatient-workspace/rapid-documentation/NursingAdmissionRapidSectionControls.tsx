@@ -54,36 +54,36 @@ export function NursingAdmissionRapidSectionControls({
         <ClinicalMultiSelectChips
           label={t("inpatientRapidConvergenceD4a27c.rapid.appearance")}
           options={GENERAL_APPEARANCE_OPTIONS}
-          value={asCodes(answers.rapidAppearance)}
-          onChange={(next) => set("rapidAppearance", next)}
+          value={asCodes(answers.generalAppearance)}
+          onChange={(next) => set("generalAppearance", next)}
           readOnly={readOnly}
         />
         <ClinicalSingleSelect
           label={t("inpatientRapidConvergenceD4a27c.rapid.loc")}
           options={LOC_OPTIONS}
-          value={asCode(answers.rapidLoc)}
-          onChange={(next) => set("rapidLoc", next)}
+          value={asCode(answers.levelOfConsciousness)}
+          onChange={(next) => set("levelOfConsciousness", next)}
           readOnly={readOnly}
         />
         <ClinicalSingleSelect
           label={t("inpatientRapidConvergenceD4a27c.rapid.orientation")}
           options={ORIENTATION_PRESETS}
-          value={asCode(answers.rapidOrientation)}
-          onChange={(next) => set("rapidOrientation", next)}
+          value={asCode(answers.orientation)}
+          onChange={(next) => set("orientation", next)}
           readOnly={readOnly}
         />
         <ClinicalMultiSelectChips
           label={t("inpatientRapidConvergenceD4a27c.rapid.concerns")}
           options={IMMEDIATE_CONCERN_OPTIONS}
-          value={asCodes(answers.rapidImmediateConcerns)}
-          onChange={(next) => set("rapidImmediateConcerns", next)}
+          value={asCodes(answers.immediateConcerns)}
+          onChange={(next) => set("immediateConcerns", next)}
           readOnly={readOnly}
         />
         <ClinicalConditionalText
           label={t("inpatientRapidConvergenceD4a27c.exceptionDetail")}
           value={typeof answers.rapidConcernsComment === "string" ? answers.rapidConcernsComment : ""}
           onChange={(v) => set("rapidConcernsComment", v)}
-          visible={asCodes(answers.rapidImmediateConcerns).includes("OTHER")}
+          visible={asCodes(answers.immediateConcerns).includes("OTHER")}
           disabled={readOnly}
         />
       </div>
