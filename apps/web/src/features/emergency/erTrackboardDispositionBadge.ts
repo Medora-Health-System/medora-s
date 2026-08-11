@@ -9,6 +9,7 @@ import {
   erDispositionSupplementFromEncounter,
   readDischargeSortieExecutionFromEncounter,
 } from "@/features/emergency/emergencyDispositionV1";
+import { resolveEdDispositionPath } from "@medora/shared";
 
 export type ErDispositionBadgeVariant =
   | "discharge"
@@ -27,7 +28,7 @@ export type ErDispositionBadgeModel = {
   source: "dischargeMode" | "admissionCareLevel" | "erDispositionV1" | "none";
 };
 
-const CARE_OBSERVATION = "Observation";
+const OBSERVATION_LEVELS = new Set(["OBSERVATION", "OBSERVATION CARE"]);
 
 function normalizeMode(m: string): string {
   return m.trim();
@@ -44,6 +45,7 @@ export function erDispositionBadgeFromEncounterJson(enc: {
   const d = parseDischargeSummaryForChart(enc.dischargeSummaryJson);
   const a = parseAdmissionSummaryForChart(enc.admissionSummaryJson);
   const mode = d?.dischargeMode ? normalizeMode(d.dischargeMode) : "";
+  const path = resolveEdDispositionPath(enc);
 
   if (mode === "Domicile") {
     const exec = readDischargeSortieExecutionFromEncounter(enc.nursingAssessment);
@@ -53,12 +55,21 @@ export function erDispositionBadgeFromEncounterJson(enc: {
       source: "dischargeMode",
     };
   }
-  if (mode === "Admission / hospitalisation") {
-    const care = a?.careLevel ? normalizeMode(a.careLevel) : "";
-    if (care === CARE_OBSERVATION) {
+  if (path === "ADMISSION") {
+    const summary =
+      enc.admissionSummaryJson && typeof enc.admissionSummaryJson === "object"
+        ? (enc.admissionSummaryJson as Record<string, unknown>)
+        : {};
+    const packet =
+      summary.admissionPacketV1 && typeof summary.admissionPacketV1 === "object"
+        ? (summary.admissionPacketV1 as Record<string, unknown>)
+        : {};
+    const care = String(packet.levelOfCareCode ?? a?.careLevel ?? "").trim().toUpperCase();
+    const requestedType = String(summary.requestedEncounterType ?? "").trim().toUpperCase();
+    if (OBSERVATION_LEVELS.has(care) || requestedType === "OBSERVATION") {
       return { shortLabel: "Observation", variant: "observe", source: "admissionCareLevel" };
     }
-    return { shortLabel: "Admission", variant: "admit", source: "dischargeMode" };
+    return { shortLabel: "Admission", variant: "admit", source: "admissionCareLevel" };
   }
   if (mode === "Transfert vers un autre établissement") {
     return { shortLabel: "Transfert", variant: "transfer", source: "dischargeMode" };
@@ -83,11 +94,6 @@ export function erDispositionBadgeFromEncounterJson(enc: {
       return { shortLabel: "LWBS", variant: "lwbs", source: "erDispositionV1" };
     }
     return { shortLabel: "Autre", variant: "other", source: "dischargeMode" };
-  }
-
-  const care = a?.careLevel ? normalizeMode(a.careLevel) : "";
-  if (care === CARE_OBSERVATION) {
-    return { shortLabel: "Observation", variant: "observe", source: "admissionCareLevel" };
   }
 
   return null;

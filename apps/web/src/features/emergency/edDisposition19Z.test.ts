@@ -150,6 +150,26 @@ describe("edDisposition19Z — canonical disposition sync / trackboard / preview
     expect(saved.dischargeMode).toBe(ER_DISCHARGE_MODE_ADMISSION);
   });
 
+  it("7a. governed admission decision appears without a duplicate discharge mode", () => {
+    const badge = erDispositionBadgeFromEncounterJson({
+      admissionSummaryJson: {
+        admissionDecisionMode: "SIGN",
+        careLevel: "MEDICAL_SURGICAL",
+      },
+    });
+    expect(badge).toMatchObject({ variant: "admit", shortLabel: "Admission" });
+  });
+
+  it("7b. canonical packet level of care distinguishes observation", () => {
+    const badge = erDispositionBadgeFromEncounterJson({
+      admissionSummaryJson: {
+        admissionDecisionMode: "SIGN",
+        admissionPacketV1: { levelOfCareCode: "OBSERVATION" },
+      },
+    });
+    expect(badge).toMatchObject({ variant: "observe", shortLabel: "Observation" });
+  });
+
   it("8. right-side disposition preview includes provider discharge diagnosis documentation", () => {
     const form = sampleProviderForm();
     const sections = buildProviderDischargeDocumentationPreviewSections(form, {}, "en");

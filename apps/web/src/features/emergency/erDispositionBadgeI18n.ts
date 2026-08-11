@@ -10,9 +10,7 @@ export function erDispositionBadgeDisplayLabel(
 ): string {
   switch (badge.variant) {
     case "discharge":
-      return badge.shortLabel === "SORTIE"
-        ? t("emergencyTrackboard.disposition.discharged")
-        : t("emergencyTrackboard.disposition.dischargePending");
+      return t("emergencyTrackboard.disposition.discharged");
     case "admit":
       return t("emergencyTrackboard.disposition.admit");
     case "observe":

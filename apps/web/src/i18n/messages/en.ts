@@ -7074,7 +7074,7 @@ export default {
       ordersPendingLinkAria: "Open encounter orders ({count})",
     },
     disposition: {
-      discharged: "Discharge",
+      discharged: "Discharge home",
       dischargePending: "Discharge pending",
       admissionPending: "Admission — waiting",
       transferPending: "Transfer — waiting",

@@ -1132,9 +1132,7 @@ export function EmergencyTrackboardView() {
                 ? dispositionBadgeSoft(dispositionBadge.variant)
                 : statusSoft(statusKey);
               const primaryStatusLabel = dispositionBadge
-                ? dispositionBadge.variant === "admit" && encounterTypeKey === EMERGENCY_TYPE
-                  ? t("emergencyTrackboard.disposition.admissionPending")
-                  : erDispositionBadgeDisplayLabel(dispositionBadge, t)
+                ? erDispositionBadgeDisplayLabel(dispositionBadge, t)
                 : tEncounterStatus(t, statusKey);
               const showTransferPendingChip =
                 dispositionBadge?.variant === "admit" &&

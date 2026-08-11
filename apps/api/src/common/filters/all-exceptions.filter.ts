@@ -45,11 +45,25 @@ export class AllExceptionsFilter implements ExceptionFilter {
     if (isHttpException) {
       const statusCode = exception.getStatus();
       if (statusCode >= 400 && statusCode < 500) {
+        const exceptionResponse = exception.getResponse();
+        const canonicalCode =
+          exceptionResponse && typeof exceptionResponse === "object"
+            ? String(
+                (exceptionResponse as { code?: unknown; errorCode?: unknown }).code ??
+                  (exceptionResponse as { errorCode?: unknown }).errorCode ??
+                  "HTTP_CLIENT_ERROR"
+              )
+            : "HTTP_CLIENT_ERROR";
+        const route =
+          typeof request.url === "string" ? request.url.split("?")[0] : undefined;
         log.warn("http_exception_client", {
           statusCode,
           name: exception.name,
           requestId: request.requestId,
           method: request.method,
+          route,
+          operation: `${request.method ?? "UNKNOWN"} ${route ?? "UNKNOWN"}`,
+          canonicalCode,
         });
       } else if (exception instanceof Error) {
         log.error("http_exception_server", {
@@ -185,4 +199,3 @@ export class AllExceptionsFilter implements ExceptionFilter {
     });
   }
 }
-
