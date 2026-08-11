@@ -11,6 +11,7 @@ import {
   UseGuards,
   BadRequestException,
   ForbiddenException,
+  HttpStatus,
 } from "@nestjs/common";
 import { AuthGuard } from "@nestjs/passport";
 import {
@@ -1372,7 +1373,16 @@ export class EncountersController {
     }
     const parsed = encounterAdmissionDecisionDtoSchema.safeParse(body);
     if (!parsed.success) {
-      throw new BadRequestException("Invalid payload", { cause: parsed.error });
+      throw new BadRequestException(
+        {
+          statusCode: HttpStatus.BAD_REQUEST,
+          code: "ADMISSION_DECISION_INVALID_PAYLOAD",
+          errorCode: "ADMISSION_DECISION_INVALID_PAYLOAD",
+          message: "Invalid admission decision payload",
+          requestId: typeof req.requestId === "string" ? req.requestId : null,
+        },
+        { cause: parsed.error }
+      );
     }
     return this.encountersService.recordAdmissionDecision(
       facilityId,
@@ -1550,4 +1560,3 @@ export class EncountersController {
     );
   }
 }
-
