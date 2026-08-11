@@ -57,6 +57,8 @@ import { ClinicalRulesActionAdapter } from "./enterprise-workflow/clinical-rules
 import { ClinicalRulesOrchestrationService } from "./enterprise-workflow/clinical-rules-orchestration.service";
 import { EnterpriseEncounterLifecycleService } from "./enterprise-encounter-lifecycle.service";
 import { EnterpriseAssignmentService } from "./enterprise-assignment.service";
+import { EncounterCarePlanController } from "./encounter-care-plan.controller";
+import { EncounterCarePlanService } from "./encounter-care-plan.service";
 
 @Module({
   imports: [PrismaModule, DiagnosesModule, OrdersModule, TrackboardModule, FacilitiesModule],
@@ -73,8 +75,10 @@ import { EnterpriseAssignmentService } from "./enterprise-assignment.service";
     OperationalGovernanceController,
     EnterpriseWorkflowController,
     ClinicalRulesController,
+    EncounterCarePlanController,
   ],
   providers: [
+    EncounterCarePlanService,
     EnterpriseAssignmentService,
     EnterpriseEncounterLifecycleService,
     EncountersService,

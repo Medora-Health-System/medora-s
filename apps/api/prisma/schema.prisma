@@ -73,6 +73,9 @@ model Facility {
   encounterClinicalEvents                EncounterClinicalEvent[]
   encounterIntakes                       EncounterIntake[]
   encounterNotes                         EncounterNote[]
+  encounterCarePlans                     EncounterCarePlan[]
+  encounterCarePlanProgress              EncounterCarePlanProgress[]
+  encounterCarePlanReviews               EncounterCarePlanReview[]
   encounterProviderAddenda               EncounterProviderAddendum[]
   facilityFormularyItems                 FacilityFormularyItem[]
   facilityMedicationUsages               FacilityMedicationUsage[]
@@ -230,6 +233,11 @@ model User {
   clinicalDocumentationEntriesVoided              EncounterClinicalDocumentationEntry[]  @relation("ClinicalDocumentationEntryVoidedBy")
   clinicalDocumentationEntriesWitnessed           EncounterClinicalDocumentationEntry[]  @relation("ClinicalDocumentationEntryWitnessedBy")
   encounterClinicalEventsCreated                  EncounterClinicalEvent[]               @relation("EncounterClinicalEventCreatedBy")
+  carePlansActivated                              EncounterCarePlan[]                     @relation("CarePlanActivatedBy")
+  carePlanComponentsCreated                       EncounterCarePlanComponent[]            @relation("CarePlanComponentCreatedBy")
+  carePlanProgressAuthored                         EncounterCarePlanProgress[]             @relation("CarePlanProgressAuthor")
+  carePlanReviewsAuthored                          EncounterCarePlanReview[]               @relation("CarePlanReviewReviewer")
+  carePlanTransitionsActed                         EncounterCarePlanTransition[]           @relation("CarePlanTransitionActor")
   encounterNotesAuthored                          EncounterNote[]                        @relation("EncounterNoteAuthor")
   encounterNotesCosigned                          EncounterNote[]                        @relation("EncounterNoteCosignedBy")
   encounterNotesVoided                            EncounterNote[]                        @relation("EncounterNoteVoidedBy")
@@ -538,6 +546,9 @@ model Patient {
   clinicalDocumentationEntries EncounterClinicalDocumentationEntry[]
   encounterClinicalEvents      EncounterClinicalEvent[]
   encounterNotes               EncounterNote[]
+  encounterCarePlans           EncounterCarePlan[]
+  encounterCarePlanProgress    EncounterCarePlanProgress[]
+  encounterCarePlanReviews     EncounterCarePlanReview[]
   followUps                    FollowUp[]
   /// MEDUI.D4C.3 — enterprise appointments for this patient.
   appointments                 Appointment[]
@@ -748,6 +759,9 @@ model Encounter {
   billingClassificationTransitionJson       Json?
   /// D3B — nullable link to continuous facility stay (HospitalEpisode). Absence is safe.
   hospitalEpisodeId                         String?
+  encounterCarePlans                        EncounterCarePlan[]
+  encounterCarePlanProgress                 EncounterCarePlanProgress[]
+  encounterCarePlanReviews                  EncounterCarePlanReview[]
   /// MEDUI.D4C.3 — durable ambulatory visit origin (SCHEDULED | WALK_IN | …). Null = legacy/unknown.
   /// Do not overload Encounter.type or EncounterIntake.modeOfArrival for this meaning.
   visitOrigin                               EncounterVisitOrigin?
@@ -1481,6 +1495,135 @@ model EncounterClinicalEvent {
   @@index([encounterId, createdAt])
   @@index([patientId, createdAt])
   @@index([createdByUserId])
+}
+
+/// INP.2 — the single durable patient-specific inpatient care-plan aggregate.
+model EncounterCarePlan {
+  id                   String                        @id @default(uuid())
+  facilityId           String
+  patientId            String
+  encounterId          String
+  templateId           String
+  templateVersion      String
+  templateSnapshotJson Json
+  title                String
+  status               CarePlanStatus                @default(ACTIVE)
+  revision             Int                           @default(1)
+  priority             CarePlanPriority              @default(ROUTINE)
+  activatedAt          DateTime                      @default(now())
+  activatedByUserId    String
+  createdAt            DateTime                      @default(now())
+  updatedAt            DateTime                      @updatedAt
+  completedAt          DateTime?
+  discontinuedAt       DateTime?
+  currentReviewDueAt   DateTime?
+  facility             Facility                      @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  patient              Patient                       @relation(fields: [patientId], references: [id], onDelete: Restrict)
+  encounter            Encounter                     @relation(fields: [encounterId], references: [id], onDelete: Restrict)
+  activatedBy          User                          @relation("CarePlanActivatedBy", fields: [activatedByUserId], references: [id], onDelete: Restrict)
+  components           EncounterCarePlanComponent[]
+  progress             EncounterCarePlanProgress[]
+  reviews              EncounterCarePlanReview[]
+  transitions          EncounterCarePlanTransition[]
+
+  @@index([facilityId, encounterId, status])
+  @@index([facilityId, patientId])
+  @@index([encounterId, createdAt])
+  @@index([templateId, templateVersion])
+}
+
+model EncounterCarePlanComponent {
+  id                        String                      @id @default(uuid())
+  carePlanId                String
+  componentType             CarePlanComponentType
+  sourceTemplateComponentId String?
+  discipline                String
+  title                     String
+  text                      String
+  targetOutcome             String?
+  status                    CarePlanComponentStatus     @default(NOT_STARTED)
+  sequence                  Int
+  monitoringJson            Json?
+  educationJson             Json?
+  responsibleRole           String?
+  createdByUserId           String
+  createdAt                 DateTime                    @default(now())
+  updatedAt                 DateTime                    @updatedAt
+  revision                  Int                         @default(1)
+  carePlan                  EncounterCarePlan           @relation(fields: [carePlanId], references: [id], onDelete: Restrict)
+  createdBy                 User                        @relation("CarePlanComponentCreatedBy", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  progress                  EncounterCarePlanProgress[]
+
+  @@index([carePlanId, sequence])
+  @@index([carePlanId, discipline])
+}
+
+/// Immutable clinical progress; intentionally has no updatedAt field.
+model EncounterCarePlanProgress {
+  id                    String                      @id @default(uuid())
+  carePlanId            String
+  componentId           String?
+  facilityId            String
+  patientId             String
+  encounterId           String
+  discipline            String
+  status                CarePlanComponentStatus
+  narrative             String
+  structuredOutcomeJson Json?
+  authorUserId          String
+  authorRoleSnapshot    String
+  createdAt             DateTime                    @default(now())
+  carePlan              EncounterCarePlan           @relation(fields: [carePlanId], references: [id], onDelete: Restrict)
+  component             EncounterCarePlanComponent? @relation(fields: [componentId], references: [id], onDelete: Restrict)
+  facility              Facility                    @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  patient               Patient                     @relation(fields: [patientId], references: [id], onDelete: Restrict)
+  encounter             Encounter                   @relation(fields: [encounterId], references: [id], onDelete: Restrict)
+  author                User                        @relation("CarePlanProgressAuthor", fields: [authorUserId], references: [id], onDelete: Restrict)
+
+  @@index([carePlanId, createdAt])
+  @@index([facilityId, encounterId, createdAt])
+}
+
+/// Immutable point-in-time evaluation snapshot.
+model EncounterCarePlanReview {
+  id                         String            @id @default(uuid())
+  carePlanId                 String
+  facilityId                 String
+  patientId                  String
+  encounterId                String
+  reviewStatus               String
+  nextReviewAt               DateTime?
+  componentStateSnapshotJson Json
+  narrative                  String?
+  reviewerUserId             String
+  reviewerRoleSnapshot       String
+  createdAt                  DateTime          @default(now())
+  carePlan                   EncounterCarePlan @relation(fields: [carePlanId], references: [id], onDelete: Restrict)
+  facility                   Facility          @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  patient                    Patient           @relation(fields: [patientId], references: [id], onDelete: Restrict)
+  encounter                  Encounter         @relation(fields: [encounterId], references: [id], onDelete: Restrict)
+  reviewer                   User              @relation("CarePlanReviewReviewer", fields: [reviewerUserId], references: [id], onDelete: Restrict)
+
+  @@index([carePlanId, createdAt])
+  @@index([facilityId, encounterId, createdAt])
+}
+
+/// Immutable lifecycle evidence. Aggregate revision makes concurrent transitions auditable.
+model EncounterCarePlanTransition {
+  id                String            @id @default(uuid())
+  carePlanId        String
+  fromStatus        CarePlanStatus
+  toStatus          CarePlanStatus
+  reason            String?
+  actorUserId       String
+  actorRoleSnapshot String
+  aggregateRevision Int
+  createdAt         DateTime          @default(now())
+  carePlan          EncounterCarePlan @relation(fields: [carePlanId], references: [id], onDelete: Restrict)
+  actor             User              @relation("CarePlanTransitionActor", fields: [actorUserId], references: [id], onDelete: Restrict)
+
+  @@unique([carePlanId, aggregateRevision])
+  @@index([carePlanId, createdAt])
 }
 
 model Triage {
@@ -7658,6 +7801,11 @@ enum MedicationOrderLifecycleStatus {
 
 /// Append-only clinical documentation / workflow events (S8A — INSERT only; no updates or deletes).
 enum EncounterClinicalEventType {
+  CARE_PLAN_ACTIVATED
+  CARE_PLAN_REVIEWED
+  CARE_PLAN_GOAL_COMPLETED
+  CARE_PLAN_COMPLETED
+  CARE_PLAN_DISCONTINUED
   VITALS_RECORDED
   NURSING_ASSESSMENT_SAVED
   PROVIDER_MSE_SAVED
@@ -8329,4 +8477,34 @@ enum MsppDiseaseReportFeedbackStatus {
   OPEN
   REVIEWED
   RESOLVED
+}
+
+/// INP.2 canonical, locale-independent lifecycle codes.
+enum CarePlanStatus {
+  DRAFT
+  ACTIVE
+  ON_HOLD
+  UNDER_REVIEW
+  COMPLETED
+  DISCONTINUED
+}
+
+enum CarePlanComponentType {
+  GOAL
+  INTERVENTION
+}
+
+enum CarePlanComponentStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  MET
+  PARTIALLY_MET
+  NOT_MET
+  DISCONTINUED
+}
+
+enum CarePlanPriority {
+  ROUTINE
+  HIGH
+  URGENT
 }

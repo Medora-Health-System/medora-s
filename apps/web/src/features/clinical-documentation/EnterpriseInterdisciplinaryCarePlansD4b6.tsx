@@ -25,6 +25,7 @@ import {
   type RtCarePlanContributionProjection,
   type TechCarePlanProgressProjection,
 } from "@medora/shared";
+import { apiFetch } from "@/lib/apiClient";
 import { MEDORA_CARD_SHELL } from "@/components/medora-card/medoraCardTokens";
 import { useI18n } from "@/lib/i18n";
 import {
@@ -152,6 +153,37 @@ export function EnterpriseInterdisciplinaryCarePlansD4b6(
   const [activationMessage, setActivationMessage] = useState<string | null>(null);
 
   React.useEffect(() => {
+    if (props.careSetting !== "INPATIENT") return;
+    let cancelled = false;
+    apiFetch(`/encounters/${props.encounterId}/care-plans`)
+      .then(async (response) => {
+        if (!response.ok) throw new Error(`Care plan load failed (${response.status})`);
+        const payload = (await response.json()) as { plans?: Array<any> };
+        if (!cancelled) setLocalPlans((payload.plans ?? []).map((plan) => ({
+          planId: plan.id, encounterId: plan.encounterId, patientId: plan.patientId,
+          facilityId: plan.facilityId, sourceTemplateId: plan.templateId,
+          sourceTemplateVersion: plan.templateVersion, title: plan.title,
+          lifecycleState: plan.status === "UNDER_REVIEW" ? "IN_REVIEW" : plan.status,
+          components: (plan.components ?? []).map((component: any) => ({
+            componentId: component.id, sourceTemplateComponentId: component.sourceTemplateComponentId,
+            kind: component.componentType, title: component.title, body: component.text,
+            custom: !component.sourceTemplateComponentId, disciplineHint: component.discipline,
+            status: component.status === "NOT_STARTED" ? "PENDING" : component.status,
+            isRecommendationNotOrder: true, safetyDoesNotAuthorizePrecaution: true,
+            authorUserId: component.createdByUserId, lastUpdatedAt: component.updatedAt,
+          })), activatedAt: plan.activatedAt, activatedByUserId: plan.activatedByUserId,
+          completedAt: plan.completedAt, discontinuedAt: plan.discontinuedAt, enteredInError: false,
+          isNotDiagnosis: true, doesNotMutateProblemList: true, doesNotCreateProviderOrders: true,
+          doesNotAlterMar: true, doesNotFinalizeDiet: true, doesNotAlterOxygenVent: true,
+          doesNotAuthorizeDischarge: true, doesNotProcureDme: true,
+          doesNotAuthorizeRestraintsOrIsolation: true, sourceTemplateNotMutated: true,
+          usesD4b1DocumentLifecycle: true,
+        })));
+      }).catch((error) => { if (!cancelled) setActivationMessage(error instanceof Error ? error.message : "Care plan load failed"); });
+    return () => { cancelled = true; };
+  }, [props.careSetting, props.encounterId]);
+
+  React.useEffect(() => {
     if (!sections.some((s) => s.id === active)) {
       setActive("overview");
     }
@@ -194,8 +226,26 @@ export function EnterpriseInterdisciplinaryCarePlansD4b6(
     setActive(resolved);
   };
 
-  const onActivate = (templateId: string) => {
+  const onActivate = async (templateId: string) => {
     if (!canActivate) return;
+    if (props.careSetting === "INPATIENT") {
+      const response = await apiFetch(`/encounters/${props.encounterId}/care-plans`, {
+        method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ templateId }),
+      });
+      if (!response.ok) { setActivationMessage(`Activation denied (${response.status})`); return; }
+      const plan = await response.json();
+      setActivationMessage("OK");
+      // Reload from the authority so the UI never invents server identity, timestamps, or IDs.
+      const list = await apiFetch(`/encounters/${props.encounterId}/care-plans`);
+      if (list.ok) {
+        const payload = await list.json();
+        window.dispatchEvent(new CustomEvent("medora:care-plan-persisted", { detail: { carePlanId: plan.id } }));
+        // The load effect mapping is intentionally reused on the next workspace render.
+        setLocalPlans((current) => current.some((item) => item.planId === plan.id) ? current : current);
+        if (payload.plans) window.location.reload();
+      }
+      return;
+    }
     const result = activateCarePlanFromTemplate({
       planId: `plan-${templateId}-${Date.now()}`,
       encounterId: props.encounterId,
