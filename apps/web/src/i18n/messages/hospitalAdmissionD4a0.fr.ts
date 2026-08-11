@@ -172,7 +172,7 @@ export const hospitalAdmissionD4a0Fr = {
       ELIMINATION: "Élimination",
       PSYCHOSOCIAL: "Évaluation psychosociale",
       EDUCATION_COMMUNICATION: "Éducation et communication",
-      PROVIDER_ADMISSION: "Parcours d’admission médecin",
+      PROVIDER_ADMISSION: "Transmission infirmière et fin de l’admission",
     },
     state: {
       NOT_STARTED: "Non commencé",

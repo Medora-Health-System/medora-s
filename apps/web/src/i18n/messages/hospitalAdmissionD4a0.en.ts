@@ -170,7 +170,7 @@ export const hospitalAdmissionD4a0En = {
       ELIMINATION: "Elimination",
       PSYCHOSOCIAL: "Psychosocial assessment",
       EDUCATION_COMMUNICATION: "Education and communication",
-      PROVIDER_ADMISSION: "Provider admission workflow",
+      PROVIDER_ADMISSION: "Nursing handoff & admission completion",
     },
     state: {
       NOT_STARTED: "Not started",

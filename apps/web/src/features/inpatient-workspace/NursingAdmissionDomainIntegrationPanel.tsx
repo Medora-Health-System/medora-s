@@ -154,7 +154,7 @@ export function NursingAdmissionDomainIntegrationPanel({
           }}
           data-testid="nursing-domain-badge"
         >
-          {t("hospitalAdmissionD4a25a.domain.sharedEnterprise")} · {badgeLabel}
+          {badgeLabel}
         </span>
         <span
           title={help}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
 import {
   ADMISSION_HISTORY_VERIFICATION_STATUSES,
   ADMISSION_SECTION_COMPLETION_STATES,
@@ -16,10 +16,6 @@ import {
   type NursingAdmissionDomainReferenceV1,
   type NursingAdmissionStageId,
 } from "@medora/shared";
-import {
-  createLatestWinsClinicalAutosaveScheduler,
-  shouldRunClinicalAutosave,
-} from "@/lib/clinicalAutosave";
 import { useI18n } from "@/lib/i18n";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import { apiFetch, asApiObject } from "@/lib/apiClient";
@@ -276,38 +272,13 @@ export function InpatientAdmissionClinicalShell({
     [active, answers, applyPayload, doc, draftNote, encounterId, signed, unableReason]
   );
 
-  const autosave = useMemo(
-    () =>
-      createLatestWinsClinicalAutosaveScheduler({
-        debounceMs: 1500,
-        getSnapshot: () => ({
-          signature: JSON.stringify({ active, answers, unableReason, draftNote }),
-          payload: { active, answers, unableReason, draftNote },
-        }),
-        save: async () => {
-          if (
-            !shouldRunClinicalAutosave({
-              currentSignature: JSON.stringify({ active, answers, unableReason, draftNote }),
-              lastSavedSignature: "",
-              mode: "server",
-              hasContent: dirtyRef.current,
-              signedOrFinalized: signed,
-              saving: busy,
-            })
-          ) {
-            return;
-          }
-          await persistSection();
-        },
-      }),
-    [active, answers, busy, draftNote, persistSection, signed, unableReason]
-  );
-
   const markDirty = (nextAnswers: Record<string, unknown>) => {
     setAnswers(nextAnswers);
     dirtyRef.current = true;
     setSaveState("NOT_SAVED");
-    autosave.schedule();
+    // Explicit Save / Save and continue preserve the existing audited write
+    // semantics. Scheduling here used a render-stale closure and could write
+    // the pre-click snapshot over a newly selected chip.
   };
 
   const goTo = (id: InpatientAdmissionClinicalSection) => {
@@ -482,10 +453,6 @@ export function InpatientAdmissionClinicalShell({
 
   return (
     <div data-testid="inpatient-admission-clinical-shell">
-      <p style={{ margin: "0 0 8px", fontSize: 13, color: "#334155", lineHeight: 1.45 }} data-testid="d4a25-admission-intro">
-        {t("hospitalAdmissionD4a1.intro")}
-      </p>
-
       <nav
         aria-label={t("inpatientRapidConvergenceD4a27c.stages.ARRIVAL_IDENTITY")}
         data-testid="nursing-admission-stage-rail"
@@ -696,9 +663,6 @@ export function InpatientAdmissionClinicalShell({
             active === "ALLERGIES" ||
             active === "IDENTITY_DEMOGRAPHICS") && (
             <div data-testid="admission-preload-panel" style={{ marginBottom: 10 }}>
-              <p style={{ fontSize: 12, color: "#64748b", margin: "0 0 8px" }}>
-                {t("hospitalAdmissionD4a0.clinical.preloadProvenance")}
-              </p>
               {(doc?.preloadedItems ?? [])
                 .filter((item) => {
                   if (active === "MEDICAL_HISTORY") return item.domain === "MEDICAL_HISTORY";
@@ -748,7 +712,6 @@ export function InpatientAdmissionClinicalShell({
               setUnableReason(r);
               dirtyRef.current = true;
               setSaveState("NOT_SAVED");
-              autosave.schedule();
             }}
           />
 
@@ -761,7 +724,6 @@ export function InpatientAdmissionClinicalShell({
                 setDraftNote(e.target.value);
                 dirtyRef.current = true;
                 setSaveState("NOT_SAVED");
-                autosave.schedule();
               }}
               rows={2}
               style={textareaStyle}
@@ -849,10 +811,6 @@ export function InpatientAdmissionClinicalShell({
                     {t(`hospitalAdmissionD4a0.clinical.sections.${String(s.sectionId)}`)}
                     {" — "}
                     {t("hospitalAdmissionD4a25a.review.projected")}: {String(s.projectedState ?? s.completionState)}
-                    {" · "}
-                    {t("hospitalAdmissionD4a25a.review.domainColumn")}: {String(s.authoritativeDomain ?? "—")}
-                    {" · "}
-                    {t("hospitalAdmissionD4a25a.review.linked")}: {String(s.domainRefCount ?? 0)}
                     {" · "}
                     {t("hospitalAdmissionD4a25a.review.amendments")}: {String(s.amendmentCount ?? 0)}
                   </li>

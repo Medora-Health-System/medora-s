@@ -10,7 +10,17 @@ import {
 } from "@medora/shared";
 import { useI18n } from "@/lib/i18n";
 import { NursingAdmissionRapidSectionControls } from "./rapid-documentation/NursingAdmissionRapidSectionControls";
-import { sentenceCaseClinicalLabel } from "@medora/shared";
+
+const CHIP_EDITOR_FIELDS = new Set([
+  "generalAppearance",
+  "levelOfConsciousness",
+  "orientation",
+  "immediateConcerns",
+]);
+
+export function isAdmissionChipEditorField(sectionId: InpatientAdmissionClinicalSection, key: string): boolean {
+  return sectionId === "NURSING_ADMISSION_ASSESSMENT" && CHIP_EDITOR_FIELDS.has(key);
+}
 
 type Props = {
   sectionId: InpatientAdmissionClinicalSection;
@@ -49,10 +59,11 @@ function FieldControl(props: {
     ? NURSING_ADMISSION_OPTION_CATALOGS[field.optionsKey] ?? []
     : [];
   const labelRaw = t(`hospitalAdmissionD4a25.fields.${field.key}`);
-  const label =
-    labelRaw === `hospitalAdmissionD4a25.fields.${field.key}`
-      ? sentenceCaseClinicalLabel(field.key)
-      : labelRaw;
+  // A missing catalog label is a configuration error, never an invitation to
+  // expose an internal field identifier to a clinician.
+  const label = labelRaw === `hospitalAdmissionD4a25.fields.${field.key}`
+    ? t("hospitalAdmissionD4a25.fieldConfigurationError")
+    : labelRaw;
   const commonLabel: CSSProperties = { display: "block", fontSize: 12, fontWeight: 600, marginBottom: 4 };
 
   if (field.control === "textarea") {
@@ -221,16 +232,8 @@ export function NursingAdmissionStructuredSectionForm({
         readOnly={readOnly}
         onChange={onChange}
       />
-      <p style={{ margin: 0, fontSize: 12, color: "#475569", lineHeight: 1.45 }}>
-        <HelpTip helpKey={schema.helpKey} />{" "}
-        {t(schema.helpKey)}
-      </p>
-      {schema.domainReuse?.length ? (
-        <p style={{ margin: 0, fontSize: 11, color: "#64748b" }}>
-          {t("hospitalAdmissionD4a25.domainReuse")}: {schema.domainReuse.join(" · ")}
-        </p>
-      ) : null}
       {schema.fields.map((field) => {
+        if (isAdmissionChipEditorField(sectionId, field.key)) return null;
         if (!fieldIsVisible(field, answers)) return null;
         return (
           <FieldControl
