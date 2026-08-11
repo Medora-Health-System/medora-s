@@ -474,6 +474,30 @@ export function EncounterClinicalRecordSummaryView({
         </div>
       </SummarySectionCard>
 
+      {record.narrativeNotes.length > 0 ? <SummarySectionCard
+        accent="#0284c7"
+        title={t("encounterNotes.summarySectionTitle")}
+      >
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          {record.narrativeNotes.map((note) => (
+            <div key={note.id} data-source-note-id={note.id} style={{ border: "1px solid #e2e8f0", borderRadius: 10, padding: "8px 10px" }}>
+              <p style={{ ...lineStyle, fontWeight: 600 }}>
+                {t(`encounterNotes.noteType.${note.noteType}`)} — {note.authorDisplayName}
+                {note.status === "AMENDMENT" ? ` · ${t("encounterNotes.badgeAmendment")}` : ""}
+                {note.status === "VOIDED" ? ` · ${t("encounterNotes.badgeVoided")}` : ""}
+                {note.status === "COSIGNED" ? ` · ${t("encounterNotes.badgeCosigned")}` : ""}
+              </p>
+              <p style={{ ...lineStyle, fontSize: 12, color: "#64748b" }}>
+                {note.authorRoleTitle} · {formatDt(note.createdAt)}
+              </p>
+              <p style={{ ...lineStyle, whiteSpace: "pre-wrap", textDecoration: note.status === "VOIDED" ? "line-through" : undefined }}>{note.body}</p>
+              {note.amendmentReason ? <p style={lineStyle}>{t("encounterNotes.amendmentReasonLabel")}: {note.amendmentReason}</p> : null}
+              {note.voidReasonCode ? <p style={lineStyle}>{t("encounterNotes.voidReasonLabel")}: {t(`encounterNotes.voidReason.${note.voidReasonCode}`)}</p> : null}
+            </div>
+          ))}
+        </div>
+      </SummarySectionCard> : null}
+
       <SummarySectionCard
         accent="#2563eb"
         title={t("encounterClinicalRecordSummary.chiefComplaintTitle")}

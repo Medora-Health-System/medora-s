@@ -113,6 +113,24 @@ export type EncounterClinicalRecordNursingAssessmentHistoryEntry = {
   narrativeSummary: string | null;
 };
 
+export type EncounterClinicalRecordNarrativeNote = {
+  id: string;
+  encounterId: string;
+  noteType: "PROVIDER" | "NURSING" | "TECHNICIAN" | "OTHER";
+  body: string;
+  authorUserId: string | null;
+  authorDisplayName: string;
+  authorRoleTitle: string;
+  createdAt: string;
+  status: "SAVED" | "COSIGNED" | "AMENDMENT" | "VOIDED";
+  legacy: boolean;
+  amendedFromNoteId: string | null;
+  amendmentReason: string | null;
+  voidedAt: string | null;
+  voidReasonCode: string | null;
+  cosignedAt: string | null;
+};
+
 export type EncounterClinicalRecordOrderRow = {
   orderId: string;
   orderItemId: string;
@@ -276,6 +294,7 @@ export type EncounterClinicalRecord = {
   providerAssessmentHistory: EncounterClinicalRecordProviderAssessmentHistoryEntry[];
   nursingAssessment: EncounterClinicalRecordNursingAssessment | null;
   nursingAssessmentHistory: EncounterClinicalRecordNursingAssessmentHistoryEntry[];
+  narrativeNotes: EncounterClinicalRecordNarrativeNote[];
   orders: EncounterClinicalRecordOrderRow[];
   laboratoryResults: EncounterClinicalRecordLaboratoryResult[];
   imagingResults: EncounterClinicalRecordImagingResult[];
@@ -398,6 +417,23 @@ export type BuildEncounterClinicalRecordInput = {
     structuredLines?: string[];
     narrativeSummary?: string | null;
   }>;
+  encounterNotes?: Array<{
+    id?: string;
+    encounterId?: string | null;
+    noteType?: string | null;
+    body?: string | null;
+    authorUserId?: string | null;
+    authorDisplayName?: string | null;
+    authorRoleTitle?: string | null;
+    createdAt?: string | null;
+    legacy?: boolean;
+    voidedAt?: string | null;
+    voidReasonCode?: string | null;
+    isAmendment?: boolean;
+    amendedFromNoteId?: string | null;
+    amendmentReason?: string | null;
+    cosignedAt?: string | null;
+  }> | null;
   orders?: Array<{
     id?: string;
     type?: string;

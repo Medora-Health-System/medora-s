@@ -26,6 +26,7 @@ export function encounterClinicalRecordHasPrimaryContent(record: EncounterClinic
       record.vitals.length ||
       record.providerAssessment ||
       record.nursingAssessment ||
+      record.narrativeNotes.length ||
       record.orders.length ||
       record.laboratoryResults.length ||
       record.imagingResults.length ||
