@@ -83,6 +83,8 @@ import { RevenueCyclePaymentsController } from "../billing/revenue-cycle-payment
     BillingService,
     ExternalBillingExportService,
     ExternalBillingAutomationService,
+    RevenueCycleClaimsService,
+    RevenueCyclePaymentsService,
   ],
 })
 export class QueuesModule {}
