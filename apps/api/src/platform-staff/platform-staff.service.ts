@@ -99,15 +99,15 @@ export class PlatformStaffService {
   }
 
   private async lifecycle(actorUserId: string, targetUserId: string, eventType: "PROVISION" | "ACTIVATE" | "DEACTIVATE" | "PERSONA_CHANGE", persona: MedoraStaffPersonaCode | undefined, reason: string, ticketReference?: string) {
-    if (eventType === "DEACTIVATE") await this.requirePrincipalOrCapability(actorUserId, "STAFF_PROVISION");
+    if (eventType === "PROVISION" || eventType === "DEACTIVATE") await this.requirePrincipalOrCapability(actorUserId, "STAFF_PROVISION");
     else await this.requirePrincipal(actorUserId);
     if (actorUserId === targetUserId) { await this.denied("STAFF_MUTATION_DENIED", actorUserId, targetUserId, undefined, "SELF_MUTATION_PROHIBITED"); throw new ForbiddenException("Self staff mutation is prohibited"); }
     const target = await this.prisma.user.findUnique({ where: { id: targetUserId }, select: { isActive: true } });
-    if (!target) throw new NotFoundException("Target user not found");
-    if (!target.isActive) throw new BadRequestException("Target user must be active");
+    if (!target) throw new NotFoundException("STAFF_TARGET_NOT_FOUND");
+    if (!target.isActive) throw new BadRequestException("STAFF_TARGET_INACTIVE");
     const existing = await this.prisma.medoraStaffProfile.findUnique({ where: { userId: targetUserId } });
     if (eventType !== "PROVISION" && !existing) throw new NotFoundException("Medora staff profile not found");
-    if (eventType === "PROVISION" && existing?.persona) throw new BadRequestException("Staff is already provisioned");
+    if (eventType === "PROVISION" && existing) throw new BadRequestException("STAFF_ALREADY_PROVISIONED");
     const nextPersona = persona ?? existing?.persona;
     if (!nextPersona) throw new BadRequestException("Staff persona is required");
     const nextActive = eventType !== "DEACTIVATE";
@@ -157,7 +157,7 @@ export class PlatformStaffService {
   }
 
   async grant(actorUserId: string, targetUserId: string, code: PlatformCapabilityCode, reason: string, ticketReference?: string) {
-    await this.requirePrincipal(actorUserId);
+    await this.requirePrincipalOrCapability(actorUserId, "STAFF_GRANT_CAPABILITIES");
     if (actorUserId === targetUserId) { await this.denied("PLATFORM_CAPABILITY_GRANT_DENIED", actorUserId, targetUserId, code, "SELF_GRANT_PROHIBITED"); throw new ForbiddenException("Self-grant is prohibited"); }
     const [target, capability, existing] = await Promise.all([
       this.prisma.user.findUnique({ where: { id: targetUserId }, select: { isActive: true, medoraStaffProfile: { select: { isActive: true } } } }),
@@ -166,6 +166,7 @@ export class PlatformStaffService {
     ]);
     if (!target?.isActive || !target.medoraStaffProfile?.isActive) { await this.denied("PLATFORM_CAPABILITY_GRANT_DENIED", actorUserId, targetUserId, code, "TARGET_NOT_ACTIVE_STAFF"); throw new BadRequestException("Target must be active Medora staff"); }
     if (!capability?.isActive) { await this.denied("PLATFORM_CAPABILITY_GRANT_DENIED", actorUserId, targetUserId, code, "CAPABILITY_NOT_ACTIVE"); throw new BadRequestException("Capability must exist and be active"); }
+    if (capability.riskLevel === "CRITICAL") { await this.denied("PLATFORM_CAPABILITY_GRANT_DENIED", actorUserId, targetUserId, code, "DUAL_CONTROL_REQUIRED"); throw new ForbiddenException("DUAL_CONTROL_REQUIRED"); }
     if (existing) return { ...existing, idempotent: true };
     try {
       return await this.prisma.$transaction(async (tx) => {

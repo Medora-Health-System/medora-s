@@ -6,7 +6,7 @@ import { logSecurityAdminAudit } from "../common/services/security-admin-audit";
 import { PrismaService } from "../prisma/prisma.service";
 import { hasRequiredCapabilities, resolvePlatformCapabilities } from "./platform-capability.resolver";
 import { PERSONA_CAPABILITY_TEMPLATES, type MedoraStaffPersonaCode, type PlatformCapabilityCode } from "./platform-capabilities";
-import { OPERATION_POLICY, PRIVILEGED_ACTION_TTL_MS, hasFreshMfa, scopeDigest, type GovernedOperation, type PrivilegedScope } from "./privileged-action-policy";
+import { OPERATION_POLICY, PRIVILEGED_ACTION_TTL_MS, hasFreshMfa, requiresDualControl, scopeDigest, type GovernedOperation, type PrivilegedScope } from "./privileged-action-policy";
 import { AdminFacilitiesService } from "../admin/admin-facilities.service";
 import { MfaService } from "../auth/mfa/mfa.service";
 
@@ -38,6 +38,7 @@ export class PrivilegedActionService {
 
   async create(actor: Actor, input: CreateInput) {
     const policy = OPERATION_POLICY[input.operationType];
+    if (!requiresDualControl(input.operationType)) throw new BadRequestException("OPERATION_REQUIRES_DIRECT_MUTATION");
     await this.requireFreshSession(actor);
     if (!(await this.has(actor.userId, policy.authority))) return this.deny(actor.userId, actor.userId, "REQUESTER_AUTHORITY_REQUIRED");
     if (input.targetUserId && actor.userId === input.targetUserId) return this.deny(actor.userId, actor.userId, "SELF_PRIVILEGE_ELEVATION_PROHIBITED");

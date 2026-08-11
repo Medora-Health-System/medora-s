@@ -66,7 +66,11 @@ export class PlatformCapabilitiesGuard implements CanActivate {
       throw new ForbiddenException("Authoritative platform principal required");
     }
     const resolved = await resolvePlatformCapabilities(this.prisma, userId);
-    if (!hasRequiredCapabilities(resolved, requirement.codes, requirement.mode)) throw new ForbiddenException("Required platform capability missing");
+    if (!hasRequiredCapabilities(resolved, requirement.codes, requirement.mode)) {
+      const denial = requirement.codes.includes("STAFF_PROVISION") ? "STAFF_PROVISION_FORBIDDEN" : "REQUIRED_PLATFORM_CAPABILITY_MISSING";
+      await this.auditMutationDenial(requirement, request, userId, denial);
+      throw new ForbiddenException(denial);
+    }
     await this.enforceRecentMfa(requirement, request, userId);
     return true;
   }
