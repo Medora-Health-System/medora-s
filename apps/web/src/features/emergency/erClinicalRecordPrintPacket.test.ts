@@ -85,6 +85,18 @@ function buildPrintRecord() {
         narrativeSummary: "Improved after medication.",
       },
     ],
+    encounterNotes: [
+      {
+        id: "note-print-1",
+        encounterId: ENCOUNTER_ID,
+        noteType: "NURSING",
+        body: "Narrative preserved verbatim — aucun traduction.",
+        authorUserId: "user-rn-1",
+        authorDisplayName: "RN Legal",
+        authorRoleTitle: "RN",
+        createdAt: "2026-06-23T09:45:00.000Z",
+      },
+    ],
   });
 }
 
@@ -163,6 +175,9 @@ describe("erClinicalRecordPrintPacket (Phase 5)", () => {
     expect(html).toContain("Triage RN");
     expect(html).toContain("Pain: 2/10");
     expect(html).toContain("Improved after medication.");
+    expect(html).toContain("Encounter notes registry");
+    expect(html).toContain("Narrative preserved verbatim — aucun traduction.");
+    expect(html).toContain("RN Legal");
   });
 
   it("V2 print packet shows diagnosis documented-by attribution", () => {

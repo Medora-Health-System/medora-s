@@ -29,6 +29,7 @@ import type {
   EncounterClinicalRecordLaboratoryResult,
   EncounterClinicalRecordLocale,
   EncounterClinicalRecordMedicationAdministration,
+  EncounterClinicalRecordNarrativeNote,
   EncounterClinicalRecordOrderRow,
   EncounterClinicalRecordProcedure,
   EncounterClinicalRecordTriageDocumentation,
@@ -108,6 +109,38 @@ function buildHeader(input: BuildEncounterClinicalRecordInput): EncounterClinica
     attendingProviderDisplayName: asTrimmed(input.attendingProviderDisplayName),
     roomLabel: asTrimmed(input.roomLabel),
   };
+}
+
+function buildNarrativeNotes(input: BuildEncounterClinicalRecordInput): EncounterClinicalRecordNarrativeNote[] {
+  const encounterId = input.encounter.id;
+  const byId = new Map<string, EncounterClinicalRecordNarrativeNote>();
+  for (const note of input.encounterNotes ?? []) {
+    const id = asTrimmed(note.id);
+    const body = asTrimmed(note.body);
+    const createdAt = asTrimmed(note.createdAt);
+    const sourceEncounterId = asTrimmed(note.encounterId);
+    if (!id || !body || !createdAt || (sourceEncounterId && sourceEncounterId !== encounterId)) continue;
+    const noteType = String(note.noteType ?? "OTHER").toUpperCase();
+    const safeType = (["PROVIDER", "NURSING", "TECHNICIAN", "OTHER"] as const).find((v) => v === noteType) ?? "OTHER";
+    byId.set(id, {
+      id,
+      encounterId,
+      noteType: safeType,
+      body,
+      authorUserId: asTrimmed(note.authorUserId),
+      authorDisplayName: asTrimmed(note.authorDisplayName) ?? "—",
+      authorRoleTitle: asTrimmed(note.authorRoleTitle) ?? "—",
+      createdAt,
+      status: note.voidedAt ? "VOIDED" : note.isAmendment ? "AMENDMENT" : note.cosignedAt ? "COSIGNED" : "SAVED",
+      legacy: Boolean(note.legacy),
+      amendedFromNoteId: asTrimmed(note.amendedFromNoteId),
+      amendmentReason: asTrimmed(note.amendmentReason),
+      voidedAt: asTrimmed(note.voidedAt),
+      voidReasonCode: asTrimmed(note.voidReasonCode),
+      cosignedAt: asTrimmed(note.cosignedAt),
+    });
+  }
+  return [...byId.values()].sort((a, b) => a.createdAt.localeCompare(b.createdAt) || a.id.localeCompare(b.id));
 }
 
 function buildOrders(input: BuildEncounterClinicalRecordInput): EncounterClinicalRecordOrderRow[] {
@@ -705,6 +738,7 @@ export function buildEncounterClinicalRecord(
     providerAssessmentHistory,
     nursingAssessment: nursing.primary,
     nursingAssessmentHistory: nursing.history,
+    narrativeNotes: buildNarrativeNotes(input),
     orders: buildOrders(input),
     laboratoryResults: buildLaboratoryResults(input, locale),
     imagingResults: buildImagingResults(input),

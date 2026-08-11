@@ -959,3 +959,27 @@ describe("encounterClinicalRecord", () => {
     expect(record.diagnoses[0]?.documentedBy.role).toBe("MD");
   });
 });
+
+describe("ED authoritative narrative note projection", () => {
+  it("preserves chronology, attribution, amendment history and encounter isolation without duplicates", () => {
+    const record = buildEncounterClinicalRecord({
+      encounter: { id: "enc-1", facilityId: "fac-1", patientId: "pat-1" },
+      encounterNotes: [
+        { id: "n2", encounterId: "enc-1", noteType: "NURSING", body: "Pain now 3/10", authorUserId: "u2", authorDisplayName: "RN B", authorRoleTitle: "RN", createdAt: "2026-01-01T09:05:00Z" },
+        { id: "n1", encounterId: "enc-1", noteType: "NURSING", body: "Improved after medication", authorUserId: "u1", authorDisplayName: "RN A", authorRoleTitle: "RN", createdAt: "2026-01-01T08:10:00Z" },
+        { id: "n3", encounterId: "enc-1", noteType: "PROVIDER", body: "Corrected assessment", authorUserId: "u3", authorDisplayName: "Dr C", authorRoleTitle: "Provider", createdAt: "2026-01-01T10:00:00Z", isAmendment: true, amendedFromNoteId: "n0", amendmentReason: "Clarification" },
+        { id: "n4", encounterId: "enc-1", noteType: "TECHNICIAN", body: "Splint checked", authorUserId: "u4", authorDisplayName: "Tech D", authorRoleTitle: "PCT", createdAt: "2026-01-01T10:10:00Z", cosignedAt: "2026-01-01T10:20:00Z" },
+        { id: "n5", encounterId: "enc-1", noteType: "OTHER", body: "Entered in error retained", authorUserId: "u5", authorDisplayName: "Staff E", authorRoleTitle: "Staff", createdAt: "2026-01-01T10:30:00Z", voidedAt: "2026-01-01T10:31:00Z", voidReasonCode: "ENTERED_IN_ERROR" },
+        { id: "n6", noteType: "PROVIDER", body: "Nested encounter-scoped note", authorUserId: "u6", authorDisplayName: "Dr F", authorRoleTitle: "Provider", createdAt: "2026-01-01T10:40:00Z" },
+        { id: "foreign", encounterId: "enc-2", noteType: "OTHER", body: "must not leak", createdAt: "2026-01-01T07:00:00Z" },
+        { id: "n1", encounterId: "enc-1", noteType: "NURSING", body: "Improved after medication", authorUserId: "u1", authorDisplayName: "RN A", authorRoleTitle: "RN", createdAt: "2026-01-01T08:10:00Z" },
+      ],
+    });
+    expect(record.narrativeNotes.map((n) => n.id)).toEqual(["n1", "n2", "n3", "n4", "n5", "n6"]);
+    expect(record.narrativeNotes[0]).toMatchObject({ body: "Improved after medication", authorUserId: "u1", authorDisplayName: "RN A", authorRoleTitle: "RN" });
+    expect(record.narrativeNotes[2]).toMatchObject({ status: "AMENDMENT", amendedFromNoteId: "n0", amendmentReason: "Clarification" });
+    expect(record.narrativeNotes[3]).toMatchObject({ noteType: "TECHNICIAN", status: "COSIGNED", body: "Splint checked" });
+    expect(record.narrativeNotes[4]).toMatchObject({ noteType: "OTHER", status: "VOIDED", voidReasonCode: "ENTERED_IN_ERROR" });
+    expect(record.narrativeNotes.some((n) => n.body === "must not leak")).toBe(false);
+  });
+});

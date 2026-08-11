@@ -284,6 +284,24 @@ export function getErClinicalRecordPrintPacketHtml(input: {
     );
   }
 
+  if (record.narrativeNotes.length > 0) {
+    const body = record.narrativeNotes
+      .map((note) => {
+        const badges = [
+          note.status === "AMENDMENT" ? t("encounterNotes.badgeAmendment") : "",
+          note.status === "VOIDED" ? t("encounterNotes.badgeVoided") : "",
+          note.status === "COSIGNED" ? t("encounterNotes.badgeCosigned") : "",
+        ].filter(Boolean).join(" · ");
+        return p(`${t(`encounterNotes.noteType.${note.noteType}`)} — ${note.authorDisplayName}${badges ? ` · ${badges}` : ""}`) +
+          attr(`${note.authorRoleTitle} · ${formatEncounterChromeDateTime(note.createdAt, language)}`) +
+          p(note.body) +
+          (note.amendmentReason ? p(`${t("encounterNotes.amendmentReasonLabel")}: ${note.amendmentReason}`) : "") +
+          (note.voidReasonCode ? p(`${t("encounterNotes.voidReasonLabel")}: ${t(`encounterNotes.voidReason.${note.voidReasonCode}`)}`) : "");
+      })
+      .join("");
+    sections.push(section(t("encounterNotes.summarySectionTitle"), body));
+  }
+
   if (layout.laboratoryResults.length > 0 || layout.imagingResults.length > 0) {
     const body = [
       ...layout.laboratoryResults.map(

@@ -70,6 +70,7 @@ export type EmergencySummaryClinicalRecordAdapterEncounter = {
     lastName?: string | null;
   } | null;
   physicianAssigned?: { firstName?: string | null; lastName?: string | null } | null;
+  encounterNotes?: BuildEncounterClinicalRecordInput["encounterNotes"];
 };
 
 export type EmergencySummaryClinicalRecordAdapterInput = {
@@ -886,6 +887,7 @@ export function buildEncounterClinicalRecordInputFromEmergencySummary(
     providerAssessmentSaveHistory: model.providerMseHistory.map(mapProviderHistoryEntry),
     nursingAssessmentInitial: buildInitialNursingAssessmentInput(encounter, model),
     nursingReassessmentHistory,
+    encounterNotes: encounter.encounterNotes,
     orders: mapOrders(input.orders ?? [], locale),
     medicationAdministrations: mapMedicationAdministrations(input.medicationAdministrations ?? []),
     procedures: mapProcedures(input.procedures ?? [], locale),

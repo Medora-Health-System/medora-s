@@ -705,3 +705,5 @@ export * from "./clinicalDocumentation/enterpriseInterdisciplinaryCarePlansD4b6.
 export * from "./clinicalDocumentation/enterpriseCaseManagementDischargePlanningD4b7.js";
 export * from "./clinicalDocumentation/enterpriseProviderClinicalWorkspaceD4b8.js";
 
+
+export * from "./encounters/edClinicalDocumentationCatalog.js";
