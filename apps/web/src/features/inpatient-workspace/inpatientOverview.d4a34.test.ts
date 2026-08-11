@@ -170,6 +170,8 @@ describe("MEDUI.D4A.3.4 inpatient Overview projection", () => {
     expect(panel).not.toContain('InpatientClinicalOpsPanel encounterId={encounterId} mode="overview"');
     expect(panel).toContain('mode="overview"');
     expect(panel).toContain("workspaceRole={workspaceRole}");
+    const overviewCase = panel.match(/case "overview":([\s\S]*?)case "admission":/)?.[1] ?? "";
+    expect(overviewCase).not.toContain("EnterpriseProviderClinicalWorkspaceD4b8");
 
     const provider = read("InpatientProviderWorkspacePanel.tsx");
     expect(provider).toContain("projectInpatientOverview");

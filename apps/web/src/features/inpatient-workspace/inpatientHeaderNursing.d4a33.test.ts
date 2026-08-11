@@ -55,12 +55,12 @@ describe("MEDUI.D4A.3.3 inpatient header + nursing consolidation", () => {
     const ids = INPATIENT_NURSING_STICKY_NAV_SECTIONS.map((s) => s.id);
     expect(ids).toEqual([
       "overview",
+      "admission",
+      "nursing",
       "orders",
       "medications",
       "results",
       "carePlan",
-      "admission",
-      "nursing",
       "notes",
       "dischargePlanning",
     ]);
