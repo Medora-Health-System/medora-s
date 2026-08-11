@@ -16,6 +16,7 @@ import {
   type PatientClinicalHistoryProfile,
   type PatientHistoryReconciliationResult,
   type TriageCarryForwardDraft,
+  type PatientHistorySectionUpdate,
 } from "@medora/shared";
 import { PrismaService } from "../prisma/prisma.service";
 import { AuditService } from "../common/services/audit.service";
@@ -208,5 +209,48 @@ export class PatientClinicalHistoryService {
     });
 
     return { profile: nextProfile };
+  }
+
+  /** INP.1A section allow-list; never accepts paths or arbitrary JSON patch operations. */
+  async patchSection(input: {
+    patientId: string; facilityId: string; actorUserId: string;
+    update: PatientHistorySectionUpdate; encounterId?: string | null; ip?: string; userAgent?: string;
+  }): Promise<{ profile: PatientClinicalHistoryProfile }> {
+    const patient = await this.prisma.patient.findFirst({
+      where: { id: input.patientId, facilityId: input.facilityId },
+      select: { id: true, clinicalHistoryProfileJson: true },
+    });
+    if (!patient) throw new NotFoundException("Patient not found");
+    if (input.encounterId) {
+      const scopedEncounter = await this.prisma.encounter.findFirst({
+        where: { id: input.encounterId, patientId: input.patientId, facilityId: input.facilityId }, select: { id: true },
+      });
+      if (!scopedEncounter) throw new NotFoundException("Encounter not found for patient");
+    }
+    const current = patientClinicalHistoryProfileFromJson(patient.clinicalHistoryProfileJson);
+    const now = new Date().toISOString();
+    const profile: PatientClinicalHistoryProfile = {
+      ...(current ?? { version: PATIENT_CLINICAL_HISTORY_PROFILE_VERSION, provenance: {} }),
+      updatedAt: now, updatedBy: input.actorUserId,
+      provenance: { ...(current?.provenance ?? {}) },
+    };
+    const section = input.update.section;
+    if (section === "medicalHistory" || section === "surgicalHistory" || section === "homeMedications") {
+      profile[section] = input.update.value as never;
+    } else {
+      profile.socialHistory = { ...(current?.socialHistory ?? {}), ...input.update.value };
+    }
+    const provenanceSection = ["tobacco", "alcohol", "substances", "socialHistory"].includes(section) ? "socialHistory" : section;
+    profile.provenance[provenanceSection as keyof typeof profile.provenance] = {
+      sourceEncounterId: input.encounterId ?? undefined, sourceFacilityId: input.facilityId,
+      sourceType: "manually_entered", lastReviewedAt: now, reviewerId: input.actorUserId,
+    };
+    await this.prisma.patient.update({ where: { id: input.patientId }, data: { clinicalHistoryProfileJson: profile as unknown as Prisma.InputJsonValue } });
+    await this.audit.log(AuditAction.PATIENT_UPDATE, "PatientClinicalHistoryProfile", {
+      facilityId: input.facilityId, userId: input.actorUserId, patientId: input.patientId,
+      entityId: input.patientId, encounterId: input.encounterId ?? undefined, ip: input.ip, userAgent: input.userAgent,
+      metadata: { section, operation: "SECTION_UPDATE", result: "SUCCESS", timestamp: now },
+    });
+    return { profile };
   }
 }

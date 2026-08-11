@@ -32,6 +32,7 @@ import {
   patientCreateDtoSchema,
   patientUpdateDtoSchema,
   patientInsuranceCoverageUpsertDtoSchema,
+  patientHistorySectionSchema,
 } from "@medora/shared";
 import { listPatientEncountersQuerySchema } from "../encounters/dto";
 import { MsppRoleCode, RoleCode } from "@prisma/client";
@@ -194,6 +195,23 @@ export class PatientsController {
             : null,
       ip: req.ip,
       userAgent: req.headers["user-agent"],
+    });
+  }
+
+  @Patch(":id/clinical-history-profile/sections/:section")
+  @AllowBreakGlassForPatientParam("id")
+  @RequireRoles(RoleCode.RN, RoleCode.PROVIDER, RoleCode.ADMIN)
+  async patchClinicalHistorySection(@Param("id") id: string, @Param("section") section: string, @Body() body: unknown, @Req() req: any) {
+    const facilityId = req.user?.facilityId || req.headers["x-facility-id"];
+    const actorUserId = req.user?.userId;
+    if (!facilityId || !actorUserId) throw new BadRequestException("Authentication and facility required");
+    const raw = body && typeof body === "object" && !Array.isArray(body) ? body as Record<string, unknown> : {};
+    const parsed = patientHistorySectionSchema.safeParse({ section, value: raw.value ?? raw });
+    if (!parsed.success) throw new BadRequestException("Invalid patient history section", { cause: parsed.error });
+    return this.patientClinicalHistoryService.patchSection({
+      patientId: id, facilityId, actorUserId, update: parsed.data,
+      encounterId: typeof raw.encounterId === "string" ? raw.encounterId : null,
+      ip: req.ip, userAgent: req.headers["user-agent"],
     });
   }
 
@@ -409,4 +427,3 @@ export class PatientsController {
   }
 
 }
-

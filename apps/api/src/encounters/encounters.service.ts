@@ -119,6 +119,12 @@ import {
   readPerformedByDisplayNameFromPayload,
   type ProcedureDocumentationRole,
   type ObservationReassessmentV1Body,
+  type InpatientNursingAssessmentSave,
+  type InpatientNursingAssessmentV1,
+  INPATIENT_NURSING_ASSESSMENT_V1_KEY,
+  INPATIENT_NURSING_ASSESSMENT_INVALID_CARE_SETTING,
+  projectInpatientNursingAssessmentOverview,
+  resolveHospitalCareSettingFromEncounter,
   dischargeSnapshotIsObservationAdmissionRoutingOnly,
   isEdPhysicalDepartureCompleted,
   legacyErNotesV1DisplayEntries,
@@ -306,6 +312,76 @@ export class EncountersService {
     /** MEDUI.D4C.7K — required: every enterprise close routes through the lifecycle authority. */
     private readonly enterpriseLifecycle: EnterpriseEncounterLifecycleService
   ) {}
+
+  /** INP.1A: every save is a new, immutable legal-history session. */
+  async saveInpatientNursingAssessment(
+    facilityId: string,
+    encounterId: string,
+    clinical: InpatientNursingAssessmentSave,
+    actorUserId: string,
+  ) {
+    const encounter = await this.prisma.encounter.findFirst({
+      where: { id: encounterId, facilityId },
+      select: { id: true, patientId: true, type: true, admissionSummaryJson: true, nursingAssessment: true },
+    });
+    if (!encounter) throw new NotFoundException("Encounter not found");
+    const careSetting = resolveHospitalCareSettingFromEncounter(encounter);
+    if (encounter.type !== EncounterType.INPATIENT || careSetting !== "INPATIENT") {
+      throw new BadRequestException({
+        code: INPATIENT_NURSING_ASSESSMENT_INVALID_CARE_SETTING,
+        message: "Inpatient nursing assessment requires an Inpatient encounter",
+      });
+    }
+    const performer = await this.resolveErNursingReassessmentPerformer(facilityId, actorUserId);
+    if (!performer || !["RN", "MD", "ADMIN"].includes(performer.performerRoleTitle)) {
+      throw new ForbiddenException("Clinical nursing assessment authority required");
+    }
+    const authoredAt = new Date().toISOString();
+    const sessionId = crypto.randomUUID();
+    const authorRole: InpatientNursingAssessmentV1["authorRole"] =
+      performer.performerRoleTitle === "MD" ? "PROVIDER" : performer.performerRoleTitle as "RN" | "ADMIN";
+    const snapshot: InpatientNursingAssessmentV1 = {
+      ...clinical,
+      version: 1 as const,
+      sessionId,
+      authoredAt,
+      authorUserId: actorUserId,
+      authorDisplayName: performer.performerDisplayName,
+      authorRole,
+    };
+    const root = encounter.nursingAssessment && typeof encounter.nursingAssessment === "object" && !Array.isArray(encounter.nursingAssessment)
+      ? { ...(encounter.nursingAssessment as Record<string, unknown>) }
+      : {};
+    root[INPATIENT_NURSING_ASSESSMENT_V1_KEY] = snapshot;
+    await this.prisma.$transaction(async (tx) => {
+      await tx.encounter.update({ where: { id: encounterId }, data: { nursingAssessment: root as Prisma.InputJsonValue } });
+      await tx.encounterClinicalEvent.create({ data: {
+        facilityId, encounterId, patientId: encounter.patientId,
+        eventType: EncounterClinicalEventType.NURSING_ASSESSMENT_SAVED,
+        createdByUserId: actorUserId,
+        payloadJson: { source: "NURSING_ASSESSMENT_JSON", namespace: INPATIENT_NURSING_ASSESSMENT_V1_KEY, snapshot } as Prisma.InputJsonValue,
+      }});
+    });
+    return { assessment: snapshot, overview: projectInpatientNursingAssessmentOverview(snapshot) };
+  }
+
+  async listInpatientNursingAssessmentEvents(facilityId: string, encounterId: string) {
+    const encounter = await this.prisma.encounter.findFirst({ where: { id: encounterId, facilityId }, select: { id: true, patientId: true, type: true, admissionSummaryJson: true, nursingAssessment: true } });
+    if (!encounter) throw new NotFoundException("Encounter not found");
+    if (encounter.type !== EncounterType.INPATIENT || resolveHospitalCareSettingFromEncounter(encounter) !== "INPATIENT") {
+      throw new BadRequestException({ code: INPATIENT_NURSING_ASSESSMENT_INVALID_CARE_SETTING });
+    }
+    const rows = await this.prisma.encounterClinicalEvent.findMany({
+      where: { encounterId, patientId: encounter.patientId, facilityId, eventType: EncounterClinicalEventType.NURSING_ASSESSMENT_SAVED,
+        payloadJson: { path: ["namespace"], equals: INPATIENT_NURSING_ASSESSMENT_V1_KEY } },
+      orderBy: { createdAt: "asc" }, take: 100,
+    });
+    const entries = rows.map((row) => ({ id: row.id, createdAt: row.createdAt.toISOString(), compatibility: "AUTHORITATIVE" as const,
+      assessment: (row.payloadJson as Record<string, unknown>).snapshot }));
+    const root = encounter.nursingAssessment && typeof encounter.nursingAssessment === "object" && !Array.isArray(encounter.nursingAssessment) ? encounter.nursingAssessment as Record<string, unknown> : {};
+    const legacy = root[NURSING_ASSESSMENT_NAMESPACE_ER_NURSING_REASSESSMENT_V1];
+    return { entries, legacyCompatibility: legacy && typeof legacy === "object" ? [{ compatibility: "LEGACY_ER_NAMESPACE_READ_ONLY" as const, assessment: legacy }] : [] };
+  }
 
   async create(patientId: string, facilityId: string, data: EncounterCreateDto, userId?: string, ip?: string, userAgent?: string) {
     // Verify patient exists and belongs to facility
@@ -5313,4 +5389,3 @@ export class EncountersService {
     }
   }
 }
-

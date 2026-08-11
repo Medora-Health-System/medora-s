@@ -107,6 +107,7 @@ export * from "./encounters/inpatientWorkspaceIdentity.js";
 export * from "./encounters/inpatientOrderOwnershipV1.js";
 export * from "./encounters/inpatientHpDocumentationV1.js";
 export * from "./encounters/inpatientNursingWorkflowV1.js";
+export * from "./encounters/inpatientNursingAssessmentV1.js";
 export * from "./encounters/inpatientConsultsV1.js";
 export * from "./encounters/inpatientCarePlanV1.js";
 export * from "./encounters/inpatientDischargePlanningV1.js";
