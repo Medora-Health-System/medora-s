@@ -354,12 +354,12 @@ export function providerPrimaryNav(): readonly string[] {
 export function nursingPrimaryNav(): readonly string[] {
   return [
     "overview",
+    "admission",
+    "nursing",
     "orders",
     "medications",
     "results",
     "carePlan",
-    "admission",
-    "nursing",
     "notes",
     "dischargePlanning",
   ] as const;

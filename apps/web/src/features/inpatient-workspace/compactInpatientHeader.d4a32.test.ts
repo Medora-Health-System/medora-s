@@ -71,7 +71,8 @@ describe("MEDUI.D4A.3.2 compact inpatient header", () => {
   it("sticky nav order merges Review Orders, MAR, Review Results into one nursing row", () => {
     const ids = INPATIENT_STICKY_NAV_SECTIONS.map((s) => s.id);
     expect(ids).toEqual(INPATIENT_NURSING_STICKY_NAV_SECTIONS.map((s) => s.id));
-    expect(ids.slice(0, 4)).toEqual(["overview", "orders", "medications", "results"]);
+    expect(ids.slice(0, 3)).toEqual(["overview", "admission", "nursing"]);
+    expect(ids.slice(3, 6)).toEqual(["orders", "medications", "results"]);
     const nav = read("InpatientWorkspaceSectionNav.tsx");
     expect(nav).toContain("inpatient-sticky-section-nav");
     expect(nav).toContain('position: "sticky"');

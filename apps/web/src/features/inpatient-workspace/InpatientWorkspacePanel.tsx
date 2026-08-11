@@ -166,15 +166,6 @@ export function InpatientWorkspacePanel({
       }
       return (
         <div data-testid="inpatient-panel-overview" style={{ display: "grid", gap: 12 }}>
-          <EnterpriseProviderClinicalWorkspaceD4b8
-            encounterId={encounterId}
-            patientId={encounter?.patient?.id ?? "unknown-patient"}
-            facilityId={facilityId}
-            careSetting="INPATIENT"
-            roleCodes={roles}
-            isLocked={signed}
-            initialSection="overview"
-          />
           <InpatientProviderWorkspacePanel
             mode="overview"
             encounterId={encounterId}

@@ -41,8 +41,8 @@ export const INPATIENT_WORKSPACE_SECTIONS: Array<{
 
 /**
  * MEDUI.D4A.3.3 — Nursing sticky nav (no Timeline / Summary).
- * Order: Overview → Review Orders → MAR → Review Results → Care Plan →
- * Nursing Admission → Nursing Assessment → Notes → Discharge.
+ * Admission and Assessment lead the RN workflow so both remain visible before
+ * horizontally scrolling the action-oriented chart navigation.
  */
 export const INPATIENT_NURSING_STICKY_NAV_SECTIONS: Array<{
   id: InpatientWorkspaceSection;
@@ -50,12 +50,12 @@ export const INPATIENT_NURSING_STICKY_NAV_SECTIONS: Array<{
   icon: string;
 }> = [
   { id: "overview", labelKey: "inpatientProviderD4a26.nav.overview", icon: "📋" },
+  { id: "admission", labelKey: "inpatientProviderD4a26.nav.nursingAdmission", icon: "🏥" },
+  { id: "nursing", labelKey: "inpatientHeaderNursingD4a33.nav.nursingAssessment", icon: "🩺" },
   { id: "orders", labelKey: "inpatientCompactHeaderD4a32.nav.reviewOrders", icon: "📝" },
   { id: "medications", labelKey: "inpatientCompactHeaderD4a32.nav.mar", icon: "💊" },
   { id: "results", labelKey: "inpatientCompactHeaderD4a32.nav.reviewResults", icon: "🧪" },
   { id: "carePlan", labelKey: "inpatientProviderD4a26.nav.carePlan", icon: "🗂️" },
-  { id: "admission", labelKey: "inpatientProviderD4a26.nav.nursingAdmission", icon: "🏥" },
-  { id: "nursing", labelKey: "inpatientHeaderNursingD4a33.nav.nursingAssessment", icon: "🩺" },
   { id: "notes", labelKey: "inpatientHeaderNursingD4a33.nav.notes", icon: "🗒️" },
   { id: "dischargePlanning", labelKey: "inpatientProviderD4a26.nav.discharge", icon: "🚪" },
 ];
