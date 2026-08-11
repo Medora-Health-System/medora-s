@@ -7,3 +7,4 @@ export const provisionStaffSchema = staffLifecycleSchema.extend({ persona: z.enu
 export const changePersonaSchema = provisionStaffSchema;
 export const grantCapabilitySchema = z.object({ code: z.enum(PLATFORM_CAPABILITY_CODES), reason: safeReason, ticketReference: z.string().trim().min(1).max(100).optional() }).strict();
 export const revokeCapabilitySchema = z.object({ reason: safeReason, ticketReference: z.string().trim().min(1).max(100).optional() }).strict();
+export const governanceBootstrapSchema = z.object({ targetUserId: z.string().uuid(), reason: safeReason, ticketReference: z.string().trim().min(1).max(100) }).strict();

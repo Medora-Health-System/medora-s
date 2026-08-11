@@ -9,5 +9,6 @@ import { PrivilegedActionService } from "./privileged-action.service";
 import { PlatformOperationsController } from "./platform-operations.controller";
 import { AdminModule } from "../admin/admin.module";
 import { QueuesModule } from "../queues/queues.module";
-@Module({ imports: [PrismaModule, AdminModule, QueuesModule], controllers: [PlatformStaffController, PrivilegedActionController, PlatformOperationsController], providers: [PlatformStaffService, PrivilegedActionService, PlatformCapabilitiesGuard, AuditService], exports: [PlatformCapabilitiesGuard] })
+import { GovernanceBootstrapService } from "./governance-bootstrap.service";
+@Module({ imports: [PrismaModule, AdminModule, QueuesModule], controllers: [PlatformStaffController, PrivilegedActionController, PlatformOperationsController], providers: [PlatformStaffService, PrivilegedActionService, GovernanceBootstrapService, PlatformCapabilitiesGuard, AuditService], exports: [PlatformCapabilitiesGuard] })
 export class PlatformStaffModule {}

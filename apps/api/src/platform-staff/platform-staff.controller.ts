@@ -2,7 +2,8 @@ import { BadRequestException, Body, Controller, Delete, Get, Param, Patch, Post,
 import { createFacilityDtoSchema, facilityBillingIdentityPatchDtoSchema, facilityBillingWorkflowPatchDtoSchema, setFacilityLanguageDtoSchema, updateFacilityServiceConfigDtoSchema } from "@medora/shared";
 import { AdminFacilitiesService } from "../admin/admin-facilities.service";
 import { AuthGuard } from "@nestjs/passport";
-import { changePersonaSchema, classifyStaffSchema, grantCapabilitySchema, provisionStaffSchema, revokeCapabilitySchema, staffLifecycleSchema } from "./dto/platform-staff.dto";
+import { changePersonaSchema, classifyStaffSchema, governanceBootstrapSchema, grantCapabilitySchema, provisionStaffSchema, revokeCapabilitySchema, staffLifecycleSchema } from "./dto/platform-staff.dto";
+import { GovernanceBootstrapService } from "./governance-bootstrap.service";
 import { RequirePlatformCapabilities, RequirePlatformPrincipal } from "./platform-capabilities.decorator";
 import { PlatformCapabilitiesGuard } from "./platform-capabilities.guard";
 import type { MedoraStaffPersonaCode, PlatformCapabilityCode } from "./platform-capabilities";
@@ -12,12 +13,17 @@ import { PLATFORM_CAPABILITY_CODES } from "./platform-capabilities";
 @Controller("platform")
 @UseGuards(AuthGuard("jwt"), PlatformCapabilitiesGuard)
 export class PlatformStaffController {
-  constructor(private readonly staff: PlatformStaffService, private readonly facilities: AdminFacilitiesService) {}
+  constructor(private readonly staff: PlatformStaffService, private readonly facilities: AdminFacilitiesService, private readonly bootstrapService: GovernanceBootstrapService) {}
   private actor(req: any): string { return String(req.user?.userId ?? ""); }
   private parse<T>(schema: { safeParse(v: unknown): any }, body: unknown): T { const parsed = schema.safeParse(body); if (!parsed.success) throw new BadRequestException(parsed.error.issues[0]?.message ?? "Invalid request"); return parsed.data; }
 
   @Get("context") @RequirePlatformCapabilities([...PLATFORM_CAPABILITY_CODES], { mode: "ANY" })
   context(@Req() req: any) { return this.staff.getWorkspaceContext(this.actor(req)); }
+
+  @Get("governance-bootstrap") @RequirePlatformPrincipal()
+  bootstrapStatus(@Req() req: any) { return this.bootstrapService.status(this.actor(req)); }
+  @Post("governance-bootstrap") @RequirePlatformPrincipal()
+  bootstrap(@Req() req: any, @Body() body: unknown) { const dto=this.parse<{targetUserId:string;reason:string;ticketReference:string}>(governanceBootstrapSchema,body); return this.bootstrapService.bootstrap({userId:this.actor(req),sessionId:String(req.user?.sessionId??"")},dto); }
 
   @Get("facilities") @RequirePlatformCapabilities(["FACILITY_CREATE", "FACILITY_CONFIGURE", "FACILITY_ACTIVATE", "FACILITY_HEALTH_VIEW"], { mode: "ANY" })
   listFacilities() { return this.staff.listPlatformFacilities(); }
