@@ -297,6 +297,9 @@ export function InpatientWorkspacePanel({
           facilityId={facilityId}
           encounter={encounter}
           isLocked={signed}
+          canEditAssessment={
+            writersEnabled && (roles.includes("RN") || roles.includes("ADMIN"))
+          }
           canEditHandoff={
             writersEnabled && (roles.includes("RN") || roles.includes("ADMIN") || workspaceRole === "NURSING")
           }

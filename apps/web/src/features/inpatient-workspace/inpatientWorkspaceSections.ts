@@ -50,14 +50,36 @@ export const INPATIENT_NURSING_STICKY_NAV_SECTIONS: Array<{
   icon: string;
 }> = [
   { id: "overview", labelKey: "inpatientProviderD4a26.nav.overview", icon: "📋" },
-  { id: "nursing", labelKey: "inpatientHeaderNursingD4a33.nav.nursingAssessment", icon: "🩺" },
   { id: "admission", labelKey: "inpatientProviderD4a26.nav.nursingAdmission", icon: "🏥" },
+  { id: "nursing", labelKey: "inpatientHeaderNursingD4a33.nav.nursingAssessment", icon: "🩺" },
   { id: "orders", labelKey: "inpatientCompactHeaderD4a32.nav.reviewOrders", icon: "📝" },
   { id: "medications", labelKey: "inpatientCompactHeaderD4a32.nav.mar", icon: "💊" },
   { id: "results", labelKey: "inpatientCompactHeaderD4a32.nav.reviewResults", icon: "🧪" },
   { id: "carePlan", labelKey: "inpatientProviderD4a26.nav.carePlan", icon: "🗂️" },
   { id: "notes", labelKey: "inpatientHeaderNursingD4a33.nav.notes", icon: "🗒️" },
   { id: "dischargePlanning", labelKey: "inpatientProviderD4a26.nav.discharge", icon: "🚪" },
+];
+
+/**
+ * INP.1B.1 — the shared chart is the common clinical record navigator.  Keep
+ * nursing destinations visible here; authoring remains governed by the
+ * clinical panels and API authorization, not by the presence of a tab.
+ */
+export const INPATIENT_SHARED_CHART_NAV_SECTIONS: Array<{
+  id: InpatientWorkspaceSection;
+  labelKey: string;
+  icon: string;
+}> = [
+  { id: "overview", labelKey: "inpatientProviderD4a26.nav.overview", icon: "📋" },
+  { id: "admission", labelKey: "inpatientProviderD4a26.nav.nursingAdmission", icon: "🏥" },
+  { id: "nursing", labelKey: "inpatientHeaderNursingD4a33.nav.nursingAssessment", icon: "🩺" },
+  { id: "orders", labelKey: "inpatientCompactHeaderD4a32.nav.reviewOrders", icon: "📝" },
+  { id: "medications", labelKey: "inpatientCompactHeaderD4a32.nav.mar", icon: "💊" },
+  { id: "results", labelKey: "inpatientCompactHeaderD4a32.nav.reviewResults", icon: "🧪" },
+  { id: "carePlan", labelKey: "inpatientProviderD4a26.nav.carePlan", icon: "🗂️" },
+  { id: "dischargePlanning", labelKey: "inpatientProviderD4a26.nav.discharge", icon: "🚪" },
+  { id: "timeline", labelKey: "inpatientProviderD4a26.nav.timeline", icon: "⏱️" },
+  { id: "summary", labelKey: "inpatientProviderD4a26.nav.summary", icon: "📄" },
 ];
 
 /**

@@ -128,11 +128,14 @@ export const inpatientOverviewD4a34En = {
     unsupported: "Device inventory is not available on Overview yet — document in Nursing.",
   },
   nursing: {
-    admission: "Admission assessment",
+    admission: "Nursing admission",
     complete: "Complete",
     incomplete: "Incomplete",
     lastShift: "Last shift assessment",
-    openNursing: "Open Nursing",
+    openNursing: "Open Nursing Assessment",
+    openAdmission: "Open Nursing Admission",
+    startAssessment: "Start Nursing Assessment",
+    openAssessmentReassess: "Open Nursing Assessment / Reassess",
   },
   discharge: {
     medicalReady: "Medical ready",

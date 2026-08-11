@@ -128,11 +128,14 @@ export const inpatientOverviewD4a34Fr = {
     unsupported: "L’inventaire des dispositifs n’est pas encore disponible ici — documenter en Soins infirmiers.",
   },
   nursing: {
-    admission: "Évaluation d’admission",
+    admission: "Admission infirmière",
     complete: "Complète",
     incomplete: "Incomplète",
     lastShift: "Dernière évaluation de quart",
-    openNursing: "Ouvrir Soins infirmiers",
+    openNursing: "Ouvrir l’évaluation infirmière",
+    openAdmission: "Ouvrir l’admission infirmière",
+    startAssessment: "Commencer l’évaluation infirmière",
+    openAssessmentReassess: "Ouvrir l’évaluation / Réévaluation infirmière",
   },
   discharge: {
     medicalReady: "Prêt médicalement",

@@ -1,5 +1,5 @@
 export const inpatientNursingAssessmentInp1bFr = {
-  title: "Évaluation infirmière", subtitle: "Documentation infirmière structurée en hospitalisation", save: "Enregistrer l’évaluation",
+  title: "Évaluation / Réévaluation infirmière", subtitle: "Documentez une évaluation initiale ou de quart, enregistrez un nouvel événement immuable et consultez les évaluations antérieures ci-dessous.", save: "Enregistrer une nouvelle évaluation / réévaluation",
   saving: "Enregistrement…", saved: "Évaluation enregistrée", loadError: "Impossible de charger la documentation infirmière.", history: "Évaluations antérieures",
   noHistory: "Aucune évaluation antérieure", narrative: "Note narrative infirmière", status: "Statut", findings: "Constatations", author: "Auteur",
   longitudinal: "Antécédents longitudinaux du patient", updateHistory: "Mettre à jour", allergies: "Allergies", notDocumented: "Non documenté",

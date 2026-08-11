@@ -449,10 +449,20 @@ export function InpatientOverviewView({
               ? formatEncounterChromeDateTime(p.nursing.lastShiftAssessmentAtIso, language)
               : dash}
           </p>
-          <DeepLinkButton
-            label={t("inpatientOverviewD4a34.nursing.openNursing")}
-            onClick={() => onNavigateSection?.("nursing")}
-          />
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+            <DeepLinkButton
+              label={t("inpatientOverviewD4a34.nursing.openAdmission")}
+              onClick={() => onNavigateSection?.("admission")}
+            />
+            <DeepLinkButton
+              label={t(
+                p.nursing.lastShiftAssessmentAtIso
+                  ? "inpatientOverviewD4a34.nursing.openAssessmentReassess"
+                  : "inpatientOverviewD4a34.nursing.startAssessment"
+              )}
+              onClick={() => onNavigateSection?.("nursing")}
+            />
+          </div>
         </Section>
       ) : null}
 

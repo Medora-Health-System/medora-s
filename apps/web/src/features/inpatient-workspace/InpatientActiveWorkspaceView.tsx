@@ -50,6 +50,7 @@ import {
 import {
   INPATIENT_NURSING_STICKY_NAV_SECTIONS,
   INPATIENT_PROVIDER_STICKY_NAV_SECTIONS,
+  INPATIENT_SHARED_CHART_NAV_SECTIONS,
   parseInpatientWorkspaceSection,
   type InpatientWorkspaceSection,
 } from "./inpatientWorkspaceSections";
@@ -97,6 +98,7 @@ function filterSectionsForRole(role: InpatientWorkspaceRole): InpatientWorkspace
 
 /** Sticky chrome sections for role — Nursing has no Timeline/Summary (D4A.3.3). */
 function stickyNavForRole(role: InpatientWorkspaceRole) {
+  if (role === "CHART") return INPATIENT_SHARED_CHART_NAV_SECTIONS;
   if (role === "NURSING") return INPATIENT_NURSING_STICKY_NAV_SECTIONS;
   if (role === "TECHNICIAN") {
     const techIds = new Set<InpatientWorkspaceSection>([

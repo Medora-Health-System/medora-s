@@ -81,10 +81,10 @@ describe("MEDUI.D4A.3.3 inpatient header + nursing consolidation", () => {
     expect(nursing).toContain("notes");
   });
 
-  it("reuses ED Nursing Assessment + Notes engines without forking", () => {
+  it("uses the native inpatient assessment while retaining shared Notes", () => {
     const section = read("InpatientNursingAssessmentSection.tsx");
-    expect(section).toContain("EmergencyNursingReassessmentPanel");
-    expect(section).toContain('variant="inpatientEncounter"');
+    expect(section).toContain("InpatientNursingAssessmentPanel");
+    expect(section).not.toContain("EmergencyNursingReassessmentPanel");
     expect(section).toContain("InpatientNursingHandoffPanel");
     expect(section).toContain("InpatientNursingTeamExecutionPanel");
     const panel = read("InpatientWorkspacePanel.tsx");

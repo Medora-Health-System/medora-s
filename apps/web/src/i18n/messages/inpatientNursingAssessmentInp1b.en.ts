@@ -1,5 +1,5 @@
 export const inpatientNursingAssessmentInp1bEn = {
-  title: "Nursing Assessment", subtitle: "Structured inpatient nursing documentation", save: "Save assessment",
+  title: "Nursing Assessment / Reassessment", subtitle: "Document an initial or shift assessment, save a new immutable event, and review prior assessments below.", save: "Save new assessment / reassessment",
   saving: "Saving…", saved: "Assessment saved", loadError: "Unable to load nursing documentation.", history: "Previous assessments",
   noHistory: "No previous assessments", narrative: "Nursing narrative", status: "Status", findings: "Findings", author: "Author",
   longitudinal: "Patient longitudinal history", updateHistory: "Update history", allergies: "Allergies", notDocumented: "Not documented",
