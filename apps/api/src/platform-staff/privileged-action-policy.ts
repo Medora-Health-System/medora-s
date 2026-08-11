@@ -11,12 +11,17 @@ export type PrivilegedScope =
   | { operationType: "FACILITY_ACTIVATION_CHANGE"; targetFacilityId: string; isActive: boolean }
   | { operationType: "MFA_RESET"; targetUserId: string };
 
-export const OPERATION_POLICY: Readonly<Record<GovernedOperation, { authority: PlatformCapabilityCode; dualControl: true; risk: "CRITICAL" }>> = {
-  STAFF_PROVISION: { authority: "STAFF_PROVISION", dualControl: true, risk: "CRITICAL" },
+export const OPERATION_POLICY: Readonly<Record<GovernedOperation, { authority: PlatformCapabilityCode; dualControl: boolean; risk: "CRITICAL" }>> = {
+  STAFF_PROVISION: { authority: "STAFF_PROVISION", dualControl: false, risk: "CRITICAL" },
   STAFF_GRANT_CAPABILITY: { authority: "STAFF_GRANT_CAPABILITIES", dualControl: true, risk: "CRITICAL" },
   FACILITY_ACTIVATION_CHANGE: { authority: "FACILITY_ACTIVATE", dualControl: true, risk: "CRITICAL" },
   MFA_RESET: { authority: "SECURITY_MFA_RECOVERY", dualControl: true, risk: "CRITICAL" },
 };
+
+/** Fail-closed allow-list for operations explicitly classified as requiring an independent approver. */
+export function requiresDualControl(operation: GovernedOperation): boolean {
+  return OPERATION_POLICY[operation].dualControl === true;
+}
 
 export function riskRequirements(risk: PlatformCapabilityRiskLevel) {
   return { recentMfa: risk === "HIGH" || risk === "CRITICAL", audit: risk !== "LOW", dualControlEligible: risk === "CRITICAL" };

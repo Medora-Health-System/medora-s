@@ -1,10 +1,16 @@
-import { canonicalScope, hasFreshMfa, riskRequirements, scopeDigest } from "./privileged-action-policy";
+import { canonicalScope, hasFreshMfa, requiresDualControl, riskRequirements, scopeDigest } from "./privileged-action-policy";
 
 describe("D4SEC.1C.4C authoritative high-risk policy", () => {
   it("derives MODERATE/HIGH/CRITICAL requirements centrally", () => {
     expect(riskRequirements("MODERATE")).toEqual({recentMfa:false,audit:true,dualControlEligible:false});
     expect(riskRequirements("HIGH")).toEqual({recentMfa:true,audit:true,dualControlEligible:false});
     expect(riskRequirements("CRITICAL")).toEqual({recentMfa:true,audit:true,dualControlEligible:true});
+  });
+  it("routes ordinary staff provisioning directly while retaining exceptional dual control", () => {
+    expect(requiresDualControl("STAFF_PROVISION")).toBe(false);
+    expect(requiresDualControl("STAFF_GRANT_CAPABILITY")).toBe(true);
+    expect(requiresDualControl("FACILITY_ACTIVATION_CHANGE")).toBe(true);
+    expect(requiresDualControl("MFA_RESET")).toBe(true);
   });
   it("binds SHA-256 scope to operation, immutable target and capability", () => {
     const a:any={operationType:"STAFF_GRANT_CAPABILITY",targetUserId:"target-a",capabilityCode:"STAFF_VIEW"};
