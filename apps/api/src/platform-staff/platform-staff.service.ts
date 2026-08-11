@@ -35,6 +35,35 @@ export class PlatformStaffService {
   }
 
   listCapabilities() { return this.prisma.platformCapability.findMany({ orderBy: { code: "asc" } }); }
+  listEligibleUsers(query = "") {
+    const term = query.trim().slice(0, 80);
+    return this.prisma.user.findMany({
+      where: {
+        isActive: true,
+        medoraStaffProfile: null,
+        ...(term ? { OR: [
+          { firstName: { contains: term, mode: "insensitive" } },
+          { lastName: { contains: term, mode: "insensitive" } },
+          { email: { contains: term, mode: "insensitive" } },
+        ] } : {}),
+      },
+      select: { id: true, firstName: true, lastName: true, email: true, isActive: true, mfaEnabled: true },
+      orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
+      take: 50,
+    });
+  }
+  listSecurityUsers(query = "") {
+    const term=query.trim().slice(0,80);return this.prisma.user.findMany({where:{isActive:true,...(term?{OR:[{firstName:{contains:term,mode:"insensitive"}},{lastName:{contains:term,mode:"insensitive"}},{email:{contains:term,mode:"insensitive"}}]}:{})},select:{id:true,firstName:true,lastName:true,email:true,isActive:true,mfaEnabled:true},orderBy:[{lastName:"asc"},{firstName:"asc"}],take:50});
+  }
+
+  async getPlatformFacility(id: string) {
+    const row = await this.prisma.facility.findUnique({ where: { id }, select: {
+      id: true, name: true, code: true, isActive: true, facilityType: true, country: true,
+      timezone: true, defaultLanguage: true, serviceLinesJson: true, billingClassificationMode: true,
+    } });
+    if (!row) throw new NotFoundException("Facility not found");
+    return row;
+  }
   listStaff() {
     return this.prisma.medoraStaffProfile.findMany({
       select: { id: true, userId: true, persona: true, isActive: true, classifiedAt: true, deactivatedAt: true, user: { select: { firstName: true, lastName: true, isActive: true } } }, orderBy: { classifiedAt: "desc" },

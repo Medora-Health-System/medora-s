@@ -33,3 +33,9 @@ describe("D4SEC.1C.3 grant mutation determinism", () => {
     expect(audit.log).not.toHaveBeenCalled();
   });
 });
+
+describe("D4SEC.1C.5A bounded authoritative user search",()=>{
+  function searchHarness(){const findMany=jest.fn().mockResolvedValue([]);const prisma:any={user:{findMany}};return{service:new PlatformStaffService(prisma,{log:jest.fn()} as any),findMany};}
+  it("uses existing identity fields and excludes already-classified staff",async()=>{const{service,findMany}=searchHarness();await service.listEligibleUsers("Ada");expect(findMany).toHaveBeenCalledWith(expect.objectContaining({where:expect.objectContaining({isActive:true,medoraStaffProfile:null,OR:[{firstName:{contains:"Ada",mode:"insensitive"}},{lastName:{contains:"Ada",mode:"insensitive"}},{email:{contains:"Ada",mode:"insensitive"}}]}),select:{id:true,firstName:true,lastName:true,email:true,isActive:true,mfaEnabled:true},take:50}));expect(JSON.stringify(findMany.mock.calls[0])).not.toContain("username");});
+  it("keeps security recovery search active, bounded, and identity-only",async()=>{const{service,findMany}=searchHarness();await service.listSecurityUsers("ops@example");const query=findMany.mock.calls[0][0];expect(query.where.isActive).toBe(true);expect(query.take).toBe(50);expect(query.select).toEqual({id:true,firstName:true,lastName:true,email:true,isActive:true,mfaEnabled:true});expect(JSON.stringify(query)).not.toContain("passwordHash");});
+});

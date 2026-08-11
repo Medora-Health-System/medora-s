@@ -653,7 +653,19 @@ export class MfaService {
       }
     }
 
-    const revoked = await this.prisma.$transaction(async (tx) => {
+    return this.resetAfterAuthorization(actor.userId, targetUserId, "MfaService.adminReset");
+  }
+
+  /** Called only by the dual-controlled platform privileged-action executor. */
+  async resetForPrivilegedAction(actorUserId: string, targetUserId: string, tx?: any) {
+    if (actorUserId === targetUserId) throw new ForbiddenException("Self MFA reset is prohibited");
+    const target = await (tx??this.prisma).user.findUnique({where:{id:targetUserId},select:{id:true}});
+    if (!target) throw new NotFoundException("Utilisateur introuvable.");
+    return this.resetAfterAuthorization(actorUserId, targetUserId, "platform.privileged-action.execute",tx);
+  }
+
+  private async resetAfterAuthorization(actorUserId:string,targetUserId:string,sourceOperation:string,providedTx?:any): Promise<{reset:true;sessionsRevoked:number}> {
+    const perform=async(tx:any)=>{
       const result = await tx.authSession.updateMany({
         where: { userId: targetUserId, revokedAt: null },
         data: { revokedAt: new Date(), revokedReason: "mfa_reset_by_admin" },
@@ -672,12 +684,12 @@ export class MfaService {
       });
       await logSecurityAdminAudit(this.audit, AuditAction.MFA_RESET_BY_ADMIN, {
         event: "ADMIN_USER_MFA_RESET",
-        actorUserId: actor.userId,
+          actorUserId,
         entityType: "User",
         entityId: targetUserId,
         severity: "CRITICAL",
         outcome: "SUCCESS",
-        sourceOperation: "MfaService.adminReset",
+        sourceOperation,
         evidence: {
           mfaReset: true,
           sessionsRevoked: true,
@@ -686,10 +698,11 @@ export class MfaService {
         tx,
       });
       return result;
-    });
+    };
+    const revoked = providedTx ? await perform(providedTx) : await this.prisma.$transaction(perform);
 
     log.warn("mfa_reset_by_admin", {
-      actorUserId: actor.userId,
+      actorUserId,
       targetUserId,
       sessionsRevoked: revoked.count,
     });

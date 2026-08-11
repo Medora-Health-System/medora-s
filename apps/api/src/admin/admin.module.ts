@@ -61,5 +61,6 @@ import { EncountersModule } from "../encounters/encounters.module";
     AdminBillingGovernanceService,
     AuditService,
   ],
+  exports: [QueuesModule, MfaModule, AdminFacilitiesService, GoLiveReadinessService, BackupReadinessService, SystemHealthService, AdminComplianceService, AdminExportMonitoringService, AdminBillingGovernanceService, AdminCatalogAuditService],
 })
 export class AdminModule {}

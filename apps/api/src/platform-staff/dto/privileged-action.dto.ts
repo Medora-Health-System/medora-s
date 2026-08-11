@@ -6,6 +6,8 @@ const common = { targetUserId: z.string().uuid(), reason, ticketReference };
 export const createPrivilegedActionSchema = z.discriminatedUnion("operationType", [
   z.object({ operationType: z.literal("STAFF_PROVISION"), ...common, persona: z.enum(MEDORA_STAFF_PERSONAS) }).strict(),
   z.object({ operationType: z.literal("STAFF_GRANT_CAPABILITY"), ...common, capabilityCode: z.enum(PLATFORM_CAPABILITY_CODES) }).strict(),
+  z.object({ operationType: z.literal("FACILITY_ACTIVATION_CHANGE"), targetFacilityId: z.string().uuid(), isActive: z.boolean(), reason, ticketReference }).strict(),
+  z.object({ operationType: z.literal("MFA_RESET"), ...common }).strict(),
 ]);
 export const decisionSchema = z.object({ reason }).strict();
 export const listPrivilegedActionsSchema = z.object({ status: z.enum(["PENDING","APPROVED","REJECTED","CANCELLED","EXPIRED","EXECUTED","FAILED"]).optional(), take: z.coerce.number().int().min(1).max(100).default(50) }).strict();

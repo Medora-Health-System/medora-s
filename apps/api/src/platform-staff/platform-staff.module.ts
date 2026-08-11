@@ -6,5 +6,8 @@ import { PlatformStaffController } from "./platform-staff.controller";
 import { PlatformStaffService } from "./platform-staff.service";
 import { PrivilegedActionController } from "./privileged-action.controller";
 import { PrivilegedActionService } from "./privileged-action.service";
-@Module({ imports: [PrismaModule], controllers: [PlatformStaffController, PrivilegedActionController], providers: [PlatformStaffService, PrivilegedActionService, PlatformCapabilitiesGuard, AuditService], exports: [PlatformCapabilitiesGuard] })
+import { PlatformOperationsController } from "./platform-operations.controller";
+import { AdminModule } from "../admin/admin.module";
+import { QueuesModule } from "../queues/queues.module";
+@Module({ imports: [PrismaModule, AdminModule, QueuesModule], controllers: [PlatformStaffController, PrivilegedActionController, PlatformOperationsController], providers: [PlatformStaffService, PrivilegedActionService, PlatformCapabilitiesGuard, AuditService], exports: [PlatformCapabilitiesGuard] })
 export class PlatformStaffModule {}

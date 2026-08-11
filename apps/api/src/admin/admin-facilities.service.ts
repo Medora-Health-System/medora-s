@@ -169,9 +169,9 @@ export class AdminFacilitiesService {
     return (await resolvePlatformAuthority(this.prisma, userId)).granted;
   }
 
-  async create(dto: CreateFacilityDto, userId: string) {
+  async create(dto: CreateFacilityDto, userId: string, capabilityAuthorized = false, assignCreatorAdmin = true) {
     assertNoClientEscalation(dto);
-    if (!(await this.isPlatformPrincipal(userId))) {
+    if (!capabilityAuthorized && !(await this.isPlatformPrincipal(userId))) {
       throw new ForbiddenException(
         "Création d’établissement non autorisée pour ce compte.",
       );
@@ -238,21 +238,11 @@ export class AdminFacilitiesService {
         },
       });
 
-      const adminRole = await tx.role.findUnique({
-        where: { code: RoleCode.ADMIN },
-      });
-      if (!adminRole) {
-        throw new NotFoundException("Rôle ADMIN introuvable.");
+      if (assignCreatorAdmin) {
+        const adminRole = await tx.role.findUnique({ where: { code: RoleCode.ADMIN } });
+        if (!adminRole) throw new NotFoundException("Rôle ADMIN introuvable.");
+        await tx.userRole.create({ data: { userId, facilityId: facility.id, roleId: adminRole.id, isActive: true } });
       }
-
-      await tx.userRole.create({
-        data: {
-          userId,
-          facilityId: facility.id,
-          roleId: adminRole.id,
-          isActive: true,
-        },
-      });
 
       await ensureFacilityServiceLineDepartments(tx, facility.id, {
         facilityType: facility.facilityType,
@@ -289,8 +279,9 @@ export class AdminFacilitiesService {
   async getFacilityBillingIdentityForAdmin(
     actorUserId: string,
     facilityId: string,
+    preauthorized = false,
   ) {
-    await this.assertCanManageFacilityBilling(actorUserId, facilityId);
+    if (!preauthorized) await this.assertCanManageFacilityBilling(actorUserId, facilityId);
     return this.billingIdentity.getFacilityBillingIdentity(facilityId);
   }
 
@@ -298,16 +289,18 @@ export class AdminFacilitiesService {
     actorUserId: string,
     facilityId: string,
     dto: FacilityBillingIdentityPatchDto,
+    preauthorized = false,
   ) {
-    await this.assertCanManageFacilityBilling(actorUserId, facilityId);
+    if (!preauthorized) await this.assertCanManageFacilityBilling(actorUserId, facilityId);
     return this.billingIdentity.updateFacilityBillingIdentity(facilityId, dto);
   }
 
   async getFacilityBillingWorkflowForAdmin(
     actorUserId: string,
     facilityId: string,
+    preauthorized = false,
   ) {
-    await this.assertCanManageFacilityBilling(actorUserId, facilityId);
+    if (!preauthorized) await this.assertCanManageFacilityBilling(actorUserId, facilityId);
     return this.facilityBillingWorkflow.getForFacility(facilityId);
   }
 
@@ -315,14 +308,15 @@ export class AdminFacilitiesService {
     actorUserId: string,
     facilityId: string,
     dto: FacilityBillingWorkflowPatchDto,
+    preauthorized = false,
   ) {
-    await this.assertCanManageFacilityBilling(actorUserId, facilityId);
+    if (!preauthorized) await this.assertCanManageFacilityBilling(actorUserId, facilityId);
     return this.facilityBillingWorkflow.updateForFacility(facilityId, dto);
   }
 
   /** MEDUI.AUTH.ROLE.2 — active clinical departments for admin user assignment UI. */
-  async listDepartmentsForAdmin(actorUserId: string, facilityId: string) {
-    await this.assertCanManageFacilityBilling(actorUserId, facilityId);
+  async listDepartmentsForAdmin(actorUserId: string, facilityId: string, preauthorized = false) {
+    if (!preauthorized) await this.assertCanManageFacilityBilling(actorUserId, facilityId);
     const facility = await this.prisma.facility.findUnique({
       where: { id: facilityId },
       select: { defaultLanguage: true },
@@ -484,9 +478,10 @@ export class AdminFacilitiesService {
     id: string,
     dto: UpdateFacilityServiceConfigDto,
     userId: string,
+    preauthorized = false,
   ) {
     assertNoClientEscalation(dto);
-    await this.assertCanManageFacilityBilling(userId, id);
+    if (!preauthorized) await this.assertCanManageFacilityBilling(userId, id);
 
     const existing = await this.prisma.facility.findUnique({
       where: { id },
@@ -594,8 +589,9 @@ export class AdminFacilitiesService {
     id: string,
     defaultLanguage: "fr" | "en",
     userId: string,
+    preauthorized = false,
   ) {
-    if (!(await this.isPlatformPrincipal(userId))) {
+    if (!preauthorized && !(await this.isPlatformPrincipal(userId))) {
       throw new ForbiddenException(
         "Modification de l’établissement non autorisée pour ce compte.",
       );
@@ -616,8 +612,8 @@ export class AdminFacilitiesService {
     });
   }
 
-  async setFacilityActive(id: string, isActive: boolean, userId: string) {
-    if (!(await this.isPlatformPrincipal(userId))) {
+  async setFacilityActive(id: string, isActive: boolean, userId: string, preauthorized = false) {
+    if (!preauthorized && !(await this.isPlatformPrincipal(userId))) {
       throw new ForbiddenException(
         "Modification de l’établissement non autorisée pour ce compte.",
       );
@@ -654,5 +650,27 @@ export class AdminFacilitiesService {
       });
       return updated;
     });
+  }
+
+  /** Called only behind PlatformCapabilitiesGuard; keeps creation logic and audit in one authority. */
+  createForPlatformCapability(dto: CreateFacilityDto, userId: string) {
+    // Platform authority never grants clinical/facility RolesGuard authority.
+    return this.create(dto, userId, true, false);
+  }
+
+  /** These adapters are callable only after PlatformCapabilitiesGuard resolves authority. */
+  getBillingIdentityForPlatform(userId: string, facilityId: string) { return this.getFacilityBillingIdentityForAdmin(userId, facilityId, true); }
+  updateBillingIdentityForPlatform(userId: string, facilityId: string, dto: FacilityBillingIdentityPatchDto) { return this.updateFacilityBillingIdentityForAdmin(userId, facilityId, dto, true); }
+  getBillingWorkflowForPlatform(userId: string, facilityId: string) { return this.getFacilityBillingWorkflowForAdmin(userId, facilityId, true); }
+  updateBillingWorkflowForPlatform(userId: string, facilityId: string, dto: FacilityBillingWorkflowPatchDto) { return this.updateFacilityBillingWorkflowForAdmin(userId, facilityId, dto, true); }
+  listDepartmentsForPlatform(userId: string, facilityId: string) { return this.listDepartmentsForAdmin(userId, facilityId, true); }
+  updateServiceConfigForPlatform(id: string, dto: UpdateFacilityServiceConfigDto, userId: string) { return this.updateFacilityServiceConfig(id, dto, userId, true); }
+  setLanguageForPlatform(id: string, language: "fr" | "en", userId: string) { return this.setFacilityLanguage(id, language, userId, true); }
+  async setActiveForPrivilegedAction(id: string, isActive: boolean, userId: string, tx: any = this.prisma) {
+    const existing=await tx.facility.findUnique({where:{id},select:{id:true,isActive:true}});
+    if(!existing)throw new NotFoundException("Établissement introuvable.");
+    const updated=await tx.facility.update({where:{id},data:{isActive},select:{id:true,name:true,isActive:true,defaultLanguage:true}});
+    await logSecurityAdminAudit(this.requiredAudit,AuditAction.UPDATE,{event:isActive?"FACILITY_ACTIVATED":"FACILITY_DEACTIVATED",actorUserId:userId,facilityId:id,entityType:"Facility",entityId:id,severity:"CRITICAL",outcome:"SUCCESS",sourceOperation:"platform.privileged-action.execute",evidence:{before:{isActive:existing.isActive},after:{isActive}},tx});
+    return updated;
   }
 }

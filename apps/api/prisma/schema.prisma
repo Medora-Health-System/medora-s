@@ -83,6 +83,7 @@ model Facility {
   hospitalEpisodes                       HospitalEpisode[]
   /// D3C — internal ED→Obs/IP placement requests.
   internalPlacementRequests              InternalPlacementRequest[]
+  privilegedActionRequests               PrivilegedActionRequest[]              @relation("PrivilegedActionFacilityTarget")
   infusionSessions                       InfusionSession[]
   inventoryItems                         InventoryItem[]
   inventoryTransactions                  InventoryTransaction[]
@@ -459,7 +460,8 @@ model PrivilegedActionRequest {
   status              PrivilegedActionRequestStatus @default(PENDING)
   requesterUserId     String
   requesterSessionId  String
-  targetUserId        String
+  targetUserId        String?
+  targetFacilityId    String?
   scope                Json
   scopeDigest          String
   reason               String
@@ -475,7 +477,8 @@ model PrivilegedActionRequest {
   executedAt           DateTime?
   failureCode          String?
   requester            User                          @relation("PrivilegedActionRequester", fields: [requesterUserId], references: [id], onDelete: Restrict)
-  target               User                          @relation("PrivilegedActionTarget", fields: [targetUserId], references: [id], onDelete: Restrict)
+  target               User?                         @relation("PrivilegedActionTarget", fields: [targetUserId], references: [id], onDelete: Restrict)
+  targetFacility       Facility?                     @relation("PrivilegedActionFacilityTarget", fields: [targetFacilityId], references: [id], onDelete: Restrict)
   approver             User?                         @relation("PrivilegedActionApprover", fields: [approverUserId], references: [id], onDelete: Restrict)
   closedBy             User?                         @relation("PrivilegedActionClosedBy", fields: [closedByUserId], references: [id], onDelete: Restrict)
   executionActor       User?                         @relation("PrivilegedActionExecutor", fields: [executionActorUserId], references: [id], onDelete: Restrict)
@@ -484,6 +487,7 @@ model PrivilegedActionRequest {
   @@index([requesterUserId, requestedAt])
   @@index([approverUserId, requestedAt])
   @@index([targetUserId, requestedAt])
+  @@index([targetFacilityId, requestedAt])
 }
 
 /// Demographics: date of birth is `dob` only (age is always derived). `sex` is canonical; `sexAtBirth` kept for legacy/API parity.
@@ -7377,6 +7381,8 @@ enum PlatformCapabilityRiskLevel {
 enum PrivilegedActionOperationType {
   STAFF_PROVISION
   STAFF_GRANT_CAPABILITY
+  FACILITY_ACTIVATION_CHANGE
+  MFA_RESET
 }
 
 enum PrivilegedActionRequestStatus {
