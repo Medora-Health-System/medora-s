@@ -55,6 +55,7 @@ export function InpatientNursingAssessmentSection({
   facilityId,
   encounter,
   isLocked,
+  canEditAssessment,
   canEditHandoff,
   assignedRnName,
   assignedPctName,
@@ -67,6 +68,7 @@ export function InpatientNursingAssessmentSection({
   facilityId: string;
   encounter: InpatientWorkspaceEncounterLite | null;
   isLocked: boolean;
+  canEditAssessment: boolean;
   canEditHandoff: boolean;
   assignedRnName?: string | null;
   assignedPctName?: string | null;
@@ -114,7 +116,7 @@ export function InpatientNursingAssessmentSection({
       encounterId={encounterId}
       facilityId={facilityId}
       patientId={patientId}
-      isLocked={isLocked}
+      isLocked={isLocked || !canEditAssessment}
       onSaved={refresh}
     />
   );
