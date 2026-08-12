@@ -988,7 +988,7 @@ export class EncountersController {
   }
 
   @Post("encounters/:id/inpatient-nursing-assessments")
-  @RequireRoles(RoleCode.RN, RoleCode.PROVIDER, RoleCode.ADMIN)
+  @RequireRoles(RoleCode.RN, RoleCode.ADMIN)
   async saveInpatientNursingAssessment(@Param("id") id: string, @Body() body: unknown, @Req() req: any) {
     const facilityId = req.user?.facilityId || req.headers["x-facility-id"];
     const actorUserId = req.user?.userId;

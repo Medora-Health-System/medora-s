@@ -333,13 +333,12 @@ export class EncountersService {
       });
     }
     const performer = await this.resolveErNursingReassessmentPerformer(facilityId, actorUserId);
-    if (!performer || !["RN", "MD", "ADMIN"].includes(performer.performerRoleTitle)) {
+    if (!performer || !["RN", "ADMIN"].includes(performer.performerRoleTitle)) {
       throw new ForbiddenException("Clinical nursing assessment authority required");
     }
     const authoredAt = new Date().toISOString();
     const sessionId = crypto.randomUUID();
-    const authorRole: InpatientNursingAssessmentV1["authorRole"] =
-      performer.performerRoleTitle === "MD" ? "PROVIDER" : performer.performerRoleTitle as "RN" | "ADMIN";
+    const authorRole: InpatientNursingAssessmentV1["authorRole"] = performer.performerRoleTitle as "RN" | "ADMIN";
     const snapshot: InpatientNursingAssessmentV1 = {
       ...clinical,
       version: 1 as const,

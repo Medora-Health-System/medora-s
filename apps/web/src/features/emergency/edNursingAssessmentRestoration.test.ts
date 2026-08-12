@@ -25,11 +25,11 @@ describe("ED nursing assessment restoration", () => {
     expect(nursingBranch).not.toMatch(/Enterprise(?:Nursing|Respiratory|Rehabilitation|Interdisciplinary|CaseManagement|Provider)/);
   });
 
-  it("leaves Observation and Inpatient on the enterprise nursing composition", () => {
+  it("leaves Observation unchanged and keeps Inpatient on its native nursing composition", () => {
     expect(readWeb("features/observation-workspace/ObservationWorkspacePanel.tsx"))
       .toContain("<EnterpriseNursingClinicalWorkspaceD4b2");
     expect(readWeb("features/inpatient-workspace/InpatientNursingAssessmentSection.tsx"))
-      .toContain("<EnterpriseNursingClinicalWorkspaceD4b2");
+      .toContain("<InpatientNursingAssessmentPanel");
   });
 
   it("reuses the dropdown grid, canonical catalog, save endpoint, and append-only event history", () => {
