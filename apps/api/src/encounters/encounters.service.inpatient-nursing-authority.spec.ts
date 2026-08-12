@@ -9,7 +9,7 @@ describe("INP.1A inpatient nursing authority", () => {
     nursingAssessment: { erNursingReassessmentV1: { narrative: "legacy" } },
   };
 
-  function harness(row: any = encounter) {
+  function harness(row: any = encounter, roleCode = "RN") {
     const events: any[] = [];
     const prisma: any = {
       encounter: { findFirst: jest.fn().mockResolvedValue(row), update: jest.fn().mockResolvedValue({}) },
@@ -18,7 +18,7 @@ describe("INP.1A inpatient nursing authority", () => {
         findMany: jest.fn(async ({ where }) => events.filter((e) => e.encounterId === where.encounterId && e.facilityId === where.facilityId && (e.payloadJson as any).namespace === "inpatientNursingAssessmentV1")),
       },
       user: { findFirst: jest.fn().mockResolvedValue({ id: "rn-1", firstName: "Renee", lastName: "Nurse" }) },
-      userRole: { findMany: jest.fn().mockResolvedValue([{ role: { code: "RN" } }]) },
+      userRole: { findMany: jest.fn().mockResolvedValue([{ role: { code: roleCode } }]) },
       $transaction: jest.fn(async (fn) => fn(prisma)),
     };
     const service = new EncountersService(prisma, {} as any, {} as any, {} as any, {} as any, {} as any, {} as any);
@@ -48,5 +48,12 @@ describe("INP.1A inpatient nursing authority", () => {
     expect(history.legacyCompatibility[0]).toMatchObject({ compatibility: "LEGACY_ER_NAMESPACE_READ_ONLY" });
     const ed = harness({ ...encounter, type: EncounterType.EMERGENCY });
     await expect(ed.service.saveInpatientNursingAssessment("fac-1", "enc-1", { status: "SAVED" }, "rn-1")).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it("keeps provider nursing review read-only", async () => {
+    const provider = harness(encounter, "PROVIDER");
+    await expect(provider.service.saveInpatientNursingAssessment("fac-1", "enc-1", { status: "SAVED" }, "provider-1"))
+      .rejects.toThrow("Clinical nursing assessment authority required");
+    expect(provider.events).toHaveLength(0);
   });
 });

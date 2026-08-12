@@ -10,6 +10,11 @@ const codedText = z.object({ code: text(80), note: text(1000).optional() }).stri
 /** Client-authored clinical content only. Identity and time are deliberately absent. */
 export const inpatientNursingAssessmentSaveSchema = z.object({
   status: z.enum(["DRAFT", "SAVED", "SIGNED", "FINAL"]),
+  assessmentType: z.enum(["INITIAL", "SHIFT", "REASSESSMENT", "FOCUSED"]).optional(),
+  /** Structured bedside findings: stable clinical codes only, never translations. */
+  structuredFindings: z.record(z.string().max(80), z.union([text(1000), z.number(), z.boolean(), z.array(text(80)).max(30)])).optional(),
+  sectionStatus: z.record(z.string().max(80), z.enum(["WNL", "ABNORMAL"])).optional(),
+  significantConcerns: z.array(text(80)).max(20).optional(),
   generalAppearance: codedText.optional(),
   mentalStatus: codedText.optional(),
   orientation: z.array(text(80)).max(12).optional(),
@@ -52,6 +57,8 @@ export type InpatientNursingAssessmentOverview = {
   respiratoryConcern: boolean;
   mobility: string | null;
   deviceLineConcern: boolean;
+  assessmentType: "INITIAL" | "SHIFT" | "REASSESSMENT" | "FOCUSED" | null;
+  significantConcerns: string[];
 };
 
 export function projectInpatientNursingAssessmentOverview(
@@ -69,6 +76,8 @@ export function projectInpatientNursingAssessmentOverview(
     respiratoryConcern: concern(value.respiratory?.code) || concern(value.airway?.code),
     mobility: value.mobility?.code ?? null,
     deviceLineConcern: (value.linesDrainsDevices?.length ?? 0) > 0 || (value.ivAccess?.length ?? 0) > 0,
+    assessmentType: value.assessmentType ?? null,
+    significantConcerns: value.significantConcerns ?? [],
   };
 }
 
