@@ -594,8 +594,9 @@ export function applyNurseAdmissionSignature(input: {
   });
   if (!gate.ok) return gate;
   const summary = computeAdmissionCompletionSummary(input.doc);
-  // Signature allowed when nursing has progressed; does not require every optional field.
-  if (summary.complete + summary.inProgress + summary.unable === 0) {
+  // Legal completion is distinct from merely authoring a draft. Optional sections must be
+  // explicitly marked not applicable; all remaining sections must be complete or unable.
+  if (!summary.allRequiredComplete) {
     return { ok: false, code: "INCOMPLETE_ADMISSION" };
   }
   const at = input.atIso ?? new Date().toISOString();
