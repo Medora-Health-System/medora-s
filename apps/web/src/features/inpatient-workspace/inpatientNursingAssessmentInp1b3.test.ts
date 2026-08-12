@@ -1,71 +1,47 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-const read = (p: string) => readFileSync(join(process.cwd(), "src", p), "utf8");
-describe("INP.1B.3 focused nursing assessment", () => {
-  const panel = read(
-    "features/inpatient-workspace/InpatientNursingAssessmentPanel.tsx",
-  );
-  const composition = read(
-    "features/inpatient-workspace/InpatientNursingAssessmentSection.tsx",
-  );
-  it("isolates ancillary and engineering workspaces", () => {
-    expect(composition).not.toMatch(
-      /RespiratoryTherapy|Rehabilitation|TeamExecution|EnterpriseNursingClinicalWorkspace/,
-    );
-    expect(composition).not.toMatch(
-      /D4B|EDOC|authoritative|projection|recommendation is not an order/i,
-    );
+const read = (path: string) => readFileSync(join(process.cwd(), "src", path), "utf8");
+
+describe("INP.1B.5 shared nursing documentation board", () => {
+  const panel = read("features/inpatient-workspace/InpatientNursingAssessmentPanel.tsx");
+  const board = read("features/clinical-documentation/NursingDocumentationBoard.tsx");
+  const composition = read("features/inpatient-workspace/InpatientNursingAssessmentSection.tsx");
+
+  it("mounts the shared board and removes the rejected tab presentation", () => {
+    expect(panel).toContain("<NursingDocumentationBoard");
+    expect(board).toContain('data-testid="nursing-documentation-board"');
+    expect(panel).not.toContain("setTab(");
+    expect(panel).not.toContain("assessment-section-");
+    expect(composition).toContain("<InpatientNursingAssessmentPanel");
   });
-  it("provides one focused navigation and every requested section", () => {
-    for (const id of [
-      "overview",
-      "systems",
-      "neurological",
-      "respiratory",
-      "cardiovascular",
-      "gastrointestinal",
-      "genitourinary",
-      "skinWounds",
-      "mobilityFallRisk",
-      "pain",
-      "devices",
-      "safety",
-      "intakeOutput",
-      "nutrition",
-      "education",
-      "handoff",
-      "history",
-    ])
-      expect(panel).toContain(`id: "${id}"`);
+  it("renders immutable saved columns and only edits the draft", () => {
+    expect(panel).toContain("history.map");
+    expect(board).toContain('column.id === "draft" && !readOnly');
+    expect(board).toContain("CURRENT · SAVED");
+    expect(board).toContain("DRAFT");
   });
-  it("never silently charts WNL and every select field has coded options", () => {
-    expect(panel).toContain("withinExpectedLimits");
-    expect(panel).toContain("sectionStatus: {}");
-    expect(panel).toContain("field.options.map");
-    expect(panel).toContain('<option value="">');
+  it("creates blank or copied unsaved reassessments without mutating history", () => {
+    expect(panel).toContain("emptyDraft()");
+    expect(panel).toContain("structuredFindings: { ...clinical.structuredFindings }");
+    expect(panel).toContain("Previous values copied into a new unsaved draft");
+    expect(panel).not.toMatch(/setHistory\([^)]*draft/);
   });
-  it("supports explicit copy, immutable saves, restore, change display and read-only history", () => {
-    expect(panel).toContain("beginReassessment(true)");
-    expect(panel).toContain('status: "DRAFT"');
+  it("uses only INP.1A authority and leaves ED persistence out", () => {
     expect(panel).toContain("/inpatient-nursing-assessments");
     expect(panel).toContain("/inpatient-nursing-assessment-events");
-    expect(panel).toContain("changed(");
-    expect(panel).toContain("readOnlyHistory");
+    expect(panel).not.toContain("erNursingReassessmentV1");
+    expect(panel).not.toContain("triage");
+    expect(panel).not.toContain("trauma");
   });
-  it("has matching EN/FR field and canonical-code catalogs", () => {
-    const en = read("i18n/messages/inpatientNursingAssessmentInp1b.en.ts");
-    const fr = read("i18n/messages/inpatientNursingAssessmentInp1b.fr.ts");
-    for (const key of [
-      "levelOfConsciousness",
-      "respiratoryEffort",
-      "fallRisk",
-      "handoffStatus",
-      "SEVERELY_LABORED",
-      "UNABLE_TO_ASSESS",
-    ]) {
-      expect(en).toContain(`${key}:`);
-      expect(fr).toContain(`${key}:`);
-    }
+  it("supports hourly columns, copied-value visibility and role-derived read-only mode", () => {
+    expect(board).toContain("+ Add column");
+    expect(board).toContain("copiedFieldIds.has");
+    expect(panel).toContain("readOnly={isLocked}");
+    expect(panel).toContain("RN or Admin authority");
+  });
+  it("contains professional complete bedside row labels and no internal release terminology", () => {
+    for (const label of ["Mental status", "Respiratory effort", "Peripheral perfusion", "Voiding / urinary status", "Wounds / pressure concern", "Lines / drains / devices", "Nutrition / hydration", "Nursing narrative"]) expect(panel).toContain(label);
+    expect(panel).not.toMatch(/D4A|D4B|EDOC|CurrentDouleur|Chute Risque|Lines dispositifs/);
   });
 });
