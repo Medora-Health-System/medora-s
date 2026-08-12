@@ -20,12 +20,13 @@ describe("INP.1B inpatient nursing UI isolation", () => {
     expect(panel).not.toContain("erNursingReassessmentV1");
   });
   it("charts canonical select values", () => {
-    expect(panel).toContain("value={o}");
-    expect(panel).toContain("setFinding");
+    expect(panel).toContain("options: choice(");
+    expect(panel).toContain("patchAssessment");
   });
   it("keeps assessment persistence focused and delegates other records", () => {
-    expect(panel).toContain("activeDevicesProjection");
-    expect(panel).toContain("ioProjection");
+    expect(panel).toContain("Lines / drains / devices");
+    expect(panel).toContain("Intake / output status");
+    expect(panel).not.toContain("EmergencyNursing");
   });
   it("has complete EN/FR assessment and reassessment catalogs", () => {
     expect(
