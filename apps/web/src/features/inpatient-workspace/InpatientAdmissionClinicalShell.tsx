@@ -602,30 +602,7 @@ export function InpatientAdmissionClinicalShell({
               </li>
             ))}
           </ul>
-          <details style={{ marginTop: 10 }}>
-            <summary style={{ fontSize: 12, cursor: "pointer", color: "#64748b" }}>
-              {t("inpatientD3e.admission.checklistTitle")} ({INPATIENT_ADMISSION_CLINICAL_SECTIONS.length})
-            </summary>
-            <ul style={{ margin: "8px 0 0", padding: 0, listStyle: "none" }}>
-              {INPATIENT_ADMISSION_CLINICAL_SECTIONS.map((section, idx) => (
-                <li key={section} style={{ marginBottom: 4 }}>
-                  <button
-                    type="button"
-                    onClick={() => goTo(section)}
-                    style={{
-                      ...sectionBtn,
-                      background: active === section ? "#ecfeff" : "#fff",
-                      borderColor: active === section ? "#0891b2" : "#e2e8f0",
-                    }}
-                  >
-                    <span>
-                      {idx + 1}. {t(`hospitalAdmissionD4a0.clinical.sections.${section}`)}
-                    </span>
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </details>
+          {/* Durable section identifiers remain internal. Clinicians navigate only the six stages. */}
           <div style={{ marginTop: 10 }}>
             <AdditionalClinicalDocumentationLauncher role="NURSING" encounterType="INPATIENT" compact />
           </div>

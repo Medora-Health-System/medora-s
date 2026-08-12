@@ -438,9 +438,11 @@ export function InpatientOverviewView({
           <p style={{ margin: "0 0 4px", fontSize: 13 }}>
             {t("inpatientOverviewD4a34.nursing.admission")}:{" "}
             <strong>
-              {p.nursing.admissionAssessmentComplete
+              {p.nursing.admissionAssessmentComplete === true
                 ? t("inpatientOverviewD4a34.nursing.complete")
-                : t("inpatientOverviewD4a34.nursing.incomplete")}
+                : p.nursing.admissionAssessmentComplete === false
+                  ? t("inpatientOverviewD4a34.nursing.inProgress")
+                  : t("inpatientOverviewD4a34.nursing.notStarted")}
             </strong>
           </p>
           <p style={{ margin: 0, fontSize: 13 }}>
@@ -451,7 +453,13 @@ export function InpatientOverviewView({
           </p>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
             <DeepLinkButton
-              label={t("inpatientOverviewD4a34.nursing.openAdmission")}
+              label={t(
+                p.nursing.admissionAssessmentComplete === true
+                  ? "inpatientOverviewD4a34.nursing.reviewAdmission"
+                  : p.nursing.admissionAssessmentComplete === false
+                    ? "inpatientOverviewD4a34.nursing.continueAdmission"
+                    : "inpatientOverviewD4a34.nursing.startAdmission"
+              )}
               onClick={() => onNavigateSection?.("admission")}
             />
             <DeepLinkButton
