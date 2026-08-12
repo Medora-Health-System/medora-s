@@ -21,13 +21,13 @@ describe("INP.1A inpatient nursing assessment authority", () => {
 
   it("provides one typed Overview/Summary/chart/print clinical-record projection", () => {
     const assessment = {
-      status: "SAVED" as const, version: 1 as const, sessionId: "s1", authoredAt: "2026-01-02T00:00:00.000Z",
+      status: "SAVED" as const, version: 1 as const, sessionId: "s1", authoredAt: "2026-01-02T00:05:00.000Z", clinicalEffectiveAt: "2026-01-02T00:00:00.000Z",
       authorUserId: "rn1", authorDisplayName: "Nurse One", authorRole: "RN" as const,
       pain: { score: 2 }, fallRisk: { level: "LOW" as const }, mentalStatus: { code: "ALERT" },
       respiratory: { code: "NORMAL" }, skinWounds: { code: "INTACT" }, mobility: { code: "INDEPENDENT" },
     };
     expect(projectInpatientNursingAssessmentOverview(assessment)).toMatchObject({ painScore: 2, mentalStatus: "ALERT", respiratoryConcern: false });
-    expect(adaptInpatientNursingAssessmentToClinicalRecord({ encounterId: "e", patientId: "p", facilityId: "f", assessment })).toMatchObject({ schemaId: INPATIENT_NURSING_ASSESSMENT_V1_KEY, occurredAt: assessment.authoredAt });
+    expect(adaptInpatientNursingAssessmentToClinicalRecord({ encounterId: "e", patientId: "p", facilityId: "f", assessment })).toMatchObject({ schemaId: INPATIENT_NURSING_ASSESSMENT_V1_KEY, occurredAt: assessment.clinicalEffectiveAt });
   });
 
   it.each(["medicalHistory", "surgicalHistory", "homeMedications", "tobacco", "alcohol", "substances", "socialHistory"])("allows only typed %s updates", (section) => {

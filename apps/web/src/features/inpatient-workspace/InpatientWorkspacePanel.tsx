@@ -36,6 +36,7 @@ import { InpatientAdmissionClinicalShell } from "./InpatientAdmissionClinicalShe
 import { InpatientProviderWorkspacePanel } from "./InpatientProviderWorkspacePanel";
 import { InpatientTechnicianTasksPanel } from "./InpatientTechnicianTasksPanel";
 import { InpatientNursingAssessmentSection } from "./InpatientNursingAssessmentSection";
+import { InpatientNursingOverviewCard } from "./InpatientNursingOverviewCard";
 import { EnterpriseInterdisciplinaryCarePlansD4b6 } from "@/features/clinical-documentation/EnterpriseInterdisciplinaryCarePlansD4b6";
 import { EnterpriseCaseManagementDischargePlanningD4b7 } from "@/features/clinical-documentation/EnterpriseCaseManagementDischargePlanningD4b7";
 import { EnterpriseProviderClinicalWorkspaceD4b8 } from "@/features/clinical-documentation/EnterpriseProviderClinicalWorkspaceD4b8";
@@ -166,6 +167,7 @@ export function InpatientWorkspacePanel({
       }
       return (
         <div data-testid="inpatient-panel-overview" style={{ display: "grid", gap: 12 }}>
+          <InpatientNursingOverviewCard encounterId={encounterId} facilityId={facilityId} onOpen={() => onNavigateSection?.("nursing")} />
           <InpatientProviderWorkspacePanel
             mode="overview"
             encounterId={encounterId}

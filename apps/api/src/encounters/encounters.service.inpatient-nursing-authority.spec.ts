@@ -56,4 +56,15 @@ describe("INP.1A inpatient nursing authority", () => {
       .rejects.toThrow("Clinical nursing assessment authority required");
     expect(provider.events).toHaveLength(0);
   });
+
+  it("preserves clinician effective time separately from the server audit time and validates chronology", async () => {
+    const h = harness();
+    const clinicalEffectiveAt = new Date(Date.now() - 60_000).toISOString();
+    const saved = await h.service.saveInpatientNursingAssessment("fac-1", "enc-1", { status: "SAVED", clinicalEffectiveAt }, "rn-1");
+    expect(saved.assessment.clinicalEffectiveAt).toBe(clinicalEffectiveAt);
+    expect(saved.assessment.authoredAt).not.toBe(clinicalEffectiveAt);
+    const future = new Date(Date.now() + 60 * 60_000).toISOString();
+    await expect(h.service.saveInpatientNursingAssessment("fac-1", "enc-1", { status: "SAVED", clinicalEffectiveAt: future }, "rn-1"))
+      .rejects.toThrow("Clinical documentation time");
+  });
 });

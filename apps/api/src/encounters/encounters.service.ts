@@ -336,7 +336,15 @@ export class EncountersService {
     if (!performer || !["RN", "ADMIN"].includes(performer.performerRoleTitle)) {
       throw new ForbiddenException("Clinical nursing assessment authority required");
     }
-    const authoredAt = new Date().toISOString();
+    const committedAt = new Date();
+    const authoredAt = committedAt.toISOString();
+    const clinicalEffectiveAt = clinical.clinicalEffectiveAt ?? authoredAt;
+    const effectiveTime = new Date(clinicalEffectiveAt);
+    const earliestPermitted = new Date(committedAt.getTime() - 30 * 24 * 60 * 60 * 1000);
+    const latestPermitted = new Date(committedAt.getTime() + 15 * 60 * 1000);
+    if (!Number.isFinite(effectiveTime.getTime()) || effectiveTime < earliestPermitted || effectiveTime > latestPermitted) {
+      throw new BadRequestException("Clinical documentation time must be within the previous 30 days and no more than 15 minutes in the future");
+    }
     const sessionId = crypto.randomUUID();
     const authorRole: InpatientNursingAssessmentV1["authorRole"] = performer.performerRoleTitle as "RN" | "ADMIN";
     const snapshot: InpatientNursingAssessmentV1 = {
@@ -344,6 +352,7 @@ export class EncountersService {
       version: 1 as const,
       sessionId,
       authoredAt,
+      clinicalEffectiveAt,
       authorUserId: actorUserId,
       authorDisplayName: performer.performerDisplayName,
       authorRole,

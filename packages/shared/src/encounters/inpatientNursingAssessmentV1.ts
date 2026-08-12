@@ -7,9 +7,11 @@ export const INPATIENT_NURSING_ASSESSMENT_INVALID_CARE_SETTING =
 const text = (max: number) => z.string().trim().max(max);
 const codedText = z.object({ code: text(80), note: text(1000).optional() }).strict();
 
-/** Client-authored clinical content only. Identity and time are deliberately absent. */
+/** Client-authored clinical content only. Identity and server audit time are deliberately absent. */
 export const inpatientNursingAssessmentSaveSchema = z.object({
   status: z.enum(["DRAFT", "SAVED", "SIGNED", "FINAL"]),
+  /** Clinician-selected clinical effective time. The API owns the separate audit timestamp. */
+  clinicalEffectiveAt: z.string().datetime({ offset: true }).optional(),
   assessmentType: z.enum(["INITIAL", "SHIFT", "REASSESSMENT", "FOCUSED"]).optional(),
   /** Structured bedside findings: stable clinical codes only, never translations. */
   structuredFindings: z.record(z.string().max(80), z.union([text(1000), z.number(), z.boolean(), z.array(text(80)).max(30)])).optional(),
@@ -41,6 +43,7 @@ export type InpatientNursingAssessmentV1 = InpatientNursingAssessmentSave & {
   version: 1;
   sessionId: string;
   authoredAt: string;
+  clinicalEffectiveAt: string;
   authorUserId: string;
   authorDisplayName: string;
   authorRole: "RN" | "PROVIDER" | "ADMIN";
@@ -67,7 +70,7 @@ export function projectInpatientNursingAssessmentOverview(
   const concern = (code?: string) => Boolean(code && !["NORMAL", "NONE", "INTACT", "PATENT"].includes(code.toUpperCase()));
   return {
     status: value.status,
-    lastAssessmentAt: value.authoredAt,
+    lastAssessmentAt: value.clinicalEffectiveAt ?? value.authoredAt,
     rn: { userId: value.authorUserId, displayName: value.authorDisplayName, role: value.authorRole },
     painScore: value.pain?.score ?? null,
     fallRisk: value.fallRisk?.level ?? null,
@@ -94,7 +97,7 @@ export type InpatientNursingAssessmentClinicalRecord = {
 export function adaptInpatientNursingAssessmentToClinicalRecord(input: {
   encounterId: string; patientId: string; facilityId: string; assessment: InpatientNursingAssessmentV1;
 }): InpatientNursingAssessmentClinicalRecord {
-  return { schemaId: INPATIENT_NURSING_ASSESSMENT_V1_KEY, ...input, occurredAt: input.assessment.authoredAt };
+  return { schemaId: INPATIENT_NURSING_ASSESSMENT_V1_KEY, ...input, occurredAt: input.assessment.clinicalEffectiveAt ?? input.assessment.authoredAt };
 }
 
 export const projectInpatientSummaryAssessment = adaptInpatientNursingAssessmentToClinicalRecord;
