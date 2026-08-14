@@ -284,6 +284,19 @@ export function EnterpriseClosedEncounterViewer({
               </Link>
             </p>
           ) : null}
+          {roleCodes.includes("PROVIDER") || roleCodes.includes("ADMIN") || roleCodes.includes("MEDORA_SUPER_ADMIN") ? (
+            <p style={{ margin: "8px 0 0", fontSize: 13 }}>
+              <a
+                href={`/api/backend/encounters/${encodeURIComponent(encounter.id)}/chart-export?format=html`}
+                target="_blank"
+                rel="noopener noreferrer"
+                data-testid="enterprise-closed-encounter-export"
+                style={{ color: "#2563eb", fontWeight: 600, textDecoration: "none" }}
+              >
+                {t("enterprisePatientMedicalRecordD4c8c.export.encounterRecord")}
+              </a>
+            </p>
+          ) : null}
         </section>
 
         <EnterpriseClosedEncounterClinicalRecord facilityId={facilityId} encounter={encounter} />

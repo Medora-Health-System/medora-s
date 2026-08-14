@@ -10573,6 +10573,40 @@ export default {
     backToPatient: "Back to patient chart",
   },
 
+  enterprisePatientMedicalRecordD4c8c: {
+    title: "Medical record",
+    subtitle:
+      "Longitudinal patient index. Open an encounter to view its authoritative clinical record. Closed encounters open in read-only mode.",
+    notDocumented: "Not documented",
+    careSetting: {
+      AMBULATORY: "Clinic Care",
+      ED: "Emergency",
+      URGENT_CARE: "Urgent Care",
+      OBSERVATION: "Observation",
+      INPATIENT: "Inpatient",
+      HOSPITAL: "Hospital",
+      DENTAL: "Dental",
+    },
+    encounters: {
+      title: "Encounters",
+      subtitle: "Encounter-scoped records. Closing an encounter locks clinical editing until an authorized reopen.",
+      colCareSetting: "Care setting",
+      colNurse: "Nurse",
+      colDisposition: "Disposition",
+      closedLock: "CLOSED",
+      closedAria: "Closed encounter",
+      openClosedRecord: "Open closed record",
+      openActiveWorkspace: "Open active workspace",
+    },
+    audit: {
+      adminLink: "Facility audit history",
+      adminHint: "Privileged security/audit trail (facility admin). Separate from the clinical medical record.",
+    },
+    export: {
+      encounterRecord: "Export encounter clinical record (HTML)",
+    },
+  },
+
   enterpriseClosedClinicalRecordD4c8b: {
     loadError: "Unable to load part of the clinical record.",
     notDocumented: "Not documented",

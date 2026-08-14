@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
-import { projectEncounterListLifecycle } from "./encounterListProjection";
+import { projectEncounterListLifecycle, projectPatientEncounterIndexRow } from "./encounterListProjection";
 
 describe("MEDUI.D4C.8.1 closed encounter navigation and lock projection", () => {
   it("derives CLOSED only from encounter.status, never dischargedAt", () => {
@@ -25,21 +25,26 @@ describe("MEDUI.D4C.8.1 closed encounter navigation and lock projection", () => 
     ).toBeNull();
   });
 
-  it("uses the single authoritative encounter route for open and closed encounters", () => {
+  it("uses the single authoritative encounter route for closed encounters", () => {
     expect(projectEncounterListLifecycle({ id: "open-id", status: "OPEN" }).href).toBe("/app/encounters/open-id");
     expect(projectEncounterListLifecycle({ id: "closed-id", status: "CLOSED" }).href).toBe("/app/encounters/closed-id");
+    expect(projectPatientEncounterIndexRow({ id: "closed-id", status: "CLOSED", type: "OUTPATIENT" }).href).toBe(
+      "/app/encounters/closed-id"
+    );
   });
 
   it("renders a persistent accessible lock independent of navigation permission", () => {
     const source = readFileSync(new URL("./PatientConsultationsTab.tsx", import.meta.url), "utf8");
-    expect(source).toContain('aria-label={t("patientConsultationsTab.closedEncounterLock")}');
-    expect(source).toContain("{lifecycle.isClosed ? (");
-    expect(source.indexOf("{lifecycle.isClosed ? (")).toBeLessThan(source.indexOf("{canOpenEncounterDetail ? ("));
+    expect(source).toContain('aria-label={t("enterprisePatientMedicalRecordD4c8c.encounters.closedAria")}');
+    expect(source).toContain("{indexRow.showClosedLock ? (");
+    expect(source.indexOf("{indexRow.showClosedLock ? (")).toBeLessThan(
+      source.indexOf("{canOpenEncounterDetail ? (")
+    );
   });
 
-  it("preserves open behavior and introduces no parallel record route", () => {
+  it("preserves closed enterprise route and introduces no parallel record route", () => {
     const source = readFileSync(new URL("./PatientConsultationsTab.tsx", import.meta.url), "utf8");
-    expect(source).toContain("href={lifecycle.href}");
+    expect(source).toContain("href={indexRow.href}");
     expect(source).not.toContain("/closed-chart");
     expect(source).not.toMatch(/["'`]\/record(?:[\/"'`?]|$)/);
   });
