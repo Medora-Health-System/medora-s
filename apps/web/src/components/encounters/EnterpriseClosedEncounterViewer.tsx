@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useMemo, useState, type ReactNode } from "react";
 import { EncounterDisplayMode, shouldShowEnterpriseReopenAction } from "@medora/shared";
 import { EnterpriseClosedEncounterBanner } from "@/components/encounters/EnterpriseClosedEncounterBanner";
+import { EnterpriseClosedEncounterClinicalRecord } from "@/components/encounters/EnterpriseClosedEncounterClinicalRecord";
 import { EnterpriseEncounterLifecycleTimeline } from "@/components/encounters/EnterpriseEncounterLifecycleTimeline";
 import { EnterpriseReopenEncounterAction } from "@/components/encounters/EnterpriseReopenEncounterAction";
 import { MEDORA_CARD_SHELL } from "@/components/medora-card/medoraCardTokens";
@@ -28,7 +29,21 @@ export type EnterpriseClosedEncounterViewerEncounter = {
   roomLabel?: string | null;
   visitReason?: string | null;
   chiefComplaint?: string | null;
+  triageAcuity?: string | null;
+  providerNote?: string | null;
+  treatmentPlan?: string | null;
+  nursingAssessment?: unknown;
+  dischargeSummaryJson?: unknown;
+  admissionSummaryJson?: unknown;
   providerDocumentationStatus?: string | null;
+  providerDocumentationSignedAt?: string | null;
+  providerDocumentationSignedByDisplayFr?: string | null;
+  providerAddenda?: Array<{
+    id: string;
+    text: string;
+    createdAt: string;
+    createdByDisplayFr?: string | null;
+  }>;
   physicianAssigned?: {
     id?: string;
     firstName?: string | null;
@@ -74,9 +89,8 @@ function displayName(
 }
 
 /**
- * MEDUI.D4C.8A — enterprise CLOSED_READ_ONLY shell.
+ * MEDUI.D4C.8A/8B — enterprise CLOSED_READ_ONLY shell + clinical record composition.
  * One authority for Clinic, ED (adapter), Observation, Hospital, Inpatient, future Dental.
- * Clinical domain composition beyond identity + lifecycle is deferred to D4C.8B.
  */
 export function EnterpriseClosedEncounterViewer({
   facilityId,
@@ -236,7 +250,7 @@ export function EnterpriseClosedEncounterViewer({
           </p>
         ) : null}
 
-        <section style={{ ...MEDORA_CARD_SHELL, padding: 16, marginBottom: 14 }}>
+        <section style={{ ...MEDORA_CARD_SHELL, padding: 16, marginBottom: 0 }}>
           <h1 style={{ margin: "0 0 4px", fontSize: 22, fontWeight: 700, color: "#0f172a" }}>
             {patientName}
           </h1>
@@ -260,17 +274,8 @@ export function EnterpriseClosedEncounterViewer({
               </div>
             ))}
           </dl>
-        </section>
-
-        <section style={{ ...MEDORA_CARD_SHELL, padding: 16 }}>
-          <h3 style={{ margin: "0 0 8px", fontSize: 15, fontWeight: 700, color: "#0f172a" }}>
-            {t("enterpriseClosedEncounterD4c8a.summary.title")}
-          </h3>
-          <p style={{ margin: 0, fontSize: 13, color: "#475569", lineHeight: 1.45 }}>
-            {t("enterpriseClosedEncounterD4c8a.summary.body")}
-          </p>
           {patient?.id ? (
-            <p style={{ margin: "10px 0 0", fontSize: 13 }}>
+            <p style={{ margin: "12px 0 0", fontSize: 13 }}>
               <Link
                 href={`/app/patients/${encodeURIComponent(patient.id)}`}
                 style={{ color: "#2563eb", fontWeight: 600, textDecoration: "none" }}
@@ -280,6 +285,8 @@ export function EnterpriseClosedEncounterViewer({
             </p>
           ) : null}
         </section>
+
+        <EnterpriseClosedEncounterClinicalRecord facilityId={facilityId} encounter={encounter} />
 
         {children}
 
