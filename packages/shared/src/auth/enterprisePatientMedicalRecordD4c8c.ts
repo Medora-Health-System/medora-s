@@ -12,6 +12,10 @@ import {
   resolveEnterpriseEncounterDisplayMode,
   type EncounterDisplayMode,
 } from "./enterpriseClosedEncounterViewerD4c8a.js";
+import {
+  enterpriseDentalEncounterWorkspacePath,
+  isDentalEncounterProjection,
+} from "./enterpriseDentalEncounterWorkspaceD5a3.js";
 import { resolveReopenWorkspaceTarget } from "./enterpriseEncounterLifecycleAuthorityD4c7k.js";
 
 export const D4C8C_CERTIFICATION_ID = "MEDUI.D4C.8C" as const;
@@ -37,6 +41,8 @@ export type EnterprisePatientEncounterIndexInput = {
   providerDocumentationStatus?: string | null;
   workflowState?: string | null;
   careSetting?: string | null;
+  nursingAssessment?: unknown;
+  admissionSummaryJson?: unknown;
 };
 
 export type EnterprisePatientEncounterIndexProjection = {
@@ -66,8 +72,15 @@ export function resolveEnterprisePatientEncounterIndexHref(
   const careHint = String(input.careSetting ?? "").trim().toUpperCase();
   const wf = String(input.workflowState ?? "").trim().toUpperCase();
 
-  if (careHint === "DENTAL" || careHint.includes("DENTAL") || type === "DENTAL") {
-    return `/app/dental?encounterId=${encodeURIComponent(input.id)}`;
+  if (
+    isDentalEncounterProjection({
+      type: input.type,
+      careSetting: input.careSetting,
+      nursingAssessment: input.nursingAssessment,
+      admissionSummaryJson: input.admissionSummaryJson,
+    })
+  ) {
+    return enterpriseDentalEncounterWorkspacePath(input.id);
   }
   if (type === "EMERGENCY" || type === "URGENT_CARE" || careHint === "ED" || careHint === "FSED") {
     return `/app/emergency/active/${encodeURIComponent(input.id)}`;

@@ -375,6 +375,8 @@ export function PatientConsultationsTab({
                     dischargedAt: encounter.dischargedAt,
                     providerDocumentationStatus: encounter.providerDocumentationStatus,
                     workflowState: encounter.workflowState,
+                    nursingAssessment: encounter.nursingAssessment,
+                    admissionSummaryJson: encounter.admissionSummaryJson,
                   });
                   const providerName = encounter.physicianAssigned
                     ? `${encounter.physicianAssigned.firstName ?? ""} ${encounter.physicianAssigned.lastName ?? ""}`.trim()

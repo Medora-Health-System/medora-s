@@ -34,10 +34,11 @@ describe("MEDUI.D5A.2 dental care web guards", () => {
     const workspace = read("src/features/dental-care/DentalCareActiveWorkspaceView.tsx");
     const shell = read("src/features/dental-care/DentalCareShell.tsx");
     expect(dash).toContain("DentalCareDashboardView");
-    expect(dash).toContain("projectDentalDashboardShellPlaceholders");
-    expect(workspace).toContain("noOdontogram");
+    expect(dash).toContain("/dental-care/worklist");
+    expect(workspace).toContain("dental-active-workspace");
     expect(shell).toContain("resolveDentalWorkspaceAccess");
     expect(shell).not.toMatch(/DentalPatient|OrthodonticCase\s*=/);
+    expect(dash).not.toMatch(/\bclass\s+DentalPatient\b|\bDentalPrescription\b/);
   });
 
   it("defines app routes under /app/dental", () => {
