@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   Injectable,
   NotFoundException,
@@ -13,13 +14,18 @@ import type {
   MedoraServiceLine,
 } from "@medora/shared";
 import {
+  FACILITY_CONFIGURATION_CONFLICT,
+  buildServiceLineDisablePreflight,
   mapBillingClassificationModeToSiteType,
   parseStoredFacilityServiceLines,
+  projectEnterpriseFacilityCapabilities,
   resolveFacilityServiceLines,
   getDefaultBillingClassificationModeForProfile,
   projectFacilityPrintIdentity,
   resolveFacilityCareProfile,
   resolveFacilityModuleCapabilitiesD4c1,
+  resolveDentalSpecialtiesFromCareProfile,
+  resolveEffectiveFacilityBillingWorkflow,
 } from "@medora/shared";
 import { PrismaService } from "../prisma/prisma.service";
 import { AuditAction, FacilityType, RoleCode } from "@prisma/client";
@@ -115,6 +121,10 @@ function mapFacilityRowForClient(row: {
   serviceLinesJson: unknown;
   facilityCareProfileJson?: unknown;
   timezone?: string;
+  country?: string | null;
+  updatedAt?: Date;
+  billingClassificationMode?: string | null;
+  billingSiteType?: string | null;
 }) {
   const serviceLines = resolveFacilityServiceLines({
     facilityType: row.facilityType,
@@ -136,6 +146,34 @@ function mapFacilityRowForClient(row: {
     facilityName: row.name,
     careProfileJson: row.facilityCareProfileJson,
   });
+  const enterpriseCapabilities = projectEnterpriseFacilityCapabilities({
+    facilityId: row.id,
+    facilityType: row.facilityType,
+    serviceLinesJson: row.serviceLinesJson,
+    careProfileJson: row.facilityCareProfileJson,
+    facilityCountry: row.country,
+    billing: {
+      billingClassificationMode:
+        (row.billingClassificationMode as
+          | "CLINIC_ONLY"
+          | "URGENT_CARE_ONLY"
+          | "EMERGENCY_ONLY"
+          | "HYBRID_UC_ED"
+          | "HOSPITAL_ENTERPRISE"
+          | null
+          | undefined) ?? null,
+      billingSiteType:
+        (row.billingSiteType as
+          | "CLINIC"
+          | "URGENT_CARE"
+          | "FREESTANDING_ER"
+          | "HYBRID"
+          | "HOSPITAL"
+          | null
+          | undefined) ?? null,
+    },
+    updatedAt: row.updatedAt ?? null,
+  });
   return {
     id: row.id,
     name: row.name,
@@ -148,8 +186,24 @@ function mapFacilityRowForClient(row: {
     moduleCapabilities: capabilities,
     printIdentity,
     facilityCareProfileJson: row.facilityCareProfileJson ?? null,
+    configurationUpdatedAt: row.updatedAt?.toISOString() ?? null,
+    enterpriseCapabilities,
   };
 }
+
+const FACILITY_LIST_SELECT = {
+  id: true,
+  name: true,
+  defaultLanguage: true,
+  facilityType: true,
+  serviceLinesJson: true,
+  facilityCareProfileJson: true,
+  timezone: true,
+  country: true,
+  updatedAt: true,
+  billingClassificationMode: true,
+  billingSiteType: true,
+} as const;
 
 @Injectable()
 export class AdminFacilitiesService {
@@ -311,7 +365,7 @@ export class AdminFacilitiesService {
     preauthorized = false,
   ) {
     if (!preauthorized) await this.assertCanManageFacilityBilling(actorUserId, facilityId);
-    return this.facilityBillingWorkflow.updateForFacility(facilityId, dto);
+    return this.facilityBillingWorkflow.updateForFacility(facilityId, dto, actorUserId);
   }
 
   /** MEDUI.AUTH.ROLE.2 — active clinical departments for admin user assignment UI. */
@@ -417,14 +471,8 @@ export class AdminFacilitiesService {
         .findMany({
           orderBy: { name: "asc" },
           select: {
-            id: true,
-            name: true,
+            ...FACILITY_LIST_SELECT,
             isActive: true,
-            defaultLanguage: true,
-            facilityType: true,
-            serviceLinesJson: true,
-            facilityCareProfileJson: true,
-            timezone: true,
           },
         })
         .then((rows) => rows.map((row) => mapFacilityRowForClient(row)));
@@ -434,15 +482,7 @@ export class AdminFacilitiesService {
         .findMany({
           where: { isActive: true },
           orderBy: { name: "asc" },
-          select: {
-            id: true,
-            name: true,
-            defaultLanguage: true,
-            facilityType: true,
-            serviceLinesJson: true,
-            facilityCareProfileJson: true,
-            timezone: true,
-          },
+          select: FACILITY_LIST_SELECT,
         })
         .then((rows) => rows.map((row) => mapFacilityRowForClient(row)));
     }
@@ -461,15 +501,7 @@ export class AdminFacilitiesService {
           id: { in: facilityIds },
         },
         orderBy: { name: "asc" },
-        select: {
-          id: true,
-          name: true,
-          defaultLanguage: true,
-          facilityType: true,
-          serviceLinesJson: true,
-          facilityCareProfileJson: true,
-          timezone: true,
-        },
+        select: FACILITY_LIST_SELECT,
       })
       .then((rows) => rows.map((row) => mapFacilityRowForClient(row)));
   }
@@ -494,10 +526,25 @@ export class AdminFacilitiesService {
         facilityCareProfileJson: true,
         timezone: true,
         country: true,
+        updatedAt: true,
+        billingClassificationMode: true,
+        billingSiteType: true,
       },
     });
     if (!existing) {
       throw new NotFoundException("Établissement introuvable.");
+    }
+
+    if (dto.expectedUpdatedAt) {
+      const currentIso = existing.updatedAt.toISOString();
+      if (currentIso !== dto.expectedUpdatedAt) {
+        throw new ConflictException({
+          code: FACILITY_CONFIGURATION_CONFLICT,
+          message:
+            "La configuration de l’établissement a été modifiée par un autre administrateur. Rechargez et réessayez.",
+          currentUpdatedAt: currentIso,
+        });
+      }
     }
 
     const nextType = dto.facilityType
@@ -505,7 +552,7 @@ export class AdminFacilitiesService {
       : existing.facilityType;
     const existingLines = parseStoredFacilityServiceLines(
       existing.serviceLinesJson,
-    );
+    ) ?? [];
     const nextServiceLines = resolveServiceLinesForCareConfig({
       facilityType: nextType,
       dto,
@@ -516,6 +563,9 @@ export class AdminFacilitiesService {
       nextType,
       nextServiceLines,
     );
+    const priorLines = [...existingLines];
+    const addedServiceLines = serialized.filter((l) => !priorLines.includes(l));
+    const removedServiceLines = priorLines.filter((l) => !serialized.includes(l));
     const careProfileJson = mergeCareProfileJson(
       existing.facilityCareProfileJson,
       dto,
@@ -526,30 +576,94 @@ export class AdminFacilitiesService {
       careProfileJson,
       serviceLines: serialized,
     });
+    const priorSpecialties = resolveDentalSpecialtiesFromCareProfile(
+      existing.facilityCareProfileJson,
+    );
+    const nextSpecialties = resolveDentalSpecialtiesFromCareProfile(careProfileJson);
     const nextCountry =
       dto.operationalAddress?.country?.trim() || dto.country?.trim() || null;
 
+    const billingBefore = resolveEffectiveFacilityBillingWorkflow({
+      billingClassificationMode: existing.billingClassificationMode as never,
+      billingSiteType: existing.billingSiteType as never,
+    });
+
+    if (removedServiceLines.length > 0 && dto.acknowledgeServiceLineDisable !== true) {
+      const preflight = [];
+      for (const line of removedServiceLines) {
+        const openEncounterCount = await this.countOpenEncountersForServiceLine(
+          id,
+          line,
+        );
+        const futureAppointmentCount =
+          line === "CLINIC" || line === "URGENT_CARE" || line === "DENTAL"
+            ? await this.prisma.appointment.count({
+                where: {
+                  facilityId: id,
+                  status: { in: ["SCHEDULED", "ARRIVED"] },
+                  scheduledStartAt: { gt: new Date() },
+                },
+              })
+            : 0;
+        const item = buildServiceLineDisablePreflight({
+          serviceLine: line,
+          openEncounterCount,
+          futureAppointmentCount,
+        });
+        if (item.acknowledgementRequired) preflight.push(item);
+      }
+      if (preflight.length > 0) {
+        throw new BadRequestException({
+          code: "FACILITY_SERVICE_LINE_DISABLE_ACK_REQUIRED",
+          message:
+            "Des dépendances opérationnelles existent. Confirmez la désactivation pour continuer.",
+          preflight,
+        });
+      }
+    }
+
+    const isPlatform = await this.isPlatformPrincipal(userId);
+
     const updated = await this.prisma.$transaction(async (tx) => {
-      const row = await tx.facility.update({
+      const data = {
+        facilityType: nextType,
+        serviceLinesJson: serialized,
+        facilityCareProfileJson: careProfileJson,
+        ...(dto.timezone != null && String(dto.timezone).trim()
+          ? { timezone: String(dto.timezone).trim() }
+          : {}),
+        ...(nextCountry ? { country: nextCountry } : {}),
+      };
+
+      if (dto.expectedUpdatedAt != null) {
+        const count = await tx.facility.updateMany({
+          where: { id, updatedAt: existing.updatedAt },
+          data,
+        });
+        if (count.count === 0) {
+          throw new ConflictException({
+            code: FACILITY_CONFIGURATION_CONFLICT,
+            message:
+              "La configuration de l’établissement a été modifiée par un autre administrateur. Rechargez et réessayez.",
+            currentUpdatedAt: existing.updatedAt.toISOString(),
+          });
+        }
+      } else {
+        await tx.facility.update({
+          where: { id },
+          data,
+        });
+      }
+
+      const row = await tx.facility.findUniqueOrThrow({
         where: { id },
-        data: {
-          facilityType: nextType,
-          serviceLinesJson: serialized,
-          facilityCareProfileJson: careProfileJson,
-          ...(dto.timezone != null && String(dto.timezone).trim()
-            ? { timezone: String(dto.timezone).trim() }
-            : {}),
-          ...(nextCountry ? { country: nextCountry } : {}),
-        },
-        select: {
-          id: true,
-          name: true,
-          defaultLanguage: true,
-          facilityType: true,
-          serviceLinesJson: true,
-          facilityCareProfileJson: true,
-          timezone: true,
-        },
+        select: FACILITY_LIST_SELECT,
+      });
+
+      const deptResult = await ensureFacilityServiceLineDepartments(tx, id, {
+        facilityType: row.facilityType,
+        serviceLines: serialized,
+        defaultLanguage: (row.defaultLanguage as "fr" | "en") ?? "fr",
       });
 
       await tx.auditLog.create({
@@ -560,15 +674,44 @@ export class AdminFacilitiesService {
           entityType: "Facility",
           entityId: id,
           metadata: {
-            event: "FACILITY_CARE_PROFILE_UPDATED",
+            event: "FACILITY_CONFIGURATION_UPDATED",
+            certificationId: "MEDUI.D4C.9",
+            actorIsPlatformPrincipal: isPlatform,
+            configurationVersion: row.updatedAt.toISOString(),
             facilityType: nextType,
             careProfile: profile,
-            serviceLines: serialized,
+            previousServiceLines: priorLines,
+            newServiceLines: serialized,
+            addedServiceLines,
+            removedServiceLines,
+            previousSpecialties: priorSpecialties,
+            newSpecialties: nextSpecialties,
+            previousOptionalModules: resolveFacilityModuleCapabilitiesD4c1({
+              facilityType: existing.facilityType,
+              careProfileJson: existing.facilityCareProfileJson,
+              serviceLines: priorLines,
+            }),
+            newOptionalModules: resolveFacilityModuleCapabilitiesD4c1({
+              facilityType: nextType,
+              careProfileJson: careProfileJson,
+              serviceLines: serialized,
+            }),
+            previousBillingWorkflowConfigured: billingBefore.configuredMode,
+            newBillingWorkflowConfigured: billingBefore.configuredMode,
+            previousBillingWorkflowEffective: billingBefore.effectiveMode,
+            newBillingWorkflowEffective: billingBefore.effectiveMode,
+            departmentProvisioning: deptResult,
             resetToTypeDefaults: dto.resetToTypeDefaults === true,
             operationalIdentityUpdated:
               dto.operationalAddress != null ||
               dto.printDisplayName != null ||
               dto.legalName != null,
+            ...(addedServiceLines.includes("DENTAL")
+              ? { enablementEvent: "FACILITY_SERVICE_LINE_ENABLED", enabledLine: "DENTAL" }
+              : {}),
+            ...(removedServiceLines.includes("DENTAL")
+              ? { disablementEvent: "FACILITY_SERVICE_LINE_DISABLED", disabledLine: "DENTAL" }
+              : {}),
           },
         },
       });
@@ -576,13 +719,48 @@ export class AdminFacilitiesService {
       return row;
     });
 
-    await ensureFacilityServiceLineDepartments(this.prisma, id, {
-      facilityType: updated.facilityType,
-      serviceLines: serialized,
-      defaultLanguage: (updated.defaultLanguage as "fr" | "en") ?? "fr",
-    });
-
     return mapFacilityRowForClient(updated);
+  }
+
+  /** Best-effort open-encounter counts for disable preflight (Dental tagged vs type). */
+  private async countOpenEncountersForServiceLine(
+    facilityId: string,
+    serviceLine: string,
+  ): Promise<number> {
+    if (serviceLine === "DENTAL") {
+      const open = await this.prisma.encounter.findMany({
+        where: { facilityId, status: "OPEN" },
+        select: { nursingAssessment: true, roomLabel: true },
+        take: 500,
+      });
+      return open.filter((e) => {
+        const na = e.nursingAssessment;
+        if (na && typeof na === "object" && !Array.isArray(na)) {
+          if ((na as Record<string, unknown>).dentalServiceLineV1 != null) return true;
+        }
+        return String(e.roomLabel ?? "").toUpperCase() === "DENTAL";
+      }).length;
+    }
+    if (serviceLine === "EMERGENCY") {
+      return this.prisma.encounter.count({
+        where: { facilityId, status: "OPEN", type: "EMERGENCY" },
+      });
+    }
+    if (serviceLine === "HOSPITAL" || serviceLine === "INPATIENT") {
+      return this.prisma.encounter.count({
+        where: { facilityId, status: "OPEN", type: "INPATIENT" },
+      });
+    }
+    if (serviceLine === "CLINIC" || serviceLine === "URGENT_CARE") {
+      return this.prisma.encounter.count({
+        where: {
+          facilityId,
+          status: "OPEN",
+          type: serviceLine === "URGENT_CARE" ? "URGENT_CARE" : "OUTPATIENT",
+        },
+      });
+    }
+    return 0;
   }
 
   async setFacilityLanguage(

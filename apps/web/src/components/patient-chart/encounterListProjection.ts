@@ -14,9 +14,12 @@ export function projectEncounterListLifecycle(encounter: EncounterListLifecycleP
   return projectEnterpriseEncounterListLifecycle(encounter);
 }
 
-/** MEDUI.D4C.8C: patient encounter index — OPEN workspace vs CLOSED enterprise record. */
-export function projectPatientEncounterIndexRow(encounter: EnterprisePatientEncounterIndexInput) {
-  return projectEnterprisePatientEncounterIndex(encounter);
+/** MEDUI.D4C.8C / D4C.9: patient encounter index — OPERATE vs HISTORICAL READ for Dental. */
+export function projectPatientEncounterIndexRow(
+  encounter: EnterprisePatientEncounterIndexInput,
+  options?: { dentalCareEnabled?: boolean }
+) {
+  return projectEnterprisePatientEncounterIndex(encounter, options);
 }
 
 export { patientPageMustNotEmbedClosedClinicalRecord, D4C8C_CERTIFICATION_ID };

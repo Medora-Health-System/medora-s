@@ -238,6 +238,13 @@ export const updateFacilityServiceConfigDtoSchema = z
     facilityType: medoraFacilityTypeSchema.optional(),
     serviceLines: z.array(medoraServiceLineSchema).optional().nullable(),
     resetToTypeDefaults: z.boolean().optional(),
+    /**
+     * MEDUI.D4C.9 — optimistic concurrency token (Facility.updatedAt ISO string).
+     * Stale writes return FACILITY_CONFIGURATION_CONFLICT.
+     */
+    expectedUpdatedAt: z.string().datetime().optional().nullable(),
+    /** Soft acknowledgement that Admin understands disable side-effects. */
+    acknowledgeServiceLineDisable: z.boolean().optional(),
   })
   .merge(facilityCareProfileFieldsSchema.partial())
   .superRefine((d, ctx) => {

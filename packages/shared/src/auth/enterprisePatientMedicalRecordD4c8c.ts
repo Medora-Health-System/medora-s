@@ -63,7 +63,8 @@ export type EnterprisePatientEncounterIndexProjection = {
  * SIGNED alone never forces closed lock or closed href.
  */
 export function resolveEnterprisePatientEncounterIndexHref(
-  input: EnterprisePatientEncounterIndexInput
+  input: EnterprisePatientEncounterIndexInput,
+  options?: { dentalCareEnabled?: boolean }
 ): string {
   if (isEnterpriseEncounterClosed(input.status)) {
     return enterpriseEncounterRecordPath(input.id);
@@ -72,15 +73,23 @@ export function resolveEnterprisePatientEncounterIndexHref(
   const careHint = String(input.careSetting ?? "").trim().toUpperCase();
   const wf = String(input.workflowState ?? "").trim().toUpperCase();
 
-  if (
-    isDentalEncounterProjection({
-      type: input.type,
-      careSetting: input.careSetting,
-      nursingAssessment: input.nursingAssessment,
-      admissionSummaryJson: input.admissionSummaryJson,
-    })
-  ) {
-    return enterpriseDentalEncounterWorkspacePath(input.id);
+  const isDental = isDentalEncounterProjection({
+    type: input.type,
+    careSetting: input.careSetting,
+    nursingAssessment: input.nursingAssessment,
+    admissionSummaryJson: input.admissionSummaryJson,
+  });
+  /**
+   * MEDUI.D4C.9 — OPERATE vs HISTORICAL READ:
+   * OPEN dental workspace only when Dental is currently enabled (operate).
+   * When Dental is disabled, OPEN dental still routes to the enterprise record
+   * for authorized historical read — never rewrite encounter provenance.
+   */
+  if (isDental) {
+    if (options?.dentalCareEnabled !== false) {
+      return enterpriseDentalEncounterWorkspacePath(input.id);
+    }
+    return enterpriseEncounterRecordPath(input.id);
   }
   if (type === "EMERGENCY" || type === "URGENT_CARE" || careHint === "ED" || careHint === "FSED") {
     return `/app/emergency/active/${encodeURIComponent(input.id)}`;
@@ -99,7 +108,8 @@ export function resolveEnterprisePatientEncounterIndexHref(
 }
 
 export function projectEnterprisePatientEncounterIndex(
-  encounter: EnterprisePatientEncounterIndexInput
+  encounter: EnterprisePatientEncounterIndexInput,
+  options?: { dentalCareEnabled?: boolean }
 ): EnterprisePatientEncounterIndexProjection {
   const lifecycle = projectEnterpriseEncounterListLifecycle(encounter);
   const workspace = resolveReopenWorkspaceTarget({
@@ -117,7 +127,7 @@ export function projectEnterprisePatientEncounterIndex(
     showClosedLock: lifecycle.isClosed,
     closedAt: lifecycle.closedAt,
     displayMode: resolveEnterpriseEncounterDisplayMode(encounter.status),
-    href: resolveEnterprisePatientEncounterIndexHref(encounter),
+    href: resolveEnterprisePatientEncounterIndexHref(encounter, options),
     careSetting: workspace.careSetting,
     workspaceHubTarget: workspace.workspaceTarget,
   };

@@ -15,6 +15,7 @@ import {
   workflowFormToPatch,
   type FacilityBillingWorkflowFormState,
 } from "@/components/admin/FacilityBillingWorkflowFields";
+import type { EffectiveFacilityBillingWorkflow } from "@medora/shared";
 import { normalizeUserFacingError } from "@/lib/userFacingError";
 import { useI18n } from "@/lib/i18n";
 
@@ -72,6 +73,10 @@ export function FacilityBillingIdentityModal({
   const [workflowForm, setWorkflowForm] = useState<FacilityBillingWorkflowFormState>(
     emptyFacilityBillingWorkflowForm(),
   );
+  const [effectiveProjection, setEffectiveProjection] = useState<Pick<
+    EffectiveFacilityBillingWorkflow,
+    "configuredMode" | "effectiveMode" | "source"
+  > | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -84,6 +89,16 @@ export function FacilityBillingIdentityModal({
         if (!cancelled) {
           setForm(payloadToForm(billing));
           setWorkflowForm(workflowFormFromPayload(workflow));
+          setEffectiveProjection({
+            configuredMode: workflow.configuredMode ?? null,
+            effectiveMode:
+              workflow.effectiveMode ?? workflow.billingClassificationMode ?? null,
+            source:
+              workflow.source ??
+              (workflow.configuredMode
+                ? "EXPLICIT"
+                : "INFERRED_FROM_EXISTING_PROFILE"),
+          });
         }
       })
       .catch((e: unknown) => {
@@ -98,7 +113,7 @@ export function FacilityBillingIdentityModal({
     return () => {
       cancelled = true;
     };
-  }, [headerFacilityId, targetFacilityId]);
+  }, [headerFacilityId, targetFacilityId, language, onError, t]);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -267,6 +282,8 @@ export function FacilityBillingIdentityModal({
               form={workflowForm}
               onChange={setWorkflowForm}
               disabled={submitting}
+              variant="edit"
+              effectiveProjection={effectiveProjection}
             />
             <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 16 }}>
               <button

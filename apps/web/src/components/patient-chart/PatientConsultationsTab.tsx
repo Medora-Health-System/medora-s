@@ -9,7 +9,8 @@ import { useI18n } from "@/lib/i18n";
 import { DEFAULT_ENCOUNTER_ROOM_LABEL, ENCOUNTER_ROOM_OPTIONS } from "@/lib/encounterRoomOptions";
 import { BillingClassificationBadgeReadOnly } from "@/components/encounters/BillingClassificationBadgeReadOnly";
 import { projectPatientEncounterIndexRow } from "./encounterListProjection";
-import { D4C8C_CERTIFICATION_ID } from "@medora/shared";
+import { D4C8C_CERTIFICATION_ID, resolveFacilityModuleCapabilitiesD4c1 } from "@medora/shared";
+import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 
 function EncounterLockIcon() {
   return (
@@ -230,6 +231,18 @@ export function PatientConsultationsTab({
 }) {
   const { t, language } = useI18n();
   const dateLocale = encounterBcp47(language);
+  const {
+    facilityType,
+    facilityServiceLines,
+    careProfileJson,
+    facilityCountry,
+  } = useFacilityAndRoles();
+  const dentalCareEnabled = resolveFacilityModuleCapabilitiesD4c1({
+    facilityType,
+    careProfileJson,
+    serviceLines: facilityServiceLines,
+    facilityCountry,
+  }).dentalCareEnabled;
   const [encounters, setEncounters] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -367,17 +380,20 @@ export function PatientConsultationsTab({
               </thead>
               <tbody>
                 {encounters.map((encounter) => {
-                  const indexRow = projectPatientEncounterIndexRow({
-                    id: encounter.id,
-                    status: encounter.status,
-                    type: encounter.type,
-                    closedAt: encounter.closedAt,
-                    dischargedAt: encounter.dischargedAt,
-                    providerDocumentationStatus: encounter.providerDocumentationStatus,
-                    workflowState: encounter.workflowState,
-                    nursingAssessment: encounter.nursingAssessment,
-                    admissionSummaryJson: encounter.admissionSummaryJson,
-                  });
+                  const indexRow = projectPatientEncounterIndexRow(
+                    {
+                      id: encounter.id,
+                      status: encounter.status,
+                      type: encounter.type,
+                      closedAt: encounter.closedAt,
+                      dischargedAt: encounter.dischargedAt,
+                      providerDocumentationStatus: encounter.providerDocumentationStatus,
+                      workflowState: encounter.workflowState,
+                      nursingAssessment: encounter.nursingAssessment,
+                      admissionSummaryJson: encounter.admissionSummaryJson,
+                    },
+                    { dentalCareEnabled }
+                  );
                   const providerName = encounter.physicianAssigned
                     ? `${encounter.physicianAssigned.firstName ?? ""} ${encounter.physicianAssigned.lastName ?? ""}`.trim()
                     : "";

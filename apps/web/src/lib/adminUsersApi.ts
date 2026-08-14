@@ -36,19 +36,33 @@ async function adminApiFetch(
   if (!response.ok) {
     const txt = await response.text().catch(() => "");
     let message = `La requête a échoué (${response.status}).`;
+    let code: string | undefined;
+    let body: Record<string, unknown> | undefined;
     try {
       if (txt.trim()) {
-        const json = JSON.parse(txt);
-        if (typeof json?.message === "string") message = json.message;
-        else if (Array.isArray(json?.message)) message = json.message.join(" ");
-        else if (typeof json?.error === "string") message = json.error;
+        const json = JSON.parse(txt) as Record<string, unknown>;
+        body = json;
+        const msg = json?.message;
+        if (typeof msg === "string") message = msg;
+        else if (Array.isArray(msg)) message = msg.join(" ");
+        else if (msg && typeof msg === "object" && !Array.isArray(msg)) {
+          const nested = msg as Record<string, unknown>;
+          if (typeof nested.message === "string") message = nested.message;
+          if (typeof nested.code === "string") code = nested.code;
+          body = { ...json, ...nested };
+        } else if (typeof json?.error === "string") message = json.error;
+        if (typeof json?.code === "string") code = json.code;
       }
     } catch {
       if (txt?.trim()) message = txt;
     }
-    throw new Error(
+    const err = new Error(
       normalizeUserFacingError(message, "fr") || `La requête a échoué (${response.status}).`
-    );
+    ) as Error & { code?: string; body?: Record<string, unknown>; status?: number };
+    err.code = code;
+    err.body = body;
+    err.status = response.status;
+    throw err;
   }
 
   return await parseApiResponse(response);
@@ -219,6 +233,10 @@ export type FacilityBillingWorkflowPayload = {
   allowUrgentCareToEmergencyUpgrade: boolean;
   requireUcToEdPatientAcknowledgement: boolean;
   showEncounterBillingControls: boolean;
+  /** MEDUI.D4C.9 — persisted vs effective projection */
+  configuredMode?: FacilityBillingClassificationMode | null;
+  effectiveMode?: FacilityBillingClassificationMode | null;
+  source?: "EXPLICIT" | "INFERRED_FROM_EXISTING_PROFILE" | "UNRESOLVED";
 };
 
 export async function fetchAdminFacilityBillingWorkflow(
@@ -279,7 +297,11 @@ export type AdminFacilityRow = {
   name: string;
   isActive?: boolean;
   defaultLanguage?: "fr" | "en";
+  facilityType?: string;
+  serviceLines?: string[];
   facilityCareProfileJson?: unknown;
+  configurationUpdatedAt?: string | null;
+  enterpriseCapabilities?: unknown;
   printIdentity?: {
     displayName?: string | null;
     address?: Record<string, string | null>;

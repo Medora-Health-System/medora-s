@@ -270,6 +270,12 @@ import {
   metadataEncounterId,
 } from "../patients/chart-audit-timeline.util";
 import { resolveDefaultBillingClassification } from "@medora/shared";
+import {
+  D5A3_DENTAL_SERVICE_LINE_TAG,
+  parseStoredFacilityServiceLines,
+  resolveEffectiveFacilityBillingWorkflow,
+  resolveFacilityModuleCapabilitiesD4c1,
+} from "@medora/shared";
 import { throwEncounterConcurrentModification } from "./encounter-concurrency.util";
 import {
   ADMISSION_ERROR_MESSAGES_FR,
@@ -444,10 +450,21 @@ export class EncountersService {
 
     const facility = await this.prisma.facility.findFirst({
       where: { id: facilityId },
-      select: { billingSiteType: true },
+      select: {
+        billingSiteType: true,
+        billingClassificationMode: true,
+        facilityType: true,
+        serviceLinesJson: true,
+        facilityCareProfileJson: true,
+        country: true,
+      },
+    });
+    const effectiveBilling = resolveEffectiveFacilityBillingWorkflow({
+      billingClassificationMode: facility?.billingClassificationMode as never,
+      billingSiteType: facility?.billingSiteType as never,
     });
     const billingClassification = resolveDefaultBillingClassification({
-      facilityBillingSiteType: facility?.billingSiteType ?? null,
+      facilityBillingSiteType: effectiveBilling.config.billingSiteType,
       encounterType: data.type,
     });
 
@@ -1072,6 +1089,11 @@ export class EncountersService {
         encounter,
         data.nursingAssessment,
         undefined
+      );
+      await this.assertDentalServiceLineOperateAllowed(
+        facilityId,
+        encounter.nursingAssessment,
+        data.nursingAssessment
       );
     }
 
@@ -3669,6 +3691,52 @@ export class EncountersService {
       if (codes.has(a)) return;
     }
     throw new ForbiddenException("Rôle insuffisant pour cette action.");
+  }
+
+  /**
+   * MEDUI.D4C.9 — CREATE/OPERATE dental tagging requires Dental service line enabled.
+   * Existing dental tags remain (historical); introducing the tag is gated.
+   */
+  private async assertDentalServiceLineOperateAllowed(
+    facilityId: string,
+    previousNursingAssessment: unknown,
+    nextNursingAssessment: unknown
+  ) {
+    const hadTag =
+      previousNursingAssessment &&
+      typeof previousNursingAssessment === "object" &&
+      !Array.isArray(previousNursingAssessment) &&
+      (previousNursingAssessment as Record<string, unknown>)[D5A3_DENTAL_SERVICE_LINE_TAG] != null;
+    const hasTag =
+      nextNursingAssessment &&
+      typeof nextNursingAssessment === "object" &&
+      !Array.isArray(nextNursingAssessment) &&
+      (nextNursingAssessment as Record<string, unknown>)[D5A3_DENTAL_SERVICE_LINE_TAG] != null;
+    if (!hasTag || hadTag) return;
+
+    const facility = await this.prisma.facility.findFirst({
+      where: { id: facilityId },
+      select: {
+        facilityType: true,
+        serviceLinesJson: true,
+        facilityCareProfileJson: true,
+        country: true,
+      },
+    });
+    if (!facility) throw new NotFoundException("Facility not found");
+    const caps = resolveFacilityModuleCapabilitiesD4c1({
+      facilityType: facility.facilityType,
+      careProfileJson: facility.facilityCareProfileJson,
+      serviceLines: parseStoredFacilityServiceLines(facility.serviceLinesJson) ?? [],
+      facilityCountry: facility.country,
+    });
+    if (!caps.dentalCareEnabled) {
+      throw new ForbiddenException({
+        code: "DENTAL_SERVICE_LINE_DISABLED",
+        message:
+          "Les soins dentaires ne sont pas activés pour cet établissement. Impossible de démarrer une rencontre dentaire.",
+      });
+    }
   }
 
   private async validateErHandoffReceivingNurseUserId(facilityId: string, nursingAssessment: unknown) {

@@ -1,8 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
   defaultAllowedClassificationsForMode,
+  defaultBillingWorkflowModeForFacilityType,
+  FACILITY_BILLING_WORKFLOW_UNRESOLVED,
   inferBillingClassificationModeFromSiteType,
+  isFacilityBillingWorkflowUnresolved,
   resolveAllowedTargetClassifications,
+  resolveEffectiveFacilityBillingWorkflow,
   resolveFacilityBillingWorkflowConfig,
   validateFacilityBillingTransition,
 } from "./facilityBillingWorkflow.js";
@@ -136,5 +140,40 @@ describe("facilityBillingWorkflow (19UCED.2)", () => {
       isAdmin: false,
     });
     expect(v.allowed).toBe(false);
+  });
+});
+
+describe("MEDUI.D4C.9 effective facility billing workflow", () => {
+  it("projects explicit mode", () => {
+    const eff = resolveEffectiveFacilityBillingWorkflow({
+      billingClassificationMode: "CLINIC_ONLY",
+      billingSiteType: "CLINIC",
+    });
+    expect(eff.source).toBe("EXPLICIT");
+    expect(eff.configuredMode).toBe("CLINIC_ONLY");
+    expect(eff.effectiveMode).toBe("CLINIC_ONLY");
+    expect(defaultBillingWorkflowModeForFacilityType("HOSPITAL")).toBe("HOSPITAL_ENTERPRISE");
+    expect(defaultBillingWorkflowModeForFacilityType("CLINIC")).toBe("CLINIC_ONLY");
+  });
+
+  it("infers LEGACY from billingSiteType", () => {
+    const eff = resolveEffectiveFacilityBillingWorkflow({
+      billingClassificationMode: null,
+      billingSiteType: "CLINIC",
+    });
+    expect(eff.source).toBe("INFERRED_FROM_EXISTING_PROFILE");
+    expect(eff.configuredMode).toBeNull();
+    expect(eff.effectiveMode).toBe("CLINIC_ONLY");
+  });
+
+  it("marks unresolved LEGACY when inference fails", () => {
+    const eff = resolveEffectiveFacilityBillingWorkflow({
+      billingClassificationMode: null,
+      billingSiteType: null,
+    });
+    expect(eff.source).toBe("UNRESOLVED");
+    expect(eff.effectiveMode).toBeNull();
+    expect(isFacilityBillingWorkflowUnresolved(eff)).toBe(true);
+    expect(FACILITY_BILLING_WORKFLOW_UNRESOLVED).toBe("FACILITY_BILLING_WORKFLOW_UNRESOLVED");
   });
 });

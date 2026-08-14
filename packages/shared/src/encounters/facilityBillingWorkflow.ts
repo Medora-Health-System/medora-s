@@ -140,6 +140,90 @@ export function resolveFacilityBillingWorkflowConfig(
   };
 }
 
+/** MEDUI.D4C.9 — typed failure when LEGACY/null cannot be inferred. */
+export const FACILITY_BILLING_WORKFLOW_UNRESOLVED = "FACILITY_BILLING_WORKFLOW_UNRESOLVED" as const;
+
+export type FacilityBillingWorkflowResolutionSource =
+  | "EXPLICIT"
+  | "INFERRED_FROM_EXISTING_PROFILE"
+  | "UNRESOLVED";
+
+export type EffectiveFacilityBillingWorkflow = {
+  /** Persisted mode; null means legacy/unset compatibility. */
+  configuredMode: FacilityBillingClassificationMode | null;
+  /** Deterministic operating mode after inference (null only when unresolved). */
+  effectiveMode: FacilityBillingClassificationMode | null;
+  source: FacilityBillingWorkflowResolutionSource;
+  config: FacilityBillingWorkflowConfig;
+};
+
+/**
+ * MEDUI.D4C.9 — explicit vs inferred billing workflow projection.
+ * Does not auto-persist inferred mode.
+ */
+export function resolveEffectiveFacilityBillingWorkflow(
+  input: FacilityBillingWorkflowInput
+): EffectiveFacilityBillingWorkflow {
+  const configuredMode = input.billingClassificationMode ?? null;
+  if (configuredMode) {
+    const config = resolveFacilityBillingWorkflowConfig({
+      ...input,
+      billingClassificationMode: configuredMode,
+    });
+    return {
+      configuredMode,
+      effectiveMode: configuredMode,
+      source: "EXPLICIT",
+      config,
+    };
+  }
+  const inferred = inferBillingClassificationModeFromSiteType(input.billingSiteType ?? null);
+  if (!inferred) {
+    const config = resolveFacilityBillingWorkflowConfig(input);
+    return {
+      configuredMode: null,
+      effectiveMode: null,
+      source: "UNRESOLVED",
+      config,
+    };
+  }
+  const config = resolveFacilityBillingWorkflowConfig({
+    ...input,
+    billingClassificationMode: inferred,
+  });
+  return {
+    configuredMode: null,
+    effectiveMode: inferred,
+    source: "INFERRED_FROM_EXISTING_PROFILE",
+    config,
+  };
+}
+
+export function isFacilityBillingWorkflowUnresolved(
+  projection: EffectiveFacilityBillingWorkflow
+): boolean {
+  return projection.source === "UNRESOLVED" || projection.effectiveMode == null;
+}
+
+/** MEDUI.D4C.9 — explicit defaults for new-facility onboarding (never LEGACY). */
+export function defaultBillingWorkflowModeForFacilityType(
+  facilityType: string | null | undefined
+): FacilityBillingClassificationMode {
+  switch (String(facilityType ?? "").toUpperCase()) {
+    case "URGENT_CARE":
+      return "URGENT_CARE_ONLY";
+    case "FREESTANDING_ER":
+      return "EMERGENCY_ONLY";
+    case "HYBRID":
+      return "HYBRID_UC_ED";
+    case "HOSPITAL":
+      return "HOSPITAL_ENTERPRISE";
+    case "CLINIC":
+    default:
+      return "CLINIC_ONLY";
+  }
+}
+
 /** Explicit operational transitions — never complaint/ESI driven. */
 const OPERATIONAL_TRANSITIONS: Partial<Record<BillingClassification, BillingClassification[]>> = {
   CLINIC_VISIT: ["URGENT_CARE", "EMERGENCY_DEPARTMENT"],
