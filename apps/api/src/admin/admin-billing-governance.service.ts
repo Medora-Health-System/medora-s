@@ -14,6 +14,7 @@ import {
   type BillingClassification,
   type BillingClassificationTransitionEntry,
   type BillingGovernanceAnalyticsInput,
+  resolveEffectiveFacilityBillingWorkflow,
 } from "@medora/shared";
 import { AuditAction, BillingSide, EncounterBillingFinalizationStatus, OrderStatus } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
@@ -536,6 +537,7 @@ export class AdminBillingGovernanceService {
   private evaluateFacilityConfiguration(
     facility: {
       billingClassificationMode: string | null;
+      billingSiteType?: string | null;
       showEncounterBillingControls: boolean;
       billingLegalName: string | null;
       billingAddressLine1: string | null;
@@ -545,7 +547,11 @@ export class AdminBillingGovernanceService {
     },
   ): BillingGovernanceAnalyticsInput["facilityConfiguration"] {
     const identityComplete = evaluateFacilityBillingIdentityComplete(facility);
-    const mode = facility.billingClassificationMode;
+    const effective = resolveEffectiveFacilityBillingWorkflow({
+      billingClassificationMode: facility.billingClassificationMode as never,
+      billingSiteType: (facility.billingSiteType ?? null) as never,
+    });
+    const mode = effective.effectiveMode;
     const isHybrid = mode === "HYBRID_UC_ED";
     const isHospital = mode === "HOSPITAL_ENTERPRISE";
 

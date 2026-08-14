@@ -10437,6 +10437,46 @@ export default {
       "The document facility differs from the selected facility. The header uses the document facility.",
   },
 
+  facilityServiceConfigD4c9: {
+    cardTitle: "Facility configuration",
+    cardIntro:
+      "Evolve service lines and specialties for this facility without creating a duplicate organization.",
+    openButton: "Services & configuration",
+    editTitle: "Facility services & configuration",
+    intro:
+      "Enable or disable supported service lines. Dental specialties appear when Dental is enabled. Historical clinical records are never deleted.",
+    disableWarning:
+      "Active encounters may exist for a disabled service. Disabling hides new operational navigation but does not delete historical records.",
+    ackDisable:
+      "I understand: operational navigation will be hidden; historical records remain accessible.",
+    preflightWarning:
+      "Open encounters or future appointments exist for this service. Confirm to continue.",
+    readinessTitle: "Configuration status",
+    readinessReady: "Enabled — ready",
+    readinessAttention: "Enabled — attention required",
+    readinessDisabled: "Disabled",
+    billingWorkflowLabel: "Billing workflow",
+    saveSuccess: "Facility services saved. Navigation will refresh for this session.",
+    errLoad: "Unable to load facility service configuration.",
+    errNotFound: "Facility not found.",
+    errSave: "Unable to save facility service configuration.",
+    errNoLines: "Select at least one service line.",
+    errDentalSpecialty: "Select at least one Dental specialty when Dental is enabled.",
+    errAckRequired: "Acknowledge service-line disable before saving.",
+    errConflict: "Configuration was changed by another administrator. Reload and try again.",
+    billingWorkflowCreateIntro:
+      "Choose an explicit billing workflow for this new facility. Legacy inference is not available during onboarding.",
+    configuredWorkflow: "Configured workflow",
+    effectiveWorkflow: "Effective workflow",
+    unresolvedWorkflow: "Unresolved",
+    sourceExplicit: "Source: explicit configuration",
+    sourceInferred: "Source: inferred from existing profile",
+    sourceUnresolved: "Source: unresolved — select an explicit workflow",
+    unresolvedHelp:
+      "Billing workflow could not be inferred from this facility's existing configuration. Select an explicit workflow.",
+    recommendExplicit: "Recommended: configure an explicit workflow instead of Legacy.",
+  },
+
   clinicCareD4c7j: {
     closure: {
       pendingTitle: "Clinical items are still pending",

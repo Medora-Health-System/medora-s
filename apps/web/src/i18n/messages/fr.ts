@@ -10439,6 +10439,47 @@ export default {
       "L’établissement du document diffère de l’établissement sélectionné. L’en-tête utilise l’établissement du document.",
   },
 
+  facilityServiceConfigD4c9: {
+    cardTitle: "Configuration de l’établissement",
+    cardIntro:
+      "Faites évoluer les lignes de service et spécialités de cet établissement sans créer d’organisation en double.",
+    openButton: "Services et configuration de l’établissement",
+    editTitle: "Services et configuration de l’établissement",
+    intro:
+      "Activez ou désactivez les lignes de service prises en charge. Les spécialités dentaires apparaissent lorsque les Soins dentaires sont activés. Les dossiers cliniques historiques ne sont jamais supprimés.",
+    disableWarning:
+      "Des rencontres actives peuvent exister pour un service désactivé. La désactivation masque la navigation opérationnelle future mais ne supprime pas les dossiers historiques.",
+    ackDisable:
+      "Je comprends : la navigation opérationnelle sera masquée ; les dossiers historiques restent accessibles.",
+    preflightWarning:
+      "Des rencontres ouvertes ou des rendez-vous à venir existent pour ce service. Confirmez pour continuer.",
+    readinessTitle: "État de configuration",
+    readinessReady: "Activé — prêt",
+    readinessAttention: "Activé — attention requise",
+    readinessDisabled: "Désactivé",
+    billingWorkflowLabel: "Parcours de facturation",
+    saveSuccess: "Services de l’établissement enregistrés. La navigation sera actualisée pour cette session.",
+    errLoad: "Impossible de charger la configuration des services.",
+    errNotFound: "Établissement introuvable.",
+    errSave: "Impossible d’enregistrer la configuration des services.",
+    errNoLines: "Sélectionnez au moins une ligne de service.",
+    errDentalSpecialty: "Sélectionnez au moins une spécialité dentaire lorsque les Soins dentaires sont activés.",
+    errAckRequired: "Confirmez la désactivation d’une ligne de service avant d’enregistrer.",
+    errConflict:
+      "La configuration a été modifiée par un autre administrateur. Rechargez la page et réessayez.",
+    billingWorkflowCreateIntro:
+      "Choisissez un parcours de facturation explicite pour ce nouvel établissement. L’inférence héritée n’est pas disponible à la création.",
+    configuredWorkflow: "Parcours configuré",
+    effectiveWorkflow: "Parcours effectif",
+    unresolvedWorkflow: "Non résolu",
+    sourceExplicit: "Source : configuration explicite",
+    sourceInferred: "Source : déduit de la configuration existante",
+    sourceUnresolved: "Source : non résolu — sélectionnez un parcours explicite",
+    unresolvedHelp:
+      "Le parcours de facturation ne peut pas être déduit de la configuration existante de cet établissement. Sélectionnez un parcours explicite.",
+    recommendExplicit: "Recommandé : configurer un parcours explicite plutôt que Héritage.",
+  },
+
   clinicCareD4c7j: {
     closure: {
       pendingTitle: "Des éléments cliniques sont encore en attente",

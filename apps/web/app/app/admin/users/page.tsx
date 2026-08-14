@@ -11,6 +11,7 @@ import {
 } from "@medora/shared";
 import { FacilityBillingIdentityModal } from "@/components/admin/FacilityBillingIdentityModal";
 import { FacilityOperationalIdentityModal } from "@/components/admin/FacilityOperationalIdentityModal";
+import { FacilityServiceConfigModal } from "@/components/admin/FacilityServiceConfigModal";
 import {
   FacilityOperationalIdentityFields,
   emptyFacilityOperationalIdentityForm,
@@ -98,6 +99,7 @@ export default function AdminUsersPage() {
   const [showAddFacility, setShowAddFacility] = useState(false);
   const [showFacilityBilling, setShowFacilityBilling] = useState(false);
   const [showFacilityOperationalIdentity, setShowFacilityOperationalIdentity] = useState(false);
+  const [showFacilityServiceConfig, setShowFacilityServiceConfig] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
   const [editUser, setEditUser] = useState<AdminUserRow | null>(null);
   const [profileUser, setProfileUser] = useState<AdminUserRow | null>(null);
@@ -251,44 +253,63 @@ export default function AdminUsersPage() {
             borderRadius: 8,
             maxWidth: 720,
           }}
+          data-testid="facility-configuration-card"
         >
-          <div style={{ fontWeight: 600, marginBottom: 6 }}>{t("adminUsers.facilityBillingCardTitle")}</div>
+          <div style={{ fontWeight: 600, marginBottom: 6 }}>{t("facilityServiceConfigD4c9.cardTitle")}</div>
           <p style={{ margin: "0 0 10px 0", fontSize: 13, color: "#475569" }}>
-            {t("adminUsers.facilityBillingCardIntro")}
+            {t("facilityServiceConfigD4c9.cardIntro")}
           </p>
-          <button
-            type="button"
-            onClick={() => setShowFacilityBilling(true)}
-            style={{
-              padding: "8px 14px",
-              border: "1px solid #1a1a1a",
-              borderRadius: 4,
-              background: "#fff",
-              fontWeight: 600,
-              cursor: "pointer",
-              fontSize: 13,
-              marginRight: 8,
-            }}
-          >
-            {t("adminUsers.openFacilityBilling")}
-          </button>
-          <button
-            type="button"
-            onClick={() => setShowFacilityOperationalIdentity(true)}
-            data-testid="open-facility-operational-identity"
-            style={{
-              padding: "8px 14px",
-              border: "1px solid #0d9488",
-              borderRadius: 4,
-              background: "#fff",
-              fontWeight: 600,
-              cursor: "pointer",
-              fontSize: 13,
-              color: "#0f766e",
-            }}
-          >
-            {t("facilityIdentityD4c7i.editButton")}
-          </button>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+            <button
+              type="button"
+              onClick={() => setShowFacilityServiceConfig(true)}
+              data-testid="open-facility-service-config"
+              style={{
+                padding: "8px 14px",
+                border: "1px solid #0f172a",
+                borderRadius: 4,
+                background: "#0f172a",
+                color: "#fff",
+                fontWeight: 600,
+                cursor: "pointer",
+                fontSize: 13,
+              }}
+            >
+              {t("facilityServiceConfigD4c9.openButton")}
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowFacilityOperationalIdentity(true)}
+              data-testid="open-facility-operational-identity"
+              style={{
+                padding: "8px 14px",
+                border: "1px solid #0d9488",
+                borderRadius: 4,
+                background: "#fff",
+                fontWeight: 600,
+                cursor: "pointer",
+                fontSize: 13,
+                color: "#0f766e",
+              }}
+            >
+              {t("facilityIdentityD4c7i.editButton")}
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowFacilityBilling(true)}
+              style={{
+                padding: "8px 14px",
+                border: "1px solid #1a1a1a",
+                borderRadius: 4,
+                background: "#fff",
+                fontWeight: 600,
+                cursor: "pointer",
+                fontSize: 13,
+              }}
+            >
+              {t("adminUsers.openFacilityBilling")}
+            </button>
+          </div>
         </div>
       ) : null}
 
@@ -574,6 +595,26 @@ export default function AdminUsersPage() {
         />
       ) : null}
 
+      {showFacilityServiceConfig && facilityId && isFacilityOrPlatformAdmin ? (
+        <FacilityServiceConfigModal
+          headerFacilityId={facilityId}
+          targetFacilityId={facilityId}
+          facilityDisplayName={currentFacilityName}
+          onClose={() => setShowFacilityServiceConfig(false)}
+          onSuccess={async () => {
+            setShowFacilityServiceConfig(false);
+            try {
+              await refreshFromMe();
+            } catch {
+              /* session may be unchanged */
+            }
+            window.dispatchEvent(new Event("medora:session-refresh"));
+            setToast({ message: t("facilityServiceConfigD4c9.saveSuccess"), ok: true });
+          }}
+          onError={(m) => setToast({ message: m, ok: false })}
+        />
+      ) : null}
+
       {resetPasswordUser && facilityId && isFacilityOrPlatformAdmin && (
         <ResetPasswordModal
           facilityId={facilityId}
@@ -754,7 +795,12 @@ function AddFacilityModal({
             onChange={setOperationalIdentity}
             disabled={submitting}
           />
-          <FacilityBillingWorkflowFields form={billingWorkflow} onChange={setBillingWorkflow} disabled={submitting} />
+          <FacilityBillingWorkflowFields
+            form={billingWorkflow}
+            onChange={setBillingWorkflow}
+            disabled={submitting}
+            variant="create"
+          />
           <label
             style={{
               display: "flex",

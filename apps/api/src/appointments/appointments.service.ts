@@ -14,8 +14,10 @@ import {
   canCheckInAppointment,
   canMarkAppointmentArrived,
   isHaitiPublicHealthJurisdiction,
+  parseStoredFacilityServiceLines,
   projectRegistrationCompleteness,
   resolveDefaultBillingClassification,
+  resolveEffectiveFacilityBillingWorkflow,
   resolveFacilityModuleCapabilitiesD4c1,
   type AmbulatoryWalkInCreateDto,
   type AppointmentCheckInDto,
@@ -156,12 +158,11 @@ export class AppointmentsService {
         serviceLinesJson: true,
         facilityCareProfileJson: true,
         billingSiteType: true,
+        billingClassificationMode: true,
       },
     });
     if (!facility) throw new NotFoundException("Facility not found");
-    const serviceLines = Array.isArray(facility.serviceLinesJson)
-      ? (facility.serviceLinesJson as string[])
-      : [];
+    const serviceLines = parseStoredFacilityServiceLines(facility.serviceLinesJson) ?? [];
     const caps = resolveFacilityModuleCapabilitiesD4c1({
       facilityType: facility.facilityType,
       careProfileJson: facility.facilityCareProfileJson,
@@ -173,6 +174,16 @@ export class AppointmentsService {
       throw new BadRequestException("Clinic Care / registration is not enabled for this facility");
     }
     return facility;
+  }
+
+  private resolveFacilityBillingSiteType(facility: {
+    billingClassificationMode: string | null;
+    billingSiteType: string | null;
+  }) {
+    return resolveEffectiveFacilityBillingWorkflow({
+      billingClassificationMode: facility.billingClassificationMode as never,
+      billingSiteType: facility.billingSiteType as never,
+    }).config.billingSiteType;
   }
 
   async create(
@@ -362,7 +373,7 @@ export class AppointmentsService {
       }
 
       const billingClassification = resolveDefaultBillingClassification({
-        facilityBillingSiteType: facility.billingSiteType ?? null,
+        facilityBillingSiteType: this.resolveFacilityBillingSiteType(facility),
         encounterType,
       });
       const chief =
@@ -466,7 +477,7 @@ export class AppointmentsService {
     }
 
     const billingClassification = resolveDefaultBillingClassification({
-      facilityBillingSiteType: facility.billingSiteType ?? null,
+      facilityBillingSiteType: this.resolveFacilityBillingSiteType(facility),
       encounterType,
     });
     const chief =

@@ -1,7 +1,7 @@
 import type { BillingClassification, FacilityBillingSiteType } from "@medora/shared";
 import {
   mapBillingClassificationModeToSiteType,
-  resolveFacilityBillingWorkflowConfig,
+  resolveEffectiveFacilityBillingWorkflow,
   type FacilityBillingClassificationMode,
   type FacilityBillingWorkflowConfig,
 } from "@medora/shared";
@@ -24,10 +24,14 @@ export const facilityBillingWorkflowSelect = {
   showEncounterBillingControls: true,
 } as const;
 
+/**
+ * MEDUI.D4C.9 — canonical effective billing workflow for all billing consumers.
+ * Never guess LEGACY independently; uses resolveEffectiveFacilityBillingWorkflow.
+ */
 export function facilityWorkflowConfigFromRow(
   row: FacilityBillingWorkflowRow | null | undefined,
 ): FacilityBillingWorkflowConfig {
-  return resolveFacilityBillingWorkflowConfig({
+  const effective = resolveEffectiveFacilityBillingWorkflow({
     billingClassificationMode: row?.billingClassificationMode ?? null,
     billingSiteType: row?.billingSiteType ?? null,
     allowedEncounterBillingClassifications: row?.allowedEncounterBillingClassifications ?? [],
@@ -35,6 +39,7 @@ export function facilityWorkflowConfigFromRow(
     requireUcToEdPatientAcknowledgement: row?.requireUcToEdPatientAcknowledgement,
     showEncounterBillingControls: row?.showEncounterBillingControls,
   });
+  return effective.config;
 }
 
 export function facilityWorkflowPatchData(dto: {
