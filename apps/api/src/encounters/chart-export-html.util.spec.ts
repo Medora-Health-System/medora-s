@@ -187,7 +187,7 @@ describe("chart-export-html.util", () => {
     expect(html).not.toMatch(/dataBase64/i);
   });
 
-  it("embeds JSON only inside escaped pre blocks", () => {
+  it("renders structured payloads as escaped human-readable fields (no raw script injection)", () => {
     const html = renderEncounterChartExportHtml(
       baseManifest({
         encounter: {
@@ -198,6 +198,8 @@ describe("chart-export-html.util", () => {
     );
     expect(html).not.toContain("</pre><script>");
     expect(html).toContain("&lt;/pre&gt;");
+    expect(html).toContain("structured-dl");
+    expect(html).not.toContain('<pre class="json-block">');
   });
 
   it("renders initial nursing documentation from structured manifest field", () => {

@@ -8,7 +8,8 @@ import { encounterBcp47, tEncounterStatus, tEncounterType } from "@/lib/encounte
 import { useI18n } from "@/lib/i18n";
 import { DEFAULT_ENCOUNTER_ROOM_LABEL, ENCOUNTER_ROOM_OPTIONS } from "@/lib/encounterRoomOptions";
 import { BillingClassificationBadgeReadOnly } from "@/components/encounters/BillingClassificationBadgeReadOnly";
-import { projectEncounterListLifecycle } from "./encounterListProjection";
+import { projectPatientEncounterIndexRow } from "./encounterListProjection";
+import { D4C8C_CERTIFICATION_ID } from "@medora/shared";
 
 function EncounterLockIcon() {
   return (
@@ -306,9 +307,14 @@ export function PatientConsultationsTab({
   }
 
   return (
-    <div>
+    <div data-testid="enterprise-patient-encounter-index" data-certification-id={D4C8C_CERTIFICATION_ID}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12, marginBottom: 16 }}>
-        <h3 style={{ margin: 0, fontSize: 18 }}>{t("encounters.title")}</h3>
+        <div>
+          <h3 style={{ margin: 0, fontSize: 18 }}>{t("enterprisePatientMedicalRecordD4c8c.encounters.title")}</h3>
+          <p style={{ margin: "4px 0 0", fontSize: 13, color: "#64748b" }}>
+            {t("enterprisePatientMedicalRecordD4c8c.encounters.subtitle")}
+          </p>
+        </div>
         <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
           <label style={{ fontSize: 14, display: "flex", alignItems: "center", gap: 6 }}>
             <input type="checkbox" checked={outpatientOnly} onChange={(e) => setOutpatientOnly(e.target.checked)} />
@@ -348,24 +354,58 @@ export function PatientConsultationsTab({
               <thead>
                 <tr style={{ backgroundColor: "#f5f5f5" }}>
                   <th style={{ padding: "10px 12px", textAlign: "left" }}>{t("patientConsultationsTab.colDate")}</th>
+                  <th style={{ padding: "10px 12px", textAlign: "left" }}>{t("enterprisePatientMedicalRecordD4c8c.encounters.colCareSetting")}</th>
                   <th style={{ padding: "10px 12px", textAlign: "left" }}>{t("patientConsultationsTab.colType")}</th>
                   <th style={{ padding: "10px 12px", textAlign: "left" }}>{t("patientConsultationsTab.colStatus")}</th>
                   <th style={{ padding: "10px 12px", textAlign: "left" }}>{t("patientConsultationsTab.colRoom")}</th>
                   <th style={{ padding: "10px 12px", textAlign: "left" }}>{t("encounters.assignedProvider")}</th>
+                  <th style={{ padding: "10px 12px", textAlign: "left" }}>{t("enterprisePatientMedicalRecordD4c8c.encounters.colNurse")}</th>
+                  <th style={{ padding: "10px 12px", textAlign: "left" }}>{t("enterprisePatientMedicalRecordD4c8c.encounters.colDisposition")}</th>
                   <th style={{ padding: "10px 12px", textAlign: "left" }}>{t("patientConsultationsTab.colReason")}</th>
                   <th style={{ padding: "10px 12px", textAlign: "left" }}>{t("patientConsultationsTab.colAction")}</th>
                 </tr>
               </thead>
               <tbody>
                 {encounters.map((encounter) => {
-                  const lifecycle = projectEncounterListLifecycle(encounter);
+                  const indexRow = projectPatientEncounterIndexRow({
+                    id: encounter.id,
+                    status: encounter.status,
+                    type: encounter.type,
+                    closedAt: encounter.closedAt,
+                    dischargedAt: encounter.dischargedAt,
+                    providerDocumentationStatus: encounter.providerDocumentationStatus,
+                    workflowState: encounter.workflowState,
+                  });
+                  const providerName = encounter.physicianAssigned
+                    ? `${encounter.physicianAssigned.firstName ?? ""} ${encounter.physicianAssigned.lastName ?? ""}`.trim()
+                    : "";
+                  const nurseName = encounter.nurseAssigned
+                    ? `${encounter.nurseAssigned.firstName ?? ""} ${encounter.nurseAssigned.lastName ?? ""}`.trim()
+                    : "";
+                  const disposition =
+                    (typeof encounter.disposition === "string" && encounter.disposition.trim()) ||
+                    (typeof encounter.dischargeStatus === "string" && encounter.dischargeStatus.trim()) ||
+                    "";
+                  const notDocumented = t("enterprisePatientMedicalRecordD4c8c.notDocumented");
                   return (
-                    <tr key={encounter.id} style={{ borderTop: "1px solid #eee" }}>
+                    <tr
+                      key={encounter.id}
+                      data-testid="enterprise-patient-encounter-row"
+                      data-encounter-status={String(encounter.status ?? "").toUpperCase()}
+                      data-closed={indexRow.isClosed ? "true" : "false"}
+                      style={{ borderTop: "1px solid #eee" }}
+                    >
                     <td style={{ padding: "10px 12px", whiteSpace: "nowrap" }}>
                       {new Date(encounter.createdAt).toLocaleString(dateLocale, {
                         dateStyle: "short",
                         timeStyle: "short",
                       })}
+                    </td>
+                    <td style={{ padding: "10px 12px" }}>
+                      {t(`enterprisePatientMedicalRecordD4c8c.careSetting.${indexRow.careSetting}`) ===
+                      `enterprisePatientMedicalRecordD4c8c.careSetting.${indexRow.careSetting}`
+                        ? indexRow.careSetting
+                        : t(`enterprisePatientMedicalRecordD4c8c.careSetting.${indexRow.careSetting}`)}
                     </td>
                     <td style={{ padding: "10px 12px" }}>{tEncounterType(t, encounter.type)}</td>
                     <td style={{ padding: "10px 12px" }}>
@@ -382,11 +422,12 @@ export function PatientConsultationsTab({
                           {tEncounterStatus(t, encounter.status)}
                         </span>
                         <BillingClassificationBadgeReadOnly classification={encounter.billingClassification} />
-                        {lifecycle.isClosed ? (
+                        {indexRow.showClosedLock ? (
                           <span
                             role="status"
-                            aria-label={t("patientConsultationsTab.closedEncounterLock")}
-                            title={t("patientConsultationsTab.closedEncounterLock")}
+                            aria-label={t("enterprisePatientMedicalRecordD4c8c.encounters.closedAria")}
+                            title={t("enterprisePatientMedicalRecordD4c8c.encounters.closedLock")}
+                            data-testid="enterprise-patient-encounter-closed-lock"
                             style={{
                               display: "inline-flex",
                               alignItems: "center",
@@ -401,15 +442,15 @@ export function PatientConsultationsTab({
                             }}
                           >
                             <EncounterLockIcon />
-                            <span>{t("patientConsultationsTab.closedEncounterLock")}</span>
+                            <span>{t("enterprisePatientMedicalRecordD4c8c.encounters.closedLock")}</span>
                           </span>
                         ) : null}
                       </div>
-                      {lifecycle.closedAt ? (
+                      {indexRow.closedAt ? (
                         <div style={{ marginTop: 5, color: "#64748b", fontSize: 12 }}>
                           {t("patientConsultationsTab.closedAt").replace(
                             "{datetime}",
-                            new Date(lifecycle.closedAt).toLocaleString(dateLocale, {
+                            new Date(indexRow.closedAt).toLocaleString(dateLocale, {
                               dateStyle: "short",
                               timeStyle: "short",
                             })
@@ -417,20 +458,24 @@ export function PatientConsultationsTab({
                         </div>
                       ) : null}
                     </td>
-                    <td style={{ padding: "10px 12px" }}>{encounter.roomLabel?.trim() || t("common.dash")}</td>
                     <td style={{ padding: "10px 12px" }}>
-                      {encounter.physicianAssigned
-                        ? `${encounter.physicianAssigned.firstName ?? ""} ${encounter.physicianAssigned.lastName ?? ""}`.trim() ||
-                          t("common.dash")
-                        : t("common.dash")}
+                      {encounter.roomLabel?.trim() || notDocumented}
                     </td>
+                    <td style={{ padding: "10px 12px" }}>{providerName || notDocumented}</td>
+                    <td style={{ padding: "10px 12px" }}>{nurseName || notDocumented}</td>
+                    <td style={{ padding: "10px 12px" }}>{disposition || notDocumented}</td>
                     <td style={{ padding: "10px 12px", maxWidth: 280 }}>
-                      {encounter.visitReason || encounter.chiefComplaint || t("common.dash")}
+                      {encounter.visitReason || encounter.chiefComplaint || notDocumented}
                     </td>
                     <td style={{ padding: "10px 12px" }}>
                       {canOpenEncounterDetail ? (
                         <Link
-                          href={lifecycle.href}
+                          href={indexRow.href}
+                          data-testid={
+                            indexRow.isClosed
+                              ? "enterprise-patient-open-closed-encounter"
+                              : "enterprise-patient-open-active-encounter"
+                          }
                           style={{
                             display: "inline-block",
                             padding: "6px 12px",
@@ -442,7 +487,9 @@ export function PatientConsultationsTab({
                             fontWeight: 600,
                           }}
                         >
-                          {t("patientConsultationsTab.openEncounter")}
+                          {indexRow.isClosed
+                            ? t("enterprisePatientMedicalRecordD4c8c.encounters.openClosedRecord")
+                            : t("enterprisePatientMedicalRecordD4c8c.encounters.openActiveWorkspace")}
                         </Link>
                       ) : (
                         <span style={{ fontSize: 12, color: "#9e9e9e" }}>{t("common.dash")}</span>

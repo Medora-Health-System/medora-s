@@ -1,9 +1,9 @@
 /**
- * Phase 5E — Server-side HTML rendering for the encounter chart export manifest.
+ * Phase 5E / MEDUI.D4C.8C — Server-side HTML rendering for the encounter chart export manifest.
  *
  * Pure string composition from `ChartExportManifest` only (same data path as JSON).
  * No client JavaScript, no external assets, no PDF. All dynamic text is HTML-escaped.
- * JSON payloads are shown inside `<pre>` only after `JSON.stringify` + `escapeHtml`.
+ * Structured clinical payloads render as human-readable key/value lists (not raw JSON dumps).
  * Attachment rows list filename / mime / size only (manifest never carries base64).
  */
 
@@ -94,16 +94,58 @@ const PROCEDURE_EXPORT_LABELS = {
 
 export type ChartExportHtmlLocale = keyof typeof PROCEDURE_EXPORT_LABELS;
 
-function safeJsonStringify(value: unknown): string {
-  try {
-    return JSON.stringify(value, null, 2);
-  } catch {
-    return "[unserializable]";
+function formatHumanScalar(value: unknown): string {
+  if (value == null) return "—";
+  if (typeof value === "boolean") return value ? "Yes" : "No";
+  if (typeof value === "number") return Number.isFinite(value) ? String(value) : "—";
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    return trimmed || "—";
   }
+  return "—";
 }
 
+/** Human-readable projection of structured export payloads (D4C.8C — no raw JSON UX). */
+function humanReadableStructuredBlock(value: unknown, depth = 0): string {
+  if (value == null) return `<p class="muted">${esc(NO_DATA)}</p>`;
+  if (typeof value !== "object") {
+    return `<p>${esc(formatHumanScalar(value))}</p>`;
+  }
+  if (depth >= 4) {
+    return `<p class="muted">${esc("Additional nested details omitted")}</p>`;
+  }
+  if (Array.isArray(value)) {
+    if (value.length === 0) return `<p class="muted">${esc(NO_DATA)}</p>`;
+    return `<ul class="structured-list">${value
+      .map((item) => {
+        if (item != null && typeof item === "object") {
+          return `<li>${humanReadableStructuredBlock(item, depth + 1)}</li>`;
+        }
+        return `<li>${esc(formatHumanScalar(item))}</li>`;
+      })
+      .join("")}</ul>`;
+  }
+  const entries = Object.entries(value as Record<string, unknown>).filter(
+    ([, v]) => v !== undefined && v !== null && v !== ""
+  );
+  if (entries.length === 0) return `<p class="muted">${esc(NO_DATA)}</p>`;
+  return `<dl class="structured-dl">${entries
+    .map(([key, v]) => {
+      const label = key
+        .replace(/([a-z])([A-Z])/g, "$1 $2")
+        .replace(/_/g, " ")
+        .replace(/\b\w/g, (c) => c.toUpperCase());
+      if (v != null && typeof v === "object") {
+        return `<dt>${esc(label)}</dt><dd>${humanReadableStructuredBlock(v, depth + 1)}</dd>`;
+      }
+      return `<dt>${esc(label)}</dt><dd>${esc(formatHumanScalar(v))}</dd>`;
+    })
+    .join("")}</dl>`;
+}
+
+/** @deprecated Prefer humanReadableStructuredBlock — kept for tests that assert absence of json-block. */
 function jsonPreBlock(value: unknown): string {
-  return `<pre class="json-block">${esc(safeJsonStringify(value))}</pre>`;
+  return humanReadableStructuredBlock(value);
 }
 
 function renderProcedureExportEntry(
@@ -344,12 +386,12 @@ export function renderEncounterChartExportHtml(
     ${nursingDocumentationHtml(enc.nursingDocumentation)}
     <h3>Clinical timeline</h3>
     ${edClinicalTimelineHtml(manifest.edClinicalTimeline ?? null)}
-    <h3>Nursing assessment / structured JSON</h3>
-    ${enc.nursingAssessment != null ? jsonPreBlock(enc.nursingAssessment) : `<p class="muted">${esc(NO_DATA)}</p>`}
-    <h3>Discharge summary JSON</h3>
-    ${enc.dischargeSummaryJson != null ? jsonPreBlock(enc.dischargeSummaryJson) : `<p class="muted">${esc(NO_DATA)}</p>`}
-    <h3>Admission summary JSON</h3>
-    ${enc.admissionSummaryJson != null ? jsonPreBlock(enc.admissionSummaryJson) : `<p class="muted">${esc(NO_DATA)}</p>`}
+    <h3>Nursing assessment</h3>
+    ${enc.nursingAssessment != null ? humanReadableStructuredBlock(enc.nursingAssessment) : `<p class="muted">${esc(NO_DATA)}</p>`}
+    <h3>Discharge summary</h3>
+    ${enc.dischargeSummaryJson != null ? humanReadableStructuredBlock(enc.dischargeSummaryJson) : `<p class="muted">${esc(NO_DATA)}</p>`}
+    <h3>Admission summary</h3>
+    ${enc.admissionSummaryJson != null ? humanReadableStructuredBlock(enc.admissionSummaryJson) : `<p class="muted">${esc(NO_DATA)}</p>`}
     <h3>Provider addenda</h3>
     ${
       enc.providerAddenda.length === 0
@@ -691,6 +733,10 @@ export function renderEncounterChartExportHtml(
     th,td{border:1px solid #cbd5e1;padding:6px 8px;text-align:left;vertical-align:top;}
     th{background:#f8fafc;}
     .json-block,.pre-text{white-space:pre-wrap;word-break:break-word;background:#f8fafc;border:1px solid #e2e8f0;padding:10px;font-size:11px;margin:6px 0;}
+    .structured-dl{margin:6px 0;font-size:12px;}
+    .structured-dl dt{font-weight:600;color:#334155;margin-top:6px;}
+    .structured-dl dd{margin:2px 0 0 12px;color:#0f172a;}
+    .structured-list{margin:4px 0 4px 18px;}
     .note-block{border-left:3px solid #0f766e;padding-left:10px;margin:10px 0 14px;}
     .note-section{margin:8px 0;}
     .order{border:1px solid #e2e8f0;padding:10px;margin:10px 0;border-radius:6px;}

@@ -10576,6 +10576,42 @@ export default {
     backToPatient: "Retour à la fiche patient",
   },
 
+  enterprisePatientMedicalRecordD4c8c: {
+    title: "Dossier médical",
+    subtitle:
+      "Index longitudinal du patient. Ouvrez une rencontre pour consulter son dossier clinique autoritatif. Les rencontres fermées s’ouvrent en lecture seule.",
+    notDocumented: "Non documenté",
+    careSetting: {
+      AMBULATORY: "Soins de clinique",
+      ED: "Urgences",
+      URGENT_CARE: "Soins urgents",
+      OBSERVATION: "Observation",
+      INPATIENT: "Hospitalisation",
+      HOSPITAL: "Hôpital",
+      DENTAL: "Dentaire",
+    },
+    encounters: {
+      title: "Rencontres",
+      subtitle:
+        "Dossiers liés à chaque rencontre. La fermeture verrouille la saisie clinique jusqu’à une réouverture autorisée.",
+      colCareSetting: "Cadre de soins",
+      colNurse: "Infirmier(ère)",
+      colDisposition: "Disposition",
+      closedLock: "FERMÉE",
+      closedAria: "Rencontre fermée",
+      openClosedRecord: "Ouvrir le dossier fermé",
+      openActiveWorkspace: "Ouvrir l’espace actif",
+    },
+    audit: {
+      adminLink: "Historique d’audit de l’établissement",
+      adminHint:
+        "Journal d’audit / sécurité privilégié (admin établissement). Distinct du dossier médical clinique.",
+    },
+    export: {
+      encounterRecord: "Exporter le dossier clinique de la rencontre (HTML)",
+    },
+  },
+
   enterpriseClosedClinicalRecordD4c8b: {
     loadError: "Impossible de charger une partie du dossier clinique.",
     notDocumented: "Non documenté",

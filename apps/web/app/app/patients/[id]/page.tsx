@@ -19,6 +19,7 @@ import {
   CreateFollowUpModal,
   computeHeaderVitalsLine,
 } from "@/components/patient-chart";
+import { EnterprisePatientMedicalRecord } from "@/components/patient-chart/EnterprisePatientMedicalRecord";
 import {
   PatientAuditTimelineTabContent,
   PatientOrdersTabContent,
@@ -414,6 +415,7 @@ export default function PatientDetailPage() {
 
   return (
     <div style={{ maxWidth: 1200, margin: "0 auto", padding: "0 8px 32px" }}>
+      <EnterprisePatientMedicalRecord patientId={patientId} roleCodes={roles}>
       <div style={{ marginBottom: 14 }}>
         <PatientHeaderCard
           patient={patient}
@@ -627,6 +629,7 @@ export default function PatientDetailPage() {
         />
       )}
 
+      </EnterprisePatientMedicalRecord>
     </div>
   );
 }
