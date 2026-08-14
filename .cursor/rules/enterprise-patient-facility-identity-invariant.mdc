@@ -1,0 +1,51 @@
+---
+description: Permanent Medora invariant — one facility, one registration, one patient/MRN/medical record; service lines are capabilities under that facility, never parallel identities.
+alwaysApply: true
+---
+
+# Medora enterprise patient & facility identity invariant
+
+Permanent architectural contract for **all** current and future service lines.
+
+```
+ONE FACILITY
+  → ONE REGISTRATION ENGINE
+  → ONE PATIENT / MRN AUTHORITY
+  → ONE MEDICAL RECORD
+  → MANY SERVICE LINES
+```
+
+A **service line** is a capability/workspace under the existing facility. It is **never** a separate patient identity or registration universe.
+
+Service lines include (non-exhaustive): Clinic, Dental, Emergency, Hospital, Observation, Inpatient, Laboratory, Radiology, Pharmacy, Urgent Care, Behavioral Health, Pediatrics, future specialties.
+
+## MUST
+
+1. **Same `facilityId`** when enabling new service lines — never clone the organization.
+2. **Same enterprise Registration** for every service line; a registered patient is discoverable by any authorized line in that facility.
+3. **Same `Patient` authority** — no `DentalPatient` / `ClinicPatient` / `HospitalPatient` / `EmergencyPatient`.
+4. **Same MRN** — no second MRN because the patient later receives Dental, Clinic, ED, Hospital, etc.
+5. **Enterprise patient search** in every authorized service-line workspace — do **not** limit search to patients who already have an encounter in that line (e.g. Clinic-registered, never-seen-in-Dental → still searchable from Dental).
+6. **Enterprise Encounter** + service-line context (e.g. Dental tag) — never `DentalEncounter` as a parallel identity.
+7. **One longitudinal Patient Medical Record** holding Clinic / Dental / ED / Hospital encounters under the same patient.
+8. **Historical integrity** — enable/disable service lines must not rewrite patient identity, MRN, encounters, documents, orders, results, billing, odontogram findings, closed charts, or audit history.
+9. **Department rows** (e.g. `DepartmentCode.DENTAL`) are operational routing under the same facility — not a new patient/facility authority.
+10. **Specialties** (e.g. Orthodontics under DENTAL) are configuration under the service line — not separate facilities or patients.
+11. **Billing** may use service-line context for classification/reporting — never a separate patient identity.
+12. **Audit** attributes activity to same `facilityId`, `patientId`, `encounterId`, service-line context, actor, timestamp.
+
+## STOP — architectural review required
+
+Do **not** implement without review:
+
+`DentalPatient` · `DentalRegistration` · `DentalMRN` · `DentalFacility` · `ClinicPatient` · `HospitalPatient` · `EmergencyPatient` · service-line-specific patient table · service-line-specific registration engine · `ClinicFacility` / `HospitalFacility` clones for a new service
+
+## Dental-specific
+
+Dental discovery uses the **enterprise Patient** authority (after normal search threshold + facility auth). A prior Dental encounter is **not** required to appear in Dental search.
+
+## Certification (every new service-line milestone)
+
+Prove: same `facilityId` · same `patientId` · same MRN · shared Registration · shared Patient search · shared Medical Record · enterprise Encounter reuse · no patient duplication · no facility cloning.
+
+**Contract:** ONE PATIENT · ONE REGISTRATION · ONE MRN · ONE MEDICAL RECORD · ONE FACILITY · MANY SERVICE LINES.
