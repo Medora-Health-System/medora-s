@@ -17,6 +17,7 @@ import {
   getDefaultClinicCareAmbulatoryWorkspaceSection,
   getVisibleClinicCareAmbulatoryWorkspaceSections,
   isAmbulatoryEnterpriseCloseTarget,
+  isEnterpriseEncounterClosed,
   parseClinicCareAmbulatoryWorkspaceSection,
   projectAmbulatoryEnterpriseCloseResponse,
   projectAmbulatoryLifecycleHeader,
@@ -28,6 +29,7 @@ import {
   type ClinicCareAmbulatoryWorkflowAction,
   type ClinicCareAmbulatoryWorkspaceSection,
 } from "@medora/shared";
+import { EnterpriseClosedEncounterViewer } from "@/components/encounters/EnterpriseClosedEncounterViewer";
 import { apiFetch, asApiObject } from "@/lib/apiClient";
 import { normalizeUserFacingError } from "@/lib/userFacingError";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
@@ -64,6 +66,11 @@ type EncounterShell = {
   workflowState?: string | null;
   createdAt?: string | null;
   admittedAt?: string | null;
+  closedAt?: string | null;
+  closedByDisplayFr?: string | null;
+  closedByUserId?: string | null;
+  reopenCount?: number | null;
+  version?: number | null;
   roomLabel?: string | null;
   governedRoomDisplay?: string | null;
   governedRoomUnit?: string | null;
@@ -82,6 +89,7 @@ type EncounterShell = {
   providerDocumentationSignedAt?: string | null;
   providerDocumentationSignedByDisplayFr?: string | null;
   physicianAssigned?: { id?: string; firstName?: string | null; lastName?: string | null } | null;
+  nurseAssigned?: { id?: string; firstName?: string | null; lastName?: string | null } | null;
   patient?: {
     id?: string;
     firstName?: string | null;
@@ -449,6 +457,26 @@ export function ClinicCareActiveAmbulatoryWorkspaceView() {
           </Link>
         </p>
       </div>
+    );
+  }
+
+  // MEDUI.D4C.8A — closed ambulatory encounters use the enterprise CLOSED_READ_ONLY shell.
+  if (isEnterpriseEncounterClosed(encounter.status) && facilityId) {
+    const facilityName = facilities.find((x) => x.id === facilityId)?.name ?? null;
+    return (
+      <EnterpriseClosedEncounterViewer
+        facilityId={facilityId}
+        facilityName={facilityName}
+        encounter={encounter}
+        roleCodes={roles}
+        backHref={backHref}
+        backLabel={backLabel}
+        allergiesLine={clinicalStrip.allergyText}
+        careSettingLabel={t("enterpriseClosedEncounterD4c8a.careSetting.ambulatory")}
+        onReopened={async () => {
+          await load();
+        }}
+      />
     );
   }
 

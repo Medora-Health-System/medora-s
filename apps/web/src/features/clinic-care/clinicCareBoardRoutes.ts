@@ -2,6 +2,8 @@ import { genericEncounterPath } from "@/features/emergency/emergencyRoutes";
 import {
   clinicCareAmbulatoryOpenWorkspacePath,
   clinicCareAmbulatoryProviderChartPath,
+  enterpriseEncounterRecordPath,
+  isEnterpriseEncounterClosed,
 } from "@medora/shared";
 import { CLINIC_CARE_TODAYS_VISITS } from "./clinicCarePaths";
 
@@ -12,8 +14,9 @@ export function clinicPatientChartPath(patientId: string): string {
 
 /**
  * Primary patient-name destination from Clinic Care trackboard / provider worklist.
- * Closed → patient chart; open → Active Clinic Workspace (D4C.5B).
- * `facilityId` is session-scoped (x-facility-id), same as ED boards.
+ * OPEN → Active Clinic Workspace (D4C.5B).
+ * CLOSED → canonical enterprise encounter record (D4C.8A) — never patient chart.
+ * Provider documentation SIGNED ≠ encounter CLOSED.
  */
 export function resolveClinicBoardPatientNameHref(input: {
   encounterId: string;
@@ -25,12 +28,10 @@ export function resolveClinicBoardPatientNameHref(input: {
   fromTodaysVisits?: boolean;
 }): string {
   void input.facilityId;
-  const closed =
-    input.status === "CLOSED" ||
-    input.workflowState === "CLOSED" ||
-    input.status === "SIGNED";
-  if (closed && input.patientId) {
-    return clinicPatientChartPath(input.patientId);
+  void input.patientId;
+  void input.workflowState;
+  if (isEnterpriseEncounterClosed(input.status)) {
+    return enterpriseEncounterRecordPath(input.encounterId);
   }
   if (input.ambulatoryProviderChart !== false) {
     const base = clinicCareAmbulatoryOpenWorkspacePath(input.encounterId);

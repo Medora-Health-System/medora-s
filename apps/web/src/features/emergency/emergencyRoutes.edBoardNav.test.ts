@@ -17,4 +17,10 @@ describe("resolveEdBoardPatientNameHref", () => {
       resolveEdBoardPatientNameHref({ encounterId: "enc-2", status: "CLOSED", workflowState: "CLOSED" })
     ).toBe(emergencyChartPath("enc-2"));
   });
+
+  it("does not treat SIGNED documentation status as CLOSED", () => {
+    expect(
+      resolveEdBoardPatientNameHref({ encounterId: "enc-3", status: "SIGNED", workflowState: "IN_TREATMENT" })
+    ).toBe(emergencyActiveWorkspacePath("enc-3"));
+  });
 });
