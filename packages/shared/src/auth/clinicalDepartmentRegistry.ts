@@ -58,7 +58,9 @@ export type LegacyPrismaDepartmentCode =
   | "LAB"
   | "RAD"
   | "PHARM"
-  | "INPATIENT";
+  | "INPATIENT"
+  /** MEDUI.D4C.9A — ambulatory Dental operational department (not a hospital clinical ward). */
+  | "DENTAL";
 
 export type StoredPrismaDepartmentCode = LegacyPrismaDepartmentCode | ClinicalDepartmentCode;
 
@@ -110,6 +112,9 @@ export function mapLegacyPrismaDepartmentCodeToClinicalDepartment(
       return "MEDSURG";
     case "PRIMARY_CARE":
       return "OBSERVATION";
+    case "DENTAL":
+      /** Dental is operational service-line department — not hospital clinical taxonomy. */
+      return null;
     default:
       return null;
   }

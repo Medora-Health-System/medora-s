@@ -36,6 +36,7 @@ import { FacilityBillingWorkflowService } from "../encounters/facility-billing-w
 import {
   ensureFacilityClinicalDepartments,
   ensureFacilityServiceLineDepartments,
+  FacilityServiceLineDepartmentMappingError,
 } from "./facility-department-seed.util";
 import { AuditService } from "../common/services/audit.service";
 import { logSecurityAdminAudit } from "../common/services/security-admin-audit";
@@ -44,6 +45,27 @@ import {
   mergeCareProfileJson,
   resolveServiceLinesForCareConfig,
 } from "./facility-care-profile.util";
+
+async function ensureServiceLineDepartmentsOrThrow(
+  prisma: Parameters<typeof ensureFacilityServiceLineDepartments>[0],
+  facilityId: string,
+  input: Parameters<typeof ensureFacilityServiceLineDepartments>[2],
+) {
+  try {
+    return await ensureFacilityServiceLineDepartments(prisma, facilityId, input);
+  } catch (err: unknown) {
+    if (err instanceof FacilityServiceLineDepartmentMappingError) {
+      throw new BadRequestException({
+        code: err.code,
+        message:
+          "Configuration des services invalide : ligne de service sans département Prisma pris en charge.",
+        serviceLine: err.serviceLine,
+        invalidCode: err.invalidCode,
+      });
+    }
+    throw err;
+  }
+}
 
 /** Valeurs par défaut — le schéma Prisma exige country et timezone ; non exposés sur POST minimal (nom seul). */
 const DEFAULT_NEW_FACILITY_COUNTRY = "Haiti";
@@ -298,7 +320,7 @@ export class AdminFacilitiesService {
         await tx.userRole.create({ data: { userId, facilityId: facility.id, roleId: adminRole.id, isActive: true } });
       }
 
-      await ensureFacilityServiceLineDepartments(tx, facility.id, {
+      await ensureServiceLineDepartmentsOrThrow(tx, facility.id, {
         facilityType: facility.facilityType,
         serviceLines,
         defaultLanguage: (facility.defaultLanguage as "fr" | "en") ?? "fr",
@@ -386,7 +408,7 @@ export class AdminFacilitiesService {
       select: { facilityType: true, serviceLinesJson: true },
     });
     if (facilityConfig) {
-      await ensureFacilityServiceLineDepartments(this.prisma, facilityId, {
+      await ensureServiceLineDepartmentsOrThrow(this.prisma, facilityId, {
         facilityType: facilityConfig.facilityType,
         serviceLines: parseStoredFacilityServiceLines(
           facilityConfig.serviceLinesJson,
@@ -660,7 +682,7 @@ export class AdminFacilitiesService {
         select: FACILITY_LIST_SELECT,
       });
 
-      const deptResult = await ensureFacilityServiceLineDepartments(tx, id, {
+      const deptResult = await ensureServiceLineDepartmentsOrThrow(tx, id, {
         facilityType: row.facilityType,
         serviceLines: serialized,
         defaultLanguage: (row.defaultLanguage as "fr" | "en") ?? "fr",

@@ -10,6 +10,8 @@
 
 **MEDUI.D4C.9 — ENTERPRISE FACILITY CAPABILITY GOVERNANCE — CERTIFIED WITH DOCUMENTED DEFERRALS**
 
+**Re-certified after MEDUI.D4C.9A** (Dental DepartmentCode provisioning correction).
+
 Not a UI-only checkbox milestone. Persisted facility configuration is the platform authority for navigation, guards, capabilities, departments, billing effective workflow, audit, and historical-record access.
 
 ## Validation
