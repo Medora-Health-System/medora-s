@@ -46,9 +46,10 @@ describe("MEDUI.D5A.3 enterprise dental encounter workspace", () => {
     ).toBe("/app/dental/encounters/d1");
   });
 
-  it("marks odontogram as placeholder and assessment as active", () => {
+  it("marks odontogram as active (D5A.4) and periodontal as placeholder", () => {
     expect(isD5a3DentalSectionActive("assessment")).toBe(true);
-    expect(isD5a3DentalSectionActive("odontogram")).toBe(false);
+    expect(isD5a3DentalSectionActive("odontogram")).toBe(true);
+    expect(isD5a3DentalSectionActive("periodontal")).toBe(false);
     expect(parseD5a3DentalWorkspaceSection("bogus")).toBe("overview");
   });
 

@@ -6,7 +6,7 @@
  */
 
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { D4C8B_CERTIFICATION_ID } from "@medora/shared";
+import { D4C8B_CERTIFICATION_ID, formatToothDisplayLabel, getCanonicalTooth } from "@medora/shared";
 import { apiFetch } from "@/lib/apiClient";
 import { ClinicalResultViewer } from "@/components/clinical/ClinicalResultViewer";
 import {
@@ -220,6 +220,17 @@ export function EnterpriseClosedEncounterClinicalRecord({ facilityId, encounter 
   const [diagnoses, setDiagnoses] = useState<
     Array<{ id: string; code: string; description: string | null; sortOrder: number }>
   >([]);
+  const [dentalFindings, setDentalFindings] = useState<
+    Array<{
+      id: string;
+      toothCode: string;
+      findingType: string;
+      surfaces: string[];
+      clinicalState: string;
+      documentedAt: string;
+      documentedByDisplay?: string | null;
+    }>
+  >([]);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -229,7 +240,7 @@ export function EnterpriseClosedEncounterClinicalRecord({ facilityId, encounter 
       setLoading(true);
       setLoadError(null);
       try {
-        const [vitalsRaw, ordersRaw, marRaw, dxRaw] = await Promise.all([
+        const [vitalsRaw, ordersRaw, marRaw, dxRaw, odontogramRaw] = await Promise.all([
           apiFetch(`/encounters/${encodeURIComponent(encounterId)}/vitals-history`, { facilityId }).catch(
             () => null
           ),
@@ -242,6 +253,9 @@ export function EnterpriseClosedEncounterClinicalRecord({ facilityId, encounter 
                 facilityId,
               }).catch(() => ({ items: [] }))
             : Promise.resolve({ items: [] }),
+          apiFetch(`/dental-care/encounters/${encodeURIComponent(encounterId)}/odontogram`, {
+            facilityId,
+          }).catch(() => null),
         ]);
         if (cancelled) return;
         setVitals(parseVitalsHistoryEntries(vitalsRaw));
@@ -254,6 +268,32 @@ export function EnterpriseClosedEncounterClinicalRecord({ facilityId, encounter 
             description: d.description ?? null,
             sortOrder: d.sortOrder ?? 0,
           }))
+        );
+        const encFindings = Array.isArray(odontogramRaw?.encounterFindings)
+          ? odontogramRaw.encounterFindings
+          : [];
+        setDentalFindings(
+          encFindings
+            .filter((f: { voidedAt?: string | null; clinicalState?: string }) => !f.voidedAt && f.clinicalState !== "VOIDED")
+            .map(
+              (f: {
+                id: string;
+                toothCode: string;
+                findingType: string;
+                surfaces?: string[];
+                clinicalState: string;
+                documentedAt: string;
+                documentedByDisplay?: string | null;
+              }) => ({
+                id: f.id,
+                toothCode: f.toothCode,
+                findingType: f.findingType,
+                surfaces: f.surfaces ?? [],
+                clinicalState: f.clinicalState,
+                documentedAt: f.documentedAt,
+                documentedByDisplay: f.documentedByDisplay ?? null,
+              })
+            )
         );
       } catch (err) {
         if (cancelled) return;
@@ -712,6 +752,31 @@ export function EnterpriseClosedEncounterClinicalRecord({ facilityId, encounter 
                 {tOrderItemStatusForWorklist(t, it.status ?? "")}
               </li>
             ))}
+          </ul>
+        )}
+      </SectionShell>
+
+      <SectionShell
+        title={t("enterpriseClosedClinicalRecordD4c8b.sections.dentalFindings")}
+        testId="closed-record-dental-findings"
+      >
+        {dentalFindings.length === 0 ? (
+          <EmptyState text={t("enterpriseClosedClinicalRecordD4c8b.empty.dentalFindings")} />
+        ) : (
+          <ul style={{ margin: 0, paddingLeft: 18, fontSize: 14, lineHeight: 1.5 }}>
+            {dentalFindings.map((f) => {
+              const tooth = getCanonicalTooth(f.toothCode);
+              const lbl = tooth ? formatToothDisplayLabel(tooth, "FDI") : f.toothCode;
+              return (
+                <li key={f.id} data-testid="closed-record-dental-finding-row">
+                  #{lbl} — {t(`dentalCareD5a4.findings.${f.findingType}`)}
+                  {f.surfaces.length ? ` (${f.surfaces.join("+")})` : ""} ·{" "}
+                  {t(`dentalCareD5a4.states.${f.clinicalState}`)}
+                  {f.documentedByDisplay ? ` · ${f.documentedByDisplay}` : ""} ·{" "}
+                  {formatEncounterChromeDateTime(f.documentedAt, language)}
+                </li>
+              );
+            })}
           </ul>
         )}
       </SectionShell>

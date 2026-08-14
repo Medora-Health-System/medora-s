@@ -1,4 +1,15 @@
-import { BadRequestException, Controller, Get, Req, UseGuards } from "@nestjs/common";
+import {
+  BadRequestException,
+  Body,
+  Controller,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Put,
+  Req,
+  UseGuards,
+} from "@nestjs/common";
 import { AuthGuard } from "@nestjs/passport";
 import {
   projectDentalDashboardShellPlaceholders,
@@ -8,15 +19,35 @@ import { RequireRoles } from "../common/guards/roles.decorators";
 import { RoleCode } from "@prisma/client";
 import { DentalCareReadAccessGuard } from "./dental-care-read-access.guard";
 import { DentalCareWorklistService } from "./dental-care-worklist.service";
+import { DentalCareOdontogramService } from "./dental-care-odontogram.service";
 
 /**
- * MEDUI.D5A.2/D5A.3 — Dental Care shell + thin worklist API.
- * Reuses enterprise Encounter — no Dental repositories.
+ * MEDUI.D5A.2/D5A.3/D5A.4 — Dental Care shell, worklist, odontogram APIs.
+ * Reuses enterprise Patient/Encounter — no DentalPatient / DentalEncounter.
  */
 @Controller("dental-care")
 @UseGuards(AuthGuard("jwt"))
 export class DentalCareController {
-  constructor(private readonly dentalCareWorklist: DentalCareWorklistService) {}
+  constructor(
+    private readonly dentalCareWorklist: DentalCareWorklistService,
+    private readonly odontogram: DentalCareOdontogramService
+  ) {}
+
+  private actor(req: any): {
+    userId: string;
+    facilityId: string;
+    access: DentalWorkspaceAccess;
+  } {
+    const facilityId = req.user?.facilityId || req.headers["x-facility-id"];
+    const userId = req.user?.userId as string | undefined;
+    if (!facilityId) throw new BadRequestException("Facility ID required");
+    if (!userId) throw new BadRequestException("Authentication required");
+    return {
+      userId,
+      facilityId: String(facilityId),
+      access: req.dentalCareAccess as DentalWorkspaceAccess,
+    };
+  }
 
   @Get("dashboard")
   @RequireRoles(RoleCode.RN, RoleCode.PROVIDER, RoleCode.ADMIN, RoleCode.FRONT_DESK, RoleCode.BILLING)
@@ -46,10 +77,76 @@ export class DentalCareController {
   @RequireRoles(RoleCode.RN, RoleCode.PROVIDER, RoleCode.ADMIN, RoleCode.FRONT_DESK, RoleCode.BILLING)
   @UseGuards(DentalCareReadAccessGuard)
   async getWorklist(@Req() req: any) {
-    const facilityId = req.user?.facilityId || req.headers["x-facility-id"];
-    if (!facilityId) {
-      throw new BadRequestException("Facility ID required");
-    }
+    const { facilityId } = this.actor(req);
     return this.dentalCareWorklist.listOpenDentalEncounters(facilityId);
+  }
+
+  /** MEDUI.D5A.4 — encounter-scoped odontogram projection + history. */
+  @Get("encounters/:encounterId/odontogram")
+  @RequireRoles(RoleCode.RN, RoleCode.PROVIDER, RoleCode.ADMIN, RoleCode.FRONT_DESK, RoleCode.BILLING)
+  @UseGuards(DentalCareReadAccessGuard)
+  getEncounterOdontogram(@Req() req: any, @Param("encounterId") encounterId: string) {
+    return this.odontogram.getEncounterOdontogram(this.actor(req), encounterId);
+  }
+
+  /** MEDUI.D5A.4 — patient longitudinal odontogram (facility-scoped). */
+  @Get("patients/:patientId/odontogram")
+  @RequireRoles(RoleCode.RN, RoleCode.PROVIDER, RoleCode.ADMIN, RoleCode.FRONT_DESK, RoleCode.BILLING)
+  @UseGuards(DentalCareReadAccessGuard)
+  getPatientOdontogram(@Req() req: any, @Param("patientId") patientId: string) {
+    return this.odontogram.getPatientOdontogram(this.actor(req), patientId);
+  }
+
+  @Get("patients/:patientId/teeth/:toothCode/history")
+  @RequireRoles(RoleCode.RN, RoleCode.PROVIDER, RoleCode.ADMIN, RoleCode.FRONT_DESK, RoleCode.BILLING)
+  @UseGuards(DentalCareReadAccessGuard)
+  getToothHistory(
+    @Req() req: any,
+    @Param("patientId") patientId: string,
+    @Param("toothCode") toothCode: string
+  ) {
+    return this.odontogram.getToothHistory(this.actor(req), patientId, toothCode);
+  }
+
+  @Put("patients/:patientId/dentition")
+  @RequireRoles(RoleCode.PROVIDER)
+  @UseGuards(DentalCareReadAccessGuard)
+  upsertDentition(
+    @Req() req: any,
+    @Param("patientId") patientId: string,
+    @Body() body: { dentitionType?: string; numberingSystem?: string }
+  ) {
+    return this.odontogram.upsertDentition(this.actor(req), patientId, body ?? {});
+  }
+
+  @Post("encounters/:encounterId/tooth-findings")
+  @RequireRoles(RoleCode.PROVIDER)
+  @UseGuards(DentalCareReadAccessGuard)
+  createFinding(
+    @Req() req: any,
+    @Param("encounterId") encounterId: string,
+    @Body()
+    body: {
+      toothCode?: string;
+      scope?: string;
+      surfaces?: string[];
+      findingType?: string;
+      clinicalState?: string;
+      notes?: string | null;
+      supersedesFindingId?: string | null;
+    }
+  ) {
+    return this.odontogram.createFinding(this.actor(req), encounterId, body ?? {});
+  }
+
+  @Patch("tooth-findings/:id")
+  @RequireRoles(RoleCode.PROVIDER)
+  @UseGuards(DentalCareReadAccessGuard)
+  patchFinding(
+    @Req() req: any,
+    @Param("id") id: string,
+    @Body() body: { action?: string; reason?: string | null }
+  ) {
+    return this.odontogram.voidOrResolveFinding(this.actor(req), id, body ?? {});
   }
 }

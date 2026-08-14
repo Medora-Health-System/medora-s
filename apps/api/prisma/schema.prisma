@@ -61,6 +61,9 @@ model Facility {
   claimSubmissionBatches                 ClaimSubmissionBatch[]
   departments                            Department[]
   diagnoses                              Diagnosis[]
+  /// MEDUI.D5A.4 — facility-scoped dental tooth findings / dentition state.
+  toothFindings                          ToothFinding[]
+  patientDentitionStates                 PatientDentitionState[]
   enterpriseDocuments                    EnterpriseDocument[]
   enterpriseDocPacketSources             EnterpriseDocumentPacketSource[] @relation("PacketSourceFacility")
   registrationPacketThemes               RegistrationPacketTheme[]        @relation("RegistrationPacketThemeFacility")
@@ -242,6 +245,10 @@ model User {
   encounterNotesCosigned                          EncounterNote[]                        @relation("EncounterNoteCosignedBy")
   encounterNotesVoided                            EncounterNote[]                        @relation("EncounterNoteVoidedBy")
   diagnosesRemoved                                Diagnosis[]                            @relation("DiagnosisRemovedBy")
+  /// MEDUI.D5A.4 — odontogram tooth finding authorship / void / dentition updates.
+  toothFindingsDocumented                         ToothFinding[]                         @relation("ToothFindingDocumentedBy")
+  toothFindingsVoided                             ToothFinding[]                         @relation("ToothFindingVoidedBy")
+  patientDentitionStatesUpdated                   PatientDentitionState[]                @relation("PatientDentitionStateUpdatedBy")
   triageVitalsReadingsRecorded                    TriageVitalsReading[]                  @relation("TriageVitalsReadingRecordedBy")
   triageVitalsReadingsVoided                      TriageVitalsReading[]                  @relation("TriageVitalsReadingVoidedBy")
   providerAddendaCreated                          EncounterProviderAddendum[]
@@ -541,6 +548,9 @@ model Patient {
   diagnoses                    Diagnosis[]
   diseaseCaseReports           DiseaseCaseReport[]
   encounters                   Encounter[]
+  /// MEDUI.D5A.4 — longitudinal tooth findings (append/amend; not a second patient).
+  toothFindings                ToothFinding[]
+  patientDentitionStates       PatientDentitionState[]
   encounterLifecycleTransitions EncounterLifecycleTransition[]
   encounterChartExports        EncounterChartExport[]
   clinicalDocumentationEntries EncounterClinicalDocumentationEntry[]
@@ -776,6 +786,8 @@ model Encounter {
   chartRoiRequests                          ChartRoiRequest[]
   claimSubmissions                          ClaimSubmission[]
   diagnoses                                 Diagnosis[]
+  /// MEDUI.D5A.4 — tooth findings documented with this encounter as provenance.
+  toothFindings                             ToothFinding[]
   diseaseCaseReports                        DiseaseCaseReport[]
   billingClassificationAcknowledgedBy       User?                                  @relation("EncounterBillingClassificationAckBy", fields: [billingClassificationAcknowledgedByUserId], references: [id])
   billingClassificationChangedBy            User?                                  @relation("EncounterBillingClassificationChangedBy", fields: [billingClassificationChangedByUserId], references: [id])
@@ -7492,6 +7504,10 @@ enum AuditAction {
   PHARMACY_VERIFICATION_REJECTED
   /// M1.3F.7 — pharmacy verification override at MAR (PHI-safe metadata only).
   PHARMACY_VERIFICATION_OVERRIDE
+  /// MEDUI.D5A.4 — tooth finding create / amend / void (PHI-safe metadata only).
+  TOOTH_FINDING_CREATE
+  TOOTH_FINDING_AMEND
+  TOOTH_FINDING_RESOLVE
 }
 
 enum MedoraStaffPersona {
@@ -8507,4 +8523,101 @@ enum CarePlanPriority {
   ROUTINE
   HIGH
   URGENT
+}
+
+/// MEDUI.D5A.4 — patient dentition class for odontogram projection.
+enum DentitionType {
+  PRIMARY
+  MIXED
+  PERMANENT
+}
+
+/// MEDUI.D5A.4 — display numbering preference (canonical codes remain FDI-aligned).
+enum ToothNumberingSystem {
+  UNIVERSAL
+  FDI
+  PALMER
+}
+
+enum ToothFindingScope {
+  WHOLE_TOOTH
+  SURFACE_SPECIFIC
+}
+
+enum ToothFindingClinicalState {
+  OBSERVED
+  EXISTING
+  PLANNED
+  IN_PROGRESS
+  COMPLETED
+  RESOLVED
+  AMENDED
+  VOIDED
+}
+
+/**
+ * MEDUI.D5A.4 — facility-scoped dentition + numbering preference for a patient.
+ * Rebuildable preference layer; not a second Patient.
+ */
+model PatientDentitionState {
+  id                String               @id @default(uuid())
+  facilityId        String
+  patientId         String
+  dentitionType     DentitionType        @default(PERMANENT)
+  numberingSystem   ToothNumberingSystem @default(FDI)
+  updatedByUserId   String?
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime             @updatedAt
+  facility          Facility             @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  patient           Patient              @relation(fields: [patientId], references: [id], onDelete: Restrict)
+  updatedBy         User?                @relation("PatientDentitionStateUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: SetNull)
+
+  @@unique([facilityId, patientId])
+  @@index([patientId])
+  @@index([facilityId])
+}
+
+/**
+ * MEDUI.D5A.4 — append-oriented tooth finding event.
+ * Clinical authority for odontogram; UI is a projection. Soft void / amend only.
+ */
+model ToothFinding {
+  id                   String                    @id @default(uuid())
+  facilityId           String
+  patientId            String
+  /// Encounter provenance for this documentation event.
+  encounterId          String
+  /// Canonical tooth code (e.g. PERM_14, PRIM_51) — not display-only Universal #.
+  toothCode            String
+  scope                ToothFindingScope
+  /// Canonical surface codes; empty when WHOLE_TOOTH.
+  surfaces             String[]                  @default([])
+  findingType          String
+  clinicalState        ToothFindingClinicalState @default(OBSERVED)
+  notes                String?
+  documentedByUserId   String
+  documentedAt         DateTime                  @default(now())
+  /// Prior finding this event amends (history preserved).
+  supersedesFindingId  String?
+  voidedAt             DateTime?
+  voidedByUserId       String?
+  voidReason           String?
+  createdAt            DateTime                  @default(now())
+  updatedAt            DateTime                  @updatedAt
+  facility             Facility                  @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  patient              Patient                   @relation(fields: [patientId], references: [id], onDelete: Restrict)
+  encounter            Encounter                 @relation(fields: [encounterId], references: [id], onDelete: Restrict)
+  documentedBy         User                      @relation("ToothFindingDocumentedBy", fields: [documentedByUserId], references: [id], onDelete: Restrict)
+  voidedBy             User?                     @relation("ToothFindingVoidedBy", fields: [voidedByUserId], references: [id], onDelete: SetNull)
+  supersedesFinding    ToothFinding?             @relation("ToothFindingSupersedes", fields: [supersedesFindingId], references: [id], onDelete: Restrict)
+  supersededBy         ToothFinding[]            @relation("ToothFindingSupersedes")
+
+  @@index([facilityId, patientId])
+  @@index([patientId, toothCode])
+  @@index([encounterId])
+  @@index([facilityId, encounterId])
+  @@index([toothCode, clinicalState])
+  @@index([documentedByUserId])
+  @@index([voidedByUserId])
+  @@index([supersedesFindingId])
 }
