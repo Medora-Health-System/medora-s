@@ -82,8 +82,7 @@ describe("MEDUI.D4C.8C enterprise patient medical record index", () => {
       type: "OUTPATIENT",
       careSetting: "DENTAL",
     });
-    expect(href).toContain("encounterId=dent-1");
-    expect(href).toContain("/app/dental");
+    expect(href).toBe("/app/dental/encounters/dent-1");
   });
 
   it("reopen remains Admin-only (D4C.7K)", () => {
