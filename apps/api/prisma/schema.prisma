@@ -7341,6 +7341,8 @@ enum DepartmentCode {
   TELEMETRY
   LABORATORY
   RADIOLOGY
+  /// MEDUI.D4C.9A — operational Dental department (service line DENTAL; specialties stay on care profile).
+  DENTAL
 }
 
 /// Clinical / legacy shorthand stored alongside `Patient.sex` (canonical demographic enum).

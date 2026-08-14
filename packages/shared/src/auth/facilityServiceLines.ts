@@ -150,14 +150,133 @@ export function facilitySupportsObservationAccessForTechnician(
 export function mapServiceLineToClinicalDepartmentCode(
   line: MedoraServiceLine
 ): ClinicalDepartmentCode | null {
-  if (line === "PHARMACY" || line === "CLINIC" || line === "URGENT_CARE") return null;
+  if (line === "PHARMACY" || line === "CLINIC" || line === "URGENT_CARE" || line === "DENTAL") {
+    return null;
+  }
   if (isClinicalDepartmentCode(line)) return line;
   return null;
 }
 
-export function mapServiceLineToPrismaDepartmentCodes(line: MedoraServiceLine): string[] {
-  if (line === "PHARMACY") return ["PHARM"];
-  /** Ambulatory Clinic/UC lines seed legacy PRIMARY_CARE department (no new Prisma enum). */
-  if (line === "CLINIC" || line === "URGENT_CARE") return ["PRIMARY_CARE"];
-  return [line];
+/**
+ * MEDUI.D4C.9A — Prisma `DepartmentCode` tokens that may be written by service-line seeding.
+ * Must stay in sync with `apps/api/prisma/schema.prisma` enum DepartmentCode.
+ * DENTAL is operational department authority; specialties are NOT department codes.
+ */
+export const PRISMA_DEPARTMENT_CODE_TOKENS = [
+  "PRIMARY_CARE",
+  "LAB",
+  "RAD",
+  "PHARM",
+  "INPATIENT",
+  "EMERGENCY",
+  "ICU",
+  "MEDSURG",
+  "OBSERVATION",
+  "OBGYN",
+  "PEDIATRICS",
+  "BEHAVIORAL_HEALTH",
+  "TELEMETRY",
+  "LABORATORY",
+  "RADIOLOGY",
+  "DENTAL",
+] as const;
+
+export type PrismaDepartmentCodeToken = (typeof PRISMA_DEPARTMENT_CODE_TOKENS)[number];
+
+const PRISMA_DEPARTMENT_CODE_SET = new Set<string>(PRISMA_DEPARTMENT_CODE_TOKENS);
+
+export function isPrismaDepartmentCodeToken(
+  value: string | null | undefined
+): value is PrismaDepartmentCodeToken {
+  const code = String(value ?? "")
+    .trim()
+    .toUpperCase();
+  return PRISMA_DEPARTMENT_CODE_SET.has(code);
+}
+
+export const FACILITY_SERVICE_LINE_DEPARTMENT_MAPPING_INVALID =
+  "FACILITY_SERVICE_LINE_DEPARTMENT_MAPPING_INVALID" as const;
+
+/**
+ * Typed service-line → Prisma department provisioning contract.
+ * Never returns arbitrary strings; every token is a known DepartmentCode value.
+ */
+export function mapServiceLineToPrismaDepartmentCodes(
+  line: MedoraServiceLine
+): readonly PrismaDepartmentCodeToken[] {
+  switch (line) {
+    case "PHARMACY":
+      return ["PHARM"];
+    /** Ambulatory Clinic/UC lines seed legacy PRIMARY_CARE department (no Clinic/UC Prisma enum). */
+    case "CLINIC":
+    case "URGENT_CARE":
+      return ["PRIMARY_CARE"];
+    case "DENTAL":
+      return ["DENTAL"];
+    case "EMERGENCY":
+      return ["EMERGENCY"];
+    case "ICU":
+      return ["ICU"];
+    case "MEDSURG":
+      return ["MEDSURG"];
+    case "OBSERVATION":
+      return ["OBSERVATION"];
+    case "OBGYN":
+      return ["OBGYN"];
+    case "PEDIATRICS":
+      return ["PEDIATRICS"];
+    case "BEHAVIORAL_HEALTH":
+      return ["BEHAVIORAL_HEALTH"];
+    case "TELEMETRY":
+      return ["TELEMETRY"];
+    case "LABORATORY":
+      return ["LABORATORY"];
+    case "RADIOLOGY":
+      return ["RADIOLOGY"];
+    default: {
+      const _exhaustive: never = line;
+      void _exhaustive;
+      return [];
+    }
+  }
+}
+
+/** Defense-in-depth: assert every mapped code is a known Prisma DepartmentCode token. */
+export function assertServiceLinePrismaDepartmentMapping(
+  line: MedoraServiceLine
+): readonly PrismaDepartmentCodeToken[] {
+  const codes = mapServiceLineToPrismaDepartmentCodes(line);
+  if (codes.length === 0) {
+    throw new Error(
+      `${FACILITY_SERVICE_LINE_DEPARTMENT_MAPPING_INVALID}: service line ${line} has empty department mapping`
+    );
+  }
+  for (const code of codes) {
+    if (!isPrismaDepartmentCodeToken(code)) {
+      throw new Error(
+        `${FACILITY_SERVICE_LINE_DEPARTMENT_MAPPING_INVALID}: service line ${line} mapped to unsupported department code ${code}`
+      );
+    }
+  }
+  return codes;
+}
+
+/** All MedoraServiceLine tokens that Admin may enable (matrix invariant source). */
+export function listAllMedoraServiceLinesForProvisioning(): readonly MedoraServiceLine[] {
+  return [
+    "EMERGENCY",
+    "ICU",
+    "MEDSURG",
+    "OBSERVATION",
+    "OBGYN",
+    "PEDIATRICS",
+    "BEHAVIORAL_HEALTH",
+    "TELEMETRY",
+    "LABORATORY",
+    "RADIOLOGY",
+    "PHARMACY",
+    "CLINIC",
+    "URGENT_CARE",
+    "DENTAL",
+  ];
 }

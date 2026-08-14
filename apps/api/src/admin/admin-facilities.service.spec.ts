@@ -1,4 +1,5 @@
 import { FacilityType } from "@prisma/client";
+import { DepartmentCode } from "@prisma/client";
 import {
   ensureFacilityClinicalDepartments,
   ensureFacilityServiceLineDepartments,
@@ -17,6 +18,11 @@ describe("ensureFacilityServiceLineDepartments (MEDUI.FACILITY.TYPE.1)", () => {
           }: {
             where: { facilityId_code: { facilityId: string; code: string } };
           }) => {
+            if (!Object.values(DepartmentCode).includes(where.facilityId_code.code as DepartmentCode)) {
+              throw new Error(
+                `PrismaClientValidationError: Invalid DepartmentCode ${where.facilityId_code.code}`
+              );
+            }
             const hit = rows.find(
               (r) =>
                 where.facilityId_code.facilityId === facilityId &&
@@ -38,6 +44,11 @@ describe("ensureFacilityServiceLineDepartments (MEDUI.FACILITY.TYPE.1)", () => {
           }: {
             data: { facilityId: string; code: string; name: string; isActive: boolean };
           }) => {
+            if (!Object.values(DepartmentCode).includes(data.code as DepartmentCode)) {
+              throw new Error(
+                `PrismaClientValidationError: Invalid DepartmentCode ${data.code}`
+              );
+            }
             const row = {
               id: `dept-${rows.length + 1}`,
               code: data.code,
@@ -78,5 +89,16 @@ describe("ensureFacilityServiceLineDepartments (MEDUI.FACILITY.TYPE.1)", () => {
     const prisma = mockPrisma();
     const result = await ensureFacilityClinicalDepartments(prisma as never, facilityId);
     expect(result.created).toBe(10);
+  });
+
+  it("Clinic + Dental seeds PRIMARY_CARE and DENTAL without Prisma validation error", async () => {
+    const prisma = mockPrisma();
+    const result = await ensureFacilityServiceLineDepartments(prisma as never, facilityId, {
+      facilityType: FacilityType.CLINIC,
+      serviceLines: ["CLINIC", "DENTAL"],
+      defaultLanguage: "fr",
+    });
+    expect(result.created).toBe(2);
+    expect(prisma._rows.map((r) => r.code).sort()).toEqual(["DENTAL", "PRIMARY_CARE"]);
   });
 });
