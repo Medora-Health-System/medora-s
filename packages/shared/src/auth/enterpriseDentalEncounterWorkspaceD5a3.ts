@@ -33,11 +33,15 @@ export const D5A3_DENTAL_WORKSPACE_SECTIONS = [
 
 export type D5a3DentalWorkspaceSection = (typeof D5A3_DENTAL_WORKSPACE_SECTIONS)[number];
 
-/** Active in D5A.3 (enterprise reuse). Others are controlled placeholders. */
+/**
+ * Active dental workspace sections.
+ * Odontogram activated in MEDUI.D5A.4 (was placeholder in D5A.3).
+ */
 export const D5A3_ACTIVE_DENTAL_SECTIONS: readonly D5a3DentalWorkspaceSection[] = [
   "overview",
   "history",
   "assessment",
+  "odontogram",
   "diagnoses",
   "imaging",
   "prescriptions",
@@ -48,7 +52,6 @@ export const D5A3_ACTIVE_DENTAL_SECTIONS: readonly D5a3DentalWorkspaceSection[] 
 ] as const;
 
 export const D5A3_PLACEHOLDER_DENTAL_SECTIONS = [
-  "odontogram",
   "periodontal",
   "treatmentPlan",
   "procedures",
@@ -58,7 +61,6 @@ export const D5A3_PLACEHOLDER_MILESTONE: Record<
   (typeof D5A3_PLACEHOLDER_DENTAL_SECTIONS)[number],
   string
 > = {
-  odontogram: "MEDUI.D5A.4",
   periodontal: "MEDUI.D5A.6",
   treatmentPlan: "MEDUI.D5A.5",
   procedures: "MEDUI.D5A.5",

@@ -7,6 +7,8 @@ import {
   D5A3_CERTIFICATION_ID,
   D5A3_DENTAL_WORKSPACE_SECTIONS,
   D5A3_PLACEHOLDER_MILESTONE,
+  formatToothDisplayLabel,
+  getCanonicalTooth,
   isDentalEncounterProjection,
   isEnterpriseEncounterClosed,
   isD5a3DentalSectionActive,
@@ -23,6 +25,7 @@ import { EmergencyErNotesPanel } from "@/features/emergency/EmergencyErNotesPane
 import { PatientClinicalHistoryProfileBlock } from "@/components/patient-chart/PatientClinicalHistoryProfileBlock";
 import { patientClinicalHistoryProfileFromJson } from "@/features/emergency/patientClinicalHistoryProfile";
 import { RegistrationDocumentCenter } from "@/components/documents/RegistrationDocumentCenter";
+import { EnterpriseDentalOdontogramPanel } from "@/features/dental-care/odontogram/EnterpriseDentalOdontogramPanel";
 import { apiFetch } from "@/lib/apiClient";
 import { normalizeUserFacingError } from "@/lib/userFacingError";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
@@ -76,6 +79,109 @@ function personName(
   dash: string
 ): string {
   return `${(p?.firstName ?? "").trim()} ${(p?.lastName ?? "").trim()}`.trim() || dash;
+}
+
+function DentalSummarySection({
+  encounter,
+  encounterId,
+  facilityId,
+  notDocumented,
+}: {
+  encounter: EncounterShell;
+  encounterId: string;
+  facilityId: string;
+  notDocumented: string;
+}) {
+  const { t, language } = useI18n();
+  const [rows, setRows] = useState<
+    Array<{ id: string; toothCode: string; findingType: string; surfaces: string[]; clinicalState: string }>
+  >([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await apiFetch(
+          `/dental-care/encounters/${encodeURIComponent(encounterId)}/odontogram`,
+          { facilityId }
+        );
+        if (cancelled) return;
+        const list = Array.isArray(res?.encounterFindings) ? res.encounterFindings : [];
+        setRows(
+          list
+            .filter((f: { voidedAt?: string | null; clinicalState?: string }) => !f.voidedAt && f.clinicalState !== "VOIDED")
+            .map((f: { id: string; toothCode: string; findingType: string; surfaces?: string[]; clinicalState: string }) => ({
+              id: f.id,
+              toothCode: f.toothCode,
+              findingType: f.findingType,
+              surfaces: f.surfaces ?? [],
+              clinicalState: f.clinicalState,
+            }))
+        );
+      } catch {
+        if (!cancelled) setRows([]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [encounterId, facilityId, language]);
+
+  return (
+    <SectionShell title={t("dentalCareD5a3.sections.summary")}>
+      <p style={{ margin: "0 0 8px", fontSize: 12, color: "#64748b" }}>
+        {t("dentalCareD5a3.summary.reuseNote")}
+      </p>
+      <dl style={{ margin: 0, display: "grid", gap: 8, fontSize: 14 }}>
+        <div>
+          <dt style={{ fontWeight: 700, color: "#64748b", fontSize: 12 }}>{t("dentalCareD5a3.header.reason")}</dt>
+          <dd style={{ margin: "2px 0 0", whiteSpace: "pre-wrap" }}>
+            {(encounter.chiefComplaint ?? encounter.visitReason ?? "").trim() || notDocumented}
+          </dd>
+        </div>
+        <div>
+          <dt style={{ fontWeight: 700, color: "#64748b", fontSize: 12 }}>{t("dentalCareD5a3.summary.plan")}</dt>
+          <dd style={{ margin: "2px 0 0", whiteSpace: "pre-wrap" }}>
+            {(encounter.treatmentPlan ?? "").trim() || notDocumented}
+          </dd>
+        </div>
+        <div>
+          <dt style={{ fontWeight: 700, color: "#64748b", fontSize: 12 }}>{t("dentalCareD5a3.summary.note")}</dt>
+          <dd style={{ margin: "2px 0 0", whiteSpace: "pre-wrap" }}>
+            {(encounter.providerNote ?? "").trim() || notDocumented}
+          </dd>
+        </div>
+        <div>
+          <dt style={{ fontWeight: 700, color: "#64748b", fontSize: 12 }}>{t("dentalCareD5a3.overview.docStatus")}</dt>
+          <dd style={{ margin: "2px 0 0" }}>
+            {(encounter.providerDocumentationStatus ?? "").trim() || notDocumented}
+            {encounter.providerDocumentationSignedByDisplayFr
+              ? ` · ${encounter.providerDocumentationSignedByDisplayFr}`
+              : ""}
+          </dd>
+        </div>
+      </dl>
+      <div style={{ marginTop: 14 }} data-testid="dental-summary-findings">
+        <h4 style={{ margin: "0 0 8px", fontSize: 13, fontWeight: 700 }}>{t("dentalCareD5a4.summaryFindings")}</h4>
+        {rows.length === 0 ? (
+          <p style={{ margin: 0, fontSize: 13, color: "#64748b" }}>{t("dentalCareD5a4.noEncounterFindings")}</p>
+        ) : (
+          <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13 }}>
+            {rows.map((f) => {
+              const tooth = getCanonicalTooth(f.toothCode);
+              const lbl = tooth ? formatToothDisplayLabel(tooth, "FDI") : f.toothCode;
+              return (
+                <li key={f.id}>
+                  #{lbl} — {t(`dentalCareD5a4.findings.${f.findingType}`)}
+                  {f.surfaces.length ? ` (${f.surfaces.join("+")})` : ""} · {t(`dentalCareD5a4.states.${f.clinicalState}`)}
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </div>
+    </SectionShell>
+  );
 }
 
 function PlaceholderCard({ title, milestone }: { title: string; milestone: string }) {
@@ -633,47 +739,26 @@ export function EnterpriseDentalEncounterWorkspace({ encounterId }: { encounterI
           </SectionShell>
         ) : null}
 
-        {section === "summary" ? (
-          <SectionShell title={t("dentalCareD5a3.sections.summary")}>
-            <p style={{ margin: "0 0 8px", fontSize: 12, color: "#64748b" }}>
-              {t("dentalCareD5a3.summary.reuseNote")}
-            </p>
-            <dl style={{ margin: 0, display: "grid", gap: 8, fontSize: 14 }}>
-              <div>
-                <dt style={{ fontWeight: 700, color: "#64748b", fontSize: 12 }}>{t("dentalCareD5a3.header.reason")}</dt>
-                <dd style={{ margin: "2px 0 0", whiteSpace: "pre-wrap" }}>
-                  {(encounter.chiefComplaint ?? encounter.visitReason ?? "").trim() || notDocumented}
-                </dd>
-              </div>
-              <div>
-                <dt style={{ fontWeight: 700, color: "#64748b", fontSize: 12 }}>{t("dentalCareD5a3.summary.plan")}</dt>
-                <dd style={{ margin: "2px 0 0", whiteSpace: "pre-wrap" }}>
-                  {(encounter.treatmentPlan ?? "").trim() || notDocumented}
-                </dd>
-              </div>
-              <div>
-                <dt style={{ fontWeight: 700, color: "#64748b", fontSize: 12 }}>{t("dentalCareD5a3.summary.note")}</dt>
-                <dd style={{ margin: "2px 0 0", whiteSpace: "pre-wrap" }}>
-                  {(encounter.providerNote ?? "").trim() || notDocumented}
-                </dd>
-              </div>
-              <div>
-                <dt style={{ fontWeight: 700, color: "#64748b", fontSize: 12 }}>{t("dentalCareD5a3.overview.docStatus")}</dt>
-                <dd style={{ margin: "2px 0 0" }}>
-                  {(encounter.providerDocumentationStatus ?? "").trim() || notDocumented}
-                  {encounter.providerDocumentationSignedByDisplayFr
-                    ? ` · ${encounter.providerDocumentationSignedByDisplayFr}`
-                    : ""}
-                </dd>
-              </div>
-            </dl>
+        {section === "odontogram" ? (
+          <SectionShell title={t("dentalCareD5a3.sections.odontogram")}>
+            <EnterpriseDentalOdontogramPanel
+              encounterId={encounterId}
+              facilityId={facilityId}
+              locked={locked || !canAuthorClinical || clinicalAuthorBlocked}
+            />
           </SectionShell>
         ) : null}
 
-        {(section === "odontogram" ||
-          section === "periodontal" ||
-          section === "treatmentPlan" ||
-          section === "procedures") &&
+        {section === "summary" ? (
+          <DentalSummarySection
+            encounter={encounter}
+            encounterId={encounterId}
+            facilityId={facilityId}
+            notDocumented={notDocumented}
+          />
+        ) : null}
+
+        {(section === "periodontal" || section === "treatmentPlan" || section === "procedures") &&
         !isD5a3DentalSectionActive(section) ? (
           <PlaceholderCard
             title={t(`dentalCareD5a3.sections.${section}`)}

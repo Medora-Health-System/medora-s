@@ -15,6 +15,8 @@ export const ENTERPRISE_CLOSED_CLINICAL_RECORD_SECTIONS = [
   "medicationsMar",
   "results",
   "procedures",
+  /** MEDUI.D5A.4 — encounter-scoped tooth findings (structured; not a screenshot). */
+  "dentalFindings",
   "disposition",
   "addenda",
 ] as const;

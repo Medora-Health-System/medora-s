@@ -38,6 +38,7 @@ export * from "./auth/enterpriseClosedEncounterViewerD4c8a.js";
 export * from "./auth/enterpriseClosedEncounterClinicalRecordD4c8b.js";
 export * from "./auth/enterprisePatientMedicalRecordD4c8c.js";
 export * from "./auth/enterpriseDentalEncounterWorkspaceD5a3.js";
+export * from "./auth/enterpriseInteractiveOdontogramD5a4.js";
 export * from "./auth/enterpriseDentalOrthodonticsArchitectureD5a1.js";
 export * from "./auth/enterpriseDentalServiceLineNavigationD5a2.js";
 export * from "./auth/navigationAuthorization.js";
