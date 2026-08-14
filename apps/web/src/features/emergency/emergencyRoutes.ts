@@ -30,17 +30,19 @@ export function genericEncounterPath(encounterId: string): string {
 
 /**
  * Primary patient-name destination from ED boards.
- * Closed → read-only chart; open / incomplete → active workspace.
+ * Closed → ED chart archive adapter (enterprise CLOSED_READ_ONLY content).
+ * OPEN (including signed provider documentation) → active workspace.
+ * SIGNED ≠ CLOSED (D4C.8A).
  */
 export function resolveEdBoardPatientNameHref(input: {
   encounterId: string;
   status?: string | null;
   workflowState?: string | null;
 }): string {
-  const closed =
-    input.status === "CLOSED" ||
-    input.workflowState === "CLOSED" ||
-    input.status === "SIGNED";
-  if (closed) return emergencyChartPath(input.encounterId);
+  void input.workflowState;
+  const status = String(input.status ?? "").trim().toUpperCase();
+  if (status === "CLOSED" || status === "CANCELLED") {
+    return emergencyChartPath(input.encounterId);
+  }
   return emergencyActiveWorkspacePath(input.encounterId);
 }

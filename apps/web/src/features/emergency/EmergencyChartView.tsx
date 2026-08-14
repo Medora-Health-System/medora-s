@@ -505,6 +505,7 @@ export function EmergencyChartView() {
         encounter={encounter}
         facilityId={fid}
         facilityName={facilityName}
+        roleCodes={roles}
         triageSnapshot={triageSnapshot}
         resultsRefresh={resultsRefresh}
         canEditNursingDischarge={canEditNursingDischarge}

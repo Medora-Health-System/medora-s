@@ -45,6 +45,7 @@ import {
   documentationTemplateIdToLauncherStep,
   resolveProcedureDocumentationLinkage,
   isClinicCareAmbulatoryEncounterType,
+  isEnterpriseEncounterClosed,
   type EnterpriseProcedureDocumentationTemplateId,
 } from "@medora/shared";
 import {
@@ -106,6 +107,7 @@ import { BillingClassificationHistoryPanel } from "@/components/encounters/Billi
 import { ObservationContinueObservationQuickModal } from "@/components/encounters/ObservationContinueObservationQuickModal";
 import { ObservationReassessmentModal } from "@/components/encounters/ObservationReassessmentModal";
 import { EnterpriseEncounterCommandTimeline } from "@/components/encounters/EnterpriseEncounterCommandTimeline";
+import { EnterpriseClosedEncounterViewer } from "@/components/encounters/EnterpriseClosedEncounterViewer";
 import { ObservationTemplateOrdersPanel } from "@/components/encounters/ObservationTemplateOrdersPanel";
 import { ordersExcludingObservationTemplate } from "@/lib/observationTemplateOrderRows";
 import { dispatchObservationEncounterRefresh } from "@/lib/observationEncounterRefresh";
@@ -1796,6 +1798,38 @@ function EncounterDetailPageInner({ session }: { session: ReturnType<typeof useF
           )}
         </div>
       </div>
+    );
+  }
+
+  // MEDUI.D4C.8A — CLOSED encounters render the enterprise read-only shell (not editable tabs).
+  if (isEnterpriseEncounterClosed(encounter.status) && facilityId) {
+    const facilityName = facilities.find((x) => x.id === facilityId)?.name ?? null;
+    const careSettingLabel = isClinicCareAmbulatoryEncounterType(encounter.type)
+      ? t("enterpriseClosedEncounterD4c8a.careSetting.ambulatory")
+      : encounter.type === "EMERGENCY"
+        ? t("enterpriseClosedEncounterD4c8a.careSetting.emergency")
+        : encounter.type === "OBSERVATION"
+          ? t("enterpriseClosedEncounterD4c8a.careSetting.observation")
+          : encounter.type === "INPATIENT"
+            ? t("enterpriseClosedEncounterD4c8a.careSetting.inpatient")
+            : null;
+    return (
+      <EnterpriseClosedEncounterViewer
+        facilityId={facilityId}
+        facilityName={facilityName}
+        encounter={encounter}
+        roleCodes={roles}
+        backHref={encounter.patient?.id ? `/app/patients/${encounter.patient.id}` : "/app/encounters"}
+        backLabel={
+          encounter.patient?.id
+            ? t("enterpriseClosedEncounterD4c8a.backToPatient")
+            : t("enterpriseClosedEncounterD4c8a.back")
+        }
+        careSettingLabel={careSettingLabel}
+        onReopened={async () => {
+          await loadEncounter();
+        }}
+      />
     );
   }
 

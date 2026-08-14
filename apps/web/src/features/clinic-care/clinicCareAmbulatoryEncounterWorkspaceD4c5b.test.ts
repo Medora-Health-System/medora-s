@@ -66,7 +66,7 @@ describe("MEDUI.D4C.5B unified ambulatory encounter workspace", () => {
     expect(page).toContain('workspace") === "ambulatory"');
   });
 
-  it("C — Today's Visits / board open workspace; closed → patient chart", () => {
+  it("C — Today's Visits / board open workspace; closed → encounter record", () => {
     expect(
       resolveClinicBoardPatientNameHref({
         encounterId: "e1",
@@ -89,7 +89,21 @@ describe("MEDUI.D4C.5B unified ambulatory encounter workspace", () => {
         patientId: "p2",
         status: "CLOSED",
       })
-    ).toBe("/app/patients/p2");
+    ).toBe("/app/encounters/e2");
+    expect(
+      resolveClinicBoardPatientNameHref({
+        encounterId: "e3",
+        patientId: "p3",
+        status: "SIGNED",
+      })
+    ).toContain("workspace=ambulatory");
+    expect(
+      resolveClinicBoardPatientNameHref({
+        encounterId: "e3",
+        patientId: "p3",
+        status: "SIGNED",
+      })
+    ).not.toContain("/app/patients/");
     const trackboard = read("ClinicCareTrackboardView.tsx");
     expect(trackboard).toContain("fromTodaysVisits");
   });

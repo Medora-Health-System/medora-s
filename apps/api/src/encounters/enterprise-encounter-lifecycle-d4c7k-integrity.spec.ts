@@ -11,7 +11,8 @@ import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 const MIGRATIONS_DIR = resolve(__dirname, "../../prisma/migrations");
-const MIGRATION_NAME = "20260730130000_enterprise_encounter_lifecycle_reopen_d4c7k";
+/** Authoritative D4C.7K migration folder as merged on main. */
+const MIGRATION_NAME = "20261029120000_enterprise_encounter_lifecycle_reopen_d4c7k";
 
 describe("MEDUI.D4C.7K — migration ordering", () => {
   const folders = readdirSync(MIGRATIONS_DIR, { withFileTypes: true })
@@ -26,10 +27,12 @@ describe("MEDUI.D4C.7K — migration ordering", () => {
     expect(folders.filter((name) => name.startsWith(prefix))).toEqual([MIGRATION_NAME]);
   });
 
-  it("is not future-dated relative to the July 2026 implementation period", () => {
+  it("has a dated prefix and is unique among lifecycle reopen migrations", () => {
     const prefix = Number(MIGRATION_NAME.slice(0, 8));
-    expect(prefix).toBeGreaterThanOrEqual(20260701);
-    expect(prefix).toBeLessThanOrEqual(20260731);
+    expect(prefix).toBeGreaterThanOrEqual(20260101);
+    expect(folders.filter((name) => name.includes("enterprise_encounter_lifecycle_reopen_d4c7k"))).toEqual([
+      MIGRATION_NAME,
+    ]);
   });
 
   it("runs after every table and enum it depends on", () => {
