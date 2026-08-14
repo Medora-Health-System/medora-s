@@ -35,6 +35,7 @@ export * from "./auth/enterpriseFacilityIdentityOnboardingPrintProjectionD4c7i.j
 export * from "./auth/enterpriseEncounterClosureAdvisoryOverrideD4c7j.js";
 export * from "./auth/enterpriseEncounterLifecycleAuthorityD4c7k.js";
 export * from "./auth/enterpriseClosedEncounterViewerD4c8a.js";
+export * from "./auth/enterpriseClosedEncounterClinicalRecordD4c8b.js";
 export * from "./auth/enterpriseDentalOrthodonticsArchitectureD5a1.js";
 export * from "./auth/enterpriseDentalServiceLineNavigationD5a2.js";
 export * from "./auth/navigationAuthorization.js";
