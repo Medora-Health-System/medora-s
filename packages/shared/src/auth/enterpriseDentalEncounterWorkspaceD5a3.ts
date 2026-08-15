@@ -117,9 +117,16 @@ function asRecord(value: unknown): Record<string, unknown> | null {
 export function isDentalEncounterProjection(input: {
   type?: string | null;
   careSetting?: string | null;
+  /** MEDUI.D4C.10A — first-class Encounter.serviceLine when present. */
+  serviceLine?: string | null;
   nursingAssessment?: unknown;
   admissionSummaryJson?: unknown;
 }): boolean {
+  const persisted = String(input.serviceLine ?? "")
+    .trim()
+    .toUpperCase();
+  if (persisted === "DENTAL") return true;
+
   const careHint = String(input.careSetting ?? "").trim().toUpperCase();
   if (careHint === "DENTAL" || careHint.includes("DENTAL")) return true;
   if (String(input.type ?? "").trim().toUpperCase() === "DENTAL") return true;

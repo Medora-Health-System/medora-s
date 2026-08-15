@@ -83,6 +83,8 @@ export const ENCOUNTER_CORE_SELECT = {
   reopenReason: true,
   reopenReasonCode: true,
   reopenCount: true,
+  /// MEDUI.D4C.10A — MedoraServiceLine token (nullable legacy).
+  serviceLine: true,
 } satisfies Prisma.EncounterSelect;
 
 /**
@@ -122,6 +124,7 @@ export const ENCOUNTER_ACCESS_SELECT = {
   treatmentPlan: true,
   billingClassification: true,
   billingFinalizationStatus: true,
+  serviceLine: true,
   createdAt: true,
   updatedAt: true,
 } satisfies Prisma.EncounterSelect;
@@ -233,6 +236,7 @@ export const ENCOUNTER_OPEN_EXISTENCE_SELECT = {
   type: true,
   patientId: true,
   facilityId: true,
+  serviceLine: true,
 } satisfies Prisma.EncounterSelect;
 
 /** List-by-patient / lightweight clinic list. */

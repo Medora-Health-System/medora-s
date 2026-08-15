@@ -775,6 +775,10 @@ model Encounter {
   /// MEDUI.D4C.3 — durable ambulatory visit origin (SCHEDULED | WALK_IN | …). Null = legacy/unknown.
   /// Do not overload Encounter.type or EncounterIntake.modeOfArrival for this meaning.
   visitOrigin                               EncounterVisitOrigin?
+  /// MEDUI.D4C.10A — enterprise MedoraServiceLine token (CLINIC, DENTAL, EMERGENCY, …).
+  /// String storage validated by shared registry (no Prisma enum dual authority). Null = legacy/unknown.
+  /// Do NOT silently treat null as CLINIC for concurrency.
+  serviceLine                               String?
   /// D3C — placement requests originated from this ED encounter.
   internalPlacementRequestsOriginated       InternalPlacementRequest[]             @relation("InternalPlacementOriginatingEncounter")
   /// D3C — placement requests whose receiving encounter is this chart (nullable until arrival).
@@ -844,6 +848,8 @@ model Encounter {
   @@index([billingClassification])
   @@index([hospitalEpisodeId])
   @@index([facilityId, visitOrigin, createdAt])
+  /// MEDUI.D4C.10A — concurrency / reporting lookups by patient + service line + status.
+  @@index([facilityId, patientId, status, serviceLine])
   @@index([closedAt])
   @@index([reopenedAt])
   @@index([closedByUserId])

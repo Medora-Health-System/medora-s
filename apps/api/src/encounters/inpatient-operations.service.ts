@@ -154,6 +154,7 @@ import {
   type ProviderAmendmentTarget,
   type ProviderHandoffDraftV1,
   type ProviderDocumentAmendmentV1,
+  resolveAuthoritativeEncounterServiceLine,
 } from "@medora/shared";
 import { PrismaService } from "../prisma/prisma.service";
 import { AuditService } from "../common/services/audit.service";
@@ -832,12 +833,18 @@ export class InpatientOperationsService {
         let hospitalEpisodeId: string | null = activeEpisodeId;
 
         // Pre-D3B create data: never include hospitalEpisodeId key (even as undefined).
+        const serviceLine = resolveAuthoritativeEncounterServiceLine({
+          encounterType: EncounterType.INPATIENT,
+          workflowHint: "DIRECT_ADMISSION",
+          billingClassification: BillingClassification.INPATIENT,
+        }).serviceLine;
         const encounterBaseCreate = {
           facilityId,
           patientId: patient.id,
           type: EncounterType.INPATIENT,
           status: EncounterStatus.OPEN,
           billingClassification: BillingClassification.INPATIENT,
+          serviceLine,
           providerId: actorUserId,
           physicianAssignedUserId: body.attendingProviderUserId?.trim() || null,
           nurseAssignedUserId: actorUserId,

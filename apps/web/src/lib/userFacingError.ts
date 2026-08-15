@@ -53,9 +53,17 @@ const RULES: Array<{ test: (s: string) => boolean; fr: string; en: string }> = [
   },
   { test: (s) => /patient not found/i.test(s), fr: "Patient introuvable.", en: "Patient not found." },
   {
+    test: (s) =>
+      /duplicate_active_service_encounter|an active encounter already exists for this patient in a compatible care context/i.test(
+        s
+      ),
+    fr: "Une rencontre active existe déjà pour ce contexte de soins. Ouvrez la rencontre existante.",
+    en: "An active encounter already exists for this care context. Open the existing encounter.",
+  },
+  {
     test: (s) => /patient already has an open encounter/i.test(s),
-    fr: "Une consultation est déjà ouverte pour ce patient. Fermez-la ou ouvrez-la avant d’en créer une nouvelle.",
-    en: "This patient already has an open encounter. Close or open it before creating another.",
+    fr: "Une rencontre active existe déjà pour ce patient dans un contexte compatible. Ouvrez-la plutôt que d’en créer une autre.",
+    en: "An active encounter already exists for this patient in a compatible care context. Open it instead of creating another.",
   },
   { test: (s) => /order not found/i.test(s), fr: "Ordre introuvable.", en: "Order not found." },
   {

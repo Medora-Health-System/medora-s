@@ -36,6 +36,8 @@ export type EnterprisePatientEncounterIndexInput = {
   id: string;
   status?: string | null;
   type?: string | null;
+  /** MEDUI.D4C.10A — durable MedoraServiceLine when present. */
+  serviceLine?: string | null;
   closedAt?: string | null;
   dischargedAt?: string | null;
   providerDocumentationStatus?: string | null;
@@ -53,6 +55,8 @@ export type EnterprisePatientEncounterIndexProjection = {
   /** Canonical navigation from the patient encounter index. */
   href: string;
   careSetting: string;
+  /** MEDUI.D4C.10A — projected service line (null = legacy/unknown). */
+  serviceLine: string | null;
   /** Board/workspace hub after reopen — informational; not a second lifecycle engine. */
   workspaceHubTarget: string;
 };
@@ -76,6 +80,7 @@ export function resolveEnterprisePatientEncounterIndexHref(
   const isDental = isDentalEncounterProjection({
     type: input.type,
     careSetting: input.careSetting,
+    serviceLine: input.serviceLine,
     nursingAssessment: input.nursingAssessment,
     admissionSummaryJson: input.admissionSummaryJson,
   });
@@ -129,6 +134,9 @@ export function projectEnterprisePatientEncounterIndex(
     displayMode: resolveEnterpriseEncounterDisplayMode(encounter.status),
     href: resolveEnterprisePatientEncounterIndexHref(encounter, options),
     careSetting: workspace.careSetting,
+    serviceLine: encounter.serviceLine?.trim()
+      ? encounter.serviceLine.trim().toUpperCase()
+      : null,
     workspaceHubTarget: workspace.workspaceTarget,
   };
 }

@@ -71,6 +71,7 @@ describe("MEDUI.D5A.3B enterprise Dental patient discovery & safe encounter laun
     expect(dashboard).toContain("mergeDentalServiceLineIntoNursingAssessment");
     expect(dashboard).toContain('type: "OUTPATIENT"');
     expect(dashboard).toContain('roomLabel: "DENTAL"');
+    expect(dashboard).toContain('serviceLine: "DENTAL"');
     expect(dashboard).toContain("enterpriseDentalEncounterWorkspacePath");
   });
 });

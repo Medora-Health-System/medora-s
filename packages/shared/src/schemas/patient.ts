@@ -204,6 +204,11 @@ export const encounterCreateDtoSchema = z.object({
   notes: z.preprocess(emptyStrToUndefined, z.string().max(16000).optional()),
   /** Salle / lieu de consultation (accueil) */
   roomLabel: z.preprocess(emptyStrToUndefined, z.union([z.string().max(64), z.null()]).optional()),
+  /**
+   * MEDUI.D4C.10A — optional MedoraServiceLine hint (CLINIC, DENTAL, …).
+   * Server resolves authoritative value + facility capability gate; client cannot invent unknown tokens.
+   */
+  serviceLine: z.preprocess(emptyStrToUndefined, z.string().max(64).optional()),
   /** Accept suggested shared-room suffix when numbered room is occupied (ED). */
   confirmOccupiedRoomAssignment: z.boolean().optional(),
   roomOccupancyOverride: z
@@ -238,6 +243,8 @@ export const encounterOutpatientCreateDtoSchema = z.object({
   visitReason: z.preprocess(emptyStrToUndefined, z.string().max(4000).optional()),
   notes: z.preprocess(emptyStrToUndefined, z.string().max(16000).optional()),
   roomLabel: z.preprocess(emptyStrToUndefined, z.union([z.string().max(64), z.null()]).optional()),
+  /** MEDUI.D4C.10A — defaults to CLINIC when omitted (clinic outpatient helper). */
+  serviceLine: z.preprocess(emptyStrToUndefined, z.string().max(64).optional()),
   physicianAssignedUserId: z.preprocess(
     emptyStrToUndefined,
     z.union([z.string().uuid(), z.null()]).optional()

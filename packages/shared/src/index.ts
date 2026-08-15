@@ -63,6 +63,8 @@ export * from "./encounters/unifiedEncounterTimeline.js";
 export * from "./encounters/edClinicalTimeline.js";
 export * from "./encounters/encounterClinicalRecord.js";
 export * from "./encounters/billingClassification.js";
+export * from "./encounters/enterpriseEncounterServiceLineProvenanceD4c10a.js";
+export * from "./encounters/enterpriseEncounterCreateRaceHardeningD4c10c.js";
 export * from "./encounters/facilityBillingWorkflow.js";
 export * from "./encounters/billingExportReadiness.js";
 export * from "./encounters/billingLedgerReadiness.js";
