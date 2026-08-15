@@ -21337,6 +21337,13 @@ export default {
       empty: "Aucune rencontre dentaire ouverte.",
       loadError: "Impossible de charger la file dentaire.",
       startTitle: "Démarrer une rencontre dentaire",
+      searchHelp:
+        "Recherchez un patient de cet établissement (nom ou NIP). La sélection fixe l’identité — le texte saisi n’est jamais un identifiant patient.",
+      patientSearchLabel: "Rechercher un patient",
+      patientSearchPlaceholder: "Nom ou NIP (3 caractères minimum)",
+      selectedPatient: "Patient sélectionné",
+      mrn: "NIP",
+      selectPatientRequired: "Sélectionnez un patient dans les résultats avant de démarrer.",
       patientIdPlaceholder: "ID patient",
       reasonPlaceholder: "Motif de visite (facultatif)",
       startButton: "Démarrer la rencontre dentaire",

@@ -149,6 +149,27 @@ function IconMsppAccessAdmin() {
   );
 }
 
+/** MEDUI.D5A.3B — Dental Care (tooth) — professional stroke mark, not ❓ fallback. */
+function IconDentalTooth() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width={20}
+      height={20}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="pointer-events-none shrink-0"
+      aria-hidden
+      data-testid="sidebar-icon-dental"
+    >
+      <path d="M12 3c-2.2 0-4 1.4-4 3.6 0 1.1.3 2 .7 3 .5 1.2.8 2.4.8 3.7V19c0 .8.5 1.4 1.2 1.4.5 0 .9-.3 1.1-.8l.2-.5.2.5c.2.5.6.8 1.1.8.7 0 1.2-.6 1.2-1.4v-5.7c0-1.3.3-2.5.8-3.7.4-1 .7-1.9.7-3C16 4.4 14.2 3 12 3z" />
+    </svg>
+  );
+}
+
 export function SidebarNavIcon({ href }: { href: string }) {
   if (href === "/app/mspp/dashboard") {
     return <MsppBrandMark />;
@@ -173,6 +194,10 @@ export function SidebarNavIcon({ href }: { href: string }) {
   }
 
   const iconKey = resolveSidebarNavIconPathname(href);
+  if (iconKey === "/app/dental" || href === "/app/dental" || href.startsWith("/app/dental/")) {
+    return <IconDentalTooth />;
+  }
+
   const file = HREF_TWEMOJI_SVG[iconKey] ?? HREF_TWEMOJI_SVG[href] ?? "2753.svg";
   return (
     <img

@@ -6,8 +6,10 @@ import {
   D5A3_CERTIFICATION_ID,
   buildDentalServiceLineTag,
   enterpriseDentalEncounterWorkspacePath,
+  formatPatientLegalName,
   isDentalEncounterProjection,
   mergeDentalServiceLineIntoNursingAssessment,
+  type PatientSearchHitV1,
 } from "@medora/shared";
 import { apiFetch } from "@/lib/apiClient";
 import { normalizeUserFacingError } from "@/lib/userFacingError";
@@ -18,6 +20,7 @@ import {
   tEncounterStatus,
 } from "@/lib/encounterChromeI18n";
 import { MEDORA_CARD_SHELL } from "@/components/medora-card/medoraCardTokens";
+import { PatientSearchAndSelect } from "@/components/patients/PatientSearchAndSelect";
 
 type WorklistRow = {
   id: string;
@@ -39,7 +42,8 @@ type WorklistRow = {
 };
 
 /**
- * MEDUI.D5A.3 — Dental worklist + start-encounter projection over enterprise Encounter.
+ * MEDUI.D5A.3B — Dental worklist + enterprise Patient discovery + safe encounter launch.
+ * Typed search text is NEVER Patient.id. Reuses PatientSearchAndSelect → GET /patients/search.
  */
 export function DentalCareDashboardView() {
   const { t, language } = useI18n();
@@ -47,7 +51,7 @@ export function DentalCareDashboardView() {
   const [rows, setRows] = useState<WorklistRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [patientId, setPatientId] = useState("");
+  const [selectedPatient, setSelectedPatient] = useState<PatientSearchHitV1 | null>(null);
   const [visitReason, setVisitReason] = useState("");
   const [starting, setStarting] = useState(false);
 
@@ -79,12 +83,21 @@ export function DentalCareDashboardView() {
     void load();
   }, [ready, facilityId]);
 
+  const canStart =
+    Boolean(facilityId) &&
+    Boolean(selectedPatient?.id?.trim()) &&
+    !starting;
+
   const startDentalEncounter = async () => {
-    if (!facilityId || !patientId.trim()) return;
+    const patientId = selectedPatient?.id?.trim();
+    if (!facilityId || !patientId) {
+      setError(t("dentalCareD5a3.worklist.selectPatientRequired"));
+      return;
+    }
     setStarting(true);
     setError(null);
     try {
-      const created = (await apiFetch(`/patients/${encodeURIComponent(patientId.trim())}/encounters`, {
+      const created = (await apiFetch(`/patients/${encodeURIComponent(patientId)}/encounters`, {
         method: "POST",
         facilityId,
         headers: { "Content-Type": "application/json" },
@@ -117,36 +130,69 @@ export function DentalCareDashboardView() {
   };
 
   return (
-    <div data-testid="dental-care-dashboard" data-certification-id={D5A3_CERTIFICATION_ID} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+    <div
+      data-testid="dental-care-dashboard"
+      data-certification-id="MEDUI.D5A.3B"
+      data-d5a3-certification-id={D5A3_CERTIFICATION_ID}
+      style={{ display: "flex", flexDirection: "column", gap: 12 }}
+    >
       <p style={{ margin: 0, color: "#64748b", fontSize: 13 }}>{t("dentalCareD5a3.worklist.intro")}</p>
 
-      <section style={{ ...MEDORA_CARD_SHELL, padding: 14 }}>
+      <section style={{ ...MEDORA_CARD_SHELL, padding: 14 }} data-testid="dental-start-encounter">
         <h2 style={{ margin: 0, fontSize: 14, fontWeight: 700 }}>{t("dentalCareD5a3.worklist.startTitle")}</h2>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 10 }}>
-          <input
-            value={patientId}
-            onChange={(e) => setPatientId(e.target.value)}
-            placeholder={t("dentalCareD5a3.worklist.patientIdPlaceholder")}
-            style={{ flex: "1 1 220px", padding: 8, borderRadius: 6, border: "1px solid #e2e8f0" }}
+        <p style={{ margin: "6px 0 0", fontSize: 12, color: "#64748b" }}>
+          {t("dentalCareD5a3.worklist.searchHelp")}
+        </p>
+        <div style={{ marginTop: 10 }}>
+          <PatientSearchAndSelect
+            facilityId={facilityId}
+            autoSearch
+            debounceMs={300}
+            limit={12}
+            selectedPatientId={selectedPatient?.id ?? null}
+            onSelect={(p) => {
+              setSelectedPatient(p);
+              setError(null);
+            }}
+            onClearSelection={() => setSelectedPatient(null)}
+            clearSelectionOnQueryChange
+            label={t("dentalCareD5a3.worklist.patientSearchLabel")}
+            placeholder={t("dentalCareD5a3.worklist.patientSearchPlaceholder")}
+            testIdPrefix="dental-patient-search"
           />
+        </div>
+        {selectedPatient ? (
+          <p
+            data-testid="dental-selected-patient"
+            data-patient-id={selectedPatient.id}
+            style={{ margin: "8px 0 0", fontSize: 12, color: "#0f172a" }}
+          >
+            {t("dentalCareD5a3.worklist.selectedPatient")}:{" "}
+            <strong>{formatPatientLegalName(selectedPatient)}</strong>
+            {selectedPatient.mrn ? ` · ${t("dentalCareD5a3.worklist.mrn")}: ${selectedPatient.mrn}` : ""}
+          </p>
+        ) : null}
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 10 }}>
           <input
             value={visitReason}
             onChange={(e) => setVisitReason(e.target.value)}
             placeholder={t("dentalCareD5a3.worklist.reasonPlaceholder")}
             style={{ flex: "2 1 260px", padding: 8, borderRadius: 6, border: "1px solid #e2e8f0" }}
+            data-testid="dental-visit-reason"
           />
           <button
             type="button"
-            disabled={starting || !patientId.trim()}
+            disabled={!canStart}
             onClick={() => void startDentalEncounter()}
+            data-testid="dental-start-encounter-button"
             style={{
               padding: "8px 14px",
               borderRadius: 6,
               border: "none",
-              background: "#0f172a",
+              background: canStart ? "#0f172a" : "#94a3b8",
               color: "#fff",
               fontWeight: 600,
-              cursor: starting ? "wait" : "pointer",
+              cursor: canStart ? (starting ? "wait" : "pointer") : "not-allowed",
             }}
           >
             {starting ? t("common.loading") : t("dentalCareD5a3.worklist.startButton")}
@@ -201,8 +247,12 @@ export function DentalCareDashboardView() {
                     nursingAssessment: row.nursingAssessment,
                     admissionSummaryJson: row.admissionSummaryJson,
                   });
-                  const name = `${row.patient?.firstName ?? ""} ${row.patient?.lastName ?? ""}`.trim() || t("dentalCareD5a3.notDocumented");
-                  const provider = `${row.physicianAssigned?.firstName ?? ""} ${row.physicianAssigned?.lastName ?? ""}`.trim() || t("dentalCareD5a3.notDocumented");
+                  const name =
+                    `${row.patient?.firstName ?? ""} ${row.patient?.lastName ?? ""}`.trim() ||
+                    t("dentalCareD5a3.notDocumented");
+                  const provider =
+                    `${row.physicianAssigned?.firstName ?? ""} ${row.physicianAssigned?.lastName ?? ""}`.trim() ||
+                    t("dentalCareD5a3.notDocumented");
                   return (
                     <tr key={row.id} data-testid="dental-worklist-row" style={{ borderTop: "1px solid #eee" }}>
                       <td style={{ padding: "8px 10px" }}>
@@ -213,7 +263,8 @@ export function DentalCareDashboardView() {
                         {row.createdAt ? formatEncounterChromeDateTime(row.createdAt, language) : "—"}
                       </td>
                       <td style={{ padding: "8px 10px" }}>
-                        {(row.chiefComplaint ?? row.visitReason ?? "").trim() || t("dentalCareD5a3.notDocumented")}
+                        {(row.chiefComplaint ?? row.visitReason ?? "").trim() ||
+                          t("dentalCareD5a3.notDocumented")}
                       </td>
                       <td style={{ padding: "8px 10px" }}>{provider}</td>
                       <td style={{ padding: "8px 10px" }}>{tEncounterStatus(t, row.status ?? "OPEN")}</td>

@@ -21227,6 +21227,13 @@ export default {
       empty: "No open Dental encounters.",
       loadError: "Unable to load the Dental worklist.",
       startTitle: "Start Dental encounter",
+      searchHelp:
+        "Search a patient at this facility (name or MRN). Selection sets identity — typed text is never a patient id.",
+      patientSearchLabel: "Search patient",
+      patientSearchPlaceholder: "Name or MRN (minimum 3 characters)",
+      selectedPatient: "Selected patient",
+      mrn: "MRN",
+      selectPatientRequired: "Select a patient from the results before starting.",
       patientIdPlaceholder: "Patient ID",
       reasonPlaceholder: "Visit reason (optional)",
       startButton: "Start Dental encounter",
