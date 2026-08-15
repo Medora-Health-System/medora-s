@@ -1,14 +1,25 @@
 /**
- * D3E.6D — Context-aware open-encounter creation policy.
- * Replaces global "one open encounter per patient" for governed hospital admission.
- * ED + Inpatient may coexist. Duplicate active Inpatient for same admission is denied.
+ * D3E.6D + MEDUI.D4C.10B — Enterprise concurrent encounter create policy.
  *
- * Receiving-encounter reuse is driven by hospitalAdmissionCorrelationV1 — never by
- * "any open Inpatient for the patient" alone.
+ * OPEN/CLOSED is an Encounter state, not a Patient state.
+ * Distinct known service lines may coexist (e.g. CLINIC + DENTAL).
+ * Same service line is governed by operational episode (appointment / idempotency),
+ * not a permanent one-open-per-service-line lock.
+ *
+ * Hospital admission pathways (D3E.6D) remain authoritative for Inpatient correlation.
  */
+
+import {
+  normalizePersistedEncounterServiceLine,
+  resolveAuthoritativeEncounterServiceLine,
+  serviceLinesMatchForConcurrency,
+} from "./enterpriseEncounterServiceLineProvenanceD4c10a.js";
+import type { MedoraServiceLine } from "../auth/facilityTypeRegistry.js";
 
 export const UNIT_BED_BOARDS_ADMISSION_INTAKE_CERTIFICATION_ID =
   "MEDUI.UNIT_BED_BOARDS_ADMISSION_INTAKE.D3E6D" as const;
+
+export const D4C10B_CERTIFICATION_ID = "MEDUI.D4C.10B" as const;
 
 export type ConcurrentEncounterPathway =
   | "GENERAL_CREATE"
@@ -20,16 +31,98 @@ export type OpenEncounterSnapshot = {
   id: string;
   type: string;
   status?: string | null;
+  /** MEDUI.D4C.10A — nullable legacy unknown. Never invent CLINIC. */
+  serviceLine?: string | null;
+  /** Linked appointment when present (episode identity). */
+  appointmentId?: string | null;
 };
 
 export type ConcurrentEncounterDecision =
-  | { allowed: true; code: "OK" | "ALLOW_ED_PLUS_INPATIENT" | "IDEMPOTENT_REUSE"; reuseEncounterId?: string }
-  | { allowed: false; code: string; detail: string };
+  | {
+      allowed: true;
+      code:
+        | "OK"
+        | "ALLOW_ED_PLUS_INPATIENT"
+        | "ALLOW_DISTINCT_SERVICE_LINE"
+        | "IDEMPOTENT_REUSE";
+      reuseEncounterId?: string;
+    }
+  | {
+      allowed: false;
+      code: string;
+      detail: string;
+      existingEncounterId?: string;
+    };
 
 export function normalizeEncounterTypeToken(raw: unknown): string {
   return String(raw ?? "")
     .trim()
     .toUpperCase();
+}
+
+function resolveRequestedServiceLine(input: {
+  requestedType: string;
+  requestedServiceLine?: string | null;
+}): MedoraServiceLine | null {
+  const explicit = normalizePersistedEncounterServiceLine(input.requestedServiceLine);
+  if (explicit) return explicit;
+  try {
+    return resolveAuthoritativeEncounterServiceLine({
+      encounterType: input.requestedType,
+    }).serviceLine;
+  } catch {
+    return null;
+  }
+}
+
+function isAmbulatoryServiceLine(line: MedoraServiceLine): boolean {
+  return line === "CLINIC" || line === "DENTAL" || line === "URGENT_CARE";
+}
+
+/**
+ * Legacy null serviceLine handling (D4C.10B):
+ * - Never fabricate CLINIC for null.
+ * - Distinct encounter types / clear cross-context requests → ALLOW.
+ * - Same ambulatory type with null vs CLINIC/UC → conservative AMBIGUOUS (block).
+ * - null OUTPATIENT + requested DENTAL → ALLOW (null is not Dental provenance).
+ */
+function classifyLegacyNullOpenVsRequested(input: {
+  openType: string;
+  requestedType: string;
+  requestedLine: MedoraServiceLine;
+}): "ALLOW" | "AMBIGUOUS" {
+  const openType = normalizeEncounterTypeToken(input.openType);
+  const requestedLine = input.requestedLine;
+
+  if (openType === "EMERGENCY" && requestedLine !== "EMERGENCY") return "ALLOW";
+  if (openType === "INPATIENT" && isAmbulatoryServiceLine(requestedLine)) return "ALLOW";
+  if (openType === "INPATIENT" && requestedLine === "EMERGENCY") return "ALLOW";
+  if (openType === "URGENT_CARE" && requestedLine === "DENTAL") return "ALLOW";
+  if (openType === "URGENT_CARE" && requestedLine === "EMERGENCY") return "ALLOW";
+  if (openType === "OUTPATIENT" && requestedLine === "DENTAL") return "ALLOW";
+  if (openType === "OUTPATIENT" && requestedLine === "EMERGENCY") return "ALLOW";
+  if (openType === "OUTPATIENT" && (requestedLine === "CLINIC" || requestedLine === "URGENT_CARE")) {
+    return "AMBIGUOUS";
+  }
+  if (openType === "EMERGENCY" && requestedLine === "EMERGENCY") return "AMBIGUOUS";
+  if (openType === "URGENT_CARE" && requestedLine === "URGENT_CARE") return "AMBIGUOUS";
+  if (openType === normalizeEncounterTypeToken(input.requestedType)) return "AMBIGUOUS";
+  return "ALLOW";
+}
+
+function sameOperationalEpisode(
+  open: OpenEncounterSnapshot,
+  requestedAppointmentId?: string | null
+): boolean {
+  const openAppt = String(open.appointmentId ?? "").trim();
+  const reqAppt = String(requestedAppointmentId ?? "").trim();
+  // Both unbound (e.g. Dental dashboard double-click / walk-in retry) → same episode.
+  if (!openAppt && !reqAppt) return true;
+  // Distinct appointment identities → different episodes.
+  if (openAppt && reqAppt && openAppt !== reqAppt) return false;
+  // One bound, one not → treat as different episodes when creating via appointment.
+  if (openAppt !== reqAppt) return false;
+  return true;
 }
 
 /**
@@ -43,6 +136,10 @@ export function evaluateConcurrentEncounterCreate(input: {
   pathway: ConcurrentEncounterPathway;
   requestedType: string;
   existingOpen: OpenEncounterSnapshot[];
+  /** MEDUI.D4C.10A/B — authoritative requested MedoraServiceLine when known. */
+  requestedServiceLine?: string | null;
+  /** Appointment / operational episode correlation for ambulatory creates. */
+  requestedAppointmentId?: string | null;
   /** When set and matches an existing open IP, treat as safe retry. */
   idempotencyKey?: string | null;
   existingIdempotentEncounterId?: string | null;
@@ -79,16 +176,72 @@ export function evaluateConcurrentEncounterCreate(input: {
   const openIp = open.filter((e) => normalizeEncounterTypeToken(e.type) === "INPATIENT");
   const openEd = open.filter((e) => normalizeEncounterTypeToken(e.type) === "EMERGENCY");
 
-  // General registration / ED create: keep strict one-open rule.
+  // MEDUI.D4C.10B — enterprise multi-service GENERAL_CREATE
   if (input.pathway === "GENERAL_CREATE") {
+    const requestedLine = resolveRequestedServiceLine(input);
+    if (!requestedLine) {
+      return {
+        allowed: false,
+        code: "OPEN_ENCOUNTER_EXISTS",
+        detail: "Patient already has an open encounter",
+        existingEncounterId: open[0]?.id,
+      };
+    }
+
+    let sawDistinct = false;
+    let ambiguous: OpenEncounterSnapshot | null = null;
+
+    for (const row of open) {
+      const openLine = normalizePersistedEncounterServiceLine(row.serviceLine);
+
+      if (openLine && serviceLinesMatchForConcurrency(openLine, requestedLine)) {
+        if (sameOperationalEpisode(row, input.requestedAppointmentId)) {
+          return {
+            allowed: true,
+            code: "IDEMPOTENT_REUSE",
+            reuseEncounterId: row.id,
+          };
+        }
+        // Same service line, different appointment/episode → allow parallel episode.
+        sawDistinct = true;
+        continue;
+      }
+
+      if (openLine && openLine !== requestedLine) {
+        sawDistinct = true;
+        continue;
+      }
+
+      // Legacy null serviceLine — contextual, never invent CLINIC.
+      const legacy = classifyLegacyNullOpenVsRequested({
+        openType: row.type,
+        requestedType: input.requestedType,
+        requestedLine,
+      });
+      if (legacy === "ALLOW") {
+        sawDistinct = true;
+        continue;
+      }
+      ambiguous = ambiguous ?? row;
+    }
+
+    if (ambiguous) {
+      return {
+        allowed: false,
+        code: "DUPLICATE_ACTIVE_SERVICE_ENCOUNTER",
+        detail:
+          "An active encounter already exists for this patient in a compatible care context",
+        existingEncounterId: ambiguous.id,
+      };
+    }
+
     return {
-      allowed: false,
-      code: "OPEN_ENCOUNTER_EXISTS",
-      detail: "Patient already has an open encounter",
+      allowed: true,
+      code: sawDistinct ? "ALLOW_DISTINCT_SERVICE_LINE" : "OK",
     };
   }
 
-  // Hospital admission pathways creating INPATIENT
+  // Hospital admission pathways creating INPATIENT (D3E.6D — preserved)
   if (
     (input.pathway === "DIRECT_ADMISSION" ||
       input.pathway === "PLACEMENT_RECEIVING" ||
@@ -96,15 +249,14 @@ export function evaluateConcurrentEncounterCreate(input: {
     requested === "INPATIENT"
   ) {
     if (openIp.length > 0) {
-      // Uncorrelated open IP must not be silently reused (prevents wrong-chart attachment).
       return {
         allowed: false,
         code: "DUPLICATE_INPATIENT",
         detail:
           "Patient already has an open Inpatient encounter that is not correlated to this admission",
+        existingEncounterId: openIp[0]?.id,
       };
     }
-    // Open ED / Observation / outpatient — allow concurrent ED + Inpatient
     if (openEd.length > 0 || openTypes.every((t) => t === "EMERGENCY" || t === "OUTPATIENT")) {
       return { allowed: true, code: "ALLOW_ED_PLUS_INPATIENT" };
     }
@@ -117,6 +269,7 @@ export function evaluateConcurrentEncounterCreate(input: {
     allowed: false,
     code: "OPEN_ENCOUNTER_EXISTS",
     detail: "Patient already has an open encounter",
+    existingEncounterId: open[0]?.id,
   };
 }
 

@@ -21238,6 +21238,8 @@ export default {
       reasonPlaceholder: "Visit reason (optional)",
       startButton: "Start Dental encounter",
       startError: "Unable to start Dental encounter.",
+      duplicateActive: "An active Dental encounter already exists for this patient.",
+      openExisting: "Open encounter",
       openWorkspace: "Open workspace",
       refresh: "Refresh",
       colPatient: "Patient",

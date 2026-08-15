@@ -54,11 +54,13 @@ export function DentalCareDashboardView() {
   const [selectedPatient, setSelectedPatient] = useState<PatientSearchHitV1 | null>(null);
   const [visitReason, setVisitReason] = useState("");
   const [starting, setStarting] = useState(false);
+  const [duplicateExistingId, setDuplicateExistingId] = useState<string | null>(null);
 
   const load = async () => {
     if (!facilityId) return;
     setLoading(true);
     setError(null);
+    setDuplicateExistingId(null);
     try {
       const data = await apiFetch("/dental-care/worklist", { facilityId });
       const items = Array.isArray((data as { items?: unknown })?.items)
@@ -96,6 +98,7 @@ export function DentalCareDashboardView() {
     }
     setStarting(true);
     setError(null);
+    setDuplicateExistingId(null);
     try {
       const created = (await apiFetch(`/patients/${encodeURIComponent(patientId)}/encounters`, {
         method: "POST",
@@ -103,11 +106,13 @@ export function DentalCareDashboardView() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           type: "OUTPATIENT",
+          serviceLine: "DENTAL",
           visitReason: visitReason.trim() || undefined,
           roomLabel: "DENTAL",
         }),
       })) as WorklistRow;
 
+      // Tag merge remains for projection compat; create path also stamps serviceLine + tag server-side.
       const nursing = mergeDentalServiceLineIntoNursingAssessment(
         created.nursingAssessment,
         buildDentalServiceLineTag()
@@ -121,10 +126,30 @@ export function DentalCareDashboardView() {
 
       window.location.assign(enterpriseDentalEncounterWorkspacePath(created.id));
     } catch (err) {
-      setError(
-        normalizeUserFacingError(err instanceof Error ? err.message : null, language) ||
-          t("dentalCareD5a3.worklist.startError")
-      );
+      const body =
+        err && typeof err === "object" && "body" in err
+          ? ((err as { body?: unknown }).body as Record<string, unknown> | undefined)
+          : undefined;
+      const payload =
+        body && typeof body.message === "object" && body.message
+          ? (body.message as Record<string, unknown>)
+          : body;
+      const code = String(payload?.code ?? (err as { errorCode?: string })?.errorCode ?? "");
+      const existingId = String(payload?.existingEncounterId ?? "").trim();
+      if (
+        existingId &&
+        (code === "DUPLICATE_ACTIVE_SERVICE_ENCOUNTER" ||
+          code === "OPEN_ENCOUNTER_EXISTS" ||
+          /dental|compatible care context|active encounter/i.test(String(payload?.message ?? "")))
+      ) {
+        setDuplicateExistingId(existingId);
+        setError(t("dentalCareD5a3.worklist.duplicateActive"));
+      } else {
+        setError(
+          normalizeUserFacingError(err instanceof Error ? err.message : null, language) ||
+            t("dentalCareD5a3.worklist.startError")
+        );
+      }
       setStarting(false);
     }
   };
@@ -198,6 +223,19 @@ export function DentalCareDashboardView() {
             {starting ? t("common.loading") : t("dentalCareD5a3.worklist.startButton")}
           </button>
         </div>
+        {duplicateExistingId ? (
+          <p
+            data-testid="dental-duplicate-active"
+            style={{ margin: "10px 0 0", fontSize: 13, color: "#0f172a" }}
+          >
+            <Link
+              href={enterpriseDentalEncounterWorkspacePath(duplicateExistingId)}
+              style={{ fontWeight: 600, color: "#1d4ed8" }}
+            >
+              {t("dentalCareD5a3.worklist.openExisting")}
+            </Link>
+          </p>
+        ) : null}
       </section>
 
       <section style={{ ...MEDORA_CARD_SHELL, padding: 14 }}>

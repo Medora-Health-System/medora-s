@@ -21348,6 +21348,9 @@ export default {
       reasonPlaceholder: "Motif de visite (facultatif)",
       startButton: "Démarrer la rencontre dentaire",
       startError: "Impossible de démarrer la rencontre dentaire.",
+      duplicateActive:
+        "Une rencontre dentaire active existe déjà pour ce patient.",
+      openExisting: "Ouvrir la rencontre",
       openWorkspace: "Ouvrir l’espace",
       refresh: "Actualiser",
       colPatient: "Patient",

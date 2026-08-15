@@ -28,6 +28,7 @@ import {
   validateInternalPlacementTransition,
   type HospitalAdmissionCorrelationV1,
   type InternalPlacementStateProjection,
+  resolveAuthoritativeEncounterServiceLine,
 } from "@medora/shared";
 import { AuditService } from "../common/services/audit.service";
 import { PrismaService } from "../prisma/prisma.service";
@@ -864,6 +865,12 @@ export class InternalPlacementService {
                 },
                 preCreate
               );
+              const serviceLine = resolveAuthoritativeEncounterServiceLine({
+                encounterType: EncounterType.INPATIENT,
+                billingClassification: billingClass,
+                workflowHint:
+                  destType === "OBSERVATION" ? "PLACEMENT_OBSERVATION" : "DIRECT_ADMISSION",
+              }).serviceLine;
               const created = await tx.encounter.create({
                 data: {
                   facilityId: row.facilityId,
@@ -875,6 +882,7 @@ export class InternalPlacementService {
                     billingClass === "OBSERVATION"
                       ? BillingClassification.OBSERVATION
                       : BillingClassification.INPATIENT,
+                  serviceLine,
                   admissionSummaryJson: summary as Prisma.InputJsonValue,
                   admittedAt: new Date(),
                 },

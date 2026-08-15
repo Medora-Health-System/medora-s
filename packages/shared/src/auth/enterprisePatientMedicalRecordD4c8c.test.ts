@@ -75,14 +75,34 @@ describe("MEDUI.D4C.8C enterprise patient medical record index", () => {
     ).toBe("/app/encounters/inp-1");
   });
 
-  it("future Dental OPEN remains index-compatible without DentalPatient", () => {
-    const href = resolveEnterprisePatientEncounterIndexHref({
-      id: "dent-1",
+  it("projects durable serviceLine on encounter index without collapsing OUTPATIENT rows", () => {
+    const clinic = projectEnterprisePatientEncounterIndex({
+      id: "c1",
       status: "OPEN",
       type: "OUTPATIENT",
-      careSetting: "DENTAL",
+      serviceLine: "CLINIC",
     });
-    expect(href).toBe("/app/dental/encounters/dent-1");
+    const dental = projectEnterprisePatientEncounterIndex({
+      id: "d1",
+      status: "OPEN",
+      type: "OUTPATIENT",
+      serviceLine: "DENTAL",
+    });
+    expect(clinic.serviceLine).toBe("CLINIC");
+    expect(dental.serviceLine).toBe("DENTAL");
+    expect(clinic.href).not.toBe(dental.href);
+    expect(dental.href).toBe("/app/dental/encounters/d1");
+  });
+
+  it("legacy null serviceLine remains readable on index", () => {
+    const row = projectEnterprisePatientEncounterIndex({
+      id: "legacy",
+      status: "CLOSED",
+      type: "OUTPATIENT",
+      serviceLine: null,
+    });
+    expect(row.serviceLine).toBeNull();
+    expect(row.href).toBe("/app/encounters/legacy");
   });
 
   it("reopen remains Admin-only (D4C.7K)", () => {

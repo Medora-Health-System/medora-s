@@ -146,6 +146,11 @@ import {
   type EncounterRoomUpdateDto,
   type EncounterCareUnitCode,
   evaluateConcurrentEncounterCreate,
+  resolveAuthoritativeEncounterServiceLine,
+  assertEncounterServiceLineEnabledForFacility,
+  EncounterServiceLineResolutionError,
+  mergeDentalServiceLineIntoNursingAssessment,
+  buildDentalServiceLineTag,
   D4C7J_CLOSE_CODES,
   D4C7J_ACKNOWLEDGEMENT_VERSION,
   buildD4c7jCloseAuditMetadata,
@@ -277,6 +282,7 @@ import {
   resolveFacilityModuleCapabilitiesD4c1,
 } from "@medora/shared";
 import { throwEncounterConcurrentModification } from "./encounter-concurrency.util";
+import { acquireEnterpriseEncounterCreateRaceLock } from "./encounter-create-race-lock.util";
 import {
   ADMISSION_ERROR_MESSAGES_FR,
   throwAdmissionDecisionError,
@@ -398,20 +404,6 @@ export class EncountersService {
       throw new NotFoundException("Patient not found");
     }
 
-    // Check for existing OPEN encounter
-    const existingOpen = await this.prisma.encounter.findFirst({
-      select: ENCOUNTER_OPEN_EXISTENCE_SELECT,
-      where: {
-        patientId,
-        facilityId,
-        status: "OPEN",
-      },
-    });
-
-    if (existingOpen) {
-      throw new BadRequestException("Patient already has an open encounter");
-    }
-
     const chief =
       data.visitReason?.trim() ||
       data.chiefComplaint?.trim() ||
@@ -468,33 +460,125 @@ export class EncountersService {
       encounterType: data.type,
     });
 
-    const encounter = await this.prisma.encounter.create({
-      data: {
-        patientId,
-        facilityId,
-        type: data.type,
-        billingClassification,
-        providerId: data.providerId ?? userId,
-        chiefComplaint: chief,
-        notes: data.notes?.trim() || undefined,
+    let serviceLineResolved;
+    try {
+      serviceLineResolved = resolveAuthoritativeEncounterServiceLine({
+        encounterType: data.type,
+        requestedServiceLine: data.serviceLine,
         roomLabel,
-        physicianAssignedUserId,
-        status: "OPEN",
-      },
-      select: ENCOUNTER_DETAIL_SELECT,
+      });
+      assertEncounterServiceLineEnabledForFacility({
+        facilityType: facility?.facilityType,
+        configuredServiceLines: parseStoredFacilityServiceLines(facility?.serviceLinesJson),
+        careProfileJson: facility?.facilityCareProfileJson,
+        facilityCountry: facility?.country,
+        serviceLine: serviceLineResolved.serviceLine,
+      });
+    } catch (e) {
+      if (e instanceof EncounterServiceLineResolutionError) {
+        throw new BadRequestException({ code: e.code, message: e.message });
+      }
+      throw e;
+    }
+
+    // MEDUI.D4C.10C — atomic open-check + insert under episode-scoped advisory lock.
+    const nursingAssessment =
+      serviceLineResolved.serviceLine === "DENTAL"
+        ? mergeDentalServiceLineIntoNursingAssessment(null, buildDentalServiceLineTag())
+        : undefined;
+
+    const txnResult = await this.prisma.$transaction(async (tx) => {
+      await acquireEnterpriseEncounterCreateRaceLock(tx, {
+        facilityId,
+        patientId,
+        serviceLine: serviceLineResolved.serviceLine,
+        appointmentId: null,
+      });
+
+      const existingOpenRows = await tx.encounter.findMany({
+        where: { patientId, facilityId, status: "OPEN" },
+        select: {
+          id: true,
+          type: true,
+          status: true,
+          serviceLine: true,
+          appointment: { select: { id: true } },
+        },
+      });
+      const decision = evaluateConcurrentEncounterCreate({
+        pathway: "GENERAL_CREATE",
+        requestedType: data.type,
+        requestedServiceLine: serviceLineResolved.serviceLine,
+        existingOpen: existingOpenRows.map((row) => ({
+          id: row.id,
+          type: row.type,
+          status: row.status,
+          serviceLine: row.serviceLine,
+          appointmentId: row.appointment?.id ?? null,
+        })),
+      });
+
+      if (decision.allowed && decision.code === "IDEMPOTENT_REUSE" && decision.reuseEncounterId) {
+        const existing = await tx.encounter.findFirst({
+          where: { id: decision.reuseEncounterId, facilityId, patientId },
+          select: ENCOUNTER_DETAIL_SELECT,
+        });
+        if (existing) {
+          return { kind: "reuse" as const, encounter: existing, decision };
+        }
+      }
+
+      if (!decision.allowed) {
+        throw new ConflictException({
+          code: decision.code,
+          message: decision.detail,
+          existingEncounterId: decision.existingEncounterId ?? null,
+          requestedServiceLine: serviceLineResolved.serviceLine,
+        });
+      }
+
+      const encounter = await tx.encounter.create({
+        data: {
+          patientId,
+          facilityId,
+          type: data.type,
+          billingClassification,
+          serviceLine: serviceLineResolved.serviceLine,
+          providerId: data.providerId ?? userId,
+          chiefComplaint: chief,
+          notes: data.notes?.trim() || undefined,
+          roomLabel,
+          physicianAssignedUserId,
+          nursingAssessment: nursingAssessment as never,
+          status: "OPEN",
+        },
+        select: ENCOUNTER_DETAIL_SELECT,
+      });
+
+      return { kind: "created" as const, encounter, decision };
     });
+
+    if (txnResult.kind === "reuse") {
+      return toEncounterClinicResponse(txnResult.encounter);
+    }
 
     await this.audit.log(AuditAction.ENCOUNTER_CREATE, "ENCOUNTER", {
       userId,
       facilityId,
       patientId,
-      encounterId: encounter.id,
-      entityId: encounter.id,
+      encounterId: txnResult.encounter.id,
+      entityId: txnResult.encounter.id,
       ip,
       userAgent,
+      metadata: {
+        serviceLine: serviceLineResolved.serviceLine,
+        serviceLineSource: serviceLineResolved.source,
+        concurrencyCode: txnResult.decision.code,
+        certificationId: "MEDUI.D4C.10C",
+      },
     });
 
-    return toEncounterClinicResponse(encounter);
+    return toEncounterClinicResponse(txnResult.encounter);
   }
 
   async createOutpatientVisit(
@@ -515,6 +599,7 @@ export class EncountersService {
         roomLabel: data.roomLabel,
         physicianAssignedUserId: data.physicianAssignedUserId,
         providerId: data.providerId,
+        serviceLine: data.serviceLine?.trim() || "CLINIC",
       },
       userId,
       ip,
