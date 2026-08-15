@@ -3,15 +3,15 @@
 import { MEDORA_CARD_SHELL } from "@/components/medora-card/medoraCardTokens";
 import { useI18n } from "@/lib/i18n";
 
-const LEGEND: Array<{ key: string; color: string }> = [
-  { key: "CARIES", color: "#ef4444" },
-  { key: "EXISTING_RESTORATION", color: "#38bdf8" },
-  { key: "MISSING", color: "#94a3b8" },
-  { key: "CROWN", color: "#fbbf24" },
-  { key: "IMPLANT", color: "#64748b" },
-  { key: "FRACTURE", color: "#f97316" },
-  { key: "ROOT_CANAL_TREATED", color: "#a78bfa" },
-  { key: "PLANNED", color: "#fde68a" },
+const LEGEND: Array<{ key: string; color: string; i18nPrefix: "findings" | "states" }> = [
+  { key: "CARIES", color: "#ef4444", i18nPrefix: "findings" },
+  { key: "EXISTING_RESTORATION", color: "#38bdf8", i18nPrefix: "findings" },
+  { key: "MISSING", color: "#94a3b8", i18nPrefix: "findings" },
+  { key: "CROWN", color: "#fbbf24", i18nPrefix: "findings" },
+  { key: "IMPLANT", color: "#64748b", i18nPrefix: "findings" },
+  { key: "FRACTURE", color: "#f97316", i18nPrefix: "findings" },
+  { key: "ROOT_CANAL_TREATED", color: "#a78bfa", i18nPrefix: "findings" },
+  { key: "PLANNED", color: "#fde68a", i18nPrefix: "states" },
 ];
 
 export function DentalOdontogramLegend() {
@@ -32,7 +32,7 @@ export function DentalOdontogramLegend() {
                 border: "1px solid #cbd5e1",
               }}
             />
-            {t(`dentalCareD5a4.findings.${item.key}`)}
+            {t(`dentalCareD5a4.${item.i18nPrefix}.${item.key}`)}
           </span>
         ))}
       </div>
