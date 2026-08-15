@@ -24,7 +24,8 @@ describe("MEDUI.D5A.3 dental encounter workspace (web)", () => {
   it("workspace reuses enterprise engines and forbids Dental* forks", () => {
     const ws = readFileSync(resolve(__dirname, "./EnterpriseDentalEncounterWorkspace.tsx"), "utf8");
     expect(ws).toContain("EnterpriseClosedEncounterViewer");
-    expect(ws).toContain("ClinicCareAmbulatoryMedicalEvaluationPanel");
+    expect(ws).toContain("EnterpriseDentalClinicalEvaluationPanel");
+    expect(ws).not.toContain("ClinicCareAmbulatoryMedicalEvaluationPanel");
     expect(ws).toContain("ClinicCareAmbulatoryPrescriptionPanel");
     expect(ws).toContain("EncounterDiagnosticsPanel");
     expect(ws).toContain("EmergencyErOrdersPanel");

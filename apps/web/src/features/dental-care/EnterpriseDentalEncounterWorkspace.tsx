@@ -16,8 +16,8 @@ import {
   type D5a3DentalWorkspaceSection,
 } from "@medora/shared";
 import { EnterpriseClosedEncounterViewer } from "@/components/encounters/EnterpriseClosedEncounterViewer";
-import { ClinicCareAmbulatoryMedicalEvaluationPanel } from "@/features/clinic-care/ClinicCareAmbulatoryMedicalEvaluationPanel";
 import { ClinicCareAmbulatoryPrescriptionPanel } from "@/features/clinic-care/ClinicCareAmbulatoryPrescriptionPanel";
+import { EnterpriseDentalClinicalEvaluationPanel } from "@/features/dental-care/EnterpriseDentalClinicalEvaluationPanel";
 import { EncounterDiagnosticsPanel } from "@/components/encounters/EncounterDiagnosticsPanel";
 import { EmergencyErOrdersPanel } from "@/features/emergency/EmergencyErOrdersPanel";
 import { EmergencyResultsPanel } from "@/features/emergency/EmergencyResultsPanel";
@@ -219,7 +219,6 @@ export function EnterpriseDentalEncounterWorkspace({ encounterId }: { encounterI
     ready,
     facilities,
     userId,
-    facilityCountry,
     careProfileJson,
   } = useFacilityAndRoles();
   const dash = t("common.dash");
@@ -592,10 +591,9 @@ export function EnterpriseDentalEncounterWorkspace({ encounterId }: { encounterI
             {clinicalAuthorBlocked && !canAuthorClinical ? (
               <p style={{ margin: 0, color: "#64748b", fontSize: 13 }}>{t("dentalCareD5a3.errors.noClinicalAuthor")}</p>
             ) : (
-              <ClinicCareAmbulatoryMedicalEvaluationPanel
+              <EnterpriseDentalClinicalEvaluationPanel
                 encounter={encounter}
                 facilityId={facilityId}
-                facilityCountry={facilityCountry}
                 roles={roles}
                 onUpdate={loadEncounter}
               />
