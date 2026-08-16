@@ -73,6 +73,9 @@ export type D4c10dOpenEncounterRoutingSnapshot = {
   clinicalDocumentationEntryCount?: number | null;
   medicationAdministrationCount?: number | null;
   toothFindingCount?: number | null;
+  periodontalExamCount?: number | null;
+  treatmentPlanItemCount?: number | null;
+  procedureRecordCount?: number | null;
   providerAddendumCount?: number | null;
   lifecycleTransitionCount?: number | null;
   triageCompleteAt?: string | Date | null;
@@ -231,6 +234,9 @@ export type D4c10dOwnershipBlockerCode =
   | "CLINICAL_DOCUMENTATION"
   | "MEDICATION_ADMIN"
   | "TOOTH_FINDING"
+  | "PERIODONTAL_EXAM"
+  | "TREATMENT_PLAN_ITEM"
+  | "DENTAL_PROCEDURE"
   | "PROVIDER_ADDENDUM"
   | "LIFECYCLE_TRANSITION"
   | "HOSPITAL_EPISODE"
@@ -326,6 +332,9 @@ export function listClinicOwnershipBlockersForDentalReroute(
   if ((row.clinicalDocumentationEntryCount ?? 0) > 0) blockers.push("CLINICAL_DOCUMENTATION");
   if ((row.medicationAdministrationCount ?? 0) > 0) blockers.push("MEDICATION_ADMIN");
   if ((row.toothFindingCount ?? 0) > 0) blockers.push("TOOTH_FINDING");
+  if ((row.periodontalExamCount ?? 0) > 0) blockers.push("PERIODONTAL_EXAM");
+  if ((row.treatmentPlanItemCount ?? 0) > 0) blockers.push("TREATMENT_PLAN_ITEM");
+  if ((row.procedureRecordCount ?? 0) > 0) blockers.push("DENTAL_PROCEDURE");
   if ((row.providerAddendumCount ?? 0) > 0) blockers.push("PROVIDER_ADDENDUM");
   if ((row.lifecycleTransitionCount ?? 0) > 0) blockers.push("LIFECYCLE_TRANSITION");
   if (String(row.hospitalEpisodeId ?? "").trim()) blockers.push("HOSPITAL_EPISODE");

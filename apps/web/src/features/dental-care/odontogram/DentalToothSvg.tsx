@@ -1,10 +1,6 @@
 "use client";
 
-/**
- * MEDUI.D5A.4 — Original Medora SVG tooth with clickable surface zones.
- * Geometry is presentation only; surface codes are clinical authority.
- */
-
+import type { MouseEvent } from "react";
 import type { D5a4CanonicalTooth, D5a4ToothSurface } from "@medora/shared";
 
 const FILL_BY_FINDING: Record<string, string> = {
@@ -30,7 +26,7 @@ type Props = {
   dominantFindingType: string | null;
   surfaceFindings: Partial<Record<D5a4ToothSurface, string>>;
   disabled?: boolean;
-  onSelectTooth: () => void;
+  onSelectTooth: (event: MouseEvent<HTMLButtonElement>) => void;
   onToggleSurface: (surface: D5a4ToothSurface) => void;
 };
 

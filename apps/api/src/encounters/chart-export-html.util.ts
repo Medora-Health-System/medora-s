@@ -774,6 +774,21 @@ export function renderEncounterChartExportHtml(
   ${section("Chronologie unifiée (inter-départements)", unifiedInner)}
   ${section("Audit timeline summary", auditInner)}
   ${section("Follow-ups", fuInner)}
+  ${
+    manifest.dentalClinicalBoard
+      ? section(
+          "Dossier clinique dentaire",
+          manifest.dentalClinicalBoard.sections
+            .map(
+              (s) =>
+                `<div class="note-section"><strong>${esc(s.label)}</strong><div class="pre-text">${esc(
+                  s.text
+                )}</div></div>`
+            )
+            .join("")
+        )
+      : ""
+  }
   ${section("Deferred domains", deferredInner)}
 </body>
 </html>`;

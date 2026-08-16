@@ -81,6 +81,9 @@ const D4C10D_ROUTING_OWNERSHIP_SELECT = {
       clinicalDocumentationEntries: true,
       medicationAdministrations: true,
       toothFindings: true,
+      dentalPeriodontalExams: true,
+      dentalTreatmentPlans: true,
+      dentalProcedureRecords: true,
       providerAddenda: true,
       lifecycleTransitions: true,
     },
@@ -131,6 +134,9 @@ function toRoutingSnapshot(
       clinicalDocumentationEntries: number;
       medicationAdministrations: number;
       toothFindings: number;
+      dentalPeriodontalExams: number;
+      dentalTreatmentPlans: number;
+      dentalProcedureRecords: number;
       providerAddenda: number;
       lifecycleTransitions: number;
     };
@@ -182,6 +188,9 @@ function toRoutingSnapshot(
     clinicalDocumentationEntryCount: row._count.clinicalDocumentationEntries,
     medicationAdministrationCount: row._count.medicationAdministrations,
     toothFindingCount: row._count.toothFindings,
+    periodontalExamCount: row._count.dentalPeriodontalExams,
+    treatmentPlanItemCount: row._count.dentalTreatmentPlans,
+    procedureRecordCount: row._count.dentalProcedureRecords,
     providerAddendumCount: row._count.providerAddenda,
     lifecycleTransitionCount: row._count.lifecycleTransitions,
   };

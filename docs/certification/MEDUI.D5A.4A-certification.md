@@ -65,7 +65,7 @@ Odontogram preserved; legend `PLANNED` fixed to `states.PLANNED`.
 
 ## Deferrals
 
-D5A.5 Treatment Plan / Procedures · D5A.6 Periodontal · CDT · production UAT on Clinique Bon Samaritain
+D5A.5 Treatment Plan / Procedures / Periodontal — **completed in MEDUI.D5A.5** · CDT · production UAT on Clinique Bon Samaritain
 
 ## Manual UAT checklist
 

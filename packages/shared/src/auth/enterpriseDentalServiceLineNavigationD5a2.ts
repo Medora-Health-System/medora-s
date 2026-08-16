@@ -165,6 +165,9 @@ export type DentalWorkspaceAccess = {
   canAccessDentalAdmin: boolean;
   canViewOdontogram: boolean;
   canEditOdontogram: boolean;
+  canEditPeriodontal: boolean;
+  canEditTreatmentPlan: boolean;
+  canPerformProcedures: boolean;
   canViewOrthodontics: boolean;
   canEditOrthodontics: boolean;
   capabilities: readonly D5a2DentalCapability[];
@@ -252,15 +255,13 @@ export function resolveDentalCapabilityCodes(input: {
     caps.add("DENTAL_TREATMENT_PLAN");
     caps.add("DENTAL_PROCEDURE_PERFORM");
     caps.add("ODONTOGRAM_EDIT");
+    caps.add("PERIODONTAL_CHART_EDIT");
     caps.add("DENTAL_IMAGE_UPLOAD");
     caps.add("DENTAL_CONSENT_MANAGE");
     if (hasOrtho) {
       caps.add("ORTHODONTICS_EDIT");
       caps.add("ORTHODONTIC_CASE_MANAGE");
       caps.add("ORTHODONTIC_PLAN_SIGN");
-    }
-    if (specialties.includes("PERIODONTICS")) {
-      caps.add("PERIODONTAL_CHART_EDIT");
     }
   }
 
@@ -300,6 +301,9 @@ export function resolveDentalWorkspaceAccess(input: {
     canAccessDentalAdmin: hasDentalCapability(capabilities, "DENTAL_ADMIN"),
     canViewOdontogram: hasDentalCapability(capabilities, "ODONTOGRAM_VIEW"),
     canEditOdontogram: hasDentalCapability(capabilities, "ODONTOGRAM_EDIT"),
+    canEditPeriodontal: hasDentalCapability(capabilities, "PERIODONTAL_CHART_EDIT"),
+    canEditTreatmentPlan: hasDentalCapability(capabilities, "DENTAL_TREATMENT_PLAN"),
+    canPerformProcedures: hasDentalCapability(capabilities, "DENTAL_PROCEDURE_PERFORM"),
     canViewOrthodontics: hasDentalCapability(capabilities, "ORTHODONTICS_VIEW"),
     canEditOrthodontics: hasDentalCapability(capabilities, "ORTHODONTICS_EDIT"),
     capabilities,

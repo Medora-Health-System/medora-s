@@ -25,6 +25,10 @@ describe("MEDUI.D5A.3 dental encounter workspace (web)", () => {
     const ws = readFileSync(resolve(__dirname, "./EnterpriseDentalEncounterWorkspace.tsx"), "utf8");
     expect(ws).toContain("EnterpriseClosedEncounterViewer");
     expect(ws).toContain("EnterpriseDentalClinicalEvaluationPanel");
+    expect(ws).toContain("EnterpriseDentalEncounterOverviewPanel");
+    expect(ws).toContain("EnterpriseDentalPeriodontalChartPanel");
+    expect(ws).toContain("EnterpriseDentalTreatmentPlanPanel");
+    expect(ws).toContain("EnterpriseDentalProceduresPanel");
     expect(ws).not.toContain("ClinicCareAmbulatoryMedicalEvaluationPanel");
     expect(ws).toContain("ClinicCareAmbulatoryPrescriptionPanel");
     expect(ws).toContain("EncounterDiagnosticsPanel");
@@ -33,6 +37,7 @@ describe("MEDUI.D5A.3 dental encounter workspace (web)", () => {
     expect(ws).toContain("PatientClinicalHistoryProfileBlock");
     expect(ws).toContain("RegistrationDocumentCenter");
     expect(ws).not.toContain("MedicationAdministrationTab");
+    expect(ws).not.toContain("PlaceholderCard");
     expect(ws).not.toMatch(/\bclass\s+DentalPatient\b/);
     expect(ws).not.toMatch(/\bDentalPrescription\b/);
     expect(ws).not.toMatch(/\bDentalFollowUp\b/);

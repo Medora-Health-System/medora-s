@@ -16,6 +16,7 @@ import {
   getCanonicalTooth,
   isCanonicalToothCode,
   isD5a4FindingType,
+  normalizeBulkToothCodes,
   normalizeSurfaceCodes,
   projectCurrentToothFindings,
   type DentalWorkspaceAccess,
@@ -230,6 +231,42 @@ export class DentalCareOdontogramService {
         updatedByUserId: actor.userId,
       },
     });
+  }
+
+  async createBulkFindings(
+    actor: Actor,
+    encounterId: string,
+    body: {
+      toothCodes?: string[];
+      scope?: string;
+      surfaces?: string[];
+      findingType?: string;
+      clinicalState?: string;
+      notes?: string | null;
+    }
+  ) {
+    this.assertEdit(actor.access);
+    const codes = normalizeBulkToothCodes(body.toothCodes ?? []);
+    if (codes.length === 0) throw new BadRequestException("toothCodes required");
+
+    const created = [];
+    for (const toothCode of codes) {
+      created.push(
+        await this.createFinding(actor, encounterId, {
+          toothCode,
+          scope: body.scope,
+          surfaces: body.surfaces,
+          findingType: body.findingType,
+          clinicalState: body.clinicalState,
+          notes: body.notes,
+        })
+      );
+    }
+    return {
+      certificationId: D5A4_CERTIFICATION_ID,
+      count: created.length,
+      findings: created,
+    };
   }
 
   async createFinding(
