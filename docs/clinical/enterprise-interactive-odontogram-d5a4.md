@@ -41,4 +41,4 @@ Models: `PatientDentitionState`, `ToothFinding` + AuditAction values.
 
 ## Deferrals
 
-Multi-tooth bulk edit · D5A.5 treatment plans · D5A.6 perio · licensed CDT · image–tooth associations
+Multi-tooth bulk edit · Treatment plans / Procedures / Periodontal — **completed in MEDUI.D5A.5** · licensed CDT · image–tooth associations

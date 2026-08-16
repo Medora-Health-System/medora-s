@@ -498,6 +498,10 @@ export type ChartExportManifest = {
       createdAt: string;
     }>;
   };
+  /** MEDUI.D5A.5 — optional dental clinical board print sections. */
+  dentalClinicalBoard?: {
+    sections: Array<{ id: string; label: string; text: string }>;
+  } | null;
   deferredDomains: Array<{ domain: string; reason: string }>;
   /** Phase 19W.2 — chronological ED clinical timeline (read-only aggregation). */
   edClinicalTimeline?: {
@@ -1230,6 +1234,132 @@ export class EncounterChartExportService {
       { domain: "billing", reason: "out_of_scope_for_clinical_export" },
     ];
 
+    /* ---------- MEDUI.D5A.5 dental clinical board (print projection) ---------- */
+    const [toothFindings, perioExam, dentalPlan, dentalProcs] = await Promise.all([
+      this.prisma.toothFinding.findMany({
+        where: {
+          facilityId,
+          encounterId: encounter.id,
+          voidedAt: null,
+          clinicalState: { notIn: ["VOIDED", "AMENDED"] },
+        },
+        orderBy: { documentedAt: "asc" },
+        take: 200,
+        select: {
+          toothCode: true,
+          findingType: true,
+          surfaces: true,
+          clinicalState: true,
+          notes: true,
+        },
+      }),
+      this.prisma.dentalPeriodontalExam.findUnique({
+        where: { encounterId: encounter.id },
+        include: { siteMeasurements: { take: 400 } },
+      }),
+      this.prisma.dentalTreatmentPlan.findUnique({
+        where: { encounterId: encounter.id },
+        include: { items: { orderBy: { sequence: "asc" } } },
+      }),
+      this.prisma.dentalProcedureRecord.findMany({
+        where: { facilityId, encounterId: encounter.id, status: { not: "VOIDED" } },
+        orderBy: { performedAt: "asc" },
+        take: 100,
+        select: {
+          clinicalName: true,
+          toothCodes: true,
+          performedAt: true,
+          status: true,
+          notes: true,
+        },
+      }),
+    ]);
+
+    const dentalSections: Array<{ id: string; label: string; text: string }> = [];
+    const nd = "Non documenté";
+    const nursingObj = asObjectOrNull(encounter.nursingAssessment);
+    const dentalEval = nursingObj?.dentalClinicalEvaluationV1;
+    dentalSections.push({
+      id: "dentalEvaluation",
+      label: "Évaluation clinique dentaire",
+      text: dentalEval ? "Documenté (évaluation clinique dentaire structurée)" : nd,
+    });
+    dentalSections.push({
+      id: "odontogramFindings",
+      label: "Constatations odontogramme",
+      text:
+        toothFindings.length === 0
+          ? nd
+          : toothFindings
+              .map(
+                (f) =>
+                  `${f.toothCode} — ${f.findingType} (${f.clinicalState})${
+                    f.surfaces.length ? ` [${f.surfaces.join(",")}]` : ""
+                  }${f.notes ? `: ${f.notes}` : ""}`
+              )
+              .join("\n"),
+    });
+    dentalSections.push({
+      id: "periodontalExam",
+      label: "Examen parodontal",
+      text: !perioExam
+        ? nd
+        : [
+            `Statut: ${perioExam.periodontalStatus}`,
+            perioExam.periodontitisStage ? `Stade: ${perioExam.periodontitisStage}` : null,
+            perioExam.periodontitisGrade ? `Grade: ${perioExam.periodontitisGrade}` : null,
+            perioExam.narrativeAssessment ? `Narratif: ${perioExam.narrativeAssessment}` : null,
+            `Sites documentés: ${perioExam.siteMeasurements.length}`,
+          ]
+            .filter(Boolean)
+            .join("\n"),
+    });
+    dentalSections.push({
+      id: "treatmentPlan",
+      label: "Plan de traitement dentaire",
+      text: !dentalPlan
+        ? nd
+        : [
+            `Acceptation: ${dentalPlan.acceptanceOutcome}`,
+            dentalPlan.expectedBenefits ? `Bénéfices: ${dentalPlan.expectedBenefits}` : null,
+            dentalPlan.materialRisks ? `Risques: ${dentalPlan.materialRisks}` : null,
+            dentalPlan.reasonableAlternatives
+              ? `Alternatives: ${dentalPlan.reasonableAlternatives}`
+              : null,
+            ...(dentalPlan.items.map(
+              (i) =>
+                `- [${i.status}/${i.phase}] ${i.proposedTreatment} (${i.toothCodes.join(",") || "—"})`
+            ) || []),
+          ]
+            .filter(Boolean)
+            .join("\n"),
+    });
+    dentalSections.push({
+      id: "dentalProcedures",
+      label: "Actes dentaires réalisés",
+      text:
+        dentalProcs.length === 0
+          ? nd
+          : dentalProcs
+              .map(
+                (p) =>
+                  `${p.performedAt.toISOString()} — ${p.clinicalName} (${p.toothCodes.join(",") || "—"})${
+                    p.notes ? `: ${p.notes}` : ""
+                  }`
+              )
+              .join("\n"),
+    });
+
+    const hasDentalContent =
+      Boolean(dentalEval) ||
+      toothFindings.length > 0 ||
+      Boolean(perioExam) ||
+      Boolean(dentalPlan) ||
+      dentalProcs.length > 0;
+    const dentalClinicalBoard: ChartExportManifest["dentalClinicalBoard"] = hasDentalContent
+      ? { sections: dentalSections }
+      : null;
+
     const observationStay = computeObservationStaySummaryForExport({
       encounterType: encounter.type as string,
       admittedAt: encounter.admittedAt,
@@ -1489,6 +1619,8 @@ export class EncounterChartExportService {
           createdAt: f.createdAt.toISOString(),
         })),
       },
+      /** MEDUI.D5A.5 — dental clinical board projection for print (optional; null when none). */
+      dentalClinicalBoard,
       deferredDomains,
     };
 

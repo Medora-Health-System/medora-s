@@ -64,6 +64,10 @@ model Facility {
   /// MEDUI.D5A.4 — facility-scoped dental tooth findings / dentition state.
   toothFindings                          ToothFinding[]
   patientDentitionStates                 PatientDentitionState[]
+  /// MEDUI.D5A.5 — periodontal / treatment plan / procedure clinical domains.
+  dentalPeriodontalExams                 DentalPeriodontalExam[]
+  dentalTreatmentPlans                   DentalTreatmentPlan[]
+  dentalProcedureRecords                 DentalProcedureRecord[]
   enterpriseDocuments                    EnterpriseDocument[]
   enterpriseDocPacketSources             EnterpriseDocumentPacketSource[] @relation("PacketSourceFacility")
   registrationPacketThemes               RegistrationPacketTheme[]        @relation("RegistrationPacketThemeFacility")
@@ -249,6 +253,12 @@ model User {
   toothFindingsDocumented                         ToothFinding[]                         @relation("ToothFindingDocumentedBy")
   toothFindingsVoided                             ToothFinding[]                         @relation("ToothFindingVoidedBy")
   patientDentitionStatesUpdated                   PatientDentitionState[]                @relation("PatientDentitionStateUpdatedBy")
+  /// MEDUI.D5A.5 — dental clinical board authorship.
+  dentalPeriodontalExamsDocumented                DentalPeriodontalExam[]                @relation("DentalPeriodontalExamDocumentedBy")
+  dentalTreatmentPlansDocumented                  DentalTreatmentPlan[]                  @relation("DentalTreatmentPlanDocumentedBy")
+  dentalTreatmentPlanItemsResponsible             DentalTreatmentPlanItem[]              @relation("DentalTreatmentPlanItemResponsible")
+  dentalProcedureRecordsAsProvider                DentalProcedureRecord[]                @relation("DentalProcedureRecordProvider")
+  dentalProcedureRecordsAsAssistant               DentalProcedureRecord[]                @relation("DentalProcedureRecordAssistant")
   triageVitalsReadingsRecorded                    TriageVitalsReading[]                  @relation("TriageVitalsReadingRecordedBy")
   triageVitalsReadingsVoided                      TriageVitalsReading[]                  @relation("TriageVitalsReadingVoidedBy")
   providerAddendaCreated                          EncounterProviderAddendum[]
@@ -551,6 +561,10 @@ model Patient {
   /// MEDUI.D5A.4 — longitudinal tooth findings (append/amend; not a second patient).
   toothFindings                ToothFinding[]
   patientDentitionStates       PatientDentitionState[]
+  /// MEDUI.D5A.5 — dental clinical domains on the same Patient authority.
+  dentalPeriodontalExams       DentalPeriodontalExam[]
+  dentalTreatmentPlans         DentalTreatmentPlan[]
+  dentalProcedureRecords       DentalProcedureRecord[]
   encounterLifecycleTransitions EncounterLifecycleTransition[]
   encounterChartExports        EncounterChartExport[]
   clinicalDocumentationEntries EncounterClinicalDocumentationEntry[]
@@ -792,6 +806,10 @@ model Encounter {
   diagnoses                                 Diagnosis[]
   /// MEDUI.D5A.4 — tooth findings documented with this encounter as provenance.
   toothFindings                             ToothFinding[]
+  /// MEDUI.D5A.5 — periodontal exam / treatment plan / procedures for this encounter.
+  dentalPeriodontalExams                    DentalPeriodontalExam[]
+  dentalTreatmentPlans                      DentalTreatmentPlan[]
+  dentalProcedureRecords                    DentalProcedureRecord[]
   diseaseCaseReports                        DiseaseCaseReport[]
   billingClassificationAcknowledgedBy       User?                                  @relation("EncounterBillingClassificationAckBy", fields: [billingClassificationAcknowledgedByUserId], references: [id])
   billingClassificationChangedBy            User?                                  @relation("EncounterBillingClassificationChangedBy", fields: [billingClassificationChangedByUserId], references: [id])
@@ -2214,6 +2232,8 @@ model Diagnosis {
   icd10Catalog   Icd10DiagnosisCode? @relation(fields: [icd10CatalogId], references: [id])
   patient        Patient             @relation(fields: [patientId], references: [id])
   removedBy      User?               @relation("DiagnosisRemovedBy", fields: [removedByUserId], references: [id])
+  /// MEDUI.D5A.5 — optional linkage from dental treatment-plan items.
+  dentalTreatmentPlanItems DentalTreatmentPlanItem[]
 
   @@index([patientId])
   @@index([encounterId])
@@ -7516,6 +7536,11 @@ enum AuditAction {
   TOOTH_FINDING_CREATE
   TOOTH_FINDING_AMEND
   TOOTH_FINDING_RESOLVE
+  /// MEDUI.D5A.5 — periodontal / treatment plan / procedure clinical writes (PHI-safe).
+  DENTAL_PERIODONTAL_EXAM_SAVE
+  DENTAL_TREATMENT_PLAN_SAVE
+  DENTAL_TREATMENT_PLAN_ITEM_SAVE
+  DENTAL_PROCEDURE_RECORD_SAVE
 }
 
 enum MedoraStaffPersona {
@@ -8628,4 +8653,186 @@ model ToothFinding {
   @@index([documentedByUserId])
   @@index([voidedByUserId])
   @@index([supersedesFindingId])
+}
+
+/// MEDUI.D5A.5 — periodontal exam header (clinician-authored classification; no auto-diagnosis).
+model DentalPeriodontalExam {
+  id                   String   @id @default(uuid())
+  facilityId           String
+  patientId            String
+  encounterId          String
+  /// Clinician-authored: NOT_ASSESSED | HEALTH | GINGIVITIS | PERIODONTITIS | OTHER
+  periodontalStatus    String   @default("NOT_ASSESSED")
+  /// Clinician-authored stage when periodontitis (I–IV | NOT_DETERMINED).
+  periodontitisStage   String?
+  periodontitisGrade   String?
+  extentDistribution   String?
+  periImplantStatus    String   @default("NOT_APPLICABLE")
+  narrativeAssessment  String?
+  documentedByUserId   String
+  documentedAt         DateTime @default(now())
+  version              Int      @default(1)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+  facility             Facility @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  patient              Patient  @relation(fields: [patientId], references: [id], onDelete: Restrict)
+  encounter            Encounter @relation(fields: [encounterId], references: [id], onDelete: Restrict)
+  documentedBy         User     @relation("DentalPeriodontalExamDocumentedBy", fields: [documentedByUserId], references: [id], onDelete: Restrict)
+  siteMeasurements     DentalPeriodontalSiteMeasurement[]
+
+  @@unique([encounterId])
+  @@index([facilityId, patientId])
+  @@index([facilityId, encounterId])
+  @@index([documentedByUserId])
+}
+
+/// MEDUI.D5A.5 — six-site (or tooth-level flag) periodontal measurement row.
+model DentalPeriodontalSiteMeasurement {
+  id                        String  @id @default(uuid())
+  examId                    String
+  facilityId                String
+  patientId                 String
+  encounterId               String
+  toothCode                 String
+  /// MB | B | DB | ML | L | DL
+  site                      String
+  probingDepthMm            Float?
+  gingivalMarginMm          Float?
+  clinicalAttachmentLevelMm Float?
+  bleedingOnProbing         Boolean @default(false)
+  plaque                    Boolean @default(false)
+  suppuration               Boolean @default(false)
+  /// Tooth-level flags repeated per site row for bulk save simplicity (0–3).
+  mobilityGrade             Int?
+  furcationGrade            Int?
+  missingTooth              Boolean @default(false)
+  implantSite               Boolean @default(false)
+  notes                     String?
+  createdAt                 DateTime @default(now())
+  updatedAt                 DateTime @updatedAt
+  exam                      DentalPeriodontalExam @relation(fields: [examId], references: [id], onDelete: Restrict)
+
+  @@unique([examId, toothCode, site])
+  @@index([facilityId, encounterId])
+  @@index([patientId, toothCode])
+  @@index([examId])
+}
+
+/// MEDUI.D5A.5 — encounter-linked dental treatment plan header + consent discussion.
+model DentalTreatmentPlan {
+  id                      String   @id @default(uuid())
+  facilityId              String
+  patientId               String
+  encounterId             String
+  /// DRAFT | ACTIVE | COMPLETED | CANCELLED
+  status                  String   @default("ACTIVE")
+  proposedTreatmentSummary String?
+  expectedBenefits        String?
+  materialRisks           String?
+  reasonableAlternatives  String?
+  noTreatmentDiscussed    Boolean  @default(false)
+  patientQuestions        String?
+  /// NOT_DISCUSSED | ACCEPTED | PARTIAL | REFUSED | DEFERRED
+  acceptanceOutcome       String   @default("NOT_DISCUSSED")
+  documentedByUserId      String
+  documentedAt            DateTime @default(now())
+  proposedAt              DateTime @default(now())
+  version                 Int      @default(1)
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+  facility                Facility @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  patient                 Patient  @relation(fields: [patientId], references: [id], onDelete: Restrict)
+  encounter               Encounter @relation(fields: [encounterId], references: [id], onDelete: Restrict)
+  documentedBy            User     @relation("DentalTreatmentPlanDocumentedBy", fields: [documentedByUserId], references: [id], onDelete: Restrict)
+  items                   DentalTreatmentPlanItem[]
+
+  @@unique([encounterId])
+  @@index([facilityId, patientId])
+  @@index([facilityId, encounterId])
+  @@index([documentedByUserId])
+}
+
+model DentalTreatmentPlanItem {
+  id                   String   @id @default(uuid())
+  planId               String
+  facilityId           String
+  patientId            String
+  encounterId          String
+  problemText          String?
+  diagnosisId          String?
+  toothCodes           String[] @default([])
+  surfaces             String[] @default([])
+  proposedTreatment    String
+  priority             Int      @default(3)
+  /// URGENT | DISEASE_CONTROL | RESTORATIVE | …
+  phase                String   @default("DISEASE_CONTROL")
+  /// PROPOSED | ACCEPTED | DECLINED | …
+  status               String   @default("PROPOSED")
+  sequence             Int      @default(0)
+  responsibleUserId    String?
+  notes                String?
+  plannedDate          DateTime?
+  /// Optional downstream coding placeholders — never auto-filled with CDT content.
+  codingSystem         String?
+  code                 String?
+  codeVersion          String?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+  plan                 DentalTreatmentPlan @relation(fields: [planId], references: [id], onDelete: Restrict)
+  diagnosis            Diagnosis? @relation(fields: [diagnosisId], references: [id], onDelete: SetNull)
+  responsibleUser      User?     @relation("DentalTreatmentPlanItemResponsible", fields: [responsibleUserId], references: [id], onDelete: SetNull)
+  procedureRecords     DentalProcedureRecord[]
+
+  @@index([planId, sequence])
+  @@index([facilityId, encounterId])
+  @@index([diagnosisId])
+  @@index([status])
+}
+
+/// MEDUI.D5A.5 — performed dental procedure clinical record (not a billing code table).
+model DentalProcedureRecord {
+  id                    String   @id @default(uuid())
+  facilityId            String
+  patientId             String
+  encounterId           String
+  treatmentPlanItemId   String?
+  /// Medora-owned clinical procedure name/description (not licensed CDT text).
+  clinicalName          String
+  toothCodes            String[] @default([])
+  surfaces              String[] @default([])
+  performedAt           DateTime @default(now())
+  providerUserId        String
+  assistantUserId       String?
+  indication            String?
+  anesthesiaUsed        Boolean  @default(false)
+  anesthesiaDetails     String?
+  materials             String?
+  techniqueDetails      String?
+  findings              String?
+  complications         String?
+  postProcedureStatus   String?
+  postOpInstructions    String?
+  followUpNotes         String?
+  notes                 String?
+  /// DOCUMENTED | AMENDED | VOIDED
+  status                String   @default("DOCUMENTED")
+  codingSystem          String?
+  code                  String?
+  codeVersion           String?
+  voidedAt              DateTime?
+  voidReason            String?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  facility              Facility @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  patient               Patient  @relation(fields: [patientId], references: [id], onDelete: Restrict)
+  encounter             Encounter @relation(fields: [encounterId], references: [id], onDelete: Restrict)
+  treatmentPlanItem     DentalTreatmentPlanItem? @relation(fields: [treatmentPlanItemId], references: [id], onDelete: SetNull)
+  provider              User     @relation("DentalProcedureRecordProvider", fields: [providerUserId], references: [id], onDelete: Restrict)
+  assistant             User?    @relation("DentalProcedureRecordAssistant", fields: [assistantUserId], references: [id], onDelete: SetNull)
+
+  @@index([facilityId, encounterId])
+  @@index([facilityId, patientId])
+  @@index([treatmentPlanItemId])
+  @@index([providerUserId])
+  @@index([status])
 }

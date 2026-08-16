@@ -1,3 +1,9 @@
+/**
+ * MEDUI.D5A.2/D5A.3/D5A.4/D5A.5 / D4C.10D — Dental Care shell, worklist, odontogram,
+ * clinical board (perio/plan/procedures/overview), visit routing.
+ * Reuses enterprise Patient/Encounter — no DentalPatient / DentalEncounter.
+ */
+
 import {
   BadRequestException,
   Body,
@@ -21,18 +27,16 @@ import { DentalCareReadAccessGuard } from "./dental-care-read-access.guard";
 import { DentalCareWorklistService } from "./dental-care-worklist.service";
 import { DentalCareOdontogramService } from "./dental-care-odontogram.service";
 import { DentalCareVisitRoutingService } from "./dental-care-visit-routing.service";
+import { DentalCareClinicalBoardService } from "./dental-care-clinical-board.service";
 
-/**
- * MEDUI.D5A.2/D5A.3/D5A.4 / D4C.10D — Dental Care shell, worklist, odontogram, visit routing.
- * Reuses enterprise Patient/Encounter — no DentalPatient / DentalEncounter.
- */
 @Controller("dental-care")
 @UseGuards(AuthGuard("jwt"))
 export class DentalCareController {
   constructor(
     private readonly dentalCareWorklist: DentalCareWorklistService,
     private readonly odontogram: DentalCareOdontogramService,
-    private readonly visitRouting: DentalCareVisitRoutingService
+    private readonly visitRouting: DentalCareVisitRoutingService,
+    private readonly clinicalBoard: DentalCareClinicalBoardService
   ) {}
 
   private actor(req: any): {
@@ -72,9 +76,6 @@ export class DentalCareController {
     };
   }
 
-  /**
-   * MEDUI.D5A.3 — Thin OPEN encounter worklist filtered to Dental service-line tags.
-   */
   @Get("worklist")
   @RequireRoles(RoleCode.RN, RoleCode.PROVIDER, RoleCode.ADMIN, RoleCode.FRONT_DESK, RoleCode.BILLING)
   @UseGuards(DentalCareReadAccessGuard)
@@ -83,9 +84,6 @@ export class DentalCareController {
     return this.dentalCareWorklist.listOpenDentalEncounters(facilityId);
   }
 
-  /**
-   * MEDUI.D4C.10D — claim unclaimed Clinic wait into Dental, reuse Dental, or create new Dental visit.
-   */
   @Post("patients/:patientId/claim-or-start")
   @RequireRoles(RoleCode.PROVIDER, RoleCode.ADMIN, RoleCode.RN)
   @UseGuards(DentalCareReadAccessGuard)
@@ -105,7 +103,6 @@ export class DentalCareController {
     });
   }
 
-  /** MEDUI.D5A.4 — encounter-scoped odontogram projection + history. */
   @Get("encounters/:encounterId/odontogram")
   @RequireRoles(RoleCode.RN, RoleCode.PROVIDER, RoleCode.ADMIN, RoleCode.FRONT_DESK, RoleCode.BILLING)
   @UseGuards(DentalCareReadAccessGuard)
@@ -113,7 +110,6 @@ export class DentalCareController {
     return this.odontogram.getEncounterOdontogram(this.actor(req), encounterId);
   }
 
-  /** MEDUI.D5A.4 — patient longitudinal odontogram (facility-scoped). */
   @Get("patients/:patientId/odontogram")
   @RequireRoles(RoleCode.RN, RoleCode.PROVIDER, RoleCode.ADMIN, RoleCode.FRONT_DESK, RoleCode.BILLING)
   @UseGuards(DentalCareReadAccessGuard)
@@ -163,6 +159,26 @@ export class DentalCareController {
     return this.odontogram.createFinding(this.actor(req), encounterId, body ?? {});
   }
 
+  /** MEDUI.D5A.5 — one authoritative finding per selected tooth. */
+  @Post("encounters/:encounterId/tooth-findings/bulk")
+  @RequireRoles(RoleCode.PROVIDER)
+  @UseGuards(DentalCareReadAccessGuard)
+  createBulkFindings(
+    @Req() req: any,
+    @Param("encounterId") encounterId: string,
+    @Body()
+    body: {
+      toothCodes?: string[];
+      scope?: string;
+      surfaces?: string[];
+      findingType?: string;
+      clinicalState?: string;
+      notes?: string | null;
+    }
+  ) {
+    return this.odontogram.createBulkFindings(this.actor(req), encounterId, body ?? {});
+  }
+
   @Patch("tooth-findings/:id")
   @RequireRoles(RoleCode.PROVIDER)
   @UseGuards(DentalCareReadAccessGuard)
@@ -172,5 +188,54 @@ export class DentalCareController {
     @Body() body: { action?: string; reason?: string | null }
   ) {
     return this.odontogram.voidOrResolveFinding(this.actor(req), id, body ?? {});
+  }
+
+  @Get("encounters/:encounterId/periodontal-exam")
+  @RequireRoles(RoleCode.RN, RoleCode.PROVIDER, RoleCode.ADMIN, RoleCode.FRONT_DESK, RoleCode.BILLING)
+  @UseGuards(DentalCareReadAccessGuard)
+  getPeriodontal(@Req() req: any, @Param("encounterId") encounterId: string) {
+    return this.clinicalBoard.getPeriodontalExam(this.actor(req), encounterId);
+  }
+
+  @Put("encounters/:encounterId/periodontal-exam")
+  @RequireRoles(RoleCode.PROVIDER)
+  @UseGuards(DentalCareReadAccessGuard)
+  savePeriodontal(@Req() req: any, @Param("encounterId") encounterId: string, @Body() body: unknown) {
+    return this.clinicalBoard.savePeriodontalExam(this.actor(req), encounterId, (body ?? {}) as never);
+  }
+
+  @Get("encounters/:encounterId/treatment-plan")
+  @RequireRoles(RoleCode.RN, RoleCode.PROVIDER, RoleCode.ADMIN, RoleCode.FRONT_DESK, RoleCode.BILLING)
+  @UseGuards(DentalCareReadAccessGuard)
+  getTreatmentPlan(@Req() req: any, @Param("encounterId") encounterId: string) {
+    return this.clinicalBoard.getTreatmentPlan(this.actor(req), encounterId);
+  }
+
+  @Put("encounters/:encounterId/treatment-plan")
+  @RequireRoles(RoleCode.PROVIDER)
+  @UseGuards(DentalCareReadAccessGuard)
+  saveTreatmentPlan(@Req() req: any, @Param("encounterId") encounterId: string, @Body() body: unknown) {
+    return this.clinicalBoard.saveTreatmentPlan(this.actor(req), encounterId, (body ?? {}) as never);
+  }
+
+  @Get("encounters/:encounterId/procedures")
+  @RequireRoles(RoleCode.RN, RoleCode.PROVIDER, RoleCode.ADMIN, RoleCode.FRONT_DESK, RoleCode.BILLING)
+  @UseGuards(DentalCareReadAccessGuard)
+  listProcedures(@Req() req: any, @Param("encounterId") encounterId: string) {
+    return this.clinicalBoard.listProcedures(this.actor(req), encounterId);
+  }
+
+  @Post("encounters/:encounterId/procedures")
+  @RequireRoles(RoleCode.PROVIDER)
+  @UseGuards(DentalCareReadAccessGuard)
+  createProcedure(@Req() req: any, @Param("encounterId") encounterId: string, @Body() body: unknown) {
+    return this.clinicalBoard.createProcedure(this.actor(req), encounterId, (body ?? {}) as never);
+  }
+
+  @Get("encounters/:encounterId/clinical-record")
+  @RequireRoles(RoleCode.RN, RoleCode.PROVIDER, RoleCode.ADMIN, RoleCode.FRONT_DESK, RoleCode.BILLING)
+  @UseGuards(DentalCareReadAccessGuard)
+  getClinicalRecord(@Req() req: any, @Param("encounterId") encounterId: string) {
+    return this.clinicalBoard.getClinicalRecord(this.actor(req), encounterId);
   }
 }

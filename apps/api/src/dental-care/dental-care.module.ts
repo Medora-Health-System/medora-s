@@ -7,6 +7,7 @@ import { DentalCareReadAccessGuard } from "./dental-care-read-access.guard";
 import { DentalCareWorklistService } from "./dental-care-worklist.service";
 import { DentalCareOdontogramService } from "./dental-care-odontogram.service";
 import { DentalCareVisitRoutingService } from "./dental-care-visit-routing.service";
+import { DentalCareClinicalBoardService } from "./dental-care-clinical-board.service";
 
 @Module({
   imports: [PrismaModule, EncountersModule],
@@ -16,6 +17,7 @@ import { DentalCareVisitRoutingService } from "./dental-care-visit-routing.servi
     DentalCareWorklistService,
     DentalCareOdontogramService,
     DentalCareVisitRoutingService,
+    DentalCareClinicalBoardService,
     AuditService,
   ],
 })

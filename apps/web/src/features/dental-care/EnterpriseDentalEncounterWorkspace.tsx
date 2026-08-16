@@ -6,7 +6,6 @@ import { useRouter, useSearchParams } from "next/navigation";
 import {
   D5A3_CERTIFICATION_ID,
   D5A3_DENTAL_WORKSPACE_SECTIONS,
-  D5A3_PLACEHOLDER_MILESTONE,
   formatToothDisplayLabel,
   getCanonicalTooth,
   isDentalEncounterProjection,
@@ -25,6 +24,10 @@ import { EmergencyErNotesPanel } from "@/features/emergency/EmergencyErNotesPane
 import { PatientClinicalHistoryProfileBlock } from "@/components/patient-chart/PatientClinicalHistoryProfileBlock";
 import { patientClinicalHistoryProfileFromJson } from "@/features/emergency/patientClinicalHistoryProfile";
 import { RegistrationDocumentCenter } from "@/components/documents/RegistrationDocumentCenter";
+import { EnterpriseDentalEncounterOverviewPanel } from "@/features/dental-care/overview/EnterpriseDentalEncounterOverviewPanel";
+import { EnterpriseDentalPeriodontalChartPanel } from "@/features/dental-care/periodontal/EnterpriseDentalPeriodontalChartPanel";
+import { EnterpriseDentalTreatmentPlanPanel } from "@/features/dental-care/treatment-plan/EnterpriseDentalTreatmentPlanPanel";
+import { EnterpriseDentalProceduresPanel } from "@/features/dental-care/procedures/EnterpriseDentalProceduresPanel";
 import { EnterpriseDentalOdontogramPanel } from "@/features/dental-care/odontogram/EnterpriseDentalOdontogramPanel";
 import { apiFetch } from "@/lib/apiClient";
 import { normalizeUserFacingError } from "@/lib/userFacingError";
@@ -181,18 +184,6 @@ function DentalSummarySection({
         )}
       </div>
     </SectionShell>
-  );
-}
-
-function PlaceholderCard({ title, milestone }: { title: string; milestone: string }) {
-  const { t } = useI18n();
-  return (
-    <div style={{ ...MEDORA_CARD_SHELL, padding: 16 }} data-testid="dental-workspace-placeholder">
-      <h3 style={{ margin: 0, fontSize: 15 }}>{title}</h3>
-      <p style={{ margin: "8px 0 0", fontSize: 13, color: "#64748b" }}>
-        {t("dentalCareD5a3.placeholder.body").replace("{milestone}", milestone)}
-      </p>
-    </div>
   );
 }
 
@@ -560,21 +551,11 @@ export function EnterpriseDentalEncounterWorkspace({ encounterId }: { encounterI
 
       <div data-testid={`dental-workspace-section-${section}`}>
         {section === "overview" ? (
-          <SectionShell title={t("dentalCareD5a3.sections.overview")}>
-            <p style={{ margin: 0, fontSize: 13, color: "#475569", lineHeight: 1.5 }}>
-              {t("dentalCareD5a3.overview.body")}
-            </p>
-            <ul style={{ margin: "10px 0 0", paddingLeft: 18, fontSize: 13, lineHeight: 1.5 }}>
-              <li>
-                {t("dentalCareD5a3.header.reason")}:{" "}
-                {(encounter.chiefComplaint ?? encounter.visitReason ?? "").trim() || notDocumented}
-              </li>
-              <li>
-                {t("dentalCareD5a3.overview.docStatus")}:{" "}
-                {(encounter.providerDocumentationStatus ?? "").trim() || notDocumented}
-              </li>
-            </ul>
-          </SectionShell>
+          <EnterpriseDentalEncounterOverviewPanel
+            encounterId={encounterId}
+            facilityId={facilityId}
+            locked={locked || clinicalAuthorBlocked}
+          />
         ) : null}
 
         {section === "history" ? (
@@ -756,12 +737,34 @@ export function EnterpriseDentalEncounterWorkspace({ encounterId }: { encounterI
           />
         ) : null}
 
-        {(section === "periodontal" || section === "treatmentPlan" || section === "procedures") &&
-        !isD5a3DentalSectionActive(section) ? (
-          <PlaceholderCard
-            title={t(`dentalCareD5a3.sections.${section}`)}
-            milestone={D5A3_PLACEHOLDER_MILESTONE[section]}
-          />
+        {section === "periodontal" ? (
+          <SectionShell title={t("dentalCareD5a3.sections.periodontal")}>
+            <EnterpriseDentalPeriodontalChartPanel
+              encounterId={encounterId}
+              facilityId={facilityId}
+              locked={locked || !canAuthorClinical || clinicalAuthorBlocked}
+            />
+          </SectionShell>
+        ) : null}
+
+        {section === "treatmentPlan" ? (
+          <SectionShell title={t("dentalCareD5a3.sections.treatmentPlan")}>
+            <EnterpriseDentalTreatmentPlanPanel
+              encounterId={encounterId}
+              facilityId={facilityId}
+              locked={locked || !canAuthorClinical || clinicalAuthorBlocked}
+            />
+          </SectionShell>
+        ) : null}
+
+        {section === "procedures" ? (
+          <SectionShell title={t("dentalCareD5a3.sections.procedures")}>
+            <EnterpriseDentalProceduresPanel
+              encounterId={encounterId}
+              facilityId={facilityId}
+              locked={locked || !canAuthorClinical || clinicalAuthorBlocked}
+            />
+          </SectionShell>
         ) : null}
       </div>
     </div>
