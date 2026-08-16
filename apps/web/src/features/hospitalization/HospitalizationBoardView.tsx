@@ -511,9 +511,18 @@ function ObservationOperationalStatChip({
 }
 
 /**
- * Single implementation for `/app/hospitalisation` (and optional `?mock=error` | `?mock=empty` for demos/tests).
+ * Single implementation for hospitalisation operational boards.
+ * - `legacyCensusWithBeds` — historical Observation-style census + beds (other callers)
+ * - `hospitalCareDashboard` — MEDUI.D4A.4.3 facility Hospital Care Dashboard (beds only)
  */
-export function HospitalizationBoardView() {
+export type HospitalizationBoardProjection = "legacyCensusWithBeds" | "hospitalCareDashboard";
+
+export function HospitalizationBoardView({
+  projection = "legacyCensusWithBeds",
+}: {
+  projection?: HospitalizationBoardProjection;
+} = {}) {
+  const isHospitalCareDashboard = projection === "hospitalCareDashboard";
   const { t, language } = useI18n();
   const acuityLabel = useMemo(
     () => ({
@@ -1046,10 +1055,11 @@ export function HospitalizationBoardView() {
   return (
     <div
       style={{ minHeight: "calc(100vh - 48px)", backgroundColor: "#f8fafc", padding: "0 0 8px 0" }}
-      data-testid="observation-board-layout"
+      data-testid={isHospitalCareDashboard ? "hospital-care-dashboard" : "observation-board-layout"}
       data-layout-mode={layoutMode}
+      data-projection={projection}
     >
-      {ready && canManagePharmacy && effectiveFacilityId && (
+      {ready && canManagePharmacy && effectiveFacilityId && !isHospitalCareDashboard && (
         <div style={{ marginBottom: 16 }}>
           <PharmacyAlertsCard facilityId={effectiveFacilityId} />
         </div>
@@ -1069,7 +1079,9 @@ export function HospitalizationBoardView() {
         >
           <div>
             <h1 style={{ margin: 0, fontSize: "clamp(1.35rem, 2.5vw, 1.65rem)", fontWeight: 600, color: "#0f172a" }}>
-              {t("hospitalizationBoard.pageTitle")}
+              {isHospitalCareDashboard
+                ? t("hospitalCareD3e6a.floorBoard.dashboardTitle")
+                : t("hospitalizationBoard.pageTitle")}
             </h1>
             <p style={{ margin: "8px 0 0 0", fontSize: 14, color: "#64748b" }}>
               {t("hospitalCareD3e6a.floorBoard.pageSubtitle")}
@@ -1086,7 +1098,7 @@ export function HospitalizationBoardView() {
           </div>
         </header>
 
-        {encounters.length > 0 && mockMode !== "error" ? (
+        {!isHospitalCareDashboard && encounters.length > 0 && mockMode !== "error" ? (
           <section style={observationBoardSnapshotSectionStyle(layoutMode)}>
             <div style={observationBoardSnapshotTitleStyle(layoutMode)}>
               {t("hospitalizationBoard.operationalStripTitle")}
@@ -1201,11 +1213,20 @@ export function HospitalizationBoardView() {
                 canManageBedStatus={canManageBedStatus}
                 onAvailableBedClick={(bed) => setAssignPickerBed(bed)}
                 onBedStatusUpdated={handleBedStatusUpdated}
+                onChangeRoom={(bed) => {
+                  const encounterId = bed.occupantEncounterId;
+                  if (!encounterId) return;
+                  const encounter = encounters.find((row) => row.id === encounterId);
+                  if (!encounter) return;
+                  setRoomAssignmentLaunch({ encounter });
+                }}
               />
             ))}
           </section>
         ) : null}
 
+        {!isHospitalCareDashboard ? (
+        <>
         {/* Barre unique : recherche à gauche, filtres compacts, actions à droite (V0) */}
         <div style={observationBoardFilterRowStyle(layoutMode)}>
           <div style={{ flex: "1 1 220px", minWidth: 0 }}>
@@ -1895,6 +1916,8 @@ export function HospitalizationBoardView() {
             })}
           </ul>
         )}
+        </>
+        ) : null}
       </div>
       {assignPickerBed ? (
         <BedBoardAssignEncounterPicker

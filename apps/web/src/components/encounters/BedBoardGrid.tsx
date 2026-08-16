@@ -24,6 +24,8 @@ export type BedBoardGridProps = {
   canManageBedStatus?: boolean;
   onAvailableBedClick?: (bed: FacilityBedBoardBedRow) => void;
   onBedStatusUpdated?: (bed: FacilityBedBoardBedRow) => void;
+  /** MEDUI.D4A.4.3 — occupied bed → enterprise room change (RoomAssignmentModal). */
+  onChangeRoom?: (bed: FacilityBedBoardBedRow) => void;
   encounterChartPath?: (encounterId: string, unit: EncounterBedUnitCode) => string;
 };
 
@@ -60,6 +62,7 @@ export function BedBoardGrid({
   canManageBedStatus = false,
   onAvailableBedClick,
   onBedStatusUpdated,
+  onChangeRoom,
   encounterChartPath = defaultChartPath,
 }: BedBoardGridProps) {
   const { t, language } = useI18n();
@@ -212,6 +215,7 @@ export function BedBoardGrid({
         onClose={() => setStatusDetailBed(null)}
         onStatusUpdated={onBedStatusUpdated}
         onAssignPatient={onAvailableBedClick}
+        onChangeRoom={onChangeRoom}
         encounterChartPath={encounterChartPath}
       />
     </>

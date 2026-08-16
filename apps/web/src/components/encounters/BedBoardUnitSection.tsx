@@ -18,6 +18,7 @@ export type BedBoardUnitSectionProps = {
   canManageBedStatus?: boolean;
   onAvailableBedClick?: (bed: FacilityBedBoardBedRow) => void;
   onBedStatusUpdated?: (bed: FacilityBedBoardBedRow) => void;
+  onChangeRoom?: (bed: FacilityBedBoardBedRow) => void;
   encounterChartPath?: (encounterId: string, unit: EncounterBedUnitCode) => string;
 };
 
@@ -32,6 +33,7 @@ export function BedBoardUnitSection({
   canManageBedStatus,
   onAvailableBedClick,
   onBedStatusUpdated,
+  onChangeRoom,
   encounterChartPath,
 }: BedBoardUnitSectionProps) {
   return (
@@ -55,6 +57,7 @@ export function BedBoardUnitSection({
         canManageBedStatus={canManageBedStatus}
         onAvailableBedClick={onAvailableBedClick}
         onBedStatusUpdated={onBedStatusUpdated}
+        onChangeRoom={onChangeRoom}
         encounterChartPath={encounterChartPath}
       />
     </section>
