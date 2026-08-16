@@ -137,6 +137,7 @@ import {
   normalizeEncounterRoomUnitCodeInput,
   normalizeBedUnitCode,
   validateBedInPool,
+  buildCanonicalBedKey,
   formatCanonicalBedDisplay,
   resolveBedAssignmentForSave,
   resolveEncounterCanonicalBedKey,
@@ -282,6 +283,7 @@ import {
   resolveFacilityModuleCapabilitiesD4c1,
 } from "@medora/shared";
 import { throwEncounterConcurrentModification } from "./encounter-concurrency.util";
+import { acquireBedAssignmentRaceLock } from "./encounter-bed-assignment-race-lock.util";
 import { acquireEnterpriseEncounterCreateRaceLock } from "./encounter-create-race-lock.util";
 import {
   ADMISSION_ERROR_MESSAGES_FR,
@@ -2128,8 +2130,19 @@ export class EncountersService {
       }
     }
 
-    const openEncounters = await this.loadOpenBedOccupancyRows(facilityId);
-    const resolved = resolveBedAssignmentForSave({
+    const allowSharedOccupancy =
+      data.confirmOccupiedRoomAssignment === true || data.roomOccupancyOverride != null;
+    /** Exclusive pool beds: lock + re-check occupancy in one transaction (MEDUI.D4A.4.3A). */
+    const exclusiveCanonicalBedKey =
+      !allowSharedOccupancy &&
+      requestedRoomRaw &&
+      bedUnit &&
+      !isEdWaitingRoomLabel(requestedRoomRaw) &&
+      validateBedInPool(bedUnit, requestedRoomRaw)
+        ? buildCanonicalBedKey(bedUnit, requestedRoomRaw)
+        : null;
+
+    const resolveInputBase = {
       facilityId,
       encounterId: id,
       encounterType: encounter.type,
@@ -2138,21 +2151,52 @@ export class EncountersService {
       requestedRoomRaw: requestedRoomRaw === undefined ? encounter.roomLabel : requestedRoomRaw,
       confirmOccupiedRoomAssignment: data.confirmOccupiedRoomAssignment,
       roomOccupancyOverride: data.roomOccupancyOverride ?? null,
-      openEncounters,
-    });
-    if (!resolved.ok) {
-      throwRoomAlreadyOccupiedConflict(resolved.conflict);
-    }
-    const resolvedRoomLabel = resolved.roomLabel;
+    };
 
-    const u = await this.prisma.encounter.updateMany({
-      where: { id, facilityId, version: encounter.version },
-      data: {
-        roomLabel: resolvedRoomLabel,
-        version: { increment: 1 },
-      },
-    });
-    if (u.count === 0) throwEncounterConcurrentModification();
+    let resolvedRoomLabel: string | null;
+    if (exclusiveCanonicalBedKey) {
+      resolvedRoomLabel = await this.prisma.$transaction(async (tx) => {
+        await acquireBedAssignmentRaceLock(tx, {
+          facilityId,
+          canonicalBedKey: exclusiveCanonicalBedKey,
+        });
+        const openEncounters = await this.loadOpenBedOccupancyRows(facilityId, tx);
+        const resolved = resolveBedAssignmentForSave({
+          ...resolveInputBase,
+          openEncounters,
+        });
+        if (!resolved.ok) {
+          throwRoomAlreadyOccupiedConflict(resolved.conflict);
+        }
+        const u = await tx.encounter.updateMany({
+          where: { id, facilityId, version: encounter.version },
+          data: {
+            roomLabel: resolved.roomLabel,
+            version: { increment: 1 },
+          },
+        });
+        if (u.count === 0) throwEncounterConcurrentModification();
+        return resolved.roomLabel;
+      });
+    } else {
+      const openEncounters = await this.loadOpenBedOccupancyRows(facilityId);
+      const resolved = resolveBedAssignmentForSave({
+        ...resolveInputBase,
+        openEncounters,
+      });
+      if (!resolved.ok) {
+        throwRoomAlreadyOccupiedConflict(resolved.conflict);
+      }
+      resolvedRoomLabel = resolved.roomLabel;
+      const u = await this.prisma.encounter.updateMany({
+        where: { id, facilityId, version: encounter.version },
+        data: {
+          roomLabel: resolvedRoomLabel,
+          version: { increment: 1 },
+        },
+      });
+      if (u.count === 0) throwEncounterConcurrentModification();
+    }
 
     const updated = await this.prisma.encounter.findFirst({
       where: { id, facilityId },
@@ -2232,8 +2276,15 @@ export class EncountersService {
   }
 
   /** Open encounters with room assignments for canonical bed occupancy checks (K.10B.10B). */
-  private async loadOpenBedOccupancyRows(facilityId: string): Promise<BedOccupancyRow[]> {
-    const rows = await this.prisma.encounter.findMany({
+  private async loadOpenBedOccupancyRows(
+    facilityId: string,
+    db: {
+      encounter: {
+        findMany: PrismaService["encounter"]["findMany"];
+      };
+    } = this.prisma
+  ): Promise<BedOccupancyRow[]> {
+    const rows = await db.encounter.findMany({
       where: {
         facilityId,
         status: EncounterStatus.OPEN,

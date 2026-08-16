@@ -4,7 +4,10 @@ import { Suspense } from "react";
 import { HospitalizationBoardView } from "@/features/hospitalization/HospitalizationBoardView";
 import { CommonSuspenseFallback } from "@/components/i18n/CommonSuspenseFallback";
 
-/** Preserved pre-D3CA operational floor board (beds / INPATIENT open census). */
+/**
+ * MEDUI.D4A.4.3 — Facility-wide Hospital Care Dashboard (bed inventory).
+ * Not Observation census — Observation is a care setting within Hospital Care.
+ */
 export default function HospitalCareFloorBoardPage() {
   return (
     <Suspense
@@ -23,7 +26,7 @@ export default function HospitalCareFloorBoardPage() {
         </div>
       }
     >
-      <HospitalizationBoardView />
+      <HospitalizationBoardView projection="hospitalCareDashboard" />
     </Suspense>
   );
 }

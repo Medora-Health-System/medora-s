@@ -15210,6 +15210,7 @@ export default {
     statusDetailReason: "Motif",
     statusViewEncounter: "Voir la consultation",
     statusAssignPatient: "Assigner un patient",
+    statusChangeRoom: "Changer de chambre",
     statusSave: "Enregistrer",
     statusHistoryTitle: "Activité récente",
     statusHistoryEmpty: "Aucun changement de statut récent.",
@@ -20491,8 +20492,9 @@ export default {
       count: "{count} consultation(s) d’hospitalisation active(s)",
     },
     floorBoard: {
+      dashboardTitle: "Tableau de bord Soins hospitaliers",
       pageSubtitle: "Inventaire visuel des chambres et lits de l’établissement.",
-      openHospitalCare: "Ouvrir le tableau de bord Soins hospitaliers",
+      openHospitalCare: "Ouvrir l’accueil Soins hospitaliers",
       clinicalCensusHint: "Recensement clinique — Observation : {obs} · Hospitalisation : {ip}",
     },
   },

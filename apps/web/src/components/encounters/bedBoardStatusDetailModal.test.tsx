@@ -29,9 +29,10 @@ describe("BedBoardStatusDetailModal (K.10B.10E)", () => {
     expect(modal).toContain("pendingAction");
   });
 
-  it("shows occupant, view encounter, and recent activity", () => {
+  it("shows occupant, view encounter, change room, and recent activity", () => {
     expect(modal).toContain("statusDetailOccupant");
     expect(modal).toContain('data-testid="bed-board-status-view-encounter"');
+    expect(modal).toContain('data-testid="bed-board-status-change-room"');
     expect(modal).toContain('data-testid="bed-board-status-history"');
   });
 

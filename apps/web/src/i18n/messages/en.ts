@@ -15166,6 +15166,7 @@ export default {
     statusDetailReason: "Reason",
     statusViewEncounter: "View encounter",
     statusAssignPatient: "Assign patient",
+    statusChangeRoom: "Change room",
     statusSave: "Save",
     statusHistoryTitle: "Recent activity",
     statusHistoryEmpty: "No recent status changes.",
@@ -20396,8 +20397,9 @@ export default {
       count: "{count} active Inpatient encounter(s)",
     },
     floorBoard: {
+      dashboardTitle: "Hospital Care Dashboard",
       pageSubtitle: "Visual room and bed inventory for the facility.",
-      openHospitalCare: "Open Hospital Care dashboard",
+      openHospitalCare: "Open Hospital Care home",
       clinicalCensusHint: "Clinical census — Observation: {obs} · Inpatient: {ip}",
     },
   },

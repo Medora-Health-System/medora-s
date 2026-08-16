@@ -18,13 +18,25 @@ function buildUpdateRoomMocks(encounterRow: Record<string, unknown>, openRows: u
     .fn()
     .mockResolvedValueOnce(encounterRow)
     .mockResolvedValue(updatedRow);
+  const encounterFindMany = jest.fn().mockResolvedValue(openRows);
+  const executeRawUnsafe = jest.fn().mockResolvedValue(undefined);
+  const txClient = {
+    encounter: {
+      findFirst: encounterFindFirst,
+      findMany: encounterFindMany,
+      updateMany: encounterUpdateMany,
+    },
+    $executeRawUnsafe: executeRawUnsafe,
+  };
   const auditLog = jest.fn().mockResolvedValue(undefined);
   const prisma = {
     encounter: {
       findFirst: encounterFindFirst,
-      findMany: jest.fn().mockResolvedValue(openRows),
+      findMany: encounterFindMany,
       updateMany: encounterUpdateMany,
     },
+    $transaction: jest.fn(async (fn: (tx: typeof txClient) => Promise<unknown>) => fn(txClient)),
+    $executeRawUnsafe: executeRawUnsafe,
   };
   const service = new EncountersService(
     prisma as never,
@@ -35,7 +47,7 @@ function buildUpdateRoomMocks(encounterRow: Record<string, unknown>, openRows: u
     createMockEnterpriseAssignmentService() as never,
     createMockEnterpriseLifecycleService() as never
   );
-  return { service, auditLog, encounterUpdateMany, updatedRow };
+  return { service, auditLog, encounterUpdateMany, executeRawUnsafe, prisma, updatedRow };
 }
 
 describe("EncountersService.updateRoom (K.10B.10)", () => {
@@ -127,23 +139,35 @@ describe("EncountersService.updateRoom (K.10B.10)", () => {
       .fn()
       .mockResolvedValueOnce(edEncounter)
       .mockResolvedValue(updatedRow);
+    const encounterFindMany = jest.fn().mockResolvedValue([]);
+    const executeRawUnsafe = jest.fn().mockResolvedValue(undefined);
     const auditLog = jest.fn().mockResolvedValue(undefined);
+    const txClient = {
+      encounter: {
+        findFirst: encounterFindFirst,
+        findMany: encounterFindMany,
+        updateMany: encounterUpdateMany,
+      },
+      $executeRawUnsafe: executeRawUnsafe,
+    };
     const prisma = {
       encounter: {
         findFirst: encounterFindFirst,
-        findMany: jest.fn().mockResolvedValue([]),
+        findMany: encounterFindMany,
         updateMany: encounterUpdateMany,
       },
+      $transaction: jest.fn(async (fn: (tx: typeof txClient) => Promise<unknown>) => fn(txClient)),
+      $executeRawUnsafe: executeRawUnsafe,
     };
     const service = new EncountersService(
-    prisma as never,
-    { log: auditLog } as never,
-    {} as never,
-    createMockBedBoardService() as never,
-    createMockInternalPlacementService() as never,
-    createMockEnterpriseAssignmentService() as never,
-    createMockEnterpriseLifecycleService() as never
-  );
+      prisma as never,
+      { log: auditLog } as never,
+      {} as never,
+      createMockBedBoardService() as never,
+      createMockInternalPlacementService() as never,
+      createMockEnterpriseAssignmentService() as never,
+      createMockEnterpriseLifecycleService() as never
+    );
 
     const res = (await service.updateRoom(facilityId, "enc-1", {
       room: "2",

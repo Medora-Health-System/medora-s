@@ -29,13 +29,25 @@ function buildUpdateRoomMocks(
     .fn()
     .mockResolvedValueOnce(encounterRow)
     .mockResolvedValue(updatedRow);
+  const encounterFindMany = jest.fn().mockResolvedValue(openRows);
   const auditLog = jest.fn().mockResolvedValue(undefined);
+  const executeRawUnsafe = jest.fn().mockResolvedValue(undefined);
+  const txClient = {
+    encounter: {
+      findFirst: encounterFindFirst,
+      findMany: encounterFindMany,
+      updateMany: encounterUpdateMany,
+    },
+    $executeRawUnsafe: executeRawUnsafe,
+  };
   const prisma = {
     encounter: {
       findFirst: encounterFindFirst,
-      findMany: jest.fn().mockResolvedValue(openRows),
+      findMany: encounterFindMany,
       updateMany: encounterUpdateMany,
     },
+    $transaction: jest.fn(async (fn: (tx: typeof txClient) => Promise<unknown>) => fn(txClient)),
+    $executeRawUnsafe: executeRawUnsafe,
   };
   const service = new EncountersService(
     prisma as never,
@@ -46,7 +58,16 @@ function buildUpdateRoomMocks(
     createMockEnterpriseAssignmentService() as never,
     createMockEnterpriseLifecycleService() as never
   );
-  return { service, auditLog, encounterUpdateMany, encounterFindFirst, updatedRow };
+  return {
+    service,
+    auditLog,
+    encounterUpdateMany,
+    encounterFindFirst,
+    encounterFindMany,
+    executeRawUnsafe,
+    prisma,
+    updatedRow,
+  };
 }
 
 describe("EncountersService.updateRoom — bed governance (K.10B.10B M2)", () => {

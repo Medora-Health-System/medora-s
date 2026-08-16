@@ -46,6 +46,8 @@ export type BedBoardStatusDetailModalProps = {
   onClose: () => void;
   onStatusUpdated?: (bed: FacilityBedBoardBedRow) => void;
   onAssignPatient?: (bed: FacilityBedBoardBedRow) => void;
+  /** Occupied bed → change room / bed transfer via enterprise RoomAssignmentModal. */
+  onChangeRoom?: (bed: FacilityBedBoardBedRow) => void;
   encounterChartPath?: (encounterId: string, unit: EncounterBedUnitCode) => string;
 };
 
@@ -71,6 +73,7 @@ export function BedBoardStatusDetailModal({
   onClose,
   onStatusUpdated,
   onAssignPatient,
+  onChangeRoom,
   encounterChartPath,
 }: BedBoardStatusDetailModalProps) {
   const { t, language } = useI18n();
@@ -311,6 +314,32 @@ export function BedBoardStatusDetailModal({
             }}
           >
             {t("bedBoard.statusViewEncounter")}
+          </button>
+        ) : null}
+
+        {hasOccupant && canAssignRoom && onChangeRoom && bed ? (
+          <button
+            type="button"
+            data-testid="bed-board-status-change-room"
+            onClick={() => {
+              onChangeRoom(bed);
+              onClose();
+            }}
+            style={{
+              width: "100%",
+              minHeight: 44,
+              marginBottom: 12,
+              padding: "8px 12px",
+              borderRadius: 8,
+              border: "1px solid #c4b5fd",
+              background: "#f5f3ff",
+              color: "#5b21b6",
+              fontSize: 13,
+              fontWeight: 600,
+              cursor: "pointer",
+            }}
+          >
+            {t("bedBoard.statusChangeRoom")}
           </button>
         ) : null}
 
