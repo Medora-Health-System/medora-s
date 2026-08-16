@@ -44,6 +44,8 @@ import {
   resolveClinicCareDashboardAccess,
   resolveClinicCareTrackboardFieldVisibility,
   resolveFacilityCareProfile,
+  clinicAmbulatoryWorklistServiceLineWhere,
+  dedupeWorklistRowsByEncounterId,
   type ClinicCareAnalyticsKpiValue,
   type ClinicCareDashboardPeriod,
   type ClinicCareDeterministicInsight,
@@ -241,6 +243,8 @@ export class ClinicCareService {
       facilityId: input.facilityId,
       status: EncounterStatus.OPEN,
       type: { in: ambulatoryTypes },
+      // MEDUI.D4C.10D — Clinic board = Clinic/UC/legacy-null only (not Dental-routed visits).
+      ...clinicAmbulatoryWorklistServiceLineWhere(),
     };
 
     const todayClosedWhere: Prisma.EncounterWhereInput = {
@@ -248,6 +252,7 @@ export class ClinicCareService {
       status: EncounterStatus.CLOSED,
       type: { in: ambulatoryTypes },
       createdAt: { gte: day.startUtc, lt: day.endExclusiveUtc },
+      ...clinicAmbulatoryWorklistServiceLineWhere(),
     };
 
     // FOLLOW_UPS_DUE candidate rows: facility-scoped OPEN with dueDate before local tomorrow.
@@ -304,7 +309,7 @@ export class ClinicCareService {
     for (const row of [...openRows, ...todayClosedRows]) {
       if (!byId.has(row.id)) byId.set(row.id, row);
     }
-    const encounters = [...byId.values()];
+    const encounters = dedupeWorklistRowsByEncounterId([...byId.values()]);
     const truncated = openRows.length >= CLINIC_CARE_ROW_LIMIT;
 
     const opMap = await this.trackboardService.getOperationalAggregatesForEncounterIds(
@@ -567,6 +572,8 @@ export class ClinicCareService {
           facilityId: input.facilityId,
           status: EncounterStatus.OPEN,
           type: { in: ambulatoryTypes },
+          // MEDUI.D4C.10D — open Clinic dashboard KPIs exclude Dental-routed visits.
+          ...clinicAmbulatoryWorklistServiceLineWhere(),
         },
         select: encounterSelect,
         take: 1000,

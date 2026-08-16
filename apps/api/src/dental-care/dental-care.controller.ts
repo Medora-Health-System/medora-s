@@ -20,9 +20,10 @@ import { RoleCode } from "@prisma/client";
 import { DentalCareReadAccessGuard } from "./dental-care-read-access.guard";
 import { DentalCareWorklistService } from "./dental-care-worklist.service";
 import { DentalCareOdontogramService } from "./dental-care-odontogram.service";
+import { DentalCareVisitRoutingService } from "./dental-care-visit-routing.service";
 
 /**
- * MEDUI.D5A.2/D5A.3/D5A.4 — Dental Care shell, worklist, odontogram APIs.
+ * MEDUI.D5A.2/D5A.3/D5A.4 / D4C.10D — Dental Care shell, worklist, odontogram, visit routing.
  * Reuses enterprise Patient/Encounter — no DentalPatient / DentalEncounter.
  */
 @Controller("dental-care")
@@ -30,7 +31,8 @@ import { DentalCareOdontogramService } from "./dental-care-odontogram.service";
 export class DentalCareController {
   constructor(
     private readonly dentalCareWorklist: DentalCareWorklistService,
-    private readonly odontogram: DentalCareOdontogramService
+    private readonly odontogram: DentalCareOdontogramService,
+    private readonly visitRouting: DentalCareVisitRoutingService
   ) {}
 
   private actor(req: any): {
@@ -79,6 +81,28 @@ export class DentalCareController {
   async getWorklist(@Req() req: any) {
     const { facilityId } = this.actor(req);
     return this.dentalCareWorklist.listOpenDentalEncounters(facilityId);
+  }
+
+  /**
+   * MEDUI.D4C.10D — claim unclaimed Clinic wait into Dental, reuse Dental, or create new Dental visit.
+   */
+  @Post("patients/:patientId/claim-or-start")
+  @RequireRoles(RoleCode.PROVIDER, RoleCode.ADMIN, RoleCode.RN)
+  @UseGuards(DentalCareReadAccessGuard)
+  claimOrStart(
+    @Req() req: any,
+    @Param("patientId") patientId: string,
+    @Body() body: { visitReason?: string }
+  ) {
+    const { facilityId, userId } = this.actor(req);
+    return this.visitRouting.claimOrStartDentalVisit({
+      facilityId,
+      patientId,
+      userId,
+      ip: req.ip,
+      userAgent: req.headers?.["user-agent"],
+      visitReason: body?.visitReason,
+    });
   }
 
   /** MEDUI.D5A.4 — encounter-scoped odontogram projection + history. */

@@ -92,10 +92,10 @@ describe("MEDUI.D5A.3 dental encounter workspace (web)", () => {
     expect(D5A3_CERTIFICATION_ID).toBe("MEDUI.D5A.3");
   });
 
-  it("dashboard uses dental worklist API", () => {
+  it("dashboard uses dental worklist API and D4C.10D claim-or-start", () => {
     const dash = readFileSync(resolve(__dirname, "./DentalCareDashboardView.tsx"), "utf8");
     expect(dash).toContain("/dental-care/worklist");
-    expect(dash).toContain("buildDentalServiceLineTag");
+    expect(dash).toContain("claim-or-start");
     expect(dash).toContain("enterpriseDentalEncounterWorkspacePath");
   });
 });

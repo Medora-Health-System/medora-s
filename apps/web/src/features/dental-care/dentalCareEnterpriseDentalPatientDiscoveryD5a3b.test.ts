@@ -26,13 +26,14 @@ describe("MEDUI.D5A.3B enterprise Dental patient discovery & safe encounter laun
     expect(dashboard).toContain("clearSelectionOnQueryChange");
     expect(dashboard).toContain("onClearSelection");
     expect(dashboard).toMatch(
-      /\/patients\/\$\{encodeURIComponent\(patientId\)\}\/encounters/
+      /\/dental-care\/patients\/\$\{encodeURIComponent\(patientId\)\}\/claim-or-start/
     );
     expect(dashboard).not.toMatch(/patientId\.trim\(\).*encounters/);
     expect(dashboard).not.toContain("setPatientId");
     expect(dashboard).not.toContain("patientIdPlaceholder");
     expect(dashboard).toContain('disabled={!canStart}');
     expect(dashboard).toContain("MEDUI.D5A.3B");
+    expect(dashboard).toContain("D4C.10D");
   });
 
   it("enforces min 3 chars via shared patientSearchQueryIsEligible", () => {
@@ -56,7 +57,10 @@ describe("MEDUI.D5A.3B enterprise Dental patient discovery & safe encounter laun
     expect(dashboard).toContain('/dental-care/worklist');
     expect(dashboard).toContain("dental-worklist-row");
     expect(dashboard).not.toContain("/dental/patients");
-    expect(dashboard).not.toContain("/dental-care/patients");
+    // claim-or-start is visit routing, not a DentalPatient registry.
+    expect(dashboard).toContain("/dental-care/patients/");
+    expect(dashboard).toContain("claim-or-start");
+    expect(dashboard).not.toMatch(/DentalPatient/);
   });
 
   it("replaces Dental sidebar question-mark fallback with tooth icon", () => {
@@ -66,12 +70,11 @@ describe("MEDUI.D5A.3B enterprise Dental patient discovery & safe encounter laun
     expect(sidebarIcons).toMatch(/href\.startsWith\("\/app\/dental\/"\)/);
   });
 
-  it("keeps enterprise Encounter create + Dental service-line tag flow", () => {
-    expect(dashboard).toContain("buildDentalServiceLineTag");
-    expect(dashboard).toContain("mergeDentalServiceLineIntoNursingAssessment");
-    expect(dashboard).toContain('type: "OUTPATIENT"');
-    expect(dashboard).toContain('roomLabel: "DENTAL"');
-    expect(dashboard).toContain('serviceLine: "DENTAL"');
+  it("uses D4C.10D claim-or-start for Dental visit launch (enterprise Encounter)", () => {
+    expect(dashboard).toContain("claim-or-start");
+    expect(dashboard).toContain("D4C.10D");
     expect(dashboard).toContain("enterpriseDentalEncounterWorkspacePath");
+    expect(dashboard).not.toContain("buildDentalServiceLineTag");
+    expect(dashboard).not.toContain("mergeDentalServiceLineIntoNursingAssessment");
   });
 });
