@@ -21,7 +21,7 @@ function uniqueRoleCodes<T extends string>(arr: T[]): T[] {
   return [...new Set(arr)];
 }
 
-/** MEDUI.AUTH.ROLE.2 — facility role row with optional department assignment. */
+/** MEDUI.AUTH.ROLE.2 — facility role row with optional department + profession. */
 export const adminUserAssignmentSchema = z.object({
   facilityId: z.string().uuid({ message: "L’établissement est invalide." }).optional(),
   roleCode: adminUserRoleCodeSchema,
@@ -30,6 +30,14 @@ export const adminUserAssignmentSchema = z.object({
     .uuid({ message: "Le département est invalide." })
     .nullable()
     .optional(),
+  /** MEDUI.D4C.11 — first-class workforce profession (persisted on UserRole). */
+  professionCode: z
+    .string()
+    .min(1)
+    .max(64)
+    .optional()
+    .nullable()
+    .transform((s) => (s == null || String(s).trim() === "" ? null : String(s).trim().toUpperCase())),
 });
 
 export type AdminUserAssignmentDto = z.infer<typeof adminUserAssignmentSchema>;

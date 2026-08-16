@@ -1,0 +1,55 @@
+---
+description: Enterprise workforce profession identity — one SSoT, no role-per-profession explosion
+alwaysApply: true
+---
+
+# Enterprise workforce identity (MEDUI.D4A.4.0W)
+
+```
+ONE ENTERPRISE WORKFORCE IDENTITY
+ → MANY FACILITY ASSIGNMENTS
+ → PRECISE PROFESSION
+ → DERIVED SYSTEM ROLE
+ → DEPARTMENT / SERVICE ROUTING
+ → CAPABILITY-GATED DOCUMENTATION
+```
+
+## Separate concepts (never collapse)
+
+| Concept | Meaning |
+|---|---|
+| **Profession** | What the employee is (`UserRole.professionCode`) |
+| **System role** | Broad `RoleCode` family (ADMIN, PROVIDER, RN, …) |
+| **Department / service line** | Where they work |
+| **Specialty** | Clinical specialization — **not** `DepartmentCode` |
+| **Capability** | What they may perform |
+| **Credential** | License / NPI / attribution identity |
+
+## Hard prohibitions
+
+- No `DentistUser` / `TherapistUser` / parallel employee registries
+- No duplicate provider identity system
+- No RoleCode explosion (`MD_ROLE`, `DO_ROLE`, `NP_ROLE`, …) unless an audit proves an existing authority requires it
+- No UI-only profession list (SSoT: `enterpriseWorkforceProfessionD4c11.ts`)
+- No service-line-specific employee registry
+- No provider authority inferred from department alone
+- No department/module access inferred from `RoleCode.PROVIDER` alone (e.g. Clinic physician ≠ Dental)
+
+## Provider family
+
+`PHYSICIAN_MD` / `PHYSICIAN_DO` / `RESIDENT_PHYSICIAN` / `PHYSICIAN_ASSISTANT` / `NURSE_PRACTITIONER` / legacy `MEDICINE` all derive **systemRole = PROVIDER** while retaining precise profession for attribution, signing labels, credentialing, billing, and supervision.
+
+Never invent MD vs DO vs NP vs PA from bare `RoleCode.PROVIDER`.
+
+## Access intersection
+
+```
+FACILITY MEMBERSHIP
+ ∩ ENABLED SERVICE LINE
+ ∩ DEPARTMENT / ASSIGNMENT
+ ∩ ROLE
+ ∩ PROFESSION
+ ∩ CAPABILITY
+```
+
+Facility ADMIN clinical override remains governed by D5A.5C. Platform `MEDORA_SUPER_ADMIN` alone is not facility clinical membership.

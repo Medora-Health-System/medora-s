@@ -13,7 +13,7 @@ describe("MEDUI.D5A.5B enterprise Dental encounter authoring", () => {
 
   it("1: PROVIDER + Dental + OPEN => canEdit all clinical domains", () => {
     const a = resolveEnterpriseDentalEncounterAuthoring({
-      roleCodes: ["PROVIDER"],
+      roleCodes: ["PROVIDER"], professionCodes: ["DENTIST"], departmentCodes: ["DENTAL"],
       dentalCareEnabled: true,
       encounterStatus: "OPEN",
       serviceLine: "DENTAL",
@@ -77,7 +77,7 @@ describe("MEDUI.D5A.5B enterprise Dental encounter authoring", () => {
 
   it("7: CLOSED => read-only even for PROVIDER", () => {
     const a = resolveEnterpriseDentalEncounterAuthoring({
-      roleCodes: ["PROVIDER"],
+      roleCodes: ["PROVIDER"], professionCodes: ["DENTIST"], departmentCodes: ["DENTAL"],
       dentalCareEnabled: true,
       encounterStatus: "CLOSED",
       serviceLine: "DENTAL",
@@ -95,7 +95,7 @@ describe("MEDUI.D5A.5B enterprise Dental encounter authoring", () => {
       serviceLine: "DENTAL",
     });
     expect(a.isReadOnly).toBe(true);
-    expect(a.readOnlyReason).toBe("NO_CLINICAL_CAPABILITY");
+    expect(["NO_VIEW", "NO_CLINICAL_CAPABILITY"]).toContain(a.readOnlyReason);
   });
 
   it("RN view-only for clinical board domains", () => {

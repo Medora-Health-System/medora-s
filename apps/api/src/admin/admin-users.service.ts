@@ -12,8 +12,10 @@ import { AuditAction, RoleCode } from "@prisma/client";
 import { AuditService } from "../common/services/audit.service";
 import { logSecurityAdminAudit } from "../common/services/security-admin-audit";
 import {
+  canonicalizeWorkforceProfession,
   dedupeAdminUserAssignments,
-  findDuplicateRoleCodeDepartmentConflict,
+  findDuplicateProfessionAssignmentConflict,
+  inferWorkforceProfessionFromRoleAndDepartment,
 } from "@medora/shared";
 import type {
   AdminUserAssignmentDto,
@@ -32,6 +34,7 @@ import {
 type ResolvedUserRoleAssignment = {
   roleCode: RoleCode;
   departmentId: string | null;
+  professionCode: string;
 };
 
 @Injectable()
@@ -177,6 +180,7 @@ export class AdminUsersService {
             roleId: r.id,
             facilityId: facilityIdHeader,
             departmentId: assignment.departmentId,
+            professionCode: assignment.professionCode,
             isActive: true,
           },
         });
@@ -193,6 +197,8 @@ export class AdminUsersService {
         sourceOperation: "AdminUsersService.create",
         evidence: {
           roles: resolvedAssignments.map((row) => row.roleCode).sort(),
+          professions: resolvedAssignments.map((row) => row.professionCode).sort(),
+          departments: resolvedAssignments.map((row) => row.departmentId).filter(Boolean),
           isActive: created.isActive,
         },
         tx,
@@ -320,9 +326,9 @@ export class AdminUsersService {
     const mergedAssignments: ResolvedUserRoleAssignment[] = [
       ...resolvedAssignments,
     ];
-    const mergedRoleCodes: RoleCode[] = mergedAssignments.map(
-      (a) => a.roleCode,
-    );
+    const mergedRoleCodes: RoleCode[] = [
+      ...new Set(mergedAssignments.map((a) => a.roleCode)),
+    ];
     if (
       hadActiveSuperAdmin &&
       !mergedRoleCodes.includes(RoleCode.MEDORA_SUPER_ADMIN)
@@ -330,11 +336,12 @@ export class AdminUsersService {
       mergedAssignments.push({
         roleCode: RoleCode.MEDORA_SUPER_ADMIN,
         departmentId: null,
+        professionCode: "ADMINISTRATION",
       });
       mergedRoleCodes.push(RoleCode.MEDORA_SUPER_ADMIN);
     }
 
-    if (mergedRoleCodes.length === 0) {
+    if (mergedAssignments.length === 0) {
       throw new BadRequestException(
         "Sélectionnez au moins un rôle pour cet établissement.",
       );
@@ -346,25 +353,35 @@ export class AdminUsersService {
     if (roleRows.length !== mergedRoleCodes.length) {
       throw new BadRequestException("Un ou plusieurs rôles sont invalides.");
     }
-
-    const assignmentByRole = new Map(
-      mergedAssignments.map((a) => [a.roleCode, a.departmentId] as const),
-    );
+    const roleByCode = new Map(roleRows.map((r) => [r.code, r]));
 
     await this.prisma.$transaction(async (tx) => {
       await tx.userRole.updateMany({
         where: { userId, facilityId: facilityIdHeader },
         data: { isActive: false },
       });
-      for (const r of roleRows) {
-        const departmentId = assignmentByRole.get(r.code) ?? null;
+      for (const assignment of mergedAssignments) {
+        const r = roleByCode.get(assignment.roleCode);
+        if (!r) {
+          throw new BadRequestException("Un ou plusieurs rôles sont invalides.");
+        }
         const existingUr = await tx.userRole.findFirst({
-          where: { userId, facilityId: facilityIdHeader, roleId: r.id },
+          where: {
+            userId,
+            facilityId: facilityIdHeader,
+            professionCode: assignment.professionCode,
+            departmentId: assignment.departmentId,
+          },
         });
         if (existingUr) {
           await tx.userRole.update({
             where: { id: existingUr.id },
-            data: { isActive: true, departmentId },
+            data: {
+              isActive: true,
+              departmentId: assignment.departmentId,
+              roleId: r.id,
+              professionCode: assignment.professionCode,
+            },
           });
         } else {
           await tx.userRole.create({
@@ -372,7 +389,8 @@ export class AdminUsersService {
               userId,
               roleId: r.id,
               facilityId: facilityIdHeader,
-              departmentId,
+              departmentId: assignment.departmentId,
+              professionCode: assignment.professionCode,
               isActive: true,
             },
           });
@@ -399,16 +417,31 @@ export class AdminUsersService {
         evidence: {
           before: {
             roles: activeAtFacility.map((row) => row.role.code).sort(),
+            professions: activeAtFacility
+              .map((row) => (row as { professionCode?: string }).professionCode ?? row.role.code)
+              .sort(),
+            departments: activeAtFacility.map((row) => row.departmentId).filter(Boolean),
           },
-          after: { roles: mergedRoleCodes.slice().sort() },
-          assigned: mergedRoleCodes
+          after: {
+            roles: mergedRoleCodes.slice().sort(),
+            professions: mergedAssignments.map((a) => a.professionCode).sort(),
+            departments: mergedAssignments.map((a) => a.departmentId).filter(Boolean),
+          },
+          assigned: mergedAssignments
+            .map((a) => a.professionCode)
             .filter(
-              (code) => !activeAtFacility.some((row) => row.role.code === code),
+              (code) =>
+                !activeAtFacility.some(
+                  (row) =>
+                    ((row as { professionCode?: string }).professionCode ?? row.role.code) === code,
+                ),
             )
             .sort(),
           removed: activeAtFacility
-            .map((row) => row.role.code)
-            .filter((code) => !mergedRoleCodes.includes(code))
+            .map((row) => (row as { professionCode?: string }).professionCode ?? row.role.code)
+            .filter(
+              (code) => !mergedAssignments.some((a) => a.professionCode === code),
+            )
             .sort(),
         },
         tx,
@@ -649,6 +682,7 @@ export class AdminUsersService {
       userRoles: {
         isActive: boolean;
         departmentId: string | null;
+        professionCode: string;
         role: { code: RoleCode };
         department: { id: string; code: string; name: string } | null;
       }[];
@@ -674,6 +708,7 @@ export class AdminUsersService {
         departmentId: ur.departmentId ?? null,
         departmentCode: ur.department?.code ?? null,
         departmentName: ur.department?.name ?? null,
+        professionCode: ur.professionCode,
       })),
     };
   }
@@ -686,18 +721,41 @@ export class AdminUsersService {
     },
   ): Promise<ResolvedUserRoleAssignment[]> {
     if (dto.assignments?.length) {
+      const deptIds = dto.assignments.map((row) => row.departmentId ?? null);
+      await this.assertDepartmentsBelongToFacility(facilityId, deptIds);
+      const depts = await this.prisma.department.findMany({
+        where: {
+          facilityId,
+          id: { in: deptIds.filter((id): id is string => Boolean(id)) },
+        },
+        select: { id: true, code: true },
+      });
+      const deptCodeById = new Map(depts.map((d) => [d.id, d.code]));
+
       const normalized = dedupeAdminUserAssignments(
-        dto.assignments.map((row) => ({
-          facilityId: row.facilityId ?? facilityId,
-          roleCode: row.roleCode,
-          departmentId: row.departmentId ?? null,
-        })),
+        dto.assignments.map((row) => {
+          const deptCode = row.departmentId
+            ? deptCodeById.get(row.departmentId) ?? null
+            : null;
+          const professionCode =
+            canonicalizeWorkforceProfession(row.professionCode) ??
+            inferWorkforceProfessionFromRoleAndDepartment({
+              roleCode: row.roleCode,
+              departmentCode: deptCode,
+            });
+          return {
+            facilityId: row.facilityId ?? facilityId,
+            roleCode: row.roleCode,
+            departmentId: row.departmentId ?? null,
+            professionCode,
+          };
+        }),
       );
 
-      const conflict = findDuplicateRoleCodeDepartmentConflict(normalized);
+      const conflict = findDuplicateProfessionAssignmentConflict(normalized);
       if (conflict) {
         throw new BadRequestException(
-          `Le rôle ${conflict} ne peut pas être assigné à plusieurs départements dans le même établissement.`,
+          `La profession ${conflict} est déjà assignée pour ce département dans cet établissement.`,
         );
       }
 
@@ -709,14 +767,12 @@ export class AdminUsersService {
         }
       }
 
-      await this.assertDepartmentsBelongToFacility(
-        facilityId,
-        normalized.map((row) => row.departmentId),
-      );
-
       return normalized.map((row) => ({
         roleCode: row.roleCode as RoleCode,
         departmentId: row.departmentId ?? null,
+        professionCode:
+          canonicalizeWorkforceProfession(row.professionCode) ??
+          String(row.professionCode),
       }));
     }
 
@@ -730,6 +786,10 @@ export class AdminUsersService {
     return legacyRoles.map((roleCode) => ({
       roleCode: roleCode as RoleCode,
       departmentId: null,
+      professionCode: inferWorkforceProfessionFromRoleAndDepartment({
+        roleCode: String(roleCode),
+        departmentCode: null,
+      }),
     }));
   }
 

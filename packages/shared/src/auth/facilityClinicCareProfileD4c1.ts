@@ -556,10 +556,13 @@ export function resolveFacilityModuleCapabilitiesD4c1(input: {
   const ambulatory = isAmbulatoryFacilityProfile(profile);
 
   return {
-    clinicCareEnabled: ambulatory && (lines.includes("CLINIC") || profile === "CLINIC" || profile === "CLINIC_AND_URGENT_CARE"),
+    clinicCareEnabled:
+      lines.includes("CLINIC") ||
+      lines.includes("URGENT_CARE") ||
+      (ambulatory && (profile === "CLINIC" || profile === "CLINIC_AND_URGENT_CARE" || profile === "URGENT_CARE")),
     urgentCareEnabled:
-      ambulatory &&
-      (lines.includes("URGENT_CARE") || profile === "URGENT_CARE" || profile === "CLINIC_AND_URGENT_CARE"),
+      lines.includes("URGENT_CARE") ||
+      (ambulatory && (profile === "URGENT_CARE" || profile === "CLINIC_AND_URGENT_CARE")),
     edEnabled: lines.includes("EMERGENCY") || profile === "FREESTANDING_ER" || profile === "HOSPITAL",
     observationEnabled: lines.includes("OBSERVATION") || profile === "HOSPITAL" || profile === "FREESTANDING_ER",
     inpatientEnabled:

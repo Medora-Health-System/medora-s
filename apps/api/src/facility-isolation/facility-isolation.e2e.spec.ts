@@ -123,16 +123,37 @@ describe("Facility isolation (e2e)", () => {
     });
 
     await prisma.userRole.create({
-      data: { userId: userProviderA.id, roleId: roleProvider.id, facilityId: facilityIdA },
+      data: {
+        userId: userProviderA.id,
+        roleId: roleProvider.id,
+        facilityId: facilityIdA,
+        /** MEDUI.D4C.11 — required; do not invent MD/DO from RoleCode.PROVIDER. */
+        professionCode: "PROVIDER_UNSPECIFIED",
+      },
     });
     await prisma.userRole.create({
-      data: { userId: userLabA.id, roleId: roleLab.id, facilityId: facilityIdA },
+      data: {
+        userId: userLabA.id,
+        roleId: roleLab.id,
+        facilityId: facilityIdA,
+        professionCode: "TECHNICIAN",
+      },
     });
     await prisma.userRole.create({
-      data: { userId: userLabB.id, roleId: roleLab.id, facilityId: facilityIdB },
+      data: {
+        userId: userLabB.id,
+        roleId: roleLab.id,
+        facilityId: facilityIdB,
+        professionCode: "TECHNICIAN",
+      },
     });
     await prisma.userRole.create({
-      data: { userId: userPharmA.id, roleId: rolePharmacy.id, facilityId: facilityIdA },
+      data: {
+        userId: userPharmA.id,
+        roleId: rolePharmacy.id,
+        facilityId: facilityIdA,
+        professionCode: "PHARMACY",
+      },
     });
 
     const login = async (u: string) => {

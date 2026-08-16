@@ -377,24 +377,30 @@ model PasswordResetToken {
 
 /// Facility-scoped role assignment (user + Role row + facility). Same idea as a dedicated `FacilityUserRole` model.
 model UserRole {
-  id           String      @id @default(uuid())
-  userId       String
-  roleId       String
-  facilityId   String
-  departmentId String?
-  isActive     Boolean     @default(true)
-  createdAt    DateTime    @default(now())
-  updatedAt    DateTime    @updatedAt
-  department   Department? @relation(fields: [departmentId], references: [id], onDelete: Restrict)
-  facility     Facility    @relation(fields: [facilityId], references: [id])
-  role         Role        @relation(fields: [roleId], references: [id])
-  user         User        @relation(fields: [userId], references: [id])
+  id             String      @id @default(uuid())
+  userId         String
+  roleId         String
+  facilityId     String
+  departmentId   String?
+  /// MEDUI.D4C.11 — first-class workforce profession (not RoleCode).
+  professionCode String
+  isActive       Boolean     @default(true)
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+  department     Department? @relation(fields: [departmentId], references: [id], onDelete: Restrict)
+  facility       Facility    @relation(fields: [facilityId], references: [id])
+  role           Role        @relation(fields: [roleId], references: [id])
+  user           User        @relation(fields: [userId], references: [id])
 
-  @@unique([userId, roleId, facilityId])
+  /// MEDUI.D4C.11A — uniqueness enforced in DB as expression unique
+  /// (userId, facilityId, professionCode, COALESCE(departmentId, zero-uuid))
+  /// so one profession may span multiple departments. See migration 20261112120000.
+  @@index([userId, facilityId, professionCode, departmentId])
   @@index([userId])
   @@index([facilityId])
   @@index([facilityId, roleId])
   @@index([departmentId])
+  @@index([professionCode])
 }
 
 /// D4SEC.1C.3 authoritative, global Medora employee classification. It confers no facility or clinical access.

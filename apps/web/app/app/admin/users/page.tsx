@@ -6,6 +6,7 @@ import { getLandingRouteForRoles, getLandingHomeLabel } from "@/lib/landingRoute
 import { useFacilityAndRoles, type UserFacilityOption } from "@/hooks/useFacilityAndRoles";
 import {
   ADMIN_ASSIGNABLE_ROLE_CODES,
+  showsProviderBillingCredentialFields,
   type CreateAdminUserDto,
   type CreateFacilityDto,
 } from "@medora/shared";
@@ -46,6 +47,7 @@ import {
 import { AdminUserAssignmentSection } from "@/features/admin/AdminUserAssignmentSection";
 import {
   assignmentRowsFromExistingUser,
+  assignmentRowsNeedProviderCredentials,
   buildAssignmentsPayload,
   createEmptyAssignmentRow,
   type AssignmentDraftRow,
@@ -91,7 +93,7 @@ function accessStatusColumn(u: AdminUserRow, t: (key: string) => string): string
 
 export default function AdminUsersPage() {
   const { t, language } = useI18n();
-  const { facilityId, facilities, roles, ready, refreshFromMe, canCreateFacilities } = useFacilityAndRoles();
+  const { facilityId, facilities, roles, ready, refreshFromMe, canCreateFacilities, facilityServiceLines } = useFacilityAndRoles();
   const [items, setItems] = useState<AdminUserRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
@@ -522,6 +524,7 @@ export default function AdminUsersPage() {
         <CreateUserModal
           facilities={facilities}
           defaultFacilityId={facilityId}
+          facilityServiceLines={facilityServiceLines}
           onClose={() => setShowCreate(false)}
           onSuccess={async () => {
             setShowCreate(false);
@@ -537,11 +540,18 @@ export default function AdminUsersPage() {
           facilityId={facilityId}
           facilityDisplayName={currentFacilityName}
           user={editUser}
+          facilityServiceLines={facilityServiceLines}
           onClose={() => setEditUser(null)}
           onSuccess={async () => {
             setEditUser(null);
             setToast({ message: t("adminUsers.toastRolesUpdated"), ok: true });
             await load();
+            try {
+              await refreshFromMe();
+            } catch {
+              /* target user session is separate; actor shell still refresh */
+            }
+            window.dispatchEvent(new Event("medora:session-refresh"));
           }}
           onError={(m) => setToast({ message: m, ok: false })}
         />
@@ -961,12 +971,14 @@ function AddFacilityModal({
 function CreateUserModal({
   facilities,
   defaultFacilityId,
+  facilityServiceLines = null,
   onClose,
   onSuccess,
   onError,
 }: {
   facilities: UserFacilityOption[];
   defaultFacilityId: string;
+  facilityServiceLines?: readonly string[] | null;
   onClose: () => void;
   onSuccess: () => Promise<void>;
   onError: (m: string) => void;
@@ -1016,7 +1028,7 @@ function CreateUserModal({
   const previewRoleCodes = payloadPreview.ok ? payloadPreview.roleCodes : [];
   const previewPath = getLandingRouteForRoles(previewRoleCodes);
   const previewLabel = getLandingHomeLabel(previewPath, t);
-  const isProvider = previewRoleCodes.includes("PROVIDER");
+  const isProvider = assignmentRowsNeedProviderCredentials(assignmentRows);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1220,6 +1232,7 @@ function CreateUserModal({
             departmentsLoading={departmentsLoading}
             showFacilityColumn={false}
             disabled={submitting}
+            facilityServiceLines={facilityServiceLines}
           />
           {isProvider ? (
             <div
@@ -1302,6 +1315,7 @@ function EditRolesModal({
   facilityId,
   facilityDisplayName,
   user,
+  facilityServiceLines = null,
   onClose,
   onSuccess,
   onError,
@@ -1309,6 +1323,7 @@ function EditRolesModal({
   facilityId: string;
   facilityDisplayName: string;
   user: AdminUserRow;
+  facilityServiceLines?: readonly string[] | null;
   onClose: () => void;
   onSuccess: () => Promise<void>;
   onError: (m: string) => void;
@@ -1452,6 +1467,7 @@ function EditRolesModal({
             departmentsLoading={departmentsLoading}
             showFacilityColumn={false}
             disabled={submitting}
+            facilityServiceLines={facilityServiceLines}
           />
           <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
             <button
@@ -1650,7 +1666,11 @@ function EditProfileModal({
   onError: (m: string) => void;
 }) {
   const { t, language } = useI18n();
-  const isProvider = user.roles.includes("PROVIDER");
+  const isProvider =
+    (user.assignments ?? []).some((a) =>
+      showsProviderBillingCredentialFields(a.professionCode ?? null)
+    ) ||
+    (!(user.assignments?.length) && user.roles.includes("PROVIDER"));
   const [firstName, setFirstName] = useState(user.firstName);
   const [lastName, setLastName] = useState(user.lastName);
   const [email, setEmail] = useState(user.email);

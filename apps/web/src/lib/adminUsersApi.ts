@@ -72,6 +72,7 @@ export type AdminUserAssignmentRow = {
   facilityId: string;
   roleCode: string;
   departmentId: string | null;
+  professionCode?: string | null;
   departmentCode?: string | null;
   departmentName?: string | null;
 };

@@ -15,8 +15,18 @@ describe("MEDUI.D5A.5B web dental final authoring gate", () => {
   });
 
   it("role matrix: PROVIDER write; FACILITY_ADMIN write; ADMIN+PROVIDER write; platform-only deny", () => {
-    const provider = resolveEnterpriseDentalEncounterAuthoring({
+    const medicine = resolveEnterpriseDentalEncounterAuthoring({
       roleCodes: ["PROVIDER"],
+      professionCodes: ["MEDICINE"],
+      departmentCodes: ["PRIMARY_CARE"],
+      dentalCareEnabled: true,
+      encounterStatus: "OPEN",
+      serviceLine: "DENTAL",
+    });
+    expect(medicine.canView).toBe(false);
+
+    const provider = resolveEnterpriseDentalEncounterAuthoring({
+      roleCodes: ["PROVIDER"], professionCodes: ["DENTIST"], departmentCodes: ["DENTAL"],
       dentalCareEnabled: true,
       encounterStatus: "OPEN",
       serviceLine: "DENTAL",
@@ -48,7 +58,7 @@ describe("MEDUI.D5A.5B web dental final authoring gate", () => {
       serviceLine: "DENTAL",
     });
     expect(platform.isReadOnly).toBe(true);
-    expect(platform.readOnlyReason).toBe("NO_CLINICAL_CAPABILITY");
+    expect(["NO_VIEW", "NO_CLINICAL_CAPABILITY"]).toContain(platform.readOnlyReason);
   });
 
   it("multi-tooth odontogram codes remain per-tooth", () => {

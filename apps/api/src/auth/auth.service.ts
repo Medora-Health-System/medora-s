@@ -199,6 +199,7 @@ export class AuthService {
       departmentId: ur.departmentId ?? null,
       departmentCode: ur.department?.code ?? null,
       departmentName: ur.department?.name ?? null,
+      professionCode: ur.professionCode ?? null,
       facilityType: ur.facility?.facilityType ?? "CLINIC",
       serviceLines: resolveFacilityServiceLines({
         facilityType: ur.facility?.facilityType ?? "CLINIC",
@@ -233,6 +234,7 @@ export class AuthService {
         departmentId: null,
         departmentCode: null,
         departmentName: null,
+        professionCode: "ADMINISTRATION",
         facilityType: base.facilityType,
         serviceLines: base.serviceLines,
         careProfileJson: base.careProfileJson,

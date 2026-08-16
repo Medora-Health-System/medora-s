@@ -18,6 +18,8 @@ export type FacilityRoleDto = {
   /** Prisma department row code when assigned (MEDUI.AUTH.ROLE.2). */
   departmentCode?: string | null;
   departmentName?: string | null;
+  /** MEDUI.D4C.11 — first-class workforce profession on this membership. */
+  professionCode?: string | null;
   /**
    * Phase 1 — freestanding-ER policy mirror : autorise la saisie d'un résultat de
    * `LAB_TEST` par un infirmier (RN) sur cet établissement. Optionnel pour rétrocompatibilité ;

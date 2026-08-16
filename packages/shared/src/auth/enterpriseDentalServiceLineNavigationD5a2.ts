@@ -11,6 +11,13 @@
 import type { ProfessionGroup } from "./professionResolver.js";
 import { resolveProfessionGroup } from "./professionResolver.js";
 import { hasFacilityClinicalAuthoringRoleCodes } from "./enterpriseFacilityAdministratorClinicalAuthoringD5a5c.js";
+import {
+  canonicalizeWorkforceProfession,
+  hasDentalProfessionAssignment,
+  inferWorkforceProfessionFromRoleAndDepartment,
+  isDentalWorkforceProfession,
+} from "./enterpriseWorkforceProfessionD4c11.js";
+import { resolveClinicalWorkspaceEntitlement } from "./enterpriseClinicalWorkspaceEntitlementD4c11.js";
 import type { FacilityModuleCapabilitiesD4c1 } from "./facilityClinicCareProfileD4c1.js";
 import {
   D5A1_FORBIDDEN_AUTHORITIES,
@@ -222,19 +229,17 @@ export function facilityHasDentalServiceLine(
 }
 
 /**
- * Derive capability set from profession ∩ dental enabled ∩ specialty config.
- * No hardcoded single-role gate: PROVIDER / RN / ADMIN map to capability bundles.
+ * Derive capability set from dental profession assignment ∩ dental enabled ∩ specialty.
  *
- * MEDUI.D5A.5A — Clinical authoring follows PROVIDER role membership, not exclusive
- * profession-group winner. ADMIN+PROVIDER must retain PROVIDER dental authoring.
- *
- * MEDUI.D5A.5C — Facility ADMIN (RoleCode.ADMIN on facility membership) defaults to
- * full clinical authoring for enabled Dental. MEDORA_SUPER_ADMIN alone does not.
+ * MEDUI.D4C.11 — MEDICINE/PROVIDER alone does NOT grant Dental. Require dental profession,
+ * DENTAL department support role, or facility ADMIN (D5A.5C).
  */
 export function resolveDentalCapabilityCodes(input: {
   roleCodes: readonly string[] | null | undefined;
   dentalCareEnabled: boolean;
   specialties?: readonly D5a2DentalSpecialty[] | null;
+  professionCodes?: readonly string[] | null;
+  departmentCodes?: readonly string[] | null;
 }): D5a2DentalCapability[] {
   if (!input.dentalCareEnabled) return [];
 
@@ -243,7 +248,27 @@ export function resolveDentalCapabilityCodes(input: {
   const specialties = input.specialties ?? [];
   const hasOrtho = specialties.includes("ORTHODONTICS");
   const caps = new Set<D5a2DentalCapability>();
-  const hasClinicalAuthorRole = hasFacilityClinicalAuthoringRoleCodes(roleCodes);
+
+  const professionCodes = (input.professionCodes?.length
+    ? input.professionCodes
+    : roleCodes.map((role) =>
+        inferWorkforceProfessionFromRoleAndDepartment({
+          roleCode: role,
+          departmentCode: input.departmentCodes?.[0] ?? null,
+        })
+      )
+  ).map((c) => canonicalizeWorkforceProfession(c) ?? String(c).toUpperCase());
+
+  const entitlement = resolveClinicalWorkspaceEntitlement({
+    roleCodes,
+    professionCodes,
+    departmentCodes: input.departmentCodes,
+    workspace: "DENTAL",
+    moduleEnabled: true,
+  });
+  if (!entitlement.allowed) {
+    return [];
+  }
 
   const grantViewBundle = () => {
     caps.add("DENTAL_VIEW");
@@ -251,14 +276,16 @@ export function resolveDentalCapabilityCodes(input: {
     if (hasOrtho) caps.add("ORTHODONTICS_VIEW");
   };
 
-  if (profession === "ADMIN" || roleCodes.includes("ADMIN") || roleCodes.includes("MEDORA_SUPER_ADMIN")) {
+  const isFacilityAdmin = roleCodes.includes("ADMIN");
+  const professions = new Set(professionCodes);
+
+  if (isFacilityAdmin || roleCodes.includes("MEDORA_SUPER_ADMIN") && isFacilityAdmin) {
     grantViewBundle();
     caps.add("DENTAL_ADMIN");
     caps.add("DENTAL_BILLING_VIEW");
   }
 
-  // Clinical authoring: PROVIDER or facility ADMIN (D5A.5C). Not platform-operator-alone.
-  if (hasClinicalAuthorRole) {
+  if (isFacilityAdmin || professions.has("DENTIST")) {
     grantViewBundle();
     caps.add("DENTAL_PROVIDER");
     caps.add("DENTAL_DOCUMENT");
@@ -275,13 +302,53 @@ export function resolveDentalCapabilityCodes(input: {
     }
   }
 
-  if (profession === "RN" || profession === "FRONT_DESK") {
+  if (professions.has("DENTAL_HYGIENIST")) {
+    grantViewBundle();
+    caps.add("DENTAL_DOCUMENT");
+    caps.add("ODONTOGRAM_EDIT");
+    caps.add("PERIODONTAL_CHART_EDIT");
+    caps.add("DENTAL_IMAGE_UPLOAD");
+  }
+
+  if (professions.has("DENTAL_ASSISTANT") || (profession === "FRONT_DESK" && entitlement.allowed)) {
+    grantViewBundle();
+    caps.add("DENTAL_CONSENT_MANAGE");
+  }
+
+  if (professions.has("DENTAL_TECHNICIAN")) {
+    grantViewBundle();
+    caps.add("DENTAL_IMAGE_UPLOAD");
+  }
+
+  // PATIENT_CARE_TECH + dental profession is the D4C.11A allied mapping (not PROVIDER).
+  if (
+    roleCodes.includes("PATIENT_CARE_TECH") &&
+    hasDentalProfessionAssignment(professionCodes) &&
+    !professions.has("DENTIST")
+  ) {
     grantViewBundle();
   }
 
-  if (profession === "BILLING") {
+  if (profession === "RN" && entitlement.allowed && !hasDentalProfessionAssignment(professionCodes)) {
+    grantViewBundle();
+  }
+
+  if (profession === "BILLING" && entitlement.allowed) {
     caps.add("DENTAL_VIEW");
     caps.add("DENTAL_BILLING_VIEW");
+  }
+
+  // Facility admin clinical authoring (D5A.5C) when ADMIN without dentist profession
+  if (isFacilityAdmin && hasFacilityClinicalAuthoringRoleCodes(roleCodes)) {
+    grantViewBundle();
+    caps.add("DENTAL_PROVIDER");
+    caps.add("DENTAL_DOCUMENT");
+    caps.add("DENTAL_TREATMENT_PLAN");
+    caps.add("DENTAL_PROCEDURE_PERFORM");
+    caps.add("ODONTOGRAM_EDIT");
+    caps.add("PERIODONTAL_CHART_EDIT");
+    caps.add("DENTAL_IMAGE_UPLOAD");
+    caps.add("DENTAL_CONSENT_MANAGE");
   }
 
   return D5A2_DENTAL_CAPABILITIES.filter((c) => caps.has(c));
@@ -298,12 +365,16 @@ export function resolveDentalWorkspaceAccess(input: {
   roleCodes: readonly string[] | null | undefined;
   dentalCareEnabled: boolean;
   specialties?: readonly D5a2DentalSpecialty[] | null;
+  professionCodes?: readonly string[] | null;
+  departmentCodes?: readonly string[] | null;
 }): DentalWorkspaceAccess {
   const specialties = input.specialties ?? [];
   const capabilities = resolveDentalCapabilityCodes({
     roleCodes: input.roleCodes,
     dentalCareEnabled: input.dentalCareEnabled,
     specialties,
+    professionCodes: input.professionCodes,
+    departmentCodes: input.departmentCodes,
   });
   return {
     canAccessDentalShell: hasDentalCapability(capabilities, "DENTAL_VIEW"),

@@ -111,7 +111,8 @@ export function mapLegacyPrismaDepartmentCodeToClinicalDepartment(
     case "INPATIENT":
       return "MEDSURG";
     case "PRIMARY_CARE":
-      return "OBSERVATION";
+      /** Ambulatory clinic ops department — not a hospital Observation ward. */
+      return null;
     case "DENTAL":
       /** Dental is operational service-line department — not hospital clinical taxonomy. */
       return null;

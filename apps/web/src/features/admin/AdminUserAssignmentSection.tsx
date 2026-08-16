@@ -2,7 +2,6 @@
 
 import React from "react";
 import {
-  ADMIN_PROFESSION_CODES,
   TECHNICIAN_TYPE_CODES,
   getClinicalDepartmentLabel,
   isClinicalDepartmentCode,
@@ -14,7 +13,10 @@ import { useI18n } from "@/lib/i18n";
 import type { UserFacilityOption } from "@/hooks/useFacilityAndRoles";
 import {
   createEmptyAssignmentRow,
+  defaultDepartmentIdForProfession,
+  departmentsForProfessionRow,
   resolveRowRoleCode,
+  visibleAdminProfessionCodes,
   workspacePreviewKeyForRow,
   type AssignmentDraftRow,
   type FacilityDepartmentOption,
@@ -29,6 +31,8 @@ type Props = {
   /** When false, facility column is hidden (single-facility create flow). */
   showFacilityColumn?: boolean;
   disabled?: boolean;
+  /** Active facility service lines — Dental professions shown only when DENTAL enabled. */
+  facilityServiceLines?: readonly string[] | null;
 };
 
 function professionLabel(profession: AdminProfessionCode, t: (key: string) => string): string {
@@ -72,12 +76,40 @@ export function AdminUserAssignmentSection({
   departmentsLoading = false,
   showFacilityColumn = true,
   disabled = false,
+  facilityServiceLines = null,
 }: Props) {
   const { t, language } = useI18n();
+  const professionOptions = visibleAdminProfessionCodes({ facilityServiceLines });
 
   const updateRow = (clientId: string, patch: Partial<AssignmentDraftRow>) => {
     onChangeRows(
-      rows.map((row) => (row.clientId === clientId ? { ...row, ...patch } : row))
+      rows.map((row) => {
+        if (row.clientId !== clientId) return row;
+        const next = { ...row, ...patch };
+        if (patch.profession !== undefined) {
+          const departments = departmentsForProfessionRow({
+            profession: next.profession,
+            departments: departmentsByFacility[next.facilityId] ?? [],
+            facilityServiceLines,
+          });
+          const preferredDeptId = defaultDepartmentIdForProfession({
+            profession: next.profession,
+            departments: departmentsByFacility[next.facilityId] ?? [],
+            facilityServiceLines,
+          });
+          if (preferredDeptId && (next.departmentId == null || patch.profession)) {
+            next.departmentId = preferredDeptId;
+          }
+          // Clear department if no longer valid for profession routing
+          if (
+            next.departmentId &&
+            !departments.some((d) => d.id === next.departmentId)
+          ) {
+            next.departmentId = preferredDeptId;
+          }
+        }
+        return next;
+      })
     );
   };
 
@@ -102,9 +134,14 @@ export function AdminUserAssignmentSection({
 
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
         {rows.map((row) => {
-          const departments = departmentsByFacility[row.facilityId] ?? [];
+          const allDepartments = departmentsByFacility[row.facilityId] ?? [];
+          const departments = departmentsForProfessionRow({
+            profession: row.profession,
+            departments: allDepartments,
+            facilityServiceLines,
+          });
           const { roleCode } = resolveRowRoleCode(row);
-          const workspaceKey = workspacePreviewKeyForRow(row, departments);
+          const workspaceKey = workspacePreviewKeyForRow(row, allDepartments);
           const workspaceLabel = t(workspaceKey);
           const showTechnicianType = row.profession === "TECHNICIAN";
 
@@ -178,7 +215,7 @@ export function AdminUserAssignmentSection({
                     }}
                   >
                     <option value="">{t("adminUsers.selectProfession")}</option>
-                    {ADMIN_PROFESSION_CODES.map((code) => (
+                    {professionOptions.map((code) => (
                       <option key={code} value={code}>
                         {professionLabel(code, t)}
                       </option>

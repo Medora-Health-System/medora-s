@@ -28,6 +28,8 @@ export function buildNavigationProfileFromSession(input: {
   roleCodes: readonly string[];
   departmentCode?: string | null;
   prismaDepartmentCode?: string | null;
+  professionCodes?: readonly string[] | null;
+  departmentCodes?: readonly string[] | null;
   facilityType?: string | null;
   facilityServiceLines?: readonly string[] | null;
   careProfileJson?: unknown;
@@ -37,6 +39,8 @@ export function buildNavigationProfileFromSession(input: {
     roleCodes: input.roleCodes,
     departmentCode: input.departmentCode ?? null,
     prismaDepartmentCode: input.prismaDepartmentCode ?? null,
+    professionCodes: input.professionCodes ?? null,
+    departmentCodes: input.departmentCodes ?? null,
     facilityType: input.facilityType ?? null,
     facilityServiceLines: input.facilityServiceLines ?? null,
     careProfileJson: input.careProfileJson,

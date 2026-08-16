@@ -12,6 +12,11 @@ import type { MedoraFacilityType, MedoraServiceLine } from "./facilityTypeRegist
 import { normalizeFacilityType } from "./facilityTypeRegistry.js";
 import type { ProfessionGroup } from "./professionResolver.js";
 import { resolveProfessionGroup } from "./professionResolver.js";
+import { resolveClinicalWorkspaceEntitlement } from "./enterpriseClinicalWorkspaceEntitlementD4c11.js";
+import {
+  canonicalizeWorkforceProfession,
+  inferWorkforceProfessionFromRoleAndDepartment,
+} from "./enterpriseWorkforceProfessionD4c11.js";
 
 export type NavigationArea =
   | "DASHBOARD"
@@ -64,6 +69,10 @@ export type ResolveNavigationAreasInput = {
   professionGroup: ProfessionGroup;
   departmentCode?: DepartmentCode | string | null;
   roleCodes?: readonly string[];
+  /** MEDUI.D4C.11 — first-class workforce professions at this facility. */
+  professionCodes?: readonly string[] | null;
+  /** Raw prisma department codes from all active assignments (e.g. PRIMARY_CARE, DENTAL). */
+  departmentCodes?: readonly string[] | null;
   facilityType?: MedoraFacilityType | string | null;
   facilityServiceLines?: readonly string[] | null;
 };
@@ -72,6 +81,8 @@ export type NavigationProfileInput = {
   roleCodes: readonly string[];
   departmentCode?: string | null;
   prismaDepartmentCode?: string | null;
+  professionCodes?: readonly string[] | null;
+  departmentCodes?: readonly string[] | null;
   facilityType?: MedoraFacilityType | string | null;
   facilityServiceLines?: readonly string[] | null;
 };
@@ -161,8 +172,8 @@ function supplementFreestandingErRnProviderNavigationAreas(
 }
 
 /**
- * MEDUI.D4C.1 — Clinic / Urgent Care ambulatory operational menus.
- * Registration + Clinic Care without ED/Hospital unless hybrid lines present.
+ * MEDUI.D4C.1 / D4C.11 — Clinic Care when CLINIC/UC service line is enabled.
+ * Not limited to ambulatory facilityType (HOSPITAL may enable CLINIC line).
  */
 function supplementClinicCareNavigationAreas(
   areas: NavigationArea[],
@@ -171,15 +182,24 @@ function supplementClinicCareNavigationAreas(
     facilityType?: MedoraFacilityType | string | null;
     facilityServiceLines: readonly MedoraServiceLine[];
     roleCodes: readonly string[];
+    professionCodes?: readonly string[] | null;
+    departmentCodes?: readonly string[] | null;
   }
 ): NavigationArea[] {
-  if (!isAmbulatoryOperationalFacility(input.facilityType)) {
-    return areas;
-  }
-
   const lineSet = new Set(input.facilityServiceLines);
   const hasAmbulatoryLine = lineSet.has("CLINIC") || lineSet.has("URGENT_CARE");
   if (!hasAmbulatoryLine) {
+    return areas;
+  }
+
+  const entitlement = resolveClinicalWorkspaceEntitlement({
+    roleCodes: input.roleCodes,
+    professionCodes: input.professionCodes,
+    departmentCodes: input.departmentCodes,
+    workspace: "CLINIC",
+    moduleEnabled: true,
+  });
+  if (!entitlement.allowed) {
     return areas;
   }
 
@@ -190,26 +210,23 @@ function supplementClinicCareNavigationAreas(
     input.professionGroup === "RN" ||
     input.professionGroup === "PROVIDER" ||
     input.professionGroup === "FRONT_DESK" ||
-    input.professionGroup === "ADMIN"
+    input.professionGroup === "ADMIN" ||
+    entitlement.allowed
   ) {
     result.add("REGISTRATION");
     result.add("CLINIC_CARE");
   }
 
-  // Authorized Billing at ambulatory Clinic/UC may access Clinic Care shell + operational trackboard.
   if (input.professionGroup === "BILLING") {
     result.add("CLINIC_CARE");
     result.add("BILLING");
   }
 
-  // Pharmacy gets Clinic Care shell only when ambulatory lines present AND Pharmacy service line on.
   if (input.professionGroup === "PHARMACY" && lineSet.has("PHARMACY")) {
     result.add("CLINIC_CARE");
     result.add("PHARMACY");
   }
 
-  // Authorized technicians may access Clinic Care shell + trackboard/Today's Visits projections
-  // at ambulatory Clinic / UC. Shell visibility ≠ provider/nursing source authority.
   if (input.professionGroup === "TECHNICIAN") {
     result.add("CLINIC_CARE");
     if (roles.includes("LAB") && lineSet.has("LABORATORY")) {
@@ -227,18 +244,22 @@ function supplementClinicCareNavigationAreas(
     }
   }
 
+  void input.facilityType;
   return sortNavigationAreas([...result]);
 }
 
 /**
- * MEDUI.D5A.2 — Dental Care navigation when the DENTAL service line is enabled.
- * Parallel to Clinic Care / Emergency / Hospital — not a Clinic Care duplicate.
+ * MEDUI.D5A.2 / D4C.11 — Dental Care when DENTAL line enabled AND dental profession/admin.
+ * MEDICINE physicians are not granted Dental merely because they are PROVIDER.
  */
 function supplementDentalCareNavigationAreas(
   areas: NavigationArea[],
   input: {
     professionGroup: ProfessionGroup;
     facilityServiceLines: readonly MedoraServiceLine[];
+    roleCodes: readonly string[];
+    professionCodes?: readonly string[] | null;
+    departmentCodes?: readonly string[] | null;
   }
 ): NavigationArea[] {
   const lineSet = new Set(input.facilityServiceLines);
@@ -246,17 +267,20 @@ function supplementDentalCareNavigationAreas(
     return areas;
   }
 
-  const result = new Set(areas);
-  if (
-    input.professionGroup === "RN" ||
-    input.professionGroup === "PROVIDER" ||
-    input.professionGroup === "FRONT_DESK" ||
-    input.professionGroup === "ADMIN" ||
-    input.professionGroup === "BILLING"
-  ) {
-    result.add("DENTAL_CARE");
+  const entitlement = resolveClinicalWorkspaceEntitlement({
+    roleCodes: input.roleCodes,
+    professionCodes: input.professionCodes,
+    departmentCodes: input.departmentCodes,
+    workspace: "DENTAL",
+    moduleEnabled: true,
+  });
+  if (!entitlement.allowed) {
+    return areas;
   }
 
+  const result = new Set(areas);
+  result.add("DENTAL_CARE");
+  void input.professionGroup;
   return sortNavigationAreas([...result]);
 }
 
@@ -367,6 +391,8 @@ function applyFacilityServiceLineNavigationFilter(
     professionGroup: ProfessionGroup;
     departmentCode: DepartmentCode | null;
     roleCodes: readonly string[];
+    professionCodes?: readonly string[] | null;
+    departmentCodes?: readonly string[] | null;
     facilityType?: MedoraFacilityType | string | null;
     facilityServiceLines?: readonly string[] | null;
   }
@@ -434,11 +460,16 @@ function applyFacilityServiceLineNavigationFilter(
     facilityType: input.facilityType,
     facilityServiceLines: serviceLines,
     roleCodes: input.roleCodes,
+    professionCodes: input.professionCodes,
+    departmentCodes: input.departmentCodes,
   });
 
   filtered = supplementDentalCareNavigationAreas(filtered, {
     professionGroup: input.professionGroup,
     facilityServiceLines: serviceLines,
+    roleCodes: input.roleCodes,
+    professionCodes: input.professionCodes,
+    departmentCodes: input.departmentCodes,
   });
 
   return filtered;
@@ -497,6 +528,8 @@ export function resolveNavigationAreas(input: ResolveNavigationAreasInput): Navi
     professionGroup,
     departmentCode: department,
     roleCodes,
+    professionCodes: input.professionCodes,
+    departmentCodes: input.departmentCodes,
     facilityType: input.facilityType,
     facilityServiceLines: input.facilityServiceLines,
   });
@@ -527,10 +560,23 @@ export function resolveNavigationProfile(input: NavigationProfileInput): {
           : "ED",
   });
 
+  const inferredProfessions =
+    input.professionCodes && input.professionCodes.length > 0
+      ? input.professionCodes
+      : input.roleCodes.map((role) =>
+          inferWorkforceProfessionFromRoleAndDepartment({
+            roleCode: role,
+            departmentCode: input.prismaDepartmentCode ?? input.departmentCode,
+          })
+        );
+
   const areas = resolveNavigationAreas({
     professionGroup,
     departmentCode,
     roleCodes: input.roleCodes,
+    professionCodes: inferredProfessions,
+    departmentCodes: input.departmentCodes ??
+      (input.prismaDepartmentCode ? [input.prismaDepartmentCode] : null),
     facilityType: input.facilityType,
     facilityServiceLines: input.facilityServiceLines,
   });

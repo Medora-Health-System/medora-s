@@ -44,6 +44,8 @@ export class DentalCareController {
     facilityId: string;
     access: DentalWorkspaceAccess;
     roleCodes: string[];
+    professionCodes: string[];
+    departmentCodes: string[];
   } {
     const facilityId = req.user?.facilityId || req.headers["x-facility-id"];
     const userId = req.user?.userId as string | undefined;
@@ -52,11 +54,19 @@ export class DentalCareController {
     const roleCodes = Array.isArray(req.dentalCareRoleCodes)
       ? (req.dentalCareRoleCodes as string[])
       : [];
+    const professionCodes = Array.isArray(req.dentalCareProfessionCodes)
+      ? (req.dentalCareProfessionCodes as string[])
+      : [];
+    const departmentCodes = Array.isArray(req.dentalCareDepartmentCodes)
+      ? (req.dentalCareDepartmentCodes as string[])
+      : [];
     return {
       userId,
       facilityId: String(facilityId),
       access: req.dentalCareAccess as DentalWorkspaceAccess,
       roleCodes,
+      professionCodes,
+      departmentCodes,
     };
   }
 

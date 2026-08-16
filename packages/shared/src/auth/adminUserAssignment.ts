@@ -1,3 +1,8 @@
+/**
+ * MEDUI.AUTH.ROLE.2 / MEDUI.D4C.11 — Admin user assignment helpers.
+ * Profession registry lives in enterpriseWorkforceProfessionD4c11 (single authority).
+ */
+
 import type { AdminAssignableRoleCode } from "../schemas/adminUsers.js";
 import {
   mapPrismaDepartmentCodeToClinical,
@@ -6,109 +11,59 @@ import {
 } from "./departmentResolver.js";
 import { resolveProfessionGroup } from "./professionResolver.js";
 import { filterEdWorkspaceTiles, resolveWorkspacePermissions } from "./workspaceAuthorization.js";
+import {
+  ADMIN_PROFESSION_CODES,
+  canonicalizeWorkforceProfession,
+  preferredDepartmentCodeForProfession,
+  resolveProfessionFromRoleCode,
+  resolveRoleCodeFromProfession,
+  TECHNICIAN_TYPE_CODES,
+  workforceAssignmentConflictKey,
+  type AdminProfessionCode,
+  type TechnicianTypeCode,
+} from "./enterpriseWorkforceProfessionD4c11.js";
 
-/** Admin UI profession selector — maps to existing RoleCode values. */
-export const ADMIN_PROFESSION_CODES = [
-  "ADMINISTRATION",
-  "PROVIDER",
-  "RN",
-  "TECHNICIAN",
-  "PHARMACY",
-  "BILLING",
-  "FRONT_DESK",
-] as const;
-
-export type AdminProfessionCode = (typeof ADMIN_PROFESSION_CODES)[number];
-
-export type TechnicianTypeCode = "LAB" | "RADIOLOGY" | "PATIENT_CARE";
-
-export const TECHNICIAN_TYPE_CODES = ["LAB", "RADIOLOGY", "PATIENT_CARE"] as const;
+export {
+  ADMIN_PROFESSION_CODES,
+  filterDepartmentsForProfession,
+  preferredDepartmentCodeForProfession,
+  resolveProfessionFromRoleCode,
+  resolveRoleCodeFromProfession,
+  showsProviderBillingCredentialFields,
+  TECHNICIAN_TYPE_CODES,
+  workforceAssignmentConflictKey,
+  type AdminProfessionCode,
+  type ResolveRoleCodeFromProfessionResult,
+  type TechnicianTypeCode,
+} from "./enterpriseWorkforceProfessionD4c11.js";
 
 export type AdminUserAssignmentInput = {
   facilityId: string;
   roleCode: AdminAssignableRoleCode;
   departmentId?: string | null;
+  /** MEDUI.D4C.11 — first-class profession identity (persisted on UserRole). */
+  professionCode?: string | null;
 };
-
-export type ResolveRoleCodeFromProfessionResult =
-  | { ok: true; roleCode: AdminAssignableRoleCode }
-  | { ok: false; errorKey: "adminUsers.valTechnicianTypeRequired" };
-
-/**
- * Map admin profession (+ technician type) to an existing Prisma RoleCode.
- * Does not invent TECH or other new roles.
- */
-export function resolveRoleCodeFromProfession(input: {
-  profession: AdminProfessionCode;
-  technicianType?: TechnicianTypeCode | null;
-}): ResolveRoleCodeFromProfessionResult {
-  switch (input.profession) {
-    case "ADMINISTRATION":
-      return { ok: true, roleCode: "ADMIN" };
-    case "PROVIDER":
-      return { ok: true, roleCode: "PROVIDER" };
-    case "RN":
-      return { ok: true, roleCode: "RN" };
-    case "PHARMACY":
-      return { ok: true, roleCode: "PHARMACY" };
-    case "BILLING":
-      return { ok: true, roleCode: "BILLING" };
-    case "FRONT_DESK":
-      return { ok: true, roleCode: "FRONT_DESK" };
-    case "TECHNICIAN": {
-      const type = input.technicianType;
-      if (type === "LAB" || type === "RADIOLOGY") {
-        return { ok: true, roleCode: type };
-      }
-      if (type === "PATIENT_CARE") {
-        return { ok: true, roleCode: "PATIENT_CARE_TECH" };
-      }
-      return { ok: false, errorKey: "adminUsers.valTechnicianTypeRequired" };
-    }
-    default:
-      return { ok: false, errorKey: "adminUsers.valTechnicianTypeRequired" };
-  }
-}
-
-/** Reverse map RoleCode → profession for edit forms. */
-export function resolveProfessionFromRoleCode(roleCode: string): {
-  profession: AdminProfessionCode;
-  technicianType?: TechnicianTypeCode;
-} {
-  const code = roleCode.trim().toUpperCase();
-  switch (code) {
-    case "ADMIN":
-    case "MEDORA_SUPER_ADMIN":
-      return { profession: "ADMINISTRATION" };
-    case "PROVIDER":
-      return { profession: "PROVIDER" };
-    case "RN":
-      return { profession: "RN" };
-    case "LAB":
-      return { profession: "TECHNICIAN", technicianType: "LAB" };
-    case "RADIOLOGY":
-      return { profession: "TECHNICIAN", technicianType: "RADIOLOGY" };
-    case "PATIENT_CARE_TECH":
-      return { profession: "TECHNICIAN", technicianType: "PATIENT_CARE" };
-    case "PHARMACY":
-      return { profession: "PHARMACY" };
-    case "BILLING":
-      return { profession: "BILLING" };
-    case "FRONT_DESK":
-      return { profession: "FRONT_DESK" };
-    default:
-      return { profession: "ADMINISTRATION" };
-  }
-}
 
 export type WorkspacePreviewInput = {
   roleCodes: readonly string[];
   prismaDepartmentCode?: string | null;
   clinicalDepartmentCode?: DepartmentCode | string | null;
+  professionCode?: string | null;
 };
 
 /** i18n key under `adminUsers.workspacePreview.*` */
 export function resolveAdminWorkspacePreviewKey(input: WorkspacePreviewInput): string {
+  const professionCode = canonicalizeWorkforceProfession(input.professionCode);
+  if (
+    professionCode === "DENTIST" ||
+    professionCode === "DENTAL_HYGIENIST" ||
+    professionCode === "DENTAL_ASSISTANT" ||
+    professionCode === "DENTAL_TECHNICIAN"
+  ) {
+    return "adminUsers.workspacePreview.dental";
+  }
+
   const profession = resolveProfessionGroup({ roleCodes: input.roleCodes });
   const clinicalFromPrisma = mapPrismaDepartmentCodeToClinical(input.prismaDepartmentCode);
   const hasExplicitDepartment =
@@ -155,6 +110,9 @@ export function resolveAdminWorkspacePreviewKey(input: WorkspacePreviewInput): s
   if (profession === "FRONT_DESK") {
     return "adminUsers.workspacePreview.frontDesk";
   }
+  if (profession === "PROVIDER" && input.prismaDepartmentCode === "PRIMARY_CARE") {
+    return "adminUsers.workspacePreview.clinicProvider";
+  }
   return "adminUsers.workspacePreview.default";
 }
 
@@ -175,14 +133,19 @@ export function summarizeEdWorkspaceTilesForPreview(input: WorkspacePreviewInput
   return perms.visibleTiles.join(", ");
 }
 
-/** Dedupe assignment rows by roleCode + departmentId (same facility). */
+/** Dedupe assignment rows by professionCode + department at a facility. */
 export function dedupeAdminUserAssignments<T extends AdminUserAssignmentInput>(
   rows: readonly T[]
 ): T[] {
   const seen = new Set<string>();
   const out: T[] = [];
   for (const row of rows) {
-    const key = `${row.facilityId}::${row.roleCode}::${row.departmentId ?? ""}`;
+    const key = workforceAssignmentConflictKey({
+      facilityId: row.facilityId,
+      professionCode: row.professionCode,
+      departmentId: row.departmentId,
+      roleCode: row.roleCode,
+    });
     if (seen.has(key)) continue;
     seen.add(key);
     out.push(row);
@@ -190,20 +153,36 @@ export function dedupeAdminUserAssignments<T extends AdminUserAssignmentInput>(
   return out;
 }
 
-/** Detect conflicting same roleCode with different departments at one facility. */
+/**
+ * Detect duplicate profession+department at one facility.
+ * Same profession across different departments is allowed (e.g. MD + CLINIC + MEDSURG).
+ */
+export function findDuplicateProfessionAssignmentConflict(
+  rows: readonly AdminUserAssignmentInput[]
+): string | null {
+  const seen = new Set<string>();
+  for (const row of rows) {
+    const key = workforceAssignmentConflictKey({
+      facilityId: row.facilityId,
+      professionCode: row.professionCode,
+      departmentId: row.departmentId,
+      roleCode: row.roleCode,
+    });
+    if (seen.has(key)) {
+      return (
+        canonicalizeWorkforceProfession(row.professionCode) ??
+        row.professionCode ??
+        row.roleCode
+      );
+    }
+    seen.add(key);
+  }
+  return null;
+}
+
+/** @deprecated Use findDuplicateProfessionAssignmentConflict — same RoleCode may appear twice with different professions. */
 export function findDuplicateRoleCodeDepartmentConflict(
   rows: readonly AdminUserAssignmentInput[]
 ): string | null {
-  const byRole = new Map<string, Set<string>>();
-  for (const row of rows) {
-    const deptKey = row.departmentId ?? "";
-    const key = `${row.facilityId}::${row.roleCode}`;
-    const set = byRole.get(key) ?? new Set<string>();
-    set.add(deptKey);
-    byRole.set(key, set);
-    if (set.size > 1) {
-      return row.roleCode;
-    }
-  }
-  return null;
+  return findDuplicateProfessionAssignmentConflict(rows);
 }
