@@ -72,6 +72,17 @@ type ClinicalRecord = {
   orders?: Array<{ orderType?: string; status?: string; displayName?: string | null }>;
   notes?: Array<{ noteType?: string; body?: string; authorDisplay?: string | null }>;
   addenda?: Array<{ text?: string }>;
+  historyReview?: { reviewed?: boolean; reviewedAt?: string | null; notes?: string | null } | null;
+  documents?: Array<{
+    title?: string | null;
+    category?: string;
+    type?: string;
+    status?: string;
+    signatureStatus?: string | null;
+    uploadedAt?: string;
+    encounterScoped?: boolean;
+    signers?: Array<{ signerName?: string; signerType?: string; signedAt?: string }>;
+  }>;
   providerNote?: string | null;
   freeTextTreatmentPlan?: string | null;
 };
@@ -165,6 +176,37 @@ export function EnterpriseDentalEncounterOverviewPanel({ encounterId, facilityId
             {val(enc?.chiefComplaint ?? null, notDocumented)}
           </p>
         );
+      case "alertsHistory": {
+        const hr = data.historyReview;
+        return (
+          <dl style={{ margin: 0, display: "grid", gap: 6, fontSize: 13 }}>
+            <div>
+              <dt style={{ fontWeight: 700, color: "#64748b", fontSize: 11 }}>
+                {t("dentalCareD5a5.history.reviewTitle")}
+              </dt>
+              <dd style={{ margin: "2px 0 0" }}>
+                {hr?.reviewed
+                  ? t("dentalCareD5a5.history.reviewedYes")
+                  : t("dentalCareD5a5.history.reviewedNo")}
+                {hr?.reviewedAt
+                  ? ` · ${new Date(hr.reviewedAt).toLocaleString(language === "en" ? "en-US" : "fr-FR")}`
+                  : ""}
+              </dd>
+            </div>
+            {hr?.notes ? (
+              <div>
+                <dt style={{ fontWeight: 700, color: "#64748b", fontSize: 11 }}>
+                  {t("dentalCareD5a5.history.reviewNotes")}
+                </dt>
+                <dd style={{ margin: "2px 0 0", whiteSpace: "pre-wrap" }}>{hr.notes}</dd>
+              </div>
+            ) : null}
+            <p style={{ margin: "6px 0 0", fontSize: 12, color: "#64748b" }}>
+              {t("dentalCareD5a5.history.longitudinalNote")}
+            </p>
+          </dl>
+        );
+      }
       case "dentalEvaluation":
         return data.dentalEvaluation ? (
           <pre style={{ margin: 0, fontSize: 12, whiteSpace: "pre-wrap", fontFamily: "inherit" }}>
@@ -293,6 +335,9 @@ export function EnterpriseDentalEncounterOverviewPanel({ encounterId, facilityId
                 {t(`dentalCareD5a5.treatmentPlan.acceptance.${plan.acceptanceOutcome ?? "NOT_DISCUSSED"}`)}
               </dd>
             </div>
+            <p style={{ margin: "4px 0 0", fontSize: 12, color: "#64748b" }}>
+              {t("dentalCareD5a5.treatmentPlan.acceptanceNotConsent")}
+            </p>
             {plan.expectedBenefits ? (
               <div>
                 <dt style={{ fontWeight: 700, color: "#64748b", fontSize: 11 }}>{t("dentalCareD5a5.treatmentPlan.benefits")}</dt>
@@ -306,6 +351,28 @@ export function EnterpriseDentalEncounterOverviewPanel({ encounterId, facilityId
               </div>
             ) : null}
           </dl>
+        );
+      }
+      case "documents": {
+        const docs = data.documents ?? [];
+        if (docs.length === 0) {
+          return <p style={{ margin: 0, fontSize: 13, color: "#64748b" }}>{notDocumented}</p>;
+        }
+        return (
+          <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13 }}>
+            {docs.map((d, i) => (
+              <li key={i} style={{ marginBottom: 6 }}>
+                {(d.title || d.type || d.category || "Document").trim()}
+                {d.signatureStatus ? ` · ${d.signatureStatus}` : ""}
+                {d.uploadedAt
+                  ? ` · ${new Date(d.uploadedAt).toLocaleDateString(language === "en" ? "en-US" : "fr-FR")}`
+                  : ""}
+                {d.signers?.[0]
+                  ? ` · ${d.signers[0].signerName ?? ""} (${d.signers[0].signerType ?? ""})`
+                  : ""}
+              </li>
+            ))}
+          </ul>
         );
       }
       case "procedures": {
@@ -381,9 +448,8 @@ export function EnterpriseDentalEncounterOverviewPanel({ encounterId, facilityId
     }
   };
 
-  const visibleSections: D5a5OverviewSection[] = D5A5_OVERVIEW_SECTIONS.filter((s) =>
-    !["alertsHistory", "prescriptions", "documents", "lifecycle"].includes(s)
-  );
+  // MEDUI.D5A.5A — project all overview domains (empty → Non documenté).
+  const visibleSections: D5a5OverviewSection[] = [...D5A5_OVERVIEW_SECTIONS];
 
   if (loading) {
     return <p style={{ margin: 0, color: "#64748b" }}>{t("common.loading")}</p>;

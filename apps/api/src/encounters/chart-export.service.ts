@@ -771,6 +771,7 @@ export class EncounterChartExportService {
         type: true,
         status: true,
         workflowState: true,
+        serviceLine: true,
         chiefComplaint: true,
         roomLabel: true,
         treatmentPlan: true,
@@ -1234,8 +1235,8 @@ export class EncounterChartExportService {
       { domain: "billing", reason: "out_of_scope_for_clinical_export" },
     ];
 
-    /* ---------- MEDUI.D5A.5 dental clinical board (print projection) ---------- */
-    const [toothFindings, perioExam, dentalPlan, dentalProcs] = await Promise.all([
+    /* ---------- MEDUI.D5A.5 / D5A.5A dental clinical board (print projection) ---------- */
+    const [toothFindings, perioExam, dentalPlan, dentalProcs, dentalDocs] = await Promise.all([
       this.prisma.toothFinding.findMany({
         where: {
           facilityId,
@@ -1273,12 +1274,55 @@ export class EncounterChartExportService {
           notes: true,
         },
       }),
+      this.prisma.enterpriseDocument.findMany({
+        where: {
+          facilityId,
+          OR: [
+            { encounterId: encounter.id },
+            { patientId: encounter.patientId, encounterId: null },
+          ],
+          status: { not: "VOIDED" },
+        },
+        orderBy: { uploadedAt: "desc" },
+        take: 40,
+        select: {
+          title: true,
+          category: true,
+          type: true,
+          status: true,
+          signatureStatus: true,
+          uploadedAt: true,
+          signatures: {
+            take: 1,
+            orderBy: { signedAt: "desc" },
+            select: { signerName: true, signedAt: true },
+          },
+        },
+      }),
     ]);
 
     const dentalSections: Array<{ id: string; label: string; text: string }> = [];
     const nd = "Non documenté";
     const nursingObj = asObjectOrNull(encounter.nursingAssessment);
     const dentalEval = nursingObj?.dentalClinicalEvaluationV1;
+    const historyReviewObj = asObjectOrNull(nursingObj?.dentalHistoryReviewV1);
+    dentalSections.push({
+      id: "historyReview",
+      label: "Revue des antécédents (rencontre dentaire)",
+      text: historyReviewObj?.reviewed
+        ? [
+            "Revus pour cette rencontre",
+            typeof historyReviewObj.reviewedAt === "string"
+              ? `Le: ${historyReviewObj.reviewedAt}`
+              : null,
+            typeof historyReviewObj.notes === "string" && historyReviewObj.notes.trim()
+              ? `Notes: ${historyReviewObj.notes}`
+              : null,
+          ]
+            .filter(Boolean)
+            .join("\n")
+        : "Non revus",
+    });
     dentalSections.push({
       id: "dentalEvaluation",
       label: "Évaluation clinique dentaire",
@@ -1320,7 +1364,7 @@ export class EncounterChartExportService {
       text: !dentalPlan
         ? nd
         : [
-            `Acceptation: ${dentalPlan.acceptanceOutcome}`,
+            `Acceptation du plan (≠ consentement procédural signé): ${dentalPlan.acceptanceOutcome}`,
             dentalPlan.expectedBenefits ? `Bénéfices: ${dentalPlan.expectedBenefits}` : null,
             dentalPlan.materialRisks ? `Risques: ${dentalPlan.materialRisks}` : null,
             dentalPlan.reasonableAlternatives
@@ -1349,13 +1393,36 @@ export class EncounterChartExportService {
               )
               .join("\n"),
     });
+    dentalSections.push({
+      id: "consentsDocuments",
+      label: "Consentements / documents (autorité entreprise)",
+      text:
+        dentalDocs.length === 0
+          ? nd
+          : dentalDocs
+              .map((d) => {
+                const signer = d.signatures[0];
+                return [
+                  (d.title || d.type || d.category || "Document").trim(),
+                  d.signatureStatus ? `statut: ${d.signatureStatus}` : null,
+                  d.uploadedAt ? `date: ${d.uploadedAt.toISOString()}` : null,
+                  signer?.signerName ? `signataire: ${signer.signerName}` : null,
+                ]
+                  .filter(Boolean)
+                  .join(" · ");
+              })
+              .join("\n"),
+    });
 
     const hasDentalContent =
       Boolean(dentalEval) ||
+      Boolean(historyReviewObj?.reviewed) ||
       toothFindings.length > 0 ||
       Boolean(perioExam) ||
       Boolean(dentalPlan) ||
-      dentalProcs.length > 0;
+      dentalProcs.length > 0 ||
+      dentalDocs.length > 0 ||
+      String(encounter.serviceLine ?? "").toUpperCase() === "DENTAL";
     const dentalClinicalBoard: ChartExportManifest["dentalClinicalBoard"] = hasDentalContent
       ? { sections: dentalSections }
       : null;

@@ -222,6 +222,9 @@ export function EnterpriseDentalEncounterWorkspace({ encounterId }: { encounterI
   const [historyProfile, setHistoryProfile] = useState<ReturnType<
     typeof patientClinicalHistoryProfileFromJson
   > | null>(null);
+  const [historyReviewSaving, setHistoryReviewSaving] = useState(false);
+  const [historyReviewed, setHistoryReviewed] = useState(false);
+  const [historyReviewNotes, setHistoryReviewNotes] = useState("");
   const [followUpDraft, setFollowUpDraft] = useState("");
   const [followUpSaving, setFollowUpSaving] = useState(false);
   const [closePending, setClosePending] = useState(false);
@@ -241,6 +244,28 @@ export function EnterpriseDentalEncounterWorkspace({ encounterId }: { encounterI
     !roles.includes("RN") &&
     !roles.includes("ADMIN");
   void userId;
+
+  useEffect(() => {
+    if (!facilityId || !encounterId) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const rec = (await apiFetch(
+          `/dental-care/encounters/${encodeURIComponent(encounterId)}/clinical-record`,
+          { facilityId }
+        )) as { historyReview?: { reviewed?: boolean; notes?: string | null } };
+        if (!cancelled) {
+          setHistoryReviewed(Boolean(rec.historyReview?.reviewed));
+          setHistoryReviewNotes(String(rec.historyReview?.notes ?? ""));
+        }
+      } catch {
+        /* optional */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [facilityId, encounterId]);
 
   const loadEncounter = async () => {
     if (!facilityId) return;
@@ -409,6 +434,26 @@ export function EnterpriseDentalEncounterWorkspace({ encounterId }: { encounterI
   const locked = isEncounterLocked(encounter) || encounter.status !== "OPEN";
   const clinicalAuthorBlocked = canFrontDeskOnly || canBillingOnly || locked;
 
+  const saveHistoryReview = async (reviewed: boolean) => {
+    if (!facilityId || locked || clinicalAuthorBlocked || !roles.includes("PROVIDER")) return;
+    setHistoryReviewSaving(true);
+    try {
+      await apiFetch(`/dental-care/encounters/${encodeURIComponent(encounterId)}/history-review`, {
+        method: "PUT",
+        facilityId,
+        body: JSON.stringify({ reviewed, notes: historyReviewNotes || null }),
+      });
+      setHistoryReviewed(reviewed);
+    } catch (err) {
+      setLoadError(
+        normalizeUserFacingError(err instanceof Error ? err.message : null, language) ||
+          t("dentalCareD5a5.history.reviewError")
+      );
+    } finally {
+      setHistoryReviewSaving(false);
+    }
+  };
+
   const historyParsed = historyProfile;
 
   return (
@@ -563,7 +608,51 @@ export function EnterpriseDentalEncounterWorkspace({ encounterId }: { encounterI
             <p style={{ margin: "0 0 10px", fontSize: 12, color: "#64748b" }}>
               {t("dentalCareD5a3.history.reuseNote")}
             </p>
+            {patient?.id ? (
+              <p style={{ margin: "0 0 10px", fontSize: 13 }}>
+                <Link href={`/app/patients/${encodeURIComponent(patient.id)}`} style={{ color: "#0f766e", fontWeight: 600 }}>
+                  {t("dentalCareD5a5.history.openPatientRecord")}
+                </Link>
+              </p>
+            ) : null}
             <PatientClinicalHistoryProfileBlock profile={historyParsed} />
+            <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid #e2e8f0" }}>
+              <p style={{ margin: "0 0 8px", fontSize: 13, fontWeight: 600 }}>
+                {t("dentalCareD5a5.history.reviewTitle")}
+              </p>
+              <p style={{ margin: "0 0 8px", fontSize: 12, color: "#64748b" }}>
+                {t("dentalCareD5a5.history.reviewHelp")}
+              </p>
+              <label style={{ display: "flex", gap: 8, alignItems: "flex-start", fontSize: 13 }}>
+                <input
+                  type="checkbox"
+                  checked={historyReviewed}
+                  disabled={locked || clinicalAuthorBlocked || historyReviewSaving || !roles.includes("PROVIDER")}
+                  onChange={(e) => void saveHistoryReview(e.target.checked)}
+                />
+                <span>{t("dentalCareD5a5.history.reviewedCheckbox")}</span>
+              </label>
+              <textarea
+                value={historyReviewNotes}
+                disabled={locked || clinicalAuthorBlocked || !roles.includes("PROVIDER")}
+                onChange={(e) => setHistoryReviewNotes(e.target.value)}
+                onBlur={() => {
+                  if (historyReviewed) void saveHistoryReview(true);
+                }}
+                rows={2}
+                placeholder={t("dentalCareD5a5.history.reviewNotesPlaceholder")}
+                style={{
+                  marginTop: 8,
+                  width: "100%",
+                  boxSizing: "border-box",
+                  borderRadius: 8,
+                  border: "1px solid #e2e8f0",
+                  padding: 8,
+                  fontSize: 13,
+                  fontFamily: "inherit",
+                }}
+              />
+            </div>
           </SectionShell>
         ) : null}
 

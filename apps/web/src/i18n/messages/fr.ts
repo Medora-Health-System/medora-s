@@ -21591,10 +21591,24 @@ export default {
 
   dentalCareD5a5: {
     notDocumented: "Non documenté",
-    printRecord: "Imprimer le dossier",
+    printRecord: "Imprimer le dossier dentaire",
     overview: {
       title: "Aperçu du dossier clinique dentaire",
       readOnly: "Rencontre verrouillée — aperçu en lecture seule.",
+    },
+    history: {
+      openPatientRecord: "Ouvrir le dossier patient (antécédents d’entreprise)",
+      reviewTitle: "Revue des antécédents pour cette rencontre dentaire",
+      reviewHelp:
+        "Les antécédents médicaux restent sur le dossier patient d’entreprise. Cochez ici uniquement la revue effectuée pour cette visite.",
+      reviewedCheckbox: "Antécédents médicaux / allergies / médicaments revus pour cette rencontre",
+      reviewNotesPlaceholder: "Notes de revue (optionnel)",
+      reviewNotes: "Notes de revue",
+      reviewError: "Impossible d’enregistrer la revue des antécédents.",
+      reviewedYes: "Revus",
+      reviewedNo: "Non revus",
+      longitudinalNote:
+        "Le détail longitudinal (allergies, médicaments, antécédents) demeure sur le dossier patient — pas un historique dentaire parallèle.",
     },
     sections: {
       patientIdentity: "Identité du patient",
@@ -21680,6 +21694,8 @@ export default {
       notes: "Notes",
       save: "Enregistrer le plan",
       readOnly: "Lecture seule — vous ne pouvez pas modifier le plan de traitement.",
+      acceptanceNotConsent:
+        "L’acceptation du plan n’équivaut pas à un consentement procédural signé (voir Documents / consentements).",
       acceptance: {
         NOT_DISCUSSED: "Non discuté",
         ACCEPTED: "Accepté",

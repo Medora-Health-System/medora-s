@@ -238,4 +238,16 @@ export class DentalCareController {
   getClinicalRecord(@Req() req: any, @Param("encounterId") encounterId: string) {
     return this.clinicalBoard.getClinicalRecord(this.actor(req), encounterId);
   }
+
+  /** MEDUI.D5A.5A — encounter-scoped medical-history review acknowledgement. */
+  @Put("encounters/:encounterId/history-review")
+  @RequireRoles(RoleCode.PROVIDER)
+  @UseGuards(DentalCareReadAccessGuard)
+  saveHistoryReview(
+    @Req() req: any,
+    @Param("encounterId") encounterId: string,
+    @Body() body: { reviewed?: boolean; notes?: string | null }
+  ) {
+    return this.clinicalBoard.saveHistoryReview(this.actor(req), encounterId, body ?? {});
+  }
 }

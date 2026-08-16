@@ -12,6 +12,7 @@ import { AuditAction } from "@prisma/client";
 import {
   D5A4A_DENTAL_CLINICAL_EVALUATION_KEY,
   D5A5_CERTIFICATION_ID,
+  D5A5_DENTAL_HISTORY_REVIEW_KEY,
   D5A5_PERIODONTAL_STATUS,
   D5A5_TREATMENT_ACCEPTANCE,
   deriveClinicalAttachmentLevelMm,
@@ -19,6 +20,7 @@ import {
   isD5a5PeriodontalSite,
   isD5a5TreatmentPlanItemStatus,
   isD5a5TreatmentPlanPhase,
+  isDentalClinicalBoardEditable,
   normalizeBulkToothCodes,
   projectCurrentToothFindings,
   summarizePeriodontalSites,
@@ -82,6 +84,17 @@ export class DentalCareClinicalBoardService {
     return encounter;
   }
 
+  private canEditClinicalDomain(
+    access: DentalWorkspaceAccess,
+    encounterStatus: string,
+    domain: "periodontal" | "treatmentPlan" | "procedures"
+  ): boolean {
+    if (!isDentalClinicalBoardEditable({ access, encounterStatus })) return false;
+    if (domain === "periodontal") return access.canEditPeriodontal;
+    if (domain === "treatmentPlan") return access.canEditTreatmentPlan;
+    return access.canPerformProcedures;
+  }
+
   private assertOpenForWrite(status: string) {
     if (status !== "OPEN") {
       throw new ForbiddenException("Closed encounters are read-only for dental clinical board.");
@@ -114,8 +127,8 @@ export class DentalCareClinicalBoardService {
       certificationId: D5A5_CERTIFICATION_ID,
       encounterId: encounter.id,
       patientId: encounter.patientId,
-      readOnly: encounter.status !== "OPEN" || !actor.access.canEditPeriodontal,
-      canEdit: actor.access.canEditPeriodontal && encounter.status === "OPEN",
+      readOnly: !this.canEditClinicalDomain(actor.access, encounter.status, "periodontal"),
+      canEdit: this.canEditClinicalDomain(actor.access, encounter.status, "periodontal"),
       exam: exam
         ? {
             id: exam.id,
@@ -305,8 +318,8 @@ export class DentalCareClinicalBoardService {
       certificationId: D5A5_CERTIFICATION_ID,
       encounterId: encounter.id,
       patientId: encounter.patientId,
-      readOnly: encounter.status !== "OPEN" || !actor.access.canEditTreatmentPlan,
-      canEdit: actor.access.canEditTreatmentPlan && encounter.status === "OPEN",
+      readOnly: !this.canEditClinicalDomain(actor.access, encounter.status, "treatmentPlan"),
+      canEdit: this.canEditClinicalDomain(actor.access, encounter.status, "treatmentPlan"),
       plan: plan
         ? {
             id: plan.id,
@@ -533,8 +546,8 @@ export class DentalCareClinicalBoardService {
       certificationId: D5A5_CERTIFICATION_ID,
       encounterId: encounter.id,
       patientId: encounter.patientId,
-      readOnly: encounter.status !== "OPEN" || !actor.access.canPerformProcedures,
-      canEdit: actor.access.canPerformProcedures && encounter.status === "OPEN",
+      readOnly: !this.canEditClinicalDomain(actor.access, encounter.status, "procedures"),
+      canEdit: this.canEditClinicalDomain(actor.access, encounter.status, "procedures"),
       procedures: rows.map((r) => this.mapProcedure(r)),
     };
   }
@@ -727,6 +740,7 @@ export class DentalCareClinicalBoardService {
       notes,
       orders,
       providerAddenda,
+      documents,
     ] = await Promise.all([
       this.prisma.toothFinding.findMany({
         where: { facilityId: actor.facilityId, patientId: encounter.patientId },
@@ -786,6 +800,33 @@ export class DentalCareClinicalBoardService {
         take: 20,
         select: { id: true, text: true, createdAt: true },
       }),
+      this.prisma.enterpriseDocument.findMany({
+        where: {
+          facilityId: actor.facilityId,
+          OR: [
+            { encounterId: encounter.id },
+            { patientId: encounter.patientId, encounterId: null },
+          ],
+          status: { not: "VOIDED" },
+        },
+        orderBy: { uploadedAt: "desc" },
+        take: 40,
+        select: {
+          id: true,
+          title: true,
+          category: true,
+          type: true,
+          status: true,
+          signatureStatus: true,
+          uploadedAt: true,
+          encounterId: true,
+          signatures: {
+            take: 3,
+            orderBy: { signedAt: "desc" },
+            select: { signerName: true, signerType: true, signedAt: true },
+          },
+        },
+      }),
     ]);
 
     const nursing = (encounter.nursingAssessment ?? null) as Record<string, unknown> | null;
@@ -793,6 +834,20 @@ export class DentalCareClinicalBoardService {
       nursing && typeof nursing === "object"
         ? (nursing[D5A4A_DENTAL_CLINICAL_EVALUATION_KEY] ?? null)
         : null;
+    const historyReviewRaw =
+      nursing && typeof nursing === "object"
+        ? (nursing[D5A5_DENTAL_HISTORY_REVIEW_KEY] as Record<string, unknown> | null | undefined)
+        : null;
+    const historyReview =
+      historyReviewRaw && typeof historyReviewRaw === "object"
+        ? {
+            reviewed: Boolean(historyReviewRaw.reviewed),
+            reviewedAt:
+              typeof historyReviewRaw.reviewedAt === "string" ? historyReviewRaw.reviewedAt : null,
+            notes:
+              typeof historyReviewRaw.notes === "string" ? historyReviewRaw.notes : null,
+          }
+        : { reviewed: false, reviewedAt: null, notes: null };
 
     const currentFindings = projectCurrentToothFindings(
       findings.map((f) => ({
@@ -917,8 +972,76 @@ export class DentalCareClinicalBoardService {
         text: a.text,
         createdAt: a.createdAt.toISOString(),
       })),
+      historyReview,
+      documents: documents.map((d) => ({
+        id: d.id,
+        title: d.title,
+        category: d.category,
+        type: d.type,
+        status: d.status,
+        signatureStatus: d.signatureStatus,
+        uploadedAt: d.uploadedAt.toISOString(),
+        encounterScoped: d.encounterId === encounter.id,
+        // Treatment-plan acceptance is NOT the same as signed procedural consent.
+        signers: d.signatures.map((s) => ({
+          signerName: s.signerName,
+          signerType: s.signerType,
+          signedAt: s.signedAt.toISOString(),
+        })),
+      })),
       providerNote: encounter.providerNote,
       freeTextTreatmentPlan: encounter.treatmentPlan,
+    };
+  }
+
+  /**
+   * MEDUI.D5A.5A — encounter acknowledgement that enterprise medical history was reviewed.
+   * Does not mutate longitudinal Patient clinical history.
+   */
+  async saveHistoryReview(
+    actor: Actor,
+    encounterId: string,
+    body: { reviewed?: boolean; notes?: string | null }
+  ) {
+    this.assertView(actor.access);
+    const encounter = await this.loadOpenEncounter(actor.facilityId, encounterId);
+    if (
+      !isDentalClinicalBoardEditable({
+        access: actor.access,
+        encounterStatus: encounter.status,
+      })
+    ) {
+      throw new ForbiddenException(
+        encounter.status !== "OPEN"
+          ? "Closed encounters are read-only for dental clinical board."
+          : "Dental clinical authoring capability required."
+      );
+    }
+    this.assertOpenForWrite(encounter.status);
+
+    const nursing =
+      encounter.nursingAssessment &&
+      typeof encounter.nursingAssessment === "object" &&
+      !Array.isArray(encounter.nursingAssessment)
+        ? { ...(encounter.nursingAssessment as Record<string, unknown>) }
+        : {};
+    const reviewed = Boolean(body.reviewed);
+    nursing[D5A5_DENTAL_HISTORY_REVIEW_KEY] = {
+      reviewed,
+      reviewedAt: reviewed ? new Date().toISOString() : null,
+      reviewedByUserId: actor.userId,
+      notes: body.notes?.trim() ? body.notes.trim() : null,
+      certificationId: D5A5_CERTIFICATION_ID,
+    };
+
+    await this.prisma.encounter.update({
+      where: { id: encounter.id },
+      data: { nursingAssessment: nursing as never, version: { increment: 1 } },
+    });
+
+    return {
+      certificationId: D5A5_CERTIFICATION_ID,
+      historyReview: nursing[D5A5_DENTAL_HISTORY_REVIEW_KEY],
     };
   }
 }
