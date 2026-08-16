@@ -42,7 +42,7 @@ describe("MEDUI.D5A.5A dental clinical board authoring", () => {
   });
 
   it("4: unauthorized roles denied clinical authoring", () => {
-    for (const role of ["ADMIN", "FRONT_DESK", "BILLING"] as const) {
+    for (const role of ["FRONT_DESK", "BILLING", "MEDORA_SUPER_ADMIN"] as const) {
       const access = resolveDentalWorkspaceAccess({
         roleCodes: [role],
         dentalCareEnabled: true,
@@ -52,6 +52,16 @@ describe("MEDUI.D5A.5A dental clinical board authoring", () => {
       expect(access.canEditTreatmentPlan).toBe(false);
       expect(access.canPerformProcedures).toBe(false);
     }
+  });
+
+  it("MEDUI.D5A.5C: FACILITY_ADMIN-only authors clinical board", () => {
+    const access = resolveDentalWorkspaceAccess({
+      roleCodes: ["ADMIN"],
+      dentalCareEnabled: true,
+    });
+    expect(canAuthorDentalClinicalBoard(access)).toBe(true);
+    expect(access.canEditPeriodontal).toBe(true);
+    expect(isDentalClinicalBoardEditable({ access, encounterStatus: "OPEN" })).toBe(true);
   });
 
   it("6: CLOSED encounter is not editable even for PROVIDER", () => {

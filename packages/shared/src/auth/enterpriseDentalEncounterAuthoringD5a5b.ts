@@ -1,16 +1,18 @@
 /**
  * MEDUI.D5A.5B — Single enterprise Dental encounter authoring projection.
+ * MEDUI.D5A.5C — Facility ADMIN (facility-scoped RoleCode.ADMIN) defaults to clinical write.
  * API and UI must derive editable flags from this policy (no panel-local role drift).
  *
  * Invariant:
- * AUTHORIZED clinical capability (PROVIDER dental write caps)
+ * AUTHORIZED clinical capability (PROVIDER or facility ADMIN dental write caps)
  * + dentalCareEnabled
  * + OPEN encounter
  * = writable clinical board
  *
- * ADMIN alone / FRONT_DESK / BILLING = read-only clinical authoring.
+ * FRONT_DESK / BILLING / platform-operator-alone = read-only clinical authoring.
  * CLOSED = read-only. Signed provider documentation does not by itself lock
  * perio/plan/procedures/odontogram (evaluation signing has its own rules).
+ * Signing: facility ADMIN may sign (aligns ambulatory PROVIDER|ADMIN pattern).
  */
 
 import {
@@ -79,8 +81,8 @@ export function resolveEnterpriseDentalEncounterAuthoring(input: {
   const clinicalWritable =
     readOnlyReason === null && canAuthorDentalClinicalBoard(access) && encounterOpen;
 
-  // Evaluation / sign / prescribe follow PROVIDER dental documentation capability
-  // (same as board write), not ADMIN-alone.
+  // Evaluation / sign / prescribe follow clinical dental documentation capability
+  // (PROVIDER or facility ADMIN — D5A.5C).
   const canDocument = clinicalWritable;
   const frontDeskAssist =
     encounterOpen &&
@@ -123,7 +125,7 @@ export function dentalAuthoringReadOnlyReasonMessageFr(
     case "NO_VIEW":
       return "Vous n’avez pas accès aux soins dentaires.";
     case "NO_CLINICAL_CAPABILITY":
-      return "Lecture seule — votre compte n’a pas le privilège clinique dentaire (rôle PROVIDER requis).";
+      return "Lecture seule — votre compte n’a pas l’autorité clinique pour ce module dans cet établissement.";
     case "ENCOUNTER_NOT_OPEN":
       return "Lecture seule — la rencontre est fermée ou non modifiable.";
     case "NOT_DENTAL_SERVICE_LINE":

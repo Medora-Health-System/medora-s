@@ -21625,11 +21625,11 @@ export default {
       longitudinalNote:
         "Le détail longitudinal (allergies, médicaments, antécédents) demeure sur le dossier patient — pas un historique dentaire parallèle.",
       noClinicalCapability:
-        "Lecture seule — votre compte n’a pas le privilège clinique dentaire (rôle PROVIDER requis sur cet établissement).",
+        "Lecture seule — votre compte n’a pas l’autorité clinique pour ce module dans cet établissement.",
     },
     authoring: {
       noClinicalCapability:
-        "Lecture seule — privilège clinique dentaire (PROVIDER) requis pour documenter.",
+        "Lecture seule — votre compte n’a pas l’autorité clinique pour documenter dans cet établissement.",
       encounterClosed: "Lecture seule — rencontre fermée.",
       dentalDisabled: "Soins dentaires non activés pour cet établissement.",
     },

@@ -141,14 +141,23 @@ describe("MEDUI.D5A.2 dental service line and navigation", () => {
     expect(adminProvider.canPerformProcedures).toBe(true);
     expect(adminProvider.canEditOdontogram).toBe(true);
 
-    // ADMIN alone remains non-authoring for clinical board.
+    // MEDUI.D5A.5C — Facility ADMIN alone authors clinical board by default.
     const adminOnly = resolveDentalWorkspaceAccess({
       roleCodes: ["ADMIN"],
       dentalCareEnabled: true,
     });
-    expect(adminOnly.canEditPeriodontal).toBe(false);
-    expect(adminOnly.canEditTreatmentPlan).toBe(false);
-    expect(adminOnly.canPerformProcedures).toBe(false);
+    expect(adminOnly.canEditPeriodontal).toBe(true);
+    expect(adminOnly.canEditTreatmentPlan).toBe(true);
+    expect(adminOnly.canPerformProcedures).toBe(true);
+
+    // Platform operator alone does not inherit clinical write.
+    const platformOnly = resolveDentalWorkspaceAccess({
+      roleCodes: ["MEDORA_SUPER_ADMIN"],
+      dentalCareEnabled: true,
+    });
+    expect(platformOnly.canEditPeriodontal).toBe(false);
+    expect(platformOnly.canEditTreatmentPlan).toBe(false);
+    expect(platformOnly.canPerformProcedures).toBe(false);
 
     const billing = resolveDentalCapabilityCodes({
       roleCodes: ["BILLING"],

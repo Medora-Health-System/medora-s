@@ -10,6 +10,7 @@
 
 import type { ProfessionGroup } from "./professionResolver.js";
 import { resolveProfessionGroup } from "./professionResolver.js";
+import { hasFacilityClinicalAuthoringRoleCodes } from "./enterpriseFacilityAdministratorClinicalAuthoringD5a5c.js";
 import type { FacilityModuleCapabilitiesD4c1 } from "./facilityClinicCareProfileD4c1.js";
 import {
   D5A1_FORBIDDEN_AUTHORITIES,
@@ -225,8 +226,10 @@ export function facilityHasDentalServiceLine(
  * No hardcoded single-role gate: PROVIDER / RN / ADMIN map to capability bundles.
  *
  * MEDUI.D5A.5A — Clinical authoring follows PROVIDER role membership, not exclusive
- * profession-group winner. ADMIN alone remains view/admin-only (no clinical write).
- * ADMIN+PROVIDER must retain PROVIDER dental authoring (profession priority is ADMIN).
+ * profession-group winner. ADMIN+PROVIDER must retain PROVIDER dental authoring.
+ *
+ * MEDUI.D5A.5C — Facility ADMIN (RoleCode.ADMIN on facility membership) defaults to
+ * full clinical authoring for enabled Dental. MEDORA_SUPER_ADMIN alone does not.
  */
 export function resolveDentalCapabilityCodes(input: {
   roleCodes: readonly string[] | null | undefined;
@@ -240,7 +243,7 @@ export function resolveDentalCapabilityCodes(input: {
   const specialties = input.specialties ?? [];
   const hasOrtho = specialties.includes("ORTHODONTICS");
   const caps = new Set<D5a2DentalCapability>();
-  const hasProviderRole = roleCodes.includes("PROVIDER");
+  const hasClinicalAuthorRole = hasFacilityClinicalAuthoringRoleCodes(roleCodes);
 
   const grantViewBundle = () => {
     caps.add("DENTAL_VIEW");
@@ -248,14 +251,14 @@ export function resolveDentalCapabilityCodes(input: {
     if (hasOrtho) caps.add("ORTHODONTICS_VIEW");
   };
 
-  if (profession === "ADMIN" || roleCodes.includes("ADMIN")) {
+  if (profession === "ADMIN" || roleCodes.includes("ADMIN") || roleCodes.includes("MEDORA_SUPER_ADMIN")) {
     grantViewBundle();
     caps.add("DENTAL_ADMIN");
     caps.add("DENTAL_BILLING_VIEW");
   }
 
-  // Clinical authoring: PROVIDER role (even when profession resolves to ADMIN).
-  if (profession === "PROVIDER" || hasProviderRole) {
+  // Clinical authoring: PROVIDER or facility ADMIN (D5A.5C). Not platform-operator-alone.
+  if (hasClinicalAuthorRole) {
     grantViewBundle();
     caps.add("DENTAL_PROVIDER");
     caps.add("DENTAL_DOCUMENT");
@@ -319,9 +322,9 @@ export function resolveDentalWorkspaceAccess(input: {
 }
 
 /**
- * MEDUI.D5A.5A — authoritative clinical authoring for Dental board domains.
- * True when capability policy grants provider dental documentation writes.
- * Encounter OPEN/SIGNED/CLOSED gating is applied by API services separately.
+ * MEDUI.D5A.5A / D5A.5C — authoritative clinical authoring for Dental board domains.
+ * True when capability policy grants clinical dental documentation writes
+ * (PROVIDER or facility ADMIN). Encounter OPEN/CLOSED gating is applied separately.
  */
 export function canAuthorDentalClinicalBoard(access: DentalWorkspaceAccess): boolean {
   return (

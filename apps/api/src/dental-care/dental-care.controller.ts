@@ -134,7 +134,7 @@ export class DentalCareController {
   }
 
   @Put("patients/:patientId/dentition")
-  @RequireRoles(RoleCode.PROVIDER)
+  @RequireRoles(RoleCode.PROVIDER, RoleCode.ADMIN)
   @UseGuards(DentalCareReadAccessGuard)
   upsertDentition(
     @Req() req: any,
@@ -145,7 +145,7 @@ export class DentalCareController {
   }
 
   @Post("encounters/:encounterId/tooth-findings")
-  @RequireRoles(RoleCode.PROVIDER)
+  @RequireRoles(RoleCode.PROVIDER, RoleCode.ADMIN)
   @UseGuards(DentalCareReadAccessGuard)
   createFinding(
     @Req() req: any,
@@ -166,7 +166,7 @@ export class DentalCareController {
 
   /** MEDUI.D5A.5 — one authoritative finding per selected tooth. */
   @Post("encounters/:encounterId/tooth-findings/bulk")
-  @RequireRoles(RoleCode.PROVIDER)
+  @RequireRoles(RoleCode.PROVIDER, RoleCode.ADMIN)
   @UseGuards(DentalCareReadAccessGuard)
   createBulkFindings(
     @Req() req: any,
@@ -185,7 +185,7 @@ export class DentalCareController {
   }
 
   @Patch("tooth-findings/:id")
-  @RequireRoles(RoleCode.PROVIDER)
+  @RequireRoles(RoleCode.PROVIDER, RoleCode.ADMIN)
   @UseGuards(DentalCareReadAccessGuard)
   patchFinding(
     @Req() req: any,
@@ -210,7 +210,7 @@ export class DentalCareController {
   }
 
   @Put("encounters/:encounterId/periodontal-exam")
-  @RequireRoles(RoleCode.PROVIDER)
+  @RequireRoles(RoleCode.PROVIDER, RoleCode.ADMIN)
   @UseGuards(DentalCareReadAccessGuard)
   savePeriodontal(@Req() req: any, @Param("encounterId") encounterId: string, @Body() body: unknown) {
     return this.clinicalBoard.savePeriodontalExam(this.actor(req), encounterId, (body ?? {}) as never);
@@ -224,7 +224,7 @@ export class DentalCareController {
   }
 
   @Put("encounters/:encounterId/treatment-plan")
-  @RequireRoles(RoleCode.PROVIDER)
+  @RequireRoles(RoleCode.PROVIDER, RoleCode.ADMIN)
   @UseGuards(DentalCareReadAccessGuard)
   saveTreatmentPlan(@Req() req: any, @Param("encounterId") encounterId: string, @Body() body: unknown) {
     return this.clinicalBoard.saveTreatmentPlan(this.actor(req), encounterId, (body ?? {}) as never);
@@ -238,7 +238,7 @@ export class DentalCareController {
   }
 
   @Post("encounters/:encounterId/procedures")
-  @RequireRoles(RoleCode.PROVIDER)
+  @RequireRoles(RoleCode.PROVIDER, RoleCode.ADMIN)
   @UseGuards(DentalCareReadAccessGuard)
   createProcedure(@Req() req: any, @Param("encounterId") encounterId: string, @Body() body: unknown) {
     return this.clinicalBoard.createProcedure(this.actor(req), encounterId, (body ?? {}) as never);
@@ -253,7 +253,7 @@ export class DentalCareController {
 
   /** MEDUI.D5A.5A — encounter-scoped medical-history review acknowledgement. */
   @Put("encounters/:encounterId/history-review")
-  @RequireRoles(RoleCode.PROVIDER)
+  @RequireRoles(RoleCode.PROVIDER, RoleCode.ADMIN)
   @UseGuards(DentalCareReadAccessGuard)
   saveHistoryReview(
     @Req() req: any,

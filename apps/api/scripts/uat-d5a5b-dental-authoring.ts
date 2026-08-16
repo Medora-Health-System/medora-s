@@ -332,7 +332,7 @@ async function main() {
     });
   }
 
-  // L — ADMIN-only negative control (separate login)
+  // L — FACILITY_ADMIN clinical authoring (MEDUI.D5A.5C — was incorrectly denied)
   const adminLogin = await fetch(`${base}/auth/login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -383,7 +383,6 @@ async function main() {
   }
 
   if (adminToken) {
-    // Need an OPEN dental encounter for ADMIN negative — create one
     const prisma = new PrismaClient();
     const openEnc = await prisma.encounter.create({
       data: {
@@ -392,7 +391,7 @@ async function main() {
         status: "OPEN",
         type: "OUTPATIENT",
         serviceLine: "DENTAL",
-        chiefComplaint: "UAT ADMIN negative",
+        chiefComplaint: "UAT FACILITY_ADMIN authoring D5A.5C",
         nursingAssessment: { serviceLineTag: { serviceLine: "DENTAL" } },
       },
       select: { id: true },
@@ -400,16 +399,15 @@ async function main() {
     await prisma.$disconnect();
     const adminAuth = await api(adminToken, `/dental-care/encounters/${openEnc.id}/authoring`);
     const aa = (adminAuth.body as Json).authoring as Json;
-    assert(aa?.isReadOnly === true, "admin isReadOnly");
-    assert(aa?.readOnlyReason === "NO_CLINICAL_CAPABILITY", `reason=${aa?.readOnlyReason}`);
-    assert(aa?.canEditPeriodontal === false, "admin cannot edit perio");
+    assert(aa?.isReadOnly === false, "facility admin isReadOnly false");
+    assert(aa?.canEditPeriodontal === true, "facility admin can edit perio");
     results.push({
-      test: "L ADMIN-only read-only + NO_CLINICAL_CAPABILITY",
+      test: "L FACILITY_ADMIN clinical WRITE (D5A.5C)",
       pass: true,
-      detail: String(aa?.readOnlyReason),
+      detail: String(aa?.readOnlyReason ?? "writable"),
     });
   } else {
-    results.push({ test: "L ADMIN-only read-only", pass: false, detail: "admin auth failed" });
+    results.push({ test: "L FACILITY_ADMIN clinical WRITE", pass: false, detail: "admin auth failed" });
   }
 
   console.log("\n=== UAT RESULTS ===");
