@@ -4,11 +4,9 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
   D5A3_CERTIFICATION_ID,
-  buildDentalServiceLineTag,
   enterpriseDentalEncounterWorkspacePath,
   formatPatientLegalName,
   isDentalEncounterProjection,
-  mergeDentalServiceLineIntoNursingAssessment,
   type PatientSearchHitV1,
 } from "@medora/shared";
 import { apiFetch } from "@/lib/apiClient";
@@ -100,31 +98,25 @@ export function DentalCareDashboardView() {
     setError(null);
     setDuplicateExistingId(null);
     try {
-      const created = (await apiFetch(`/patients/${encodeURIComponent(patientId)}/encounters`, {
-        method: "POST",
-        facilityId,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          type: "OUTPATIENT",
-          serviceLine: "DENTAL",
-          visitReason: visitReason.trim() || undefined,
-          roomLabel: "DENTAL",
-        }),
-      })) as WorklistRow;
+      // MEDUI.D4C.10D — claim unclaimed Clinic wait, reuse Dental, or create new Dental visit.
+      const result = (await apiFetch(
+        `/dental-care/patients/${encodeURIComponent(patientId)}/claim-or-start`,
+        {
+          method: "POST",
+          facilityId,
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            visitReason: visitReason.trim() || undefined,
+          }),
+        }
+      )) as { encounter?: WorklistRow; routingAction?: string };
 
-      // Tag merge remains for projection compat; create path also stamps serviceLine + tag server-side.
-      const nursing = mergeDentalServiceLineIntoNursingAssessment(
-        created.nursingAssessment,
-        buildDentalServiceLineTag()
-      );
-      await apiFetch(`/encounters/${encodeURIComponent(created.id)}`, {
-        method: "PATCH",
-        facilityId,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ nursingAssessment: nursing }),
-      });
+      const encounterId = result?.encounter?.id?.trim();
+      if (!encounterId) {
+        throw new Error("Missing encounter id");
+      }
 
-      window.location.assign(enterpriseDentalEncounterWorkspacePath(created.id));
+      window.location.assign(enterpriseDentalEncounterWorkspacePath(encounterId));
     } catch (err) {
       const body =
         err && typeof err === "object" && "body" in err

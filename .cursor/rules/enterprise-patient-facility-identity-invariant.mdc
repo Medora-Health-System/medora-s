@@ -34,6 +34,7 @@ Service lines include (non-exhaustive): Clinic, Dental, Emergency, Hospital, Obs
 11. **Specialties** (e.g. Orthodontics under DENTAL) are configuration under the service line — not separate facilities or patients.
 12. **Billing** may use service-line context for classification/reporting — never a separate patient identity.
 13. **Audit** attributes activity to same `facilityId`, `patientId`, `encounterId`, service-line context, actor, timestamp.
+14. **MEDUI.D4C.10D — visit routing / worklists** — A Patient must never be duplicated to satisfy service-line routing. An operational visit/encounter must appear at most once on any single worklist. A visit has one authoritative current operational destination (`Encounter.serviceLine` for ambulatory boards). Moving an unclaimed visit between service queues must not clone the encounter. A new specialty episode requires a new explicit visit when the prior encounter already owns clinical documentation. Never deduplicate legitimate encounters solely by `patientId`.
 
 ## STOP — architectural review required
 

@@ -62,6 +62,7 @@ export const TRACKBOARD_ACTIVE_ENCOUNTER_SELECT = {
   followUpDate: true,
   roomLabel: true,
   physicianAssignedUserId: true,
+  serviceLine: true,
   dischargeSummaryJson: true,
   admissionSummaryJson: true,
   admittedAt: true,
