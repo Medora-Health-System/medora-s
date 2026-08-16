@@ -1,8 +1,8 @@
 # MEDUI.D5A.5A — Certification Report
 
-**Title:** Enterprise Dental Clinical Board Authoring Completion  
-**Date:** 2026-08-15  
-**Branch:** `d5a5-enterprise-dental-complete-clinical-board`  
+**Title:** Enterprise Dental Clinical Board Authoring Completion
+**Date:** 2026-08-15
+**Branch:** `d5a5-enterprise-dental-complete-clinical-board`
 **Prerequisite:** MEDUI.D5A.5 tables/migration already present
 
 ---
@@ -71,16 +71,16 @@
 
 ## Manual UAT checklist
 
-- [ ] History review + patient-record link  
-- [ ] Evaluation authoring  
-- [ ] Odontogram multi-tooth save/reload  
-- [ ] Periodontal save/reload (no Lecture seule)  
-- [ ] Treatment Plan save/reload  
-- [ ] Procedures save/reload  
-- [ ] Consents via enterprise documents  
-- [ ] Overview complete projection  
-- [ ] Print dental record  
-- [ ] Sign/finalize → read-only; reopen policy if applicable  
+- [ ] History review + patient-record link
+- [ ] Evaluation authoring
+- [ ] Odontogram multi-tooth save/reload
+- [ ] Periodontal save/reload (no Lecture seule)
+- [ ] Treatment Plan save/reload
+- [ ] Procedures save/reload
+- [ ] Consents via enterprise documents
+- [ ] Overview complete projection
+- [ ] Print dental record
+- [ ] Sign/finalize → read-only; reopen policy if applicable
 
 ---
 

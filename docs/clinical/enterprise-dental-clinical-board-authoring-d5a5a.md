@@ -1,7 +1,7 @@
 # MEDUI.D5A.5A — Enterprise Dental Clinical Board Authoring Completion
 
-**Status:** Implemented locally — **not committed / not pushed / not deployed**  
-**Branch:** `d5a5-enterprise-dental-complete-clinical-board`  
+**Status:** Implemented locally — **not committed / not pushed / not deployed**
+**Branch:** `d5a5-enterprise-dental-complete-clinical-board`
 **Migration:** **NONE** (reuses `20261110120000_d5a5_enterprise_dental_complete_clinical_board`)
 
 ## Root cause (UAT read-only)
@@ -26,14 +26,14 @@ Helpers: `canAuthorDentalClinicalBoard`, `isDentalClinicalBoardEditable` (shared
 
 ## Manual UAT
 
-1. Login as **PROVIDER** or **ADMIN+PROVIDER** at Dental-enabled facility  
-2. Open an **OPEN** `serviceLine=DENTAL` encounter  
-3. Periodontal / Treatment Plan / Procedures / Odontogram: editable (no Lecture seule)  
-4. Save each domain → refresh → data persists  
-5. History: review checkbox + open patient record for longitudinal edit  
-6. Consents: Documents tab; Overview documents section  
-7. Overview + **Imprimer le dossier dentaire**  
-8. Sign evaluation / close encounter → read-only  
+1. Login as **PROVIDER** or **ADMIN+PROVIDER** at Dental-enabled facility
+2. Open an **OPEN** `serviceLine=DENTAL` encounter
+3. Periodontal / Treatment Plan / Procedures / Odontogram: editable (no Lecture seule)
+4. Save each domain → refresh → data persists
+5. History: review checkbox + open patient record for longitudinal edit
+6. Consents: Documents tab; Overview documents section
+7. Overview + **Imprimer le dossier dentaire**
+8. Sign evaluation / close encounter → read-only
 
 ## STOP
 
