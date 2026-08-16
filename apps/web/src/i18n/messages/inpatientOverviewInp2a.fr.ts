@@ -1,0 +1,47 @@
+/** MEDUI.INP.2A — Centre de commande Overview + rail clinique (FR). */
+export const inpatientOverviewInp2aFr = {
+  modules: {
+    provider: "Documentation médicale",
+    orders: "Ordonnances",
+    carePlan: "Plan de soins",
+  },
+  provider: {
+    hpStatus: "Statut H&P",
+    progress: "Dernière note d’évolution",
+    assessmentPlan: "Évaluation / plan",
+    empty: "Aucune documentation médicale projetée pour le moment.",
+  },
+  orders: {
+    new: "Nouvelles / non acquittées",
+    active: "Ordonnances actives",
+    pending: "Actions en attente",
+    empty: "Aucune ordonnance projetée.",
+    openOrders: "Ouvrir les ordonnances",
+  },
+  carePlan: {
+    empty: "Aucun plan de soins actif projeté.",
+    openCarePlan: "Ouvrir le plan de soins",
+    untitled: "Plan de soins",
+  },
+  rail: {
+    title: "Contexte clinique",
+    projectionOnly: "Aperçu en lecture seule — ouvrez un module pour documenter.",
+    nursingSummary: "Dernier résumé infirmier",
+    abnormals: "Constats importants",
+    newOrders: "Nouvelles ordonnances",
+    marDue: "Médicaments dus / retenus",
+    medicationsDue: "Médicaments dus / retenus",
+    criticalResults: "Résultats critiques / nouveaux",
+    carePlanGoals: "Objectifs du plan de soins",
+    dischargeBarriers: "Obstacles à la sortie",
+    latestEvent: "Dernier événement significatif",
+    empty: "Aucun",
+    emptyNursing: "Aucun résumé infirmier pour le moment.",
+    emptyOrders: "Aucune",
+    emptyMeds: "Aucun dû",
+    emptyResults: "Aucun",
+    emptyGoals: "Aucun actif",
+    emptyBarriers: "Aucun obstacle ouvert",
+    emptyEvent: "Aucun événement significatif récent",
+  },
+};

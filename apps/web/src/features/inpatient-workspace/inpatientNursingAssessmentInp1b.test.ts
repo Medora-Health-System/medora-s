@@ -45,8 +45,8 @@ describe("INP.1B inpatient nursing UI isolation", () => {
       "features/inpatient-workspace/inpatientWorkspaceSections.ts",
     );
     const block = nav.slice(
-      nav.indexOf("INPATIENT_NURSING_STICKY_NAV_SECTIONS"),
-      nav.indexOf("INPATIENT_PROVIDER_STICKY_NAV_SECTIONS"),
+      nav.indexOf("INPATIENT_CLINICAL_PRIMARY_NAV_SECTIONS"),
+      nav.indexOf("/** Nursing sticky"),
     );
     expect(block.indexOf('id: "nursing"')).toBeGreaterThan(
       block.indexOf('id: "overview"'),

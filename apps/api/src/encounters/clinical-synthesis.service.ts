@@ -237,11 +237,37 @@ export class ClinicalSynthesisService {
       held?: boolean;
       recentlyChanged?: boolean;
     }> = [];
+    const orderActive: Array<{
+      orderItemId: string;
+      label: string;
+      status: string;
+      orderType: string;
+    }> = [];
+    const orderNew: Array<{ orderItemId: string; label: string; status: string }> = [];
+    const orderPending: Array<{ orderItemId: string; label: string; status: string }> = [];
 
     for (const order of orders) {
       for (const item of order.items) {
         const label = item.manualLabel?.trim() || item.catalogItemType;
         const cat = String(item.catalogItemType ?? order.type ?? "").toUpperCase();
+        const itemStatus = String(item.status ?? order.status ?? "").toUpperCase();
+        const isTerminal = /COMPLETE|CANCEL|DISCONTIN|VOID|STOPPED/.test(itemStatus);
+        if (!isTerminal) {
+          orderActive.push({
+            orderItemId: item.id,
+            label,
+            status: itemStatus || String(order.status),
+            orderType: cat || String(order.type ?? "ORDER"),
+          });
+        }
+        if (/NEW|ORDERED|ACTIVE|PENDING|ACK|UNSIGNED/.test(itemStatus) || itemStatus === "") {
+          if (!isTerminal) {
+            orderNew.push({ orderItemId: item.id, label, status: itemStatus || "NEW" });
+          }
+        }
+        if (/PENDING|IN_PROGRESS|ACKNOWLEDGED|SCHEDULED/.test(itemStatus)) {
+          orderPending.push({ orderItemId: item.id, label, status: itemStatus });
+        }
         if (cat.includes("LAB")) {
           labItems.push({
             orderItemId: item.id,
@@ -462,6 +488,11 @@ export class ClinicalSynthesisService {
       laboratories: projectLabLines({ items: labItems }),
       radiology: projectRadiologyStudies({ items: radItems }),
       medications: projectMedicationSnapshot({ items: medItems }),
+      orders: {
+        active: orderActive.slice(0, 24),
+        newOrUnacknowledged: orderNew.slice(0, 12),
+        pendingActions: orderPending.slice(0, 12),
+      },
       dischargeReadiness: projectDischargeReadiness({
         workflowState: ops.dischargePlanning?.workflowState ?? null,
         estimatedDischargeDate: ops.dischargePlanning?.anticipatedDischargeDate ?? null,

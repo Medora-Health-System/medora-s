@@ -333,40 +333,35 @@ export function buildEncounterMismatchResolution(input: {
   };
 }
 
+/** MEDUI.INP.2A — Primary sticky modules (shared). Deep-link extras listed per role below. */
+const INPATIENT_CLINICAL_PRIMARY_NAV = [
+  "overview",
+  "admission",
+  "nursing",
+  "orders",
+  "medications",
+  "results",
+  "carePlan",
+  "dischargePlanning",
+] as const;
+
 export function providerPrimaryNav(): readonly string[] {
   return [
-    "overview",
+    ...INPATIENT_CLINICAL_PRIMARY_NAV,
     "historyPhysical",
     "problemsPlan",
     "progressNotes",
-    "orders",
-    "results",
-    "medications",
     "consults",
-    "carePlan",
-    "dischargePlanning",
-    "timeline",
-    "summary",
   ] as const;
 }
 
-/** MEDUI.D4A.3.3 — Nursing primary nav (no Timeline / Summary; Notes + Assessment). */
+/** MEDUI.INP.2A — Nursing primary nav (no Notes / Timeline / Summary sticky). */
 export function nursingPrimaryNav(): readonly string[] {
-  return [
-    "overview",
-    "admission",
-    "nursing",
-    "orders",
-    "medications",
-    "results",
-    "carePlan",
-    "notes",
-    "dischargePlanning",
-  ] as const;
+  return [...INPATIENT_CLINICAL_PRIMARY_NAV] as const;
 }
 
 export function technicianPrimaryNav(): readonly string[] {
-  return ["overview", "nursing", "tasks", "timeline", "summary"] as const;
+  return [...INPATIENT_CLINICAL_PRIMARY_NAV, "tasks"] as const;
 }
 
 /** Humanize camelCase / compressed keys for clinical UI (fallback only — prefer i18n). */

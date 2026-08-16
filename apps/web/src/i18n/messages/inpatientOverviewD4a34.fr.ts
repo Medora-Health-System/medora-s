@@ -40,7 +40,8 @@ export const inpatientOverviewD4a34Fr = {
       wounds: "Plaies",
     },
     notDocumented: "Non documenté",
-    legacySynthetic: "Valeur synthétique héritée — vérifier dans l’évaluation infirmière",
+    verifyInNursing: "Vérifier dans l’évaluation infirmière",
+    legacySynthetic: "Vérifier dans l’évaluation infirmière",
     openNursing: "Ouvrir l’évaluation infirmière",
   },
   encounterStatus: {

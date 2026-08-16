@@ -69,6 +69,44 @@ export type OverviewMedLine = {
   frequency: string | null;
   held: boolean;
   group: string;
+  due?: boolean;
+  overdue?: boolean;
+  highAlert?: boolean;
+};
+
+export type OverviewOrderLine = {
+  orderItemId: string;
+  label: string;
+  status: string;
+  orderType?: string;
+  bucket: "active" | "new" | "pending";
+};
+
+export type OverviewCarePlanLine = {
+  planId: string;
+  title: string;
+  status: string;
+  goalSummary: string | null;
+  concern: string | null;
+};
+
+export type OverviewProviderDocs = {
+  availability: OverviewModuleAvailability;
+  hpStatus: string | null;
+  latestProgressExcerpt: string | null;
+  assessmentPlanExcerpt: string | null;
+};
+
+export type OverviewDischargeModule = {
+  availability: OverviewModuleAvailability;
+  medicalReady: boolean | null;
+  workflowState: string | null;
+  estimatedDischargeDate: string | null;
+  destination: string | null;
+  barriers: Array<{ key: string; label: string; resolved: boolean }>;
+  medicationReconciliationIncomplete: boolean | null;
+  educationReady: boolean | null;
+  followUpReady: boolean | null;
 };
 
 export type OverviewTaskItem = {
@@ -95,15 +133,6 @@ export type OverviewEventItem = {
   status: string;
   occurredAtIso: string;
   canAck: boolean;
-};
-
-export type OverviewDischargeModule = {
-  availability: OverviewModuleAvailability;
-  medicalReady: boolean | null;
-  workflowState: string | null;
-  estimatedDischargeDate: string | null;
-  destination: string | null;
-  barriers: Array<{ key: string; label: string; resolved: boolean }>;
 };
 
 export type OverviewPainCompare = {
@@ -149,6 +178,17 @@ export type InpatientOverviewProjection = {
     changes: string[];
     held: string[];
   };
+  orders: {
+    availability: OverviewModuleAvailability;
+    active: OverviewOrderLine[];
+    newOrUnacknowledged: OverviewOrderLine[];
+    pendingActions: OverviewOrderLine[];
+  };
+  carePlan: {
+    availability: OverviewModuleAvailability;
+    plans: OverviewCarePlanLine[];
+  };
+  providerDocs: OverviewProviderDocs;
   /** Unified work requiring attention (D4A.2.8 task buckets). */
   tasks: { availability: OverviewModuleAvailability; items: OverviewTaskItem[] };
   nursing: {
@@ -247,6 +287,11 @@ export type ProjectInpatientOverviewInput = {
       changes?: Array<{ drug: string }>;
       held?: Array<{ drug: string }>;
     };
+    orders?: {
+      active?: Array<{ orderItemId: string; label: string; status: string; orderType?: string }>;
+      newOrUnacknowledged?: Array<{ orderItemId: string; label: string; status: string }>;
+      pendingActions?: Array<{ orderItemId: string; label: string; status: string }>;
+    };
     tasks?: {
       critical?: Array<{
         taskId: string;
@@ -318,6 +363,12 @@ export type ProjectInpatientOverviewInput = {
       narrativeExcerpt?: string | null;
       significantConcerns?: string[];
     } | null;
+  } | null;
+  carePlanPlans?: OverviewCarePlanLine[] | null;
+  providerDocs?: {
+    hpStatus?: string | null;
+    latestProgressExcerpt?: string | null;
+    assessmentPlanExcerpt?: string | null;
   } | null;
   canProviderWrite: boolean;
 };
@@ -451,21 +502,61 @@ export function projectInpatientOverview(
     isDocumentedMl(io.balance24hMl);
 
   const problems = syn?.problems ?? [];
-  const events = (syn?.events ?? []).map((e) => ({
-    eventId: e.eventId,
-    type: e.type,
-    severity: e.severity,
-    summary: e.summary,
-    status: e.status,
-    occurredAtIso: e.occurredAt,
-    canAck: input.canProviderWrite && e.status === "NEW" && role === "PROVIDER",
-  }));
+  const SIGNIFICANT_EVENT_TYPES = new Set([
+    "CRITICAL_RESULT",
+    "CONSULT_COMPLETED",
+    "CODE_STATUS_CHANGED",
+    "ISOLATION_CHANGED",
+    "MEDICATION_HELD",
+    "CLINICAL_ALERT",
+    "NURSING_ASSESSMENT_SAVED",
+    "SIGNIFICANT_EVENT",
+  ]);
+  const events = (syn?.events ?? [])
+    .filter((e) => {
+      const sev = String(e.severity ?? "").toUpperCase();
+      return (
+        SIGNIFICANT_EVENT_TYPES.has(String(e.type ?? "").toUpperCase()) ||
+        sev === "CRITICAL" ||
+        sev === "WARNING" ||
+        sev === "HIGH"
+      );
+    })
+    .map((e) => ({
+      eventId: e.eventId,
+      type: e.type,
+      severity: e.severity,
+      summary: e.summary,
+      status: e.status,
+      occurredAtIso: e.occurredAt,
+      canAck: input.canProviderWrite && e.status === "NEW" && role === "PROVIDER",
+    }));
 
   const dc = syn?.dischargeReadiness ?? {};
   const cva = syn?.currentVsAdmission ?? {};
   const nursing = input.nursingOps ?? null;
+  const orderActive = (syn?.orders?.active ?? []).map((o) => ({
+    ...o,
+    bucket: "active" as const,
+  }));
+  const orderNew = (syn?.orders?.newOrUnacknowledged ?? []).map((o) => ({
+    ...o,
+    bucket: "new" as const,
+  }));
+  const orderPending = (syn?.orders?.pendingActions ?? []).map((o) => ({
+    ...o,
+    bucket: "pending" as const,
+  }));
+  const carePlans = input.carePlanPlans ?? [];
+  const providerDocsIn = input.providerDocs ?? null;
+  const medReconIncomplete =
+    (dc.barriers ?? []).some((b) => /med.?recon/i.test(b.key) || /med.?recon/i.test(b.label)) ||
+    null;
+  const followUpReady = !(dc.barriers ?? []).some((b) => /follow.?up/i.test(b.key) || /follow.?up/i.test(b.label));
+  const educationReady = !(dc.barriers ?? []).some((b) => /educat/i.test(b.key) || /educat/i.test(b.label));
 
-  const showNursingModule = role === "NURSING" || role === "TECHNICIAN" || role === "CHART";
+  /** Overview always projects nursing for all clinical roles (providers read-only via panels). */
+  const showNursingModule = true;
 
   return {
     role,
@@ -508,9 +599,36 @@ export function projectInpatientOverview(
     },
     medications: {
       availability: medLines.length ? "READY" : "EMPTY",
-      lines: medLines,
+      lines: medLines.map((m) => ({
+        ...m,
+        due: /due/i.test(m.group),
+        overdue: /overdue/i.test(m.group),
+        highAlert: /vasoactive|anticoag|insulin|sedation/i.test(m.group),
+      })),
       changes: (syn?.medications?.changes ?? []).map((m) => m.drug),
       held: (syn?.medications?.held ?? []).map((m) => m.drug),
+    },
+    orders: {
+      availability:
+        orderActive.length + orderNew.length + orderPending.length > 0 ? "READY" : "EMPTY",
+      active: orderActive,
+      newOrUnacknowledged: orderNew,
+      pendingActions: orderPending,
+    },
+    carePlan: {
+      availability: carePlans.length ? "READY" : "EMPTY",
+      plans: carePlans,
+    },
+    providerDocs: {
+      availability:
+        providerDocsIn?.hpStatus ||
+        providerDocsIn?.latestProgressExcerpt ||
+        providerDocsIn?.assessmentPlanExcerpt
+          ? "READY"
+          : "EMPTY",
+      hpStatus: providerDocsIn?.hpStatus ?? null,
+      latestProgressExcerpt: providerDocsIn?.latestProgressExcerpt ?? null,
+      assessmentPlanExcerpt: providerDocsIn?.assessmentPlanExcerpt ?? null,
     },
     tasks: {
       availability: taskItems.length ? "READY" : "EMPTY",
@@ -574,6 +692,9 @@ export function projectInpatientOverview(
       estimatedDischargeDate: dc.estimatedDischargeDate ?? o.estimatedDischarge ?? null,
       destination: dc.destination ?? null,
       barriers: dc.barriers ?? [],
+      medicationReconciliationIncomplete: medReconIncomplete,
+      educationReady: (dc.barriers ?? []).length ? educationReady : null,
+      followUpReady: (dc.barriers ?? []).length ? followUpReady : null,
     },
     recentEvents: {
       availability: events.length ? "READY" : "EMPTY",

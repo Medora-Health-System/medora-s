@@ -248,6 +248,15 @@ export function InpatientProviderWorkspacePanel({
   const [problemBarrier, setProblemBarrier] = useState("");
   const [authProjection, setAuthProjection] = useState<Record<string, unknown> | null>(null);
   const [synthesis, setSynthesis] = useState<SynthesisLite | null>(null);
+  const [carePlanPlans, setCarePlanPlans] = useState<
+    Array<{
+      planId: string;
+      title: string;
+      status: string;
+      goalSummary: string | null;
+      concern: string | null;
+    }>
+  >([]);
   const [printMsg, setPrintMsg] = useState<string | null>(null);
   const [progressText, setProgressText] = useState("");
   const [activeProgressNoteId, setActiveProgressNoteId] = useState<string | null>(null);
@@ -273,26 +282,77 @@ export function InpatientProviderWorkspacePanel({
         setAuthProjection(null);
       }
       if (mode === "overview") {
-        try {
-          const synRes = await fetchProviderClinicalSynthesis(encounterId);
-          setSynthesis((synRes.synthesis ?? null) as SynthesisLite);
-        } catch {
-          setSynthesis(null);
-        }
-        try {
-          const nursingRes = await apiFetch(
+        const [synSettled, nursingSettled, careSettled] = await Promise.allSettled([
+          fetchProviderClinicalSynthesis(encounterId),
+          apiFetch(
             `/encounters/${encodeURIComponent(encounterId)}/inpatient-nursing-assessment-events`,
             { facilityId },
-          );
+          ),
+          apiFetch(`/encounters/${encodeURIComponent(encounterId)}/care-plans`, {
+            facilityId,
+          }),
+        ]);
+        if (synSettled.status === "fulfilled") {
+          setSynthesis((synSettled.value.synthesis ?? null) as SynthesisLite);
+        } else {
+          setSynthesis(null);
+        }
+        if (nursingSettled.status === "fulfilled") {
           const entries =
-            asApiObject<{ entries?: { assessment: InpatientNursingAssessmentV1 }[] }>(nursingRes)
-              ?.entries ?? [];
+            asApiObject<{ entries?: { assessment: InpatientNursingAssessmentV1 }[] }>(
+              nursingSettled.value,
+            )?.entries ?? [];
           const latest = entries.at(-1)?.assessment;
           setNursingAssessmentOverview(
             latest ? projectInpatientNursingAssessmentOverview(latest) : null,
           );
-        } catch {
+        } else {
           setNursingAssessmentOverview(null);
+        }
+        if (careSettled.status === "fulfilled") {
+          const plans =
+            asApiObject<{
+              plans?: Array<{
+                id?: string;
+                title?: string;
+                status?: string;
+                components?: Array<{
+                  componentType?: string;
+                  title?: string;
+                  text?: string;
+                  status?: string;
+                }>;
+              }>;
+            }>(careSettled.value)?.plans ?? [];
+          setCarePlanPlans(
+            plans.map((plan) => {
+              const goals = (plan.components ?? []).filter(
+                (c) => String(c.componentType ?? "").toUpperCase() === "GOAL",
+              );
+              const concerns = (plan.components ?? []).filter((c) =>
+                /CONCERN|BARRIER|PROBLEM/i.test(String(c.componentType ?? "")),
+              );
+              const openConcern = concerns.find(
+                (c) => !/COMPLETE|RESOLVED|DISCONTINUED/i.test(String(c.status ?? "")),
+              );
+              return {
+                planId: String(plan.id ?? ""),
+                title: String(plan.title ?? "").trim() || t("inpatientOverviewInp2a.carePlan.untitled"),
+                status: String(plan.status ?? "ACTIVE"),
+                goalSummary:
+                  goals
+                    .slice(0, 2)
+                    .map((g) => String(g.title || g.text || "").trim())
+                    .filter(Boolean)
+                    .join("; ") || null,
+                concern: openConcern
+                  ? String(openConcern.title || openConcern.text || "").trim() || null
+                  : null,
+              };
+            }),
+          );
+        } else {
+          setCarePlanPlans([]);
         }
       }
     } catch {
@@ -1044,7 +1104,14 @@ export function InpatientProviderWorkspacePanel({
     );
   }
 
-  // overview — projected shared clinical landing (MEDUI.D4A.3.4)
+  // overview — projected shared clinical landing (MEDUI.INP.2A / D4A.3.4)
+  const latestProgress = (doc?.progressNotes ?? [])
+    .slice()
+    .reverse()
+    .find((n) => String(n.text ?? "").trim());
+  const activeProblemPlan = (doc?.problemPlans ?? []).find(
+    (p) => p.status === "ACTIVE" && (p.assessment || p.plan),
+  );
   const overviewProjection = projectInpatientOverview({
     role: workspaceRole,
     emptyClinicianLabel: t("inpatientOverviewD4a34.notAssigned"),
@@ -1073,6 +1140,21 @@ export function InpatientProviderWorkspacePanel({
             narrativeExcerpt: nursingAssessmentOverview.narrativeExcerpt,
             significantConcerns: nursingAssessmentOverview.significantConcerns,
           }
+        : null,
+    },
+    carePlanPlans,
+    providerDocs: {
+      hpStatus: doc?.hpDraft?.status
+        ? String(doc.hpDraft.status).replace(/_/g, " ")
+        : null,
+      latestProgressExcerpt: latestProgress?.text
+        ? String(latestProgress.text).trim().slice(0, 180)
+        : null,
+      assessmentPlanExcerpt: activeProblemPlan
+        ? [activeProblemPlan.assessment, activeProblemPlan.plan]
+            .filter(Boolean)
+            .join(" · ")
+            .slice(0, 180)
         : null,
     },
     canProviderWrite,

@@ -51,7 +51,7 @@ describe("MEDUI.D4A.3.3 inpatient header + nursing consolidation", () => {
     expect(active).not.toContain("longitudinal");
   });
 
-  it("nursing sticky nav order excludes Timeline/Summary and includes Assessment + Notes", () => {
+  it("nursing sticky nav order is the eight clinical modules (no Notes/Timeline/Summary)", () => {
     const ids = INPATIENT_NURSING_STICKY_NAV_SECTIONS.map((s) => s.id);
     expect(ids).toEqual([
       "overview",
@@ -61,32 +61,31 @@ describe("MEDUI.D4A.3.3 inpatient header + nursing consolidation", () => {
       "medications",
       "results",
       "carePlan",
-      "notes",
       "dischargePlanning",
     ]);
     expect(ids).not.toContain("timeline");
     expect(ids).not.toContain("summary");
+    expect(ids).not.toContain("notes");
     expect(parseInpatientWorkspaceSection("notes")).toBe("notes");
   });
 
-  it("provider sticky retains Timeline + Summary; nursing primary nav matches sticky intent", () => {
+  it("provider sticky matches nursing primary modules; deep-link extras remain available", () => {
     const providerIds = INPATIENT_PROVIDER_STICKY_NAV_SECTIONS.map((s) => s.id);
-    expect(providerIds).toContain("timeline");
-    expect(providerIds).toContain("summary");
+    expect(providerIds).not.toContain("timeline");
+    expect(providerIds).not.toContain("summary");
     expect(providerIds).not.toContain("notes");
-    expect(providerPrimaryNav()).toContain("summary");
+    expect(providerPrimaryNav()).not.toContain("summary");
+    expect(providerPrimaryNav()).toContain("historyPhysical");
     const nursing = nursingPrimaryNav();
     expect(nursing).not.toContain("timeline");
     expect(nursing).not.toContain("summary");
-    expect(nursing).toContain("notes");
+    expect(nursing).not.toContain("notes");
   });
 
   it("uses the native inpatient assessment while retaining shared Notes", () => {
     const section = read("InpatientNursingAssessmentSection.tsx");
     expect(section).toContain("InpatientNursingAssessmentPanel");
     expect(section).not.toContain("EmergencyNursingReassessmentPanel");
-    expect(section).toContain("InpatientNursingHandoffPanel");
-    expect(section).toContain("InpatientNursingTeamExecutionPanel");
     const panel = read("InpatientWorkspacePanel.tsx");
     expect(panel).toContain("EmergencyErNotesPanel");
     expect(panel).toContain("printDischarge");

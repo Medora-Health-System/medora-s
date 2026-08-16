@@ -83,12 +83,12 @@ describe("MEDUI.D4A.3.3A final hardening", () => {
     expect(header).toContain("maxWidth: 200");
   });
 
-  it("longitudinal overview remains deleted; nursing sticky has no Timeline/Summary", () => {
+  it("longitudinal overview remains deleted; nursing sticky has no Timeline/Summary/Notes", () => {
     expect(existsSync(join(root, "InpatientLongitudinalOverviewStrip.tsx"))).toBe(false);
     const ids = INPATIENT_NURSING_STICKY_NAV_SECTIONS.map((s) => s.id);
     expect(ids).not.toContain("timeline");
     expect(ids).not.toContain("summary");
-    expect(ids).toContain("notes");
+    expect(ids).not.toContain("notes");
     expect(ids).toContain("nursing");
   });
 

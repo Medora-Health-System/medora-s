@@ -265,6 +265,12 @@ export type ProviderClinicalSynthesisV1 = {
     changes: MedicationSnapshotLine[];
     held: MedicationSnapshotLine[];
   };
+  /** Compact order snapshot for Overview (reuses same Order query — no extra fan-out). */
+  orders: {
+    active: Array<{ orderItemId: string; label: string; status: string; orderType: string }>;
+    newOrUnacknowledged: Array<{ orderItemId: string; label: string; status: string }>;
+    pendingActions: Array<{ orderItemId: string; label: string; status: string }>;
+  };
   problems: ProviderProblemPlanItemV1[];
   events: ProviderEventItemV1[];
   tasks: {
@@ -1117,6 +1123,7 @@ export function emptyProviderClinicalSynthesis(input: {
       all: [],
     },
     medications: { groups: {}, changes: [], held: [] },
+    orders: { active: [], newOrUnacknowledged: [], pendingActions: [] },
     problems: [],
     events: [],
     tasks: { critical: [], today: [], upcoming: [], completed: [] },

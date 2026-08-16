@@ -40,7 +40,8 @@ export const inpatientOverviewD4a34En = {
       wounds: "Wounds",
     },
     notDocumented: "Not documented",
-    legacySynthetic: "Legacy synthetic value — verify in Nursing Assessment",
+    verifyInNursing: "Verify in Nursing Assessment",
+    legacySynthetic: "Verify in Nursing Assessment",
     openNursing: "Open Nursing Assessment",
   },
   encounterStatus: {
