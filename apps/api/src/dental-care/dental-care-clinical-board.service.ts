@@ -36,6 +36,8 @@ type Actor = {
   facilityId: string;
   access: DentalWorkspaceAccess;
   roleCodes?: readonly string[];
+  professionCodes?: readonly string[];
+  departmentCodes?: readonly string[];
 };
 
 @Injectable()
@@ -96,6 +98,8 @@ export class DentalCareClinicalBoardService {
       encounterStatus: encounter.status,
       serviceLine: encounter.serviceLine ?? "DENTAL",
       specialties: actor.access.specialties,
+      professionCodes: actor.professionCodes,
+      departmentCodes: actor.departmentCodes,
     });
   }
 

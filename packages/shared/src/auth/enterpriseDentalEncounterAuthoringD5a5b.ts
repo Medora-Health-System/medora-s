@@ -59,12 +59,16 @@ export function resolveEnterpriseDentalEncounterAuthoring(input: {
   encounterStatus?: string | null;
   serviceLine?: string | null;
   specialties?: readonly string[] | null;
+  professionCodes?: readonly string[] | null;
+  departmentCodes?: readonly string[] | null;
 }): EnterpriseDentalEncounterAuthoring {
   const roleCodes = (input.roleCodes ?? []).map((r) => String(r ?? "").trim().toUpperCase());
   const access = resolveDentalWorkspaceAccess({
     roleCodes: input.roleCodes,
     dentalCareEnabled: input.dentalCareEnabled,
     specialties: input.specialties as never,
+    professionCodes: input.professionCodes,
+    departmentCodes: input.departmentCodes,
   });
 
   const encounterOpen = String(input.encounterStatus ?? "").toUpperCase() === "OPEN";
@@ -81,29 +85,37 @@ export function resolveEnterpriseDentalEncounterAuthoring(input: {
   const clinicalWritable =
     readOnlyReason === null && canAuthorDentalClinicalBoard(access) && encounterOpen;
 
-  // Evaluation / sign / prescribe follow clinical dental documentation capability
-  // (PROVIDER or facility ADMIN — D5A.5C).
+  // Hygienist may chart without dentist PROVIDER privileges (prescribe/sign).
   const canDocument = clinicalWritable;
+  const dentistOrAdminSign =
+    clinicalWritable &&
+    (access.canAccessDentalProvider ||
+      roleCodes.includes("ADMIN") ||
+      (input.professionCodes ?? []).some((p) => String(p).toUpperCase() === "DENTIST"));
+
   const frontDeskAssist =
     encounterOpen &&
     access.canAccessDentalShell &&
-    roleCodes.includes("FRONT_DESK") &&
+    (roleCodes.includes("FRONT_DESK") ||
+      (input.professionCodes ?? []).some(
+        (p) => String(p).toUpperCase() === "DENTAL_ASSISTANT"
+      )) &&
     !roleCodes.includes("BILLING");
 
   return {
     certificationId: D5A5B_CERTIFICATION_ID,
     canView: access.canAccessDentalShell,
-    canEditClinicalEvaluation: canDocument,
+    canEditClinicalEvaluation: canDocument && access.canAccessDentalProvider,
     canEditOdontogram: clinicalWritable && access.canEditOdontogram,
     canEditPeriodontal: clinicalWritable && access.canEditPeriodontal,
     canEditTreatmentPlan: clinicalWritable && access.canEditTreatmentPlan,
     canDocumentProcedure: clinicalWritable && access.canPerformProcedures,
     canReviewHistory: canDocument,
-    canEditEnterpriseHistory: canDocument,
+    canEditEnterpriseHistory: canDocument && access.canAccessDentalProvider,
     canManageDocumentsOrConsents: canDocument || frontDeskAssist,
-    canPrescribe: canDocument,
-    canSign: canDocument,
-    canEditFollowUp: canDocument,
+    canPrescribe: dentistOrAdminSign,
+    canSign: dentistOrAdminSign,
+    canEditFollowUp: dentistOrAdminSign,
     isReadOnly: !clinicalWritable,
     readOnlyReason,
     encounterOpen,

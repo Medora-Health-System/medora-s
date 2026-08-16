@@ -279,33 +279,47 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       .map((fr: any) => fr.role);
   };
 
-  const getActiveFacilityRoleRow = (): {
+  const getActiveFacilityRoleRows = (): {
     departmentCode?: string | null;
+    professionCode?: string | null;
+    role?: string | null;
     facilityType?: string | null;
     serviceLines?: readonly string[] | null;
     careProfileJson?: unknown;
     facilityCountry?: string | null;
-  } | null => {
-    if (!user || !activeFacility) return null;
-    const rows = (
+  }[] => {
+    if (!user || !activeFacility) return [];
+    return (
       user.facilityRoles as {
         facilityId?: string;
         departmentCode?: string | null;
+        professionCode?: string | null;
+        role?: string | null;
         facilityType?: string | null;
         serviceLines?: readonly string[] | null;
         careProfileJson?: unknown;
         facilityCountry?: string | null;
       }[]
     ).filter((fr) => fr.facilityId === activeFacility);
-    return rows[0] ?? null;
   };
 
+  const getActiveFacilityRoleRow = () => getActiveFacilityRoleRows()[0] ?? null;
+
   const buildNavigationProfile = () => {
-    const activeRoleRow = getActiveFacilityRoleRow();
+    const rows = getActiveFacilityRoleRows();
+    const activeRoleRow = rows[0] ?? null;
+    const professionCodes = rows
+      .map((r) => r.professionCode)
+      .filter((c): c is string => typeof c === "string" && c.trim().length > 0);
+    const departmentCodes = rows
+      .map((r) => r.departmentCode)
+      .filter((c): c is string => typeof c === "string" && c.trim().length > 0);
     return buildNavigationProfileFromSession({
       roleCodes: activeRoles,
       departmentCode: activeRoleRow?.departmentCode ?? null,
       prismaDepartmentCode: activeRoleRow?.departmentCode ?? null,
+      professionCodes,
+      departmentCodes,
       facilityType: activeRoleRow?.facilityType ?? null,
       facilityServiceLines: activeRoleRow?.serviceLines ?? null,
       careProfileJson: activeRoleRow?.careProfileJson,

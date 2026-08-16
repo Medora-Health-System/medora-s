@@ -12,7 +12,7 @@ describe("MEDUI.D5A.5B API dental authoring gate", () => {
 
   it("PROVIDER + OPEN => writable; FACILITY_ADMIN-only => writable (D5A.5C)", () => {
     const provider = resolveEnterpriseDentalEncounterAuthoring({
-      roleCodes: ["PROVIDER"],
+      roleCodes: ["PROVIDER"], professionCodes: ["DENTIST"], departmentCodes: ["DENTAL"],
       dentalCareEnabled: true,
       encounterStatus: "OPEN",
       serviceLine: "DENTAL",
@@ -41,7 +41,7 @@ describe("MEDUI.D5A.5B API dental authoring gate", () => {
     });
     expect(both.canDocumentProcedure).toBe(true);
     const closed = resolveEnterpriseDentalEncounterAuthoring({
-      roleCodes: ["PROVIDER"],
+      roleCodes: ["PROVIDER"], professionCodes: ["DENTIST"], departmentCodes: ["DENTAL"],
       dentalCareEnabled: true,
       encounterStatus: "CLOSED",
       serviceLine: "DENTAL",

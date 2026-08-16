@@ -19,7 +19,7 @@ describe("MEDUI.D5A.5A dental clinical board authoring", () => {
 
   it("1–3: PROVIDER + OPEN => periodontal / plan / procedures editable", () => {
     const access = resolveDentalWorkspaceAccess({
-      roleCodes: ["PROVIDER"],
+      roleCodes: ["PROVIDER"], professionCodes: ["DENTIST"], departmentCodes: ["DENTAL"],
       dentalCareEnabled: true,
     });
     expect(access.canEditPeriodontal).toBe(true);
@@ -66,7 +66,7 @@ describe("MEDUI.D5A.5A dental clinical board authoring", () => {
 
   it("6: CLOSED encounter is not editable even for PROVIDER", () => {
     const access = resolveDentalWorkspaceAccess({
-      roleCodes: ["PROVIDER"],
+      roleCodes: ["PROVIDER"], professionCodes: ["DENTIST"], departmentCodes: ["DENTAL"],
       dentalCareEnabled: true,
     });
     expect(isDentalClinicalBoardEditable({ access, encounterStatus: "CLOSED" })).toBe(false);

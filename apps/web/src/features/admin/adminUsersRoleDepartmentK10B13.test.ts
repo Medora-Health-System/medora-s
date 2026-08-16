@@ -12,7 +12,7 @@ describe("adminUsersRoleDepartmentK10B13", () => {
       {
         clientId: "1",
         facilityId: "fac-1",
-        profession: "RN",
+        profession: "NURSING",
         technicianType: "",
         departmentId: "dept-ed",
       },
@@ -98,7 +98,7 @@ describe("adminUsersRoleDepartmentK10B13", () => {
       {
         clientId: "1",
         facilityId: "fac-1",
-        profession: "PROVIDER",
+        profession: "MEDICINE",
         technicianType: "",
         departmentId: null,
       },
@@ -127,7 +127,7 @@ describe("adminUsersRoleDepartmentK10B13", () => {
       roles: ["RN"],
       assignments: [{ roleCode: "RN", departmentId: "dept-1" }],
     });
-    expect(rows[0]?.profession).toBe("RN");
+    expect(rows[0]?.profession).toBe("NURSING");
     expect(rows[0]?.departmentId).toBe("dept-1");
   });
 });

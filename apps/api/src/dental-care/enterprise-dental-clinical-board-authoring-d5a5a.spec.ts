@@ -15,7 +15,7 @@ describe("MEDUI.D5A.5A API clinical board authoring", () => {
 
   it("authorized dentist + OPEN => clinical board writable", () => {
     const access = resolveDentalWorkspaceAccess({
-      roleCodes: ["PROVIDER"],
+      roleCodes: ["PROVIDER"], professionCodes: ["DENTIST"], departmentCodes: ["DENTAL"],
       dentalCareEnabled: true,
     });
     expect(canAuthorDentalClinicalBoard(access)).toBe(true);
@@ -29,7 +29,7 @@ describe("MEDUI.D5A.5A API clinical board authoring", () => {
     });
     expect(canAuthorDentalClinicalBoard(billing)).toBe(false);
     const provider = resolveDentalWorkspaceAccess({
-      roleCodes: ["PROVIDER"],
+      roleCodes: ["PROVIDER"], professionCodes: ["DENTIST"], departmentCodes: ["DENTAL"],
       dentalCareEnabled: true,
     });
     expect(isDentalClinicalBoardEditable({ access: provider, encounterStatus: "CLOSED" })).toBe(false);

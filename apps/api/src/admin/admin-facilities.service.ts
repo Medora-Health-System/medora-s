@@ -317,7 +317,15 @@ export class AdminFacilitiesService {
       if (assignCreatorAdmin) {
         const adminRole = await tx.role.findUnique({ where: { code: RoleCode.ADMIN } });
         if (!adminRole) throw new NotFoundException("Rôle ADMIN introuvable.");
-        await tx.userRole.create({ data: { userId, facilityId: facility.id, roleId: adminRole.id, isActive: true } });
+        await tx.userRole.create({
+          data: {
+            userId,
+            facilityId: facility.id,
+            roleId: adminRole.id,
+            professionCode: "ADMINISTRATION",
+            isActive: true,
+          },
+        });
       }
 
       await ensureServiceLineDepartmentsOrThrow(tx, facility.id, {

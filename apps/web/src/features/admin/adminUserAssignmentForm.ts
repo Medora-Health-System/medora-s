@@ -1,9 +1,13 @@
 import {
   ADMIN_PROFESSION_CODES,
-  findDuplicateRoleCodeDepartmentConflict,
+  DENTAL_WORKFORCE_PROFESSION_CODES,
+  filterDepartmentsForProfession,
+  findDuplicateProfessionAssignmentConflict,
+  preferredDepartmentCodeForProfession,
   resolveAdminWorkspacePreviewKey,
   resolveProfessionFromRoleCode,
   resolveRoleCodeFromProfession,
+  showsProviderBillingCredentialFields,
   type AdminProfessionCode,
   type AdminUserAssignmentInput,
   type TechnicianTypeCode,
@@ -47,19 +51,39 @@ export function assignmentRowsFromExistingUser(input: {
   assignments?: {
     roleCode: string;
     departmentId?: string | null;
+    departmentCode?: string | null;
+    professionCode?: string | null;
   }[];
 }): AssignmentDraftRow[] {
   const source =
     input.assignments && input.assignments.length > 0
       ? input.assignments
-      : input.roles.map((roleCode) => ({ roleCode, departmentId: null as string | null }));
+      : input.roles.map((roleCode) => ({
+          roleCode,
+          departmentId: null as string | null,
+          departmentCode: null as string | null,
+          professionCode: null as string | null,
+        }));
 
   return source.map((row) => {
-    const mapped = resolveProfessionFromRoleCode(row.roleCode);
+    const rawCode = row.professionCode
+      ? String(row.professionCode).trim().toUpperCase()
+      : "";
+    const fromStored =
+      rawCode && (ADMIN_PROFESSION_CODES as readonly string[]).includes(rawCode)
+        ? (rawCode as AdminProfessionCode)
+        : rawCode === "PROVIDER" || rawCode === "PROVIDER_UNSPECIFIED"
+          ? ("MEDICINE" as AdminProfessionCode)
+          : rawCode === "RN"
+            ? ("NURSING" as AdminProfessionCode)
+            : rawCode === "PHARMACY"
+              ? ("PHARMACIST" as AdminProfessionCode)
+              : null;
+    const mapped = resolveProfessionFromRoleCode(row.roleCode, row.departmentCode);
     return {
       clientId: createAssignmentRowId(),
       facilityId: input.facilityId,
-      profession: mapped.profession,
+      profession: fromStored ?? mapped.profession,
       technicianType: mapped.technicianType ?? "",
       departmentId: row.departmentId ?? null,
     };
@@ -108,17 +132,23 @@ export function buildAssignmentsPayload(rows: AssignmentDraftRow[]): {
       facilityId: row.facilityId,
       roleCode: roleCode as AdminUserAssignmentDto["roleCode"],
       departmentId: row.departmentId,
+      professionCode: row.profession || null,
     });
   }
 
-  const conflict = findDuplicateRoleCodeDepartmentConflict(assignments);
+  const conflict = findDuplicateProfessionAssignmentConflict(assignments);
   if (conflict) {
-    return { ok: false, errorKey: "adminUsers.valDuplicateRoleDepartment" };
+    return { ok: false, errorKey: "adminUsers.valDuplicateProfession" };
   }
 
   return {
     ok: true,
-    assignments,
+    assignments: assignments.map((a) => ({
+      facilityId: a.facilityId,
+      roleCode: a.roleCode,
+      departmentId: a.departmentId,
+      professionCode: a.professionCode ?? null,
+    })),
     roleCodes: [...new Set(assignments.map((a) => a.roleCode))],
   };
 }
@@ -135,7 +165,81 @@ export function workspacePreviewKeyForRow(
   return resolveAdminWorkspacePreviewKey({
     roleCodes: [roleCode],
     prismaDepartmentCode: dept?.code ?? null,
+    professionCode: row.profession || null,
   });
+}
+
+const INPATIENT_ALLIED_PROFESSIONS = new Set([
+  "SOCIAL_WORKER",
+  "PHYSICAL_THERAPIST",
+  "OCCUPATIONAL_THERAPIST",
+  "SPEECH_LANGUAGE_PATHOLOGIST",
+  "RESPIRATORY_THERAPIST",
+  "DIETITIAN",
+  "CASE_MANAGER",
+  "RESIDENT_PHYSICIAN",
+  "LICENSED_PRACTICAL_NURSE",
+  "PATIENT_CARE_TECHNICIAN",
+]);
+
+/** Professions shown in onboarding for a facility (gated by enabled service lines). */
+export function visibleAdminProfessionCodes(input: {
+  facilityServiceLines?: readonly string[] | null;
+}): AdminProfessionCode[] {
+  const lines = new Set(
+    (input.facilityServiceLines ?? []).map((l) => String(l).trim().toUpperCase())
+  );
+  const dentalEnabled = lines.has("DENTAL");
+  const hospitalish =
+    lines.size === 0 ||
+    lines.has("EMERGENCY") ||
+    lines.has("OBSERVATION") ||
+    lines.has("INPATIENT") ||
+    lines.has("HOSPITAL");
+  return ADMIN_PROFESSION_CODES.filter((code) => {
+    if ((DENTAL_WORKFORCE_PROFESSION_CODES as readonly string[]).includes(code)) {
+      return dentalEnabled;
+    }
+    if (INPATIENT_ALLIED_PROFESSIONS.has(code) && lines.size > 0 && !hospitalish) {
+      return false;
+    }
+    return true;
+  });
+}
+
+export function departmentsForProfessionRow(input: {
+  profession: AdminProfessionCode | "";
+  departments: FacilityDepartmentOption[];
+  facilityServiceLines?: readonly string[] | null;
+}): FacilityDepartmentOption[] {
+  if (!input.profession) return [...input.departments];
+  return filterDepartmentsForProfession({
+    profession: input.profession,
+    facilityDepartments: input.departments,
+    facilityServiceLines: input.facilityServiceLines,
+  });
+}
+
+export function defaultDepartmentIdForProfession(input: {
+  profession: AdminProfessionCode | "";
+  departments: FacilityDepartmentOption[];
+  facilityServiceLines?: readonly string[] | null;
+}): string | null {
+  if (!input.profession) return null;
+  const filtered = departmentsForProfessionRow(input);
+  const preferred = preferredDepartmentCodeForProfession(input.profession);
+  if (preferred) {
+    const match = filtered.find((d) => d.code === preferred);
+    if (match) return match.id;
+  }
+  return filtered[0]?.id ?? null;
+}
+
+/** Show existing User NPI/taxonomy/name fields when any assignment is provider-credentialed. */
+export function assignmentRowsNeedProviderCredentials(
+  rows: readonly AssignmentDraftRow[]
+): boolean {
+  return rows.some((row) => showsProviderBillingCredentialFields(row.profession || null));
 }
 
 export { ADMIN_PROFESSION_CODES };

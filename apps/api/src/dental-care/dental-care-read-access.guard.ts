@@ -50,6 +50,7 @@ export class DentalCareReadAccessGuard implements CanActivate {
       },
       include: {
         role: true,
+        department: { select: { code: true } },
         facility: {
           select: {
             facilityType: true,
@@ -66,6 +67,10 @@ export class DentalCareReadAccessGuard implements CanActivate {
     }
 
     const roleCodes = memberships.map((row) => row.role.code);
+    const professionCodes = memberships.map((row) => row.professionCode);
+    const departmentCodes = memberships
+      .map((row) => row.department?.code)
+      .filter((c): c is NonNullable<typeof c> => c != null);
     const facility = memberships[0]!.facility;
     const facilityType = facility?.facilityType ?? "CLINIC";
     const facilityServiceLines = resolveFacilityServiceLines({
@@ -88,6 +93,8 @@ export class DentalCareReadAccessGuard implements CanActivate {
       roleCodes,
       dentalCareEnabled: true,
       specialties,
+      professionCodes,
+      departmentCodes,
     });
 
     if (!access.canAccessDentalShell) {
@@ -96,6 +103,8 @@ export class DentalCareReadAccessGuard implements CanActivate {
 
     request.dentalCareAccess = access;
     request.dentalCareRoleCodes = roleCodes;
+    request.dentalCareProfessionCodes = professionCodes;
+    request.dentalCareDepartmentCodes = departmentCodes;
     return true;
   }
 }

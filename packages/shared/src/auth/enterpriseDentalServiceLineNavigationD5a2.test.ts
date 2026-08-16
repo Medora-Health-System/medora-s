@@ -77,7 +77,7 @@ describe("MEDUI.D5A.2 dental service line and navigation", () => {
 
   it("exposes DENTAL_CARE navigation when dental is enabled", () => {
     const nav = resolveFacilityNavigation({
-      roleCodes: ["PROVIDER"],
+      roleCodes: ["PROVIDER"], professionCodes: ["DENTIST"], departmentCodes: ["DENTAL"],
       facilityType: "CLINIC",
       facilityServiceLines: ["CLINIC", "DENTAL"],
     });
@@ -100,14 +100,14 @@ describe("MEDUI.D5A.2 dental service line and navigation", () => {
   it("gates /app/dental routes by dentalCareEnabled", () => {
     expect(
       isFacilityCareSettingPathAllowed("/app/dental", {
-        roleCodes: ["PROVIDER"],
+        roleCodes: ["PROVIDER"], professionCodes: ["DENTIST"], departmentCodes: ["DENTAL"],
         facilityType: "CLINIC",
         facilityServiceLines: ["CLINIC", "DENTAL"],
       })
     ).toBe(true);
     expect(
       isFacilityCareSettingPathAllowed("/app/dental/provider", {
-        roleCodes: ["PROVIDER"],
+        roleCodes: ["PROVIDER"], professionCodes: ["DENTIST"], departmentCodes: ["DENTAL"],
         facilityType: "CLINIC",
         facilityServiceLines: ["CLINIC"],
       })
@@ -116,7 +116,7 @@ describe("MEDUI.D5A.2 dental service line and navigation", () => {
 
   it("resolves capability-first workspace access", () => {
     const provider = resolveDentalWorkspaceAccess({
-      roleCodes: ["PROVIDER"],
+      roleCodes: ["PROVIDER"], professionCodes: ["DENTIST"], departmentCodes: ["DENTAL"],
       dentalCareEnabled: true,
       specialties: ["ORTHODONTICS", "PERIODONTICS"],
     });
@@ -168,7 +168,7 @@ describe("MEDUI.D5A.2 dental service line and navigation", () => {
     expect(billing).not.toContain("DENTAL_PROVIDER");
 
     const denied = resolveDentalWorkspaceAccess({
-      roleCodes: ["PROVIDER"],
+      roleCodes: ["PROVIDER"], professionCodes: ["DENTIST"], departmentCodes: ["DENTAL"],
       dentalCareEnabled: false,
     });
     expect(denied.canAccessDentalShell).toBe(false);

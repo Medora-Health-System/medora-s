@@ -174,7 +174,7 @@ describe("navigationAuthorization (MEDUI.NAV.ROLE.1)", () => {
       prismaDepartmentCode: "LAB",
       facilityType: "CLINIC",
     });
-    expect(areas).toEqual(["DASHBOARD", "CLINIC_CARE", "LABORATORY"]);
+    expect(areas).toEqual(["DASHBOARD", "REGISTRATION", "CLINIC_CARE", "LABORATORY"]);
     expect(areas).not.toContain("EMERGENCY");
   });
 
