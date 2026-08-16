@@ -48,10 +48,8 @@ import {
   inpatientTechnicianWorkspacePath,
 } from "./inpatientWorkspacePaths";
 import {
-  INPATIENT_NURSING_STICKY_NAV_SECTIONS,
-  INPATIENT_PROVIDER_STICKY_NAV_SECTIONS,
-  INPATIENT_SHARED_CHART_NAV_SECTIONS,
-  parseInpatientWorkspaceSection,
+  INPATIENT_CLINICAL_PRIMARY_NAV_SECTIONS,
+  resolveInpatientWorkspaceSection,
   type InpatientWorkspaceSection,
 } from "./inpatientWorkspaceSections";
 import { InpatientWorkspaceSectionNav } from "./InpatientWorkspaceSectionNav";
@@ -96,29 +94,10 @@ function filterSectionsForRole(role: InpatientWorkspaceRole): InpatientWorkspace
   return list as InpatientWorkspaceSection[];
 }
 
-/** Sticky chrome sections for role — Nursing has no Timeline/Summary (D4A.3.3). */
+/** Sticky chrome — MEDUI.INP.2A eight-module clinical navigation for all roles. */
 function stickyNavForRole(role: InpatientWorkspaceRole) {
-  if (role === "CHART") return INPATIENT_SHARED_CHART_NAV_SECTIONS;
-  if (role === "NURSING") return INPATIENT_NURSING_STICKY_NAV_SECTIONS;
-  if (role === "TECHNICIAN") {
-    const techIds = new Set<InpatientWorkspaceSection>([
-      "overview",
-      "nursing",
-      "timeline",
-      "summary",
-    ]);
-    const catalog = [
-      ...INPATIENT_NURSING_STICKY_NAV_SECTIONS,
-      ...INPATIENT_PROVIDER_STICKY_NAV_SECTIONS,
-    ];
-    const seen = new Set<InpatientWorkspaceSection>();
-    return catalog.filter((s) => {
-      if (!techIds.has(s.id) || seen.has(s.id)) return false;
-      seen.add(s.id);
-      return true;
-    });
-  }
-  return INPATIENT_PROVIDER_STICKY_NAV_SECTIONS;
+  void role;
+  return INPATIENT_CLINICAL_PRIMARY_NAV_SECTIONS;
 }
 
 function stickySectionsForRole(role: InpatientWorkspaceRole): InpatientWorkspaceSection[] {
@@ -192,16 +171,29 @@ export function InpatientActiveWorkspaceView({
 
   const stickyNav = stickyNavForRole(role);
   const stickyAllowed = stickySectionsForRole(role);
+  /** Deep-link allowlist: sticky modules + role extras; notes/tasks remain reachable; timeline/summary redirect. */
   const allowed = useMemo(() => {
     const base = filterSectionsForRole(role);
-    return Array.from(new Set([...base, ...stickyAllowed]));
+    const deepOnly: InpatientWorkspaceSection[] =
+      role === "TECHNICIAN"
+        ? ["tasks", "notes"]
+        : role === "NURSING"
+          ? ["notes"]
+          : ["notes", "historyPhysical", "problemsPlan", "progressNotes", "consults"];
+    return Array.from(new Set([...base, ...stickyAllowed, ...deepOnly]));
   }, [role, stickyAllowed]);
 
-  const initialSection =
-    parseInpatientWorkspaceSection(searchParams.get("section")) ?? allowed[0] ?? "overview";
-  const [section, setSection] = useState<InpatientWorkspaceSection>(
-    allowed.includes(initialSection) ? initialSection : allowed[0] ?? "overview"
+  const resolveAllowedSection = useCallback(
+    (raw: string | null | undefined): InpatientWorkspaceSection => {
+      const resolved = resolveInpatientWorkspaceSection(raw) ?? "overview";
+      if (allowed.includes(resolved)) return resolved;
+      return stickyAllowed[0] ?? "overview";
+    },
+    [allowed, stickyAllowed]
   );
+
+  const initialSection = resolveAllowedSection(searchParams.get("section"));
+  const [section, setSection] = useState<InpatientWorkspaceSection>(initialSection);
   const [bootstrap, setBootstrap] = useState<HospitalWorkspaceBootstrapV1 | null>(null);
   const [loading, setLoading] = useState(true);
   const [errorCategory, setErrorCategory] = useState<
@@ -223,19 +215,26 @@ export function InpatientActiveWorkspaceView({
   const [showIsolationEditor, setShowIsolationEditor] = useState(false);
 
   useEffect(() => {
-    const fromUrl = parseInpatientWorkspaceSection(searchParams.get("section"));
-    if (fromUrl && allowed.includes(fromUrl)) setSection(fromUrl);
-  }, [searchParams, allowed]);
+    const next = resolveAllowedSection(searchParams.get("section"));
+    setSection(next);
+    const raw = String(searchParams.get("section") ?? "").trim().toLowerCase();
+    if (raw === "timeline" || raw === "summary") {
+      const qs = new URLSearchParams(searchParams.toString());
+      qs.set("section", "overview");
+      router.replace(`?${qs.toString()}`, { scroll: false });
+    }
+  }, [searchParams, resolveAllowedSection, router]);
 
   const selectSection = useCallback(
     (next: InpatientWorkspaceSection) => {
-      if (!allowed.includes(next)) return;
-      setSection(next);
+      const resolved = next === "timeline" || next === "summary" ? "overview" : next;
+      if (!allowed.includes(resolved) && !stickyAllowed.includes(resolved)) return;
+      setSection(resolved);
       const qs = new URLSearchParams(searchParams.toString());
-      qs.set("section", next);
+      qs.set("section", resolved);
       router.replace(`?${qs.toString()}`, { scroll: false });
     },
-    [router, searchParams, allowed]
+    [router, searchParams, allowed, stickyAllowed]
   );
 
   const loadBootstrap = useCallback(async () => {

@@ -17,10 +17,19 @@ import {
   formatInpatientConsultSpecialtyDisplay,
 } from "./inpatientClinicalDisplayLabels";
 
+import { InpatientClinicalContextRail } from "./InpatientClinicalContextRail";
+
 const card: CSSProperties = {
   ...MEDORA_CARD_SHELL,
   padding: "10px 12px",
   marginBottom: 10,
+};
+
+const overviewLayout: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "minmax(0, 1fr) minmax(240px, 300px)",
+  gap: 14,
+  alignItems: "start",
 };
 
 function Section({
@@ -112,7 +121,16 @@ export function InpatientOverviewView({
   const dash = DISPLAY_DASH;
 
   return (
-    <div data-testid="inpatient-overview-projected" data-role={p.role}>
+    <div data-testid="inpatient-overview-projected" data-role={p.role} data-readonly="true">
+      <div data-testid="inpatient-overview-drawer-host" className="inpatient-overview-drawer">
+        <InpatientClinicalContextRail
+          projection={p}
+          onNavigateSection={onNavigateSection}
+          variant="drawer"
+        />
+      </div>
+      <div style={overviewLayout} className="inpatient-overview-grid">
+        <div data-testid="inpatient-overview-main">
       {p.alerts.availability === "READY" ? (
         <Section title={t("inpatientOverviewD4a34.modules.alerts")} testId="overview-alerts">
           <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13, color: "#9a3412" }}>
@@ -193,7 +211,7 @@ export function InpatientOverviewView({
                   : ""}
               </>
             ) : item.state === "UNRESOLVED_SYNTHETIC" ? (
-              t("inpatientOverviewD4a34.clinicalState.legacySynthetic")
+              t("inpatientOverviewD4a34.clinicalState.verifyInNursing")
             ) : (
               t("inpatientOverviewD4a34.clinicalState.notDocumented")
             )}
@@ -257,6 +275,94 @@ export function InpatientOverviewView({
           </table>
         </Section>
       ) : null}
+
+      <Section title={t("inpatientOverviewInp2a.modules.provider")} testId="overview-provider-docs">
+        {p.providerDocs.availability === "READY" ? (
+          <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13 }}>
+            {p.providerDocs.hpStatus ? (
+              <li>
+                {t("inpatientOverviewInp2a.provider.hpStatus")}: {p.providerDocs.hpStatus}
+              </li>
+            ) : null}
+            {p.providerDocs.latestProgressExcerpt ? (
+              <li>
+                {t("inpatientOverviewInp2a.provider.progress")}: {p.providerDocs.latestProgressExcerpt}
+              </li>
+            ) : null}
+            {p.providerDocs.assessmentPlanExcerpt ? (
+              <li>
+                {t("inpatientOverviewInp2a.provider.assessmentPlan")}:{" "}
+                {p.providerDocs.assessmentPlanExcerpt}
+              </li>
+            ) : null}
+          </ul>
+        ) : (
+          <p style={{ margin: 0, fontSize: 13, color: "#64748b" }}>
+            {t("inpatientOverviewInp2a.provider.empty")}
+          </p>
+        )}
+        <DeepLinkButton
+          label={t("inpatientOverviewD4a34.problems.openProblems")}
+          onClick={() => onNavigateSection?.("problemsPlan")}
+        />
+      </Section>
+
+      <Section title={t("inpatientOverviewInp2a.modules.orders")} testId="overview-orders">
+        {p.orders.availability === "READY" ? (
+          <>
+            {p.orders.newOrUnacknowledged.length ? (
+              <div style={{ marginBottom: 8 }}>
+                <strong style={{ fontSize: 12 }}>
+                  {t("inpatientOverviewInp2a.orders.new")}
+                </strong>
+                <ul style={{ margin: "4px 0 0", paddingLeft: 18, fontSize: 12 }}>
+                  {p.orders.newOrUnacknowledged.slice(0, 8).map((o) => (
+                    <li key={`new-${o.orderItemId}`}>
+                      {o.label}
+                      {o.status ? ` — ${o.status.replace(/_/g, " ")}` : ""}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+            {p.orders.active.length ? (
+              <div style={{ marginBottom: 8 }}>
+                <strong style={{ fontSize: 12 }}>
+                  {t("inpatientOverviewInp2a.orders.active")}
+                </strong>
+                <ul style={{ margin: "4px 0 0", paddingLeft: 18, fontSize: 12 }}>
+                  {p.orders.active.slice(0, 10).map((o) => (
+                    <li key={`act-${o.orderItemId}`}>
+                      {o.label}
+                      {o.orderType ? ` · ${o.orderType.replace(/_/g, " ")}` : ""}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+            {p.orders.pendingActions.length ? (
+              <div style={{ marginBottom: 8 }}>
+                <strong style={{ fontSize: 12 }}>
+                  {t("inpatientOverviewInp2a.orders.pending")}
+                </strong>
+                <ul style={{ margin: "4px 0 0", paddingLeft: 18, fontSize: 12 }}>
+                  {p.orders.pendingActions.slice(0, 8).map((o) => (
+                    <li key={`pend-${o.orderItemId}`}>{o.label}</li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+          </>
+        ) : (
+          <p style={{ margin: 0, fontSize: 13, color: "#64748b" }}>
+            {t("inpatientOverviewInp2a.orders.empty")}
+          </p>
+        )}
+        <DeepLinkButton
+          label={t("inpatientOverviewInp2a.orders.openOrders")}
+          onClick={() => onNavigateSection?.("orders")}
+        />
+      </Section>
 
       <Section title={t("inpatientOverviewD4a34.modules.results")} testId="overview-results">
         {p.results.availability === "READY" ? (
@@ -438,8 +544,7 @@ export function InpatientOverviewView({
         )}
       </Section>
 
-      {(p.role === "NURSING" || p.role === "TECHNICIAN" || p.role === "CHART") &&
-      p.nursing.availability !== "OMITTED_HEADER_DUPLICATE" ? (
+      {p.nursing.availability !== "OMITTED_HEADER_DUPLICATE" ? (
         <Section title={t("inpatientOverviewD4a34.modules.nursing")} testId="overview-nursing">
           <p style={{ margin: "0 0 4px", fontSize: 13 }}>
             {t("inpatientOverviewD4a34.nursing.admission")}:{" "}
@@ -632,6 +737,33 @@ export function InpatientOverviewView({
         />
       </Section>
 
+      <Section title={t("inpatientOverviewInp2a.modules.carePlan")} testId="overview-care-plan">
+        {p.carePlan.availability === "READY" ? (
+          <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13 }}>
+            {p.carePlan.plans.slice(0, 8).map((plan) => (
+              <li key={plan.planId}>
+                <strong>{plan.title}</strong>
+                {plan.status ? ` — ${plan.status.replace(/_/g, " ")}` : ""}
+                {plan.goalSummary ? (
+                  <div style={{ color: "#475569", fontSize: 12 }}>{plan.goalSummary}</div>
+                ) : null}
+                {plan.concern ? (
+                  <div style={{ color: "#9a3412", fontSize: 12 }}>{plan.concern}</div>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p style={{ margin: 0, fontSize: 13, color: "#64748b" }}>
+            {t("inpatientOverviewInp2a.carePlan.empty")}
+          </p>
+        )}
+        <DeepLinkButton
+          label={t("inpatientOverviewInp2a.carePlan.openCarePlan")}
+          onClick={() => onNavigateSection?.("carePlan")}
+        />
+      </Section>
+
       {p.painCompare.availability === "READY" ? (
         <Section title={t("inpatientOverviewD4a34.modules.painCompare")} testId="overview-pain">
           <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13 }}>
@@ -695,6 +827,25 @@ export function InpatientOverviewView({
           </p>
         )}
       </Section>
+        </div>
+        <div data-testid="inpatient-overview-rail-host" className="inpatient-overview-rail-desktop">
+          <InpatientClinicalContextRail
+            projection={p}
+            onNavigateSection={onNavigateSection}
+            variant="desktop"
+          />
+        </div>
+      </div>
+      <style>{`
+        @media (max-width: 960px) {
+          .inpatient-overview-grid { grid-template-columns: 1fr !important; }
+          .inpatient-overview-rail-desktop { display: none; }
+          .inpatient-overview-drawer { display: block; margin-bottom: 10px; }
+        }
+        @media (min-width: 961px) {
+          .inpatient-overview-drawer { display: none; }
+        }
+      `}</style>
     </div>
   );
 }

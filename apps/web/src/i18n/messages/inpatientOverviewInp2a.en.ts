@@ -1,0 +1,47 @@
+/** MEDUI.INP.2A — Overview command center + clinical context rail (EN). */
+export const inpatientOverviewInp2aEn = {
+  modules: {
+    provider: "Provider documentation",
+    orders: "Orders",
+    carePlan: "Care plan",
+  },
+  provider: {
+    hpStatus: "H&P status",
+    progress: "Latest progress note",
+    assessmentPlan: "Assessment / plan",
+    empty: "No provider documentation projected yet.",
+  },
+  orders: {
+    new: "New / unacknowledged",
+    active: "Active orders",
+    pending: "Pending actions",
+    empty: "No orders projected.",
+    openOrders: "Open Orders",
+  },
+  carePlan: {
+    empty: "No active care plans projected.",
+    openCarePlan: "Open Care Plan",
+    untitled: "Care plan",
+  },
+  rail: {
+    title: "Clinical context",
+    projectionOnly: "Read-only snapshot — open a module to document.",
+    nursingSummary: "Latest nursing summary",
+    abnormals: "Important findings",
+    newOrders: "New orders",
+    marDue: "Medications due / held",
+    medicationsDue: "Medications due / held",
+    criticalResults: "Critical / new results",
+    carePlanGoals: "Care plan goals",
+    dischargeBarriers: "Discharge barriers",
+    latestEvent: "Latest significant event",
+    empty: "None",
+    emptyNursing: "No nursing summary yet.",
+    emptyOrders: "None",
+    emptyMeds: "None due",
+    emptyResults: "None",
+    emptyGoals: "None active",
+    emptyBarriers: "No open barriers",
+    emptyEvent: "No recent significant events",
+  },
+};

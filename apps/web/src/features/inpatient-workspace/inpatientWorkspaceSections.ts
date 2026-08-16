@@ -1,4 +1,4 @@
-/** D3E / D4A.2.6 / MEDUI.D4A.3.3 — Inpatient clinical workspace tabs. */
+/** Inpatient clinical workspace section ids (sticky + deep-link destinations). */
 export type InpatientWorkspaceSection =
   | "overview"
   | "historyPhysical"
@@ -40,32 +40,11 @@ export const INPATIENT_WORKSPACE_SECTIONS: Array<{
 ];
 
 /**
- * MEDUI.D4A.3.3 — Nursing sticky nav (no Timeline / Summary).
- * Admission and Assessment lead the RN workflow so both remain visible before
- * horizontally scrolling the action-oriented chart navigation.
+ * MEDUI.INP.2A — Canonical primary sticky navigation (all inpatient clinical roles).
+ * Notes / Timeline / Summary are not sticky tabs; their data engines remain.
+ * Authoring is governed by roles/API — not by tab presence.
  */
-export const INPATIENT_NURSING_STICKY_NAV_SECTIONS: Array<{
-  id: InpatientWorkspaceSection;
-  labelKey: string;
-  icon: string;
-}> = [
-  { id: "overview", labelKey: "inpatientProviderD4a26.nav.overview", icon: "📋" },
-  { id: "admission", labelKey: "inpatientProviderD4a26.nav.nursingAdmission", icon: "🏥" },
-  { id: "nursing", labelKey: "inpatientHeaderNursingD4a33.nav.nursingAssessment", icon: "🩺" },
-  { id: "orders", labelKey: "inpatientCompactHeaderD4a32.nav.reviewOrders", icon: "📝" },
-  { id: "medications", labelKey: "inpatientCompactHeaderD4a32.nav.mar", icon: "💊" },
-  { id: "results", labelKey: "inpatientCompactHeaderD4a32.nav.reviewResults", icon: "🧪" },
-  { id: "carePlan", labelKey: "inpatientProviderD4a26.nav.carePlan", icon: "🗂️" },
-  { id: "notes", labelKey: "inpatientHeaderNursingD4a33.nav.notes", icon: "🗒️" },
-  { id: "dischargePlanning", labelKey: "inpatientProviderD4a26.nav.discharge", icon: "🚪" },
-];
-
-/**
- * INP.1B.1 — the shared chart is the common clinical record navigator.  Keep
- * nursing destinations visible here; authoring remains governed by the
- * clinical panels and API authorization, not by the presence of a tab.
- */
-export const INPATIENT_SHARED_CHART_NAV_SECTIONS: Array<{
+export const INPATIENT_CLINICAL_PRIMARY_NAV_SECTIONS: Array<{
   id: InpatientWorkspaceSection;
   labelKey: string;
   icon: string;
@@ -78,30 +57,25 @@ export const INPATIENT_SHARED_CHART_NAV_SECTIONS: Array<{
   { id: "results", labelKey: "inpatientCompactHeaderD4a32.nav.reviewResults", icon: "🧪" },
   { id: "carePlan", labelKey: "inpatientProviderD4a26.nav.carePlan", icon: "🗂️" },
   { id: "dischargePlanning", labelKey: "inpatientProviderD4a26.nav.discharge", icon: "🚪" },
-  { id: "timeline", labelKey: "inpatientProviderD4a26.nav.timeline", icon: "⏱️" },
-  { id: "summary", labelKey: "inpatientProviderD4a26.nav.summary", icon: "📄" },
 ];
 
-/**
- * Provider sticky chrome — keeps Timeline + Summary; no Nursing Assessment / Notes tabs.
- */
-export const INPATIENT_PROVIDER_STICKY_NAV_SECTIONS: Array<{
-  id: InpatientWorkspaceSection;
-  labelKey: string;
-  icon: string;
-}> = [
-  { id: "overview", labelKey: "inpatientProviderD4a26.nav.overview", icon: "📋" },
-  { id: "orders", labelKey: "inpatientCompactHeaderD4a32.nav.reviewOrders", icon: "📝" },
-  { id: "medications", labelKey: "inpatientCompactHeaderD4a32.nav.mar", icon: "💊" },
-  { id: "results", labelKey: "inpatientCompactHeaderD4a32.nav.reviewResults", icon: "🧪" },
-  { id: "carePlan", labelKey: "inpatientProviderD4a26.nav.carePlan", icon: "🗂️" },
-  { id: "dischargePlanning", labelKey: "inpatientProviderD4a26.nav.discharge", icon: "🚪" },
-  { id: "timeline", labelKey: "inpatientProviderD4a26.nav.timeline", icon: "⏱️" },
-  { id: "summary", labelKey: "inpatientProviderD4a26.nav.summary", icon: "📄" },
-];
+/** Nursing sticky — same eight clinical modules. */
+export const INPATIENT_NURSING_STICKY_NAV_SECTIONS = INPATIENT_CLINICAL_PRIMARY_NAV_SECTIONS;
 
-/** @deprecated Prefer role-specific sticky lists; kept as nursing alias for D4A.3.2 tests migration. */
-export const INPATIENT_STICKY_NAV_SECTIONS = INPATIENT_NURSING_STICKY_NAV_SECTIONS;
+/** Shared chart sticky — same eight clinical modules. */
+export const INPATIENT_SHARED_CHART_NAV_SECTIONS = INPATIENT_CLINICAL_PRIMARY_NAV_SECTIONS;
+
+/** Provider sticky — same eight clinical modules (Admission/Assessment visible read-capable). */
+export const INPATIENT_PROVIDER_STICKY_NAV_SECTIONS = INPATIENT_CLINICAL_PRIMARY_NAV_SECTIONS;
+
+/** Alias for older tests / imports. */
+export const INPATIENT_STICKY_NAV_SECTIONS = INPATIENT_CLINICAL_PRIMARY_NAV_SECTIONS;
+
+/** Legacy sticky destinations that resolve to Overview (engines retained). */
+export const INPATIENT_OVERVIEW_REDIRECT_SECTIONS: readonly InpatientWorkspaceSection[] = [
+  "timeline",
+  "summary",
+];
 
 const SECTION_SET = new Set(INPATIENT_WORKSPACE_SECTIONS.map((s) => s.id));
 
@@ -144,4 +118,14 @@ export function parseInpatientWorkspaceSection(
     technician: "tasks",
   };
   return alias[lower] ?? null;
+}
+
+/** Map sticky-removed sections to Overview while preserving deep-link parseability. */
+export function resolveInpatientWorkspaceSection(
+  raw: string | null | undefined
+): InpatientWorkspaceSection | null {
+  const parsed = parseInpatientWorkspaceSection(raw);
+  if (!parsed) return null;
+  if (INPATIENT_OVERVIEW_REDIRECT_SECTIONS.includes(parsed)) return "overview";
+  return parsed;
 }

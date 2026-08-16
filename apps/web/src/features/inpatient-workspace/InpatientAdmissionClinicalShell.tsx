@@ -103,6 +103,8 @@ type Props = {
   nursingLive?: boolean;
   docsLive?: boolean;
   canAdmin?: boolean;
+  /** INP.2A — providers may read admission without nursing write authority. */
+  readOnly?: boolean;
 };
 
 /**
@@ -113,6 +115,7 @@ export function InpatientAdmissionClinicalShell({
   nursingLive = false,
   docsLive = false,
   canAdmin = false,
+  readOnly = false,
 }: Props) {
   const { t, language } = useI18n();
   const { roles } = useFacilityAndRoles();
@@ -145,13 +148,14 @@ export function InpatientAdmissionClinicalShell({
   const panelRef = useRef<HTMLDivElement | null>(null);
   const expectedVersionRef = useRef(0);
   const dirtyRef = useRef(false);
-  const canAmend = roles.includes("RN");
-  const canLinkDomain = roles.includes("RN") || roles.includes("ADMIN");
+  const canAmend = !readOnly && roles.includes("RN");
+  const canLinkDomain = !readOnly && (roles.includes("RN") || roles.includes("ADMIN"));
 
   const sectionIndex = INPATIENT_ADMISSION_CLINICAL_SECTIONS.indexOf(active);
   const isFirst = sectionIndex <= 0;
   const isLast = sectionIndex >= INPATIENT_ADMISSION_CLINICAL_SECTIONS.length - 1;
   const signed = Boolean(doc?.nurseSignature?.signed);
+  const writeBlocked = readOnly || signed;
   const activeStage = nursingAdmissionStageForSection(active);
   const stageId = (activeStage?.id ?? "ARRIVAL_IDENTITY") as NursingAdmissionStageId;
   const stageIndex = NURSING_ADMISSION_STAGES.findIndex((s) => s.id === stageId);
@@ -237,17 +241,17 @@ export function InpatientAdmissionClinicalShell({
 
   useEffect(() => {
     const onBeforeUnload = (e: BeforeUnloadEvent) => {
-      if (!dirtyRef.current || signed) return;
+      if (!dirtyRef.current || writeBlocked) return;
       e.preventDefault();
       e.returnValue = "";
     };
     window.addEventListener("beforeunload", onBeforeUnload);
     return () => window.removeEventListener("beforeunload", onBeforeUnload);
-  }, [signed]);
+  }, [writeBlocked]);
 
   const persistSection = useCallback(
     async (completionState?: AdmissionSectionCompletionState) => {
-      if (!doc || signed) return;
+      if (!doc || writeBlocked) return;
       setSaveState("SAVING");
       setBusy(true);
       try {
@@ -269,7 +273,7 @@ export function InpatientAdmissionClinicalShell({
         setBusy(false);
       }
     },
-    [active, answers, applyPayload, doc, draftNote, encounterId, signed, unableReason]
+    [active, answers, applyPayload, doc, draftNote, encounterId, writeBlocked, unableReason]
   );
 
   const markDirty = (nextAnswers: Record<string, unknown>) => {
@@ -282,7 +286,7 @@ export function InpatientAdmissionClinicalShell({
   };
 
   const goTo = (id: InpatientAdmissionClinicalSection) => {
-    if (dirtyRef.current && !signed) {
+    if (dirtyRef.current && !writeBlocked) {
       void persistSection().then(() => setActive(id));
       return;
     }
@@ -312,10 +316,10 @@ export function InpatientAdmissionClinicalShell({
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sectionIndex, dirtyRef.current, signed]);
+  }, [sectionIndex, dirtyRef.current, writeBlocked]);
 
   const verifyItem = async (itemId: string, status: string) => {
-    if (!doc || signed) return;
+    if (!doc || writeBlocked) return;
     setBusy(true);
     try {
       await verifyNursingAdmissionPreloadItem(encounterId, {
@@ -343,7 +347,7 @@ export function InpatientAdmissionClinicalShell({
   };
 
   const signAdmission = async () => {
-    if (!doc || signed) return;
+    if (!doc || writeBlocked) return;
     if (dirtyRef.current) await persistSection();
     setBusy(true);
     try {
@@ -369,7 +373,7 @@ export function InpatientAdmissionClinicalShell({
     .replace("{current}", String(stageIndex + 1))
     .replace("{total}", String(NURSING_ADMISSION_STAGES.length));
 
-  const effectiveSaveCode = signed ? "SIGNED" : saveState;
+  const effectiveSaveCode = signed ? "SIGNED" : readOnly ? "READ_ONLY" : saveState;
 
   const StickyFooter = () => (
     <footer
@@ -399,7 +403,7 @@ export function InpatientAdmissionClinicalShell({
         <button
           type="button"
           style={navBtnPrimary}
-          disabled={busy || signed}
+          disabled={busy || writeBlocked}
           onClick={() => void persistSection()}
           data-testid="admission-save"
         >
@@ -410,7 +414,7 @@ export function InpatientAdmissionClinicalShell({
             <button
               type="button"
               style={navBtn}
-              disabled={busy || signed}
+              disabled={busy || writeBlocked}
               onClick={() => void persistSection().then(() => goNext())}
               data-testid="admission-save-continue"
             >
@@ -428,7 +432,7 @@ export function InpatientAdmissionClinicalShell({
             <button
               type="button"
               style={{ ...navBtnPrimary, background: "#0f766e" }}
-              disabled={busy || signed}
+              disabled={busy || writeBlocked}
               onClick={() => void signAdmission()}
               data-testid="admission-nurse-sign"
             >
@@ -659,7 +663,7 @@ export function InpatientAdmissionClinicalShell({
                         <button
                           key={st}
                           type="button"
-                          disabled={busy || signed}
+                          disabled={busy || writeBlocked}
                           onClick={() => void verifyItem(item.itemId, st)}
                           style={chipBtn}
                         >
@@ -683,7 +687,7 @@ export function InpatientAdmissionClinicalShell({
             sectionId={active}
             answers={answers}
             unableReason={unableReason}
-            readOnly={signed}
+            readOnly={writeBlocked}
             onChange={markDirty}
             onUnableReasonChange={(r) => {
               setUnableReason(r);
@@ -696,7 +700,7 @@ export function InpatientAdmissionClinicalShell({
             {t("hospitalAdmissionD4a0.clinical.sectionNotes")}
             <textarea
               value={draftNote}
-              disabled={signed}
+              disabled={writeBlocked}
               onChange={(e) => {
                 setDraftNote(e.target.value);
                 dirtyRef.current = true;
@@ -712,7 +716,7 @@ export function InpatientAdmissionClinicalShell({
               <button
                 key={st}
                 type="button"
-                disabled={busy || signed}
+                disabled={busy || writeBlocked}
                 onClick={() => void persistSection(st)}
                 style={chipBtn}
               >

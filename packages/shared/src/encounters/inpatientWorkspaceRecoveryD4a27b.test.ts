@@ -46,20 +46,21 @@ describe("MEDUI.INPATIENT_WORKSPACE_RECOVERY.D4A2_7B shared", () => {
     expect(resolveHospitalChartPathKind({ unitCode: "ICU" })).toBe("INPATIENT");
   });
 
-  it("keeps provider and nursing primary nav separated", () => {
+  it("keeps provider and nursing primary nav aligned on eight clinical modules", () => {
     const provider = providerPrimaryNav();
     const nursing = nursingPrimaryNav();
     const tech = technicianPrimaryNav();
     expect(provider).toContain("historyPhysical");
-    expect(provider).not.toContain("admission");
+    expect(provider).toContain("admission");
     expect(nursing).toContain("admission");
-    expect(nursing).toContain("notes");
+    expect(nursing).not.toContain("notes");
     expect(nursing).toContain("nursing");
     expect(nursing).not.toContain("historyPhysical");
     expect(nursing).not.toContain("timeline");
     expect(nursing).not.toContain("summary");
     expect(tech).not.toContain("historyPhysical");
-    expect(tech).not.toContain("admission");
+    expect(tech).toContain("admission");
+    expect(tech).toContain("tasks");
   });
 
   it("humanizes compressed labels and detects certification leakage", () => {
