@@ -43,15 +43,20 @@ export class DentalCareController {
     userId: string;
     facilityId: string;
     access: DentalWorkspaceAccess;
+    roleCodes: string[];
   } {
     const facilityId = req.user?.facilityId || req.headers["x-facility-id"];
     const userId = req.user?.userId as string | undefined;
     if (!facilityId) throw new BadRequestException("Facility ID required");
     if (!userId) throw new BadRequestException("Authentication required");
+    const roleCodes = Array.isArray(req.dentalCareRoleCodes)
+      ? (req.dentalCareRoleCodes as string[])
+      : [];
     return {
       userId,
       facilityId: String(facilityId),
       access: req.dentalCareAccess as DentalWorkspaceAccess,
+      roleCodes,
     };
   }
 
@@ -188,6 +193,13 @@ export class DentalCareController {
     @Body() body: { action?: string; reason?: string | null }
   ) {
     return this.odontogram.voidOrResolveFinding(this.actor(req), id, body ?? {});
+  }
+
+  @Get("encounters/:encounterId/authoring")
+  @RequireRoles(RoleCode.RN, RoleCode.PROVIDER, RoleCode.ADMIN, RoleCode.FRONT_DESK, RoleCode.BILLING)
+  @UseGuards(DentalCareReadAccessGuard)
+  getEncounterAuthoring(@Req() req: any, @Param("encounterId") encounterId: string) {
+    return this.clinicalBoard.getEncounterAuthoring(this.actor(req), encounterId);
   }
 
   @Get("encounters/:encounterId/periodontal-exam")

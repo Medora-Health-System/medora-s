@@ -34,7 +34,7 @@ describe("MEDUI.D5A.3 dental encounter workspace (web)", () => {
     expect(ws).toContain("EncounterDiagnosticsPanel");
     expect(ws).toContain("EmergencyErOrdersPanel");
     expect(ws).toContain("EmergencyErNotesPanel");
-    expect(ws).toContain("PatientClinicalHistoryProfileBlock");
+    expect(ws).toContain("EnterpriseDentalMedicalHistoryPanel");
     expect(ws).toContain("RegistrationDocumentCenter");
     expect(ws).not.toContain("MedicationAdministrationTab");
     expect(ws).not.toContain("PlaceholderCard");

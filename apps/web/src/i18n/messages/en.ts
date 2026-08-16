@@ -21486,9 +21486,24 @@ export default {
     },
     history: {
       openPatientRecord: "Open patient record (enterprise history)",
+      openFullRecord: "Open full medical record",
+      inlineHelp:
+        "Enterprise medical history (same patient record). Edit here — changes remain visible everywhere.",
+      allergiesLabel: "Allergies",
+      medicationsLabel: "Current medications",
+      editAllergies: "Edit allergies",
+      pmh: "Past medical history",
+      psh: "Past surgical history",
+      homeMeds: "Home medications",
+      tobacco: "Tobacco",
+      alcohol: "Alcohol",
+      socialComments: "Social history / comments",
+      saveEnterprise: "Save medical history",
+      unsaved: "Unsaved changes",
+      saved: "History saved",
       reviewTitle: "Medical history review for this dental encounter",
       reviewHelp:
-        "Medical history remains on the enterprise patient record. Check here only that it was reviewed for this visit.",
+        "Check that history was reviewed for this visit. Longitudinal history remains on the enterprise patient record.",
       reviewedCheckbox: "Medical history / allergies / medications reviewed for this encounter",
       reviewNotesPlaceholder: "Review notes (optional)",
       reviewNotes: "Review notes",
@@ -21497,6 +21512,14 @@ export default {
       reviewedNo: "Not reviewed",
       longitudinalNote:
         "Longitudinal detail (allergies, medications, history) remains on the patient record — not a parallel dental history.",
+      noClinicalCapability:
+        "Read-only — your account lacks dental clinical privilege (PROVIDER role required at this facility).",
+    },
+    authoring: {
+      noClinicalCapability:
+        "Read-only — dental clinical privilege (PROVIDER) required to document.",
+      encounterClosed: "Read-only — encounter is closed.",
+      dentalDisabled: "Dental care is not enabled for this facility.",
     },
     sections: {
       patientIdentity: "Patient identity",

@@ -21598,9 +21598,24 @@ export default {
     },
     history: {
       openPatientRecord: "Ouvrir le dossier patient (antécédents d’entreprise)",
+      openFullRecord: "Ouvrir le dossier médical complet",
+      inlineHelp:
+        "Antécédents d’entreprise (même dossier patient). Modifiez ici — les changements restent visibles partout.",
+      allergiesLabel: "Allergies",
+      medicationsLabel: "Médicaments actuels",
+      editAllergies: "Modifier les allergies",
+      pmh: "Antécédents médicaux",
+      psh: "Antécédents chirurgicaux",
+      homeMeds: "Médicaments à domicile",
+      tobacco: "Tabac",
+      alcohol: "Alcool",
+      socialComments: "Histoire sociale / commentaires",
+      saveEnterprise: "Enregistrer les antécédents",
+      unsaved: "Modifications non enregistrées",
+      saved: "Antécédents enregistrés",
       reviewTitle: "Revue des antécédents pour cette rencontre dentaire",
       reviewHelp:
-        "Les antécédents médicaux restent sur le dossier patient d’entreprise. Cochez ici uniquement la revue effectuée pour cette visite.",
+        "Cochez la revue effectuée pour cette visite. Les antécédents longitudinaux restent sur le dossier patient d’entreprise.",
       reviewedCheckbox: "Antécédents médicaux / allergies / médicaments revus pour cette rencontre",
       reviewNotesPlaceholder: "Notes de revue (optionnel)",
       reviewNotes: "Notes de revue",
@@ -21609,6 +21624,14 @@ export default {
       reviewedNo: "Non revus",
       longitudinalNote:
         "Le détail longitudinal (allergies, médicaments, antécédents) demeure sur le dossier patient — pas un historique dentaire parallèle.",
+      noClinicalCapability:
+        "Lecture seule — votre compte n’a pas le privilège clinique dentaire (rôle PROVIDER requis sur cet établissement).",
+    },
+    authoring: {
+      noClinicalCapability:
+        "Lecture seule — privilège clinique dentaire (PROVIDER) requis pour documenter.",
+      encounterClosed: "Lecture seule — rencontre fermée.",
+      dentalDisabled: "Soins dentaires non activés pour cet établissement.",
     },
     sections: {
       patientIdentity: "Identité du patient",

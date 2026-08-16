@@ -12,7 +12,7 @@ import {
   getCanonicalTooth,
   type D5a5OverviewSection,
 } from "@medora/shared";
-import { apiFetch } from "@/lib/apiClient";
+import { apiFetch, apiFetchResponse } from "@/lib/apiClient";
 import { useI18n } from "@/lib/i18n";
 import { normalizeUserFacingError } from "@/lib/userFacingError";
 import { MEDORA_CARD_SHELL } from "@/components/medora-card/medoraCardTokens";
@@ -207,13 +207,35 @@ export function EnterpriseDentalEncounterOverviewPanel({ encounterId, facilityId
           </dl>
         );
       }
-      case "dentalEvaluation":
-        return data.dentalEvaluation ? (
-          <pre style={{ margin: 0, fontSize: 12, whiteSpace: "pre-wrap", fontFamily: "inherit" }}>
-            {JSON.stringify(data.dentalEvaluation, null, 2)}
-          </pre>
-        ) : (
-          <p style={{ margin: 0, fontSize: 13, color: "#64748b" }}>{notDocumented}</p>
+      case "dentalEvaluation": {
+        const ev = data.dentalEvaluation as Record<string, unknown> | null | undefined;
+        if (!ev || typeof ev !== "object") {
+          return <p style={{ margin: 0, fontSize: 13, color: "#64748b" }}>{notDocumented}</p>;
+        }
+        const lines = Object.entries(ev)
+          .filter(([k, v]) => k !== "certificationId" && v != null && String(v).trim() !== "")
+          .map(([k, v]) => `${k}: ${typeof v === "object" ? JSON.stringify(v) : String(v)}`);
+        if (lines.length === 0) {
+          return <p style={{ margin: 0, fontSize: 13, color: "#64748b" }}>{notDocumented}</p>;
+        }
+        return (
+          <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13 }}>
+            {lines.slice(0, 24).map((line, i) => (
+              <li key={i} style={{ whiteSpace: "pre-wrap" }}>
+                {line}
+              </li>
+            ))}
+          </ul>
+        );
+      }
+      case "prescriptions":
+        return <p style={{ margin: 0, fontSize: 13, color: "#64748b" }}>{notDocumented}</p>;
+      case "lifecycle":
+        return (
+          <p style={{ margin: 0, fontSize: 13 }}>
+            {val(enc?.status ?? null, notDocumented)}
+            {enc?.providerDocumentationStatus ? ` · ${enc.providerDocumentationStatus}` : ""}
+          </p>
         );
       case "odontogramFindings": {
         const rows = data.odontogramFindings ?? [];
@@ -467,11 +489,23 @@ export function EnterpriseDentalEncounterOverviewPanel({ encounterId, facilityId
           <button
             type="button"
             onClick={() => {
-              window.open(
-                `/api/backend/encounters/${encodeURIComponent(encounterId)}/chart-export?format=html`,
-                "_blank",
-                "noopener,noreferrer"
-              );
+              void (async () => {
+                try {
+                  const res = await apiFetchResponse(
+                    `/encounters/${encodeURIComponent(encounterId)}/chart-export?format=html&locale=fr`,
+                    { facilityId }
+                  );
+                  const html = await res.text();
+                  const blob = new Blob([html], { type: "text/html;charset=utf-8" });
+                  const url = URL.createObjectURL(blob);
+                  window.open(url, "_blank", "noopener,noreferrer");
+                  setTimeout(() => URL.revokeObjectURL(url), 60_000);
+                } catch (e) {
+                  setError(
+                    normalizeUserFacingError(e instanceof Error ? e.message : null, language === "fr" ? "fr" : "en")
+                  );
+                }
+              })();
             }}
             style={{
               padding: "6px 12px",

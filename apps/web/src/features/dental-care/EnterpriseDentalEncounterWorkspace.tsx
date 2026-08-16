@@ -21,10 +21,9 @@ import { EncounterDiagnosticsPanel } from "@/components/encounters/EncounterDiag
 import { EmergencyErOrdersPanel } from "@/features/emergency/EmergencyErOrdersPanel";
 import { EmergencyResultsPanel } from "@/features/emergency/EmergencyResultsPanel";
 import { EmergencyErNotesPanel } from "@/features/emergency/EmergencyErNotesPanel";
-import { PatientClinicalHistoryProfileBlock } from "@/components/patient-chart/PatientClinicalHistoryProfileBlock";
-import { patientClinicalHistoryProfileFromJson } from "@/features/emergency/patientClinicalHistoryProfile";
 import { RegistrationDocumentCenter } from "@/components/documents/RegistrationDocumentCenter";
 import { EnterpriseDentalEncounterOverviewPanel } from "@/features/dental-care/overview/EnterpriseDentalEncounterOverviewPanel";
+import { EnterpriseDentalMedicalHistoryPanel } from "@/features/dental-care/history/EnterpriseDentalMedicalHistoryPanel";
 import { EnterpriseDentalPeriodontalChartPanel } from "@/features/dental-care/periodontal/EnterpriseDentalPeriodontalChartPanel";
 import { EnterpriseDentalTreatmentPlanPanel } from "@/features/dental-care/treatment-plan/EnterpriseDentalTreatmentPlanPanel";
 import { EnterpriseDentalProceduresPanel } from "@/features/dental-care/procedures/EnterpriseDentalProceduresPanel";
@@ -40,6 +39,11 @@ import {
 } from "@/lib/encounterChromeI18n";
 import { MEDORA_CARD_SHELL } from "@/components/medora-card/medoraCardTokens";
 import { isEncounterLocked } from "@/lib/encounterLock";
+import type { EnterpriseDentalEncounterAuthoring } from "@medora/shared";
+import {
+  dentalAuthoringReadOnlyReasonMessageFr,
+  resolveEnterpriseDentalEncounterAuthoring,
+} from "@medora/shared";
 
 type EncounterShell = {
   id: string;
@@ -219,20 +223,25 @@ export function EnterpriseDentalEncounterWorkspace({ encounterId }: { encounterI
   const [encounter, setEncounter] = useState<EncounterShell | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [historyProfile, setHistoryProfile] = useState<ReturnType<
-    typeof patientClinicalHistoryProfileFromJson
-  > | null>(null);
-  const [historyReviewSaving, setHistoryReviewSaving] = useState(false);
-  const [historyReviewed, setHistoryReviewed] = useState(false);
-  const [historyReviewNotes, setHistoryReviewNotes] = useState("");
+  const [authoring, setAuthoring] = useState<EnterpriseDentalEncounterAuthoring | null>(null);
   const [followUpDraft, setFollowUpDraft] = useState("");
   const [followUpSaving, setFollowUpSaving] = useState(false);
   const [closePending, setClosePending] = useState(false);
 
   const facilityName = facilities.find((f) => f.id === facilityId)?.name ?? null;
-  const canPrescribe = roles.includes("PROVIDER") || roles.includes("ADMIN");
-  const canAuthorClinical =
-    roles.includes("PROVIDER") || roles.includes("RN") || roles.includes("ADMIN");
+  const clientAuthoring = useMemo(
+    () =>
+      resolveEnterpriseDentalEncounterAuthoring({
+        roleCodes: roles,
+        dentalCareEnabled: true,
+        encounterStatus: encounter?.status ?? "OPEN",
+        serviceLine: "DENTAL",
+      }),
+    [roles, encounter?.status]
+  );
+  const effectiveAuthoring = authoring ?? clientAuthoring;
+  const canPrescribe = effectiveAuthoring.canPrescribe;
+  const canAuthorClinical = !effectiveAuthoring.isReadOnly;
   const canFrontDeskOnly =
     roles.includes("FRONT_DESK") &&
     !roles.includes("PROVIDER") &&
@@ -250,16 +259,13 @@ export function EnterpriseDentalEncounterWorkspace({ encounterId }: { encounterI
     let cancelled = false;
     (async () => {
       try {
-        const rec = (await apiFetch(
-          `/dental-care/encounters/${encodeURIComponent(encounterId)}/clinical-record`,
+        const res = (await apiFetch(
+          `/dental-care/encounters/${encodeURIComponent(encounterId)}/authoring`,
           { facilityId }
-        )) as { historyReview?: { reviewed?: boolean; notes?: string | null } };
-        if (!cancelled) {
-          setHistoryReviewed(Boolean(rec.historyReview?.reviewed));
-          setHistoryReviewNotes(String(rec.historyReview?.notes ?? ""));
-        }
+        )) as { authoring?: EnterpriseDentalEncounterAuthoring };
+        if (!cancelled && res.authoring) setAuthoring(res.authoring);
       } catch {
-        /* optional */
+        /* clientAuthoring fallback */
       }
     })();
     return () => {
@@ -291,27 +297,6 @@ export function EnterpriseDentalEncounterWorkspace({ encounterId }: { encounterI
     if (!ready || !facilityId) return;
     void loadEncounter();
   }, [ready, facilityId, encounterId]);
-
-  useEffect(() => {
-    if (!facilityId || !encounter?.patient?.id) return;
-    let cancelled = false;
-    (async () => {
-      try {
-        const profile = await apiFetch(
-          `/patients/${encodeURIComponent(encounter.patient!.id!)}/clinical-history-profile`,
-          { facilityId }
-        );
-        if (!cancelled) {
-          setHistoryProfile(patientClinicalHistoryProfileFromJson(profile));
-        }
-      } catch {
-        if (!cancelled) setHistoryProfile(null);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [facilityId, encounter?.patient?.id]);
 
   const isDental = useMemo(
     () =>
@@ -431,30 +416,21 @@ export function EnterpriseDentalEncounterWorkspace({ encounterId }: { encounterI
 
   const patient = encounter.patient;
   const patientName = personName(patient, dash);
-  const locked = isEncounterLocked(encounter) || encounter.status !== "OPEN";
-  const clinicalAuthorBlocked = canFrontDeskOnly || canBillingOnly || locked;
-
-  const saveHistoryReview = async (reviewed: boolean) => {
-    if (!facilityId || locked || clinicalAuthorBlocked || !roles.includes("PROVIDER")) return;
-    setHistoryReviewSaving(true);
-    try {
-      await apiFetch(`/dental-care/encounters/${encodeURIComponent(encounterId)}/history-review`, {
-        method: "PUT",
-        facilityId,
-        body: JSON.stringify({ reviewed, notes: historyReviewNotes || null }),
-      });
-      setHistoryReviewed(reviewed);
-    } catch (err) {
-      setLoadError(
-        normalizeUserFacingError(err instanceof Error ? err.message : null, language) ||
-          t("dentalCareD5a5.history.reviewError")
-      );
-    } finally {
-      setHistoryReviewSaving(false);
-    }
-  };
-
-  const historyParsed = historyProfile;
+  // SIGNED evaluation must NOT lock perio/plan/procedures/odontogram (D5A.5B).
+  // Closed encounter uses EnterpriseClosedEncounterViewer above.
+  const evalLocked = isEncounterLocked(encounter) || encounter.status !== "OPEN";
+  const boardLocked = effectiveAuthoring.isReadOnly;
+  const clinicalAuthorBlocked = canFrontDeskOnly || canBillingOnly || boardLocked;
+  const readOnlyReasonLabel =
+    language === "fr"
+      ? dentalAuthoringReadOnlyReasonMessageFr(effectiveAuthoring.readOnlyReason)
+      : effectiveAuthoring.readOnlyReason === "NO_CLINICAL_CAPABILITY"
+        ? t("dentalCareD5a5.authoring.noClinicalCapability")
+        : effectiveAuthoring.readOnlyReason === "ENCOUNTER_NOT_OPEN"
+          ? t("dentalCareD5a5.authoring.encounterClosed")
+          : effectiveAuthoring.readOnlyReason === "DENTAL_DISABLED"
+            ? t("dentalCareD5a5.authoring.dentalDisabled")
+            : null;
 
   return (
     <div
@@ -594,72 +570,50 @@ export function EnterpriseDentalEncounterWorkspace({ encounterId }: { encounterI
         })}
       </nav>
 
+      {boardLocked && readOnlyReasonLabel ? (
+        <p
+          role="status"
+          data-testid="dental-authoring-readonly-reason"
+          style={{
+            margin: 0,
+            padding: "10px 12px",
+            borderRadius: 8,
+            background: "#fff7ed",
+            border: "1px solid #fed7aa",
+            color: "#9a3412",
+            fontSize: 13,
+          }}
+        >
+          {readOnlyReasonLabel}
+        </p>
+      ) : null}
+
       <div data-testid={`dental-workspace-section-${section}`}>
         {section === "overview" ? (
           <EnterpriseDentalEncounterOverviewPanel
             encounterId={encounterId}
             facilityId={facilityId}
-            locked={locked || clinicalAuthorBlocked}
+            locked={boardLocked}
           />
         ) : null}
 
-        {section === "history" ? (
+        {section === "history" && patient?.id ? (
           <SectionShell title={t("dentalCareD5a3.sections.history")}>
-            <p style={{ margin: "0 0 10px", fontSize: 12, color: "#64748b" }}>
-              {t("dentalCareD5a3.history.reuseNote")}
-            </p>
-            {patient?.id ? (
-              <p style={{ margin: "0 0 10px", fontSize: 13 }}>
-                <Link href={`/app/patients/${encodeURIComponent(patient.id)}`} style={{ color: "#0f766e", fontWeight: 600 }}>
-                  {t("dentalCareD5a5.history.openPatientRecord")}
-                </Link>
-              </p>
-            ) : null}
-            <PatientClinicalHistoryProfileBlock profile={historyParsed} />
-            <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid #e2e8f0" }}>
-              <p style={{ margin: "0 0 8px", fontSize: 13, fontWeight: 600 }}>
-                {t("dentalCareD5a5.history.reviewTitle")}
-              </p>
-              <p style={{ margin: "0 0 8px", fontSize: 12, color: "#64748b" }}>
-                {t("dentalCareD5a5.history.reviewHelp")}
-              </p>
-              <label style={{ display: "flex", gap: 8, alignItems: "flex-start", fontSize: 13 }}>
-                <input
-                  type="checkbox"
-                  checked={historyReviewed}
-                  disabled={locked || clinicalAuthorBlocked || historyReviewSaving || !roles.includes("PROVIDER")}
-                  onChange={(e) => void saveHistoryReview(e.target.checked)}
-                />
-                <span>{t("dentalCareD5a5.history.reviewedCheckbox")}</span>
-              </label>
-              <textarea
-                value={historyReviewNotes}
-                disabled={locked || clinicalAuthorBlocked || !roles.includes("PROVIDER")}
-                onChange={(e) => setHistoryReviewNotes(e.target.value)}
-                onBlur={() => {
-                  if (historyReviewed) void saveHistoryReview(true);
-                }}
-                rows={2}
-                placeholder={t("dentalCareD5a5.history.reviewNotesPlaceholder")}
-                style={{
-                  marginTop: 8,
-                  width: "100%",
-                  boxSizing: "border-box",
-                  borderRadius: 8,
-                  border: "1px solid #e2e8f0",
-                  padding: 8,
-                  fontSize: 13,
-                  fontFamily: "inherit",
-                }}
-              />
-            </div>
+            <EnterpriseDentalMedicalHistoryPanel
+              patientId={patient.id}
+              encounterId={encounterId}
+              facilityId={facilityId}
+              canEdit={effectiveAuthoring.canEditEnterpriseHistory}
+              canReview={effectiveAuthoring.canReviewHistory}
+              readOnlyReasonLabel={readOnlyReasonLabel}
+            />
           </SectionShell>
         ) : null}
 
         {section === "assessment" ? (
           <SectionShell title={t("dentalCareD5a3.sections.assessment")}>
-            {clinicalAuthorBlocked && !canAuthorClinical ? (
-              <p style={{ margin: 0, color: "#64748b", fontSize: 13 }}>{t("dentalCareD5a3.errors.noClinicalAuthor")}</p>
+            {!effectiveAuthoring.canEditClinicalEvaluation && boardLocked ? (
+              <p style={{ margin: 0, color: "#64748b", fontSize: 13 }}>{readOnlyReasonLabel}</p>
             ) : (
               <EnterpriseDentalClinicalEvaluationPanel
                 encounter={encounter}
@@ -677,8 +631,8 @@ export function EnterpriseDentalEncounterWorkspace({ encounterId }: { encounterI
               encounterId={encounter.id}
               patientId={patient?.id ?? ""}
               facilityId={facilityId}
-              canDocumentDiagnoses={canAuthorClinical && !clinicalAuthorBlocked}
-              isLocked={locked || clinicalAuthorBlocked}
+              canDocumentDiagnoses={effectiveAuthoring.canEditClinicalEvaluation}
+              isLocked={evalLocked || boardLocked}
             />
           </SectionShell>
         ) : null}
@@ -691,8 +645,8 @@ export function EnterpriseDentalEncounterWorkspace({ encounterId }: { encounterI
             <EmergencyErOrdersPanel
               encounterId={encounter.id}
               facilityId={facilityId}
-              canPrescribe={canPrescribe && !clinicalAuthorBlocked}
-              encounterSigned={encounter.providerDocumentationStatus === "SIGNED" || locked}
+              canPrescribe={effectiveAuthoring.canPrescribe}
+              encounterSigned={encounter.providerDocumentationStatus === "SIGNED" || evalLocked}
               encounterForOrderModal={{ patient: encounter.patient }}
               medicationOrderMode="OUTPATIENT_RX_ONLY"
               hideTraumaProtocolAssist
@@ -737,9 +691,9 @@ export function EnterpriseDentalEncounterWorkspace({ encounterId }: { encounterI
               facilityId={facilityId}
               facilityDisplayName={facilityName}
               facilityCareProfileJson={careProfileJson}
-              canPrescribe={canPrescribe && !clinicalAuthorBlocked}
+              canPrescribe={effectiveAuthoring.canPrescribe}
               encounter={encounter}
-              isLocked={locked}
+              isLocked={evalLocked || boardLocked}
               onUpdate={loadEncounter}
             />
           </SectionShell>
@@ -751,7 +705,7 @@ export function EnterpriseDentalEncounterWorkspace({ encounterId }: { encounterI
               encounterId={encounter.id}
               facilityId={facilityId}
               status={encounter.status}
-              isLocked={locked || clinicalAuthorBlocked}
+              isLocked={evalLocked || boardLocked}
               roleCodes={roles}
               onSaved={loadEncounter}
             />
@@ -767,7 +721,7 @@ export function EnterpriseDentalEncounterWorkspace({ encounterId }: { encounterI
               <RegistrationDocumentCenter
                 patientId={patient.id}
                 facilityId={facilityId}
-                canEdit={!locked && !canBillingOnly && (canAuthorClinical || roles.includes("FRONT_DESK"))}
+                canEdit={effectiveAuthoring.canManageDocumentsOrConsents}
               />
             ) : (
               <p style={{ margin: 0, color: "#64748b" }}>{notDocumented}</p>
@@ -782,14 +736,14 @@ export function EnterpriseDentalEncounterWorkspace({ encounterId }: { encounterI
               <input
                 type="date"
                 value={followUpDraft}
-                disabled={locked || !canAuthorClinical || clinicalAuthorBlocked}
+                disabled={!effectiveAuthoring.canEditFollowUp}
                 onChange={(e) => setFollowUpDraft(e.target.value)}
                 style={{ display: "block", marginTop: 6, padding: 8, borderRadius: 6, border: "1px solid #e2e8f0" }}
               />
             </label>
             <button
               type="button"
-              disabled={locked || !canAuthorClinical || clinicalAuthorBlocked || followUpSaving}
+              disabled={!effectiveAuthoring.canEditFollowUp || followUpSaving}
               onClick={() => void saveFollowUp()}
               style={{
                 marginTop: 10,
@@ -812,7 +766,7 @@ export function EnterpriseDentalEncounterWorkspace({ encounterId }: { encounterI
             <EnterpriseDentalOdontogramPanel
               encounterId={encounterId}
               facilityId={facilityId}
-              locked={locked || !canAuthorClinical || clinicalAuthorBlocked}
+              locked={boardLocked}
             />
           </SectionShell>
         ) : null}
@@ -831,7 +785,7 @@ export function EnterpriseDentalEncounterWorkspace({ encounterId }: { encounterI
             <EnterpriseDentalPeriodontalChartPanel
               encounterId={encounterId}
               facilityId={facilityId}
-              locked={locked || !canAuthorClinical || clinicalAuthorBlocked}
+              locked={boardLocked}
             />
           </SectionShell>
         ) : null}
@@ -841,7 +795,7 @@ export function EnterpriseDentalEncounterWorkspace({ encounterId }: { encounterI
             <EnterpriseDentalTreatmentPlanPanel
               encounterId={encounterId}
               facilityId={facilityId}
-              locked={locked || !canAuthorClinical || clinicalAuthorBlocked}
+              locked={boardLocked}
             />
           </SectionShell>
         ) : null}
@@ -851,7 +805,7 @@ export function EnterpriseDentalEncounterWorkspace({ encounterId }: { encounterI
             <EnterpriseDentalProceduresPanel
               encounterId={encounterId}
               facilityId={facilityId}
-              locked={locked || !canAuthorClinical || clinicalAuthorBlocked}
+              locked={boardLocked}
             />
           </SectionShell>
         ) : null}
