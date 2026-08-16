@@ -7,6 +7,9 @@ describe("INP.1B inpatient nursing UI isolation", () => {
   const panel = read(
     "features/inpatient-workspace/InpatientNursingAssessmentPanel.tsx",
   );
+  const rows = read(
+    "features/inpatient-workspace/inpatientNursingBoardRowsInp1b6.ts",
+  );
   const host = read(
     "features/inpatient-workspace/InpatientNursingAssessmentSection.tsx",
   );
@@ -20,12 +23,13 @@ describe("INP.1B inpatient nursing UI isolation", () => {
     expect(panel).not.toContain("erNursingReassessmentV1");
   });
   it("charts canonical select values", () => {
-    expect(panel).toContain("options: choice(");
+    expect(rows).toContain("options: choice(");
     expect(panel).toContain("patchAssessment");
   });
   it("keeps assessment persistence focused and delegates other records", () => {
-    expect(panel).toContain("Lines / drains / devices");
-    expect(panel).toContain("Intake / output status");
+    expect(rows).toContain("Lines / Drains / Devices");
+    expect(rows).toContain("Intake & Output");
+    expect(panel).toContain("ClinicalDocumentationHub");
     expect(panel).not.toContain("EmergencyNursing");
   });
   it("has complete EN/FR assessment and reassessment catalogs", () => {

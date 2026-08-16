@@ -21,6 +21,9 @@ import {
   clinicalTimelineDisplayLabelFr,
   computeObservationStaySummaryForExport,
   resolveClinicalTimelineDisplayEventType,
+  INPATIENT_NURSING_ASSESSMENT_V1_KEY,
+  resolveInpatientNursingClinicalOccurredAt,
+  type InpatientNursingAssessmentV1,
   type ObservationStaySummaryForExport,
 } from "@medora/shared";
 import { PrismaService } from "../prisma/prisma.service";
@@ -226,12 +229,23 @@ export type ChartExportManifest = {
         sections: Array<{ id: string; label: string; text: string }>;
       } | null;
     };
-    /** Structured initial nursing documentation derived read-only from nursingEvalV1. */
+    /** Structured nursing documentation: nursingEvalV1 and/or INP.1A inpatientNursingAssessmentV1 (read-only projections). */
     nursingDocumentation: {
       initialAssessment: {
         title: string;
         documentedBy: string | null;
         documentedAt: string | null;
+        sections: Array<{ id: string; label: string; text: string }>;
+      } | null;
+      /** INP.1B.6 — authoritative inpatient nursing assessment/reassessment snapshot. */
+      inpatientNursingAssessment: {
+        title: string;
+        documentedBy: string | null;
+        /** Clinician-selected clinical time when present. */
+        documentedAt: string | null;
+        /** Server audit save time. */
+        serverAuthoredAt: string | null;
+        assessmentType: string | null;
         sections: Array<{ id: string; label: string; text: string }>;
       } | null;
       dischargeExecution: {
@@ -549,6 +563,81 @@ function nursingSectionLabelEn(key: string): string {
   return NURSING_SECTION_LABELS_EN[key] ?? key;
 }
 
+function inpatientNursingDocumentationFromAssessment(
+  raw: unknown
+): NonNullable<ChartExportManifest["encounter"]["nursingDocumentation"]>["inpatientNursingAssessment"] {
+  const root = asObjectOrNull(raw);
+  const stored = asObjectOrNull(root?.[INPATIENT_NURSING_ASSESSMENT_V1_KEY]);
+  if (!stored) return null;
+  const assessment = stored as unknown as InpatientNursingAssessmentV1;
+  if (!assessment.authoredAt || !assessment.sessionId) return null;
+
+  const sections: Array<{ id: string; label: string; text: string }> = [];
+  const push = (id: string, label: string, text: string | null | undefined) => {
+    const trimmed = typeof text === "string" ? text.trim() : text != null ? String(text).trim() : "";
+    if (!trimmed) return;
+    sections.push({ id, label, text: trimmed });
+  };
+
+  push("assessmentType", "Assessment type", assessment.assessmentType ?? null);
+  push("mentalStatus", "Mental status", assessment.mentalStatus?.code);
+  push("speech", "Speech", assessment.speech?.code);
+  if (assessment.pain?.score != null) {
+    push(
+      "pain",
+      "Pain",
+      [
+        `${assessment.pain.score}/10`,
+        assessment.pain.location?.trim() || null,
+        assessment.pain.intervention?.trim() || null,
+      ]
+        .filter(Boolean)
+        .join(" · ")
+    );
+  }
+  push("airway", "Airway", assessment.airway?.code);
+  push("respiratory", "Respiratory", assessment.respiratory?.code);
+  push("cardiac", "Cardiovascular", assessment.cardiac?.code);
+  push("giAbdomen", "Gastrointestinal", assessment.giAbdomen?.code);
+  push("gu", "Genitourinary", assessment.gu?.code);
+  push("skinWounds", "Skin / wounds", assessment.skinWounds?.code);
+  push("mobility", "Mobility", assessment.mobility?.code);
+  if (assessment.fallRisk?.level) push("fallRisk", "Fall risk", assessment.fallRisk.level);
+  push("safety", "Safety", assessment.safety?.code);
+  if (assessment.ivAccess?.length) {
+    push("ivAccess", "IV access", assessment.ivAccess.map((x) => x.code).join(", "));
+  }
+  if (assessment.linesDrainsDevices?.length) {
+    push(
+      "linesDrainsDevices",
+      "Lines / drains / devices",
+      assessment.linesDrainsDevices.map((x) => x.code).join(", ")
+    );
+  }
+  const sf = assessment.structuredFindings;
+  if (sf && typeof sf === "object") {
+    for (const [id, value] of Object.entries(sf)) {
+      if (value === undefined || value === "" || (Array.isArray(value) && value.length === 0)) continue;
+      const text = Array.isArray(value) ? value.join(", ") : String(value);
+      push(`finding.${id}`, id, text);
+    }
+  }
+  push("narrative", "Nursing narrative", assessment.narrative);
+  if (assessment.significantConcerns?.length) {
+    push("significantConcerns", "Significant concerns", assessment.significantConcerns.join(", "));
+  }
+
+  if (sections.length === 0) return null;
+  return {
+    title: "Inpatient nursing assessment",
+    documentedBy: assessment.authorDisplayName?.trim() || null,
+    documentedAt: resolveInpatientNursingClinicalOccurredAt(assessment),
+    serverAuthoredAt: assessment.authoredAt,
+    assessmentType: assessment.assessmentType ?? null,
+    sections,
+  };
+}
+
 function initialNursingDocumentationFromAssessment(
   raw: unknown
 ): ChartExportManifest["encounter"]["nursingDocumentation"] {
@@ -604,8 +693,10 @@ function initialNursingDocumentationFromAssessment(
         }
       : null;
 
-  if (!initialAssessment && !dischargeExecution) return null;
-  return { initialAssessment, dischargeExecution };
+  const inpatientNursingAssessment = inpatientNursingDocumentationFromAssessment(raw);
+
+  if (!initialAssessment && !dischargeExecution && !inpatientNursingAssessment) return null;
+  return { initialAssessment, inpatientNursingAssessment, dischargeExecution };
 }
 
 function providerDocumentationWorkspaceNote(raw: unknown): ChartExportManifest["encounter"]["providerDocumentation"]["workspaceNote"] {

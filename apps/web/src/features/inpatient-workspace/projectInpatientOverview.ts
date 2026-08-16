@@ -155,6 +155,26 @@ export type InpatientOverviewProjection = {
     availability: OverviewModuleAvailability;
     admissionAssessmentComplete: boolean | null;
     lastShiftAssessmentAtIso: string | null;
+    /** INP.1B.6 — authoritative INP.1A overview projection (optional). */
+    assessment?: {
+      clinicalDocumentedAtIso: string | null;
+      serverAuthoredAtIso: string | null;
+      authorDisplayName: string | null;
+      assessmentType: string | null;
+      mentalStatus: string | null;
+      painScore: number | null;
+      respiratoryStatus: string | null;
+      cardiovascularConcern: boolean;
+      giGuConcern: boolean;
+      skinWoundConcern: boolean;
+      mobility: string | null;
+      fallRisk: string | null;
+      deviceLineConcern: boolean;
+      safetyConcern: boolean;
+      nutritionStatus: string | null;
+      narrativeExcerpt: string | null;
+      significantConcerns: string[];
+    } | null;
   };
   intakeOutput: OverviewIoCompact;
   devices: { availability: OverviewModuleAvailability };
@@ -279,6 +299,25 @@ export type ProjectInpatientOverviewInput = {
   nursingOps?: {
     admissionAssessmentComplete?: boolean | null;
     lastShiftAssessmentAt?: string | null;
+    assessmentOverview?: {
+      clinicalDocumentedAtIso?: string | null;
+      serverAuthoredAtIso?: string | null;
+      authorDisplayName?: string | null;
+      assessmentType?: string | null;
+      mentalStatus?: string | null;
+      painScore?: number | null;
+      respiratoryStatus?: string | null;
+      cardiovascularConcern?: boolean;
+      giGuConcern?: boolean;
+      skinWoundConcern?: boolean;
+      mobility?: string | null;
+      fallRisk?: string | null;
+      deviceLineConcern?: boolean;
+      safetyConcern?: boolean;
+      nutritionStatus?: string | null;
+      narrativeExcerpt?: string | null;
+      significantConcerns?: string[];
+    } | null;
   } | null;
   canProviderWrite: boolean;
 };
@@ -484,7 +523,31 @@ export function projectInpatientOverview(
           : "EMPTY"
         : "OMITTED_HEADER_DUPLICATE",
       admissionAssessmentComplete: nursing?.admissionAssessmentComplete ?? null,
-      lastShiftAssessmentAtIso: nursing?.lastShiftAssessmentAt ?? null,
+      lastShiftAssessmentAtIso:
+        nursing?.assessmentOverview?.clinicalDocumentedAtIso ??
+        nursing?.lastShiftAssessmentAt ??
+        null,
+      assessment: nursing?.assessmentOverview
+        ? {
+            clinicalDocumentedAtIso: nursing.assessmentOverview.clinicalDocumentedAtIso ?? null,
+            serverAuthoredAtIso: nursing.assessmentOverview.serverAuthoredAtIso ?? null,
+            authorDisplayName: nursing.assessmentOverview.authorDisplayName ?? null,
+            assessmentType: nursing.assessmentOverview.assessmentType ?? null,
+            mentalStatus: nursing.assessmentOverview.mentalStatus ?? null,
+            painScore: nursing.assessmentOverview.painScore ?? null,
+            respiratoryStatus: nursing.assessmentOverview.respiratoryStatus ?? null,
+            cardiovascularConcern: Boolean(nursing.assessmentOverview.cardiovascularConcern),
+            giGuConcern: Boolean(nursing.assessmentOverview.giGuConcern),
+            skinWoundConcern: Boolean(nursing.assessmentOverview.skinWoundConcern),
+            mobility: nursing.assessmentOverview.mobility ?? null,
+            fallRisk: nursing.assessmentOverview.fallRisk ?? null,
+            deviceLineConcern: Boolean(nursing.assessmentOverview.deviceLineConcern),
+            safetyConcern: Boolean(nursing.assessmentOverview.safetyConcern),
+            nutritionStatus: nursing.assessmentOverview.nutritionStatus ?? null,
+            narrativeExcerpt: nursing.assessmentOverview.narrativeExcerpt ?? null,
+            significantConcerns: nursing.assessmentOverview.significantConcerns ?? [],
+          }
+        : null,
     },
     intakeOutput: {
       availability: hasIo ? "READY" : "EMPTY",

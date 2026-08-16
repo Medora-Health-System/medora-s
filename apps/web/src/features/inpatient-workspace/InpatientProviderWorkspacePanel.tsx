@@ -10,6 +10,8 @@ import {
   EXAM_SYSTEM_CODES,
   ROS_SYSTEM_CODES,
   PROVIDER_PRINT_PACKAGE_KINDS,
+  projectInpatientNursingAssessmentOverview,
+  type InpatientNursingAssessmentV1,
   type InpatientWorkspaceRole,
   type ProviderEventAckStatus,
   type ProviderHpSectionKey,
@@ -17,6 +19,7 @@ import {
   type ProviderRoundingModeStep,
 } from "@medora/shared";
 import { useI18n } from "@/lib/i18n";
+import { apiFetch, asApiObject } from "@/lib/apiClient";
 import { MEDORA_CARD_SHELL } from "@/components/medora-card/medoraCardTokens";
 import {
   acknowledgeProviderWorkspaceEvent,
@@ -223,6 +226,9 @@ export function InpatientProviderWorkspacePanel({
   const { t } = useI18n();
   const [doc, setDoc] = useState<ProviderDoc | null>(null);
   const [ops, setOps] = useState<ClinicalOpsLite | null>(null);
+  const [nursingAssessmentOverview, setNursingAssessmentOverview] = useState<ReturnType<
+    typeof projectInpatientNursingAssessmentOverview
+  > | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "failed" | "conflict">(
@@ -273,6 +279,21 @@ export function InpatientProviderWorkspacePanel({
         } catch {
           setSynthesis(null);
         }
+        try {
+          const nursingRes = await apiFetch(
+            `/encounters/${encodeURIComponent(encounterId)}/inpatient-nursing-assessment-events`,
+            { facilityId },
+          );
+          const entries =
+            asApiObject<{ entries?: { assessment: InpatientNursingAssessmentV1 }[] }>(nursingRes)
+              ?.entries ?? [];
+          const latest = entries.at(-1)?.assessment;
+          setNursingAssessmentOverview(
+            latest ? projectInpatientNursingAssessmentOverview(latest) : null,
+          );
+        } catch {
+          setNursingAssessmentOverview(null);
+        }
       }
     } catch {
       setError(t("inpatientD3e.workspace.loadError"));
@@ -280,7 +301,7 @@ export function InpatientProviderWorkspacePanel({
     } finally {
       setLoading(false);
     }
-  }, [encounterId, mode, t]);
+  }, [encounterId, facilityId, mode, t]);
 
   useEffect(() => {
     void load();
@@ -1030,7 +1051,30 @@ export function InpatientProviderWorkspacePanel({
     alerts,
     synthesis: synthesis as Parameters<typeof projectInpatientOverview>[0]["synthesis"],
     authProjection,
-    nursingOps: ops?.nursing ?? null,
+    nursingOps: {
+      ...(ops?.nursing ?? {}),
+      assessmentOverview: nursingAssessmentOverview
+        ? {
+            clinicalDocumentedAtIso: nursingAssessmentOverview.lastAssessmentAt,
+            serverAuthoredAtIso: nursingAssessmentOverview.serverAuthoredAt,
+            authorDisplayName: nursingAssessmentOverview.rn.displayName,
+            assessmentType: nursingAssessmentOverview.assessmentType,
+            mentalStatus: nursingAssessmentOverview.mentalStatus,
+            painScore: nursingAssessmentOverview.painScore,
+            respiratoryStatus: nursingAssessmentOverview.respiratoryStatus,
+            cardiovascularConcern: nursingAssessmentOverview.cardiovascularConcern,
+            giGuConcern: nursingAssessmentOverview.giGuConcern,
+            skinWoundConcern: nursingAssessmentOverview.skinWoundConcern,
+            mobility: nursingAssessmentOverview.mobility,
+            fallRisk: nursingAssessmentOverview.fallRisk,
+            deviceLineConcern: nursingAssessmentOverview.deviceLineConcern,
+            safetyConcern: nursingAssessmentOverview.safetyConcern,
+            nutritionStatus: nursingAssessmentOverview.nutritionStatus,
+            narrativeExcerpt: nursingAssessmentOverview.narrativeExcerpt,
+            significantConcerns: nursingAssessmentOverview.significantConcerns,
+          }
+        : null,
+    },
     canProviderWrite,
   });
 
