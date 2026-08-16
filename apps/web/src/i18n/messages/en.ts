@@ -21479,10 +21479,24 @@ export default {
 
   dentalCareD5a5: {
     notDocumented: "Not documented",
-    printRecord: "Print record",
+    printRecord: "Print dental record",
     overview: {
       title: "Dental clinical record overview",
       readOnly: "Encounter locked — read-only overview.",
+    },
+    history: {
+      openPatientRecord: "Open patient record (enterprise history)",
+      reviewTitle: "Medical history review for this dental encounter",
+      reviewHelp:
+        "Medical history remains on the enterprise patient record. Check here only that it was reviewed for this visit.",
+      reviewedCheckbox: "Medical history / allergies / medications reviewed for this encounter",
+      reviewNotesPlaceholder: "Review notes (optional)",
+      reviewNotes: "Review notes",
+      reviewError: "Unable to save history review.",
+      reviewedYes: "Reviewed",
+      reviewedNo: "Not reviewed",
+      longitudinalNote:
+        "Longitudinal detail (allergies, medications, history) remains on the patient record — not a parallel dental history.",
     },
     sections: {
       patientIdentity: "Patient identity",
@@ -21568,6 +21582,8 @@ export default {
       notes: "Notes",
       save: "Save plan",
       readOnly: "Read-only — you cannot edit the treatment plan.",
+      acceptanceNotConsent:
+        "Plan acceptance is not the same as a signed procedural consent (see Documents / consents).",
       acceptance: {
         NOT_DISCUSSED: "Not discussed",
         ACCEPTED: "Accepted",

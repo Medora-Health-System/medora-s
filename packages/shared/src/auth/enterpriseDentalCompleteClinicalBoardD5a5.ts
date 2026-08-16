@@ -5,9 +5,36 @@
  */
 
 export const D5A5_CERTIFICATION_ID = "MEDUI.D5A.5" as const;
+/** Corrective authoring completion over D5A.5 (no new schema phase). */
+export const D5A5A_CERTIFICATION_ID = "MEDUI.D5A.5A" as const;
 
 export const D5A5_NOT_DOCUMENTED_FR = "Non documenté" as const;
 export const D5A5_NOT_DOCUMENTED_EN = "Not documented" as const;
+
+/** Encounter-scoped dental medical-history review acknowledgement (zero-schema). */
+export const D5A5_DENTAL_HISTORY_REVIEW_KEY = "dentalHistoryReviewV1" as const;
+
+/**
+ * MEDUI.D5A.5A — forks forbidden for clinical-board completion.
+ * Longitudinal history + consents remain enterprise authorities.
+ */
+export const D5A5A_FORBIDDEN_AUTHORITIES = [
+  "DentalMedicalHistory",
+  "DentalConsent",
+  "DentalEncounter",
+  "DentalMRN",
+  "DentalPatient",
+] as const;
+
+export function assertNoForbiddenDentalClinicalBoardAuthorities(
+  names: readonly string[]
+): { ok: true } | { ok: false; forbidden: string[] } {
+  const hit = names.filter((n) =>
+    (D5A5A_FORBIDDEN_AUTHORITIES as readonly string[]).includes(n)
+  );
+  if (hit.length > 0) return { ok: false, forbidden: hit };
+  return { ok: true };
+}
 
 /** Six-site periodontal layout (facial/buccal + lingual/palatal). */
 export const D5A5_PERIODONTAL_SITES = ["MB", "B", "DB", "ML", "L", "DL"] as const;

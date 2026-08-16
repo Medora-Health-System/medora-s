@@ -223,6 +223,10 @@ export function facilityHasDentalServiceLine(
 /**
  * Derive capability set from profession ∩ dental enabled ∩ specialty config.
  * No hardcoded single-role gate: PROVIDER / RN / ADMIN map to capability bundles.
+ *
+ * MEDUI.D5A.5A — Clinical authoring follows PROVIDER role membership, not exclusive
+ * profession-group winner. ADMIN alone remains view/admin-only (no clinical write).
+ * ADMIN+PROVIDER must retain PROVIDER dental authoring (profession priority is ADMIN).
  */
 export function resolveDentalCapabilityCodes(input: {
   roleCodes: readonly string[] | null | undefined;
@@ -231,10 +235,12 @@ export function resolveDentalCapabilityCodes(input: {
 }): D5a2DentalCapability[] {
   if (!input.dentalCareEnabled) return [];
 
+  const roleCodes = (input.roleCodes ?? []).map((r) => String(r ?? "").trim().toUpperCase());
   const profession = resolveProfessionGroup({ roleCodes: input.roleCodes ?? [] });
   const specialties = input.specialties ?? [];
   const hasOrtho = specialties.includes("ORTHODONTICS");
   const caps = new Set<D5a2DentalCapability>();
+  const hasProviderRole = roleCodes.includes("PROVIDER");
 
   const grantViewBundle = () => {
     caps.add("DENTAL_VIEW");
@@ -242,13 +248,14 @@ export function resolveDentalCapabilityCodes(input: {
     if (hasOrtho) caps.add("ORTHODONTICS_VIEW");
   };
 
-  if (profession === "ADMIN") {
+  if (profession === "ADMIN" || roleCodes.includes("ADMIN")) {
     grantViewBundle();
     caps.add("DENTAL_ADMIN");
     caps.add("DENTAL_BILLING_VIEW");
   }
 
-  if (profession === "PROVIDER") {
+  // Clinical authoring: PROVIDER role (even when profession resolves to ADMIN).
+  if (profession === "PROVIDER" || hasProviderRole) {
     grantViewBundle();
     caps.add("DENTAL_PROVIDER");
     caps.add("DENTAL_DOCUMENT");
@@ -309,6 +316,33 @@ export function resolveDentalWorkspaceAccess(input: {
     capabilities,
     specialties,
   };
+}
+
+/**
+ * MEDUI.D5A.5A — authoritative clinical authoring for Dental board domains.
+ * True when capability policy grants provider dental documentation writes.
+ * Encounter OPEN/SIGNED/CLOSED gating is applied by API services separately.
+ */
+export function canAuthorDentalClinicalBoard(access: DentalWorkspaceAccess): boolean {
+  return (
+    access.canEditOdontogram ||
+    access.canEditPeriodontal ||
+    access.canEditTreatmentPlan ||
+    access.canPerformProcedures
+  );
+}
+
+/** OPEN + capability = editable; signed/closed handled by callers via encounter status. */
+export function isDentalClinicalBoardEditable(input: {
+  access: DentalWorkspaceAccess;
+  encounterStatus?: string | null;
+  providerDocumentationStatus?: string | null;
+}): boolean {
+  if (!canAuthorDentalClinicalBoard(input.access)) return false;
+  if (String(input.encounterStatus ?? "").toUpperCase() !== "OPEN") return false;
+  // Signed provider documentation does not by itself lock perio/plan/procedures
+  // (those domains use their own amend/audit paths). Closed encounter locks all.
+  return true;
 }
 
 export function resolveVisibleDentalNavItems(access: DentalWorkspaceAccess) {

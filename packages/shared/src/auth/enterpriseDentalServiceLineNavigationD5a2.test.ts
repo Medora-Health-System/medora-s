@@ -123,8 +123,32 @@ describe("MEDUI.D5A.2 dental service line and navigation", () => {
     expect(provider.canAccessDentalShell).toBe(true);
     expect(provider.canAccessDentalProvider).toBe(true);
     expect(provider.canEditOdontogram).toBe(true);
+    expect(provider.canEditPeriodontal).toBe(true);
+    expect(provider.canEditTreatmentPlan).toBe(true);
+    expect(provider.canPerformProcedures).toBe(true);
     expect(provider.canEditOrthodontics).toBe(true);
     expect(provider.capabilities).toContain("PERIODONTAL_CHART_EDIT");
+
+    // MEDUI.D5A.5A — ADMIN+PROVIDER must retain clinical authoring (profession winner is ADMIN).
+    const adminProvider = resolveDentalWorkspaceAccess({
+      roleCodes: ["ADMIN", "PROVIDER"],
+      dentalCareEnabled: true,
+      specialties: ["GENERAL_DENTISTRY"],
+    });
+    expect(adminProvider.canAccessDentalAdmin).toBe(true);
+    expect(adminProvider.canEditPeriodontal).toBe(true);
+    expect(adminProvider.canEditTreatmentPlan).toBe(true);
+    expect(adminProvider.canPerformProcedures).toBe(true);
+    expect(adminProvider.canEditOdontogram).toBe(true);
+
+    // ADMIN alone remains non-authoring for clinical board.
+    const adminOnly = resolveDentalWorkspaceAccess({
+      roleCodes: ["ADMIN"],
+      dentalCareEnabled: true,
+    });
+    expect(adminOnly.canEditPeriodontal).toBe(false);
+    expect(adminOnly.canEditTreatmentPlan).toBe(false);
+    expect(adminOnly.canPerformProcedures).toBe(false);
 
     const billing = resolveDentalCapabilityCodes({
       roleCodes: ["BILLING"],
