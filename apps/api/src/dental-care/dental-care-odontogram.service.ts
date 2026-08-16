@@ -19,6 +19,7 @@ import {
   normalizeBulkToothCodes,
   normalizeSurfaceCodes,
   projectCurrentToothFindings,
+  resolveEnterpriseDentalEncounterAuthoring,
   type DentalWorkspaceAccess,
   type D5a4DentitionType,
   type D5a4ToothNumberingSystem,
@@ -29,6 +30,7 @@ type Actor = {
   userId: string;
   facilityId: string;
   access: DentalWorkspaceAccess;
+  roleCodes?: readonly string[];
 };
 
 @Injectable()
@@ -141,14 +143,25 @@ export class DentalCareOdontogramService {
     const current = projectCurrentToothFindings(mapped);
     const encounterFindings = mapped.filter((f) => f.encounterId === encounterId);
 
+    const authoring = resolveEnterpriseDentalEncounterAuthoring({
+      roleCodes: actor.roleCodes ?? [],
+      dentalCareEnabled: true,
+      encounterStatus: encounter.status,
+      serviceLine: "DENTAL",
+      specialties: actor.access.specialties,
+    });
+    const canEdit = authoring.canEditOdontogram;
+
     return {
       certificationId: D5A4_CERTIFICATION_ID,
       encounterId: encounter.id,
       patientId: encounter.patientId,
       facilityId: encounter.facilityId,
       encounterStatus: encounter.status,
-      readOnly: encounter.status !== "OPEN" || !actor.access.canEditOdontogram,
-      canEdit: encounter.status === "OPEN" && actor.access.canEditOdontogram,
+      readOnly: !canEdit,
+      canEdit,
+      readOnlyReason: authoring.readOnlyReason,
+      authoring,
       dentitionType: (dentition?.dentitionType ?? "PERMANENT") as D5a4DentitionType,
       numberingSystem: (dentition?.numberingSystem ?? "FDI") as D5a4ToothNumberingSystem,
       currentFindings: current,

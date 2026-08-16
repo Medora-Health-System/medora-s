@@ -95,6 +95,7 @@ export class DentalCareReadAccessGuard implements CanActivate {
     }
 
     request.dentalCareAccess = access;
+    request.dentalCareRoleCodes = roleCodes;
     return true;
   }
 }

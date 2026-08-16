@@ -471,7 +471,9 @@ export function EnterpriseDentalPeriodontalChartPanel({ encounterId, facilityId,
             {saving ? t("common.loading") : t("dentalCareD5a5.periodontal.save")}
           </button>
         ) : (
-          <p style={{ margin: "10px 0 0", fontSize: 12, color: "#64748b" }}>{t("dentalCareD5a5.periodontal.readOnly")}</p>
+          <p style={{ margin: "10px 0 0", fontSize: 12, color: "#64748b" }}>
+            {t("dentalCareD5a5.periodontal.readOnly")}
+          </p>
         )}
       </div>
     </div>

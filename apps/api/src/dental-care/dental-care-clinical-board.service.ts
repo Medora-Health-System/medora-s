@@ -20,13 +20,14 @@ import {
   isD5a5PeriodontalSite,
   isD5a5TreatmentPlanItemStatus,
   isD5a5TreatmentPlanPhase,
-  isDentalClinicalBoardEditable,
+  resolveEnterpriseDentalEncounterAuthoring,
   normalizeBulkToothCodes,
   projectCurrentToothFindings,
   summarizePeriodontalSites,
   validateProbingDepthMm,
   type DentalWorkspaceAccess,
   type D5a5PeriodontalSiteInput,
+  type EnterpriseDentalEncounterAuthoring,
 } from "@medora/shared";
 import { PrismaService } from "../prisma/prisma.service";
 
@@ -34,6 +35,7 @@ type Actor = {
   userId: string;
   facilityId: string;
   access: DentalWorkspaceAccess;
+  roleCodes?: readonly string[];
 };
 
 @Injectable()
@@ -84,21 +86,49 @@ export class DentalCareClinicalBoardService {
     return encounter;
   }
 
+  private resolveAuthoring(
+    actor: Actor,
+    encounter: { status: string; serviceLine?: string | null }
+  ): EnterpriseDentalEncounterAuthoring {
+    return resolveEnterpriseDentalEncounterAuthoring({
+      roleCodes: actor.roleCodes ?? [],
+      dentalCareEnabled: true,
+      encounterStatus: encounter.status,
+      serviceLine: encounter.serviceLine ?? "DENTAL",
+      specialties: actor.access.specialties,
+    });
+  }
+
   private canEditClinicalDomain(
-    access: DentalWorkspaceAccess,
-    encounterStatus: string,
+    authoring: EnterpriseDentalEncounterAuthoring,
     domain: "periodontal" | "treatmentPlan" | "procedures"
   ): boolean {
-    if (!isDentalClinicalBoardEditable({ access, encounterStatus })) return false;
-    if (domain === "periodontal") return access.canEditPeriodontal;
-    if (domain === "treatmentPlan") return access.canEditTreatmentPlan;
-    return access.canPerformProcedures;
+    if (domain === "periodontal") return authoring.canEditPeriodontal;
+    if (domain === "treatmentPlan") return authoring.canEditTreatmentPlan;
+    return authoring.canDocumentProcedure;
   }
 
   private assertOpenForWrite(status: string) {
     if (status !== "OPEN") {
       throw new ForbiddenException("Closed encounters are read-only for dental clinical board.");
     }
+  }
+
+  /**
+   * MEDUI.D5A.5B — authoritative authoring projection for this encounter + actor.
+   */
+  async getEncounterAuthoring(actor: Actor, encounterId: string) {
+    this.assertView(actor.access);
+    const encounter = await this.loadOpenEncounter(actor.facilityId, encounterId);
+    const authoring = this.resolveAuthoring(actor, encounter);
+    return {
+      certificationId: authoring.certificationId,
+      encounterId: encounter.id,
+      patientId: encounter.patientId,
+      encounterStatus: encounter.status,
+      serviceLine: encounter.serviceLine,
+      authoring,
+    };
   }
 
   async getPeriodontalExam(actor: Actor, encounterId: string) {
@@ -123,12 +153,15 @@ export class DentalCareClinicalBoardService {
       implantSite: s.implantSite,
       notes: s.notes,
     }));
+    const authoring = this.resolveAuthoring(actor, encounter);
     return {
       certificationId: D5A5_CERTIFICATION_ID,
       encounterId: encounter.id,
       patientId: encounter.patientId,
-      readOnly: !this.canEditClinicalDomain(actor.access, encounter.status, "periodontal"),
-      canEdit: this.canEditClinicalDomain(actor.access, encounter.status, "periodontal"),
+      readOnly: !this.canEditClinicalDomain(authoring, "periodontal"),
+      canEdit: this.canEditClinicalDomain(authoring, "periodontal"),
+      authoring,
+      readOnlyReason: authoring.readOnlyReason,
       exam: exam
         ? {
             id: exam.id,
@@ -314,12 +347,15 @@ export class DentalCareClinicalBoardService {
         items: { orderBy: [{ sequence: "asc" }, { createdAt: "asc" }] },
       },
     });
+    const authoring = this.resolveAuthoring(actor, encounter);
     return {
       certificationId: D5A5_CERTIFICATION_ID,
       encounterId: encounter.id,
       patientId: encounter.patientId,
-      readOnly: !this.canEditClinicalDomain(actor.access, encounter.status, "treatmentPlan"),
-      canEdit: this.canEditClinicalDomain(actor.access, encounter.status, "treatmentPlan"),
+      readOnly: !this.canEditClinicalDomain(authoring, "treatmentPlan"),
+      canEdit: this.canEditClinicalDomain(authoring, "treatmentPlan"),
+      authoring,
+      readOnlyReason: authoring.readOnlyReason,
       plan: plan
         ? {
             id: plan.id,
@@ -542,12 +578,15 @@ export class DentalCareClinicalBoardService {
         assistant: { select: { firstName: true, lastName: true } },
       },
     });
+    const authoring = this.resolveAuthoring(actor, encounter);
     return {
       certificationId: D5A5_CERTIFICATION_ID,
       encounterId: encounter.id,
       patientId: encounter.patientId,
-      readOnly: !this.canEditClinicalDomain(actor.access, encounter.status, "procedures"),
-      canEdit: this.canEditClinicalDomain(actor.access, encounter.status, "procedures"),
+      readOnly: !this.canEditClinicalDomain(authoring, "procedures"),
+      canEdit: this.canEditClinicalDomain(authoring, "procedures"),
+      authoring,
+      readOnlyReason: authoring.readOnlyReason,
       procedures: rows.map((r) => this.mapProcedure(r)),
     };
   }
@@ -1005,14 +1044,10 @@ export class DentalCareClinicalBoardService {
   ) {
     this.assertView(actor.access);
     const encounter = await this.loadOpenEncounter(actor.facilityId, encounterId);
-    if (
-      !isDentalClinicalBoardEditable({
-        access: actor.access,
-        encounterStatus: encounter.status,
-      })
-    ) {
+    const authoring = this.resolveAuthoring(actor, encounter);
+    if (!authoring.canReviewHistory) {
       throw new ForbiddenException(
-        encounter.status !== "OPEN"
+        authoring.readOnlyReason === "ENCOUNTER_NOT_OPEN"
           ? "Closed encounters are read-only for dental clinical board."
           : "Dental clinical authoring capability required."
       );

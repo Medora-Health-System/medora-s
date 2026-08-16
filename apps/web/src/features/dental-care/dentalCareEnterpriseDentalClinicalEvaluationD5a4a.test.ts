@@ -58,7 +58,7 @@ describe("MEDUI.D5A.4A enterprise dental clinical evaluation", () => {
     expect(panel).toContain("apiFetch(`/encounters/${encounter.id}`");
     expect(panel).toContain("sign-provider-documentation");
     expect(panel + workspace).not.toMatch(/DentalPatient|DentalMRN|DentalNote|DentalClinicalNote/);
-    expect(workspace).toContain("PatientClinicalHistoryProfileBlock");
+    expect(workspace).toContain("EnterpriseDentalMedicalHistoryPanel");
   });
 
   it("9: D5A.4 odontogram section remains active", () => {
