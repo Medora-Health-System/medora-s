@@ -19,8 +19,8 @@ export type NursingBoardRow = {
 };
 
 /**
- * Care-setting-neutral bedside flowsheet. It owns layout and interaction only: callers provide
- * immutable columns, the active draft and all persistence/authorization callbacks.
+ * Care-setting-neutral bedside flowsheet. Layout/interaction only.
+ * INP.1B.6 — sticky Clinical Finding column + sticky header row; horizontal scroll for assessments.
  */
 export function NursingDocumentationBoard({
   title,
@@ -29,6 +29,9 @@ export function NursingDocumentationBoard({
   columns,
   draft,
   draftTime,
+  clinicalTimeValue,
+  onClinicalTimeChange,
+  clinicalTimeLabel,
   copiedFieldIds = new Set(),
   readOnly,
   busy,
@@ -40,11 +43,15 @@ export function NursingDocumentationBoard({
   labels,
 }: {
   title: string;
-  context: ReactNode;
+  context?: ReactNode;
   rows: readonly NursingBoardRow[];
   columns: readonly NursingBoardColumn[];
   draft: Readonly<Record<string, NursingBoardValue>> | null;
   draftTime?: string;
+  /** Clinician-selected clinical documentation time (datetime-local value). */
+  clinicalTimeValue?: string;
+  onClinicalTimeChange?: (localValue: string) => void;
+  clinicalTimeLabel?: string;
   copiedFieldIds?: ReadonlySet<string>;
   readOnly: boolean;
   busy?: boolean;
@@ -53,75 +60,230 @@ export function NursingDocumentationBoard({
   onCopyPrevious: () => void;
   onSave: () => void;
   summary?: ReactNode;
-  labels?: Partial<{ clinicalFinding: string; noSaved: string; addColumn: string; copyPrevious: string; save: string; notCharted: string; currentSaved: string; saved: string; draft: string; summary: string }>;
+  labels?: Partial<{
+    clinicalFinding: string;
+    noSaved: string;
+    addColumn: string;
+    copyPrevious: string;
+    save: string;
+    notCharted: string;
+    currentSaved: string;
+    saved: string;
+    draft: string;
+    summary: string;
+  }>;
 }) {
-  const l = { clinicalFinding: "Clinical finding", noSaved: "No saved assessments", addColumn: "+ Add column", copyPrevious: "Copy previous", save: "Save assessment", notCharted: "Not charted", currentSaved: "CURRENT · SAVED", saved: "SAVED", draft: "DRAFT", summary: "Nursing Summary", ...labels };
+  const l = {
+    clinicalFinding: "Clinical finding",
+    noSaved: "No saved assessments",
+    addColumn: "+ Add column",
+    copyPrevious: "Copy previous",
+    save: "Save assessment",
+    notCharted: "Not charted",
+    currentSaved: "CURRENT · SAVED",
+    saved: "SAVED",
+    draft: "DRAFT",
+    summary: "Nursing Summary",
+    ...labels,
+  };
   const groups = [...new Set(rows.map((row) => row.group))];
   const allColumns = draft
     ? [...columns, { id: "draft", occurredAt: draftTime ?? new Date().toISOString(), status: "DRAFT", values: draft }]
     : columns;
-  const gridTemplate = `minmax(190px, 1.25fr) repeat(${Math.max(allColumns.length, 1)}, minmax(168px, 1fr))`;
+  const gridTemplate = `minmax(200px, 220px) repeat(${Math.max(allColumns.length, 1)}, minmax(168px, 1fr))`;
 
   return (
     <section data-testid="nursing-documentation-board" style={{ display: "grid", gap: 14 }}>
       <header style={{ display: "flex", justifyContent: "space-between", alignItems: "end", gap: 12, flexWrap: "wrap" }}>
-        <div><h2 style={{ margin: 0 }}>{title}</h2><div style={{ color: "#475569", fontSize: 13 }}>{context}</div></div>
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+        <div>
+          <h2 style={{ margin: 0 }}>{title}</h2>
+          {context ? <div data-testid="nursing-board-context" style={{ color: "#475569", fontSize: 13 }}>{context}</div> : null}
+        </div>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+          {draft && !readOnly && onClinicalTimeChange ? (
+            <label style={{ display: "flex", flexDirection: "column", gap: 2, fontSize: 12 }}>
+              <span>{clinicalTimeLabel ?? "Assessment date/time"}</span>
+              <input
+                data-testid="nursing-clinical-documented-at"
+                type="datetime-local"
+                value={clinicalTimeValue ?? ""}
+                onChange={(event) => onClinicalTimeChange(event.target.value)}
+              />
+            </label>
+          ) : null}
           {!readOnly && <button type="button" onClick={onNew}>{l.addColumn}</button>}
           {!readOnly && columns.length > 0 && <button type="button" onClick={onCopyPrevious}>{l.copyPrevious}</button>}
           {!readOnly && draft && <button type="button" disabled={busy} onClick={onSave}>{l.save}</button>}
         </div>
       </header>
-      <div style={{ display: "grid", gridTemplateColumns: summary ? "minmax(0, 1fr) minmax(230px, 290px)" : "1fr", gap: 14, alignItems: "start" }}>
-        <div style={{ overflowX: "auto", border: "1px solid #cbd5e1", borderRadius: 8 }}>
-          <div style={{ display: "grid", gridTemplateColumns: gridTemplate, minWidth: 190 + Math.max(allColumns.length, 1) * 168 }}>
-            <div style={headerCell}><strong>{l.clinicalFinding}</strong></div>
-            {allColumns.length === 0 ? <div style={headerCell}>{l.noSaved}</div> : allColumns.map((column, index) => (
-              <div key={column.id} style={{ ...headerCell, background: column.id === "draft" ? "#e0f2fe" : "#f8fafc" }}>
-                <strong>{new Date(column.occurredAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</strong>
-                <span>{new Date(column.occurredAt).toLocaleDateString()}</span>
-                <span style={{ color: column.id === "draft" ? "#0369a1" : "#475569", fontWeight: 700 }}>{column.id === "draft" ? l.draft : index === columns.length - 1 ? l.currentSaved : l.saved}</span>
-                {column.author && <span>{column.author}</span>}
-              </div>
-            ))}
+      <div style={{ display: "grid", gridTemplateColumns: summary ? "minmax(0, 1fr) minmax(240px, 300px)" : "1fr", gap: 14, alignItems: "start" }}>
+        <div data-testid="nursing-board-scroll" style={{ overflowX: "auto", border: "1px solid #cbd5e1", borderRadius: 8, WebkitOverflowScrolling: "touch" }}>
+          <div style={{ display: "grid", gridTemplateColumns: gridTemplate, minWidth: 220 + Math.max(allColumns.length, 1) * 168 }}>
+            <div style={{ ...headerCell, ...stickyLabel, ...stickyHeader, zIndex: 4 }} data-testid="nursing-clinical-finding-header">
+              <strong>{l.clinicalFinding}</strong>
+            </div>
+            {allColumns.length === 0 ? (
+              <div style={{ ...headerCell, ...stickyHeader, zIndex: 3 }}>{l.noSaved}</div>
+            ) : (
+              allColumns.map((column, index) => (
+                <div
+                  key={column.id}
+                  style={{
+                    ...headerCell,
+                    ...stickyHeader,
+                    zIndex: 3,
+                    background: column.id === "draft" ? "#e0f2fe" : "#f8fafc",
+                  }}
+                >
+                  <strong>{new Date(column.occurredAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</strong>
+                  <span>{new Date(column.occurredAt).toLocaleDateString()}</span>
+                  <span style={{ color: column.id === "draft" ? "#0369a1" : "#475569", fontWeight: 700 }}>
+                    {column.id === "draft" ? l.draft : index === columns.length - 1 ? l.currentSaved : l.saved}
+                  </span>
+                  {column.author && <span>{column.author}</span>}
+                </div>
+              ))
+            )}
             {groups.flatMap((group) => {
               const groupRows = rows.filter((row) => row.group === group);
               return [
-                <div key={`${group}-heading`} style={{ ...groupCell, gridColumn: `1 / span ${Math.max(allColumns.length + 1, 2)}` }}>{group}</div>,
+                <div key={`${group}-heading`} style={{ ...groupCell, gridColumn: `1 / span ${Math.max(allColumns.length + 1, 2)}` }}>
+                  {group}
+                </div>,
                 ...groupRows.flatMap((row) => [
-                  <div key={`${row.id}-label`} style={labelCell}>{row.label}</div>,
-                  ...(allColumns.length === 0 ? [<div key={`${row.id}-empty`} style={valueCell}>—</div>] : allColumns.map((column) => {
-                    const editable = column.id === "draft" && !readOnly;
-                    const value = column.values[row.id];
-                    return <div key={`${row.id}-${column.id}`} style={{ ...valueCell, background: editable ? "#f0f9ff" : "#fff" }}>
-                      {editable ? <BoardInput row={row} value={value} copied={copiedFieldIds.has(row.id)} notCharted={l.notCharted} onChange={(next) => onChange(row.id, next)} /> : <span>{displayValue(value, row)}</span>}
-                    </div>;
-                  })),
+                  <div key={`${row.id}-label`} data-testid={`nursing-finding-label-${row.id}`} style={{ ...labelCell, ...stickyLabel }}>
+                    {row.label}
+                  </div>,
+                  ...(allColumns.length === 0
+                    ? [<div key={`${row.id}-empty`} style={valueCell}>—</div>]
+                    : allColumns.map((column) => {
+                        const editable = column.id === "draft" && !readOnly;
+                        const value = column.values[row.id];
+                        return (
+                          <div key={`${row.id}-${column.id}`} style={{ ...valueCell, background: editable ? "#f0f9ff" : "#fff" }}>
+                            {editable ? (
+                              <BoardInput
+                                row={row}
+                                value={value}
+                                copied={copiedFieldIds.has(row.id)}
+                                notCharted={l.notCharted}
+                                onChange={(next) => onChange(row.id, next)}
+                              />
+                            ) : (
+                              <span>{displayValue(value, row)}</span>
+                            )}
+                          </div>
+                        );
+                      })),
                 ]),
               ];
             })}
           </div>
         </div>
-        {summary && <aside aria-label={l.summary} style={{ border: "1px solid #cbd5e1", borderRadius: 8, padding: 14, position: "sticky", top: 12 }}><h3 style={{ marginTop: 0 }}>{l.summary}</h3>{summary}</aside>}
+        {summary ? (
+          <aside aria-label={l.summary} data-testid="nursing-summary-sidebar" style={{ border: "1px solid #cbd5e1", borderRadius: 8, padding: 14, position: "sticky", top: 12, maxHeight: "80vh", overflowY: "auto" }}>
+            <h3 style={{ marginTop: 0 }}>{l.summary}</h3>
+            {summary}
+          </aside>
+        ) : null}
       </div>
     </section>
   );
 }
 
-function BoardInput({ row, value, copied, notCharted, onChange }: { row: NursingBoardRow; value: NursingBoardValue; copied: boolean; notCharted: string; onChange: (value: NursingBoardValue) => void }) {
+function BoardInput({
+  row,
+  value,
+  copied,
+  notCharted,
+  onChange,
+}: {
+  row: NursingBoardRow;
+  value: NursingBoardValue;
+  copied: boolean;
+  notCharted: string;
+  onChange: (value: NursingBoardValue) => void;
+}) {
   const style = { width: "100%", border: 0, padding: 8, background: copied ? "#fef3c7" : "transparent", boxSizing: "border-box" as const };
-  if (row.options) return <select aria-label={row.label} style={style} value={String(value ?? "")} onChange={(event) => onChange(event.target.value)}><option value="">{notCharted}</option>{row.options.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select>;
-  if (row.kind === "textarea") return <textarea aria-label={row.label} style={{ ...style, minHeight: 70 }} value={String(value ?? "")} onChange={(event) => onChange(event.target.value)} />;
-  return <input aria-label={row.label} style={style} type={row.kind === "number" ? "number" : "text"} min={row.kind === "number" ? 0 : undefined} max={row.kind === "number" ? 10 : undefined} value={String(value ?? "")} onChange={(event) => onChange(row.kind === "number" && event.target.value ? Number(event.target.value) : event.target.value)} />;
+  if (row.options) {
+    return (
+      <select aria-label={row.label} style={style} value={String(value ?? "")} onChange={(event) => onChange(event.target.value)}>
+        <option value="">{notCharted}</option>
+        {row.options.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </select>
+    );
+  }
+  if (row.kind === "textarea") {
+    return <textarea aria-label={row.label} style={{ ...style, minHeight: 70 }} value={String(value ?? "")} onChange={(event) => onChange(event.target.value)} />;
+  }
+  return (
+    <input
+      aria-label={row.label}
+      style={style}
+      type={row.kind === "number" ? "number" : "text"}
+      min={row.kind === "number" ? 0 : undefined}
+      max={row.kind === "number" ? 10 : undefined}
+      value={String(value ?? "")}
+      onChange={(event) => onChange(row.kind === "number" && event.target.value ? Number(event.target.value) : event.target.value)}
+    />
+  );
 }
 
 function displayValue(value: NursingBoardValue, row: NursingBoardRow): string {
   if (value === undefined || value === "" || (Array.isArray(value) && value.length === 0)) return "—";
   const raw = Array.isArray(value) ? value.join(", ") : String(value);
-  return row.options?.find((option) => option.value === raw)?.label ?? raw.replaceAll("_", " ").toLowerCase().replace(/(^|\s)\S/g, (letter) => letter.toUpperCase());
+  return (
+    row.options?.find((option) => option.value === raw)?.label ??
+    raw.replaceAll("_", " ").toLowerCase().replace(/(^|\s)\S/g, (letter) => letter.toUpperCase())
+  );
 }
 
-const headerCell = { padding: 10, borderRight: "1px solid #cbd5e1", borderBottom: "1px solid #cbd5e1", display: "flex", flexDirection: "column" as const, gap: 2, fontSize: 12, background: "#f8fafc" };
-const groupCell = { padding: "7px 10px", background: "#e2e8f0", fontWeight: 800, fontSize: 12, textTransform: "uppercase" as const, letterSpacing: ".04em" };
-const labelCell = { padding: 8, borderRight: "1px solid #e2e8f0", borderBottom: "1px solid #e2e8f0", fontWeight: 600, fontSize: 12 };
-const valueCell = { minHeight: 34, borderRight: "1px solid #e2e8f0", borderBottom: "1px solid #e2e8f0", display: "flex", alignItems: "center", padding: "0 8px", fontSize: 12 };
+const stickyLabel = {
+  position: "sticky" as const,
+  left: 0,
+  zIndex: 2,
+  background: "#fff",
+  boxShadow: "2px 0 0 #e2e8f0",
+};
+const stickyHeader = {
+  position: "sticky" as const,
+  top: 0,
+};
+const headerCell = {
+  padding: 10,
+  borderRight: "1px solid #cbd5e1",
+  borderBottom: "1px solid #cbd5e1",
+  display: "flex",
+  flexDirection: "column" as const,
+  gap: 2,
+  fontSize: 12,
+  background: "#f8fafc",
+};
+const groupCell = {
+  padding: "7px 10px",
+  background: "#e2e8f0",
+  fontWeight: 800,
+  fontSize: 12,
+  textTransform: "uppercase" as const,
+  letterSpacing: ".04em",
+};
+const labelCell = {
+  padding: 8,
+  borderRight: "1px solid #e2e8f0",
+  borderBottom: "1px solid #e2e8f0",
+  fontWeight: 600,
+  fontSize: 12,
+};
+const valueCell = {
+  minHeight: 34,
+  borderRight: "1px solid #e2e8f0",
+  borderBottom: "1px solid #e2e8f0",
+  display: "flex",
+  alignItems: "center",
+  padding: "0 8px",
+  fontSize: 12,
+};

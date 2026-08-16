@@ -7,6 +7,7 @@ describe("INP.1B.5 shared nursing documentation board", () => {
   const panel = read("features/inpatient-workspace/InpatientNursingAssessmentPanel.tsx");
   const board = read("features/clinical-documentation/NursingDocumentationBoard.tsx");
   const composition = read("features/inpatient-workspace/InpatientNursingAssessmentSection.tsx");
+  const rows = read("features/inpatient-workspace/inpatientNursingBoardRowsInp1b6.ts");
 
   it("mounts the shared board and removes the rejected tab presentation", () => {
     expect(panel).toContain("<NursingDocumentationBoard");
@@ -24,7 +25,7 @@ describe("INP.1B.5 shared nursing documentation board", () => {
   it("creates blank or copied unsaved reassessments without mutating history", () => {
     expect(panel).toContain("emptyDraft()");
     expect(panel).toContain("structuredFindings: { ...clinical.structuredFindings }");
-    expect(panel).toContain("Previous values copied into a new unsaved draft");
+    expect(panel).toContain("copiedNotice");
     expect(panel).not.toMatch(/setHistory\([^)]*draft/);
   });
   it("uses only INP.1A authority and leaves ED persistence out", () => {
@@ -41,7 +42,17 @@ describe("INP.1B.5 shared nursing documentation board", () => {
     expect(panel).toContain("RN or Admin authority");
   });
   it("contains professional complete bedside row labels and no internal release terminology", () => {
-    for (const label of ["Mental status", "Respiratory effort", "Peripheral perfusion", "Voiding / urinary status", "Wounds / pressure concern", "Lines / drains / devices", "Nutrition / hydration", "Nursing narrative"]) expect(panel).toContain(label);
+    for (const label of [
+      "Level of consciousness",
+      "Respiratory effort",
+      "Peripheral pulses / perfusion",
+      "Voiding status",
+      "Pressure injury",
+      "Active lines / drains / devices (condition)",
+      "Diet / nutrition",
+      "Focused nursing narrative",
+    ])
+      expect(rows).toContain(label);
     expect(panel).not.toMatch(/D4A|D4B|EDOC|CurrentDouleur|Chute Risque|Lines dispositifs/);
   });
 });

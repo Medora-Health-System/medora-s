@@ -225,6 +225,29 @@ function nursingDocumentationHtml(
         .join("")}
     </div>`);
   }
+  const inpatient = nursingDocumentation.inpatientNursingAssessment;
+  if (inpatient && inpatient.sections.length > 0) {
+    const meta = [
+      inpatient.documentedBy,
+      inpatient.documentedAt,
+      inpatient.serverAuthoredAt && inpatient.serverAuthoredAt !== inpatient.documentedAt
+        ? `saved ${inpatient.serverAuthoredAt}`
+        : null,
+    ]
+      .filter(Boolean)
+      .join(" — ");
+    parts.push(`<div class="note-block">
+      <h3>${esc(inpatient.title)}</h3>
+      ${meta ? `<p class="muted">${esc(meta)}</p>` : ""}
+      ${inpatient.sections
+        .map(
+          (section) => `<div class="note-section"><strong>${esc(section.label)}</strong><div class="pre-text">${esc(
+            section.text
+          )}</div></div>`
+        )
+        .join("")}
+    </div>`);
+  }
   const discharge = nursingDocumentation.dischargeExecution;
   if (discharge) {
     const meta = [discharge.documentedBy, discharge.documentedAt].filter(Boolean).join(" — ");

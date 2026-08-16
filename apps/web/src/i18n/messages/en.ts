@@ -18257,7 +18257,7 @@ export default {
     chartReferenceLink: "Chart reference",
     hubTitle: "Clinical Documentation",
     hubSubtitle:
-      "Structured ED documentation — flowsheets, scores, screens, intake/output, safety, and monitoring.",
+      "Structured clinical documentation — flowsheets, scores, screens, intake/output, safety, and monitoring.",
     closeHub: "Close",
     searchPlaceholder: "Search documentation…",
     searchAria: "Search clinical documentation cards",

@@ -220,6 +220,7 @@ describe("chart-export-html.util", () => {
                 },
               ],
             },
+            inpatientNursingAssessment: null,
             dischargeExecution: {
               documentedBy: "Marie Infirmière",
               documentedAt: "2026-05-18T14:00:00.000Z",

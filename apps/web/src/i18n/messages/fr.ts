@@ -18342,7 +18342,7 @@ export default {
     chartReferenceLink: "Référence dossier",
     hubTitle: "Documentation clinique",
     hubSubtitle:
-      "Documentation structurée aux urgences — feuilles de suivi, scores, dépistages, E/S, sécurité et surveillance.",
+      "Documentation structurée — feuilles de suivi, scores, dépistages, E/S, sécurité et surveillance.",
     closeHub: "Fermer",
     searchPlaceholder: "Rechercher une documentation…",
     searchAria: "Rechercher dans la documentation clinique",

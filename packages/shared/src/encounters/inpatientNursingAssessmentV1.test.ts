@@ -27,7 +27,43 @@ describe("INP.1A inpatient nursing assessment authority", () => {
       respiratory: { code: "NORMAL" }, skinWounds: { code: "INTACT" }, mobility: { code: "INDEPENDENT" },
     };
     expect(projectInpatientNursingAssessmentOverview(assessment)).toMatchObject({ painScore: 2, mentalStatus: "ALERT", respiratoryConcern: false });
-    expect(adaptInpatientNursingAssessmentToClinicalRecord({ encounterId: "e", patientId: "p", facilityId: "f", assessment })).toMatchObject({ schemaId: INPATIENT_NURSING_ASSESSMENT_V1_KEY, occurredAt: assessment.authoredAt });
+    expect(adaptInpatientNursingAssessmentToClinicalRecord({ encounterId: "e", patientId: "p", facilityId: "f", assessment })).toMatchObject({
+      schemaId: INPATIENT_NURSING_ASSESSMENT_V1_KEY,
+      occurredAt: assessment.authoredAt,
+      serverAuthoredAt: assessment.authoredAt,
+    });
+  });
+
+  it("INP.1B.6 keeps clinical documented time distinct from server authoredAt", () => {
+    const clinicalDocumentedAt = "2026-01-01T07:00:00.000Z";
+    const authoredAt = "2026-01-01T09:30:00.000Z";
+    expect(inpatientNursingAssessmentSaveSchema.safeParse({
+      status: "SAVED",
+      clinicalDocumentedAt,
+      mentalStatus: { code: "ALERT" },
+    }).success).toBe(true);
+    const assessment = {
+      status: "SAVED" as const,
+      version: 1 as const,
+      sessionId: "s2",
+      authoredAt,
+      clinicalDocumentedAt,
+      authorUserId: "rn1",
+      authorDisplayName: "Nurse One",
+      authorRole: "RN" as const,
+      pain: { score: 1 },
+    };
+    const overview = projectInpatientNursingAssessmentOverview(assessment);
+    expect(overview.lastAssessmentAt).toBe(clinicalDocumentedAt);
+    expect(overview.serverAuthoredAt).toBe(authoredAt);
+    expect(
+      adaptInpatientNursingAssessmentToClinicalRecord({
+        encounterId: "e",
+        patientId: "p",
+        facilityId: "f",
+        assessment,
+      }).occurredAt,
+    ).toBe(clinicalDocumentedAt);
   });
 
   it.each(["medicalHistory", "surgicalHistory", "homeMedications", "tobacco", "alcohol", "substances", "socialHistory"])("allows only typed %s updates", (section) => {

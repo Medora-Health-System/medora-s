@@ -78,6 +78,7 @@ export type EnterpriseNursingWorkspaceSectionDefinition = {
   authoritativeSource:
     | "NURSING_ADMISSION_D4A1"
     | "ED_REASSESSMENT_ENGINE"
+    | "INPATIENT_NURSING_ASSESSMENT_V1"
     | "ER_HANDOFF_V1"
     | "EDOC"
     | "ENCOUNTER_NOTE"
@@ -566,7 +567,33 @@ export function isNursingDocumentTypeAllowedForCareSetting(
 export function nursingWorkspaceSectionsForCareSetting(
   careSetting: "EMERGENCY" | "OBSERVATION" | "INPATIENT" | "AMBULATORY"
 ): EnterpriseNursingWorkspaceSectionDefinition[] {
-  return ENTERPRISE_NURSING_WORKSPACE_SECTIONS.filter((s) => s.visibleIn.includes(careSetting));
+  return ENTERPRISE_NURSING_WORKSPACE_SECTIONS.filter((s) => s.visibleIn.includes(careSetting)).map(
+    (section) => ({
+      ...section,
+      authoritativeSource: resolveNursingSectionAuthoritativeSource(section, careSetting),
+    })
+  );
+}
+
+/**
+ * INP.1B.6 — systems/reassessment/GI/GU for inpatient resolve to INP.1A, not the ED reassessment engine.
+ * ED/Observation keep `ED_REASSESSMENT_ENGINE`.
+ */
+export function resolveNursingSectionAuthoritativeSource(
+  section: Pick<EnterpriseNursingWorkspaceSectionDefinition, "id" | "authoritativeSource">,
+  careSetting: "EMERGENCY" | "OBSERVATION" | "INPATIENT" | "AMBULATORY"
+): EnterpriseNursingWorkspaceSectionDefinition["authoritativeSource"] {
+  if (
+    careSetting === "INPATIENT" &&
+    section.authoritativeSource === "ED_REASSESSMENT_ENGINE" &&
+    (section.id === "systems" ||
+      section.id === "reassessment" ||
+      section.id === "gastrointestinal" ||
+      section.id === "genitourinary")
+  ) {
+    return "INPATIENT_NURSING_ASSESSMENT_V1";
+  }
+  return section.authoritativeSource;
 }
 
 export function resolveNursingWorkspaceSection(

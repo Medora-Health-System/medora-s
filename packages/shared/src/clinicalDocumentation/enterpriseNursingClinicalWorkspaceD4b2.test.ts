@@ -14,6 +14,7 @@ import {
   NURSING_RAPID_REASSESSMENT_PANEL_IS_DURABLE,
   nursingDocumentEligibility,
   nursingWorkspaceSectionsForCareSetting,
+  resolveNursingSectionAuthoritativeSource,
   resolveNursingWorkspaceSection,
   toClinicalDocumentationHubCareSetting,
 } from "./enterpriseNursingClinicalWorkspaceD4b2.js";
@@ -46,6 +47,23 @@ describe("MEDUI.D4B.2 enterprise nursing clinical workspace", () => {
     expect(ip).toContain("admission");
     expect(ip).toContain("intakeOutput");
     expect(ip).toContain("nutrition");
+  });
+
+  it("INP.1B.6 resolves inpatient systems/reassessment authority to INP.1A (ED keeps ED engine)", () => {
+    const systemsIp = nursingWorkspaceSectionsForCareSetting("INPATIENT").find((s) => s.id === "systems");
+    const reassessmentIp = nursingWorkspaceSectionsForCareSetting("INPATIENT").find(
+      (s) => s.id === "reassessment"
+    );
+    const systemsEd = nursingWorkspaceSectionsForCareSetting("EMERGENCY").find((s) => s.id === "systems");
+    expect(systemsIp?.authoritativeSource).toBe("INPATIENT_NURSING_ASSESSMENT_V1");
+    expect(reassessmentIp?.authoritativeSource).toBe("INPATIENT_NURSING_ASSESSMENT_V1");
+    expect(systemsEd?.authoritativeSource).toBe("ED_REASSESSMENT_ENGINE");
+    expect(
+      resolveNursingSectionAuthoritativeSource(
+        { id: "systems", authoritativeSource: "ED_REASSESSMENT_ENGINE" },
+        "OBSERVATION"
+      )
+    ).toBe("ED_REASSESSMENT_ENGINE");
   });
 
   it("rejects prohibited care-setting combinations for admission", () => {

@@ -102,6 +102,12 @@ export function InpatientOverviewView({
   onAckEvent?: (eventId: string, status: string) => void;
 }) {
   const { t, language } = useI18n();
+  const nursingCodeLabel = (code: string | null | undefined) => {
+    if (!code) return null;
+    const key = `inpatientNursingAssessmentInp1b.codes.${code}`;
+    const labeled = t(key);
+    return labeled !== key ? labeled : code.replaceAll("_", " ");
+  };
   const p = projection;
   const dash = DISPLAY_DASH;
 
@@ -451,6 +457,70 @@ export function InpatientOverviewView({
               ? formatEncounterChromeDateTime(p.nursing.lastShiftAssessmentAtIso, language)
               : dash}
           </p>
+          {p.nursing.assessment ? (
+            <div data-testid="overview-nursing-assessment-projection" style={{ marginTop: 8, fontSize: 13 }}>
+              {p.nursing.assessment.authorDisplayName ? (
+                <p style={{ margin: "0 0 4px" }}>
+                  {t("inpatientOverviewD4a34.nursing.documentedBy")}:{" "}
+                  <strong>{p.nursing.assessment.authorDisplayName}</strong>
+                  {p.nursing.assessment.assessmentType
+                    ? ` · ${nursingCodeLabel(p.nursing.assessment.assessmentType)}`
+                    : null}
+                </p>
+              ) : null}
+              {p.nursing.assessment.mentalStatus ? (
+                <p style={{ margin: "0 0 2px" }}>
+                  {t("inpatientOverviewD4a34.nursing.mentalStatus")}:{" "}
+                  {nursingCodeLabel(p.nursing.assessment.mentalStatus)}
+                </p>
+              ) : null}
+              {p.nursing.assessment.painScore != null ? (
+                <p style={{ margin: "0 0 2px" }}>
+                  {t("inpatientOverviewD4a34.nursing.pain")}: {p.nursing.assessment.painScore}/10
+                </p>
+              ) : null}
+              {p.nursing.assessment.respiratoryStatus ? (
+                <p style={{ margin: "0 0 2px" }}>
+                  {t("inpatientOverviewD4a34.nursing.respiratory")}:{" "}
+                  {nursingCodeLabel(p.nursing.assessment.respiratoryStatus)}
+                </p>
+              ) : null}
+              {p.nursing.assessment.mobility || p.nursing.assessment.fallRisk ? (
+                <p style={{ margin: "0 0 2px" }}>
+                  {t("inpatientOverviewD4a34.nursing.mobilityFall")}:{" "}
+                  {[
+                    nursingCodeLabel(p.nursing.assessment.mobility),
+                    nursingCodeLabel(p.nursing.assessment.fallRisk),
+                  ]
+                    .filter(Boolean)
+                    .join(" · ")}
+                </p>
+              ) : null}
+              {p.nursing.assessment.skinWoundConcern ||
+              p.nursing.assessment.deviceLineConcern ||
+              p.nursing.assessment.safetyConcern ? (
+                <p style={{ margin: "0 0 2px" }}>
+                  {t("inpatientOverviewD4a34.nursing.concerns")}:{" "}
+                  {[
+                    p.nursing.assessment.skinWoundConcern
+                      ? t("inpatientOverviewD4a34.nursing.skinWound")
+                      : null,
+                    p.nursing.assessment.deviceLineConcern
+                      ? t("inpatientOverviewD4a34.nursing.devices")
+                      : null,
+                    p.nursing.assessment.safetyConcern
+                      ? t("inpatientOverviewD4a34.nursing.safety")
+                      : null,
+                  ]
+                    .filter(Boolean)
+                    .join(", ")}
+                </p>
+              ) : null}
+              {p.nursing.assessment.narrativeExcerpt ? (
+                <p style={{ margin: "4px 0 0", color: "#334155" }}>{p.nursing.assessment.narrativeExcerpt}</p>
+              ) : null}
+            </div>
+          ) : null}
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
             <DeepLinkButton
               label={t(
@@ -463,11 +533,7 @@ export function InpatientOverviewView({
               onClick={() => onNavigateSection?.("admission")}
             />
             <DeepLinkButton
-              label={t(
-                p.nursing.lastShiftAssessmentAtIso
-                  ? "inpatientOverviewD4a34.nursing.openAssessmentReassess"
-                  : "inpatientOverviewD4a34.nursing.startAssessment"
-              )}
+              label={t("inpatientOverviewD4a34.nursing.openNursingAssessment")}
               onClick={() => onNavigateSection?.("nursing")}
             />
           </div>

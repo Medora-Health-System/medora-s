@@ -123,6 +123,8 @@ import {
   type InpatientNursingAssessmentV1,
   INPATIENT_NURSING_ASSESSMENT_V1_KEY,
   INPATIENT_NURSING_ASSESSMENT_INVALID_CARE_SETTING,
+  INPATIENT_CLINICAL_DOCUMENTED_AT_INVALID,
+  normalizeInpatientClinicalDocumentedAt,
   projectInpatientNursingAssessmentOverview,
   resolveHospitalCareSettingFromEncounter,
   dischargeSnapshotIsObservationAdmissionRoutingOnly,
@@ -350,11 +352,20 @@ export class EncountersService {
     if (!performer || !["RN", "ADMIN"].includes(performer.performerRoleTitle)) {
       throw new ForbiddenException("Clinical nursing assessment authority required");
     }
+    const clinicalTime = normalizeInpatientClinicalDocumentedAt(clinical.clinicalDocumentedAt);
+    if (!clinicalTime.ok) {
+      throw new BadRequestException({
+        code: INPATIENT_CLINICAL_DOCUMENTED_AT_INVALID,
+        message: "Clinical documentation date/time is invalid or outside the permitted range.",
+      });
+    }
     const authoredAt = new Date().toISOString();
     const sessionId = crypto.randomUUID();
     const authorRole: InpatientNursingAssessmentV1["authorRole"] = performer.performerRoleTitle as "RN" | "ADMIN";
+    const { clinicalDocumentedAt: _clientClinicalTime, ...clinicalBody } = clinical;
     const snapshot: InpatientNursingAssessmentV1 = {
-      ...clinical,
+      ...clinicalBody,
+      ...(clinicalTime.value ? { clinicalDocumentedAt: clinicalTime.value } : {}),
       version: 1 as const,
       sessionId,
       authoredAt,
