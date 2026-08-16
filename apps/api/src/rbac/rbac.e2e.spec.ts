@@ -99,6 +99,7 @@ describe("RBAC (e2e)", () => {
         userId: frontDeskUser.id,
         roleId: frontDeskRole.id,
         facilityId: facility.id,
+        professionCode: "FRONT_DESK",
       },
     });
 
@@ -107,6 +108,7 @@ describe("RBAC (e2e)", () => {
         userId: labUser.id,
         roleId: labRole.id,
         facilityId: facility.id,
+        professionCode: "TECHNICIAN",
       },
     });
 
@@ -115,6 +117,8 @@ describe("RBAC (e2e)", () => {
         userId: providerUser.id,
         roleId: providerRole.id,
         facilityId: facility.id,
+        /** MEDUI.D4C.11 — required; do not invent MD/DO from RoleCode.PROVIDER. */
+        professionCode: "PROVIDER_UNSPECIFIED",
       },
     });
 
