@@ -21513,11 +21513,11 @@ export default {
       longitudinalNote:
         "Longitudinal detail (allergies, medications, history) remains on the patient record — not a parallel dental history.",
       noClinicalCapability:
-        "Read-only — your account lacks dental clinical privilege (PROVIDER role required at this facility).",
+        "Read-only — your account lacks clinical authority for this module at this facility.",
     },
     authoring: {
       noClinicalCapability:
-        "Read-only — dental clinical privilege (PROVIDER) required to document.",
+        "Read-only — your account lacks clinical authority to document at this facility.",
       encounterClosed: "Read-only — encounter is closed.",
       dentalDisabled: "Dental care is not enabled for this facility.",
     },

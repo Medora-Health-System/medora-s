@@ -17,7 +17,7 @@ describe("MEDUI.D5A.5A web dental clinical board authoring", () => {
     expect(D5A5_DENTAL_HISTORY_REVIEW_KEY).toBe("dentalHistoryReviewV1");
   });
 
-  it("ADMIN+PROVIDER can author; ADMIN alone cannot", () => {
+  it("FACILITY_ADMIN and ADMIN+PROVIDER can author; platform-only cannot", () => {
     const both = resolveDentalWorkspaceAccess({
       roleCodes: ["ADMIN", "PROVIDER"],
       dentalCareEnabled: true,
@@ -29,7 +29,13 @@ describe("MEDUI.D5A.5A web dental clinical board authoring", () => {
       roleCodes: ["ADMIN"],
       dentalCareEnabled: true,
     });
-    expect(canAuthorDentalClinicalBoard(admin)).toBe(false);
+    expect(canAuthorDentalClinicalBoard(admin)).toBe(true);
+
+    const platform = resolveDentalWorkspaceAccess({
+      roleCodes: ["MEDORA_SUPER_ADMIN"],
+      dentalCareEnabled: true,
+    });
+    expect(canAuthorDentalClinicalBoard(platform)).toBe(false);
   });
 
   it("multi-tooth odontogram bulk preserves per-tooth codes", () => {

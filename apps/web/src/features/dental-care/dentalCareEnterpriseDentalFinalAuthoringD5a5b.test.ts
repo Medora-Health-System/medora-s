@@ -14,7 +14,7 @@ describe("MEDUI.D5A.5B web dental final authoring gate", () => {
     expect(D5A5_OVERVIEW_SECTIONS).toContain("treatmentAcceptance");
   });
 
-  it("role matrix: PROVIDER write; ADMIN-only no clinical; ADMIN+PROVIDER write", () => {
+  it("role matrix: PROVIDER write; FACILITY_ADMIN write; ADMIN+PROVIDER write; platform-only deny", () => {
     const provider = resolveEnterpriseDentalEncounterAuthoring({
       roleCodes: ["PROVIDER"],
       dentalCareEnabled: true,
@@ -30,7 +30,8 @@ describe("MEDUI.D5A.5B web dental final authoring gate", () => {
       encounterStatus: "OPEN",
       serviceLine: "DENTAL",
     });
-    expect(admin.canEditEnterpriseHistory).toBe(false);
+    expect(admin.canEditEnterpriseHistory).toBe(true);
+    expect(admin.canEditPeriodontal).toBe(true);
 
     const both = resolveEnterpriseDentalEncounterAuthoring({
       roleCodes: ["ADMIN", "PROVIDER"],
@@ -39,6 +40,15 @@ describe("MEDUI.D5A.5B web dental final authoring gate", () => {
       serviceLine: "DENTAL",
     });
     expect(both.canEditTreatmentPlan).toBe(true);
+
+    const platform = resolveEnterpriseDentalEncounterAuthoring({
+      roleCodes: ["MEDORA_SUPER_ADMIN"],
+      dentalCareEnabled: true,
+      encounterStatus: "OPEN",
+      serviceLine: "DENTAL",
+    });
+    expect(platform.isReadOnly).toBe(true);
+    expect(platform.readOnlyReason).toBe("NO_CLINICAL_CAPABILITY");
   });
 
   it("multi-tooth odontogram codes remain per-tooth", () => {

@@ -10,7 +10,7 @@ describe("MEDUI.D5A.5B API dental authoring gate", () => {
     expect(D5A5_DENTAL_HISTORY_REVIEW_KEY).toBe("dentalHistoryReviewV1");
   });
 
-  it("PROVIDER + OPEN => writable; ADMIN-only => read-only with reason", () => {
+  it("PROVIDER + OPEN => writable; FACILITY_ADMIN-only => writable (D5A.5C)", () => {
     const provider = resolveEnterpriseDentalEncounterAuthoring({
       roleCodes: ["PROVIDER"],
       dentalCareEnabled: true,
@@ -27,8 +27,9 @@ describe("MEDUI.D5A.5B API dental authoring gate", () => {
       encounterStatus: "OPEN",
       serviceLine: "DENTAL",
     });
-    expect(admin.canEditPeriodontal).toBe(false);
-    expect(admin.readOnlyReason).toBe("NO_CLINICAL_CAPABILITY");
+    expect(admin.canEditPeriodontal).toBe(true);
+    expect(admin.isReadOnly).toBe(false);
+    expect(admin.readOnlyReason).toBeNull();
   });
 
   it("ADMIN+PROVIDER retains write; CLOSED locks", () => {

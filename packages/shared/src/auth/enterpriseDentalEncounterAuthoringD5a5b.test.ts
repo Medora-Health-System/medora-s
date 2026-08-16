@@ -43,7 +43,7 @@ describe("MEDUI.D5A.5B enterprise Dental encounter authoring", () => {
     expect(a.canEditEnterpriseHistory).toBe(true);
   });
 
-  it("3: ADMIN-only => cannot clinical-author", () => {
+  it("3: FACILITY_ADMIN-only => clinical-author (MEDUI.D5A.5C)", () => {
     const a = resolveEnterpriseDentalEncounterAuthoring({
       roleCodes: ["ADMIN"],
       dentalCareEnabled: true,
@@ -51,9 +51,14 @@ describe("MEDUI.D5A.5B enterprise Dental encounter authoring", () => {
       serviceLine: "DENTAL",
     });
     expect(a.canView).toBe(true);
-    expect(a.isReadOnly).toBe(true);
-    expect(a.canEditPeriodontal).toBe(false);
-    expect(a.readOnlyReason).toBe("NO_CLINICAL_CAPABILITY");
+    expect(a.isReadOnly).toBe(false);
+    expect(a.canEditPeriodontal).toBe(true);
+    expect(a.canEditTreatmentPlan).toBe(true);
+    expect(a.canDocumentProcedure).toBe(true);
+    expect(a.canEditOdontogram).toBe(true);
+    expect(a.canEditEnterpriseHistory).toBe(true);
+    expect(a.canSign).toBe(true);
+    expect(a.readOnlyReason).toBeNull();
   });
 
   it("4–5: FRONT_DESK / BILLING => cannot clinical-author", () => {
