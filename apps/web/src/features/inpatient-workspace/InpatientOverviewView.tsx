@@ -607,7 +607,24 @@ export function InpatientOverviewView({
                   {t(`hospitalAdmissionD4a25.options.${p.nursing.admissionOverview.homeMedReviewed}`)}
                 </li>
               ) : null}
-              {p.nursing.admissionOverview.mobilityBaseline ? (
+              {p.nursing.admissionOverview.mobilityBaseline || p.nursing.assessment?.mobility ? (
+                <li data-testid="overview-mobility-baseline-vs-current">
+                  {t("inpatientNursingAssessmentInp2c.overview.mobilityPair")}:{" "}
+                  {p.nursing.admissionOverview.mobilityBaseline ? (
+                    <>
+                      {t("inpatientNursingAssessmentInp2c.overview.assessmentBaseline")}{" "}
+                      {t(`hospitalAdmissionD4a25.options.${p.nursing.admissionOverview.mobilityBaseline}`)}
+                    </>
+                  ) : null}
+                  {p.nursing.admissionOverview.mobilityBaseline && p.nursing.assessment?.mobility ? " · " : null}
+                  {p.nursing.assessment?.mobility ? (
+                    <>
+                      {t("inpatientNursingAssessmentInp2c.overview.assessmentCurrent")}{" "}
+                      {nursingCodeLabel(p.nursing.assessment.mobility)}
+                    </>
+                  ) : null}
+                </li>
+              ) : p.nursing.admissionOverview.mobilityBaseline ? (
                 <li>
                   {t("inpatientAdmissionInp2b.overview.mobility")}:{" "}
                   {t(`hospitalAdmissionD4a25.options.${p.nursing.admissionOverview.mobilityBaseline}`)}

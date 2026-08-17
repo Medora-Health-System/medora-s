@@ -38,6 +38,7 @@ import { inpatientOverviewD4a34Fr } from "./inpatientOverviewD4a34.fr";
 import { inpatientOverviewInp2aFr } from "./inpatientOverviewInp2a.fr";
 import { inpatientAdmissionInp2bFr } from "./inpatientAdmissionInp2b.fr";
 import { inpatientNursingAssessmentInp1bFr } from "./inpatientNursingAssessmentInp1b.fr";
+import { inpatientNursingAssessmentInp2cFr } from "./inpatientNursingAssessmentInp2c.fr";
 import { emergencyAdaptiveNursingFr } from "./emergencyAdaptiveNursing.fr";
 import { admissionWorkflowVisibilityFr } from "./admissionWorkflowVisibility.fr";
 import { admissionCommandCenterFr } from "./admissionCommandCenter.fr";
@@ -20702,6 +20703,7 @@ export default {
   inpatientOverviewInp2a: inpatientOverviewInp2aFr,
   inpatientAdmissionInp2b: inpatientAdmissionInp2bFr,
   inpatientNursingAssessmentInp1b: inpatientNursingAssessmentInp1bFr,
+  inpatientNursingAssessmentInp2c: inpatientNursingAssessmentInp2cFr,
 
   hospitalAdmissionD4a0: hospitalAdmissionD4a0Fr,
   emergencyAdaptiveNursing: emergencyAdaptiveNursingFr,

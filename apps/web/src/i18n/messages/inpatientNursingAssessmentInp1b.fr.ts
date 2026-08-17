@@ -23,9 +23,13 @@ export const inpatientNursingAssessmentInp1bFr = {
   saved: "Évaluation enregistrée",
   loadError: "Impossible de charger la documentation infirmière.",
   copiedNotice:
-    "Constatations précédentes copiées dans un nouveau brouillon de réévaluation non enregistré.",
+    "Constatations précédentes copiées dans un nouveau brouillon de réévaluation non enregistré. Copié — vérifier avant d’enregistrer.",
   newNotice:
     "Nouveau brouillon de réévaluation commencé sans copier les constatations.",
+  copiedVerify: "Copié — vérifier avant d’enregistrer",
+  discardDraft: "Annuler le brouillon",
+  activeDraft: "BROUILLON ACTIF",
+  historicalColumn: "HISTORIQUE",
   notDocumented: "Non documenté",
   continueAssessment: "Continuer l’évaluation",
   startReassessment: "Commencer une réévaluation",

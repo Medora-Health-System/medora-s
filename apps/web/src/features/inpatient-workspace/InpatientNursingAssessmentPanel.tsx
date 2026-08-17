@@ -2,9 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { InpatientNursingAssessmentSave, InpatientNursingAssessmentV1 } from "@medora/shared";
-import {
-  resolveInpatientNursingClinicalOccurredAt,
-} from "@medora/shared";
+import { resolveInpatientNursingClinicalOccurredAt } from "@medora/shared";
 import { apiFetch, asApiObject } from "@/lib/apiClient";
 import {
   NursingDocumentationBoard,
@@ -15,6 +13,8 @@ import {
 import { ClinicalDocumentationHub } from "@/features/clinical-documentation/ClinicalDocumentationHub";
 import { useI18n } from "@/lib/i18n";
 import { INPATIENT_NURSING_BOARD_ROWS } from "./inpatientNursingBoardRowsInp1b6";
+import { NursingAssessmentContextRail } from "./NursingAssessmentContextRail";
+import type { InpatientWorkspaceSection } from "./inpatientWorkspaceSections";
 
 function toLocalDatetimeValue(iso: string): string {
   const d = new Date(iso);
@@ -46,12 +46,14 @@ export function InpatientNursingAssessmentPanel({
   patientId: _patientId,
   isLocked,
   onSaved,
+  onNavigateSection,
 }: {
   encounterId: string;
   facilityId: string;
   patientId: string;
   isLocked: boolean;
   onSaved: () => void | Promise<void>;
+  onNavigateSection?: (section: InpatientWorkspaceSection) => void;
 }) {
   const { language, t } = useI18n();
   const french = language === "fr";
@@ -114,7 +116,13 @@ export function InpatientNursingAssessmentPanel({
         structuredFindings: { ...clinical.structuredFindings },
         clinicalDocumentedAt: new Date().toISOString(),
       });
-      setCopied(new Set(Object.keys(toBoardValues(latest)).filter((key) => toBoardValues(latest)[key] !== undefined && toBoardValues(latest)[key] !== "")));
+      setCopied(
+        new Set(
+          Object.keys(toBoardValues(latest)).filter(
+            (key) => toBoardValues(latest)[key] !== undefined && toBoardValues(latest)[key] !== "",
+          ),
+        ),
+      );
       setMessage(t("inpatientNursingAssessmentInp1b.copiedNotice"));
     }
   }
@@ -150,23 +158,38 @@ export function InpatientNursingAssessmentPanel({
   const latest = history.at(-1);
   const summarySource = draft ? toBoardValues(draft) : latest ? toBoardValues(latest) : {};
   const rows = useMemo(() => localizeRows(INPATIENT_NURSING_BOARD_ROWS, french, t), [french, t]);
+  const summaryLines = useMemo(() => buildSummaryLines(summarySource, rows), [summarySource, rows]);
   const context = latest ? (
     <>
-      {french ? "Dernière documentation : " : "Last documented: "}
+      {t("inpatientNursingAssessmentInp2c.board.lastDocumented")}{" "}
       {new Date(resolveInpatientNursingClinicalOccurredAt(latest)).toLocaleString()}
       {" · "}
-      {french ? "Documenté par : " : "Documented by: "}
-      {latest.authorDisplayName}
+      {t("inpatientNursingAssessmentInp2c.board.documentedBy")} {latest.authorDisplayName}
     </>
   ) : (
-    <>{french ? "Aucune évaluation enregistrée" : "No saved assessments yet"}</>
+    <>{t("inpatientNursingAssessmentInp2c.board.noSavedYet")}</>
   );
+
+  const boardLabels = {
+    clinicalFinding: t("inpatientNursingAssessmentInp2c.board.clinicalFinding"),
+    noSaved: t("inpatientNursingAssessmentInp2c.board.noSaved"),
+    addColumn: t("inpatientNursingAssessmentInp2c.board.addColumn"),
+    copyPrevious: t("inpatientNursingAssessmentInp2c.board.copyPrevious"),
+    save: t("inpatientNursingAssessmentInp2c.board.save"),
+    discard: t("inpatientNursingAssessmentInp2c.board.discard"),
+    notCharted: t("inpatientNursingAssessmentInp2c.board.notCharted"),
+    currentSaved: t("inpatientNursingAssessmentInp2c.board.currentSaved"),
+    saved: t("inpatientNursingAssessmentInp2c.board.saved"),
+    draft: t("inpatientNursingAssessmentInp2c.board.draft"),
+    historical: t("inpatientNursingAssessmentInp2c.board.historical"),
+    summary: t("inpatientNursingAssessmentInp2c.board.summary"),
+  };
 
   return (
     <div data-testid="inpatient-native-nursing-assessment">
       <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 8 }}>
         <button type="button" data-testid="inpatient-clinical-documentation-open" onClick={() => setHubOpen(true)}>
-          {french ? "Documentation clinique" : "Clinical Documentation"}
+          {t("inpatientNursingAssessmentInp2c.board.openHub")}
         </button>
       </div>
       {hubOpen ? (
@@ -177,58 +200,57 @@ export function InpatientNursingAssessmentPanel({
           onClose={() => setHubOpen(false)}
         />
       ) : null}
-      <NursingDocumentationBoard
-        title={t("inpatientNursingAssessmentInp1b.title")}
-        context={context}
-        rows={rows}
-        columns={columns}
-        draft={draft ? toBoardValues(draft) : null}
-        draftTime={draft?.clinicalDocumentedAt ?? undefined}
-        clinicalTimeValue={draft?.clinicalDocumentedAt ? toLocalDatetimeValue(draft.clinicalDocumentedAt) : ""}
-        onClinicalTimeChange={(local) =>
-          setDraft((current) =>
-            current ? { ...current, clinicalDocumentedAt: fromLocalDatetimeValue(local) } : current,
-          )
-        }
-        clinicalTimeLabel={t("inpatientNursingAssessmentInp1b.assessmentTime")}
-        copiedFieldIds={copied}
-        readOnly={isLocked}
-        busy={busy}
-        onChange={patch}
-        onNew={() => begin(false)}
-        onCopyPrevious={() => begin(true)}
-        onSave={() => void save()}
-        labels={
-          french
-            ? {
-                clinicalFinding: "Constat clinique",
-                noSaved: "Aucune évaluation enregistrée",
-                addColumn: "+ Ajouter une colonne",
-                copyPrevious: "Copier la précédente",
-                save: "Enregistrer l’évaluation",
-                notCharted: "Non documenté",
-                currentSaved: "ACTUELLE · ENREGISTRÉE",
-                saved: "ENREGISTRÉE",
-                draft: "BROUILLON",
-                summary: "Résumé infirmier",
-              }
-            : undefined
-        }
-        summary={<SectionSummary values={summarySource} french={french} rows={rows} />}
-      />
-      <p style={{ fontSize: 12, color: "#64748b" }}>
-        {french
-          ? "Entrées/sorties et dispositifs : ouvrir Documentation clinique (autorité entreprise). Ne pas recopier ici."
-          : "Intake & output and devices: open Clinical Documentation (enterprise authority). Do not duplicate inventory here."}
-      </p>
-      {message ? <p role="status">{message}</p> : null}
-      {isLocked ? (
-        <p role="status">
-          {french
-            ? "Lecture seule : la rédaction de l’évaluation infirmière nécessite une autorité Infirmier ou Admin."
-            : "Read-only: nursing assessment authoring requires RN or Admin authority."}
-        </p>
-      ) : null}
+      <div
+        data-testid="nursing-assessment-layout"
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
+          gap: 14,
+          alignItems: "start",
+        }}
+      >
+        <div style={{ minWidth: 0 }}>
+          <NursingDocumentationBoard
+            title={t("inpatientNursingAssessmentInp1b.title")}
+            context={context}
+            rows={rows}
+            columns={columns}
+            draft={draft ? toBoardValues(draft) : null}
+            draftTime={draft?.clinicalDocumentedAt ?? undefined}
+            clinicalTimeValue={draft?.clinicalDocumentedAt ? toLocalDatetimeValue(draft.clinicalDocumentedAt) : ""}
+            onClinicalTimeChange={(local) =>
+              setDraft((current) =>
+                current ? { ...current, clinicalDocumentedAt: fromLocalDatetimeValue(local) } : current,
+              )
+            }
+            clinicalTimeLabel={t("inpatientNursingAssessmentInp2c.board.assessmentTime")}
+            copiedFieldIds={copied}
+            copiedVerifyLabel={t("inpatientNursingAssessmentInp2c.board.copiedVerify")}
+            readOnly={isLocked}
+            busy={busy}
+            onChange={patch}
+            onNew={() => begin(false)}
+            onCopyPrevious={() => begin(true)}
+            onSave={() => void save()}
+            onDiscard={() => {
+              setDraft(null);
+              setCopied(new Set());
+              setMessage("");
+            }}
+            labels={boardLabels}
+            summary={<SectionSummary lines={summaryLines} emptyLabel={t("inpatientNursingAssessmentInp2c.board.summaryEmpty")} />}
+          />
+          <p style={{ fontSize: 12, color: "#64748b" }}>{t("inpatientNursingAssessmentInp2c.board.hubHint")}</p>
+          {message ? <p role="status">{message}</p> : null}
+          {isLocked ? <p role="status">{t("inpatientNursingAssessmentInp2c.board.readOnly")}</p> : null}
+        </div>
+        <NursingAssessmentContextRail
+          values={summarySource}
+          summaryLines={summaryLines}
+          onNavigateSection={onNavigateSection}
+          onOpenHub={() => setHubOpen(true)}
+        />
+      </div>
     </div>
   );
 }
@@ -316,49 +338,52 @@ const GROUP_FR: Record<string, string> = {
   Narrative: "Note narrative",
 };
 
-function SectionSummary({
-  values,
-  french,
-  rows,
-}: {
-  values: Record<string, NursingBoardValue>;
-  french: boolean;
-  rows: readonly NursingBoardRow[];
-}) {
+/** Concise clinical lines per group — omit empty sections (no "Not charted" spam). */
+export function buildSummaryLines(
+  values: Record<string, NursingBoardValue>,
+  rows: readonly NursingBoardRow[],
+): string[] {
   const groups = [...new Set(rows.map((r) => r.group))];
+  const lines: string[] = [];
+  for (const group of groups) {
+    const parts: string[] = [];
+    for (const r of rows.filter((row) => row.group === group)) {
+      const raw = values[r.id];
+      if (raw === undefined || raw === "" || (Array.isArray(raw) && raw.length === 0)) continue;
+      const display =
+        r.options?.find((o) => o.value === String(raw))?.label ?? String(raw).replaceAll("_", " ");
+      parts.push(display);
+    }
+    if (parts.length === 0) continue;
+    lines.push(`${group}: ${parts.slice(0, 4).join(" · ")}`);
+  }
+  return lines;
+}
+
+function SectionSummary({ lines, emptyLabel }: { lines: readonly string[]; emptyLabel: string }) {
   return (
     <div data-testid="nursing-section-summary">
-      {groups.map((group) => {
-        const items = rows
-          .filter((r) => r.group === group)
-          .map((r) => {
-            const raw = values[r.id];
-            if (raw === undefined || raw === "" || (Array.isArray(raw) && raw.length === 0)) return null;
-            const display =
-              r.options?.find((o) => o.value === String(raw))?.label ??
-              String(raw).replaceAll("_", " ");
-            return (
-              <p key={r.id} style={{ margin: "4px 0", fontSize: 13 }}>
-                <strong>{r.label}:</strong> {display}
-              </p>
-            );
-          })
-          .filter(Boolean);
-        if (items.length === 0) return null;
-        return (
-          <div key={group} style={{ marginBottom: 12 }}>
-            <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: "0.04em", color: "#334155" }}>
-              {group.toUpperCase()}
-            </div>
-            {items}
-          </div>
-        );
-      })}
-      {Object.values(values).every((v) => v === undefined || v === "" || (Array.isArray(v) && v.length === 0)) ? (
-        <p style={{ color: "#64748b", fontSize: 13 }}>
-          {french ? "Aucun constat documenté pour le moment." : "No findings documented yet."}
-        </p>
-      ) : null}
+      {lines.length === 0 ? (
+        <p style={{ color: "#64748b", fontSize: 13 }}>{emptyLabel}</p>
+      ) : (
+        lines.map((line) => {
+          const significant = /HIGH|CONCERN|WORSENED|UNRESPONSIVE|SEVERE/i.test(line);
+          return (
+            <p
+              key={line}
+              data-significant={significant ? "true" : undefined}
+              style={{
+                margin: "6px 0",
+                fontSize: 13,
+                color: significant ? "#9a3412" : "#0f172a",
+                fontWeight: significant ? 600 : 400,
+              }}
+            >
+              {line}
+            </p>
+          );
+        })
+      )}
     </div>
   );
 }

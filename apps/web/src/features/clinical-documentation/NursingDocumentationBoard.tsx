@@ -18,9 +18,22 @@ export type NursingBoardRow = {
   kind?: "text" | "number" | "textarea";
 };
 
+const CHIP_MAX = 8;
+
+function isSignificantFinding(row: NursingBoardRow, value: NursingBoardValue): boolean {
+  if (value === undefined || value === "" || (Array.isArray(value) && value.length === 0)) return false;
+  const raw = Array.isArray(value) ? value.join(",") : String(value);
+  if (row.id === "painScore" && typeof value === "number" && value >= 4) return true;
+  if (row.id === "fallRisk" && (raw === "HIGH" || raw === "MODERATE")) return true;
+  return /CONCERN|HIGH|SEVERE|WORSENED|ABSENT|UNRESPONSIVE|CRITICAL|AIRWAY_CONCERN|SEVERELY_LABORED/.test(
+    raw,
+  );
+}
+
 /**
  * Care-setting-neutral bedside flowsheet. Layout/interaction only.
  * INP.1B.6 — sticky Clinical Finding column + sticky header row; horizontal scroll for assessments.
+ * MEDUI.INP.2C — rapid chips, draft/history chrome, copied verify label (no persistence change).
  */
 export function NursingDocumentationBoard({
   title,
@@ -39,8 +52,10 @@ export function NursingDocumentationBoard({
   onNew,
   onCopyPrevious,
   onSave,
+  onDiscard,
   summary,
   labels,
+  copiedVerifyLabel,
 }: {
   title: string;
   context?: ReactNode;
@@ -48,7 +63,6 @@ export function NursingDocumentationBoard({
   columns: readonly NursingBoardColumn[];
   draft: Readonly<Record<string, NursingBoardValue>> | null;
   draftTime?: string;
-  /** Clinician-selected clinical documentation time (datetime-local value). */
   clinicalTimeValue?: string;
   onClinicalTimeChange?: (localValue: string) => void;
   clinicalTimeLabel?: string;
@@ -59,17 +73,21 @@ export function NursingDocumentationBoard({
   onNew: () => void;
   onCopyPrevious: () => void;
   onSave: () => void;
+  onDiscard?: () => void;
   summary?: ReactNode;
+  copiedVerifyLabel?: string;
   labels?: Partial<{
     clinicalFinding: string;
     noSaved: string;
     addColumn: string;
     copyPrevious: string;
     save: string;
+    discard: string;
     notCharted: string;
     currentSaved: string;
     saved: string;
     draft: string;
+    historical: string;
     summary: string;
   }>;
 }) {
@@ -79,10 +97,12 @@ export function NursingDocumentationBoard({
     addColumn: "+ Add column",
     copyPrevious: "Copy previous",
     save: "Save assessment",
+    discard: "Discard draft",
     notCharted: "Not charted",
     currentSaved: "CURRENT · SAVED",
     saved: "SAVED",
-    draft: "DRAFT",
+    draft: "ACTIVE DRAFT",
+    historical: "HISTORICAL",
     summary: "Nursing Summary",
     ...labels,
   };
@@ -113,6 +133,11 @@ export function NursingDocumentationBoard({
           ) : null}
           {!readOnly && <button type="button" onClick={onNew}>{l.addColumn}</button>}
           {!readOnly && columns.length > 0 && <button type="button" onClick={onCopyPrevious}>{l.copyPrevious}</button>}
+          {!readOnly && draft && onDiscard ? (
+            <button type="button" data-testid="nursing-discard-draft" onClick={onDiscard} disabled={busy}>
+              {l.discard}
+            </button>
+          ) : null}
           {!readOnly && draft && <button type="button" disabled={busy} onClick={onSave}>{l.save}</button>}
         </div>
       </header>
@@ -125,24 +150,32 @@ export function NursingDocumentationBoard({
             {allColumns.length === 0 ? (
               <div style={{ ...headerCell, ...stickyHeader, zIndex: 3 }}>{l.noSaved}</div>
             ) : (
-              allColumns.map((column, index) => (
-                <div
-                  key={column.id}
-                  style={{
-                    ...headerCell,
-                    ...stickyHeader,
-                    zIndex: 3,
-                    background: column.id === "draft" ? "#e0f2fe" : "#f8fafc",
-                  }}
-                >
-                  <strong>{new Date(column.occurredAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</strong>
-                  <span>{new Date(column.occurredAt).toLocaleDateString()}</span>
-                  <span style={{ color: column.id === "draft" ? "#0369a1" : "#475569", fontWeight: 700 }}>
-                    {column.id === "draft" ? l.draft : index === columns.length - 1 ? l.currentSaved : l.saved}
-                  </span>
-                  {column.author && <span>{column.author}</span>}
-                </div>
-              ))
+              allColumns.map((column, index) => {
+                const isDraft = column.id === "draft";
+                const isCurrentSaved = !isDraft && index === columns.length - 1;
+                return (
+                  <div
+                    key={column.id}
+                    data-testid={isDraft ? "nursing-column-draft" : "nursing-column-historical"}
+                    aria-readonly={!isDraft}
+                    style={{
+                      ...headerCell,
+                      ...stickyHeader,
+                      zIndex: 3,
+                      background: isDraft ? "#e0f2fe" : "#f1f5f9",
+                      borderTop: isDraft ? "3px solid #0284c7" : "3px solid transparent",
+                      opacity: isDraft ? 1 : 0.92,
+                    }}
+                  >
+                    <strong>{new Date(column.occurredAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</strong>
+                    <span>{new Date(column.occurredAt).toLocaleDateString()}</span>
+                    <span style={{ color: isDraft ? "#0369a1" : "#64748b", fontWeight: 700 }}>
+                      {isDraft ? l.draft : isCurrentSaved ? l.currentSaved : l.historical}
+                    </span>
+                    {column.author && <span>{column.author}</span>}
+                  </div>
+                );
+              })
             )}
             {groups.flatMap((group) => {
               const groupRows = rows.filter((row) => row.group === group);
@@ -159,18 +192,46 @@ export function NursingDocumentationBoard({
                     : allColumns.map((column) => {
                         const editable = column.id === "draft" && !readOnly;
                         const value = column.values[row.id];
+                        const significant = isSignificantFinding(row, value);
+                        const copied = editable && copiedFieldIds.has(row.id);
                         return (
-                          <div key={`${row.id}-${column.id}`} style={{ ...valueCell, background: editable ? "#f0f9ff" : "#fff" }}>
+                          <div
+                            key={`${row.id}-${column.id}`}
+                            data-significant={significant ? "true" : undefined}
+                            style={{
+                              ...valueCell,
+                              background: editable ? "#f0f9ff" : "#fff",
+                              borderLeft: significant ? "3px solid #c2410c" : undefined,
+                              alignItems: editable && row.options && row.options.length <= CHIP_MAX ? "flex-start" : "center",
+                              flexDirection: "column",
+                              padding: editable ? "6px 8px" : "0 8px",
+                            }}
+                          >
                             {editable ? (
-                              <BoardInput
-                                row={row}
-                                value={value}
-                                copied={copiedFieldIds.has(row.id)}
-                                notCharted={l.notCharted}
-                                onChange={(next) => onChange(row.id, next)}
-                              />
+                              <>
+                                <BoardInput
+                                  row={row}
+                                  value={value}
+                                  copied={copied}
+                                  notCharted={l.notCharted}
+                                  onChange={(next) => onChange(row.id, next)}
+                                />
+                                {copied && copiedVerifyLabel ? (
+                                  <span
+                                    data-testid={`nursing-copied-verify-${row.id}`}
+                                    style={{ fontSize: 10, color: "#92400e", marginTop: 4, fontWeight: 600 }}
+                                  >
+                                    {copiedVerifyLabel}
+                                  </span>
+                                ) : null}
+                              </>
                             ) : (
-                              <span>{displayValue(value, row)}</span>
+                              <span>
+                                {displayValue(value, row)}
+                                {significant ? (
+                                  <span style={{ marginLeft: 4, fontSize: 10, fontWeight: 700, color: "#c2410c" }}>●</span>
+                                ) : null}
+                              </span>
                             )}
                           </div>
                         );
@@ -204,7 +265,44 @@ function BoardInput({
   notCharted: string;
   onChange: (value: NursingBoardValue) => void;
 }) {
-  const style = { width: "100%", border: 0, padding: 8, background: copied ? "#fef3c7" : "transparent", boxSizing: "border-box" as const };
+  const style = {
+    width: "100%",
+    border: 0,
+    padding: 8,
+    background: copied ? "#fef3c7" : "transparent",
+    boxSizing: "border-box" as const,
+  };
+  if (row.options && row.options.length > 0 && row.options.length <= CHIP_MAX) {
+    const current = String(value ?? "");
+    return (
+      <div
+        data-testid={`nursing-rapid-chips-${row.id}`}
+        role="group"
+        aria-label={row.label}
+        style={{ display: "flex", flexWrap: "wrap", gap: 4, background: copied ? "#fef3c7" : "transparent", borderRadius: 6, padding: 2 }}
+      >
+        <button
+          type="button"
+          aria-pressed={current === ""}
+          onClick={() => onChange("")}
+          style={chipStyle(current === "")}
+        >
+          {notCharted}
+        </button>
+        {row.options.map((option) => (
+          <button
+            key={option.value}
+            type="button"
+            aria-pressed={current === option.value}
+            onClick={() => onChange(option.value)}
+            style={chipStyle(current === option.value)}
+          >
+            {option.label}
+          </button>
+        ))}
+      </div>
+    );
+  }
   if (row.options) {
     return (
       <select aria-label={row.label} style={style} value={String(value ?? "")} onChange={(event) => onChange(event.target.value)}>
@@ -231,6 +329,22 @@ function BoardInput({
       onChange={(event) => onChange(row.kind === "number" && event.target.value ? Number(event.target.value) : event.target.value)}
     />
   );
+}
+
+function chipStyle(selected: boolean) {
+  return {
+    display: "inline-flex",
+    alignItems: "center",
+    fontSize: 11,
+    padding: "4px 8px",
+    borderRadius: 9999,
+    border: selected ? "1px solid #0f766e" : "1px solid #cbd5e1",
+    background: selected ? "#ccfbf1" : "#fff",
+    color: selected ? "#115e59" : "#334155",
+    fontWeight: selected ? 600 : 500,
+    cursor: "pointer",
+    minHeight: 28,
+  } as const;
 }
 
 function displayValue(value: NursingBoardValue, row: NursingBoardRow): string {
