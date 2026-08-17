@@ -248,7 +248,7 @@ export class InpatientOperationsController {
   }
 
   @Patch("encounters/:encounterId/nursing-admission/sections")
-  @RequireRoles(RoleCode.PROVIDER, RoleCode.RN, RoleCode.ADMIN)
+  @RequireRoles(RoleCode.RN, RoleCode.ADMIN)
   async patchNursingAdmissionSection(
     @Param("encounterId") encounterId: string,
     @Body() body: Record<string, unknown>,
@@ -279,7 +279,7 @@ export class InpatientOperationsController {
   }
 
   @Post("encounters/:encounterId/nursing-admission/verify-preload")
-  @RequireRoles(RoleCode.PROVIDER, RoleCode.RN, RoleCode.ADMIN)
+  @RequireRoles(RoleCode.RN, RoleCode.ADMIN)
   async verifyNursingAdmissionPreload(
     @Param("encounterId") encounterId: string,
     @Body() body: Record<string, unknown>,
@@ -307,7 +307,7 @@ export class InpatientOperationsController {
   }
 
   @Post("encounters/:encounterId/nursing-admission/sign")
-  @RequireRoles(RoleCode.PROVIDER, RoleCode.RN, RoleCode.ADMIN)
+  @RequireRoles(RoleCode.RN, RoleCode.ADMIN)
   async signNursingAdmission(
     @Param("encounterId") encounterId: string,
     @Body() body: Record<string, unknown>,

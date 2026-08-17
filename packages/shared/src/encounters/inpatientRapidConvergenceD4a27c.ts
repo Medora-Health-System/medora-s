@@ -233,12 +233,88 @@ export const FALL_PRECAUTION_OPTIONS: ClinicalRapidOptionV1[] = [
 
 export const MOBILITY_CURRENT_OPTIONS: ClinicalRapidOptionV1[] = [
   { code: "INDEPENDENT", display: "Independent", displayFr: "Indépendant(e)" },
+  { code: "INDEPENDENT_WITH_DEVICE", display: "Independent with device", displayFr: "Indépendant(e) avec aide technique" },
   { code: "STANDBY", display: "Standby assist", displayFr: "Surveillance" },
   { code: "ONE_PERSON", display: "One-person assist", displayFr: "Aide d’une personne" },
   { code: "TWO_PERSON", display: "Two-person assist", displayFr: "Aide de deux personnes" },
+  { code: "DEPENDENT", display: "Dependent", displayFr: "Dépendant(e)" },
+  { code: "WHEELCHAIR", display: "Wheelchair", displayFr: "Fauteuil roulant" },
   { code: "MECHANICAL_LIFT", display: "Mechanical lift", displayFr: "Lève-personne" },
   { code: "BEDBOUND", display: "Bedbound", displayFr: "Alité(e)" },
   { code: "UNABLE_TO_ASSESS", display: "Unable to assess", displayFr: "Impossible d’évaluer", requiresComment: true },
+];
+
+export const ADMISSION_SOURCE_RAPID_OPTIONS: ClinicalRapidOptionV1[] = [
+  { code: "EMERGENCY_DEPARTMENT", display: "Emergency Department", displayFr: "Service des urgences" },
+  { code: "DIRECT_ADMISSION", display: "Direct admission", displayFr: "Admission directe" },
+  { code: "OUTSIDE_HOSPITAL_TRANSFER", display: "Transfer from another hospital", displayFr: "Transfert d’un autre hôpital" },
+  { code: "SNF_TRANSFER", display: "Transfer from skilled nursing facility", displayFr: "Transfert d’un établissement de soins" },
+  { code: "LONG_TERM_CARE", display: "Transfer from long-term care", displayFr: "Transfert de soins de longue durée" },
+  { code: "REHABILITATION_TRANSFER", display: "Transfer from rehabilitation", displayFr: "Transfert de réadaptation" },
+  { code: "CLINIC", display: "Clinic / physician office", displayFr: "Clinique / cabinet" },
+  { code: "PROCEDURAL_AREA", display: "Procedural / surgical admission", displayFr: "Admission procédurale / chirurgicale" },
+  { code: "OTHER", display: "Other", displayFr: "Autre", requiresComment: true },
+];
+
+export const MODE_OF_ARRIVAL_RAPID_OPTIONS: ClinicalRapidOptionV1[] = [
+  { code: "AMBULATORY", display: "Ambulatory", displayFr: "Marche" },
+  { code: "WHEELCHAIR", display: "Wheelchair", displayFr: "Fauteuil roulant" },
+  { code: "STRETCHER", display: "Stretcher", displayFr: "Civière" },
+  { code: "EMS", display: "EMS", displayFr: "Services médicaux d’urgence" },
+  { code: "PRIVATE_VEHICLE", display: "Private vehicle", displayFr: "Véhicule privé" },
+  { code: "AIR_TRANSPORT", display: "Air transport", displayFr: "Transport aérien" },
+  { code: "OTHER", display: "Other", displayFr: "Autre", requiresComment: true },
+];
+
+/** MEDUI.INP.2B — condition on arrival chips (canonical codes; bilingual labels). */
+export const CONDITION_ON_ARRIVAL_RAPID_OPTIONS: ClinicalRapidOptionV1[] = [
+  { code: "STABLE", display: "Stable", displayFr: "Stable" },
+  { code: "GUARDED", display: "Guarded", displayFr: "Sous surveillance" },
+  { code: "SERIOUS", display: "Serious", displayFr: "Sérieux" },
+  { code: "CRITICAL", display: "Critical", displayFr: "Critique" },
+  {
+    code: "UNABLE_TO_DETERMINE",
+    display: "Unable to determine",
+    displayFr: "Impossible à déterminer",
+    requiresComment: true,
+  },
+];
+
+export const REVIEW_STATUS_RAPID_OPTIONS: ClinicalRapidOptionV1[] = [
+  { code: "REVIEWED", display: "Reviewed", displayFr: "Revu" },
+  { code: "UNABLE_TO_REVIEW", display: "Unable to review", displayFr: "Impossible de revoir" },
+  { code: "NOT_APPLICABLE", display: "Not applicable", displayFr: "Sans objet" },
+];
+
+export const SKIN_BASELINE_RAPID_OPTIONS: ClinicalRapidOptionV1[] = [
+  { code: "INTACT", display: "Intact", displayFr: "Intacte" },
+  { code: "PRESSURE_INJURY", display: "Pressure injury present", displayFr: "Lésion de pression" },
+  { code: "WOUND_PRESENT", display: "Wound present", displayFr: "Plaie présente" },
+  { code: "SURGICAL_INCISION", display: "Surgical incision", displayFr: "Incision chirurgicale" },
+  { code: "BRUISING", display: "Bruising", displayFr: "Ecchymoses" },
+  { code: "RASH", display: "Rash", displayFr: "Éruption" },
+  { code: "MOISTURE_ASSOCIATED", display: "Moisture-associated damage", displayFr: "Lésion liée à l’humidité" },
+  { code: "OTHER", display: "Other", displayFr: "Autre", requiresComment: true },
+  { code: "NOT_ASSESSED", display: "Not assessed", displayFr: "Non évaluée" },
+];
+
+export const LIVING_SITUATION_RAPID_OPTIONS: ClinicalRapidOptionV1[] = [
+  { code: "LIVES_ALONE", display: "Lives alone", displayFr: "Vit seul(e)" },
+  { code: "WITH_FAMILY", display: "With family", displayFr: "Avec la famille" },
+  { code: "FACILITY", display: "Facility", displayFr: "Établissement" },
+  { code: "OTHER", display: "Other", displayFr: "Autre", requiresComment: true },
+  { code: "UNKNOWN", display: "Unknown", displayFr: "Inconnu" },
+];
+
+export const PRE_ADMISSION_RESIDENCE_RAPID_OPTIONS: ClinicalRapidOptionV1[] = [
+  { code: "HOME", display: "Home", displayFr: "Domicile" },
+  { code: "HOME_WITH_SERVICES", display: "Home with services", displayFr: "Domicile avec services" },
+  { code: "SNF", display: "Skilled nursing facility", displayFr: "Établissement de soins" },
+  { code: "ASSISTED_LIVING", display: "Assisted living", displayFr: "Résidence assistée" },
+  { code: "REHAB", display: "Rehabilitation", displayFr: "Réadaptation" },
+  { code: "ANOTHER_HOSPITAL", display: "Another hospital", displayFr: "Autre hôpital" },
+  { code: "OTHER", display: "Other", displayFr: "Autre", requiresComment: true },
+  { code: "UNKNOWN", display: "Unknown", displayFr: "Inconnu" },
 ];
 
 export const PAIN_PRESENCE_OPTIONS: ClinicalRapidOptionV1[] = [

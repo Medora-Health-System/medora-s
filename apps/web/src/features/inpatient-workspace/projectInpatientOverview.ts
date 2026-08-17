@@ -195,6 +195,31 @@ export type InpatientOverviewProjection = {
     availability: OverviewModuleAvailability;
     admissionAssessmentComplete: boolean | null;
     lastShiftAssessmentAtIso: string | null;
+    /** MEDUI.INP.2B — nursing admission baseline projection (read-only). */
+    admissionOverview?: {
+      availability: "READY" | "EMPTY";
+      completeCount: number;
+      totalSections: number;
+      allRequiredComplete: boolean;
+      signed: boolean;
+      admissionSource: string | null;
+      modeOfArrival: string | null;
+      language: string | null;
+      interpreterNeeded: string | null;
+      historyReviewed: string | null;
+      allergyReviewed: string | null;
+      homeMedReviewed: string | null;
+      advanceDirective: string | null;
+      fallRiskConcern: string | null;
+      mobilityBaseline: string | null;
+      skinBaseline: string | null;
+      nutritionConcern: string | null;
+      eliminationBaseline: string | null;
+      psychosocialBarrier: string | null;
+      educationBarrier: string | null;
+      preAdmissionResidence: string | null;
+      dischargeBaselineFlag: string | null;
+    } | null;
     /** INP.1B.6 — authoritative INP.1A overview projection (optional). */
     assessment?: {
       clinicalDocumentedAtIso: string | null;
@@ -363,7 +388,8 @@ export type ProjectInpatientOverviewInput = {
       narrativeExcerpt?: string | null;
       significantConcerns?: string[];
     } | null;
-  } | null;
+    admissionOverview?: InpatientOverviewProjection["nursing"]["admissionOverview"];
+  };
   carePlanPlans?: OverviewCarePlanLine[] | null;
   providerDocs?: {
     hpStatus?: string | null;
@@ -645,6 +671,7 @@ export function projectInpatientOverview(
         nursing?.assessmentOverview?.clinicalDocumentedAtIso ??
         nursing?.lastShiftAssessmentAt ??
         null,
+      admissionOverview: nursing?.admissionOverview ?? null,
       assessment: nursing?.assessmentOverview
         ? {
             clinicalDocumentedAtIso: nursing.assessmentOverview.clinicalDocumentedAtIso ?? null,

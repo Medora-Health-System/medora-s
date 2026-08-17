@@ -556,6 +556,79 @@ export function InpatientOverviewView({
                   : t("inpatientOverviewD4a34.nursing.notStarted")}
             </strong>
           </p>
+          {p.nursing.admissionOverview?.availability === "READY" ? (
+            <ul
+              data-testid="overview-nursing-admission-projection"
+              style={{ margin: "0 0 8px", paddingLeft: 18, fontSize: 12 }}
+            >
+              <li>
+                {t("inpatientAdmissionInp2b.overview.completion")}:{" "}
+                {t("inpatientAdmissionInp2b.completion.sections")
+                  .replace("{complete}", String(p.nursing.admissionOverview.completeCount))
+                  .replace("{total}", String(p.nursing.admissionOverview.totalSections))}
+                {" · "}
+                {p.nursing.admissionOverview.signed
+                  ? t("inpatientAdmissionInp2b.overview.signed")
+                  : t("inpatientAdmissionInp2b.overview.unsigned")}
+              </li>
+              {p.nursing.admissionOverview.admissionSource ? (
+                <li>
+                  {t("inpatientAdmissionInp2b.overview.admissionSource")}:{" "}
+                  {t(`hospitalAdmissionD4a25.options.${p.nursing.admissionOverview.admissionSource}`)}
+                </li>
+              ) : null}
+              {p.nursing.admissionOverview.modeOfArrival ? (
+                <li>
+                  {t("inpatientAdmissionInp2b.overview.modeOfArrival")}:{" "}
+                  {t(`hospitalAdmissionD4a25.options.${p.nursing.admissionOverview.modeOfArrival}`)}
+                </li>
+              ) : null}
+              {p.nursing.admissionOverview.interpreterNeeded ? (
+                <li>
+                  {t("inpatientAdmissionInp2b.overview.interpreter")}:{" "}
+                  {t(`hospitalAdmissionD4a25.options.${p.nursing.admissionOverview.interpreterNeeded}`)}
+                </li>
+              ) : null}
+              {p.nursing.admissionOverview.historyReviewed ? (
+                <li>
+                  {t("inpatientAdmissionInp2b.overview.historyReviewed")}:{" "}
+                  {t(`hospitalAdmissionD4a25.options.${p.nursing.admissionOverview.historyReviewed}`)}
+                </li>
+              ) : null}
+              {p.nursing.admissionOverview.allergyReviewed ? (
+                <li>
+                  {t("inpatientAdmissionInp2b.overview.allergyReviewed")}:{" "}
+                  {t(`hospitalAdmissionD4a25.options.${p.nursing.admissionOverview.allergyReviewed}`)}
+                </li>
+              ) : null}
+              {p.nursing.admissionOverview.homeMedReviewed ? (
+                <li>
+                  {t("inpatientAdmissionInp2b.overview.homeMedReviewed")}:{" "}
+                  {t(`hospitalAdmissionD4a25.options.${p.nursing.admissionOverview.homeMedReviewed}`)}
+                </li>
+              ) : null}
+              {p.nursing.admissionOverview.mobilityBaseline ? (
+                <li>
+                  {t("inpatientAdmissionInp2b.overview.mobility")}:{" "}
+                  {t(`hospitalAdmissionD4a25.options.${p.nursing.admissionOverview.mobilityBaseline}`)}
+                </li>
+              ) : null}
+              {p.nursing.admissionOverview.skinBaseline ? (
+                <li>
+                  {t("inpatientAdmissionInp2b.overview.skin")}:{" "}
+                  {t(`hospitalAdmissionD4a25.options.${p.nursing.admissionOverview.skinBaseline}`)}
+                </li>
+              ) : null}
+              {p.nursing.admissionOverview.preAdmissionResidence ? (
+                <li>
+                  {t("inpatientAdmissionInp2b.overview.residence")}:{" "}
+                  {t(
+                    `hospitalAdmissionD4a25.options.${p.nursing.admissionOverview.preAdmissionResidence}`,
+                  )}
+                </li>
+              ) : null}
+            </ul>
+          ) : null}
           <p style={{ margin: 0, fontSize: 13 }}>
             {t("inpatientOverviewD4a34.nursing.lastShift")}:{" "}
             {p.nursing.lastShiftAssessmentAtIso
