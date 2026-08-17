@@ -28,7 +28,7 @@ describe("MEDUI.INP.2C nursing assessment UX convergence (post-2C.1)", () => {
     expect(board).toContain("onCopyPrevious");
     expect(board).toContain("onNew");
     expect(board).toContain("copiedFieldIds");
-    expect(board).toContain("nursing-clinical-documented-at");
+    expect(panel).toContain("nursing-clinical-documented-at");
     expect(panel).toContain("/inpatient-nursing-assessments");
     expect(panel).toContain("/inpatient-nursing-assessment-events");
   });

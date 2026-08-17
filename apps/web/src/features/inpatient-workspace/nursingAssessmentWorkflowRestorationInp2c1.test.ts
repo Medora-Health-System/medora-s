@@ -57,9 +57,12 @@ describe("MEDUI.INP.2C.1 nursing assessment workflow restoration", () => {
     expect(panel).toContain("status: \"SAVED\"");
   });
 
-  it("J — clinicalDocumentedAt preserved on board", () => {
-    expect(board).toContain("nursing-clinical-documented-at");
+  it("J — clinicalDocumentedAt shared by assessment draft and nursing note", () => {
+    expect(panel).toContain("nursing-clinical-documented-at");
     expect(panel).toContain("clinicalDocumentedAt");
+    expect(panel).toContain("nursing-note-section");
+    expect(panel).toContain("nursing-note-save");
+    expect(board).not.toContain("nursing-clinical-documented-at");
   });
 
   it("K-L — Nursing Summary uses assessment + Clinical Documentation projection", () => {
@@ -128,10 +131,15 @@ describe("MEDUI.INP.2C.1 nursing assessment workflow restoration", () => {
     expect(panel).not.toContain("EmergencyNursing");
   });
 
-  it("layout — board full-width; no Assessment Context rail mount", () => {
+  it("layout — board left + sticky summary rail; note full-width below; no Assessment Context rail", () => {
     expect(panel).not.toContain("NursingAssessmentContextRail");
     expect(panel).not.toContain("minmax(260px, 1fr)");
-    expect(board).toContain('data-testid="nursing-summary-sidebar"');
+    expect(panel).toContain("minmax(0, 1fr) minmax(360px, 400px)");
+    expect(panel).toContain('data-testid="nursing-summary-sidebar"');
+    expect(panel).toContain('data-testid="nursing-note-section"');
+    expect(panel).toContain("nursing-open-io");
+    expect(panel).toContain("nursing-open-devices");
+    expect(board).not.toContain('data-testid="nursing-summary-sidebar"');
     expect(existsSync(join(root, "NursingAssessmentContextRail.tsx"))).toBe(false);
   });
 });

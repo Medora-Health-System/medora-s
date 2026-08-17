@@ -16,7 +16,7 @@
 |---|---|---|---|---|---|---|---|
 | Assessment board | INP.1B.6 | `NursingDocumentationBoard` | Chips + squeezed columns | Sticky finding + scrollable saved columns + `<select>` | INP.1A JSON/events | Fix | None |
 | Assessment context rail | INP.2C only | `NursingAssessmentContextRail` | Steals width; duplicates summary | **Remove** | none | Remove | None |
-| Nursing Summary | Projection | Board `SectionSummary` | Empty of Hub I&O/devices | Single summary; project Hub domains | none | Extend projection | Do not copy into assessment |
+| Nursing Summary | Projection | Board `SectionSummary` | Empty of Hub I&O/devices | Sticky 360–400px **latest** rail (not Assessment Context) | none | Extend projection | Do not copy into assessment |
 | Clinical Documentation Hub | EDOC | Hub button INPATIENT | Keep | Keep; refresh summary/Overview on close | EDOC entries | Fix refresh | None |
 | I&O | EDOC.5 | Hub + Overview synthesis | Not in Nursing Summary | Project into Summary + Overview | EDOC only | Projection | No second ledger |
 | Devices | EDOC.17 | Hub; Overview UNSUPPORTED | Not in Summary/Overview | Project active inventory when available | EDOC only | Projection | No second inventory |
@@ -29,4 +29,6 @@ Horizontal immutable columns · sticky Clinical Finding · Add Column · Copy Pr
 
 ## Nursing Summary placement
 
-**OPTION A (preferred):** keep compact summary sidebar on the board after rail deletion (single content column: flowsheet + summary). Do not remount a permanent second right rail.
+Operator target (INP.2C.1 layout): **right rail 360–420px**, sticky, latest clinical picture only (assessment + Clinical Documentation projections). **Not** the retired Assessment Context rail (`auto-fit minmax(260px, 1fr)` + Open orders/MAR/results).
+
+Board column uses `minmax(0, 1fr)` so historical columns keep horizontal scroll. Nursing Note is full-width below both columns. `clinicalDocumentedAt` is shared with the note Date/Time control.
