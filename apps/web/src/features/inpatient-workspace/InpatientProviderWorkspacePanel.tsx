@@ -11,8 +11,10 @@ import {
   ROS_SYSTEM_CODES,
   PROVIDER_PRINT_PACKAGE_KINDS,
   projectInpatientNursingAssessmentOverview,
+  projectNursingAdmissionOverview,
   type InpatientNursingAssessmentV1,
   type InpatientWorkspaceRole,
+  type MedSurgNursingAdmissionDocV1,
   type ProviderEventAckStatus,
   type ProviderHpSectionKey,
   type ProviderPrintPackageKind,
@@ -25,6 +27,7 @@ import {
   acknowledgeProviderWorkspaceEvent,
   carryForwardProviderProgressNote,
   fetchAuthoritativeClinicalProjection,
+  fetchNursingAdmissionDocumentation,
   fetchProviderClinicalSynthesis,
   fetchProviderPrintPackage,
   fetchProviderWorkspace,
@@ -257,6 +260,9 @@ export function InpatientProviderWorkspacePanel({
       concern: string | null;
     }>
   >([]);
+  const [admissionOverview, setAdmissionOverview] = useState<ReturnType<
+    typeof projectNursingAdmissionOverview
+  > | null>(null);
   const [printMsg, setPrintMsg] = useState<string | null>(null);
   const [progressText, setProgressText] = useState("");
   const [activeProgressNoteId, setActiveProgressNoteId] = useState<string | null>(null);
@@ -282,7 +288,7 @@ export function InpatientProviderWorkspacePanel({
         setAuthProjection(null);
       }
       if (mode === "overview") {
-        const [synSettled, nursingSettled, careSettled] = await Promise.allSettled([
+        const [synSettled, nursingSettled, careSettled, admissionSettled] = await Promise.allSettled([
           fetchProviderClinicalSynthesis(encounterId),
           apiFetch(
             `/encounters/${encodeURIComponent(encounterId)}/inpatient-nursing-assessment-events`,
@@ -291,6 +297,7 @@ export function InpatientProviderWorkspacePanel({
           apiFetch(`/encounters/${encodeURIComponent(encounterId)}/care-plans`, {
             facilityId,
           }),
+          fetchNursingAdmissionDocumentation(encounterId),
         ]);
         if (synSettled.status === "fulfilled") {
           setSynthesis((synSettled.value.synthesis ?? null) as SynthesisLite);
@@ -308,6 +315,14 @@ export function InpatientProviderWorkspacePanel({
           );
         } else {
           setNursingAssessmentOverview(null);
+        }
+        if (admissionSettled.status === "fulfilled") {
+          const documentation = (
+            admissionSettled.value as unknown as { documentation?: MedSurgNursingAdmissionDocV1 }
+          )?.documentation;
+          setAdmissionOverview(projectNursingAdmissionOverview(documentation ?? null));
+        } else {
+          setAdmissionOverview(null);
         }
         if (careSettled.status === "fulfilled") {
           const plans =
@@ -1120,6 +1135,7 @@ export function InpatientProviderWorkspacePanel({
     authProjection,
     nursingOps: {
       ...(ops?.nursing ?? {}),
+      admissionOverview: admissionOverview ?? null,
       assessmentOverview: nursingAssessmentOverview
         ? {
             clinicalDocumentedAtIso: nursingAssessmentOverview.lastAssessmentAt,

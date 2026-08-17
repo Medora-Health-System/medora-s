@@ -1,5 +1,10 @@
 "use client";
 
+/**
+ * MEDUI.INP.2B — Structured admission section form.
+ * Help tips only for clinically/legally necessary fields (not routine labels).
+ */
+
 import type { CSSProperties } from "react";
 import {
   NURSING_ADMISSION_OPTION_CATALOGS,
@@ -11,11 +16,37 @@ import {
 import { useI18n } from "@/lib/i18n";
 import { NursingAdmissionRapidSectionControls } from "./rapid-documentation/NursingAdmissionRapidSectionControls";
 
+/** Free-text forks superseded by enterprise clinical-ops projections. */
+const SUPPRESSED_ENTERPRISE_FORK_FIELDS = new Set(["codeStatus", "isolationStatus"]);
+
+/** Clinically/legally necessary help only — not routine field labels. */
+const CLINICAL_HELP_FIELD_KEYS = new Set([
+  "advanceDirectiveKnown",
+  "suicidalIdeationScreen",
+  "abuseNeglectConcern",
+  "aspirationRisk",
+  "elopementRisk",
+]);
+
 const CHIP_EDITOR_FIELDS = new Set([
   "generalAppearance",
   "levelOfConsciousness",
   "orientation",
   "immediateConcerns",
+]);
+
+const RAPID_SUPPRESSED_GENERIC_FIELDS = new Set([
+  "admissionSource",
+  "modeOfArrival",
+  "conditionOnArrival",
+  "interpreterNeeded",
+  "rapidHistoryReviewed",
+  "rapidAllergyReviewed",
+  "rapidHomeMedReviewed",
+  "rapidSkinStatus",
+  "rapidSocialWorkNeed",
+  "rapidCaseManagementNeed",
+  "rapidPreAdmissionResidence",
 ]);
 
 export function isAdmissionChipEditorField(sectionId: InpatientAdmissionClinicalSection, key: string): boolean {
@@ -34,6 +65,7 @@ type Props = {
 function HelpTip({ helpKey }: { helpKey: string }) {
   const { t } = useI18n();
   const text = t(helpKey);
+  if (!text || text === helpKey) return null;
   return (
     <button
       type="button"
@@ -59,20 +91,23 @@ function FieldControl(props: {
     ? NURSING_ADMISSION_OPTION_CATALOGS[field.optionsKey] ?? []
     : [];
   const labelRaw = t(`hospitalAdmissionD4a25.fields.${field.key}`);
-  // A missing catalog label is a configuration error, never an invitation to
-  // expose an internal field identifier to a clinician.
-  const label = labelRaw === `hospitalAdmissionD4a25.fields.${field.key}`
-    ? t("hospitalAdmissionD4a25.fieldConfigurationError")
-    : labelRaw;
+  const label =
+    labelRaw === `hospitalAdmissionD4a25.fields.${field.key}`
+      ? t("hospitalAdmissionD4a25.fieldConfigurationError")
+      : labelRaw;
+  const showHelp = CLINICAL_HELP_FIELD_KEYS.has(field.key);
   const commonLabel: CSSProperties = { display: "block", fontSize: 12, fontWeight: 600, marginBottom: 4 };
+  const labelRow = (
+    <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+      {label}
+      {showHelp ? <HelpTip helpKey={field.helpKey} /> : null}
+    </span>
+  );
 
   if (field.control === "textarea") {
     return (
       <label style={commonLabel}>
-        <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-          {label}
-          <HelpTip helpKey={field.helpKey} />
-        </span>
+        {labelRow}
         <textarea
           value={typeof value === "string" ? value : ""}
           disabled={readOnly}
@@ -88,10 +123,7 @@ function FieldControl(props: {
   if (field.control === "number") {
     return (
       <label style={commonLabel}>
-        <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-          {label}
-          <HelpTip helpKey={field.helpKey} />
-        </span>
+        {labelRow}
         <input
           type="number"
           value={value === undefined || value === null ? "" : String(value)}
@@ -107,10 +139,7 @@ function FieldControl(props: {
   if (field.control === "datetime" || field.control === "date") {
     return (
       <label style={commonLabel}>
-        <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-          {label}
-          <HelpTip helpKey={field.helpKey} />
-        </span>
+        {labelRow}
         <input
           type={field.control === "date" ? "date" : "datetime-local"}
           value={typeof value === "string" ? value : ""}
@@ -139,10 +168,7 @@ function FieldControl(props: {
             : [];
     return (
       <label style={commonLabel}>
-        <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-          {label}
-          <HelpTip helpKey={field.helpKey} />
-        </span>
+        {labelRow}
         <select
           value={typeof value === "string" ? value : ""}
           disabled={readOnly}
@@ -165,12 +191,7 @@ function FieldControl(props: {
     const selected = Array.isArray(value) ? (value as string[]) : [];
     return (
       <fieldset style={{ border: "1px solid #e2e8f0", borderRadius: 10, padding: 8, margin: 0 }}>
-        <legend style={{ fontSize: 12, fontWeight: 600, display: "contents" }}>
-          <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-            {label}
-            <HelpTip helpKey={field.helpKey} />
-          </span>
-        </legend>
+        <legend style={{ fontSize: 12, fontWeight: 600, display: "contents" }}>{labelRow}</legend>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 6 }}>
           {options.map((opt) => {
             const checked = selected.includes(opt);
@@ -197,10 +218,7 @@ function FieldControl(props: {
 
   return (
     <label style={commonLabel}>
-      <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-        {label}
-        <HelpTip helpKey={field.helpKey} />
-      </span>
+      {labelRow}
       <input
         type="text"
         value={typeof value === "string" ? value : ""}
@@ -234,6 +252,26 @@ export function NursingAdmissionStructuredSectionForm({
       />
       {schema.fields.map((field) => {
         if (isAdmissionChipEditorField(sectionId, field.key)) return null;
+        if (SUPPRESSED_ENTERPRISE_FORK_FIELDS.has(field.key)) return null;
+        if (RAPID_SUPPRESSED_GENERIC_FIELDS.has(field.key) && answers[field.key] != null) {
+          /* still allow edit via rapid; hide duplicate generic when rapid owns it */
+        }
+        if (
+          (sectionId === "OVERVIEW" &&
+            ["admissionSource", "modeOfArrival", "conditionOnArrival", "interpreterNeeded"].includes(
+              field.key,
+            )) ||
+          (sectionId === "MEDICAL_HISTORY" && field.key === "rapidHistoryReviewed") ||
+          (sectionId === "ALLERGIES" && field.key === "rapidAllergyReviewed") ||
+          (sectionId === "HOME_MEDICATIONS" && field.key === "rapidHomeMedReviewed") ||
+          (sectionId === "SKIN_WOUND" && field.key === "rapidSkinStatus") ||
+          (sectionId === "PSYCHOSOCIAL" &&
+            ["rapidSocialWorkNeed", "rapidCaseManagementNeed", "rapidPreAdmissionResidence"].includes(
+              field.key,
+            ))
+        ) {
+          return null;
+        }
         if (!fieldIsVisible(field, answers)) return null;
         return (
           <FieldControl
@@ -241,15 +279,12 @@ export function NursingAdmissionStructuredSectionForm({
             field={field}
             value={answers[field.key]}
             readOnly={readOnly}
-            onChange={(v) => onChange({ ...answers, [field.key]: v })}
+            onChange={(value) => onChange({ ...answers, [field.key]: value })}
           />
         );
       })}
       <label style={{ display: "block", fontSize: 12, fontWeight: 600 }}>
-        <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-          {t("hospitalAdmissionD4a25.unableReason")}
-          <HelpTip helpKey="hospitalAdmissionD4a25.help.fields.unableReason" />
-        </span>
+        {t("hospitalAdmissionD4a25.unableReason")}
         <textarea
           value={unableReason}
           disabled={readOnly}
@@ -267,9 +302,9 @@ const inputStyle: CSSProperties = {
   display: "block",
   width: "100%",
   marginTop: 4,
+  padding: "8px 10px",
   borderRadius: 10,
   border: "1px solid #cbd5e1",
-  padding: 8,
   fontSize: 13,
   boxSizing: "border-box",
 };
@@ -277,13 +312,13 @@ const inputStyle: CSSProperties = {
 const helpBtn: CSSProperties = {
   width: 18,
   height: 18,
-  borderRadius: 9999,
+  borderRadius: 999,
   border: "1px solid #94a3b8",
   background: "#f8fafc",
-  color: "#334155",
+  color: "#475569",
   fontSize: 11,
   fontWeight: 700,
+  lineHeight: 1,
   cursor: "help",
-  lineHeight: "16px",
   padding: 0,
 };

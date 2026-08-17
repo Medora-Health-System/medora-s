@@ -1,18 +1,27 @@
 /**
- * D4A.2.7C — Rapid controls for highest-burden nursing admission sections.
+ * MEDUI.INP.2B — Rapid controls for nursing admission sections.
  * Persists stable codes into section answers (not localized labels).
+ * No silent clinical defaults.
  */
 
 "use client";
 
 import {
+  ADMISSION_SOURCE_RAPID_OPTIONS,
+  CONDITION_ON_ARRIVAL_RAPID_OPTIONS,
   FALL_PRECAUTION_OPTIONS,
   GENERAL_APPEARANCE_OPTIONS,
   IMMEDIATE_CONCERN_OPTIONS,
+  LIVING_SITUATION_RAPID_OPTIONS,
   LOC_OPTIONS,
+  MODE_OF_ARRIVAL_RAPID_OPTIONS,
   MOBILITY_CURRENT_OPTIONS,
   ORIENTATION_PRESETS,
   PAIN_PRESENCE_OPTIONS,
+  PRE_ADMISSION_RESIDENCE_RAPID_OPTIONS,
+  REVIEW_STATUS_RAPID_OPTIONS,
+  SKIN_BASELINE_RAPID_OPTIONS,
+  type ClinicalRapidOptionV1,
   type InpatientAdmissionClinicalSection,
 } from "@medora/shared";
 import { useI18n } from "@/lib/i18n";
@@ -47,6 +56,55 @@ export function NursingAdmissionRapidSectionControls({
 }) {
   const { t } = useI18n();
   const set = (key: string, value: unknown) => onChange({ ...answers, [key]: value });
+
+  if (sectionId === "OVERVIEW") {
+    return (
+      <div data-testid="rapid-overview-arrival" style={{ display: "grid", gap: 12, marginBottom: 12 }}>
+        <ClinicalSingleSelect
+          label={t("inpatientAdmissionInp2b.rapid.admissionSource")}
+          options={ADMISSION_SOURCE_RAPID_OPTIONS}
+          value={asCode(answers.admissionSource)}
+          onChange={(next) => set("admissionSource", next)}
+          readOnly={readOnly}
+        />
+        <ClinicalConditionalText
+          label={t("inpatientAdmissionInp2b.rapid.otherDetail")}
+          value={typeof answers.admissionSourceOther === "string" ? answers.admissionSourceOther : ""}
+          onChange={(v) => set("admissionSourceOther", v)}
+          visible={asCode(answers.admissionSource) === "OTHER"}
+          disabled={readOnly}
+        />
+        <ClinicalSingleSelect
+          label={t("inpatientAdmissionInp2b.rapid.modeOfArrival")}
+          options={MODE_OF_ARRIVAL_RAPID_OPTIONS}
+          value={asCode(answers.modeOfArrival)}
+          onChange={(next) => set("modeOfArrival", next)}
+          readOnly={readOnly}
+        />
+        <ClinicalConditionalText
+          label={t("inpatientAdmissionInp2b.rapid.otherDetail")}
+          value={typeof answers.modeOfArrivalOther === "string" ? answers.modeOfArrivalOther : ""}
+          onChange={(v) => set("modeOfArrivalOther", v)}
+          visible={asCode(answers.modeOfArrival) === "OTHER"}
+          disabled={readOnly}
+        />
+        <ClinicalSingleSelect
+          label={t("inpatientAdmissionInp2b.rapid.conditionOnArrival")}
+          options={CONDITION_ON_ARRIVAL_RAPID_OPTIONS}
+          value={asCode(answers.conditionOnArrival)}
+          onChange={(next) => set("conditionOnArrival", next)}
+          readOnly={readOnly}
+        />
+        <ClinicalYesNoUnknown
+          label={t("inpatientAdmissionInp2b.rapid.interpreterNeeded")}
+          value={(asCode(answers.interpreterNeeded) as "YES" | "NO" | "UNKNOWN" | null) ?? null}
+          onChange={(next) => set("interpreterNeeded", next)}
+          readOnly={readOnly}
+        />
+        <AdditionalClinicalDocumentationLauncher role="NURSING" encounterType="INPATIENT" compact />
+      </div>
+    );
+  }
 
   if (sectionId === "NURSING_ADMISSION_ASSESSMENT") {
     return (
@@ -112,6 +170,48 @@ export function NursingAdmissionRapidSectionControls({
     );
   }
 
+  if (sectionId === "MEDICAL_HISTORY") {
+    return (
+      <div data-testid="rapid-history-review" style={{ marginBottom: 12 }}>
+        <ClinicalSingleSelect
+          label={t("inpatientAdmissionInp2b.rapid.historyReviewed")}
+          options={REVIEW_STATUS_RAPID_OPTIONS}
+          value={asCode(answers.rapidHistoryReviewed)}
+          onChange={(next) => set("rapidHistoryReviewed", next)}
+          readOnly={readOnly}
+        />
+      </div>
+    );
+  }
+
+  if (sectionId === "ALLERGIES") {
+    return (
+      <div data-testid="rapid-allergy-review" style={{ marginBottom: 12 }}>
+        <ClinicalSingleSelect
+          label={t("inpatientAdmissionInp2b.rapid.allergyReviewed")}
+          options={REVIEW_STATUS_RAPID_OPTIONS}
+          value={asCode(answers.rapidAllergyReviewed)}
+          onChange={(next) => set("rapidAllergyReviewed", next)}
+          readOnly={readOnly}
+        />
+      </div>
+    );
+  }
+
+  if (sectionId === "HOME_MEDICATIONS") {
+    return (
+      <div data-testid="rapid-homemed-review" style={{ marginBottom: 12 }}>
+        <ClinicalSingleSelect
+          label={t("inpatientAdmissionInp2b.rapid.homeMedReviewed")}
+          options={REVIEW_STATUS_RAPID_OPTIONS}
+          value={asCode(answers.rapidHomeMedReviewed)}
+          onChange={(next) => set("rapidHomeMedReviewed", next)}
+          readOnly={readOnly}
+        />
+      </div>
+    );
+  }
+
   if (sectionId === "FALL_SAFETY") {
     return (
       <div data-testid="rapid-fall" style={{ display: "grid", gap: 12, marginBottom: 12 }}>
@@ -140,6 +240,28 @@ export function NursingAdmissionRapidSectionControls({
     );
   }
 
+  if (sectionId === "SKIN_WOUND") {
+    return (
+      <div data-testid="rapid-skin" style={{ display: "grid", gap: 12, marginBottom: 12 }}>
+        <ClinicalSingleSelect
+          label={t("inpatientAdmissionInp2b.rapid.skinBaseline")}
+          options={SKIN_BASELINE_RAPID_OPTIONS}
+          value={asCode(answers.rapidSkinStatus)}
+          onChange={(next) => set("rapidSkinStatus", next)}
+          readOnly={readOnly}
+        />
+        <ClinicalConditionalText
+          label={t("inpatientAdmissionInp2b.rapid.otherDetail")}
+          value={typeof answers.rapidSkinOther === "string" ? answers.rapidSkinOther : ""}
+          onChange={(v) => set("rapidSkinOther", v)}
+          visible={asCode(answers.rapidSkinStatus) === "OTHER"}
+          disabled={readOnly}
+        />
+        <AdditionalClinicalDocumentationLauncher role="NURSING" encounterType="INPATIENT" compact />
+      </div>
+    );
+  }
+
   if (sectionId === "NUTRITION") {
     return (
       <div data-testid="rapid-nutrition" style={{ marginBottom: 12 }}>
@@ -160,6 +282,39 @@ export function NursingAdmissionRapidSectionControls({
           label={t("inpatientRapidConvergenceD4a27c.rapid.elimination")}
           value={(asCode(answers.rapidEliminationOk) as "YES" | "NO" | "UNKNOWN" | null) ?? null}
           onChange={(next) => set("rapidEliminationOk", next)}
+          readOnly={readOnly}
+        />
+      </div>
+    );
+  }
+
+  if (sectionId === "PSYCHOSOCIAL") {
+    return (
+      <div data-testid="rapid-psychosocial" style={{ display: "grid", gap: 12, marginBottom: 12 }}>
+        <ClinicalSingleSelect
+          label={t("inpatientAdmissionInp2b.rapid.livingSituation")}
+          options={LIVING_SITUATION_RAPID_OPTIONS}
+          value={asCode(answers.rapidLivingSituation)}
+          onChange={(next) => set("rapidLivingSituation", next)}
+          readOnly={readOnly}
+        />
+        <ClinicalSingleSelect
+          label={t("inpatientAdmissionInp2b.rapid.preAdmissionResidence")}
+          options={PRE_ADMISSION_RESIDENCE_RAPID_OPTIONS}
+          value={asCode(answers.rapidPreAdmissionResidence)}
+          onChange={(next) => set("rapidPreAdmissionResidence", next)}
+          readOnly={readOnly}
+        />
+        <ClinicalYesNoUnknown
+          label={t("inpatientAdmissionInp2b.rapid.socialWorkNeed")}
+          value={(asCode(answers.rapidSocialWorkNeed) as "YES" | "NO" | "UNKNOWN" | null) ?? null}
+          onChange={(next) => set("rapidSocialWorkNeed", next)}
+          readOnly={readOnly}
+        />
+        <ClinicalYesNoUnknown
+          label={t("inpatientAdmissionInp2b.rapid.caseManagementNeed")}
+          value={(asCode(answers.rapidCaseManagementNeed) as "YES" | "NO" | "UNKNOWN" | null) ?? null}
+          onChange={(next) => set("rapidCaseManagementNeed", next)}
           readOnly={readOnly}
         />
       </div>
@@ -216,12 +371,7 @@ export function NursingAdmissionRapidSectionControls({
     );
   }
 
-  if (
-    sectionId === "OVERVIEW" ||
-    sectionId === "PROVIDER_ADMISSION" ||
-    sectionId === "SKIN_WOUND" ||
-    sectionId === "EDUCATION_COMMUNICATION"
-  ) {
+  if (sectionId === "PROVIDER_ADMISSION" || sectionId === "EDUCATION_COMMUNICATION") {
     return (
       <div style={{ marginBottom: 10 }} data-testid="admission-additional-docs-slot">
         <AdditionalClinicalDocumentationLauncher role="NURSING" encounterType="INPATIENT" compact />

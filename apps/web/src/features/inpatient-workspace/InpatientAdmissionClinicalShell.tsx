@@ -7,6 +7,7 @@ import {
   HEAD_TO_TOE_SYSTEM_KEYS,
   INPATIENT_ADMISSION_CLINICAL_SECTIONS,
   NURSING_ADMISSION_STAGES,
+  computeAdmissionCompletionSummary,
   nursingAdmissionStageForSection,
   resolveAuthoritativeCodeStatus,
   resolveAuthoritativeIsolation,
@@ -34,6 +35,7 @@ import { InpatientLifecycleActionsMenu } from "./InpatientLifecycleActionsMenu";
 import { NursingAdmissionDomainIntegrationPanel } from "./NursingAdmissionDomainIntegrationPanel";
 import { NursingAdmissionPrintSummaryModal } from "./NursingAdmissionPrintSummaryModal";
 import { NursingAdmissionAmendmentDialog } from "./NursingAdmissionAmendmentDialog";
+import { NursingAdmissionContextRail } from "./NursingAdmissionContextRail";
 import { ClinicalSaveStatus } from "./rapid-documentation/ClinicalRapidControls";
 import { AdditionalClinicalDocumentationLauncher } from "./rapid-documentation/AdditionalClinicalDocumentationLauncher";
 
@@ -372,6 +374,14 @@ export function InpatientAdmissionClinicalShell({
   const sectionLabel = t("inpatientRapidConvergenceD4a27c.stages.progress")
     .replace("{current}", String(stageIndex + 1))
     .replace("{total}", String(NURSING_ADMISSION_STAGES.length));
+  const completionSummary = doc
+    ? computeAdmissionCompletionSummary(doc as Parameters<typeof computeAdmissionCompletionSummary>[0])
+    : null;
+  const completionLabel = completionSummary
+    ? t("inpatientAdmissionInp2b.completion.sections")
+        .replace("{complete}", String(completionSummary.complete))
+        .replace("{total}", String(completionSummary.total))
+    : null;
 
   const effectiveSaveCode = signed ? "SIGNED" : readOnly ? "READ_ONLY" : saveState;
 
@@ -491,11 +501,23 @@ export function InpatientAdmissionClinicalShell({
       </nav>
       <p style={{ margin: "0 0 10px", fontSize: 12, color: "#64748b" }} data-testid="nursing-admission-stages-hint">
         {sectionLabel}
+        {completionLabel ? ` · ${completionLabel}` : null}
       </p>
 
       <InpatientLifecycleActionsMenu encounterId={encounterId} canAdmin={canAdmin} />
 
       {admissionCorrelationUiEnabled() ? <AdmissionJourneyPanel encounterId={encounterId} /> : null}
+
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "minmax(0, 1fr) minmax(220px, 280px)",
+          gap: 12,
+          alignItems: "start",
+        }}
+        className="nursing-admission-layout"
+      >
+        <div data-testid="nursing-admission-main">
 
       {loadError ? (
         <p style={{ color: "#b91c1c", fontSize: 12 }} role="alert">
@@ -736,6 +758,13 @@ export function InpatientAdmissionClinicalShell({
 
           <StickyFooter />
         </div>
+      </div>
+        </div>
+        <NursingAdmissionContextRail
+          codeStatus={codeStatus}
+          isolation={isolation}
+          allergiesSummary={null}
+        />
       </div>
 
       {signed ? (

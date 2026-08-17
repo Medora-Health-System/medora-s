@@ -2,37 +2,37 @@ export const hospitalAdmissionD4a26hFr = {
   certification: "MEDUI.AUTHORITATIVE_DOMAIN_LINKAGE.D4A2_6H",
   help: {
     authoritativeLink:
-      "Cette section se lie à un dossier d’entreprise autoritatif. Les identifiants temporaires du client ne sont jamais enregistrés comme références cliniques.",
+      "Cette section se lie au dossier clinique de l’établissement utilisé pour cette admission.",
   },
   status: {
-    authoritativeRecord: "Dossier autoritatif vérifié",
-    authoritativeCount: "Liens autoritatifs : {count}",
-    legacySynthetic: "Référence synthétique héritée — revue requise",
-    legacySyntheticCount: "Liens synthétiques hérités : {count}",
-    linkedAuthoritative: "Dossier de domaine autoritatif lié",
+    authoritativeRecord: "Dossier clinique vérifié",
+    authoritativeCount: "Dossiers cliniques liés : {count}",
+    legacySynthetic: "Revue requise avant d’utiliser ce lien",
+    legacySyntheticCount: "Liens à revoir : {count}",
+    linkedAuthoritative: "Dossier clinique lié",
     replaceLegacy:
-      "Enregistrez à nouveau l’évaluation d’entreprise pour remplacer ce lien hérité.",
-    idHidden: "référence non autoritative",
-    unresolved: "Source autoritative non résolue",
+      "Enregistrez à nouveau l’évaluation d’entreprise pour remplacer ce lien.",
+    idHidden: "référence à revoir",
+    unresolved: "Source clinique non résolue",
     currentState: "État clinique actuel",
     admissionTime: "Évaluation au moment de l’admission",
   },
   errors: {
-    syntheticRejected: "Référence de domaine synthétique rejetée",
-    linkFailed: "Impossible de lier le dossier de domaine autoritatif",
+    syntheticRejected: "Référence clinique invalide rejetée",
+    linkFailed: "Impossible de lier le dossier clinique",
   },
   codeStatus: {
     label: "Statut de réanimation",
     notDocumented: "Non documenté",
-    source: "inpatientClinicalOpsV1",
+    source: "En-tête patient",
   },
   isolation: {
     label: "Précautions d’isolement",
     notDocumented: "Non documenté",
-    source: "inpatientClinicalOpsV1",
+    source: "En-tête patient",
   },
   print: {
-    legacySynthetic: "Référence synthétique héritée",
-    unavailable: "Évaluation autoritative indisponible",
+    legacySynthetic: "Lien nécessitant une revue",
+    unavailable: "Évaluation clinique indisponible",
   },
 };
