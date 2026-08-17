@@ -56,7 +56,9 @@ describe("INP.1B.6 inpatient nursing documentation completion", () => {
   it("13-14 I&O and devices through Clinical Documentation authority", () => {
     expect(panel).toContain("ClinicalDocumentationHub");
     expect(panel).toContain('careSetting="INPATIENT"');
-    expect(panel).toContain("Intake & output and devices");
+    expect(panel).toContain("inpatientNursingAssessmentInp2c.board.hubHint");
+    expect(panel).toContain("ClinicalDocumentationHub");
+    expect(panel).toContain('careSetting="INPATIENT"');
     expect(rows).toContain("Intake & Output");
     expect(rows).toContain("Lines / Drains / Devices");
   });
@@ -119,7 +121,7 @@ describe("INP.1B.6 inpatient nursing documentation completion", () => {
 
   it("25-28 RN/Admin authoring and PCT/RT boundaries preserved in panel messaging", () => {
     expect(panel).toContain("readOnly={isLocked}");
-    expect(panel).toMatch(/RN or Admin|Infirmier ou Admin/);
+    expect(panel).toContain("inpatientNursingAssessmentInp2c.board.readOnly");
   });
 
   it("29-30 EN/FR labels present", () => {

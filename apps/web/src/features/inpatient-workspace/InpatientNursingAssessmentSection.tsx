@@ -12,6 +12,7 @@ export function InpatientNursingAssessmentSection({
   isLocked,
   canEditAssessment,
   onRefetch,
+  onNavigateSection,
 }: {
   encounterId: string;
   facilityId: string;
@@ -34,6 +35,7 @@ export function InpatientNursingAssessmentSection({
         patientId={encounter?.patient?.id ?? "unknown-patient"}
         isLocked={isLocked || !canEditAssessment}
         onSaved={onRefetch}
+        onNavigateSection={onNavigateSection}
       />
     </div>
   );

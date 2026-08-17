@@ -39,7 +39,7 @@ describe("INP.1B.5 shared nursing documentation board", () => {
     expect(board).toContain("+ Add column");
     expect(board).toContain("copiedFieldIds.has");
     expect(panel).toContain("readOnly={isLocked}");
-    expect(panel).toContain("RN or Admin authority");
+    expect(panel).toContain("inpatientNursingAssessmentInp2c.board.readOnly");
   });
   it("contains professional complete bedside row labels and no internal release terminology", () => {
     for (const label of [

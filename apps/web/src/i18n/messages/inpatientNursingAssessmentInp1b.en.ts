@@ -23,8 +23,12 @@ export const inpatientNursingAssessmentInp1bEn = {
   saved: "Assessment saved",
   loadError: "Unable to load nursing documentation.",
   copiedNotice:
-    "Previous findings copied into a new, unsaved reassessment draft.",
+    "Previous findings copied into a new, unsaved reassessment draft. Copied — verify before saving.",
   newNotice: "New reassessment draft started without copied findings.",
+  copiedVerify: "Copied — verify before saving",
+  discardDraft: "Discard draft",
+  activeDraft: "ACTIVE DRAFT",
+  historicalColumn: "HISTORICAL",
   notDocumented: "Not documented",
   continueAssessment: "Continue assessment",
   startReassessment: "Start reassessment",
