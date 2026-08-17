@@ -274,6 +274,12 @@ export class InpatientOperationsController {
         unableReason: typeof body.unableReason === "string" ? body.unableReason : undefined,
         completionState: typeof body.completionState === "string" ? body.completionState : null,
         expectedVersion,
+        clinicalDocumentedAt:
+          body.clinicalDocumentedAt === null
+            ? null
+            : typeof body.clinicalDocumentedAt === "string"
+              ? body.clinicalDocumentedAt
+              : undefined,
       }
     );
   }

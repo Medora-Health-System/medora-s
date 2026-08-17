@@ -204,6 +204,8 @@ export type InpatientOverviewProjection = {
       signed: boolean;
       admissionSource: string | null;
       modeOfArrival: string | null;
+      clinicalDocumentedAt: string | null;
+      authorUserId: string | null;
       language: string | null;
       interpreterNeeded: string | null;
       historyReviewed: string | null;

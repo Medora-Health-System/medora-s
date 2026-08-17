@@ -2581,6 +2581,7 @@ export class InpatientOperationsService {
       unableReason?: string | null;
       completionState?: string | null;
       expectedVersion: number;
+      clinicalDocumentedAt?: string | null;
     }
   ) {
     const enc = await this.loadOpenInpatient(facilityId, encounterId);
@@ -2621,6 +2622,15 @@ export class InpatientOperationsService {
       }
     }
 
+    let clinicalDocumentedAt: string | null | undefined = body.clinicalDocumentedAt;
+    if (typeof clinicalDocumentedAt === "string") {
+      const parsed = Date.parse(clinicalDocumentedAt);
+      if (!Number.isFinite(parsed)) {
+        throw new BadRequestException("clinicalDocumentedAt must be an ISO timestamp");
+      }
+      clinicalDocumentedAt = new Date(parsed).toISOString();
+    }
+
     const result = saveAdmissionSectionDraft({
       doc,
       sectionId,
@@ -2630,6 +2640,7 @@ export class InpatientOperationsService {
       completionState: completionState as AdmissionSectionCompletionState | undefined,
       clientExpectedVersion: Number(body.expectedVersion),
       actorUserId,
+      clinicalDocumentedAt,
     });
     if (!result.ok) {
       throw new ConflictException(result.code);

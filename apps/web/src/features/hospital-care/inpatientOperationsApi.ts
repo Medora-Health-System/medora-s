@@ -103,6 +103,7 @@ export async function patchNursingAdmissionSection(
     unableReason?: string | null;
     completionState?: string | null;
     expectedVersion: number;
+    clinicalDocumentedAt?: string | null;
   }
 ) {
   return apiFetch(

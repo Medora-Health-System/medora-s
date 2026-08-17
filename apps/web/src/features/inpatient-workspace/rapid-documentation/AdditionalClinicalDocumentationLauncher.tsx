@@ -101,12 +101,14 @@ export function AdditionalClinicalDocumentationLauncher({
   catalog = DEFAULT_CATALOG,
   onOpen,
   compact = false,
+  launchLabel,
 }: {
   role?: "PROVIDER" | "NURSING" | "TECHNICIAN";
   encounterType?: "INPATIENT" | "OBSERVATION";
   catalog?: AdditionalDocCatalogItem[];
   onOpen?: (item: AdditionalDocCatalogItem) => void;
   compact?: boolean;
+  launchLabel?: string;
 }) {
   const { t } = useI18n();
   const [open, setOpen] = useState(false);
@@ -134,7 +136,7 @@ export function AdditionalClinicalDocumentationLauncher({
         style={launchBtn}
         data-testid="additional-docs-launch-btn"
       >
-        {t("inpatientRapidConvergenceD4a27c.launcher.title")}
+        {launchLabel ?? t("inpatientRapidConvergenceD4a27c.launcher.title")}
       </button>
       {open ? (
         <div
