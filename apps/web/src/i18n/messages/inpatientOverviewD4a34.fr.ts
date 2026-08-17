@@ -127,6 +127,7 @@ export const inpatientOverviewD4a34Fr = {
   },
   devices: {
     unsupported: "L’inventaire des dispositifs n’est pas encore disponible ici — documenter en Soins infirmiers.",
+    empty: "Aucun dispositif actif documenté",
   },
   nursing: {
     admission: "Admission infirmière",

@@ -11,9 +11,13 @@ import {
   type NursingBoardValue,
 } from "@/features/clinical-documentation/NursingDocumentationBoard";
 import { ClinicalDocumentationHub } from "@/features/clinical-documentation/ClinicalDocumentationHub";
+import {
+  fetchClinicalDocumentationEntries,
+  type ClinicalDocumentationEntryRow,
+} from "@/lib/clinicalDocumentationApi";
 import { useI18n } from "@/lib/i18n";
 import { INPATIENT_NURSING_BOARD_ROWS } from "./inpatientNursingBoardRowsInp1b6";
-import { NursingAssessmentContextRail } from "./NursingAssessmentContextRail";
+import { projectClinicalDocumentationSummaryLines } from "./projectNursingClinicalDocumentationSummary";
 import type { InpatientWorkspaceSection } from "./inpatientWorkspaceSections";
 
 function toLocalDatetimeValue(iso: string): string {
@@ -40,19 +44,37 @@ const emptyDraft = (): InpatientNursingAssessmentSave => ({
   clinicalDocumentedAt: new Date().toISOString(),
 });
 
+type IvActiveLite = { site: string; gauge: string };
+
+function parseIvActive(raw: unknown): IvActiveLite[] {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return [];
+  const a = (raw as { active?: unknown }).active;
+  if (!Array.isArray(a)) return [];
+  const out: IvActiveLite[] = [];
+  for (const row of a) {
+    if (!row || typeof row !== "object") continue;
+    const x = row as Record<string, unknown>;
+    out.push({
+      site: typeof x.site === "string" ? x.site : "",
+      gauge: typeof x.gauge === "string" ? x.gauge : "",
+    });
+  }
+  return out;
+}
+
 export function InpatientNursingAssessmentPanel({
   encounterId,
   facilityId,
   patientId: _patientId,
   isLocked,
   onSaved,
-  onNavigateSection,
 }: {
   encounterId: string;
   facilityId: string;
   patientId: string;
   isLocked: boolean;
   onSaved: () => void | Promise<void>;
+  /** Kept for workspace API compatibility; Assessment no longer mounts a context rail. */
   onNavigateSection?: (section: InpatientWorkspaceSection) => void;
 }) {
   const { language, t } = useI18n();
@@ -63,6 +85,8 @@ export function InpatientNursingAssessmentPanel({
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [hubOpen, setHubOpen] = useState(false);
+  const [clinicalEntries, setClinicalEntries] = useState<ClinicalDocumentationEntryRow[]>([]);
+  const [ivActive, setIvActive] = useState<IvActiveLite[]>([]);
 
   const load = useCallback(async () => {
     const response = await apiFetch(
@@ -76,9 +100,29 @@ export function InpatientNursingAssessmentPanel({
     );
   }, [encounterId, facilityId]);
 
+  const loadClinicalProjections = useCallback(async () => {
+    const [docsSettled, ivSettled] = await Promise.allSettled([
+      fetchClinicalDocumentationEntries(encounterId, facilityId),
+      apiFetch(`/encounters/${encodeURIComponent(encounterId)}/iv-access`, { facilityId }),
+    ]);
+    if (docsSettled.status === "fulfilled") {
+      setClinicalEntries(docsSettled.value.entries ?? []);
+    } else {
+      setClinicalEntries([]);
+    }
+    if (ivSettled.status === "fulfilled") {
+      setIvActive(parseIvActive(ivSettled.value));
+    } else {
+      setIvActive([]);
+    }
+  }, [encounterId, facilityId]);
+
   useEffect(() => {
     void load().catch(() => setMessage(t("inpatientNursingAssessmentInp1b.loadError")));
-  }, [load, t]);
+    void loadClinicalProjections().catch(() => {
+      /* projection-only; assessment board remains usable */
+    });
+  }, [load, loadClinicalProjections, t]);
 
   const columns: NursingBoardColumn[] = useMemo(
     () =>
@@ -149,16 +193,35 @@ export function InpatientNursingAssessmentPanel({
       setCopied(new Set());
       setMessage(t("inpatientNursingAssessmentInp1b.saved"));
       await load();
+      await loadClinicalProjections();
       await onSaved();
     } finally {
       setBusy(false);
     }
   }
 
+  async function refreshAfterHub() {
+    await loadClinicalProjections();
+    await onSaved();
+  }
+
   const latest = history.at(-1);
   const summarySource = draft ? toBoardValues(draft) : latest ? toBoardValues(latest) : {};
   const rows = useMemo(() => localizeRows(INPATIENT_NURSING_BOARD_ROWS, french, t), [french, t]);
-  const summaryLines = useMemo(() => buildSummaryLines(summarySource, rows), [summarySource, rows]);
+  const assessmentSummaryLines = useMemo(() => buildSummaryLines(summarySource, rows), [summarySource, rows]);
+  const clinicalSummaryLines = useMemo(
+    () =>
+      projectClinicalDocumentationSummaryLines({
+        entries: clinicalEntries,
+        ivActive,
+        french,
+      }),
+    [clinicalEntries, ivActive, french],
+  );
+  const summaryLines = useMemo(
+    () => [...assessmentSummaryLines, ...clinicalSummaryLines],
+    [assessmentSummaryLines, clinicalSummaryLines],
+  );
   const context = latest ? (
     <>
       {t("inpatientNursingAssessmentInp2c.board.lastDocumented")}{" "}
@@ -186,7 +249,7 @@ export function InpatientNursingAssessmentPanel({
   };
 
   return (
-    <div data-testid="inpatient-native-nursing-assessment">
+    <div data-testid="inpatient-native-nursing-assessment" style={{ width: "100%", minWidth: 0 }}>
       <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 8 }}>
         <button type="button" data-testid="inpatient-clinical-documentation-open" onClick={() => setHubOpen(true)}>
           {t("inpatientNursingAssessmentInp2c.board.openHub")}
@@ -197,59 +260,54 @@ export function InpatientNursingAssessmentPanel({
           careSetting="INPATIENT"
           encounterId={encounterId}
           facilityId={facilityId}
-          onClose={() => setHubOpen(false)}
+          onClose={() => {
+            setHubOpen(false);
+            void refreshAfterHub();
+          }}
+          onEntriesChanged={() => {
+            void refreshAfterHub();
+          }}
         />
       ) : null}
-      <div
-        data-testid="nursing-assessment-layout"
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
-          gap: 14,
-          alignItems: "start",
-        }}
-      >
-        <div style={{ minWidth: 0 }}>
-          <NursingDocumentationBoard
-            title={t("inpatientNursingAssessmentInp1b.title")}
-            context={context}
-            rows={rows}
-            columns={columns}
-            draft={draft ? toBoardValues(draft) : null}
-            draftTime={draft?.clinicalDocumentedAt ?? undefined}
-            clinicalTimeValue={draft?.clinicalDocumentedAt ? toLocalDatetimeValue(draft.clinicalDocumentedAt) : ""}
-            onClinicalTimeChange={(local) =>
-              setDraft((current) =>
-                current ? { ...current, clinicalDocumentedAt: fromLocalDatetimeValue(local) } : current,
-              )
-            }
-            clinicalTimeLabel={t("inpatientNursingAssessmentInp2c.board.assessmentTime")}
-            copiedFieldIds={copied}
-            copiedVerifyLabel={t("inpatientNursingAssessmentInp2c.board.copiedVerify")}
-            readOnly={isLocked}
-            busy={busy}
-            onChange={patch}
-            onNew={() => begin(false)}
-            onCopyPrevious={() => begin(true)}
-            onSave={() => void save()}
-            onDiscard={() => {
-              setDraft(null);
-              setCopied(new Set());
-              setMessage("");
-            }}
-            labels={boardLabels}
-            summary={<SectionSummary lines={summaryLines} emptyLabel={t("inpatientNursingAssessmentInp2c.board.summaryEmpty")} />}
-          />
-          <p style={{ fontSize: 12, color: "#64748b" }}>{t("inpatientNursingAssessmentInp2c.board.hubHint")}</p>
-          {message ? <p role="status">{message}</p> : null}
-          {isLocked ? <p role="status">{t("inpatientNursingAssessmentInp2c.board.readOnly")}</p> : null}
-        </div>
-        <NursingAssessmentContextRail
-          values={summarySource}
-          summaryLines={summaryLines}
-          onNavigateSection={onNavigateSection}
-          onOpenHub={() => setHubOpen(true)}
+      <div data-testid="nursing-assessment-layout" style={{ width: "100%", minWidth: 0 }}>
+        <NursingDocumentationBoard
+          title={t("inpatientNursingAssessmentInp1b.title")}
+          context={context}
+          rows={rows}
+          columns={columns}
+          draft={draft ? toBoardValues(draft) : null}
+          draftTime={draft?.clinicalDocumentedAt ?? undefined}
+          clinicalTimeValue={draft?.clinicalDocumentedAt ? toLocalDatetimeValue(draft.clinicalDocumentedAt) : ""}
+          onClinicalTimeChange={(local) =>
+            setDraft((current) =>
+              current ? { ...current, clinicalDocumentedAt: fromLocalDatetimeValue(local) } : current,
+            )
+          }
+          clinicalTimeLabel={t("inpatientNursingAssessmentInp2c.board.assessmentTime")}
+          copiedFieldIds={copied}
+          copiedVerifyLabel={t("inpatientNursingAssessmentInp2c.board.copiedVerify")}
+          readOnly={isLocked}
+          busy={busy}
+          onChange={patch}
+          onNew={() => begin(false)}
+          onCopyPrevious={() => begin(true)}
+          onSave={() => void save()}
+          onDiscard={() => {
+            setDraft(null);
+            setCopied(new Set());
+            setMessage("");
+          }}
+          labels={boardLabels}
+          summary={
+            <SectionSummary
+              lines={summaryLines}
+              emptyLabel={t("inpatientNursingAssessmentInp2c.board.summaryEmpty")}
+            />
+          }
         />
+        <p style={{ fontSize: 12, color: "#64748b" }}>{t("inpatientNursingAssessmentInp2c.board.hubHint")}</p>
+        {message ? <p role="status">{message}</p> : null}
+        {isLocked ? <p role="status">{t("inpatientNursingAssessmentInp2c.board.readOnly")}</p> : null}
       </div>
     </div>
   );

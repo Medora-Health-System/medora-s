@@ -764,13 +764,21 @@ export function InpatientOverviewView({
         )}
       </Section>
 
-      {p.devices.availability === "UNSUPPORTED" ? (
+      {p.devices.availability === "READY" && (p.devices.lines?.length ?? 0) > 0 ? (
+        <Section title={t("inpatientOverviewD4a34.modules.devices")} testId="overview-devices">
+          <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13 }}>
+            {(p.devices.lines ?? []).map((line) => (
+              <li key={line}>{line}</li>
+            ))}
+          </ul>
+        </Section>
+      ) : (
         <Section title={t("inpatientOverviewD4a34.modules.devices")} testId="overview-devices">
           <p style={{ margin: 0, fontSize: 13, color: "#64748b" }}>
-            {t("inpatientOverviewD4a34.devices.unsupported")}
+            {t("inpatientOverviewD4a34.devices.empty")}
           </p>
         </Section>
-      ) : null}
+      )}
 
       <Section title={t("inpatientOverviewD4a34.modules.consults")} testId="overview-consults">
         {p.consults.availability === "READY" ? (

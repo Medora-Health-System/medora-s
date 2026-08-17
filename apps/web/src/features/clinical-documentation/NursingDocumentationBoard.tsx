@@ -18,8 +18,6 @@ export type NursingBoardRow = {
   kind?: "text" | "number" | "textarea";
 };
 
-const CHIP_MAX = 8;
-
 function isSignificantFinding(row: NursingBoardRow, value: NursingBoardValue): boolean {
   if (value === undefined || value === "" || (Array.isArray(value) && value.length === 0)) return false;
   const raw = Array.isArray(value) ? value.join(",") : String(value);
@@ -33,7 +31,7 @@ function isSignificantFinding(row: NursingBoardRow, value: NursingBoardValue): b
 /**
  * Care-setting-neutral bedside flowsheet. Layout/interaction only.
  * INP.1B.6 — sticky Clinical Finding column + sticky header row; horizontal scroll for assessments.
- * MEDUI.INP.2C — rapid chips, draft/history chrome, copied verify label (no persistence change).
+ * MEDUI.INP.2C.1 — restore compact dropdown documentation; full-width board (no competing rail).
  */
 export function NursingDocumentationBoard({
   title,
@@ -110,10 +108,12 @@ export function NursingDocumentationBoard({
   const allColumns = draft
     ? [...columns, { id: "draft", occurredAt: draftTime ?? new Date().toISOString(), status: "DRAFT", values: draft }]
     : columns;
-  const gridTemplate = `minmax(200px, 220px) repeat(${Math.max(allColumns.length, 1)}, minmax(168px, 1fr))`;
+  const columnCount = Math.max(allColumns.length, 1);
+  const columnMinPx = 180;
+  const gridTemplate = `minmax(200px, 220px) repeat(${columnCount}, minmax(${columnMinPx}px, ${columnMinPx}px))`;
 
   return (
-    <section data-testid="nursing-documentation-board" style={{ display: "grid", gap: 14 }}>
+    <section data-testid="nursing-documentation-board" style={{ display: "grid", gap: 14, width: "100%", minWidth: 0 }}>
       <header style={{ display: "flex", justifyContent: "space-between", alignItems: "end", gap: 12, flexWrap: "wrap" }}>
         <div>
           <h2 style={{ margin: 0 }}>{title}</h2>
@@ -141,9 +141,26 @@ export function NursingDocumentationBoard({
           {!readOnly && draft && <button type="button" disabled={busy} onClick={onSave}>{l.save}</button>}
         </div>
       </header>
-      <div style={{ display: "grid", gridTemplateColumns: summary ? "minmax(0, 1fr) minmax(240px, 300px)" : "1fr", gap: 14, alignItems: "start" }}>
+      {summary ? (
+        <aside
+          aria-label={l.summary}
+          data-testid="nursing-summary-sidebar"
+          style={{
+            border: "1px solid #cbd5e1",
+            borderRadius: 8,
+            padding: "10px 14px",
+            background: "#f8fafc",
+            width: "100%",
+            boxSizing: "border-box",
+          }}
+        >
+          <h3 style={{ margin: "0 0 6px", fontSize: 15 }}>{l.summary}</h3>
+          {summary}
+        </aside>
+      ) : null}
+      <div style={{ minWidth: 0, width: "100%" }}>
         <div data-testid="nursing-board-scroll" style={{ overflowX: "auto", border: "1px solid #cbd5e1", borderRadius: 8, WebkitOverflowScrolling: "touch" }}>
-          <div style={{ display: "grid", gridTemplateColumns: gridTemplate, minWidth: 220 + Math.max(allColumns.length, 1) * 168 }}>
+          <div style={{ display: "grid", gridTemplateColumns: gridTemplate, minWidth: 220 + columnCount * columnMinPx }}>
             <div style={{ ...headerCell, ...stickyLabel, ...stickyHeader, zIndex: 4 }} data-testid="nursing-clinical-finding-header">
               <strong>{l.clinicalFinding}</strong>
             </div>
@@ -170,8 +187,11 @@ export function NursingDocumentationBoard({
                     <strong>{new Date(column.occurredAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</strong>
                     <span>{new Date(column.occurredAt).toLocaleDateString()}</span>
                     <span style={{ color: isDraft ? "#0369a1" : "#64748b", fontWeight: 700 }}>
-                      {isDraft ? l.draft : isCurrentSaved ? l.currentSaved : l.historical}
+                      {isDraft ? l.draft : isCurrentSaved ? l.currentSaved : l.saved}
                     </span>
+                    {!isDraft ? (
+                      <span style={{ fontSize: 11, color: "#64748b" }}>{l.historical}</span>
+                    ) : null}
                     {column.author && <span>{column.author}</span>}
                   </div>
                 );
@@ -202,7 +222,7 @@ export function NursingDocumentationBoard({
                               ...valueCell,
                               background: editable ? "#f0f9ff" : "#fff",
                               borderLeft: significant ? "3px solid #c2410c" : undefined,
-                              alignItems: editable && row.options && row.options.length <= CHIP_MAX ? "flex-start" : "center",
+                              alignItems: "center",
                               flexDirection: "column",
                               padding: editable ? "6px 8px" : "0 8px",
                             }}
@@ -241,12 +261,6 @@ export function NursingDocumentationBoard({
             })}
           </div>
         </div>
-        {summary ? (
-          <aside aria-label={l.summary} data-testid="nursing-summary-sidebar" style={{ border: "1px solid #cbd5e1", borderRadius: 8, padding: 14, position: "sticky", top: 12, maxHeight: "80vh", overflowY: "auto" }}>
-            <h3 style={{ marginTop: 0 }}>{l.summary}</h3>
-            {summary}
-          </aside>
-        ) : null}
       </div>
     </section>
   );
@@ -272,40 +286,15 @@ function BoardInput({
     background: copied ? "#fef3c7" : "transparent",
     boxSizing: "border-box" as const,
   };
-  if (row.options && row.options.length > 0 && row.options.length <= CHIP_MAX) {
-    const current = String(value ?? "");
-    return (
-      <div
-        data-testid={`nursing-rapid-chips-${row.id}`}
-        role="group"
-        aria-label={row.label}
-        style={{ display: "flex", flexWrap: "wrap", gap: 4, background: copied ? "#fef3c7" : "transparent", borderRadius: 6, padding: 2 }}
-      >
-        <button
-          type="button"
-          aria-pressed={current === ""}
-          onClick={() => onChange("")}
-          style={chipStyle(current === "")}
-        >
-          {notCharted}
-        </button>
-        {row.options.map((option) => (
-          <button
-            key={option.value}
-            type="button"
-            aria-pressed={current === option.value}
-            onClick={() => onChange(option.value)}
-            style={chipStyle(current === option.value)}
-          >
-            {option.label}
-          </button>
-        ))}
-      </div>
-    );
-  }
   if (row.options) {
     return (
-      <select aria-label={row.label} style={style} value={String(value ?? "")} onChange={(event) => onChange(event.target.value)}>
+      <select
+        data-testid={`nursing-select-${row.id}`}
+        aria-label={row.label}
+        style={style}
+        value={String(value ?? "")}
+        onChange={(event) => onChange(event.target.value)}
+      >
         <option value="">{notCharted}</option>
         {row.options.map((option) => (
           <option key={option.value} value={option.value}>
@@ -329,22 +318,6 @@ function BoardInput({
       onChange={(event) => onChange(row.kind === "number" && event.target.value ? Number(event.target.value) : event.target.value)}
     />
   );
-}
-
-function chipStyle(selected: boolean) {
-  return {
-    display: "inline-flex",
-    alignItems: "center",
-    fontSize: 11,
-    padding: "4px 8px",
-    borderRadius: 9999,
-    border: selected ? "1px solid #0f766e" : "1px solid #cbd5e1",
-    background: selected ? "#ccfbf1" : "#fff",
-    color: selected ? "#115e59" : "#334155",
-    fontWeight: selected ? 600 : 500,
-    cursor: "pointer",
-    minHeight: 28,
-  } as const;
 }
 
 function displayValue(value: NursingBoardValue, row: NursingBoardRow): string {

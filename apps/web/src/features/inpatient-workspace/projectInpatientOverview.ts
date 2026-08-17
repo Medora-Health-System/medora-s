@@ -242,7 +242,10 @@ export type InpatientOverviewProjection = {
     } | null;
   };
   intakeOutput: OverviewIoCompact;
-  devices: { availability: OverviewModuleAvailability };
+  devices: {
+    availability: OverviewModuleAvailability;
+    lines?: string[];
+  };
   consults: {
     availability: OverviewModuleAvailability;
     specialties: string[];
@@ -395,6 +398,11 @@ export type ProjectInpatientOverviewInput = {
     hpStatus?: string | null;
     latestProgressExcerpt?: string | null;
     assessmentPlanExcerpt?: string | null;
+  } | null;
+  /** MEDUI.INP.2C.1 — enterprise device projection (IV + EDOC.17), optional. */
+  devicesProjection?: {
+    availability: OverviewModuleAvailability;
+    lines?: string[];
   } | null;
   canProviderWrite: boolean;
 };
@@ -701,7 +709,7 @@ export function projectInpatientOverview(
       balance24hMl: isDocumentedMl(io.balance24hMl) ? io.balance24hMl : null,
       warnings: io.warnings ?? [],
     },
-    devices: { availability: "UNSUPPORTED" },
+    devices: input.devicesProjection ?? { availability: "EMPTY", lines: [] },
     consults: {
       availability: (o.consultServices ?? []).length ? "READY" : "EMPTY",
       specialties: o.consultServices ?? [],

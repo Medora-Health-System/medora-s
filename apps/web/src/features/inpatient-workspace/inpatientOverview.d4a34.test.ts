@@ -140,7 +140,7 @@ describe("MEDUI.D4A.3.4 inpatient Overview projection", () => {
     expect(nursing.results.critical[0]?.label).toBe("K+");
     expect(nursing.medications.lines[0]?.drug).toBe("Acetaminophen");
     expect(nursing.tasks.items[0]?.bucket).toBe("critical");
-    expect(nursing.devices.availability).toBe("UNSUPPORTED");
+    expect(nursing.devices.availability).toBe("EMPTY");
     expect(nursing.intakeOutput.availability).toBe("EMPTY");
   });
 
