@@ -49,7 +49,7 @@ describe("INP.1B.6 inpatient nursing documentation completion", () => {
     expect(sharedV1).toContain("clinicalDocumentedAt");
     expect(sharedV1).toContain("normalizeInpatientClinicalDocumentedAt");
     expect(sharedV1).toContain("authoredAt");
-    expect(board).toContain('data-testid="nursing-clinical-documented-at"');
+    expect(panel).toContain('data-testid="nursing-clinical-documented-at"');
     expect(panel).toContain("clinicalDocumentedAt");
   });
 
@@ -85,10 +85,10 @@ describe("INP.1B.6 inpatient nursing documentation completion", () => {
     }
   });
 
-  it("16-17 section-organized Nursing Summary from current/latest", () => {
+  it("16-17 section-organized Nursing Summary from latest saved", () => {
     expect(panel).toContain("SectionSummary");
     expect(panel).toContain("nursing-section-summary");
-    expect(panel).toContain("summarySource = draft ? toBoardValues(draft)");
+    expect(panel).toContain("summarySource = latest ? toBoardValues(latest)");
   });
 
   it("18-19 Overview consumes assessment projection without nursing persistence", () => {

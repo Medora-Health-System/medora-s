@@ -31,7 +31,7 @@ function isSignificantFinding(row: NursingBoardRow, value: NursingBoardValue): b
 /**
  * Care-setting-neutral bedside flowsheet. Layout/interaction only.
  * INP.1B.6 — sticky Clinical Finding column + sticky header row; horizontal scroll for assessments.
- * MEDUI.INP.2C.1 — restore compact dropdown documentation; full-width board (no competing rail).
+ * MEDUI.INP.2C.1 — compact dropdown documentation; parent owns summary rail + nursing note.
  */
 export function NursingDocumentationBoard({
   title,
@@ -40,9 +40,6 @@ export function NursingDocumentationBoard({
   columns,
   draft,
   draftTime,
-  clinicalTimeValue,
-  onClinicalTimeChange,
-  clinicalTimeLabel,
   copiedFieldIds = new Set(),
   readOnly,
   busy,
@@ -51,7 +48,7 @@ export function NursingDocumentationBoard({
   onCopyPrevious,
   onSave,
   onDiscard,
-  summary,
+  headerActions,
   labels,
   copiedVerifyLabel,
 }: {
@@ -61,9 +58,6 @@ export function NursingDocumentationBoard({
   columns: readonly NursingBoardColumn[];
   draft: Readonly<Record<string, NursingBoardValue>> | null;
   draftTime?: string;
-  clinicalTimeValue?: string;
-  onClinicalTimeChange?: (localValue: string) => void;
-  clinicalTimeLabel?: string;
   copiedFieldIds?: ReadonlySet<string>;
   readOnly: boolean;
   busy?: boolean;
@@ -72,7 +66,7 @@ export function NursingDocumentationBoard({
   onCopyPrevious: () => void;
   onSave: () => void;
   onDiscard?: () => void;
-  summary?: ReactNode;
+  headerActions?: ReactNode;
   copiedVerifyLabel?: string;
   labels?: Partial<{
     clinicalFinding: string;
@@ -86,7 +80,6 @@ export function NursingDocumentationBoard({
     saved: string;
     draft: string;
     historical: string;
-    summary: string;
   }>;
 }) {
   const l = {
@@ -101,7 +94,6 @@ export function NursingDocumentationBoard({
     saved: "SAVED",
     draft: "ACTIVE DRAFT",
     historical: "HISTORICAL",
-    summary: "Nursing Summary",
     ...labels,
   };
   const groups = [...new Set(rows.map((row) => row.group))];
@@ -120,17 +112,7 @@ export function NursingDocumentationBoard({
           {context ? <div data-testid="nursing-board-context" style={{ color: "#475569", fontSize: 13 }}>{context}</div> : null}
         </div>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-          {draft && !readOnly && onClinicalTimeChange ? (
-            <label style={{ display: "flex", flexDirection: "column", gap: 2, fontSize: 12 }}>
-              <span>{clinicalTimeLabel ?? "Assessment date/time"}</span>
-              <input
-                data-testid="nursing-clinical-documented-at"
-                type="datetime-local"
-                value={clinicalTimeValue ?? ""}
-                onChange={(event) => onClinicalTimeChange(event.target.value)}
-              />
-            </label>
-          ) : null}
+          {headerActions}
           {!readOnly && <button type="button" onClick={onNew}>{l.addColumn}</button>}
           {!readOnly && columns.length > 0 && <button type="button" onClick={onCopyPrevious}>{l.copyPrevious}</button>}
           {!readOnly && draft && onDiscard ? (
@@ -141,23 +123,6 @@ export function NursingDocumentationBoard({
           {!readOnly && draft && <button type="button" disabled={busy} onClick={onSave}>{l.save}</button>}
         </div>
       </header>
-      {summary ? (
-        <aside
-          aria-label={l.summary}
-          data-testid="nursing-summary-sidebar"
-          style={{
-            border: "1px solid #cbd5e1",
-            borderRadius: 8,
-            padding: "10px 14px",
-            background: "#f8fafc",
-            width: "100%",
-            boxSizing: "border-box",
-          }}
-        >
-          <h3 style={{ margin: "0 0 6px", fontSize: 15 }}>{l.summary}</h3>
-          {summary}
-        </aside>
-      ) : null}
       <div style={{ minWidth: 0, width: "100%" }}>
         <div data-testid="nursing-board-scroll" style={{ overflowX: "auto", border: "1px solid #cbd5e1", borderRadius: 8, WebkitOverflowScrolling: "touch" }}>
           <div style={{ display: "grid", gridTemplateColumns: gridTemplate, minWidth: 220 + columnCount * columnMinPx }}>
