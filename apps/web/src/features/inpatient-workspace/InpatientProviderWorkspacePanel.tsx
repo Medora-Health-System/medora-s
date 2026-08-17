@@ -22,7 +22,9 @@ import {
 } from "@medora/shared";
 import { useI18n } from "@/lib/i18n";
 import { apiFetch, asApiObject } from "@/lib/apiClient";
+import { fetchClinicalDocumentationEntries } from "@/lib/clinicalDocumentationApi";
 import { MEDORA_CARD_SHELL } from "@/components/medora-card/medoraCardTokens";
+import { projectDevicesOverviewFromAuthorities } from "./projectNursingClinicalDocumentationSummary";
 import {
   acknowledgeProviderWorkspaceEvent,
   carryForwardProviderProgressNote,
@@ -226,7 +228,7 @@ export function InpatientProviderWorkspacePanel({
   workspaceRole?: InpatientWorkspaceRole;
   onNavigateSection?: (section: InpatientWorkspaceSection) => void;
 }) {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   const [doc, setDoc] = useState<ProviderDoc | null>(null);
   const [ops, setOps] = useState<ClinicalOpsLite | null>(null);
   const [nursingAssessmentOverview, setNursingAssessmentOverview] = useState<ReturnType<
@@ -263,6 +265,10 @@ export function InpatientProviderWorkspacePanel({
   const [admissionOverview, setAdmissionOverview] = useState<ReturnType<
     typeof projectNursingAdmissionOverview
   > | null>(null);
+  const [devicesProjection, setDevicesProjection] = useState<{
+    availability: "READY" | "EMPTY";
+    lines: string[];
+  } | null>(null);
   const [printMsg, setPrintMsg] = useState<string | null>(null);
   const [progressText, setProgressText] = useState("");
   const [activeProgressNoteId, setActiveProgressNoteId] = useState<string | null>(null);
@@ -288,17 +294,20 @@ export function InpatientProviderWorkspacePanel({
         setAuthProjection(null);
       }
       if (mode === "overview") {
-        const [synSettled, nursingSettled, careSettled, admissionSettled] = await Promise.allSettled([
-          fetchProviderClinicalSynthesis(encounterId),
-          apiFetch(
-            `/encounters/${encodeURIComponent(encounterId)}/inpatient-nursing-assessment-events`,
-            { facilityId },
-          ),
-          apiFetch(`/encounters/${encodeURIComponent(encounterId)}/care-plans`, {
-            facilityId,
-          }),
-          fetchNursingAdmissionDocumentation(encounterId),
-        ]);
+        const [synSettled, nursingSettled, careSettled, admissionSettled, docsSettled, ivSettled] =
+          await Promise.allSettled([
+            fetchProviderClinicalSynthesis(encounterId),
+            apiFetch(
+              `/encounters/${encodeURIComponent(encounterId)}/inpatient-nursing-assessment-events`,
+              { facilityId },
+            ),
+            apiFetch(`/encounters/${encodeURIComponent(encounterId)}/care-plans`, {
+              facilityId,
+            }),
+            fetchNursingAdmissionDocumentation(encounterId),
+            fetchClinicalDocumentationEntries(encounterId, facilityId),
+            apiFetch(`/encounters/${encodeURIComponent(encounterId)}/iv-access`, { facilityId }),
+          ]);
         if (synSettled.status === "fulfilled") {
           setSynthesis((synSettled.value.synthesis ?? null) as SynthesisLite);
         } else {
@@ -323,6 +332,25 @@ export function InpatientProviderWorkspacePanel({
           setAdmissionOverview(projectNursingAdmissionOverview(documentation ?? null));
         } else {
           setAdmissionOverview(null);
+        }
+        {
+          const docEntries =
+            docsSettled.status === "fulfilled" ? (docsSettled.value.entries ?? []) : [];
+          const ivRaw = ivSettled.status === "fulfilled" ? ivSettled.value : null;
+          const ivActive =
+            ivRaw && typeof ivRaw === "object" && Array.isArray((ivRaw as { active?: unknown }).active)
+              ? ((ivRaw as { active: Array<Record<string, unknown>> }).active).map((row) => ({
+                  site: typeof row.site === "string" ? row.site : "",
+                  gauge: typeof row.gauge === "string" ? row.gauge : "",
+                }))
+              : [];
+          setDevicesProjection(
+            projectDevicesOverviewFromAuthorities({
+              entries: docEntries,
+              ivActive,
+              french: language === "fr",
+            }),
+          );
         }
         if (careSettled.status === "fulfilled") {
           const plans =
@@ -376,7 +404,7 @@ export function InpatientProviderWorkspacePanel({
     } finally {
       setLoading(false);
     }
-  }, [encounterId, facilityId, mode, t]);
+  }, [encounterId, facilityId, language, mode, t]);
 
   useEffect(() => {
     void load();
@@ -1159,6 +1187,7 @@ export function InpatientProviderWorkspacePanel({
         : null,
     },
     carePlanPlans,
+    devicesProjection,
     providerDocs: {
       hpStatus: doc?.hpDraft?.status
         ? String(doc.hpDraft.status).replace(/_/g, " ")

@@ -127,6 +127,7 @@ export const inpatientOverviewD4a34En = {
   },
   devices: {
     unsupported: "Device inventory is not available on Overview yet — document in Nursing.",
+    empty: "No active devices documented",
   },
   nursing: {
     admission: "Nursing admission",

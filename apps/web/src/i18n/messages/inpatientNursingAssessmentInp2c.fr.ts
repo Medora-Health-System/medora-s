@@ -1,4 +1,4 @@
-/** MEDUI.INP.2C — Convergence UX finale de l’évaluation infirmière (FR). */
+/** MEDUI.INP.2C / INP.2C.1 — Évaluation infirmière UX (FR). Clés rail retirées en 2C.1. */
 export const inpatientNursingAssessmentInp2cFr = {
   board: {
     clinicalFinding: "Constat clinique",
@@ -24,17 +24,6 @@ export const inpatientNursingAssessmentInp2cFr = {
     documentedBy: "Documenté par :",
     noSavedYet: "Aucune évaluation enregistrée",
     summaryEmpty: "Aucun constat documenté pour le moment.",
-    railTitle: "Contexte d’évaluation",
-    railProjectionOnly: "Contexte en lecture seule — documentez dans le tableau.",
-    railPain: "Douleur récente",
-    railFall: "Chute / sécurité",
-    railOxygen: "Oxygène / respiratoire",
-    railOpenIo: "Ouvrir E/S",
-    railOpenDevices: "Ouvrir dispositifs",
-    railOpenOrders: "Ouvrir ordonnances",
-    railOpenMar: "Ouvrir MAR",
-    railOpenResults: "Ouvrir résultats",
-    abnormal: "Constat significatif",
   },
   overview: {
     assessmentBaseline: "Base d’admission",

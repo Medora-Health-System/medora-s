@@ -1,4 +1,4 @@
-/** MEDUI.INP.2C — Nursing Assessment final UX convergence (EN). */
+/** MEDUI.INP.2C / INP.2C.1 — Nursing Assessment UX (EN). Rail keys removed in 2C.1. */
 export const inpatientNursingAssessmentInp2cEn = {
   board: {
     clinicalFinding: "Clinical finding",
@@ -24,17 +24,6 @@ export const inpatientNursingAssessmentInp2cEn = {
     documentedBy: "Documented by:",
     noSavedYet: "No saved assessments yet",
     summaryEmpty: "No findings documented yet.",
-    railTitle: "Assessment context",
-    railProjectionOnly: "Read-only context — chart in the board.",
-    railPain: "Latest pain",
-    railFall: "Fall / safety",
-    railOxygen: "Oxygen / respiratory",
-    railOpenIo: "Open I&O",
-    railOpenDevices: "Open devices",
-    railOpenOrders: "Open orders",
-    railOpenMar: "Open MAR",
-    railOpenResults: "Open results",
-    abnormal: "Significant finding",
   },
   overview: {
     assessmentBaseline: "Admission baseline",

@@ -1,5 +1,6 @@
 /**
- * MEDUI.INP.2C — Nursing Assessment final UX convergence gates.
+ * MEDUI.INP.2C — Nursing Assessment UX convergence gates (corrected by INP.2C.1).
+ * Rapid chips and Assessment Context rail are retired.
  */
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
@@ -13,7 +14,6 @@ const root = join(__dirname);
 const read = (rel: string) => readFileSync(join(root, rel), "utf8");
 const board = read("../clinical-documentation/NursingDocumentationBoard.tsx");
 const panel = read("InpatientNursingAssessmentPanel.tsx");
-const rail = read("NursingAssessmentContextRail.tsx");
 const overview = read("InpatientOverviewView.tsx");
 const rows = read("inpatientNursingBoardRowsInp1b6.ts");
 const api = readFileSync(
@@ -21,7 +21,7 @@ const api = readFileSync(
   "utf8",
 );
 
-describe("MEDUI.INP.2C nursing assessment UX convergence", () => {
+describe("MEDUI.INP.2C nursing assessment UX convergence (post-2C.1)", () => {
   it("A — preserves INP.1B.6 board architecture", () => {
     expect(board).toContain('data-testid="nursing-clinical-finding-header"');
     expect(board).toContain("sticky");
@@ -33,9 +33,10 @@ describe("MEDUI.INP.2C nursing assessment UX convergence", () => {
     expect(panel).toContain("/inpatient-nursing-assessment-events");
   });
 
-  it("B — rapid chips without automatic WNL default", () => {
-    expect(board).toContain("nursing-rapid-chips-");
-    expect(board).toContain("aria-pressed");
+  it("B — dropdown selects restored (no rapid-chip wall)", () => {
+    expect(board).toContain("nursing-select-");
+    expect(board).not.toContain("nursing-rapid-chips-");
+    expect(board).not.toContain("CHIP_MAX");
     expect(board).not.toMatch(/onChange\([^)]*WNL/);
     expect(rows).toContain("No silent WNL default");
   });
@@ -63,11 +64,10 @@ describe("MEDUI.INP.2C nursing assessment UX convergence", () => {
     expect(lines.join(" ")).not.toMatch(/Not charted|Non documenté/i);
   });
 
-  it("E — assessment context rail is projection-only", () => {
-    expect(rail).toContain('data-persistence="none"');
-    expect(rail).toContain("nursing-assessment-context-rail");
-    expect(rail).not.toMatch(/apiFetch|method:\s*[\"']POST|method:\s*[\"']PATCH/);
-    expect(panel).toContain("NursingAssessmentContextRail");
+  it("E — Assessment Context rail removed", () => {
+    expect(panel).not.toContain("NursingAssessmentContextRail");
+    expect(panel).not.toContain("railTitle");
+    expect(() => read("NursingAssessmentContextRail.tsx")).toThrow();
   });
 
   it("F — Overview keeps admission baseline vs current assessment distinct", () => {
@@ -87,7 +87,7 @@ describe("MEDUI.INP.2C nursing assessment UX convergence", () => {
     expect(workspace).toContain('roles.includes("RN") || roles.includes("ADMIN")');
   });
 
-  it("H — EN/FR inp2c keys mirrored", () => {
+  it("H — EN/FR inp2c keys mirrored (no rail keys)", () => {
     const enBoard = (en as Record<string, unknown>).inpatientNursingAssessmentInp2c as {
       board: Record<string, string>;
     };
@@ -97,6 +97,7 @@ describe("MEDUI.INP.2C nursing assessment UX convergence", () => {
     expect(Object.keys(enBoard.board).sort()).toEqual(Object.keys(frBoard.board).sort());
     expect(frBoard.board.copiedVerify).toMatch(/Copié/);
     expect(frBoard.board.draft).toMatch(/BROUILLON/);
+    expect(enBoard.board).not.toHaveProperty("railTitle");
   });
 
   it("I — hub remains inpatient-only mount; no ED catalog coupling", () => {
