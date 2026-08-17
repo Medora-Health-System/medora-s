@@ -11,6 +11,7 @@ import {
   type ClinicalRapidOptionV1,
 } from "@medora/shared";
 import { useI18n } from "@/lib/i18n";
+import { resolveNursingAdmissionOptionLabel } from "../nursingAdmissionOptionI18n";
 
 const chipBase: CSSProperties = {
   display: "inline-flex",
@@ -42,7 +43,13 @@ const chipDisabled: CSSProperties = {
 
 export type ClinicalOption = { code: string; label: string };
 
-function optionLabel(opt: ClinicalRapidOptionV1 | ClinicalOption, language: string): string {
+function optionLabel(
+  opt: ClinicalRapidOptionV1 | ClinicalOption,
+  language: string,
+  t: (key: string) => string
+): string {
+  const catalog = resolveNursingAdmissionOptionLabel(t, opt.code);
+  if (catalog !== opt.code) return catalog;
   if ("displayFr" in opt && "display" in opt) {
     return String(language ?? "").toLowerCase().startsWith("fr") ? opt.displayFr : opt.display;
   }
@@ -51,9 +58,10 @@ function optionLabel(opt: ClinicalRapidOptionV1 | ClinicalOption, language: stri
 
 function toClinicalOptions(
   options: readonly (ClinicalRapidOptionV1 | ClinicalOption)[],
-  language: string
+  language: string,
+  t: (key: string) => string
 ): ClinicalOption[] {
-  return options.map((o) => ({ code: o.code, label: optionLabel(o, language) }));
+  return options.map((o) => ({ code: o.code, label: optionLabel(o, language, t) }));
 }
 
 export function ClinicalSingleSelect({
@@ -71,8 +79,8 @@ export function ClinicalSingleSelect({
   disabled?: boolean;
   readOnly?: boolean;
 }) {
-  const { language } = useI18n();
-  const opts = toClinicalOptions(options, language);
+  const { language, t } = useI18n();
+  const opts = toClinicalOptions(options, language, t);
   const locked = disabled || readOnly;
   return (
     <fieldset style={{ border: "none", margin: 0, padding: 0 }} disabled={locked}>
@@ -118,8 +126,8 @@ export function ClinicalMultiSelectChips({
   readOnly?: boolean;
   respectMutualExclusion?: boolean;
 }) {
-  const { language } = useI18n();
-  const opts = toClinicalOptions(options, language);
+  const { language, t } = useI18n();
+  const opts = toClinicalOptions(options, language, t);
   const locked = disabled || readOnly;
   const selected = new Set(value);
   return (
@@ -434,7 +442,7 @@ export function ClinicalSearchSelect({
 }) {
   const { language, t } = useI18n();
   const [q, setQ] = useState("");
-  const opts = toClinicalOptions(options, language);
+  const opts = toClinicalOptions(options, language, t);
   const filtered = useMemo(() => {
     const needle = q.trim().toLowerCase();
     if (!needle) return opts.slice(0, 40);
@@ -870,5 +878,239 @@ export function ClinicalSaveStatus({
     <span data-testid="clinical-save-status" style={{ fontSize: 12, color: "#64748b" }}>
       {label}
     </span>
+  );
+}
+
+const iconCardBase: CSSProperties = {
+  display: "inline-flex",
+  flexDirection: "column",
+  alignItems: "center",
+  justifyContent: "center",
+  gap: 6,
+  minWidth: 88,
+  minHeight: 88,
+  padding: "10px 8px",
+  borderRadius: 12,
+  border: "1px solid #cbd5e1",
+  background: "#fff",
+  color: "#334155",
+  cursor: "pointer",
+  fontSize: 12,
+  fontWeight: 500,
+  textAlign: "center",
+};
+
+const iconCardSelected: CSSProperties = {
+  ...iconCardBase,
+  borderColor: "#0f766e",
+  background: "#ccfbf1",
+  color: "#115e59",
+  fontWeight: 700,
+  boxShadow: "inset 0 0 0 1px #0f766e",
+};
+
+const iconCardDisabled: CSSProperties = {
+  ...iconCardBase,
+  opacity: 0.55,
+  cursor: "not-allowed",
+};
+
+export function ClinicalIconCardSelect({
+  label,
+  options,
+  value,
+  onChange,
+  disabled,
+  readOnly,
+  renderIcon,
+  testId,
+  allowDeselect = false,
+}: {
+  label: string;
+  options: readonly (ClinicalRapidOptionV1 | ClinicalOption)[];
+  value: string | null;
+  onChange: (next: string | null) => void;
+  disabled?: boolean;
+  readOnly?: boolean;
+  renderIcon: (code: string) => ReactNode;
+  testId?: string;
+  allowDeselect?: boolean;
+}) {
+  const { language, t } = useI18n();
+  const opts = toClinicalOptions(options, language, t);
+  const locked = disabled || readOnly;
+  return (
+    <fieldset style={{ border: "none", margin: 0, padding: 0 }} disabled={locked}>
+      <legend style={{ fontSize: 13, fontWeight: 600, color: "#334155", marginBottom: 8 }}>
+        {label}
+      </legend>
+      <div
+        role="radiogroup"
+        aria-label={label}
+        data-testid={testId}
+        style={{ display: "flex", flexWrap: "wrap", gap: 8 }}
+      >
+        {opts.map((opt) => {
+          const on = value === opt.code;
+          return (
+            <button
+              key={opt.code}
+              type="button"
+              role="radio"
+              aria-checked={on}
+              aria-label={opt.label}
+              disabled={locked}
+              data-testid={testId ? `${testId}-${opt.code}` : undefined}
+              onClick={() => onChange(on && allowDeselect ? null : opt.code)}
+              style={locked ? iconCardDisabled : on ? iconCardSelected : iconCardBase}
+            >
+              {renderIcon(opt.code)}
+              <span>{opt.label}</span>
+            </button>
+          );
+        })}
+      </div>
+    </fieldset>
+  );
+}
+
+const CONDITION_SEMANTIC: Record<string, { bg: string; border: string; color: string }> = {
+  STABLE: { bg: "#ecfdf5", border: "#86efac", color: "#065f46" },
+  GUARDED: { bg: "#fefce8", border: "#fde047", color: "#854d0e" },
+  SERIOUS: { bg: "#fff7ed", border: "#fdba74", color: "#9a3412" },
+  CRITICAL: { bg: "#fef2f2", border: "#fca5a5", color: "#991b1b" },
+  UNABLE_TO_DETERMINE: { bg: "#f8fafc", border: "#cbd5e1", color: "#475569" },
+};
+
+export function ClinicalSemanticSingleSelect({
+  label,
+  options,
+  value,
+  onChange,
+  disabled,
+  readOnly,
+}: {
+  label: string;
+  options: readonly (ClinicalRapidOptionV1 | ClinicalOption)[];
+  value: string | null;
+  onChange: (next: string | null) => void;
+  disabled?: boolean;
+  readOnly?: boolean;
+}) {
+  const { language, t } = useI18n();
+  const opts = toClinicalOptions(options, language, t);
+  const locked = disabled || readOnly;
+  return (
+    <fieldset style={{ border: "none", margin: 0, padding: 0 }} disabled={locked}>
+      <legend style={{ fontSize: 13, fontWeight: 600, color: "#334155", marginBottom: 6 }}>
+        {label}
+      </legend>
+      <div
+        role="radiogroup"
+        aria-label={label}
+        data-testid="clinical-semantic-condition"
+        style={{ display: "flex", flexWrap: "wrap", gap: 6 }}
+      >
+        {opts.map((opt) => {
+          const on = value === opt.code;
+          const sem = CONDITION_SEMANTIC[opt.code] ?? CONDITION_SEMANTIC.UNABLE_TO_DETERMINE;
+          const style: CSSProperties = locked
+            ? chipDisabled
+            : on
+              ? {
+                  ...chipBase,
+                  borderColor: sem.border,
+                  background: sem.bg,
+                  color: sem.color,
+                  fontWeight: 700,
+                }
+              : {
+                  ...chipBase,
+                  borderColor: sem.border,
+                  background: "#fff",
+                  color: sem.color,
+                };
+          return (
+            <button
+              key={opt.code}
+              type="button"
+              role="radio"
+              aria-checked={on}
+              disabled={locked}
+              onClick={() => onChange(on ? null : opt.code)}
+              style={style}
+            >
+              {opt.label}
+            </button>
+          );
+        })}
+      </div>
+    </fieldset>
+  );
+}
+
+export function ClinicalPainScoreSelector({
+  label,
+  value,
+  onChange,
+  disabled,
+  readOnly,
+  visible = true,
+}: {
+  label: string;
+  value: number | null;
+  onChange: (next: number | null) => void;
+  disabled?: boolean;
+  readOnly?: boolean;
+  visible?: boolean;
+}) {
+  const locked = disabled || readOnly;
+  if (!visible) return null;
+  const scores = Array.from({ length: 11 }, (_, i) => i);
+  return (
+    <fieldset style={{ border: "none", margin: 0, padding: 0 }} disabled={locked}>
+      <legend style={{ fontSize: 13, fontWeight: 600, color: "#334155", marginBottom: 6 }}>
+        {label}
+      </legend>
+      <div
+        role="radiogroup"
+        aria-label={label}
+        data-testid="clinical-pain-score-selector"
+        style={{ display: "flex", flexWrap: "wrap", gap: 4 }}
+      >
+        {scores.map((n) => {
+          const on = value === n;
+          const hot = n >= 7;
+          const warm = n >= 4 && n < 7;
+          const tone = hot ? "#991b1b" : warm ? "#9a3412" : "#334155";
+          const bg = on ? (hot ? "#fef2f2" : warm ? "#fff7ed" : "#ccfbf1") : "#fff";
+          const border = on ? (hot ? "#fca5a5" : warm ? "#fdba74" : "#0f766e") : "#cbd5e1";
+          return (
+            <button
+              key={n}
+              type="button"
+              role="radio"
+              aria-checked={on}
+              disabled={locked}
+              data-testid={`pain-score-${n}`}
+              onClick={() => onChange(on ? null : n)}
+              style={{
+                ...chipBase,
+                minWidth: 36,
+                justifyContent: "center",
+                borderColor: border,
+                background: bg,
+                color: tone,
+                fontWeight: on ? 700 : 500,
+                opacity: locked ? 0.55 : 1,
+                cursor: locked ? "not-allowed" : "pointer",
+              }}
+            >
+              {n}
+            </button>
+          );
+        })}
+      </div>
+    </fieldset>
   );
 }

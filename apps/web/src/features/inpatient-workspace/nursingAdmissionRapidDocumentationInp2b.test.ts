@@ -28,11 +28,12 @@ describe("MEDUI.INP.2B nursing admission rapid documentation", () => {
     expect(new Set(keys).size).toBe(keys.length);
   });
 
-  it("A2 Save Draft / Save & Continue controls remain in shell", () => {
+  it("A2 Save Draft / Save & Continue controls remain in chrome", () => {
     const shell = read("InpatientAdmissionClinicalShell.tsx");
-    expect(shell).toContain('data-testid="admission-save"');
-    expect(shell).toContain('data-testid="admission-save-continue"');
-    expect(shell).toContain("inpatientRapidConvergenceD4a27c.nav.previous");
+    const chrome = read("NursingAdmissionWorkspaceChromeInp2b1.tsx");
+    expect(chrome).toContain('data-testid="admission-save"');
+    expect(chrome).toContain('data-testid="admission-save-continue"');
+    expect(chrome).toContain("inpatientAdmissionInp2b1.previous");
     expect(shell).toContain("computeAdmissionCompletionSummary");
   });
 
@@ -48,6 +49,8 @@ describe("MEDUI.INP.2B nursing admission rapid documentation", () => {
     ]);
     expect(CONDITION_ON_ARRIVAL_RAPID_OPTIONS.every((o) => Boolean(o.displayFr))).toBe(true);
     const rapid = read("rapid-documentation/NursingAdmissionRapidSectionControls.tsx");
+    expect(rapid).toContain("ClinicalIconCardSelect");
+    expect(rapid).toContain('testId="rapid-mode-of-arrival-icons"');
     expect(rapid).toContain("ADMISSION_SOURCE_RAPID_OPTIONS");
     expect(rapid).toContain("CONDITION_ON_ARRIVAL_RAPID_OPTIONS");
     expect(rapid).toContain('data-testid="rapid-overview-arrival"');
@@ -63,7 +66,7 @@ describe("MEDUI.INP.2B nursing admission rapid documentation", () => {
     const shell = read("InpatientAdmissionClinicalShell.tsx");
     expect(shell).toContain("resolveAuthoritativeCodeStatus");
     expect(shell).toContain("resolveAuthoritativeIsolation");
-    expect(shell).toContain("NursingAdmissionContextRail");
+    expect(shell).toContain("NursingAdmissionSaveRail");
   });
 
   it("D13–D15 RN write / provider read / platform-admin boundary", () => {
@@ -100,6 +103,7 @@ describe("MEDUI.INP.2B nursing admission rapid documentation", () => {
     const projected = projectNursingAdmissionOverview(doc);
     expect(projected.availability).toBe("READY");
     expect(projected.admissionSource).toBe("DIRECT_ADMISSION");
+    expect(projected.clinicalDocumentedAt).toBeNull();
     const overview = read("InpatientOverviewView.tsx");
     expect(overview).toContain("overview-nursing-admission-projection");
     expect(overview).toContain('onNavigateSection?.("admission")');
@@ -107,7 +111,7 @@ describe("MEDUI.INP.2B nursing admission rapid documentation", () => {
   });
 
   it("F25–F26 admission context rail is projection-only", () => {
-    const rail = read("NursingAdmissionContextRail.tsx");
+    const rail = read("NursingAdmissionWorkspaceChromeInp2b1.tsx");
     expect(rail).toContain('data-persistence="none"');
     expect(rail).not.toContain("apiFetch");
     expect(rail).not.toContain("POST");
@@ -122,6 +126,8 @@ describe("MEDUI.INP.2B nursing admission rapid documentation", () => {
 
   it("H29–H31 EN/FR admission i18n mirrored without impl jargon", () => {
     expect(Object.keys(en.inpatientAdmissionInp2b)).toEqual(Object.keys(fr.inpatientAdmissionInp2b));
+    expect(Object.keys(en.inpatientAdmissionInp2b1)).toEqual(Object.keys(fr.inpatientAdmissionInp2b1));
+    expect(Object.keys(en.inpatientAdmissionInp2b2)).toEqual(Object.keys(fr.inpatientAdmissionInp2b2));
     expect(fr.inpatientAdmissionInp2b.overview.openAdmission).toMatch(/admission/i);
     expect(fr.inpatientAdmissionInp2b.rail.title).not.toMatch(/INP\.2B|D4A|JSON/i);
     expect(en.hospitalAdmissionD4a26h.status.legacySynthetic).not.toMatch(/legacy synthetic/i);

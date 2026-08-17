@@ -16,6 +16,15 @@ import { linkNursingAdmissionDomainReference } from "@/features/hospital-care/in
 import { DISPLAY_DASH } from "@/lib/patientDisplay";
 import { AdditionalClinicalDocumentationLauncher } from "./rapid-documentation/AdditionalClinicalDocumentationLauncher";
 
+/** Clinically/legally necessary help only — not routine field labels. */
+const CLINICAL_HELP_SECTIONS = new Set<InpatientAdmissionClinicalSection>([
+  "ALLERGIES",
+  "PAIN",
+  "MEDICAL_HISTORY",
+  "SURGICAL_HISTORY",
+  "SOCIAL_HISTORY",
+]);
+
 type PatientLite = {
   id?: string;
   firstName?: string | null;
@@ -81,6 +90,7 @@ export function NursingAdmissionDomainIntegrationPanel({
 
   const badgeLabel = t(`hospitalAdmissionD4a25a.badges.${integration.badgeKey}`);
 
+  const showHelp = CLINICAL_HELP_SECTIONS.has(sectionId);
   const help =
     sectionId === "ALLERGIES"
       ? t("hospitalAdmissionD4a25a.domain.helpAllergy")
@@ -156,29 +166,33 @@ export function NursingAdmissionDomainIntegrationPanel({
         >
           {badgeLabel}
         </span>
-        <span
-          title={help}
-          aria-label={help}
-          style={{
-            display: "inline-flex",
-            width: 18,
-            height: 18,
-            borderRadius: 9999,
-            border: "1px solid #94a3b8",
-            fontSize: 11,
-            alignItems: "center",
-            justifyContent: "center",
-            cursor: "help",
-          }}
-        >
-          ?
-        </span>
-        <span style={{ fontSize: 12, color: "#64748b" }} data-testid="nursing-domain-auth-count">
-          {t("hospitalAdmissionD4a26h.status.authoritativeCount").replace(
-            "{count}",
-            String(authoritativeCount)
-          )}
-        </span>
+        {showHelp ? (
+          <span
+            title={help}
+            aria-label={help}
+            style={{
+              display: "inline-flex",
+              width: 18,
+              height: 18,
+              borderRadius: 9999,
+              border: "1px solid #94a3b8",
+              fontSize: 11,
+              alignItems: "center",
+              justifyContent: "center",
+              cursor: "help",
+            }}
+          >
+            ?
+          </span>
+        ) : null}
+        {authoritativeCount > 0 || legacyCount > 0 ? (
+          <span style={{ fontSize: 12, color: "#64748b" }} data-testid="nursing-domain-auth-count">
+            {t("hospitalAdmissionD4a26h.status.authoritativeCount").replace(
+              "{count}",
+              String(authoritativeCount)
+            )}
+          </span>
+        ) : null}
         {legacyCount > 0 ? (
           <span
             role="status"
@@ -237,7 +251,20 @@ export function NursingAdmissionDomainIntegrationPanel({
             <dt>{t("hospitalAdmissionD4a25a.demographics.mrn")}</dt>
             <dd style={{ margin: 0 }}>{patient?.mrn?.trim() || DISPLAY_DASH}</dd>
             <dt>{t("hospitalAdmissionD4a25a.demographics.dob")}</dt>
-            <dd style={{ margin: 0 }}>{patient?.dob?.trim() || DISPLAY_DASH}</dd>
+            <dd style={{ margin: 0 }} data-testid="nursing-demographics-dob">
+              {patient?.dob?.trim()
+                ? (() => {
+                    const d = new Date(patient.dob!);
+                    return Number.isNaN(d.getTime())
+                      ? DISPLAY_DASH
+                      : d.toLocaleDateString(undefined, {
+                          year: "numeric",
+                          month: "short",
+                          day: "numeric",
+                        });
+                  })()
+                : DISPLAY_DASH}
+            </dd>
             <dt>{t("hospitalAdmissionD4a25a.demographics.sex")}</dt>
             <dd style={{ margin: 0 }}>{patient?.sexAtBirth?.trim() || DISPLAY_DASH}</dd>
             <dt>{t("hospitalAdmissionD4a25a.demographics.preferredName")}</dt>

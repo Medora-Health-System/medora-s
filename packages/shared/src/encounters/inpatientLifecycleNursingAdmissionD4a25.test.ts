@@ -117,6 +117,43 @@ describe("D4A.2.5 nursing section schemas", () => {
     if (!saved.ok) expect(saved.code).toBe("NURSING_ADMISSION_ALREADY_SIGNED");
   });
 
+  it("INP.2B.1 keeps clinicalDocumentedAt distinct from server updatedAt and does not wipe other sections", () => {
+    const doc = emptyMedSurgNursingAdmissionDocV1({
+      patientId: "p1",
+      facilityId: "f1",
+      encounterId: "e1",
+      nowIso: "2026-08-17T19:00:00.000Z",
+    });
+    const first = saveAdmissionSectionDraft({
+      doc,
+      sectionId: "OVERVIEW",
+      answers: { admissionSource: "EMERGENCY_DEPARTMENT" },
+      clientExpectedVersion: 0,
+      actorUserId: "rn-1",
+      atIso: "2026-08-17T19:04:52.000Z",
+      clinicalDocumentedAt: "2026-08-17T17:04:00.000Z",
+    });
+    expect(first.ok).toBe(true);
+    if (!first.ok) return;
+    expect(first.doc.clinicalDocumentedAt).toBe("2026-08-17T17:04:00.000Z");
+    expect(first.doc.updatedAt).toBe("2026-08-17T19:04:52.000Z");
+    expect(first.doc.clinicalDocumentedAt).not.toBe(first.doc.updatedAt);
+    const second = saveAdmissionSectionDraft({
+      doc: first.doc,
+      sectionId: "PAIN",
+      answers: { painPresent: "NO" },
+      clientExpectedVersion: first.doc.expectedVersion,
+      actorUserId: "rn-1",
+      atIso: "2026-08-17T19:10:00.000Z",
+    });
+    expect(second.ok).toBe(true);
+    if (!second.ok) return;
+    expect(second.doc.sections.OVERVIEW?.answers?.admissionSource).toBe("EMERGENCY_DEPARTMENT");
+    expect(second.doc.sections.PAIN?.answers?.painPresent).toBe("NO");
+    expect(second.doc.clinicalDocumentedAt).toBe("2026-08-17T17:04:00.000Z");
+    expect(second.doc.updatedAt).toBe("2026-08-17T19:10:00.000Z");
+  });
+
   it("keeps lifecycle meta additive and never hard-deletes", () => {
     const meta = emptyInpatientLifecycleMeta();
     meta.voidedAt = new Date().toISOString();

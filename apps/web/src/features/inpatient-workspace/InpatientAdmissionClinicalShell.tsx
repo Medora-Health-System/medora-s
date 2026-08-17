@@ -9,11 +9,14 @@ import {
   NURSING_ADMISSION_STAGES,
   computeAdmissionCompletionSummary,
   nursingAdmissionStageForSection,
+  projectNursingAdmissionOverview,
+  projectNursingAdmissionRailSummary,
   resolveAuthoritativeCodeStatus,
   resolveAuthoritativeIsolation,
   type AdmissionSectionCompletionState,
   type InpatientAdmissionClinicalSection,
   type InpatientClinicalOpsV1,
+  type MedSurgNursingAdmissionDocV1,
   type NursingAdmissionDomainReferenceV1,
   type NursingAdmissionStageId,
 } from "@medora/shared";
@@ -35,9 +38,15 @@ import { InpatientLifecycleActionsMenu } from "./InpatientLifecycleActionsMenu";
 import { NursingAdmissionDomainIntegrationPanel } from "./NursingAdmissionDomainIntegrationPanel";
 import { NursingAdmissionPrintSummaryModal } from "./NursingAdmissionPrintSummaryModal";
 import { NursingAdmissionAmendmentDialog } from "./NursingAdmissionAmendmentDialog";
-import { NursingAdmissionContextRail } from "./NursingAdmissionContextRail";
+import {
+  NursingAdmissionEncounterActionsSlot,
+  NursingAdmissionLeftNavigator,
+  NursingAdmissionSaveRail,
+  NursingAdmissionStageTracker,
+  NursingAdmissionWorkspaceStyles,
+} from "./NursingAdmissionWorkspaceChromeInp2b1";
 import { ClinicalSaveStatus } from "./rapid-documentation/ClinicalRapidControls";
-import { AdditionalClinicalDocumentationLauncher } from "./rapid-documentation/AdditionalClinicalDocumentationLauncher";
+import { NursingAdmissionReviewDashboard } from "./NursingAdmissionReviewDashboard";
 
 function admissionCorrelationUiEnabled(): boolean {
   const v = String(process.env.NEXT_PUBLIC_ADMISSION_CORRELATION_ENABLED ?? "")
@@ -60,6 +69,9 @@ type PreloadItem = {
 
 type NursingDoc = {
   expectedVersion?: number;
+  clinicalDocumentedAt?: string | null;
+  updatedAt?: string | null;
+  updatedByUserId?: string | null;
   preloadedItems?: PreloadItem[];
   homeMedicationLines?: Array<{ lineId: string; medicationLabel: string; status: string }>;
   sections?: Record<
@@ -146,10 +158,21 @@ export function InpatientAdmissionClinicalShell({
   const [amendMode, setAmendMode] = useState<
     null | "ADDENDUM" | "CORRECTION" | "ENTERED_IN_ERROR"
   >(null);
+  const [clinicalDocumentedAt, setClinicalDocumentedAt] = useState<string | null>(null);
   const [localDraftBackup, setLocalDraftBackup] = useState<Record<string, unknown> | null>(null);
   const panelRef = useRef<HTMLDivElement | null>(null);
   const expectedVersionRef = useRef(0);
   const dirtyRef = useRef(false);
+  const draftsRef = useRef<
+    Partial<Record<string, { answers: Record<string, unknown>; unableReason: string; draftNote: string }>>
+  >({});
+  const docRef = useRef<NursingDoc | null>(null);
+  const answersRef = useRef(answers);
+  const draftNoteRef = useRef(draftNote);
+  const unableReasonRef = useRef(unableReason);
+  const clinicalDocumentedAtRef = useRef(clinicalDocumentedAt);
+  const activeRef = useRef(active);
+  const saveInFlightRef = useRef(false);
   const canAmend = !readOnly && roles.includes("RN");
   const canLinkDomain = !readOnly && (roles.includes("RN") || roles.includes("ADMIN"));
 
@@ -161,7 +184,6 @@ export function InpatientAdmissionClinicalShell({
   const activeStage = nursingAdmissionStageForSection(active);
   const stageId = (activeStage?.id ?? "ARRIVAL_IDENTITY") as NursingAdmissionStageId;
   const stageIndex = NURSING_ADMISSION_STAGES.findIndex((s) => s.id === stageId);
-  const stageSections = (activeStage?.sectionKeys ?? []) as InpatientAdmissionClinicalSection[];
 
 
   const applyPayload = useCallback(
@@ -175,6 +197,11 @@ export function InpatientAdmissionClinicalShell({
       setAnswers((sec?.answers as Record<string, unknown>) ?? {});
       setUnableReason(typeof sec?.unableReason === "string" ? sec.unableReason : "");
       setDraftNote(typeof sec?.draftText === "string" ? sec.draftText : "");
+      if (typeof d?.clinicalDocumentedAt === "string" && d.clinicalDocumentedAt) {
+        setClinicalDocumentedAt(d.clinicalDocumentedAt);
+      } else if (d?.clinicalDocumentedAt === null) {
+        setClinicalDocumentedAt(null);
+      }
       dirtyRef.current = false;
       setSaveState("SAVED");
     },
@@ -232,14 +259,48 @@ export function InpatientAdmissionClinicalShell({
   }, [encounterId]);
 
   useEffect(() => {
-    const sec = doc?.sections?.[active];
+    docRef.current = doc;
+  }, [doc]);
+
+  useEffect(() => {
+    answersRef.current = answers;
+  }, [answers]);
+
+  useEffect(() => {
+    draftNoteRef.current = draftNote;
+  }, [draftNote]);
+
+  useEffect(() => {
+    unableReasonRef.current = unableReason;
+  }, [unableReason]);
+
+  useEffect(() => {
+    clinicalDocumentedAtRef.current = clinicalDocumentedAt;
+  }, [clinicalDocumentedAt]);
+
+  useEffect(() => {
+    activeRef.current = active;
+  }, [active]);
+
+  useEffect(() => {
+    const stash = draftsRef.current[active];
+    if (stash) {
+      setAnswers(stash.answers);
+      setUnableReason(stash.unableReason);
+      setDraftNote(stash.draftNote);
+      dirtyRef.current = true;
+      setSaveState("NOT_SAVED");
+      panelRef.current?.focus();
+      return;
+    }
+    const sec = docRef.current?.sections?.[active];
     setAnswers((sec?.answers as Record<string, unknown>) ?? {});
     setUnableReason(typeof sec?.unableReason === "string" ? sec.unableReason : "");
     setDraftNote(typeof sec?.draftText === "string" ? sec.draftText : "");
     dirtyRef.current = false;
     setSaveState("SAVED");
     panelRef.current?.focus();
-  }, [active, doc?.sections]);
+  }, [active]);
 
   useEffect(() => {
     const onBeforeUnload = (e: BeforeUnloadEvent) => {
@@ -253,43 +314,96 @@ export function InpatientAdmissionClinicalShell({
 
   const persistSection = useCallback(
     async (completionState?: AdmissionSectionCompletionState) => {
-      if (!doc || writeBlocked) return;
+      if (!docRef.current) {
+        setSaveState("SAVE_FAILED");
+        return false;
+      }
+      if (writeBlocked) return false;
+      if (saveInFlightRef.current) return false;
+
+      saveInFlightRef.current = true;
+      const sectionId = activeRef.current;
       setSaveState("SAVING");
       setBusy(true);
       try {
         const payload = await patchNursingAdmissionSection(encounterId, {
-          sectionId: active,
-          draftText: draftNote,
-          answers,
-          unableReason: unableReason || null,
+          sectionId,
+          draftText: draftNoteRef.current,
+          answers: answersRef.current,
+          unableReason: unableReasonRef.current || null,
           completionState: completionState ?? undefined,
           expectedVersion: expectedVersionRef.current,
+          clinicalDocumentedAt: clinicalDocumentedAtRef.current,
         });
-        applyPayload(payload as never, active);
+        delete draftsRef.current[sectionId];
+        applyPayload(payload as never, sectionId);
         dirtyRef.current = false;
         setSaveState("SAVED");
         setLastSavedAt(new Date().toISOString());
-      } catch {
-        setSaveState("SAVE_FAILED");
+        return true;
+      } catch (err) {
+        const status =
+          typeof err === "object" && err && "status" in err
+            ? Number((err as { status?: number }).status)
+            : 0;
+        if (status === 409) {
+          setLocalDraftBackup({
+            answers: answersRef.current,
+            unableReason: unableReasonRef.current,
+            draftNote: draftNoteRef.current,
+          });
+          setSaveState("CONFLICT_DETECTED");
+        } else {
+          setSaveState("SAVE_FAILED");
+        }
+        return false;
       } finally {
+        saveInFlightRef.current = false;
         setBusy(false);
       }
     },
-    [active, answers, applyPayload, doc, draftNote, encounterId, writeBlocked, unableReason]
+    [applyPayload, encounterId, writeBlocked]
   );
+
+  useEffect(() => {
+    if (saveState !== "NOT_SAVED" || writeBlocked || busy || saveInFlightRef.current) return;
+    const handle = window.setTimeout(() => {
+      void persistSection();
+    }, 2500);
+    return () => window.clearTimeout(handle);
+  }, [saveState, answers, draftNote, unableReason, clinicalDocumentedAt, persistSection, writeBlocked, busy]);
+
+  useEffect(() => {
+    if (active !== "PROVIDER_ADMISSION") return;
+    void (async () => {
+      try {
+        const payload = await fetchNursingAdmissionReview(encounterId);
+        setReview(payload.review as Record<string, unknown>);
+        applyPayload(payload as never);
+      } catch {
+        /* review fetch is best-effort on stage entry */
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [active, encounterId]);
 
   const markDirty = (nextAnswers: Record<string, unknown>) => {
     setAnswers(nextAnswers);
     dirtyRef.current = true;
     setSaveState("NOT_SAVED");
-    // Explicit Save / Save and continue preserve the existing audited write
-    // semantics. Scheduling here used a render-stale closure and could write
-    // the pre-click snapshot over a newly selected chip.
+    draftsRef.current[activeRef.current] = {
+      answers: nextAnswers,
+      unableReason: unableReasonRef.current,
+      draftNote: draftNoteRef.current,
+    };
   };
 
   const goTo = (id: InpatientAdmissionClinicalSection) => {
+    if (id === activeRef.current) return;
     if (dirtyRef.current && !writeBlocked) {
-      void persistSection().then(() => setActive(id));
+      void persistSection().then((ok) => {
+        if (ok) setActive(id);
+      });
       return;
     }
     setActive(id);
@@ -371,88 +485,11 @@ export function InpatientAdmissionClinicalShell({
   const sectionState = (id: string) =>
     (doc?.sections?.[id]?.completionState as AdmissionSectionCompletionState) ?? "NOT_STARTED";
 
-  const sectionLabel = t("inpatientRapidConvergenceD4a27c.stages.progress")
-    .replace("{current}", String(stageIndex + 1))
-    .replace("{total}", String(NURSING_ADMISSION_STAGES.length));
   const completionSummary = doc
     ? computeAdmissionCompletionSummary(doc as Parameters<typeof computeAdmissionCompletionSummary>[0])
     : null;
-  const completionLabel = completionSummary
-    ? t("inpatientAdmissionInp2b.completion.sections")
-        .replace("{complete}", String(completionSummary.complete))
-        .replace("{total}", String(completionSummary.total))
-    : null;
 
   const effectiveSaveCode = signed ? "SIGNED" : readOnly ? "READ_ONLY" : saveState;
-
-  const StickyFooter = () => (
-    <footer
-      style={{
-        position: "sticky",
-        bottom: 0,
-        zIndex: 25,
-        marginTop: 12,
-        padding: "10px 12px",
-        borderTop: "1px solid #e2e8f0",
-        background: "rgba(248,250,252,0.97)",
-        display: "flex",
-        flexWrap: "wrap",
-        gap: 8,
-        alignItems: "center",
-        justifyContent: "space-between",
-      }}
-      data-testid="admission-sticky-footer"
-    >
-      <ClinicalSaveStatus code={effectiveSaveCode} savedAt={lastSavedAt} language={language} />
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-        {!isFirst ? (
-          <button type="button" style={navBtn} onClick={goPrev} disabled={busy}>
-            {t("inpatientRapidConvergenceD4a27c.nav.previous")}
-          </button>
-        ) : null}
-        <button
-          type="button"
-          style={navBtnPrimary}
-          disabled={busy || writeBlocked}
-          onClick={() => void persistSection()}
-          data-testid="admission-save"
-        >
-          {t("inpatientRapidConvergenceD4a27c.nav.save")}
-        </button>
-        {!isLast ? (
-          <>
-            <button
-              type="button"
-              style={navBtn}
-              disabled={busy || writeBlocked}
-              onClick={() => void persistSection().then(() => goNext())}
-              data-testid="admission-save-continue"
-            >
-              {t("inpatientRapidConvergenceD4a27c.nav.saveContinue")}
-            </button>
-            <button type="button" style={navBtn} onClick={goNext} disabled={busy}>
-              {t("inpatientRapidConvergenceD4a27c.nav.next")}
-            </button>
-          </>
-        ) : (
-          <>
-            <button type="button" style={navBtn} onClick={() => void openReview()} disabled={busy}>
-              {t("inpatientRapidConvergenceD4a27c.nav.review")}
-            </button>
-            <button
-              type="button"
-              style={{ ...navBtnPrimary, background: "#0f766e" }}
-              disabled={busy || writeBlocked}
-              onClick={() => void signAdmission()}
-              data-testid="admission-nurse-sign"
-            >
-              {signed ? t("hospitalAdmissionD4a1.alreadySigned") : t("inpatientRapidConvergenceD4a27c.nav.sign")}
-            </button>
-          </>
-        )}
-      </div>
-    </footer>
-  );
 
   const openPrintSummary = () => {
     // Always load authoritative server summary — never print unsaved local state.
@@ -465,58 +502,57 @@ export function InpatientAdmissionClinicalShell({
     if (first) goTo(first);
   };
 
+  const allergiesSummary =
+    (doc?.preloadedItems ?? [])
+      .filter((item) => item.domain === "ALLERGIES")
+      .map((item) => item.valueText || item.displayLabel)
+      .filter(Boolean)
+      .join("; ") || null;
+  const admissionProjection = projectNursingAdmissionOverview(
+    doc as Parameters<typeof projectNursingAdmissionOverview>[0]
+  );
+  const railSummary = projectNursingAdmissionRailSummary({
+    doc: doc as Parameters<typeof projectNursingAdmissionRailSummary>[0]["doc"],
+    activeSectionId: active,
+  });
+  const showReviewDashboard = active === "PROVIDER_ADMISSION";
+
   return (
     <div data-testid="inpatient-admission-clinical-shell">
-      <nav
-        aria-label={t("inpatientRapidConvergenceD4a27c.stages.ARRIVAL_IDENTITY")}
-        data-testid="nursing-admission-stage-rail"
-        style={{
-          display: "flex",
-          flexWrap: "wrap",
-          gap: 6,
-          marginBottom: 10,
-          position: "sticky",
-          top: 0,
-          zIndex: 24,
-          background: "rgba(248,250,252,0.96)",
-          padding: "8px 0",
-        }}
-      >
-        {NURSING_ADMISSION_STAGES.map((s, idx) => (
-          <button
-            key={s.id}
-            type="button"
-            data-testid={`admission-stage-${s.id}`}
-            onClick={() => goToStage(s.id)}
-            style={{
-              ...chipBtn,
-              fontWeight: s.id === stageId ? 700 : 500,
-              borderColor: s.id === stageId ? "#0f766e" : "#e2e8f0",
-              background: s.id === stageId ? "#ccfbf1" : "#fff",
-            }}
-          >
-            {idx + 1}. {t(`inpatientRapidConvergenceD4a27c.stages.${s.id}`)}
-          </button>
-        ))}
-      </nav>
-      <p style={{ margin: "0 0 10px", fontSize: 12, color: "#64748b" }} data-testid="nursing-admission-stages-hint">
-        {sectionLabel}
-        {completionLabel ? ` · ${completionLabel}` : null}
-      </p>
+      <NursingAdmissionWorkspaceStyles />
+      <NursingAdmissionStageTracker
+        stageId={stageId}
+        sectionState={sectionState}
+        lastSavedAt={lastSavedAt}
+        saveCode={effectiveSaveCode}
+        language={language}
+        onStage={goToStage}
+      />
 
-      <InpatientLifecycleActionsMenu encounterId={encounterId} canAdmin={canAdmin} />
+      <NursingAdmissionEncounterActionsSlot>
+        <InpatientLifecycleActionsMenu encounterId={encounterId} canAdmin={canAdmin} />
+        <button
+          type="button"
+          style={{ ...chipBtn, marginTop: 8 }}
+          onClick={openPrintSummary}
+          data-testid="nursing-admission-open-print"
+        >
+          {t("hospitalAdmissionD4a25a.print.open")}
+        </button>
+      </NursingAdmissionEncounterActionsSlot>
 
       {admissionCorrelationUiEnabled() ? <AdmissionJourneyPanel encounterId={encounterId} /> : null}
 
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "minmax(0, 1fr) minmax(220px, 280px)",
-          gap: 12,
-          alignItems: "start",
-        }}
-        className="nursing-admission-layout"
-      >
+      <div className="nursing-admission-workspace-2b1" data-testid="nursing-admission-layout-2b1">
+        <NursingAdmissionLeftNavigator
+          stageId={stageId}
+          active={active}
+          stageIndex={stageIndex}
+          complete={completionSummary?.complete ?? 0}
+          total={completionSummary?.total ?? 20}
+          sectionState={sectionState}
+          onSection={goTo}
+        />
         <div data-testid="nursing-admission-main">
 
       {loadError ? (
@@ -585,64 +621,15 @@ export function InpatientAdmissionClinicalShell({
         </div>
       ) : null}
 
-      <div style={saveBar} data-testid="admission-save-state" role="status">
-        <ClinicalSaveStatus code={effectiveSaveCode} savedAt={lastSavedAt} language={language} />
-      </div>
-
-      {completion ? (
-        <div style={completionBar} data-testid="admission-completion-dashboard">
-          <strong>{t("hospitalAdmissionD4a1.completion.title")}</strong>
-          <span>
-            {t("hospitalAdmissionD4a1.completion.complete")}: {String(completion.complete ?? 0)} /{" "}
-            {String(completion.total ?? 0)}
-          </span>
-          <span data-testid="admission-section-position">{sectionLabel}</span>
-        </div>
-      ) : null}
-
-      <div style={layout}>
-        <nav style={checklistBox} data-testid="inpatient-admission-checklist" aria-label={t("inpatientD3e.admission.checklistTitle")}>
-          <p style={{ margin: "0 0 8px", fontSize: 13, fontWeight: 700, color: "#0f172a" }}>
-            {t(`inpatientRapidConvergenceD4a27c.stages.${stageId}`)}
-          </p>
-          <ul style={{ margin: 0, padding: 0, listStyle: "none" }}>
-            {stageSections.map((section, idx) => (
-              <li key={section} style={{ marginBottom: 4 }}>
-                <button
-                  type="button"
-                  onClick={() => goTo(section)}
-                  data-testid={`admission-section-${section}`}
-                  style={{
-                    ...sectionBtn,
-                    background: active === section ? "#ecfeff" : "#fff",
-                    borderColor: active === section ? "#0891b2" : "#e2e8f0",
-                  }}
-                >
-                  <span>
-                    {idx + 1}. {t(`hospitalAdmissionD4a0.clinical.sections.${section}`)}
-                  </span>
-                  <span style={{ fontSize: 11, color: "#64748b" }}>
-                    {t(`hospitalAdmissionD4a0.clinical.state.${sectionState(section)}`)}
-                  </span>
-                </button>
-              </li>
-            ))}
-          </ul>
-          {/* Durable section identifiers remain internal. Clinicians navigate only the six stages. */}
-          <div style={{ marginTop: 10 }}>
-            <AdditionalClinicalDocumentationLauncher role="NURSING" encounterType="INPATIENT" compact />
-          </div>
-        </nav>
-
-        <div
-          ref={panelRef}
-          tabIndex={-1}
-          style={panel}
-          data-testid={`admission-section-panel-${active}`}
-        >
-          <h4 style={{ margin: "0 0 8px", fontSize: 14, color: "#0f172a" }}>
-            {t(`hospitalAdmissionD4a0.clinical.sections.${active}`)}
-          </h4>
+      <div
+        ref={panelRef}
+        tabIndex={-1}
+        style={panel}
+        data-testid={`admission-section-panel-${active}`}
+      >
+        <h4 style={{ margin: "0 0 8px", fontSize: 14, color: "#0f172a" }}>
+          {t(`hospitalAdmissionD4a0.clinical.sections.${active}`)}
+        </h4>
 
           <NursingAdmissionDomainIntegrationPanel
             sectionId={active}
@@ -659,6 +646,18 @@ export function InpatientAdmissionClinicalShell({
             }}
           />
 
+          {showReviewDashboard ? (
+            <NursingAdmissionReviewDashboard
+              doc={(doc ?? null) as MedSurgNursingAdmissionDocV1 | null}
+              review={review}
+              readOnly={writeBlocked}
+              signed={signed}
+              onNavigate={goTo}
+              onComplete={() => void signAdmission()}
+              completionAllowed={completionSummary?.allRequiredComplete ?? false}
+            />
+          ) : (
+            <>
           {(active === "MEDICAL_HISTORY" ||
             active === "SURGICAL_HISTORY" ||
             active === "HOME_MEDICATIONS" ||
@@ -713,6 +712,7 @@ export function InpatientAdmissionClinicalShell({
             onChange={markDirty}
             onUnableReasonChange={(r) => {
               setUnableReason(r);
+              unableReasonRef.current = r;
               dirtyRef.current = true;
               setSaveState("NOT_SAVED");
             }}
@@ -725,6 +725,7 @@ export function InpatientAdmissionClinicalShell({
               disabled={writeBlocked}
               onChange={(e) => {
                 setDraftNote(e.target.value);
+                draftNoteRef.current = e.target.value;
                 dirtyRef.current = true;
                 setSaveState("NOT_SAVED");
               }}
@@ -747,23 +748,76 @@ export function InpatientAdmissionClinicalShell({
             ))}
           </div>
 
-          <button
-            type="button"
-            style={{ ...chipBtn, marginTop: 8 }}
-            onClick={openPrintSummary}
-            data-testid="nursing-admission-open-print"
-          >
-            {t("hospitalAdmissionD4a25a.print.open")}
-          </button>
+          {isLast && !showReviewDashboard ? (
+            <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
+              <button type="button" style={navBtn} onClick={() => void openReview()} disabled={busy}>
+                {t("inpatientRapidConvergenceD4a27c.nav.review")}
+              </button>
+              <button
+                type="button"
+                style={{ ...navBtnPrimary, background: "#0f766e" }}
+                disabled={busy || writeBlocked}
+                onClick={() => void signAdmission()}
+                data-testid="admission-nurse-sign"
+              >
+                {signed ? t("hospitalAdmissionD4a1.alreadySigned") : t("inpatientRapidConvergenceD4a27c.nav.sign")}
+              </button>
+            </div>
+          ) : null}
 
-          <StickyFooter />
+          <footer
+            style={{
+              marginTop: 12,
+              paddingTop: 8,
+              borderTop: "1px solid #e2e8f0",
+              fontSize: 12,
+              color: "#64748b",
+            }}
+            data-testid="admission-sticky-footer"
+          >
+            <ClinicalSaveStatus code={effectiveSaveCode} savedAt={lastSavedAt} language={language} />
+          </footer>
+            </>
+          )}
         </div>
-      </div>
         </div>
-        <NursingAdmissionContextRail
+        <NursingAdmissionSaveRail
           codeStatus={codeStatus}
           isolation={isolation}
-          allergiesSummary={null}
+          allergiesSummary={allergiesSummary}
+          projection={admissionProjection}
+          railSummary={railSummary}
+          activeSection={active}
+          clinicalDocumentedAt={clinicalDocumentedAt}
+          onClinicalTimeChange={(iso) => {
+            setClinicalDocumentedAt(iso);
+            clinicalDocumentedAtRef.current = iso;
+            dirtyRef.current = true;
+            setSaveState("NOT_SAVED");
+          }}
+          saveCode={effectiveSaveCode}
+          lastSavedAt={lastSavedAt}
+          language={language}
+          writeBlocked={writeBlocked}
+          busy={busy}
+          isFirst={isFirst}
+          isLast={isLast}
+          onPrevious={goPrev}
+          onSaveDraft={() => void persistSection()}
+          onSaveContinue={() =>
+            void persistSection().then((ok) => {
+              if (ok && !isLast) goNext();
+            })
+          }
+          onNext={() => {
+            if (dirtyRef.current && !writeBlocked) {
+              void persistSection().then((ok) => {
+                if (ok) goNext();
+              });
+              return;
+            }
+            goNext();
+          }}
         />
       </div>
 
@@ -866,44 +920,11 @@ export function InpatientAdmissionClinicalShell({
   );
 }
 
-const layout: CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "minmax(220px, 280px) 1fr",
-  gap: 12,
-  alignItems: "start",
-};
-
-const checklistBox: CSSProperties = {
-  position: "sticky",
-  top: 8,
-  padding: 10,
-  borderRadius: 12,
-  border: "1px solid #e2e8f0",
-  background: "#fff",
-  maxHeight: "70vh",
-  overflow: "auto",
-};
-
 const panel: CSSProperties = {
   padding: 12,
   borderRadius: 12,
   border: "1px solid #e2e8f0",
   background: "#f8fafc",
-};
-
-const sectionBtn: CSSProperties = {
-  width: "100%",
-  display: "flex",
-  justifyContent: "space-between",
-  gap: 8,
-  textAlign: "left",
-  padding: "6px 8px",
-  borderRadius: 8,
-  border: "1px solid #e2e8f0",
-  background: "#fff",
-  cursor: "pointer",
-  fontSize: 12,
-  color: "#334155",
 };
 
 const chipBtn: CSSProperties = {
@@ -947,34 +968,6 @@ const preloadCard: CSSProperties = {
   borderRadius: 10,
   border: "1px solid #e2e8f0",
   background: "#fff",
-};
-
-const completionBar: CSSProperties = {
-  display: "flex",
-  gap: 12,
-  flexWrap: "wrap",
-  alignItems: "center",
-  marginBottom: 8,
-  padding: "8px 10px",
-  borderRadius: 10,
-  background: "#ecfeff",
-  border: "1px solid #a5f3fc",
-  fontSize: 12,
-  color: "#155e75",
-};
-
-const saveBar: CSSProperties = {
-  display: "flex",
-  gap: 10,
-  flexWrap: "wrap",
-  alignItems: "center",
-  marginBottom: 8,
-  padding: "6px 10px",
-  borderRadius: 10,
-  background: "#fff7ed",
-  border: "1px solid #fed7aa",
-  fontSize: 12,
-  color: "#9a3412",
 };
 
 const textareaStyle: CSSProperties = {

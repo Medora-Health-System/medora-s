@@ -222,6 +222,11 @@ export type MedSurgNursingAdmissionDocV1 = {
   domainReferences?: unknown[];
   /** D4A.2.5A — append-only post-sign amendments (original signature remains immutable). */
   amendments?: unknown[];
+  /**
+   * MEDUI.INP.2B.1 — nurse-selected clinical effective time.
+   * Distinct from server audit `updatedAt` / signature clocks. Additive JSON only.
+   */
+  clinicalDocumentedAt?: string | null;
   updatedAt: string;
   updatedByUserId?: string | null;
 };
@@ -261,6 +266,7 @@ export function emptyMedSurgNursingAdmissionDocV1(input: {
     })),
     nurseSignature: { signed: false },
     providerHandoff: null,
+    clinicalDocumentedAt: null,
     updatedAt: input.nowIso ?? new Date().toISOString(),
   };
 }
@@ -483,6 +489,8 @@ export function saveAdmissionSectionDraft(input: {
   clientExpectedVersion: number;
   actorUserId: string;
   atIso?: string;
+  /** Nurse-selected clinical effective time. Never copied onto `updatedAt`. */
+  clinicalDocumentedAt?: string | null;
   /** When true, refuse if nurse signature already present (use addendum path). */
   blockIfSigned?: boolean;
 }):
@@ -531,12 +539,17 @@ export function saveAdmissionSectionDraft(input: {
       updatedByUserId: input.actorUserId,
     },
   };
+  const clinicalDocumentedAt =
+    input.clinicalDocumentedAt !== undefined
+      ? input.clinicalDocumentedAt
+      : (input.doc.clinicalDocumentedAt ?? null);
   return {
     ok: true,
     doc: {
       ...input.doc,
       sections,
       expectedVersion: nextVersion,
+      clinicalDocumentedAt,
       updatedAt: at,
       updatedByUserId: input.actorUserId,
     },

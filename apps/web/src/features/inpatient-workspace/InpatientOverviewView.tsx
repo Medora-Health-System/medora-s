@@ -577,6 +577,14 @@ export function InpatientOverviewView({
                   {t(`hospitalAdmissionD4a25.options.${p.nursing.admissionOverview.admissionSource}`)}
                 </li>
               ) : null}
+              {p.nursing.admissionOverview.clinicalDocumentedAt ? (
+                <li data-testid="overview-nursing-admission-clinical-time">
+                  {t("inpatientAdmissionInp2b1.clinicalTime")}:{" "}
+                  {new Date(p.nursing.admissionOverview.clinicalDocumentedAt).toLocaleString(
+                    language?.startsWith("fr") ? "fr-FR" : "en-US"
+                  )}
+                </li>
+              ) : null}
               {p.nursing.admissionOverview.modeOfArrival ? (
                 <li>
                   {t("inpatientAdmissionInp2b.overview.modeOfArrival")}:{" "}

@@ -15,6 +15,10 @@ import {
 } from "@medora/shared";
 import { useI18n } from "@/lib/i18n";
 import { NursingAdmissionRapidSectionControls } from "./rapid-documentation/NursingAdmissionRapidSectionControls";
+import {
+  resolveNursingAdmissionFieldLabel,
+  resolveNursingAdmissionOptionLabel,
+} from "./nursingAdmissionOptionI18n";
 
 /** Free-text forks superseded by enterprise clinical-ops projections. */
 const SUPPRESSED_ENTERPRISE_FORK_FIELDS = new Set(["codeStatus", "isolationStatus"]);
@@ -40,6 +44,22 @@ const RAPID_SUPPRESSED_GENERIC_FIELDS = new Set([
   "modeOfArrival",
   "conditionOnArrival",
   "interpreterNeeded",
+  "arrivalAt",
+  "immediateConcerns",
+  "sourceReportReceived",
+  "handoffReceivedFrom",
+  "handoffMethod",
+  "handoffAt",
+  "discrepanciesNoted",
+  "followUpRequired",
+  "twoIdentifiersVerified",
+  "wristbandPresent",
+  "wristbandCorrect",
+  "allergyBandPresent",
+  "fallRiskBandPresent",
+  "patientConfirmsIdentity",
+  "discrepancyFound",
+  "registrationCorrectionRequested",
   "rapidHistoryReviewed",
   "rapidAllergyReviewed",
   "rapidHomeMedReviewed",
@@ -47,6 +67,38 @@ const RAPID_SUPPRESSED_GENERIC_FIELDS = new Set([
   "rapidSocialWorkNeed",
   "rapidCaseManagementNeed",
   "rapidPreAdmissionResidence",
+  "rapidPainPresence",
+  "painPresent",
+  "score",
+  "location",
+  "rapidFallPrecautions",
+  "precautionsInitiated",
+  "fallPriorMonths",
+  "gaitImpairment",
+  "dizziness",
+  "confusion",
+  "sedatingMedication",
+  "elopementRisk",
+  "suicideSelfHarmConcern",
+  "aspirationRisk",
+  "rapidMobility",
+  "currentMobility",
+  "baselineMobility",
+  "transferAbility",
+  "rapidNutritionOk",
+  "swallowingDifficulty",
+  "npoStatus",
+  "rapidEliminationOk",
+  "ioMonitoringRequired",
+  "rapidBelongingsPresent",
+  "inventoryReviewed",
+  "valuablesPresent",
+  "rapidDevicesConfirmed",
+  "devicesPresent",
+  "pressureInjury",
+  "openWound",
+  "patientDeniesPriorSurgery",
+  "teachBack",
 ]);
 
 export function isAdmissionChipEditorField(sectionId: InpatientAdmissionClinicalSection, key: string): boolean {
@@ -90,11 +142,7 @@ function FieldControl(props: {
   const options = field.optionsKey
     ? NURSING_ADMISSION_OPTION_CATALOGS[field.optionsKey] ?? []
     : [];
-  const labelRaw = t(`hospitalAdmissionD4a25.fields.${field.key}`);
-  const label =
-    labelRaw === `hospitalAdmissionD4a25.fields.${field.key}`
-      ? t("hospitalAdmissionD4a25.fieldConfigurationError")
-      : labelRaw;
+  const label = resolveNursingAdmissionFieldLabel(t, field.key);
   const showHelp = CLINICAL_HELP_FIELD_KEYS.has(field.key);
   const commonLabel: CSSProperties = { display: "block", fontSize: 12, fontWeight: 600, marginBottom: 4 };
   const labelRow = (
@@ -179,7 +227,7 @@ function FieldControl(props: {
           <option value="">{t("hospitalAdmissionD4a25.selectPlaceholder")}</option>
           {opts.map((opt) => (
             <option key={opt} value={opt}>
-              {t(`hospitalAdmissionD4a25.options.${opt}`)}
+              {resolveNursingAdmissionOptionLabel(t, opt)}
             </option>
           ))}
         </select>
@@ -207,7 +255,7 @@ function FieldControl(props: {
                   }}
                   data-testid={`field-${field.key}-${opt}`}
                 />
-                {t(`hospitalAdmissionD4a25.options.${opt}`)}
+                {resolveNursingAdmissionOptionLabel(t, opt)}
               </label>
             );
           })}
@@ -253,20 +301,47 @@ export function NursingAdmissionStructuredSectionForm({
       {schema.fields.map((field) => {
         if (isAdmissionChipEditorField(sectionId, field.key)) return null;
         if (SUPPRESSED_ENTERPRISE_FORK_FIELDS.has(field.key)) return null;
-        if (RAPID_SUPPRESSED_GENERIC_FIELDS.has(field.key) && answers[field.key] != null) {
-          /* still allow edit via rapid; hide duplicate generic when rapid owns it */
+        if (
+          RAPID_SUPPRESSED_GENERIC_FIELDS.has(field.key) &&
+          answers[field.key] != null
+        ) {
+          return null;
         }
         if (
           (sectionId === "OVERVIEW" &&
-            ["admissionSource", "modeOfArrival", "conditionOnArrival", "interpreterNeeded"].includes(
+            ["admissionSource", "modeOfArrival", "conditionOnArrival", "interpreterNeeded", "arrivalAt", "immediateConcerns"].includes(
               field.key,
             )) ||
+          (sectionId === "SOURCE_ENCOUNTER_SUMMARY" &&
+            ["sourceReportReceived", "handoffReceivedFrom", "handoffMethod", "handoffAt", "discrepanciesNoted", "followUpRequired"].includes(
+              field.key,
+            )) ||
+          (sectionId === "IDENTITY_DEMOGRAPHICS" &&
+            [
+              "twoIdentifiersVerified",
+              "wristbandPresent",
+              "wristbandCorrect",
+              "allergyBandPresent",
+              "fallRiskBandPresent",
+              "patientConfirmsIdentity",
+              "discrepancyFound",
+              "registrationCorrectionRequested",
+            ].includes(field.key)) ||
           (sectionId === "MEDICAL_HISTORY" && field.key === "rapidHistoryReviewed") ||
           (sectionId === "ALLERGIES" && field.key === "rapidAllergyReviewed") ||
           (sectionId === "HOME_MEDICATIONS" && field.key === "rapidHomeMedReviewed") ||
           (sectionId === "SKIN_WOUND" && field.key === "rapidSkinStatus") ||
           (sectionId === "PSYCHOSOCIAL" &&
-            ["rapidSocialWorkNeed", "rapidCaseManagementNeed", "rapidPreAdmissionResidence"].includes(
+            ["rapidSocialWorkNeed", "rapidCaseManagementNeed", "rapidPreAdmissionResidence", "rapidLivingSituation"].includes(
+              field.key,
+            )) ||
+          (sectionId === "PAIN" && ["painPresent", "score", "location", "rapidPainPresence"].includes(field.key)) ||
+          (sectionId === "FALL_SAFETY" &&
+            ["fallPriorMonths", "gaitImpairment", "dizziness", "confusion", "sedatingMedication", "elopementRisk", "suicideSelfHarmConcern", "aspirationRisk", "precautionsInitiated"].includes(
+              field.key,
+            )) ||
+          (sectionId === "NURSING_ADMISSION_ASSESSMENT" &&
+            ["generalAppearance", "levelOfConsciousness", "orientation", "immediateConcerns", "respiratoryEffort", "immediateSafetyConcern", "painPresent", "nauseaVomiting", "dizziness", "weakness", "shortnessOfBreath", "chestDiscomfort", "acuteNeuroConcern", "urgentProviderNotification", "providerNotified", "notificationTime", "providerResponse"].includes(
               field.key,
             ))
         ) {
