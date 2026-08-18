@@ -29,31 +29,36 @@ function deepKeys(obj: unknown, prefix = ""): string[] {
 describe("MEDUI.INP.2D inpatient Review Orders", () => {
   it("reuses enterprise order GET/actions and does not invent an inpatient order engine", () => {
     expect(inpatientReviewOrdersReuseEnterpriseEngine()).toBe(true);
-    const panel = read("InpatientReviewOrdersPanel.tsx");
-    expect(panel).toContain("fetchOrdersForEncounter");
-    expect(panel).toContain("fetchOrderEventsForEncounter");
-    expect(panel).toContain("mutateOrderItemLifecycleAction");
-    expect(panel).toContain("projectInpatientReviewOrders");
-    expect(panel).toContain('medicationOrderMode="DEFAULT"');
-    expect(panel).not.toContain("prisma.");
-    expect(panel).not.toMatch(/POST\s*[`'"]\/inpatient.*orders/);
     const workspace = read("InpatientWorkspacePanel.tsx");
-    expect(workspace).toContain("InpatientReviewOrdersPanel");
-    expect(workspace).not.toContain("EmergencyErOrdersPanel");
+    expect(workspace).toContain("EmergencyErOrdersPanel");
+    expect(workspace).toContain('medicationOrderMode="DEFAULT"');
+    expect(workspace).not.toContain("InpatientReviewOrdersPanel");
+    expect(workspace).not.toMatch(/POST\s*[`'"]\/inpatient.*orders/);
+    const restored = readSrc("features/emergency/EmergencyErOrdersPanel.tsx");
+    expect(restored).toContain("mutateOrderItemLifecycleAction");
+    expect(restored).toContain("CreateOrderModal");
+    expect(restored).not.toContain("prisma.");
+    expect(restored).not.toContain("medication-administrations");
+    const retained = read("InpatientReviewOrdersPanel.tsx");
+    expect(retained).toContain("fetchOrdersForEncounter");
+    expect(retained).toContain("projectInpatientReviewOrders");
+    expect(retained).toContain('medicationOrderMode="DEFAULT"');
   });
 
   it("keeps MAR as the medication administration authority", () => {
-    const panel = read("InpatientReviewOrdersPanel.tsx");
-    expect(panel).toContain('onNavigateSection?.("medications")');
-    expect(panel).toContain("inpatientReviewOrdersInp2d.openMar");
-    expect(panel).toContain("inpatientReviewOrdersInp2d.marBoundary");
-    expect(panel).not.toContain("medication-administrations");
+    const restored = readSrc("features/emergency/EmergencyErOrdersPanel.tsx");
+    expect(restored).not.toContain("medication-administrations");
+    const retained = read("InpatientReviewOrdersPanel.tsx");
+    expect(retained).toContain('onNavigateSection?.("medications")');
+    expect(retained).toContain("inpatientReviewOrdersInp2d.openMar");
+    expect(retained).toContain("inpatientReviewOrdersInp2d.marBoundary");
+    expect(retained).not.toContain("medication-administrations");
     const workspace = read("InpatientWorkspacePanel.tsx");
     expect(workspace).toContain("MedicationAdministrationTab");
     expect(workspace).toContain('case "medications"');
   });
 
-  it("surfaces bedside buckets and clinical groups", () => {
+  it("retains INP.2D projection buckets as unmounted helpers, not the primary Orders UI", () => {
     const panel = read("InpatientReviewOrdersPanel.tsx");
     expect(panel).toContain("INPATIENT_REVIEW_ORDER_STATUS_BUCKETS");
     expect(panel).toContain("INPATIENT_REVIEW_ORDER_CLINICAL_GROUPS");
@@ -102,6 +107,13 @@ describe("MEDUI.INP.2D inpatient Review Orders", () => {
   });
 
   it("does not grant RN provider prescribing chrome", () => {
+    const workspace = read("InpatientWorkspacePanel.tsx");
+    expect(workspace).toMatch(/roles\.includes\("PROVIDER"\) \|\| roles\.includes\("ADMIN"\)/);
+    const restored = readSrc("features/emergency/EmergencyErOrdersPanel.tsx");
+    expect(restored).toContain("canUseRnOrderAuthority");
+    expect(restored).toContain("effectiveCanPrescribe");
+    expect(restored).toContain("ProviderMedicationOrderGovernanceSection");
+    expect(restored).toContain("auditMedicationOrderGovernancePermissions");
     const panel = read("InpatientReviewOrdersPanel.tsx");
     expect(panel).toContain("canUseRnOrderAuthority");
     expect(panel).toContain("effectiveCanPrescribe");
