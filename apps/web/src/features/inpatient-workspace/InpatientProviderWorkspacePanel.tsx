@@ -11,8 +11,10 @@ import {
   ROS_SYSTEM_CODES,
   PROVIDER_PRINT_PACKAGE_KINDS,
   projectInpatientNursingAssessmentOverview,
+  projectInpatientReviewOrders,
   projectNursingAdmissionOverview,
   type InpatientNursingAssessmentV1,
+  type InpatientReviewOrdersProjection,
   type InpatientWorkspaceRole,
   type MedSurgNursingAdmissionDocV1,
   type ProviderEventAckStatus,
@@ -22,6 +24,7 @@ import {
 } from "@medora/shared";
 import { useI18n } from "@/lib/i18n";
 import { apiFetch, asApiObject } from "@/lib/apiClient";
+import { fetchOrderEventsForEncounter, fetchOrdersForEncounter } from "@/lib/clinicalWorklistApi";
 import { fetchClinicalDocumentationEntries } from "@/lib/clinicalDocumentationApi";
 import { MEDORA_CARD_SHELL } from "@/components/medora-card/medoraCardTokens";
 import { projectDevicesOverviewFromAuthorities } from "./projectNursingClinicalDocumentationSummary";
@@ -269,6 +272,8 @@ export function InpatientProviderWorkspacePanel({
     availability: "READY" | "EMPTY";
     lines: string[];
   } | null>(null);
+  const [reviewOrdersProjection, setReviewOrdersProjection] =
+    useState<InpatientReviewOrdersProjection | null>(null);
   const [printMsg, setPrintMsg] = useState<string | null>(null);
   const [progressText, setProgressText] = useState("");
   const [activeProgressNoteId, setActiveProgressNoteId] = useState<string | null>(null);
@@ -294,8 +299,16 @@ export function InpatientProviderWorkspacePanel({
         setAuthProjection(null);
       }
       if (mode === "overview") {
-        const [synSettled, nursingSettled, careSettled, admissionSettled, docsSettled, ivSettled] =
-          await Promise.allSettled([
+        const [
+          synSettled,
+          nursingSettled,
+          careSettled,
+          admissionSettled,
+          docsSettled,
+          ivSettled,
+          ordersSettled,
+          orderEventsSettled,
+        ] = await Promise.allSettled([
             fetchProviderClinicalSynthesis(encounterId),
             apiFetch(
               `/encounters/${encodeURIComponent(encounterId)}/inpatient-nursing-assessment-events`,
@@ -307,6 +320,8 @@ export function InpatientProviderWorkspacePanel({
             fetchNursingAdmissionDocumentation(encounterId),
             fetchClinicalDocumentationEntries(encounterId, facilityId),
             apiFetch(`/encounters/${encodeURIComponent(encounterId)}/iv-access`, { facilityId }),
+            fetchOrdersForEncounter(facilityId, encounterId),
+            fetchOrderEventsForEncounter(facilityId, encounterId),
           ]);
         if (synSettled.status === "fulfilled") {
           setSynthesis((synSettled.value.synthesis ?? null) as SynthesisLite);
@@ -397,6 +412,21 @@ export function InpatientProviderWorkspacePanel({
         } else {
           setCarePlanPlans([]);
         }
+        if (ordersSettled.status === "fulfilled") {
+          const events =
+            orderEventsSettled.status === "fulfilled" ? orderEventsSettled.value : [];
+          setReviewOrdersProjection(
+            projectInpatientReviewOrders({
+              encounterId,
+              orders: ordersSettled.value,
+              orderEvents: events,
+            }),
+          );
+        } else {
+          setReviewOrdersProjection(null);
+        }
+      } else {
+        setReviewOrdersProjection(null);
       }
     } catch {
       setError(t("inpatientD3e.workspace.loadError"));
@@ -1203,6 +1233,7 @@ export function InpatientProviderWorkspacePanel({
         : null,
     },
     canProviderWrite,
+    reviewOrdersProjection,
   });
 
   const printPackage = async (kind: ProviderPrintPackageKind) => {

@@ -4,7 +4,11 @@
  * Does not fabricate clinical values; unsupported modules are EMPTY/UNSUPPORTED.
  */
 
-import type { InpatientWorkspaceRole } from "@medora/shared";
+import {
+  summarizeInpatientReviewOrdersForOverview,
+  type InpatientReviewOrdersProjection,
+  type InpatientWorkspaceRole,
+} from "@medora/shared";
 import {
   formatCareTeamDisplayName,
   isDocumentedMl,
@@ -183,6 +187,13 @@ export type InpatientOverviewProjection = {
     active: OverviewOrderLine[];
     newOrUnacknowledged: OverviewOrderLine[];
     pendingActions: OverviewOrderLine[];
+    reviewOrders: {
+      newUnreviewed: number;
+      statUrgent: number;
+      dueNursingActionable: number;
+      overdueNursingActionable: number;
+      held: number;
+    } | null;
   };
   carePlan: {
     availability: OverviewModuleAvailability;
@@ -407,6 +418,8 @@ export type ProjectInpatientOverviewInput = {
     lines?: string[];
   } | null;
   canProviderWrite: boolean;
+  /** Same enterprise order projection as Review Orders — no second store. */
+  reviewOrdersProjection?: InpatientReviewOrdersProjection | null;
 };
 
 const HEADER_DUPLICATES = [
@@ -646,10 +659,16 @@ export function projectInpatientOverview(
     },
     orders: {
       availability:
-        orderActive.length + orderNew.length + orderPending.length > 0 ? "READY" : "EMPTY",
+        orderActive.length + orderNew.length + orderPending.length > 0 ||
+        Boolean(input.reviewOrdersProjection?.lines.length)
+          ? "READY"
+          : "EMPTY",
       active: orderActive,
       newOrUnacknowledged: orderNew,
       pendingActions: orderPending,
+      reviewOrders: input.reviewOrdersProjection
+        ? summarizeInpatientReviewOrdersForOverview(input.reviewOrdersProjection)
+        : null,
     },
     carePlan: {
       availability: carePlans.length ? "READY" : "EMPTY",

@@ -147,6 +147,27 @@ export function InpatientClinicalContextRail({
         />
       </div>
 
+      {p.orders.reviewOrders ? (
+        <div style={{ marginBottom: 10 }} data-testid="inpatient-rail-review-orders-counts">
+          <p style={{ margin: "0 0 4px", fontSize: 12, color: "#334155" }}>
+            {t("inpatientOverviewInp2a.rail.reviewOrdersNew")}: {p.orders.reviewOrders.newUnreviewed}
+          </p>
+          <p style={{ margin: "0 0 4px", fontSize: 12, color: "#334155" }}>
+            {t("inpatientOverviewInp2a.rail.reviewOrdersStat")}: {p.orders.reviewOrders.statUrgent}
+          </p>
+          <p style={{ margin: "0 0 4px", fontSize: 12, color: "#334155" }}>
+            {t("inpatientOverviewInp2a.rail.reviewOrdersDue")}: {p.orders.reviewOrders.dueNursingActionable}
+          </p>
+          <p style={{ margin: "0 0 4px", fontSize: 12, color: "#334155" }}>
+            {t("inpatientOverviewInp2a.rail.reviewOrdersOverdue")}:{" "}
+            {p.orders.reviewOrders.overdueNursingActionable}
+          </p>
+          <p style={{ margin: 0, fontSize: 12, color: "#334155" }}>
+            {t("inpatientOverviewInp2a.rail.reviewOrdersHeld")}: {p.orders.reviewOrders.held}
+          </p>
+        </div>
+      ) : null}
+
       <div style={{ marginBottom: 10 }}>
         <strong style={{ fontSize: 11, color: "#475569" }}>
           {t("inpatientOverviewInp2a.rail.marDue")}
