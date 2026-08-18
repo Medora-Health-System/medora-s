@@ -47,11 +47,23 @@ function stageCompletion(
 ): "COMPLETE" | "IN_PROGRESS" | "NOT_STARTED" | "UNABLE_TO_COMPLETE" {
   const states = sectionKeys.map((id) => sectionState(id));
   if (states.every((s) => s === "NOT_STARTED")) return "NOT_STARTED";
-  if (states.every((s) => s === "COMPLETE" || s === "NOT_APPLICABLE")) return "COMPLETE";
-  if (states.some((s) => s === "UNABLE_TO_COMPLETE") && !states.some((s) => s === "IN_PROGRESS")) {
+  if (states.every((s) => s === "COMPLETE" || s === "NOT_APPLICABLE" || s === "UNABLE_TO_COMPLETE")) {
+    return "COMPLETE";
+  }
+  if (states.some((s) => s === "UNABLE_TO_COMPLETE") && !states.some((s) => s === "IN_PROGRESS" || s === "NOT_STARTED")) {
     return "UNABLE_TO_COMPLETE";
   }
   return "IN_PROGRESS";
+}
+
+function stageResolvedCount(
+  sectionKeys: readonly string[],
+  sectionState: (id: string) => AdmissionSectionCompletionState
+): number {
+  return sectionKeys.filter((id) => {
+    const st = sectionState(id);
+    return st === "COMPLETE" || st === "NOT_APPLICABLE" || st === "UNABLE_TO_COMPLETE";
+  }).length;
 }
 
 export function NursingAdmissionStageTracker({
@@ -92,6 +104,7 @@ export function NursingAdmissionStageTracker({
         {NURSING_ADMISSION_STAGES.map((s, idx) => {
           const active = s.id === stageId;
           const st = stageCompletion(s.sectionKeys, sectionState);
+          const resolved = stageResolvedCount(s.sectionKeys, sectionState);
           return (
             <button
               key={s.id}
@@ -111,7 +124,8 @@ export function NursingAdmissionStageTracker({
                 cursor: "pointer",
               }}
             >
-              {idx + 1} {t(`inpatientAdmissionInp2b1.tracker.${s.id}`)}
+              {idx + 1} {t(`inpatientAdmissionInp2b1.tracker.${s.id}`)}{" "}
+              {resolved}/{s.sectionKeys.length}
               {st === "COMPLETE" ? " ✓" : ""}
             </button>
           );
@@ -194,6 +208,7 @@ export function NursingAdmissionLeftNavigator({
                 }}
               >
                 <span style={{ fontSize: 13, fontWeight: isActive ? 700 : 600 }}>
+                  {st === "COMPLETE" || st === "NOT_APPLICABLE" || st === "UNABLE_TO_COMPLETE" ? "✓ " : st === "IN_PROGRESS" ? "• " : ""}
                   {idx + 1}. {t(`hospitalAdmissionD4a0.clinical.sections.${id}`)}
                 </span>
                 <span style={{ fontSize: 11, color: "#64748b", whiteSpace: "nowrap" }}>

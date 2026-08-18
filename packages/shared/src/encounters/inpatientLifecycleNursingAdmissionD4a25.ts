@@ -135,9 +135,15 @@ export const NURSING_ADMISSION_OPTION_CATALOGS: Record<string, readonly string[]
   reviewStatus: ["REVIEWED", "UNABLE_TO_REVIEW", "NOT_APPLICABLE"],
   livingSituation: [
     "LIVES_ALONE",
+    "WITH_SPOUSE_PARTNER",
     "WITH_FAMILY",
-    "FACILITY",
+    "WITH_CAREGIVER",
+    "ASSISTED_LIVING",
+    "SNF",
+    "LONG_TERM_CARE",
+    "GROUP_HOME",
     "HOMELESS",
+    "FACILITY",
     "OTHER",
     "UNKNOWN",
   ],
@@ -267,6 +273,72 @@ export const NURSING_ADMISSION_OPTION_CATALOGS: Record<string, readonly string[]
     "EXPIRED",
     "OTHER",
   ],
+  behavior: [
+    "CALM_COOPERATIVE",
+    "ANXIOUS",
+    "AGITATED",
+    "RESTLESS",
+    "WITHDRAWN",
+    "CONFUSED",
+    "COMBATIVE",
+    "SEDATED",
+    "UNABLE_TO_ASSESS",
+    "OTHER",
+  ],
+  skinColorDetail: [
+    "NORMAL",
+    "PALE",
+    "FLUSHED",
+    "CYANOTIC",
+    "JAUNDICED",
+    "MOTTLED",
+    "ASHEN",
+    "UNABLE_TO_ASSESS",
+    "OTHER",
+  ],
+  communicationAbility: [
+    "WITHOUT_DIFFICULTY",
+    "SPEECH_IMPAIRED",
+    "LANGUAGE_BARRIER",
+    "NONVERBAL",
+    "USES_DEVICE",
+    "COGNITIVE_BARRIER",
+    "HEARING_BARRIER",
+    "UNABLE_TO_ASSESS",
+    "OTHER",
+  ],
+  skinTemperature: ["WARM", "COOL", "HOT", "UNABLE_TO_ASSESS"],
+  skinMoisture: ["DRY", "NORMAL", "MOIST", "DIAPHORETIC", "CLAMMY", "UNABLE_TO_ASSESS"],
+  skinTurgor: ["NORMAL", "DECREASED", "TENTING", "UNABLE_TO_ASSESS"],
+  assistiveDevices: [
+    "NONE",
+    "CANE",
+    "WALKER",
+    "ROLLING_WALKER",
+    "CRUTCHES",
+    "WHEELCHAIR",
+    "PROSTHESIS",
+    "ORTHOSIS_BRACE",
+    "MECHANICAL_LIFT",
+    "OTHER",
+  ],
+  weightBearing: [
+    "NONE",
+    "WBAT",
+    "PARTIAL_WEIGHT_BEARING",
+    "TOE_TOUCH",
+    "NON_WEIGHT_BEARING",
+    "OTHER",
+    "UNKNOWN",
+  ],
+  admissionPriority: ["ROUTINE", "URGENT", "EMERGENT", "OTHER"],
+  preferredLanguage: ["fr", "en", "ht", "es", "OTHER"],
+  hospitalService: ["MED_SURG", "ICU", "TELEMETRY", "SURGICAL", "OBSERVATION", "OTHER"],
+  levelOfCare: ["ACUTE", "INTERMEDIATE", "ICU", "OBSERVATION", "OTHER"],
+  appetite: ["GOOD", "FAIR", "POOR", "UNABLE_TO_ASSESS", "NOT_APPLICABLE"],
+  currentDiet: ["REGULAR", "CARDIAC", "DIABETIC", "RENAL", "NPO", "CLEAR_LIQUIDS", "FULL_LIQUIDS", "OTHER"],
+  bowelPattern: ["DAILY", "EVERY_OTHER_DAY", "CONSTIPATED_BASELINE", "VARIABLE", "OSTOMY", "UNKNOWN"],
+  urinaryPattern: ["CONTINENT", "INCONTINENT", "URGENCY", "RETENTION", "CATHETER", "UNKNOWN"],
 };
 
 function f(
@@ -306,13 +378,19 @@ export const NURSING_ADMISSION_SECTION_SCHEMAS: Record<
         required: true,
       }),
       f("secondaryDiagnoses", "textarea", "hospitalAdmissionD4a25.help.fields.secondaryDiagnoses"),
-      f("service", "text", "hospitalAdmissionD4a25.help.fields.service"),
-      f("levelOfCare", "text", "hospitalAdmissionD4a25.help.fields.levelOfCare"),
+      f("service", "select", "hospitalAdmissionD4a25.help.fields.service", {
+        optionsKey: "hospitalService",
+      }),
+      f("levelOfCare", "select", "hospitalAdmissionD4a25.help.fields.levelOfCare", {
+        optionsKey: "levelOfCare",
+      }),
       f("assignedUnit", "text", "hospitalAdmissionD4a25.help.fields.assignedUnit"),
       f("assignedBed", "text", "hospitalAdmissionD4a25.help.fields.assignedBed"),
       f("attendingProvider", "text", "hospitalAdmissionD4a25.help.fields.attendingProvider"),
       f("receivingNurse", "text", "hospitalAdmissionD4a25.help.fields.receivingNurse"),
-      f("language", "text", "hospitalAdmissionD4a25.help.fields.language"),
+      f("language", "select", "hospitalAdmissionD4a25.help.fields.language", {
+        optionsKey: "preferredLanguage",
+      }),
       f("interpreterNeeded", "yes_no_unknown", "hospitalAdmissionD4a25.help.fields.interpreterNeeded", {
         optionsKey: "yesNoUnknown",
       }),
@@ -323,7 +401,9 @@ export const NURSING_ADMISSION_SECTION_SCHEMAS: Record<
         required: true,
       }),
       f("immediateConcerns", "textarea", "hospitalAdmissionD4a25.help.fields.immediateConcerns"),
-      f("admissionPriority", "text", "hospitalAdmissionD4a25.help.fields.admissionPriority"),
+      f("admissionPriority", "select", "hospitalAdmissionD4a25.help.fields.admissionPriority", {
+        optionsKey: "admissionPriority",
+      }),
       f("comments", "textarea", "hospitalAdmissionD4a25.help.fields.comments"),
     ],
   },
@@ -402,15 +482,21 @@ export const NURSING_ADMISSION_SECTION_SCHEMAS: Record<
       f("orientation", "multiselect", "hospitalAdmissionD4a25.help.fields.orientation", {
         optionsKey: "orientation",
       }),
-      f("behavior", "text", "hospitalAdmissionD4a25.help.fields.behavior"),
+      f("behavior", "select", "hospitalAdmissionD4a25.help.fields.behavior", {
+        optionsKey: "behavior",
+      }),
       f("distress", "select", "hospitalAdmissionD4a25.help.fields.distress", {
         optionsKey: "generalAppearance",
       }),
       f("respiratoryEffort", "select", "hospitalAdmissionD4a25.help.fields.respiratoryEffort", {
         optionsKey: "normalAbnormal",
       }),
-      f("skinColor", "text", "hospitalAdmissionD4a25.help.fields.skinColor"),
-      f("communicationAbility", "text", "hospitalAdmissionD4a25.help.fields.communication"),
+      f("skinColor", "select", "hospitalAdmissionD4a25.help.fields.skinColor", {
+        optionsKey: "skinColorDetail",
+      }),
+      f("communicationAbility", "select", "hospitalAdmissionD4a25.help.fields.communication", {
+        optionsKey: "communicationAbility",
+      }),
       f("immediateSafetyConcern", "yes_no_unknown", "hospitalAdmissionD4a25.help.fields.safetyConcern", {
         optionsKey: "yesNoUnknown",
         required: true,
@@ -518,8 +604,9 @@ export const NURSING_ADMISSION_SECTION_SCHEMAS: Record<
     helpKey: "hospitalAdmissionD4a25.help.sections.SOCIAL_HISTORY",
     domainReuse: ["PATIENT_CLINICAL_HISTORY_PROFILE"],
     fields: [
-      f("livingSituation", "text", "hospitalAdmissionD4a25.help.fields.livingSituation"),
-      f("livesWith", "text", "hospitalAdmissionD4a25.help.fields.livesWith"),
+      f("livingSituation", "select", "hospitalAdmissionD4a25.help.fields.livingSituation", {
+        optionsKey: "livingSituation",
+      }),
       f("housingStability", "select", "hospitalAdmissionD4a25.help.fields.housing", {
         optionsKey: "concernTriad",
       }),
@@ -586,10 +673,18 @@ export const NURSING_ADMISSION_SECTION_SCHEMAS: Record<
         optionsKey: "normalAbnormal",
         required: true,
       }),
-      f("color", "text", "hospitalAdmissionD4a25.help.fields.skinColorDetail"),
-      f("temperature", "text", "hospitalAdmissionD4a25.help.fields.skinTemp"),
-      f("moisture", "text", "hospitalAdmissionD4a25.help.fields.skinMoisture"),
-      f("turgor", "text", "hospitalAdmissionD4a25.help.fields.turgor"),
+      f("color", "select", "hospitalAdmissionD4a25.help.fields.skinColorDetail", {
+        optionsKey: "skinColorDetail",
+      }),
+      f("temperature", "select", "hospitalAdmissionD4a25.help.fields.skinTemp", {
+        optionsKey: "skinTemperature",
+      }),
+      f("moisture", "select", "hospitalAdmissionD4a25.help.fields.skinMoisture", {
+        optionsKey: "skinMoisture",
+      }),
+      f("turgor", "select", "hospitalAdmissionD4a25.help.fields.turgor", {
+        optionsKey: "skinTurgor",
+      }),
       f("edema", "presentAbsentUnable", "hospitalAdmissionD4a25.help.fields.edema", {
         optionsKey: "presentAbsentUnable",
       }),
@@ -644,7 +739,9 @@ export const NURSING_ADMISSION_SECTION_SCHEMAS: Record<
       f("gaitImpairment", "yes_no_unknown", "hospitalAdmissionD4a25.help.fields.gait", {
         optionsKey: "yesNoUnknown",
       }),
-      f("assistiveDevice", "text", "hospitalAdmissionD4a25.help.fields.assistiveDevice"),
+      f("assistiveDevice", "multiselect", "hospitalAdmissionD4a25.help.fields.assistiveDevice", {
+        optionsKey: "assistiveDevices",
+      }),
       f("dizziness", "yes_no_unknown", "hospitalAdmissionD4a25.help.fields.dizziness", {
         optionsKey: "yesNoUnknown",
       }),
@@ -722,8 +819,12 @@ export const NURSING_ADMISSION_SECTION_SCHEMAS: Record<
       f("transferAbility", "select", "hospitalAdmissionD4a25.help.fields.transfer", {
         optionsKey: "assistanceLevel",
       }),
-      f("assistiveDevices", "text", "hospitalAdmissionD4a25.help.fields.assistiveDevice"),
-      f("weightBearingRestriction", "text", "hospitalAdmissionD4a25.help.fields.weightBearing"),
+      f("assistiveDevices", "multiselect", "hospitalAdmissionD4a25.help.fields.assistiveDevice", {
+        optionsKey: "assistiveDevices",
+      }),
+      f("weightBearingRestriction", "select", "hospitalAdmissionD4a25.help.fields.weightBearing", {
+        optionsKey: "weightBearing",
+      }),
       f("ptNeed", "yes_no_unknown", "hospitalAdmissionD4a25.help.fields.ptNeed", {
         optionsKey: "yesNoUnknown",
       }),
@@ -738,8 +839,12 @@ export const NURSING_ADMISSION_SECTION_SCHEMAS: Record<
     helpKey: "hospitalAdmissionD4a25.help.sections.NUTRITION",
     domainReuse: ["EDOC_NUTRITION"],
     fields: [
-      f("currentDiet", "text", "hospitalAdmissionD4a25.help.fields.diet"),
-      f("appetite", "text", "hospitalAdmissionD4a25.help.fields.appetite"),
+      f("currentDiet", "select", "hospitalAdmissionD4a25.help.fields.diet", {
+        optionsKey: "currentDiet",
+      }),
+      f("appetite", "select", "hospitalAdmissionD4a25.help.fields.appetite", {
+        optionsKey: "appetite",
+      }),
       f("unintendedWeightLoss", "yes_no_unknown", "hospitalAdmissionD4a25.help.fields.weightLoss", {
         optionsKey: "yesNoUnknown",
       }),
@@ -762,7 +867,9 @@ export const NURSING_ADMISSION_SECTION_SCHEMAS: Record<
     helpKey: "hospitalAdmissionD4a25.help.sections.ELIMINATION",
     domainReuse: ["EDOC_GU_GI"],
     fields: [
-      f("usualBowelPattern", "text", "hospitalAdmissionD4a25.help.fields.bowelPattern"),
+      f("usualBowelPattern", "select", "hospitalAdmissionD4a25.help.fields.bowelPattern", {
+        optionsKey: "bowelPattern",
+      }),
       f("lastBowelMovement", "datetime", "hospitalAdmissionD4a25.help.fields.lastBm"),
       f("constipation", "yes_no_unknown", "hospitalAdmissionD4a25.help.fields.constipation", {
         optionsKey: "yesNoUnknown",
@@ -770,7 +877,9 @@ export const NURSING_ADMISSION_SECTION_SCHEMAS: Record<
       f("diarrhea", "yes_no_unknown", "hospitalAdmissionD4a25.help.fields.diarrhea", {
         optionsKey: "yesNoUnknown",
       }),
-      f("urinaryPattern", "text", "hospitalAdmissionD4a25.help.fields.urinaryPattern"),
+      f("urinaryPattern", "select", "hospitalAdmissionD4a25.help.fields.urinaryPattern", {
+        optionsKey: "urinaryPattern",
+      }),
       f("lastVoid", "datetime", "hospitalAdmissionD4a25.help.fields.lastVoid"),
       f("catheter", "yes_no_unknown", "hospitalAdmissionD4a25.help.fields.catheter", {
         optionsKey: "yesNoUnknown",
@@ -917,6 +1026,88 @@ export function validateSectionAnswersForCompletion(input: {
     return { ok: false, code: "SECTION_VALIDATION_FAILED", missing };
   }
   return { ok: true };
+}
+
+const NON_MEANINGFUL_ANSWER_KEYS = new Set([
+  "comments",
+  "additionalHistory",
+  "handoffNote",
+  "discrepancyDescription",
+  "followUpDetail",
+]);
+
+export function sectionHasMeaningfulAnswers(answers: SectionAnswers | null | undefined): boolean {
+  if (!answers) return false;
+  return Object.entries(answers).some(([key, raw]) => {
+    if (NON_MEANINGFUL_ANSWER_KEYS.has(key)) return false;
+    if (raw == null || raw === "") return false;
+    if (Array.isArray(raw)) return raw.length > 0;
+    if (typeof raw === "string") return raw.trim().length > 0;
+    return true;
+  });
+}
+
+/**
+ * Derive subsection completion for save orchestration.
+ * Visiting a section does not complete it. Save & Continue may promote to COMPLETE
+ * when required fields are satisfied.
+ */
+export function deriveAdmissionSectionCompletion(input: {
+  sectionId: InpatientAdmissionClinicalSection;
+  answers: SectionAnswers;
+  unableReason?: string | null;
+  previousState: AdmissionSectionCompletionState;
+  mode: "DRAFT" | "CONTINUE" | "EXPLICIT";
+  explicitState?: AdmissionSectionCompletionState;
+}): AdmissionSectionCompletionState {
+  if (input.mode === "EXPLICIT" && input.explicitState) {
+    const check = validateSectionAnswersForCompletion({
+      sectionId: input.sectionId,
+      answers: input.answers,
+      completionState: input.explicitState,
+      unableReason: input.unableReason,
+    });
+    if (check.ok) return input.explicitState;
+    if (input.explicitState === "UNABLE_TO_COMPLETE") return "IN_PROGRESS";
+    if (input.explicitState === "COMPLETE") {
+      return sectionHasMeaningfulAnswers(input.answers) ? "IN_PROGRESS" : "NOT_STARTED";
+    }
+    return input.explicitState;
+  }
+
+  if (input.previousState === "NOT_APPLICABLE") return "NOT_APPLICABLE";
+  if (input.previousState === "UNABLE_TO_COMPLETE") {
+    const unableOk = validateSectionAnswersForCompletion({
+      sectionId: input.sectionId,
+      answers: input.answers,
+      completionState: "UNABLE_TO_COMPLETE",
+      unableReason: input.unableReason,
+    });
+    if (unableOk.ok) return "UNABLE_TO_COMPLETE";
+  }
+
+  if (input.mode === "CONTINUE") {
+    const unableOk = validateSectionAnswersForCompletion({
+      sectionId: input.sectionId,
+      answers: input.answers,
+      completionState: "UNABLE_TO_COMPLETE",
+      unableReason: input.unableReason,
+    });
+    if (unableOk.ok && String(input.unableReason ?? "").trim()) {
+      return "UNABLE_TO_COMPLETE";
+    }
+    const completeOk = validateSectionAnswersForCompletion({
+      sectionId: input.sectionId,
+      answers: input.answers,
+      completionState: "COMPLETE",
+      unableReason: input.unableReason,
+    });
+    if (completeOk.ok) return "COMPLETE";
+  }
+
+  if (sectionHasMeaningfulAnswers(input.answers)) return "IN_PROGRESS";
+  if (input.previousState === "COMPLETE") return "COMPLETE";
+  return "NOT_STARTED";
 }
 
 /** Opening a section must never invent clinical findings. */

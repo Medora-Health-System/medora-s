@@ -6,6 +6,7 @@ import {
   INPATIENT_LIFECYCLE_NURSING_ADMISSION_CERTIFICATION_ID,
   NURSING_ADMISSION_SECTION_SCHEMAS,
   allNursingSectionSchemas,
+  deriveAdmissionSectionCompletion,
   emptyInpatientLifecycleMeta,
   fieldIsVisible,
   mergeInpatientLifecycleMeta,
@@ -166,5 +167,50 @@ describe("D4A.2.5 nursing section schemas", () => {
   it("provides EN/FR attestation parity", () => {
     expect(nursingAdmissionAttestationText("en")).toMatch(/attest/i);
     expect(nursingAdmissionAttestationText("fr")).toMatch(/atteste/i);
+  });
+
+  it("INP.2B.2A derives COMPLETE on Save & Continue when required fields are present", () => {
+    expect(
+      deriveAdmissionSectionCompletion({
+        sectionId: "PAIN",
+        answers: { painPresent: "NO" },
+        previousState: "IN_PROGRESS",
+        mode: "CONTINUE",
+      })
+    ).toBe("COMPLETE");
+    expect(
+      deriveAdmissionSectionCompletion({
+        sectionId: "PAIN",
+        answers: { painPresent: "YES" },
+        previousState: "IN_PROGRESS",
+        mode: "CONTINUE",
+      })
+    ).toBe("IN_PROGRESS");
+    expect(
+      deriveAdmissionSectionCompletion({
+        sectionId: "PAIN",
+        answers: { painPresent: "NO" },
+        previousState: "NOT_STARTED",
+        mode: "DRAFT",
+      })
+    ).toBe("IN_PROGRESS");
+    expect(
+      deriveAdmissionSectionCompletion({
+        sectionId: "PAIN",
+        answers: {},
+        previousState: "NOT_STARTED",
+        unableReason: "Patient off unit",
+        mode: "CONTINUE",
+      })
+    ).toBe("UNABLE_TO_COMPLETE");
+    expect(
+      deriveAdmissionSectionCompletion({
+        sectionId: "PAIN",
+        answers: {},
+        previousState: "NOT_STARTED",
+        mode: "EXPLICIT",
+        explicitState: "NOT_APPLICABLE",
+      })
+    ).toBe("NOT_APPLICABLE");
   });
 });

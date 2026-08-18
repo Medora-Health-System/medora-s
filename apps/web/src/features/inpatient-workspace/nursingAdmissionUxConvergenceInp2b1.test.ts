@@ -48,8 +48,8 @@ describe("MEDUI.INP.2B.1 nursing admission UX convergence", () => {
     const shell = read("InpatientAdmissionClinicalShell.tsx");
     expect(chrome).toContain('data-testid="admission-save"');
     expect(chrome).toContain('data-testid="admission-save-continue"');
-    expect(shell).toContain("onSaveDraft={() => void persistSection()}");
-    expect(shell).toContain("persistSection().then((ok)");
+    expect(shell).toContain("onSaveDraft={() => void persistSection(undefined, \"DRAFT\")}");
+    expect(shell).toContain("persistSection(undefined, \"CONTINUE\").then((ok)");
   });
 
   it("H — switching subsection stashes local draft instead of wiping from server effect", () => {

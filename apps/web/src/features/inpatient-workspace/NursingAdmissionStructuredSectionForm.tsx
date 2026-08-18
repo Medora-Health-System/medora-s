@@ -5,7 +5,7 @@
  * Help tips only for clinically/legally necessary fields (not routine labels).
  */
 
-import type { CSSProperties } from "react";
+import { useState, type CSSProperties } from "react";
 import {
   NURSING_ADMISSION_OPTION_CATALOGS,
   fieldIsVisible,
@@ -98,7 +98,11 @@ const RAPID_SUPPRESSED_GENERIC_FIELDS = new Set([
   "pressureInjury",
   "openWound",
   "patientDeniesPriorSurgery",
-  "teachBack",
+  "assignedUnit",
+  "assignedBed",
+  "attendingProvider",
+  "receivingNurse",
+  "comments",
 ]);
 
 export function isAdmissionChipEditorField(sectionId: InpatientAdmissionClinicalSection, key: string): boolean {
@@ -112,6 +116,12 @@ type Props = {
   readOnly?: boolean;
   onChange: (answers: Record<string, unknown>) => void;
   onUnableReasonChange: (reason: string) => void;
+  assignmentProjection?: {
+    unit?: string | null;
+    bed?: string | null;
+    attending?: string | null;
+    receivingNurse?: string | null;
+  };
 };
 
 function HelpTip({ helpKey }: { helpKey: string }) {
@@ -286,12 +296,44 @@ export function NursingAdmissionStructuredSectionForm({
   readOnly,
   onChange,
   onUnableReasonChange,
+  assignmentProjection,
 }: Props) {
   const { t } = useI18n();
   const schema = nursingSectionSchema(sectionId);
+  const [showUnable, setShowUnable] = useState(Boolean(unableReason.trim()));
+  const [showNote, setShowNote] = useState(Boolean(typeof answers.comments === "string" && answers.comments.trim()));
 
   return (
     <div data-testid={`structured-section-${sectionId}`} style={{ display: "grid", gap: 10 }}>
+      {sectionId === "OVERVIEW" && assignmentProjection ? (
+        <div
+          data-testid="admission-assignment-projection"
+          style={{
+            padding: 8,
+            borderRadius: 10,
+            border: "1px solid #e2e8f0",
+            background: "#fff",
+            fontSize: 12,
+          }}
+        >
+          <p style={{ margin: "0 0 4px", fontWeight: 700 }}>{t("inpatientAdmissionInp2b2a.assignmentTitle")}</p>
+          <p style={{ margin: "0 0 8px", color: "#64748b", fontSize: 11 }}>{t("inpatientAdmissionInp2b2a.assignmentHint")}</p>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
+            <span>
+              {t("inpatientAdmissionInp2b2a.assignedUnit")}: {assignmentProjection.unit || t("inpatientAdmissionInp2b2a.notAssigned")}
+            </span>
+            <span>
+              {t("inpatientAdmissionInp2b2a.assignedBed")}: {assignmentProjection.bed || t("inpatientAdmissionInp2b2a.notAssigned")}
+            </span>
+            <span>
+              {t("inpatientAdmissionInp2b2a.attendingProvider")}: {assignmentProjection.attending || t("inpatientAdmissionInp2b2a.notAssigned")}
+            </span>
+            <span>
+              {t("inpatientAdmissionInp2b2a.receivingNurse")}: {assignmentProjection.receivingNurse || t("inpatientAdmissionInp2b2a.notAssigned")}
+            </span>
+          </div>
+        </div>
+      ) : null}
       <NursingAdmissionRapidSectionControls
         sectionId={sectionId}
         answers={answers}
@@ -301,12 +343,8 @@ export function NursingAdmissionStructuredSectionForm({
       {schema.fields.map((field) => {
         if (isAdmissionChipEditorField(sectionId, field.key)) return null;
         if (SUPPRESSED_ENTERPRISE_FORK_FIELDS.has(field.key)) return null;
-        if (
-          RAPID_SUPPRESSED_GENERIC_FIELDS.has(field.key) &&
-          answers[field.key] != null
-        ) {
-          return null;
-        }
+        if (RAPID_SUPPRESSED_GENERIC_FIELDS.has(field.key)) return null;
+        if (field.key === "comments") return null;
         if (
           (sectionId === "OVERVIEW" &&
             ["admissionSource", "modeOfArrival", "conditionOnArrival", "interpreterNeeded", "arrivalAt", "immediateConcerns"].includes(
@@ -358,6 +396,38 @@ export function NursingAdmissionStructuredSectionForm({
           />
         );
       })}
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 4 }}>
+        <button
+          type="button"
+          style={disclosureBtn}
+          data-testid="admission-add-note"
+          onClick={() => setShowNote((v) => !v)}
+        >
+          {t("inpatientAdmissionInp2b2a.addNote")}
+        </button>
+        <button
+          type="button"
+          style={disclosureBtn}
+          data-testid="admission-unable-toggle"
+          onClick={() => setShowUnable((v) => !v)}
+        >
+          {t("inpatientAdmissionInp2b2a.unableToComplete")}
+        </button>
+      </div>
+      {showNote ? (
+        <label style={{ display: "block", fontSize: 12, fontWeight: 600 }}>
+          {t("hospitalAdmissionD4a25.fields.comments")}
+          <textarea
+            value={typeof answers.comments === "string" ? answers.comments : ""}
+            disabled={readOnly}
+            rows={2}
+            onChange={(e) => onChange({ ...answers, comments: e.target.value })}
+            style={inputStyle}
+            data-testid="field-comments-disclosure"
+          />
+        </label>
+      ) : null}
+      {showUnable ? (
       <label style={{ display: "block", fontSize: 12, fontWeight: 600 }}>
         {t("hospitalAdmissionD4a25.unableReason")}
         <textarea
@@ -369,6 +439,7 @@ export function NursingAdmissionStructuredSectionForm({
           data-testid="field-unableReason"
         />
       </label>
+      ) : null}
     </div>
   );
 }
@@ -382,6 +453,18 @@ const inputStyle: CSSProperties = {
   border: "1px solid #cbd5e1",
   fontSize: 13,
   boxSizing: "border-box",
+};
+
+const disclosureBtn: CSSProperties = {
+  minHeight: 32,
+  padding: "4px 10px",
+  borderRadius: 9999,
+  border: "1px solid #cbd5e1",
+  background: "#fff",
+  color: "#334155",
+  fontSize: 12,
+  fontWeight: 600,
+  cursor: "pointer",
 };
 
 const helpBtn: CSSProperties = {

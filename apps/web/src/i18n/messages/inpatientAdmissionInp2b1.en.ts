@@ -3,7 +3,7 @@ export const inpatientAdmissionInp2b1En = {
   title: "Nursing Admission",
   steps: "Steps",
   clinicalDocumentation: "Clinical Documentation",
-  overallProgress: "Overall progress {complete} / {total} completed",
+  overallProgress: "Overall progress {complete} / {total} resolved",
   stageOf: "Stage {current} of 6",
   completeCount: "Complete {complete} / {total}",
   autosaved: "Auto-saved {time}",

@@ -33,7 +33,7 @@ describe("MEDUI.INP.2B.2 nursing admission design 1 rapid documentation", () => 
 
   it("C — unsaved navigation save-before-move", () => {
     const shell = read("InpatientAdmissionClinicalShell.tsx");
-    expect(shell).toContain("void persistSection().then((ok)");
+    expect(shell).toContain("void persistSection(undefined, \"DRAFT\").then((ok)");
     expect(shell).toContain("if (ok) setActive");
   });
 
@@ -108,14 +108,15 @@ describe("MEDUI.INP.2B.2 nursing admission design 1 rapid documentation", () => 
     const shell = read("InpatientAdmissionClinicalShell.tsx");
     expect(shell).toContain("admission-preload-panel");
     expect(shell).toContain("verifyNursingAdmissionPreloadItem");
-    const rapid = read("rapid-documentation/NursingAdmissionRapidSectionControls.tsx");
-    expect(rapid).toContain("historyVerificationAction");
+    expect(shell).toContain("NursingAdmissionEnterpriseHistoryEditor");
+    expect(shell).toContain("InpatientAllergyEditorModal");
   });
 
   it("L — allergies do not infer NKA from empty list", () => {
     const rapid = read("rapid-documentation/NursingAdmissionRapidSectionControls.tsx");
+    const shell = read("InpatientAdmissionClinicalShell.tsx");
     expect(rapid).not.toMatch(/inferNKA|empty.*NKA/i);
-    expect(rapid).toContain("allergyVerificationAction");
+    expect(shell).toContain("InpatientAllergyEditorModal");
   });
 
   it("M — device section does not duplicate inventory list", () => {
@@ -227,7 +228,7 @@ describe("MEDUI.INP.2B.2 nursing admission design 1 rapid documentation", () => 
 
   it("remediation — unified save uses refs and in-flight guard", () => {
     const shell = read("InpatientAdmissionClinicalShell.tsx");
-    expect(shell).toContain("saveInFlightRef");
+    expect(shell).toContain("createNursingAdmissionSaveCoordinator");
     expect(shell).toContain("answersRef");
     expect(shell).toContain("clinicalDocumentedAtRef");
     expect(shell).not.toContain("draftsRef.current[active] = { answers, unableReason, draftNote }");

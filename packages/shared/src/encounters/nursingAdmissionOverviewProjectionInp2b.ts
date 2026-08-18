@@ -63,6 +63,7 @@ export type NursingAdmissionOverviewProjectionV1 = {
   devicesConfirmed: string | null;
   unresolvedSectionCount: number;
   conditionOnArrival: string | null;
+  resolvedCount: number;
 };
 
 export type NursingAdmissionRailSummaryV1 = {
@@ -78,6 +79,7 @@ export type NursingAdmissionRailSummaryV1 = {
   devicesConfirmed: string | null;
   conditionOnArrival: string | null;
   admissionAssessmentComplete: boolean;
+  resolvedCount: number;
 };
 
 function painStatusFromDoc(doc: MedSurgNursingAdmissionDocV1): string | null {
@@ -110,7 +112,7 @@ function devicesConfirmedFromDoc(doc: MedSurgNursingAdmissionDocV1): string | nu
 
 function unresolvedCount(doc: MedSurgNursingAdmissionDocV1): number {
   const summary = computeAdmissionCompletionSummary(doc);
-  return summary.notStarted + summary.inProgress + summary.unable;
+  return summary.notStarted + summary.inProgress;
 }
 
 export function projectNursingAdmissionOverview(
@@ -147,6 +149,7 @@ export function projectNursingAdmissionOverview(
       devicesConfirmed: null,
       unresolvedSectionCount: 0,
       conditionOnArrival: null,
+      resolvedCount: 0,
     };
   }
   const summary = computeAdmissionCompletionSummary(doc);
@@ -210,6 +213,7 @@ export function projectNursingAdmissionOverview(
     devicesConfirmed: devicesConfirmedFromDoc(doc),
     unresolvedSectionCount: unresolvedCount(doc),
     conditionOnArrival: ans(doc, "OVERVIEW", "conditionOnArrival"),
+    resolvedCount: summary.resolved,
   };
 }
 
@@ -236,6 +240,7 @@ export function projectNursingAdmissionRailSummary(input: {
     devicesConfirmed: overview.devicesConfirmed,
     conditionOnArrival: overview.conditionOnArrival,
     admissionAssessmentComplete: assessmentState === "COMPLETE" || assessmentState === "NOT_APPLICABLE",
+    resolvedCount: overview.resolvedCount,
   };
 }
 

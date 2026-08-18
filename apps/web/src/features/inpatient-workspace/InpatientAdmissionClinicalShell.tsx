@@ -3,11 +3,11 @@
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
 import {
   ADMISSION_HISTORY_VERIFICATION_STATUSES,
-  ADMISSION_SECTION_COMPLETION_STATES,
   HEAD_TO_TOE_SYSTEM_KEYS,
   INPATIENT_ADMISSION_CLINICAL_SECTIONS,
   NURSING_ADMISSION_STAGES,
   computeAdmissionCompletionSummary,
+  deriveAdmissionSectionCompletion,
   nursingAdmissionStageForSection,
   projectNursingAdmissionOverview,
   projectNursingAdmissionRailSummary,
@@ -47,6 +47,38 @@ import {
 } from "./NursingAdmissionWorkspaceChromeInp2b1";
 import { ClinicalSaveStatus } from "./rapid-documentation/ClinicalRapidControls";
 import { NursingAdmissionReviewDashboard } from "./NursingAdmissionReviewDashboard";
+import { createNursingAdmissionSaveCoordinator } from "./nursingAdmissionSaveCoordinator";
+import { NursingAdmissionEnterpriseHistoryEditor, type NursingAdmissionHistoryEditorDomain } from "./NursingAdmissionEnterpriseHistoryEditor";
+import { InpatientAllergyEditorModal } from "./InpatientClinicalStatusEditors";
+
+const CANONICAL_PRELOAD_ITEM_ID: Record<string, string> = {
+  MEDICAL_HISTORY: "pmh-summary",
+  SURGICAL_HISTORY: "psh-summary",
+  HOME_MEDICATIONS: "home-meds-summary",
+  ALLERGIES: "allergy-note",
+};
+
+function reviewCompletePatchForDomain(
+  domain: string | undefined,
+  status: string
+): Record<string, unknown> | null {
+  if (!domain) return null;
+  const reviewed = status === "CONFIRMED" || status === "UPDATED" || status === "UNABLE_TO_VERIFY" || status === "PATIENT_DENIES";
+  if (!reviewed) return null;
+  if (domain === "MEDICAL_HISTORY") {
+    return { historyReviewComplete: "YES", historyVerificationAction: status };
+  }
+  if (domain === "SURGICAL_HISTORY") {
+    return { surgicalReviewComplete: "YES", surgicalVerificationAction: status };
+  }
+  if (domain === "HOME_MEDICATIONS") {
+    return { reconComplete: "YES", homeMedVerificationAction: status };
+  }
+  if (domain === "ALLERGIES") {
+    return { allergyReviewComplete: "YES", allergyVerificationAction: status };
+  }
+  return null;
+}
 
 function admissionCorrelationUiEnabled(): boolean {
   const v = String(process.env.NEXT_PUBLIC_ADMISSION_CORRELATION_ENABLED ?? "")
@@ -119,6 +151,9 @@ type Props = {
   canAdmin?: boolean;
   /** INP.2A — providers may read admission without nursing write authority. */
   readOnly?: boolean;
+  room?: string | null;
+  attendingName?: string | null;
+  assignedRnName?: string | null;
 };
 
 /**
@@ -130,9 +165,12 @@ export function InpatientAdmissionClinicalShell({
   docsLive = false,
   canAdmin = false,
   readOnly = false,
+  room = null,
+  attendingName = null,
+  assignedRnName = null,
 }: Props) {
   const { t, language } = useI18n();
-  const { roles } = useFacilityAndRoles();
+  const { roles, facilityId } = useFacilityAndRoles();
   const [active, setActive] = useState<InpatientAdmissionClinicalSection>("OVERVIEW");
   const [doc, setDoc] = useState<NursingDoc | null>(null);
   const [completion, setCompletion] = useState<Record<string, unknown> | null>(null);
@@ -153,6 +191,10 @@ export function InpatientAdmissionClinicalShell({
     sexAtBirth?: string | null;
     preferredName?: string | null;
   } | null>(null);
+  const [encounterPlacement, setEncounterPlacement] = useState<{
+    unit: string | null;
+    bed: string | null;
+  }>({ unit: null, bed: null });
   const [printOpen, setPrintOpen] = useState(false);
   const [clinicalOps, setClinicalOps] = useState<InpatientClinicalOpsV1 | null>(null);
   const [amendMode, setAmendMode] = useState<
@@ -160,6 +202,17 @@ export function InpatientAdmissionClinicalShell({
   >(null);
   const [clinicalDocumentedAt, setClinicalDocumentedAt] = useState<string | null>(null);
   const [localDraftBackup, setLocalDraftBackup] = useState<Record<string, unknown> | null>(null);
+  const [historyEditorDomain, setHistoryEditorDomain] = useState<NursingAdmissionHistoryEditorDomain | null>(null);
+  const [historyEditorItemId, setHistoryEditorItemId] = useState<string | null>(null);
+  const [allergyEditorOpen, setAllergyEditorOpen] = useState(false);
+  const [allergyEditorItemId, setAllergyEditorItemId] = useState<string | null>(null);
+  const [conflictDebug, setConflictDebug] = useState<{
+    section: string;
+    expectedVersion: number;
+    operation: string;
+  } | null>(null);
+  const persistModeRef = useRef<"DRAFT" | "CONTINUE" | "EXPLICIT">("DRAFT");
+  const explicitCompletionRef = useRef<AdmissionSectionCompletionState | undefined>(undefined);
   const panelRef = useRef<HTMLDivElement | null>(null);
   const expectedVersionRef = useRef(0);
   const dirtyRef = useRef(false);
@@ -172,7 +225,6 @@ export function InpatientAdmissionClinicalShell({
   const unableReasonRef = useRef(unableReason);
   const clinicalDocumentedAtRef = useRef(clinicalDocumentedAt);
   const activeRef = useRef(active);
-  const saveInFlightRef = useRef(false);
   const canAmend = !readOnly && roles.includes("RN");
   const canLinkDomain = !readOnly && (roles.includes("RN") || roles.includes("ADMIN"));
 
@@ -187,33 +239,41 @@ export function InpatientAdmissionClinicalShell({
 
 
   const applyPayload = useCallback(
-    (payload: { documentation?: NursingDoc; completion?: Record<string, unknown> }, sectionId?: InpatientAdmissionClinicalSection) => {
+    (
+      payload: { documentation?: NursingDoc; completion?: Record<string, unknown> },
+      sectionId?: InpatientAdmissionClinicalSection,
+      opts?: { preserveDirtyAnswers?: boolean }
+    ) => {
       const d = (payload.documentation ?? null) as NursingDoc | null;
       setDoc(d);
       setCompletion(payload.completion ?? null);
       expectedVersionRef.current = Number(d?.expectedVersion ?? 0);
-      const sid = sectionId ?? active;
+      const sid = sectionId ?? activeRef.current;
       const sec = d?.sections?.[sid];
-      setAnswers((sec?.answers as Record<string, unknown>) ?? {});
-      setUnableReason(typeof sec?.unableReason === "string" ? sec.unableReason : "");
-      setDraftNote(typeof sec?.draftText === "string" ? sec.draftText : "");
+      if (!opts?.preserveDirtyAnswers) {
+        setAnswers((sec?.answers as Record<string, unknown>) ?? {});
+        setUnableReason(typeof sec?.unableReason === "string" ? sec.unableReason : "");
+        setDraftNote(typeof sec?.draftText === "string" ? sec.draftText : "");
+        dirtyRef.current = false;
+        setSaveState("SAVED");
+      }
       if (typeof d?.clinicalDocumentedAt === "string" && d.clinicalDocumentedAt) {
         setClinicalDocumentedAt(d.clinicalDocumentedAt);
       } else if (d?.clinicalDocumentedAt === null) {
         setClinicalDocumentedAt(null);
       }
-      dirtyRef.current = false;
-      setSaveState("SAVED");
     },
-    [active]
+    []
   );
 
-  const reload = useCallback(async () => {
+  const reload = useCallback(async (opts?: { preserveDirtyAnswers?: boolean }) => {
     setLoadError(null);
     try {
       const payload = await fetchNursingAdmissionDocumentation(encounterId);
-      applyPayload(payload as never);
-      setLastSavedAt(new Date().toISOString());
+      applyPayload(payload as never, undefined, { preserveDirtyAnswers: opts?.preserveDirtyAnswers });
+      if (!opts?.preserveDirtyAnswers) {
+        setLastSavedAt(new Date().toISOString());
+      }
       try {
         const opsPayload = await fetchInpatientClinicalOps(encounterId);
         setClinicalOps((opsPayload.ops as InpatientClinicalOpsV1) ?? null);
@@ -238,6 +298,8 @@ export function InpatientAdmissionClinicalShell({
       try {
         const raw = await apiFetch(`/encounters/${encounterId}`);
         const obj = asApiObject<{
+          assignedBedKey?: string | null;
+          requestedUnit?: string | null;
           patient?: {
             id?: string;
             firstName?: string | null;
@@ -248,9 +310,18 @@ export function InpatientAdmissionClinicalShell({
             preferredName?: string | null;
           } | null;
         }>(raw);
-        if (!cancelled) setPatient(obj?.patient ?? null);
+        if (!cancelled) {
+          setPatient(obj?.patient ?? null);
+          setEncounterPlacement({
+            bed: obj?.assignedBedKey ?? null,
+            unit: obj?.requestedUnit ?? null,
+          });
+        }
       } catch {
-        if (!cancelled) setPatient(null);
+        if (!cancelled) {
+          setPatient(null);
+          setEncounterPlacement({ unit: null, bed: null });
+        }
       }
     })();
     return () => {
@@ -312,63 +383,161 @@ export function InpatientAdmissionClinicalShell({
     return () => window.removeEventListener("beforeunload", onBeforeUnload);
   }, [writeBlocked]);
 
-  const persistSection = useCallback(
-    async (completionState?: AdmissionSectionCompletionState) => {
-      if (!docRef.current) {
-        setSaveState("SAVE_FAILED");
-        return false;
-      }
-      if (writeBlocked) return false;
-      if (saveInFlightRef.current) return false;
-
-      saveInFlightRef.current = true;
-      const sectionId = activeRef.current;
-      setSaveState("SAVING");
-      setBusy(true);
-      try {
-        const payload = await patchNursingAdmissionSection(encounterId, {
-          sectionId,
-          draftText: draftNoteRef.current,
-          answers: answersRef.current,
-          unableReason: unableReasonRef.current || null,
-          completionState: completionState ?? undefined,
-          expectedVersion: expectedVersionRef.current,
-          clinicalDocumentedAt: clinicalDocumentedAtRef.current,
-        });
+  const runSectionSaveImpl = useCallback(async () => {
+    if (!docRef.current) {
+      setSaveState("SAVE_FAILED");
+      return { ok: false as const };
+    }
+    if (writeBlocked) return { ok: false as const };
+    const sectionId = activeRef.current;
+    const previousState =
+      (docRef.current.sections?.[sectionId]?.completionState as AdmissionSectionCompletionState) ??
+      "NOT_STARTED";
+    const completionState = deriveAdmissionSectionCompletion({
+      sectionId,
+      answers: answersRef.current,
+      unableReason: unableReasonRef.current,
+      previousState,
+      mode: persistModeRef.current,
+      explicitState: explicitCompletionRef.current,
+    });
+    setSaveState("SAVING");
+    setBusy(true);
+    try {
+      const payload = await patchNursingAdmissionSection(encounterId, {
+        sectionId,
+        draftText: draftNoteRef.current,
+        answers: answersRef.current,
+        unableReason: unableReasonRef.current || null,
+        completionState,
+        expectedVersion: expectedVersionRef.current,
+        clinicalDocumentedAt: clinicalDocumentedAtRef.current,
+      });
+      const nextDoc = (payload as { documentation?: NursingDoc }).documentation;
+      const nextVersion = Number(nextDoc?.expectedVersion ?? expectedVersionRef.current);
+      expectedVersionRef.current = nextVersion;
+      const savedAnswers = (nextDoc?.sections?.[sectionId]?.answers as Record<string, unknown>) ?? null;
+      const preserve = JSON.stringify(answersRef.current) !== JSON.stringify(savedAnswers ?? {});
+      applyPayload(payload as never, sectionId, { preserveDirtyAnswers: preserve });
+      if (!preserve) {
         delete draftsRef.current[sectionId];
-        applyPayload(payload as never, sectionId);
         dirtyRef.current = false;
         setSaveState("SAVED");
         setLastSavedAt(new Date().toISOString());
-        return true;
+      } else {
+        dirtyRef.current = true;
+        setSaveState("NOT_SAVED");
+      }
+      return {
+        ok: true as const,
+        expectedVersion: nextVersion,
+        savedAnswers,
+      };
+    } catch (err) {
+      const status =
+        typeof err === "object" && err && "status" in err
+          ? Number((err as { status?: number }).status)
+          : 0;
+      if (status === 409) {
+        setLocalDraftBackup({
+          answers: answersRef.current,
+          unableReason: unableReasonRef.current,
+          draftNote: draftNoteRef.current,
+        });
+        setConflictDebug({
+          section: sectionId,
+          expectedVersion: expectedVersionRef.current,
+          operation: "SECTION",
+        });
+        setSaveState("CONFLICT_DETECTED");
+        return { ok: false as const, conflict: true };
+      }
+      setSaveState("SAVE_FAILED");
+      return { ok: false as const };
+    } finally {
+      setBusy(false);
+    }
+  }, [applyPayload, encounterId, writeBlocked]);
+
+  const runVerifyImpl = useCallback(
+    async (itemId: string, status: string) => {
+      if (writeBlocked) return { ok: false as const };
+      setBusy(true);
+      try {
+        const payload = await verifyNursingAdmissionPreloadItem(encounterId, {
+          itemId,
+          status,
+          expectedVersion: expectedVersionRef.current,
+        });
+        const nextDoc = (payload as { documentation?: NursingDoc }).documentation;
+        const nextVersion = Number(nextDoc?.expectedVersion ?? expectedVersionRef.current);
+        expectedVersionRef.current = nextVersion;
+        applyPayload(payload as never, activeRef.current, { preserveDirtyAnswers: dirtyRef.current });
+        return { ok: true as const, expectedVersion: nextVersion };
       } catch (err) {
-        const status =
+        const statusCode =
           typeof err === "object" && err && "status" in err
             ? Number((err as { status?: number }).status)
             : 0;
-        if (status === 409) {
+        if (statusCode === 409) {
           setLocalDraftBackup({
             answers: answersRef.current,
             unableReason: unableReasonRef.current,
             draftNote: draftNoteRef.current,
           });
+          setConflictDebug({
+            section: activeRef.current,
+            expectedVersion: expectedVersionRef.current,
+            operation: "VERIFY",
+          });
           setSaveState("CONFLICT_DETECTED");
-        } else {
-          setSaveState("SAVE_FAILED");
+          return { ok: false as const, conflict: true };
         }
-        return false;
+        setSaveState("SAVE_FAILED");
+        return { ok: false as const };
       } finally {
-        saveInFlightRef.current = false;
         setBusy(false);
       }
     },
     [applyPayload, encounterId, writeBlocked]
   );
 
+  const runSectionSaveImplRef = useRef(runSectionSaveImpl);
+  runSectionSaveImplRef.current = runSectionSaveImpl;
+  const runVerifyImplRef = useRef(runVerifyImpl);
+  runVerifyImplRef.current = runVerifyImpl;
+  const writeBlockedRef = useRef(writeBlocked);
+  writeBlockedRef.current = writeBlocked;
+
+  const coordinatorRef = useRef<ReturnType<typeof createNursingAdmissionSaveCoordinator> | null>(null);
+  if (!coordinatorRef.current) {
+    coordinatorRef.current = createNursingAdmissionSaveCoordinator({
+      isWriteBlocked: () => writeBlockedRef.current,
+      getExpectedVersion: () => expectedVersionRef.current,
+      setExpectedVersion: (next) => {
+        expectedVersionRef.current = next;
+      },
+      localAnswers: () => answersRef.current,
+      runSectionSave: () => runSectionSaveImplRef.current(),
+      runVerify: (itemId, status) => runVerifyImplRef.current(itemId, status),
+    });
+  }
+
+  const persistSection = useCallback(
+    async (completionState?: AdmissionSectionCompletionState, mode: "DRAFT" | "CONTINUE" | "EXPLICIT" = "DRAFT") => {
+      persistModeRef.current = mode;
+      explicitCompletionRef.current = completionState;
+      const result = await coordinatorRef.current!.requestSectionSave();
+      return result.ok;
+    },
+    []
+  );
+
   useEffect(() => {
-    if (saveState !== "NOT_SAVED" || writeBlocked || busy || saveInFlightRef.current) return;
+    if (saveState !== "NOT_SAVED" || writeBlocked || busy) return;
     const handle = window.setTimeout(() => {
-      void persistSection();
+      persistModeRef.current = "DRAFT";
+      void persistSection(undefined, "DRAFT");
     }, 2500);
     return () => window.clearTimeout(handle);
   }, [saveState, answers, draftNote, unableReason, clinicalDocumentedAt, persistSection, writeBlocked, busy]);
@@ -401,7 +570,7 @@ export function InpatientAdmissionClinicalShell({
   const goTo = (id: InpatientAdmissionClinicalSection) => {
     if (id === activeRef.current) return;
     if (dirtyRef.current && !writeBlocked) {
-      void persistSection().then((ok) => {
+      void persistSection(undefined, "DRAFT").then((ok) => {
         if (ok) setActive(id);
       });
       return;
@@ -436,18 +605,43 @@ export function InpatientAdmissionClinicalShell({
 
   const verifyItem = async (itemId: string, status: string) => {
     if (!doc || writeBlocked) return;
-    setBusy(true);
-    try {
-      await verifyNursingAdmissionPreloadItem(encounterId, {
-        itemId,
-        status,
-        expectedVersion: expectedVersionRef.current,
-      });
-      await reload();
-    } catch {
-      setSaveState("SAVE_FAILED");
-    } finally {
-      setBusy(false);
+    if (status === "UPDATED") {
+      const domain =
+        (doc.preloadedItems ?? []).find((i) => i.itemId === itemId)?.domain ??
+        (itemId === CANONICAL_PRELOAD_ITEM_ID.ALLERGIES
+          ? "ALLERGIES"
+          : itemId === CANONICAL_PRELOAD_ITEM_ID.MEDICAL_HISTORY
+            ? "MEDICAL_HISTORY"
+            : itemId === CANONICAL_PRELOAD_ITEM_ID.SURGICAL_HISTORY
+              ? "SURGICAL_HISTORY"
+              : itemId === CANONICAL_PRELOAD_ITEM_ID.HOME_MEDICATIONS
+                ? "HOME_MEDICATIONS"
+                : undefined);
+      if (domain === "ALLERGIES") {
+        setAllergyEditorItemId(itemId);
+        setAllergyEditorOpen(true);
+        return;
+      }
+      if (domain === "MEDICAL_HISTORY" || domain === "SURGICAL_HISTORY" || domain === "HOME_MEDICATIONS") {
+        setHistoryEditorItemId(itemId);
+        setHistoryEditorDomain(domain);
+        return;
+      }
+    }
+    if (dirtyRef.current) {
+      const saved = await persistSection(undefined, "DRAFT");
+      if (!saved) return;
+    }
+    const result = await coordinatorRef.current!.requestVerify(itemId, status);
+    if (!result.ok) return;
+    const domain = (docRef.current?.preloadedItems ?? []).find((i) => i.itemId === itemId)?.domain;
+    const reviewPatch = reviewCompletePatchForDomain(domain, status);
+    if (reviewPatch) {
+      const nextAnswers = { ...answersRef.current, ...reviewPatch };
+      answersRef.current = nextAnswers;
+      setAnswers(nextAnswers);
+      dirtyRef.current = true;
+      await persistSection(undefined, "DRAFT");
     }
   };
 
@@ -548,7 +742,7 @@ export function InpatientAdmissionClinicalShell({
           stageId={stageId}
           active={active}
           stageIndex={stageIndex}
-          complete={completionSummary?.complete ?? 0}
+          complete={completionSummary?.resolved ?? 0}
           total={completionSummary?.total ?? 20}
           sectionState={sectionState}
           onSection={goTo}
@@ -561,10 +755,13 @@ export function InpatientAdmissionClinicalShell({
         </p>
       ) : null}
 
-      {saveState === "CONFLICT_DETECTED" || saveState === "SAVE_FAILED" ? (
+      {saveState === "CONFLICT_DETECTED" ? (
         <div
           role="alert"
           data-testid="admission-conflict-banner"
+          data-conflict-section={conflictDebug?.section ?? active}
+          data-conflict-expected-version={String(conflictDebug?.expectedVersion ?? expectedVersionRef.current)}
+          data-conflict-operation={conflictDebug?.operation ?? "SECTION"}
           style={{
             marginBottom: 10,
             padding: 10,
@@ -574,8 +771,8 @@ export function InpatientAdmissionClinicalShell({
             fontSize: 12,
           }}
         >
-          <strong>{t("inpatientRapidConvergenceD4a27c.conflict.title")}</strong>
-          <p style={{ margin: "6px 0" }}>{t("inpatientRapidConvergenceD4a27c.conflict.body")}</p>
+          <strong>{t("inpatientAdmissionInp2b2a.conflict.title")}</strong>
+          <p style={{ margin: "6px 0" }}>{t("inpatientAdmissionInp2b2a.conflict.body")}</p>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
             <button
               type="button"
@@ -585,7 +782,7 @@ export function InpatientAdmissionClinicalShell({
                 void reload();
               }}
             >
-              {t("inpatientRapidConvergenceD4a27c.conflict.reload")}
+              {t("inpatientAdmissionInp2b2a.conflict.reload")}
             </button>
             <button
               type="button"
@@ -600,10 +797,10 @@ export function InpatientAdmissionClinicalShell({
                 }
               }}
             >
-              {t("inpatientRapidConvergenceD4a27c.conflict.preserve")}
+              {t("inpatientAdmissionInp2b2a.conflict.preserve")}
             </button>
-            <button type="button" style={chipBtn} onClick={() => void persistSection()}>
-              {t("inpatientRapidConvergenceD4a27c.conflict.retry")}
+            <button type="button" style={chipBtn} onClick={() => void persistSection(undefined, "DRAFT")}>
+              {t("inpatientAdmissionInp2b2a.conflict.retry")}
             </button>
             <button
               type="button"
@@ -615,10 +812,16 @@ export function InpatientAdmissionClinicalShell({
                 }
               }}
             >
-              {t("inpatientRapidConvergenceD4a27c.conflict.discard")}
+              {t("inpatientAdmissionInp2b2a.conflict.discard")}
             </button>
           </div>
         </div>
+      ) : null}
+
+      {saveState === "SAVE_FAILED" ? (
+        <p role="alert" data-testid="admission-save-failed" style={{ color: "#b91c1c", fontSize: 12 }}>
+          {t("inpatientAdmissionInp2b2a.saveFailed")}
+        </p>
       ) : null}
 
       <div
@@ -665,8 +868,8 @@ export function InpatientAdmissionClinicalShell({
             active === "ALLERGIES" ||
             active === "IDENTITY_DEMOGRAPHICS") && (
             <div data-testid="admission-preload-panel" style={{ marginBottom: 10 }}>
-              {(doc?.preloadedItems ?? [])
-                .filter((item) => {
+              {(() => {
+                const sectionItems = (doc?.preloadedItems ?? []).filter((item) => {
                   if (active === "MEDICAL_HISTORY") return item.domain === "MEDICAL_HISTORY";
                   if (active === "SURGICAL_HISTORY") return item.domain === "SURGICAL_HISTORY";
                   if (active === "ALLERGIES") return item.domain === "ALLERGIES";
@@ -674,8 +877,38 @@ export function InpatientAdmissionClinicalShell({
                   if (active === "SOCIAL_HISTORY")
                     return ["SMOKING", "ALCOHOL", "RECREATIONAL_DRUGS"].includes(item.domain);
                   return true;
-                })
-                .map((item) => (
+                });
+                if (
+                  sectionItems.length === 0 &&
+                  (active === "MEDICAL_HISTORY" ||
+                    active === "SURGICAL_HISTORY" ||
+                    active === "HOME_MEDICATIONS" ||
+                    active === "ALLERGIES")
+                ) {
+                  return (
+                    <div data-testid="admission-preload-empty" style={preloadCard}>
+                      <div style={{ fontSize: 12, color: "#334155" }}>
+                        {t("inpatientAdmissionInp2b2a.preloadEmpty")}
+                      </div>
+                      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 6 }}>
+                        <button
+                          type="button"
+                          disabled={busy || writeBlocked}
+                          style={chipBtn}
+                          data-testid="admission-preload-empty-update"
+                          onClick={() => {
+                            const itemId = CANONICAL_PRELOAD_ITEM_ID[active];
+                            if (!itemId) return;
+                            void verifyItem(itemId, "UPDATED");
+                          }}
+                        >
+                          {t("hospitalAdmissionD4a1.verify.UPDATED")}
+                        </button>
+                      </div>
+                    </div>
+                  );
+                }
+                return sectionItems.map((item) => (
                   <div key={item.itemId} style={preloadCard} data-testid={`preload-${item.itemId}`}>
                     <div style={{ fontWeight: 700, fontSize: 12 }}>{item.displayLabel}</div>
                     <div style={{ fontSize: 12, color: "#334155" }}>{item.valueText}</div>
@@ -693,7 +926,8 @@ export function InpatientAdmissionClinicalShell({
                       ))}
                     </div>
                   </div>
-                ))}
+                ));
+              })()}
             </div>
           )}
 
@@ -709,6 +943,12 @@ export function InpatientAdmissionClinicalShell({
             answers={answers}
             unableReason={unableReason}
             readOnly={writeBlocked}
+            assignmentProjection={{
+              unit: encounterPlacement.unit ?? room ?? null,
+              bed: encounterPlacement.bed ?? room ?? null,
+              attending: attendingName,
+              receivingNurse: assignedRnName,
+            }}
             onChange={markDirty}
             onUnableReasonChange={(r) => {
               setUnableReason(r);
@@ -718,34 +958,19 @@ export function InpatientAdmissionClinicalShell({
             }}
           />
 
-          <label style={{ display: "block", marginTop: 10, fontSize: 12, fontWeight: 600 }}>
-            {t("hospitalAdmissionD4a0.clinical.sectionNotes")}
-            <textarea
-              value={draftNote}
-              disabled={writeBlocked}
-              onChange={(e) => {
-                setDraftNote(e.target.value);
-                draftNoteRef.current = e.target.value;
-                dirtyRef.current = true;
-                setSaveState("NOT_SAVED");
-              }}
-              rows={2}
-              style={textareaStyle}
-            />
-          </label>
-
-          <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
-            {ADMISSION_SECTION_COMPLETION_STATES.map((st) => (
-              <button
-                key={st}
-                type="button"
-                disabled={busy || writeBlocked}
-                onClick={() => void persistSection(st)}
-                style={chipBtn}
-              >
-                {t(`hospitalAdmissionD4a0.clinical.state.${st}`)}
-              </button>
-            ))}
+          <div style={{ display: "flex", gap: 8, marginTop: 8, flexWrap: "wrap", alignItems: "center" }}>
+            <span style={{ fontSize: 12, color: "#64748b" }} data-testid="admission-derived-status">
+              {t("inpatientAdmissionInp2b2a.derivedStatus")}: {t(`inpatientAdmissionInp2b1.status.${sectionState(active)}`)}
+            </span>
+            <button
+              type="button"
+              style={chipBtn}
+              disabled={busy || writeBlocked}
+              onClick={() => void persistSection("NOT_APPLICABLE", "EXPLICIT")}
+              data-testid="admission-mark-na"
+            >
+              {t("inpatientAdmissionInp2b2a.notApplicable")}
+            </button>
           </div>
 
           {isLast && !showReviewDashboard ? (
@@ -803,15 +1028,15 @@ export function InpatientAdmissionClinicalShell({
           isFirst={isFirst}
           isLast={isLast}
           onPrevious={goPrev}
-          onSaveDraft={() => void persistSection()}
+          onSaveDraft={() => void persistSection(undefined, "DRAFT")}
           onSaveContinue={() =>
-            void persistSection().then((ok) => {
+            void persistSection(undefined, "CONTINUE").then((ok) => {
               if (ok && !isLast) goNext();
             })
           }
           onNext={() => {
             if (dirtyRef.current && !writeBlocked) {
-              void persistSection().then((ok) => {
+              void persistSection(undefined, "CONTINUE").then((ok) => {
                 if (ok) goNext();
               });
               return;
@@ -916,6 +1141,58 @@ export function InpatientAdmissionClinicalShell({
           applyPayload({ documentation: documentation as NursingDoc, completion: completion ?? undefined });
         }}
       />
+      {patient?.id && historyEditorDomain ? (
+        <NursingAdmissionEnterpriseHistoryEditor
+          open
+          domain={historyEditorDomain}
+          patientId={patient.id}
+          encounterId={encounterId}
+          onClose={() => {
+            setHistoryEditorDomain(null);
+            setHistoryEditorItemId(null);
+          }}
+          onSaved={async () => {
+            await reload({ preserveDirtyAnswers: dirtyRef.current });
+            if (historyEditorItemId) {
+              await coordinatorRef.current!.requestVerify(historyEditorItemId, "UPDATED");
+              const reviewPatch = reviewCompletePatchForDomain(historyEditorDomain, "UPDATED");
+              if (reviewPatch) {
+                const nextAnswers = { ...answersRef.current, ...reviewPatch };
+                answersRef.current = nextAnswers;
+                setAnswers(nextAnswers);
+                dirtyRef.current = true;
+                await persistSection(undefined, "DRAFT");
+              }
+            }
+          }}
+        />
+      ) : null}
+      {patient?.id && facilityId && allergyEditorOpen ? (
+        <InpatientAllergyEditorModal
+          open={allergyEditorOpen}
+          onClose={() => {
+            setAllergyEditorOpen(false);
+            setAllergyEditorItemId(null);
+          }}
+          encounterId={encounterId}
+          facilityId={facilityId}
+          patientId={patient.id}
+          onSaved={async () => {
+            await reload({ preserveDirtyAnswers: dirtyRef.current });
+            if (allergyEditorItemId) {
+              await coordinatorRef.current!.requestVerify(allergyEditorItemId, "UPDATED");
+              const reviewPatch = reviewCompletePatchForDomain("ALLERGIES", "UPDATED");
+              if (reviewPatch) {
+                const nextAnswers = { ...answersRef.current, ...reviewPatch };
+                answersRef.current = nextAnswers;
+                setAnswers(nextAnswers);
+                dirtyRef.current = true;
+                await persistSection(undefined, "DRAFT");
+              }
+            }
+          }}
+        />
+      ) : null}
     </div>
   );
 }

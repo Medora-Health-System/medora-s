@@ -14,12 +14,16 @@ describe("D4A.2.5 inpatient lifecycle + nursing admission UI contracts", () => {
       join(__dirname, "../inpatient-workspace/InpatientAdmissionClinicalShell.tsx"),
       "utf8"
     );
+    const chrome = readFileSync(
+      join(__dirname, "../inpatient-workspace/NursingAdmissionWorkspaceChromeInp2b1.tsx"),
+      "utf8"
+    );
     expect(shell).toContain("NursingAdmissionStructuredSectionForm");
     expect(shell).toContain("InpatientLifecycleActionsMenu");
     expect(shell).toContain("admission-sticky-footer");
-    expect(shell).toContain("nursing-admission-stage-rail");
-    expect(shell).toContain("admission-save-state");
-    expect(shell).toContain("createLatestWinsClinicalAutosaveScheduler");
+    expect(chrome).toContain("nursing-admission-stage-rail");
+    expect(shell).toContain("ClinicalSaveStatus");
+    expect(shell).toContain("createNursingAdmissionSaveCoordinator");
     expect(shell).toContain("beforeunload");
   });
 
