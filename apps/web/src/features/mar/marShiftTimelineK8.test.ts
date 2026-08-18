@@ -8,7 +8,6 @@ import {
   buildMarShiftTimelineStopPayload,
   isMarShiftTimelineActionEnabled,
   isMarShiftTimelineActionShowComingSoon,
-  isRoutineMarDueAdministerShortcut,
 } from "@/features/mar/marShiftTimelineActions";
 import { marShiftTimelineDateTimeLocalToUtcIso } from "@/features/mar/marShiftTimelineDisplay";
 import type { MarShiftTimelineCellItem } from "@/lib/marShiftTimelineApi";
@@ -151,17 +150,6 @@ describe("MAR language, time picker, action enablement (M1.8B.7K.8)", () => {
     const administer = ivpbItem({ clinicalAction: "ADMINISTER", doseKind: "FIXED_ADMINISTRATION" });
     expect(isMarShiftTimelineActionShowComingSoon("ADMINISTER", administer)).toBe(false);
     expect(isMarShiftTimelineActionEnabled("ADMINISTER", administer, enabledHandlers)).toBe(true);
-    expect(isRoutineMarDueAdministerShortcut(administer, enabledHandlers)).toBe(true);
-  });
-
-  it("does not shortcut PRN or infusion start cells to administer", () => {
-    const prn = ivpbItem({
-      clinicalAction: "ADMINISTER",
-      doseKind: "FIXED_ADMINISTRATION",
-      isPrnBand: true,
-    });
-    expect(isRoutineMarDueAdministerShortcut(prn, enabledHandlers)).toBe(false);
-    expect(isRoutineMarDueAdministerShortcut(ivpbItem(), enabledHandlers)).toBe(false);
   });
 
   it("Refuse and Hold are enabled for pending administer/start items", () => {

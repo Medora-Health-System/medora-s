@@ -9,7 +9,7 @@ import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import { buildRxPrintFacilityIdentity, printRx } from "@/components/pharmacy/RxPrintLayout";
 import { getOrderItemDisplayLabelFromLocale } from "@/lib/orderItemDisplayFr";
 import { careOrderClinicalDetailLines } from "@/lib/careOrderDisplayUi";
-import { sanitizeOrderItemNotesForDisplay, normalizeLabResultTextForPersist, recoverJammedRadiologyHeadings } from "@medora/shared";
+import { sanitizeOrderItemNotesForDisplay } from "@medora/shared";
 import { MEDORA_CHART_RESULT_UPDATED } from "@/lib/chartEvents";
 import { ClinicalResultViewer } from "@/components/clinical/ClinicalResultViewer";
 import { attachmentsFromResultDataAll, clinicalResultFromOrderItemLike } from "@/lib/clinicalResultNormalize";
@@ -31,8 +31,6 @@ import { highRiskMedicationWarning } from "@/lib/highRiskMedication";
 import { LabRadiologyEffectiveTimeRow } from "@/components/worklists/LabRadiologyEffectiveTimeRow";
 import { LabRadiologyEffectiveTimeModal } from "@/components/worklists/LabRadiologyEffectiveTimeModal";
 import { LabRadiologyOperationalBadges } from "@/components/worklists/LabRadiologyOperationalBadges";
-import { LabResultStructuredEntry } from "@/components/worklists/LabResultStructuredEntry";
-import { ImagingReportStructuredEntry } from "@/components/worklists/ImagingReportStructuredEntry";
 import { analyzeLabRadWorklistOperationalRow } from "@/features/orders/labRadiologyOperationalEscalationUi";
 import { isEncounterLocked } from "@/lib/encounterLock";
 import {
@@ -1087,14 +1085,8 @@ function LineCard({
       await collect(pdfFiles);
       await collect(imgFiles);
 
-      const persistText =
-        kind === "lab"
-          ? normalizeLabResultTextForPersist(resultText)
-          : kind === "radiology"
-            ? recoverJammedRadiologyHeadings(resultText)
-            : resultText;
       const body: Record<string, unknown> = {
-        resultText: persistText.trim() || undefined,
+        resultText: resultText.trim() || undefined,
       };
       if (labels.showCritical) body.criticalValue = critical;
       if (newAttachments.length > 0) body.resultData = { attachments: newAttachments };
@@ -1508,29 +1500,13 @@ function LineCard({
                 {t("orderDetail.localDraftSaved")}
               </span>
             ) : null}
-            {kind === "lab" ? (
-              <LabResultStructuredEntry
-                value={resultText}
-                onChange={setResultText}
-                placeholder={labels.resultPlaceholder}
-                t={t}
-              />
-            ) : kind === "radiology" ? (
-              <ImagingReportStructuredEntry
-                value={resultText}
-                onChange={setResultText}
-                placeholder={labels.resultPlaceholder}
-                t={t}
-              />
-            ) : (
-              <textarea
-                value={resultText}
-                onChange={(e) => setResultText(e.target.value)}
-                rows={4}
-                placeholder={labels.resultPlaceholder}
-                style={{ display: "block", marginTop: 6, width: "100%", boxSizing: "border-box", padding: 8 }}
-              />
-            )}
+            <textarea
+              value={resultText}
+              onChange={(e) => setResultText(e.target.value)}
+              rows={4}
+              placeholder={labels.resultPlaceholder}
+              style={{ display: "block", marginTop: 6, width: "100%", boxSizing: "border-box", padding: 8 }}
+            />
           </label>
           {labels.showCritical ? (
             <label style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 10, fontSize: 13 }}>
