@@ -162,7 +162,8 @@ describe("createDirectAdmission expand-and-contract (D3B)", () => {
       bedBoardService as never,
       clinicalSynthesis,
       compatibleEncounters as never,
-      encounterAuthority as never
+      encounterAuthority as never,
+      { upsertLatestActiveEntryForCard: jest.fn() } as never
     );
     return { svc, prisma, encounterCreate, encounterUpdate, findMany, audit };
   }
@@ -309,7 +310,8 @@ describe("createDirectAdmission expand-and-contract (D3B)", () => {
       {
         resolveRequestedEncounter: jest.fn(),
         certification: jest.fn(),
-      } as never
+      } as never,
+      { upsertLatestActiveEntryForCard: jest.fn() } as never
     );
 
     const result = await svc.createDirectAdmission("fac-1", "user-rn-1", {

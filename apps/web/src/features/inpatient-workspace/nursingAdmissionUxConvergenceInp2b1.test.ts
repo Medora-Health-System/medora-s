@@ -61,7 +61,7 @@ describe("MEDUI.INP.2B.1 nursing admission UX convergence", () => {
 
   it("I — 409 maps to CONFLICT_DETECTED with recoverable backup", () => {
     const shell = read("InpatientAdmissionClinicalShell.tsx");
-    expect(shell).toContain("status === 409");
+    expect(shell).toContain("classifyNursingAdmissionSaveFailure");
     expect(shell).toContain("CONFLICT_DETECTED");
     expect(shell).toContain("admission-conflict-banner");
   });

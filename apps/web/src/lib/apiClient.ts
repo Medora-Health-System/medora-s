@@ -77,6 +77,7 @@ export function extractApiErrorMeta(json: {
   nonOverridable?: unknown;
 }): { message: string; errorCode: string | null } {
   let message = "";
+  let nestedCode: string | null = null;
   const m = json.message;
   if (typeof m === "string") {
     message = m;
@@ -84,8 +85,10 @@ export function extractApiErrorMeta(json: {
     message = m.filter((x): x is string => typeof x === "string" && Boolean(x)).join(" ");
   } else if (typeof m === "object" && m !== null) {
     const o = m as Record<string, unknown>;
+    if (typeof o.code === "string" && o.code.trim()) nestedCode = o.code.trim();
     if (typeof o.message === "string") message = o.message;
-    else message = JSON.stringify(o);
+    else if (typeof o.sectionId === "string" && nestedCode) message = nestedCode;
+    else message = "";
   } else if (typeof json.error === "string") {
     message = json.error;
   }
@@ -110,7 +113,7 @@ export function extractApiErrorMeta(json: {
       ? json.errorCode.trim()
       : typeof json.code === "string" && json.code.trim()
         ? json.code.trim()
-        : null;
+        : nestedCode;
   if (!message && rawCode) message = rawCode;
   return { message, errorCode: rawCode };
 }

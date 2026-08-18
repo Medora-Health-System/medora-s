@@ -83,7 +83,8 @@ describe("InpatientOperationsService workspace-bootstrap D4A.2.8-HF1/HF2", () =>
       bedBoardService,
       clinicalSynthesis,
       compatibleEncounters as never,
-      encounterAuthority as never
+      encounterAuthority as never,
+      { upsertLatestActiveEntryForCard: jest.fn() } as never
     );
     return { svc, audit, prisma, compatibleEncounters, encounterAuthority };
   }

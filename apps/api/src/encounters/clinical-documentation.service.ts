@@ -31,6 +31,7 @@ import { assertEncounterOpenForClinicalMutation } from "./encounter-sign-lock.ut
 
 export const clinicalDocumentationEntrySelect = {
   id: true,
+  facilityId: true,
   encounterId: true,
   patientId: true,
   category: true,
@@ -227,6 +228,127 @@ export class ClinicalDocumentationService {
     return mapClinicalDocumentationEntryForLegalChart({
       ...created,
       payloadJson: created.payloadJson,
+    });
+  }
+
+  /**
+   * INP.2B.2B — Upsert the latest non-voided entry for a card on this encounter.
+   * Updates payload in place so Nursing Admission write-through cannot duplicate EDOC rows.
+   */
+  async upsertLatestActiveEntryForCard(
+    facilityId: string,
+    encounterId: string,
+    dto: ClinicalDocumentationEntryCreateDto,
+    userId: string | undefined
+  ): Promise<{
+    id: string;
+    facilityId: string;
+    encounterId: string;
+    patientId: string;
+    category: string;
+    cardId: string;
+    createdAt: Date;
+    voidedAt: Date | null;
+    authorUserId: string;
+    authorDisplayNameSnapshot: string;
+  }> {
+    if (!userId) {
+      throw new ForbiddenException("Authentification requise.");
+    }
+    const parsed = clinicalDocumentationEntryCreateDtoSchema.safeParse(dto);
+    if (!parsed.success) {
+      throw new BadRequestException("Invalid payload", { cause: parsed.error });
+    }
+    try {
+      assertClinicalDocumentationEntryCreateAllowed(parsed.data);
+    } catch (e) {
+      throw new BadRequestException(e instanceof Error ? e.message : "Invalid payload");
+    }
+    const payloadValidation = validatePayloadForCard(
+      parsed.data.cardId,
+      parsed.data.payloadJson as Record<string, unknown>
+    );
+    if (!payloadValidation.ok) {
+      throw new BadRequestException(payloadValidation.message);
+    }
+
+    const encounter = await this.prisma.encounter.findFirst({
+      select: ENCOUNTER_CORE_SELECT,
+      where: { id: encounterId, facilityId },
+    });
+    if (!encounter) throw new NotFoundException("Encounter not found");
+    assertEncounterOpenForClinicalMutation(encounter);
+
+    const existing = await this.prisma.encounterClinicalDocumentationEntry.findFirst({
+      where: {
+        facilityId,
+        encounterId,
+        cardId: parsed.data.cardId,
+        voidedAt: null,
+      },
+      orderBy: { createdAt: "desc" },
+      select: {
+        id: true,
+        facilityId: true,
+        encounterId: true,
+        patientId: true,
+        category: true,
+        cardId: true,
+        createdAt: true,
+        voidedAt: true,
+        authorUserId: true,
+        authorDisplayNameSnapshot: true,
+      },
+    });
+    if (!existing) {
+      const created = await this.createEntry(facilityId, encounterId, parsed.data, userId);
+      return {
+        id: created.id,
+        facilityId,
+        encounterId: created.encounterId,
+        patientId: created.patientId ?? encounter.patientId,
+        category: created.category,
+        cardId: created.cardId,
+        createdAt: new Date(created.createdAt),
+        voidedAt: created.voidedAt ? new Date(created.voidedAt) : null,
+        authorUserId: created.authorUserId,
+        authorDisplayNameSnapshot: created.authorDisplayName,
+      };
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      const row = await tx.encounterClinicalDocumentationEntry.update({
+        where: { id: existing.id },
+        data: {
+          payloadJson: payloadValidation.data as Prisma.InputJsonValue,
+          category: parsed.data.category,
+        },
+        select: {
+          id: true,
+          facilityId: true,
+          encounterId: true,
+          patientId: true,
+          category: true,
+          cardId: true,
+          createdAt: true,
+          voidedAt: true,
+          authorUserId: true,
+          authorDisplayNameSnapshot: true,
+        },
+      });
+      await this.audit.log(AuditAction.ENCOUNTER_UPDATE, "ENCOUNTER_CLINICAL_DOCUMENTATION_ENTRY", {
+        userId,
+        facilityId,
+        patientId: encounter.patientId,
+        encounterId,
+        entityId: row.id,
+        metadata: {
+          event: "NURSING_ADMISSION_EDOC_WRITE_THROUGH_UPDATED",
+          cardId: row.cardId,
+        },
+        tx,
+      });
+      return row;
     });
   }
 

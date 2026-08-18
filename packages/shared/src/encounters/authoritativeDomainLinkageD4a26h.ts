@@ -122,7 +122,9 @@ export function mapEdocCardIdToNursingDomain(
 ): NursingAdmissionDomainKey | null {
   const c = cardId.trim().toLowerCase();
   if (c.includes("pain")) return "PAIN_EDOC13";
-  if (c.includes("fall") || c.includes("morse")) return "FALL_SAFETY_EDOC14";
+  if (c.includes("fall") || c.includes("morse") || c.includes("safety_precaution")) {
+    return "FALL_SAFETY_EDOC14";
+  }
   if (c.includes("skin") || c.includes("wound") || c.includes("pressure")) {
     return "SKIN_WOUND_EDOC20";
   }

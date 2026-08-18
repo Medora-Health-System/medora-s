@@ -103,6 +103,8 @@ import {
   resolveAuthoritativeIsolation,
   buildProviderDomainProjection,
   nursingDocDomainReferences,
+  buildNursingAdmissionWriteThrough,
+  sectionNeedsAuthoritativeEdocWriteThrough,
   readInpatientLifecycleMeta,
   computeHospitalDay,
   ensureEmptyHospitalAssignmentOnAdmission,
@@ -164,6 +166,7 @@ import {
   ENCOUNTER_ID_ONLY_SELECT,
 } from "./encounter-query-contracts";
 import { AdmissionCorrelationService } from "./admission-correlation.service";
+import { ClinicalDocumentationService } from "./clinical-documentation.service";
 import { FacilityBedBoardService } from "../facilities/facility-bed-board.service";
 import {
   directAdmissionNotFound,
@@ -244,7 +247,8 @@ export class InpatientOperationsService {
     private readonly bedBoardService: FacilityBedBoardService,
     private readonly clinicalSynthesis: ClinicalSynthesisService,
     private readonly compatibleEncounters: SchemaCompatibleEncounterRepository,
-    private readonly encounterAuthority: HospitalEncounterAuthorityService
+    private readonly encounterAuthority: HospitalEncounterAuthorityService,
+    private readonly clinicalDocumentation: ClinicalDocumentationService
   ) {}
 
   /** Map Prisma P2022 on Encounter.hospitalEpisodeId to a coded clinical-safe error. */
@@ -2639,6 +2643,65 @@ export class InpatientOperationsService {
       clinicalDocumentedAt = new Date(parsed).toISOString();
     }
 
+    if (completionState === "COMPLETE" && sectionNeedsAuthoritativeEdocWriteThrough(sectionId)) {
+      if (Number(body.expectedVersion) !== doc.expectedVersion) {
+        throw new ConflictException("EXPECTED_VERSION_CONFLICT");
+      }
+      const writeAnswers =
+        answers ?? (doc.sections[sectionId]?.answers as Record<string, unknown>) ?? {};
+      const plan = buildNursingAdmissionWriteThrough({
+        sectionId,
+        answers: writeAnswers,
+        clinicalDocumentedAt,
+      });
+      if (!plan.ok) {
+        throw new BadRequestException({
+          code: "SECTION_VALIDATION_FAILED",
+          missing: plan.missing,
+        });
+      }
+      if (!plan.skip) {
+        const row = await this.clinicalDocumentation.upsertLatestActiveEntryForCard(
+          facilityId,
+          enc.id,
+          {
+            category: plan.category,
+            cardId: plan.cardId,
+            payloadJson: plan.payload,
+          },
+          actorUserId
+        );
+        const lite: ResolvedDomainRecordLite = {
+          id: row.id,
+          facilityId: row.facilityId,
+          encounterId: row.encounterId,
+          patientId: row.patientId,
+          category: row.category,
+          cardId: row.cardId,
+          createdAt: row.createdAt.toISOString(),
+          voidedAt: row.voidedAt ? row.voidedAt.toISOString() : null,
+          authorUserId: row.authorUserId,
+          authorDisplayName: row.authorDisplayNameSnapshot,
+        };
+        const linked = linkNursingDomainReference({
+          doc,
+          clientExpectedVersion: doc.expectedVersion,
+          actorUserId,
+          reference: buildAuthoritativeReferenceFromEdoc({
+            domain: plan.domain,
+            sectionId,
+            row: lite,
+            actorUserId,
+            status: "LINKED",
+          }),
+        });
+        if (!linked.ok) {
+          throw new ConflictException(linked.code);
+        }
+        doc = linked.doc;
+      }
+    }
+
     const result = saveAdmissionSectionDraft({
       doc,
       sectionId,
@@ -2646,7 +2709,7 @@ export class InpatientOperationsService {
       answers,
       unableReason: body.unableReason,
       completionState: completionState as AdmissionSectionCompletionState | undefined,
-      clientExpectedVersion: Number(body.expectedVersion),
+      clientExpectedVersion: doc.expectedVersion,
       actorUserId,
       clinicalDocumentedAt,
     });
@@ -2656,12 +2719,18 @@ export class InpatientOperationsService {
 
     // D4A.2.6H — EDOC sections need an authoritative (non-synthetic) linked record.
     if (completionState === "COMPLETE") {
+      const resolvedByRecordId = await this.resolveNursingAdmissionEdocRecords({
+        facilityId,
+        encounterId: enc.id,
+        recordIds: nursingDocDomainReferences(result.doc).map((r) => r.recordId),
+      });
       const projection = projectAuthoritativeSectionCompletion({
         doc: result.doc,
         sectionId,
         expectedEncounterId: enc.id,
         expectedPatientId: enc.patientId,
         expectedFacilityId: facilityId,
+        resolvedByRecordId,
       });
       if (
         projection.requiresDomainRecord &&
@@ -2747,7 +2816,12 @@ export class InpatientOperationsService {
       doc: stored,
     });
     const idx = doc.preloadedItems.findIndex((i) => i.itemId === body.itemId);
-    if (idx < 0) throw new NotFoundException("Preload item not found");
+    if (idx < 0) {
+      throw new BadRequestException({
+        code: "PRELOAD_ITEM_NOT_FOUND",
+        itemId: body.itemId,
+      });
+    }
 
     const nextItems = [...doc.preloadedItems];
     nextItems[idx] = applyHistoryVerification({
@@ -3600,6 +3674,56 @@ export class InpatientOperationsService {
       metadata: { event: "PROVIDER_HANDOFF_ACKNOWLEDGED" },
     });
     return { documentation: result.doc };
+  }
+
+  /**
+   * Hydrate EDOC rows for Nursing Admission domain-reference classification.
+   */
+  private async resolveNursingAdmissionEdocRecords(input: {
+    facilityId: string;
+    encounterId: string;
+    recordIds: string[];
+  }): Promise<Record<string, ResolvedDomainRecordLite | null>> {
+    const ids = [
+      ...new Set(input.recordIds.filter((id) => isPersistedEdocRecordId(id))),
+    ];
+    const out: Record<string, ResolvedDomainRecordLite | null> = {};
+    if (ids.length === 0) return out;
+    const rows = await this.prisma.encounterClinicalDocumentationEntry.findMany({
+      where: {
+        facilityId: input.facilityId,
+        encounterId: input.encounterId,
+        id: { in: ids },
+      },
+      select: {
+        id: true,
+        facilityId: true,
+        encounterId: true,
+        patientId: true,
+        category: true,
+        cardId: true,
+        createdAt: true,
+        voidedAt: true,
+        authorUserId: true,
+        authorDisplayNameSnapshot: true,
+      },
+    });
+    for (const id of ids) out[id] = null;
+    for (const row of rows) {
+      out[row.id] = {
+        id: row.id,
+        facilityId: row.facilityId,
+        encounterId: row.encounterId,
+        patientId: row.patientId,
+        category: row.category,
+        cardId: row.cardId,
+        createdAt: row.createdAt.toISOString(),
+        voidedAt: row.voidedAt ? row.voidedAt.toISOString() : null,
+        authorUserId: row.authorUserId,
+        authorDisplayName: row.authorDisplayNameSnapshot,
+      };
+    }
+    return out;
   }
 
   /**
