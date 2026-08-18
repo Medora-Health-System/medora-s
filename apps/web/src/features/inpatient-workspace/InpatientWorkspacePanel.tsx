@@ -187,6 +187,9 @@ export function InpatientWorkspacePanel({
           docsLive={docsLive}
           canAdmin={roles.includes("ADMIN")}
           readOnly={!(roles.includes("RN") || roles.includes("ADMIN"))}
+          room={room}
+          attendingName={attendingName}
+          assignedRnName={assignedRnName}
         />
       );
     case "problemsPlan":

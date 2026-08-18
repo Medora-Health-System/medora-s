@@ -405,6 +405,42 @@ export function buildAdmissionPreloadFromPatientProfile(input: {
   return items;
 }
 
+/**
+ * Overlay current enterprise history onto admission preload without duplicating PMH.
+ * Preserves encounter verification provenance. Adds newly available domains (e.g. surgical).
+ * Display-only on GET; persist happens on verify/section save.
+ */
+export function mergeAdmissionPreloadFromPatientProfile(input: {
+  existing: PreloadedHistoryItemV1[];
+  profile: PatientClinicalHistoryProfile | null | undefined;
+  sourceEncounterId?: string | null;
+}): PreloadedHistoryItemV1[] {
+  const fresh = buildAdmissionPreloadFromPatientProfile({
+    profile: input.profile,
+    sourceEncounterId: input.sourceEncounterId,
+  });
+  const byId = new Map((input.existing ?? []).map((item) => [item.itemId, item]));
+  const out: PreloadedHistoryItemV1[] = [];
+  const seen = new Set<string>();
+  for (const item of fresh) {
+    const prior = byId.get(item.itemId);
+    if (prior) {
+      out.push({
+        ...prior,
+        displayLabel: item.displayLabel,
+        valueText: item.valueText,
+      });
+    } else {
+      out.push(item);
+    }
+    seen.add(item.itemId);
+  }
+  for (const prior of input.existing ?? []) {
+    if (!seen.has(prior.itemId)) out.push(prior);
+  }
+  return out;
+}
+
 export function assertPreloadRequiresVerification(item: PreloadedHistoryItemV1): boolean {
   if (!preloadedHistoryRequiresVerification()) return false;
   if (!preloadedHistoryMustRetainProvenance()) return false;
@@ -563,6 +599,8 @@ export function computeAdmissionCompletionSummary(doc: MedSurgNursingAdmissionDo
   notStarted: number;
   unable: number;
   notApplicable: number;
+  /** COMPLETE + N/A + UNABLE — workflow progress numerator. */
+  resolved: number;
   allRequiredComplete: boolean;
 } {
   let complete = 0;
@@ -580,6 +618,7 @@ export function computeAdmissionCompletionSummary(doc: MedSurgNursingAdmissionDo
   }
   const total = INPATIENT_ADMISSION_CLINICAL_SECTIONS.length;
   const actionable = total - notApplicable;
+  const resolved = complete + notApplicable + unable;
   return {
     total,
     complete,
@@ -587,6 +626,7 @@ export function computeAdmissionCompletionSummary(doc: MedSurgNursingAdmissionDo
     notStarted,
     unable,
     notApplicable,
+    resolved,
     allRequiredComplete: complete + unable >= actionable && actionable > 0,
   };
 }

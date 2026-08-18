@@ -11,14 +11,14 @@ const iconBox: CSSProperties = {
   display: "inline-flex",
   alignItems: "center",
   justifyContent: "center",
-  width: 36,
-  height: 36,
+  width: 24,
+  height: 24,
 };
 
 function SvgWrap({ children }: { children: ReactNode }) {
   return (
     <span style={iconBox} aria-hidden="true">
-      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
         {children}
       </svg>
     </span>

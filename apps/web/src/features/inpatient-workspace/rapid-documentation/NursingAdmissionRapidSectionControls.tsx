@@ -51,8 +51,6 @@ function asNum(value: unknown): number | null {
 
 const HANDOFF_METHOD_CODES = ["BEDSIDE", "PHONE", "WRITTEN", "ELECTRONIC", "OTHER"] as const;
 
-const HISTORY_VERIFY_CODES = ["CONFIRMED", "UPDATED", "UNABLE_TO_VERIFY", "PATIENT_DENIES"] as const;
-
 const TRANSFER_SOURCES = new Set([
   "OUTSIDE_HOSPITAL_TRANSFER",
   "SNF_TRANSFER",
@@ -65,33 +63,6 @@ function painPresenceToSchema(code: string | null): string | null {
   if (code === "NO_PAIN") return "NO";
   if (code === "UNABLE_SELF_REPORT" || code === "UNABLE_TO_ASSESS") return "UNKNOWN";
   return null;
-}
-
-function ReviewActionChips({
-  label,
-  value,
-  onChange,
-  readOnly,
-}: {
-  label: string;
-  value: string | null;
-  onChange: (next: string | null) => void;
-  readOnly?: boolean;
-}) {
-  const { t } = useI18n();
-  const opts = HISTORY_VERIFY_CODES.map((code) => ({
-    code,
-    label: t(`inpatientAdmissionInp2b2.reviewAction.${code}`),
-  }));
-  return (
-    <ClinicalSingleSelect
-      label={label}
-      options={opts}
-      value={value}
-      onChange={onChange}
-      readOnly={readOnly}
-    />
-  );
 }
 
 export function NursingAdmissionRapidSectionControls({
@@ -129,6 +100,7 @@ export function NursingAdmissionRapidSectionControls({
           readOnly={readOnly}
           renderIcon={(code) => <AdmissionSourceIcon code={code} />}
           testId="rapid-admission-source-icons"
+          density="source"
         />
         <ClinicalConditionalText
           label={t("inpatientAdmissionInp2b.rapid.otherDetail")}
@@ -145,6 +117,7 @@ export function NursingAdmissionRapidSectionControls({
           readOnly={readOnly}
           renderIcon={(code) => <ModeOfArrivalIcon code={code} />}
           testId="rapid-mode-of-arrival-icons"
+          density="arrival"
         />
         <ClinicalConditionalText
           label={t("inpatientAdmissionInp2b.rapid.otherDetail")}
@@ -415,12 +388,6 @@ export function NursingAdmissionRapidSectionControls({
   if (sectionId === "MEDICAL_HISTORY") {
     return (
       <div data-testid="rapid-history-review" style={{ display: "grid", gap: 10, marginBottom: 12 }}>
-        <ReviewActionChips
-          label={t("inpatientAdmissionInp2b2.historyAction")}
-          value={asCode(answers.historyVerificationAction)}
-          onChange={(next) => set("historyVerificationAction", next)}
-          readOnly={readOnly}
-        />
         <ClinicalSingleSelect
           label={t("inpatientAdmissionInp2b.rapid.historyReviewed")}
           options={REVIEW_STATUS_RAPID_OPTIONS}
@@ -435,12 +402,6 @@ export function NursingAdmissionRapidSectionControls({
   if (sectionId === "SURGICAL_HISTORY") {
     return (
       <div data-testid="rapid-surgical-review" style={{ display: "grid", gap: 10, marginBottom: 12 }}>
-        <ReviewActionChips
-          label={t("inpatientAdmissionInp2b2.surgicalAction")}
-          value={asCode(answers.surgicalVerificationAction)}
-          onChange={(next) => set("surgicalVerificationAction", next)}
-          readOnly={readOnly}
-        />
         <ClinicalYesNoUnknown
           label={t("inpatientAdmissionInp2b2.deniesPriorSurgery")}
           value={(asCode(answers.patientDeniesPriorSurgery) as "YES" | "NO" | "UNKNOWN" | null) ?? null}
@@ -454,12 +415,6 @@ export function NursingAdmissionRapidSectionControls({
   if (sectionId === "ALLERGIES") {
     return (
       <div data-testid="rapid-allergy-review" style={{ display: "grid", gap: 10, marginBottom: 12 }}>
-        <ReviewActionChips
-          label={t("inpatientAdmissionInp2b2.allergyAction")}
-          value={asCode(answers.allergyVerificationAction)}
-          onChange={(next) => set("allergyVerificationAction", next)}
-          readOnly={readOnly}
-        />
         <ClinicalSingleSelect
           label={t("inpatientAdmissionInp2b.rapid.allergyReviewed")}
           options={REVIEW_STATUS_RAPID_OPTIONS}
@@ -475,12 +430,6 @@ export function NursingAdmissionRapidSectionControls({
     const discrepancies = asCode(answers.discrepancies);
     return (
       <div data-testid="rapid-homemed-review" style={{ display: "grid", gap: 10, marginBottom: 12 }}>
-        <ReviewActionChips
-          label={t("inpatientAdmissionInp2b2.homeMedAction")}
-          value={asCode(answers.homeMedVerificationAction)}
-          onChange={(next) => set("homeMedVerificationAction", next)}
-          readOnly={readOnly}
-        />
         <ClinicalSingleSelect
           label={t("inpatientAdmissionInp2b.rapid.homeMedReviewed")}
           options={REVIEW_STATUS_RAPID_OPTIONS}

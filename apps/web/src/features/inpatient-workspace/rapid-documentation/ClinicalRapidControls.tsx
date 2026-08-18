@@ -886,11 +886,12 @@ const iconCardBase: CSSProperties = {
   flexDirection: "column",
   alignItems: "center",
   justifyContent: "center",
-  gap: 6,
+  gap: 4,
   minWidth: 88,
-  minHeight: 88,
-  padding: "10px 8px",
-  borderRadius: 12,
+  minHeight: 72,
+  maxWidth: 145,
+  padding: "6px 8px",
+  borderRadius: 10,
   border: "1px solid #cbd5e1",
   background: "#fff",
   color: "#334155",
@@ -898,21 +899,21 @@ const iconCardBase: CSSProperties = {
   fontSize: 12,
   fontWeight: 500,
   textAlign: "center",
+  lineHeight: 1.2,
 };
 
-const iconCardSelected: CSSProperties = {
+const iconCardSource: CSSProperties = {
   ...iconCardBase,
-  borderColor: "#0f766e",
-  background: "#ccfbf1",
-  color: "#115e59",
-  fontWeight: 700,
-  boxShadow: "inset 0 0 0 1px #0f766e",
+  minWidth: 118,
+  maxWidth: 145,
+  minHeight: 76,
 };
 
-const iconCardDisabled: CSSProperties = {
+const iconCardArrival: CSSProperties = {
   ...iconCardBase,
-  opacity: 0.55,
-  cursor: "not-allowed",
+  minWidth: 88,
+  maxWidth: 108,
+  minHeight: 72,
 };
 
 export function ClinicalIconCardSelect({
@@ -925,6 +926,7 @@ export function ClinicalIconCardSelect({
   renderIcon,
   testId,
   allowDeselect = false,
+  density = "arrival",
 }: {
   label: string;
   options: readonly (ClinicalRapidOptionV1 | ClinicalOption)[];
@@ -935,10 +937,12 @@ export function ClinicalIconCardSelect({
   renderIcon: (code: string) => ReactNode;
   testId?: string;
   allowDeselect?: boolean;
+  density?: "source" | "arrival";
 }) {
   const { language, t } = useI18n();
   const opts = toClinicalOptions(options, language, t);
   const locked = disabled || readOnly;
+  const base = density === "source" ? iconCardSource : iconCardArrival;
   return (
     <fieldset style={{ border: "none", margin: 0, padding: 0 }} disabled={locked}>
       <legend style={{ fontSize: 13, fontWeight: 600, color: "#334155", marginBottom: 8 }}>
@@ -948,24 +952,57 @@ export function ClinicalIconCardSelect({
         role="radiogroup"
         aria-label={label}
         data-testid={testId}
-        style={{ display: "flex", flexWrap: "wrap", gap: 8 }}
+        style={{
+          display: "grid",
+          gridTemplateColumns:
+            density === "source"
+              ? "repeat(auto-fill, minmax(118px, 1fr))"
+              : "repeat(auto-fill, minmax(88px, 1fr))",
+          gap: 8,
+        }}
       >
         {opts.map((opt) => {
           const on = value === opt.code;
+          const style: CSSProperties = locked
+            ? { ...base, opacity: 0.55, cursor: "not-allowed" }
+            : on
+              ? {
+                  ...base,
+                  borderColor: "#0f766e",
+                  background: "#ccfbf1",
+                  color: "#115e59",
+                  fontWeight: 700,
+                  boxShadow: "inset 0 0 0 1px #0f766e",
+                }
+              : {
+                  ...base,
+                  cursor: "pointer",
+                };
           return (
             <button
               key={opt.code}
               type="button"
               role="radio"
               aria-checked={on}
+              aria-pressed={on}
               aria-label={opt.label}
               disabled={locked}
               data-testid={testId ? `${testId}-${opt.code}` : undefined}
               onClick={() => onChange(on && allowDeselect ? null : opt.code)}
-              style={locked ? iconCardDisabled : on ? iconCardSelected : iconCardBase}
+              onMouseEnter={(e) => {
+                if (locked || on) return;
+                e.currentTarget.style.background = "#f8fafc";
+              }}
+              onMouseLeave={(e) => {
+                if (locked || on) return;
+                e.currentTarget.style.background = "#fff";
+              }}
+              style={style}
             >
               {renderIcon(opt.code)}
-              <span>{opt.label}</span>
+              <span style={{ display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+                {opt.label}
+              </span>
             </button>
           );
         })}

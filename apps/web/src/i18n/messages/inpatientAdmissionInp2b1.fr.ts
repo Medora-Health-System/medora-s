@@ -3,7 +3,7 @@ export const inpatientAdmissionInp2b1Fr = {
   title: "Admission infirmière",
   steps: "Étapes",
   clinicalDocumentation: "Documentation clinique",
-  overallProgress: "Progression globale {complete} / {total} terminées",
+  overallProgress: "Progression globale {complete} / {total} résolues",
   stageOf: "Étape {current} sur 6",
   completeCount: "Terminé {complete} / {total}",
   autosaved: "Enregistrement auto {time}",

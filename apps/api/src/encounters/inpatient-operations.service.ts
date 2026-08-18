@@ -60,6 +60,7 @@ import {
   validateConnectedAdmissionIntakeHardBlockers,
   isBedSelectableForAdmissionIntake,
   buildAdmissionPreloadFromPatientProfile,
+  mergeAdmissionPreloadFromPatientProfile,
   buildHomeMedReconLinesFromPreload,
   emptyMedSurgNursingAdmissionDocV1,
   readMedSurgNursingAdmissionFromSummary,
@@ -1923,10 +1924,17 @@ export class InpatientOperationsService {
     const enc = await this.loadOpenInpatient(facilityId, encounterId);
     const existing = readMedSurgNursingAdmissionFromSummary(enc.admissionSummaryJson);
     if (existing) {
+      const corr = readHospitalAdmissionCorrelation(enc.admissionSummaryJson);
+      const documentation = await this.overlayNursingAdmissionPreloadFromProfile({
+        facilityId,
+        patientId: enc.patientId,
+        sourceEncounterId: corr?.sourceEncounterId ?? existing.sourceEncounterId ?? null,
+        doc: existing,
+      });
       return {
         certification: MEDSURG_NURSING_ADMISSION_CERTIFICATION_ID,
-        documentation: existing,
-        completion: computeAdmissionCompletionSummary(existing),
+        documentation,
+        completion: computeAdmissionCompletionSummary(documentation),
       };
     }
 
@@ -2721,16 +2729,23 @@ export class InpatientOperationsService {
     const enc = await this.loadOpenInpatient(facilityId, encounterId);
     const boot = await this.getNursingAdmissionDocumentation(facilityId, encounterId);
     const fresh = await this.loadOpenInpatient(facilityId, encounterId);
-    const doc =
+    const stored =
       readMedSurgNursingAdmissionFromSummary(fresh.admissionSummaryJson) ??
       boot.documentation;
 
-    if (Number(body.expectedVersion) !== doc.expectedVersion) {
+    if (Number(body.expectedVersion) !== stored.expectedVersion) {
       throw new ConflictException("EXPECTED_VERSION_CONFLICT");
     }
     if (!isAdmissionHistoryVerificationStatus(body.status)) {
       throw new BadRequestException("Invalid verification status");
     }
+    const corr = readHospitalAdmissionCorrelation(fresh.admissionSummaryJson);
+    const doc = await this.overlayNursingAdmissionPreloadFromProfile({
+      facilityId,
+      patientId: enc.patientId,
+      sourceEncounterId: corr?.sourceEncounterId ?? stored.sourceEncounterId ?? null,
+      doc: stored,
+    });
     const idx = doc.preloadedItems.findIndex((i) => i.itemId === body.itemId);
     if (idx < 0) throw new NotFoundException("Preload item not found");
 
@@ -3585,6 +3600,39 @@ export class InpatientOperationsService {
       metadata: { event: "PROVIDER_HANDOFF_ACKNOWLEDGED" },
     });
     return { documentation: result.doc };
+  }
+
+  /**
+   * Refresh preload display from the patient history profile without bumping expectedVersion.
+   * Encounter verification provenance is preserved; new profile domains are appended.
+   */
+  private async overlayNursingAdmissionPreloadFromProfile(input: {
+    facilityId: string;
+    patientId: string;
+    sourceEncounterId?: string | null;
+    doc: MedSurgNursingAdmissionDocV1;
+  }): Promise<MedSurgNursingAdmissionDocV1> {
+    const patient = await this.prisma.patient.findFirst({
+      where: { id: input.patientId, facilityId: input.facilityId },
+      select: { clinicalHistoryProfileJson: true },
+    });
+    const profile = patientClinicalHistoryProfileFromJson(
+      patient?.clinicalHistoryProfileJson ?? null
+    );
+    const preloadedItems = mergeAdmissionPreloadFromPatientProfile({
+      existing: input.doc.preloadedItems ?? [],
+      profile,
+      sourceEncounterId: input.sourceEncounterId ?? null,
+    });
+    const homeMedicationLines =
+      (input.doc.homeMedicationLines ?? []).length > 0
+        ? input.doc.homeMedicationLines
+        : buildHomeMedReconLinesFromPreload(preloadedItems);
+    return {
+      ...input.doc,
+      preloadedItems,
+      homeMedicationLines,
+    };
   }
 
   private async loadOpenInpatient(facilityId: string, encounterId: string) {
