@@ -76,6 +76,7 @@ import { inpatientAdmissionInp2b2En } from "./inpatientAdmissionInp2b2.en";
 import { inpatientAdmissionInp2b2aEn } from "./inpatientAdmissionInp2b2a.en";
 import { inpatientNursingAssessmentInp1bEn } from "./inpatientNursingAssessmentInp1b.en";
 import { inpatientNursingAssessmentInp2cEn } from "./inpatientNursingAssessmentInp2c.en";
+import { inpatientReviewOrdersInp2dEn } from "./inpatientReviewOrdersInp2d.en";
 
 export default {
   common: {
@@ -20612,6 +20613,7 @@ export default {
   inpatientAdmissionInp2b2a: inpatientAdmissionInp2b2aEn,
   inpatientNursingAssessmentInp1b: inpatientNursingAssessmentInp1bEn,
   inpatientNursingAssessmentInp2c: inpatientNursingAssessmentInp2cEn,
+  inpatientReviewOrdersInp2d: inpatientReviewOrdersInp2dEn,
 
   hospitalAdmissionD4a0: hospitalAdmissionD4a0En,
   emergencyAdaptiveNursing: emergencyAdaptiveNursingEn,

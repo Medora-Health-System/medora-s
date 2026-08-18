@@ -352,6 +352,30 @@ export function InpatientOverviewView({
                 </ul>
               </div>
             ) : null}
+            {p.orders.reviewOrders ? (
+              <div
+                style={{ marginBottom: 8, fontSize: 12, color: "#334155" }}
+                data-testid="overview-review-orders-counts"
+              >
+                <p style={{ margin: "0 0 2px" }}>
+                  {t("inpatientOverviewInp2a.rail.reviewOrdersNew")}: {p.orders.reviewOrders.newUnreviewed}
+                </p>
+                <p style={{ margin: "0 0 2px" }}>
+                  {t("inpatientOverviewInp2a.rail.reviewOrdersStat")}: {p.orders.reviewOrders.statUrgent}
+                </p>
+                <p style={{ margin: "0 0 2px" }}>
+                  {t("inpatientOverviewInp2a.rail.reviewOrdersDue")}:{" "}
+                  {p.orders.reviewOrders.dueNursingActionable}
+                </p>
+                <p style={{ margin: "0 0 2px" }}>
+                  {t("inpatientOverviewInp2a.rail.reviewOrdersOverdue")}:{" "}
+                  {p.orders.reviewOrders.overdueNursingActionable}
+                </p>
+                <p style={{ margin: 0 }}>
+                  {t("inpatientOverviewInp2a.rail.reviewOrdersHeld")}: {p.orders.reviewOrders.held}
+                </p>
+              </div>
+            ) : null}
           </>
         ) : (
           <p style={{ margin: 0, fontSize: 13, color: "#64748b" }}>

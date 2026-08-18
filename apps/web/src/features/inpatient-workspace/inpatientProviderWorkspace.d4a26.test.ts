@@ -44,7 +44,8 @@ describe("D4A.2.6 inpatient provider workspace UI", () => {
 
   it("reuses enterprise engines and does not redesign nursing admission shell", () => {
     const panel = readFileSync(join(root, "InpatientWorkspacePanel.tsx"), "utf8");
-    expect(panel).toContain("EmergencyErOrdersPanel");
+    expect(panel).toContain("InpatientReviewOrdersPanel");
+    expect(panel).not.toContain("EmergencyErOrdersPanel");
     expect(panel).toContain("EmergencyResultsPanel");
     expect(panel).toContain("MedicationAdministrationTab");
     expect(panel).toContain("InpatientAdmissionClinicalShell");

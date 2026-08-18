@@ -13,7 +13,7 @@ import {
   synthesizeInpatientDischargeSummaryDraft,
   type InpatientWorkspaceRole,
 } from "@medora/shared";
-import { EmergencyErOrdersPanel } from "@/features/emergency/EmergencyErOrdersPanel";
+import { InpatientReviewOrdersPanel } from "./InpatientReviewOrdersPanel";
 import { EmergencyResultsPanel } from "@/features/emergency/EmergencyResultsPanel";
 import { EmergencyErNotesPanel } from "@/features/emergency/EmergencyErNotesPanel";
 import { MedicationAdministrationTab } from "@/components/encounters/MedicationAdministrationTab";
@@ -357,10 +357,7 @@ export function InpatientWorkspacePanel({
       }
       return (
         <div data-testid="inpatient-panel-orders-live">
-          <p style={{ margin: "0 0 10px", fontSize: 12, color: "#64748b" }}>
-            {t("inpatientD3e.ordersOwnershipHint")}
-          </p>
-          <EmergencyErOrdersPanel
+          <InpatientReviewOrdersPanel
             encounterId={encounterId}
             facilityId={facilityId}
             canPrescribe={canPrescribe}
@@ -369,8 +366,8 @@ export function InpatientWorkspacePanel({
               encounter ? { patient: encounter.patient ?? null } : null
             }
             onRefetchEncounter={onRefetchEncounter}
-            encounterType={encounter?.type ?? "INPATIENT"}
             roles={roles}
+            onNavigateSection={onNavigateSection}
           />
         </div>
       );

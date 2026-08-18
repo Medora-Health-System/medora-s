@@ -15,7 +15,7 @@ import {
   parseInpatientWorkspaceSection,
 } from "./inpatientWorkspaceSections";
 import { projectInpatientOverview } from "./projectInpatientOverview";
-import { nursingPrimaryNav, providerPrimaryNav } from "@medora/shared";
+import { nursingPrimaryNav, providerPrimaryNav, projectInpatientReviewOrders } from "@medora/shared";
 
 const root = join(__dirname);
 const read = (rel: string) => readFileSync(join(root, rel), "utf8");
@@ -159,6 +159,7 @@ describe("MEDUI.INP.2A authority + overview projections", () => {
     });
     expect(projected.orders.active[0]?.label).toBe("CBC");
     expect(projected.orders.newOrUnacknowledged[0]?.label).toBe("CXR");
+    expect(projected.orders.reviewOrders).toBeNull();
     expect(projected.medications.lines.some((m) => m.drug === "Heparin")).toBe(true);
     expect(projected.results.critical[0]?.label).toBe("K+");
     expect(projected.carePlan.plans[0]?.title).toBe("Mobility");
@@ -176,6 +177,66 @@ describe("MEDUI.INP.2A authority + overview projections", () => {
     expect(overview).toContain("openResults");
     expect(overview).toContain("openCarePlan");
     expect(overview).toContain("openDischarge");
+    expect(overview).toContain("overview-review-orders-counts");
+  });
+
+  it("INP.2D Overview/rail consumes the same Review Orders projection", () => {
+    const reviewOrdersProjection = projectInpatientReviewOrders({
+      encounterId: "enc-ip",
+      nowIso: "2026-08-18T15:00:00.000Z",
+      orders: [
+        {
+          id: "ord-care",
+          type: "CARE",
+          status: "PLACED",
+          priority: "STAT",
+          items: [
+            {
+              id: "item-care",
+              catalogItemType: "CARE",
+              status: "PLACED",
+              enterpriseProcedureId: "glucose_check",
+              due: true,
+            },
+          ],
+        },
+        {
+          id: "ord-hold",
+          type: "MEDICATION",
+          status: "ACKNOWLEDGED",
+          items: [
+            {
+              id: "item-hold",
+              catalogItemType: "MEDICATION",
+              status: "ACKNOWLEDGED",
+              medicationLifecycleStatus: "ON_HOLD",
+              medicationFulfillmentIntent: "ADMINISTER_CHART",
+            },
+          ],
+        },
+      ],
+    });
+    const projected = projectInpatientOverview({
+      role: "PROVIDER",
+      emptyClinicianLabel: "Not assigned",
+      alerts: [],
+      synthesis: null,
+      authProjection: null,
+      canProviderWrite: true,
+      reviewOrdersProjection,
+    });
+    expect(projected.orders.reviewOrders).toEqual({
+      newUnreviewed: 1,
+      statUrgent: 1,
+      dueNursingActionable: 1,
+      overdueNursingActionable: 0,
+      held: 1,
+    });
+    const provider = read("InpatientProviderWorkspacePanel.tsx");
+    expect(provider).toContain("fetchOrdersForEncounter");
+    expect(provider).toContain("projectInpatientReviewOrders");
+    expect(provider).toContain("reviewOrdersProjection");
+    expect(provider).not.toContain("prisma.");
   });
 
   it("14 Significant events appear without deleting event infrastructure", () => {
@@ -189,6 +250,7 @@ describe("MEDUI.INP.2A authority + overview projections", () => {
   it("15 Right-side panel does not create persistence", () => {
     const rail = read("InpatientClinicalContextRail.tsx");
     expect(rail).toContain('data-persistence="none"');
+    expect(rail).toContain("inpatient-rail-review-orders-counts");
     expect(rail).not.toContain("apiFetch");
     expect(rail).not.toContain("method:");
     expect(rail).not.toContain("POST");
@@ -204,6 +266,8 @@ describe("MEDUI.INP.2A authority + overview projections", () => {
     );
     expect(en.inpatientOverviewInp2a.orders.openOrders).toBe("Open Orders");
     expect(fr.inpatientOverviewInp2a.orders.openOrders).toMatch(/ordonnance/i);
+    expect(en.inpatientOverviewInp2a.rail.reviewOrdersNew).toBe("New / unreviewed orders");
+    expect(fr.inpatientOverviewInp2a.rail.reviewOrdersNew).toBe("Nouvelles / non revues");
     expect(fr.inpatientOverviewInp2a.rail.title).not.toMatch(/INP\.2A|D4A|D4B/i);
     expect(en.inpatientOverviewD4a34.clinicalState.verifyInNursing).not.toMatch(/legacy|stub/i);
   });
