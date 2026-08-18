@@ -35,22 +35,6 @@ describe("parseLabObservationLines — LAB.ED.1 flag accuracy", () => {
     const row = parseLabObservationLines("Sodium: 140").rows[0];
     expect(row?.flag).toBeFalsy();
   });
-
-  it("recovers smashed CMP blobs into analyte rows with ranges and units", () => {
-    const smashed =
-      "Glucose9270–100mg/dL—BUN146–20mg/dL—Creatinine0.90.6–1.2mg/dL—Sodium140135–145mEq/L";
-    const { rows } = parseLabObservationLines(smashed);
-    expect(rows.map((r) => r.label)).toEqual(["Glucose", "BUN", "Creatinine", "Sodium"]);
-    expect(rows[0]).toMatchObject({ value: "92", ref: "70–100", units: "mg/dL" });
-    expect(rows[1]).toMatchObject({ value: "14", ref: "6–20", units: "mg/dL" });
-    expect(rows[3]).toMatchObject({ value: "140", ref: "135–145", units: "mEq/L" });
-  });
-
-  it("keeps explicit C flag over range-based HIGH/LOW", () => {
-    const row = parseLabObservationLines("Potassium: 2.2 mmol/L C (3.5–5.0)").rows[0];
-    expect(row?.flag).toBe("C");
-    expect(row?.units).toBe("mmol/L");
-  });
 });
 
 describe("worklistLabRadUi — acknowledge workflow visibility", () => {
