@@ -257,6 +257,18 @@ function isMarShiftTimelineUpcomingActionable(item: MarShiftTimelineCellItem): b
   return item.clinicalAction === "VIEW_UPCOMING";
 }
 
+export function isRoutineMarDueAdministerShortcut(
+  item: MarShiftTimelineCellItem,
+  handlers: MarShiftTimelineActionHandlers | null | undefined
+): boolean {
+  if (!handlers) return false;
+  if (item.isPrnBand === true) return false;
+  const status = item.doseStatus?.trim().toUpperCase();
+  if (status !== "DUE" && status !== "OVERDUE") return false;
+  if (item.clinicalAction !== "ADMINISTER") return false;
+  return isMarShiftTimelineActionEnabled("ADMINISTER", item, handlers);
+}
+
 export function isMarShiftTimelineActionEnabled(
   action: MarShiftTimelineDrawerAction,
   item: MarShiftTimelineCellItem,

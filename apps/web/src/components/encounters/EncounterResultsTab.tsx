@@ -395,7 +395,12 @@ export function EncounterResultsTab({
           !acknowledgedAt;
         const ackBusy = ackBusyItemId === item.id;
         return (
-          <div key={item.id} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          <div
+            key={item.id}
+            data-testid="enterprise-result-card"
+            data-order-item-id={String(item.id)}
+            style={{ display: "flex", flexDirection: "column", gap: 10 }}
+          >
             {pendingSync ? (
               <div
                 role="status"

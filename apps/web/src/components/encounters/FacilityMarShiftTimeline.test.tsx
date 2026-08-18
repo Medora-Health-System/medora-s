@@ -131,8 +131,11 @@ describe("FacilityMarShiftTimeline (M1.8B.7K.2)", () => {
     expect(timeline).toContain("title={buildMarShiftTimelineItemHoverTitle(item)}");
   });
 
-  it("clicking item opens drawer", () => {
+  it("clicking due/overdue routine cell requests administer; more-actions opens drawer", () => {
+    expect(timeline).toContain("isRoutineMarDueAdministerShortcut");
+    expect(timeline).toContain("onRequestAdminister");
     expect(timeline).toContain("setDrawerSelection");
+    expect(timeline).toContain('data-testid="mar-shift-timeline-cell-more-actions"');
     expect(timeline).toContain("<FacilityMarShiftTimelineDrawer");
     expect(drawer).toContain('data-testid="mar-shift-timeline-drawer"');
   });

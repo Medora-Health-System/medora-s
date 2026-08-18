@@ -150,9 +150,8 @@ function normalizeRowForPrint(
 function labFlagLabel(flag: LabParsedRow["flag"], language: SupportedLanguage): string {
   if (!flag) return "";
   if (flag === "C") return printT(language, "printOutput.results.critical");
-  if (flag === "H" || flag === "HH" || flag === "L" || flag === "LL") {
-    return printT(language, "printOutput.results.abnormal");
-  }
+  if (flag === "H" || flag === "HH") return printT(language, "printOutput.results.flagHigh");
+  if (flag === "L" || flag === "LL") return printT(language, "printOutput.results.flagLow");
   return flag;
 }
 
@@ -265,6 +264,7 @@ function buildLabResultBodyHtml(
   }
 
   if (labRows.length > 0) {
+    const anyUnits = labRows.some((r) => Boolean(r.units?.trim()));
     const header = [
       `<th style="text-align:left;padding:8px 10px;border:1px solid #cbd5e1;">${esc(
         printT(language, "printOutput.results.testName")
@@ -273,11 +273,16 @@ function buildLabResultBodyHtml(
         printT(language, "printOutput.results.resultValue")
       )}</th>`,
       `<th style="text-align:left;padding:8px 10px;border:1px solid #cbd5e1;">${esc(
-        printT(language, "printOutput.results.referenceRange")
-      )}</th>`,
-      `<th style="text-align:left;padding:8px 10px;border:1px solid #cbd5e1;">${esc(
         printT(language, "printOutput.results.flag")
       )}</th>`,
+      `<th style="text-align:left;padding:8px 10px;border:1px solid #cbd5e1;">${esc(
+        printT(language, "printOutput.results.referenceRange")
+      )}</th>`,
+      anyUnits
+        ? `<th style="text-align:left;padding:8px 10px;border:1px solid #cbd5e1;">${esc(
+            printT(language, "printOutput.results.units")
+          )}</th>`
+        : "",
     ].join("");
     const body = labRows
       .map((r) => {
@@ -285,8 +290,9 @@ function buildLabResultBodyHtml(
         return `<tr>
 <td style="padding:8px 10px;border:1px solid #e2e8f0;vertical-align:top;">${esc(r.label)}</td>
 <td style="padding:8px 10px;border:1px solid #e2e8f0;vertical-align:top;">${esc(r.value)}</td>
-<td style="padding:8px 10px;border:1px solid #e2e8f0;vertical-align:top;">${esc(r.ref ?? "")}</td>
 <td style="padding:8px 10px;border:1px solid #e2e8f0;vertical-align:top;">${esc(flag)}</td>
+<td style="padding:8px 10px;border:1px solid #e2e8f0;vertical-align:top;">${esc(r.ref ?? "")}</td>
+${anyUnits ? `<td style="padding:8px 10px;border:1px solid #e2e8f0;vertical-align:top;">${esc(r.units ?? "")}</td>` : ""}
 </tr>`;
       })
       .join("");
