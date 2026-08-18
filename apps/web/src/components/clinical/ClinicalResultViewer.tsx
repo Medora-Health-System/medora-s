@@ -202,8 +202,8 @@ function labRowBackground(flag: LabParsedRow["flag"]): string {
 function labFlagBadge(flag: LabParsedRow["flag"], t: (k: string) => string): string | null {
   if (!flag) return null;
   if (flag === "C") return t("clinicalResultViewer.labFlagCritical");
-  if (flag === "H" || flag === "HH") return "H";
-  if (flag === "L" || flag === "LL") return "L";
+  if (flag === "H" || flag === "HH") return t("clinicalResultViewer.labFlagHigh");
+  if (flag === "L" || flag === "LL") return t("clinicalResultViewer.labFlagLow");
   return null;
 }
 
@@ -240,7 +240,7 @@ function StructuredResultBody({
 
   if (catalogItemType === "LAB_TEST") {
     const { rows, preamble, conclusion, sectionNotes } = parseLabObservationLines(raw);
-    const anyFlag = rows.some((r) => r.flag);
+    const anyUnits = rows.some((r) => Boolean(r.units?.trim()));
     const introBlock = [sectionNotes.length ? sectionNotes.map((n) => `• ${n}`).join("\n") : "", preamble].filter(Boolean).join("\n\n");
 
     const fallbackSource =
@@ -279,7 +279,7 @@ function StructuredResultBody({
     const tableBlock =
       rows.length > 0 ? (
         <div style={{ overflowX: "auto", borderRadius: 8, border: "1px solid #cfd8dc" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+          <table data-testid="lab-analyte-table" style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
             <thead>
               <tr style={{ background: "#eceff1" }}>
                 <th style={{ textAlign: "left", padding: "10px 12px", color: "#37474f", fontWeight: 700 }}>
@@ -288,46 +288,63 @@ function StructuredResultBody({
                 <th style={{ textAlign: "left", padding: "10px 12px", color: "#37474f", fontWeight: 700 }}>
                   {t("clinicalResultViewer.labTableResult")}
                 </th>
-                {anyFlag ? (
-                  <th style={{ textAlign: "center", padding: "10px 8px", color: "#546e7a", fontWeight: 600, width: 72 }}>
-                    {t("clinicalResultViewer.labTableFlag")}
-                  </th>
-                ) : null}
+                <th style={{ textAlign: "center", padding: "10px 8px", color: "#546e7a", fontWeight: 600, width: 92 }}>
+                  {t("clinicalResultViewer.labTableFlag")}
+                </th>
                 <th style={{ textAlign: "left", padding: "10px 12px", color: "#546e7a", fontWeight: 600 }}>
                   {t("clinicalResultViewer.labTableRefRange")}
                 </th>
+                {anyUnits ? (
+                  <th style={{ textAlign: "left", padding: "10px 12px", color: "#546e7a", fontWeight: 600 }}>
+                    {t("clinicalResultViewer.labTableUnits")}
+                  </th>
+                ) : null}
               </tr>
             </thead>
             <tbody>
               {rows.map((r, i) => {
                 const bg = labRowBackground(r.flag);
                 const badge = labFlagBadge(r.flag, t);
+                const critical = r.flag === "C";
                 return (
-                  <tr key={i} style={{ borderTop: "1px solid #eceff1", background: bg }}>
+                  <tr key={i} style={{ borderTop: "1px solid #eceff1", background: bg }} data-lab-flag={r.flag || ""}>
                     <td style={{ padding: "9px 12px", fontWeight: 600, color: "#263238", verticalAlign: "top" }}>{r.label}</td>
-                    <td style={{ padding: "9px 12px", whiteSpace: "pre-wrap", verticalAlign: "top" }}>{r.value}</td>
-                    {anyFlag ? (
-                      <td style={{ padding: "9px 8px", textAlign: "center", verticalAlign: "top", fontSize: 11, fontWeight: 700 }}>
-                        {badge ? (
-                          <span
-                            style={{
-                              display: "inline-block",
-                              padding: "2px 6px",
-                              borderRadius: 4,
-                              background: r.flag === "C" ? "#ffcdd2" : "#ffe0b2",
-                              color: r.flag === "C" ? "#b71c1c" : "#e65100",
-                            }}
-                          >
-                            {badge}
-                          </span>
-                        ) : (
-                          t("common.dash")
-                        )}
-                      </td>
-                    ) : null}
+                    <td
+                      style={{
+                        padding: "9px 12px",
+                        whiteSpace: "pre-wrap",
+                        verticalAlign: "top",
+                        fontWeight: critical ? 800 : 500,
+                        color: critical ? "#b71c1c" : "#263238",
+                      }}
+                    >
+                      {r.value}
+                    </td>
+                    <td style={{ padding: "9px 8px", textAlign: "center", verticalAlign: "top", fontSize: 11, fontWeight: 700 }}>
+                      {badge ? (
+                        <span
+                          style={{
+                            display: "inline-block",
+                            padding: "2px 6px",
+                            borderRadius: 4,
+                            background: critical ? "#ffcdd2" : r.flag === "H" || r.flag === "HH" ? "#ffe0b2" : "#bbdefb",
+                            color: critical ? "#b71c1c" : r.flag === "H" || r.flag === "HH" ? "#e65100" : "#1565c0",
+                          }}
+                        >
+                          {badge}
+                        </span>
+                      ) : (
+                        t("common.dash")
+                      )}
+                    </td>
                     <td style={{ padding: "9px 12px", fontSize: 12, color: "#607d8b", verticalAlign: "top" }}>
                       {r.ref?.trim() ? r.ref : t("common.dash")}
                     </td>
+                    {anyUnits ? (
+                      <td style={{ padding: "9px 12px", fontSize: 12, color: "#607d8b", verticalAlign: "top" }}>
+                        {r.units?.trim() ? r.units : t("common.dash")}
+                      </td>
+                    ) : null}
                   </tr>
                 );
               })}
@@ -405,17 +422,24 @@ function StructuredResultBody({
       </div>
     );
 
-    const sectionBlock = (heading: string, body: string, key: number) => (
-      <div key={key} style={{ marginBottom: 16 }}>
+    const sectionBlock = (heading: string, body: string, key: number) => {
+      const compact = heading
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/\s/g, "");
+      const isImpression = compact === "impression" || compact === "conclusion";
+      return (
+      <div key={key} data-testid={isImpression ? "radiology-impression-section" : "radiology-report-section"} style={{ marginBottom: 16 }}>
         <div
           style={{
             fontSize: 12,
-            fontWeight: 700,
-            color: "#006064",
+            fontWeight: 800,
+            color: isImpression ? "#4a148c" : "#006064",
             textTransform: "uppercase",
             letterSpacing: "0.04em",
             marginBottom: 8,
-            borderBottom: "1px solid #b2ebf2",
+            borderBottom: isImpression ? "2px solid #ce93d8" : "1px solid #b2ebf2",
             paddingBottom: 4,
           }}
         >
@@ -425,17 +449,19 @@ function StructuredResultBody({
           style={{
             whiteSpace: "pre-wrap",
             padding: "12px 14px",
-            background: "#fafcfd",
+            background: isImpression ? "#f3e5f5" : "#fafcfd",
             borderRadius: 8,
-            border: "1px solid #e0f2f1",
+            border: isImpression ? "1px solid #ce93d8" : "1px solid #e0f2f1",
             fontSize: 14,
             lineHeight: 1.6,
+            fontWeight: isImpression ? 600 : 400,
           }}
         >
           {body}
         </div>
       </div>
-    );
+      );
+    };
 
     if (hasSections) {
       return (

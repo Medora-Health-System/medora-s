@@ -6,6 +6,8 @@
 import {
   extractExplicitLabResultFlag,
   parseLabReferenceRange,
+  recoverJammedRadiologyHeadings,
+  recoverSmashedLabAnalyteRows,
   resolveLabParsedRowFlag,
 } from "@medora/shared";
 
@@ -182,6 +184,7 @@ export type LabParsedRow = {
   label: string;
   value: string;
   ref?: string;
+  units?: string;
   /** Indication visuelle (H/L/C) si détectée dans le texte */
   flag?: "H" | "L" | "HH" | "LL" | "C" | null;
 };
@@ -194,6 +197,23 @@ function isLabSectionHeader(line: string): boolean {
   const t = line.trim();
   if (t.length > 60) return false;
   return /^(résultats?|hémogramme|biochimie|ionogramme|hémostase|urines?|nfs|numération|bilan)\b/i.test(t);
+}
+
+/** Split trailing unit tokens from an analyte value for the Units column. */
+export function splitLabValueAndUnits(
+  value: string,
+  existingUnits?: string | null
+): { value: string; units?: string } {
+  const existing = existingUnits?.trim();
+  if (existing) {
+    const escaped = existing.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const stripped = value.replace(new RegExp(`\\s*${escaped}\\s*$`, "i"), "").trim();
+    return { value: stripped || value, units: existing };
+  }
+  const m = value.match(/^(.*?)\s+(\/?[A-Za-zµμ%][A-Za-z0-9µμ/%.^]*)$/);
+  if (!m) return { value };
+  if (/^(H|L|C|HH|LL)$/i.test(m[2])) return { value };
+  return { value: m[1].trim(), units: m[2] };
 }
 
 /** Détecte H / L / critique dans la valeur (explicit trailing flag only — not unit suffixes). */
@@ -268,12 +288,13 @@ export function parseLabObservationLines(raw: string): {
 
   const tryPushRow = (r: LabParsedRow) => {
     const { clean, flag: explicitFlag } = extractFlag(r.value);
+    const split = splitLabValueAndUnits(clean, r.units);
     const resolved = resolveLabParsedRowFlag({
-      value: clean,
+      value: split.value,
       ref: r.ref,
       explicitFlag,
     });
-    rows.push({ ...r, value: clean, flag: resolved });
+    rows.push({ ...r, value: split.value, units: split.units ?? r.units, flag: resolved });
   };
 
   for (const line of bodyLines) {
@@ -335,6 +356,26 @@ export function parseLabObservationLines(raw: string): {
     preambleParts.push(line);
   }
 
+  if (rows.length === 0) {
+    const recovered = recoverSmashedLabAnalyteRows(text);
+    for (const rec of recovered) {
+      tryPushRow({
+        label: rec.label,
+        value: rec.value,
+        ref: rec.ref,
+        units: rec.units,
+      });
+    }
+    if (recovered.length > 0) {
+      return {
+        rows,
+        preamble: "",
+        conclusion,
+        sectionNotes,
+      };
+    }
+  }
+
   return {
     rows,
     preamble: preambleParts.join("\n").trim(),
@@ -384,6 +425,11 @@ export function normalizeExamTitleFr(title: string): string {
 const RAD_HEADING_MAP: Record<string, string> = {
   indication: "Indication",
   technique: "Technique",
+  contrast: "Contraste",
+  contraste: "Contraste",
+  comparison: "Comparaison",
+  comparaison: "Comparaison",
+  examtype: "Examen",
   constatation: "Constatations",
   constatations: "Constatations",
   resultat: "Résultats",
@@ -406,12 +452,12 @@ const RAD_HEADING_MAP: Record<string, string> = {
 };
 
 const RAD_LINE_HEADING = new RegExp(
-  "^\\s*(Indication(?:\\s+clinique)?|Technique|Constatations?|Résultats?|Examen|Impression|Conclusion|Recommandation(?:s)?|Discussion|Observations?|Findings?|Compte\\s+rendu)\\s*:\\s*(.*)$",
+  "^\\s*(Indication(?:\\s+clinique)?|Technique|Contrast(?:e)?|Comparison|Comparaison|Exam\\s*Type|Constatations?|Résultats?|Examen|Impression|Conclusion|Recommandation(?:s)?|Discussion|Observations?|Findings?|Compte\\s+rendu)\\s*:\\s*(.*)$",
   "i"
 );
 
 const RAD_STANDALONE_HEADING = new RegExp(
-  "^\\s*(Indication(?:\\s+clinique)?|Technique|Constatations?|Résultats?|Examen|Impression|Conclusion|Recommandation(?:s)?|Discussion|Observations?|Findings?|Compte\\s+rendu)\\s*$",
+  "^\\s*(Indication(?:\\s+clinique)?|Technique|Contrast(?:e)?|Comparison|Comparaison|Exam\\s*Type|Constatations?|Résultats?|Examen|Impression|Conclusion|Recommandation(?:s)?|Discussion|Observations?|Findings?|Compte\\s+rendu)\\s*$",
   "i"
 );
 
@@ -426,6 +472,11 @@ function normalizeRadHeadingFr(key: string): string {
 const RAD_HEADING_MAP_EN: Record<string, string> = {
   indication: "Indication",
   technique: "Technique",
+  contrast: "Contrast",
+  contraste: "Contrast",
+  comparison: "Comparison",
+  comparaison: "Comparison",
+  examtype: "Study",
   constatation: "Findings",
   constatations: "Findings",
   resultat: "Results",
@@ -488,7 +539,7 @@ export function parseRadiologySections(
   raw: string,
   language: SupportedLanguage = "fr"
 ): { sections: RadiologySection[]; remainder: string } {
-  const text = (raw ?? "").trim();
+  const text = recoverJammedRadiologyHeadings((raw ?? "").trim());
   if (!text) return { sections: [], remainder: "" };
 
   const lines = text.split(/\r?\n/);

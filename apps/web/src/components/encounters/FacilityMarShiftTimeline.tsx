@@ -36,7 +36,10 @@ import {
   resolveMarShiftTimelineResponseTimelineLabelKey,
   type MarShiftTimelineDrawerSelection,
 } from "@/features/mar/marShiftTimelineDisplay";
-import type { MarShiftTimelineActionHandlers } from "@/features/mar/marShiftTimelineActions";
+import {
+  isRoutineMarDueAdministerShortcut,
+  type MarShiftTimelineActionHandlers,
+} from "@/features/mar/marShiftTimelineActions";
 import { FacilityMarShiftTimelineDrawer } from "./FacilityMarShiftTimelineDrawer";
 import {
   readStoredMarShiftTimelineShiftCode,
@@ -588,8 +591,11 @@ export function FacilityMarShiftTimeline({
                                   (candidate.rowKind ?? "SCHEDULED") === "SCHEDULED"
                               )?.patientDisplay ?? row.patientDisplay;
                             return (
-                              <button
+                              <div
                                 key={`${item.orderItemId}:${item.medicationDoseInstanceId || item.prnProjectionKey || item.administeredAt || item.scheduledAt || "fallback"}`}
+                                style={{ position: "relative", width: "100%", maxWidth: "100%", flexShrink: 0 }}
+                              >
+                              <button
                                 type="button"
                                 data-testid="mar-shift-timeline-cell-item"
                                 data-dose-status={item.doseStatus}
@@ -597,15 +603,23 @@ export function FacilityMarShiftTimeline({
                                 data-prn-band={item.isPrnBand ? "true" : "false"}
                                 aria-label={`${item.primaryText} ${localizedSecondary ?? item.secondaryText ?? ""} ${item.tertiaryText ?? ""}`.trim()}
                                 title={buildMarShiftTimelineItemHoverTitle(item)}
-                                onClick={() =>
+                                onClick={() => {
+                                  if (
+                                    !readOnly &&
+                                    drawerActionHandlers &&
+                                    isRoutineMarDueAdministerShortcut(item, drawerActionHandlers)
+                                  ) {
+                                    void drawerActionHandlers.onRequestAdminister(item);
+                                    return;
+                                  }
                                   setDrawerSelection({
                                     item,
                                     patientDisplay: scheduledPatientDisplay,
                                     roomLabel: row.roomLabel,
                                     governedRoomDisplay: row.governedRoomDisplay ?? null,
                                     encounterId: row.encounterId,
-                                  })
-                                }
+                                  });
+                                }}
                                 style={{
                                   display: "block",
                                   width: "100%",
@@ -832,6 +846,41 @@ export function FacilityMarShiftTimeline({
                                   </div>
                                 ) : null}
                               </button>
+                              {!readOnly ? (
+                                <button
+                                  type="button"
+                                  data-testid="mar-shift-timeline-cell-more-actions"
+                                  aria-label={t("marShiftTimeline.moreActions")}
+                                  onClick={(event) => {
+                                    event.stopPropagation();
+                                    setDrawerSelection({
+                                      item,
+                                      patientDisplay: scheduledPatientDisplay,
+                                      roomLabel: row.roomLabel,
+                                      governedRoomDisplay: row.governedRoomDisplay ?? null,
+                                      encounterId: row.encounterId,
+                                    });
+                                  }}
+                                  style={{
+                                    position: "absolute",
+                                    top: 2,
+                                    right: 2,
+                                    width: 18,
+                                    height: 18,
+                                    padding: 0,
+                                    border: "none",
+                                    borderRadius: 4,
+                                    background: "transparent",
+                                    color: "inherit",
+                                    cursor: "pointer",
+                                    fontSize: 12,
+                                    lineHeight: 1,
+                                  }}
+                                >
+                                  ⋮
+                                </button>
+                              ) : null}
+                              </div>
                             );
                           })}
                         </div>
