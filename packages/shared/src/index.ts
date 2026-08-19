@@ -185,6 +185,7 @@ export * from "./encounters/inpatientLifecycleNursingAdmissionD4a25.js";
 export * from "./encounters/inpatientProviderWorkspaceD4a26.js";
 export * from "./encounters/nursingAdmissionDomainIntegrationD4a25a.js";
 export * from "./encounters/authoritativeDomainLinkageD4a26h.js";
+export * from "./encounters/nursingAdmissionAuthoritativeWriteThroughInp2b2b.js";
 export * from "./encounters/providerClinicalSynthesisD4a26a.js";
 export * from "./encounters/clinicalSynthesisServiceD4a26b.js";
 export * from "./encounters/providerLegalRecordD4a26b.js";

@@ -75,7 +75,8 @@ describe("MEDUI.INP.2B.2A nursing admission UAT correction", () => {
     expect(shell).toContain("reconComplete");
     expect(shell).toContain("allergyReviewComplete");
     expect(shell).toContain("reviewCompletePatchForDomain");
-    expect(shell).toContain("requestVerify");
+    expect(shell).toContain('persistSection(undefined, "CONTINUE")');
+    expect(shell).toContain("classifyNursingAdmissionSaveFailure");
   });
 
   it("10 — Update reuses enterprise history editor and allergy modal", () => {
@@ -267,6 +268,10 @@ describe("MEDUI.INP.2B.2A nursing admission UAT correction", () => {
     expect(fr.inpatientAdmissionInp2b2a.conflict.body).toMatch(/session/i);
     expect(en.inpatientAdmissionInp2b2a.addNote).toMatch(/note/i);
     expect(en.inpatientAdmissionInp2b2a.preloadEmpty).toMatch(/history/i);
+    expect(en.inpatientAdmissionInp2b2a.saveNetwork).toMatch(/connection/i);
+    expect(fr.inpatientAdmissionInp2b2a.saveNetwork).toMatch(/connexion/i);
+    expect(en.inpatientAdmissionInp2b2a.saveDomainLink).not.toMatch(/AUTHORITATIVE/);
+    expect(fr.inpatientAdmissionInp2b2a.saveDomainLink).not.toMatch(/AUTHORITATIVE/);
   });
 
   it("33 — accessibility on compact cards", () => {

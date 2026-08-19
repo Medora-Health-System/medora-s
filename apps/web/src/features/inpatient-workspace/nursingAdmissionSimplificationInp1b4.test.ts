@@ -4,6 +4,7 @@ import { NURSING_ADMISSION_STAGES, NURSING_ADMISSION_SECTION_INTEGRATIONS } from
 import { formatNursingAdmissionClinicalValue } from "./NursingAdmissionPrintSummaryModal";
 
 const shell = readFileSync(new URL("./InpatientAdmissionClinicalShell.tsx", import.meta.url), "utf8");
+const chrome = readFileSync(new URL("./NursingAdmissionWorkspaceChromeInp2b1.tsx", import.meta.url), "utf8");
 const overview = readFileSync(new URL("./InpatientOverviewView.tsx", import.meta.url), "utf8");
 const activeWorkspace = readFileSync(new URL("./InpatientActiveWorkspaceView.tsx", import.meta.url), "utf8");
 const summary = readFileSync(new URL("./NursingAdmissionPrintSummaryModal.tsx", import.meta.url), "utf8");
@@ -12,7 +13,7 @@ describe("INP.1B.4 nursing admission simplification", () => {
   it("presents exactly six stages without a twenty-section navigation escape hatch", () => {
     expect(NURSING_ADMISSION_STAGES).toHaveLength(6);
     expect(shell).not.toContain("INPATIENT_ADMISSION_CLINICAL_SECTIONS.map((section");
-    expect(shell).toContain("NURSING_ADMISSION_STAGES.map");
+    expect(chrome).toContain("NURSING_ADMISSION_STAGES.map");
   });
 
   it("preserves one explicit writer or verification/projection authority for every duplicate-sensitive domain", () => {
@@ -24,7 +25,7 @@ describe("INP.1B.4 nursing admission simplification", () => {
       LINES_DRAINS_DEVICES: "DEVICE_LINE_EDOC17", EDUCATION_COMMUNICATION: "EDUCATION_EDOC22",
     } as const;
     for (const [section, authority] of Object.entries(expected)) expect(mapped.get(section as never)?.authoritativeDomain).toBe(authority);
-    expect(mapped.get("FUNCTIONAL_MOBILITY")?.authoritativeDomain).toBe("FALL_SAFETY_EDOC14");
+    expect(mapped.get("FUNCTIONAL_MOBILITY")?.authoritativeDomain).toBe("ADMISSION_OWNED");
     expect(mapped.get("IDENTITY_DEMOGRAPHICS")?.readMode).toBe("READ_ONLY_PROJECTION");
   });
 
