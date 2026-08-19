@@ -7,6 +7,7 @@ import {
   NURSING_ADMISSION_SECTION_SCHEMAS,
   allNursingSectionSchemas,
   deriveAdmissionSectionCompletion,
+  persistableAdmissionSectionCompletion,
   emptyInpatientLifecycleMeta,
   fieldIsVisible,
   mergeInpatientLifecycleMeta,
@@ -212,5 +213,61 @@ describe("D4A.2.5 nursing section schemas", () => {
         explicitState: "NOT_APPLICABLE",
       })
     ).toBe("NOT_APPLICABLE");
+    expect(
+      persistableAdmissionSectionCompletion({
+        sectionId: "PAIN",
+        answers: { painPresent: "NO" },
+        previousState: "IN_PROGRESS",
+        mode: "CONTINUE",
+      })
+    ).toBe("COMPLETE");
+    expect(
+      persistableAdmissionSectionCompletion({
+        sectionId: "PAIN",
+        answers: { painPresent: "YES" },
+        previousState: "IN_PROGRESS",
+        mode: "CONTINUE",
+      })
+    ).toBe("IN_PROGRESS");
+    expect(
+      persistableAdmissionSectionCompletion({
+        sectionId: "LINES_DRAINS_DEVICES",
+        answers: { devicesPresent: "NO" },
+        previousState: "NOT_STARTED",
+        mode: "CONTINUE",
+      })
+    ).toBe("COMPLETE");
+    expect(["NOT_STARTED", "IN_PROGRESS", "COMPLETE", "NOT_APPLICABLE", "UNABLE_TO_COMPLETE"]).toContain(
+      persistableAdmissionSectionCompletion({
+        sectionId: "PAIN",
+        answers: { painPresent: "NO" },
+        previousState: "NOT_STARTED",
+        mode: "CONTINUE",
+      })
+    );
+    expect(
+      persistableAdmissionSectionCompletion({
+        sectionId: "PAIN",
+        answers: { painPresent: "NO" },
+        previousState: "IN_PROGRESS",
+        mode: "CONTINUE",
+      })
+    ).not.toBe("CONTINUE" as never);
+    expect(
+      persistableAdmissionSectionCompletion({
+        sectionId: "PROVIDER_ADMISSION",
+        answers: { handoffStatus: "ORDERS_PENDING", providerNotifiedOfArrival: "YES" },
+        previousState: "IN_PROGRESS",
+        mode: "CONTINUE",
+      })
+    ).toBe("IN_PROGRESS");
+    expect(
+      persistableAdmissionSectionCompletion({
+        sectionId: "PROVIDER_ADMISSION",
+        answers: { handoffStatus: "PROVIDER_NOTIFIED", providerNotifiedOfArrival: "YES" },
+        previousState: "IN_PROGRESS",
+        mode: "CONTINUE",
+      })
+    ).toBe("COMPLETE");
   });
 });

@@ -40,6 +40,7 @@ import { inpatientAdmissionInp2bFr } from "./inpatientAdmissionInp2b.fr";
 import { inpatientAdmissionInp2b1Fr } from "./inpatientAdmissionInp2b1.fr";
 import { inpatientAdmissionInp2b2Fr } from "./inpatientAdmissionInp2b2.fr";
 import { inpatientAdmissionInp2b2aFr } from "./inpatientAdmissionInp2b2a.fr";
+import { inpatientAdmissionInp2b2dFr } from "./inpatientAdmissionInp2b2d.fr";
 import { inpatientNursingAssessmentInp1bFr } from "./inpatientNursingAssessmentInp1b.fr";
 import { inpatientNursingAssessmentInp2cFr } from "./inpatientNursingAssessmentInp2c.fr";
 import { inpatientReviewOrdersInp2dFr } from "./inpatientReviewOrdersInp2d.fr";
@@ -20709,6 +20710,7 @@ export default {
   inpatientAdmissionInp2b1: inpatientAdmissionInp2b1Fr,
   inpatientAdmissionInp2b2: inpatientAdmissionInp2b2Fr,
   inpatientAdmissionInp2b2a: inpatientAdmissionInp2b2aFr,
+  inpatientAdmissionInp2b2d: inpatientAdmissionInp2b2dFr,
   inpatientNursingAssessmentInp1b: inpatientNursingAssessmentInp1bFr,
   inpatientNursingAssessmentInp2c: inpatientNursingAssessmentInp2cFr,
   inpatientReviewOrdersInp2d: inpatientReviewOrdersInp2dFr,

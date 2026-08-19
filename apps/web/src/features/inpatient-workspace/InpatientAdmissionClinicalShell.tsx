@@ -3,16 +3,20 @@
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
 import {
   ADMISSION_HISTORY_VERIFICATION_STATUSES,
-  HEAD_TO_TOE_SYSTEM_KEYS,
   INPATIENT_ADMISSION_CLINICAL_SECTIONS,
   NURSING_ADMISSION_STAGES,
   computeAdmissionCompletionSummary,
-  deriveAdmissionSectionCompletion,
+  persistableAdmissionSectionCompletion,
   nursingAdmissionStageForSection,
+  nursingAdmissionMayCompleteAndSign,
+  nursingAdmissionPreloadActionIsSelected,
+  nursingAdmissionPreloadLabelKey,
+  projectNursingAdmissionStage6,
   projectNursingAdmissionOverview,
   projectNursingAdmissionRailSummary,
   resolveAuthoritativeCodeStatus,
   resolveAuthoritativeIsolation,
+  reviewCompletePatchForDomain,
   type AdmissionSectionCompletionState,
   type InpatientAdmissionClinicalSection,
   type InpatientClinicalOpsV1,
@@ -23,6 +27,7 @@ import {
 import { useI18n } from "@/lib/i18n";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import { apiFetch, asApiObject } from "@/lib/apiClient";
+import { fetchOrdersForEncounter } from "@/lib/clinicalWorklistApi";
 import { AdmissionJourneyPanel } from "@/features/hospital-care/AdmissionJourneyPanel";
 import {
   fetchInpatientClinicalOps,
@@ -54,7 +59,7 @@ import {
   type NursingAdmissionSaveFailureKind,
 } from "./nursingAdmissionSaveFailure";
 import { NursingAdmissionEnterpriseHistoryEditor, type NursingAdmissionHistoryEditorDomain } from "./NursingAdmissionEnterpriseHistoryEditor";
-import { InpatientAllergyEditorModal } from "./InpatientClinicalStatusEditors";
+import { InpatientAllergyEditorModal, InpatientCodeStatusEditorModal } from "./InpatientClinicalStatusEditors";
 
 const CANONICAL_PRELOAD_ITEM_ID: Record<string, string> = {
   MEDICAL_HISTORY: "pmh-summary",
@@ -62,28 +67,6 @@ const CANONICAL_PRELOAD_ITEM_ID: Record<string, string> = {
   HOME_MEDICATIONS: "home-meds-summary",
   ALLERGIES: "allergy-note",
 };
-
-function reviewCompletePatchForDomain(
-  domain: string | undefined,
-  status: string
-): Record<string, unknown> | null {
-  if (!domain) return null;
-  const reviewed = status === "CONFIRMED" || status === "UPDATED" || status === "UNABLE_TO_VERIFY" || status === "PATIENT_DENIES";
-  if (!reviewed) return null;
-  if (domain === "MEDICAL_HISTORY") {
-    return { historyReviewComplete: "YES", historyVerificationAction: status };
-  }
-  if (domain === "SURGICAL_HISTORY") {
-    return { surgicalReviewComplete: "YES", surgicalVerificationAction: status };
-  }
-  if (domain === "HOME_MEDICATIONS") {
-    return { reconComplete: "YES", homeMedVerificationAction: status };
-  }
-  if (domain === "ALLERGIES") {
-    return { allergyReviewComplete: "YES", allergyVerificationAction: status };
-  }
-  return null;
-}
 
 function admissionCorrelationUiEnabled(): boolean {
   const v = String(process.env.NEXT_PUBLIC_ADMISSION_CORRELATION_ENABLED ?? "")
@@ -101,6 +84,8 @@ type PreloadItem = {
     sourceType?: string;
     sourceEncounterId?: string | null;
     verified?: boolean;
+    verificationStatus?: string | null;
+    verifiedAt?: string | null;
   };
 };
 
@@ -208,10 +193,16 @@ export function InpatientAdmissionClinicalShell({
   >(null);
   const [clinicalDocumentedAt, setClinicalDocumentedAt] = useState<string | null>(null);
   const [localDraftBackup, setLocalDraftBackup] = useState<Record<string, unknown> | null>(null);
+  const [stage6Orders, setStage6Orders] = useState<unknown[]>([]);
   const [historyEditorDomain, setHistoryEditorDomain] = useState<NursingAdmissionHistoryEditorDomain | null>(null);
   const [historyEditorItemId, setHistoryEditorItemId] = useState<string | null>(null);
+  const [historyEditorSocialFocus, setHistoryEditorSocialFocus] = useState<
+    "smoking" | "alcohol" | "substances" | undefined
+  >(undefined);
+  const stage6PersistRef = useRef<string | false>(false);
   const [allergyEditorOpen, setAllergyEditorOpen] = useState(false);
   const [allergyEditorItemId, setAllergyEditorItemId] = useState<string | null>(null);
+  const [codeStatusEditorOpen, setCodeStatusEditorOpen] = useState(false);
   const [conflictDebug, setConflictDebug] = useState<{
     section: string;
     expectedVersion: number;
@@ -400,7 +391,7 @@ export function InpatientAdmissionClinicalShell({
     const previousState =
       (docRef.current.sections?.[sectionId]?.completionState as AdmissionSectionCompletionState) ??
       "NOT_STARTED";
-    const completionState = deriveAdmissionSectionCompletion({
+    const completionState = persistableAdmissionSectionCompletion({
       sectionId,
       answers: answersRef.current,
       unableReason: unableReasonRef.current,
@@ -537,6 +528,23 @@ export function InpatientAdmissionClinicalShell({
     []
   );
 
+  const persistStage6Answers = (partial: Record<string, unknown>) => {
+    const nextAnswers = { ...answersRef.current, ...partial };
+    answersRef.current = nextAnswers;
+    setAnswers(nextAnswers);
+    dirtyRef.current = true;
+    stage6PersistRef.current = false;
+    void persistSection(undefined, "DRAFT");
+  };
+
+  const stage6Projection = doc
+    ? projectNursingAdmissionStage6({
+        doc: doc as MedSurgNursingAdmissionDocV1,
+        ops: clinicalOps,
+        orders: stage6Orders,
+      })
+    : null;
+
   useEffect(() => {
     if (saveState !== "NOT_SAVED" || writeBlocked || busy) return;
     const handle = window.setTimeout(() => {
@@ -559,6 +567,22 @@ export function InpatientAdmissionClinicalShell({
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [active, encounterId]);
+
+  useEffect(() => {
+    if (active !== "PROVIDER_ADMISSION" || !facilityId) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const orders = await fetchOrdersForEncounter(facilityId, encounterId);
+        if (!cancelled) setStage6Orders(orders);
+      } catch {
+        if (!cancelled) setStage6Orders([]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [active, encounterId, facilityId]);
 
   const markDirty = (nextAnswers: Record<string, unknown>) => {
     setAnswers(nextAnswers);
@@ -629,6 +653,15 @@ export function InpatientAdmissionClinicalShell({
       if (domain === "MEDICAL_HISTORY" || domain === "SURGICAL_HISTORY" || domain === "HOME_MEDICATIONS") {
         setHistoryEditorItemId(itemId);
         setHistoryEditorDomain(domain);
+        setHistoryEditorSocialFocus(undefined);
+        return;
+      }
+      if (domain === "SMOKING" || domain === "ALCOHOL" || domain === "RECREATIONAL_DRUGS") {
+        setHistoryEditorItemId(itemId);
+        setHistoryEditorDomain("SOCIAL_HISTORY");
+        setHistoryEditorSocialFocus(
+          domain === "SMOKING" ? "smoking" : domain === "ALCOHOL" ? "alcohol" : "substances"
+        );
         return;
       }
     }
@@ -861,9 +894,28 @@ export function InpatientAdmissionClinicalShell({
               review={review}
               readOnly={writeBlocked}
               signed={signed}
+              stage6Projection={stage6Projection}
               onNavigate={goTo}
               onComplete={() => void signAdmission()}
-              completionAllowed={completionSummary?.allRequiredComplete ?? false}
+              onHandoffStatus={(status) => persistStage6Answers({ handoffStatus: status })}
+              onProviderNotified={(value) => {
+                persistStage6Answers({
+                  providerNotifiedOfArrival: value,
+                  notificationAt: value === "YES" ? new Date().toISOString() : answersRef.current.notificationAt,
+                });
+              }}
+              onOpenCodeStatus={() => setCodeStatusEditorOpen(true)}
+              onOpenHomeMedications={() => goTo("HOME_MEDICATIONS")}
+              completionAllowed={
+                Boolean(completionSummary?.allRequiredComplete) ||
+                (doc
+                  ? nursingAdmissionMayCompleteAndSign({
+                      doc: doc as MedSurgNursingAdmissionDocV1,
+                      ops: clinicalOps,
+                      orders: stage6Orders,
+                    })
+                  : false)
+              }
             />
           ) : (
             <>
@@ -889,7 +941,8 @@ export function InpatientAdmissionClinicalShell({
                   (active === "MEDICAL_HISTORY" ||
                     active === "SURGICAL_HISTORY" ||
                     active === "HOME_MEDICATIONS" ||
-                    active === "ALLERGIES")
+                    active === "ALLERGIES" ||
+                    active === "SOCIAL_HISTORY")
                 ) {
                   return (
                     <div data-testid="admission-preload-empty" style={preloadCard}>
@@ -903,6 +956,12 @@ export function InpatientAdmissionClinicalShell({
                           style={chipBtn}
                           data-testid="admission-preload-empty-update"
                           onClick={() => {
+                            if (active === "SOCIAL_HISTORY") {
+                              setHistoryEditorItemId("smoking");
+                              setHistoryEditorDomain("SOCIAL_HISTORY");
+                              setHistoryEditorSocialFocus("smoking");
+                              return;
+                            }
                             const itemId = CANONICAL_PRELOAD_ITEM_ID[active];
                             if (!itemId) return;
                             void verifyItem(itemId, "UPDATED");
@@ -916,20 +975,33 @@ export function InpatientAdmissionClinicalShell({
                 }
                 return sectionItems.map((item) => (
                   <div key={item.itemId} style={preloadCard} data-testid={`preload-${item.itemId}`}>
-                    <div style={{ fontWeight: 700, fontSize: 12 }}>{item.displayLabel}</div>
+                    <div style={{ fontWeight: 700, fontSize: 12 }}>
+                      {nursingAdmissionPreloadLabelKey(item.itemId)
+                        ? t(nursingAdmissionPreloadLabelKey(item.itemId)!)
+                        : item.displayLabel}
+                    </div>
                     <div style={{ fontSize: 12, color: "#334155" }}>{item.valueText}</div>
                     <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 6 }}>
-                      {ADMISSION_HISTORY_VERIFICATION_STATUSES.map((st) => (
+                      {ADMISSION_HISTORY_VERIFICATION_STATUSES.map((st) => {
+                        const selected = nursingAdmissionPreloadActionIsSelected({
+                          verificationStatus: item.provenance?.verificationStatus,
+                          verifiedAt: item.provenance?.verifiedAt,
+                          action: st,
+                        });
+                        return (
                         <button
                           key={st}
                           type="button"
                           disabled={busy || writeBlocked}
                           onClick={() => void verifyItem(item.itemId, st)}
-                          style={chipBtn}
+                          data-testid={`admission-preload-action-${item.itemId}-${st}`}
+                          data-selected={selected ? "true" : "false"}
+                          style={selected ? chipSelected : chipBtn}
                         >
                           {t(`hospitalAdmissionD4a1.verify.${st}`)}
                         </button>
-                      ))}
+                        );
+                      })}
                     </div>
                   </div>
                 ));
@@ -939,8 +1011,7 @@ export function InpatientAdmissionClinicalShell({
 
           {active === "NURSING_ADMISSION_ASSESSMENT" ? (
             <p style={{ fontSize: 11, color: "#64748b" }} data-testid="head-to-toe-shell">
-              {t("hospitalAdmissionD4a1.headToToe.hint")} ·{" "}
-              {HEAD_TO_TOE_SYSTEM_KEYS.length} systems
+              {t("hospitalAdmissionD4a1.headToToe.hint")}
             </p>
           ) : null}
 
@@ -1105,7 +1176,8 @@ export function InpatientAdmissionClinicalShell({
                   <li key={String(s.sectionId)}>
                     {t(`hospitalAdmissionD4a0.clinical.sections.${String(s.sectionId)}`)}
                     {" — "}
-                    {t("hospitalAdmissionD4a25a.review.projected")}: {String(s.projectedState ?? s.completionState)}
+                    {t("hospitalAdmissionD4a25a.review.projected")}:{" "}
+                    {t(`inpatientAdmissionInp2b1.status.${String(s.projectedState ?? s.completionState)}`)}
                     {" · "}
                     {t("hospitalAdmissionD4a25a.review.amendments")}: {String(s.amendmentCount ?? 0)}
                   </li>
@@ -1156,20 +1228,41 @@ export function InpatientAdmissionClinicalShell({
           onClose={() => {
             setHistoryEditorDomain(null);
             setHistoryEditorItemId(null);
+            setHistoryEditorSocialFocus(undefined);
           }}
+          socialFocus={historyEditorSocialFocus}
           onSaved={async () => {
             await reload({ preserveDirtyAnswers: dirtyRef.current });
             if (historyEditorItemId) {
               await coordinatorRef.current!.requestVerify(historyEditorItemId, "UPDATED");
-              const reviewPatch = reviewCompletePatchForDomain(historyEditorDomain, "UPDATED");
+              const domainForPatch =
+                historyEditorDomain === "SOCIAL_HISTORY"
+                  ? historyEditorSocialFocus === "alcohol"
+                    ? "ALCOHOL"
+                    : historyEditorSocialFocus === "substances"
+                      ? "RECREATIONAL_DRUGS"
+                      : "SMOKING"
+                  : historyEditorDomain;
+              const reviewPatch = reviewCompletePatchForDomain(domainForPatch ?? undefined, "UPDATED");
               if (reviewPatch) {
                 const nextAnswers = { ...answersRef.current, ...reviewPatch };
                 answersRef.current = nextAnswers;
                 setAnswers(nextAnswers);
                 dirtyRef.current = true;
-                await persistSection(undefined, "DRAFT");
+                await persistSection(undefined, "CONTINUE");
               }
             }
+          }}
+        />
+      ) : null}
+      {codeStatusEditorOpen ? (
+        <InpatientCodeStatusEditorModal
+          open={codeStatusEditorOpen}
+          onClose={() => setCodeStatusEditorOpen(false)}
+          encounterId={encounterId}
+          currentStatus={codeStatus.documented ? codeStatus.value : null}
+          onSaved={async () => {
+            await reload({ preserveDirtyAnswers: dirtyRef.current });
           }}
         />
       ) : null}
@@ -1193,7 +1286,7 @@ export function InpatientAdmissionClinicalShell({
                 answersRef.current = nextAnswers;
                 setAnswers(nextAnswers);
                 dirtyRef.current = true;
-                await persistSection(undefined, "DRAFT");
+                await persistSection(undefined, "CONTINUE");
               }
             }
           }}
@@ -1217,6 +1310,14 @@ const chipBtn: CSSProperties = {
   background: "#fff",
   fontSize: 11,
   cursor: "pointer",
+};
+
+const chipSelected: CSSProperties = {
+  ...chipBtn,
+  borderColor: "#0f766e",
+  background: "#ccfbf1",
+  color: "#115e59",
+  fontWeight: 600,
 };
 
 const navRow: CSSProperties = {

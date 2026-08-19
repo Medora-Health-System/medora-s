@@ -30,9 +30,10 @@ import {
   type InpatientAdmissionClinicalSection,
   type AdmissionWoundEntryV1,
 } from "./connectedInpatientAdmissionIntakeD4a0.js";
-import type {
-  PatientClinicalHistoryProfile,
-  PatientHistorySectionKey,
+import {
+  PATIENT_CLINICAL_HISTORY_PROFILE_VERSION,
+  type PatientClinicalHistoryProfile,
+  type PatientHistorySectionKey,
 } from "../patient/patientClinicalHistoryProfile.js";
 
 export const MEDSURG_NURSING_ADMISSION_CERTIFICATION_ID =
@@ -335,8 +336,11 @@ export function buildAdmissionPreloadFromPatientProfile(input: {
   profile: PatientClinicalHistoryProfile | null | undefined;
   sourceEncounterId?: string | null;
 }): PreloadedHistoryItemV1[] {
-  const profile = input.profile;
-  if (!profile) return [];
+  const profile = input.profile ?? {
+    version: PATIENT_CLINICAL_HISTORY_PROFILE_VERSION,
+    updatedAt: "",
+    provenance: {},
+  };
   const items: PreloadedHistoryItemV1[] = [];
   const push = (
     domain: AdmissionPreloadDomain,
@@ -346,7 +350,6 @@ export function buildAdmissionPreloadFromPatientProfile(input: {
     sectionKey: PatientHistorySectionKey
   ) => {
     const text = String(valueText ?? "").trim();
-    if (!text) return;
     const prov = profile.provenance?.[sectionKey];
     items.push({
       itemId,
@@ -391,15 +394,13 @@ export function buildAdmissionPreloadFromPatientProfile(input: {
     profile.homeMedications?.medicationsSummary,
     "homeMedications"
   );
-  const social = profile.socialHistory;
-  if (social) {
-    push("SMOKING", "smoking", "Smoking", social.smokingStatus, "socialHistory");
-    push("ALCOHOL", "alcohol", "Alcohol", social.alcoholUse, "socialHistory");
-    const drugs = [social.marijuanaUse, social.stimulantUse, social.opioidHeroinUse]
-      .filter((x) => String(x ?? "").trim())
-      .join("; ");
-    push("RECREATIONAL_DRUGS", "recreational-drugs", "Recreational substances", drugs, "socialHistory");
-  }
+  const social = profile.socialHistory ?? {};
+  push("SMOKING", "smoking", "Smoking", social.smokingStatus, "socialHistory");
+  push("ALCOHOL", "alcohol", "Alcohol", social.alcoholUse, "socialHistory");
+  const drugs = [social.marijuanaUse, social.stimulantUse, social.opioidHeroinUse]
+    .filter((x) => String(x ?? "").trim())
+    .join("; ");
+  push("RECREATIONAL_DRUGS", "recreational-drugs", "Recreational substances", drugs, "socialHistory");
 
   void mapProfileSectionToDomain;
   return items;

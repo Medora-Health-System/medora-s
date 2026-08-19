@@ -70,10 +70,6 @@ describe("MEDUI.INP.2B.2A nursing admission UAT correction", () => {
     const shell = read("InpatientAdmissionClinicalShell.tsx");
     expect(shell).toContain("requestVerify");
     expect(shell).toContain('if (status === "UPDATED")');
-    expect(shell).toContain("historyReviewComplete");
-    expect(shell).toContain("surgicalReviewComplete");
-    expect(shell).toContain("reconComplete");
-    expect(shell).toContain("allergyReviewComplete");
     expect(shell).toContain("reviewCompletePatchForDomain");
     expect(shell).toContain('persistSection(undefined, "CONTINUE")');
     expect(shell).toContain("classifyNursingAdmissionSaveFailure");

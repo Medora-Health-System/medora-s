@@ -30,6 +30,8 @@ export const inpatientAdmissionInp2b2aEn = {
   saveForbidden: "You do not have authority to change this admission section.",
   saveNotFound: "This admission record could not be found. Reload the chart and try again.",
   saveServer: "The server could not save this admission section. Try again in a moment.",
+  saveIncompleteAdmission:
+    "Nursing admission is not complete. Resolve remaining required sections before signing.",
   preloadEmpty: "No shared history is on file for this section yet. Update uses the enterprise history record.",
   historyEditor: {
     reuseHint: "This edits the shared patient history. It does not create a second Nursing Admission list.",
@@ -39,6 +41,7 @@ export const inpatientAdmissionInp2b2aEn = {
       MEDICAL_HISTORY: "Update medical history",
       SURGICAL_HISTORY: "Update surgical history",
       HOME_MEDICATIONS: "Update home medications",
+      SOCIAL_HISTORY: "Update social history",
     },
   },
 };

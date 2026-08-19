@@ -11,6 +11,7 @@ import {
   type InpatientAdmissionClinicalSection,
 } from "./connectedInpatientAdmissionIntakeD4a0.js";
 import type { MedSurgNursingAdmissionDocV1 } from "./medSurgNursingAdmissionD4a1.js";
+import { nursingAdmissionStage6HandoffIsPending } from "./nursingAdmissionStage6ProjectionInp2b2d.js";
 
 export const INPATIENT_LIFECYCLE_NURSING_ADMISSION_CERTIFICATION_ID =
   "MEDUI.INPATIENT_LIFECYCLE_NURSING_ADMISSION.D4A2_5" as const;
@@ -1108,6 +1109,26 @@ export function deriveAdmissionSectionCompletion(input: {
   if (sectionHasMeaningfulAnswers(input.answers)) return "IN_PROGRESS";
   if (input.previousState === "COMPLETE") return "COMPLETE";
   return "NOT_STARTED";
+}
+
+/**
+ * UI Save & Continue uses mode CONTINUE. The API enum must never receive "CONTINUE".
+ */
+export function persistableAdmissionSectionCompletion(
+  input: Parameters<typeof deriveAdmissionSectionCompletion>[0]
+): AdmissionSectionCompletionState {
+  const derived = deriveAdmissionSectionCompletion(input);
+  if ((derived as string) === "CONTINUE") {
+    return sectionHasMeaningfulAnswers(input.answers) ? "IN_PROGRESS" : "NOT_STARTED";
+  }
+  if (input.sectionId === "PROVIDER_ADMISSION" && derived === "COMPLETE") {
+    const notify = String(input.answers.providerNotifiedOfArrival ?? "").toUpperCase();
+    const handoff = String(input.answers.handoffStatus ?? "");
+    if (notify !== "YES" || nursingAdmissionStage6HandoffIsPending(handoff)) {
+      return "IN_PROGRESS";
+    }
+  }
+  return derived;
 }
 
 /** Opening a section must never invent clinical findings. */

@@ -12,6 +12,7 @@ export type NursingAdmissionSaveFailureKind =
   | "SERVER"
   | "AUTHORITATIVE_DOMAIN"
   | "VALIDATION"
+  | "INCOMPLETE"
   | "PRELOAD"
   | "UNKNOWN";
 
@@ -42,6 +43,20 @@ function readCode(err: unknown): string | null {
   return null;
 }
 
+function readMessage(err: unknown): string {
+  if (err instanceof Error && err.message) return err.message;
+  if (typeof err === "object" && err) {
+    const rec = err as { message?: unknown; body?: unknown };
+    if (typeof rec.message === "string") return rec.message;
+    const body = rec.body;
+    if (body && typeof body === "object") {
+      const msg = (body as { message?: unknown }).message;
+      if (typeof msg === "string") return msg;
+    }
+  }
+  return "";
+}
+
 function looksLikeNetwork(err: unknown): boolean {
   const msg = err instanceof Error ? err.message : String(err ?? "");
   return /failed to fetch|network error|err_network|econnrefused|enotfound|unable to reach the server|erreur de communication/i.test(
@@ -56,6 +71,7 @@ export function classifyNursingAdmissionSaveFailure(err: unknown): {
 } {
   const status = readStatus(err);
   const code = readCode(err);
+  const message = readMessage(err);
   if (status === 409 || code === "EXPECTED_VERSION_CONFLICT") {
     return { kind: "CONFLICT", code: code ?? "EXPECTED_VERSION_CONFLICT", status: status || 409 };
   }
@@ -77,8 +93,12 @@ export function classifyNursingAdmissionSaveFailure(err: unknown): {
   if (code === "PRELOAD_ITEM_NOT_FOUND") {
     return { kind: "PRELOAD", code, status: status || 400 };
   }
+  if (code === "INCOMPLETE_ADMISSION" || /INCOMPLETE_ADMISSION/i.test(message)) {
+    return { kind: "INCOMPLETE", code: code ?? "INCOMPLETE_ADMISSION", status: status || 400 };
+  }
   if (
     code === "SECTION_VALIDATION_FAILED" ||
+    /Invalid completionState/i.test(message) ||
     (status >= 400 && status < 500 && status !== 0)
   ) {
     return { kind: "VALIDATION", code, status };
@@ -102,6 +122,8 @@ export function nursingAdmissionSaveFailureMessageKey(
       return "inpatientAdmissionInp2b2a.saveDomainLink";
     case "VALIDATION":
       return "inpatientAdmissionInp2b2a.saveValidation";
+    case "INCOMPLETE":
+      return "inpatientAdmissionInp2b2a.saveIncompleteAdmission";
     case "PRELOAD":
       return "inpatientAdmissionInp2b2a.savePreloadConfirm";
     case "AUTH":
