@@ -43,6 +43,7 @@ export const inpatientAdmissionInp2b2aFr = {
       MEDICAL_HISTORY: "Mettre à jour les antécédents médicaux",
       SURGICAL_HISTORY: "Mettre à jour les antécédents chirurgicaux",
       HOME_MEDICATIONS: "Mettre à jour les médicaments à domicile",
+      SOCIAL_HISTORY: "Mettre à jour les antécédents sociaux",
     },
   },
 };

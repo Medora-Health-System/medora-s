@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useI18n } from "@/lib/i18n";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import {
@@ -119,16 +119,10 @@ export function InpatientWorkspacePanel({
 }) {
   const { t, language } = useI18n();
   const { facilityId, roles, userId, facilityTimeZone } = useFacilityAndRoles();
-  const [marClinicalOpsEnabled, setMarClinicalOpsEnabled] = useState(false);
 
   useEffect(() => {
-    if (section !== "medications") {
-      setMarClinicalOpsEnabled(false);
-      return;
-    }
+    if (section !== "medications") return;
     marOpenPerfMark("workspace-mar-section");
-    const timeoutId = window.setTimeout(() => setMarClinicalOpsEnabled(true), 400);
-    return () => window.clearTimeout(timeoutId);
   }, [section]);
   const enabled = workspaceEnabled ?? isInpatientWorkspaceEnabledInBrowser();
   const ordersLive = isInpatientDepartmentalOrdersEnabledInBrowser();
@@ -453,15 +447,6 @@ export function InpatientWorkspacePanel({
               latestVitalsEntry={latestVitalsEntry}
             />
           </div>
-          {marClinicalOpsEnabled ? (
-            <div style={{ marginTop: 12 }}>
-              <InpatientClinicalOpsPanel
-                encounterId={encounterId}
-                mode="medications"
-                loadEnabled={marClinicalOpsEnabled}
-              />
-            </div>
-          ) : null}
         </div>
       );
     case "consults":

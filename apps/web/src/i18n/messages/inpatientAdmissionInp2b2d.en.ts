@@ -1,0 +1,40 @@
+/** MEDUI.INP.2B.2D — Nursing Admission final convergence (EN). */
+export const inpatientAdmissionInp2b2dEn = {
+  preload: {
+    pmh: "Medical history",
+    psh: "Surgical history",
+    homeMeds: "Home medications",
+    allergies: "Allergies",
+    smoking: "Smoking",
+    alcohol: "Alcohol",
+    recreational: "Recreational substances",
+  },
+  confirmedComplete: "Confirmed",
+  source: "Source",
+  notifyArrival: "Document that the provider was notified of arrival",
+  homeMedSearch: "Search medications (at least 3 characters)",
+  homeMedFrequency: "Frequency",
+  homeMedAdd: "Add medication",
+  homeMedRemove: "Remove",
+  homeMedNoOrder: "This records home medication history. It does not create an order or a MAR dose.",
+  handoffStatus: {
+    NOT_STARTED: "Not started",
+    PROVIDER_NOTIFIED: "Provider notified",
+    ORDERS_PENDING: "Orders pending",
+    ORDERS_RECEIVED: "Orders received",
+    HP_PENDING: "Provider H&P pending (not required for nursing signature)",
+    HP_COMPLETE: "Provider H&P complete",
+    ESCALATION_REQUIRED: "Escalation required",
+  },
+  yn: {
+    YES: "Yes",
+    NO: "No",
+    UNKNOWN: "Unknown",
+  },
+  medRecon: {
+    COMPLETE: "Complete",
+    IN_PROGRESS: "In progress",
+    NOT_STARTED: "Not started",
+  },
+  codeStatusNotDocumented: "Not documented in the patient header",
+};

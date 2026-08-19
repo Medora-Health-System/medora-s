@@ -68,6 +68,8 @@ import {
   saveAdmissionSectionDraft,
   applyHistoryVerification,
   applyNurseAdmissionSignature,
+  applyStage6ProjectionAnswers,
+  projectNursingAdmissionStage6,
   createProviderAdmissionHandoff,
   computeAdmissionCompletionSummary,
   isAdmissionHistoryVerificationStatus,
@@ -250,6 +252,10 @@ export class InpatientOperationsService {
     private readonly encounterAuthority: HospitalEncounterAuthorityService,
     private readonly clinicalDocumentation: ClinicalDocumentationService
   ) {}
+
+  private clinicalLogRef(id: string): string {
+    return id.slice(0, 8);
+  }
 
   /** Map Prisma P2022 on Encounter.hospitalEpisodeId to a coded clinical-safe error. */
   private rethrowDirectAdmissionSchemaError(
@@ -2627,6 +2633,14 @@ export class InpatientOperationsService {
         unableReason: body.unableReason ?? doc.sections[sectionId]?.unableReason,
       });
       if (!validation.ok) {
+        this.logger.warn({
+          event: "SECTION_SAVE_FAILURE",
+          code: "SECTION_VALIDATION_FAILED",
+          sectionId,
+          facilityId,
+          encounterRef: this.clinicalLogRef(encounterId),
+          expectedVersion: Number(body.expectedVersion),
+        });
         throw new BadRequestException({
           code: "SECTION_VALIDATION_FAILED",
           missing: validation.missing,
@@ -2718,6 +2732,14 @@ export class InpatientOperationsService {
       clinicalDocumentedAt,
     });
     if (!result.ok) {
+      this.logger.warn({
+        event: "SECTION_SAVE_FAILURE",
+        code: result.code,
+        sectionId,
+        facilityId,
+        encounterRef: this.clinicalLogRef(encounterId),
+        expectedVersion: draftExpectedVersion,
+      });
       throw new ConflictException(result.code);
     }
 
@@ -2740,6 +2762,14 @@ export class InpatientOperationsService {
         projection.requiresDomainRecord &&
         projection.authoritativeLinkedCount === 0
       ) {
+        this.logger.warn({
+          event: "SECTION_SAVE_FAILURE",
+          code: "AUTHORITATIVE_DOMAIN_RECORD_REQUIRED",
+          sectionId,
+          facilityId,
+          encounterRef: this.clinicalLogRef(encounterId),
+          expectedVersion: draftExpectedVersion,
+        });
         throw new BadRequestException({
           code: "AUTHORITATIVE_DOMAIN_RECORD_REQUIRED",
           sectionId,
@@ -2782,6 +2812,15 @@ export class InpatientOperationsService {
       },
     });
 
+    this.logger.log({
+      event: "SECTION_SAVE_SUCCESS",
+      sectionId,
+      facilityId,
+      encounterRef: this.clinicalLogRef(encounterId),
+      expectedVersion: requestedVersion,
+      returnedVersion: result.doc.expectedVersion,
+    });
+
     return {
       documentation: result.doc,
       completion: computeAdmissionCompletionSummary(result.doc),
@@ -2807,9 +2846,24 @@ export class InpatientOperationsService {
       boot.documentation;
 
     if (Number(body.expectedVersion) !== stored.expectedVersion) {
+      this.logger.warn({
+        event: "VERIFY_PRELOAD_FAILURE",
+        code: "EXPECTED_VERSION_CONFLICT",
+        facilityId,
+        encounterRef: this.clinicalLogRef(encounterId),
+        expectedVersion: body.expectedVersion,
+        returnedVersion: stored.expectedVersion,
+      });
       throw new ConflictException("EXPECTED_VERSION_CONFLICT");
     }
     if (!isAdmissionHistoryVerificationStatus(body.status)) {
+      this.logger.warn({
+        event: "VERIFY_PRELOAD_FAILURE",
+        code: "INVALID_STATUS",
+        facilityId,
+        encounterRef: this.clinicalLogRef(encounterId),
+        expectedVersion: body.expectedVersion,
+      });
       throw new BadRequestException("Invalid verification status");
     }
     const corr = readHospitalAdmissionCorrelation(fresh.admissionSummaryJson);
@@ -2821,6 +2875,13 @@ export class InpatientOperationsService {
     });
     const idx = doc.preloadedItems.findIndex((i) => i.itemId === body.itemId);
     if (idx < 0) {
+      this.logger.warn({
+        event: "VERIFY_PRELOAD_FAILURE",
+        code: "PRELOAD_ITEM_NOT_FOUND",
+        facilityId,
+        encounterRef: this.clinicalLogRef(encounterId),
+        expectedVersion: body.expectedVersion,
+      });
       throw new BadRequestException({
         code: "PRELOAD_ITEM_NOT_FOUND",
         itemId: body.itemId,
@@ -2868,6 +2929,14 @@ export class InpatientOperationsService {
       },
     });
 
+    this.logger.log({
+      event: "VERIFY_PRELOAD_SUCCESS",
+      facilityId,
+      encounterRef: this.clinicalLogRef(encounterId),
+      expectedVersion: body.expectedVersion,
+      returnedVersion: nextDoc.expectedVersion,
+    });
+
     return { documentation: nextDoc };
   }
 
@@ -2888,14 +2957,57 @@ export class InpatientOperationsService {
     const doc = readMedSurgNursingAdmissionFromSummary(fresh.admissionSummaryJson);
     if (!doc) throw new NotFoundException("Nursing admission documentation not found");
 
-    const signed = applyNurseAdmissionSignature({
+    const opsForStage = readInpatientClinicalOpsFromAdmissionSummary(fresh.admissionSummaryJson);
+    const orderRows = await this.prisma.order.findMany({
+      where: { encounterId: enc.id, facilityId },
+      include: { items: true },
+    });
+    const orders = orderRows.map((row) => ({
+      id: row.id,
+      encounterId: row.encounterId,
+      type: row.type,
+      status: row.status,
+      items: row.items.map((item) => ({
+        id: item.id,
+        status: item.status,
+        catalogItemType: item.catalogItemType,
+      })),
+    }));
+    const projection = projectNursingAdmissionStage6({
       doc,
+      ops: opsForStage,
+      orders,
+    });
+    this.logger.log({
+      event: "STAGE6_PROJECTION",
+      sectionId: "PROVIDER_ADMISSION",
+      facilityId,
+      encounterRef: this.clinicalLogRef(encounterId),
+      satisfied: projection.nursingResponsibilitiesSatisfied,
+      handoffSource: projection.sources.handoff,
+      ordersSource: projection.sources.admissionOrders,
+      codeStatusSource: projection.sources.codeStatus,
+      reconSource: projection.sources.medicationReconciliation,
+    });
+    const prepared = projection.nursingResponsibilitiesSatisfied
+      ? applyStage6ProjectionAnswers(doc, projection)
+      : doc;
+
+    const signed = applyNurseAdmissionSignature({
+      doc: prepared,
       actorUserId,
       credentials: body.credentials ?? "RN",
       displayName: body.displayName ?? null,
       clientExpectedVersion: Number(body.expectedVersion),
     });
     if (!signed.ok) {
+      this.logger.warn({
+        event: "ADMISSION_COMPLETE_BLOCKED",
+        code: signed.code,
+        facilityId,
+        encounterRef: this.clinicalLogRef(encounterId),
+        expectedVersion: body.expectedVersion,
+      });
       if (signed.code === "EXPECTED_VERSION_CONFLICT") {
         throw new ConflictException(signed.code);
       }
@@ -2940,6 +3052,14 @@ export class InpatientOperationsService {
         event: "NURSING_ADMISSION_SIGNED",
         providerHandoffId: nextDoc.providerHandoff?.taskId ?? null,
       },
+    });
+
+    this.logger.log({
+      event: "ADMISSION_COMPLETE_SUCCESS",
+      facilityId,
+      encounterRef: this.clinicalLogRef(encounterId),
+      expectedVersion: body.expectedVersion,
+      returnedVersion: nextDoc.expectedVersion,
     });
 
     return {

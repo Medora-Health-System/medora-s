@@ -39,6 +39,7 @@ export const inpatientAdmissionInp2b2aEn = {
       MEDICAL_HISTORY: "Update medical history",
       SURGICAL_HISTORY: "Update surgical history",
       HOME_MEDICATIONS: "Update home medications",
+      SOCIAL_HISTORY: "Update social history",
     },
   },
 };

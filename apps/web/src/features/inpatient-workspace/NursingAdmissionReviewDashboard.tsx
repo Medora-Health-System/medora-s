@@ -122,15 +122,35 @@ export function NursingAdmissionReviewDashboard({
         <h4 style={{ margin: "0 0 8px", fontSize: 13 }}>{t("inpatientAdmissionInp2b2.review.handoffTitle")}</h4>
         <dl style={{ margin: 0, fontSize: 12, display: "grid", gridTemplateColumns: "160px 1fr", gap: "4px 8px" }}>
           <dt>{t("inpatientAdmissionInp2b2.review.handoffStatus")}</dt>
-          <dd style={{ margin: 0 }}>{String(handoffAnswers.handoffStatus ?? "—")}</dd>
+          <dd style={{ margin: 0 }} data-testid="stage6-handoff-status">
+            {handoffAnswers.handoffStatus
+              ? t(`inpatientAdmissionInp2b2d.handoffStatus.${String(handoffAnswers.handoffStatus)}`)
+              : t("common.dash")}
+          </dd>
           <dt>{t("inpatientAdmissionInp2b2.review.providerNotified")}</dt>
-          <dd style={{ margin: 0 }}>{String(handoffAnswers.providerNotifiedOfArrival ?? "—")}</dd>
+          <dd style={{ margin: 0 }}>
+            {handoffAnswers.providerNotifiedOfArrival
+              ? t(`inpatientAdmissionInp2b2d.yn.${String(handoffAnswers.providerNotifiedOfArrival)}`)
+              : t("common.dash")}
+          </dd>
           <dt>{t("inpatientAdmissionInp2b2.review.ordersPresent")}</dt>
-          <dd style={{ margin: 0 }}>{String(handoffAnswers.admissionOrdersPresent ?? "—")}</dd>
+          <dd style={{ margin: 0 }}>
+            {handoffAnswers.admissionOrdersPresent
+              ? t(`inpatientAdmissionInp2b2d.yn.${String(handoffAnswers.admissionOrdersPresent)}`)
+              : t("common.dash")}
+          </dd>
           <dt>{t("inpatientAdmissionInp2b2.review.codeConfirmed")}</dt>
-          <dd style={{ margin: 0 }}>{String(handoffAnswers.codeStatusConfirmed ?? "—")}</dd>
+          <dd style={{ margin: 0 }}>
+            {handoffAnswers.codeStatusConfirmed
+              ? t(`inpatientAdmissionInp2b2d.yn.${String(handoffAnswers.codeStatusConfirmed)}`)
+              : t("common.dash")}
+          </dd>
           <dt>{t("inpatientAdmissionInp2b2.review.medRecon")}</dt>
-          <dd style={{ margin: 0 }}>{String(handoffAnswers.medReconStatus ?? "—")}</dd>
+          <dd style={{ margin: 0 }}>
+            {handoffAnswers.medReconStatus
+              ? t(`inpatientAdmissionInp2b2d.medRecon.${String(handoffAnswers.medReconStatus)}`)
+              : t("common.dash")}
+          </dd>
         </dl>
         {typeof handoffAnswers.unresolvedItems === "string" && handoffAnswers.unresolvedItems.trim() ? (
           <p style={{ margin: "8px 0 0", fontSize: 12 }}>
