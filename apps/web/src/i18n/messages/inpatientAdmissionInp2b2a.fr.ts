@@ -20,7 +20,18 @@ export const inpatientAdmissionInp2b2aFr = {
     retry: "Réessayer après revue",
     discard: "Abandonner mon brouillon",
   },
-  saveFailed: "Échec de l’enregistrement. Vérifiez la connexion et réessayez.",
+  saveFailed: "Impossible d’enregistrer cette section d’admission. Votre brouillon a été conservé.",
+  saveNetwork: "Impossible de joindre le serveur. Vérifiez votre connexion et réessayez.",
+  saveDomainLink:
+    "La documentation clinique requise n’a pas pu être liée. Votre brouillon d’admission a été conservé. Réessayez ou ouvrez la documentation clinique.",
+  saveValidation:
+    "Cette section n’a pas pu être enregistrée. Vérifiez les réponses obligatoires et réessayez.",
+  savePreloadConfirm:
+    "Aucun antécédent partagé à confirmer. Utilisez Mettre à jour pour consigner les antécédents dans le dossier de l’établissement, ou confirmez une fois les antécédents présents.",
+  saveAuth: "Votre session a expiré. Reconnectez-vous pour continuer.",
+  saveForbidden: "Vous n’avez pas l’autorité pour modifier cette section d’admission.",
+  saveNotFound: "Ce dossier d’admission est introuvable. Rechargez le dossier et réessayez.",
+  saveServer: "Le serveur n’a pas pu enregistrer cette section d’admission. Réessayez dans un instant.",
   preloadEmpty:
     "Aucun antécédent partagé n’est encore consigné pour cette section. La mise à jour utilise le dossier d’antécédents de l’établissement.",
   historyEditor: {

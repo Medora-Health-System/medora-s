@@ -40,7 +40,15 @@ describe("D4A.2.5A nursing domain integration", () => {
     expect(nursingSectionIntegration("PAIN").authoritativeDomain).toBe("PAIN_EDOC13");
     expect(nursingSectionIntegration("PAIN").writeMode).toBe("EMBED_CANONICAL_EDITOR");
     expect(nursingSectionIntegration("FALL_SAFETY").edocFocusedCardId).toBe(
-      "morse_fall_risk_assessment"
+      "safety_precautions_documentation"
+    );
+    expect(nursingSectionIntegration("FUNCTIONAL_MOBILITY").authoritativeDomain).toBe(
+      "ADMISSION_OWNED"
+    );
+    expect(nursingSectionIntegration("HOME_MEDICATIONS").writeMode).toBe("VERIFY_AND_UPDATE");
+    expect(nursingSectionIntegration("LINES_DRAINS_DEVICES").writeMode).toBe("ADMISSION_ONLY");
+    expect(nursingSectionIntegration("EDUCATION_COMMUNICATION").edocFocusedCardId).toBe(
+      "patient_education_session"
     );
     expect(nursingSectionIntegration("SKIN_WOUND").badgeKey).toBe("wound");
     expect(nursingSectionIntegration("ALLERGIES").readMode).toBe("VERIFY_AND_UPDATE");

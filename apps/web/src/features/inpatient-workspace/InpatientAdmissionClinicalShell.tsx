@@ -48,6 +48,11 @@ import {
 import { ClinicalSaveStatus } from "./rapid-documentation/ClinicalRapidControls";
 import { NursingAdmissionReviewDashboard } from "./NursingAdmissionReviewDashboard";
 import { createNursingAdmissionSaveCoordinator } from "./nursingAdmissionSaveCoordinator";
+import {
+  classifyNursingAdmissionSaveFailure,
+  nursingAdmissionSaveFailureMessageKey,
+  type NursingAdmissionSaveFailureKind,
+} from "./nursingAdmissionSaveFailure";
 import { NursingAdmissionEnterpriseHistoryEditor, type NursingAdmissionHistoryEditorDomain } from "./NursingAdmissionEnterpriseHistoryEditor";
 import { InpatientAllergyEditorModal } from "./InpatientClinicalStatusEditors";
 
@@ -179,6 +184,7 @@ export function InpatientAdmissionClinicalShell({
   const [draftNote, setDraftNote] = useState("");
   const [loadError, setLoadError] = useState<string | null>(null);
   const [saveState, setSaveState] = useState<SaveUiState>("SAVED");
+  const [saveFailureKind, setSaveFailureKind] = useState<NursingAdmissionSaveFailureKind | null>(null);
   const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [review, setReview] = useState<Record<string, unknown> | null>(null);
@@ -385,6 +391,7 @@ export function InpatientAdmissionClinicalShell({
 
   const runSectionSaveImpl = useCallback(async () => {
     if (!docRef.current) {
+      setSaveFailureKind("UNKNOWN");
       setSaveState("SAVE_FAILED");
       return { ok: false as const };
     }
@@ -424,6 +431,7 @@ export function InpatientAdmissionClinicalShell({
         dirtyRef.current = false;
         setSaveState("SAVED");
         setLastSavedAt(new Date().toISOString());
+        setSaveFailureKind(null);
       } else {
         dirtyRef.current = true;
         setSaveState("NOT_SAVED");
@@ -434,11 +442,8 @@ export function InpatientAdmissionClinicalShell({
         savedAnswers,
       };
     } catch (err) {
-      const status =
-        typeof err === "object" && err && "status" in err
-          ? Number((err as { status?: number }).status)
-          : 0;
-      if (status === 409) {
+      const classified = classifyNursingAdmissionSaveFailure(err);
+      if (classified.kind === "CONFLICT") {
         setLocalDraftBackup({
           answers: answersRef.current,
           unableReason: unableReasonRef.current,
@@ -452,6 +457,7 @@ export function InpatientAdmissionClinicalShell({
         setSaveState("CONFLICT_DETECTED");
         return { ok: false as const, conflict: true };
       }
+      setSaveFailureKind(classified.kind);
       setSaveState("SAVE_FAILED");
       return { ok: false as const };
     } finally {
@@ -475,11 +481,8 @@ export function InpatientAdmissionClinicalShell({
         applyPayload(payload as never, activeRef.current, { preserveDirtyAnswers: dirtyRef.current });
         return { ok: true as const, expectedVersion: nextVersion };
       } catch (err) {
-        const statusCode =
-          typeof err === "object" && err && "status" in err
-            ? Number((err as { status?: number }).status)
-            : 0;
-        if (statusCode === 409) {
+        const classified = classifyNursingAdmissionSaveFailure(err);
+        if (classified.kind === "CONFLICT") {
           setLocalDraftBackup({
             answers: answersRef.current,
             unableReason: unableReasonRef.current,
@@ -493,6 +496,7 @@ export function InpatientAdmissionClinicalShell({
           setSaveState("CONFLICT_DETECTED");
           return { ok: false as const, conflict: true };
         }
+        setSaveFailureKind(classified.kind);
         setSaveState("SAVE_FAILED");
         return { ok: false as const };
       } finally {
@@ -641,7 +645,7 @@ export function InpatientAdmissionClinicalShell({
       answersRef.current = nextAnswers;
       setAnswers(nextAnswers);
       dirtyRef.current = true;
-      await persistSection(undefined, "DRAFT");
+      await persistSection(undefined, "CONTINUE");
     }
   };
 
@@ -651,7 +655,8 @@ export function InpatientAdmissionClinicalShell({
       const payload = await fetchNursingAdmissionReview(encounterId);
       setReview(payload.review as Record<string, unknown>);
       applyPayload(payload as never);
-    } catch {
+    } catch (err) {
+      setSaveFailureKind(classifyNursingAdmissionSaveFailure(err).kind);
       setSaveState("SAVE_FAILED");
     }
   };
@@ -668,7 +673,8 @@ export function InpatientAdmissionClinicalShell({
       });
       applyPayload(payload as never);
       await openReview();
-    } catch {
+    } catch (err) {
+      setSaveFailureKind(classifyNursingAdmissionSaveFailure(err).kind);
       setSaveState("SAVE_FAILED");
       await reload();
     } finally {
@@ -820,7 +826,7 @@ export function InpatientAdmissionClinicalShell({
 
       {saveState === "SAVE_FAILED" ? (
         <p role="alert" data-testid="admission-save-failed" style={{ color: "#b91c1c", fontSize: 12 }}>
-          {t("inpatientAdmissionInp2b2a.saveFailed")}
+          {t(nursingAdmissionSaveFailureMessageKey(saveFailureKind ?? "UNKNOWN"))}
         </p>
       ) : null}
 
