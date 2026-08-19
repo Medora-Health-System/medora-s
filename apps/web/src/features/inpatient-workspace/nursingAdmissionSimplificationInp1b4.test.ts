@@ -46,7 +46,7 @@ describe("INP.1B.4 nursing admission simplification", () => {
     expect(overview).toContain('nursing.continueAdmission');
     expect(overview).toContain('nursing.reviewAdmission');
     expect(overview).toContain('onNavigateSection?.("admission")');
-    expect(activeWorkspace).toContain('qs.set("section"');
+    expect(activeWorkspace).toContain("replaceInpatientWorkspaceSectionQuery");
   });
 
   it("renders a legal summary without raw records, identifiers, diagnostics, or field dumps", () => {

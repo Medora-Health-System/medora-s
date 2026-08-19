@@ -11,6 +11,7 @@ import {
   resolveMarShiftTimelineClinicalAction,
   resolveMarShiftTimelineColumnKey,
   resolveMarUniversalShiftTimelineDosePlacementInstant,
+  resolveMarScheduledDoseInstanceShiftCellInstant,
   resolveMarShiftTimelineDrawerActions,
   filterMarShiftTimelineDrawerActionsForDoseContext,
   resolveMarShiftTimelineWindow,
@@ -690,8 +691,8 @@ export class MarShiftTimelineService {
           : null,
       });
 
-      // MEDUI.ED.MAR.H9F.1 — universal placement certification (single resolver).
-      const placementInstant = resolveMarUniversalShiftTimelineDosePlacementInstant({
+      // MEDUI.ED.MAR.H9F.1 — universal clinical placement (annotation / infusion columns).
+      const clinicalPlacementInstant = resolveMarUniversalShiftTimelineDosePlacementInstant({
         doseStatus: parsedStatus,
         doseKind: dose.doseKind,
         scheduledAt: dose.scheduledAt,
@@ -714,11 +715,19 @@ export class MarShiftTimelineService {
           : null,
       });
 
+      const cellPlacementInstant = resolveMarScheduledDoseInstanceShiftCellInstant({
+        scheduledAt: dose.scheduledAt,
+        clinicalPlacementInstant,
+        doseKind: dose.doseKind,
+        isFluidBolus: fluidEnrichmentForPlacement?.isFluidBolus === true,
+        isContinuousFluid: fluidEnrichmentForPlacement?.isContinuousFluid === true,
+      });
+
       if (
         !doseOverlapsMarShiftTimelineWindow({
           shiftStart: shiftWindow.startAt,
           shiftEnd: shiftWindow.endAt,
-          scheduledAt: placementInstant,
+          scheduledAt: cellPlacementInstant,
           dueWindowStartAt: dose.dueWindowStartAt,
           dueWindowEndAt: dose.dueWindowEndAt,
           doseStatus: dose.doseStatus,
@@ -799,7 +808,7 @@ export class MarShiftTimelineService {
       const clinicalDoseAmount = doseDisplay.doseLabel;
 
       const columnKey = resolveMarShiftTimelineColumnKey({
-        scheduledAt: placementInstant,
+        scheduledAt: cellPlacementInstant,
         dueWindowStartAt: dose.dueWindowStartAt,
         columns,
         facilityTimeZone: shiftWindow.facilityTimeZone,
@@ -823,6 +832,7 @@ export class MarShiftTimelineService {
           enrichment,
           facilityTimeZone: shiftWindow.facilityTimeZone,
           directionsSig,
+          marAction: enrichment?.marAction ?? null,
           marNotes: administrationNotes,
         });
       primaryText = scheduledDisplay.primaryText;
@@ -869,7 +879,12 @@ export class MarShiftTimelineService {
         clinicalAction,
         referenceAt,
       });
-      secondaryText = followUpProjection.secondaryText;
+      secondaryText =
+        scheduledDisplay.secondaryText === "REFUSED" ||
+        scheduledDisplay.secondaryText === "HELD" ||
+        scheduledDisplay.secondaryText === "MISSED"
+          ? scheduledDisplay.secondaryText
+          : followUpProjection.secondaryText;
 
       const medicationResponses = followUpProjection.medicationResponses ?? [];
       const respiratoryMedicationResponses =

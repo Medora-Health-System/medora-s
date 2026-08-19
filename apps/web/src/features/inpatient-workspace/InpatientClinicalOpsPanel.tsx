@@ -13,9 +13,12 @@ import {
 export function InpatientClinicalOpsPanel({
   encounterId,
   mode,
+  loadEnabled = true,
 }: {
   encounterId: string;
   mode: "nursing" | "consults" | "carePlan" | "discharge" | "overview" | "medications";
+  /** INP.2E.1 — MAR first paint does not wait on clinical-ops. */
+  loadEnabled?: boolean;
 }) {
   const { t } = useI18n();
   const [ops, setOps] = useState<Record<string, unknown> | null>(null);
@@ -35,8 +38,9 @@ export function InpatientClinicalOpsPanel({
   }, [encounterId, t]);
 
   useEffect(() => {
+    if (!loadEnabled) return;
     void load();
-  }, [load]);
+  }, [load, loadEnabled]);
 
   const runPatch = async (patch: Record<string, unknown>) => {
     setBusy(true);

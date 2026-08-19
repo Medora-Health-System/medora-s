@@ -9,17 +9,24 @@ export type MedicationAllergyReviewProviderNoticeProps = {
   facilityId: string;
   encounterId: string;
   onReviewDetails?: () => void;
+  /** INP.2E.1 — skip history GET until enabled (timeline-first MAR). */
+  loadEnabled?: boolean;
 };
 
 export function MedicationAllergyReviewProviderNotice({
   facilityId,
   encounterId,
   onReviewDetails,
+  loadEnabled = true,
 }: MedicationAllergyReviewProviderNoticeProps) {
   const { t } = useI18n();
   const [entries, setEntries] = useState<MedicationAdministrationHistoryEntry[]>([]);
 
   useEffect(() => {
+    if (!loadEnabled) {
+      setEntries([]);
+      return;
+    }
     let cancelled = false;
     void fetchMedicationAdministrationHistory(encounterId, facilityId)
       .then((rows) => {
@@ -31,7 +38,7 @@ export function MedicationAllergyReviewProviderNotice({
     return () => {
       cancelled = true;
     };
-  }, [facilityId, encounterId]);
+  }, [facilityId, encounterId, loadEnabled]);
 
   const activeRecommendations = useMemo(() => {
     return entries.filter(

@@ -7,6 +7,7 @@ import {
 } from "@/features/mar/marShiftTimelineActions";
 import type { MarShiftTimelineCellItem } from "@/lib/marShiftTimelineApi";
 import {
+  initialMarShiftTimelineShiftCode,
   marShiftTimelineShiftStorageKey,
   readStoredMarShiftTimelineShiftCode,
   writeStoredMarShiftTimelineShiftCode,
@@ -168,7 +169,14 @@ describe("M1.8B.7K.10 — stop infusion + shift persistence", () => {
       const timeline = readSrc("components/encounters/FacilityMarShiftTimeline.tsx");
       expect(timeline).toContain("readStoredMarShiftTimelineShiftCode");
       expect(timeline).toContain("writeStoredMarShiftTimelineShiftCode");
+      expect(timeline).toContain("initialMarShiftTimelineShiftCode");
       expect(timeline).toContain("viewerUserId");
+    });
+
+    it("initialMarShiftTimelineShiftCode prefers stored shift", () => {
+      writeStoredMarShiftTimelineShiftCode(facilityA, userA, "7P_7A");
+      expect(initialMarShiftTimelineShiftCode(facilityA, userA, "7A_7P")).toBe("7P_7A");
+      expect(initialMarShiftTimelineShiftCode(facilityA, "", "7A_7P")).toBe("7A_7P");
     });
   });
 });

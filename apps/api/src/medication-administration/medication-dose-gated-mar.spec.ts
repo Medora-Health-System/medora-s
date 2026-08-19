@@ -206,4 +206,39 @@ describe("MedicationAdministrationService dose-gated MAR harness (M1.8B.7I.2)", 
     expectOrderLineCompleted(orderItemUpdate);
     expect(orderItemUpdate.mock.calls[0]?.[0]?.data?.status).toBe(OrderStatus.COMPLETED);
   });
+
+  it("persists requested dose instance id when gated flag is OFF", async () => {
+    process.env.MEDICATION_SCHEDULING_V1 = "true";
+    process.env.MEDICATION_DOSE_INSTANCES = "true";
+    delete process.env.MEDICATION_DOSE_GATED_MAR;
+
+    const catalog = makeMarTestCatalog();
+    const orderItem = makeMarTestOrderItem({ catalogItemId: catalog.id, notes: "frequency:BID" });
+    const doseInstance = makeDoseInstance();
+    const base = buildMarAdministrationTestHarness({ catalog, orderItem });
+    const doseFindFirst = jest.fn().mockResolvedValue(doseInstance);
+    const doseUpdate = jest.fn();
+    const prisma = base.prisma as Record<string, unknown>;
+    prisma.medicationDoseInstance = {
+      findFirst: doseFindFirst,
+      update: doseUpdate,
+    };
+
+    await base.service.create("enc-1", "fac-1", "nurse-1", {
+      orderItemId: String(orderItem.id),
+      medicationDoseInstanceId: doseInstance.id,
+      marAction: "administered",
+      administeredQuantity: 1,
+      administeredAt: doseInstance.scheduledAt,
+    });
+
+    expect(base.marCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          medicationDoseInstanceId: doseInstance.id,
+        }),
+      })
+    );
+    expect(doseUpdate).not.toHaveBeenCalled();
+  });
 });

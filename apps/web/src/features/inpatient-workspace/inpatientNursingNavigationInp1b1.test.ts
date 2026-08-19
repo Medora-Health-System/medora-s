@@ -41,7 +41,7 @@ describe("INP.1B.1 shared inpatient nursing navigation", () => {
     expect(sections).toContain('nursingadmission: "admission"');
     expect(sections).toContain('nursingassessment: "nursing"');
     expect(view).toContain("resolveInpatientWorkspaceSection");
-    expect(view).toContain('qs.set("section"');
+    expect(view).toContain("replaceInpatientWorkspaceSectionQuery");
   });
 
   it("routes to existing admission and native assessment engines for the same encounter", () => {

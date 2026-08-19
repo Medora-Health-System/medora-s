@@ -12,6 +12,15 @@ export function marShiftTimelineShiftStorageKey(facilityId: string, userId: stri
   return `medora.marShiftTimeline.shiftCode.${facilityId}.${userId}`;
 }
 
+export function initialMarShiftTimelineShiftCode(
+  facilityId: string,
+  userId?: string | null,
+  fallback: MarShiftTimelineShiftCode = "7A_7P"
+): MarShiftTimelineShiftCode {
+  if (!userId?.trim()) return fallback;
+  return readStoredMarShiftTimelineShiftCode(facilityId, userId) ?? fallback;
+}
+
 export function readStoredMarShiftTimelineShiftCode(
   facilityId: string,
   userId: string

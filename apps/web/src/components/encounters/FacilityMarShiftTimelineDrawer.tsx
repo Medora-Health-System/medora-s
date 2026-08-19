@@ -42,6 +42,8 @@ import {
 import { extractMarSaveErrorMessage } from "@/features/mar/marSaveErrorMessage";
 import { MedicationDoseScheduleAdjustmentModal } from "@/components/mar/MedicationDoseScheduleAdjustmentModal";
 import { MedicationScheduleAdjustmentChainViewer } from "@/components/mar/MedicationScheduleAdjustmentChainViewer";
+import { MarAdministrationRowCorrectionControls } from "@/components/mar/MarAdministrationRowCorrectionControls";
+import type { MedicationAdministrationHistoryEntry } from "@medora/shared";
 import { MedicationTimingOverrideJustificationPanel } from "@/components/mar/MedicationTimingOverrideJustificationPanel";
 import { MedicationFollowUpPanel } from "@/components/mar/MedicationFollowUpPanel";
 import { ContinuousInfusionRuntimePanel } from "@/components/mar/ContinuousInfusionRuntimePanel";
@@ -69,6 +71,12 @@ export type FacilityMarShiftTimelineDrawerProps = {
   actionHandlers?: MarShiftTimelineActionHandlers | null;
   onClose: () => void;
   onActionSuccess?: () => void | Promise<void>;
+  historyEntries?: MedicationAdministrationHistoryEntry[];
+  canAdjustAdminTime?: boolean;
+  encounterClinicalMutationsAllowed?: boolean;
+  onCorrectionUiOpenChange?: (open: boolean) => void;
+  onOpenTimeCorrection?: (administrationId: string) => void;
+  onCorrectionSaved?: () => Promise<void>;
 };
 
 function actionLabelKey(action: MarShiftTimelineDrawerAction): string {
@@ -84,6 +92,12 @@ export function FacilityMarShiftTimelineDrawer({
   actionHandlers = null,
   onClose,
   onActionSuccess,
+  historyEntries = [],
+  canAdjustAdminTime = false,
+  encounterClinicalMutationsAllowed = false,
+  onCorrectionUiOpenChange,
+  onOpenTimeCorrection,
+  onCorrectionSaved,
 }: FacilityMarShiftTimelineDrawerProps) {
   const { t, language } = useI18n();
   const marActionErrorFallback = t("marShiftTimeline.actionError");
@@ -108,6 +122,15 @@ export function FacilityMarShiftTimelineDrawer({
   const [reasonTimingReasonDetail, setReasonTimingReasonDetail] = useState("");
   const [documentedAtIso, setDocumentedAtIso] = useState(() => new Date().toISOString());
   const [scheduleModalOpen, setScheduleModalOpen] = useState(false);
+  const administrationId = item?.medicationAdministrationId?.trim() || "";
+
+  useEffect(() => {
+    const open = Boolean(administrationId);
+    onCorrectionUiOpenChange?.(open);
+    return () => {
+      onCorrectionUiOpenChange?.(false);
+    };
+  }, [administrationId, onCorrectionUiOpenChange]);
 
   const readOnly = item ? isMarShiftTimelineDrawerReadOnly(item) : false;
   const scheduledActionable = item ? isMarShiftTimelineDrawerScheduledActionable(item) : false;
@@ -1060,6 +1083,36 @@ export function FacilityMarShiftTimelineDrawer({
             <MedicationScheduleAdjustmentChainViewer
               steps={item.scheduleAdjustmentChain}
               facilityTimeZone={facilityTimeZone}
+            />
+          ) : null}
+
+          {administrationId && encounterId?.trim() && facilityId?.trim() ? (
+            <MarAdministrationRowCorrectionControls
+              row={{
+                id: administrationId,
+                medicationLabelSnapshot: item.medicationLabel,
+                doseValue: item.doseDisplay?.doseLabel ?? null,
+                doseUnit: null,
+                route: item.route,
+                marAction: item.marAction,
+                notes: item.administrationNotes ?? null,
+                infusionPhase: null,
+              }}
+              medicationLabel={item.medicationLabel ?? item.primaryText}
+              encounterId={encounterId}
+              facilityId={facilityId}
+              facilityTimeZone={facilityTimeZone}
+              language={language}
+              encounterOpen={encounterClinicalMutationsAllowed}
+              canAdjust={canAdjustAdminTime}
+              readOnly={readOnly}
+              historyEntries={historyEntries}
+              t={t}
+              onOpenTimeCorrection={() => onOpenTimeCorrection?.(administrationId)}
+              onSaved={async () => {
+                await onCorrectionSaved?.();
+                await onActionSuccess?.();
+              }}
             />
           ) : null}
 

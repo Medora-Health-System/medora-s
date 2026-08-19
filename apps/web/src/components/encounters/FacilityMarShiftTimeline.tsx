@@ -39,6 +39,7 @@ import {
 import type { MarShiftTimelineActionHandlers } from "@/features/mar/marShiftTimelineActions";
 import { FacilityMarShiftTimelineDrawer } from "./FacilityMarShiftTimelineDrawer";
 import {
+  initialMarShiftTimelineShiftCode,
   readStoredMarShiftTimelineShiftCode,
   writeStoredMarShiftTimelineShiftCode,
 } from "@/lib/marShiftTimelineUiState";
@@ -47,6 +48,8 @@ import {
   resolveFacilityLocalToday,
   shouldUseExplicitMarShiftWindow,
 } from "@/lib/marHistoricalTimeline";
+import { marShiftTimelineHasVisibleMedicationCell } from "@/features/mar/marTimelineFirstLoad";
+import { marOpenPerfMark } from "@/lib/marOpenPerfAudit";
 
 const DEFAULT_SHIFT_CODE: MarShiftTimelineShiftCode = "7A_7P";
 const HEADER_CLOCK_REFRESH_MS = 60_000;
@@ -79,6 +82,15 @@ export type FacilityMarShiftTimelineProps = {
   ) => void;
   /** Flatter layout when nested inside ED MAR card (no duplicate chrome). */
   embedded?: boolean;
+  /** First successful timeline payload (INP.2E.1 first-paint). */
+  onReady?: (info: { hasMedicationCell: boolean }) => void;
+  /** INP.2E.1 — on-demand administration correction/history (not first paint). */
+  correctionHistoryEntries?: import("@medora/shared").MedicationAdministrationHistoryEntry[];
+  canAdjustAdminTime?: boolean;
+  encounterClinicalMutationsAllowed?: boolean;
+  onCorrectionUiOpenChange?: (open: boolean) => void;
+  onOpenTimeCorrection?: (administrationId: string) => void;
+  onCorrectionSaved?: () => Promise<void>;
 };
 
 type DrawerSelection = MarShiftTimelineDrawerSelection;
@@ -98,11 +110,23 @@ export function FacilityMarShiftTimeline({
   onRegisterCloseDrawer,
   onRegisterReopenDrawer,
   embedded = false,
+  onReady,
+  correctionHistoryEntries,
+  canAdjustAdminTime = false,
+  encounterClinicalMutationsAllowed = false,
+  onCorrectionUiOpenChange,
+  onOpenTimeCorrection,
+  onCorrectionSaved,
 }: FacilityMarShiftTimelineProps) {
   const { t, language } = useI18n();
   const dateLocale = language === "en" ? "en-US" : "fr-FR";
   const shiftHydratedRef = useRef(false);
-  const [shiftCode, setShiftCode] = useState<MarShiftTimelineShiftCode>(DEFAULT_SHIFT_CODE);
+  const firstReadyNotifiedRef = useRef(false);
+  const onReadyRef = useRef(onReady);
+  onReadyRef.current = onReady;
+  const [shiftCode, setShiftCode] = useState<MarShiftTimelineShiftCode>(() =>
+    initialMarShiftTimelineShiftCode(facilityId, viewerUserId, DEFAULT_SHIFT_CODE)
+  );
   const [data, setData] = useState<MarShiftTimelineResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -122,7 +146,8 @@ export function FacilityMarShiftTimeline({
 
   useEffect(() => {
     shiftHydratedRef.current = false;
-  }, [facilityId, viewerUserId]);
+    firstReadyNotifiedRef.current = false;
+  }, [facilityId, encounterId, viewerUserId]);
 
   useEffect(() => {
     if (shiftHydratedRef.current || !facilityId.trim() || !viewerUserId?.trim()) return;
@@ -163,6 +188,7 @@ export function FacilityMarShiftTimeline({
     setLoading(true);
     setError(false);
     try {
+      marOpenPerfMark("timeline-request");
       const response = await fetchMarShiftTimeline({
         facilityId,
         encounterId,
@@ -176,6 +202,13 @@ export function FacilityMarShiftTimeline({
         includeUpcoming: true,
       });
       setData(response);
+      const hasMedicationCell = marShiftTimelineHasVisibleMedicationCell(response);
+      if (!firstReadyNotifiedRef.current) {
+        firstReadyNotifiedRef.current = true;
+        marOpenPerfMark("timeline-ready");
+        if (hasMedicationCell) marOpenPerfMark("first-medication-cell");
+        onReadyRef.current?.({ hasMedicationCell });
+      }
       if (reopenDrawer) {
         const found = findMarShiftTimelineCellItem(response, reopenDrawer);
         setDrawerSelection(
@@ -865,6 +898,12 @@ export function FacilityMarShiftTimeline({
         onActionSuccess={async () => {
           await loadTimeline();
         }}
+        historyEntries={correctionHistoryEntries}
+        canAdjustAdminTime={canAdjustAdminTime}
+        encounterClinicalMutationsAllowed={encounterClinicalMutationsAllowed}
+        onCorrectionUiOpenChange={onCorrectionUiOpenChange}
+        onOpenTimeCorrection={onOpenTimeCorrection}
+        onCorrectionSaved={onCorrectionSaved}
       />
     </section>
   );

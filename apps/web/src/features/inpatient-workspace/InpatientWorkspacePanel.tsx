@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { useI18n } from "@/lib/i18n";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import {
@@ -40,6 +41,8 @@ import { EnterpriseInterdisciplinaryCarePlansD4b6 } from "@/features/clinical-do
 import { EnterpriseCaseManagementDischargePlanningD4b7 } from "@/features/clinical-documentation/EnterpriseCaseManagementDischargePlanningD4b7";
 import { EnterpriseProviderClinicalWorkspaceD4b8 } from "@/features/clinical-documentation/EnterpriseProviderClinicalWorkspaceD4b8";
 import { ClinicalAvailabilityBanner } from "./rapid-documentation/ClinicalRapidControls";
+import type { VitalsHistoryEntry } from "@/lib/encounterClinicalSafetyUi";
+import { marOpenPerfMark } from "@/lib/marOpenPerfAudit";
 
 export type InpatientWorkspaceEncounterLite = {
   id: string;
@@ -94,6 +97,7 @@ export function InpatientWorkspacePanel({
   room,
   codeStatus,
   isolation,
+  latestVitalsEntry,
 }: {
   section: InpatientWorkspaceSection;
   encounterId: string;
@@ -111,9 +115,21 @@ export function InpatientWorkspacePanel({
   room?: string | null;
   codeStatus?: string | null;
   isolation?: string[] | null;
+  latestVitalsEntry?: VitalsHistoryEntry | null;
 }) {
   const { t, language } = useI18n();
   const { facilityId, roles, userId, facilityTimeZone } = useFacilityAndRoles();
+  const [marClinicalOpsEnabled, setMarClinicalOpsEnabled] = useState(false);
+
+  useEffect(() => {
+    if (section !== "medications") {
+      setMarClinicalOpsEnabled(false);
+      return;
+    }
+    marOpenPerfMark("workspace-mar-section");
+    const timeoutId = window.setTimeout(() => setMarClinicalOpsEnabled(true), 400);
+    return () => window.clearTimeout(timeoutId);
+  }, [section]);
   const enabled = workspaceEnabled ?? isInpatientWorkspaceEnabledInBrowser();
   const ordersLive = isInpatientDepartmentalOrdersEnabledInBrowser();
   const marLive = isInpatientMarEnabledInBrowser();
@@ -424,8 +440,7 @@ export function InpatientWorkspacePanel({
           <p style={{ margin: "0 0 10px", fontSize: 12, color: "#64748b" }}>
             {t("inpatientD3e.medications.continuationHint")}
           </p>
-          <InpatientClinicalOpsPanel encounterId={encounterId} mode="medications" />
-          <div style={{ marginTop: 12 }}>
+          <div style={{ marginTop: 0 }}>
             <MedicationAdministrationTab
               encounterId={encounterId}
               facilityId={facilityId}
@@ -435,8 +450,18 @@ export function InpatientWorkspacePanel({
               roleCodes={roles}
               facilityTimeZone={facilityTimeZone}
               embeddedWorkspaceLayout
+              latestVitalsEntry={latestVitalsEntry}
             />
           </div>
+          {marClinicalOpsEnabled ? (
+            <div style={{ marginTop: 12 }}>
+              <InpatientClinicalOpsPanel
+                encounterId={encounterId}
+                mode="medications"
+                loadEnabled={marClinicalOpsEnabled}
+              />
+            </div>
+          ) : null}
         </div>
       );
     case "consults":

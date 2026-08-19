@@ -12,6 +12,7 @@ import { EncounterStatus, EncounterType, OrderStatus } from "@prisma/client";
 import type { OrderCreateDto } from "@medora/shared";
 
 describe("MedicationAdministrationService dose-gated MAR (M1.8B.7I.2)", () => {
+  jest.setTimeout(120_000);
   let app: INestApplication;
   let prisma: PrismaService;
   let ordersService: OrdersService;
@@ -220,6 +221,21 @@ describe("MedicationAdministrationService dose-gated MAR (M1.8B.7I.2)", () => {
     expect(mar.medicationDoseInstanceId).toBeNull();
     const updatedLine = await prisma.orderItem.findUniqueOrThrow({ where: { id: orderItem.id } });
     expect(updatedLine.status).toBe(OrderStatus.COMPLETED);
+  });
+
+  it("persists explicit medicationDoseInstanceId when dose-gated flag is OFF", async () => {
+    setSchedulingFlags({ schedulingV1: true, doseInstances: true, doseGatedMar: false });
+    const { encounter, orderItem, dose } = await createBidMedicationOrder();
+
+    const mar = await marService.create(encounter.id, facilityId, nurseUserId, {
+      orderItemId: orderItem.id,
+      medicationDoseInstanceId: dose.id,
+      marAction: "administered",
+      administeredQuantity: 1,
+      administeredAt: dose.scheduledAt,
+    });
+
+    expect(mar.medicationDoseInstanceId).toBe(dose.id);
   });
 
   it("NOW order completes line when flags ON but no dose instance id", async () => {

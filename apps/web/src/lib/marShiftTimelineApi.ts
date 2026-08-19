@@ -133,6 +133,8 @@ export type MarShiftTimelineCellItem = {
     dismissedAt?: string | null;
   }>;
   medicationAdministrationId?: string | null;
+  marAction?: string | null;
+  administrationNotes?: string | null;
   medicationResponses?: Array<{
     responseCode: string;
     responseDetail: string | null;
