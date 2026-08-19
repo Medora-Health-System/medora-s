@@ -38,6 +38,7 @@ export function NursingAdmissionReviewDashboard({
   signed,
   onNavigate,
   onComplete,
+  onDocumentProviderNotified,
   completionAllowed,
 }: {
   doc: MedSurgNursingAdmissionDocV1 | null | undefined;
@@ -46,6 +47,7 @@ export function NursingAdmissionReviewDashboard({
   signed?: boolean;
   onNavigate: (sectionId: InpatientAdmissionClinicalSection) => void;
   onComplete: () => void;
+  onDocumentProviderNotified?: () => void;
   completionAllowed?: boolean;
 }) {
   const { t } = useI18n();
@@ -126,12 +128,29 @@ export function NursingAdmissionReviewDashboard({
             {handoffAnswers.handoffStatus
               ? t(`inpatientAdmissionInp2b2d.handoffStatus.${String(handoffAnswers.handoffStatus)}`)
               : t("common.dash")}
+            {handoffAnswers.handoffStatus === "ORDERS_PENDING" ||
+            handoffAnswers.handoffStatus === "HP_PENDING" ||
+            handoffAnswers.handoffStatus === "NOT_STARTED" ? (
+              <span style={{ display: "block", color: "#64748b", fontSize: 11 }}>
+                {t("inpatientAdmissionInp2b2d.pendingProjection")}
+              </span>
+            ) : null}
           </dd>
           <dt>{t("inpatientAdmissionInp2b2.review.providerNotified")}</dt>
           <dd style={{ margin: 0 }}>
             {handoffAnswers.providerNotifiedOfArrival
               ? t(`inpatientAdmissionInp2b2d.yn.${String(handoffAnswers.providerNotifiedOfArrival)}`)
               : t("common.dash")}
+            {handoffAnswers.providerNotifiedOfArrival !== "YES" && !readOnly && !signed && onDocumentProviderNotified ? (
+              <button
+                type="button"
+                data-testid="stage6-document-provider-notified"
+                onClick={onDocumentProviderNotified}
+                style={{ marginLeft: 8, fontSize: 12 }}
+              >
+                {t("inpatientAdmissionInp2b2d.notifyArrival")}
+              </button>
+            ) : null}
           </dd>
           <dt>{t("inpatientAdmissionInp2b2.review.ordersPresent")}</dt>
           <dd style={{ margin: 0 }}>

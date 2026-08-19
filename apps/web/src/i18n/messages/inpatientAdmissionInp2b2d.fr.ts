@@ -10,6 +10,7 @@ export const inpatientAdmissionInp2b2dFr = {
     recreational: "Substances récréatives",
   },
   confirmedComplete: "Confirmé",
+  pendingProjection: "Projection en attente — ce n’est pas une transmission terminée",
   source: "Source",
   notifyArrival: "Consignez que le médecin a été notifié de l’arrivée",
   homeMedSearch: "Rechercher un médicament (au moins 3 caractères)",

@@ -201,7 +201,7 @@ export function InpatientAdmissionClinicalShell({
   const [historyEditorSocialFocus, setHistoryEditorSocialFocus] = useState<
     "smoking" | "alcohol" | "substances" | undefined
   >(undefined);
-  const stage6PersistRef = useRef(false);
+  const stage6PersistRef = useRef<string | false>(false);
   const [allergyEditorOpen, setAllergyEditorOpen] = useState(false);
   const [allergyEditorItemId, setAllergyEditorItemId] = useState<string | null>(null);
   const [conflictDebug, setConflictDebug] = useState<{
@@ -567,18 +567,17 @@ export function InpatientAdmissionClinicalShell({
           ops: clinicalOps,
           orders,
         });
-        if (!projection.nursingResponsibilitiesSatisfied) return;
-        const already =
-          doc.sections?.PROVIDER_ADMISSION?.completionState === "COMPLETE" &&
-          String((doc.sections?.PROVIDER_ADMISSION?.answers as Record<string, unknown> | undefined)?.handoffStatus ?? "") ===
-            projection.answers.handoffStatus;
-        if (already) return;
-        stage6PersistRef.current = true;
+        const fingerprint = JSON.stringify(projection.answers);
+        if (stage6PersistRef.current === fingerprint) return;
+        stage6PersistRef.current = fingerprint;
         const nextAnswers = { ...answersRef.current, ...projection.answers };
         answersRef.current = nextAnswers;
         setAnswers(nextAnswers);
         dirtyRef.current = true;
-        const ok = await persistSection(undefined, "CONTINUE");
+        const ok = await persistSection(
+          undefined,
+          projection.nursingResponsibilitiesSatisfied ? "CONTINUE" : "DRAFT"
+        );
         if (!ok) stage6PersistRef.current = false;
       } catch {
         stage6PersistRef.current = false;
@@ -901,6 +900,17 @@ export function InpatientAdmissionClinicalShell({
               signed={signed}
               onNavigate={goTo}
               onComplete={() => void signAdmission()}
+              onDocumentProviderNotified={() => {
+                const nextAnswers = {
+                  ...answersRef.current,
+                  providerNotifiedOfArrival: "YES",
+                };
+                answersRef.current = nextAnswers;
+                setAnswers(nextAnswers);
+                dirtyRef.current = true;
+                stage6PersistRef.current = false;
+                void persistSection(undefined, "DRAFT");
+              }}
               completionAllowed={
                 Boolean(completionSummary?.allRequiredComplete) ||
                 (doc

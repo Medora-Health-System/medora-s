@@ -1,6 +1,8 @@
 /**
  * MEDUI.INP.2B.2D — Stage 6 is a projection of existing authorities.
  * Does not create a second handoff, order, code-status, or medication-reconciliation engine.
+ *
+ * Completion is NOT granted merely because fallback display strings are populated.
  */
 
 import { INPATIENT_ADMISSION_CLINICAL_SECTIONS } from "./connectedInpatientAdmissionIntakeD4a0.js";
@@ -11,6 +13,13 @@ import type { MedSurgNursingAdmissionDocV1 } from "./medSurgNursingAdmissionD4a1
 import { computeAdmissionCompletionSummary } from "./medSurgNursingAdmissionD4a1.js";
 
 const STAGE6_SECTION = "PROVIDER_ADMISSION" as const;
+
+/** Pending handoff projections — never treat as a completed handoff. */
+export const NURSING_ADMISSION_STAGE6_PENDING_HANDOFF = [
+  "NOT_STARTED",
+  "ORDERS_PENDING",
+  "HP_PENDING",
+] as const;
 
 export type NursingAdmissionStage6Answers = {
   handoffStatus: string;
@@ -23,14 +32,16 @@ export type NursingAdmissionStage6Answers = {
 export type NursingAdmissionStage6Projection = {
   answers: NursingAdmissionStage6Answers;
   sources: {
-    handoff: "providerHandoff" | "assessmentNotify" | "admissionOrders" | "nursingReady";
+    handoff: "providerHandoff" | "assessmentNotify" | "pendingProjection";
     providerNotified: "nursingAdmissionAssessment" | "explicit" | "unknown";
     admissionOrders: "enterpriseOrderEngine";
     codeStatus: "inpatientClinicalOpsV1" | "NOT_DOCUMENTED";
-    medicationReconciliation: "homeMedicationsSection" | "clinicalOpsRecon" | "notStarted";
+    medicationReconciliation: "homeMedicationsReconComplete" | "clinicalOpsReconIncomplete" | "notStarted";
   };
+  /** True only when nursing Stage-6 duties are actually met — not when placeholders are filled. */
   nursingResponsibilitiesSatisfied: boolean;
   providerHpRequired: false;
+  handoffIsPendingProjection: boolean;
 };
 
 function yn(raw: unknown): "YES" | "NO" | "UNKNOWN" | null {
@@ -71,6 +82,15 @@ export function nursingAdmissionQualifyingOrdersPresent(orders: unknown[]): bool
   });
 }
 
+export function nursingAdmissionStage6HandoffIsPending(status: string | null | undefined): boolean {
+  return (NURSING_ADMISSION_STAGE6_PENDING_HANDOFF as readonly string[]).includes(String(status ?? ""));
+}
+
+function homeMedReconAuthoritativelyComplete(doc: MedSurgNursingAdmissionDocV1): boolean {
+  const homeMed = (doc.sections.HOME_MEDICATIONS?.answers ?? {}) as Record<string, unknown>;
+  return String(homeMed.reconComplete ?? "").toUpperCase() === "YES";
+}
+
 export function projectNursingAdmissionStage6(input: {
   doc: MedSurgNursingAdmissionDocV1;
   ops: InpatientClinicalOpsV1 | null | undefined;
@@ -81,9 +101,9 @@ export function projectNursingAdmissionStage6(input: {
     unknown
   >;
   const existing = (input.doc.sections.PROVIDER_ADMISSION?.answers ?? {}) as Record<string, unknown>;
-  const notifiedFromAssessment =
-    yn(assessment.providerNotified) ?? yn(assessment.urgentProviderNotification);
+  const notifiedFromAssessment = yn(assessment.providerNotified);
   const notifiedExplicit = yn(existing.providerNotifiedOfArrival);
+  // Never infer notification from orders or from unrelated urgent-concern flags.
   const providerNotifiedOfArrival: "YES" | "NO" | "UNKNOWN" =
     notifiedFromAssessment ?? notifiedExplicit ?? "UNKNOWN";
 
@@ -93,33 +113,28 @@ export function projectNursingAdmissionStage6(input: {
   const code = resolveAuthoritativeCodeStatus(input.ops);
   const codeStatusConfirmed: "YES" | "NO" | "UNKNOWN" = code.documented ? "YES" : "UNKNOWN";
 
-  const homeMed = (input.doc.sections.HOME_MEDICATIONS?.answers ?? {}) as Record<string, unknown>;
-  const homeComplete =
-    input.doc.sections.HOME_MEDICATIONS?.completionState === "COMPLETE" ||
-    String(homeMed.reconComplete ?? "") === "YES";
-  const opsRecon = Array.isArray(input.ops?.medicationReconciliation)
+  const reconComplete = homeMedReconAuthoritativelyComplete(input.doc);
+  const opsReconRows = Array.isArray(input.ops?.medicationReconciliation)
     ? input.ops!.medicationReconciliation!.length > 0
     : false;
-  const medReconStatus: "COMPLETE" | "IN_PROGRESS" | "NOT_STARTED" = homeComplete
+  const medReconStatus: "COMPLETE" | "IN_PROGRESS" | "NOT_STARTED" = reconComplete
     ? "COMPLETE"
-    : opsRecon
+    : opsReconRows
       ? "IN_PROGRESS"
       : "NOT_STARTED";
 
-  let handoffStatus = "PROVIDER_NOTIFIED";
-  let handoffSource: NursingAdmissionStage6Projection["sources"]["handoff"] = "nursingReady";
+  let handoffStatus = "ORDERS_PENDING";
+  let handoffSource: NursingAdmissionStage6Projection["sources"]["handoff"] = "pendingProjection";
   if (input.doc.providerHandoff) {
-    handoffStatus = "PROVIDER_NOTIFIED";
+    const raw = String(input.doc.providerHandoff.status ?? "").toUpperCase();
+    handoffStatus = raw === "COMPLETE" || raw === "ACKNOWLEDGED" ? "PROVIDER_NOTIFIED" : "ORDERS_PENDING";
     handoffSource = "providerHandoff";
-  } else if (ordersPresent) {
-    handoffStatus = "ORDERS_RECEIVED";
-    handoffSource = "admissionOrders";
   } else if (providerNotifiedOfArrival === "YES") {
     handoffStatus = "PROVIDER_NOTIFIED";
     handoffSource = "assessmentNotify";
   } else {
     handoffStatus = "ORDERS_PENDING";
-    handoffSource = "nursingReady";
+    handoffSource = "pendingProjection";
   }
 
   const answers: NursingAdmissionStage6Answers = {
@@ -131,7 +146,14 @@ export function projectNursingAdmissionStage6(input: {
   };
 
   const prior19 = nursingAdmissionPriorNineteenResolved(input.doc);
-  const nursingResponsibilitiesSatisfied = prior19 && handoffStatus !== "NOT_STARTED";
+  const notifyDocumented = providerNotifiedOfArrival === "YES";
+  const handoffIsPendingProjection =
+    handoffSource === "pendingProjection" || nursingAdmissionStage6HandoffIsPending(handoffStatus);
+  const nursingResponsibilitiesSatisfied =
+    prior19 &&
+    notifyDocumented &&
+    reconComplete &&
+    !nursingAdmissionStage6HandoffIsPending(handoffStatus);
 
   return {
     answers,
@@ -144,14 +166,15 @@ export function projectNursingAdmissionStage6(input: {
           : "unknown",
       admissionOrders: "enterpriseOrderEngine",
       codeStatus: code.source,
-      medicationReconciliation: homeComplete
-        ? "homeMedicationsSection"
-        : opsRecon
-          ? "clinicalOpsRecon"
+      medicationReconciliation: reconComplete
+        ? "homeMedicationsReconComplete"
+        : opsReconRows
+          ? "clinicalOpsReconIncomplete"
           : "notStarted",
     },
     nursingResponsibilitiesSatisfied,
     providerHpRequired: false,
+    handoffIsPendingProjection,
   };
 }
 
@@ -167,7 +190,11 @@ export function applyStage6ProjectionAnswers(
       PROVIDER_ADMISSION: {
         ...prior,
         sectionId: "PROVIDER_ADMISSION",
-        completionState: "COMPLETE",
+        completionState: projection.nursingResponsibilitiesSatisfied
+          ? "COMPLETE"
+          : prior?.completionState === "COMPLETE"
+            ? "IN_PROGRESS"
+            : prior?.completionState ?? "IN_PROGRESS",
         expectedVersion: prior?.expectedVersion ?? doc.expectedVersion,
         answers: {
           ...(prior?.answers ?? {}),
@@ -184,9 +211,8 @@ export function nursingAdmissionMayCompleteAndSign(input: {
   orders: unknown[];
 }): boolean {
   if (input.doc.nurseSignature?.signed) return false;
-  const projected = applyStage6ProjectionAnswers(
-    input.doc,
-    projectNursingAdmissionStage6(input)
-  );
+  const projection = projectNursingAdmissionStage6(input);
+  if (!projection.nursingResponsibilitiesSatisfied) return false;
+  const projected = applyStage6ProjectionAnswers(input.doc, projection);
   return computeAdmissionCompletionSummary(projected).allRequiredComplete;
 }
