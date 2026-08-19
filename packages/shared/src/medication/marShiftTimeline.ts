@@ -1014,6 +1014,35 @@ export function buildMarShiftTimelineHover(input: {
 }
 
 /**
+ * MEDUI.INP.2E.1 — planned MAR cell ownership for a scheduled dose instance.
+ *
+ * Scheduled time owns shift membership and hour-column placement.
+ * Clinical/administered time annotates the event (status, actual time, variance).
+ * Do not move or drop the planned cell because actual time differs.
+ *
+ * Infusion / IVPB / fluid / PRN event cells keep clinical-time placement (H9F/H9K).
+ * NOW/STAT and legacy rows without a dose instance are not routed through this helper.
+ */
+export function resolveMarScheduledDoseInstanceShiftCellInstant(input: {
+  scheduledAt: Date;
+  clinicalPlacementInstant: Date;
+  doseKind?: string | null;
+  isFluidBolus?: boolean;
+  isContinuousFluid?: boolean;
+}): Date {
+  if (input.isFluidBolus === true || input.isContinuousFluid === true) {
+    return input.clinicalPlacementInstant;
+  }
+  if (isIvpbSessionDoseKind(input.doseKind)) {
+    return input.clinicalPlacementInstant;
+  }
+  if (parseMedicationDoseKind(input.doseKind) === "PRN_EVENT") {
+    return input.clinicalPlacementInstant;
+  }
+  return input.scheduledAt;
+}
+
+/**
  * Column placement (M1.8B.7K.1 / K.10A):
  * Uses only the placement instant (`scheduledAt`). Never `dueWindowEndAt`.
  * Does not round up, shift for collision, or fall back to window edges.

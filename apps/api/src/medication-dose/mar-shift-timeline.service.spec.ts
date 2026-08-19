@@ -988,22 +988,25 @@ describe("MarShiftTimelineService (M1.8B.7K.1)", () => {
     const rnRole =
       (await prisma.role.findFirst({ where: { code: RoleCode.RN } })) ??
       (await prisma.role.create({ data: { code: RoleCode.RN, name: "Registered Nurse" } }));
-    await prisma.userRole.upsert({
-      where: {
-        userId_roleId_facilityId: {
+    const existingRole = await prisma.userRole.findFirst({
+      where: { userId: nurseUserId, roleId: rnRole.id, facilityId },
+    });
+    if (existingRole) {
+      await prisma.userRole.update({
+        where: { id: existingRole.id },
+        data: { isActive: true },
+      });
+    } else {
+      await prisma.userRole.create({
+        data: {
           userId: nurseUserId,
           roleId: rnRole.id,
           facilityId,
+          professionCode: "REGISTERED_NURSE",
+          isActive: true,
         },
-      },
-      create: {
-        userId: nurseUserId,
-        roleId: rnRole.id,
-        facilityId,
-        isActive: true,
-      },
-      update: { isActive: true },
-    });
+      });
+    }
 
     const encounter = await createEncounterWithNurse();
     const doses = await createRecurringIvpbOrder(encounter.id);
@@ -1087,6 +1090,158 @@ describe("MarShiftTimelineService (M1.8B.7K.1)", () => {
     expect(item?.tertiaryText).toContain("JN");
     expect(item?.tertiaryText).toContain("08:05");
   });
+
+  it("INP.2E.1 — scheduled 09:00 dose administered at 00:15 stays in the 09A cell", async () => {
+    const encounter = await createEncounterWithNurse();
+    const doses = await createBidOrder(encounter.id);
+    const dose = doses[0]!;
+    const encounterRow = await prisma.encounter.findUniqueOrThrow({
+      where: { id: encounter.id },
+      select: { patientId: true },
+    });
+    const mar = await prisma.medicationAdministration.create({
+      data: {
+        facilityId,
+        patientId: encounterRow.patientId,
+        encounterId: encounter.id,
+        orderItemId: dose.orderItemId,
+        medicationDoseInstanceId: dose.id,
+        administeredByUserId: nurseUserId,
+        administeredAt: new Date("2026-06-11T00:15:00.000Z"),
+        marAction: "administered",
+      },
+    });
+    await prisma.medicationDoseInstance.update({
+      where: { id: dose.id },
+      data: {
+        doseStatus: "COMPLETED",
+        scheduledAt: new Date("2026-06-11T09:00:00.000Z"),
+        dueWindowStartAt: new Date("2026-06-11T09:00:00.000Z"),
+        dueWindowEndAt: new Date("2026-06-11T10:00:00.000Z"),
+        terminalMedicationAdministrationId: mar.id,
+      },
+    });
+
+    const day = await timelineService.getMarShiftTimeline(facilityId, viewer, {
+      shiftCode: "7A_7P",
+      shiftStart: new Date("2026-06-11T07:00:00.000Z"),
+      shiftEnd: new Date("2026-06-11T20:00:00.000Z"),
+      encounterId: encounter.id,
+      includeCompleted: true,
+    });
+    const dayItem = allTimelineItems(day).find((i) => i.medicationDoseInstanceId === dose.id);
+    expect(dayItem).toBeTruthy();
+    expect(dayItem?.doseStatus).toBe("COMPLETED");
+    expect(dayItem?.scheduledAt).toBe("2026-06-11T09:00:00.000Z");
+    expect(dayItem?.administeredAt).toBe("2026-06-11T00:15:00.000Z");
+    expect(dayItem?.medicationAdministrationId).toBe(mar.id);
+    expect(dayItem?.readOnly).toBe(true);
+    expect(columnLabelForOrderItem(day, dose.orderItemId)).toBe("09A");
+
+    const reloaded = await timelineService.getMarShiftTimeline(facilityId, viewer, {
+      shiftCode: "7A_7P",
+      shiftStart: new Date("2026-06-11T07:00:00.000Z"),
+      shiftEnd: new Date("2026-06-11T20:00:00.000Z"),
+      encounterId: encounter.id,
+      includeCompleted: true,
+    });
+    const reloadedItem = allTimelineItems(reloaded).find(
+      (i) => i.medicationDoseInstanceId === dose.id
+    );
+    expect(reloadedItem?.doseStatus).toBe("COMPLETED");
+    expect(reloadedItem?.administeredAt).toBe("2026-06-11T00:15:00.000Z");
+    expect(columnLabelForOrderItem(reloaded, dose.orderItemId)).toBe("09A");
+
+    const night = await timelineService.getMarShiftTimeline(facilityId, viewer, {
+      shiftCode: "7P_7A",
+      shiftStart: new Date("2026-06-10T19:00:00.000Z"),
+      shiftEnd: new Date("2026-06-11T08:00:00.000Z"),
+      encounterId: encounter.id,
+      includeCompleted: true,
+    });
+    expect(allTimelineItems(night).some((i) => i.medicationDoseInstanceId === dose.id)).toBe(
+      false
+    );
+
+    const admins = await prisma.medicationAdministration.count({
+      where: { medicationDoseInstanceId: dose.id },
+    });
+    expect(admins).toBe(1);
+  }, 90_000);
+
+  it("INP.2E.1 — refused scheduled dose remains in the 09A cell", async () => {
+    const encounter = await createEncounterWithNurse();
+    const doses = await createBidOrder(encounter.id);
+    const dose = doses[0]!;
+    const encounterRow = await prisma.encounter.findUniqueOrThrow({
+      where: { id: encounter.id },
+      select: { patientId: true },
+    });
+    const mar = await prisma.medicationAdministration.create({
+      data: {
+        facilityId,
+        patientId: encounterRow.patientId,
+        encounterId: encounter.id,
+        orderItemId: dose.orderItemId,
+        medicationDoseInstanceId: dose.id,
+        administeredByUserId: nurseUserId,
+        administeredAt: new Date("2026-06-11T00:20:00.000Z"),
+        marAction: "refused",
+        notes: "Refused: PATIENT_REFUSED",
+      },
+    });
+    await prisma.medicationDoseInstance.update({
+      where: { id: dose.id },
+      data: {
+        doseStatus: "COMPLETED",
+        scheduledAt: new Date("2026-06-11T09:00:00.000Z"),
+        dueWindowStartAt: new Date("2026-06-11T09:00:00.000Z"),
+        dueWindowEndAt: new Date("2026-06-11T10:00:00.000Z"),
+        terminalMedicationAdministrationId: mar.id,
+      },
+    });
+
+    const result = await timelineService.getMarShiftTimeline(facilityId, viewer, {
+      shiftCode: "7A_7P",
+      shiftStart: new Date("2026-06-11T07:00:00.000Z"),
+      shiftEnd: new Date("2026-06-11T20:00:00.000Z"),
+      encounterId: encounter.id,
+      includeCompleted: true,
+    });
+    const item = allTimelineItems(result).find((i) => i.medicationDoseInstanceId === dose.id);
+    expect(item?.secondaryText).toBe("REFUSED");
+    expect(item?.readOnly).toBe(true);
+    expect(item?.scheduledAt).toBe("2026-06-11T09:00:00.000Z");
+    expect(columnLabelForOrderItem(result, dose.orderItemId)).toBe("09A");
+  }, 30_000);
+
+  it("INP.2E.1 — missed scheduled dose remains in the 09A cell", async () => {
+    const encounter = await createEncounterWithNurse();
+    const doses = await createBidOrder(encounter.id);
+    const dose = doses[0]!;
+    await prisma.medicationDoseInstance.update({
+      where: { id: dose.id },
+      data: {
+        doseStatus: "MISSED",
+        scheduledAt: new Date("2026-06-11T09:00:00.000Z"),
+        dueWindowStartAt: new Date("2026-06-11T09:00:00.000Z"),
+        dueWindowEndAt: new Date("2026-06-11T10:00:00.000Z"),
+      },
+    });
+
+    const result = await timelineService.getMarShiftTimeline(facilityId, viewer, {
+      shiftCode: "7A_7P",
+      shiftStart: new Date("2026-06-11T07:00:00.000Z"),
+      shiftEnd: new Date("2026-06-11T20:00:00.000Z"),
+      encounterId: encounter.id,
+      includeCompleted: true,
+    });
+    const item = allTimelineItems(result).find((i) => i.medicationDoseInstanceId === dose.id);
+    expect(item).toBeTruthy();
+    expect(item?.doseStatus).toBe("MISSED");
+    expect(item?.scheduledAt).toBe("2026-06-11T09:00:00.000Z");
+    expect(columnLabelForOrderItem(result, dose.orderItemId)).toBe("09A");
+  }, 30_000);
 
   it("read model enrichment is read-only and does not mutate rows (K.3)", async () => {
     const encounter = await createEncounterWithNurse();

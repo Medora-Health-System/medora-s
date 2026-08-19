@@ -12,24 +12,37 @@ import {
 export function ClinicalLatestVitalsBanner({
   encounterId,
   facilityId,
+  latestEntry,
+  fetchEnabled = true,
 }: {
   encounterId: string;
   facilityId: string;
+  /** Same vitals-history engine; skip GET when the parent already loaded the latest entry. */
+  latestEntry?: VitalsHistoryEntry | null;
+  /** When false, do not fetch (timeline-first MAR can enable after first paint). */
+  fetchEnabled?: boolean;
 }) {
   const { t, language } = useI18n();
-  const [entry, setEntry] = useState<VitalsHistoryEntry | null | undefined>(undefined);
+  const [fetchedEntry, setFetchedEntry] = useState<VitalsHistoryEntry | null | undefined>(undefined);
   const dateLocale = language === "en" ? "en-US" : "fr-FR";
+  const usePrefetch = latestEntry !== undefined;
+  const entry = usePrefetch ? latestEntry : fetchedEntry;
 
   useEffect(() => {
+    if (usePrefetch || !fetchEnabled) return;
     let cancelled = false;
-    setEntry(undefined);
+    setFetchedEntry(undefined);
     void fetchLatestVitalsHistoryEntry(encounterId, facilityId).then((e) => {
-      if (!cancelled) setEntry(e);
+      if (!cancelled) setFetchedEntry(e);
     });
     return () => {
       cancelled = true;
     };
-  }, [encounterId, facilityId]);
+  }, [encounterId, facilityId, fetchEnabled, usePrefetch]);
+
+  if (!usePrefetch && !fetchEnabled) {
+    return null;
+  }
 
   if (entry === undefined) {
     return (

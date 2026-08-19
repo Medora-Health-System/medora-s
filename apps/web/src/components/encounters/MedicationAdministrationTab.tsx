@@ -133,6 +133,13 @@ import {
 import { appendMedicationDoseInstanceIdToMarCreateBody } from "@/features/mar/medicationPassQueueMarIntegration";
 import { adjustMarMedicationSchedule } from "@/lib/medicationDoseScheduleAdjustmentApi";
 import { MAR_TAB_SHOW_LEGACY_SECTIONS } from "@/features/mar/marTabUnifiedTimeline";
+import {
+  shouldDeferMarAllergyEncounterFetch,
+  shouldDeferMarCorrectionHistoryLoad,
+  shouldSkipStandaloneInitialMarLoad,
+} from "@/features/mar/marTimelineFirstLoad";
+import { marOpenPerfMark } from "@/lib/marOpenPerfAudit";
+import type { VitalsHistoryEntry } from "@/lib/encounterClinicalSafetyUi";
 import { shouldShowAmbulatoryPendingMarOrderItemFallback } from "@medora/shared";
 import { MedicationPassQueuePanel } from "@/components/encounters/MedicationPassQueuePanel";
 import { FacilityMarShiftTimeline } from "@/components/encounters/FacilityMarShiftTimeline";
@@ -498,6 +505,8 @@ export function MedicationAdministrationTab({
   facilityTimeZone = null,
   embeddedWorkspaceLayout = false,
   showFacilityMarShiftTimeline = true,
+  latestVitalsEntry,
+  onTimelineReady,
 }: {
   encounterId: string;
   facilityId: string;
@@ -518,13 +527,34 @@ export function MedicationAdministrationTab({
    * MAR administer / verify / allergy paths remain available.
    */
   showFacilityMarShiftTimeline?: boolean;
+  /** Same vitals-history engine as ClinicalLatestVitalsBanner — reuse when already loaded. */
+  latestVitalsEntry?: VitalsHistoryEntry | null;
+  onTimelineReady?: (info: { hasMedicationCell: boolean }) => void;
 }) {
   const { t, language } = useI18n();
   const clinicalData = useEncounterClinicalDataOptional();
   const useSharedClinicalData = clinicalData != null;
+  const skipStandaloneInitialMarLoad = shouldSkipStandaloneInitialMarLoad({
+    showFacilityMarShiftTimeline,
+    marTabShowLegacySections: MAR_TAB_SHOW_LEGACY_SECTIONS,
+    useSharedClinicalData,
+  });
+  const standaloneMarBundleLoadedRef = useRef(useSharedClinicalData);
+  const allergyContextLoadedRef = useRef(Boolean(encounterAllergySource));
+  const onTimelineReadyRef = useRef(onTimelineReady);
+  onTimelineReadyRef.current = onTimelineReady;
+  const [marTimelineReady, setMarTimelineReady] = useState(!showFacilityMarShiftTimeline);
+  const [pendingTimelineAdminister, setPendingTimelineAdminister] = useState<MarShiftTimelineCellItem | null>(
+    null
+  );
+  const [marAllergyEncounterVitals, setMarAllergyEncounterVitals] = useState<unknown>(
+    encounterAllergySource?.vitals
+  );
   const dateLocale = language === "en" ? "en-US" : "fr-FR";
   const [orders, setOrders] = useState<unknown[]>([]);
   const [admins, setAdmins] = useState<AdminRow[]>([]);
+  const adminsRef = useRef<AdminRow[]>([]);
+  adminsRef.current = admins;
   const [orderEventsRaw, setOrderEventsRaw] = useState<unknown[] | null>(null);
   const [infusionBusy, setInfusionBusy] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -647,6 +677,7 @@ export function MedicationAdministrationTab({
     useOverride: false,
   });
   const [adminTimeModalRow, setAdminTimeModalRow] = useState<AdminRow | null>(null);
+  const [timelineCorrectionUiOpen, setTimelineCorrectionUiOpen] = useState(false);
   const [adminTimeSaving, setAdminTimeSaving] = useState(false);
   const [marHistoryRawEntries, setMarHistoryRawEntries] = useState<MedicationAdministrationHistoryEntry[]>(
     []
@@ -680,6 +711,8 @@ export function MedicationAdministrationTab({
     count: 0,
     items: [],
   });
+  const passQueueRef = useRef(passQueue);
+  passQueueRef.current = passQueue;
   const timelineRefreshRef = useRef<(() => Promise<void>) | null>(null);
   const refreshMarViews = useCallback(async () => {
     await timelineRefreshRef.current?.();
@@ -747,6 +780,10 @@ export function MedicationAdministrationTab({
     setMarSelectedDateLocal(dateLocal);
   }, []);
 
+  useEffect(() => {
+    marOpenPerfMark("tab-mount");
+  }, [encounterId]);
+
   const loadMarHistoryForCorrections = useCallback(async () => {
     try {
       const rows = await fetchMedicationAdministrationHistory(encounterId, facilityId);
@@ -757,8 +794,16 @@ export function MedicationAdministrationTab({
   }, [encounterId, facilityId]);
 
   useEffect(() => {
+    if (
+      shouldDeferMarCorrectionHistoryLoad({
+        marTabShowLegacySections: MAR_TAB_SHOW_LEGACY_SECTIONS,
+        correctionUiOpen: Boolean(adminTimeModalRow) || timelineCorrectionUiOpen,
+      })
+    ) {
+      return;
+    }
     void loadMarHistoryForCorrections();
-  }, [loadMarHistoryForCorrections]);
+  }, [loadMarHistoryForCorrections, adminTimeModalRow, timelineCorrectionUiOpen]);
 
   useEffect(() => {
     if (!modalItem) return;
@@ -864,9 +909,40 @@ export function MedicationAdministrationTab({
       const evaluation = evaluateMarAllergySafetyForAdministration(input);
       setMarAllergyDocSummary(evaluation.summary);
       setMarAllergyCategory(evaluation.category);
+      if (input.vitals !== undefined) setMarAllergyEncounterVitals(input.vitals);
     },
     []
   );
+
+  const ensureMarAllergyContext = useCallback(async () => {
+    if (encounterAllergySource) {
+      applyMarAllergyEvaluation({
+        vitals: encounterAllergySource.vitals,
+        nursingAssessment: encounterAllergySource.nursingAssessment,
+        triageVitalsJson: encounterAllergySource.triage?.vitalsJson ?? null,
+      });
+      allergyContextLoadedRef.current = true;
+      return;
+    }
+    if (allergyContextLoadedRef.current) return;
+    try {
+      const encRaw = await apiFetch(`/encounters/${encounterId}`, { facilityId });
+      const encObj = asApiObject(encRaw) as {
+        vitals?: unknown;
+        nursingAssessment?: unknown;
+        triage?: { vitalsJson?: unknown } | null;
+      } | null;
+      applyMarAllergyEvaluation({
+        vitals: encObj?.vitals,
+        nursingAssessment: encObj?.nursingAssessment,
+        triageVitalsJson: encObj?.triage?.vitalsJson ?? null,
+      });
+      allergyContextLoadedRef.current = true;
+    } catch {
+      setMarAllergyDocSummary(null);
+      setMarAllergyCategory("NONE");
+    }
+  }, [applyMarAllergyEvaluation, encounterAllergySource, encounterId, facilityId]);
 
   useEffect(() => {
     if (encounterAllergySource) {
@@ -875,6 +951,15 @@ export function MedicationAdministrationTab({
         nursingAssessment: encounterAllergySource.nursingAssessment,
         triageVitalsJson: encounterAllergySource.triage?.vitalsJson ?? null,
       });
+      allergyContextLoadedRef.current = true;
+      return;
+    }
+    if (
+      shouldDeferMarAllergyEncounterFetch({
+        hasEncounterAllergySource: false,
+        skipStandaloneInitialMarLoad,
+      })
+    ) {
       return;
     }
     let cancelled = false;
@@ -892,6 +977,7 @@ export function MedicationAdministrationTab({
           nursingAssessment: encObj?.nursingAssessment,
           triageVitalsJson: encObj?.triage?.vitalsJson ?? null,
         });
+        allergyContextLoadedRef.current = true;
       } catch {
         if (!cancelled) {
           setMarAllergyDocSummary(null);
@@ -902,7 +988,7 @@ export function MedicationAdministrationTab({
     return () => {
       cancelled = true;
     };
-  }, [encounterAllergySource, encounterId, facilityId, applyMarAllergyEvaluation]);
+  }, [encounterAllergySource, encounterId, facilityId, applyMarAllergyEvaluation, skipStandaloneInitialMarLoad]);
 
   const marAllergyAcknowledgementRequired =
     marAllergyAckForcedByServer ||
@@ -965,19 +1051,27 @@ export function MedicationAdministrationTab({
       }
 
       setOrders(mergeOrders(serverOrders, pendingOrders));
-      setAdmins([...serverAdmins, ...pendingAdmins]);
+      const nextAdmins = [...serverAdmins, ...pendingAdmins];
+      setAdmins(nextAdmins);
+      adminsRef.current = nextAdmins;
       setOrderEventsRaw(eventsRaw);
       setPassQueue(passQueueRes);
+      passQueueRef.current = passQueueRes;
+      standaloneMarBundleLoadedRef.current = true;
     } catch (e) {
       setError(e instanceof Error ? e.message : t("marTab.loadFailed"));
       setOrders(mergeOrders([], pendingOrders));
       setAdmins(pendingAdmins);
+      adminsRef.current = pendingAdmins;
       setOrderEventsRaw([]);
       if (!encounterAllergySource) {
         setMarAllergyDocSummary(null);
         setMarAllergyCategory("NONE");
       }
-      setPassQueue({ enabled: false, at: new Date().toISOString(), count: 0, items: [] });
+      const emptyQueue = { enabled: false, at: new Date().toISOString(), count: 0, items: [] as MedicationPassQueueResponse["items"] };
+      setPassQueue(emptyQueue);
+      passQueueRef.current = emptyQueue;
+      standaloneMarBundleLoadedRef.current = true;
     } finally {
       setLoading(false);
     }
@@ -988,8 +1082,15 @@ export function MedicationAdministrationTab({
       await clinicalData.refresh("marMutation", { reason: "mutation", force: true });
       return;
     }
+    if (!standaloneMarBundleLoadedRef.current) return;
     await loadAllStandalone();
   }, [useSharedClinicalData, clinicalData, loadAllStandalone]);
+
+  const ensureStandaloneMarBundle = useCallback(async () => {
+    if (useSharedClinicalData) return;
+    if (standaloneMarBundleLoadedRef.current) return;
+    await loadAllStandalone();
+  }, [useSharedClinicalData, loadAllStandalone]);
 
   const handleMarCorrectionSaved = useCallback(async () => {
     await reloadMarData();
@@ -1002,8 +1103,11 @@ export function MedicationAdministrationTab({
     perfClinicalDataLog("MAR tab using shared orders cache");
     setOrders(clinicalData.orders);
     setAdmins(clinicalData.medicationAdministrations as AdminRow[]);
+    adminsRef.current = clinicalData.medicationAdministrations as AdminRow[];
     setOrderEventsRaw(clinicalData.orderEvents);
     setPassQueue(clinicalData.passQueue);
+    passQueueRef.current = clinicalData.passQueue;
+    standaloneMarBundleLoadedRef.current = true;
     const awaitingFirstPayload =
       clinicalData.orders.length === 0 && clinicalData.medicationAdministrations.length === 0;
     setLoading(clinicalData.loading.any && awaitingFirstPayload);
@@ -1026,8 +1130,12 @@ export function MedicationAdministrationTab({
 
   useEffect(() => {
     if (useSharedClinicalData) return;
+    if (skipStandaloneInitialMarLoad) {
+      setLoading(false);
+      return;
+    }
     void loadAllStandalone();
-  }, [useSharedClinicalData, loadAllStandalone]);
+  }, [useSharedClinicalData, loadAllStandalone, skipStandaloneInitialMarLoad]);
 
   const adminsByOrderItemId = useMemo(() => {
     const m = new Map<string, AdminRow[]>();
@@ -1578,7 +1686,7 @@ export function MedicationAdministrationTab({
     ) {
       return false;
     }
-    const vitals = encounterAllergySource?.vitals;
+    const vitals = marAllergyEncounterVitals ?? encounterAllergySource?.vitals;
     if (!vitals || typeof vitals !== "object") return true;
     const record = vitals as Record<string, unknown>;
     const rr = record.respiratoryRate ?? record.respRate ?? record.rr;
@@ -1589,6 +1697,7 @@ export function MedicationAdministrationTab({
     modalItem?.label,
     modalItem?.genericName,
     encounterAllergySource?.vitals,
+    marAllergyEncounterVitals,
   ]);
 
   useEffect(() => {
@@ -1787,6 +1896,24 @@ export function MedicationAdministrationTab({
     [openModal, taskRows, t]
   );
 
+  useEffect(() => {
+    if (!pendingTimelineAdminister) return;
+    const row = taskRows.find((r) => r.orderItemId === pendingTimelineAdminister.orderItemId);
+    if (row) {
+      try {
+        openModalFromTimelineItem(pendingTimelineAdminister);
+      } catch {
+        setError(t("marShiftTimeline.actionError"));
+      }
+      setPendingTimelineAdminister(null);
+      return;
+    }
+    if (standaloneMarBundleLoadedRef.current && !loading) {
+      setError(t("marShiftTimeline.actionError"));
+      setPendingTimelineAdminister(null);
+    }
+  }, [pendingTimelineAdminister, taskRows, loading, openModalFromTimelineItem, t]);
+
   const submitTimelineTerminalMar = useCallback(
     async (
       item: MarShiftTimelineCellItem,
@@ -1807,10 +1934,13 @@ export function MedicationAdministrationTab({
       disabled: actionsDisabled,
       busy: Boolean(infusionBusy),
       onRequestAdminister: async (item) => {
-        openModalFromTimelineItem(item);
+        await ensureMarAllergyContext();
+        await ensureStandaloneMarBundle();
+        setPendingTimelineAdminister(item);
       },
       onRequestStartInfusion: async (item, input) => {
-        const passItem = findPassQueueItemForTimelineCell(item, passQueue.items);
+        await ensureStandaloneMarBundle();
+        const passItem = findPassQueueItemForTimelineCell(item, passQueueRef.current.items);
         const orderId = resolveMarShiftTimelineOrderId(item, passItem);
         const label = item.medicationLabel?.trim() || item.primaryText;
         if (marShiftTimelineStartWitnessRequired(item, passItem)) {
@@ -1830,7 +1960,7 @@ export function MedicationAdministrationTab({
         return true;
       },
       onExecuteStopInfusion: async (item, input) => {
-        const passItem = findPassQueueItemForTimelineCell(item, passQueue.items);
+        const passItem = findPassQueueItemForTimelineCell(item, passQueueRef.current.items);
         const orderId = resolveMarShiftTimelineOrderId(item, passItem);
         await runMarInfusion(item.orderItemId, orderId, "stop", input.notes, null, {
           medicationDoseInstanceId: item.medicationDoseInstanceId,
@@ -1926,6 +2056,8 @@ export function MedicationAdministrationTab({
     facilityId,
     infusionBusy,
     openModalFromTimelineItem,
+    ensureMarAllergyContext,
+    ensureStandaloneMarBundle,
     passQueue.items,
     reloadMarData,
     runMarInfusion,
@@ -2579,7 +2711,11 @@ export function MedicationAdministrationTab({
           {error}
         </p>
       ) : null}
-      <MedicationAllergyReviewProviderNotice facilityId={facilityId} encounterId={encounterId} />
+      <MedicationAllergyReviewProviderNotice
+        facilityId={facilityId}
+        encounterId={encounterId}
+        loadEnabled={!skipStandaloneInitialMarLoad || Boolean(adminTimeModalRow) || timelineCorrectionUiOpen}
+      />
       {marQueuedOfflineNotice ? (
         <div
           role="alert"
@@ -2609,8 +2745,6 @@ export function MedicationAdministrationTab({
           {t("marTab.offlineNotice")}
         </div>
       ) : null}
-
-      <ClinicalLatestVitalsBanner encounterId={encounterId} facilityId={facilityId} />
 
       <MarHistoricalDateNavigationBar
         selectedDateLocal={marSelectedDateLocal}
@@ -2649,9 +2783,36 @@ export function MedicationAdministrationTab({
           onRegisterReopenDrawer={(reopen) => {
             timelineReopenDrawerRef.current = reopen;
           }}
+          onReady={(info) => {
+            setMarTimelineReady(true);
+            onTimelineReadyRef.current?.(info);
+          }}
+          correctionHistoryEntries={marHistoryRawEntries}
+          canAdjustAdminTime={canAdjustAdminTime}
+          encounterClinicalMutationsAllowed={encounterClinicalMutationsAllowed}
+          onCorrectionUiOpenChange={setTimelineCorrectionUiOpen}
+          onOpenTimeCorrection={(administrationId) => {
+            void (async () => {
+              await ensureStandaloneMarBundle();
+              const row = adminsRef.current.find((a) => a.id === administrationId) ?? null;
+              if (row) setAdminTimeModalRow(row);
+            })();
+          }}
+          onCorrectionSaved={handleMarCorrectionSaved}
         />
       </div>
       ) : null}
+
+      <ClinicalLatestVitalsBanner
+        encounterId={encounterId}
+        facilityId={facilityId}
+        latestEntry={latestVitalsEntry}
+        fetchEnabled={
+          latestVitalsEntry !== undefined
+            ? false
+            : !skipStandaloneInitialMarLoad || marTimelineReady
+        }
+      />
 
       {shouldShowAmbulatoryPendingMarOrderItemFallback({
         showFacilityMarShiftTimeline,

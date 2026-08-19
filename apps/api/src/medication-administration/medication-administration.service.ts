@@ -1303,6 +1303,7 @@ export class MedicationAdministrationService {
           medicationDoseInstanceId:
             doseGatedMarContext?.doseInstance.id ??
             ivpbDoseSessionMarContext?.doseInstance.id ??
+            scheduleGovernanceDoseInstance?.id ??
             null,
           medicationLabelSnapshot,
           route: data.route?.trim() ? data.route.trim() : null,

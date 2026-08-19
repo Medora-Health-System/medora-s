@@ -65,6 +65,8 @@ import { fetchInpatientWorkspaceBootstrap } from "@/features/hospital-care/inpat
 import { emergencyActiveWorkspacePath } from "@/features/emergency/emergencyRoutes";
 import { observationActiveWorkspacePath } from "@/features/observation-workspace/observationWorkspacePaths";
 import { classifyInpatientBootstrapClientError } from "./inpatientBootstrapClientErrors";
+import { replaceInpatientWorkspaceSectionQuery } from "./inpatientWorkspaceSectionQuery";
+import { marOpenPerfMark } from "@/lib/marOpenPerfAudit";
 
 function roleFromPath(pathname: string): InpatientWorkspaceRole {
   if (pathname.endsWith("/provider")) return "PROVIDER";
@@ -205,6 +207,7 @@ export function InpatientActiveWorkspaceView({
   const [triageSnapshot, setTriageSnapshot] = useState<Record<string, unknown> | null>(null);
   const [esiLevel, setEsiLevel] = useState<string | number | null>(null);
   const [vitalsHistory, setVitalsHistory] = useState<VitalsHistoryEntry[]>([]);
+  const [vitalsHistoryReady, setVitalsHistoryReady] = useState(false);
   const [vitalsRefresh, setVitalsRefresh] = useState(0);
   const [editVitalReading, setEditVitalReading] = useState<VitalSummaryReading | null>(null);
   const [voidVitalReading, setVoidVitalReading] = useState<VitalSummaryReading | null>(null);
@@ -215,26 +218,29 @@ export function InpatientActiveWorkspaceView({
   const [showIsolationEditor, setShowIsolationEditor] = useState(false);
 
   useEffect(() => {
-    const next = resolveAllowedSection(searchParams.get("section"));
-    setSection(next);
-    const raw = String(searchParams.get("section") ?? "").trim().toLowerCase();
-    if (raw === "timeline" || raw === "summary") {
-      const qs = new URLSearchParams(searchParams.toString());
-      qs.set("section", "overview");
-      router.replace(`?${qs.toString()}`, { scroll: false });
-    }
-  }, [searchParams, resolveAllowedSection, router]);
+    const syncSectionFromBrowserUrl = () => {
+      if (typeof window === "undefined") return;
+      const raw = new URLSearchParams(window.location.search).get("section");
+      const next = resolveAllowedSection(raw);
+      setSection(next);
+      const rawLower = String(raw ?? "").trim().toLowerCase();
+      if (rawLower === "timeline" || rawLower === "summary") {
+        replaceInpatientWorkspaceSectionQuery("overview");
+      }
+    };
+    window.addEventListener("popstate", syncSectionFromBrowserUrl);
+    return () => window.removeEventListener("popstate", syncSectionFromBrowserUrl);
+  }, [resolveAllowedSection]);
 
   const selectSection = useCallback(
     (next: InpatientWorkspaceSection) => {
       const resolved = next === "timeline" || next === "summary" ? "overview" : next;
       if (!allowed.includes(resolved) && !stickyAllowed.includes(resolved)) return;
+      if (resolved === "medications") marOpenPerfMark("mar-click");
       setSection(resolved);
-      const qs = new URLSearchParams(searchParams.toString());
-      qs.set("section", resolved);
-      router.replace(`?${qs.toString()}`, { scroll: false });
+      replaceInpatientWorkspaceSectionQuery(resolved);
     },
-    [router, searchParams, allowed, stickyAllowed]
+    [allowed, stickyAllowed]
   );
 
   const loadBootstrap = useCallback(async () => {
@@ -287,10 +293,12 @@ export function InpatientActiveWorkspaceView({
       const esi = triage && "esi" in triage ? (triage.esi as string | number | null) : null;
       setEsiLevel(esi ?? null);
       setVitalsHistory(parseVitalsHistoryEntries(historyRaw));
+      setVitalsHistoryReady(true);
     } catch {
       setTriageSnapshot(null);
       setEsiLevel(null);
       setVitalsHistory([]);
+      setVitalsHistoryReady(true);
     }
   }, [encounterId, facilityId]);
 
@@ -341,6 +349,14 @@ export function InpatientActiveWorkspaceView({
       return { ...row, byInitials: vitalSummaryInitials({ displayName }) };
     });
   }, [vitalsHistory, language, t, header?.encounterType]);
+
+  const latestVitalsEntry = useMemo(() => {
+    if (!vitalsHistoryReady) return undefined;
+    const sorted = [...vitalsHistory].sort(
+      (a, b) => new Date(b.recordedAt).getTime() - new Date(a.recordedAt).getTime()
+    );
+    return sorted[0] ?? null;
+  }, [vitalsHistory, vitalsHistoryReady]);
 
   const canDocumentVitals =
     writersEnabled &&
@@ -534,6 +550,7 @@ export function InpatientActiveWorkspaceView({
                 room={header.room}
                 codeStatus={header.codeStatus}
                 isolation={header.isolation}
+                latestVitalsEntry={latestVitalsEntry}
               />
             )}
           </section>
