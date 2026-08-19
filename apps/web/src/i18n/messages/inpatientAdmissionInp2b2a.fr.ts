@@ -32,6 +32,8 @@ export const inpatientAdmissionInp2b2aFr = {
   saveForbidden: "Vous n’avez pas l’autorité pour modifier cette section d’admission.",
   saveNotFound: "Ce dossier d’admission est introuvable. Rechargez le dossier et réessayez.",
   saveServer: "Le serveur n’a pas pu enregistrer cette section d’admission. Réessayez dans un instant.",
+  saveIncompleteAdmission:
+    "L’admission infirmière n’est pas terminée. Résolvez les sections obligatoires restantes avant de signer.",
   preloadEmpty:
     "Aucun antécédent partagé n’est encore consigné pour cette section. La mise à jour utilise le dossier d’antécédents de l’établissement.",
   historyEditor: {

@@ -30,10 +30,11 @@ type HomeMedLine = {
   strength: string;
   route: string;
   frequency: string;
+  notes: string;
 };
 
 function formatHomeMedLine(line: HomeMedLine): string {
-  return [line.name, line.strength, line.route, line.frequency].filter(Boolean).join(" · ");
+  return [line.name, line.strength, line.route, line.frequency, line.notes].filter(Boolean).join(" · ");
 }
 
 function parseHomeMedLines(summary: string): HomeMedLine[] {
@@ -49,6 +50,7 @@ function parseHomeMedLines(summary: string): HomeMedLine[] {
         strength: parts[1] ?? "",
         route: parts[2] ?? "",
         frequency: parts[3] ?? "",
+        notes: parts.slice(4).join(" · "),
       };
     });
 }
@@ -134,6 +136,7 @@ export function NursingAdmissionEnterpriseHistoryEditor({
         strength: String(item.metadata?.strength ?? ""),
         route: String(item.metadata?.route ?? ""),
         frequency: frequencyDraft.trim(),
+        notes: "",
       },
     ]);
     setFrequencyDraft("");
@@ -233,10 +236,62 @@ export function NursingAdmissionEnterpriseHistoryEditor({
                 onSelect={addCatalogMed}
               />
             </div>
-            <ul data-testid="nursing-admission-home-med-lines" style={{ paddingLeft: 18, fontSize: 13 }}>
+            <ul data-testid="nursing-admission-home-med-lines" style={{ paddingLeft: 0, listStyle: "none", fontSize: 13 }}>
               {homeLines.map((line, idx) => (
-                <li key={`${line.code}-${idx}`}>
-                  {formatHomeMedLine(line)}{" "}
+                <li key={`${line.code}-${idx}`} style={{ display: "grid", gap: 4, marginBottom: 8 }}>
+                  <strong>{line.name}</strong>
+                  <label>
+                    {t("inpatientAdmissionInp2b2d.homeMedStrength")}
+                    <input
+                      value={line.strength}
+                      onChange={(e) =>
+                        setHomeLines((prev) =>
+                          prev.map((row, i) => (i === idx ? { ...row, strength: e.target.value } : row))
+                        )
+                      }
+                      data-testid={`nursing-admission-home-med-strength-${idx}`}
+                      style={inputStyle}
+                    />
+                  </label>
+                  <label>
+                    {t("inpatientAdmissionInp2b2d.homeMedRoute")}
+                    <input
+                      value={line.route}
+                      onChange={(e) =>
+                        setHomeLines((prev) =>
+                          prev.map((row, i) => (i === idx ? { ...row, route: e.target.value } : row))
+                        )
+                      }
+                      data-testid={`nursing-admission-home-med-route-${idx}`}
+                      style={inputStyle}
+                    />
+                  </label>
+                  <label>
+                    {t("inpatientAdmissionInp2b2d.homeMedFrequency")}
+                    <input
+                      value={line.frequency}
+                      onChange={(e) =>
+                        setHomeLines((prev) =>
+                          prev.map((row, i) => (i === idx ? { ...row, frequency: e.target.value } : row))
+                        )
+                      }
+                      data-testid={`nursing-admission-home-med-frequency-line-${idx}`}
+                      style={inputStyle}
+                    />
+                  </label>
+                  <label>
+                    {t("inpatientAdmissionInp2b2d.homeMedNotes")}
+                    <input
+                      value={line.notes}
+                      onChange={(e) =>
+                        setHomeLines((prev) =>
+                          prev.map((row, i) => (i === idx ? { ...row, notes: e.target.value } : row))
+                        )
+                      }
+                      data-testid={`nursing-admission-home-med-notes-${idx}`}
+                      style={inputStyle}
+                    />
+                  </label>
                   <button
                     type="button"
                     onClick={() => setHomeLines((prev) => prev.filter((_, i) => i !== idx))}
@@ -267,8 +322,14 @@ export function NursingAdmissionEnterpriseHistoryEditor({
                   {t("inpatientAdmissionInp2b2d.preload.recreational")}
                   <input value={marijuana} onChange={(e) => setMarijuana(e.target.value)} style={inputStyle} />
                 </label>
-                <input value={stimulant} onChange={(e) => setStimulant(e.target.value)} style={inputStyle} />
-                <input value={opioid} onChange={(e) => setOpioid(e.target.value)} style={inputStyle} />
+                <label>
+                  {t("inpatientAdmissionInp2b2d.socialStimulant")}
+                  <input value={stimulant} onChange={(e) => setStimulant(e.target.value)} style={inputStyle} />
+                </label>
+                <label>
+                  {t("inpatientAdmissionInp2b2d.socialOpioid")}
+                  <input value={opioid} onChange={(e) => setOpioid(e.target.value)} style={inputStyle} />
+                </label>
               </>
             ) : null}
           </div>

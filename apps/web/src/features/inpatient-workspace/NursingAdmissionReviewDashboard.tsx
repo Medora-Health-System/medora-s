@@ -7,9 +7,11 @@
 import {
   NURSING_ADMISSION_STAGES,
   nursingAdmissionOutstandingSections,
+  nursingAdmissionStage6HandoffIsPending,
   nursingAdmissionStageGroupStatus,
   type InpatientAdmissionClinicalSection,
   type MedSurgNursingAdmissionDocV1,
+  type NursingAdmissionStage6Projection,
   type NursingAdmissionStageId,
 } from "@medora/shared";
 import { useI18n } from "@/lib/i18n";
@@ -22,6 +24,9 @@ const REVIEW_STAGE_IDS: NursingAdmissionStageId[] = [
   "SAFETY_PHYSICAL",
   "PSYCHOSOCIAL_EDUCATION",
 ];
+
+const HANDOFF_NURSE_ACTIONS = ["PROVIDER_NOTIFIED", "ORDERS_PENDING", "NOT_STARTED"] as const;
+const YN_ACTIONS = ["YES", "NO", "UNKNOWN"] as const;
 
 function statusGlyph(st: ReturnType<typeof nursingAdmissionStageGroupStatus>): string {
   if (st === "COMPLETE") return "✓";
@@ -36,23 +41,40 @@ export function NursingAdmissionReviewDashboard({
   review,
   readOnly,
   signed,
+  stage6Projection,
   onNavigate,
   onComplete,
-  onDocumentProviderNotified,
+  onHandoffStatus,
+  onProviderNotified,
+  onOpenCodeStatus,
+  onOpenHomeMedications,
   completionAllowed,
 }: {
   doc: MedSurgNursingAdmissionDocV1 | null | undefined;
   review?: Record<string, unknown> | null;
   readOnly?: boolean;
   signed?: boolean;
+  stage6Projection?: NursingAdmissionStage6Projection | null;
   onNavigate: (sectionId: InpatientAdmissionClinicalSection) => void;
   onComplete: () => void;
-  onDocumentProviderNotified?: () => void;
+  onHandoffStatus?: (status: string) => void;
+  onProviderNotified?: (value: "YES" | "NO" | "UNKNOWN") => void;
+  onOpenCodeStatus?: () => void;
+  onOpenHomeMedications?: () => void;
   completionAllowed?: boolean;
 }) {
   const { t } = useI18n();
   const outstanding = nursingAdmissionOutstandingSections(doc);
-  const handoffAnswers = (doc?.sections?.PROVIDER_ADMISSION?.answers ?? {}) as Record<string, unknown>;
+  const stored = (doc?.sections?.PROVIDER_ADMISSION?.answers ?? {}) as Record<string, unknown>;
+  const projected = stage6Projection?.answers;
+  const handoffStatus = String(stored.handoffStatus ?? projected?.handoffStatus ?? "");
+  const providerNotified = String(
+    stored.providerNotifiedOfArrival ?? projected?.providerNotifiedOfArrival ?? ""
+  );
+  const ordersPresent = String(projected?.admissionOrdersPresent ?? stored.admissionOrdersPresent ?? "");
+  const codeConfirmed = String(projected?.codeStatusConfirmed ?? stored.codeStatusConfirmed ?? "");
+  const medRecon = String(projected?.medReconStatus ?? stored.medReconStatus ?? "");
+  const handoffPending = nursingAdmissionStage6HandoffIsPending(handoffStatus);
 
   const cardStyle = {
     ...MEDORA_CARD_SHELL,
@@ -61,6 +83,16 @@ export function NursingAdmissionReviewDashboard({
     textAlign: "left" as const,
     width: "100%",
   };
+
+  const actionBtn = (selected: boolean) => ({
+    padding: "4px 8px",
+    borderRadius: 9999,
+    border: selected ? "1px solid #0f766e" : "1px solid #cbd5e1",
+    background: selected ? "#ccfbf1" : "#fff",
+    color: selected ? "#0f766e" : "#334155",
+    fontSize: 11,
+    cursor: readOnly || signed ? "not-allowed" : "pointer",
+  });
 
   return (
     <div data-testid="nursing-admission-review-dashboard" style={{ display: "grid", gap: 12 }}>
@@ -122,61 +154,90 @@ export function NursingAdmissionReviewDashboard({
 
       <div data-testid="nursing-admission-handoff-summary" style={{ ...cardStyle, cursor: "default" }}>
         <h4 style={{ margin: "0 0 8px", fontSize: 13 }}>{t("inpatientAdmissionInp2b2.review.handoffTitle")}</h4>
-        <dl style={{ margin: 0, fontSize: 12, display: "grid", gridTemplateColumns: "160px 1fr", gap: "4px 8px" }}>
+        <dl style={{ margin: 0, fontSize: 12, display: "grid", gridTemplateColumns: "160px 1fr", gap: "8px 8px" }}>
           <dt>{t("inpatientAdmissionInp2b2.review.handoffStatus")}</dt>
           <dd style={{ margin: 0 }} data-testid="stage6-handoff-status">
-            {handoffAnswers.handoffStatus
-              ? t(`inpatientAdmissionInp2b2d.handoffStatus.${String(handoffAnswers.handoffStatus)}`)
-              : t("common.dash")}
-            {handoffAnswers.handoffStatus === "ORDERS_PENDING" ||
-            handoffAnswers.handoffStatus === "HP_PENDING" ||
-            handoffAnswers.handoffStatus === "NOT_STARTED" ? (
+            {handoffStatus ? t(`inpatientAdmissionInp2b2d.handoffStatus.${handoffStatus}`) : t("common.dash")}
+            {handoffPending ? (
               <span style={{ display: "block", color: "#64748b", fontSize: 11 }}>
                 {t("inpatientAdmissionInp2b2d.pendingProjection")}
               </span>
             ) : null}
+            {!readOnly && !signed && onHandoffStatus ? (
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 6 }}>
+                {HANDOFF_NURSE_ACTIONS.map((status) => (
+                  <button
+                    key={status}
+                    type="button"
+                    data-testid={`stage6-handoff-${status}`}
+                    disabled={readOnly || signed}
+                    onClick={() => onHandoffStatus(status)}
+                    style={actionBtn(handoffStatus === status)}
+                  >
+                    {t(`inpatientAdmissionInp2b2d.handoffAction.${status}`)}
+                  </button>
+                ))}
+              </div>
+            ) : null}
           </dd>
           <dt>{t("inpatientAdmissionInp2b2.review.providerNotified")}</dt>
-          <dd style={{ margin: 0 }}>
-            {handoffAnswers.providerNotifiedOfArrival
-              ? t(`inpatientAdmissionInp2b2d.yn.${String(handoffAnswers.providerNotifiedOfArrival)}`)
-              : t("common.dash")}
-            {handoffAnswers.providerNotifiedOfArrival !== "YES" && !readOnly && !signed && onDocumentProviderNotified ? (
-              <button
-                type="button"
-                data-testid="stage6-document-provider-notified"
-                onClick={onDocumentProviderNotified}
-                style={{ marginLeft: 8, fontSize: 12 }}
-              >
-                {t("inpatientAdmissionInp2b2d.notifyArrival")}
-              </button>
+          <dd style={{ margin: 0 }} data-testid="stage6-provider-notified">
+            {providerNotified ? t(`inpatientAdmissionInp2b2d.yn.${providerNotified}`) : t("common.dash")}
+            {!readOnly && !signed && onProviderNotified ? (
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 6 }}>
+                {YN_ACTIONS.map((value) => (
+                  <button
+                    key={value}
+                    type="button"
+                    data-testid={`stage6-notify-${value}`}
+                    disabled={readOnly || signed}
+                    onClick={() => onProviderNotified(value)}
+                    style={actionBtn(providerNotified === value)}
+                  >
+                    {t(`inpatientAdmissionInp2b2d.yn.${value}`)}
+                  </button>
+                ))}
+              </div>
             ) : null}
           </dd>
           <dt>{t("inpatientAdmissionInp2b2.review.ordersPresent")}</dt>
-          <dd style={{ margin: 0 }}>
-            {handoffAnswers.admissionOrdersPresent
-              ? t(`inpatientAdmissionInp2b2d.yn.${String(handoffAnswers.admissionOrdersPresent)}`)
-              : t("common.dash")}
+          <dd style={{ margin: 0 }} data-testid="stage6-orders-present">
+            {ordersPresent ? t(`inpatientAdmissionInp2b2d.yn.${ordersPresent}`) : t("common.dash")}
+            <span style={{ display: "block", color: "#64748b", fontSize: 11 }}>
+              {t("inpatientAdmissionInp2b2d.ordersInformational")}
+            </span>
           </dd>
           <dt>{t("inpatientAdmissionInp2b2.review.codeConfirmed")}</dt>
-          <dd style={{ margin: 0 }}>
-            {handoffAnswers.codeStatusConfirmed
-              ? t(`inpatientAdmissionInp2b2d.yn.${String(handoffAnswers.codeStatusConfirmed)}`)
-              : t("common.dash")}
+          <dd style={{ margin: 0 }} data-testid="stage6-code-status">
+            {codeConfirmed === "YES"
+              ? t("inpatientAdmissionInp2b2d.yn.YES")
+              : t("inpatientAdmissionInp2b2d.codeStatusNotDocumented")}
+            {!readOnly && !signed && onOpenCodeStatus ? (
+              <button
+                type="button"
+                data-testid="stage6-open-code-status"
+                onClick={onOpenCodeStatus}
+                style={{ marginTop: 6, display: "block", fontSize: 12, color: "#0f766e" }}
+              >
+                {t("inpatientAdmissionInp2b2d.openCodeStatus")}
+              </button>
+            ) : null}
           </dd>
           <dt>{t("inpatientAdmissionInp2b2.review.medRecon")}</dt>
-          <dd style={{ margin: 0 }}>
-            {handoffAnswers.medReconStatus
-              ? t(`inpatientAdmissionInp2b2d.medRecon.${String(handoffAnswers.medReconStatus)}`)
-              : t("common.dash")}
+          <dd style={{ margin: 0 }} data-testid="stage6-med-recon">
+            {medRecon ? t(`inpatientAdmissionInp2b2d.medRecon.${medRecon}`) : t("common.dash")}
+            {medRecon !== "COMPLETE" && !readOnly && !signed && onOpenHomeMedications ? (
+              <button
+                type="button"
+                data-testid="stage6-open-home-meds"
+                onClick={onOpenHomeMedications}
+                style={{ marginTop: 6, display: "block", fontSize: 12, color: "#0f766e" }}
+              >
+                {t("inpatientAdmissionInp2b2d.openHomeMeds")}
+              </button>
+            ) : null}
           </dd>
         </dl>
-        {typeof handoffAnswers.unresolvedItems === "string" && handoffAnswers.unresolvedItems.trim() ? (
-          <p style={{ margin: "8px 0 0", fontSize: 12 }}>
-            <strong>{t("inpatientAdmissionInp2b2.review.unresolvedNote")}</strong>:{" "}
-            {handoffAnswers.unresolvedItems}
-          </p>
-        ) : null}
       </div>
 
       {Array.isArray(review?.warnings) && (review!.warnings as string[]).length > 0 ? (

@@ -85,6 +85,16 @@ describe("MEDUI.INP.2B.2D nursing admission final convergence", () => {
   it("Stage 6 dashboard maps enums through i18n", () => {
     const dash = read("NursingAdmissionReviewDashboard.tsx");
     expect(dash).toContain("inpatientAdmissionInp2b2d.handoffStatus");
+    expect(dash).toContain("stage6-notify-${value}");
+    expect(dash).toContain("stage6-handoff-${status}");
     expect(dash).not.toContain("{String(handoffAnswers.handoffStatus ??");
+  });
+
+  it("Save & Continue uses persistableAdmissionSectionCompletion rather than API CONTINUE", () => {
+    const shell = read("InpatientAdmissionClinicalShell.tsx");
+    expect(shell).toContain("persistableAdmissionSectionCompletion");
+    expect(shell).toContain('persistSection(undefined, "CONTINUE")');
+    expect(shell).not.toMatch(/completionState:\s*persistModeRef/);
+    expect(shell).not.toMatch(/completionState:\s*"CONTINUE"/);
   });
 });

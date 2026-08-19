@@ -3,16 +3,14 @@
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
 import {
   ADMISSION_HISTORY_VERIFICATION_STATUSES,
-  HEAD_TO_TOE_SYSTEM_KEYS,
   INPATIENT_ADMISSION_CLINICAL_SECTIONS,
   NURSING_ADMISSION_STAGES,
   computeAdmissionCompletionSummary,
-  deriveAdmissionSectionCompletion,
+  persistableAdmissionSectionCompletion,
   nursingAdmissionStageForSection,
   nursingAdmissionMayCompleteAndSign,
   nursingAdmissionPreloadActionIsSelected,
   nursingAdmissionPreloadLabelKey,
-  nursingAdmissionPriorNineteenResolved,
   projectNursingAdmissionStage6,
   projectNursingAdmissionOverview,
   projectNursingAdmissionRailSummary,
@@ -61,7 +59,7 @@ import {
   type NursingAdmissionSaveFailureKind,
 } from "./nursingAdmissionSaveFailure";
 import { NursingAdmissionEnterpriseHistoryEditor, type NursingAdmissionHistoryEditorDomain } from "./NursingAdmissionEnterpriseHistoryEditor";
-import { InpatientAllergyEditorModal } from "./InpatientClinicalStatusEditors";
+import { InpatientAllergyEditorModal, InpatientCodeStatusEditorModal } from "./InpatientClinicalStatusEditors";
 
 const CANONICAL_PRELOAD_ITEM_ID: Record<string, string> = {
   MEDICAL_HISTORY: "pmh-summary",
@@ -204,6 +202,7 @@ export function InpatientAdmissionClinicalShell({
   const stage6PersistRef = useRef<string | false>(false);
   const [allergyEditorOpen, setAllergyEditorOpen] = useState(false);
   const [allergyEditorItemId, setAllergyEditorItemId] = useState<string | null>(null);
+  const [codeStatusEditorOpen, setCodeStatusEditorOpen] = useState(false);
   const [conflictDebug, setConflictDebug] = useState<{
     section: string;
     expectedVersion: number;
@@ -392,7 +391,7 @@ export function InpatientAdmissionClinicalShell({
     const previousState =
       (docRef.current.sections?.[sectionId]?.completionState as AdmissionSectionCompletionState) ??
       "NOT_STARTED";
-    const completionState = deriveAdmissionSectionCompletion({
+    const completionState = persistableAdmissionSectionCompletion({
       sectionId,
       answers: answersRef.current,
       unableReason: unableReasonRef.current,
@@ -529,6 +528,23 @@ export function InpatientAdmissionClinicalShell({
     []
   );
 
+  const persistStage6Answers = (partial: Record<string, unknown>) => {
+    const nextAnswers = { ...answersRef.current, ...partial };
+    answersRef.current = nextAnswers;
+    setAnswers(nextAnswers);
+    dirtyRef.current = true;
+    stage6PersistRef.current = false;
+    void persistSection(undefined, "DRAFT");
+  };
+
+  const stage6Projection = doc
+    ? projectNursingAdmissionStage6({
+        doc: doc as MedSurgNursingAdmissionDocV1,
+        ops: clinicalOps,
+        orders: stage6Orders,
+      })
+    : null;
+
   useEffect(() => {
     if (saveState !== "NOT_SAVED" || writeBlocked || busy) return;
     const handle = window.setTimeout(() => {
@@ -553,40 +569,20 @@ export function InpatientAdmissionClinicalShell({
   }, [active, encounterId]);
 
   useEffect(() => {
-    if (active !== "PROVIDER_ADMISSION" || writeBlocked || signed || !doc || !facilityId) return;
-    if (!nursingAdmissionPriorNineteenResolved(doc as MedSurgNursingAdmissionDocV1)) return;
-    if (stage6PersistRef.current) return;
+    if (active !== "PROVIDER_ADMISSION" || !facilityId) return;
     let cancelled = false;
     void (async () => {
       try {
         const orders = await fetchOrdersForEncounter(facilityId, encounterId);
-        if (cancelled) return;
-        setStage6Orders(orders);
-        const projection = projectNursingAdmissionStage6({
-          doc: doc as MedSurgNursingAdmissionDocV1,
-          ops: clinicalOps,
-          orders,
-        });
-        const fingerprint = JSON.stringify(projection.answers);
-        if (stage6PersistRef.current === fingerprint) return;
-        stage6PersistRef.current = fingerprint;
-        const nextAnswers = { ...answersRef.current, ...projection.answers };
-        answersRef.current = nextAnswers;
-        setAnswers(nextAnswers);
-        dirtyRef.current = true;
-        const ok = await persistSection(
-          undefined,
-          projection.nursingResponsibilitiesSatisfied ? "CONTINUE" : "DRAFT"
-        );
-        if (!ok) stage6PersistRef.current = false;
+        if (!cancelled) setStage6Orders(orders);
       } catch {
-        stage6PersistRef.current = false;
+        if (!cancelled) setStage6Orders([]);
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, [active, clinicalOps, doc, encounterId, facilityId, persistSection, signed, writeBlocked]);
+  }, [active, encounterId, facilityId]);
 
   const markDirty = (nextAnswers: Record<string, unknown>) => {
     setAnswers(nextAnswers);
@@ -898,19 +894,18 @@ export function InpatientAdmissionClinicalShell({
               review={review}
               readOnly={writeBlocked}
               signed={signed}
+              stage6Projection={stage6Projection}
               onNavigate={goTo}
               onComplete={() => void signAdmission()}
-              onDocumentProviderNotified={() => {
-                const nextAnswers = {
-                  ...answersRef.current,
-                  providerNotifiedOfArrival: "YES",
-                };
-                answersRef.current = nextAnswers;
-                setAnswers(nextAnswers);
-                dirtyRef.current = true;
-                stage6PersistRef.current = false;
-                void persistSection(undefined, "DRAFT");
+              onHandoffStatus={(status) => persistStage6Answers({ handoffStatus: status })}
+              onProviderNotified={(value) => {
+                persistStage6Answers({
+                  providerNotifiedOfArrival: value,
+                  notificationAt: value === "YES" ? new Date().toISOString() : answersRef.current.notificationAt,
+                });
               }}
+              onOpenCodeStatus={() => setCodeStatusEditorOpen(true)}
+              onOpenHomeMedications={() => goTo("HOME_MEDICATIONS")}
               completionAllowed={
                 Boolean(completionSummary?.allRequiredComplete) ||
                 (doc
@@ -1016,8 +1011,7 @@ export function InpatientAdmissionClinicalShell({
 
           {active === "NURSING_ADMISSION_ASSESSMENT" ? (
             <p style={{ fontSize: 11, color: "#64748b" }} data-testid="head-to-toe-shell">
-              {t("hospitalAdmissionD4a1.headToToe.hint")} ·{" "}
-              {HEAD_TO_TOE_SYSTEM_KEYS.length} systems
+              {t("hospitalAdmissionD4a1.headToToe.hint")}
             </p>
           ) : null}
 
@@ -1258,6 +1252,17 @@ export function InpatientAdmissionClinicalShell({
                 await persistSection(undefined, "CONTINUE");
               }
             }
+          }}
+        />
+      ) : null}
+      {codeStatusEditorOpen ? (
+        <InpatientCodeStatusEditorModal
+          open={codeStatusEditorOpen}
+          onClose={() => setCodeStatusEditorOpen(false)}
+          encounterId={encounterId}
+          currentStatus={codeStatus.documented ? codeStatus.value : null}
+          onSaved={async () => {
+            await reload({ preserveDirtyAnswers: dirtyRef.current });
           }}
         />
       ) : null}

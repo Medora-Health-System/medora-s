@@ -32,7 +32,7 @@ export type NursingAdmissionStage6Answers = {
 export type NursingAdmissionStage6Projection = {
   answers: NursingAdmissionStage6Answers;
   sources: {
-    handoff: "providerHandoff" | "assessmentNotify" | "pendingProjection";
+    handoff: "providerHandoff" | "assessmentNotify" | "explicitAdmissionAnswer" | "pendingProjection";
     providerNotified: "nursingAdmissionAssessment" | "explicit" | "unknown";
     admissionOrders: "enterpriseOrderEngine";
     codeStatus: "inpatientClinicalOpsV1" | "NOT_DOCUMENTED";
@@ -103,9 +103,9 @@ export function projectNursingAdmissionStage6(input: {
   const existing = (input.doc.sections.PROVIDER_ADMISSION?.answers ?? {}) as Record<string, unknown>;
   const notifiedFromAssessment = yn(assessment.providerNotified);
   const notifiedExplicit = yn(existing.providerNotifiedOfArrival);
-  // Never infer notification from orders or from unrelated urgent-concern flags.
+  // Stage-6 explicit answer is the nurse-owned path. Never infer from orders.
   const providerNotifiedOfArrival: "YES" | "NO" | "UNKNOWN" =
-    notifiedFromAssessment ?? notifiedExplicit ?? "UNKNOWN";
+    notifiedExplicit ?? notifiedFromAssessment ?? "UNKNOWN";
 
   const ordersPresent = nursingAdmissionQualifyingOrdersPresent(input.orders);
   const admissionOrdersPresent: "YES" | "NO" = ordersPresent ? "YES" : "NO";
@@ -125,15 +125,19 @@ export function projectNursingAdmissionStage6(input: {
 
   let handoffStatus = "ORDERS_PENDING";
   let handoffSource: NursingAdmissionStage6Projection["sources"]["handoff"] = "pendingProjection";
+  const existingHandoff = String(existing.handoffStatus ?? "").trim().toUpperCase();
   if (input.doc.providerHandoff) {
     const raw = String(input.doc.providerHandoff.status ?? "").toUpperCase();
     handoffStatus = raw === "COMPLETE" || raw === "ACKNOWLEDGED" ? "PROVIDER_NOTIFIED" : "ORDERS_PENDING";
     handoffSource = "providerHandoff";
-  } else if (providerNotifiedOfArrival === "YES") {
-    handoffStatus = "PROVIDER_NOTIFIED";
-    handoffSource = "assessmentNotify";
+  } else if (existingHandoff) {
+    handoffStatus = existingHandoff;
+    handoffSource = nursingAdmissionStage6HandoffIsPending(existingHandoff)
+      ? "pendingProjection"
+      : "explicitAdmissionAnswer";
   } else {
-    handoffStatus = "ORDERS_PENDING";
+    // Do not infer handoff completion from notify-of-arrival or from order count.
+    handoffStatus = "NOT_STARTED";
     handoffSource = "pendingProjection";
   }
 
@@ -159,10 +163,10 @@ export function projectNursingAdmissionStage6(input: {
     answers,
     sources: {
       handoff: handoffSource,
-      providerNotified: notifiedFromAssessment
-        ? "nursingAdmissionAssessment"
-        : notifiedExplicit
-          ? "explicit"
+      providerNotified: notifiedExplicit
+        ? "explicit"
+        : notifiedFromAssessment
+          ? "nursingAdmissionAssessment"
           : "unknown",
       admissionOrders: "enterpriseOrderEngine",
       codeStatus: code.source,

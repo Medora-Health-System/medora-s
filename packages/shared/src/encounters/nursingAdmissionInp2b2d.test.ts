@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { emptyMedSurgNursingAdmissionDocV1 } from "./medSurgNursingAdmissionD4a1.js";
+import { emptyMedSurgNursingAdmissionDocV1, buildAdmissionPreloadFromPatientProfile } from "./medSurgNursingAdmissionD4a1.js";
+import { nursingSectionIntegration } from "./nursingAdmissionDomainIntegrationD4a25a.js";
 import { INPATIENT_ADMISSION_CLINICAL_SECTIONS } from "./connectedInpatientAdmissionIntakeD4a0.js";
 import {
   inpatientMarMountsMedicationReconciliation,
@@ -9,6 +10,7 @@ import {
   nursingAdmissionPreloadActionIsSelected,
   reviewCompletePatchForDomain,
 } from "./nursingAdmissionPreloadVerificationInp2b2d.js";
+import { persistableAdmissionSectionCompletion } from "./inpatientLifecycleNursingAdmissionD4a25.js";
 import {
   applyStage6ProjectionAnswers,
   nursingAdmissionMayCompleteAndSign,
@@ -40,6 +42,11 @@ function completeNineteen(facilityId: string) {
     ...doc.sections.NURSING_ADMISSION_ASSESSMENT!,
     completionState: "COMPLETE",
     answers: { providerNotified: "YES" },
+  };
+  doc.sections.PROVIDER_ADMISSION = {
+    ...doc.sections.PROVIDER_ADMISSION!,
+    completionState: "NOT_STARTED",
+    answers: { providerNotifiedOfArrival: "YES", handoffStatus: "PROVIDER_NOTIFIED" },
   };
   return doc;
 }
@@ -155,6 +162,11 @@ describe("MEDUI.INP.2B.2D preload + Stage 6 convergence", () => {
       completionState: "COMPLETE",
       answers: { reconComplete: "NO" },
     };
+    doc.sections.PROVIDER_ADMISSION = {
+      ...doc.sections.PROVIDER_ADMISSION!,
+      completionState: "NOT_STARTED",
+      answers: {},
+    };
     const ops = emptyInpatientClinicalOpsV1();
     ops.medicationReconciliation = [
       {
@@ -177,7 +189,7 @@ describe("MEDUI.INP.2B.2D preload + Stage 6 convergence", () => {
     const projection = projectNursingAdmissionStage6({ doc, ops, orders });
     expect(projection.answers.providerNotifiedOfArrival).toBe("UNKNOWN");
     expect(projection.answers.admissionOrdersPresent).toBe("YES");
-    expect(projection.answers.handoffStatus).toBe("ORDERS_PENDING");
+    expect(projection.answers.handoffStatus).toBe("NOT_STARTED");
     expect(projection.handoffIsPendingProjection).toBe(true);
     expect(projection.answers.medReconStatus).toBe("IN_PROGRESS");
     expect(projection.nursingResponsibilitiesSatisfied).toBe(false);
@@ -186,5 +198,84 @@ describe("MEDUI.INP.2B.2D preload + Stage 6 convergence", () => {
 
   it("home-med update contract never creates orders or MAR doses", () => {
     expect(nursingAdmissionHomeMedUpdateCreatesOrderOrMar()).toBe(false);
+  });
+
+  it("emits canonical social preload rows even when profile values are empty", () => {
+    const items = buildAdmissionPreloadFromPatientProfile({
+      profile: null,
+      sourceEncounterId: null,
+    });
+    expect(items.map((i) => i.itemId)).toEqual(
+      expect.arrayContaining([
+        "pmh-summary",
+        "psh-summary",
+        "home-meds-summary",
+        "allergy-note",
+        "smoking",
+        "alcohol",
+        "recreational-drugs",
+      ])
+    );
+  });
+
+  it("Stage 4 LINES remains admission-owned; FALL stays write-through without fabricated completion", () => {
+    expect(nursingSectionIntegration("LINES_DRAINS_DEVICES").classification).toBe(
+      "KEEP_AS_ADMISSION_OWNED"
+    );
+    expect(nursingSectionIntegration("FALL_SAFETY").classification).toBe(
+      "WRITE_THROUGH_ENTERPRISE_DOMAIN"
+    );
+    expect(
+      persistableAdmissionSectionCompletion({
+        sectionId: "LINES_DRAINS_DEVICES",
+        answers: {},
+        previousState: "NOT_STARTED",
+        mode: "CONTINUE",
+      })
+    ).toBe("NOT_STARTED");
+  });
+
+  it("Stage 6 notify YES is admission-owned and does not complete from ORDERS_PENDING", () => {
+    const doc = completeNineteen(FACILITY_A);
+    doc.sections.NURSING_ADMISSION_ASSESSMENT = {
+      ...doc.sections.NURSING_ADMISSION_ASSESSMENT!,
+      completionState: "COMPLETE",
+      answers: {},
+    };
+    doc.sections.PROVIDER_ADMISSION = {
+      ...doc.sections.PROVIDER_ADMISSION!,
+      completionState: "IN_PROGRESS",
+      answers: { providerNotifiedOfArrival: "YES", handoffStatus: "PROVIDER_NOTIFIED" },
+    };
+    const projection = projectNursingAdmissionStage6({
+      doc,
+      ops: emptyInpatientClinicalOpsV1(),
+      orders: [],
+    });
+    expect(projection.answers.providerNotifiedOfArrival).toBe("YES");
+    expect(projection.sources.providerNotified).toBe("explicit");
+    expect(projection.nursingResponsibilitiesSatisfied).toBe(true);
+    doc.sections.PROVIDER_ADMISSION = {
+      ...doc.sections.PROVIDER_ADMISSION!,
+      answers: { providerNotifiedOfArrival: "YES", handoffStatus: "ORDERS_PENDING" },
+    };
+    const pending = projectNursingAdmissionStage6({
+      doc,
+      ops: emptyInpatientClinicalOpsV1(),
+      orders: [],
+    });
+    expect(pending.answers.handoffStatus).toBe("ORDERS_PENDING");
+    expect(pending.nursingResponsibilitiesSatisfied).toBe(false);
+  });
+
+  it("Save & Continue persistable state is never the CONTINUE UI mode", () => {
+    expect(
+      persistableAdmissionSectionCompletion({
+        sectionId: "FUNCTIONAL_MOBILITY",
+        answers: { baselineMobility: "INDEPENDENT", currentMobility: "INDEPENDENT" },
+        previousState: "IN_PROGRESS",
+        mode: "CONTINUE",
+      })
+    ).not.toBe("CONTINUE" as never);
   });
 });

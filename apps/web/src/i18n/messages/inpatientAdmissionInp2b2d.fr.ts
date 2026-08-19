@@ -19,13 +19,26 @@ export const inpatientAdmissionInp2b2dFr = {
   homeMedRemove: "Retirer",
   homeMedNoOrder:
     "Ceci consigne l’historique des médicaments à domicile. Cela ne crée ni ordonnance ni dose MAR.",
+  homeMedStrength: "Dosage",
+  homeMedRoute: "Voie",
+  homeMedNotes: "Notes (facultatif)",
+  socialStimulant: "Stimulants",
+  socialOpioid: "Opioïdes",
+  ordersInformational: "Information — moteur d’ordonnances d’établissement. Ceci ne crée pas d’ordonnance.",
+  openCodeStatus: "Ouvrir l’éditeur de statut de code existant",
+  openHomeMeds: "Ouvrir les médicaments à domicile",
+  handoffAction: {
+    PROVIDER_NOTIFIED: "Terminé / communiqué",
+    ORDERS_PENDING: "En attente",
+    NOT_STARTED: "Non commencé",
+  },
   handoffStatus: {
     NOT_STARTED: "Non commencé",
     PROVIDER_NOTIFIED: "Médecin notifié",
     ORDERS_PENDING: "Ordres en attente",
     ORDERS_RECEIVED: "Ordres reçus",
-    HP_PENDING: "H&P médecin en attente (non requis pour la signature infirmière)",
-    HP_COMPLETE: "H&P médecin terminé",
+    HP_PENDING: "Compte rendu médecin en attente (non requis pour la signature infirmière)",
+    HP_COMPLETE: "Compte rendu médecin terminé",
     ESCALATION_REQUIRED: "Escalade requise",
   },
   yn: {

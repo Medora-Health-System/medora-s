@@ -67,4 +67,27 @@ describe("MEDUI.INP.2B.2B nursing admission save failure classification", () => 
     ).toBe("CONFLICT");
     expect(nursingAdmissionSaveFailureMessageKey("CONFLICT")).toBe("inpatientAdmissionInp2b2a.conflict.body");
   });
+
+  it("classifies INCOMPLETE_ADMISSION and Invalid completionState as non-network", () => {
+    expect(
+      classifyNursingAdmissionSaveFailure(
+        Object.assign(new Error("INCOMPLETE_ADMISSION"), {
+          status: 400,
+          body: { message: "INCOMPLETE_ADMISSION" },
+        })
+      ).kind
+    ).toBe("INCOMPLETE");
+    expect(nursingAdmissionSaveFailureMessageKey("INCOMPLETE")).toBe(
+      "inpatientAdmissionInp2b2a.saveIncompleteAdmission"
+    );
+    expect(
+      classifyNursingAdmissionSaveFailure(
+        Object.assign(new Error("Invalid completionState"), {
+          status: 400,
+          body: { message: "Invalid completionState" },
+        })
+      ).kind
+    ).toBe("VALIDATION");
+    expect(nursingAdmissionSaveFailureMessageKey("VALIDATION")).not.toMatch(/connection/i);
+  });
 });
