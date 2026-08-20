@@ -10,6 +10,7 @@ import {
   type InpatientReviewOrderClinicalGroup,
   type InpatientReviewOrderLine,
   type InpatientReviewOrderStatusBucket,
+  inpatientFacilityMedicationOrderMode,
 } from "@medora/shared";
 import { useI18n } from "@/lib/i18n";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
@@ -481,7 +482,7 @@ export function InpatientReviewOrdersPanel({
               : undefined
           }
           initialOrderTab={createTab}
-          medicationOrderMode="DEFAULT"
+          medicationOrderMode={inpatientFacilityMedicationOrderMode()}
           onClose={() => setShowCreate(false)}
           onRefetchEncounter={onRefetchEncounter}
           onSuccess={async () => {

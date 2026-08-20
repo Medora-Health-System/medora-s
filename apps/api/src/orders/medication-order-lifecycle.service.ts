@@ -672,6 +672,7 @@ export class MedicationOrderLifecycleService {
         frequencyCode: string | null;
         route: string | null;
         manualLabel: string | null;
+        medicationFulfillmentIntent?: string | null;
       };
       userId: string;
     }
@@ -706,6 +707,7 @@ export class MedicationOrderLifecycleService {
       catalogMedication: catalog,
       createdByUserId: input.userId,
       featureFlags: getMedicationSchedulingFeatureFlagsFromEnv(),
+      medicationFulfillmentIntent: input.orderItem.medicationFulfillmentIntent ?? null,
     });
 
     if (scheduleResult.created && scheduleResult.scheduleId) {

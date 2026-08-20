@@ -6,13 +6,19 @@ import { describe, expect, it } from "vitest";
 import {
   CLINIC_ENTERPRISE_MAR_AUTHORITY_ORDER_RX_CERTIFICATION_ID,
   D4C7G_ERROR_CODES,
+  D4C7G_FACILITY_ADMINISTER_STANDING_ORDER_MODE,
   D4C7G_FORBIDDEN_CLINIC_MEDICATION_AUTHORITIES,
   D4C7G_OUTPATIENT_RX_ORDER_MODE,
   assertOutpatientRxModeRejectsFacilityAdminIntent,
   buildFacilityMarProjectionObservability,
   clinicAmbulatoryFacilityMedicationOrderMode,
   clinicAmbulatoryOutpatientRxOrderMode,
+  composerForcesFacilityAdministerIntent,
+  composerUsesErQuantityConfirmation,
+  inpatientFacilityMedicationOrderMode,
   isPureOutpatientPrescriptionOrderCreate,
+  resolveComposerDefaultMedicationFulfillmentIntent,
+  resolveComposerDefaultMedicationQuantity,
   resolveOutpatientRxLineIntent,
   shouldShowAmbulatoryPendingMarOrderItemFallback,
   shouldSkipPilotScopeForOutpatientRxCreate,
@@ -134,5 +140,27 @@ describe("MEDUI.D4C.7G enterprise MAR authority / Clinic Rx", () => {
         medicationFulfillmentIntent: "PHARMACY_DISPENSE",
       }).ok
     ).toBe(true);
+  });
+
+  it("INP.2E.2 — inpatient standing mode forces ADMINISTER_CHART without ER qty confirmation", () => {
+    expect(inpatientFacilityMedicationOrderMode()).toBe(
+      D4C7G_FACILITY_ADMINISTER_STANDING_ORDER_MODE
+    );
+    expect(
+      composerForcesFacilityAdministerIntent(inpatientFacilityMedicationOrderMode())
+    ).toBe(true);
+    expect(composerUsesErQuantityConfirmation(inpatientFacilityMedicationOrderMode())).toBe(
+      false
+    );
+    expect(
+      resolveComposerDefaultMedicationFulfillmentIntent(inpatientFacilityMedicationOrderMode())
+    ).toBe("ADMINISTER_CHART");
+    expect(
+      resolveComposerDefaultMedicationQuantity(inpatientFacilityMedicationOrderMode())
+    ).toBe(1);
+    expect(composerUsesErQuantityConfirmation("ER_ADMINISTER_ONLY")).toBe(true);
+    expect(resolveComposerDefaultMedicationFulfillmentIntent("DEFAULT")).toBe(
+      "PHARMACY_DISPENSE"
+    );
   });
 });

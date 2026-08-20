@@ -4,6 +4,13 @@ import React, { useState } from "react";
 import { useI18n } from "@/lib/i18n";
 import type { CreateOrderLineItem, OrderModalTab } from "./types";
 import { newOrderLineId } from "./types";
+import {
+  composerForcesFacilityAdministerIntent,
+  composerForcesOutpatientRxIntent,
+  resolveComposerDefaultMedicationFulfillmentIntent,
+  resolveComposerDefaultMedicationQuantity,
+  type D4c7gMedicationOrderMode,
+} from "@medora/shared";
 
 const btnOutline: React.CSSProperties = {
   padding: "8px 12px",
@@ -44,10 +51,11 @@ export function ManualOrderEntry({
 }: {
   tab: OrderModalTab;
   onAdd: (line: CreateOrderLineItem) => void;
-  medicationOrderMode?: "DEFAULT" | "ER_ADMINISTER_ONLY" | "OUTPATIENT_RX_ONLY";
+  medicationOrderMode?: D4c7gMedicationOrderMode;
 }) {
   const { t } = useI18n();
-  const outpatientRxOnly = medicationOrderMode === "OUTPATIENT_RX_ONLY";
+  const outpatientRxOnly = composerForcesOutpatientRxIntent(medicationOrderMode);
+  const facilityAdministerForced = composerForcesFacilityAdministerIntent(medicationOrderMode);
   const [open, setOpen] = useState(false);
   const [labLabel, setLabLabel] = useState("");
   const [labNotes, setLabNotes] = useState("");
@@ -57,9 +65,9 @@ export function ManualOrderEntry({
   const [medName, setMedName] = useState("");
   const [medDosage, setMedDosage] = useState("");
   const [medPoso, setMedPoso] = useState("");
-  const [medQty, setMedQty] = useState(30);
+  const [medQty, setMedQty] = useState(resolveComposerDefaultMedicationQuantity(medicationOrderMode));
   const [medIntent, setMedIntent] = useState<"ADMINISTER_CHART" | "PHARMACY_DISPENSE">(
-    outpatientRxOnly ? "PHARMACY_DISPENSE" : "PHARMACY_DISPENSE"
+    resolveComposerDefaultMedicationFulfillmentIntent(medicationOrderMode)
   );
 
   const addLab = () => {
@@ -113,14 +121,18 @@ export function ManualOrderEntry({
       notes: medPoso.trim() || undefined,
       quantity: medQty,
       refillCount: 0,
-      medicationFulfillmentIntent: outpatientRxOnly ? "PHARMACY_DISPENSE" : medIntent,
+      medicationFulfillmentIntent: facilityAdministerForced
+        ? "ADMINISTER_CHART"
+        : outpatientRxOnly
+          ? "PHARMACY_DISPENSE"
+          : medIntent,
       _label: name,
     });
     setMedName("");
     setMedDosage("");
     setMedPoso("");
-    setMedQty(30);
-    setMedIntent("PHARMACY_DISPENSE");
+    setMedQty(resolveComposerDefaultMedicationQuantity(medicationOrderMode));
+    setMedIntent(resolveComposerDefaultMedicationFulfillmentIntent(medicationOrderMode));
     setOpen(false);
   };
 
@@ -274,6 +286,8 @@ export function ManualOrderEntry({
                   <span data-testid="manual-rx-external-destination">
                     {t("clinicCareD4c7g.rx.externalPharmacyDestination")}
                   </span>
+                ) : facilityAdministerForced ? (
+                  <span>{t("createOrderModal.manualIntentAdminister")}</span>
                 ) : (
                   <>
                     <label style={{ marginRight: 12, cursor: "pointer" }}>

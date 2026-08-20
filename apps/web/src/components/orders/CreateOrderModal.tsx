@@ -32,6 +32,14 @@ import {
   type EnterpriseOrderSetCategory,
   type OxygenTherapyDraft,
   type D4c7ePersistedOrderItemLike,
+  type D4c7gMedicationOrderMode,
+  D4C7G_FACILITY_ADMINISTER_STANDING_ORDER_MODE,
+  composerForcesFacilityAdministerIntent,
+  composerForcesOutpatientRxIntent,
+  composerUsesErQuantityConfirmation,
+  isStructuredMedicationOrderRoute,
+  resolveComposerDefaultMedicationFulfillmentIntent,
+  resolveComposerDefaultMedicationQuantity,
 } from "@medora/shared";
 import { SharedCatalogAutocomplete } from "@/components/catalog/SharedCatalogAutocomplete";
 import { buildRxPrintFacilityIdentity, printRx } from "@/components/pharmacy/RxPrintLayout";
@@ -119,7 +127,7 @@ import { useClinicalBeforeUnloadWarning } from "@/lib/useClinicalBeforeUnloadWar
 
 type OrderTypeKey = OrderModalTab;
 type OrderAuthorityFormSource = OrderSource | "";
-type MedicationOrderMode = "DEFAULT" | "ER_ADMINISTER_ONLY" | "OUTPATIENT_RX_ONLY";
+type MedicationOrderMode = D4c7gMedicationOrderMode;
 const ORDER_DRAFT_VERSION = "orders-drafting-v2";
 const UNKNOWN_CLINICAL_DRAFT_USER_ID = "unknown-user";
 
@@ -202,14 +210,13 @@ function catalogItemToOrderLine(
   }
 
   if (item.type === "MEDICATION") {
-    const erAdministerOnly = medicationOrderMode === "ER_ADMINISTER_ONLY";
-    const outpatientRxOnly = medicationOrderMode === "OUTPATIENT_RX_ONLY";
+    const outpatientRxOnly = composerForcesOutpatientRxIntent(medicationOrderMode);
     return applyDefaultPlannedAdministrationIfNeeded({
       _lineId: newOrderLineId(),
       isManual: false,
       catalogItemId: item.id,
       catalogItemType: "MEDICATION",
-      quantity: erAdministerOnly ? 1 : 30,
+      quantity: resolveComposerDefaultMedicationQuantity(medicationOrderMode),
       notes: "",
       strength: item.metadata?.strength ?? undefined,
       route: normalizeMedicationRoute({
@@ -224,7 +231,7 @@ function catalogItemToOrderLine(
       _requiresWitness: item.metadata?.requiresWitness,
       _requiresDoubleSign: item.metadata?.requiresDoubleSign,
       refillCount: 0,
-      medicationFulfillmentIntent: erAdministerOnly ? "ADMINISTER_CHART" : "PHARMACY_DISPENSE",
+      medicationFulfillmentIntent: resolveComposerDefaultMedicationFulfillmentIntent(medicationOrderMode),
       _safetyCatalog: {
         code: item.code,
         name: item.name ?? null,
@@ -282,7 +289,7 @@ export function CreateOrderModal({
   const { language, t } = useI18n();
   const { facilityTimeZone, facilityClinicalTimeZoneReady, roles, userId, facilities, careProfileJson } = useFacilityAndRoles();
   const hasRnStandingOrderAuthority = canUseRnOrderAuthority;
-  const outpatientRxOnlyMedication = medicationOrderMode === "OUTPATIENT_RX_ONLY";
+  const outpatientRxOnlyMedication = composerForcesOutpatientRxIntent(medicationOrderMode);
   const plannedAdminFacilityTimeZone =
     outpatientRxOnlyMedication || !facilityClinicalTimeZoneReady ? null : facilityTimeZone;
   const [carePickerQuery, setCarePickerQuery] = useState("");
@@ -315,7 +322,8 @@ export function CreateOrderModal({
   const canUseMedicationCareTabs = canPrescribe || canUseRnOrderAuthority;
   const careSearchActive =
     carePickerQuery.trim().length >= 2 || Boolean(careCategoryFilter);
-  const erAdministerOnlyMedication = medicationOrderMode === "ER_ADMINISTER_ONLY";
+  const erAdministerOnlyMedication = composerUsesErQuantityConfirmation(medicationOrderMode);
+  const facilityAdministerForcedMedication = composerForcesFacilityAdministerIntent(medicationOrderMode);
   const firstTab: OrderModalTab = outpatientRxOnlyMedication
     ? "MEDICATION"
     : !canUseMedicationCareTabs && (initialOrderTab === "MEDICATION" || initialOrderTab === "CARE")
@@ -956,6 +964,10 @@ export function CreateOrderModal({
         erAdministerOnlyMedication &&
         items.some((it) => (it.quantity ?? 0) > 1 && erQuantityConfirmations[it._lineId] !== true);
       if (missingErQuantityConfirmation) return t("createOrderModal.errErQuantityConfirmationRequired");
+      if (medicationOrderMode === D4C7G_FACILITY_ADMINISTER_STANDING_ORDER_MODE) {
+        const missingStructuredRoute = items.some((it) => !isStructuredMedicationOrderRoute(it.route));
+        if (missingStructuredRoute) return t("createOrderModal.errFacilityAdminRouteRequired");
+      }
       if (summaryAtSubmit && !medicationAllergySafetyAck) {
         return t("createOrderModal.errMedicationAllergyAckRequired");
       }
@@ -1051,7 +1063,7 @@ export function CreateOrderModal({
         prescriberLicense: formData.prescriberLicense,
         prescriberContact: formData.prescriberContact,
         items:
-          erAdministerOnlyMedication && type === "MEDICATION"
+          facilityAdministerForcedMedication && type === "MEDICATION"
             ? items.map((item) => ({ ...item, medicationFulfillmentIntent: "ADMINISTER_CHART" as const }))
             : outpatientRxOnlyMedication && type === "MEDICATION"
               ? items.map((item) => ({
@@ -1405,7 +1417,7 @@ export function CreateOrderModal({
 
   const handleAddManualLine = (line: CreateOrderLineItem) => {
     let nextLine =
-      erAdministerOnlyMedication && line.catalogItemType === "MEDICATION"
+      facilityAdministerForcedMedication && line.catalogItemType === "MEDICATION"
         ? { ...line, quantity: line.quantity ?? 1, medicationFulfillmentIntent: "ADMINISTER_CHART" as const }
         : outpatientRxOnlyMedication && line.catalogItemType === "MEDICATION"
           ? { ...line, medicationFulfillmentIntent: "PHARMACY_DISPENSE" as const }
@@ -1439,7 +1451,7 @@ export function CreateOrderModal({
         patch,
         plannedAdminFacilityTimeZone
       );
-      if (erAdministerOnlyMedication) {
+      if (facilityAdministerForcedMedication) {
         patched = { ...patched, medicationFulfillmentIntent: "ADMINISTER_CHART" as const };
       } else if (outpatientRxOnlyMedication) {
         patched = { ...patched, medicationFulfillmentIntent: "PHARMACY_DISPENSE" as const };

@@ -20,10 +20,49 @@ export const D4C7G_FORBIDDEN_CLINIC_MEDICATION_AUTHORITIES =
  */
 export const D4C7G_OUTPATIENT_RX_ORDER_MODE = "OUTPATIENT_RX_ONLY" as const;
 
+/**
+ * MEDUI.INP.2E.2 — facility-administered standing orders (Hospital Inpatient).
+ * Forces ADMINISTER_CHART without ER quantity-override semantics, so BID/TID/q6h remain available.
+ */
+export const D4C7G_FACILITY_ADMINISTER_STANDING_ORDER_MODE =
+  "FACILITY_ADMINISTER_STANDING" as const;
+
 export type D4c7gMedicationOrderMode =
   | "DEFAULT"
   | "ER_ADMINISTER_ONLY"
-  | typeof D4C7G_OUTPATIENT_RX_ORDER_MODE;
+  | typeof D4C7G_OUTPATIENT_RX_ORDER_MODE
+  | typeof D4C7G_FACILITY_ADMINISTER_STANDING_ORDER_MODE;
+
+export function composerForcesFacilityAdministerIntent(mode: string | null | undefined): boolean {
+  return (
+    mode === "ER_ADMINISTER_ONLY" || mode === D4C7G_FACILITY_ADMINISTER_STANDING_ORDER_MODE
+  );
+}
+
+export function composerForcesOutpatientRxIntent(mode: string | null | undefined): boolean {
+  return mode === D4C7G_OUTPATIENT_RX_ORDER_MODE;
+}
+
+/** ER-only qty>1 confirmation. Standing inpatient orders do not use this gate. */
+export function composerUsesErQuantityConfirmation(mode: string | null | undefined): boolean {
+  return mode === "ER_ADMINISTER_ONLY";
+}
+
+export function resolveComposerDefaultMedicationFulfillmentIntent(
+  mode: string | null | undefined
+): "ADMINISTER_CHART" | "PHARMACY_DISPENSE" {
+  if (composerForcesFacilityAdministerIntent(mode)) return "ADMINISTER_CHART";
+  return "PHARMACY_DISPENSE";
+}
+
+export function resolveComposerDefaultMedicationQuantity(mode: string | null | undefined): number {
+  return composerForcesFacilityAdministerIntent(mode) ? 1 : 30;
+}
+
+/** Hospital Inpatient facility-administered medication composer — not DEFAULT and not ER_ADMINISTER_ONLY. */
+export function inpatientFacilityMedicationOrderMode(): typeof D4C7G_FACILITY_ADMINISTER_STANDING_ORDER_MODE {
+  return D4C7G_FACILITY_ADMINISTER_STANDING_ORDER_MODE;
+}
 
 /** Typed observability / error contracts (no unnecessary PHI). */
 export const D4C7G_ERROR_CODES = {

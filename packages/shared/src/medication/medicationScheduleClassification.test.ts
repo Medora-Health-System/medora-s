@@ -126,6 +126,48 @@ describe("evaluateMedicationOrderScheduleCreateGate", () => {
     expect(gate.classification).toBe("RECURRING");
   });
 
+  it("ADMINISTER_CHART + BID → create", () => {
+    const gate = evaluateMedicationOrderScheduleCreateGate({
+      frequencyCode: "BID",
+      featureFlags: flagsOn,
+      medicationFulfillmentIntent: "ADMINISTER_CHART",
+    });
+    expect(gate.shouldCreate).toBe(true);
+    expect(gate.classification).toBe("RECURRING");
+  });
+
+  it("ADMINISTER_CHART + DAILY → create", () => {
+    const gate = evaluateMedicationOrderScheduleCreateGate({
+      frequencyCode: "DAILY",
+      featureFlags: flagsOn,
+      medicationFulfillmentIntent: "ADMINISTER_CHART",
+    });
+    expect(gate.shouldCreate).toBe(true);
+    expect(gate.classification).toBe("RECURRING");
+  });
+
+  it("PHARMACY_DISPENSE + BID → never create facility MAR schedule", () => {
+    const gate = evaluateMedicationOrderScheduleCreateGate({
+      frequencyCode: "BID",
+      featureFlags: flagsOn,
+      medicationFulfillmentIntent: "PHARMACY_DISPENSE",
+    });
+    expect(gate.shouldCreate).toBe(false);
+    expect(gate.reason).toBe("NOT_FACILITY_ADMIN_INTENT");
+  });
+
+  it("NOW/STAT/ONCE stay DIRECT_MAR even for ADMINISTER_CHART", () => {
+    for (const frequencyCode of ["NOW", "STAT", "ONCE"] as const) {
+      const gate = evaluateMedicationOrderScheduleCreateGate({
+        frequencyCode,
+        featureFlags: flagsOn,
+        medicationFulfillmentIntent: "ADMINISTER_CHART",
+      });
+      expect(gate.shouldCreate).toBe(false);
+      expect(gate.reason).toBe("DIRECT_MAR_FREQUENCY_NEVER_SCHEDULES");
+    }
+  });
+
   it("PRN + flags ON → ON_DEMAND create", () => {
     const gate = evaluateMedicationOrderScheduleCreateGate({
       frequencyCode: "PRN",

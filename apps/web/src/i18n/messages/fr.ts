@@ -20145,6 +20145,7 @@ export default {
     errIvConfirmationRequired: "La confirmation d'administration IV est requise",
     confirmErQuantityOverride: "Je confirme que l'administration de plus d'une unité est appropriée",
     errErQuantityConfirmationRequired: "La confirmation de dépassement de quantité est requise",
+    errFacilityAdminRouteRequired: "Sélectionnez une voie d'administration structurée.",
     medicationAllergySafetyTitle: "Allergies documentées pour cette visite",
     medicationAllergySafetyAckLabel: "Je confirme avoir vérifié les allergies documentées.",
     errMedicationAllergyAckRequired:

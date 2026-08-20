@@ -13,6 +13,7 @@ import {
   hasMeaningfulDischargeSummary,
   synthesizeInpatientDischargeSummaryDraft,
   type InpatientWorkspaceRole,
+  inpatientFacilityMedicationOrderMode,
 } from "@medora/shared";
 import { EmergencyErOrdersPanel } from "@/features/emergency/EmergencyErOrdersPanel";
 import { EmergencyResultsPanel } from "@/features/emergency/EmergencyResultsPanel";
@@ -380,7 +381,7 @@ export function InpatientWorkspacePanel({
             }
             onRefetchEncounter={onRefetchEncounter}
             encounterType={encounter?.type ?? "INPATIENT"}
-            medicationOrderMode="DEFAULT"
+            medicationOrderMode={inpatientFacilityMedicationOrderMode()}
             roles={roles}
           />
         </div>

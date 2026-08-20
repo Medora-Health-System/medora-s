@@ -1405,6 +1405,7 @@ export class OrdersService {
           : null,
         createdByUserId: input.userId,
         featureFlags,
+        medicationFulfillmentIntent: item.medicationFulfillmentIntent ?? null,
       });
 
       if (

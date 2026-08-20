@@ -3,6 +3,7 @@ import {
   buildMedicationOrderedDoseSnapshotJson,
   evaluateMedicationDoseExpansionForClassification,
   filterUnmaterializedMedicationDoseSlots,
+  isExternalPharmacyDispenseIntent,
   isRecurringDoseExpandableScheduleClassification,
   medicationIvpbDoseSchedulingEnabled,
   medicationSchedulingFeatureFlagsEnabled,
@@ -40,7 +41,13 @@ export type ExpandMedicationDosesForScheduleInput = {
 type ScheduleWithOrderItem = MedicationOrderSchedule & {
   orderItem: Pick<
     OrderItem,
-    "route" | "quantity" | "strength" | "manualLabel" | "frequencyCode" | "catalogItemId"
+    | "route"
+    | "quantity"
+    | "strength"
+    | "manualLabel"
+    | "frequencyCode"
+    | "catalogItemId"
+    | "medicationFulfillmentIntent"
   >;
 };
 
@@ -70,6 +77,7 @@ export async function expandMedicationDosesForScheduleInTransaction(
           manualLabel: true,
           frequencyCode: true,
           catalogItemId: true,
+          medicationFulfillmentIntent: true,
         },
       },
     },
@@ -109,6 +117,15 @@ async function expandLoadedMedicationOrderSchedule(
   schedule: ScheduleWithOrderItem,
   input: ExpandMedicationDosesForScheduleInput
 ): Promise<MedicationDoseExpansionServiceResult> {
+    if (isExternalPharmacyDispenseIntent(schedule.orderItem.medicationFulfillmentIntent)) {
+      return {
+        expanded: false,
+        reason: "NOT_FACILITY_ADMIN_INTENT",
+        createdCount: 0,
+        scheduleId: schedule.id,
+      };
+    }
+
     if (schedule.scheduleStatus !== MEDICATION_ORDER_SCHEDULE_STATUS_ACTIVE) {
       return {
         expanded: false,
