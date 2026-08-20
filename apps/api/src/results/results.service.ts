@@ -26,6 +26,7 @@ import {
   writeOrderEventForResultLineOutcome,
 } from "../orders/order-lifecycle-event.util";
 import { ORDER_ITEM_RESULT_LIST_SELECT } from "../orders/order-item-result.select";
+import { hasStructuredDiagnosticResultContent } from "@medora/shared";
 
 /** Alignés avec la pré-validation client : `apps/web/src/lib/resultUploadLimits.ts` */
 const MAX_TOTAL_RESULT_CHARS = 2_500_000;
@@ -56,6 +57,7 @@ function mergeResultData(existing: unknown, incoming: unknown): unknown {
 function hasReportableContent(resultText?: string | null, resultData?: unknown): boolean {
   if (resultText?.trim()) return true;
   if (!resultData || typeof resultData !== "object" || Array.isArray(resultData)) return false;
+  if (hasStructuredDiagnosticResultContent(resultData)) return true;
   const att = (resultData as Record<string, unknown>)["attachments"];
   return Array.isArray(att) && att.length > 0;
 }

@@ -133,6 +133,28 @@ export function buildUnifiedOrderEventTitle(input: {
     return line ? `Ordre accusé réception — ${line}` : "Ordre accusé réception";
   }
 
+  /** MEDUI.RES.2A — clinician Result acknowledgement (RESULT_SERVICE / COMPLETED+ACK). */
+  if (et === "COMPLETED" && lifecycle === "ACKNOWLEDGED") {
+    const source =
+      meta && typeof meta.source === "string" ? String(meta.source).toUpperCase() : "";
+    if (source === "RESULT_SERVICE") {
+      if (input.locale === "en") {
+        if (ot === "IMAGING") {
+          return line ? `Imaging result acknowledged — ${line}` : "Imaging result acknowledged";
+        }
+        return line ? `Laboratory result acknowledged — ${line}` : "Laboratory result acknowledged";
+      }
+      if (ot === "IMAGING") {
+        return line
+          ? `Résultat d’imagerie accusé réception — ${line}`
+          : "Résultat d’imagerie accusé réception";
+      }
+      return line
+        ? `Résultat de laboratoire accusé réception — ${line}`
+        : "Résultat de laboratoire accusé réception";
+    }
+  }
+
   if (line && et !== "STARTED") return line;
 
   if (et === "CREATED") {
