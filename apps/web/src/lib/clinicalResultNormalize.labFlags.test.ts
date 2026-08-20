@@ -85,8 +85,46 @@ describe("lab worklist — stable default sort", () => {
     join(import.meta.dirname, "../../app/app/lab-worklist/page.tsx"),
     "utf8"
   );
+  const dashboardSource = readFileSync(
+    join(import.meta.dirname, "../components/worklists/LabRadTechnicianWorklistDashboard.tsx"),
+    "utf8"
+  );
 
-  it("defaults to OLDEST_FIRST for stable active queue ordering", () => {
-    expect(labPageSource).toContain('useState<LabRadWorklistSortMode>("OLDEST_FIRST")');
+  it("laboratory page uses shared technician dashboard", () => {
+    expect(labPageSource).toContain("LabRadTechnicianWorklistDashboard");
+    expect(labPageSource).toContain('kind="lab"');
+  });
+
+  it("defaults to New Orders tab and PRIORITY_NEWEST sort (not OLDEST_FIRST)", () => {
+    expect(dashboardSource).toContain('useState<TechnicianWorkStatus>("NEW")');
+    expect(dashboardSource).toContain('useState<TechnicianWorklistSortMode>("PRIORITY_NEWEST")');
+    expect(dashboardSource).not.toContain('useState<TechnicianWorklistSortMode>("OLDEST_FIRST")');
+  });
+});
+
+describe("parseLabObservationLines — MEDUI.RES.2 smashed CMP recovery", () => {
+  it("recovers smashed CMP wall into parameter/value/range/unit rows", () => {
+    const raw =
+      "Glucose9270–100mg/dL—BUN146–20mg/dL—Creatinine0.80.6–1.3mg/dL—Potassium2.93.5–5.0mEq/L";
+    const { rows } = parseLabObservationLines(raw);
+    expect(rows.length).toBeGreaterThanOrEqual(3);
+    const glucose = rows.find((r) => /glucose/i.test(r.label));
+    expect(glucose?.value).toBe("92");
+    expect(glucose?.ref).toMatch(/70/);
+    expect(glucose?.unit?.toLowerCase()).toContain("mg");
+  });
+
+  it("flags LOW potassium from recovered smashed text", () => {
+    const raw = "Potassium2.93.5–5.0mEq/L—Sodium140135–145mmol/L";
+    const { rows } = parseLabObservationLines(raw);
+    const k = rows.find((r) => /potassium/i.test(r.label));
+    expect(k?.flag).toBe("L");
+  });
+
+  it("leaves unrecoverable narrative as narrative (no invented rows)", () => {
+    const raw = "Patient clinically stable. No discrete analyte panel available.";
+    const { rows, preamble } = parseLabObservationLines(raw);
+    expect(rows).toHaveLength(0);
+    expect(preamble).toContain("clinically stable");
   });
 });

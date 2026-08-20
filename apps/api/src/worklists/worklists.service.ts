@@ -1,5 +1,5 @@
 import { Injectable } from "@nestjs/common";
-import { resolveDepartmentalEncounterContext } from "@medora/shared";
+import { projectEnterpriseOrderOrigin } from "@medora/shared";
 import { ENCOUNTER_NESTED_CORE_SELECT } from "../encounters/encounter-query-contracts";
 import { PrismaService } from "../prisma/prisma.service";
 import { MedicationFulfillmentIntent, OrderStatus, Prisma } from "@prisma/client";
@@ -27,6 +27,12 @@ const WORKLIST_ORDER_STATUSES: OrderStatus[] = [
   OrderStatus.RESULTED,
 ];
 
+/** MEDUI.RES.2 — Lab/Rad technician Cancelled tab requires cancelled rows in the fetch. */
+const LAB_RAD_WORKLIST_ORDER_STATUSES: OrderStatus[] = [
+  ...WORKLIST_ORDER_STATUSES,
+  OrderStatus.CANCELLED,
+];
+
 const PHARMACY_ITEM_INTENT_FILTER: Pick<Prisma.OrderItemWhereInput, "OR"> = {
   OR: [
     { medicationFulfillmentIntent: null },
@@ -42,12 +48,20 @@ export class WorklistsService {
   ) {}
 
   /**
-   * D3DA / D3E.5 / D4C.7C — annotate departmental worklist rows with
-   * ED / Observation / Inpatient / AMBULATORY / UNKNOWN.
-   * Canonical clinical identity for hospital pathways; ambulatory care-setting
-   * badge for OUTPATIENT / URGENT_CARE (never short-stay / admittedAt heuristics).
+   * D3DA / D3E.5 / D4C.7C / MEDUI.RES.2 — annotate departmental worklist rows with
+   * legacy clinicalEncounterContext plus enterpriseOrderOrigin (ED | INPATIENT |
+   * CLINIC | DENTAL | UNKNOWN). Origin uses Encounter.serviceLine / dental
+   * projection — never free-text inference.
    */
-  private annotateClinicalEncounterContext<T>(orders: T[]): Array<T & { clinicalEncounterContext: string }> {
+  private annotateClinicalEncounterContext<T>(
+    orders: T[]
+  ): Array<
+    T & {
+      clinicalEncounterContext: string;
+      enterpriseOrderOrigin: string;
+      enterpriseOrderLocationLabel: string | null;
+    }
+  > {
     return orders.map((order) => {
       const enc = (order as { encounter?: unknown }).encounter as
         | {
@@ -56,18 +70,27 @@ export class WorklistsService {
             billingClassification?: string | null;
             admissionSummaryJson?: unknown;
             admittedAt?: unknown;
+            serviceLine?: string | null;
+            nursingAssessment?: unknown;
+            roomLabel?: string | null;
           }
         | null
         | undefined;
+      const origin = projectEnterpriseOrderOrigin({
+        type: enc?.type,
+        status: enc?.status,
+        billingClassification: enc?.billingClassification,
+        admissionSummaryJson: enc?.admissionSummaryJson,
+        admittedAt: enc?.admittedAt,
+        serviceLine: enc?.serviceLine,
+        nursingAssessment: enc?.nursingAssessment,
+        roomLabel: enc?.roomLabel,
+      });
       return {
         ...order,
-        clinicalEncounterContext: resolveDepartmentalEncounterContext({
-          type: enc?.type,
-          status: enc?.status,
-          billingClassification: enc?.billingClassification,
-          admissionSummaryJson: enc?.admissionSummaryJson,
-          admittedAt: enc?.admittedAt,
-        }),
+        clinicalEncounterContext: origin.departmentalContext,
+        enterpriseOrderOrigin: origin.origin,
+        enterpriseOrderLocationLabel: origin.locationLabel,
       };
     });
   }
@@ -79,11 +102,11 @@ export class WorklistsService {
         where: {
           facilityId,
           type: "LAB",
-          status: { in: WORKLIST_ORDER_STATUSES },
+          status: { in: LAB_RAD_WORKLIST_ORDER_STATUSES },
           items: {
             some: {
               catalogItemType: "LAB_TEST",
-              status: { in: WORKLIST_ORDER_STATUSES },
+              status: { in: LAB_RAD_WORKLIST_ORDER_STATUSES },
             },
           },
         },
@@ -132,11 +155,11 @@ export class WorklistsService {
         where: {
           facilityId,
           type: "LAB",
-          status: { in: WORKLIST_ORDER_STATUSES },
+          status: { in: LAB_RAD_WORKLIST_ORDER_STATUSES },
           items: {
             some: {
               catalogItemType: "LAB_TEST",
-              status: { in: WORKLIST_ORDER_STATUSES },
+              status: { in: LAB_RAD_WORKLIST_ORDER_STATUSES },
             },
           },
         },
@@ -185,11 +208,11 @@ export class WorklistsService {
         where: {
           facilityId,
           type: "IMAGING",
-          status: { in: WORKLIST_ORDER_STATUSES },
+          status: { in: LAB_RAD_WORKLIST_ORDER_STATUSES },
           items: {
             some: {
               catalogItemType: "IMAGING_STUDY",
-              status: { in: WORKLIST_ORDER_STATUSES },
+              status: { in: LAB_RAD_WORKLIST_ORDER_STATUSES },
             },
           },
         },
@@ -238,11 +261,11 @@ export class WorklistsService {
         where: {
           facilityId,
           type: "IMAGING",
-          status: { in: WORKLIST_ORDER_STATUSES },
+          status: { in: LAB_RAD_WORKLIST_ORDER_STATUSES },
           items: {
             some: {
               catalogItemType: "IMAGING_STUDY",
-              status: { in: WORKLIST_ORDER_STATUSES },
+              status: { in: LAB_RAD_WORKLIST_ORDER_STATUSES },
             },
           },
         },

@@ -241,6 +241,7 @@ function StructuredResultBody({
   if (catalogItemType === "LAB_TEST") {
     const { rows, preamble, conclusion, sectionNotes } = parseLabObservationLines(raw);
     const anyFlag = rows.some((r) => r.flag);
+    const anyUnit = rows.some((r) => Boolean(r.unit?.trim()));
     const introBlock = [sectionNotes.length ? sectionNotes.map((n) => `• ${n}`).join("\n") : "", preamble].filter(Boolean).join("\n\n");
 
     const fallbackSource =
@@ -296,6 +297,11 @@ function StructuredResultBody({
                 <th style={{ textAlign: "left", padding: "10px 12px", color: "#546e7a", fontWeight: 600 }}>
                   {t("clinicalResultViewer.labTableRefRange")}
                 </th>
+                {anyUnit ? (
+                  <th style={{ textAlign: "left", padding: "10px 12px", color: "#546e7a", fontWeight: 600 }}>
+                    {t("clinicalResultViewer.labTableUnits")}
+                  </th>
+                ) : null}
               </tr>
             </thead>
             <tbody>
@@ -328,6 +334,11 @@ function StructuredResultBody({
                     <td style={{ padding: "9px 12px", fontSize: 12, color: "#607d8b", verticalAlign: "top" }}>
                       {r.ref?.trim() ? r.ref : t("common.dash")}
                     </td>
+                    {anyUnit ? (
+                      <td style={{ padding: "9px 12px", fontSize: 12, color: "#607d8b", verticalAlign: "top" }}>
+                        {r.unit?.trim() ? r.unit : t("common.dash")}
+                      </td>
+                    ) : null}
                   </tr>
                 );
               })}
