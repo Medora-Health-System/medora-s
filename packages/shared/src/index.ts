@@ -332,6 +332,8 @@ export * from "./orders/careProcedureEffectiveClinicalTime.js";
 export * from "./orders/labRadiologyEffectiveClinicalTime.js";
 export * from "./orders/labRadiologyOperationalReconciliation.js";
 export * from "./orders/labRadiologyOperationalEscalation.js";
+export * from "./orders/enterpriseOrderOrigin.js";
+export * from "./orders/enterpriseLabRadTechnicianQueue.js";
 export * from "./encounter-allergy-safety.js";
 export * from "./vitalsUnitConversions.js";
 export * from "./vitalsMeasurementContext.js";

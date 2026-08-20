@@ -182,6 +182,8 @@ export type LabParsedRow = {
   label: string;
   value: string;
   ref?: string;
+  /** Optional unit when recoverable separately from the reference range. */
+  unit?: string;
   /** Indication visuelle (H/L/C) si détectée dans le texte */
   flag?: "H" | "L" | "HH" | "LL" | "C" | null;
 };
@@ -200,6 +202,95 @@ function isLabSectionHeader(line: string): boolean {
 function extractFlag(value: string): { clean: string; flag: LabParsedRow["flag"] } {
   const { cleanValue, flag } = extractExplicitLabResultFlag(value);
   return { clean: cleanValue, flag: flag as LabParsedRow["flag"] };
+}
+
+/**
+ * MEDUI.RES.2 — display-only recovery for smashed CMP/CBC walls such as
+ * `Glucose9270–100mg/dL—BUN146–20mg/dL—Creatinine…`.
+ * Never mutates stored result text; returns rows only when confident.
+ */
+export function tryRecoverSmashedLabAnalytes(raw: string): LabParsedRow[] {
+  const text = (raw ?? "").trim();
+  if (!text) return [];
+  // Dense smashed panels usually lack newlines / colons and use em/en dashes between analytes.
+  if (text.includes(":") && text.includes("\n")) return [];
+
+  const chunks = text
+    .split(/\s*[—|;]\s*/)
+    .map((c) => c.trim())
+    .filter(Boolean);
+  if (chunks.length < 2 && !/[–−-]/.test(text)) return [];
+
+  const recovered: LabParsedRow[] = [];
+  for (const chunk of chunks.length >= 2 ? chunks : [text]) {
+    const row = parseSmashedAnalyteChunk(chunk);
+    if (!row) {
+      // One bad chunk → abort (do not partially invent a table).
+      if (chunks.length >= 2) return [];
+      continue;
+    }
+    recovered.push(row);
+  }
+  return recovered.length >= 2 ? recovered : [];
+}
+
+function parseSmashedAnalyteChunk(chunk: string): LabParsedRow | null {
+  const c = chunk.trim();
+  if (!c || c.length > 120) return null;
+
+  // Name + valueLow + en-dash + high + optional unit
+  // e.g. Glucose9270–100mg/dL  → Glucose | 92 | 70–100 | mg/dL
+  const m = c.match(
+    /^([A-Za-z][A-Za-z0-9 ./\-]{0,40}?)(\d[\d.,]*)[–\-−](\d[\d.,]*)\s*([A-Za-zµμ/%0-9.^ ]{0,24})$/
+  );
+  if (!m) return null;
+
+  const label = m[1].trim();
+  const valueLowDigits = m[2].replace(/,/g, "");
+  const highRaw = m[3].replace(/,/g, "");
+  const unit = m[4].trim() || undefined;
+  const high = Number.parseFloat(highRaw);
+  if (!label || !Number.isFinite(high)) return null;
+
+  const split = splitSmashedValueAndLow(valueLowDigits, high);
+  if (!split) return null;
+
+  return {
+    label,
+    value: split.value,
+    ref: `${split.low}–${highRaw}`,
+    unit,
+  };
+}
+
+/** Prefer a split where low < high and both sides are clinically plausible lengths. */
+function splitSmashedValueAndLow(
+  digits: string,
+  high: number
+): { value: string; low: string } | null {
+  const clean = digits.replace(/[^\d.]/g, "");
+  if (!clean || clean.length < 2) return null;
+
+  let best: { value: string; low: string; score: number } | null = null;
+  for (let i = 1; i < clean.length; i++) {
+    const value = clean.slice(0, i);
+    const low = clean.slice(i);
+    if (!value || !low) continue;
+    // Avoid leading-zero artifacts except decimal forms.
+    if (/^0\d/.test(value) || /^0\d/.test(low)) continue;
+    const v = Number.parseFloat(value);
+    const l = Number.parseFloat(low);
+    if (!Number.isFinite(v) || !Number.isFinite(l)) continue;
+    if (!(l < high)) continue;
+    // Prefer 1–4 digit value and 1–4 digit low (typical CMP).
+    if (value.length > 5 || low.length > 5) continue;
+    const score =
+      (value.length >= 1 && value.length <= 3 ? 3 : 1) +
+      (low.length >= 1 && low.length <= 3 ? 3 : 1) +
+      (l > 0 ? 1 : 0);
+    if (!best || score > best.score) best = { value, low, score };
+  }
+  return best ? { value: best.value, low: best.low } : null;
 }
 
 function parsePipeOrTabLine(line: string): LabParsedRow | null {
@@ -333,6 +424,22 @@ export function parseLabObservationLines(raw: string): {
     }
 
     preambleParts.push(line);
+  }
+
+  // MEDUI.RES.2 — if structured rows failed but preamble looks like a smashed CMP wall,
+  // attempt display-only recovery (does not mutate stored result text).
+  if (rows.length === 0 && preambleParts.length > 0) {
+    const smashedSource = preambleParts.join("\n").trim();
+    const recovered = tryRecoverSmashedLabAnalytes(smashedSource);
+    if (recovered.length >= 2) {
+      for (const r of recovered) tryPushRow(r);
+      return {
+        rows,
+        preamble: "",
+        conclusion,
+        sectionNotes,
+      };
+    }
   }
 
   return {
