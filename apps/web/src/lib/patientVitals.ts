@@ -4,6 +4,7 @@ import {
   cmToFeetInches,
   hasMeaningfulVitalMeasurement,
   kgToPounds,
+  readCanonicalVitalsMeasurements,
   resolveLatestMeaningfulVitalsReading,
 } from "@medora/shared";
 
@@ -133,41 +134,32 @@ export function formatVitalsHeaderLineForLocale(
   vitals: Record<string, number | string | null | undefined>,
   language: SupportedLanguage
 ): string {
-  const painScore = resolveVitalsPainScoreFromRecord(vitals);
+  const c = readCanonicalVitalsMeasurements(vitals);
+  const painScore = c.painScore;
   if (language === "en") {
     const parts: string[] = [];
-    const sys = vitals.bpSys;
-    const dia = vitals.bpDia;
-    if (sys != null && sys !== "" && dia != null && dia !== "") {
-      parts.push(`BP ${sys}/${dia}`);
+    if (c.bpSys != null && c.bpDia != null) {
+      parts.push(`BP ${c.bpSys}/${c.bpDia} mmHg`);
     }
-    if (vitals.hr != null && vitals.hr !== "") parts.push(`HR ${vitals.hr}/min`);
-    const tc = numOrNull(vitals.tempC);
-    if (tc != null) parts.push(`Temp ${formatTemperatureDualLine(tc, language)}`);
-    if (vitals.spo2 != null && vitals.spo2 !== "") parts.push(`SpO2 ${vitals.spo2}%`);
-    if (vitals.rr != null && vitals.rr !== "") parts.push(`RR ${vitals.rr}/min`);
-    const wk = numOrNull(vitals.weightKg);
-    if (wk != null) parts.push(`Wt ${formatWeightDualLine(wk, language)}`);
-    const hc = numOrNull(vitals.heightCm);
-    if (hc != null) parts.push(`Ht ${formatHeightDualLine(hc, language)}`);
+    if (c.hr != null) parts.push(`HR ${c.hr}/min`);
+    if (c.tempC != null) parts.push(`Temp ${formatTemperatureDualLine(c.tempC, language)}`);
+    if (c.spo2 != null) parts.push(`SpO2 ${c.spo2}%`);
+    if (c.rr != null) parts.push(`RR ${c.rr}/min`);
+    if (c.weightKg != null) parts.push(`Wt ${formatWeightDualLine(c.weightKg, language)}`);
+    if (c.heightCm != null) parts.push(`Ht ${formatHeightDualLine(c.heightCm, language)}`);
     if (painScore != null) parts.push(`Pain ${painScore}/10`);
     return parts.length ? parts.join(" · ") : "";
   }
   const parts: string[] = [];
-  const sys = vitals.bpSys;
-  const dia = vitals.bpDia;
-  if (sys != null && sys !== "" && dia != null && dia !== "") {
-    parts.push(`TA : ${sys}/${dia}`);
+  if (c.bpSys != null && c.bpDia != null) {
+    parts.push(`TA : ${c.bpSys}/${c.bpDia} mmHg`);
   }
-  if (vitals.hr != null && vitals.hr !== "") parts.push(`FC : ${vitals.hr}/min`);
-  const tcFr = numOrNull(vitals.tempC);
-  if (tcFr != null) parts.push(`Température : ${formatTemperatureDualLine(tcFr, language)}`);
-  if (vitals.spo2 != null && vitals.spo2 !== "") parts.push(`SpO₂ : ${vitals.spo2} %`);
-  if (vitals.rr != null && vitals.rr !== "") parts.push(`FR : ${vitals.rr}/min`);
-  const wkFr = numOrNull(vitals.weightKg);
-  if (wkFr != null) parts.push(`Poids : ${formatWeightDualLine(wkFr, language)}`);
-  const hcFr = numOrNull(vitals.heightCm);
-  if (hcFr != null) parts.push(`Taille : ${formatHeightDualLine(hcFr, language)}`);
+  if (c.hr != null) parts.push(`FC : ${c.hr}/min`);
+  if (c.tempC != null) parts.push(`Température : ${formatTemperatureDualLine(c.tempC, language)}`);
+  if (c.spo2 != null) parts.push(`SpO₂ : ${c.spo2} %`);
+  if (c.rr != null) parts.push(`FR : ${c.rr}/min`);
+  if (c.weightKg != null) parts.push(`Poids : ${formatWeightDualLine(c.weightKg, language)}`);
+  if (c.heightCm != null) parts.push(`Taille : ${formatHeightDualLine(c.heightCm, language)}`);
   if (painScore != null) parts.push(`Douleur : ${painScore}/10`);
   return parts.length ? parts.join(" · ") : "";
 }

@@ -160,6 +160,7 @@ import {
   type ProviderHandoffDraftV1,
   type ProviderDocumentAmendmentV1,
   resolveAuthoritativeEncounterServiceLine,
+  projectHospitalHeaderVitalsLiteFromJson,
 } from "@medora/shared";
 import { PrismaService } from "../prisma/prisma.service";
 import { AuditService } from "../common/services/audit.service";
@@ -1590,41 +1591,14 @@ export class InpatientOperationsService {
         })(),
         oxygenSupport: null,
         dietNpo: null,
-        weightKg: null,
-        latestVitals: (() => {
-          const raw = enc.patient?.latestVitalsJson;
-          if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
-            return {
-              availability: "NO_DATA_DOCUMENTED" as const,
-              recordedAt: enc.patient?.latestVitalsAt
-                ? new Date(enc.patient.latestVitalsAt).toISOString()
-                : null,
-              systolic: null,
-              diastolic: null,
-              heartRate: null,
-              spo2: null,
-              temperatureC: null,
-              respiratoryRate: null,
-            };
-          }
-          const v = raw as Record<string, unknown>;
-          const num = (k: string) => {
-            const n = Number(v[k]);
-            return Number.isFinite(n) ? n : null;
-          };
-          return {
-            availability: "AVAILABLE" as const,
-            recordedAt: enc.patient?.latestVitalsAt
-              ? new Date(enc.patient.latestVitalsAt).toISOString()
-              : null,
-            systolic: num("systolic") ?? num("sbp"),
-            diastolic: num("diastolic") ?? num("dbp"),
-            heartRate: num("heartRate") ?? num("hr") ?? num("pulse"),
-            spo2: num("spo2") ?? num("oxygenSaturation"),
-            temperatureC: num("temperatureC") ?? num("tempC") ?? num("temperature"),
-            respiratoryRate: num("respiratoryRate") ?? num("rr"),
-          };
-        })(),
+        weightKg: projectHospitalHeaderVitalsLiteFromJson(
+          enc.patient?.latestVitalsJson,
+          enc.patient?.latestVitalsAt ? new Date(enc.patient.latestVitalsAt).toISOString() : null
+        ).weightKg,
+        latestVitals: projectHospitalHeaderVitalsLiteFromJson(
+          enc.patient?.latestVitalsJson,
+          enc.patient?.latestVitalsAt ? new Date(enc.patient.latestVitalsAt).toISOString() : null
+        ),
         indicators: [
           {
             code: "ISOLATION",

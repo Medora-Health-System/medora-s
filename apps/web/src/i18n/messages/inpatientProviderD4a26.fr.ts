@@ -15,7 +15,7 @@ export const inpatientProviderD4a26Fr = {
     nursing: "Évaluation infirmière",
     notes: "Notes",
     timeline: "Chronologie",
-    summary: "Synthèse",
+    summary: "Dossier médical",
   },
   header: {
     preferredName: "Nom préféré",
@@ -139,13 +139,14 @@ export const inpatientProviderD4a26Fr = {
     linked: "Flux lié",
   },
   summary: {
-    title: "Synthèse clinique du médecin",
+    title: "Dossier médical",
     reason: "Motif d’hospitalisation",
     course: "Évolution hospitalière",
     activeProblems: "Problèmes actifs",
     pending: "Éléments en attente",
-    discharge: "Préparation à la sortie",
-    notAiSigned: "Le texte dérivé du dossier n’est pas une documentation signée sans attestation.",
+    discharge: "Documentation de sortie",
+    notAiSigned:
+      "Cette page est une projection en lecture seule. Ce n’est pas un second dossier signé.",
   },
   timeline: {
     title: "Chronologie partagée de la rencontre",

@@ -22,6 +22,7 @@ const read = (rel: string) => readFileSync(join(root, rel), "utf8");
 
 const PRIMARY_IDS = [
   "overview",
+  "summary",
   "admission",
   "nursing",
   "orders",
@@ -32,19 +33,20 @@ const PRIMARY_IDS = [
 ] as const;
 
 describe("MEDUI.INP.2A navigation convergence", () => {
-  it("1 nursing sticky contains exactly the eight primary modules", () => {
+  it("1 nursing sticky contains exactly the nine primary modules including Summary", () => {
     expect(INPATIENT_NURSING_STICKY_NAV_SECTIONS.map((s) => s.id)).toEqual([...PRIMARY_IDS]);
     expect(nursingPrimaryNav()).toEqual([...PRIMARY_IDS]);
   });
 
-  it("2 provider sticky no longer shows Timeline/Summary", () => {
+  it("2 provider sticky includes Summary; Timeline remains off sticky", () => {
     const ids = INPATIENT_PROVIDER_STICKY_NAV_SECTIONS.map((s) => s.id);
     expect(ids).toEqual([...PRIMARY_IDS]);
+    expect(ids).toContain("summary");
+    expect(ids).toContain("overview");
     expect(ids).not.toContain("timeline");
-    expect(ids).not.toContain("summary");
   });
 
-  it("3 shared chart sticky matches the eight modules (no Timeline/Summary)", () => {
+  it("3 shared chart sticky matches the nine modules", () => {
     expect(INPATIENT_SHARED_CHART_NAV_SECTIONS.map((s) => s.id)).toEqual([...PRIMARY_IDS]);
   });
 
@@ -53,14 +55,15 @@ describe("MEDUI.INP.2A navigation convergence", () => {
     expect(parseInpatientWorkspaceSection("notes")).toBe("notes");
   });
 
-  it("5 old timeline/summary section navigation safely resolves to overview", () => {
+  it("5 timeline still redirects to overview; summary is a first-class sticky section", () => {
     expect(resolveInpatientWorkspaceSection("timeline")).toBe("overview");
-    expect(resolveInpatientWorkspaceSection("summary")).toBe("overview");
+    expect(resolveInpatientWorkspaceSection("summary")).toBe("summary");
     expect(parseInpatientWorkspaceSection("timeline")).toBe("timeline");
     expect(parseInpatientWorkspaceSection("summary")).toBe("summary");
     const view = read("InpatientActiveWorkspaceView.tsx");
     expect(view).toContain("resolveInpatientWorkspaceSection");
-    expect(view).toContain('raw === "timeline" || raw === "summary"');
+    expect(view).toContain('rawLower === "timeline"');
+    expect(view).not.toContain('rawLower === "timeline" || rawLower === "summary"');
   });
 });
 
@@ -282,5 +285,62 @@ describe("MEDUI.INP.2A authority + overview projections", () => {
     );
     expect(edNav).not.toContain("INPATIENT_CLINICAL_PRIMARY_NAV_SECTIONS");
     expect(providerPrimaryNav()).toContain("historyPhysical");
+  });
+});
+
+describe("MEDUI.INP.2F medical-record Summary + vitals", () => {
+  it("Summary mounts read-only projection and Print Entire Chart", () => {
+    const panel = read("InpatientWorkspacePanel.tsx");
+    expect(panel).toContain("InpatientEncounterMedicalRecordSummaryView");
+    const summary = read("InpatientEncounterMedicalRecordSummaryView.tsx");
+    expect(summary).toContain('data-readonly="true"');
+    expect(summary).toContain("printEncounterChartLivePreview");
+    expect(summary).toContain("legalMedicalRecord: true");
+    expect(summary).toContain("EmergencyResultsPanel");
+    expect(summary).toContain("canAcknowledgeResults={false}");
+    expect(summary).not.toMatch(/\bsummaryJson\b/);
+    expect(summary).toContain("buildRxPrintFacilityIdentity");
+    expect(summary).not.toMatch(/Clinique Bon Samaritain|Wayne Urgent Care/i);
+  });
+
+  it("header vital pairs project BP/height/weight from bootstrap fields", async () => {
+    const { buildInpatientHeaderVitalPairs } = await import("./inpatientHeaderVitalsPairs");
+    const pairs = buildInpatientHeaderVitalPairs(
+      {
+        availability: "AVAILABLE",
+        systolic: 126,
+        diastolic: 78,
+        heartRate: 88,
+        spo2: 97,
+        temperatureC: 37.1,
+        respiratoryRate: 16,
+        heightCm: 170,
+        weightKg: 84.37,
+      },
+      "en",
+      "—"
+    );
+    expect(pairs.find((p) => p.label === "BP")?.value).toBe("126/78 mmHg");
+    expect(pairs.find((p) => p.label === "Weight")?.value).toMatch(/84/);
+    expect(pairs.find((p) => p.label === "Height")?.value).toMatch(/170|ft/);
+  });
+
+  it("EN/FR Summary i18n keys stay mirrored", () => {
+    expect(Object.keys(en.inpatientMedicalRecordSummaryInp2f)).toEqual(
+      Object.keys(fr.inpatientMedicalRecordSummaryInp2f)
+    );
+    expect(Object.keys(en.inpatientMedicalRecordSummaryInp2f.sections)).toEqual(
+      Object.keys(fr.inpatientMedicalRecordSummaryInp2f.sections)
+    );
+  });
+
+  it("print live preview supports legal medical-record letterhead", () => {
+    const preview = readFileSync(
+      join(root, "../../components/encounters/EncounterChartLivePreview.ts"),
+      "utf8"
+    );
+    expect(preview).toContain("facility-letterhead");
+    expect(preview).toContain("legalMedicalRecord");
+    expect(preview).toContain("printedFooter");
   });
 });

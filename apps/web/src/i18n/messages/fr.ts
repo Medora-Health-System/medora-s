@@ -44,6 +44,7 @@ import { inpatientAdmissionInp2b2dFr } from "./inpatientAdmissionInp2b2d.fr";
 import { inpatientNursingAssessmentInp1bFr } from "./inpatientNursingAssessmentInp1b.fr";
 import { inpatientNursingAssessmentInp2cFr } from "./inpatientNursingAssessmentInp2c.fr";
 import { inpatientReviewOrdersInp2dFr } from "./inpatientReviewOrdersInp2d.fr";
+import { inpatientMedicalRecordSummaryInp2fFr } from "./inpatientMedicalRecordSummaryInp2f.fr";
 import { emergencyAdaptiveNursingFr } from "./emergencyAdaptiveNursing.fr";
 import { admissionWorkflowVisibilityFr } from "./admissionWorkflowVisibility.fr";
 import { admissionCommandCenterFr } from "./admissionCommandCenter.fr";
@@ -14726,6 +14727,8 @@ export default {
     },
     encounterChartLivePreview: {
       h1: "Aperçu du dossier de consultation",
+      legalH1: "Dossier médical de la rencontre",
+      printedFooter: "Imprimé le {date} · Medora Health System",
       banner:
         "Aperçu en direct à partir des données actuelles du dossier. Ce n’est pas une exportation légale finalisée.",
       printedAt: "Généré le {date}",
@@ -20715,6 +20718,7 @@ export default {
   inpatientNursingAssessmentInp1b: inpatientNursingAssessmentInp1bFr,
   inpatientNursingAssessmentInp2c: inpatientNursingAssessmentInp2cFr,
   inpatientReviewOrdersInp2d: inpatientReviewOrdersInp2dFr,
+  inpatientMedicalRecordSummaryInp2f: inpatientMedicalRecordSummaryInp2fFr,
 
   hospitalAdmissionD4a0: hospitalAdmissionD4a0Fr,
   emergencyAdaptiveNursing: emergencyAdaptiveNursingFr,
