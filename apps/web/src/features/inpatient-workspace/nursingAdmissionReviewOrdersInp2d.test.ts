@@ -31,7 +31,8 @@ describe("MEDUI.INP.2D inpatient Review Orders", () => {
     expect(inpatientReviewOrdersReuseEnterpriseEngine()).toBe(true);
     const workspace = read("InpatientWorkspacePanel.tsx");
     expect(workspace).toContain("EmergencyErOrdersPanel");
-    expect(workspace).toContain('medicationOrderMode="DEFAULT"');
+    expect(workspace).toContain("inpatientFacilityMedicationOrderMode()");
+    expect(workspace).not.toContain('medicationOrderMode="DEFAULT"');
     expect(workspace).not.toContain("InpatientReviewOrdersPanel");
     expect(workspace).not.toMatch(/POST\s*[`'"]\/inpatient.*orders/);
     const restored = readSrc("features/emergency/EmergencyErOrdersPanel.tsx");
@@ -42,7 +43,7 @@ describe("MEDUI.INP.2D inpatient Review Orders", () => {
     const retained = read("InpatientReviewOrdersPanel.tsx");
     expect(retained).toContain("fetchOrdersForEncounter");
     expect(retained).toContain("projectInpatientReviewOrders");
-    expect(retained).toContain('medicationOrderMode="DEFAULT"');
+    expect(retained).toContain("inpatientFacilityMedicationOrderMode()");
   });
 
   it("keeps MAR as the medication administration authority", () => {

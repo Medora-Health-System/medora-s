@@ -35,6 +35,7 @@ export type MaybeCreateMedicationOrderScheduleInput = {
   createdByUserId?: string | null;
   featureFlags?: Partial<MedicationSchedulingFeatureFlags> | null;
   snapshottedAt?: Date;
+  medicationFulfillmentIntent?: string | null;
 };
 
 function toCatalogSnapshotInput(
@@ -72,6 +73,7 @@ export async function maybeCreateMedicationOrderScheduleForOrderItem(
     featureFlags: input.featureFlags ?? null,
     catalog: catalogSnapshotInput,
     orderRoute: input.route ?? null,
+    medicationFulfillmentIntent: input.medicationFulfillmentIntent ?? null,
   });
 
   if (!gate.shouldCreate || !gate.frequencyCode) {

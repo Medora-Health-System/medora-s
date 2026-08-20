@@ -15,6 +15,7 @@ import {
   resolveMedicationGovernanceRenderState,
 } from "@/lib/medicationOrderGovernancePermissions";
 import { EmergencyProcedureLauncherModal } from "@/features/emergency/EmergencyProcedureLauncherModal";
+import type { D4c7gMedicationOrderMode } from "@medora/shared";
 import type { OrderModalTab } from "@/components/orders/createOrderModal/types";
 import { MedoraCard, MedoraCardInner } from "@/components/medora-card";
 import { type ErOrderDomain } from "@/features/emergency/erOrderWorkspace";
@@ -648,7 +649,7 @@ export function EmergencyErOrdersPanel({
   cdsIntent?: string | null;
   onConsumeIntent?: () => void;
   /** Ambulatory Clinic uses DEFAULT outpatient Rx; ED workspace keeps ER_ADMINISTER_ONLY. */
-  medicationOrderMode?: "DEFAULT" | "ER_ADMINISTER_ONLY" | "OUTPATIENT_RX_ONLY";
+  medicationOrderMode?: D4c7gMedicationOrderMode;
   /** Haiti ambulatory: hide trauma protocol assist without removing it from ED. */
   hideTraumaProtocolAssist?: boolean;
 }) {

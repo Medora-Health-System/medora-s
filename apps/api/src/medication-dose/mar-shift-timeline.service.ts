@@ -460,6 +460,9 @@ export class MarShiftTimelineService {
         encounter: {
           ...(!query.encounterId ? { status: "OPEN" } : {}),
         },
+        orderItem: {
+          medicationFulfillmentIntent: { not: "PHARMACY_DISPENSE" },
+        },
       },
       select: MEDICATION_PASS_QUEUE_DOSE_SELECT,
       orderBy: [{ scheduledAt: "asc" }, { doseSequenceNumber: "asc" }],

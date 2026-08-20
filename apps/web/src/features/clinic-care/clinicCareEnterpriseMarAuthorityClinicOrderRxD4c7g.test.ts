@@ -51,7 +51,7 @@ describe("MEDUI.D4C.7G Clinic MAR / Rx web guards", () => {
 
   it("D — CreateOrderModal supports medication-only outpatient Rx mode", () => {
     const modal = readFileSync(join(webSrc, "components/orders/CreateOrderModal.tsx"), "utf8");
-    expect(modal).toContain('OUTPATIENT_RX_ONLY"');
+    expect(modal).toContain("composerForcesOutpatientRxIntent");
     expect(modal).toContain('? ["MEDICATION"]');
     expect(modal).toContain("create-order-modal-rx-only-tabs");
     expect(modal).toContain("outpatientRxOnlyMedication");
@@ -66,9 +66,9 @@ describe("MEDUI.D4C.7G Clinic MAR / Rx web guards", () => {
       join(webSrc, "components/orders/createOrderModal/ManualOrderEntry.tsx"),
       "utf8"
     );
-    expect(selected).toContain("OUTPATIENT_RX_ONLY");
+    expect(selected).toContain("composerForcesOutpatientRxIntent");
     expect(selected).toContain("clinicCareD4c7g.rx.externalPharmacyDestination");
-    expect(manual).toContain("OUTPATIENT_RX_ONLY");
+    expect(manual).toContain("composerForcesOutpatientRxIntent");
     expect(manual).toContain("manual-rx-external-destination");
   });
 

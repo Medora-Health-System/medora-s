@@ -15,6 +15,11 @@ import {
 import { medicationIvpbDoseSchedulingEnabled } from "./medicationIvpbDoseFeatureFlags.js";
 import { evaluateRecurringIvpbEligibility } from "./recurringIvpbEligibility.js";
 
+/** External pharmacy / take-home Rx — never materialize facility MAR dose instances. */
+function isPharmacyDispenseFulfillmentIntent(intent: string | null | undefined): boolean {
+  return String(intent ?? "").trim().toUpperCase() === "PHARMACY_DISPENSE";
+}
+
 /**
  * Immutable schedule routing classes (M1.8B.7A.1). Stored as strings in DB for enum-evolution safety.
  *
@@ -157,6 +162,7 @@ export function evaluateMedicationOrderScheduleCreateGate(input: {
   featureFlags: Partial<MedicationSchedulingFeatureFlags> | null | undefined;
   catalog?: MedicationCatalogSnapshotInput | null;
   orderRoute?: string | null;
+  medicationFulfillmentIntent?: string | null;
 }): MedicationOrderScheduleCreateGateResult {
   const catalog = input.catalog ?? null;
   const classification = resolveScheduleClassification({
@@ -164,6 +170,18 @@ export function evaluateMedicationOrderScheduleCreateGate(input: {
     catalog,
     orderRoute: input.orderRoute,
   });
+
+  if (isPharmacyDispenseFulfillmentIntent(input.medicationFulfillmentIntent)) {
+    const parsedForIntent = parseMedicationFrequencyCode(
+      input.frequencyCode == null ? null : String(input.frequencyCode)
+    );
+    return {
+      shouldCreate: false,
+      reason: "NOT_FACILITY_ADMIN_INTENT",
+      classification,
+      frequencyCode: parsedForIntent,
+    };
+  }
 
   if (isStructuredMedicationOrderRouteIvpb(input.orderRoute)) {
     const parsedForIvpb = parseMedicationFrequencyCode(

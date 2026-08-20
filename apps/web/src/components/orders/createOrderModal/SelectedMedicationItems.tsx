@@ -16,6 +16,10 @@ import { FluidOrderPicker } from "./FluidOrderPicker";
 import {
   parseFluidOrderDraftFromDirections,
   shouldShowFluidOrderEntryFields,
+  composerForcesFacilityAdministerIntent,
+  composerForcesOutpatientRxIntent,
+  composerUsesErQuantityConfirmation,
+  type D4c7gMedicationOrderMode,
 } from "@medora/shared";
 import type { CreateOrderLineItem } from "./types";
 
@@ -79,7 +83,7 @@ export function SelectedMedicationItems({
   items: CreateOrderLineItem[];
   onPatch: (index: number, patch: Partial<CreateOrderLineItem>) => void;
   onRemove: (index: number) => void;
-  medicationOrderMode?: "DEFAULT" | "ER_ADMINISTER_ONLY" | "OUTPATIENT_RX_ONLY";
+  medicationOrderMode?: D4c7gMedicationOrderMode;
   facilityClinicalTimeZoneReady?: boolean;
   ivRouteConfirmations?: Record<string, boolean>;
   erQuantityConfirmations?: Record<string, boolean>;
@@ -88,8 +92,9 @@ export function SelectedMedicationItems({
 }) {
   const { t, language } = useI18n();
   const directionsListIdPrefix = useId();
-  const erAdministerOnly = medicationOrderMode === "ER_ADMINISTER_ONLY";
-  const outpatientRxOnly = medicationOrderMode === "OUTPATIENT_RX_ONLY";
+  const erAdministerOnly = composerUsesErQuantityConfirmation(medicationOrderMode);
+  const facilityAdministerForced = composerForcesFacilityAdministerIntent(medicationOrderMode);
+  const outpatientRxOnly = composerForcesOutpatientRxIntent(medicationOrderMode);
 
   if (items.length === 0) return null;
 
@@ -160,7 +165,7 @@ export function SelectedMedicationItems({
                 therapeuticClass={item._safetyCatalog?.therapeuticClass}
               />
             </div>
-            {erAdministerOnly ? (
+            {facilityAdministerForced ? (
               <div style={{ marginBottom: 10, fontSize: 13, color: "#475569" }}>
                 <span style={{ marginRight: 12, fontWeight: 500 }}>{t("createOrderModal.selectedMedDestination")}</span>
                 {t("createOrderModal.selectedMedIntentAdminister")}
