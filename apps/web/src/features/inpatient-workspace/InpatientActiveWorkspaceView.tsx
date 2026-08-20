@@ -96,7 +96,7 @@ function filterSectionsForRole(role: InpatientWorkspaceRole): InpatientWorkspace
   return list as InpatientWorkspaceSection[];
 }
 
-/** Sticky chrome — MEDUI.INP.2A eight-module clinical navigation for all roles. */
+/** Sticky chrome — MEDUI.INP.2F nine-module clinical navigation for all roles. */
 function stickyNavForRole(role: InpatientWorkspaceRole) {
   void role;
   return INPATIENT_CLINICAL_PRIMARY_NAV_SECTIONS;
@@ -173,7 +173,7 @@ export function InpatientActiveWorkspaceView({
 
   const stickyNav = stickyNavForRole(role);
   const stickyAllowed = stickySectionsForRole(role);
-  /** Deep-link allowlist: sticky modules + role extras; notes/tasks remain reachable; timeline/summary redirect. */
+  /** Deep-link allowlist: sticky modules + role extras; notes/tasks remain reachable; timeline redirects. */
   const allowed = useMemo(() => {
     const base = filterSectionsForRole(role);
     const deepOnly: InpatientWorkspaceSection[] =
@@ -224,7 +224,7 @@ export function InpatientActiveWorkspaceView({
       const next = resolveAllowedSection(raw);
       setSection(next);
       const rawLower = String(raw ?? "").trim().toLowerCase();
-      if (rawLower === "timeline" || rawLower === "summary") {
+      if (rawLower === "timeline") {
         replaceInpatientWorkspaceSectionQuery("overview");
       }
     };
@@ -234,7 +234,7 @@ export function InpatientActiveWorkspaceView({
 
   const selectSection = useCallback(
     (next: InpatientWorkspaceSection) => {
-      const resolved = next === "timeline" || next === "summary" ? "overview" : next;
+      const resolved = next === "timeline" ? "overview" : next;
       if (!allowed.includes(resolved) && !stickyAllowed.includes(resolved)) return;
       if (resolved === "medications") marOpenPerfMark("mar-click");
       setSection(resolved);

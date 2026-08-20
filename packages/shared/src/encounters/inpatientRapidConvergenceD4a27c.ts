@@ -3,6 +3,11 @@
  * Extends D4A.2.7B recovery. No Placement / D3B. No migrations.
  */
 
+import {
+  canonicalVitalsHaveAnyMeasurement,
+  readCanonicalVitalsMeasurements,
+} from "../vitalsCanonicalFields.js";
+
 export const INPATIENT_RAPID_CONVERGENCE_CERTIFICATION_ID =
   "MEDUI.INPATIENT_RAPID_CONVERGENCE.D4A2_7C" as const;
 
@@ -41,7 +46,46 @@ export type HospitalHeaderVitalsLiteV1 = {
   spo2: number | null;
   temperatureC: number | null;
   respiratoryRate: number | null;
+  heightCm: number | null;
+  weightKg: number | null;
+  painScore: number | null;
 };
+
+/** Shared header/bootstrap vitals projection over enterprise vitals JSON (no new table). */
+export function projectHospitalHeaderVitalsLiteFromJson(
+  raw: unknown,
+  recordedAt: string | null
+): HospitalHeaderVitalsLiteV1 {
+  const empty: HospitalHeaderVitalsLiteV1 = {
+    availability: "NO_DATA_DOCUMENTED",
+    recordedAt,
+    systolic: null,
+    diastolic: null,
+    heartRate: null,
+    spo2: null,
+    temperatureC: null,
+    respiratoryRate: null,
+    heightCm: null,
+    weightKg: null,
+    painScore: null,
+  };
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return empty;
+  const m = readCanonicalVitalsMeasurements(raw);
+  if (!canonicalVitalsHaveAnyMeasurement(m)) return empty;
+  return {
+    availability: "AVAILABLE",
+    recordedAt,
+    systolic: m.bpSys,
+    diastolic: m.bpDia,
+    heartRate: m.hr,
+    spo2: m.spo2,
+    temperatureC: m.tempC,
+    respiratoryRate: m.rr,
+    heightCm: m.heightCm,
+    weightKg: m.weightKg,
+    painScore: m.painScore,
+  };
+}
 
 export type HospitalHeaderEnrichmentV1 = {
   interpreterRequired: boolean | null;

@@ -138,13 +138,13 @@ export const inpatientProviderD4a26En = {
     linked: "Linked workflow",
   },
   summary: {
-    title: "Provider clinical summary",
+    title: "Medical record summary",
     reason: "Reason for hospitalization",
     course: "Hospital course",
     activeProblems: "Active problems",
     pending: "Pending items",
-    discharge: "Discharge readiness",
-    notAiSigned: "Chart-derived text is not signed documentation until attested.",
+    discharge: "Discharge documentation",
+    notAiSigned: "This page is a read-only projection. It is not a second signed store.",
   },
   timeline: {
     title: "Shared encounter timeline",

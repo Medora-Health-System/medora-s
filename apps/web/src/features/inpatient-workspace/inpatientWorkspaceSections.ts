@@ -40,9 +40,9 @@ export const INPATIENT_WORKSPACE_SECTIONS: Array<{
 ];
 
 /**
- * MEDUI.INP.2A — Canonical primary sticky navigation (all inpatient clinical roles).
- * Notes / Timeline / Summary are not sticky tabs; their data engines remain.
- * Authoring is governed by roles/API — not by tab presence.
+ * MEDUI.INP.2F — Canonical primary sticky navigation (all inpatient clinical roles).
+ * Timeline is not a sticky tab; Overview remains the operational dashboard.
+ * Summary is the read-only encounter medical-record projection.
  */
 export const INPATIENT_CLINICAL_PRIMARY_NAV_SECTIONS: Array<{
   id: InpatientWorkspaceSection;
@@ -50,6 +50,7 @@ export const INPATIENT_CLINICAL_PRIMARY_NAV_SECTIONS: Array<{
   icon: string;
 }> = [
   { id: "overview", labelKey: "inpatientProviderD4a26.nav.overview", icon: "📋" },
+  { id: "summary", labelKey: "inpatientProviderD4a26.nav.summary", icon: "📑" },
   { id: "admission", labelKey: "inpatientProviderD4a26.nav.nursingAdmission", icon: "🏥" },
   { id: "nursing", labelKey: "inpatientHeaderNursingD4a33.nav.nursingAssessment", icon: "🩺" },
   { id: "orders", labelKey: "inpatientCompactHeaderD4a32.nav.reviewOrders", icon: "📝" },
@@ -71,10 +72,9 @@ export const INPATIENT_PROVIDER_STICKY_NAV_SECTIONS = INPATIENT_CLINICAL_PRIMARY
 /** Alias for older tests / imports. */
 export const INPATIENT_STICKY_NAV_SECTIONS = INPATIENT_CLINICAL_PRIMARY_NAV_SECTIONS;
 
-/** Legacy sticky destinations that resolve to Overview (engines retained). */
+/** Legacy sticky destination that resolves to Overview (engine retained). */
 export const INPATIENT_OVERVIEW_REDIRECT_SECTIONS: readonly InpatientWorkspaceSection[] = [
   "timeline",
-  "summary",
 ];
 
 const SECTION_SET = new Set(INPATIENT_WORKSPACE_SECTIONS.map((s) => s.id));

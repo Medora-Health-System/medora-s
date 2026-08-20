@@ -49,6 +49,19 @@ function roundCm(cm: number): number {
   return Math.round(cm * 10) / 10;
 }
 
+/** Presentation-only BMI (kg/m²) from canonical height/weight. Not a stored authority. */
+export function computeBmiFromHeightCmWeightKg(
+  heightCm: number | null | undefined,
+  weightKg: number | null | undefined
+): number | null {
+  if (heightCm == null || weightKg == null) return null;
+  if (!Number.isFinite(heightCm) || !Number.isFinite(weightKg) || heightCm <= 0 || weightKg <= 0) {
+    return null;
+  }
+  const meters = heightCm / 100;
+  return Math.round((weightKg / (meters * meters)) * 10) / 10;
+}
+
 /** Parse user-entered temperature into canonical °C for storage. */
 export function canonicalTemperatureCelsius(
   valueStr: string,

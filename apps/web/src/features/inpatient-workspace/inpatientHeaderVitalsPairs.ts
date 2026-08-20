@@ -1,5 +1,9 @@
 import type { SupportedLanguage } from "@/i18n/config";
-import { formatTemperatureDualLine } from "@/lib/patientVitals";
+import {
+  formatHeightDualLine,
+  formatTemperatureDualLine,
+  formatWeightDualLine,
+} from "@/lib/patientVitals";
 import { erTriageMessagesEn } from "@/i18n/messages/erTriage.en";
 import { erTriageMessagesFr } from "@/i18n/messages/erTriage.fr";
 
@@ -11,6 +15,9 @@ type LatestVitals = {
   spo2: number | null;
   temperatureC: number | null;
   respiratoryRate: number | null;
+  heightCm?: number | null;
+  weightKg?: number | null;
+  painScore?: number | null;
 };
 
 /**
@@ -36,7 +43,7 @@ export function buildInpatientHeaderVitalPairs(
   }
   const bp =
     vitals.systolic != null && vitals.diastolic != null
-      ? `${vitals.systolic}/${vitals.diastolic}`
+      ? `${vitals.systolic}/${vitals.diastolic} mmHg`
       : dash;
   const perMin = (n: number | null) =>
     n != null ? vs.perMin.replace("{n}", String(n)) : dash;
@@ -53,8 +60,16 @@ export function buildInpatientHeaderVitalPairs(
           : dash,
     },
     { label: vs.spo2, value: pct(vitals.spo2) },
-    { label: vs.weight, value: dash },
-    { label: vs.height, value: dash },
+    {
+      label: vs.weight,
+      value:
+        vitals.weightKg != null ? formatWeightDualLine(vitals.weightKg, language) : dash,
+    },
+    {
+      label: vs.height,
+      value:
+        vitals.heightCm != null ? formatHeightDualLine(vitals.heightCm, language) : dash,
+    },
   ];
 }
 

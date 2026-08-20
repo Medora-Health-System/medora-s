@@ -332,9 +332,10 @@ export function buildEncounterMismatchResolution(input: {
   };
 }
 
-/** MEDUI.INP.2A — Primary sticky modules (shared). Deep-link extras listed per role below. */
+/** MEDUI.INP.2F — Primary sticky modules (shared). Timeline is not sticky. */
 const INPATIENT_CLINICAL_PRIMARY_NAV = [
   "overview",
+  "summary",
   "admission",
   "nursing",
   "orders",
@@ -354,7 +355,7 @@ export function providerPrimaryNav(): readonly string[] {
   ] as const;
 }
 
-/** MEDUI.INP.2A — Nursing primary nav (no Notes / Timeline / Summary sticky). */
+/** MEDUI.INP.2F — Nursing primary nav (Timeline is not sticky). */
 export function nursingPrimaryNav(): readonly string[] {
   return [...INPATIENT_CLINICAL_PRIMARY_NAV] as const;
 }

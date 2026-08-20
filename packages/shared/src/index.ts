@@ -336,6 +336,7 @@ export * from "./encounter-allergy-safety.js";
 export * from "./vitalsUnitConversions.js";
 export * from "./vitalsMeasurementContext.js";
 export * from "./vitalsMeaningfulMeasurement.js";
+export * from "./vitalsCanonicalFields.js";
 export * from "./documentedProcedureBillingBridge.js";
 export * from "./documentedProcedureSummary.js";
 export * from "./medicationSafetyWarnings.js";

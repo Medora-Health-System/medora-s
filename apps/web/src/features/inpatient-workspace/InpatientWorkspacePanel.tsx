@@ -36,6 +36,7 @@ import {
 import { InpatientClinicalOpsPanel } from "./InpatientClinicalOpsPanel";
 import { InpatientAdmissionClinicalShell } from "./InpatientAdmissionClinicalShell";
 import { InpatientProviderWorkspacePanel } from "./InpatientProviderWorkspacePanel";
+import { InpatientEncounterMedicalRecordSummaryView } from "./InpatientEncounterMedicalRecordSummaryView";
 import { InpatientTechnicianTasksPanel } from "./InpatientTechnicianTasksPanel";
 import { InpatientNursingAssessmentSection } from "./InpatientNursingAssessmentSection";
 import { EnterpriseInterdisciplinaryCarePlansD4b6 } from "@/features/clinical-documentation/EnterpriseInterdisciplinaryCarePlansD4b6";
@@ -637,14 +638,17 @@ export function InpatientWorkspacePanel({
         );
       }
       return (
-        <InpatientProviderWorkspacePanel
-          mode="summary"
+        <InpatientEncounterMedicalRecordSummaryView
           encounterId={encounterId}
           facilityId={facilityId}
-          patientId={encounter?.patient?.id}
-          canProviderWrite={canProviderWrite}
-          canDocumentDiagnoses={canPrescribe}
-          isLocked={signed}
+          encounter={encounter}
+          room={room}
+          admittedAt={admittedAt}
+          attendingName={attendingName}
+          assignedRnName={assignedRnName}
+          codeStatus={codeStatus}
+          isolation={isolation}
+          admissionDiagnosis={admissionDiagnosis}
           onNavigateSection={onNavigateSection}
         />
       );

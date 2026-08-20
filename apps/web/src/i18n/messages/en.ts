@@ -78,6 +78,7 @@ import { inpatientAdmissionInp2b2dEn } from "./inpatientAdmissionInp2b2d.en";
 import { inpatientNursingAssessmentInp1bEn } from "./inpatientNursingAssessmentInp1b.en";
 import { inpatientNursingAssessmentInp2cEn } from "./inpatientNursingAssessmentInp2c.en";
 import { inpatientReviewOrdersInp2dEn } from "./inpatientReviewOrdersInp2d.en";
+import { inpatientMedicalRecordSummaryInp2fEn } from "./inpatientMedicalRecordSummaryInp2f.en";
 
 export default {
   common: {
@@ -14685,6 +14686,8 @@ export default {
     },
     encounterChartLivePreview: {
       h1: "Encounter chart preview",
+      legalH1: "Encounter medical record",
+      printedFooter: "Printed {date} · Medora Health System",
       banner:
         "Live preview from current chart data. Not a finalized legal record export.",
       printedAt: "Generated on {date}",
@@ -20617,6 +20620,7 @@ export default {
   inpatientNursingAssessmentInp1b: inpatientNursingAssessmentInp1bEn,
   inpatientNursingAssessmentInp2c: inpatientNursingAssessmentInp2cEn,
   inpatientReviewOrdersInp2d: inpatientReviewOrdersInp2dEn,
+  inpatientMedicalRecordSummaryInp2f: inpatientMedicalRecordSummaryInp2fEn,
 
   hospitalAdmissionD4a0: hospitalAdmissionD4a0En,
   emergencyAdaptiveNursing: emergencyAdaptiveNursingEn,

@@ -14,7 +14,7 @@ import {
   formatOxygenSupportCompact,
   temperatureSiteI18nKey,
 } from "@/lib/vitalsMeasurementContextDisplay";
-import { isVitalTemperatureSite } from "@medora/shared";
+import { isVitalTemperatureSite, readCanonicalVitalsMeasurements } from "@medora/shared";
 import { useI18n } from "@/lib/i18n";
 
 export type VitalSummaryReading = {
@@ -89,29 +89,20 @@ export function snapshotsToVitalSummaryReadings(
   const translate = t ?? ((key: string) => key);
   return snapshotsNewestFirst.map((snap) => {
     const v = (snap.vitalsJson || {}) as Record<string, unknown>;
-    const tempN = num(v.tempC);
+    const c = readCanonicalVitalsMeasurements(v);
+    const tempN = c.tempC;
     const measured = snap.measuredAt ?? snap.triageCompleteAt ?? snap.updatedAt;
-    const sys = v.bpSys;
-    const dia = v.bpDia;
     const bp =
-      sys != null && sys !== "" && dia != null && dia !== ""
-        ? `${String(sys).trim()}/${String(dia).trim()}`
-        : "";
-    const hr = v.hr != null && v.hr !== "" ? `${String(v.hr).trim()}` : "";
-    const rr = v.rr != null && v.rr !== "" ? `${String(v.rr).trim()}` : "";
-    const spo2 = v.spo2 != null && v.spo2 !== "" ? `${String(v.spo2).trim()}` : "";
-    const wk = num(v.weightKg);
-    const hc = num(v.heightCm);
-    const painRaw = v.painScore ?? v.pain;
+      c.bpSys != null && c.bpDia != null ? `${c.bpSys}/${c.bpDia}` : "";
+    const hr = c.hr != null ? `${c.hr}` : "";
+    const rr = c.rr != null ? `${c.rr}` : "";
+    const spo2 = c.spo2 != null ? `${c.spo2}` : "";
+    const wk = c.weightKg;
+    const hc = c.heightCm;
+    const painRaw = c.painScore;
     let pain = "";
-    if (painRaw != null && painRaw !== "") {
-      pain = `${String(painRaw).trim()}/10`;
-    } else {
-      const er = v.medoraErTriageV1;
-      if (er != null && typeof er === "object" && !Array.isArray(er)) {
-        const legacy = (er as { painScale0to10?: unknown }).painScale0to10;
-        if (legacy != null && legacy !== "") pain = `${String(legacy).trim()}/10`;
-      }
+    if (painRaw != null) {
+      pain = `${painRaw}/10`;
     }
     const siteRaw = v.temperatureSite;
     const tempSiteLabel =

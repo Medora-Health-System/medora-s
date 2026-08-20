@@ -38,6 +38,7 @@ import {
   sortMarMedicationResponsesNewestFirst,
   buildMedicationResponseSummaryFieldsFromParsed,
   listMedicationResponseSideEffectKeys,
+  formatRxPrintFacilityAddressLines,
 } from "@medora/shared";
 import {
   diagnosisDisplayFr,
@@ -151,6 +152,19 @@ export type EncounterChartLivePreviewParams = {
   facilityId: string;
   facilityName?: string | null;
   language: SupportedLanguage;
+  /** INP.2F — complete encounter medical record print (not Overview screenshot). */
+  legalMedicalRecord?: boolean;
+  facilityIdentity?: {
+    name?: string | null;
+    line1?: string | null;
+    line2?: string | null;
+    city?: string | null;
+    stateProvince?: string | null;
+    postalCode?: string | null;
+    country?: string | null;
+    phone?: string | null;
+    fax?: string | null;
+  } | null;
 };
 
 /* ---------- Fetched data ---------- */
@@ -171,7 +185,7 @@ type FetchedSections = {
 
 const CLINICAL_TIMELINE_LIMIT = 100;
 
-async function fetchEncounterChartPreviewData(
+export async function fetchEncounterChartPreviewData(
   encounterId: string,
   patientId: string,
   facilityId: string
@@ -255,7 +269,8 @@ function renderHeader(
   lang: SupportedLanguage,
   encounter: AnyRecord,
   facilityName: string | null,
-  triage: AnyRecord | null
+  triage: AnyRecord | null,
+  opts?: { hideEncounterId?: boolean }
 ): string {
   const patient = (encounter.patient as AnyRecord | null) ?? null;
   const fn = pickString(patient, "firstName") ?? "";
@@ -308,7 +323,7 @@ function renderHeader(
     );
   }
   const encId = pickString(encounter, "id");
-  if (encId) {
+  if (encId && !opts?.hideEncounterId) {
     lines.push(
       `<p><strong>${esc(tprev(lang, "encounterIdLabel"))}:</strong> <code style="font-family:monospace;font-size:11px;">${esc(
         encId
@@ -1388,30 +1403,61 @@ function renderFollowUps(
 
 /* ---------- Top-level HTML composer ---------- */
 
+function renderFacilityLetterhead(
+  lang: SupportedLanguage,
+  identity: EncounterChartLivePreviewParams["facilityIdentity"],
+  fallbackName: string | null
+): string {
+  const name = (identity?.name ?? fallbackName ?? "").trim();
+  if (!name) return "";
+  const addressLines = identity ? formatRxPrintFacilityAddressLines(identity) : [];
+  const phone = identity?.phone?.trim();
+  const fax = identity?.fax?.trim();
+  const phoneLabel = printT(lang, "printOutput.rx.phone");
+  const faxLabel = printT(lang, "printOutput.rx.fax");
+  const extra: string[] = [];
+  if (phone) extra.push(`${phoneLabel}: ${phone}`);
+  if (fax) extra.push(`${faxLabel}: ${fax}`);
+  return `<header class="facility-letterhead">
+    <div class="facility-name">${esc(name)}</div>
+    ${addressLines.map((line) => `<div class="facility-line">${esc(line)}</div>`).join("")}
+    ${extra.map((line) => `<div class="facility-line">${esc(line)}</div>`).join("")}
+  </header>`;
+}
+
 function getEncounterChartLivePreviewHtml(
   params: EncounterChartLivePreviewParams,
   fetched: FetchedSections
 ): string {
-  const { encounter, triage, orders, facilityName, language } = params;
+  const { encounter, triage, orders, facilityName, language, legalMedicalRecord, facilityIdentity } =
+    params;
   const lang = language;
   const loc = printDateLocale(lang);
   const printedAt = new Date().toLocaleString(loc);
   const htmlLang = lang === "en" ? "en" : "fr";
-  const titleStr = tprev(lang, "h1");
+  const titleStr = legalMedicalRecord ? tprev(lang, "legalH1") : tprev(lang, "h1");
   const banner = tprev(lang, "banner");
   const printedAtLine = tprev(lang, "printedAt").replace("{date}", printedAt);
+  const printedFooter = tprev(lang, "printedFooter").replace("{date}", printedAt);
   const encounterIdSafe = pickString(encounter, "id") ?? "";
+  const letterhead = renderFacilityLetterhead(lang, facilityIdentity ?? null, facilityName ?? null);
+  const bannerHtml = legalMedicalRecord
+    ? ""
+    : `<div class="preview-banner" role="alert">${esc(banner)}</div>`;
 
   return `<!DOCTYPE html>
 <html lang="${htmlLang}">
 <head>
   <meta charset="utf-8" />
-  <title>${esc(titleStr)} — ${esc(encounterIdSafe)}</title>
+  <title>${esc(titleStr)}</title>
   <style>
     body { font-family: Georgia, "Times New Roman", serif; padding: 20px; font-size: 13px; color: #000; background: #fff; max-width: 880px; margin: 0 auto; }
     h1 { font-size: 18px; margin: 0 0 6px 0; font-weight: 700; }
-    h2 { font-size: 14px; margin: 22px 0 10px 0; font-weight: 700; border-bottom: 1px solid #000; padding-bottom: 4px; }
+    h2 { font-size: 14px; margin: 22px 0 10px 0; font-weight: 700; border-bottom: 1px solid #000; padding-bottom: 4px; page-break-after: avoid; }
     .meta p { margin: 4px 0; line-height: 1.45; }
+    .facility-letterhead { text-align: center; margin: 0 0 18px 0; }
+    .facility-letterhead .facility-name { font-size: 16px; font-weight: 700; }
+    .facility-letterhead .facility-line { font-size: 12px; margin-top: 2px; }
     .preview-banner {
       margin: 0 0 16px 0;
       padding: 10px 14px;
@@ -1422,22 +1468,33 @@ function getEncounterChartLivePreviewHtml(
       font-size: 12px;
       border-radius: 4px;
     }
-    .printed-at {
+    .printed-at, .print-footer {
       font-size: 11px;
       color: #475569;
       margin: 0 0 12px 0;
     }
+    .print-footer { margin-top: 28px; text-align: center; }
     ul { margin: 6px 0 0 0; padding-left: 18px; }
-    @media print { body { padding: 12px; } }
+    section, table, ul, .meta { break-inside: avoid; page-break-inside: avoid; }
+    @media print {
+      body { padding: 12px; }
+      .preview-banner { display: none !important; }
+      nav, button, .no-print { display: none !important; }
+      @page { margin: 16mm 14mm 18mm 14mm; }
+      @page { @bottom-center { content: counter(page) " / " counter(pages); font-size: 10px; } }
+    }
   </style>
 </head>
 <body>
+  ${letterhead}
   <h1>${esc(titleStr)}</h1>
-  <p class="printed-at">${esc(printedAtLine)}</p>
-  <div class="preview-banner" role="alert">${esc(banner)}</div>
+  <p class="printed-at">${esc(legalMedicalRecord ? printedFooter : printedAtLine)}</p>
+  ${bannerHtml}
 
   ${h2(lang, "sectionHeader")}
-  ${renderHeader(lang, encounter, facilityName ?? null, triage)}
+  ${renderHeader(lang, encounter, facilityName ?? null, triage, {
+    hideEncounterId: Boolean(legalMedicalRecord),
+  })}
 
   ${h2(lang, "sectionTriage")}
   ${renderTriage(lang, triage)}
@@ -1507,7 +1564,8 @@ function getEncounterChartLivePreviewHtml(
   ${h2(lang, "sectionFollowUps")}
   ${renderFollowUps(lang, fetched.followUps, encounterIdSafe)}
 
-  <p style="margin-top:24px;font-size:11px;color:#000;">${esc(banner)}</p>
+  ${legalMedicalRecord ? `<p class="print-footer">${esc(printedFooter)}</p>` : `<p style="margin-top:24px;font-size:11px;color:#000;">${esc(banner)}</p>`}
+
 </body>
 </html>`;
 }

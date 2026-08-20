@@ -95,6 +95,12 @@ function eventStatusLabel(status: string, t: (k: string) => string): string {
   return labeled !== key ? labeled : status.replace(/_/g, " ");
 }
 
+function vitalMetricLabel(key: string, fallback: string, t: (k: string) => string): string {
+  const i18nKey = `inpatientMedicalRecordSummaryInp2f.vitals.${key}`;
+  const labeled = t(i18nKey);
+  return labeled !== i18nKey ? labeled : fallback;
+}
+
 function medGroupLabel(group: string, t: (k: string) => string): string {
   const key = `inpatientOverviewD4a34.meds.groups.${group}`;
   const labeled = t(key);
@@ -265,7 +271,9 @@ export function InpatientOverviewView({
             <tbody>
               {p.vitals.rows.map((v) => (
                 <tr key={v.key} style={{ color: v.abnormal ? "#9a3412" : "#334155" }}>
-                  <td style={{ padding: "2px 4px", fontWeight: 600 }}>{v.label}</td>
+                  <td style={{ padding: "2px 4px", fontWeight: 600 }}>
+                    {vitalMetricLabel(v.key, v.label, t)}
+                  </td>
                   <td style={{ padding: "2px 4px" }}>{v.current ?? dash}</td>
                   <td style={{ padding: "2px 4px" }}>{v.previous ?? dash}</td>
                   <td style={{ padding: "2px 4px" }}>{v.trend24h}</td>

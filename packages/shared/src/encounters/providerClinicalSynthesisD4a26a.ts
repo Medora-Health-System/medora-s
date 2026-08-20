@@ -7,6 +7,8 @@
  * This module projects authoritative enterprise records — it never duplicates engines.
  */
 
+import { computeBmiFromHeightCmWeightKg } from "../vitalsUnitConversions.js";
+import { readCanonicalVitalsMeasurements } from "../vitalsCanonicalFields.js";
 import type { HospitalCensusPatientRow } from "./hospitalCensusV1.js";
 import type {
   InpatientProviderWorkspaceV1,
@@ -78,6 +80,7 @@ export type VitalMetricKey =
   | "O2"
   | "PAIN"
   | "WEIGHT"
+  | "HEIGHT"
   | "BMI"
   | "MEWS"
   | "FLUID_BALANCE";
@@ -381,14 +384,18 @@ export function projectProviderVitals(input: {
     const fmt = format ?? ((n, raw) => (n != null ? String(n) : str(raw)));
     const trendSeries = last24
       .map((r) => {
-        if (key === "BP") return num(r.vitals.systolic ?? r.vitals.sbp ?? r.vitals.bpSystolic);
-        if (key === "HR") return num(r.vitals.hr ?? r.vitals.heartRate ?? r.vitals.pulse);
-        if (key === "RR") return num(r.vitals.rr ?? r.vitals.respiratoryRate);
-        if (key === "TEMP") return num(r.vitals.temp ?? r.vitals.temperature);
-        if (key === "O2") return num(r.vitals.spo2 ?? r.vitals.o2Sat ?? r.vitals.oxygenSaturation);
-        if (key === "PAIN") return num(r.vitals.pain ?? r.vitals.painScore);
-        if (key === "WEIGHT") return num(r.vitals.weight ?? r.vitals.weightKg);
-        if (key === "BMI") return num(r.vitals.bmi);
+        const c = readCanonicalVitalsMeasurements(r.vitals);
+        if (key === "BP") return c.bpSys;
+        if (key === "HR") return c.hr;
+        if (key === "RR") return c.rr;
+        if (key === "TEMP") return c.tempC;
+        if (key === "O2") return c.spo2;
+        if (key === "PAIN") return c.painScore;
+        if (key === "WEIGHT") return c.weightKg;
+        if (key === "HEIGHT") return c.heightCm;
+        if (key === "BMI") {
+          return num(r.vitals.bmi) ?? computeBmiFromHeightCmWeightKg(c.heightCm, c.weightKg);
+        }
         return null;
       })
       .filter((n): n is number => n != null);
@@ -408,17 +415,19 @@ export function projectProviderVitals(input: {
     };
   };
 
+  const curC = readCanonicalVitalsMeasurements(current);
+  const prevC = readCanonicalVitalsMeasurements(previous);
   const bpCur =
     current.bp != null
       ? str(current.bp)
-      : current.systolic != null || current.sbp != null
-        ? `${str(current.systolic ?? current.sbp) ?? "?"}/${str(current.diastolic ?? current.dbp) ?? "?"}`
+      : curC.bpSys != null && curC.bpDia != null
+        ? `${curC.bpSys}/${curC.bpDia}`
         : null;
   const bpPrev =
     previous.bp != null
       ? str(previous.bp)
-      : previous.systolic != null || previous.sbp != null
-        ? `${str(previous.systolic ?? previous.sbp) ?? "?"}/${str(previous.diastolic ?? previous.dbp) ?? "?"}`
+      : prevC.bpSys != null && prevC.bpDia != null
+        ? `${prevC.bpSys}/${prevC.bpDia}`
         : null;
 
   const list: VitalMetricProjection[] = [
@@ -427,25 +436,29 @@ export function projectProviderVitals(input: {
       label: "BP",
       current: bpCur,
       previous: bpPrev,
-      trend24h: trendFromNumeric(
-        num(current.systolic ?? current.sbp),
-        num(previous.systolic ?? previous.sbp)
-      ),
+      trend24h: trendFromNumeric(curC.bpSys, prevC.bpSys),
       abnormal: (() => {
-        const s = num(current.systolic ?? current.sbp);
-        const d = num(current.diastolic ?? current.dbp);
+        const s = curC.bpSys;
+        const d = curC.bpDia;
         return (s != null && (s >= 160 || s <= 90)) || (d != null && (d >= 100 || d <= 50));
       })(),
       measuredAt,
       source: sorted.length ? "ENTERPRISE_VITALS" : "MISSING",
     },
-    metric("HR", "HR", current.hr ?? current.heartRate ?? current.pulse, previous.hr ?? previous.heartRate ?? previous.pulse, (n) => n != null && (n >= 110 || n <= 50)),
-    metric("RR", "RR", current.rr ?? current.respiratoryRate, previous.rr ?? previous.respiratoryRate, (n) => n != null && (n >= 24 || n <= 10)),
-    metric("TEMP", "Temp", current.temp ?? current.temperature, previous.temp ?? previous.temperature, (n) => n != null && (n >= 38.3 || n <= 35.5)),
-    metric("O2", "O2", current.spo2 ?? current.o2Sat ?? current.oxygenSaturation, previous.spo2 ?? previous.o2Sat ?? previous.oxygenSaturation, (n) => n != null && n < 92),
-    metric("PAIN", "Pain", current.pain ?? current.painScore, previous.pain ?? previous.painScore, (n) => n != null && n >= 7),
-    metric("WEIGHT", "Weight", current.weight ?? current.weightKg, previous.weight ?? previous.weightKg, () => false),
-    metric("BMI", "BMI", current.bmi, previous.bmi, (n) => n != null && (n >= 40 || n < 16)),
+    metric("HR", "HR", curC.hr, prevC.hr, (n) => n != null && (n >= 110 || n <= 50)),
+    metric("RR", "RR", curC.rr, prevC.rr, (n) => n != null && (n >= 24 || n <= 10)),
+    metric("TEMP", "Temp", curC.tempC, prevC.tempC, (n) => n != null && (n >= 38.3 || n <= 35.5)),
+    metric("O2", "O2", curC.spo2, prevC.spo2, (n) => n != null && n < 92),
+    metric("PAIN", "Pain", curC.painScore, prevC.painScore, (n) => n != null && n >= 7),
+    metric("WEIGHT", "Weight", curC.weightKg, prevC.weightKg, () => false),
+    metric("HEIGHT", "Height", curC.heightCm, prevC.heightCm, () => false),
+    metric(
+      "BMI",
+      "BMI",
+      num(current.bmi) ?? computeBmiFromHeightCmWeightKg(curC.heightCm, curC.weightKg),
+      num(previous.bmi) ?? computeBmiFromHeightCmWeightKg(prevC.heightCm, prevC.weightKg),
+      (n) => n != null && (n >= 40 || n < 16)
+    ),
   ];
 
   if (input.mewsIfPresent != null && Number.isFinite(input.mewsIfPresent)) {
