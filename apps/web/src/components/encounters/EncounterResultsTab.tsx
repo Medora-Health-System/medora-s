@@ -9,6 +9,7 @@ import {
   attachmentsFromResultDataAll,
   clinicalResultFromOrderItemLike,
 } from "@/lib/clinicalResultNormalize";
+import { hasStructuredDiagnosticResultContent } from "@medora/shared";
 import { getCachedRecord } from "@/lib/offline/offlineCache";
 import { getPendingOrderItemResultsForEncounter } from "@/lib/offline/pendingOrderItemResults";
 import { MEDORA_CARD_SHELL } from "@/components/medora-card";
@@ -37,6 +38,7 @@ function hasLabRadResult(item: any): boolean {
   return !!(
     r?.resultText?.trim() ||
     att ||
+    hasStructuredDiagnosticResultContent(r?.resultData) ||
     r?.verifiedAt ||
     item.status === "RESULTED" ||
     item.status === "VERIFIED"
@@ -433,48 +435,17 @@ export function EncounterResultsTab({
                 resultEffectiveVersion={v.resultEffectiveVersion}
                 criticalValue={v.criticalValue}
                 resultText={v.resultText}
+                resultData={v.resultData}
                 attachments={v.attachments}
                 enteredByDisplayFr={v.enteredByDisplayFr}
                 acknowledgedByDisplayFr={v.acknowledgedByDisplayFr}
                 acknowledgedByProviderAt={v.acknowledgedByProviderAt}
                 catalogItemType={v.catalogItemType}
                 compact={compactResultViewer}
+                canAcknowledge={showAckButton}
+                acknowledgeBusy={ackBusy}
+                onAcknowledge={showAckButton ? () => void onAcknowledge(item.id) : undefined}
               />
-              {acknowledgedAt && !pendingSync ? (
-                <p
-                  style={{
-                    margin: "10px 0 0 0",
-                    fontSize: 11,
-                    color: "#15803d",
-                    fontWeight: 600,
-                  }}
-                >
-                  {t("patientChartUi.encounterResultsAcknowledged")}
-                </p>
-              ) : null}
-              {showAckButton ? (
-                <div style={{ marginTop: 10, display: "flex", justifyContent: "flex-end" }}>
-                  <button
-                    type="button"
-                    onClick={() => void onAcknowledge(item.id)}
-                    disabled={ackBusy}
-                    style={{
-                      padding: "6px 12px",
-                      fontSize: 12,
-                      fontWeight: 600,
-                      borderRadius: 8,
-                      border: "1px solid #cbd5e1",
-                      background: ackBusy ? "#f1f5f9" : "#fff",
-                      color: "#0f172a",
-                      cursor: ackBusy ? "default" : "pointer",
-                    }}
-                  >
-                    {ackBusy
-                      ? t("patientChartUi.encounterResultsAckBusy")
-                      : t("patientChartUi.encounterResultsAcknowledgeButton")}
-                  </button>
-                </div>
-              ) : null}
             </div>
           </div>
         );

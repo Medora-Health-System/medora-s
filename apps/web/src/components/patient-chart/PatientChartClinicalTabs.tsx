@@ -320,6 +320,7 @@ export function PatientResultsTabContent({ chartSummary }: { chartSummary: Chart
               resultEffectiveVersion={v.resultEffectiveVersion}
               criticalValue={v.criticalValue}
               resultText={v.resultText}
+              resultData={v.resultData}
               attachments={v.attachments}
               enteredByDisplayFr={v.enteredByDisplayFr}
               acknowledgedByDisplayFr={v.acknowledgedByDisplayFr}
@@ -401,6 +402,7 @@ export function PatientImagingTabContent({ chartSummary }: { chartSummary: Chart
                     resultEffectiveVersion={v.resultEffectiveVersion}
                     criticalValue={v.criticalValue}
                     resultText={v.resultText}
+                    resultData={v.resultData}
                     attachments={v.attachments}
                     enteredByDisplayFr={v.enteredByDisplayFr}
               acknowledgedByDisplayFr={v.acknowledgedByDisplayFr}

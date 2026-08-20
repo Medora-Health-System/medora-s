@@ -16,16 +16,32 @@ describe("unifiedEncounterTimelineDisplayTitles", () => {
     expect(label).not.toMatch(/oxymétrie/i);
   });
 
-  it("builds English order acknowledgement title with template line", () => {
+  it("builds English laboratory result acknowledgement title (RESULT_SERVICE)", () => {
     const title = buildUnifiedOrderEventTitle({
       locale: "en",
-      eventType: "STARTED",
-      orderType: "CARE",
-      lineLabel: "Continuous pulse oximetry monitoring",
-      metadata: { lifecycleOutcome: "ACKNOWLEDGED", source: "OBSERVATION_TEMPLATE_ORDER" },
+      eventType: "COMPLETED",
+      orderType: "LAB",
+      lineLabel: "CBC with differential",
+      metadata: {
+        lifecycleOutcome: "ACKNOWLEDGED",
+        source: "RESULT_SERVICE",
+      },
     });
-    expect(title).toBe("Order acknowledged — Continuous pulse oximetry monitoring");
-    expect(title).not.toMatch(/accusé|réception/i);
+    expect(title).toBe("Laboratory result acknowledged — CBC with differential");
+  });
+
+  it("builds French laboratory result acknowledgement title (RESULT_SERVICE)", () => {
+    const title = buildUnifiedOrderEventTitle({
+      locale: "fr",
+      eventType: "COMPLETED",
+      orderType: "LAB",
+      lineLabel: "NFS",
+      metadata: {
+        lifecycleOutcome: "ACKNOWLEDGED",
+        source: "RESULT_SERVICE",
+      },
+    });
+    expect(title).toBe("Résultat de laboratoire accusé réception — NFS");
   });
 
   it("builds French discharge packet clinical title", () => {

@@ -725,6 +725,7 @@ export function EnterpriseClosedEncounterClinicalRecord({ facilityId, encounter 
                   resultEffectiveVersion={viewer.resultEffectiveVersion}
                   criticalValue={viewer.criticalValue}
                   resultText={viewer.resultText}
+                  resultData={viewer.resultData}
                   attachments={viewer.attachments}
                   enteredByDisplayFr={viewer.enteredByDisplayFr}
                   acknowledgedByDisplayFr={viewer.acknowledgedByDisplayFr}

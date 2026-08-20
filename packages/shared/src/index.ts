@@ -328,6 +328,7 @@ export * from "./orders/enterpriseOrderSetVerbalOrderAttestation.js";
 export * from "./orders/enterpriseOrderSetAnalytics.js";
 export * from "./orders/trackboardOpenOrderCount.js";
 export * from "./orders/labResultReferenceFlag.js";
+export * from "./orders/clinicalResultStructured.js";
 export * from "./orders/careProcedureEffectiveClinicalTime.js";
 export * from "./orders/labRadiologyEffectiveClinicalTime.js";
 export * from "./orders/labRadiologyOperationalReconciliation.js";

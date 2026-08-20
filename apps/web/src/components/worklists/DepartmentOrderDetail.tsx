@@ -9,9 +9,25 @@ import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import { buildRxPrintFacilityIdentity, printRx } from "@/components/pharmacy/RxPrintLayout";
 import { getOrderItemDisplayLabelFromLocale } from "@/lib/orderItemDisplayFr";
 import { careOrderClinicalDetailLines } from "@/lib/careOrderDisplayUi";
-import { sanitizeOrderItemNotesForDisplay } from "@medora/shared";
+import {
+  sanitizeOrderItemNotesForDisplay,
+  buildEmptyLabObservationsFromPanel,
+  buildImagingStructuredResultData,
+  buildLabStructuredResultData,
+  hasStructuredDiagnosticResultContent,
+  imagingReportToResultText,
+  labObservationsToResultText,
+  parseClinicalStructuredResultData,
+  resolveLabPanelKeyFromCatalog,
+  type ClinicalImagingReportSections,
+  type ClinicalLabObservation,
+} from "@medora/shared";
 import { MEDORA_CHART_RESULT_UPDATED } from "@/lib/chartEvents";
 import { ClinicalResultViewer } from "@/components/clinical/ClinicalResultViewer";
+import {
+  StructuredImagingReportEditor,
+  StructuredLabObservationEditor,
+} from "@/components/worklists/StructuredDiagnosticResultEditor";
 import { attachmentsFromResultDataAll, clinicalResultFromOrderItemLike } from "@/lib/clinicalResultNormalize";
 import {
   collectResultUploadFiles,
@@ -755,6 +771,40 @@ function LineCard({
   const [feedback, setFeedback] = useState<{ type: "ok" | "err"; text: string } | null>(null);
   const [draftRestoredAt, setDraftRestoredAt] = useState<string | null>(null);
   const [draftSavedLocallyAt, setDraftSavedLocallyAt] = useState<string | null>(null);
+
+  const labPanelKey = useMemo(() => {
+    if (kind !== "lab") return null;
+    return resolveLabPanelKeyFromCatalog({
+      catalogCode: item.catalogLabTest?.code ?? null,
+      label: getOrderItemDisplayLabelFromLocale(item, language),
+    });
+  }, [kind, item, language]);
+
+  const initialStructured = useMemo(() => parseClinicalStructuredResultData(item.result?.resultData), [item.result?.resultData]);
+
+  const [labObservations, setLabObservations] = useState<ClinicalLabObservation[]>(() => {
+    if (initialStructured?.resultType === "LAB") return initialStructured.observations;
+    if (labPanelKey) return buildEmptyLabObservationsFromPanel(labPanelKey);
+    return [];
+  });
+  const [labComments, setLabComments] = useState(
+    initialStructured?.resultType === "LAB" ? initialStructured.comments ?? "" : ""
+  );
+  const [imagingReport, setImagingReport] = useState<ClinicalImagingReportSections>(() =>
+    initialStructured?.resultType === "IMAGING"
+      ? initialStructured.report
+      : {
+          indication: "",
+          technique: "",
+          comparison: "",
+          findings: "",
+          impression: "",
+          recommendation: "",
+        }
+  );
+
+  const useStructuredLabAuthoring = kind === "lab" && labPanelKey != null;
+  const useStructuredImagingAuthoring = kind === "radiology";
   const [timeAdjustSaving, setTimeAdjustSaving] = useState(false);
   const [timeAdjustTarget, setTimeAdjustTarget] = useState<{
     milestone: "received" | "collected" | "performed" | "resulted" | "finalized";
@@ -848,12 +898,20 @@ function LineCard({
   const criticalChanged = critical !== !!item.result?.criticalValue;
   const hasNewFiles = (pdfFiles?.length ?? 0) > 0 || (imgFiles?.length ?? 0) > 0;
   const hasText = resultText.trim().length > 0;
+  const hasStructuredLabValues =
+    useStructuredLabAuthoring &&
+    labObservations.some((o) => o.name.trim() && String(o.value ?? "").trim());
+  const hasStructuredImagingValues =
+    useStructuredImagingAuthoring &&
+    Object.values(imagingReport).some((v) => String(v ?? "").trim().length > 0);
   const hasPayloadForSubmit =
     kind === "lab"
-      ? hasText || hasNewFiles || criticalChanged
-      : hasText || hasNewFiles;
+      ? hasText || hasNewFiles || criticalChanged || hasStructuredLabValues
+      : hasText || hasNewFiles || hasStructuredImagingValues;
 
-  const substantiveBlocked = (hasText || hasNewFiles) && !statusAllowsSubstantiveResult;
+  const substantiveBlocked =
+    (hasText || hasNewFiles || hasStructuredLabValues || hasStructuredImagingValues) &&
+    !statusAllowsSubstantiveResult;
   const resultDraftEditable = canResult && encounterEditable && statusAllowsSubstantiveResult;
 
   useEffect(() => {
@@ -861,7 +919,27 @@ function LineCard({
     setCritical(!!item.result?.criticalValue);
     setDraftRestoredAt(null);
     setDraftSavedLocallyAt(null);
-  }, [item.id, item.result?.resultText, item.result?.criticalValue]);
+    const parsed = parseClinicalStructuredResultData(item.result?.resultData);
+    if (parsed?.resultType === "LAB") {
+      setLabObservations(parsed.observations);
+      setLabComments(parsed.comments ?? "");
+    } else if (labPanelKey) {
+      setLabObservations(buildEmptyLabObservationsFromPanel(labPanelKey));
+      setLabComments("");
+    }
+    if (parsed?.resultType === "IMAGING") {
+      setImagingReport(parsed.report);
+    } else if (kind === "radiology") {
+      setImagingReport({
+        indication: "",
+        technique: "",
+        comparison: "",
+        findings: "",
+        impression: "",
+        recommendation: "",
+      });
+    }
+  }, [item.id, item.result?.resultText, item.result?.criticalValue, item.result?.resultData, labPanelKey, kind]);
 
   useEffect(() => {
     if (!resultDraftKey || !resultDraftScope || restoringDraftRef.current) return;
@@ -1051,8 +1129,35 @@ function LineCard({
     }
 
     const newFiles = collectResultUploadFiles(pdfFiles, imgFiles);
+
+    let effectiveResultText = resultText;
+    let structuredPayload: Record<string, unknown> | null = null;
+
+    if (useStructuredLabAuthoring) {
+      const filled = labObservations.filter((o) => o.name.trim() && String(o.value ?? "").trim());
+      if (!filled.length && newFiles.length === 0) {
+        setFeedback({ type: "err", text: t("structuredDiagnosticResult.labNeedValues") });
+        return;
+      }
+      const structured = buildLabStructuredResultData({
+        observations: labObservations,
+        comments: labComments,
+      });
+      structuredPayload = structured as unknown as Record<string, unknown>;
+      effectiveResultText = labObservationsToResultText(structured.observations, labComments);
+    } else if (useStructuredImagingAuthoring) {
+      const structured = buildImagingStructuredResultData(imagingReport);
+      const text = imagingReportToResultText(structured.report);
+      if (!text && newFiles.length === 0) {
+        setFeedback({ type: "err", text: t("structuredDiagnosticResult.imagingNeedContent") });
+        return;
+      }
+      structuredPayload = structured as unknown as Record<string, unknown>;
+      effectiveResultText = text;
+    }
+
     const preflight = validateResultUploadPreflight({
-      resultText,
+      resultText: effectiveResultText,
       existingResultData: item.result?.resultData,
       newFiles,
     });
@@ -1086,17 +1191,26 @@ function LineCard({
       await collect(imgFiles);
 
       const body: Record<string, unknown> = {
-        resultText: resultText.trim() || undefined,
+        resultText: effectiveResultText.trim() || undefined,
       };
       if (labels.showCritical) body.criticalValue = critical;
-      if (newAttachments.length > 0) body.resultData = { attachments: newAttachments };
+
+      const resultDataBody: Record<string, unknown> = {
+        ...(structuredPayload ?? {}),
+      };
+      if (newAttachments.length > 0) resultDataBody.attachments = newAttachments;
+      if (Object.keys(resultDataBody).length > 0) body.resultData = resultDataBody;
 
       const res = await apiFetch(`/orders/${item.id}/result`, {
         method: "PUT",
         facilityId,
         body: JSON.stringify(body),
       });
-      if (resultDraftKey && typeof window !== "undefined") {
+      if (!useStructuredLabAuthoring && !useStructuredImagingAuthoring) {
+        setResultText(effectiveResultText);
+      } else {
+        setResultText(effectiveResultText);
+      }      if (resultDraftKey && typeof window !== "undefined") {
         removeClinicalDraft(window.localStorage, resultDraftKey);
       }
       setDraftRestoredAt(null);
@@ -1396,6 +1510,7 @@ function LineCard({
       {item.result &&
       (item.result.resultText?.trim() ||
         existingAtt.length > 0 ||
+        hasStructuredDiagnosticResultContent(item.result.resultData) ||
         attachmentsFromResultDataAll(item.result.resultData).length > 0) ? (
         <div style={{ marginTop: 14 }}>
           {(() => {
@@ -1416,6 +1531,7 @@ function LineCard({
                 resultEffectiveVersion={v.resultEffectiveVersion}
                 criticalValue={v.criticalValue}
                 resultText={v.resultText}
+                resultData={v.resultData}
                 attachments={v.attachments}
                 enteredByDisplayFr={v.enteredByDisplayFr}
                 acknowledgedByDisplayFr={v.acknowledgedByDisplayFr}
@@ -1500,13 +1616,24 @@ function LineCard({
                 {t("orderDetail.localDraftSaved")}
               </span>
             ) : null}
-            <textarea
-              value={resultText}
-              onChange={(e) => setResultText(e.target.value)}
-              rows={4}
-              placeholder={labels.resultPlaceholder}
-              style={{ display: "block", marginTop: 6, width: "100%", boxSizing: "border-box", padding: 8 }}
-            />
+            {useStructuredLabAuthoring ? (
+              <StructuredLabObservationEditor
+                observations={labObservations}
+                onChange={setLabObservations}
+                comments={labComments}
+                onCommentsChange={setLabComments}
+              />
+            ) : useStructuredImagingAuthoring ? (
+              <StructuredImagingReportEditor report={imagingReport} onChange={setImagingReport} />
+            ) : (
+              <textarea
+                value={resultText}
+                onChange={(e) => setResultText(e.target.value)}
+                rows={4}
+                placeholder={labels.resultPlaceholder}
+                style={{ display: "block", marginTop: 6, width: "100%", boxSizing: "border-box", padding: 8 }}
+              />
+            )}
           </label>
           {labels.showCritical ? (
             <label style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 10, fontSize: 13 }}>

@@ -47,6 +47,8 @@ export type ClinicalResultViewerInput = {
   resultEffectiveVersion?: number;
   criticalValue?: boolean | null;
   resultText?: string | null;
+  /** Full Result.resultData (structured LAB/IMAGING + attachments). */
+  resultData?: unknown;
   attachments?: ResultAttachmentRow[] | null;
   /** Nom affichage du professionnel ayant saisi / validé le résultat */
   enteredByDisplayFr?: string | null;
@@ -107,6 +109,7 @@ export function clinicalResultFromOrderItemLike(item: {
     resultEffectiveVersion: effectiveVersion,
     criticalValue: r?.criticalValue ?? null,
     resultText: r?.resultText ?? null,
+    resultData: r?.resultData ?? null,
     attachments: attachmentsFromResultDataAll(r?.resultData ?? null),
     enteredByDisplayFr: r?.enteredByDisplayFr ?? null,
     acknowledgedByDisplayFr: r?.acknowledgedByDisplayFr ?? null,

@@ -15,6 +15,13 @@ import {
 import { useI18n } from "@/lib/i18n";
 import { MedicationAdministrationAdjustedBadge } from "@/components/encounters/MedicationAdministrationClockButton";
 import { resolveLabRadMilestoneDisplay } from "@/features/orders/labRadiologyEffectiveTimeDisplay";
+import {
+  initialsFromDisplayName,
+  parseClinicalStructuredResultData,
+  resolveStructuredLabObservationDisplayFlag,
+  type ClinicalImagingReportSections,
+  type ClinicalLabObservation,
+} from "@medora/shared";
 
 export type { ResultAttachmentRow };
 
@@ -139,6 +146,8 @@ type ClinicalResultViewerProps = {
   resultEffectiveVersion?: number;
   criticalValue?: boolean | null;
   resultText?: string | null;
+  /** Full Result.resultData — structured LAB/IMAGING preferred over text parse. */
+  resultData?: unknown;
   attachments?: ResultAttachmentRow[] | null;
   /** Nom du professionnel ayant saisi / validé (API enrichie) */
   enteredByDisplayFr?: string | null;
@@ -148,6 +157,10 @@ type ClinicalResultViewerProps = {
   compact?: boolean;
   /** Mise en page labo (tableau) vs imagerie (sections rapport) */
   catalogItemType?: "LAB_TEST" | "IMAGING_STUDY";
+  /** MEDUI.RES.2A — enterprise acknowledgement footer (viewing ≠ acknowledgement). */
+  canAcknowledge?: boolean;
+  acknowledgeBusy?: boolean;
+  onAcknowledge?: () => void;
 };
 
 function StatusChips({
@@ -216,40 +229,36 @@ function labRawWithoutConclusionBlock(full: string, conclusion: string): string 
   return full.slice(0, idx).replace(/\s+$/, "").trim();
 }
 
-function StructuredResultBody({
-  catalogItemType,
-  resultText,
+function labRowsFromStructuredObservations(observations: ClinicalLabObservation[]): LabParsedRow[] {
+  return observations
+    .filter((o) => o.name.trim() && String(o.value ?? "").trim())
+    .map((o) => ({
+      label: o.name.trim(),
+      value: String(o.value).trim(),
+      ref: o.referenceText?.trim() || undefined,
+      unit: o.unit?.trim() || undefined,
+      flag: resolveStructuredLabObservationDisplayFlag(o),
+    }));
+}
+
+function StructuredLabTable({
+  rows,
   examTitle,
   verifiedAt,
   criticalValue,
 }: {
-  catalogItemType?: "LAB_TEST" | "IMAGING_STUDY";
-  resultText: string | null | undefined;
+  rows: LabParsedRow[];
   examTitle: string;
   verifiedAt?: string | null;
   criticalValue?: boolean | null;
 }) {
   const { t, language } = useI18n();
   const dateLocale = language === "en" ? "en-US" : "fr-FR";
-  const raw = (resultText ?? "").trim();
-  if (!raw) {
-    return (
-      <span style={{ color: "#757575", fontStyle: "italic" }}>{t("clinicalResultViewer.emptyInterpretation")}</span>
-    );
-  }
+  const anyFlag = rows.some((r) => r.flag);
+  const anyUnit = rows.some((r) => Boolean(r.unit?.trim()));
 
-  if (catalogItemType === "LAB_TEST") {
-    const { rows, preamble, conclusion, sectionNotes } = parseLabObservationLines(raw);
-    const anyFlag = rows.some((r) => r.flag);
-    const anyUnit = rows.some((r) => Boolean(r.unit?.trim()));
-    const introBlock = [sectionNotes.length ? sectionNotes.map((n) => `• ${n}`).join("\n") : "", preamble].filter(Boolean).join("\n\n");
-
-    const fallbackSource =
-      introBlock.trim() || labRawWithoutConclusionBlock(raw, conclusion);
-
-    const fallbackParas = splitLabFallbackParagraphs(fallbackSource);
-
-    const labDocHeader = (
+  return (
+    <div style={{ fontSize: 14, color: "#212121" }}>
       <div
         style={{
           marginBottom: 14,
@@ -272,79 +281,222 @@ function StructuredResultBody({
               <span style={{ marginLeft: 8 }}>{new Date(verifiedAt).toLocaleString(dateLocale)}</span>
             </div>
           ) : null}
-          {criticalValue ? <div style={{ fontWeight: 700, color: "#b71c1c" }}>{t("clinicalResultViewer.labCriticalBanner")}</div> : null}
+          {criticalValue ? (
+            <div style={{ fontWeight: 700, color: "#b71c1c" }}>{t("clinicalResultViewer.labCriticalBanner")}</div>
+          ) : null}
         </div>
       </div>
+      <div style={{ overflowX: "auto", borderRadius: 8, border: "1px solid #cfd8dc" }}>
+        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+          <thead>
+            <tr style={{ background: "#eceff1" }}>
+              <th style={{ textAlign: "left", padding: "10px 12px", color: "#37474f", fontWeight: 700 }}>
+                {t("clinicalResultViewer.labTableParam")}
+              </th>
+              <th style={{ textAlign: "left", padding: "10px 12px", color: "#37474f", fontWeight: 700 }}>
+                {t("clinicalResultViewer.labTableResult")}
+              </th>
+              {anyFlag ? (
+                <th style={{ textAlign: "center", padding: "10px 8px", color: "#546e7a", fontWeight: 600, width: 72 }}>
+                  {t("clinicalResultViewer.labTableFlag")}
+                </th>
+              ) : null}
+              <th style={{ textAlign: "left", padding: "10px 12px", color: "#546e7a", fontWeight: 600 }}>
+                {t("clinicalResultViewer.labTableRefRange")}
+              </th>
+              {anyUnit ? (
+                <th style={{ textAlign: "left", padding: "10px 12px", color: "#546e7a", fontWeight: 600 }}>
+                  {t("clinicalResultViewer.labTableUnits")}
+                </th>
+              ) : null}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((r, i) => {
+              const bg = labRowBackground(r.flag);
+              const badge = labFlagBadge(r.flag, t);
+              return (
+                <tr key={i} style={{ borderTop: "1px solid #eceff1", background: bg }}>
+                  <td style={{ padding: "9px 12px", fontWeight: 600, color: "#263238", verticalAlign: "top" }}>{r.label}</td>
+                  <td style={{ padding: "9px 12px", whiteSpace: "pre-wrap", verticalAlign: "top" }}>{r.value}</td>
+                  {anyFlag ? (
+                    <td style={{ padding: "9px 8px", textAlign: "center", verticalAlign: "top", fontSize: 11, fontWeight: 700 }}>
+                      {badge ? (
+                        <span
+                          style={{
+                            display: "inline-block",
+                            padding: "2px 6px",
+                            borderRadius: 4,
+                            background: r.flag === "C" ? "#ffcdd2" : "#ffe0b2",
+                            color: r.flag === "C" ? "#b71c1c" : "#e65100",
+                          }}
+                        >
+                          {badge}
+                        </span>
+                      ) : (
+                        t("common.dash")
+                      )}
+                    </td>
+                  ) : null}
+                  <td style={{ padding: "9px 12px", fontSize: 12, color: "#607d8b", verticalAlign: "top" }}>
+                    {r.ref?.trim() ? r.ref : t("common.dash")}
+                  </td>
+                  {anyUnit ? (
+                    <td style={{ padding: "9px 12px", fontSize: 12, color: "#607d8b", verticalAlign: "top" }}>
+                      {r.unit?.trim() ? r.unit : t("common.dash")}
+                    </td>
+                  ) : null}
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function StructuredImagingReportBody({
+  report,
+  examTitle,
+  verifiedAt,
+}: {
+  report: ClinicalImagingReportSections;
+  examTitle: string;
+  verifiedAt?: string | null;
+}) {
+  const { t, language } = useI18n();
+  const dateLocale = language === "en" ? "en-US" : "fr-FR";
+  const sections: { key: keyof ClinicalImagingReportSections; labelKey: string; emphasize?: boolean }[] = [
+    { key: "indication", labelKey: "structuredDiagnosticResult.indication" },
+    { key: "technique", labelKey: "structuredDiagnosticResult.technique" },
+    { key: "comparison", labelKey: "structuredDiagnosticResult.comparison" },
+    { key: "findings", labelKey: "structuredDiagnosticResult.findings" },
+    { key: "impression", labelKey: "structuredDiagnosticResult.impression", emphasize: true },
+    { key: "recommendation", labelKey: "structuredDiagnosticResult.recommendation" },
+  ];
+
+  return (
+    <div style={{ fontSize: 14, color: "#212121" }}>
+      <div
+        style={{
+          marginBottom: 16,
+          padding: "10px 12px",
+          background: "#fff",
+          borderRadius: 8,
+          border: "1px solid #e0f2f1",
+          fontSize: 13,
+          color: "#37474f",
+        }}
+      >
+        <div style={{ display: "grid", gap: 6 }}>
+          <div>
+            <span style={{ fontWeight: 700, color: "#006064" }}>{t("clinicalResultViewer.imagingExam")}</span>
+            <span style={{ marginLeft: 8 }}>{examTitle}</span>
+          </div>
+          {verifiedAt ? (
+            <div>
+              <span style={{ fontWeight: 700, color: "#006064" }}>{t("clinicalResultViewer.labDocDateTime")}</span>
+              <span style={{ marginLeft: 8 }}>{new Date(verifiedAt).toLocaleString(dateLocale)}</span>
+            </div>
+          ) : null}
+        </div>
+      </div>
+      {sections.map((s) => {
+        const text = report[s.key]?.trim();
+        if (!text) return null;
+        return (
+          <div key={s.key} style={{ marginBottom: 14 }}>
+            <div
+              style={{
+                fontSize: 11,
+                fontWeight: 800,
+                letterSpacing: "0.04em",
+                textTransform: "uppercase",
+                color: s.emphasize ? "#00695c" : "#546e7a",
+                marginBottom: 6,
+                borderBottom: s.emphasize ? "2px solid #80cbc4" : undefined,
+                paddingBottom: s.emphasize ? 4 : undefined,
+              }}
+            >
+              {t(s.labelKey)}
+            </div>
+            <div style={{ whiteSpace: "pre-wrap", lineHeight: 1.55, fontWeight: s.emphasize ? 600 : 400 }}>{text}</div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function StructuredResultBody({
+  catalogItemType,
+  resultText,
+  resultData,
+  examTitle,
+  verifiedAt,
+  criticalValue,
+}: {
+  catalogItemType?: "LAB_TEST" | "IMAGING_STUDY";
+  resultText: string | null | undefined;
+  resultData?: unknown;
+  examTitle: string;
+  verifiedAt?: string | null;
+  criticalValue?: boolean | null;
+}) {
+  const { t, language } = useI18n();
+  const dateLocale = language === "en" ? "en-US" : "fr-FR";
+  const structured = parseClinicalStructuredResultData(resultData);
+
+  /** Priority 1 — durable structured Result.resultData */
+  if (structured?.resultType === "LAB" && (catalogItemType === "LAB_TEST" || !catalogItemType)) {
+    const rows = labRowsFromStructuredObservations(structured.observations);
+    if (rows.length > 0) {
+      return (
+        <div>
+          <StructuredLabTable
+            rows={rows}
+            examTitle={examTitle}
+            verifiedAt={verifiedAt}
+            criticalValue={criticalValue}
+          />
+          {structured.comments?.trim() ? (
+            <div style={{ marginTop: 14 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: "#6a1b9a", marginBottom: 6 }}>
+                {t("clinicalResultViewer.conclusionHeading")}
+              </div>
+              <div style={{ whiteSpace: "pre-wrap", padding: 12, background: "#f3e5f5", borderRadius: 8, fontSize: 13 }}>
+                {structured.comments}
+              </div>
+            </div>
+          ) : null}
+        </div>
+      );
+    }
+  }
+  if (structured?.resultType === "IMAGING" && (catalogItemType === "IMAGING_STUDY" || !catalogItemType)) {
+    return <StructuredImagingReportBody report={structured.report} examTitle={examTitle} verifiedAt={verifiedAt} />;
+  }
+
+  const raw = (resultText ?? "").trim();
+  if (!raw) {
+    return (
+      <span style={{ color: "#757575", fontStyle: "italic" }}>{t("clinicalResultViewer.emptyInterpretation")}</span>
     );
+  }
+
+  if (catalogItemType === "LAB_TEST") {
+    const { rows, preamble, conclusion, sectionNotes } = parseLabObservationLines(raw);
+    const introBlock = [sectionNotes.length ? sectionNotes.map((n) => `• ${n}`).join("\n") : "", preamble].filter(Boolean).join("\n\n");
+
+    const fallbackSource =
+      introBlock.trim() || labRawWithoutConclusionBlock(raw, conclusion);
+
+    const fallbackParas = splitLabFallbackParagraphs(fallbackSource);
 
     const tableBlock =
       rows.length > 0 ? (
-        <div style={{ overflowX: "auto", borderRadius: 8, border: "1px solid #cfd8dc" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
-            <thead>
-              <tr style={{ background: "#eceff1" }}>
-                <th style={{ textAlign: "left", padding: "10px 12px", color: "#37474f", fontWeight: 700 }}>
-                  {t("clinicalResultViewer.labTableParam")}
-                </th>
-                <th style={{ textAlign: "left", padding: "10px 12px", color: "#37474f", fontWeight: 700 }}>
-                  {t("clinicalResultViewer.labTableResult")}
-                </th>
-                {anyFlag ? (
-                  <th style={{ textAlign: "center", padding: "10px 8px", color: "#546e7a", fontWeight: 600, width: 72 }}>
-                    {t("clinicalResultViewer.labTableFlag")}
-                  </th>
-                ) : null}
-                <th style={{ textAlign: "left", padding: "10px 12px", color: "#546e7a", fontWeight: 600 }}>
-                  {t("clinicalResultViewer.labTableRefRange")}
-                </th>
-                {anyUnit ? (
-                  <th style={{ textAlign: "left", padding: "10px 12px", color: "#546e7a", fontWeight: 600 }}>
-                    {t("clinicalResultViewer.labTableUnits")}
-                  </th>
-                ) : null}
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((r, i) => {
-                const bg = labRowBackground(r.flag);
-                const badge = labFlagBadge(r.flag, t);
-                return (
-                  <tr key={i} style={{ borderTop: "1px solid #eceff1", background: bg }}>
-                    <td style={{ padding: "9px 12px", fontWeight: 600, color: "#263238", verticalAlign: "top" }}>{r.label}</td>
-                    <td style={{ padding: "9px 12px", whiteSpace: "pre-wrap", verticalAlign: "top" }}>{r.value}</td>
-                    {anyFlag ? (
-                      <td style={{ padding: "9px 8px", textAlign: "center", verticalAlign: "top", fontSize: 11, fontWeight: 700 }}>
-                        {badge ? (
-                          <span
-                            style={{
-                              display: "inline-block",
-                              padding: "2px 6px",
-                              borderRadius: 4,
-                              background: r.flag === "C" ? "#ffcdd2" : "#ffe0b2",
-                              color: r.flag === "C" ? "#b71c1c" : "#e65100",
-                            }}
-                          >
-                            {badge}
-                          </span>
-                        ) : (
-                          t("common.dash")
-                        )}
-                      </td>
-                    ) : null}
-                    <td style={{ padding: "9px 12px", fontSize: 12, color: "#607d8b", verticalAlign: "top" }}>
-                      {r.ref?.trim() ? r.ref : t("common.dash")}
-                    </td>
-                    {anyUnit ? (
-                      <td style={{ padding: "9px 12px", fontSize: 12, color: "#607d8b", verticalAlign: "top" }}>
-                        {r.unit?.trim() ? r.unit : t("common.dash")}
-                      </td>
-                    ) : null}
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+        <StructuredLabTable rows={rows} examTitle={examTitle} verifiedAt={verifiedAt} criticalValue={criticalValue} />
       ) : null;
 
     const fallbackBlock =
@@ -376,7 +528,6 @@ function StructuredResultBody({
 
     return (
       <div style={{ fontSize: 14, color: "#212121" }}>
-        {labDocHeader}
         {fallbackBlock}
         {tableBlock}
         {conclusionBlock}
@@ -547,12 +698,16 @@ export function ClinicalResultViewer({
   resultEffectiveVersion,
   criticalValue,
   resultText,
+  resultData,
   attachments,
   enteredByDisplayFr,
   acknowledgedByDisplayFr,
   acknowledgedByProviderAt,
   compact,
   catalogItemType,
+  canAcknowledge,
+  acknowledgeBusy,
+  onAcknowledge,
 }: ClinicalResultViewerProps) {
   const { t, language } = useI18n();
   const dateLocale = language === "en" ? "en-US" : "fr-FR";
@@ -563,6 +718,16 @@ export function ClinicalResultViewer({
     catalogItemType === "IMAGING_STUDY" ? "#00838f" : catalogItemType === "LAB_TEST" ? "#1565c0" : "#1565c0";
 
   const whenTs = (iso: string) => fillTemplate(t("clinicalResultViewer.onDateTime"), { datetime: new Date(iso).toLocaleString(dateLocale) });
+  const ackInitials = initialsFromDisplayName(acknowledgedByDisplayFr);
+  const ackAtLabel = acknowledgedByProviderAt
+    ? new Date(acknowledgedByProviderAt).toLocaleString(dateLocale, {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+      })
+    : null;
 
   return (
     <div
@@ -600,12 +765,6 @@ export function ClinicalResultViewer({
           {fillTemplate(t("clinicalResultViewer.enteredVerifiedOn"), { datetime: new Date(verifiedAt).toLocaleString(dateLocale) })}
         </div>
       ) : null}
-      {acknowledgedByDisplayFr?.trim() ? (
-        <div style={{ fontSize: 12, color: "#37474f", marginTop: 6 }}>
-          <strong>{t("clinicalResultViewer.acknowledgedByProvider")}</strong> {acknowledgedByDisplayFr.trim()}
-          {acknowledgedByProviderAt ? <> {whenTs(acknowledgedByProviderAt)}</> : null}
-        </div>
-      ) : null}
       {(resultDocumentedAt || resultClinicalAt) &&
       (catalogItemType === "LAB_TEST" || catalogItemType === "IMAGING_STUDY") ? (
         <ResultTimestampBlock
@@ -639,6 +798,7 @@ export function ClinicalResultViewer({
           <StructuredResultBody
             catalogItemType={catalogItemType}
             resultText={resultText}
+            resultData={resultData}
             examTitle={displayTitle}
             verifiedAt={verifiedAt}
             criticalValue={criticalValue}
@@ -646,6 +806,55 @@ export function ClinicalResultViewer({
         </div>
       </div>
       <ResultAttachmentsList attachments={attachments ?? []} />
+      <div
+        style={{
+          marginTop: 14,
+          paddingTop: 12,
+          borderTop: "1px solid #e2e8f0",
+          display: "flex",
+          flexWrap: "wrap",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 10,
+        }}
+      >
+        {acknowledgedByProviderAt ? (
+          <div style={{ fontSize: 13, color: "#15803d", fontWeight: 600, lineHeight: 1.4 }}>
+            {fillTemplate(t("clinicalResultViewer.ackFooterAcknowledged"), {
+              initials: ackInitials,
+              datetime: ackAtLabel ?? "",
+            })}
+            {acknowledgedByDisplayFr?.trim() ? (
+              <div style={{ fontSize: 11, fontWeight: 500, color: "#475569", marginTop: 2 }}>
+                {acknowledgedByDisplayFr.trim()}
+              </div>
+            ) : null}
+          </div>
+        ) : canAcknowledge && onAcknowledge ? (
+          <button
+            type="button"
+            onClick={() => onAcknowledge()}
+            disabled={acknowledgeBusy}
+            style={{
+              padding: "7px 14px",
+              fontSize: 13,
+              fontWeight: 600,
+              borderRadius: 8,
+              border: "1px solid #cbd5e1",
+              background: acknowledgeBusy ? "#f1f5f9" : "#fff",
+              color: "#0f172a",
+              cursor: acknowledgeBusy ? "default" : "pointer",
+              marginLeft: "auto",
+            }}
+          >
+            {acknowledgeBusy
+              ? t("clinicalResultViewer.ackFooterBusy")
+              : t("clinicalResultViewer.ackFooterButton")}
+          </button>
+        ) : (
+          <div style={{ fontSize: 12, color: "#94a3b8" }}>{t("clinicalResultViewer.ackFooterViewingOnly")}</div>
+        )}
+      </div>
     </div>
   );
 }
