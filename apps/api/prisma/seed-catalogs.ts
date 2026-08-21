@@ -18,6 +18,7 @@ import { seedHaitiImagingWave2 } from "./helpers/seed-haiti-imaging-wave2";
 import { seedHaitiImagingWave3 } from "./helpers/seed-haiti-imaging-wave3";
 import { seedHaitiImagingWave4 } from "./helpers/seed-haiti-imaging-wave4";
 import { seedUsErLabCatalog } from "./helpers/seed-us-er-lab-catalog";
+import { seedLabReferenceAuthority } from "./helpers/seed-lab-reference-authority";
 import { seedBillingCatalogCommonMappings } from "./helpers/seed-billing-catalog";
 import { seedMedicationBillingMappingRemediation } from "./helpers/seed-medication-billing-mapping-remediation";
 import { seedHaitiCanonicalMedicationLinkage } from "./helpers/seed-haiti-canonical-medication-linkage";
@@ -32,6 +33,7 @@ async function main() {
   await seedHaitiLabImagingCatalog(prisma, HAITI_LAB_CATALOG, HAITI_IMAGING_CATALOG);
   // ER lab extension: uses existing repo billing defaults only; official LOINC/CMS import remains pending.
   await seedUsErLabCatalog(prisma, US_ER_LAB_CATALOG);
+  await seedLabReferenceAuthority(prisma);
   await seedMrvClassifiers(prisma);
   await seedMedicationSafetyClassifiers(prisma);
   console.log("✅ Medication safety classifiers seeded (TermClassifier reference vocabulary only)");

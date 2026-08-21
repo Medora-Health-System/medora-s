@@ -4,9 +4,10 @@ import { ResultsService } from "./results.service";
 import { PrismaModule } from "../prisma/prisma.module";
 import { AuditService } from "../common/services/audit.service";
 import { OrdersModule } from "../orders/orders.module";
+import { LabReferenceModule } from "../lab-reference/lab-reference.module";
 
 @Module({
-  imports: [PrismaModule, OrdersModule],
+  imports: [PrismaModule, OrdersModule, LabReferenceModule],
   controllers: [ResultsController],
   providers: [ResultsService, AuditService],
   exports: [ResultsService],
