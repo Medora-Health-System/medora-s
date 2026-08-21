@@ -15141,7 +15141,7 @@ export default {
     typeFile: "File",
     ackFooterButton: "Acknowledge",
     ackFooterBusy: "Acknowledging…",
-    ackFooterAcknowledged: "✓ Acknowledged — {initials} — {datetime}",
+    ackFooterAcknowledged: "✓ Acknowledged — {initials} · {datetime}",
     ackFooterViewingOnly: "Viewing does not acknowledge this result.",
   },
   structuredDiagnosticResult: {

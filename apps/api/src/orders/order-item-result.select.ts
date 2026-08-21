@@ -23,11 +23,12 @@ export const ORDER_ITEM_RESULT_LIST_SELECT: Prisma.ResultSelect = {
   updatedAt: true,
 };
 
-/** Encounter order list — omits heavy `resultData` blobs; use GET /orders/:id for attachments. */
+/** Encounter order list — includes structured resultData without heavy attachment payloads (sanitized in OrdersService). */
 export const ORDER_ITEM_RESULT_SUMMARY_SELECT: Prisma.ResultSelect = {
   id: true,
   orderItemId: true,
   facilityId: true,
+  resultData: true,
   resultText: true,
   criticalValue: true,
   verifiedByUserId: true,

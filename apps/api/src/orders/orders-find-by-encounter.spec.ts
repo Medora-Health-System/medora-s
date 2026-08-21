@@ -98,10 +98,11 @@ describe("OrdersService.findByEncounter", () => {
         id: true,
         orderItemId: true,
         resultText: true,
+        resultData: true,
       }),
     });
-    expect(prisma.result.findMany.mock.calls[0][0].select.resultData).toBeUndefined();
-    expect(ORDER_ITEM_RESULT_SUMMARY_SELECT.resultData).toBeUndefined();
+    expect(prisma.result.findMany.mock.calls[0][0].select.resultData).toBe(true);
+    expect(ORDER_ITEM_RESULT_SUMMARY_SELECT.resultData).toBe(true);
   });
 
   it("uses a single merged orderEvent query for authority and attribution", async () => {

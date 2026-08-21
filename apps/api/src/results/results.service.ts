@@ -391,7 +391,19 @@ export class ResultsService {
     }
 
     if (orderItem.result.acknowledgedByProviderAt) {
-      return orderItem.result;
+      const actorId = orderItem.result.acknowledgedByUserId;
+      const actor = actorId
+        ? await this.prisma.user.findUnique({
+            where: { id: actorId },
+            select: { firstName: true, lastName: true },
+          })
+        : null;
+      return {
+        ...orderItem.result,
+        acknowledgedByDisplayFr: actor
+          ? `${actor.firstName} ${actor.lastName}`.trim() || null
+          : null,
+      };
     }
 
     const now = new Date();
@@ -426,10 +438,21 @@ export class ResultsService {
       metadata: { orderItemId, action: "RESULT_CLINICIAN_ACK" },
     });
 
-    return this.prisma.result.findUnique({
+    const result = await this.prisma.result.findUnique({
       where: { orderItemId },
       select: ORDER_ITEM_RESULT_LIST_SELECT,
     });
+    const actor = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { firstName: true, lastName: true },
+    });
+    const acknowledgedByDisplayFr = actor
+      ? `${actor.firstName} ${actor.lastName}`.trim() || null
+      : null;
+    return {
+      ...result,
+      acknowledgedByDisplayFr,
+    };
   }
 
   /**

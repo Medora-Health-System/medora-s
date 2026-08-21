@@ -254,8 +254,6 @@ function StructuredLabTable({
 }) {
   const { t, language } = useI18n();
   const dateLocale = language === "en" ? "en-US" : "fr-FR";
-  const anyFlag = rows.some((r) => r.flag);
-  const anyUnit = rows.some((r) => Boolean(r.unit?.trim()));
 
   return (
     <div style={{ fontSize: 14, color: "#212121" }}>
@@ -296,19 +294,15 @@ function StructuredLabTable({
               <th style={{ textAlign: "left", padding: "10px 12px", color: "#37474f", fontWeight: 700 }}>
                 {t("clinicalResultViewer.labTableResult")}
               </th>
-              {anyFlag ? (
-                <th style={{ textAlign: "center", padding: "10px 8px", color: "#546e7a", fontWeight: 600, width: 72 }}>
-                  {t("clinicalResultViewer.labTableFlag")}
-                </th>
-              ) : null}
+              <th style={{ textAlign: "center", padding: "10px 8px", color: "#546e7a", fontWeight: 600, width: 72 }}>
+                {t("clinicalResultViewer.labTableFlag")}
+              </th>
               <th style={{ textAlign: "left", padding: "10px 12px", color: "#546e7a", fontWeight: 600 }}>
                 {t("clinicalResultViewer.labTableRefRange")}
               </th>
-              {anyUnit ? (
-                <th style={{ textAlign: "left", padding: "10px 12px", color: "#546e7a", fontWeight: 600 }}>
-                  {t("clinicalResultViewer.labTableUnits")}
-                </th>
-              ) : null}
+              <th style={{ textAlign: "left", padding: "10px 12px", color: "#546e7a", fontWeight: 600 }}>
+                {t("clinicalResultViewer.labTableUnits")}
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -319,33 +313,29 @@ function StructuredLabTable({
                 <tr key={i} style={{ borderTop: "1px solid #eceff1", background: bg }}>
                   <td style={{ padding: "9px 12px", fontWeight: 600, color: "#263238", verticalAlign: "top" }}>{r.label}</td>
                   <td style={{ padding: "9px 12px", whiteSpace: "pre-wrap", verticalAlign: "top" }}>{r.value}</td>
-                  {anyFlag ? (
-                    <td style={{ padding: "9px 8px", textAlign: "center", verticalAlign: "top", fontSize: 11, fontWeight: 700 }}>
-                      {badge ? (
-                        <span
-                          style={{
-                            display: "inline-block",
-                            padding: "2px 6px",
-                            borderRadius: 4,
-                            background: r.flag === "C" ? "#ffcdd2" : "#ffe0b2",
-                            color: r.flag === "C" ? "#b71c1c" : "#e65100",
-                          }}
-                        >
-                          {badge}
-                        </span>
-                      ) : (
-                        t("common.dash")
-                      )}
-                    </td>
-                  ) : null}
+                  <td style={{ padding: "9px 8px", textAlign: "center", verticalAlign: "top", fontSize: 11, fontWeight: 700 }}>
+                    {badge ? (
+                      <span
+                        style={{
+                          display: "inline-block",
+                          padding: "2px 6px",
+                          borderRadius: 4,
+                          background: r.flag === "C" ? "#ffcdd2" : "#ffe0b2",
+                          color: r.flag === "C" ? "#b71c1c" : "#e65100",
+                        }}
+                      >
+                        {badge}
+                      </span>
+                    ) : (
+                      t("common.dash")
+                    )}
+                  </td>
                   <td style={{ padding: "9px 12px", fontSize: 12, color: "#607d8b", verticalAlign: "top" }}>
                     {r.ref?.trim() ? r.ref : t("common.dash")}
                   </td>
-                  {anyUnit ? (
-                    <td style={{ padding: "9px 12px", fontSize: 12, color: "#607d8b", verticalAlign: "top" }}>
-                      {r.unit?.trim() ? r.unit : t("common.dash")}
-                    </td>
-                  ) : null}
+                  <td style={{ padding: "9px 12px", fontSize: 12, color: "#607d8b", verticalAlign: "top" }}>
+                    {r.unit?.trim() ? r.unit : t("common.dash")}
+                  </td>
                 </tr>
               );
             })}

@@ -131,6 +131,7 @@ export function clinicalResultFromChartOrderItem(
     catalogItemType?: string;
     result: {
       resultText: string | null;
+      resultData?: unknown;
       verifiedAt: string | null;
       effectiveResultedAt?: string | null;
       effectiveResultedAtVersion?: number;
@@ -170,6 +171,7 @@ export function clinicalResultFromChartOrderItem(
     resultEffectiveVersion: effectiveVersion,
     criticalValue: r?.criticalValue ?? null,
     resultText: r?.resultText ?? null,
+    resultData: (r as { resultData?: unknown } | null | undefined)?.resultData ?? null,
     attachments: r?.attachments?.length ? r.attachments : [],
     enteredByDisplayFr: r?.enteredByDisplayFr ?? null,
     acknowledgedByDisplayFr: r?.acknowledgedByDisplayFr ?? null,
