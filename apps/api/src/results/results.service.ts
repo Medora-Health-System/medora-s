@@ -27,10 +27,21 @@ import {
 } from "../orders/order-lifecycle-event.util";
 import { ORDER_ITEM_RESULT_LIST_SELECT } from "../orders/order-item-result.select";
 import { hasStructuredDiagnosticResultContent } from "@medora/shared";
+import { LabReferenceIntervalService } from "../lab-reference/lab-reference-interval.service";
 
 /** Alignés avec la pré-validation client : `apps/web/src/lib/resultUploadLimits.ts` */
 const MAX_TOTAL_RESULT_CHARS = 2_500_000;
 const MAX_SINGLE_BASE64_CHARS = 2_400_000;
+
+function ageYearsFromDob(dob: Date | string | null | undefined, at: Date): number | null {
+  if (!dob) return null;
+  const d = dob instanceof Date ? dob : new Date(dob);
+  if (Number.isNaN(d.getTime())) return null;
+  let age = at.getFullYear() - d.getFullYear();
+  const m = at.getMonth() - d.getMonth();
+  if (m < 0 || (m === 0 && at.getDate() < d.getDate())) age -= 1;
+  return age >= 0 && Number.isFinite(age) ? age : null;
+}
 
 function mergeResultData(existing: unknown, incoming: unknown): unknown {
   if (incoming === undefined) return existing;
@@ -91,7 +102,8 @@ function assertPayloadSize(resultText: string | undefined | null, resultData: un
 export class ResultsService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly audit: AuditService
+    private readonly audit: AuditService,
+    private readonly labReference: LabReferenceIntervalService
   ) {}
 
   async updateResult(
@@ -208,13 +220,49 @@ export class ResultsService {
     const shouldStampVerification =
       substantive && (data.resultText !== undefined || data.resultData !== undefined);
 
+    let payloadForPersist = nextData;
+    if (
+      shouldStampVerification &&
+      orderItem.catalogItemType === "LAB_TEST" &&
+      payloadForPersist != null
+    ) {
+      const patient = orderItem.order.encounter.patient as
+        | { dob?: Date | null; sex?: string | null; sexAtBirth?: string | null }
+        | undefined;
+      const collectedAt = new Date();
+      payloadForPersist = await this.labReference.snapshotLabResultObservations({
+        facilityId,
+        resultData: payloadForPersist,
+        patientDemographics: {
+          sex: (patient?.sex ?? patient?.sexAtBirth ?? null) as
+            | "MALE"
+            | "FEMALE"
+            | "OTHER"
+            | "UNKNOWN"
+            | "M"
+            | "F"
+            | "X"
+            | "U"
+            | null,
+          ageYears: ageYearsFromDob(patient?.dob ?? null, collectedAt),
+        },
+        collectedAt,
+      });
+    }
+
     const initialJson =
-      mergedResultData !== undefined ? mergedResultData : data.resultData ?? undefined;
+      payloadForPersist !== undefined
+        ? payloadForPersist
+        : data.resultData !== undefined
+          ? data.resultData
+          : undefined;
 
     const updateFields: Prisma.ResultUpdateInput = {};
     if (data.resultText !== undefined) updateFields.resultText = data.resultText;
     if (data.criticalValue !== undefined) updateFields.criticalValue = data.criticalValue;
-    if (mergedResultData !== undefined) updateFields.resultData = mergedResultData as Prisma.InputJsonValue;
+    if (payloadForPersist !== undefined && (data.resultData !== undefined || shouldStampVerification)) {
+      updateFields.resultData = payloadForPersist as Prisma.InputJsonValue;
+    }
     if (shouldStampVerification) {
       updateFields.verifiedByUserId = userId ?? undefined;
       updateFields.verifiedAt = new Date();
@@ -516,11 +564,44 @@ export class ResultsService {
     const nextLife = applyLifecycleWithStatus(orderItem.lifecycleState, OrderStatus.VERIFIED);
     const resultIdForEvent = resultRow.id;
 
+    let snapshottedData: unknown | undefined;
+    if (orderItem.catalogItemType === "LAB_TEST" && resultRow.resultData != null) {
+      const patient = await this.prisma.patient.findFirst({
+        where: { id: orderItem.order.encounter.patientId },
+        select: { dob: true, sex: true, sexAtBirth: true },
+      });
+      const collectedAt = resultRow.verifiedAt ?? new Date();
+      snapshottedData = await this.labReference.snapshotLabResultObservations({
+        facilityId,
+        resultData: resultRow.resultData,
+        patientDemographics: {
+          sex: (patient?.sex ?? patient?.sexAtBirth ?? null) as
+            | "MALE"
+            | "FEMALE"
+            | "OTHER"
+            | "UNKNOWN"
+            | "M"
+            | "F"
+            | "X"
+            | "U"
+            | null,
+          ageYears: ageYearsFromDob(patient?.dob ?? null, collectedAt),
+        },
+        collectedAt,
+      });
+    }
+
     await this.prisma.$transaction(async (tx) => {
       await tx.orderItem.update({
         where: { id: orderItemId },
         data: { status: OrderStatus.VERIFIED, lifecycleState: nextLife },
       });
+      if (snapshottedData !== undefined) {
+        await tx.result.update({
+          where: { id: resultIdForEvent },
+          data: { resultData: snapshottedData as Prisma.InputJsonValue },
+        });
+      }
       await writeOrderEventForResultLineOutcome(tx, {
         facilityId,
         encounterId: orderItem.order.encounterId,

@@ -805,6 +805,59 @@ function LineCard({
 
   const useStructuredLabAuthoring = kind === "lab" && labPanelKey != null;
   const useStructuredImagingAuthoring = kind === "radiology";
+
+  /** Hydrate panel units/ranges from enterprise lab-reference authority (no UI redesign). */
+  useEffect(() => {
+    if (kind !== "lab" || !labPanelKey) return;
+    if (initialStructured?.resultType === "LAB") return;
+    let cancelled = false;
+    const patient = order?.encounter?.patient as
+      | { dob?: string | null; sex?: string | null; sexAtBirth?: string | null }
+      | undefined;
+    const ageYears = (() => {
+      if (!patient?.dob) return null;
+      const d = new Date(patient.dob);
+      if (Number.isNaN(d.getTime())) return null;
+      const now = new Date();
+      let age = now.getFullYear() - d.getFullYear();
+      const m = now.getMonth() - d.getMonth();
+      if (m < 0 || (m === 0 && now.getDate() < d.getDate())) age -= 1;
+      return age >= 0 ? age : null;
+    })();
+    const sex = patient?.sex ?? patient?.sexAtBirth ?? "";
+    const qs = new URLSearchParams({
+      facilityId,
+      ...(sex ? { sex: String(sex) } : {}),
+      ...(ageYears != null ? { ageYears: String(ageYears) } : {}),
+    });
+    void (async () => {
+      try {
+        const data = await apiFetch(`/lab-reference/panels/${labPanelKey}/observations?${qs}`, {
+          facilityId,
+        });
+        const obj = asApiObject(data);
+        const rows = Array.isArray(obj?.observations) ? obj.observations : [];
+        if (cancelled || rows.length === 0) return;
+        setLabObservations(
+          rows.map((r: Record<string, unknown>) => ({
+            code: typeof r.code === "string" ? r.code : undefined,
+            name: String(r.name ?? ""),
+            value: "",
+            unit: typeof r.unit === "string" ? r.unit : "",
+            referenceLow: typeof r.referenceLow === "number" ? r.referenceLow : null,
+            referenceHigh: typeof r.referenceHigh === "number" ? r.referenceHigh : null,
+            referenceText: typeof r.referenceText === "string" ? r.referenceText : "",
+            flag: null,
+          }))
+        );
+      } catch {
+        // Keep scaffold rows; unresolved registry must not block authoring.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [kind, labPanelKey, facilityId, order?.encounter?.patient, initialStructured?.resultType]);
   const [timeAdjustSaving, setTimeAdjustSaving] = useState(false);
   const [timeAdjustTarget, setTimeAdjustTarget] = useState<{
     milestone: "received" | "collected" | "performed" | "resulted" | "finalized";

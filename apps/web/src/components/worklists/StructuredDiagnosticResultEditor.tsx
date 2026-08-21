@@ -6,6 +6,7 @@ import type {
   ClinicalLabObservation,
   ClinicalLabObservationFlag,
 } from "@medora/shared";
+import { computeLabResultFlagFromReference } from "@medora/shared";
 import { useI18n } from "@/lib/i18n";
 
 const FLAG_OPTIONS: { value: ClinicalLabObservationFlag; labelKey: string }[] = [
@@ -57,7 +58,36 @@ export function StructuredLabObservationEditor({
   const { t } = useI18n();
 
   const updateRow = (index: number, patch: Partial<ClinicalLabObservation>) => {
-    onChange(observations.map((row, i) => (i === index ? { ...row, ...patch } : row)));
+    onChange(
+      observations.map((row, i) => {
+        if (i !== index) return row;
+        const next = { ...row, ...patch };
+        // Auto H/L from authoritative reference text when value changes (manual flag still editable).
+        if (patch.value !== undefined || patch.referenceText !== undefined) {
+          const hasValue = String(next.value ?? "").trim().length > 0;
+          const hasRef = String(next.referenceText ?? "").trim().length > 0;
+          if (patch.flag === undefined && hasValue && hasRef) {
+            const hl = computeLabResultFlagFromReference(next.value, next.referenceText ?? "");
+            next.flag = hl === "L" ? "LOW" : hl === "H" ? "HIGH" : "NORMAL";
+          }
+        }
+        // Manual reference override: require attribution; do not silently claim canonical source.
+        if (
+          patch.referenceText !== undefined &&
+          patch.referenceText !== (row.referenceText ?? "") &&
+          (row as { intervalAuthority?: string }).intervalAuthority &&
+          (row as { intervalAuthority?: string }).intervalAuthority !== "UNRESOLVED"
+        ) {
+          (next as { referenceManualOverride?: unknown }).referenceManualOverride = {
+            previousText: row.referenceText ?? "",
+            attributedAt: new Date().toISOString(),
+            note: "Technician/authorized manual reference override",
+          };
+          (next as { intervalAuthority?: string }).intervalAuthority = "TECHNICIAN_OVERRIDE";
+        }
+        return next;
+      })
+    );
   };
 
   return (

@@ -8,6 +8,7 @@ import { seedHaitiImagingWave3 } from "./seed-haiti-imaging-wave3";
 import { seedHaitiImagingWave4 } from "./seed-haiti-imaging-wave4";
 import { seedMrvClassifiers } from "./seed-mrv-classifiers";
 import { seedUsErLabCatalog } from "./seed-us-er-lab-catalog";
+import { seedLabReferenceAuthority } from "./seed-lab-reference-authority";
 import { seedBillingCatalogCommonMappings } from "./seed-billing-catalog";
 import { seedMedicationBillingMappingRemediation } from "./seed-medication-billing-mapping-remediation";
 import { seedUsInsurancePayers } from "./seed-us-insurance-payers";
@@ -29,7 +30,14 @@ export async function seedEnterpriseCatalogs(prisma: PrismaClient) {
   await seedHaitiImagingWave3(prisma);
   await seedHaitiImagingWave4(prisma);
   await seedUsErLabCatalog(prisma, US_ER_LAB_CATALOG);
+  await seedMrvClassifiers(prisma);
+  await seedHaitiImagingWave1(prisma);
+  await seedHaitiImagingWave2(prisma);
+  await seedHaitiImagingWave3(prisma);
+  await seedHaitiImagingWave4(prisma);
+  await seedLabReferenceAuthority(prisma);
   await seedBillingCatalogCommonMappings(prisma);
+
   await seedUsInsurancePayers(prisma);
 
   const medCatalogIds = await seedHaitiMedicationCatalog(prisma, HAITI_MEDICATION_CATALOG_FULL);

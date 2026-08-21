@@ -115,6 +115,9 @@ model Facility {
   pharmacyVerifications                  PharmacyVerification[]
   protocolOrderSets                      ProtocolOrderSet[]
   results                                Result[]
+  /// MEDUI.LAB.REF.1 — facility-validated lab reference / critical overrides (never mutate other facilities).
+  facilityLabReferenceIntervalOverrides  FacilityLabReferenceIntervalOverride[]
+  facilityLabCriticalValuePolicies       LabCriticalValuePolicy[]
   triages                                Triage[]
   triageVitalsReadings                   TriageVitalsReading[]
   userRoles                              UserRole[]
@@ -1879,6 +1882,165 @@ model LabTestAlias {
   @@unique([catalogLabTestId, alias])
   @@index([catalogLabTestId])
   @@index([alias])
+}
+
+/// MEDUI.LAB.REF.1 — enterprise result-component identity (not a CatalogLabTest / orderable replacement).
+model CanonicalLabAnalyte {
+  id                 String                                 @id @default(uuid())
+  /// Stable clinical identity code (e.g. HEMOGLOBIN, SODIUM). Distinct from CatalogLabTest.code.
+  code               String                                 @unique
+  displayNameEn      String
+  displayNameFr      String?
+  description        String?
+  /// LOINC only when independently established — never guessed.
+  defaultLoincCode   String?
+  isActive           Boolean                                @default(true)
+  createdAt          DateTime                               @default(now())
+  updatedAt          DateTime                               @updatedAt
+  aliases            CanonicalLabAnalyteAlias[]
+  panelMembers       LabPanelMember[]
+  referenceIntervals LabReferenceInterval[]
+  facilityOverrides  FacilityLabReferenceIntervalOverride[]
+  criticalPolicies   LabCriticalValuePolicy[]
+}
+
+/// Alias / legacy code → one CanonicalLabAnalyte (HB/HGB → HEMOGLOBIN). Never collapse clinically distinct assays.
+model CanonicalLabAnalyteAlias {
+  id                     String              @id @default(uuid())
+  canonicalLabAnalyteId  String
+  /// Uppercase normalized lookup key (e.g. HB, HGB, ER_HGB).
+  aliasCode              String              @unique
+  notes                  String?
+  createdAt              DateTime            @default(now())
+  analyte                CanonicalLabAnalyte @relation(fields: [canonicalLabAnalyteId], references: [id], onDelete: Restrict)
+
+  @@index([canonicalLabAnalyteId])
+}
+
+/// Durable panel definition (CBC / BMP / CMP). Membership shares CanonicalLabAnalyte rows across panels.
+model LabPanelDefinition {
+  id            String           @id @default(uuid())
+  code          String           @unique
+  displayNameEn String
+  displayNameFr String?
+  isActive      Boolean          @default(true)
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+  members       LabPanelMember[]
+}
+
+model LabPanelMember {
+  id                    String              @id @default(uuid())
+  panelId               String
+  canonicalLabAnalyteId String
+  sortOrder             Int
+  /// Optional unit display hint only — never a reference interval.
+  unitHint              String?
+  createdAt             DateTime            @default(now())
+  panel                 LabPanelDefinition  @relation(fields: [panelId], references: [id], onDelete: Cascade)
+  analyte               CanonicalLabAnalyte @relation(fields: [canonicalLabAnalyteId], references: [id], onDelete: Restrict)
+
+  @@unique([panelId, canonicalLabAnalyteId])
+  @@index([panelId, sortOrder])
+  @@index([canonicalLabAnalyteId])
+}
+
+/// Medora canonical baseline reference interval. One analyte may have many rows (age/sex/specimen/method).
+model LabReferenceInterval {
+  id                       String                       @id @default(uuid())
+  canonicalLabAnalyteId    String
+  loincCode                String?
+  specimen                 String?
+  unit                     String?
+  ageMinYears              Float?
+  ageMaxYears              Float?
+  sexApplicability         LabSexApplicability          @default(ANY)
+  pregnancyApplicability   LabPregnancyApplicability    @default(ANY)
+  methodOrAnalyzer         String?
+  low                      Float?
+  high                     Float?
+  textualInterval          String?
+  sourceName               String
+  sourceIdentifier         String?
+  sourceUrl                String?
+  sourceVersion            String?
+  sourcePublishedAt        DateTime?
+  effectiveFrom            DateTime
+  effectiveTo              DateTime?
+  status                   LabReferenceIntervalStatus   @default(ACTIVE)
+  createdAt                DateTime                     @default(now())
+  updatedAt                DateTime                     @updatedAt
+  analyte                  CanonicalLabAnalyte          @relation(fields: [canonicalLabAnalyteId], references: [id], onDelete: Restrict)
+
+  @@index([canonicalLabAnalyteId, status])
+  @@index([effectiveFrom, effectiveTo])
+  @@index([specimen, unit])
+}
+
+/// Facility-validated override — never mutates Medora canonical baseline or other facilities.
+model FacilityLabReferenceIntervalOverride {
+  id                       String                       @id @default(uuid())
+  facilityId               String
+  canonicalLabAnalyteId    String
+  loincCode                String?
+  specimen                 String?
+  unit                     String?
+  ageMinYears              Float?
+  ageMaxYears              Float?
+  sexApplicability         LabSexApplicability          @default(ANY)
+  pregnancyApplicability   LabPregnancyApplicability    @default(ANY)
+  methodOrAnalyzer         String?
+  low                      Float?
+  high                     Float?
+  textualInterval          String?
+  sourceName               String?
+  sourceIdentifier         String?
+  sourceUrl                String?
+  effectiveFrom            DateTime
+  effectiveTo              DateTime?
+  status                   LabReferenceIntervalStatus   @default(ACTIVE)
+  validatedByUserId        String?
+  validatedAt              DateTime?
+  validationNotes          String?
+  createdAt                DateTime                     @default(now())
+  updatedAt                DateTime                     @updatedAt
+  facility                 Facility                     @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  analyte                  CanonicalLabAnalyte          @relation(fields: [canonicalLabAnalyteId], references: [id], onDelete: Restrict)
+
+  @@index([facilityId, canonicalLabAnalyteId, status])
+  @@index([effectiveFrom, effectiveTo])
+}
+
+/// Critical limits are a separate clinical authority from reference intervals (H/L ≠ Critical).
+model LabCriticalValuePolicy {
+  id                    String                        @id @default(uuid())
+  canonicalLabAnalyteId String
+  /// null = enterprise baseline policy; non-null = facility-scoped validated policy.
+  facilityId            String?
+  specimen              String?
+  unit                  String?
+  ageMinYears           Float?
+  ageMaxYears           Float?
+  sexApplicability      LabSexApplicability           @default(ANY)
+  methodOrAnalyzer      String?
+  criticalLow           Float?
+  criticalHigh          Float?
+  textualCritical       String?
+  sourceName            String?
+  sourceIdentifier      String?
+  effectiveFrom         DateTime
+  effectiveTo           DateTime?
+  status                LabCriticalValuePolicyStatus  @default(ACTIVE)
+  validatedByUserId     String?
+  validatedAt           DateTime?
+  validationNotes       String?
+  createdAt             DateTime                      @default(now())
+  updatedAt             DateTime                      @updatedAt
+  analyte               CanonicalLabAnalyte           @relation(fields: [canonicalLabAnalyteId], references: [id], onDelete: Restrict)
+  facility              Facility?                     @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+
+  @@index([canonicalLabAnalyteId, facilityId, status])
+  @@index([effectiveFrom, effectiveTo])
 }
 
 /// Shared catalog row: stable `code`, human-readable labels, `searchText` for unified search, `updatedAt` for sync.
@@ -7383,6 +7545,36 @@ enum SexAtBirth {
   F
   X
   U
+}
+
+/// MEDUI.LAB.REF.1 — sex applicability for reference / critical policies.
+enum LabSexApplicability {
+  ANY
+  MALE
+  FEMALE
+  OTHER
+}
+
+/// MEDUI.LAB.REF.1 — pregnancy applicability where clinically relevant.
+enum LabPregnancyApplicability {
+  ANY
+  NOT_PREGNANT
+  PREGNANT
+  UNKNOWN
+}
+
+enum LabReferenceIntervalStatus {
+  ACTIVE
+  SUPERSEDED
+  DRAFT
+  RETIRED
+}
+
+enum LabCriticalValuePolicyStatus {
+  ACTIVE
+  SUPERSEDED
+  DRAFT
+  RETIRED
 }
 
 /// Canonical patient demographic sex for APIs, search, and offline snapshots (no age stored).
