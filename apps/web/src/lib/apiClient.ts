@@ -6,7 +6,7 @@ import { normalizeUserFacingError } from "./userFacingError";
 import { enqueueOfflineAction } from "@/lib/offline/offlineQueue";
 import type { OfflineQueueItemType } from "@/lib/offline/offlineTypes";
 import { processOfflineQueueOnce } from "@/lib/offline/offlineSync";
-import { buildGetDedupeKey, dedupeGetRequest } from "@/lib/getRequestDedupe";
+import { buildGetDedupeKey, dedupeGetRequest, DEFAULT_GET_DEDUPE_TTL_MS } from "@/lib/getRequestDedupe";
 
 const API_BASE = "/api/backend";
 
@@ -161,10 +161,15 @@ function queueTypeForRequest(path: string, method: string): OfflineQueueItemType
 }
 
 const MUTABLE_ORDER_GET_PATH =
-  /^\/(encounters\/[^/]+\/(orders|order-events)|orders\/[^/]+|worklists\/(lab|radiology))(?:\/|$)/;
+  /^\/(encounters\/[^/]+\/(orders|order-events)|orders\/[^/]+|worklists\/(lab|radiology)|clinic-care\/results-inbox)(?:\/|$)/;
 
 function shouldUseNoStoreGet(path: string, method: string): boolean {
   return method === "GET" && MUTABLE_ORDER_GET_PATH.test(path);
+}
+
+/** Mutable clinical lists: coalesce in-flight only — never serve a TTL-cached stale payload after ack/result writes. */
+function getDedupeTtlMsForPath(path: string): number {
+  return MUTABLE_ORDER_GET_PATH.test(path) ? 0 : DEFAULT_GET_DEDUPE_TTL_MS;
 }
 
 /**
@@ -293,7 +298,7 @@ export async function apiFetch(
   const method = (options.method ?? "GET").toUpperCase();
   if (isGetDedupeEligible(path, method)) {
     const key = buildGetDedupeKey(path, options.facilityId);
-    return dedupeGetRequest(key, () => apiFetchOnce(path, options));
+    return dedupeGetRequest(key, () => apiFetchOnce(path, options), getDedupeTtlMsForPath(path));
   }
   return apiFetchOnce(path, options);
 }

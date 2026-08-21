@@ -10,6 +10,7 @@ import {
   initialsFromDisplayName,
   labObservationsToResultText,
   parseClinicalStructuredResultData,
+  projectResultDataForListRead,
   resolveLabPanelKeyFromCatalog,
   resolveStructuredLabObservationDisplayFlag,
 } from "./clinicalResultStructured.js";
@@ -123,5 +124,28 @@ describe("clinicalResultStructured — RES.2A", () => {
         attachments: [{ fileName: "a.pdf", dataBase64: "xx" }],
       })
     ).toBe(false);
+  });
+
+  it("list-read projection keeps observations/report and strips attachment bytes", () => {
+    const data = buildLabStructuredResultData({
+      observations: [
+        {
+          name: "Hemoglobin",
+          value: "14.2",
+          unit: "g/dL",
+          referenceText: "12.0–16.0",
+          flag: null,
+        },
+      ],
+    });
+    const withAtt = {
+      ...data,
+      attachments: [{ fileName: "cbc.pdf", mimeType: "application/pdf", dataBase64: "AAA" }],
+    };
+    const projected = projectResultDataForListRead(withAtt) as Record<string, unknown>;
+    expect(parseClinicalStructuredResultData(projected)?.observations?.[0]?.name).toMatch(/Hemoglobin/i);
+    const atts = projected.attachments as Array<Record<string, unknown>>;
+    expect(atts[0]?.fileName).toBe("cbc.pdf");
+    expect(atts[0]?.dataBase64).toBeUndefined();
   });
 });

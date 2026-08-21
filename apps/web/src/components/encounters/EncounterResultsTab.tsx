@@ -12,6 +12,7 @@ import {
 import { hasStructuredDiagnosticResultContent } from "@medora/shared";
 import { getCachedRecord } from "@/lib/offline/offlineCache";
 import { getPendingOrderItemResultsForEncounter } from "@/lib/offline/pendingOrderItemResults";
+import { invalidateGetRequestDedupeForPath } from "@/lib/getRequestDedupe";
 import { MEDORA_CARD_SHELL } from "@/components/medora-card";
 import type { PrintFacilityInfo } from "@/lib/printFacilityHeader";
 import {
@@ -67,6 +68,51 @@ function mergeItemWithPendingSnapshot(item: any, pending: PendingLocalResult): a
       enteredByDisplayFr: (prev as { enteredByDisplayFr?: string | null }).enteredByDisplayFr ?? null,
     },
   };
+}
+
+/**
+ * After clinician ack, a stale GET dedupe hit must not wipe local acknowledgement fields.
+ */
+function mergeEncounterOrdersPreserveResultAcks(incoming: any[], previous: any[]): any[] {
+  if (!previous.length) return incoming;
+  const prevAckByItemId = new Map<
+    string,
+    {
+      acknowledgedByProviderAt: string;
+      acknowledgedByUserId?: string | null;
+      acknowledgedByDisplayFr?: string | null;
+    }
+  >();
+  for (const order of previous) {
+    for (const item of order.items || []) {
+      const at = item?.result?.acknowledgedByProviderAt;
+      if (item?.id && at) {
+        prevAckByItemId.set(item.id, {
+          acknowledgedByProviderAt: typeof at === "string" ? at : new Date(at).toISOString(),
+          acknowledgedByUserId: item.result?.acknowledgedByUserId ?? null,
+          acknowledgedByDisplayFr: item.result?.acknowledgedByDisplayFr ?? null,
+        });
+      }
+    }
+  }
+  if (prevAckByItemId.size === 0) return incoming;
+  return incoming.map((order) => ({
+    ...order,
+    items: (order.items || []).map((item: any) => {
+      const local = prevAckByItemId.get(item.id);
+      if (!local || item?.result?.acknowledgedByProviderAt) return item;
+      if (!item.result) return item;
+      return {
+        ...item,
+        result: {
+          ...item.result,
+          acknowledgedByProviderAt: local.acknowledgedByProviderAt,
+          acknowledgedByUserId: local.acknowledgedByUserId ?? item.result.acknowledgedByUserId,
+          acknowledgedByDisplayFr: local.acknowledgedByDisplayFr ?? item.result.acknowledgedByDisplayFr,
+        },
+      };
+    }),
+  }));
 }
 
 /** Ligne labo/imagerie telle que construite pour l’affichage (réutilisable par l’UI urgences). */
@@ -127,6 +173,7 @@ export function EncounterResultsTab({
   const [ackError, setAckError] = useState<string | null>(null);
   /** Compteur local pour relancer le GET commandes après accusé réception sans recharger toute la page. */
   const [localAckTick, setLocalAckTick] = useState(0);
+  const ackInFlightRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     let cancelled = false;
@@ -135,7 +182,10 @@ export function EncounterResultsTab({
       setOrdersLoadFailedNoCache(false);
       try {
         const data = await apiFetch(`/encounters/${encounterId}/orders`, { facilityId });
-        if (!cancelled) setOrders(Array.isArray(data) ? data : []);
+        if (!cancelled) {
+          const next = Array.isArray(data) ? data : [];
+          setOrders((prev) => mergeEncounterOrdersPreserveResultAcks(next, prev));
+        }
       } catch {
         const ordersCacheKey = `encounter-orders:${facilityId}:${encounterId}`;
         const cached = await getCachedRecord<any[]>("encounter_summaries", ordersCacheKey);
@@ -143,7 +193,7 @@ export function EncounterResultsTab({
           cached?.data && Array.isArray(cached.data) && cached.data.length > 0 ? cached.data : null;
         if (!cancelled) {
           if (cachedArr) {
-            setOrders(cachedArr);
+            setOrders((prev) => mergeEncounterOrdersPreserveResultAcks(cachedArr, prev));
           } else {
             setOrders([]);
             setOrdersLoadFailedNoCache(true);
@@ -159,13 +209,60 @@ export function EncounterResultsTab({
   }, [encounterId, facilityId, refreshToken, localAckTick]);
 
   const onAcknowledge = async (orderItemId: string) => {
+    if (!facilityId || ackInFlightRef.current.has(orderItemId) || ackBusyItemId === orderItemId) {
+      return;
+    }
+    const existing = orders
+      .flatMap((o) => o.items || [])
+      .find((it: { id?: string }) => it.id === orderItemId) as
+      | { result?: { acknowledgedByProviderAt?: string | null } | null }
+      | undefined;
+    if (existing?.result?.acknowledgedByProviderAt) {
+      return;
+    }
+
+    ackInFlightRef.current.add(orderItemId);
     setAckBusyItemId(orderItemId);
     setAckError(null);
     try {
-      await apiFetch(`/orders/${orderItemId}/result/acknowledge`, {
+      const result = await apiFetch(`/orders/${orderItemId}/result/acknowledge`, {
         method: "POST",
         facilityId,
       });
+      const ackAtRaw = result?.acknowledgedByProviderAt;
+      const ackAt =
+        typeof ackAtRaw === "string"
+          ? ackAtRaw
+          : ackAtRaw
+            ? new Date(ackAtRaw).toISOString()
+            : new Date().toISOString();
+      const ackDisplay =
+        typeof result?.acknowledgedByDisplayFr === "string" ? result.acknowledgedByDisplayFr : null;
+      const ackUserId =
+        typeof result?.acknowledgedByUserId === "string" ? result.acknowledgedByUserId : null;
+
+      setOrders((prev) =>
+        prev.map((order) => ({
+          ...order,
+          items: (order.items || []).map((item: any) =>
+            item.id !== orderItemId
+              ? item
+              : {
+                  ...item,
+                  result: item.result
+                    ? {
+                        ...item.result,
+                        acknowledgedByProviderAt: ackAt,
+                        acknowledgedByUserId: ackUserId ?? item.result.acknowledgedByUserId,
+                        acknowledgedByDisplayFr: ackDisplay ?? item.result.acknowledgedByDisplayFr,
+                      }
+                    : item.result,
+                }
+          ),
+        }))
+      );
+
+      invalidateGetRequestDedupeForPath(`/encounters/${encounterId}/orders`, facilityId);
       setLocalAckTick((x) => x + 1);
     } catch (e) {
       setAckError(
@@ -174,6 +271,7 @@ export function EncounterResultsTab({
           : t("patientChartUi.encounterResultsAckFailed")
       );
     } finally {
+      ackInFlightRef.current.delete(orderItemId);
       setAckBusyItemId(null);
     }
   };

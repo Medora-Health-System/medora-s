@@ -18,6 +18,7 @@ import {
   type ClinicCareAmbulatoryResultInboxGroup,
 } from "@medora/shared";
 import { apiFetch } from "@/lib/apiClient";
+import { invalidateGetRequestDedupeForPath } from "@/lib/getRequestDedupe";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import { useI18n } from "@/lib/i18n";
 import { ClinicCareShell } from "./ClinicCareShell";
@@ -174,13 +175,48 @@ export function ClinicCareAmbulatoryResultsInboxView() {
 
   const onAcknowledge = async (orderItemId: string) => {
     if (!facilityId || !inboxAccess?.canAcknowledgeResults) return;
+    if (ackBusyId === orderItemId) return;
+    const existing = data?.rows.find((r) => r.orderItemId === orderItemId);
+    if (existing?.acknowledged || existing?.acknowledgedByProviderAt) return;
+
     setAckBusyId(orderItemId);
     setAckError(null);
     try {
-      await apiFetch(`/orders/${orderItemId}/result/acknowledge`, {
+      const result = await apiFetch(`/orders/${orderItemId}/result/acknowledge`, {
         method: "POST",
         facilityId,
       });
+      const ackAtRaw = result?.acknowledgedByProviderAt;
+      const ackAt =
+        typeof ackAtRaw === "string"
+          ? ackAtRaw
+          : ackAtRaw
+            ? new Date(ackAtRaw).toISOString()
+            : new Date().toISOString();
+      const ackUserId =
+        typeof result?.acknowledgedByUserId === "string" ? result.acknowledgedByUserId : null;
+
+      setData((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          rows: prev.rows.map((row) =>
+            row.orderItemId !== orderItemId
+              ? row
+              : {
+                  ...row,
+                  acknowledged: true,
+                  acknowledgedByProviderAt: ackAt,
+                  acknowledgedByUserId: ackUserId ?? row.acknowledgedByUserId,
+                }
+          ),
+        };
+      });
+
+      invalidateGetRequestDedupeForPath("/clinic-care/results-inbox", facilityId);
+      if (existing?.encounterId) {
+        invalidateGetRequestDedupeForPath(`/encounters/${existing.encounterId}/orders`, facilityId);
+      }
       await load();
     } catch (e) {
       setAckError(

@@ -389,3 +389,25 @@ export function initialsFromDisplayName(displayName: string | null | undefined):
 export function clinicalResultStructuredEngineIsFacilityAgnostic(): boolean {
   return true;
 }
+
+/**
+ * Encounter/chart list projection: keep structured observations/report;
+ * drop base64 attachment payloads (metadata only) to stay lightweight.
+ */
+export function projectResultDataForListRead(resultData: unknown): unknown {
+  if (resultData == null) return null;
+  if (typeof resultData !== "object" || Array.isArray(resultData)) return resultData;
+  const root = { ...(resultData as Record<string, unknown>) };
+  if (Array.isArray(root.attachments)) {
+    root.attachments = root.attachments.map((a) => {
+      if (!a || typeof a !== "object" || Array.isArray(a)) return a;
+      const row = a as Record<string, unknown>;
+      return {
+        fileName: typeof row.fileName === "string" ? row.fileName : null,
+        mimeType: typeof row.mimeType === "string" ? row.mimeType : null,
+        // intentionally omit dataBase64
+      };
+    });
+  }
+  return root;
+}

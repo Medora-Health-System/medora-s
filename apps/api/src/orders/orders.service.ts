@@ -84,6 +84,7 @@ import {
   isIdempotentLifecycleAction,
   type OrderItemLifecycleAction,
   resolveOrderCancelOperationalAssignees,
+  projectResultDataForListRead,
 } from "@medora/shared";
 import { appendBillingCaptureCandidate } from "../billing/billing-capture.append.util";
 import { tryEnterpriseProcedureBillableReviewEvent } from "../billing/enterprise-procedure-billable-review.util";
@@ -1714,7 +1715,21 @@ export class OrdersService {
         },
         select: context.resultSelect ?? ORDER_ITEM_RESULT_LIST_SELECT,
       });
-      const resultByItemId = new Map(results.map((result) => [result.orderItemId, result]));
+      const sanitizeStructuredPayload = context.resultSelect === ORDER_ITEM_RESULT_SUMMARY_SELECT;
+      const resultByItemId = new Map(
+        results.map((result) => {
+          if (!sanitizeStructuredPayload || !("resultData" in result)) {
+            return [result.orderItemId, result] as const;
+          }
+          return [
+            result.orderItemId,
+            {
+              ...result,
+              resultData: projectResultDataForListRead(result.resultData),
+            },
+          ] as const;
+        })
+      );
       return orders.map((order) => ({
         ...order,
         items: (order.items || []).map((item) => ({

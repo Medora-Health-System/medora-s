@@ -15185,7 +15185,7 @@ export default {
     typeFile: "Fichier",
     ackFooterButton: "Accuser réception",
     ackFooterBusy: "Accusation en cours…",
-    ackFooterAcknowledged: "✓ Accusé réception — {initials} — {datetime}",
+    ackFooterAcknowledged: "✓ Accusé réception — {initials} · {datetime}",
     ackFooterViewingOnly: "La consultation n’accuse pas réception de ce résultat.",
   },
   structuredDiagnosticResult: {

@@ -17,21 +17,25 @@ export type ChartSummaryOrderItem = {
   cancelledAt?: string | null;
   cancellationReason?: string | null;
   cancelledByDisplayFr?: string | null;
-  result: {
-    resultText: string | null;
-    verifiedAt: string | null;
-    criticalValue: boolean;
-    /** Nom du professionnel ayant saisi / validé le résultat */
-    enteredByDisplayFr?: string | null;
-    attachmentSummaryFr?: string | null;
-    attachmentSummaryEn?: string | null;
-    /** Pièces jointes (avec ou sans base64 — message FR si fichier indisponible). */
-    attachments?: Array<{
-      fileName?: string | null;
-      mimeType?: string | null;
-      dataBase64?: string | null;
-    }>;
-  } | null;
+    result: {
+      resultText: string | null;
+      /** Structured medora.clinicalResult.v1 when present (list projection may omit attachment bytes). */
+      resultData?: unknown;
+      verifiedAt: string | null;
+      criticalValue: boolean;
+      /** Nom du professionnel ayant saisi / validé le résultat */
+      enteredByDisplayFr?: string | null;
+      acknowledgedByDisplayFr?: string | null;
+      acknowledgedByProviderAt?: string | null;
+      attachmentSummaryFr?: string | null;
+      attachmentSummaryEn?: string | null;
+      /** Pièces jointes (avec ou sans base64 — message FR si fichier indisponible). */
+      attachments?: Array<{
+        fileName?: string | null;
+        mimeType?: string | null;
+        dataBase64?: string | null;
+      }>;
+    } | null;
 };
 
 export type ChartSummaryOrder = {

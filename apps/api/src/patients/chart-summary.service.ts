@@ -12,7 +12,7 @@ import { AuditService } from "../common/services/audit.service";
 import { AuditAction } from "@prisma/client";
 import { OrdersService } from "../orders/orders.service";
 import { TrackboardService } from "../trackboard/trackboard.service";
-import { computeObservationOperationalSnapshot, computeObservationStaySummaryForExport } from "@medora/shared";
+import { computeObservationOperationalSnapshot, computeObservationStaySummaryForExport, projectResultDataForListRead } from "@medora/shared";
 import { emptyTrackboardOperationalAggregate } from "../trackboard/trackboard-operational.util";
 import type {
   OrderItemWithCatalogMedication,
@@ -283,9 +283,16 @@ function toChartOrderItems(order: OrderWithEnrichedItems) {
       result: res
         ? {
             resultText: res.resultText,
+            resultData: projectResultDataForListRead(res.resultData),
             verifiedAt: res.verifiedAt,
             criticalValue: res.criticalValue,
             enteredByDisplayFr: res.enteredByDisplayFr ?? null,
+            acknowledgedByDisplayFr: (res as { acknowledgedByDisplayFr?: string | null }).acknowledgedByDisplayFr ?? null,
+            acknowledgedByProviderAt: (() => {
+              const raw = (res as { acknowledgedByProviderAt?: Date | string | null }).acknowledgedByProviderAt;
+              if (!raw) return null;
+              return raw instanceof Date ? raw.toISOString() : String(raw);
+            })(),
             attachmentSummaryFr: attachmentSummaryFr(res.resultData),
             attachmentSummaryEn: attachmentSummaryEn(res.resultData),
             attachments: attachmentsForChartUi(res.resultData),
@@ -506,6 +513,8 @@ export class ChartSummaryService {
                         criticalValue: true,
                         resultData: true,
                         verifiedByUserId: true,
+                        acknowledgedByProviderAt: true,
+                        acknowledgedByUserId: true,
                       },
                     },
                   },

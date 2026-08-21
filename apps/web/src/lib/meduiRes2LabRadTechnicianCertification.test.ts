@@ -48,7 +48,11 @@ describe("MEDUI.RES.2 — technician dashboard wiring", () => {
 
   it("ClinicalResultViewer keeps Units column for structured lab rows", () => {
     expect(viewer).toContain("labTableUnits");
-    expect(viewer).toContain("anyUnit");
+    expect(viewer).toContain("labTableFlag");
+    expect(viewer).toContain("labTableRefRange");
+    // RES.2A.1 — canonical five-column lab table always shows Flag + Units (dash when empty).
+    expect(viewer).not.toContain("anyUnit");
+    expect(viewer).not.toContain("anyFlag");
   });
 
   it("EN/FR keys present for RES.2 chrome", () => {
