@@ -547,7 +547,8 @@ export function saveAdmissionSectionDraft(input: {
       code:
         | "EXPECTED_VERSION_CONFLICT"
         | "NURSING_ADMISSION_ALREADY_SIGNED"
-        | "NURSING_ADMISSION_NOT_DOCUMENT_OWNER";
+        | "NURSING_ADMISSION_NOT_DOCUMENT_OWNER"
+        | "NURSING_ADMISSION_OWNER_UNRESOLVED";
     } {
   if (!admissionDocumentationSupportsSaveAndResume()) {
     return { ok: false, code: "EXPECTED_VERSION_CONFLICT" };

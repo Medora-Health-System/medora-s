@@ -10,6 +10,9 @@ import type { InpatientNursingAssessmentV1 } from "./inpatientNursingAssessmentV
 
 export const NURSING_ADMISSION_NOT_DOCUMENT_OWNER =
   "NURSING_ADMISSION_NOT_DOCUMENT_OWNER" as const;
+/** Signed document with no resolvable signedByUserId / documentOwnerUserId — never claimable. */
+export const NURSING_ADMISSION_OWNER_UNRESOLVED =
+  "NURSING_ADMISSION_OWNER_UNRESOLVED" as const;
 export const NURSING_ASSESSMENT_DRAFT_NOT_OWNER =
   "NURSING_ASSESSMENT_DRAFT_NOT_OWNER" as const;
 export const NURSING_ASSESSMENT_CORRECTION_NOT_OWNER =
@@ -53,14 +56,25 @@ export function resolveNursingAdmissionDocumentOwner(
   return owner || null;
 }
 
+/** Signed without a resolvable owner — READ ONLY / OWNER UNRESOLVED (never infer from assignment). */
+export function isNursingAdmissionOwnerUnresolved(
+  doc: NursingAdmissionOwnershipSlice | null | undefined,
+): boolean {
+  const signed = Boolean(doc?.nurseSignature?.signed);
+  if (!signed) return false;
+  return resolveNursingAdmissionDocumentOwner(doc) == null;
+}
+
 export function isNursingAdmissionDocumentOwner(
   doc: NursingAdmissionOwnershipSlice | null | undefined,
   actorUserId: string,
 ): boolean {
-  const owner = resolveNursingAdmissionDocumentOwner(doc);
   const actor = String(actorUserId ?? "").trim();
   if (!actor) return false;
-  if (!owner) return true; // claimable
+  // Signed + unresolved owner is never claimable and never writable by inference.
+  if (isNursingAdmissionOwnerUnresolved(doc)) return false;
+  const owner = resolveNursingAdmissionDocumentOwner(doc);
+  if (!owner) return true; // unsigned + unowned → claimable on first RN write
   return owner === actor;
 }
 
@@ -82,7 +96,15 @@ export function assertNursingAdmissionOwnerWrite(input: {
   actorUserId: string;
 }):
   | { ok: true }
-  | { ok: false; code: typeof NURSING_ADMISSION_NOT_DOCUMENT_OWNER } {
+  | {
+      ok: false;
+      code:
+        | typeof NURSING_ADMISSION_NOT_DOCUMENT_OWNER
+        | typeof NURSING_ADMISSION_OWNER_UNRESOLVED;
+    } {
+  if (isNursingAdmissionOwnerUnresolved(input.doc)) {
+    return { ok: false, code: NURSING_ADMISSION_OWNER_UNRESOLVED };
+  }
   if (isNursingAdmissionDocumentOwner(input.doc, input.actorUserId)) {
     return { ok: true };
   }

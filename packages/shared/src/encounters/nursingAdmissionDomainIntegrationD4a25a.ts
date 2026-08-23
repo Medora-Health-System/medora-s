@@ -586,7 +586,8 @@ export function appendNursingAdmissionAmendment(input: {
         | "NURSING_ADMISSION_NOT_SIGNED"
         | "NURSING_ADMISSION_AMENDMENT_DUPLICATE"
         | "NURSING_ADMISSION_AMENDMENT_NOT_AUTHORIZED"
-        | "NURSING_ADMISSION_NOT_DOCUMENT_OWNER";
+        | "NURSING_ADMISSION_NOT_DOCUMENT_OWNER"
+        | "NURSING_ADMISSION_OWNER_UNRESOLVED";
     } {
   if (!input.doc.nurseSignature?.signed) {
     return { ok: false, code: "NURSING_ADMISSION_NOT_SIGNED" };
@@ -596,7 +597,7 @@ export function appendNursingAdmissionAmendment(input: {
     actorUserId: input.actorUserId,
   });
   if (!ownerGate.ok) {
-    return { ok: false, code: "NURSING_ADMISSION_NOT_DOCUMENT_OWNER" };
+    return { ok: false, code: ownerGate.code };
   }
   if (input.doc.expectedVersion !== input.clientExpectedVersion) {
     return { ok: false, code: "NURSING_ADMISSION_AMENDMENT_STALE" };

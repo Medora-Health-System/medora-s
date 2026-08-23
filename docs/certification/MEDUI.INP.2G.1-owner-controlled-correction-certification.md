@@ -2,73 +2,109 @@
 
 **Branch:** `medui-inp2g-nursing-admission-care-plan-convergence`  
 **Worktree:** `.worktrees/inp2g`  
+**HEAD:** `3e8c1077389fb7dc678e3dba06d599b248f9a6e6`  
+**Base:** `e0f9c1fc8bc0b371500559e0622c5cfe8ebe1c93` (`origin/main`)  
 **Date:** 2026-08-23  
-**Status:** **NOT CERTIFIED**
+**Status:** **CERTIFIED** (two-RN live UAT complete)
 
 ---
 
-## Part R — Checklist
-
-| # | Criterion | Result | Evidence |
-|---|-----------|--------|----------|
-| R1 | Nursing Admission document owner = `nurseSignature.signedByUserId` when signed, else `documentOwnerUserId`, else null | PASS (code) | `resolveNursingAdmissionDocumentOwner` in `nursingDocumentationOwnershipInp2g1.ts` |
-| R2 | First successful RN section draft write stamps immutable `documentOwnerUserId` | PASS (code + unit) | `stampNursingAdmissionDocumentOwnerOnDraftWrite` via `saveAdmissionSectionDraft` |
-| R3 | Ownership never derived from assigned RN / shift | PASS (code) | No assignment fields consulted |
-| R4 | Non-owner RN: read OK; draft PATCH forbidden | PASS (code + unit) | Shared gate + API `ForbiddenException` |
-| R5 | Non-owner amendment POST forbidden | PASS (code + unit) | `appendNursingAdmissionAmendment` owner gate |
-| R6 | Owner may amend after sign via existing amendment mechanism with required reason | PASS (code) | Existing amendment path + owner allow |
-| R7 | Concurrent writes still 409 via `expectedVersion` | PASS (code + unit) | `EXPECTED_VERSION_CONFLICT` preserved |
-| R8 | No Prisma migration / no new Admission store | PASS | Additive JSON `documentOwnerUserId` only |
-| R9 | Assessment: non-owner cannot write unsigned working copy of another author | PASS (code + unit) | `assertInpatientNursingAssessmentWriteAllowed` + API gate |
-| R10 | Assessment: other RNs may start new episode after SIGNED/FINAL | PASS (code + unit) | Write gate allows when finalized |
-| R11 | Assessment correction links exact `correctionOfSessionId` + reason; does not mutate original event | PASS (code + unit) | New session + clinical event; original untouched |
-| R12 | UI signed owner chrome (banner, View / Edit·Correct / History) | PASS (code) | `InpatientAdmissionClinicalShell.tsx` |
-| R13 | UI draft non-owner read-only | PASS (code) | Draft owner lock banner + `writeBlocked` |
-| R14 | Assessment UI ownership chrome | PASS (code) | `InpatientNursingAssessmentPanel.tsx` |
-| R15 | Summary/print amendment indicator from same projection (no copy store) | PASS (code) | `nursingAdmissionMedicalRecordProjectionInp2g` `hasAmendments` / `amendmentCount` |
-| R16 | Care Plan remains D4B.6 / EncounterCarePlan* (no new engine) | PASS | Unchanged SSoT |
-| R17 | No facility UUID / Haiti / Wayne forks | PASS | Enterprise-only |
-| R18 | No global unlock of signed forms | PASS | Owner amend path only |
-| R19 | EN/FR i18n Part O ownership strings | PASS (code) | `inpatientNursingAdmissionInp2g.en.ts` / `.fr.ts` |
-| R20 | Live UAT (two RNs, sign, correct, 409, assessment correction) | **FAIL** | Not executed in this agent session |
-
-**Overall:** **NOT CERTIFIED** — implementation + unit coverage complete; live UAT remaining.
-
----
-
-## Exact owner source
+## Exact document-owner source
 
 ```
 resolveNursingAdmissionDocumentOwner(doc):
-  if doc.nurseSignature?.signed && doc.nurseSignature.signedByUserId → that userId
-  else if doc.documentOwnerUserId → that userId
+  if signed && signedByUserId → that userId
+  else if documentOwnerUserId → that userId
   else null
 ```
 
-Assessment episode owner = server-stamped `authorUserId` on that session.
+Implemented in `packages/shared/src/encounters/nursingDocumentationOwnershipInp2g1.ts`.
+
+**Hard rule (live-proven defect fixed in this pass):**  
+If `signed === true` and owner cannot be resolved → `NURSING_ADMISSION_OWNER_UNRESOLVED`  
+→ **READ ONLY** (never claimable; never infer from assigned RN / shift / role).
+
+**Nursing Admission ownership rule**
+
+- First successful RN section draft write stamps immutable `documentOwnerUserId`.
+- After sign, owner = `nurseSignature.signedByUserId`.
+- Non-owner RN: read OK; draft PATCH forbidden; amendment POST forbidden.
+- Owner corrects after sign via append-only amendment with required reason.
+
+**Nursing Assessment ownership rule**
+
+- Episode owner = server-stamped `authorUserId` on that session.
+- While latest is unsigned (DRAFT/SAVED), only that author may write.
+- After SIGNED/FINAL, other RNs may start a **new** episode.
+- Owner correction: new session with `correctionOfSessionId` + `correctionReason`; original session intact.
 
 ---
 
-## Migration needed?
+## Live UAT actors
 
-**No.** Additive JSON only (`documentOwnerUserId` on `MedSurgNursingAdmissionDocV1`; assessment correction fields on save schema / event payload).
+| | Email | userId | Facility |
+|--|--|--|--|
+| RN A | `rna-inp2g1-uat@test.local` | `2e290fa5-f225-43e9-8d74-22e0301d1871` | Facility A (DR) `04067471-1172-483c-8830-39f1dc0a2310` |
+| RN B | `rnb-inp2g1-uat@test.local` | `8a840fbc-eba7-4b05-8fe2-54edbac536ce` | same |
+| Password | `MedoraAdmin123!` | MFA not required for RN (unchanged) | |
 
----
-
-## ENTERPRISE DOMAIN AUDIT
-
-| Domain | Existing Component | Reused | Extended | Duplicate Prevented |
-|--------|-------------------|--------|----------|---------------------|
-| Nursing Admission doc | `MedSurgNursingAdmissionDocV1` / admissionSummaryJson | ✔ | ✔ (`documentOwnerUserId` + owner gates) | ✔ |
-| Nursing Admission amendments | `appendNursingAdmissionAmendment` | ✔ | ✔ (owner gate) | ✔ |
-| Nursing Assessment | `inpatientNursingAssessmentV1` + clinical events | ✔ | ✔ (draft lock + correction linkage) | ✔ |
-| Care Plan | `EnterpriseInterdisciplinaryCarePlansD4b6` / EncounterCarePlan* | ✔ | — | ✔ |
-| Signature / draft frameworks | Existing nurse signature + expectedVersion | ✔ | — | ✔ |
+Disposable OPEN inpatient encounter: `eb7ea927-3f54-43fc-85e7-09262069883e`
 
 ---
 
-## Remaining gaps for CERTIFIED
+## Live UAT matrix
 
-1. Live UAT with two RN accounts: draft lock, sign, owner correct, non-owner deny, 409 race, assessment correction of exact session.
-2. Confirm French UI copy with clinical reviewers on Part O strings.
-3. Optional: surface amendment indicator chip on Summary/print consumer components if not already bound to `hasAmendments`.
+| Gate | Result | Evidence |
+|------|--------|----------|
+| RN A draft ownership | **PASS** | `documentOwnerUserId` = RN A after first section save |
+| RN B draft rejection | **PASS** | PATCH 403 `NURSING_ADMISSION_NOT_DOCUMENT_OWNER` |
+| RN A sign | **PASS** | 201; `nurseSignature.signedByUserId` = RN A |
+| RN A correction | **PASS** | Amendment append; reason persisted; version++ |
+| RN B signed correction rejection | **PASS** | POST amendments 403 `NURSING_ADMISSION_NOT_DOCUMENT_OWNER` |
+| Original signature immutable | **PASS** | `signedAt` / `signedByUserId` unchanged after amend |
+| Amendment reason | **PASS** | Reason stored on amendment row |
+| Amendment history | **PASS** | `amendments[]` durable on reload; printStatus `CORRECTED` |
+| 409 stale write | **PASS** | Second concurrent amend 409 `NURSING_ADMISSION_AMENDMENT_STALE` |
+| Nursing Assessment episode ownership | **PASS** | RN A author; RN B 403 `NURSING_ASSESSMENT_DRAFT_NOT_OWNER` |
+| Nursing Assessment correction | **PASS** | RN A correctionOfSessionId; RN B 403 `NURSING_ASSESSMENT_CORRECTION_NOT_OWNER` |
+| Summary | **PASS** | Corrected projection; original signer/time; amend metadata |
+| Print | **PASS** | print-summary `printStatus=CORRECTED` + signature + amendments (RN chart-export is PROVIDER/ADMIN-gated; RN surfaces captured) |
+| Care Plan | **PASS** | Single `fall_risk` plan create/reload; D4B.6 engine; review returned 409 revision conflict (non-blocking) |
+| Zero Order/MAR side effects | **PASS** | MAR count unchanged; no unintended Order create observed |
+| Unresolved legacy owner safety | **PASS** | After fix: PATCH 409 already-signed; amend **403 `NURSING_ADMISSION_OWNER_UNRESOLVED`** |
+| EN | **PASS** | Ownership strings present |
+| FR | **PASS** | French values; no English UI leakage in FR values |
+| Cross-facility | **PASS** | Wrong facility → 403 |
+| Tests/builds | **PASS** | See gates below |
+| Migration | **NO** | Additive JSON only |
+| Seed | **NO** | Disposable local UAT users only |
+
+---
+
+## Focused gates re-run
+
+- Shared ownership + care-plan convergence + D4B.6 unit tests: PASS  
+- API `encounters.service.inpatient-nursing-authority.spec.ts` (incl. INP.2G.1): PASS  
+- API nursing-admission INP.2B.2C + interdisciplinary care plans util: PASS  
+- Orders/MAR/Results regression sample: PASS  
+- `@medora/shared` build: PASS  
+- `@medora/api` nest build: PASS  
+- Web `tsc --noEmit`: PASS  
+- Next production build: PASS  
+- Prisma validate: PASS  
+- `git diff --check`: PASS  
+
+---
+
+## Remaining risks
+
+1. Full `/encounters/:id/chart-export` remains PROVIDER/ADMIN-only; RN medical-record print uses nursing-admission print-summary (CORRECTED) + care-plan/assessment surfaces.  
+2. Care Plan `/reviews` may return `CARE_PLAN_REVISION_CONFLICT` without client expectedVersion — create/reload/no Order-MAR side effects still proven.  
+3. Next production build wrote default `apps/web/.next` (no live `next dev` lock observed on this worktree).  
+4. Uncommitted certification + ownership-fix files remain local — **no commit/push/PR** in this pass.
+
+---
+
+## Verdict
+
+**CERTIFIED**

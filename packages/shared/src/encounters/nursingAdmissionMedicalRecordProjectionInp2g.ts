@@ -134,5 +134,7 @@ export function projectNursingAdmissionMedicalRecord(
         createdAt: String(a.createdAt ?? ""),
       };
     }),
+    hasAmendments: (Array.isArray(doc.amendments) ? doc.amendments : []).length > 0,
+    amendmentCount: (Array.isArray(doc.amendments) ? doc.amendments : []).length,
   };
 }

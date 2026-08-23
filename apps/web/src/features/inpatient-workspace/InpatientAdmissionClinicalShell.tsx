@@ -194,6 +194,8 @@ export function InpatientAdmissionClinicalShell({
   const [printOpen, setPrintOpen] = useState(false);
   const [clinicalOps, setClinicalOps] = useState<InpatientClinicalOpsV1 | null>(null);
   const [correctionReason, setCorrectionReason] = useState<string>("");
+  /** Owner clicked Edit/Correct — collect reason before opening amendment dialog. */
+  const [correctionPromptOpen, setCorrectionPromptOpen] = useState(false);
   const [amendMode, setAmendMode] = useState<
     null | "ADDENDUM" | "CORRECTION" | "ENTERED_IN_ERROR"
   >(null);
@@ -235,7 +237,11 @@ export function InpatientAdmissionClinicalShell({
   const isLast = sectionIndex >= INPATIENT_ADMISSION_CLINICAL_SECTIONS.length - 1;
   const signed = Boolean(doc?.nurseSignature?.signed);
   const documentOwnerUserId = resolveNursingAdmissionDocumentOwner(doc ?? null);
-  const isDocumentOwner = Boolean(userId) && (documentOwnerUserId == null || documentOwnerUserId === userId);
+  // Unowned + unsigned → claimable by first RN writer. Signed without resolvable
+  // owner must not treat every viewer as owner (legacy / corrupt signature edge).
+  const isDocumentOwner = Boolean(userId) && (
+    documentOwnerUserId == null ? !signed : documentOwnerUserId === userId
+  );
   const nonOwnerDraftLock = !signed && documentOwnerUserId != null && documentOwnerUserId !== userId;
   const writeBlocked = readOnly || signed || nonOwnerDraftLock;
   const canOwnerCorrect = signed && isDocumentOwner && !readOnly && roles.includes("RN");
@@ -836,7 +842,11 @@ export function InpatientAdmissionClinicalShell({
               style={chipBtn}
               data-testid="nursing-admission-edit-correct"
               disabled={!canOwnerCorrect}
-              onClick={() => canOwnerCorrect && setAmendMode("CORRECTION")}
+              onClick={() => {
+                if (!canOwnerCorrect) return;
+                setCorrectionReason("");
+                setCorrectionPromptOpen(true);
+              }}
             >
               {t("inpatientNursingAdmissionInp2g.ownership.editCorrect")}
             </button>
@@ -889,7 +899,7 @@ export function InpatientAdmissionClinicalShell({
         </div>
       ) : null}
 
-      {signed && canOwnerCorrect && amendMode === "CORRECTION" ? (
+      {signed && canOwnerCorrect && correctionPromptOpen && amendMode == null ? (
         <div data-testid="nursing-admission-correction-reason" style={{ ...panel, marginBottom: 12 }}>
           <label style={{ display: "block", fontSize: 13, fontWeight: 600, marginBottom: 6 }}>
             {t("inpatientNursingAdmissionInp2g.ownership.correctionReasonLabel")}
@@ -908,15 +918,24 @@ export function InpatientAdmissionClinicalShell({
             <option value="OTHER">{t("inpatientNursingAdmissionInp2g.ownership.reasonOther")}</option>
           </select>
           <div style={{ display: "flex", gap: 8 }}>
-            <button type="button" style={chipBtn} onClick={() => { setAmendMode(null); setCorrectionReason(""); }}>
+            <button
+              type="button"
+              style={chipBtn}
+              onClick={() => {
+                setCorrectionPromptOpen(false);
+                setCorrectionReason("");
+              }}
+            >
               {t("inpatientNursingAdmissionInp2g.ownership.cancelCorrection")}
             </button>
             <button
               type="button"
               style={chipBtn}
               disabled={!correctionReason}
+              data-testid="nursing-admission-correction-continue"
               onClick={() => {
                 if (!correctionReason) return;
+                setCorrectionPromptOpen(false);
                 setAmendMode("CORRECTION");
               }}
             >

@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   resolveNursingAdmissionDocumentOwner,
+  isNursingAdmissionOwnerUnresolved,
+  isNursingAdmissionDocumentOwner,
   stampNursingAdmissionDocumentOwnerOnDraftWrite,
   assertNursingAdmissionOwnerWrite,
   assertInpatientNursingAssessmentWriteAllowed,
@@ -34,6 +36,41 @@ describe("MEDUI.INP.2G.1 nursing documentation ownership", () => {
         nurseSignature: { signed: false, signedByUserId: "rn-b" },
       }),
     ).toBe("rn-a");
+  });
+
+  it("treats signed docs with unresolved signer as READ ONLY / OWNER UNRESOLVED", () => {
+    const unresolved = {
+      documentOwnerUserId: null,
+      nurseSignature: {
+        signed: true as const,
+        signedAt: "2024-01-01T00:00:00.000Z",
+        signedByUserId: null,
+        displayName: "Legacy RN",
+      },
+    };
+    expect(resolveNursingAdmissionDocumentOwner(unresolved)).toBeNull();
+    expect(isNursingAdmissionOwnerUnresolved(unresolved)).toBe(true);
+    expect(isNursingAdmissionDocumentOwner(unresolved, "rn-a")).toBe(false);
+    expect(assertNursingAdmissionOwnerWrite({ doc: unresolved, actorUserId: "rn-a" })).toEqual({
+      ok: false,
+      code: "NURSING_ADMISSION_OWNER_UNRESOLVED",
+    });
+
+    const denied = appendNursingAdmissionAmendment({
+      doc: {
+        ...baseDoc(),
+        ...unresolved,
+        expectedVersion: 1,
+      } as any,
+      type: "CORRECTION",
+      clientRequestId: "legacy-1",
+      reason: "must fail",
+      actorUserId: "rn-a",
+      clientExpectedVersion: 1,
+    });
+    expect(denied.ok).toBe(false);
+    if (denied.ok) return;
+    expect(denied.code).toBe("NURSING_ADMISSION_OWNER_UNRESOLVED");
   });
 
   it("stamps immutable documentOwnerUserId on first draft write and denies non-owner", () => {
