@@ -48,5 +48,9 @@ describe("MEDUI.INP.2G nursing medical-record projection", () => {
     expect(ready.rows.every((r) => r.value && r.value !== "N/A" && r.value !== "Normal")).toBe(true);
     expect(ready.signed).toBe(true);
     expect(ready.nurseDisplayName).toBe("UAT Nurse");
+    // Summary/Print must reuse the shared clinical attribution projector — no parallel store.
+    expect(ready.attribution.signed.displayName).toBe("UAT Nurse");
+    expect(ready.attribution.signed.credentials).toBe("RN");
+    expect(ready.attribution.signed.atIso).toBe("2026-01-01T13:00:00.000Z");
   });
 });

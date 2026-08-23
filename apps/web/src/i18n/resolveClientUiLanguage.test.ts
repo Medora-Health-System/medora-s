@@ -56,4 +56,15 @@ describe("resolveClientUiLanguage (MEDUI.2C)", () => {
       })
     ).toBe("fr");
   });
+
+  it("prefers stored English over active facility French (INP.2G.2 locale defect)", () => {
+    expect(
+      resolveClientUiLanguage({
+        storedLanguage: "en",
+        facilityLanguage: "fr",
+        cachedFacilityLanguage: "fr",
+        browserLanguage: "fr",
+      })
+    ).toBe("en");
+  });
 });
