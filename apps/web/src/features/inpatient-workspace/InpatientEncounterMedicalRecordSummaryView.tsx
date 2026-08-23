@@ -9,9 +9,10 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   humanizeClinicalLabel,
   projectInpatientNursingAssessmentOverview,
-  projectNursingAdmissionOverview,
+  projectNursingAdmissionMedicalRecord,
   type InpatientNursingAssessmentV1,
   type MedSurgNursingAdmissionDocV1,
+  type NursingAdmissionMedicalRecordProjectionV1,
 } from "@medora/shared";
 import { useI18n } from "@/lib/i18n";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
@@ -67,6 +68,14 @@ const card = { ...MEDORA_CARD_SHELL, padding: "10px 12px", marginBottom: 10 } as
 function asRecord(v: unknown): Record<string, unknown> | null {
   if (!v || typeof v !== "object" || Array.isArray(v)) return null;
   return v as Record<string, unknown>;
+}
+
+function escHtml(s: string): string {
+  return String(s)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
 }
 
 function displayOrDash(v: unknown, dash: string): string {
@@ -127,7 +136,21 @@ export function InpatientEncounterMedicalRecordSummaryView({
   const { facilities, careProfileJson } = useFacilityAndRoles();
   const dash = t("common.dash");
   const [printBusy, setPrintBusy] = useState(false);
-  const [nursingAdmission, setNursingAdmission] = useState<string | null>(null);
+  const [nursingAdmission, setNursingAdmission] =
+    useState<NursingAdmissionMedicalRecordProjectionV1 | null>(null);
+  const [carePlans, setCarePlans] = useState<
+    Array<{
+      id: string;
+      title: string;
+      status: string;
+      activatedAt?: string | null;
+      completedAt?: string | null;
+      discontinuedAt?: string | null;
+      components?: Array<{ componentType: string; title: string; text: string; discipline?: string | null; status?: string }>;
+      progress?: Array<{ status: string; narrative: string; createdAt: string; discipline?: string }>;
+      reviews?: Array<{ reviewStatus: string; createdAt: string }>;
+    }>
+  >([]);
   const [nursingAssessment, setNursingAssessment] = useState<string | null>(null);
   const [providerLines, setProviderLines] = useState<string[]>([]);
   const [orders, setOrders] = useState<Array<Record<string, unknown>>>([]);
@@ -158,6 +181,7 @@ export function InpatientEncounterMedicalRecordSummaryView({
           marSettled,
           vitalsSettled,
           triageSettled,
+          carePlansSettled,
         ] = await Promise.allSettled([
           fetchNursingAdmissionDocumentation(encounterId),
           apiFetch(
@@ -172,6 +196,7 @@ export function InpatientEncounterMedicalRecordSummaryView({
           }),
           apiFetch(`/encounters/${encodeURIComponent(encounterId)}/vitals-history`, { facilityId }),
           apiFetch(`/encounters/${encodeURIComponent(encounterId)}/triage`, { facilityId }),
+          apiFetch(`/encounters/${encodeURIComponent(encounterId)}/care-plans`, { facilityId }),
         ]);
         if (cancelled) return;
 
@@ -179,23 +204,15 @@ export function InpatientEncounterMedicalRecordSummaryView({
           const documentation = (
             admissionSettled.value as unknown as { documentation?: MedSurgNursingAdmissionDocV1 }
           )?.documentation;
-          const ov = projectNursingAdmissionOverview(documentation ?? null);
-          if (ov.availability === "READY") {
-            const sig = documentation?.nurseSignature;
-            const bits = [
-              ov.signed ? t("inpatientMedicalRecordSummaryInp2f.signed") : null,
-              typeof sig?.displayName === "string" ? sig.displayName : null,
-              typeof sig?.credentials === "string" ? sig.credentials : null,
-              ov.admissionSource ? humanizeClinicalLabel(String(ov.admissionSource)) : null,
-              ov.modeOfArrival ? humanizeClinicalLabel(String(ov.modeOfArrival)) : null,
-              ov.conditionOnArrival ? humanizeClinicalLabel(String(ov.conditionOnArrival)) : null,
-              ov.clinicalDocumentedAt,
-              typeof sig?.signedAt === "string" ? sig.signedAt : null,
-            ].filter((x) => typeof x === "string" && x.trim());
-            setNursingAdmission(bits.length ? bits.map(String).join(" · ") : t("inpatientMedicalRecordSummaryInp2f.empty"));
-          } else {
-            setNursingAdmission(null);
-          }
+          setNursingAdmission(projectNursingAdmissionMedicalRecord(documentation ?? null));
+        }
+
+        if (carePlansSettled.status === "fulfilled") {
+          const payload = asRecord(carePlansSettled.value);
+          const plans = Array.isArray(payload?.plans) ? payload!.plans : [];
+          setCarePlans(plans as typeof carePlans);
+        } else {
+          setCarePlans([]);
         }
 
         if (nursingSettled.status === "fulfilled") {
@@ -359,6 +376,57 @@ export function InpatientEncounterMedicalRecordSummaryView({
     if (!encounter) return;
     setPrintBusy(true);
     try {
+      const nursingBody =
+        nursingAdmission && nursingAdmission.availability === "READY"
+          ? `<dl>${nursingAdmission.rows
+              .map(
+                (r) =>
+                  `<div><dt>${escHtml(t(`inpatientNursingAdmissionInp2g.record.${r.fieldKey}`))}</dt><dd>${escHtml(
+                    humanizeClinicalLabel(r.value)
+                  )}</dd></div>`
+              )
+              .join("")}${
+              nursingAdmission.nurseDisplayName
+                ? `<div><dt>${escHtml(t("inpatientNursingAdmissionInp2g.record.nurse"))}</dt><dd>${escHtml(
+                    [nursingAdmission.nurseDisplayName, nursingAdmission.nurseCredentials]
+                      .filter(Boolean)
+                      .join(" · ")
+                  )}</dd></div>`
+                : ""
+            }${
+              nursingAdmission.signedAt
+                ? `<div><dt>${escHtml(t("inpatientNursingAdmissionInp2g.record.signedAt"))}</dt><dd>${escHtml(
+                    nursingAdmission.signedAt
+                  )}</dd></div>`
+                : ""
+            }</dl>`
+          : `<p>${escHtml(t("inpatientMedicalRecordSummaryInp2f.empty"))}</p>`;
+
+      const carePlanBody =
+        carePlans.length === 0
+          ? `<p>${escHtml(t("inpatientMedicalRecordSummaryInp2f.empty"))}</p>`
+          : `<ul>${carePlans
+              .map((plan) => {
+                const goals = (plan.components ?? [])
+                  .filter((c) => c.componentType === "GOAL")
+                  .map((g) => humanizeClinicalLabel(g.title))
+                  .join("; ");
+                const interventions = (plan.components ?? [])
+                  .filter((c) => c.componentType === "INTERVENTION")
+                  .map((g) => humanizeClinicalLabel(g.title))
+                  .join("; ");
+                return `<li><strong>${escHtml(humanizeClinicalLabel(plan.title))}</strong> — ${escHtml(
+                  humanizeClinicalLabel(plan.status)
+                )}${goals ? `<br/>${escHtml(t("inpatientNursingAdmissionInp2g.carePlanWorkspace.colGoal"))}: ${escHtml(goals)}` : ""}${
+                  interventions
+                    ? `<br/>${escHtml(t("inpatientNursingAdmissionInp2g.carePlanWorkspace.colInterventions"))}: ${escHtml(
+                        interventions
+                      )}`
+                    : ""
+                }</li>`;
+              })
+              .join("")}</ul>`;
+
       await printEncounterChartLivePreview({
         encounter: encounter as unknown as Record<string, unknown>,
         triage,
@@ -368,11 +436,31 @@ export function InpatientEncounterMedicalRecordSummaryView({
         facilityIdentity,
         language,
         legalMedicalRecord: true,
+        supplementalPrintSections: [
+          {
+            title: t("inpatientMedicalRecordSummaryInp2f.sections.nursingAdmission"),
+            bodyHtml: nursingBody,
+          },
+          {
+            title: t("inpatientMedicalRecordSummaryInp2f.sections.carePlan"),
+            bodyHtml: carePlanBody,
+          },
+        ],
       });
     } finally {
       setPrintBusy(false);
     }
-  }, [encounter, facilityId, facilityIdentity, language, orders, triage]);
+  }, [
+    carePlans,
+    encounter,
+    facilityId,
+    facilityIdentity,
+    language,
+    nursingAdmission,
+    orders,
+    t,
+    triage,
+  ]);
 
   const medOrders = orders.filter((o) => {
     const typ = String(o.type ?? o.orderType ?? "").toUpperCase();
@@ -468,10 +556,125 @@ export function InpatientEncounterMedicalRecordSummaryView({
         <h2 style={{ margin: "0 0 8px", fontSize: 14 }}>
           {t("inpatientMedicalRecordSummaryInp2f.sections.nursingAdmission")}
         </h2>
-        <p style={{ margin: 0, fontSize: 13 }}>
-          {nursingAdmission ?? t("inpatientMedicalRecordSummaryInp2f.empty")}
-        </p>
+        {!nursingAdmission || nursingAdmission.availability === "EMPTY" ? (
+          <p style={{ margin: 0, fontSize: 13 }}>{t("inpatientMedicalRecordSummaryInp2f.empty")}</p>
+        ) : (
+          <dl
+            data-testid="summary-nursing-admission-structured"
+            style={{ margin: 0, display: "grid", gap: 6, fontSize: 13 }}
+          >
+            {nursingAdmission.rows.map((row) => (
+              <div
+                key={row.fieldKey}
+                style={{ display: "grid", gridTemplateColumns: "minmax(140px, 34%) 1fr", gap: 8 }}
+              >
+                <dt style={{ margin: 0, color: "#64748b", fontWeight: 600 }}>
+                  {t(`inpatientNursingAdmissionInp2g.record.${row.fieldKey}`)}
+                </dt>
+                <dd style={{ margin: 0 }}>{humanizeClinicalLabel(row.value)}</dd>
+              </div>
+            ))}
+            {nursingAdmission.nurseDisplayName ? (
+              <div style={{ display: "grid", gridTemplateColumns: "minmax(140px, 34%) 1fr", gap: 8 }}>
+                <dt style={{ margin: 0, color: "#64748b", fontWeight: 600 }}>
+                  {t("inpatientNursingAdmissionInp2g.record.nurse")}
+                </dt>
+                <dd style={{ margin: 0 }}>
+                  {[nursingAdmission.nurseDisplayName, nursingAdmission.nurseCredentials]
+                    .filter(Boolean)
+                    .join(" · ")}
+                </dd>
+              </div>
+            ) : null}
+            {nursingAdmission.signedAt ? (
+              <div style={{ display: "grid", gridTemplateColumns: "minmax(140px, 34%) 1fr", gap: 8 }}>
+                <dt style={{ margin: 0, color: "#64748b", fontWeight: 600 }}>
+                  {t("inpatientNursingAdmissionInp2g.record.signedAt")}
+                </dt>
+                <dd style={{ margin: 0 }}>{nursingAdmission.signedAt}</dd>
+              </div>
+            ) : null}
+            {nursingAdmission.amendments.length > 0 ? (
+              <div>
+                <dt style={{ margin: "0 0 4px", color: "#64748b", fontWeight: 600 }}>
+                  {t("inpatientNursingAdmissionInp2g.record.amendments")}
+                </dt>
+                <dd style={{ margin: 0 }}>
+                  <ul style={{ margin: 0, paddingLeft: 18 }}>
+                    {nursingAdmission.amendments.map((a, i) => (
+                      <li key={`${a.createdAt}-${i}`}>
+                        {[a.type, a.sectionId, a.reason, a.createdAt].filter(Boolean).join(" · ")}
+                      </li>
+                    ))}
+                  </ul>
+                </dd>
+              </div>
+            ) : null}
+          </dl>
+        )}
         <button type="button" className="no-print" onClick={() => onNavigateSection?.("admission")}>
+          {t("inpatientMedicalRecordSummaryInp2f.openSource")}
+        </button>
+      </section>
+
+      <section style={card} data-testid="summary-care-plan">
+        <h2 style={{ margin: "0 0 8px", fontSize: 14 }}>
+          {t("inpatientMedicalRecordSummaryInp2f.sections.carePlan")}
+        </h2>
+        {carePlans.length === 0 ? (
+          <p style={{ margin: 0, fontSize: 13 }}>{t("inpatientMedicalRecordSummaryInp2f.empty")}</p>
+        ) : (
+          <ul data-testid="summary-care-plan-list" style={{ margin: 0, padding: 0, listStyle: "none", display: "grid", gap: 10 }}>
+            {carePlans.map((plan) => {
+              const goals = (plan.components ?? []).filter((c) => c.componentType === "GOAL");
+              const interventions = (plan.components ?? []).filter((c) => c.componentType === "INTERVENTION");
+              const lastReview = plan.reviews?.at(-1);
+              const lastProgress = plan.progress?.at(-1);
+              return (
+                <li
+                  key={plan.id}
+                  data-testid={`summary-care-plan-${plan.id}`}
+                  style={{ border: "1px solid #e2e8f0", borderRadius: 12, padding: "8px 10px" }}
+                >
+                  <strong style={{ fontSize: 13 }}>{humanizeClinicalLabel(plan.title)}</strong>
+                  <div style={{ fontSize: 12, color: "#64748b", marginTop: 4 }}>
+                    {humanizeClinicalLabel(plan.status)}
+                    {plan.activatedAt ? ` · ${plan.activatedAt}` : ""}
+                    {lastReview?.createdAt ? ` · ${lastReview.createdAt}` : ""}
+                    {plan.completedAt ? ` · ${plan.completedAt}` : ""}
+                    {plan.discontinuedAt ? ` · ${plan.discontinuedAt}` : ""}
+                  </div>
+                  {goals.length ? (
+                    <p style={{ margin: "6px 0 0", fontSize: 12 }}>
+                      <strong>{t("inpatientNursingAdmissionInp2g.carePlanWorkspace.colGoal")}: </strong>
+                      {goals.map((g) => humanizeClinicalLabel(g.title)).join("; ")}
+                    </p>
+                  ) : null}
+                  {interventions.length ? (
+                    <p style={{ margin: "4px 0 0", fontSize: 12 }}>
+                      <strong>{t("inpatientNursingAdmissionInp2g.carePlanWorkspace.colInterventions")}: </strong>
+                      {interventions
+                        .map((g) =>
+                          [humanizeClinicalLabel(g.title), g.discipline ? humanizeClinicalLabel(g.discipline) : null]
+                            .filter(Boolean)
+                            .join(" / ")
+                        )
+                        .join("; ")}
+                    </p>
+                  ) : null}
+                  {lastProgress ? (
+                    <p style={{ margin: "4px 0 0", fontSize: 12 }}>
+                      <strong>{t("inpatientNursingAdmissionInp2g.carePlanWorkspace.colProgress")}: </strong>
+                      {humanizeClinicalLabel(lastProgress.status)}
+                      {lastProgress.narrative ? ` — ${lastProgress.narrative}` : ""}
+                    </p>
+                  ) : null}
+                </li>
+              );
+            })}
+          </ul>
+        )}
+        <button type="button" className="no-print" onClick={() => onNavigateSection?.("carePlan")}>
           {t("inpatientMedicalRecordSummaryInp2f.openSource")}
         </button>
       </section>

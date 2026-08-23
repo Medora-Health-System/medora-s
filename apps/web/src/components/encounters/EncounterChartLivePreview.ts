@@ -154,6 +154,8 @@ export type EncounterChartLivePreviewParams = {
   language: SupportedLanguage;
   /** INP.2F — complete encounter medical record print (not Overview screenshot). */
   legalMedicalRecord?: boolean;
+  /** MEDUI.INP.2G — authoritative Nursing Admission / Care Plan projections (read-only HTML). */
+  supplementalPrintSections?: Array<{ title: string; bodyHtml: string }>;
   facilityIdentity?: {
     name?: string | null;
     line1?: string | null;
@@ -1507,6 +1509,13 @@ function getEncounterChartLivePreviewHtml(
 
   ${h2(lang, "sectionNursingAssessment")}
   ${renderNursingAssessment(lang, encounter)}
+
+  ${(params.supplementalPrintSections ?? [])
+    .map(
+      (s) =>
+        `<h2>${esc(s.title)}</h2>\n  ${s.bodyHtml}`
+    )
+    .join("\n\n  ")}
 
   ${h2(lang, "sectionNursingReassessments")}
   ${renderNursingReassessments(lang, fetched.nursingReassessmentEvents)}

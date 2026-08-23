@@ -788,6 +788,96 @@ export function InpatientAdmissionClinicalShell({
         />
         <div data-testid="nursing-admission-main">
 
+      {signed ? (
+        <div
+          role="status"
+          data-testid="nursing-admission-signed-lock-banner"
+          data-write-blocked="true"
+          data-lock-reason="SIGNED"
+          style={{
+            marginBottom: 12,
+            padding: "10px 12px",
+            borderRadius: 12,
+            border: "1px solid #fcd34d",
+            background: "#fffbeb",
+            color: "#92400e",
+            fontSize: 13,
+            lineHeight: 1.45,
+          }}
+        >
+          <strong style={{ display: "block", marginBottom: 4 }}>
+            {t("inpatientNursingAdmissionInp2g.signedLock.title")}
+          </strong>
+          <span>{t("inpatientNursingAdmissionInp2g.signedLock.body")}</span>
+          {canAmend ? (
+            <p style={{ margin: "8px 0 0", fontSize: 12 }}>
+              {t("inpatientNursingAdmissionInp2g.signedLock.amendHint")}
+            </p>
+          ) : (
+            <p style={{ margin: "8px 0 0", fontSize: 12 }}>
+              {t("inpatientNursingAdmissionInp2g.signedLock.readOnlyHint")}
+            </p>
+          )}
+        </div>
+      ) : readOnly ? (
+        <div
+          role="status"
+          data-testid="nursing-admission-role-readonly-banner"
+          data-write-blocked="true"
+          data-lock-reason="ROLE_READ_ONLY"
+          style={{
+            marginBottom: 12,
+            padding: "10px 12px",
+            borderRadius: 12,
+            border: "1px solid #e2e8f0",
+            background: "#f8fafc",
+            color: "#475569",
+            fontSize: 13,
+          }}
+        >
+          {t("inpatientNursingAdmissionInp2g.roleReadOnly.body")}
+        </div>
+      ) : null}
+
+      {signed ? (
+        <div data-testid="nursing-admission-amendments" style={{ ...panel, marginBottom: 12 }}>
+          <h4 style={{ margin: "0 0 6px" }}>{t("hospitalAdmissionD4a25a.amendments.title")}</h4>
+          <p style={{ margin: "0 0 8px", fontSize: 12, color: "#64748b" }}>
+            {t("hospitalAdmissionD4a25a.amendments.lockedHint")}{" "}
+            {t("hospitalAdmissionD4a25a.amendments.noUnlock")}
+          </p>
+          {!canAmend ? (
+            <p style={{ fontSize: 12 }}>{t("hospitalAdmissionD4a25a.amendments.providerViewOnly")}</p>
+          ) : (
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 8 }}>
+              <button type="button" style={chipBtn} onClick={() => setAmendMode("ADDENDUM")}>
+                {t("hospitalAdmissionD4a25a.amendments.addAddendum")}
+              </button>
+              <button type="button" style={chipBtn} onClick={() => setAmendMode("CORRECTION")}>
+                {t("hospitalAdmissionD4a25a.amendments.addCorrection")}
+              </button>
+              <button type="button" style={chipBtn} onClick={() => setAmendMode("ENTERED_IN_ERROR")}>
+                {t("hospitalAdmissionD4a25a.amendments.enteredInError")}
+              </button>
+            </div>
+          )}
+          <h5 style={{ margin: "0 0 6px", fontSize: 13 }}>
+            {t("hospitalAdmissionD4a25a.amendments.history")}
+          </h5>
+          {(doc?.amendments ?? []).length === 0 ? (
+            <p style={{ fontSize: 12 }}>{t("hospitalAdmissionD4a25a.amendments.empty")}</p>
+          ) : (
+            <ul style={{ margin: 0, paddingLeft: 18, fontSize: 12 }}>
+              {(doc?.amendments ?? []).map((a) => (
+                <li key={a.amendmentId}>
+                  {a.type} · {a.sectionId || "—"} · {a.reason} · {a.createdAt}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      ) : null}
+
       {loadError ? (
         <p style={{ color: "#b91c1c", fontSize: 12 }} role="alert">
           {loadError}
@@ -1122,45 +1212,6 @@ export function InpatientAdmissionClinicalShell({
           }}
         />
       </div>
-
-      {signed ? (
-        <div data-testid="nursing-admission-amendments" style={{ ...panel, marginTop: 12 }}>
-          <h4 style={{ margin: "0 0 6px" }}>{t("hospitalAdmissionD4a25a.amendments.title")}</h4>
-          <p style={{ margin: "0 0 8px", fontSize: 12, color: "#64748b" }}>
-            {t("hospitalAdmissionD4a25a.amendments.lockedHint")}{" "}
-            {t("hospitalAdmissionD4a25a.amendments.noUnlock")}
-          </p>
-          {!canAmend ? (
-            <p style={{ fontSize: 12 }}>{t("hospitalAdmissionD4a25a.amendments.providerViewOnly")}</p>
-          ) : (
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 8 }}>
-              <button type="button" style={chipBtn} onClick={() => setAmendMode("ADDENDUM")}>
-                {t("hospitalAdmissionD4a25a.amendments.addAddendum")}
-              </button>
-              <button type="button" style={chipBtn} onClick={() => setAmendMode("CORRECTION")}>
-                {t("hospitalAdmissionD4a25a.amendments.addCorrection")}
-              </button>
-              <button type="button" style={chipBtn} onClick={() => setAmendMode("ENTERED_IN_ERROR")}>
-                {t("hospitalAdmissionD4a25a.amendments.enteredInError")}
-              </button>
-            </div>
-          )}
-          <h5 style={{ margin: "0 0 6px", fontSize: 13 }}>
-            {t("hospitalAdmissionD4a25a.amendments.history")}
-          </h5>
-          {(doc?.amendments ?? []).length === 0 ? (
-            <p style={{ fontSize: 12 }}>{t("hospitalAdmissionD4a25a.amendments.empty")}</p>
-          ) : (
-            <ul style={{ margin: 0, paddingLeft: 18, fontSize: 12 }}>
-              {(doc?.amendments ?? []).map((a) => (
-                <li key={a.amendmentId}>
-                  {a.type} · {a.sectionId || "—"} · {a.reason} · {a.createdAt}
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-      ) : null}
 
       {review ? (
         <div style={panel} data-testid="nursing-admission-review">
