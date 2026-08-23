@@ -72,14 +72,14 @@ export function I18nProvider({
 
   useEffect(() => {
     try {
+      // Cache facility language for fallback only — never override an explicit user locale.
       if (facilityLanguage && isSupportedLanguage(facilityLanguage)) {
-        setLanguageState(facilityLanguage);
         persistFacilityUiLanguage(facilityLanguage);
-        return;
       }
 
       const resolved = resolveClientUiLanguage({
         storedLanguage: readStoredUiLanguageRaw(),
+        facilityLanguage,
         cachedFacilityLanguage: readCachedFacilityUiLanguage(),
         browserLanguage: resolveBrowserUiLanguage(),
       });
