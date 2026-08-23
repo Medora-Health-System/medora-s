@@ -8,12 +8,21 @@ import {
 import { useI18n } from "@/lib/i18n";
 import { createNursingAdmissionAmendment } from "@/features/hospital-care/inpatientOperationsApi";
 
+const CORRECTION_REASON_I18N: Record<string, string> = {
+  DOCUMENTATION_ERROR: "inpatientNursingAdmissionInp2g.ownership.reasonDocumentationError",
+  INCORRECT_VALUE: "inpatientNursingAdmissionInp2g.ownership.reasonIncorrectValue",
+  INFORMATION_CLARIFIED: "inpatientNursingAdmissionInp2g.ownership.reasonInformationClarified",
+  LATE_ENTRY: "inpatientNursingAdmissionInp2g.ownership.reasonLateEntry",
+  OTHER: "inpatientNursingAdmissionInp2g.ownership.reasonOther",
+};
+
 export function NursingAdmissionAmendmentDialog({
   encounterId,
   expectedVersion,
   expectedAmendmentVersion,
   open,
   mode,
+  initialReason,
   onClose,
   onSaved,
 }: {
@@ -22,6 +31,8 @@ export function NursingAdmissionAmendmentDialog({
   expectedAmendmentVersion: number;
   open: boolean;
   mode: "ADDENDUM" | "CORRECTION" | "ENTERED_IN_ERROR";
+  /** Prefill from owner Edit/Correct reason prompt (code or free text). */
+  initialReason?: string;
   onClose: () => void;
   onSaved: (documentation: Record<string, unknown>) => void;
 }) {
@@ -37,10 +48,21 @@ export function NursingAdmissionAmendmentDialog({
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (open) {
-      firstFieldRef.current?.focus();
+    if (!open) return;
+    const raw = String(initialReason ?? "").trim();
+    if (raw) {
+      const i18nKey = CORRECTION_REASON_I18N[raw];
+      setReason(i18nKey ? t(i18nKey) : raw);
+    } else {
+      setReason("");
     }
-  }, [open]);
+    setNote("");
+    setOriginalValue("");
+    setCorrectedValue("");
+    setSectionId("");
+    setError(null);
+    firstFieldRef.current?.focus();
+  }, [open, initialReason, t]);
 
   if (!open) return null;
 

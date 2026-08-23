@@ -23,7 +23,6 @@ import { printDischarge } from "@/components/encounters/DischargePrintLayout";
 import type { InpatientWorkspaceSection } from "./inpatientWorkspaceSections";
 import { apiFetch, asApiObject } from "@/lib/apiClient";
 import {
-  isInpatientCarePlanEnabledInBrowser,
   isInpatientConsultsEnabledInBrowser,
   isInpatientDepartmentalOrdersEnabledInBrowser,
   isInpatientDischargePlanningEnabledInBrowser,
@@ -132,7 +131,6 @@ export function InpatientWorkspacePanel({
   const docsLive = isInpatientDocumentationEnabledInBrowser();
   const nursingLive = isInpatientNursingEnabledInBrowser();
   const consultsLive = isInpatientConsultsEnabledInBrowser();
-  const carePlanLive = isInpatientCarePlanEnabledInBrowser();
   const dischargeLive = isInpatientDischargePlanningEnabledInBrowser();
   const canPrescribe =
     writersEnabled &&
@@ -482,6 +480,7 @@ export function InpatientWorkspacePanel({
       }
       return (
         <div data-testid="inpatient-panel-care-plan-live" style={{ display: "grid", gap: 12 }}>
+          {/* MEDUI.INP.2G — single Care Plan surface: D4B.6 / EncounterCarePlan only (no ClinicalOps stack). */}
           <EnterpriseInterdisciplinaryCarePlansD4b6
             encounterId={encounterId}
             patientId={encounter?.patient?.id ?? "unknown-patient"}
@@ -489,9 +488,6 @@ export function InpatientWorkspacePanel({
             careSetting="INPATIENT"
             roleCodes={roles}
           />
-          {carePlanLive ? (
-            <InpatientClinicalOpsPanel encounterId={encounterId} mode="carePlan" />
-          ) : null}
         </div>
       );
     case "dischargePlanning":

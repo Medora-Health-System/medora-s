@@ -17,6 +17,7 @@ import {
   type ClinicalDocumentationEntryRow,
 } from "@/lib/clinicalDocumentationApi";
 import { useI18n } from "@/lib/i18n";
+import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import { INPATIENT_NURSING_BOARD_ROWS } from "./inpatientNursingBoardRowsInp1b6";
 import { projectClinicalDocumentationSummaryLines } from "./projectNursingClinicalDocumentationSummary";
 import type { InpatientWorkspaceSection } from "./inpatientWorkspaceSections";
@@ -83,6 +84,7 @@ export function InpatientNursingAssessmentPanel({
   onNavigateSection?: (section: InpatientWorkspaceSection) => void;
 }) {
   const { language, t } = useI18n();
+  const { userId } = useFacilityAndRoles();
   const french = language === "fr";
   const [history, setHistory] = useState<InpatientNursingAssessmentV1[]>([]);
   const [draft, setDraft] = useState<InpatientNursingAssessmentSave | null>(null);
@@ -142,7 +144,26 @@ export function InpatientNursingAssessmentPanel({
     [history],
   );
 
+
+  const latestAssessment = history.at(-1) ?? null;
+  const latestIsUnsignedWorking =
+    latestAssessment?.status === "DRAFT" || latestAssessment?.status === "SAVED";
+  const draftOwnedByOther =
+    Boolean(latestIsUnsignedWorking && latestAssessment && latestAssessment.authorUserId !== userId);
+  const canCorrectLatest =
+    Boolean(
+      latestAssessment &&
+        (latestAssessment.status === "SIGNED" || latestAssessment.status === "FINAL") &&
+        latestAssessment.authorUserId === userId,
+    );
+  const [correctingSessionId, setCorrectingSessionId] = useState<string | null>(null);
+  const [assessmentCorrectionReason, setAssessmentCorrectionReason] = useState("");
+
   function begin(copyPrevious: boolean) {
+    if (draftOwnedByOther) {
+      setMessage(t("inpatientNursingAdmissionInp2g.ownership.assessingOwnerDraftLock"));
+      return;
+    }
     const latest = history.at(-1);
     if (!copyPrevious || !latest) {
       setDraft(emptyDraft());
@@ -190,13 +211,25 @@ export function InpatientNursingAssessmentPanel({
     if (!draft) return;
     setBusy(true);
     try {
+      const payload: Record<string, unknown> = { ...draft, status: "SAVED" };
+      if (correctingSessionId) {
+        if (!assessmentCorrectionReason.trim()) {
+          setMessage(t("inpatientNursingAdmissionInp2g.ownership.correctionReasonRequired"));
+          setBusy(false);
+          return;
+        }
+        payload.correctionOfSessionId = correctingSessionId;
+        payload.correctionReason = assessmentCorrectionReason.trim();
+      }
       await apiFetch(`/encounters/${encodeURIComponent(encounterId)}/inpatient-nursing-assessments`, {
         method: "POST",
         facilityId,
-        body: JSON.stringify({ ...draft, status: "SAVED" }),
+        body: JSON.stringify(payload),
       });
       setDraft(null);
       setCopied(new Set());
+      setCorrectingSessionId(null);
+      setAssessmentCorrectionReason("");
       setMessage(t("inpatientNursingAssessmentInp1b.saved"));
       await load();
       await loadClinicalProjections();
@@ -456,7 +489,47 @@ export function InpatientNursingAssessmentPanel({
           </div>
         </section>
         {message ? <p role="status">{message}</p> : null}
-        {isLocked ? <p role="status">{t("inpatientNursingAssessmentInp2c.board.readOnly")}</p> : null}
+        
+      {draftOwnedByOther ? (
+        <p role="status" data-testid="nursing-assessment-owner-lock">
+          {t("inpatientNursingAdmissionInp2g.ownership.assessingOwnerDraftLock")}
+        </p>
+      ) : null}
+      {canCorrectLatest ? (
+        <div style={{ marginBottom: 8 }} data-testid="nursing-assessment-owner-correct">
+          <button
+            type="button"
+            disabled={isLocked || busy}
+            onClick={() => {
+              if (!latestAssessment) return;
+              setCorrectingSessionId(latestAssessment.sessionId);
+              begin(true);
+            }}
+          >
+            {t("inpatientNursingAdmissionInp2g.ownership.editCorrect")}
+          </button>
+          {correctingSessionId ? (
+            <label style={{ display: "block", marginTop: 6, fontSize: 13 }}>
+              {t("inpatientNursingAdmissionInp2g.ownership.correctionReasonLabel")}
+              <select
+                value={assessmentCorrectionReason}
+                onChange={(e) => setAssessmentCorrectionReason(e.target.value)}
+                style={{ display: "block", marginTop: 4 }}
+              >
+                <option value="">—</option>
+                <option value="DOCUMENTATION_ERROR">{t("inpatientNursingAdmissionInp2g.ownership.reasonDocumentationError")}</option>
+                <option value="INCORRECT_VALUE">{t("inpatientNursingAdmissionInp2g.ownership.reasonIncorrectValue")}</option>
+                <option value="INFORMATION_CLARIFIED">{t("inpatientNursingAdmissionInp2g.ownership.reasonInformationClarified")}</option>
+                <option value="LATE_ENTRY">{t("inpatientNursingAdmissionInp2g.ownership.reasonLateEntry")}</option>
+                <option value="OTHER">{t("inpatientNursingAdmissionInp2g.ownership.reasonOther")}</option>
+              </select>
+            </label>
+          ) : null}
+        </div>
+      ) : latestAssessment && (latestAssessment.status === "SIGNED" || latestAssessment.status === "FINAL") && latestAssessment.authorUserId !== userId ? (
+        <p role="status">{t("inpatientNursingAdmissionInp2g.ownership.assessmentOnlyAuthorCorrect")}</p>
+      ) : null}
+{isLocked ? <p role="status">{t("inpatientNursingAssessmentInp2c.board.readOnly")}</p> : null}
       </div>
     </div>
   );

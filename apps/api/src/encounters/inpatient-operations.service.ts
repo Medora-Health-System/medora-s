@@ -2214,6 +2214,12 @@ export class InpatientOperationsService {
           : undefined,
     });
     if (!result.ok) {
+      if (result.code === "NURSING_ADMISSION_NOT_DOCUMENT_OWNER") {
+        throw new ForbiddenException(result.code);
+      }
+      if (result.code === "NURSING_ADMISSION_OWNER_UNRESOLVED") {
+        throw new ForbiddenException(result.code);
+      }
       if (result.code === "NURSING_ADMISSION_AMENDMENT_NOT_AUTHORIZED") {
         throw new BadRequestException(result.code);
       }
@@ -2714,6 +2720,12 @@ export class InpatientOperationsService {
         encounterRef: this.clinicalLogRef(encounterId),
         expectedVersion: draftExpectedVersion,
       });
+      if (result.code === "NURSING_ADMISSION_NOT_DOCUMENT_OWNER") {
+        throw new ForbiddenException(result.code);
+      }
+      if (result.code === "NURSING_ADMISSION_OWNER_UNRESOLVED") {
+        throw new ForbiddenException(result.code);
+      }
       throw new ConflictException(result.code);
     }
 

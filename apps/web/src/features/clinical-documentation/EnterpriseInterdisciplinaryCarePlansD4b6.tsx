@@ -151,36 +151,71 @@ export function EnterpriseInterdisciplinaryCarePlansD4b6(
     ...(props.plans ?? []),
   ]);
   const [activationMessage, setActivationMessage] = useState<string | null>(null);
+  const [planFilter, setPlanFilter] = useState<
+    "ACTIVE" | "GOALS" | "INTERVENTIONS" | "PROGRESS" | "COMPLETED" | "HISTORY"
+  >("ACTIVE");
+  const [busyPlanId, setBusyPlanId] = useState<string | null>(null);
+
+  const mapServerPlans = (plans: Array<Record<string, any>>): CarePlanPatientPlan[] =>
+    (plans ?? []).map((plan) => ({
+      planId: plan.id,
+      encounterId: plan.encounterId,
+      patientId: plan.patientId,
+      facilityId: plan.facilityId,
+      sourceTemplateId: plan.templateId,
+      sourceTemplateVersion: plan.templateVersion,
+      title: plan.title,
+      lifecycleState: plan.status === "UNDER_REVIEW" ? "IN_REVIEW" : plan.status,
+      components: (plan.components ?? []).map((component: any) => ({
+        componentId: component.id,
+        sourceTemplateComponentId: component.sourceTemplateComponentId,
+        kind: component.componentType,
+        title: component.title,
+        body: component.text,
+        custom: !component.sourceTemplateComponentId,
+        disciplineHint: component.discipline,
+        status: component.status === "NOT_STARTED" ? "PENDING" : component.status,
+        isRecommendationNotOrder: true,
+        safetyDoesNotAuthorizePrecaution: true,
+        authorUserId: component.createdByUserId,
+        lastUpdatedAt: component.updatedAt,
+      })),
+      activatedAt: plan.activatedAt,
+      activatedByUserId: plan.activatedByUserId,
+      completedAt: plan.completedAt,
+      discontinuedAt: plan.discontinuedAt,
+      enteredInError: false,
+      isNotDiagnosis: true,
+      doesNotMutateProblemList: true,
+      doesNotCreateProviderOrders: true,
+      doesNotAlterMar: true,
+      doesNotFinalizeDiet: true,
+      doesNotAlterOxygenVent: true,
+      doesNotAuthorizeDischarge: true,
+      doesNotProcureDme: true,
+      doesNotAuthorizeRestraintsOrIsolation: true,
+      sourceTemplateNotMutated: true,
+      usesD4b1DocumentLifecycle: true,
+      // Preserve server review/progress for dense workspace (non-schema extension via cast)
+      ...(plan.reviews ? { reviews: plan.reviews } : {}),
+      ...(plan.progress ? { progress: plan.progress } : {}),
+      ...(plan.revision != null ? { revision: plan.revision } : {}),
+    })) as CarePlanPatientPlan[];
 
   React.useEffect(() => {
     if (props.careSetting !== "INPATIENT") return;
     let cancelled = false;
     apiFetch(`/encounters/${props.encounterId}/care-plans`)
-      .then(async (response) => {
-        if (!response.ok) throw new Error(`Care plan load failed (${response.status})`);
-        const payload = (await response.json()) as { plans?: Array<any> };
-        if (!cancelled) setLocalPlans((payload.plans ?? []).map((plan) => ({
-          planId: plan.id, encounterId: plan.encounterId, patientId: plan.patientId,
-          facilityId: plan.facilityId, sourceTemplateId: plan.templateId,
-          sourceTemplateVersion: plan.templateVersion, title: plan.title,
-          lifecycleState: plan.status === "UNDER_REVIEW" ? "IN_REVIEW" : plan.status,
-          components: (plan.components ?? []).map((component: any) => ({
-            componentId: component.id, sourceTemplateComponentId: component.sourceTemplateComponentId,
-            kind: component.componentType, title: component.title, body: component.text,
-            custom: !component.sourceTemplateComponentId, disciplineHint: component.discipline,
-            status: component.status === "NOT_STARTED" ? "PENDING" : component.status,
-            isRecommendationNotOrder: true, safetyDoesNotAuthorizePrecaution: true,
-            authorUserId: component.createdByUserId, lastUpdatedAt: component.updatedAt,
-          })), activatedAt: plan.activatedAt, activatedByUserId: plan.activatedByUserId,
-          completedAt: plan.completedAt, discontinuedAt: plan.discontinuedAt, enteredInError: false,
-          isNotDiagnosis: true, doesNotMutateProblemList: true, doesNotCreateProviderOrders: true,
-          doesNotAlterMar: true, doesNotFinalizeDiet: true, doesNotAlterOxygenVent: true,
-          doesNotAuthorizeDischarge: true, doesNotProcureDme: true,
-          doesNotAuthorizeRestraintsOrIsolation: true, sourceTemplateNotMutated: true,
-          usesD4b1DocumentLifecycle: true,
-        })));
-      }).catch((error) => { if (!cancelled) setActivationMessage(error instanceof Error ? error.message : "Care plan load failed"); });
-    return () => { cancelled = true; };
+      .then((payload: { plans?: Array<Record<string, any>> }) => {
+        if (!cancelled) setLocalPlans(mapServerPlans(payload?.plans ?? []));
+      })
+      .catch((error) => {
+        if (!cancelled)
+          setActivationMessage(error instanceof Error ? error.message : "Care plan load failed");
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [props.careSetting, props.encounterId]);
 
   React.useEffect(() => {
@@ -229,20 +264,22 @@ export function EnterpriseInterdisciplinaryCarePlansD4b6(
   const onActivate = async (templateId: string) => {
     if (!canActivate) return;
     if (props.careSetting === "INPATIENT") {
-      const response = await apiFetch(`/encounters/${props.encounterId}/care-plans`, {
-        method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ templateId }),
-      });
-      if (!response.ok) { setActivationMessage(`Activation denied (${response.status})`); return; }
-      const plan = await response.json();
-      setActivationMessage("OK");
-      // Reload from the authority so the UI never invents server identity, timestamps, or IDs.
-      const list = await apiFetch(`/encounters/${props.encounterId}/care-plans`);
-      if (list.ok) {
-        const payload = await list.json();
-        window.dispatchEvent(new CustomEvent("medora:care-plan-persisted", { detail: { carePlanId: plan.id } }));
-        // The load effect mapping is intentionally reused on the next workspace render.
-        setLocalPlans((current) => current.some((item) => item.planId === plan.id) ? current : current);
-        if (payload.plans) window.location.reload();
+      try {
+        const plan = await apiFetch(`/encounters/${props.encounterId}/care-plans`, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ templateId }),
+        });
+        setActivationMessage("OK");
+        window.dispatchEvent(
+          new CustomEvent("medora:care-plan-persisted", { detail: { carePlanId: plan.id } })
+        );
+        const payload = await apiFetch(`/encounters/${props.encounterId}/care-plans`);
+        setLocalPlans(mapServerPlans(payload?.plans ?? []));
+        setActive("activePlans");
+        setPlanFilter("ACTIVE");
+      } catch (error) {
+        setActivationMessage(error instanceof Error ? error.message : "Activation denied");
       }
       return;
     }
@@ -273,13 +310,33 @@ export function EnterpriseInterdisciplinaryCarePlansD4b6(
       data-care-setting={props.careSetting}
       style={{ display: "grid", gap: 12 }}
     >
-      <header style={{ display: "grid", gap: 4 }}>
-        <h2 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: "#0f172a" }}>
-          {t("enterpriseInterdisciplinaryCarePlansD4b6.title")}
-        </h2>
-        <p style={{ margin: 0, fontSize: 12, color: "#64748b" }}>
-          {t("enterpriseInterdisciplinaryCarePlansD4b6.subtitle")} ·{" "}
-          {t(`enterpriseInterdisciplinaryCarePlansD4b6.careSetting.${props.careSetting}`)}
+      <header style={{ display: "grid", gap: 6 }}>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center", justifyContent: "space-between" }}>
+          <div style={{ display: "grid", gap: 2 }}>
+            <h2 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: "#0f172a" }}>
+              {t("enterpriseInterdisciplinaryCarePlansD4b6.title")}
+            </h2>
+            <p style={{ margin: 0, fontSize: 12, color: "#64748b" }}>
+              {t("inpatientNursingAdmissionInp2g.carePlanWorkspace.headerMeta")} ·{" "}
+              {t(`enterpriseInterdisciplinaryCarePlansD4b6.careSetting.${props.careSetting}`)}
+            </p>
+          </div>
+          {canActivate ? (
+            <button
+              type="button"
+              data-testid="eicp-add-care-plan"
+              style={linkButtonStyle}
+              onClick={() => {
+                setActive("templateCatalog");
+                setQuery("");
+              }}
+            >
+              {t("inpatientNursingAdmissionInp2g.carePlanWorkspace.addCarePlan")}
+            </button>
+          ) : null}
+        </div>
+        <p style={{ margin: 0, fontSize: 11, color: "#64748b" }}>
+          {t("inpatientNursingAdmissionInp2g.carePlanWorkspace.singleSurfaceNote")}
         </p>
       </header>
 
@@ -501,44 +558,203 @@ export function EnterpriseInterdisciplinaryCarePlansD4b6(
         active === "safety" ||
         active === "progress" ||
         active === "review" ? (
-          localPlans.length === 0 ? (
-            <p data-testid="eicp-empty-plans" style={{ margin: 0, fontSize: 13, color: "#64748b" }}>
-              {t("enterpriseInterdisciplinaryCarePlansD4b6.empty")}
-            </p>
-          ) : (
-            <ul data-testid="eicp-active-plans" style={{ margin: 0, padding: 0, listStyle: "none", display: "grid", gap: 8 }}>
-              {localPlans.map((plan) => (
-                <li
-                  key={plan.planId}
-                  data-testid={`eicp-plan-${plan.planId}`}
-                  style={{ border: "1px solid #e2e8f0", borderRadius: 12, padding: "8px 10px" }}
+          <>
+            <div
+              data-testid="eicp-plan-filters"
+              style={{ display: "flex", flexWrap: "wrap", gap: 6 }}
+            >
+              {(
+                [
+                  ["ACTIVE", "filterActive"],
+                  ["GOALS", "filterGoals"],
+                  ["INTERVENTIONS", "filterInterventions"],
+                  ["PROGRESS", "filterProgress"],
+                  ["COMPLETED", "filterCompleted"],
+                  ["HISTORY", "filterHistory"],
+                ] as const
+              ).map(([id, key]) => (
+                <button
+                  key={id}
+                  type="button"
+                  data-testid={`eicp-filter-${id}`}
+                  data-active={planFilter === id ? "true" : "false"}
+                  onClick={() => setPlanFilter(id)}
+                  style={{
+                    ...linkButtonStyle,
+                    background: planFilter === id ? "#ecfdf5" : "#fff",
+                    borderColor: planFilter === id ? "#0f766e" : "#e2e8f0",
+                  }}
                 >
-                  <strong style={{ fontSize: 13 }}>
-                    {t(TEMPLATE_TITLE_KEYS[plan.sourceTemplateId ?? ""] ?? plan.title)}
-                  </strong>
-                  <div style={{ fontSize: 12, color: "#64748b", marginTop: 4 }}>
-                    {t(`enterpriseInterdisciplinaryCarePlansD4b6.lifecycle.${plan.lifecycleState}`)}
-                  </div>
-                  <ul style={{ margin: "6px 0 0", paddingLeft: 18, fontSize: 12 }}>
-                    {plan.components
-                      .filter((c) => {
-                        if (active === "goalsOutcomes") return c.kind === "GOAL" || c.kind === "OUTCOME" || c.kind === "FOCUS";
-                        if (active === "interventions") return c.kind === "INTERVENTION";
-                        if (active === "monitoring") return c.kind === "MONITORING";
-                        if (active === "education") return c.kind === "EDUCATION";
-                        if (active === "safety") return c.kind === "SAFETY";
-                        return true;
-                      })
-                      .map((c) => (
-                        <li key={c.componentId}>
-                          {c.kind}: {t(c.title)} — {c.status}
-                        </li>
-                      ))}
-                  </ul>
-                </li>
+                  {t(`inpatientNursingAdmissionInp2g.carePlanWorkspace.${key}`)}
+                </button>
               ))}
-            </ul>
-          )
+            </div>
+            {localPlans.length === 0 ? (
+              <p data-testid="eicp-empty-plans" style={{ margin: 0, fontSize: 13, color: "#64748b" }}>
+                {t("enterpriseInterdisciplinaryCarePlansD4b6.empty")}
+              </p>
+            ) : (
+              <div data-testid="eicp-active-plans" style={{ overflowX: "auto" }}>
+                <table
+                  style={{
+                    width: "100%",
+                    borderCollapse: "collapse",
+                    fontSize: 12,
+                    minWidth: 720,
+                  }}
+                >
+                  <thead>
+                    <tr style={{ textAlign: "left", color: "#64748b", borderBottom: "1px solid #e2e8f0" }}>
+                      <th style={{ padding: "6px 8px" }}>
+                        {t("inpatientNursingAdmissionInp2g.carePlanWorkspace.colProblem")}
+                      </th>
+                      <th style={{ padding: "6px 8px" }}>
+                        {t("inpatientNursingAdmissionInp2g.carePlanWorkspace.colGoal")}
+                      </th>
+                      <th style={{ padding: "6px 8px" }}>
+                        {t("inpatientNursingAdmissionInp2g.carePlanWorkspace.colInterventions")}
+                      </th>
+                      <th style={{ padding: "6px 8px" }}>
+                        {t("inpatientNursingAdmissionInp2g.carePlanWorkspace.colOwner")}
+                      </th>
+                      <th style={{ padding: "6px 8px" }}>
+                        {t("inpatientNursingAdmissionInp2g.carePlanWorkspace.colStatus")}
+                      </th>
+                      <th style={{ padding: "6px 8px" }}>
+                        {t("inpatientNursingAdmissionInp2g.carePlanWorkspace.colActions")}
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {localPlans
+                      .filter((plan) => {
+                        if (planFilter === "COMPLETED")
+                          return plan.lifecycleState === "COMPLETED" || plan.lifecycleState === "DISCONTINUED";
+                        if (planFilter === "HISTORY") return true;
+                        if (planFilter === "ACTIVE")
+                          return (
+                            plan.lifecycleState === "ACTIVE" ||
+                            plan.lifecycleState === "IN_PROGRESS" ||
+                            plan.lifecycleState === "IN_REVIEW" ||
+                            plan.lifecycleState === "DRAFT_CUSTOMIZATION"
+                          );
+                        return (
+                          plan.lifecycleState !== "COMPLETED" &&
+                          plan.lifecycleState !== "DISCONTINUED"
+                        );
+                      })
+                      .map((plan) => {
+                        const goals = plan.components.filter(
+                          (c) => c.kind === "GOAL" || c.kind === "OUTCOME" || c.kind === "FOCUS"
+                        );
+                        const interventions = plan.components.filter((c) => c.kind === "INTERVENTION");
+                        const showGoals =
+                          planFilter === "GOALS" ||
+                          planFilter === "ACTIVE" ||
+                          planFilter === "HISTORY" ||
+                          planFilter === "COMPLETED";
+                        const showInterventions =
+                          planFilter === "INTERVENTIONS" ||
+                          planFilter === "ACTIVE" ||
+                          planFilter === "HISTORY" ||
+                          planFilter === "COMPLETED";
+                        const owners = [
+                          ...new Set(
+                            plan.components
+                              .map((c) => (c.disciplineHint ? String(c.disciplineHint) : ""))
+                              .filter((d) => d.trim().length > 0)
+                          ),
+                        ];
+                        const revision = (plan as { revision?: number }).revision ?? 1;
+                        return (
+                          <tr
+                            key={plan.planId}
+                            data-testid={`eicp-plan-${plan.planId}`}
+                            style={{ borderBottom: "1px solid #f1f5f9", verticalAlign: "top" }}
+                          >
+                            <td style={{ padding: "8px" }}>
+                              <strong>
+                                {t(TEMPLATE_TITLE_KEYS[plan.sourceTemplateId ?? ""] ?? plan.title)}
+                              </strong>
+                              <div style={{ color: "#64748b", marginTop: 2 }}>
+                                {plan.activatedAt
+                                  ? String(plan.activatedAt).slice(0, 10)
+                                  : "—"}
+                              </div>
+                            </td>
+                            <td style={{ padding: "8px" }}>
+                              {showGoals
+                                ? goals.map((g) => t(g.title)).join("; ") || "—"
+                                : "—"}
+                            </td>
+                            <td style={{ padding: "8px" }}>
+                              {showInterventions
+                                ? interventions.map((g) => t(g.title)).join("; ") || "—"
+                                : "—"}
+                            </td>
+                            <td style={{ padding: "8px" }}>{owners.join(", ") || "—"}</td>
+                            <td style={{ padding: "8px" }}>
+                              {t(
+                                `enterpriseInterdisciplinaryCarePlansD4b6.lifecycle.${plan.lifecycleState}`
+                              )}
+                            </td>
+                            <td style={{ padding: "8px" }}>
+                              {canActivate &&
+                              (plan.lifecycleState === "ACTIVE" ||
+                                plan.lifecycleState === "IN_PROGRESS" ||
+                                plan.lifecycleState === "IN_REVIEW") ? (
+                                <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
+                                  <button
+                                    type="button"
+                                    style={linkButtonStyle}
+                                    disabled={busyPlanId === plan.planId}
+                                    data-testid={`eicp-complete-${plan.planId}`}
+                                    onClick={() => {
+                                      void (async () => {
+                                        setBusyPlanId(plan.planId);
+                                        try {
+                                          await apiFetch(
+                                            `/encounters/${props.encounterId}/care-plans/${plan.planId}/transitions`,
+                                            {
+                                              method: "POST",
+                                              headers: { "content-type": "application/json" },
+                                              body: JSON.stringify({
+                                                toStatus: "COMPLETED",
+                                                expectedRevision: revision,
+                                              }),
+                                            }
+                                          );
+                                          const payload = await apiFetch(
+                                            `/encounters/${props.encounterId}/care-plans`
+                                          );
+                                          setLocalPlans(mapServerPlans(payload?.plans ?? []));
+                                        } catch (error) {
+                                          setActivationMessage(
+                                            error instanceof Error
+                                              ? error.message
+                                              : "Complete denied"
+                                          );
+                                        } finally {
+                                          setBusyPlanId(null);
+                                        }
+                                      })();
+                                    }}
+                                  >
+                                    {t("inpatientNursingAdmissionInp2g.carePlanWorkspace.complete")}
+                                  </button>
+                                </div>
+                              ) : (
+                                "—"
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </>
         ) : null}
 
         {active === "nursingContributions" ? (
