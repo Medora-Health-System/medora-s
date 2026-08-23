@@ -9,6 +9,7 @@ import {
   INPATIENT_ADMISSION_CLINICAL_SECTIONS,
   type MedSurgNursingAdmissionDocV1,
 } from "./medSurgNursingAdmissionD4a1.js";
+import { assertNursingAdmissionOwnerWrite } from "./nursingDocumentationOwnershipInp2g1.js";
 import type {
   AdmissionSectionCompletionState,
   InpatientAdmissionClinicalSection,
@@ -584,10 +585,18 @@ export function appendNursingAdmissionAmendment(input: {
         | "NURSING_ADMISSION_AMENDMENT_STALE"
         | "NURSING_ADMISSION_NOT_SIGNED"
         | "NURSING_ADMISSION_AMENDMENT_DUPLICATE"
-        | "NURSING_ADMISSION_AMENDMENT_NOT_AUTHORIZED";
+        | "NURSING_ADMISSION_AMENDMENT_NOT_AUTHORIZED"
+        | "NURSING_ADMISSION_NOT_DOCUMENT_OWNER";
     } {
   if (!input.doc.nurseSignature?.signed) {
     return { ok: false, code: "NURSING_ADMISSION_NOT_SIGNED" };
+  }
+  const ownerGate = assertNursingAdmissionOwnerWrite({
+    doc: input.doc,
+    actorUserId: input.actorUserId,
+  });
+  if (!ownerGate.ok) {
+    return { ok: false, code: "NURSING_ADMISSION_NOT_DOCUMENT_OWNER" };
   }
   if (input.doc.expectedVersion !== input.clientExpectedVersion) {
     return { ok: false, code: "NURSING_ADMISSION_AMENDMENT_STALE" };

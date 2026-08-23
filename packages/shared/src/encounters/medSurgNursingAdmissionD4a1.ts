@@ -35,6 +35,10 @@ import {
   type PatientClinicalHistoryProfile,
   type PatientHistorySectionKey,
 } from "../patient/patientClinicalHistoryProfile.js";
+import {
+  assertNursingAdmissionOwnerWrite,
+  stampNursingAdmissionDocumentOwnerOnDraftWrite,
+} from "./nursingDocumentationOwnershipInp2g1.js";
 
 export const MEDSURG_NURSING_ADMISSION_CERTIFICATION_ID =
   "MEDUI.MEDSURG_NURSING_ADMISSION.D4A1" as const;
@@ -223,6 +227,12 @@ export type MedSurgNursingAdmissionDocV1 = {
   domainReferences?: unknown[];
   /** D4A.2.5A — append-only post-sign amendments (original signature remains immutable). */
   amendments?: unknown[];
+  /**
+   * MEDUI.INP.2G.1 — immutable draft document owner (first successful RN section write).
+   * After sign, resolveNursingAdmissionDocumentOwner prefers nurseSignature.signedByUserId.
+   * Never transfer on shift change / assignment.
+   */
+  documentOwnerUserId?: string | null;
   /**
    * MEDUI.INP.2B.1 — nurse-selected clinical effective time.
    * Distinct from server audit `updatedAt` / signature clocks. Additive JSON only.
@@ -534,7 +544,10 @@ export function saveAdmissionSectionDraft(input: {
   | { ok: true; doc: MedSurgNursingAdmissionDocV1 }
   | {
       ok: false;
-      code: "EXPECTED_VERSION_CONFLICT" | "NURSING_ADMISSION_ALREADY_SIGNED";
+      code:
+        | "EXPECTED_VERSION_CONFLICT"
+        | "NURSING_ADMISSION_ALREADY_SIGNED"
+        | "NURSING_ADMISSION_NOT_DOCUMENT_OWNER";
     } {
   if (!admissionDocumentationSupportsSaveAndResume()) {
     return { ok: false, code: "EXPECTED_VERSION_CONFLICT" };
@@ -542,6 +555,11 @@ export function saveAdmissionSectionDraft(input: {
   if (input.blockIfSigned !== false && input.doc.nurseSignature?.signed) {
     return { ok: false, code: "NURSING_ADMISSION_ALREADY_SIGNED" };
   }
+  const ownerGate = assertNursingAdmissionOwnerWrite({
+    doc: input.doc,
+    actorUserId: input.actorUserId,
+  });
+  if (!ownerGate.ok) return ownerGate;
   const gate = validateSectionDraftSave({
     currentExpectedVersion: input.doc.expectedVersion,
     clientExpectedVersion: input.clientExpectedVersion,
@@ -582,14 +600,17 @@ export function saveAdmissionSectionDraft(input: {
       : (input.doc.clinicalDocumentedAt ?? null);
   return {
     ok: true,
-    doc: {
-      ...input.doc,
-      sections,
-      expectedVersion: nextVersion,
-      clinicalDocumentedAt,
-      updatedAt: at,
-      updatedByUserId: input.actorUserId,
-    },
+    doc: stampNursingAdmissionDocumentOwnerOnDraftWrite(
+      {
+        ...input.doc,
+        sections,
+        expectedVersion: nextVersion,
+        clinicalDocumentedAt,
+        updatedAt: at,
+        updatedByUserId: input.actorUserId,
+      },
+      input.actorUserId,
+    ),
   };
 }
 

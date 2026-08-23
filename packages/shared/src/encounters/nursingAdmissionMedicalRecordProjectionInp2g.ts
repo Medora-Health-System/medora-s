@@ -21,6 +21,9 @@ export type NursingAdmissionMedicalRecordProjectionV1 = {
   nurseCredentials: string | null;
   signedAt: string | null;
   amendments: Array<{ type: string; sectionId: string; reason: string; createdAt: string }>;
+  /** True when the authoritative admission has one or more amendments (summary/print chrome). */
+  hasAmendments: boolean;
+  amendmentCount: number;
 };
 
 function push(
@@ -58,6 +61,8 @@ export function projectNursingAdmissionMedicalRecord(
       nurseCredentials: null,
       signedAt: null,
       amendments: [],
+      hasAmendments: false,
+      amendmentCount: 0,
     };
   }
 

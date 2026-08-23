@@ -168,6 +168,8 @@ import {
   shouldSetDischargedAtOnEnterpriseClose,
   type D4c7jAdvisoryClassification,
   type D4c7jClosePreflight,
+  assertInpatientNursingAssessmentWriteAllowed,
+  assertInpatientNursingAssessmentCorrection,
 } from "@medora/shared";
 import { throwRoomAlreadyOccupiedConflict } from "./ed-room-occupancy.util";
 import { FacilityBedBoardService } from "../facilities/facility-bed-board.service";
@@ -352,7 +354,63 @@ export class EncountersService {
     if (!performer || !["RN", "ADMIN"].includes(performer.performerRoleTitle)) {
       throw new ForbiddenException("Clinical nursing assessment authority required");
     }
-    const clinicalTime = normalizeInpatientClinicalDocumentedAt(clinical.clinicalDocumentedAt);
+    const rootPreview =
+      encounter.nursingAssessment && typeof encounter.nursingAssessment === "object" && !Array.isArray(encounter.nursingAssessment)
+        ? (encounter.nursingAssessment as Record<string, unknown>)
+        : {};
+    const latestPreview = rootPreview[INPATIENT_NURSING_ASSESSMENT_V1_KEY] as InpatientNursingAssessmentV1 | undefined;
+    const correctionOfSessionId =
+      typeof (clinical as { correctionOfSessionId?: unknown }).correctionOfSessionId === "string"
+        ? String((clinical as { correctionOfSessionId?: string }).correctionOfSessionId).trim()
+        : "";
+    const correctionReason =
+      typeof (clinical as { correctionReason?: unknown }).correctionReason === "string"
+        ? String((clinical as { correctionReason?: string }).correctionReason).trim()
+        : "";
+    const isCorrection = Boolean(correctionOfSessionId || correctionReason);
+    if (isCorrection) {
+      const priorRows = await this.prisma.encounterClinicalEvent.findMany({
+        where: {
+          encounterId,
+          facilityId,
+          patientId: encounter.patientId,
+          eventType: EncounterClinicalEventType.NURSING_ASSESSMENT_SAVED,
+          payloadJson: { path: ["namespace"], equals: INPATIENT_NURSING_ASSESSMENT_V1_KEY },
+        },
+        orderBy: { createdAt: "asc" },
+        take: 100,
+      });
+      const sessions = priorRows
+        .map((row) => (row.payloadJson as Record<string, unknown>)?.snapshot as InpatientNursingAssessmentV1 | undefined)
+        .filter(Boolean) as InpatientNursingAssessmentV1[];
+      if (latestPreview?.sessionId && !sessions.some((s) => s.sessionId === latestPreview.sessionId)) {
+        sessions.push(latestPreview);
+      }
+      const correctionGate = assertInpatientNursingAssessmentCorrection({
+        actorUserId,
+        correctionOfSessionId,
+        correctionReason,
+        sessions,
+      });
+      if (!correctionGate.ok) {
+        throw new ForbiddenException(correctionGate.code);
+      }
+    } else {
+      const writeGate = assertInpatientNursingAssessmentWriteAllowed({
+        latest: latestPreview
+          ? {
+              status: latestPreview.status,
+              authorUserId: latestPreview.authorUserId,
+              sessionId: latestPreview.sessionId,
+            }
+          : null,
+        actorUserId,
+      });
+      if (!writeGate.ok) {
+        throw new ForbiddenException(writeGate.code);
+      }
+    }
+const clinicalTime = normalizeInpatientClinicalDocumentedAt(clinical.clinicalDocumentedAt);
     if (!clinicalTime.ok) {
       throw new BadRequestException({
         code: INPATIENT_CLINICAL_DOCUMENTED_AT_INVALID,

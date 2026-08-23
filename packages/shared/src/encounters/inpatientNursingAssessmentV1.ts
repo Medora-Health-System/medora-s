@@ -43,6 +43,10 @@ export const inpatientNursingAssessmentSaveSchema = z.object({
   musculoskeletal: codedText.optional(),
   safety: codedText.optional(),
   narrative: text(8000).optional(),
+  /** Owner correction of a specific prior session — never mutates that session. */
+  correctionOfSessionId: z.string().trim().min(1).max(80).optional(),
+  /** Required when correctionOfSessionId is set. */
+  correctionReason: z.string().trim().min(1).max(500).optional(),
 }).strict();
 
 export type InpatientNursingAssessmentSave = z.infer<typeof inpatientNursingAssessmentSaveSchema>;

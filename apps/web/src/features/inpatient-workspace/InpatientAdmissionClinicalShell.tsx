@@ -26,6 +26,8 @@ import {
 } from "@medora/shared";
 import { useI18n } from "@/lib/i18n";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
+import { resolveNursingAdmissionDocumentOwner } from "@medora/shared";
+
 import { apiFetch, asApiObject } from "@/lib/apiClient";
 import { fetchOrdersForEncounter } from "@/lib/clinicalWorklistApi";
 import { AdmissionJourneyPanel } from "@/features/hospital-care/AdmissionJourneyPanel";
@@ -111,7 +113,10 @@ type NursingDoc = {
     signed?: boolean;
     signedAt?: string | null;
     signedByUserId?: string | null;
+    displayName?: string | null;
+    credentials?: string | null;
   } | null;
+  documentOwnerUserId?: string | null;
   providerHandoff?: { taskId?: string; status?: string } | null;
   wounds?: unknown[];
   domainReferences?: NursingAdmissionDomainReferenceV1[];
@@ -160,7 +165,7 @@ export function InpatientAdmissionClinicalShell({
   assignedRnName = null,
 }: Props) {
   const { t, language } = useI18n();
-  const { roles, facilityId } = useFacilityAndRoles();
+  const { roles, facilityId, userId } = useFacilityAndRoles();
   const [active, setActive] = useState<InpatientAdmissionClinicalSection>("OVERVIEW");
   const [doc, setDoc] = useState<NursingDoc | null>(null);
   const [completion, setCompletion] = useState<Record<string, unknown> | null>(null);
@@ -188,6 +193,7 @@ export function InpatientAdmissionClinicalShell({
   }>({ unit: null, bed: null });
   const [printOpen, setPrintOpen] = useState(false);
   const [clinicalOps, setClinicalOps] = useState<InpatientClinicalOpsV1 | null>(null);
+  const [correctionReason, setCorrectionReason] = useState<string>("");
   const [amendMode, setAmendMode] = useState<
     null | "ADDENDUM" | "CORRECTION" | "ENTERED_IN_ERROR"
   >(null);
@@ -222,14 +228,18 @@ export function InpatientAdmissionClinicalShell({
   const unableReasonRef = useRef(unableReason);
   const clinicalDocumentedAtRef = useRef(clinicalDocumentedAt);
   const activeRef = useRef(active);
-  const canAmend = !readOnly && roles.includes("RN");
   const canLinkDomain = !readOnly && (roles.includes("RN") || roles.includes("ADMIN"));
 
   const sectionIndex = INPATIENT_ADMISSION_CLINICAL_SECTIONS.indexOf(active);
   const isFirst = sectionIndex <= 0;
   const isLast = sectionIndex >= INPATIENT_ADMISSION_CLINICAL_SECTIONS.length - 1;
   const signed = Boolean(doc?.nurseSignature?.signed);
-  const writeBlocked = readOnly || signed;
+  const documentOwnerUserId = resolveNursingAdmissionDocumentOwner(doc ?? null);
+  const isDocumentOwner = Boolean(userId) && (documentOwnerUserId == null || documentOwnerUserId === userId);
+  const nonOwnerDraftLock = !signed && documentOwnerUserId != null && documentOwnerUserId !== userId;
+  const writeBlocked = readOnly || signed || nonOwnerDraftLock;
+  const canOwnerCorrect = signed && isDocumentOwner && !readOnly && roles.includes("RN");
+  const canAmend = canOwnerCorrect;
   const activeStage = nursingAdmissionStageForSection(active);
   const stageId = (activeStage?.id ?? "ARRIVAL_IDENTITY") as NursingAdmissionStageId;
   const stageIndex = NURSING_ADMISSION_STAGES.findIndex((s) => s.id === stageId);
@@ -805,19 +815,35 @@ export function InpatientAdmissionClinicalShell({
             lineHeight: 1.45,
           }}
         >
-          <strong style={{ display: "block", marginBottom: 4 }}>
-            {t("inpatientNursingAdmissionInp2g.signedLock.title")}
+          <strong style={{ display: "block", marginBottom: 4 }} data-testid="nursing-admission-signed-owner-banner">
+            {isDocumentOwner
+              ? t("inpatientNursingAdmissionInp2g.ownership.signedBanner")
+                  .replace("{name}", doc?.nurseSignature?.displayName || doc?.nurseSignature?.signedByUserId || "—")
+                  .replace("{when}", doc?.nurseSignature?.signedAt || "—")
+              : t("inpatientNursingAdmissionInp2g.ownership.signedReadOnly")}
           </strong>
-          <span>{t("inpatientNursingAdmissionInp2g.signedLock.body")}</span>
-          {canAmend ? (
-            <p style={{ margin: "8px 0 0", fontSize: 12 }}>
-              {t("inpatientNursingAdmissionInp2g.signedLock.amendHint")}
-            </p>
+          {isDocumentOwner ? (
+            <span>{t("inpatientNursingAdmissionInp2g.signedLock.body")}</span>
           ) : (
-            <p style={{ margin: "8px 0 0", fontSize: 12 }}>
-              {t("inpatientNursingAdmissionInp2g.signedLock.readOnlyHint")}
-            </p>
+            <span>{t("inpatientNursingAdmissionInp2g.ownership.onlyAuthorMayCorrect")}</span>
           )}
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 8 }}>
+            <button type="button" style={chipBtn} data-testid="nursing-admission-view-signed" onClick={() => setAmendMode(null)}>
+              {t("inpatientNursingAdmissionInp2g.ownership.viewSigned")}
+            </button>
+            <button
+              type="button"
+              style={chipBtn}
+              data-testid="nursing-admission-edit-correct"
+              disabled={!canOwnerCorrect}
+              onClick={() => canOwnerCorrect && setAmendMode("CORRECTION")}
+            >
+              {t("inpatientNursingAdmissionInp2g.ownership.editCorrect")}
+            </button>
+            <button type="button" style={chipBtn} data-testid="nursing-admission-amendment-history" onClick={() => setAmendMode(null)}>
+              {t("inpatientNursingAdmissionInp2g.ownership.amendmentHistory")}
+            </button>
+          </div>
         </div>
       ) : readOnly ? (
         <div
@@ -839,6 +865,66 @@ export function InpatientAdmissionClinicalShell({
         </div>
       ) : null}
 
+
+      {!signed && nonOwnerDraftLock ? (
+        <div
+          role="status"
+          data-testid="nursing-admission-draft-owner-lock"
+          data-write-blocked="true"
+          data-lock-reason="DRAFT_OWNER"
+          style={{
+            marginBottom: 12,
+            padding: "10px 12px",
+            borderRadius: 12,
+            border: "1px solid #e2e8f0",
+            background: "#f8fafc",
+            color: "#475569",
+            fontSize: 13,
+          }}
+        >
+          <strong style={{ display: "block", marginBottom: 4 }}>
+            {t("inpatientNursingAdmissionInp2g.ownership.draftReadOnly")}
+          </strong>
+          <span>{t("inpatientNursingAdmissionInp2g.ownership.draftOwnedBy")}</span>
+        </div>
+      ) : null}
+
+      {signed && canOwnerCorrect && amendMode === "CORRECTION" ? (
+        <div data-testid="nursing-admission-correction-reason" style={{ ...panel, marginBottom: 12 }}>
+          <label style={{ display: "block", fontSize: 13, fontWeight: 600, marginBottom: 6 }}>
+            {t("inpatientNursingAdmissionInp2g.ownership.correctionReasonLabel")}
+          </label>
+          <select
+            value={correctionReason}
+            onChange={(e) => setCorrectionReason(e.target.value)}
+            style={{ width: "100%", maxWidth: 420, marginBottom: 8 }}
+            data-testid="nursing-admission-correction-reason-select"
+          >
+            <option value="">—</option>
+            <option value="DOCUMENTATION_ERROR">{t("inpatientNursingAdmissionInp2g.ownership.reasonDocumentationError")}</option>
+            <option value="INCORRECT_VALUE">{t("inpatientNursingAdmissionInp2g.ownership.reasonIncorrectValue")}</option>
+            <option value="INFORMATION_CLARIFIED">{t("inpatientNursingAdmissionInp2g.ownership.reasonInformationClarified")}</option>
+            <option value="LATE_ENTRY">{t("inpatientNursingAdmissionInp2g.ownership.reasonLateEntry")}</option>
+            <option value="OTHER">{t("inpatientNursingAdmissionInp2g.ownership.reasonOther")}</option>
+          </select>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button type="button" style={chipBtn} onClick={() => { setAmendMode(null); setCorrectionReason(""); }}>
+              {t("inpatientNursingAdmissionInp2g.ownership.cancelCorrection")}
+            </button>
+            <button
+              type="button"
+              style={chipBtn}
+              disabled={!correctionReason}
+              onClick={() => {
+                if (!correctionReason) return;
+                setAmendMode("CORRECTION");
+              }}
+            >
+              {t("inpatientNursingAdmissionInp2g.ownership.saveCorrection")}
+            </button>
+          </div>
+        </div>
+      ) : null}
       {signed ? (
         <div data-testid="nursing-admission-amendments" style={{ ...panel, marginBottom: 12 }}>
           <h4 style={{ margin: "0 0 6px" }}>{t("hospitalAdmissionD4a25a.amendments.title")}</h4>
@@ -1260,6 +1346,7 @@ export function InpatientAdmissionClinicalShell({
         onClose={() => setPrintOpen(false)}
       />
       <NursingAdmissionAmendmentDialog
+          initialReason={correctionReason || undefined}
         encounterId={encounterId}
         expectedVersion={expectedVersionRef.current}
         expectedAmendmentVersion={(doc?.amendments ?? []).length}

@@ -57,3 +57,92 @@ describe("INP.1A inpatient nursing authority", () => {
     expect(provider.events).toHaveLength(0);
   });
 });
+
+
+describe("INP.2G.1 assessment ownership gates", () => {
+  const encounter = {
+    id: "enc-1",
+    patientId: "pat-1",
+    type: EncounterType.INPATIENT,
+    admissionSummaryJson: { hospitalAssignmentV1: { version: 1, careSetting: "INPATIENT", assignments: [] } },
+    nursingAssessment: {
+      inpatientNursingAssessmentV1: {
+        version: 1,
+        sessionId: "s-draft",
+        status: "DRAFT",
+        authoredAt: "2026-01-01T00:00:00.000Z",
+        authorUserId: "rn-1",
+        authorDisplayName: "RN One",
+        authorRole: "RN",
+        narrative: "draft",
+      },
+    },
+  };
+
+  function harness(row: any = encounter, roleCode = "RN", actorId = "rn-2") {
+    const events: any[] = [];
+    const prisma: any = {
+      encounter: { findFirst: jest.fn().mockResolvedValue(row), update: jest.fn().mockResolvedValue({}) },
+      encounterClinicalEvent: {
+        create: jest.fn(async ({ data }) => {
+          events.push({ id: `ev-${events.length + 1}`, createdAt: new Date(), ...data });
+          return data;
+        }),
+        findMany: jest.fn(async () => events),
+      },
+      user: { findFirst: jest.fn().mockResolvedValue({ id: actorId, firstName: "Other", lastName: "Nurse" }) },
+      userRole: { findMany: jest.fn().mockResolvedValue([{ role: { code: roleCode } }]) },
+      $transaction: jest.fn(async (fn: any) => fn(prisma)),
+    };
+    const service = new EncountersService(prisma, {} as any, {} as any, {} as any, {} as any, {} as any, {} as any);
+    return { service, prisma, events };
+  }
+
+  it("forbids non-owner writes while latest assessment is DRAFT", async () => {
+    const { service } = harness();
+    await expect(
+      service.saveInpatientNursingAssessment("fac-1", "enc-1", { status: "SAVED", narrative: "nope" } as any, "rn-2"),
+    ).rejects.toMatchObject({ response: expect.anything() });
+  });
+
+  it("allows owner correction linked to exact session id", async () => {
+    const signed = {
+      ...encounter,
+      nursingAssessment: {
+        inpatientNursingAssessmentV1: {
+          version: 1,
+          sessionId: "s-signed",
+          status: "SIGNED",
+          authoredAt: "2026-01-01T00:00:00.000Z",
+          authorUserId: "rn-1",
+          authorDisplayName: "RN One",
+          authorRole: "RN",
+          narrative: "signed",
+        },
+      },
+    };
+    const { service, events, prisma } = harness(signed, "RN", "rn-1");
+    prisma.encounterClinicalEvent.findMany = jest.fn(async () => [
+      {
+        payloadJson: {
+          namespace: "inpatientNursingAssessmentV1",
+          snapshot: signed.nursingAssessment.inpatientNursingAssessmentV1,
+        },
+      },
+    ]);
+    const saved = await service.saveInpatientNursingAssessment(
+      "fac-1",
+      "enc-1",
+      {
+        status: "SAVED",
+        narrative: "corrected",
+        correctionOfSessionId: "s-signed",
+        correctionReason: "DOCUMENTATION_ERROR",
+      } as any,
+      "rn-1",
+    );
+    expect(saved.assessment.correctionOfSessionId).toBe("s-signed");
+    expect(saved.assessment.sessionId).not.toBe("s-signed");
+    expect(events.length).toBe(1);
+  });
+});
