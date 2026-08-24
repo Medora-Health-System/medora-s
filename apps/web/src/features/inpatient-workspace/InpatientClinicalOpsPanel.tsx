@@ -218,7 +218,10 @@ export function InpatientClinicalOpsPanel({
       ) : null}
 
       {mode === "carePlan" ? (
-        <div>
+        <div data-testid="inpatient-ops-care-plan-legacy-readonly">
+          <p style={{ margin: "0 0 10px", fontSize: 13, color: "#64748b" }}>
+            {t("inpatientNursingAdmissionInp2g.carePlanWorkspace.legacyOpsReadOnly")}
+          </p>
           <ul style={{ margin: "0 0 10px", paddingLeft: 18 }}>
             {carePlan.length === 0 ? (
               <li>{t("inpatientD3e7.ops.noCarePlan")}</li>
@@ -232,24 +235,6 @@ export function InpatientClinicalOpsPanel({
               ))
             )}
           </ul>
-          <input
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            placeholder={t("inpatientD3e7.ops.carePlanGoalPlaceholder")}
-            style={inputStyle}
-          />
-          <button
-            type="button"
-            disabled={busy || !text.trim()}
-            style={{ ...btnStyle, marginTop: 8 }}
-            onClick={() =>
-              void runPatch({
-                appendCarePlanItem: { discipline: "medicine", goalText: text.trim() },
-              })
-            }
-          >
-            {t("inpatientD3e7.ops.addCarePlanItem")}
-          </button>
         </div>
       ) : null}
 

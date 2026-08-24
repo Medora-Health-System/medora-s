@@ -2,7 +2,7 @@
  * MEDUI.D4B.6 — English strings for enterprise interdisciplinary care plans.
  */
 export const enterpriseInterdisciplinaryCarePlansD4b6En = {
-  title: "Interdisciplinary care plans",
+  title: "Interdisciplinary Care Plan",
   subtitle:
     "Template browse → preview → customize → activate → progress → review — not diagnosis, not orders, not discharge authorization",
   careSetting: {

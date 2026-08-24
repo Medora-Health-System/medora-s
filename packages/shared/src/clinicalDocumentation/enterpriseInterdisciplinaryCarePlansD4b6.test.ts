@@ -375,4 +375,21 @@ describe("MEDUI.D4B.6 enterprise interdisciplinary care plans", () => {
     expect(summary.techProgress[0]?.isTechnicianAuthored).toBe(true);
     expect(summary.legacyD3eStub[0]?.isNotAuthoritativeIdcp).toBe(true);
   });
+
+
+  it("MEDUI.CP.1A clinician primary nav hides legacy and discipline walls", () => {
+    const ip = carePlanWorkspaceSectionsForCareSetting("INPATIENT", {
+      roleProfile: "NURSE_CARE_PLAN_AUTHOR",
+      clinicianPrimaryNav: true,
+      includeDeferred: false,
+    }).map((s) => s.id);
+    expect(ip).toEqual(
+      expect.arrayContaining(["activePlans", "goalsOutcomes", "interventions", "progress", "history"])
+    );
+    expect(ip).not.toContain("legacyD3eStub");
+    expect(ip).not.toContain("deferredBoundaries");
+    expect(ip).not.toContain("nursingContributions");
+    expect(ip).not.toContain("rtContributions");
+  });
+
 });

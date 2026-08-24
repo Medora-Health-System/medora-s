@@ -940,6 +940,23 @@ export type EnterpriseCarePlanWorkspaceSectionId =
   | "history"
   | "deferredBoundaries";
 
+/** MEDUI.CP.1A — bedside primary navigation (engineering/legacy sections excluded). */
+export const CLINICIAN_CARE_PLAN_PRIMARY_SECTION_IDS = [
+  "activePlans",
+  "goalsOutcomes",
+  "interventions",
+  "progress",
+  "history",
+] as const satisfies ReadonlyArray<EnterpriseCarePlanWorkspaceSectionId>;
+
+/** Sections reachable from Add Care Plan / plan detail, not permanent top-level nav. */
+export const CLINICIAN_CARE_PLAN_WORKFLOW_SECTION_IDS = [
+  "templateCatalog",
+  "templatePreview",
+  "review",
+] as const satisfies ReadonlyArray<EnterpriseCarePlanWorkspaceSectionId>;
+
+
 export type CarePlanSectionMode =
   | "WORKFLOW"
   | "PROJECTION"
@@ -986,13 +1003,29 @@ export function resolveCarePlanWorkspaceSection(
 
 export function carePlanWorkspaceSectionsForCareSetting(
   careSetting: "EMERGENCY" | "OBSERVATION" | "INPATIENT",
-  opts?: { roleProfile?: CarePlanRoleProfile; includeDeferred?: boolean }
+  opts?: {
+    roleProfile?: CarePlanRoleProfile;
+    includeDeferred?: boolean;
+    /** When true (CP.1A clinician workspace), hide legacy/engineering/discipline-wall tabs. */
+    clinicianPrimaryNav?: boolean;
+  }
 ): EnterpriseCarePlanWorkspaceSectionDefinition[] {
   const roleProfile = opts?.roleProfile ?? "NURSE_CARE_PLAN_AUTHOR";
   const includeDeferred = opts?.includeDeferred ?? true;
+  const clinicianPrimaryNav = opts?.clinicianPrimaryNav ?? false;
   return ENTERPRISE_CARE_PLAN_WORKSPACE_SECTIONS.filter((s) => {
     if (!s.allowedCareSettings.includes(careSetting)) return false;
     if (s.mode === "DEFERRED" && !includeDeferred) return false;
+    if (clinicianPrimaryNav) {
+      const primary = CLINICIAN_CARE_PLAN_PRIMARY_SECTION_IDS as ReadonlyArray<string>;
+      const workflow = CLINICIAN_CARE_PLAN_WORKFLOW_SECTION_IDS as ReadonlyArray<string>;
+      // ED keeps limited overview + activePlans only (existing ED_LIMITED rule below).
+      if (careSetting === "EMERGENCY") {
+        if (s.id !== "overview" && s.id !== "activePlans") return false;
+      } else if (!primary.includes(s.id) && !workflow.includes(s.id)) {
+        return false;
+      }
+    }
     if (careSetting === "EMERGENCY" && s.mode === "WORKFLOW" && s.id !== "overview" && s.id !== "activePlans") {
       return false;
     }

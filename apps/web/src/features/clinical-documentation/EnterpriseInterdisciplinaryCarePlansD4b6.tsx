@@ -12,6 +12,7 @@ import {
   activateCarePlanFromTemplate,
   buildEnterpriseInterdisciplinaryCarePlansSummary,
   carePlanWorkspaceSectionsForCareSetting,
+  CLINICIAN_CARE_PLAN_PRIMARY_SECTION_IDS,
   listActiveCarePlanTemplates,
   previewCarePlanTemplate,
   resolveCarePlanRoleProfile,
@@ -122,6 +123,30 @@ const TEMPLATE_DESC_KEYS: Record<string, string> = {
   discharge_readiness: "enterpriseInterdisciplinaryCarePlansD4b6.templates.dischargeReadiness.description",
 };
 
+
+function clinicalCarePlanErrorMessage(error: unknown, t: (key: string) => string): string {
+  const raw =
+    error && typeof error === "object" && "message" in error
+      ? String((error as { message?: unknown }).message ?? "")
+      : error instanceof Error
+        ? error.message
+        : String(error ?? "");
+  const upper = raw.toUpperCase();
+  if (upper.includes("CARE_PLAN_REVISION_CONFLICT") || upper.includes("409")) {
+    return t("inpatientNursingAdmissionInp2g.carePlanWorkspace.revisionConflict");
+  }
+  if (upper.includes("CARE_PLAN_COMPONENT_NOT_AUTHOR")) {
+    return t("inpatientNursingAdmissionInp2g.carePlanWorkspace.notAuthor");
+  }
+  if (upper.includes("CARE_PLAN_LEGACY_OPS_WRITE_FROZEN")) {
+    return t("inpatientNursingAdmissionInp2g.carePlanWorkspace.legacyOpsReadOnly");
+  }
+  if (/^[A-Z0-9_]+$/.test(raw.trim()) || /[0-9a-f]{8}-[0-9a-f]{4}-/i.test(raw)) {
+    return t("inpatientNursingAdmissionInp2g.carePlanWorkspace.genericError");
+  }
+  return raw || t("inpatientNursingAdmissionInp2g.carePlanWorkspace.genericError");
+}
+
 export function EnterpriseInterdisciplinaryCarePlansD4b6(
   props: EnterpriseInterdisciplinaryCarePlansProps
 ) {
@@ -135,16 +160,30 @@ export function EnterpriseInterdisciplinaryCarePlansD4b6(
     () =>
       carePlanWorkspaceSectionsForCareSetting(props.careSetting, {
         roleProfile,
-        includeDeferred: true,
+        includeDeferred: false,
+        clinicianPrimaryNav: true,
       }),
     [props.careSetting, roleProfile]
   );
 
+  const primaryNavSections = useMemo(() => {
+    const primary = new Set<string>(CLINICIAN_CARE_PLAN_PRIMARY_SECTION_IDS as readonly string[]);
+    if (props.careSetting === "EMERGENCY") {
+      return sections.filter((s) => s.id === "overview" || s.id === "activePlans");
+    }
+    return sections.filter((s) => primary.has(s.id));
+  }, [sections, props.careSetting]);
+
   const [active, setActive] = useState<EnterpriseCarePlanWorkspaceSectionId>(
     props.initialSection && sections.some((s) => s.id === props.initialSection)
       ? props.initialSection
-      : "overview"
+      : props.careSetting === "EMERGENCY"
+        ? "overview"
+        : "activePlans"
   );
+  const [disciplineFilter, setDisciplineFilter] = useState<
+    "ALL" | "NURSING" | "PROVIDER" | "RESPIRATORY" | "PT" | "OT" | "SLP" | "TECHNICIAN"
+  >("ALL");
   const [query, setQuery] = useState("");
   const [previewId, setPreviewId] = useState<string | null>(null);
   const [localPlans, setLocalPlans] = useState<CarePlanPatientPlan[]>(() => [
@@ -203,7 +242,7 @@ export function EnterpriseInterdisciplinaryCarePlansD4b6(
     })) as CarePlanPatientPlan[];
 
   React.useEffect(() => {
-    if (props.careSetting !== "INPATIENT") return;
+    if (props.careSetting !== "INPATIENT" && props.careSetting !== "OBSERVATION") return;
     let cancelled = false;
     apiFetch(`/encounters/${props.encounterId}/care-plans`)
       .then((payload: { plans?: Array<Record<string, any>> }) => {
@@ -211,7 +250,7 @@ export function EnterpriseInterdisciplinaryCarePlansD4b6(
       })
       .catch((error) => {
         if (!cancelled)
-          setActivationMessage(error instanceof Error ? error.message : "Care plan load failed");
+          setActivationMessage(clinicalCarePlanErrorMessage(error, t));
       });
     return () => {
       cancelled = true;
@@ -220,9 +259,9 @@ export function EnterpriseInterdisciplinaryCarePlansD4b6(
 
   React.useEffect(() => {
     if (!sections.some((s) => s.id === active)) {
-      setActive("overview");
+      setActive(props.careSetting === "EMERGENCY" ? "overview" : "activePlans");
     }
-  }, [sections, active]);
+  }, [sections, active, props.careSetting]);
 
   const summary = useMemo(
     () =>
@@ -263,7 +302,7 @@ export function EnterpriseInterdisciplinaryCarePlansD4b6(
 
   const onActivate = async (templateId: string) => {
     if (!canActivate) return;
-    if (props.careSetting === "INPATIENT") {
+    if (props.careSetting === "INPATIENT" || props.careSetting === "OBSERVATION") {
       try {
         const plan = await apiFetch(`/encounters/${props.encounterId}/care-plans`, {
           method: "POST",
@@ -279,7 +318,7 @@ export function EnterpriseInterdisciplinaryCarePlansD4b6(
         setActive("activePlans");
         setPlanFilter("ACTIVE");
       } catch (error) {
-        setActivationMessage(error instanceof Error ? error.message : "Activation denied");
+        setActivationMessage(clinicalCarePlanErrorMessage(error, t));
       }
       return;
     }
@@ -340,21 +379,6 @@ export function EnterpriseInterdisciplinaryCarePlansD4b6(
         </p>
       </header>
 
-      <p
-        data-testid="eicp-foundation-banner"
-        style={{
-          margin: 0,
-          fontSize: 12,
-          color: "#334155",
-          background: "#f8fafc",
-          border: "1px solid #e2e8f0",
-          borderRadius: 12,
-          padding: "8px 10px",
-        }}
-      >
-        {t("enterpriseInterdisciplinaryCarePlansD4b6.foundationBanner")}
-      </p>
-
       {isEd ? (
         <p
           data-testid="eicp-ed-limited-banner"
@@ -377,7 +401,7 @@ export function EnterpriseInterdisciplinaryCarePlansD4b6(
         style={{ display: "flex", flexWrap: "wrap", gap: 6 }}
         aria-label={t("enterpriseInterdisciplinaryCarePlansD4b6.title")}
       >
-        {sections.map((section) => (
+        {primaryNavSections.map((section) => (
           <button
             key={section.id}
             type="button"
@@ -390,7 +414,18 @@ export function EnterpriseInterdisciplinaryCarePlansD4b6(
               borderColor: active === section.id ? "#0f766e" : "#e2e8f0",
             }}
           >
-            {t(section.titleKey)}
+            {t(
+              (
+                {
+                  activePlans: "inpatientNursingAdmissionInp2g.carePlanWorkspace.navActivePlans",
+                  goalsOutcomes: "inpatientNursingAdmissionInp2g.carePlanWorkspace.navGoalsOutcomes",
+                  interventions: "inpatientNursingAdmissionInp2g.carePlanWorkspace.navInterventions",
+                  progress: "inpatientNursingAdmissionInp2g.carePlanWorkspace.navProgress",
+                  history: "inpatientNursingAdmissionInp2g.carePlanWorkspace.navHistory",
+                  overview: "enterpriseInterdisciplinaryCarePlansD4b6.sections.overview",
+                } as Record<string, string>
+              )[section.id] ?? section.titleKey
+            )}
           </button>
         ))}
       </nav>
@@ -589,6 +624,104 @@ export function EnterpriseInterdisciplinaryCarePlansD4b6(
                 </button>
               ))}
             </div>
+
+            <div
+              data-testid="eicp-discipline-filter"
+              style={{ display: "flex", flexWrap: "wrap", gap: 6 }}
+            >
+              {(
+                [
+                  ["ALL", "disciplineAll"],
+                  ["NURSING", "disciplineNursing"],
+                  ["PROVIDER", "disciplineProvider"],
+                  ["RESPIRATORY", "disciplineRespiratory"],
+                  ["PT", "disciplinePt"],
+                  ["OT", "disciplineOt"],
+                  ["SLP", "disciplineSlp"],
+                  ["TECHNICIAN", "disciplineTechnician"],
+                ] as const
+              ).map(([id, key]) => (
+                <button
+                  key={id}
+                  type="button"
+                  data-testid={`eicp-discipline-${id}`}
+                  data-active={disciplineFilter === id ? "true" : "false"}
+                  onClick={() => setDisciplineFilter(id)}
+                  style={{
+                    ...linkButtonStyle,
+                    background: disciplineFilter === id ? "#f0f9ff" : "#fff",
+                    borderColor: disciplineFilter === id ? "#0284c7" : "#e2e8f0",
+                    color: "#0c4a6e",
+                  }}
+                >
+                  {t(`inpatientNursingAdmissionInp2g.carePlanWorkspace.${key}`)}
+                </button>
+              ))}
+            </div>
+            <div data-testid="eicp-interdisciplinary-contributions" style={{ display: "grid", gap: 6 }}>
+              {[
+                ...((disciplineFilter === "ALL" || disciplineFilter === "NURSING")
+                  ? nursing.map((c, idx) => ({
+                      id: `nursing-${(c as { sourceCardId?: string }).sourceCardId ?? idx}`,
+                      discipline: "NURSING",
+                      text: (c as { summaryText?: string | null }).summaryText ?? "",
+                      author: (c as { authorDisplayName?: string | null }).authorDisplayName,
+                    }))
+                  : []),
+                ...((disciplineFilter === "ALL" || disciplineFilter === "RESPIRATORY")
+                  ? rt.map((c, idx) => ({
+                      id: `rt-${(c as { documentTypeId?: string }).documentTypeId ?? idx}`,
+                      discipline: "RESPIRATORY",
+                      text: (c as { summaryText?: string | null }).summaryText ?? "",
+                      author: (c as { authorUserId?: string | null }).authorUserId,
+                    }))
+                  : []),
+                ...((disciplineFilter === "ALL" || disciplineFilter === "PT" || disciplineFilter === "OT" || disciplineFilter === "SLP")
+                  ? rehab
+                      .filter((c) => {
+                        if (disciplineFilter === "ALL") return true;
+                        const d = String((c as { discipline?: string }).discipline ?? "").toUpperCase();
+                        if (disciplineFilter === "PT") return d.includes("PHYSICAL");
+                        if (disciplineFilter === "OT") return d.includes("OCCUPATIONAL");
+                        if (disciplineFilter === "SLP") return d.includes("SPEECH");
+                        return true;
+                      })
+                      .map((c, idx) => ({
+                        id: `rehab-${(c as { documentTypeId?: string }).documentTypeId ?? idx}`,
+                        discipline: String((c as { discipline?: string }).discipline ?? "REHAB"),
+                        text: (c as { summaryText?: string | null }).summaryText ?? "",
+                        author: (c as { authorUserId?: string | null }).authorUserId,
+                      }))
+                  : []),
+                ...((disciplineFilter === "ALL" || disciplineFilter === "TECHNICIAN")
+                  ? tech.map((c, idx) => ({
+                      id: `tech-${c.activityId ?? idx}`,
+                      discipline: "TECHNICIAN",
+                      text: t("inpatientNursingAdmissionInp2g.carePlanWorkspace.technicianProgress"),
+                      author: c.performerDisplayName,
+                    }))
+                  : []),
+              ]
+                .filter((row) => row.text)
+                .map((row) => (
+                  <div
+                    key={row.id}
+                    data-testid={`eicp-contribution-${row.id}`}
+                    style={{
+                      border: "1px solid #e2e8f0",
+                      borderRadius: 10,
+                      padding: "8px 10px",
+                      fontSize: 12,
+                      color: "#334155",
+                    }}
+                  >
+                    <strong>{row.discipline}</strong>
+                    {row.author ? ` · ${row.author}` : ""}
+                    <div>{row.text}</div>
+                  </div>
+                ))}
+            </div>
+
             {localPlans.length === 0 ? (
               <p data-testid="eicp-empty-plans" style={{ margin: 0, fontSize: 13, color: "#64748b" }}>
                 {t("enterpriseInterdisciplinaryCarePlansD4b6.empty")}
@@ -757,81 +890,15 @@ export function EnterpriseInterdisciplinaryCarePlansD4b6(
           </>
         ) : null}
 
-        {active === "nursingContributions" ? (
-          nursing.length === 0 ? (
-            <p style={{ margin: 0, fontSize: 13, color: "#64748b" }}>
-              {t("enterpriseInterdisciplinaryCarePlansD4b6.emptyContributions")}
-            </p>
-          ) : (
-            <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13 }}>
-              {nursing.map((n, i) => (
-                <li key={`${n.sourceCardId ?? "n"}-${i}`}>{n.summaryText ?? n.sourceCardId}</li>
-              ))}
-            </ul>
-          )
-        ) : null}
+        {/* MEDUI.CP.1A — nursingContributions composed into interdisciplinary workspace. */ null}
 
-        {active === "rtContributions" ? (
-          rt.length === 0 ? (
-            <p style={{ margin: 0, fontSize: 13, color: "#64748b" }}>
-              {t("enterpriseInterdisciplinaryCarePlansD4b6.emptyContributions")}
-            </p>
-          ) : (
-            <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13 }}>
-              {rt.map((r, i) => (
-                <li key={`${r.documentTypeId ?? "rt"}-${i}`}>{r.summaryText ?? r.documentTypeId}</li>
-              ))}
-            </ul>
-          )
-        ) : null}
+        {/* MEDUI.CP.1A — rtContributions composed into interdisciplinary workspace. */ null}
 
-        {active === "rehabContributions" ? (
-          rehab.length === 0 ? (
-            <p style={{ margin: 0, fontSize: 13, color: "#64748b" }}>
-              {t("enterpriseInterdisciplinaryCarePlansD4b6.emptyContributions")}
-            </p>
-          ) : (
-            <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13 }}>
-              {rehab.map((r, i) => (
-                <li key={`${r.discipline}-${i}`}>
-                  {r.discipline}: {r.summaryText ?? r.documentTypeId}
-                </li>
-              ))}
-            </ul>
-          )
-        ) : null}
+        {/* MEDUI.CP.1A — rehabContributions composed into interdisciplinary workspace. */ null}
 
-        {active === "techProgress" ? (
-          tech.length === 0 ? (
-            <p style={{ margin: 0, fontSize: 13, color: "#64748b" }}>
-              {t("enterpriseInterdisciplinaryCarePlansD4b6.emptyContributions")}
-            </p>
-          ) : (
-            <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13 }}>
-              {tech.map((x, i) => (
-                <li key={`${x.activityId ?? "t"}-${i}`}>
-                  {x.activityId} — {x.performerDisplayName ?? x.performerUserId}
-                </li>
-              ))}
-            </ul>
-          )
-        ) : null}
+        {/* MEDUI.CP.1A — techProgress composed into interdisciplinary workspace. */ null}
 
-        {active === "legacyD3eStub" ? (
-          legacy.length === 0 ? (
-            <p style={{ margin: 0, fontSize: 13, color: "#64748b" }}>
-              {t("enterpriseInterdisciplinaryCarePlansD4b6.emptyLegacy")}
-            </p>
-          ) : (
-            <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13 }}>
-              {legacy.map((item) => (
-                <li key={item.itemId}>
-                  [{item.discipline}] {item.goalText} — {item.status}
-                </li>
-              ))}
-            </ul>
-          )
-        ) : null}
+        {/* MEDUI.CP.1A — legacyD3eStub composed into interdisciplinary workspace. */ null}
 
         {active === "history" ? (
           documents.length === 0 ? (
@@ -847,15 +914,7 @@ export function EnterpriseInterdisciplinaryCarePlansD4b6(
           )
         ) : null}
 
-        {active === "deferredBoundaries" ? (
-          <div style={{ display: "grid", gap: 8, fontSize: 13, color: "#334155" }}>
-            <p style={{ margin: 0 }}>{t("enterpriseInterdisciplinaryCarePlansD4b6.nursingBoundary")}</p>
-            <p style={{ margin: 0 }}>{t("enterpriseInterdisciplinaryCarePlansD4b6.rtBoundary")}</p>
-            <p style={{ margin: 0 }}>{t("enterpriseInterdisciplinaryCarePlansD4b6.rehabBoundary")}</p>
-            <p style={{ margin: 0 }}>{t("enterpriseInterdisciplinaryCarePlansD4b6.techBoundary")}</p>
-            <p style={{ margin: 0 }}>{t("enterpriseInterdisciplinaryCarePlansD4b6.deferred")}</p>
-          </div>
-        ) : null}
+        {/* MEDUI.CP.1A — deferredBoundaries composed into interdisciplinary workspace. */ null}
       </section>
     </div>
   );
