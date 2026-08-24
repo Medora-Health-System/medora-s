@@ -1,6 +1,6 @@
 import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
 import { CarePlanComponentStatus, CarePlanComponentType, CarePlanPriority, CarePlanStatus, EncounterClinicalEventType, EncounterType, Prisma, RoleCode } from "@prisma/client";
-import { getCarePlanTemplate } from "@medora/shared";
+import { assertSameClinicalAuthor, CARE_PLAN_COMPONENT_NOT_AUTHOR, getCarePlanTemplate } from "@medora/shared";
 import { PrismaService } from "../prisma/prisma.service";
 
 export type CarePlanActor = { userId: string; facilityId: string; role: RoleCode };
@@ -73,7 +73,7 @@ export class EncounterCarePlanService {
 
   async updateComponent(actor: CarePlanActor, encounterId: string, carePlanId: string, componentId: string, input: any) {
     return this.prisma.$transaction(async (tx) => { const plan = await this.scoped(actor, encounterId, carePlanId, tx); this.revision(plan, input.expectedRevision); const component = plan.components.find((c) => c.id === componentId); if (!component) throw new NotFoundException("Care plan component not found");
-      const actorDiscipline = actor.role === RoleCode.RN ? "NURSING" : actor.role === RoleCode.PROVIDER ? "PROVIDER" : ""; if (component.discipline !== actorDiscipline) throw new ForbiddenException("CARE_PLAN_DISCIPLINE_DENIED");
+      const authorship = assertSameClinicalAuthor({ authorUserId: component.createdByUserId, actorUserId: actor.userId, code: CARE_PLAN_COMPONENT_NOT_AUTHOR }); if (!authorship.ok) throw new ForbiddenException(authorship.code); const actorDiscipline = actor.role === RoleCode.RN ? "NURSING" : actor.role === RoleCode.PROVIDER ? "PROVIDER" : ""; if (component.discipline !== actorDiscipline) throw new ForbiddenException("CARE_PLAN_DISCIPLINE_DENIED");
       const bumped = await tx.encounterCarePlan.updateMany({ where: { id: carePlanId, revision: plan.revision }, data: { revision: { increment: 1 } } }); if (!bumped.count) throw new ConflictException("CARE_PLAN_REVISION_CONFLICT");
       await tx.encounterCarePlanComponent.update({ where: { id: componentId }, data: { title: input.title, text: input.text, targetOutcome: input.targetOutcome, status: input.status, revision: { increment: 1 } } }); return tx.encounterCarePlan.findUniqueOrThrow({ where: { id: carePlanId }, include: includeAggregate }); });
   }

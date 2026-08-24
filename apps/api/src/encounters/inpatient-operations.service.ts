@@ -1747,16 +1747,9 @@ export class InpatientOperationsService {
     }
 
     if (patch.appendCarePlanItem) {
-      ops.carePlan = [
-        ...(ops.carePlan ?? []),
-        {
-          itemId: `cp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-          discipline: String(patch.appendCarePlanItem.discipline ?? "").trim() || "medicine",
-          goalText: String(patch.appendCarePlanItem.goalText ?? "").trim(),
-          status: patch.appendCarePlanItem.status ?? "ACTIVE",
-          updatedAt: now,
-        },
-      ];
+      // MEDUI.CP.1A — EncounterCarePlan is the only inpatient Care Plan write authority.
+      // Historical ops.carePlan rows remain readable; new writes are rejected.
+      throw new BadRequestException("CARE_PLAN_LEGACY_OPS_WRITE_FROZEN");
     }
 
     if (patch.appendConsult) {

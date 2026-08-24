@@ -2,7 +2,7 @@
  * MEDUI.D4B.6 — Chaînes françaises pour les plans de soins interdisciplinaires.
  */
 export const enterpriseInterdisciplinaryCarePlansD4b6Fr = {
-  title: "Plans de soins interdisciplinaires",
+  title: "Plan de soins interdisciplinaire",
   subtitle:
     "Parcourir → prévisualiser → personnaliser → activer → suivi → révision — ce n’est ni un diagnostic, ni une ordonnance, ni une autorisation de sortie",
   careSetting: {

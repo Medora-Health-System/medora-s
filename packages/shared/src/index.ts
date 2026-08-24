@@ -740,3 +740,5 @@ export * from "./clinicalDocumentation/enterpriseProviderClinicalWorkspaceD4b8.j
 
 
 export * from "./encounters/edClinicalDocumentationCatalog.js";
+
+export * from "./clinicalDocumentation/clinicalDocumentationAuthorshipAuthority.js";
