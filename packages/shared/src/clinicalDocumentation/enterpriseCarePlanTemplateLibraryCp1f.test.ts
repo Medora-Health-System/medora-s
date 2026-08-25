@@ -96,11 +96,11 @@ describe("MEDUI.CP.1F Care Plan template catalog expansion", () => {
     const here = dirname(fileURLToPath(import.meta.url));
     const repoRoot = join(here, "../../../../");
     const enSrc = readFileSync(
-      join(repoRoot, "apps/web/src/i18n/messages/enterpriseInterdisciplinaryCarePlansD4b6.en.ts"),
+      join(repoRoot, "packages/shared/src/clinicalDocumentation/enterpriseCarePlanTemplateClinicalText.en.ts"),
       "utf8"
     );
     const frSrc = readFileSync(
-      join(repoRoot, "apps/web/src/i18n/messages/enterpriseInterdisciplinaryCarePlansD4b6.fr.ts"),
+      join(repoRoot, "packages/shared/src/clinicalDocumentation/enterpriseCarePlanTemplateClinicalText.fr.ts"),
       "utf8"
     );
     for (const tpl of active) {
@@ -215,11 +215,11 @@ describe("MEDUI.CP.1F Care Plan template catalog expansion", () => {
     const here = dirname(fileURLToPath(import.meta.url));
     const repoRoot = join(here, "../../../../");
     const enSrc = readFileSync(
-      join(repoRoot, "apps/web/src/i18n/messages/enterpriseInterdisciplinaryCarePlansD4b6.en.ts"),
+      join(repoRoot, "packages/shared/src/clinicalDocumentation/enterpriseCarePlanTemplateClinicalText.en.ts"),
       "utf8"
     );
     const frSrc = readFileSync(
-      join(repoRoot, "apps/web/src/i18n/messages/enterpriseInterdisciplinaryCarePlansD4b6.fr.ts"),
+      join(repoRoot, "packages/shared/src/clinicalDocumentation/enterpriseCarePlanTemplateClinicalText.fr.ts"),
       "utf8"
     );
     for (const tpl of active) {

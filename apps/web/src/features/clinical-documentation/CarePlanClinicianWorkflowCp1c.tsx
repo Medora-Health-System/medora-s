@@ -246,6 +246,7 @@ function statusLabel(status: string | null | undefined, t: (k: string) => string
     COMPLETED: "inpatientMedicalRecordSummaryInp2f.carePlan.status.completed",
     DISCONTINUED: "inpatientMedicalRecordSummaryInp2f.carePlan.status.discontinued",
     NOT_STARTED: "inpatientNursingAdmissionInp2g.carePlanWorkspace.componentNotStarted",
+    PENDING: "inpatientNursingAdmissionInp2g.carePlanWorkspace.componentNotStarted",
     IN_PROGRESS: "inpatientNursingAdmissionInp2g.carePlanWorkspace.progressProgressing",
     MET: "inpatientNursingAdmissionInp2g.carePlanWorkspace.progressMet",
     PARTIALLY_MET: "inpatientNursingAdmissionInp2g.carePlanWorkspace.progressPartial",
@@ -469,7 +470,7 @@ export function CarePlanClinicianWorkflowCp1c(props: Props) {
   const saveComponentEdit = async (plan: CarePlanWorkflowPlan, component: CarePlanWorkflowComponent) => {
     if (!canClinicalWrite) return;
     if (!editCorrectionReason.trim()) {
-      props.onMessage(t("inpatientNursingAdmissionInp2g.carePlanWorkspace.correctionReasonRequired"));
+      props.onMessage(t("inpatientNursingAdmissionInp2g.ownership.correctionReasonRequired"));
       return;
     }
     setBusy(true);
@@ -659,7 +660,7 @@ export function CarePlanClinicianWorkflowCp1c(props: Props) {
                             style={{ width: "100%", fontSize: 12, padding: 8, borderRadius: 8 }}
                           />
                           <label style={{ fontSize: 12, fontWeight: 600 }}>
-                            {t("inpatientNursingAdmissionInp2g.carePlanWorkspace.correctionReasonLabel")}
+                            {t("inpatientNursingAdmissionInp2g.ownership.correctionReasonLabel")}
                           </label>
                           <input
                             value={editCorrectionReason}
@@ -761,7 +762,7 @@ export function CarePlanClinicianWorkflowCp1c(props: Props) {
                             style={{ width: "100%", fontSize: 12, padding: 8, borderRadius: 8 }}
                           />
                           <label style={{ fontSize: 12, fontWeight: 600 }}>
-                            {t("inpatientNursingAdmissionInp2g.carePlanWorkspace.correctionReasonLabel")}
+                            {t("inpatientNursingAdmissionInp2g.ownership.correctionReasonLabel")}
                           </label>
                           <input
                             value={editCorrectionReason}

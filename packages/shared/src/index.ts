@@ -745,3 +745,10 @@ export * from "./clinicalDocumentation/clinicalDocumentationAuthorshipAuthority.
 export * from "./clinicalDocumentation/encounterCarePlanMedicalRecordProjectionCp1b.js";
 export * from "./clinicalDocumentation/encounterCarePlanSuggestionsCp1d.js";
 export * from "./clinicalDocumentation/clinicalAuthorSnapshotCp1e.js";
+export * from "./clinicalDocumentation/enterpriseCarePlanTemplateClinicalTextCp1f1.js";
+export {
+  enterpriseCarePlanTemplateClinicalTextEn,
+} from "./clinicalDocumentation/enterpriseCarePlanTemplateClinicalText.en.js";
+export {
+  enterpriseCarePlanTemplateClinicalTextFr,
+} from "./clinicalDocumentation/enterpriseCarePlanTemplateClinicalText.fr.js";

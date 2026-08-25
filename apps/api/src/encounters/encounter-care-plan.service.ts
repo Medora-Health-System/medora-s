@@ -3,10 +3,12 @@ import { CarePlanComponentStatus, CarePlanComponentType, CarePlanPriority, CareP
 import {
   assertSameClinicalAuthor,
   buildClinicalAuthorSnapshotPersist,
+  CARE_PLAN_ACTIVATION_CLINICAL_LOCALE,
   CARE_PLAN_COMPONENT_NOT_AUTHOR,
   CARE_PLAN_SUGGESTION_SIGNAL_CARD_IDS,
   getCarePlanTemplate,
   INPATIENT_NURSING_ASSESSMENT_V1_KEY,
+  resolveEnterpriseCarePlanTemplateClinicalText,
   suggestEncounterCarePlans,
 } from "@medora/shared";
 import { PrismaService } from "../prisma/prisma.service";
@@ -216,6 +218,13 @@ export class EncounterCarePlanService {
         template,
       })
     );
+    const resolvedTemplate = resolveEnterpriseCarePlanTemplateClinicalText({
+      template,
+      locale: CARE_PLAN_ACTIVATION_CLINICAL_LOCALE,
+    });
+    const resolvedByComponentId = new Map(
+      resolvedTemplate.components.map((c) => [c.componentId, c])
+    );
     return this.prisma.$transaction(async (tx) => {
       const author = await this.resolveAuthorSnapshot(actor, tx);
       const plan = await tx.encounterCarePlan.create({
@@ -226,7 +235,7 @@ export class EncounterCarePlanService {
           templateId: template.templateId,
           templateVersion: template.version,
           templateSnapshotJson: snapshot,
-          title: template.titleKey,
+          title: resolvedTemplate.title,
           priority: input.priority ?? CarePlanPriority.ROUTINE,
           activatedByUserId: actor.userId,
           activatedByDisplayNameSnapshot: author.displayNameSnapshot,
@@ -242,22 +251,25 @@ export class EncounterCarePlanService {
                   c.kind === "EDUCATION" ||
                   c.kind === "SAFETY"
               )
-              .map((c, sequence) => ({
+              .map((c, sequence) => {
+                const resolved = resolvedByComponentId.get(c.componentId);
+                return {
                 componentType:
                   c.kind === "GOAL" || c.kind === "OUTCOME"
                     ? CarePlanComponentType.GOAL
                     : CarePlanComponentType.INTERVENTION,
                 sourceTemplateComponentId: c.componentId,
                 discipline: c.disciplineHint,
-                title: c.titleKey,
-                text: c.bodyKey,
+                title: resolved?.title ?? c.titleKey,
+                text: resolved?.body ?? c.bodyKey,
                 sequence,
                 monitoringJson: c.kind === "MONITORING" ? { source: c.componentId } : undefined,
                 educationJson: c.kind === "EDUCATION" ? { source: c.componentId } : undefined,
                 createdByUserId: actor.userId,
                 createdByDisplayNameSnapshot: author.displayNameSnapshot,
                 createdByProfessionalTitleSnapshot: author.professionalTitleSnapshot,
-              })),
+              };
+              }),
           },
         },
       });

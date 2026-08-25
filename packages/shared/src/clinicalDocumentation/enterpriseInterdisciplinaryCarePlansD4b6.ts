@@ -23,6 +23,11 @@ import {
   CARE_PLAN_LEGACY_TEMPLATE_CATEGORIES,
   type CarePlanTemplateCategory,
 } from "./enterpriseCarePlanTemplateLibraryCp1f.js";
+import {
+  CARE_PLAN_ACTIVATION_CLINICAL_LOCALE,
+  resolveEnterpriseCarePlanTemplateClinicalText,
+  type CarePlanClinicalLocale,
+} from "./enterpriseCarePlanTemplateClinicalTextCp1f1.js";
 export {
   CARE_PLAN_TEMPLATE_CATEGORIES,
   CARE_PLAN_TEMPLATE_CATEGORY_LABEL_KEYS,
@@ -737,6 +742,8 @@ export function activateCarePlanFromTemplate(input: {
   }>;
   /** Must never be true — diagnosis alone cannot activate. */
   autoFromDiagnosisAlone?: boolean;
+  /** Snapshot locale for persisted clinical narrative (default product French). */
+  clinicalLocale?: CarePlanClinicalLocale;
 }): CarePlanActivationResult {
   if (input.autoFromDiagnosisAlone) {
     return {
@@ -800,14 +807,23 @@ export function activateCarePlanFromTemplate(input: {
   const customMap = new Map(
     (input.customizations ?? []).map((c) => [c.sourceTemplateComponentId, c])
   );
+  const clinicalLocale = input.clinicalLocale ?? CARE_PLAN_ACTIVATION_CLINICAL_LOCALE;
+  const resolvedTemplate = resolveEnterpriseCarePlanTemplateClinicalText({
+    template,
+    locale: clinicalLocale,
+  });
+  const resolvedByComponentId = new Map(
+    resolvedTemplate.components.map((c) => [c.componentId, c])
+  );
   const components: CarePlanPatientComponent[] = template.components.map((c) => {
     const custom = customMap.get(c.componentId);
+    const resolved = resolvedByComponentId.get(c.componentId);
     return {
       componentId: `${input.planId}:${c.componentId}`,
       sourceTemplateComponentId: c.componentId,
       kind: c.kind,
-      title: custom?.title ?? c.titleKey,
-      body: custom?.body ?? c.bodyKey,
+      title: custom?.title ?? resolved?.title ?? c.titleKey,
+      body: custom?.body ?? resolved?.body ?? c.bodyKey,
       custom: !!custom,
       disciplineHint: c.disciplineHint,
       status: "PENDING",
@@ -841,7 +857,7 @@ export function activateCarePlanFromTemplate(input: {
     facilityId: input.facilityId,
     sourceTemplateId: template.templateId,
     sourceTemplateVersion: template.version,
-    title: template.titleKey,
+    title: resolvedTemplate.title,
     lifecycleState: "ACTIVE",
     components,
     activatedAt: input.activatedAt,
