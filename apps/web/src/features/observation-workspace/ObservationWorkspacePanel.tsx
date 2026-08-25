@@ -16,6 +16,7 @@ import { EnterpriseRehabilitationWorkspacesD4b5 } from "@/features/clinical-docu
 import { EnterpriseInterdisciplinaryCarePlansD4b6 } from "@/features/clinical-documentation/EnterpriseInterdisciplinaryCarePlansD4b6";
 import { EnterpriseCaseManagementDischargePlanningD4b7 } from "@/features/clinical-documentation/EnterpriseCaseManagementDischargePlanningD4b7";
 import { EnterpriseProviderClinicalWorkspaceD4b8 } from "@/features/clinical-documentation/EnterpriseProviderClinicalWorkspaceD4b8";
+import { InpatientEncounterMedicalRecordSummaryView } from "@/features/inpatient-workspace/InpatientEncounterMedicalRecordSummaryView";
 import { MedicationAdministrationTab } from "@/components/encounters/MedicationAdministrationTab";
 import type { ObservationWorkspaceSection } from "./observationWorkspaceSections";
 import {
@@ -81,9 +82,6 @@ export function ObservationWorkspacePanel({
         <div data-testid="observation-panel-overview">
           <p style={{ margin: 0, fontSize: 13, color: "#334155", lineHeight: 1.45 }}>
             {t("observationD3d.overview.body")}
-          </p>
-          <p style={{ margin: "10px 0 0", fontSize: 12, color: "#64748b" }}>
-            {t("observationD3d.overview.encounterId")}: {encounterId}
           </p>
           <p style={{ margin: "8px 0 0", fontSize: 12, color: "#64748b" }}>
             {t("observationD3da.sharedOrderEngineHint")}
@@ -306,10 +304,23 @@ export function ObservationWorkspacePanel({
         </div>
       );
     case "summary":
+      // MEDUI.CP.1F — same medical-record Summary/Print projector as inpatient (no second store).
+      if (!facilityId) {
+        return (
+          <p data-testid="observation-panel-summary" style={{ margin: 0, fontSize: 13 }}>
+            {t("observationD3d.summary.body")}
+          </p>
+        );
+      }
       return (
-        <p data-testid="observation-panel-summary" style={{ margin: 0, fontSize: 13 }}>
-          {t("observationD3d.summary.body")}
-        </p>
+        <div data-testid="observation-panel-summary">
+          <InpatientEncounterMedicalRecordSummaryView
+            encounterId={encounterId}
+            facilityId={facilityId}
+            encounter={encounter}
+            careSetting="OBSERVATION"
+          />
+        </div>
       );
     case "disposition":
       if (!facilityId) {

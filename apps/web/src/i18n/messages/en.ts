@@ -20943,7 +20943,7 @@ export default {
       body: "Observation care plan surface (destination nursing workflow).",
     },
     summary: {
-      body: "Observation stay summary for handoff and disposition readiness.",
+      body: "Read-only medical record summary for this Observation stay — same Care Plan authority as inpatient.",
     },
     disposition: {
       pathways: {

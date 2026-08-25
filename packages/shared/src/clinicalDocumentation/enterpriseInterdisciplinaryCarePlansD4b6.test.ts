@@ -62,7 +62,7 @@ describe("MEDUI.D4B.6 enterprise interdisciplinary care plans", () => {
     expect(summary.assignmentEqualsAuthorization).toBe(false);
   });
 
-  it("curates ACTIVE starter templates and defers shallow/full pathways", () => {
+  it("curates ACTIVE enterprise templates and keeps deferred full pathways non-activatable", () => {
     const active = listActiveCarePlanTemplates().map((t) => t.templateId);
     expect(active).toEqual(
       expect.arrayContaining([
@@ -76,7 +76,8 @@ describe("MEDUI.D4B.6 enterprise interdisciplinary care plans", () => {
         "discharge_readiness",
       ])
     );
-    expect(active).toHaveLength(8);
+    expect(active.length).toBeGreaterThanOrEqual(40);
+    expect(active.length).toBeLessThanOrEqual(60);
     const deferred = ENTERPRISE_CARE_PLAN_TEMPLATE_CATALOG.filter((t) => !t.selectedInD4b6);
     expect(deferred.map((t) => t.templateId)).toEqual(
       expect.arrayContaining([

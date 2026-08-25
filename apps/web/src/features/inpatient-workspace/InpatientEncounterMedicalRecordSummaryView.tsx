@@ -72,6 +72,8 @@ type Props = {
   codeStatus?: string | null;
   isolation?: string[] | null;
   admissionDiagnosis?: string | null;
+  /** Hospital lane for chrome only — Care Plan SSoT unchanged. */
+  careSetting?: "INPATIENT" | "OBSERVATION";
   onNavigateSection?: (section: InpatientWorkspaceSection) => void;
 };
 
@@ -196,9 +198,11 @@ export function InpatientEncounterMedicalRecordSummaryView({
   codeStatus,
   isolation,
   admissionDiagnosis,
+  careSetting = "INPATIENT",
   onNavigateSection,
 }: Props) {
   const { t, language } = useI18n();
+  const isObservationLane = careSetting === "OBSERVATION";
   const { facilities, careProfileJson } = useFacilityAndRoles();
   const dash = t("common.dash");
   const [printBusy, setPrintBusy] = useState(false);
@@ -538,17 +542,27 @@ export function InpatientEncounterMedicalRecordSummaryView({
   });
 
   return (
-    <div data-testid="inpatient-panel-summary-live" data-readonly="true">
+    <div
+      data-testid={isObservationLane ? "observation-panel-summary-live" : "inpatient-panel-summary-live"}
+      data-care-setting={careSetting}
+      data-readonly="true"
+    >
       <div style={{ display: "flex", justifyContent: "space-between", gap: 12, marginBottom: 10 }}>
         <div>
           <h1 style={{ margin: 0, fontSize: 16 }}>{t("inpatientMedicalRecordSummaryInp2f.title")}</h1>
           <p style={{ margin: "4px 0 0", fontSize: 12, color: "#64748b" }}>
-            {t("inpatientMedicalRecordSummaryInp2f.subtitle")}
+            {isObservationLane
+              ? t("observationD3d.summary.body")
+              : t("inpatientMedicalRecordSummaryInp2f.subtitle")}
           </p>
         </div>
         <button
           type="button"
-          data-testid="inpatient-summary-print-entire-chart"
+          data-testid={
+            isObservationLane
+              ? "observation-summary-print-entire-chart"
+              : "inpatient-summary-print-entire-chart"
+          }
           onClick={() => void printChart()}
           disabled={printBusy}
           className="no-print"

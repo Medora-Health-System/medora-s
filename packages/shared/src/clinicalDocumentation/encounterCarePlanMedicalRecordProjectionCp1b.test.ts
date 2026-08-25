@@ -200,9 +200,9 @@ describe("projectEncounterCarePlanMedicalRecord (MEDUI.CP.1B / CP.1E)", () => {
       },
       at: "Jan 1, 2026",
       mode: "documented",
-      attributionUnavailableLabel: "Author attribution unavailable for this historical entry",
+      attributionUnavailableLabel: "Historical author attribution unavailable",
     });
-    expect(line).toContain("Author attribution unavailable");
+    expect(line).toContain("Historical author attribution unavailable");
     expect(line).not.toContain("Documented by");
   });
 

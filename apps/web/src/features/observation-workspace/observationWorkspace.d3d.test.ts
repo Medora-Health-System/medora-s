@@ -84,4 +84,19 @@ describe("D3D Observation workspace UI contracts", () => {
     expect(header).toContain('data-testid="hospital-header-remove-assignment"');
     expect(header).toContain("showAssignmentActions");
   });
+
+  it("MEDUI.CP.1F — Observation Summary remounts shared Care Plan medical-record projector (no second store)", () => {
+    const panel = readFileSync(join(root, "ObservationWorkspacePanel.tsx"), "utf8");
+    expect(panel).toContain("InpatientEncounterMedicalRecordSummaryView");
+    expect(panel).toContain('careSetting="OBSERVATION"');
+    expect(panel).toContain("observation-panel-summary");
+    expect(panel).not.toMatch(/ObservationCarePlan|ObservationCarePlanSummary/);
+    const summary = readFileSync(
+      join(root, "../inpatient-workspace/InpatientEncounterMedicalRecordSummaryView.tsx"),
+      "utf8"
+    );
+    expect(summary).toContain("projectEncounterCarePlanMedicalRecord");
+    expect(summary).toContain("buildCarePlanMedicalRecordPrintHtml");
+    expect(summary).toContain('careSetting === "OBSERVATION"');
+  });
 });
