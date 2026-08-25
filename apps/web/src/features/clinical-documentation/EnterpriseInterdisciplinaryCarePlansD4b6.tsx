@@ -36,6 +36,13 @@ import {
   type CarePlanWorkflowPlan,
 } from "@/features/clinical-documentation/CarePlanClinicianWorkflowCp1c";
 
+type CarePlanSuggestionDto = {
+  templateId: string;
+  kind: "SUGGEST_ACTIVATE" | "SUGGEST_REVIEW";
+  reasonKey: string;
+  sourceKind?: string;
+};
+
 export type EnterpriseInterdisciplinaryCarePlansProps = {
   encounterId: string;
   patientId: string;
@@ -238,14 +245,34 @@ export function EnterpriseInterdisciplinaryCarePlansD4b6(
   const [query, setQuery] = useState("");
   const [previewId, setPreviewId] = useState<string | null>(null);
   const [durablePlans, setDurablePlans] = useState<CarePlanWorkflowPlan[]>([]);
+  const [suggestions, setSuggestions] = useState<CarePlanSuggestionDto[]>([]);
+  const [dismissedSuggestionIds, setDismissedSuggestionIds] = useState<string[]>([]);
   const [activationMessage, setActivationMessage] = useState<string | null>(null);
+
+  const applyCarePlanListPayload = (payload: {
+    plans?: Array<Record<string, any>>;
+    suggestions?: unknown;
+  }) => {
+    setDurablePlans(mapDurableCarePlans(payload?.plans ?? []));
+    const raw = Array.isArray(payload?.suggestions) ? payload.suggestions : [];
+    setSuggestions(
+      raw.filter(
+        (row): row is CarePlanSuggestionDto =>
+          !!row &&
+          typeof row === "object" &&
+          typeof (row as CarePlanSuggestionDto).templateId === "string" &&
+          typeof (row as CarePlanSuggestionDto).kind === "string" &&
+          typeof (row as CarePlanSuggestionDto).reasonKey === "string"
+      )
+    );
+  };
 
   React.useEffect(() => {
     if (props.careSetting !== "INPATIENT" && props.careSetting !== "OBSERVATION") return;
     let cancelled = false;
     apiFetch(`/encounters/${props.encounterId}/care-plans`)
-      .then((payload: { plans?: Array<Record<string, any>> }) => {
-        if (!cancelled) setDurablePlans(mapDurableCarePlans(payload?.plans ?? []));
+      .then((payload: { plans?: Array<Record<string, any>>; suggestions?: CarePlanSuggestionDto[] }) => {
+        if (!cancelled) applyCarePlanListPayload(payload);
       })
       .catch((error) => {
         if (!cancelled) setActivationMessage(clinicalCarePlanErrorMessage(error, t));
@@ -319,7 +346,7 @@ export function EnterpriseInterdisciplinaryCarePlansD4b6(
           new CustomEvent("medora:care-plan-persisted", { detail: { carePlanId: plan.id } })
         );
         const payload = await apiFetch(`/encounters/${props.encounterId}/care-plans`);
-        setDurablePlans(mapDurableCarePlans(payload?.plans ?? []));
+        applyCarePlanListPayload(payload);
         setActive("activePlans");
       } catch (error) {
         setActivationMessage(clinicalCarePlanErrorMessage(error, t));
@@ -368,6 +395,23 @@ export function EnterpriseInterdisciplinaryCarePlansD4b6(
     active === "review" ||
     active === "history";
 
+  const visibleSuggestions = suggestions.filter(
+    (s) => !dismissedSuggestionIds.includes(`${s.kind}:${s.templateId}`)
+  );
+
+  const suggestionReason = (reasonKey: string) => {
+    const key = `inpatientNursingAdmissionInp2g.carePlanWorkspace.suggestionReasons.${reasonKey}`;
+    const localized = t(key);
+    return localized === key
+      ? t("inpatientNursingAdmissionInp2g.carePlanWorkspace.suggestionSuggested")
+      : localized;
+  };
+
+  const reviewSuggestion = (templateId: string) => {
+    setPreviewId(templateId);
+    setActive("templatePreview");
+  };
+
   return (
     <div
       data-testid="enterprise-interdisciplinary-care-plans-d4b6"
@@ -403,6 +447,75 @@ export function EnterpriseInterdisciplinaryCarePlansD4b6(
           {t("inpatientNursingAdmissionInp2g.carePlanWorkspace.singleSurfaceNote")}
         </p>
       </header>
+
+      {!isEd && visibleSuggestions.length > 0 ? (
+        <section
+          data-testid="eicp-suggestions"
+          style={{
+            ...MEDORA_CARD_SHELL,
+            padding: "10px 12px",
+            display: "grid",
+            gap: 8,
+            borderColor: "#bae6fd",
+            background: "#f0f9ff",
+          }}
+        >
+          <strong style={{ fontSize: 13, color: "#0c4a6e" }}>
+            {t("inpatientNursingAdmissionInp2g.carePlanWorkspace.suggestionsHeading")}
+          </strong>
+          {visibleSuggestions.map((s) => (
+            <div
+              key={`${s.kind}-${s.templateId}`}
+              data-testid={`eicp-suggestion-${s.templateId}`}
+              data-suggestion-kind={s.kind}
+              style={{
+                display: "grid",
+                gap: 6,
+                border: "1px solid #e0f2fe",
+                borderRadius: 10,
+                padding: "8px 10px",
+                background: "#fff",
+              }}
+            >
+              <div style={{ fontSize: 13, fontWeight: 700, color: "#0f172a" }}>
+                {t(TEMPLATE_TITLE_KEYS[s.templateId] ?? s.templateId)}
+                <span style={{ marginLeft: 8, fontWeight: 600, color: "#0369a1", fontSize: 12 }}>
+                  {s.kind === "SUGGEST_REVIEW"
+                    ? t("inpatientNursingAdmissionInp2g.carePlanWorkspace.suggestionReviewRecommended")
+                    : t("inpatientNursingAdmissionInp2g.carePlanWorkspace.suggestionSuggested")}
+                </span>
+              </div>
+              <p style={{ margin: 0, fontSize: 12, color: "#334155" }}>
+                {suggestionReason(s.reasonKey)}
+              </p>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                <button
+                  type="button"
+                  data-testid={`eicp-suggestion-review-${s.templateId}`}
+                  style={linkButtonStyle}
+                  onClick={() => reviewSuggestion(s.templateId)}
+                >
+                  {t("inpatientNursingAdmissionInp2g.carePlanWorkspace.suggestionReview")}
+                </button>
+                <button
+                  type="button"
+                  data-testid={`eicp-suggestion-dismiss-${s.templateId}`}
+                  style={linkButtonStyle}
+                  onClick={() =>
+                    setDismissedSuggestionIds((prev) =>
+                      prev.includes(`${s.kind}:${s.templateId}`)
+                        ? prev
+                        : [...prev, `${s.kind}:${s.templateId}`]
+                    )
+                  }
+                >
+                  {t("inpatientNursingAdmissionInp2g.carePlanWorkspace.suggestionNotNow")}
+                </button>
+              </div>
+            </div>
+          ))}
+        </section>
+      ) : null}
 
       {isEd ? (
         <p
@@ -734,6 +847,7 @@ export function EnterpriseInterdisciplinaryCarePlansD4b6(
               roleCodes={props.roleCodes ?? []}
               locked={Boolean(props.isLocked)}
               onPlansChanged={setDurablePlans}
+              onListPayload={applyCarePlanListPayload}
               onMessage={setActivationMessage}
               resolvePlanTitle={resolvePlanTitle}
               resolveComponentTitle={resolveComponentTitle}

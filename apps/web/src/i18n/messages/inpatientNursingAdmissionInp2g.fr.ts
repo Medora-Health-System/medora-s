@@ -139,5 +139,30 @@ export const inpatientNursingAdmissionInp2gFr = {
     transitionInvalid: "Ce changement de statut du plan de soins n’est pas autorisé à partir du statut actuel.",
     activatedOk: "Plan de soins activé pour ce patient.",
     componentNotStarted: "Non commencé",
+    suggestionsHeading: "Plans de soins suggérés",
+    suggestionSuggested: "Suggéré",
+    suggestionReview: "Examiner",
+    suggestionNotNow: "Pas maintenant",
+    suggestionReviewRecommended: "Révision recommandée",
+    suggestionReasons: {
+      fallRiskNursingAssessment:
+        "Suggéré parce que l’évaluation infirmière actuelle identifie un risque de chute élevé.",
+      fallRiskMorseAssessment:
+        "Suggéré parce que l’évaluation actuelle du risque de chute identifie un risque élevé.",
+      mobilityAssessment:
+        "Suggéré parce que l’évaluation actuelle de la mobilité identifie une mobilité altérée.",
+      pressureInjuryBraden:
+        "Suggéré parce que l’évaluation cutanée actuelle identifie un risque élevé de lésion de pression.",
+      aspirationSwallowFailed:
+        "Suggéré parce que le dépistage de la déglutition actuel identifie un risque d’aspiration.",
+      activePlanReviewFallRisk:
+        "Révision recommandée parce qu’une nouvelle évaluation du risque de chute reste élevée alors que ce plan est actif.",
+      activePlanReviewPressureInjury:
+        "Révision recommandée parce qu’une nouvelle évaluation cutanée reste élevée alors que ce plan est actif.",
+      activePlanReviewMobility:
+        "Révision recommandée parce qu’une nouvelle évaluation de la mobilité reste élevée alors que ce plan est actif.",
+      activePlanReviewAspiration:
+        "Révision recommandée parce qu’un nouveau dépistage de la déglutition reste anormal alors que ce plan est actif.",
+    },
   },
 } as const;
