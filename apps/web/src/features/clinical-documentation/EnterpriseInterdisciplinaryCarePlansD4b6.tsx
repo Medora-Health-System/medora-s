@@ -11,14 +11,17 @@ import type { CarePlanPatientPlan, EnterpriseClinicalDocument } from "@medora/sh
 import {
   activateCarePlanFromTemplate,
   buildEnterpriseInterdisciplinaryCarePlansSummary,
+  CARE_PLAN_TEMPLATE_CATEGORIES,
+  CARE_PLAN_TEMPLATE_CATEGORY_LABEL_KEYS,
   carePlanWorkspaceSectionsForCareSetting,
   CLINICIAN_CARE_PLAN_PRIMARY_SECTION_IDS,
-  listActiveCarePlanTemplates,
+  getCarePlanTemplate,
   previewCarePlanTemplate,
   resolveCarePlanRoleProfile,
   resolveCarePlanWorkspaceSection,
   searchCarePlanTemplates,
   type CarePlanRoleProfile,
+  type CarePlanTemplateCategory,
   type EnterpriseCarePlanWorkspaceSectionId,
   type LegacyD3eCarePlanStubProjection,
   type NursingCarePlanContributionProjection,
@@ -72,27 +75,10 @@ const linkButtonStyle: React.CSSProperties = {
   cursor: "pointer",
 };
 
-const TEMPLATE_TITLE_KEYS: Record<string, string> = {
-  fall_risk: "enterpriseInterdisciplinaryCarePlansD4b6.templates.fallRisk.title",
-  aspiration_risk: "enterpriseInterdisciplinaryCarePlansD4b6.templates.aspirationRisk.title",
-  acute_pain: "enterpriseInterdisciplinaryCarePlansD4b6.templates.acutePain.title",
-  pneumonia: "enterpriseInterdisciplinaryCarePlansD4b6.templates.pneumonia.title",
-  chf: "enterpriseInterdisciplinaryCarePlansD4b6.templates.chf.title",
-  impaired_mobility: "enterpriseInterdisciplinaryCarePlansD4b6.templates.impairedMobility.title",
-  pressure_injury_risk: "enterpriseInterdisciplinaryCarePlansD4b6.templates.pressureInjuryRisk.title",
-  discharge_readiness: "enterpriseInterdisciplinaryCarePlansD4b6.templates.dischargeReadiness.title",
-};
-
-const TEMPLATE_DESC_KEYS: Record<string, string> = {
-  fall_risk: "enterpriseInterdisciplinaryCarePlansD4b6.templates.fallRisk.description",
-  aspiration_risk: "enterpriseInterdisciplinaryCarePlansD4b6.templates.aspirationRisk.description",
-  acute_pain: "enterpriseInterdisciplinaryCarePlansD4b6.templates.acutePain.description",
-  pneumonia: "enterpriseInterdisciplinaryCarePlansD4b6.templates.pneumonia.description",
-  chf: "enterpriseInterdisciplinaryCarePlansD4b6.templates.chf.description",
-  impaired_mobility: "enterpriseInterdisciplinaryCarePlansD4b6.templates.impairedMobility.description",
-  pressure_injury_risk: "enterpriseInterdisciplinaryCarePlansD4b6.templates.pressureInjuryRisk.description",
-  discharge_readiness: "enterpriseInterdisciplinaryCarePlansD4b6.templates.dischargeReadiness.description",
-};
+const CATALOG_FILTER_IDS: Array<"ALL" | CarePlanTemplateCategory> = [
+  "ALL",
+  ...CARE_PLAN_TEMPLATE_CATEGORIES,
+];
 
 function looksLikeUuid(value: string): boolean {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
@@ -243,6 +229,7 @@ export function EnterpriseInterdisciplinaryCarePlansD4b6(
     "ALL" | "NURSING" | "PROVIDER" | "RESPIRATORY" | "PT" | "OT" | "SLP" | "TECHNICIAN"
   >("ALL");
   const [query, setQuery] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState<"ALL" | CarePlanTemplateCategory>("ALL");
   const [previewId, setPreviewId] = useState<string | null>(null);
   const [durablePlans, setDurablePlans] = useState<CarePlanWorkflowPlan[]>([]);
   const [suggestions, setSuggestions] = useState<CarePlanSuggestionDto[]>([]);
@@ -314,12 +301,18 @@ export function EnterpriseInterdisciplinaryCarePlansD4b6(
   const rt = props.rtContributions ?? summary.rtContributions;
   const rehab = props.rehabContributions ?? summary.rehabContributions;
   const tech = props.techProgress ?? summary.techProgress;
-  const templates = query.trim() ? searchCarePlanTemplates(query) : listActiveCarePlanTemplates();
+  const templates = searchCarePlanTemplates(query, categoryFilter);
   const preview = previewId ? previewCarePlanTemplate(previewId) : null;
   const activeDef = sections.find((s) => s.id === active) ?? sections[0];
 
+  const resolveTemplateTitle = (templateId: string | null | undefined, fallback?: string) => {
+    const tpl = templateId ? getCarePlanTemplate(templateId) : null;
+    if (tpl) return t(tpl.titleKey);
+    return fallback && fallback.trim() ? fallback : templateId ?? "—";
+  };
+
   const resolvePlanTitle = (plan: CarePlanWorkflowPlan) =>
-    t(TEMPLATE_TITLE_KEYS[plan.templateId ?? ""] ?? plan.title);
+    resolveTemplateTitle(plan.templateId, plan.title);
   const resolveComponentTitle = (title: string) => {
     const localized = t(title);
     return localized === title ? title : localized;
@@ -478,7 +471,7 @@ export function EnterpriseInterdisciplinaryCarePlansD4b6(
               }}
             >
               <div style={{ fontSize: 13, fontWeight: 700, color: "#0f172a" }}>
-                {t(TEMPLATE_TITLE_KEYS[s.templateId] ?? s.templateId)}
+                {resolveTemplateTitle(s.templateId)}
                 <span style={{ marginLeft: 8, fontWeight: 600, color: "#0369a1", fontSize: 12 }}>
                   {s.kind === "SUGGEST_REVIEW"
                     ? t("inpatientNursingAdmissionInp2g.carePlanWorkspace.suggestionReviewRecommended")
@@ -581,13 +574,22 @@ export function EnterpriseInterdisciplinaryCarePlansD4b6(
               <strong style={{ fontSize: 13 }}>
                 {t("enterpriseInterdisciplinaryCarePlansD4b6.overview.templatesHeading")}
               </strong>
-              <ul style={{ margin: "6px 0 0", paddingLeft: 18, fontSize: 13 }}>
-                {summary.activeTemplates.map((tpl) => (
-                  <li key={tpl.templateId}>
-                    {t(TEMPLATE_TITLE_KEYS[tpl.templateId] ?? tpl.titleKey)}
-                  </li>
-                ))}
-              </ul>
+              <p style={{ margin: "6px 0 0", fontSize: 13, color: "#64748b" }}>
+                {summary.activeTemplates.length}{" "}
+                {t("enterpriseInterdisciplinaryCarePlansD4b6.overview.templatesHint")}
+              </p>
+              <button
+                type="button"
+                data-testid="eicp-overview-open-catalog"
+                style={{ ...linkButtonStyle, marginTop: 6 }}
+                onClick={() => {
+                  setActive("templateCatalog");
+                  setQuery("");
+                  setCategoryFilter("ALL");
+                }}
+              >
+                {t("enterpriseInterdisciplinaryCarePlansD4b6.sections.templateCatalog")}
+              </button>
             </div>
             <div>
               <strong style={{ fontSize: 13 }}>
@@ -629,6 +631,36 @@ export function EnterpriseInterdisciplinaryCarePlansD4b6(
                 fontSize: 13,
               }}
             />
+            <div
+              data-testid="eicp-template-category-filters"
+              style={{ display: "flex", flexWrap: "wrap", gap: 6 }}
+            >
+              {CATALOG_FILTER_IDS.map((id) => {
+                const selected = categoryFilter === id;
+                const labelKey =
+                  id === "ALL"
+                    ? "enterpriseInterdisciplinaryCarePlansD4b6.categories.ALL"
+                    : CARE_PLAN_TEMPLATE_CATEGORY_LABEL_KEYS[id];
+                return (
+                  <button
+                    key={id}
+                    type="button"
+                    data-testid={`eicp-category-${id}`}
+                    data-active={selected ? "true" : "false"}
+                    onClick={() => setCategoryFilter(id)}
+                    style={{
+                      ...linkButtonStyle,
+                      padding: "4px 10px",
+                      fontSize: 11,
+                      background: selected ? "#ecfdf5" : "#fff",
+                      borderColor: selected ? "#0f766e" : "#e2e8f0",
+                    }}
+                  >
+                    {t(labelKey)}
+                  </button>
+                );
+              })}
+            </div>
             {templates.length === 0 ? (
               <p style={{ margin: 0, fontSize: 13, color: "#64748b" }}>
                 {t("enterpriseInterdisciplinaryCarePlansD4b6.emptyTemplates")}
@@ -646,12 +678,8 @@ export function EnterpriseInterdisciplinaryCarePlansD4b6(
                       gap: 6,
                     }}
                   >
-                    <strong style={{ fontSize: 13 }}>
-                      {t(TEMPLATE_TITLE_KEYS[tpl.templateId] ?? tpl.titleKey)}
-                    </strong>
-                    <span style={{ fontSize: 12, color: "#64748b" }}>
-                      {t(TEMPLATE_DESC_KEYS[tpl.templateId] ?? tpl.descriptionKey)}
-                    </span>
+                    <strong style={{ fontSize: 13 }}>{t(tpl.titleKey)}</strong>
+                    <span style={{ fontSize: 12, color: "#64748b" }}>{t(tpl.descriptionKey)}</span>
                     <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                       <button
                         type="button"
@@ -693,19 +721,14 @@ export function EnterpriseInterdisciplinaryCarePlansD4b6(
         {active === "templatePreview" ? (
           preview?.template ? (
             <div data-testid="eicp-template-preview" style={{ display: "grid", gap: 8 }}>
-              <strong style={{ fontSize: 14 }}>
-                {t(TEMPLATE_TITLE_KEYS[preview.template.templateId] ?? preview.template.titleKey)}
-              </strong>
+              <strong style={{ fontSize: 14 }}>{t(preview.template.titleKey)}</strong>
               <p style={{ margin: 0, fontSize: 13, color: "#334155" }}>
-                {t(
-                  TEMPLATE_DESC_KEYS[preview.template.templateId] ??
-                    preview.template.descriptionKey
-                )}
+                {t(preview.template.descriptionKey)}
               </p>
               <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13 }}>
                 {preview.template.components.map((c) => (
                   <li key={c.componentId}>
-                    {componentKindLabel(c.kind, t)}: {t(c.titleKey)}
+                    {componentKindLabel(c.kind, t)}: {t(c.bodyKey)}
                   </li>
                 ))}
               </ul>

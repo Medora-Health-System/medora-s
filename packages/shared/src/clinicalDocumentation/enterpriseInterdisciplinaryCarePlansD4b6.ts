@@ -17,6 +17,18 @@ import type {
 } from "./enterpriseClinicalDocumentContractD4b1.js";
 import { actorSnapshot } from "./enterpriseClinicalDocumentAuthorshipD4b1.js";
 import { ENTERPRISE_CLINICAL_DOCUMENT_CONTRACT_VERSION } from "./enterpriseClinicalDocumentContractD4b1.js";
+import {
+  CARE_PLAN_CP1F_EXPANDED_TEMPLATES,
+  CARE_PLAN_LEGACY_ALIAS_ENRICHMENT,
+  CARE_PLAN_LEGACY_TEMPLATE_CATEGORIES,
+  type CarePlanTemplateCategory,
+} from "./enterpriseCarePlanTemplateLibraryCp1f.js";
+export {
+  CARE_PLAN_TEMPLATE_CATEGORIES,
+  CARE_PLAN_TEMPLATE_CATEGORY_LABEL_KEYS,
+  CARE_PLAN_LEGACY_STARTER_TEMPLATE_IDS,
+  type CarePlanTemplateCategory,
+} from "./enterpriseCarePlanTemplateLibraryCp1f.js";
 
 export const ENTERPRISE_INTERDISCIPLINARY_CARE_PLANS_CERTIFICATION_ID =
   "MEDUI.ENTERPRISE_INTERDISCIPLINARY_CARE_PLANS.D4B6" as const;
@@ -252,6 +264,8 @@ export type CarePlanTemplateDefinition = {
   governanceStatus: CarePlanTemplateGovernanceStatus;
   titleKey: string;
   descriptionKey: string;
+  /** Clinical grouping for catalog UX — projection metadata only (not a second engine). */
+  category?: CarePlanTemplateCategory;
   searchAliases: readonly string[];
   conditionTags: readonly string[];
   riskTags: readonly string[];
@@ -283,7 +297,7 @@ function tplComponent(
 }
 
 /** Curated ACTIVE starter catalog — quality over breadth. */
-export const ENTERPRISE_CARE_PLAN_TEMPLATE_CATALOG: ReadonlyArray<CarePlanTemplateDefinition> = [
+const CARE_PLAN_TEMPLATE_CATALOG_BASE: CarePlanTemplateDefinition[] = [
   {
     templateId: "fall_risk",
     version: "D4B.6.1",
@@ -541,6 +555,29 @@ export const ENTERPRISE_CARE_PLAN_TEMPLATE_CATALOG: ReadonlyArray<CarePlanTempla
   },
 ];
 
+function withLegacyCategoryAndAliases(
+  template: CarePlanTemplateDefinition
+): CarePlanTemplateDefinition {
+  const legacyCategory =
+    CARE_PLAN_LEGACY_TEMPLATE_CATEGORIES[
+      template.templateId as keyof typeof CARE_PLAN_LEGACY_TEMPLATE_CATEGORIES
+    ];
+  const extraAliases = CARE_PLAN_LEGACY_ALIAS_ENRICHMENT[template.templateId] ?? [];
+  if (!legacyCategory && extraAliases.length === 0) return template;
+  const mergedAliases = Array.from(new Set([...template.searchAliases, ...extraAliases]));
+  return {
+    ...template,
+    ...(legacyCategory ? { category: legacyCategory } : {}),
+    searchAliases: mergedAliases,
+  };
+}
+
+/** Canonical shared catalog: D4B.6 starters + CP.1F expansions + deferred stubs. */
+export const ENTERPRISE_CARE_PLAN_TEMPLATE_CATALOG: ReadonlyArray<CarePlanTemplateDefinition> = [
+  ...CARE_PLAN_TEMPLATE_CATALOG_BASE.map(withLegacyCategoryAndAliases),
+  ...CARE_PLAN_CP1F_EXPANDED_TEMPLATES,
+];
+
 export function listActiveCarePlanTemplates(): CarePlanTemplateDefinition[] {
   return ENTERPRISE_CARE_PLAN_TEMPLATE_CATALOG.filter(
     (t) => t.selectedInD4b6 && t.governanceStatus === "ACTIVE"
@@ -551,16 +588,34 @@ export function getCarePlanTemplate(templateId: string): CarePlanTemplateDefinit
   return ENTERPRISE_CARE_PLAN_TEMPLATE_CATALOG.find((t) => t.templateId === templateId) ?? null;
 }
 
-export function searchCarePlanTemplates(query: string): CarePlanTemplateDefinition[] {
+export function searchCarePlanTemplates(
+  query: string,
+  category?: CarePlanTemplateCategory | "ALL" | null
+): CarePlanTemplateDefinition[] {
   const q = String(query ?? "").trim().toLowerCase();
-  const active = listActiveCarePlanTemplates();
+  let active = listActiveCarePlanTemplates();
+  if (category && category !== "ALL") {
+    active = active.filter((t) => t.category === category);
+  }
   if (!q) return active;
   return active.filter((t) => {
-    const hay = [t.templateId, ...t.searchAliases, ...t.conditionTags, ...t.riskTags]
+    const hay = [
+      t.templateId,
+      t.category ?? "",
+      ...t.searchAliases,
+      ...t.conditionTags,
+      ...t.riskTags,
+    ]
       .join(" ")
       .toLowerCase();
     return hay.includes(q);
   });
+}
+
+export function listCarePlanTemplatesByCategory(
+  category: CarePlanTemplateCategory | "ALL"
+): CarePlanTemplateDefinition[] {
+  return searchCarePlanTemplates("", category);
 }
 
 export function previewCarePlanTemplate(templateId: string): {

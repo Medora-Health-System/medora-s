@@ -392,7 +392,7 @@ export function formatCarePlanClinicianAttribution(input: {
   if (input.clinician.attributionUnavailable) {
     const unavailable =
       input.attributionUnavailableLabel?.trim() ||
-      "Author attribution unavailable for this historical entry";
+      "Historical author attribution unavailable";
     return [unavailable, input.at].filter(Boolean).join(" · ");
   }
   const name = input.clinician.displayName?.trim() || null;

@@ -184,6 +184,25 @@ function attributionLine(input: {
   return [who ? `${prefix} ${who}` : null, when].filter(Boolean).join(" · ") || null;
 }
 
+function componentHistoryTitle(
+  kind: CarePlanWorkflowComponent["kind"],
+  t: (k: string) => string,
+  corrected: boolean
+): string {
+  if (corrected) {
+    return t("inpatientNursingAdmissionInp2g.carePlanWorkspace.historyComponentCorrected");
+  }
+  const map: Record<CarePlanWorkflowComponent["kind"], string> = {
+    GOAL: "inpatientNursingAdmissionInp2g.carePlanWorkspace.historyGoalAdded",
+    OUTCOME: "inpatientNursingAdmissionInp2g.carePlanWorkspace.historyOutcomeAdded",
+    INTERVENTION: "inpatientNursingAdmissionInp2g.carePlanWorkspace.historyInterventionAdded",
+    MONITORING: "inpatientNursingAdmissionInp2g.carePlanWorkspace.historyMonitoringAdded",
+    EDUCATION: "inpatientNursingAdmissionInp2g.carePlanWorkspace.historyEducationAdded",
+    SAFETY: "inpatientNursingAdmissionInp2g.carePlanWorkspace.historySafetyAdded",
+  };
+  return t(map[kind]);
+}
+
 function transitionClinicalLabel(toStatus: string | null | undefined, t: (k: string) => string): string {
   const s = String(toStatus ?? "").toUpperCase();
   if (s === "ACTIVE") return t("inpatientNursingAdmissionInp2g.carePlanWorkspace.historyActivated");
@@ -319,6 +338,7 @@ export function CarePlanClinicianWorkflowCp1c(props: Props) {
   const [busy, setBusy] = useState(false);
   const [editComponentId, setEditComponentId] = useState<string | null>(null);
   const [editText, setEditText] = useState("");
+  const [editCorrectionReason, setEditCorrectionReason] = useState("");
   const [progressNarrative, setProgressNarrative] = useState("");
   const [progressStatus, setProgressStatus] = useState("IN_PROGRESS");
   const [reviewNarrative, setReviewNarrative] = useState("");
@@ -448,6 +468,10 @@ export function CarePlanClinicianWorkflowCp1c(props: Props) {
 
   const saveComponentEdit = async (plan: CarePlanWorkflowPlan, component: CarePlanWorkflowComponent) => {
     if (!canClinicalWrite) return;
+    if (!editCorrectionReason.trim()) {
+      props.onMessage(t("inpatientNursingAdmissionInp2g.carePlanWorkspace.correctionReasonRequired"));
+      return;
+    }
     setBusy(true);
     try {
       await apiFetch(
@@ -461,10 +485,12 @@ export function CarePlanClinicianWorkflowCp1c(props: Props) {
             text: editText,
             status: component.status,
             targetOutcome: component.targetOutcome,
+            correctionReason: editCorrectionReason.trim(),
           }),
         }
       );
       setEditComponentId(null);
+      setEditCorrectionReason("");
       props.onMessage(null);
       await refresh();
     } catch (error) {
@@ -615,6 +641,12 @@ export function CarePlanClinicianWorkflowCp1c(props: Props) {
                           c.correctedByProfessionalTitleSnapshot,
                           c.correctedAt
                         )}
+                        {c.correctionReason?.trim() ? (
+                          <div>
+                            {t("inpatientNursingAdmissionInp2g.carePlanWorkspace.historyCorrectionReason")}:{" "}
+                            {c.correctionReason.trim()}
+                          </div>
+                        ) : null}
                       </div>
                     ) : null}
                     {own && canClinicalWrite && isCurrent(selected.status) ? (
@@ -626,11 +658,27 @@ export function CarePlanClinicianWorkflowCp1c(props: Props) {
                             rows={3}
                             style={{ width: "100%", fontSize: 12, padding: 8, borderRadius: 8 }}
                           />
+                          <label style={{ fontSize: 12, fontWeight: 600 }}>
+                            {t("inpatientNursingAdmissionInp2g.carePlanWorkspace.correctionReasonLabel")}
+                          </label>
+                          <input
+                            value={editCorrectionReason}
+                            onChange={(e) => setEditCorrectionReason(e.target.value)}
+                            data-testid={`eicp-correction-reason-${c.id}`}
+                            style={{ width: "100%", fontSize: 12, padding: 8, borderRadius: 8 }}
+                          />
                           <div style={{ display: "flex", gap: 6 }}>
                             <button type="button" style={btn} disabled={busy} onClick={() => void saveComponentEdit(selected, c)}>
                               {t("common.save")}
                             </button>
-                            <button type="button" style={btn} onClick={() => setEditComponentId(null)}>
+                            <button
+                              type="button"
+                              style={btn}
+                              onClick={() => {
+                                setEditComponentId(null);
+                                setEditCorrectionReason("");
+                              }}
+                            >
                               {t("common.cancel")}
                             </button>
                           </div>
@@ -643,6 +691,7 @@ export function CarePlanClinicianWorkflowCp1c(props: Props) {
                           onClick={() => {
                             setEditComponentId(c.id);
                             setEditText(c.text || props.resolveComponentTitle(c.title));
+                            setEditCorrectionReason("");
                           }}
                         >
                           {t("inpatientNursingAdmissionInp2g.carePlanWorkspace.editOwn")}
@@ -694,6 +743,12 @@ export function CarePlanClinicianWorkflowCp1c(props: Props) {
                           c.correctedByProfessionalTitleSnapshot,
                           c.correctedAt
                         )}
+                        {c.correctionReason?.trim() ? (
+                          <div>
+                            {t("inpatientNursingAdmissionInp2g.carePlanWorkspace.historyCorrectionReason")}:{" "}
+                            {c.correctionReason.trim()}
+                          </div>
+                        ) : null}
                       </div>
                     ) : null}
                     {own && canClinicalWrite && isCurrent(selected.status) ? (
@@ -705,11 +760,27 @@ export function CarePlanClinicianWorkflowCp1c(props: Props) {
                             rows={3}
                             style={{ width: "100%", fontSize: 12, padding: 8, borderRadius: 8 }}
                           />
+                          <label style={{ fontSize: 12, fontWeight: 600 }}>
+                            {t("inpatientNursingAdmissionInp2g.carePlanWorkspace.correctionReasonLabel")}
+                          </label>
+                          <input
+                            value={editCorrectionReason}
+                            onChange={(e) => setEditCorrectionReason(e.target.value)}
+                            data-testid={`eicp-correction-reason-${c.id}`}
+                            style={{ width: "100%", fontSize: 12, padding: 8, borderRadius: 8 }}
+                          />
                           <div style={{ display: "flex", gap: 6 }}>
                             <button type="button" style={btn} disabled={busy} onClick={() => void saveComponentEdit(selected, c)}>
                               {t("common.save")}
                             </button>
-                            <button type="button" style={btn} onClick={() => setEditComponentId(null)}>
+                            <button
+                              type="button"
+                              style={btn}
+                              onClick={() => {
+                                setEditComponentId(null);
+                                setEditCorrectionReason("");
+                              }}
+                            >
                               {t("common.cancel")}
                             </button>
                           </div>
@@ -722,6 +793,7 @@ export function CarePlanClinicianWorkflowCp1c(props: Props) {
                           onClick={() => {
                             setEditComponentId(c.id);
                             setEditText(c.text || props.resolveComponentTitle(c.title));
+                            setEditCorrectionReason("");
                           }}
                         >
                           {t("inpatientNursingAdmissionInp2g.carePlanWorkspace.editOwn")}
@@ -836,49 +908,136 @@ export function CarePlanClinicianWorkflowCp1c(props: Props) {
               <strong style={{ fontSize: 13 }}>
                 {t("inpatientNursingAdmissionInp2g.carePlanWorkspace.navHistory")}
               </strong>
-              {selected.reviews.map((r, idx) => (
-                <div key={r.id ?? `r-${idx}`} style={{ fontSize: 12 }}>
-                  <div>{r.narrative || r.reviewStatus || t("inpatientMedicalRecordSummaryInp2f.carePlan.reviews")}</div>
-                  <div style={{ color: "#64748b" }}>
-                    {reviewedLine(
-                      r.reviewerDisplayNameSnapshot,
-                      r.reviewerProfessionalTitleSnapshot,
-                      r.reviewerRoleSnapshot,
-                      r.createdAt
-                    )}
+              {(() => {
+                type HistItem = {
+                  at: string;
+                  key: string;
+                  title: string;
+                  detail?: string | null;
+                  who: string | null;
+                  unavailable: boolean;
+                };
+                const items: HistItem[] = [];
+                for (const tr of selected.transitions) {
+                  const at = String(tr.createdAt ?? "");
+                  const { who, unavailable } = attributionWho(
+                    tr.actorDisplayNameSnapshot,
+                    tr.actorProfessionalTitleSnapshot,
+                    tr.actorRoleSnapshot,
+                    t
+                  );
+                  items.push({
+                    at,
+                    key: `t-${at}-${tr.toStatus}`,
+                    title: transitionClinicalLabel(tr.toStatus, t),
+                    detail: tr.reason?.trim() || null,
+                    who,
+                    unavailable,
+                  });
+                }
+                for (const r of selected.reviews) {
+                  const at = String(r.createdAt ?? "");
+                  const { who, unavailable } = attributionWho(
+                    r.reviewerDisplayNameSnapshot,
+                    r.reviewerProfessionalTitleSnapshot,
+                    r.reviewerRoleSnapshot,
+                    t
+                  );
+                  items.push({
+                    at,
+                    key: `r-${r.id ?? at}`,
+                    title:
+                      r.narrative?.trim() ||
+                      t("inpatientNursingAdmissionInp2g.carePlanWorkspace.historyReviewed"),
+                    who,
+                    unavailable,
+                  });
+                }
+                for (const p of selected.progress) {
+                  const at = String(p.createdAt ?? "");
+                  const { who, unavailable } = attributionWho(
+                    p.authorDisplayNameSnapshot,
+                    p.authorProfessionalTitleSnapshot,
+                    p.authorRoleSnapshot,
+                    t
+                  );
+                  items.push({
+                    at,
+                    key: `p-${p.id ?? at}`,
+                    title:
+                      p.narrative?.trim() ||
+                      t("inpatientNursingAdmissionInp2g.carePlanWorkspace.historyProgress"),
+                    who,
+                    unavailable,
+                  });
+                }
+                for (const c of selected.components) {
+                  const createdAt = String(c.createdAt ?? "");
+                  if (createdAt) {
+                    const { who, unavailable } = attributionWho(
+                      c.createdByDisplayNameSnapshot,
+                      c.createdByProfessionalTitleSnapshot,
+                      null,
+                      t
+                    );
+                    const clinicalSnippet = (c.text || c.title || "").trim();
+                    items.push({
+                      at: createdAt,
+                      key: `c-add-${c.id}`,
+                      title: componentHistoryTitle(c.kind, t, false),
+                      detail: clinicalSnippet
+                        ? clinicalSnippet.length > 160
+                          ? `${clinicalSnippet.slice(0, 157)}…`
+                          : clinicalSnippet
+                        : null,
+                      who,
+                      unavailable,
+                    });
+                  }
+                  if (c.correctedAt) {
+                    const { who, unavailable } = attributionWho(
+                      c.correctedByDisplayNameSnapshot,
+                      c.correctedByProfessionalTitleSnapshot,
+                      null,
+                      t
+                    );
+                    items.push({
+                      at: String(c.correctedAt),
+                      key: `c-corr-${c.id}-${c.correctedAt}`,
+                      title: componentHistoryTitle(c.kind, t, true),
+                      detail: c.correctionReason?.trim()
+                        ? `${t("inpatientNursingAdmissionInp2g.carePlanWorkspace.historyCorrectionReason")}: ${c.correctionReason.trim()}`
+                        : null,
+                      who,
+                      unavailable,
+                    });
+                  }
+                }
+                items.sort((a, b) => {
+                  const ta = Date.parse(a.at) || 0;
+                  const tb = Date.parse(b.at) || 0;
+                  return ta - tb;
+                });
+                if (!items.length) {
+                  return (
+                    <p style={{ margin: 0, fontSize: 12, color: "#64748b" }}>
+                      {t("inpatientNursingAdmissionInp2g.carePlanWorkspace.historyEmpty")}
+                    </p>
+                  );
+                }
+                return items.map((item) => (
+                  <div key={item.key} data-testid="eicp-history-item" style={{ fontSize: 12, color: "#334155" }}>
+                    <div style={{ fontWeight: 600 }}>{item.title}</div>
+                    <div style={{ color: "#64748b" }}>
+                      {item.unavailable
+                        ? t("inpatientNursingAdmissionInp2g.carePlanWorkspace.attributionUnavailable")
+                        : item.who}
+                    </div>
+                    <div style={{ color: "#64748b" }}>{formatDt(item.at, language)}</div>
+                    {item.detail ? <div style={{ color: "#475569" }}>{item.detail}</div> : null}
                   </div>
-                </div>
-              ))}
-              {selected.transitions.map((tr, idx) => (
-                <div key={`t-${idx}`} style={{ fontSize: 12, color: "#334155" }}>
-                  <div>{formatDt(tr.createdAt, language)}</div>
-                  <div>{transitionClinicalLabel(tr.toStatus, t)}</div>
-                  {tr.reason ? <div style={{ color: "#64748b" }}>{tr.reason}</div> : null}
-                  <div style={{ color: "#64748b" }}>
-                    {attributionLine({
-                      prefixKey:
-                        String(tr.toStatus ?? "").toUpperCase() === "COMPLETED"
-                          ? "inpatientNursingAdmissionInp2g.carePlanWorkspace.completedBy"
-                          : String(tr.toStatus ?? "").toUpperCase() === "DISCONTINUED"
-                            ? "inpatientNursingAdmissionInp2g.carePlanWorkspace.discontinuedBy"
-                            : String(tr.toStatus ?? "").toUpperCase() === "ON_HOLD"
-                              ? "inpatientNursingAdmissionInp2g.carePlanWorkspace.heldBy"
-                              : String(tr.toStatus ?? "").toUpperCase() === "ACTIVE" &&
-                                  String(tr.fromStatus ?? "").toUpperCase() === "DRAFT"
-                                ? "inpatientNursingAdmissionInp2g.carePlanWorkspace.activatedBy"
-                                : String(tr.toStatus ?? "").toUpperCase() === "ACTIVE"
-                                  ? "inpatientNursingAdmissionInp2g.carePlanWorkspace.reactivatedBy"
-                                  : "inpatientMedicalRecordSummaryInp2f.carePlan.documentedBy",
-                      displayNameSnapshot: tr.actorDisplayNameSnapshot,
-                      professionalTitleSnapshot: tr.actorProfessionalTitleSnapshot,
-                      roleSnapshot: tr.actorRoleSnapshot,
-                      at: null,
-                      language,
-                      t,
-                    })}
-                  </div>
-                </div>
-              ))}
+                ));
+              })()}
             </div>
           )}
 

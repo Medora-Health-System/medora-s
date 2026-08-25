@@ -21048,7 +21048,7 @@ export default {
       body: "Plan de soins Observation (flux infirmier à destination).",
     },
     summary: {
-      body: "Synthèse du séjour Observation pour la transmission et la disposition.",
+      body: "Synthèse du dossier médical en lecture seule pour ce séjour Observation — même autorité de plan de soins qu’en hospitalisation.",
     },
     disposition: {
       pathways: {
