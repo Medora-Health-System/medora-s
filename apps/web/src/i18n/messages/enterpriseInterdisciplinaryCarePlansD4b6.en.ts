@@ -82,8 +82,11 @@ export const enterpriseInterdisciplinaryCarePlansD4b6En = {
     contributionsHeading: "Discipline contributions",
   },
   lifecycle: {
+    DRAFT: "Draft",
     DRAFT_CUSTOMIZATION: "Draft customization",
     ACTIVE: "Active",
+    ON_HOLD: "On hold",
+    UNDER_REVIEW: "Under review",
     IN_PROGRESS: "In progress",
     IN_REVIEW: "In review",
     REVISED: "Revised",

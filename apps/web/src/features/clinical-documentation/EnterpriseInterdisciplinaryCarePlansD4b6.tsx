@@ -1,9 +1,9 @@
 "use client";
 
 /**
- * MEDUI.D4B.6 — Enterprise Interdisciplinary Care Plans shell.
- * Obs + IP: full activation workflow. ED: limited projection.
- * Consumes D4B.1 primitives. Composes D4B.2–5 contributions without overwrite.
+ * MEDUI.CP.1A / CP.1C — Enterprise Interdisciplinary Care Plans clinician workspace.
+ * Canonical authority: EncounterCarePlan* (activate + document progress/review/lifecycle).
+ * Obs + IP: durable API. ED: limited projection only (no redesign this phase).
  */
 
 import React, { useMemo, useState } from "react";
@@ -29,13 +29,12 @@ import {
 import { apiFetch } from "@/lib/apiClient";
 import { MEDORA_CARD_SHELL } from "@/components/medora-card/medoraCardTokens";
 import { useI18n } from "@/lib/i18n";
+import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import {
-  EnterpriseClinicalDocumentAmendmentBanner,
-  EnterpriseClinicalDocumentCompletenessSummary,
-  EnterpriseClinicalDocumentSignatureMeta,
-  EnterpriseClinicalDocumentStatusBadge,
-  EnterpriseClinicalDocumentUnsignedDraftWarning,
-} from "@/features/clinical-documentation/EnterpriseClinicalDocumentPrimitivesD4b1";
+  CarePlanClinicianWorkflowCp1c,
+  mapDurableCarePlans,
+  type CarePlanWorkflowPlan,
+} from "@/features/clinical-documentation/CarePlanClinicianWorkflowCp1c";
 
 export type EnterpriseInterdisciplinaryCarePlansProps = {
   encounterId: string;
@@ -54,41 +53,6 @@ export type EnterpriseInterdisciplinaryCarePlansProps = {
   legacyD3eStub?: ReadonlyArray<LegacyD3eCarePlanStubProjection>;
   initialSection?: EnterpriseCarePlanWorkspaceSectionId;
 };
-
-function DocumentStatusRow({ doc }: { doc: EnterpriseClinicalDocument }) {
-  return (
-    <div
-      data-testid={`eicp-doc-${doc.documentId}`}
-      style={{
-        ...MEDORA_CARD_SHELL,
-        padding: "10px 12px",
-        display: "grid",
-        gap: 8,
-      }}
-    >
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
-        <strong style={{ fontSize: 13 }}>{doc.documentTypeId}</strong>
-        <EnterpriseClinicalDocumentStatusBadge state={doc.lifecycleState} compact />
-      </div>
-      {doc.lifecycleState === "DRAFT" || doc.lifecycleState === "IN_PROGRESS" ? (
-        <EnterpriseClinicalDocumentUnsignedDraftWarning />
-      ) : null}
-      {doc.lifecycleState === "AMENDED" || doc.lifecycleState === "ENTERED_IN_ERROR" ? (
-        <EnterpriseClinicalDocumentAmendmentBanner
-          kind={doc.enteredInError ? "enteredInError" : "amended"}
-          reason={doc.lineage.amendmentReason}
-        />
-      ) : null}
-      <EnterpriseClinicalDocumentSignatureMeta
-        authorDisplay={doc.author.displayName}
-        signerDisplay={doc.responsibleSigner?.displayName}
-        signedAt={doc.signedAt}
-        templateVersion={doc.templateVersion}
-      />
-      <EnterpriseClinicalDocumentCompletenessSummary completeness={doc.completeness} />
-    </div>
-  );
-}
 
 const linkButtonStyle: React.CSSProperties = {
   border: "1px solid #e2e8f0",
@@ -123,6 +87,11 @@ const TEMPLATE_DESC_KEYS: Record<string, string> = {
   discharge_readiness: "enterpriseInterdisciplinaryCarePlansD4b6.templates.dischargeReadiness.description",
 };
 
+function looksLikeUuid(value: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+    value.trim()
+  );
+}
 
 function clinicalCarePlanErrorMessage(error: unknown, t: (key: string) => string): string {
   const raw =
@@ -141,16 +110,98 @@ function clinicalCarePlanErrorMessage(error: unknown, t: (key: string) => string
   if (upper.includes("CARE_PLAN_LEGACY_OPS_WRITE_FROZEN")) {
     return t("inpatientNursingAdmissionInp2g.carePlanWorkspace.legacyOpsReadOnly");
   }
+  if (upper.includes("CARE_PLAN_TRANSITION_REASON_REQUIRED")) {
+    return t("inpatientNursingAdmissionInp2g.carePlanWorkspace.transitionReasonRequired");
+  }
+  if (upper.includes("CARE_PLAN_TRANSITION_INVALID")) {
+    return t("inpatientNursingAdmissionInp2g.carePlanWorkspace.transitionInvalid");
+  }
   if (/^[A-Z0-9_]+$/.test(raw.trim()) || /[0-9a-f]{8}-[0-9a-f]{4}-/i.test(raw)) {
     return t("inpatientNursingAdmissionInp2g.carePlanWorkspace.genericError");
   }
   return raw || t("inpatientNursingAdmissionInp2g.carePlanWorkspace.genericError");
 }
 
+function toSummaryPlans(plans: CarePlanWorkflowPlan[]): CarePlanPatientPlan[] {
+  return plans.map((plan) => ({
+    planId: plan.id,
+    encounterId: "",
+    patientId: "",
+    facilityId: "",
+    sourceTemplateId: plan.templateId ?? undefined,
+    title: plan.title,
+    lifecycleState:
+      plan.status === "UNDER_REVIEW"
+        ? "IN_REVIEW"
+        : (plan.status as CarePlanPatientPlan["lifecycleState"]),
+    components: plan.components.map((component) => ({
+      componentId: component.id,
+      kind: component.kind as CarePlanPatientPlan["components"][number]["kind"],
+      title: component.title,
+      body: component.text,
+      custom: false,
+      disciplineHint: component.discipline ?? undefined,
+      status:
+        component.status === "NOT_STARTED"
+          ? "PENDING"
+          : ((component.status as CarePlanPatientPlan["components"][number]["status"]) ?? "PENDING"),
+      isRecommendationNotOrder: true,
+      safetyDoesNotAuthorizePrecaution: true,
+      authorUserId: component.createdByUserId ?? undefined,
+      lastUpdatedAt: component.createdAt ?? undefined,
+    })),
+    activatedAt: plan.activatedAt ?? undefined,
+    activatedByUserId: plan.activatedByUserId ?? undefined,
+    completedAt: plan.completedAt ?? undefined,
+    discontinuedAt: plan.discontinuedAt ?? undefined,
+    enteredInError: false,
+    isNotDiagnosis: true,
+    doesNotMutateProblemList: true,
+    doesNotCreateProviderOrders: true,
+    doesNotAlterMar: true,
+    doesNotFinalizeDiet: true,
+    doesNotAlterOxygenVent: true,
+    doesNotAuthorizeDischarge: true,
+    doesNotProcureDme: true,
+    doesNotAuthorizeRestraintsOrIsolation: true,
+    sourceTemplateNotMutated: true,
+    usesD4b1DocumentLifecycle: true,
+  })) as CarePlanPatientPlan[];
+}
+
+function componentKindLabel(kind: string, t: (key: string) => string): string {
+  const k = kind.toUpperCase();
+  if (k === "GOAL") return t("inpatientNursingAdmissionInp2g.carePlanWorkspace.goalLabel");
+  if (k === "OUTCOME") return t("inpatientNursingAdmissionInp2g.carePlanWorkspace.outcomeLabel");
+  if (k === "INTERVENTION") return t("inpatientMedicalRecordSummaryInp2f.carePlan.interventions");
+  if (k === "MONITORING") return t("inpatientMedicalRecordSummaryInp2f.carePlan.monitoring");
+  if (k === "EDUCATION") return t("inpatientMedicalRecordSummaryInp2f.carePlan.education");
+  if (k === "SAFETY") return t("inpatientMedicalRecordSummaryInp2f.carePlan.safety");
+  return t("inpatientNursingAdmissionInp2g.carePlanWorkspace.goalLabel");
+}
+
+function disciplineFilterLabel(
+  id: string,
+  t: (key: string) => string
+): string {
+  const map: Record<string, string> = {
+    ALL: "inpatientNursingAdmissionInp2g.carePlanWorkspace.disciplineAll",
+    NURSING: "inpatientNursingAdmissionInp2g.carePlanWorkspace.disciplineNursing",
+    PROVIDER: "inpatientNursingAdmissionInp2g.carePlanWorkspace.disciplineProvider",
+    RESPIRATORY: "inpatientNursingAdmissionInp2g.carePlanWorkspace.disciplineRespiratory",
+    PT: "inpatientNursingAdmissionInp2g.carePlanWorkspace.disciplinePt",
+    OT: "inpatientNursingAdmissionInp2g.carePlanWorkspace.disciplineOt",
+    SLP: "inpatientNursingAdmissionInp2g.carePlanWorkspace.disciplineSlp",
+    TECHNICIAN: "inpatientNursingAdmissionInp2g.carePlanWorkspace.disciplineTechnician",
+  };
+  return t(map[id] ?? map.ALL);
+}
+
 export function EnterpriseInterdisciplinaryCarePlansD4b6(
   props: EnterpriseInterdisciplinaryCarePlansProps
 ) {
   const { t } = useI18n();
+  const { userId } = useFacilityAndRoles();
   const roleProfile =
     props.roleProfile ?? resolveCarePlanRoleProfile(props.roleCodes ?? ["RN"]);
   const isEd = props.careSetting === "EMERGENCY";
@@ -186,82 +237,31 @@ export function EnterpriseInterdisciplinaryCarePlansD4b6(
   >("ALL");
   const [query, setQuery] = useState("");
   const [previewId, setPreviewId] = useState<string | null>(null);
-  const [localPlans, setLocalPlans] = useState<CarePlanPatientPlan[]>(() => [
-    ...(props.plans ?? []),
-  ]);
+  const [durablePlans, setDurablePlans] = useState<CarePlanWorkflowPlan[]>([]);
   const [activationMessage, setActivationMessage] = useState<string | null>(null);
-  const [planFilter, setPlanFilter] = useState<
-    "ACTIVE" | "GOALS" | "INTERVENTIONS" | "PROGRESS" | "COMPLETED" | "HISTORY"
-  >("ACTIVE");
-  const [busyPlanId, setBusyPlanId] = useState<string | null>(null);
-
-  const mapServerPlans = (plans: Array<Record<string, any>>): CarePlanPatientPlan[] =>
-    (plans ?? []).map((plan) => ({
-      planId: plan.id,
-      encounterId: plan.encounterId,
-      patientId: plan.patientId,
-      facilityId: plan.facilityId,
-      sourceTemplateId: plan.templateId,
-      sourceTemplateVersion: plan.templateVersion,
-      title: plan.title,
-      lifecycleState: plan.status === "UNDER_REVIEW" ? "IN_REVIEW" : plan.status,
-      components: (plan.components ?? []).map((component: any) => ({
-        componentId: component.id,
-        sourceTemplateComponentId: component.sourceTemplateComponentId,
-        kind: component.componentType,
-        title: component.title,
-        body: component.text,
-        custom: !component.sourceTemplateComponentId,
-        disciplineHint: component.discipline,
-        status: component.status === "NOT_STARTED" ? "PENDING" : component.status,
-        isRecommendationNotOrder: true,
-        safetyDoesNotAuthorizePrecaution: true,
-        authorUserId: component.createdByUserId,
-        lastUpdatedAt: component.updatedAt,
-      })),
-      activatedAt: plan.activatedAt,
-      activatedByUserId: plan.activatedByUserId,
-      completedAt: plan.completedAt,
-      discontinuedAt: plan.discontinuedAt,
-      enteredInError: false,
-      isNotDiagnosis: true,
-      doesNotMutateProblemList: true,
-      doesNotCreateProviderOrders: true,
-      doesNotAlterMar: true,
-      doesNotFinalizeDiet: true,
-      doesNotAlterOxygenVent: true,
-      doesNotAuthorizeDischarge: true,
-      doesNotProcureDme: true,
-      doesNotAuthorizeRestraintsOrIsolation: true,
-      sourceTemplateNotMutated: true,
-      usesD4b1DocumentLifecycle: true,
-      // Preserve server review/progress for dense workspace (non-schema extension via cast)
-      ...(plan.reviews ? { reviews: plan.reviews } : {}),
-      ...(plan.progress ? { progress: plan.progress } : {}),
-      ...(plan.revision != null ? { revision: plan.revision } : {}),
-    })) as CarePlanPatientPlan[];
 
   React.useEffect(() => {
     if (props.careSetting !== "INPATIENT" && props.careSetting !== "OBSERVATION") return;
     let cancelled = false;
     apiFetch(`/encounters/${props.encounterId}/care-plans`)
       .then((payload: { plans?: Array<Record<string, any>> }) => {
-        if (!cancelled) setLocalPlans(mapServerPlans(payload?.plans ?? []));
+        if (!cancelled) setDurablePlans(mapDurableCarePlans(payload?.plans ?? []));
       })
       .catch((error) => {
-        if (!cancelled)
-          setActivationMessage(clinicalCarePlanErrorMessage(error, t));
+        if (!cancelled) setActivationMessage(clinicalCarePlanErrorMessage(error, t));
       });
     return () => {
       cancelled = true;
     };
-  }, [props.careSetting, props.encounterId]);
+  }, [props.careSetting, props.encounterId, t]);
 
   React.useEffect(() => {
     if (!sections.some((s) => s.id === active)) {
       setActive(props.careSetting === "EMERGENCY" ? "overview" : "activePlans");
     }
   }, [sections, active, props.careSetting]);
+
+  const summaryPlans = useMemo(() => toSummaryPlans(durablePlans), [durablePlans]);
 
   const summary = useMemo(
     () =>
@@ -271,7 +271,7 @@ export function EnterpriseInterdisciplinaryCarePlansD4b6(
         facilityId: props.facilityId,
         careSetting: props.careSetting,
         roleProfile,
-        plans: localPlans,
+        plans: summaryPlans,
       }),
     [
       props.encounterId,
@@ -279,19 +279,24 @@ export function EnterpriseInterdisciplinaryCarePlansD4b6(
       props.facilityId,
       props.careSetting,
       roleProfile,
-      localPlans,
+      summaryPlans,
     ]
   );
 
-  const documents = props.documents ?? summary.documents;
   const nursing = props.nursingContributions ?? summary.nursingContributions;
   const rt = props.rtContributions ?? summary.rtContributions;
   const rehab = props.rehabContributions ?? summary.rehabContributions;
   const tech = props.techProgress ?? summary.techProgress;
-  const legacy = props.legacyD3eStub ?? summary.legacyD3eStub;
   const templates = query.trim() ? searchCarePlanTemplates(query) : listActiveCarePlanTemplates();
   const preview = previewId ? previewCarePlanTemplate(previewId) : null;
   const activeDef = sections.find((s) => s.id === active) ?? sections[0];
+
+  const resolvePlanTitle = (plan: CarePlanWorkflowPlan) =>
+    t(TEMPLATE_TITLE_KEYS[plan.templateId ?? ""] ?? plan.title);
+  const resolveComponentTitle = (title: string) => {
+    const localized = t(title);
+    return localized === title ? title : localized;
+  };
 
   const selectSection = (id: string) => {
     const resolved = resolveCarePlanWorkspaceSection(id);
@@ -309,14 +314,13 @@ export function EnterpriseInterdisciplinaryCarePlansD4b6(
           headers: { "content-type": "application/json" },
           body: JSON.stringify({ templateId }),
         });
-        setActivationMessage("OK");
+        setActivationMessage(t("inpatientNursingAdmissionInp2g.carePlanWorkspace.activatedOk"));
         window.dispatchEvent(
           new CustomEvent("medora:care-plan-persisted", { detail: { carePlanId: plan.id } })
         );
         const payload = await apiFetch(`/encounters/${props.encounterId}/care-plans`);
-        setLocalPlans(mapServerPlans(payload?.plans ?? []));
+        setDurablePlans(mapDurableCarePlans(payload?.plans ?? []));
         setActive("activePlans");
-        setPlanFilter("ACTIVE");
       } catch (error) {
         setActivationMessage(clinicalCarePlanErrorMessage(error, t));
       }
@@ -332,16 +336,37 @@ export function EnterpriseInterdisciplinaryCarePlansD4b6(
       activatedAt: new Date().toISOString(),
       careSetting: props.careSetting,
       roleProfile,
-      existingActivePlans: localPlans,
+      existingActivePlans: summaryPlans,
     });
     if (result.accepted && result.plan) {
-      setLocalPlans((prev) => [...prev, result.plan!]);
-      setActivationMessage(result.reason);
+      setActivationMessage(t("inpatientNursingAdmissionInp2g.carePlanWorkspace.activatedOk"));
       setActive("activePlans");
     } else {
-      setActivationMessage(result.reason);
+      setActivationMessage(result.reason ?? t("inpatientNursingAdmissionInp2g.carePlanWorkspace.genericError"));
     }
   };
+
+  const workflowSection =
+    active === "goalsOutcomes"
+      ? "goalsOutcomes"
+      : active === "interventions" || active === "monitoring" || active === "education" || active === "safety"
+        ? "interventions"
+        : active === "progress" || active === "review"
+          ? "progress"
+          : active === "history"
+            ? "history"
+            : "activePlans";
+
+  const showWorkflow =
+    active === "activePlans" ||
+    active === "goalsOutcomes" ||
+    active === "interventions" ||
+    active === "monitoring" ||
+    active === "education" ||
+    active === "safety" ||
+    active === "progress" ||
+    active === "review" ||
+    active === "history";
 
   return (
     <div
@@ -455,16 +480,20 @@ export function EnterpriseInterdisciplinaryCarePlansD4b6(
               <strong style={{ fontSize: 13 }}>
                 {t("enterpriseInterdisciplinaryCarePlansD4b6.overview.plansHeading")}
               </strong>
-              {localPlans.length === 0 ? (
+              {durablePlans.length === 0 ? (
                 <p style={{ margin: "6px 0 0", fontSize: 13, color: "#64748b" }}>
                   {t("enterpriseInterdisciplinaryCarePlansD4b6.empty")}
                 </p>
               ) : (
                 <ul style={{ margin: "6px 0 0", paddingLeft: 18, fontSize: 13 }}>
-                  {localPlans.map((p) => (
-                    <li key={p.planId}>
-                      {t(TEMPLATE_TITLE_KEYS[p.sourceTemplateId ?? ""] ?? p.title)} —{" "}
-                      {t(`enterpriseInterdisciplinaryCarePlansD4b6.lifecycle.${p.lifecycleState}`)}
+                  {durablePlans.map((p) => (
+                    <li key={p.id}>
+                      {resolvePlanTitle(p)} —{" "}
+                      {t(
+                        `enterpriseInterdisciplinaryCarePlansD4b6.lifecycle.${
+                          p.status === "UNDER_REVIEW" ? "IN_REVIEW" : p.status
+                        }`
+                      )}
                     </li>
                   ))}
                 </ul>
@@ -527,7 +556,7 @@ export function EnterpriseInterdisciplinaryCarePlansD4b6(
                           type="button"
                           style={linkButtonStyle}
                           data-testid={`eicp-activate-${tpl.templateId}`}
-                          onClick={() => onActivate(tpl.templateId)}
+                          onClick={() => void onActivate(tpl.templateId)}
                         >
                           {t("enterpriseInterdisciplinaryCarePlansD4b6.activateAction")}
                         </button>
@@ -563,7 +592,7 @@ export function EnterpriseInterdisciplinaryCarePlansD4b6(
               <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13 }}>
                 {preview.template.components.map((c) => (
                   <li key={c.componentId}>
-                    {c.kind}: {t(c.titleKey)}
+                    {componentKindLabel(c.kind, t)}: {t(c.titleKey)}
                   </li>
                 ))}
               </ul>
@@ -572,7 +601,7 @@ export function EnterpriseInterdisciplinaryCarePlansD4b6(
                   type="button"
                   style={linkButtonStyle}
                   data-testid="eicp-activate-from-preview"
-                  onClick={() => onActivate(preview.template!.templateId)}
+                  onClick={() => void onActivate(preview.template!.templateId)}
                 >
                   {t("enterpriseInterdisciplinaryCarePlansD4b6.activateAction")}
                 </button>
@@ -585,62 +614,16 @@ export function EnterpriseInterdisciplinaryCarePlansD4b6(
           )
         ) : null}
 
-        {active === "activePlans" ||
-        active === "goalsOutcomes" ||
-        active === "interventions" ||
-        active === "monitoring" ||
-        active === "education" ||
-        active === "safety" ||
-        active === "progress" ||
-        active === "review" ? (
+        {showWorkflow ? (
           <>
-            <div
-              data-testid="eicp-plan-filters"
-              style={{ display: "flex", flexWrap: "wrap", gap: 6 }}
-            >
-              {(
-                [
-                  ["ACTIVE", "filterActive"],
-                  ["GOALS", "filterGoals"],
-                  ["INTERVENTIONS", "filterInterventions"],
-                  ["PROGRESS", "filterProgress"],
-                  ["COMPLETED", "filterCompleted"],
-                  ["HISTORY", "filterHistory"],
-                ] as const
-              ).map(([id, key]) => (
-                <button
-                  key={id}
-                  type="button"
-                  data-testid={`eicp-filter-${id}`}
-                  data-active={planFilter === id ? "true" : "false"}
-                  onClick={() => setPlanFilter(id)}
-                  style={{
-                    ...linkButtonStyle,
-                    background: planFilter === id ? "#ecfdf5" : "#fff",
-                    borderColor: planFilter === id ? "#0f766e" : "#e2e8f0",
-                  }}
-                >
-                  {t(`inpatientNursingAdmissionInp2g.carePlanWorkspace.${key}`)}
-                </button>
-              ))}
-            </div>
-
+            {/* MEDUI.CP.1C — duplicate secondary plan-filter row removed; primary nav is sole section driver. */}
             <div
               data-testid="eicp-discipline-filter"
               style={{ display: "flex", flexWrap: "wrap", gap: 6 }}
             >
               {(
-                [
-                  ["ALL", "disciplineAll"],
-                  ["NURSING", "disciplineNursing"],
-                  ["PROVIDER", "disciplineProvider"],
-                  ["RESPIRATORY", "disciplineRespiratory"],
-                  ["PT", "disciplinePt"],
-                  ["OT", "disciplineOt"],
-                  ["SLP", "disciplineSlp"],
-                  ["TECHNICIAN", "disciplineTechnician"],
-                ] as const
-              ).map(([id, key]) => (
+                ["ALL", "NURSING", "PROVIDER", "RESPIRATORY", "PT", "OT", "SLP", "TECHNICIAN"] as const
+              ).map((id) => (
                 <button
                   key={id}
                   type="button"
@@ -654,29 +637,37 @@ export function EnterpriseInterdisciplinaryCarePlansD4b6(
                     color: "#0c4a6e",
                   }}
                 >
-                  {t(`inpatientNursingAdmissionInp2g.carePlanWorkspace.${key}`)}
+                  {disciplineFilterLabel(id, t)}
                 </button>
               ))}
             </div>
+
             <div data-testid="eicp-interdisciplinary-contributions" style={{ display: "grid", gap: 6 }}>
               {[
                 ...((disciplineFilter === "ALL" || disciplineFilter === "NURSING")
                   ? nursing.map((c, idx) => ({
                       id: `nursing-${(c as { sourceCardId?: string }).sourceCardId ?? idx}`,
-                      discipline: "NURSING",
+                      disciplineLabel: disciplineFilterLabel("NURSING", t),
                       text: (c as { summaryText?: string | null }).summaryText ?? "",
                       author: (c as { authorDisplayName?: string | null }).authorDisplayName,
                     }))
                   : []),
                 ...((disciplineFilter === "ALL" || disciplineFilter === "RESPIRATORY")
                   ? rt.map((c, idx) => ({
-                      id: `rt-${(c as { documentTypeId?: string }).documentTypeId ?? idx}`,
-                      discipline: "RESPIRATORY",
+                      id: `rt-${idx}`,
+                      disciplineLabel: disciplineFilterLabel("RESPIRATORY", t),
                       text: (c as { summaryText?: string | null }).summaryText ?? "",
-                      author: (c as { authorUserId?: string | null }).authorUserId,
+                      author: (() => {
+                        const name = (c as { authorDisplayName?: string | null }).authorDisplayName;
+                        if (name && !looksLikeUuid(name)) return name;
+                        return null;
+                      })(),
                     }))
                   : []),
-                ...((disciplineFilter === "ALL" || disciplineFilter === "PT" || disciplineFilter === "OT" || disciplineFilter === "SLP")
+                ...((disciplineFilter === "ALL" ||
+                disciplineFilter === "PT" ||
+                disciplineFilter === "OT" ||
+                disciplineFilter === "SLP")
                   ? rehab
                       .filter((c) => {
                         if (disciplineFilter === "ALL") return true;
@@ -687,16 +678,23 @@ export function EnterpriseInterdisciplinaryCarePlansD4b6(
                         return true;
                       })
                       .map((c, idx) => ({
-                        id: `rehab-${(c as { documentTypeId?: string }).documentTypeId ?? idx}`,
-                        discipline: String((c as { discipline?: string }).discipline ?? "REHAB"),
+                        id: `rehab-${idx}`,
+                        disciplineLabel: disciplineFilterLabel(
+                          disciplineFilter === "ALL" ? "PT" : disciplineFilter,
+                          t
+                        ),
                         text: (c as { summaryText?: string | null }).summaryText ?? "",
-                        author: (c as { authorUserId?: string | null }).authorUserId,
+                        author: (() => {
+                          const name = (c as { authorDisplayName?: string | null }).authorDisplayName;
+                          if (name && !looksLikeUuid(name)) return name;
+                          return null;
+                        })(),
                       }))
                   : []),
                 ...((disciplineFilter === "ALL" || disciplineFilter === "TECHNICIAN")
                   ? tech.map((c, idx) => ({
                       id: `tech-${c.activityId ?? idx}`,
-                      discipline: "TECHNICIAN",
+                      disciplineLabel: disciplineFilterLabel("TECHNICIAN", t),
                       text: t("inpatientNursingAdmissionInp2g.carePlanWorkspace.technicianProgress"),
                       author: c.performerDisplayName,
                     }))
@@ -715,206 +713,34 @@ export function EnterpriseInterdisciplinaryCarePlansD4b6(
                       color: "#334155",
                     }}
                   >
-                    <strong>{row.discipline}</strong>
-                    {row.author ? ` · ${row.author}` : ""}
+                    <strong>{row.disciplineLabel}</strong>
+                    {row.author && !looksLikeUuid(String(row.author)) ? ` · ${row.author}` : ""}
                     <div>{row.text}</div>
                   </div>
                 ))}
             </div>
 
-            {localPlans.length === 0 ? (
-              <p data-testid="eicp-empty-plans" style={{ margin: 0, fontSize: 13, color: "#64748b" }}>
-                {t("enterpriseInterdisciplinaryCarePlansD4b6.empty")}
+            {activationMessage ? (
+              <p data-testid="eicp-workflow-message" style={{ margin: 0, fontSize: 12, color: "#0f766e" }}>
+                {activationMessage}
               </p>
-            ) : (
-              <div data-testid="eicp-active-plans" style={{ overflowX: "auto" }}>
-                <table
-                  style={{
-                    width: "100%",
-                    borderCollapse: "collapse",
-                    fontSize: 12,
-                    minWidth: 720,
-                  }}
-                >
-                  <thead>
-                    <tr style={{ textAlign: "left", color: "#64748b", borderBottom: "1px solid #e2e8f0" }}>
-                      <th style={{ padding: "6px 8px" }}>
-                        {t("inpatientNursingAdmissionInp2g.carePlanWorkspace.colProblem")}
-                      </th>
-                      <th style={{ padding: "6px 8px" }}>
-                        {t("inpatientNursingAdmissionInp2g.carePlanWorkspace.colGoal")}
-                      </th>
-                      <th style={{ padding: "6px 8px" }}>
-                        {t("inpatientNursingAdmissionInp2g.carePlanWorkspace.colInterventions")}
-                      </th>
-                      <th style={{ padding: "6px 8px" }}>
-                        {t("inpatientNursingAdmissionInp2g.carePlanWorkspace.colOwner")}
-                      </th>
-                      <th style={{ padding: "6px 8px" }}>
-                        {t("inpatientNursingAdmissionInp2g.carePlanWorkspace.colStatus")}
-                      </th>
-                      <th style={{ padding: "6px 8px" }}>
-                        {t("inpatientNursingAdmissionInp2g.carePlanWorkspace.colActions")}
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {localPlans
-                      .filter((plan) => {
-                        if (planFilter === "COMPLETED")
-                          return plan.lifecycleState === "COMPLETED" || plan.lifecycleState === "DISCONTINUED";
-                        if (planFilter === "HISTORY") return true;
-                        if (planFilter === "ACTIVE")
-                          return (
-                            plan.lifecycleState === "ACTIVE" ||
-                            plan.lifecycleState === "IN_PROGRESS" ||
-                            plan.lifecycleState === "IN_REVIEW" ||
-                            plan.lifecycleState === "DRAFT_CUSTOMIZATION"
-                          );
-                        return (
-                          plan.lifecycleState !== "COMPLETED" &&
-                          plan.lifecycleState !== "DISCONTINUED"
-                        );
-                      })
-                      .map((plan) => {
-                        const goals = plan.components.filter(
-                          (c) => c.kind === "GOAL" || c.kind === "OUTCOME" || c.kind === "FOCUS"
-                        );
-                        const interventions = plan.components.filter((c) => c.kind === "INTERVENTION");
-                        const showGoals =
-                          planFilter === "GOALS" ||
-                          planFilter === "ACTIVE" ||
-                          planFilter === "HISTORY" ||
-                          planFilter === "COMPLETED";
-                        const showInterventions =
-                          planFilter === "INTERVENTIONS" ||
-                          planFilter === "ACTIVE" ||
-                          planFilter === "HISTORY" ||
-                          planFilter === "COMPLETED";
-                        const owners = [
-                          ...new Set(
-                            plan.components
-                              .map((c) => (c.disciplineHint ? String(c.disciplineHint) : ""))
-                              .filter((d) => d.trim().length > 0)
-                          ),
-                        ];
-                        const revision = (plan as { revision?: number }).revision ?? 1;
-                        return (
-                          <tr
-                            key={plan.planId}
-                            data-testid={`eicp-plan-${plan.planId}`}
-                            style={{ borderBottom: "1px solid #f1f5f9", verticalAlign: "top" }}
-                          >
-                            <td style={{ padding: "8px" }}>
-                              <strong>
-                                {t(TEMPLATE_TITLE_KEYS[plan.sourceTemplateId ?? ""] ?? plan.title)}
-                              </strong>
-                              <div style={{ color: "#64748b", marginTop: 2 }}>
-                                {plan.activatedAt
-                                  ? String(plan.activatedAt).slice(0, 10)
-                                  : "—"}
-                              </div>
-                            </td>
-                            <td style={{ padding: "8px" }}>
-                              {showGoals
-                                ? goals.map((g) => t(g.title)).join("; ") || "—"
-                                : "—"}
-                            </td>
-                            <td style={{ padding: "8px" }}>
-                              {showInterventions
-                                ? interventions.map((g) => t(g.title)).join("; ") || "—"
-                                : "—"}
-                            </td>
-                            <td style={{ padding: "8px" }}>{owners.join(", ") || "—"}</td>
-                            <td style={{ padding: "8px" }}>
-                              {t(
-                                `enterpriseInterdisciplinaryCarePlansD4b6.lifecycle.${plan.lifecycleState}`
-                              )}
-                            </td>
-                            <td style={{ padding: "8px" }}>
-                              {canActivate &&
-                              (plan.lifecycleState === "ACTIVE" ||
-                                plan.lifecycleState === "IN_PROGRESS" ||
-                                plan.lifecycleState === "IN_REVIEW") ? (
-                                <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
-                                  <button
-                                    type="button"
-                                    style={linkButtonStyle}
-                                    disabled={busyPlanId === plan.planId}
-                                    data-testid={`eicp-complete-${plan.planId}`}
-                                    onClick={() => {
-                                      void (async () => {
-                                        setBusyPlanId(plan.planId);
-                                        try {
-                                          await apiFetch(
-                                            `/encounters/${props.encounterId}/care-plans/${plan.planId}/transitions`,
-                                            {
-                                              method: "POST",
-                                              headers: { "content-type": "application/json" },
-                                              body: JSON.stringify({
-                                                toStatus: "COMPLETED",
-                                                expectedRevision: revision,
-                                              }),
-                                            }
-                                          );
-                                          const payload = await apiFetch(
-                                            `/encounters/${props.encounterId}/care-plans`
-                                          );
-                                          setLocalPlans(mapServerPlans(payload?.plans ?? []));
-                                        } catch (error) {
-                                          setActivationMessage(
-                                            error instanceof Error
-                                              ? error.message
-                                              : "Complete denied"
-                                          );
-                                        } finally {
-                                          setBusyPlanId(null);
-                                        }
-                                      })();
-                                    }}
-                                  >
-                                    {t("inpatientNursingAdmissionInp2g.carePlanWorkspace.complete")}
-                                  </button>
-                                </div>
-                              ) : (
-                                "—"
-                              )}
-                            </td>
-                          </tr>
-                        );
-                      })}
-                  </tbody>
-                </table>
-              </div>
-            )}
+            ) : null}
+
+            <CarePlanClinicianWorkflowCp1c
+              encounterId={props.encounterId}
+              section={workflowSection}
+              plans={durablePlans}
+              currentUserId={userId}
+              roleCodes={props.roleCodes ?? []}
+              locked={Boolean(props.isLocked)}
+              onPlansChanged={setDurablePlans}
+              onMessage={setActivationMessage}
+              resolvePlanTitle={resolvePlanTitle}
+              resolveComponentTitle={resolveComponentTitle}
+              clinicalError={(error) => clinicalCarePlanErrorMessage(error, t)}
+            />
           </>
         ) : null}
-
-        {/* MEDUI.CP.1A — nursingContributions composed into interdisciplinary workspace. */ null}
-
-        {/* MEDUI.CP.1A — rtContributions composed into interdisciplinary workspace. */ null}
-
-        {/* MEDUI.CP.1A — rehabContributions composed into interdisciplinary workspace. */ null}
-
-        {/* MEDUI.CP.1A — techProgress composed into interdisciplinary workspace. */ null}
-
-        {/* MEDUI.CP.1A — legacyD3eStub composed into interdisciplinary workspace. */ null}
-
-        {active === "history" ? (
-          documents.length === 0 ? (
-            <p style={{ margin: 0, fontSize: 13, color: "#64748b" }}>
-              {t("enterpriseInterdisciplinaryCarePlansD4b6.empty")}
-            </p>
-          ) : (
-            <div style={{ display: "grid", gap: 8 }}>
-              {documents.map((doc) => (
-                <DocumentStatusRow key={doc.documentId} doc={doc} />
-              ))}
-            </div>
-          )
-        ) : null}
-
-        {/* MEDUI.CP.1A — deferredBoundaries composed into interdisciplinary workspace. */ null}
       </section>
     </div>
   );

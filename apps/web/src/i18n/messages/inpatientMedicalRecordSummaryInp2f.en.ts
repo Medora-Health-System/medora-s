@@ -55,6 +55,7 @@ export const inpatientMedicalRecordSummaryInp2fEn = {
     interventions: "Interventions",
     monitoring: "Monitoring",
     education: "Education",
+    safety: "Safety",
     progress: "Progress",
     reviews: "Reviews",
     documentedBy: "Documented by",
