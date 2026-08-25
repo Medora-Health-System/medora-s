@@ -11,11 +11,6 @@ import { apiFetch } from "@/lib/apiClient";
 import { useI18n } from "@/lib/i18n";
 import { MEDORA_CARD_SHELL } from "@/components/medora-card/medoraCardTokens";
 
-export type CarePlanWorkflowUserLite = {
-  firstName?: string | null;
-  lastName?: string | null;
-} | null;
-
 export type CarePlanWorkflowComponent = {
   id: string;
   componentType: string;
@@ -26,7 +21,13 @@ export type CarePlanWorkflowComponent = {
   discipline?: string | null;
   status?: string | null;
   createdByUserId?: string | null;
-  createdBy?: CarePlanWorkflowUserLite;
+  createdByDisplayNameSnapshot?: string | null;
+  createdByProfessionalTitleSnapshot?: string | null;
+  correctedByUserId?: string | null;
+  correctedByDisplayNameSnapshot?: string | null;
+  correctedByProfessionalTitleSnapshot?: string | null;
+  correctedAt?: string | null;
+  correctionReason?: string | null;
   createdAt?: string | null;
 };
 
@@ -38,7 +39,8 @@ export type CarePlanWorkflowProgress = {
   createdAt?: string | null;
   authorUserId?: string | null;
   authorRoleSnapshot?: string | null;
-  author?: CarePlanWorkflowUserLite;
+  authorDisplayNameSnapshot?: string | null;
+  authorProfessionalTitleSnapshot?: string | null;
 };
 
 export type CarePlanWorkflowReview = {
@@ -48,7 +50,8 @@ export type CarePlanWorkflowReview = {
   createdAt?: string | null;
   reviewerUserId?: string | null;
   reviewerRoleSnapshot?: string | null;
-  reviewer?: CarePlanWorkflowUserLite;
+  reviewerDisplayNameSnapshot?: string | null;
+  reviewerProfessionalTitleSnapshot?: string | null;
 };
 
 export type CarePlanWorkflowTransition = {
@@ -58,7 +61,8 @@ export type CarePlanWorkflowTransition = {
   createdAt?: string | null;
   actorUserId?: string | null;
   actorRoleSnapshot?: string | null;
-  actor?: CarePlanWorkflowUserLite;
+  actorDisplayNameSnapshot?: string | null;
+  actorProfessionalTitleSnapshot?: string | null;
 };
 
 export type CarePlanWorkflowPlan = {
@@ -69,7 +73,8 @@ export type CarePlanWorkflowPlan = {
   revision: number;
   activatedAt?: string | null;
   activatedByUserId?: string | null;
-  activatedBy?: CarePlanWorkflowUserLite;
+  activatedByDisplayNameSnapshot?: string | null;
+  activatedByProfessionalTitleSnapshot?: string | null;
   completedAt?: string | null;
   discontinuedAt?: string | null;
   components: CarePlanWorkflowComponent[];
@@ -107,13 +112,6 @@ const btn: React.CSSProperties = {
   cursor: "pointer",
 };
 
-function displayName(user: CarePlanWorkflowUserLite | undefined): string | null {
-  const first = typeof user?.firstName === "string" ? user.firstName.trim() : "";
-  const last = typeof user?.lastName === "string" ? user.lastName.trim() : "";
-  const joined = [first, last].filter(Boolean).join(" ").trim();
-  return joined || null;
-}
-
 function looksLikeUuid(value: string): boolean {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
     value.trim()
@@ -134,16 +132,66 @@ function formatDt(iso: string | null | undefined, language: string): string {
   }
 }
 
-function roleCredential(
+/** MEDUI.CP.1E — prefer durable snapshots; never invent from live User / assignment. */
+function attributionWho(
+  displayNameSnapshot: string | null | undefined,
+  professionalTitleSnapshot: string | null | undefined,
   roleSnapshot: string | null | undefined,
   t: (k: string) => string
-): string | null {
-  const r = String(roleSnapshot ?? "").toUpperCase();
-  if (r === "RN") return t("inpatientMedicalRecordSummaryInp2f.carePlan.credentials.rn");
-  if (r === "PROVIDER") return t("inpatientMedicalRecordSummaryInp2f.carePlan.credentials.provider");
-  if (r === "PATIENT_CARE_TECH") return t("inpatientMedicalRecordSummaryInp2f.carePlan.credentials.pct");
-  if (r === "ADMIN") return t("inpatientMedicalRecordSummaryInp2f.carePlan.credentials.admin");
-  return null;
+): { who: string | null; unavailable: boolean } {
+  const name =
+    typeof displayNameSnapshot === "string" && displayNameSnapshot.trim() && !looksLikeUuid(displayNameSnapshot)
+      ? displayNameSnapshot.trim()
+      : null;
+  if (!name) {
+    return { who: null, unavailable: true };
+  }
+  const title =
+    (typeof professionalTitleSnapshot === "string" && professionalTitleSnapshot.trim()
+      ? professionalTitleSnapshot.trim()
+      : null) ||
+    (() => {
+      const r = String(roleSnapshot ?? "").toUpperCase();
+      if (r === "RN") return t("inpatientMedicalRecordSummaryInp2f.carePlan.credentials.rn");
+      if (r === "PROVIDER") return t("inpatientMedicalRecordSummaryInp2f.carePlan.credentials.provider");
+      if (r === "PATIENT_CARE_TECH") return t("inpatientMedicalRecordSummaryInp2f.carePlan.credentials.pct");
+      return null;
+    })();
+  return { who: [name, title].filter(Boolean).join(", "), unavailable: false };
+}
+
+function attributionLine(input: {
+  prefixKey: string;
+  displayNameSnapshot?: string | null;
+  professionalTitleSnapshot?: string | null;
+  roleSnapshot?: string | null;
+  at?: string | null;
+  language: string;
+  t: (k: string) => string;
+}): string | null {
+  const when = formatDt(input.at, input.language);
+  const { who, unavailable } = attributionWho(
+    input.displayNameSnapshot,
+    input.professionalTitleSnapshot,
+    input.roleSnapshot,
+    input.t
+  );
+  if (unavailable) {
+    const msg = input.t("inpatientNursingAdmissionInp2g.carePlanWorkspace.attributionUnavailable");
+    return [msg, when].filter(Boolean).join(" · ") || null;
+  }
+  const prefix = input.t(input.prefixKey);
+  return [who ? `${prefix} ${who}` : null, when].filter(Boolean).join(" · ") || null;
+}
+
+function transitionClinicalLabel(toStatus: string | null | undefined, t: (k: string) => string): string {
+  const s = String(toStatus ?? "").toUpperCase();
+  if (s === "ACTIVE") return t("inpatientNursingAdmissionInp2g.carePlanWorkspace.historyActivated");
+  if (s === "ON_HOLD") return t("inpatientNursingAdmissionInp2g.carePlanWorkspace.historyHeld");
+  if (s === "UNDER_REVIEW") return t("inpatientNursingAdmissionInp2g.carePlanWorkspace.historyUnderReview");
+  if (s === "COMPLETED") return t("inpatientNursingAdmissionInp2g.carePlanWorkspace.historyCompleted");
+  if (s === "DISCONTINUED") return t("inpatientNursingAdmissionInp2g.carePlanWorkspace.historyDiscontinued");
+  return statusLabel(toStatus, t);
 }
 
 function disciplineLabel(discipline: string | null | undefined, t: (k: string) => string): string {
@@ -236,7 +284,8 @@ export function mapDurableCarePlans(payloadPlans: Array<Record<string, any>>): C
     revision: Number(plan.revision ?? 1),
     activatedAt: plan.activatedAt ?? null,
     activatedByUserId: plan.activatedByUserId ?? null,
-    activatedBy: plan.activatedBy ?? null,
+    activatedByDisplayNameSnapshot: plan.activatedByDisplayNameSnapshot ?? null,
+    activatedByProfessionalTitleSnapshot: plan.activatedByProfessionalTitleSnapshot ?? null,
     completedAt: plan.completedAt ?? null,
     discontinuedAt: plan.discontinuedAt ?? null,
     components: (plan.components ?? []).map((c: any) => ({
@@ -249,7 +298,13 @@ export function mapDurableCarePlans(payloadPlans: Array<Record<string, any>>): C
       discipline: c.discipline ?? null,
       status: c.status ?? null,
       createdByUserId: c.createdByUserId ?? null,
-      createdBy: c.createdBy ?? null,
+      createdByDisplayNameSnapshot: c.createdByDisplayNameSnapshot ?? null,
+      createdByProfessionalTitleSnapshot: c.createdByProfessionalTitleSnapshot ?? null,
+      correctedByUserId: c.correctedByUserId ?? null,
+      correctedByDisplayNameSnapshot: c.correctedByDisplayNameSnapshot ?? null,
+      correctedByProfessionalTitleSnapshot: c.correctedByProfessionalTitleSnapshot ?? null,
+      correctedAt: c.correctedAt ?? null,
+      correctionReason: c.correctionReason ?? null,
       createdAt: c.createdAt ?? null,
     })),
     progress: Array.isArray(plan.progress) ? plan.progress : [],
@@ -305,34 +360,64 @@ export function CarePlanClinicianWorkflowCp1c(props: Props) {
   };
 
   const documentedLine = (
-    name: string | null,
+    displayNameSnapshot: string | null | undefined,
+    professionalTitleSnapshot: string | null | undefined,
     roleSnapshot: string | null | undefined,
     at: string | null | undefined
-  ) => {
-    const safeName = name && !looksLikeUuid(name) ? name : null;
-    const cred = roleCredential(roleSnapshot, t);
-    const who = [safeName, cred].filter(Boolean).join(", ");
-    const when = formatDt(at, language);
-    if (!who && !when) return null;
-    return [who ? `${t("inpatientMedicalRecordSummaryInp2f.carePlan.documentedBy")} ${who}` : null, when]
-      .filter(Boolean)
-      .join(" · ");
-  };
+  ) =>
+    attributionLine({
+      prefixKey: "inpatientMedicalRecordSummaryInp2f.carePlan.documentedBy",
+      displayNameSnapshot,
+      professionalTitleSnapshot,
+      roleSnapshot,
+      at,
+      language,
+      t,
+    });
 
   const reviewedLine = (
-    name: string | null,
+    displayNameSnapshot: string | null | undefined,
+    professionalTitleSnapshot: string | null | undefined,
     roleSnapshot: string | null | undefined,
     at: string | null | undefined
-  ) => {
-    const safeName = name && !looksLikeUuid(name) ? name : null;
-    const cred = roleCredential(roleSnapshot, t);
-    const who = [safeName, cred].filter(Boolean).join(", ");
-    const when = formatDt(at, language);
-    if (!who && !when) return null;
-    return [who ? `${t("inpatientMedicalRecordSummaryInp2f.carePlan.reviewedBy")} ${who}` : null, when]
-      .filter(Boolean)
-      .join(" · ");
-  };
+  ) =>
+    attributionLine({
+      prefixKey: "inpatientMedicalRecordSummaryInp2f.carePlan.reviewedBy",
+      displayNameSnapshot,
+      professionalTitleSnapshot,
+      roleSnapshot,
+      at,
+      language,
+      t,
+    });
+
+  const correctedLine = (
+    displayNameSnapshot: string | null | undefined,
+    professionalTitleSnapshot: string | null | undefined,
+    at: string | null | undefined
+  ) =>
+    attributionLine({
+      prefixKey: "inpatientNursingAdmissionInp2g.carePlanWorkspace.correctedBy",
+      displayNameSnapshot,
+      professionalTitleSnapshot,
+      at,
+      language,
+      t,
+    });
+
+  const activatedLine = (
+    displayNameSnapshot: string | null | undefined,
+    professionalTitleSnapshot: string | null | undefined,
+    at: string | null | undefined
+  ) =>
+    attributionLine({
+      prefixKey: "inpatientNursingAdmissionInp2g.carePlanWorkspace.activatedBy",
+      displayNameSnapshot,
+      professionalTitleSnapshot,
+      at,
+      language,
+      t,
+    });
 
   const runTransition = async (plan: CarePlanWorkflowPlan, toStatus: string) => {
     if (!canClinicalWrite) return;
@@ -479,8 +564,16 @@ export function CarePlanClinicianWorkflowCp1c(props: Props) {
               {selected.activatedAt
                 ? ` · ${t("inpatientMedicalRecordSummaryInp2f.carePlan.activated")}: ${formatDt(selected.activatedAt, language)}`
                 : ""}
-              {displayName(selected.activatedBy)
-                ? ` · ${displayName(selected.activatedBy)}`
+              {activatedLine(
+                selected.activatedByDisplayNameSnapshot,
+                selected.activatedByProfessionalTitleSnapshot,
+                selected.activatedAt
+              )
+                ? ` · ${activatedLine(
+                    selected.activatedByDisplayNameSnapshot,
+                    selected.activatedByProfessionalTitleSnapshot,
+                    null
+                  )}`
                 : ""}
             </div>
           </header>
@@ -508,8 +601,22 @@ export function CarePlanClinicianWorkflowCp1c(props: Props) {
                       {c.discipline ? ` · ${disciplineLabel(c.discipline, t)}` : ""}
                     </div>
                     <div style={{ color: "#64748b" }}>
-                      {documentedLine(displayName(c.createdBy), null, c.createdAt)}
+                      {documentedLine(
+                        c.createdByDisplayNameSnapshot,
+                        c.createdByProfessionalTitleSnapshot,
+                        null,
+                        c.createdAt
+                      )}
                     </div>
+                    {c.correctedAt ? (
+                      <div style={{ color: "#64748b" }}>
+                        {correctedLine(
+                          c.correctedByDisplayNameSnapshot,
+                          c.correctedByProfessionalTitleSnapshot,
+                          c.correctedAt
+                        )}
+                      </div>
+                    ) : null}
                     {own && canClinicalWrite && isCurrent(selected.status) ? (
                       editing ? (
                         <div style={{ display: "grid", gap: 6, marginTop: 6 }}>
@@ -573,8 +680,22 @@ export function CarePlanClinicianWorkflowCp1c(props: Props) {
                       {c.discipline ? ` · ${disciplineLabel(c.discipline, t)}` : ""}
                     </div>
                     <div style={{ color: "#64748b" }}>
-                      {documentedLine(displayName(c.createdBy), null, c.createdAt)}
+                      {documentedLine(
+                        c.createdByDisplayNameSnapshot,
+                        c.createdByProfessionalTitleSnapshot,
+                        null,
+                        c.createdAt
+                      )}
                     </div>
+                    {c.correctedAt ? (
+                      <div style={{ color: "#64748b" }}>
+                        {correctedLine(
+                          c.correctedByDisplayNameSnapshot,
+                          c.correctedByProfessionalTitleSnapshot,
+                          c.correctedAt
+                        )}
+                      </div>
+                    ) : null}
                     {own && canClinicalWrite && isCurrent(selected.status) ? (
                       editing ? (
                         <div style={{ display: "grid", gap: 6, marginTop: 6 }}>
@@ -631,7 +752,12 @@ export function CarePlanClinicianWorkflowCp1c(props: Props) {
                       {p.discipline ? ` · ${disciplineLabel(p.discipline, t)}` : ""}
                     </div>
                     <div style={{ color: "#64748b" }}>
-                      {documentedLine(displayName(p.author), p.authorRoleSnapshot, p.createdAt)}
+                      {documentedLine(
+                        p.authorDisplayNameSnapshot,
+                        p.authorProfessionalTitleSnapshot,
+                        p.authorRoleSnapshot,
+                        p.createdAt
+                      )}
                     </div>
                   </div>
                 ))
@@ -714,16 +840,42 @@ export function CarePlanClinicianWorkflowCp1c(props: Props) {
                 <div key={r.id ?? `r-${idx}`} style={{ fontSize: 12 }}>
                   <div>{r.narrative || r.reviewStatus || t("inpatientMedicalRecordSummaryInp2f.carePlan.reviews")}</div>
                   <div style={{ color: "#64748b" }}>
-                    {reviewedLine(displayName(r.reviewer), r.reviewerRoleSnapshot, r.createdAt)}
+                    {reviewedLine(
+                      r.reviewerDisplayNameSnapshot,
+                      r.reviewerProfessionalTitleSnapshot,
+                      r.reviewerRoleSnapshot,
+                      r.createdAt
+                    )}
                   </div>
                 </div>
               ))}
               {selected.transitions.map((tr, idx) => (
                 <div key={`t-${idx}`} style={{ fontSize: 12, color: "#334155" }}>
-                  {statusLabel(tr.fromStatus, t)} → {statusLabel(tr.toStatus, t)}
-                  {tr.reason ? ` · ${tr.reason}` : ""}
+                  <div>{formatDt(tr.createdAt, language)}</div>
+                  <div>{transitionClinicalLabel(tr.toStatus, t)}</div>
+                  {tr.reason ? <div style={{ color: "#64748b" }}>{tr.reason}</div> : null}
                   <div style={{ color: "#64748b" }}>
-                    {documentedLine(displayName(tr.actor), tr.actorRoleSnapshot, tr.createdAt)}
+                    {attributionLine({
+                      prefixKey:
+                        String(tr.toStatus ?? "").toUpperCase() === "COMPLETED"
+                          ? "inpatientNursingAdmissionInp2g.carePlanWorkspace.completedBy"
+                          : String(tr.toStatus ?? "").toUpperCase() === "DISCONTINUED"
+                            ? "inpatientNursingAdmissionInp2g.carePlanWorkspace.discontinuedBy"
+                            : String(tr.toStatus ?? "").toUpperCase() === "ON_HOLD"
+                              ? "inpatientNursingAdmissionInp2g.carePlanWorkspace.heldBy"
+                              : String(tr.toStatus ?? "").toUpperCase() === "ACTIVE" &&
+                                  String(tr.fromStatus ?? "").toUpperCase() === "DRAFT"
+                                ? "inpatientNursingAdmissionInp2g.carePlanWorkspace.activatedBy"
+                                : String(tr.toStatus ?? "").toUpperCase() === "ACTIVE"
+                                  ? "inpatientNursingAdmissionInp2g.carePlanWorkspace.reactivatedBy"
+                                  : "inpatientMedicalRecordSummaryInp2f.carePlan.documentedBy",
+                      displayNameSnapshot: tr.actorDisplayNameSnapshot,
+                      professionalTitleSnapshot: tr.actorProfessionalTitleSnapshot,
+                      roleSnapshot: tr.actorRoleSnapshot,
+                      at: null,
+                      language,
+                      t,
+                    })}
                   </div>
                 </div>
               ))}

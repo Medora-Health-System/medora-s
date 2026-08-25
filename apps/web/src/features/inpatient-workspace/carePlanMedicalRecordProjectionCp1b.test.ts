@@ -11,13 +11,15 @@ describe("carePlanMedicalRecordProjectionCp1b UI helpers", () => {
           title: "Fall risk",
           status: "ACTIVE",
           activatedAt: "2026-08-24T12:00:00.000Z",
-          activatedBy: { firstName: "Elizabeth", lastName: "Posada" },
+          activatedByDisplayNameSnapshot: "Elizabeth Posada",
+          activatedByProfessionalTitleSnapshot: "RN",
           components: [
             {
               componentType: "GOAL",
               title: "No fall",
               text: "Remain free from falls.",
-              createdBy: { firstName: "Elizabeth", lastName: "Posada" },
+              createdByDisplayNameSnapshot: "Elizabeth Posada",
+              createdByProfessionalTitleSnapshot: "RN",
               createdAt: "2026-08-24T12:01:00.000Z",
             },
             {
@@ -25,7 +27,8 @@ describe("carePlanMedicalRecordProjectionCp1b UI helpers", () => {
               title: "Ambulation",
               text: "Assist with ambulation.",
               discipline: "NURSING",
-              createdBy: { firstName: "Elizabeth", lastName: "Posada" },
+              createdByDisplayNameSnapshot: "Elizabeth Posada",
+              createdByProfessionalTitleSnapshot: "RN",
               createdAt: "2026-08-24T12:02:00.000Z",
             },
           ],
@@ -33,7 +36,8 @@ describe("carePlanMedicalRecordProjectionCp1b UI helpers", () => {
             {
               narrative: "No fall event.",
               authorRoleSnapshot: "RN",
-              author: { firstName: "Marie", lastName: "Claire" },
+              authorDisplayNameSnapshot: "Marie Claire",
+              authorProfessionalTitleSnapshot: "RN",
               createdAt: "2026-08-24T14:00:00.000Z",
             },
           ],
@@ -41,8 +45,19 @@ describe("carePlanMedicalRecordProjectionCp1b UI helpers", () => {
             {
               narrative: "Continue precautions.",
               reviewerRoleSnapshot: "PROVIDER",
-              reviewer: { firstName: "Rajnil", lastName: "Shah" },
+              reviewerDisplayNameSnapshot: "Rajnil Shah",
+              reviewerProfessionalTitleSnapshot: "MD",
               createdAt: "2026-08-24T15:00:00.000Z",
+            },
+          ],
+          transitions: [
+            {
+              fromStatus: "DRAFT",
+              toStatus: "ACTIVE",
+              actorDisplayNameSnapshot: "Elizabeth Posada",
+              actorProfessionalTitleSnapshot: "RN",
+              actorRoleSnapshot: "RN",
+              createdAt: "2026-08-24T12:00:00.000Z",
             },
           ],
         },
@@ -61,6 +76,8 @@ describe("carePlanMedicalRecordProjectionCp1b UI helpers", () => {
     expect(html).toContain("Assist with ambulation.");
     expect(html).toContain("No fall event.");
     expect(html).toContain("Continue precautions.");
+    expect(html).toContain("Elizabeth Posada");
+    expect(html).toContain("Marie Claire");
     expect(html).not.toMatch(/aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee/);
     expect(html).not.toMatch(/D4B|D3E|Legacy D3E|expectedRevision|createdByUserId/);
     expect(html).not.toMatch(/\{\s*"/);
