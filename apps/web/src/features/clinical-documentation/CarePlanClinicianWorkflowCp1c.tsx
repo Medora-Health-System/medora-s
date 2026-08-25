@@ -88,6 +88,8 @@ type Props = {
   roleCodes: readonly string[];
   locked?: boolean;
   onPlansChanged: (plans: CarePlanWorkflowPlan[]) => void;
+  /** Optional full list refresh (plans + suggestions). Prefer when CP.1D suggestions are present. */
+  onListPayload?: (payload: { plans?: Array<Record<string, any>>; suggestions?: unknown[] }) => void;
   onMessage: (message: string | null) => void;
   resolvePlanTitle: (plan: CarePlanWorkflowPlan) => string;
   resolveComponentTitle: (title: string) => string;
@@ -295,7 +297,11 @@ export function CarePlanClinicianWorkflowCp1c(props: Props) {
 
   const refresh = async () => {
     const payload = await apiFetch(`/encounters/${props.encounterId}/care-plans`);
-    props.onPlansChanged(mapDurableCarePlans(payload?.plans ?? []));
+    if (props.onListPayload) {
+      props.onListPayload(payload);
+    } else {
+      props.onPlansChanged(mapDurableCarePlans(payload?.plans ?? []));
+    }
   };
 
   const documentedLine = (

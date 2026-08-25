@@ -1,6 +1,6 @@
 import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
 import { CarePlanComponentStatus, CarePlanComponentType, CarePlanPriority, CarePlanStatus, EncounterClinicalEventType, EncounterType, Prisma, RoleCode } from "@prisma/client";
-import { assertSameClinicalAuthor, CARE_PLAN_COMPONENT_NOT_AUTHOR, getCarePlanTemplate } from "@medora/shared";
+import { assertSameClinicalAuthor, CARE_PLAN_COMPONENT_NOT_AUTHOR, CARE_PLAN_SUGGESTION_SIGNAL_CARD_IDS, getCarePlanTemplate, INPATIENT_NURSING_ASSESSMENT_V1_KEY, suggestEncounterCarePlans } from "@medora/shared";
 import { PrismaService } from "../prisma/prisma.service";
 
 export type CarePlanActor = { userId: string; facilityId: string; role: RoleCode };
@@ -59,8 +59,39 @@ export class EncounterCarePlanService {
 
   async list(actor: CarePlanActor, encounterId: string) {
     const encounter = await this.encounter(actor, encounterId);
-    const plans = await this.prisma.encounterCarePlan.findMany({ where: { encounterId, facilityId: actor.facilityId, patientId: encounter.patientId }, include: includeAggregate, orderBy: { createdAt: "desc" } });
-    const legacy = await this.prisma.encounter.findUnique({ where: { id: encounterId }, select: { admissionSummaryJson: true } });
+    // MEDUI.CP.1D — one batched read for plans + suggestion signals (no N+1 / no extra client round-trip).
+    const [plans, legacy, signalDocs, nursingEvents] = await Promise.all([
+      this.prisma.encounterCarePlan.findMany({
+        where: { encounterId, facilityId: actor.facilityId, patientId: encounter.patientId },
+        include: includeAggregate,
+        orderBy: { createdAt: "desc" },
+      }),
+      this.prisma.encounter.findUnique({
+        where: { id: encounterId },
+        select: { admissionSummaryJson: true, nursingAssessment: true },
+      }),
+      this.prisma.encounterClinicalDocumentationEntry.findMany({
+        where: {
+          encounterId,
+          facilityId: actor.facilityId,
+          patientId: encounter.patientId,
+          voidedAt: null,
+          cardId: { in: [...CARE_PLAN_SUGGESTION_SIGNAL_CARD_IDS] },
+        },
+        orderBy: { createdAt: "desc" },
+        select: { cardId: true, payloadJson: true, createdAt: true, voidedAt: true },
+      }),
+      this.prisma.encounterClinicalEvent.findMany({
+        where: {
+          encounterId,
+          facilityId: actor.facilityId,
+          payloadJson: { path: ["namespace"], equals: INPATIENT_NURSING_ASSESSMENT_V1_KEY },
+        },
+        orderBy: { createdAt: "desc" },
+        take: 1,
+        select: { payloadJson: true, createdAt: true },
+      }),
+    ]);
     const raw = legacy?.admissionSummaryJson as {
       carePlan?: unknown[];
       inpatientClinicalOpsV1?: { carePlan?: unknown[] };
@@ -71,10 +102,37 @@ export class EncounterCarePlanService {
       (Array.isArray(raw?.ops?.carePlan) && raw!.ops!.carePlan) ||
       (Array.isArray(raw?.carePlan) && raw!.carePlan) ||
       [];
+
+    const nursingRoot = (legacy?.nursingAssessment ?? null) as Record<string, unknown> | null;
+    const nursingFromRoot = nursingRoot?.[INPATIENT_NURSING_ASSESSMENT_V1_KEY] as
+      | { fallRisk?: { level?: string | null } | null }
+      | undefined;
+    const nursingFromEvent = (nursingEvents[0]?.payloadJson as { snapshot?: { fallRisk?: { level?: string | null } } } | null)
+      ?.snapshot;
+    const nursingFallLevel =
+      nursingFromRoot?.fallRisk?.level ?? nursingFromEvent?.fallRisk?.level ?? null;
+
+    const suggestions = suggestEncounterCarePlans({
+      activePlans: plans.map((p) => ({ templateId: p.templateId, status: p.status })),
+      clinicalDocs: signalDocs.map((d) => ({
+        cardId: d.cardId,
+        payload:
+          d.payloadJson && typeof d.payloadJson === "object" && !Array.isArray(d.payloadJson)
+            ? (d.payloadJson as Record<string, unknown>)
+            : null,
+        documentedAt: d.createdAt,
+        voidedAt: d.voidedAt,
+      })),
+      nursingAssessment: nursingFallLevel
+        ? { fallRiskLevel: nursingFallLevel, documentedAt: nursingEvents[0]?.createdAt ?? null }
+        : null,
+    });
+
     // Historical integrity only — never current Care Plan authority (CP.1A freeze).
     return {
       plans,
       legacyReadOnly: legacyItems.map((item) => ({ historical: true, item })),
+      suggestions,
     };
   }
   async get(actor: CarePlanActor, encounterId: string, carePlanId: string) { return this.scoped(actor, encounterId, carePlanId); }

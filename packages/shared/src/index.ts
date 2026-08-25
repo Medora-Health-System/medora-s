@@ -743,3 +743,4 @@ export * from "./encounters/edClinicalDocumentationCatalog.js";
 
 export * from "./clinicalDocumentation/clinicalDocumentationAuthorshipAuthority.js";
 export * from "./clinicalDocumentation/encounterCarePlanMedicalRecordProjectionCp1b.js";
+export * from "./clinicalDocumentation/encounterCarePlanSuggestionsCp1d.js";

@@ -14,6 +14,7 @@ describe("EnterpriseInterdisciplinaryCarePlansD4b6", () => {
     );
     expect(src).toContain("enterprise-interdisciplinary-care-plans-d4b6");
     expect(src).toContain("CarePlanClinicianWorkflowCp1c");
+    expect(src).toContain("eicp-suggestions");
     expect(src).toContain("activateCarePlanFromTemplate");
     expect(src).toContain("searchCarePlanTemplates");
     expect(src).toContain("eicp-ed-limited-banner");

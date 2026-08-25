@@ -138,5 +138,30 @@ export const inpatientNursingAdmissionInp2gEn = {
     transitionInvalid: "That care plan status change is not allowed from the current status.",
     activatedOk: "Care plan activated for this patient.",
     componentNotStarted: "Not started",
+    suggestionsHeading: "Suggested care plans",
+    suggestionSuggested: "Suggested",
+    suggestionReview: "Review",
+    suggestionNotNow: "Not now",
+    suggestionReviewRecommended: "Review recommended",
+    suggestionReasons: {
+      fallRiskNursingAssessment:
+        "Suggested because the current nursing assessment identifies elevated fall risk.",
+      fallRiskMorseAssessment:
+        "Suggested because the current fall-risk assessment identifies elevated fall risk.",
+      mobilityAssessment:
+        "Suggested because the current mobility assessment identifies impaired mobility.",
+      pressureInjuryBraden:
+        "Suggested because the current skin assessment identifies elevated pressure-injury risk.",
+      aspirationSwallowFailed:
+        "Suggested because the current swallow screen identifies aspiration risk.",
+      activePlanReviewFallRisk:
+        "Review recommended because a new fall-risk assessment remains elevated while this plan is active.",
+      activePlanReviewPressureInjury:
+        "Review recommended because a new skin assessment remains elevated while this plan is active.",
+      activePlanReviewMobility:
+        "Review recommended because a new mobility assessment remains elevated while this plan is active.",
+      activePlanReviewAspiration:
+        "Review recommended because a new swallow screen remains abnormal while this plan is active.",
+    },
   },
 } as const;
