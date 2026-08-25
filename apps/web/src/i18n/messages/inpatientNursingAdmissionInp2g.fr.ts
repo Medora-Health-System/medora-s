@@ -38,6 +38,10 @@ export const inpatientNursingAdmissionInp2gFr = {
     clinicalDocumentedAt: "Heure clinique documentée",
     nurse: "Infirmier(ère)",
     signedAt: "Signé le",
+    completedBy: "Terminé par",
+    signedBy: "Signé par",
+    correctedBy: "Corrigé par",
+    completedAt: "Terminé le",
     amendments: "Amendements / corrections",
   },
 

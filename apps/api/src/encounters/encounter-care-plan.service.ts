@@ -4,7 +4,27 @@ import { assertSameClinicalAuthor, CARE_PLAN_COMPONENT_NOT_AUTHOR, getCarePlanTe
 import { PrismaService } from "../prisma/prisma.service";
 
 export type CarePlanActor = { userId: string; facilityId: string; role: RoleCode };
-const includeAggregate = { components: { orderBy: { sequence: "asc" as const } }, progress: { orderBy: { createdAt: "asc" as const } }, reviews: { orderBy: { createdAt: "asc" as const } }, transitions: { orderBy: { createdAt: "asc" as const } } };
+/** MEDUI.CP.1B — include clinician display names for medical-record projection (no UUID chrome). */
+const userDisplaySelect = { select: { firstName: true, lastName: true } } as const;
+const includeAggregate = {
+  activatedBy: userDisplaySelect,
+  components: {
+    orderBy: { sequence: "asc" as const },
+    include: { createdBy: userDisplaySelect },
+  },
+  progress: {
+    orderBy: { createdAt: "asc" as const },
+    include: { author: userDisplaySelect },
+  },
+  reviews: {
+    orderBy: { createdAt: "asc" as const },
+    include: { reviewer: userDisplaySelect },
+  },
+  transitions: {
+    orderBy: { createdAt: "asc" as const },
+    include: { actor: userDisplaySelect },
+  },
+} as const;
 const mutable = new Set<CarePlanStatus>([CarePlanStatus.DRAFT, CarePlanStatus.ACTIVE, CarePlanStatus.ON_HOLD, CarePlanStatus.UNDER_REVIEW]);
 const transitions: Record<CarePlanStatus, CarePlanStatus[]> = {
   DRAFT: [CarePlanStatus.ACTIVE, CarePlanStatus.DISCONTINUED],
@@ -41,8 +61,21 @@ export class EncounterCarePlanService {
     const encounter = await this.encounter(actor, encounterId);
     const plans = await this.prisma.encounterCarePlan.findMany({ where: { encounterId, facilityId: actor.facilityId, patientId: encounter.patientId }, include: includeAggregate, orderBy: { createdAt: "desc" } });
     const legacy = await this.prisma.encounter.findUnique({ where: { id: encounterId }, select: { admissionSummaryJson: true } });
-    const raw = legacy?.admissionSummaryJson as { carePlan?: unknown[] } | null;
-    return { plans, legacyReadOnly: Array.isArray(raw?.carePlan) ? raw!.carePlan!.map((item) => ({ compatibilityState: "LEGACY_READ_ONLY", item })) : [] };
+    const raw = legacy?.admissionSummaryJson as {
+      carePlan?: unknown[];
+      inpatientClinicalOpsV1?: { carePlan?: unknown[] };
+      ops?: { carePlan?: unknown[] };
+    } | null;
+    const legacyItems =
+      (Array.isArray(raw?.inpatientClinicalOpsV1?.carePlan) && raw!.inpatientClinicalOpsV1!.carePlan) ||
+      (Array.isArray(raw?.ops?.carePlan) && raw!.ops!.carePlan) ||
+      (Array.isArray(raw?.carePlan) && raw!.carePlan) ||
+      [];
+    // Historical integrity only — never current Care Plan authority (CP.1A freeze).
+    return {
+      plans,
+      legacyReadOnly: legacyItems.map((item) => ({ historical: true, item })),
+    };
   }
   async get(actor: CarePlanActor, encounterId: string, carePlanId: string) { return this.scoped(actor, encounterId, carePlanId); }
 
