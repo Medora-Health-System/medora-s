@@ -7,6 +7,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
+  formatCarePlanClinicianAttribution,
   formatNursingAdmissionAttributionClinician,
   humanizeClinicalLabel,
   projectEncounterCarePlanMedicalRecord,
@@ -980,8 +981,17 @@ function CarePlanMedicalRecordCard({
       </div>
       {plan.activatedAt ? (
         <div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>
-          {t("inpatientMedicalRecordSummaryInp2f.carePlan.activated")}: {formatDt(plan.activatedAt)}
-          {plan.activatedBy.displayName ? ` · ${plan.activatedBy.displayName}` : ""}
+          {formatCarePlanClinicianAttribution({
+            documentedByLabel: t("inpatientMedicalRecordSummaryInp2f.carePlan.documentedBy"),
+            reviewedByLabel: t("inpatientMedicalRecordSummaryInp2f.carePlan.reviewedBy"),
+            activatedByLabel: t("inpatientNursingAdmissionInp2g.carePlanWorkspace.activatedBy"),
+            clinician: plan.activatedBy,
+            at: formatDt(plan.activatedAt),
+            mode: "activated",
+            attributionUnavailableLabel: t(
+              "inpatientNursingAdmissionInp2g.carePlanWorkspace.attributionUnavailable"
+            ),
+          })}
         </div>
       ) : null}
       {plan.lastReviewedAt ? (

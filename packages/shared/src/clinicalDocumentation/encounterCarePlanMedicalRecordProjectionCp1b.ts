@@ -1,8 +1,11 @@
 /**
- * MEDUI.CP.1B — Read-only medical-record projection of EncounterCarePlan*.
+ * MEDUI.CP.1B / CP.1E — Read-only medical-record projection of EncounterCarePlan*.
  * Same projection feeds Inpatient Summary and Print Entire Chart.
  * Does not invent a second Care Plan store.
+ * CP.1E: attribution from durable ClinicalAuthorSnapshot columns only (no live User rewrite).
  */
+
+import { projectClinicalAuthorFromSnapshots } from "./clinicalAuthorSnapshotCp1e.js";
 
 export type CarePlanMedicalRecordBucket = "CURRENT" | "COMPLETED_DISCONTINUED";
 
@@ -12,6 +15,11 @@ export type CarePlanMedicalRecordClinicianV1 = {
   credentials: string | null;
   /** Role snapshot string when display credentials unavailable (RN, PROVIDER, …). */
   roleSnapshot: string | null;
+  /**
+   * MEDUI.CP.1E — true when durable display-name snapshot is absent
+   * (pre-migration historical rows). Never invent names from live User / assignment.
+   */
+  attributionUnavailable?: boolean;
 };
 
 export type CarePlanMedicalRecordComponentV1 = {
@@ -23,6 +31,10 @@ export type CarePlanMedicalRecordComponentV1 = {
   status: string | null;
   documentedBy: CarePlanMedicalRecordClinicianV1;
   documentedAt: string | null;
+  /** Author-owned correction — original documentedBy unchanged. */
+  correctedBy?: CarePlanMedicalRecordClinicianV1 | null;
+  correctedAt?: string | null;
+  correctionReason?: string | null;
 };
 
 export type CarePlanMedicalRecordProgressV1 = {
@@ -84,12 +96,6 @@ export type EncounterCarePlanMedicalRecordProjectionV1 = {
   historicalLegacy: CarePlanHistoricalLegacyItemV1[];
 };
 
-type UserLite = {
-  firstName?: string | null;
-  lastName?: string | null;
-  displayName?: string | null;
-} | null | undefined;
-
 type AggregateComponent = {
   id?: string;
   /** Prisma: componentType */
@@ -109,7 +115,13 @@ type AggregateComponent = {
   createdAt?: string | Date | null;
   /** Prisma: createdByUserId */
   createdByUserId?: string | null;
-  createdBy?: UserLite;
+  createdByDisplayNameSnapshot?: string | null;
+  createdByProfessionalTitleSnapshot?: string | null;
+  correctedByUserId?: string | null;
+  correctedByDisplayNameSnapshot?: string | null;
+  correctedByProfessionalTitleSnapshot?: string | null;
+  correctedAt?: string | Date | null;
+  correctionReason?: string | null;
 };
 
 type AggregateProgress = {
@@ -120,7 +132,8 @@ type AggregateProgress = {
   /** Prisma: authorUserId */
   authorUserId?: string | null;
   authorRoleSnapshot?: string | null;
-  author?: UserLite;
+  authorDisplayNameSnapshot?: string | null;
+  authorProfessionalTitleSnapshot?: string | null;
 };
 
 type AggregateReview = {
@@ -131,7 +144,8 @@ type AggregateReview = {
   /** Prisma: reviewerUserId */
   reviewerUserId?: string | null;
   reviewerRoleSnapshot?: string | null;
-  reviewer?: UserLite;
+  reviewerDisplayNameSnapshot?: string | null;
+  reviewerProfessionalTitleSnapshot?: string | null;
 };
 
 type AggregateTransition = {
@@ -141,7 +155,8 @@ type AggregateTransition = {
   createdAt?: string | Date | null;
   actorUserId?: string | null;
   actorRoleSnapshot?: string | null;
-  actor?: UserLite;
+  actorDisplayNameSnapshot?: string | null;
+  actorProfessionalTitleSnapshot?: string | null;
 };
 
 export type EncounterCarePlanAggregateInput = {
@@ -151,7 +166,8 @@ export type EncounterCarePlanAggregateInput = {
   status?: string;
   activatedAt?: string | Date | null;
   activatedByUserId?: string | null;
-  activatedBy?: UserLite;
+  activatedByDisplayNameSnapshot?: string | null;
+  activatedByProfessionalTitleSnapshot?: string | null;
   completedAt?: string | Date | null;
   discontinuedAt?: string | Date | null;
   components?: AggregateComponent[];
@@ -174,28 +190,17 @@ function iso(value: string | Date | null | undefined): string | null {
   return s || null;
 }
 
-function displayName(user: UserLite, fallbackId?: string | null): string | null {
-  if (user && typeof user.displayName === "string" && user.displayName.trim()) {
-    return user.displayName.trim();
-  }
-  const first = typeof user?.firstName === "string" ? user.firstName.trim() : "";
-  const last = typeof user?.lastName === "string" ? user.lastName.trim() : "";
-  const joined = [first, last].filter(Boolean).join(" ").trim();
-  if (joined) return joined;
-  // Never surface raw user UUID in the medical record.
-  void fallbackId;
-  return null;
-}
-
-function clinician(
-  user: UserLite,
-  roleSnapshot: string | null | undefined,
-  userId?: string | null
-): CarePlanMedicalRecordClinicianV1 {
+function clinicianFromSnapshots(input: {
+  displayNameSnapshot?: string | null;
+  professionalTitleSnapshot?: string | null;
+  roleSnapshot?: string | null;
+}): CarePlanMedicalRecordClinicianV1 {
+  const projected = projectClinicalAuthorFromSnapshots(input);
   return {
-    displayName: displayName(user, userId),
-    credentials: null,
-    roleSnapshot: typeof roleSnapshot === "string" && roleSnapshot.trim() ? roleSnapshot.trim() : null,
+    displayName: projected.displayName,
+    credentials: projected.credentials,
+    roleSnapshot: projected.roleSnapshot,
+    attributionUnavailable: projected.attributionUnavailable,
   };
 }
 
@@ -223,6 +228,7 @@ function componentKind(c: AggregateComponent): CarePlanMedicalRecordComponentV1[
 
 function mapComponent(c: AggregateComponent): CarePlanMedicalRecordComponentV1 {
   const target = c.targetOutcome;
+  const correctedAt = iso(c.correctedAt);
   return {
     kind: componentKind(c),
     title: String(c.title ?? "").trim(),
@@ -230,8 +236,22 @@ function mapComponent(c: AggregateComponent): CarePlanMedicalRecordComponentV1 {
     targetOutcome: typeof target === "string" && target.trim() ? target.trim() : null,
     discipline: typeof c.discipline === "string" && c.discipline.trim() ? c.discipline.trim() : null,
     status: typeof c.status === "string" && c.status.trim() ? c.status.trim() : null,
-    documentedBy: clinician(c.createdBy, null, c.createdByUserId),
+    documentedBy: clinicianFromSnapshots({
+      displayNameSnapshot: c.createdByDisplayNameSnapshot,
+      professionalTitleSnapshot: c.createdByProfessionalTitleSnapshot,
+    }),
     documentedAt: iso(c.createdAt),
+    correctedBy: correctedAt
+      ? clinicianFromSnapshots({
+          displayNameSnapshot: c.correctedByDisplayNameSnapshot,
+          professionalTitleSnapshot: c.correctedByProfessionalTitleSnapshot,
+        })
+      : null,
+    correctedAt,
+    correctionReason:
+      typeof c.correctionReason === "string" && c.correctionReason.trim()
+        ? c.correctionReason.trim()
+        : null,
   };
 }
 
@@ -267,14 +287,22 @@ export function projectEncounterCarePlanPlan(
     narrative: String(p.narrative ?? "").trim(),
     status: typeof p.status === "string" ? p.status : null,
     discipline: typeof p.discipline === "string" ? p.discipline : null,
-    documentedBy: clinician(p.author, p.authorRoleSnapshot, p.authorUserId),
+    documentedBy: clinicianFromSnapshots({
+      displayNameSnapshot: p.authorDisplayNameSnapshot,
+      professionalTitleSnapshot: p.authorProfessionalTitleSnapshot,
+      roleSnapshot: p.authorRoleSnapshot,
+    }),
     documentedAt: iso(p.createdAt),
   }));
 
   const reviews: CarePlanMedicalRecordReviewV1[] = (plan.reviews ?? []).map((r) => ({
     reviewStatus: typeof r.reviewStatus === "string" ? r.reviewStatus : null,
     narrative: typeof r.narrative === "string" ? r.narrative : null,
-    reviewedBy: clinician(r.reviewer, r.reviewerRoleSnapshot, r.reviewerUserId),
+    reviewedBy: clinicianFromSnapshots({
+      displayNameSnapshot: r.reviewerDisplayNameSnapshot,
+      professionalTitleSnapshot: r.reviewerProfessionalTitleSnapshot,
+      roleSnapshot: r.reviewerRoleSnapshot,
+    }),
     reviewedAt: iso(r.createdAt),
   }));
 
@@ -282,7 +310,11 @@ export function projectEncounterCarePlanPlan(
     fromStatus: typeof t.fromStatus === "string" ? t.fromStatus : null,
     toStatus: typeof t.toStatus === "string" ? t.toStatus : null,
     reason: typeof t.reason === "string" ? t.reason : null,
-    actor: clinician(t.actor, t.actorRoleSnapshot, t.actorUserId),
+    actor: clinicianFromSnapshots({
+      displayNameSnapshot: t.actorDisplayNameSnapshot,
+      professionalTitleSnapshot: t.actorProfessionalTitleSnapshot,
+      roleSnapshot: t.actorRoleSnapshot,
+    }),
     at: iso(t.createdAt),
   }));
 
@@ -293,7 +325,10 @@ export function projectEncounterCarePlanPlan(
     status,
     bucket: bucketForStatus(status),
     activatedAt: iso(plan.activatedAt),
-    activatedBy: clinician(plan.activatedBy, null, plan.activatedByUserId),
+    activatedBy: clinicianFromSnapshots({
+      displayNameSnapshot: plan.activatedByDisplayNameSnapshot,
+      professionalTitleSnapshot: plan.activatedByProfessionalTitleSnapshot,
+    }),
     completedAt: iso(plan.completedAt),
     discontinuedAt: iso(plan.discontinuedAt),
     lastReviewedAt: reviews.at(-1)?.reviewedAt ?? null,
@@ -345,16 +380,39 @@ export function formatCarePlanClinicianAttribution(input: {
   reviewedByLabel: string;
   clinician: CarePlanMedicalRecordClinicianV1;
   at: string | null;
-  mode: "documented" | "reviewed";
+  mode: "documented" | "reviewed" | "corrected" | "activated" | "completed" | "discontinued";
   roleLabel?: string | null;
+  /** Locale string when durable snapshot is absent (pre-CP.1E rows). */
+  attributionUnavailableLabel?: string | null;
+  correctedByLabel?: string | null;
+  activatedByLabel?: string | null;
+  completedByLabel?: string | null;
+  discontinuedByLabel?: string | null;
 }): string {
+  if (input.clinician.attributionUnavailable) {
+    const unavailable =
+      input.attributionUnavailableLabel?.trim() ||
+      "Author attribution unavailable for this historical entry";
+    return [unavailable, input.at].filter(Boolean).join(" · ");
+  }
   const name = input.clinician.displayName?.trim() || null;
   const cred =
     input.clinician.credentials?.trim() ||
     input.roleLabel?.trim() ||
     null;
   const who = [name, cred].filter(Boolean).join(", ");
-  const prefix = input.mode === "reviewed" ? input.reviewedByLabel : input.documentedByLabel;
+  const prefix =
+    input.mode === "reviewed"
+      ? input.reviewedByLabel
+      : input.mode === "corrected"
+        ? input.correctedByLabel || input.documentedByLabel
+        : input.mode === "activated"
+          ? input.activatedByLabel || input.documentedByLabel
+          : input.mode === "completed"
+            ? input.completedByLabel || input.documentedByLabel
+            : input.mode === "discontinued"
+              ? input.discontinuedByLabel || input.documentedByLabel
+              : input.documentedByLabel;
   const parts = [who ? `${prefix} ${who}` : null, input.at].filter(Boolean);
   return parts.join(" · ");
 }
