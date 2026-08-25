@@ -5,6 +5,11 @@
 
 import type { MedSurgNursingAdmissionDocV1 } from "./medSurgNursingAdmissionD4a1.js";
 import { projectNursingAdmissionOverview } from "./nursingAdmissionOverviewProjectionInp2b.js";
+import {
+  clinicianFacingDisplayName,
+  projectNursingAdmissionClinicalAttribution,
+  type NursingAdmissionClinicalAttributionV1,
+} from "./nursingAdmissionClinicalAttributionInp2g.js";
 
 export type NursingAdmissionMedicalRecordRowV1 = {
   /** Stable i18n key suffix under inpatientNursingAdmissionInp2g.record.* */
@@ -24,6 +29,8 @@ export type NursingAdmissionMedicalRecordProjectionV1 = {
   /** True when the authoritative admission has one or more amendments (summary/print chrome). */
   hasAmendments: boolean;
   amendmentCount: number;
+  /** Canonical Completed/Signed/Corrected attribution — same authority as Admission/Print */
+  attribution: NursingAdmissionClinicalAttributionV1;
 };
 
 function push(
@@ -63,6 +70,7 @@ export function projectNursingAdmissionMedicalRecord(
       amendments: [],
       hasAmendments: false,
       amendmentCount: 0,
+      attribution: projectNursingAdmissionClinicalAttribution(null),
     };
   }
 
@@ -122,7 +130,9 @@ export function projectNursingAdmissionMedicalRecord(
     availability: "READY",
     rows,
     signed: Boolean(sig?.signed),
-    nurseDisplayName: typeof sig?.displayName === "string" ? sig.displayName : null,
+    nurseDisplayName: clinicianFacingDisplayName(
+      typeof sig?.displayName === "string" ? sig.displayName : null
+    ),
     nurseCredentials: typeof sig?.credentials === "string" ? sig.credentials : null,
     signedAt: typeof sig?.signedAt === "string" ? sig.signedAt : null,
     amendments: (Array.isArray(doc.amendments) ? doc.amendments : []).map((raw) => {
@@ -136,5 +146,6 @@ export function projectNursingAdmissionMedicalRecord(
     }),
     hasAmendments: (Array.isArray(doc.amendments) ? doc.amendments : []).length > 0,
     amendmentCount: (Array.isArray(doc.amendments) ? doc.amendments : []).length,
+    attribution: projectNursingAdmissionClinicalAttribution(doc),
   };
 }

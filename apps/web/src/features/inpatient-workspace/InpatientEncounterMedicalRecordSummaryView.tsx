@@ -7,9 +7,12 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
+  formatNursingAdmissionAttributionClinician,
   humanizeClinicalLabel,
+  projectEncounterCarePlanMedicalRecord,
   projectInpatientNursingAssessmentOverview,
   projectNursingAdmissionMedicalRecord,
+  type EncounterCarePlanMedicalRecordProjectionV1,
   type InpatientNursingAssessmentV1,
   type MedSurgNursingAdmissionDocV1,
   type NursingAdmissionMedicalRecordProjectionV1,
@@ -36,6 +39,14 @@ import {
 } from "@/components/encounters/EncounterChartLivePreview";
 import { buildRxPrintFacilityIdentity } from "@/components/pharmacy/RxPrintLayout";
 import type { InpatientWorkspaceSection } from "./inpatientWorkspaceSections";
+import {
+  buildCarePlanMedicalRecordPrintHtml,
+  formatCarePlanDocumentedLine,
+  formatCarePlanReviewedLine,
+  resolveCarePlanDisciplineLabel,
+  resolveCarePlanPlanTitle,
+  resolveCarePlanStatusLabel,
+} from "./carePlanMedicalRecordProjectionCp1b";
 
 type EncounterLite = {
   id: string;
@@ -76,6 +87,60 @@ function escHtml(s: string): string {
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
+}
+
+function formatSummaryClinicalDateTime(iso?: string | null, language?: string): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  try {
+    return new Intl.DateTimeFormat(language === "fr" ? "fr-HT" : "en-US", {
+      dateStyle: "medium",
+      timeStyle: "short",
+    }).format(d);
+  } catch {
+    return iso;
+  }
+}
+
+function nursingAdmissionAttributionHtml(
+  nursingAdmission: NursingAdmissionMedicalRecordProjectionV1,
+  t: (key: string) => string,
+  language: string
+): string {
+  const attr = nursingAdmission.attribution;
+  if (!attr) return "";
+  const lines: string[] = [];
+  const completed = formatNursingAdmissionAttributionClinician(attr.completed);
+  if (completed) {
+    const when = formatSummaryClinicalDateTime(attr.completed.atIso, language);
+    lines.push(
+      `<div data-testid="print-nursing-admission-completed-by"><dt>${escHtml(
+        t("inpatientNursingAdmissionInp2g.record.completedBy")
+      )}</dt><dd>${escHtml(completed)}${when ? ` · ${escHtml(when)}` : ""}</dd></div>`
+    );
+  }
+  const signed = formatNursingAdmissionAttributionClinician(attr.signed);
+  if (signed) {
+    const when = formatSummaryClinicalDateTime(attr.signed.atIso, language);
+    lines.push(
+      `<div data-testid="print-nursing-admission-signed-by"><dt>${escHtml(
+        t("inpatientNursingAdmissionInp2g.record.signedBy")
+      )}</dt><dd>${escHtml(signed)}${when ? ` · ${escHtml(when)}` : ""}</dd></div>`
+    );
+  }
+  const corrected = attr.latestCorrection
+    ? formatNursingAdmissionAttributionClinician(attr.latestCorrection)
+    : null;
+  if (corrected && attr.latestCorrection?.atIso) {
+    const when = formatSummaryClinicalDateTime(attr.latestCorrection.atIso, language);
+    lines.push(
+      `<div data-testid="print-nursing-admission-corrected-by"><dt>${escHtml(
+        t("inpatientNursingAdmissionInp2g.record.correctedBy")
+      )}</dt><dd>${escHtml(corrected)}${when ? ` · ${escHtml(when)}` : ""}</dd></div>`
+    );
+  }
+  return lines.join("");
 }
 
 function displayOrDash(v: unknown, dash: string): string {
@@ -138,19 +203,13 @@ export function InpatientEncounterMedicalRecordSummaryView({
   const [printBusy, setPrintBusy] = useState(false);
   const [nursingAdmission, setNursingAdmission] =
     useState<NursingAdmissionMedicalRecordProjectionV1 | null>(null);
-  const [carePlans, setCarePlans] = useState<
-    Array<{
-      id: string;
-      title: string;
-      status: string;
-      activatedAt?: string | null;
-      completedAt?: string | null;
-      discontinuedAt?: string | null;
-      components?: Array<{ componentType: string; title: string; text: string; discipline?: string | null; status?: string }>;
-      progress?: Array<{ status: string; narrative: string; createdAt: string; discipline?: string }>;
-      reviews?: Array<{ reviewStatus: string; createdAt: string }>;
-    }>
-  >([]);
+  const [carePlanProjection, setCarePlanProjection] =
+    useState<EncounterCarePlanMedicalRecordProjectionV1>({
+      availability: "EMPTY",
+      currentPlans: [],
+      completedDiscontinuedPlans: [],
+      historicalLegacy: [],
+    });
   const [nursingAssessment, setNursingAssessment] = useState<string | null>(null);
   const [providerLines, setProviderLines] = useState<string[]>([]);
   const [orders, setOrders] = useState<Array<Record<string, unknown>>>([]);
@@ -210,9 +269,39 @@ export function InpatientEncounterMedicalRecordSummaryView({
         if (carePlansSettled.status === "fulfilled") {
           const payload = asRecord(carePlansSettled.value);
           const plans = Array.isArray(payload?.plans) ? payload!.plans : [];
-          setCarePlans(plans as typeof carePlans);
+          const legacyRaw = Array.isArray(payload?.legacyReadOnly)
+            ? payload!.legacyReadOnly
+            : Array.isArray(payload?.legacyReadOnly)
+              ? payload!.legacyReadOnly
+              : [];
+          const legacyItems = legacyRaw.map((row: unknown) => {
+            const rec = asRecord(row);
+            const item = asRecord(rec?.item) ?? rec;
+            return {
+              discipline: typeof item?.discipline === "string" ? item.discipline : null,
+              goalText: typeof item?.goalText === "string" ? item.goalText : null,
+              createdAt:
+                typeof item?.createdAt === "string"
+                  ? item.createdAt
+                  : typeof item?.documentedAt === "string"
+                    ? item.documentedAt
+                    : null,
+            };
+          });
+          // Single aggregate GET → one medical-record projection (Summary + Print).
+          setCarePlanProjection(
+            projectEncounterCarePlanMedicalRecord({
+              plans: plans as Parameters<typeof projectEncounterCarePlanMedicalRecord>[0]["plans"],
+              legacyItems,
+            })
+          );
         } else {
-          setCarePlans([]);
+          setCarePlanProjection({
+            availability: "EMPTY",
+            currentPlans: [],
+            completedDiscontinuedPlans: [],
+            historicalLegacy: [],
+          });
         }
 
         if (nursingSettled.status === "fulfilled") {
@@ -385,47 +474,27 @@ export function InpatientEncounterMedicalRecordSummaryView({
                     humanizeClinicalLabel(r.value)
                   )}</dd></div>`
               )
-              .join("")}${
-              nursingAdmission.nurseDisplayName
-                ? `<div><dt>${escHtml(t("inpatientNursingAdmissionInp2g.record.nurse"))}</dt><dd>${escHtml(
-                    [nursingAdmission.nurseDisplayName, nursingAdmission.nurseCredentials]
-                      .filter(Boolean)
-                      .join(" · ")
-                  )}</dd></div>`
-                : ""
-            }${
-              nursingAdmission.signedAt
-                ? `<div><dt>${escHtml(t("inpatientNursingAdmissionInp2g.record.signedAt"))}</dt><dd>${escHtml(
-                    nursingAdmission.signedAt
-                  )}</dd></div>`
-                : ""
-            }</dl>`
+              .join("")}${nursingAdmissionAttributionHtml(nursingAdmission, t, language)}</dl>`
           : `<p>${escHtml(t("inpatientMedicalRecordSummaryInp2f.empty"))}</p>`;
 
-      const carePlanBody =
-        carePlans.length === 0
-          ? `<p>${escHtml(t("inpatientMedicalRecordSummaryInp2f.empty"))}</p>`
-          : `<ul>${carePlans
-              .map((plan) => {
-                const goals = (plan.components ?? [])
-                  .filter((c) => c.componentType === "GOAL")
-                  .map((g) => humanizeClinicalLabel(g.title))
-                  .join("; ");
-                const interventions = (plan.components ?? [])
-                  .filter((c) => c.componentType === "INTERVENTION")
-                  .map((g) => humanizeClinicalLabel(g.title))
-                  .join("; ");
-                return `<li><strong>${escHtml(humanizeClinicalLabel(plan.title))}</strong> — ${escHtml(
-                  humanizeClinicalLabel(plan.status)
-                )}${goals ? `<br/>${escHtml(t("inpatientNursingAdmissionInp2g.carePlanWorkspace.colGoal"))}: ${escHtml(goals)}` : ""}${
-                  interventions
-                    ? `<br/>${escHtml(t("inpatientNursingAdmissionInp2g.carePlanWorkspace.colInterventions"))}: ${escHtml(
-                        interventions
-                      )}`
-                    : ""
-                }</li>`;
-              })
-              .join("")}</ul>`;
+      const formatCarePlanDt = (iso: string | null) => {
+        if (!iso) return "";
+        try {
+          return new Date(iso).toLocaleString(language === "fr" ? "fr-FR" : "en-US", {
+            dateStyle: "medium",
+            timeStyle: "short",
+          });
+        } catch {
+          return iso;
+        }
+      };
+
+      const carePlanBody = buildCarePlanMedicalRecordPrintHtml({
+        projection: carePlanProjection,
+        t,
+        formatDateTime: formatCarePlanDt,
+        emptyLabel: t("inpatientMedicalRecordSummaryInp2f.empty"),
+      });
 
       await printEncounterChartLivePreview({
         encounter: encounter as unknown as Record<string, unknown>,
@@ -451,7 +520,7 @@ export function InpatientEncounterMedicalRecordSummaryView({
       setPrintBusy(false);
     }
   }, [
-    carePlans,
+    carePlanProjection,
     encounter,
     facilityId,
     facilityIdentity,
@@ -574,24 +643,62 @@ export function InpatientEncounterMedicalRecordSummaryView({
                 <dd style={{ margin: 0 }}>{humanizeClinicalLabel(row.value)}</dd>
               </div>
             ))}
-            {nursingAdmission.nurseDisplayName ? (
-              <div style={{ display: "grid", gridTemplateColumns: "minmax(140px, 34%) 1fr", gap: 8 }}>
+            {formatNursingAdmissionAttributionClinician(nursingAdmission.attribution.completed) ? (
+              <div
+                data-testid="summary-nursing-admission-completed-by"
+                style={{ display: "grid", gridTemplateColumns: "minmax(140px, 34%) 1fr", gap: 8 }}
+              >
                 <dt style={{ margin: 0, color: "#64748b", fontWeight: 600 }}>
-                  {t("inpatientNursingAdmissionInp2g.record.nurse")}
+                  {t("inpatientNursingAdmissionInp2g.record.completedBy")}
                 </dt>
                 <dd style={{ margin: 0 }}>
-                  {[nursingAdmission.nurseDisplayName, nursingAdmission.nurseCredentials]
-                    .filter(Boolean)
-                    .join(" · ")}
+                  {formatNursingAdmissionAttributionClinician(nursingAdmission.attribution.completed)}
+                  {nursingAdmission.attribution.completed.atIso
+                    ? ` · ${formatSummaryClinicalDateTime(
+                        nursingAdmission.attribution.completed.atIso,
+                        language
+                      )}`
+                    : ""}
                 </dd>
               </div>
             ) : null}
-            {nursingAdmission.signedAt ? (
-              <div style={{ display: "grid", gridTemplateColumns: "minmax(140px, 34%) 1fr", gap: 8 }}>
+            {formatNursingAdmissionAttributionClinician(nursingAdmission.attribution.signed) ? (
+              <div
+                data-testid="summary-nursing-admission-signed-by"
+                style={{ display: "grid", gridTemplateColumns: "minmax(140px, 34%) 1fr", gap: 8 }}
+              >
                 <dt style={{ margin: 0, color: "#64748b", fontWeight: 600 }}>
-                  {t("inpatientNursingAdmissionInp2g.record.signedAt")}
+                  {t("inpatientNursingAdmissionInp2g.record.signedBy")}
                 </dt>
-                <dd style={{ margin: 0 }}>{nursingAdmission.signedAt}</dd>
+                <dd style={{ margin: 0 }}>
+                  {formatNursingAdmissionAttributionClinician(nursingAdmission.attribution.signed)}
+                  {nursingAdmission.attribution.signed.atIso
+                    ? ` · ${formatSummaryClinicalDateTime(
+                        nursingAdmission.attribution.signed.atIso,
+                        language
+                      )}`
+                    : ""}
+                </dd>
+              </div>
+            ) : null}
+            {nursingAdmission.attribution.latestCorrection &&
+            formatNursingAdmissionAttributionClinician(nursingAdmission.attribution.latestCorrection) ? (
+              <div
+                data-testid="summary-nursing-admission-corrected-by"
+                style={{ display: "grid", gridTemplateColumns: "minmax(140px, 34%) 1fr", gap: 8 }}
+              >
+                <dt style={{ margin: 0, color: "#64748b", fontWeight: 600 }}>
+                  {t("inpatientNursingAdmissionInp2g.record.correctedBy")}
+                </dt>
+                <dd style={{ margin: 0 }}>
+                  {formatNursingAdmissionAttributionClinician(nursingAdmission.attribution.latestCorrection)}
+                  {nursingAdmission.attribution.latestCorrection.atIso
+                    ? ` · ${formatSummaryClinicalDateTime(
+                        nursingAdmission.attribution.latestCorrection.atIso,
+                        language
+                      )}`
+                    : ""}
+                </dd>
               </div>
             ) : null}
             {nursingAdmission.amendments.length > 0 ? (
@@ -621,58 +728,61 @@ export function InpatientEncounterMedicalRecordSummaryView({
         <h2 style={{ margin: "0 0 8px", fontSize: 14 }}>
           {t("inpatientMedicalRecordSummaryInp2f.sections.carePlan")}
         </h2>
-        {carePlans.length === 0 ? (
+        {carePlanProjection.availability === "EMPTY" ? (
           <p style={{ margin: 0, fontSize: 13 }}>{t("inpatientMedicalRecordSummaryInp2f.empty")}</p>
         ) : (
-          <ul data-testid="summary-care-plan-list" style={{ margin: 0, padding: 0, listStyle: "none", display: "grid", gap: 10 }}>
-            {carePlans.map((plan) => {
-              const goals = (plan.components ?? []).filter((c) => c.componentType === "GOAL");
-              const interventions = (plan.components ?? []).filter((c) => c.componentType === "INTERVENTION");
-              const lastReview = plan.reviews?.at(-1);
-              const lastProgress = plan.progress?.at(-1);
-              return (
-                <li
-                  key={plan.id}
-                  data-testid={`summary-care-plan-${plan.id}`}
-                  style={{ border: "1px solid #e2e8f0", borderRadius: 12, padding: "8px 10px" }}
-                >
-                  <strong style={{ fontSize: 13 }}>{humanizeClinicalLabel(plan.title)}</strong>
-                  <div style={{ fontSize: 12, color: "#64748b", marginTop: 4 }}>
-                    {humanizeClinicalLabel(plan.status)}
-                    {plan.activatedAt ? ` · ${plan.activatedAt}` : ""}
-                    {lastReview?.createdAt ? ` · ${lastReview.createdAt}` : ""}
-                    {plan.completedAt ? ` · ${plan.completedAt}` : ""}
-                    {plan.discontinuedAt ? ` · ${plan.discontinuedAt}` : ""}
-                  </div>
-                  {goals.length ? (
-                    <p style={{ margin: "6px 0 0", fontSize: 12 }}>
-                      <strong>{t("inpatientNursingAdmissionInp2g.carePlanWorkspace.colGoal")}: </strong>
-                      {goals.map((g) => humanizeClinicalLabel(g.title)).join("; ")}
-                    </p>
-                  ) : null}
-                  {interventions.length ? (
-                    <p style={{ margin: "4px 0 0", fontSize: 12 }}>
-                      <strong>{t("inpatientNursingAdmissionInp2g.carePlanWorkspace.colInterventions")}: </strong>
-                      {interventions
-                        .map((g) =>
-                          [humanizeClinicalLabel(g.title), g.discipline ? humanizeClinicalLabel(g.discipline) : null]
-                            .filter(Boolean)
-                            .join(" / ")
-                        )
-                        .join("; ")}
-                    </p>
-                  ) : null}
-                  {lastProgress ? (
-                    <p style={{ margin: "4px 0 0", fontSize: 12 }}>
-                      <strong>{t("inpatientNursingAdmissionInp2g.carePlanWorkspace.colProgress")}: </strong>
-                      {humanizeClinicalLabel(lastProgress.status)}
-                      {lastProgress.narrative ? ` — ${lastProgress.narrative}` : ""}
-                    </p>
-                  ) : null}
-                </li>
-              );
-            })}
-          </ul>
+          <div data-testid="summary-care-plan-list" style={{ display: "grid", gap: 14 }}>
+            {carePlanProjection.currentPlans.length ? (
+              <div data-testid="summary-care-plan-current">
+                <h3 style={{ margin: "0 0 8px", fontSize: 13 }}>
+                  {t("inpatientMedicalRecordSummaryInp2f.carePlan.currentPlans")}
+                </h3>
+                <div style={{ display: "grid", gap: 10 }}>
+                  {carePlanProjection.currentPlans.map((plan) => (
+                    <CarePlanMedicalRecordCard
+                      key={plan.planId}
+                      plan={plan}
+                      language={language}
+                      t={t}
+                    />
+                  ))}
+                </div>
+              </div>
+            ) : null}
+            {carePlanProjection.completedDiscontinuedPlans.length ? (
+              <div data-testid="summary-care-plan-completed">
+                <h3 style={{ margin: "0 0 8px", fontSize: 13 }}>
+                  {t("inpatientMedicalRecordSummaryInp2f.carePlan.completedDiscontinuedPlans")}
+                </h3>
+                <div style={{ display: "grid", gap: 10 }}>
+                  {carePlanProjection.completedDiscontinuedPlans.map((plan) => (
+                    <CarePlanMedicalRecordCard
+                      key={plan.planId}
+                      plan={plan}
+                      language={language}
+                      t={t}
+                    />
+                  ))}
+                </div>
+              </div>
+            ) : null}
+            {carePlanProjection.historicalLegacy.length ? (
+              <div data-testid="summary-care-plan-historical">
+                <h3 style={{ margin: "0 0 8px", fontSize: 13 }}>
+                  {t("inpatientMedicalRecordSummaryInp2f.carePlan.historical")}
+                </h3>
+                <ul style={{ margin: 0, paddingLeft: 18, fontSize: 12 }}>
+                  {carePlanProjection.historicalLegacy.map((item, idx) => (
+                    <li key={`legacy-${idx}`}>
+                      {[item.goalText, resolveCarePlanDisciplineLabel(item.discipline, t)]
+                        .filter(Boolean)
+                        .join(" · ")}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+          </div>
         )}
         <button type="button" className="no-print" onClick={() => onNavigateSection?.("carePlan")}>
           {t("inpatientMedicalRecordSummaryInp2f.openSource")}
@@ -826,5 +936,156 @@ export function InpatientEncounterMedicalRecordSummaryView({
 
       {patientId ? <span data-testid="summary-patient-id-hidden" hidden>{patientId}</span> : null}
     </div>
+  );
+}
+
+function formatMrDateTime(iso: string | null, language: string): string {
+  if (!iso) return "";
+  try {
+    return new Date(iso).toLocaleString(language === "fr" ? "fr-FR" : "en-US", {
+      dateStyle: "medium",
+      timeStyle: "short",
+    });
+  } catch {
+    return iso;
+  }
+}
+
+function CarePlanMedicalRecordCard({
+  plan,
+  language,
+  t,
+}: {
+  plan: import("@medora/shared").CarePlanMedicalRecordPlanV1;
+  language: string;
+  t: (key: string, vars?: Record<string, string | number>) => string;
+}) {
+  const formatDt = (iso: string | null) => formatMrDateTime(iso, language);
+  const title = resolveCarePlanPlanTitle(plan, t);
+  const status = resolveCarePlanStatusLabel(plan.status, t);
+  const contributors = plan.contributors
+    .map((d) => resolveCarePlanDisciplineLabel(d, t) ?? d)
+    .filter(Boolean)
+    .join(" · ");
+  const goalsOutcomes = [...plan.goals, ...plan.outcomes];
+
+  return (
+    <article
+      data-testid={`summary-care-plan-${plan.planId}`}
+      style={{ border: "1px solid #e2e8f0", borderRadius: 12, padding: "10px 12px" }}
+    >
+      <strong style={{ fontSize: 13 }}>{title}</strong>
+      <div style={{ fontSize: 12, color: "#64748b", marginTop: 4 }}>
+        {t("inpatientMedicalRecordSummaryInp2f.carePlan.statusLabel")}: {status}
+      </div>
+      {plan.activatedAt ? (
+        <div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>
+          {t("inpatientMedicalRecordSummaryInp2f.carePlan.activated")}: {formatDt(plan.activatedAt)}
+          {plan.activatedBy.displayName ? ` · ${plan.activatedBy.displayName}` : ""}
+        </div>
+      ) : null}
+      {plan.lastReviewedAt ? (
+        <div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>
+          {t("inpatientMedicalRecordSummaryInp2f.carePlan.lastReviewed")}: {formatDt(plan.lastReviewedAt)}
+        </div>
+      ) : null}
+      {contributors ? (
+        <div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>
+          {t("inpatientMedicalRecordSummaryInp2f.carePlan.contributors")}: {contributors}
+        </div>
+      ) : null}
+
+      {goalsOutcomes.length ? (
+        <div style={{ marginTop: 8 }}>
+          <div style={{ fontSize: 12, fontWeight: 700 }}>
+            {t("inpatientMedicalRecordSummaryInp2f.carePlan.goalsOutcomes")}
+          </div>
+          {goalsOutcomes.map((g, i) => (
+            <div key={`g-${i}`} style={{ fontSize: 12, marginTop: 4 }}>
+              <div>{g.text || g.title}</div>
+              {g.status ? (
+                <div style={{ color: "#64748b" }}>{resolveCarePlanStatusLabel(g.status, t)}</div>
+              ) : null}
+              <div style={{ color: "#64748b" }}>{formatCarePlanDocumentedLine(g, t, formatDt)}</div>
+            </div>
+          ))}
+        </div>
+      ) : null}
+
+      {plan.interventions.length ? (
+        <div style={{ marginTop: 8 }}>
+          <div style={{ fontSize: 12, fontWeight: 700 }}>
+            {t("inpatientMedicalRecordSummaryInp2f.carePlan.interventions")}
+          </div>
+          {plan.interventions.map((item, i) => (
+            <div key={`i-${i}`} style={{ fontSize: 12, marginTop: 4 }}>
+              <div>{item.text || item.title}</div>
+              {item.discipline ? (
+                <div style={{ color: "#64748b" }}>
+                  {resolveCarePlanDisciplineLabel(item.discipline, t)}
+                </div>
+              ) : null}
+              <div style={{ color: "#64748b" }}>{formatCarePlanDocumentedLine(item, t, formatDt)}</div>
+            </div>
+          ))}
+        </div>
+      ) : null}
+
+      {plan.monitoring.length ? (
+        <div style={{ marginTop: 8 }}>
+          <div style={{ fontSize: 12, fontWeight: 700 }}>
+            {t("inpatientMedicalRecordSummaryInp2f.carePlan.monitoring")}
+          </div>
+          {plan.monitoring.map((item, i) => (
+            <div key={`m-${i}`} style={{ fontSize: 12, marginTop: 4 }}>
+              <div>{item.text || item.title}</div>
+              <div style={{ color: "#64748b" }}>{formatCarePlanDocumentedLine(item, t, formatDt)}</div>
+            </div>
+          ))}
+        </div>
+      ) : null}
+
+      {plan.education.length ? (
+        <div style={{ marginTop: 8 }}>
+          <div style={{ fontSize: 12, fontWeight: 700 }}>
+            {t("inpatientMedicalRecordSummaryInp2f.carePlan.education")}
+          </div>
+          {plan.education.map((item, i) => (
+            <div key={`e-${i}`} style={{ fontSize: 12, marginTop: 4 }}>
+              <div>{item.text || item.title}</div>
+              <div style={{ color: "#64748b" }}>{formatCarePlanDocumentedLine(item, t, formatDt)}</div>
+            </div>
+          ))}
+        </div>
+      ) : null}
+
+      {plan.progress.length ? (
+        <div style={{ marginTop: 8 }}>
+          <div style={{ fontSize: 12, fontWeight: 700 }}>
+            {t("inpatientMedicalRecordSummaryInp2f.carePlan.progress")}
+          </div>
+          {plan.progress.map((p, i) => (
+            <div key={`p-${i}`} style={{ fontSize: 12, marginTop: 4 }}>
+              <div>{p.narrative}</div>
+              <div style={{ color: "#64748b" }}>{formatCarePlanDocumentedLine(p, t, formatDt)}</div>
+            </div>
+          ))}
+        </div>
+      ) : null}
+
+      {plan.reviews.length ? (
+        <div style={{ marginTop: 8 }}>
+          <div style={{ fontSize: 12, fontWeight: 700 }}>
+            {t("inpatientMedicalRecordSummaryInp2f.carePlan.reviews")}
+          </div>
+          {plan.reviews.map((r, i) => (
+            <div key={`r-${i}`} style={{ fontSize: 12, marginTop: 4 }}>
+              <div>{r.narrative ?? r.reviewStatus ?? ""}</div>
+              <div style={{ color: "#64748b" }}>{formatCarePlanReviewedLine(r, t, formatDt)}</div>
+            </div>
+          ))}
+        </div>
+      ) : null}
+    </article>
   );
 }
