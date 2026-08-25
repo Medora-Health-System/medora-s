@@ -6,6 +6,10 @@
  */
 
 import { projectClinicalAuthorFromSnapshots } from "./clinicalAuthorSnapshotCp1e.js";
+import {
+  CARE_PLAN_ACTIVATION_CLINICAL_LOCALE,
+  resolveCarePlanClinicalNarrative,
+} from "./enterpriseCarePlanTemplateClinicalTextCp1f1.js";
 
 export type CarePlanMedicalRecordBucket = "CURRENT" | "COMPLETED_DISCONTINUED";
 
@@ -229,11 +233,18 @@ function componentKind(c: AggregateComponent): CarePlanMedicalRecordComponentV1[
 function mapComponent(c: AggregateComponent): CarePlanMedicalRecordComponentV1 {
   const target = c.targetOutcome;
   const correctedAt = iso(c.correctedAt);
+  const locale = CARE_PLAN_ACTIVATION_CLINICAL_LOCALE;
+  const title = resolveCarePlanClinicalNarrative(String(c.title ?? "").trim(), locale);
+  const text = resolveCarePlanClinicalNarrative(String(c.text ?? "").trim(), locale);
+  const resolvedTarget =
+    typeof target === "string" && target.trim()
+      ? resolveCarePlanClinicalNarrative(target.trim(), locale)
+      : null;
   return {
     kind: componentKind(c),
-    title: String(c.title ?? "").trim(),
-    text: String(c.text ?? "").trim(),
-    targetOutcome: typeof target === "string" && target.trim() ? target.trim() : null,
+    title,
+    text,
+    targetOutcome: resolvedTarget,
     discipline: typeof c.discipline === "string" && c.discipline.trim() ? c.discipline.trim() : null,
     status: typeof c.status === "string" && c.status.trim() ? c.status.trim() : null,
     documentedBy: clinicianFromSnapshots({
@@ -320,7 +331,9 @@ export function projectEncounterCarePlanPlan(
 
   const projected: CarePlanMedicalRecordPlanV1 = {
     planId: String(plan.id ?? ""),
-    title: String(plan.title ?? "").trim() || "Care plan",
+    title:
+      resolveCarePlanClinicalNarrative(String(plan.title ?? "").trim(), CARE_PLAN_ACTIVATION_CLINICAL_LOCALE) ||
+      "Care plan",
     templateId: typeof plan.templateId === "string" ? plan.templateId : null,
     status,
     bucket: bucketForStatus(status),

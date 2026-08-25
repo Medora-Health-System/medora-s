@@ -17,6 +17,7 @@ import {
   CLINICIAN_CARE_PLAN_PRIMARY_SECTION_IDS,
   getCarePlanTemplate,
   previewCarePlanTemplate,
+  resolveCarePlanClinicalNarrative,
   resolveCarePlanRoleProfile,
   resolveCarePlanWorkspaceSection,
   searchCarePlanTemplates,
@@ -193,7 +194,7 @@ function disciplineFilterLabel(
 export function EnterpriseInterdisciplinaryCarePlansD4b6(
   props: EnterpriseInterdisciplinaryCarePlansProps
 ) {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   const { userId } = useFacilityAndRoles();
   const roleProfile =
     props.roleProfile ?? resolveCarePlanRoleProfile(props.roleCodes ?? ["RN"]);
@@ -313,9 +314,12 @@ export function EnterpriseInterdisciplinaryCarePlansD4b6(
 
   const resolvePlanTitle = (plan: CarePlanWorkflowPlan) =>
     resolveTemplateTitle(plan.templateId, plan.title);
-  const resolveComponentTitle = (title: string) => {
-    const localized = t(title);
-    return localized === title ? title : localized;
+  const resolveComponentTitle = (value: string) => {
+    const locale = language === "en" ? "en" : "fr";
+    const resolved = resolveCarePlanClinicalNarrative(value, locale);
+    if (resolved && resolved !== value) return resolved;
+    const localized = t(value);
+    return localized === value ? value : localized;
   };
 
   const selectSection = (id: string) => {
