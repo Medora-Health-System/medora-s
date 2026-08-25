@@ -84,8 +84,11 @@ export const enterpriseInterdisciplinaryCarePlansD4b6Fr = {
     contributionsHeading: "Contributions de discipline",
   },
   lifecycle: {
+    DRAFT: "Brouillon",
     DRAFT_CUSTOMIZATION: "Personnalisation (brouillon)",
     ACTIVE: "Actif",
+    ON_HOLD: "En attente",
+    UNDER_REVIEW: "En révision",
     IN_PROGRESS: "En cours",
     IN_REVIEW: "En révision",
     REVISED: "Révisé",
