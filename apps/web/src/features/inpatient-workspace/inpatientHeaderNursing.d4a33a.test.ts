@@ -67,11 +67,11 @@ describe("MEDUI.D4A.3.3A final hardening", () => {
     expect(shared).toContain("history?");
   });
 
-  it("discharge print auto-synthesizes when summary empty", () => {
+  it("discharge print uses print-time projection without persisting synthesis", () => {
     const panel = read("InpatientWorkspacePanel.tsx");
-    expect(panel).toContain("hasMeaningfulDischargeSummary");
+    expect(panel).toContain("resolveInpatientDischargeForDisplay");
     expect(panel).toContain("synthesizeInpatientDischargeSummaryDraft");
-    expect(panel).toContain("dischargeSummaryJson: draft");
+    expect(panel).not.toContain("dischargeSummaryJson: draft");
   });
 
   it("clinical status cards expose click-to-edit a11y affordances", () => {

@@ -295,4 +295,24 @@ describe("MEDUI.D4B.7 enterprise case management discharge planning", () => {
     expect(cm.discipline).toBe("CASE_MANAGEMENT");
     expect(cm.legalRecordVisible).toBe(true);
   });
+
+  it("INP.DIS.1A projects persisted D3E.7 legacy ops without discharge authorization", () => {
+    const summary = buildEnterpriseCaseManagementDischargePlanningSummary({
+      encounterId: "e1",
+      patientId: "p1",
+      facilityId: "f1",
+      careSetting: "INPATIENT",
+      roleProfile: "CASE_MANAGER",
+      legacyOps: {
+        workflowState: "READY",
+        destination: "HOME",
+        anticipatedDischargeDate: "2026-09-01",
+        barriers: "Transport pending",
+      },
+    });
+    expect(summary.legacyOpsProjections).toHaveLength(1);
+    expect(summary.legacyOpsProjections[0]?.anticipatedDischargeDate).toBe("2026-09-01");
+    expect(summary.legacyOpsProjections[0]?.authorizesDischarge).toBe(false);
+    expect(summary.authorizesDischarge).toBe(false);
+  });
 });
