@@ -17,7 +17,8 @@ import {
   CLINICIAN_CARE_PLAN_PRIMARY_SECTION_IDS,
   getCarePlanTemplate,
   previewCarePlanTemplate,
-  resolveCarePlanClinicalNarrative,
+  isCanonicalCarePlanTemplateI18nKey,
+  resolveCarePlanClinicalNarrativeForClinician,
   resolveCarePlanRoleProfile,
   resolveCarePlanWorkspaceSection,
   searchCarePlanTemplates,
@@ -316,8 +317,10 @@ export function EnterpriseInterdisciplinaryCarePlansD4b6(
     resolveTemplateTitle(plan.templateId, plan.title);
   const resolveComponentTitle = (value: string) => {
     const locale = language === "en" ? "en" : "fr";
-    const resolved = resolveCarePlanClinicalNarrative(value, locale);
-    if (resolved && resolved !== value) return resolved;
+    // CP.1F.1 / CP.1F.2 — never show raw canonical template keys as clinical text.
+    if (isCanonicalCarePlanTemplateI18nKey(value)) {
+      return resolveCarePlanClinicalNarrativeForClinician(value, locale);
+    }
     const localized = t(value);
     return localized === value ? value : localized;
   };

@@ -13,6 +13,7 @@ import {
   CANONICAL_CARE_PLAN_TEMPLATE_I18N_KEYS,
   isCanonicalCarePlanTemplateI18nKey,
   resolveCarePlanClinicalNarrative,
+  resolveCarePlanClinicalNarrativeForClinician,
   resolveCarePlanTemplateI18nKey,
   resolveEnterpriseCarePlanTemplateClinicalText,
 } from "./enterpriseCarePlanTemplateClinicalTextCp1f1.js";
@@ -161,5 +162,81 @@ describe("MEDUI.CP.1F.1 Care Plan clinical text resolution", () => {
     expect(resolveCarePlanClinicalNarrative("Clinician free-text correction.", "fr")).toBe(
       "Clinician free-text correction."
     );
+  });
+
+  it("CP.1F.2 correction prefill resolves recognized template keys to clinical text", () => {
+    const key =
+      "enterpriseInterdisciplinaryCarePlansD4b6.templates.impairedMobility.goalBody";
+    const prefill = resolveCarePlanClinicalNarrativeForClinician(key, "en");
+    expect(prefill).toContain("safe mobility");
+    expect(isCanonicalCarePlanTemplateI18nKey(prefill)).toBe(false);
+    expect(prefill).not.toContain(KEY_PREFIX);
+  });
+
+  it("CP.1F.2 correction prefill preserves ordinary clinician narrative", () => {
+    const narrative = "Patient will walk twice daily with assist of one.";
+    expect(resolveCarePlanClinicalNarrativeForClinician(narrative, "fr")).toBe(narrative);
+  });
+
+  it("CP.1F.2 History field kinds resolve clinical narrative for impaired mobility", () => {
+    const template = getCarePlanTemplate("impaired_mobility")!;
+    const kinds = ["goalBody", "outcomeBody", "interventionBody", "monitoringBody", "educationBody"];
+    for (const leaf of kinds) {
+      const key = `enterpriseInterdisciplinaryCarePlansD4b6.templates.impairedMobility.${leaf}`;
+      const resolved = resolveCarePlanClinicalNarrativeForClinician(key, "en");
+      expect(resolved.length).toBeGreaterThan(8);
+      expect(isCanonicalCarePlanTemplateI18nKey(resolved)).toBe(false);
+      expect(resolved).not.toContain(".goalBody");
+    }
+    expect(template.components.some((c) => c.bodyKey.includes("goalBody"))).toBe(true);
+  });
+
+  it("CP.1F.2 clinician display never returns raw canonical keys as fallback", () => {
+    const bogusButCanonicalLooking = resolveCarePlanClinicalNarrativeForClinician(
+      "enterpriseInterdisciplinaryCarePlansD4b6.templates.fallRisk.goalBody",
+      "en"
+    );
+    expect(bogusButCanonicalLooking).not.toContain(KEY_PREFIX);
+  });
+
+  it("CP.1F.2 Summary projection of exact keys contains no template key clinical text", () => {
+    const key =
+      "enterpriseInterdisciplinaryCarePlansD4b6.templates.impairedMobility.goalBody";
+    const projection = projectEncounterCarePlanMedicalRecord({
+      plans: [
+        {
+          id: "plan-hist",
+          title: "enterpriseInterdisciplinaryCarePlansD4b6.templates.impairedMobility.title",
+          templateId: "impaired_mobility",
+          status: "ACTIVE",
+          components: [
+            {
+              componentType: "GOAL",
+              title: key,
+              text: key,
+              sourceTemplateComponentId: "mob_goal",
+              createdAt: "2026-08-25T12:00:00.000Z",
+            },
+            {
+              componentType: "INTERVENTION",
+              title:
+                "enterpriseInterdisciplinaryCarePlansD4b6.templates.impairedMobility.interventionBody",
+              text:
+                "enterpriseInterdisciplinaryCarePlansD4b6.templates.impairedMobility.interventionBody",
+              sourceTemplateComponentId: "mob_intervention",
+              monitoringJson: undefined,
+              educationJson: undefined,
+              createdAt: "2026-08-25T12:00:00.000Z",
+            },
+          ],
+        },
+      ],
+    });
+    const clinical = JSON.stringify([
+      projection.currentPlans[0]?.goals,
+      projection.currentPlans[0]?.interventions,
+    ]);
+    expect(clinical).not.toContain(KEY_PREFIX);
+    expect(clinical).not.toContain(".goalBody");
   });
 });

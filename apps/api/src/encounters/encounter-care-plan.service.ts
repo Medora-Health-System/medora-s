@@ -8,6 +8,7 @@ import {
   CARE_PLAN_SUGGESTION_SIGNAL_CARD_IDS,
   getCarePlanTemplate,
   INPATIENT_NURSING_ASSESSMENT_V1_KEY,
+  resolveCarePlanClinicalNarrative,
   resolveEnterpriseCarePlanTemplateClinicalText,
   suggestEncounterCarePlans,
 } from "@medora/shared";
@@ -374,11 +375,20 @@ export class EncounterCarePlanService {
       if (!bumped.count) throw new ConflictException("CARE_PLAN_REVISION_CONFLICT");
       const corrector = await this.resolveAuthorSnapshot(actor, tx);
       const now = new Date();
+      // CP.1F.2 — never persist unresolved canonical template i18n keys as clinical narrative.
+      const resolvedTitle = resolveCarePlanClinicalNarrative(
+        typeof input.title === "string" ? input.title : component.title,
+        CARE_PLAN_ACTIVATION_CLINICAL_LOCALE
+      );
+      const resolvedText = resolveCarePlanClinicalNarrative(
+        typeof input.text === "string" ? input.text : component.text,
+        CARE_PLAN_ACTIVATION_CLINICAL_LOCALE
+      );
       await tx.encounterCarePlanComponent.update({
         where: { id: componentId },
         data: {
-          title: input.title,
-          text: input.text,
+          title: resolvedTitle,
+          text: resolvedText,
           targetOutcome: input.targetOutcome,
           status: input.status,
           revision: { increment: 1 },
