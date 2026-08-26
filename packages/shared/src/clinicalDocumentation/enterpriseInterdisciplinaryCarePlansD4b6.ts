@@ -24,7 +24,7 @@ import {
   type CarePlanTemplateCategory,
 } from "./enterpriseCarePlanTemplateLibraryCp1f.js";
 import {
-  CARE_PLAN_ACTIVATION_CLINICAL_LOCALE,
+  resolveCarePlanActivationClinicalLocale,
   resolveEnterpriseCarePlanTemplateClinicalText,
   type CarePlanClinicalLocale,
 } from "./enterpriseCarePlanTemplateClinicalTextCp1f1.js";
@@ -807,7 +807,9 @@ export function activateCarePlanFromTemplate(input: {
   const customMap = new Map(
     (input.customizations ?? []).map((c) => [c.sourceTemplateComponentId, c])
   );
-  const clinicalLocale = input.clinicalLocale ?? CARE_PLAN_ACTIVATION_CLINICAL_LOCALE;
+  const clinicalLocale = resolveCarePlanActivationClinicalLocale({
+    requestedLocale: input.clinicalLocale,
+  });
   const resolvedTemplate = resolveEnterpriseCarePlanTemplateClinicalText({
     template,
     locale: clinicalLocale,

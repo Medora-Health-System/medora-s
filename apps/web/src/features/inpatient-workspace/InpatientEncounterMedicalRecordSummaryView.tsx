@@ -9,6 +9,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   formatCarePlanClinicianAttribution,
   formatNursingAdmissionAttributionClinician,
+  coerceCarePlanClinicalLocale,
   humanizeClinicalLabel,
   projectEncounterCarePlanMedicalRecord,
   projectInpatientNursingAssessmentOverview,
@@ -298,6 +299,7 @@ export function InpatientEncounterMedicalRecordSummaryView({
             projectEncounterCarePlanMedicalRecord({
               plans: plans as Parameters<typeof projectEncounterCarePlanMedicalRecord>[0]["plans"],
               legacyItems,
+              displayLocale: coerceCarePlanClinicalLocale(language),
             })
           );
         } else {

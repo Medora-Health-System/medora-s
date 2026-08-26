@@ -13,6 +13,8 @@ import {
   projectInpatientNursingAssessmentOverview,
   projectInpatientReviewOrders,
   projectNursingAdmissionOverview,
+  projectEncounterCarePlanOverview,
+  coerceCarePlanClinicalLocale,
   type InpatientNursingAssessmentV1,
   type InpatientReviewOrdersProjection,
   type InpatientWorkspaceRole,
@@ -383,31 +385,16 @@ export function InpatientProviderWorkspacePanel({
               }>;
             }>(careSettled.value)?.plans ?? [];
           setCarePlanPlans(
-            plans.map((plan) => {
-              const goals = (plan.components ?? []).filter(
-                (c) => String(c.componentType ?? "").toUpperCase() === "GOAL",
-              );
-              const concerns = (plan.components ?? []).filter((c) =>
-                /CONCERN|BARRIER|PROBLEM/i.test(String(c.componentType ?? "")),
-              );
-              const openConcern = concerns.find(
-                (c) => !/COMPLETE|RESOLVED|DISCONTINUED/i.test(String(c.status ?? "")),
-              );
-              return {
-                planId: String(plan.id ?? ""),
-                title: String(plan.title ?? "").trim() || t("inpatientOverviewInp2a.carePlan.untitled"),
-                status: String(plan.status ?? "ACTIVE"),
-                goalSummary:
-                  goals
-                    .slice(0, 2)
-                    .map((g) => String(g.title || g.text || "").trim())
-                    .filter(Boolean)
-                    .join("; ") || null,
-                concern: openConcern
-                  ? String(openConcern.title || openConcern.text || "").trim() || null
-                  : null,
-              };
-            }),
+            projectEncounterCarePlanOverview({
+              plans,
+              displayLocale: coerceCarePlanClinicalLocale(language),
+            }).map((line) => ({
+              ...line,
+              title:
+                line.title === "—"
+                  ? t("inpatientOverviewInp2a.carePlan.untitled")
+                  : line.title,
+            })),
           );
         } else {
           setCarePlanPlans([]);

@@ -12,6 +12,8 @@ import {
 import {
   CANONICAL_CARE_PLAN_TEMPLATE_I18N_KEYS,
   isCanonicalCarePlanTemplateI18nKey,
+  resolveCarePlanActivationClinicalLocale,
+  coerceCarePlanClinicalLocale,
   resolveCarePlanClinicalNarrative,
   resolveCarePlanClinicalNarrativeForClinician,
   resolveCarePlanTemplateI18nKey,
@@ -197,6 +199,89 @@ describe("MEDUI.CP.1F.1 Care Plan clinical text resolution", () => {
       "en"
     );
     expect(bogusButCanonicalLooking).not.toContain(KEY_PREFIX);
+  });
+
+  it("CP.1F.3 EN activation stores English clinical text (not global FR default)", () => {
+    const result = activateCarePlanFromTemplate({
+      planId: "cp1f3-en",
+      encounterId: "e1",
+      patientId: "p1",
+      facilityId: "f1",
+      templateId: "aspiration_risk",
+      activatedByUserId: "rn-a",
+      activatedAt: "2026-08-26T12:00:00.000Z",
+      careSetting: "INPATIENT",
+      roleProfile: "NURSE_CARE_PLAN_AUTHOR",
+      clinicalLocale: "en",
+    });
+    expect(result.accepted).toBe(true);
+    const goal = result.plan?.components.find((c) => c.kind === "GOAL");
+    expect(goal?.body ?? "").toMatch(/oral|aspiration|patient/i);
+    expect(goal?.body ?? "").not.toMatch(/Le patient|Prise orale|Surveiller/i);
+  });
+
+  it("CP.1F.3 FR activation stores French clinical text", () => {
+    const result = activateCarePlanFromTemplate({
+      planId: "cp1f3-fr",
+      encounterId: "e1",
+      patientId: "p1",
+      facilityId: "f1",
+      templateId: "aspiration_risk",
+      activatedByUserId: "rn-a",
+      activatedAt: "2026-08-26T12:00:00.000Z",
+      careSetting: "INPATIENT",
+      roleProfile: "NURSE_CARE_PLAN_AUTHOR",
+      clinicalLocale: "fr",
+    });
+    expect(result.accepted).toBe(true);
+    const goal = result.plan?.components.find((c) => c.kind === "GOAL");
+    expect(goal?.body ?? "").toMatch(/patient|aspiration|orale/i);
+  });
+
+  it("CP.1F.3 activation locale authority validates en|fr only", () => {
+    expect(resolveCarePlanActivationClinicalLocale({ requestedLocale: "en" })).toBe("en");
+    expect(resolveCarePlanActivationClinicalLocale({ requestedLocale: "fr" })).toBe("fr");
+    expect(resolveCarePlanActivationClinicalLocale({ requestedLocale: "de" })).toBe("fr");
+    expect(coerceCarePlanClinicalLocale("EN")).toBe("en");
+  });
+
+  it("CP.1F.3 persisted narrative does not retranslate on locale switch", () => {
+    const frText = "Le patient restera sans chute avec blessure pendant le séjour.";
+    expect(resolveCarePlanClinicalNarrative(frText, "en")).toBe(frText);
+    const enText = "Patient will remain free of fall with injury during the stay.";
+    expect(resolveCarePlanClinicalNarrative(enText, "fr")).toBe(enText);
+  });
+
+  it("CP.1F.3 Summary projection respects displayLocale for legacy keys", () => {
+    const key =
+      "enterpriseInterdisciplinaryCarePlansD4b6.templates.fallRisk.goalBody";
+    const enProjection = projectEncounterCarePlanMedicalRecord({
+      displayLocale: "en",
+      plans: [
+        {
+          id: "plan-1",
+          title: "enterpriseInterdisciplinaryCarePlansD4b6.templates.fallRisk.title",
+          status: "ACTIVE",
+          components: [{ componentType: "GOAL", title: key, text: key }],
+        },
+      ],
+    });
+    const frProjection = projectEncounterCarePlanMedicalRecord({
+      displayLocale: "fr",
+      plans: [
+        {
+          id: "plan-1",
+          title: "enterpriseInterdisciplinaryCarePlansD4b6.templates.fallRisk.title",
+          status: "ACTIVE",
+          components: [{ componentType: "GOAL", title: key, text: key }],
+        },
+      ],
+    });
+    const enGoal = enProjection.currentPlans[0]?.goals[0]?.text ?? "";
+    const frGoal = frProjection.currentPlans[0]?.goals[0]?.text ?? "";
+    expect(enGoal).not.toBe(frGoal);
+    expect(enGoal).toMatch(/fall|patient/i);
+    expect(frGoal).toMatch(/chute|patient/i);
   });
 
   it("CP.1F.2 Summary projection of exact keys contains no template key clinical text", () => {

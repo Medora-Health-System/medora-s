@@ -3,11 +3,12 @@ import { CarePlanComponentStatus, CarePlanComponentType, CarePlanPriority, CareP
 import {
   assertSameClinicalAuthor,
   buildClinicalAuthorSnapshotPersist,
-  CARE_PLAN_ACTIVATION_CLINICAL_LOCALE,
   CARE_PLAN_COMPONENT_NOT_AUTHOR,
   CARE_PLAN_SUGGESTION_SIGNAL_CARD_IDS,
+  coerceCarePlanClinicalLocale,
   getCarePlanTemplate,
   INPATIENT_NURSING_ASSESSMENT_V1_KEY,
+  resolveCarePlanActivationClinicalLocale,
   resolveCarePlanClinicalNarrative,
   resolveEnterpriseCarePlanTemplateClinicalText,
   suggestEncounterCarePlans,
@@ -199,7 +200,7 @@ export class EncounterCarePlanService {
   async activate(
     actor: CarePlanActor,
     encounterId: string,
-    input: { templateId?: string; priority?: CarePlanPriority }
+    input: { templateId?: string; priority?: CarePlanPriority; clinicalLocale?: string }
   ) {
     this.requireClinical(actor, [RoleCode.RN]);
     const encounter = await this.encounter(actor, encounterId);
@@ -219,9 +220,12 @@ export class EncounterCarePlanService {
         template,
       })
     );
+    const activationLocale = resolveCarePlanActivationClinicalLocale({
+      requestedLocale: input.clinicalLocale,
+    });
     const resolvedTemplate = resolveEnterpriseCarePlanTemplateClinicalText({
       template,
-      locale: CARE_PLAN_ACTIVATION_CLINICAL_LOCALE,
+      locale: activationLocale,
     });
     const resolvedByComponentId = new Map(
       resolvedTemplate.components.map((c) => [c.componentId, c])
@@ -376,13 +380,14 @@ export class EncounterCarePlanService {
       const corrector = await this.resolveAuthorSnapshot(actor, tx);
       const now = new Date();
       // CP.1F.2 — never persist unresolved canonical template i18n keys as clinical narrative.
+      const keyResolutionLocale = coerceCarePlanClinicalLocale(input.clinicalLocale);
       const resolvedTitle = resolveCarePlanClinicalNarrative(
         typeof input.title === "string" ? input.title : component.title,
-        CARE_PLAN_ACTIVATION_CLINICAL_LOCALE
+        keyResolutionLocale
       );
       const resolvedText = resolveCarePlanClinicalNarrative(
         typeof input.text === "string" ? input.text : component.text,
-        CARE_PLAN_ACTIVATION_CLINICAL_LOCALE
+        keyResolutionLocale
       );
       await tx.encounterCarePlanComponent.update({
         where: { id: componentId },
