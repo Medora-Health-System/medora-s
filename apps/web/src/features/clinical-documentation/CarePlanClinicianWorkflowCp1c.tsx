@@ -112,6 +112,34 @@ const btn: React.CSSProperties = {
   cursor: "pointer",
 };
 
+/**
+ * MEDUI.CP.1F.2 — Correction textarea prefill must match clinician-visible narrative.
+ * Always resolve through the display authority; never prefer raw persisted keys.
+ */
+export function carePlanCorrectionPrefillText(
+  text: string | null | undefined,
+  title: string | null | undefined,
+  resolveClinical: (value: string) => string
+): string {
+  return resolveClinical(String(text || title || "").trim());
+}
+
+/**
+ * MEDUI.CP.1F.2 — History clinical detail for template-derived components.
+ */
+export function carePlanHistoryClinicalDetail(
+  text: string | null | undefined,
+  title: string | null | undefined,
+  resolveClinical: (value: string) => string,
+  maxLen = 160
+): string | null {
+  const clinicalSnippet = resolveClinical(String(text || title || "").trim()).trim();
+  if (!clinicalSnippet) return null;
+  return clinicalSnippet.length > maxLen
+    ? `${clinicalSnippet.slice(0, maxLen - 3)}…`
+    : clinicalSnippet;
+}
+
 function looksLikeUuid(value: string): boolean {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
     value.trim()
@@ -482,8 +510,8 @@ export function CarePlanClinicianWorkflowCp1c(props: Props) {
           headers: { "content-type": "application/json" },
           body: JSON.stringify({
             expectedRevision: plan.revision,
-            title: component.title,
-            text: editText,
+            title: props.resolveComponentTitle(component.title),
+            text: props.resolveComponentTitle(editText),
             status: component.status,
             targetOutcome: component.targetOutcome,
             correctionReason: editCorrectionReason.trim(),
@@ -691,7 +719,10 @@ export function CarePlanClinicianWorkflowCp1c(props: Props) {
                           data-testid={`eicp-edit-component-${c.id}`}
                           onClick={() => {
                             setEditComponentId(c.id);
-                            setEditText(c.text || props.resolveComponentTitle(c.title));
+                            // Prefill MUST match clinician-visible text (resolve keys; never raw bodyKey).
+                            setEditText(
+                              carePlanCorrectionPrefillText(c.text, c.title, props.resolveComponentTitle)
+                            );
                             setEditCorrectionReason("");
                           }}
                         >
@@ -793,7 +824,10 @@ export function CarePlanClinicianWorkflowCp1c(props: Props) {
                           data-testid={`eicp-edit-component-${c.id}`}
                           onClick={() => {
                             setEditComponentId(c.id);
-                            setEditText(c.text || props.resolveComponentTitle(c.title));
+                            // Prefill MUST match clinician-visible text (resolve keys; never raw bodyKey).
+                            setEditText(
+                              carePlanCorrectionPrefillText(c.text, c.title, props.resolveComponentTitle)
+                            );
                             setEditCorrectionReason("");
                           }}
                         >
@@ -981,16 +1015,16 @@ export function CarePlanClinicianWorkflowCp1c(props: Props) {
                       null,
                       t
                     );
-                    const clinicalSnippet = (c.text || c.title || "").trim();
+                    const clinicalSnippet = carePlanHistoryClinicalDetail(
+                      c.text,
+                      c.title,
+                      props.resolveComponentTitle
+                    );
                     items.push({
                       at: createdAt,
                       key: `c-add-${c.id}`,
                       title: componentHistoryTitle(c.kind, t, false),
-                      detail: clinicalSnippet
-                        ? clinicalSnippet.length > 160
-                          ? `${clinicalSnippet.slice(0, 157)}…`
-                          : clinicalSnippet
-                        : null,
+                      detail: clinicalSnippet,
                       who,
                       unavailable,
                     });
@@ -1002,13 +1036,20 @@ export function CarePlanClinicianWorkflowCp1c(props: Props) {
                       null,
                       t
                     );
+                    const correctedSnippet = carePlanHistoryClinicalDetail(
+                      c.text,
+                      c.title,
+                      props.resolveComponentTitle
+                    );
+                    const reason = c.correctionReason?.trim()
+                      ? `${t("inpatientNursingAdmissionInp2g.carePlanWorkspace.historyCorrectionReason")}: ${c.correctionReason.trim()}`
+                      : null;
+                    const detailParts = [correctedSnippet, reason].filter(Boolean);
                     items.push({
                       at: String(c.correctedAt),
                       key: `c-corr-${c.id}-${c.correctedAt}`,
                       title: componentHistoryTitle(c.kind, t, true),
-                      detail: c.correctionReason?.trim()
-                        ? `${t("inpatientNursingAdmissionInp2g.carePlanWorkspace.historyCorrectionReason")}: ${c.correctionReason.trim()}`
-                        : null,
+                      detail: detailParts.length ? detailParts.join(" · ") : null,
                       who,
                       unavailable,
                     });

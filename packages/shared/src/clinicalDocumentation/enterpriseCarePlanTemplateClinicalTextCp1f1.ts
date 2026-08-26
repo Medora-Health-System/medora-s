@@ -84,6 +84,8 @@ export function resolveCarePlanTemplateI18nKey(
 /**
  * Resolve persisted or template-descriptor text to clinician-readable narrative.
  * Unknown strings pass through unchanged (clinician-authored content).
+ * Recognized exact keys try the requested locale, then the alternate locale.
+ * Never invent translations for free-text clinician narrative.
  */
 export function resolveCarePlanClinicalNarrative(
   value: string | null | undefined,
@@ -92,7 +94,26 @@ export function resolveCarePlanClinicalNarrative(
   const raw = String(value ?? "").trim();
   if (!raw) return "";
   if (!isCanonicalCarePlanTemplateI18nKey(raw)) return raw;
-  return resolveCarePlanTemplateI18nKey(raw, locale) ?? raw;
+  const primary = resolveCarePlanTemplateI18nKey(raw, locale);
+  if (primary) return primary;
+  const alternate = resolveCarePlanTemplateI18nKey(raw, locale === "en" ? "fr" : "en");
+  return alternate ?? raw;
+}
+
+/**
+ * MEDUI.CP.1F.2 — Clinician-facing Care Plan narrative.
+ * Same authority as resolveCarePlanClinicalNarrative; never returns a raw
+ * canonical template i18n key as UI fallback.
+ */
+export function resolveCarePlanClinicalNarrativeForClinician(
+  value: string | null | undefined,
+  locale: CarePlanClinicalLocale = "fr",
+  safeFallback = "—"
+): string {
+  const resolved = resolveCarePlanClinicalNarrative(value, locale);
+  if (!resolved) return "";
+  if (isCanonicalCarePlanTemplateI18nKey(resolved)) return safeFallback;
+  return resolved;
 }
 
 export type ResolvedEnterpriseCarePlanTemplateClinicalText = {
