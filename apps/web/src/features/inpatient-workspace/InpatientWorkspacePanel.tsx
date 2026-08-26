@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useI18n } from "@/lib/i18n";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import {
@@ -10,8 +10,11 @@ import {
   INPATIENT_NURSING_ASSESSMENT_KINDS,
   INPATIENT_NOTE_KINDS,
   INPATIENT_TIMELINE_EVENT_KINDS,
+  extractDischargePlanningFromClinicalOps,
   hasMeaningfulDischargeSummary,
+  resolveInpatientDischargeForDisplay,
   synthesizeInpatientDischargeSummaryDraft,
+  type InpatientDischargePlanningContext,
   type InpatientWorkspaceRole,
   inpatientFacilityMedicationOrderMode,
 } from "@medora/shared";
@@ -37,6 +40,7 @@ import { InpatientAdmissionClinicalShell } from "./InpatientAdmissionClinicalShe
 import { InpatientProviderWorkspacePanel } from "./InpatientProviderWorkspacePanel";
 import { InpatientEncounterMedicalRecordSummaryView } from "./InpatientEncounterMedicalRecordSummaryView";
 import { InpatientTechnicianTasksPanel } from "./InpatientTechnicianTasksPanel";
+import { fetchInpatientClinicalOps } from "@/features/hospital-care/inpatientOperationsApi";
 import { InpatientNursingAssessmentSection } from "./InpatientNursingAssessmentSection";
 import { EnterpriseInterdisciplinaryCarePlansD4b6 } from "@/features/clinical-documentation/EnterpriseInterdisciplinaryCarePlansD4b6";
 import { EnterpriseCaseManagementDischargePlanningD4b7 } from "@/features/clinical-documentation/EnterpriseCaseManagementDischargePlanningD4b7";
@@ -120,6 +124,9 @@ export function InpatientWorkspacePanel({
 }) {
   const { t, language } = useI18n();
   const { facilityId, roles, userId, facilityTimeZone } = useFacilityAndRoles();
+  const [dischargePlanningOps, setDischargePlanningOps] =
+    useState<InpatientDischargePlanningContext | null>(null);
+  const [dischargePlanningBarriers, setDischargePlanningBarriers] = useState<string | null>(null);
 
   useEffect(() => {
     if (section !== "medications") return;
@@ -132,6 +139,34 @@ export function InpatientWorkspacePanel({
   const nursingLive = isInpatientNursingEnabledInBrowser();
   const consultsLive = isInpatientConsultsEnabledInBrowser();
   const dischargeLive = isInpatientDischargePlanningEnabledInBrowser();
+
+  useEffect(() => {
+    if (section !== "dischargePlanning" || !dischargeLive || !encounterId) {
+      setDischargePlanningOps(null);
+      setDischargePlanningBarriers(null);
+      return;
+    }
+    let cancelled = false;
+    void fetchInpatientClinicalOps(encounterId)
+      .then((payload) => {
+        if (cancelled) return;
+        const ops = payload.ops as Record<string, unknown>;
+        setDischargePlanningOps(extractDischargePlanningFromClinicalOps(ops));
+        const dp = ops.dischargePlanning as Record<string, unknown> | undefined;
+        setDischargePlanningBarriers(
+          typeof dp?.barriers === "string" ? dp.barriers : null
+        );
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setDischargePlanningOps(null);
+          setDischargePlanningBarriers(null);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [section, dischargeLive, encounterId]);
   const canPrescribe =
     writersEnabled &&
     (workspaceRole === "PROVIDER" || workspaceRole === "CHART") &&
@@ -510,6 +545,16 @@ export function InpatientWorkspacePanel({
             facilityId={facilityId}
             careSetting="INPATIENT"
             roleCodes={roles}
+            legacyOps={
+              dischargePlanningOps
+                ? {
+                    workflowState: dischargePlanningOps.workflowState ?? null,
+                    destination: dischargePlanningOps.destination ?? null,
+                    anticipatedDischargeDate: dischargePlanningOps.anticipatedDischargeDate ?? null,
+                    barriers: dischargePlanningBarriers,
+                  }
+                : undefined
+            }
           />
           {dischargeLive ? (
             <>
@@ -544,31 +589,31 @@ export function InpatientWorkspacePanel({
                             facilityId: facilityId ?? undefined,
                           }).catch(() => null)
                         );
-                        let dischargeSummaryJson = enc?.dischargeSummaryJson ?? null;
-                        if (!hasMeaningfulDischargeSummary(dischargeSummaryJson)) {
-                          const draft = synthesizeInpatientDischargeSummaryDraft({
-                            patientName: [patient?.firstName, patient?.lastName]
-                              .filter(Boolean)
-                              .join(" "),
-                            mrn: patient?.mrn,
-                            admissionDiagnosis,
-                            admittedAt,
-                            room,
-                            codeStatus,
-                            isolation,
-                            attendingName,
-                            assignedRnName,
-                            language: language === "en" ? "en" : "fr",
-                          });
-                          await apiFetch(`/encounters/${encodeURIComponent(encounterId)}`, {
-                            method: "PATCH",
-                            facilityId: facilityId ?? undefined,
-                            headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify({ dischargeSummaryJson: draft }),
-                          });
-                          dischargeSummaryJson = draft;
-                          await onRefetchEncounter();
-                        }
+                        const stored = enc?.dischargeSummaryJson ?? null;
+                        const fallbackDraft = !hasMeaningfulDischargeSummary(stored)
+                          ? synthesizeInpatientDischargeSummaryDraft({
+                              patientName: [patient?.firstName, patient?.lastName]
+                                .filter(Boolean)
+                                .join(" "),
+                              mrn: patient?.mrn,
+                              admissionDiagnosis,
+                              admittedAt,
+                              room,
+                              codeStatus,
+                              isolation,
+                              attendingName,
+                              assignedRnName,
+                              dischargeDestination: dischargePlanningOps?.destination ?? null,
+                              dischargeWorkflowState:
+                                dischargePlanningOps?.workflowState ?? null,
+                              language: language === "en" ? "en" : "fr",
+                            })
+                          : null;
+                        const dischargeSummaryJson = resolveInpatientDischargeForDisplay({
+                          stored,
+                          planning: dischargePlanningOps,
+                          fallbackDraft,
+                        });
                         printDischarge({
                           patient: {
                             firstName: patient?.firstName ?? null,

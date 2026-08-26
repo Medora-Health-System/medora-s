@@ -1,8 +1,14 @@
 import { describe, expect, it } from "vitest";
 import {
   hasMeaningfulDischargeSummary,
+  isSynthesizedDraftFallback,
   synthesizeInpatientDischargeSummaryDraft,
 } from "./inpatientDischargeSynthesisD4a33a.js";
+import {
+  hasClinicianAuthoredDischargeContent,
+  hasMeaningfulDischargeSummary,
+  isSynthesizedDraftFallback,
+} from "./inpatientDischargeContractInpDis1a.js";
 
 describe("inpatientDischargeSynthesis D4A.3.3A", () => {
   it("detects empty vs meaningful summaries", () => {
@@ -13,15 +19,20 @@ describe("inpatientDischargeSynthesis D4A.3.3A", () => {
     ).toBe(true);
   });
 
-  it("synthesizes a non-empty draft for print", () => {
+  it("synthesizes a planning fallback draft marked explicitly", () => {
     const draft = synthesizeInpatientDischargeSummaryDraft({
       admissionDiagnosis: "Abdominal Pain",
+      dischargeDestination: "REHAB",
+      dischargeWorkflowState: "READY",
       room: "MS-1",
       codeStatus: "FULL_CODE",
       isolation: ["CONTACT"],
       language: "en",
     });
-    expect(hasMeaningfulDischargeSummary(draft)).toBe(true);
+    expect(isSynthesizedDraftFallback(draft)).toBe(true);
+    expect(hasClinicianAuthoredDischargeContent(draft)).toBe(false);
     expect(String(draft.dischargeInstructions)).toMatch(/Abdominal Pain/);
+    expect(String(draft.dischargeInstructions)).toMatch(/REHAB/);
+    expect(draft.plannedDestinationNotFinalDisposition).toBe(true);
   });
 });

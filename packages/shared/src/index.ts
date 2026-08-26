@@ -162,7 +162,12 @@ export * from "./encounters/admissionIntentOriginationD3e8a.js";
 export * from "./encounters/admissionIntentOriginationD3e8aBenchmark.js";
 export * from "./encounters/unitBedBoardsAdmissionIntakeD3e6dBenchmark.js";
 export * from "./encounters/inpatientClinicalOpsV1.js";
-export * from "./encounters/inpatientDischargeSynthesisD4a33a.js";
+export * from "./encounters/inpatientDischargeContractInpDis1a.js";
+export {
+  synthesizeInpatientDischargeSummaryDraft,
+  shouldOverwriteDischargeSummaryWithSynthesis,
+  type InpatientDischargeSynthesisInput,
+} from "./encounters/inpatientDischargeSynthesisD4a33a.js";
 export * from "./encounters/hospitalAdmissionIntakeVocabV1.js";
 export * from "./encounters/connectedInpatientAdmissionIntakeD4a0.js";
 export * from "./encounters/connectedInpatientAdmissionIntakeD4a0Benchmark.js";

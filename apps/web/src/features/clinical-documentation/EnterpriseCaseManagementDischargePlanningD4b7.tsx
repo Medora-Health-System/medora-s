@@ -16,6 +16,7 @@ import {
   careCoordinationWorkspaceSectionsForCareSetting,
   openCareCoordinationEpisode,
   planDestinationOnEpisode,
+  projectLegacyDischargeOps,
   resolveCareCoordinationRoleProfile,
   resolveCareCoordinationWorkspaceSection,
   upsertBarrierOnEpisode,
@@ -56,6 +57,8 @@ export type EnterpriseCaseManagementDischargePlanningProps = {
   techProjections?: ReadonlyArray<TechCoordinationProjection>;
   carePlanProjections?: ReadonlyArray<D4b6CarePlanCoordinationProjection>;
   legacyOpsProjections?: ReadonlyArray<LegacyDischargeOpsProjection>;
+  /** INP.DIS.1A — read-only D3E.7 ops feed for legacy projection (does not mutate ops). */
+  legacyOps?: Parameters<typeof projectLegacyDischargeOps>[0]["ops"];
   initialSection?: EnterpriseCareCoordinationWorkspaceSectionId;
 };
 
@@ -158,6 +161,7 @@ export function EnterpriseCaseManagementDischargePlanningD4b7(
         careSetting: props.careSetting,
         roleProfile,
         episodes: localEpisodes,
+        legacyOps: props.legacyOps,
       }),
     [
       props.encounterId,
@@ -166,6 +170,7 @@ export function EnterpriseCaseManagementDischargePlanningD4b7(
       props.careSetting,
       roleProfile,
       localEpisodes,
+      props.legacyOps,
     ]
   );
 

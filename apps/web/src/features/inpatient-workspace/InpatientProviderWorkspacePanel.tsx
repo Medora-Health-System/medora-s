@@ -114,7 +114,7 @@ type ClinicalOpsLite = {
   medicationReconciliation?: unknown[];
   dischargePlanning?: {
     workflowState?: string | null;
-    expectedDischargeDate?: string | null;
+    anticipatedDischargeDate?: string | null;
     destination?: string | null;
   } | null;
   nursing?: {
@@ -912,7 +912,8 @@ export function InpatientProviderWorkspacePanel({
             </dd>
             <dt style={{ fontWeight: 600 }}>{t("inpatientProviderD4a26.summary.discharge")}</dt>
             <dd style={{ margin: 0 }}>
-              {ops?.dischargePlanning?.expectedDischargeDate ||
+              {ops?.dischargePlanning?.anticipatedDischargeDate ||
+                ops?.dischargePlanning?.destination ||
                 ops?.dischargePlanning?.workflowState ||
                 t("common.dash")}
             </dd>
