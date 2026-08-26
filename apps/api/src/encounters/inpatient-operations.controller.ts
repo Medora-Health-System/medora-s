@@ -19,6 +19,7 @@ import { AuthGuard } from "@nestjs/passport";
 import { RoleCode } from "@prisma/client";
 import { RolesGuard, RequireRoles } from "../common/guards/roles.guard";
 import { InpatientOperationsService } from "./inpatient-operations.service";
+import { InpatientProviderDischargeService } from "./inpatient-provider-discharge.service";
 import { InpatientLifecycleService } from "./inpatient-lifecycle.service";
 import { EnterpriseAssignmentService } from "./enterprise-assignment.service";
 import type { EnterpriseHospitalBoardAssignmentRole } from "@medora/shared";
@@ -31,10 +32,24 @@ function facilityIdFromReq(req: { user?: { facilityId?: string } }): string {
   return facilityId;
 }
 
+function roleFromReq(req: { userRole?: RoleCode; user?: { role?: RoleCode } }): RoleCode {
+  const role = req.userRole ?? req.user?.role;
+  if (!role) throw new BadRequestException("Role required");
+  return role;
+}
+
 function userIdFromReq(req: { user?: { userId?: string; id?: string } }): string {
   const userId = req.user?.userId || req.user?.id;
   if (!userId) throw new BadRequestException("User ID required");
   return userId;
+}
+
+function providerDischargeActor(req: any) {
+  return {
+    userId: userIdFromReq(req),
+    facilityId: facilityIdFromReq(req),
+    role: roleFromReq(req),
+  };
 }
 
 @Controller("inpatient-operations")
@@ -43,7 +58,8 @@ export class InpatientOperationsController {
   constructor(
     private readonly ops: InpatientOperationsService,
     private readonly lifecycle: InpatientLifecycleService,
-    private readonly enterpriseAssignment: EnterpriseAssignmentService
+    private readonly enterpriseAssignment: EnterpriseAssignmentService,
+    private readonly inpatientProviderDischarge: InpatientProviderDischargeService
   ) {}
 
   @Get("meta")
@@ -965,5 +981,31 @@ export class InpatientOperationsController {
       ip: req?.ip,
       userAgent: req?.headers?.["user-agent"],
     });
+  }
+
+  /** INP.DIS.1B — Provider inpatient discharge documentation (read). */
+  @Get("encounters/:encounterId/inpatient-provider-discharge")
+  @RequireRoles(RoleCode.PROVIDER, RoleCode.RN, RoleCode.ADMIN)
+  async getInpatientProviderDischarge(
+    @Param("encounterId") encounterId: string,
+    @Req() req: any
+  ) {
+    return this.inpatientProviderDischarge.get(providerDischargeActor(req), encounterId);
+  }
+
+  /** INP.DIS.1B — Provider inpatient discharge documentation (write). */
+  @Patch("encounters/:encounterId/inpatient-provider-discharge")
+  @RequireRoles(RoleCode.PROVIDER)
+  async patchInpatientProviderDischarge(
+    @Param("encounterId") encounterId: string,
+    @Body() body: Record<string, unknown>,
+    @Req() req: any
+  ) {
+    return this.inpatientProviderDischarge.patch(
+      providerDischargeActor(req),
+      encounterId,
+      body,
+      { ip: req.ip, userAgent: req.headers?.["user-agent"] }
+    );
   }
 }

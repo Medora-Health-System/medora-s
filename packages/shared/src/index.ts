@@ -163,6 +163,7 @@ export * from "./encounters/admissionIntentOriginationD3e8aBenchmark.js";
 export * from "./encounters/unitBedBoardsAdmissionIntakeD3e6dBenchmark.js";
 export * from "./encounters/inpatientClinicalOpsV1.js";
 export * from "./encounters/inpatientDischargeContractInpDis1a.js";
+export * from "./encounters/inpatientProviderDischargeInpDis1b.js";
 export {
   synthesizeInpatientDischargeSummaryDraft,
   shouldOverwriteDischargeSummaryWithSynthesis,

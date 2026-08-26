@@ -428,3 +428,33 @@ export async function acknowledgeProviderHandoffApi(
     { method: "POST", body: JSON.stringify(body) }
   ) as Promise<{ documentation: Record<string, unknown> }>;
 }
+
+export async function fetchInpatientProviderDischarge(encounterId: string) {
+  return apiFetch(
+    `/inpatient-operations/encounters/${encodeURIComponent(encounterId)}/inpatient-provider-discharge`
+  ) as Promise<{
+    encounterId: string;
+    documentation: Record<string, unknown>;
+    revision: number;
+    planningContext?: {
+      plannedDestination?: string | null;
+      plannedDischargeWorkflowState?: string | null;
+      anticipatedDischargeDate?: string | null;
+    };
+    canAuthor?: boolean;
+  }>;
+}
+
+export async function saveInpatientProviderDischarge(
+  encounterId: string,
+  body: {
+    documentation: Record<string, unknown>;
+    expectedRevision: number;
+    saveMode: "draft" | "complete";
+  }
+) {
+  return apiFetch(
+    `/inpatient-operations/encounters/${encodeURIComponent(encounterId)}/inpatient-provider-discharge`,
+    { method: "PATCH", body: JSON.stringify(body) }
+  ) as Promise<{ documentation: Record<string, unknown>; revision: number }>;
+}

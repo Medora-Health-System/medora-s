@@ -5,8 +5,16 @@
  */
 
 import type { InpatientDischargeWorkflowState } from "./inpatientClinicalOpsV1.js";
+import {
+  hydrateInpatientProviderDischarge,
+  readInpatientProviderDischargeFromSummary,
+  type InpatientProviderDischargeV1,
+  type InpatientProviderDischargeV1B,
+} from "./inpatientProviderDischargeInpDis1b.js";
 
 export const INPATIENT_DISCHARGE_SCHEMA_VERSION = "INP.DIS.1A" as const;
+
+export type { InpatientProviderDischargeV1, InpatientProviderDischargeV1B };
 
 export const INPATIENT_DISCHARGE_NAMESPACE_KEYS = [
   "inpatientProviderDischarge",
@@ -14,27 +22,6 @@ export const INPATIENT_DISCHARGE_NAMESPACE_KEYS = [
   "inpatientPatientInstructions",
   "inpatientNursingDischarge",
 ] as const;
-
-/** Provider-authorized inpatient discharge documentation (INP.DIS.1B+). */
-export type InpatientProviderDischargeV1 = {
-  schemaVersion?: typeof INPATIENT_DISCHARGE_SCHEMA_VERSION;
-  admissionDiagnosis?: string | null;
-  dischargeDiagnoses?: Array<{ code?: string | null; label: string }>;
-  reasonForHospitalization?: string | null;
-  hospitalCourse?: string | null;
-  conditionAtDischarge?: string | null;
-  /** Provider-authorized final disposition — distinct from planned destination. */
-  finalDisposition?: string | null;
-  pendingStudies?: string | null;
-  authorization?: {
-    at: string;
-    byUserId: string;
-    displayNameSnapshot?: string | null;
-    professionalTitleSnapshot?: string | null;
-  } | null;
-  documentedAt?: string | null;
-  documentedByUserId?: string | null;
-};
 
 /** Discharge medication reconciliation snapshot (INP.DIS.1C+). */
 export type InpatientMedReconDischargeV1 = {
@@ -154,13 +141,14 @@ export function hasClinicianAuthoredDischargeContent(raw: unknown): boolean {
   if (!isRecord(raw)) return false;
   if (isSynthesizedDraftFallback(raw)) return false;
 
-  const provider = readNamespace<InpatientProviderDischargeV1>(raw, "inpatientProviderDischarge");
+  const providerRaw = raw.inpatientProviderDischarge;
+  const provider = hydrateInpatientProviderDischarge(providerRaw);
   if (provider) {
-    if (hasNonEmptyString(provider.finalDisposition)) return true;
+    if (provider.finalDisposition?.code?.trim()) return true;
     if (hasNonEmptyString(provider.hospitalCourse)) return true;
     if (hasNonEmptyString(provider.reasonForHospitalization)) return true;
-    if ((provider.dischargeDiagnoses?.length ?? 0) > 0) return true;
-    if (provider.authorization?.byUserId) return true;
+    if (provider.dischargeDiagnoses.length > 0) return true;
+    if (provider.documentedByUserId) return true;
   }
 
   if (namespaceHasContent(readNamespace(raw, "inpatientMedRecon"))) return true;
@@ -211,9 +199,9 @@ export function hasMeaningfulDischargeSummary(raw: unknown): boolean {
 }
 
 export function resolveFinalDisposition(raw: Record<string, unknown>): string | null {
-  const provider = readNamespace<InpatientProviderDischargeV1>(raw, "inpatientProviderDischarge");
-  if (hasNonEmptyString(provider?.finalDisposition)) {
-    return String(provider!.finalDisposition).trim();
+  const provider = readInpatientProviderDischargeFromSummary(raw);
+  if (provider?.finalDisposition?.code?.trim()) {
+    return provider.finalDisposition.labelSnapshot?.trim() || provider.finalDisposition.code.trim();
   }
   const flat = hasNonEmptyString(raw.finalDisposition) ? String(raw.finalDisposition).trim() : null;
   if (flat) return flat;
@@ -250,7 +238,7 @@ export function readEffectiveInpatientDischargeSummary(
     delete flat[k];
   }
 
-  const provider = readNamespace<InpatientProviderDischargeV1>(base, "inpatientProviderDischarge");
+  const provider = readInpatientProviderDischargeFromSummary(base);
   const finalDisposition = resolveFinalDisposition(base);
   const plannedDestination = resolvePlannedDestination(base, planning);
 

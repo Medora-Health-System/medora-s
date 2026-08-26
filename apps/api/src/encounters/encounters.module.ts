@@ -59,6 +59,7 @@ import { EnterpriseEncounterLifecycleService } from "./enterprise-encounter-life
 import { EnterpriseAssignmentService } from "./enterprise-assignment.service";
 import { EncounterCarePlanController } from "./encounter-care-plan.controller";
 import { EncounterCarePlanService } from "./encounter-care-plan.service";
+import { InpatientProviderDischargeService } from "./inpatient-provider-discharge.service";
 
 @Module({
   imports: [PrismaModule, DiagnosesModule, OrdersModule, TrackboardModule, FacilitiesModule],
@@ -83,6 +84,7 @@ import { EncounterCarePlanService } from "./encounter-care-plan.service";
     EnterpriseEncounterLifecycleService,
     EncountersService,
     InpatientOperationsService,
+    InpatientProviderDischargeService,
     ObservationOperationsService,
     InpatientLifecycleService,
     AdmissionCorrelationService,
