@@ -743,6 +743,7 @@ export * from "./encounters/edClinicalDocumentationCatalog.js";
 
 export * from "./clinicalDocumentation/clinicalDocumentationAuthorshipAuthority.js";
 export * from "./clinicalDocumentation/encounterCarePlanMedicalRecordProjectionCp1b.js";
+export * from "./clinicalDocumentation/encounterCarePlanOverviewProjectionCp1f3.js";
 export * from "./clinicalDocumentation/encounterCarePlanSuggestionsCp1d.js";
 export * from "./clinicalDocumentation/clinicalAuthorSnapshotCp1e.js";
 export * from "./clinicalDocumentation/enterpriseCarePlanTemplateClinicalTextCp1f1.js";

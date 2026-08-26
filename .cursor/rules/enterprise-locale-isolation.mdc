@@ -1,0 +1,46 @@
+# Medora enterprise locale isolation (MEDUI.CP.1F.3)
+
+**Short form:**
+
+> **UI chrome follows session locale. Template activation snapshots in intended clinical locale. Persisted clinician narrative is never silently machine-translated.**
+
+## CORE INVARIANT
+
+A Medora UI session must resolve:
+
+| Kind | Rule |
+|---|---|
+| **A. UI chrome** | Localize dynamically from session locale (`en` \| `fr` only) |
+| **B. Reusable template source** | Resolve at activation using authoritative activation locale |
+| **C. Patient-specific persisted clinical narrative** | Historical snapshot — do not retranslate on locale switch |
+| **D. Clinician-written narrative** | Never machine-translate |
+
+## Cross-language display
+
+- **EN session** must not receive **FR** template-derived narrative on **new** activation.
+- **FR session** must not receive **EN** template-derived narrative on **new** activation.
+- The only acceptable cross-language display is **persisted historical** clinician or activation snapshot text documented in that language.
+
+## Activation locale authority
+
+Preferred order (validate `en` \| `fr` only):
+
+1. Authenticated user's resolved UI / documentation locale (client sends; API validates)
+2. Facility configured language (when applicable)
+3. Product fallback (`MEDORA_CARE_PLAN_CLINICAL_LOCALE_FALLBACK`)
+
+**Never** hardcode a single locale for every activation globally.
+
+## Clinician-facing surfaces
+
+Overview, Clinical Context, Summary, Print, Active Care Plan, History, Correction — must consume canonical clinical text projection/resolvers.
+
+**Never** display raw i18n keys, template IDs, or internal enum paths to clinicians.
+
+## Regression hook
+
+Before shipping clinical template or overview work:
+
+1. Audit activation locale source (not hardcoded global default).
+2. Assert clinician-facing output contains **zero** matches for internal key patterns (`enterpriseInterdisciplinaryCarePlans`, `.templates.`, `.goalBody`, etc.).
+3. Confirm persisted narrative unchanged when UI locale switches.

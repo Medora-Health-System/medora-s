@@ -339,7 +339,10 @@ export function EnterpriseInterdisciplinaryCarePlansD4b6(
         const plan = await apiFetch(`/encounters/${props.encounterId}/care-plans`, {
           method: "POST",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({ templateId }),
+          body: JSON.stringify({
+            templateId,
+            clinicalLocale: language === "en" || language === "fr" ? language : "fr",
+          }),
         });
         setActivationMessage(t("inpatientNursingAdmissionInp2g.carePlanWorkspace.activatedOk"));
         window.dispatchEvent(
@@ -359,6 +362,7 @@ export function EnterpriseInterdisciplinaryCarePlansD4b6(
       patientId: props.patientId,
       facilityId: props.facilityId,
       templateId,
+      clinicalLocale: language === "en" || language === "fr" ? language : "fr",
       activatedByUserId: "session-nurse",
       activatedAt: new Date().toISOString(),
       careSetting: props.careSetting,

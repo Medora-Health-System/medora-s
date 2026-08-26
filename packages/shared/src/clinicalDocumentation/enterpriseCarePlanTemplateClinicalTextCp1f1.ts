@@ -9,6 +9,53 @@ import type { CarePlanTemplateDefinition } from "./enterpriseInterdisciplinaryCa
 
 export type CarePlanClinicalLocale = "en" | "fr";
 
+export const SUPPORTED_CARE_PLAN_CLINICAL_LOCALES = ["en", "fr"] as const;
+
+/** Product clinical-documentation fallback when activation locale is absent (Haiti clinic default). */
+export const MEDORA_CARE_PLAN_CLINICAL_LOCALE_FALLBACK: CarePlanClinicalLocale = "fr";
+
+/**
+ * @deprecated Use {@link resolveCarePlanActivationClinicalLocale} — never as the sole activation source.
+ * Retained for read-time legacy key resolution fallback only.
+ */
+export const CARE_PLAN_ACTIVATION_CLINICAL_LOCALE: CarePlanClinicalLocale =
+  MEDORA_CARE_PLAN_CLINICAL_LOCALE_FALLBACK;
+
+/**
+ * MEDUI.CP.1F.3 — Validate activation/documentation locale (en | fr only).
+ */
+export function coerceCarePlanClinicalLocale(
+  value: unknown,
+  fallback: CarePlanClinicalLocale = MEDORA_CARE_PLAN_CLINICAL_LOCALE_FALLBACK
+): CarePlanClinicalLocale {
+  const v = String(value ?? "")
+    .trim()
+    .toLowerCase();
+  if (v === "en" || v === "fr") return v;
+  return fallback;
+}
+
+/**
+ * Activation locale authority: explicit request → facility locale → product fallback.
+ * Never trust unvalidated locale strings.
+ */
+export function resolveCarePlanActivationClinicalLocale(input: {
+  requestedLocale?: unknown;
+  facilityLocale?: unknown;
+  fallback?: CarePlanClinicalLocale;
+}): CarePlanClinicalLocale {
+  const fallback = input.fallback ?? MEDORA_CARE_PLAN_CLINICAL_LOCALE_FALLBACK;
+  const req = String(input.requestedLocale ?? "")
+    .trim()
+    .toLowerCase();
+  if (req === "en" || req === "fr") return req;
+  const fac = String(input.facilityLocale ?? "")
+    .trim()
+    .toLowerCase();
+  if (fac === "en" || fac === "fr") return fac;
+  return fallback;
+}
+
 export const CARE_PLAN_TEMPLATE_I18N_PREFIX =
   "enterpriseInterdisciplinaryCarePlansD4b6.templates.";
 
@@ -134,7 +181,7 @@ export function resolveEnterpriseCarePlanTemplateClinicalText(input: {
   template: CarePlanTemplateDefinition;
   locale?: CarePlanClinicalLocale;
 }): ResolvedEnterpriseCarePlanTemplateClinicalText {
-  const locale = input.locale ?? "fr";
+  const locale = input.locale ?? MEDORA_CARE_PLAN_CLINICAL_LOCALE_FALLBACK;
   const { template } = input;
   return {
     title: resolveCarePlanClinicalNarrative(template.titleKey, locale),
@@ -150,6 +197,3 @@ export function resolveEnterpriseCarePlanTemplateClinicalText(input: {
     })),
   };
 }
-
-/** Default activation locale — product clinical language (French). */
-export const CARE_PLAN_ACTIVATION_CLINICAL_LOCALE: CarePlanClinicalLocale = "fr";

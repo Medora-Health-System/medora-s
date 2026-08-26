@@ -8,7 +8,9 @@
 import { projectClinicalAuthorFromSnapshots } from "./clinicalAuthorSnapshotCp1e.js";
 import {
   CARE_PLAN_ACTIVATION_CLINICAL_LOCALE,
+  MEDORA_CARE_PLAN_CLINICAL_LOCALE_FALLBACK,
   resolveCarePlanClinicalNarrative,
+  type CarePlanClinicalLocale,
 } from "./enterpriseCarePlanTemplateClinicalTextCp1f1.js";
 
 export type CarePlanMedicalRecordBucket = "CURRENT" | "COMPLETED_DISCONTINUED";
@@ -230,10 +232,13 @@ function componentKind(c: AggregateComponent): CarePlanMedicalRecordComponentV1[
   return "INTERVENTION";
 }
 
-function mapComponent(c: AggregateComponent): CarePlanMedicalRecordComponentV1 {
+function mapComponent(
+  c: AggregateComponent,
+  displayLocale: CarePlanClinicalLocale
+): CarePlanMedicalRecordComponentV1 {
   const target = c.targetOutcome;
   const correctedAt = iso(c.correctedAt);
-  const locale = CARE_PLAN_ACTIVATION_CLINICAL_LOCALE;
+  const locale = displayLocale;
   const title = resolveCarePlanClinicalNarrative(String(c.title ?? "").trim(), locale);
   const text = resolveCarePlanClinicalNarrative(String(c.text ?? "").trim(), locale);
   const resolvedTarget =
@@ -284,10 +289,11 @@ function contributorLabels(plan: CarePlanMedicalRecordPlanV1): string[] {
 }
 
 export function projectEncounterCarePlanPlan(
-  plan: EncounterCarePlanAggregateInput
+  plan: EncounterCarePlanAggregateInput,
+  displayLocale: CarePlanClinicalLocale = MEDORA_CARE_PLAN_CLINICAL_LOCALE_FALLBACK
 ): CarePlanMedicalRecordPlanV1 {
   const status = String(plan.status ?? "ACTIVE").toUpperCase();
-  const components = Array.isArray(plan.components) ? plan.components.map(mapComponent) : [];
+  const components = Array.isArray(plan.components) ? plan.components.map((c) => mapComponent(c, displayLocale)) : [];
   const goals = components.filter((c) => c.kind === "GOAL");
   const outcomes = components.filter((c) => c.kind === "OUTCOME");
   const interventions = components.filter((c) => c.kind === "INTERVENTION" || c.kind === "SAFETY");
@@ -332,7 +338,7 @@ export function projectEncounterCarePlanPlan(
   const projected: CarePlanMedicalRecordPlanV1 = {
     planId: String(plan.id ?? ""),
     title:
-      resolveCarePlanClinicalNarrative(String(plan.title ?? "").trim(), CARE_PLAN_ACTIVATION_CLINICAL_LOCALE) ||
+      resolveCarePlanClinicalNarrative(String(plan.title ?? "").trim(), displayLocale) ||
       "Care plan",
     templateId: typeof plan.templateId === "string" ? plan.templateId : null,
     status,
@@ -362,8 +368,11 @@ export function projectEncounterCarePlanPlan(
 export function projectEncounterCarePlanMedicalRecord(input: {
   plans?: EncounterCarePlanAggregateInput[] | null;
   legacyItems?: LegacyCarePlanOpsItemInput[] | null;
+  /** UI session locale for legacy exact-key resolution only — never retranslates persisted narrative. */
+  displayLocale?: CarePlanClinicalLocale;
 }): EncounterCarePlanMedicalRecordProjectionV1 {
-  const plans = Array.isArray(input.plans) ? input.plans.map(projectEncounterCarePlanPlan) : [];
+  const displayLocale = input.displayLocale ?? CARE_PLAN_ACTIVATION_CLINICAL_LOCALE;
+  const plans = Array.isArray(input.plans) ? input.plans.map((p) => projectEncounterCarePlanPlan(p, displayLocale)) : [];
   const currentPlans = plans.filter((p) => p.bucket === "CURRENT");
   const completedDiscontinuedPlans = plans.filter((p) => p.bucket === "COMPLETED_DISCONTINUED");
   const historicalLegacy: CarePlanHistoricalLegacyItemV1[] = (input.legacyItems ?? [])

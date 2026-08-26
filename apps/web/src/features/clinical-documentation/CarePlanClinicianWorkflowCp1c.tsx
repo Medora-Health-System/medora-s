@@ -243,6 +243,7 @@ function transitionClinicalLabel(toStatus: string | null | undefined, t: (k: str
 
 function disciplineLabel(discipline: string | null | undefined, t: (k: string) => string): string {
   const d = String(discipline ?? "").toUpperCase();
+  if (d === "SHARED") return "";
   const map: Record<string, string> = {
     NURSING: "inpatientNursingAdmissionInp2g.carePlanWorkspace.disciplineNursing",
     PROVIDER: "inpatientNursingAdmissionInp2g.carePlanWorkspace.disciplineProvider",
@@ -251,6 +252,7 @@ function disciplineLabel(discipline: string | null | undefined, t: (k: string) =
     PHYSICAL_THERAPY: "inpatientNursingAdmissionInp2g.carePlanWorkspace.disciplinePt",
     OCCUPATIONAL_THERAPY: "inpatientNursingAdmissionInp2g.carePlanWorkspace.disciplineOt",
     SPEECH_LANGUAGE: "inpatientNursingAdmissionInp2g.carePlanWorkspace.disciplineSlp",
+    SPEECH_LANGUAGE_PATHOLOGY: "inpatientNursingAdmissionInp2g.carePlanWorkspace.disciplineSlp",
     PT: "inpatientNursingAdmissionInp2g.carePlanWorkspace.disciplinePt",
     OT: "inpatientNursingAdmissionInp2g.carePlanWorkspace.disciplineOt",
     SLP: "inpatientNursingAdmissionInp2g.carePlanWorkspace.disciplineSlp",
@@ -261,6 +263,26 @@ function disciplineLabel(discipline: string | null | undefined, t: (k: string) =
     if (localized !== key) return localized;
   }
   return discipline?.trim() || "—";
+}
+
+/** MEDUI.CP.1F.3 — hide default untouched component status from routine display. */
+export function shouldShowCarePlanComponentStatus(status: string | null | undefined): boolean {
+  const s = String(status ?? "").toUpperCase();
+  return s !== "NOT_STARTED" && s !== "PENDING" && s !== "";
+}
+
+function componentStatusMetaLine(
+  status: string | null | undefined,
+  discipline: string | null | undefined,
+  t: (k: string) => string
+): string | null {
+  const parts: string[] = [];
+  if (shouldShowCarePlanComponentStatus(status)) {
+    parts.push(statusLabel(status, t));
+  }
+  const disc = disciplineLabel(discipline, t);
+  if (disc) parts.push(disc);
+  return parts.length ? parts.join(" · ") : null;
 }
 
 function statusLabel(status: string | null | undefined, t: (k: string) => string): string {
@@ -643,6 +665,7 @@ export function CarePlanClinicianWorkflowCp1c(props: Props) {
               ).map((c) => {
                 const own = Boolean(props.currentUserId && c.createdByUserId === props.currentUserId);
                 const editing = editComponentId === c.id;
+                const statusMeta = componentStatusMetaLine(c.status, c.discipline, t);
                 return (
                   <div key={c.id} data-testid={`eicp-component-${c.id}`} style={{ fontSize: 12 }}>
                     <div style={{ fontWeight: 700 }}>
@@ -651,10 +674,9 @@ export function CarePlanClinicianWorkflowCp1c(props: Props) {
                         : t("inpatientNursingAdmissionInp2g.carePlanWorkspace.goalLabel")}
                     </div>
                     <div>{props.resolveComponentTitle(c.text || c.title)}</div>
-                    <div style={{ color: "#64748b" }}>
-                      {statusLabel(c.status, t)}
-                      {c.discipline ? ` · ${disciplineLabel(c.discipline, t)}` : ""}
-                    </div>
+                    {statusMeta ? (
+                      <div style={{ color: "#64748b" }}>{statusMeta}</div>
+                    ) : null}
                     <div style={{ color: "#64748b" }}>
                       {documentedLine(
                         c.createdByDisplayNameSnapshot,
@@ -746,6 +768,7 @@ export function CarePlanClinicianWorkflowCp1c(props: Props) {
               ).map((c) => {
                 const own = Boolean(props.currentUserId && c.createdByUserId === props.currentUserId);
                 const editing = editComponentId === c.id;
+                const statusMeta = componentStatusMetaLine(c.status, c.discipline, t);
                 const kindLabel =
                   c.kind === "MONITORING"
                     ? t("inpatientMedicalRecordSummaryInp2f.carePlan.monitoring")
@@ -756,10 +779,9 @@ export function CarePlanClinicianWorkflowCp1c(props: Props) {
                   <div key={c.id} data-testid={`eicp-component-${c.id}`} style={{ fontSize: 12 }}>
                     <div style={{ fontWeight: 700 }}>{kindLabel}</div>
                     <div>{props.resolveComponentTitle(c.text || c.title)}</div>
-                    <div style={{ color: "#64748b" }}>
-                      {statusLabel(c.status, t)}
-                      {c.discipline ? ` · ${disciplineLabel(c.discipline, t)}` : ""}
-                    </div>
+                    {statusMeta ? (
+                      <div style={{ color: "#64748b" }}>{statusMeta}</div>
+                    ) : null}
                     <div style={{ color: "#64748b" }}>
                       {documentedLine(
                         c.createdByDisplayNameSnapshot,
@@ -851,13 +873,14 @@ export function CarePlanClinicianWorkflowCp1c(props: Props) {
                   {t("inpatientNursingAdmissionInp2g.carePlanWorkspace.noProgressYet")}
                 </p>
               ) : (
-                selected.progress.map((p, idx) => (
+                selected.progress.map((p, idx) => {
+                  const statusMeta = componentStatusMetaLine(p.status, p.discipline, t);
+                  return (
                   <div key={p.id ?? `p-${idx}`} style={{ fontSize: 12 }}>
                     <div>{p.narrative}</div>
-                    <div style={{ color: "#64748b" }}>
-                      {statusLabel(p.status, t)}
-                      {p.discipline ? ` · ${disciplineLabel(p.discipline, t)}` : ""}
-                    </div>
+                    {statusMeta ? (
+                      <div style={{ color: "#64748b" }}>{statusMeta}</div>
+                    ) : null}
                     <div style={{ color: "#64748b" }}>
                       {documentedLine(
                         p.authorDisplayNameSnapshot,
@@ -867,7 +890,8 @@ export function CarePlanClinicianWorkflowCp1c(props: Props) {
                       )}
                     </div>
                   </div>
-                ))
+                  );
+                })
               )}
               {canClinicalWrite && isCurrent(selected.status) ? (
                 <div style={{ display: "grid", gap: 6, marginTop: 4 }}>
