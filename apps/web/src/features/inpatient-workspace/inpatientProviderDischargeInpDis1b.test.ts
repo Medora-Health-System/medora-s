@@ -1,35 +1,37 @@
 /**
- * INP.DIS.1B — Provider inpatient discharge UI regression.
+ * INP.DIS.1C — Provider inpatient discharge UI regression.
  */
 
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
-describe("INP.DIS.1B inpatient provider discharge UI", () => {
-  it("integrates provider discharge section in inpatient discharge workflow", () => {
-    const panel = readFileSync(
-      join(__dirname, "InpatientWorkspacePanel.tsx"),
-      "utf8"
-    );
-    expect(panel).toContain("InpatientProviderDischargeSection");
-    expect(panel).toContain('canAuthor={roles.includes("PROVIDER")}');
-  });
-
-  it("uses localized chrome and separates planning from final disposition", () => {
+describe("INP.DIS.1C inpatient discharge completion UI", () => {
+  it("integrates smart discharge section with chart refresh and instruction generation", () => {
     const section = readFileSync(
       join(__dirname, "InpatientProviderDischargeSection.tsx"),
       "utf8"
     );
-    expect(section).toContain("inpatientProviderDischargeInpDis1b");
-    expect(section).toContain("planningContextHint");
-    expect(section).toContain("inpatient-provider-discharge-planned-destination");
-    expect(section).toContain("inpatient-provider-discharge-final-disposition");
-    expect(section).toContain("usePlanningSuggestion");
-    expect(section).not.toContain("INP.DIS.1B");
+    expect(section).toContain("refreshFromChart");
+    expect(section).toContain("generateInpatientPatientInstructionsFromDiagnoses");
+    expect(section).toContain("inpatient-discharge-readiness");
+    expect(section).toContain("inpatient-discharge-transfer-details");
+    expect(section).toContain("inpatient-discharge-deceased-details");
+    expect(section).toContain("finalizeHint");
+    expect(section).not.toContain("schemaVersion");
   });
 
-  it("mirrors i18n keys in EN/FR message modules", () => {
+  it("reuses ED template engine without duplicating registry", () => {
+    const gen = readFileSync(
+      join(__dirname, "inpatientPatientInstructionsFromDiagnoses.ts"),
+      "utf8"
+    );
+    expect(gen).toContain("buildProviderDischargeCardFromDiagnosis");
+    expect(gen).toContain('careSetting: "INPATIENT"');
+    expect(gen).toContain("patientInstructionsGiven: false");
+  });
+
+  it("mirrors expanded disposition labels in EN/FR", () => {
     const en = readFileSync(
       join(__dirname, "../../i18n/messages/inpatientProviderDischargeInpDis1b.en.ts"),
       "utf8"
@@ -38,9 +40,11 @@ describe("INP.DIS.1B inpatient provider discharge UI", () => {
       join(__dirname, "../../i18n/messages/inpatientProviderDischargeInpDis1b.fr.ts"),
       "utf8"
     );
-    expect(en).toContain("Provider discharge documentation");
-    expect(fr).toContain("Documentation médicale de sortie");
-    expect(en).toContain('HOME: "Home"');
-    expect(fr).toContain("Domicile");
+    expect(en).toContain("Correctional facility");
+    expect(fr).toContain("Établissement correctionnel");
+    expect(en).toContain("Eloped");
+    expect(fr).toContain("Départ sans autorisation");
+    expect(en).toContain("Deceased");
+    expect(fr).toContain("Décédé");
   });
 });

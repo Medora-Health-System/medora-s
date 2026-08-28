@@ -30,8 +30,10 @@ describe("INP.DIS.1B inpatient provider discharge API", () => {
     expect(service).toContain("sanitizeInpatientProviderDischargeClientPayload");
     expect(service).toContain("buildClinicalAuthorSnapshotPersist");
     expect(service).toContain("assertSameClinicalAuthor");
-    expect(service).toContain("mergeInpatientProviderDischargeIntoDischargeSummary");
+    expect(service).toContain("mergeInpatientProviderDischargeIntoDischargeSummary1C");
+    expect(service).toContain("chartBootstrap");
     expect(service).toContain("EncounterType.INPATIENT");
     expect(service).toContain("INPATIENT_PROVIDER_DISCHARGE_REVISION_CONFLICT");
+    expect(service).toContain("does not close the encounter");
   });
 });

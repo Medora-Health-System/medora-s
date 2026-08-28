@@ -5,12 +5,19 @@
  */
 
 export const INPATIENT_PROVIDER_DISCHARGE_SCHEMA_VERSION = "INP.DIS.1B" as const;
+export const INPATIENT_PROVIDER_DISCHARGE_SCHEMA_VERSIONS = [
+  "INP.DIS.1B",
+  "INP.DIS.1C",
+] as const;
+export type InpatientProviderDischargeSchemaVersion =
+  (typeof INPATIENT_PROVIDER_DISCHARGE_SCHEMA_VERSIONS)[number];
 
 export const INPATIENT_CONDITION_AT_DISCHARGE_STATUSES = [
   "STABLE",
   "IMPROVED",
   "UNCHANGED",
   "GUARDED",
+  "UNKNOWN",
   "OTHER",
 ] as const;
 
@@ -37,7 +44,10 @@ export const INPATIENT_FINAL_DISPOSITION_CODES = [
   "HOSPICE",
   "TRANSFER_ACUTE_CARE",
   "BEHAVIORAL_HEALTH_FACILITY",
+  "CORRECTIONAL_FACILITY",
   "AGAINST_MEDICAL_ADVICE",
+  "ELOPED",
+  "DECEASED",
   "OTHER",
 ] as const;
 
@@ -75,9 +85,9 @@ export type InpatientProviderDischargePendingStudy = {
   followUpPlan?: string | null;
 };
 
-/** Provider-authorized inpatient discharge documentation (INP.DIS.1B). */
+/** Provider-authorized inpatient discharge documentation (INP.DIS.1B / 1C). */
 export type InpatientProviderDischargeV1B = {
-  schemaVersion: typeof INPATIENT_PROVIDER_DISCHARGE_SCHEMA_VERSION;
+  schemaVersion: InpatientProviderDischargeSchemaVersion;
   admissionDiagnosis?: InpatientProviderDischargeAdmissionDiagnosis | null;
   dischargeDiagnoses: InpatientProviderDischargeDiagnosis[];
   reasonForHospitalization?: string | null;
@@ -335,7 +345,7 @@ export function normalizeDischargeDiagnoses(
   });
 }
 
-/** Validate provider discharge for draft or complete save. */
+/** Validate provider discharge for draft or complete save (disposition-aware). */
 export function validateInpatientProviderDischarge(
   doc: InpatientProviderDischargeV1B,
   mode: InpatientProviderDischargeSaveMode
@@ -343,27 +353,71 @@ export function validateInpatientProviderDischarge(
   if (mode === "draft") return { ok: true };
 
   const errors: string[] = [];
+  const dispositionCode =
+    typeof doc.finalDisposition?.code === "string"
+      ? doc.finalDisposition.code.trim().toUpperCase()
+      : "";
+
+  if (!dispositionCode) {
+    errors.push("FINAL_DISPOSITION_REQUIRED");
+  }
+
+  const skipDxHospitalCourse =
+    dispositionCode === "DECEASED" || dispositionCode === "ELOPED";
   const diagnoses = normalizeDischargeDiagnoses(doc.dischargeDiagnoses);
-  if (diagnoses.length === 0) {
-    errors.push("DISCHARGE_DIAGNOSIS_REQUIRED");
+  if (!skipDxHospitalCourse) {
+    if (diagnoses.length === 0) {
+      errors.push("DISCHARGE_DIAGNOSIS_REQUIRED");
+    }
+    const primaryCount = countPrimaryDischargeDiagnoses(diagnoses);
+    if (diagnoses.length > 0 && primaryCount !== 1) {
+      errors.push("PRIMARY_DISCHARGE_DIAGNOSIS_REQUIRED");
+    }
+    if (!readString(doc.hospitalCourse)) {
+      errors.push("HOSPITAL_COURSE_REQUIRED");
+    }
   }
-  const primaryCount = countPrimaryDischargeDiagnoses(diagnoses);
-  if (diagnoses.length > 0 && primaryCount !== 1) {
-    errors.push("PRIMARY_DISCHARGE_DIAGNOSIS_REQUIRED");
-  }
-  if (!readString(doc.hospitalCourse)) {
-    errors.push("HOSPITAL_COURSE_REQUIRED");
-  }
-  if (!doc.conditionAtDischarge?.status) {
-    errors.push("CONDITION_AT_DISCHARGE_REQUIRED");
+
+  const requiresCondition =
+    dispositionCode !== "DECEASED" && dispositionCode !== "ELOPED";
+  if (requiresCondition) {
+    if (!doc.conditionAtDischarge?.status) {
+      errors.push("CONDITION_AT_DISCHARGE_REQUIRED");
+    } else if (
+      doc.conditionAtDischarge.status === "OTHER" &&
+      !readString(doc.conditionAtDischarge.narrative)
+    ) {
+      errors.push("CONDITION_AT_DISCHARGE_NARRATIVE_REQUIRED");
+    }
   } else if (
-    doc.conditionAtDischarge.status === "OTHER" &&
+    dispositionCode === "ELOPED" &&
+    doc.conditionAtDischarge?.status === "OTHER" &&
     !readString(doc.conditionAtDischarge.narrative)
   ) {
-    errors.push("CONDITION_AT_DISCHARGE_NARRATIVE_REQUIRED");
+    // optional for eloped
   }
-  if (!doc.finalDisposition?.code?.trim()) {
-    errors.push("FINAL_DISPOSITION_REQUIRED");
+
+  if (dispositionCode === "OTHER" && !readString(doc.finalDisposition?.destinationDetails)) {
+    errors.push("OTHER_DISPOSITION_DETAILS_REQUIRED");
+  }
+
+  const fdExtra = doc.finalDisposition as {
+    transfer?: { receivingHospital?: string | null };
+    snf?: { facilityName?: string | null };
+    deceased?: { pronouncedAt?: string | null };
+  } | null;
+  if (dispositionCode === "TRANSFER_ACUTE_CARE") {
+    if (!readString(fdExtra?.transfer?.receivingHospital) && !readString(doc.finalDisposition?.destinationDetails)) {
+      errors.push("TRANSFER_RECEIVING_HOSPITAL_REQUIRED");
+    }
+  }
+  if (dispositionCode === "SKILLED_NURSING_FACILITY") {
+    if (!readString(fdExtra?.snf?.facilityName) && !readString(doc.finalDisposition?.destinationDetails)) {
+      errors.push("SNF_FACILITY_REQUIRED");
+    }
+  }
+  if (dispositionCode === "DECEASED" && !readString(fdExtra?.deceased?.pronouncedAt)) {
+    errors.push("DECEASED_PRONOUNCED_AT_REQUIRED");
   }
 
   return errors.length ? { ok: false, errors } : { ok: true };
@@ -510,6 +564,11 @@ export function suggestFinalDispositionFromPlannedDestination(
   if (raw.includes("TRANSFER")) return "TRANSFER_ACUTE_CARE";
   if (raw.includes("BEHAVIOR") || raw.includes("PSYCH")) return "BEHAVIORAL_HEALTH_FACILITY";
   if (raw.includes("AMA") || raw.includes("AGAINST")) return "AGAINST_MEDICAL_ADVICE";
+  if (raw.includes("CORRECTION") || raw.includes("CUSTODY") || raw.includes("JAIL")) {
+    return "CORRECTIONAL_FACILITY";
+  }
+  if (raw.includes("ELOP")) return "ELOPED";
+  if (raw.includes("DECEAS") || raw.includes("EXPIR") || raw.includes("DEATH")) return "DECEASED";
   return null;
 }
 

@@ -44,6 +44,7 @@ export const D4C7_DISCHARGE_INSTRUCTION_CARE_SETTINGS = [
   "ED",
   "CLINIC",
   "URGENT_CARE",
+  "INPATIENT",
 ] as const;
 export type DischargeInstructionCareSetting =
   (typeof D4C7_DISCHARGE_INSTRUCTION_CARE_SETTINGS)[number];
@@ -373,7 +374,26 @@ export function resolveDischargeVisitFramingPhrases(
     };
   }
 
-  // CLINIC or URGENT_CARE — facility-aware, never "Emergency Department"
+  // CLINIC, URGENT_CARE, or INPATIENT — facility-aware, never "Emergency Department"
+  if (ctx.careSetting === "INPATIENT") {
+    if (ctx.locale === "fr") {
+      return {
+        evaluatedLocation: `à ${facility}`,
+        afterVisit: "après cette hospitalisation",
+        returnImmediatelySuffix: `Reconsultez immédiatement ${facility} ou les urgences si les symptômes s'aggravent, si de nouveaux signes inquiétants apparaissent ou si vous ne vous sentez pas en sécurité à domicile.`,
+        leftFacilityLabelKey: "inpatientProviderDischargeInpDis1b.patientLeftHospital",
+        careSettingNoun: facility,
+      };
+    }
+    return {
+      evaluatedLocation: `at ${facility}`,
+      afterVisit: "after this hospitalization",
+      returnImmediatelySuffix: `Return to ${facility} or seek emergency care immediately if symptoms worsen, new concerning symptoms develop, or you feel unsafe at home.`,
+      leftFacilityLabelKey: "inpatientProviderDischargeInpDis1b.patientLeftHospital",
+      careSettingNoun: facility,
+    };
+  }
+
   if (ctx.locale === "fr") {
     return {
       evaluatedLocation: `à ${facility}`,
