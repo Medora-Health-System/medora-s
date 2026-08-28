@@ -37,6 +37,7 @@ import { inpatientHeaderNursingD4a33Fr } from "./inpatientHeaderNursingD4a33.fr"
 import { inpatientProviderDischargeInpDis1bFr } from "./inpatientProviderDischargeInpDis1b.fr";
 import { inpatientNursingDischargeInpDis1dFr } from "./inpatientNursingDischargeInpDis1d.fr";
 import { inpatientFinalDischargeInpDis1eFr } from "./inpatientFinalDischargeInpDis1e.fr";
+import { inpatientDischargeBoardInpDis1fFr } from "./inpatientDischargeBoardInpDis1f.fr";
 import { inpatientOverviewD4a34Fr } from "./inpatientOverviewD4a34.fr";
 import { inpatientOverviewInp2aFr } from "./inpatientOverviewInp2a.fr";
 import { inpatientAdmissionInp2bFr } from "./inpatientAdmissionInp2b.fr";
@@ -20803,6 +20804,7 @@ export default {
   inpatientProviderDischargeInpDis1b: inpatientProviderDischargeInpDis1bFr,
   inpatientNursingDischargeInpDis1d: inpatientNursingDischargeInpDis1dFr,
   inpatientFinalDischargeInpDis1e: inpatientFinalDischargeInpDis1eFr,
+  inpatientDischargeBoardInpDis1f: inpatientDischargeBoardInpDis1fFr,
   inpatientOverviewD4a34: inpatientOverviewD4a34Fr,
   inpatientOverviewInp2a: inpatientOverviewInp2aFr,
   inpatientAdmissionInp2b: inpatientAdmissionInp2bFr,
