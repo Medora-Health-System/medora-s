@@ -87,8 +87,8 @@ export class InpatientFinalDischargeService {
   }
 
   /**
-   * Role gate mirrors governed lifecycle/discharge:
-   * @see InpatientOperationsController — POST encounters/:id/lifecycle/discharge
+   * Role gate for final discharge HTTP (INP.DIS.1E):
+   * @see InpatientOperationsController — POST encounters/:id/inpatient-final-discharge
    * (@RequireRoles PROVIDER, RN, ADMIN). ADMIN is permitted by existing lifecycle policy,
    * not a final-discharge-specific broadening.
    */

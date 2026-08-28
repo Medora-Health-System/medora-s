@@ -5,7 +5,6 @@ import { INPATIENT_CANCEL_REASON_CODES } from "@medora/shared";
 import { useI18n } from "@/lib/i18n";
 import {
   cancelInpatientAdmission,
-  dischargeInpatientEncounter,
   editInpatientAdmissionDetails,
   transferInpatientBed,
   voidInpatientEncounter,
@@ -16,7 +15,8 @@ type Props = {
   canAdmin?: boolean;
 };
 
-type Mode = null | "edit" | "transfer" | "discharge" | "cancel" | "void";
+/** Discharge is only via INP.DIS.1E final-discharge board — not this menu. */
+type Mode = null | "edit" | "transfer" | "cancel" | "void";
 
 export function InpatientLifecycleActionsMenu({ encounterId, canAdmin }: Props) {
   const { t } = useI18n();
@@ -31,7 +31,6 @@ export function InpatientLifecycleActionsMenu({ encounterId, canAdmin }: Props) 
   const [reasonForAdmission, setReasonForAdmission] = useState("");
   const [toBedKey, setToBedKey] = useState("");
   const [transferReason, setTransferReason] = useState("");
-  const [disposition, setDisposition] = useState("HOME");
   const [cancelCode, setCancelCode] = useState<string>("CREATED_IN_ERROR");
   const [cancelExplanation, setCancelExplanation] = useState("");
   const [voidReason, setVoidReason] = useState("");
@@ -65,9 +64,6 @@ export function InpatientLifecycleActionsMenu({ encounterId, canAdmin }: Props) 
           </button>
           <button type="button" style={itemBtn} onClick={() => setMode("transfer")}>
             {t("hospitalAdmissionD4a25.lifecycle.transferBed")}
-          </button>
-          <button type="button" style={itemBtn} onClick={() => setMode("discharge")}>
-            {t("hospitalAdmissionD4a25.lifecycle.discharge")}
           </button>
           <button type="button" style={itemBtn} onClick={() => setMode("cancel")}>
             {t("hospitalAdmissionD4a25.lifecycle.cancelAdmission")}
@@ -144,36 +140,6 @@ export function InpatientLifecycleActionsMenu({ encounterId, canAdmin }: Props) 
             }
           >
             {t("hospitalAdmissionD4a25.lifecycle.confirmTransfer")}
-          </button>
-        </div>
-      ) : null}
-
-      {mode === "discharge" ? (
-        <div style={formBox} data-testid="lifecycle-discharge-form">
-          <label style={label}>
-            {t("hospitalAdmissionD4a25.lifecycle.disposition")}
-            <select value={disposition} onChange={(e) => setDisposition(e.target.value)} style={input}>
-              {["HOME", "HOME_WITH_SERVICES", "SNF", "ACUTE_REHAB", "ANOTHER_HOSPITAL", "AMA", "OTHER"].map(
-                (d) => (
-                  <option key={d} value={d}>
-                    {t(`hospitalAdmissionD4a25.options.${d}`)}
-                  </option>
-                )
-              )}
-            </select>
-          </label>
-          <button
-            type="button"
-            disabled={busy}
-            style={primaryBtn}
-            onClick={() =>
-              void run(
-                () => dischargeInpatientEncounter(encounterId, { disposition }),
-                "hospitalAdmissionD4a25.lifecycle.dischargeOk"
-              )
-            }
-          >
-            {t("hospitalAdmissionD4a25.lifecycle.confirmDischarge")}
           </button>
         </div>
       ) : null}

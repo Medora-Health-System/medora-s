@@ -143,16 +143,6 @@ export async function transferInpatientBed(
   );
 }
 
-export async function dischargeInpatientEncounter(
-  encounterId: string,
-  body: Record<string, unknown>
-) {
-  return apiFetch(
-    `/inpatient-operations/encounters/${encodeURIComponent(encounterId)}/lifecycle/discharge`,
-    { method: "POST", body: JSON.stringify(body) }
-  );
-}
-
 export async function cancelInpatientAdmission(
   encounterId: string,
   body: { reasonCode: string; explanation: string }

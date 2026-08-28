@@ -78,6 +78,24 @@ describe("INP.DIS.1F inpatient discharge board", () => {
     expect(board).toContain("expectedNursingRevision: finalReadiness.nursingRevision");
   });
 
+  it("INP.DIS.1F.3 — board uses executeInpatientFinalDischarge only (no lifecycle bypass helper)", () => {
+    const board = readFileSync(boardPath, "utf8");
+    const api = readFileSync(
+      join(__dirname, "../hospital-care/inpatientOperationsApi.ts"),
+      "utf8"
+    );
+    const menu = readFileSync(join(__dirname, "InpatientLifecycleActionsMenu.tsx"), "utf8");
+    expect(board).toContain("executeInpatientFinalDischarge");
+    expect(board).not.toContain("dischargeInpatientEncounter");
+    expect(api).toContain("executeInpatientFinalDischarge");
+    expect(api).toContain("inpatient-final-discharge");
+    expect(api).not.toContain("dischargeInpatientEncounter");
+    expect(api).not.toContain("lifecycle/discharge");
+    expect(menu).not.toContain("dischargeInpatientEncounter");
+    expect(menu).not.toContain("lifecycle-discharge-form");
+    expect(menu).not.toContain('setMode("discharge")');
+  });
+
   it("board has finalizeInpatientMedRecon", () => {
     const board = readFileSync(boardPath, "utf8");
     expect(board).toContain("finalizeInpatientMedRecon");
