@@ -10,7 +10,13 @@ import {
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
-import { AuditAction, EncounterStatus, EncounterType, Prisma } from "@prisma/client";
+import {
+  AuditAction,
+  EncounterClinicalEventType,
+  EncounterStatus,
+  EncounterType,
+  Prisma,
+} from "@prisma/client";
 import {
   BED_NO_LONGER_AVAILABLE_CODE,
   emptyInpatientLifecycleMeta,
@@ -342,6 +348,12 @@ export class InpatientLifecycleService {
       dischargeStatus?: "DISCHARGED" | "AMA" | "TRANSFERRED" | "DECEASED" | null;
       /** Detailed clinical disposition preserved in lifecycle meta (ELOPED stays ELOPED). */
       clinicalDispositionCode?: string | null;
+      /** Optional: persist canonical clinical event in the same close transaction. */
+      clinicalEventOnClose?: {
+        eventType: EncounterClinicalEventType;
+        payloadJson: Record<string, unknown>;
+        createdByUserId: string;
+      } | null;
     },
     options?: { ip?: string; userAgent?: string }
   ) {
@@ -425,6 +437,19 @@ export class InpatientLifecycleService {
           coarseDischargeStatus: body.dischargeStatus ?? null,
         },
       });
+
+      if (body.clinicalEventOnClose) {
+        await tx.encounterClinicalEvent.create({
+          data: {
+            facilityId,
+            patientId: enc.patientId,
+            encounterId: enc.id,
+            eventType: body.clinicalEventOnClose.eventType,
+            payloadJson: body.clinicalEventOnClose.payloadJson as Prisma.InputJsonValue,
+            createdByUserId: body.clinicalEventOnClose.createdByUserId,
+          },
+        });
+      }
     });
 
     await this.audit.log(AuditAction.ENCOUNTER_UPDATE, ENTITY, {

@@ -13,6 +13,8 @@ describe("INP.DIS.1E final discharge UI", () => {
     const section = readFileSync(join(__dirname, "InpatientFinalDischargeSection.tsx"), "utf8");
     expect(section).toContain("dischargePatient");
     expect(section).toContain("inpatient-final-discharge-execute");
+    expect(section).toContain("expectedProviderRevision: readiness.providerRevision");
+    expect(section).toContain("expectedNursingRevision: readiness.nursingRevision");
     expect(section).not.toContain("lifecycle convergence");
     expect(section).not.toContain("INP.DIS.1E");
   });
