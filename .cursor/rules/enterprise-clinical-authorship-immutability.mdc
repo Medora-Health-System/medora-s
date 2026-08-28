@@ -1,0 +1,148 @@
+---
+description: Master Constitution — clinical authorship immutability. Authors correct themselves; everyone else documents forward. Always enforce server-side.
+alwaysApply: true
+---
+
+# Medora Enterprise Authorship Immutability (Master Constitution)
+
+**Short form (every clinical feature):**
+
+> **Authors can correct themselves. Everyone else documents forward.**
+
+This is a **medical-record integrity** rule — not a UI rule. It applies to every clinical documentation engine in Medora, present and future.
+
+## CORE INVARIANT
+
+**User B MUST NEVER modify User A’s authored clinical documentation.**
+
+Applies to (non-exhaustive): Nursing Admission · Nursing Assessment / reassessments · Nursing notes · Provider H&P · Provider progress notes · Consult notes · Procedure documentation · Technician/PCT · Respiratory · PT/OT/rehab · Pharmacy clinical documentation · Laboratory documentation · Radiology documentation · Care Plans and discipline contributions · Case management · Social work · Discharge planning · Patient education · any future clinical module.
+
+## 1. Authorship is immutable
+
+Every authored clinical document/event MUST retain:
+
+- `authorUserId` (or equivalent durable owner field)
+- author display name
+- credentials / profession / role at authorship
+- authored / documented timestamp
+- facility
+- encounter
+- version / lineage
+
+Once User A authors an entry, authorship MUST NEVER be reassigned to User B.
+
+**Never** treat as document owner: patient assignment, shift assignment, current RN, current attending, department assignment, ADMIN status, or facility membership alone.
+
+## 2. User A may correct User A
+
+The original author may correct their own documentation through Medora’s **governed** correction / amendment workflow.
+
+For signed / final documentation:
+
+- preserve original version
+- require correction reason
+- append amendment / corrected version (do not silently overwrite)
+- preserve original signer / time
+- identify correcting user
+- record before/after or equivalent lineage
+- retain audit history
+
+No second clinician signature is required merely for the original author to correct their own documentation, unless a separate regulated cosign workflow explicitly requires it.
+
+## 3. User B documents a new entry
+
+When User B assumes care, User B creates **new** documentation under User B’s identity.
+
+- RN A assessment → later RN B **reassessment** (not edit of A)
+- Provider A progress note → later Provider B progress note / addendum (not rewrite of A)
+
+## 4. Draft ownership
+
+Applies **before** signing.
+
+If User A starts a clinical document with an authoritative owner:
+
+- User A may continue editing it
+- User B sees it read-only
+- User B creates their own appropriate documentation
+
+**Do not** transfer draft ownership because shifts changed.
+
+Signed documents with **unresolvable** owner (`signed` but no resolvable `signedByUserId` / owner) → **READ ONLY / OWNER UNRESOLVED** — never claimable by inference.
+
+## 5. Administrative exception is not editing
+
+ADMIN / privileged governance users MUST NOT rewrite another clinician’s documentation.
+
+If policy permits Entered in Error / Void / Superseded / Administrative Correction, that MUST be a **new governance event** preserving the original and recording actor, reason, timestamp, affected document.
+
+Never silently alter User A’s content.
+
+## 6. Shared server-side enforcement
+
+Do **not** implement this only by disabling buttons.
+
+Prefer one enterprise authorship authorization resolver (shared), conceptually:
+
+```ts
+canModifyClinicalDocumentation({
+  currentUserId,
+  authorUserId,
+  documentState, // DRAFT | SIGNED | AMENDED | VOID | …
+  action,        // EDIT | CORRECT | GOVERNANCE_VOID | …
+})
+```
+
+Ordinary modification requires: `currentUserId === authorUserId`.
+
+Any permitted governance action must use a **separate explicit action** and must never masquerade as author editing.
+
+**Every write API must enforce this server-side.** Frontend controls are only a projection of server authority.
+
+## 7. Concurrency
+
+Even User A cannot silently overwrite User A’s stale copy.
+
+Preserve optimistic concurrency / version checking → **409** on stale version.
+
+No last-write-wins clinical documentation.
+
+## 8. Medical record / Summary / Print
+
+Summary and Print Entire Chart must preserve authorship.
+
+Where appropriate show: author · credentials · date/time · signed status · amendment/correction indicator.
+
+Summary must never blend multiple clinicians’ entries into one anonymous document.
+
+## 9. Audit
+
+Required for clinical writes / corrections: actor · author · encounter · facility · document/event ID · action · timestamp · version · correction reason where applicable.
+
+Original historical clinical documentation remains recoverable.
+
+## 10. Cross-facility
+
+Enterprise Medora rule.
+
+- No facility UUID branches
+- No Haiti-only / Clinic-only / inpatient-only ownership models
+- Same authorship invariant across all clinical settings
+
+## 11. Before building feature-specific fixes
+
+1. **Audit** existing clinical write endpoints for that domain.
+2. Classify compliant / partial / noncompliant with evidence.
+3. Remediate **only proven violations** — do not change all domains blindly.
+4. Reuse the shared authorship resolver; do not invent parallel ownership engines per specialty.
+
+## STOP — architectural review required
+
+Do **not** ship without review:
+
+- Role-only gates that allow editing another user’s clinical document
+- ADMIN overwrite of clinical authorship content
+- Assignment / shift as substitute for `authorUserId`
+- Non-author edit of signed documents
+- Implicit draft ownership transfer on handoff / shift change
+- UI-only “read-only” without server rejection
