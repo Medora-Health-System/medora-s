@@ -161,6 +161,39 @@ export type ClinicalTimeTraceStep = {
   hourBucket: string;
 };
 
+/**
+ * Browser-local `datetime-local` (YYYY-MM-DDTHH:mm) from an ISO instant.
+ * Uses native Date local components (DST-safe for the runtime timezone).
+ * Prefer facility-TZ helpers when facilityTimeZone is known.
+ */
+export function instantToLocalDateTimeInput(iso: string | null | undefined): string {
+  if (!iso?.trim()) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}T${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+}
+
+/**
+ * Browser-local `datetime-local` wall clock → ISO UTC instant.
+ * Constructed via Date(y, m, d, h, min) so DST rules of the runtime apply.
+ */
+export function localDateTimeInputToIso(value: string | null | undefined): string | null {
+  if (!value?.trim()) return null;
+  const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/.exec(value.trim());
+  if (!match) return null;
+  const d = new Date(
+    Number(match[1]),
+    Number(match[2]) - 1,
+    Number(match[3]),
+    Number(match[4]),
+    Number(match[5]),
+    0,
+    0
+  );
+  if (Number.isNaN(d.getTime())) return null;
+  return d.toISOString();
+}
+
 /** Trace helper for audits — maps instant → facility wall + hour bucket label. */
 export function traceClinicalInstantInZone(
   field: string,

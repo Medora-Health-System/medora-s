@@ -177,6 +177,36 @@ export class InpatientProviderDischargeService {
     };
   }
 
+  private computeReadiness(
+    documentation: InpatientProviderDischargeV1C | ReturnType<typeof emptyInpatientProviderDischarge>,
+    dischargeSummaryJson: unknown
+  ) {
+    const summaryRoot =
+      dischargeSummaryJson &&
+      typeof dischargeSummaryJson === "object" &&
+      !Array.isArray(dischargeSummaryJson)
+        ? (dischargeSummaryJson as Record<string, unknown>)
+        : {};
+    const medRecon = summaryRoot.inpatientMedRecon;
+    const nursing = summaryRoot.inpatientNursingDischarge;
+    return projectInpatientDischargeReadiness(documentation as never, {
+      medReconComplete: Boolean(
+        medRecon &&
+          typeof medRecon === "object" &&
+          !Array.isArray(medRecon) &&
+          (medRecon as { finalizedAt?: string }).finalizedAt
+      ),
+      nursingDischargePresent: Boolean(
+        nursing &&
+          typeof nursing === "object" &&
+          !Array.isArray(nursing) &&
+          ((nursing as { executionStatus?: string }).executionStatus === "COMPLETED" ||
+            (nursing as { completedAt?: string }).completedAt ||
+            (nursing as { departureAt?: string }).departureAt)
+      ),
+    });
+  }
+
   async get(actor: InpatientProviderDischargeActor, encounterId: string) {
     const enc = await this.loadInpatientEncounter(actor.facilityId, encounterId);
     const documentation =
@@ -187,25 +217,7 @@ export class InpatientProviderDischargeService {
       emptyInpatientProviderDischarge();
     const ops = readInpatientClinicalOpsFromAdmissionSummary(enc.admissionSummaryJson);
     const planning = extractDischargePlanningFromClinicalOps(ops);
-    const summaryRoot =
-      enc.dischargeSummaryJson &&
-      typeof enc.dischargeSummaryJson === "object" &&
-      !Array.isArray(enc.dischargeSummaryJson)
-        ? (enc.dischargeSummaryJson as Record<string, unknown>)
-        : {};
-    const medRecon = summaryRoot.inpatientMedRecon;
-    const nursing = summaryRoot.inpatientNursingDischarge;
-    const readiness = projectInpatientDischargeReadiness(documentation as never, {
-      medReconComplete: Boolean(
-        medRecon &&
-          typeof medRecon === "object" &&
-          !Array.isArray(medRecon) &&
-          (medRecon as { finalizedAt?: string }).finalizedAt
-      ),
-      nursingDischargePresent: Boolean(
-        nursing && typeof nursing === "object" && !Array.isArray(nursing)
-      ),
-    });
+    const readiness = this.computeReadiness(documentation, enc.dischargeSummaryJson);
 
     const encounterLite = await this.prisma.encounter.findFirst({
       where: { id: enc.id, facilityId: actor.facilityId },
@@ -375,6 +387,7 @@ export class InpatientProviderDischargeService {
       encounterId: enc.id,
       documentation: nextDoc,
       revision: nextDoc.revision,
+      readiness: this.computeReadiness(nextDoc, nextSummary),
     };
   }
 }

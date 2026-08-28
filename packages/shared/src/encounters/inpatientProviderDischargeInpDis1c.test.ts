@@ -91,10 +91,11 @@ describe("INP.DIS.1C inpatient discharge completion", () => {
     ).toBe(false);
   });
 
-  it("chart draft preserves clinician-edited fields", () => {
+  it("chart draft preserves clinician-edited fields when force list empty", () => {
     const existing = {
       ...emptyInpatientProviderDischarge(),
       hospitalCourse: "Clinician authored course",
+      consultations: "Old consult",
       fieldProvenance: { clinicianEditedFields: ["hospitalCourse"] },
     };
     const draft = buildInpatientDischargeChartDraft({
@@ -102,13 +103,25 @@ describe("INP.DIS.1C inpatient discharge completion", () => {
       consults: [{ specialty: "Cardiology", status: "COMPLETED" }],
       language: "en",
     });
-    const { next, refreshed } = mergeChartDraftPreservingClinicianEdits({
+    const declined = mergeChartDraftPreservingClinicianEdits({
       existing,
       draft,
+      forceReplaceFields: [],
     });
-    expect(next.hospitalCourse).toBe("Clinician authored course");
-    expect(refreshed).not.toContain("hospitalCourse");
-    expect(next.consultations).toContain("Cardiology");
+    expect(declined.next.hospitalCourse).toBe("Clinician authored course");
+    expect(declined.refreshed).not.toContain("hospitalCourse");
+    expect(declined.next.consultations).toContain("Cardiology");
+
+    const confirmed = mergeChartDraftPreservingClinicianEdits({
+      existing,
+      draft,
+      forceReplaceFields: ["hospitalCourse"],
+    });
+    expect(confirmed.next.hospitalCourse).not.toBe("Clinician authored course");
+    expect(confirmed.refreshed).toContain("hospitalCourse");
+    expect(confirmed.next.fieldProvenance?.clinicianEditedFields ?? []).not.toContain(
+      "hospitalCourse"
+    );
   });
 
   it("chart draft does not fabricate undocumented complications", () => {

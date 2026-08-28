@@ -35,6 +35,7 @@ import { enterpriseHospitalAssignmentD4a30Fr } from "./enterpriseHospitalAssignm
 import { inpatientCompactHeaderD4a32Fr } from "./inpatientCompactHeaderD4a32.fr";
 import { inpatientHeaderNursingD4a33Fr } from "./inpatientHeaderNursingD4a33.fr";
 import { inpatientProviderDischargeInpDis1bFr } from "./inpatientProviderDischargeInpDis1b.fr";
+import { inpatientNursingDischargeInpDis1dFr } from "./inpatientNursingDischargeInpDis1d.fr";
 import { inpatientOverviewD4a34Fr } from "./inpatientOverviewD4a34.fr";
 import { inpatientOverviewInp2aFr } from "./inpatientOverviewInp2a.fr";
 import { inpatientAdmissionInp2bFr } from "./inpatientAdmissionInp2b.fr";
@@ -20799,6 +20800,7 @@ export default {
   inpatientCompactHeaderD4a32: inpatientCompactHeaderD4a32Fr,
   inpatientHeaderNursingD4a33: inpatientHeaderNursingD4a33Fr,
   inpatientProviderDischargeInpDis1b: inpatientProviderDischargeInpDis1bFr,
+  inpatientNursingDischargeInpDis1d: inpatientNursingDischargeInpDis1dFr,
   inpatientOverviewD4a34: inpatientOverviewD4a34Fr,
   inpatientOverviewInp2a: inpatientOverviewInp2aFr,
   inpatientAdmissionInp2b: inpatientAdmissionInp2bFr,

@@ -45,6 +45,7 @@ import { InpatientNursingAssessmentSection } from "./InpatientNursingAssessmentS
 import { EnterpriseInterdisciplinaryCarePlansD4b6 } from "@/features/clinical-documentation/EnterpriseInterdisciplinaryCarePlansD4b6";
 import { EnterpriseCaseManagementDischargePlanningD4b7 } from "@/features/clinical-documentation/EnterpriseCaseManagementDischargePlanningD4b7";
 import { InpatientProviderDischargeSection } from "./InpatientProviderDischargeSection";
+import { InpatientNursingDischargeSection } from "./InpatientNursingDischargeSection";
 import { EnterpriseProviderClinicalWorkspaceD4b8 } from "@/features/clinical-documentation/EnterpriseProviderClinicalWorkspaceD4b8";
 import { ClinicalAvailabilityBanner } from "./rapid-documentation/ClinicalRapidControls";
 import type { VitalsHistoryEntry } from "@/lib/encounterClinicalSafetyUi";
@@ -560,6 +561,10 @@ export function InpatientWorkspacePanel({
           <InpatientProviderDischargeSection
             encounterId={encounterId}
             canAuthor={roles.includes("PROVIDER")}
+          />
+          <InpatientNursingDischargeSection
+            encounterId={encounterId}
+            canAuthor={roles.includes("RN")}
           />
           {dischargeLive ? (
             <>

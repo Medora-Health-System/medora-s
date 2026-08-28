@@ -407,6 +407,9 @@ export function mergeChartDraftPreservingClinicianEdits(input: {
 
   next.fieldProvenance = {
     ...provenance,
+    clinicianEditedFields: (provenance.clinicianEditedFields ?? []).filter(
+      (f) => !(force.has(f) && refreshed.includes(f))
+    ),
     lastChartDraftAt: new Date().toISOString(),
   };
   next.schemaVersion = INPATIENT_PROVIDER_DISCHARGE_SCHEMA_VERSION_1C;
