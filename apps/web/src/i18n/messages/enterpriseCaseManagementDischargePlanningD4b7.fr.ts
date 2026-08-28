@@ -3,35 +3,27 @@
  * Product UI language for end users.
  */
 export const enterpriseCaseManagementDischargePlanningD4b7Fr = {
-  title: "Coordination des soins — gestion de cas, travail social, revue d’utilisation",
-  subtitle:
-    "Planification et recommandations uniquement — pas d’autorisation de sortie, pas d’ordonnances, pas de diagnostic, pas de disposition finale",
+  title: "Planification de sortie",
+  subtitle: "",
   careSetting: {
     EMERGENCY: "Urgences",
     OBSERVATION: "Observation",
     INPATIENT: "Hospitalisation",
   },
-  loading: "Chargement de la coordination des soins…",
+  loading: "Chargement…",
   empty: "Aucun épisode de coordination pour cette rencontre pour le moment.",
   emptyBarriers: "Aucun obstacle enregistré.",
   emptyProjections: "Aucune projection disciplinaire pour le moment.",
-  emptyLegacy: "Aucune projection des opérations de sortie héritées.",
-  error: "Impossible de charger l’espace de coordination des soins.",
+  emptyLegacy: "Aucune donnée de planification.",
+  error: "Impossible de charger la planification de sortie.",
   openEpisodeAction: "Ouvrir un épisode de coordination",
-  foundationBanner:
-    "S’appuie sur la fondation de documentation clinique d’entreprise (D4B.1). L’affectation n’est pas une autorisation. La planification n’autorise pas la sortie et ne modifie pas la disposition finale. Ne crée pas d’ordonnances, n’altère pas le MAR, ne modifie pas le diagnostic/la liste de problèmes, ni le statut d’admission. Ne réécrit pas les plans de soins interdisciplinaires (D4B.6). InterQual/MCG = espaces réservés uniquement. Le risque de réadmission repose sur des règles transparentes — pas d’IA prédictive. Les récits sensibles de travail social sont minimisés sur les tableaux de bord.",
-  edLimitedBanner:
-    "Urgences : projection limitée de coordination et sensibilisation à l’état de préparation uniquement. Les flux complets GC / TS / RU sont disponibles en Observation et Hospitalisation.",
-  cmBoundary:
-    "La documentation de gestion de cas reste attribuée à la GC. Distincte du travail social et de la revue d’utilisation.",
-  swBoundary:
-    "La documentation de travail social reste attribuée au TS. Les récits psychosociaux complets ne s’affichent pas sur les tableaux de bord larges — statut et codes d’obstacles uniquement.",
-  urBoundary:
-    "La documentation de revue d’utilisation reste attribuée à la RU. Les sources de critères sont la politique de l’établissement, la revue documentaire clinique, ou une bibliothèque de remplacement non propriétaire explicite — pas de contenu InterQual/MCG.",
-  d4b6Boundary:
-    "Les plans de soins interdisciplinaires (D4B.6) sont projetés pour la préparation uniquement. Cet espace ne réécrit jamais la paternité ni le cycle de vie du plan de soins.",
-  deferred:
-    "Reporté : InterQual/MCG propriétaires, IA prédictive, facturation/réclamations/CDI, moteur de sortie finale, espaces pharmacie/nutrition, H&P/MDM/résumé de sortie médecin (D4B.8), tables Prisma durables GC, nouveaux RoleCodes.",
+  foundationBanner: "",
+  edLimitedBanner: "Urgences : projection limitée de coordination uniquement.",
+  cmBoundary: "",
+  swBoundary: "",
+  urBoundary: "",
+  d4b6Boundary: "",
+  deferred: "",
   sections: {
     overview: "Vue d’ensemble",
     episode: "Épisode de coordination",

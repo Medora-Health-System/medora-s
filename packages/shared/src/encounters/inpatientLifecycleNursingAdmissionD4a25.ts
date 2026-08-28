@@ -1192,6 +1192,10 @@ export type InpatientLifecycleMetaV1 = {
     medReconStatus?: string | null;
     followUpStatus?: string | null;
     note?: string | null;
+    /** Detailed clinical disposition (ELOPED stays ELOPED). */
+    clinicalDispositionCode?: string | null;
+    /** Coarse Encounter.dischargeStatus enum projection. */
+    coarseDischargeStatus?: string | null;
   } | null;
 };
 

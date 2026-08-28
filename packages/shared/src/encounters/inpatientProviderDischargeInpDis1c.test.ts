@@ -39,6 +39,8 @@ describe("INP.DIS.1C inpatient discharge completion", () => {
     expect(mapInpatientDispositionToLifecycleStatus("ELOPED")).toBe("AMA");
     expect(mapInpatientDispositionToLifecycleStatus("DECEASED")).toBe("DECEASED");
     expect(mapInpatientDispositionToLifecycleStatus("CORRECTIONAL_FACILITY")).toBe("TRANSFERRED");
+    expect(mapInpatientDispositionToLifecycleStatus("ASSISTED_LIVING")).toBe("TRANSFERRED");
+    expect(mapInpatientDispositionToLifecycleStatus("HOSPICE")).toBe("TRANSFERRED");
   });
 
   it("disposition-aware validation skips home requirements for deceased/eloped", () => {

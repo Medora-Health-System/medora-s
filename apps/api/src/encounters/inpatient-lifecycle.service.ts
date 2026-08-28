@@ -336,6 +336,12 @@ export class InpatientLifecycleService {
       medReconStatus?: string | null;
       followUpStatus?: string | null;
       note?: string | null;
+      /** Optional: merge final dischargeSummaryJson in the same close transaction. */
+      dischargeSummaryJson?: Record<string, unknown> | null;
+      /** Optional: Prisma DischargeStatus coarse enum (ELOPED → AMA). */
+      dischargeStatus?: "DISCHARGED" | "AMA" | "TRANSFERRED" | "DECEASED" | null;
+      /** Detailed clinical disposition preserved in lifecycle meta (ELOPED stays ELOPED). */
+      clinicalDispositionCode?: string | null;
     },
     options?: { ip?: string; userAgent?: string }
   ) {
@@ -354,6 +360,8 @@ export class InpatientLifecycleService {
 
     const disposition = String(body.disposition ?? "").trim().toUpperCase();
     if (!disposition) throw new BadRequestException("disposition is required");
+    const clinicalDisposition =
+      String(body.clinicalDispositionCode ?? disposition).trim().toUpperCase() || disposition;
     const dischargedAt = body.dischargedAt?.trim()
       ? new Date(body.dischargedAt)
       : new Date();
@@ -364,7 +372,7 @@ export class InpatientLifecycleService {
     meta.discharge = {
       dischargedAt: dischargedAt.toISOString(),
       dischargedByUserId: actorUserId,
-      disposition,
+      disposition: clinicalDisposition,
       condition: body.condition?.trim() || null,
       destination: body.destination?.trim() || null,
       responsibleProviderUserId: body.responsibleProviderUserId?.trim() || null,
@@ -373,6 +381,8 @@ export class InpatientLifecycleService {
       medReconStatus: body.medReconStatus?.trim() || null,
       followUpStatus: body.followUpStatus?.trim() || null,
       note: body.note?.trim() || null,
+      clinicalDispositionCode: clinicalDisposition,
+      coarseDischargeStatus: body.dischargeStatus ?? null,
     };
     const summary = mergeInpatientLifecycleMeta(enc.admissionSummaryJson, meta);
 
@@ -395,18 +405,24 @@ export class InpatientLifecycleService {
         dischargedAt,
         clearRoomLabel: true,
         careSetting: "INPATIENT",
-        reason: disposition,
+        reason: clinicalDisposition,
         reasonCode: "INPATIENT_DISCHARGE",
         expectedVersion: enc.version,
         reopenCountBeforeClose: Number((enc as { reopenCount?: number }).reopenCount ?? 0) || 0,
         extraData: {
-          disposition,
+          disposition: clinicalDisposition,
           admissionSummaryJson: summary as Prisma.InputJsonValue,
+          ...(body.dischargeSummaryJson
+            ? { dischargeSummaryJson: body.dischargeSummaryJson as Prisma.InputJsonValue }
+            : {}),
+          ...(body.dischargeStatus ? { dischargeStatus: body.dischargeStatus } : {}),
         },
         metadata: {
           event: "INPATIENT_ENCOUNTER_DISCHARGED",
           bedReleased: true,
           source: "InpatientLifecycleService.dischargeEncounter",
+          clinicalDispositionCode: clinicalDisposition,
+          coarseDischargeStatus: body.dischargeStatus ?? null,
         },
       });
     });
@@ -422,7 +438,9 @@ export class InpatientLifecycleService {
       userAgent: options?.userAgent,
       metadata: {
         event: "INPATIENT_ENCOUNTER_DISCHARGED",
-        disposition,
+        disposition: clinicalDisposition,
+        clinicalDispositionCode: clinicalDisposition,
+        coarseDischargeStatus: body.dischargeStatus ?? null,
         bedReleased: true,
         enterpriseLifecycleClose: true,
       },

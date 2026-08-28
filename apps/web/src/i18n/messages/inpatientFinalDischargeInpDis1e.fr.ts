@@ -1,0 +1,46 @@
+/** INP.DIS.1E — Convergence finale de sortie (FR). */
+
+export const inpatientFinalDischargeInpDis1eFr = {
+  title: "Sortie finale",
+  dischargePatient: "Sortir le patient",
+  discharging: "Sortie en cours…",
+  reload: "Recharger",
+  confirmTitle: "Sortir le patient ?",
+  confirmBody: "Cela clôturera la rencontre d'hospitalisation active.",
+  confirmCancel: "Annuler",
+  confirmOk: "Sortir",
+  completedTitle: "Sorti",
+  printSummary: "Imprimer le résumé de sortie",
+  disposition: "Disposition",
+  departure: "Départ",
+  provider: "Médecin",
+  medRecon: "Réconciliation médicamenteuse",
+  nursing: "Infirmier",
+  final: "Final",
+  dischargedBy: "Sorti par",
+  readiness: {
+    complete: "Complet",
+    incomplete: "En attente",
+    attention: "Action requise",
+    blocked: "Bloqué",
+    not_applicable: "N/A",
+  },
+  blockersHeading: "Impossible de sortir le patient :",
+  conflict:
+    "Les informations de sortie ont changé. Actualisez et vérifiez avant de continuer.",
+  forbidden: "Vous ne pouvez pas exécuter la sortie finale.",
+  errors: {
+    load: "Impossible de charger l'état de sortie finale.",
+    execute: "Impossible de sortir le patient.",
+  },
+  validation: {
+    PROVIDER_DISCHARGE_NOT_FINALIZED: "La documentation médicale doit être finalisée",
+    NURSING_DISCHARGE_INCOMPLETE: "Sortie infirmière incomplète",
+    MEDICATION_RECONCILIATION_INCOMPLETE: "Réconciliation médicamenteuse incomplète",
+    PROVIDER_DISPOSITION_MISMATCH: "Incohérence de disposition médicale",
+    DISPOSITION_REQUIRED: "Disposition finale requise",
+    DEPARTURE_TIME_REQUIRED: "Heure de départ requise",
+    ENCOUNTER_ALREADY_CLOSED: "Rencontre déjà clôturée",
+    DECEASED_BODY_DESTINATION_REQUIRED: "Destination du corps requise",
+  },
+} as const;

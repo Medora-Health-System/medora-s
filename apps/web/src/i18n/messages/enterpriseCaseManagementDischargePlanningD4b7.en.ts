@@ -2,35 +2,27 @@
  * MEDUI.D4B.7 — English strings for enterprise CM / SW / UR / discharge planning.
  */
 export const enterpriseCaseManagementDischargePlanningD4b7En = {
-  title: "Care coordination — case management, social work, utilization review",
-  subtitle:
-    "Planning and recommendations only — not discharge authorization, not orders, not diagnosis, not final disposition",
+  title: "Discharge Planning",
+  subtitle: "",
   careSetting: {
     EMERGENCY: "Emergency",
     OBSERVATION: "Observation",
     INPATIENT: "Inpatient",
   },
-  loading: "Loading care coordination…",
+  loading: "Loading…",
   empty: "No care-coordination episode for this encounter yet.",
   emptyBarriers: "No barriers recorded.",
   emptyProjections: "No discipline projections yet.",
-  emptyLegacy: "No legacy discharge-ops projection.",
-  error: "Unable to load care-coordination workspace.",
+  emptyLegacy: "No planning data.",
+  error: "Unable to load discharge planning.",
   openEpisodeAction: "Open coordination episode",
-  foundationBanner:
-    "Uses enterprise clinical documentation foundation (D4B.1). Assignment is not authorization. Planning does not authorize discharge or change final disposition. Does not create provider orders, alter MAR, mutate diagnosis/problem list, or change admission status. Does not rewrite interdisciplinary care plans (D4B.6). InterQual/MCG are placeholders only. Readmission risk uses transparent rules — not predictive AI. Sensitive social-work narratives are minimized on dashboards.",
-  edLimitedBanner:
-    "Emergency: limited coordination projection and readiness awareness only. Full CM / SW / UR episode workflows are available in Observation and Inpatient.",
-  cmBoundary:
-    "Case management documentation remains CM-attributed. Distinct from social work and utilization review.",
-  swBoundary:
-    "Social work documentation remains SW-attributed. Full psychosocial narratives are not shown on broad dashboards — status and barrier codes only.",
-  urBoundary:
-    "Utilization review documentation remains UR-attributed. Criteria sources are facility policy, clinical documentation review, or an explicit non-proprietary placeholder — not InterQual/MCG content.",
-  d4b6Boundary:
-    "Interdisciplinary care plans (D4B.6) are projected for readiness only. This workspace never overwrites care-plan authorship or lifecycle.",
-  deferred:
-    "Deferred: proprietary InterQual/MCG, predictive AI, billing/claims/CDI, final discharge engine, pharmacy/nutrition workspaces, provider H&P/MDM/discharge summary (D4B.8), durable Prisma CM tables, new RoleCodes.",
+  foundationBanner: "",
+  edLimitedBanner: "Emergency: limited coordination projection only.",
+  cmBoundary: "",
+  swBoundary: "",
+  urBoundary: "",
+  d4b6Boundary: "",
+  deferred: "",
   sections: {
     overview: "Overview",
     episode: "Coordination episode",
