@@ -261,6 +261,49 @@ export function getDischargePrintHtml(params: {
     dischargeMedicationSources
   );
 
+  // INP.DIS.1D — concise nursing execution (not patient-facing education checklist)
+  if (encounter.dischargeSummaryJson && typeof encounter.dischargeSummaryJson === "object") {
+    const ns = encounter.dischargeSummaryJson as Record<string, unknown>;
+    const departed =
+      typeof ns.nursingDepartureAt === "string" ? ns.nursingDepartureAt.trim() : "";
+    const completedBy =
+      typeof ns.nursingDischargeCompletedBy === "string"
+        ? ns.nursingDischargeCompletedBy.trim()
+        : "";
+    const transport =
+      typeof ns.nursingTransportMode === "string" ? ns.nursingTransportMode.trim() : "";
+    if (departed || completedBy || transport) {
+      bodySections.push(
+        `<h2 style="font-size: 15px; margin: 18px 0 10px 0; font-weight: 700; border-bottom: 1px solid #000; padding-bottom: 4px;">${esc(
+          printT(language, "printOutput.erPacket.nursingDepartureSummary")
+        )}</h2>`
+      );
+      bodySections.push(`<div style="margin-bottom: 16px;">`);
+      if (departed) {
+        let when = departed;
+        try {
+          when = new Date(departed).toLocaleString(loc);
+        } catch {
+          /* keep raw */
+        }
+        bodySections.push(
+          line(printT(language, "printOutput.patientDischargeInstructions.metaAt"), when)
+        );
+      }
+      if (transport) {
+        bodySections.push(
+          line(printT(language, "encounterChrome.modals.dischargeField.dischargeMode"), transport)
+        );
+      }
+      if (completedBy) {
+        bodySections.push(
+          line(printT(language, "printOutput.erPacket.nursingDischargeDocumentedBy"), completedBy)
+        );
+      }
+      bodySections.push(`</div>`);
+    }
+  }
+
   if (d && dischargeSummaryHasPatientInstructions(d)) {
     const loc = printDateLocale(language);
     bodySections.push(

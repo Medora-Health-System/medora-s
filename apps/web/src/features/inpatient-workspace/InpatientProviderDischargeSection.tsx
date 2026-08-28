@@ -14,6 +14,8 @@ import {
   dispositionUsesHomeInstructionEngine,
   emptyInpatientProviderDischarge,
   hydrateInpatientProviderDischarge1C,
+  instantToLocalDateTimeInput,
+  localDateTimeInputToIso,
   markClinicianEditedField,
   mergeChartDraftPreservingClinicianEdits,
   projectInpatientDischargeReadiness,
@@ -197,23 +199,9 @@ export function InpatientProviderDischargeSection({
     touchField("finalDisposition");
   };
 
-  const refreshFromChart = (force = false) => {
+  const refreshFromChart = () => {
     if (!chartBootstrap) return;
     const edited = doc.fieldProvenance?.clinicianEditedFields ?? [];
-    if (!force && edited.length) {
-      if (!window.confirm(t(`${prefix}.refreshConfirm`))) {
-        const { next } = mergeChartDraftPreservingClinicianEdits({
-          existing: doc,
-          draft: buildInpatientDischargeChartDraft({
-            ...chartBootstrap,
-            dischargeDiagnoses: doc.dischargeDiagnoses,
-            language: language === "en" ? "en" : "fr",
-          }),
-        });
-        setDoc(next);
-        return;
-      }
-    }
     const draft = buildInpatientDischargeChartDraft({
       ...chartBootstrap,
       dischargeDiagnoses: doc.dischargeDiagnoses.length
@@ -221,10 +209,29 @@ export function InpatientProviderDischargeSection({
         : chartBootstrap.dischargeDiagnoses,
       language: language === "en" ? "en" : "fr",
     });
+    if (edited.length) {
+      const replaceEdited = window.confirm(t(`${prefix}.refreshConfirm`));
+      if (!replaceEdited) {
+        const { next } = mergeChartDraftPreservingClinicianEdits({
+          existing: doc,
+          draft,
+          forceReplaceFields: [],
+        });
+        setDoc(next);
+        return;
+      }
+      const { next } = mergeChartDraftPreservingClinicianEdits({
+        existing: doc,
+        draft,
+        forceReplaceFields: edited,
+      });
+      setDoc(next);
+      return;
+    }
     const { next } = mergeChartDraftPreservingClinicianEdits({
       existing: doc,
       draft,
-      forceReplaceFields: force ? edited : [],
+      forceReplaceFields: [],
     });
     setDoc(next);
   };
@@ -278,7 +285,11 @@ export function InpatientProviderDischargeSection({
         (emptyInpatientProviderDischarge() as InpatientProviderDischargeV1C);
       setDoc(hydrated);
       setRevision(res.revision ?? hydrated.revision ?? 0);
-      setReadiness(projectInpatientDischargeReadiness(hydrated));
+      if (Array.isArray((res as { readiness?: DischargeReadinessChip[] }).readiness)) {
+        setReadiness((res as { readiness: DischargeReadinessChip[] }).readiness);
+      } else {
+        setReadiness(projectInpatientDischargeReadiness(hydrated));
+      }
     } catch (e: unknown) {
       const err = e as { status?: number; body?: { errors?: string[] } };
       if (err.status === 409) setError(t(`${prefix}.errors.conflict`));
@@ -324,7 +335,7 @@ export function InpatientProviderDischargeSection({
         <p style={{ margin: 0, fontSize: 12, color: "#64748b" }}>{t(`${prefix}.readinessHint`)}</p>
         <ReadinessRow chips={readiness.length ? readiness : projectInpatientDischargeReadiness(doc)} t={t} />
         {editable ? (
-          <button type="button" data-testid="inpatient-discharge-refresh-chart" onClick={() => refreshFromChart(false)}>
+          <button type="button" data-testid="inpatient-discharge-refresh-chart" onClick={() => refreshFromChart()}>
             {t(`${prefix}.refreshFromChart`)}
           </button>
         ) : null}
@@ -801,12 +812,12 @@ export function InpatientProviderDischargeSection({
               disabled={!editable}
               type="datetime-local"
               placeholder={t(`${prefix}.disposition.pronouncedAt`)}
-              value={doc.finalDisposition?.deceased?.pronouncedAt?.slice(0, 16) ?? ""}
+              value={instantToLocalDateTimeInput(doc.finalDisposition?.deceased?.pronouncedAt)}
               onChange={(e) =>
                 patchDispositionDetails({
                   deceased: {
                     ...doc.finalDisposition?.deceased,
-                    pronouncedAt: e.target.value ? new Date(e.target.value).toISOString() : null,
+                    pronouncedAt: localDateTimeInputToIso(e.target.value),
                   },
                 })
               }

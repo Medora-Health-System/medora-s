@@ -458,5 +458,48 @@ export async function saveInpatientProviderDischarge(
   return apiFetch(
     `/inpatient-operations/encounters/${encodeURIComponent(encounterId)}/inpatient-provider-discharge`,
     { method: "PATCH", body: JSON.stringify(body) }
-  ) as Promise<{ documentation: Record<string, unknown>; revision: number }>;
+  ) as Promise<{
+    documentation: Record<string, unknown>;
+    revision: number;
+    readiness?: Array<{ id: string; status: string }>;
+  }>;
+}
+
+export async function fetchInpatientNursingDischarge(encounterId: string) {
+  return apiFetch(
+    `/inpatient-operations/encounters/${encodeURIComponent(encounterId)}/inpatient-nursing-discharge`
+  ) as Promise<{
+    encounterId: string;
+    documentation: Record<string, unknown>;
+    revision: number;
+    providerFinalDisposition?: Record<string, unknown> | null;
+    providerFinalized?: boolean;
+    medicationReconciliationStatus?: string;
+    instructionsAvailable?: boolean;
+    readiness?: Array<{ id: string; status: string }>;
+    canAuthor?: boolean;
+    canComplete?: boolean;
+    dispositionMismatch?: { detected?: boolean } | null;
+    status?: string;
+  }>;
+}
+
+export async function saveInpatientNursingDischarge(
+  encounterId: string,
+  body: {
+    documentation: Record<string, unknown>;
+    expectedRevision: number;
+    saveMode: "draft" | "complete";
+  }
+) {
+  return apiFetch(
+    `/inpatient-operations/encounters/${encodeURIComponent(encounterId)}/inpatient-nursing-discharge`,
+    { method: "PATCH", body: JSON.stringify(body) }
+  ) as Promise<{
+    documentation: Record<string, unknown>;
+    revision: number;
+    readiness?: Array<{ id: string; status: string }>;
+    encounterClosed?: boolean;
+    encounterStatus?: string;
+  }>;
 }

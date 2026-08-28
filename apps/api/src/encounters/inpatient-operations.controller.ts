@@ -20,6 +20,7 @@ import { RoleCode } from "@prisma/client";
 import { RolesGuard, RequireRoles } from "../common/guards/roles.guard";
 import { InpatientOperationsService } from "./inpatient-operations.service";
 import { InpatientProviderDischargeService } from "./inpatient-provider-discharge.service";
+import { InpatientNursingDischargeService } from "./inpatient-nursing-discharge.service";
 import { InpatientLifecycleService } from "./inpatient-lifecycle.service";
 import { EnterpriseAssignmentService } from "./enterprise-assignment.service";
 import type { EnterpriseHospitalBoardAssignmentRole } from "@medora/shared";
@@ -59,7 +60,8 @@ export class InpatientOperationsController {
     private readonly ops: InpatientOperationsService,
     private readonly lifecycle: InpatientLifecycleService,
     private readonly enterpriseAssignment: EnterpriseAssignmentService,
-    private readonly inpatientProviderDischarge: InpatientProviderDischargeService
+    private readonly inpatientProviderDischarge: InpatientProviderDischargeService,
+    private readonly inpatientNursingDischarge: InpatientNursingDischargeService
   ) {}
 
   @Get("meta")
@@ -1002,6 +1004,32 @@ export class InpatientOperationsController {
     @Req() req: any
   ) {
     return this.inpatientProviderDischarge.patch(
+      providerDischargeActor(req),
+      encounterId,
+      body,
+      { ip: req.ip, userAgent: req.headers?.["user-agent"] }
+    );
+  }
+
+  /** INP.DIS.1D — Nursing inpatient discharge execution (read). */
+  @Get("encounters/:encounterId/inpatient-nursing-discharge")
+  @RequireRoles(RoleCode.PROVIDER, RoleCode.RN, RoleCode.ADMIN)
+  async getInpatientNursingDischarge(
+    @Param("encounterId") encounterId: string,
+    @Req() req: any
+  ) {
+    return this.inpatientNursingDischarge.get(providerDischargeActor(req), encounterId);
+  }
+
+  /** INP.DIS.1D — Nursing inpatient discharge execution (write). */
+  @Patch("encounters/:encounterId/inpatient-nursing-discharge")
+  @RequireRoles(RoleCode.RN)
+  async patchInpatientNursingDischarge(
+    @Param("encounterId") encounterId: string,
+    @Body() body: Record<string, unknown>,
+    @Req() req: any
+  ) {
+    return this.inpatientNursingDischarge.patch(
       providerDischargeActor(req),
       encounterId,
       body,

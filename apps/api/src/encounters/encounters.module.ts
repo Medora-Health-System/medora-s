@@ -60,6 +60,7 @@ import { EnterpriseAssignmentService } from "./enterprise-assignment.service";
 import { EncounterCarePlanController } from "./encounter-care-plan.controller";
 import { EncounterCarePlanService } from "./encounter-care-plan.service";
 import { InpatientProviderDischargeService } from "./inpatient-provider-discharge.service";
+import { InpatientNursingDischargeService } from "./inpatient-nursing-discharge.service";
 
 @Module({
   imports: [PrismaModule, DiagnosesModule, OrdersModule, TrackboardModule, FacilitiesModule],
@@ -85,6 +86,7 @@ import { InpatientProviderDischargeService } from "./inpatient-provider-discharg
     EncountersService,
     InpatientOperationsService,
     InpatientProviderDischargeService,
+    InpatientNursingDischargeService,
     ObservationOperationsService,
     InpatientLifecycleService,
     AdmissionCorrelationService,
