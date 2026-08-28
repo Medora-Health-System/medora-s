@@ -417,3 +417,103 @@ export function readProviderAndNursingRevisions(dischargeSummaryJson: unknown): 
     nursing,
   };
 }
+
+/** Stable API error codes — POST final discharge concurrency gate. */
+export const INPATIENT_FINAL_DISCHARGE_PROVIDER_REVISION_REQUIRED =
+  "INPATIENT_FINAL_DISCHARGE_PROVIDER_REVISION_REQUIRED";
+export const INPATIENT_FINAL_DISCHARGE_NURSING_REVISION_REQUIRED =
+  "INPATIENT_FINAL_DISCHARGE_NURSING_REVISION_REQUIRED";
+export const INPATIENT_FINAL_DISCHARGE_PROVIDER_REVISION_CONFLICT =
+  "INPATIENT_FINAL_DISCHARGE_PROVIDER_REVISION_CONFLICT";
+export const INPATIENT_FINAL_DISCHARGE_NURSING_REVISION_CONFLICT =
+  "INPATIENT_FINAL_DISCHARGE_NURSING_REVISION_CONFLICT";
+
+export type FinalDischargeRevisionRequirements = {
+  providerRevisionRequired: boolean;
+  nursingRevisionRequired: boolean;
+  currentProviderRevision: number;
+  currentNursingRevision: number;
+};
+
+/** When provider/nursing documents exist, POST must include matching expected revisions. */
+export function resolveFinalDischargeRevisionRequirements(
+  dischargeSummaryJson: unknown
+): FinalDischargeRevisionRequirements {
+  const { providerRevision, nursingRevision, provider, nursing } =
+    readProviderAndNursingRevisions(dischargeSummaryJson);
+  return {
+    providerRevisionRequired: provider != null,
+    nursingRevisionRequired: nursing != null,
+    currentProviderRevision: providerRevision,
+    currentNursingRevision: nursingRevision,
+  };
+}
+
+function parseExpectedRevision(value: unknown): number | null {
+  if (value == null) return null;
+  const n = Number(value);
+  return Number.isFinite(n) ? n : null;
+}
+
+export type FinalDischargeRevisionValidationResult =
+  | { ok: true; providerRevision: number; nursingRevision: number }
+  | { ok: false; httpStatus: 400 | 409; code: string };
+
+/** Mandatory stale-revision protection for POST final discharge (no null bypass). */
+export function validateFinalDischargeRevisionPayload(input: {
+  body: Record<string, unknown>;
+  requirements: FinalDischargeRevisionRequirements;
+}): FinalDischargeRevisionValidationResult {
+  const expectedProvider = parseExpectedRevision(input.body.expectedProviderRevision);
+  const expectedNursing = parseExpectedRevision(input.body.expectedNursingRevision);
+  const {
+    providerRevisionRequired,
+    nursingRevisionRequired,
+    currentProviderRevision,
+    currentNursingRevision,
+  } = input.requirements;
+
+  if (providerRevisionRequired && expectedProvider == null) {
+    return {
+      ok: false,
+      httpStatus: 400,
+      code: INPATIENT_FINAL_DISCHARGE_PROVIDER_REVISION_REQUIRED,
+    };
+  }
+  if (nursingRevisionRequired && expectedNursing == null) {
+    return {
+      ok: false,
+      httpStatus: 400,
+      code: INPATIENT_FINAL_DISCHARGE_NURSING_REVISION_REQUIRED,
+    };
+  }
+
+  if (
+    providerRevisionRequired &&
+    expectedProvider != null &&
+    expectedProvider !== currentProviderRevision
+  ) {
+    return {
+      ok: false,
+      httpStatus: 409,
+      code: INPATIENT_FINAL_DISCHARGE_PROVIDER_REVISION_CONFLICT,
+    };
+  }
+  if (
+    nursingRevisionRequired &&
+    expectedNursing != null &&
+    expectedNursing !== currentNursingRevision
+  ) {
+    return {
+      ok: false,
+      httpStatus: 409,
+      code: INPATIENT_FINAL_DISCHARGE_NURSING_REVISION_CONFLICT,
+    };
+  }
+
+  return {
+    ok: true,
+    providerRevision: expectedProvider ?? currentProviderRevision,
+    nursingRevision: expectedNursing ?? currentNursingRevision,
+  };
+}

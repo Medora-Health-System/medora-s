@@ -15,16 +15,18 @@ import {
   EncounterClinicalEventType,
   EncounterStatus,
   EncounterType,
-  Prisma,
   RoleCode,
 } from "@prisma/client";
 import {
   buildClinicalAuthorSnapshotPersist,
   buildInpatientFinalDischargeRecord,
+  INPATIENT_FINAL_DISCHARGE_NURSING_REVISION_CONFLICT,
+  INPATIENT_FINAL_DISCHARGE_PROVIDER_REVISION_CONFLICT,
   mergeInpatientFinalDischargeIntoDischargeSummary,
   projectInpatientFinalDischargeReadiness,
   readInpatientFinalDischargeFromSummary,
-  readProviderAndNursingRevisions,
+  resolveFinalDischargeRevisionRequirements,
+  validateFinalDischargeRevisionPayload,
 } from "@medora/shared";
 import { PrismaService } from "../prisma/prisma.service";
 import { AuditService } from "../common/services/audit.service";
@@ -84,6 +86,12 @@ export class InpatientFinalDischargeService {
     return enc;
   }
 
+  /**
+   * Role gate mirrors governed lifecycle/discharge:
+   * @see InpatientOperationsController — POST encounters/:id/lifecycle/discharge
+   * (@RequireRoles PROVIDER, RN, ADMIN). ADMIN is permitted by existing lifecycle policy,
+   * not a final-discharge-specific broadening.
+   */
   private requireFinalDischargeActor(actor: InpatientFinalDischargeActor) {
     if (
       actor.role !== RoleCode.PROVIDER &&
@@ -131,28 +139,26 @@ export class InpatientFinalDischargeService {
       });
     }
 
-    const { providerRevision, nursingRevision } = readProviderAndNursingRevisions(
+    const revisionRequirements = resolveFinalDischargeRevisionRequirements(
       enc.dischargeSummaryJson
     );
-    const expectedProviderRevision =
-      body.expectedProviderRevision != null && Number.isFinite(Number(body.expectedProviderRevision))
-        ? Number(body.expectedProviderRevision)
-        : null;
-    const expectedNursingRevision =
-      body.expectedNursingRevision != null && Number.isFinite(Number(body.expectedNursingRevision))
-        ? Number(body.expectedNursingRevision)
-        : null;
-
-    if (expectedProviderRevision != null && expectedProviderRevision !== providerRevision) {
-      throw new ConflictException({
-        code: "INPATIENT_FINAL_DISCHARGE_PROVIDER_REVISION_CONFLICT",
-        message: "Provider discharge changed. Refresh and review before continuing.",
-      });
-    }
-    if (expectedNursingRevision != null && expectedNursingRevision !== nursingRevision) {
-      throw new ConflictException({
-        code: "INPATIENT_FINAL_DISCHARGE_NURSING_REVISION_CONFLICT",
-        message: "Nursing discharge changed. Refresh and review before continuing.",
+    const revisionValidation = validateFinalDischargeRevisionPayload({
+      body,
+      requirements: revisionRequirements,
+    });
+    if (!revisionValidation.ok) {
+      if (revisionValidation.httpStatus === 409) {
+        throw new ConflictException({
+          code: revisionValidation.code,
+          message:
+            revisionValidation.code === INPATIENT_FINAL_DISCHARGE_PROVIDER_REVISION_CONFLICT
+              ? "Provider discharge changed. Refresh and review before continuing."
+              : "Nursing discharge changed. Refresh and review before continuing.",
+        });
+      }
+      throw new BadRequestException({
+        code: revisionValidation.code,
+        message: "Expected discharge revisions are required from the latest readiness response.",
       });
     }
 
@@ -205,31 +211,26 @@ export class InpatientFinalDischargeService {
               : null,
         dischargeSummaryJson: nextSummary,
         dischargeStatus: finalRecord.lifecycleStatus,
+        clinicalEventOnClose: {
+          eventType: EncounterClinicalEventType.DISCHARGE_SUMMARY_SAVED,
+          createdByUserId: actor.userId,
+          payloadJson: {
+            inpatientNamespace: "inpatientFinalDischarge",
+            event: "INPATIENT_FINAL_DISCHARGE_COMPLETED",
+            clinicalDispositionCode: finalRecord.clinicalDispositionCode,
+            lifecycleStatus: finalRecord.lifecycleStatus,
+            providerRevision: finalRecord.providerRevision,
+            nursingRevision: finalRecord.nursingRevision,
+            departedAt: finalRecord.departedAt,
+            dischargedAt: finalRecord.dischargedAt,
+            encounterClosed: true,
+          },
+        },
       },
       options
     );
 
-    await this.prisma.encounterClinicalEvent.create({
-      data: {
-        facilityId: actor.facilityId,
-        patientId: enc.patientId,
-        encounterId: enc.id,
-        eventType: EncounterClinicalEventType.DISCHARGE_SUMMARY_SAVED,
-        payloadJson: {
-          inpatientNamespace: "inpatientFinalDischarge",
-          event: "INPATIENT_FINAL_DISCHARGE_COMPLETED",
-          clinicalDispositionCode: finalRecord.clinicalDispositionCode,
-          lifecycleStatus: finalRecord.lifecycleStatus,
-          providerRevision: finalRecord.providerRevision,
-          nursingRevision: finalRecord.nursingRevision,
-          departedAt: finalRecord.departedAt,
-          dischargedAt: finalRecord.dischargedAt,
-          encounterClosed: true,
-        } as Prisma.InputJsonValue,
-        createdByUserId: actor.userId,
-      },
-    });
-
+    // Best-effort telemetry — clinical event persists inside dischargeEncounter transaction.
     await this.audit.log(AuditAction.ENCOUNTER_UPDATE, "InpatientFinalDischarge", {
       userId: actor.userId,
       facilityId: actor.facilityId,

@@ -20,16 +20,34 @@ describe("INP.DIS.1E inpatient final discharge API", () => {
     expect(controller).toContain("InpatientFinalDischargeService");
   });
 
-  it("final discharge reuses lifecycle dischargeEncounter and does not mutate status directly", () => {
+  it("final discharge roles match governed lifecycle/discharge policy", () => {
+    const controller = readFileSync(
+      join(__dirname, "inpatient-operations.controller.ts"),
+      "utf8"
+    );
+    const lifecycleDischarge = controller.match(
+      /@Post\("encounters\/:encounterId\/lifecycle\/discharge"\)[\s\S]*?@RequireRoles\(([^)]+)\)/
+    );
+    const finalDischarge = controller.match(
+      /@Post\("encounters\/:encounterId\/inpatient-final-discharge"\)[\s\S]*?@RequireRoles\(([^)]+)\)/
+    );
+    expect(lifecycleDischarge?.[1]).toBeDefined();
+    expect(finalDischarge?.[1]).toBeDefined();
+    expect(finalDischarge?.[1]).toBe(lifecycleDischarge?.[1]);
+  });
+
+  it("final discharge reuses lifecycle dischargeEncounter with transactional clinical event", () => {
     const service = readFileSync(
       join(__dirname, "inpatient-final-discharge.service.ts"),
       "utf8"
     );
     expect(service).toContain("projectInpatientFinalDischargeReadiness");
     expect(service).toContain("this.lifecycle.dischargeEncounter");
+    expect(service).toContain("clinicalEventOnClose");
     expect(service).toContain("INPATIENT_FINAL_DISCHARGE_COMPLETED");
-    expect(service).toContain("expectedProviderRevision");
-    expect(service).toContain("expectedNursingRevision");
+    expect(service).toContain("validateFinalDischargeRevisionPayload");
+    expect(service).toContain("resolveFinalDischargeRevisionRequirements");
+    expect(service).not.toContain("this.prisma.encounterClinicalEvent.create");
     expect(service).not.toContain("status: EncounterStatus.CLOSED");
   });
 
@@ -41,5 +59,15 @@ describe("INP.DIS.1E inpatient final discharge API", () => {
     expect(lifecycle).toContain("clinicalDispositionCode");
     expect(lifecycle).toContain("dischargeStatus");
     expect(lifecycle).toContain("dischargeSummaryJson");
+    expect(lifecycle).toContain("clinicalEventOnClose");
+  });
+
+  it("print layout prefers clinicalDispositionCode over coarse mapped status", () => {
+    const print = readFileSync(
+      join(__dirname, "../../../web/src/components/encounters/DischargePrintLayout.tsx"),
+      "utf8"
+    );
+    expect(print).toContain("clinicalDispositionCode");
+    expect(print).toContain("ELOPED stays ELOPED");
   });
 });
