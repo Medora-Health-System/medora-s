@@ -441,6 +441,8 @@ export async function fetchInpatientProviderDischarge(encounterId: string) {
       plannedDischargeWorkflowState?: string | null;
       anticipatedDischargeDate?: string | null;
     };
+    chartBootstrap?: Record<string, unknown>;
+    readiness?: Array<{ id: string; status: string }>;
     canAuthor?: boolean;
   }>;
 }
