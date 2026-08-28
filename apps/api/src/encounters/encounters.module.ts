@@ -61,6 +61,7 @@ import { EncounterCarePlanController } from "./encounter-care-plan.controller";
 import { EncounterCarePlanService } from "./encounter-care-plan.service";
 import { InpatientProviderDischargeService } from "./inpatient-provider-discharge.service";
 import { InpatientNursingDischargeService } from "./inpatient-nursing-discharge.service";
+import { InpatientFinalDischargeService } from "./inpatient-final-discharge.service";
 
 @Module({
   imports: [PrismaModule, DiagnosesModule, OrdersModule, TrackboardModule, FacilitiesModule],
@@ -87,6 +88,7 @@ import { InpatientNursingDischargeService } from "./inpatient-nursing-discharge.
     InpatientOperationsService,
     InpatientProviderDischargeService,
     InpatientNursingDischargeService,
+    InpatientFinalDischargeService,
     ObservationOperationsService,
     InpatientLifecycleService,
     AdmissionCorrelationService,

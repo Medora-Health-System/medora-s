@@ -1,13 +1,11 @@
 /** INP.DIS.1C — Documentation médicale de sortie (FR). */
 
 export const inpatientProviderDischargeInpDis1bFr = {
-  title: "Documentation médicale de sortie",
-  readinessTitle: "État de la documentation de sortie",
-  readinessHint:
-    "État de documentation du flux de travail uniquement — ne constitue pas une autorisation médicale de sortie.",
-  planningContextTitle: "Planification de sortie (coordination uniquement)",
-  planningContextHint:
-    "La destination planifiée par la gestion de cas est affichée à titre indicatif. La disposition finale doit être confirmée séparément par le médecin.",
+  title: "Sortie médicale",
+  readinessTitle: "Sortie médicale",
+  readinessHint: "",
+  planningContextTitle: "Planification de sortie",
+  planningContextHint: "",
   plannedDestination: "Destination planifiée",
   usePlannedSuggestion: "Confirmer la disposition suggérée",
   none: "Non documenté",
@@ -18,14 +16,14 @@ export const inpatientProviderDischargeInpDis1bFr = {
   noKnownPending: "Aucun examen en attente connu",
   patientLeftHospital: "A quitté l'hôpital",
   readiness: {
-    dischargeDiagnoses: "Diagnostics de sortie",
-    medicationReconciliation: "Réconciliation médicamenteuse",
+    dischargeDiagnoses: "Diagnostics",
+    medicationReconciliation: "Réconciliation",
     pendingStudies: "Examens en attente",
     followUp: "Suivi",
-    patientInstructions: "Consignes patient",
-    finalDisposition: "Disposition finale",
-    providerSummary: "Résumé médical",
-    nursingDischarge: "Sortie infirmière",
+    patientInstructions: "Consignes",
+    finalDisposition: "Disposition",
+    providerSummary: "Évolution",
+    nursingDischarge: "Infirmier",
   },
   sections: {
     dischargeDiagnoses: "Diagnostics de sortie",
@@ -140,8 +138,7 @@ export const inpatientProviderDischargeInpDis1bFr = {
     saving: "Enregistrement…",
     reload: "Recharger",
   },
-  finalizeHint:
-    "La finalisation de la documentation médicale ne clôture pas la rencontre. L'exécution infirmière de sortie suit séparément.",
+  finalizeHint: "",
   metadata: {
     documentedBy: "Documenté par",
     professionalTitle: "Titre professionnel",

@@ -194,7 +194,9 @@ export function InpatientNursingDischargeSection({
   return (
     <div data-testid="inpatient-nursing-discharge-section" style={{ display: "grid", gap: 12 }}>
       <Section title={t(`${prefix}.title`)}>
-        <p style={{ margin: 0, fontSize: 12, color: "#64748b" }}>{t(`${prefix}.readinessHint`)}</p>
+        {t(`${prefix}.readinessHint`) ? (
+          <p style={{ margin: 0, fontSize: 12, color: "#64748b" }}>{t(`${prefix}.readinessHint`)}</p>
+        ) : null}
         <div data-testid="inpatient-nursing-discharge-readiness" style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
           {readiness.map((chip) => (
             <span
@@ -685,7 +687,9 @@ export function InpatientNursingDischargeSection({
 
       {editable ? (
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          <p style={{ margin: 0, fontSize: 12, color: "#64748b" }}>{t(`${prefix}.completeHint`)}</p>
+          {t(`${prefix}.completeHint`) ? (
+            <p style={{ margin: 0, fontSize: 12, color: "#64748b" }}>{t(`${prefix}.completeHint`)}</p>
+          ) : null}
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             {!isEloped && !isDeceased && !isTransferFamily ? (
               <button

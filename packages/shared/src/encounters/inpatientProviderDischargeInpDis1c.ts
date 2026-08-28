@@ -296,10 +296,14 @@ export function mapInpatientDispositionToLifecycleStatus(
     c === "SKILLED_NURSING_FACILITY" ||
     c === "ACUTE_REHAB" ||
     c === "LONG_TERM_ACUTE_CARE" ||
+    c === "ASSISTED_LIVING" ||
+    c === "HOSPICE" ||
     c === "CORRECTIONAL_FACILITY"
   ) {
     return "TRANSFERRED";
   }
+  // Coarse Encounter.dischargeStatus enum has no ELOPED — map to AMA for lifecycle only.
+  // Clinical / print / reporting MUST retain detailed code ELOPED (see inpatientFinalDischarge).
   if (c === "ELOPED") return "AMA";
   return "DISCHARGED";
 }

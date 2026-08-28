@@ -503,3 +503,35 @@ export async function saveInpatientNursingDischarge(
     encounterStatus?: string;
   }>;
 }
+
+export async function fetchInpatientFinalDischarge(encounterId: string) {
+  return apiFetch(
+    `/inpatient-operations/encounters/${encodeURIComponent(encounterId)}/inpatient-final-discharge`
+  ) as Promise<{
+    encounterId: string;
+    status?: string;
+    readiness: Record<string, unknown>;
+    completed?: Record<string, unknown> | null;
+    canExecute?: boolean;
+  }>;
+}
+
+export async function executeInpatientFinalDischarge(
+  encounterId: string,
+  body: {
+    expectedProviderRevision?: number;
+    expectedNursingRevision?: number;
+  }
+) {
+  return apiFetch(
+    `/inpatient-operations/encounters/${encodeURIComponent(encounterId)}/inpatient-final-discharge`,
+    { method: "POST", body: JSON.stringify(body) }
+  ) as Promise<{
+    encounterId: string;
+    status: string;
+    readiness?: Record<string, unknown>;
+    completed?: Record<string, unknown>;
+    clinicalDispositionCode?: string;
+    lifecycleStatus?: string;
+  }>;
+}

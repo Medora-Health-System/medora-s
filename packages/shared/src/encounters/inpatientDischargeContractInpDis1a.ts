@@ -21,6 +21,7 @@ export const INPATIENT_DISCHARGE_NAMESPACE_KEYS = [
   "inpatientMedRecon",
   "inpatientPatientInstructions",
   "inpatientNursingDischarge",
+  "inpatientFinalDischarge",
 ] as const;
 
 /** Discharge medication reconciliation snapshot (INP.DIS.1C+). */

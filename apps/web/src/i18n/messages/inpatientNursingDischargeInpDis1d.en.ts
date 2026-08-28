@@ -1,13 +1,12 @@
 /** INP.DIS.1D — Nursing discharge execution UI (EN). */
 
 export const inpatientNursingDischargeInpDis1dEn = {
-  title: "Nursing discharge execution",
-  readinessHint:
-    "Workflow documentation status only — does not close the encounter or authorize medical discharge.",
+  title: "Nursing Discharge",
+  readinessHint: "",
   providerDisposition: "Provider final disposition",
-  providerNotFinalized: "Provider discharge is not finalized. Nursing discharge cannot be completed.",
+  providerNotFinalized: "! Provider discharge must be finalized first.",
   dispositionMismatch:
-    "Provider disposition changed since nursing discharge was started. Request provider reconfirmation.",
+    "! Provider disposition changed. Request provider reconfirmation.",
   requestReconfirm: "Request provider reconfirmation",
   finalizedBy: "Finalized by",
   medRecon: "Medication reconciliation",
@@ -20,19 +19,18 @@ export const inpatientNursingDischargeInpDis1dEn = {
   complete: "Complete nursing discharge",
   saving: "Saving…",
   reload: "Reload",
-  completeHint:
-    "Completing nursing discharge does not close the encounter. Lifecycle closure is a separate step.",
+  completeHint: "",
   none: "Not documented",
   readiness: {
-    providerDisposition: "Provider disposition",
-    medicationReconciliation: "Medication reconciliation",
-    patientInstructions: "Patient instructions",
-    educationReviewed: "Instructions reviewed",
+    providerDisposition: "Provider",
+    medicationReconciliation: "Med Rec",
+    patientInstructions: "Instructions",
+    educationReviewed: "Reviewed",
     ivDevices: "IV / lines",
     belongings: "Belongings",
     transport: "Transport",
     departure: "Departure",
-    nursingComplete: "Nursing complete",
+    nursingComplete: "Complete",
   },
   education: {
     title: "Education",

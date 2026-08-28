@@ -21,6 +21,7 @@ import { RolesGuard, RequireRoles } from "../common/guards/roles.guard";
 import { InpatientOperationsService } from "./inpatient-operations.service";
 import { InpatientProviderDischargeService } from "./inpatient-provider-discharge.service";
 import { InpatientNursingDischargeService } from "./inpatient-nursing-discharge.service";
+import { InpatientFinalDischargeService } from "./inpatient-final-discharge.service";
 import { InpatientLifecycleService } from "./inpatient-lifecycle.service";
 import { EnterpriseAssignmentService } from "./enterprise-assignment.service";
 import type { EnterpriseHospitalBoardAssignmentRole } from "@medora/shared";
@@ -61,7 +62,8 @@ export class InpatientOperationsController {
     private readonly lifecycle: InpatientLifecycleService,
     private readonly enterpriseAssignment: EnterpriseAssignmentService,
     private readonly inpatientProviderDischarge: InpatientProviderDischargeService,
-    private readonly inpatientNursingDischarge: InpatientNursingDischargeService
+    private readonly inpatientNursingDischarge: InpatientNursingDischargeService,
+    private readonly inpatientFinalDischarge: InpatientFinalDischargeService
   ) {}
 
   @Get("meta")
@@ -1030,6 +1032,32 @@ export class InpatientOperationsController {
     @Req() req: any
   ) {
     return this.inpatientNursingDischarge.patch(
+      providerDischargeActor(req),
+      encounterId,
+      body,
+      { ip: req.ip, userAgent: req.headers?.["user-agent"] }
+    );
+  }
+
+  /** INP.DIS.1E — Final discharge readiness (convergence gate). */
+  @Get("encounters/:encounterId/inpatient-final-discharge")
+  @RequireRoles(RoleCode.PROVIDER, RoleCode.RN, RoleCode.ADMIN)
+  async getInpatientFinalDischarge(
+    @Param("encounterId") encounterId: string,
+    @Req() req: any
+  ) {
+    return this.inpatientFinalDischarge.getReadiness(providerDischargeActor(req), encounterId);
+  }
+
+  /** INP.DIS.1E — Execute final discharge (closes encounter via lifecycle service). */
+  @Post("encounters/:encounterId/inpatient-final-discharge")
+  @RequireRoles(RoleCode.PROVIDER, RoleCode.RN, RoleCode.ADMIN)
+  async postInpatientFinalDischarge(
+    @Param("encounterId") encounterId: string,
+    @Body() body: Record<string, unknown>,
+    @Req() req: any
+  ) {
+    return this.inpatientFinalDischarge.execute(
       providerDischargeActor(req),
       encounterId,
       body,

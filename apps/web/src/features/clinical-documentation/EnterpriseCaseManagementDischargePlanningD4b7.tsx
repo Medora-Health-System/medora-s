@@ -267,16 +267,20 @@ export function EnterpriseCaseManagementDischargePlanningD4b7(
           <h2 style={{ margin: 0, fontSize: 16, color: "#0f172a" }}>
             {t("enterpriseCaseManagementDischargePlanningD4b7.title")}
           </h2>
-          <p style={{ margin: "4px 0 0", fontSize: 12, color: "#64748b" }}>
-            {t("enterpriseCaseManagementDischargePlanningD4b7.subtitle")}
-          </p>
+          {t("enterpriseCaseManagementDischargePlanningD4b7.subtitle") ? (
+            <p style={{ margin: "4px 0 0", fontSize: 12, color: "#64748b" }}>
+              {t("enterpriseCaseManagementDischargePlanningD4b7.subtitle")}
+            </p>
+          ) : null}
         </div>
-        <p
-          data-testid="ecmdp-foundation-banner"
-          style={{ margin: 0, fontSize: 12, color: "#334155", lineHeight: 1.45 }}
-        >
-          {t("enterpriseCaseManagementDischargePlanningD4b7.foundationBanner")}
-        </p>
+        {t("enterpriseCaseManagementDischargePlanningD4b7.foundationBanner") ? (
+          <p
+            data-testid="ecmdp-foundation-banner"
+            style={{ margin: 0, fontSize: 12, color: "#334155", lineHeight: 1.45 }}
+          >
+            {t("enterpriseCaseManagementDischargePlanningD4b7.foundationBanner")}
+          </p>
+        ) : null}
         {isEd ? (
           <p
             data-testid="ecmdp-ed-limited-banner"

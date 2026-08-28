@@ -1,14 +1,12 @@
 /** INP.DIS.1D — Exécution infirmière de sortie (FR). */
 
 export const inpatientNursingDischargeInpDis1dFr = {
-  title: "Exécution infirmière de la sortie",
-  readinessHint:
-    "État de documentation du flux de travail uniquement — ne clôture pas la rencontre et n'autorise pas la sortie médicale.",
+  title: "Sortie infirmière",
+  readinessHint: "",
   providerDisposition: "Disposition finale du médecin",
-  providerNotFinalized:
-    "La documentation médicale de sortie n'est pas finalisée. La sortie infirmière ne peut pas être complétée.",
+  providerNotFinalized: "! La documentation médicale doit d'abord être finalisée.",
   dispositionMismatch:
-    "La disposition médicale a changé depuis le début de la sortie infirmière. Demandez une reconfirmation médicale.",
+    "! La disposition médicale a changé. Demandez une reconfirmation médicale.",
   requestReconfirm: "Demander une reconfirmation médicale",
   finalizedBy: "Finalisé par",
   medRecon: "Réconciliation médicamenteuse",
@@ -21,19 +19,18 @@ export const inpatientNursingDischargeInpDis1dFr = {
   complete: "Compléter la sortie infirmière",
   saving: "Enregistrement…",
   reload: "Recharger",
-  completeHint:
-    "Compléter la sortie infirmière ne clôture pas la rencontre. La clôture du cycle de vie est une étape séparée.",
+  completeHint: "",
   none: "Non documenté",
   readiness: {
-    providerDisposition: "Disposition médicale",
-    medicationReconciliation: "Réconciliation médicamenteuse",
-    patientInstructions: "Consignes patient",
-    educationReviewed: "Consignes revues",
+    providerDisposition: "Médecin",
+    medicationReconciliation: "Réconciliation",
+    patientInstructions: "Consignes",
+    educationReviewed: "Revues",
     ivDevices: "Voie / dispositifs",
-    belongings: "Effets personnels",
+    belongings: "Effets",
     transport: "Transport",
     departure: "Départ",
-    nursingComplete: "Sortie infirmière complète",
+    nursingComplete: "Complète",
   },
   education: {
     title: "Éducation",

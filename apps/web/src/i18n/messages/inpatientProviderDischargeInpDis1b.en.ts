@@ -1,12 +1,11 @@
 /** INP.DIS.1C — Provider inpatient discharge UI (EN). */
 
 export const inpatientProviderDischargeInpDis1bEn = {
-  title: "Provider discharge documentation",
-  readinessTitle: "Discharge documentation readiness",
-  readinessHint: "Workflow documentation status only — not medical discharge authorization.",
-  planningContextTitle: "Discharge planning (coordination only)",
-  planningContextHint:
-    "Planned destination from case management is shown for context. Final disposition must be confirmed separately by the provider.",
+  title: "Provider Discharge",
+  readinessTitle: "Provider Discharge",
+  readinessHint: "",
+  planningContextTitle: "Discharge Planning",
+  planningContextHint: "",
   plannedDestination: "Planned destination",
   usePlannedSuggestion: "Confirm suggested disposition",
   none: "Not documented",
@@ -17,17 +16,17 @@ export const inpatientProviderDischargeInpDis1bEn = {
   noKnownPending: "No known pending studies",
   patientLeftHospital: "Left the hospital",
   readiness: {
-    dischargeDiagnoses: "Discharge diagnoses",
-    medicationReconciliation: "Medication reconciliation",
+    dischargeDiagnoses: "Diagnoses",
+    medicationReconciliation: "Med Rec",
     pendingStudies: "Pending studies",
     followUp: "Follow-up",
-    patientInstructions: "Patient instructions",
-    finalDisposition: "Final disposition",
-    providerSummary: "Provider summary",
-    nursingDischarge: "Nursing discharge",
+    patientInstructions: "Instructions",
+    finalDisposition: "Disposition",
+    providerSummary: "Course",
+    nursingDischarge: "Nursing",
   },
   sections: {
-    dischargeDiagnoses: "Discharge diagnoses",
+    dischargeDiagnoses: "Discharge Diagnoses",
     admissionDiagnosis: "Admission diagnosis",
     reasonForHospitalization: "Reason for hospitalization",
     hospitalCourse: "Hospital course",
@@ -139,8 +138,7 @@ export const inpatientProviderDischargeInpDis1bEn = {
     saving: "Saving…",
     reload: "Reload",
   },
-  finalizeHint:
-    "Finalizing provider documentation does not close the encounter. Nursing discharge execution follows separately.",
+  finalizeHint: "",
   metadata: {
     documentedBy: "Documented by",
     professionalTitle: "Professional title",

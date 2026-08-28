@@ -332,7 +332,9 @@ export function InpatientProviderDischargeSection({
   return (
     <div data-testid="inpatient-provider-discharge-section" style={{ display: "grid", gap: 12 }}>
       <Section title={t(`${prefix}.title`)}>
-        <p style={{ margin: 0, fontSize: 12, color: "#64748b" }}>{t(`${prefix}.readinessHint`)}</p>
+        {t(`${prefix}.readinessHint`) ? (
+          <p style={{ margin: 0, fontSize: 12, color: "#64748b" }}>{t(`${prefix}.readinessHint`)}</p>
+        ) : null}
         <ReadinessRow chips={readiness.length ? readiness : projectInpatientDischargeReadiness(doc)} t={t} />
         {editable ? (
           <button type="button" data-testid="inpatient-discharge-refresh-chart" onClick={() => refreshFromChart()}>
@@ -1073,7 +1075,9 @@ export function InpatientProviderDischargeSection({
 
       {editable ? (
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          <p style={{ margin: 0, fontSize: 12, color: "#64748b" }}>{t(`${prefix}.finalizeHint`)}</p>
+          {t(`${prefix}.finalizeHint`) ? (
+            <p style={{ margin: 0, fontSize: 12, color: "#64748b" }}>{t(`${prefix}.finalizeHint`)}</p>
+          ) : null}
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             <button
               type="button"

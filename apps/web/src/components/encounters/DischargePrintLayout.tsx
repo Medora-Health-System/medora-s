@@ -250,6 +250,17 @@ export function getDischargePrintHtml(params: {
       }
     }
   }
+  // Prefer detailed clinical disposition (ELOPED stays ELOPED) over coarse mapped status
+  if (encounter.dischargeSummaryJson && typeof encounter.dischargeSummaryJson === "object") {
+    const raw = encounter.dischargeSummaryJson as Record<string, unknown>;
+    const clinical =
+      typeof raw.clinicalDispositionCode === "string" ? raw.clinicalDispositionCode.trim() : "";
+    if (clinical) {
+      bodySections.push(
+        line(printT(language, "encounterChrome.modals.dischargeField.disposition"), clinical)
+      );
+    }
+  }
   bodySections.push(`</div>`);
 
   appendProviderDischargeDocumentationPrintSection(
