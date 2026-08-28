@@ -34,6 +34,7 @@ import {
   mergeMedicationNamesForDischargeContext,
   type DischargeMedicationSourceInput,
 } from "@/features/emergency/providerDischargeMedicationContext";
+import { collectInpatientDispositionPrintFacts } from "@medora/shared";
 
 export type DischargePrintPatient = {
   firstName?: string | null;
@@ -262,6 +263,32 @@ export function getDischargePrintHtml(params: {
     }
   }
   bodySections.push(`</div>`);
+
+  // INP.DIS.1F.2 — disposition-specific clinical facts (non-empty only)
+  {
+    const facts = collectInpatientDispositionPrintFacts(encounter.dischargeSummaryJson);
+    const printable = facts.filter((f) => f.key !== "clinicalDispositionCode");
+    if (printable.length) {
+      bodySections.push(
+        `<h2 style="font-size: 15px; margin: 18px 0 10px 0; font-weight: 700; border-bottom: 1px solid #000; padding-bottom: 4px;">${esc(
+          printT(language, "printOutput.inpatientDisposition.sectionTitle")
+        )}</h2>`
+      );
+      bodySections.push(`<div style="margin-bottom: 16px;">`);
+      for (const fact of printable) {
+        const labelKey = `printOutput.inpatientDisposition.${fact.key}`;
+        let label = printT(language, labelKey);
+        if (label === labelKey) {
+          label = fact.key.replace(/\./g, " · ");
+        }
+        let value = fact.value;
+        if (value === "YES") value = printT(language, "printOutput.erPacket.yes");
+        if (value === "NO") value = printT(language, "common.no");
+        bodySections.push(line(label, value));
+      }
+      bodySections.push(`</div>`);
+    }
+  }
 
   appendProviderDischargeDocumentationPrintSection(
     bodySections,

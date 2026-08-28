@@ -95,20 +95,22 @@ export function dispositionNursingFlags(code: string) {
   const isAma = c === "AGAINST_MEDICAL_ADVICE";
   const isCorrectional = c === "CORRECTIONAL_FACILITY";
   const isHomeHealth = c === "HOME_WITH_HOME_HEALTH";
+  /** Facility transfer handoff — HOSPICE uses home-style nursing per 1D (not handoff-required). */
   const isTransferFamily =
     c === "TRANSFER_ACUTE_CARE" ||
     c === "SKILLED_NURSING_FACILITY" ||
     c === "ACUTE_REHAB" ||
     c === "LONG_TERM_ACUTE_CARE" ||
     c === "BEHAVIORAL_HEALTH_FACILITY" ||
-    c === "ASSISTED_LIVING" ||
-    c === "HOSPICE";
+    c === "ASSISTED_LIVING";
+  const isHospice = c === "HOSPICE";
   return {
     isEloped,
     isDeceased,
     isAma,
     isCorrectional,
     isHomeHealth,
+    isHospice,
     isTransferFamily,
     showEducation: !isEloped && !isDeceased,
     showIv: !isEloped && !isDeceased,
@@ -198,20 +200,36 @@ export function InpatientDischargeBoardNursing({
             }
           />
           {flags.isAma ? (
-            <Check
-              label={tp("nursing.patientDeclined")}
-              checked={nursingDoc.education?.patientDeclinedInstructions === true}
-              disabled={disabled}
-              onChange={(v) =>
-                touchNursing((prev) => ({
-                  ...prev,
-                  education: {
-                    ...ensureEducation(prev.education),
-                    patientDeclinedInstructions: v,
-                  },
-                }))
-              }
-            />
+            <>
+              <Check
+                label={tp("nursing.patientDeclined")}
+                checked={nursingDoc.education?.patientDeclinedInstructions === true}
+                disabled={disabled}
+                onChange={(v) =>
+                  touchNursing((prev) => ({
+                    ...prev,
+                    education: {
+                      ...ensureEducation(prev.education),
+                      patientDeclinedInstructions: v,
+                    },
+                  }))
+                }
+              />
+              <Check
+                label={tp("nursing.leftBeforeComplete")}
+                checked={nursingDoc.education?.leftBeforeInstructionsComplete === true}
+                disabled={disabled}
+                onChange={(v) =>
+                  touchNursing((prev) => ({
+                    ...prev,
+                    education: {
+                      ...ensureEducation(prev.education),
+                      leftBeforeInstructionsComplete: v,
+                    },
+                  }))
+                }
+              />
+            </>
           ) : null}
           <select
             style={fieldStyle}
@@ -259,6 +277,55 @@ export function InpatientDischargeBoardNursing({
               </option>
             ))}
           </select>
+          {nursingDoc.education?.recipient &&
+          nursingDoc.education.recipient !== "PATIENT" ? (
+            <input
+              style={fieldStyle}
+              disabled={disabled}
+              placeholder={tp("nursing.recipientName")}
+              value={nursingDoc.education?.recipientName ?? ""}
+              onChange={(e) =>
+                touchNursing((prev) => ({
+                  ...prev,
+                  education: {
+                    ...ensureEducation(prev.education),
+                    recipientName: e.target.value,
+                  },
+                }))
+              }
+            />
+          ) : null}
+          <Check
+            label={tp("nursing.interpreterUsed")}
+            checked={nursingDoc.education?.interpreterUsed === true}
+            disabled={disabled}
+            onChange={(v) =>
+              touchNursing((prev) => ({
+                ...prev,
+                education: {
+                  ...ensureEducation(prev.education),
+                  interpreterUsed: v,
+                },
+              }))
+            }
+          />
+          {nursingDoc.education?.interpreterUsed ? (
+            <input
+              style={fieldStyle}
+              disabled={disabled}
+              placeholder={tp("nursing.interpreterDetails")}
+              value={nursingDoc.education?.interpreterDetails ?? ""}
+              onChange={(e) =>
+                touchNursing((prev) => ({
+                  ...prev,
+                  education: {
+                    ...ensureEducation(prev.education),
+                    interpreterDetails: e.target.value,
+                  },
+                }))
+              }
+            />
+          ) : null}
         </Card>
       ) : null}
 
@@ -503,6 +570,57 @@ export function InpatientDischargeBoardNursing({
             }
           />
           <Check
+            label={tp("nursing.handoff.medicationReconciliation")}
+            checked={nursingDoc.handoff?.documentsSent?.medicationReconciliation === true}
+            disabled={disabled}
+            onChange={(v) =>
+              touchNursing((prev) => ({
+                ...prev,
+                handoff: {
+                  ...prev.handoff,
+                  documentsSent: {
+                    ...prev.handoff?.documentsSent,
+                    medicationReconciliation: v,
+                  },
+                },
+              }))
+            }
+          />
+          <Check
+            label={tp("nursing.handoff.relevantResults")}
+            checked={nursingDoc.handoff?.documentsSent?.relevantResults === true}
+            disabled={disabled}
+            onChange={(v) =>
+              touchNursing((prev) => ({
+                ...prev,
+                handoff: {
+                  ...prev.handoff,
+                  documentsSent: {
+                    ...prev.handoff?.documentsSent,
+                    relevantResults: v,
+                  },
+                },
+              }))
+            }
+          />
+          <Check
+            label={tp("nursing.handoff.imaging")}
+            checked={nursingDoc.handoff?.documentsSent?.imaging === true}
+            disabled={disabled}
+            onChange={(v) =>
+              touchNursing((prev) => ({
+                ...prev,
+                handoff: {
+                  ...prev.handoff,
+                  documentsSent: {
+                    ...prev.handoff?.documentsSent,
+                    imaging: v,
+                  },
+                },
+              }))
+            }
+          />
+          <Check
             label={tp("nursing.handoff.pendingStudies")}
             checked={nursingDoc.handoff?.documentsSent?.pendingStudies === true}
             disabled={disabled}
@@ -519,6 +637,43 @@ export function InpatientDischargeBoardNursing({
               }))
             }
           />
+          <Check
+            label={tp("nursing.handoff.other")}
+            checked={nursingDoc.handoff?.documentsSent?.other === true}
+            disabled={disabled}
+            onChange={(v) =>
+              touchNursing((prev) => ({
+                ...prev,
+                handoff: {
+                  ...prev.handoff,
+                  documentsSent: {
+                    ...prev.handoff?.documentsSent,
+                    other: v,
+                  },
+                },
+              }))
+            }
+          />
+          {nursingDoc.handoff?.documentsSent?.other ? (
+            <input
+              style={fieldStyle}
+              disabled={disabled}
+              placeholder={tp("nursing.handoff.otherDetails")}
+              value={nursingDoc.handoff?.documentsSent?.otherDetails ?? ""}
+              onChange={(e) =>
+                touchNursing((prev) => ({
+                  ...prev,
+                  handoff: {
+                    ...prev.handoff,
+                    documentsSent: {
+                      ...prev.handoff?.documentsSent,
+                      otherDetails: e.target.value,
+                    },
+                  },
+                }))
+              }
+            />
+          ) : null}
         </Card>
       ) : null}
 
@@ -554,6 +709,17 @@ export function InpatientDischargeBoardNursing({
               touchNursing((prev) => ({
                 ...prev,
                 homeHealth: { ...prev.homeHealth, contactProvided: v },
+              }))
+            }
+          />
+          <Check
+            label={tp("nursing.homeHealth.documentsSent")}
+            checked={nursingDoc.homeHealth?.documentsSent === true}
+            disabled={disabled}
+            onChange={(v) =>
+              touchNursing((prev) => ({
+                ...prev,
+                homeHealth: { ...prev.homeHealth, documentsSent: v },
               }))
             }
           />
@@ -976,6 +1142,18 @@ export function InpatientDischargeBoardNursing({
               touchNursing((prev) => ({
                 ...prev,
                 departure: { ...prev.departure, conditionAtDeparture: e.target.value },
+              }))
+            }
+          />
+          <input
+            style={fieldStyle}
+            disabled={disabled}
+            placeholder={tp("nursing.accompaniedBy")}
+            value={nursingDoc.departure?.accompaniedBy ?? ""}
+            onChange={(e) =>
+              touchNursing((prev) => ({
+                ...prev,
+                departure: { ...prev.departure, accompaniedBy: e.target.value },
               }))
             }
           />

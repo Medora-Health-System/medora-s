@@ -12,7 +12,9 @@ import {
   INPATIENT_CONDITION_AT_DISCHARGE_STATUSES,
   INPATIENT_DISCHARGE_WORKFLOW_STATES,
   INPATIENT_FINAL_DISPOSITION_CODES_1C,
+  INPATIENT_HOME_HEALTH_SERVICES,
   INPATIENT_PENDING_STUDY_TYPES,
+  INPATIENT_TRANSFER_REASONS,
   INPATIENT_TRANSFER_SERVICES,
   INPATIENT_TRANSPORT_MODES,
   dispositionRequiresConditionAtDischarge,
@@ -1823,6 +1825,40 @@ export function InpatientDischargeBoard({
             <select
               style={fieldStyle}
               disabled={readOnly || !canProvider}
+              value={providerDoc.finalDisposition?.transfer?.reasonCode ?? ""}
+              onChange={(e) =>
+                patchDispositionDetails({
+                  transfer: {
+                    ...providerDoc.finalDisposition?.transfer,
+                    reasonCode: e.target.value || null,
+                  },
+                })
+              }
+            >
+              <option value="">— {tp("disposition.transferReason")}</option>
+              {INPATIENT_TRANSFER_REASONS.map((s) => (
+                <option key={s} value={s}>
+                  {tp(`transferReasons.${s}`)}
+                </option>
+              ))}
+            </select>
+            <textarea
+              style={{ ...fieldStyle, minHeight: 48 }}
+              disabled={readOnly || !canProvider}
+              placeholder={tp("disposition.reasonNarrative")}
+              value={providerDoc.finalDisposition?.transfer?.reasonNarrative ?? ""}
+              onChange={(e) =>
+                patchDispositionDetails({
+                  transfer: {
+                    ...providerDoc.finalDisposition?.transfer,
+                    reasonNarrative: e.target.value,
+                  },
+                })
+              }
+            />
+            <select
+              style={fieldStyle}
+              disabled={readOnly || !canProvider}
               value={providerDoc.finalDisposition?.transfer?.transportMode ?? ""}
               onChange={(e) =>
                 patchDispositionDetails({
@@ -1840,6 +1876,48 @@ export function InpatientDischargeBoard({
                 </option>
               ))}
             </select>
+            <input
+              style={fieldStyle}
+              disabled={readOnly || !canProvider}
+              placeholder={tp("disposition.conditionAtTransfer")}
+              value={providerDoc.finalDisposition?.transfer?.conditionAtTransfer ?? ""}
+              onChange={(e) =>
+                patchDispositionDetails({
+                  transfer: {
+                    ...providerDoc.finalDisposition?.transfer,
+                    conditionAtTransfer: e.target.value,
+                  },
+                })
+              }
+            />
+            <input
+              style={fieldStyle}
+              disabled={readOnly || !canProvider}
+              placeholder={tp("disposition.documentsSent")}
+              value={providerDoc.finalDisposition?.transfer?.documentsSent ?? ""}
+              onChange={(e) =>
+                patchDispositionDetails({
+                  transfer: {
+                    ...providerDoc.finalDisposition?.transfer,
+                    documentsSent: e.target.value,
+                  },
+                })
+              }
+            />
+            <input
+              style={fieldStyle}
+              disabled={readOnly || !canProvider}
+              placeholder={tp("disposition.pendingResultsCommunicated")}
+              value={providerDoc.finalDisposition?.transfer?.pendingResultsCommunicated ?? ""}
+              onChange={(e) =>
+                patchDispositionDetails({
+                  transfer: {
+                    ...providerDoc.finalDisposition?.transfer,
+                    pendingResultsCommunicated: e.target.value,
+                  },
+                })
+              }
+            />
           </div>
         ) : null}
 
@@ -1898,24 +1976,119 @@ export function InpatientDischargeBoard({
                 })
               }
             />
+            <label>
+              <span style={labelStyle}>{tp("disposition.transferAt")}</span>
+              <input
+                style={fieldStyle}
+                disabled={readOnly || !canProvider}
+                type="datetime-local"
+                value={instantToLocalDateTimeInput(providerDoc.finalDisposition?.snf?.transferAt)}
+                onChange={(e) =>
+                  patchDispositionDetails({
+                    snf: {
+                      ...providerDoc.finalDisposition?.snf,
+                      transferAt: localDateTimeInputToIso(e.target.value),
+                    },
+                  })
+                }
+              />
+            </label>
+            <select
+              style={fieldStyle}
+              disabled={readOnly || !canProvider}
+              value={providerDoc.finalDisposition?.snf?.transportMode ?? ""}
+              onChange={(e) =>
+                patchDispositionDetails({
+                  snf: {
+                    ...providerDoc.finalDisposition?.snf,
+                    transportMode: e.target.value || null,
+                  },
+                })
+              }
+            >
+              <option value="">— {tp("disposition.transportMode")}</option>
+              {INPATIENT_TRANSPORT_MODES.map((s) => (
+                <option key={s} value={s}>
+                  {s.replace(/_/g, " ")}
+                </option>
+              ))}
+            </select>
+            <input
+              style={fieldStyle}
+              disabled={readOnly || !canProvider}
+              placeholder={tp("disposition.documentsSent")}
+              value={providerDoc.finalDisposition?.snf?.documentsSent ?? ""}
+              onChange={(e) =>
+                patchDispositionDetails({
+                  snf: {
+                    ...providerDoc.finalDisposition?.snf,
+                    documentsSent: e.target.value,
+                  },
+                })
+              }
+            />
           </div>
         ) : null}
 
         {dispositionCode === "HOME_WITH_HOME_HEALTH" ? (
-          <input
-            style={fieldStyle}
-            disabled={readOnly || !canProvider}
-            placeholder={tp("disposition.agencyName")}
-            value={providerDoc.finalDisposition?.homeHealth?.agencyName ?? ""}
-            onChange={(e) =>
-              patchDispositionDetails({
-                homeHealth: {
-                  ...providerDoc.finalDisposition?.homeHealth,
-                  agencyName: e.target.value,
-                },
-              })
-            }
-          />
+          <div data-testid="inp-dis-1f-home-health-details" style={{ display: "grid", gap: 8 }}>
+            <input
+              style={fieldStyle}
+              disabled={readOnly || !canProvider}
+              placeholder={tp("disposition.agencyName")}
+              value={providerDoc.finalDisposition?.homeHealth?.agencyName ?? ""}
+              onChange={(e) =>
+                patchDispositionDetails({
+                  homeHealth: {
+                    ...providerDoc.finalDisposition?.homeHealth,
+                    agencyName: e.target.value,
+                  },
+                })
+              }
+            />
+            <div style={{ display: "grid", gap: 4 }}>
+              <span style={labelStyle}>{tp("disposition.homeHealthServices")}</span>
+              {INPATIENT_HOME_HEALTH_SERVICES.map((svc) => {
+                const selected = (providerDoc.finalDisposition?.homeHealth?.services ?? []).includes(
+                  svc
+                );
+                return (
+                  <Check
+                    key={svc}
+                    label={tp(`homeHealthServices.${svc}`)}
+                    checked={selected}
+                    disabled={readOnly || !canProvider}
+                    onChange={(v) => {
+                      const prev = providerDoc.finalDisposition?.homeHealth?.services ?? [];
+                      const next = v
+                        ? Array.from(new Set([...prev, svc]))
+                        : prev.filter((s) => s !== svc);
+                      patchDispositionDetails({
+                        homeHealth: {
+                          ...providerDoc.finalDisposition?.homeHealth,
+                          services: next,
+                        },
+                      });
+                    }}
+                  />
+                );
+              })}
+            </div>
+            <textarea
+              style={{ ...fieldStyle, minHeight: 48 }}
+              disabled={readOnly || !canProvider}
+              placeholder={tp("disposition.startOfCareNotes")}
+              value={providerDoc.finalDisposition?.homeHealth?.startOfCareNotes ?? ""}
+              onChange={(e) =>
+                patchDispositionDetails({
+                  homeHealth: {
+                    ...providerDoc.finalDisposition?.homeHealth,
+                    startOfCareNotes: e.target.value,
+                  },
+                })
+              }
+            />
+          </div>
         ) : null}
 
         {dispositionCode === "CORRECTIONAL_FACILITY" ? (
@@ -2256,6 +2429,20 @@ export function InpatientDischargeBoard({
                 })
               }
             />
+            <textarea
+              style={{ ...fieldStyle, minHeight: 48 }}
+              disabled={readOnly || !canProvider}
+              placeholder={tp("disposition.preliminaryContext")}
+              value={providerDoc.finalDisposition?.deceased?.preliminaryContext ?? ""}
+              onChange={(e) =>
+                patchDispositionDetails({
+                  deceased: {
+                    ...providerDoc.finalDisposition?.deceased,
+                    preliminaryContext: e.target.value,
+                  },
+                })
+              }
+            />
             <Check
               label={tp("disposition.nextOfKinNotified")}
               checked={providerDoc.finalDisposition?.deceased?.nextOfKinNotified === true}
@@ -2265,6 +2452,20 @@ export function InpatientDischargeBoard({
                   deceased: {
                     ...providerDoc.finalDisposition?.deceased,
                     nextOfKinNotified: v,
+                  },
+                })
+              }
+            />
+            <input
+              style={fieldStyle}
+              disabled={readOnly || !canProvider}
+              placeholder={tp("disposition.notifiedBy")}
+              value={providerDoc.finalDisposition?.deceased?.notifiedBy ?? ""}
+              onChange={(e) =>
+                patchDispositionDetails({
+                  deceased: {
+                    ...providerDoc.finalDisposition?.deceased,
+                    notifiedBy: e.target.value,
                   },
                 })
               }
@@ -2322,6 +2523,22 @@ export function InpatientDischargeBoard({
                 </option>
               ))}
             </select>
+            {providerDoc.finalDisposition?.deceased?.bodyDisposition === "OTHER" ? (
+              <input
+                style={fieldStyle}
+                disabled={readOnly || !canProvider}
+                placeholder={tp("disposition.bodyDispositionOther")}
+                value={providerDoc.finalDisposition?.deceased?.bodyDispositionOther ?? ""}
+                onChange={(e) =>
+                  patchDispositionDetails({
+                    deceased: {
+                      ...providerDoc.finalDisposition?.deceased,
+                      bodyDispositionOther: e.target.value,
+                    },
+                  })
+                }
+              />
+            ) : null}
           </div>
         ) : null}
 
