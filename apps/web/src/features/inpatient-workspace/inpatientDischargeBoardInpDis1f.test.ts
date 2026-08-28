@@ -14,6 +14,7 @@ const frPath = join(__dirname, "../../i18n/messages/inpatientDischargeBoardInpDi
 describe("INP.DIS.1F inpatient discharge board", () => {
   it("board file contains reference section testids", () => {
     const board = readFileSync(boardPath, "utf8");
+    const nursing = readFileSync(join(__dirname, "InpatientDischargeBoardNursing.tsx"), "utf8");
     expect(board).toContain('data-testid="inp-dis-1f-board"');
     expect(board).toContain('data-testid="inp-dis-1f-readiness"');
     expect(board).toContain('data-testid="inp-dis-1f-card-provider"');
@@ -25,11 +26,11 @@ describe("INP.DIS.1F inpatient discharge board", () => {
     expect(board).toContain('data-testid="inp-dis-1f-hospital-course"');
     expect(board).toContain('data-testid="inp-dis-1f-disposition"');
     expect(board).toContain('data-testid="inp-dis-1f-follow-up"');
-    expect(board).toContain('data-testid="inp-dis-1f-nursing-education"');
-    expect(board).toContain('data-testid="inp-dis-1f-nursing-iv"');
-    expect(board).toContain('data-testid="inp-dis-1f-nursing-belongings"');
-    expect(board).toContain('data-testid="inp-dis-1f-nursing-transport"');
-    expect(board).toContain('data-testid="inp-dis-1f-nursing-departure"');
+    expect(nursing).toContain('testId="inp-dis-1f-nursing-education"');
+    expect(nursing).toContain('testId="inp-dis-1f-nursing-iv"');
+    expect(nursing).toContain('testId="inp-dis-1f-nursing-belongings"');
+    expect(nursing).toContain('testId="inp-dis-1f-nursing-transport"');
+    expect(nursing).toContain('testId="inp-dis-1f-nursing-departure"');
     expect(board).toContain('data-testid="inp-dis-1f-bottom-bar"');
     expect(board).toContain('data-testid="inp-dis-1f-discharge-patient"');
     expect(board).toContain('data-testid="inp-dis-1f-print"');
@@ -88,6 +89,7 @@ describe("INP.DIS.1F inpatient discharge board", () => {
     expect(board).toContain('data-testid="inp-dis-1f-snf-details"');
     expect(board).toContain('data-testid="inp-dis-1f-eloped-details"');
     expect(board).toContain('data-testid="inp-dis-1f-deceased-details"');
+    expect(board).toContain('data-testid="inp-dis-1f-ama-details"');
     expect(board).toContain("cards.providerCta");
     expect(board).toContain("cards.reviewBefore");
     expect(board).toContain("searchIcd10Catalog");

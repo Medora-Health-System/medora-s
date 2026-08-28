@@ -34,13 +34,14 @@ export const boardCardStyle: CSSProperties = {
   boxShadow: MEDORA_CARD_SHELL.boxShadow,
   padding: 12,
   display: "grid",
-  gap: 8,
+  gap: 6,
   minWidth: 0,
+  alignContent: "start",
 };
 
 export const boardSectionStyle: CSSProperties = {
   ...boardCardStyle,
-  padding: 12,
+  gap: 8,
 };
 
 export const fieldStyle: CSSProperties = {

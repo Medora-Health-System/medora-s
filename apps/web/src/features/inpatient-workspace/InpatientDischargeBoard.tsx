@@ -12,9 +12,6 @@ import {
   INPATIENT_CONDITION_AT_DISCHARGE_STATUSES,
   INPATIENT_DISCHARGE_WORKFLOW_STATES,
   INPATIENT_FINAL_DISPOSITION_CODES_1C,
-  INPATIENT_NURSING_EDUCATION_RECIPIENTS,
-  INPATIENT_NURSING_TRANSPORT_MODES,
-  INPATIENT_NURSING_UNDERSTANDING,
   INPATIENT_PENDING_STUDY_TYPES,
   INPATIENT_TRANSFER_SERVICES,
   INPATIENT_TRANSPORT_MODES,
@@ -56,6 +53,7 @@ import {
   saveInpatientProviderDischarge,
 } from "@/features/hospital-care/inpatientOperationsApi";
 import { generateInpatientPatientInstructionsFromDiagnoses } from "./inpatientPatientInstructionsFromDiagnoses";
+import { InpatientDischargeBoardNursing } from "./InpatientDischargeBoardNursing";
 import {
   badgeAttention,
   badgeComplete,
@@ -216,24 +214,6 @@ function FactRow({ label, value }: { label: string; value: string }) {
       <span style={{ fontWeight: 600, textAlign: "right" }}>{value}</span>
     </div>
   );
-}
-
-function ensureEducation(
-  prev: InpatientNursingDischargeV1D["education"] | null | undefined
-): NonNullable<InpatientNursingDischargeV1D["education"]> {
-  return {
-    instructionsReviewed: prev?.instructionsReviewed === true,
-    medicationInstructionsReviewed: prev?.medicationInstructionsReviewed === true,
-    followUpReviewed: prev?.followUpReviewed === true,
-    returnPrecautionsReviewed: prev?.returnPrecautionsReviewed === true,
-    patientUnderstanding: prev?.patientUnderstanding ?? null,
-    recipient: prev?.recipient ?? null,
-    recipientName: prev?.recipientName ?? null,
-    interpreterUsed: prev?.interpreterUsed,
-    interpreterDetails: prev?.interpreterDetails ?? null,
-    patientDeclinedInstructions: prev?.patientDeclinedInstructions,
-    leftBeforeInstructionsComplete: prev?.leftBeforeInstructionsComplete,
-  };
 }
 
 function emptyPlanning(): PlanningDraft {
@@ -1806,6 +1786,40 @@ export function InpatientDischargeBoard({
                 })
               }
             />
+            <input
+              style={fieldStyle}
+              disabled={readOnly || !canProvider}
+              placeholder={tp("disposition.acceptedBy")}
+              value={providerDoc.finalDisposition?.transfer?.acceptedBy ?? ""}
+              onChange={(e) =>
+                patchDispositionDetails({
+                  transfer: {
+                    ...providerDoc.finalDisposition?.transfer,
+                    acceptedBy: e.target.value,
+                    transferAccepted: true,
+                  },
+                })
+              }
+            />
+            <label>
+              <span style={labelStyle}>{tp("disposition.acceptedAt")}</span>
+              <input
+                style={fieldStyle}
+                disabled={readOnly || !canProvider}
+                type="datetime-local"
+                value={instantToLocalDateTimeInput(
+                  providerDoc.finalDisposition?.transfer?.acceptedAt
+                )}
+                onChange={(e) =>
+                  patchDispositionDetails({
+                    transfer: {
+                      ...providerDoc.finalDisposition?.transfer,
+                      acceptedAt: localDateTimeInputToIso(e.target.value),
+                    },
+                  })
+                }
+              />
+            </label>
             <select
               style={fieldStyle}
               disabled={readOnly || !canProvider}
@@ -1873,6 +1887,17 @@ export function InpatientDischargeBoard({
                 })
               }
             />
+            <input
+              style={fieldStyle}
+              disabled={readOnly || !canProvider}
+              placeholder={tp("disposition.acceptingProvider")}
+              value={providerDoc.finalDisposition?.snf?.acceptingProvider ?? ""}
+              onChange={(e) =>
+                patchDispositionDetails({
+                  snf: { ...providerDoc.finalDisposition?.snf, acceptingProvider: e.target.value },
+                })
+              }
+            />
           </div>
         ) : null}
 
@@ -1937,6 +1962,127 @@ export function InpatientDischargeBoard({
                 })
               }
             />
+            <input
+              style={fieldStyle}
+              disabled={readOnly || !canProvider}
+              placeholder={tp("disposition.badgeId")}
+              value={providerDoc.finalDisposition?.correctional?.badgeId ?? ""}
+              onChange={(e) =>
+                patchDispositionDetails({
+                  correctional: {
+                    ...providerDoc.finalDisposition?.correctional,
+                    badgeId: e.target.value,
+                  },
+                })
+              }
+            />
+            <label>
+              <span style={labelStyle}>{tp("disposition.custodyTransferredAt")}</span>
+              <input
+                style={fieldStyle}
+                disabled={readOnly || !canProvider}
+                type="datetime-local"
+                value={instantToLocalDateTimeInput(
+                  providerDoc.finalDisposition?.correctional?.custodyTransferredAt
+                )}
+                onChange={(e) =>
+                  patchDispositionDetails({
+                    correctional: {
+                      ...providerDoc.finalDisposition?.correctional,
+                      custodyTransferredAt: localDateTimeInputToIso(e.target.value),
+                    },
+                  })
+                }
+              />
+            </label>
+            <Check
+              label={tp("disposition.transportByLawEnforcement")}
+              checked={
+                providerDoc.finalDisposition?.correctional?.transportByLawEnforcement === true
+              }
+              disabled={readOnly || !canProvider}
+              onChange={(v) =>
+                patchDispositionDetails({
+                  correctional: {
+                    ...providerDoc.finalDisposition?.correctional,
+                    transportByLawEnforcement: v,
+                  },
+                })
+              }
+            />
+          </div>
+        ) : null}
+
+        {dispositionCode === "AGAINST_MEDICAL_ADVICE" ? (
+          <div data-testid="inp-dis-1f-ama-details" style={{ display: "grid", gap: 8 }}>
+            <Check
+              label={tp("disposition.ama.capacityDocumented")}
+              checked={providerDoc.finalDisposition?.ama?.capacityDocumented === true}
+              disabled={readOnly || !canProvider}
+              onChange={(v) =>
+                patchDispositionDetails({
+                  ama: { ...providerDoc.finalDisposition?.ama, capacityDocumented: v },
+                })
+              }
+            />
+            <Check
+              label={tp("disposition.ama.risksDiscussed")}
+              checked={providerDoc.finalDisposition?.ama?.risksDiscussed === true}
+              disabled={readOnly || !canProvider}
+              onChange={(v) =>
+                patchDispositionDetails({
+                  ama: { ...providerDoc.finalDisposition?.ama, risksDiscussed: v },
+                })
+              }
+            />
+            <Check
+              label={tp("disposition.ama.alternativesDiscussed")}
+              checked={providerDoc.finalDisposition?.ama?.alternativesDiscussed === true}
+              disabled={readOnly || !canProvider}
+              onChange={(v) =>
+                patchDispositionDetails({
+                  ama: { ...providerDoc.finalDisposition?.ama, alternativesDiscussed: v },
+                })
+              }
+            />
+            <Check
+              label={tp("disposition.ama.treatmentOffered")}
+              checked={providerDoc.finalDisposition?.ama?.treatmentOffered === true}
+              disabled={readOnly || !canProvider}
+              onChange={(v) =>
+                patchDispositionDetails({
+                  ama: { ...providerDoc.finalDisposition?.ama, treatmentOffered: v },
+                })
+              }
+            />
+            <Check
+              label={tp("disposition.ama.returnPrecautionsReviewed")}
+              checked={providerDoc.finalDisposition?.ama?.returnPrecautionsReviewed === true}
+              disabled={readOnly || !canProvider}
+              onChange={(v) =>
+                patchDispositionDetails({
+                  ama: { ...providerDoc.finalDisposition?.ama, returnPrecautionsReviewed: v },
+                })
+              }
+            />
+            <textarea
+              style={{ ...fieldStyle, minHeight: 56 }}
+              disabled={readOnly || !canProvider}
+              placeholder={tp("disposition.ama.notes")}
+              value={providerDoc.finalDisposition?.ama?.notes ?? ""}
+              onChange={(e) =>
+                patchDispositionDetails({
+                  ama: { ...providerDoc.finalDisposition?.ama, notes: e.target.value },
+                })
+              }
+            />
+            <input
+              style={fieldStyle}
+              disabled={readOnly || !canProvider}
+              placeholder={tp("disposition.otherDetails")}
+              value={providerDoc.finalDisposition?.destinationDetails ?? ""}
+              onChange={(e) => patchDispositionDetails({ destinationDetails: e.target.value })}
+            />
           </div>
         ) : null}
 
@@ -1970,27 +2116,132 @@ export function InpatientDischargeBoard({
                 })
               }
             />
+            <input
+              style={fieldStyle}
+              disabled={readOnly || !canProvider}
+              placeholder={tp("disposition.conditionWhenLastObserved")}
+              value={providerDoc.finalDisposition?.eloped?.conditionWhenLastObserved ?? ""}
+              onChange={(e) =>
+                patchDispositionDetails({
+                  eloped: {
+                    ...providerDoc.finalDisposition?.eloped,
+                    conditionWhenLastObserved: e.target.value,
+                  },
+                })
+              }
+            />
+            <select
+              style={fieldStyle}
+              disabled={readOnly || !canProvider}
+              value={providerDoc.finalDisposition?.eloped?.ivOrLinesPresent ?? ""}
+              onChange={(e) =>
+                patchDispositionDetails({
+                  eloped: {
+                    ...providerDoc.finalDisposition?.eloped,
+                    ivOrLinesPresent: (e.target.value || null) as "YES" | "NO" | "UNKNOWN" | null,
+                  },
+                })
+              }
+            >
+              <option value="">— {tp("disposition.ivOrLinesPresent")}</option>
+              <option value="YES">{tp("yes")}</option>
+              <option value="NO">{tp("no")}</option>
+              <option value="UNKNOWN">{tp("nursing.belongingsUnknown")}</option>
+            </select>
+            <Check
+              label={tp("disposition.providerNotified")}
+              checked={providerDoc.finalDisposition?.eloped?.providerNotified === true}
+              disabled={readOnly || !canProvider}
+              onChange={(v) =>
+                patchDispositionDetails({
+                  eloped: { ...providerDoc.finalDisposition?.eloped, providerNotified: v },
+                })
+              }
+            />
+            <Check
+              label={tp("disposition.nursingSupervisorNotified")}
+              checked={providerDoc.finalDisposition?.eloped?.nursingSupervisorNotified === true}
+              disabled={readOnly || !canProvider}
+              onChange={(v) =>
+                patchDispositionDetails({
+                  eloped: {
+                    ...providerDoc.finalDisposition?.eloped,
+                    nursingSupervisorNotified: v,
+                  },
+                })
+              }
+            />
+            <Check
+              label={tp("disposition.securityNotified")}
+              checked={providerDoc.finalDisposition?.eloped?.securityNotified === true}
+              disabled={readOnly || !canProvider}
+              onChange={(v) =>
+                patchDispositionDetails({
+                  eloped: { ...providerDoc.finalDisposition?.eloped, securityNotified: v },
+                })
+              }
+            />
+            <Check
+              label={tp("disposition.lawEnforcementNotified")}
+              checked={providerDoc.finalDisposition?.eloped?.lawEnforcementNotified === true}
+              disabled={readOnly || !canProvider}
+              onChange={(v) =>
+                patchDispositionDetails({
+                  eloped: {
+                    ...providerDoc.finalDisposition?.eloped,
+                    lawEnforcementNotified: v,
+                  },
+                })
+              }
+            />
+            <Check
+              label={tp("disposition.emergencyContactAttempted")}
+              checked={providerDoc.finalDisposition?.eloped?.emergencyContactAttempted === true}
+              disabled={readOnly || !canProvider}
+              onChange={(v) =>
+                patchDispositionDetails({
+                  eloped: {
+                    ...providerDoc.finalDisposition?.eloped,
+                    emergencyContactAttempted: v,
+                  },
+                })
+              }
+            />
+            <textarea
+              style={{ ...fieldStyle, minHeight: 56 }}
+              disabled={readOnly || !canProvider}
+              placeholder={tp("disposition.otherDetails")}
+              value={providerDoc.finalDisposition?.eloped?.notes ?? ""}
+              onChange={(e) =>
+                patchDispositionDetails({
+                  eloped: { ...providerDoc.finalDisposition?.eloped, notes: e.target.value },
+                })
+              }
+            />
           </div>
         ) : null}
 
         {dispositionCode === "DECEASED" ? (
           <div data-testid="inp-dis-1f-deceased-details" style={{ display: "grid", gap: 8 }}>
-            <input
-              style={fieldStyle}
-              disabled={readOnly || !canProvider}
-              type="datetime-local"
-              value={instantToLocalDateTimeInput(
-                providerDoc.finalDisposition?.deceased?.pronouncedAt
-              )}
-              onChange={(e) =>
-                patchDispositionDetails({
-                  deceased: {
-                    ...providerDoc.finalDisposition?.deceased,
-                    pronouncedAt: localDateTimeInputToIso(e.target.value),
-                  },
-                })
-              }
-            />
+            <label>
+              <span style={labelStyle}>{tp("disposition.pronouncedAt")}</span>
+              <input
+                style={fieldStyle}
+                disabled={readOnly || !canProvider}
+                type="datetime-local"
+                value={instantToLocalDateTimeInput(
+                  providerDoc.finalDisposition?.deceased?.pronouncedAt
+                )}
+                onChange={(e) =>
+                  patchDispositionDetails({
+                    deceased: {
+                      ...providerDoc.finalDisposition?.deceased,
+                      pronouncedAt: localDateTimeInputToIso(e.target.value),
+                    },
+                  })
+                }
+              />
+            </label>
             <input
               style={fieldStyle}
               disabled={readOnly || !canProvider}
@@ -2005,10 +2256,76 @@ export function InpatientDischargeBoard({
                 })
               }
             />
+            <Check
+              label={tp("disposition.nextOfKinNotified")}
+              checked={providerDoc.finalDisposition?.deceased?.nextOfKinNotified === true}
+              disabled={readOnly || !canProvider}
+              onChange={(v) =>
+                patchDispositionDetails({
+                  deceased: {
+                    ...providerDoc.finalDisposition?.deceased,
+                    nextOfKinNotified: v,
+                  },
+                })
+              }
+            />
+            <input
+              style={fieldStyle}
+              disabled={readOnly || !canProvider}
+              placeholder={tp("disposition.medicalExaminerStatus")}
+              value={providerDoc.finalDisposition?.deceased?.medicalExaminerStatus ?? ""}
+              onChange={(e) =>
+                patchDispositionDetails({
+                  deceased: {
+                    ...providerDoc.finalDisposition?.deceased,
+                    medicalExaminerStatus: e.target.value,
+                  },
+                })
+              }
+            />
+            <input
+              style={fieldStyle}
+              disabled={readOnly || !canProvider}
+              placeholder={tp("disposition.organDonationReferralStatus")}
+              value={providerDoc.finalDisposition?.deceased?.organDonationReferralStatus ?? ""}
+              onChange={(e) =>
+                patchDispositionDetails({
+                  deceased: {
+                    ...providerDoc.finalDisposition?.deceased,
+                    organDonationReferralStatus: e.target.value,
+                  },
+                })
+              }
+            />
+            <select
+              style={fieldStyle}
+              disabled={readOnly || !canProvider}
+              value={providerDoc.finalDisposition?.deceased?.bodyDisposition ?? ""}
+              onChange={(e) =>
+                patchDispositionDetails({
+                  deceased: {
+                    ...providerDoc.finalDisposition?.deceased,
+                    bodyDisposition: (e.target.value || null) as
+                      | "MORGUE"
+                      | "FUNERAL_HOME"
+                      | "MEDICAL_EXAMINER"
+                      | "OTHER"
+                      | null,
+                  },
+                })
+              }
+            >
+              <option value="">— {tp("disposition.bodyDisposition")}</option>
+              {(["MORGUE", "FUNERAL_HOME", "MEDICAL_EXAMINER", "OTHER"] as const).map((d) => (
+                <option key={d} value={d}>
+                  {tp(`nursing.decedent.${d}`)}
+                </option>
+              ))}
+            </select>
           </div>
         ) : null}
 
-        {dispositionCode === "OTHER" || dispositionCode === "AGAINST_MEDICAL_ADVICE" ? (
+        {dispositionCode === "OTHER" ? (
           <input
             style={fieldStyle}
             disabled={readOnly || !canProvider}
@@ -2088,226 +2405,15 @@ export function InpatientDischargeBoard({
         ) : null}
       </div>
 
-      {/* Nursing execution */}
-      <div id="inp-dis-nursing-details" style={{ display: "grid", gap: 10 }}>
-        <div data-testid="inp-dis-1f-nursing-education" style={boardSectionStyle}>
-          <h3 style={{ margin: 0, fontSize: 14 }}>{tp("nursing.education")}</h3>
-          <Check
-            label={tp("nursing.instructionsReviewed")}
-            checked={nursingDoc.education?.instructionsReviewed === true}
-            disabled={readOnly || !canNursing}
-            onChange={(v) =>
-              touchNursing((prev) => ({
-                ...prev,
-                education: { ...ensureEducation(prev.education), instructionsReviewed: v },
-              }))
-            }
-          />
-          <Check
-            label={tp("nursing.medicationReviewed")}
-            checked={nursingDoc.education?.medicationInstructionsReviewed === true}
-            disabled={readOnly || !canNursing}
-            onChange={(v) =>
-              touchNursing((prev) => ({
-                ...prev,
-                education: {
-                  ...ensureEducation(prev.education),
-                  medicationInstructionsReviewed: v,
-                },
-              }))
-            }
-          />
-          <Check
-            label={tp("nursing.followUpReviewed")}
-            checked={nursingDoc.education?.followUpReviewed === true}
-            disabled={readOnly || !canNursing}
-            onChange={(v) =>
-              touchNursing((prev) => ({
-                ...prev,
-                education: { ...ensureEducation(prev.education), followUpReviewed: v },
-              }))
-            }
-          />
-          <Check
-            label={tp("nursing.returnPrecautions")}
-            checked={nursingDoc.education?.returnPrecautionsReviewed === true}
-            disabled={readOnly || !canNursing}
-            onChange={(v) =>
-              touchNursing((prev) => ({
-                ...prev,
-                education: {
-                  ...ensureEducation(prev.education),
-                  returnPrecautionsReviewed: v,
-                },
-              }))
-            }
-          />
-          <select
-            style={fieldStyle}
-            disabled={readOnly || !canNursing}
-            value={nursingDoc.education?.patientUnderstanding ?? ""}
-            onChange={(e) =>
-              touchNursing((prev) => ({
-                ...prev,
-                education: {
-                  ...ensureEducation(prev.education),
-                  patientUnderstanding: (e.target.value || null) as
-                    | (typeof INPATIENT_NURSING_UNDERSTANDING)[number]
-                    | null,
-                },
-              }))
-            }
-          >
-            <option value="">— {tp("nursing.understanding")}</option>
-            {INPATIENT_NURSING_UNDERSTANDING.map((u) => (
-              <option key={u} value={u}>
-                {tp(`understanding.${u}`)}
-              </option>
-            ))}
-          </select>
-          <select
-            style={fieldStyle}
-            disabled={readOnly || !canNursing}
-            value={nursingDoc.education?.recipient ?? ""}
-            onChange={(e) =>
-              touchNursing((prev) => ({
-                ...prev,
-                education: {
-                  ...ensureEducation(prev.education),
-                  recipient: (e.target.value || null) as
-                    | (typeof INPATIENT_NURSING_EDUCATION_RECIPIENTS)[number]
-                    | null,
-                },
-              }))
-            }
-          >
-            <option value="">— {tp("nursing.reviewedWith")}</option>
-            {INPATIENT_NURSING_EDUCATION_RECIPIENTS.map((u) => (
-              <option key={u} value={u}>
-                {tp(`recipients.${u}`)}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div data-testid="inp-dis-1f-nursing-iv" style={boardSectionStyle}>
-          <h3 style={{ margin: 0, fontSize: 14 }}>{tp("nursing.ivLines")}</h3>
-          <Check
-            label={tp("nursing.ivRemoved")}
-            checked={nursingDoc.devices?.ivRemoved === true}
-            disabled={readOnly || !canNursing}
-            onChange={(v) =>
-              touchNursing((prev) => ({
-                ...prev,
-                devices: { ...prev.devices, ivRemoved: v },
-              }))
-            }
-          />
-        </div>
-
-        <div data-testid="inp-dis-1f-nursing-belongings" style={boardSectionStyle}>
-          <h3 style={{ margin: 0, fontSize: 14 }}>{tp("nursing.belongings")}</h3>
-          <Check
-            label={tp("nursing.belongingsReturned")}
-            checked={nursingDoc.belongings?.returned === true}
-            disabled={readOnly || !canNursing}
-            onChange={(v) =>
-              touchNursing((prev) => ({
-                ...prev,
-                belongings: { ...(prev.belongings ?? { returned: false }), returned: v },
-              }))
-            }
-          />
-          <Check
-            label={tp("nursing.belongingsUnknown")}
-            checked={nursingDoc.belongings?.unknown === true}
-            disabled={readOnly || !canNursing}
-            onChange={(v) =>
-              touchNursing((prev) => ({
-                ...prev,
-                belongings: { ...(prev.belongings ?? { returned: false }), unknown: v },
-              }))
-            }
-          />
-        </div>
-
-        <div data-testid="inp-dis-1f-nursing-transport" style={boardSectionStyle}>
-          <h3 style={{ margin: 0, fontSize: 14 }}>{tp("nursing.transport")}</h3>
-          <select
-            style={fieldStyle}
-            disabled={readOnly || !canNursing}
-            value={nursingDoc.transport?.mode ?? ""}
-            onChange={(e) =>
-              touchNursing((prev) => ({
-                ...prev,
-                transport: { ...prev.transport, mode: e.target.value || null },
-                departure: { ...prev.departure, mode: e.target.value || null },
-              }))
-            }
-          >
-            <option value="">— {tp("nursing.transportMode")}</option>
-            {INPATIENT_NURSING_TRANSPORT_MODES.map((m) => (
-              <option key={m} value={m}>
-                {(() => {
-                  const labeled = tp(`transportModes.${m}`);
-                  return labeled.startsWith(PREFIX) ? m.replace(/_/g, " ") : labeled;
-                })()}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div
-          id="inp-dis-nursing-departure"
-          data-testid="inp-dis-1f-nursing-departure"
-          style={boardSectionStyle}
-        >
-          <h3 style={{ margin: 0, fontSize: 14 }}>{tp("nursing.departure")}</h3>
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-            <input
-              style={{ ...fieldStyle, flex: 1 }}
-              disabled={readOnly || !canNursing}
-              type="datetime-local"
-              value={instantToLocalDateTimeInput(nursingDoc.departure?.departedAt)}
-              onChange={(e) =>
-                touchNursing((prev) => ({
-                  ...prev,
-                  departure: {
-                    ...prev.departure,
-                    departedAt: localDateTimeInputToIso(e.target.value),
-                  },
-                }))
-              }
-            />
-            {!readOnly && canNursing ? (
-              <button
-                type="button"
-                style={secondaryBtn}
-                onClick={() =>
-                  touchNursing((prev) => ({
-                    ...prev,
-                    departure: { ...prev.departure, departedAt: new Date().toISOString() },
-                  }))
-                }
-              >
-                {tp("setToNow")}
-              </button>
-            ) : null}
-          </div>
-          <input
-            style={fieldStyle}
-            disabled={readOnly || !canNursing}
-            placeholder={tp("nursing.conditionAtDeparture")}
-            value={nursingDoc.departure?.conditionAtDeparture ?? ""}
-            onChange={(e) =>
-              touchNursing((prev) => ({
-                ...prev,
-                departure: { ...prev.departure, conditionAtDeparture: e.target.value },
-              }))
-            }
-          />
-        </div>
-      </div>
+      {/* Nursing execution — disposition-aware cards */}
+      <InpatientDischargeBoardNursing
+        nursingDoc={nursingDoc}
+        dispositionCode={dispositionCode}
+        readOnly={readOnly}
+        canNursing={canNursing}
+        tp={tp}
+        touchNursing={touchNursing}
+      />
 
       {/* Completed by */}
       {(nursingDoc.completedByDisplayNameSnapshot ||
