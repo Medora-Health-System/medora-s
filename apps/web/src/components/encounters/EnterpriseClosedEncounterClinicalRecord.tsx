@@ -6,7 +6,7 @@
  */
 
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { D4C8B_CERTIFICATION_ID, formatToothDisplayLabel, getCanonicalTooth } from "@medora/shared";
+import { D4C8B_CERTIFICATION_ID, formatToothDisplayLabel, getCanonicalTooth, isProviderProgressNoteFinalStatus } from "@medora/shared";
 import { apiFetch } from "@/lib/apiClient";
 import { ClinicalResultViewer } from "@/components/clinical/ClinicalResultViewer";
 import {
@@ -253,8 +253,8 @@ function projectInpatientProviderWorkspaceForClosedRecord(
   for (const raw of notes) {
     if (!raw || typeof raw !== "object") continue;
     const n = raw as Record<string, unknown>;
-    const status = String(n.status ?? "").toUpperCase();
-    if (status !== "SIGNED" && status !== "CORRECTED" && status !== "AMENDED") continue;
+    // Final/legal states only — drafts must not appear in closed medical record.
+    if (!isProviderProgressNoteFinalStatus(String(n.status ?? ""))) continue;
     const text = String(n.text ?? "").trim();
     if (!text) continue;
     const when = String(n.signedAt ?? n.serviceDate ?? "").trim();

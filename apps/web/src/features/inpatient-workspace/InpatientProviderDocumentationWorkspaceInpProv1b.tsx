@@ -33,6 +33,7 @@ import Link from "next/link";
 import {
   canAuthorInpatientProviderDocumentation,
   inpatientFacilityMedicationOrderMode,
+  isProviderProgressNoteFinalStatus,
   PLAN_STICKY_OPTIONS,
 } from "@medora/shared";
 import { useI18n } from "@/lib/i18n";
@@ -198,9 +199,12 @@ function sortNotesNewestFirst(notes: ProgressNoteLite[]): ProgressNoteLite[] {
     .sort((a, b) => String(b.serviceDate ?? "").localeCompare(String(a.serviceDate ?? "")));
 }
 
-function isSignedStatus(status: string | null | undefined): boolean {
-  const s = String(status ?? "").toUpperCase();
-  return s === "SIGNED" || s === "CORRECTED";
+function isProgressNoteFinal(status: string | null | undefined): boolean {
+  return isProviderProgressNoteFinalStatus(status);
+}
+
+function isHpSignedStatus(status: string | null | undefined): boolean {
+  return String(status ?? "").trim().toUpperCase() === "SIGNED";
 }
 
 const CARD: CSSProperties = { ...MEDORA_CARD_SHELL, borderRadius: 12, padding: "10px 12px" };
@@ -367,14 +371,14 @@ export function InpatientProviderDocumentationWorkspaceInpProv1b({
     [progressNotes, selectedNoteId]
   );
   const canEditNote =
-    canAuthor && noteType === "PROGRESS" && Boolean(activeNote) && !isSignedStatus(activeNote?.status);
+    canAuthor && noteType === "PROGRESS" && Boolean(activeNote) && !isProgressNoteFinal(activeNote?.status);
 
   const applyDocumentation = useCallback((next: ProviderWorkspaceDoc) => {
     setDoc(next);
     const notes = sortNotesNewestFirst(next.progressNotes ?? []);
     const preferred =
       notes.find((n) => n.noteId === selectedRef.current) ??
-      notes.find((n) => !isSignedStatus(n.status)) ??
+      notes.find((n) => !isProgressNoteFinal(n.status)) ??
       notes[0] ??
       null;
     if (!preferred) return;
@@ -472,7 +476,7 @@ export function InpatientProviderDocumentationWorkspaceInpProv1b({
 
   const persistProgressDraft = useCallback(async (): Promise<number | null> => {
     const note = progressNotes.find((n) => n.noteId === selectedRef.current);
-    if (!canAuthor || !note || isSignedStatus(note.status)) return null;
+    if (!canAuthor || !note || isProgressNoteFinal(note.status)) return null;
     setSaveState("saving");
     setActionError(null);
     try {
@@ -566,6 +570,8 @@ export function InpatientProviderDocumentationWorkspaceInpProv1b({
   const signNote = async () => {
     setActionError(null);
     if (noteType === "HP") {
+      // Defense-in-depth: UI disables Sign for ADMIN-only / already-signed H&P.
+      if (!canAuthor || isHpSignedStatus(doc?.hpDraft?.status) || saveState === "saving") return;
       setSaveState("saving");
       try {
         const res = await signProviderHp(encounterId, { expectedVersion });
@@ -577,7 +583,7 @@ export function InpatientProviderDocumentationWorkspaceInpProv1b({
       }
       return;
     }
-    if (!canEditNote || !activeNote) return;
+    if (!canEditNote || !activeNote || isProgressNoteFinal(activeNote.status)) return;
     setSaveState("saving");
     try {
       const version = dirty ? await persistProgressDraft() : expectedVersion;
@@ -639,7 +645,7 @@ export function InpatientProviderDocumentationWorkspaceInpProv1b({
 
   const goToResults = () => onNavigateSection?.("results");
   const resultsHref = `${inpatientActiveWorkspacePath(encounterId)}?section=results`;
-  const hpSigned = isSignedStatus(doc?.hpDraft?.status);
+  const hpSigned = isHpSignedStatus(doc?.hpDraft?.status);
 
   const noteEntries = useMemo(() => {
     const entries: Array<{ id: string; title: string; statusLabel: string; when: string }> = [];
@@ -655,7 +661,7 @@ export function InpatientProviderDocumentationWorkspaceInpProv1b({
       entries.push({
         id: note.noteId,
         title: t(`${I18N}.noteTypes.PROGRESS`),
-        statusLabel: isSignedStatus(note.status) ? t(`${I18N}.signed`) : t(`${I18N}.draft`),
+        statusLabel: isProgressNoteFinal(note.status) ? t(`${I18N}.signed`) : t(`${I18N}.draft`),
         when: note.serviceDate ?? "",
       });
     }
@@ -664,7 +670,7 @@ export function InpatientProviderDocumentationWorkspaceInpProv1b({
 
   const visibleNoteEntries = showAllNotes ? noteEntries : noteEntries.slice(0, COLLAPSED_NOTE_COUNT);
   const signedNotes = useMemo(
-    () => progressNotes.filter((n) => isSignedStatus(n.status)).slice(0, 4),
+    () => progressNotes.filter((n) => isProgressNoteFinal(n.status)).slice(0, 4),
     [progressNotes]
   );
 

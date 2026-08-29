@@ -146,6 +146,7 @@ import {
   acknowledgeProviderHandoff,
   classifyPrintPackage,
   providerDocumentMatrix,
+  isProviderProgressNoteFinalStatus,
   type MedSurgNursingAdmissionDocV1,
   type InpatientAdmissionClinicalSection,
   type AdmissionHistoryVerificationStatus,
@@ -3592,12 +3593,7 @@ export class InpatientOperationsService {
     }
     if (kind === "DAILY_PROGRESS_NOTE") {
       const notes = workspace.progressNotes ?? [];
-      const signed = notes.filter(
-        (n) =>
-          String(n.status ?? "").toUpperCase() === "SIGNED" ||
-          String(n.status ?? "").toUpperCase() === "CORRECTED" ||
-          String(n.status ?? "").toUpperCase() === "AMENDED"
-      );
+      const signed = notes.filter((n) => isProviderProgressNoteFinalStatus(n.status));
       const latestSigned = signed[signed.length - 1];
       sections.push({
         heading: "Progress note",

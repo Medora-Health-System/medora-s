@@ -121,7 +121,7 @@ describe("INP.PROV.1B authorship", () => {
 
   it("blocks editing of signed notes and view-only sessions", () => {
     expect(workspace).toContain(
-      'canAuthor && noteType === "PROGRESS" && Boolean(activeNote) && !isSignedStatus(activeNote?.status)'
+      'canAuthor && noteType === "PROGRESS" && Boolean(activeNote) && !isProgressNoteFinal(activeNote?.status)'
     );
     expect(workspace).toContain("disabled={!canEditNote}");
     expect(workspace).toContain("disabled={!canSign || busy}");
@@ -319,6 +319,31 @@ describe("INP.PROV.1B engine reuse", () => {
   it("documents the closed-record projection boundary and never rewrites it", () => {
     expect(workspace).toContain("admissionSummaryJson");
     expect(workspace).not.toMatch(/admissionSummaryJson\s*[:=]/);
+  });
+
+  it("treats SIGNED / CORRECTED / AMENDED progress notes as final (non-editable)", () => {
+    expect(workspace).toContain("isProviderProgressNoteFinalStatus");
+    expect(workspace).toContain("isProgressNoteFinal");
+    expect(workspace).toContain("!isProgressNoteFinal(activeNote?.status)");
+    expect(workspace).toContain("isProgressNoteFinal(note.status)) return null");
+    expect(workspace).toContain(
+      "notes.find((n) => !isProgressNoteFinal(n.status))"
+    );
+    expect(workspace).toContain(
+      "statusLabel: isProgressNoteFinal(note.status) ? t(`${I18N}.signed`) : t(`${I18N}.draft`)"
+    );
+    // AMENDED must not be treated as draft-editable via the old SIGNED|CORRECTED-only helper.
+    expect(workspace).not.toMatch(
+      /return s === "SIGNED" \|\| s === "CORRECTED"/
+    );
+  });
+
+  it("gates H&P Sign & Save with canAuthor defense-in-depth", () => {
+    expect(workspace).toContain("if (noteType === \"HP\")");
+    expect(workspace).toContain(
+      "if (!canAuthor || isHpSignedStatus(doc?.hpDraft?.status) || saveState === \"saving\") return"
+    );
+    expect(workspace).toContain("isHpSignedStatus");
   });
 });
 

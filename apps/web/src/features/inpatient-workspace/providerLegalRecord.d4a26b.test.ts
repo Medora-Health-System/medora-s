@@ -44,6 +44,7 @@ describe("D4A.2.6B provider legal record + synthesis service", () => {
     );
     // INP.PROV.1B — legal print packages must not project unsigned progress/H&P drafts.
     expect(ops).toContain("latestSigned");
+    expect(ops).toContain("isProviderProgressNoteFinalStatus");
     expect(ops).toContain('hpSigned = String(hp?.status ?? "").toUpperCase() === "SIGNED"');
     expect(panel).toContain("provider-conflict-banner");
     expect(panel).toContain("providerLegalRecordD4a26b.reload");
