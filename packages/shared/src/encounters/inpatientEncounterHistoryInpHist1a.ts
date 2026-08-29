@@ -124,13 +124,14 @@ function readDispositionCode(input: InpatientHistoryEncounterInput): string | nu
   );
 }
 
-function readCurrentUnit(admissionSummaryJson: unknown, roomLabel?: string | null): string | null {
+/**
+ * Authoritative unit/service only — never roomLabel (room ≠ level-of-care history).
+ */
+export function readAuthoritativeCurrentUnit(
+  admissionSummaryJson: unknown
+): string | null {
   const root = asRecord(admissionSummaryJson) ?? {};
-  return (
-    trimOrNull(root.serviceUnit) ??
-    trimOrNull(root.requestedUnit) ??
-    trimOrNull(roomLabel)
-  );
+  return trimOrNull(root.serviceUnit) ?? trimOrNull(root.requestedUnit);
 }
 
 function unitDisplay(unit: string | null | undefined): string {
@@ -230,13 +231,14 @@ export function buildInpatientHospitalCourseProjection(
   const dispositionCode = readDispositionCode(input);
   const dispositionLabel = formatInpatientDispositionLabel(dispositionCode);
   const transfers = life?.bedTransfers ?? [];
-  const currentUnit = readCurrentUnit(input.admissionSummaryJson, input.roomLabel);
+  const currentUnit = readAuthoritativeCurrentUnit(input.admissionSummaryJson);
   const unitSegments = buildUnitSegmentsFromBedTransfers(transfers, {
     admitAt,
     endAt,
     currentUnit,
   });
-  const timelineIncomplete = transfers.length === 0 && Boolean(currentUnit);
+  // Without durable bedTransfers, unit history is incomplete even if current serviceUnit is known.
+  const timelineIncomplete = transfers.length === 0;
 
   const timeline: InpatientHistoryTimelineSegment[] = [];
   if (originatingEdEncounterId) {

@@ -9,13 +9,13 @@ import Link from "next/link";
 import { useI18n } from "@/lib/i18n";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import { MEDORA_CARD_SHELL } from "@/components/medora-card/medoraCardTokens";
-import { apiFetch } from "@/lib/apiClient";
 import { printEncounterChartLivePreview } from "@/components/encounters/EncounterChartLivePreview";
 import { buildRxPrintFacilityIdentity } from "@/components/pharmacy/RxPrintLayout";
 import {
   fetchInpatientEncountersArchive,
   inpatientHistoryEdRecordHref,
   inpatientHistoryRecordHref,
+  loadInpatientArchiveMedicalRecordPrintInputs,
   type InpatientEncountersArchiveApiRow,
 } from "./inpatientEncounterHistoryApi";
 
@@ -70,16 +70,17 @@ export function InpatientAllEncountersWorkspace({ embedded = false }: Props) {
     if (!facilityId || !row.patient?.id) return;
     setPrintingId(row.id);
     try {
-      const encounter = (await apiFetch(`/encounters/${encodeURIComponent(row.id)}`, {
+      const { encounter, triage, orders } = await loadInpatientArchiveMedicalRecordPrintInputs({
         facilityId,
-      })) as Record<string, unknown>;
+        encounterId: row.id,
+      });
       const facilityIdentity = buildRxPrintFacilityIdentity({
         facilityName: null,
       });
       await printEncounterChartLivePreview({
         encounter,
-        triage: null,
-        orders: [],
+        triage,
+        orders,
         facilityId,
         facilityName: facilityIdentity.name,
         facilityIdentity,

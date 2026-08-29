@@ -3,6 +3,7 @@
  */
 
 import { apiFetch } from "@/lib/apiClient";
+import { fetchOrdersForEncounter } from "@/lib/clinicalWorklistApi";
 import { inpatientActiveWorkspacePath } from "./inpatientWorkspacePaths";
 
 export const INPATIENT_ALL_ENCOUNTERS_DEFAULT_LIMIT = 50;
@@ -76,4 +77,48 @@ export async function fetchInpatientEncountersArchive(params: {
   q.set("limit", String(params.limit ?? INPATIENT_ALL_ENCOUNTERS_DEFAULT_LIMIT));
   q.set("offset", String(params.offset ?? 0));
   return apiFetch(`/inpatient-operations/encounters/archive?${q.toString()}`);
+}
+
+/**
+ * Load encounter + triage + orders for archive medical-record print.
+ * Reuses the same canonical endpoints as inpatient Summary print inputs.
+ * Does not hard-code empty orders when orders exist.
+ */
+export async function loadInpatientArchiveMedicalRecordPrintInputs(params: {
+  facilityId: string;
+  encounterId: string;
+}): Promise<{
+  encounter: Record<string, unknown>;
+  triage: Record<string, unknown> | null;
+  orders: Array<Record<string, unknown>>;
+}> {
+  const { facilityId, encounterId } = params;
+  const encounter = (await apiFetch(`/encounters/${encodeURIComponent(encounterId)}`, {
+    facilityId,
+  })) as Record<string, unknown>;
+
+  const [triageSettled, ordersSettled] = await Promise.allSettled([
+    apiFetch(`/encounters/${encodeURIComponent(encounterId)}/triage`, { facilityId }),
+    fetchOrdersForEncounter(facilityId, encounterId),
+  ]);
+
+  let triage: Record<string, unknown> | null = null;
+  if (triageSettled.status === "fulfilled" && triageSettled.value) {
+    const raw = triageSettled.value;
+    triage =
+      raw && typeof raw === "object" && !Array.isArray(raw)
+        ? (raw as Record<string, unknown>)
+        : null;
+  }
+
+  const ordersRaw =
+    ordersSettled.status === "fulfilled" && Array.isArray(ordersSettled.value)
+      ? ordersSettled.value
+      : [];
+  const orders = ordersRaw.filter(
+    (row): row is Record<string, unknown> =>
+      Boolean(row) && typeof row === "object" && !Array.isArray(row)
+  );
+
+  return { encounter, triage, orders };
 }

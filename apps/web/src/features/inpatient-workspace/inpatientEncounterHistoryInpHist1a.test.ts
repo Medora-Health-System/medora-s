@@ -50,10 +50,21 @@ describe("INP.HIST.1A inpatient encounter history", () => {
   it("archive UI uses View Record + Print and does not invent write controls", () => {
     const ws = readFileSync(join(root, "InpatientAllEncountersWorkspace.tsx"), "utf8");
     expect(ws).toContain("printEncounterChartLivePreview");
+    expect(ws).toContain("loadInpatientArchiveMedicalRecordPrintInputs");
     expect(ws).toContain("inpatientHistoryRecordHref");
     expect(ws).toContain("legalMedicalRecord: true");
+    expect(ws).not.toContain("orders: []");
+    expect(ws).not.toContain("triage: null");
     expect(ws).not.toContain("canProviderWrite");
     expect(ws).not.toContain("patchInpatient");
+  });
+
+  it("archive print preload loads canonical orders and triage endpoints", () => {
+    const api = readFileSync(join(root, "inpatientEncounterHistoryApi.ts"), "utf8");
+    expect(api).toContain("loadInpatientArchiveMedicalRecordPrintInputs");
+    expect(api).toContain("fetchOrdersForEncounter");
+    expect(api).toContain("/triage");
+    expect(api).not.toMatch(/orders:\s*\[\]/);
   });
 
   it("closed strip projects canonical course + related ED only", () => {

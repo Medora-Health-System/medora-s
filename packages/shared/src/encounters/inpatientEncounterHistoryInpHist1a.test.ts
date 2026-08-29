@@ -173,4 +173,37 @@ describe("INP.HIST.1A inpatient encounter history", () => {
     expect(labels[1]).toMatch(/ICU/i);
     expect(labels[2]).toMatch(/MED/i);
   });
+
+  it("roomLabel-only does not become a UNIT segment", () => {
+    const proj = buildInpatientHospitalCourseProjection({
+      id: "ip-room",
+      status: "OPEN",
+      createdAt: "2026-08-20T00:00:00.000Z",
+      roomLabel: "MS-4",
+      admissionSummaryJson: {
+        inpatientLifecycleV1: { version: 1, bedTransfers: [], discharge: null },
+      },
+    });
+    expect(proj.timeline.filter((s) => s.kind === "UNIT")).toHaveLength(0);
+    expect(proj.courseSummary).toBe("—");
+    expect(proj.timelineIncomplete).toBe(true);
+    expect(proj.courseSummary).not.toContain("MS-4");
+  });
+
+  it("authoritative serviceUnit may appear as current-state when no transfers", () => {
+    const proj = buildInpatientHospitalCourseProjection({
+      id: "ip-svc",
+      status: "OPEN",
+      createdAt: "2026-08-20T00:00:00.000Z",
+      roomLabel: "MS-4",
+      admissionSummaryJson: {
+        serviceUnit: "MED_SURG",
+        inpatientLifecycleV1: { version: 1, bedTransfers: [], discharge: null },
+      },
+    });
+    expect(proj.courseSummary).toMatch(/MED/i);
+    expect(proj.courseSummary).not.toContain("MS-4");
+    expect(proj.timelineIncomplete).toBe(true);
+    expect(proj.timeline.some((s) => s.kind === "UNIT" && s.currentStateOnly)).toBe(true);
+  });
 });
