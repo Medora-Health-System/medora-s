@@ -24,6 +24,7 @@ import { InpatientNursingDischargeService } from "./inpatient-nursing-discharge.
 import { InpatientFinalDischargeService } from "./inpatient-final-discharge.service";
 import { InpatientLifecycleService } from "./inpatient-lifecycle.service";
 import { EnterpriseAssignmentService } from "./enterprise-assignment.service";
+import { InpatientEncountersArchiveService } from "./inpatient-encounters-archive.service";
 import type { EnterpriseHospitalBoardAssignmentRole } from "@medora/shared";
 
 function facilityIdFromReq(req: { user?: { facilityId?: string } }): string {
@@ -63,13 +64,46 @@ export class InpatientOperationsController {
     private readonly enterpriseAssignment: EnterpriseAssignmentService,
     private readonly inpatientProviderDischarge: InpatientProviderDischargeService,
     private readonly inpatientNursingDischarge: InpatientNursingDischargeService,
-    private readonly inpatientFinalDischarge: InpatientFinalDischargeService
+    private readonly inpatientFinalDischarge: InpatientFinalDischargeService,
+    private readonly inpatientEncountersArchive: InpatientEncountersArchiveService
   ) {}
 
   @Get("meta")
   @RequireRoles(RoleCode.PROVIDER, RoleCode.RN, RoleCode.ADMIN, RoleCode.LAB, RoleCode.RADIOLOGY)
   meta() {
     return this.ops.meta();
+  }
+
+  /** INP.HIST.1A — lightweight inpatient encounter history (not full chart payloads). */
+  @Get("encounters/archive")
+  @RequireRoles(
+    RoleCode.PROVIDER,
+    RoleCode.RN,
+    RoleCode.ADMIN,
+    RoleCode.PATIENT_CARE_TECH,
+    RoleCode.LAB,
+    RoleCode.RADIOLOGY
+  )
+  async listEncounterArchive(
+    @Query("startDate") startDate: string | undefined,
+    @Query("endDate") endDate: string | undefined,
+    @Query("search") search: string | undefined,
+    @Query("status") status: string | undefined,
+    @Query("limit") limitRaw: string | undefined,
+    @Query("offset") offsetRaw: string | undefined,
+    @Req() req: any
+  ) {
+    const limit = limitRaw ? Number.parseInt(limitRaw, 10) : undefined;
+    const offset = offsetRaw ? Number.parseInt(offsetRaw, 10) : undefined;
+    return this.inpatientEncountersArchive.listArchiveEncounters({
+      facilityId: facilityIdFromReq(req),
+      startDate,
+      endDate,
+      search,
+      status,
+      limit: Number.isFinite(limit) ? limit : undefined,
+      offset: Number.isFinite(offset) ? offset : undefined,
+    });
   }
 
   @Post("direct-admission")

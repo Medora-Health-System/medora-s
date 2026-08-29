@@ -62,6 +62,7 @@ import { EncounterCarePlanService } from "./encounter-care-plan.service";
 import { InpatientProviderDischargeService } from "./inpatient-provider-discharge.service";
 import { InpatientNursingDischargeService } from "./inpatient-nursing-discharge.service";
 import { InpatientFinalDischargeService } from "./inpatient-final-discharge.service";
+import { InpatientEncountersArchiveService } from "./inpatient-encounters-archive.service";
 
 @Module({
   imports: [PrismaModule, DiagnosesModule, OrdersModule, TrackboardModule, FacilitiesModule],
@@ -89,6 +90,7 @@ import { InpatientFinalDischargeService } from "./inpatient-final-discharge.serv
     InpatientProviderDischargeService,
     InpatientNursingDischargeService,
     InpatientFinalDischargeService,
+    InpatientEncountersArchiveService,
     ObservationOperationsService,
     InpatientLifecycleService,
     AdmissionCorrelationService,
