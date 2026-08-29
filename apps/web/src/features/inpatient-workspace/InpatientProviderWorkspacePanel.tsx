@@ -29,6 +29,7 @@ import { apiFetch, asApiObject } from "@/lib/apiClient";
 import { fetchOrderEventsForEncounter, fetchOrdersForEncounter } from "@/lib/clinicalWorklistApi";
 import { fetchClinicalDocumentationEntries } from "@/lib/clinicalDocumentationApi";
 import { MEDORA_CARD_SHELL } from "@/components/medora-card/medoraCardTokens";
+import { DictationFieldLabel } from "@/components/clinical/DictationFieldLabel";
 import { projectDevicesOverviewFromAuthorities } from "./projectNursingClinicalDocumentationSummary";
 import {
   acknowledgeProviderWorkspaceEvent,
@@ -1141,18 +1142,26 @@ export function InpatientProviderWorkspacePanel({
               />
             </div>
           ) : null}
-          <label style={{ fontSize: 12, display: "block" }}>
-            {t("inpatientProviderD4a26.hp.draftText")}
+          <div>
+            <DictationFieldLabel
+              label={t("inpatientProviderD4a26.hp.draftText")}
+              dictationTargetId="inp-prov-hp-draft"
+              dictationLabel={t("inpatientProviderD4a26.hp.draftText")}
+              readOnly={hpSigned || !canProviderWrite}
+              readOnlyLabel={t("inpatientProviderD4a26.hp.signed")}
+              alignEnd
+              prominent
+            />
             <textarea
               id="inp-prov-hp-draft"
               value={hpText}
               onChange={(e) => setHpText(e.target.value)}
               disabled={hpSigned || !canProviderWrite}
               rows={8}
-              style={{ display: "block", width: "100%", marginTop: 4 }}
+              style={{ display: "block", width: "100%" }}
               data-dictation-ready={canProviderWrite && !hpSigned ? "true" : undefined}
             />
-          </label>
+          </div>
           {canProviderWrite && !hpSigned ? (
             <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
               <button type="button" onClick={() => void saveHp()}>

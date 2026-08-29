@@ -72,12 +72,31 @@ const HISTORY_LIMIT = 40;
 const I18N = "inpatientProviderDocumentationInpProv1b";
 const HP_LIST_ID = "__hp__";
 const COLLAPSED_NOTE_COUNT = 6;
+const CLOCK_INTERVAL_MS = 30_000;
+
+function standardDailyTemplate(french: boolean): ProgressSoapSections {
+  return french
+    ? {
+        SUBJECTIVE: "Revue du jour d’hospitalisation :\n",
+        OBJECTIVE: "Examen et données :\n",
+        ASSESSMENT: "Évaluation :\n",
+        PLAN: "Plan :\n",
+      }
+    : {
+        SUBJECTIVE: "Hospital day review:\n",
+        OBJECTIVE: "Exam and data:\n",
+        ASSESSMENT: "Assessment:\n",
+        PLAN: "Plan:\n",
+      };
+}
 
 type NoteType = "PROGRESS" | "HP";
 const NOTE_TYPES: NoteType[] = ["PROGRESS", "HP"];
 
 type CenterTab = "note" | "templates" | "smartPhrases" | "flowsheets" | "dictate";
 const CENTER_TABS: CenterTab[] = ["note", "templates", "smartPhrases", "flowsheets", "dictate"];
+
+type RightTab = "smartAssist" | "patientContext";
 
 type ProgressNoteLite = {
   noteId: string;
@@ -101,7 +120,6 @@ type WorkspaceSynthesis = {
     codeStatus?: string | null;
     isolation?: string | null;
   } | null;
-  /** Read-only projection of the provider clinical synthesis (never authored here). */
   vitals?: Array<{
     key: string;
     label: string;
@@ -133,15 +151,40 @@ type WorkspaceSynthesis = {
   }> | null;
 };
 
+type OrderItemLite = {
+  id: string;
+  status: string;
+  displayLabel: string;
+  catalogItemType: string;
+  priority?: string | null;
+  createdAt?: string | null;
+  route?: string | null;
+  frequencyCode?: string | null;
+  frequency?: string | null;
+  strength?: string | null;
+  dose?: string | null;
+};
+
 type OrderCardLite = {
   id: string;
   status: string;
-  items: Array<{ id: string; status: string; displayLabel: string; catalogItemType: string }>;
+  createdAt?: string | null;
+  priority?: string | null;
+  items: OrderItemLite[];
+};
+
+type NoteEntry = {
+  id: string;
+  title: string;
+  status: string;
+  statusLabel: string;
+  statusTone: "draft" | "final";
+  when: string;
 };
 
 /**
- * Same affordance as `DictationFieldLabel`: bring the target field into view, focus it and
- * flash it briefly so the provider can see where Dragon will type.
+ * Same affordance as `DictationFieldLabel`: bring the target field into view, focus it,
+ * place the caret at end, and flash it briefly so the provider can see where Dragon will type.
  */
 function focusDictationTarget(elementId: string): void {
   if (typeof document === "undefined") return;
@@ -149,12 +192,20 @@ function focusDictationTarget(elementId: string): void {
   if (!el || el.disabled) return;
   el.scrollIntoView({ behavior: "smooth", block: "center" });
   el.focus();
-  el.style.boxShadow = "0 0 0 3px rgba(20, 184, 166, 0.18)";
-  el.style.background = "#fefce8";
+  const len = el.value.length;
+  try {
+    el.setSelectionRange(len, len);
+  } catch {
+    /* some browsers reject setSelectionRange on disabled/non-text inputs */
+  }
+  el.style.boxShadow = "0 0 0 3px rgba(37, 99, 235, 0.28)";
+  el.style.background = "#eff6ff";
+  el.style.borderColor = "#93c5fd";
   window.setTimeout(() => {
     el.style.boxShadow = "";
     el.style.background = "";
-  }, 1200);
+    el.style.borderColor = "";
+  }, 1400);
 }
 
 function asRecord(value: unknown): Record<string, unknown> | null {
@@ -169,14 +220,34 @@ function pickLabel(item: Record<string, unknown>, french: boolean): string {
   return french ? fr || en || manual : en || fr || manual;
 }
 
-/** Normalize the enterprise order payload down to the few fields this strip displays. */
+function pickOptionalString(...values: unknown[]): string | null {
+  for (const value of values) {
+    const text = String(value ?? "").trim();
+    if (text) return text;
+  }
+  return null;
+}
+
+function progressNoteStatusMeta(
+  status: string,
+  t: (key: string) => string
+): { label: string; tone: "draft" | "final" } {
+  const s = String(status ?? "").trim().toUpperCase();
+  if (s === "AMENDED") return { label: t(`${I18N}.amended`), tone: "final" };
+  if (s === "CORRECTED") return { label: t(`${I18N}.corrected`), tone: "final" };
+  if (s === "SIGNED") return { label: t(`${I18N}.signed`), tone: "final" };
+  if (s === "REVIEW") return { label: t(`${I18N}.review`), tone: "draft" };
+  return { label: t(`${I18N}.draft`), tone: "draft" };
+}
+
+/** Normalize the enterprise order payload down to the fields this strip displays. */
 function normalizeOrders(raw: unknown[], french: boolean): OrderCardLite[] {
   const out: OrderCardLite[] = [];
   for (const entry of raw) {
     const order = asRecord(entry);
     const id = String(order?.id ?? "").trim();
     if (!order || !id) continue;
-    const items: OrderCardLite["items"] = [];
+    const items: OrderItemLite[] = [];
     for (const rawItem of Array.isArray(order.items) ? order.items : []) {
       const item = asRecord(rawItem);
       const itemId = String(item?.id ?? "").trim();
@@ -186,9 +257,22 @@ function normalizeOrders(raw: unknown[], french: boolean): OrderCardLite[] {
         status: String(item.status ?? order.status ?? "").toUpperCase(),
         displayLabel: pickLabel(item, french),
         catalogItemType: String(item.catalogItemType ?? "").toUpperCase(),
+        priority: pickOptionalString(item.priority, order.priority),
+        createdAt: pickOptionalString(item.createdAt, order.createdAt, order.orderedAt),
+        route: pickOptionalString(item.route, item.administrationRoute),
+        frequencyCode: pickOptionalString(item.frequencyCode),
+        frequency: pickOptionalString(item.frequency, item.frequencyLabel),
+        strength: pickOptionalString(item.strength, item.medicationStrength),
+        dose: pickOptionalString(item.dose, item.doseAmount),
       });
     }
-    out.push({ id, status: String(order.status ?? "").toUpperCase(), items });
+    out.push({
+      id,
+      status: String(order.status ?? "").toUpperCase(),
+      createdAt: pickOptionalString(order.createdAt, order.orderedAt),
+      priority: pickOptionalString(order.priority),
+      items,
+    });
   }
   return out;
 }
@@ -205,6 +289,24 @@ function isProgressNoteFinal(status: string | null | undefined): boolean {
 
 function isHpSignedStatus(status: string | null | undefined): boolean {
   return String(status ?? "").trim().toUpperCase() === "SIGNED";
+}
+
+function formatClockLabel(french: boolean): string {
+  return new Date().toLocaleTimeString(french ? "fr-FR" : "en-US", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function labAbnormalHint(
+  row: { abnormal: boolean; direction: string },
+  t: (key: string) => string
+): string | null {
+  const d = String(row.direction ?? "").toUpperCase();
+  if (d.includes("UP") || d === "INCREASING" || d === "↑") return t(`${I18N}.recentLabs.high`);
+  if (d.includes("DOWN") || d === "DECREASING" || d === "↓") return t(`${I18N}.recentLabs.low`);
+  if (row.abnormal) return t(`${I18N}.recentLabs.high`);
+  return null;
 }
 
 const CARD: CSSProperties = { ...MEDORA_CARD_SHELL, borderRadius: 12, padding: "10px 12px" };
@@ -252,6 +354,36 @@ const TEXTAREA: CSSProperties = {
   color: "#0f172a",
   resize: "vertical",
 };
+const SOAP_SECTION: CSSProperties = {
+  border: "1px solid #e2e8f0",
+  borderRadius: 10,
+  padding: "8px 10px",
+  background: "#fff",
+};
+
+function statusBadgeStyle(tone: "draft" | "final"): CSSProperties {
+  return tone === "final"
+    ? {
+        display: "inline-block",
+        padding: "1px 6px",
+        borderRadius: 9999,
+        fontSize: 9,
+        fontWeight: 700,
+        background: "#ecfdf5",
+        border: "1px solid #6ee7b7",
+        color: "#047857",
+      }
+    : {
+        display: "inline-block",
+        padding: "1px 6px",
+        borderRadius: 9999,
+        fontSize: 9,
+        fontWeight: 700,
+        background: "#eff6ff",
+        border: "1px solid #bfdbfe",
+        color: "#1d4ed8",
+      };
+}
 
 function off(base: CSSProperties, disabled: boolean): CSSProperties {
   return disabled ? { ...base, opacity: 0.5, cursor: "not-allowed" } : base;
@@ -322,6 +454,7 @@ export function InpatientProviderDocumentationWorkspaceInpProv1b({
 
   const [noteType, setNoteType] = useState<NoteType>("PROGRESS");
   const [centerTab, setCenterTab] = useState<CenterTab>("note");
+  const [rightTab, setRightTab] = useState<RightTab>("smartAssist");
   const [assistTab, setAssistTab] = useState<"suggestions" | "review">("suggestions");
   const [selectedNoteId, setSelectedNoteId] = useState<string | null>(null);
   const [sections, setSections] = useState<ProgressSoapSections>(() => emptyProgressSoapSections());
@@ -337,12 +470,14 @@ export function InpatientProviderDocumentationWorkspaceInpProv1b({
   const [showCreateOrder, setShowCreateOrder] = useState(false);
   const [ordersRefresh, setOrdersRefresh] = useState(0);
   const [todayIso, setTodayIso] = useState("");
+  const [clockLabel, setClockLabel] = useState("");
   const [bootstrapAllergies, setBootstrapAllergies] = useState<string | null>(null);
 
   const sectionsRef = useRef(sections);
   const focusedRef = useRef(focusedSection);
   const dirtyRef = useRef(dirty);
   const selectedRef = useRef(selectedNoteId);
+  const noteTypeRef = useRef(noteType);
   const ordersStripRef = useRef<HTMLElement | null>(null);
   const assistRef = useRef<HTMLElement | null>(null);
 
@@ -358,11 +493,16 @@ export function InpatientProviderDocumentationWorkspaceInpProv1b({
   useEffect(() => {
     selectedRef.current = selectedNoteId;
   }, [selectedNoteId]);
+  useEffect(() => {
+    noteTypeRef.current = noteType;
+  }, [noteType]);
 
-  // Locale-dependent clock values are resolved after mount (no SSR/client mismatch).
   useEffect(() => {
     setTodayIso(new Date().toISOString().slice(0, 10));
-  }, []);
+    setClockLabel(formatClockLabel(french));
+    const handle = window.setInterval(() => setClockLabel(formatClockLabel(french)), CLOCK_INTERVAL_MS);
+    return () => window.clearInterval(handle);
+  }, [french]);
 
   const progressNotes = useMemo(() => sortNotesNewestFirst(doc?.progressNotes ?? []), [doc]);
   const expectedVersion = Number(doc?.expectedVersion ?? 0);
@@ -397,7 +537,6 @@ export function InpatientProviderDocumentationWorkspaceInpProv1b({
   const loadWorkspace = useCallback(async () => {
     setLoading(true);
     setLoadFailed(false);
-    // One bounded parallel read per surface — no chatty refetch loop.
     const [workspaceSettled, synthesisSettled, bootstrapSettled] = await Promise.allSettled([
       fetchProviderWorkspace(encounterId),
       fetchProviderClinicalSynthesis(encounterId),
@@ -444,7 +583,6 @@ export function InpatientProviderDocumentationWorkspaceInpProv1b({
     setDirty(true);
   }, []);
 
-  /** Append-only: dictation, Smart Assist and lab attach never overwrite authored text. */
   const appendToSection = useCallback(
     (key: ProgressSoapSectionKey, text: string) => {
       if (!text.trim()) return;
@@ -495,12 +633,7 @@ export function InpatientProviderDocumentationWorkspaceInpProv1b({
       dirtyRef.current = false;
       applyDocumentation(nextDoc);
       setSaveState("saved");
-      setSavedAtLabel(
-        new Date().toLocaleTimeString(french ? "fr-FR" : "en-US", {
-          hour: "2-digit",
-          minute: "2-digit",
-        })
-      );
+      setSavedAtLabel(formatClockLabel(french));
       return Number(nextDoc.expectedVersion ?? expectedVersion + 1);
     } catch {
       setSaveState("failed");
@@ -515,8 +648,52 @@ export function InpatientProviderDocumentationWorkspaceInpProv1b({
     return () => window.clearTimeout(handle);
   }, [canEditNote, dirty, persistProgressDraft, sections]);
 
+  const guardDirtySwitch = useCallback(async (): Promise<boolean> => {
+    if (!dirtyRef.current || noteTypeRef.current !== "PROGRESS" || !canAuthor) return true;
+    const note = progressNotes.find((n) => n.noteId === selectedRef.current);
+    if (!note || isProgressNoteFinal(note.status)) return true;
+    const version = await persistProgressDraft();
+    // Saved successfully → clear dirty and allow navigation.
+    if (version !== null && !dirtyRef.current) return true;
+    // Save failed: keep current note selected, preserve editor, show failure — never switch.
+    return false;
+  }, [canAuthor, persistProgressDraft, progressNotes]);
+
+  const applyNoteSelection = useCallback(
+    (id: string) => {
+      if (id === HP_LIST_ID) {
+        setNoteType("HP");
+        setCenterTab("note");
+        return;
+      }
+      const note = progressNotes.find((n) => n.noteId === id);
+      if (!note) return;
+      setNoteType("PROGRESS");
+      setCenterTab("note");
+      setSelectedNoteId(note.noteId);
+      selectedRef.current = note.noteId;
+      setSections(parseProgressNoteSoapText(note.text));
+      setUndoStack([]);
+      setRedoStack([]);
+      setDirty(false);
+      dirtyRef.current = false;
+    },
+    [progressNotes]
+  );
+
+  const selectNote = async (id: string) => {
+    const currentListId = noteTypeRef.current === "HP" ? HP_LIST_ID : selectedRef.current;
+    if (id !== currentListId) {
+      const ok = await guardDirtySwitch();
+      if (!ok) return;
+    }
+    applyNoteSelection(id);
+  };
+
   const createProgressNote = async () => {
-    if (!canAuthor) return;
+    if (!canAuthor || saveState === "saving") return;
+    const ok = await guardDirtySwitch();
+    if (!ok) return;
     const noteId = `pn-${Date.now()}`;
     setSaveState("saving");
     setActionError(null);
@@ -542,67 +719,70 @@ export function InpatientProviderDocumentationWorkspaceInpProv1b({
       dirtyRef.current = false;
       setDoc(res.documentation as ProviderWorkspaceDoc);
       setSaveState("saved");
+      setSavedAtLabel(formatClockLabel(french));
     } catch {
       setSaveState("failed");
       setActionError(t(`${I18N}.saveFailed`));
     }
   };
 
-  const selectNote = (id: string) => {
-    if (id === HP_LIST_ID) {
-      setNoteType("HP");
-      setCenterTab("note");
-      return;
-    }
-    const note = progressNotes.find((n) => n.noteId === id);
-    if (!note) return;
-    setNoteType("PROGRESS");
+  const handleNoteTypeChange = async (next: NoteType) => {
+    if (next === noteType) return;
+    const ok = await guardDirtySwitch();
+    if (!ok) return;
+    setNoteType(next);
     setCenterTab("note");
-    setSelectedNoteId(note.noteId);
-    selectedRef.current = note.noteId;
-    setSections(parseProgressNoteSoapText(note.text));
-    setUndoStack([]);
-    setRedoStack([]);
-    setDirty(false);
-    dirtyRef.current = false;
   };
 
   const signNote = async () => {
     setActionError(null);
     if (noteType === "HP") {
-      // Defense-in-depth: UI disables Sign for ADMIN-only / already-signed H&P.
       if (!canAuthor || isHpSignedStatus(doc?.hpDraft?.status) || saveState === "saving") return;
       setSaveState("saving");
       try {
         const res = await signProviderHp(encounterId, { expectedVersion });
         applyDocumentation(res.documentation as ProviderWorkspaceDoc);
         setSaveState("saved");
+        setSavedAtLabel(formatClockLabel(french));
       } catch {
         setSaveState("failed");
         setActionError(t(`${I18N}.signFailed`));
       }
       return;
     }
-    if (!canEditNote || !activeNote || isProgressNoteFinal(activeNote.status)) return;
-    setSaveState("saving");
+    if (!canEditNote || !activeNote || isProgressNoteFinal(activeNote.status) || saveState === "saving") {
+      return;
+    }
     try {
-      const version = dirty ? await persistProgressDraft() : expectedVersion;
+      // Persist first when dirty; never call sign if save failed.
+      const version = dirtyRef.current ? await persistProgressDraft() : expectedVersion;
       if (version === null) return;
+      setSaveState("saving");
       const res = await signProviderProgressNote(encounterId, {
         noteId: activeNote.noteId,
         expectedVersion: version,
       });
       applyDocumentation(res.documentation as ProviderWorkspaceDoc);
       setSaveState("saved");
+      setSavedAtLabel(formatClockLabel(french));
     } catch {
       setSaveState("failed");
       setActionError(t(`${I18N}.signFailed`));
     }
   };
 
-  /** Dictation is Dragon-driven: we only put the caret in the section the provider chose. */
-  const focusSectionForDictation = () => {
-    focusDictationTarget(`inp-prov-1b-soap-${focusedRef.current}`);
+  const focusSoapSection = (key: ProgressSoapSectionKey) => {
+    setFocusedSection(key);
+    focusDictationTarget(`inp-prov-1b-soap-${key}`);
+  };
+
+  const applyTemplate = (template: ProgressSoapSections) => {
+    if (!canEditNote) return;
+    if (countProgressSoapCharacters(sectionsRef.current) > 0) {
+      if (!window.confirm(t(`${I18N}.templates.overwriteConfirm`))) return;
+    }
+    commitSections(template);
+    setCenterTab("note");
   };
 
   const recentLabs = useMemo(() => projectRecentLabsFromSynthesis(synthesis), [synthesis]);
@@ -628,7 +808,6 @@ export function InpatientProviderDocumentationWorkspaceInpProv1b({
     [activeNote?.status, noteType, sections]
   );
 
-  /** Smart Assist never auto-inserts: text lands in the note only from this click handler. */
   const insertSuggestion = (suggestion: ProviderSmartAssistSuggestion) => {
     if (!canEditNote || !suggestion.insertText.trim()) return;
     appendToSection(suggestion.kind === "lab" ? "OBJECTIVE" : "PLAN", suggestion.insertText);
@@ -647,21 +826,28 @@ export function InpatientProviderDocumentationWorkspaceInpProv1b({
   const resultsHref = `${inpatientActiveWorkspacePath(encounterId)}?section=results`;
   const hpSigned = isHpSignedStatus(doc?.hpDraft?.status);
 
-  const noteEntries = useMemo(() => {
-    const entries: Array<{ id: string; title: string; statusLabel: string; when: string }> = [];
+  const noteEntries = useMemo((): NoteEntry[] => {
+    const entries: NoteEntry[] = [];
     if (doc?.hpDraft) {
+      const hpStatus = hpSigned ? "SIGNED" : "DRAFT";
+      const meta = progressNoteStatusMeta(hpStatus, t);
       entries.push({
         id: HP_LIST_ID,
         title: t(`${I18N}.noteTypes.HP`),
-        statusLabel: hpSigned ? t(`${I18N}.signed`) : t(`${I18N}.draft`),
+        status: hpStatus,
+        statusLabel: meta.label,
+        statusTone: meta.tone,
         when: String(doc.hpDraft.signedAt ?? "").slice(0, 10),
       });
     }
     for (const note of progressNotes) {
+      const meta = progressNoteStatusMeta(note.status, t);
       entries.push({
         id: note.noteId,
         title: t(`${I18N}.noteTypes.PROGRESS`),
-        statusLabel: isProgressNoteFinal(note.status) ? t(`${I18N}.signed`) : t(`${I18N}.draft`),
+        status: note.status,
+        statusLabel: meta.label,
+        statusTone: meta.tone,
         when: note.serviceDate ?? "",
       });
     }
@@ -678,11 +864,14 @@ export function InpatientProviderDocumentationWorkspaceInpProv1b({
   const selectedListId = noteType === "HP" ? HP_LIST_ID : selectedNoteId;
   const canSign = noteType === "PROGRESS" ? canEditNote : canAuthor && !hpSigned;
   const busy = saveState === "saving";
+  const orderItemCount = useMemo(
+    () => orders.reduce((sum, order) => sum + order.items.length, 0),
+    [orders]
+  );
 
   const allergiesLine =
     (bootstrapAllergies ?? "").trim() || (allergiesSummary ?? "").trim() || null;
 
-  /** Flowsheets is a read-only synthesis projection: vitals trend rows + 24 h intake/output. */
   const flowsheetVitals = synthesis?.vitals ?? [];
   const flowsheetIo = synthesis?.intakeOutput ?? null;
   const flowsheetIoRows = (
@@ -704,77 +893,114 @@ export function InpatientProviderDocumentationWorkspaceInpProv1b({
     </Link>
   );
 
+  const flowsheetResultsLink = onNavigateSection ? (
+    <button type="button" onClick={goToResults} style={GHOST_BTN}>
+      {t(`${I18N}.flowsheets.viewResults`)}
+    </button>
+  ) : (
+    <Link href={resultsHref} style={{ ...GHOST_BTN, textDecoration: "none" }}>
+      {t(`${I18N}.flowsheets.viewResults`)}
+    </Link>
+  );
+
+  const autosaveLabel =
+    saveState === "saving"
+      ? t(`${I18N}.saving`)
+      : saveState === "failed"
+        ? t(`${I18N}.saveFailedStatus`)
+        : savedAtLabel
+          ? t(`${I18N}.savedAt`).replace("{time}", savedAtLabel)
+          : null;
+
   if (loading) return <p style={META}>{t("common.loading")}</p>;
 
   return (
     <div data-testid="inp-prov-1b-workspace" style={{ display: "grid", gap: 10 }}>
-      <header style={{ ...CARD, ...ROW_BETWEEN, flexWrap: "wrap", gap: 8 }}>
-        <h2 style={{ margin: 0, fontSize: 14, fontWeight: 700, color: "#0f172a" }}>
-          {t(`${I18N}.title`)}
-        </h2>
-        <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
-          <span data-testid="inp-prov-1b-datetime" style={META}>
-            {activeNote?.serviceDate || todayIso}
-          </span>
-          <label style={{ ...META, display: "flex", alignItems: "center", gap: 4 }}>
-            {t(`${I18N}.noteType`)}
-            <select
-              data-testid="inp-prov-1b-note-type"
-              value={noteType}
-              onChange={(e) => {
-                setNoteType(e.target.value as NoteType);
-                setCenterTab("note");
-              }}
-              style={{
-                padding: "4px 6px",
-                borderRadius: 10,
-                border: "1px solid #e2e8f0",
-                fontSize: 11,
-                fontFamily: "inherit",
-              }}
+      <header style={{ ...CARD, display: "grid", gap: 8 }}>
+        <div style={ROW_BETWEEN}>
+          <div>
+            <h2 style={{ margin: 0, fontSize: 14, fontWeight: 700, color: "#0f172a" }}>
+              {t(`${I18N}.title`)}
+            </h2>
+            <p style={{ margin: "2px 0 0", ...META }}>{t(`${I18N}.subtitle`)}</p>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
+            <span data-testid="inp-prov-1b-datetime" style={META}>
+              {activeNote?.serviceDate || todayIso}
+            </span>
+            <span data-testid="inp-prov-1b-clock" style={META}>
+              {clockLabel}
+            </span>
+            <label style={{ ...META, display: "flex", alignItems: "center", gap: 4 }}>
+              {t(`${I18N}.noteType`)}
+              <select
+                data-testid="inp-prov-1b-note-type"
+                value={noteType}
+                onChange={(e) => void handleNoteTypeChange(e.target.value as NoteType)}
+                style={{
+                  padding: "4px 6px",
+                  borderRadius: 10,
+                  border: "1px solid #e2e8f0",
+                  fontSize: 11,
+                  fontFamily: "inherit",
+                }}
+              >
+                {NOTE_TYPES.map((type) => (
+                  <option key={type} value={type}>
+                    {t(`${I18N}.noteTypes.${type}`)}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <button
+              type="button"
+              data-testid="inp-prov-1b-sign-save"
+              disabled={!canSign || busy}
+              onClick={() => void signNote()}
+              style={off(PRIMARY_BTN, !canSign || busy)}
             >
-              {NOTE_TYPES.map((type) => (
-                <option key={type} value={type}>
-                  {t(`${I18N}.noteTypes.${type}`)}
-                </option>
-              ))}
-            </select>
-          </label>
-          <button
-            type="button"
-            data-testid="inp-prov-1b-sign-save"
-            disabled={!canSign || busy}
-            onClick={() => void signNote()}
-            style={off(PRIMARY_BTN, !canSign || busy)}
-          >
-            {busy ? t(`${I18N}.signing`) : t(`${I18N}.signSave`)}
-          </button>
-          <button
-            type="button"
-            data-testid="inp-prov-1b-save-draft"
-            disabled={!canEditNote || busy}
-            onClick={() => void persistProgressDraft()}
-            style={off({ ...GHOST_BTN, padding: "6px 12px", fontSize: 12 }, !canEditNote || busy)}
-          >
-            {t(`${I18N}.saveDraft`)}
-          </button>
+              {busy ? t(`${I18N}.signing`) : t(`${I18N}.signSave`)}
+            </button>
+            <button
+              type="button"
+              data-testid="inp-prov-1b-save-draft"
+              disabled={!canEditNote || busy}
+              onClick={() => void persistProgressDraft()}
+              style={off({ ...GHOST_BTN, padding: "6px 12px", fontSize: 12 }, !canEditNote || busy)}
+            >
+              {t(`${I18N}.saveDraft`)}
+            </button>
+            {autosaveLabel ? (
+              <span
+                data-testid="inp-prov-1b-autosave"
+                style={{
+                  ...META,
+                  color: saveState === "failed" ? "#b91c1c" : "#64748b",
+                  fontWeight: saveState === "failed" ? 700 : 400,
+                }}
+                aria-live="polite"
+              >
+                {autosaveLabel}
+              </span>
+            ) : null}
+          </div>
         </div>
         {!canAuthor ? (
           <p
             role="status"
             data-testid="inp-prov-1b-view-only"
-            style={{ margin: 0, flexBasis: "100%", fontSize: 11, color: "#92400e", fontWeight: 600 }}
+            style={{ margin: 0, fontSize: 11, color: "#92400e", fontWeight: 600 }}
           >
             {t(`${I18N}.viewOnly`)}
           </p>
         ) : null}
         {loadFailed ? (
-          <p role="alert" style={{ margin: 0, flexBasis: "100%", fontSize: 11, color: "#b91c1c" }}>
+          <p role="alert" style={{ margin: 0, fontSize: 11, color: "#b91c1c" }}>
             {t(`${I18N}.loadFailed`)}
           </p>
         ) : null}
         {actionError ? (
-          <p role="alert" style={{ margin: 0, flexBasis: "100%", fontSize: 11, color: "#b91c1c" }}>
+          <p role="alert" style={{ margin: 0, fontSize: 11, color: "#b91c1c" }}>
             {actionError}
           </p>
         ) : null}
@@ -783,7 +1009,7 @@ export function InpatientProviderDocumentationWorkspaceInpProv1b({
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: "minmax(180px, 0.2fr) minmax(0, 1.15fr) minmax(220px, 0.55fr)",
+          gridTemplateColumns: "minmax(200px, 0.22fr) minmax(0, 1.1fr) minmax(240px, 0.58fr)",
           gap: 10,
           alignItems: "start",
         }}
@@ -794,9 +1020,9 @@ export function InpatientProviderDocumentationWorkspaceInpProv1b({
             <button
               type="button"
               data-testid="inp-prov-1b-new-note"
-              disabled={!canAuthor}
+              disabled={!canAuthor || busy}
               onClick={() => void createProgressNote()}
-              style={off(GHOST_BTN, !canAuthor)}
+              style={off(GHOST_BTN, !canAuthor || busy)}
             >
               {t(`${I18N}.newNote`)}
             </button>
@@ -810,7 +1036,7 @@ export function InpatientProviderDocumentationWorkspaceInpProv1b({
                     type="button"
                     data-testid={`inp-prov-1b-note-row-${entry.id}`}
                     aria-current={selected ? "true" : undefined}
-                    onClick={() => selectNote(entry.id)}
+                    onClick={() => void selectNote(entry.id)}
                     style={{
                       display: "block",
                       width: "100%",
@@ -825,31 +1051,40 @@ export function InpatientProviderDocumentationWorkspaceInpProv1b({
                   >
                     <span
                       style={{
-                        display: "block",
-                        fontSize: 11,
-                        fontWeight: 700,
-                        color: selected ? "#1d4ed8" : "#0f172a",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        gap: 6,
                       }}
                     >
-                      {entry.title}
+                      <span
+                        style={{
+                          fontSize: 11,
+                          fontWeight: 700,
+                          color: selected ? "#1d4ed8" : "#0f172a",
+                        }}
+                      >
+                        {entry.title}
+                      </span>
+                      <span style={statusBadgeStyle(entry.statusTone)}>{entry.statusLabel}</span>
                     </span>
-                    <span style={{ ...META, display: "block" }}>
-                      {[entry.when, entry.statusLabel].filter(Boolean).join(" · ")}
-                    </span>
+                    <span style={{ ...META, display: "block", marginTop: 2 }}>{entry.when}</span>
                   </button>
                 </li>
               );
             })}
           </ul>
-          {noteEntries.length > COLLAPSED_NOTE_COUNT && !showAllNotes ? (
+          {noteEntries.length > COLLAPSED_NOTE_COUNT ? (
             <div style={{ padding: "6px 10px", borderTop: "1px solid #e2e8f0" }}>
               <button
                 type="button"
                 data-testid="inp-prov-1b-show-all-notes"
-                onClick={() => setShowAllNotes(true)}
+                onClick={() => setShowAllNotes((v) => !v)}
                 style={LINK_BTN}
               >
-                {t(`${I18N}.showAllNotes`).replace("{n}", String(noteEntries.length))}
+                {showAllNotes
+                  ? t(`${I18N}.notes`)
+                  : t(`${I18N}.showAllNotes`).replace("{n}", String(noteEntries.length))}
               </button>
             </div>
           ) : null}
@@ -906,6 +1141,7 @@ export function InpatientProviderDocumentationWorkspaceInpProv1b({
               type="button"
               data-testid="inp-prov-1b-toolbar-smart-assist"
               onClick={() => {
+                setRightTab("smartAssist");
                 setAssistTab("suggestions");
                 assistRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
               }}
@@ -953,7 +1189,16 @@ export function InpatientProviderDocumentationWorkspaceInpProv1b({
             {showAttachMenu ? (
               <div
                 data-testid="inp-prov-1b-attach-menu"
-                style={{ ...CARD, position: "absolute", top: 34, left: 8, zIndex: 5, padding: 6, display: "grid", gap: 4 }}
+                style={{
+                  ...CARD,
+                  position: "absolute",
+                  top: 34,
+                  left: 8,
+                  zIndex: 5,
+                  padding: 6,
+                  display: "grid",
+                  gap: 4,
+                }}
               >
                 <button
                   type="button"
@@ -990,13 +1235,15 @@ export function InpatientProviderDocumentationWorkspaceInpProv1b({
               <div style={{ display: "grid", gap: 8 }}>
                 {!activeNote ? <p style={{ margin: 0, ...META }}>{t(`${I18N}.noActiveNote`)}</p> : null}
                 {PROGRESS_SOAP_SECTION_KEYS.map((key) => (
-                  <div key={key}>
+                  <div key={key} style={SOAP_SECTION}>
                     <DictationFieldLabel
                       label={t(`${I18N}.soap.${key}`)}
                       dictationTargetId={`inp-prov-1b-soap-${key}`}
-                      dictationLabel={t(`${I18N}.dictate.idle`)}
+                      dictationLabel={t(`${I18N}.dictateInto.${key}`)}
                       readOnly={!canEditNote}
                       readOnlyLabel={t(`${I18N}.viewOnly`)}
+                      alignEnd
+                      prominent
                     />
                     <textarea
                       id={`inp-prov-1b-soap-${key}`}
@@ -1023,13 +1270,6 @@ export function InpatientProviderDocumentationWorkspaceInpProv1b({
                   }}
                 >
                   <span style={META}>{t(`${I18N}.characters`).replace("{n}", String(charCount))}</span>
-                  <span style={META} aria-live="polite">
-                    {busy
-                      ? t(`${I18N}.saving`)
-                      : savedAtLabel
-                        ? t(`${I18N}.savedAt`).replace("{time}", savedAtLabel)
-                        : null}
-                  </span>
                 </div>
               </div>
             ) : null}
@@ -1039,20 +1279,30 @@ export function InpatientProviderDocumentationWorkspaceInpProv1b({
                 <h3 style={CARD_TITLE}>{t(`${I18N}.templates.title`)}</h3>
                 <button
                   type="button"
-                  disabled={!canEditNote || charCount > 0}
-                  onClick={() => commitSections(emptyProgressSoapSections())}
-                  style={off(GHOST_BTN, !canEditNote || charCount > 0)}
+                  data-testid="inp-prov-1b-template-blank"
+                  disabled={!canEditNote}
+                  onClick={() => applyTemplate(emptyProgressSoapSections())}
+                  style={off(GHOST_BTN, !canEditNote)}
                 >
-                  {t(`${I18N}.templates.progressSoap`)}
+                  {t(`${I18N}.templates.blankSoap`)}
                 </button>
-                <p style={{ margin: 0, ...META }}>{t(`${I18N}.templates.applied`)}</p>
+                <button
+                  type="button"
+                  data-testid="inp-prov-1b-template-standard-daily"
+                  disabled={!canEditNote}
+                  onClick={() => applyTemplate(standardDailyTemplate(french))}
+                  style={off(GHOST_BTN, !canEditNote)}
+                >
+                  {t(`${I18N}.templates.standardDaily`)}
+                </button>
               </div>
             ) : null}
 
             {noteType === "PROGRESS" && centerTab === "smartPhrases" ? (
               <div data-testid="inp-prov-1b-smart-phrases" style={{ display: "grid", gap: 6 }}>
                 <h3 style={CARD_TITLE}>{t(`${I18N}.smartPhrases.title`)}</h3>
-                <p style={{ margin: 0, ...META }}>{t(`${I18N}.smartPhrases.empty`)}</p>
+                <p style={{ margin: 0, ...META }}>{t(`${I18N}.smartPhrases.subtitle`)}</p>
+                <p style={{ margin: 0, ...META }}>{t(`${I18N}.smartPhrases.appendHint`)}</p>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
                   {PLAN_STICKY_OPTIONS.map((option) => {
                     const display = french ? option.displayFr : option.display;
@@ -1135,31 +1385,45 @@ export function InpatientProviderDocumentationWorkspaceInpProv1b({
                     ))}
                   </dl>
                 ) : null}
-                {resultsLink}
+                {flowsheetResultsLink}
               </div>
             ) : null}
 
             {noteType === "PROGRESS" && centerTab === "dictate" ? (
-              <div data-testid="inp-prov-1b-dictate" style={{ display: "grid", gap: 6 }}>
+              <div data-testid="inp-prov-1b-dictate" style={{ display: "grid", gap: 8 }}>
                 <p style={{ margin: 0, ...META }}>
-                  {t(`${I18N}.dictate.target`).replace("{section}", t(`${I18N}.soap.${focusedSection}`))}
+                  {t(`${I18N}.dictate.currentTarget`).replace(
+                    "{section}",
+                    t(`${I18N}.soap.${focusedSection}`)
+                  )}
                 </p>
-                <p style={{ margin: 0, ...META }}>{t(`${I18N}.dictate.focusCopy`)}</p>
-                <button
-                  type="button"
-                  data-testid="inp-prov-1b-dictate-focus"
-                  disabled={!canEditNote}
-                  onClick={focusSectionForDictation}
-                  style={off(GHOST_BTN, !canEditNote)}
-                >
-                  {t(`${I18N}.dictate.focusAction`)}
-                </button>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
+                  {PROGRESS_SOAP_SECTION_KEYS.map((key) => (
+                    <button
+                      key={key}
+                      type="button"
+                      data-testid={`inp-prov-1b-dictate-target-${key}`}
+                      disabled={!canEditNote}
+                      onClick={() => focusSoapSection(key)}
+                      style={off(
+                        {
+                          ...GHOST_BTN,
+                          borderColor: focusedSection === key ? "#93c5fd" : "#e2e8f0",
+                          background: focusedSection === key ? "#eff6ff" : "#fff",
+                          color: focusedSection === key ? "#1d4ed8" : "#334155",
+                        },
+                        !canEditNote
+                      )}
+                    >
+                      {t(`${I18N}.dictate.targetAction`).replace("{section}", t(`${I18N}.soap.${key}`))}
+                    </button>
+                  ))}
+                </div>
               </div>
             ) : null}
 
             {noteType === "HP" ? (
-              <div data-testid="inp-prov-1b-hp-host" style={{ display: "grid", gap: 6 }}>
-                <p style={{ margin: 0, ...META }}>{t(`${I18N}.hpHint`)}</p>
+              <div data-testid="inp-prov-1b-hp-host" style={{ display: "grid", gap: 8 }}>
                 <InpatientProviderWorkspacePanel
                   mode="historyPhysical"
                   encounterId={encounterId}
@@ -1175,165 +1439,210 @@ export function InpatientProviderDocumentationWorkspaceInpProv1b({
         </section>
 
         <div style={{ display: "grid", gap: 10 }}>
-          <PanelCard
-            testId="inp-prov-1b-smart-assist"
-            panelRef={assistRef}
-            title={t(`${I18N}.smartAssist.title`)}
-            action={
-              <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                <span
-                  style={{
-                    padding: "1px 6px",
-                    borderRadius: 9999,
-                    background: "#eff6ff",
-                    border: "1px solid #bfdbfe",
-                    color: "#1d4ed8",
-                    fontSize: 9,
-                    fontWeight: 700,
-                  }}
-                >
-                  {t(`${I18N}.smartAssist.beta`)}
-                </span>
-                <button
-                  type="button"
-                  data-testid="inp-prov-1b-assist-regenerate"
-                  onClick={() => void loadWorkspace()}
-                  style={GHOST_BTN}
-                >
-                  {t(`${I18N}.smartAssist.regenerate`)}
-                </button>
-              </span>
-            }
-          >
-            <div role="tablist" style={{ display: "flex", gap: 4, margin: "6px 0" }}>
-              {(["suggestions", "review"] as const).map((tab) => (
+          <section ref={assistRef} style={{ ...CARD, padding: 0 }}>
+            <div
+              role="tablist"
+              style={{
+                display: "flex",
+                gap: 4,
+                padding: "6px 10px",
+                borderBottom: "1px solid #e2e8f0",
+              }}
+            >
+              {(["smartAssist", "patientContext"] as const).map((tab) => (
                 <button
                   key={tab}
                   type="button"
                   role="tab"
-                  aria-selected={assistTab === tab}
-                  data-testid={`inp-prov-1b-assist-tab-${tab}`}
-                  onClick={() => setAssistTab(tab)}
-                  style={tabStyle(assistTab === tab)}
+                  aria-selected={rightTab === tab}
+                  data-testid={`inp-prov-1b-right-tab-${tab}`}
+                  onClick={() => setRightTab(tab)}
+                  style={tabStyle(rightTab === tab)}
                 >
-                  {t(`${I18N}.smartAssist.${tab}`)}
+                  {t(`${I18N}.rightTabs.${tab}`)}
                 </button>
               ))}
             </div>
-            {assistTab === "suggestions" ? (
-              <ul style={{ margin: 0, padding: 0, listStyle: "none", display: "grid", gap: 6 }}>
-                {suggestions.length === 0 ? <li style={META}>{t(`${I18N}.smartAssist.empty`)}</li> : null}
-                {suggestions.map((suggestion) => (
-                  <li
-                    key={suggestion.id}
-                    style={{
-                      border: "1px solid #e2e8f0",
-                      borderRadius: 10,
-                      padding: "6px 8px",
-                      background: "#f8fafc",
-                    }}
-                  >
-                    <span style={{ display: "block", fontSize: 11, fontWeight: 700, color: "#0f172a" }}>
-                      {suggestion.title}
+
+            {rightTab === "smartAssist" ? (
+              <div data-testid="inp-prov-1b-smart-assist" style={{ padding: "8px 10px" }}>
+                <div style={{ ...ROW_BETWEEN, marginBottom: 6 }}>
+                  <h3 style={CARD_TITLE}>{t(`${I18N}.smartAssist.title`)}</h3>
+                  <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                    <span
+                      style={{
+                        padding: "1px 6px",
+                        borderRadius: 9999,
+                        background: "#eff6ff",
+                        border: "1px solid #bfdbfe",
+                        color: "#1d4ed8",
+                        fontSize: 9,
+                        fontWeight: 700,
+                      }}
+                    >
+                      {t(`${I18N}.smartAssist.beta`)}
                     </span>
-                    <span style={{ ...META, display: "block" }}>{suggestion.rationale}</span>
-                    {suggestion.insertText.trim() ? (
-                      <div style={{ display: "flex", gap: 4, marginTop: 4 }}>
-                        <button
-                          type="button"
-                          data-testid={`inp-prov-1b-assist-insert-${suggestion.id}`}
-                          disabled={!canEditNote}
-                          onClick={() => insertSuggestion(suggestion)}
-                          style={off(GHOST_BTN, !canEditNote)}
-                        >
-                          {t(`${I18N}.smartAssist.insert`)}
-                        </button>
-                        <button
-                          type="button"
-                          data-testid={`inp-prov-1b-assist-preview-${suggestion.id}`}
-                          onClick={() => setPreviewText(suggestion.insertText)}
-                          style={GHOST_BTN}
-                        >
-                          {t(`${I18N}.smartAssist.preview`)}
-                        </button>
-                      </div>
-                    ) : null}
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <ul style={{ margin: 0, paddingLeft: 16, display: "grid", gap: 4 }}>
-                {reviewItems.length === 0 ? (
-                  <li style={META}>{t(`${I18N}.smartAssist.reviewEmpty`)}</li>
-                ) : null}
-                {reviewItems.map((item) => (
-                  <li
-                    key={item.id}
-                    data-review-code={item.code}
-                    style={{ fontSize: 11, color: item.severity === "warn" ? "#92400e" : "#475569" }}
-                  >
-                    {item.message}
-                  </li>
-                ))}
-              </ul>
-            )}
-          </PanelCard>
-
-          <PanelCard
-            testId="inp-prov-1b-patient-context"
-            title={t(`${I18N}.patientContext.title`)}
-            action={
-              onNavigateSection ? (
-                <button
-                  type="button"
-                  data-testid="inp-prov-1b-context-view-more"
-                  onClick={() => onNavigateSection("summary")}
-                  style={GHOST_BTN}
-                >
-                  {t(`${I18N}.patientContext.viewMore`)}
-                </button>
-              ) : null
-            }
-          >
-            <dl style={{ margin: "6px 0 0", display: "grid", gap: 3, fontSize: 11 }}>
-              {(
-                [
-                  [`${I18N}.patientContext.allergies`, allergiesLine],
-                  [`${I18N}.patientContext.codeStatus`, synthesis?.overview?.codeStatus],
-                  [`${I18N}.patientContext.isolation`, synthesis?.overview?.isolation],
-                  [`${I18N}.patientContext.attending`, synthesis?.overview?.attending],
-                  [`${I18N}.patientContext.primaryDx`, synthesis?.overview?.primaryDiagnosis],
-                ] as Array<[string, string | null | undefined]>
-              ).map(([labelKey, value]) => (
-                <div key={labelKey} style={{ display: "flex", gap: 6 }}>
-                  <dt style={{ margin: 0, color: "#64748b", minWidth: 84 }}>{t(labelKey)}</dt>
-                  <dd style={{ margin: 0, color: "#0f172a", fontWeight: 600 }}>
-                    {String(value ?? "").trim() || t(`${I18N}.patientContext.notDocumented`)}
-                  </dd>
+                    <button
+                      type="button"
+                      data-testid="inp-prov-1b-assist-regenerate"
+                      onClick={() => void loadWorkspace()}
+                      style={GHOST_BTN}
+                    >
+                      {t(`${I18N}.smartAssist.regenerate`)}
+                    </button>
+                  </span>
                 </div>
-              ))}
-            </dl>
-          </PanelCard>
+                <div role="tablist" style={{ display: "flex", gap: 4, marginBottom: 6 }}>
+                  {(["suggestions", "review"] as const).map((tab) => (
+                    <button
+                      key={tab}
+                      type="button"
+                      role="tab"
+                      aria-selected={assistTab === tab}
+                      data-testid={`inp-prov-1b-assist-tab-${tab}`}
+                      onClick={() => setAssistTab(tab)}
+                      style={tabStyle(assistTab === tab)}
+                    >
+                      {t(`${I18N}.smartAssist.${tab}`)}
+                    </button>
+                  ))}
+                </div>
+                {assistTab === "suggestions" ? (
+                  <ul style={{ margin: 0, padding: 0, listStyle: "none", display: "grid", gap: 6 }}>
+                    {suggestions.length === 0 ? (
+                      <li style={META}>{t(`${I18N}.smartAssist.empty`)}</li>
+                    ) : null}
+                    {suggestions.map((suggestion) => (
+                      <li
+                        key={suggestion.id}
+                        style={{
+                          border: "1px solid #e2e8f0",
+                          borderRadius: 10,
+                          padding: "6px 8px",
+                          background: "#f8fafc",
+                        }}
+                      >
+                        <span
+                          style={{
+                            display: "inline-block",
+                            marginBottom: 4,
+                            padding: "1px 6px",
+                            borderRadius: 9999,
+                            background: "#eff6ff",
+                            border: "1px solid #bfdbfe",
+                            color: "#1d4ed8",
+                            fontSize: 9,
+                            fontWeight: 700,
+                          }}
+                        >
+                          {t(`${I18N}.smartAssist.kinds.${suggestion.kind}`)}
+                        </span>
+                        <span
+                          style={{ display: "block", fontSize: 11, fontWeight: 700, color: "#0f172a" }}
+                        >
+                          {suggestion.title}
+                        </span>
+                        <span style={{ ...META, display: "block" }}>{suggestion.rationale}</span>
+                        <div style={{ display: "flex", gap: 4, marginTop: 4 }}>
+                          <button
+                            type="button"
+                            data-testid={`inp-prov-1b-assist-preview-${suggestion.id}`}
+                            onClick={() => setPreviewText(suggestion.insertText)}
+                            style={GHOST_BTN}
+                          >
+                            {t(`${I18N}.smartAssist.preview`)}
+                          </button>
+                          {suggestion.insertText.trim() ? (
+                            <button
+                              type="button"
+                              data-testid={`inp-prov-1b-assist-insert-${suggestion.id}`}
+                              disabled={!canEditNote}
+                              onClick={() => insertSuggestion(suggestion)}
+                              style={off(GHOST_BTN, !canEditNote)}
+                            >
+                              {t(`${I18N}.smartAssist.insert`)}
+                            </button>
+                          ) : null}
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <ul style={{ margin: 0, paddingLeft: 16, display: "grid", gap: 4 }}>
+                    {reviewItems.length === 0 ? (
+                      <li style={META}>{t(`${I18N}.smartAssist.reviewEmpty`)}</li>
+                    ) : null}
+                    {reviewItems.map((item) => (
+                      <li
+                        key={item.id}
+                        data-review-code={item.code}
+                        style={{
+                          fontSize: 11,
+                          color: item.severity === "warn" ? "#92400e" : "#475569",
+                        }}
+                      >
+                        {item.message}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            ) : (
+              <div data-testid="inp-prov-1b-patient-context" style={{ padding: "8px 10px" }}>
+                <div style={ROW_BETWEEN}>
+                  <h3 style={CARD_TITLE}>{t(`${I18N}.patientContext.title`)}</h3>
+                  {onNavigateSection ? (
+                    <button
+                      type="button"
+                      data-testid="inp-prov-1b-context-view-more"
+                      onClick={() => onNavigateSection("summary")}
+                      style={GHOST_BTN}
+                    >
+                      {t(`${I18N}.patientContext.viewMore`)}
+                    </button>
+                  ) : null}
+                </div>
+                <dl style={{ margin: "6px 0 0", display: "grid", gap: 3, fontSize: 11 }}>
+                  {(
+                    [
+                      [`${I18N}.patientContext.allergies`, allergiesLine],
+                      [`${I18N}.patientContext.codeStatus`, synthesis?.overview?.codeStatus],
+                      [`${I18N}.patientContext.isolation`, synthesis?.overview?.isolation],
+                      [`${I18N}.patientContext.attending`, synthesis?.overview?.attending],
+                      [`${I18N}.patientContext.primaryDx`, synthesis?.overview?.primaryDiagnosis],
+                    ] as Array<[string, string | null | undefined]>
+                  ).map(([labelKey, value]) => (
+                    <div key={labelKey} style={{ display: "flex", gap: 6 }}>
+                      <dt style={{ margin: 0, color: "#64748b", minWidth: 84 }}>{t(labelKey)}</dt>
+                      <dd style={{ margin: 0, color: "#0f172a", fontWeight: 600 }}>
+                        {String(value ?? "").trim() || t(`${I18N}.patientContext.notDocumented`)}
+                      </dd>
+                    </div>
+                  ))}
+                </dl>
+              </div>
+            )}
+          </section>
 
-          <PanelCard
-            testId="inp-prov-1b-recent-labs"
-            title={t(`${I18N}.recentLabs.title`)}
-            action={resultsLink}
-          >
+          <PanelCard testId="inp-prov-1b-recent-labs" title={t(`${I18N}.recentLabs.title`)} action={resultsLink}>
             <ul style={{ margin: "6px 0 0", padding: 0, listStyle: "none", display: "grid", gap: 3 }}>
               {recentLabs.length === 0 ? <li style={META}>{t(`${I18N}.recentLabs.empty`)}</li> : null}
-              {recentLabs.map((row) => (
-                <li
-                  key={row.label}
-                  style={{ display: "flex", justifyContent: "space-between", fontSize: 11, gap: 6 }}
-                >
-                  <span style={{ color: "#475569" }}>{row.label}</span>
-                  <span style={{ color: "#0f172a", fontWeight: 600 }}>
-                    {row.value}
-                    {row.trend ? ` ${row.trend}` : ""}
-                  </span>
-                </li>
-              ))}
+              {recentLabs.map((row) => {
+                const hint = labAbnormalHint(row, t);
+                return (
+                  <li
+                    key={row.label}
+                    style={{ display: "flex", justifyContent: "space-between", fontSize: 11, gap: 6 }}
+                  >
+                    <span style={{ color: "#475569" }}>{row.label}</span>
+                    <span style={{ color: row.abnormal ? "#9a3412" : "#0f172a", fontWeight: 600 }}>
+                      {row.value}
+                      {row.trend ? ` ${row.trend}` : ""}
+                      {hint ? ` · ${hint}` : ""}
+                    </span>
+                  </li>
+                );
+              })}
             </ul>
           </PanelCard>
 
@@ -1353,15 +1662,21 @@ export function InpatientProviderDocumentationWorkspaceInpProv1b({
                 <li style={META}>{t(`${I18N}.recentNotes.empty`)}</li>
               ) : null}
               {hpSigned ? (
-                <li style={{ fontSize: 11, color: "#0f172a" }}>
-                  {t(`${I18N}.noteTypes.HP`)} · {t(`${I18N}.signed`)}
+                <li>
+                  <button
+                    type="button"
+                    onClick={() => void selectNote(HP_LIST_ID)}
+                    style={{ ...LINK_BTN, fontWeight: 600 }}
+                  >
+                    {t(`${I18N}.noteTypes.HP`)} · {t(`${I18N}.signed`)}
+                  </button>
                 </li>
               ) : null}
               {signedNotes.map((note) => (
                 <li key={note.noteId}>
                   <button
                     type="button"
-                    onClick={() => selectNote(note.noteId)}
+                    onClick={() => void selectNote(note.noteId)}
                     style={{ ...LINK_BTN, fontWeight: 600 }}
                   >
                     {t(`${I18N}.noteTypes.PROGRESS`)} · {note.serviceDate}
@@ -1376,7 +1691,7 @@ export function InpatientProviderDocumentationWorkspaceInpProv1b({
       <PanelCard
         testId="inp-prov-1b-encounter-orders"
         panelRef={ordersStripRef}
-        title={t(`${I18N}.encounterOrders.title`)}
+        title={`${t(`${I18N}.encounterOrders.title`)} · ${t(`${I18N}.encounterOrders.count`).replace("{n}", String(orderItemCount))}`}
         action={
           <button
             type="button"
@@ -1390,26 +1705,40 @@ export function InpatientProviderDocumentationWorkspaceInpProv1b({
         }
       >
         <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 6 }}>
-          {orders.length === 0 ? <span style={META}>{t(`${I18N}.encounterOrders.empty`)}</span> : null}
+          {orders.length === 0 ? (
+            <span style={META}>{t(`${I18N}.encounterOrders.empty`)}</span>
+          ) : null}
           {orders.flatMap((order) =>
-            order.items.map((item) => (
-              <article
-                key={item.id}
-                data-testid={`inp-prov-1b-order-card-${item.id}`}
-                style={{
-                  border: "1px solid #e2e8f0",
-                  borderRadius: 10,
-                  padding: "5px 8px",
-                  background: "#f8fafc",
-                  minWidth: 150,
-                }}
-              >
-                <span style={{ display: "block", fontSize: 11, fontWeight: 700, color: "#0f172a" }}>
-                  {item.displayLabel || item.catalogItemType}
-                </span>
-                <span style={{ ...META, display: "block" }}>{item.status}</span>
-              </article>
-            ))
+            order.items.map((item) => {
+              const metaParts = [
+                item.priority,
+                item.route,
+                item.frequencyCode || item.frequency,
+                item.strength || item.dose,
+                item.createdAt ? item.createdAt.slice(0, 10) : null,
+              ].filter(Boolean);
+              return (
+                <article
+                  key={item.id}
+                  data-testid={`inp-prov-1b-order-card-${item.id}`}
+                  style={{
+                    border: "1px solid #e2e8f0",
+                    borderRadius: 10,
+                    padding: "5px 8px",
+                    background: "#f8fafc",
+                    minWidth: 150,
+                  }}
+                >
+                  <span style={{ display: "block", fontSize: 11, fontWeight: 700, color: "#0f172a" }}>
+                    {item.displayLabel || item.catalogItemType}
+                  </span>
+                  <span style={{ ...META, display: "block" }}>{item.status}</span>
+                  {metaParts.length ? (
+                    <span style={{ ...META, display: "block" }}>{metaParts.join(" · ")}</span>
+                  ) : null}
+                </article>
+              );
+            })
           )}
         </div>
       </PanelCard>

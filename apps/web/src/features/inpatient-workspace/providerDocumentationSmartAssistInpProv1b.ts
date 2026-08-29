@@ -162,21 +162,43 @@ export function projectRecentLabsFromSynthesis(synthesis: SynthesisLite | null):
   value: string;
   trend: string;
   when: string | null;
+  abnormal: boolean;
+  direction: string;
 }> {
   const trending = synthesis?.laboratories?.trending ?? [];
   const abnormal = synthesis?.laboratories?.abnormal ?? [];
-  const rows = [...trending, ...abnormal.map((a) => ({ ...a, previous: null as string | null }))];
+  const abnormalLabels = new Set(
+    abnormal.map((a) => (a.label ?? "").trim()).filter(Boolean)
+  );
+  const rows = [
+    ...trending.map((r) => ({ ...r, fromAbnormal: false })),
+    ...abnormal.map((a) => ({
+      ...a,
+      previous: null as string | null,
+      fromAbnormal: true,
+    })),
+  ];
   const seen = new Set<string>();
-  const out: Array<{ label: string; value: string; trend: string; when: string | null }> = [];
+  const out: Array<{
+    label: string;
+    value: string;
+    trend: string;
+    when: string | null;
+    abnormal: boolean;
+    direction: string;
+  }> = [];
   for (const row of rows) {
     const label = (row.label ?? "").trim();
     if (!label || seen.has(label)) continue;
     seen.add(label);
+    const direction = String(row.direction ?? "").toUpperCase();
     out.push({
       label,
       value: (row.current ?? "").trim() || "—",
       trend: arrow(row.direction),
       when: null,
+      abnormal: row.fromAbnormal || abnormalLabels.has(label),
+      direction,
     });
     if (out.length >= 4) break;
   }

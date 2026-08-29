@@ -30,6 +30,11 @@ function read(rel: string): string {
 const workspace = read("InpatientProviderDocumentationWorkspaceInpProv1b.tsx");
 /** Source without the leading documentation block, for "must not render X" guards. */
 const workspaceBody = workspace.replace(/^[\s\S]*?\*\/\n/, "");
+const hpPanel = read("InpatientProviderWorkspacePanel.tsx");
+const dictationLabel = readFileSync(
+  join(webSrc, "components/clinical/DictationFieldLabel.tsx"),
+  "utf8"
+);
 
 function keyPaths(value: unknown, prefix = ""): string[] {
   if (!value || typeof value !== "object" || Array.isArray(value)) return [prefix];
@@ -42,12 +47,11 @@ describe("INP.PROV.1B workspace layout", () => {
   it("renders one workspace root with the three-column grid", () => {
     expect(workspace).toContain('data-testid="inp-prov-1b-workspace"');
     expect(workspace).toContain(
-      '"minmax(180px, 0.2fr) minmax(0, 1.15fr) minmax(220px, 0.55fr)"'
+      '"minmax(200px, 0.22fr) minmax(0, 1.1fr) minmax(240px, 0.58fr)"'
     );
   });
 
   it("mounts notes navigator, editor and right rail cards", () => {
-    // Right-rail / orders panels go through the local PanelCard shell, which forwards testId.
     expect(workspace).toContain("<section ref={panelRef} data-testid={testId} style={CARD}>");
     for (const testId of [
       "inp-prov-1b-notes-navigator",
@@ -59,9 +63,12 @@ describe("INP.PROV.1B workspace layout", () => {
       "inp-prov-1b-recent-labs",
       "inp-prov-1b-recent-notes",
       "inp-prov-1b-encounter-orders",
+      "inp-prov-1b-clock",
+      "inp-prov-1b-autosave",
     ]) {
       expect(workspace).toContain(`"${testId}"`);
     }
+    expect(workspace).toContain("data-testid={`inp-prov-1b-right-tab-${tab}`}");
   });
 
   it("keeps the H&P as a synthetic navigator row instead of a second note store", () => {
@@ -74,6 +81,7 @@ describe("INP.PROV.1B workspace layout", () => {
     expect(workspace).toContain('data-testid="inp-prov-1b-datetime"');
     expect(workspace).toContain('data-testid="inp-prov-1b-sign-save"');
     expect(workspace).toContain('data-testid="inp-prov-1b-save-draft"');
+    expect(workspace).toContain("subtitle");
   });
 
   it("offers only the two durable authoring note types", () => {
@@ -102,7 +110,6 @@ describe("INP.PROV.1B workspace layout", () => {
   it("does not duplicate the patient identity / MRN / live vitals header", () => {
     expect(workspaceBody).not.toMatch(/firstName|lastName|dateOfBirth/);
     expect(workspaceBody).not.toMatch(/\bmrn\b/i);
-    // Flowsheets projects synthesis vitals read-only; the live header stays in the chrome above.
     expect(workspaceBody).not.toMatch(/latestVitals|VitalsHistoryEntry|EnterpriseHospitalPatientHeader/);
     expect(workspaceBody).not.toContain("InpatientClinicalContextRail");
   });
@@ -152,6 +159,28 @@ describe("INP.PROV.1B SOAP + save behavior", () => {
     expect(workspace).toContain("persistProgressDraft(), 900");
   });
 
+  it("guards dirty note switches: save success allows navigate; save failure blocks switch", () => {
+    expect(workspace).toContain("guardDirtySwitch");
+    expect(workspace).toContain("const version = await persistProgressDraft()");
+    expect(workspace).toContain("if (version !== null && !dirtyRef.current) return true");
+    expect(workspace).toContain("return false");
+    expect(workspace).toContain("await guardDirtySwitch()");
+    // Failed save must not offer silent discard / confirm-to-leave.
+    expect(workspace).not.toContain("dirtySwitchConfirm");
+    expect(workspaceBody).not.toMatch(/window\.confirm\(t\(`\$\{I18N\}\.dirtySwitchConfirm`\)\)/);
+  });
+
+  it("Sign & Save persists draft before sign and aborts sign when save fails", () => {
+    expect(workspace).toContain("dirtyRef.current ? await persistProgressDraft() : expectedVersion");
+    expect(workspace).toContain("if (version === null) return");
+    expect(workspace).toContain("signProviderProgressNote");
+  });
+
+  it("disables New Note while a save/create is in flight", () => {
+    expect(workspace).toContain("if (!canAuthor || saveState === \"saving\") return");
+    expect(workspace).toContain("disabled={!canAuthor || busy}");
+  });
+
   it("round-trips an authored note through the encoder used by the workspace", () => {
     const sections = { ...emptyProgressSoapSections(), PLAN: "Continue current management." };
     expect(parseProgressNoteSoapText(serializeProgressNoteSoapText(sections))).toEqual(sections);
@@ -164,25 +193,42 @@ describe("INP.PROV.1B assistance is append-only and never automatic", () => {
     expect(workspace).not.toMatch(/dictate\.(listening|start|stop|unsupported)/);
     expect(workspace).not.toContain('data-testid="inp-prov-1b-dictate-start"');
     expect(workspace).not.toContain('data-testid="inp-prov-1b-dictate-stop"');
-    for (const key of ["listening", "start", "stop", "unsupported"]) {
+    expect(workspace).not.toContain('data-testid="inp-prov-1b-dictate-focus"');
+    for (const key of ["listening", "start", "stop", "unsupported", "focusCopy", "focusAction", "idle"]) {
       expect(inpatientProviderDocumentationInpProv1bEn.dictate).not.toHaveProperty(key);
       expect(inpatientProviderDocumentationInpProv1bFr.dictate).not.toHaveProperty(key);
     }
   });
 
-  it("keeps the Dragon focus affordance on every SOAP section", () => {
+  it("keeps a prominent Dragon mic affordance on every SOAP section", () => {
     expect(workspace).toContain("DictationFieldLabel");
     expect(workspace).toContain("dictationTargetId={`inp-prov-1b-soap-${key}`}");
     expect(workspace).toContain("id={`inp-prov-1b-soap-${key}`}");
     expect(workspace).toContain('data-dictation-ready={canEditNote ? "true" : undefined}');
+    expect(workspace).toContain("alignEnd");
+    expect(workspace).toContain("prominent");
+    expect(workspace).toContain("dictateInto.${key}");
+    expect(dictationLabel).toContain("MicrophoneGlyph");
+    expect(dictationLabel).toContain("alignEnd");
+    expect(dictationLabel).toContain("prominent");
+    expect(dictationLabel).toContain("data-testid={dictationTargetId ? `dictation-mic-${dictationTargetId}`");
   });
 
-  it("the Dictate tab only focuses the currently focused SOAP section", () => {
-    expect(workspace).toContain('data-testid="inp-prov-1b-dictate-focus"');
-    expect(workspace).toContain("focusDictationTarget(`inp-prov-1b-soap-${focusedRef.current}`)");
-    expect(workspace).toContain("document.getElementById(elementId)");
-    expect(workspace).toContain("dictate.focusCopy");
-    expect(workspace).toContain("dictate.focusAction");
+  it("the Dictate tab exposes four SOAP target buttons", () => {
+    expect(workspace).toContain("data-testid={`inp-prov-1b-dictate-target-${key}`}");
+    expect(workspace).toContain("focusSoapSection");
+    expect(workspace).toContain("focusDictationTarget(`inp-prov-1b-soap-${key}`)");
+    expect(workspace).toContain("dictate.currentTarget");
+    expect(workspace).toContain("dictate.targetAction");
+    expect(workspace).toContain("setSelectionRange");
+  });
+
+  it("H&P draft field exposes the same prominent dictation affordance", () => {
+    expect(hpPanel).toContain("DictationFieldLabel");
+    expect(hpPanel).toContain('dictationTargetId="inp-prov-hp-draft"');
+    expect(hpPanel).toContain('id="inp-prov-hp-draft"');
+    expect(hpPanel).toContain("alignEnd");
+    expect(hpPanel).toContain("prominent");
   });
 
   it("appends dictated and assisted text without overwriting authored sections", () => {
@@ -243,7 +289,6 @@ describe("INP.PROV.1B assistance is append-only and never automatic", () => {
     for (const suggestion of suggestions) {
       expect(suggestion.insertText.trim()).not.toBe("");
     }
-    // Empty-section completeness hints belong to Review, not to Suggestions.
     expect(suggestions.some((s) => s.id.startsWith("section-"))).toBe(false);
   });
 
@@ -260,6 +305,34 @@ describe("INP.PROV.1B assistance is append-only and never automatic", () => {
   it("recent labs projection stays empty without chart data (no seeded examples)", () => {
     expect(projectRecentLabsFromSynthesis(null)).toEqual([]);
     expect(workspace).not.toMatch(/Dupont|Jean |Doe|123456/);
+  });
+
+  it("recent labs projection marks abnormal rows for High/Low display", () => {
+    const rows = projectRecentLabsFromSynthesis({
+      laboratories: {
+        trending: [{ label: "WBC", current: "15.2", previous: "11.0", direction: "UP" }],
+        abnormal: [{ label: "WBC", current: "15.2", direction: "UP" }],
+      },
+    });
+    expect(rows[0]?.abnormal).toBe(true);
+    expect(rows[0]?.label).toBe("WBC");
+  });
+});
+
+describe("INP.PROV.1B templates and phrases", () => {
+  it("exposes blank and standard daily templates with overwrite confirmation", () => {
+    expect(workspace).toContain('data-testid="inp-prov-1b-template-blank"');
+    expect(workspace).toContain('data-testid="inp-prov-1b-template-standard-daily"');
+    expect(workspace).toContain("standardDailyTemplate");
+    expect(workspace).toContain("templates.overwriteConfirm");
+    expect(workspace).toContain("window.confirm(t(`${I18N}.templates.overwriteConfirm`))");
+    expect(workspace).toContain("applyTemplate(emptyProgressSoapSections())");
+  });
+
+  it("labels SmartPhrases as rapid phrases, not a durable personal library", () => {
+    expect(workspace).toContain("smartPhrases.subtitle");
+    expect(workspace).toContain("PLAN_STICKY_OPTIONS");
+    expect(inpatientProviderDocumentationInpProv1bEn.smartPhrases.subtitle).toMatch(/not a personal/i);
   });
 });
 
@@ -285,7 +358,6 @@ describe("INP.PROV.1B engine reuse", () => {
     expect(workspace).not.toContain("associatedOrders");
     expect(inpatientProviderDocumentationInpProv1bEn.encounterOrders.title).toBe("Encounter Orders");
     expect(inpatientProviderDocumentationInpProv1bFr.encounterOrders.title).not.toMatch(/associé/i);
-    // Creating an order through the enterprise composer refreshes the strip.
     expect(workspace).toContain("setOrdersRefresh((n) => n + 1)");
   });
 
@@ -295,7 +367,6 @@ describe("INP.PROV.1B engine reuse", () => {
     expect(workspace).toContain(
       '(bootstrapAllergies ?? "").trim() || (allergiesSummary ?? "").trim() || null'
     );
-    expect(workspace).toContain("patientContext.allergies`, allergiesLine");
   });
 
   it("projects Flowsheets from real synthesis vitals and intake/output", () => {
@@ -307,13 +378,7 @@ describe("INP.PROV.1B engine reuse", () => {
     }
     expect(workspace).toContain('data-testid="inp-prov-1b-flowsheets-vitals"');
     expect(workspace).toContain('data-testid="inp-prov-1b-flowsheets-io"');
-    // Empty data keeps the real surface with an empty state instead of removing the tab.
-    expect(workspace).toContain(
-      "const flowsheetsEmpty = flowsheetVitals.length === 0 && flowsheetIoRows.length === 0"
-    );
-    expect(inpatientProviderDocumentationInpProv1bEn.flowsheets.empty).toBe(
-      "No vitals or intake/output on this encounter."
-    );
+    expect(workspace).toContain("flowsheets.viewResults");
   });
 
   it("documents the closed-record projection boundary and never rewrites it", () => {
@@ -326,20 +391,15 @@ describe("INP.PROV.1B engine reuse", () => {
     expect(workspace).toContain("isProgressNoteFinal");
     expect(workspace).toContain("!isProgressNoteFinal(activeNote?.status)");
     expect(workspace).toContain("isProgressNoteFinal(note.status)) return null");
-    expect(workspace).toContain(
-      "notes.find((n) => !isProgressNoteFinal(n.status))"
-    );
-    expect(workspace).toContain(
-      "statusLabel: isProgressNoteFinal(note.status) ? t(`${I18N}.signed`) : t(`${I18N}.draft`)"
-    );
-    // AMENDED must not be treated as draft-editable via the old SIGNED|CORRECTED-only helper.
-    expect(workspace).not.toMatch(
-      /return s === "SIGNED" \|\| s === "CORRECTED"/
-    );
+    expect(workspace).toContain("notes.find((n) => !isProgressNoteFinal(n.status))");
+    expect(workspace).toContain("progressNoteStatusMeta");
+    expect(workspace).toContain("amended");
+    expect(workspace).toContain("corrected");
+    expect(workspace).not.toMatch(/return s === "SIGNED" \|\| s === "CORRECTED"/);
   });
 
   it("gates H&P Sign & Save with canAuthor defense-in-depth", () => {
-    expect(workspace).toContain("if (noteType === \"HP\")");
+    expect(workspace).toContain('if (noteType === "HP")');
     expect(workspace).toContain(
       "if (!canAuthor || isHpSignedStatus(doc?.hpDraft?.status) || saveState === \"saving\") return"
     );
