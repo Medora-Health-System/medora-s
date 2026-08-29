@@ -161,6 +161,9 @@ import {
   type ProviderDocumentAmendmentV1,
   resolveAuthoritativeEncounterServiceLine,
   projectHospitalHeaderVitalsLiteFromJson,
+  hydrateInpatientDischargeMedReconLine,
+  projectPostDischargeHomeMedicationsFromRecon,
+  PATIENT_CLINICAL_HISTORY_PROFILE_VERSION,
 } from "@medora/shared";
 import { PrismaService } from "../prisma/prisma.service";
 import { AuditService } from "../common/services/audit.service";
@@ -1870,6 +1873,14 @@ export class InpatientOperationsService {
     }
 
     let nextDischargeSummary: Prisma.InputJsonValue | undefined;
+    let medReconAudit:
+      | {
+          event: string;
+          markComplete: boolean;
+          medicationCount: number;
+          revision: number | null;
+        }
+      | undefined;
     if (patch.finalizeInpatientMedRecon) {
       const prevRoot =
         enc.dischargeSummaryJson &&
@@ -1896,15 +1907,74 @@ export class InpatientOperationsService {
           : Array.isArray(prevMed.lines) && (prevMed.lines as unknown[]).length > 0
             ? (prevMed.lines as Array<Record<string, unknown>>)
             : linesFromOps;
+      // Draft (markComplete === false) must not set finalizedAt.
+      // Omitted markComplete still finalizes (legacy completeMedRec shortcut).
       const markComplete = patch.finalizeInpatientMedRecon.markComplete !== false;
+      const priorRevision =
+        typeof prevMed.revision === "number" && Number.isFinite(prevMed.revision)
+          ? prevMed.revision
+          : 0;
+      const nextRevision = priorRevision + 1;
       prevRoot.inpatientMedRecon = {
         ...prevMed,
         schemaVersion: "INP.DIS.1A",
         lines,
-        finalizedAt: markComplete ? now : (prevMed.finalizedAt ?? null),
-        finalizedByUserId: markComplete ? actorUserId : (prevMed.finalizedByUserId ?? null),
+        revision: nextRevision,
+        finalizedAt: markComplete ? now : null,
+        finalizedByUserId: markComplete ? actorUserId : null,
       };
       nextDischargeSummary = prevRoot as Prisma.InputJsonValue;
+      medReconAudit = {
+        event: markComplete
+          ? "INPATIENT_MED_RECON_FINALIZED"
+          : "INPATIENT_MED_RECON_DRAFT_SAVED",
+        markComplete,
+        medicationCount: lines.length,
+        revision: nextRevision,
+      };
+
+      // Longitudinal home meds via existing Patient.clinicalHistoryProfileJson only.
+      // No new PatientMedication table — summary-based homeMedications section.
+      if (markComplete) {
+        const hydrated = lines
+          .map((raw) => hydrateInpatientDischargeMedReconLine(raw))
+          .filter((x): x is NonNullable<typeof x> => Boolean(x));
+        const projected = projectPostDischargeHomeMedicationsFromRecon(hydrated);
+        const patient = await this.prisma.patient.findFirst({
+          where: { id: enc.patientId, facilityId },
+          select: { id: true, clinicalHistoryProfileJson: true },
+        });
+        if (patient) {
+          const current = patientClinicalHistoryProfileFromJson(
+            patient.clinicalHistoryProfileJson
+          );
+          const profile = {
+            ...(current ?? {
+              version: PATIENT_CLINICAL_HISTORY_PROFILE_VERSION,
+              provenance: {},
+            }),
+            updatedAt: now,
+            updatedBy: actorUserId,
+            homeMedications: projected,
+            provenance: {
+              ...(current?.provenance ?? {}),
+              homeMedications: {
+                sourceEncounterId: enc.id,
+                sourceFacilityId: facilityId,
+                sourceType: "reconciled_update" as const,
+                lastReviewedAt: now,
+                reviewerId: actorUserId,
+              },
+            },
+          };
+          await this.prisma.patient.update({
+            where: { id: patient.id },
+            data: {
+              clinicalHistoryProfileJson: profile as unknown as Prisma.InputJsonValue,
+            },
+          });
+        }
+      }
     }
 
     const nextSummary = mergeInpatientClinicalOpsIntoAdmissionSummary(
@@ -1937,6 +2007,7 @@ export class InpatientOperationsService {
         event: "INPATIENT_CLINICAL_OPS_PATCHED",
         keys: Object.keys(patch),
         originModule: "inpatientClinicalOps",
+        ...(medReconAudit ? { medRecon: medReconAudit } : {}),
         ...(patch.setCodeStatus
           ? { codeStatus: { previous: previousCodeStatus, next: nextCodeStatus } }
           : {}),

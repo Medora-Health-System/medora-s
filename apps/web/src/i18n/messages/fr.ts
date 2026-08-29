@@ -14687,6 +14687,16 @@ export default {
       flag: "Indicateur",
       fallbackStudyLabel: "Examen",
     },
+    dischargeMedications: {
+      sectionTitle: "Médicaments de sortie",
+      medication: "Médicament",
+      relationship: {
+        NEW: "Nouveau",
+        CONTINUE: "Poursuivre",
+        CHANGE: "Modifier",
+        STOP: "Arrêter",
+      },
+    },
     patientDischargeInstructions: {
       sectionTitle: "Instructions structurées au patient",
       givenYes: "Consignes données au patient (documenté)",

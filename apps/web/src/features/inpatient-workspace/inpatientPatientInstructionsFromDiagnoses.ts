@@ -1,6 +1,10 @@
 /**
- * INP.DIS.1C — Generate inpatient HOME patient instructions from the enterprise ED
+ * INP.DIS.1C / 1G.1 — Generate inpatient HOME patient instructions from the enterprise ED
  * diagnosis → discharge template engine (no duplicate library).
+ *
+ * Diagnosis/medication narrative: buildProviderDischargeCardFromDiagnosis.
+ * Return precautions / follow-ups: extractSharedFieldsFromTemplate (same as ED shared planning),
+ * because applyProviderDischargeTemplateToCard does not copy returnPrecautions onto the card.
  */
 
 import {
@@ -10,8 +14,13 @@ import {
   type InpatientPatientInstructions1C,
   type InpatientProviderDischargeDiagnosis,
 } from "@medora/shared";
-import { buildProviderDischargeCardFromDiagnosis } from "@/features/emergency/providerDischargeTemplateRegistry";
 import {
+  buildProviderDischargeCardFromDiagnosis,
+  resolveProviderDischargeTemplateForDiagnosis,
+} from "@/features/emergency/providerDischargeTemplateRegistry";
+import { ensureGoldStandardReturnPrecautions } from "@/features/emergency/providerDischargeTemplateGoldStandard";
+import {
+  extractSharedFieldsFromTemplate,
   mergeDedupedFollowUpRows,
   mergeUniquePrecautionText,
 } from "@/features/emergency/providerDischargeSharedPlanningMerge";
@@ -64,9 +73,23 @@ export function generateInpatientPatientInstructionsFromDiagnoses(input: {
 
   diagnosisInstructions = primaryCard.diagnosisInstructions || primaryCard.description;
   medicationInstructions = primaryCard.medicationTreatment || primaryCard.treatment || "";
-  returnPrecautions = primaryCard.returnPrecautions || "";
-  activityInstructions = primaryCard.returnWorkSchool || "";
-  followUpRows = mergeDedupedFollowUpRows([], primaryCard.followUps ?? []);
+
+  const primaryResolved = resolveProviderDischargeTemplateForDiagnosis({
+    code: primary.code ?? "",
+    displayName: primary.description,
+  });
+  const primaryShared = extractSharedFieldsFromTemplate(
+    primaryResolved.template,
+    input.locale,
+    careSettingContext
+  );
+  returnPrecautions = ensureGoldStandardReturnPrecautions(
+    primaryShared.returnPrecautions || "",
+    input.locale,
+    careSettingContext
+  );
+  activityInstructions = primaryShared.returnWorkSchool || "";
+  followUpRows = mergeDedupedFollowUpRows([], primaryShared.defaultFollowUps ?? []);
 
   for (const dx of sorted.filter((d) => d.id !== primary.id)) {
     const card = buildProviderDischargeCardFromDiagnosis({
@@ -89,10 +112,30 @@ export function generateInpatientPatientInstructionsFromDiagnoses(input: {
         card.medicationTreatment || card.treatment || "",
       ]);
     }
-    if (card.returnPrecautions) {
-      returnPrecautions = mergeUniquePrecautionText(returnPrecautions, [card.returnPrecautions]);
+    const resolved = resolveProviderDischargeTemplateForDiagnosis({
+      code: dx.code ?? "",
+      displayName: dx.description,
+    });
+    const shared = extractSharedFieldsFromTemplate(
+      resolved.template,
+      input.locale,
+      careSettingContext
+    );
+    if (shared.returnPrecautions) {
+      returnPrecautions = mergeUniquePrecautionText(returnPrecautions, [
+        ensureGoldStandardReturnPrecautions(
+          shared.returnPrecautions,
+          input.locale,
+          careSettingContext
+        ),
+      ]);
     }
-    followUpRows = mergeDedupedFollowUpRows(followUpRows, card.followUps ?? []);
+    if (shared.returnWorkSchool) {
+      activityInstructions = mergeUniquePrecautionText(activityInstructions, [
+        shared.returnWorkSchool,
+      ]);
+    }
+    followUpRows = mergeDedupedFollowUpRows(followUpRows, shared.defaultFollowUps ?? []);
   }
 
   // Ensure care-setting adaptation even if cards already adapted
