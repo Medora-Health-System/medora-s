@@ -314,13 +314,30 @@ function labAbnormalHint(
   return null;
 }
 
-const CARD: CSSProperties = { ...MEDORA_CARD_SHELL, borderRadius: 12, padding: "10px 12px" };
+const CARD: CSSProperties = {
+  ...MEDORA_CARD_SHELL,
+  borderRadius: 12,
+  padding: "10px 12px",
+  width: "100%",
+  maxWidth: "100%",
+  minWidth: 0,
+  boxSizing: "border-box",
+};
 const CARD_TITLE: CSSProperties = { margin: 0, fontSize: 12, fontWeight: 700, color: "#0f172a" };
 const ROW_BETWEEN: CSSProperties = {
   display: "flex",
   alignItems: "center",
   justifyContent: "space-between",
   gap: 6,
+  flexWrap: "wrap",
+  minWidth: 0,
+};
+/** Prevent grid/flex children from expanding the chart beyond its container. */
+const CONTAIN: CSSProperties = {
+  width: "100%",
+  maxWidth: "100%",
+  minWidth: 0,
+  boxSizing: "border-box",
 };
 const META: CSSProperties = { fontSize: 11, color: "#64748b" };
 const GHOST_BTN: CSSProperties = {
@@ -950,17 +967,69 @@ export function InpatientProviderDocumentationWorkspaceInpProv1b({
 
   if (loading) return <p style={META}>{t("common.loading")}</p>;
 
+  const viewingSignedHp = noteType === "HP" && hpSigned;
+  const viewingFinalProgress =
+    noteType === "PROGRESS" && Boolean(activeNote && isProgressNoteFinal(activeNote.status));
+  const viewingFinalDocument = viewingSignedHp || viewingFinalProgress;
+  const signedAtDisplay = viewingSignedHp
+    ? String(doc?.hpDraft?.signedAt ?? "").trim()
+    : String(activeNote?.signedAt ?? "").trim();
+
   return (
-    <div data-testid="inp-prov-1b-workspace" style={{ display: "grid", gap: 10 }}>
+    <div
+      data-testid="inp-prov-1b-workspace"
+      style={{ display: "grid", gap: 10, ...CONTAIN, overflowX: "hidden" }}
+    >
+      <style>{`
+        [data-testid="inp-prov-1b-workspace"],
+        [data-testid="inp-prov-1b-main-grid"],
+        [data-testid="inp-prov-1b-notes-navigator"],
+        [data-testid="inp-prov-1b-editor"],
+        [data-testid="inp-prov-1b-right-rail"],
+        [data-testid="inp-prov-1b-hp-host"] {
+          width: 100%;
+          max-width: 100%;
+          min-width: 0;
+          box-sizing: border-box;
+        }
+        [data-testid="inp-prov-1b-main-grid"] {
+          display: grid;
+          grid-template-columns: minmax(180px, 220px) minmax(0, 1fr) minmax(260px, 300px);
+          gap: 10px;
+          align-items: start;
+        }
+        @media (max-width: 1099px) {
+          [data-testid="inp-prov-1b-main-grid"] {
+            grid-template-columns: minmax(160px, 180px) minmax(0, 1fr) !important;
+          }
+          [data-testid="inp-prov-1b-right-rail"] {
+            grid-column: 1 / -1;
+          }
+        }
+        @media (max-width: 799px) {
+          [data-testid="inp-prov-1b-main-grid"] {
+            grid-template-columns: minmax(0, 1fr) !important;
+          }
+        }
+      `}</style>
       <header style={{ ...CARD, display: "grid", gap: 8 }}>
         <div style={ROW_BETWEEN}>
-          <div>
+          <div style={{ ...CONTAIN, flex: "1 1 160px" }}>
             <h2 style={{ margin: 0, fontSize: 14, fontWeight: 700, color: "#0f172a" }}>
               {t(`${I18N}.title`)}
             </h2>
             <p style={{ margin: "2px 0 0", ...META }}>{t(`${I18N}.subtitle`)}</p>
           </div>
-          <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              flexWrap: "wrap",
+              gap: 8,
+              minWidth: 0,
+              maxWidth: "100%",
+            }}
+          >
             <span data-testid="inp-prov-1b-datetime" style={META}>
               {activeNote?.serviceDate || todayIso}
             </span>
@@ -988,37 +1057,70 @@ export function InpatientProviderDocumentationWorkspaceInpProv1b({
                 ))}
               </select>
             </label>
-            <button
-              type="button"
-              data-testid="inp-prov-1b-sign-save"
-              disabled={!canSign || busy}
-              onClick={() => void signNote()}
-              style={off(PRIMARY_BTN, !canSign || busy)}
-            >
-              {busy ? t(`${I18N}.signing`) : t(`${I18N}.signSave`)}
-            </button>
-            <button
-              type="button"
-              data-testid="inp-prov-1b-save-draft"
-              disabled={!canEditNote || busy}
-              onClick={() => void persistProgressDraft()}
-              style={off({ ...GHOST_BTN, padding: "6px 12px", fontSize: 12 }, !canEditNote || busy)}
-            >
-              {t(`${I18N}.saveDraft`)}
-            </button>
-            {autosaveLabel ? (
+            {viewingFinalDocument ? (
               <span
-                data-testid="inp-prov-1b-autosave"
+                data-testid="inp-prov-1b-signed-status"
+                role="status"
                 style={{
-                  ...META,
-                  color: saveState === "failed" ? "#b91c1c" : "#64748b",
-                  fontWeight: saveState === "failed" ? 700 : 400,
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 6,
+                  padding: "4px 10px",
+                  borderRadius: 9999,
+                  background: "#ecfdf5",
+                  border: "1px solid #6ee7b7",
+                  color: "#047857",
+                  fontSize: 11,
+                  fontWeight: 700,
                 }}
-                aria-live="polite"
               >
-                {autosaveLabel}
+                {t(`${I18N}.signed`)}
+                {signedAtDisplay ? (
+                  <span style={{ fontWeight: 500, color: "#64748b" }}>
+                    {signedAtDisplay.slice(0, 16).replace("T", " ")}
+                  </span>
+                ) : null}
               </span>
-            ) : null}
+            ) : (
+              <>
+                <button
+                  type="button"
+                  data-testid="inp-prov-1b-sign-save"
+                  disabled={!canSign || busy}
+                  onClick={() => void signNote()}
+                  style={off(PRIMARY_BTN, !canSign || busy)}
+                >
+                  {busy ? t(`${I18N}.signing`) : t(`${I18N}.signSave`)}
+                </button>
+                {noteType === "PROGRESS" ? (
+                  <button
+                    type="button"
+                    data-testid="inp-prov-1b-save-draft"
+                    disabled={!canEditNote || busy}
+                    onClick={() => void persistProgressDraft()}
+                    style={off(
+                      { ...GHOST_BTN, padding: "6px 12px", fontSize: 12 },
+                      !canEditNote || busy
+                    )}
+                  >
+                    {t(`${I18N}.saveDraft`)}
+                  </button>
+                ) : null}
+                {autosaveLabel ? (
+                  <span
+                    data-testid="inp-prov-1b-autosave"
+                    style={{
+                      ...META,
+                      color: saveState === "failed" ? "#b91c1c" : "#64748b",
+                      fontWeight: saveState === "failed" ? 700 : 400,
+                    }}
+                    aria-live="polite"
+                  >
+                    {autosaveLabel}
+                  </span>
+                ) : null}
+              </>
+            )}
           </div>
         </div>
         {!canAuthor ? (
@@ -1042,15 +1144,11 @@ export function InpatientProviderDocumentationWorkspaceInpProv1b({
         ) : null}
       </header>
 
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "minmax(200px, 0.22fr) minmax(0, 1.1fr) minmax(240px, 0.58fr)",
-          gap: 10,
-          alignItems: "start",
-        }}
-      >
-        <aside data-testid="inp-prov-1b-notes-navigator" style={{ ...CARD, padding: 0 }}>
+      <div data-testid="inp-prov-1b-main-grid" style={CONTAIN}>
+        <aside
+          data-testid="inp-prov-1b-notes-navigator"
+          style={{ ...CARD, padding: 0, ...CONTAIN }}
+        >
           <div style={{ ...ROW_BETWEEN, padding: "8px 10px", borderBottom: "1px solid #e2e8f0" }}>
             <h3 style={CARD_TITLE}>{t(`${I18N}.notes`)}</h3>
             <button
@@ -1126,7 +1224,7 @@ export function InpatientProviderDocumentationWorkspaceInpProv1b({
           ) : null}
         </aside>
 
-        <section data-testid="inp-prov-1b-editor" style={{ ...CARD, padding: 0 }}>
+        <section data-testid="inp-prov-1b-editor" style={{ ...CARD, padding: 0, ...CONTAIN }}>
           <div
             role="tablist"
             aria-label={t(`${I18N}.title`)}
@@ -1459,7 +1557,7 @@ export function InpatientProviderDocumentationWorkspaceInpProv1b({
             ) : null}
 
             {noteType === "HP" ? (
-              <div data-testid="inp-prov-1b-hp-host" style={{ display: "grid", gap: 8 }}>
+              <div data-testid="inp-prov-1b-hp-host" style={{ display: "grid", gap: 8, ...CONTAIN }}>
                 <InpatientProviderWorkspacePanel
                   mode="historyPhysical"
                   encounterId={encounterId}
@@ -1480,8 +1578,8 @@ export function InpatientProviderDocumentationWorkspaceInpProv1b({
           </div>
         </section>
 
-        <div style={{ display: "grid", gap: 10 }}>
-          <section ref={assistRef} style={{ ...CARD, padding: 0 }}>
+        <div data-testid="inp-prov-1b-right-rail" style={{ display: "grid", gap: 10, ...CONTAIN }}>
+          <section ref={assistRef} style={{ ...CARD, padding: 0, ...CONTAIN }}>
             <div
               role="tablist"
               style={{
@@ -1562,6 +1660,10 @@ export function InpatientProviderDocumentationWorkspaceInpProv1b({
                           borderRadius: 10,
                           padding: "6px 8px",
                           background: "#f8fafc",
+                          minWidth: 0,
+                          maxWidth: "100%",
+                          boxSizing: "border-box",
+                          overflowWrap: "anywhere",
                         }}
                       >
                         <span
@@ -1772,7 +1874,15 @@ export function InpatientProviderDocumentationWorkspaceInpProv1b({
           </button>
         }
       >
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 6 }}>
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 180px), 1fr))",
+            gap: 6,
+            marginTop: 6,
+            ...CONTAIN,
+          }}
+        >
           {orders.length === 0 ? (
             <span style={META}>{t(`${I18N}.encounterOrders.empty`)}</span>
           ) : null}
@@ -1794,7 +1904,10 @@ export function InpatientProviderDocumentationWorkspaceInpProv1b({
                     borderRadius: 10,
                     padding: "5px 8px",
                     background: "#f8fafc",
-                    minWidth: 150,
+                    minWidth: 0,
+                    maxWidth: "100%",
+                    boxSizing: "border-box",
+                    overflowWrap: "anywhere",
                   }}
                 >
                   <span style={{ display: "block", fontSize: 11, fontWeight: 700, color: "#0f172a" }}>
