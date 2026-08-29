@@ -47,17 +47,19 @@ describe("D4A.2.5 inpatient lifecycle + nursing admission UI contracts", () => {
     expect(hospitalAdmissionD4a25En.lifecycle.voidEncounter).not.toMatch(/Delete patient/i);
   });
 
-  it("API client exposes lifecycle endpoints without hard delete", () => {
+  it("API client exposes lifecycle endpoints without hard delete or legacy discharge bypass", () => {
     const api = readFileSync(join(__dirname, "inpatientOperationsApi.ts"), "utf8");
     expect(api).toContain("lifecycle/edit-admission");
     expect(api).toContain("lifecycle/transfer-bed");
-    expect(api).toContain("lifecycle/discharge");
+    expect(api).not.toContain("lifecycle/discharge");
+    expect(api).not.toContain("dischargeInpatientEncounter");
+    expect(api).toContain("executeInpatientFinalDischarge");
     expect(api).toContain("lifecycle/cancel-admission");
     expect(api).toContain("lifecycle/void-encounter");
     expect(api).not.toMatch(/hard-delete|deleteEncounter\(/i);
   });
 
-  it("controller registers governed lifecycle routes", () => {
+  it("controller registers governed lifecycle routes without public discharge bypass", () => {
     const ctrl = readFileSync(
       join(
         __dirname,
@@ -67,6 +69,7 @@ describe("D4A.2.5 inpatient lifecycle + nursing admission UI contracts", () => {
     );
     expect(ctrl).toContain('lifecycle/cancel-admission');
     expect(ctrl).toContain('lifecycle/void-encounter');
+    expect(ctrl).not.toContain('@Post("encounters/:encounterId/lifecycle/discharge")');
     expect(ctrl).toContain("@RequireRoles(RoleCode.ADMIN)");
   });
 });

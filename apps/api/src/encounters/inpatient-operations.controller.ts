@@ -532,38 +532,12 @@ export class InpatientOperationsController {
     );
   }
 
-  @Post("encounters/:encounterId/lifecycle/discharge")
-  @RequireRoles(RoleCode.PROVIDER, RoleCode.RN, RoleCode.ADMIN)
-  async discharge(
-    @Param("encounterId") encounterId: string,
-    @Body() body: Record<string, unknown>,
-    @Req() req: any
-  ) {
-    const disposition = String(body.disposition ?? "").trim();
-    if (!disposition) throw new BadRequestException("disposition is required");
-    return this.lifecycle.dischargeEncounter(
-      facilityIdFromReq(req),
-      encounterId,
-      userIdFromReq(req),
-      {
-        disposition,
-        dischargedAt: typeof body.dischargedAt === "string" ? body.dischargedAt : null,
-        condition: typeof body.condition === "string" ? body.condition : null,
-        destination: typeof body.destination === "string" ? body.destination : null,
-        responsibleProviderUserId:
-          typeof body.responsibleProviderUserId === "string"
-            ? body.responsibleProviderUserId
-            : null,
-        nursingDischargeComplete: body.nursingDischargeComplete === true,
-        instructionsStatus:
-          typeof body.instructionsStatus === "string" ? body.instructionsStatus : null,
-        medReconStatus: typeof body.medReconStatus === "string" ? body.medReconStatus : null,
-        followUpStatus: typeof body.followUpStatus === "string" ? body.followUpStatus : null,
-        note: typeof body.note === "string" ? body.note : null,
-      },
-      { ip: req.ip, userAgent: req.headers?.["user-agent"] }
-    );
-  }
+  /**
+   * INP.DIS.1F.3 — Legacy public discharge bypass retired.
+   * Inpatient encounter close must use POST …/inpatient-final-discharge (1E convergence).
+   * Do not reintroduce a route that calls InpatientLifecycleService.dischargeEncounter()
+   * directly from HTTP.
+   */
 
   @Post("encounters/:encounterId/lifecycle/cancel-admission")
   @RequireRoles(RoleCode.PROVIDER, RoleCode.ADMIN)

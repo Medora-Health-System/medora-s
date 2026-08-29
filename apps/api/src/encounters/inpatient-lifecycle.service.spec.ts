@@ -48,6 +48,9 @@ describe("InpatientLifecycleService D4A.2.5", () => {
             create: jest.fn().mockResolvedValue({ id: "lt-1" }),
             findFirst: jest.fn().mockResolvedValue(null),
           },
+          encounterClinicalEvent: {
+            create: jest.fn().mockResolvedValue({ id: "evt-1" }),
+          },
         })
       ),
     };
@@ -123,6 +126,84 @@ describe("InpatientLifecycleService D4A.2.5", () => {
     expect(closeArg.forceDischargedAt).toBe(true);
     expect(closeArg.clearRoomLabel).toBe(true);
     expect(closeArg.extraData.disposition).toBe("HOME");
+  });
+
+  it("discharge persists clinicalEventOnClose inside the close transaction", async () => {
+    const { svc, prisma } = build();
+    const clinicalEventCreate = jest.fn().mockResolvedValue({ id: "evt-final" });
+    prisma.$transaction.mockImplementation(async (cb: (tx: unknown) => Promise<unknown>) =>
+      cb({
+        encounter: {
+          updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+          findFirst: jest.fn().mockResolvedValue({ id: "enc-1" }),
+        },
+        encounterLifecycleTransition: {
+          create: jest.fn().mockResolvedValue({ id: "lt-1" }),
+          findFirst: jest.fn().mockResolvedValue(null),
+        },
+        encounterClinicalEvent: { create: clinicalEventCreate },
+      })
+    );
+
+    await svc.dischargeEncounter("fac-1", "enc-1", "rn-1", {
+      disposition: "ELOPED",
+      clinicalDispositionCode: "ELOPED",
+      dischargeStatus: "AMA",
+      clinicalEventOnClose: {
+        eventType: "DISCHARGE_SUMMARY_SAVED",
+        createdByUserId: "rn-1",
+        payloadJson: {
+          event: "INPATIENT_FINAL_DISCHARGE_COMPLETED",
+          clinicalDispositionCode: "ELOPED",
+          lifecycleStatus: "AMA",
+        },
+      },
+    });
+
+    expect(clinicalEventCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          encounterId: "enc-1",
+          eventType: "DISCHARGE_SUMMARY_SAVED",
+          payloadJson: expect.objectContaining({
+            clinicalDispositionCode: "ELOPED",
+            lifecycleStatus: "AMA",
+          }),
+        }),
+      })
+    );
+  });
+
+  it("discharge rolls back when final clinical event persistence fails", async () => {
+    const { svc, prisma, enterpriseLifecycle } = build();
+    const clinicalEventCreate = jest.fn().mockRejectedValue(new Error("event persistence failed"));
+    prisma.$transaction.mockImplementation(async (cb: (tx: unknown) => Promise<unknown>) =>
+      cb({
+        encounter: {
+          updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+          findFirst: jest.fn().mockResolvedValue({ id: "enc-1" }),
+        },
+        encounterLifecycleTransition: {
+          create: jest.fn().mockResolvedValue({ id: "lt-1" }),
+          findFirst: jest.fn().mockResolvedValue(null),
+        },
+        encounterClinicalEvent: { create: clinicalEventCreate },
+      })
+    );
+
+    await expect(
+      svc.dischargeEncounter("fac-1", "enc-1", "rn-1", {
+        disposition: "HOME",
+        clinicalEventOnClose: {
+          eventType: "DISCHARGE_SUMMARY_SAVED",
+          createdByUserId: "rn-1",
+          payloadJson: { event: "INPATIENT_FINAL_DISCHARGE_COMPLETED" },
+        },
+      })
+    ).rejects.toThrow("event persistence failed");
+
+    expect(enterpriseLifecycle.applyCloseTransition).toHaveBeenCalled();
+    expect(clinicalEventCreate).toHaveBeenCalled();
   });
 
   it("cancel admission retains record and rejects substantial clinical activity", async () => {

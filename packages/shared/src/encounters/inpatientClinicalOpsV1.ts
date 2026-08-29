@@ -82,6 +82,10 @@ export type InpatientClinicalOpsV1 = {
     workflowState: InpatientDischargeWorkflowState;
     transportation?: string | null;
     barriers?: string | null;
+    /** INP.DIS.1F — planning card extras (JSON only). */
+    homeHealth?: string | null;
+    specialNeedsEquipment?: string | null;
+    careTeamNotified?: boolean | null;
     updatedAt: string;
   } | null;
   medicationReconciliation?: Array<{

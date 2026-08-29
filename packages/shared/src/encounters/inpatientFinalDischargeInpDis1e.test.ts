@@ -5,11 +5,17 @@
 import { describe, expect, it } from "vitest";
 import {
   buildInpatientFinalDischargeRecord,
+  INPATIENT_FINAL_DISCHARGE_NURSING_REVISION_CONFLICT,
+  INPATIENT_FINAL_DISCHARGE_NURSING_REVISION_REQUIRED,
+  INPATIENT_FINAL_DISCHARGE_PROVIDER_REVISION_CONFLICT,
+  INPATIENT_FINAL_DISCHARGE_PROVIDER_REVISION_REQUIRED,
   isClinicallyEloped,
   mapDetailedDispositionToCoarseDischargeStatus,
   mergeInpatientFinalDischargeIntoDischargeSummary,
   projectInpatientFinalDischargeReadiness,
   resolveDetailedClinicalDisposition,
+  resolveFinalDischargeRevisionRequirements,
+  validateFinalDischargeRevisionPayload,
 } from "./inpatientFinalDischargeInpDis1e.js";
 import { emptyInpatientProviderDischarge } from "./inpatientProviderDischargeInpDis1b.js";
 import { emptyInpatientNursingDischarge } from "./inpatientNursingDischargeInpDis1d.js";
@@ -203,5 +209,80 @@ describe("INP.DIS.1E final discharge readiness", () => {
     expect(readiness.blockers.map((b) => b.code)).not.toContain(
       "MEDICATION_RECONCILIATION_INCOMPLETE"
     );
+  });
+});
+
+describe("INP.DIS.1E final discharge revision gate", () => {
+  it("requires expected revisions when provider/nursing documents exist", () => {
+    const summary = homeSummary();
+    const requirements = resolveFinalDischargeRevisionRequirements(summary);
+    expect(requirements.providerRevisionRequired).toBe(true);
+    expect(requirements.nursingRevisionRequired).toBe(true);
+    expect(requirements.currentProviderRevision).toBe(3);
+    expect(requirements.currentNursingRevision).toBe(2);
+
+    expect(
+      validateFinalDischargeRevisionPayload({ body: {}, requirements }).ok
+    ).toBe(false);
+    expect(
+      validateFinalDischargeRevisionPayload({ body: {}, requirements })
+    ).toMatchObject({
+      ok: false,
+      httpStatus: 400,
+      code: INPATIENT_FINAL_DISCHARGE_PROVIDER_REVISION_REQUIRED,
+    });
+
+    expect(
+      validateFinalDischargeRevisionPayload({
+        body: { expectedProviderRevision: 3 },
+        requirements,
+      })
+    ).toMatchObject({
+      ok: false,
+      httpStatus: 400,
+      code: INPATIENT_FINAL_DISCHARGE_NURSING_REVISION_REQUIRED,
+    });
+  });
+
+  it("rejects stale provider or nursing revisions with 409", () => {
+    const summary = homeSummary();
+    const requirements = resolveFinalDischargeRevisionRequirements(summary);
+
+    expect(
+      validateFinalDischargeRevisionPayload({
+        body: { expectedProviderRevision: 2, expectedNursingRevision: 2 },
+        requirements,
+      })
+    ).toMatchObject({
+      ok: false,
+      httpStatus: 409,
+      code: INPATIENT_FINAL_DISCHARGE_PROVIDER_REVISION_CONFLICT,
+    });
+
+    expect(
+      validateFinalDischargeRevisionPayload({
+        body: { expectedProviderRevision: 3, expectedNursingRevision: 1 },
+        requirements,
+      })
+    ).toMatchObject({
+      ok: false,
+      httpStatus: 409,
+      code: INPATIENT_FINAL_DISCHARGE_NURSING_REVISION_CONFLICT,
+    });
+  });
+
+  it("accepts current revisions from readiness", () => {
+    const summary = homeSummary();
+    const requirements = resolveFinalDischargeRevisionRequirements(summary);
+    expect(
+      validateFinalDischargeRevisionPayload({
+        body: { expectedProviderRevision: 3, expectedNursingRevision: 2 },
+        requirements,
+      })
+    ).toEqual({
+      ok: true,
+      providerRevision: 3,
+      nursingRevision: 2,
+    });
   });
 });

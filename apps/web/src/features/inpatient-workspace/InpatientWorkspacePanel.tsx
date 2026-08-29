@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useI18n } from "@/lib/i18n";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import {
@@ -10,11 +10,6 @@ import {
   INPATIENT_NURSING_ASSESSMENT_KINDS,
   INPATIENT_NOTE_KINDS,
   INPATIENT_TIMELINE_EVENT_KINDS,
-  extractDischargePlanningFromClinicalOps,
-  hasMeaningfulDischargeSummary,
-  resolveInpatientDischargeForDisplay,
-  synthesizeInpatientDischargeSummaryDraft,
-  type InpatientDischargePlanningContext,
   type InpatientWorkspaceRole,
   inpatientFacilityMedicationOrderMode,
 } from "@medora/shared";
@@ -22,13 +17,10 @@ import { EmergencyErOrdersPanel } from "@/features/emergency/EmergencyErOrdersPa
 import { EmergencyResultsPanel } from "@/features/emergency/EmergencyResultsPanel";
 import { EmergencyErNotesPanel } from "@/features/emergency/EmergencyErNotesPanel";
 import { MedicationAdministrationTab } from "@/components/encounters/MedicationAdministrationTab";
-import { printDischarge } from "@/components/encounters/DischargePrintLayout";
 import type { InpatientWorkspaceSection } from "./inpatientWorkspaceSections";
-import { apiFetch, asApiObject } from "@/lib/apiClient";
 import {
   isInpatientConsultsEnabledInBrowser,
   isInpatientDepartmentalOrdersEnabledInBrowser,
-  isInpatientDischargePlanningEnabledInBrowser,
   isInpatientDocumentationEnabledInBrowser,
   isInpatientMarEnabledInBrowser,
   isInpatientNursingEnabledInBrowser,
@@ -40,13 +32,9 @@ import { InpatientAdmissionClinicalShell } from "./InpatientAdmissionClinicalShe
 import { InpatientProviderWorkspacePanel } from "./InpatientProviderWorkspacePanel";
 import { InpatientEncounterMedicalRecordSummaryView } from "./InpatientEncounterMedicalRecordSummaryView";
 import { InpatientTechnicianTasksPanel } from "./InpatientTechnicianTasksPanel";
-import { fetchInpatientClinicalOps } from "@/features/hospital-care/inpatientOperationsApi";
 import { InpatientNursingAssessmentSection } from "./InpatientNursingAssessmentSection";
 import { EnterpriseInterdisciplinaryCarePlansD4b6 } from "@/features/clinical-documentation/EnterpriseInterdisciplinaryCarePlansD4b6";
-import { EnterpriseCaseManagementDischargePlanningD4b7 } from "@/features/clinical-documentation/EnterpriseCaseManagementDischargePlanningD4b7";
-import { InpatientProviderDischargeSection } from "./InpatientProviderDischargeSection";
-import { InpatientNursingDischargeSection } from "./InpatientNursingDischargeSection";
-import { InpatientFinalDischargeSection } from "./InpatientFinalDischargeSection";
+import { InpatientDischargeBoard } from "./InpatientDischargeBoard";
 import { EnterpriseProviderClinicalWorkspaceD4b8 } from "@/features/clinical-documentation/EnterpriseProviderClinicalWorkspaceD4b8";
 import { ClinicalAvailabilityBanner } from "./rapid-documentation/ClinicalRapidControls";
 import type { VitalsHistoryEntry } from "@/lib/encounterClinicalSafetyUi";
@@ -125,11 +113,8 @@ export function InpatientWorkspacePanel({
   isolation?: string[] | null;
   latestVitalsEntry?: VitalsHistoryEntry | null;
 }) {
-  const { t, language } = useI18n();
+  const { t } = useI18n();
   const { facilityId, roles, userId, facilityTimeZone } = useFacilityAndRoles();
-  const [dischargePlanningOps, setDischargePlanningOps] =
-    useState<InpatientDischargePlanningContext | null>(null);
-  const [dischargePlanningBarriers, setDischargePlanningBarriers] = useState<string | null>(null);
 
   useEffect(() => {
     if (section !== "medications") return;
@@ -141,35 +126,6 @@ export function InpatientWorkspacePanel({
   const docsLive = isInpatientDocumentationEnabledInBrowser();
   const nursingLive = isInpatientNursingEnabledInBrowser();
   const consultsLive = isInpatientConsultsEnabledInBrowser();
-  const dischargeLive = isInpatientDischargePlanningEnabledInBrowser();
-
-  useEffect(() => {
-    if (section !== "dischargePlanning" || !dischargeLive || !encounterId) {
-      setDischargePlanningOps(null);
-      setDischargePlanningBarriers(null);
-      return;
-    }
-    let cancelled = false;
-    void fetchInpatientClinicalOps(encounterId)
-      .then((payload) => {
-        if (cancelled) return;
-        const ops = payload.ops as Record<string, unknown>;
-        setDischargePlanningOps(extractDischargePlanningFromClinicalOps(ops));
-        const dp = ops.dischargePlanning as Record<string, unknown> | undefined;
-        setDischargePlanningBarriers(
-          typeof dp?.barriers === "string" ? dp.barriers : null
-        );
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setDischargePlanningOps(null);
-          setDischargePlanningBarriers(null);
-        }
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [section, dischargeLive, encounterId]);
   const canPrescribe =
     writersEnabled &&
     (workspaceRole === "PROVIDER" || workspaceRole === "CHART") &&
@@ -542,125 +498,17 @@ export function InpatientWorkspacePanel({
       }
       return (
         <div data-testid="inpatient-panel-discharge-live" style={{ display: "grid", gap: 12 }}>
-          <EnterpriseCaseManagementDischargePlanningD4b7
+          <InpatientDischargeBoard
             encounterId={encounterId}
-            patientId={encounter?.patient?.id ?? "unknown-patient"}
+            encounter={encounter}
+            roles={roles}
             facilityId={facilityId}
-            careSetting="INPATIENT"
-            roleCodes={roles}
-            legacyOps={
-              dischargePlanningOps
-                ? {
-                    workflowState: dischargePlanningOps.workflowState ?? null,
-                    destination: dischargePlanningOps.destination ?? null,
-                    anticipatedDischargeDate: dischargePlanningOps.anticipatedDischargeDate ?? null,
-                    barriers: dischargePlanningBarriers,
-                  }
-                : undefined
-            }
+            admittedAt={admittedAt}
+            onDischarged={() => {
+              void onRefetchEncounter();
+            }}
+            onRefetchEncounter={onRefetchEncounter}
           />
-          <InpatientProviderDischargeSection
-            encounterId={encounterId}
-            canAuthor={roles.includes("PROVIDER")}
-          />
-          <InpatientNursingDischargeSection
-            encounterId={encounterId}
-            canAuthor={roles.includes("RN")}
-          />
-          <InpatientFinalDischargeSection
-            encounterId={encounterId}
-            canExecute={
-              roles.includes("PROVIDER") || roles.includes("RN") || roles.includes("ADMIN")
-            }
-          />
-          {dischargeLive ? (
-            <>
-              <InpatientClinicalOpsPanel encounterId={encounterId} mode="discharge" />
-              <div style={{ marginTop: 12 }}>
-                <button
-                  type="button"
-                  data-testid="inpatient-print-discharge-summary"
-                  style={{
-                    padding: "8px 12px",
-                    borderRadius: 10,
-                    border: "1px solid #0f766e",
-                    background: "#f0fdfa",
-                    color: "#115e59",
-                    fontSize: 13,
-                    fontWeight: 700,
-                    cursor: "pointer",
-                  }}
-                  onClick={() => {
-                    void (async () => {
-                      try {
-                        const patient = encounter?.patient;
-                        const enc = asApiObject<{
-                          createdAt?: string;
-                          dischargeSummaryJson?: unknown;
-                          physicianAssigned?: {
-                            firstName?: string | null;
-                            lastName?: string | null;
-                          } | null;
-                        }>(
-                          await apiFetch(`/encounters/${encodeURIComponent(encounterId)}`, {
-                            facilityId: facilityId ?? undefined,
-                          }).catch(() => null)
-                        );
-                        const stored = enc?.dischargeSummaryJson ?? null;
-                        const fallbackDraft = !hasMeaningfulDischargeSummary(stored)
-                          ? synthesizeInpatientDischargeSummaryDraft({
-                              patientName: [patient?.firstName, patient?.lastName]
-                                .filter(Boolean)
-                                .join(" "),
-                              mrn: patient?.mrn,
-                              admissionDiagnosis,
-                              admittedAt,
-                              room,
-                              codeStatus,
-                              isolation,
-                              attendingName,
-                              assignedRnName,
-                              dischargeDestination: dischargePlanningOps?.destination ?? null,
-                              dischargeWorkflowState:
-                                dischargePlanningOps?.workflowState ?? null,
-                              language: language === "en" ? "en" : "fr",
-                            })
-                          : null;
-                        const dischargeSummaryJson = resolveInpatientDischargeForDisplay({
-                          stored,
-                          planning: dischargePlanningOps,
-                          fallbackDraft,
-                        });
-                        printDischarge({
-                          patient: {
-                            firstName: patient?.firstName ?? null,
-                            lastName: patient?.lastName ?? null,
-                            mrn: patient?.mrn ?? null,
-                            dob:
-                              patient?.dob instanceof Date
-                                ? patient.dob.toISOString()
-                                : (patient?.dob ?? null),
-                            sexAtBirth: patient?.sexAtBirth ?? null,
-                          },
-                          encounter: {
-                            createdAt: enc?.createdAt ?? admittedAt ?? new Date().toISOString(),
-                            dischargeSummaryJson,
-                            physicianAssigned: enc?.physicianAssigned ?? null,
-                          },
-                          primaryDiagnosis: admissionDiagnosis ?? null,
-                          language,
-                        });
-                      } catch {
-                        window.alert(t("inpatientHeaderNursingD4a33.discharge.printError"));
-                      }
-                    })();
-                  }}
-                >
-                  {t("inpatientHeaderNursingD4a33.discharge.printSummary")}
-                </button>
-              </div>
-            </>
-          ) : null}
         </div>
       );
     case "timeline":

@@ -7,14 +7,19 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 describe("INP.DIS.1E final discharge UI", () => {
-  it("mounts final discharge section and Discharge Patient CTA", () => {
-    const panel = readFileSync(join(__dirname, "InpatientWorkspacePanel.tsx"), "utf8");
-    expect(panel).toContain("InpatientFinalDischargeSection");
+  it("final discharge section retains Discharge Patient CTA and revision guards", () => {
     const section = readFileSync(join(__dirname, "InpatientFinalDischargeSection.tsx"), "utf8");
     expect(section).toContain("dischargePatient");
     expect(section).toContain("inpatient-final-discharge-execute");
+    expect(section).toContain("expectedProviderRevision: readiness.providerRevision");
+    expect(section).toContain("expectedNursingRevision: readiness.nursingRevision");
     expect(section).not.toContain("lifecycle convergence");
     expect(section).not.toContain("INP.DIS.1E");
+  });
+
+  it("INP.DIS.1F board mounts from workspace panel for discharge", () => {
+    const panel = readFileSync(join(__dirname, "InpatientWorkspacePanel.tsx"), "utf8");
+    expect(panel).toContain("InpatientDischargeBoard");
   });
 
   it("EN/FR final discharge labels", () => {

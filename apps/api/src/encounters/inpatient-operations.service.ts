@@ -1694,6 +1694,14 @@ export class InpatientOperationsService {
         workflowState?: string;
         transportation?: string | null;
         barriers?: string | null;
+        homeHealth?: string | null;
+        specialNeedsEquipment?: string | null;
+        careTeamNotified?: boolean | null;
+      };
+      /** INP.DIS.1F — finalize canonical inpatientMedRecon on dischargeSummaryJson. */
+      finalizeInpatientMedRecon?: {
+        lines?: Array<Record<string, unknown>>;
+        markComplete?: boolean;
       };
       setNursing?: {
         admissionAssessmentComplete?: boolean;
@@ -1809,19 +1817,30 @@ export class InpatientOperationsService {
       if (!(INPATIENT_DISCHARGE_WORKFLOW_STATES as readonly string[]).includes(wf)) {
         throw new BadRequestException("Invalid discharge workflow state");
       }
+      const prevPlan = ops.dischargePlanning;
       ops.dischargePlanning = {
         anticipatedDischargeDate:
           patch.setDischargePlanning.anticipatedDischargeDate ??
-          ops.dischargePlanning?.anticipatedDischargeDate ??
+          prevPlan?.anticipatedDischargeDate ??
           null,
         destination:
-          patch.setDischargePlanning.destination ?? ops.dischargePlanning?.destination ?? null,
+          patch.setDischargePlanning.destination ?? prevPlan?.destination ?? null,
         workflowState: wf as InpatientDischargeWorkflowState,
         transportation:
-          patch.setDischargePlanning.transportation ??
-          ops.dischargePlanning?.transportation ??
-          null,
-        barriers: patch.setDischargePlanning.barriers ?? ops.dischargePlanning?.barriers ?? null,
+          patch.setDischargePlanning.transportation ?? prevPlan?.transportation ?? null,
+        barriers: patch.setDischargePlanning.barriers ?? prevPlan?.barriers ?? null,
+        homeHealth:
+          patch.setDischargePlanning.homeHealth !== undefined
+            ? patch.setDischargePlanning.homeHealth
+            : (prevPlan?.homeHealth ?? null),
+        specialNeedsEquipment:
+          patch.setDischargePlanning.specialNeedsEquipment !== undefined
+            ? patch.setDischargePlanning.specialNeedsEquipment
+            : (prevPlan?.specialNeedsEquipment ?? null),
+        careTeamNotified:
+          patch.setDischargePlanning.careTeamNotified !== undefined
+            ? patch.setDischargePlanning.careTeamNotified
+            : (prevPlan?.careTeamNotified ?? null),
         updatedAt: now,
       };
     }
@@ -1850,6 +1869,44 @@ export class InpatientOperationsService {
       ];
     }
 
+    let nextDischargeSummary: Prisma.InputJsonValue | undefined;
+    if (patch.finalizeInpatientMedRecon) {
+      const prevRoot =
+        enc.dischargeSummaryJson &&
+        typeof enc.dischargeSummaryJson === "object" &&
+        !Array.isArray(enc.dischargeSummaryJson)
+          ? { ...(enc.dischargeSummaryJson as Record<string, unknown>) }
+          : {};
+      const prevMed =
+        prevRoot.inpatientMedRecon &&
+        typeof prevRoot.inpatientMedRecon === "object" &&
+        !Array.isArray(prevRoot.inpatientMedRecon)
+          ? { ...(prevRoot.inpatientMedRecon as Record<string, unknown>) }
+          : {};
+      const linesFromOps = (ops.medicationReconciliation ?? []).map((line) => ({
+        id: line.lineId,
+        sourceLabel: line.sourceLabel,
+        decision: line.decision,
+        reason: line.reason ?? null,
+      }));
+      const lines =
+        Array.isArray(patch.finalizeInpatientMedRecon.lines) &&
+        patch.finalizeInpatientMedRecon.lines.length > 0
+          ? patch.finalizeInpatientMedRecon.lines
+          : Array.isArray(prevMed.lines) && (prevMed.lines as unknown[]).length > 0
+            ? (prevMed.lines as Array<Record<string, unknown>>)
+            : linesFromOps;
+      const markComplete = patch.finalizeInpatientMedRecon.markComplete !== false;
+      prevRoot.inpatientMedRecon = {
+        ...prevMed,
+        schemaVersion: "INP.DIS.1A",
+        lines,
+        finalizedAt: markComplete ? now : (prevMed.finalizedAt ?? null),
+        finalizedByUserId: markComplete ? actorUserId : (prevMed.finalizedByUserId ?? null),
+      };
+      nextDischargeSummary = prevRoot as Prisma.InputJsonValue;
+    }
+
     const nextSummary = mergeInpatientClinicalOpsIntoAdmissionSummary(
       enc.admissionSummaryJson,
       ops
@@ -1859,6 +1916,9 @@ export class InpatientOperationsService {
       where: { id: enc.id },
       data: {
         admissionSummaryJson: nextSummary as Prisma.InputJsonValue,
+        ...(nextDischargeSummary !== undefined
+          ? { dischargeSummaryJson: nextDischargeSummary }
+          : {}),
         version: { increment: 1 },
       },
       select: { id: true },
@@ -3881,6 +3941,7 @@ export class InpatientOperationsService {
         type: true,
         status: true,
         admissionSummaryJson: true,
+        dischargeSummaryJson: true,
       },
     });
     if (!enc) throw new NotFoundException("Encounter not found");
