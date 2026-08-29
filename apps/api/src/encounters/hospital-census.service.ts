@@ -53,6 +53,7 @@ export class HospitalCensusService {
       status: String(e.status),
       billingClassification: e.billingClassification ?? null,
       admissionSummaryJson: e.admissionSummaryJson,
+      dischargeSummaryJson: (e as { dischargeSummaryJson?: unknown }).dischargeSummaryJson ?? null,
       admittedAt: e.admittedAt ?? null,
       createdAt: e.createdAt ?? null,
       roomLabel: e.roomLabel ?? null,

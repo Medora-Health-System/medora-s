@@ -43,6 +43,7 @@ export type HospitalCensusResponse = {
     criticalResults: number;
     los24hOrMore: number;
     readyDischarge: number;
+    dischargeOrders: number;
     awaitingBed: number;
   };
   diagnostics: Array<{ code: string; severity: string; detail: string }>;

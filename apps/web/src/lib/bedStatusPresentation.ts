@@ -14,7 +14,8 @@ export const BED_STATUS_PRESENTATION_COLORS: Record<
   CLEANING: { bg: "#fef3c7", text: "#92400e", border: "#fde68a" },
   RESERVED: { bg: "#f3e8ff", text: "#7e22ce", border: "#e9d5ff" },
   TRANSFER_PENDING: { bg: "#ccfbf1", text: "#0f766e", border: "#99f6e4" },
-  DISCHARGE_PENDING: { bg: "#f1f5f9", text: "#64748b", border: "#e2e8f0" },
+  /** Occupied + discharge order — stronger green than AVAILABLE pale mint; never reads as free. */
+  DISCHARGE_PENDING: { bg: "#f0fdf4", text: "#166534", border: "#16a34a" },
 };
 
 export function resolveBedStatusColor(status: BedOperationalStatus): string {

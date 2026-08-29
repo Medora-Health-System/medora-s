@@ -72,12 +72,12 @@ export function UnitBedBoard({ facilityId, unitCode, title }: Props) {
   const canAssignRoom = canAssignEncounterRoom(roles);
   const canManageBedStatus = canManageBedOperationalStatus(roles);
 
-  const refreshBoard = useCallback(async () => {
+  const refreshBoard = useCallback(async (opts?: { silent?: boolean }) => {
     if (!facilityId || !bedUnit) {
       setUnitView(null);
       return;
     }
-    setLoading(true);
+    if (!opts?.silent) setLoading(true);
     setError(null);
     try {
       const [board, census] = await Promise.all([
@@ -91,13 +91,21 @@ export function UnitBedBoard({ facilityId, unitCode, title }: Props) {
       setUnitView(null);
       setError(t("hospitalCareD3e6d.bedBoard.loadError"));
     } finally {
-      setLoading(false);
+      if (!opts?.silent) setLoading(false);
     }
   }, [facilityId, bedUnit, t]);
 
   useEffect(() => {
     void refreshBoard();
   }, [refreshBoard]);
+
+  useEffect(() => {
+    if (!facilityId || !bedUnit) return;
+    const id = window.setInterval(() => {
+      void refreshBoard({ silent: true });
+    }, 15_000);
+    return () => window.clearInterval(id);
+  }, [facilityId, bedUnit, refreshBoard]);
 
   const assignCandidates = useMemo((): BedBoardAssignCandidate[] => {
     if (!assignPickerBed || !facilityId) return [];

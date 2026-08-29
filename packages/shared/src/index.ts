@@ -170,6 +170,7 @@ export * from "./encounters/inpatientFinalDischargeInpDis1e.js";
 export * from "./encounters/inpatientDischargeBoardInpDis1f.js";
 export * from "./encounters/inpatientDispositionPrintInpDis1f2.js";
 export * from "./encounters/inpatientDischargeMedReconPreloadInpDis1g.js";
+export * from "./encounters/inpatientDischargeAwarenessInpDis1h.js";
 export {
   synthesizeInpatientDischargeSummaryDraft,
   shouldOverwriteDischargeSummaryWithSynthesis,

@@ -28,9 +28,15 @@ import {
   type HospitalBoardViewTab,
 } from "@/features/hospitalization/hospitalMyPatientsFilter";
 import { inpatientActiveWorkspacePath } from "./inpatientWorkspacePaths";
+import { InpatientDischargeAwarenessBadge } from "./InpatientDischargeAwarenessBadge";
+import { InpatientDischargeOrderNotifyBanner } from "./InpatientDischargeOrderNotifyBanner";
+import { inpatientDischargeAwarenessRowAccent } from "./inpatientDischargeAwarenessUi";
+
+const CENSUS_POLL_MS = 15_000;
 
 /**
  * D4A.2.6A / D4A.3.0 — My Patients hospital census with enterprise assignment filters.
+ * INP.DIS.1H — discharge awareness column + order notify.
  */
 export function ProviderCensusBoard() {
   const { t } = useI18n();
@@ -76,6 +82,15 @@ export function ProviderCensusBoard() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- reload closes over facilityId
   }, [t, ready, facilityId]);
+
+  useEffect(() => {
+    if (!ready || !facilityId?.trim()) return;
+    const id = window.setInterval(() => {
+      void reload().catch(() => undefined);
+    }, CENSUS_POLL_MS);
+    return () => window.clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- poll reload
+  }, [ready, facilityId]);
 
   const filterCtx = useMemo(
     () => ({
@@ -139,6 +154,11 @@ export function ProviderCensusBoard() {
       data-testid="provider-census-board"
       aria-label={t("enterpriseHospitalAssignmentD4a30.myPatients")}
     >
+      <InpatientDischargeOrderNotifyBanner
+        rows={rows}
+        currentUserId={userId}
+        roles={(roles ?? []) as string[]}
+      />
       <h2 style={{ margin: "0 0 8px", fontSize: 14, fontWeight: 700 }}>
         {t("enterpriseHospitalAssignmentD4a30.myPatients")}
       </h2>
@@ -219,6 +239,7 @@ export function ProviderCensusBoard() {
               <th style={{ padding: "4px" }}>{t("enterpriseHospitalAssignmentD4a30.provider")}</th>
               <th style={{ padding: "4px" }}>{t("enterpriseHospitalAssignmentD4a30.nurse")}</th>
               <th style={{ padding: "4px" }}>{t("enterpriseHospitalAssignmentD4a30.technician")}</th>
+              <th style={{ padding: "4px" }}>{t("inpatientDischargeAwarenessInpDis1h.columnStatus")}</th>
               <th style={{ padding: "4px" }}>{t("enterpriseHospitalAssignmentD4a30.actions")}</th>
             </tr>
           </thead>
@@ -227,8 +248,16 @@ export function ProviderCensusBoard() {
               const mineProvider = Boolean(userId && r.providerUserId === userId);
               const mineNurse = Boolean(userId && r.nurseUserId === userId);
               const mineTech = Boolean(userId && r.technicianUserId === userId);
+              const awareness = r.dischargeAwareness;
+              const rowAccent = awareness
+                ? inpatientDischargeAwarenessRowAccent(awareness.tone)
+                : {};
               return (
-                <tr key={r.encounterId} style={{ borderTop: "1px solid #e2e8f0" }}>
+                <tr
+                  key={r.encounterId}
+                  style={{ borderTop: "1px solid #e2e8f0", ...rowAccent }}
+                  data-discharge-order={awareness?.providerFinalized ? "1" : "0"}
+                >
                   <td style={{ padding: "4px" }}>
                     <Link href={inpatientActiveWorkspacePath(r.encounterId)}>{r.patientName}</Link>
                   </td>
@@ -241,6 +270,18 @@ export function ProviderCensusBoard() {
                   </td>
                   <td style={{ padding: "4px" }}>
                     {r.technicianName?.trim() || t("enterpriseHospitalAssignmentD4a30.unassigned")}
+                  </td>
+                  <td style={{ padding: "4px" }}>
+                    {awareness?.providerFinalized ? (
+                      <InpatientDischargeAwarenessBadge
+                        awareness={awareness}
+                        encounterId={r.encounterId}
+                        roles={roles}
+                        compact
+                      />
+                    ) : (
+                      t("common.dash")
+                    )}
                   </td>
                   <td style={{ padding: "4px" }}>
                     <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>

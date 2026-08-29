@@ -35,6 +35,9 @@ import {
 import { inpatientActiveWorkspacePath } from "./inpatientWorkspacePaths";
 import { HOSPITAL_CARE_FLOOR_BOARD } from "@/features/hospital-care/hospitalCarePaths";
 import { UnitBedBoard } from "./UnitBedBoard";
+import { InpatientDischargeAwarenessBadge } from "./InpatientDischargeAwarenessBadge";
+import { InpatientDischargeOrderNotifyBanner } from "./InpatientDischargeOrderNotifyBanner";
+import { inpatientDischargeAwarenessRowAccent } from "./inpatientDischargeAwarenessUi";
 
 export type UnitBoardShellProps = {
   title: string;
@@ -177,12 +180,18 @@ export function UnitBoardShell({
       reassess: countAlert("REASSESSMENT_OVERDUE"),
       vitals: countAlert("VITALS_STALE"),
       critical: countAlert("CRITICAL_RESULTS"),
+      dischargeOrders: countAlert("DISCHARGE_ORDER"),
       readyDc: countAlert("READY_DISCHARGE"),
     };
   }, [patients]);
 
   return (
     <HospitalCareShell active="inpatient" title={title} subtitle={subtitle}>
+      <InpatientDischargeOrderNotifyBanner
+        rows={patients}
+        currentUserId={userId}
+        roles={(roles ?? []) as string[]}
+      />
       <div style={{ marginBottom: 10 }}>
         <Link href={INPATIENT_UNIT_TREE_PATH} style={backLink}>
           ← {t("hospitalCareD3e6c.board.backToTree")}
@@ -289,6 +298,7 @@ export function UnitBoardShell({
         unitSlug={unitCode?.toLowerCase()}
         useUnitPatientRoute={useUnitPatientRoute}
         currentUserId={userId}
+        roles={roles}
         isProvider={isProvider}
         isNurse={isNurse}
         isTech={isTech}
@@ -313,6 +323,7 @@ export function UnitOperationalSnapshot({
     reassess: number;
     vitals: number;
     critical: number;
+    dischargeOrders: number;
     readyDc: number;
   };
   occupiedBeds: number | null;
@@ -334,7 +345,14 @@ export function UnitOperationalSnapshot({
     { label: t("hospitalCareD3e6b.summary.reassess"), value: snap.reassess },
     { label: t("hospitalCareD3e6b.summary.vitals"), value: snap.vitals },
     { label: t("hospitalCareD3e6b.summary.critical"), value: snap.critical },
-    { label: t("hospitalCareD3e6b.summary.readyDc"), value: snap.readyDc },
+    {
+      label: t("inpatientDischargeAwarenessInpDis1h.metricDischargeOrders"),
+      value: snap.dischargeOrders,
+    },
+    {
+      label: t("inpatientDischargeAwarenessInpDis1h.metricReadyDischarge"),
+      value: snap.readyDc,
+    },
   ];
   return (
     <div
@@ -399,6 +417,9 @@ export function UnitPatientFilterBar({
         <option value="vitals_stale">{t("hospitalCareD3e6a.filters.opVitals")}</option>
         <option value="critical_results">{t("hospitalCareD3e6a.filters.opCritical")}</option>
         <option value="ready_discharge">{t("hospitalCareD3e6a.filters.opReadyDc")}</option>
+        <option value="discharge_order">
+          {t("inpatientDischargeAwarenessInpDis1h.filterDischargeOrder")}
+        </option>
       </select>
     </div>
   );
@@ -410,6 +431,7 @@ export function UnitPatientCardList({
   unitSlug,
   useUnitPatientRoute,
   currentUserId,
+  roles,
   isProvider,
   isNurse,
   isTech,
@@ -421,6 +443,7 @@ export function UnitPatientCardList({
   unitSlug?: string;
   useUnitPatientRoute?: boolean;
   currentUserId?: string;
+  roles?: string[] | null;
   isProvider?: boolean;
   isNurse?: boolean;
   isTech?: boolean;
@@ -452,6 +475,8 @@ export function UnitPatientCardList({
         const mineProvider = Boolean(currentUserId && row.providerUserId === currentUserId);
         const mineNurse = Boolean(currentUserId && row.nurseUserId === currentUserId);
         const mineTech = Boolean(currentUserId && row.technicianUserId === currentUserId);
+        const awareness = row.dischargeAwareness;
+        const accent = awareness ? inpatientDischargeAwarenessRowAccent(awareness.tone) : {};
         return (
           <li
             key={row.encounterId}
@@ -463,13 +488,26 @@ export function UnitPatientCardList({
               justifyContent: "space-between",
               gap: 10,
               alignItems: "flex-start",
+              ...accent,
             }}
+            data-discharge-order={awareness?.providerFinalized ? "1" : "0"}
           >
             <div style={{ minWidth: 0, flex: 1 }}>
               <div style={{ fontWeight: 700, fontSize: 13 }}>{row.patientName}</div>
               <div style={{ fontSize: 11, color: "#64748b" }}>
                 {row.mrn ?? "—"} · {row.unitRoomBed || t("hospitalCareD3e6a.patients.noBed")}
               </div>
+              {awareness?.providerFinalized ? (
+                <div style={{ marginTop: 4 }}>
+                  <InpatientDischargeAwarenessBadge
+                    awareness={awareness}
+                    encounterId={row.encounterId}
+                    roles={roles}
+                    showSubstatus
+                    compact
+                  />
+                </div>
+              ) : null}
               <div style={{ fontSize: 11, color: "#475569", marginTop: 4 }}>
                 {t("enterpriseHospitalAssignmentD4a30.provider")}:{" "}
                 {row.attendingName?.trim() || t("enterpriseHospitalAssignmentD4a30.unassigned")}

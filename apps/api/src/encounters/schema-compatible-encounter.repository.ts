@@ -51,6 +51,7 @@ export type CompatibleEncounterProjection = {
   roomLabel: string | null;
   chiefComplaint: string | null;
   admissionSummaryJson: unknown;
+  dischargeSummaryJson?: unknown;
   billingClassification: string | null;
   providerDocumentationStatus: string | null;
   physicianAssignedUserId: string | null;
@@ -127,6 +128,8 @@ export function buildHospitalCensusEncounterSelect(
     roomLabel: true,
     chiefComplaint: true,
     admissionSummaryJson: true,
+    /** INP.DIS.1H — provider discharge awareness on census/unit boards (no PHI narrative). */
+    dischargeSummaryJson: true,
     billingClassification: true,
     providerDocumentationStatus: true,
     physicianAssignedUserId: true,
@@ -173,6 +176,7 @@ function mapRowToProjection(
     roomLabel: (row.roomLabel as string | null | undefined) ?? null,
     chiefComplaint: (row.chiefComplaint as string | null | undefined) ?? null,
     admissionSummaryJson: row.admissionSummaryJson,
+    dischargeSummaryJson: row.dischargeSummaryJson,
     billingClassification: (row.billingClassification as string | null | undefined) ?? null,
     providerDocumentationStatus:
       (row.providerDocumentationStatus as string | null | undefined) ?? null,

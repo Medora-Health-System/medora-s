@@ -45,8 +45,9 @@ export function InpatientUnitBoardView({ mode }: { mode: Mode }) {
 
   useEffect(() => {
     let cancelled = false;
-    void (async () => {
-      setLoading(true);
+    let first = true;
+    const load = async () => {
+      if (first) setLoading(true);
       setError(null);
       try {
         if (!facilityId?.trim()) {
@@ -139,11 +140,17 @@ export function InpatientUnitBoardView({ mode }: { mode: Mode }) {
           );
         }
       } finally {
-        if (!cancelled) setLoading(false);
+        if (!cancelled && first) setLoading(false);
+        first = false;
       }
-    })();
+    };
+    void load();
+    const pollId = window.setInterval(() => {
+      void load().catch(() => undefined);
+    }, 15_000);
     return () => {
       cancelled = true;
+      window.clearInterval(pollId);
     };
   }, [mode, t, facilityId]);
 

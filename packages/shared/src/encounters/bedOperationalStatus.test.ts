@@ -4,6 +4,7 @@ import {
   formatBedOperationalStatusLabel,
   formatEdSimplifiedBedStatusLabel,
   getBedOperationalStatusVisual,
+  isActiveBedOccupancyStatus,
   isBedAssignableWithoutOverride,
   isManualBedOperationalStatusWritable,
   manualStatusBlockedByOccupancy,
@@ -51,6 +52,18 @@ describe("bedOperationalStatus (K.10B.10C)", () => {
     });
     expect(resolved.status).toBe("OCCUPIED");
     expect(resolved.statusSource).toBe("derived");
+  });
+
+  it("INP.DIS.1H provider finalize → DISCHARGE_PENDING while still occupied", () => {
+    const resolved = resolveBedOperationalStatus({
+      occupant: {
+        encounterId: "enc-1",
+        workflowState: "IN_TREATMENT",
+        providerDischargeFinalized: true,
+      },
+    });
+    expect(resolved.status).toBe("DISCHARGE_PENDING");
+    expect(isActiveBedOccupancyStatus(resolved.status)).toBe(true);
   });
 
   it("rejects manual OCCUPIED write helper", () => {

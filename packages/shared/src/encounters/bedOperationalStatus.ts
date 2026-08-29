@@ -246,6 +246,8 @@ export type BedOccupantInput = {
   workflowState?: string | null;
   disposition?: string | null;
   transferPending?: boolean;
+  /** INP.DIS.1H — provider finalized discharge; bed stays occupied (DISCHARGE_PENDING). */
+  providerDischargeFinalized?: boolean;
 };
 
 export type ResolvedBedOperationalStatus = {
@@ -270,6 +272,7 @@ function deriveOccupantStatus(occupant: BedOccupantInput | null | undefined): Be
   if (!occupant?.encounterId) return null;
   const workflow = (occupant.workflowState ?? "").trim().toUpperCase();
   if (workflow === "DISCHARGE_READY") return "DISCHARGE_PENDING";
+  if (occupant.providerDischargeFinalized === true) return "DISCHARGE_PENDING";
   const disposition = (occupant.disposition ?? "").trim().toLowerCase();
   if (
     occupant.transferPending === true ||
