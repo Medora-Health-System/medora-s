@@ -348,6 +348,7 @@ const INPATIENT_CLINICAL_PRIMARY_NAV = [
 export function providerPrimaryNav(): readonly string[] {
   return [
     ...INPATIENT_CLINICAL_PRIMARY_NAV,
+    "providerDocumentation",
     "historyPhysical",
     "problemsPlan",
     "progressNotes",

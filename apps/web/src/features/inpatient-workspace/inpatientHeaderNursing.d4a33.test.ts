@@ -51,10 +51,11 @@ describe("MEDUI.D4A.3.3 inpatient header + nursing consolidation", () => {
     expect(active).not.toContain("longitudinal");
   });
 
-  it("nursing sticky nav order is the eight clinical modules (no Notes/Timeline/Summary)", () => {
+  it("nursing sticky nav order is the nine clinical modules including Summary (no Notes/Timeline)", () => {
     const ids = INPATIENT_NURSING_STICKY_NAV_SECTIONS.map((s) => s.id);
     expect(ids).toEqual([
       "overview",
+      "summary",
       "admission",
       "nursing",
       "orders",
@@ -64,22 +65,25 @@ describe("MEDUI.D4A.3.3 inpatient header + nursing consolidation", () => {
       "dischargePlanning",
     ]);
     expect(ids).not.toContain("timeline");
-    expect(ids).not.toContain("summary");
     expect(ids).not.toContain("notes");
+    expect(ids).not.toContain("providerDocumentation");
     expect(parseInpatientWorkspaceSection("notes")).toBe("notes");
   });
 
-  it("provider sticky matches nursing primary modules; deep-link extras remain available", () => {
+  it("provider sticky adds Provider Documentation after Summary; deep-link extras remain available", () => {
     const providerIds = INPATIENT_PROVIDER_STICKY_NAV_SECTIONS.map((s) => s.id);
+    expect(providerIds).toContain("summary");
+    expect(providerIds).toContain("providerDocumentation");
+    expect(providerIds.indexOf("providerDocumentation")).toBe(providerIds.indexOf("summary") + 1);
     expect(providerIds).not.toContain("timeline");
-    expect(providerIds).not.toContain("summary");
     expect(providerIds).not.toContain("notes");
-    expect(providerPrimaryNav()).not.toContain("summary");
+    expect(providerIds).not.toContain("historyPhysical");
     expect(providerPrimaryNav()).toContain("historyPhysical");
+    expect(providerPrimaryNav()).toContain("providerDocumentation");
     const nursing = nursingPrimaryNav();
     expect(nursing).not.toContain("timeline");
-    expect(nursing).not.toContain("summary");
     expect(nursing).not.toContain("notes");
+    expect(nursing).not.toContain("providerDocumentation");
   });
 
   it("uses the native inpatient assessment while retaining shared Notes", () => {
@@ -88,8 +92,9 @@ describe("MEDUI.D4A.3.3 inpatient header + nursing consolidation", () => {
     expect(section).not.toContain("EmergencyNursingReassessmentPanel");
     const panel = read("InpatientWorkspacePanel.tsx");
     expect(panel).toContain("EmergencyErNotesPanel");
-    expect(panel).toContain("printDischarge");
-    expect(panel).toContain("inpatient-print-discharge-summary");
+    const dischargeBoard = read("InpatientDischargeBoard.tsx");
+    expect(dischargeBoard).toContain("printDischarge");
+    expect(panel).toContain("InpatientDischargeBoard");
     const edNursing = readFileSync(
       join(root, "../emergency/EmergencyNursingReassessmentPanel.tsx"),
       "utf8"

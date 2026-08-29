@@ -345,8 +345,21 @@ export function InpatientEncounterMedicalRecordSummaryView({
           const hp = asRecord(doc?.hpDraft);
           if (hp) {
             const status = displayOrDash(hp.status, dash);
+            const signedAt = typeof hp.signedAt === "string" ? hp.signedAt : null;
+            const author =
+              typeof hp.signedByDisplayName === "string"
+                ? hp.signedByDisplayName
+                : typeof hp.authorDisplayName === "string"
+                  ? hp.authorDisplayName
+                  : null;
             providerLinesAcc.push(
-              `${t("inpatientMedicalRecordSummaryInp2f.sections.provider")}: ${humanizeClinicalLabel(status)}`
+              [
+                `H&P · ${humanizeClinicalLabel(status)}`,
+                author ? String(author) : null,
+                signedAt ? formatSummaryClinicalDateTime(signedAt, language) : null,
+              ]
+                .filter(Boolean)
+                .join(" · ")
             );
           }
           const notes = Array.isArray(doc?.progressNotes) ? doc!.progressNotes : [];
@@ -354,7 +367,23 @@ export function InpatientEncounterMedicalRecordSummaryView({
             const text = typeof n.text === "string" ? n.text.trim() : "";
             if (!text) continue;
             const st = humanizeClinicalLabel(String(n.status ?? ""));
-            providerLinesAcc.push(`${st}: ${text.slice(0, 240)}`);
+            const author =
+              typeof n.authorDisplayName === "string"
+                ? n.authorDisplayName
+                : typeof n.signedByDisplayName === "string"
+                  ? n.signedByDisplayName
+                  : null;
+            const signedAt = typeof n.signedAt === "string" ? n.signedAt : null;
+            providerLinesAcc.push(
+              [
+                `Progress · ${st}`,
+                author,
+                signedAt ? formatSummaryClinicalDateTime(signedAt, language) : null,
+                text.slice(0, 200),
+              ]
+                .filter(Boolean)
+                .join(" · ")
+            );
           }
         }
         setProviderLines(providerLinesAcc);
