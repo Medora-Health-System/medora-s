@@ -17,6 +17,7 @@ import {
   INPATIENT_TRANSFER_REASONS,
   INPATIENT_TRANSFER_SERVICES,
   INPATIENT_TRANSPORT_MODES,
+  buildInpatientDischargeChartDraft,
   dispositionRequiresConditionAtDischarge,
   emptyInpatientNursingDischarge,
   emptyInpatientProviderDischarge,
@@ -27,18 +28,26 @@ import {
   hydrateInpatientProviderDischarge1C,
   instantToLocalDateTimeInput,
   localDateTimeInputToIso,
+  markClinicianEditedField,
+  mergeChartDraftPreservingClinicianEdits,
   projectInpatientDischargePlanningSummary,
   resolveInpatientDischargeForDisplay,
   synthesizeInpatientDischargeSummaryDraft,
   type InpatientClinicalOpsV1,
+  type InpatientDischargeChartSnapshot,
   type InpatientDischargeFollowUp1C,
+  type InpatientDischargeMedicationLine1C,
   type InpatientFinalDischargeReadiness,
   type InpatientFinalDischargeV1E,
   type InpatientFinalDisposition1C,
   type InpatientNursingDischargeV1D,
   type InpatientProviderDischargeDiagnosis,
   type InpatientProviderDischargePendingStudy,
+  type InpatientDischargeMedReconHistoryState,
   type InpatientProviderDischargeV1C,
+  type PatientClinicalHistoryHomeMedications,
+  type HomeMedicationReconciliationLineV1,
+  buildInpatientDischargeMedReconPreload,
 } from "@medora/shared";
 import { useI18n } from "@/lib/i18n";
 import { apiFetch, asApiObject } from "@/lib/apiClient";
@@ -50,12 +59,15 @@ import {
   fetchInpatientFinalDischarge,
   fetchInpatientNursingDischarge,
   fetchInpatientProviderDischarge,
+  fetchNursingAdmissionDocumentation,
   patchInpatientClinicalOps,
   saveInpatientNursingDischarge,
   saveInpatientProviderDischarge,
 } from "@/features/hospital-care/inpatientOperationsApi";
 import { generateInpatientPatientInstructionsFromDiagnoses } from "./inpatientPatientInstructionsFromDiagnoses";
 import { InpatientDischargeBoardNursing } from "./InpatientDischargeBoardNursing";
+import { InpatientDischargeMedicationsPanel } from "./InpatientDischargeMedicationsPanel";
+import { InpatientDischargeMedReconPanel } from "./InpatientDischargeMedReconPanel";
 import {
   badgeAttention,
   badgeComplete,
@@ -244,11 +256,17 @@ export function InpatientDischargeBoard({
   const { t, language } = useI18n();
   const dateLocale = language === "en" ? "en-US" : "fr-FR";
   const tp = (key: string) => t(`${PREFIX}.${key}`);
+  const validationLabel = (code: string) => {
+    const key = `${PREFIX}.validation.${code}`;
+    const labeled = t(key);
+    return labeled === key ? code.replace(/_/g, " ") : labeled;
+  };
 
-  const canProvider = roles.includes("PROVIDER") || roles.includes("ADMIN");
-  const canNursing = roles.includes("RN") || roles.includes("ADMIN");
-  const canOps = canProvider || canNursing;
-  const canExecuteFinal = canOps;
+  /** Provider clinical write: PROVIDER role only — never ADMIN masquerading. */
+  const canProvider = roles.includes("PROVIDER");
+  const canNursing = roles.includes("RN");
+  const canOps = canProvider || canNursing || roles.includes("ADMIN");
+  const canExecuteFinal = canProvider || canNursing || roles.includes("ADMIN");
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -281,6 +299,19 @@ export function InpatientDischargeBoard({
   const [dirtyPlanning, setDirtyPlanning] = useState(false);
   const [icdQuery, setIcdQuery] = useState("");
   const [icdHits, setIcdHits] = useState<Array<{ code: string; description: string }>>([]);
+  const [chartBootstrap, setChartBootstrap] = useState<InpatientDischargeChartSnapshot | null>(
+    null
+  );
+  const [providerCanAuthor, setProviderCanAuthor] = useState(false);
+  const [serverProviderFinalized, setServerProviderFinalized] = useState(false);
+  const [waitingProviderFinalize, setWaitingProviderFinalize] = useState(false);
+  const [savedMedReconLines, setSavedMedReconLines] = useState<unknown[]>([]);
+  const [admissionHomeMedLines, setAdmissionHomeMedLines] = useState<
+    HomeMedicationReconciliationLineV1[]
+  >([]);
+  const [patientHomeMedications, setPatientHomeMedications] =
+    useState<PatientClinicalHistoryHomeMedications | null>(null);
+  const [medHistoryLoadFailed, setMedHistoryLoadFailed] = useState(false);
 
   const dirty = dirtyProvider || dirtyNursing || dirtyPlanning;
   const readOnly = encounterClosed || Boolean(completed);
@@ -309,19 +340,54 @@ export function InpatientDischargeBoard({
       setError(null);
       setValidationErrors([]);
       try {
-        const [providerRes, nursingRes, finalRes, opsRes] = await Promise.all([
+        const patientId = encounter?.patient?.id ?? null;
+        const historyFetches = Promise.allSettled([
+          fetchNursingAdmissionDocumentation(encounterId),
+          patientId
+            ? apiFetch(`/patients/${encodeURIComponent(patientId)}/clinical-history-profile`, {
+                facilityId: facilityId ?? undefined,
+              })
+            : Promise.resolve(null),
+        ]);
+
+        const [providerRes, nursingRes, finalRes, opsRes, historySettled] = await Promise.all([
           fetchInpatientProviderDischarge(encounterId),
           fetchInpatientNursingDischarge(encounterId),
           fetchInpatientFinalDischarge(encounterId),
           fetchInpatientClinicalOps(encounterId),
+          historyFetches,
         ]);
 
         const hydratedProvider =
           hydrateInpatientProviderDischarge1C(providerRes.documentation) ??
           (emptyInpatientProviderDischarge() as InpatientProviderDischargeV1C);
-        setProviderDoc(hydratedProvider);
+        const bootstrap =
+          (providerRes.chartBootstrap as InpatientDischargeChartSnapshot | undefined) ?? null;
+        setChartBootstrap(bootstrap);
+        setProviderCanAuthor(providerRes.canAuthor === true);
+
+        let nextProvider = hydratedProvider;
+        const emptyCourse =
+          !hydratedProvider.hospitalCourse &&
+          !hydratedProvider.reasonForHospitalization &&
+          (hydratedProvider.dischargeDiagnoses?.length ?? 0) === 0 &&
+          !hydratedProvider.documentedAt &&
+          !hydratedProvider.providerDocumentationFinalizedAt;
+        if (emptyCourse && bootstrap && providerRes.canAuthor === true) {
+          const draft = buildInpatientDischargeChartDraft({
+            ...bootstrap,
+            language: language === "en" ? "en" : "fr",
+          });
+          nextProvider = mergeChartDraftPreservingClinicianEdits({
+            existing: hydratedProvider,
+            draft,
+          }).next;
+          setDirtyProvider(true);
+        } else {
+          setDirtyProvider(false);
+        }
+        setProviderDoc(nextProvider);
         setProviderRevision(providerRes.revision ?? hydratedProvider.revision ?? 0);
-        setDirtyProvider(false);
 
         const hydratedNursing =
           hydrateInpatientNursingDischarge(nursingRes.documentation) ??
@@ -330,7 +396,40 @@ export function InpatientDischargeBoard({
         setNursingRevision(nursingRes.revision ?? hydratedNursing.revision ?? 0);
         setCanCompleteNursing(nursingRes.canComplete === true);
         setMedReconStatus(nursingRes.medicationReconciliationStatus ?? "UNKNOWN");
+        setServerProviderFinalized(nursingRes.providerFinalized === true);
+        setWaitingProviderFinalize(nursingRes.providerFinalized !== true);
+        setSavedMedReconLines(
+          Array.isArray(nursingRes.medicationReconciliationLines)
+            ? (nursingRes.medicationReconciliationLines as unknown[])
+            : []
+        );
         setDirtyNursing(false);
+
+        const [admissionSettled, profileSettled] = historySettled;
+        let historyFailed = false;
+        if (admissionSettled.status === "fulfilled") {
+          const doc = admissionSettled.value?.documentation as
+            | { homeMedicationLines?: HomeMedicationReconciliationLineV1[] }
+            | undefined;
+          setAdmissionHomeMedLines(
+            Array.isArray(doc?.homeMedicationLines) ? doc!.homeMedicationLines! : []
+          );
+        } else {
+          historyFailed = true;
+          setAdmissionHomeMedLines([]);
+        }
+        if (profileSettled.status === "fulfilled" && profileSettled.value) {
+          const profile = asApiObject(profileSettled.value) as {
+            homeMedications?: PatientClinicalHistoryHomeMedications;
+          };
+          setPatientHomeMedications(profile.homeMedications ?? null);
+        } else if (patientId && profileSettled.status === "rejected") {
+          historyFailed = true;
+          setPatientHomeMedications(null);
+        } else {
+          setPatientHomeMedications(null);
+        }
+        setMedHistoryLoadFailed(historyFailed);
 
         const opsRaw = opsRes.ops as InpatientClinicalOpsV1;
         setOps(opsRaw);
@@ -358,7 +457,7 @@ export function InpatientDischargeBoard({
     },
     // tp uses t — include dirty/canExecute/encounter
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [applyPlanningFromOps, canExecuteFinal, dirty, encounter?.status, encounterId, t]
+    [applyPlanningFromOps, canExecuteFinal, dirty, encounter?.patient?.id, encounter?.status, encounterId, facilityId, language, t]
   );
 
   useEffect(() => {
@@ -378,8 +477,10 @@ export function InpatientDischargeBoard({
 
   const dispositionCode = providerDoc.finalDisposition?.code?.toUpperCase() ?? "";
   const showCondition = dispositionRequiresConditionAtDischarge(dispositionCode);
-  const providerFinalized = Boolean(providerDoc.providerDocumentationFinalizedAt);
+  const providerFinalized =
+    Boolean(providerDoc.providerDocumentationFinalizedAt) || serverProviderFinalized;
   const nursingCompleted = nursingDoc.executionStatus === "COMPLETED";
+  const providerWriteEnabled = canProvider && providerCanAuthor && !readOnly;
 
   const chipRows = useMemo(() => {
     const r = finalReadiness;
@@ -482,7 +583,7 @@ export function InpatientDischargeBoard({
   };
 
   const saveProvider = async (saveMode: "draft" | "complete") => {
-    if (!canProvider || readOnly) return;
+    if (!providerWriteEnabled) return;
     setSaving(true);
     setError(null);
     setValidationErrors([]);
@@ -706,12 +807,110 @@ export function InpatientDischargeBoard({
       locale: language === "en" ? "en" : "fr",
       facilityDisplayName,
     });
-    touchProvider((prev) => ({
-      ...prev,
-      patientInstructions: { ...instructions, clinicianEdited: false },
-      followUps: followUps.length ? followUps : prev.followUps ?? [],
-    }));
+    touchProvider((prev) => {
+      const prevPi = prev.patientInstructions;
+      const edited = prevPi?.clinicianEdited === true;
+      if (edited) {
+        // Only fill empty instruction slots when clinician already edited.
+        return {
+          ...prev,
+          patientInstructions: {
+            ...prevPi,
+            returnPrecautions:
+              prevPi?.returnPrecautions?.trim() || instructions.returnPrecautions || null,
+            diagnosisInstructions:
+              prevPi?.diagnosisInstructions?.trim() ||
+              instructions.diagnosisInstructions ||
+              null,
+            medicationInstructions:
+              prevPi?.medicationInstructions?.trim() ||
+              instructions.medicationInstructions ||
+              null,
+            activityInstructions:
+              prevPi?.activityInstructions?.trim() ||
+              instructions.activityInstructions ||
+              null,
+            followUpInstructions:
+              prevPi?.followUpInstructions?.trim() ||
+              instructions.followUpInstructions ||
+              null,
+            lastInstructionDraftAt: new Date().toISOString(),
+          } as typeof prevPi,
+          followUps: (prev.followUps ?? []).length ? prev.followUps : followUps,
+          fieldProvenance: {
+            ...prev.fieldProvenance,
+            lastInstructionDraftAt: new Date().toISOString(),
+          },
+        };
+      }
+      return {
+        ...prev,
+        patientInstructions: {
+          ...instructions,
+          clinicianEdited: false,
+          generatedAt: new Date().toISOString(),
+        },
+        followUps: followUps.length ? followUps : prev.followUps ?? [],
+        fieldProvenance: {
+          ...prev.fieldProvenance,
+          lastInstructionDraftAt: new Date().toISOString(),
+        },
+      };
+    });
   };
+
+  const refreshFromChart = () => {
+    if (!chartBootstrap || readOnly || !canProvider) return;
+    const edited = providerDoc.fieldProvenance?.clinicianEditedFields ?? [];
+    const draft = buildInpatientDischargeChartDraft({
+      ...chartBootstrap,
+      dischargeDiagnoses: providerDoc.dischargeDiagnoses.length
+        ? providerDoc.dischargeDiagnoses
+        : chartBootstrap.dischargeDiagnoses,
+      language: language === "en" ? "en" : "fr",
+    });
+    if (edited.length) {
+      const replaceEdited = window.confirm(tp("refreshConfirm"));
+      const { next } = mergeChartDraftPreservingClinicianEdits({
+        existing: providerDoc,
+        draft,
+        forceReplaceFields: replaceEdited ? edited : [],
+      });
+      setProviderDoc(next);
+      setDirtyProvider(true);
+      return;
+    }
+    const { next } = mergeChartDraftPreservingClinicianEdits({
+      existing: providerDoc,
+      draft,
+    });
+    setProviderDoc(next);
+    setDirtyProvider(true);
+  };
+
+  const medReconPreload = useMemo(() => {
+    return buildInpatientDischargeMedReconPreload({
+      existingDischargeReconLines: savedMedReconLines,
+      clinicalOpsLines: ops?.medicationReconciliation ?? [],
+      admissionHomeMedicationLines: admissionHomeMedLines,
+      patientHomeMedications,
+      providerDischargeMedications: providerDoc.dischargeMedications ?? [],
+      historyLoadFailed: medHistoryLoadFailed,
+    });
+  }, [
+    admissionHomeMedLines,
+    medHistoryLoadFailed,
+    ops?.medicationReconciliation,
+    patientHomeMedications,
+    providerDoc.dischargeMedications,
+    savedMedReconLines,
+  ]);
+
+  const medReconLines = medReconPreload.lines;
+  const medReconHistoryState: InpatientDischargeMedReconHistoryState =
+    medReconPreload.historyState;
+
+  const medReconFinalized = medReconStatus === "COMPLETE";
 
   const statusBadge = (complete: boolean, labelComplete: string, labelPending: string) => (
     <span style={complete ? badgeComplete : badgePending}>
@@ -817,7 +1016,7 @@ export function InpatientDischargeBoard({
       {validationErrors.length ? (
         <ul style={{ margin: 0, paddingLeft: 18, color: DISCHARGE_BOARD_COLORS.danger, fontSize: 12 }}>
           {validationErrors.map((code) => (
-            <li key={code}>{tp(`validation.${code}`)}</li>
+            <li key={code}>{validationLabel(code)}</li>
           ))}
         </ul>
       ) : null}
@@ -1094,7 +1293,7 @@ export function InpatientDischargeBoard({
               ) : (
                 <ul style={{ margin: 0, paddingLeft: 18, fontSize: 12, color: "#b45309" }}>
                   {(finalReadiness?.blockers ?? []).slice(0, 4).map((b) => (
-                    <li key={b.code}>{tp(`validation.${b.code}`)}</li>
+                    <li key={b.code}>{validationLabel(b.code)}</li>
                   ))}
                 </ul>
               )}
@@ -1363,7 +1562,7 @@ export function InpatientDischargeBoard({
           <Check
             label={tp("noKnownPending")}
             checked={providerDoc.noKnownPendingStudies === true}
-            disabled={readOnly || !canProvider}
+            disabled={!providerWriteEnabled}
             onChange={(v) =>
               touchProvider((prev) => ({
                 ...prev,
@@ -1377,7 +1576,7 @@ export function InpatientDischargeBoard({
                 <div key={row.id} style={{ display: "grid", gap: 6 }}>
                   <select
                     style={fieldStyle}
-                    disabled={readOnly || !canProvider}
+                    disabled={!providerWriteEnabled}
                     value={row.type}
                     onChange={(e) => {
                       const next = [...providerDoc.pendingStudies];
@@ -1396,7 +1595,7 @@ export function InpatientDischargeBoard({
                   </select>
                   <input
                     style={fieldStyle}
-                    disabled={readOnly || !canProvider}
+                    disabled={!providerWriteEnabled}
                     value={row.description ?? ""}
                     onChange={(e) => {
                       const next = [...providerDoc.pendingStudies];
@@ -1404,7 +1603,7 @@ export function InpatientDischargeBoard({
                       touchProvider((prev) => ({ ...prev, pendingStudies: next }));
                     }}
                   />
-                  {!readOnly && canProvider ? (
+                  {providerWriteEnabled ? (
                     <button
                       type="button"
                       style={dangerBtn}
@@ -1464,7 +1663,7 @@ export function InpatientDischargeBoard({
               <span style={labelStyle}>{tp("diagnoses.code")}</span>
               <input
                 style={fieldStyle}
-                disabled={readOnly || !canProvider}
+                disabled={!providerWriteEnabled}
                 value={row.code ?? ""}
                 onChange={(e) => {
                   const next = [...providerDoc.dischargeDiagnoses];
@@ -1477,7 +1676,7 @@ export function InpatientDischargeBoard({
               <span style={labelStyle}>{tp("diagnoses.description")}</span>
               <input
                 style={fieldStyle}
-                disabled={readOnly || !canProvider}
+                disabled={!providerWriteEnabled}
                 value={row.description}
                 onChange={(e) => {
                   const next = [...providerDoc.dischargeDiagnoses];
@@ -1506,7 +1705,7 @@ export function InpatientDischargeBoard({
               <button
                 type="button"
                 style={dangerBtn}
-                disabled={readOnly || !canProvider}
+                disabled={!providerWriteEnabled}
                 onClick={() =>
                   touchProvider((prev) => ({
                     ...prev,
@@ -1519,7 +1718,7 @@ export function InpatientDischargeBoard({
             </div>
           </div>
         ))}
-        {!readOnly && canProvider ? (
+        {providerWriteEnabled ? (
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
             <button
               type="button"
@@ -1576,7 +1775,7 @@ export function InpatientDischargeBoard({
               </button>
             ))}
             <button type="button" style={secondaryBtn} onClick={generateInstructions}>
-              {tp("generateInstructions")}
+              {tp("refreshInstructions")}
             </button>
           </div>
         ) : null}
@@ -1594,7 +1793,7 @@ export function InpatientDischargeBoard({
                 <span style={labelStyle}>{tp(`instructions.${labelKey}`)}</span>
                 <textarea
                   style={{ ...fieldStyle, minHeight: 64 }}
-                  disabled={readOnly || !canProvider}
+                  disabled={!providerWriteEnabled}
                   value={providerDoc.patientInstructions?.[field] ?? ""}
                   onChange={(e) =>
                     touchProvider((prev) => ({
@@ -1625,6 +1824,11 @@ export function InpatientDischargeBoard({
         {courseOpen ? (
           <div style={{ display: "grid", gap: 8 }}>
             <h3 style={{ margin: 0, fontSize: 14 }}>{tp("hospitalCourse.title")}</h3>
+            {providerWriteEnabled && chartBootstrap ? (
+              <button type="button" style={secondaryBtn} onClick={refreshFromChart}>
+                {tp("refreshChart")}
+              </button>
+            ) : null}
             {(
               [
                 ["admissionDiagnosis", "admissionDiagnosis"],
@@ -1641,7 +1845,7 @@ export function InpatientDischargeBoard({
                 {field === "admissionDiagnosis" ? (
                   <input
                     style={fieldStyle}
-                    disabled={readOnly || !canProvider}
+                    disabled={!providerWriteEnabled}
                     value={providerDoc.admissionDiagnosis?.description ?? ""}
                     onChange={(e) =>
                       touchProvider((prev) => ({
@@ -1650,6 +1854,10 @@ export function InpatientDischargeBoard({
                           description: e.target.value,
                           code: prev.admissionDiagnosis?.code ?? null,
                         },
+                        fieldProvenance: markClinicianEditedField(
+                          prev.fieldProvenance,
+                          "admissionDiagnosis"
+                        ),
                       }))
                     }
                   />
@@ -1659,10 +1867,14 @@ export function InpatientDischargeBoard({
                       ...fieldStyle,
                       minHeight: field === "hospitalCourse" ? 88 : 52,
                     }}
-                    disabled={readOnly || !canProvider}
+                    disabled={!providerWriteEnabled}
                     value={(providerDoc[field] as string | null | undefined) ?? ""}
                     onChange={(e) =>
-                      touchProvider((prev) => ({ ...prev, [field]: e.target.value }))
+                      touchProvider((prev) => ({
+                        ...prev,
+                        [field]: e.target.value,
+                        fieldProvenance: markClinicianEditedField(prev.fieldProvenance, field),
+                      }))
                     }
                   />
                 )}
@@ -1679,7 +1891,7 @@ export function InpatientDischargeBoard({
           <span style={labelStyle}>{tp("disposition.finalDisposition")}</span>
           <select
             style={fieldStyle}
-            disabled={readOnly || !canProvider}
+            disabled={!providerWriteEnabled}
             value={dispositionCode}
             onChange={(e) => setDisposition(e.target.value)}
           >
@@ -1697,7 +1909,7 @@ export function InpatientDischargeBoard({
               <span style={labelStyle}>{tp("disposition.condition")}</span>
               <select
                 style={fieldStyle}
-                disabled={readOnly || !canProvider}
+                disabled={!providerWriteEnabled}
                 value={providerDoc.conditionAtDischarge?.status ?? ""}
                 onChange={(e) => {
                   const status = e.target.value;
@@ -1723,7 +1935,7 @@ export function InpatientDischargeBoard({
             {providerDoc.conditionAtDischarge?.status === "OTHER" ? (
               <input
                 style={fieldStyle}
-                disabled={readOnly || !canProvider}
+                disabled={!providerWriteEnabled}
                 placeholder={tp("disposition.conditionNarrative")}
                 value={providerDoc.conditionAtDischarge.narrative ?? ""}
                 onChange={(e) =>
@@ -1742,7 +1954,7 @@ export function InpatientDischargeBoard({
           <div data-testid="inp-dis-1f-transfer-details" style={{ display: "grid", gap: 8 }}>
             <input
               style={fieldStyle}
-              disabled={readOnly || !canProvider}
+              disabled={!providerWriteEnabled}
               placeholder={tp("disposition.receivingHospital")}
               value={providerDoc.finalDisposition?.transfer?.receivingHospital ?? ""}
               onChange={(e) =>
@@ -1756,7 +1968,7 @@ export function InpatientDischargeBoard({
             />
             <select
               style={fieldStyle}
-              disabled={readOnly || !canProvider}
+              disabled={!providerWriteEnabled}
               value={providerDoc.finalDisposition?.transfer?.receivingService ?? ""}
               onChange={(e) =>
                 patchDispositionDetails({
@@ -1776,7 +1988,7 @@ export function InpatientDischargeBoard({
             </select>
             <input
               style={fieldStyle}
-              disabled={readOnly || !canProvider}
+              disabled={!providerWriteEnabled}
               placeholder={tp("disposition.receivingPhysician")}
               value={providerDoc.finalDisposition?.transfer?.receivingPhysician ?? ""}
               onChange={(e) =>
@@ -1790,7 +2002,7 @@ export function InpatientDischargeBoard({
             />
             <input
               style={fieldStyle}
-              disabled={readOnly || !canProvider}
+              disabled={!providerWriteEnabled}
               placeholder={tp("disposition.acceptedBy")}
               value={providerDoc.finalDisposition?.transfer?.acceptedBy ?? ""}
               onChange={(e) =>
@@ -1807,7 +2019,7 @@ export function InpatientDischargeBoard({
               <span style={labelStyle}>{tp("disposition.acceptedAt")}</span>
               <input
                 style={fieldStyle}
-                disabled={readOnly || !canProvider}
+                disabled={!providerWriteEnabled}
                 type="datetime-local"
                 value={instantToLocalDateTimeInput(
                   providerDoc.finalDisposition?.transfer?.acceptedAt
@@ -1824,7 +2036,7 @@ export function InpatientDischargeBoard({
             </label>
             <select
               style={fieldStyle}
-              disabled={readOnly || !canProvider}
+              disabled={!providerWriteEnabled}
               value={providerDoc.finalDisposition?.transfer?.reasonCode ?? ""}
               onChange={(e) =>
                 patchDispositionDetails({
@@ -1844,7 +2056,7 @@ export function InpatientDischargeBoard({
             </select>
             <textarea
               style={{ ...fieldStyle, minHeight: 48 }}
-              disabled={readOnly || !canProvider}
+              disabled={!providerWriteEnabled}
               placeholder={tp("disposition.reasonNarrative")}
               value={providerDoc.finalDisposition?.transfer?.reasonNarrative ?? ""}
               onChange={(e) =>
@@ -1858,7 +2070,7 @@ export function InpatientDischargeBoard({
             />
             <select
               style={fieldStyle}
-              disabled={readOnly || !canProvider}
+              disabled={!providerWriteEnabled}
               value={providerDoc.finalDisposition?.transfer?.transportMode ?? ""}
               onChange={(e) =>
                 patchDispositionDetails({
@@ -1878,7 +2090,7 @@ export function InpatientDischargeBoard({
             </select>
             <input
               style={fieldStyle}
-              disabled={readOnly || !canProvider}
+              disabled={!providerWriteEnabled}
               placeholder={tp("disposition.conditionAtTransfer")}
               value={providerDoc.finalDisposition?.transfer?.conditionAtTransfer ?? ""}
               onChange={(e) =>
@@ -1892,7 +2104,7 @@ export function InpatientDischargeBoard({
             />
             <input
               style={fieldStyle}
-              disabled={readOnly || !canProvider}
+              disabled={!providerWriteEnabled}
               placeholder={tp("disposition.documentsSent")}
               value={providerDoc.finalDisposition?.transfer?.documentsSent ?? ""}
               onChange={(e) =>
@@ -1906,7 +2118,7 @@ export function InpatientDischargeBoard({
             />
             <input
               style={fieldStyle}
-              disabled={readOnly || !canProvider}
+              disabled={!providerWriteEnabled}
               placeholder={tp("disposition.pendingResultsCommunicated")}
               value={providerDoc.finalDisposition?.transfer?.pendingResultsCommunicated ?? ""}
               onChange={(e) =>
@@ -1929,7 +2141,7 @@ export function InpatientDischargeBoard({
           <div data-testid="inp-dis-1f-snf-details" style={{ display: "grid", gap: 8 }}>
             <input
               style={fieldStyle}
-              disabled={readOnly || !canProvider}
+              disabled={!providerWriteEnabled}
               placeholder={tp("disposition.facilityName")}
               value={
                 providerDoc.finalDisposition?.snf?.facilityName ??
@@ -1945,7 +2157,7 @@ export function InpatientDischargeBoard({
             />
             <input
               style={fieldStyle}
-              disabled={readOnly || !canProvider}
+              disabled={!providerWriteEnabled}
               placeholder={tp("disposition.facilityAddress")}
               value={providerDoc.finalDisposition?.snf?.facilityAddress ?? ""}
               onChange={(e) =>
@@ -1956,7 +2168,7 @@ export function InpatientDischargeBoard({
             />
             <input
               style={fieldStyle}
-              disabled={readOnly || !canProvider}
+              disabled={!providerWriteEnabled}
               placeholder={tp("disposition.facilityPhone")}
               value={providerDoc.finalDisposition?.snf?.facilityPhone ?? ""}
               onChange={(e) =>
@@ -1967,7 +2179,7 @@ export function InpatientDischargeBoard({
             />
             <input
               style={fieldStyle}
-              disabled={readOnly || !canProvider}
+              disabled={!providerWriteEnabled}
               placeholder={tp("disposition.acceptingProvider")}
               value={providerDoc.finalDisposition?.snf?.acceptingProvider ?? ""}
               onChange={(e) =>
@@ -1980,7 +2192,7 @@ export function InpatientDischargeBoard({
               <span style={labelStyle}>{tp("disposition.transferAt")}</span>
               <input
                 style={fieldStyle}
-                disabled={readOnly || !canProvider}
+                disabled={!providerWriteEnabled}
                 type="datetime-local"
                 value={instantToLocalDateTimeInput(providerDoc.finalDisposition?.snf?.transferAt)}
                 onChange={(e) =>
@@ -1995,7 +2207,7 @@ export function InpatientDischargeBoard({
             </label>
             <select
               style={fieldStyle}
-              disabled={readOnly || !canProvider}
+              disabled={!providerWriteEnabled}
               value={providerDoc.finalDisposition?.snf?.transportMode ?? ""}
               onChange={(e) =>
                 patchDispositionDetails({
@@ -2015,7 +2227,7 @@ export function InpatientDischargeBoard({
             </select>
             <input
               style={fieldStyle}
-              disabled={readOnly || !canProvider}
+              disabled={!providerWriteEnabled}
               placeholder={tp("disposition.documentsSent")}
               value={providerDoc.finalDisposition?.snf?.documentsSent ?? ""}
               onChange={(e) =>
@@ -2034,7 +2246,7 @@ export function InpatientDischargeBoard({
           <div data-testid="inp-dis-1f-home-health-details" style={{ display: "grid", gap: 8 }}>
             <input
               style={fieldStyle}
-              disabled={readOnly || !canProvider}
+              disabled={!providerWriteEnabled}
               placeholder={tp("disposition.agencyName")}
               value={providerDoc.finalDisposition?.homeHealth?.agencyName ?? ""}
               onChange={(e) =>
@@ -2057,7 +2269,7 @@ export function InpatientDischargeBoard({
                     key={svc}
                     label={tp(`homeHealthServices.${svc}`)}
                     checked={selected}
-                    disabled={readOnly || !canProvider}
+                    disabled={!providerWriteEnabled}
                     onChange={(v) => {
                       const prev = providerDoc.finalDisposition?.homeHealth?.services ?? [];
                       const next = v
@@ -2076,7 +2288,7 @@ export function InpatientDischargeBoard({
             </div>
             <textarea
               style={{ ...fieldStyle, minHeight: 48 }}
-              disabled={readOnly || !canProvider}
+              disabled={!providerWriteEnabled}
               placeholder={tp("disposition.startOfCareNotes")}
               value={providerDoc.finalDisposition?.homeHealth?.startOfCareNotes ?? ""}
               onChange={(e) =>
@@ -2095,7 +2307,7 @@ export function InpatientDischargeBoard({
           <div data-testid="inp-dis-1f-correctional-details" style={{ display: "grid", gap: 8 }}>
             <input
               style={fieldStyle}
-              disabled={readOnly || !canProvider}
+              disabled={!providerWriteEnabled}
               placeholder={tp("disposition.facilityName")}
               value={providerDoc.finalDisposition?.correctional?.facilityName ?? ""}
               onChange={(e) =>
@@ -2109,7 +2321,7 @@ export function InpatientDischargeBoard({
             />
             <input
               style={fieldStyle}
-              disabled={readOnly || !canProvider}
+              disabled={!providerWriteEnabled}
               placeholder={tp("disposition.agencyName")}
               value={providerDoc.finalDisposition?.correctional?.agencyName ?? ""}
               onChange={(e) =>
@@ -2123,7 +2335,7 @@ export function InpatientDischargeBoard({
             />
             <input
               style={fieldStyle}
-              disabled={readOnly || !canProvider}
+              disabled={!providerWriteEnabled}
               placeholder={tp("disposition.officerName")}
               value={providerDoc.finalDisposition?.correctional?.officerName ?? ""}
               onChange={(e) =>
@@ -2137,7 +2349,7 @@ export function InpatientDischargeBoard({
             />
             <input
               style={fieldStyle}
-              disabled={readOnly || !canProvider}
+              disabled={!providerWriteEnabled}
               placeholder={tp("disposition.badgeId")}
               value={providerDoc.finalDisposition?.correctional?.badgeId ?? ""}
               onChange={(e) =>
@@ -2153,7 +2365,7 @@ export function InpatientDischargeBoard({
               <span style={labelStyle}>{tp("disposition.custodyTransferredAt")}</span>
               <input
                 style={fieldStyle}
-                disabled={readOnly || !canProvider}
+                disabled={!providerWriteEnabled}
                 type="datetime-local"
                 value={instantToLocalDateTimeInput(
                   providerDoc.finalDisposition?.correctional?.custodyTransferredAt
@@ -2173,7 +2385,7 @@ export function InpatientDischargeBoard({
               checked={
                 providerDoc.finalDisposition?.correctional?.transportByLawEnforcement === true
               }
-              disabled={readOnly || !canProvider}
+              disabled={!providerWriteEnabled}
               onChange={(v) =>
                 patchDispositionDetails({
                   correctional: {
@@ -2191,7 +2403,7 @@ export function InpatientDischargeBoard({
             <Check
               label={tp("disposition.ama.capacityDocumented")}
               checked={providerDoc.finalDisposition?.ama?.capacityDocumented === true}
-              disabled={readOnly || !canProvider}
+              disabled={!providerWriteEnabled}
               onChange={(v) =>
                 patchDispositionDetails({
                   ama: { ...providerDoc.finalDisposition?.ama, capacityDocumented: v },
@@ -2201,7 +2413,7 @@ export function InpatientDischargeBoard({
             <Check
               label={tp("disposition.ama.risksDiscussed")}
               checked={providerDoc.finalDisposition?.ama?.risksDiscussed === true}
-              disabled={readOnly || !canProvider}
+              disabled={!providerWriteEnabled}
               onChange={(v) =>
                 patchDispositionDetails({
                   ama: { ...providerDoc.finalDisposition?.ama, risksDiscussed: v },
@@ -2211,7 +2423,7 @@ export function InpatientDischargeBoard({
             <Check
               label={tp("disposition.ama.alternativesDiscussed")}
               checked={providerDoc.finalDisposition?.ama?.alternativesDiscussed === true}
-              disabled={readOnly || !canProvider}
+              disabled={!providerWriteEnabled}
               onChange={(v) =>
                 patchDispositionDetails({
                   ama: { ...providerDoc.finalDisposition?.ama, alternativesDiscussed: v },
@@ -2221,7 +2433,7 @@ export function InpatientDischargeBoard({
             <Check
               label={tp("disposition.ama.treatmentOffered")}
               checked={providerDoc.finalDisposition?.ama?.treatmentOffered === true}
-              disabled={readOnly || !canProvider}
+              disabled={!providerWriteEnabled}
               onChange={(v) =>
                 patchDispositionDetails({
                   ama: { ...providerDoc.finalDisposition?.ama, treatmentOffered: v },
@@ -2231,7 +2443,7 @@ export function InpatientDischargeBoard({
             <Check
               label={tp("disposition.ama.returnPrecautionsReviewed")}
               checked={providerDoc.finalDisposition?.ama?.returnPrecautionsReviewed === true}
-              disabled={readOnly || !canProvider}
+              disabled={!providerWriteEnabled}
               onChange={(v) =>
                 patchDispositionDetails({
                   ama: { ...providerDoc.finalDisposition?.ama, returnPrecautionsReviewed: v },
@@ -2240,7 +2452,7 @@ export function InpatientDischargeBoard({
             />
             <textarea
               style={{ ...fieldStyle, minHeight: 56 }}
-              disabled={readOnly || !canProvider}
+              disabled={!providerWriteEnabled}
               placeholder={tp("disposition.ama.notes")}
               value={providerDoc.finalDisposition?.ama?.notes ?? ""}
               onChange={(e) =>
@@ -2251,7 +2463,7 @@ export function InpatientDischargeBoard({
             />
             <input
               style={fieldStyle}
-              disabled={readOnly || !canProvider}
+              disabled={!providerWriteEnabled}
               placeholder={tp("disposition.otherDetails")}
               value={providerDoc.finalDisposition?.destinationDetails ?? ""}
               onChange={(e) => patchDispositionDetails({ destinationDetails: e.target.value })}
@@ -2263,7 +2475,7 @@ export function InpatientDischargeBoard({
           <div data-testid="inp-dis-1f-eloped-details" style={{ display: "grid", gap: 8 }}>
             <input
               style={fieldStyle}
-              disabled={readOnly || !canProvider}
+              disabled={!providerWriteEnabled}
               placeholder={tp("disposition.lastKnownAt")}
               value={providerDoc.finalDisposition?.eloped?.lastKnownAt ?? ""}
               onChange={(e) =>
@@ -2277,7 +2489,7 @@ export function InpatientDischargeBoard({
             />
             <input
               style={fieldStyle}
-              disabled={readOnly || !canProvider}
+              disabled={!providerWriteEnabled}
               placeholder={tp("disposition.lastKnownLocation")}
               value={providerDoc.finalDisposition?.eloped?.lastKnownLocation ?? ""}
               onChange={(e) =>
@@ -2291,7 +2503,7 @@ export function InpatientDischargeBoard({
             />
             <input
               style={fieldStyle}
-              disabled={readOnly || !canProvider}
+              disabled={!providerWriteEnabled}
               placeholder={tp("disposition.conditionWhenLastObserved")}
               value={providerDoc.finalDisposition?.eloped?.conditionWhenLastObserved ?? ""}
               onChange={(e) =>
@@ -2305,7 +2517,7 @@ export function InpatientDischargeBoard({
             />
             <select
               style={fieldStyle}
-              disabled={readOnly || !canProvider}
+              disabled={!providerWriteEnabled}
               value={providerDoc.finalDisposition?.eloped?.ivOrLinesPresent ?? ""}
               onChange={(e) =>
                 patchDispositionDetails({
@@ -2324,7 +2536,7 @@ export function InpatientDischargeBoard({
             <Check
               label={tp("disposition.providerNotified")}
               checked={providerDoc.finalDisposition?.eloped?.providerNotified === true}
-              disabled={readOnly || !canProvider}
+              disabled={!providerWriteEnabled}
               onChange={(v) =>
                 patchDispositionDetails({
                   eloped: { ...providerDoc.finalDisposition?.eloped, providerNotified: v },
@@ -2334,7 +2546,7 @@ export function InpatientDischargeBoard({
             <Check
               label={tp("disposition.nursingSupervisorNotified")}
               checked={providerDoc.finalDisposition?.eloped?.nursingSupervisorNotified === true}
-              disabled={readOnly || !canProvider}
+              disabled={!providerWriteEnabled}
               onChange={(v) =>
                 patchDispositionDetails({
                   eloped: {
@@ -2347,7 +2559,7 @@ export function InpatientDischargeBoard({
             <Check
               label={tp("disposition.securityNotified")}
               checked={providerDoc.finalDisposition?.eloped?.securityNotified === true}
-              disabled={readOnly || !canProvider}
+              disabled={!providerWriteEnabled}
               onChange={(v) =>
                 patchDispositionDetails({
                   eloped: { ...providerDoc.finalDisposition?.eloped, securityNotified: v },
@@ -2357,7 +2569,7 @@ export function InpatientDischargeBoard({
             <Check
               label={tp("disposition.lawEnforcementNotified")}
               checked={providerDoc.finalDisposition?.eloped?.lawEnforcementNotified === true}
-              disabled={readOnly || !canProvider}
+              disabled={!providerWriteEnabled}
               onChange={(v) =>
                 patchDispositionDetails({
                   eloped: {
@@ -2370,7 +2582,7 @@ export function InpatientDischargeBoard({
             <Check
               label={tp("disposition.emergencyContactAttempted")}
               checked={providerDoc.finalDisposition?.eloped?.emergencyContactAttempted === true}
-              disabled={readOnly || !canProvider}
+              disabled={!providerWriteEnabled}
               onChange={(v) =>
                 patchDispositionDetails({
                   eloped: {
@@ -2382,7 +2594,7 @@ export function InpatientDischargeBoard({
             />
             <textarea
               style={{ ...fieldStyle, minHeight: 56 }}
-              disabled={readOnly || !canProvider}
+              disabled={!providerWriteEnabled}
               placeholder={tp("disposition.otherDetails")}
               value={providerDoc.finalDisposition?.eloped?.notes ?? ""}
               onChange={(e) =>
@@ -2400,7 +2612,7 @@ export function InpatientDischargeBoard({
               <span style={labelStyle}>{tp("disposition.pronouncedAt")}</span>
               <input
                 style={fieldStyle}
-                disabled={readOnly || !canProvider}
+                disabled={!providerWriteEnabled}
                 type="datetime-local"
                 value={instantToLocalDateTimeInput(
                   providerDoc.finalDisposition?.deceased?.pronouncedAt
@@ -2417,7 +2629,7 @@ export function InpatientDischargeBoard({
             </label>
             <input
               style={fieldStyle}
-              disabled={readOnly || !canProvider}
+              disabled={!providerWriteEnabled}
               placeholder={tp("disposition.pronouncedBy")}
               value={providerDoc.finalDisposition?.deceased?.pronouncedBy ?? ""}
               onChange={(e) =>
@@ -2431,7 +2643,7 @@ export function InpatientDischargeBoard({
             />
             <textarea
               style={{ ...fieldStyle, minHeight: 48 }}
-              disabled={readOnly || !canProvider}
+              disabled={!providerWriteEnabled}
               placeholder={tp("disposition.preliminaryContext")}
               value={providerDoc.finalDisposition?.deceased?.preliminaryContext ?? ""}
               onChange={(e) =>
@@ -2446,7 +2658,7 @@ export function InpatientDischargeBoard({
             <Check
               label={tp("disposition.nextOfKinNotified")}
               checked={providerDoc.finalDisposition?.deceased?.nextOfKinNotified === true}
-              disabled={readOnly || !canProvider}
+              disabled={!providerWriteEnabled}
               onChange={(v) =>
                 patchDispositionDetails({
                   deceased: {
@@ -2458,7 +2670,7 @@ export function InpatientDischargeBoard({
             />
             <input
               style={fieldStyle}
-              disabled={readOnly || !canProvider}
+              disabled={!providerWriteEnabled}
               placeholder={tp("disposition.notifiedBy")}
               value={providerDoc.finalDisposition?.deceased?.notifiedBy ?? ""}
               onChange={(e) =>
@@ -2472,7 +2684,7 @@ export function InpatientDischargeBoard({
             />
             <input
               style={fieldStyle}
-              disabled={readOnly || !canProvider}
+              disabled={!providerWriteEnabled}
               placeholder={tp("disposition.medicalExaminerStatus")}
               value={providerDoc.finalDisposition?.deceased?.medicalExaminerStatus ?? ""}
               onChange={(e) =>
@@ -2486,7 +2698,7 @@ export function InpatientDischargeBoard({
             />
             <input
               style={fieldStyle}
-              disabled={readOnly || !canProvider}
+              disabled={!providerWriteEnabled}
               placeholder={tp("disposition.organDonationReferralStatus")}
               value={providerDoc.finalDisposition?.deceased?.organDonationReferralStatus ?? ""}
               onChange={(e) =>
@@ -2500,7 +2712,7 @@ export function InpatientDischargeBoard({
             />
             <select
               style={fieldStyle}
-              disabled={readOnly || !canProvider}
+              disabled={!providerWriteEnabled}
               value={providerDoc.finalDisposition?.deceased?.bodyDisposition ?? ""}
               onChange={(e) =>
                 patchDispositionDetails({
@@ -2526,7 +2738,7 @@ export function InpatientDischargeBoard({
             {providerDoc.finalDisposition?.deceased?.bodyDisposition === "OTHER" ? (
               <input
                 style={fieldStyle}
-                disabled={readOnly || !canProvider}
+                disabled={!providerWriteEnabled}
                 placeholder={tp("disposition.bodyDispositionOther")}
                 value={providerDoc.finalDisposition?.deceased?.bodyDispositionOther ?? ""}
                 onChange={(e) =>
@@ -2545,7 +2757,7 @@ export function InpatientDischargeBoard({
         {dispositionCode === "OTHER" ? (
           <input
             style={fieldStyle}
-            disabled={readOnly || !canProvider}
+            disabled={!providerWriteEnabled}
             placeholder={tp("disposition.otherDetails")}
             value={providerDoc.finalDisposition?.destinationDetails ?? ""}
             onChange={(e) => patchDispositionDetails({ destinationDetails: e.target.value })}
@@ -2563,7 +2775,7 @@ export function InpatientDischargeBoard({
           >
             <input
               style={fieldStyle}
-              disabled={readOnly || !canProvider}
+              disabled={!providerWriteEnabled}
               placeholder={tp("followUpEditor.specialty")}
               value={row.specialty}
               onChange={(e) => {
@@ -2574,7 +2786,7 @@ export function InpatientDischargeBoard({
             />
             <input
               style={fieldStyle}
-              disabled={readOnly || !canProvider}
+              disabled={!providerWriteEnabled}
               placeholder={tp("followUpEditor.timing")}
               value={row.timing ?? ""}
               onChange={(e) => {
@@ -2586,7 +2798,7 @@ export function InpatientDischargeBoard({
             <button
               type="button"
               style={dangerBtn}
-              disabled={readOnly || !canProvider}
+              disabled={!providerWriteEnabled}
               onClick={() =>
                 touchProvider((prev) => ({
                   ...prev,
@@ -2598,7 +2810,7 @@ export function InpatientDischargeBoard({
             </button>
           </div>
         ))}
-        {!readOnly && canProvider ? (
+        {providerWriteEnabled ? (
           <button
             type="button"
             style={neutralBtn}
@@ -2623,6 +2835,47 @@ export function InpatientDischargeBoard({
       </div>
 
       {/* Nursing execution — disposition-aware cards */}
+      <div data-testid="inp-dis-1g-provider-meds-section" style={boardSectionStyle}>
+        <InpatientDischargeMedicationsPanel
+          facilityId={facilityId ?? null}
+          lines={providerDoc.dischargeMedications ?? []}
+          disabled={!providerWriteEnabled}
+          onChange={(next) =>
+            touchProvider((prev) => ({
+              ...prev,
+              dischargeMedications: next,
+              fieldProvenance: markClinicianEditedField(
+                prev.fieldProvenance,
+                "dischargeMedications"
+              ),
+            }))
+          }
+        />
+      </div>
+
+      <div data-testid="inp-dis-1g-med-recon-section" style={boardSectionStyle}>
+        <InpatientDischargeMedReconPanel
+          encounterId={encounterId}
+          facilityId={facilityId ?? null}
+          initialLines={medReconLines}
+          historyState={medReconHistoryState}
+          finalized={medReconFinalized}
+          disabled={readOnly || (!canNursing && !canProvider)}
+          onSaved={async () => {
+            await loadAll();
+          }}
+        />
+      </div>
+
+      {canNursing && waitingProviderFinalize && !canCompleteNursing ? (
+        <p
+          data-testid="inp-dis-1g-waiting-provider"
+          style={{ margin: "0 0 8px", fontSize: 13, color: "#b45309" }}
+        >
+          {tp("validation.WAITING_PROVIDER_FINALIZE")}
+        </p>
+      ) : null}
+
       <InpatientDischargeBoardNursing
         nursingDoc={nursingDoc}
         dispositionCode={dispositionCode}
@@ -2678,7 +2931,7 @@ export function InpatientDischargeBoard({
             background: "#fff",
           }}
         >
-          {canProvider ? (
+          {providerWriteEnabled ? (
             <>
               <button
                 type="button"

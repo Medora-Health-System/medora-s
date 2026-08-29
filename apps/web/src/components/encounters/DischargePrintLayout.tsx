@@ -34,7 +34,12 @@ import {
   mergeMedicationNamesForDischargeContext,
   type DischargeMedicationSourceInput,
 } from "@/features/emergency/providerDischargeMedicationContext";
-import { collectInpatientDispositionPrintFacts } from "@medora/shared";
+import {
+  collectInpatientDispositionPrintFacts,
+  collectInpatientDischargeMedicationPrintFacts,
+  formatInpatientDischargeMedicationPrintLine,
+  hydrateInpatientProviderDischarge1C,
+} from "@medora/shared";
 
 export type DischargePrintPatient = {
   firstName?: string | null;
@@ -285,6 +290,43 @@ export function getDischargePrintHtml(params: {
         if (value === "YES") value = printT(language, "printOutput.erPacket.yes");
         if (value === "NO") value = printT(language, "common.no");
         bodySections.push(line(label, value));
+      }
+      bodySections.push(`</div>`);
+    }
+  }
+
+  // INP.DIS.1G.1 — structured provider discharge medications (catalog-backed plan; not eRx)
+  {
+    const raw =
+      encounter.dischargeSummaryJson && typeof encounter.dischargeSummaryJson === "object"
+        ? (encounter.dischargeSummaryJson as Record<string, unknown>)
+        : null;
+    const providerDoc = hydrateInpatientProviderDischarge1C(raw?.inpatientProviderDischarge);
+    const medFacts = collectInpatientDischargeMedicationPrintFacts(
+      providerDoc?.dischargeMedications
+    );
+    if (medFacts.length) {
+      bodySections.push(
+        `<h2 style="font-size: 15px; margin: 18px 0 10px 0; font-weight: 700; border-bottom: 1px solid #000; padding-bottom: 4px;">${esc(
+          printT(language, "printOutput.dischargeMedications.sectionTitle")
+        )}</h2>`
+      );
+      bodySections.push(`<div style="margin-bottom: 16px;">`);
+      for (const fact of medFacts) {
+        const rel = fact.relationship
+          ? printT(language, `printOutput.dischargeMedications.relationship.${fact.relationship}`)
+          : "";
+        const relLabel =
+          rel && !rel.startsWith("printOutput.")
+            ? rel
+            : fact.relationship
+              ? fact.relationship
+              : "";
+        const lineText = formatInpatientDischargeMedicationPrintLine(fact);
+        const value = relLabel ? `${relLabel} — ${lineText}` : lineText;
+        bodySections.push(
+          line(printT(language, "printOutput.dischargeMedications.medication"), value)
+        );
       }
       bodySections.push(`</div>`);
     }

@@ -127,6 +127,24 @@ export class InpatientNursingDischargeService {
     const providerFinalized = Boolean(provider?.providerDocumentationFinalizedAt);
     const dispositionCode = provider?.finalDisposition?.code ?? null;
 
+    const summaryRoot =
+      enc.dischargeSummaryJson &&
+      typeof enc.dischargeSummaryJson === "object" &&
+      !Array.isArray(enc.dischargeSummaryJson)
+        ? (enc.dischargeSummaryJson as Record<string, unknown>)
+        : {};
+    const medReconRaw =
+      summaryRoot.inpatientMedRecon &&
+      typeof summaryRoot.inpatientMedRecon === "object" &&
+      !Array.isArray(summaryRoot.inpatientMedRecon)
+        ? (summaryRoot.inpatientMedRecon as Record<string, unknown>)
+        : null;
+    const medicationReconciliationLines = Array.isArray(medReconRaw?.lines)
+      ? (medReconRaw!.lines as unknown[])
+      : [];
+    const medicationReconciliationFinalizedAt =
+      typeof medReconRaw?.finalizedAt === "string" ? medReconRaw.finalizedAt : null;
+
     return {
       documentation: nursingWithMismatch,
       provider,
@@ -139,6 +157,9 @@ export class InpatientNursingDischargeService {
           : medReconComplete === false
             ? "INCOMPLETE"
             : "UNKNOWN",
+      /** INP.DIS.1G.1 — expose saved discharge recon lines for board preload/reload. */
+      medicationReconciliationLines,
+      medicationReconciliationFinalizedAt,
       instructionsAvailable,
       readiness,
       canAuthor: actor.role === RoleCode.RN && enc.status === EncounterStatus.OPEN,

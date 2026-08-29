@@ -237,6 +237,33 @@ export type InpatientDischargeFollowUp1C = {
   source?: "TEMPLATE" | "CONSULT" | "ORDER" | "PLANNING" | "MANUAL" | string | null;
 };
 
+/** Structured discharge medication line (JSON under inpatientProviderDischarge). */
+export const INPATIENT_DISCHARGE_MED_RELATIONSHIPS = [
+  "NEW",
+  "CONTINUE",
+  "CHANGE",
+  "STOP",
+] as const;
+
+export type InpatientDischargeMedRelationship =
+  (typeof INPATIENT_DISCHARGE_MED_RELATIONSHIPS)[number];
+
+export type InpatientDischargeMedicationLine1C = {
+  id: string;
+  catalogMedicationId?: string | null;
+  displayName: string;
+  dose?: string | null;
+  unit?: string | null;
+  route?: string | null;
+  frequency?: string | null;
+  duration?: string | null;
+  quantity?: string | null;
+  refills?: number | null;
+  instructions?: string | null;
+  /** NEW = discharge prescription intent; CONTINUE/CHANGE/STOP vs home med. */
+  relationship?: InpatientDischargeMedRelationship | null;
+};
+
 export type InpatientProviderDischargeV1C = InpatientProviderDischargeV1B & {
   schemaVersion: InpatientProviderDischargeSchemaVersion;
   conditionAtDischarge?: {
@@ -249,6 +276,8 @@ export type InpatientProviderDischargeV1C = InpatientProviderDischargeV1B & {
   /** Embedded patient instructions (also mirrored to inpatientPatientInstructions namespace). */
   patientInstructions?: InpatientPatientInstructions1C | null;
   followUps?: InpatientDischargeFollowUp1C[];
+  /** Provider discharge medication plan (catalog-backed; not eRx transmission). */
+  dischargeMedications?: InpatientDischargeMedicationLine1C[];
   fieldProvenance?: InpatientFieldProvenance | null;
   /** Provider finalized documentation — does NOT close encounter (1E). */
   providerDocumentationFinalizedAt?: string | null;
@@ -838,6 +867,12 @@ export function hydrateInpatientProviderDischarge1C(
       )
     : [];
 
+  const dischargeMedications = Array.isArray(raw.dischargeMedications)
+    ? (raw.dischargeMedications as InpatientDischargeMedicationLine1C[]).filter(
+        (m) => m && typeof m === "object" && trimOrNull(m.displayName) && trimOrNull(m.id)
+      )
+    : [];
+
   return {
     ...hydrated,
     schemaVersion:
@@ -850,6 +885,7 @@ export function hydrateInpatientProviderDischarge1C(
     noKnownPendingStudies: raw.noKnownPendingStudies === true,
     patientInstructions: pi,
     followUps,
+    dischargeMedications,
     fieldProvenance: isRecord(raw.fieldProvenance)
       ? (raw.fieldProvenance as InpatientFieldProvenance)
       : null,

@@ -14646,6 +14646,16 @@ export default {
       flag: "Flag",
       fallbackStudyLabel: "Study",
     },
+    dischargeMedications: {
+      sectionTitle: "Discharge medications",
+      medication: "Medication",
+      relationship: {
+        NEW: "New",
+        CONTINUE: "Continue",
+        CHANGE: "Change",
+        STOP: "Stop",
+      },
+    },
     patientDischargeInstructions: {
       sectionTitle: "Structured patient discharge instructions",
       givenYes: "Instructions given to patient (documented)",

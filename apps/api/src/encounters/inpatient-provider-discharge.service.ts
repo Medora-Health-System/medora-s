@@ -149,16 +149,16 @@ export class InpatientProviderDischargeService {
     }));
 
     const progressNoteExcerpts = (workspace?.progressNotes ?? [])
-      .slice(-3)
+      .slice(-5)
       .map((n) => {
         const text = typeof n.text === "string" ? n.text.trim() : "";
-        return text ? text.slice(0, 400) : null;
+        return text ? text.slice(0, 500) : null;
       })
       .filter((t): t is string => Boolean(t));
 
     const problemPlanSummaries = (workspace?.problemPlans ?? [])
       .filter((p) => p.status !== "RESOLVED" && p.status !== "RULED_OUT")
-      .slice(0, 8)
+      .slice(0, 10)
       .map((p) => {
         const parts = [p.displayLabel, p.assessment, p.plan].filter(
           (x): x is string => typeof x === "string" && x.trim().length > 0
@@ -167,6 +167,12 @@ export class InpatientProviderDischargeService {
       })
       .filter((t): t is string => Boolean(t));
 
+    const procedureBits = (ops.carePlan ?? [])
+      .filter((i) => /procedure|treatment|op|surgery/i.test(`${i.discipline} ${i.goalText}`))
+      .map((i) => i.goalText.trim())
+      .filter(Boolean)
+      .slice(0, 8);
+
     return {
       admissionDiagnosis: admDx,
       reasonForAdmission: reason,
@@ -174,6 +180,8 @@ export class InpatientProviderDischargeService {
       consults,
       progressNoteExcerpts,
       problemPlanSummaries,
+      proceduresSummary: procedureBits.length ? procedureBits.join("; ") : null,
+      significantFindingsSummary: null,
     };
   }
 

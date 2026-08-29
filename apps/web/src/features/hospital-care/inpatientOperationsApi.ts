@@ -465,6 +465,8 @@ export async function fetchInpatientNursingDischarge(encounterId: string) {
     providerFinalDisposition?: Record<string, unknown> | null;
     providerFinalized?: boolean;
     medicationReconciliationStatus?: string;
+    medicationReconciliationLines?: unknown[];
+    medicationReconciliationFinalizedAt?: string | null;
     instructionsAvailable?: boolean;
     readiness?: Array<{ id: string; status: string }>;
     canAuthor?: boolean;
