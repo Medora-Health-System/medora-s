@@ -28,12 +28,22 @@ import {
 } from "@/features/hospital-care/hospitalCareUnitsApi";
 import { isForbiddenApiError } from "@/features/hospital-care/hospitalCarePlacementApi";
 import { inpatientActiveWorkspacePath } from "@/features/inpatient-workspace/inpatientWorkspacePaths";
+import { InpatientAllEncountersWorkspace } from "@/features/inpatient-workspace/InpatientAllEncountersWorkspace";
+import {
+  InpatientLandingPatientModeTabs,
+  type InpatientLandingPatientMode,
+} from "@/features/inpatient-workspace/InpatientLandingPatientModeTabs";
 
 /**
  * D3E.6B — Unit-based Inpatient navigation + canonical census.
  * Never blank: defaults to All Hospital Units; loads when placement is OFF.
+ * INP.HIST.1A — optional All Encounters mode.
  */
-export function InpatientCensusViewLegacy() {
+export function InpatientCensusViewLegacy({
+  patientMode = "active",
+}: {
+  patientMode?: InpatientLandingPatientMode;
+}) {
   const { t } = useI18n();
   const { facilityId, ready } = useFacilityAndRoles();
   const [census, setCensus] = useState<HospitalCensusResponse | null>(null);
@@ -125,7 +135,10 @@ export function InpatientCensusViewLegacy() {
       title={t("inpatientD3e.census.title")}
       subtitle={t("hospitalCareD3e6b.inpatient.subtitle")}
     >
-      {loading ? (
+      <InpatientLandingPatientModeTabs mode={patientMode} />
+      {patientMode === "allEncounters" ? (
+        <InpatientAllEncountersWorkspace embedded />
+      ) : loading ? (
         <p style={{ fontSize: 13, color: "#64748b" }}>{t("common.loading")}</p>
       ) : error ? (
         <p style={{ fontSize: 13, color: "#b91c1c" }} role="alert">

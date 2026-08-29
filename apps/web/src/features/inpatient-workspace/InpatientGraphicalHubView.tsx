@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import {
   graphicalHospitalUnitTreeEnabledInRuntime,
   graphicalHospitalUnitTreeFlagsFromProcessEnv,
@@ -18,23 +19,44 @@ import { isForbiddenApiError } from "@/features/hospital-care/hospitalCarePlacem
 import { InpatientCensusViewLegacy } from "./InpatientCensusViewLegacy";
 import { INPATIENT_ALL_UNITS_BOARD_PATH } from "./inpatientUnitBoardPaths";
 import { ProviderCensusBoard } from "./ProviderCensusBoard";
+import { InpatientAllEncountersWorkspace } from "./InpatientAllEncountersWorkspace";
+import {
+  InpatientLandingPatientModeTabs,
+  parseInpatientLandingPatientMode,
+} from "./InpatientLandingPatientModeTabs";
 
 /**
  * D3E.6C — Graphical service-line hub (primary).
  * Falls back to D3E.6B vertical tree when graphical flag is OFF in production.
+ * INP.HIST.1A — Active Patients | All Encounters landing modes.
  */
 export function InpatientGraphicalHubView() {
   const { t } = useI18n();
+  const searchParams = useSearchParams();
+  const mode = parseInpatientLandingPatientMode(searchParams.get("mode"));
   const flags = graphicalHospitalUnitTreeFlagsFromProcessEnv(
     typeof process !== "undefined" ? process.env : undefined
   );
   const graphicalOn = graphicalHospitalUnitTreeEnabledInRuntime(flags);
 
   if (!graphicalOn) {
-    return <InpatientCensusViewLegacy />;
+    return <InpatientCensusViewLegacy patientMode={mode} />;
   }
 
-  return <GraphicalHubBody />;
+  return (
+    <HospitalCareShell
+      active="inpatient"
+      title={t("inpatientD3e.census.title")}
+      subtitle={t("hospitalCareD3e6c.hub.subtitle")}
+    >
+      <InpatientLandingPatientModeTabs mode={mode} />
+      {mode === "allEncounters" ? (
+        <InpatientAllEncountersWorkspace embedded />
+      ) : (
+        <GraphicalHubBody />
+      )}
+    </HospitalCareShell>
+  );
 }
 
 function GraphicalHubBody() {
@@ -76,89 +98,87 @@ function GraphicalHubBody() {
     };
   }, [t, ready, facilityId]);
 
+  if (loading) {
+    return <p style={{ fontSize: 13, color: "#64748b" }}>{t("common.loading")}</p>;
+  }
+  if (error) {
+    return (
+      <p style={{ fontSize: 13, color: "#b91c1c" }} role="alert">
+        {error}
+      </p>
+    );
+  }
+  if (!tree) return null;
+
   return (
-    <HospitalCareShell
-      active="inpatient"
-      title={t("inpatientD3e.census.title")}
-      subtitle={t("hospitalCareD3e6c.hub.subtitle")}
-    >
-      {loading ? (
-        <p style={{ fontSize: 13, color: "#64748b" }}>{t("common.loading")}</p>
-      ) : error ? (
-        <p style={{ fontSize: 13, color: "#b91c1c" }} role="alert">
-          {error}
+    <>
+      <div
+        style={{
+          ...MEDORA_CARD_SHELL,
+          padding: "10px 12px",
+          marginBottom: 12,
+          display: "flex",
+          flexWrap: "wrap",
+          gap: 12,
+          justifyContent: "space-between",
+          alignItems: "center",
+        }}
+        data-testid="inpatient-hub-summary"
+      >
+        <div>
+          <div style={{ fontSize: 13, fontWeight: 700, color: "#0f172a" }}>
+            {t("hospitalCareD3e6c.hub.summaryTitle")}
+          </div>
+          <div style={{ fontSize: 12, color: "#64748b" }}>
+            {tree.root.totalPatients} {t("hospitalCareD3e6c.tree.patients")}
+            {" · "}
+            {tree.root.alerts} {t("hospitalCareD3e6c.tree.alerts")}
+            {" · "}
+            {tree.serviceLines.length} {t("hospitalCareD3e6c.hub.serviceLines")}
+          </div>
+        </div>
+        <Link
+          href={INPATIENT_ALL_UNITS_BOARD_PATH}
+          style={{ fontSize: 13, fontWeight: 600, color: "#2563eb" }}
+        >
+          {t("hospitalCareD3e6c.hub.openAllCensus")}
+        </Link>
+      </div>
+
+      <ProviderCensusBoard />
+
+      {tree.serviceLines.length === 0 ? (
+        <div style={{ ...MEDORA_CARD_SHELL, padding: 16 }}>
+          <p style={{ margin: 0, fontWeight: 600 }}>{t("hospitalCareD3e6b.empty.noUnits")}</p>
+          <p style={{ margin: "6px 0 0", fontSize: 13, color: "#64748b" }}>
+            {t("hospitalCareD3e6b.empty.configureUnits")}
+          </p>
+        </div>
+      ) : (
+        <HospitalServiceLineTree tree={tree} />
+      )}
+
+      <div
+        style={{
+          ...MEDORA_CARD_SHELL,
+          marginTop: 16,
+          padding: "10px 12px",
+          display: "flex",
+          justifyContent: "space-between",
+          flexWrap: "wrap",
+          gap: 8,
+        }}
+      >
+        <p style={{ margin: 0, fontSize: 12, color: "#475569" }}>
+          {t("hospitalCareD3e6c.hub.bedHint")}
         </p>
-      ) : tree ? (
-        <>
-          <div
-            style={{
-              ...MEDORA_CARD_SHELL,
-              padding: "10px 12px",
-              marginBottom: 12,
-              display: "flex",
-              flexWrap: "wrap",
-              gap: 12,
-              justifyContent: "space-between",
-              alignItems: "center",
-            }}
-            data-testid="inpatient-hub-summary"
-          >
-            <div>
-              <div style={{ fontSize: 13, fontWeight: 700, color: "#0f172a" }}>
-                {t("hospitalCareD3e6c.hub.summaryTitle")}
-              </div>
-              <div style={{ fontSize: 12, color: "#64748b" }}>
-                {tree.root.totalPatients} {t("hospitalCareD3e6c.tree.patients")}
-                {" · "}
-                {tree.root.alerts} {t("hospitalCareD3e6c.tree.alerts")}
-                {" · "}
-                {tree.serviceLines.length} {t("hospitalCareD3e6c.hub.serviceLines")}
-              </div>
-            </div>
-            <Link
-              href={INPATIENT_ALL_UNITS_BOARD_PATH}
-              style={{ fontSize: 13, fontWeight: 600, color: "#2563eb" }}
-            >
-              {t("hospitalCareD3e6c.hub.openAllCensus")}
-            </Link>
-          </div>
-
-          <ProviderCensusBoard />
-
-          {tree.serviceLines.length === 0 ? (
-            <div style={{ ...MEDORA_CARD_SHELL, padding: 16 }}>
-              <p style={{ margin: 0, fontWeight: 600 }}>{t("hospitalCareD3e6b.empty.noUnits")}</p>
-              <p style={{ margin: "6px 0 0", fontSize: 13, color: "#64748b" }}>
-                {t("hospitalCareD3e6b.empty.configureUnits")}
-              </p>
-            </div>
-          ) : (
-            <HospitalServiceLineTree tree={tree} />
-          )}
-
-          <div
-            style={{
-              ...MEDORA_CARD_SHELL,
-              marginTop: 16,
-              padding: "10px 12px",
-              display: "flex",
-              justifyContent: "space-between",
-              flexWrap: "wrap",
-              gap: 8,
-            }}
-          >
-            <p style={{ margin: 0, fontSize: 12, color: "#475569" }}>
-              {t("hospitalCareD3e6c.hub.bedHint")}
-            </p>
-            <Link
-              href={HOSPITAL_CARE_FLOOR_BOARD}
-              style={{ fontSize: 13, fontWeight: 600, color: "#2563eb" }}
-            >
-              {t("hospitalCareD3e6b.bedManagement.open")}
-            </Link>
-          </div>
-        </>
-      ) : null}
-    </HospitalCareShell>
+        <Link
+          href={HOSPITAL_CARE_FLOOR_BOARD}
+          style={{ fontSize: 13, fontWeight: 600, color: "#2563eb" }}
+        >
+          {t("hospitalCareD3e6b.bedManagement.open")}
+        </Link>
+      </div>
+    </>
   );
 }

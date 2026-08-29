@@ -1,0 +1,37 @@
+/** INP.HIST.1A — Inpatient All Encounters (French product UI via fr.ts). */
+export const inpatientEncounterHistoryInpHist1aEn = {
+  modeActive: "Active Patients",
+  modeAllEncounters: "All Encounters",
+  modeAria: "Inpatient patient list mode",
+  title: "All Encounters",
+  subtitle: "Prior and current inpatient hospitalizations for this facility.",
+  searchLabel: "Search",
+  searchPlaceholder: "Name, MRN, or encounter ID",
+  statusLabel: "Status",
+  statusAll: "All",
+  statusOpen: "Open",
+  statusClosed: "Closed",
+  statusCancelled: "Cancelled",
+  table: {
+    date: "Date",
+    patient: "Patient",
+    mrn: "MRN",
+    type: "Type",
+    course: "Hospital course",
+    status: "Status",
+    actions: "Actions",
+  },
+  actions: {
+    viewRecord: "View Record",
+    print: "Print",
+    viewEd: "View ED Record",
+  },
+  empty: "No inpatient encounters match these filters.",
+  loadError: "Unable to load encounter history.",
+  timelineIncomplete:
+    "Unit history is limited to known placements; some room moves may not appear.",
+  relatedEd: "Related emergency encounter",
+  printBusy: "Preparing medical record…",
+  printError: "Unable to print medical record.",
+  showingCount: "Showing {shown} of {total}",
+};

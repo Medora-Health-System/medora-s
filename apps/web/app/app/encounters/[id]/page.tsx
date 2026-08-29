@@ -108,6 +108,8 @@ import { ObservationContinueObservationQuickModal } from "@/components/encounter
 import { ObservationReassessmentModal } from "@/components/encounters/ObservationReassessmentModal";
 import { EnterpriseEncounterCommandTimeline } from "@/components/encounters/EnterpriseEncounterCommandTimeline";
 import { EnterpriseClosedEncounterViewer } from "@/components/encounters/EnterpriseClosedEncounterViewer";
+import { InpatientClosedEncounterHistoryStrip } from "@/features/inpatient-workspace/InpatientClosedEncounterHistoryStrip";
+import { inpatientAllEncountersPath } from "@/features/inpatient-workspace/inpatientEncounterHistoryApi";
 import { ObservationTemplateOrdersPanel } from "@/components/encounters/ObservationTemplateOrdersPanel";
 import { ordersExcludingObservationTemplate } from "@/lib/observationTemplateOrderRows";
 import { dispatchObservationEncounterRefresh } from "@/lib/observationEncounterRefresh";
@@ -451,6 +453,7 @@ function EncounterDetailPageContent() {
 function EncounterDetailPageInner({ session }: { session: ReturnType<typeof useFacilityAndRoles> }) {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { t, language } = useI18n();
   const encounterId = params.id as string;
   const { facilityId, userId, canPrescribe, roles, ready: rolesReady, facilities, careProfileJson, facilityCountry } = session;
@@ -1813,23 +1816,39 @@ function EncounterDetailPageInner({ session }: { session: ReturnType<typeof useF
           : encounter.type === "INPATIENT"
             ? t("enterpriseClosedEncounterD4c8a.careSetting.inpatient")
             : null;
+    const fromInpatientArchive = searchParams?.get("from") === "inpatientAllEncounters";
     return (
       <EnterpriseClosedEncounterViewer
         facilityId={facilityId}
         facilityName={facilityName}
         encounter={encounter}
         roleCodes={roles}
-        backHref={encounter.patient?.id ? `/app/patients/${encounter.patient.id}` : "/app/encounters"}
+        backHref={
+          fromInpatientArchive
+            ? inpatientAllEncountersPath()
+            : encounter.patient?.id
+              ? `/app/patients/${encounter.patient.id}`
+              : "/app/encounters"
+        }
         backLabel={
-          encounter.patient?.id
-            ? t("enterpriseClosedEncounterD4c8a.backToPatient")
-            : t("enterpriseClosedEncounterD4c8a.back")
+          fromInpatientArchive
+            ? t("inpatientEncounterHistoryInpHist1a.modeAllEncounters")
+            : encounter.patient?.id
+              ? t("enterpriseClosedEncounterD4c8a.backToPatient")
+              : t("enterpriseClosedEncounterD4c8a.back")
         }
         careSettingLabel={careSettingLabel}
         onReopened={async () => {
           await loadEncounter();
         }}
-      />
+      >
+        {encounter.type === "INPATIENT" ? (
+          <InpatientClosedEncounterHistoryStrip
+            encounter={encounter}
+            showBackToAllEncounters={fromInpatientArchive}
+          />
+        ) : null}
+      </EnterpriseClosedEncounterViewer>
     );
   }
 

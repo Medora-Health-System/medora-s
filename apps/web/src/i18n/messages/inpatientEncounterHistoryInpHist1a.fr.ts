@@ -1,0 +1,37 @@
+/** INP.HIST.1A — Historique des séjours hospitaliers. */
+export const inpatientEncounterHistoryInpHist1aFr = {
+  modeActive: "Patients actifs",
+  modeAllEncounters: "Toutes les rencontres",
+  modeAria: "Mode liste patients hospitalisation",
+  title: "Toutes les rencontres",
+  subtitle: "Hospitalisations actuelles et antérieures de cet établissement.",
+  searchLabel: "Recherche",
+  searchPlaceholder: "Nom, NIP ou identifiant de rencontre",
+  statusLabel: "Statut",
+  statusAll: "Tous",
+  statusOpen: "Ouvert",
+  statusClosed: "Fermé",
+  statusCancelled: "Annulé",
+  table: {
+    date: "Date",
+    patient: "Patient",
+    mrn: "NIP",
+    type: "Type",
+    course: "Parcours hospitalier",
+    status: "Statut",
+    actions: "Actions",
+  },
+  actions: {
+    viewRecord: "Voir le dossier",
+    print: "Imprimer",
+    viewEd: "Voir dossier urgences",
+  },
+  empty: "Aucune rencontre d’hospitalisation ne correspond à ces filtres.",
+  loadError: "Impossible de charger l’historique des rencontres.",
+  timelineIncomplete:
+    "L’historique d’unité se limite aux placements connus ; certains changements de chambre peuvent manquer.",
+  relatedEd: "Rencontre d’urgences liée",
+  printBusy: "Préparation du dossier médical…",
+  printError: "Impossible d’imprimer le dossier médical.",
+  showingCount: "Affichage de {shown} sur {total}",
+};
