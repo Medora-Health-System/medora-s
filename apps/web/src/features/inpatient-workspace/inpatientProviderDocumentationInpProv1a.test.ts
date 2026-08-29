@@ -78,19 +78,24 @@ describe("INP.PROV.1A provider documentation navigation", () => {
     expect(panel).toContain('case "providerDocumentation"');
   });
 
-  it("board reuses D4B.8 + inpatient provider panel; ADMIN consults read-only; no disconnected carry-forward", () => {
+  it("board mounts INP.PROV.1B workspace; ADMIN view-only; durable engines reused (no second store)", () => {
     const board = readFileSync(join(root, "InpatientProviderDocumentationBoard.tsx"), "utf8");
-    expect(board).toContain("EnterpriseProviderClinicalWorkspaceD4b8");
-    expect(board).toContain("InpatientProviderWorkspacePanel");
-    expect(board).toContain("canWrite={canAuthor}");
-    expect(board).toContain('mode="consults"');
+    expect(board).toContain("InpatientProviderDocumentationWorkspaceInpProv1b");
+    expect(board).toContain("canAuthorInpatientProviderDocumentation");
     expect(board).toContain("inp-prov-1a-view-only");
     expect(board).not.toContain("procedure_note");
     expect(board).not.toContain("carryForwardText");
-    expect(board).not.toContain("carryForwardPendingReview");
     expect(board).not.toContain("inp-prov-1a-carry-forward");
-    expect(board).not.toContain("admissionRationaleText:");
-    expect(board).toContain("buildInpatientDocumentationCompletenessAlerts");
+    const workspace = readFileSync(
+      join(root, "InpatientProviderDocumentationWorkspaceInpProv1b.tsx"),
+      "utf8"
+    );
+    expect(workspace).toContain("InpatientProviderWorkspacePanel");
+    // Consults stay in the clinical-ops surface: the 1B note workspace only authors Progress/H&P.
+    expect(workspace).not.toContain("InpatientClinicalOpsPanel");
+    expect(workspace).toContain("CreateOrderModal");
+    expect(workspace).toContain("saveProviderProgressNote");
+    expect(workspace).toContain("signProviderProgressNote");
     const panel = readFileSync(join(root, "InpatientProviderWorkspacePanel.tsx"), "utf8");
     expect(panel).toContain(
       'data-dictation-ready={canProviderWrite && !hpSigned ? "true" : undefined}'

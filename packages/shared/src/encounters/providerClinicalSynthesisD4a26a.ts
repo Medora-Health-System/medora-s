@@ -41,6 +41,23 @@ export const PROVIDER_PROGRESS_NOTE_STATUSES = [
 
 export type ProviderProgressNoteStatus = (typeof PROVIDER_PROGRESS_NOTE_STATUSES)[number];
 
+/** Legal/final progress-note states — non-editable; shown in closed record / print. */
+export const PROVIDER_PROGRESS_NOTE_FINAL_STATUSES = [
+  "SIGNED",
+  "AMENDED",
+  "CORRECTED",
+] as const;
+
+export type ProviderProgressNoteFinalStatus =
+  (typeof PROVIDER_PROGRESS_NOTE_FINAL_STATUSES)[number];
+
+export function isProviderProgressNoteFinalStatus(
+  status: string | null | undefined
+): boolean {
+  const s = String(status ?? "").trim().toUpperCase();
+  return (PROVIDER_PROGRESS_NOTE_FINAL_STATUSES as readonly string[]).includes(s);
+}
+
 export const PROVIDER_MED_SNAPSHOT_GROUPS = [
   "ANTIBIOTICS",
   "ANTICOAGULANTS",
@@ -901,7 +918,7 @@ export function saveProviderProgressNoteDraft(input: {
     return { ok: false, code: "PROVIDER_DOCUMENT_STALE" };
   }
   const existing = input.notes.find((n) => n.noteId === input.note.noteId);
-  if (existing?.status === "SIGNED" || existing?.status === "CORRECTED") {
+  if (isProviderProgressNoteFinalStatus(existing?.status)) {
     return { ok: false, code: "PROVIDER_NOTE_ALREADY_SIGNED" };
   }
   const next = [...input.notes];
@@ -937,7 +954,7 @@ export function signProviderProgressNote(input: {
   const idx = input.notes.findIndex((n) => n.noteId === input.noteId);
   if (idx < 0) return { ok: false, code: "NOTE_NOT_FOUND" };
   const prev = input.notes[idx]!;
-  if (prev.status === "SIGNED" || prev.status === "CORRECTED") {
+  if (isProviderProgressNoteFinalStatus(prev.status)) {
     return { ok: false, code: "PROVIDER_NOTE_ALREADY_SIGNED" };
   }
   const at = input.atIso ?? new Date().toISOString();

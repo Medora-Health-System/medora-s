@@ -74,6 +74,7 @@ import { inpatientFinalDischargeInpDis1eEn } from "./inpatientFinalDischargeInpD
 import { inpatientDischargeBoardInpDis1fEn } from "./inpatientDischargeBoardInpDis1f.en";
 import { inpatientDischargeAwarenessInpDis1hEn } from "./inpatientDischargeAwarenessInpDis1h.en";
 import { inpatientProviderDocumentationInpProv1aEn } from "./inpatientProviderDocumentationInpProv1a.en";
+import { inpatientProviderDocumentationInpProv1bEn } from "./inpatientProviderDocumentationInpProv1b.en";
 import { inpatientEncounterHistoryInpHist1aEn } from "./inpatientEncounterHistoryInpHist1a.en";
 import { inpatientOverviewD4a34En } from "./inpatientOverviewD4a34.en";
 import { inpatientOverviewInp2aEn } from "./inpatientOverviewInp2a.en";
@@ -20847,6 +20848,7 @@ export default {
   inpatientDischargeBoardInpDis1f: inpatientDischargeBoardInpDis1fEn,
   inpatientDischargeAwarenessInpDis1h: inpatientDischargeAwarenessInpDis1hEn,
   inpatientProviderDocumentationInpProv1a: inpatientProviderDocumentationInpProv1aEn,
+  inpatientProviderDocumentationInpProv1b: inpatientProviderDocumentationInpProv1bEn,
   inpatientEncounterHistoryInpHist1a: inpatientEncounterHistoryInpHist1aEn,
   inpatientOverviewD4a34: inpatientOverviewD4a34En,
   inpatientOverviewInp2a: inpatientOverviewInp2aEn,

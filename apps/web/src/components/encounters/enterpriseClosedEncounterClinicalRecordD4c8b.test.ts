@@ -6,9 +6,26 @@ import {
   isForbiddenClosedRecordAggregatePath,
   isEnterpriseEncounterClosed,
   shouldShowEnterpriseReopenAction,
+  isProviderProgressNoteFinalStatus,
 } from "@medora/shared";
 
 describe("MEDUI.D4C.8B enterprise closed clinical record composition", () => {
+  it("projects inpatientProviderWorkspaceV1 signed notes into provider section", () => {
+    const src = readFileSync(
+      resolve(__dirname, "./EnterpriseClosedEncounterClinicalRecord.tsx"),
+      "utf8"
+    );
+    expect(src).toContain("projectInpatientProviderWorkspaceForClosedRecord");
+    expect(src).toContain("inpatientProviderWorkspaceV1");
+    expect(src).toContain("admissionSummaryJson");
+    expect(src).toContain("isProviderProgressNoteFinalStatus");
+    expect(isProviderProgressNoteFinalStatus("SIGNED")).toBe(true);
+    expect(isProviderProgressNoteFinalStatus("CORRECTED")).toBe(true);
+    expect(isProviderProgressNoteFinalStatus("AMENDED")).toBe(true);
+    expect(isProviderProgressNoteFinalStatus("DRAFT")).toBe(false);
+    expect(isProviderProgressNoteFinalStatus("REVIEW")).toBe(false);
+  });
+
   it("exports certification id and forbids chart-summary aggregate", () => {
     expect(D4C8B_CERTIFICATION_ID).toBe("MEDUI.D4C.8B");
     expect(isForbiddenClosedRecordAggregatePath("/patients/p1/chart-summary")).toBe(true);

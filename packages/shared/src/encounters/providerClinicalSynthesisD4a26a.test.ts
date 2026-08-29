@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   PROVIDER_CLINICAL_SYNTHESIS_CERTIFICATION_ID,
+  PROVIDER_PROGRESS_NOTE_FINAL_STATUSES,
   buildCarryForwardDiff,
   buildProgressNoteCarryForward,
   buildProviderPrintPackage,
@@ -9,6 +10,7 @@ import {
   computeProviderHospitalDay,
   filterProviderCensusRows,
   groupProviderTasks,
+  isProviderProgressNoteFinalStatus,
   projectDischargeReadiness,
   projectIntakeOutputSynthesis,
   projectLabLines,
@@ -281,5 +283,53 @@ describe("D4A.2.6A provider clinical synthesis", () => {
     expect(pkg.authoritative).toBe(true);
     expect(pkg.auditEvent).toBe("PROVIDER_PRINT_PACKAGE_GENERATED");
     expect(pkg.revision).toBe(2);
+  });
+
+  it("treats SIGNED / AMENDED / CORRECTED as final progress-note states (not DRAFT/REVIEW)", () => {
+    expect([...PROVIDER_PROGRESS_NOTE_FINAL_STATUSES]).toEqual([
+      "SIGNED",
+      "AMENDED",
+      "CORRECTED",
+    ]);
+    expect(isProviderProgressNoteFinalStatus("SIGNED")).toBe(true);
+    expect(isProviderProgressNoteFinalStatus("amended")).toBe(true);
+    expect(isProviderProgressNoteFinalStatus("CORRECTED")).toBe(true);
+    expect(isProviderProgressNoteFinalStatus("DRAFT")).toBe(false);
+    expect(isProviderProgressNoteFinalStatus("REVIEW")).toBe(false);
+
+    const base = {
+      noteId: "pn-1",
+      expectedVersion: 1,
+      text: "Finalized body",
+      serviceDate: "2026-08-20",
+    };
+    for (const status of ["SIGNED", "AMENDED", "CORRECTED"] as const) {
+      const blocked = saveProviderProgressNoteDraft({
+        notes: [{ ...base, status }],
+        note: { ...base, status: "DRAFT", text: "overwrite attempt" },
+        clientExpectedVersion: 0,
+        documentExpectedVersion: 0,
+      });
+      expect(blocked.ok).toBe(false);
+      if (!blocked.ok) expect(blocked.code).toBe("PROVIDER_NOTE_ALREADY_SIGNED");
+
+      const resign = signProviderProgressNote({
+        notes: [{ ...base, status }],
+        noteId: "pn-1",
+        actorUserId: "u1",
+        clientExpectedVersion: 0,
+        documentExpectedVersion: 0,
+      });
+      expect(resign.ok).toBe(false);
+      if (!resign.ok) expect(resign.code).toBe("PROVIDER_NOTE_ALREADY_SIGNED");
+    }
+
+    const draftOk = saveProviderProgressNoteDraft({
+      notes: [{ ...base, status: "DRAFT" }],
+      note: { ...base, status: "DRAFT", text: "updated draft" },
+      clientExpectedVersion: 0,
+      documentExpectedVersion: 0,
+    });
+    expect(draftOk.ok).toBe(true);
   });
 });

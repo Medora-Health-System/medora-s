@@ -6,7 +6,7 @@
  */
 
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { D4C8B_CERTIFICATION_ID, formatToothDisplayLabel, getCanonicalTooth } from "@medora/shared";
+import { D4C8B_CERTIFICATION_ID, formatToothDisplayLabel, getCanonicalTooth, isProviderProgressNoteFinalStatus } from "@medora/shared";
 import { apiFetch } from "@/lib/apiClient";
 import { ClinicalResultViewer } from "@/components/clinical/ClinicalResultViewer";
 import {
@@ -209,6 +209,66 @@ function dischargeLabelKey(key: string): string {
   return `enterpriseClosedClinicalRecordD4c8b.discharge.fields.${key}`;
 }
 
+/**
+ * INP.PROV.1B — project durable inpatientProviderWorkspaceV1 signed notes into closed record.
+ * Same JSON authority as the documentation workspace / Summary — read-only, no copy store.
+ */
+function projectInpatientProviderWorkspaceForClosedRecord(
+  admissionSummaryJson: unknown,
+  language: string
+): Array<{ label: string; text: string }> {
+  const root =
+    admissionSummaryJson && typeof admissionSummaryJson === "object" && !Array.isArray(admissionSummaryJson)
+      ? (admissionSummaryJson as Record<string, unknown>)
+      : null;
+  const ws =
+    root?.inpatientProviderWorkspaceV1 &&
+    typeof root.inpatientProviderWorkspaceV1 === "object" &&
+    !Array.isArray(root.inpatientProviderWorkspaceV1)
+      ? (root.inpatientProviderWorkspaceV1 as Record<string, unknown>)
+      : null;
+  if (!ws) return [];
+
+  const out: Array<{ label: string; text: string }> = [];
+  const hp = ws.hpDraft && typeof ws.hpDraft === "object" ? (ws.hpDraft as Record<string, unknown>) : null;
+  if (hp && String(hp.status ?? "").toUpperCase() === "SIGNED") {
+    const sections =
+      hp.sections && typeof hp.sections === "object" && !Array.isArray(hp.sections)
+        ? (hp.sections as Record<string, { text?: string | null }>)
+        : {};
+    const parts: string[] = [];
+    for (const [key, val] of Object.entries(sections)) {
+      const text = String(val?.text ?? "").trim();
+      if (text) parts.push(`${key.replace(/_/g, " ")}\n${text}`);
+    }
+    if (parts.length) {
+      out.push({
+        label: language === "fr" ? "H&P (hospitalisation)" : "H&P (inpatient)",
+        text: parts.join("\n\n"),
+      });
+    }
+  }
+
+  const notes = Array.isArray(ws.progressNotes) ? ws.progressNotes : [];
+  for (const raw of notes) {
+    if (!raw || typeof raw !== "object") continue;
+    const n = raw as Record<string, unknown>;
+    // Final/legal states only — drafts must not appear in closed medical record.
+    if (!isProviderProgressNoteFinalStatus(String(n.status ?? ""))) continue;
+    const text = String(n.text ?? "").trim();
+    if (!text) continue;
+    const when = String(n.signedAt ?? n.serviceDate ?? "").trim();
+    out.push({
+      label:
+        language === "fr"
+          ? `Note d’évolution${when ? ` · ${when}` : ""}`
+          : `Progress note${when ? ` · ${when}` : ""}`,
+      text,
+    });
+  }
+  return out;
+}
+
 export function EnterpriseClosedEncounterClinicalRecord({ facilityId, encounter }: Props) {
   const { t, language } = useI18n();
   const encounterId = encounter.id;
@@ -314,10 +374,14 @@ export function EnterpriseClosedEncounterClinicalRecord({ facilityId, encounter 
     () => parseNursingAssessmentSectionsForChart(encounter.nursingAssessment, language),
     [encounter.nursingAssessment, language]
   );
-  const providerSections = useMemo(
-    () => parsePhysicianEvalV1ForChart(encounter.nursingAssessment, language),
-    [encounter.nursingAssessment, language]
-  );
+  const providerSections = useMemo(() => {
+    const fromMse = parsePhysicianEvalV1ForChart(encounter.nursingAssessment, language);
+    const fromInpatient = projectInpatientProviderWorkspaceForClosedRecord(
+      encounter.admissionSummaryJson,
+      language
+    );
+    return [...fromMse, ...fromInpatient];
+  }, [encounter.nursingAssessment, encounter.admissionSummaryJson, language]);
   const nursingSig = nursingAssessmentSignatureForLocale(encounter.nursingAssessment, language, t);
   const providerWorkspaceSig = providerDocumentationWorkspaceSignatureForLocale(
     encounter.nursingAssessment,
