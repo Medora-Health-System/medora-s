@@ -1,6 +1,6 @@
 /**
- * INP.HIST.1A — Lightweight inpatient encounter history / archive list.
- * Mirrors ED archive pagination pattern; does NOT load full charts per row.
+ * INP.HIST.1A — Lightweight CLOSED inpatient encounter archive.
+ * Mirrors ED archive: historical completed hospitalizations only (not live census).
  */
 
 import { Injectable } from "@nestjs/common";
@@ -16,8 +16,6 @@ export type InpatientEncountersArchiveQuery = {
   startDate?: string;
   endDate?: string;
   search?: string;
-  /** ALL | OPEN | CLOSED | CANCELLED — default ALL (OPEN + CLOSED; CANCELLED optional). */
-  status?: string;
   limit?: number;
   offset?: number;
 };
@@ -33,6 +31,7 @@ export type InpatientEncountersArchiveRow = {
   dateRangeLabel: string;
   encounterTypeLabel: string;
   courseSummary: string;
+  dispositionLabel: string | null;
   originatingEdEncounterId: string | null;
   timelineIncomplete: boolean;
   patient: {
@@ -83,24 +82,13 @@ export class InpatientEncountersArchiveService {
     );
     const offset = Math.max(query.offset ?? 0, 0);
     const search = (query.search ?? "").trim();
-    const statusFilter = String(query.status ?? "ALL").trim().toUpperCase();
 
+    /** Server-enforced closed archive — mirrors ED All Encounters (CLOSED only). */
     const where: Prisma.EncounterWhereInput = {
       facilityId: query.facilityId,
       type: EncounterType.INPATIENT,
+      status: EncounterStatus.CLOSED,
     };
-
-    if (statusFilter === "OPEN") {
-      where.status = EncounterStatus.OPEN;
-    } else if (statusFilter === "CLOSED") {
-      where.status = EncounterStatus.CLOSED;
-    } else if (statusFilter === "CANCELLED") {
-      where.status = EncounterStatus.CANCELLED;
-    } else {
-      where.status = {
-        in: [EncounterStatus.OPEN, EncounterStatus.CLOSED, EncounterStatus.CANCELLED],
-      };
-    }
 
     if (query.startDate || query.endDate) {
       const createdAt: Prisma.DateTimeFilter = {};
@@ -181,6 +169,7 @@ export class InpatientEncountersArchiveService {
         }),
         encounterTypeLabel: course.encounterTypeLabel,
         courseSummary: course.courseSummary,
+        dispositionLabel: course.dispositionLabel,
         originatingEdEncounterId: course.originatingEdEncounterId,
         timelineIncomplete: course.timelineIncomplete,
         patient: enc.patient

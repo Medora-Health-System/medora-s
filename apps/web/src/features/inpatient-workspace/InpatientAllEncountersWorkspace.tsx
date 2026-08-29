@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * INP.HIST.1A — Inpatient All Encounters archive (facility history, not unit board).
+ * INP.HIST.1A — CLOSED inpatient All Encounters archive (ED historical-chart model).
  */
 
 import { useCallback, useEffect, useState, type CSSProperties } from "react";
@@ -13,7 +13,6 @@ import { printEncounterChartLivePreview } from "@/components/encounters/Encounte
 import { buildRxPrintFacilityIdentity } from "@/components/pharmacy/RxPrintLayout";
 import {
   fetchInpatientEncountersArchive,
-  inpatientHistoryEdRecordHref,
   inpatientHistoryRecordHref,
   loadInpatientArchiveMedicalRecordPrintInputs,
   type InpatientEncountersArchiveApiRow,
@@ -27,7 +26,6 @@ export function InpatientAllEncountersWorkspace({ embedded = false }: Props) {
   const { t, language } = useI18n();
   const { facilityId, ready } = useFacilityAndRoles();
   const [search, setSearch] = useState("");
-  const [status, setStatus] = useState("ALL");
   const [rows, setRows] = useState<InpatientEncountersArchiveApiRow[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -44,7 +42,6 @@ export function InpatientAllEncountersWorkspace({ embedded = false }: Props) {
     try {
       const data = await fetchInpatientEncountersArchive({
         search,
-        status,
         limit: 50,
         offset: 0,
       });
@@ -57,7 +54,7 @@ export function InpatientAllEncountersWorkspace({ embedded = false }: Props) {
     } finally {
       setLoading(false);
     }
-  }, [facilityId, ready, search, status, t]);
+  }, [facilityId, ready, search, t]);
 
   useEffect(() => {
     const handle = window.setTimeout(() => {
@@ -123,22 +120,6 @@ export function InpatientAllEncountersWorkspace({ embedded = false }: Props) {
             data-testid="inp-hist-1a-search"
           />
         </label>
-        <label style={{ fontSize: 12, display: "grid", gap: 4 }}>
-          {t("inpatientEncounterHistoryInpHist1a.statusLabel")}
-          <select
-            value={status}
-            onChange={(e) => setStatus(e.target.value)}
-            style={inputStyle}
-            data-testid="inp-hist-1a-status"
-          >
-            <option value="ALL">{t("inpatientEncounterHistoryInpHist1a.statusAll")}</option>
-            <option value="OPEN">{t("inpatientEncounterHistoryInpHist1a.statusOpen")}</option>
-            <option value="CLOSED">{t("inpatientEncounterHistoryInpHist1a.statusClosed")}</option>
-            <option value="CANCELLED">
-              {t("inpatientEncounterHistoryInpHist1a.statusCancelled")}
-            </option>
-          </select>
-        </label>
       </div>
 
       {error ? (
@@ -164,9 +145,8 @@ export function InpatientAllEncountersWorkspace({ embedded = false }: Props) {
                 <th style={thStyle}>{t("inpatientEncounterHistoryInpHist1a.table.date")}</th>
                 <th style={thStyle}>{t("inpatientEncounterHistoryInpHist1a.table.patient")}</th>
                 <th style={thStyle}>{t("inpatientEncounterHistoryInpHist1a.table.mrn")}</th>
-                <th style={thStyle}>{t("inpatientEncounterHistoryInpHist1a.table.type")}</th>
                 <th style={thStyle}>{t("inpatientEncounterHistoryInpHist1a.table.course")}</th>
-                <th style={thStyle}>{t("inpatientEncounterHistoryInpHist1a.table.status")}</th>
+                <th style={thStyle}>{t("inpatientEncounterHistoryInpHist1a.table.disposition")}</th>
                 <th style={thStyle}>{t("inpatientEncounterHistoryInpHist1a.table.actions")}</th>
               </tr>
             </thead>
@@ -180,24 +160,8 @@ export function InpatientAllEncountersWorkspace({ embedded = false }: Props) {
                     <td style={tdStyle}>{row.dateRangeLabel}</td>
                     <td style={tdStyle}>{name}</td>
                     <td style={tdStyle}>{row.patient?.mrn || t("common.dash")}</td>
-                    <td style={tdStyle}>{row.encounterTypeLabel}</td>
-                    <td style={tdStyle}>
-                      <div>{row.courseSummary}</div>
-                      {row.originatingEdEncounterId ? (
-                        <Link
-                          href={inpatientHistoryEdRecordHref(row.originatingEdEncounterId)}
-                          style={{ fontSize: 11, color: "#2563eb" }}
-                        >
-                          {t("inpatientEncounterHistoryInpHist1a.actions.viewEd")}
-                        </Link>
-                      ) : null}
-                      {row.timelineIncomplete ? (
-                        <div style={{ fontSize: 10, color: "#92400e", marginTop: 2 }}>
-                          {t("inpatientEncounterHistoryInpHist1a.timelineIncomplete")}
-                        </div>
-                      ) : null}
-                    </td>
-                    <td style={tdStyle}>{row.status}</td>
+                    <td style={tdStyle}>{row.courseSummary}</td>
+                    <td style={tdStyle}>{row.dispositionLabel || t("common.dash")}</td>
                     <td style={tdStyle}>
                       <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                         <Link
