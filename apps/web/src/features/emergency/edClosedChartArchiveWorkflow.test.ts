@@ -42,17 +42,19 @@ describe("ED closed chart archive workflow", () => {
     expect(chart).toMatch(/if \(isEdEncounterClosedForArchive\(encounter\.status\)\)/);
   });
 
-  it("closed archive reuses EmergencyErSummaryClosureSurface in CLOSED_READ_ONLY mode", () => {
+  it("closed archive uses EnterpriseClosedEncounterViewer CLOSED_READ_ONLY shell", () => {
     const archiveView = readSrc("features/emergency/EmergencyClosedChartArchiveView.tsx");
-    expect(archiveView).toContain("EmergencyErSummaryClosureSurface");
+    expect(archiveView).toContain("EnterpriseClosedEncounterViewer");
     expect(archiveView).toContain("CLOSED_READ_ONLY");
-    expect(archiveView).toContain("summaryReadOnly");
+    expect(archiveView).toContain('data-testid="ed-closed-chart-archive"');
     expect(archiveView).not.toContain("EmergencyTriagePanel");
     expect(archiveView).not.toContain("EmergencyErOrdersPanel");
     expect(archiveView).not.toContain("EmergencyDispositionPanel");
     expect(archiveView).not.toContain("emergencyChartView.linkMedoraEncounterRef");
-    expect(archiveView).toContain("ed-closed-chart-readonly-badge");
     expect(archiveView).toContain("emergencyClosedChart.backToAllEncounters");
+    const viewer = readSrc("components/encounters/EnterpriseClosedEncounterViewer.tsx");
+    expect(viewer).toContain("CLOSED_READ_ONLY");
+    expect(viewer).toContain("EnterpriseClosedEncounterClinicalRecord");
   });
 
   it("does not expose Open full encounter chart to ordinary closed-chart users", () => {
