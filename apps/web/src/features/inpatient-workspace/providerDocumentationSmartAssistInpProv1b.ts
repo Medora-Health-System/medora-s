@@ -15,6 +15,8 @@ export type ProviderSmartAssistSuggestion = {
   /** Non-empty text to insert only when provider clicks Insert. */
   insertText: string;
   kind: "lab" | "order" | "problem";
+  /** Preferred destination when documenting H&P (Progress SOAP still uses kind heuristics). */
+  hpSectionHint?: "DIAGNOSTICS_REVIEWED" | "ASSESSMENT_PLAN" | "HPI" | "PLAN";
 };
 
 export type ProviderSmartAssistReviewItem = {
@@ -59,6 +61,12 @@ type OrderLite = {
   }>;
 };
 
+type HpSectionPresence = {
+  rosDocumented?: boolean;
+  examDocumented?: boolean;
+  hpStatus?: string | null;
+};
+
 function arrow(direction: string | null | undefined): string {
   const d = String(direction ?? "").toUpperCase();
   if (d.includes("DOWN") || d === "DECREASING" || d === "↓") return "↓";
@@ -66,11 +74,29 @@ function arrow(direction: string | null | undefined): string {
   return "";
 }
 
+/**
+ * Clinical integrity: labs/orders/diagnoses must never insert into ROS or Physical Exam.
+ */
+export function canInsertSmartAssistIntoHpSection(
+  activeHpSection: string | null | undefined,
+  suggestion: Pick<ProviderSmartAssistSuggestion, "kind" | "hpSectionHint">
+): boolean {
+  const section = String(activeHpSection ?? "").trim().toUpperCase();
+  if (!section) return false;
+  if (section === "ROS" || section === "PHYSICAL_EXAM") return false;
+  if (suggestion.kind === "lab") return section === "DIAGNOSTICS_REVIEWED";
+  if (suggestion.kind === "problem") return section === "ASSESSMENT_PLAN";
+  if (suggestion.kind === "order") return section === "ASSESSMENT_PLAN";
+  return suggestion.hpSectionHint === section;
+}
+
 export function buildProviderSmartAssistSuggestions(input: {
   sections: ProgressSoapSections;
   synthesis: SynthesisLite | null;
   orders: OrderLite[];
   noteStatus: string | null;
+  noteType?: "PROGRESS" | "HP";
+  activeHpSection?: string | null;
 }): ProviderSmartAssistSuggestion[] {
   const out: ProviderSmartAssistSuggestion[] = [];
   const synth = input.synthesis;
@@ -86,17 +112,23 @@ export function buildProviderSmartAssistSuggestions(input: {
       rationale: `${label} ${current}${a ? ` ${a}` : ""}${row.previous ? ` (prev ${row.previous})` : ""}`,
       insertText: `${label}: ${current}${a ? ` ${a}` : ""}${row.previous ? ` (previous ${row.previous})` : ""}.`,
       kind: "lab",
+      hpSectionHint: "DIAGNOSTICS_REVIEWED",
     });
   }
 
   const primary = (synth?.overview?.primaryDiagnosis ?? "").trim();
-  if (primary && !(input.sections.ASSESSMENT ?? "").toLowerCase().includes(primary.toLowerCase())) {
+  const assessmentHaystack =
+    input.noteType === "HP"
+      ? ""
+      : (input.sections.ASSESSMENT ?? "").toLowerCase();
+  if (primary && !assessmentHaystack.includes(primary.toLowerCase())) {
     out.push({
       id: "dx-not-discussed",
       title: "Address primary diagnosis",
-      rationale: `Primary diagnosis “${primary}” is not mentioned in Assessment.`,
+      rationale: `Primary diagnosis “${primary}” is available from chart context.`,
       insertText: `Primary diagnosis: ${primary}.`,
       kind: "problem",
+      hpSectionHint: "ASSESSMENT_PLAN",
     });
   }
 
@@ -113,6 +145,7 @@ export function buildProviderSmartAssistSuggestions(input: {
         rationale: `${label} · ${status}`,
         insertText: `Continue ${label} (${status}).`,
         kind: "order",
+        hpSectionHint: "ASSESSMENT_PLAN",
       });
       if (out.filter((s) => s.kind === "order").length >= 2) break;
     }
@@ -126,6 +159,7 @@ export function buildProviderSmartAssistReview(input: {
   sections: ProgressSoapSections;
   noteStatus: string | null;
   noteType: "PROGRESS" | "HP";
+  hpPresence?: HpSectionPresence | null;
 }): ProviderSmartAssistReviewItem[] {
   const items: ProviderSmartAssistReviewItem[] = [];
   if (input.noteType === "PROGRESS") {
@@ -144,6 +178,34 @@ export function buildProviderSmartAssistReview(input: {
         });
       }
     }
+  }
+  if (input.noteType === "HP") {
+    if (input.hpPresence && input.hpPresence.rosDocumented === false) {
+      items.push({
+        id: "hp-ros-missing",
+        code: "HP_ROS_MISSING",
+        message: "ROS not documented",
+        severity: "warn",
+      });
+    }
+    if (input.hpPresence && input.hpPresence.examDocumented === false) {
+      items.push({
+        id: "hp-exam-missing",
+        code: "HP_EXAM_MISSING",
+        message: "Physical Exam not documented",
+        severity: "warn",
+      });
+    }
+    const hpStatus = String(input.hpPresence?.hpStatus ?? input.noteStatus ?? "").toUpperCase();
+    if (hpStatus === "DRAFT" || hpStatus === "REVIEW" || !hpStatus) {
+      items.push({
+        id: "hp-unsigned",
+        code: "HP_UNSIGNED",
+        message: "H&P unsigned",
+        severity: "info",
+      });
+    }
+    return items;
   }
   const st = String(input.noteStatus ?? "").toUpperCase();
   if (st === "DRAFT" || st === "REVIEW" || !st) {

@@ -64,6 +64,7 @@ import {
 import {
   buildProviderSmartAssistReview,
   buildProviderSmartAssistSuggestions,
+  canInsertSmartAssistIntoHpSection,
   projectRecentLabsFromSynthesis,
   type ProviderSmartAssistSuggestion,
 } from "./providerDocumentationSmartAssistInpProv1b";
@@ -109,7 +110,11 @@ type ProgressNoteLite = {
 
 type ProviderWorkspaceDoc = {
   expectedVersion?: number;
-  hpDraft?: { status?: string; signedAt?: string | null } | null;
+  hpDraft?: {
+    status?: string;
+    signedAt?: string | null;
+    sections?: Record<string, { text?: string | null; structured?: Record<string, unknown> | null }>;
+  } | null;
   progressNotes?: ProgressNoteLite[];
 };
 
@@ -480,6 +485,8 @@ export function InpatientProviderDocumentationWorkspaceInpProv1b({
   const noteTypeRef = useRef(noteType);
   const ordersStripRef = useRef<HTMLElement | null>(null);
   const assistRef = useRef<HTMLElement | null>(null);
+  const [hpAssistActiveSection, setHpAssistActiveSection] = useState<string | null>(null);
+  const hpAssistAppendRef = useRef<((text: string) => void) | null>(null);
 
   useEffect(() => {
     sectionsRef.current = sections;
@@ -793,23 +800,52 @@ export function InpatientProviderDocumentationWorkspaceInpProv1b({
         sections,
         synthesis,
         orders,
-        noteStatus: activeNote?.status ?? null,
+        noteStatus: noteType === "HP" ? doc?.hpDraft?.status ?? null : activeNote?.status ?? null,
+        noteType,
+        activeHpSection: noteType === "HP" ? hpAssistActiveSection : null,
       }),
-    [activeNote?.status, orders, sections, synthesis]
+    [
+      activeNote?.status,
+      doc?.hpDraft?.status,
+      hpAssistActiveSection,
+      noteType,
+      orders,
+      sections,
+      synthesis,
+    ]
   );
 
   const reviewItems = useMemo(
     () =>
       buildProviderSmartAssistReview({
         sections,
-        noteStatus: activeNote?.status ?? null,
+        noteStatus: noteType === "HP" ? doc?.hpDraft?.status ?? null : activeNote?.status ?? null,
         noteType,
+        hpPresence:
+          noteType === "HP"
+            ? {
+                rosDocumented: Boolean(
+                  String(doc?.hpDraft?.sections?.ROS?.text ?? "").trim()
+                ),
+                examDocumented: Boolean(
+                  String(doc?.hpDraft?.sections?.PHYSICAL_EXAM?.text ?? "").trim()
+                ),
+                hpStatus: doc?.hpDraft?.status ?? null,
+              }
+            : null,
       }),
-    [activeNote?.status, noteType, sections]
+    [activeNote?.status, doc?.hpDraft, noteType, sections]
   );
 
   const insertSuggestion = (suggestion: ProviderSmartAssistSuggestion) => {
-    if (!canEditNote || !suggestion.insertText.trim()) return;
+    if (!suggestion.insertText.trim()) return;
+    if (noteType === "HP") {
+      if (!canAuthor || hpSigned) return;
+      if (!canInsertSmartAssistIntoHpSection(hpAssistActiveSection, suggestion)) return;
+      hpAssistAppendRef.current?.(suggestion.insertText);
+      return;
+    }
+    if (!canEditNote) return;
     appendToSection(suggestion.kind === "lab" ? "OBJECTIVE" : "PLAN", suggestion.insertText);
   };
 
@@ -1432,6 +1468,12 @@ export function InpatientProviderDocumentationWorkspaceInpProv1b({
                   canProviderWrite={canAuthor}
                   canDocumentDiagnoses={canAuthor}
                   isLocked={isLocked || !canAuthor}
+                  onRegisterHpAssistAppend={(fn) => {
+                    hpAssistAppendRef.current = fn;
+                  }}
+                  onActiveHpSectionChange={(section) => {
+                    setHpAssistActiveSection(section);
+                  }}
                 />
               </div>
             ) : null}
@@ -1553,15 +1595,41 @@ export function InpatientProviderDocumentationWorkspaceInpProv1b({
                             {t(`${I18N}.smartAssist.preview`)}
                           </button>
                           {suggestion.insertText.trim() ? (
-                            <button
-                              type="button"
-                              data-testid={`inp-prov-1b-assist-insert-${suggestion.id}`}
-                              disabled={!canEditNote}
-                              onClick={() => insertSuggestion(suggestion)}
-                              style={off(GHOST_BTN, !canEditNote)}
-                            >
-                              {t(`${I18N}.smartAssist.insert`)}
-                            </button>
+                            (() => {
+                              const hpInsertOk =
+                                noteType === "HP" &&
+                                canAuthor &&
+                                !hpSigned &&
+                                canInsertSmartAssistIntoHpSection(
+                                  hpAssistActiveSection,
+                                  suggestion
+                                );
+                              const progressInsertOk =
+                                noteType === "PROGRESS" && canEditNote;
+                              const insertOk =
+                                noteType === "HP" ? hpInsertOk : progressInsertOk;
+                              if (noteType === "HP" && !insertOk) {
+                                return (
+                                  <span
+                                    data-testid={`inp-prov-1b-assist-context-only-${suggestion.id}`}
+                                    style={{ ...META, alignSelf: "center" }}
+                                  >
+                                    {t(`${I18N}.smartAssist.contextOnly`)}
+                                  </span>
+                                );
+                              }
+                              return (
+                                <button
+                                  type="button"
+                                  data-testid={`inp-prov-1b-assist-insert-${suggestion.id}`}
+                                  disabled={!insertOk}
+                                  onClick={() => insertSuggestion(suggestion)}
+                                  style={off(GHOST_BTN, !insertOk)}
+                                >
+                                  {t(`${I18N}.smartAssist.insert`)}
+                                </button>
+                              );
+                            })()
                           ) : null}
                         </div>
                       </li>

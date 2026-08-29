@@ -7,8 +7,6 @@ import {
   PROVIDER_ROUNDING_MODE_STEPS,
   PLAN_STICKY_OPTIONS,
   PROVIDER_INTERVAL_EVENT_OPTIONS,
-  EXAM_SYSTEM_CODES,
-  ROS_SYSTEM_CODES,
   PROVIDER_PRINT_PACKAGE_KINDS,
   projectInpatientNursingAssessmentOverview,
   projectInpatientReviewOrders,
@@ -53,9 +51,20 @@ import { InpatientOverviewView } from "./InpatientOverviewView";
 import { projectInpatientOverview } from "./projectInpatientOverview";
 import {
   ClinicalMultiSelectChips,
-  ClinicalNormalExceptionSelector,
   ClinicalStickyNotePicker,
 } from "./rapid-documentation/ClinicalRapidControls";
+import {
+  applyAllSystemsNegative,
+  applyNormalExam,
+  emptyInpatientHpSystemsDocument,
+  parseInpatientHpSystemsDocument,
+  serializeInpatientHpSystemsDocument,
+  type InpatientHpSystemsDocument,
+} from "./inpatientHpRosExamInpProv1c";
+import {
+  clearSystemsDocument,
+  InpatientHpSystemFindingsEditorInpProv1c,
+} from "./InpatientHpSystemFindingsEditorInpProv1c";
 
 type ProviderDoc = {
   expectedVersion?: number;
@@ -89,7 +98,7 @@ type ProviderDoc = {
   }>;
   hpDraft?: {
     status?: string;
-    sections?: Record<string, { text?: string | null }>;
+    sections?: Record<string, { text?: string | null; structured?: Record<string, unknown> | null }>;
     signedAt?: string | null;
   } | null;
   progressNotes?: Array<{
@@ -216,6 +225,8 @@ export function InpatientProviderWorkspacePanel({
   isLocked,
   workspaceRole = "PROVIDER",
   onNavigateSection,
+  onRegisterHpAssistAppend,
+  onActiveHpSectionChange,
 }: {
   mode:
     | "overview"
@@ -229,10 +240,14 @@ export function InpatientProviderWorkspacePanel({
   facilityId: string;
   patientId?: string | null;
   canProviderWrite: boolean;
-  canDocumentDiagnoses: boolean;
-  isLocked: boolean;
+  canDocumentDiagnoses?: boolean;
+  isLocked?: boolean;
   workspaceRole?: InpatientWorkspaceRole;
   onNavigateSection?: (section: InpatientWorkspaceSection) => void;
+  /** INP.PROV.1C — Smart Assist append into the active H&P section (explicit click only). */
+  onRegisterHpAssistAppend?: (fn: ((text: string) => void) | null) => void;
+  /** Active H&P section for Smart Assist destination gating. */
+  onActiveHpSectionChange?: (section: ProviderHpSectionKey | null) => void;
 }) {
   const { t, language } = useI18n();
   const [doc, setDoc] = useState<ProviderDoc | null>(null);
@@ -283,8 +298,8 @@ export function InpatientProviderWorkspacePanel({
   const [dirtyProgress, setDirtyProgress] = useState(false);
   const [intervalEvents, setIntervalEvents] = useState<string[]>([]);
   const [planSticky, setPlanSticky] = useState<string[]>([]);
-  const [rosBySystem, setRosBySystem] = useState<Record<string, string | null>>({});
-  const [examBySystem, setExamBySystem] = useState<Record<string, string | null>>({});
+  const [rosDoc, setRosDoc] = useState(() => emptyInpatientHpSystemsDocument("ROS"));
+  const [examDoc, setExamDoc] = useState(() => emptyInpatientHpSystemsDocument("PHYSICAL_EXAM"));
 
   const expectedVersion = Number(doc?.expectedVersion ?? 0);
 
@@ -429,9 +444,49 @@ export function InpatientProviderWorkspacePanel({
   }, [load]);
 
   useEffect(() => {
-    const text = doc?.hpDraft?.sections?.[hpSection]?.text ?? "";
+    if (!onActiveHpSectionChange) return;
+    if (mode !== "historyPhysical") {
+      onActiveHpSectionChange(null);
+      return;
+    }
+    onActiveHpSectionChange(hpSection);
+    return () => onActiveHpSectionChange(null);
+  }, [mode, hpSection, onActiveHpSectionChange]);
+
+  useEffect(() => {
+    const section = doc?.hpDraft?.sections?.[hpSection];
+    const text = section?.text ?? "";
     setHpText(typeof text === "string" ? text : "");
+    if (hpSection === "ROS" || hpSection === "PHYSICAL_EXAM") {
+      const parsed = parseInpatientHpSystemsDocument({
+        kind: hpSection === "ROS" ? "ROS" : "PHYSICAL_EXAM",
+        text: section?.text,
+        structured: section?.structured as Record<string, unknown> | null,
+      });
+      if (hpSection === "ROS") setRosDoc(parsed);
+      else setExamDoc(parsed);
+    }
   }, [doc, hpSection]);
+
+  useEffect(() => {
+    if (!onRegisterHpAssistAppend) return;
+    if (mode !== "historyPhysical") {
+      onRegisterHpAssistAppend(null);
+      return;
+    }
+    const signed = doc?.hpDraft?.status === "SIGNED";
+    // Never append chart facts into ROS / Physical Exam (provider-authored only).
+    if (hpSection === "ROS" || hpSection === "PHYSICAL_EXAM") {
+      onRegisterHpAssistAppend(null);
+      return () => onRegisterHpAssistAppend(null);
+    }
+    onRegisterHpAssistAppend((incoming: string) => {
+      const text = String(incoming ?? "").trim();
+      if (!text || signed || !canProviderWrite) return;
+      setHpText((prev) => (prev.trim() ? `${prev.trim()}\n${text}` : text));
+    });
+    return () => onRegisterHpAssistAppend(null);
+  }, [onRegisterHpAssistAppend, mode, hpSection, doc?.hpDraft?.status, canProviderWrite]);
 
   useEffect(() => {
     const notes = doc?.progressNotes ?? [];
@@ -532,12 +587,28 @@ export function InpatientProviderWorkspacePanel({
     if (!canProviderWrite || hpSigned) return;
     setSaveState("saving");
     try {
-      const res = await saveProviderHpDraft(encounterId, {
-        sectionKey: hpSection,
-        text: hpText,
-        expectedVersion,
-      });
-      setDoc(res.documentation as ProviderDoc);
+      if (hpSection === "ROS" || hpSection === "PHYSICAL_EXAM") {
+        const systemsKind = hpSection === "ROS" ? "ROS" : "PHYSICAL_EXAM";
+        const systemsDoc = hpSection === "ROS" ? rosDoc : examDoc;
+        const { text, structured } = serializeInpatientHpSystemsDocument(
+          systemsDoc,
+          systemsKind
+        );
+        const res = await saveProviderHpDraft(encounterId, {
+          sectionKey: hpSection,
+          text,
+          structured,
+          expectedVersion,
+        });
+        setDoc(res.documentation as ProviderDoc);
+      } else {
+        const res = await saveProviderHpDraft(encounterId, {
+          sectionKey: hpSection,
+          text: hpText,
+          expectedVersion,
+        });
+        setDoc(res.documentation as ProviderDoc);
+      }
       setSaveState("saved");
     } catch {
       setSaveState("failed");
@@ -947,8 +1018,8 @@ export function InpatientProviderWorkspacePanel({
                 encounterId={encounterId}
                 patientId={patientId}
                 facilityId={facilityId}
-                canDocumentDiagnoses={canDocumentDiagnoses}
-                isLocked={isLocked}
+                canDocumentDiagnoses={Boolean(canDocumentDiagnoses)}
+                isLocked={Boolean(isLocked)}
               />
             </div>
           ) : null}
@@ -1071,67 +1142,173 @@ export function InpatientProviderWorkspacePanel({
   }
 
   if (mode === "historyPhysical") {
+    const hpSectionLabel = (k: ProviderHpSectionKey) =>
+      t(`inpatientProviderD4a26.hp.sections.${k}`) !==
+      `inpatientProviderD4a26.hp.sections.${k}`
+        ? t(`inpatientProviderD4a26.hp.sections.${k}`)
+        : k.replace(/_/g, " ");
+
+    const hpSystemsLabels = {
+      bulkAction:
+        hpSection === "ROS"
+          ? t("inpatientProviderDocumentationInpProv1b.hpSystems.allSystemsNegative")
+          : t("inpatientProviderDocumentationInpProv1b.hpSystems.normalExam"),
+      replaceAllAction:
+        hpSection === "ROS"
+          ? t("inpatientProviderDocumentationInpProv1b.hpSystems.replaceAllRos")
+          : t("inpatientProviderDocumentationInpProv1b.hpSystems.replaceAllExam"),
+      clear: t("inpatientProviderDocumentationInpProv1b.hpSystems.clear"),
+      replaceConfirm: t("inpatientProviderDocumentationInpProv1b.hpSystems.replaceConfirm"),
+      additionalNotes: t("inpatientProviderDocumentationInpProv1b.hpSystems.additionalNotes"),
+      edit: t("inpatientProviderDocumentationInpProv1b.hpSystems.edit"),
+      negative: t("inpatientProviderDocumentationInpProv1b.hpSystems.negative"),
+      positive: t("inpatientProviderDocumentationInpProv1b.hpSystems.positive"),
+      normal: t("inpatientProviderDocumentationInpProv1b.hpSystems.normal"),
+      abnormal: t("inpatientProviderDocumentationInpProv1b.hpSystems.abnormal"),
+      notAssessed: t("inpatientProviderDocumentationInpProv1b.hpSystems.notAssessed"),
+    };
+
+    const handleSystemsDocChange = (next: InpatientHpSystemsDocument) => {
+      const kind = hpSection === "ROS" ? "ROS" : "PHYSICAL_EXAM";
+      const { text } = serializeInpatientHpSystemsDocument(next, kind);
+      if (hpSection === "ROS") setRosDoc(next);
+      else setExamDoc(next);
+      setHpText(text);
+    };
+
+    const isSystemsSection = hpSection === "ROS" || hpSection === "PHYSICAL_EXAM";
+    const systemsKind = hpSection === "ROS" ? "ROS" : "PHYSICAL_EXAM";
+    const systemsDoc = hpSection === "ROS" ? rosDoc : examDoc;
+
+    const hpSectionNav = (
+      <div
+        style={{
+          display: "flex",
+          flexWrap: "nowrap",
+          gap: 6,
+          marginBottom: 12,
+          overflowX: "auto",
+          paddingBottom: 4,
+          WebkitOverflowScrolling: "touch",
+        }}
+        data-testid="provider-hp-section-nav"
+        role="tablist"
+        aria-label={t("inpatientProviderD4a26.hp.section")}
+      >
+        {PROVIDER_HP_SECTION_KEYS.map((k) => (
+          <button
+            key={k}
+            type="button"
+            role="tab"
+            aria-selected={hpSection === k}
+            onClick={() => setHpSection(k)}
+            style={{
+              padding: "5px 10px",
+              borderRadius: 9999,
+              border: "1px solid #e2e8f0",
+              background: hpSection === k ? "#eff6ff" : "#fff",
+              color: hpSection === k ? "#1d4ed8" : "#334155",
+              fontSize: 12,
+              fontWeight: hpSection === k ? 700 : 600,
+              cursor: "pointer",
+              fontFamily: "inherit",
+              whiteSpace: "nowrap",
+              flex: "0 0 auto",
+            }}
+          >
+            {hpSectionLabel(k)}
+          </button>
+        ))}
+      </div>
+    );
+
     return (
       <div data-testid="inpatient-panel-hp-provider">
         <SectionCard
           title={t("inpatientProviderD4a26.hp.title")}
           help={t("inpatientProviderD4a26.hp.help")}
         >
-          <p style={{ margin: "0 0 8px", fontSize: 12, color: "#64748b" }}>
-            {t("inpatientProviderD4a26.hp.notNursing")} · {t("inpatientProviderD4a26.hp.noAutoRos")}{" "}
-            · {t("inpatientProviderD4a26.hp.noAutoExam")}
-          </p>
-          {hpSigned ? (
-            <p role="status" style={{ fontSize: 13, color: "#0f766e", fontWeight: 600 }}>
-              {t("inpatientProviderD4a26.hp.signed")}
+          {!hpSigned ? (
+            <p style={{ margin: "0 0 8px", fontSize: 12, color: "#64748b" }}>
+              {t("inpatientProviderD4a26.hp.notNursing")} ·{" "}
+              {t("inpatientProviderD4a26.hp.noAutoRos")} ·{" "}
+              {t("inpatientProviderD4a26.hp.noAutoExam")}
             </p>
           ) : null}
-          <label style={{ fontSize: 12, display: "block", marginBottom: 8 }}>
-            {t("inpatientProviderD4a26.hp.section")}
-            <select
-              value={hpSection}
-              onChange={(e) => setHpSection(e.target.value as ProviderHpSectionKey)}
-              style={{ display: "block", width: "100%", maxWidth: 360, marginTop: 4 }}
+          {hpSigned ? (
+            <div
+              role="status"
+              style={{
+                display: "flex",
+                flexWrap: "wrap",
+                gap: 8,
+                alignItems: "center",
+                marginBottom: 12,
+              }}
+              data-testid="provider-hp-signed-badge"
             >
-              {PROVIDER_HP_SECTION_KEYS.map((k) => (
-                <option key={k} value={k}>
-                  {t(`inpatientProviderD4a26.hp.sections.${k}`) !==
-                  `inpatientProviderD4a26.hp.sections.${k}`
-                    ? t(`inpatientProviderD4a26.hp.sections.${k}`)
-                    : k.replace(/_/g, " ")}
-                </option>
-              ))}
-            </select>
-          </label>
-          {hpSection === "ROS" ? (
-            <div data-testid="provider-hp-ros-rapid" style={{ display: "grid", gap: 10, marginBottom: 12 }}>
-              <strong style={{ fontSize: 13 }}>{t("inpatientRapidConvergenceD4a27c.hp.ros")}</strong>
-              {ROS_SYSTEM_CODES.map((sys) => (
-                <ClinicalNormalExceptionSelector
-                  key={sys}
-                  label={sys.replace(/_/g, " ").toLowerCase().replace(/^\w/, (c) => c.toUpperCase())}
-                  value={rosBySystem[sys] ?? null}
-                  onChange={(next) => setRosBySystem((prev) => ({ ...prev, [sys]: next }))}
-                  readOnly={hpSigned || !canProviderWrite}
-                />
-              ))}
+              <span
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  padding: "4px 10px",
+                  borderRadius: 9999,
+                  background: "#ecfdf5",
+                  border: "1px solid #6ee7b7",
+                  color: "#047857",
+                  fontSize: 12,
+                  fontWeight: 700,
+                }}
+              >
+                {t("inpatientProviderD4a26.hp.signed")}
+              </span>
+              {doc?.hpDraft?.signedAt ? (
+                <span style={{ fontSize: 12, color: "#64748b" }}>
+                  {new Date(doc.hpDraft.signedAt).toLocaleString()}
+                </span>
+              ) : null}
+              <span style={{ fontSize: 12, color: "#64748b" }}>
+                {t("inpatientProviderDocumentationInpProv1b.hpSystems.signedReadOnly")}
+              </span>
             </div>
           ) : null}
-          {hpSection === "PHYSICAL_EXAM" ? (
-            <div data-testid="provider-hp-exam-rapid" style={{ display: "grid", gap: 10, marginBottom: 12 }}>
-              <strong style={{ fontSize: 13 }}>{t("inpatientRapidConvergenceD4a27c.hp.exam")}</strong>
-              {EXAM_SYSTEM_CODES.map((sys) => (
-                <ClinicalNormalExceptionSelector
-                  key={sys}
-                  label={sys.replace(/_/g, " ").toLowerCase().replace(/^\w/, (c) => c.toUpperCase())}
-                  value={examBySystem[sys] ?? null}
-                  onChange={(next) => setExamBySystem((prev) => ({ ...prev, [sys]: next }))}
-                  readOnly={hpSigned || !canProviderWrite}
-                />
-              ))}
+          {hpSectionNav}
+          {isSystemsSection ? (
+            <div
+              data-testid={hpSection === "ROS" ? "provider-hp-ros-rapid" : "provider-hp-exam-rapid"}
+              style={{ marginBottom: 12 }}
+            >
+              <InpatientHpSystemFindingsEditorInpProv1c
+                kind={systemsKind}
+                value={systemsDoc}
+                readOnly={hpSigned || !canProviderWrite}
+                labels={hpSystemsLabels}
+                onChange={handleSystemsDocChange}
+                onApplyBulk={(replaceAll) => {
+                  if (hpSection === "ROS") {
+                    setRosDoc((prev) => {
+                      const next = applyAllSystemsNegative(prev, { replaceAll });
+                      setHpText(serializeInpatientHpSystemsDocument(next, "ROS").text);
+                      return next;
+                    });
+                  } else {
+                    setExamDoc((prev) => {
+                      const next = applyNormalExam(prev, { replaceAll });
+                      setHpText(
+                        serializeInpatientHpSystemsDocument(next, "PHYSICAL_EXAM").text
+                      );
+                      return next;
+                    });
+                  }
+                }}
+                onClear={() => {
+                  const cleared = clearSystemsDocument(systemsKind, systemsDoc);
+                  handleSystemsDocChange(cleared);
+                }}
+              />
             </div>
           ) : null}
-          {hpSection === "ASSESSMENT_PLAN" ? (
+          {!isSystemsSection && hpSection === "ASSESSMENT_PLAN" ? (
             <div style={{ marginBottom: 12 }}>
               <ClinicalStickyNotePicker
                 label={t("inpatientRapidConvergenceD4a27c.hp.planSticky")}
@@ -1142,26 +1319,42 @@ export function InpatientProviderWorkspacePanel({
               />
             </div>
           ) : null}
-          <div>
-            <DictationFieldLabel
-              label={t("inpatientProviderD4a26.hp.draftText")}
-              dictationTargetId="inp-prov-hp-draft"
-              dictationLabel={t("inpatientProviderD4a26.hp.draftText")}
-              readOnly={hpSigned || !canProviderWrite}
-              readOnlyLabel={t("inpatientProviderD4a26.hp.signed")}
-              alignEnd
-              prominent
-            />
-            <textarea
-              id="inp-prov-hp-draft"
-              value={hpText}
-              onChange={(e) => setHpText(e.target.value)}
-              disabled={hpSigned || !canProviderWrite}
-              rows={8}
-              style={{ display: "block", width: "100%" }}
-              data-dictation-ready={canProviderWrite && !hpSigned ? "true" : undefined}
-            />
-          </div>
+          {hpSigned && !isSystemsSection ? (
+            <pre
+              style={{
+                margin: 0,
+                whiteSpace: "pre-wrap",
+                fontSize: 13,
+                fontFamily: "inherit",
+                color: "#334155",
+                lineHeight: 1.5,
+              }}
+              data-testid="provider-hp-signed-section-text"
+            >
+              {doc?.hpDraft?.sections?.[hpSection]?.text?.trim() || t("common.dash")}
+            </pre>
+          ) : null}
+          {!hpSigned && !isSystemsSection ? (
+            <div>
+              <DictationFieldLabel
+                label={t("inpatientProviderD4a26.hp.draftText")}
+                dictationTargetId="inp-prov-hp-draft"
+                dictationLabel={t("inpatientProviderD4a26.hp.draftText")}
+                readOnly={!canProviderWrite}
+                alignEnd
+                prominent
+              />
+              <textarea
+                id="inp-prov-hp-draft"
+                value={hpText}
+                onChange={(e) => setHpText(e.target.value)}
+                disabled={!canProviderWrite}
+                rows={8}
+                style={{ display: "block", width: "100%" }}
+                data-dictation-ready={canProviderWrite ? "true" : undefined}
+              />
+            </div>
+          ) : null}
           {canProviderWrite && !hpSigned ? (
             <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
               <button type="button" onClick={() => void saveHp()}>
