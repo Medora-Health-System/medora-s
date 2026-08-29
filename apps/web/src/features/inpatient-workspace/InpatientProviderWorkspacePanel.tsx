@@ -170,6 +170,10 @@ const card: CSSProperties = {
   ...MEDORA_CARD_SHELL,
   padding: "10px 12px",
   marginBottom: 10,
+  width: "100%",
+  maxWidth: "100%",
+  minWidth: 0,
+  boxSizing: "border-box",
 };
 
 function SectionCard({
@@ -1184,12 +1188,13 @@ export function InpatientProviderWorkspacePanel({
       <div
         style={{
           display: "flex",
-          flexWrap: "nowrap",
+          flexWrap: "wrap",
           gap: 6,
           marginBottom: 12,
-          overflowX: "auto",
-          paddingBottom: 4,
-          WebkitOverflowScrolling: "touch",
+          width: "100%",
+          maxWidth: "100%",
+          minWidth: 0,
+          boxSizing: "border-box",
         }}
         data-testid="provider-hp-section-nav"
         role="tablist"
@@ -1212,8 +1217,8 @@ export function InpatientProviderWorkspacePanel({
               fontWeight: hpSection === k ? 700 : 600,
               cursor: "pointer",
               fontFamily: "inherit",
-              whiteSpace: "nowrap",
-              flex: "0 0 auto",
+              whiteSpace: "normal",
+              maxWidth: "100%",
             }}
           >
             {hpSectionLabel(k)}
@@ -1223,7 +1228,15 @@ export function InpatientProviderWorkspacePanel({
     );
 
     return (
-      <div data-testid="inpatient-panel-hp-provider">
+      <div
+        data-testid="inpatient-panel-hp-provider"
+        style={{
+          width: "100%",
+          maxWidth: "100%",
+          minWidth: 0,
+          boxSizing: "border-box",
+        }}
+      >
         <SectionCard
           title={t("inpatientProviderD4a26.hp.title")}
           help={t("inpatientProviderD4a26.hp.help")}

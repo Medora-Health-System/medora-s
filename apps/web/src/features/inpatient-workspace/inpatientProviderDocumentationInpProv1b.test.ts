@@ -46,9 +46,21 @@ function keyPaths(value: unknown, prefix = ""): string[] {
 describe("INP.PROV.1B workspace layout", () => {
   it("renders one workspace root with the three-column grid", () => {
     expect(workspace).toContain('data-testid="inp-prov-1b-workspace"');
+    expect(workspace).toContain('data-testid="inp-prov-1b-main-grid"');
     expect(workspace).toContain(
-      '"minmax(200px, 0.22fr) minmax(0, 1.1fr) minmax(240px, 0.58fr)"'
+      "minmax(180px, 220px) minmax(0, 1fr) minmax(260px, 300px)"
     );
+    expect(workspace).toContain("min-width: 0");
+    expect(workspace).toContain("max-width: 100%");
+    expect(workspace).toContain("overflowX: \"hidden\"");
+  });
+
+  it("contains Notes / Editor / Smart Assist with min-width zero", () => {
+    expect(workspace).toContain('data-testid="inp-prov-1b-notes-navigator"');
+    expect(workspace).toContain('data-testid="inp-prov-1b-editor"');
+    expect(workspace).toContain('data-testid="inp-prov-1b-right-rail"');
+    expect(workspace).toContain("@media (max-width: 1099px)");
+    expect(workspace).toContain("@media (max-width: 799px)");
   });
 
   it("mounts notes navigator, editor and right rail cards", () => {
@@ -76,11 +88,13 @@ describe("INP.PROV.1B workspace layout", () => {
     expect(workspace).toContain("doc?.hpDraft");
   });
 
-  it("exposes the note-type selector and both header actions", () => {
+  it("exposes the note-type selector and draft/signed header actions", () => {
     expect(workspace).toContain('data-testid="inp-prov-1b-note-type"');
     expect(workspace).toContain('data-testid="inp-prov-1b-datetime"');
     expect(workspace).toContain('data-testid="inp-prov-1b-sign-save"');
     expect(workspace).toContain('data-testid="inp-prov-1b-save-draft"');
+    expect(workspace).toContain('data-testid="inp-prov-1b-signed-status"');
+    expect(workspace).toContain("viewingFinalDocument");
     expect(workspace).toContain("subtitle");
   });
 

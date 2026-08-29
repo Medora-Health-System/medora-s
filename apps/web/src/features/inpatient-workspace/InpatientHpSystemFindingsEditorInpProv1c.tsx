@@ -22,13 +22,17 @@ import {
 
 const ROW: CSSProperties = {
   display: "grid",
-  gridTemplateColumns: "minmax(110px, 0.35fr) minmax(90px, 0.25fr) minmax(0, 1fr) auto",
+  gridTemplateColumns: "minmax(0, 7.5rem) minmax(0, 5.5rem) minmax(0, 1fr) auto",
   gap: 8,
   alignItems: "start",
   padding: "6px 8px",
   border: "1px solid #e2e8f0",
   borderRadius: 10,
   background: "#fff",
+  width: "100%",
+  maxWidth: "100%",
+  minWidth: 0,
+  boxSizing: "border-box",
 };
 
 const BTN: CSSProperties = {
@@ -139,7 +143,17 @@ export function InpatientHpSystemFindingsEditorInpProv1c({
   };
 
   return (
-    <div data-testid={testPrefix} style={{ display: "grid", gap: 8 }}>
+    <div
+      data-testid={testPrefix}
+      style={{
+        display: "grid",
+        gap: 8,
+        width: "100%",
+        maxWidth: "100%",
+        minWidth: 0,
+        boxSizing: "border-box",
+      }}
+    >
       {!readOnly ? (
         <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
           <button
@@ -183,11 +197,28 @@ export function InpatientHpSystemFindingsEditorInpProv1c({
           const label = inpatientHpSystemLabel(row.systemCode);
           return (
             <li key={row.systemCode} data-testid={`${testPrefix}-row-${row.systemCode}`} style={ROW}>
-              <span style={{ fontSize: 12, fontWeight: 700, color: "#0f172a" }}>{label}</span>
+              <span
+                style={{
+                  fontSize: 12,
+                  fontWeight: 700,
+                  color: "#0f172a",
+                  overflowWrap: "anywhere",
+                }}
+              >
+                {label}
+              </span>
               <span style={{ fontSize: 12, ...statusTone(row.status) }}>
                 {statusDisplay(kind, row.status, labels)}
               </span>
-              <span style={{ fontSize: 12, color: "#334155", whiteSpace: "pre-wrap" }}>
+              <span
+                style={{
+                  fontSize: 12,
+                  color: "#334155",
+                  whiteSpace: "pre-wrap",
+                  overflowWrap: "anywhere",
+                  minWidth: 0,
+                }}
+              >
                 {row.text.trim() || "—"}
               </span>
               {!readOnly ? (
@@ -253,6 +284,8 @@ export function InpatientHpSystemFindingsEditorInpProv1c({
                     data-dictation-ready="true"
                     style={{
                       width: "100%",
+                      maxWidth: "100%",
+                      minWidth: 0,
                       boxSizing: "border-box",
                       borderRadius: 10,
                       border: "1px solid #e2e8f0",
