@@ -38,6 +38,13 @@ describe("D4A.2.6B provider legal record + synthesis service", () => {
     expect(controller).toContain("command-center-clinical-synthesis");
     expect(api).toContain("appendProviderAmendment");
     expect(api).toContain("fetchCommandCenterClinicalSynthesis");
+    const ops = readFileSync(
+      join(root, "../../../../api/src/encounters/inpatient-operations.service.ts"),
+      "utf8"
+    );
+    // INP.PROV.1B — legal print packages must not project unsigned progress/H&P drafts.
+    expect(ops).toContain("latestSigned");
+    expect(ops).toContain('hpSigned = String(hp?.status ?? "").toUpperCase() === "SIGNED"');
     expect(panel).toContain("provider-conflict-banner");
     expect(panel).toContain("providerLegalRecordD4a26b.reload");
     expect(overview).toContain("unsignedSynthesisReport");

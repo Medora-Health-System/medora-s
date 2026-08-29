@@ -3592,21 +3592,29 @@ export class InpatientOperationsService {
     }
     if (kind === "DAILY_PROGRESS_NOTE") {
       const notes = workspace.progressNotes ?? [];
-      const latest = notes[notes.length - 1];
+      const signed = notes.filter(
+        (n) =>
+          String(n.status ?? "").toUpperCase() === "SIGNED" ||
+          String(n.status ?? "").toUpperCase() === "CORRECTED" ||
+          String(n.status ?? "").toUpperCase() === "AMENDED"
+      );
+      const latestSigned = signed[signed.length - 1];
       sections.push({
         heading: "Progress note",
-        body: latest?.text ?? "—",
+        body: latestSigned?.text ?? "—",
       });
     }
     if (kind === "HISTORY_PHYSICAL") {
       const hp = workspace.hpDraft;
+      const hpSigned = String(hp?.status ?? "").toUpperCase() === "SIGNED";
       sections.push({
         heading: "H&P",
-        body: hp
-          ? Object.entries(hp.sections ?? {})
-              .map(([k, v]) => `${k}: ${v?.text ?? ""}`)
-              .join("\n")
-          : "—",
+        body:
+          hp && hpSigned
+            ? Object.entries(hp.sections ?? {})
+                .map(([k, v]) => `${k}: ${v?.text ?? ""}`)
+                .join("\n")
+            : "—",
       });
     }
     if (kind === "DISCHARGE_SUMMARY" || kind === "PROVIDER_HANDOFF") {
