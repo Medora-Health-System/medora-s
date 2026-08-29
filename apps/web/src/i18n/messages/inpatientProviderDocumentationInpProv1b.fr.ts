@@ -1,6 +1,7 @@
 /** INP.PROV.1B — Espace documentation médecin. */
 export const inpatientProviderDocumentationInpProv1bFr = {
   title: "Documentation médecin",
+  subtitle: "Créer, modifier et gérer les notes médicales de cette rencontre.",
   viewOnly: "Lecture seule — la rédaction clinique exige l’autorité PROVIDER.",
   noteType: "Type de note",
   noteTypes: {
@@ -12,12 +13,16 @@ export const inpatientProviderDocumentationInpProv1bFr = {
   signing: "Signature…",
   saving: "Enregistrement…",
   savedAt: "Enregistré {time}",
+  saveFailedStatus: "Échec de l’enregistrement",
   characters: "Caractères : {n}",
   notes: "Notes",
   newNote: "+ Nouvelle note",
   showAllNotes: "Afficher toutes les notes ({n})",
   draft: "Brouillon",
   signed: "Signée",
+  amended: "Amendée",
+  corrected: "Corrigée",
+  review: "Revue",
   tabs: {
     note: "Note",
     templates: "Modèles",
@@ -39,6 +44,13 @@ export const inpatientProviderDocumentationInpProv1bFr = {
     ASSESSMENT: "Évaluation",
     PLAN: "Plan",
   },
+  dictateInto: {
+    SUBJECTIVE: "Dicter dans Subjectif",
+    OBJECTIVE: "Dicter dans Objectif",
+    ASSESSMENT: "Dicter dans Évaluation",
+    PLAN: "Dicter dans Plan",
+    HP: "Dicter dans le H&P",
+  },
   attachMenu: {
     labs: "Laboratoire",
     imaging: "Imagerie",
@@ -58,6 +70,16 @@ export const inpatientProviderDocumentationInpProv1bFr = {
     regenerate: "Régénérer",
     empty: "Aucune suggestion à partir des données du dossier.",
     reviewEmpty: "Aucun écart de complétude détecté.",
+    kinds: {
+      lab: "Laboratoire récent",
+      order: "Ordonnance existante",
+      problem: "Problème actif",
+      note: "Note signée récente",
+    },
+  },
+  rightTabs: {
+    smartAssist: "Assistant",
+    patientContext: "Contexte patient",
   },
   patientContext: {
     title: "Contexte patient",
@@ -71,34 +93,37 @@ export const inpatientProviderDocumentationInpProv1bFr = {
   },
   recentLabs: {
     title: "Laboratoire récent",
-    viewAll: "Voir tous les résultats",
+    viewAll: "Tout voir",
     empty: "Aucun résultat de laboratoire récent.",
+    high: "Élevé",
+    low: "Bas",
   },
   recentNotes: {
     title: "Notes récentes",
-    viewAll: "Voir toutes les notes",
+    viewAll: "Tout voir",
     empty: "Aucune note signée.",
   },
   encounterOrders: {
     title: "Ordonnances de la rencontre",
+    count: "{n} ordonnances",
     addOrder: "+ Ajouter une ordonnance",
     empty: "Aucune ordonnance active pour cette rencontre.",
   },
   dictate: {
-    idle: "Champ prêt pour la dictée — placez le curseur, puis dictez avec Dragon.",
-    focusCopy:
-      "Les champs sont prêts pour la dictée Dragon. Placez le curseur dans la section ci-dessous, puis dictez avec votre casque.",
-    focusAction: "Placer le curseur dans la section",
-    target: "Cible : {section}",
+    currentTarget: "Cible de dictée actuelle : {section}",
+    targetAction: "Placer le curseur dans {section}",
   },
   templates: {
     title: "Modèles",
-    progressSoap: "Structure SOAP de note d’évolution",
-    applied: "Modèle appliqué uniquement aux sections vides.",
+    blankSoap: "SOAP vierge",
+    standardDaily: "Note d’évolution quotidienne standard",
+    applied: "Modèle appliqué.",
+    overwriteConfirm: "Remplacer le contenu actuel de la note par ce modèle ?",
   },
   smartPhrases: {
     title: "SmartPhrases",
-    empty: "Pas de bibliothèque SmartPhrase durable — phrases cliniques rapides.",
+    subtitle: "Phrases cliniques rapides (pas une bibliothèque personnelle enregistrée).",
+    appendHint: "Cliquez une phrase pour l’ajouter au Plan.",
   },
   flowsheets: {
     title: "Feuilles de suivi",
@@ -112,8 +137,8 @@ export const inpatientProviderDocumentationInpProv1bFr = {
     intake24: "Entrées",
     output24: "Sorties",
     balance24: "Bilan",
+    viewResults: "Voir les résultats",
   },
-  hpHint: "Le H&P utilise les sections d’admission canoniques.",
   previewTitle: "Aperçu",
   closePreview: "Fermer",
   noActiveNote: "Créez ou sélectionnez une note pour commencer.",
