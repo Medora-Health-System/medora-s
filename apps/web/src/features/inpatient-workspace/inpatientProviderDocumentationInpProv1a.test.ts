@@ -97,13 +97,15 @@ describe("INP.PROV.1A provider documentation navigation", () => {
     expect(workspace).toContain("saveProviderProgressNote");
     expect(workspace).toContain("signProviderProgressNote");
     const panel = readFileSync(join(root, "InpatientProviderWorkspacePanel.tsx"), "utf8");
-    expect(panel).toContain(
-      'data-dictation-ready={canProviderWrite && !hpSigned ? "true" : undefined}'
-    );
+    // INP.PROV.1C: H&P draft fields remain dictation-ready; ROS/exam use per-system mics.
+    expect(panel).toContain("data-dictation-ready");
+    expect(panel).toContain("inp-prov-hp-draft");
+    expect(panel).toContain("InpatientHpSystemFindingsEditorInpProv1c");
+    expect(panel).toContain("serializeInpatientHpSystemsDocument");
+    expect(panel).not.toContain("ClinicalNormalExceptionSelector");
     expect(panel).toContain("inp-prov-progress-today");
     expect(panel).toContain("inp-prov-problem-assessment");
     expect(panel).toContain("inp-prov-problem-plan");
-    expect(panel).toContain("inp-prov-hp-draft");
   });
 
   it("ClinicalOpsPanel consults honor canWrite for request/ack/complete", () => {
