@@ -1,6 +1,10 @@
 /**
  * INP.PROV.1A — Non-leading documentation completeness prompts (not coding / not revenue).
  * Never invents diagnoses. Never suggests MCC/E/M upcoding language.
+ *
+ * Unknown vs known-empty:
+ * - Omitted optional fields are NOT evaluated (no false alerts from unwired UI).
+ * - Explicit empty / false-path evidence is required before raising an alert.
  */
 
 export type InpatientDocumentationCompletenessAlertCode =
@@ -21,17 +25,24 @@ export type InpatientDocumentationCompletenessAlert = {
 
 export type InpatientDocumentationCompletenessInput = {
   careSetting?: "INPATIENT" | "OBSERVATION" | "EMERGENCY" | null;
-  /** Provider-authored admission / disposition rationale text. */
+  /**
+   * Provider-authored admission / disposition rationale text.
+   * Only evaluated when the property is present on the input object
+   * (`null` / `""` = known empty → alert; omitted = unknown → skip).
+   */
   admissionRationaleText?: string | null;
-  /** True when provider elected time-based E/M documentation. */
+  /** True when provider elected time-based E/M documentation. Omitted = unknown. */
   timeBasedEmSelected?: boolean;
   totalProviderTimeMinutes?: number | null;
-  /** True when critical-care documentation path is active. */
+  /** True when critical-care documentation path is active. Omitted = unknown. */
   criticalCareDocumented?: boolean;
   criticalCareMinutes?: number | null;
-  /** Active problems lacking any assessment/plan text. */
+  /**
+   * Active problems lacking any assessment/plan text.
+   * Omitted = unknown (no alert). Explicit `> 0` raises DIAGNOSIS_LACKS_PLAN.
+   */
   problemsWithoutPlanCount?: number;
-  /** Copied prior note content awaiting explicit review. */
+  /** Copied prior note content awaiting explicit review. Omitted = unknown. */
   carryForwardPendingReview?: boolean;
   hasUnsignedProviderDraft?: boolean;
   /** Vague diagnosis wording needing clinical clarification (not a coding cue). */
@@ -54,14 +65,17 @@ export function buildInpatientDocumentationCompletenessAlerts(
   const setting = String(input.careSetting ?? "INPATIENT").toUpperCase();
 
   if (setting === "INPATIENT" || setting === "OBSERVATION") {
-    const rationale = String(input.admissionRationaleText ?? "").trim();
-    if (!rationale) {
-      alerts.push({
-        code: "MEDICAL_NECESSITY_MISSING",
-        severity: "warning",
-        messageEn:
-          "Admission rationale / medical necessity is not documented. If inpatient-level care is required, document the clinical rationale explicitly.",
-      });
+    // Only when caller supplies the key — omitted means UI has not evaluated canonical rationale.
+    if (Object.prototype.hasOwnProperty.call(input, "admissionRationaleText")) {
+      const rationale = String(input.admissionRationaleText ?? "").trim();
+      if (!rationale) {
+        alerts.push({
+          code: "MEDICAL_NECESSITY_MISSING",
+          severity: "warning",
+          messageEn:
+            "Admission rationale / medical necessity is not documented. If inpatient-level care is required, document the clinical rationale explicitly.",
+        });
+      }
     }
   }
 
@@ -89,7 +103,10 @@ export function buildInpatientDocumentationCompletenessAlerts(
     }
   }
 
-  if ((input.problemsWithoutPlanCount ?? 0) > 0) {
+  if (
+    Object.prototype.hasOwnProperty.call(input, "problemsWithoutPlanCount") &&
+    (input.problemsWithoutPlanCount ?? 0) > 0
+  ) {
     alerts.push({
       code: "DIAGNOSIS_LACKS_PLAN",
       severity: "info",
@@ -115,14 +132,16 @@ export function buildInpatientDocumentationCompletenessAlerts(
     });
   }
 
-  for (const label of input.vagueDiagnosisLabels ?? []) {
-    const name = String(label ?? "").trim();
-    if (!name) continue;
-    alerts.push({
-      code: "SPECIFICITY_CLARIFY",
-      severity: "info",
-      messageEn: `"${name}" may lack clinically relevant specificity. If a more precise diagnosis has been clinically established, document it explicitly.`,
-    });
+  if (Object.prototype.hasOwnProperty.call(input, "vagueDiagnosisLabels")) {
+    for (const label of input.vagueDiagnosisLabels ?? []) {
+      const name = String(label ?? "").trim();
+      if (!name) continue;
+      alerts.push({
+        code: "SPECIFICITY_CLARIFY",
+        severity: "info",
+        messageEn: `"${name}" may lack clinically relevant specificity. If a more precise diagnosis has been clinically established, document it explicitly.`,
+      });
+    }
   }
 
   return alerts.filter((a) => inpatientDocumentationCompletenessMessageIsNonLeading(a.messageEn));

@@ -23,8 +23,6 @@ export const inpatientProviderDocumentationInpProv1aFr = {
   admissionDx: "Diagnostic d’admission",
   latestVitals: "Derniers signes vitaux",
   noVitals: "Aucun signe vital récent sur cet écran",
-  carryForwardLabel: "Reprendre le texte d’une note antérieure (révision obligatoire)",
-  carryForwardReview: "J’ai révisé ce contenu repris",
   medicalNecessityHint:
     "Documentez le motif d’admission / la nécessité médicale dans la MDM (Admettre / Observer / Sortie) lorsque des soins hospitaliers sont requis. Ne rédigez pas automatiquement les conclusions cliniques.",
 };

@@ -21,8 +21,6 @@ export const inpatientProviderDocumentationInpProv1aEn = {
   admissionDx: "Admission diagnosis",
   latestVitals: "Latest vitals",
   noVitals: "No recent vitals on this view",
-  carryForwardLabel: "Carry-forward prior note text (requires review)",
-  carryForwardReview: "I reviewed this carried-forward content",
   medicalNecessityHint:
     "Document admission rationale / medical necessity in MDM (Admit / Observe / Discharge) when inpatient-level care is required. Do not auto-write clinical conclusions.",
 };

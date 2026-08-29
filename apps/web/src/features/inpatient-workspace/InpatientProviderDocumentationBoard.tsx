@@ -4,6 +4,7 @@
  * INP.PROV.1A — Provider Documentation hub.
  * Reuses EnterpriseProviderClinicalWorkspaceD4b8 + InpatientProviderWorkspacePanel.
  * Does not create a second documentation engine. Procedure notes remain deferred (D4B.8).
+ * Reviewed carry-forward into canonical progress notes is deferred to INP.PROV.1B.
  */
 
 import { useMemo, useState, type CSSProperties } from "react";
@@ -60,21 +61,20 @@ export function InpatientProviderDocumentationBoard({
   const [subtab, setSubtab] = useState<InpatientProviderDocumentationSubtab>(() =>
     parseInpatientProviderDocumentationSubtab(initialSubtab)
   );
-  const [carryForwardPendingReview, setCarryForwardPendingReview] = useState(false);
-  const [carryForwardText, setCarryForwardText] = useState("");
-  const [carryForwardReviewed, setCarryForwardReviewed] = useState(false);
 
+  /**
+   * Completeness: only evaluate dimensions with canonical evidence on this board.
+   * Admission rationale / problems-without-plan / time / critical care are NOT wired here yet —
+   * omitting those keys means "unknown / not evaluated" (no false MEDICAL_NECESSITY_MISSING).
+   */
   const alerts = useMemo(
     () =>
       buildInpatientDocumentationCompletenessAlerts({
         careSetting: "INPATIENT",
-        admissionRationaleText: null,
-        problemsWithoutPlanCount: 0,
-        carryForwardPendingReview: carryForwardPendingReview && !carryForwardReviewed,
         hasUnsignedProviderDraft:
           (encounter?.providerDocumentationStatus ?? "").trim().toUpperCase() === "DRAFT",
       }),
-    [carryForwardPendingReview, carryForwardReviewed, encounter?.providerDocumentationStatus]
+    [encounter?.providerDocumentationStatus]
   );
 
   const vitalsLine = latestVitalsEntry
@@ -178,36 +178,6 @@ export function InpatientProviderDocumentationBoard({
           <p style={{ margin: "6px 0 0", fontSize: 11, color: "#64748b" }}>
             {t("inpatientProviderDocumentationInpProv1a.objectiveContextHint")}
           </p>
-          {canAuthor ? (
-            <div style={{ marginTop: 8, display: "grid", gap: 6 }}>
-              <label style={{ fontSize: 12 }}>
-                {t("inpatientProviderDocumentationInpProv1a.carryForwardLabel")}
-                <textarea
-                  value={carryForwardText}
-                  onChange={(e) => {
-                    setCarryForwardText(e.target.value);
-                    setCarryForwardPendingReview(Boolean(e.target.value.trim()));
-                    setCarryForwardReviewed(false);
-                  }}
-                  rows={3}
-                  style={{ display: "block", width: "100%", marginTop: 4 }}
-                  data-dictation-ready="true"
-                  id="inp-prov-1a-carry-forward"
-                />
-              </label>
-              {carryForwardPendingReview ? (
-                <label style={{ fontSize: 12, display: "flex", gap: 6, alignItems: "center" }}>
-                  <input
-                    type="checkbox"
-                    checked={carryForwardReviewed}
-                    onChange={(e) => setCarryForwardReviewed(e.target.checked)}
-                    data-testid="inp-prov-1a-carry-forward-reviewed"
-                  />
-                  {t("inpatientProviderDocumentationInpProv1a.carryForwardReview")}
-                </label>
-              ) : null}
-            </div>
-          ) : null}
         </section>
       ) : null}
 
@@ -225,7 +195,11 @@ export function InpatientProviderDocumentationBoard({
 
       {subtab === "consults" ? (
         <div data-testid="inp-prov-1a-consults-live">
-          <InpatientClinicalOpsPanel encounterId={encounterId} mode="consults" />
+          <InpatientClinicalOpsPanel
+            encounterId={encounterId}
+            mode="consults"
+            canWrite={canAuthor}
+          />
         </div>
       ) : (
         <InpatientProviderWorkspacePanel

@@ -50,7 +50,7 @@ describe("INP.PROV.1A provider documentation access", () => {
 });
 
 describe("INP.PROV.1A documentation completeness", () => {
-  it("flags missing medical necessity without revenue language", () => {
+  it("flags missing medical necessity when rationale is known empty", () => {
     const alerts = buildInpatientDocumentationCompletenessAlerts({
       careSetting: "INPATIENT",
       admissionRationaleText: "",
@@ -61,12 +61,35 @@ describe("INP.PROV.1A documentation completeness", () => {
     }
   });
 
+  it("does not flag MEDICAL_NECESSITY_MISSING when rationale is unknown/not evaluated", () => {
+    const alerts = buildInpatientDocumentationCompletenessAlerts({
+      careSetting: "INPATIENT",
+      hasUnsignedProviderDraft: false,
+    });
+    expect(alerts.some((a) => a.code === "MEDICAL_NECESSITY_MISSING")).toBe(false);
+  });
+
+  it("explicit null rationale is known empty and triggers medical necessity", () => {
+    const alerts = buildInpatientDocumentationCompletenessAlerts({
+      careSetting: "INPATIENT",
+      admissionRationaleText: null,
+    });
+    expect(alerts.some((a) => a.code === "MEDICAL_NECESSITY_MISSING")).toBe(true);
+  });
+
   it("flags time-selected without minutes", () => {
     const alerts = buildInpatientDocumentationCompletenessAlerts({
       timeBasedEmSelected: true,
       totalProviderTimeMinutes: null,
     });
     expect(alerts.some((a) => a.code === "TIME_SELECTED_TIME_MISSING")).toBe(true);
+  });
+
+  it("does not flag time gap when time-based path is unknown", () => {
+    const alerts = buildInpatientDocumentationCompletenessAlerts({
+      careSetting: "INPATIENT",
+    });
+    expect(alerts.some((a) => a.code === "TIME_SELECTED_TIME_MISSING")).toBe(false);
   });
 
   it("flags critical-care time missing when path active", () => {
