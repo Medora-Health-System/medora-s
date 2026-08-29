@@ -38,12 +38,17 @@ describe("MEDUI.INP.2A navigation convergence", () => {
     expect(nursingPrimaryNav()).toEqual([...PRIMARY_IDS]);
   });
 
-  it("2 provider sticky includes Summary; Timeline remains off sticky", () => {
+  it("2 provider sticky includes Summary + Provider Documentation hub; Timeline remains off sticky", () => {
     const ids = INPATIENT_PROVIDER_STICKY_NAV_SECTIONS.map((s) => s.id);
-    expect(ids).toEqual([...PRIMARY_IDS]);
     expect(ids).toContain("summary");
     expect(ids).toContain("overview");
+    expect(ids).toContain("providerDocumentation");
+    expect(ids.indexOf("providerDocumentation")).toBe(ids.indexOf("summary") + 1);
     expect(ids).not.toContain("timeline");
+    expect(ids).not.toContain("historyPhysical");
+    expect(ids.filter((id) => PRIMARY_IDS.includes(id as (typeof PRIMARY_IDS)[number]))).toEqual([
+      ...PRIMARY_IDS,
+    ]);
   });
 
   it("3 shared chart sticky matches the nine modules", () => {

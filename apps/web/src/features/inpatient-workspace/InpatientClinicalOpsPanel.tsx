@@ -9,16 +9,23 @@ import {
 
 /**
  * D3E.7 — Durable clinical ops panel (code status, isolation, care plan, consults, discharge, med recon).
+ * INP.PROV.1A — `canWrite` defaults true for existing callers; false = read-only UI (no mutations).
  */
 export function InpatientClinicalOpsPanel({
   encounterId,
   mode,
   loadEnabled = true,
+  canWrite = true,
 }: {
   encounterId: string;
   mode: "nursing" | "consults" | "carePlan" | "discharge" | "overview" | "medications";
   /** INP.2E.1 — MAR first paint does not wait on clinical-ops. */
   loadEnabled?: boolean;
+  /**
+   * When false, list/read surfaces remain; request/ack/complete (and other mode mutations) are hidden.
+   * Defaults true for backwards-compatible callers outside Provider Documentation.
+   */
+  canWrite?: boolean;
 }) {
   const { t } = useI18n();
   const [ops, setOps] = useState<Record<string, unknown> | null>(null);
@@ -43,6 +50,7 @@ export function InpatientClinicalOpsPanel({
   }, [load, loadEnabled]);
 
   const runPatch = async (patch: Record<string, unknown>) => {
+    if (!canWrite) return;
     setBusy(true);
     setError(null);
     try {
@@ -150,7 +158,10 @@ export function InpatientClinicalOpsPanel({
       ) : null}
 
       {mode === "consults" ? (
-        <div>
+        <div
+          data-testid={canWrite ? "ip-ops-consults-writable" : "ip-ops-consults-readonly"}
+          data-can-write={canWrite ? "true" : "false"}
+        >
           <ul style={{ margin: "0 0 10px", paddingLeft: 18 }}>
             {consults.length === 0 ? (
               <li>{t("inpatientD3e7.ops.noConsults")}</li>
@@ -159,10 +170,11 @@ export function InpatientClinicalOpsPanel({
                 (c) => (
                   <li key={c.consultId}>
                     {c.specialty} — {c.status}
-                    {c.status === "REQUESTED" ? (
+                    {canWrite && c.status === "REQUESTED" ? (
                       <button
                         type="button"
                         disabled={busy}
+                        data-testid="ip-ops-ack-consult"
                         style={{ ...btnStyle, marginLeft: 8 }}
                         onClick={() =>
                           void runPatch({
@@ -173,10 +185,11 @@ export function InpatientClinicalOpsPanel({
                         {t("inpatientD3e7.ops.ackConsult")}
                       </button>
                     ) : null}
-                    {c.status === "ACKNOWLEDGED" || c.status === "IN_PROGRESS" ? (
+                    {canWrite && (c.status === "ACKNOWLEDGED" || c.status === "IN_PROGRESS") ? (
                       <button
                         type="button"
                         disabled={busy}
+                        data-testid="ip-ops-complete-consult"
                         style={{ ...btnStyle, marginLeft: 8 }}
                         onClick={() =>
                           void runPatch({
@@ -192,28 +205,34 @@ export function InpatientClinicalOpsPanel({
               )
             )}
           </ul>
-          <input
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            placeholder={t("inpatientD3e7.ops.consultReasonPlaceholder")}
-            style={inputStyle}
-          />
-          <button
-            type="button"
-            disabled={busy || !text.trim()}
-            style={{ ...btnStyle, marginTop: 8 }}
-            onClick={() =>
-              void runPatch({
-                appendConsult: {
-                  specialty: "INTERNAL_MEDICINE",
-                  reason: text.trim(),
-                  priority: "ROUTINE",
-                },
-              })
-            }
-          >
-            {t("inpatientD3e7.ops.requestConsult")}
-          </button>
+          {canWrite ? (
+            <>
+              <input
+                value={text}
+                onChange={(e) => setText(e.target.value)}
+                placeholder={t("inpatientD3e7.ops.consultReasonPlaceholder")}
+                style={inputStyle}
+                data-testid="ip-ops-consult-reason"
+              />
+              <button
+                type="button"
+                disabled={busy || !text.trim()}
+                data-testid="ip-ops-request-consult"
+                style={{ ...btnStyle, marginTop: 8 }}
+                onClick={() =>
+                  void runPatch({
+                    appendConsult: {
+                      specialty: "INTERNAL_MEDICINE",
+                      reason: text.trim(),
+                      priority: "ROUTINE",
+                    },
+                  })
+                }
+              >
+                {t("inpatientD3e7.ops.requestConsult")}
+              </button>
+            </>
+          ) : null}
         </div>
       ) : null}
 

@@ -842,6 +842,7 @@ export function InpatientProviderWorkspacePanel({
           <label style={{ fontSize: 12, display: "block" }}>
             {t("providerClinicalSynthesisD4a26a.progress.today")}
             <textarea
+              id="inp-prov-progress-today"
               value={progressText}
               onChange={(e) => {
                 setProgressText(e.target.value);
@@ -850,6 +851,9 @@ export function InpatientProviderWorkspacePanel({
               disabled={!canProviderWrite || signed || !activeProgressNoteId}
               rows={10}
               style={{ display: "block", width: "100%", marginTop: 4 }}
+              data-dictation-ready={
+                canProviderWrite && !signed && activeProgressNoteId ? "true" : undefined
+              }
             />
           </label>
           {active?.carryForwardDiff ? (
@@ -991,19 +995,23 @@ export function InpatientProviderWorkspacePanel({
               <label style={{ fontSize: 12 }}>
                 {t("inpatientProviderD4a26.problems.assessment")}
                 <textarea
+                  id="inp-prov-problem-assessment"
                   value={problemAssessment}
                   onChange={(e) => setProblemAssessment(e.target.value)}
                   rows={2}
                   style={{ display: "block", width: "100%", marginTop: 4 }}
+                  data-dictation-ready={canProviderWrite ? "true" : undefined}
                 />
               </label>
               <label style={{ fontSize: 12 }}>
                 {t("providerClinicalSynthesisD4a26a.problems.evidence")}
                 <textarea
+                  id="inp-prov-problem-evidence"
                   value={problemEvidence}
                   onChange={(e) => setProblemEvidence(e.target.value)}
                   rows={2}
                   style={{ display: "block", width: "100%", marginTop: 4 }}
+                  data-dictation-ready={canProviderWrite ? "true" : undefined}
                 />
               </label>
               <label style={{ fontSize: 12 }}>
@@ -1025,10 +1033,12 @@ export function InpatientProviderWorkspacePanel({
               <label style={{ fontSize: 12 }}>
                 {t("inpatientProviderD4a26.problems.plan")}
                 <textarea
+                  id="inp-prov-problem-plan"
                   value={problemPlan}
                   onChange={(e) => setProblemPlan(e.target.value)}
                   rows={2}
                   style={{ display: "block", width: "100%", marginTop: 4 }}
+                  data-dictation-ready={canProviderWrite ? "true" : undefined}
                 />
               </label>
               <ClinicalStickyNotePicker
@@ -1134,11 +1144,13 @@ export function InpatientProviderWorkspacePanel({
           <label style={{ fontSize: 12, display: "block" }}>
             {t("inpatientProviderD4a26.hp.draftText")}
             <textarea
+              id="inp-prov-hp-draft"
               value={hpText}
               onChange={(e) => setHpText(e.target.value)}
               disabled={hpSigned || !canProviderWrite}
               rows={8}
               style={{ display: "block", width: "100%", marginTop: 4 }}
+              data-dictation-ready={canProviderWrite && !hpSigned ? "true" : undefined}
             />
           </label>
           {canProviderWrite && !hpSigned ? (

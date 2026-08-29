@@ -36,9 +36,11 @@ import { InpatientNursingAssessmentSection } from "./InpatientNursingAssessmentS
 import { EnterpriseInterdisciplinaryCarePlansD4b6 } from "@/features/clinical-documentation/EnterpriseInterdisciplinaryCarePlansD4b6";
 import { InpatientDischargeBoard } from "./InpatientDischargeBoard";
 import { EnterpriseProviderClinicalWorkspaceD4b8 } from "@/features/clinical-documentation/EnterpriseProviderClinicalWorkspaceD4b8";
+import { InpatientProviderDocumentationBoard } from "./InpatientProviderDocumentationBoard";
 import { ClinicalAvailabilityBanner } from "./rapid-documentation/ClinicalRapidControls";
 import type { VitalsHistoryEntry } from "@/lib/encounterClinicalSafetyUi";
 import { marOpenPerfMark } from "@/lib/marOpenPerfAudit";
+import { canAuthorInpatientProviderDocumentation } from "@medora/shared";
 
 export type InpatientWorkspaceEncounterLite = {
   id: string;
@@ -129,11 +131,12 @@ export function InpatientWorkspacePanel({
   const canPrescribe =
     writersEnabled &&
     (workspaceRole === "PROVIDER" || workspaceRole === "CHART") &&
-    (roles.includes("PROVIDER") || roles.includes("ADMIN"));
+    roles.includes("PROVIDER");
+  /** INP.PROV.1A — ADMIN-only must not author provider clinical documentation. */
   const canProviderWrite =
     writersEnabled &&
     (workspaceRole === "PROVIDER" || workspaceRole === "CHART") &&
-    (roles.includes("PROVIDER") || roles.includes("ADMIN"));
+    canAuthorInpatientProviderDocumentation(roles);
   const canAck =
     writersEnabled &&
     (roles.includes("PROVIDER") || roles.includes("RN") || roles.includes("ADMIN"));
@@ -211,6 +214,26 @@ export function InpatientWorkspacePanel({
           canProviderWrite={canProviderWrite}
           canDocumentDiagnoses={canPrescribe}
           isLocked={signed}
+          onNavigateSection={onNavigateSection}
+        />
+      );
+    case "providerDocumentation":
+      if (!facilityId) {
+        return (
+          <p style={{ fontSize: 13, color: "#64748b" }}>{t("inpatientD3e.featureUnavailable")}</p>
+        );
+      }
+      return (
+        <InpatientProviderDocumentationBoard
+          encounterId={encounterId}
+          facilityId={facilityId}
+          encounter={encounter}
+          roles={roles}
+          isLocked={signed}
+          writersEnabled={writersEnabled}
+          admissionDiagnosis={admissionDiagnosis}
+          room={room}
+          latestVitalsEntry={latestVitalsEntry}
           onNavigateSection={onNavigateSection}
         />
       );

@@ -48,8 +48,8 @@ import {
   inpatientTechnicianWorkspacePath,
 } from "./inpatientWorkspacePaths";
 import {
-  INPATIENT_CLINICAL_PRIMARY_NAV_SECTIONS,
   resolveInpatientWorkspaceSection,
+  stickyNavSectionsForInpatientRole,
   type InpatientWorkspaceSection,
 } from "./inpatientWorkspaceSections";
 import { InpatientWorkspaceSectionNav } from "./InpatientWorkspaceSectionNav";
@@ -67,6 +67,10 @@ import { observationActiveWorkspacePath } from "@/features/observation-workspace
 import { classifyInpatientBootstrapClientError } from "./inpatientBootstrapClientErrors";
 import { replaceInpatientWorkspaceSectionQuery } from "./inpatientWorkspaceSectionQuery";
 import { marOpenPerfMark } from "@/lib/marOpenPerfAudit";
+import {
+  canViewInpatientProviderDocumentationBoard,
+  isInpatientProviderDocumentationAuthoringSection,
+} from "@medora/shared";
 
 function roleFromPath(pathname: string): InpatientWorkspaceRole {
   if (pathname.endsWith("/provider")) return "PROVIDER";
@@ -96,14 +100,13 @@ function filterSectionsForRole(role: InpatientWorkspaceRole): InpatientWorkspace
   return list as InpatientWorkspaceSection[];
 }
 
-/** Sticky chrome — MEDUI.INP.2F nine-module clinical navigation for all roles. */
-function stickyNavForRole(role: InpatientWorkspaceRole) {
-  void role;
-  return INPATIENT_CLINICAL_PRIMARY_NAV_SECTIONS;
+/** Sticky chrome — role-aware clinical navigation (INP.PROV.1A restores Provider Documentation). */
+function stickyNavForRole(role: InpatientWorkspaceRole, roles: string[]) {
+  return stickyNavSectionsForInpatientRole({ workspaceRole: role, roles });
 }
 
-function stickySectionsForRole(role: InpatientWorkspaceRole): InpatientWorkspaceSection[] {
-  return stickyNavForRole(role).map((s) => s.id);
+function stickySectionsForRole(role: InpatientWorkspaceRole, roles: string[]): InpatientWorkspaceSection[] {
+  return stickyNavForRole(role, roles).map((s) => s.id);
 }
 
 function asApiObject<T extends Record<string, unknown>>(raw: unknown): T | null {
@@ -171,27 +174,43 @@ export function InpatientActiveWorkspaceView({
     }
   }, [forcedRole, pathname, authReady, roles, encounterId, router]);
 
-  const stickyNav = stickyNavForRole(role);
-  const stickyAllowed = stickySectionsForRole(role);
+  const stickyNav = stickyNavForRole(role, roles ?? []);
+  const stickyAllowed = stickySectionsForRole(role, roles ?? []);
   /** Deep-link allowlist: sticky modules + role extras; notes/tasks remain reachable; timeline redirects. */
   const allowed = useMemo(() => {
     const base = filterSectionsForRole(role);
+    const canViewProviderDocs = canViewInpatientProviderDocumentationBoard(roles);
     const deepOnly: InpatientWorkspaceSection[] =
       role === "TECHNICIAN"
         ? ["tasks", "notes"]
         : role === "NURSING"
           ? ["notes"]
-          : ["notes", "historyPhysical", "problemsPlan", "progressNotes", "consults"];
+          : canViewProviderDocs
+            ? [
+                "notes",
+                "providerDocumentation",
+                "historyPhysical",
+                "problemsPlan",
+                "progressNotes",
+                "consults",
+              ]
+            : ["notes"];
     return Array.from(new Set([...base, ...stickyAllowed, ...deepOnly]));
-  }, [role, stickyAllowed]);
+  }, [role, stickyAllowed, roles]);
 
   const resolveAllowedSection = useCallback(
     (raw: string | null | undefined): InpatientWorkspaceSection => {
       const resolved = resolveInpatientWorkspaceSection(raw) ?? "overview";
+      if (
+        isInpatientProviderDocumentationAuthoringSection(resolved) &&
+        !canViewInpatientProviderDocumentationBoard(roles)
+      ) {
+        return stickyAllowed[0] ?? "overview";
+      }
       if (allowed.includes(resolved)) return resolved;
       return stickyAllowed[0] ?? "overview";
     },
-    [allowed, stickyAllowed]
+    [allowed, stickyAllowed, roles]
   );
 
   const initialSection = resolveAllowedSection(searchParams.get("section"));
