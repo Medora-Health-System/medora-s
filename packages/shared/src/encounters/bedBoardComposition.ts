@@ -13,10 +13,16 @@ import {
   type BedOperationalOverlayInput,
   type BedOperationalStatus,
 } from "./bedOperationalStatus.js";
+import {
+  buildInpatientDischargeAwareness,
+  type InpatientDischargeAwarenessV1,
+} from "./inpatientDischargeAwarenessInpDis1h.js";
 
 export type BedBoardOccupancyRow = BedOccupancyRow & {
   workflowState?: string | null;
   disposition?: string | null;
+  /** INP.DIS.1H — used only to derive provider discharge awareness (no PHI narrative on board). */
+  dischargeSummaryJson?: unknown;
   patientMrn?: string | null;
   patientDob?: string | Date | null;
   patientSexAtBirth?: string | null;
@@ -45,6 +51,8 @@ export type ComposedBedBoardRow = {
   /** Age in whole years when DOB known — display aid for occupied beds. */
   occupantAgeYears?: number | null;
   occupantSex?: string | null;
+  /** INP.DIS.1H — provider-finalized discharge awareness for occupied tiles. */
+  dischargeAwareness?: InpatientDischargeAwarenessV1 | null;
   reasonCode: string | null;
   reasonText: string | null;
   updatedAt: string | null;
@@ -106,6 +114,12 @@ export function composeUnitBedBoard(input: {
     const display = formatCanonicalBedDisplay(bedKey);
     const overlay = input.overlays.get(bedKey) ?? null;
     const occupant = occupants.get(bedKey) ?? null;
+    const dischargeAwareness = occupant
+      ? buildInpatientDischargeAwareness({
+          dischargeSummaryJson: occupant.dischargeSummaryJson,
+          encounterStatus: occupant.status,
+        })
+      : null;
     const resolved = resolveBedOperationalStatus({
       operationalOverlay: overlay,
       occupant: occupant
@@ -113,6 +127,7 @@ export function composeUnitBedBoard(input: {
             encounterId: occupant.id,
             workflowState: occupant.workflowState,
             disposition: occupant.disposition,
+            providerDischargeFinalized: dischargeAwareness?.providerFinalized === true,
           }
         : null,
     });
@@ -132,6 +147,7 @@ export function composeUnitBedBoard(input: {
         occupant?.patientSexAtBirth?.trim() ||
         occupant?.patientSex?.trim() ||
         null,
+      dischargeAwareness: dischargeAwareness ?? null,
       reasonCode: overlay?.reasonCode ?? null,
       reasonText: overlay?.reasonText ?? null,
       updatedAt: overlay?.updatedAt ?? null,

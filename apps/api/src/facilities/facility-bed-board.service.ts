@@ -317,6 +317,7 @@ export class FacilityBedBoardService {
         workflowState: row.workflowState,
         disposition: row.disposition,
         admissionSummaryJson: row.admissionSummaryJson,
+        dischargeSummaryJson: row.dischargeSummaryJson,
         patientFirstName: row.patient?.firstName ?? null,
         patientLastName: row.patient?.lastName ?? null,
         patientMrn: row.patient?.mrn ?? null,

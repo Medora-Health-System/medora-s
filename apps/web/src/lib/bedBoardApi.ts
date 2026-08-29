@@ -4,6 +4,7 @@ import type {
   BedOperationalStatus,
   BedStatusUpdateDto,
   EncounterBedUnitCode,
+  InpatientDischargeAwarenessV1,
 } from "@medora/shared";
 import { buildGetDedupeKey } from "@/lib/getRequestDedupe";
 import { logBedBoardMutationDebug } from "@/lib/bedBoardMutationDebug";
@@ -26,6 +27,8 @@ export type FacilityBedBoardBedRow = {
   occupantMrn: string | null;
   occupantAgeYears?: number | null;
   occupantSex?: string | null;
+  /** INP.DIS.1H */
+  dischargeAwareness?: InpatientDischargeAwarenessV1 | null;
   reasonCode: string | null;
   reasonText: string | null;
   updatedAt: string | null;

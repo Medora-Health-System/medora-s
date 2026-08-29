@@ -14,6 +14,10 @@ import {
   filterCensusRowsToCanonicalEncounterSet,
   projectCanonicalCensusEncounterIds,
 } from "./hospitalCensusDuplicatePreventionD4a42a.js";
+import {
+  buildInpatientDischargeAwareness,
+  type InpatientDischargeAwarenessV1,
+} from "./inpatientDischargeAwarenessInpDis1h.js";
 
 export const UNIFIED_HOSPITAL_CENSUS_CERTIFICATION_ID =
   "MEDUI.UNIFIED_HOSPITAL_CENSUS_DASHBOARD.D3E6A" as const;
@@ -25,6 +29,8 @@ export type HospitalCensusEncounterInput = {
   status?: string | null;
   billingClassification?: string | null;
   admissionSummaryJson?: unknown;
+  /** INP.DIS.1H — bounded discharge summary for awareness projection (not full chart). */
+  dischargeSummaryJson?: unknown;
   admittedAt?: string | Date | null;
   createdAt?: string | Date | null;
   roomLabel?: string | null;
@@ -107,6 +113,8 @@ export type HospitalCensusPatientRow = {
   admittedAt: string | null;
   losHours: number | null;
   alerts: Array<{ code: string; severity: "urgent" | "warning" | "info" }>;
+  /** INP.DIS.1H — provider-finalized discharge awareness (null when not finalized). */
+  dischargeAwareness?: InpatientDischargeAwarenessV1 | null;
 };
 
 export type HospitalOperationalSnapshotV1 = {
@@ -121,7 +129,10 @@ export type HospitalOperationalSnapshotV1 = {
   pendingResults: number;
   criticalResults: number;
   los24hOrMore: number;
+  /** Observation-style ready flag and/or inpatient final-ready (downstream complete). */
   readyDischarge: number;
+  /** INP.DIS.1H — provider finalized discharge while encounter still OPEN. */
+  dischargeOrders: number;
   awaitingBed: number;
 };
 
@@ -257,6 +268,24 @@ export function buildHospitalCensusPatientRow(
     alerts.push({ code: "READY_DISCHARGE", severity: "info" });
   }
 
+  const dischargeAwareness =
+    clinicalContext === "INPATIENT"
+      ? buildInpatientDischargeAwareness({
+          dischargeSummaryJson: enc.dischargeSummaryJson,
+          encounterStatus: enc.status,
+        })
+      : null;
+  if (dischargeAwareness?.providerFinalized) {
+    alerts.push({ code: "DISCHARGE_ORDER", severity: "info" });
+    if (
+      dischargeAwareness.finalDischargeReady &&
+      dischargeAwareness.tone === "ordinary" &&
+      !alerts.some((a) => a.code === "READY_DISCHARGE")
+    ) {
+      alerts.push({ code: "READY_DISCHARGE", severity: "info" });
+    }
+  }
+
   return {
     encounterId: enc.id,
     patientId: enc.patient?.id?.trim() || null,
@@ -285,6 +314,7 @@ export function buildHospitalCensusPatientRow(
         : null,
     losHours: losHoursFrom(enc.admittedAt ?? enc.createdAt, now),
     alerts,
+    dischargeAwareness: dischargeAwareness ?? null,
   };
 }
 
@@ -310,6 +340,7 @@ export function buildOperationalSnapshotFromCensusRows(
   let criticalResults = 0;
   let los24hOrMore = 0;
   let readyDischarge = 0;
+  let dischargeOrders = 0;
 
   for (const row of scoped) {
     const enc = encById.get(row.encounterId);
@@ -335,7 +366,12 @@ export function buildOperationalSnapshotFromCensusRows(
     if (ops?.extendedStay24h || (row.losHours != null && row.losHours >= 24)) {
       los24hOrMore += 1;
     }
-    if (ops?.flags?.readyForDischarge) readyDischarge += 1;
+    if (ops?.flags?.readyForDischarge || row.alerts.some((a) => a.code === "READY_DISCHARGE")) {
+      readyDischarge += 1;
+    }
+    if (row.dischargeAwareness?.providerFinalized === true) {
+      dischargeOrders += 1;
+    }
   }
 
   return {
@@ -351,6 +387,7 @@ export function buildOperationalSnapshotFromCensusRows(
     criticalResults,
     los24hOrMore,
     readyDischarge,
+    dischargeOrders,
     awaitingBed: scope === "ALL_HOSPITAL_CARE" ? awaitingBed : 0,
   };
 }
@@ -402,6 +439,9 @@ export function filterHospitalCensusPatients(
         return false;
       }
       if (op === "ready_discharge" && !row.alerts.some((a) => a.code === "READY_DISCHARGE")) {
+        return false;
+      }
+      if (op === "discharge_order" && !row.alerts.some((a) => a.code === "DISCHARGE_ORDER")) {
         return false;
       }
       if (op === "los24" && !(row.losHours != null && row.losHours >= 24)) return false;

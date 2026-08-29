@@ -14,6 +14,11 @@ import {
 import { isBedBoardDischargePending, isBedBoardTransferPending } from "@/lib/bedStatusDisplay";
 import { emergencyActiveWorkspacePath } from "@/features/emergency/emergencyRoutes";
 import { BedBoardStatusDetailModal } from "@/components/encounters/BedBoardStatusDetailModal";
+import {
+  formatInpatientDischargeAwarenessBadgeLabel,
+  formatInpatientDischargeAwarenessSubstatusLabel,
+  inpatientDischargeAwarenessBadgeStyle,
+} from "@/features/inpatient-workspace/inpatientDischargeAwarenessUi";
 
 export type BedBoardGridProps = {
   unit: EncounterBedUnitCode;
@@ -113,6 +118,26 @@ export function BedBoardGrid({
         {visibleBeds.map((bed) => {
           const colors = resolveBedStatusBadge(bed.status);
           const statusLabel = resolveBedStatusLabel(bed.status, language, t);
+          const awareness = bed.dischargeAwareness;
+          const hasDischargeOrder = awareness?.providerFinalized === true;
+          const dischargeLabel = hasDischargeOrder
+            ? formatInpatientDischargeAwarenessBadgeLabel(awareness, t)
+            : null;
+          const subLabel = hasDischargeOrder
+            ? formatInpatientDischargeAwarenessSubstatusLabel(awareness, t)
+            : null;
+          const occupiedSub =
+            hasDischargeOrder && awareness
+              ? awareness.substatus === "MED_RECON_PENDING"
+                ? t("inpatientDischargeAwarenessInpDis1h.bedOccupiedMedRec")
+                : awareness.substatus === "NURSING_PENDING"
+                  ? t("inpatientDischargeAwarenessInpDis1h.bedOccupiedNursing")
+                  : awareness.substatus === "DEPARTURE_PENDING"
+                    ? t("inpatientDischargeAwarenessInpDis1h.bedOccupiedDeparture")
+                    : awareness.substatus === "READY_FOR_FINAL"
+                      ? t("inpatientDischargeAwarenessInpDis1h.bedOccupiedReady")
+                      : t("inpatientDischargeAwarenessInpDis1h.bedOccupiedOrder")
+              : null;
 
           return (
             <button
@@ -121,6 +146,7 @@ export function BedBoardGrid({
               role="gridcell"
               data-testid={`bed-board-cell-${bed.storageKey || bed.bedKey}`}
               data-status={bed.status}
+              data-discharge-order={hasDischargeOrder ? "1" : "0"}
               aria-label={cellAriaLabel(bed)}
               onClick={() => handleBedActivate(bed)}
               onKeyDown={(event) => {
@@ -139,6 +165,16 @@ export function BedBoardGrid({
                 minWidth: 44,
                 borderRadius: 10,
                 border: `1px solid ${resolveBedStatusBorder(bed.status)}`,
+                borderTopWidth: hasDischargeOrder ? 3 : 1,
+                borderTopColor: hasDischargeOrder
+                  ? (awareness.tone === "ordinary"
+                      ? "#16a34a"
+                      : awareness.tone === "transfer"
+                        ? "#0d9488"
+                        : awareness.tone === "ama" || awareness.tone === "eloped"
+                          ? "#ea580c"
+                          : "#64748b")
+                  : resolveBedStatusBorder(bed.status),
                 background: colors.bg,
                 color: colors.text,
                 textAlign: "left",
@@ -150,29 +186,6 @@ export function BedBoardGrid({
                 style={{ fontSize: 13, fontWeight: 700, lineHeight: 1.2 }}
               >
                 {bed.displayKey || bed.display}
-              </span>
-              <span
-                data-testid="bed-board-cell-status"
-                style={{
-                  fontSize: 10,
-                  fontWeight: 600,
-                  padding: "1px 6px",
-                  borderRadius: 9999,
-                  border: `1px solid ${colors.border}`,
-                  background: "#fff",
-                  color: colors.text,
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 4,
-                }}
-              >
-                {isBedBoardTransferPending(bed.status) ? (
-                  <TransferIcon aria-label={t("bedBoard.transferIconLabel")} />
-                ) : null}
-                {isBedBoardDischargePending(bed.status) ? (
-                  <DischargeIcon aria-label={t("bedBoard.dischargeIconLabel")} />
-                ) : null}
-                {statusLabel}
               </span>
               {bed.patientDisplay || bed.occupantPatientName ? (
                 <span
@@ -199,6 +212,50 @@ export function BedBoardGrid({
                         .join(" ")}`
                     : ""}
                 </span>
+              ) : null}
+              {hasDischargeOrder && dischargeLabel ? (
+                <span
+                  data-testid="bed-board-cell-discharge-badge"
+                  style={{
+                    ...inpatientDischargeAwarenessBadgeStyle(awareness.tone),
+                    fontSize: 9,
+                    fontWeight: 700,
+                    padding: "1px 5px",
+                    borderRadius: 9999,
+                    maxWidth: "100%",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {dischargeLabel}
+                </span>
+              ) : null}
+              <span
+                data-testid="bed-board-cell-status"
+                style={{
+                  fontSize: 10,
+                  fontWeight: 600,
+                  padding: "1px 6px",
+                  borderRadius: 9999,
+                  border: `1px solid ${colors.border}`,
+                  background: "#fff",
+                  color: colors.text,
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 4,
+                }}
+              >
+                {isBedBoardTransferPending(bed.status) ? (
+                  <TransferIcon aria-label={t("bedBoard.transferIconLabel")} />
+                ) : null}
+                {isBedBoardDischargePending(bed.status) ? (
+                  <DischargeIcon aria-label={t("bedBoard.dischargeIconLabel")} />
+                ) : null}
+                {occupiedSub ?? statusLabel}
+              </span>
+              {subLabel && !occupiedSub ? (
+                <span style={{ fontSize: 9, color: "#64748b", fontWeight: 600 }}>{subLabel}</span>
               ) : null}
             </button>
           );

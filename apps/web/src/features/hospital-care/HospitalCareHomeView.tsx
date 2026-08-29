@@ -308,6 +308,10 @@ export function HospitalCareHomeView() {
                   items={[
                     { label: t("hospitalCareD3e6a.snapshot.awaitingBed"), value: snap.awaitingBed },
                     { label: t("hospitalCareD3e6a.snapshot.los24"), value: snap.los24hOrMore },
+                    {
+                      label: t("inpatientDischargeAwarenessInpDis1h.metricDischargeOrders"),
+                      value: snap.dischargeOrders ?? 0,
+                    },
                     { label: t("hospitalCareD3e6a.snapshot.readyDc"), value: snap.readyDischarge },
                   ]}
                 />
