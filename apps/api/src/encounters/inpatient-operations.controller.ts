@@ -74,7 +74,7 @@ export class InpatientOperationsController {
     return this.ops.meta();
   }
 
-  /** INP.HIST.1A — lightweight inpatient encounter history (not full chart payloads). */
+  /** INP.HIST.1A — CLOSED inpatient historical archive (not live census). */
   @Get("encounters/archive")
   @RequireRoles(
     RoleCode.PROVIDER,
@@ -88,7 +88,6 @@ export class InpatientOperationsController {
     @Query("startDate") startDate: string | undefined,
     @Query("endDate") endDate: string | undefined,
     @Query("search") search: string | undefined,
-    @Query("status") status: string | undefined,
     @Query("limit") limitRaw: string | undefined,
     @Query("offset") offsetRaw: string | undefined,
     @Req() req: any
@@ -100,7 +99,6 @@ export class InpatientOperationsController {
       startDate,
       endDate,
       search,
-      status,
       limit: Number.isFinite(limit) ? limit : undefined,
       offset: Number.isFinite(offset) ? offset : undefined,
     });

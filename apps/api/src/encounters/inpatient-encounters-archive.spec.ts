@@ -1,5 +1,5 @@
 /**
- * INP.HIST.1A — inpatient archive list service tests (lightweight metadata only).
+ * INP.HIST.1A — inpatient CLOSED archive list service tests.
  */
 
 import { EncounterStatus, EncounterType } from "@prisma/client";
@@ -15,7 +15,7 @@ describe("InpatientEncountersArchiveService (INP.HIST.1A)", () => {
     };
   }
 
-  it("queries INPATIENT encounters newest-first with default status set", async () => {
+  it("server-enforces INPATIENT + CLOSED only (no OPEN/CANCELLED)", async () => {
     const prisma = makePrisma([]);
     const service = new InpatientEncountersArchiveService(prisma as never);
     await service.listArchiveEncounters({ facilityId: "fac-1" });
@@ -24,18 +24,19 @@ describe("InpatientEncountersArchiveService (INP.HIST.1A)", () => {
         where: expect.objectContaining({
           facilityId: "fac-1",
           type: EncounterType.INPATIENT,
-          status: {
-            in: [EncounterStatus.OPEN, EncounterStatus.CLOSED, EncounterStatus.CANCELLED],
-          },
+          status: EncounterStatus.CLOSED,
         }),
         orderBy: [{ createdAt: "desc" }, { id: "desc" }],
         take: InpatientEncountersArchiveService.DEFAULT_LIMIT,
         skip: 0,
       })
     );
+    expect(prisma.encounter.findMany.mock.calls[0][0].where.status).not.toEqual(
+      expect.objectContaining({ in: expect.anything() })
+    );
   });
 
-  it("projects course summary + ED link from admission JSON without loading chart domains", async () => {
+  it("projects course summary + ED link + disposition without loading chart domains", async () => {
     const prisma = makePrisma([
       {
         id: "ip-1",
@@ -86,6 +87,7 @@ describe("InpatientEncountersArchiveService (INP.HIST.1A)", () => {
     expect(result.rows[0]!.originatingEdEncounterId).toBe("ed-9");
     expect(result.rows[0]!.encounterTypeLabel).toBe("Hospitalization");
     expect(result.rows[0]!.courseSummary).toContain("ED");
+    expect(result.rows[0]!.dispositionLabel).toBe("Home");
     expect(result.rows[0]!.patient?.mrn).toBe("0001842");
     expect(prisma.encounter.findMany).toHaveBeenCalledWith(
       expect.objectContaining({

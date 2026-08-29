@@ -103,6 +103,12 @@ describe("MEDUI.D4C.8A enterprise closed encounter viewer & navigation", () => {
     );
     expect(edArchive).toContain("EnterpriseClosedEncounterViewer");
     expect(edArchive).toContain('data-testid="ed-closed-chart-archive"');
+
+    // INP.HIST.1A — CLOSED inpatient uses the same enterprise shell + history strip
+    expect(encounterPage).toContain("InpatientClosedEncounterHistoryStrip");
+    expect(encounterPage).toContain("careSetting.inpatient");
+    expect(encounterPage).toContain("inpatientAllEncounters");
+    expect(encounterPage).toContain("inpatientAllEncountersPath");
   });
 
   it("French lock / banner keys exist without raw-key leakage", () => {
