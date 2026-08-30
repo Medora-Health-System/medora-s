@@ -3,7 +3,11 @@
  * Presentation / provider-intent only. Does not change billing, close, or type-flip.
  */
 
-import { inferPlacementEncounterTypeFromCareLevel } from "@medora/shared";
+import {
+  inferPlacementEncounterTypeFromCareLevel,
+  isInternalPlacementDestinationLocked as sharedIsInternalPlacementDestinationLocked,
+  isObservationHospitalDestinationIntent,
+} from "@medora/shared";
 import type { ErDispositionOutcomeUi } from "./emergencyDispositionV1";
 
 /** Provider-facing outcome order on the ED disposition board. */
@@ -52,12 +56,10 @@ export function requestedEncounterTypeForOutcomeUi(
 
 /** True when persisted admission/placement intent is observation (not inpatient). */
 export function isObservationPlacementIntent(hints?: InferOutcomeUiHints | null): boolean {
-  const requested = String(hints?.requestedEncounterType ?? "")
-    .trim()
-    .toUpperCase();
-  if (requested === "OBSERVATION") return true;
-  if (requested === "INPATIENT") return false;
-  return inferPlacementEncounterTypeFromCareLevel(hints?.careLevel) === "OBSERVATION";
+  return isObservationHospitalDestinationIntent({
+    requestedEncounterType: hints?.requestedEncounterType,
+    careLevel: hints?.careLevel,
+  });
 }
 
 /**
@@ -110,11 +112,7 @@ export function inferOutcomeHintsFromAdmissionSummary(admissionSummaryJson: unkn
  * Does not alter the placement state machine.
  */
 export function isInternalPlacementDestinationLocked(status?: string | null): boolean {
-  const s = String(status ?? "")
-    .trim()
-    .toUpperCase();
-  if (!s) return false;
-  return s !== "DRAFT" && s !== "SIGNED";
+  return sharedIsInternalPlacementDestinationLocked(status);
 }
 
 export function committedPlacementRequestedEncounterType(

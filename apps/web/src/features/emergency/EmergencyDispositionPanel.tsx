@@ -14,6 +14,7 @@ import {
   isDirectAdmissionErrorCode,
   isHospitalAdmittingService,
   isHospitalRequestedLevelOfCare,
+  localInpatientPlacementBlockedByFacilityType,
   markFieldPhysicianEdited,
   mergeProposalFieldWithoutOverwrite,
   replaceFieldWithUpdatedProposal,
@@ -39,6 +40,7 @@ import { ProposalSourcesDisclosure } from "./ProposalSourcesDisclosure";
 import { apiFetch, parseApiResponse } from "@/lib/apiClient";
 import { normalizeUserFacingError } from "@/lib/userFacingError";
 import { useI18n } from "@/lib/i18n";
+import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import { hospitalAdmissionReviewPath } from "@/features/hospital-care/hospitalCarePaths";
 import { isInternalPlacementWorkflowUiEnabled } from "./AdmissionObservationDecisionBoard";
 import { useEncounterDiagnosisRows } from "./useEncounterDiagnosisRows";
@@ -56,11 +58,9 @@ import {
   type AdmissionFormState,
 } from "@/lib/encounterAdmission";
 import { parseAdmissionSummaryForChart } from "@/components/patient-chart/patientChartHelpers";
-import { MedoraCard, MedoraCardActions, MedoraCardIdentity, MedoraCardInner, MedoraCardTitle } from "@/components/medora-card";
 import { AdmissionObservationDecisionBoard } from "./AdmissionObservationDecisionBoard";
 import { printDischarge } from "@/components/encounters/DischargePrintLayout";
 import {
-  buildErDispositionPreviewModel,
   emptyErDispositionSupplementForm,
   erDispositionSupplementFromEncounter,
   inferOutcomeUiFromForms,
@@ -70,7 +70,6 @@ import {
   readDispositionSignatureFromEncounter,
   type ErDispositionDecisionPersist,
   type ErDispositionOutcomeUi,
-  type ErDispositionPreviewLabels,
   type ErDispositionSupplementForm,
 } from "./emergencyDispositionV1";
 import {
@@ -87,8 +86,22 @@ import type { InternalPlacementProjectionDto } from "./internalPlacementApi";
 import { projectEdDispositionReadiness } from "./edDispositionReadinessProjection";
 import {
   ED_DISPOSITION_BOARD_COLORS,
+  ED_DISPOSITION_RESPONSIVE_CSS,
+  edActionBarStyle,
+  edBadgeCompleteStyle,
+  edBadgePendingStyle,
   edBoardCardStyle,
+  edBoardSectionStyle,
+  edBoardTitleStyle,
+  edFactRowStyle,
+  edNeutralBtnStyle,
+  edOutcomeChoiceGroupStyle,
+  edOutcomeChoiceLabelStyle,
+  edPrimaryBtnStyle,
   edReadinessChipStyle,
+  edReadinessRowStyle,
+  edSecondaryBtnStyle,
+  edSectionHeadingStyle,
 } from "./edDispositionBoardStyles";
 import {
   applyEmtalaV1ComplementToNursingAssessment,
@@ -106,14 +119,12 @@ import {
   hydrateProviderDischargeDocumentationForm,
   type ProviderDischargeValidationErrors,
 } from "@/features/emergency/providerDischargeDocumentationModel";
-import { buildProviderDischargeDocumentationPreviewSections } from "@/features/emergency/providerDischargeDocumentationSummary";
 import type { PatientSpecificDischargeContext } from "@/features/emergency/providerDischargePatientSpecificAdditions";
 import { buildPatientSpecificDischargeContext } from "@/features/emergency/providerDischargePatientSpecificAdditions";
 import {
   mergeMedicationNamesForDischargeContext,
   type DischargeMedicationSourceInput,
 } from "@/features/emergency/providerDischargeMedicationContext";
-import { EdDispositionPreviewPanel } from "@/features/emergency/EdDispositionPreviewPanel";
 import {
   AmaDispositionBoard,
   DeceasedDispositionBoard,
@@ -185,25 +196,26 @@ const labelStyle: React.CSSProperties = {
   color: "#475569",
 };
 
-const sectionHeading: React.CSSProperties = {
-  margin: 0,
-  fontSize: 11,
-  fontWeight: 700,
-  letterSpacing: "0.08em",
-  textTransform: "uppercase",
-  color: "#64748b",
-};
+const sectionHeading: React.CSSProperties = edSectionHeadingStyle;
 
-const PREVIEW_ACCENTS: Record<string, string> = {
-  mode: "#64748b",
-  discharge: "#475569",
-  providerDoc: "#0f766e",
-  providerPlanning: "#0369a1",
-  providerMeta: "#64748b",
-  admission: "#6a1b9a",
-  erExtra: "#b45309",
-  empty: "#cbd5e1",
-};
+function EdFactRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div style={edFactRowStyle}>
+      <span style={{ color: ED_DISPOSITION_BOARD_COLORS.muted, minWidth: 0 }}>{label}</span>
+      <span
+        style={{
+          fontWeight: 600,
+          textAlign: "right",
+          minWidth: 0,
+          overflowWrap: "anywhere",
+          color: ED_DISPOSITION_BOARD_COLORS.text,
+        }}
+      >
+        {value}
+      </span>
+    </div>
+  );
+}
 
 export function EmergencyDispositionPanel({
   encounterId,
@@ -232,48 +244,19 @@ export function EmergencyDispositionPanel({
   facilityName?: string | null;
 }) {
   const { t, language } = useI18n();
+  const { facilityType } = useFacilityAndRoles();
+  const localInpatientBlocked = localInpatientPlacementBlockedByFacilityType(facilityType);
   const router = useRouter();
   const dateLocale = language === "en" ? "en-US" : "fr-FR";
   const placementWorkflowUiEnabled = isInternalPlacementWorkflowUiEnabled();
 
   const OUTCOME_OPTIONS = useMemo(
-    (): { id: ErDispositionOutcomeUi; label: string }[] =>
+    (): { id: ErDispositionOutcomeUi; label: string; choiceLabel: string }[] =>
       ED_HOSP_1B_PROVIDER_OUTCOMES.map((id) => ({
         id,
         label: t(`emergencyDisposition.outcome${id}` as Parameters<typeof t>[0]),
+        choiceLabel: t(`emergencyDisposition.choice${id}` as Parameters<typeof t>[0]),
       })),
-    [t]
-  );
-
-  const dispositionPreviewLabels = useMemo(
-    (): ErDispositionPreviewLabels => ({
-      dischargeModeLinePrefix: t("emergencyDisposition.preview.dischargeModeLinePrefix"),
-      sectionDecisionShared: t("emergencyDisposition.preview.sectionDecisionShared"),
-      sectionDischargeFields: t("emergencyDisposition.preview.sectionDischargeFields"),
-      lineDispositionSummary: t("emergencyDisposition.preview.lineDispositionSummary"),
-      lineExitCondition: t("emergencyDisposition.preview.lineExitCondition"),
-      lineInstructions: t("emergencyDisposition.preview.lineInstructions"),
-      lineMedicationsGiven: t("emergencyDisposition.preview.lineMedicationsGiven"),
-      lineFollowUp: t("emergencyDisposition.preview.lineFollowUp"),
-      lineReturnIfWorse: t("emergencyDisposition.preview.lineReturnIfWorse"),
-      linePatientDestination: t("emergencyDisposition.preview.linePatientDestination"),
-      sectionAdmission: t("emergencyDisposition.preview.sectionAdmission"),
-      lineAdmissionReason: t("emergencyDisposition.preview.lineAdmissionReason"),
-      lineServiceUnit: t("emergencyDisposition.preview.lineServiceUnit"),
-      lineAdmissionDiagnosis: t("emergencyDisposition.preview.lineAdmissionDiagnosis"),
-      lineCareLevel: t("emergencyDisposition.preview.lineCareLevel"),
-      lineConditionAdmission: t("emergencyDisposition.preview.lineConditionAdmission"),
-      lineInitialPlan: t("emergencyDisposition.preview.lineInitialPlan"),
-      lineResponsiblePhysician: t("emergencyDisposition.preview.lineResponsiblePhysician"),
-      sectionErExtra: t("emergencyDisposition.preview.sectionErExtra"),
-      lineTransferNote: t("emergencyDisposition.preview.lineTransferNote"),
-      lineAmaRisks: t("emergencyDisposition.preview.lineAmaRisks"),
-      lineLwbsDetail: t("emergencyDisposition.preview.lineLwbsDetail"),
-      lineDeceasedNote: t("emergencyDisposition.preview.lineDeceasedNote"),
-      sectionEmptyTitle: t("emergencyDisposition.preview.sectionEmptyTitle"),
-      sectionEmptyLine: t("emergencyDisposition.preview.sectionEmptyLine"),
-      headlinePrefix: t("emergencyDisposition.preview.headlinePrefix"),
-    }),
     [t]
   );
 
@@ -525,11 +508,6 @@ export function EmergencyDispositionPanel({
     return () => window.removeEventListener("resize", applyLayoutMode);
   }, []);
 
-  const dischargeModeDisplayLabel = useMemo(() => {
-    const opt = OUTCOME_OPTIONS.find((o) => o.id === outcomeUi);
-    return opt?.label ?? dischargeForm.dischargeMode.trim();
-  }, [OUTCOME_OPTIONS, outcomeUi, dischargeForm.dischargeMode]);
-
   const wiredMedicationNames = useMemo(
     () =>
       mergeMedicationNamesForDischargeContext({
@@ -578,38 +556,6 @@ export function EmergencyDispositionPanel({
     patientSpecificDischargeContext,
     providerDischargeDoc.diagnosisRefs,
     wiredMedicationNames,
-  ]);
-
-  const previewModel = useMemo(() => {
-    const base = buildErDispositionPreviewModel(
-      dischargeForm,
-      admissionForm,
-      supplementForm,
-      outcomeUi,
-      dispositionPreviewLabels,
-      dischargeModeDisplayLabel
-    );
-    const providerSections = buildProviderDischargeDocumentationPreviewSections(
-      providerDischargeDoc,
-      encounter.dischargeSummaryJson,
-      language,
-      { patientContext: resolvedPatientDischargeContext }
-    );
-    if (!providerSections.length) return base;
-    const sections = [...base.sections.filter((s) => s.id !== "discharge"), ...providerSections];
-    return { ...base, sections };
-  }, [
-    dischargeForm,
-    admissionForm,
-    supplementForm,
-    outcomeUi,
-    dispositionPreviewLabels,
-    dischargeModeDisplayLabel,
-    providerDischargeDoc,
-    encounter.dischargeSummaryJson,
-    language,
-    patientSpecificDischargeContext,
-    resolvedPatientDischargeContext,
   ]);
 
   const storedSig = useMemo(
@@ -1110,20 +1056,60 @@ export function EmergencyDispositionPanel({
   const showLwbsExtra = false;
   const showDeceasedExtra = false;
 
+  const nursingChip = readinessChips.find((c) => c.id === "nursing");
+  const departureChip = readinessChips.find((c) => c.id === "departure");
+  const finalChip = readinessChips.find((c) => c.id === "final");
+  const followUpSummary = String(
+    dischargeForm.followUpInstructions || dischargeForm.followUp || ""
+  ).trim();
+  const providerStatusLabel = dispositionState.decisionSigned
+    ? t("emergencyDisposition.decisionSignedBadge")
+    : t("emergencyDisposition.decisionDraftBadge");
+  const nursingStatusLabel =
+    nursingChip?.state === "ready"
+      ? t("emergencyDisposition.readiness.ready")
+      : t("emergencyDisposition.readiness.pending");
+  const finalStatusLabel =
+    finalChip?.state === "ready"
+      ? t("emergencyDisposition.readiness.ready")
+      : t("emergencyDisposition.finalNotFinalized");
+  const pathwayShortLabel = t(
+    `emergencyDisposition.pathwayShort.${outcomeUi}` as Parameters<typeof t>[0]
+  );
+
   return (
     <>
-    <MedoraCard leftAccentColor="#64748b" variant="default">
-      <MedoraCardInner>
-        <MedoraCardIdentity initials="D">
-          <MedoraCardTitle
-            title={t("emergencyDisposition.cardTitle")}
-            subline={
-              <p style={{ margin: 0, fontSize: 13, color: "#64748b", lineHeight: 1.45 }}>
-                {t("emergencyDisposition.cardSubline")}
-              </p>
-            }
-          />
-        </MedoraCardIdentity>
+    <div className="ed-disposition-board" data-testid="ed-disposition-board">
+      <style>{ED_DISPOSITION_RESPONSIVE_CSS}</style>
+      <div style={edBoardSectionStyle}>
+        <div
+          style={{
+            display: "flex",
+            flexWrap: "wrap",
+            justifyContent: "space-between",
+            gap: 10,
+            alignItems: "center",
+            width: "100%",
+            maxWidth: "100%",
+            minWidth: 0,
+          }}
+        >
+          <h2 style={edBoardTitleStyle}>{t("emergencyDisposition.cardTitle")}</h2>
+          <button
+            type="button"
+            data-testid="ed-disposition-print"
+            onClick={handlePrintDischargeSummary}
+            disabled={!canPrintDischargeSummary}
+            style={{
+              ...edSecondaryBtnStyle,
+              opacity: canPrintDischargeSummary ? 1 : 0.55,
+              cursor: canPrintDischargeSummary ? "pointer" : "not-allowed",
+            }}
+          >
+            {t("emergencyDisposition.printDischargeSummary")}
+          </button>
+        </div>
+      </div>
 
         {encounter.type === "INPATIENT" ? (
           <p
@@ -1200,102 +1186,172 @@ export function EmergencyDispositionPanel({
 
         <div
           data-testid="ed-disposition-readiness"
-          style={{
-            marginTop: 10,
-            display: "flex",
-            flexWrap: "wrap",
-            gap: 6,
-            minWidth: 0,
-          }}
+          className="ed-disposition-readiness"
+          style={edReadinessRowStyle}
         >
           {readinessChips.map((chip) => (
             <span
               key={chip.id}
+              data-ed-readiness-chip=""
               data-testid={`ed-disposition-readiness-${chip.id}`}
               data-readiness-state={chip.state}
               style={edReadinessChipStyle(chip.state)}
             >
-              {t(`emergencyDisposition.readiness.${chip.id}` as Parameters<typeof t>[0])}
-              {" · "}
-              {t(
-                chip.state === "ready"
-                  ? "emergencyDisposition.readiness.ready"
-                  : "emergencyDisposition.readiness.pending"
-              )}
+              <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.02em" }}>
+                {t(`emergencyDisposition.readiness.${chip.id}` as Parameters<typeof t>[0])}
+              </span>
+              <span style={{ fontSize: 12, fontWeight: 800 }}>
+                {t(
+                  chip.state === "ready"
+                    ? "emergencyDisposition.readiness.ready"
+                    : "emergencyDisposition.readiness.pending"
+                )}
+              </span>
             </span>
           ))}
         </div>
 
         <div
           data-testid="ed-disposition-summary-cards"
-          style={{
-            marginTop: 10,
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
-            gap: 8,
-            minWidth: 0,
-          }}
+          className="ed-disposition-four-col"
         >
-          {([
-            {
-              id: "provider",
-              titleKey: "summaryProviderTitle",
-              value: dispositionState.decisionSigned
-                ? t("emergencyDisposition.decisionSignedBadge")
-                : t("emergencyDisposition.decisionDraftBadge"),
-            },
-            ...(readinessChips.some((c) => c.id === "nursing")
-              ? [
-                  {
-                    id: "nursing",
-                    titleKey: "summaryNursingTitle",
-                    value:
-                      readinessChips.find((c) => c.id === "nursing")?.state === "ready"
-                        ? t("emergencyDisposition.readiness.ready")
-                        : t("emergencyDisposition.readiness.pending"),
-                  },
-                ]
-              : []),
-            {
-              id: "pathway",
-              titleKey: "summaryPathwayTitle",
-              value: t(`emergencyDisposition.boardTitle.${outcomeUi}` as Parameters<typeof t>[0]),
-            },
-            {
-              id: "final",
-              titleKey: "summaryFinalTitle",
-              value:
-                readinessChips.find((c) => c.id === "final")?.state === "ready"
-                  ? t("emergencyDisposition.readiness.ready")
-                  : t("emergencyDisposition.readiness.pending"),
-            },
-          ] as const).map((card) => (
-            <div key={card.id} data-testid={`ed-disposition-summary-${card.id}`} style={edBoardCardStyle}>
-              <p style={{ ...sectionHeading, color: ED_DISPOSITION_BOARD_COLORS.muted }}>
-                {t(`emergencyDisposition.${card.titleKey}` as Parameters<typeof t>[0])}
-              </p>
-              <p
-                style={{
-                  margin: 0,
-                  fontSize: 13,
-                  fontWeight: 700,
-                  color: ED_DISPOSITION_BOARD_COLORS.text,
-                  minWidth: 0,
-                  overflowWrap: "anywhere",
-                }}
-              >
-                {card.value}
-              </p>
+          <div data-testid="ed-disposition-summary-provider" style={edBoardCardStyle}>
+            <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "center" }}>
+              <h3 style={{ margin: 0, fontSize: 14, fontWeight: 700 }}>
+                {t("emergencyDisposition.summaryProviderTitle")}
+              </h3>
+              <span style={dispositionState.decisionSigned ? edBadgeCompleteStyle : edBadgePendingStyle}>
+                {providerStatusLabel}
+              </span>
             </div>
-          ))}
+            <EdFactRow label={t("emergencyDisposition.summaryOutcomeLabel")} value={pathwayShortLabel} />
+            <EdFactRow label={t("emergencyDisposition.summaryStatusLabel")} value={providerStatusLabel} />
+          </div>
+          {nursingChip ? (
+            <div data-testid="ed-disposition-summary-nursing" style={edBoardCardStyle}>
+              <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "center" }}>
+                <h3 style={{ margin: 0, fontSize: 14, fontWeight: 700 }}>
+                  {t("emergencyDisposition.summaryNursingTitle")}
+                </h3>
+                <span style={nursingChip.state === "ready" ? edBadgeCompleteStyle : edBadgePendingStyle}>
+                  {nursingStatusLabel}
+                </span>
+              </div>
+              <EdFactRow label={t("emergencyDisposition.summaryStatusLabel")} value={nursingStatusLabel} />
+            </div>
+          ) : null}
+          <div data-testid="ed-disposition-summary-pathway" style={edBoardCardStyle}>
+            <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "center" }}>
+              <h3 style={{ margin: 0, fontSize: 14, fontWeight: 700 }}>
+                {t("emergencyDisposition.summaryPathwayTitle")}
+              </h3>
+              <span style={edBadgePendingStyle}>{pathwayShortLabel}</span>
+            </div>
+            {followUpSummary ? (
+              <EdFactRow label={t("emergencyDisposition.summaryFollowUpLabel")} value={followUpSummary} />
+            ) : null}
+          </div>
+          <div data-testid="ed-disposition-summary-final" style={edBoardCardStyle}>
+            <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "center" }}>
+              <h3 style={{ margin: 0, fontSize: 14, fontWeight: 700 }}>
+                {t("emergencyDisposition.summaryFinalTitle")}
+              </h3>
+              <span style={finalChip?.state === "ready" ? edBadgeCompleteStyle : edBadgePendingStyle}>
+                {finalStatusLabel}
+              </span>
+            </div>
+            <EdFactRow label={t("emergencyDisposition.summaryStatusLabel")} value={finalStatusLabel} />
+          </div>
         </div>
 
+        <div style={edBoardSectionStyle} data-testid="ed-disposition-primary-decision">
+              <p style={sectionHeading}>{t("emergencyDisposition.sectionPrimaryDecision")}</p>
+              <div
+                role="radiogroup"
+                aria-label={t("emergencyDisposition.outcomeSelectionLegend")}
+                className="ed-disposition-outcome-group"
+                data-testid="ed-disposition-outcome-group"
+                style={edOutcomeChoiceGroupStyle}
+              >
+                {OUTCOME_OPTIONS.map((opt) => {
+                  const showOption =
+                    opt.id === outcomeUi ||
+                    !dispositionState.decisionSigned ||
+                    pathwayChangeConfirm != null;
+                  const destSwitchBlocked = isObservationAdmissionDestinationSwitchBlocked({
+                    placementStatus: activePlacement?.status,
+                    placementRequestedEncounterType: activePlacement?.requestedEncounterType,
+                    nextOutcome: opt.id,
+                  });
+                  const capabilityBlocked = opt.id === "ADMISSION" && localInpatientBlocked;
+                  const optionDisabled = outcomeDisabled || destSwitchBlocked || capabilityBlocked;
+                  const selected =
+                    pathwayChangeConfirm != null
+                      ? pathwayChangeConfirm === opt.id
+                      : outcomeUi === opt.id;
+                  return (
+                    <label
+                      key={opt.id}
+                      data-testid={`ed-disposition-outcome-${opt.id}`}
+                      style={{
+                        ...edOutcomeChoiceLabelStyle(selected, optionDisabled),
+                        display: showOption ? "inline-flex" : "none",
+                      }}
+                    >
+                      <input
+                        type="radio"
+                        name="er-disposition-outcome"
+                        checked={selected}
+                        disabled={optionDisabled}
+                        onChange={() => setOutcomeFromUi(opt.id)}
+                        style={{ margin: 0 }}
+                      />
+                      <span>{opt.choiceLabel}</span>
+                    </label>
+                  );
+                })}
+                {localInpatientBlocked ? (
+                  <p
+                    role="status"
+                    data-testid="ed-disposition-inpatient-unavailable"
+                    style={{ margin: "4px 0 0", fontSize: 12, color: "#475569", lineHeight: 1.4, flex: "1 1 100%" }}
+                  >
+                    {t("emergencyDisposition.inpatientUnavailableByFacility")}
+                  </p>
+                ) : null}
+                {placementDestLocked &&
+                (outcomeUi === "OBSERVATION" || outcomeUi === "ADMISSION") ? (
+                  <p
+                    role="status"
+                    data-testid="ed-disposition-committed-placement-lock"
+                    style={{ margin: "4px 0 0", fontSize: 12, color: "#475569", lineHeight: 1.4, flex: "1 1 100%" }}
+                  >
+                    {t("emergencyDisposition.committedPlacementBlocksTypeSwitch")}
+                  </p>
+                ) : null}
+                {dispositionState.decisionSigned && !formDisabled && pathwayChangeConfirm == null ? (
+                  <button
+                    type="button"
+                    data-testid="ed-disposition-change-pathway"
+                    onClick={() => setPathwayChangeConfirm(outcomeUi)}
+                    style={{
+                      ...edNeutralBtnStyle,
+                      marginTop: 0,
+                      alignSelf: "center",
+                    }}
+                  >
+                    {t("emergencyDisposition.changePathwayAction")}
+                  </button>
+                ) : null}
+              </div>
+            </div>
+
         <div
-          style={{ ...edDispositionWorkspaceStyle(layoutMode), marginTop: 12 }}
+          style={edDispositionWorkspaceStyle(layoutMode)}
           data-testid="ed-disposition-workspace-layout"
           data-layout-mode={layoutMode}
         >
-          <div style={{ display: "flex", flexDirection: "column", gap: 14, minWidth: 0 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 14, minWidth: 0, width: "100%", maxWidth: "100%" }}>
             <div
               data-testid="ed-disposition-active-board"
               data-disposition-board={
@@ -1319,134 +1375,8 @@ export function EmergencyDispositionPanel({
               }
               data-disposition-workflow-state={dispositionState.workflowState}
               data-decision-status={dispositionState.decisionStatus}
+              style={{ width: "100%", maxWidth: "100%", minWidth: 0 }}
             >
-              <p style={sectionHeading}>{t("emergencyDisposition.sectionPrimaryDecision")}</p>
-              <p
-                style={{
-                  margin: "8px 0 0 0",
-                  padding: "8px 10px",
-                  borderRadius: 10,
-                  border: "1px solid #d4d4d8",
-                  background: "#f4f4f5",
-                  fontSize: 12,
-                  fontWeight: 700,
-                  color: "#3f3f46",
-                  letterSpacing: "0.02em",
-                }}
-                role="status"
-              >
-                {t(`emergencyDisposition.boardTitle.${outcomeUi}`)}
-                {" · "}
-                {dispositionState.decisionSigned
-                  ? t("emergencyDisposition.decisionSignedBadge")
-                  : t("emergencyDisposition.decisionDraftBadge")}
-              </p>
-              <div
-                role="radiogroup"
-                aria-label={t("emergencyDisposition.outcomeSelectionLegend")}
-                style={{
-                  marginTop: 8,
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: 6,
-                  padding: "10px 12px",
-                  borderRadius: 10,
-                  border: "1px solid #e2e8f0",
-                  backgroundColor: "#f8fafc",
-                  minWidth: 0,
-                }}
-              >
-                {OUTCOME_OPTIONS.map((opt) => {
-                  const showOption =
-                    opt.id === outcomeUi ||
-                    !dispositionState.decisionSigned ||
-                    pathwayChangeConfirm != null;
-                  const destSwitchBlocked = isObservationAdmissionDestinationSwitchBlocked({
-                    placementStatus: activePlacement?.status,
-                    placementRequestedEncounterType: activePlacement?.requestedEncounterType,
-                    nextOutcome: opt.id,
-                  });
-                  const optionDisabled = outcomeDisabled || destSwitchBlocked;
-                  return (
-                    <label
-                      key={opt.id}
-                      data-testid={`ed-disposition-outcome-${opt.id}`}
-                      style={{
-                        display: showOption ? "flex" : "none",
-                        alignItems: "flex-start",
-                        gap: 8,
-                        fontSize: 13,
-                        color: optionDisabled ? "#94a3b8" : "#0f172a",
-                        cursor: optionDisabled ? "not-allowed" : "pointer",
-                      }}
-                    >
-                      <input
-                        type="radio"
-                        name="er-disposition-outcome"
-                        checked={
-                          pathwayChangeConfirm != null
-                            ? pathwayChangeConfirm === opt.id
-                            : outcomeUi === opt.id
-                        }
-                        disabled={optionDisabled}
-                        onChange={() => setOutcomeFromUi(opt.id)}
-                        style={{ marginTop: 2 }}
-                      />
-                      <span>{opt.label}</span>
-                    </label>
-                  );
-                })}
-                {placementDestLocked &&
-                (outcomeUi === "OBSERVATION" || outcomeUi === "ADMISSION") ? (
-                  <p
-                    role="status"
-                    data-testid="ed-disposition-committed-placement-lock"
-                    style={{ margin: "4px 0 0", fontSize: 12, color: "#475569", lineHeight: 1.4 }}
-                  >
-                    {t("emergencyDisposition.committedPlacementBlocksTypeSwitch")}
-                  </p>
-                ) : null}
-                {dispositionState.decisionSigned && !formDisabled && pathwayChangeConfirm == null ? (
-                  <button
-                    type="button"
-                    data-testid="ed-disposition-change-pathway"
-                    onClick={() => setPathwayChangeConfirm(outcomeUi)}
-                    style={{
-                      marginTop: 6,
-                      alignSelf: "flex-start",
-                      border: "1px solid #cbd5e1",
-                      background: "#fff",
-                      borderRadius: 8,
-                      padding: "6px 10px",
-                      fontSize: 12,
-                      fontWeight: 600,
-                      color: "#475569",
-                      cursor: "pointer",
-                    }}
-                  >
-                    {t("emergencyDisposition.changePathwayAction")}
-                  </button>
-                ) : null}
-              </div>
-            </div>
-
-            {showAdmissionFields && canPrescribe ? (
-              <div
-                style={{
-                  padding: "10px 12px",
-                  borderRadius: 10,
-                  border: "1px solid #f3e8ff",
-                  backgroundColor: "#faf5ff",
-                  minWidth: 0,
-                }}
-              >
-                <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "#6b21a8" }}>
-                  {outcomeUi === "OBSERVATION"
-                    ? t("emergencyDisposition.boardTitle.OBSERVATION")
-                    : t("emergencyDisposition.admissionWarningTitle")}
-                </p>
-              </div>
-            ) : null}
 
             {showAdmissionFields && !canPrescribe ? (
               <p style={{ margin: 0, fontSize: 13, color: "#b45309", lineHeight: 1.45 }}>
@@ -1455,7 +1385,10 @@ export function EmergencyDispositionPanel({
             ) : null}
 
             {showProviderDischargeDocumentation ? (
-              <>
+              <div
+                data-testid="ed-disposition-home-workspace"
+                style={{ width: "100%", maxWidth: "100%", minWidth: 0 }}
+              >
                 <ProviderDischargeDocumentationSection
                   facilityId={facilityId}
                   patientId={encounter.patient?.id}
@@ -1466,51 +1399,73 @@ export function EmergencyDispositionPanel({
                   validationErrors={providerDischargeValidationErrors}
                   layoutMode={layoutMode}
                 />
-              </>
+              </div>
             ) : null}
 
             {outcomeUi === "AMA" ? (
+              <div data-testid="ed-disposition-ama-workspace" style={{ width: "100%", maxWidth: "100%", minWidth: 0 }}>
               <AmaDispositionBoard
                 value={amaBoard}
                 onChange={setAmaBoard}
                 nursingAssessment={encounter.nursingAssessment}
                 disabled={formDisabled}
               />
+              </div>
             ) : null}
             {outcomeUi === "LWBS" ? (
+              <div data-testid="ed-disposition-lwbs-workspace" style={{ width: "100%", maxWidth: "100%", minWidth: 0 }}>
               <LwbsDispositionBoard
                 value={lwbsBoard}
                 onChange={setLwbsBoard}
                 nursingAssessment={encounter.nursingAssessment}
                 disabled={formDisabled}
               />
+              </div>
             ) : null}
             {outcomeUi === "ELOPEMENT" ? (
+              <div data-testid="ed-disposition-elopement-workspace" style={{ width: "100%", maxWidth: "100%", minWidth: 0 }}>
               <ElopementDispositionBoard
                 value={elopementBoard}
                 onChange={setElopementBoard}
                 nursingAssessment={encounter.nursingAssessment}
                 disabled={formDisabled}
               />
+              </div>
             ) : null}
             {outcomeUi === "DECEASED" ? (
+              <div data-testid="ed-disposition-deceased-workspace" style={{ width: "100%", maxWidth: "100%", minWidth: 0 }}>
               <DeceasedDispositionBoard
                 value={deceasedBoard}
                 onChange={setDeceasedBoard}
                 nursingAssessment={encounter.nursingAssessment}
                 disabled={formDisabled}
               />
+              </div>
             ) : null}
             {outcomeUi === "OTHER" ? (
+              <div data-testid="ed-disposition-other-workspace" style={{ width: "100%", maxWidth: "100%", minWidth: 0 }}>
               <GovernedOtherDispositionBoard
                 value={otherBoard}
                 onChange={setOtherBoard}
                 disabled={formDisabled}
               />
+              </div>
             ) : null}
 
             {showAdmissionFields && canPrescribe ? (
-              <div>
+              <div
+                data-testid={
+                  outcomeUi === "OBSERVATION"
+                    ? "ed-disposition-observation-workspace"
+                    : "ed-disposition-admission-workspace"
+                }
+                style={{ width: "100%", maxWidth: "100%", minWidth: 0 }}
+              >
+                <p style={sectionHeading}>
+                  {outcomeUi === "OBSERVATION"
+                    ? t("emergencyDisposition.sectionObservationPhysician")
+                    : t("emergencyDisposition.sectionAdmissionPhysician")}
+                </p>
                 <AdmissionObservationDecisionBoard
                   encounterId={encounterId}
                   requestedEncounterType={requestedPlacementType ?? "INPATIENT"}
@@ -1533,11 +1488,6 @@ export function EmergencyDispositionPanel({
                     }
                   }}
                 />
-                <p style={sectionHeading}>
-                  {outcomeUi === "OBSERVATION"
-                    ? t("emergencyDisposition.sectionObservationPhysician")
-                    : t("emergencyDisposition.sectionAdmissionPhysician")}
-                </p>
                 {newerProposalAvailable && pendingProposal ? (
                   <div
                     role="status"
@@ -1944,7 +1894,10 @@ export function EmergencyDispositionPanel({
             ) : null}
 
             {(showTransferExtra || showAmaExtra || showLwbsExtra || showDeceasedExtra) && (
-              <div>
+              <div
+                data-testid="ed-disposition-transfer-board"
+                style={{ width: "100%", maxWidth: "100%", minWidth: 0 }}
+              >
                 <p style={sectionHeading}>{t("emergencyDisposition.sectionErSupplement")}</p>
                 <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 8 }}>
                   {showTransferExtra ? (
@@ -2151,7 +2104,68 @@ export function EmergencyDispositionPanel({
               </div>
             </div>
 
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center", width: "100%", minWidth: 0 }}>
+            </div>
+
+            <div
+              data-testid="ed-disposition-final"
+              style={edBoardSectionStyle}
+            >
+              <p style={sectionHeading}>{t("emergencyDisposition.summaryFinalTitle")}</p>
+              <EdFactRow
+                label={t("emergencyDisposition.summaryOutcomeLabel")}
+                value={pathwayShortLabel}
+              />
+              <EdFactRow
+                label={t("emergencyDisposition.readiness.provider")}
+                value={providerStatusLabel}
+              />
+              {nursingChip ? (
+                <EdFactRow
+                  label={t("emergencyDisposition.readiness.nursing")}
+                  value={nursingStatusLabel}
+                />
+              ) : null}
+              {departureChip ? (
+                <EdFactRow
+                  label={t("emergencyDisposition.summaryDepartureLabel")}
+                  value={
+                    departureChip.state === "ready"
+                      ? t("emergencyDisposition.finalDocumented")
+                      : t("emergencyDisposition.readiness.pending")
+                  }
+                />
+              ) : null}
+              <EdFactRow
+                label={t("emergencyDisposition.signatureHeading")}
+                value={
+                  storedSig
+                    ? new Date(storedSig.savedAt).toLocaleString(dateLocale, {
+                        dateStyle: "short",
+                        timeStyle: "short",
+                      })
+                    : t("common.dash")
+                }
+              />
+              {storedSig?.savedByDisplayName ? (
+                <EdFactRow
+                  label={t("emergencyDisposition.summarySignerLabel")}
+                  value={storedSig.savedByDisplayName}
+                />
+              ) : null}
+              <EdFactRow
+                label={t("emergencyDisposition.finalActionLabel")}
+                value={
+                  dispositionState.decisionSigned
+                    ? t("emergencyDisposition.decisionSignedBadge")
+                    : t("emergencyDisposition.saveDraftButton")
+                }
+              />
+            </div>
+
+            <div
+              data-testid="ed-disposition-action-bar"
+              style={edActionBarStyle}
+            >
               <button
                 type="button"
                 data-testid="ed-disposition-save-draft"
@@ -2159,13 +2173,10 @@ export function EmergencyDispositionPanel({
                 disabled={formDisabled || saving}
                 style={edDispositionTouchButtonStyle(
                   {
-                    padding: "9px 16px",
-                    borderRadius: 10,
-                    border: "1px solid #64748b",
+                    ...edNeutralBtnStyle,
                     backgroundColor: formDisabled ? "#f1f5f9" : "#475569",
                     color: formDisabled ? "#94a3b8" : "#fff",
-                    fontWeight: 600,
-                    fontSize: 14,
+                    border: "1px solid #64748b",
                     cursor: formDisabled || saving ? "not-allowed" : "pointer",
                   },
                   layoutMode
@@ -2183,14 +2194,9 @@ export function EmergencyDispositionPanel({
                   disabled={saving}
                   style={edDispositionTouchButtonStyle(
                     {
-                      padding: "9px 16px",
-                      borderRadius: 10,
-                      border: "1px solid #1d4ed8",
-                      backgroundColor: "#1d4ed8",
-                      color: "#fff",
-                      fontWeight: 600,
-                      fontSize: 14,
+                      ...edPrimaryBtnStyle,
                       cursor: saving ? "not-allowed" : "pointer",
+                      opacity: saving ? 0.7 : 1,
                     },
                     layoutMode
                   )}
@@ -2219,95 +2225,8 @@ export function EmergencyDispositionPanel({
               ) : null}
             </div>
           </div>
-
-          <EdDispositionPreviewPanel title={t("emergencyDisposition.previewColumnTitle")} layoutMode={layoutMode}>
-            <div
-              style={{
-                marginTop: layoutMode === "desktopSplit" ? 10 : 0,
-                padding: "10px 12px",
-                borderRadius: 10,
-                border: "1px solid #e2e8f0",
-                backgroundColor: "#fff",
-              }}
-            >
-              {previewModel.sections.map((sec, idx) => (
-                <div key={sec.id} style={{ marginBottom: idx === previewModel.sections.length - 1 ? 0 : 12 }}>
-                  <p
-                    style={{
-                      margin: 0,
-                      fontSize: 10,
-                      fontWeight: 700,
-                      letterSpacing: "0.06em",
-                      textTransform: "uppercase",
-                      color: PREVIEW_ACCENTS[sec.id] ?? "#64748b",
-                    }}
-                  >
-                    {sec.title}
-                  </p>
-                  <ul style={{ margin: "6px 0 0 0", paddingLeft: 16, fontSize: 13, color: "#334155", lineHeight: 1.45 }}>
-                    {sec.lines.map((line, i) => (
-                      <li key={i} style={{ marginBottom: 3 }}>
-                        {line}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ))}
-              {previewModel.headline ? (
-                <p style={{ margin: "10px 0 0 0", fontSize: 13, color: "#0f172a", lineHeight: 1.45, fontWeight: 600 }}>
-                  {previewModel.headline}
-                </p>
-              ) : null}
-            </div>
-
-            <div
-              style={{
-                marginTop: 10,
-                padding: "10px 12px",
-                borderRadius: 10,
-                border: "1px solid #e2e8f0",
-                backgroundColor: "#f8fafc",
-              }}
-            >
-              <p style={{ margin: 0, fontSize: 10, fontWeight: 700, letterSpacing: "0.06em", color: "#475569" }}>
-                {t("emergencyDisposition.signatureHeading")}
-              </p>
-              {storedSig ? (
-                <p style={{ margin: "6px 0 0 0", fontSize: 13, color: "#334155", lineHeight: 1.45 }}>
-                  {storedSig.savedByDisplayName}
-                  <br />
-                  {new Date(storedSig.savedAt).toLocaleString(dateLocale, { dateStyle: "short", timeStyle: "short" })}
-                </p>
-              ) : (
-                <p style={{ margin: "6px 0 0 0", fontSize: 13, color: "#64748b" }}>{t("common.dash")}</p>
-              )}
-            </div>
-
-            <MedoraCardActions railBorderTopColor="#e2e8f0" gap={8} minWidth={0} alignItems="flex-start">
-              <button
-                type="button"
-                onClick={handlePrintDischargeSummary}
-                disabled={!canPrintDischargeSummary}
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  padding: "8px 14px",
-                  borderRadius: 10,
-                  border: "1px solid #cbd5e1",
-                  backgroundColor: canPrintDischargeSummary ? "#f8fafc" : "#f1f5f9",
-                  color: canPrintDischargeSummary ? "#334155" : "#94a3b8",
-                  fontSize: 13,
-                  fontWeight: 600,
-                  cursor: canPrintDischargeSummary ? "pointer" : "not-allowed",
-                }}
-              >
-                {t("emergencyDisposition.printDischargeSummary")}
-              </button>
-            </MedoraCardActions>
-          </EdDispositionPreviewPanel>
         </div>
-      </MedoraCardInner>
-    </MedoraCard>
+    </div>
     {cancelOpen ? (
       <div
         role="dialog"

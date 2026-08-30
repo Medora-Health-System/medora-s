@@ -57,6 +57,8 @@ export const ADMISSION_ERROR_MESSAGES_FR: Record<string, string> = {
     "La disposition doit être Admission ou Observation pour signer ce dossier.",
   NURSING_DISPOSITION_STALE: "La documentation infirmière a été modifiée ailleurs. Actualisez.",
   DEPARTURE_ALREADY_COMPLETED: "Le départ des urgences est déjà documenté comme terminé.",
-  NURSING_COMPLETION_INCOMPLETE:
-    "Des éléments infirmiers requis avant le départ sont manquants.",
+    PLACEMENT_DESTINATION_LOCKED:
+      "La destination d'observation ou d'admission ne peut plus être modifiée : une demande de placement est déjà engagée.",
+    INPATIENT_DISABLED_BY_PROFILE:
+      "Cet établissement n'autorise pas l'admission hospitalière locale. Choisissez l'observation ou un transfert externe.",
 };

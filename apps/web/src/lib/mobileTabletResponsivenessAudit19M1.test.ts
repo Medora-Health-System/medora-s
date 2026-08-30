@@ -23,7 +23,8 @@ describe("19M.1 mobile/tablet responsiveness audit anchors", () => {
     const src = readWebSource("src/features/emergency/EmergencyDispositionPanel.tsx");
     expect(src).toContain("resolveEdDispositionLayoutMode");
     expect(src).toContain('data-testid="ed-disposition-workspace-layout"');
-    expect(src).toContain("EdDispositionPreviewPanel");
+    expect(src).toContain("ED_DISPOSITION_RESPONSIVE_CSS");
+    expect(src).not.toContain("EdDispositionPreviewPanel");
     expect(src).not.toContain("wideLayout");
     expect(src).not.toContain('matchMedia("(min-width: 960px)")');
   });

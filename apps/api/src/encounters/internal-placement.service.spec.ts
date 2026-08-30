@@ -41,6 +41,14 @@ function baseRow(overrides: Record<string, unknown> = {}) {
   };
 }
 
+function hospitalFacilityPrisma() {
+  return {
+    facility: {
+      findFirst: jest.fn().mockResolvedValue({ facilityType: "HOSPITAL" }),
+    },
+  };
+}
+
 describe("InternalPlacementService D3C", () => {
   const prev = process.env.INTERNAL_PLACEMENT_WORKFLOW_ENABLED;
 
@@ -84,6 +92,7 @@ describe("InternalPlacementService D3C", () => {
   it("creates draft when flag forced ON and keeps ED encounter type untouched", async () => {
     const created = baseRow();
     const prisma = {
+      ...hospitalFacilityPrisma(),
       encounter: {
         findFirst: jest.fn().mockResolvedValue({
           id: "enc-ed",
@@ -238,5 +247,81 @@ describe("InternalPlacementService D3C", () => {
         where: expect.objectContaining({ facilityId: "fac-1" }),
       })
     );
+  });
+
+  it("FSER cannot create local INPATIENT placement", async () => {
+    const prisma = {
+      facility: {
+        findFirst: jest.fn().mockResolvedValue({ facilityType: "FREESTANDING_ER" }),
+      },
+      encounter: {
+        findFirst: jest.fn().mockResolvedValue({
+          id: "enc-ed",
+          facilityId: "fac-1",
+          patientId: "pat-1",
+          type: "EMERGENCY",
+          status: "OPEN",
+          hospitalEpisodeId: null,
+        }),
+      },
+      internalPlacementRequest: {
+        findFirst: jest.fn().mockResolvedValue(null),
+        create: jest.fn(),
+      },
+    };
+    const svc = new InternalPlacementService(
+      prisma as never,
+      { log: jest.fn() } as never,
+      { createEpisodeForEncounter: jest.fn() } as never,
+      correlationSvc(prisma) as never
+    );
+    await expect(
+      svc.createDraft(
+        "fac-1",
+        "enc-ed",
+        "user-1",
+        { requestedEncounterType: "INPATIENT" },
+        { featureFlagEnabled: true }
+      )
+    ).rejects.toMatchObject({ response: { code: "INPATIENT_DISABLED_BY_PROFILE" } });
+    expect(prisma.internalPlacementRequest.create).not.toHaveBeenCalled();
+  });
+
+  it("FSER can create OBSERVATION placement", async () => {
+    const created = baseRow();
+    const prisma = {
+      facility: {
+        findFirst: jest.fn().mockResolvedValue({ facilityType: "FREESTANDING_ER" }),
+      },
+      encounter: {
+        findFirst: jest.fn().mockResolvedValue({
+          id: "enc-ed",
+          facilityId: "fac-1",
+          patientId: "pat-1",
+          type: "EMERGENCY",
+          status: "OPEN",
+          hospitalEpisodeId: null,
+        }),
+      },
+      internalPlacementRequest: {
+        findFirst: jest.fn().mockResolvedValue(null),
+        create: jest.fn().mockResolvedValue(created),
+      },
+    };
+    const svc = new InternalPlacementService(
+      prisma as never,
+      { log: jest.fn() } as never,
+      { createEpisodeForEncounter: jest.fn() } as never,
+      correlationSvc(prisma) as never
+    );
+    const result = await svc.createDraft(
+      "fac-1",
+      "enc-ed",
+      "user-1",
+      { requestedEncounterType: "OBSERVATION" },
+      { featureFlagEnabled: true }
+    );
+    expect(result?.requestedEncounterType).toBe("OBSERVATION");
+    expect(prisma.internalPlacementRequest.create).toHaveBeenCalled();
   });
 });

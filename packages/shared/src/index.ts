@@ -99,6 +99,7 @@ export * from "./encounters/hospitalEpisodeEligibility.js";
 export * from "./encounters/hospitalEpisodeProjection.js";
 export * from "./encounters/internalPlacementFeatureFlags.js";
 export * from "./encounters/internalPlacementStatusMachine.js";
+export * from "./encounters/hospitalDestinationIntent.js";
 export * from "./encounters/internalPlacementClinicalRequest.js";
 export * from "./encounters/internalPlacementProjection.js";
 export * from "./encounters/internalPlacementD3cBenchmark.js";

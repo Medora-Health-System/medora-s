@@ -18,22 +18,15 @@ export function edDispositionUsesSplitLayout(mode: EdDispositionLayoutMode): boo
   return mode === "desktopSplit";
 }
 
-export function edDispositionWorkspaceStyle(mode: EdDispositionLayoutMode): CSSProperties {
-  const base: CSSProperties = { width: "100%", minWidth: 0 };
-  if (mode === "desktopSplit") {
-    return {
-      ...base,
-      display: "grid",
-      gridTemplateColumns: "minmax(0, 1fr) minmax(280px, 380px)",
-      gap: 16,
-      alignItems: "start",
-    };
-  }
+/** Single-column clinical workspace — no sticky preview column. */
+export function edDispositionWorkspaceStyle(_mode: EdDispositionLayoutMode): CSSProperties {
   return {
-    ...base,
+    width: "100%",
+    maxWidth: "100%",
+    minWidth: 0,
     display: "flex",
     flexDirection: "column",
-    gap: 16,
+    gap: 12,
   };
 }
 

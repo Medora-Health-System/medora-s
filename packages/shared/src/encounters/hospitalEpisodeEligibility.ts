@@ -3,7 +3,7 @@
  * Does not mutate encounters. Does not replace type-flip admission workflow.
  */
 
-import { isObservationShortStayCareLevel } from "../observationAdmissionCareLevel.js";
+import { resolveHospitalDestinationIntent } from "./hospitalDestinationIntent.js";
 import {
   resolveEdDispositionPath,
   type EdDispositionPath,
@@ -55,24 +55,12 @@ export type HospitalEpisodeEligibilityResult = {
   internalPlacementKind: HospitalEpisodeInternalPlacementKind | null;
 };
 
-function asObject(value: unknown): Record<string, unknown> | null {
-  return value && typeof value === "object" && !Array.isArray(value)
-    ? (value as Record<string, unknown>)
-    : null;
-}
-
-function readCareLevel(admissionSummaryJson: unknown): string | null {
-  const o = asObject(admissionSummaryJson);
-  const v = o?.careLevel;
-  return typeof v === "string" && v.trim() ? v.trim() : null;
-}
-
 export function resolveHospitalEpisodeInternalPlacementKind(
   admissionSummaryJson: unknown
 ): HospitalEpisodeInternalPlacementKind {
-  const careLevel = readCareLevel(admissionSummaryJson);
-  if (isObservationShortStayCareLevel(careLevel)) return "OBSERVATION";
-  if (careLevel) return "INPATIENT_ADMISSION";
+  const dest = resolveHospitalDestinationIntent({ admissionSummaryJson });
+  if (dest === "OBSERVATION") return "OBSERVATION";
+  if (dest === "INPATIENT") return "INPATIENT_ADMISSION";
   return "INTERNAL_UNSPECIFIED";
 }
 

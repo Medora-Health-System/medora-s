@@ -6,13 +6,17 @@
  *
  * Durable signals (zero schema change):
  * 1. Encounter.type (EMERGENCY → EMERGENCY)
- * 2. admissionSummaryJson.requestedEncounterType from D3C receiving create
- * 3. Explicit billingClassification OBSERVATION | INPATIENT (not a clinical default flip)
+ * 2. Canonical destination intent (explicit requestedEncounterType > placement dest > careLevel)
+ * 3. Explicit billingClassification OBSERVATION | INPATIENT (never overrides explicit dest)
  * 4. Otherwise INPATIENT for type=INPATIENT (direct admission is first-class)
  * 5. UNKNOWN when type is absent/unrecognized
  *
+ * Encounter.type = INPATIENT does not mean the provider chose inpatient admission.
+ *
  * Short-stay / utilization helpers must not feed this resolver.
  */
+
+import { resolveHospitalDestinationIntent } from "./hospitalDestinationIntent.js";
 
 export const CLINICAL_ENCOUNTER_CONTEXTS = [
   "EMERGENCY",
@@ -75,19 +79,15 @@ export function resolveClinicalEncounterContext(
 
   if (type !== "INPATIENT") return "UNKNOWN";
 
-  // 1) Authoritative placement destination when provided by caller
-  const placement = String(input.placementRequestedEncounterType ?? "")
-    .trim()
-    .toUpperCase();
-  if (placement === "OBSERVATION") return "OBSERVATION";
-  if (placement === "INPATIENT") return "INPATIENT";
+  // 1–2) Canonical dest intent (explicit requestedEncounterType > placement > legacy LOC).
+  // Billing must not override explicit clinical destination.
+  const dest = resolveHospitalDestinationIntent({
+    placementRequestedEncounterType: input.placementRequestedEncounterType,
+    admissionSummaryJson: input.admissionSummaryJson,
+  });
+  if (dest === "OBSERVATION" || dest === "INPATIENT") return dest;
 
-  // 2) Explicit receiving-create denormalized intent
-  const fromSummary = readRequestedEncounterTypeFromAdmissionSummary(input.admissionSummaryJson);
-  if (fromSummary === "OBSERVATION") return "OBSERVATION";
-  if (fromSummary === "INPATIENT") return "INPATIENT";
-
-  // 3) Explicit billing markers only (never infer from admittedAt)
+  // 3) Explicit billing markers only when dest intent is unknown (never infer from admittedAt)
   const billing = String(input.billingClassification ?? "")
     .trim()
     .toUpperCase();
