@@ -4,13 +4,13 @@ import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { getRouteGuardRedirect } from "@/lib/landingRoute";
 import { fetchAuthMeSession, invalidateAuthMeSessionCache } from "@/lib/authSessionMe";
-import type { AuthMeFailureKind } from "@/lib/authSessionMe";
 import {
   beginLoadSessionRequest,
   clearedAuthenticatedSessionState,
   isLatestLoadSessionRequest,
   shouldIgnoreStaleAuthMeResult,
 } from "@/lib/authSessionBootstrap";
+import { isTransientAuthFailureKind, nextAuthTransientBackoffMs } from "@/lib/authSessionRetry";
 import {
   getEffectiveAccessTtlSecondsForProactiveRefresh,
   getProactiveRefreshIntervalMs,
@@ -35,7 +35,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [routeRedirecting, setRouteRedirecting] = useState(false);
   /** Après la 1re réponse /api/auth/me : évite de rendre le menu avec 0 entrée (user encore null). */
   const [sessionReady, setSessionReady] = useState(false);
-  type SessionBootstrapPhase = "loading" | "authenticated" | "unauthenticated" | "recoverable_error";
+  type SessionBootstrapPhase =
+    | "loading"
+    | "authenticated"
+    | "unauthenticated"
+    | "recoverable_error"
+    | "temporarily_unverifiable";
   const [sessionPhase, setSessionPhase] = useState<SessionBootstrapPhase>("loading");
   const [authRecoveryMessage, setAuthRecoveryMessage] = useState<string | null>(null);
   /** TTL d’accès (secondes) tel que renvoyé par GET /api/auth/me — aligné sur JWT_ACCESS_TTL (cookies), pas sur NEXT_PUBLIC seul. */
@@ -45,6 +50,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const loadSessionSeqRef = useRef(0);
   const userRef = useRef(user);
   userRef.current = user;
+  const sessionPhaseRef = useRef(sessionPhase);
+  sessionPhaseRef.current = sessionPhase;
   useEffect(() => {
     isMountedRef.current = true;
     return () => {
@@ -70,7 +77,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   const loadSession = useCallback(async (opts?: { force?: boolean }) => {
     const requestSeq = beginLoadSessionRequest(loadSessionSeqRef);
-    if (opts?.force) {
+    const hadVerifiedSession = Boolean(userRef.current);
+    if (opts?.force && !hadVerifiedSession) {
       setSessionPhase("loading");
       setAuthRecoveryMessage(null);
     }
@@ -90,9 +98,19 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           redirectToLogin();
           return;
         }
-        const unavailableKinds: AuthMeFailureKind[] = ["unavailable", "network", "timeout"];
-        if (unavailableKinds.includes(result.failureKind)) {
+        if (result.failureKind === "forbidden") {
+          // 403 is authorization, not an infrastructure outage.
           if (userRef.current) {
+            setSessionPhase("authenticated");
+            return;
+          }
+          redirectToLogin();
+          return;
+        }
+        if (isTransientAuthFailureKind(result.failureKind)) {
+          if (userRef.current) {
+            console.warn("[auth] session_verify_transient_upstream_failure");
+            setSessionPhase("temporarily_unverifiable");
             return;
           }
           setSessionPhase("recoverable_error");
@@ -101,6 +119,13 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         }
         redirectToLogin();
         return;
+      }
+
+      if (
+        sessionPhaseRef.current === "temporarily_unverifiable" ||
+        sessionPhaseRef.current === "recoverable_error"
+      ) {
+        console.info("[auth] session_verify_recovered");
       }
 
       const data = result.data;
@@ -179,6 +204,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       console.error("Failed to fetch user:", err);
       if (!isMountedRef.current) return;
       if (!isLatestLoadSessionRequest(requestSeq, loadSessionSeqRef.current)) return;
+      if (userRef.current) {
+        setSessionPhase("temporarily_unverifiable");
+        return;
+      }
       setSessionPhase("recoverable_error");
       setAuthRecoveryMessage(null);
     } finally {
@@ -193,11 +222,33 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   }, [loadSession]);
 
   useEffect(() => {
-    if (sessionPhase !== "recoverable_error") return;
-    const retryId = window.setInterval(() => {
-      void loadSession({ force: true });
-    }, 5000);
-    return () => window.clearInterval(retryId);
+    if (sessionPhase !== "recoverable_error" && sessionPhase !== "temporarily_unverifiable") {
+      return;
+    }
+    let cancelled = false;
+    let attempt = 0;
+    let timeoutId: number | null = null;
+    const schedule = () => {
+      const delay = nextAuthTransientBackoffMs(attempt);
+      timeoutId = window.setTimeout(() => {
+        if (cancelled) return;
+        attempt += 1;
+        void loadSession({ force: true }).then(() => {
+          if (cancelled) return;
+          if (
+            sessionPhaseRef.current === "recoverable_error" ||
+            sessionPhaseRef.current === "temporarily_unverifiable"
+          ) {
+            schedule();
+          }
+        });
+      }, delay);
+    };
+    schedule();
+    return () => {
+      cancelled = true;
+      if (timeoutId != null) window.clearTimeout(timeoutId);
+    };
   }, [sessionPhase, loadSession]);
 
   useEffect(() => {
@@ -216,7 +267,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     }
   }, [sessionReady, user, sessionPhase, router]);
 
-  const sessionContentReady = sessionPhase === "authenticated" && Boolean(user);
+  const sessionContentReady =
+    Boolean(user) &&
+    (sessionPhase === "authenticated" || sessionPhase === "temporarily_unverifiable");
   const redirectingToLogin = sessionPhase === "unauthenticated" && !user;
 
   /**
@@ -244,13 +297,13 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         try {
           const r = await fetch("/api/auth/refresh", { method: "POST", credentials: "include" });
           if (!r.ok) {
-            window.clearInterval(id);
             if (r.status === 401) {
+              window.clearInterval(id);
               router.replace("/login");
             }
           }
         } catch {
-          window.clearInterval(id);
+          /* transient refresh failure — keep interval; do not logout */
         }
       })();
     }, intervalMs);
@@ -448,10 +501,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <AppShell
         pathname={pathname}
         routeRedirecting={routeRedirecting}
-        bootstrapping={sessionPhase === "loading"}
+        bootstrapping={sessionPhase === "loading" && !user}
         sessionContentReady={sessionContentReady}
         redirectingToLogin={redirectingToLogin}
-        authRecoveryActive={sessionPhase === "recoverable_error"}
+        authRecoveryActive={sessionPhase === "recoverable_error" && !user}
+        connectivityDegraded={sessionPhase === "temporarily_unverifiable"}
         authRecoveryMessage={sessionPhase === "recoverable_error" ? authRecoveryMessage : null}
         onAuthRecoveryRetry={() => {
           void loadSession({ force: true });

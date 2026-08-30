@@ -34,6 +34,8 @@ const STARTUP_NOISE_CONTEXTS = new Set([
 const QUIET_HTTP_PATHS = new Set([
   "/",
   "/health",
+  "/health/live",
+  "/health/ready",
   "/favicon.ico",
   "/manifest.webmanifest",
   "/robots.txt",

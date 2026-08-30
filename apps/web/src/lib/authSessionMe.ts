@@ -8,6 +8,7 @@ export const AUTH_ME_RETRY_DELAY_MS = 400;
 export type AuthMeFailureKind =
   | "none"
   | "unauthenticated"
+  | "forbidden"
   | "unavailable"
   | "network"
   | "timeout"
@@ -38,6 +39,7 @@ export function invalidateAuthMeSessionCache(): void {
 
 export function classifyAuthMeHttpStatus(status: number): AuthMeFailureKind {
   if (status === 401) return "unauthenticated";
+  if (status === 403) return "forbidden";
   if (status === 502 || status === 503 || status === 504) return "unavailable";
   if (status >= 500) return "unavailable";
   return "unavailable";

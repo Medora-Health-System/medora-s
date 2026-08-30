@@ -43,6 +43,8 @@ export type AppShellProps = {
   onAuthRecoveryRetry?: () => void;
   onAuthRecoveryLogin?: () => void;
   onAuthRecoveryReload?: () => void;
+  /** Previously verified session, backend temporarily unreachable — keep chart mounted. */
+  connectivityDegraded?: boolean;
   /** Redirecting to login after session expiry (user must be cleared first). */
   redirectingToLogin?: boolean;
   /** Render route children only when session is fully authenticated. */
@@ -98,6 +100,7 @@ export function AppShell({
   onAuthRecoveryRetry,
   onAuthRecoveryLogin,
   onAuthRecoveryReload,
+  connectivityDegraded = false,
   redirectingToLogin = false,
   sessionContentReady = false,
   facilities,
@@ -244,6 +247,15 @@ export function AppShell({
           <h1 className="m-0 shrink-0 select-none text-base font-bold leading-none tracking-tight md:text-lg">
             <MedoraWordmark />
           </h1>
+          {connectivityDegraded ? (
+            <p
+              data-testid="app-shell-reconnecting"
+              className="m-0 shrink-0 rounded-full border border-amber-400/40 bg-amber-500/15 px-2 py-0.5 text-[11px] font-medium text-amber-100"
+              role="status"
+            >
+              {t("appShell.connectivity.reconnecting")}
+            </p>
+          ) : null}
 
           {mobileDrawerNav && activeSectionTitle ? (
             <p

@@ -102,17 +102,26 @@ import {
   bindProviderOrderablePrewarm,
   getActiveCodesForDomain,
   getPriorProviderOrderableCatalogCodesForDomain,
+  hydrateProviderOrderablePriorCodesState,
   markProviderOrderablePrewarmComplete,
   markProviderOrderablePrewarmFinished,
   markProviderOrderablePrewarmStarted,
   resetProviderOrderablePriorCodesStateForTests,
   setActiveCodesForDomain,
   setPriorCodesForDomain,
+  snapshotProviderOrderablePriorCodesState,
+  type ProviderOrderableCatalogCodesSnapshot,
   type ProviderOrderingDomainId,
 } from "./providerOrderablePriorCodesState.js";
 
-export type { ProviderOrderingDomainId } from "./providerOrderablePriorCodesState.js";
-export { getActiveCodesForDomain, getPriorProviderOrderableCatalogCodesForDomain } from "./providerOrderablePriorCodesState.js";
+export type {
+  ProviderOrderingDomainId,
+  ProviderOrderableCatalogCodesSnapshot,
+} from "./providerOrderablePriorCodesState.js";
+export {
+  getActiveCodesForDomain,
+  getPriorProviderOrderableCatalogCodesForDomain,
+} from "./providerOrderablePriorCodesState.js";
 
 /** Domains whose active codes must be treated as already covered when building a later domain registry. */
 const PRIOR_DOMAINS_BY_ID: Record<ProviderOrderingDomainId, readonly ProviderOrderingDomainId[]> = {
@@ -533,7 +542,63 @@ export function isActiveProviderOrderableCatalogCode(catalogCode: string): boole
 }
 
 /**
- * Build all domain registries once. Must run during API startup before serving traffic.
+ * Snapshot of the in-process registry for worker-thread prewarm hydration.
+ * Does not create a second catalog engine.
+ */
+export function snapshotProviderOrderableCatalogCodesRegistry(): ProviderOrderableCatalogCodesSnapshot {
+  const domains = snapshotProviderOrderablePriorCodesState();
+  return {
+    merged: [...(activeProviderOrderableCodes ?? [])],
+    activeByDomain: domains.activeByDomain,
+    priorByDomain: domains.priorByDomain,
+  };
+}
+
+function isUsableProviderOrderableCatalogCodesSnapshot(
+  snapshot: ProviderOrderableCatalogCodesSnapshot | null | undefined
+): snapshot is ProviderOrderableCatalogCodesSnapshot {
+  if (!snapshot || typeof snapshot !== "object") return false;
+  if (!Array.isArray(snapshot.merged) || snapshot.merged.length === 0) return false;
+  if (
+    snapshot.activeByDomain == null ||
+    typeof snapshot.activeByDomain !== "object" ||
+    Array.isArray(snapshot.activeByDomain)
+  ) {
+    return false;
+  }
+  if (
+    snapshot.priorByDomain == null ||
+    typeof snapshot.priorByDomain !== "object" ||
+    Array.isArray(snapshot.priorByDomain)
+  ) {
+    return false;
+  }
+  return Object.keys(snapshot.activeByDomain).length > 0;
+}
+
+/**
+ * Apply a precomputed registry snapshot (idempotent). Used after off-thread prewarm.
+ * Rejects empty/malformed snapshots so request-path lazy-load remains available.
+ */
+export function hydrateProviderOrderableCatalogCodesRegistry(
+  snapshot: ProviderOrderableCatalogCodesSnapshot
+): boolean {
+  if (!isUsableProviderOrderableCatalogCodesSnapshot(snapshot)) {
+    return false;
+  }
+  if (activeProviderOrderableCodes && activeProviderOrderableCodes.size > 0) {
+    return false;
+  }
+  hydrateProviderOrderablePriorCodesState(snapshot);
+  activeProviderOrderableCodes = new Set(snapshot.merged);
+  markProviderOrderablePrewarmComplete();
+  markProviderOrderablePrewarmFinished();
+  return true;
+}
+
+/**
+ * Build all domain registries once. Safe to run after HTTP listen (lazy or worker).
+ * Must not be awaited on the Nest boot path — first catalog lookup still lazy-loads.
  */
 export function prewarmProviderOrderableCatalogCodesRegistry(): ReadonlySet<string> {
   if (activeProviderOrderableCodes) return activeProviderOrderableCodes;

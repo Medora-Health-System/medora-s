@@ -1253,6 +1253,9 @@ export default {
       goToLogin: "Aller à la connexion",
       reloadApp: "Recharger l'application",
     },
+    connectivity: {
+      reconnecting: "Reconnexion…",
+    },
   },
   navGroups: {
     accueil: "Accueil",
