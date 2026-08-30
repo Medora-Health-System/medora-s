@@ -5278,6 +5278,9 @@ const clinicalTime = normalizeInpatientClinicalDocumentedAt(clinical.clinicalDoc
       admissionDiagnoses,
       admissionPacket
     );
+    if (dto.requestedEncounterType === "OBSERVATION" || dto.requestedEncounterType === "INPATIENT") {
+      mergedSummary.requestedEncounterType = dto.requestedEncounterType;
+    }
     mergedSummary.admissionDecisionMode = dto.mode;
     mergedSummary.admissionDecisionAt = new Date().toISOString();
     mergedSummary.admissionDecisionByUserId = userId;

@@ -27,8 +27,9 @@ describe("ED disposition D2.5 dedicated boards boundary", () => {
     expect(v1).toContain("ER_DISCHARGE_MODE_ELOPEMENT");
     expect(v1).toContain("ER_DISCHARGE_MODE_LWBS");
     const panel = readSrc("features/emergency/EmergencyDispositionPanel.tsx");
-    expect(panel).toContain('id: "ELOPEMENT"');
+    expect(panel).toContain("ED_HOSP_1B_PROVIDER_OUTCOMES");
     expect(panel).toContain('? "ELOPEMENT"');
+    expect(readSrc("features/emergency/edHosp1bDispositionOutcomeMapping.ts")).toContain('"ELOPEMENT"');
   });
 
   it("localizes D2.5 board keys in EN and FR", () => {

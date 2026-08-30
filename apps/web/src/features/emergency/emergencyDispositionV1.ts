@@ -9,6 +9,10 @@ import { i18nMessage } from "@/lib/i18nMessagesLookup";
 import { mergeDischargeForSave } from "@/lib/encounterDischarge";
 import type { DischargeFormState } from "@/lib/encounterDischarge";
 import type { AdmissionFormState } from "@/lib/encounterAdmission";
+import {
+  isObservationPlacementIntent,
+  type InferOutcomeUiHints,
+} from "./edHosp1bDispositionOutcomeMapping";
 
 export const ER_DISPOSITION_V1_KEY = "erDispositionV1" as const;
 
@@ -66,6 +70,7 @@ export function mergeDischargeSortieExecutionIntoNursingAssessment(
 /** UI outcome — maps to `dischargeForm.dischargeMode` (exact strings from DISCHARGE_MODE_OPTIONS_FR). */
 export type ErDispositionOutcomeUi =
   | "HOME"
+  | "OBSERVATION"
   | "ADMISSION"
   | "TRANSFER"
   | "AMA"
@@ -143,6 +148,7 @@ export function outcomeUiToDischargeMode(outcome: ErDispositionOutcomeUi): strin
   switch (outcome) {
     case "HOME":
       return ER_DISCHARGE_MODE_HOME;
+    case "OBSERVATION":
     case "ADMISSION":
       return ER_DISCHARGE_MODE_ADMISSION;
     case "TRANSFER":
@@ -164,11 +170,14 @@ export function outcomeUiToDischargeMode(outcome: ErDispositionOutcomeUi): strin
 
 export function inferOutcomeUiFromForms(
   dischargeMode: string,
-  supplement: ErDispositionSupplementForm
+  supplement: ErDispositionSupplementForm,
+  hints?: InferOutcomeUiHints
 ): ErDispositionOutcomeUi {
   const m = dischargeMode.trim();
   if (m === ER_DISCHARGE_MODE_HOME) return "HOME";
-  if (m === ER_DISCHARGE_MODE_ADMISSION) return "ADMISSION";
+  if (m === ER_DISCHARGE_MODE_ADMISSION) {
+    return isObservationPlacementIntent(hints) ? "OBSERVATION" : "ADMISSION";
+  }
   if (m === ER_DISCHARGE_MODE_TRANSFER) return "TRANSFER";
   if (m === ER_DISCHARGE_MODE_AMA) return "AMA";
   if (m === ER_DISCHARGE_MODE_DECEASED) return "DECEASED";
@@ -186,13 +195,15 @@ export function inferOutcomeUiFromForms(
 export function localizedErDischargeModeLabel(
   dischargeMode: string,
   supplement: ErDispositionSupplementForm,
-  locale: SupportedLanguage
+  locale: SupportedLanguage,
+  hints?: InferOutcomeUiHints
 ): string {
   const trimmed = dischargeMode.trim();
   if (!trimmed) return "";
-  const outcome = inferOutcomeUiFromForms(trimmed, supplement);
+  const outcome = inferOutcomeUiFromForms(trimmed, supplement, hints);
   const outcomeKey: Record<ErDispositionOutcomeUi, string> = {
     HOME: "outcomeHOME",
+    OBSERVATION: "outcomeOBSERVATION",
     ADMISSION: "outcomeADMISSION",
     TRANSFER: "outcomeTRANSFER",
     AMA: "outcomeAMA",
@@ -404,7 +415,7 @@ export function buildErDispositionPreviewModel(
   pushLine(disc, labels.linePatientDestination, discharge.patientDestination);
   if (disc.length) sections.push({ id: "discharge", title: labels.sectionDischargeFields, lines: disc });
 
-  if (outcome === "ADMISSION" || admission.admissionReason.trim()) {
+  if (outcome === "ADMISSION" || outcome === "OBSERVATION" || admission.admissionReason.trim()) {
     const adm: string[] = [];
     pushLine(adm, labels.lineAdmissionReason, admission.admissionReason);
     pushLine(adm, labels.lineServiceUnit, admission.serviceUnit);

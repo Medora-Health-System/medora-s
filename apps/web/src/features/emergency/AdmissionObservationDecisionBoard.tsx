@@ -21,8 +21,8 @@ import {
 
 export type AdmissionObservationDecisionBoardProps = {
   encounterId: string;
-  /** Seeded from legacy admissionSummaryJson careLevel when no placement exists. */
-  initialRequestedType?: "OBSERVATION" | "INPATIENT" | null;
+  /** Controlled from the parent ED disposition outcome (OBSERVATION vs ADMISSION). */
+  requestedEncounterType: "OBSERVATION" | "INPATIENT";
   disabled?: boolean;
   onPlacementChange?: (placement: InternalPlacementProjectionDto | null) => void;
 };
@@ -54,7 +54,7 @@ const labelStyle: CSSProperties = {
 
 export function AdmissionObservationDecisionBoard({
   encounterId,
-  initialRequestedType,
+  requestedEncounterType,
   disabled,
   onPlacementChange,
 }: AdmissionObservationDecisionBoardProps) {
@@ -63,9 +63,6 @@ export function AdmissionObservationDecisionBoard({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [requestedEncounterType, setRequestedEncounterType] = useState<
-    "OBSERVATION" | "INPATIENT" | null
-  >(initialRequestedType ?? null);
   const [admissionDiagnosisSummary, setAdmissionDiagnosisSummary] = useState("");
   const [requestedService, setRequestedService] = useState("");
   const [requestedLevelOfCare, setRequestedLevelOfCare] = useState("");
@@ -80,11 +77,6 @@ export function AdmissionObservationDecisionBoard({
       setPlacement(next);
       onPlacementChange?.(next);
       if (!next) return;
-      const type =
-        next.requestedEncounterType === "OBSERVATION" || next.requestedEncounterType === "INPATIENT"
-          ? next.requestedEncounterType
-          : null;
-      if (type) setRequestedEncounterType(type);
       setRequestedLevelOfCare(next.requestedLevelOfCare ?? "");
       setRequestedService(next.requestedService ?? "");
       setClinicalPriority(next.clinicalPriority ?? "ROUTINE");
@@ -125,9 +117,6 @@ export function AdmissionObservationDecisionBoard({
       placement.status !== "SIGNED");
 
   function buildPayload(): PlacementDraftPayload {
-    if (!requestedEncounterType) {
-      throw new Error("type_required");
-    }
     return {
       requestedEncounterType,
       requestedLevelOfCare: requestedLevelOfCare.trim() || null,
@@ -183,6 +172,7 @@ export function AdmissionObservationDecisionBoard({
   return (
     <section
       data-testid="admission-observation-decision-board"
+      data-requested-encounter-type={requestedEncounterType}
       aria-labelledby="d3c-admission-obs-title"
       style={{
         marginTop: 12,
@@ -190,61 +180,27 @@ export function AdmissionObservationDecisionBoard({
         borderRadius: 12,
         border: "1px solid #e2e8f0",
         background: "#f8fafc",
+        minWidth: 0,
+        maxWidth: "100%",
+        boxSizing: "border-box",
       }}
     >
       <h3
         id="d3c-admission-obs-title"
         style={{ margin: 0, fontSize: 15, fontWeight: 700, color: "#0f172a" }}
       >
-        {t("internalPlacementD3c.boardTitle")}
+        {requestedEncounterType === "OBSERVATION"
+          ? t("emergencyDisposition.boardTitle.OBSERVATION")
+          : t("emergencyDisposition.boardTitle.ADMISSION")}
       </h3>
-      <p style={{ margin: "6px 0 10px", fontSize: 12, color: "#64748b", lineHeight: 1.45 }}>
-        {t("internalPlacementD3c.boardHint")}
-      </p>
-
-      <div
-        style={{ display: "flex", flexDirection: "column", gap: 8 }}
-        role="radiogroup"
-        aria-label={t("internalPlacementD3c.step1Title")}
-      >
-        <span style={{ fontSize: 12, fontWeight: 600, color: "#334155" }}>
-          {t("internalPlacementD3c.step1Title")}
-        </span>
-        {(
-          [
-            ["OBSERVATION", "internalPlacementD3c.observation"],
-            ["INPATIENT", "internalPlacementD3c.inpatient"],
-          ] as const
-        ).map(([value, labelKey]) => (
-          <label
-            key={value}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 8,
-              fontSize: 13,
-              color: "#0f172a",
-              cursor: formLocked ? "not-allowed" : "pointer",
-            }}
-          >
-            <input
-              type="radio"
-              name="d3c-requested-encounter-type"
-              checked={requestedEncounterType === value}
-              disabled={formLocked}
-              onChange={() => setRequestedEncounterType(value)}
-            />
-            <span>{t(labelKey)}</span>
-          </label>
-        ))}
-      </div>
 
       <div
         style={{
           marginTop: 12,
           display: "grid",
-          gridTemplateColumns: "1fr 1fr",
+          gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)",
           gap: 10,
+          minWidth: 0,
         }}
       >
         <div style={{ gridColumn: "1 / -1" }}>
@@ -330,7 +286,7 @@ export function AdmissionObservationDecisionBoard({
       <div style={{ marginTop: 12, display: "flex", flexWrap: "wrap", gap: 8 }}>
         <button
           type="button"
-          disabled={formLocked || !requestedEncounterType}
+          disabled={formLocked}
           onClick={() => void runAction("draft")}
           style={actionBtnStyle}
         >
@@ -338,7 +294,7 @@ export function AdmissionObservationDecisionBoard({
         </button>
         <button
           type="button"
-          disabled={formLocked || !requestedEncounterType}
+          disabled={formLocked}
           onClick={() => void runAction("sign")}
           style={actionBtnStyle}
         >
@@ -346,7 +302,7 @@ export function AdmissionObservationDecisionBoard({
         </button>
         <button
           type="button"
-          disabled={formLocked || !requestedEncounterType}
+          disabled={formLocked}
           onClick={() => void runAction("submit")}
           style={{ ...actionBtnStyle, background: "#0f766e", color: "#fff", borderColor: "#0f766e" }}
         >
@@ -362,12 +318,9 @@ export function AdmissionObservationDecisionBoard({
 
       <div style={{ marginTop: 12 }}>
         <span style={{ fontSize: 12, fontWeight: 600, color: "#334155" }}>
-          {t("internalPlacementD3c.step3Title")}
+          {t("emergencyDisposition.placementStatusLabel")}
         </span>
         <p style={{ margin: "4px 0 0", fontSize: 13, color: "#0f172a" }}>{statusLabel}</p>
-        <p style={{ margin: "4px 0 0", fontSize: 11, color: "#64748b" }}>
-          {t("internalPlacementD3c.noFalseBedHint")}
-        </p>
       </div>
     </section>
   );

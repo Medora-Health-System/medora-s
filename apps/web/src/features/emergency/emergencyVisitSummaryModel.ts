@@ -16,6 +16,7 @@ import {
   inferOutcomeUiFromForms,
   localizedErDischargeModeLabel,
 } from "./emergencyDispositionV1";
+import { inferOutcomeHintsFromAdmissionSummary } from "./edHosp1bDispositionOutcomeMapping";
 import {
   buildErNursingReassessmentPreviewModel,
   ER_NURSING_REASSESSMENT_V1_KEY,
@@ -851,7 +852,7 @@ function buildDischargeSummaryHistoryEntries(
     }
     const dischargeForm = hydrateDischargeFormFromEncounterJson(snapshot);
     const outcome = inferOutcomeUiFromForms(dischargeForm.dischargeMode, emptySupplement);
-    if (outcome === "ADMISSION") continue;
+    if (outcome === "ADMISSION" || outcome === "OBSERVATION") continue;
     const modeLabel = localizedErDischargeModeLabel(dischargeForm.dischargeMode, emptySupplement, locale);
     const preview = buildErDispositionPreviewModel(
       dischargeForm,
@@ -1270,8 +1271,14 @@ export function buildEmergencyVisitSummaryModel(
     formatPhysicianName(encounter.physicianAssigned ?? undefined)
   );
   const supplement = erDispositionSupplementFromEncounter(nav);
-  const outcome = inferOutcomeUiFromForms(discharge.dischargeMode, supplement);
-  const dischargeModeLabel = localizedErDischargeModeLabel(discharge.dischargeMode, supplement, locale);
+  const outcomeHints = inferOutcomeHintsFromAdmissionSummary(encounter.admissionSummaryJson);
+  const outcome = inferOutcomeUiFromForms(discharge.dischargeMode, supplement, outcomeHints);
+  const dischargeModeLabel = localizedErDischargeModeLabel(
+    discharge.dischargeMode,
+    supplement,
+    locale,
+    outcomeHints
+  );
   const dispositionPreview = buildErDispositionPreviewModel(
     discharge,
     admission,

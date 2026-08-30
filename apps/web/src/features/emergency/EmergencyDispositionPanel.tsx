@@ -14,7 +14,6 @@ import {
   isDirectAdmissionErrorCode,
   isHospitalAdmittingService,
   isHospitalRequestedLevelOfCare,
-  mapLegacyCareLevelToRequestedTypeHint,
   markFieldPhysicianEdited,
   mergeProposalFieldWithoutOverwrite,
   replaceFieldWithUpdatedProposal,
@@ -75,6 +74,23 @@ import {
   type ErDispositionSupplementForm,
 } from "./emergencyDispositionV1";
 import {
+  ED_HOSP_1B_PROVIDER_OUTCOMES,
+  canonicalEdDispositionEnginePath,
+  inferOutcomeHintsFromAdmissionSummary,
+  isAdmissionDecisionOutcome,
+  isInternalPlacementDestinationLocked,
+  isObservationAdmissionDestinationSwitchBlocked,
+  legacyCareLevelForOutcomeUi,
+  requestedEncounterTypeForOutcomeUi,
+} from "./edHosp1bDispositionOutcomeMapping";
+import type { InternalPlacementProjectionDto } from "./internalPlacementApi";
+import { projectEdDispositionReadiness } from "./edDispositionReadinessProjection";
+import {
+  ED_DISPOSITION_BOARD_COLORS,
+  edBoardCardStyle,
+  edReadinessChipStyle,
+} from "./edDispositionBoardStyles";
+import {
   applyEmtalaV1ComplementToNursingAssessment,
   emptyEmtalaDispositionComplementForm,
   emtalaDispositionComplementFromNursing,
@@ -103,7 +119,6 @@ import {
   DeceasedDispositionBoard,
   ElopementDispositionBoard,
   GovernedOtherDispositionBoard,
-  HomeDischargeBoardMountNote,
   LwbsDispositionBoard,
 } from "@/features/emergency/EdDispositionPathwayBoards";
 import {
@@ -222,16 +237,11 @@ export function EmergencyDispositionPanel({
   const placementWorkflowUiEnabled = isInternalPlacementWorkflowUiEnabled();
 
   const OUTCOME_OPTIONS = useMemo(
-    (): { id: ErDispositionOutcomeUi; label: string }[] => [
-      { id: "HOME", label: t("emergencyDisposition.outcomeHOME") },
-      { id: "ADMISSION", label: t("emergencyDisposition.outcomeADMISSION") },
-      { id: "TRANSFER", label: t("emergencyDisposition.outcomeTRANSFER") },
-      { id: "AMA", label: t("emergencyDisposition.outcomeAMA") },
-      { id: "LWBS", label: t("emergencyDisposition.outcomeLWBS") },
-      { id: "ELOPEMENT", label: t("emergencyDisposition.outcomeELOPEMENT") },
-      { id: "DECEASED", label: t("emergencyDisposition.outcomeDECEASED") },
-      { id: "OTHER", label: t("emergencyDisposition.outcomeOTHER") },
-    ],
+    (): { id: ErDispositionOutcomeUi; label: string }[] =>
+      ED_HOSP_1B_PROVIDER_OUTCOMES.map((id) => ({
+        id,
+        label: t(`emergencyDisposition.outcome${id}` as Parameters<typeof t>[0]),
+      })),
     [t]
   );
 
@@ -276,6 +286,7 @@ export function EmergencyDispositionPanel({
     emptyEmtalaDispositionComplementForm()
   );
   const [outcomeUi, setOutcomeUi] = useState<ErDispositionOutcomeUi>("HOME");
+  const [activePlacement, setActivePlacement] = useState<InternalPlacementProjectionDto | null>(null);
   const [providerDischargeDoc, setProviderDischargeDoc] = useState(() =>
     hydrateProviderDischargeDocumentationForm(encounter.dischargeSummaryJson)
   );
@@ -364,7 +375,7 @@ export function EmergencyDispositionPanel({
   // Apply smart proposals once when admission fields are empty (documented sources only).
   // Never overwrite PHYSICIAN_EDITED — surface newer proposal availability instead.
   useEffect(() => {
-    if (outcomeUi !== "ADMISSION" || !canPrescribe) return;
+    if ((outcomeUi !== "ADMISSION" && outcomeUi !== "OBSERVATION") || !canPrescribe) return;
     const primaryRow = encounterDiagnoses.find((d) => d.id === primaryDiagnosisId);
     const secondaryRows = encounterDiagnoses.filter((d) => secondaryDiagnosisIds.includes(d.id));
     const ctx = buildSmartAdmissionChartContext({
@@ -437,7 +448,11 @@ export function EmergencyDispositionPanel({
     const sup = erDispositionSupplementFromEncounter(encounter.nursingAssessment);
     const defPhys = formatPhysicianName(encounter.physicianAssigned ?? undefined);
     const a = hydrateAdmissionFormFromEncounterJson(encounter.admissionSummaryJson, defPhys);
-    const inferred = inferOutcomeUiFromForms(d.dischargeMode, sup);
+    const inferred = inferOutcomeUiFromForms(
+      d.dischargeMode,
+      sup,
+      inferOutcomeHintsFromAdmissionSummary(encounter.admissionSummaryJson)
+    );
     // Align dischargeMode with inferred outcome when JSON has no mode yet (e.g. new encounter).
     // Otherwise the radio shows HOME but form.dischargeMode stays "", and PATCH omits dischargeSummaryJson.dischargeMode
     // — the ER board badge reads dischargeMode from dischargeSummaryJson only.
@@ -468,9 +483,28 @@ export function EmergencyDispositionPanel({
   const applyOutcomeFromUi = useCallback((o: ErDispositionOutcomeUi) => {
     setOutcomeUi(o);
     setDischargeForm((prev) => ({ ...prev, dischargeMode: outcomeUiToDischargeMode(o) }));
+    const nextCare = legacyCareLevelForOutcomeUi(o);
+    if (nextCare) {
+      setAdmissionForm((prev) => ({
+        ...prev,
+        careLevel: legacyCareLevelForOutcomeUi(o, prev.careLevel) ?? prev.careLevel,
+      }));
+    }
   }, []);
 
+  const placementDestLocked = isInternalPlacementDestinationLocked(activePlacement?.status);
+
   const setOutcomeFromUi = (o: ErDispositionOutcomeUi) => {
+    if (
+      isObservationAdmissionDestinationSwitchBlocked({
+        placementStatus: activePlacement?.status,
+        placementRequestedEncounterType: activePlacement?.requestedEncounterType,
+        nextOutcome: o,
+      })
+    ) {
+      setSaveInfo(t("emergencyDisposition.committedPlacementBlocksTypeSwitch"));
+      return;
+    }
     if (dispositionState.requiresCorrectionToChangePathway) {
       setPathwayChangeConfirm(o);
       if (o !== outcomeUi) setPathwayChangeReason("");
@@ -591,7 +625,8 @@ export function EmergencyDispositionPanel({
       admissionSummaryJson: encounter.admissionSummaryJson,
       nursingAssessment: encounter.nursingAssessment,
     });
-    const pathForPrint = resolvedPath !== "NONE" ? resolvedPath : outcomeUi;
+    const pathForPrint =
+      resolvedPath !== "NONE" ? resolvedPath : canonicalEdDispositionEnginePath(outcomeUi);
     // D2.5 — Home Discharge print layout is HOME-only.
     if (!shouldUseHomeDischargePrintLayout(pathForPrint)) {
       const kind = resolveEdDispositionPrintKind(pathForPrint);
@@ -664,6 +699,17 @@ export function EmergencyDispositionPanel({
     }
 
     const effectiveOutcome = outcomeOverride ?? outcomeUi;
+
+    if (
+      isObservationAdmissionDestinationSwitchBlocked({
+        placementStatus: activePlacement?.status,
+        placementRequestedEncounterType: activePlacement?.requestedEncounterType,
+        nextOutcome: effectiveOutcome,
+      })
+    ) {
+      setSaveInfo(t("emergencyDisposition.committedPlacementBlocksTypeSwitch"));
+      return;
+    }
 
     // D2.5 — Home discharge packet participates in validation/save for HOME only.
     const showProviderDischargeOnSave = effectiveOutcome === "HOME";
@@ -771,7 +817,7 @@ export function EmergencyDispositionPanel({
 
       // Governed writer for admission packet (avoids PATCH role singleton 403 + correlation wipe).
       if (
-        effectiveOutcome === "ADMISSION" &&
+        isAdmissionDecisionOutcome(effectiveOutcome) &&
         canPrescribe &&
         encounter.status === "OPEN" &&
         Object.keys(admissionPayload).length > 0
@@ -860,9 +906,9 @@ export function EmergencyDispositionPanel({
               careLevel: locCode || admissionForm.careLevel,
             },
             admissionPacket: packetToSave,
-            requestedEncounterType: inferPlacementEncounterTypeFromCareLevel(
-              locCode || admissionForm.careLevel
-            ),
+            requestedEncounterType:
+              requestedEncounterTypeForOutcomeUi(effectiveOutcome) ??
+              inferPlacementEncounterTypeFromCareLevel(locCode || admissionForm.careLevel),
             admissionDiagnoses: {
               primaryDiagnosisId: primaryDiagnosisId || null,
               secondaryDiagnosisIds: secondaryIds,
@@ -879,7 +925,7 @@ export function EmergencyDispositionPanel({
        * Phase 15F-D — observation admission must not PATCH discharge summary (avoids
        * DISCHARGE_SUMMARY_SAVED timeline noise). Trackboard disposition uses admission packet + erDispositionV1.
        */
-      if (mergedDischarge !== null && effectiveOutcome !== "ADMISSION") {
+      if (mergedDischarge !== null && !isAdmissionDecisionOutcome(effectiveOutcome)) {
         if (canEditMedicalDischarge && effectiveOutcome === "HOME") {
           body.dischargeSummaryJson = buildProviderDischargeJsonForSave(
             encounter.dischargeSummaryJson,
@@ -923,7 +969,7 @@ export function EmergencyDispositionPanel({
       await onSaved();
       setPathwayChangeConfirm(null);
       setPathwayChangeReason("");
-      if (mode === "SIGN" && effectiveOutcome === "ADMISSION") {
+      if (mode === "SIGN" && isAdmissionDecisionOutcome(effectiveOutcome)) {
         setSaveInfo(
           placementWorkflowUiEnabled
             ? t("emergencyDisposition.signAdmissionOkPlacementOn")
@@ -938,7 +984,7 @@ export function EmergencyDispositionPanel({
           ? t("emergencyDisposition.saveQueued")
           : mode === "SIGN"
             ? t("emergencyDisposition.signDecisionOk")
-            : effectiveOutcome === "ADMISSION"
+            : isAdmissionDecisionOutcome(effectiveOutcome)
               ? t("emergencyDisposition.saveOkObservationAdmission")
               : t("emergencyDisposition.saveOk")
       );
@@ -1029,7 +1075,7 @@ export function EmergencyDispositionPanel({
     />
   );
 
-  const showAdmissionFields = outcomeUi === "ADMISSION";
+  const showAdmissionFields = isAdmissionDecisionOutcome(outcomeUi);
   const observationHandoffReady = useMemo(
     () => erHandoffV1SatisfiesInpatientTransferConfirm(encounter.nursingAssessment),
     [encounter.nursingAssessment]
@@ -1037,6 +1083,26 @@ export function EmergencyDispositionPanel({
   const showObservationHandoffStatus = showAdmissionFields && hasSavedAdmission;
   // D2.5 — Home packet mounts for HOME only; other pathways use dedicated boards.
   const showProviderDischargeDocumentation = outcomeUi === "HOME";
+
+  const readinessChips = useMemo(
+    () =>
+      projectEdDispositionReadiness({
+        outcomeUi,
+        dispositionState,
+        hasSavedAdmission,
+        nursingAssessment: encounter.nursingAssessment,
+        providerDischargeDoc,
+      }),
+    [
+      outcomeUi,
+      dispositionState,
+      hasSavedAdmission,
+      encounter.nursingAssessment,
+      providerDischargeDoc,
+    ]
+  );
+
+  const requestedPlacementType = requestedEncounterTypeForOutcomeUi(outcomeUi);
 
   const showTransferExtra = outcomeUi === "TRANSFER";
   // Legacy thin textareas removed for AMA/LWBS/DECEASED — dedicated boards own those fields.
@@ -1093,7 +1159,7 @@ export function EmergencyDispositionPanel({
             >
               {saveInfo}
             </p>
-            {outcomeUi === "ADMISSION" &&
+            {isAdmissionDecisionOutcome(outcomeUi) &&
             (saveInfo === t("emergencyDisposition.signAdmissionOk") ||
               saveInfo === t("emergencyDisposition.signAdmissionOkPlacementOn")) ? (
               <Link
@@ -1133,6 +1199,98 @@ export function EmergencyDispositionPanel({
         ) : null}
 
         <div
+          data-testid="ed-disposition-readiness"
+          style={{
+            marginTop: 10,
+            display: "flex",
+            flexWrap: "wrap",
+            gap: 6,
+            minWidth: 0,
+          }}
+        >
+          {readinessChips.map((chip) => (
+            <span
+              key={chip.id}
+              data-testid={`ed-disposition-readiness-${chip.id}`}
+              data-readiness-state={chip.state}
+              style={edReadinessChipStyle(chip.state)}
+            >
+              {t(`emergencyDisposition.readiness.${chip.id}` as Parameters<typeof t>[0])}
+              {" · "}
+              {t(
+                chip.state === "ready"
+                  ? "emergencyDisposition.readiness.ready"
+                  : "emergencyDisposition.readiness.pending"
+              )}
+            </span>
+          ))}
+        </div>
+
+        <div
+          data-testid="ed-disposition-summary-cards"
+          style={{
+            marginTop: 10,
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
+            gap: 8,
+            minWidth: 0,
+          }}
+        >
+          {([
+            {
+              id: "provider",
+              titleKey: "summaryProviderTitle",
+              value: dispositionState.decisionSigned
+                ? t("emergencyDisposition.decisionSignedBadge")
+                : t("emergencyDisposition.decisionDraftBadge"),
+            },
+            ...(readinessChips.some((c) => c.id === "nursing")
+              ? [
+                  {
+                    id: "nursing",
+                    titleKey: "summaryNursingTitle",
+                    value:
+                      readinessChips.find((c) => c.id === "nursing")?.state === "ready"
+                        ? t("emergencyDisposition.readiness.ready")
+                        : t("emergencyDisposition.readiness.pending"),
+                  },
+                ]
+              : []),
+            {
+              id: "pathway",
+              titleKey: "summaryPathwayTitle",
+              value: t(`emergencyDisposition.boardTitle.${outcomeUi}` as Parameters<typeof t>[0]),
+            },
+            {
+              id: "final",
+              titleKey: "summaryFinalTitle",
+              value:
+                readinessChips.find((c) => c.id === "final")?.state === "ready"
+                  ? t("emergencyDisposition.readiness.ready")
+                  : t("emergencyDisposition.readiness.pending"),
+            },
+          ] as const).map((card) => (
+            <div key={card.id} data-testid={`ed-disposition-summary-${card.id}`} style={edBoardCardStyle}>
+              <p style={{ ...sectionHeading, color: ED_DISPOSITION_BOARD_COLORS.muted }}>
+                {t(`emergencyDisposition.${card.titleKey}` as Parameters<typeof t>[0])}
+              </p>
+              <p
+                style={{
+                  margin: 0,
+                  fontSize: 13,
+                  fontWeight: 700,
+                  color: ED_DISPOSITION_BOARD_COLORS.text,
+                  minWidth: 0,
+                  overflowWrap: "anywhere",
+                }}
+              >
+                {card.value}
+              </p>
+            </div>
+          ))}
+        </div>
+
+        <div
           style={{ ...edDispositionWorkspaceStyle(layoutMode), marginTop: 12 }}
           data-testid="ed-disposition-workspace-layout"
           data-layout-mode={layoutMode}
@@ -1143,19 +1301,21 @@ export function EmergencyDispositionPanel({
               data-disposition-board={
                 outcomeUi === "HOME"
                   ? "HOME_DISCHARGE"
-                  : outcomeUi === "ADMISSION"
-                    ? "ADMISSION_OBSERVATION"
-                    : outcomeUi === "TRANSFER"
-                      ? "EXTERNAL_TRANSFER"
-                      : outcomeUi === "AMA"
-                        ? "AMA"
-                        : outcomeUi === "LWBS"
-                          ? "LWBS"
-                          : outcomeUi === "ELOPEMENT"
-                            ? "ELOPEMENT"
-                            : outcomeUi === "DECEASED"
-                              ? "DECEASED"
-                              : "OTHER_GOVERNED"
+                  : outcomeUi === "OBSERVATION"
+                    ? "OBSERVATION"
+                    : outcomeUi === "ADMISSION"
+                      ? "ADMISSION"
+                      : outcomeUi === "TRANSFER"
+                        ? "EXTERNAL_TRANSFER"
+                        : outcomeUi === "AMA"
+                          ? "AMA"
+                          : outcomeUi === "LWBS"
+                            ? "LWBS"
+                            : outcomeUi === "ELOPEMENT"
+                              ? "ELOPEMENT"
+                              : outcomeUi === "DECEASED"
+                                ? "DECEASED"
+                                : "OTHER_GOVERNED"
               }
               data-disposition-workflow-state={dispositionState.workflowState}
               data-decision-status={dispositionState.decisionStatus}
@@ -1180,10 +1340,10 @@ export function EmergencyDispositionPanel({
                 {dispositionState.decisionSigned
                   ? t("emergencyDisposition.decisionSignedBadge")
                   : t("emergencyDisposition.decisionDraftBadge")}
-                {" · "}
-                {t("emergencyDisposition.onePathwayVisible")}
               </p>
               <div
+                role="radiogroup"
+                aria-label={t("emergencyDisposition.outcomeSelectionLegend")}
                 style={{
                   marginTop: 8,
                   display: "flex",
@@ -1193,6 +1353,7 @@ export function EmergencyDispositionPanel({
                   borderRadius: 10,
                   border: "1px solid #e2e8f0",
                   backgroundColor: "#f8fafc",
+                  minWidth: 0,
                 }}
               >
                 {OUTCOME_OPTIONS.map((opt) => {
@@ -1200,16 +1361,23 @@ export function EmergencyDispositionPanel({
                     opt.id === outcomeUi ||
                     !dispositionState.decisionSigned ||
                     pathwayChangeConfirm != null;
+                  const destSwitchBlocked = isObservationAdmissionDestinationSwitchBlocked({
+                    placementStatus: activePlacement?.status,
+                    placementRequestedEncounterType: activePlacement?.requestedEncounterType,
+                    nextOutcome: opt.id,
+                  });
+                  const optionDisabled = outcomeDisabled || destSwitchBlocked;
                   return (
                     <label
                       key={opt.id}
+                      data-testid={`ed-disposition-outcome-${opt.id}`}
                       style={{
                         display: showOption ? "flex" : "none",
                         alignItems: "flex-start",
                         gap: 8,
                         fontSize: 13,
-                        color: "#0f172a",
-                        cursor: outcomeDisabled ? "not-allowed" : "pointer",
+                        color: optionDisabled ? "#94a3b8" : "#0f172a",
+                        cursor: optionDisabled ? "not-allowed" : "pointer",
                       }}
                     >
                       <input
@@ -1220,7 +1388,7 @@ export function EmergencyDispositionPanel({
                             ? pathwayChangeConfirm === opt.id
                             : outcomeUi === opt.id
                         }
-                        disabled={outcomeDisabled}
+                        disabled={optionDisabled}
                         onChange={() => setOutcomeFromUi(opt.id)}
                         style={{ marginTop: 2 }}
                       />
@@ -1228,6 +1396,16 @@ export function EmergencyDispositionPanel({
                     </label>
                   );
                 })}
+                {placementDestLocked &&
+                (outcomeUi === "OBSERVATION" || outcomeUi === "ADMISSION") ? (
+                  <p
+                    role="status"
+                    data-testid="ed-disposition-committed-placement-lock"
+                    style={{ margin: "4px 0 0", fontSize: 12, color: "#475569", lineHeight: 1.4 }}
+                  >
+                    {t("emergencyDisposition.committedPlacementBlocksTypeSwitch")}
+                  </p>
+                ) : null}
                 {dispositionState.decisionSigned && !formDisabled && pathwayChangeConfirm == null ? (
                   <button
                     type="button"
@@ -1250,12 +1428,6 @@ export function EmergencyDispositionPanel({
                   </button>
                 ) : null}
               </div>
-              <p style={{ margin: "8px 0 0 0", fontSize: 12, color: "#64748b", lineHeight: 1.45 }}>
-                {t("emergencyDisposition.outcomeHint1")}
-              </p>
-              <p style={{ margin: "8px 0 0 0", fontSize: 12, color: "#64748b", lineHeight: 1.45 }}>
-                {t("emergencyDisposition.outcomeHint2")}
-              </p>
             </div>
 
             {showAdmissionFields && canPrescribe ? (
@@ -1265,13 +1437,13 @@ export function EmergencyDispositionPanel({
                   borderRadius: 10,
                   border: "1px solid #f3e8ff",
                   backgroundColor: "#faf5ff",
+                  minWidth: 0,
                 }}
               >
                 <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "#6b21a8" }}>
-                  {t("emergencyDisposition.admissionWarningTitle")}
-                </p>
-                <p style={{ margin: "6px 0 0 0", fontSize: 12, color: "#6b21a8", lineHeight: 1.45 }}>
-                  {t("emergencyDisposition.admissionWarningBody")}
+                  {outcomeUi === "OBSERVATION"
+                    ? t("emergencyDisposition.boardTitle.OBSERVATION")
+                    : t("emergencyDisposition.admissionWarningTitle")}
                 </p>
               </div>
             ) : null}
@@ -1284,7 +1456,6 @@ export function EmergencyDispositionPanel({
 
             {showProviderDischargeDocumentation ? (
               <>
-                <HomeDischargeBoardMountNote />
                 <ProviderDischargeDocumentationSection
                   facilityId={facilityId}
                   patientId={encounter.patient?.id}
@@ -1342,24 +1513,30 @@ export function EmergencyDispositionPanel({
               <div>
                 <AdmissionObservationDecisionBoard
                   encounterId={encounterId}
-                  initialRequestedType={
-                    mapLegacyCareLevelToRequestedTypeHint(admissionForm.careLevel) ??
-                    (admissionForm.careLevel ? "INPATIENT" : null)
-                  }
+                  requestedEncounterType={requestedPlacementType ?? "INPATIENT"}
                   disabled={medDisabled}
                   onPlacementChange={(placement) => {
-                    if (!placement?.requestedEncounterType) return;
-                    patchAdmission({
-                      careLevel:
-                        placement.requestedEncounterType === "OBSERVATION"
-                          ? "OBSERVATION"
-                          : "MEDICAL_SURGICAL",
-                    });
+                    setActivePlacement(placement);
+                    if (
+                      !placement ||
+                      !isInternalPlacementDestinationLocked(placement.status)
+                    ) {
+                      return;
+                    }
+                    const dest = String(placement.requestedEncounterType ?? "")
+                      .trim()
+                      .toUpperCase();
+                    if (dest === "OBSERVATION" && outcomeUi === "ADMISSION") {
+                      applyOutcomeFromUi("OBSERVATION");
+                    } else if (dest === "INPATIENT" && outcomeUi === "OBSERVATION") {
+                      applyOutcomeFromUi("ADMISSION");
+                    }
                   }}
                 />
-                <p style={sectionHeading}>{t("emergencyDisposition.sectionAdmissionPhysician")}</p>
-                <p style={{ margin: "4px 0 8px", fontSize: 11, color: "#64748b" }}>
-                  {t("emergencyDisposition.smartPacketProvenanceHint")}
+                <p style={sectionHeading}>
+                  {outcomeUi === "OBSERVATION"
+                    ? t("emergencyDisposition.sectionObservationPhysician")
+                    : t("emergencyDisposition.sectionAdmissionPhysician")}
                 </p>
                 {newerProposalAvailable && pendingProposal ? (
                   <div
@@ -2018,7 +2195,9 @@ export function EmergencyDispositionPanel({
                     layoutMode
                   )}
                 >
-                  {outcomeUi === "ADMISSION"
+                  {outcomeUi === "OBSERVATION"
+                    ? t("emergencyDisposition.signObservationButton")
+                    : outcomeUi === "ADMISSION"
                     ? t("emergencyDisposition.signAdmissionButton")
                     : outcomeUi === "HOME"
                       ? t("emergencyDisposition.signHomeDischargeButton")
@@ -2327,6 +2506,16 @@ export function EmergencyDispositionPanel({
               onClick={() => {
                 if (pathwayChangeReason.trim().length < 3) {
                   setSaveInfo(t("emergencyDisposition.pathwayChangeReasonRequired"));
+                  return;
+                }
+                if (
+                  isObservationAdmissionDestinationSwitchBlocked({
+                    placementStatus: activePlacement?.status,
+                    placementRequestedEncounterType: activePlacement?.requestedEncounterType,
+                    nextOutcome: pathwayChangeConfirm,
+                  })
+                ) {
+                  setSaveInfo(t("emergencyDisposition.committedPlacementBlocksTypeSwitch"));
                   return;
                 }
                 void handleSave("DRAFT", pathwayChangeConfirm);

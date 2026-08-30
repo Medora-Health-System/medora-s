@@ -13,6 +13,7 @@ import {
   supplementFormHasContent,
 } from "./emergencyDispositionV1";
 import type { ErDispositionOutcomeUi } from "./emergencyDispositionV1";
+import { canonicalEdDispositionEnginePath } from "./edHosp1bDispositionOutcomeMapping";
 import { erTriageV1FormFromVitalsJson } from "./medoraErTriageV1";
 import { mseDocumentedAtFromNursing } from "./emergencyProviderMseV1";
 
@@ -463,7 +464,7 @@ export function deriveEmtalaStateFromEncounter(input: EmtalaDerivationInput): Er
     out.emtalaStatus = emtalaStatus;
   }
   if (hasDisp) {
-    out.emtalaDispositionCategory = outcome as EmtalaDispositionCategoryV1;
+    out.emtalaDispositionCategory = canonicalEdDispositionEnginePath(outcome);
   } else if (manual?.emtalaDispositionCategory) {
     out.emtalaDispositionCategory = manual.emtalaDispositionCategory;
   }
@@ -591,7 +592,7 @@ export function applyEmtalaV1ComplementToNursingAssessment(
   if (at) {
     next.dispositionDecisionAt = at;
   }
-  next.emtalaDispositionCategory = outcome as EmtalaDispositionCategoryV1;
+  next.emtalaDispositionCategory = canonicalEdDispositionEnginePath(outcome);
 
   if (outcome !== "TRANSFER") {
     delete next.transferRequestedAt;

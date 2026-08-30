@@ -3158,6 +3158,7 @@ function EncounterDetailPageInner({ session }: { session: ReturnType<typeof useF
                           (
                             {
                               HOME: "emergencyDisposition.outcomeHOME",
+                              OBSERVATION: "emergencyDisposition.outcomeOBSERVATION",
                               ADMISSION: "emergencyDisposition.outcomeADMISSION",
                               TRANSFER: "emergencyDisposition.outcomeTRANSFER",
                               AMA: "emergencyDisposition.outcomeAMA",
