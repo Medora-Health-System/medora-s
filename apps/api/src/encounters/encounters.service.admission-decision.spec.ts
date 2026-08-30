@@ -404,6 +404,37 @@ describe("EncountersService.recordAdmissionDecision", () => {
     expect(updateMany).not.toHaveBeenCalled();
   });
 
+  it("keeps NURSING_COMPLETION_INCOMPLETE in the admission error map", async () => {
+    const { ADMISSION_ERROR_MESSAGES_FR } = await import("./admission-decision-errors.util");
+    expect(ADMISSION_ERROR_MESSAGES_FR.NURSING_COMPLETION_INCOMPLETE).toMatch(/éléments infirmiers/i);
+    expect(ADMISSION_ERROR_MESSAGES_FR.INPATIENT_DISABLED_BY_PROFILE).toBeTruthy();
+    expect(ADMISSION_ERROR_MESSAGES_FR.PLACEMENT_DESTINATION_LOCKED).toBeTruthy();
+  });
+
+  it("35b. FSER blocks inferred INPATIENT from careLevel when dest is omitted", async () => {
+    const { svc, prisma, updateMany } = buildService({ roleCodes: ["PROVIDER"] });
+    prisma.facility.findFirst.mockResolvedValue({ facilityType: "FREESTANDING_ER" });
+    const { requestedEncounterType: _omit, ...dto } = baseDto("DRAFT");
+    await expect(
+      svc.recordAdmissionDecision(facilityId, encounterId, dto as never, userId)
+    ).rejects.toMatchObject({ response: { code: "INPATIENT_DISABLED_BY_PROFILE" } });
+    expect(updateMany).not.toHaveBeenCalled();
+  });
+
+  it("35c. FSER inferred INPATIENT is blocked before placement write", async () => {
+    const { svc, prisma, updateMany, placement } = buildService({
+      roleCodes: ["PROVIDER"],
+      placementEnabled: true,
+    });
+    prisma.facility.findFirst.mockResolvedValue({ facilityType: "FREESTANDING_ER" });
+    const { requestedEncounterType: _omit, ...dto } = baseDto("DRAFT");
+    await expect(
+      svc.recordAdmissionDecision(facilityId, encounterId, dto as never, userId)
+    ).rejects.toMatchObject({ response: { code: "INPATIENT_DISABLED_BY_PROFILE" } });
+    expect(updateMany).not.toHaveBeenCalled();
+    expect(placement.createDraft).not.toHaveBeenCalled();
+  });
+
   it("36. FSER can stamp OBSERVATION destination", async () => {
     const { svc, prisma, updateMany } = buildService({ roleCodes: ["PROVIDER"] });
     prisma.facility.findFirst.mockResolvedValue({ facilityType: "FREESTANDING_ER" });
@@ -419,5 +450,16 @@ describe("EncountersService.recordAdmissionDecision", () => {
     );
     const data = updateMany.mock.calls[0]![0].data.admissionSummaryJson as Record<string, unknown>;
     expect(data.requestedEncounterType).toBe("OBSERVATION");
+  });
+
+  it("36b. FSER inferred OBSERVATION from careLevel remains allowed", async () => {
+    const { svc, prisma, updateMany } = buildService({ roleCodes: ["PROVIDER"] });
+    prisma.facility.findFirst.mockResolvedValue({ facilityType: "FREESTANDING_ER" });
+    const { requestedEncounterType: _omit, ...dto } = {
+      ...baseDto("DRAFT"),
+      admissionSummary: { ...baseDto("DRAFT").admissionSummary, careLevel: "OBSERVATION" },
+    };
+    await svc.recordAdmissionDecision(facilityId, encounterId, dto as never, userId);
+    expect(updateMany).toHaveBeenCalled();
   });
 });

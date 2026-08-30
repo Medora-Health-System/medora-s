@@ -77,6 +77,7 @@ import {
   hospitalDestinationIntentForPlacementCreate,
   isInternalPlacementDestinationLocked,
   parseHospitalDestinationIntent,
+  resolveHospitalDestinationIntent,
   mergeAdmissionSummaryFieldsPreservingNested,
   validateSmartAdmissionServiceLocCompatibility,
   readAdmissionPacketV1,
@@ -5276,14 +5277,34 @@ const clinicalTime = normalizeInpatientClinicalDocumentedAt(clinical.clinicalDoc
     }
 
     const dtoDest = parseHospitalDestinationIntent(dto.requestedEncounterType);
-    if (dtoDest === "INPATIENT") {
+    const mergedSummary = mergeAdmissionSummaryFieldsPreservingNested(
+      encounter.admissionSummaryJson,
+      dto.admissionSummary,
+      admissionDiagnoses,
+      admissionPacket
+    );
+    if (dtoDest === "OBSERVATION" || dtoDest === "INPATIENT") {
+      mergedSummary.requestedEncounterType = dtoDest;
+    }
+
+    const placementOn = this.internalPlacement.isWorkflowEnabled();
+    const resolvedDest = resolveHospitalDestinationIntent({
+      requestedEncounterType: dto.requestedEncounterType,
+      careLevel: dto.admissionSummary.careLevel,
+      admissionSummaryJson: mergedSummary,
+    });
+    const destForCapability =
+      placementOn && encounter.type === EncounterType.EMERGENCY
+        ? (resolvedDest ?? "INPATIENT")
+        : resolvedDest;
+    if (destForCapability === "INPATIENT") {
       const facilityRow = await this.prisma.facility.findFirst({
         where: { id: facilityId },
         select: { facilityType: true },
       });
       const destGuard = assertLocalHospitalDestinationAllowed({
         facilityType: facilityRow?.facilityType ?? null,
-        destination: dtoDest,
+        destination: destForCapability,
       });
       if (!destGuard.ok) {
         throwAdmissionDecisionError(
@@ -5294,7 +5315,6 @@ const clinicalTime = normalizeInpatientClinicalDocumentedAt(clinical.clinicalDoc
       }
     }
 
-    const placementOn = this.internalPlacement.isWorkflowEnabled();
     let activePlacement =
       placementOn && encounter.type === EncounterType.EMERGENCY
         ? await this.internalPlacement.getActiveForEncounter(facilityId, encounterId, {
@@ -5314,16 +5334,6 @@ const clinicalTime = normalizeInpatientClinicalDocumentedAt(clinical.clinicalDoc
           { requestId }
         );
       }
-    }
-
-    const mergedSummary = mergeAdmissionSummaryFieldsPreservingNested(
-      encounter.admissionSummaryJson,
-      dto.admissionSummary,
-      admissionDiagnoses,
-      admissionPacket
-    );
-    if (dtoDest === "OBSERVATION" || dtoDest === "INPATIENT") {
-      mergedSummary.requestedEncounterType = dtoDest;
     }
     mergedSummary.admissionDecisionMode = dto.mode;
     mergedSummary.admissionDecisionAt = new Date().toISOString();

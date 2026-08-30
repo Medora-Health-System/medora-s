@@ -34,6 +34,16 @@ describe("ED.HOSP.1C lifecycle unchanged", () => {
     expect(writer).not.toContain("prisma.encounter.create");
     expect(writer).not.toContain("receivingEncounterId");
   });
+
+  it("facility dest guard uses resolved dest before encounter update", () => {
+    const writer = encSvc.slice(
+      encSvc.indexOf("async recordAdmissionDecision("),
+      encSvc.indexOf("async cancelAdmissionDecision(")
+    );
+    expect(writer).toContain("resolveHospitalDestinationIntent");
+    expect(writer).toContain("destForCapability");
+    expect(writer.indexOf("destForCapability")).toBeLessThan(writer.indexOf("encounter.updateMany"));
+  });
 });
 
 describe("ED.HOSP.1C receiving foundation semantics", () => {
