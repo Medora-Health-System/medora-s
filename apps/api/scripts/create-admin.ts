@@ -3,7 +3,30 @@ import * as argon2 from "argon2";
 
 const prisma = new PrismaClient();
 
+/**
+ * Development-only bootstrap of a local admin account.
+ *
+ * This script must never run automatically against a production database: it
+ * exists to seed a disposable admin for local / Cloud Agent development. In
+ * production, admins are provisioned through the governed admin-users flow.
+ */
+function assertNotProduction(): void {
+  const isProduction = (process.env.NODE_ENV || "").trim().toLowerCase() === "production";
+  if (!isProduction) return;
+  const override = (process.env.MEDORA_ALLOW_DEV_ADMIN_IN_PRODUCTION || "").trim().toLowerCase();
+  if (override === "true" || override === "1" || override === "yes") return;
+  throw new Error(
+    [
+      "Refusing to run create-admin with NODE_ENV=production.",
+      "This script seeds a development-only admin account.",
+      "Set MEDORA_ALLOW_DEV_ADMIN_IN_PRODUCTION=true to override (dangerous).",
+    ].join(" "),
+  );
+}
+
 async function main() {
+  assertNotProduction();
+
   const email = process.env.ADMIN_EMAIL || "admin@medora.local";
   const password = process.env.ADMIN_PASSWORD || "MedoraAdmin123!";
   const firstName = process.env.ADMIN_FIRST_NAME || "Admin";
