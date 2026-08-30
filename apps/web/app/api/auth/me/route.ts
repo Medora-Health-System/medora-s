@@ -66,10 +66,7 @@ export async function GET(request: NextRequest) {
       });
       return withRequestId(
         NextResponse.json(
-          {
-            error: "Authentication service temporarily unavailable.",
-            code: "AUTH_SERVICE_UNAVAILABLE",
-          },
+          { error: "BACKEND_TEMPORARILY_UNAVAILABLE", retryable: true },
           { status: 503 }
         )
       );
@@ -108,22 +105,19 @@ export async function GET(request: NextRequest) {
       if (backendResponse.status === 401) {
         return withRequestId(
           NextResponse.json(
-            { error: "Session expired.", code: "AUTH_SESSION_EXPIRED" },
+            { error: "SESSION_INVALID" },
             { status: 401 }
           )
         );
       }
       if (isRetryableBackendStatus(backendResponse.status)) {
-        console.error("[auth/me] backend unavailable", {
+        console.error("[auth/me] session_verify_transient_upstream_failure", {
           requestId: requestId || undefined,
           status: backendResponse.status,
         });
         return withRequestId(
           NextResponse.json(
-            {
-              error: "Authentication service temporarily unavailable.",
-              code: "AUTH_SERVICE_UNAVAILABLE",
-            },
+            { error: "BACKEND_TEMPORARILY_UNAVAILABLE", retryable: true },
             { status: 503 }
           )
         );
@@ -161,18 +155,13 @@ export async function GET(request: NextRequest) {
     return withRequestId(res);
   } catch (error) {
     const isAbort = error instanceof Error && error.name === "AbortError";
-    console.error("[auth/me] proxy failure", {
+    console.error("[auth/me] session_verify_transient_upstream_failure", {
       requestId: requestId || undefined,
       reason: isAbort ? "timeout" : error instanceof Error ? error.name : "unknown",
     });
     return withRequestId(
       NextResponse.json(
-        {
-          error: isAbort
-            ? "Session verification timed out."
-            : "Authentication service temporarily unavailable.",
-          code: "AUTH_SERVICE_UNAVAILABLE",
-        },
+        { error: "BACKEND_TEMPORARILY_UNAVAILABLE", retryable: true },
         { status: 503 }
       )
     );

@@ -170,6 +170,9 @@ export default {
       goToLogin: "Go to login",
       reloadApp: "Reload app",
     },
+    connectivity: {
+      reconnecting: "Reconnecting…",
+    },
   },
   nav: {
     trackboard: "Clinical trackboard",

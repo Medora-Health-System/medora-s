@@ -85,6 +85,41 @@ export function getPriorProviderOrderableCatalogCodesForDomain(
   return priorCodesByDomain.get(domain) ?? EMPTY_SET;
 }
 
+export type ProviderOrderableCatalogCodesSnapshot = {
+  merged: string[];
+  activeByDomain: Record<string, string[]>;
+  priorByDomain: Record<string, string[]>;
+};
+
+export function snapshotProviderOrderablePriorCodesState(): Pick<
+  ProviderOrderableCatalogCodesSnapshot,
+  "activeByDomain" | "priorByDomain"
+> {
+  const activeByDomain: Record<string, string[]> = {};
+  const priorByDomain: Record<string, string[]> = {};
+  for (const [domain, codes] of activeCodesByDomain) {
+    activeByDomain[domain] = [...codes];
+  }
+  for (const [domain, codes] of priorCodesByDomain) {
+    priorByDomain[domain] = [...codes];
+  }
+  return { activeByDomain, priorByDomain };
+}
+
+export function hydrateProviderOrderablePriorCodesState(input: {
+  activeByDomain?: Record<string, string[]>;
+  priorByDomain?: Record<string, string[]>;
+}): void {
+  for (const [domain, codes] of Object.entries(input.activeByDomain ?? {})) {
+    setActiveCodesForDomain(domain as ProviderOrderingDomainId, new Set(codes));
+  }
+  for (const [domain, codes] of Object.entries(input.priorByDomain ?? {})) {
+    setPriorCodesForDomain(domain as ProviderOrderingDomainId, new Set(codes));
+  }
+  prewarmComplete = true;
+  prewarmInProgress = false;
+}
+
 export function resetProviderOrderablePriorCodesStateForTests(): void {
   activeCodesByDomain.clear();
   priorCodesByDomain.clear();

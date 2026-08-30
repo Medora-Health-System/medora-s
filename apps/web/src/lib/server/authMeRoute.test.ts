@@ -48,7 +48,7 @@ describe("GET /api/auth/me", () => {
     });
   });
 
-  it("maps backend 503 to recoverable AUTH_SERVICE_UNAVAILABLE without clearing cookies", async () => {
+  it("maps backend 503 to BACKEND_TEMPORARILY_UNAVAILABLE without clearing cookies", async () => {
     vi.mocked(fetch)
       .mockResolvedValueOnce(
         new Response(JSON.stringify({ message: "upstream down" }), { status: 503 })
@@ -60,9 +60,40 @@ describe("GET /api/auth/me", () => {
     const req = new NextRequest("https://app.example.test/api/auth/me");
     const res = await GET(req);
     expect(res.status).toBe(503);
-    const body = (await res.json()) as { code?: string; error?: string };
-    expect(body.code).toBe("AUTH_SERVICE_UNAVAILABLE");
-    expect(body.error).toContain("temporarily unavailable");
-    expect(body.error).not.toMatch(/authentification|indisponible/i);
+    const body = (await res.json()) as { error?: string; retryable?: boolean };
+    expect(body.error).toBe("BACKEND_TEMPORARILY_UNAVAILABLE");
+    expect(body.retryable).toBe(true);
+    expect(res.headers.get("set-cookie")).toBeNull();
+  });
+
+  it("maps backend 502 to retryable 503 and does not convert to 401", async () => {
+    vi.mocked(fetch)
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ message: "bad gateway" }), { status: 502 })
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ message: "bad gateway" }), { status: 502 })
+      );
+
+    const req = new NextRequest("https://app.example.test/api/auth/me");
+    const res = await GET(req);
+    expect(res.status).toBe(503);
+    const body = (await res.json()) as { error?: string; retryable?: boolean };
+    expect(body.error).toBe("BACKEND_TEMPORARILY_UNAVAILABLE");
+    expect(body.retryable).toBe(true);
+    expect(body.error).not.toBe("SESSION_INVALID");
+  });
+
+  it("maps backend 401 to SESSION_INVALID", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(
+      new Response(JSON.stringify({ error: "unauthorized" }), { status: 401 })
+    );
+
+    const req = new NextRequest("https://app.example.test/api/auth/me");
+    const res = await GET(req);
+    expect(res.status).toBe(401);
+    const body = (await res.json()) as { error?: string; retryable?: boolean };
+    expect(body.error).toBe("SESSION_INVALID");
+    expect(body.retryable).not.toBe(true);
   });
 });

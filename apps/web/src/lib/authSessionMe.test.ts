@@ -77,13 +77,22 @@ describe("authSessionMe bootstrap recovery", () => {
 
   it("classifies HTTP statuses for recovery routing", () => {
     expect(classifyAuthMeHttpStatus(401)).toBe("unauthenticated");
+    expect(classifyAuthMeHttpStatus(403)).toBe("forbidden");
     expect(classifyAuthMeHttpStatus(502)).toBe("unavailable");
     expect(classifyAuthMeHttpStatus(503)).toBe("unavailable");
   });
 
+  it("classifies 403 as forbidden, not unavailable", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(jsonResponse({ error: "Forbidden" }, 403));
+    const result = await fetchAuthMeSession({ force: true });
+    expect(result.ok).toBe(false);
+    expect(result.failureKind).toBe("forbidden");
+    expect(result.status).toBe(403);
+  });
+
   it("force refresh bypasses cached unavailable result after login retry", async () => {
     vi.mocked(fetch).mockResolvedValueOnce(
-      jsonResponse({ error: "Service unavailable.", code: "AUTH_SERVICE_UNAVAILABLE" }, 503)
+      jsonResponse({ error: "BACKEND_TEMPORARILY_UNAVAILABLE", retryable: true }, 503)
     );
     const failed = await fetchAuthMeSession({ force: true });
     expect(failed.ok).toBe(false);
@@ -98,7 +107,7 @@ describe("authSessionMe bootstrap recovery", () => {
 
   it("does not cache transient unavailable responses", async () => {
     vi.mocked(fetch).mockResolvedValueOnce(
-      jsonResponse({ error: "Service unavailable.", code: "AUTH_SERVICE_UNAVAILABLE" }, 503)
+      jsonResponse({ error: "BACKEND_TEMPORARILY_UNAVAILABLE", retryable: true }, 503)
     );
     const first = await fetchAuthMeSession({ force: true });
     expect(first.ok).toBe(false);

@@ -36,7 +36,7 @@ describe("auth recovery false-positive prevention", () => {
 
   it("3. retry success path clears recovery via sessionPhase gate in layout", () => {
     const layout = readWebSource("app/app/layout.tsx");
-    expect(layout).toContain("authRecoveryActive={sessionPhase === \"recoverable_error\"}");
+    expect(layout).toContain("authRecoveryActive={sessionPhase === \"recoverable_error\" && !user}");
     expect(layout).toContain("setAuthRecoveryMessage(null)");
     expect(layout).toContain('setSessionPhase("authenticated")');
   });

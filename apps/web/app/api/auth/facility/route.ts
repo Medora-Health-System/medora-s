@@ -66,7 +66,7 @@ export async function POST(request: NextRequest) {
   } catch {
     return withRequestId(
       NextResponse.json(
-        { error: "Authentication service temporarily unavailable.", code: "AUTH_SERVICE_UNAVAILABLE" },
+        { error: "BACKEND_TEMPORARILY_UNAVAILABLE", retryable: true },
         { status: 503 }
       )
     );

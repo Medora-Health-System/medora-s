@@ -7,7 +7,13 @@ import { AllExceptionsFilter } from "./common/filters/all-exceptions.filter";
 import { getLogPolicy, resetLogPolicyCache } from "./common/logging/log-policy";
 import { MedoraNestLogger } from "./common/logging/medora-nest-logger";
 import { createStructuredLogger } from "./common/logging/structured-logger";
+import {
+  bootElapsedMs,
+  markCriticalDependenciesReady,
+  markHttpListening,
+} from "./common/runtime/runtime-availability.state";
 import { buildCorsOriginList } from "./config/cors-origins";
+import { startOptionalMedicationRegistryPrewarm } from "./medication-catalog/medication-registry-prewarm.service";
 
 resetLogPolicyCache();
 const bootstrapLog = createStructuredLogger("Bootstrap");
@@ -26,6 +32,11 @@ async function bootstrap() {
     bodyParser: false,
     logger: new MedoraNestLogger(),
   });
+  markCriticalDependenciesReady();
+  bootstrapLog.log("critical_dependencies_ready", {
+    durationMs: bootElapsedMs(),
+  });
+  app.enableShutdownHooks();
   const http = app.getHttpAdapter().getInstance() as { set?: (key: string, value: unknown) => void };
   if (typeof http?.set === "function") {
     /** Correct client IP behind reverse proxies (rate limits, audit). */
@@ -82,12 +93,16 @@ async function bootstrap() {
 
   const port = Number(process.env.PORT ?? 3001);
   await app.listen(port, "0.0.0.0");
+  markHttpListening();
 
   bootstrapLog.log("bootstrap_listening", {
     nodeEnv: process.env.NODE_ENV,
     corsConfigured: !!process.env.CORS_ORIGINS?.trim(),
     port: Number(process.env.PORT ?? 3001),
+    durationMs: bootElapsedMs(),
   });
+
+  startOptionalMedicationRegistryPrewarm();
 }
 
 void bootstrap();

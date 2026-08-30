@@ -24,7 +24,8 @@ describe("auth refresh blank screen recovery", () => {
   it("auth/me BFF maps backend 502 to 503 with retry", () => {
     const route = readWebSource("app/api/auth/me/route.ts");
     expect(route).toContain("fetchBackendMeWithRetry");
-    expect(route).toContain("AUTH_SERVICE_UNAVAILABLE");
+    expect(route).toContain("BACKEND_TEMPORARILY_UNAVAILABLE");
+    expect(route).toContain("retryable: true");
     expect(route).toContain("status: 503");
   });
 
@@ -37,9 +38,9 @@ describe("auth refresh blank screen recovery", () => {
 
   it("layout gates recovery panel on sessionPhase only", () => {
     const layout = readWebSource("app/app/layout.tsx");
-    expect(layout).toContain('bootstrapping={sessionPhase === "loading"}');
+    expect(layout).toContain('bootstrapping={sessionPhase === "loading" && !user}');
     expect(layout).not.toContain("bootstrapping={!sessionReady || !user}");
-    expect(layout).toContain('authRecoveryActive={sessionPhase === "recoverable_error"}');
+    expect(layout).toContain('authRecoveryActive={sessionPhase === "recoverable_error" && !user}');
     expect(layout).toContain('sessionPhase === "recoverable_error"');
     expect(layout).toContain("sessionContentReady");
     expect(layout).toContain('sessionPhase === "unauthenticated" && !user');

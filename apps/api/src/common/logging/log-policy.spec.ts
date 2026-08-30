@@ -104,6 +104,8 @@ describe("Medora production log policy", () => {
 
     it("excludes health/static/HEAD", () => {
       expect(isQuietHttpPath("/health")).toBe(true);
+    expect(isQuietHttpPath("/health/live")).toBe(true);
+    expect(isQuietHttpPath("/health/ready")).toBe(true);
       expect(isQuietHttpPath("/favicon.ico")).toBe(true);
       expect(
         shouldLogHttpRequest(
