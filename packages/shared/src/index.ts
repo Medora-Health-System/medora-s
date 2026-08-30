@@ -165,6 +165,7 @@ export * from "./encounters/inpatientClinicalOpsV1.js";
 export * from "./encounters/inpatientDischargeContractInpDis1a.js";
 export * from "./encounters/inpatientProviderDischargeInpDis1b.js";
 export * from "./encounters/inpatientProviderDischargeInpDis1c.js";
+export * from "./encounters/inpatientDischargeProgressNoteProjectionInpDis1i.js";
 export * from "./encounters/inpatientNursingDischargeInpDis1d.js";
 export * from "./encounters/inpatientFinalDischargeInpDis1e.js";
 export * from "./encounters/inpatientDischargeBoardInpDis1f.js";

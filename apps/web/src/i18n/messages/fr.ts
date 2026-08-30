@@ -14655,6 +14655,15 @@ export default {
         },
       },
     },
+    inpatientDischargeDocumentation: {
+      sectionTitle: "Documentation de sortie hospitalière",
+      diagnoses: "Diagnostics",
+      hospitalCourse: "Séjour hospitalier",
+      pendingStudies: "Examens en attente",
+      consultations: "Consultations",
+      procedures: "Procédures et traitements",
+      findings: "Constats significatifs",
+    },
     results: {
       printAllLabResults: "Imprimer tous les résultats de laboratoire",
       printAllImagingResults: "Imprimer tous les résultats d'imagerie",
@@ -15159,6 +15168,7 @@ export default {
     manualCodeRequired: "Saisissez un code.",
     invalidIcdFormat: "Ce code ne correspond pas au format CIM-10 attendu.",
     saveError: "Enregistrement du diagnostic impossible.",
+    alreadyAdded: "Déjà ajouté",
   },
   procedureCapture: {
     heading: "Acte facturable (CPT / HCPCS)",

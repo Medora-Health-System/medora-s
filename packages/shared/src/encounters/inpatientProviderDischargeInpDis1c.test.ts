@@ -131,8 +131,10 @@ describe("INP.DIS.1C inpatient discharge completion", () => {
       admissionDiagnosis: { description: "Pneumonia" },
       language: "en",
     });
-    expect(draft.complications).toBeNull();
-    expect(String(draft.hospitalCourse)).toContain("Admission diagnosis");
+    expect(draft.complications).toBeUndefined();
+    expect(String(draft.hospitalCourse)).toContain("Admission reason");
+    expect(String(draft.hospitalCourse)).toContain("Pneumonia");
+    expect(String(draft.hospitalCourse)).not.toMatch(/no complications/i);
   });
 
   it("merge preserves unrelated namespaces and projects instructions", () => {

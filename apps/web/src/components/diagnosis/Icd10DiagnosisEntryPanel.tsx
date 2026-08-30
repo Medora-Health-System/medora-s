@@ -2,14 +2,11 @@
 
 import React, { useEffect, useState } from "react";
 import { isIcd10CmLikeCodeFormat } from "@medora/shared";
-import { searchIcd10Catalog, type Icd10SearchHit } from "@/lib/chartApi";
+import type { Icd10SearchHit } from "@/lib/chartApi";
 import type { SupportedLanguage } from "@/i18n/config";
 import { normalizeUserFacingError } from "@/lib/userFacingError";
-import { getLocalizedDiagnosisDisplayLabel } from "@/features/emergency/diagnosisFrenchDisplayLabels";
-import {
-  diagnosisMatchesLocalizedSearch,
-  resolveLocalizedDiagnosisSearchQueries,
-} from "@/features/emergency/diagnosisFrenchSearchAliases";
+import { Icd10DiagnosisSearchAutocomplete } from "./Icd10DiagnosisSearchAutocomplete";
+import { icd10HitDescription } from "./icd10DiagnosisSearchHelpers";
 
 export type Icd10DiagnosisEntryPanelProps = {
   facilityId: string;
@@ -59,69 +56,11 @@ export function Icd10DiagnosisEntryPanel({
   saving = false,
   manualPrefill = null,
 }: Icd10DiagnosisEntryPanelProps) {
-  const [searchQ, setSearchQ] = useState("");
-  const [searchHits, setSearchHits] = useState<Icd10SearchHit[]>([]);
-  const [searching, setSearching] = useState(false);
-  /** True when the last ICD catalog request failed (network / 5xx), distinct from an empty successful result. */
-  const [searchFetchFailed, setSearchFetchFailed] = useState(false);
   const [manualOpen, setManualOpen] = useState(false);
   const [manualCode, setManualCode] = useState("");
   const [manualDesc, setManualDesc] = useState("");
   const [onsetDate, setOnsetDate] = useState("");
   const [notes, setNotes] = useState("");
-
-  useEffect(() => {
-    const q = searchQ.trim();
-    if (q.length < 2) {
-      setSearchHits([]);
-      setSearchFetchFailed(false);
-      return;
-    }
-    let cancelled = false;
-    const tmr = window.setTimeout(() => {
-      setSearching(true);
-      setSearchFetchFailed(false);
-      const apiQueries = resolveLocalizedDiagnosisSearchQueries(q, language);
-      const runSearch = async (): Promise<Icd10SearchHit[]> => {
-        const merged: Icd10SearchHit[] = [];
-        const seen = new Set<string>();
-        for (const apiQ of apiQueries) {
-          const res = await searchIcd10Catalog(apiQ, 25);
-          for (const hit of Array.isArray(res.items) ? res.items : []) {
-            if (seen.has(hit.id)) continue;
-            seen.add(hit.id);
-            merged.push(hit);
-          }
-          if (merged.length >= 25) break;
-        }
-        if (language === "fr") {
-          return merged.filter((hit) => diagnosisMatchesLocalizedSearch(hit, q, language)).slice(0, 25);
-        }
-        return merged.slice(0, 25);
-      };
-      void runSearch()
-        .then((items) => {
-          if (!cancelled) {
-            setSearchHits(items);
-            setSearchFetchFailed(false);
-          }
-        })
-        .catch((err: unknown) => {
-          console.error("ICD search failed", err);
-          if (!cancelled) {
-            setSearchHits([]);
-            setSearchFetchFailed(true);
-          }
-        })
-        .finally(() => {
-          if (!cancelled) setSearching(false);
-        });
-    }, 280);
-    return () => {
-      cancelled = true;
-      window.clearTimeout(tmr);
-    };
-  }, [language, searchQ]);
 
   useEffect(() => {
     if (!manualPrefill?.code?.trim()) return;
@@ -137,17 +76,14 @@ export function Icd10DiagnosisEntryPanel({
     onError(null);
     if (selectionOnly) {
       onSelectCatalog?.(hit);
-      setSearchQ("");
-      setSearchHits([]);
       return;
     }
     try {
       await onPickCatalog(hit, {
         onsetDate: showOnsetNotes && onsetDate.trim() ? onsetDate.trim() : undefined,
         notes: showOnsetNotes && notes.trim() ? notes.trim() : undefined,
+        description: icd10HitDescription(hit),
       });
-      setSearchQ("");
-      setSearchHits([]);
       if (showOnsetNotes) {
         setOnsetDate("");
         setNotes("");
@@ -224,73 +160,18 @@ export function Icd10DiagnosisEntryPanel({
         </div>
       ) : null}
 
-      <label style={{ fontSize: 13, fontWeight: 600, color: "#334155", display: "block" }}>
-        {t("diagnosisEntry.icdSearchLabel")}
-        <input
-          type="search"
-          value={searchQ}
-          onChange={(e) => setSearchQ(e.target.value)}
-          placeholder={t("diagnosisEntry.icdSearchPlaceholder")}
-          autoComplete="off"
-          disabled={busy}
-          style={{
-            display: "block",
-            marginTop: 6,
-            width: "100%",
-            padding: "10px 12px",
-            borderRadius: 10,
-            border: "1px solid #e2e8f0",
-            fontSize: 14,
-          }}
-        />
-      </label>
-      {searching ? <div style={{ fontSize: 13, color: "#64748b" }}>{t("diagnosisEntry.icdSearching")}</div> : null}
-      {!searching && searchQ.trim().length >= 2 && searchHits.length === 0 ? (
-        <div style={{ fontSize: 13, color: searchFetchFailed ? "#b45309" : "#64748b" }}>
-          {searchFetchFailed ? t("diagnosisEntry.icdSearchFailed") : t("diagnosisEntry.icdNoResults")}
-        </div>
-      ) : null}
-      {searchHits.length > 0 ? (
-        <ul
-          style={{
-            margin: 0,
-            padding: 0,
-            listStyle: "none",
-            maxHeight: 220,
-            overflowY: "auto",
-            border: "1px solid #e2e8f0",
-            borderRadius: 10,
-            background: "#fff",
-          }}
-        >
-          {searchHits.map((h) => (
-            <li key={h.id} style={{ borderBottom: "1px solid #f1f5f9" }}>
-              <button
-                type="button"
-                disabled={busy}
-                onClick={() => void pickCatalog(h)}
-                style={{
-                  width: "100%",
-                  textAlign: "left",
-                  padding: "10px 12px",
-                  border: "none",
-                  background: "transparent",
-                  cursor: busy ? "not-allowed" : "pointer",
-                  fontSize: 13,
-                }}
-              >
-                <div style={{ fontWeight: 600, color: "#0f172a" }}>
-                  {getLocalizedDiagnosisDisplayLabel(h, language)}
-                </div>
-                <div style={{ color: "#475569", marginTop: 2, fontSize: 12 }}>{h.code}</div>
-                {!h.isBillable ? (
-                  <div style={{ fontSize: 11, color: "#b45309", marginTop: 4 }}>{t("diagnosisEntry.nonBillableCode")}</div>
-                ) : null}
-              </button>
-            </li>
-          ))}
-        </ul>
-      ) : null}
+      <Icd10DiagnosisSearchAutocomplete
+        language={language}
+        disabled={busy}
+        label={t("diagnosisEntry.icdSearchLabel")}
+        placeholder={t("diagnosisEntry.icdSearchPlaceholder")}
+        searchingLabel={t("diagnosisEntry.icdSearching")}
+        noResultsLabel={t("diagnosisEntry.icdNoResults")}
+        searchFailedLabel={t("diagnosisEntry.icdSearchFailed")}
+        alreadyAddedLabel={t("diagnosisEntry.alreadyAdded")}
+        nonBillableLabel={t("diagnosisEntry.nonBillableCode")}
+        onSelect={(hit) => void pickCatalog(hit)}
+      />
 
       <div>
         <button

@@ -16,6 +16,7 @@ import {
   Prisma,
   RoleCode,
   AuditAction,
+  DiagnosisStatus,
 } from "@prisma/client";
 import {
   assertSameClinicalAuthor,
@@ -105,8 +106,16 @@ export class InpatientProviderDischargeService {
 
   private buildChartBootstrap(
     admissionSummaryJson: unknown,
-    chiefComplaint?: string | null
+    extra?: {
+      chiefComplaint?: string | null;
+      encounterDiagnoses?: Array<{
+        code: string;
+        description: string | null;
+        sortOrder: number;
+      }>;
+    }
   ): InpatientDischargeChartSnapshot {
+    const chiefComplaint = extra?.chiefComplaint ?? null;
     const root =
       admissionSummaryJson &&
       typeof admissionSummaryJson === "object" &&
@@ -149,10 +158,10 @@ export class InpatientProviderDischargeService {
     }));
 
     const progressNoteExcerpts = (workspace?.progressNotes ?? [])
-      .slice(-5)
+      .slice(-8)
       .map((n) => {
         const text = typeof n.text === "string" ? n.text.trim() : "";
-        return text ? text.slice(0, 500) : null;
+        return text ? text.slice(0, 12000) : null;
       })
       .filter((t): t is string => Boolean(t));
 
@@ -167,11 +176,44 @@ export class InpatientProviderDischargeService {
       })
       .filter((t): t is string => Boolean(t));
 
-    const procedureBits = (ops.carePlan ?? [])
-      .filter((i) => /procedure|treatment|op|surgery/i.test(`${i.discipline} ${i.goalText}`))
-      .map((i) => i.goalText.trim())
+    const procedureBits = [
+      ...(ops.carePlan ?? [])
+        .filter((i) => /procedure|treatment|op|surgery/i.test(`${i.discipline} ${i.goalText}`))
+        .map((i) => i.goalText.trim()),
+      ...(workspace?.events ?? [])
+        .filter((e) => /procedure/i.test(`${e.type} ${e.summary}`))
+        .map((e) => (typeof e.summary === "string" ? e.summary.trim() : "")),
+    ]
       .filter(Boolean)
       .slice(0, 8);
+
+    const findingBits = [
+      ...(workspace?.events ?? [])
+        .filter((e) => e.severity === "CRITICAL" && typeof e.summary === "string")
+        .map((e) => e.summary.trim()),
+      typeof workspace?.hpDraft?.sections?.DIAGNOSTICS_REVIEWED?.text === "string"
+        ? workspace.hpDraft.sections.DIAGNOSTICS_REVIEWED.text.trim()
+        : "",
+      ...(workspace?.problemPlans ?? [])
+        .map((p) => (typeof p.supportingEvidence === "string" ? p.supportingEvidence.trim() : ""))
+        .filter(Boolean),
+    ].filter(Boolean);
+
+    const suggestedChartDiagnoses = [
+      ...(extra?.encounterDiagnoses ?? [])
+        .map((d) => ({
+          code: d.code || null,
+          description: (d.description ?? "").trim() || d.code,
+        }))
+        .filter((d) => d.description),
+      ...(workspace?.problemPlans ?? [])
+        .filter((p) => p.status !== "RESOLVED" && p.status !== "RULED_OUT")
+        .map((p) => ({
+          code: null as string | null,
+          description: p.displayLabel.trim(),
+        }))
+        .filter((d) => d.description),
+    ].slice(0, 20);
 
     return {
       admissionDiagnosis: admDx,
@@ -181,7 +223,10 @@ export class InpatientProviderDischargeService {
       progressNoteExcerpts,
       problemPlanSummaries,
       proceduresSummary: procedureBits.length ? procedureBits.join("; ") : null,
-      significantFindingsSummary: null,
+      significantFindingsSummary: findingBits.length ? findingBits.join("; ") : null,
+      suggestedChartDiagnoses: suggestedChartDiagnoses.length
+        ? suggestedChartDiagnoses
+        : undefined,
     };
   }
 
@@ -227,10 +272,22 @@ export class InpatientProviderDischargeService {
     const planning = extractDischargePlanningFromClinicalOps(ops);
     const readiness = this.computeReadiness(documentation, enc.dischargeSummaryJson);
 
-    const encounterLite = await this.prisma.encounter.findFirst({
-      where: { id: enc.id, facilityId: actor.facilityId },
-      select: { chiefComplaint: true },
-    });
+    const [encounterLite, encounterDiagnoses] = await Promise.all([
+      this.prisma.encounter.findFirst({
+        where: { id: enc.id, facilityId: actor.facilityId },
+        select: { chiefComplaint: true },
+      }),
+      this.prisma.diagnosis.findMany({
+        where: {
+          encounterId: enc.id,
+          facilityId: actor.facilityId,
+          status: DiagnosisStatus.ACTIVE,
+        },
+        select: { code: true, description: true, sortOrder: true },
+        orderBy: { sortOrder: "asc" },
+        take: 20,
+      }),
+    ]);
 
     return {
       encounterId: enc.id,
@@ -243,10 +300,10 @@ export class InpatientProviderDischargeService {
         plannedDischargeWorkflowState: planning?.workflowState ?? null,
         anticipatedDischargeDate: planning?.anticipatedDischargeDate ?? null,
       },
-      chartBootstrap: this.buildChartBootstrap(
-        enc.admissionSummaryJson,
-        encounterLite?.chiefComplaint ?? null
-      ),
+      chartBootstrap: this.buildChartBootstrap(enc.admissionSummaryJson, {
+        chiefComplaint: encounterLite?.chiefComplaint ?? null,
+        encounterDiagnoses,
+      }),
       readiness,
       canAuthor: actor.role === RoleCode.PROVIDER && enc.status === EncounterStatus.OPEN,
     };

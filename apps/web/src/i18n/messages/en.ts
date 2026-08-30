@@ -14614,6 +14614,15 @@ export default {
         },
       },
     },
+    inpatientDischargeDocumentation: {
+      sectionTitle: "Inpatient discharge documentation",
+      diagnoses: "Diagnoses",
+      hospitalCourse: "Hospital course",
+      pendingStudies: "Pending studies",
+      consultations: "Consultations",
+      procedures: "Procedures and treatments",
+      findings: "Significant findings",
+    },
     results: {
       printAllLabResults: "Print all laboratory results",
       printAllImagingResults: "Print all imaging results",
@@ -15118,6 +15127,7 @@ export default {
     manualCodeRequired: "Enter a code.",
     invalidIcdFormat: "That code does not match the expected ICD-10-style pattern.",
     saveError: "Could not save diagnosis.",
+    alreadyAdded: "Already added",
   },
   procedureCapture: {
     heading: "Billable procedure (CPT / HCPCS)",
