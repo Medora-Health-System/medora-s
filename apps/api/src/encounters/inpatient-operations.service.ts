@@ -163,7 +163,11 @@ import {
   resolveAuthoritativeEncounterServiceLine,
   projectHospitalHeaderVitalsLiteFromJson,
   hydrateInpatientDischargeMedReconLine,
+  hydrateInpatientProviderDischarge1C,
+  isInpatientMedReconEffectivelyComplete,
+  mergeSavedMedReconWithCurrentProviderPlan,
   projectPostDischargeHomeMedicationsFromRecon,
+  validateInpatientDischargePlanningReady,
   PATIENT_CLINICAL_HISTORY_PROFILE_VERSION,
 } from "@medora/shared";
 import { PrismaService } from "../prisma/prisma.service";
@@ -1847,6 +1851,15 @@ export class InpatientOperationsService {
             : (prevPlan?.careTeamNotified ?? null),
         updatedAt: now,
       };
+      if (wf === "READY") {
+        const ready = validateInpatientDischargePlanningReady(ops.dischargePlanning);
+        if (!ready.ok) {
+          throw new BadRequestException({
+            code: "PLANNING_NOT_READY",
+            errors: ready.errors,
+          });
+        }
+      }
     }
 
     if (patch.setNursing) {
@@ -1911,6 +1924,25 @@ export class InpatientOperationsService {
       // Draft (markComplete === false) must not set finalizedAt.
       // Omitted markComplete still finalizes (legacy completeMedRec shortcut).
       const markComplete = patch.finalizeInpatientMedRecon.markComplete !== false;
+      const hydratedLines = lines
+        .map((raw) => hydrateInpatientDischargeMedReconLine(raw))
+        .filter((x): x is NonNullable<typeof x> => Boolean(x));
+      const providerDoc = hydrateInpatientProviderDischarge1C(
+        prevRoot.inpatientProviderDischarge
+      );
+      const effectiveLines = mergeSavedMedReconWithCurrentProviderPlan({
+        savedLines: hydratedLines,
+        providerDischargeMedications: providerDoc?.dischargeMedications ?? null,
+      });
+      if (
+        markComplete &&
+        !isInpatientMedReconEffectivelyComplete({
+          storedComplete: true,
+          lines: effectiveLines,
+        })
+      ) {
+        throw new BadRequestException("MEDICATION_RECONCILIATION_INCOMPLETE");
+      }
       const priorRevision =
         typeof prevMed.revision === "number" && Number.isFinite(prevMed.revision)
           ? prevMed.revision
@@ -1919,7 +1951,7 @@ export class InpatientOperationsService {
       prevRoot.inpatientMedRecon = {
         ...prevMed,
         schemaVersion: "INP.DIS.1A",
-        lines,
+        lines: markComplete && effectiveLines.length > 0 ? effectiveLines : lines,
         revision: nextRevision,
         finalizedAt: markComplete ? now : null,
         finalizedByUserId: markComplete ? actorUserId : null,
@@ -1937,10 +1969,7 @@ export class InpatientOperationsService {
       // Longitudinal home meds via existing Patient.clinicalHistoryProfileJson only.
       // No new PatientMedication table — summary-based homeMedications section.
       if (markComplete) {
-        const hydrated = lines
-          .map((raw) => hydrateInpatientDischargeMedReconLine(raw))
-          .filter((x): x is NonNullable<typeof x> => Boolean(x));
-        const projected = projectPostDischargeHomeMedicationsFromRecon(hydrated);
+        const projected = projectPostDischargeHomeMedicationsFromRecon(effectiveLines);
         const patient = await this.prisma.patient.findFirst({
           where: { id: enc.patientId, facilityId },
           select: { id: true, clinicalHistoryProfileJson: true },

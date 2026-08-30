@@ -46,6 +46,8 @@ export const boardSectionStyle: CSSProperties = {
 
 export const fieldStyle: CSSProperties = {
   width: "100%",
+  maxWidth: "100%",
+  minWidth: 0,
   padding: "7px 10px",
   borderRadius: 10,
   border: "1px solid #cbd5e1",

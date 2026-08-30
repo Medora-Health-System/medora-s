@@ -7,10 +7,13 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 describe("INP.DIS.1D nursing discharge UI", () => {
-  it("mounts nursing section in discharge workspace", () => {
+  it("mounts nursing discharge execution on the enterprise discharge board", () => {
     const panel = readFileSync(join(__dirname, "InpatientWorkspacePanel.tsx"), "utf8");
-    expect(panel).toContain("InpatientNursingDischargeSection");
-    expect(panel).toContain('canAuthor={roles.includes("RN")}');
+    expect(panel).toContain("InpatientDischargeBoard");
+    expect(panel).not.toContain("InpatientNursingDischargeSection");
+    const nursing = readFileSync(join(__dirname, "InpatientDischargeBoardNursing.tsx"), "utf8");
+    expect(nursing).toContain('testId="inp-dis-1f-nursing-education"');
+    expect(nursing).toContain("INPATIENT_DEPARTURE_ACCOMPANIED_BY");
   });
 
   it("nursing section uses timezone helpers and disposition gates", () => {

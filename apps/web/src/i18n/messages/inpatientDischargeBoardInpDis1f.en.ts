@@ -50,6 +50,7 @@ export const inpatientDischargeBoardInpDis1fEn = {
     provider: "Provider",
     medRec: "Med Rec",
     nursing: "Nursing",
+    planning: "Planning",
     disposition: "Disposition",
     departure: "Departure",
     final: "Final Discharge",
@@ -178,6 +179,7 @@ export const inpatientDischargeBoardInpDis1fEn = {
     anticipatedDate: "Anticipated discharge date",
     barriers: "Barriers",
     workflowState: "Planning status",
+    markReady: "Mark planning ready",
   },
   nursing: {
     education: "Education",
@@ -207,6 +209,7 @@ export const inpatientDischargeBoardInpDis1fEn = {
     departedAt: "Departure time",
     conditionAtDeparture: "Condition at departure",
     accompaniedBy: "Accompanied by",
+    accompaniedByDetail: "Accompanied-by details",
     handoff: {
       title: "Transfer / facility handoff",
       reportCalled: "Report called",
@@ -347,6 +350,14 @@ export const inpatientDischargeBoardInpDis1fEn = {
     LAW_ENFORCEMENT: "Law enforcement",
     OTHER: "Other",
   },
+  accompaniedBy: {
+    SELF: "Self",
+    FAMILY_CAREGIVER: "Family / caregiver",
+    FACILITY_STAFF: "Facility staff",
+    EMS: "EMS",
+    LAW_ENFORCEMENT: "Law enforcement",
+    OTHER: "Other",
+  },
   transportModes: {
     PRIVATE_VEHICLE: "Private vehicle",
     TAXI_RIDESHARE: "Taxi / rideshare",
@@ -407,14 +418,14 @@ export const inpatientDischargeBoardInpDis1fEn = {
     SNF_FACILITY_REQUIRED: "Facility name is required for this disposition.",
     DECEASED_PRONOUNCED_AT_REQUIRED: "Pronounced date/time is required for deceased disposition.",
     WAITING_PROVIDER_FINALIZE: "Waiting for provider discharge finalization",
+    PLANNING_DESTINATION_REQUIRED: "Planned destination is required.",
+    PLANNING_TRANSPORT_REQUIRED: "Transport plan is required for this destination.",
+    PLANNING_HOME_HEALTH_REQUIRED: "Home health details are required for this destination.",
   },
   medRecon: {
     title: "Medication reconciliation",
     open: "Open medication reconciliation",
     hide: "Hide medication reconciliation",
-    hint: "Review home, prior, and provider discharge medications. Inpatient orders are labeled separately and are not treated as home medications.",
-    hintFast:
-      "One-click reconcile: Continue, Stop, or Edit. Provider changes and new discharge medications appear in the same list.",
     summary: "{total} medications · {reconciled} reconciled · {needsReview} need review",
     finalizeBlocked: "Reconcile every medication before finalizing.",
     bulkContinue: "Continue all unchanged medications",
@@ -446,12 +457,9 @@ export const inpatientDischargeBoardInpDis1fEn = {
     providerPlan: "Provider discharge plan",
     saveDraft: "Save med recon draft",
     finalize: "Finalize medication reconciliation",
-    empty: "No medications loaded yet. Add from history or search.",
+    empty: "No medications loaded.",
     noneDocumented: "No pre-admission medications documented.",
-    historyUnavailable: "Medication history unavailable. Retrieval failed — this is not the same as no medications.",
-    reviewHomeMedsHint:
-      "Document or review home medications in nursing admission / patient clinical history if needed, then reload.",
-    retryHint: "Reload the discharge board after connectivity is restored, then reconcile.",
+    historyUnavailable: "Medication history unavailable.",
     addFromSearch: "Add medication",
     finalized: "Medication reconciliation finalized",
     sourceType: {
