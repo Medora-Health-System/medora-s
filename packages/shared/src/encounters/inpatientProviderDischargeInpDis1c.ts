@@ -21,6 +21,13 @@ import {
   hydrateInpatientProviderDischarge,
   normalizeDischargeDiagnoses,
 } from "./inpatientProviderDischargeInpDis1b.js";
+import {
+  assembleInpatientHospitalCourseDraft,
+  formatDischargeNarrativeForDisplay,
+  formatInpatientDischargeDiagnosisDisplay,
+  formatInpatientDischargeHumanLabel,
+  formatInpatientDischargePendingStudyTypeLabel,
+} from "./inpatientDischargeProgressNoteProjectionInpDis1i.js";
 
 export const INPATIENT_PROVIDER_DISCHARGE_SCHEMA_VERSION_1C = "INP.DIS.1C" as const;
 
@@ -294,6 +301,11 @@ export type InpatientDischargeChartSnapshot = {
   significantFindingsSummary?: string | null;
   progressNoteExcerpts?: string[];
   problemPlanSummaries?: string[];
+  /** Chart diagnoses for suggestion chips — never auto-copied into dischargeDiagnoses. */
+  suggestedChartDiagnoses?: Array<{
+    code?: string | null;
+    description: string;
+  }>;
   pendingStudySuggestions?: Array<{
     type?: InpatientPendingStudyType | string;
     description: string;
@@ -449,12 +461,59 @@ export function mergeChartDraftPreservingClinicianEdits(input: {
   return { next, refreshed };
 }
 
+export const INPATIENT_DISCHARGE_CHART_DRAFT_FIELDS = [
+  "admissionDiagnosis",
+  "reasonForHospitalization",
+  "hospitalCourse",
+  "significantFindings",
+  "proceduresAndTreatments",
+  "consultations",
+  "complications",
+  "dischargeDiagnoses",
+  "pendingStudies",
+] as const;
+
+function chartDraftFieldValue(
+  doc: Partial<InpatientProviderDischargeV1C>,
+  key: (typeof INPATIENT_DISCHARGE_CHART_DRAFT_FIELDS)[number]
+): string {
+  const value = doc[key];
+  if (value == null) return "";
+  if (typeof value === "string") return value.trim();
+  if (key === "admissionDiagnosis" && value && typeof value === "object") {
+    const adm = value as { description?: string | null; code?: string | null };
+    return [adm.description, adm.code].filter(Boolean).join(" ").trim();
+  }
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return String(value);
+  }
+}
+
+/** Clinician-edited fields whose chart draft now differs — review required before replace. */
+export function listProtectedChartFieldsWithUpdates(input: {
+  existing: InpatientProviderDischargeV1C;
+  draft: Partial<InpatientProviderDischargeV1C>;
+}): string[] {
+  const provenance = input.existing.fieldProvenance ?? {};
+  const out: string[] = [];
+  for (const key of INPATIENT_DISCHARGE_CHART_DRAFT_FIELDS) {
+    if (input.draft[key] === undefined) continue;
+    if (!isFieldClinicianEdited(provenance, key)) continue;
+    if (chartDraftFieldValue(input.existing, key) === chartDraftFieldValue(input.draft, key)) {
+      continue;
+    }
+    out.push(key);
+  }
+  return out;
+}
+
 /** Deterministic chart → draft narratives. Only uses provided snapshot facts. */
 export function buildInpatientDischargeChartDraft(
   snapshot: InpatientDischargeChartSnapshot
 ): Partial<InpatientProviderDischargeV1C> {
-  const fr = snapshot.language === "fr";
-  const lines: string[] = [];
+  const language = snapshot.language === "fr" ? "fr" : "en";
   const adm =
     snapshot.admissionDiagnosis?.description?.trim() ||
     snapshot.admissionDiagnosis?.code?.trim() ||
@@ -464,26 +523,6 @@ export function buildInpatientDischargeChartDraft(
     trimOrNull(snapshot.chiefComplaint) ||
     adm;
 
-  if (adm) {
-    lines.push(
-      fr ? `Diagnostic d'admission : ${adm}` : `Admission diagnosis: ${adm}`
-    );
-  }
-  if (reason && reason !== adm) {
-    lines.push(fr ? `Motif d'hospitalisation : ${reason}` : `Reason for hospitalization: ${reason}`);
-  }
-
-  const dxLabels = (snapshot.dischargeDiagnoses ?? [])
-    .map((d) => [d.code, d.description].filter(Boolean).join(" — "))
-    .filter(Boolean);
-  if (dxLabels.length) {
-    lines.push(
-      fr
-        ? `Diagnostics de sortie documentés : ${dxLabels.join("; ")}`
-        : `Documented discharge diagnoses: ${dxLabels.join("; ")}`
-    );
-  }
-
   const consultLines = (snapshot.consults ?? [])
     .map((c) => {
       const specialty = trimOrNull(c.specialty);
@@ -492,47 +531,15 @@ export function buildInpatientDischargeChartDraft(
       const reasonC = trimOrNull(c.reason);
       return [specialty, status, reasonC].filter(Boolean).join(" — ");
     })
-    .filter(Boolean);
-  if (consultLines.length) {
-    lines.push(
-      fr
-        ? `Consultations : ${consultLines.join("; ")}`
-        : `Consultations: ${consultLines.join("; ")}`
-    );
-  }
+    .filter((line): line is string => Boolean(line));
 
-  if (trimOrNull(snapshot.proceduresSummary)) {
-    lines.push(
-      fr
-        ? `Procédures / traitements : ${snapshot.proceduresSummary!.trim()}`
-        : `Procedures / treatments: ${snapshot.proceduresSummary!.trim()}`
-    );
-  }
-
-  if (trimOrNull(snapshot.significantFindingsSummary)) {
-    lines.push(
-      fr
-        ? `Constats significatifs : ${snapshot.significantFindingsSummary!.trim()}`
-        : `Significant findings: ${snapshot.significantFindingsSummary!.trim()}`
-    );
-  }
-
-  for (const excerpt of snapshot.progressNoteExcerpts ?? []) {
-    const t = trimOrNull(excerpt);
-    if (t) lines.push(t);
-  }
-  for (const plan of snapshot.problemPlanSummaries ?? []) {
-    const t = trimOrNull(plan);
-    if (t) lines.push(t);
-  }
-
-  if (!lines.length) {
-    lines.push(
-      fr
-        ? "Brouillon généré à partir du dossier — compléter selon les données cliniques documentées."
-        : "Chart-derived draft — complete using documented clinical data."
-    );
-  }
+  const hospitalCourse = assembleInpatientHospitalCourseDraft({
+    language,
+    admissionReason: reason,
+    admissionDiagnosis: adm,
+    progressNoteTexts: snapshot.progressNoteExcerpts,
+    problemPlanSummaries: snapshot.problemPlanSummaries,
+  });
 
   const pendingStudies: InpatientProviderDischargePendingStudy[] = (
     snapshot.pendingStudySuggestions ?? []
@@ -556,11 +563,11 @@ export function buildInpatientDischargeChartDraft(
     schemaVersion: INPATIENT_PROVIDER_DISCHARGE_SCHEMA_VERSION_1C,
     admissionDiagnosis: snapshot.admissionDiagnosis ?? null,
     reasonForHospitalization: reason,
-    hospitalCourse: lines.join("\n"),
+    hospitalCourse: hospitalCourse || undefined,
     significantFindings: trimOrNull(snapshot.significantFindingsSummary),
     proceduresAndTreatments: trimOrNull(snapshot.proceduresSummary),
     consultations: consultLines.length ? consultLines.join("\n") : null,
-    complications: null,
+    complications: undefined,
     dischargeDiagnoses: snapshot.dischargeDiagnoses?.length
       ? normalizeDischargeDiagnoses(snapshot.dischargeDiagnoses)
       : undefined,
@@ -744,23 +751,31 @@ export function mergeInpatientProviderDischargeIntoDischargeSummary1C(
     providerDoc.dischargeDiagnoses?.[0];
   const secondary = (providerDoc.dischargeDiagnoses ?? []).filter((d) => d !== primary);
   const diagnosisSummary = [
-    primary ? [primary.code, primary.description].filter(Boolean).join(" — ") : null,
-    ...secondary.map((d) => [d.code, d.description].filter(Boolean).join(" — ")),
+    primary
+      ? `${primary.isPrimary ? "PRIMARY — " : ""}${formatInpatientDischargeDiagnosisDisplay(primary)}`
+      : null,
+    ...secondary.map((d) => formatInpatientDischargeDiagnosisDisplay(d)),
   ]
     .filter(Boolean)
     .join("; ");
 
   const finalCode = trimOrNull(providerDoc.finalDisposition?.code);
   const finalLabel =
-    trimOrNull(providerDoc.finalDisposition?.labelSnapshot) ?? finalCode;
+    trimOrNull(providerDoc.finalDisposition?.labelSnapshot) ||
+    formatInpatientDischargeHumanLabel(finalCode) ||
+    finalCode;
   const lifecycle = mapInpatientDispositionToLifecycleStatus(finalCode);
+  const conditionLabel = formatInpatientDischargeHumanLabel(
+    providerDoc.conditionAtDischarge?.status
+  );
 
   const instrFlat = projectInpatientPatientInstructionsToFlat(providerDoc.patientInstructions);
   const pendingLines = (providerDoc.pendingStudies ?? []).map((s) => {
-    const parts = [s.type, s.description];
+    const typeLabel = formatInpatientDischargePendingStudyTypeLabel(s.type);
+    const parts = [typeLabel, s.description];
     if (s.responsibleParty) parts.push(`(${s.responsibleParty})`);
     if (s.followUpPlan) parts.push(`— ${s.followUpPlan}`);
-    return parts.join(" ");
+    return parts.filter(Boolean).join(" ");
   });
 
   const followUpText =
@@ -775,7 +790,10 @@ export function mergeInpatientProviderDischargeIntoDischargeSummary1C(
     ...instrFlat,
     dischargeDiagnosisSummary:
       (instrFlat.dischargeDiagnosisSummary as string | null) || diagnosisSummary || null,
-    hospitalCourse: providerDoc.hospitalCourse ?? null,
+    hospitalCourse:
+      formatDischargeNarrativeForDisplay(providerDoc.hospitalCourse) ||
+      providerDoc.hospitalCourse ||
+      null,
     reasonForHospitalization: providerDoc.reasonForHospitalization ?? null,
     significantFindings: providerDoc.significantFindings ?? null,
     proceduresAndTreatments: providerDoc.proceduresAndTreatments ?? null,
@@ -784,7 +802,8 @@ export function mergeInpatientProviderDischargeIntoDischargeSummary1C(
     finalDisposition: finalCode,
     dischargeMode: finalLabel,
     dischargeStatusMapped: lifecycle,
-    exitCondition: providerDoc.conditionAtDischarge?.status ?? null,
+    exitCondition:
+      conditionLabel || providerDoc.conditionAtDischarge?.status || null,
     conditionAtDischargeNarrative: providerDoc.conditionAtDischarge?.narrative ?? null,
     pendingStudiesSummary: pendingLines.length ? pendingLines.join("\n") : null,
     followUpInstructions: followUpText,

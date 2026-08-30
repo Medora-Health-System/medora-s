@@ -9,6 +9,7 @@
 
 import {
   adaptDischargeSuggestedTextBodyForCareSetting,
+  formatInpatientDischargeDiagnosisDisplay,
   type DischargeInstructionCareSettingContext,
   type InpatientDischargeFollowUp1C,
   type InpatientPatientInstructions1C,
@@ -25,6 +26,19 @@ import {
   mergeUniquePrecautionText,
 } from "@/features/emergency/providerDischargeSharedPlanningMerge";
 
+export function inpatientDiagnosisHasSpecificInstructionTemplate(input: {
+  code?: string | null;
+  description?: string | null;
+}): boolean {
+  const description = (input.description ?? "").trim();
+  if (!description) return false;
+  const resolved = resolveProviderDischargeTemplateForDiagnosis({
+    code: input.code ?? "",
+    displayName: description,
+  });
+  return resolved.matchLevel !== "generic";
+}
+
 export function generateInpatientPatientInstructionsFromDiagnoses(input: {
   diagnoses: InpatientProviderDischargeDiagnosis[];
   locale: "en" | "fr";
@@ -32,8 +46,11 @@ export function generateInpatientPatientInstructionsFromDiagnoses(input: {
 }): {
   instructions: InpatientPatientInstructions1C;
   followUps: InpatientDischargeFollowUp1C[];
+  hasDiagnosisSpecificTemplate: boolean;
 } {
-  const sorted = [...input.diagnoses].sort((a, b) => {
+  const sorted = [...input.diagnoses]
+    .filter((d) => (d.description ?? "").trim().length > 0)
+    .sort((a, b) => {
     if (a.isPrimary !== b.isPrimary) return a.isPrimary ? -1 : 1;
     return a.sortOrder - b.sortOrder;
   });
@@ -44,6 +61,7 @@ export function generateInpatientPatientInstructionsFromDiagnoses(input: {
         patientInstructionsGiven: false,
       },
       followUps: [],
+      hasDiagnosisSpecificTemplate: false,
     };
   }
 
@@ -151,7 +169,7 @@ export function generateInpatientPatientInstructionsFromDiagnoses(input: {
   );
 
   const diagnosisSummary = sorted
-    .map((d) => [d.code, d.description].filter(Boolean).join(" — "))
+    .map((d) => formatInpatientDischargeDiagnosisDisplay(d))
     .join("; ");
 
   const followUps: InpatientDischargeFollowUp1C[] = followUpRows
@@ -185,5 +203,6 @@ export function generateInpatientPatientInstructionsFromDiagnoses(input: {
       clinicianEdited: false,
     },
     followUps,
+    hasDiagnosisSpecificTemplate: inpatientDiagnosisHasSpecificInstructionTemplate(primary),
   };
 }

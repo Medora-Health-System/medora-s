@@ -110,6 +110,6 @@ describe("INP.DIS.1F inpatient discharge board", () => {
     expect(board).toContain('data-testid="inp-dis-1f-ama-details"');
     expect(board).toContain("cards.providerCta");
     expect(board).toContain("cards.reviewBefore");
-    expect(board).toContain("searchIcd10Catalog");
+    expect(board).toContain("Icd10DiagnosisSearchAutocomplete");
   });
 });

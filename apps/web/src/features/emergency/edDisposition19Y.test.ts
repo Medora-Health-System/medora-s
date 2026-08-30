@@ -8594,17 +8594,26 @@ describe("edDisposition19Y", () => {
 
     it("Icd10DiagnosisEntryPanel uses French diagnosis search aliases", () => {
       const source = readFileSync(
-        join(webRoot, "src/components/diagnosis/Icd10DiagnosisEntryPanel.tsx"),
+        join(webRoot, "src/components/diagnosis/Icd10DiagnosisSearchAutocomplete.tsx"),
         "utf8"
       );
       expect(source).toContain("resolveLocalizedDiagnosisSearchQueries");
       expect(source).toContain("diagnosisMatchesLocalizedSearch");
       expect(source).toContain("getLocalizedDiagnosisDisplayLabel");
       expect(source).not.toContain("console.log(\"[DxSearch]");
+      const panel = readFileSync(
+        join(webRoot, "src/components/diagnosis/Icd10DiagnosisEntryPanel.tsx"),
+        "utf8"
+      );
+      expect(panel).toContain("Icd10DiagnosisSearchAutocomplete");
     });
 
     it("French diagnosis display labels render at UI surfaces only", () => {
       const panel = readFileSync(join(webRoot, "src/components/diagnosis/Icd10DiagnosisEntryPanel.tsx"), "utf8");
+      const autocomplete = readFileSync(
+        join(webRoot, "src/components/diagnosis/Icd10DiagnosisSearchAutocomplete.tsx"),
+        "utf8"
+      );
       const dxPanel = readFileSync(join(webRoot, "src/components/encounters/EncounterDiagnosticsPanel.tsx"), "utf8");
       const discharge = readFileSync(
         join(webRoot, "src/features/emergency/ProviderDischargeDocumentationSection.tsx"),
@@ -8614,7 +8623,7 @@ describe("edDisposition19Y", () => {
         join(webRoot, "src/features/emergency/providerDischargeDocumentationSummary.ts"),
         "utf8"
       );
-      expect(panel).toContain("getLocalizedDiagnosisDisplayLabel");
+      expect(autocomplete).toContain("getLocalizedDiagnosisDisplayLabel");
       expect(dxPanel).toContain("getLocalizedDiagnosisDisplayLabel");
       expect(discharge).toContain("getLocalizedDiagnosisDisplayLabel");
       expect(summary).toContain("getLocalizedDiagnosisDisplayLabel");

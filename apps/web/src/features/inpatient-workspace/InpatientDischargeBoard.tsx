@@ -19,14 +19,20 @@ import {
   INPATIENT_TRANSPORT_MODES,
   buildInpatientDischargeChartDraft,
   dispositionRequiresConditionAtDischarge,
+  dispositionUsesHomeInstructionEngine,
   emptyInpatientNursingDischarge,
   emptyInpatientProviderDischarge,
   extractDischargePlanningFromClinicalOps,
+  formatDischargeNarrativeForDisplay,
+  formatInpatientDischargeDiagnosisDisplay,
+  formatInpatientDischargeHumanLabel,
+  formatInpatientDischargePendingStudyTypeLabel,
   hasMeaningfulDischargeSummary,
   hydrateInpatientFinalDischarge,
   hydrateInpatientNursingDischarge,
   hydrateInpatientProviderDischarge1C,
   instantToLocalDateTimeInput,
+  listProtectedChartFieldsWithUpdates,
   localDateTimeInputToIso,
   markClinicianEditedField,
   mergeChartDraftPreservingClinicianEdits,
@@ -52,7 +58,8 @@ import {
 import { useI18n } from "@/lib/i18n";
 import { apiFetch, asApiObject } from "@/lib/apiClient";
 import { printDischarge } from "@/components/encounters/DischargePrintLayout";
-import { searchIcd10Catalog } from "@/lib/chartApi";
+import { Icd10DiagnosisSearchAutocomplete } from "@/components/diagnosis/Icd10DiagnosisSearchAutocomplete";
+import { isDuplicateDischargeDiagnosis } from "@/components/diagnosis/icd10DiagnosisSearchHelpers";
 import {
   executeInpatientFinalDischarge,
   fetchInpatientClinicalOps,
@@ -64,7 +71,10 @@ import {
   saveInpatientNursingDischarge,
   saveInpatientProviderDischarge,
 } from "@/features/hospital-care/inpatientOperationsApi";
-import { generateInpatientPatientInstructionsFromDiagnoses } from "./inpatientPatientInstructionsFromDiagnoses";
+import {
+  generateInpatientPatientInstructionsFromDiagnoses,
+  inpatientDiagnosisHasSpecificInstructionTemplate,
+} from "./inpatientPatientInstructionsFromDiagnoses";
 import { InpatientDischargeBoardNursing } from "./InpatientDischargeBoardNursing";
 import { InpatientDischargeMedicationsPanel } from "./InpatientDischargeMedicationsPanel";
 import { InpatientDischargeMedReconPanel } from "./InpatientDischargeMedReconPanel";
@@ -261,6 +271,14 @@ export function InpatientDischargeBoard({
     const labeled = t(key);
     return labeled === key ? code.replace(/_/g, " ") : labeled;
   };
+  const enumLabel = (i18nKey: string, code: string) => {
+    const labeled = tp(i18nKey);
+    const full = `${PREFIX}.${i18nKey}`;
+    if (!labeled || labeled === full || labeled === i18nKey) {
+      return formatInpatientDischargeHumanLabel(code) || code;
+    }
+    return labeled;
+  };
 
   /** Provider clinical write: PROVIDER role only — never ADMIN masquerading. */
   const canProvider = roles.includes("PROVIDER");
@@ -297,8 +315,7 @@ export function InpatientDischargeBoard({
   const [dirtyProvider, setDirtyProvider] = useState(false);
   const [dirtyNursing, setDirtyNursing] = useState(false);
   const [dirtyPlanning, setDirtyPlanning] = useState(false);
-  const [icdQuery, setIcdQuery] = useState("");
-  const [icdHits, setIcdHits] = useState<Array<{ code: string; description: string }>>([]);
+  const [instructionSuggestionPending, setInstructionSuggestionPending] = useState(false);
   const [chartBootstrap, setChartBootstrap] = useState<InpatientDischargeChartSnapshot | null>(
     null
   );
@@ -563,7 +580,7 @@ export function InpatientDischargeBoard({
     const next: InpatientFinalDisposition1C = {
       ...(providerDoc.finalDisposition ?? { code }),
       code,
-      labelSnapshot: code ? tp(`dispositionCodes.${code}`) : null,
+      labelSnapshot: code ? enumLabel(`dispositionCodes.${code}`, code) : null,
     };
     touchProvider((prev) => ({
       ...prev,
@@ -781,74 +798,30 @@ export function InpatientDischargeBoard({
     }
   };
 
-  const searchIcd = async () => {
-    const q = icdQuery.trim();
-    if (q.length < 2) {
-      setIcdHits([]);
-      return;
-    }
-    try {
-      const res = await searchIcd10Catalog(q, 8);
-      setIcdHits(
-        (res.items ?? []).map((item) => ({
-          code: item.code,
-          description: item.shortDescription || item.longDescription || item.code,
-        }))
-      );
-    } catch {
-      setIcdHits([]);
-    }
-  };
-
-  const generateInstructions = () => {
+  const generateInstructions = (forceReplaceEdited = false) => {
     if (!providerDoc.dischargeDiagnoses.length || readOnly || !canProvider) return;
+    const usable = providerDoc.dischargeDiagnoses.filter((d) => (d.description ?? "").trim());
+    if (!usable.length) return;
     const { instructions, followUps } = generateInpatientPatientInstructionsFromDiagnoses({
-      diagnoses: providerDoc.dischargeDiagnoses,
+      diagnoses: usable,
       locale: language === "en" ? "en" : "fr",
       facilityDisplayName,
     });
     touchProvider((prev) => {
       const prevPi = prev.patientInstructions;
       const edited = prevPi?.clinicianEdited === true;
-      if (edited) {
-        // Only fill empty instruction slots when clinician already edited.
-        return {
-          ...prev,
-          patientInstructions: {
-            ...prevPi,
-            returnPrecautions:
-              prevPi?.returnPrecautions?.trim() || instructions.returnPrecautions || null,
-            diagnosisInstructions:
-              prevPi?.diagnosisInstructions?.trim() ||
-              instructions.diagnosisInstructions ||
-              null,
-            medicationInstructions:
-              prevPi?.medicationInstructions?.trim() ||
-              instructions.medicationInstructions ||
-              null,
-            activityInstructions:
-              prevPi?.activityInstructions?.trim() ||
-              instructions.activityInstructions ||
-              null,
-            followUpInstructions:
-              prevPi?.followUpInstructions?.trim() ||
-              instructions.followUpInstructions ||
-              null,
-            lastInstructionDraftAt: new Date().toISOString(),
-          } as typeof prevPi,
-          followUps: (prev.followUps ?? []).length ? prev.followUps : followUps,
-          fieldProvenance: {
-            ...prev.fieldProvenance,
-            lastInstructionDraftAt: new Date().toISOString(),
-          },
-        };
+      if (edited && !forceReplaceEdited) {
+        setInstructionSuggestionPending(true);
+        return prev;
       }
+      setInstructionSuggestionPending(false);
       return {
         ...prev,
         patientInstructions: {
           ...instructions,
           clinicianEdited: false,
           generatedAt: new Date().toISOString(),
+          patientInstructionsGiven: false,
         },
         followUps: followUps.length ? followUps : prev.followUps ?? [],
         fieldProvenance: {
@@ -859,33 +832,111 @@ export function InpatientDischargeBoard({
     });
   };
 
-  const refreshFromChart = () => {
-    if (!chartBootstrap || readOnly || !canProvider) return;
-    const edited = providerDoc.fieldProvenance?.clinicianEditedFields ?? [];
-    const draft = buildInpatientDischargeChartDraft({
+  const courseLanguage = language === "en" ? "en" : "fr";
+  const chartDraft = useMemo(() => {
+    if (!chartBootstrap) return null;
+    return buildInpatientDischargeChartDraft({
       ...chartBootstrap,
       dischargeDiagnoses: providerDoc.dischargeDiagnoses.length
         ? providerDoc.dischargeDiagnoses
         : chartBootstrap.dischargeDiagnoses,
-      language: language === "en" ? "en" : "fr",
+      language: courseLanguage,
     });
-    if (edited.length) {
-      const replaceEdited = window.confirm(tp("refreshConfirm"));
-      const { next } = mergeChartDraftPreservingClinicianEdits({
-        existing: providerDoc,
-        draft,
-        forceReplaceFields: replaceEdited ? edited : [],
-      });
-      setProviderDoc(next);
-      setDirtyProvider(true);
-      return;
+  }, [chartBootstrap, courseLanguage, providerDoc.dischargeDiagnoses]);
+
+  const protectedChartUpdates = useMemo(() => {
+    if (!chartDraft) return [];
+    return listProtectedChartFieldsWithUpdates({
+      existing: providerDoc,
+      draft: chartDraft,
+    });
+  }, [chartDraft, providerDoc]);
+
+  const refreshFromChart = () => {
+    if (!chartBootstrap || !chartDraft || readOnly || !canProvider) return;
+    const protectedUpdates = listProtectedChartFieldsWithUpdates({
+      existing: providerDoc,
+      draft: chartDraft,
+    });
+    let forceReplaceFields: string[] = [];
+    if (protectedUpdates.length) {
+      const fieldLines = protectedUpdates
+        .map((field) => `- ${tp(`chartFields.${field}`)}`)
+        .join("\n");
+      const confirmed = window.confirm(
+        `${tp("refreshConfirmIntro")}\n${fieldLines}\n\n${tp("refreshConfirmContinue")}`
+      );
+      if (!confirmed) {
+        const { next } = mergeChartDraftPreservingClinicianEdits({
+          existing: providerDoc,
+          draft: chartDraft,
+          forceReplaceFields: [],
+        });
+        setProviderDoc(next);
+        setDirtyProvider(true);
+        return;
+      }
+      forceReplaceFields = protectedUpdates;
     }
     const { next } = mergeChartDraftPreservingClinicianEdits({
       existing: providerDoc,
-      draft,
+      draft: chartDraft,
+      forceReplaceFields,
     });
     setProviderDoc(next);
     setDirtyProvider(true);
+  };
+
+  const addDischargeDiagnosis = (input: {
+    code?: string | null;
+    description: string;
+  }) => {
+    const description = input.description.trim();
+    if (!description) return;
+    const code = input.code?.trim() || null;
+    if (
+      isDuplicateDischargeDiagnosis(
+        { code, description },
+        providerDoc.dischargeDiagnoses
+      )
+    ) {
+      return;
+    }
+    const nextRows = [
+      ...providerDoc.dischargeDiagnoses,
+      {
+        id: newId("dx"),
+        code: code ?? "",
+        description,
+        isPrimary: providerDoc.dischargeDiagnoses.length === 0,
+        sortOrder: providerDoc.dischargeDiagnoses.length,
+      } satisfies InpatientProviderDischargeDiagnosis,
+    ];
+    const editedInstructions = providerDoc.patientInstructions?.clinicianEdited === true;
+    touchProvider((prev) => ({
+      ...prev,
+      dischargeDiagnoses: nextRows,
+    }));
+    if (editedInstructions) {
+      setInstructionSuggestionPending(true);
+    } else {
+      const { instructions, followUps } = generateInpatientPatientInstructionsFromDiagnoses({
+        diagnoses: nextRows,
+        locale: courseLanguage,
+        facilityDisplayName,
+      });
+      touchProvider((prev) => ({
+        ...prev,
+        dischargeDiagnoses: nextRows,
+        patientInstructions: {
+          ...instructions,
+          clinicianEdited: false,
+          generatedAt: new Date().toISOString(),
+          patientInstructionsGiven: false,
+        },
+        followUps: followUps.length ? followUps : prev.followUps ?? [],
+      }));
+    }
   };
 
   const medReconPreload = useMemo(() => {
@@ -1188,8 +1239,8 @@ export function InpatientDischargeBoard({
                 planningSummary.plannedDestination
                   ? (() => {
                       const code = planningSummary.plannedDestination;
-                      const labeled = tp(`dispositionCodes.${code}`);
-                      return labeled.startsWith(PREFIX) ? code : labeled;
+                      const labeled = enumLabel(`dispositionCodes.${code}`, code);
+                      return labeled;
                     })()
                   : tp("notDocumented")
               }
@@ -1406,7 +1457,7 @@ export function InpatientDischargeBoard({
                 <option value="">—</option>
                 {INPATIENT_FINAL_DISPOSITION_CODES_1C.map((code) => (
                   <option key={code} value={code}>
-                    {tp(`dispositionCodes.${code}`)}
+                    {enumLabel(`dispositionCodes.${code}`, code)}
                   </option>
                 ))}
               </select>
@@ -1525,9 +1576,8 @@ export function InpatientDischargeBoard({
               ) : (
                 providerDoc.dischargeDiagnoses.map((dx) => (
                   <li key={dx.id}>
-                    {dx.isPrimary ? <strong>{tp("primary")}: </strong> : null}
-                    {dx.code ? `${dx.code} — ` : ""}
-                    {dx.description || tp("none")}
+                    {dx.isPrimary ? <strong>{tp("clinicalSummaryPrimary")} — </strong> : null}
+                    {formatInpatientDischargeDiagnosisDisplay(dx) || tp("none")}
                   </li>
                 ))
               )}
@@ -1536,8 +1586,14 @@ export function InpatientDischargeBoard({
           <div>
             <strong style={{ fontSize: 12 }}>{tp("clinicalSummary.hospitalCourse")}</strong>
             <p style={{ margin: "4px 0 0", whiteSpace: "pre-wrap" }}>
-              {(providerDoc.hospitalCourse || "").slice(0, 280) || tp("notDocumented")}
-              {(providerDoc.hospitalCourse || "").length > 280 ? "…" : ""}
+              {(() => {
+                const course = formatDischargeNarrativeForDisplay(
+                  providerDoc.hospitalCourse,
+                  courseLanguage
+                );
+                if (!course) return tp("notDocumented");
+                return course.length > 280 ? `${course.slice(0, 280)}…` : course;
+              })()}
             </p>
           </div>
           <div>
@@ -1555,6 +1611,19 @@ export function InpatientDischargeBoard({
               )}
             </ul>
           </div>
+          {!providerDoc.noKnownPendingStudies && providerDoc.pendingStudies.length > 0 ? (
+            <div>
+              <strong style={{ fontSize: 12 }}>{tp("pendingStudies.title")}</strong>
+              <ul style={{ margin: "4px 0 0", paddingLeft: 18 }}>
+                {providerDoc.pendingStudies.map((row) => (
+                  <li key={row.id}>
+                    {formatInpatientDischargePendingStudyTypeLabel(row.type, courseLanguage)}
+                    {row.description ? ` — ${row.description}` : ""}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
         </div>
 
         <div data-testid="inp-dis-1f-pending-studies" style={boardSectionStyle}>
@@ -1649,137 +1718,174 @@ export function InpatientDischargeBoard({
       {/* Provider details: diagnoses + hospital course */}
       <div id="inp-dis-provider-details" data-testid="inp-dis-1f-provider-details" style={boardSectionStyle}>
         <h3 style={{ margin: 0, fontSize: 14 }}>{tp("diagnoses.title")}</h3>
+        {providerDoc.dischargeDiagnoses.length > 0 &&
+        providerDoc.dischargeDiagnoses.every((d) => !d.isPrimary) ? (
+          <p style={{ margin: 0, fontSize: 12, color: "#b45309" }}>{tp("noPrimaryWarning")}</p>
+        ) : null}
         {providerDoc.dischargeDiagnoses.map((row, index) => (
           <div
             key={row.id}
+            data-testid={`inp-dis-1i-dx-card-${row.id}`}
             style={{
               display: "grid",
-              gap: 6,
-              gridTemplateColumns: "120px 1fr auto",
-              alignItems: "end",
+              gap: 4,
+              padding: "8px 10px",
+              border: "1px solid #e2e8f0",
+              borderRadius: 12,
+              background: "#fff",
             }}
           >
-            <label>
-              <span style={labelStyle}>{tp("diagnoses.code")}</span>
-              <input
-                style={fieldStyle}
-                disabled={!providerWriteEnabled}
-                value={row.code ?? ""}
-                onChange={(e) => {
-                  const next = [...providerDoc.dischargeDiagnoses];
-                  next[index] = { ...row, code: e.target.value };
-                  touchProvider((prev) => ({ ...prev, dischargeDiagnoses: next }));
-                }}
-              />
-            </label>
-            <label>
-              <span style={labelStyle}>{tp("diagnoses.description")}</span>
-              <input
-                style={fieldStyle}
-                disabled={!providerWriteEnabled}
-                value={row.description}
-                onChange={(e) => {
-                  const next = [...providerDoc.dischargeDiagnoses];
-                  next[index] = { ...row, description: e.target.value };
-                  touchProvider((prev) => ({ ...prev, dischargeDiagnoses: next }));
-                }}
-              />
-            </label>
-            <div style={{ display: "flex", gap: 6 }}>
-              <button
-                type="button"
-                style={neutralBtn}
-                disabled={readOnly || !canProvider || row.isPrimary}
-                onClick={() =>
-                  touchProvider((prev) => ({
-                    ...prev,
-                    dischargeDiagnoses: prev.dischargeDiagnoses.map((d, i) => ({
-                      ...d,
-                      isPrimary: i === index,
-                    })),
-                  }))
-                }
-              >
-                {row.isPrimary ? tp("primary") : tp("setPrimary")}
-              </button>
-              <button
-                type="button"
-                style={dangerBtn}
-                disabled={!providerWriteEnabled}
-                onClick={() =>
-                  touchProvider((prev) => ({
-                    ...prev,
-                    dischargeDiagnoses: prev.dischargeDiagnoses.filter((_, i) => i !== index),
-                  }))
-                }
-              >
-                {tp("remove")}
-              </button>
+            {row.isPrimary ? (
+              <span style={{ fontSize: 11, fontWeight: 700, color: "#334155" }}>{tp("primary")}</span>
+            ) : null}
+            <div
+              style={{
+                fontWeight: 700,
+                fontSize: 14,
+                color: "#0f172a",
+                lineHeight: 1.35,
+                display: "-webkit-box",
+                WebkitLineClamp: 2,
+                WebkitBoxOrient: "vertical",
+                overflow: "hidden",
+              }}
+            >
+              {row.description || tp("none")}
             </div>
+            {row.code ? (
+              <div style={{ fontSize: 12, color: "#475569", fontWeight: 400 }}>{row.code}</div>
+            ) : null}
+            {providerWriteEnabled ? (
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                <button
+                  type="button"
+                  style={neutralBtn}
+                  disabled={readOnly || !canProvider || row.isPrimary}
+                  onClick={() =>
+                    touchProvider((prev) => ({
+                      ...prev,
+                      dischargeDiagnoses: prev.dischargeDiagnoses.map((d, i) => ({
+                        ...d,
+                        isPrimary: i === index,
+                      })),
+                    }))
+                  }
+                >
+                  {row.isPrimary ? tp("primary") : tp("setPrimary")}
+                </button>
+                {row.isPrimary ? (
+                  <button
+                    type="button"
+                    style={neutralBtn}
+                    disabled={readOnly || !canProvider}
+                    onClick={() =>
+                      touchProvider((prev) => ({
+                        ...prev,
+                        dischargeDiagnoses: prev.dischargeDiagnoses.map((d) => ({
+                          ...d,
+                          isPrimary: false,
+                        })),
+                      }))
+                    }
+                  >
+                    {tp("removePrimary")}
+                  </button>
+                ) : null}
+                <button
+                  type="button"
+                  style={dangerBtn}
+                  onClick={() =>
+                    touchProvider((prev) => ({
+                      ...prev,
+                      dischargeDiagnoses: prev.dischargeDiagnoses.filter((_, i) => i !== index),
+                    }))
+                  }
+                >
+                  {tp("remove")}
+                </button>
+              </div>
+            ) : null}
           </div>
         ))}
         {providerWriteEnabled ? (
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
-            <button
-              type="button"
-              style={neutralBtn}
-              onClick={() =>
-                touchProvider((prev) => ({
-                  ...prev,
-                  dischargeDiagnoses: [
-                    ...prev.dischargeDiagnoses,
-                    {
-                      id: newId("dx"),
-                      code: "",
-                      description: "",
-                      isPrimary: prev.dischargeDiagnoses.length === 0,
-                      sortOrder: prev.dischargeDiagnoses.length,
-                    } satisfies InpatientProviderDischargeDiagnosis,
-                  ],
-                }))
+          <div style={{ display: "grid", gap: 8 }}>
+            <Icd10DiagnosisSearchAutocomplete
+              language={language === "en" ? "en" : "fr"}
+              disabled={!providerWriteEnabled}
+              label={tp("searchDiagnoses")}
+              placeholder={tp("searchDiagnosesPlaceholder")}
+              searchingLabel={t("diagnosisEntry.icdSearching")}
+              noResultsLabel={t("diagnosisEntry.icdNoResults")}
+              searchFailedLabel={tp("unableToSearchDiagnoses")}
+              alreadyAddedLabel={tp("alreadyAdded")}
+              selectedDiagnoses={providerDoc.dischargeDiagnoses}
+              onSelect={(hit, description) =>
+                addDischargeDiagnosis({ code: hit.code, description })
               }
-            >
-              {tp("addDiagnosis")}
-            </button>
-            <input
-              style={{ ...fieldStyle, maxWidth: 220 }}
-              placeholder={tp("diagnoses.code")}
-              value={icdQuery}
-              onChange={(e) => setIcdQuery(e.target.value)}
-              onBlur={() => void searchIcd()}
             />
-            {icdHits.map((hit) => (
-              <button
-                key={hit.code}
-                type="button"
-                style={secondaryBtn}
-                onClick={() => {
-                  touchProvider((prev) => ({
-                    ...prev,
-                    dischargeDiagnoses: [
-                      ...prev.dischargeDiagnoses,
-                      {
-                        id: newId("dx"),
-                        code: hit.code,
-                        description: hit.description,
-                        isPrimary: prev.dischargeDiagnoses.length === 0,
-                        sortOrder: prev.dischargeDiagnoses.length,
-                      },
-                    ],
-                  }));
-                  setIcdHits([]);
-                  setIcdQuery("");
-                }}
-              >
-                {hit.code}
-              </button>
-            ))}
-            <button type="button" style={secondaryBtn} onClick={generateInstructions}>
+            {(chartBootstrap?.suggestedChartDiagnoses ?? []).filter(
+              (s) =>
+                s.description &&
+                !isDuplicateDischargeDiagnosis(s, providerDoc.dischargeDiagnoses)
+            ).length > 0 ? (
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center" }}>
+                <span style={{ fontSize: 12, color: "#64748b" }}>{tp("suggestedFromChart")}</span>
+                {(chartBootstrap?.suggestedChartDiagnoses ?? []).map((s, i) =>
+                  !s.description ||
+                  isDuplicateDischargeDiagnosis(s, providerDoc.dischargeDiagnoses) ? null : (
+                    <button
+                      key={`${s.code ?? "s"}-${i}`}
+                      type="button"
+                      style={secondaryBtn}
+                      onClick={() =>
+                        addDischargeDiagnosis({
+                          code: s.code,
+                          description: s.description,
+                        })
+                      }
+                    >
+                      {tp("addSuggested")}: {formatInpatientDischargeDiagnosisDisplay(s)}
+                    </button>
+                  )
+                )}
+              </div>
+            ) : null}
+            <button type="button" style={secondaryBtn} onClick={() => generateInstructions()}>
               {tp("refreshInstructions")}
             </button>
           </div>
         ) : null}
-        {providerDoc.patientInstructions ? (
+        {instructionSuggestionPending ? (
+          <div
+            style={{
+              display: "flex",
+              gap: 8,
+              alignItems: "center",
+              flexWrap: "wrap",
+              fontSize: 12,
+              color: "#92400e",
+            }}
+          >
+            <span>{tp("suggestedInstructionUpdates")}</span>
+            {providerWriteEnabled ? (
+              <button
+                type="button"
+                style={secondaryBtn}
+                onClick={() => generateInstructions(true)}
+              >
+                {tp("applySuggestedInstructions")}
+              </button>
+            ) : null}
+          </div>
+        ) : null}
+        {providerDoc.dischargeDiagnoses.some((d) => (d.description ?? "").trim()) &&
+        !providerDoc.dischargeDiagnoses.some((d) =>
+          inpatientDiagnosisHasSpecificInstructionTemplate(d)
+        ) ? (
+          <p style={{ margin: 0, fontSize: 12, color: "#64748b" }}>{tp("noDiagnosisTemplate")}</p>
+        ) : null}
+        {providerDoc.patientInstructions ||
+        dispositionUsesHomeInstructionEngine(dispositionCode) ? (
           <div style={{ display: "grid", gap: 8 }}>
             {(
               [
@@ -1802,6 +1908,7 @@ export function InpatientDischargeBoard({
                         ...prev.patientInstructions,
                         [field]: e.target.value,
                         clinicianEdited: true,
+                        patientInstructionsGiven: prev.patientInstructions?.patientInstructionsGiven === true,
                       },
                     }))
                   }
@@ -1824,9 +1931,17 @@ export function InpatientDischargeBoard({
         {courseOpen ? (
           <div style={{ display: "grid", gap: 8 }}>
             <h3 style={{ margin: 0, fontSize: 14 }}>{tp("hospitalCourse.title")}</h3>
+            {providerWriteEnabled && protectedChartUpdates.length > 0 ? (
+              <div
+                data-testid="inp-dis-1i-chart-updates"
+                style={{ fontSize: 12, color: "#92400e" }}
+              >
+                {tp("chartUpdatesAvailable")}
+              </div>
+            ) : null}
             {providerWriteEnabled && chartBootstrap ? (
               <button type="button" style={secondaryBtn} onClick={refreshFromChart}>
-                {tp("refreshChart")}
+                {protectedChartUpdates.length ? tp("reviewChartUpdates") : tp("refreshChart")}
               </button>
             ) : null}
             {(
@@ -1862,21 +1977,47 @@ export function InpatientDischargeBoard({
                     }
                   />
                 ) : (
-                  <textarea
-                    style={{
-                      ...fieldStyle,
-                      minHeight: field === "hospitalCourse" ? 88 : 52,
-                    }}
-                    disabled={!providerWriteEnabled}
-                    value={(providerDoc[field] as string | null | undefined) ?? ""}
-                    onChange={(e) =>
-                      touchProvider((prev) => ({
-                        ...prev,
-                        [field]: e.target.value,
-                        fieldProvenance: markClinicianEditedField(prev.fieldProvenance, field),
-                      }))
-                    }
-                  />
+                  <>
+                    <textarea
+                      style={{
+                        ...fieldStyle,
+                        minHeight: field === "hospitalCourse" ? 88 : 52,
+                      }}
+                      disabled={!providerWriteEnabled}
+                      value={(providerDoc[field] as string | null | undefined) ?? ""}
+                      onChange={(e) =>
+                        touchProvider((prev) => ({
+                          ...prev,
+                          [field]: e.target.value,
+                          fieldProvenance: markClinicianEditedField(prev.fieldProvenance, field),
+                        }))
+                      }
+                    />
+                    {!String((providerDoc[field] as string | null | undefined) ?? "").trim() &&
+                    field === "consultations" ? (
+                      <span style={{ fontSize: 12, color: "#64748b" }}>
+                        {tp("emptyChart.consultations")}
+                      </span>
+                    ) : null}
+                    {!String((providerDoc[field] as string | null | undefined) ?? "").trim() &&
+                    field === "proceduresAndTreatments" ? (
+                      <span style={{ fontSize: 12, color: "#64748b" }}>
+                        {tp("emptyChart.procedures")}
+                      </span>
+                    ) : null}
+                    {!String((providerDoc[field] as string | null | undefined) ?? "").trim() &&
+                    field === "significantFindings" ? (
+                      <span style={{ fontSize: 12, color: "#64748b" }}>
+                        {tp("emptyChart.findings")}
+                      </span>
+                    ) : null}
+                    {!String((providerDoc[field] as string | null | undefined) ?? "").trim() &&
+                    field === "complications" ? (
+                      <span style={{ fontSize: 12, color: "#64748b" }}>
+                        {tp("emptyChart.complications")}
+                      </span>
+                    ) : null}
+                  </>
                 )}
               </label>
             ))}
@@ -1898,7 +2039,7 @@ export function InpatientDischargeBoard({
             <option value="">—</option>
             {INPATIENT_FINAL_DISPOSITION_CODES_1C.map((code) => (
               <option key={code} value={code}>
-                {tp(`dispositionCodes.${code}`)}
+                {enumLabel(`dispositionCodes.${code}`, code)}
               </option>
             ))}
           </select>
@@ -1927,7 +2068,7 @@ export function InpatientDischargeBoard({
                 <option value="">—</option>
                 {INPATIENT_CONDITION_AT_DISCHARGE_STATUSES.map((status) => (
                   <option key={status} value={status}>
-                    {tp(`condition.${status}`)}
+                    {enumLabel(`condition.${status}`, status)}
                   </option>
                 ))}
               </select>

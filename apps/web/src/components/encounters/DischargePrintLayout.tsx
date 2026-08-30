@@ -38,6 +38,10 @@ import {
   collectInpatientDispositionPrintFacts,
   collectInpatientDischargeMedicationPrintFacts,
   formatInpatientDischargeMedicationPrintLine,
+  formatDischargeNarrativeForDisplay,
+  formatInpatientDischargeDiagnosisDisplay,
+  formatInpatientDischargeHumanLabel,
+  formatInpatientDischargePendingStudyTypeLabel,
   hydrateInpatientProviderDischarge1C,
 } from "@medora/shared";
 
@@ -250,8 +254,11 @@ export function getDischargePrintHtml(params: {
   bodySections.push(`<div style="margin-bottom: 16px;">`);
   if (d) {
     for (const k of DISCHARGE_SUMMARY_CORE_STRING_KEYS) {
-      const v = d[k];
-      if (typeof v === "string" && v.trim()) {
+      const rawVal = d[k];
+      if (typeof rawVal === "string" && rawVal.trim()) {
+        const v = /^[A-Z][A-Z0-9_]+$/.test(rawVal.trim())
+          ? formatInpatientDischargeHumanLabel(rawVal.trim()) || rawVal
+          : rawVal;
         bodySections.push(line(printT(language, DISCHARGE_CORE_FIELD_LABEL_KEYS[k]), v));
       }
     }
@@ -262,8 +269,9 @@ export function getDischargePrintHtml(params: {
     const clinical =
       typeof raw.clinicalDispositionCode === "string" ? raw.clinicalDispositionCode.trim() : "";
     if (clinical) {
+      const human = formatInpatientDischargeHumanLabel(clinical) || clinical;
       bodySections.push(
-        line(printT(language, "encounterChrome.modals.dischargeField.disposition"), clinical)
+        line(printT(language, "encounterChrome.modals.dischargeField.disposition"), human)
       );
     }
   }
@@ -289,6 +297,9 @@ export function getDischargePrintHtml(params: {
         let value = fact.value;
         if (value === "YES") value = printT(language, "printOutput.erPacket.yes");
         if (value === "NO") value = printT(language, "common.no");
+        if (/^[A-Z][A-Z0-9_]+$/.test(value)) {
+          value = formatInpatientDischargeHumanLabel(value) || value;
+        }
         bodySections.push(line(label, value));
       }
       bodySections.push(`</div>`);
@@ -329,6 +340,92 @@ export function getDischargePrintHtml(params: {
         );
       }
       bodySections.push(`</div>`);
+    }
+  }
+
+  {
+    const lang = language === "fr" ? "fr" : "en";
+    const raw =
+      encounter.dischargeSummaryJson && typeof encounter.dischargeSummaryJson === "object"
+        ? (encounter.dischargeSummaryJson as Record<string, unknown>)
+        : null;
+    const providerDoc = hydrateInpatientProviderDischarge1C(raw?.inpatientProviderDischarge);
+    if (providerDoc) {
+      const course = formatDischargeNarrativeForDisplay(providerDoc.hospitalCourse, lang);
+      const dxLines = (providerDoc.dischargeDiagnoses ?? []).map((dx) => {
+        const display = formatInpatientDischargeDiagnosisDisplay(dx);
+        return dx.isPrimary
+          ? `${language === "fr" ? "PRINCIPAL" : "PRIMARY"} — ${display}`
+          : display;
+      });
+      const pendingLines = (providerDoc.pendingStudies ?? []).map((s) =>
+        [formatInpatientDischargePendingStudyTypeLabel(s.type, lang), s.description]
+          .filter(Boolean)
+          .join(" — ")
+      );
+      const consults = formatDischargeNarrativeForDisplay(providerDoc.consultations, lang);
+      const procedures = formatDischargeNarrativeForDisplay(
+        providerDoc.proceduresAndTreatments,
+        lang
+      );
+      const findings = formatDischargeNarrativeForDisplay(providerDoc.significantFindings, lang);
+      if (dxLines.length || course || pendingLines.length || consults || procedures || findings) {
+        bodySections.push(
+          `<h2 style="font-size: 15px; margin: 18px 0 10px 0; font-weight: 700; border-bottom: 1px solid #000; padding-bottom: 4px;">${esc(
+            printT(language, "printOutput.inpatientDischargeDocumentation.sectionTitle")
+          )}</h2>`
+        );
+        bodySections.push(`<div style="margin-bottom: 16px;">`);
+        if (dxLines.length) {
+          bodySections.push(
+            line(
+              printT(language, "printOutput.inpatientDischargeDocumentation.diagnoses"),
+              dxLines.join("; ")
+            )
+          );
+        }
+        if (course) {
+          bodySections.push(
+            line(
+              printT(language, "printOutput.inpatientDischargeDocumentation.hospitalCourse"),
+              course
+            )
+          );
+        }
+        if (consults) {
+          bodySections.push(
+            line(
+              printT(language, "printOutput.inpatientDischargeDocumentation.consultations"),
+              consults
+            )
+          );
+        }
+        if (procedures) {
+          bodySections.push(
+            line(
+              printT(language, "printOutput.inpatientDischargeDocumentation.procedures"),
+              procedures
+            )
+          );
+        }
+        if (findings) {
+          bodySections.push(
+            line(
+              printT(language, "printOutput.inpatientDischargeDocumentation.findings"),
+              findings
+            )
+          );
+        }
+        if (pendingLines.length) {
+          bodySections.push(
+            line(
+              printT(language, "printOutput.inpatientDischargeDocumentation.pendingStudies"),
+              pendingLines.join("\n")
+            )
+          );
+        }
+        bodySections.push(`</div>`);
+      }
     }
   }
 
