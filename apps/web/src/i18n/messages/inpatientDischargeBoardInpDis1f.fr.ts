@@ -50,6 +50,7 @@ export const inpatientDischargeBoardInpDis1fFr = {
     provider: "Médecin",
     medRec: "Réconciliation",
     nursing: "Infirmier",
+    planning: "Planification",
     disposition: "Disposition",
     departure: "Départ",
     final: "Sortie finale",
@@ -178,6 +179,7 @@ export const inpatientDischargeBoardInpDis1fFr = {
     anticipatedDate: "Date de sortie anticipée",
     barriers: "Obstacles",
     workflowState: "État de planification",
+    markReady: "Marquer la planification comme prête",
   },
   nursing: {
     education: "Éducation",
@@ -207,6 +209,7 @@ export const inpatientDischargeBoardInpDis1fFr = {
     departedAt: "Heure de départ",
     conditionAtDeparture: "État au départ",
     accompaniedBy: "Accompagné par",
+    accompaniedByDetail: "Précisions sur l’accompagnement",
     handoff: {
       title: "Transfert / passation",
       reportCalled: "Rapport téléphonique effectué",
@@ -347,6 +350,14 @@ export const inpatientDischargeBoardInpDis1fFr = {
     LAW_ENFORCEMENT: "Forces de l'ordre",
     OTHER: "Autre",
   },
+  accompaniedBy: {
+    SELF: "Patient seul",
+    FAMILY_CAREGIVER: "Famille / aidant",
+    FACILITY_STAFF: "Personnel de l'établissement",
+    EMS: "Ambulance / SMUR",
+    LAW_ENFORCEMENT: "Forces de l'ordre",
+    OTHER: "Autre",
+  },
   transportModes: {
     PRIVATE_VEHICLE: "Véhicule privé",
     TAXI_RIDESHARE: "Taxi / VTC",
@@ -407,14 +418,14 @@ export const inpatientDischargeBoardInpDis1fFr = {
     SNF_FACILITY_REQUIRED: "Le nom de l'établissement est requis pour cette disposition.",
     DECEASED_PRONOUNCED_AT_REQUIRED: "La date/heure de constatation est requise pour un décès.",
     WAITING_PROVIDER_FINALIZE: "En attente de la finalisation médicale de la sortie",
+    PLANNING_DESTINATION_REQUIRED: "La destination prévue est requise.",
+    PLANNING_TRANSPORT_REQUIRED: "Le plan de transport est requis pour cette destination.",
+    PLANNING_HOME_HEALTH_REQUIRED: "Les détails de soins à domicile sont requis pour cette destination.",
   },
   medRecon: {
     title: "Réconciliation médicamenteuse",
     open: "Ouvrir la réconciliation médicamenteuse",
     hide: "Masquer la réconciliation médicamenteuse",
-    hint: "Examinez les médicaments à domicile, l'historique et le plan médical de sortie. Les ordres hospitaliers sont étiquetés séparément et ne sont pas traités comme des médicaments à domicile.",
-    hintFast:
-      "Réconciliation en un clic : Poursuivre, Arrêter ou Modifier. Les changements du médecin et les nouveaux médicaments de sortie apparaissent dans la même liste.",
     summary: "{total} médicaments · {reconciled} réconciliés · {needsReview} à revoir",
     finalizeBlocked: "Réconciliez chaque médicament avant de finaliser.",
     bulkContinue: "Poursuivre tous les médicaments inchangés",
@@ -446,13 +457,9 @@ export const inpatientDischargeBoardInpDis1fFr = {
     providerPlan: "Plan médical de sortie",
     saveDraft: "Enregistrer le brouillon de réconciliation",
     finalize: "Finaliser la réconciliation médicamenteuse",
-    empty: "Aucun médicament chargé. Ajoutez depuis l'historique ou la recherche.",
+    empty: "Aucun médicament chargé.",
     noneDocumented: "Aucun médicament pré-admission documenté.",
-    historyUnavailable:
-      "Historique médicamenteux indisponible. Échec de récupération — ce n'est pas la même chose qu'aucun médicament.",
-    reviewHomeMedsHint:
-      "Documentez ou révisez les médicaments à domicile dans l'admission infirmière / l'historique clinique du patient si besoin, puis rechargez.",
-    retryHint: "Rechargez le tableau de sortie après rétablissement de la connexion, puis réconciliez.",
+    historyUnavailable: "Historique médicamenteux indisponible.",
     addFromSearch: "Ajouter un médicament",
     finalized: "Réconciliation médicamenteuse finalisée",
     sourceType: {

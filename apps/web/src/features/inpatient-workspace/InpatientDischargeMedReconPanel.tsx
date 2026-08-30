@@ -87,6 +87,7 @@ export function InpatientDischargeMedReconPanel({
   const summary = useMemo(() => summarizeMedReconWorkspace(lines), [lines]);
   const canFinalize = allRequiredMedReconDecisionsComplete(lines);
   const bulkTargets = useMemo(() => lines.filter(canBulkContinueMedReconLine), [lines]);
+  const operationallyFinalized = finalized && summary.needsReview === 0;
 
   const setDecision = (id: string, decision: MedReconDecision, reason?: string | null) => {
     setLines((prev) =>
@@ -171,12 +172,11 @@ export function InpatientDischargeMedReconPanel({
     <div data-testid="inp-dis-1g-med-recon" style={{ display: "grid", gap: 8 }}>
       <button type="button" style={neutralBtn} onClick={() => setOpen((v) => !v)}>
         {open ? tp("medRecon.hide") : tp("medRecon.open")}
-        {finalized ? ` · ${tp("medRecon.finalized")}` : ""}
+        {operationallyFinalized ? ` · ${tp("medRecon.finalized")}` : ""}
       </button>
       {open ? (
         <div style={panel} data-testid="inp-dis-1g-med-recon-drawer">
           <h3 style={{ margin: 0, fontSize: 14 }}>{tp("medRecon.title")}</h3>
-          <p style={{ margin: 0, fontSize: 11, color: "#64748b" }}>{tp("medRecon.hintFast")}</p>
           <div
             data-testid="inp-dis-1g-med-recon-summary"
             style={{ fontSize: 12, fontWeight: 600, color: "#0f172a" }}
@@ -187,7 +187,7 @@ export function InpatientDischargeMedReconPanel({
               .replace("{needsReview}", String(summary.needsReview))}
           </div>
 
-          {!disabled && !finalized ? (
+          {!disabled && !operationallyFinalized ? (
             <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
               <MedicationAutocomplete
                 key={searchKey}
@@ -219,16 +219,6 @@ export function InpatientDischargeMedReconPanel({
           {lines.length === 0 ? (
             <div data-testid="inp-dis-1g-med-recon-empty" style={{ display: "grid", gap: 6 }}>
               <p style={{ margin: 0, fontSize: 12, color: "#64748b" }}>{emptyMessage}</p>
-              {historyState === "NO_DOCUMENTED_MEDICATIONS" ? (
-                <p style={{ margin: 0, fontSize: 11, color: "#64748b" }}>
-                  {tp("medRecon.reviewHomeMedsHint")}
-                </p>
-              ) : null}
-              {historyState === "MEDICATION_HISTORY_UNAVAILABLE" ? (
-                <p style={{ margin: 0, fontSize: 11, color: "#b45309" }}>
-                  {tp("medRecon.retryHint")}
-                </p>
-              ) : null}
             </div>
           ) : (
             lines.map((line) => {
@@ -316,7 +306,7 @@ export function InpatientDischargeMedReconPanel({
                     </span>
                   </div>
 
-                  {!disabled && !finalized ? (
+                  {!disabled && !operationallyFinalized ? (
                     <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                       {kind === "PROVIDER_CHANGED" ? (
                         <ActionBtn
@@ -379,7 +369,7 @@ export function InpatientDischargeMedReconPanel({
                     </div>
                   ) : null}
 
-                  {isEdit && !finalized ? (
+                  {isEdit && !operationallyFinalized ? (
                     <div style={{ display: "grid", gap: 6 }} data-testid="inp-dis-1g-med-recon-editor">
                       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
                         <input
@@ -469,7 +459,7 @@ export function InpatientDischargeMedReconPanel({
           )}
 
           {error ? <p style={{ margin: 0, color: "#b91c1c", fontSize: 12 }}>{error}</p> : null}
-          {!disabled && !finalized ? (
+          {!disabled && !operationallyFinalized ? (
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
               <button
                 type="button"

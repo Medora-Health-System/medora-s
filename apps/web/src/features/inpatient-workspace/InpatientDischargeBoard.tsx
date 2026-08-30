@@ -10,14 +10,16 @@ import {
 } from "react";
 import {
   INPATIENT_CONDITION_AT_DISCHARGE_STATUSES,
-  INPATIENT_DISCHARGE_WORKFLOW_STATES,
   INPATIENT_FINAL_DISPOSITION_CODES_1C,
   INPATIENT_HOME_HEALTH_SERVICES,
   INPATIENT_PENDING_STUDY_TYPES,
   INPATIENT_TRANSFER_REASONS,
   INPATIENT_TRANSFER_SERVICES,
   INPATIENT_TRANSPORT_MODES,
+  allRequiredMedReconDecisionsComplete,
   buildInpatientDischargeChartDraft,
+  buildInpatientDischargeMedReconPreload,
+  demoteInpatientDischargePlanningWorkflowAfterEdit,
   dispositionRequiresConditionAtDischarge,
   dispositionUsesHomeInstructionEngine,
   emptyInpatientNursingDischarge,
@@ -32,6 +34,8 @@ import {
   hydrateInpatientNursingDischarge,
   hydrateInpatientProviderDischarge1C,
   instantToLocalDateTimeInput,
+  isInpatientDischargePlanningOperationallyReady,
+  isInpatientMedReconEffectivelyComplete,
   listProtectedChartFieldsWithUpdates,
   localDateTimeInputToIso,
   markClinicianEditedField,
@@ -39,6 +43,7 @@ import {
   projectInpatientDischargePlanningSummary,
   resolveInpatientDischargeForDisplay,
   synthesizeInpatientDischargeSummaryDraft,
+  validateInpatientDischargePlanningReady,
   type InpatientClinicalOpsV1,
   type InpatientDischargeChartSnapshot,
   type InpatientDischargeFollowUp1C,
@@ -53,7 +58,6 @@ import {
   type InpatientProviderDischargeV1C,
   type PatientClinicalHistoryHomeMedications,
   type HomeMedicationReconciliationLineV1,
-  buildInpatientDischargeMedReconPreload,
 } from "@medora/shared";
 import { useI18n } from "@/lib/i18n";
 import { apiFetch, asApiObject } from "@/lib/apiClient";
@@ -253,6 +257,48 @@ function emptyPlanning(): PlanningDraft {
   };
 }
 
+function serializeMedReconLine(l: {
+  id: string;
+  sourceLabel: string;
+  medicationName: string;
+  strength?: string | null;
+  dose?: string | null;
+  unit?: string | null;
+  route?: string | null;
+  frequency?: string | null;
+  instructions?: string | null;
+  catalogMedicationId?: string | null;
+  source: string;
+  rowKind?: string | null;
+  homeRegimen?: string | null;
+  dischargeRegimen?: string | null;
+  providerPlanRelationship?: string | null;
+  providerPlanSummary?: string | null;
+  decision: string;
+  reason?: string | null;
+}) {
+  return {
+    id: l.id,
+    sourceLabel: l.sourceLabel,
+    medicationName: l.medicationName,
+    strength: l.strength ?? null,
+    dose: l.dose ?? null,
+    unit: l.unit ?? null,
+    route: l.route ?? null,
+    frequency: l.frequency ?? null,
+    instructions: l.instructions ?? null,
+    catalogMedicationId: l.catalogMedicationId ?? null,
+    source: l.source,
+    rowKind: l.rowKind ?? null,
+    homeRegimen: l.homeRegimen ?? null,
+    dischargeRegimen: l.dischargeRegimen ?? null,
+    providerPlanRelationship: l.providerPlanRelationship ?? null,
+    providerPlanSummary: l.providerPlanSummary ?? null,
+    decision: l.decision,
+    reason: l.reason ?? null,
+  };
+}
+
 export function InpatientDischargeBoard({
   encounterId,
   encounter,
@@ -332,6 +378,10 @@ export function InpatientDischargeBoard({
 
   const dirty = dirtyProvider || dirtyNursing || dirtyPlanning;
   const readOnly = encounterClosed || Boolean(completed);
+  const planningDisplayReady = isInpatientDischargePlanningOperationallyReady({
+    workflowState: planning.workflowState,
+    dirty: dirtyPlanning,
+  });
 
   const applyPlanningFromOps = useCallback((nextOps: InpatientClinicalOpsV1 | null) => {
     const plan = nextOps?.dischargePlanning;
@@ -503,6 +553,12 @@ export function InpatientDischargeBoard({
     const r = finalReadiness;
     return [
       {
+        id: "planning",
+        label: tp("readiness.planning"),
+        status: planningDisplayReady ? "complete" : "incomplete",
+        target: "inp-dis-1f-card-planning",
+      },
+      {
         id: "provider",
         label: tp("readiness.provider"),
         status: r?.provider ?? (providerFinalized ? "complete" : "incomplete"),
@@ -554,6 +610,7 @@ export function InpatientDischargeBoard({
     medReconStatus,
     nursingCompleted,
     nursingDoc.departure?.departedAt,
+    planningDisplayReady,
     providerFinalized,
     t,
   ]);
@@ -574,6 +631,15 @@ export function InpatientDischargeBoard({
   const touchNursing = (updater: (prev: InpatientNursingDischargeV1D) => InpatientNursingDischargeV1D) => {
     setNursingDoc(updater);
     setDirtyNursing(true);
+  };
+
+  const touchPlanning = (patch: Partial<PlanningDraft>) => {
+    setPlanning((p) => ({
+      ...p,
+      ...patch,
+      workflowState: demoteInpatientDischargePlanningWorkflowAfterEdit(p.workflowState),
+    }));
+    setDirtyPlanning(true);
   };
 
   const setDisposition = (code: string) => {
@@ -656,10 +722,19 @@ export function InpatientDischargeBoard({
     }
   };
 
-  const savePlanning = async () => {
+  const savePlanning = async (workflowStateOverride?: string) => {
     if (!canOps || readOnly) return;
+    const nextWorkflow = workflowStateOverride || planning.workflowState || "PLANNING";
+    if (nextWorkflow === "READY") {
+      const ready = validateInpatientDischargePlanningReady(planning);
+      if (!ready.ok) {
+        setValidationErrors(ready.errors);
+        return;
+      }
+    }
     setSaving(true);
     setError(null);
+    setValidationErrors([]);
     try {
       const res = await patchInpatientClinicalOps(encounterId, {
         setDischargePlanning: {
@@ -670,7 +745,7 @@ export function InpatientDischargeBoard({
           careTeamNotified: planning.careTeamNotified,
           anticipatedDischargeDate: planning.anticipatedDischargeDate || null,
           barriers: planning.barriers || null,
-          workflowState: planning.workflowState || "PLANNING",
+          workflowState: nextWorkflow,
         },
       });
       const nextOps = res.ops as InpatientClinicalOpsV1;
@@ -683,20 +758,8 @@ export function InpatientDischargeBoard({
     }
   };
 
-  const completeMedRec = async () => {
-    if (!canOps || readOnly) return;
-    setSaving(true);
-    setError(null);
-    try {
-      await patchInpatientClinicalOps(encounterId, {
-        finalizeInpatientMedRecon: { markComplete: true },
-      });
-      await loadAll();
-    } catch {
-      setError(tp("errors.medRec"));
-    } finally {
-      setSaving(false);
-    }
+  const markPlanningReady = async () => {
+    await savePlanning("READY");
   };
 
   const executeFinal = async () => {
@@ -961,7 +1024,35 @@ export function InpatientDischargeBoard({
   const medReconHistoryState: InpatientDischargeMedReconHistoryState =
     medReconPreload.historyState;
 
-  const medReconFinalized = medReconStatus === "COMPLETE";
+  const medReconFinalized = isInpatientMedReconEffectivelyComplete({
+    storedComplete:
+      medReconStatus === "COMPLETE" ||
+      finalReadiness?.medicationReconciliation === "complete",
+    lines: medReconLines,
+  });
+
+  const completeMedRec = async () => {
+    if (!canOps || readOnly) return;
+    if (medReconLines.length > 0 && !allRequiredMedReconDecisionsComplete(medReconLines)) {
+      setError(tp("medRecon.finalizeBlocked"));
+      return;
+    }
+    setSaving(true);
+    setError(null);
+    try {
+      await patchInpatientClinicalOps(encounterId, {
+        finalizeInpatientMedRecon: {
+          markComplete: true,
+          lines: medReconLines.map(serializeMedReconLine),
+        },
+      });
+      await loadAll();
+    } catch {
+      setError(tp("errors.medRec"));
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const statusBadge = (complete: boolean, labelComplete: string, labelPending: string) => (
     <span style={complete ? badgeComplete : badgePending}>
@@ -1221,11 +1312,11 @@ export function InpatientDischargeBoard({
         </CardShell>
 
         <CardShell
+          id="inp-dis-1f-card-planning"
           data-testid="inp-dis-1f-card-planning"
           title={tp("cards.planning")}
           badge={
-            planningSummary.workflowState === "READY" ||
-            planningSummary.workflowState === "COMPLETED" ? (
+            planningDisplayReady ? (
               <span style={badgeComplete}>{tp("readiness.ready")}</span>
             ) : (
               <span style={badgePending}>{tp("cards.pending")}</span>
@@ -1406,26 +1497,25 @@ export function InpatientDischargeBoard({
           <strong>{tp("readiness.medRec")}</strong>
           <span
             style={
-              medReconStatus === "COMPLETE" ||
-              finalReadiness?.medicationReconciliation === "complete"
-                ? badgeComplete
-                : finalReadiness?.medicationReconciliation === "not_applicable"
-                  ? badgePending
+              finalReadiness?.medicationReconciliation === "not_applicable"
+                ? badgePending
+                : medReconFinalized
+                  ? badgeComplete
                   : badgeAttention
             }
           >
             {finalReadiness?.medicationReconciliation === "not_applicable"
               ? tp("readiness.not_applicable")
-              : medReconStatus === "COMPLETE" ||
-                  finalReadiness?.medicationReconciliation === "complete"
+              : medReconFinalized
                 ? tp("readiness.complete")
                 : tp("readiness.attention")}
           </span>
           {!readOnly &&
           canOps &&
-          medReconStatus !== "COMPLETE" &&
-          finalReadiness?.medicationReconciliation !== "complete" &&
-          finalReadiness?.medicationReconciliation !== "not_applicable" ? (
+          !medReconFinalized &&
+          finalReadiness?.medicationReconciliation !== "not_applicable" &&
+          (medReconLines.length === 0 ||
+            allRequiredMedReconDecisionsComplete(medReconLines)) ? (
             <button
               type="button"
               style={secondaryBtn}
@@ -1442,17 +1532,22 @@ export function InpatientDischargeBoard({
       {planningOpen ? (
         <div data-testid="inp-dis-1f-planning-details" style={boardSectionStyle}>
           <h3 style={{ margin: 0, fontSize: 14 }}>{tp("cards.planning")}</h3>
-          <div style={{ display: "grid", gap: 8, gridTemplateColumns: "1fr 1fr" }}>
+          <div
+            style={{
+              display: "grid",
+              gap: 8,
+              gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 220px), 1fr))",
+              minWidth: 0,
+            }}
+          >
             <label>
               <span style={labelStyle}>{tp("planning.plannedDestination")}</span>
               <select
+                data-testid="inp-dis-1j-planning-destination"
                 style={fieldStyle}
                 disabled={readOnly || !canOps}
                 value={planning.destination}
-                onChange={(e) => {
-                  setPlanning((p) => ({ ...p, destination: e.target.value }));
-                  setDirtyPlanning(true);
-                }}
+                onChange={(e) => touchPlanning({ destination: e.target.value })}
               >
                 <option value="">—</option>
                 {INPATIENT_FINAL_DISPOSITION_CODES_1C.map((code) => (
@@ -1463,33 +1558,13 @@ export function InpatientDischargeBoard({
               </select>
             </label>
             <label>
-              <span style={labelStyle}>{tp("planning.workflowState")}</span>
-              <select
-                style={fieldStyle}
-                disabled={readOnly || !canOps}
-                value={planning.workflowState}
-                onChange={(e) => {
-                  setPlanning((p) => ({ ...p, workflowState: e.target.value }));
-                  setDirtyPlanning(true);
-                }}
-              >
-                {INPATIENT_DISCHARGE_WORKFLOW_STATES.map((s) => (
-                  <option key={s} value={s}>
-                    {tp(`workflowStates.${s}`)}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label>
               <span style={labelStyle}>{tp("planning.transportPlan")}</span>
               <input
+                data-testid="inp-dis-1j-planning-transport"
                 style={fieldStyle}
                 disabled={readOnly || !canOps}
                 value={planning.transportation}
-                onChange={(e) => {
-                  setPlanning((p) => ({ ...p, transportation: e.target.value }));
-                  setDirtyPlanning(true);
-                }}
+                onChange={(e) => touchPlanning({ transportation: e.target.value })}
               />
             </label>
             <label>
@@ -1499,10 +1574,7 @@ export function InpatientDischargeBoard({
                 style={fieldStyle}
                 disabled={readOnly || !canOps}
                 value={planning.anticipatedDischargeDate}
-                onChange={(e) => {
-                  setPlanning((p) => ({ ...p, anticipatedDischargeDate: e.target.value }));
-                  setDirtyPlanning(true);
-                }}
+                onChange={(e) => touchPlanning({ anticipatedDischargeDate: e.target.value })}
               />
             </label>
             <label>
@@ -1511,10 +1583,7 @@ export function InpatientDischargeBoard({
                 style={fieldStyle}
                 disabled={readOnly || !canOps}
                 value={planning.homeHealth}
-                onChange={(e) => {
-                  setPlanning((p) => ({ ...p, homeHealth: e.target.value }));
-                  setDirtyPlanning(true);
-                }}
+                onChange={(e) => touchPlanning({ homeHealth: e.target.value })}
               />
             </label>
             <label>
@@ -1523,10 +1592,7 @@ export function InpatientDischargeBoard({
                 style={fieldStyle}
                 disabled={readOnly || !canOps}
                 value={planning.specialNeedsEquipment}
-                onChange={(e) => {
-                  setPlanning((p) => ({ ...p, specialNeedsEquipment: e.target.value }));
-                  setDirtyPlanning(true);
-                }}
+                onChange={(e) => touchPlanning({ specialNeedsEquipment: e.target.value })}
               />
             </label>
           </div>
@@ -1536,30 +1602,36 @@ export function InpatientDischargeBoard({
               style={{ ...fieldStyle, minHeight: 48 }}
               disabled={readOnly || !canOps}
               value={planning.barriers}
-              onChange={(e) => {
-                setPlanning((p) => ({ ...p, barriers: e.target.value }));
-                setDirtyPlanning(true);
-              }}
+              onChange={(e) => touchPlanning({ barriers: e.target.value })}
             />
           </label>
           <Check
             label={tp("careTeamNotified")}
             checked={planning.careTeamNotified}
             disabled={readOnly || !canOps}
-            onChange={(v) => {
-              setPlanning((p) => ({ ...p, careTeamNotified: v }));
-              setDirtyPlanning(true);
-            }}
+            onChange={(v) => touchPlanning({ careTeamNotified: v })}
           />
           {!readOnly && canOps ? (
-            <button
-              type="button"
-              style={secondaryBtn}
-              disabled={saving}
-              onClick={() => void savePlanning()}
-            >
-              {saving ? tp("actions.saving") : tp("savePlanning")}
-            </button>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+              <button
+                type="button"
+                data-testid="inp-dis-1j-save-planning"
+                style={secondaryBtn}
+                disabled={saving}
+                onClick={() => void savePlanning()}
+              >
+                {saving ? tp("actions.saving") : tp("savePlanning")}
+              </button>
+              <button
+                type="button"
+                data-testid="inp-dis-1j-mark-planning-ready"
+                style={primaryBtn}
+                disabled={saving}
+                onClick={() => void markPlanningReady()}
+              >
+                {tp("planning.markReady")}
+              </button>
+            </div>
           ) : null}
         </div>
       ) : null}

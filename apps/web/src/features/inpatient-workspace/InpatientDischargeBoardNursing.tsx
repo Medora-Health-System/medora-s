@@ -7,6 +7,8 @@
 
 import type { CSSProperties, ReactNode } from "react";
 import {
+  INPATIENT_CONDITION_AT_DISCHARGE_STATUSES,
+  INPATIENT_DEPARTURE_ACCOMPANIED_BY,
   INPATIENT_NURSING_EDUCATION_RECIPIENTS,
   INPATIENT_NURSING_TRANSPORT_MODES,
   INPATIENT_NURSING_UNDERSTANDING,
@@ -75,7 +77,7 @@ function Card({
   id?: string;
 }) {
   return (
-    <div id={id} data-testid={testId} style={boardSectionStyle}>
+    <div id={id} data-testid={testId} style={{ ...boardSectionStyle, minWidth: 0, maxWidth: "100%" }}>
       <h3 style={{ margin: 0, fontSize: 14 }}>{title}</h3>
       {children}
     </div>
@@ -85,7 +87,10 @@ function Card({
 const fiveCol: CSSProperties = {
   display: "grid",
   gap: 10,
-  gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+  gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 190px), 1fr))",
+  minWidth: 0,
+  width: "100%",
+  maxWidth: "100%",
 };
 
 export function dispositionNursingFlags(code: string) {
@@ -1102,9 +1107,12 @@ export function InpatientDischargeBoardNursing({
           title={tp("nursing.departure")}
           testId="inp-dis-1f-nursing-departure"
         >
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+          <div
+            data-testid="inp-dis-1j-departure-datetime"
+            style={{ display: "grid", gap: 8, minWidth: 0, maxWidth: "100%" }}
+          >
             <input
-              style={{ ...fieldStyle, flex: 1 }}
+              style={fieldStyle}
               disabled={disabled}
               type="datetime-local"
               value={instantToLocalDateTimeInput(nursingDoc.departure?.departedAt)}
@@ -1121,7 +1129,7 @@ export function InpatientDischargeBoardNursing({
             {!disabled ? (
               <button
                 type="button"
-                style={secondaryBtn}
+                style={{ ...secondaryBtn, maxWidth: "100%" }}
                 onClick={() =>
                   touchNursing((prev) => ({
                     ...prev,
@@ -1133,30 +1141,86 @@ export function InpatientDischargeBoardNursing({
               </button>
             ) : null}
           </div>
-          <input
-            style={fieldStyle}
-            disabled={disabled}
-            placeholder={tp("nursing.conditionAtDeparture")}
-            value={nursingDoc.departure?.conditionAtDeparture ?? ""}
-            onChange={(e) =>
-              touchNursing((prev) => ({
-                ...prev,
-                departure: { ...prev.departure, conditionAtDeparture: e.target.value },
-              }))
-            }
-          />
-          <input
-            style={fieldStyle}
-            disabled={disabled}
-            placeholder={tp("nursing.accompaniedBy")}
-            value={nursingDoc.departure?.accompaniedBy ?? ""}
-            onChange={(e) =>
-              touchNursing((prev) => ({
-                ...prev,
-                departure: { ...prev.departure, accompaniedBy: e.target.value },
-              }))
-            }
-          />
+          <label style={{ minWidth: 0, maxWidth: "100%" }}>
+            <span style={labelStyle}>{tp("nursing.conditionAtDeparture")}</span>
+            <select
+              data-testid="inp-dis-1j-condition-at-departure"
+              style={fieldStyle}
+              disabled={disabled}
+              value={nursingDoc.departure?.conditionAtDeparture ?? ""}
+              onChange={(e) =>
+                touchNursing((prev) => ({
+                  ...prev,
+                  departure: { ...prev.departure, conditionAtDeparture: e.target.value },
+                }))
+              }
+            >
+              <option value="">—</option>
+              {INPATIENT_CONDITION_AT_DISCHARGE_STATUSES.map((code) => (
+                <option key={code} value={code}>
+                  {tp(`condition.${code}`)}
+                </option>
+              ))}
+              {nursingDoc.departure?.conditionAtDeparture &&
+              !(INPATIENT_CONDITION_AT_DISCHARGE_STATUSES as readonly string[]).includes(
+                nursingDoc.departure.conditionAtDeparture
+              ) ? (
+                <option value={nursingDoc.departure.conditionAtDeparture}>
+                  {nursingDoc.departure.conditionAtDeparture}
+                </option>
+              ) : null}
+            </select>
+          </label>
+          <label style={{ minWidth: 0, maxWidth: "100%" }}>
+            <span style={labelStyle}>{tp("nursing.accompaniedBy")}</span>
+            <select
+              data-testid="inp-dis-1j-accompanied-by"
+              style={fieldStyle}
+              disabled={disabled}
+              value={nursingDoc.departure?.accompaniedBy ?? ""}
+              onChange={(e) =>
+                touchNursing((prev) => ({
+                  ...prev,
+                  departure: {
+                    ...prev.departure,
+                    accompaniedBy: e.target.value,
+                    accompaniedByDetail:
+                      e.target.value === "OTHER" ? prev.departure?.accompaniedByDetail ?? "" : null,
+                  },
+                }))
+              }
+            >
+              <option value="">—</option>
+              {INPATIENT_DEPARTURE_ACCOMPANIED_BY.map((code) => (
+                <option key={code} value={code}>
+                  {tp(`accompaniedBy.${code}`)}
+                </option>
+              ))}
+              {nursingDoc.departure?.accompaniedBy &&
+              !(INPATIENT_DEPARTURE_ACCOMPANIED_BY as readonly string[]).includes(
+                nursingDoc.departure.accompaniedBy
+              ) ? (
+                <option value={nursingDoc.departure.accompaniedBy}>
+                  {nursingDoc.departure.accompaniedBy}
+                </option>
+              ) : null}
+            </select>
+          </label>
+          {nursingDoc.departure?.accompaniedBy === "OTHER" ? (
+            <input
+              data-testid="inp-dis-1j-accompanied-by-detail"
+              style={fieldStyle}
+              disabled={disabled}
+              placeholder={tp("nursing.accompaniedByDetail")}
+              value={nursingDoc.departure?.accompaniedByDetail ?? ""}
+              onChange={(e) =>
+                touchNursing((prev) => ({
+                  ...prev,
+                  departure: { ...prev.departure, accompaniedByDetail: e.target.value },
+                }))
+              }
+            />
+          ) : null}
         </Card>
       ) : null}
     </div>

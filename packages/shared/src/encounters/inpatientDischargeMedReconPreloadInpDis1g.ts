@@ -200,6 +200,119 @@ export function allRequiredMedReconDecisionsComplete(
   return lines.every((l) => !medReconLineNeedsReview(l));
 }
 
+/**
+ * Stored COMPLETE/finalizedAt is not enough: current required lines must all have decisions,
+ * including provider new/change/stop introduced after a prior finalize.
+ */
+export function isInpatientMedReconEffectivelyComplete(input: {
+  storedComplete: boolean;
+  lines: InpatientDischargeMedReconLineV1[];
+}): boolean {
+  if (!input.storedComplete) return false;
+  if (input.lines.length === 0) return true;
+  return allRequiredMedReconDecisionsComplete(input.lines);
+}
+
+function providerRowKindFromRelationship(
+  rel: string | null | undefined
+): InpatientDischargeMedReconRowKind {
+  const u = (rel ?? "").trim().toUpperCase();
+  if (u === "CHANGE") return "PROVIDER_CHANGED";
+  if (u === "STOP") return "PROVIDER_STOP";
+  if (u === "NEW") return "PROVIDER_NEW";
+  return "PROVIDER_CONTINUE";
+}
+
+function normalizeRegimenKey(value: string | null | undefined): string {
+  return (value ?? "").trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+/**
+ * Keep saved nurse decisions, then reopen review for current provider new/change/stop
+ * that is not already reflected in the saved workspace.
+ */
+export function mergeSavedMedReconWithCurrentProviderPlan(input: {
+  savedLines: InpatientDischargeMedReconLineV1[];
+  providerDischargeMedications?: InpatientDischargeMedicationLine1C[] | null;
+}): InpatientDischargeMedReconLineV1[] {
+  const providers = collectProviderSeeds(input.providerDischargeMedications);
+  if (providers.length === 0) return input.savedLines.map((l) => ({ ...l }));
+
+  const next = input.savedLines.map((l) => ({ ...l }));
+  const usedSavedIds = new Set<string>();
+  const extras: InpatientDischargeMedReconLineV1[] = [];
+
+  const takeSaved = (name: string): InpatientDischargeMedReconLineV1 | null => {
+    const key = medicationBaseMatchKey(name);
+    if (!key) return null;
+    const found = next.find(
+      (l) => !usedSavedIds.has(l.id) && medicationBaseMatchKey(l.medicationName) === key
+    );
+    if (!found) return null;
+    usedSavedIds.add(found.id);
+    return found;
+  };
+
+  for (const prov of providers) {
+    const name = trimOrNull(prov.displayName);
+    if (!name) continue;
+    const rel = (trimOrNull(prov.relationship)?.toUpperCase() ?? "CONTINUE") as string;
+    const dReg = providerRegimen(prov);
+    const rowKind = providerRowKindFromRelationship(rel);
+    const saved = takeSaved(name);
+    if (!saved) {
+      extras.push({
+        id: `pair-new-${prov.id}`,
+        sourceLabel: buildSourceLabel([name, dReg]),
+        medicationName: name,
+        dose: trimOrNull(prov.dose),
+        unit: trimOrNull(prov.unit),
+        route: trimOrNull(prov.route),
+        frequency: trimOrNull(prov.frequency),
+        instructions: trimOrNull(prov.instructions),
+        catalogMedicationId: trimOrNull(prov.catalogMedicationId),
+        source: "PROVIDER_DISCHARGE_PLAN",
+        rowKind,
+        homeRegimen: null,
+        dischargeRegimen: dReg || null,
+        providerPlanRelationship: rel,
+        providerPlanSummary: dReg || null,
+        decision: "UNABLE_TO_VERIFY",
+        reason: null,
+      });
+      continue;
+    }
+
+    const prevRel = (saved.providerPlanRelationship ?? "").trim().toUpperCase();
+    const hadProviderPlan = Boolean(prevRel);
+    const regimenChanged =
+      normalizeRegimenKey(saved.dischargeRegimen) !== normalizeRegimenKey(dReg) &&
+      Boolean(normalizeRegimenKey(saved.dischargeRegimen) || normalizeRegimenKey(dReg));
+    const planChanged = hadProviderPlan
+      ? prevRel !== rel ||
+        normalizeRegimenKey(saved.dischargeRegimen) !== normalizeRegimenKey(dReg)
+      : rel === "CHANGE" ||
+        rel === "STOP" ||
+        (rel === "NEW" && regimenChanged && Boolean(normalizeRegimenKey(saved.dischargeRegimen)));
+    saved.rowKind = rowKind;
+    saved.providerPlanRelationship = rel;
+    saved.providerPlanSummary = dReg || null;
+    saved.dischargeRegimen = dReg || saved.dischargeRegimen;
+    saved.dose = trimOrNull(prov.dose) ?? saved.dose;
+    saved.unit = trimOrNull(prov.unit) ?? saved.unit;
+    saved.route = trimOrNull(prov.route) ?? saved.route;
+    saved.frequency = trimOrNull(prov.frequency) ?? saved.frequency;
+    saved.instructions = trimOrNull(prov.instructions) ?? saved.instructions;
+    saved.catalogMedicationId = trimOrNull(prov.catalogMedicationId) ?? saved.catalogMedicationId;
+    saved.source = "PROVIDER_DISCHARGE_PLAN";
+    if (planChanged) {
+      saved.decision = "UNABLE_TO_VERIFY";
+    }
+  }
+
+  return [...next, ...extras];
+}
+
 type HomeSeed = {
   id: string;
   medicationName: string;
@@ -472,9 +585,13 @@ export function buildInpatientDischargeMedReconPreload(
     .filter((x): x is InpatientDischargeMedReconLineV1 => Boolean(x));
 
   if (existing.length > 0) {
+    const lines = mergeSavedMedReconWithCurrentProviderPlan({
+      savedLines: existing,
+      providerDischargeMedications: input.providerDischargeMedications,
+    });
     return {
-      lines: existing,
-      historyState: "LOADED_WITH_MEDICATIONS",
+      lines,
+      historyState: lines.length > 0 ? "LOADED_WITH_MEDICATIONS" : "NO_DOCUMENTED_MEDICATIONS",
       usedExistingDischargeRecon: true,
     };
   }

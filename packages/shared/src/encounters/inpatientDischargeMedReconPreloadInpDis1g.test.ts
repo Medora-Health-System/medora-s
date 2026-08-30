@@ -25,7 +25,7 @@ import {
 } from "../index.js";
 
 describe("INP.DIS.1G.1 discharge med-recon preload", () => {
-  it("prefers saved discharge recon lines over home/provider seeds", () => {
+  it("prefers saved discharge recon decisions and merges new provider medications", () => {
     const result = buildInpatientDischargeMedReconPreload({
       existingDischargeReconLines: [
         {
@@ -35,6 +35,8 @@ describe("INP.DIS.1G.1 discharge med-recon preload", () => {
           source: "HOME_MEDICATION",
           decision: "CONTINUE",
           reason: "Continue home dose",
+          providerPlanRelationship: "CONTINUE",
+          dischargeRegimen: "500 mg",
         },
       ],
       admissionHomeMedicationLines: [
@@ -52,6 +54,13 @@ describe("INP.DIS.1G.1 discharge med-recon preload", () => {
       ],
       providerDischargeMedications: [
         {
+          id: "p-met",
+          displayName: "Metformin",
+          dose: "500",
+          unit: "mg",
+          relationship: "CONTINUE",
+        },
+        {
           id: "p1",
           displayName: "Aspirin",
           relationship: "NEW",
@@ -59,9 +68,11 @@ describe("INP.DIS.1G.1 discharge med-recon preload", () => {
       ],
     });
     expect(result.usedExistingDischargeRecon).toBe(true);
-    expect(result.lines).toHaveLength(1);
-    expect(result.lines[0]!.medicationName).toBe("Metformin");
-    expect(result.lines[0]!.decision).toBe("CONTINUE");
+    expect(result.lines).toHaveLength(2);
+    const byName = Object.fromEntries(result.lines.map((l) => [l.medicationName, l]));
+    expect(byName.Metformin?.decision).toBe("CONTINUE");
+    expect(byName.Aspirin?.rowKind).toBe("PROVIDER_NEW");
+    expect(byName.Aspirin?.decision).toBe("UNABLE_TO_VERIFY");
   });
 
   it("differentiates no documented meds vs history unavailable", () => {

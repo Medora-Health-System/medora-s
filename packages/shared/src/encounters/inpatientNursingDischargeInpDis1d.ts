@@ -10,6 +10,11 @@ import {
   mapInpatientDispositionToLifecycleStatus,
   type InpatientProviderDischargeV1C,
 } from "./inpatientProviderDischargeInpDis1c.js";
+import {
+  hydrateInpatientDischargeMedReconLine,
+  isInpatientMedReconEffectivelyComplete,
+  mergeSavedMedReconWithCurrentProviderPlan,
+} from "./inpatientDischargeMedReconPreloadInpDis1g.js";
 
 export const INPATIENT_NURSING_DISCHARGE_SCHEMA_VERSION = "INP.DIS.1D" as const;
 
@@ -38,6 +43,19 @@ export const INPATIENT_NURSING_EDUCATION_RECIPIENTS = [
   "LAW_ENFORCEMENT",
   "OTHER",
 ] as const;
+
+/** Departure accompaniment codes — persist codes, not UI labels. Same 1D JSON field. */
+export const INPATIENT_DEPARTURE_ACCOMPANIED_BY = [
+  "SELF",
+  "FAMILY_CAREGIVER",
+  "FACILITY_STAFF",
+  "EMS",
+  "LAW_ENFORCEMENT",
+  "OTHER",
+] as const;
+
+export type InpatientDepartureAccompaniedBy =
+  (typeof INPATIENT_DEPARTURE_ACCOMPANIED_BY)[number];
 
 export const INPATIENT_NURSING_TRANSPORT_MODES = [
   "PRIVATE_VEHICLE",
@@ -117,6 +135,8 @@ export type InpatientNursingDeparture = {
   departedAt?: string | null;
   mode?: string | null;
   accompaniedBy?: string | null;
+  /** Free-text details when accompaniedBy is OTHER (same JSON blob, no migration). */
+  accompaniedByDetail?: string | null;
   conditionAtDeparture?: string | null;
 };
 
@@ -636,9 +656,20 @@ export function isMedReconCompleteInSummary(dischargeSummaryJson: unknown): bool
   if (!isRecord(dischargeSummaryJson)) return null;
   const med = dischargeSummaryJson.inpatientMedRecon;
   if (!isRecord(med)) return null;
-  if (trimOrNull(med.finalizedAt)) return true;
-  if (Array.isArray(med.lines) && med.lines.length > 0) return false;
-  return false;
+  const storedComplete = Boolean(trimOrNull(med.finalizedAt));
+  const savedLines = Array.isArray(med.lines)
+    ? med.lines
+        .map(hydrateInpatientDischargeMedReconLine)
+        .filter((x): x is NonNullable<typeof x> => Boolean(x))
+    : [];
+  const provider = hydrateInpatientProviderDischarge1C(
+    dischargeSummaryJson.inpatientProviderDischarge
+  );
+  const lines = mergeSavedMedReconWithCurrentProviderPlan({
+    savedLines,
+    providerDischargeMedications: provider?.dischargeMedications ?? null,
+  });
+  return isInpatientMedReconEffectivelyComplete({ storedComplete, lines });
 }
 
 export function hasPatientInstructionsInSummary(dischargeSummaryJson: unknown): boolean {

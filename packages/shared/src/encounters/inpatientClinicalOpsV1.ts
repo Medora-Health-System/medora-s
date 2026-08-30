@@ -182,6 +182,67 @@ export function validateMedReconDecision(decision: string): decision is MedRecon
   return (MED_RECON_DECISIONS as readonly string[]).includes(decision);
 }
 
+const PLANNING_DESTINATIONS_WITHOUT_TRANSPORT = new Set(["ELOPED", "DECEASED"]);
+const PLANNING_DESTINATIONS_REQUIRING_HOME_HEALTH = new Set(["HOME_WITH_HOME_HEALTH"]);
+
+export type InpatientDischargePlanningReadyInput = {
+  destination?: string | null;
+  transportation?: string | null;
+  anticipatedDischargeDate?: string | null;
+  homeHealth?: string | null;
+  specialNeedsEquipment?: string | null;
+  barriers?: string | null;
+  careTeamNotified?: boolean | null;
+  workflowState?: string | null;
+};
+
+/**
+ * Operational READY for discharge planning — explicit clinician confirmation, not inferred
+ * from non-empty text. Does not replace provider final disposition or 1E close.
+ */
+export function validateInpatientDischargePlanningReady(
+  plan: InpatientDischargePlanningReadyInput
+): { ok: true } | { ok: false; errors: string[] } {
+  const errors: string[] = [];
+  const dest = typeof plan.destination === "string" ? plan.destination.trim().toUpperCase() : "";
+  if (!dest) errors.push("PLANNING_DESTINATION_REQUIRED");
+  if (dest && !PLANNING_DESTINATIONS_WITHOUT_TRANSPORT.has(dest)) {
+    const transport =
+      typeof plan.transportation === "string" ? plan.transportation.trim() : "";
+    if (!transport) errors.push("PLANNING_TRANSPORT_REQUIRED");
+  }
+  if (dest && PLANNING_DESTINATIONS_REQUIRING_HOME_HEALTH.has(dest)) {
+    const homeHealth = typeof plan.homeHealth === "string" ? plan.homeHealth.trim() : "";
+    if (!homeHealth) errors.push("PLANNING_HOME_HEALTH_REQUIRED");
+  }
+  return errors.length ? { ok: false, errors } : { ok: true };
+}
+
+export function isInpatientDischargePlanningOperationallyReady(input: {
+  workflowState?: string | null;
+  dirty?: boolean;
+}): boolean {
+  if (input.dirty) return false;
+  const wf = String(input.workflowState ?? "")
+    .trim()
+    .toUpperCase();
+  return wf === "READY" || wf === "COMPLETED";
+}
+
+/** Material field edits after READY/COMPLETED return the canonical PLANNING state. */
+export function demoteInpatientDischargePlanningWorkflowAfterEdit(
+  workflowState: string | null | undefined
+): InpatientDischargeWorkflowState {
+  const wf = String(workflowState ?? "")
+    .trim()
+    .toUpperCase();
+  if (wf === "READY" || wf === "COMPLETED") return "PLANNING";
+  if ((INPATIENT_DISCHARGE_WORKFLOW_STATES as readonly string[]).includes(wf)) {
+    return wf as InpatientDischargeWorkflowState;
+  }
+  return "PLANNING";
+}
+
 /** Auto-copy of prior encounter meds into Inpatient is forbidden. */
 export function inpatientMedicationAutoCopyForbidden(): true {
   return true;
