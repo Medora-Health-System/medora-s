@@ -141,6 +141,7 @@ export function pathwayFromDispositionOutcomeUi(
   const o = String(outcome ?? "").trim().toUpperCase();
   if (o === "HOME") return "HOME";
   if (o === "ADMISSION") return "ADMISSION";
+  if (o === "OBSERVATION") return "OBSERVATION";
   if (o === "TRANSFER") return "TRANSFER";
   if (o === "AMA") return "AMA";
   if (o === "LWBS") return "LWBS";

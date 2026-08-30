@@ -156,7 +156,9 @@ describe("EncountersService.recordAdmissionDecision", () => {
     expect(data.admissionSummaryJson.admissionDiagnosesV1).toMatchObject({
       primaryDiagnosisId: "dx-1",
     });
+    expect(data.admissionSummaryJson.requestedEncounterType).toBe("INPATIENT");
     expect(data).not.toHaveProperty("status");
+    expect(data).not.toHaveProperty("type");
     expect(res.edEncounterClosed).toBe(false);
     expect(audit.log).toHaveBeenCalled();
     const meta = audit.log.mock.calls[0]![2].metadata as Record<string, unknown>;
@@ -208,6 +210,35 @@ describe("EncountersService.recordAdmissionDecision", () => {
     expect(res.edEncounterClosed).toBe(false);
     const data = updateMany.mock.calls[0]![0].data as Record<string, unknown>;
     expect(data).not.toHaveProperty("status");
+  });
+
+  it("stamps requestedEncounterType OBSERVATION on admissionSummaryJson without changing encounter type", async () => {
+    const { svc, updateMany, placement } = buildService({
+      roleCodes: ["PROVIDER"],
+      placementEnabled: false,
+    });
+    await svc.recordAdmissionDecision(
+      facilityId,
+      encounterId,
+      {
+        ...baseDto("DRAFT"),
+        requestedEncounterType: "OBSERVATION",
+        admissionSummary: { ...baseDto("DRAFT").admissionSummary, careLevel: "OBSERVATION" },
+        admissionPacket: {
+          ...baseDto("DRAFT").admissionPacket,
+          levelOfCareCode: "OBSERVATION",
+        },
+      },
+      userId
+    );
+    expect(placement.createDraft).not.toHaveBeenCalled();
+    const data = updateMany.mock.calls[0]![0].data as {
+      admissionSummaryJson: Record<string, unknown>;
+      type?: string;
+    };
+    expect(data.admissionSummaryJson.requestedEncounterType).toBe("OBSERVATION");
+    expect(data.admissionSummaryJson.careLevel).toBe("OBSERVATION");
+    expect(data).not.toHaveProperty("type");
   });
 
   it("actorHasProviderOrAdminAtFacility is true for dual-role when findFirst would prefer RN", async () => {

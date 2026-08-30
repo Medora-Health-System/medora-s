@@ -38,6 +38,10 @@ import {
   readDispositionSignatureFromEncounter,
   type ErDispositionOutcomeUi,
 } from "@/features/emergency/emergencyDispositionV1";
+import {
+  inferOutcomeHintsFromAdmissionSummary,
+  isAdmissionDecisionOutcome,
+} from "@/features/emergency/edHosp1bDispositionOutcomeMapping";
 import { deriveEmtalaStateFromEncounter, type ErEmtalaV1Stored } from "@/features/emergency/erEmtalaV1";
 import {
   buildInitialNursingAssessmentPrintSection,
@@ -239,12 +243,14 @@ function h2(lang: SupportedLanguage, key: string): string {
 }
 
 function erPacketH1(lang: SupportedLanguage, outcome: ErDispositionOutcomeUi): string {
+  if (outcome === "OBSERVATION") return printT(lang, "printOutput.erPacket.h1ObservationSummary");
   if (outcome === "ADMISSION") return printT(lang, "printOutput.erPacket.h1AdmissionSummary");
   if (outcome === "TRANSFER") return printT(lang, "printOutput.erPacket.h1TransferPacket");
   return printT(lang, "printOutput.erPacket.h1ErPacket");
 }
 
 function erPacketSubtitleKey(outcome: ErDispositionOutcomeUi): string {
+  if (outcome === "OBSERVATION") return "printOutput.erPacket.subtitleObservationSummary";
   if (outcome === "ADMISSION") return "printOutput.erPacket.subtitleAdmissionSummary";
   if (outcome === "TRANSFER") return "printOutput.erPacket.subtitleTransferPacket";
   return "printOutput.erPacket.subtitleErPacket";
@@ -343,11 +349,13 @@ export function getErPrintPacketHtml(params: {
 
   const dischargeForm = hydrateDischargeFormFromEncounterJson(encounter.dischargeSummaryJson);
   const supplement = erDispositionSupplementFromEncounter(encounter.nursingAssessment);
-  const outcome = inferOutcomeUiFromForms(dischargeForm.dischargeMode, supplement);
+  const outcomeHints = inferOutcomeHintsFromAdmissionSummary(encounter.admissionSummaryJson);
+  const outcome = inferOutcomeUiFromForms(dischargeForm.dischargeMode, supplement, outcomeHints);
   const dispositionOutcomeLabel = localizedErDischargeModeLabel(
     dischargeForm.dischargeMode,
     supplement,
-    language
+    language,
+    outcomeHints
   );
 
   const d = parseDischargeSummaryForChart(encounter.dischargeSummaryJson);
@@ -435,8 +443,15 @@ export function getErPrintPacketHtml(params: {
     });
   }
 
-  if (outcome === "ADMISSION") {
-    body.push(h2(language, "printOutput.erPacket.sectionAdmissionClinical"));
+  if (isAdmissionDecisionOutcome(outcome)) {
+    body.push(
+      h2(
+        language,
+        outcome === "OBSERVATION"
+          ? "printOutput.erPacket.sectionObservationClinical"
+          : "printOutput.erPacket.sectionAdmissionClinical"
+      )
+    );
     const packet = readAdmissionPacketV1(encounter.admissionSummaryJson);
     const summaryRoot =
       encounter.admissionSummaryJson && typeof encounter.admissionSummaryJson === "object"
@@ -705,7 +720,9 @@ export function getErPrintPacketHtml(params: {
 
   const htmlLang = language === "en" ? "en" : "fr";
   const titleKey =
-    outcome === "ADMISSION"
+    outcome === "OBSERVATION"
+      ? "printOutput.erPacket.htmlTitleObservation"
+      : outcome === "ADMISSION"
       ? "printOutput.erPacket.htmlTitleAdmission"
       : outcome === "TRANSFER"
         ? "printOutput.erPacket.htmlTitleTransfer"

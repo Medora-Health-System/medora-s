@@ -18,6 +18,7 @@ import {
   evaluateAdaptiveNursingCompletion,
   isHomeNursingForbiddenForPathway,
   nursingSectionsForPathway,
+  pathwayFromDispositionOutcomeUi,
   validateAdaptiveNursingAgainstDisposition,
 } from "./adaptiveEdNursingExecutionD4a2.js";
 import { mergeAdmissionSummaryFieldsPreservingNested } from "./admissionSummaryMerge.js";
@@ -177,6 +178,13 @@ describe("D4A.2.1 SIGN validation + service/LOC", () => {
 });
 
 describe("D4A.2.1 adaptive nursing completion contracts", () => {
+  it("maps OBSERVATION outcome UI to the observation nursing pathway", () => {
+    expect(pathwayFromDispositionOutcomeUi("OBSERVATION")).toBe("OBSERVATION");
+    expect(pathwayFromDispositionOutcomeUi("ADMISSION")).toBe("ADMISSION");
+    expect(pathwayFromDispositionOutcomeUi("HOME")).toBe("HOME");
+    expect(isHomeNursingForbiddenForPathway("OBSERVATION")).toBe(true);
+  });
+
   it("forbids HOME nursing for ADMISSION and requires signed decision", () => {
     expect(isHomeNursingForbiddenForPathway("ADMISSION")).toBe(true);
     expect(nursingSectionsForPathway("HOME")).toContain("dischargeVitals");

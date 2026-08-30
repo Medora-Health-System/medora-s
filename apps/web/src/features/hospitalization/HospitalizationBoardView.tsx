@@ -183,6 +183,7 @@ const OBS_OK = { bg: "#ecfdf5", text: "#065f46", border: "#a7f3d0" } as const;
 
 const OBS_DISP_OUTCOME_I18N: Record<ErDispositionOutcomeUi, string> = {
   HOME: "emergencyDisposition.outcomeHOME",
+  OBSERVATION: "emergencyDisposition.outcomeOBSERVATION",
   ADMISSION: "emergencyDisposition.outcomeADMISSION",
   TRANSFER: "emergencyDisposition.outcomeTRANSFER",
   AMA: "emergencyDisposition.outcomeAMA",

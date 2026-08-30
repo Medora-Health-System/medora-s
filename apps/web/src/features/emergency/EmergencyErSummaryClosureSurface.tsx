@@ -60,6 +60,7 @@ import {
   inferOutcomeUiFromForms,
   localizedErDischargeModeLabel,
 } from "@/features/emergency/emergencyDispositionV1";
+import { inferOutcomeHintsFromAdmissionSummary } from "@/features/emergency/edHosp1bDispositionOutcomeMapping";
 import { EmergencyVisitSummaryPanel } from "@/features/emergency/EmergencyVisitSummaryPanel";
 import { MEDORA_CARD_SHELL } from "@/components/medora-card";
 import { buildEdClosedEncounterCertificationFromEncounter } from "@/features/emergency/edClosedEncounterCertificationFromEncounter";
@@ -226,8 +227,14 @@ export function EmergencyErSummaryClosureSurface({
 
   const supplement = erDispositionSupplementFromEncounter(encounter.nursingAssessment);
   const dischargeForm = hydrateDischargeFormFromEncounterJson(encounter.dischargeSummaryJson);
-  const dispositionLabel = localizedErDischargeModeLabel(dischargeForm.dischargeMode, supplement, language);
-  const outcomeUi = inferOutcomeUiFromForms(dischargeForm.dischargeMode, supplement);
+  const outcomeHints = inferOutcomeHintsFromAdmissionSummary(encounter.admissionSummaryJson);
+  const dispositionLabel = localizedErDischargeModeLabel(
+    dischargeForm.dischargeMode,
+    supplement,
+    language,
+    outcomeHints
+  );
+  const outcomeUi = inferOutcomeUiFromForms(dischargeForm.dischargeMode, supplement, outcomeHints);
 
   const contextKey = `emergencyErClosure.context.${outcomeUi}`;
   const contextLine = t(contextKey);
