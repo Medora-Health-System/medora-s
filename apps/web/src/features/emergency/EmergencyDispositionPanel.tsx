@@ -31,6 +31,8 @@ import {
   resolveEdDispositionPrintKind,
   shouldUseHomeDischargePrintLayout,
   validateSmartAdmissionServiceLocCompatibility,
+  persistedObservationDecisionRemountsComposer,
+  shouldMountObservationOrderComposer,
   type AdmissionPacketV1,
   type HospitalAdmittingService,
   type HospitalRequestedLevelOfCare,
@@ -59,6 +61,7 @@ import {
 } from "@/lib/encounterAdmission";
 import { parseAdmissionSummaryForChart } from "@/components/patient-chart/patientChartHelpers";
 import { AdmissionObservationDecisionBoard } from "./AdmissionObservationDecisionBoard";
+import { EdObservationOrderComposer } from "./EdObservationOrderComposer";
 import { printDischarge } from "@/components/encounters/DischargePrintLayout";
 import {
   emptyErDispositionSupplementForm,
@@ -431,11 +434,16 @@ export function EmergencyDispositionPanel({
     const sup = erDispositionSupplementFromEncounter(encounter.nursingAssessment);
     const defPhys = formatPhysicianName(encounter.physicianAssigned ?? undefined);
     const a = hydrateAdmissionFormFromEncounterJson(encounter.admissionSummaryJson, defPhys);
-    const inferred = inferOutcomeUiFromForms(
-      d.dischargeMode,
-      sup,
-      inferOutcomeHintsFromAdmissionSummary(encounter.admissionSummaryJson)
-    );
+    const hints = inferOutcomeHintsFromAdmissionSummary(encounter.admissionSummaryJson);
+    let inferred = inferOutcomeUiFromForms(d.dischargeMode, sup, hints);
+    if (
+      !d.dischargeMode.trim() &&
+      persistedObservationDecisionRemountsComposer({
+        admissionSummaryJson: encounter.admissionSummaryJson,
+      })
+    ) {
+      inferred = "OBSERVATION";
+    }
     // Align dischargeMode with inferred outcome when JSON has no mode yet (e.g. new encounter).
     // Otherwise the radio shows HOME but form.dischargeMode stays "", and PATCH omits dischargeSummaryJson.dischargeMode
     // — the ER board badge reads dischargeMode from dischargeSummaryJson only.
@@ -1890,6 +1898,34 @@ export function EmergencyDispositionPanel({
                     </div>
                   ) : null}
                 </div>
+                {shouldMountObservationOrderComposer(outcomeUi) ? (
+                  <EdObservationOrderComposer
+                    encounterId={encounterId}
+                    facilityId={facilityId}
+                    canPrescribe={canPrescribe}
+                    disabled={medDisabled}
+                    encounterOpen={encounter.status !== "CLOSED" && encounter.status !== "SIGNED"}
+                    prescriberName={
+                      formatPhysicianName(encounter.physicianAssigned ?? undefined) ||
+                      admissionForm.responsiblePhysicianName
+                    }
+                    encounter={encounter}
+                    context={{
+                      placementStatus: activePlacement?.status ?? null,
+                      requestedService: activePlacement?.requestedService ?? admissionForm.serviceUnit,
+                      reason: activePlacement?.reasonForPlacement ?? admissionForm.admissionReason,
+                      diagnosis:
+                        activePlacement?.admissionDiagnosisSummary ?? admissionForm.admissionDiagnosis,
+                      telemetryRequired: activePlacement?.telemetryRequired === true,
+                      isolationRequired: activePlacement?.isolationRequired === true,
+                      clinicalPriority: activePlacement?.clinicalPriority ?? null,
+                      acceptingProvider:
+                        activePlacement?.acceptingProviderNameSnapshot ??
+                        admissionForm.responsiblePhysicianName,
+                      initialPlan: admissionForm.initialPlan,
+                    }}
+                  />
+                ) : null}
               </div>
             ) : null}
 
