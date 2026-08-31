@@ -16096,7 +16096,7 @@ export default {
       ADMISSION_PROVIDER_NOT_AUTHORIZED:
         "Seul un médecin (PROVIDER) ou administrateur peut signer l'admission.",
       ADMISSION_DECISION_STALE:
-        "Le dossier d'admission a été modifié ailleurs. Actualisez et réessayez.",
+        "La disposition a été mise à jour ailleurs. Actualisez la décision avant de continuer.",
       ADMISSION_ALREADY_SIGNED: "La décision d'admission est déjà signée.",
       ENCOUNTER_NOT_EDITABLE:
         "La rencontre n'est plus modifiable pour une décision d'admission.",
@@ -16266,6 +16266,7 @@ export default {
     observationHandoffAwaitingRn: "En attente de la prise en charge infirmière en observation",
     observationActive: "Observation active",
     saveFailed: "Impossible d'enregistrer.",
+    refreshDecision: "Actualiser la décision",
     signerFallback: "Professionnel",
     outcomeHOME: "Sortie à domicile",
     outcomeOBSERVATION: "Observation",
