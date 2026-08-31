@@ -264,6 +264,7 @@ export * from "./clinicalDocumentation/strokeDocumentationPayloads.js";
 export * from "./observationReassessmentV1.js";
 export * from "./observationOrderTemplate.js";
 export * from "./encounters/edHosp1dObservationOrderComposer.js";
+export * from "./encounters/edHosp1eAdmissionOrderComposer.js";
 export * from "./billingCaptureV1.js";
 export * from "./infusionBillingRules.js";
 export * from "./billingLedgerCoding.js";

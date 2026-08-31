@@ -34,7 +34,10 @@ describe("ED.HOSP.1D Observation order composer — UI contract", () => {
     expect(shouldMountObservationOrderComposer("OBSERVATION")).toBe(true);
     expect(shouldMountObservationOrderComposer("HOME")).toBe(false);
     expect(shouldMountObservationOrderComposer("ADMISSION")).toBe(false);
-    expect(panel).not.toContain("EdAdmissionOrderComposer");
+    expect(shouldMountObservationOrderComposer("TRANSFER")).toBe(false);
+    expect(shouldMountObservationOrderComposer("")).toBe(false);
+    expect(panel).toContain("shouldMountAdmissionOrderComposer");
+    expect(panel).toContain("EdAdmissionOrderComposer");
   });
 
   it("4-6. opening composer does not POST orders; suggestions require explicit select", () => {
@@ -97,8 +100,8 @@ describe("ED.HOSP.1D Observation order composer — UI contract", () => {
     expect(enumBlock).not.toMatch(/^\s*OBSERVATION\s*$/m);
   });
 
-  it("27-29. no Admission composer, no paper-sheet meds, no diagnosis auto-order", () => {
-    expect(panel).not.toContain("EdAdmissionOrderComposer");
+  it("27-29. Observation composer has no paper-sheet meds, no diagnosis auto-order", () => {
+    expect(composer).not.toContain("EdAdmissionOrderComposer");
     expect(observationComposerContainsPaperSheetMedications()).toBe(false);
     expect(composer).not.toContain("buildSmartAdmissionProposals");
     expect(composer).not.toContain("encounterDiagnoses");
