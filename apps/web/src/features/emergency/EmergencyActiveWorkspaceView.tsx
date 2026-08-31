@@ -19,6 +19,8 @@ import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import { printFacilityInfoFromEnterpriseSource } from "@/lib/printFacilityHeader";
 import { canDocumentEdTriage } from "@medora/shared";
 import { getCachedRecord, setCachedRecord } from "@/lib/offline/offlineCache";
+import { invalidateGetRequestDedupeForPath } from "@/lib/getRequestDedupe";
+import { preferNewerEncounterVersion } from "@/lib/admissionDecisionConcurrency";
 import type { PatientTriageVitalsResponse } from "@/lib/patientVitals";
 import {
   buildVitalsTimelineNewestFirst,
@@ -192,6 +194,7 @@ type EncounterShell = {
   providerDocumentationSignedByDisplayFr?: string | null;
   providerAddenda?: Array<{ id: string; text: string; createdAt: string }>;
   notes?: string | null;
+  version?: number | null;
 };
 
 function patientInitials(p: PatientLite | null | undefined): string {
@@ -418,7 +421,7 @@ export function EmergencyActiveWorkspaceView() {
     const cacheKey = `encounter:${fid}:${encounterId}`;
     const cached = await getCachedRecord<EncounterShell>("encounter_summaries", cacheKey);
     if (cached?.data) {
-      setEncounter(cached.data);
+      setEncounter((prev) => preferNewerEncounterVersion(prev, cached.data));
       setLoading(false);
     } else {
       setLoading(true);
@@ -427,7 +430,7 @@ export function EmergencyActiveWorkspaceView() {
       const raw = await apiFetch(`/encounters/${encounterId}`, { facilityId: fid });
       const enc = asApiObject<EncounterShell>(raw);
       if (enc) {
-        setEncounter(enc);
+        setEncounter((prev) => preferNewerEncounterVersion(prev, enc));
         void setCachedRecord("encounter_summaries", cacheKey, enc, {
           facilityId: fid,
           encounterId,
@@ -444,7 +447,7 @@ export function EmergencyActiveWorkspaceView() {
       setError(msg || t("emergencyWorkspace.errLoadEncounter"));
       const cached = await getCachedRecord<EncounterShell>("encounter_summaries", cacheKey);
       if (cached?.data) {
-        setEncounter(cached.data);
+        setEncounter((prev) => preferNewerEncounterVersion(prev, cached.data));
         setError((msg || t("emergencyWorkspace.errCachePrefix")) + t("emergencyWorkspace.errCacheStale"));
       } else {
         setEncounter(null);
@@ -466,10 +469,13 @@ export function EmergencyActiveWorkspaceView() {
   }, [encounter, router]);
 
   const onEmbeddedEncounterUpdate = useCallback(async () => {
+    if (fid && encounterId) {
+      invalidateGetRequestDedupeForPath(`/encounters/${encounterId}`, fid);
+    }
     await load();
     setResultsRefresh((r) => r + 1);
     setTriageRefresh((r) => r + 1);
-  }, [load]);
+  }, [load, fid, encounterId]);
 
   const goToErSummaryClosure = useCallback(() => {
     setActiveSection("visitSummary");

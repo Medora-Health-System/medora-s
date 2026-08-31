@@ -462,4 +462,237 @@ describe("EncountersService.recordAdmissionDecision", () => {
     await svc.recordAdmissionDecision(facilityId, encounterId, dto as never, userId);
     expect(updateMany).toHaveBeenCalled();
   });
+
+  function buildVersionTrackingService(opts: { roleCodes: string[]; placementEnabled?: boolean }) {
+    let current: {
+      id: string;
+      patientId: string;
+      facilityId: string;
+      type: string;
+      status: string;
+      version: number;
+      admittedAt: Date | null;
+      admissionSummaryJson: Record<string, unknown>;
+      providerDocumentationSignedAt: Date | null;
+      workflowState: string;
+    } = { ...openEdEncounter };
+    const updateMany = jest.fn().mockImplementation(async (args: { where: { version?: number }; data: { admissionSummaryJson?: Record<string, unknown> } }) => {
+      if (args.where.version != null && args.where.version !== current.version) {
+        return { count: 0 };
+      }
+      current = {
+        ...current,
+        version: current.version + 1,
+        admissionSummaryJson: {
+          ...current.admissionSummaryJson,
+          ...(args.data.admissionSummaryJson ?? {}),
+        },
+      };
+      return { count: 1 };
+    });
+    const diagnosisFindMany = jest.fn().mockResolvedValue([
+      { id: "dx-1", code: "J18.9", description: "Pneumonia" },
+      { id: "dx-2", code: "I10", description: "HTN" },
+    ]);
+    const prisma = {
+      userRole: {
+        findMany: jest.fn().mockResolvedValue(opts.roleCodes.map((code) => ({ role: { code } }))),
+        findFirst: jest.fn().mockImplementation(async (args: { where?: { role?: { code?: { in?: string[] } } } }) => {
+          const allowed = args?.where?.role?.code?.in ?? [];
+          const hit = opts.roleCodes.find((c) => allowed.includes(c));
+          return hit ? { id: "ur-1" } : null;
+        }),
+      },
+      encounter: {
+        findFirst: jest.fn().mockImplementation(async () => ({ ...current })),
+        updateMany,
+      },
+      diagnosis: { findMany: diagnosisFindMany },
+      facility: { findFirst: jest.fn().mockResolvedValue({ facilityType: "HOSPITAL" }) },
+    };
+    const audit = { log: jest.fn().mockResolvedValue(undefined) };
+    const placement = createMockInternalPlacementService();
+    placement.isWorkflowEnabled.mockReturnValue(opts.placementEnabled === true);
+    const draft = { id: "plc-1", status: "DRAFT", version: 1 };
+    placement.getActiveForEncounter.mockResolvedValue(null);
+    placement.createDraft.mockResolvedValue(draft);
+    placement.signDraft.mockResolvedValue({ ...draft, status: "SIGNED", version: 2 });
+    placement.submitRequested.mockResolvedValue({ ...draft, status: "REQUESTED", version: 3 });
+    const svc = new EncountersService(
+      prisma as never,
+      audit as never,
+      {} as never,
+      createMockBedBoardService() as never,
+      placement as never,
+      createMockEnterpriseAssignmentService() as never,
+      createMockEnterpriseLifecycleService() as never
+    );
+    return { svc, updateMany, placement, audit, getCurrent: () => current };
+  }
+
+  it("1. fresh Admission draft save succeeds with matching expectedVersion", async () => {
+    const { svc, updateMany, getCurrent } = buildVersionTrackingService({ roleCodes: ["PROVIDER"] });
+    await svc.recordAdmissionDecision(
+      facilityId,
+      encounterId,
+      { ...baseDto("DRAFT"), expectedVersion: 3 } as never,
+      userId
+    );
+    expect(updateMany).toHaveBeenCalled();
+    expect(getCurrent().version).toBe(4);
+    expect(getCurrent().admissionSummaryJson.requestedEncounterType).toBe("INPATIENT");
+  });
+
+  it("2. fresh Observation draft save succeeds with matching expectedVersion", async () => {
+    const { svc, getCurrent } = buildVersionTrackingService({ roleCodes: ["PROVIDER"] });
+    await svc.recordAdmissionDecision(
+      facilityId,
+      encounterId,
+      {
+        ...baseDto("DRAFT"),
+        expectedVersion: 3,
+        requestedEncounterType: "OBSERVATION",
+        admissionSummary: { ...baseDto("DRAFT").admissionSummary, careLevel: "OBSERVATION" },
+        admissionPacket: { ...baseDto("DRAFT").admissionPacket, levelOfCareCode: "OBSERVATION" },
+      } as never,
+      userId
+    );
+    expect(getCurrent().version).toBe(4);
+    expect(getCurrent().admissionSummaryJson.requestedEncounterType).toBe("OBSERVATION");
+  });
+
+  it("3. fresh Admission direct sign succeeds with matching expectedVersion", async () => {
+    const { svc, getCurrent, placement } = buildVersionTrackingService({
+      roleCodes: ["PROVIDER"],
+      placementEnabled: false,
+    });
+    await svc.recordAdmissionDecision(
+      facilityId,
+      encounterId,
+      { ...baseDto("SIGN"), expectedVersion: 3 } as never,
+      userId
+    );
+    expect(getCurrent().version).toBe(4);
+    expect(getCurrent().admissionSummaryJson.admissionDecisionMode).toBe("SIGN");
+    expect(getCurrent().admissionSummaryJson.requestedEncounterType).toBe("INPATIENT");
+    expect(placement.signDraft).not.toHaveBeenCalled();
+  });
+
+  it("4. fresh Observation direct sign succeeds with matching expectedVersion", async () => {
+    const { svc, getCurrent } = buildVersionTrackingService({ roleCodes: ["PROVIDER"] });
+    await svc.recordAdmissionDecision(
+      facilityId,
+      encounterId,
+      {
+        ...baseDto("SIGN"),
+        expectedVersion: 3,
+        requestedEncounterType: "OBSERVATION",
+        admissionSummary: { ...baseDto("SIGN").admissionSummary, careLevel: "OBSERVATION" },
+        admissionPacket: { ...baseDto("SIGN").admissionPacket, levelOfCareCode: "OBSERVATION" },
+      } as never,
+      userId
+    );
+    expect(getCurrent().version).toBe(4);
+    expect(getCurrent().admissionSummaryJson.admissionDecisionMode).toBe("SIGN");
+    expect(getCurrent().admissionSummaryJson.requestedEncounterType).toBe("OBSERVATION");
+  });
+
+  it("5-8. Admission save then sign succeeds when client uses returned version", async () => {
+    const { svc, getCurrent } = buildVersionTrackingService({ roleCodes: ["PROVIDER"] });
+    const draftRes = await svc.recordAdmissionDecision(
+      facilityId,
+      encounterId,
+      { ...baseDto("DRAFT"), expectedVersion: 3 } as never,
+      userId
+    );
+    expect(draftRes.encounter.version).toBe(4);
+    await svc.recordAdmissionDecision(
+      facilityId,
+      encounterId,
+      { ...baseDto("SIGN"), expectedVersion: draftRes.encounter.version } as never,
+      userId
+    );
+    expect(getCurrent().version).toBe(5);
+    expect(getCurrent().admissionSummaryJson.admissionDecisionMode).toBe("SIGN");
+    expect(getCurrent().admissionSummaryJson.requestedEncounterType).toBe("INPATIENT");
+  });
+
+  it("6. Observation save then sign succeeds when client uses returned version", async () => {
+    const { svc, getCurrent } = buildVersionTrackingService({ roleCodes: ["PROVIDER"] });
+    const obsDto = {
+      requestedEncounterType: "OBSERVATION" as const,
+      admissionSummary: { ...baseDto("DRAFT").admissionSummary, careLevel: "OBSERVATION" },
+      admissionPacket: { ...baseDto("DRAFT").admissionPacket, levelOfCareCode: "OBSERVATION" },
+    };
+    const draftRes = await svc.recordAdmissionDecision(
+      facilityId,
+      encounterId,
+      { ...baseDto("DRAFT"), ...obsDto, expectedVersion: 3 } as never,
+      userId
+    );
+    await svc.recordAdmissionDecision(
+      facilityId,
+      encounterId,
+      { ...baseDto("SIGN"), ...obsDto, expectedVersion: draftRes.encounter.version } as never,
+      userId
+    );
+    expect(getCurrent().admissionSummaryJson.admissionDecisionMode).toBe("SIGN");
+    expect(getCurrent().admissionSummaryJson.requestedEncounterType).toBe("OBSERVATION");
+  });
+
+  it("9-11. truly stale revision 409s, does not overwrite, and does not sign", async () => {
+    const { svc, updateMany, getCurrent, placement } = buildVersionTrackingService({
+      roleCodes: ["PROVIDER"],
+      placementEnabled: true,
+    });
+    await svc.recordAdmissionDecision(
+      facilityId,
+      encounterId,
+      { ...baseDto("DRAFT"), expectedVersion: 3 } as never,
+      userId
+    );
+    const afterDraft = { ...getCurrent() };
+    expect(afterDraft.version).toBe(4);
+    await expect(
+      svc.recordAdmissionDecision(
+        facilityId,
+        encounterId,
+        {
+          ...baseDto("SIGN"),
+          expectedVersion: 3,
+          admissionSummary: { ...baseDto("SIGN").admissionSummary, admissionReason: "CONFLICTING OVERWRITE" },
+        } as never,
+        userId
+      )
+    ).rejects.toMatchObject({ response: { code: "ADMISSION_DECISION_STALE" } });
+    expect(getCurrent().version).toBe(4);
+    expect(getCurrent().admissionSummaryJson.admissionReason).toBe(afterDraft.admissionSummaryJson.admissionReason);
+    expect(getCurrent().admissionSummaryJson.admissionDecisionMode).not.toBe("SIGN");
+    expect(placement.signDraft).not.toHaveBeenCalled();
+    expect(updateMany.mock.calls.length).toBe(1);
+  });
+
+  it("12. pathway switch Admission→Observation with refreshed version does not 409", async () => {
+    const { svc, getCurrent } = buildVersionTrackingService({ roleCodes: ["PROVIDER"] });
+    const first = await svc.recordAdmissionDecision(
+      facilityId,
+      encounterId,
+      { ...baseDto("DRAFT"), expectedVersion: 3 } as never,
+      userId
+    );
+    await svc.recordAdmissionDecision(
+      facilityId,
+      encounterId,
+      {
+        ...baseDto("DRAFT"),
+        expectedVersion: first.encounter.version,
+        requestedEncounterType: "OBSERVATION",
+        admissionSummary: { ...baseDto("DRAFT").admissionSummary, careLevel: "OBSERVATION" },
+        admissionPacket: { ...baseDto("DRAFT").admissionPacket, levelOfCareCode: "OBSERVATION" },
+      } as never,
+      userId
+    );
+    expect(getCurrent().admissionSummaryJson.requestedEncounterType).toBe("OBSERVATION");
+    expect(getCurrent().version).toBe(5);
+  });
 });

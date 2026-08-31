@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -40,6 +40,13 @@ import {
 import { buildSmartAdmissionChartContext } from "./smartAdmissionChartContext";
 import { ProposalSourcesDisclosure } from "./ProposalSourcesDisclosure";
 import { apiFetch, parseApiResponse } from "@/lib/apiClient";
+import { invalidateGetRequestDedupeForPath } from "@/lib/getRequestDedupe";
+import {
+  extractAdmissionDecisionErrorCode,
+  isAdmissionDecisionStaleErrorCode,
+  mergeAdmissionDecisionExpectedVersion,
+  parseEncounterVersionFromAdmissionDecisionResponse,
+} from "@/lib/admissionDecisionConcurrency";
 import { normalizeUserFacingError } from "@/lib/userFacingError";
 import { useI18n } from "@/lib/i18n";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
@@ -280,6 +287,25 @@ export function EmergencyDispositionPanel({
     useState<ProviderDischargeValidationErrors | null>(null);
   const [saving, setSaving] = useState(false);
   const [saveInfo, setSaveInfo] = useState<string | null>(null);
+  const [decisionConflict, setDecisionConflict] = useState(false);
+  const expectedVersionEncounterIdRef = useRef(encounterId);
+  const [admissionDecisionExpectedVersion, setAdmissionDecisionExpectedVersion] = useState<
+    number | undefined
+  >(() => mergeAdmissionDecisionExpectedVersion(undefined, encounter.version));
+
+  useEffect(() => {
+    if (expectedVersionEncounterIdRef.current !== encounterId) {
+      expectedVersionEncounterIdRef.current = encounterId;
+      setAdmissionDecisionExpectedVersion(
+        mergeAdmissionDecisionExpectedVersion(undefined, encounter.version)
+      );
+      setDecisionConflict(false);
+      return;
+    }
+    setAdmissionDecisionExpectedVersion((prev) =>
+      mergeAdmissionDecisionExpectedVersion(prev, encounter.version)
+    );
+  }, [encounterId, encounter.version]);
 
   /** Cancel-admission modal local state (admission decision is encounter-level, not an order). */
   const [cancelOpen, setCancelOpen] = useState(false);
@@ -708,6 +734,7 @@ export function EmergencyDispositionPanel({
 
     setSaving(true);
     setSaveInfo(null);
+    setDecisionConflict(false);
     try {
       let savedByDisplayName = t("emergencyDisposition.signerFallback");
       try {
@@ -843,16 +870,15 @@ export function EmergencyDispositionPanel({
         }
         const clientRequestId =
           mode === "SIGN"
-            ? `adm-sign-${encounterId}-${typeof encounter.version === "number" ? encounter.version : "v"}`
+            ? `adm-sign-${encounterId}-${typeof admissionDecisionExpectedVersion === "number" ? admissionDecisionExpectedVersion : "v"}`
             : null;
-        await apiFetch(`/encounters/${encounterId}/admission/decision`, {
+        const decisionRes = await apiFetch(`/encounters/${encounterId}/admission/decision`, {
           method: "POST",
           facilityId,
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             mode,
-            expectedVersion:
-              typeof encounter.version === "number" ? encounter.version : undefined,
+            expectedVersion: admissionDecisionExpectedVersion,
             clientRequestId,
             admissionSummary: {
               ...admissionPayload,
@@ -872,6 +898,11 @@ export function EmergencyDispositionPanel({
             },
           }),
         });
+        const fromDecision = parseEncounterVersionFromAdmissionDecisionResponse(decisionRes);
+        setAdmissionDecisionExpectedVersion((prev) =>
+          mergeAdmissionDecisionExpectedVersion(prev, fromDecision)
+        );
+        invalidateGetRequestDedupeForPath(`/encounters/${encounterId}`, facilityId);
       }
 
       const body: Record<string, unknown> = {};
@@ -917,6 +948,11 @@ export function EmergencyDispositionPanel({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
+      const fromPatch = parseEncounterVersionFromAdmissionDecisionResponse(res);
+      setAdmissionDecisionExpectedVersion((prev) =>
+        mergeAdmissionDecisionExpectedVersion(prev, fromPatch)
+      );
+      invalidateGetRequestDedupeForPath(`/encounters/${encounterId}`, facilityId);
       const queued =
         res && typeof res === "object" && !Array.isArray(res) && (res as { queued?: boolean }).queued === true;
       if (outcomeOverride) applyOutcomeFromUi(outcomeOverride);
@@ -945,16 +981,24 @@ export function EmergencyDispositionPanel({
     } catch (e) {
       console.error(e);
       const err = e as Error & { errorCode?: string | null; status?: number; body?: unknown };
-      const code = err.errorCode ?? null;
+      const code = extractAdmissionDecisionErrorCode(err) ?? err.errorCode ?? null;
       const requestId =
         err.body && typeof err.body === "object" && !Array.isArray(err.body)
-          ? String((err.body as { requestId?: string }).requestId ?? "")
+          ? String(
+              (err.body as { requestId?: string }).requestId ??
+                (typeof (err.body as { message?: { requestId?: string } }).message === "object"
+                  ? (err.body as { message: { requestId?: string } }).message.requestId ?? ""
+                  : "")
+            )
           : "";
       let msg =
         normalizeUserFacingError(err instanceof Error ? err.message : null, language) ||
         t("emergencyDisposition.saveFailed");
       if (err.status === 403) {
         msg = t("emergencyDisposition.errors.permissionDenied");
+      } else if (isAdmissionDecisionStaleErrorCode(code)) {
+        msg = t("emergencyDisposition.errors.ADMISSION_DECISION_STALE");
+        setDecisionConflict(true);
       } else if (code && isDirectAdmissionErrorCode(code)) {
         msg = t(`emergencyDisposition.errors.${code}`);
       } else if (code === "PATIENT_NOT_FOUND_IN_FACILITY") {
@@ -964,6 +1008,24 @@ export function EmergencyDispositionPanel({
         msg = `${msg} (${t("emergencyDisposition.errors.requestId")}: ${requestId})`;
       }
       setSaveInfo(msg);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleRefreshDecision = async () => {
+    if (saving) return;
+    setSaving(true);
+    try {
+      invalidateGetRequestDedupeForPath(`/encounters/${encounterId}`, facilityId);
+      await onSaved();
+      setDecisionConflict(false);
+      setSaveInfo(null);
+    } catch (e) {
+      setSaveInfo(
+        normalizeUserFacingError(e instanceof Error ? e.message : null, language) ||
+          t("emergencyDisposition.saveFailed")
+      );
     } finally {
       setSaving(false);
     }
@@ -1144,6 +1206,7 @@ export function EmergencyDispositionPanel({
                 margin: 0,
                 fontSize: 13,
                 color:
+                  decisionConflict ||
                   saveInfo.toLowerCase().includes("impossible") ||
                   saveInfo.toLowerCase().includes("unable")
                     ? "#b91c1c"
@@ -1153,6 +1216,27 @@ export function EmergencyDispositionPanel({
             >
               {saveInfo}
             </p>
+            {decisionConflict ? (
+              <button
+                type="button"
+                data-testid="emergency-disposition-refresh-decision"
+                onClick={() => void handleRefreshDecision()}
+                disabled={saving}
+                style={{
+                  marginTop: 8,
+                  padding: "6px 12px",
+                  borderRadius: 10,
+                  border: "1px solid #cbd5e1",
+                  backgroundColor: "#fff",
+                  color: "#0f172a",
+                  fontSize: 13,
+                  fontWeight: 600,
+                  cursor: saving ? "not-allowed" : "pointer",
+                }}
+              >
+                {t("emergencyDisposition.refreshDecision")}
+              </button>
+            ) : null}
             {isAdmissionDecisionOutcome(outcomeUi) &&
             (saveInfo === t("emergencyDisposition.signAdmissionOk") ||
               saveInfo === t("emergencyDisposition.signAdmissionOkPlacementOn")) ? (

@@ -16038,7 +16038,8 @@ export default {
       CONDITION_ON_ADMISSION_REQUIRED: "Condition on admission is required to sign.",
       INITIAL_PLAN_REQUIRED: "Initial plan narrative or structured items are required to sign.",
       ADMISSION_PROVIDER_NOT_AUTHORIZED: "Only a provider or admin may sign admission.",
-      ADMISSION_DECISION_STALE: "Admission documentation changed elsewhere. Refresh and retry.",
+      ADMISSION_DECISION_STALE:
+        "The disposition was updated elsewhere. Refresh the latest decision before continuing.",
       ADMISSION_ALREADY_SIGNED: "Admission decision is already signed.",
       ENCOUNTER_NOT_EDITABLE: "This encounter is no longer editable for admission.",
       ADMISSION_SIGNATURE_METADATA_REQUIRED: "Responsible physician is required to sign.",
@@ -16200,6 +16201,7 @@ export default {
     observationHandoffAwaitingRn: "Awaiting nursing observation handoff",
     observationActive: "Observation active",
     saveFailed: "Unable to save.",
+    refreshDecision: "Refresh decision",
     signerFallback: "Clinician",
     outcomeHOME: "Discharge home",
     outcomeOBSERVATION: "Observation",

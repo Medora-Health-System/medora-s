@@ -58,6 +58,7 @@ describe("MEDUI.SMART_ADMISSION_CLINICAL_HARDENING.D4A2_1 boundary", () => {
       "replaceWithUpdatedProposal",
       "INVALID_SERVICE_LEVEL_OF_CARE_COMBINATION",
       "ADMISSION_DECISION_STALE",
+      "refreshDecision",
     ]) {
       expect(enDisp).toContain(key);
       expect(frDisp).toContain(key);
