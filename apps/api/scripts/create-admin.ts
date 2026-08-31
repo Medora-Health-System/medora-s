@@ -26,21 +26,30 @@ async function main() {
   const facility = await prisma.facility.findFirst();
   if (!facility) throw new Error("No facility found. Run seed first.");
 
-  await prisma.userRole.upsert({
-    where: {
-      userId_roleId_facilityId: {
+  // MEDUI.D4C.11 — UserRole now requires an enterprise workforce professionCode and
+  // no longer exposes a (userId, roleId, facilityId) compound unique (uniqueness is a
+  // DB expression index over userId/facilityId/professionCode/COALESCE(departmentId)).
+  // Idempotency is therefore handled with an explicit find + create.
+  const professionCode = "ADMINISTRATION";
+  const existingUserRole = await prisma.userRole.findFirst({
+    where: { userId: user.id, roleId: adminRole.id, facilityId: facility.id },
+  });
+  if (existingUserRole) {
+    await prisma.userRole.update({
+      where: { id: existingUserRole.id },
+      data: { isActive: true, professionCode },
+    });
+  } else {
+    await prisma.userRole.create({
+      data: {
         userId: user.id,
         roleId: adminRole.id,
         facilityId: facility.id,
+        professionCode,
+        isActive: true,
       },
-    },
-    update: {},
-    create: {
-      userId: user.id,
-      roleId: adminRole.id,
-      facilityId: facility.id,
-    },
-  });
+    });
+  }
 
   console.log("✅ Admin user ready:");
   console.log("Email:", email);
