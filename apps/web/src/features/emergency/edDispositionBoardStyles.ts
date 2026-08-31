@@ -309,4 +309,27 @@ export const ED_DISPOSITION_RESPONSIVE_CSS = `
   .ed-disposition-four-col { grid-template-columns: minmax(0, 1fr); }
   .ed-disposition-outcome-group label { width: 100%; }
 }
+.ed-observation-order-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+.ed-observation-order-context {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+@media (max-width: 1199px) {
+  .ed-observation-order-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 799px) {
+  .ed-observation-order-grid { grid-template-columns: minmax(0, 1fr); }
+  .ed-observation-order-context { grid-template-columns: minmax(0, 1fr); }
+}
 `;
