@@ -32,7 +32,9 @@ import {
   shouldUseHomeDischargePrintLayout,
   validateSmartAdmissionServiceLocCompatibility,
   persistedObservationDecisionRemountsComposer,
+  persistedAdmissionDecisionRemountsComposer,
   shouldMountObservationOrderComposer,
+  shouldMountAdmissionOrderComposer,
   type AdmissionPacketV1,
   type HospitalAdmittingService,
   type HospitalRequestedLevelOfCare,
@@ -69,6 +71,7 @@ import {
 import { parseAdmissionSummaryForChart } from "@/components/patient-chart/patientChartHelpers";
 import { AdmissionObservationDecisionBoard } from "./AdmissionObservationDecisionBoard";
 import { EdObservationOrderComposer } from "./EdObservationOrderComposer";
+import { EdAdmissionOrderComposer } from "./EdAdmissionOrderComposer";
 import { printDischarge } from "@/components/encounters/DischargePrintLayout";
 import {
   emptyErDispositionSupplementForm,
@@ -469,6 +472,13 @@ export function EmergencyDispositionPanel({
       })
     ) {
       inferred = "OBSERVATION";
+    } else if (
+      !d.dischargeMode.trim() &&
+      persistedAdmissionDecisionRemountsComposer({
+        admissionSummaryJson: encounter.admissionSummaryJson,
+      })
+    ) {
+      inferred = "ADMISSION";
     }
     // Align dischargeMode with inferred outcome when JSON has no mode yet (e.g. new encounter).
     // Otherwise the radio shows HOME but form.dischargeMode stays "", and PATCH omits dischargeSummaryJson.dischargeMode
@@ -1982,6 +1992,31 @@ export function EmergencyDispositionPanel({
                     </div>
                   ) : null}
                 </div>
+                {shouldMountAdmissionOrderComposer(outcomeUi) ? (
+                  <EdAdmissionOrderComposer
+                    encounterId={encounterId}
+                    facilityId={facilityId}
+                    patientId={encounter.patient?.id}
+                    canPrescribe={canPrescribe}
+                    disabled={medDisabled}
+                    encounterOpen={encounter.status !== "CLOSED" && encounter.status !== "SIGNED"}
+                    prescriberName={
+                      formatPhysicianName(encounter.physicianAssigned ?? undefined) ||
+                      admissionForm.responsiblePhysicianName
+                    }
+                    encounter={encounter}
+                    careLevel={admissionForm.careLevel}
+                    onCareLevelChange={(code) => patchAdmission({ careLevel: code })}
+                    context={{
+                      diagnosis:
+                        activePlacement?.admissionDiagnosisSummary ?? admissionForm.admissionDiagnosis,
+                      acceptingProvider:
+                        activePlacement?.acceptingProviderNameSnapshot ??
+                        admissionForm.responsiblePhysicianName,
+                      requestedService: admissionForm.serviceUnit,
+                    }}
+                  />
+                ) : null}
                 {shouldMountObservationOrderComposer(outcomeUi) ? (
                   <EdObservationOrderComposer
                     encounterId={encounterId}

@@ -52,18 +52,22 @@ export type EdHosp1dComposerItemState = "SUGGESTED" | "SELECTED" | "ORDERED";
 
 export type EdHosp1dOrderModalTab = "LAB" | "IMAGING" | "MEDICATION" | "CARE";
 
-export type EdHosp1dComposerSuggestion = {
+/** Fields the CARE planner needs — Observation and Admission catalogs both satisfy this. */
+export type EdHospComposerPlannerSuggestion = {
   id: string;
-  category: EdHosp1dComposerCategoryId;
   kind: EdHosp1dComposerItemKind;
   labelEn: string;
   labelFr: string;
-  /** Always false — opening Observation must not pre-check or auto-order. */
-  defaultSelected: false;
   templateItemId?: string;
   enterpriseProcedureId?: string;
   freeTextEn?: string;
   freeTextFr?: string;
+};
+
+export type EdHosp1dComposerSuggestion = EdHospComposerPlannerSuggestion & {
+  category: EdHosp1dComposerCategoryId;
+  /** Always false — opening Observation must not pre-check or auto-order. */
+  defaultSelected: false;
   opensOrderTab?: EdHosp1dOrderModalTab;
   /** Consult request is a plan/order — never a completed consult event. */
   consultPlanOnly?: boolean;
@@ -366,7 +370,7 @@ export function observationComposerSuggestionsCreateZeroOrders(): true {
   return true;
 }
 
-export function suggestionIsActivatableCare(item: EdHosp1dComposerSuggestion): boolean {
+export function suggestionIsActivatableCare(item: Pick<EdHospComposerPlannerSuggestion, "kind">): boolean {
   return item.kind === "CARE_TEMPLATE" || item.kind === "CARE_PROCEDURE" || item.kind === "CARE_FREE_TEXT";
 }
 
@@ -434,7 +438,7 @@ function itemIsActiveForHydration(item: EdHosp1dExistingOrderItemLite): boolean 
 }
 
 export function matchComposerSuggestionToExistingOrder(
-  suggestion: EdHosp1dComposerSuggestion,
+  suggestion: EdHospComposerPlannerSuggestion,
   orders: readonly EdHosp1dExistingOrderLite[]
 ): EdHosp1dExistingOrderLite | null {
   if (!suggestionIsActivatableCare(suggestion)) return null;
@@ -474,7 +478,7 @@ export function matchComposerSuggestionToExistingOrder(
 }
 
 export function hydrateComposerItemState(
-  suggestion: EdHosp1dComposerSuggestion,
+  suggestion: EdHospComposerPlannerSuggestion,
   orders: readonly EdHosp1dExistingOrderLite[],
   selectedIds: ReadonlySet<string>
 ): EdHosp1dComposerItemState {
@@ -503,7 +507,7 @@ export function customCareSuggestion(input: {
 }
 
 export function buildComposerCareOrderDto(input: {
-  suggestion: EdHosp1dComposerSuggestion;
+  suggestion: EdHospComposerPlannerSuggestion;
   prescriberName: string;
   locale: ObservationOrderTemplateLabelLocale;
 }): OrderCreateDto | null {
@@ -550,14 +554,16 @@ export type EdHosp1dComposerCreateAttempt = {
 
 export function planComposerCareOrderCreates(input: {
   selectedIds: readonly string[];
-  extraSuggestions?: readonly EdHosp1dComposerSuggestion[];
+  extraSuggestions?: readonly EdHospComposerPlannerSuggestion[];
+  /** Defaults to the Observation catalog; Admission (1E) passes its own presentation list. */
+  catalog?: readonly EdHospComposerPlannerSuggestion[];
   orders: readonly EdHosp1dExistingOrderLite[];
   inFlightIds: ReadonlySet<string>;
   prescriberName: string;
   locale: ObservationOrderTemplateLabelLocale;
 }): EdHosp1dComposerCreateAttempt[] {
   const catalog = [
-    ...ED_HOSP_1D_COMPOSER_SUGGESTIONS,
+    ...(input.catalog ?? ED_HOSP_1D_COMPOSER_SUGGESTIONS),
     ...(input.extraSuggestions ?? []),
   ];
   const byId = new Map(catalog.map((row) => [row.id, row]));
