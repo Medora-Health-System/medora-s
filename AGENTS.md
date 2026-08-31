@@ -12,29 +12,46 @@ Medora S is a healthcare/ER management system — a monorepo with three packages
 | `@medora/web` | `apps/web` | Next.js 15 frontend (port 3002 dev) |
 | `@medora/shared` | `packages/shared` | Shared TypeScript types, Zod schemas |
 
-PostgreSQL 16 is the only infrastructure dependency (via Docker Compose at `infra/docker/docker-compose.yml`).
+PostgreSQL 16 is the only infrastructure dependency. Locally it can run via Docker Compose (`infra/docker/docker-compose.yml`), but Docker is **optional / not guaranteed** in Cloud Agent VMs — a **native** PostgreSQL 16 install is acceptable for a disposable agent database (see "Reproducible Cloud Agent environment" below).
 
 ### Package manager
 
-Despite `pnpm-workspace.yaml` existing, use **npm** — the `pnpm-lock.yaml` is broken (does not contain real dependencies). The `package-lock.json` is the real lockfile and root `package.json` scripts use `npm run ... --workspaces`.
+Use **pnpm** — it is pinned by the root `package.json` `packageManager` field (currently `pnpm@10.32.1`) and is authoritative for this monorepo. Activate it with `corepack prepare "$(node -e "process.stdout.write(require('./package.json').packageManager)")" --activate`.
+
+**Do not use `npm install` / `npm ci`**: the workspaces (`apps/api`, `apps/web`) declare `@medora/shared` as `"workspace:*"`, which npm cannot parse (`EUNSUPPORTEDPROTOCOL "workspace:"`). pnpm resolves the workspace protocol natively.
+
+### Reproducible Cloud Agent environment
+
+`.cursor/environment.json` reproduces this setup for future Cloud Agents:
+
+- **install** (`.cursor/scripts/cloud-agent-install.sh`, one-time): ensure/start native PostgreSQL 16, ensure a disposable `medora` role + database, write local `.env` files (JWT secrets generated locally — never committed), `pnpm install`, build `@medora/shared`, `prisma generate`, `prisma migrate deploy`, core seed + bootstrap facilities, and create a dev admin. Idempotent and safe to re-run.
+- **start** (`.cursor/scripts/cloud-agent-start.sh`, per-boot): only ensure the local PostgreSQL cluster is running. It does **not** re-install, build, migrate, or seed.
+- **terminals**: API (`pnpm --filter @medora/api dev`, :3001) and Web (`PORT=3002 pnpm --filter @medora/web dev`, :3002).
 
 ### Starting services
 
-1. **PostgreSQL**: `sudo docker compose -f infra/docker/docker-compose.yml up -d`
-   - Env file: copy `infra/docker/.env.example` → `infra/docker/.env` if missing
-2. **Shared package build** (must run before API/web): `npm run build --workspace=@medora/shared`
+For a fresh disposable agent, `bash .cursor/scripts/cloud-agent-install.sh` does all of the following. Manual equivalents:
+
+1. **PostgreSQL 16**: native (`sudo pg_ctlcluster 16 main start`) or Docker Compose (`sudo docker compose -f infra/docker/docker-compose.yml up -d`, env file `infra/docker/.env.example` → `infra/docker/.env`). Ensure a disposable `medora` database exists.
+2. **Shared package build** (must run before API/web): `pnpm --filter @medora/shared build`
 3. **API env**: copy `apps/api/.env.example` → `apps/api/.env` if missing. **Delete** `apps/api/prisma/.env` if it exists (conflicts with `apps/api/.env`).
-4. **Prisma**: `npm run prisma:generate --workspace=@medora/api && npm run prisma:migrate --workspace=@medora/api`
-5. **Seed**: `npm run prisma:seed --workspace=@medora/api` (roles, facilities, admin user), then optionally `npm run prisma:seed-catalogs --workspace=@medora/api` and `npm run prisma:seed-pathways --workspace=@medora/api`
-6. **Admin user**: `ADMIN_EMAIL=admin@medora.local ADMIN_PASSWORD='Admin123!' npm run create-admin --workspace=@medora/api`
-7. **API server**: `npm run dev --workspace=@medora/api` (port 3001)
-8. **Web server**: `PORT=3002 npm run dev --workspace=@medora/web` (port 3002)
+4. **Prisma**: `pnpm --filter @medora/api prisma:generate` as needed, then apply migrations — see the Prisma strategy note below.
+5. **Seed**: `pnpm --filter @medora/api prisma:seed:core` (roles + geo) and `pnpm --filter @medora/api seed:bootstrap-facilities` (DR/HT facilities + departments). Optionally `prisma:seed-catalogs` / `prisma:seed-pathways`.
+6. **Admin user** (dev-only, idempotent): `ADMIN_EMAIL=admin@medora.local ADMIN_PASSWORD='Admin123!' pnpm --filter @medora/api create-admin`
+7. **API server**: `pnpm --filter @medora/api dev` (port 3001)
+8. **Web server**: `PORT=3002 pnpm --filter @medora/web dev` (port 3002)
+
+#### Prisma migration strategy — authoring vs. applying
+
+- **Applying existing migrations to a fresh disposable DB** (Cloud Agent boot, CI, local reset): use **`pnpm --filter @medora/api migrate:deploy`** (`prisma migrate deploy`). It is non-interactive and only applies already-committed migrations.
+- **Do NOT run `prisma migrate dev`** (`prisma:migrate`) in unattended Cloud Agent automation — it is interactive (prompts to name/author migrations) and will hang, and it may attempt to author new migrations. It is for local developer migration authoring only.
+- **Never run `migrate deploy` against a production database as part of environment setup.** In Cloud Agent context it targets only the disposable local `medora` database.
 
 ### Running checks
 
-- **Lint**: `npm run lint` — all three packages have placeholder lint scripts (not yet configured)
-- **Tests**: `npm run test --workspace=@medora/shared` (vitest, passes), `npm run test --workspace=@medora/api` (jest — unit test passes, e2e tests fail due to pre-existing shared-package module resolution issue with Jest/ESM)
-- **Build**: `npm run build --workspace=@medora/shared && npm run build --workspace=@medora/api && npm run build --workspace=@medora/web`
+- **Lint**: `pnpm -r lint` — all three packages have placeholder lint scripts (not yet configured)
+- **Tests**: `pnpm --filter @medora/shared test` (vitest, passes), `pnpm --filter @medora/api test` (jest — unit test passes, e2e tests fail due to pre-existing shared-package module resolution issue with Jest/ESM)
+- **Build**: `pnpm --filter @medora/shared build && pnpm --filter @medora/api build && pnpm --filter @medora/web build`
 
 ### Default credentials
 
@@ -48,4 +65,4 @@ Despite `pnpm-workspace.yaml` existing, use **npm** — the `pnpm-lock.yaml` is 
 
 ### Docker in Cloud Agent VMs
 
-Docker requires `fuse-overlayfs` storage driver and `iptables-legacy`. The update script handles Docker startup. If Docker daemon is not running, start with: `sudo dockerd &>/tmp/dockerd.log &`
+Docker is **optional and not guaranteed** in Cloud Agent VMs (it may be entirely absent). Prefer a **native** PostgreSQL 16 install for the disposable agent database (this is what `.cursor/scripts/cloud-agent-install.sh` does). If you do need Docker and the daemon is not running, it requires the `fuse-overlayfs` storage driver and `iptables-legacy`, and can be started with: `sudo dockerd &>/tmp/dockerd.log &`

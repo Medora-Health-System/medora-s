@@ -25,6 +25,7 @@
     "seed:core": "MEDORA_SEED_MODE=core prisma db seed",
     "seed:templates": "MEDORA_SEED_MODE=templates prisma db seed",
     "seed:clinical-content": "MEDORA_SEED_MODE=clinical-content prisma db seed",
+    "seed:bootstrap-facilities": "ts-node --transpile-only prisma/bootstrap-facilities.ts",
     "prisma:seed-catalogs": "pnpm --filter @medora/shared build && ts-node --transpile-only prisma/seed-catalogs.ts",
     "prisma:seed-pathways": "ts-node --transpile-only prisma/seed-pathways.ts",
     "create-admin": "ts-node --transpile-only scripts/create-admin.ts",
