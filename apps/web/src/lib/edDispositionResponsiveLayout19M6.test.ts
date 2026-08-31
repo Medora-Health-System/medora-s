@@ -32,15 +32,19 @@ describe("edDispositionResponsiveLayout (19M.6)", () => {
     expect(resolveEdDispositionLayoutMode(1024)).toBe("desktopSplit");
   });
 
-  it("preserves desktop two-column split at >=1024px", () => {
+  it("preserves a single-column clinical workspace (no sticky preview column)", () => {
     expect(edDispositionUsesSplitLayout("desktopSplit")).toBe(true);
     const style = edDispositionWorkspaceStyle("desktopSplit");
-    expect(style.display).toBe("grid");
-    expect(style.gridTemplateColumns).toBe("minmax(0, 1fr) minmax(280px, 380px)");
+    expect(style.display).toBe("flex");
+    expect(style.flexDirection).toBe("column");
+    expect(style.width).toBe("100%");
+    expect(style.maxWidth).toBe("100%");
+    expect(style.minWidth).toBe(0);
+    expect(style.gridTemplateColumns).toBeUndefined();
   });
 
   it("stacks workspace on mobile and tablet", () => {
-    for (const mode of ["mobileStacked", "tabletStacked"] as const) {
+    for (const mode of ["mobileStacked", "tabletStacked", "desktopSplit"] as const) {
       const style = edDispositionWorkspaceStyle(mode);
       expect(style.display).toBe("flex");
       expect(style.flexDirection).toBe("column");
@@ -107,9 +111,11 @@ describe("EmergencyDispositionPanel responsive wiring (19M.6)", () => {
     expect(dispositionSource).not.toContain('matchMedia("(min-width: 960px)")');
   });
 
-  it("stacks provider, nursing, and preview on mobile/tablet", () => {
-    expect(dispositionSource).toContain("EdDispositionPreviewPanel");
-    expect(dispositionSource).toContain("layoutMode={layoutMode}");
+  it("uses compact wrapping board chrome instead of a sticky preview column", () => {
+    expect(dispositionSource).toContain("ed-disposition-outcome-group");
+    expect(dispositionSource).toContain("ed-disposition-readiness");
+    expect(dispositionSource).toContain("ED_DISPOSITION_RESPONSIVE_CSS");
+    expect(dispositionSource).not.toContain("EdDispositionPreviewPanel");
     expect(previewSource).toContain('data-testid="ed-disposition-preview-collapsible"');
     expect(previewSource).toContain('data-testid="ed-disposition-preview-stacked"');
     expect(previewSource).toContain('data-testid="ed-disposition-preview-aside"');

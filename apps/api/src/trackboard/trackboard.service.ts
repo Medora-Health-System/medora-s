@@ -99,6 +99,7 @@ export class TrackboardService {
         billingClassification: e.billingClassification,
         providerDocumentationStatus: e.providerDocumentationStatus,
         providerDocumentationSignedAt: e.providerDocumentationSignedAt,
+        placementRequestedEncounterType: internalPlacement?.requestedEncounterType ?? null,
         trackboardOps: {
           resultsPendingCount: ops.resultsPendingCount,
           criticalResultUnacknowledged: ops.criticalResultUnacknowledged,

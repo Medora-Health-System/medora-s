@@ -14,6 +14,7 @@ import {
 import { AuditAction, BillingClassification, EncounterStatus, EncounterType, Prisma } from "@prisma/client";
 import {
   applyAdmissionCorrelationMutation,
+  assertLocalHospitalDestinationAllowed,
   billingClassificationForPlacementDestination,
   buildHospitalAdmissionCorrelationV1,
   InternalPlacementActorRole,
@@ -276,6 +277,7 @@ export class InternalPlacementService {
     }
   > {
     this.assertWorkflowEnabled(options);
+    await this.assertLocalDestinationAllowed(facilityId, input.requestedEncounterType);
     const encounter = await this.loadEdEncounter(facilityId, originatingEncounterId);
     const early =
       this.admissionCorrelation.isEarlyAdmissionEnabled() &&
@@ -417,6 +419,7 @@ export class InternalPlacementService {
     options?: { featureFlagEnabled?: boolean; ip?: string; userAgent?: string }
   ): Promise<InternalPlacementStateProjection> {
     this.assertWorkflowEnabled(options);
+    await this.assertLocalDestinationAllowed(facilityId, input.requestedEncounterType);
     const row = await this.prisma.internalPlacementRequest.findFirst({
       where: { id: requestId, facilityId },
       select: PLACEMENT_SELECT,
@@ -1006,6 +1009,7 @@ export class InternalPlacementService {
     options?: { featureFlagEnabled?: boolean; expectedVersion?: number }
   ): Promise<InternalPlacementStateProjection> {
     this.assertWorkflowEnabled(options);
+    await this.assertLocalDestinationAllowed(facilityId, requestedEncounterType);
     const row = await this.prisma.internalPlacementRequest.findFirst({
       where: { id: requestId, facilityId },
       select: { ...PLACEMENT_SELECT, status: true },
@@ -1032,6 +1036,29 @@ export class InternalPlacementService {
       select: PLACEMENT_SELECT,
     });
     return projectInternalPlacementState(updated)!;
+  }
+
+  private async assertLocalDestinationAllowed(
+    facilityId: string,
+    destination: "OBSERVATION" | "INPATIENT"
+  ) {
+    const facility = await this.prisma.facility.findFirst({
+      where: { id: facilityId },
+      select: { facilityType: true },
+    });
+    const check = assertLocalHospitalDestinationAllowed({
+      facilityType: facility?.facilityType ?? null,
+      destination,
+    });
+    if (!check.ok) {
+      throw new BadRequestException({
+        statusCode: 400,
+        code: check.code,
+        errorCode: check.code,
+        message:
+          "Cet établissement n'autorise pas l'admission hospitalière locale. Choisissez l'observation ou un transfert externe.",
+      });
+    }
   }
 
   private async loadEdEncounter(facilityId: string, encounterId: string) {

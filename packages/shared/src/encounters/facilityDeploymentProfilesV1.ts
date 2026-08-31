@@ -110,6 +110,38 @@ export function inpatientAdmissionUnavailableByConfiguration(input: {
   return { unavailable: false, reason: null };
 }
 
+/**
+ * ED.HOSP.1C — smallest local-INPATIENT capability guard.
+ * Only FREESTANDING_ER is enforced (1A gap: observation on, inpatient off).
+ * Unknown / CLINIC defaults must not silently block HOSPITAL fixtures that omit facilityType.
+ * Does not block Observation, external TRANSFER, or HOSPITAL inpatient capability.
+ */
+export function localInpatientPlacementBlockedByFacilityType(
+  facilityType: string | null | undefined
+): boolean {
+  const code = String(facilityType ?? "")
+    .trim()
+    .toUpperCase();
+  if (code !== "FREESTANDING_ER") return false;
+  return inpatientAdmissionUnavailableByConfiguration({
+    profile: deploymentProfileForFacilityType(code),
+  }).unavailable;
+}
+
+export function assertLocalHospitalDestinationAllowed(input: {
+  facilityType?: string | null;
+  destination?: string | null;
+}): { ok: true } | { ok: false; code: "INPATIENT_DISABLED_BY_PROFILE" } {
+  const dest = String(input.destination ?? "")
+    .trim()
+    .toUpperCase();
+  if (dest !== "INPATIENT") return { ok: true };
+  if (localInpatientPlacementBlockedByFacilityType(input.facilityType)) {
+    return { ok: false, code: "INPATIENT_DISABLED_BY_PROFILE" };
+  }
+  return { ok: true };
+}
+
 /** Profiles gate authorization/visibility — never reclassify encounters. */
 export function deploymentProfileMustNotRewriteEncounterIdentity(): true {
   return true;

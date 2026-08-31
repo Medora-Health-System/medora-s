@@ -69,8 +69,9 @@ describe("19M.8 — responsive helpers wired on critical surfaces", () => {
   it("disposition uses responsive layout helper", () => {
     const src = readWebSource("src/features/emergency/EmergencyDispositionPanel.tsx");
     expect(src).toContain("resolveEdDispositionLayoutMode");
-    expect(src).toContain("EdDispositionPreviewPanel");
+    expect(src).toContain("ED_DISPOSITION_RESPONSIVE_CSS");
     expect(src).toContain('data-testid="ed-disposition-workspace-layout"');
+    expect(src).not.toContain("EdDispositionPreviewPanel");
   });
 
   it("trackboard uses responsive layout helper", () => {

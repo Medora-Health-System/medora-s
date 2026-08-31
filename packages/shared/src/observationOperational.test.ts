@@ -121,8 +121,9 @@ describe("computeObservationOperationalSnapshot", () => {
   it("never returns negative LOS", () => {
     const now = new Date("2024-06-01T12:00:00.000Z").getTime();
     const snap = computeObservationOperationalSnapshot({
-      encounterType: "INPATIENT",
-      status: "OPEN",
+        encounterType: "INPATIENT",
+        status: "OPEN",
+        admissionSummaryJson: { requestedEncounterType: "OBSERVATION" },
       workflowState: "IN_TREATMENT",
       admittedAt: new Date(now + 60000).toISOString(),
       createdAt: "2024-06-01T08:00:00.000Z",
@@ -140,8 +141,9 @@ describe("computeObservationOperationalSnapshot", () => {
     const anchor = new Date("2024-06-01T22:00:00.000Z").getTime();
     const now = new Date("2024-06-02T01:00:00.000Z").getTime();
     const snap = computeObservationOperationalSnapshot({
-      encounterType: "INPATIENT",
-      status: "OPEN",
+        encounterType: "INPATIENT",
+        status: "OPEN",
+        admissionSummaryJson: { requestedEncounterType: "OBSERVATION" },
       workflowState: "IN_TREATMENT",
       admittedAt: new Date(anchor).toISOString(),
       createdAt: "2024-06-01T08:00:00.000Z",
@@ -158,8 +160,9 @@ describe("computeObservationOperationalSnapshot", () => {
   it("flags extendedStay24h at 24h boundary", () => {
     const anchor = new Date("2024-06-01T00:00:00.000Z").getTime();
     const snap = computeObservationOperationalSnapshot({
-      encounterType: "INPATIENT",
-      status: "OPEN",
+        encounterType: "INPATIENT",
+        status: "OPEN",
+        admissionSummaryJson: { requestedEncounterType: "OBSERVATION" },
       workflowState: "IN_TREATMENT",
       admittedAt: new Date(anchor).toISOString(),
       createdAt: "2024-05-01T00:00:00.000Z",
@@ -176,8 +179,9 @@ describe("computeObservationOperationalSnapshot", () => {
   it("marks reassessment overdue from anchor when no reassessment event", () => {
     const anchor = new Date("2024-06-01T00:00:00.000Z").getTime();
     const snap = computeObservationOperationalSnapshot({
-      encounterType: "INPATIENT",
-      status: "OPEN",
+        encounterType: "INPATIENT",
+        status: "OPEN",
+        admissionSummaryJson: { requestedEncounterType: "OBSERVATION" },
       workflowState: "IN_TREATMENT",
       admittedAt: new Date(anchor).toISOString(),
       createdAt: "2024-06-01T00:00:00.000Z",
@@ -195,8 +199,9 @@ describe("computeObservationOperationalSnapshot", () => {
   it("13G-C: provider and RN observation reassessment lanes are independent", () => {
     const now = new Date("2024-06-01T14:00:00.000Z").getTime();
     const snapRnOverdueProviderOk = computeObservationOperationalSnapshot({
-      encounterType: "INPATIENT",
-      status: "OPEN",
+        encounterType: "INPATIENT",
+        status: "OPEN",
+        admissionSummaryJson: { requestedEncounterType: "OBSERVATION" },
       workflowState: "IN_TREATMENT",
       admittedAt: "2024-06-01T06:00:00.000Z",
       createdAt: "2024-06-01T04:00:00.000Z",
@@ -216,8 +221,9 @@ describe("computeObservationOperationalSnapshot", () => {
     expect(snapRnOverdueProviderOk?.flags.reassessmentOverdue).toBe(true);
 
     const snapBothFresh = computeObservationOperationalSnapshot({
-      encounterType: "INPATIENT",
-      status: "OPEN",
+        encounterType: "INPATIENT",
+        status: "OPEN",
+        admissionSummaryJson: { requestedEncounterType: "OBSERVATION" },
       workflowState: "IN_TREATMENT",
       admittedAt: "2024-06-01T12:00:00.000Z",
       createdAt: "2024-06-01T08:00:00.000Z",
@@ -239,8 +245,9 @@ describe("computeObservationOperationalSnapshot", () => {
   it("does not use legacy lastNursingReassessmentAt for observation lane clocks", () => {
     const now = new Date("2024-06-01T14:00:00.000Z").getTime();
     const snap = computeObservationOperationalSnapshot({
-      encounterType: "INPATIENT",
-      status: "OPEN",
+        encounterType: "INPATIENT",
+        status: "OPEN",
+        admissionSummaryJson: { requestedEncounterType: "OBSERVATION" },
       workflowState: "IN_TREATMENT",
       admittedAt: "2024-06-01T12:00:00.000Z",
       createdAt: "2024-06-01T08:00:00.000Z",
@@ -263,8 +270,9 @@ describe("computeObservationOperationalSnapshot", () => {
   it("marks reassessment due (not overdue) between 2h and 4h without reassessment", () => {
     const anchor = new Date("2024-06-01T00:00:00.000Z").getTime();
     const snap = computeObservationOperationalSnapshot({
-      encounterType: "INPATIENT",
-      status: "OPEN",
+        encounterType: "INPATIENT",
+        status: "OPEN",
+        admissionSummaryJson: { requestedEncounterType: "OBSERVATION" },
       workflowState: "IN_TREATMENT",
       admittedAt: new Date(anchor).toISOString(),
       createdAt: "2024-06-01T00:00:00.000Z",
@@ -283,8 +291,9 @@ describe("computeObservationOperationalSnapshot", () => {
     const now = new Date("2024-06-01T12:00:00.000Z").getTime();
     const vitalsAt = new Date(now - OBSERVATION_VITALS_STALE_MS - 60_000).toISOString();
     const snap = computeObservationOperationalSnapshot({
-      encounterType: "INPATIENT",
-      status: "OPEN",
+        encounterType: "INPATIENT",
+        status: "OPEN",
+        admissionSummaryJson: { requestedEncounterType: "OBSERVATION" },
       workflowState: "IN_TREATMENT",
       admittedAt: new Date(now - 60 * 60 * 1000).toISOString(),
       createdAt: "2024-06-01T06:00:00.000Z",
@@ -301,8 +310,9 @@ describe("computeObservationOperationalSnapshot", () => {
   it("flags boardingOperational for ARRIVED workflow", () => {
     const now = new Date("2024-06-01T12:00:00.000Z").getTime();
     const snap = computeObservationOperationalSnapshot({
-      encounterType: "INPATIENT",
-      status: "OPEN",
+        encounterType: "INPATIENT",
+        status: "OPEN",
+        admissionSummaryJson: { requestedEncounterType: "OBSERVATION" },
       workflowState: "ARRIVED",
       admittedAt: new Date(now - 60 * 60 * 1000).toISOString(),
       createdAt: "2024-06-01T06:00:00.000Z",
@@ -319,8 +329,9 @@ describe("computeObservationOperationalSnapshot", () => {
   it("flags readyForDischarge and dispositionPhase", () => {
     const t = new Date("2024-06-01T12:00:00.000Z").getTime();
     const ready = computeObservationOperationalSnapshot({
-      encounterType: "INPATIENT",
-      status: "OPEN",
+        encounterType: "INPATIENT",
+        status: "OPEN",
+        admissionSummaryJson: { requestedEncounterType: "OBSERVATION" },
       workflowState: "DISCHARGE_READY",
       admittedAt: new Date(t - 3600_000).toISOString(),
       createdAt: "2024-06-01T06:00:00.000Z",
@@ -335,8 +346,9 @@ describe("computeObservationOperationalSnapshot", () => {
     expect(ready?.flags.dispositionPhase).toBe(false);
 
     const disp = computeObservationOperationalSnapshot({
-      encounterType: "INPATIENT",
-      status: "OPEN",
+        encounterType: "INPATIENT",
+        status: "OPEN",
+        admissionSummaryJson: { requestedEncounterType: "OBSERVATION" },
       workflowState: "DISPOSITION",
       admittedAt: new Date(t - 3600_000).toISOString(),
       createdAt: "2024-06-01T06:00:00.000Z",
@@ -354,14 +366,14 @@ describe("computeObservationOperationalSnapshot", () => {
   it("flags assignment gaps", () => {
     const t = new Date("2024-06-01T12:00:00.000Z").getTime();
     const snap = computeObservationOperationalSnapshot({
-      encounterType: "INPATIENT",
-      status: "OPEN",
+        encounterType: "INPATIENT",
+        status: "OPEN",
+        admissionSummaryJson: { requestedEncounterType: "OBSERVATION" },
       workflowState: "IN_TREATMENT",
       admittedAt: new Date(t - 3600_000).toISOString(),
       createdAt: "2024-06-01T06:00:00.000Z",
       physicianAssignedUserId: null,
       nurseAssignedUserId: "",
-      admissionSummaryJson: {},
       billingClassification: "OBSERVATION",
       providerDocumentationStatus: "DRAFT",
       providerDocumentationSignedAt: null,
@@ -375,14 +387,14 @@ describe("computeObservationOperationalSnapshot", () => {
   it("D4A.4.3: ED columns alone do not clear hospital assign gaps (STRICT)", () => {
     const t = new Date("2024-06-01T12:00:00.000Z").getTime();
     const snap = computeObservationOperationalSnapshot({
-      encounterType: "INPATIENT",
-      status: "OPEN",
+        encounterType: "INPATIENT",
+        status: "OPEN",
+        admissionSummaryJson: { requestedEncounterType: "OBSERVATION" },
       workflowState: "IN_TREATMENT",
       admittedAt: new Date(t - 3600_000).toISOString(),
       createdAt: "2024-06-01T06:00:00.000Z",
       physicianAssignedUserId: "ed-md",
       nurseAssignedUserId: "ed-rn",
-      admissionSummaryJson: {},
       billingClassification: "OBSERVATION",
       providerDocumentationStatus: "DRAFT",
       providerDocumentationSignedAt: null,
@@ -399,8 +411,9 @@ describe("computeObservationOperationalSnapshot", () => {
     const t = new Date("2024-06-01T12:00:00.000Z").getTime();
     const vitalsAt = new Date(t - OBSERVATION_VITALS_STALE_MS - 60_000).toISOString();
     const snap = computeObservationOperationalSnapshot({
-      encounterType: "INPATIENT",
-      status: "OPEN",
+        encounterType: "INPATIENT",
+        status: "OPEN",
+        admissionSummaryJson: { requestedEncounterType: "OBSERVATION" },
       workflowState: "IN_TREATMENT",
       admittedAt: new Date(t - 8 * 3600_000).toISOString(),
       createdAt: "2024-06-01T00:00:00.000Z",
@@ -424,8 +437,9 @@ describe("computeObservationOperationalSnapshot", () => {
   it("13G-C: readiness highlights discharge workflow when workflowState is DISCHARGE_READY", () => {
     const t = new Date("2024-06-01T12:00:00.000Z").getTime();
     const snap = computeObservationOperationalSnapshot({
-      encounterType: "INPATIENT",
-      status: "OPEN",
+        encounterType: "INPATIENT",
+        status: "OPEN",
+        admissionSummaryJson: { requestedEncounterType: "OBSERVATION" },
       workflowState: "DISCHARGE_READY",
       admittedAt: new Date(t - 3600_000).toISOString(),
       createdAt: "2024-06-01T06:00:00.000Z",
@@ -438,6 +452,65 @@ describe("computeObservationOperationalSnapshot", () => {
     });
     const readyLine = snap!.readinessLines.find((l) => l.id === "READY_FOR_DISCHARGE_WORKFLOW");
     expect(readyLine?.active).toBe(true);
+  });
+
+  it("recognizes Observation receiving charts when Encounter.type is INPATIENT", () => {
+    const snap = computeObservationOperationalSnapshot({
+      encounterType: "INPATIENT",
+      status: "OPEN",
+      admissionSummaryJson: { requestedEncounterType: "OBSERVATION" },
+      workflowState: "IN_TREATMENT",
+      admittedAt: "2024-06-01T10:00:00.000Z",
+      createdAt: "2024-06-01T08:00:00.000Z",
+      physicianAssignedUserId: "p",
+      nurseAssignedUserId: "n",
+      providerDocumentationStatus: "DRAFT",
+      providerDocumentationSignedAt: null,
+      billingClassification: "OBSERVATION",
+      trackboardOps: emptyOps,
+      nowMs: new Date("2024-06-01T12:00:00.000Z").getTime(),
+    });
+    expect(snap).not.toBeNull();
+  });
+
+  it("does not classify ordinary INPATIENT admission as Observation", () => {
+    expect(
+      computeObservationOperationalSnapshot({
+        encounterType: "INPATIENT",
+        status: "OPEN",
+        admissionSummaryJson: { requestedEncounterType: "INPATIENT" },
+        workflowState: "IN_TREATMENT",
+        admittedAt: "2024-06-01T10:00:00.000Z",
+        createdAt: "2024-06-01T08:00:00.000Z",
+        physicianAssignedUserId: "p",
+        nurseAssignedUserId: "n",
+        providerDocumentationStatus: "DRAFT",
+        providerDocumentationSignedAt: null,
+        billingClassification: "INPATIENT",
+        trackboardOps: emptyOps,
+        nowMs: new Date("2024-06-01T12:00:00.000Z").getTime(),
+      })
+    ).toBeNull();
+  });
+
+  it("does not let billing OBS override explicit INPATIENT destination", () => {
+    expect(
+      computeObservationOperationalSnapshot({
+        encounterType: "INPATIENT",
+        status: "OPEN",
+        admissionSummaryJson: { requestedEncounterType: "INPATIENT" },
+        workflowState: "IN_TREATMENT",
+        admittedAt: "2024-06-01T10:00:00.000Z",
+        createdAt: "2024-06-01T08:00:00.000Z",
+        physicianAssignedUserId: "p",
+        nurseAssignedUserId: "n",
+        providerDocumentationStatus: "DRAFT",
+        providerDocumentationSignedAt: null,
+        billingClassification: "OBSERVATION",
+        trackboardOps: emptyOps,
+        nowMs: new Date("2024-06-01T12:00:00.000Z").getTime(),
+      })
+    ).toBeNull();
   });
 });
 

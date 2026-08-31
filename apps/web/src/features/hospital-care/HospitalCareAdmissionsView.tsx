@@ -444,7 +444,13 @@ export function HospitalCareAdmissionsView() {
                         {row.patient.mrn || dash}
                       </div>
                     </td>
-                    <td style={{ padding: "10px 6px" }}>{row.requestedEncounterType}</td>
+                    <td style={{ padding: "10px 6px" }}>
+                      {row.requestedEncounterType === "OBSERVATION"
+                        ? t("hospitalCareD3ca.destination.observation")
+                        : row.requestedEncounterType === "INPATIENT"
+                          ? t("hospitalCareD3ca.destination.inpatientAdmission")
+                          : dash}
+                    </td>
                     <td style={{ padding: "10px 6px" }}>{row.clinicalPriority || dash}</td>
                     <td style={{ padding: "10px 6px" }}>{row.requestedService || dash}</td>
                     <td style={{ padding: "10px 6px" }}>{row.requestedLevelOfCare || dash}</td>

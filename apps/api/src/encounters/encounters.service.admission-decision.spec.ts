@@ -105,6 +105,9 @@ function buildService(opts: {
       updateMany,
     },
     diagnosis: { findMany: diagnosisFindMany },
+    facility: {
+      findFirst: jest.fn().mockResolvedValue({ facilityType: "HOSPITAL" }),
+    },
   };
   const audit = { log: jest.fn().mockResolvedValue(undefined) };
   const placement = createMockInternalPlacementService();
@@ -298,5 +301,165 @@ describe("EncountersService.recordAdmissionDecision", () => {
     expect(res.idempotentReplay).toBe(true);
     expect(updateMany).not.toHaveBeenCalled();
     expect(audit.log).not.toHaveBeenCalled();
+  });
+
+  it("5-8. Observation and Admission dest survive save and re-save", async () => {
+    const prior = {
+      ...openEdEncounter,
+      admissionSummaryJson: {
+        ...openEdEncounter.admissionSummaryJson,
+        requestedEncounterType: "OBSERVATION",
+        careLevel: "OBSERVATION",
+      },
+    };
+    const { svc, updateMany } = buildService({ roleCodes: ["PROVIDER"], encounter: prior });
+    await svc.recordAdmissionDecision(
+      facilityId,
+      encounterId,
+      {
+        ...baseDto("DRAFT"),
+        requestedEncounterType: "OBSERVATION",
+        admissionSummary: { ...baseDto("DRAFT").admissionSummary, careLevel: "OBSERVATION" },
+      },
+      userId
+    );
+    const first = updateMany.mock.calls[0]![0].data.admissionSummaryJson as Record<string, unknown>;
+    expect(first.requestedEncounterType).toBe("OBSERVATION");
+
+    await svc.recordAdmissionDecision(
+      facilityId,
+      encounterId,
+      {
+        ...baseDto("DRAFT"),
+        requestedEncounterType: "OBSERVATION",
+        admissionSummary: { ...baseDto("DRAFT").admissionSummary, careLevel: "OBSERVATION" },
+      },
+      userId
+    );
+    const second = updateMany.mock.calls[1]![0].data.admissionSummaryJson as Record<string, unknown>;
+    expect(second.requestedEncounterType).toBe("OBSERVATION");
+  });
+
+  it("9. omitting dest on re-save preserves prior requestedEncounterType", async () => {
+    const prior = {
+      ...openEdEncounter,
+      admissionSummaryJson: {
+        ...openEdEncounter.admissionSummaryJson,
+        requestedEncounterType: "OBSERVATION",
+      },
+    };
+    const { svc, updateMany } = buildService({ roleCodes: ["PROVIDER"], encounter: prior });
+    const dto = { ...baseDto("DRAFT") };
+    delete (dto as { requestedEncounterType?: string }).requestedEncounterType;
+    await svc.recordAdmissionDecision(facilityId, encounterId, dto as never, userId);
+    const data = updateMany.mock.calls[0]![0].data.admissionSummaryJson as Record<string, unknown>;
+    expect(data.requestedEncounterType).toBe("OBSERVATION");
+  });
+
+  it("13. duplicate save reuses active placement instead of creating a second row", async () => {
+    const { svc, placement } = buildService({
+      roleCodes: ["PROVIDER"],
+      placementEnabled: true,
+    });
+    placement.getActiveForEncounter.mockResolvedValue({
+      id: "plc-1",
+      status: "DRAFT",
+      version: 1,
+      requestedEncounterType: "INPATIENT",
+    });
+    await svc.recordAdmissionDecision(facilityId, encounterId, baseDto("DRAFT"), userId);
+    expect(placement.createDraft).not.toHaveBeenCalled();
+    expect(placement.updateDraft).toHaveBeenCalled();
+  });
+
+  it("14. committed placement dest cannot silently flip via admission decision", async () => {
+    const { svc, updateMany, placement } = buildService({
+      roleCodes: ["PROVIDER"],
+      placementEnabled: true,
+    });
+    placement.getActiveForEncounter.mockResolvedValue({
+      id: "plc-1",
+      status: "REQUESTED",
+      version: 4,
+      requestedEncounterType: "OBSERVATION",
+    });
+    await expect(
+      svc.recordAdmissionDecision(
+        facilityId,
+        encounterId,
+        { ...baseDto("DRAFT"), requestedEncounterType: "INPATIENT" },
+        userId
+      )
+    ).rejects.toMatchObject({ response: { code: "PLACEMENT_DESTINATION_LOCKED" } });
+    expect(updateMany).not.toHaveBeenCalled();
+    expect(placement.updateDraft).not.toHaveBeenCalled();
+  });
+
+  it("35. FSER cannot stamp local INPATIENT destination", async () => {
+    const { svc, prisma, updateMany } = buildService({ roleCodes: ["PROVIDER"] });
+    prisma.facility.findFirst.mockResolvedValue({ facilityType: "FREESTANDING_ER" });
+    await expect(
+      svc.recordAdmissionDecision(facilityId, encounterId, baseDto("DRAFT"), userId)
+    ).rejects.toMatchObject({ response: { code: "INPATIENT_DISABLED_BY_PROFILE" } });
+    expect(updateMany).not.toHaveBeenCalled();
+  });
+
+  it("keeps NURSING_COMPLETION_INCOMPLETE in the admission error map", async () => {
+    const { ADMISSION_ERROR_MESSAGES_FR } = await import("./admission-decision-errors.util");
+    expect(ADMISSION_ERROR_MESSAGES_FR.NURSING_COMPLETION_INCOMPLETE).toMatch(/éléments infirmiers/i);
+    expect(ADMISSION_ERROR_MESSAGES_FR.INPATIENT_DISABLED_BY_PROFILE).toBeTruthy();
+    expect(ADMISSION_ERROR_MESSAGES_FR.PLACEMENT_DESTINATION_LOCKED).toBeTruthy();
+  });
+
+  it("35b. FSER blocks inferred INPATIENT from careLevel when dest is omitted", async () => {
+    const { svc, prisma, updateMany } = buildService({ roleCodes: ["PROVIDER"] });
+    prisma.facility.findFirst.mockResolvedValue({ facilityType: "FREESTANDING_ER" });
+    const { requestedEncounterType: _omit, ...dto } = baseDto("DRAFT");
+    await expect(
+      svc.recordAdmissionDecision(facilityId, encounterId, dto as never, userId)
+    ).rejects.toMatchObject({ response: { code: "INPATIENT_DISABLED_BY_PROFILE" } });
+    expect(updateMany).not.toHaveBeenCalled();
+  });
+
+  it("35c. FSER inferred INPATIENT is blocked before placement write", async () => {
+    const { svc, prisma, updateMany, placement } = buildService({
+      roleCodes: ["PROVIDER"],
+      placementEnabled: true,
+    });
+    prisma.facility.findFirst.mockResolvedValue({ facilityType: "FREESTANDING_ER" });
+    const { requestedEncounterType: _omit, ...dto } = baseDto("DRAFT");
+    await expect(
+      svc.recordAdmissionDecision(facilityId, encounterId, dto as never, userId)
+    ).rejects.toMatchObject({ response: { code: "INPATIENT_DISABLED_BY_PROFILE" } });
+    expect(updateMany).not.toHaveBeenCalled();
+    expect(placement.createDraft).not.toHaveBeenCalled();
+  });
+
+  it("36. FSER can stamp OBSERVATION destination", async () => {
+    const { svc, prisma, updateMany } = buildService({ roleCodes: ["PROVIDER"] });
+    prisma.facility.findFirst.mockResolvedValue({ facilityType: "FREESTANDING_ER" });
+    await svc.recordAdmissionDecision(
+      facilityId,
+      encounterId,
+      {
+        ...baseDto("DRAFT"),
+        requestedEncounterType: "OBSERVATION",
+        admissionSummary: { ...baseDto("DRAFT").admissionSummary, careLevel: "OBSERVATION" },
+      },
+      userId
+    );
+    const data = updateMany.mock.calls[0]![0].data.admissionSummaryJson as Record<string, unknown>;
+    expect(data.requestedEncounterType).toBe("OBSERVATION");
+  });
+
+  it("36b. FSER inferred OBSERVATION from careLevel remains allowed", async () => {
+    const { svc, prisma, updateMany } = buildService({ roleCodes: ["PROVIDER"] });
+    prisma.facility.findFirst.mockResolvedValue({ facilityType: "FREESTANDING_ER" });
+    const { requestedEncounterType: _omit, ...dto } = {
+      ...baseDto("DRAFT"),
+      admissionSummary: { ...baseDto("DRAFT").admissionSummary, careLevel: "OBSERVATION" },
+    };
+    await svc.recordAdmissionDecision(facilityId, encounterId, dto as never, userId);
+    expect(updateMany).toHaveBeenCalled();
   });
 });

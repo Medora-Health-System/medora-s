@@ -62,6 +62,23 @@ describe("mergeAdmissionSummaryFieldsPreservingNested", () => {
     expect(String(merged.admissionDiagnosis)).toContain("hypoxic");
   });
 
+  it("preserves requestedEncounterType (not a FLAT_ADMISSION_KEY)", () => {
+    const merged = mergeAdmissionSummaryFieldsPreservingNested(
+      { requestedEncounterType: "OBSERVATION", admissionCorrelation: { id: "c1" } },
+      {
+        admissionReason: "Obs",
+        serviceUnit: "",
+        admissionDiagnosis: "",
+        careLevel: "OBSERVATION",
+        conditionAtAdmission: "",
+        initialPlan: "",
+        responsiblePhysicianName: "",
+      }
+    );
+    expect(merged.requestedEncounterType).toBe("OBSERVATION");
+    expect(merged.admissionCorrelation).toEqual({ id: "c1" });
+  });
+
   it("infers OBSERVATION vs INPATIENT from care level", () => {
     expect(inferPlacementEncounterTypeFromCareLevel("Observation")).toBe("OBSERVATION");
     expect(inferPlacementEncounterTypeFromCareLevel("Medical/Surgical")).toBe("INPATIENT");

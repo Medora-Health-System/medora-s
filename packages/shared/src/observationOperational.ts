@@ -8,6 +8,7 @@
  */
 
 import { resolveObservationAssignmentGaps } from "./encounters/enterpriseOperationalOwnershipCompletionD4a43.js";
+import { isObservationOperationalStay } from "./encounters/hospitalDestinationIntent.js";
 
 export const OBSERVATION_REASSESSMENT_DUE_MS = 2 * 60 * 60 * 1000;
 export const OBSERVATION_REASSESSMENT_OVERDUE_MS = 4 * 60 * 60 * 1000;
@@ -331,8 +332,17 @@ export function computeObservationOperationalSnapshot(input: {
   providerDocumentationSignedAt?: unknown;
   trackboardOps: ObservationTrackboardOpsInput;
   nowMs?: number;
+  placementRequestedEncounterType?: string | null;
 }): ObservationOperationalSnapshot | null {
-  if (input.encounterType !== "INPATIENT" || input.status !== "OPEN") {
+  if (
+    !isObservationOperationalStay({
+      encounterType: input.encounterType,
+      status: input.status,
+      admissionSummaryJson: input.admissionSummaryJson,
+      billingClassification: input.billingClassification,
+      placementRequestedEncounterType: input.placementRequestedEncounterType,
+    })
+  ) {
     return null;
   }
 

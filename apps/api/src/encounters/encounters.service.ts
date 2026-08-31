@@ -73,7 +73,11 @@ import {
 import {
   admissionSummaryFieldsSchema,
   flatAdmissionFieldsHaveContent,
-  inferPlacementEncounterTypeFromCareLevel,
+  assertLocalHospitalDestinationAllowed,
+  hospitalDestinationIntentForPlacementCreate,
+  isInternalPlacementDestinationLocked,
+  parseHospitalDestinationIntent,
+  resolveHospitalDestinationIntent,
   mergeAdmissionSummaryFieldsPreservingNested,
   validateSmartAdmissionServiceLocCompatibility,
   readAdmissionPacketV1,
@@ -5272,14 +5276,64 @@ const clinicalTime = normalizeInpatientClinicalDocumentedAt(clinical.clinicalDoc
       }
     }
 
+    const dtoDest = parseHospitalDestinationIntent(dto.requestedEncounterType);
     const mergedSummary = mergeAdmissionSummaryFieldsPreservingNested(
       encounter.admissionSummaryJson,
       dto.admissionSummary,
       admissionDiagnoses,
       admissionPacket
     );
-    if (dto.requestedEncounterType === "OBSERVATION" || dto.requestedEncounterType === "INPATIENT") {
-      mergedSummary.requestedEncounterType = dto.requestedEncounterType;
+    if (dtoDest === "OBSERVATION" || dtoDest === "INPATIENT") {
+      mergedSummary.requestedEncounterType = dtoDest;
+    }
+
+    const placementOn = this.internalPlacement.isWorkflowEnabled();
+    const resolvedDest = resolveHospitalDestinationIntent({
+      requestedEncounterType: dto.requestedEncounterType,
+      careLevel: dto.admissionSummary.careLevel,
+      admissionSummaryJson: mergedSummary,
+    });
+    const destForCapability =
+      placementOn && encounter.type === EncounterType.EMERGENCY
+        ? (resolvedDest ?? "INPATIENT")
+        : resolvedDest;
+    if (destForCapability === "INPATIENT") {
+      const facilityRow = await this.prisma.facility.findFirst({
+        where: { id: facilityId },
+        select: { facilityType: true },
+      });
+      const destGuard = assertLocalHospitalDestinationAllowed({
+        facilityType: facilityRow?.facilityType ?? null,
+        destination: destForCapability,
+      });
+      if (!destGuard.ok) {
+        throwAdmissionDecisionError(
+          destGuard.code,
+          ADMISSION_ERROR_MESSAGES_FR[destGuard.code] ?? destGuard.code,
+          { requestId }
+        );
+      }
+    }
+
+    let activePlacement =
+      placementOn && encounter.type === EncounterType.EMERGENCY
+        ? await this.internalPlacement.getActiveForEncounter(facilityId, encounterId, {
+            featureFlagEnabled: true,
+          })
+        : null;
+    if (
+      dtoDest &&
+      activePlacement &&
+      isInternalPlacementDestinationLocked(activePlacement.status)
+    ) {
+      const currentDest = parseHospitalDestinationIntent(activePlacement.requestedEncounterType);
+      if (currentDest && currentDest !== dtoDest) {
+        throwAdmissionDecisionError(
+          "PLACEMENT_DESTINATION_LOCKED",
+          ADMISSION_ERROR_MESSAGES_FR.PLACEMENT_DESTINATION_LOCKED,
+          { requestId }
+        );
+      }
     }
     mergedSummary.admissionDecisionMode = dto.mode;
     mergedSummary.admissionDecisionAt = new Date().toISOString();
@@ -5315,11 +5369,12 @@ const clinicalTime = normalizeInpatientClinicalDocumentedAt(clinical.clinicalDoc
       code?: string | null;
     } = {};
 
-    const placementOn = this.internalPlacement.isWorkflowEnabled();
     if (placementOn && encounter.type === EncounterType.EMERGENCY) {
-      const requestedType =
-        dto.requestedEncounterType ??
-        inferPlacementEncounterTypeFromCareLevel(dto.admissionSummary.careLevel);
+      const requestedType = hospitalDestinationIntentForPlacementCreate({
+        requestedEncounterType: dto.requestedEncounterType,
+        careLevel: dto.admissionSummary.careLevel,
+        admissionSummaryJson: mergedSummary,
+      });
       const diagnosisSummary =
         String(mergedSummary.admissionDiagnosis ?? "").trim() ||
         String(dto.admissionSummary.admissionDiagnosis ?? "").trim() ||
@@ -5344,9 +5399,7 @@ const clinicalTime = normalizeInpatientClinicalDocumentedAt(clinical.clinicalDoc
           dto.admissionSummary.responsiblePhysicianName?.trim() || null,
       };
 
-      let active = await this.internalPlacement.getActiveForEncounter(facilityId, encounterId, {
-        featureFlagEnabled: true,
-      });
+      let active = activePlacement;
       if (!active) {
         const created = await this.internalPlacement.createDraft(
           facilityId,
@@ -5356,6 +5409,7 @@ const clinicalTime = normalizeInpatientClinicalDocumentedAt(clinical.clinicalDoc
           { featureFlagEnabled: true, ip, userAgent }
         );
         active = created;
+        activePlacement = created;
         if (created.code === "EXISTING_ADMISSION_INTENT") {
           placementResult = {
             placementId: created.id,
@@ -5366,7 +5420,9 @@ const clinicalTime = normalizeInpatientClinicalDocumentedAt(clinical.clinicalDoc
         }
       } else if (
         active.status === InternalPlacementStatus.DRAFT ||
-        active.status === "DRAFT"
+        active.status === "DRAFT" ||
+        active.status === InternalPlacementStatus.SIGNED ||
+        active.status === "SIGNED"
       ) {
         active = await this.internalPlacement.updateDraft(
           facilityId,
@@ -5375,6 +5431,7 @@ const clinicalTime = normalizeInpatientClinicalDocumentedAt(clinical.clinicalDoc
           { ...draftInput, expectedVersion: active.version },
           { featureFlagEnabled: true, ip, userAgent }
         );
+        activePlacement = active;
       }
 
       if (dto.mode === "SIGN" && active?.id) {

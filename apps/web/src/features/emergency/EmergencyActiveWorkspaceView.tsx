@@ -70,6 +70,7 @@ import { EmergencyErOrdersPanel } from "@/features/emergency/EmergencyErOrdersPa
 import { EmergencyErNursingHandoffPanel } from "@/features/emergency/EmergencyErNursingHandoffPanel";
 import { NursingDischargeExecutionSection } from "@/features/emergency/NursingDischargeExecutionSection";
 import { AdaptiveDispositionNursingSection } from "@/features/emergency/AdaptiveDispositionNursingSection";
+import { edBoardSectionStyle, edSectionHeadingStyle } from "@/features/emergency/edDispositionBoardStyles";
 import { EmergencyErNotesPanel } from "@/features/emergency/EmergencyErNotesPanel";
 import { EmergencyClinicalDataPanel } from "@/features/emergency/EmergencyClinicalDataPanel";
 import { emergencyChartPath, genericEncounterPath } from "@/features/emergency/emergencyRoutes";
@@ -1663,7 +1664,11 @@ export function EmergencyActiveWorkspaceView() {
                 facilityName={facilityName}
               />
               {canRecordDischargeSortieExecution && showHomeNursingDischargeExecution ? (
-                <div style={{ marginTop: 10 }}>
+                <div
+                  data-testid="ed-disposition-nursing-execution"
+                  style={{ ...edBoardSectionStyle, marginTop: 12 }}
+                >
+                  <p style={edSectionHeadingStyle}>{t("emergencyDisposition.nursingExecutionTitle")}</p>
                   <NursingDischargeExecutionSection
                     encounterId={encounterId}
                     facilityId={fid}
@@ -1676,7 +1681,11 @@ export function EmergencyActiveWorkspaceView() {
               ) : null}
               {canRecordDischargeSortieExecution &&
               isHomeNursingForbiddenForPathway(dispositionNursingPathway) ? (
-                <div style={{ marginTop: 10 }}>
+                <div
+                  data-testid="ed-disposition-nursing-execution"
+                  style={{ ...edBoardSectionStyle, marginTop: 12 }}
+                >
+                  <p style={edSectionHeadingStyle}>{t("emergencyDisposition.nursingExecutionTitle")}</p>
                   <AdaptiveDispositionNursingSection
                     encounterId={encounterId}
                     facilityId={fid}

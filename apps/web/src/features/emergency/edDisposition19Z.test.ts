@@ -357,6 +357,11 @@ describe("edDisposition19Z — canonical disposition sync / trackboard / preview
     );
     expect(panelSource).toContain("buildProviderDischargeJsonForSave(");
     expect(panelSource).toContain("mergedDischarge");
-    expect(panelSource).toContain("buildProviderDischargeDocumentationPreviewSections");
+    expect(panelSource).not.toContain("buildProviderDischargeDocumentationPreviewSections");
+    const summarySource = readFileSync(
+      join(webRoot, "src/features/emergency/emergencyVisitSummaryModel.ts"),
+      "utf8"
+    );
+    expect(summarySource).toContain("buildErDispositionPreviewModel");
   });
 });

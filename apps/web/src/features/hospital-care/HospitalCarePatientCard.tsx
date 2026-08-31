@@ -87,8 +87,8 @@ export function HospitalCarePatientCard({
             </MedoraCardBadge>
             <MedoraCardBadge soft={{ bg: "#f8fafc", text: "#334155", border: "#e2e8f0" }}>
               {row.requestedEncounterType === "OBSERVATION"
-                ? t("hospitalCareD3ca.type.observation")
-                : t("hospitalCareD3ca.type.inpatient")}
+                ? t("hospitalCareD3ca.destination.observation")
+                : t("hospitalCareD3ca.destination.inpatientAdmission")}
             </MedoraCardBadge>
           </div>
         </div>
