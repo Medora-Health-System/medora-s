@@ -9,8 +9,10 @@ import {
   existingOrderDisplayLabel,
   hydrateComposerItemState,
   hydrateLabImagingMedicationOrders,
+  isHospitalAdmittingService,
   parseEncounterOrdersForComposer,
   planComposerCareOrderCreates,
+  projectInternalPlacementTrackboardLabel,
   summarizeComposerCreateResults,
   suggestionIsActivatableCare,
   type EdHosp1dComposerCategoryId,
@@ -152,6 +154,41 @@ export function EdObservationOrderComposer({
   const ctxValue = (value: string | null | undefined) =>
     value?.trim() ? value.trim() : t("edHosp1dObservationOrders.contextMissing");
 
+  const serviceLabel = (() => {
+    const raw = String(context?.requestedService ?? "").trim();
+    if (!raw) return t("edHosp1dObservationOrders.contextMissing");
+    const code = raw.toUpperCase();
+    if (isHospitalAdmittingService(code)) {
+      return t(`hospitalAdmissionD4a0.service.${code}`);
+    }
+    const followUpKey = `providerDischargeDocumentation19Y.followUpSpecialty.${code}`;
+    const followUpLabel = t(followUpKey as Parameters<typeof t>[0]);
+    if (followUpLabel !== followUpKey) return followUpLabel;
+    return code
+      .split("_")
+      .map((w) => (w ? w.charAt(0) + w.slice(1).toLowerCase() : w))
+      .join(" ");
+  })();
+
+  const placementLabel = (() => {
+    const key = projectInternalPlacementTrackboardLabel(context?.placementStatus);
+    if (key) return t(`internalPlacementD3c.status.${key}`);
+    const raw = String(context?.placementStatus ?? "").trim();
+    if (!raw) return t("edHosp1dObservationOrders.contextMissing");
+    return raw.replace(/_/g, " ");
+  })();
+
+  const priorityLabel = (() => {
+    const raw = String(context?.clinicalPriority ?? "").trim().toLowerCase();
+    if (!raw) return t("common.dash");
+    if (raw === "routine") return t("internalPlacementD3c.priority.routine");
+    if (raw === "urgent") return t("internalPlacementD3c.priority.urgent");
+    if (raw === "stat") return t("internalPlacementD3c.priority.stat");
+    return String(context?.clinicalPriority).replace(/_/g, " ");
+  })();
+
+  const diagnosisLine = ctxValue(context?.diagnosis);
+
   function toggleCategory(id: EdHosp1dComposerCategoryId) {
     setOpenCategories((prev) => {
       const next = new Set(prev);
@@ -279,9 +316,6 @@ export function EdObservationOrderComposer({
       style={{ ...edBoardSectionStyle, marginTop: 12 }}
     >
       <p style={edSectionHeadingStyle}>{t("edHosp1dObservationOrders.title")}</p>
-      <p style={{ margin: "4px 0 0", fontSize: 12, color: ED_DISPOSITION_BOARD_COLORS.muted, lineHeight: 1.4 }}>
-        {t("edHosp1dObservationOrders.subtitle")}
-      </p>
 
       <div
         data-testid="ed-observation-order-context"
@@ -289,39 +323,35 @@ export function EdObservationOrderComposer({
         style={{
           marginTop: 10,
           display: "grid",
-          gap: 6,
+          gap: 4,
           fontSize: 12,
+          padding: "10px 12px",
+          borderRadius: 12,
+          border: `1px solid ${ED_DISPOSITION_BOARD_COLORS.border}`,
+          background: "#fff",
         }}
       >
-        <ContextRow label={t("edHosp1dObservationOrders.contextStatus")} value={ctxValue(context?.placementStatus)} />
-        <ContextRow label={t("edHosp1dObservationOrders.contextService")} value={ctxValue(context?.requestedService)} />
-        <ContextRow label={t("edHosp1dObservationOrders.contextReason")} value={ctxValue(context?.reason)} />
-        <ContextRow label={t("edHosp1dObservationOrders.contextDiagnosis")} value={ctxValue(context?.diagnosis)} />
+        <div style={{ display: "flex", justifyContent: "space-between", gap: 8, minWidth: 0 }}>
+          <strong style={{ fontSize: 13, color: "#0f172a" }}>{t("edHosp1dObservationOrders.headerTitle")}</strong>
+          <span style={{ fontWeight: 700, textAlign: "right", minWidth: 0 }}>{serviceLabel}</span>
+        </div>
+        <p style={{ margin: 0, fontWeight: 600, color: "#0f172a", overflowWrap: "anywhere" }}>{diagnosisLine}</p>
+        <ContextRow label={t("edHosp1dObservationOrders.headerProvider")} value={ctxValue(context?.acceptingProvider)} />
+        <ContextRow label={t("edHosp1dObservationOrders.headerPlacement")} value={placementLabel} />
         <ContextRow
-          label={t("edHosp1dObservationOrders.contextTelemetry")}
+          label={t("edHosp1dObservationOrders.headerTelemetry")}
           value={
             context?.telemetryRequired
               ? t("edHosp1dObservationOrders.contextTelemetryYes")
-              : t("edHosp1dObservationOrders.contextTelemetryNo")
+              : t("edHosp1dObservationOrders.telemetryNotRequested")
           }
         />
         <ContextRow
-          label={t("edHosp1dObservationOrders.contextIsolation")}
+          label={t("edHosp1dObservationOrders.headerIsolation")}
           value={context?.isolationRequired ? t("edHosp1dObservationOrders.yes") : t("edHosp1dObservationOrders.no")}
         />
-        <ContextRow label={t("edHosp1dObservationOrders.contextPriority")} value={ctxValue(context?.clinicalPriority)} />
-        <ContextRow label={t("edHosp1dObservationOrders.contextAccepting")} value={ctxValue(context?.acceptingProvider)} />
+        <ContextRow label={t("edHosp1dObservationOrders.headerPriority")} value={priorityLabel} />
       </div>
-      <p style={{ margin: "6px 0 0", fontSize: 11, color: ED_DISPOSITION_BOARD_COLORS.muted }}>
-        {t("edHosp1dObservationOrders.contextTelemetryHint")}
-      </p>
-      <p style={{ margin: "8px 0 0", fontSize: 12, color: ED_DISPOSITION_BOARD_COLORS.label }}>
-        <strong>{t("edHosp1dObservationOrders.contextPlan")}: </strong>
-        {ctxValue(context?.initialPlan)}
-      </p>
-      <p style={{ margin: "4px 0 0", fontSize: 11, color: ED_DISPOSITION_BOARD_COLORS.muted }}>
-        {t("edHosp1dObservationOrders.planReuseHint")}
-      </p>
 
       {loadError ? (
         <p role="status" data-testid="ed-observation-orders-load-error" style={{ margin: "8px 0 0", fontSize: 12, color: "#9a3412" }}>
@@ -365,8 +395,11 @@ export function EdObservationOrderComposer({
               >
                 <span>{t(CATEGORY_I18N[categoryId])}</span>
                 <span style={{ fontSize: 11, color: ED_DISPOSITION_BOARD_COLORS.muted }}>
-                  {orderedCount}/{items.filter(suggestionIsActivatableCare).length || items.length}{" "}
-                  {open ? t("edHosp1dObservationOrders.collapse") : t("edHosp1dObservationOrders.expand")}
+                  {selectedCount > 0
+                    ? t("edHosp1dObservationOrders.selectedCount").replace("{count}", String(selectedCount))
+                    : orderedCount > 0
+                      ? t("edHosp1dObservationOrders.stateOrdered")
+                      : ""}
                 </span>
               </button>
               {open ? (

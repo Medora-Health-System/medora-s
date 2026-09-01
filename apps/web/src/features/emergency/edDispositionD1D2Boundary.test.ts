@@ -15,7 +15,7 @@ describe("ED disposition D1/D2 boundary", () => {
     expect(panel).toContain('data-testid="ed-disposition-active-board"');
     expect(panel).toContain('handleSave("DRAFT")');
     expect(panel).toContain('handleSave("SIGN")');
-    expect(panel).toContain("decisionDoesNotClose");
+    expect(panel).not.toContain("decisionDoesNotClose");
     expect(panel).toContain("ed-disposition-pathway-change-modal");
     expect(panel).toContain("documentationStatus");
   });

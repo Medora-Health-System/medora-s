@@ -9,11 +9,13 @@ import {
   HOSPITAL_ADMITTING_SERVICES,
   applyProposalsToFlatFieldsIfEmpty,
   buildSmartAdmissionProposals,
+  deriveEmtalaAttestationsFromEvidence,
   emptyAdmissionPacketV1,
   inferPlacementEncounterTypeFromCareLevel,
   isDirectAdmissionErrorCode,
   isHospitalAdmittingService,
   isHospitalRequestedLevelOfCare,
+  isUnitedStatesEmtalaJurisdiction,
   localInpatientPlacementBlockedByFacilityType,
   markFieldPhysicianEdited,
   mergeProposalFieldWithoutOverwrite,
@@ -122,6 +124,8 @@ import {
   emtalaDispositionComplementFromNursing,
   type EmtalaDispositionComplementForm,
 } from "./erEmtalaV1";
+import { mseDocumentedAtFromNursing } from "./emergencyProviderMseV1";
+import { localizeEdDispositionFollowUpChipText } from "./providerDischargeDocumentationSummary";
 import {
   buildProviderDischargeJsonForSave,
   ProviderDischargeDocumentationSection,
@@ -257,7 +261,7 @@ export function EmergencyDispositionPanel({
   facilityName?: string | null;
 }) {
   const { t, language } = useI18n();
-  const { facilityType } = useFacilityAndRoles();
+  const { facilityType, facilityCountry } = useFacilityAndRoles();
   const localInpatientBlocked = localInpatientPlacementBlockedByFacilityType(facilityType);
   const router = useRouter();
   const dateLocale = language === "en" ? "en-US" : "fr-FR";
@@ -398,7 +402,7 @@ export function EmergencyDispositionPanel({
       primaryDiagnosisDisplay: primaryRow ? formatDxRow(primaryRow) : null,
       secondaryDiagnosisDisplays: secondaryRows.map(formatDxRow),
     });
-    const proposed = buildSmartAdmissionProposals(ctx);
+    const proposed = buildSmartAdmissionProposals(ctx, language === "en" ? "en" : "fr");
     if (!proposed.fields.admissionReason && !proposed.fields.initialPlan) {
       setProposalsApplied(true);
       return;
@@ -432,12 +436,21 @@ export function EmergencyDispositionPanel({
       admissionPacket.fields.admissionReason,
       proposed.fields.admissionReason
     );
-    if (reasonMerge.newerProposalAvailable) {
+    if (admissionPacket.fields.admissionReason?.origin === "SYSTEM_PROPOSAL" && proposed.fields.admissionReason) {
+      setAdmissionPacket((prev) => ({
+        ...prev,
+        fields: { ...prev.fields, admissionReason: proposed.fields.admissionReason },
+      }));
+      setAdmissionForm((prev) => ({
+        ...prev,
+        admissionReason: proposed.fields.admissionReason?.value ?? prev.admissionReason,
+      }));
+    } else if (reasonMerge.newerProposalAvailable) {
       setNewerProposalAvailable(true);
       setPendingProposal(proposed);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- proposal refresh without overwrite
-  }, [outcomeUi, canPrescribe, encounterDiagnoses, primaryDiagnosisId, formatDxRow]);
+  }, [outcomeUi, canPrescribe, encounterDiagnoses, primaryDiagnosisId, formatDxRow, language]);
 
   const dispositionState = useMemo(
     () =>
@@ -946,10 +959,23 @@ export function EmergencyDispositionPanel({
         deceased: deceasedBoard,
         other: otherBoard,
       });
+      const usEmtala = isUnitedStatesEmtalaJurisdiction(facilityCountry);
+      const derivedAttest = deriveEmtalaAttestationsFromEvidence({
+        mseDocumentedAt: mseDocumentedAtFromNursing(encounter.nursingAssessment),
+        unitedStatesJurisdiction: usEmtala,
+      });
+      const attestSafeComplement: EmtalaDispositionComplementForm = {
+        ...emtalaComplement,
+        msePerformed: "",
+        emergencyConditionConsidered: "",
+        stabilizingTreatmentProvidedOrNotApplicable: "",
+      };
       body.nursingAssessment = applyEmtalaV1ComplementToNursingAssessment(naWithPathway, {
         outcome: effectiveOutcome,
-        complement: emtalaComplement,
+        complement: attestSafeComplement,
         dispositionDecidedAtIso: signature.savedAt,
+        persistAttestations: usEmtala,
+        derivedMsePerformed: derivedAttest.msePerformed,
       });
 
       const res = await apiFetch(`/encounters/${encounterId}`, {
@@ -1139,9 +1165,10 @@ export function EmergencyDispositionPanel({
   const nursingChip = readinessChips.find((c) => c.id === "nursing");
   const departureChip = readinessChips.find((c) => c.id === "departure");
   const finalChip = readinessChips.find((c) => c.id === "final");
-  const followUpSummary = String(
-    dischargeForm.followUpInstructions || dischargeForm.followUp || ""
-  ).trim();
+  const followUpSummary = localizeEdDispositionFollowUpChipText(
+    String(dischargeForm.followUpInstructions || dischargeForm.followUp || "").trim(),
+    language === "en" ? "en" : "fr"
+  );
   const providerStatusLabel = dispositionState.decisionSigned
     ? t("emergencyDisposition.decisionSignedBadge")
     : t("emergencyDisposition.decisionDraftBadge");
@@ -1480,11 +1507,6 @@ export function EmergencyDispositionPanel({
               style={{ width: "100%", maxWidth: "100%", minWidth: 0 }}
             >
 
-            {showAdmissionFields && !canPrescribe ? (
-              <p style={{ margin: 0, fontSize: 13, color: "#b45309", lineHeight: 1.45 }}>
-                {t("emergencyDisposition.admissionRoleHint")}
-              </p>
-            ) : null}
 
             {showProviderDischargeDocumentation ? (
               <div
@@ -1986,9 +2008,6 @@ export function EmergencyDispositionPanel({
                       >
                         {t("emergencyDisposition.cancelAdmissionButton")}
                       </button>
-                      <span style={{ fontSize: 12, color: "#64748b" }}>
-                        {t("emergencyDisposition.cancelAdmissionHint")}
-                      </span>
                     </div>
                   ) : null}
                 </div>
@@ -2101,18 +2120,19 @@ export function EmergencyDispositionPanel({
               </div>
             )}
 
+            {(showTransferExtra || showAmaExtra || showLwbsExtra) ? (
             <div
+              data-testid="ed-disposition-transfer-ops"
               style={{
                 marginTop: 8,
                 padding: "10px 12px",
                 borderRadius: 10,
-                border: "1px solid #bae6fd",
-                backgroundColor: "#f0f9ff",
+                border: "1px solid #e2e8f0",
+                backgroundColor: "#fff",
               }}
             >
-              <p style={sectionHeading}>{t("emergencyDisposition.emtalaBlock")}</p>
               {showTransferExtra ? (
-                <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 6 }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                   <div>
                     <label style={labelStyle}>{t("emergencyDisposition.emtalaLabelTransferRequestedAt")}</label>
                     <input
@@ -2175,7 +2195,7 @@ export function EmergencyDispositionPanel({
                 </div>
               ) : null}
               {showAmaExtra ? (
-                <div style={{ marginTop: showTransferExtra ? 8 : 6 }}>
+                <div style={{ marginTop: showTransferExtra ? 8 : 0 }}>
                   <label style={labelStyle}>{t("emergencyDisposition.emtalaLabelAmaRiskDoc")}</label>
                   <select
                     value={emtalaComplement.amaRiskDiscussionDocumented}
@@ -2205,59 +2225,8 @@ export function EmergencyDispositionPanel({
                   />
                 </div>
               ) : null}
-              <p style={{ ...sectionHeading, marginTop: 10 }}>{t("emergencyDisposition.emtalaAttestSection")}</p>
-              <div style={{ marginTop: 6, display: "flex", flexDirection: "column", gap: 8 }}>
-                <div>
-                  <label style={labelStyle}>{t("emergencyDisposition.emtalaLabelMsePerformed")}</label>
-                  <select
-                    value={emtalaComplement.msePerformed}
-                    onChange={(e) =>
-                      patchEmtalaComplement({ msePerformed: e.target.value as EmtalaDispositionComplementForm["msePerformed"] })
-                    }
-                    disabled={formDisabled}
-                    style={{ ...inputBase, cursor: formDisabled ? "not-allowed" : "pointer" }}
-                  >
-                    <option value="">{t("emergencyDisposition.emtalaTriUnset")}</option>
-                    <option value="true">{t("emergencyDisposition.emtalaTriYes")}</option>
-                    <option value="false">{t("emergencyDisposition.emtalaTriNo")}</option>
-                  </select>
-                </div>
-                <div>
-                  <label style={labelStyle}>{t("emergencyDisposition.emtalaLabelEmcConsidered")}</label>
-                  <select
-                    value={emtalaComplement.emergencyConditionConsidered}
-                    onChange={(e) =>
-                      patchEmtalaComplement({
-                        emergencyConditionConsidered: e.target.value as EmtalaDispositionComplementForm["emergencyConditionConsidered"],
-                      })
-                    }
-                    disabled={formDisabled}
-                    style={{ ...inputBase, cursor: formDisabled ? "not-allowed" : "pointer" }}
-                  >
-                    <option value="">{t("emergencyDisposition.emtalaTriUnset")}</option>
-                    <option value="true">{t("emergencyDisposition.emtalaTriYes")}</option>
-                    <option value="false">{t("emergencyDisposition.emtalaTriNo")}</option>
-                  </select>
-                </div>
-                <div>
-                  <label style={labelStyle}>{t("emergencyDisposition.emtalaLabelStabilizing")}</label>
-                  <select
-                    value={emtalaComplement.stabilizingTreatmentProvidedOrNotApplicable}
-                    onChange={(e) =>
-                      patchEmtalaComplement({
-                        stabilizingTreatmentProvidedOrNotApplicable: e.target.value as EmtalaDispositionComplementForm["stabilizingTreatmentProvidedOrNotApplicable"],
-                      })
-                    }
-                    disabled={formDisabled}
-                    style={{ ...inputBase, cursor: formDisabled ? "not-allowed" : "pointer" }}
-                  >
-                    <option value="">{t("emergencyDisposition.emtalaTriUnset")}</option>
-                    <option value="true">{t("emergencyDisposition.emtalaTriYes")}</option>
-                    <option value="false">{t("emergencyDisposition.emtalaTriNo")}</option>
-                  </select>
-                </div>
-              </div>
             </div>
+            ) : null}
 
             </div>
 
@@ -2369,9 +2338,6 @@ export function EmergencyDispositionPanel({
                           : t("emergencyDisposition.signDecisionButton")}
                 </button>
               ) : null}
-              <p style={{ margin: 0, fontSize: 11, color: "#64748b", flex: "1 1 220px" }}>
-                {t("emergencyDisposition.decisionDoesNotClose")}
-              </p>
               {isLocked ? (
                 <span style={{ fontSize: 12, color: "#b45309" }}>{t("emergencyDisposition.lockedSigned")}</span>
               ) : null}

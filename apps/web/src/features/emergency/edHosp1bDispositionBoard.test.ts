@@ -101,7 +101,7 @@ describe("ED.HOSP.1B ED disposition board UI convergence", () => {
   });
 
   it("24. existing close behavior unchanged (panel does not close)", () => {
-    expect(panel).toContain("decisionDoesNotClose");
+    expect(panel).not.toContain("decisionDoesNotClose");
     expect(panel).not.toContain("endEncounter");
     expect(archive).not.toContain("EmergencyDispositionPanel");
   });

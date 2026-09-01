@@ -583,6 +583,10 @@ export function applyEmtalaV1ComplementToNursingAssessment(
     outcome: ErDispositionOutcomeUi;
     complement: EmtalaDispositionComplementForm;
     dispositionDecidedAtIso: string;
+    /** When false, US EMTALA attest booleans are not written or kept (Haiti / non-US). */
+    persistAttestations?: boolean;
+    /** Derived MSE YES only. Never pass true without canonical MSE evidence. */
+    derivedMsePerformed?: boolean | null;
   }
 ): Record<string, unknown> {
   const { outcome, complement, dispositionDecidedAtIso } = params;
@@ -610,7 +614,16 @@ export function applyEmtalaV1ComplementToNursingAssessment(
   }
 
   Object.assign(next, emtalaOutcomeFieldsFromComplement(complement, outcome));
-  applyTriStateAttestations(next, complement);
+  if (params.persistAttestations === false) {
+    delete next.msePerformed;
+    delete next.emergencyConditionConsidered;
+    delete next.stabilizingTreatmentProvidedOrNotApplicable;
+  } else {
+    applyTriStateAttestations(next, complement);
+    if (params.derivedMsePerformed === true && complement.msePerformed === "") {
+      next.msePerformed = true;
+    }
+  }
 
   if (prevE?.signature) {
     next.signature = prevE.signature;
