@@ -17,6 +17,8 @@ import { apiFetch } from "@/lib/apiClient";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import { DISPLAY_DASH } from "@/lib/patientDisplay";
 import { emergencyActiveWorkspacePath } from "@/features/emergency/emergencyRoutes";
+import { observationNursingWorkspacePath } from "@/features/observation-workspace/observationWorkspacePaths";
+import { inpatientNursingWorkspacePath } from "@/features/inpatient-workspace/inpatientWorkspacePaths";
 import { HospitalCareShell } from "./HospitalCareShell";
 import { hospitalAdmissionCommandCenterPath } from "./hospitalCarePaths";
 
@@ -265,6 +267,38 @@ export function AdmissionReviewWorkspaceView() {
             >
               {t("admissionWorkflowVisibility.editDecision")}
             </Link>
+            {placement?.receivingEncounterId?.trim() ? (
+              <Link
+                href={
+                  String(
+                    encounter &&
+                      typeof encounter.admissionSummaryJson === "object" &&
+                      encounter.admissionSummaryJson &&
+                      "requestedEncounterType" in encounter.admissionSummaryJson
+                      ? (encounter.admissionSummaryJson as { requestedEncounterType?: unknown })
+                          .requestedEncounterType
+                      : ""
+                  )
+                    .trim()
+                    .toUpperCase() === "OBSERVATION"
+                    ? observationNursingWorkspacePath(placement.receivingEncounterId.trim())
+                    : inpatientNursingWorkspacePath(placement.receivingEncounterId.trim())
+                }
+                data-testid="admission-review-start-nursing"
+                style={{
+                  fontSize: 13,
+                  fontWeight: 600,
+                  color: "#0f766e",
+                  textDecoration: "none",
+                  border: "1px solid #99f6e4",
+                  background: "#f0fdfa",
+                  borderRadius: 10,
+                  padding: "8px 12px",
+                }}
+              >
+                {t("edHosp1gHospitalBoard.startReceiving")}
+              </Link>
+            ) : null}
           </div>
         ) : null
       }

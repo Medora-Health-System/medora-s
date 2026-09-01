@@ -12,8 +12,8 @@ import { HospitalCarePatientCard } from "./HospitalCarePatientCard";
 import {
   fetchFacilityPlacementQueue,
   isForbiddenApiError,
+  isHospitalBoardPlacementQueueRow,
   isPlacementActionsEnabledInBrowser,
-  PLACEMENT_QUEUE_STATUS_SET,
   transitionPlacementRequest,
   type HospitalCarePlacementQueueRow,
   type PlacementQueueAvailability,
@@ -70,7 +70,7 @@ export function HospitalCarePlacementQueueView() {
   const queueRows = useMemo(() => {
     const q = query.trim().toLowerCase();
     return rows
-      .filter((r) => PLACEMENT_QUEUE_STATUS_SET.has(r.status))
+      .filter((r) => isHospitalBoardPlacementQueueRow(r))
       .filter((r) => {
         if (!q) return true;
         const name = `${r.patient.firstName ?? ""} ${r.patient.lastName ?? ""}`.toLowerCase();
@@ -90,6 +90,8 @@ export function HospitalCarePlacementQueueView() {
       await transitionPlacementRequest(row.id, {
         toStatus,
         assignedBedKey: action === "ASSIGN_BED" ? bed || "BED-1" : undefined,
+        assignedRoomKey:
+          action === "ASSIGN_BED" ? row.assignedRoomKey || bed || "ROOM-1" : undefined,
         assignedUnitCode:
           action === "ASSIGN_BED" ? row.assignedUnitCode || "MS" : undefined,
         assignmentSourceSystem: action === "ASSIGN_BED" ? "FLOOR_BOARD" : undefined,

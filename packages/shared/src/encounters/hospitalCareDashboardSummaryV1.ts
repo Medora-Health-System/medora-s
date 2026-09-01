@@ -3,6 +3,8 @@
  * Counts derive from real placement rows — never invent census data.
  */
 
+import { countEdHospBoardSurfaces } from "./edHosp1gHospitalBoardProjection.js";
+
 export type HospitalCareDashboardPlacementRow = {
   id: string;
   status: string;
@@ -42,6 +44,7 @@ export type HospitalCareDashboardCounts = {
   activeObservation: number;
   activeInpatient: number;
   admissionsToday: number;
+  incomingAdmissions: number;
   dischargesToday: number;
   bedsAvailable: number | null;
   bedsOccupied: number | null;
@@ -152,6 +155,8 @@ export function buildHospitalCareDashboardSummary(input: {
   let placementDerivedObservation = 0;
   let placementDerivedInpatient = 0;
   let admissionsToday = 0;
+  const incoming = countEdHospBoardSurfaces(rows);
+  awaitingBed = incoming.placementQueue;
 
   const attentionMap = new Map<string, number>();
   const bump = (code: string) => attentionMap.set(code, (attentionMap.get(code) ?? 0) + 1);
@@ -162,11 +167,9 @@ export function buildHospitalCareDashboardSummary(input: {
     if (s === "REQUESTED" || s === "SIGNED") placementRequested += 1;
     if (s === "ACCEPTED") {
       placementAccepted += 1;
-      awaitingBed += 1;
       bump("ACCEPTED_WITHOUT_BED");
     }
     if (s === "UNDER_REVIEW") bump("PLACEMENTS_AWAITING_REVIEW");
-    if (s === "BED_ASSIGNED") awaitingBed += 0; // has bed
     if (s === "READY_FOR_TRANSFER") readyForTransfer += 1;
     if (s === "DEPARTED_ED") bump("DEPARTED_ED_AWAITING_ARRIVAL");
     if (isArrived(row) && dest === "OBSERVATION") placementDerivedObservation += 1;
@@ -181,8 +184,8 @@ export function buildHospitalCareDashboardSummary(input: {
 
   const clinical = input.clinicalCensus;
   const activeObservation = clinical
-    ? clinical.activeObservation
-    : placementDerivedObservation;
+    ? clinical.activeObservation + incoming.observationReceiving
+    : placementDerivedObservation + incoming.observationReceiving;
   const activeInpatient = clinical ? clinical.activeInpatient : placementDerivedInpatient;
   if (clinical?.admissionsToday != null) {
     admissionsToday = clinical.admissionsToday;
@@ -249,6 +252,7 @@ export function buildHospitalCareDashboardSummary(input: {
       activeObservation,
       activeInpatient,
       admissionsToday,
+      incomingAdmissions: incoming.admissionsReceiving,
       dischargesToday: 0,
       bedsAvailable: clinical?.bedsAvailable ?? null,
       bedsOccupied: clinical?.bedsOccupied ?? null,

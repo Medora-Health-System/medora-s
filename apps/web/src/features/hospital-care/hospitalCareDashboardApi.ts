@@ -26,6 +26,7 @@ export type HospitalCareDashboardResponse = {
     activeObservation: number;
     activeInpatient: number;
     admissionsToday: number;
+    incomingAdmissions: number;
     dischargesToday: number;
     bedsAvailable: number | null;
     bedsOccupied: number | null;

@@ -3,6 +3,11 @@
  */
 
 import { apiFetch } from "@/lib/apiClient";
+import {
+  isEdHospAdmissionsReceivingRow,
+  isEdHospObservationReceivingRow,
+  isEdHospPlacementQueueRow,
+} from "@medora/shared";
 
 export type HospitalCarePlacementQueueRow = {
   id: string;
@@ -105,7 +110,7 @@ export function isForbiddenApiError(error: unknown): boolean {
   );
 }
 
-/** Queue statuses shown on Placement Queue / Admissions (pre-arrival + transport). */
+/** Queue statuses historically shown on Placement Queue / Admissions (pre-arrival + transport). */
 export const PLACEMENT_QUEUE_STATUS_SET = new Set([
   "SIGNED",
   "REQUESTED",
@@ -115,6 +120,25 @@ export const PLACEMENT_QUEUE_STATUS_SET = new Set([
   "READY_FOR_TRANSFER",
   "DEPARTED_ED",
 ]);
+
+/** ED.HOSP.1G — no-bed hospital dest on the existing Placement queue. */
+export function isHospitalBoardPlacementQueueRow(row: HospitalCarePlacementQueueRow): boolean {
+  return isEdHospPlacementQueueRow(row);
+}
+
+/** ED.HOSP.1G — Observation receiving on the existing Observation surface. */
+export function isHospitalBoardObservationReceivingRow(
+  row: HospitalCarePlacementQueueRow
+): boolean {
+  return isEdHospObservationReceivingRow(row);
+}
+
+/** ED.HOSP.1G — Admission receiving on the existing Admissions surface. */
+export function isHospitalBoardAdmissionsReceivingRow(
+  row: HospitalCarePlacementQueueRow
+): boolean {
+  return isEdHospAdmissionsReceivingRow(row);
+}
 
 /** Post-arrival census lanes for Observation / Inpatient shells. */
 export function isArrivedPlacement(row: HospitalCarePlacementQueueRow): boolean {

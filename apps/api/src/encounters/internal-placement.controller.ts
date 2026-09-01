@@ -44,11 +44,44 @@ function userIdFromReq(req: { user?: { userId?: string; id?: string } }): string
 
 const ROLE_CODE_SET = new Set<string>(Object.values(RoleCode));
 
-function roleCodesFromReq(req: { user?: { roles?: Array<string | { code?: string }> } }): RoleCode[] {
-  const raw = req.user?.roles ?? [];
-  return raw
-    .map((r) => (typeof r === "string" ? r : r?.code))
-    .filter((c): c is RoleCode => typeof c === "string" && ROLE_CODE_SET.has(c));
+function roleCodesFromReq(req: {
+  user?: {
+    roles?: Array<string | { code?: string; role?: string }>;
+    facilityRoles?: Array<{ facilityId?: string; role?: string; code?: string; isActive?: boolean }>;
+    facilityId?: string;
+  };
+  headers?: Record<string, string | string[] | undefined>;
+}): RoleCode[] {
+  const out: RoleCode[] = [];
+  const seen = new Set<string>();
+  const push = (raw: unknown) => {
+    const c = typeof raw === "string" ? raw.trim().toUpperCase() : "";
+    if (!c || seen.has(c) || !ROLE_CODE_SET.has(c)) return;
+    seen.add(c);
+    out.push(c as RoleCode);
+  };
+
+  for (const r of req.user?.roles ?? []) {
+    if (typeof r === "string") push(r);
+    else if (r && typeof r === "object") {
+      push(r.code);
+      push(r.role);
+    }
+  }
+
+  const headerFacility = req.headers?.["x-facility-id"];
+  const facilityId =
+    req.user?.facilityId ||
+    (typeof headerFacility === "string" ? headerFacility : Array.isArray(headerFacility) ? headerFacility[0] : undefined);
+
+  for (const fr of req.user?.facilityRoles ?? []) {
+    if (!fr || fr.isActive === false) continue;
+    if (facilityId && fr.facilityId && fr.facilityId !== facilityId) continue;
+    push(fr.role);
+    push(fr.code);
+  }
+
+  return out;
 }
 
 /**

@@ -6,6 +6,7 @@
 
 import { resolveClinicalEncounterContext } from "./clinicalEncounterIdentity.js";
 import type { ClinicalEncounterContext } from "./clinicalEncounterIdentity.js";
+import { isEdHospPlacementQueueRow } from "./edHosp1gHospitalBoardProjection.js";
 import {
   projectHospitalBoardAssignments,
   readHospitalAssignmentBag,
@@ -511,9 +512,9 @@ export function buildHospitalCensusV1(input: {
     if (s === "REQUESTED" || s === "SIGNED") placementRequested += 1;
     if (s === "ACCEPTED") {
       placementAccepted += 1;
-      awaitingBed += 1;
     }
     if (s === "READY_FOR_TRANSFER") readyForTransfer += 1;
+    if (isEdHospPlacementQueueRow(row)) awaitingBed += 1;
   }
 
   /** Admissions today from canonical open hospital census rows. */

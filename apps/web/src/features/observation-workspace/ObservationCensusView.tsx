@@ -1,15 +1,21 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useI18n } from "@/lib/i18n";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import { HospitalCareShell } from "@/features/hospital-care/HospitalCareShell";
 import { HospitalCareActivePatientsSection } from "@/features/hospital-care/HospitalCareActivePatientsSection";
+import { HospitalCareIncomingPlacementSection } from "@/features/hospital-care/HospitalCareIncomingPlacementSection";
 import {
   fetchHospitalCensus,
   type HospitalCensusResponse,
 } from "@/features/hospital-care/hospitalCareCensusApi";
-import { isForbiddenApiError } from "@/features/hospital-care/hospitalCarePlacementApi";
+import {
+  fetchFacilityPlacementQueue,
+  isForbiddenApiError,
+  isHospitalBoardObservationReceivingRow,
+  type HospitalCarePlacementQueueRow,
+} from "@/features/hospital-care/hospitalCarePlacementApi";
 
 /**
  * D3E.6A — Observation census from canonical hospital census (open encounters).
@@ -19,8 +25,24 @@ export function ObservationCensusView() {
   const { t } = useI18n();
   const { facilityId, ready } = useFacilityAndRoles();
   const [census, setCensus] = useState<HospitalCensusResponse | null>(null);
+  const [incoming, setIncoming] = useState<HospitalCarePlacementQueueRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const reload = () => {
+    if (!facilityId?.trim()) return Promise.resolve();
+    return Promise.all([
+      fetchHospitalCensus("OBSERVATION", { facilityId }),
+      fetchFacilityPlacementQueue(),
+    ]).then(([data, queue]) => {
+      setCensus(data);
+      setIncoming(
+        queue.availability === "ENABLED"
+          ? queue.items.filter((r) => isHospitalBoardObservationReceivingRow(r))
+          : []
+      );
+    });
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -34,11 +56,22 @@ export function ObservationCensusView() {
       setLoading(true);
       setError(null);
       try {
-        const data = await fetchHospitalCensus("OBSERVATION", { facilityId });
-        if (!cancelled) setCensus(data);
+        const [data, queue] = await Promise.all([
+          fetchHospitalCensus("OBSERVATION", { facilityId }),
+          fetchFacilityPlacementQueue(),
+        ]);
+        if (!cancelled) {
+          setCensus(data);
+          setIncoming(
+            queue.availability === "ENABLED"
+              ? queue.items.filter((r) => isHospitalBoardObservationReceivingRow(r))
+              : []
+          );
+        }
       } catch (err) {
         if (!cancelled) {
           setCensus(null);
+          setIncoming([]);
           setError(
             isForbiddenApiError(err)
               ? t("hospitalCareD3ca.accessDenied")
@@ -53,6 +86,11 @@ export function ObservationCensusView() {
       cancelled = true;
     };
   }, [t, ready, facilityId]);
+
+  const observationCount = useMemo(
+    () => (census?.summary.activeObservation ?? 0) + incoming.length,
+    [census, incoming.length]
+  );
 
   return (
     <HospitalCareShell
@@ -74,9 +112,16 @@ export function ObservationCensusView() {
           >
             {t("hospitalCareD3e6a.observationTab.count").replace(
               "{count}",
-              String(census.summary.activeObservation)
+              String(observationCount)
             )}
           </p>
+          <HospitalCareIncomingPlacementSection
+            surface="OBSERVATION"
+            rows={incoming}
+            onReload={async () => {
+              await reload();
+            }}
+          />
           <HospitalCareActivePatientsSection census={census} defaultContext="OBSERVATION" />
         </>
       ) : null}
