@@ -1,3 +1,4 @@
+import { ConflictException } from "@nestjs/common";
 import { InternalPlacementService } from "./internal-placement.service";
 import { AdmissionCorrelationService } from "./admission-correlation.service";
 import { InternalPlacementActorRole, InternalPlacementStatus } from "@medora/shared";
@@ -49,6 +50,44 @@ function hospitalFacilityPrisma() {
   };
 }
 
+function attachPlacementCreateTx<T extends Record<string, unknown>>(prisma: T) {
+  const next = prisma as T & { $transaction: jest.Mock };
+  next.$transaction = jest.fn(async (fn: (tx: unknown) => Promise<unknown>) =>
+    fn({
+      $queryRaw: jest.fn().mockResolvedValue([{ id: "enc-ed" }]),
+      internalPlacementRequest: (prisma as { internalPlacementRequest?: unknown }).internalPlacementRequest,
+    })
+  );
+  return next;
+}
+
+function signedHospitalSummary(
+  dest: "OBSERVATION" | "INPATIENT" | "HOME" | "TRANSFER" | "AMA" | "LWBS" | "ELOPEMENT" | "DECEASED",
+  extras: Record<string, unknown> = {}
+) {
+  return {
+    admissionDecisionMode: "SIGN",
+    requestedEncounterType: dest,
+    admissionDecisionByUserId: "prov-signer",
+    admissionDecisionAt: "2026-09-01T21:15:45.841Z",
+    careLevel: dest === "INPATIENT" ? "MEDICAL_SURGICAL" : "OBSERVATION",
+    serviceUnit: "INTERNAL_MEDICINE",
+    admissionDiagnosis: "Chest pain",
+    admissionReason: "Chest pain",
+    responsiblePhysicianName: "Rajnil Shah",
+    ...extras,
+  };
+}
+
+function makeService(prisma: unknown, audit: { log: jest.Mock } = { log: jest.fn() }) {
+  return new InternalPlacementService(
+    prisma as never,
+    audit as never,
+    { createEpisodeForEncounter: jest.fn() } as never,
+    correlationSvc(prisma) as never
+  );
+}
+
 describe("InternalPlacementService D3C", () => {
   const prev = process.env.INTERNAL_PLACEMENT_WORKFLOW_ENABLED;
 
@@ -91,7 +130,7 @@ describe("InternalPlacementService D3C", () => {
 
   it("creates draft when flag forced ON and keeps ED encounter type untouched", async () => {
     const created = baseRow();
-    const prisma = {
+    const prisma = attachPlacementCreateTx({
       ...hospitalFacilityPrisma(),
       encounter: {
         findFirst: jest.fn().mockResolvedValue({
@@ -107,7 +146,7 @@ describe("InternalPlacementService D3C", () => {
         findFirst: jest.fn().mockResolvedValue(null),
         create: jest.fn().mockResolvedValue(created),
       },
-    };
+    });
     const audit = { log: jest.fn() };
     const svc = new InternalPlacementService(
       prisma as never,
@@ -289,7 +328,7 @@ describe("InternalPlacementService D3C", () => {
 
   it("FSER can create OBSERVATION placement", async () => {
     const created = baseRow();
-    const prisma = {
+    const prisma = attachPlacementCreateTx({
       facility: {
         findFirst: jest.fn().mockResolvedValue({ facilityType: "FREESTANDING_ER" }),
       },
@@ -307,7 +346,7 @@ describe("InternalPlacementService D3C", () => {
         findFirst: jest.fn().mockResolvedValue(null),
         create: jest.fn().mockResolvedValue(created),
       },
-    };
+    });
     const svc = new InternalPlacementService(
       prisma as never,
       { log: jest.fn() } as never,
@@ -323,5 +362,255 @@ describe("InternalPlacementService D3C", () => {
     );
     expect(result?.requestedEncounterType).toBe("OBSERVATION");
     expect(prisma.internalPlacementRequest.create).toHaveBeenCalled();
+  });
+
+  it("listFacilityQueue does not reconcile or create placement rows", async () => {
+    process.env.INTERNAL_PLACEMENT_WORKFLOW_ENABLED = "true";
+    const prisma = {
+      encounter: { findMany: jest.fn() },
+      internalPlacementRequest: {
+        findMany: jest.fn().mockResolvedValue([]),
+      },
+    };
+    const svc = makeService(prisma);
+    const reconcile = jest.spyOn(svc, "reconcileSignedHospitalBoundDecisions");
+    const create = jest.spyOn(svc, "createDraft");
+    await svc.listFacilityQueue("fac-1");
+    expect(reconcile).not.toHaveBeenCalled();
+    expect(create).not.toHaveBeenCalled();
+    expect(prisma.encounter.findMany).not.toHaveBeenCalled();
+    expect(prisma.internalPlacementRequest.findMany).toHaveBeenCalled();
+  });
+
+  it("reconciles a signed Observation decision without mutating admissionSummaryJson", async () => {
+    process.env.INTERNAL_PLACEMENT_WORKFLOW_ENABLED = "true";
+    const summary = signedHospitalSummary("OBSERVATION");
+    const prisma = {
+      encounter: {
+        findMany: jest.fn().mockResolvedValue([
+          { id: "enc-obs", admissionSummaryJson: summary },
+          { id: "enc-home", admissionSummaryJson: signedHospitalSummary("HOME") },
+        ]),
+        findFirst: jest.fn().mockResolvedValue({ admissionSummaryJson: summary }),
+      },
+      internalPlacementRequest: { findFirst: jest.fn() },
+    };
+    const audit = { log: jest.fn() };
+    const svc = makeService(prisma, audit);
+    jest.spyOn(svc, "getActiveForEncounter").mockResolvedValue(null);
+    const create = jest.spyOn(svc, "createDraft").mockResolvedValue({
+      ...baseRow({ status: InternalPlacementStatus.DRAFT, originatingEncounterId: "enc-obs" }),
+      status: InternalPlacementStatus.DRAFT,
+    } as never);
+    const sign = jest.spyOn(svc, "signDraft").mockResolvedValue({
+      ...baseRow({ status: InternalPlacementStatus.SIGNED, version: 2 }),
+      status: InternalPlacementStatus.SIGNED,
+      version: 2,
+    } as never);
+    const submit = jest.spyOn(svc, "submitRequested").mockResolvedValue({
+      ...baseRow({ status: InternalPlacementStatus.REQUESTED, version: 3 }),
+      status: InternalPlacementStatus.REQUESTED,
+      version: 3,
+    } as never);
+
+    const result = await svc.reconcileSignedHospitalBoundDecisions("fac-1", "admin-1", {
+      featureFlagEnabled: true,
+    });
+
+    expect(result).toEqual({
+      eligible: 1,
+      created: 1,
+      alreadyExists: 0,
+      skipped: 1,
+      failed: 0,
+    });
+    expect(create).toHaveBeenCalledWith(
+      "fac-1",
+      "enc-obs",
+      "prov-signer",
+      expect.objectContaining({ requestedEncounterType: "OBSERVATION" }),
+      expect.anything()
+    );
+    expect(sign).toHaveBeenCalled();
+    expect(submit).toHaveBeenCalledWith(
+      "fac-1",
+      "ipr-1",
+      "prov-signer",
+      expect.objectContaining({
+        requestedAtOverride: new Date("2026-09-01T21:15:45.841Z"),
+      })
+    );
+    expect(audit.log).toHaveBeenCalledWith(
+      expect.anything(),
+      "InternalPlacementRequest",
+      expect.objectContaining({
+        userId: "admin-1",
+        metadata: expect.objectContaining({
+          event: "INTERNAL_PLACEMENT_RECONCILED_FROM_SIGNED_DECISION",
+          originalSignerUserId: "prov-signer",
+          admissionSummaryUnchanged: true,
+        }),
+      })
+    );
+  });
+
+  it("reconciles a signed Admission decision onto one REQUESTED placement", async () => {
+    process.env.INTERNAL_PLACEMENT_WORKFLOW_ENABLED = "true";
+    const summary = signedHospitalSummary("INPATIENT");
+    const prisma = {
+      encounter: {
+        findMany: jest.fn().mockResolvedValue([{ id: "enc-ip", admissionSummaryJson: summary }]),
+        findFirst: jest.fn().mockResolvedValue({ admissionSummaryJson: summary }),
+      },
+    };
+    const svc = makeService(prisma);
+    jest.spyOn(svc, "getActiveForEncounter").mockResolvedValue(null);
+    jest.spyOn(svc, "createDraft").mockResolvedValue({
+      ...baseRow({
+        status: InternalPlacementStatus.DRAFT,
+        requestedEncounterType: "INPATIENT",
+        originatingEncounterId: "enc-ip",
+      }),
+      status: InternalPlacementStatus.DRAFT,
+    } as never);
+    jest.spyOn(svc, "signDraft").mockResolvedValue({
+      ...baseRow({ status: InternalPlacementStatus.SIGNED, version: 2 }),
+      status: InternalPlacementStatus.SIGNED,
+      version: 2,
+    } as never);
+    const submit = jest.spyOn(svc, "submitRequested").mockResolvedValue({
+      ...baseRow({
+        status: InternalPlacementStatus.REQUESTED,
+        requestedEncounterType: "INPATIENT",
+        version: 3,
+      }),
+      status: InternalPlacementStatus.REQUESTED,
+      version: 3,
+    } as never);
+    const result = await svc.reconcileSignedHospitalBoundDecisions("fac-1", "admin-1", {
+      featureFlagEnabled: true,
+    });
+    expect(result.created).toBe(1);
+    expect(submit).toHaveBeenCalledWith(
+      "fac-1",
+      "ipr-1",
+      "prov-signer",
+      expect.objectContaining({ requestedAtOverride: new Date("2026-09-01T21:15:45.841Z") })
+    );
+  });
+
+  it("second reconcile does not duplicate an existing placement", async () => {
+    process.env.INTERNAL_PLACEMENT_WORKFLOW_ENABLED = "true";
+    const prisma = {
+      encounter: {
+        findMany: jest.fn().mockResolvedValue([
+          { id: "enc-obs", admissionSummaryJson: signedHospitalSummary("OBSERVATION") },
+        ]),
+      },
+    };
+    const svc = makeService(prisma);
+    jest.spyOn(svc, "getActiveForEncounter").mockResolvedValue(baseRow() as never);
+    const create = jest.spyOn(svc, "createDraft");
+    const result = await svc.reconcileSignedHospitalBoundDecisions("fac-1", "admin-1", {
+      featureFlagEnabled: true,
+    });
+    expect(result).toMatchObject({
+      eligible: 1,
+      created: 0,
+      alreadyExists: 1,
+      failed: 0,
+    });
+    expect(create).not.toHaveBeenCalled();
+  });
+
+  it("concurrent reconcile creates one placement and treats the loser as alreadyExists", async () => {
+    process.env.INTERNAL_PLACEMENT_WORKFLOW_ENABLED = "true";
+    const summary = signedHospitalSummary("OBSERVATION");
+    const prisma = {
+      encounter: {
+        findMany: jest.fn().mockResolvedValue([{ id: "enc-obs", admissionSummaryJson: summary }]),
+        findFirst: jest.fn().mockResolvedValue({ admissionSummaryJson: summary }),
+      },
+    };
+    const svc = makeService(prisma);
+    jest.spyOn(svc, "getActiveForEncounter").mockResolvedValue(null);
+    let createCalls = 0;
+    jest.spyOn(svc, "createDraft").mockImplementation(async () => {
+      createCalls += 1;
+      if (createCalls > 1) {
+        throw new ConflictException("An active internal placement request already exists");
+      }
+      await new Promise((resolve) => setImmediate(resolve));
+      return {
+        ...baseRow({ status: InternalPlacementStatus.DRAFT, originatingEncounterId: "enc-obs" }),
+        status: InternalPlacementStatus.DRAFT,
+      } as never;
+    });
+    jest.spyOn(svc, "signDraft").mockResolvedValue({
+      ...baseRow({ status: InternalPlacementStatus.SIGNED, version: 2 }),
+      status: InternalPlacementStatus.SIGNED,
+      version: 2,
+    } as never);
+    jest.spyOn(svc, "submitRequested").mockResolvedValue({
+      ...baseRow({ status: InternalPlacementStatus.REQUESTED, version: 3 }),
+      status: InternalPlacementStatus.REQUESTED,
+      version: 3,
+    } as never);
+
+    const [first, second] = await Promise.all([
+      svc.reconcileSignedHospitalBoundDecisions("fac-1", "admin-1", { featureFlagEnabled: true }),
+      svc.reconcileSignedHospitalBoundDecisions("fac-1", "admin-2", { featureFlagEnabled: true }),
+    ]);
+    expect(first.created + second.created).toBe(1);
+    expect(first.alreadyExists + second.alreadyExists).toBe(1);
+    expect(createCalls).toBe(2);
+  });
+
+  it.each([
+    ["unsigned Observation", { ...signedHospitalSummary("OBSERVATION"), admissionDecisionMode: "DRAFT" }],
+    ["Home", signedHospitalSummary("HOME")],
+    ["Transfer", signedHospitalSummary("TRANSFER")],
+    ["AMA", signedHospitalSummary("AMA")],
+    ["LWBS", signedHospitalSummary("LWBS")],
+    ["Elopement", signedHospitalSummary("ELOPEMENT")],
+    ["Deceased", signedHospitalSummary("DECEASED")],
+    ["missing signer", signedHospitalSummary("OBSERVATION", { admissionDecisionByUserId: "" })],
+    ["missing signedAt", signedHospitalSummary("OBSERVATION", { admissionDecisionAt: "" })],
+  ])("skips %s and does not create placement", async (_label, summary) => {
+    process.env.INTERNAL_PLACEMENT_WORKFLOW_ENABLED = "true";
+    const prisma = {
+      encounter: {
+        findMany: jest.fn().mockResolvedValue([{ id: "enc-skip", admissionSummaryJson: summary }]),
+      },
+    };
+    const svc = makeService(prisma);
+    const create = jest.spyOn(svc, "createDraft");
+    const result = await svc.reconcileSignedHospitalBoundDecisions("fac-1", "admin-1", {
+      featureFlagEnabled: true,
+    });
+    expect(result.created).toBe(0);
+    expect(result.eligible).toBe(0);
+    expect(result.skipped).toBe(1);
+    expect(create).not.toHaveBeenCalled();
+  });
+
+  it("scopes reconcile encounter scan to the caller facility", async () => {
+    process.env.INTERNAL_PLACEMENT_WORKFLOW_ENABLED = "true";
+    const prisma = {
+      encounter: { findMany: jest.fn().mockResolvedValue([]) },
+    };
+    const svc = makeService(prisma);
+    await svc.reconcileSignedHospitalBoundDecisions("fac-1", "admin-1", {
+      featureFlagEnabled: true,
+    });
+    expect(prisma.encounter.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          facilityId: "fac-1",
+          type: "EMERGENCY",
+          status: "OPEN",
+        }),
+      })
+    );
   });
 });

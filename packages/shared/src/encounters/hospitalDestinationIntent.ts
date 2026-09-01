@@ -182,3 +182,90 @@ export function hospitalDestinationIntentForPlacementCreate(
 ): HospitalDestinationIntent {
   return resolveHospitalDestinationIntent(input) ?? "INPATIENT";
 }
+
+const NON_HOSPITAL_ED_DESTINATION_TOKENS = new Set([
+  "HOME",
+  "DISCHARGE",
+  "DISCHARGE_HOME",
+  "TRANSFER",
+  "TRANSFER_EXTERNAL",
+  "AMA",
+  "LWBS",
+  "ELOPEMENT",
+  "ELOPED",
+  "DECEASED",
+  "DEATH",
+  "OTHER",
+]);
+
+function signedAdmissionDecisionIsSupersededOrCanceled(root: Record<string, unknown>): boolean {
+  if (root.admissionDecisionCanceled === true || root.admissionDecisionSuperseded === true) {
+    return true;
+  }
+  const status = String(root.admissionDecisionStatus ?? "")
+    .trim()
+    .toUpperCase();
+  return status === "CANCELED" || status === "CANCELLED" || status === "SUPERSEDED";
+}
+
+/**
+ * Signed ED Observation/Admission only. Explicit dest token — never Home/AMA/Transfer
+ * and never the INPATIENT fallback used at live SIGN time.
+ */
+export function signedHospitalBoundEdDisposition(
+  admissionSummaryJson: unknown
+): HospitalDestinationIntent | null {
+  const root = asRecord(admissionSummaryJson);
+  if (!root) return null;
+  const mode = String(root.admissionDecisionMode ?? "")
+    .trim()
+    .toUpperCase();
+  if (mode !== "SIGN") return null;
+  if (signedAdmissionDecisionIsSupersededOrCanceled(root)) return null;
+  const destRaw =
+    typeof root.requestedEncounterType === "string"
+      ? root.requestedEncounterType.trim().toUpperCase()
+      : "";
+  if (!destRaw || NON_HOSPITAL_ED_DESTINATION_TOKENS.has(destRaw)) return null;
+  return parseHospitalDestinationIntent(destRaw);
+}
+
+export function signedHospitalBoundEdDecisionSignerUserId(
+  admissionSummaryJson: unknown
+): string | null {
+  const root = asRecord(admissionSummaryJson);
+  if (!root) return null;
+  const signer = String(root.admissionDecisionByUserId ?? "").trim();
+  return signer || null;
+}
+
+export function signedHospitalBoundEdDecisionAt(
+  admissionSummaryJson: unknown
+): Date | null {
+  const root = asRecord(admissionSummaryJson);
+  if (!root) return null;
+  const raw = String(root.admissionDecisionAt ?? "").trim();
+  if (!raw) return null;
+  const d = new Date(raw);
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
+export type SignedHospitalBoundEdPlacementReconcileCandidate = {
+  requestedEncounterType: HospitalDestinationIntent;
+  signerUserId: string;
+  decisionAt: Date;
+};
+
+/**
+ * Historical placement backfill eligibility. Requires an explicit signed hospital dest,
+ * original provider signer, and original decision timestamp. Does not infer dest.
+ */
+export function signedHospitalBoundEdPlacementReconcileCandidate(
+  admissionSummaryJson: unknown
+): SignedHospitalBoundEdPlacementReconcileCandidate | null {
+  const dest = signedHospitalBoundEdDisposition(admissionSummaryJson);
+  const signerUserId = signedHospitalBoundEdDecisionSignerUserId(admissionSummaryJson);
+  const decisionAt = signedHospitalBoundEdDecisionAt(admissionSummaryJson);
+  if (!dest || !signerUserId || !decisionAt) return null;
+  return { requestedEncounterType: dest, signerUserId, decisionAt };
+}

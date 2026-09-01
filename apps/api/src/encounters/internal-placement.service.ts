@@ -25,6 +25,7 @@ import {
   readHospitalAdmissionCorrelation,
   ReceivingEncounterLifecycle,
   receivingEncounterFoundationEnabledFromProcessEnv,
+  signedHospitalBoundEdPlacementReconcileCandidate,
   validateInternalPlacementClinicalRequestForSign,
   validateInternalPlacementTransition,
   type HospitalAdmissionCorrelationV1,
@@ -263,6 +264,178 @@ export class InternalPlacementService {
     return map;
   }
 
+  /**
+   * Project already-signed ED Observation/Admission decisions onto InternalPlacementRequest
+   * after the workflow flag is enabled. Explicit ADMIN action only — never from GET.
+   * Does not rewrite admissionSummaryJson, signer, or signed timestamps.
+   */
+  async reconcileSignedHospitalBoundDecisions(
+    facilityId: string,
+    reconcilingUserId: string,
+    options?: { featureFlagEnabled?: boolean; ip?: string; userAgent?: string }
+  ): Promise<{
+    eligible: number;
+    created: number;
+    alreadyExists: number;
+    skipped: number;
+    failed: number;
+  }> {
+    this.assertWorkflowEnabled(options);
+    const actor = String(reconcilingUserId ?? "").trim();
+    if (!actor) {
+      throw new BadRequestException("User ID required");
+    }
+
+    const PAGE = 100;
+    const encounters: Array<{ id: string; admissionSummaryJson: unknown }> = [];
+    for (let skip = 0; ; skip += PAGE) {
+      const page = await this.prisma.encounter.findMany({
+        where: {
+          facilityId,
+          type: EncounterType.EMERGENCY,
+          status: EncounterStatus.OPEN,
+        },
+        select: {
+          id: true,
+          admissionSummaryJson: true,
+        },
+        take: PAGE,
+        skip,
+        orderBy: [{ updatedAt: "desc" }, { id: "asc" }],
+      });
+      encounters.push(...page);
+      if (page.length < PAGE) break;
+    }
+
+    let eligible = 0;
+    let created = 0;
+    let alreadyExists = 0;
+    let skipped = 0;
+    let failed = 0;
+
+    for (const encounter of encounters) {
+      const candidate = signedHospitalBoundEdPlacementReconcileCandidate(
+        encounter.admissionSummaryJson
+      );
+      if (!candidate) {
+        skipped += 1;
+        continue;
+      }
+      eligible += 1;
+
+      const outcome = await this.reconcileOneSignedHospitalBoundDecision(
+        facilityId,
+        encounter.id,
+        encounter.admissionSummaryJson,
+        candidate,
+        actor,
+        options
+      );
+      if (outcome === "created") created += 1;
+      else if (outcome === "alreadyExists") alreadyExists += 1;
+      else failed += 1;
+    }
+
+    return { eligible, created, alreadyExists, skipped, failed };
+  }
+
+  private async reconcileOneSignedHospitalBoundDecision(
+    facilityId: string,
+    encounterId: string,
+    admissionSummaryJson: unknown,
+    candidate: {
+      requestedEncounterType: "OBSERVATION" | "INPATIENT";
+      signerUserId: string;
+      decisionAt: Date;
+    },
+    reconcilingUserId: string,
+    options?: { featureFlagEnabled?: boolean; ip?: string; userAgent?: string }
+  ): Promise<"created" | "alreadyExists" | "failed"> {
+    const existing = await this.getActiveForEncounter(facilityId, encounterId, {
+      featureFlagEnabled: true,
+    });
+    if (existing) return "alreadyExists";
+
+    const draftInput = draftInputFromSignedAdmissionSummary(
+      candidate.requestedEncounterType,
+      admissionSummaryJson
+    );
+    const clinical = validateInternalPlacementClinicalRequestForSign(draftInput);
+    if (!clinical.ok) return "failed";
+
+    const beforeJson = JSON.stringify(admissionSummaryJson ?? null);
+    let draft;
+    try {
+      draft = await this.createDraft(facilityId, encounterId, candidate.signerUserId, draftInput, {
+        featureFlagEnabled: true,
+        ip: options?.ip,
+        userAgent: options?.userAgent,
+      });
+    } catch (err) {
+      if (err instanceof ConflictException) return "alreadyExists";
+      return "failed";
+    }
+    if (draft.code === "EXISTING_ADMISSION_INTENT") return "alreadyExists";
+
+    try {
+      let active = draft;
+      if (String(active.status ?? "") === InternalPlacementStatus.DRAFT || active.status === "DRAFT") {
+        active = await this.signDraft(facilityId, active.id, candidate.signerUserId, {
+          featureFlagEnabled: true,
+          expectedVersion: active.version,
+          ip: options?.ip,
+          userAgent: options?.userAgent,
+        });
+      }
+      if (
+        String(active.status ?? "") === InternalPlacementStatus.SIGNED ||
+        active.status === "SIGNED"
+      ) {
+        active = await this.submitRequested(facilityId, active.id, candidate.signerUserId, {
+          featureFlagEnabled: true,
+          expectedVersion: active.version,
+          ip: options?.ip,
+          userAgent: options?.userAgent,
+          requestedAtOverride: candidate.decisionAt,
+        });
+      }
+
+      const after = await this.prisma.encounter.findFirst({
+        where: { id: encounterId, facilityId },
+        select: { admissionSummaryJson: true },
+      });
+      if (JSON.stringify(after?.admissionSummaryJson ?? null) !== beforeJson) {
+        throw new ConflictException("Reconciliation must not mutate the signed provider decision");
+      }
+
+      await this.audit.log(AuditAction.UPDATE, INTERNAL_PLACEMENT_ENTITY, {
+        userId: reconcilingUserId,
+        facilityId,
+        encounterId,
+        entityId: active.id,
+        critical: true,
+        ip: options?.ip,
+        userAgent: options?.userAgent,
+        metadata: {
+          event: "INTERNAL_PLACEMENT_RECONCILED_FROM_SIGNED_DECISION",
+          originalSignerUserId: candidate.signerUserId,
+          requestedEncounterType: candidate.requestedEncounterType,
+          placementStatus: active.status,
+          admissionSummaryUnchanged: true,
+        },
+      });
+      return "created";
+    } catch (err) {
+      if (
+        err instanceof ConflictException &&
+        String(err.message).includes("must not mutate the signed provider decision")
+      ) {
+        throw err;
+      }
+      return "failed";
+    }
+  }
+
   async createDraft(
     facilityId: string,
     originatingEncounterId: string,
@@ -283,23 +456,59 @@ export class InternalPlacementService {
       this.admissionCorrelation.isEarlyAdmissionEnabled() &&
       input.requestedEncounterType === "INPATIENT";
 
-    const existing = await this.prisma.internalPlacementRequest.findFirst({
-      where: {
-        originatingEncounterId,
-        facilityId,
-        status: {
-          notIn: [
-            InternalPlacementStatus.CANCELLED,
-            InternalPlacementStatus.DECLINED,
-            InternalPlacementStatus.EXPIRED,
-            InternalPlacementStatus.ERROR_REVIEW,
-            InternalPlacementStatus.COMPLETED,
-          ],
-        },
+    const existingWhere = {
+      originatingEncounterId,
+      facilityId,
+      status: {
+        notIn: [
+          InternalPlacementStatus.CANCELLED,
+          InternalPlacementStatus.DECLINED,
+          InternalPlacementStatus.EXPIRED,
+          InternalPlacementStatus.ERROR_REVIEW,
+          InternalPlacementStatus.COMPLETED,
+        ],
       },
-      select: PLACEMENT_SELECT,
+    } satisfies Prisma.InternalPlacementRequestWhereInput;
+
+    const txResult = await this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT id FROM "Encounter" WHERE id = ${encounter.id} AND "facilityId" = ${facilityId} FOR UPDATE`;
+      const existing = await tx.internalPlacementRequest.findFirst({
+        where: existingWhere,
+        select: PLACEMENT_SELECT,
+      });
+      if (existing) {
+        return { kind: "existing" as const, row: existing };
+      }
+      const created = await tx.internalPlacementRequest.create({
+        data: {
+          facilityId: encounter.facilityId,
+          patientId: encounter.patientId,
+          hospitalEpisodeId: encounter.hospitalEpisodeId,
+          originatingEncounterId: encounter.id,
+          requestedEncounterType: input.requestedEncounterType,
+          requestedLevelOfCare: input.requestedLevelOfCare?.trim() || null,
+          requestedService: input.requestedService?.trim() || null,
+          requestedSpecialty: input.requestedSpecialty?.trim() || null,
+          requestedUnitCode: input.requestedUnitCode?.trim() || null,
+          clinicalPriority: input.clinicalPriority?.trim() || null,
+          admissionDiagnosisSummary: input.admissionDiagnosisSummary?.trim() || null,
+          reasonForPlacement: input.reasonForPlacement?.trim() || null,
+          telemetryRequired: input.telemetryRequired === true,
+          isolationRequired: input.isolationRequired === true,
+          isolationType: input.isolationType?.trim() || null,
+          specialPlacementNeedsJson: input.specialPlacementNeedsJson ?? undefined,
+          acceptingProviderNameSnapshot: input.acceptingProviderNameSnapshot?.trim() || null,
+          status: InternalPlacementStatus.DRAFT,
+          createdByUserId: actorUserId,
+          updatedByUserId: actorUserId,
+        },
+        select: PLACEMENT_SELECT,
+      });
+      return { kind: "created" as const, row: created };
     });
-    if (existing) {
+
+    if (txResult.kind === "existing") {
+      const existing = txResult.row;
       if (early) {
         const existingCorr = await this.admissionCorrelation.findExistingEdAdmissionIntent(
           facilityId,
@@ -322,7 +531,7 @@ export class InternalPlacementService {
         facilityId,
         originatingEncounterId
       );
-      if (existingCorr?.internalPlacementRequestId) {
+      if (existingCorr?.internalPlacementRequestId && existingCorr.internalPlacementRequestId !== txResult.row.id) {
         const linked = await this.prisma.internalPlacementRequest.findFirst({
           where: {
             id: existingCorr.internalPlacementRequestId,
@@ -341,31 +550,7 @@ export class InternalPlacementService {
       }
     }
 
-    const created = await this.prisma.internalPlacementRequest.create({
-      data: {
-        facilityId: encounter.facilityId,
-        patientId: encounter.patientId,
-        hospitalEpisodeId: encounter.hospitalEpisodeId,
-        originatingEncounterId: encounter.id,
-        requestedEncounterType: input.requestedEncounterType,
-        requestedLevelOfCare: input.requestedLevelOfCare?.trim() || null,
-        requestedService: input.requestedService?.trim() || null,
-        requestedSpecialty: input.requestedSpecialty?.trim() || null,
-        requestedUnitCode: input.requestedUnitCode?.trim() || null,
-        clinicalPriority: input.clinicalPriority?.trim() || null,
-        admissionDiagnosisSummary: input.admissionDiagnosisSummary?.trim() || null,
-        reasonForPlacement: input.reasonForPlacement?.trim() || null,
-        telemetryRequired: input.telemetryRequired === true,
-        isolationRequired: input.isolationRequired === true,
-        isolationType: input.isolationType?.trim() || null,
-        specialPlacementNeedsJson: input.specialPlacementNeedsJson ?? undefined,
-        acceptingProviderNameSnapshot: input.acceptingProviderNameSnapshot?.trim() || null,
-        status: InternalPlacementStatus.DRAFT,
-        createdByUserId: actorUserId,
-        updatedByUserId: actorUserId,
-      },
-      select: PLACEMENT_SELECT,
-    });
+    const created = txResult.row;
 
     let admissionCorrelation: HospitalAdmissionCorrelationV1 | null = null;
     if (early) {
@@ -513,6 +698,7 @@ export class InternalPlacementService {
       expectedVersion?: number;
       ip?: string;
       userAgent?: string;
+      requestedAtOverride?: Date | null;
     }
   ): Promise<InternalPlacementStateProjection> {
     this.assertWorkflowEnabled(options);
@@ -570,7 +756,7 @@ export class InternalPlacementService {
         status: InternalPlacementStatus.REQUESTED,
         hospitalEpisodeId,
         requestedByUserId: actorUserId,
-        requestedAt: new Date(),
+        requestedAt: options?.requestedAtOverride ?? new Date(),
         updatedByUserId: actorUserId,
         version: { increment: 1 },
       },
@@ -1098,4 +1284,38 @@ export class InternalPlacementService {
     }
     return row;
   }
+}
+
+function asSummaryRecord(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null;
+}
+
+function draftInputFromSignedAdmissionSummary(
+  dest: "OBSERVATION" | "INPATIENT",
+  admissionSummaryJson: unknown
+): ClinicalPlacementDraftInput {
+  const root = asSummaryRecord(admissionSummaryJson) ?? {};
+  const diagnosisSummary =
+    String(root.admissionDiagnosis ?? "").trim() || "Admission depuis les urgences";
+  const reason = String(root.admissionReason ?? "").trim() || diagnosisSummary;
+  const level =
+    String(root.careLevel ?? "").trim() ||
+    (dest === "OBSERVATION" ? "Observation" : "Medical/Surgical");
+  const service = String(root.serviceUnit ?? "").trim() || "Hospital medicine";
+  return {
+    requestedEncounterType: dest,
+    requestedLevelOfCare: level,
+    requestedService: service,
+    requestedUnitCode:
+      typeof root.requestedUnitCode === "string" ? root.requestedUnitCode.trim() || null : null,
+    clinicalPriority: "ROUTINE",
+    admissionDiagnosisSummary: diagnosisSummary,
+    reasonForPlacement: reason,
+    acceptingProviderNameSnapshot:
+      typeof root.responsiblePhysicianName === "string"
+        ? root.responsiblePhysicianName.trim() || null
+        : null,
+  };
 }

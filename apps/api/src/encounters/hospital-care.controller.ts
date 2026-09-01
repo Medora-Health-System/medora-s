@@ -192,7 +192,9 @@ export class HospitalCareController {
     };
 
     const [queue, clinicalCensus] = await Promise.all([
-      this.placement.listFacilityQueue(facilityId, { strict: false }),
+      this.placement.listFacilityQueue(facilityId, {
+        strict: false,
+      }),
       this.hospitalCensus.getHospitalCensus(facilityId, {
         snapshotScope: "ALL_HOSPITAL_CARE",
       }),

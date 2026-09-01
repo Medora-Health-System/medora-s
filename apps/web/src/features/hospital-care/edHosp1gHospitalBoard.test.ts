@@ -187,6 +187,13 @@ describe("ED.HOSP.1G existing hospital board connection", () => {
     expect(out.erDispositionV1.signedAt).toBe("2026-09-01T12:00:00.000Z");
   });
 
+  it("does not add a clinical-board reconcile button", () => {
+    const home = readFileSync(join(root, "HospitalCareHomeView.tsx"), "utf8");
+    const queue = readFileSync(join(root, "HospitalCarePlacementQueueView.tsx"), "utf8");
+    expect(home).not.toMatch(/reconcile-signed-decisions|reconcileSigned/);
+    expect(queue).not.toMatch(/reconcile-signed-decisions|reconcileSigned/);
+  });
+
   it("excludes non-hospital destinations from hospital board surfaces", () => {
     for (const dest of ["HOME", "AMA", "LWBS", "ELOPEMENT", "DECEASED", "TRANSFER"]) {
       expect(classifyEdHospHospitalBoardSurface({ requestedEncounterType: dest, status: "REQUESTED" })).toBe(

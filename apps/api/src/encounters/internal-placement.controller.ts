@@ -169,11 +169,29 @@ export class InternalPlacementController {
    * D3CA — facility placement queue (read-only).
    * Soft-empty envelope `{ availability: "FEATURE_DISABLED", items: [] }` when workflow flag OFF
    * (before Prisma). Facility-scoped via JWT facility id.
+   * Does not create InternalPlacementRequest rows.
    */
   @Get("internal-placement")
   @RequireRoles(RoleCode.PROVIDER, RoleCode.RN, RoleCode.ADMIN, RoleCode.LAB, RoleCode.RADIOLOGY)
   async listFacilityQueue(@Req() req: any) {
-    return this.placement.listFacilityQueue(facilityIdFromReq(req), { strict: false });
+    return this.placement.listFacilityQueue(facilityIdFromReq(req), {
+      strict: false,
+    });
+  }
+
+  /**
+   * ADMIN-only backfill of InternalPlacementRequest for historical signed OBS/IP
+   * decisions created while INTERNAL_PLACEMENT_WORKFLOW_ENABLED was OFF.
+   * JWT facility only — not a clinical board action.
+   */
+  @Post("internal-placement/reconcile-signed-decisions")
+  @RequireRoles(RoleCode.ADMIN)
+  async reconcileSignedDecisions(@Req() req: any) {
+    return this.placement.reconcileSignedHospitalBoundDecisions(
+      facilityIdFromReq(req),
+      userIdFromReq(req),
+      { ip: req.ip, userAgent: req.headers?.["user-agent"] }
+    );
   }
 
   @Get("encounters/:encounterId/internal-placement")

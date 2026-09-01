@@ -16,6 +16,9 @@ import {
   isObservationOperationalStay,
   projectBillingClassificationForHospitalDestination,
   resolveHospitalDestinationIntent,
+  signedHospitalBoundEdDecisionSignerUserId,
+  signedHospitalBoundEdDisposition,
+  signedHospitalBoundEdPlacementReconcileCandidate,
 } from "./hospitalDestinationIntent.js";
 import {
   assertLocalHospitalDestinationAllowed,
@@ -252,6 +255,89 @@ describe("ED.HOSP.1C merge preserves dest (no new JSON SOT)", () => {
       }
     );
     expect(merged.requestedEncounterType).toBe("INPATIENT");
+  });
+});
+
+describe("signed hospital-bound ED disposition (placement reconcile)", () => {
+  it("accepts SIGN + explicit OBSERVATION", () => {
+    expect(
+      signedHospitalBoundEdDisposition({
+        admissionDecisionMode: "SIGN",
+        requestedEncounterType: "OBSERVATION",
+        admissionDecisionByUserId: "prov-1",
+      })
+    ).toBe("OBSERVATION");
+    expect(
+      signedHospitalBoundEdDecisionSignerUserId({
+        admissionDecisionMode: "SIGN",
+        requestedEncounterType: "OBSERVATION",
+        admissionDecisionByUserId: "prov-1",
+      })
+    ).toBe("prov-1");
+  });
+
+  it("accepts SIGN + explicit INPATIENT", () => {
+    expect(
+      signedHospitalBoundEdDisposition({
+        admissionDecisionMode: "SIGN",
+        requestedEncounterType: "INPATIENT",
+      })
+    ).toBe("INPATIENT");
+  });
+
+  it("excludes Home, AMA, Transfer, LWBS, Elopement, Deceased, and unsigned drafts", () => {
+    for (const dest of ["HOME", "TRANSFER", "AMA", "LWBS", "ELOPEMENT", "DECEASED", "OTHER"]) {
+      expect(
+        signedHospitalBoundEdDisposition({
+          admissionDecisionMode: "SIGN",
+          requestedEncounterType: dest,
+        })
+      ).toBeNull();
+    }
+    expect(
+      signedHospitalBoundEdDisposition({
+        admissionDecisionMode: "DRAFT",
+        requestedEncounterType: "OBSERVATION",
+      })
+    ).toBeNull();
+  });
+
+  it("requires signer and decision timestamp for reconcile eligibility", () => {
+    expect(
+      signedHospitalBoundEdPlacementReconcileCandidate({
+        admissionDecisionMode: "SIGN",
+        requestedEncounterType: "OBSERVATION",
+        admissionDecisionByUserId: "prov-1",
+      })
+    ).toBeNull();
+    expect(
+      signedHospitalBoundEdPlacementReconcileCandidate({
+        admissionDecisionMode: "SIGN",
+        requestedEncounterType: "OBSERVATION",
+        admissionDecisionAt: "2026-09-01T21:15:45.841Z",
+      })
+    ).toBeNull();
+    expect(
+      signedHospitalBoundEdPlacementReconcileCandidate({
+        admissionDecisionMode: "SIGN",
+        requestedEncounterType: "OBSERVATION",
+        admissionDecisionByUserId: "prov-1",
+        admissionDecisionAt: "2026-09-01T21:15:45.841Z",
+      })
+    ).toEqual({
+      requestedEncounterType: "OBSERVATION",
+      signerUserId: "prov-1",
+      decisionAt: new Date("2026-09-01T21:15:45.841Z"),
+    });
+  });
+
+  it("does not invent INPATIENT from careLevel when dest token is missing", () => {
+    expect(
+      signedHospitalBoundEdDisposition({
+        admissionDecisionMode: "SIGN",
+        careLevel: "MEDICAL_SURGICAL",
+      })
+    ).toBeNull();
   });
 });
 
