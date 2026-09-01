@@ -257,7 +257,7 @@ export function deriveInfusionPresence(orders: EdHosp1fOrderLite[] | undefined):
 export function encodeReceivingNurse(input: {
   userId?: string | null;
   displayName?: string | null;
-  source: "SESSION" | "ASSIGNED";
+  source: "SESSION" | "ASSIGNED" | "HANDOFF";
 }): string {
   const id = String(input.userId ?? "").trim();
   const name = String(input.displayName ?? "").trim();
@@ -267,7 +267,7 @@ export function encodeReceivingNurse(input: {
 
 export function isStructuredReceivingNurseValue(raw: string | null | undefined): boolean {
   const v = String(raw ?? "").trim();
-  return v.startsWith("SESSION:") || v.startsWith("ASSIGNED:");
+  return v.startsWith("SESSION:") || v.startsWith("ASSIGNED:") || v.startsWith("HANDOFF:");
 }
 
 export function isIsoTimestamp(raw: string | null | undefined): boolean {

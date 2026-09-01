@@ -72,6 +72,7 @@ import { EmergencyErOrdersPanel } from "@/features/emergency/EmergencyErOrdersPa
 import { EmergencyErNursingHandoffPanel } from "@/features/emergency/EmergencyErNursingHandoffPanel";
 import { NursingDischargeExecutionSection } from "@/features/emergency/NursingDischargeExecutionSection";
 import { AdaptiveDispositionNursingSection } from "@/features/emergency/AdaptiveDispositionNursingSection";
+import { EdNursingDocumentationComposer } from "@/features/emergency/EdNursingDocumentationComposer";
 import { edBoardSectionStyle, edSectionHeadingStyle } from "@/features/emergency/edDispositionBoardStyles";
 import { EmergencyErNotesPanel } from "@/features/emergency/EmergencyErNotesPanel";
 import { EmergencyClinicalDataPanel } from "@/features/emergency/EmergencyClinicalDataPanel";
@@ -1567,18 +1568,38 @@ export function EmergencyActiveWorkspaceView() {
           ) : null}
 
           {activeSection === "notes" ? (
-            <EmergencyErNotesPanel
-              encounterId={encounterId}
-              facilityId={fid}
-              status={encounter.status}
-              isLocked={isLocked}
-              roleCodes={roles}
-              onSaved={onEmbeddedEncounterUpdate}
-            />
+            <>
+              {canRecordDischargeSortieExecution && encounter.status === "OPEN" ? (
+                <EdNursingDocumentationComposer
+                  encounterId={encounterId}
+                  facilityId={fid}
+                  encounter={encounter}
+                  pathway={dispositionNursingPathway}
+                  canEdit
+                  onSaved={onEmbeddedEncounterUpdate}
+                />
+              ) : null}
+              <EmergencyErNotesPanel
+                encounterId={encounterId}
+                facilityId={fid}
+                status={encounter.status}
+                isLocked={isLocked}
+                roleCodes={roles}
+                onSaved={onEmbeddedEncounterUpdate}
+              />
+            </>
           ) : null}
 
           {activeSection === "nursing" && showNursingTab ? (
             <div data-testid="emergency-nursing-assessment-workspace" style={{ display: "grid", gap: 12 }}>
+              <EdNursingDocumentationComposer
+                encounterId={encounterId}
+                facilityId={fid}
+                encounter={encounter}
+                pathway={dispositionNursingPathway}
+                canEdit={canRecordDischargeSortieExecution && encounter.status === "OPEN"}
+                onSaved={onEmbeddedEncounterUpdate}
+              />
               <EmergencyNursingReassessmentPanel
                 encounterId={encounterId}
                 facilityId={fid}

@@ -249,9 +249,9 @@ export class EncountersController {
     );
   }
 
-  /** MEDNOTE.2 — authorized reviewer void (note body preserved). */
+  /** MEDNOTE.2 — author or authorized reviewer void (note body preserved). */
   @Post("encounters/:id/notes/:noteId/void")
-  @RequireRoles(RoleCode.PROVIDER, RoleCode.ADMIN)
+  @RequireRoles(RoleCode.RN, RoleCode.PROVIDER, RoleCode.ADMIN)
   async voidEncounterNote(
     @Param("id") id: string,
     @Param("noteId") noteId: string,

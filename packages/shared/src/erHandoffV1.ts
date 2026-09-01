@@ -39,6 +39,15 @@ export type ErHandoffV1Stored = {
   electronicSignatureAt?: string;
   /** Append-only handoff history snapshots (max 40). */
   history?: ErHandoffHistoryEntry[];
+  /** ED.HOSP.1F — method / external receiving destination / signed note link. */
+  handoffMethod?: string;
+  handoffMethodOther?: string;
+  receivingFacilityName?: string;
+  receivingPhone?: string;
+  receivingRole?: string;
+  receivingKind?: "INTERNAL" | "EXTERNAL";
+  documentationNoteId?: string;
+  handoffStatus?: "NOT_STARTED" | "IN_PROGRESS" | "COMPLETED";
 };
 
 const MAX_NOTE = 2000;
@@ -115,6 +124,28 @@ export function readErHandoffV1FromNursingAssessment(nursingAssessment: unknown)
   if (sig) out.electronicSignatureName = sig;
   const sigAt = trimStr(o.electronicSignatureAt, MAX_ISO);
   if (sigAt) out.electronicSignatureAt = sigAt;
+  const method = trimStr(o.handoffMethod, 40);
+  if (method) out.handoffMethod = method;
+  const methodOther = trimStr(o.handoffMethodOther, 200);
+  if (methodOther) out.handoffMethodOther = methodOther;
+  const facilityName = trimStr(o.receivingFacilityName, MAX_NAME);
+  if (facilityName) out.receivingFacilityName = facilityName;
+  const phone = trimStr(o.receivingPhone, 64);
+  if (phone) out.receivingPhone = phone;
+  const role = trimStr(o.receivingRole, 80);
+  if (role) out.receivingRole = role;
+  if (o.receivingKind === "INTERNAL" || o.receivingKind === "EXTERNAL") {
+    out.receivingKind = o.receivingKind;
+  }
+  const noteId = trimUuid(o.documentationNoteId);
+  if (noteId) out.documentationNoteId = noteId;
+  if (
+    o.handoffStatus === "NOT_STARTED" ||
+    o.handoffStatus === "IN_PROGRESS" ||
+    o.handoffStatus === "COMPLETED"
+  ) {
+    out.handoffStatus = o.handoffStatus;
+  }
   if (Array.isArray(o.history)) {
     const history: ErHandoffHistoryEntry[] = [];
     for (const row of o.history.slice(0, 40)) {
@@ -179,6 +210,28 @@ function sanitizeForPersist(form: ErHandoffV1Stored): Record<string, unknown> {
   if (sig) out.electronicSignatureName = sig;
   const sigAt = trimStr(form.electronicSignatureAt, MAX_ISO);
   if (sigAt) out.electronicSignatureAt = sigAt;
+  const method = trimStr(form.handoffMethod, 40);
+  if (method) out.handoffMethod = method;
+  const methodOther = trimStr(form.handoffMethodOther, 200);
+  if (methodOther) out.handoffMethodOther = methodOther;
+  const facilityName = trimStr(form.receivingFacilityName, MAX_NAME);
+  if (facilityName) out.receivingFacilityName = facilityName;
+  const phone = trimStr(form.receivingPhone, 64);
+  if (phone) out.receivingPhone = phone;
+  const role = trimStr(form.receivingRole, 80);
+  if (role) out.receivingRole = role;
+  if (form.receivingKind === "INTERNAL" || form.receivingKind === "EXTERNAL") {
+    out.receivingKind = form.receivingKind;
+  }
+  const noteId = trimUuid(form.documentationNoteId);
+  if (noteId) out.documentationNoteId = noteId;
+  if (
+    form.handoffStatus === "NOT_STARTED" ||
+    form.handoffStatus === "IN_PROGRESS" ||
+    form.handoffStatus === "COMPLETED"
+  ) {
+    out.handoffStatus = form.handoffStatus;
+  }
   if (Array.isArray(form.history) && form.history.length) {
     out.history = form.history.slice(0, 40).map((h) => ({
       at: String(h.at ?? "").slice(0, MAX_ISO),

@@ -360,7 +360,7 @@ export function EmergencyErNotesPanel({
             const showAmend =
               !readOnly &&
               canAmendEncounterNote({ ...note, legacy: note.legacy }, userId || undefined);
-            const showVoid = !readOnly && canVoidEncounterNote(note, roles);
+            const showVoid = !readOnly && canVoidEncounterNote(note, roles, userId || undefined);
             const showCosign = !readOnly && canCosignEncounterNote(note, roles);
             const pendingCosign = encounterNotePendingCosign(note);
             const isActionTarget = actionNoteId === note.id;

@@ -13,7 +13,7 @@ import {
 } from "@/lib/encounterChromeI18n";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import { printFacilityInfoFromEnterpriseSource } from "@/lib/printFacilityHeader";
-import { canDocumentEdTriage } from "@medora/shared";
+import { canDocumentEdTriage, pathwayFromDispositionBadgeVariant } from "@medora/shared";
 import { useI18n } from "@/lib/i18n";
 import { getCachedRecord, setCachedRecord } from "@/lib/offline/offlineCache";
 import {
@@ -47,6 +47,8 @@ import { EmergencyTriagePanel } from "@/features/emergency/EmergencyTriagePanel"
 import { EmergencyErOrdersPanel } from "@/features/emergency/EmergencyErOrdersPanel";
 import { EmergencyErNursingHandoffPanel } from "@/features/emergency/EmergencyErNursingHandoffPanel";
 import { EmergencyErNotesPanel } from "@/features/emergency/EmergencyErNotesPanel";
+import { EdNursingDocumentationComposer } from "@/features/emergency/EdNursingDocumentationComposer";
+import { erDispositionBadgeFromEncounterJson } from "@/features/emergency/erTrackboardDispositionBadge";
 import {
   MEDORA_CARD_SHELL,
   MedoraCard,
@@ -1048,6 +1050,20 @@ export function EmergencyChartView() {
             <h2 id="section-notes" style={sectionTitle}>
               {t("emergencyWorkspace.sectionTitle.notes")}
             </h2>
+            {canRecordDischargeSortieExecution && encounter.status === "OPEN" ? (
+              <div style={{ marginBottom: 12 }}>
+                <EdNursingDocumentationComposer
+                  encounterId={encounterId}
+                  facilityId={fid}
+                  encounter={encounter}
+                  pathway={pathwayFromDispositionBadgeVariant(
+                    erDispositionBadgeFromEncounterJson(encounter)?.variant ?? null
+                  )}
+                  canEdit
+                  onSaved={onEmbeddedEncounterUpdate}
+                />
+              </div>
+            ) : null}
             <EmergencyErNotesPanel
               encounterId={encounterId}
               facilityId={fid}
@@ -1064,6 +1080,16 @@ export function EmergencyChartView() {
             </h2>
             {showNursingTab ? (
               <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                <EdNursingDocumentationComposer
+                  encounterId={encounterId}
+                  facilityId={fid}
+                  encounter={encounter}
+                  pathway={pathwayFromDispositionBadgeVariant(
+                    erDispositionBadgeFromEncounterJson(encounter)?.variant ?? null
+                  )}
+                  canEdit={canRecordDischargeSortieExecution && encounter.status === "OPEN"}
+                  onSaved={onEmbeddedEncounterUpdate}
+                />
                 <EmergencyNursingReassessmentPanel
                   encounterId={encounterId}
                   facilityId={fid}

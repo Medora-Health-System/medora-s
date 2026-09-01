@@ -216,11 +216,24 @@ describe("EncounterNotesService (MEDNOTE.1 + MEDNOTE.2)", () => {
     expect(update).toHaveBeenCalledTimes(1);
   });
 
-  it("rejects void without reviewer role", async () => {
+  it("rejects void without reviewer role when caller is not the author", async () => {
     const { svc } = buildService();
     await expect(
-      svc.voidNote("f1", "e1", "note1", { voidReasonCode: "OTHER" }, "u1")
+      svc.voidNote("f1", "e1", "note1", { voidReasonCode: "OTHER" }, "u2")
     ).rejects.toBeInstanceOf(ForbiddenException);
+  });
+
+  it("allows the original author to void their own note", async () => {
+    const { svc, update } = buildService();
+    const voided = await svc.voidNote(
+      "f1",
+      "e1",
+      "note1",
+      { voidReasonCode: "ENTERED_IN_ERROR" },
+      "u1"
+    );
+    expect(voided.voidReasonCode).toBe("ENTERED_IN_ERROR");
+    expect(update).toHaveBeenCalledTimes(1);
   });
 
   it("cosign works for reviewer on pending note", async () => {

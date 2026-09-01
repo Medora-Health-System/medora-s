@@ -7,10 +7,25 @@ import { useI18n } from "@/lib/i18n";
 const MIN_CHARS = 3;
 const DEBOUNCE_MS = 320;
 
-export type ClinicalUserRoleOption = { id: string; firstName: string; lastName: string };
+export type ClinicalUserRoleOption = {
+  id: string;
+  firstName: string;
+  lastName: string;
+  credentials?: string;
+  departmentName?: string;
+};
 
-function formatName(u: ClinicalUserRoleOption): string {
-  return `${u.firstName} ${u.lastName}`.trim();
+export function formatClinicalUserRoleLabel(u: ClinicalUserRoleOption): string {
+  const name = `${u.firstName} ${u.lastName}`.trim();
+  const cred = u.credentials?.trim();
+  const withCred = cred ? `${name}, ${cred}` : name;
+  return withCred || u.id;
+}
+
+function optionalString(value: unknown): string | undefined {
+  if (typeof value !== "string") return undefined;
+  const trimmed = value.trim();
+  return trimmed ? trimmed : undefined;
 }
 
 type Props = {
@@ -65,6 +80,8 @@ export function ClinicalUserRoleAutocomplete({
               id: String((row as { id: unknown }).id),
               firstName: String((row as { firstName: unknown }).firstName ?? ""),
               lastName: String((row as { lastName: unknown }).lastName ?? ""),
+              credentials: optionalString((row as { credentials?: unknown }).credentials),
+              departmentName: optionalString((row as { departmentName?: unknown }).departmentName),
             }))
           );
         } else {
@@ -201,7 +218,12 @@ export function ClinicalUserRoleAutocomplete({
                   color: "#0f172a",
                 }}
               >
-                {formatName(c) || c.id}
+                {formatClinicalUserRoleLabel(c)}
+                {c.departmentName ? (
+                  <span style={{ display: "block", fontSize: 12, color: "#64748b", fontWeight: 500 }}>
+                    {c.departmentName}
+                  </span>
+                ) : null}
               </button>
             ))
           )}

@@ -210,6 +210,12 @@ export class EncounterNotesService {
     }
   }
 
+  /** Author may void their own note; reviewers may void any non-legacy note. */
+  private async assertCanVoid(userId: string, facilityId: string, authorUserId: string) {
+    if (userId === authorUserId) return;
+    await this.assertReviewer(userId, facilityId);
+  }
+
   async createNote(
     facilityId: string,
     encounterId: string,
@@ -399,7 +405,6 @@ export class EncounterNotesService {
     });
     if (!encounter) throw new NotFoundException("Encounter not found");
     assertEncounterOpenForClinicalMutation(encounter);
-    await this.assertReviewer(userId, facilityId);
 
     const existing = await this.prisma.encounterNote.findFirst({
       where: { id: noteId, encounterId, facilityId },
@@ -409,6 +414,7 @@ export class EncounterNotesService {
     if (existing.voidedAt) {
       throw new BadRequestException("Note already voided.");
     }
+    await this.assertCanVoid(userId, facilityId, existing.authorUserId);
 
     const voided = await this.prisma.$transaction(async (tx) => {
       const row = await tx.encounterNote.update({

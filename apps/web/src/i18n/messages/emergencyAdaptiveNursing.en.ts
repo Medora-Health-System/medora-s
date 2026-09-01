@@ -1,8 +1,8 @@
 /** D4A.2 / D4A.2.1 — Disposition-adaptive nursing execution (EN). */
 export const emergencyAdaptiveNursingEn = {
   subtitle: "",
-  awaitingSignedAdmission:
-    "Awaiting physician admission signature before full departure execution.",
+  awaitingSignedAdmission: "Awaiting signed admission decision.",
+  awaitingSignedObservation: "Awaiting signed observation decision.",
   saveDraft: "Save draft",
   completeDeparture: "Document ED departure",
   saveDraftOk: "Nursing execution saved.",
