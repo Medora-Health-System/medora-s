@@ -71,7 +71,7 @@ describe("ED.HOSP.1F disposition / nursing / language / EMTALA", () => {
     expect(nursing).toContain("adaptive-nursing-receivingUnit");
     expect(nursing).toContain('type="datetime-local"');
     expect(nursing).toContain("HANDOFF_REVIEWED");
-    expect(nursing).toContain("nursing-directory-gap");
+    expect(nursing).toContain("EdNursingDocumentationComposer");
     expect(nursing).toContain("fetchActiveInternalPlacement");
     expect(nursing).toContain("/iv-access");
     const structuredBlock = nursing.split("{structured ? (")[1]?.split(") : (")[0] ?? "";
@@ -156,5 +156,16 @@ describe("ED.HOSP.1F disposition / nursing / language / EMTALA", () => {
     expect(Object.keys(emergencyAdaptiveNursingEn).sort()).toEqual(
       Object.keys(emergencyAdaptiveNursingFr).sort()
     );
+  });
+
+  it("Observation nursing copy does not use Admission-only terminology", () => {
+    expect(emergencyAdaptiveNursingEn.awaitingSignedObservation).toBe("Awaiting signed observation decision.");
+    expect(emergencyAdaptiveNursingFr.awaitingSignedObservation).toBe(
+      "Attente de la décision d’observation signée."
+    );
+    expect(emergencyAdaptiveNursingEn.awaitingSignedObservation).not.toMatch(/admission/i);
+    expect(emergencyAdaptiveNursingFr.awaitingSignedObservation).not.toMatch(/admission/i);
+    expect(nursing).toContain("awaitingSignedObservation");
+    expect(nursing).toContain('pathway === "OBSERVATION"');
   });
 });

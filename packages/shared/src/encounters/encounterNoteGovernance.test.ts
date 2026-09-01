@@ -41,10 +41,12 @@ describe("encounterNoteGovernance (MEDNOTE.2)", () => {
     expect(canAmendEncounterNote({ ...baseNote, legacy: true }, "u1")).toBe(false);
   });
 
-  it("canVoidEncounterNote allows reviewers only", () => {
+  it("canVoidEncounterNote allows reviewers or the original author", () => {
     expect(canVoidEncounterNote(baseNote, ["PROVIDER"])).toBe(true);
     expect(canVoidEncounterNote(baseNote, ["ADMIN"])).toBe(true);
     expect(canVoidEncounterNote(baseNote, ["RN"])).toBe(false);
+    expect(canVoidEncounterNote(baseNote, ["RN"], "u1")).toBe(true);
+    expect(canVoidEncounterNote(baseNote, ["RN"], "u2")).toBe(false);
     expect(
       canVoidEncounterNote({ ...baseNote, voidedAt: "2026-01-01T00:00:00.000Z" }, ["PROVIDER"])
     ).toBe(false);

@@ -289,7 +289,11 @@ export function getErClinicalRecordPrintPacketHtml(input: {
       .map((note) => {
         const badges = [
           note.status === "AMENDMENT" ? t("encounterNotes.badgeAmendment") : "",
-          note.status === "VOIDED" ? t("encounterNotes.badgeVoided") : "",
+          note.status === "VOIDED"
+            ? note.voidReasonCode === "ENTERED_IN_ERROR"
+              ? t("edHosp1fNursingDocumentation.enteredInError")
+              : t("encounterNotes.badgeVoided")
+            : "",
           note.status === "COSIGNED" ? t("encounterNotes.badgeCosigned") : "",
         ].filter(Boolean).join(" · ");
         return p(`${t(`encounterNotes.noteType.${note.noteType}`)} — ${note.authorDisplayName}${badges ? ` · ${badges}` : ""}`) +

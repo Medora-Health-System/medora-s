@@ -24,6 +24,7 @@ export type EncounterNoteAmendDto = z.infer<typeof encounterNoteAmendDtoSchema>;
 
 export const encounterNoteVoidDtoSchema = z.object({
   voidReasonCode: z.enum(ENCOUNTER_NOTE_VOID_REASON_CODES),
+  voidReasonText: z.string().trim().max(500).optional(),
 });
 
 export type EncounterNoteVoidDto = z.infer<typeof encounterNoteVoidDtoSchema>;
@@ -80,11 +81,14 @@ export function canAmendEncounterNote(
 }
 
 export function canVoidEncounterNote(
-  note: Pick<EncounterNoteGovernanceFields, "voidedAt"> & { legacy?: boolean },
-  roleCodes: readonly string[]
+  note: Pick<EncounterNoteGovernanceFields, "voidedAt" | "authorUserId"> & { legacy?: boolean },
+  roleCodes: readonly string[],
+  userId?: string
 ): boolean {
   if (note.legacy || note.voidedAt) return false;
-  return canReviewEncounterNotes(roleCodes);
+  if (canReviewEncounterNotes(roleCodes)) return true;
+  if (userId && note.authorUserId === userId) return true;
+  return false;
 }
 
 export function canCosignEncounterNote(

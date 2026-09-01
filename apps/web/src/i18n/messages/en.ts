@@ -74,6 +74,7 @@ import { inpatientFinalDischargeInpDis1eEn } from "./inpatientFinalDischargeInpD
 import { inpatientDischargeBoardInpDis1fEn } from "./inpatientDischargeBoardInpDis1f.en";
 import { edHosp1dObservationOrdersEn } from "./edHosp1dObservationOrders.en";
 import { edHosp1eAdmissionOrdersEn } from "./edHosp1eAdmissionOrders.en";
+import { edHosp1fNursingDocumentationEn } from "./edHosp1fNursingDocumentation.en";
 import { inpatientDischargeAwarenessInpDis1hEn } from "./inpatientDischargeAwarenessInpDis1h.en";
 import { inpatientProviderDocumentationInpProv1aEn } from "./inpatientProviderDocumentationInpProv1a.en";
 import { inpatientProviderDocumentationInpProv1bEn } from "./inpatientProviderDocumentationInpProv1b.en";
@@ -20928,6 +20929,7 @@ export default {
   inpatientDischargeBoardInpDis1f: inpatientDischargeBoardInpDis1fEn,
   edHosp1dObservationOrders: edHosp1dObservationOrdersEn,
   edHosp1eAdmissionOrders: edHosp1eAdmissionOrdersEn,
+  edHosp1fNursingDocumentation: edHosp1fNursingDocumentationEn,
   inpatientDischargeAwarenessInpDis1h: inpatientDischargeAwarenessInpDis1hEn,
   inpatientProviderDocumentationInpProv1a: inpatientProviderDocumentationInpProv1aEn,
   inpatientProviderDocumentationInpProv1b: inpatientProviderDocumentationInpProv1bEn,

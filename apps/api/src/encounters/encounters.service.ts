@@ -2412,17 +2412,38 @@ const clinicalTime = normalizeInpatientClinicalDocumentedAt(clinical.clinicalDoc
       take: 25,
       include: {
         user: { select: { id: true, firstName: true, lastName: true } },
+        department: { select: { name: true, code: true } },
       },
     });
     const seen = new Set<string>();
-    const out: { id: string; firstName: string; lastName: string }[] = [];
+    const out: {
+      id: string;
+      firstName: string;
+      lastName: string;
+      credentials?: string;
+      departmentName?: string;
+      departmentCode?: string;
+    }[] = [];
     for (const r of rows) {
       if (seen.has(r.userId)) continue;
       seen.add(r.userId);
+      const profession = String(r.professionCode ?? "").trim().toUpperCase();
+      const credentials =
+        role === RoleCode.RN ||
+        profession === "NURSING" ||
+        profession === "REGISTERED_NURSE" ||
+        profession === "RN"
+          ? "RN"
+          : profession === "LICENSED_PRACTICAL_NURSE"
+            ? "LPN"
+            : undefined;
       out.push({
         id: r.user.id,
         firstName: r.user.firstName,
         lastName: r.user.lastName,
+        ...(credentials ? { credentials } : {}),
+        ...(r.department?.name ? { departmentName: r.department.name } : {}),
+        ...(r.department?.code ? { departmentCode: String(r.department.code) } : {}),
       });
     }
     out.sort((a, b) => `${a.lastName} ${a.firstName}`.localeCompare(`${b.lastName} ${b.firstName}`, "fr"));

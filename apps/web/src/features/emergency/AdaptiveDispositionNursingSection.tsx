@@ -33,6 +33,8 @@ import {
   projectNursingDepartureReadiness,
   readAdaptiveEdNursingExecution,
   receivingUnitOptionsForPathway,
+  edNursingHandoffStatusFromErHandoff,
+  readErHandoffV1FromNursingAssessment,
   type AdaptiveNursingPathway,
 } from "@medora/shared";
 import { useI18n } from "@/lib/i18n";
@@ -41,6 +43,7 @@ import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import { erDispositionBadgeFromEncounterJson } from "@/features/emergency/erTrackboardDispositionBadge";
 import { fetchActiveInternalPlacement } from "@/features/emergency/internalPlacementApi";
 import { MEDORA_CARD_SHELL } from "@/components/medora-card";
+import { EdNursingDocumentationComposer } from "@/features/emergency/EdNursingDocumentationComposer";
 
 const inputBase: CSSProperties = {
   width: "100%",
@@ -428,7 +431,11 @@ export function AdaptiveDispositionNursingSection({
 
       {(pathway === "ADMISSION" || pathway === "OBSERVATION") && !admissionDecisionSigned ? (
         <p style={{ margin: "0 0 10px", fontSize: 12, color: "#b45309", fontWeight: 600 }}>
-          {t("emergencyAdaptiveNursing.awaitingSignedAdmission")}
+          {t(
+            pathway === "OBSERVATION"
+              ? "emergencyAdaptiveNursing.awaitingSignedObservation"
+              : "emergencyAdaptiveNursing.awaitingSignedAdmission"
+          )}
         </p>
       ) : null}
 
@@ -466,9 +473,6 @@ export function AdaptiveDispositionNursingSection({
           </div>
           <div>
             <label style={labelStyle}>{t(sectionLabelKey(pathway, "receivingNurse"))} *</label>
-            <p style={{ margin: "0 0 6px", fontSize: 12, color: "#64748b" }} data-testid="nursing-directory-gap">
-              {t("emergencyAdaptiveNursing.directoryGap")}
-            </p>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
               {assignedNurseValue ? (
                 <Chip
@@ -534,14 +538,18 @@ export function AdaptiveDispositionNursingSection({
                 {providerName || t("emergencyAdaptiveNursing.handoffFacts.none")}
               </div>
             </div>
-            <Chip
-              selected={sections.handoff === "HANDOFF_REVIEWED"}
-              disabled={locked}
-              testId="adaptive-nursing-handoff"
-              onClick={() => patch("handoff", "HANDOFF_REVIEWED")}
+            <div
+              data-testid="adaptive-nursing-handoff"
+              style={{ fontSize: 13, fontWeight: 700, color: "#1e3a8a" }}
             >
-              {t("emergencyAdaptiveNursing.confirmHandoff")}
-            </Chip>
+              {t("emergencyAdaptiveNursing.groups.handoff")}:{" "}
+              {t(
+                `edHosp1fNursingDocumentation.handoffStatus.${edNursingHandoffStatusFromErHandoff(
+                  readErHandoffV1FromNursingAssessment(encounter.nursingAssessment)
+                )}`
+              )}
+              {sections.handoff === "HANDOFF_REVIEWED" ? ` · HANDOFF_REVIEWED` : ""}
+            </div>
           </div>
           <div>
             <label style={labelStyle}>{t(sectionLabelKey(pathway, "admissionOrderAck"))}</label>
@@ -759,6 +767,16 @@ export function AdaptiveDispositionNursingSection({
           })}
         </div>
       )}
+      <div style={{ marginTop: 12 }}>
+        <EdNursingDocumentationComposer
+          encounterId={encounterId}
+          facilityId={facilityId}
+          encounter={encounter}
+          pathway={pathway}
+          canEdit={canEdit}
+          onSaved={onSaved}
+        />
+      </div>
       <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
         <button
           type="button"

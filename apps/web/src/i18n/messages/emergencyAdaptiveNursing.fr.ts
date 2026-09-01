@@ -1,8 +1,8 @@
 /** D4A.2 / D4A.2.1 — Exécution infirmière adaptative par disposition (FR). */
 export const emergencyAdaptiveNursingFr = {
   subtitle: "",
-  awaitingSignedAdmission:
-    "Attente de la signature médicale de l’admission avant l’exécution complète du départ.",
+  awaitingSignedAdmission: "Attente de la décision d’admission signée.",
+  awaitingSignedObservation: "Attente de la décision d’observation signée.",
   saveDraft: "Enregistrer le brouillon",
   completeDeparture: "Documenter le départ des urgences",
   saveDraftOk: "Exécution infirmière enregistrée.",

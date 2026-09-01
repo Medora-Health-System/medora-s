@@ -197,6 +197,7 @@ export * from "./schemas/admissionOperationalD4a23.js";
 export * from "./encounters/admissionOperationsConvergenceD4a24.js";
 export * from "./encounters/adaptiveEdNursingExecutionD4a2.js";
 export * from "./encounters/edHosp1fStructuredDeparture.js";
+export * from "./encounters/edHosp1fNursingDocumentation.js";
 export * from "./encounters/medSurgNursingAdmissionD4a1.js";
 export * from "./encounters/nursingAdmissionOverviewProjectionInp2b.js";
 export * from "./encounters/nursingAdmissionClinicalAttributionInp2g.js";
