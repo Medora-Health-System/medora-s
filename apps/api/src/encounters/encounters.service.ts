@@ -116,6 +116,8 @@ import {
   PROCEDURE_DUPLICATE_BLOCKED,
   PROCEDURE_INVALID_CODE_FORMAT,
   readErHandoffV1FromNursingAssessment,
+  preserveSignedProviderDispositionOnNursingWrite,
+  preserveSignedAdmissionDecisionOnSummaryWrite,
   readBillingCaptureV1,
   upsertBillingCaptureItem,
   buildDocumentedProcedureSummaryMeta,
@@ -1255,6 +1257,12 @@ const clinicalTime = normalizeInpatientClinicalDocumentedAt(clinical.clinicalDoc
         encounter.nursingAssessment,
         data.nursingAssessment
       );
+      if (userId && !(await this.actorMayMutateSignedProviderDisposition(facilityId, userId))) {
+        data.nursingAssessment = preserveSignedProviderDispositionOnNursingWrite(
+          encounter.nursingAssessment,
+          data.nursingAssessment
+        );
+      }
     }
 
     const allowedWhenSigned: (keyof EncounterUpdateDto)[] = [
@@ -1386,10 +1394,17 @@ const clinicalTime = normalizeInpatientClinicalDocumentedAt(clinical.clinicalDoc
           throw new BadRequestException("Renseignez au moins un champ du dossier d'admission.");
         }
         // Preserve nested keys (admissionCorrelation, diagnoses, clinical ops, …).
-        updateData.admissionSummaryJson = mergeAdmissionSummaryFieldsPreservingNested(
+        let mergedAdmission = mergeAdmissionSummaryFieldsPreservingNested(
           encounter.admissionSummaryJson,
           parsedAdmission.data
-        ) as Prisma.InputJsonValue;
+        );
+        if (userId && !(await this.actorMayMutateSignedProviderDisposition(facilityId, userId))) {
+          mergedAdmission = preserveSignedAdmissionDecisionOnSummaryWrite(
+            encounter.admissionSummaryJson,
+            mergedAdmission
+          );
+        }
+        updateData.admissionSummaryJson = mergedAdmission as Prisma.InputJsonValue;
         if (!encounter.admittedAt) {
           updateData.admittedAt = new Date();
         }
@@ -3908,6 +3923,19 @@ const clinicalTime = normalizeInpatientClinicalDocumentedAt(clinical.clinicalDoc
         "L'infirmier ou l'infirmière sélectionné(e) n'est pas actif(ve) dans cet établissement."
       );
     }
+  }
+
+  /** PROVIDER or ADMIN may mutate signed ED disposition; RN-only actors may not. */
+  private async actorMayMutateSignedProviderDisposition(
+    facilityId: string,
+    userId: string
+  ): Promise<boolean> {
+    const rows = await this.prisma.userRole.findMany({
+      where: { facilityId, userId, isActive: true },
+      select: { role: { select: { code: true } } },
+    });
+    const codes = new Set(rows.map((r) => r.role.code));
+    return codes.has(RoleCode.PROVIDER) || codes.has(RoleCode.ADMIN);
   }
 
   private async assertUserHasAnyClinicalRole(facilityId: string, userId: string, allowed: RoleCode[]) {

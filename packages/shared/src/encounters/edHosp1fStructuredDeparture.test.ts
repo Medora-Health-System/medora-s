@@ -9,6 +9,8 @@ import {
   hydrateIvAccessFromChart,
   hydrateObservationNursingDefaults,
   hydrateReceivingUnitFromPlacement,
+  encodeReceivingNurse,
+  decodeReceivingNurse,
   isStructuredObservationNursingValue,
   isUnitedStatesEmtalaJurisdiction,
   observationReceivingUnitOptions,
@@ -175,6 +177,19 @@ describe("ED.HOSP.1F structured departure + EMTALA derivation", () => {
     });
     expect(chips.find((c) => c.groupId === "destination")?.ready).toBe(true);
     expect(chips.find((c) => c.groupId === "handoff")?.ready).toBe(false);
+  });
+
+  it("decodes structured receiving-nurse identity for handoff reuse", () => {
+    const encoded = encodeReceivingNurse({
+      source: "HANDOFF",
+      userId: "rn-marie",
+      displayName: "Marie Claire, RN",
+    });
+    expect(decodeReceivingNurse(encoded)).toEqual({
+      source: "HANDOFF",
+      userId: "rn-marie",
+      displayName: "Marie Claire, RN",
+    });
   });
 
   it("routine observation fields are structured codes, not free text", () => {

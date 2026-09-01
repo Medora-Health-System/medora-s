@@ -118,7 +118,6 @@ export function ClinicalUserRoleAutocomplete({
   const onInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const v = e.target.value;
     onChangeDisplay(v);
-    onSelectUser(null);
     setSearchError(null);
     setOpen(true);
     if (timerRef.current) clearTimeout(timerRef.current);
@@ -129,7 +128,7 @@ export function ClinicalUserRoleAutocomplete({
 
   const listStyle: React.CSSProperties = {
     position: "absolute",
-    zIndex: 30,
+    zIndex: 80,
     left: 0,
     right: 0,
     marginTop: 4,
@@ -168,6 +167,7 @@ export function ClinicalUserRoleAutocomplete({
         aria-label={ariaLabel}
         aria-expanded={open}
         aria-controls={`clinical-user-suggestions-${role}`}
+        data-testid="clinical-user-role-autocomplete-input"
         style={inputStyle}
       />
       {open && !disabled ? (
