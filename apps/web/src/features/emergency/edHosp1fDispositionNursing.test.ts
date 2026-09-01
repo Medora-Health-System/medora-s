@@ -28,6 +28,7 @@ describe("ED.HOSP.1F disposition / nursing / language / EMTALA", () => {
   const panel = readSrc("features/emergency/EmergencyDispositionPanel.tsx");
   const nursing = readSrc("features/emergency/AdaptiveDispositionNursingSection.tsx");
   const composer = readSrc("features/emergency/EdObservationOrderComposer.tsx");
+  const nursingDoc = readSrc("features/emergency/EdNursingDocumentationComposer.tsx");
   const schema = readFileSync(join(webRoot, "../../apps/api/prisma/schema.prisma"), "utf8");
 
   it("removed instructional prose is not rendered on the routine board", () => {
@@ -84,8 +85,14 @@ describe("ED.HOSP.1F disposition / nursing / language / EMTALA", () => {
     expect(nursing).toContain("mergeAdaptiveEdNursingIntoNursingAssessment");
     expect(nursing).toContain("completeDeparture");
     expect(nursing).toContain("saveDraft");
+    expect(nursingDoc).toContain("ed-nursing-save-draft");
     expect(panel).toContain("shouldMountObservationOrderComposer");
     expect(panel).toContain("shouldMountAdmissionOrderComposer");
+    expect(panel).toContain("isProviderDispositionEditor");
+    expect(panel).toContain("if (!canEditMedicalDischarge && !canPrescribe)");
+    expect(panel).toContain("outcomeDisabled = formDisabled || !canEditMedicalDischarge");
+    expect(panel).toContain("ed-disposition-save-draft");
+    expect(panel).toContain("ed-disposition-final");
     expect(shouldMountObservationOrderComposer("OBSERVATION")).toBe(true);
     expect(shouldMountAdmissionOrderComposer("ADMISSION")).toBe(true);
   });

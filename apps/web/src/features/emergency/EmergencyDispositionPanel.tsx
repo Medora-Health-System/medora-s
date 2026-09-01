@@ -696,6 +696,9 @@ export function EmergencyDispositionPanel({
     outcomeOverride?: ErDispositionOutcomeUi
   ) => {
     if (formDisabled) return;
+    if (!canEditMedicalDischarge && !canPrescribe) {
+      return;
+    }
     if (mode === "SIGN" && !canEditMedicalDischarge && !canPrescribe) {
       setSaveInfo(t("emergencyDisposition.signDecisionUnauthorized"));
       return;
@@ -1103,7 +1106,8 @@ export function EmergencyDispositionPanel({
 
   const medDisabled = formDisabled || !canEditMedicalDischarge;
   const nurDisabled = formDisabled || !canEditNursingDischarge;
-  const outcomeDisabled = formDisabled || (!canEditMedicalDischarge && !canEditNursingDischarge);
+  const outcomeDisabled = formDisabled || !canEditMedicalDischarge;
+  const isProviderDispositionEditor = canEditMedicalDischarge || canPrescribe;
 
   const ta = (
     rows: number,
@@ -1458,7 +1462,10 @@ export function EmergencyDispositionPanel({
                     {t("emergencyDisposition.committedPlacementBlocksTypeSwitch")}
                   </p>
                 ) : null}
-                {dispositionState.decisionSigned && !formDisabled && pathwayChangeConfirm == null ? (
+                {isProviderDispositionEditor &&
+                dispositionState.decisionSigned &&
+                !formDisabled &&
+                pathwayChangeConfirm == null ? (
                   <button
                     type="button"
                     data-testid="ed-disposition-change-pathway"
@@ -2230,6 +2237,8 @@ export function EmergencyDispositionPanel({
 
             </div>
 
+            {isProviderDispositionEditor ? (
+            <>
             <div
               data-testid="ed-disposition-final"
               style={edBoardSectionStyle}
@@ -2345,6 +2354,8 @@ export function EmergencyDispositionPanel({
                 <span style={{ fontSize: 12, color: "#64748b" }}>{t("emergencyDisposition.readOnlyClosed")}</span>
               ) : null}
             </div>
+            </>
+            ) : null}
           </div>
         </div>
     </div>

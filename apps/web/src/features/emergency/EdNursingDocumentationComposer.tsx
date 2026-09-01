@@ -23,6 +23,7 @@ import {
   edNursingStatementBody,
   emptyEdNursingDraft,
   encodeReceivingNurse,
+  decodeReceivingNurse,
   findEdNursingDraft,
   findEdNursingSignedMeta,
   insertEdNursingStatement,
@@ -100,6 +101,57 @@ function isoToDatetimeLocal(iso: string): string {
   if (Number.isNaN(d.getTime())) return "";
   const pad = (n: number) => String(n).padStart(2, "0");
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+function hydrateHandoffReceiverFromCanonical(
+  draft: EdNursingDraft,
+  nursingAssessment: unknown
+): EdNursingDraft {
+  if (draft.kind !== "HANDOFF") return draft;
+  const existing = draft.handoff;
+  if (existing?.receivingKind === "EXTERNAL" && existing.receivingNurseName?.trim()) return draft;
+  if (existing?.receivingNurseUserId || existing?.receivingNurseName?.trim()) return draft;
+  const erHandoff = readErHandoffV1FromNursingAssessment(nursingAssessment);
+  if (erHandoff.receivingKind === "EXTERNAL" && erHandoff.receivingNurseName) {
+    return {
+      ...draft,
+      handoff: {
+        receivingKind: "EXTERNAL",
+        receivingNurseName: erHandoff.receivingNurseName,
+        receivingFacilityName: erHandoff.receivingFacilityName,
+        receivingUnit: erHandoff.receivingUnit,
+        receivingPhone: erHandoff.receivingPhone,
+        receivingRole: erHandoff.receivingRole,
+        method: erHandoff.handoffMethod as EdNursingHandoffMethod | undefined,
+        methodOther: erHandoff.handoffMethodOther,
+      },
+    };
+  }
+  if (erHandoff.receivingNurseName || erHandoff.receivingNurseUserId) {
+    return {
+      ...draft,
+      handoff: {
+        receivingKind: "INTERNAL",
+        receivingNurseName: erHandoff.receivingNurseName ?? "",
+        receivingNurseUserId: erHandoff.receivingNurseUserId,
+        receivingRole: erHandoff.receivingRole,
+        receivingUnit: erHandoff.receivingUnit,
+        method: erHandoff.handoffMethod as EdNursingHandoffMethod | undefined,
+        methodOther: erHandoff.handoffMethodOther,
+      },
+    };
+  }
+  const adaptive = readAdaptiveEdNursingExecution(nursingAssessment);
+  const decoded = decodeReceivingNurse(String(adaptive?.sections?.receivingNurse ?? ""));
+  if (!decoded?.displayName && !decoded?.userId) return draft;
+  return {
+    ...draft,
+    handoff: {
+      receivingKind: "INTERNAL",
+      receivingNurseName: decoded.displayName,
+      receivingNurseUserId: decoded.userId || undefined,
+    },
+  };
 }
 
 async function fetchActorDisplayName(fallback: string): Promise<string> {
@@ -184,19 +236,20 @@ export function EdNursingDocumentationComposer({
   useEffect(() => {
     if (!startKind || !canAuthor || !userId) return;
     const existing = findEdNursingDraft(store, startKind === "HANDOFF" ? "handoff" : "nursing");
-    setDraft(
+    const next =
       existing ??
-        emptyEdNursingDraft({
-          kind: startKind,
-          authorUserId: userId,
-        })
-    );
-  }, [startKind, canAuthor, userId, store]);
+      emptyEdNursingDraft({
+        kind: startKind,
+        authorUserId: userId,
+      });
+    setDraft(hydrateHandoffReceiverFromCanonical(next, encounter.nursingAssessment));
+  }, [startKind, canAuthor, userId, store, encounter.nursingAssessment]);
 
   const openDraft = (kind: EdNursingNoteKind) => {
     if (!canAuthor || !userId) return;
     const existing = findEdNursingDraft(store, kind === "HANDOFF" ? "handoff" : "nursing");
-    setDraft(existing ?? emptyEdNursingDraft({ kind, authorUserId: userId }));
+    const next = existing ?? emptyEdNursingDraft({ kind, authorUserId: userId });
+    setDraft(hydrateHandoffReceiverFromCanonical(next, encounter.nursingAssessment));
     setInfo(null);
   };
 
@@ -252,6 +305,26 @@ export function EdNursingDocumentationComposer({
     let na = mergeEdNursingDocumentationV1(encounter.nursingAssessment, nextStore);
     if (extraHandoff) {
       na = mergeErHandoffV1IntoNursingAssessment(na, extraHandoff);
+      if (
+        extraHandoff.receivingKind !== "EXTERNAL" &&
+        extraHandoff.receivingNurseName &&
+        (nursingPath === "OBSERVATION" || nursingPath === "ADMISSION" || nursingPath === "TRANSFER")
+      ) {
+        const adaptive = readAdaptiveEdNursingExecution(na);
+        if (adaptive) {
+          na = mergeAdaptiveEdNursingIntoNursingAssessment(na, {
+            ...adaptive,
+            sections: {
+              ...(adaptive.sections ?? {}),
+              receivingNurse: encodeReceivingNurse({
+                source: "HANDOFF",
+                userId: extraHandoff.receivingNurseUserId,
+                displayName: extraHandoff.receivingNurseName,
+              }),
+            },
+          });
+        }
+      }
     }
     await apiFetch(`/encounters/${encounterId}`, {
       method: "PATCH",
@@ -473,7 +546,7 @@ export function EdNursingDocumentationComposer({
   return (
     <div
       data-testid="ed-nursing-documentation-composer"
-      style={{ ...MEDORA_CARD_SHELL, padding: 14, minWidth: 0, maxWidth: "100%", overflowX: "hidden" }}
+      style={{ ...MEDORA_CARD_SHELL, padding: 14, minWidth: 0, maxWidth: "100%", overflow: "visible" }}
     >
       <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center", marginBottom: 10 }}>
         <strong style={{ fontSize: 14 }}>{t("edHosp1fNursingDocumentation.title")}</strong>
@@ -730,7 +803,7 @@ export function EdNursingDocumentationComposer({
                   </div>
                 </div>
               ) : (
-                <div>
+                <div data-testid="ed-nursing-internal-receiving-search">
                   <label style={labelStyle}>{t("edHosp1fNursingDocumentation.receivingNurse")} *</label>
                   <ClinicalUserRoleAutocomplete
                     facilityId={facilityId}

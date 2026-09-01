@@ -382,7 +382,7 @@ export function AdaptiveDispositionNursingSection({
 
   return (
     <div
-      style={{ ...MEDORA_CARD_SHELL, padding: 14 }}
+      style={{ ...MEDORA_CARD_SHELL, padding: 14, overflow: "visible" }}
       data-testid="adaptive-disposition-nursing"
       data-pathway={pathway}
       data-structured={structured ? "true" : "false"}
@@ -782,6 +782,7 @@ export function AdaptiveDispositionNursingSection({
           type="button"
           disabled={!canEdit || saving}
           onClick={() => void save(false)}
+          data-testid="adaptive-nursing-save-draft"
           style={{
             padding: "8px 14px",
             borderRadius: 10,

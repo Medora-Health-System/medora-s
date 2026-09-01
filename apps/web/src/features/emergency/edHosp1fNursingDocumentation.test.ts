@@ -54,15 +54,29 @@ describe("ED.HOSP.1F nursing documentation + handoff UI", () => {
     expect(nursing).not.toContain("nursing-directory-gap");
   });
 
+  it("reuses structured/internal receiving nurse and keeps external free-text", () => {
+    expect(composer).toContain("hydrateHandoffReceiverFromCanonical");
+    expect(composer).toContain("decodeReceivingNurse");
+    expect(composer).toContain("ed-nursing-internal-receiving-search");
+    expect(composer).toContain("ed-nursing-external-receiving");
+    expect(composer).toContain('overflow: "visible"');
+    expect(composer).not.toContain("/admin/users");
+  });
+
   it("workspace mounts composer on nursing and notes", () => {
     expect(workspace).toContain("EdNursingDocumentationComposer");
     expect(workspace).toContain('activeSection === "nursing"');
     expect(workspace).toContain('activeSection === "notes"');
+    expect(workspace).not.toContain("emergencyDisposition.nursingExecutionTitle");
   });
 
   it("author RN may void own notes via existing void route", () => {
     expect(controller).toContain("encounters/:id/notes/:noteId/void");
     expect(controller).toMatch(/void[\s\S]{0,250}RoleCode\.RN/);
+    expect(controller).toMatch(
+      /admission\/decision"\)[\s\S]{0,120}@RequireRoles\(RoleCode\.PROVIDER, RoleCode\.ADMIN\)/
+    );
+    expect(controller).toContain("roster/clinical-users");
   });
 
   it("EN/FR keys match; AMA remains distinct from Elopement", () => {

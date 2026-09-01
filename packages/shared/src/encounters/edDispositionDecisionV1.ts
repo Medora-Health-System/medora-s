@@ -88,3 +88,73 @@ export function isEdDispositionDecisionSigned(
 export const ED_DISPOSITION_DECISION_STAMP_KEYS = [
   "signature",
 ] as const;
+
+const SIGNED_ADMISSION_DECISION_KEYS = [
+  "admissionDecisionMode",
+  "admissionDecisionAt",
+  "admissionDecisionByUserId",
+  "admissionDecisionClientRequestId",
+  "requestedEncounterType",
+] as const;
+
+/**
+ * RN / non-provider PATCH must not downgrade or re-attribute a SIGNED provider
+ * disposition stored on `nursingAssessment.erDispositionV1`. Nursing-owned keys
+ * (handoff, drafts, adaptive execution) are preserved.
+ */
+export function preserveSignedProviderDispositionOnNursingWrite(
+  previousNursingAssessment: unknown,
+  incomingNursingAssessment: unknown
+): unknown {
+  const priorMeta = readEdDispositionDecisionFromNursingAssessment(previousNursingAssessment);
+  if (priorMeta.documentationStatus !== EdDispositionDocumentationStatus.SIGNED) {
+    return incomingNursingAssessment;
+  }
+  const priorRoot = asObject(previousNursingAssessment);
+  const priorNs = asObject(priorRoot?.[ER_DISPOSITION_V1_KEY]);
+  if (!priorNs) return incomingNursingAssessment;
+
+  const incoming = asObject(incomingNursingAssessment);
+  if (!incoming) {
+    return previousNursingAssessment;
+  }
+  const nextNs = asObject(incoming[ER_DISPOSITION_V1_KEY]);
+  const priorSig = asObject(priorNs.signature);
+  const nextSig = asObject(nextNs?.signature);
+  return {
+    ...incoming,
+    [ER_DISPOSITION_V1_KEY]: {
+      ...(nextNs ?? {}),
+      ...priorNs,
+      documentationStatus: EdDispositionDocumentationStatus.SIGNED,
+      signedAt: priorMeta.signedAt ?? priorNs.signedAt,
+      signedByDisplayName: priorMeta.signedByDisplayName ?? priorNs.signedByDisplayName,
+      revision: priorMeta.revision,
+      previousPath: priorMeta.previousPath ?? priorNs.previousPath ?? null,
+      revisionReason: priorMeta.revisionReason ?? priorNs.revisionReason ?? null,
+      signature: priorSig ?? nextSig ?? priorNs.signature,
+    },
+  };
+}
+
+/**
+ * RN / non-provider PATCH must not rewrite signed admission/observation decision
+ * stamps or destination on `admissionSummaryJson`.
+ */
+export function preserveSignedAdmissionDecisionOnSummaryWrite(
+  previousAdmissionSummary: unknown,
+  incomingAdmissionSummary: Record<string, unknown>
+): Record<string, unknown> {
+  const prior = asObject(previousAdmissionSummary);
+  if (!prior) return incomingAdmissionSummary;
+  if (String(prior.admissionDecisionMode ?? "").toUpperCase() !== "SIGN") {
+    return incomingAdmissionSummary;
+  }
+  const out: Record<string, unknown> = { ...incomingAdmissionSummary };
+  for (const key of SIGNED_ADMISSION_DECISION_KEYS) {
+    if (prior[key] !== undefined) {
+      out[key] = prior[key];
+    }
+  }
+  return out;
+}

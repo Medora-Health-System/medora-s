@@ -1700,7 +1700,6 @@ export function EmergencyActiveWorkspaceView() {
                   data-testid="ed-disposition-nursing-execution"
                   style={{ ...edBoardSectionStyle, marginTop: 12 }}
                 >
-                  <p style={edSectionHeadingStyle}>{t("emergencyDisposition.nursingExecutionTitle")}</p>
                   <NursingDischargeExecutionSection
                     encounterId={encounterId}
                     facilityId={fid}
@@ -1717,7 +1716,6 @@ export function EmergencyActiveWorkspaceView() {
                   data-testid="ed-disposition-nursing-execution"
                   style={{ ...edBoardSectionStyle, marginTop: 12 }}
                 >
-                  <p style={edSectionHeadingStyle}>{t("emergencyDisposition.nursingExecutionTitle")}</p>
                   <AdaptiveDispositionNursingSection
                     encounterId={encounterId}
                     facilityId={fid}

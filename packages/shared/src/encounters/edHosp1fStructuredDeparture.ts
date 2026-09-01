@@ -270,6 +270,21 @@ export function isStructuredReceivingNurseValue(raw: string | null | undefined):
   return v.startsWith("SESSION:") || v.startsWith("ASSIGNED:") || v.startsWith("HANDOFF:");
 }
 
+export function decodeReceivingNurse(raw: string | null | undefined): {
+  source: "SESSION" | "ASSIGNED" | "HANDOFF";
+  userId: string;
+  displayName: string;
+} | null {
+  const v = String(raw ?? "").trim();
+  const m = /^(SESSION|ASSIGNED|HANDOFF):([^:]*):(.*)$/.exec(v);
+  if (!m) return null;
+  return {
+    source: m[1] as "SESSION" | "ASSIGNED" | "HANDOFF",
+    userId: m[2] ?? "",
+    displayName: m[3] ?? "",
+  };
+}
+
 export function isIsoTimestamp(raw: string | null | undefined): boolean {
   const s = String(raw ?? "").trim();
   if (!s) return false;

@@ -11,6 +11,15 @@ describe("ClinicalUserRoleAutocomplete (M1.8B.4A.5)", () => {
     expect(source).toContain("clinical-user-role-autocomplete-api-error");
   });
 
+  it("keeps typed characters visible and searches the clinical roster", () => {
+    expect(source).toContain("/roster/clinical-users?q=");
+    expect(source).toContain("&role=${role}");
+    expect(source).toContain("clinical-user-role-autocomplete-input");
+    expect(source).toContain("MIN_CHARS = 3");
+    expect(source).not.toMatch(/onChangeDisplay\(v\);\s*onSelectUser\(null\)/);
+    expect(source).not.toContain("/admin/users");
+  });
+
   it("renders roster credentials and department without admin/email fields", () => {
     expect(source).toContain("formatClinicalUserRoleLabel");
     expect(source).toContain("credentials");
