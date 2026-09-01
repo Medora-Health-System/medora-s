@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, type CSSProperties } from "react";
+import { useCallback, useEffect, useMemo, useState, type CSSProperties } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useI18n } from "@/lib/i18n";
@@ -8,10 +8,12 @@ import { DISPLAY_DASH } from "@/lib/patientDisplay";
 import { apiFetch } from "@/lib/apiClient";
 import { inpatientActiveWorkspacePath } from "@/features/inpatient-workspace/inpatientWorkspacePaths";
 import { HospitalCareShell } from "./HospitalCareShell";
+import { HospitalCareIncomingPlacementSection } from "./HospitalCareIncomingPlacementSection";
+import { hospitalAdmissionReviewPath } from "./hospitalCarePaths";
 import {
   fetchFacilityPlacementQueue,
   isForbiddenApiError,
-  PLACEMENT_QUEUE_STATUS_SET,
+  isHospitalBoardAdmissionsReceivingRow,
   type HospitalCarePlacementQueueRow,
   type PlacementQueueAvailability,
 } from "./hospitalCarePlacementApi";
@@ -48,35 +50,29 @@ export function HospitalCareAdmissionsView() {
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
-  useEffect(() => {
-    let cancelled = false;
-    void (async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const data = await fetchFacilityPlacementQueue();
-        if (!cancelled) {
-          setRows(data.items);
-          setAvailability(data.availability);
-        }
-      } catch (err) {
-        if (!cancelled) {
-          setRows([]);
-          setAvailability(null);
-          setError(
-            isForbiddenApiError(err)
-              ? t("hospitalCareD3ca.accessDenied")
-              : t("hospitalCareD3ca.loadError")
-          );
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
+  const reload = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await fetchFacilityPlacementQueue();
+      setRows(data.items);
+      setAvailability(data.availability);
+    } catch (err) {
+      setRows([]);
+      setAvailability(null);
+      setError(
+        isForbiddenApiError(err)
+          ? t("hospitalCareD3ca.accessDenied")
+          : t("hospitalCareD3ca.loadError")
+      );
+    } finally {
+      setLoading(false);
+    }
   }, [t]);
+
+  useEffect(() => {
+    void reload();
+  }, [reload]);
 
   useEffect(() => {
     if (!formOpen || patientQuery.trim().length < 2) {
@@ -108,7 +104,7 @@ export function HospitalCareAdmissionsView() {
   }, [formOpen, patientQuery]);
 
   const admissions = useMemo(
-    () => rows.filter((r) => PLACEMENT_QUEUE_STATUS_SET.has(r.status)),
+    () => rows.filter((r) => isHospitalBoardAdmissionsReceivingRow(r)),
     [rows]
   );
 
@@ -406,6 +402,11 @@ export function HospitalCareAdmissionsView() {
         </p>
       ) : (
         <div style={{ overflowX: "auto" }}>
+          <HospitalCareIncomingPlacementSection
+            surface="ADMISSIONS"
+            rows={admissions}
+            onReload={reload}
+          />
           <table
             style={{
               width: "100%",
@@ -439,7 +440,13 @@ export function HospitalCareAdmissionsView() {
                 return (
                   <tr key={row.id} style={{ borderBottom: "1px solid #f1f5f9" }}>
                     <td style={{ padding: "10px 6px", fontWeight: 600, color: "#0f172a" }}>
-                      {name}
+                      <Link
+                        href={hospitalAdmissionReviewPath(row.originatingEncounterId)}
+                        data-testid={`ed-hosp-1g-admissions-review-${row.id}`}
+                        style={{ color: "#0f172a", textDecoration: "none" }}
+                      >
+                        {name}
+                      </Link>
                       <div style={{ fontSize: 11, fontWeight: 400, color: "#64748b" }}>
                         {row.patient.mrn || dash}
                       </div>

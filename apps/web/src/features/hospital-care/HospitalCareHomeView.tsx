@@ -86,7 +86,7 @@ const TILES: TileDef[] = [
     primaryCount: (d) => d.counts.admissionsToday,
     secondaryKey: "hospitalCareD3e6.tiles.admissions.secondary",
     secondaryCount: (d) =>
-      d.placementAvailability === "FEATURE_DISABLED" ? "—" : d.counts.placementRequested,
+      d.placementAvailability === "FEATURE_DISABLED" ? "—" : (d.counts.incomingAdmissions ?? 0),
     actionKey: "hospitalCareD3e6.tiles.admissions.action",
     statusKey: () => "hospitalCareD3e6.status.live",
   },
