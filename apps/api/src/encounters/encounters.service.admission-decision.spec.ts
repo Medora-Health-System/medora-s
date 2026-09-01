@@ -215,6 +215,32 @@ describe("EncountersService.recordAdmissionDecision", () => {
     expect(data).not.toHaveProperty("status");
   });
 
+  it("Observation SIGN with flag ON creates placement without reconciliation", async () => {
+    const { svc, placement } = buildService({
+      roleCodes: ["PROVIDER"],
+      placementEnabled: true,
+    });
+    const res = await svc.recordAdmissionDecision(
+      facilityId,
+      encounterId,
+      {
+        ...baseDto("SIGN"),
+        requestedEncounterType: "OBSERVATION",
+        admissionSummary: { ...baseDto("SIGN").admissionSummary, careLevel: "OBSERVATION" },
+        admissionPacket: {
+          ...baseDto("SIGN").admissionPacket,
+          levelOfCareCode: "OBSERVATION",
+        },
+      },
+      userId
+    );
+    expect(res.placement?.submittedToQueue).toBe(true);
+    expect(res.edEncounterClosed).toBe(false);
+    expect(
+      Object.prototype.hasOwnProperty.call(placement, "reconcileSignedHospitalBoundDecisions")
+    ).toBe(false);
+  });
+
   it("stamps requestedEncounterType OBSERVATION on admissionSummaryJson without changing encounter type", async () => {
     const { svc, updateMany, placement } = buildService({
       roleCodes: ["PROVIDER"],
