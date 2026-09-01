@@ -189,6 +189,11 @@ type EncounterShell = {
     firstName?: string | null;
     lastName?: string | null;
   } | null;
+  nurseAssigned?: {
+    id?: string;
+    firstName?: string | null;
+    lastName?: string | null;
+  } | null;
   providerDocumentationStatus?: string | null;
   providerDocumentationSignedAt?: string | null;
   providerDocumentationSignedByDisplayFr?: string | null;

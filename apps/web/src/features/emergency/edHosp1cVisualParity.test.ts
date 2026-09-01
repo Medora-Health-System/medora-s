@@ -128,7 +128,7 @@ describe("ED.HOSP.1C visual parity with inpatient discharge board", () => {
     expect(panel).not.toContain("createDirectAdmission");
     expect(panel).not.toContain("confirmInpatientTransfer");
     expect(panel).not.toMatch(/\/encounters\/\$\{.*\}\/close/);
-    expect(panel).toContain("decisionDoesNotClose");
+    expect(panel).not.toContain("decisionDoesNotClose");
     const state = projectEdDispositionState({
       status: "OPEN",
       dischargeSummaryJson: { dischargeMode: ER_DISCHARGE_MODE_HOME },

@@ -26,8 +26,8 @@ describe("MEDUI.SMART_ADMISSION_CLINICAL_HARDENING.D4A2_1 boundary", () => {
     const src = read("AdaptiveDispositionNursingSection.tsx");
     expect(src).toContain("adaptive-nursing-completion-summary");
     expect(src).toContain("evaluateAdaptiveNursingCompletion");
-    expect(src).toContain("htmlFor={`adaptive-nursing-field-");
-    expect(src).toContain("lanes.placementOffNote");
+    expect(src).toContain("htmlFor=\"adaptive-nursing-field-receivingUnit\"");
+    expect(src).not.toContain("lanes.placementOffNote");
   });
 
   it("EN/FR adaptive nursing and disposition provenance keys stay mirrored", () => {

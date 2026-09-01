@@ -36,6 +36,30 @@ function p(locale: SupportedLanguage, key: string): string {
   return i18nMessage(locale, `providerDischargeDocumentation19Y.${key}`);
 }
 
+const ENUM_TOKEN = /\b([A-Z][A-Z0-9]*(?:_[A-Z0-9]+)*)\b/g;
+
+function titleCaseEnumCode(code: string): string {
+  return code
+    .split("_")
+    .map((w) => (w ? w.charAt(0) + w.slice(1).toLowerCase() : w))
+    .join(" ");
+}
+
+/** Display-only: localize follow-up/service enum chips. Persisted values stay unchanged. */
+export function localizeEdDispositionFollowUpChipText(
+  raw: string,
+  locale: SupportedLanguage
+): string {
+  return String(raw ?? "").replace(ENUM_TOKEN, (code) => {
+    const spec = p(locale, `followUpSpecialty.${code}`);
+    if (spec !== `providerDischargeDocumentation19Y.followUpSpecialty.${code}`) return spec;
+    const svc = i18nMessage(locale, `hospitalAdmissionD4a0.service.${code}`);
+    if (svc !== `hospitalAdmissionD4a0.service.${code}`) return svc;
+    if (code.includes("_")) return titleCaseEnumCode(code);
+    return code;
+  });
+}
+
 function formatIso(iso: string, locale: SupportedLanguage): string {
   try {
     const tag = locale === "en" ? "en-US" : "fr-FR";
@@ -53,9 +77,9 @@ function pushLine(lines: string[], label: string, value: string | null | undefin
 function formatFollowUpRow(row: ProviderDischargeFollowUpRow, locale: SupportedLanguage): string {
   const specialtyLabel = p(locale, `followUpSpecialty.${row.specialty}`);
   const parts = [
-    specialtyLabel !== `providerDischargeDocumentation19Y.followUpSpecialty.${row.specialty}` ?
-      specialtyLabel
-    : row.specialty,
+    specialtyLabel !== `providerDischargeDocumentation19Y.followUpSpecialty.${row.specialty}`
+      ? specialtyLabel
+      : localizeEdDispositionFollowUpChipText(row.specialty, locale),
   ];
   if (row.providerOrFacility.trim()) parts.push(row.providerOrFacility.trim());
   if (row.timing.trim()) parts.push(localizeProviderDischargeFollowUpTiming(row.timing, locale));

@@ -13,6 +13,10 @@ import type {
 } from "./smartAdmissionPacketD4a2.js";
 import { emptyAdmissionPacketV1 } from "./smartAdmissionPacketD4a2.js";
 import { buildNarrativeFromStructuredPlanItems } from "./smartAdmissionClinicalHardeningD4a21.js";
+import {
+  SMART_ADMISSION_PROPOSAL_PREFIXES,
+  type SmartAdmissionProposalLocale,
+} from "./edHosp1fStructuredDeparture.js";
 
 export type SmartAdmissionChartContextV1 = {
   chiefComplaint?: string | null;
@@ -268,19 +272,21 @@ export function recommendLevelOfCareFromContext(
 }
 
 export function buildSmartAdmissionProposals(
-  ctx: SmartAdmissionChartContextV1
+  ctx: SmartAdmissionChartContextV1,
+  locale: SmartAdmissionProposalLocale = "fr"
 ): AdmissionPacketV1 {
   const packet = emptyAdmissionPacketV1();
+  const prefix = SMART_ADMISSION_PROPOSAL_PREFIXES[locale] ?? SMART_ADMISSION_PROPOSAL_PREFIXES.fr;
 
   const reasonSources: AdmissionProposalSourceRef[] = [];
   const reasonParts: string[] = [];
   if (trim(ctx.chiefComplaint) || trim(ctx.visitReason)) {
     const cc = trim(ctx.chiefComplaint) || trim(ctx.visitReason);
-    reasonParts.push(`Motif de consultation: ${cc}`);
+    reasonParts.push(`${prefix.chiefComplaint}: ${cc}`);
     pushSource(reasonSources, "CHIEF_COMPLAINT", "Chief complaint / visit reason", cc);
   }
   if (trim(ctx.primaryDiagnosisDisplay)) {
-    reasonParts.push(`Diagnostic d'admission: ${trim(ctx.primaryDiagnosisDisplay)}`);
+    reasonParts.push(`${prefix.admissionDiagnosis}: ${trim(ctx.primaryDiagnosisDisplay)}`);
     pushSource(
       reasonSources,
       "DIAGNOSIS",
@@ -292,7 +298,7 @@ export function buildSmartAdmissionProposals(
   for (const line of ctx.abnormalResultLines ?? []) {
     const text = lineText(line);
     if (!text) continue;
-    reasonParts.push(`Résultat anormal documenté: ${text}`);
+    reasonParts.push(`${prefix.abnormalResult}: ${text}`);
     const label =
       typeof line === "object" && line.label ? line.label : "Abnormal diagnostic result";
     pushSource(
@@ -306,29 +312,29 @@ export function buildSmartAdmissionProposals(
   }
   for (const line of ctx.failedEdTherapyLines ?? []) {
     if (!trim(line)) continue;
-    reasonParts.push(`Thérapie urgences insuffisante: ${trim(line)}`);
+    reasonParts.push(`${prefix.failedEdTherapy}: ${trim(line)}`);
     pushSource(reasonSources, "FAILED_ED_THERAPY", "Failed ED therapy", line);
   }
   for (const line of ctx.continuedTreatmentNeeds ?? []) {
     if (!trim(line)) continue;
-    reasonParts.push(`Besoin de poursuite du traitement: ${trim(line)}`);
+    reasonParts.push(`${prefix.continuedTreatment}: ${trim(line)}`);
     pushSource(reasonSources, "CONTINUED_TREATMENT", "Continued treatment need", line);
   }
   for (const line of ctx.monitoringNeeds ?? []) {
     if (!trim(line)) continue;
-    reasonParts.push(`Surveillance requise: ${trim(line)}`);
+    reasonParts.push(`${prefix.monitoring}: ${trim(line)}`);
     pushSource(reasonSources, "MONITORING_NEED", "Monitoring need", line);
   }
   for (const line of ctx.consultantRecommendationLines ?? []) {
     const text = lineText(line);
     if (!text) continue;
-    reasonParts.push(`Recommandation de consultation: ${text}`);
+    reasonParts.push(`${prefix.consultRec}: ${text}`);
     const label =
       typeof line === "object" && line.label ? line.label : "Consultant recommendation";
     pushSource(reasonSources, "CONSULT_REC", label, text, lineId(line));
   }
   if (trim(ctx.providerAssessment)) {
-    reasonParts.push(`Évaluation médecin: ${trim(ctx.providerAssessment, 500)}`);
+    reasonParts.push(`${prefix.providerAssessment}: ${trim(ctx.providerAssessment, 500)}`);
     pushSource(reasonSources, "PROVIDER_ASSESSMENT", "Provider assessment", ctx.providerAssessment);
   }
   const reasonField = proposedField(joinUnique(reasonParts), reasonSources);
