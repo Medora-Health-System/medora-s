@@ -57,6 +57,7 @@ const PLACEMENT_SELECT = {
   telemetryRequired: true,
   isolationRequired: true,
   isolationType: true,
+  acceptingProviderUserId: true,
   acceptingProviderNameSnapshot: true,
   assignedUnitCode: true,
   assignedRoomKey: true,
@@ -831,6 +832,28 @@ export class InternalPlacementService {
       if (toStatus === InternalPlacementStatus.BED_ASSIGNED) {
         if (!patch?.assignedUnitCode?.trim() || !patch?.assignedRoomKey?.trim()) {
           throw new BadRequestException("Bed assignment requires unit and room keys");
+        }
+        const claimedBed = patch?.assignedBedKey?.trim() || null;
+        if (claimedBed) {
+          const occupying = await tx.internalPlacementRequest.findFirst({
+            where: {
+              facilityId,
+              assignedBedKey: claimedBed,
+              id: { not: requestId },
+              status: {
+                in: [
+                  InternalPlacementStatus.BED_ASSIGNED,
+                  InternalPlacementStatus.READY_FOR_TRANSFER,
+                  InternalPlacementStatus.DEPARTED_ED,
+                  InternalPlacementStatus.ARRIVED_DESTINATION,
+                ],
+              },
+            },
+            select: { id: true },
+          });
+          if (occupying) {
+            throw new ConflictException("Selected bed is no longer available");
+          }
         }
       }
       if (toStatus === InternalPlacementStatus.READY_FOR_TRANSFER) {

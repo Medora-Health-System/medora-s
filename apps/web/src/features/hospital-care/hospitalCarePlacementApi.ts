@@ -17,6 +17,7 @@ export type HospitalCarePlacementQueueRow = {
   requestedLevelOfCare: string | null;
   requestedService: string | null;
   clinicalPriority: string | null;
+  acceptingProviderUserId?: string | null;
   acceptingProviderNameSnapshot: string | null;
   assignedUnitCode: string | null;
   assignedRoomKey: string | null;
