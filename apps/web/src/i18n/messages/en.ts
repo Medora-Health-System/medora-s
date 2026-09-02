@@ -76,6 +76,7 @@ import { edHosp1dObservationOrdersEn } from "./edHosp1dObservationOrders.en";
 import { edHosp1eAdmissionOrdersEn } from "./edHosp1eAdmissionOrders.en";
 import { edHosp1fNursingDocumentationEn } from "./edHosp1fNursingDocumentation.en";
 import { edHosp1gHospitalBoardEn } from "./edHosp1gHospitalBoard.en";
+import { edHosp1g2PlacementWorkspaceEn } from "./edHosp1g2PlacementWorkspace.en";
 import { inpatientDischargeAwarenessInpDis1hEn } from "./inpatientDischargeAwarenessInpDis1h.en";
 import { inpatientProviderDocumentationInpProv1aEn } from "./inpatientProviderDocumentationInpProv1a.en";
 import { inpatientProviderDocumentationInpProv1bEn } from "./inpatientProviderDocumentationInpProv1b.en";
@@ -20932,6 +20933,7 @@ export default {
   edHosp1eAdmissionOrders: edHosp1eAdmissionOrdersEn,
   edHosp1fNursingDocumentation: edHosp1fNursingDocumentationEn,
   edHosp1gHospitalBoard: edHosp1gHospitalBoardEn,
+  edHosp1g2PlacementWorkspace: edHosp1g2PlacementWorkspaceEn,
   inpatientDischargeAwarenessInpDis1h: inpatientDischargeAwarenessInpDis1hEn,
   inpatientProviderDocumentationInpProv1a: inpatientProviderDocumentationInpProv1aEn,
   inpatientProviderDocumentationInpProv1b: inpatientProviderDocumentationInpProv1bEn,
@@ -20995,8 +20997,7 @@ export default {
   },
   hospitalCareD3e7: {
     placement: {
-      actionsOff:
-        "Placement actions are disabled. Enable NEXT_PUBLIC_PLACEMENT_ACTIONS_ENABLED for governed transitions in a controlled environment.",
+      actionsOff: "Placement actions unavailable",
       actionError: "Unable to apply this placement action. Refresh and try again.",
       bedPlaceholder: "Bed key",
       actions: {

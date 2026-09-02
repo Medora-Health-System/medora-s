@@ -11,6 +11,7 @@ import {
   tOrderItemStatusForWorklist,
 } from "@/lib/encounterChromeI18n";
 import { useI18n } from "@/lib/i18n";
+import { canonicalEncounterWorkspaceHref } from "@/features/encounters/canonicalEncounterWorkspaceHref";
 import { selectClinicalDocumentationPayloadSummary } from "@medora/shared";
 import { isOrderItemDoneForChart } from "@/constants/orderStatusLabels";
 import { catalogMedicationNameForLocale } from "@/lib/orderItemDisplayFr";
@@ -67,7 +68,13 @@ function EncounterBlock({
   return (
     <div style={{ border: "1px solid #e0e0e0", borderRadius: 8, padding: 14, marginBottom: 16 }}>
       <div style={{ fontWeight: 600, marginBottom: 6 }}>
-        <Link href={`/app/encounters/${enc.id}`} style={{ color: "#0d47a1", textDecoration: "none" }}>
+        <Link href={canonicalEncounterWorkspaceHref({
+          encounterId: enc.id,
+          encounterType: enc.type,
+          encounterStatus: enc.status,
+          admissionSummaryJson: enc.admissionSummaryJson,
+          source: "PATIENT_CHART",
+        })} style={{ color: "#0d47a1", textDecoration: "none" }}>
           {tEncounterType(t, enc.type)} — {formatDt(enc.createdAt)}
         </Link>
       </div>

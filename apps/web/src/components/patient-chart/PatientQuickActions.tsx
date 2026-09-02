@@ -3,6 +3,7 @@
 import React from "react";
 import { useRouter } from "next/navigation";
 import { useI18n } from "@/lib/i18n";
+import { canonicalEncounterWorkspaceHref } from "@/features/encounters/canonicalEncounterWorkspaceHref";
 
 const btn: React.CSSProperties = {
   padding: "8px 12px",
@@ -45,7 +46,12 @@ export function PatientQuickActions({
   isProviderLike: boolean;
   isFrontDeskQuick: boolean;
   isBillingOnlyQuick: boolean;
-  openEncounter: { id: string } | null | undefined;
+  openEncounter: {
+    id: string;
+    type?: string;
+    status?: string;
+    billingClassification?: string | null;
+  } | null | undefined;
   canOpenEncounterDetail: boolean;
   canPrescribe: boolean;
   chartSummaryReady: boolean;
@@ -59,6 +65,19 @@ export function PatientQuickActions({
 }) {
   const { t } = useI18n();
   const router = useRouter();
+  const workspaceRole = isProviderLike ? "PROVIDER" : isRNOnly ? "RN" : "OTHER";
+  const encounterHref = (tab?: string) => {
+    if (!openEncounter) return "/app/encounters";
+    return canonicalEncounterWorkspaceHref({
+      encounterId: openEncounter.id,
+      encounterType: openEncounter.type,
+      encounterStatus: openEncounter.status,
+      billingClassification: openEncounter.billingClassification,
+      role: workspaceRole,
+      source: "PATIENT_CHART",
+      tab,
+    });
+  };
   const show =
     clinicalChartAccess || isFrontDeskQuick || isBillingOnlyQuick;
 
@@ -91,7 +110,7 @@ export function PatientQuickActions({
               }
               onClick={() => {
                 if (openEncounter && canOpenEncounterDetail) {
-                  router.push(`/app/encounters/${openEncounter.id}?tab=triage`);
+                  router.push(encounterHref("triage"));
                 }
               }}
             >
@@ -107,7 +126,7 @@ export function PatientQuickActions({
               title={!openEncounter ? t("patientQuickActions.noOpenEncounter") : undefined}
               onClick={() => {
                 if (openEncounter && canOpenEncounterDetail) {
-                  router.push(`/app/encounters/${openEncounter.id}?tab=notes`);
+                  router.push(encounterHref("notes"));
                 }
               }}
             >
@@ -126,7 +145,7 @@ export function PatientQuickActions({
               style={btn}
               onClick={() => {
                 if (openEncounter && canOpenEncounterDetail) {
-                  router.push(`/app/encounters/${openEncounter.id}`);
+                  router.push(encounterHref());
                 } else {
                   onTabEncounters();
                   onPendingCreateEncounter();
@@ -159,7 +178,7 @@ export function PatientQuickActions({
               }
               onClick={() => {
                 if (openEncounter && canOpenEncounterDetail && canPrescribe) {
-                  router.push(`/app/encounters/${openEncounter.id}?tab=orders`);
+                  router.push(encounterHref("orders"));
                 }
               }}
             >

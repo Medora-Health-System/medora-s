@@ -274,6 +274,8 @@ export class InternalPlacementController {
       assignmentSourceSystem?: string | null;
       cancellationReason?: string | null;
       expectedVersion?: number;
+      acceptingProviderUserId?: string | null;
+      acceptingProviderNameSnapshot?: string | null;
     },
     @Req() req: any
   ) {
@@ -294,6 +296,8 @@ export class InternalPlacementController {
         assignmentSourceSystem: body.assignmentSourceSystem,
         cancellationReason: body.cancellationReason,
         expectedVersion: body.expectedVersion,
+        acceptingProviderUserId: body.acceptingProviderUserId,
+        acceptingProviderNameSnapshot: body.acceptingProviderNameSnapshot,
       },
       { ip: req.ip, userAgent: req.headers?.["user-agent"] }
     );

@@ -60,3 +60,19 @@ export async function fetchHospitalUnitRegistry(options?: {
   const facilityId = options?.facilityId?.trim() || undefined;
   return apiFetch("/hospital-care/units", { facilityId }) as Promise<HospitalUnitRegistryResponse>;
 }
+
+/** Observation vs Inpatient destinations from the facility unit registry — never hard-coded OBS/MS/ICU. */
+export function filterHospitalUnitsForPlacementDestination(
+  units: readonly HospitalUnitRegistryUnit[],
+  requestedEncounterType?: string | null
+): HospitalUnitRegistryUnit[] {
+  const dest = String(requestedEncounterType ?? "")
+    .trim()
+    .toUpperCase();
+  return units.filter((unit) => {
+    if (!unit.active) return false;
+    if (dest === "OBSERVATION") return unit.acceptsObservation === true;
+    if (dest === "INPATIENT") return unit.acceptsInpatient === true;
+    return false;
+  });
+}

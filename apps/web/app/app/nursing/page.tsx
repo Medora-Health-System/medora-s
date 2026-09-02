@@ -18,6 +18,7 @@ import {
   MedoraCompactPatientCardRow,
 } from "@/components/medora-card";
 import { BillingClassificationBadgeReadOnly } from "@/components/encounters/BillingClassificationBadgeReadOnly";
+import { canonicalEncounterWorkspaceHref } from "@/features/encounters/canonicalEncounterWorkspaceHref";
 
 type AcuityTier = "critical" | "monitoring" | "stable";
 
@@ -606,7 +607,14 @@ export default function NursingPage() {
                               </Link>
                             ) : null}
                             <Link
-                              href={`/app/encounters/${encounter.id}`}
+                              href={canonicalEncounterWorkspaceHref({
+                                encounterId: encounter.id,
+                                encounterType: encounter.type,
+                                encounterStatus: encounter.status,
+                                billingClassification: encounter.billingClassification,
+                                role: "RN",
+                                source: "LANDING",
+                              })}
                               style={{
                                 ...linkBase,
                                 border: "1px solid #bfdbfe",
@@ -617,7 +625,15 @@ export default function NursingPage() {
                               {t("openEncountersTable.openEncounter")}
                             </Link>
                             <Link
-                              href={`/app/encounters/${encounter.id}?tab=mar`}
+                              href={canonicalEncounterWorkspaceHref({
+                                encounterId: encounter.id,
+                                encounterType: encounter.type,
+                                encounterStatus: encounter.status,
+                                billingClassification: encounter.billingClassification,
+                                role: "RN",
+                                source: "LANDING",
+                                tab: "mar",
+                              })}
                               style={{
                                 ...linkBase,
                                 border: "1px solid #bbf7d0",

@@ -15,6 +15,7 @@ import {
   MedoraCompactPatientCardRow,
 } from "@/components/medora-card";
 import { BillingClassificationBadgeReadOnly } from "@/components/encounters/BillingClassificationBadgeReadOnly";
+import { canonicalEncounterWorkspaceHref } from "@/features/encounters/canonicalEncounterWorkspaceHref";
 
 type AcuityTier = "critical" | "monitoring" | "stable";
 
@@ -378,7 +379,13 @@ export default function EncountersLegacyOpenList() {
                               </Link>
                             ) : null}
                             <Link
-                              href={`/app/encounters/${encounter.id}`}
+                              href={canonicalEncounterWorkspaceHref({
+                                encounterId: encounter.id,
+                                encounterType: encounter.type,
+                                encounterStatus: encounter.status,
+                                billingClassification: encounter.billingClassification,
+                                source: "LANDING",
+                              })}
                               style={{
                                 ...linkBase,
                                 border: "1px solid #bfdbfe",

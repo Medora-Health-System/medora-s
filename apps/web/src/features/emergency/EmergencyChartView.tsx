@@ -357,12 +357,6 @@ export function EmergencyChartView() {
     setTriageRefresh((r) => r + 1);
   }, [load]);
 
-  const showConfirmInpatientTransfer = useMemo(() => {
-    if (!encounter || encounter.status !== "OPEN") return false;
-    if ((encounter.type ?? "").trim() !== EMERGENCY_TYPE) return false;
-    return parseAdmissionSummaryForChart(encounter.admissionSummaryJson) != null;
-  }, [encounter]);
-
   const loadTriageForStrip = useCallback(async () => {
     if (!encounterId || !fid) return;
     setTriageLoading(true);
@@ -859,7 +853,6 @@ export function EmergencyChartView() {
             canEdit={canEditOperationalEncounter && encounter.status === "OPEN"}
             roomLabel={encounter.roomLabel}
             physicianAssigned={physicianAssignedForOperational}
-            showConfirmInpatientTransfer={showConfirmInpatientTransfer}
             nursingAssessment={encounter.nursingAssessment}
             onUpdated={async () => {
               setShowOperationalPanel(false);

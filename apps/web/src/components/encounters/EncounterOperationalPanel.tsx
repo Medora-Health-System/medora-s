@@ -5,7 +5,6 @@ import { apiFetch } from "@/lib/apiClient";
 import { normalizeUserFacingError } from "@/lib/userFacingError";
 import { useI18n } from "@/lib/i18n";
 import { MEDORA_CARD_SHELL } from "@/components/medora-card";
-import { erHandoffV1SatisfiesInpatientTransferConfirm } from "@medora/shared";
 import {
   ErHandoffV1ReadonlySummary,
   erHandoffV1ShouldShowReadonlyOperationalBlock,
@@ -20,8 +19,6 @@ import {
 import { buildEncounterRoomSelectOptions, formatEncounterRoomDisplay } from "@/lib/encounterRoomOptions";
 import type { EdRoomOccupancyConflict } from "@medora/shared";
 
-type SaveOpts = { confirmInpatientTransfer?: boolean };
-
 type ProviderRow = { id: string; firstName: string; lastName: string };
 
 export function EncounterOperationalPanel({
@@ -32,7 +29,6 @@ export function EncounterOperationalPanel({
   physicianAssigned,
   onUpdated,
   onSaved,
-  showConfirmInpatientTransfer,
   nursingAssessment,
 }: {
   encounterId: string;
@@ -43,8 +39,6 @@ export function EncounterOperationalPanel({
   onUpdated: () => void | Promise<void>;
   /** Merge returned API fields immediately (avoids empty display before GET completes). */
   onSaved?: (patch: Record<string, unknown>) => void;
-  /** Open EMERGENCY encounter with saved admission packet — show transfer to hospitalization board. */
-  showConfirmInpatientTransfer?: boolean;
   /** For ER handoff (erHandoffV1) merge — same shape as GET /encounters/:id. */
   nursingAssessment?: unknown;
 }) {
@@ -55,7 +49,6 @@ export function EncounterOperationalPanel({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [roomOccupancyConflict, setRoomOccupancyConflict] = useState<EdRoomOccupancyConflict | null>(null);
-  const [pendingSaveOpts, setPendingSaveOpts] = useState<SaveOpts | undefined>(undefined);
 
   useEffect(() => {
     setRoom(roomLabel ?? "");
@@ -108,11 +101,6 @@ export function EncounterOperationalPanel({
     [t]
   );
 
-  const handoffSatisfied = useMemo(
-    () => erHandoffV1SatisfiesInpatientTransferConfirm(nursingAssessment),
-    [nursingAssessment]
-  );
-
   const showReadonlyHandoff = !canEdit && erHandoffV1ShouldShowReadonlyOperationalBlock(nursingAssessment);
 
   const roomOptions = useMemo(() => buildEncounterRoomSelectOptions(room), [room]);
@@ -120,7 +108,7 @@ export function EncounterOperationalPanel({
   const performSave = useCallback(
     async (
       roomToSave: string,
-      opts?: SaveOpts & {
+      opts?: {
         occupancyConfirm?: EdRoomOccupancyConflict;
         acceptedRoom?: string;
       }
@@ -139,7 +127,6 @@ export function EncounterOperationalPanel({
           body: JSON.stringify({
             roomLabel: occupancyPayload?.roomLabel ?? (roomToSave.trim() || null),
             physicianAssignedUserId: physicianId || null,
-            ...(opts?.confirmInpatientTransfer ? { confirmInpatientTransfer: true } : {}),
             ...(occupancyPayload
               ? {
                   confirmOccupiedRoomAssignment: occupancyPayload.confirmOccupiedRoomAssignment,
@@ -158,7 +145,6 @@ export function EncounterOperationalPanel({
         const apiConflict = parseEdRoomOccupiedApiError(e);
         if (apiConflict) {
           setRoomOccupancyConflict(apiConflict);
-          setPendingSaveOpts(opts);
           return;
         }
         setError(normalizeUserFacingError(e instanceof Error ? e.message : null, "fr") || t("encounterOperational.saveFailed"));
@@ -169,52 +155,44 @@ export function EncounterOperationalPanel({
     [canEdit, encounterId, facilityId, onUpdated, onSaved, physicianId, t]
   );
 
-  const save = useCallback(
-    async (opts?: SaveOpts) => {
-      if (!canEdit) return;
-      const trimmedRoom = room.trim();
-      if (isSameNormalizedRoom(roomLabel, trimmedRoom)) {
-        await performSave(trimmedRoom, opts);
+  const save = useCallback(async () => {
+    if (!canEdit) return;
+    const trimmedRoom = room.trim();
+    if (isSameNormalizedRoom(roomLabel, trimmedRoom)) {
+      await performSave(trimmedRoom);
+      return;
+    }
+    setSaving(true);
+    setError(null);
+    try {
+      const conflict = await checkEdRoomAssignmentConflict(facilityId, trimmedRoom, encounterId);
+      if (conflict) {
+        setRoomOccupancyConflict(conflict);
         return;
       }
-      setSaving(true);
-      setError(null);
-      try {
-        const conflict = await checkEdRoomAssignmentConflict(facilityId, trimmedRoom, encounterId);
-        if (conflict) {
-          setRoomOccupancyConflict(conflict);
-          setPendingSaveOpts(opts);
-          return;
-        }
-        await performSave(trimmedRoom, opts);
-      } catch (e) {
-        const apiConflict = parseEdRoomOccupiedApiError(e);
-        if (apiConflict) {
-          setRoomOccupancyConflict(apiConflict);
-          setPendingSaveOpts(opts);
-          return;
-        }
-        setError(normalizeUserFacingError(e instanceof Error ? e.message : null, "fr") || t("encounterOperational.saveFailed"));
-      } finally {
-        setSaving(false);
+      await performSave(trimmedRoom);
+    } catch (e) {
+      const apiConflict = parseEdRoomOccupiedApiError(e);
+      if (apiConflict) {
+        setRoomOccupancyConflict(apiConflict);
+        return;
       }
-    },
-    [canEdit, encounterId, facilityId, performSave, room, roomLabel, t]
-  );
+      setError(normalizeUserFacingError(e instanceof Error ? e.message : null, "fr") || t("encounterOperational.saveFailed"));
+    } finally {
+      setSaving(false);
+    }
+  }, [canEdit, encounterId, facilityId, performSave, room, roomLabel, t]);
 
   const confirmOccupiedRoomAssignment = useCallback(async () => {
     if (!roomOccupancyConflict) return;
     const nextRoom = roomOccupancyConflict.suggestedRoom;
     setRoom(nextRoom);
-    const opts = pendingSaveOpts;
     setRoomOccupancyConflict(null);
-    setPendingSaveOpts(undefined);
     await performSave(roomOccupancyConflict.requestedRoom, {
-      ...opts,
       occupancyConfirm: roomOccupancyConflict,
       acceptedRoom: nextRoom,
     });
-  }, [pendingSaveOpts, performSave, roomOccupancyConflict]);
+  }, [performSave, roomOccupancyConflict]);
 
   const panelShell: React.CSSProperties = {
     backgroundColor: MEDORA_CARD_SHELL.background,
@@ -256,9 +234,7 @@ export function EncounterOperationalPanel({
             </div>
             <div>
               <span style={{ color: "#64748b" }}>
-                {showConfirmInpatientTransfer
-                  ? t("encounterOperational.acceptingPhysicianColon")
-                  : t("encounterOperational.assignedProviderColon")}{" "}
+                {t("encounterOperational.assignedProviderColon")}{" "}
               </span>
               <strong style={{ color: "#0f172a" }}>
                 {physicianAssigned
@@ -302,11 +278,7 @@ export function EncounterOperationalPanel({
           </select>
         </div>
         <div>
-          <label style={fieldLabel}>
-            {showConfirmInpatientTransfer
-              ? t("encounterOperational.acceptingPhysician")
-              : t("encounterOperational.assignedProvider")}
-          </label>
+          <label style={fieldLabel}>{t("encounterOperational.assignedProvider")}</label>
           <select
             value={physicianId}
             onChange={(e) => setPhysicianId(e.target.value)}
@@ -340,48 +312,6 @@ export function EncounterOperationalPanel({
         </button>
       </div>
 
-      {showConfirmInpatientTransfer ? (
-        <>
-          <div style={{ marginTop: 16, paddingTop: 14, borderTop: "1px solid #e2e8f0" }}>
-            <div style={{ fontSize: 12, fontWeight: 600, color: "#0f172a", marginBottom: 6 }}>
-              {t("encounterOperational.handoffSectionTitle")}
-            </div>
-            <p style={{ margin: "0 0 10px 0", fontSize: 12, color: "#64748b", lineHeight: 1.45 }}>
-              {t("encounterOperational.handoffEditInNursingTabHint")}
-            </p>
-            <ErHandoffV1ReadonlySummary nursingAssessment={nursingAssessment} />
-          </div>
-
-          <div style={{ marginTop: 16, paddingTop: 14, borderTop: "1px solid #e2e8f0" }}>
-            <p style={{ margin: "0 0 10px 0", fontSize: 12, color: "#64748b", lineHeight: 1.45 }}>
-              {t("encounterOperational.confirmInpatientTransferHint")}
-            </p>
-            {!handoffSatisfied ? (
-              <p style={{ margin: "0 0 10px 0", fontSize: 12, color: "#b45309", lineHeight: 1.45 }}>
-                {t("encounterOperational.handoffRequiredForTransferHint")}
-              </p>
-            ) : null}
-            <button
-              type="button"
-              disabled={saving || !physicianId.trim() || !handoffSatisfied}
-              onClick={() => void save({ confirmInpatientTransfer: true })}
-              style={{
-                padding: "10px 18px",
-                backgroundColor: "#0f766e",
-                color: "#fff",
-                border: "none",
-                borderRadius: 10,
-                cursor: saving || !physicianId.trim() || !handoffSatisfied ? "not-allowed" : "pointer",
-                fontWeight: 600,
-                fontSize: 14,
-                opacity: !physicianId.trim() || !handoffSatisfied ? 0.55 : 1,
-              }}
-            >
-              {saving ? t("common.saving") : t("encounterOperational.confirmInpatientTransferButton")}
-            </button>
-          </div>
-        </>
-      ) : null}
       {error && (
         <p style={{ color: "#b91c1c", fontSize: 13, marginTop: 12, lineHeight: 1.45 }} role="alert">
           {error}
@@ -395,7 +325,6 @@ export function EncounterOperationalPanel({
           onCancel={() => {
             if (saving) return;
             setRoomOccupancyConflict(null);
-            setPendingSaveOpts(undefined);
           }}
           onConfirm={() => void confirmOccupiedRoomAssignment()}
         />

@@ -16,6 +16,7 @@ import {
 } from "@/lib/encounterChromeI18n";
 import type { SupportedLanguage } from "@/i18n/config";
 import { useI18n } from "@/lib/i18n";
+import { canonicalEncounterWorkspaceHref } from "@/features/encounters/canonicalEncounterWorkspaceHref";
 import { nirMrnDisplay } from "./patientChartHelpers";
 import { BillingClassificationBadgeReadOnly } from "@/components/encounters/BillingClassificationBadgeReadOnly";
 
@@ -168,7 +169,13 @@ export function PatientHeaderCard({
                 </span>
               ) : canOpenEncounterDetail ? (
                 <Link
-                  href={`/app/encounters/${openEncounter.id}`}
+                  href={canonicalEncounterWorkspaceHref({
+                    encounterId: openEncounter.id,
+                    encounterType: openEncounter.type,
+                    encounterStatus: openEncounter.status,
+                    billingClassification: openEncounter.billingClassification,
+                    source: "PATIENT_CHART",
+                  })}
                   style={{
                     padding: "5px 12px",
                     backgroundColor: "#1565c0",

@@ -487,12 +487,6 @@ export function EmergencyActiveWorkspaceView() {
     setActiveSection("visitSummary");
   }, []);
 
-  const showConfirmInpatientTransfer = useMemo(() => {
-    if (!encounter || encounter.status !== "OPEN") return false;
-    if ((encounter.type ?? "").trim() !== EMERGENCY_TYPE) return false;
-    return parseAdmissionSummaryForChart(encounter.admissionSummaryJson) != null;
-  }, [encounter]);
-
   const loadTriageForStrip = useCallback(async () => {
     if (!encounterId || !fid) return;
     setTriageLoading(true);
@@ -1367,7 +1361,6 @@ export function EmergencyActiveWorkspaceView() {
             canEdit={canEditOperationalEncounter && encounter.status === "OPEN"}
             roomLabel={encounter.roomLabel}
             physicianAssigned={physicianAssignedForOperational}
-            showConfirmInpatientTransfer={showConfirmInpatientTransfer}
             nursingAssessment={encounter.nursingAssessment}
             onUpdated={async () => {
               setShowOperationalPanel(false);

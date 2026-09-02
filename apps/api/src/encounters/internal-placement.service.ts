@@ -805,6 +805,8 @@ export class InternalPlacementService {
       assignmentSourceSystem?: string | null;
       cancellationReason?: string | null;
       expectedVersion?: number;
+      acceptingProviderUserId?: string | null;
+      acceptingProviderNameSnapshot?: string | null;
     },
     options?: { featureFlagEnabled?: boolean; ip?: string; userAgent?: string }
   ): Promise<InternalPlacementStateProjection> {
@@ -866,6 +868,12 @@ export class InternalPlacementService {
           patch?.assignmentSourceSystem?.trim() || "FACILITY_ROOM_LABEL";
         data.assignedAt = new Date();
         data.assignedByUserId = actorUserId;
+      }
+      const acceptingUserId = patch?.acceptingProviderUserId?.trim() || null;
+      const acceptingName = patch?.acceptingProviderNameSnapshot?.trim() || null;
+      if (acceptingUserId || acceptingName) {
+        if (acceptingUserId) data.acceptingProviderUserId = acceptingUserId;
+        if (acceptingName) data.acceptingProviderNameSnapshot = acceptingName;
       }
       if (toStatus === InternalPlacementStatus.READY_FOR_TRANSFER) {
         data.readyForTransferAt = new Date();
