@@ -25,6 +25,7 @@ export type InternalPlacementStateProjection = {
   admissionDiagnosisSummary: string | null;
   reasonForPlacement: string | null;
   isolationType: string | null;
+  acceptingProviderUserId: string | null;
   acceptingProviderNameSnapshot: string | null;
   telemetryRequired: boolean;
   isolationRequired: boolean;
@@ -59,6 +60,7 @@ export type InternalPlacementRowForProjection = {
   admissionDiagnosisSummary?: string | null;
   reasonForPlacement?: string | null;
   isolationType?: string | null;
+  acceptingProviderUserId?: string | null;
   acceptingProviderNameSnapshot?: string | null;
   telemetryRequired: boolean;
   isolationRequired: boolean;
@@ -99,6 +101,7 @@ export function projectInternalPlacementState(
     admissionDiagnosisSummary: row.admissionDiagnosisSummary ?? null,
     reasonForPlacement: row.reasonForPlacement ?? null,
     isolationType: row.isolationType ?? null,
+    acceptingProviderUserId: row.acceptingProviderUserId ?? null,
     acceptingProviderNameSnapshot: row.acceptingProviderNameSnapshot ?? null,
     telemetryRequired: Boolean(row.telemetryRequired),
     isolationRequired: Boolean(row.isolationRequired),

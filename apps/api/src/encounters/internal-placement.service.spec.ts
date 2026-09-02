@@ -239,6 +239,97 @@ describe("InternalPlacementService D3C", () => {
     ).rejects.toThrow(/cancel after destination arrival/i);
   });
 
+  it("rejects bed assignment when another active placement already holds the bed", async () => {
+    const findFirst = jest
+      .fn()
+      .mockResolvedValueOnce(
+        baseRow({
+          status: InternalPlacementStatus.ACCEPTED,
+          version: 2,
+        })
+      )
+      .mockResolvedValueOnce({ id: "ipr-other" });
+    const update = jest.fn();
+    const prisma = {
+      $transaction: jest.fn(async (fn: (tx: unknown) => Promise<unknown>) => {
+        const tx = {
+          internalPlacementRequest: {
+            findFirst,
+            update,
+          },
+        };
+        return fn(tx);
+      }),
+    };
+    const svc = new InternalPlacementService(
+      prisma as never,
+      { log: jest.fn() } as never,
+      { createEpisodeForEncounter: jest.fn() } as never,
+      correlationSvc(prisma) as never
+    );
+
+    await expect(
+      svc.transition(
+        "fac-1",
+        "ipr-1",
+        "admin-1",
+        InternalPlacementStatus.BED_ASSIGNED,
+        InternalPlacementActorRole.ADMIN,
+        {
+          assignedUnitCode: "OBS",
+          assignedRoomKey: "1",
+          assignedBedKey: "OBS:1",
+        },
+        { featureFlagEnabled: true }
+      )
+    ).rejects.toThrow(/no longer available/i);
+    expect(update).not.toHaveBeenCalled();
+  });
+
+  it("rejects ASSIGN_BED from REQUESTED (no shortcut past ACCEPT)", async () => {
+    const findFirst = jest.fn().mockResolvedValue(
+      baseRow({
+        status: InternalPlacementStatus.REQUESTED,
+        version: 2,
+      })
+    );
+    const update = jest.fn();
+    const prisma = {
+      $transaction: jest.fn(async (fn: (tx: unknown) => Promise<unknown>) => {
+        const tx = {
+          internalPlacementRequest: {
+            findFirst,
+            update,
+          },
+        };
+        return fn(tx);
+      }),
+    };
+    const svc = new InternalPlacementService(
+      prisma as never,
+      { log: jest.fn() } as never,
+      { createEpisodeForEncounter: jest.fn() } as never,
+      correlationSvc(prisma) as never
+    );
+
+    await expect(
+      svc.transition(
+        "fac-1",
+        "ipr-1",
+        "admin-1",
+        InternalPlacementStatus.BED_ASSIGNED,
+        InternalPlacementActorRole.ADMIN,
+        {
+          assignedUnitCode: "OBS",
+          assignedRoomKey: "1",
+          assignedBedKey: "OBS:1",
+        },
+        { featureFlagEnabled: true }
+      )
+    ).rejects.toThrow(/Transition not allowed/i);
+    expect(update).not.toHaveBeenCalled();
+  });
+
   it("module registers InternalPlacementService", async () => {
     const fs = await import("fs");
     const path = await import("path");

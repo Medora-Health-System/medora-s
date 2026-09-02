@@ -33,6 +33,24 @@ import {
   type HospitalUnitRegistryUnit,
 } from "./hospitalCareUnitsApi";
 import { HOSPITAL_CARE_PLACEMENT_QUEUE } from "./hospitalCarePaths";
+import {
+  acceptingProviderFieldsForTransition,
+  assignBedSelectionReady,
+  canAcceptPlacement,
+  canEditPlacementAssignment,
+  canRunPlacementWorkspaceAction,
+  isAcceptingProviderEditable,
+  isBedSelectorEnabled,
+  isRoomSelectorEnabled,
+  isUnitSelectorEnabled,
+  placementEditorMode,
+  placementReadOnlyProviderLine,
+  placementSectionHeadingKey,
+  placementTransitionErrorKind,
+  primaryActionLabelKey,
+  responsiblePhysicianNameFromEncounter,
+  shouldAutoSelectSoleEligibleUnit,
+} from "./placementWorkspaceEditor";
 
 const WORKFLOW_STEPS = [
   { id: "REQUESTED", key: "stepRequested", doneAt: ["REQUESTED", "SIGNED", "UNDER_REVIEW", "ACCEPTED", "BED_ASSIGNED", "READY_FOR_TRANSFER", "DEPARTED_ED", "ARRIVED_DESTINATION", "COMPLETED"] },
@@ -42,20 +60,6 @@ const WORKFLOW_STEPS = [
   { id: "DEPARTED_ED", key: "stepDeparted", doneAt: ["DEPARTED_ED", "ARRIVED_DESTINATION", "COMPLETED"] },
   { id: "ARRIVED_DESTINATION", key: "stepArrived", doneAt: ["ARRIVED_DESTINATION", "COMPLETED"] },
 ] as const;
-
-const NURSE_TRANSPORT_ACTIONS = new Set<PlacementQueueAction>([
-  "MARK_READY",
-  "MARK_DEPARTED",
-  "MARK_ARRIVED",
-]);
-
-function canRunPlacementAction(action: PlacementQueueAction, roles: readonly string[]): boolean {
-  if (roles.includes("ADMIN")) return true;
-  if (NURSE_TRANSPORT_ACTIONS.has(action)) {
-    return roles.includes("RN") || roles.includes("PROVIDER");
-  }
-  return false;
-}
 
 function primaryAction(actions: PlacementQueueAction[]): PlacementQueueAction | null {
   const order: PlacementQueueAction[] = [
@@ -127,8 +131,10 @@ export function HospitalCarePlacementWorkspaceView() {
       setUnitCode(found.assignedUnitCode ?? "");
       setRoomKey(found.assignedRoomKey ?? "");
       setBedKey(found.assignedBedKey ?? "");
-      setAcceptingName(found.acceptingProviderNameSnapshot ?? "");
-      setAcceptingUserId(null);
+      setAcceptingUserId(found.acceptingProviderUserId ?? null);
+      setAcceptingName(
+        found.acceptingProviderUserId ? found.acceptingProviderNameSnapshot ?? "" : ""
+      );
       const enc = asApiObject(
         await apiFetch(`/encounters/${found.originatingEncounterId}`, { facilityId })
       );
@@ -155,7 +161,25 @@ export function HospitalCarePlacementWorkspaceView() {
   );
   const selectedUnit = eligibleUnits.find((u) => u.code === unitCode) ?? null;
   const rooms = (selectedUnit?.rooms ?? []).filter((r) => r.active);
-  const beds = rooms.find((r) => r.code === roomKey || r.id === roomKey)?.beds ?? [];
+  const selectedRoom = rooms.find((r) => r.code === roomKey || r.id === roomKey) ?? null;
+  const beds = selectedRoom?.beds ?? [];
+  const selectedBed = beds.find((b) => (b.bedKey || b.code) === bedKey) ?? null;
+  const canEditBeds = canEditPlacementAssignment(roles, row?.status);
+  const editorMode = placementEditorMode(row?.status);
+
+  useEffect(() => {
+    if (
+      !shouldAutoSelectSoleEligibleUnit({
+        roles,
+        status: row?.status,
+        currentUnitCode: unitCode,
+        eligibleUnitCount: eligibleUnits.length,
+      })
+    ) {
+      return;
+    }
+    setUnitCode(eligibleUnits[0]?.code ?? "");
+  }, [roles, row?.status, unitCode, eligibleUnits]);
 
   const handoff = useMemo(
     () => readErHandoffV1FromNursingAssessment(encounter?.nursingAssessment),
@@ -186,7 +210,11 @@ export function HospitalCarePlacementWorkspaceView() {
     : HOSPITAL_CARE_PLACEMENT_QUEUE;
 
   const actions = row ? placementActionsForStatus(row.status) : [];
-  const visibleActions = actions.filter((a) => canRunPlacementAction(a, roles));
+  const visibleActions = actions.filter((a) => {
+    if (a === "ASSIGN_BED" && !canEditPlacementAssignment(roles, row?.status)) return false;
+    if (a === "ACCEPT" && !canAcceptPlacement(roles, row?.status)) return false;
+    return canRunPlacementWorkspaceAction(a, roles);
+  });
   const next = primaryAction(visibleActions);
 
   const chiefComplaint = String(encounter?.chiefComplaint ?? encounter?.visitReason ?? "").trim();
@@ -202,7 +230,15 @@ export function HospitalCarePlacementWorkspaceView() {
     const toStatus = placementActionToStatus(action);
     if (!toStatus) return;
     if (action === "ASSIGN_BED" && (!unitCode.trim() || !roomKey.trim())) {
-      setActionError(t("edHosp1g2PlacementWorkspace.noEligibleUnits"));
+      setActionError(t("edHosp1g2PlacementWorkspace.selectDestination"));
+      return;
+    }
+    if (action === "ASSIGN_BED" && beds.length > 0 && !bedKey.trim()) {
+      setActionError(t("edHosp1g2PlacementWorkspace.selectDestination"));
+      return;
+    }
+    if (action === "ASSIGN_BED" && selectedBed?.occupied) {
+      setActionError(t("edHosp1g2PlacementWorkspace.bedTaken"));
       return;
     }
     setBusy(true);
@@ -216,35 +252,45 @@ export function HospitalCarePlacementWorkspaceView() {
         assignedRoomKey: action === "ASSIGN_BED" ? roomKey.trim() : undefined,
         assignedBedKey: action === "ASSIGN_BED" ? bedKey.trim() || undefined : undefined,
         assignmentSourceSystem: action === "ASSIGN_BED" ? "HOSPITAL_UNIT_REGISTRY" : undefined,
-        acceptingProviderUserId: acceptingUserId,
-        acceptingProviderNameSnapshot: acceptingName.trim() || undefined,
+        ...acceptingProviderFieldsForTransition({
+          acceptingProviderUserId: acceptingUserId,
+          acceptingProviderName: acceptingName,
+        }),
       });
       setRow({ ...row, ...updated, patient: updated.patient ?? row.patient });
       await reload();
     } catch (err) {
       if (isForbiddenApiError(err)) {
         setActionsUnavailable(true);
-        setActionError(t("edHosp1g2PlacementWorkspace.actionsUnavailable"));
-      } else {
-        setActionError(t("hospitalCareD3e7.placement.actionError"));
       }
+      const kind = placementTransitionErrorKind(err, action);
+      setActionError(t(`edHosp1g2PlacementWorkspace.${kind}` as Parameters<typeof t>[0]));
     } finally {
       setBusy(false);
     }
   };
 
-  const primaryLabel =
-    next === "ASSIGN_BED"
-      ? t("edHosp1g2PlacementWorkspace.assignBed")
-      : next === "ACCEPT"
-        ? t("edHosp1g2PlacementWorkspace.acceptPlacement")
-        : next
-          ? t("edHosp1g2PlacementWorkspace.advancePlacement")
-          : null;
-
-  const canEditBeds =
-    roles.includes("ADMIN") &&
-    ["SIGNED", "REQUESTED", "UNDER_REVIEW", "ACCEPTED", "BED_ASSIGNED"].includes(row?.status ?? "");
+  const labelKey = primaryActionLabelKey(next);
+  const primaryLabel = labelKey
+    ? t(`edHosp1g2PlacementWorkspace.${labelKey}` as Parameters<typeof t>[0])
+    : null;
+  const assignReady = assignBedSelectionReady({
+    unitCode,
+    roomKey,
+    bedKey,
+    roomHasBeds: beds.length > 0,
+    selectedBedOccupied: selectedBed?.occupied === true,
+  });
+  const unitEnabled = isUnitSelectorEnabled({ roles, status: row?.status });
+  const roomEnabled = isRoomSelectorEnabled({ roles, status: row?.status, unitCode });
+  const bedEnabled = isBedSelectorEnabled({ roles, status: row?.status, roomKey });
+  const providerEditable = isAcceptingProviderEditable({ roles, status: row?.status }) && Boolean(facilityId);
+  const headingKey = placementSectionHeadingKey({ roles, status: row?.status });
+  const providerLine = placementReadOnlyProviderLine({
+    acceptingProviderUserId: row?.acceptingProviderUserId,
+    acceptingProviderNameSnapshot: row?.acceptingProviderNameSnapshot,
+    responsiblePhysicianName: responsiblePhysicianNameFromEncounter(encounter),
+  });
 
   return (
     <HospitalCareShell
@@ -324,15 +370,25 @@ export function HospitalCarePlacementWorkspaceView() {
             className="ed-hosp-1g2-placement-grid"
           >
             <div style={{ ...MEDORA_CARD_SHELL, padding: 14, minWidth: 0 }}>
-              <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 10 }}>
-                {t("edHosp1g2PlacementWorkspace.placementSection")}
+              <div
+                data-testid={
+                  editorMode === "awaiting_acceptance"
+                    ? "placement-workspace-awaiting-acceptance"
+                    : editorMode === "assign_bed"
+                      ? "placement-workspace-bed-editor"
+                      : "placement-workspace-assignment-heading"
+                }
+                style={{ fontSize: 13, fontWeight: 700, marginBottom: 10 }}
+              >
+                {t(`edHosp1g2PlacementWorkspace.${headingKey}` as Parameters<typeof t>[0])}
               </div>
+              {canEditBeds ? (
               <div style={{ display: "grid", gap: 10 }}>
                 <label style={{ fontSize: 12, fontWeight: 600 }}>
                   {t("edHosp1g2PlacementWorkspace.unit")}
                   <select
                     data-testid="placement-workspace-unit"
-                    disabled={!canEditBeds}
+                    disabled={!unitEnabled}
                     value={unitCode}
                     onChange={(e) => {
                       setUnitCode(e.target.value);
@@ -353,7 +409,7 @@ export function HospitalCarePlacementWorkspaceView() {
                   {t("edHosp1g2PlacementWorkspace.room")}
                   <select
                     data-testid="placement-workspace-room"
-                    disabled={!canEditBeds || !unitCode}
+                    disabled={!roomEnabled}
                     value={roomKey}
                     onChange={(e) => {
                       setRoomKey(e.target.value);
@@ -362,18 +418,22 @@ export function HospitalCarePlacementWorkspaceView() {
                     style={{ display: "block", width: "100%", marginTop: 4, padding: "8px 10px", borderRadius: 10, border: "1px solid #cbd5e1" }}
                   >
                     <option value="">{t("edHosp1g2PlacementWorkspace.selectRoom")}</option>
-                    {rooms.map((r) => (
-                      <option key={r.id} value={r.code}>
-                        {r.name || r.code}
-                      </option>
-                    ))}
+                    {rooms.map((r) => {
+                      const roomOpen = (r.beds ?? []).length === 0 || r.beds.some((b) => !b.occupied);
+                      return (
+                        <option key={r.id} value={r.code} disabled={!roomOpen}>
+                          {r.name || r.code}
+                          {!roomOpen ? ` — ${t("edHosp1g2PlacementWorkspace.roomUnavailable")}` : ""}
+                        </option>
+                      );
+                    })}
                   </select>
                 </label>
                 <label style={{ fontSize: 12, fontWeight: 600 }}>
                   {t("edHosp1g2PlacementWorkspace.bed")}
                   <select
                     data-testid="placement-workspace-bed"
-                    disabled={!canEditBeds || !roomKey}
+                    disabled={!bedEnabled}
                     value={bedKey}
                     onChange={(e) => setBedKey(e.target.value)}
                     style={{ display: "block", width: "100%", marginTop: 4, padding: "8px 10px", borderRadius: 10, border: "1px solid #cbd5e1" }}
@@ -393,7 +453,7 @@ export function HospitalCarePlacementWorkspaceView() {
                   <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 4 }}>
                     {t("edHosp1g2PlacementWorkspace.acceptingProvider")}
                   </div>
-                  {canEditBeds && facilityId ? (
+                  {providerEditable ? (
                     <ClinicalUserRoleAutocomplete
                       facilityId={facilityId}
                       role="PROVIDER"
@@ -421,6 +481,60 @@ export function HospitalCarePlacementWorkspaceView() {
                   )}
                 </div>
               </div>
+              ) : (
+                <div
+                  data-testid="placement-workspace-assignment-readonly"
+                  style={{ display: "grid", gap: 8, fontSize: 13, color: "#334155" }}
+                >
+                  {editorMode === "assigned" ? (
+                    <>
+                      <div>
+                        <span style={{ fontSize: 12, fontWeight: 600, color: "#64748b" }}>
+                          {t("edHosp1g2PlacementWorkspace.unit")}
+                          {": "}
+                        </span>
+                        {row.assignedUnitCode
+                          ? eligibleUnits.find((u) => u.code === row.assignedUnitCode)?.name ||
+                            row.assignedUnitCode
+                          : dash}
+                      </div>
+                      <div>
+                        <span style={{ fontSize: 12, fontWeight: 600, color: "#64748b" }}>
+                          {t("edHosp1g2PlacementWorkspace.room")}
+                          {": "}
+                        </span>
+                        {row.assignedRoomKey || dash}
+                      </div>
+                      <div>
+                        <span style={{ fontSize: 12, fontWeight: 600, color: "#64748b" }}>
+                          {t("edHosp1g2PlacementWorkspace.bed")}
+                          {": "}
+                        </span>
+                        {row.assignedBedKey || dash}
+                      </div>
+                    </>
+                  ) : (
+                    <div>
+                      <span style={{ fontSize: 12, fontWeight: 600, color: "#64748b" }}>
+                        {t("edHosp1g2PlacementWorkspace.bed")}
+                        {": "}
+                      </span>
+                      {t("edHosp1g2PlacementWorkspace.pending")}
+                    </div>
+                  )}
+                  {providerLine.name ? (
+                    <div>
+                      <span style={{ fontSize: 12, fontWeight: 600, color: "#64748b" }}>
+                        {providerLine.kind === "accepting"
+                          ? t("edHosp1g2PlacementWorkspace.acceptingProvider")
+                          : t("edHosp1g2PlacementWorkspace.admittingProvider")}
+                        {": "}
+                      </span>
+                      {providerLine.name}
+                    </div>
+                  ) : null}
+                </div>
+              )}
 
               <div style={{ marginTop: 14 }}>
                 <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 6 }}>
@@ -581,11 +695,11 @@ export function HospitalCarePlacementWorkspaceView() {
                 {t("edHosp1g2PlacementWorkspace.actionsUnavailable")}
               </p>
             ) : null}
-            {next && canRunPlacementAction(next, roles) ? (
+            {next && canRunPlacementWorkspaceAction(next, roles) ? (
               <button
                 type="button"
                 data-testid="placement-workspace-primary-action"
-                disabled={busy}
+                disabled={busy || (next === "ASSIGN_BED" && !assignReady)}
                 onClick={() => void runTransition(next)}
                 style={{
                   marginTop: 10,
@@ -596,36 +710,11 @@ export function HospitalCarePlacementWorkspaceView() {
                   color: "#fff",
                   fontSize: 13,
                   fontWeight: 700,
-                  cursor: busy ? "wait" : "pointer",
+                  cursor: busy ? "wait" : next === "ASSIGN_BED" && !assignReady ? "not-allowed" : "pointer",
                 }}
               >
                 {primaryLabel}
               </button>
-            ) : null}
-            {visibleActions.filter((a) => a !== next).length > 0 ? (
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8 }}>
-                {visibleActions
-                  .filter((a) => a !== next)
-                  .map((action) => (
-                    <button
-                      key={action}
-                      type="button"
-                      disabled={busy}
-                      data-testid={`placement-workspace-action-${action}`}
-                      onClick={() => void runTransition(action)}
-                      style={{
-                        padding: "6px 10px",
-                        borderRadius: 8,
-                        border: "1px solid #cbd5e1",
-                        background: "#fff",
-                        fontSize: 12,
-                        fontWeight: 600,
-                      }}
-                    >
-                      {t(`hospitalCareD3e7.placement.actions.${action === "ASSIGN_BED" ? "assignBed" : action === "MARK_READY" ? "markReady" : action === "MARK_DEPARTED" ? "markDeparted" : action === "MARK_ARRIVED" ? "markArrived" : action === "ACCEPT" ? "accept" : action === "REVIEW" ? "review" : action === "DECLINE" ? "decline" : action === "CANCEL" ? "cancel" : "clarify"}` as Parameters<typeof t>[0])}
-                    </button>
-                  ))}
-              </div>
             ) : null}
           </div>
         </div>

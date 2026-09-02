@@ -61,6 +61,16 @@ describe("internalPlacement status machine", () => {
     ).toBe(false);
   });
 
+  it("does not allow bed assignment from REQUESTED", () => {
+    expect(
+      validateInternalPlacementTransition(
+        InternalPlacementStatus.REQUESTED,
+        InternalPlacementStatus.BED_ASSIGNED,
+        InternalPlacementActorRole.ADMIN
+      ).ok
+    ).toBe(false);
+  });
+
   it("allows admin expire from REQUESTED", () => {
     expect(
       validateInternalPlacementTransition(
