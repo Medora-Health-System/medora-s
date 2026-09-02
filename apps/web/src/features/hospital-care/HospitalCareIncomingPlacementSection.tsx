@@ -11,7 +11,6 @@ import { useI18n } from "@/lib/i18n";
 import { hospitalAdmissionReviewPath } from "./hospitalCarePaths";
 import { HospitalCarePatientCard } from "./HospitalCarePatientCard";
 import {
-  isPlacementActionsEnabledInBrowser,
   transitionPlacementRequest,
   type HospitalCarePlacementQueueRow,
 } from "./hospitalCarePlacementApi";
@@ -66,7 +65,6 @@ export function HospitalCareIncomingPlacementSection({
   const { t } = useI18n();
   const [busyId, setBusyId] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
-  const actionsEnabled = isPlacementActionsEnabledInBrowser();
   const testId =
     surface === "OBSERVATION"
       ? "ed-hosp-1g-incoming-observation"
@@ -82,7 +80,6 @@ export function HospitalCareIncomingPlacementSection({
     row: HospitalCarePlacementQueueRow,
     action: PlacementQueueAction
   ) => {
-    if (!actionsEnabled) return;
     const toStatus = placementActionToStatus(action);
     if (!toStatus) return;
     setBusyId(row.id);
@@ -163,8 +160,7 @@ export function HospitalCareIncomingPlacementSection({
                   {t("edHosp1gHospitalBoard.startReceiving")}
                 </Link>
               ) : null}
-              {actionsEnabled
-                ? transportActions.map((action) => (
+              {transportActions.map((action) => (
                     <button
                       key={action}
                       type="button"
@@ -187,8 +183,7 @@ export function HospitalCareIncomingPlacementSection({
                     >
                       {t(ACTION_I18N[action])}
                     </button>
-                  ))
-                : null}
+                  ))}
             </div>
           </div>
         );

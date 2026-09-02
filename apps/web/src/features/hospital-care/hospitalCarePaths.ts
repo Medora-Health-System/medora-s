@@ -5,6 +5,11 @@
 
 export const HOSPITAL_CARE_HOME = "/app/hospitalisation";
 export const HOSPITAL_CARE_PLACEMENT_QUEUE = "/app/hospitalisation/placement-queue";
+
+/** ED.HOSP.1G.2 — detail workspace for one InternalPlacementRequest (not a second board). */
+export function hospitalPlacementWorkspacePath(placementId: string): string {
+  return `${HOSPITAL_CARE_PLACEMENT_QUEUE}/${encodeURIComponent(placementId)}`;
+}
 export const HOSPITAL_CARE_OBSERVATION = "/app/hospitalisation/observation";
 export const HOSPITAL_CARE_INPATIENT = "/app/hospitalisation/inpatient";
 export const HOSPITAL_CARE_ADMISSIONS = "/app/hospitalisation/admissions";

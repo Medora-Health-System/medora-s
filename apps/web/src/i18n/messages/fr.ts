@@ -42,6 +42,7 @@ import { edHosp1dObservationOrdersFr } from "./edHosp1dObservationOrders.fr";
 import { edHosp1eAdmissionOrdersFr } from "./edHosp1eAdmissionOrders.fr";
 import { edHosp1fNursingDocumentationFr } from "./edHosp1fNursingDocumentation.fr";
 import { edHosp1gHospitalBoardFr } from "./edHosp1gHospitalBoard.fr";
+import { edHosp1g2PlacementWorkspaceFr } from "./edHosp1g2PlacementWorkspace.fr";
 import { inpatientDischargeAwarenessInpDis1hFr } from "./inpatientDischargeAwarenessInpDis1h.fr";
 import { inpatientProviderDocumentationInpProv1aFr } from "./inpatientProviderDocumentationInpProv1a.fr";
 import { inpatientProviderDocumentationInpProv1bFr } from "./inpatientProviderDocumentationInpProv1b.fr";
@@ -21029,6 +21030,7 @@ export default {
   edHosp1eAdmissionOrders: edHosp1eAdmissionOrdersFr,
   edHosp1fNursingDocumentation: edHosp1fNursingDocumentationFr,
   edHosp1gHospitalBoard: edHosp1gHospitalBoardFr,
+  edHosp1g2PlacementWorkspace: edHosp1g2PlacementWorkspaceFr,
   inpatientDischargeAwarenessInpDis1h: inpatientDischargeAwarenessInpDis1hFr,
   inpatientProviderDocumentationInpProv1a: inpatientProviderDocumentationInpProv1aFr,
   inpatientProviderDocumentationInpProv1b: inpatientProviderDocumentationInpProv1bFr,
@@ -21096,7 +21098,7 @@ export default {
   hospitalCareD3e7: {
     placement: {
       actionsOff:
-        "Les actions de placement sont désactivées. Activez NEXT_PUBLIC_PLACEMENT_ACTIONS_ENABLED pour des transitions gouvernées en environnement contrôlé.",
+        "Actions de placement indisponibles",
       actionError: "Impossible d’appliquer cette action de placement. Actualisez puis réessayez.",
       bedPlaceholder: "Identifiant lit",
       actions: {

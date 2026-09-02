@@ -10,6 +10,7 @@ import { normalizeUserFacingError } from "@/lib/userFacingError";
 import { formatAgeYearsSexForLocale, DISPLAY_DASH } from "@/lib/patientDisplay";
 import { encounterBcp47 } from "@/lib/encounterChromeI18n";
 import { useI18n } from "@/lib/i18n";
+import { canonicalEncounterWorkspaceHref } from "@/features/encounters/canonicalEncounterWorkspaceHref";
 import {
   assignHospitalRoleToMe,
   unassignHospitalRole,
@@ -584,10 +585,15 @@ export function HospitalizationBoardView({
     [roles, facilityType, facilityServiceLines, departmentCode]
   );
   const resolveEncounterHref = useCallback(
-    (encounterId: string) =>
+    (encounterId: string, encounterType?: string | null) =>
       isFloorTechnician
         ? hospitalTechnicianActiveWorkspacePath(encounterId)
-        : `/app/encounters/${encounterId}`,
+        : canonicalEncounterWorkspaceHref({
+            encounterId,
+            encounterType,
+            encounterStatus: "OPEN",
+            source: "BOARD",
+          }),
     [isFloorTechnician]
   );
 
@@ -1677,7 +1683,7 @@ export function HospitalizationBoardView({
                             )}
                             <div style={observationBoardTouchActionGroupStyle(layoutMode)}>
                               <Link
-                                href={resolveEncounterHref(encounter.id)}
+                                href={resolveEncounterHref(encounter.id, encounter.type)}
                                 style={observationBoardCensusActionButtonStyle(
                                   {
                                     display: "inline-flex",

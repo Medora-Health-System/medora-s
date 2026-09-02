@@ -21,6 +21,11 @@ export type HospitalCarePlacementQueueRow = {
   assignedUnitCode: string | null;
   assignedRoomKey: string | null;
   assignedBedKey: string | null;
+  version?: number;
+  admissionDiagnosisSummary?: string | null;
+  isolationRequired?: boolean;
+  isolationType?: string | null;
+  telemetryRequired?: boolean;
   departedEdAt: string | null;
   arrivedDestinationAt: string | null;
   readyForTransferAt: string | null;
@@ -71,6 +76,15 @@ export async function fetchFacilityPlacementQueue(): Promise<FacilityPlacementQu
   return parseFacilityPlacementQueueResponse(body);
 }
 
+export async function fetchPlacementRequestById(
+  placementId: string
+): Promise<HospitalCarePlacementQueueRow | null> {
+  const id = placementId.trim();
+  if (!id) return null;
+  const data = await fetchFacilityPlacementQueue();
+  return data.items.find((row) => row.id === id) ?? null;
+}
+
 export type PlacementTransitionBody = {
   toStatus: string;
   acceptanceNotes?: string | null;
@@ -80,6 +94,8 @@ export type PlacementTransitionBody = {
   assignmentSourceSystem?: string | null;
   cancellationReason?: string | null;
   expectedVersion?: number;
+  acceptingProviderUserId?: string | null;
+  acceptingProviderNameSnapshot?: string | null;
 };
 
 /** D3E.7 — governed server transition (never invent status client-side). */

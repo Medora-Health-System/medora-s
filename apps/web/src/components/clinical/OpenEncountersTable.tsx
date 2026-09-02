@@ -4,6 +4,7 @@ import React from "react";
 import Link from "next/link";
 import { encounterBcp47, tEncounterStatus, tEncounterType } from "@/lib/encounterChromeI18n";
 import { useI18n } from "@/lib/i18n";
+import { canonicalEncounterWorkspaceHref } from "@/features/encounters/canonicalEncounterWorkspaceHref";
 
 const th: React.CSSProperties = { padding: 12, textAlign: "left" as const };
 const td: React.CSSProperties = { padding: 12 };
@@ -12,6 +13,7 @@ type Row = {
   id: string;
   type?: string;
   status?: string;
+  billingClassification?: string | null;
   createdAt?: string;
   roomLabel?: string | null;
   physicianAssigned?: { firstName?: string; lastName?: string } | null;
@@ -25,11 +27,13 @@ export function OpenEncountersTable({
   loading,
   emptyMessage,
   showMarLink,
+  workspaceRole = "OTHER",
 }: {
   encounters: Row[];
   loading: boolean;
   emptyMessage: string;
   showMarLink?: boolean;
+  workspaceRole?: "PROVIDER" | "RN" | "ADMIN" | "OTHER";
 }) {
   const { t, language } = useI18n();
   const dateLoc = encounterBcp47(language);
@@ -108,14 +112,29 @@ export function OpenEncountersTable({
                       </Link>
                     ) : null}
                     <Link
-                      href={`/app/encounters/${encounter.id}`}
+                      href={canonicalEncounterWorkspaceHref({
+                        encounterId: encounter.id,
+                        encounterType: encounter.type,
+                        encounterStatus: encounter.status,
+                        billingClassification: encounter.billingClassification,
+                        role: workspaceRole,
+                        source: "LANDING",
+                      })}
                       style={{ fontSize: 14, color: "#1565c0", fontWeight: 500 }}
                     >
                       {t("openEncountersTable.openEncounter")}
                     </Link>
                     {showMarLink ? (
                       <Link
-                        href={`/app/encounters/${encounter.id}?tab=mar`}
+                        href={canonicalEncounterWorkspaceHref({
+                          encounterId: encounter.id,
+                          encounterType: encounter.type,
+                          encounterStatus: encounter.status,
+                          billingClassification: encounter.billingClassification,
+                          role: workspaceRole,
+                          source: "LANDING",
+                          tab: "mar",
+                        })}
                         style={{ fontSize: 14, color: "#2e7d32", fontWeight: 500 }}
                       >
                         {t("openEncountersTable.medAdmin")}

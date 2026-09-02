@@ -7,6 +7,7 @@ import type { ObservationOperationalSnapshot } from "@medora/shared";
 import type { FollowUpRow } from "@/lib/followUpsApi";
 import { formatVitalsHeaderLineForLocale } from "@/lib/patientVitals";
 import { useI18n } from "@/lib/i18n";
+import { canonicalEncounterWorkspaceHref } from "@/features/encounters/canonicalEncounterWorkspaceHref";
 import { tEncounterStatus, tEncounterType } from "@/lib/encounterChromeI18n";
 import {
   diagnosisDisplayFr,
@@ -334,7 +335,13 @@ export function EncounterClinicalTimeline({
           <div key={enc.id} style={blockStyle}>
             <div style={{ marginBottom: 10 }}>
               <div style={{ fontSize: 15, fontWeight: 700, color: "#0d47a1" }}>
-                <Link href={`/app/encounters/${enc.id}`} style={{ color: "inherit", textDecoration: "none" }}>
+                <Link href={canonicalEncounterWorkspaceHref({
+                  encounterId: enc.id,
+                  encounterType: enc.type,
+                  encounterStatus: enc.status,
+                  admissionSummaryJson: enc.admissionSummaryJson,
+                  source: "PATIENT_CHART",
+                })} style={{ color: "inherit", textDecoration: "none" }}>
                   {t("encounterClinicalTimeline.encounterHeading")} — {tEncounterType(t, typeKey)}
                 </Link>
               </div>

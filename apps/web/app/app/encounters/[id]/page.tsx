@@ -55,6 +55,10 @@ import {
 } from "@/features/clinic-care/clinicCareAmbulatoryChartAdapter";
 import { ClinicCareAmbulatoryClinicalSummaryPanel } from "@/features/clinic-care/ClinicCareAmbulatoryClinicalSummaryPanel";
 import { ClinicCareActiveAmbulatoryWorkspaceView } from "@/features/clinic-care/ClinicCareActiveAmbulatoryWorkspaceView";
+import {
+  legacyGenericEncounterRedirectHref,
+  workspaceRoleFromRoleCodes,
+} from "@/features/encounters/canonicalEncounterWorkspaceHref";
 import { parseEncounterDocumentedProcedureTypes } from "@/lib/procedureOrderDocumentationLinkageUi";
 import type { OrderModalTab } from "@/components/orders/createOrderModal/types";
 import { buildRxPrintFacilityIdentity, printRx } from "@/components/pharmacy/RxPrintLayout";
@@ -522,6 +526,26 @@ function EncounterDetailPageInner({ session }: { session: ReturnType<typeof useF
     ) => Promise<void>) | null
   >(null);
   const clinicalData = useEncounterClinicalData();
+
+  const legacyWorkspaceRedirectHref = useMemo(() => {
+    if (!encounter?.id) return null;
+    if (searchParams?.get("workspace") === "ambulatory") return null;
+    return legacyGenericEncounterRedirectHref({
+      encounterId: String(encounter.id),
+      encounterType: encounter.type,
+      encounterStatus: encounter.status,
+      billingClassification: encounter.billingClassification,
+      admissionSummaryJson: encounter.admissionSummaryJson,
+      role: workspaceRoleFromRoleCodes(roles),
+      source: "LEGACY_URL",
+      tab: searchParams?.get("tab"),
+    });
+  }, [encounter, roles, searchParams]);
+
+  useEffect(() => {
+    if (!legacyWorkspaceRedirectHref) return;
+    router.replace(legacyWorkspaceRedirectHref);
+  }, [legacyWorkspaceRedirectHref, router]);
 
   /** Aligné sur GET /encounters/:id — lecture seule pour LAB/RADIOLOGY (workflow technicien). */
   const canViewEncounterDetail =
@@ -1761,6 +1785,14 @@ function EncounterDetailPageInner({ session }: { session: ReturnType<typeof useF
     );
   }
 
+  if (legacyWorkspaceRedirectHref) {
+    return (
+      <div style={{ ...encounterPageShell, display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <div style={{ fontSize: 15, color: "#475569" }}>{t("common.redirecting")}</div>
+      </div>
+    );
+  }
+
   if (!encounter) {
     const isEncounterNotFound =
       encounterFetchError != null && encounterFetchError.trim() === USER_FACING_ENCOUNTER_NOT_FOUND_FR;
@@ -1901,8 +1933,6 @@ function EncounterDetailPageInner({ session }: { session: ReturnType<typeof useF
   const showPrintDischarge =
     encounter.status === "OPEN" || dischargePreviewForPrint !== null;
   const showEncounterHospitalizationBanner = encounter.type === "INPATIENT";
-  const showConfirmInpatientTransfer =
-    encounter.status === "OPEN" && encounter.type === "EMERGENCY" && admissionPreviewForChrome != null;
 
   const showObservationOrdersEntry =
     observationWorkflowActive && observationDisplayStatus.phase === "ACTIVE" && canPrescribe;
@@ -2481,7 +2511,6 @@ function EncounterDetailPageInner({ session }: { session: ReturnType<typeof useF
           canEdit={canEditOperational && encounter.status === "OPEN"}
           roomLabel={encounter.roomLabel}
           physicianAssigned={encounter.physicianAssigned}
-          showConfirmInpatientTransfer={showConfirmInpatientTransfer}
           nursingAssessment={encounter.nursingAssessment}
           onSaved={mergeEncounterFromOperationalPatch}
           onUpdated={() => void refreshObservationClinicalSurfaces()}
