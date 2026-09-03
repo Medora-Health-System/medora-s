@@ -123,16 +123,20 @@ export class BillingController {
 
   @Get("billing/encounters/:encounterId/autobill-decisions")
   @RequireRoles(RoleCode.BILLING, RoleCode.ADMIN, RoleCode.FRONT_DESK)
-  async getEncounterAutoBillDecisions(@Param("encounterId") encounterId: string, @Req() req: any) {
+  async getEncounterAutoBillDecisions(
+    @Param("encounterId") encounterId: string,
+    @Query("language") language: string | undefined,
+    @Req() req: any
+  ) {
     const facilityId = req.facilityId;
-    return this.billingService.getEncounterAutoBillDecisions(facilityId, encounterId);
+    return this.billingService.getEncounterAutoBillDecisions(facilityId, encounterId, language);
   }
 
   @Get("billing/manual-review")
   @RequireRoles(RoleCode.BILLING, RoleCode.ADMIN, RoleCode.FRONT_DESK)
-  async getManualBillingReviewQueue(@Req() req: any) {
+  async getManualBillingReviewQueue(@Query("language") language: string | undefined, @Req() req: any) {
     const facilityId = req.facilityId;
-    return this.billingService.getManualBillingReviewQueue(facilityId);
+    return this.billingService.getManualBillingReviewQueue(facilityId, language);
   }
 
   /** Phase 19UCED.6 — read-only charge capture / revenue review queue (no claim submission). */
@@ -310,9 +314,13 @@ export class BillingController {
 
   @Get("billing/encounters/:encounterId/manual-review-gate")
   @RequireRoles(RoleCode.BILLING, RoleCode.ADMIN, RoleCode.FRONT_DESK)
-  async getEncounterManualReviewGate(@Param("encounterId") encounterId: string, @Req() req: any) {
+  async getEncounterManualReviewGate(
+    @Param("encounterId") encounterId: string,
+    @Query("language") language: string | undefined,
+    @Req() req: any
+  ) {
     const facilityId = req.facilityId;
-    return this.billingService.getEncounterManualReviewGate(facilityId, encounterId);
+    return this.billingService.getEncounterManualReviewGate(facilityId, encounterId, language);
   }
 
   @Get("billing/encounters/:encounterId/readiness-explainer")
@@ -392,6 +400,7 @@ export class BillingController {
   async exportEncounterBillingItems(
     @Param("encounterId") encounterId: string,
     @Query("format") formatRaw: string | undefined,
+    @Query("language") language: string | undefined,
     @Req() req: any,
     @Res({ passthrough: true }) res: Response
   ) {
@@ -401,7 +410,7 @@ export class BillingController {
     }
 
     const facilityId = req.facilityId;
-    const rows = await this.billingService.getEncounterBillingExportRows(facilityId, encounterId);
+    const rows = await this.billingService.getEncounterBillingExportRows(facilityId, encounterId, language);
     if (format === "csv") {
       res.setHeader("Content-Type", "text/csv; charset=utf-8");
       res.setHeader("Content-Disposition", `attachment; filename="billing-export-${encounterId}.csv"`);

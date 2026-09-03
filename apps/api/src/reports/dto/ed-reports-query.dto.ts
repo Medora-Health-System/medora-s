@@ -20,6 +20,7 @@ export const edReportsQuerySchema = z.preprocess(
     format: z.enum(["json", "csv"]).default("json"),
     limit: z.coerce.number().int().min(1).max(JSON_PAGE_MAX_LIMIT).optional(),
     cursor: z.string().trim().min(1).max(512).optional(),
+    language: z.string().trim().max(16).optional(),
   })
 );
 

@@ -17,6 +17,7 @@ import {
   JSON_PAGE_MAX_LIMIT,
 } from "./ed-report-range.util";
 import { iso, minutesBetween, parseReportTimeBoundary } from "./ed-reports-time.util";
+import { medicationCatalogLabelForReport } from "./report-catalog-display.util";
 
 function csvEscape(value: string): string {
   if (/[",\r\n]/.test(value)) return `"${value.replace(/"/g, '""')}"`;
@@ -942,7 +943,7 @@ export class ReportsService {
         select: { id: true, code: true, displayNameFr: true, displayNameEn: true },
       });
       for (const m of meds) {
-        const label = m.displayNameFr?.trim() || m.displayNameEn?.trim() || m.code;
+        const label = medicationCatalogLabelForReport(m, query.language);
         medLabels.set(m.id, label);
       }
     }
@@ -1084,7 +1085,7 @@ export class ReportsService {
             select: { id: true, code: true, displayNameFr: true, displayNameEn: true },
           });
           for (const m of meds) {
-            medLabels.set(m.id, m.displayNameFr?.trim() || m.displayNameEn?.trim() || m.code);
+            medLabels.set(m.id, medicationCatalogLabelForReport(m, query.language));
           }
         }
         const mrns = await this.loadMrnMap(batch.map((a) => a.patientId));

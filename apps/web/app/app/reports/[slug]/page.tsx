@@ -121,8 +121,9 @@ export default function EdReportDetailPage() {
       to: `${range.to}T23:59:59.999Z`,
       ...(providerId.trim() ? { providerId: providerId.trim() } : {}),
       limit: 100,
+      language,
     }),
-    [range.from, range.to, providerId]
+    [range.from, range.to, providerId, language]
   );
 
   const columns = useMemo(() => {
@@ -181,6 +182,7 @@ export default function EdReportDetailPage() {
       from: queryBase.from,
       to: queryBase.to,
       ...(queryBase.providerId ? { providerId: queryBase.providerId } : {}),
+      language: queryBase.language,
     });
     window.location.href = url;
   }, [facilityId, validSlug, slug, queryBase, t]);

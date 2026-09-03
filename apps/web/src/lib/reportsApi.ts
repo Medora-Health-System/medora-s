@@ -22,6 +22,7 @@ export type EdReportQuery = {
   format?: "json" | "csv";
   limit?: number;
   cursor?: string;
+  language?: string;
 };
 
 export type EdReportJsonResponse = {
@@ -44,6 +45,7 @@ function buildQueryString(q: EdReportQuery): string {
   p.set("format", q.format ?? "json");
   if (q.limit != null && Number.isFinite(q.limit)) p.set("limit", String(Math.trunc(q.limit)));
   if (q.cursor?.trim()) p.set("cursor", q.cursor.trim());
+  if (q.language?.trim()) p.set("language", q.language.trim());
   return p.toString();
 }
 
@@ -53,13 +55,14 @@ function buildQueryString(q: EdReportQuery): string {
  */
 export function buildEdReportCsvDownloadUrl(
   slug: EdReportSlug,
-  query: Pick<EdReportQuery, "from" | "to" | "providerId">
+  query: Pick<EdReportQuery, "from" | "to" | "providerId" | "language">
 ): string {
   const p = new URLSearchParams();
   p.set("from", query.from);
   p.set("to", query.to);
   if (query.providerId?.trim()) p.set("providerId", query.providerId.trim());
   p.set("format", "csv");
+  if (query.language?.trim()) p.set("language", query.language.trim());
   return `${API_BASE}/reports/ed/${slug}?${p.toString()}`;
 }
 

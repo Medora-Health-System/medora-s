@@ -12,7 +12,6 @@ import {
   DOCUMENTED_PROCEDURE_REVIEW_REASON,
   buildBillingReadinessExplainerSummary,
   computeClaimPackageSummaries,
-  displayNameFrForDocumentedProcedureType,
   isProviderProcedureDocumentationForBilling,
   medoraCodeForDocumentedProcedureType,
   readBillingCaptureV1,
@@ -28,6 +27,10 @@ import { throwEncounterConcurrentModification } from "../encounters/encounter-co
 import { upsertBillingEventFromCaptureItem } from "./billing-ledger.sync";
 import { evaluateEncounterBillingReadinessFromData } from "./billing-encounter-readiness.util";
 import { evaluateClaimIdentityGaps } from "./claim-billing-identity.util";
+import {
+  displayNameForCatalog,
+  documentedProcedureDisplayNameForProductUi,
+} from "./billing-catalog-display.util";
 import type { PatchInfusionBillingReviewBody } from "./dto/infusion-billing-review.dto";
 import type {
   BillingAutoBillDecisionDto,
@@ -257,7 +260,8 @@ export class BillingService {
 
   async getEncounterBillingExportRows(
     facilityId: string,
-    encounterId: string
+    encounterId: string,
+    language?: string | null
   ): Promise<BillingExportRowDto[]> {
     const encounter = await this.prisma.encounter.findFirst({
       where: { id: encounterId, facilityId },
@@ -281,24 +285,29 @@ export class BillingService {
       },
     });
 
-    const orderRows = await this.buildBillingExportRowsFromOrderItems(orderItems);
+    const orderRows = await this.buildBillingExportRowsFromOrderItems(orderItems, language);
     const procRows = await this.loadDocumentedProcedureBillingExportRows(facilityId, {
       encounterId,
       onlyClosedEncounters: false,
       orderBy: "asc",
+      language,
     });
     return [...orderRows, ...procRows];
   }
 
   async getEncounterAutoBillDecisions(
     facilityId: string,
-    encounterId: string
+    encounterId: string,
+    language?: string | null
   ): Promise<BillingAutoBillDecisionDto[]> {
-    const rows = await this.getEncounterBillingExportRows(facilityId, encounterId);
+    const rows = await this.getEncounterBillingExportRows(facilityId, encounterId, language);
     return rows.map(getAutoBillDecision);
   }
 
-  async getManualBillingReviewQueue(facilityId: string): Promise<BillingManualReviewRowDto[]> {
+  async getManualBillingReviewQueue(
+    facilityId: string,
+    language?: string | null
+  ): Promise<BillingManualReviewRowDto[]> {
     const orderItems = await this.prisma.orderItem.findMany({
       where: {
         order: {
@@ -336,7 +345,7 @@ export class BillingService {
       },
     });
 
-    const exportRows = await this.buildBillingExportRowsFromOrderItems(orderItems);
+    const exportRows = await this.buildBillingExportRowsFromOrderItems(orderItems, language);
     const itemById = new Map(orderItems.map((item) => [item.id, item]));
     const manualReviewStatuses: BillingReadinessStatus[] = ["candidate_only", "pending_license", "missing"];
 
@@ -389,7 +398,7 @@ export class BillingService {
       },
     });
     for (const ev of procedureEvents) {
-      const row = this.procedureClinicalEventToBillingExportRow(ev);
+      const row = this.procedureClinicalEventToBillingExportRow(ev, language);
       if (!row) continue;
       const autoDecision = getAutoBillDecision(row);
       if (!autoDecision.requiredReview || !manualReviewStatuses.includes(autoDecision.billingStatus)) continue;
@@ -476,8 +485,12 @@ export class BillingService {
     return rows.map((r) => toBillingReviewDecisionDto(r)!);
   }
 
-  async getEncounterManualReviewGate(facilityId: string, encounterId: string): Promise<BillingManualReviewGateDto> {
-    const rows = await this.getEncounterBillingExportRows(facilityId, encounterId);
+  async getEncounterManualReviewGate(
+    facilityId: string,
+    encounterId: string,
+    language?: string | null
+  ): Promise<BillingManualReviewGateDto> {
+    const rows = await this.getEncounterBillingExportRows(facilityId, encounterId, language);
     const manualReviewStatuses: BillingReadinessStatus[] = ["candidate_only", "pending_license", "missing"];
     const decisions = rows.length
       ? await this.prisma.billingReviewDecision.findMany({
@@ -943,15 +956,18 @@ export class BillingService {
     return { item: resultItem };
   }
 
-  private procedureClinicalEventToBillingExportRow(ev: {
-    id: string;
-    payloadJson: unknown;
-  }): BillingExportRowDto | null {
+  private procedureClinicalEventToBillingExportRow(
+    ev: {
+      id: string;
+      payloadJson: unknown;
+    },
+    language?: string | null
+  ): BillingExportRowDto | null {
     if (!isProviderProcedureDocumentationForBilling(ev.payloadJson)) return null;
     const procedureType = readProcedureTypeFromClinicalEventPayload(ev.payloadJson);
     const medoraCode = medoraCodeForDocumentedProcedureType(procedureType);
     if (!procedureType || !medoraCode) return null;
-    const displayName = displayNameFrForDocumentedProcedureType(procedureType);
+    const displayName = documentedProcedureDisplayNameForProductUi(procedureType, language);
     const billingStatus = getBillingReadinessStatus({
       category: "CARE",
       medoraCode,
@@ -979,6 +995,7 @@ export class BillingService {
       encounterId?: string;
       onlyClosedEncounters: boolean;
       orderBy: "asc" | "desc";
+      language?: string | null;
     }
   ): Promise<BillingExportRowDto[]> {
     const events = await this.prisma.encounterClinicalEvent.findMany({
@@ -999,14 +1016,15 @@ export class BillingService {
     });
     const out: BillingExportRowDto[] = [];
     for (const ev of events) {
-      const row = this.procedureClinicalEventToBillingExportRow(ev);
+      const row = this.procedureClinicalEventToBillingExportRow(ev, options.language);
       if (row) out.push(row);
     }
     return out;
   }
 
   private async buildBillingExportRowsFromOrderItems(
-    orderItems: BillingExportOrderItem[]
+    orderItems: BillingExportOrderItem[],
+    language?: string | null
   ): Promise<BillingExportRowDto[]> {
     const labIds = orderItems
       .filter((item) => item.catalogItemType === "LAB_TEST" && item.catalogItemId)
@@ -1070,7 +1088,7 @@ export class BillingService {
               : null;
       const medoraCode = catalog?.code ?? item.manualLabel?.trim() ?? null;
       const billingCodeDefault = catalog?.billingCodeDefault?.trim() || null;
-      const displayName = displayNameForCatalog(catalog, item.manualLabel);
+      const displayName = displayNameForCatalog(catalog, item.manualLabel, language);
       const officialLabBillingCodeMatched =
         category === "LAB" &&
         Boolean(
@@ -1237,16 +1255,6 @@ function categoryForCatalogItemType(catalogItemType: string): BillingReadinessCa
   if (catalogItemType === "IMAGING_STUDY") return "IMAGING";
   if (catalogItemType === "MEDICATION") return "MEDICATION";
   return "CARE";
-}
-
-function displayNameForCatalog(
-  catalog:
-    | { displayNameEn: string | null; displayNameFr: string | null; name: string | null }
-    | null
-    | undefined,
-  manualLabel: string | null
-): string {
-  return catalog?.displayNameEn?.trim() || catalog?.displayNameFr?.trim() || catalog?.name?.trim() || manualLabel?.trim() || "Order item";
 }
 
 function notesForReadiness(input: {
