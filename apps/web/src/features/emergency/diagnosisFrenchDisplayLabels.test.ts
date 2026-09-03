@@ -55,13 +55,13 @@ describe("19Y.16B French diagnosis display labels", () => {
     ).toBe("Douleur thoracique non précisée");
   });
 
-  it("unmapped diagnosis falls back to canonical English label", () => {
+  it("unmapped diagnosis uses canonical code, not English as French", () => {
     expect(
       getLocalizedDiagnosisDisplayLabel(
         { code: "Z99.99", description: "Rare unmapped diagnosis label" },
         "fr"
       )
-    ).toBe("Rare unmapped diagnosis label");
+    ).toBe("Z99.99");
   });
 
   it("template resolution still uses canonical English displayName internally", () => {

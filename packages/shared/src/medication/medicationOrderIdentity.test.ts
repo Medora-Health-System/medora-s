@@ -109,4 +109,20 @@ describe("medicationOrderIdentity (M1.7A.6)", () => {
     });
     expect(id.displayLabelEn).toBe("Hydromorphone 2 mg/mL");
   });
+
+  it("does not copy English display name into French identity", () => {
+    const id = resolveMedicationOrderIdentity({
+      catalogMedication: {
+        code: "ZZ",
+        displayNameEn: "Metformin",
+        displayNameFr: null,
+        genericName: null,
+        strength: "500 mg",
+      },
+      orderLine: { catalogItemType: "MEDICATION" },
+    });
+    expect(id.medicationNameEn).toBe("Metformin");
+    expect(id.medicationNameFr).toBeNull();
+    expect(id.displayLabelFr).toBe("Médicament (libellé indisponible)");
+  });
 });

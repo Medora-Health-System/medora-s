@@ -1,10 +1,9 @@
 /**
  * Resolve certification finding display text from the active Medora application locale.
- * Never fall back English → French. Never treat patient language as UI locale.
+ * Never fall back English → French or French → English. Never treat patient language as UI locale.
  */
 
-import { resolveChartCertificationLocalizationKeys } from "@medora/shared";
-import type { SupportedLanguage } from "@/i18n/config";
+import { parseProductUiLanguage, resolveChartCertificationLocalizationKeys } from "@medora/shared";
 
 export type CertificationDeficiencyDisplayInput = {
   title: string;
@@ -21,52 +20,62 @@ function translateOrNull(t: (key: string) => string, key: string | null | undefi
   return value;
 }
 
+function unlocalizedFindingLabel(
+  deficiency: CertificationDeficiencyDisplayInput,
+  mappedKey: string | null | undefined,
+  explicitKey: string | null | undefined
+): string {
+  const key = explicitKey?.trim() || mappedKey?.trim();
+  if (key) return key;
+  const code = deficiency.stableCode?.trim();
+  if (code) return code;
+  return "UNLOCALIZED_SOURCE";
+}
+
 /**
  * Resolve title + description for one certification finding card.
- * Order: active-locale key → mapped stable-code key → English fallback fields → localization error.
- * English locale never uses French catalogs or French API messages.
+ * Active locale only: EN keys/English-only mapped copy; FR keys only.
+ * Missing localized copy → key path / stable code. Never the other language.
  */
 export function resolveCertificationDeficiencyDisplay(
   t: (key: string) => string,
-  language: SupportedLanguage,
+  language: string,
   deficiency: CertificationDeficiencyDisplayInput
 ): { title: string; description: string } {
+  const parsed = parseProductUiLanguage(language);
   const mapped = resolveChartCertificationLocalizationKeys(deficiency.stableCode);
 
   const titleFromKey =
-    translateOrNull(t, deficiency.titleKey) ??
-    translateOrNull(t, mapped?.titleKey) ??
-    null;
-
+    translateOrNull(t, deficiency.titleKey) ?? translateOrNull(t, mapped?.titleKey) ?? null;
   const descriptionFromKey =
     translateOrNull(t, deficiency.descriptionKey) ??
     translateOrNull(t, mapped?.descriptionKey) ??
     null;
 
-  if (language === "en") {
+  const unlocalizedTitle = unlocalizedFindingLabel(deficiency, mapped?.titleKey, deficiency.titleKey);
+  const unlocalizedDescription = unlocalizedFindingLabel(
+    deficiency,
+    mapped?.descriptionKey,
+    deficiency.descriptionKey
+  );
+
+  if (parsed === "en") {
     return {
-      title: titleFromKey ?? mapped?.fallbackTitleEn ?? deficiency.title ?? "Certification finding",
-      description:
-        descriptionFromKey ??
-        mapped?.fallbackDescriptionEn ??
-        // English-safe server fallback only (must never be a French API message).
-        deficiency.description ??
-        "Localization incomplete for this finding.",
+      title: titleFromKey ?? mapped?.fallbackTitleEn ?? unlocalizedTitle,
+      description: descriptionFromKey ?? mapped?.fallbackDescriptionEn ?? unlocalizedDescription,
     };
   }
 
-  // French: prefer FR keys; established app policy allows English fallback when FR missing.
+  if (parsed === "fr") {
+    return {
+      title: titleFromKey ?? unlocalizedTitle,
+      description: descriptionFromKey ?? unlocalizedDescription,
+    };
+  }
+
   return {
-    title:
-      titleFromKey ??
-      mapped?.fallbackTitleEn ??
-      deficiency.title ??
-      "Constat de certification",
-    description:
-      descriptionFromKey ??
-      mapped?.fallbackDescriptionEn ??
-      deficiency.description ??
-      "Traduction manquante pour ce constat.",
+    title: unlocalizedTitle,
+    description: unlocalizedDescription,
   };
 }
 

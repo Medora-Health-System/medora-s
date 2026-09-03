@@ -184,7 +184,9 @@ export function resolveVaccineAdministrationDisplayName(input: {
   const exact = input.catalogCode ? exactVaccineIdentity(input.catalogCode) : null;
   if (exact) return input.locale === "fr" ? exact.fr : exact.en;
   const preferred = input.locale === "fr" ? input.displayNameFr : input.displayNameEn;
-  return preferred?.trim() || input.displayNameEn?.trim() || input.displayNameFr?.trim() || "Vaccine";
+  if (preferred?.trim()) return preferred.trim();
+  if (input.catalogCode?.trim()) return input.catalogCode.trim();
+  return input.locale === "fr" ? "Vaccin (libellé indisponible)" : "Vaccine (label unavailable)";
 }
 
 export function isVaccineMedicationForMar(input: {
