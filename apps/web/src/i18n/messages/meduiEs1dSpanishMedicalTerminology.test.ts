@@ -35,8 +35,13 @@ describe("MEDUI.ES.1D canon overlay + governance audits", () => {
     expect(resolveClinicalUiMessage("es", "nav.observation")).toBe("Observación");
     expect(resolveClinicalUiMessage("es", "nav.emergency")).toBe("Servicio de urgencias");
     expect(resolveClinicalUiMessage("es", "printOutput.discharge.documentH1")).toBe("Resumen de alta");
-    expect(resolveClinicalUiMessage("es", "common.save")).toMatch(/^UNLOCALIZED_ES::/);
-    expect(isHiddenSpanishPlaceholder(resolveClinicalUiMessage("es", "common.save"))).toBe(true);
+    // 1D canon alone leaves common.save as placeholder — but live ES catalog includes 1E overlay
+    // Verify 1D-only tree (not live ES) keeps common.save as placeholder
+    const saveInTree = collectStringLeaves(tree).find((l) => l.path === "common.save");
+    expect(saveInTree).toBeDefined();
+    expect(isHiddenSpanishPlaceholder(saveInTree!.value)).toBe(true);
+    // Live ES now has 1E overlay for common.save
+    expect(resolveClinicalUiMessage("es", "common.save")).toBe("Guardar");
     const leaves = collectStringLeaves(tree);
     const remaining = leaves.filter((l) => isHiddenSpanishPlaceholder(l.value)).length;
     expect(replaced).toBeGreaterThan(0);
