@@ -1,4 +1,7 @@
-import type { SupportedLanguage } from "@/i18n/config";
+import {
+  medicationClinicalDisplayLocaleForProductUi,
+  type SupportedLanguage,
+} from "@/i18n/config";
 import { getCatalogSearchItemDisplayLabel } from "@/lib/catalogDisplayLabel";
 import type { CatalogSearchItem } from "@/lib/catalogSearchTypes";
 import type { HomeMedicationEntryForm } from "@/features/emergency/homeMedicationEntry";
@@ -14,7 +17,7 @@ import {
 } from "@medora/shared";
 
 function toClinicalLocale(language: SupportedLanguage): MedicationClinicalDisplayLocale {
-  return language === "fr" ? "fr" : "en";
+  return medicationClinicalDisplayLocaleForProductUi(language);
 }
 
 /**

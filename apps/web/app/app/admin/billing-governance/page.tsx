@@ -17,6 +17,8 @@ import {
 } from "@/lib/billingGovernanceDisplay";
 import type { BillingClassification } from "@medora/shared";
 
+import { resolveProductUiLanguageOrDefault } from "@/i18n/config";
+
 function defaultLocalIsoDate(): string {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -81,7 +83,7 @@ export default function AdminBillingGovernancePage() {
           includeOpen,
           includeClosed,
         },
-        language === "en" ? "en" : "fr",
+        resolveProductUiLanguageOrDefault(language),
       );
       setData(payload);
     } catch (e: unknown) {

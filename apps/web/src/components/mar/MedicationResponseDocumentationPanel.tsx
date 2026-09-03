@@ -32,6 +32,7 @@ import {
   toMarShiftTimelineDateTimeLocalValue,
 } from "@/features/mar/marShiftTimelineDisplay";
 import { MedicationResponseSummaryCard } from "@/components/mar/MedicationResponseSummaryCard";
+import { productUiBcp47Tag } from "@/i18n/config";
 
 export type MedicationResponseDocumentationPanelProps = {
   item: MarShiftTimelineCellItem;
@@ -49,7 +50,7 @@ export function MedicationResponseDocumentationPanel({
   onSaved,
 }: MedicationResponseDocumentationPanelProps) {
   const { t, language } = useI18n();
-  const dateLocale = language === "en" ? "en-US" : "fr-FR";
+  const dateLocale = productUiBcp47Tag(language);
   const submitLockRef = useRef(false);
 
   const editabilityInput = useMemo(() => toMedicationResponseEditabilityInput(item), [item]);

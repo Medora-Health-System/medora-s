@@ -51,6 +51,7 @@ import { ClinicCareAmbulatoryPatientHeader } from "@/features/clinic-care/Clinic
 import { ClinicCareAmbulatoryWorkspaceSectionNav } from "@/features/clinic-care/ClinicCareAmbulatoryWorkspaceSectionNav";
 import { ClinicCareAmbulatoryWorkspacePanels } from "@/features/clinic-care/ClinicCareAmbulatoryWorkspacePanels";
 import { ClinicCareAmbulatoryClosurePendingModal } from "@/features/clinic-care/ClinicCareAmbulatoryClosurePendingModal";
+import { productUiBcp47Tag } from "@/i18n/config";
 import {
   INITIAL_D4C7J_CLOSURE_STATE,
   canDispatchD4c7jClose,
@@ -535,7 +536,7 @@ export function ClinicCareActiveAmbulatoryWorkspaceView() {
           workflowStateLabel={t(lifecycleHeader.metaLabelKey)}
           followUpDateLabel={
             encounter.followUpDate
-              ? new Date(encounter.followUpDate).toLocaleDateString(language === "en" ? "en-US" : "fr-FR")
+              ? new Date(encounter.followUpDate).toLocaleDateString(productUiBcp47Tag(language))
               : null
           }
           language={language}

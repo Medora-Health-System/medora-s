@@ -35,6 +35,8 @@ import { apiFetch } from "@/lib/apiClient";
 import { MEDORA_CARD_SHELL } from "@/components/medora-card/medoraCardTokens";
 import { useI18n } from "@/lib/i18n";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
+import { resolveProductUiLanguageOrDefault } from "@/i18n/config";
+
 import {
   CarePlanClinicianWorkflowCp1c,
   mapDurableCarePlans,
@@ -316,7 +318,7 @@ export function EnterpriseInterdisciplinaryCarePlansD4b6(
   const resolvePlanTitle = (plan: CarePlanWorkflowPlan) =>
     resolveTemplateTitle(plan.templateId, plan.title);
   const resolveComponentTitle = (value: string) => {
-    const locale = language === "en" ? "en" : "fr";
+    const locale = resolveProductUiLanguageOrDefault(language);
     // CP.1F.1 / CP.1F.2 — never show raw canonical template keys as clinical text.
     if (isCanonicalCarePlanTemplateI18nKey(value)) {
       return resolveCarePlanClinicalNarrativeForClinician(value, locale);

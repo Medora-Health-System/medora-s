@@ -53,6 +53,7 @@ import {
   type ClinicalDraftScope,
 } from "@/lib/clinicalDraftStorage";
 import { useClinicalBeforeUnloadWarning } from "@/lib/useClinicalBeforeUnloadWarning";
+import { productUiBcp47Tag } from "@/i18n/config";
 
 /** HPI quick chips — fragments only; appended to `hpiNarrative` via `appendIfNotPresent`. */
 const HPI_CHIP_ROWS: readonly { categoryKey: string; fragmentKeys: readonly string[] }[] = [
@@ -1085,7 +1086,7 @@ export function EmergencyProviderMsePanel({
           storedSig
             ? {
                 savedBy: storedSig.savedByDisplayName,
-                savedAt: new Date(storedSig.savedAt).toLocaleString(language === "en" ? "en-US" : "fr-FR", {
+                savedAt: new Date(storedSig.savedAt).toLocaleString(productUiBcp47Tag(language), {
                   dateStyle: "short",
                   timeStyle: "short",
                 }),
@@ -1099,7 +1100,7 @@ export function EmergencyProviderMsePanel({
             ? {
                 signedBy: encounter.providerDocumentationSignedByDisplayFr,
                 signedAt: new Date(encounter.providerDocumentationSignedAt).toLocaleString(
-                  language === "en" ? "en-US" : "fr-FR",
+                  productUiBcp47Tag(language),
                   {
                     dateStyle: "short",
                     timeStyle: "short",
@@ -1797,7 +1798,7 @@ export function EmergencyProviderMsePanel({
                 <p style={{ margin: "6px 0 0 0", fontSize: 13, color: "#312e81", lineHeight: 1.45 }}>
                   {storedSig.savedByDisplayName}
                   <br />
-                  {new Date(storedSig.savedAt).toLocaleString(language === "en" ? "en-US" : "fr-FR", {
+                  {new Date(storedSig.savedAt).toLocaleString(productUiBcp47Tag(language), {
                     dateStyle: "short",
                     timeStyle: "short",
                   })}

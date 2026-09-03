@@ -76,6 +76,8 @@ import {
   encounterNoteVoidDtoSchema,
   clinicalDocumentationEntryCreateDtoSchema,
   clinicalDocumentationEntryCreateWithWitnessDtoSchema,
+  parseProductUiLanguage,
+  PRODUCT_DEFAULT_UI_LANGUAGE,
 } from "@medora/shared";
 import type { Response } from "express";
 import { renderEncounterChartExportHtml } from "./chart-export-html.util";
@@ -738,7 +740,7 @@ export class EncountersController {
     );
     if (exportFormat === "html") {
       res.setHeader("Content-Type", "text/html; charset=utf-8");
-      const exportLocale = localeRaw?.trim().toLowerCase() === "fr" ? "fr" : "en";
+      const exportLocale = parseProductUiLanguage(localeRaw) ?? PRODUCT_DEFAULT_UI_LANGUAGE;
       return renderEncounterChartExportHtml(manifest, { locale: exportLocale });
     }
     return manifest;
@@ -1199,7 +1201,7 @@ export class EncountersController {
     }
     const dto = assertZodBody(observationOrderTemplateApplyDtoSchema.safeParse(body));
     const langHeader = String(req.headers["x-medora-ui-language"] ?? "").toLowerCase();
-    const orderLabelLocale = langHeader === "en" ? ("en" as const) : ("fr" as const);
+    const orderLabelLocale = parseProductUiLanguage(langHeader) ?? PRODUCT_DEFAULT_UI_LANGUAGE;
     return this.observationOrderTemplateService.apply(
       id,
       facilityId,

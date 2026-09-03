@@ -8,11 +8,14 @@ import {
 import { AuditAction, OrderEventType, RoleCode } from "@prisma/client";
 import {
   OBSERVATION_ORDER_TEMPLATE_ID,
+  PRODUCT_DEFAULT_UI_LANGUAGE,
   buildObservationTemplateCareOrderDto,
   collectObservationTemplateItemIdsFromOrderItems,
   findUnknownObservationTemplateIds,
   orderObservationTemplateSelection,
+  parseProductUiLanguage,
   type ObservationOrderTemplateApplyDto,
+  type ProductUiLanguage,
 } from "@medora/shared";
 import { PrismaService } from "../prisma/prisma.service";
 import { OrdersService } from "../orders/orders.service";
@@ -57,7 +60,7 @@ export class ObservationOrderTemplateService {
     userId: string | undefined,
     ip?: string,
     userAgent?: string,
-    opts?: { orderLabelLocale?: "fr" | "en" }
+    opts?: { orderLabelLocale?: ProductUiLanguage | string }
   ) {
     await this.assertProviderOrAdmin(userId, facilityId);
 
@@ -165,7 +168,7 @@ export class ObservationOrderTemplateService {
       `${user?.firstName ?? ""} ${user?.lastName ?? ""}`.trim() ||
       "Prescripteur";
 
-    const labelLocale = opts?.orderLabelLocale === "en" ? "en" : "fr";
+    const labelLocale = parseProductUiLanguage(opts?.orderLabelLocale) ?? PRODUCT_DEFAULT_UI_LANGUAGE;
     const observationTemplateGroupId = randomUUID();
     const createdOrders: Awaited<ReturnType<OrdersService["create"]>>[] = [];
 

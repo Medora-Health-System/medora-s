@@ -33,7 +33,7 @@ import {
   providerDocumentationToVisitSummaryBlock,
   type VisitSummaryProviderDocumentationBlock,
 } from "./erProviderDocumentationSummary";
-import type { SupportedLanguage } from "@/i18n/config";
+import { resolveProductUiLanguageOrDefault, productUiBcp47Tag, type SupportedLanguage } from "@/i18n/config";
 import {
   buildTriageCarryForwardSummary,
   triageCarryForwardMetaFromVitalsJson,
@@ -468,7 +468,7 @@ export type ClinicalDocumentationPayloadSummaryLine = {
 function formatIsoForLocale(iso: string | null | undefined, locale: SupportedLanguage): string {
   if (!iso) return "—";
   try {
-    const tag = locale === "en" ? "en-US" : "fr-FR";
+    const tag = productUiBcp47Tag(locale);
     return new Date(iso).toLocaleString(tag, { dateStyle: "short", timeStyle: "short" });
   } catch {
     return "—";
@@ -763,7 +763,7 @@ function buildProviderMseHistoryEntries(
     const wrapped = snapshot ? ({ [ER_PROVIDER_MSE_V1_KEY]: snapshot } as Record<string, unknown>) : null;
     const workspace = buildProviderDocumentationDisplayModel({
       nursingAssessment: wrapped,
-      locale: locale === "en" ? "en" : "fr",
+      locale: resolveProductUiLanguageOrDefault(locale),
     });
     const preview = workspace
       ? null
@@ -1106,7 +1106,7 @@ export function buildEmergencyVisitSummaryModel(
     if (slice.onsetAt) {
       const d = new Date(slice.onsetAt);
       if (!Number.isNaN(d.getTime())) {
-        const tag = locale === "en" ? "en-US" : "fr-FR";
+        const tag = productUiBcp47Tag(locale);
         motifLines.push(
           interpolate(vs(locale, "motifOnset"), { datetime: d.toLocaleString(tag) })
         );

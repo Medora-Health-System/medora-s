@@ -12,7 +12,7 @@ import {
   type EncounterClinicalRecordTriageFieldKey,
 } from "@medora/shared";
 import { buildProviderDocumentationDisplayModel } from "@/lib/providerDocumentationModel";
-import type { SupportedLanguage } from "@/i18n/config";
+import { resolveProductUiLanguageOrDefault, type SupportedLanguage } from "@/i18n/config";
 import type { UnifiedTimelineApiItem } from "@/lib/unifiedEncounterTimelineUi";
 import type { EncounterResultsLabRadSnapshot } from "@/components/encounters/EncounterResultsTab";
 import type { VitalsHistoryEntry } from "@/lib/encounterClinicalSafetyUi";
@@ -133,7 +133,7 @@ export function resolveOrderItemDisplayLabel(
 }
 
 function toClinicalRecordLocale(locale: SupportedLanguage): EncounterClinicalRecordLocale {
-  return locale === "en" ? "en" : "fr";
+  return resolveProductUiLanguageOrDefault(locale);
 }
 
 function formatPatientDisplayName(patient: EmergencySummaryClinicalRecordAdapterEncounter["patient"]): string | null {
@@ -197,7 +197,7 @@ function readProviderWorkspaceSavedMeta(
 } {
   const workspace = buildProviderDocumentationDisplayModel({
     nursingAssessment,
-    locale: locale === "en" ? "en" : "fr",
+    locale: resolveProductUiLanguageOrDefault(locale),
   });
   return {
     savedAt: workspace?.savedAt ?? null,

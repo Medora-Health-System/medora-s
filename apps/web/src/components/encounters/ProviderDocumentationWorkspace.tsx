@@ -11,6 +11,7 @@ import {
   omitEmptyAmbulatoryHiddenMdmFields,
   MDM_HIGH_VALUE_TEMPLATE_SUFFIXES,
 } from "@medora/shared";
+import { useI18n } from "@/lib/i18n";
 import {
   PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS,
   PROVIDER_DOCUMENTATION_DICTATION_SECTION_TARGETS,
@@ -140,7 +141,7 @@ export type ProviderDocumentationWorkspaceProps = {
   facilityCountry?: string | null;
   /**
    * Authored-document language for MDM inserts (locale ≠ jurisdiction).
-   * When omitted, inferred from French UI chrome via `t()`.
+   * When omitted, inferred from the active clinical product UI locale — never by sniffing French copy.
    */
   authoredDocumentLocale?: "en" | "fr" | null;
   providerUserId?: string | null;
@@ -469,6 +470,7 @@ export function ProviderDocumentationWorkspace({
   quickActions = null,
   t,
 }: ProviderDocumentationWorkspaceProps) {
+  const { language: appUiLanguage } = useI18n();
   const hideHaitiRoutineMedEval = shouldHideHaitiAmbulatoryRoutineMedEvalFields({
     facilityCountry,
     encounterMode,
@@ -527,8 +529,7 @@ export function ProviderDocumentationWorkspace({
   );
   const inferredAuthoredLocale = resolveAuthoredDocumentLocale({
     authoredDocumentLocale,
-    appLocale:
-      t("providerDocumentationWorkspace.mdmApplySelected") === "Appliquer la sélection" ? "fr" : "en",
+    appLocale: appUiLanguage,
   });
   const englishHighValueFragments = useMemo(
     () =>

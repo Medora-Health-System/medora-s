@@ -1,4 +1,4 @@
-import type { SupportedLanguage } from "@/i18n/config";
+import { resolveProductUiLanguageOrDefault, type SupportedLanguage } from "@/i18n/config";
 import {
   resolveCareOrderItemClinicalDisplay,
   sanitizeOrderItemNotesForDisplay,
@@ -23,7 +23,7 @@ export function careOrderClinicalDetailLines(
   item: Parameters<typeof careOrderItemLabelInput>[0],
   language: SupportedLanguage
 ): string[] {
-  const locale = language === "fr" ? "fr" : "en";
+    const locale = resolveProductUiLanguageOrDefault(language);
   const display = resolveCareOrderItemClinicalDisplay(careOrderItemLabelInput(item), locale);
   if (display?.detailLines.length) return display.detailLines;
   const cleaned = sanitizeOrderItemNotesForDisplay(careOrderItemLabelInput(item));

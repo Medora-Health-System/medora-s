@@ -1,3 +1,5 @@
+import { productUiBcp47Tag } from "../i18n/productUiLocale.js";
+
 /**
  * ED clinical timeline — read-only chronological aggregation for ED Summary / ER packet / export.
  * Preserves saved clinical text in summaries; UI category labels are localized separately.
@@ -108,7 +110,7 @@ function parseTime(iso: string | null | undefined): number | null {
 
 function formatDisplayTime(iso: string, locale: EdClinicalTimelineLocale): string {
   try {
-    const tag = locale === "en" ? "en-US" : "fr-FR";
+    const tag = productUiBcp47Tag(locale);
     return new Date(iso).toLocaleString(tag, { hour: "2-digit", minute: "2-digit" });
   } catch {
     return iso;

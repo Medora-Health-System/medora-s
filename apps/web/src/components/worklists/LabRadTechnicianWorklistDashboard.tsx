@@ -85,6 +85,8 @@ import {
 import { postWorklistItemWorkflowAction } from "@/lib/worklistLabRadWorkflowApi";
 import { orderIsCancelled } from "@/lib/worklistOrderCancelledUi";
 
+import { resolveProductUiLanguageOrDefault } from "@/i18n/config";
+
 const TABS: TechnicianWorkStatus[] = ["NEW", "IN_PROGRESS", "COMPLETED", "CANCELLED"];
 
 const EMPTY_OPS_FILTERS: LabRadWorklistOperationalFilters = {
@@ -163,7 +165,7 @@ function formatInstant(raw: string | Date | null | undefined, language: string):
   if (raw == null || raw === "") return DISPLAY_DASH;
   const d = raw instanceof Date ? raw : new Date(raw);
   if (Number.isNaN(d.getTime())) return DISPLAY_DASH;
-  return d.toLocaleString(language === "en" ? "en" : "fr", {
+  return d.toLocaleString(resolveProductUiLanguageOrDefault(language), {
     dateStyle: "short",
     timeStyle: "short",
   });

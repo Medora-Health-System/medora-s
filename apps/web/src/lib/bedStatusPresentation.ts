@@ -1,6 +1,6 @@
 import type { BedOperationalStatus } from "@medora/shared";
 import { formatBedOperationalStatusLabel } from "@medora/shared";
-import type { SupportedLanguage } from "@/i18n/config";
+import { resolveProductUiLanguageOrDefault, type SupportedLanguage } from "@/i18n/config";
 
 /** K.10B.10E deterministic bed status palette — single source for board UI. */
 export const BED_STATUS_PRESENTATION_COLORS: Record<
@@ -46,5 +46,5 @@ export function resolveBedStatusLabel(
   const key = `bedStatus.${status}`;
   const translated = t(key);
   if (translated !== key) return translated;
-  return formatBedOperationalStatusLabel(status, language === "fr" ? "fr" : "en");
+  return formatBedOperationalStatusLabel(status, resolveProductUiLanguageOrDefault(language));
 }

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState, type CSSProperties } from "react";
 import type { InpatientFinalDischargeReadiness, InpatientFinalDischargeV1E } from "@medora/shared";
 import { useI18n } from "@/lib/i18n";
 import { MEDORA_CARD_SHELL } from "@/components/medora-card/medoraCardTokens";
+import { productUiBcp47Tag } from "@/i18n/config";
 import {
   executeInpatientFinalDischarge,
   fetchInpatientFinalDischarge,
@@ -40,7 +41,7 @@ export function InpatientFinalDischargeSection({
 }) {
   const { t, language } = useI18n();
   const prefix = "inpatientFinalDischargeInpDis1e";
-  const dateLocale = language === "en" ? "en-US" : "fr-FR";
+  const dateLocale = productUiBcp47Tag(language);
 
   const [loading, setLoading] = useState(true);
   const [executing, setExecuting] = useState(false);

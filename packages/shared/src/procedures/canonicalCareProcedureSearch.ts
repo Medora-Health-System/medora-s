@@ -19,6 +19,7 @@ function normalizeSearchText(text: string): string {
 }
 
 function searchableHaystack(row: CanonicalCareProcedureRow, locale: CanonicalCareProcedureSearchLocale): string {
+  // Dual-field search index (legacy bilingual storage). Not product-UI identity coercion.
   const otherLocale = locale === "en" ? "fr" : "en";
   return normalizeSearchText(
     [

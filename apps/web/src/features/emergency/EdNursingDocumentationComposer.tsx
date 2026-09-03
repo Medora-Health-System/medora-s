@@ -66,6 +66,8 @@ import { formatEncounterChromeDateTime } from "@/lib/encounterChromeI18n";
 import { useI18n } from "@/lib/i18n";
 import { normalizeUserFacingError } from "@/lib/userFacingError";
 
+import { resolveProductUiLanguageOrDefault } from "@/i18n/config";
+
 const inputBase: CSSProperties = {
   width: "100%",
   maxWidth: "100%",
@@ -193,7 +195,7 @@ export function EdNursingDocumentationComposer({
 }) {
   const { t, language } = useI18n();
   const { userId, roles } = useFacilityAndRoles();
-  const locale: EdNursingLocale = language === "en" ? "en" : "fr";
+  const locale: EdNursingLocale = resolveProductUiLanguageOrDefault(language);
   const isRn = roles.includes("RN");
   const canAuthor = canEdit && isRn && (encounter.status ?? "").trim() === "OPEN";
   const nursingPath = (String(pathway ?? "GENERAL").toUpperCase() || "GENERAL") as EdNursingPathway;

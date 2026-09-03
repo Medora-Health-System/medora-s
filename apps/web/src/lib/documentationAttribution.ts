@@ -3,7 +3,7 @@
  * Centralizes author / updater / role / datetime display — do not duplicate inline.
  */
 
-import type { SupportedLanguage } from "@/i18n/config";
+import { defaultLanguage, productUiBcp47Tag, type SupportedLanguage } from "@/i18n/config";
 
 export type DocumentationAttributionInput = {
   name?: string | null;
@@ -37,10 +37,8 @@ const ROLE_LABELS_EN: Record<string, string> = {
   FRONT_DESK: "Front desk",
 };
 
-function dateLocale(language?: SupportedLanguage): string | undefined {
-  if (language === "en") return "en-US";
-  if (language === "fr") return "fr-FR";
-  return undefined;
+function dateLocale(language?: SupportedLanguage): string {
+  return productUiBcp47Tag(language ?? defaultLanguage);
 }
 
 /** Locale-aware clinical date/time for documentation footers. */
@@ -54,6 +52,11 @@ export function formatClinicalDateTime(
   return date.toLocaleString(dateLocale(language), { dateStyle: "short", timeStyle: "short" });
 }
 
+const ROLE_LABELS: Record<SupportedLanguage, Record<string, string>> = {
+  en: ROLE_LABELS_EN,
+  fr: ROLE_LABELS_FR,
+};
+
 /** Map stored role code(s) to a display title; preserves unknown codes verbatim. */
 export function resolveRoleTitleLabel(
   role: string | null | undefined,
@@ -61,7 +64,7 @@ export function resolveRoleTitleLabel(
 ): string {
   const raw = (role ?? "").trim();
   if (!raw) return "";
-  const map = language === "en" ? ROLE_LABELS_EN : ROLE_LABELS_FR;
+  const map = ROLE_LABELS[language ?? defaultLanguage];
   const parts = raw.split("|").map((p) => p.trim()).filter(Boolean);
   if (parts.length === 0) return raw;
   return parts.map((p) => map[p] ?? p).join(", ");
@@ -87,19 +90,21 @@ export type DocumentationAttributionLabels = {
   unknownAuthor: string;
 };
 
-export function defaultDocumentationAttributionLabels(language?: SupportedLanguage): DocumentationAttributionLabels {
-  if (language === "en") {
-    return {
-      authorLine: "Documented by {name}{role} · {datetime}",
-      updatedLine: "Last updated by {name}{role} · {datetime}",
-      unknownAuthor: "Unknown author",
-    };
-  }
-  return {
+const ATTRIBUTION_LABELS: Record<SupportedLanguage, DocumentationAttributionLabels> = {
+  en: {
+    authorLine: "Documented by {name}{role} · {datetime}",
+    updatedLine: "Last updated by {name}{role} · {datetime}",
+    unknownAuthor: "Unknown author",
+  },
+  fr: {
     authorLine: "Documenté par {name}{role} · {datetime}",
     updatedLine: "Dernière mise à jour par {name}{role} · {datetime}",
     unknownAuthor: "Auteur inconnu",
-  };
+  },
+};
+
+export function defaultDocumentationAttributionLabels(language?: SupportedLanguage): DocumentationAttributionLabels {
+  return ATTRIBUTION_LABELS[language ?? defaultLanguage];
 }
 
 /** Primary author attribution line for documentation cards. */
@@ -154,21 +159,23 @@ export function formatResultAttributionPair(input: {
   language?: SupportedLanguage;
 }): string[] {
   const lines: string[] = [];
-  const lang = input.language;
+  const lang = input.language ?? defaultLanguage;
   const resulted = formatDocumentationAuthorLine(
     { name: input.resultedBy, role: input.resultedByRole, at: input.resultedAt },
     lang,
-    lang === "en"
-      ? { authorLine: "Resulted by {name}{role} · {datetime}" }
-      : { authorLine: "Résultat saisi par {name}{role} · {datetime}" }
+    {
+      en: { authorLine: "Resulted by {name}{role} · {datetime}" },
+      fr: { authorLine: "Résultat saisi par {name}{role} · {datetime}" },
+    }[lang]
   );
   if (resulted) lines.push(resulted);
   const ack = formatDocumentationAuthorLine(
     { name: input.acknowledgedBy, role: input.acknowledgedByRole, at: input.acknowledgedAt },
     lang,
-    lang === "en"
-      ? { authorLine: "Acknowledged by {name}{role} · {datetime}" }
-      : { authorLine: "Accusé réception par {name}{role} · {datetime}" }
+    {
+      en: { authorLine: "Acknowledged by {name}{role} · {datetime}" },
+      fr: { authorLine: "Accusé réception par {name}{role} · {datetime}" },
+    }[lang]
   );
   if (ack && (input.acknowledgedBy ?? "").trim()) lines.push(ack);
   return lines;

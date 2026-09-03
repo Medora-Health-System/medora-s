@@ -5,7 +5,7 @@
  * No network: parent passes loaded objects.
  */
 
-import type { SupportedLanguage } from "@/i18n/config";
+import { resolveProductUiLanguageOrDefault, type SupportedLanguage } from "@/i18n/config";
 import { calculateAge } from "@/lib/patientDisplay";
 import { formatEncounterProviderAssigned } from "@/lib/encounterDisplay";
 import {
@@ -344,7 +344,7 @@ export function getDischargePrintHtml(params: {
   }
 
   {
-    const lang = language === "fr" ? "fr" : "en";
+    const lang = resolveProductUiLanguageOrDefault(language);
     const raw =
       encounter.dischargeSummaryJson && typeof encounter.dischargeSummaryJson === "object"
         ? (encounter.dischargeSummaryJson as Record<string, unknown>)
@@ -542,7 +542,7 @@ export function getDischargePrintHtml(params: {
   const footer = buildPrintDocumentFooterHtml(language, printDate, esc, printT);
   bodySections.push(footer);
 
-  const htmlLang = language === "en" ? "en" : "fr";
+  const htmlLang = resolveProductUiLanguageOrDefault(language);
 
   return `<!DOCTYPE html>
 <html lang="${htmlLang}">

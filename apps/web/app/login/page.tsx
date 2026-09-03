@@ -10,6 +10,7 @@ import { parseApiResponse } from "@/lib/apiClient";
 import { invalidateAuthMeSessionCache } from "@/lib/authSessionMe";
 import { notifyAuthSessionRestored } from "@/lib/authShellRecovery";
 import { useI18n } from "@/lib/i18n";
+import { parseProductUiLanguage, productUiLanguageSelectOptions } from "@/i18n/config";
 import { messageForAuthErrorCode, pickAuthErrorCodeOrLegacyMessage } from "@/lib/authApiErrorCode";
 import { MfaChallengePanel } from "./MfaChallengePanel";
 import { MfaEnrollmentPanel } from "@/components/mfa/MfaEnrollmentPanel";
@@ -49,10 +50,8 @@ function LoginForm() {
    */
   const applyPreferredLanguage = (lang?: string) => {
     if (!lang) return;
-    const norm = lang.trim().toLowerCase();
-    if (norm === "fr" || norm === "en") {
-      if (norm !== language) setLanguage(norm);
-    }
+    const parsed = parseProductUiLanguage(lang);
+    if (parsed && parsed !== language) setLanguage(parsed);
   };
 
   const navigateAfterAuth = async (user?: AuthUserShape) => {
@@ -186,44 +185,28 @@ function LoginForm() {
                 aria-label={t("auth.login.languageToggleAria")}
               >
                 <span style={{ fontSize: 12, color: "#64748b", fontWeight: 500 }}>{t("auth.login.languageLabel")}</span>
+                {productUiLanguageSelectOptions().map((opt) => (
                 <button
+                  key={opt.value}
                   type="button"
-                  onClick={() => setLanguage("fr")}
-                  aria-pressed={language === "fr"}
+                  onClick={() => setLanguage(opt.value)}
+                  aria-pressed={language === opt.value}
                   style={{
                     minHeight: 44,
                     minWidth: 44,
                     padding: "8px 12px",
                     borderRadius: 6,
-                    border: language === "fr" ? "2px solid #2563eb" : "1px solid #e2e8f0",
-                    backgroundColor: language === "fr" ? "#eff6ff" : "#fff",
-                    color: language === "fr" ? "#1d4ed8" : "#334155",
+                    border: language === opt.value ? "2px solid #2563eb" : "1px solid #e2e8f0",
+                    backgroundColor: language === opt.value ? "#eff6ff" : "#fff",
+                    color: language === opt.value ? "#1d4ed8" : "#334155",
                     fontSize: 13,
                     fontWeight: 600,
                     cursor: "pointer",
                   }}
                 >
-                  {t("auth.login.langFr")}
+                  {opt.label}
                 </button>
-                <button
-                  type="button"
-                  onClick={() => setLanguage("en")}
-                  aria-pressed={language === "en"}
-                  style={{
-                    minHeight: 44,
-                    minWidth: 44,
-                    padding: "8px 12px",
-                    borderRadius: 6,
-                    border: language === "en" ? "2px solid #2563eb" : "1px solid #e2e8f0",
-                    backgroundColor: language === "en" ? "#eff6ff" : "#fff",
-                    color: language === "en" ? "#1d4ed8" : "#334155",
-                    fontSize: 13,
-                    fontWeight: 600,
-                    cursor: "pointer",
-                  }}
-                >
-                  {t("auth.login.langEn")}
-                </button>
+                ))}
               </div>
               <h2
                 style={{

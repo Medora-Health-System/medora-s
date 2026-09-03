@@ -5,6 +5,11 @@
 
 import { z } from "zod";
 import type { OrderCreateDto, OrderItemCreateDto } from "./schemas/patient.js";
+import {
+  parseProductUiLanguage,
+  PRODUCT_DEFAULT_UI_LANGUAGE,
+  type ProductUiLanguage,
+} from "./i18n/productUiLocale.js";
 
 export const OBSERVATION_ORDER_TEMPLATE_ID = "medora_observation_order_set_v1" as const;
 
@@ -23,7 +28,7 @@ export const OBSERVATION_ORDER_TEMPLATE_GROUP_IDS = [
 
 export type ObservationOrderTemplateGroupId = (typeof OBSERVATION_ORDER_TEMPLATE_GROUP_IDS)[number];
 
-export type ObservationOrderTemplateLabelLocale = "fr" | "en";
+export type ObservationOrderTemplateLabelLocale = ProductUiLanguage;
 
 export type ObservationOrderTemplateItemDef = {
   id: string;
@@ -234,6 +239,22 @@ export function collectObservationTemplateItemIdsFromOrderItems(
   return orderObservationTemplateSelection([...discovered]);
 }
 
+function observationTemplateManualLabelForLocale(
+  def: ObservationOrderTemplateItemDef,
+  locale: ObservationOrderTemplateLabelLocale
+): string {
+  switch (locale) {
+    case "en":
+      return def.manualLabelEn;
+    case "fr":
+      return def.manualLabelFr;
+    default: {
+      const _exhaustive: never = locale;
+      return _exhaustive;
+    }
+  }
+}
+
 /** Display / persistence label for one template line (UI locale or API header). */
 export function observationOrderTemplateItemManualLabel(
   id: string,
@@ -241,7 +262,7 @@ export function observationOrderTemplateItemManualLabel(
 ): string {
   const def = OBSERVATION_ORDER_TEMPLATE_ITEMS.find((i) => i.id === id);
   if (!def) return id;
-  return locale === "en" ? def.manualLabelEn : def.manualLabelFr;
+  return observationTemplateManualLabelForLocale(def, locale);
 }
 
 export function buildObservationTemplateCareOrderDto(input: {
@@ -249,7 +270,7 @@ export function buildObservationTemplateCareOrderDto(input: {
   prescriberName: string;
   prescriberLicense?: string | null;
   prescriberContact?: string | null;
-  /** Defaults to French (legacy); English UI sends `en` so stored CARE lines match chart language. */
+  /** Product UI locale. Unsupported/omitted values resolve to English at this boundary. */
   labelLocale?: ObservationOrderTemplateLabelLocale;
   /** When applying one order per template line, links rows from the same apply action. */
   observationTemplateGroupId?: string | null;
@@ -258,13 +279,14 @@ export function buildObservationTemplateCareOrderDto(input: {
   if (unique.length === 0) {
     throw new Error("observation_template_no_valid_items");
   }
-  const locale: ObservationOrderTemplateLabelLocale = input.labelLocale === "en" ? "en" : "fr";
+  const locale: ObservationOrderTemplateLabelLocale =
+    parseProductUiLanguage(input.labelLocale) ?? PRODUCT_DEFAULT_UI_LANGUAGE;
   const items: OrderItemCreateDto[] = unique.map((id) => {
     const def = OBSERVATION_ORDER_TEMPLATE_ITEMS.find((i) => i.id === id)!;
     return {
       catalogItemId: null,
       catalogItemType: "CARE",
-      manualLabel: locale === "en" ? def.manualLabelEn : def.manualLabelFr,
+      manualLabel: observationTemplateManualLabelForLocale(def, locale),
     };
   });
   return {

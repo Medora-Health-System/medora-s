@@ -7,6 +7,8 @@ import { useI18n } from "@/lib/i18n";
 import { fetchRoiMonitoringSummary } from "@/lib/chartRoiApi";
 import { normalizeUserFacingError } from "@/lib/userFacingError";
 
+import { resolveProductUiLanguageOrDefault } from "@/i18n/config";
+
 export default function AdminRoiMonitoringPage() {
   const { t, language } = useI18n();
   const { ready, facilityId, isPlatformOperator } = useFacilityAndRoles();
@@ -16,7 +18,7 @@ export default function AdminRoiMonitoringPage() {
   } | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const lang = language === "en" ? "en" : "fr";
+  const lang = resolveProductUiLanguageOrDefault(language);
 
   const load = useCallback(async () => {
     if (!facilityId) return;

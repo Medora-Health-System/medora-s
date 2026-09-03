@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { billingClassificationSchema } from "../encounters/billingClassification.js";
+import { productUiLanguageSchema, FACILITY_DEFAULT_LANGUAGE } from "../i18n/productUiLocale.js";
 import {
   facilityBillingClassificationModeSchema,
   facilityBillingWorkflowPatchDtoSchema,
@@ -222,7 +223,7 @@ function refineFacilityOperationalIdentityOnCreate(
 export const createFacilityDtoSchema = z
   .object({
     name: z.string().trim().min(1, "Le nom est requis.").max(200),
-    defaultLanguage: z.enum(["fr", "en"]).optional().default("fr"),
+    defaultLanguage: productUiLanguageSchema.optional().default(FACILITY_DEFAULT_LANGUAGE),
     facilityType: medoraFacilityTypeSchema.optional().default("CLINIC"),
     serviceLines: z.array(medoraServiceLineSchema).optional(),
   })
@@ -277,7 +278,7 @@ export const setFacilityActiveDtoSchema = z.object({
 
 /** PATCH /admin/facilities/:id/language */
 export const setFacilityLanguageDtoSchema = z.object({
-  defaultLanguage: z.enum(["fr", "en"]),
+  defaultLanguage: productUiLanguageSchema,
 });
 
 export type CreateFacilityDto = z.infer<typeof createFacilityDtoSchema>;

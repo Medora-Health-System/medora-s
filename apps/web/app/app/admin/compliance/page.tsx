@@ -7,6 +7,7 @@ import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import { useI18n } from "@/lib/i18n";
 import { fetchComplianceDashboard, type ComplianceDashboardPayload } from "@/lib/complianceApi";
 import { normalizeUserFacingError } from "@/lib/userFacingError";
+import { productUiBcp47Tag } from "@/i18n/config";
 
 type OverallSev = "ok" | "attention" | "critical";
 
@@ -127,7 +128,7 @@ export default function AdminCompliancePage() {
     );
   }
 
-  const locale = language === "en" ? "en-US" : "fr-FR";
+  const locale = productUiBcp47Tag(language);
   const fmtIso = (iso: string) => {
     try {
       return new Date(iso).toLocaleString(locale, { dateStyle: "medium", timeStyle: "short" });

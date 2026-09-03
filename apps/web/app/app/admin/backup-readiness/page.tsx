@@ -12,6 +12,7 @@ import {
   type BackupReadinessPayload,
 } from "@/lib/backupReadinessApi";
 import { normalizeUserFacingError } from "@/lib/userFacingError";
+import { productUiBcp47Tag } from "@/i18n/config";
 
 function overallBadgeStyle(s: BackupReadinessOverallStatus): CSSProperties {
   if (s === "ready") return { background: "#166534", color: "#fff" };
@@ -113,7 +114,7 @@ export default function AdminBackupReadinessPage() {
       <p style={{ fontSize: 13, color: "#64748b" }}>
         {t("backupReadiness.generatedAt")}:{" "}
         {data?.generatedAt
-          ? new Date(data.generatedAt).toLocaleString(language === "en" ? "en-US" : "fr-FR", {
+          ? new Date(data.generatedAt).toLocaleString(productUiBcp47Tag(language), {
               dateStyle: "medium",
               timeStyle: "short",
             })

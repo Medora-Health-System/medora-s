@@ -52,6 +52,7 @@ import {
   type ErTriageV1NursingCarePersistSlice,
 } from "./medoraErTriageV1";
 import { isTriageStaleConflictError } from "./triageConcurrency";
+import { productUiBcp47Tag } from "@/i18n/config";
 
 type EncounterLite = {
   id: string;
@@ -568,7 +569,7 @@ export function EmergencyNursingReassessmentPanel({
   variant?: "edEmbedded" | "observationEncounter" | "inpatientEncounter";
 }) {
   const { t, language } = useI18n();
-  const dateLocale = language === "en" ? "en-US" : "fr-FR";
+  const dateLocale = productUiBcp47Tag(language);
   const isObservationEncounter = variant === "observationEncounter";
   const isInpatientEncounter = variant === "inpatientEncounter";
   const hubCareSetting = isInpatientEncounter ? "INPATIENT" : "ED";

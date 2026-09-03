@@ -3,7 +3,7 @@
  */
 
 import { getLocalizedDiagnosisDisplayLabel } from "./diagnosisFrenchDisplayLabels";
-import type { SupportedLanguage } from "@/i18n/config";
+import { productUiBcp47Tag, type SupportedLanguage } from "@/i18n/config";
 import { i18nMessage } from "@/lib/i18nMessagesLookup";
 import type { ErDispositionPreviewSection } from "./emergencyDispositionV1";
 import type { VisitSummaryTextBlock } from "./emergencyVisitSummaryModel";
@@ -62,7 +62,7 @@ export function localizeEdDispositionFollowUpChipText(
 
 function formatIso(iso: string, locale: SupportedLanguage): string {
   try {
-    const tag = locale === "en" ? "en-US" : "fr-FR";
+    const tag = productUiBcp47Tag(locale);
     return new Date(iso).toLocaleString(tag, { dateStyle: "short", timeStyle: "short" });
   } catch {
     return iso;

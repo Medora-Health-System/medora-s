@@ -12,6 +12,7 @@ import {
   sanitizeMarAdministrationVisibleNote,
   selectClinicalDocumentationCardTitle,
   selectClinicalDocumentationPayloadSummary,
+  resolveProductUiLanguageOrDefault,
   type ClinicalDocumentationSummaryLocale,
 } from "@medora/shared";
 
@@ -446,7 +447,7 @@ export function renderEncounterChartExportHtml(
         ? `<p class="muted">${esc(NO_DATA)}</p>`
         : `<ul>${(enc.clinicalDocumentationEntries ?? [])
             .map((entry) => {
-              const edocLocale: ClinicalDocumentationSummaryLocale = locale === "fr" ? "fr" : "en";
+              const edocLocale: ClinicalDocumentationSummaryLocale = resolveProductUiLanguageOrDefault(locale);
               const title = selectClinicalDocumentationCardTitle(entry, edocLocale);
               const summaryLines = selectClinicalDocumentationPayloadSummary(entry, edocLocale);
               const summary =
@@ -616,7 +617,7 @@ export function renderEncounterChartExportHtml(
       ${manifest.medicationAdministrations
         .map((m) => ({
           id: m.id,
-          note: sanitizeMarAdministrationVisibleNote(m.notes, locale === "fr" ? "fr" : "en"),
+          note: sanitizeMarAdministrationVisibleNote(m.notes, resolveProductUiLanguageOrDefault(locale)),
         }))
         .filter((m) => m.note.trim())
         .map((m) => `<h4>MAR notes (${esc(m.id)})</h4><div class="pre-text">${esc(m.note)}</div>`)

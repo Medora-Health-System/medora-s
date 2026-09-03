@@ -16,6 +16,7 @@ import {
 } from "./vaccineManufacturerCatalog.js";
 import type { VaccineVisDocumentation } from "./vaccineVisGovernance.js";
 import { validateVaccineVisDocumentation } from "./vaccineVisGovernance.js";
+import { productUiBcp47Tag } from "../i18n/productUiLocale.js";
 
 export type VaccineEducationRecipient =
   | "patient"
@@ -404,7 +405,7 @@ function formatDateForNote(value: string, locale: "en" | "fr"): string {
   if (!trimmed) return "";
   const parsed = new Date(`${trimmed.includes("T") ? trimmed : `${trimmed}T12:00:00`}`);
   if (Number.isNaN(parsed.getTime())) return trimmed;
-  return parsed.toLocaleDateString(locale === "fr" ? "fr-FR" : "en-US", {
+  return parsed.toLocaleDateString(productUiBcp47Tag(locale), {
     year: "numeric",
     month: "numeric",
     day: "numeric",
@@ -416,7 +417,7 @@ function formatDateTimeForNote(value: string, locale: "en" | "fr"): string {
   if (!trimmed) return "";
   const parsed = new Date(trimmed);
   if (Number.isNaN(parsed.getTime())) return trimmed;
-  return parsed.toLocaleString(locale === "fr" ? "fr-FR" : "en-US", {
+  return parsed.toLocaleString(productUiBcp47Tag(locale), {
     dateStyle: "short",
     timeStyle: "short",
   });

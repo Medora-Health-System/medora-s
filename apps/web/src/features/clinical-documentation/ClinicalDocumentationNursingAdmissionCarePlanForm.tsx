@@ -50,6 +50,8 @@ import {
 import { useI18n } from "@/lib/i18n";
 import { ClinicalDocumentationSelectField } from "./ClinicalDocumentationFieldControls";
 
+import { resolveProductUiLanguageOrDefault } from "@/i18n/config";
+
 const fieldStyle: React.CSSProperties = {
   width: "100%",
   boxSizing: "border-box",
@@ -182,7 +184,7 @@ export function ClinicalDocumentationNursingAdmissionCarePlanForm({
   onSubmit: (payload: Record<string, unknown>) => Promise<void>;
 }) {
   const { t, language } = useI18n();
-  const locale = language === "en" ? "en" : "fr";
+  const locale = resolveProductUiLanguageOrDefault(language);
   const [validationError, setValidationError] = useState<string | null>(null);
 
   const [admission, setAdmission] = useState({

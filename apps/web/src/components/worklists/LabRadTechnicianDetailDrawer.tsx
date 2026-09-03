@@ -19,6 +19,8 @@ import {
 } from "@/lib/labRadTechnicianWorklistModel";
 import { formatOrderAttributionLines } from "@/lib/orderAttribution";
 
+import { resolveProductUiLanguageOrDefault } from "@/i18n/config";
+
 const PRIMARY_BTN: React.CSSProperties = {
   display: "inline-flex",
   alignItems: "center",
@@ -59,7 +61,7 @@ function formatInstant(raw: string | Date | null | undefined, language: string):
   if (raw == null || raw === "") return DISPLAY_DASH;
   const d = raw instanceof Date ? raw : new Date(raw);
   if (Number.isNaN(d.getTime())) return DISPLAY_DASH;
-  return d.toLocaleString(language === "en" ? "en" : "fr", {
+  return d.toLocaleString(resolveProductUiLanguageOrDefault(language), {
     dateStyle: "short",
     timeStyle: "short",
   });

@@ -5,8 +5,7 @@
  */
 
 import type { SupportedLanguage } from "@/i18n/config";
-import frMessages from "@/i18n/messages/fr";
-import enMessages from "@/i18n/messages/en";
+import { getClinicalUiMessages } from "@/i18n/messages/registry";
 import { formatVitalsHeaderLineForLocale } from "@/lib/patientVitals";
 import type { ErProviderMseForm } from "./emergencyProviderMseV1";
 import {
@@ -28,7 +27,7 @@ export type ErMseSmartAssistContext = {
 };
 
 function mseRoot(locale: SupportedLanguage): Record<string, unknown> | undefined {
-  const root = (locale === "en" ? enMessages : frMessages) as Record<string, unknown>;
+  const root = getClinicalUiMessages(locale) as Record<string, unknown>;
   const block = root.erMseSmartAssist;
   return block !== null && typeof block === "object" ? (block as Record<string, unknown>) : undefined;
 }

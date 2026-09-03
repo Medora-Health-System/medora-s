@@ -92,7 +92,7 @@ describe("MEDUI.D4C.7A ambulatory MDM localization / discharge cleanup", () => {
       "utf8"
     );
     expect(clinicTab).toContain("facilityCountry={facilityCountry}");
-    expect(clinicTab).toContain("authoredDocumentLocale={language === \"fr\" ? \"fr\" : \"en\"}");
+    expect(clinicTab).toContain("authoredDocumentLocale={resolveProductUiLanguageOrDefault(language)}");
     expect(clinicTab).toContain("facilityCountry={session.facilityCountry}");
   });
 

@@ -4,7 +4,7 @@
  */
 
 import { parseNursingAssessmentSectionsForChart } from "@/components/patient-chart/patientChartHelpers";
-import type { SupportedLanguage } from "@/i18n/config";
+import { productUiBcp47Tag, type SupportedLanguage } from "@/i18n/config";
 import { readDischargeSortieExecutionFromEncounter } from "./emergencyDispositionV1";
 import { erTriageT } from "./erTriageI18nLookup";
 import type { VisitSummaryTextBlock } from "./emergencyVisitSummaryModel";
@@ -23,7 +23,7 @@ function interpolate(template: string, vars: Record<string, string>): string {
 
 function formatIsoForLocale(iso: string, locale: SupportedLanguage): string {
   try {
-    const tag = locale === "en" ? "en-US" : "fr-FR";
+    const tag = productUiBcp47Tag(locale);
     return new Date(iso).toLocaleString(tag, { dateStyle: "short", timeStyle: "short" });
   } catch {
     return "—";

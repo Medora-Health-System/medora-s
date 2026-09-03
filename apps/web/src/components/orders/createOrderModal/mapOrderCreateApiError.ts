@@ -1,11 +1,9 @@
 import { extractApiErrorMeta } from "@/lib/apiClient";
 import type { SupportedLanguage } from "@/i18n/config";
 
-const ORDER_CREATE_ERROR_RULES: Array<{
-  test: (message: string) => boolean;
-  en: string;
-  fr: string;
-}> = [
+const ORDER_CREATE_ERROR_RULES: Array<
+  { test: (message: string) => boolean } & Record<SupportedLanguage, string>
+> = [
   {
     test: (message) => /catalogue ou un libellé manuel/i.test(message),
     en: "Each line must reference the catalog or include a manual label.",
@@ -87,7 +85,7 @@ export function translateOrderCreateMessage(message: string, language: Supported
 
   for (const rule of ORDER_CREATE_ERROR_RULES) {
     if (rule.test(trimmed)) {
-      return language === "en" ? rule.en : rule.fr;
+      return rule[language];
     }
   }
 

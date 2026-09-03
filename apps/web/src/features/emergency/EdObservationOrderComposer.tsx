@@ -26,6 +26,8 @@ import { mapOrderCreateApiError } from "@/components/orders/createOrderModal/map
 import { invalidateGetRequestDedupeForPath } from "@/lib/getRequestDedupe";
 import { useI18n } from "@/lib/i18n";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
+import { resolveProductUiLanguageOrDefault } from "@/i18n/config";
+
 import {
   ED_DISPOSITION_BOARD_COLORS,
   edBadgeCompleteStyle,
@@ -104,7 +106,7 @@ export function EdObservationOrderComposer({
 }) {
   const { t, language } = useI18n();
   const { roles } = useFacilityAndRoles();
-  const locale = language === "en" ? "en" : "fr";
+  const locale = resolveProductUiLanguageOrDefault(language);
   const canActivate = canActivateObservationComposerOrders({ canPrescribe, encounterOpen });
   const locked = Boolean(disabled) || !encounterOpen;
 

@@ -36,6 +36,7 @@ import {
   saveInpatientProviderDischarge,
 } from "@/features/hospital-care/inpatientOperationsApi";
 import { generateInpatientPatientInstructionsFromDiagnoses } from "./inpatientPatientInstructionsFromDiagnoses";
+import { resolveProductUiLanguageOrDefault, productUiBcp47Tag } from "@/i18n/config";
 
 const fieldStyle: CSSProperties = {
   width: "100%",
@@ -115,7 +116,7 @@ export function InpatientProviderDischargeSection({
 }) {
   const { t, language } = useI18n();
   const prefix = "inpatientProviderDischargeInpDis1b";
-  const dateLocale = language === "en" ? "en-US" : "fr-FR";
+  const dateLocale = productUiBcp47Tag(language);
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -207,7 +208,7 @@ export function InpatientProviderDischargeSection({
       dischargeDiagnoses: doc.dischargeDiagnoses.length
         ? doc.dischargeDiagnoses
         : chartBootstrap.dischargeDiagnoses,
-      language: language === "en" ? "en" : "fr",
+      language: resolveProductUiLanguageOrDefault(language),
     });
     if (edited.length) {
       const replaceEdited = window.confirm(t(`${prefix}.refreshConfirm`));
@@ -240,7 +241,7 @@ export function InpatientProviderDischargeSection({
     if (!doc.dischargeDiagnoses.length) return;
     const { instructions, followUps } = generateInpatientPatientInstructionsFromDiagnoses({
       diagnoses: doc.dischargeDiagnoses,
-      locale: language === "en" ? "en" : "fr",
+      locale: resolveProductUiLanguageOrDefault(language),
       facilityDisplayName,
     });
     setDoc((prev) => ({
@@ -312,7 +313,7 @@ export function InpatientProviderDischargeSection({
     if (!empty) return;
     const draft = buildInpatientDischargeChartDraft({
       ...chartBootstrap,
-      language: language === "en" ? "en" : "fr",
+      language: resolveProductUiLanguageOrDefault(language),
     });
     const { next } = mergeChartDraftPreservingClinicianEdits({ existing: doc, draft });
     setDoc(next);

@@ -10,7 +10,7 @@ import {
   type EdClinicalTimelineSourceRow,
 } from "@medora/shared";
 import { formatDocumentedProcedureClinicalSummary } from "@medora/shared";
-import type { SupportedLanguage } from "@/i18n/config";
+import { resolveProductUiLanguageOrDefault, type SupportedLanguage } from "@/i18n/config";
 import { readInitialNursingEvalSignature } from "./erInitialNursingAssessmentSummary";
 import { readDischargeSortieExecutionFromEncounter } from "./emergencyDispositionV1";
 import {
@@ -27,7 +27,7 @@ import type {
 import { erTriageT } from "./erTriageI18nLookup";
 
 function timelineLocale(language: SupportedLanguage): EdClinicalTimelineLocale {
-  return language === "en" ? "en" : "fr";
+  return resolveProductUiLanguageOrDefault(language);
 }
 
 function vs(locale: SupportedLanguage, key: string): string {
@@ -239,7 +239,7 @@ export function buildErClinicalTimelineSourceRows(
       payloadJson: payload,
       documentedAtIso: documentedAt ?? "",
       documentedByDisplayName: documentedBy,
-      locale: locale === "en" ? "en" : "fr",
+      locale: resolveProductUiLanguageOrDefault(locale),
     });
     if (!summary?.trim()) continue;
     const shortSummary = summary.split("—")[0]?.trim() || summary;

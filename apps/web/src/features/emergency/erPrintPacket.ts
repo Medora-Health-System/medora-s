@@ -4,7 +4,7 @@
  * Does not invent clinical facts; only displays stored JSON / derived ambient EMTALA state.
  */
 
-import type { SupportedLanguage } from "@/i18n/config";
+import { resolveProductUiLanguageOrDefault, type SupportedLanguage } from "@/i18n/config";
 import type { EncounterClinicalRecord } from "@medora/shared";
 import { getErClinicalRecordPrintPacketHtml } from "@/features/emergency/erClinicalRecordPrintPacket";
 import { isSummaryClinicalRecordV2Enabled } from "@/features/emergency/summaryClinicalRecordFeatureFlag";
@@ -718,7 +718,7 @@ export function getErPrintPacketHtml(params: {
   const footer = buildPrintDocumentFooterHtml(language, printDate, esc, printT);
   body.push(footer);
 
-  const htmlLang = language === "en" ? "en" : "fr";
+  const htmlLang = resolveProductUiLanguageOrDefault(language);
   const titleKey =
     outcome === "OBSERVATION"
       ? "printOutput.erPacket.htmlTitleObservation"

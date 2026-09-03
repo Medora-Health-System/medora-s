@@ -10,7 +10,7 @@ import { buildErResultsCockpitModel } from "@/features/emergency/emergencyResult
 import { clinicalResultFromOrderItemLike } from "@/lib/clinicalResultNormalize";
 import { getOrderItemDisplayLabelForLanguage } from "@/lib/orderItemDisplayFr";
 import { useI18n } from "@/lib/i18n";
-import type { SupportedLanguage } from "@/i18n/config";
+import { productUiBcp47Tag, type SupportedLanguage } from "@/i18n/config";
 import type { PrintFacilityInfo } from "@/lib/printFacilityHeader";
 import type { ResultPrintEncounter, ResultPrintPatient } from "@/features/emergency/resultPrintPacket";
 import {
@@ -90,7 +90,7 @@ function CompactResultRow({
   language: SupportedLanguage;
   t: (k: string) => string;
 }) {
-  const locale = language === "en" ? "en-US" : "fr-FR";
+  const locale = productUiBcp47Tag(language);
   const disp = getOrderItemDisplayLabelForLanguage(row.item, language, t);
   const v = clinicalResultFromOrderItemLike({
     displayLabel: disp,

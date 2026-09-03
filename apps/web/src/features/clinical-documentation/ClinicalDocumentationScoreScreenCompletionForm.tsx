@@ -49,6 +49,8 @@ import {
   validateFoundationCatalogCompletionPayloadForCard,
 } from "@medora/shared";
 import { useI18n } from "@/lib/i18n";
+import { resolveProductUiLanguageOrDefault } from "@/i18n/config";
+
 import {
   ClinicalDocumentationScoreSelectField,
   ClinicalDocumentationSelectField,
@@ -150,7 +152,7 @@ export function ClinicalDocumentationScoreScreenCompletionForm({
   onSubmit: (payload: Record<string, unknown>) => Promise<void>;
 }) {
   const { t, language } = useI18n();
-  const locale = language === "en" ? "en" : "fr";
+  const locale = resolveProductUiLanguageOrDefault(language);
   const [validationError, setValidationError] = useState<string | null>(null);
 
   const [ciwa, setCiwa] = useState({

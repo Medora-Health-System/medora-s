@@ -11,6 +11,7 @@ import {
   type PatientDischargeInstructionsSlice,
 } from "@/lib/encounterDischarge";
 import { MedoraCard, MedoraCardInner, MedoraCardTitle } from "@/components/medora-card";
+import { productUiBcp47Tag } from "@/i18n/config";
 import {
   edDispositionFieldGridStyle,
   edDispositionTouchButtonStyle,
@@ -294,7 +295,7 @@ export function PatientDischargeInstructionsClosureCard({
                 </>
               ) : null}
               {slice.instructionsGivenAt
-                ? `${t("patientDischargeInstructions.givenAt")} ${new Date(slice.instructionsGivenAt).toLocaleString(language === "en" ? "en-US" : "fr-FR")}`
+                ? `${t("patientDischargeInstructions.givenAt")} ${new Date(slice.instructionsGivenAt).toLocaleString(productUiBcp47Tag(language))}`
                 : null}
             </p>
           ) : null}

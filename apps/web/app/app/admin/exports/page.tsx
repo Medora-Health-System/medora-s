@@ -12,6 +12,7 @@ import {
   type ExportMonitoringRecentRow,
 } from "@/lib/exportMonitoringApi";
 import { normalizeUserFacingError } from "@/lib/userFacingError";
+import { productUiBcp47Tag } from "@/i18n/config";
 
 function labelOrRaw(t: (k: string) => string, prefix: string, raw: string): string {
   const k = `${prefix}.${raw}`;
@@ -22,7 +23,7 @@ function labelOrRaw(t: (k: string) => string, prefix: string, raw: string): stri
 function fmtTs(iso: string | null, locale: string): string {
   if (!iso) return "—";
   try {
-    return new Date(iso).toLocaleString(locale === "en" ? "en-US" : "fr-FR", {
+    return new Date(iso).toLocaleString(productUiBcp47Tag(locale), {
       dateStyle: "short",
       timeStyle: "short",
     });
@@ -95,7 +96,7 @@ export default function AdminExportMonitoringPage() {
   }
 
   const s = data?.summary;
-  const locale = language === "en" ? "en-US" : "fr-FR";
+  const locale = productUiBcp47Tag(language);
 
   return (
     <div style={{ padding: 24, maxWidth: 1280 }}>

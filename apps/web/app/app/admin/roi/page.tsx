@@ -14,6 +14,7 @@ import {
   type RoiRequestRow,
 } from "@/lib/chartRoiApi";
 import { normalizeUserFacingError } from "@/lib/userFacingError";
+import { resolveProductUiLanguageOrDefault, productUiBcp47Tag } from "@/i18n/config";
 
 const REQUEST_TYPES = [
   "PATIENT_REQUEST",
@@ -36,7 +37,7 @@ export default function AdminRoiPage() {
   const [purpose, setPurpose] = useState("");
   const [busyId, setBusyId] = useState<string | null>(null);
 
-  const lang = language === "en" ? "en" : "fr";
+  const lang = resolveProductUiLanguageOrDefault(language);
 
   const load = useCallback(async () => {
     if (!facilityId) return;
@@ -189,7 +190,7 @@ export default function AdminRoiPage() {
             <tbody>
               {rows.map((r) => (
                 <tr key={r.id} style={{ borderBottom: "1px solid #f1f5f9" }}>
-                  <td style={{ padding: 8 }}>{new Date(r.createdAt).toLocaleString(lang === "en" ? "en-US" : "fr-FR")}</td>
+                  <td style={{ padding: 8 }}>{new Date(r.createdAt).toLocaleString(productUiBcp47Tag(lang))}</td>
                   <td style={{ padding: 8 }}>{t(`roi.requestType.${r.requestType}`)}</td>
                   <td style={{ padding: 8 }}>{t(`roi.status.${r.status}`)}</td>
                   <td style={{ padding: 8, fontFamily: "monospace", fontSize: 12 }}>{r.patientId.slice(0, 8)}…</td>

@@ -4,6 +4,7 @@ import type {
   EnterpriseWave3ReadinessReport,
   MedicationLocalizationAlias,
 } from "@medora/shared";
+import { adaptProductUiToBilingualStorageLocale } from "@medora/shared";
 import { mergeEnterpriseWave3GovernanceNotes } from "../../src/medication-master/enterprise-wave3.constants";
 import { loadEnterpriseWave3FormularySeedModules } from "./enterprise-wave3-formulary-seed-modules";
 import {
@@ -235,7 +236,9 @@ export async function seedEnterpriseWave3Formulary(
       for (const alias of entry.aliases) {
         const normalized = alias.text.trim().toLowerCase();
         if (!normalized) continue;
-        const language = alias.language === "fr" ? "fr" : "en";
+        const adapted = adaptProductUiToBilingualStorageLocale(alias.language);
+        if (adapted.kind !== "localized") continue;
+        const language = adapted.locale;
         const existingAlias = await prisma.medicationAlias.findUnique({
           where: {
             catalogMedicationId_alias: { catalogMedicationId: catalogId, alias: normalized },
@@ -499,11 +502,17 @@ export async function seedEnterpriseWave3Formulary(
             where: { catalogMedicationId: catalogId },
             select: { alias: true, language: true },
           })
-        ).map((a) => ({
-          text: a.alias,
-          language: a.language === "fr" ? "fr" : "en",
-          aliasType: "OTHER" as const,
-        }));
+        ).flatMap((a) => {
+          const adapted = adaptProductUiToBilingualStorageLocale(a.language);
+          if (adapted.kind !== "localized") return [];
+          return [
+            {
+              text: a.alias,
+              language: adapted.locale,
+              aliasType: "OTHER" as const,
+            },
+          ];
+        });
 
     const searchCheck = modules.validateWave3EntrySearchReady(
       entry,

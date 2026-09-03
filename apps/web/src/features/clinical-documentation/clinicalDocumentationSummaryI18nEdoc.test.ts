@@ -34,7 +34,7 @@ describe("clinical documentation summary i18n (EDOC.I18N.1)", () => {
 
   it("ED visit summary selects localized summaries", () => {
     expect(summaryPanel).toContain("selectClinicalDocumentationPayloadSummary");
-    expect(summaryPanel).toContain('language === "en" ? "en" : "fr"');
+    expect(summaryPanel).toContain("resolveProductUiLanguageOrDefault(language)");
     expect(summaryPanel).not.toContain("entry.payloadSummary ?? []");
   });
 
@@ -45,7 +45,7 @@ describe("clinical documentation summary i18n (EDOC.I18N.1)", () => {
 
   it("Print layout selects localized summaries", () => {
     expect(printLayout).toContain("selectClinicalDocumentationPayloadSummary");
-    expect(printLayout).toContain('lang === "en" ? "en" : "fr"');
+    expect(printLayout).toContain("resolveProductUiLanguageOrDefault(lang)");
   });
 
   it("API types expose bilingual payload summaries", () => {

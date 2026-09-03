@@ -10476,6 +10476,28 @@ export default {
     },
   },
 
+  nursingAdmissionPrint: {
+    yes: "Oui",
+    no: "Non",
+    codes: {
+      STABLE: "Stable",
+      WHEELCHAIR: "Fauteuil roulant",
+      EMERGENCY_DEPARTMENT: "Service d’urgence",
+      NO_CONCERN: "Aucune préoccupation identifiée",
+      CONCERN_PRESENT: "Préoccupation présente",
+      UNABLE_TO_ASSESS: "Impossible à évaluer",
+      YES: "Oui",
+      NO: "Non",
+      INDEPENDENT: "Autonome",
+      COMPLETE: "Terminé",
+      SIGNED: "Signé",
+      DRAFT: "Brouillon",
+      AMENDED: "Modifié",
+      CORRECTED: "Corrigé",
+      AAOX4: "Alerte et orienté ×4",
+    },
+  },
+
   clinicCareD4c7g: {
     mar: {
       ambulatoryPendingHint:

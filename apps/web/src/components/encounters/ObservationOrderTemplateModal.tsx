@@ -181,7 +181,7 @@ export function ObservationOrderTemplateModal({
   if (!open) return null;
 
   const formDisabled = applySuccess || applying;
-  const labelLocale = language === "en" ? "en" : "fr";
+  const labelLocale = language;
 
   return (
     <div

@@ -4,7 +4,7 @@ import {
   resolveClinicalViewportMode,
   type ClinicalViewportMode,
 } from "@/lib/clinicalViewport";
-import type { SupportedLanguage } from "@/i18n/config";
+import { resolveProductUiLanguageOrDefault, type SupportedLanguage } from "@/i18n/config";
 import type {
   MedicationAdministrationHistoryEntry,
   MedicationAdministrationHistoryEventType,
@@ -179,7 +179,7 @@ function formatReasonLine(
   const detail = entry.reasonDetail?.trim();
   if (!code && !detail) return null;
   const prefix = t("marAdministrationHistory.reasonPrefix");
-  const locale = language === "en" ? "en" : "fr";
+  const locale = resolveProductUiLanguageOrDefault(language);
   if (entry.eventType === "PRN_ADMINISTERED") {
     const label = formatMarPrnReasonForLocale({ code, label: detail }, locale);
     return label ? `${prefix}${label}` : null;

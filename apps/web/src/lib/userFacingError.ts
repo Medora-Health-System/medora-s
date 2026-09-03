@@ -1,6 +1,6 @@
 /**
  * Normalizes API/proxy error strings for display.
- * Default locale is French (product default); pass `"en"` for English UI (e.g. auth screens).
+ * Copy is keyed by product UI locale — never `en ? en : fr`.
  */
 
 import type { SupportedLanguage } from "@/i18n/config";
@@ -10,7 +10,7 @@ export const USER_FACING_ENCOUNTER_NOT_FOUND_FR = "Consultation introuvable.";
 
 const ENCOUNTER_NOT_FOUND_EN = "Encounter not found.";
 
-const RULES: Array<{ test: (s: string) => boolean; fr: string; en: string }> = [
+const RULES: Array<{ test: (s: string) => boolean } & Record<SupportedLanguage, string>> = [
   {
     test: (s) => /^\s*request failed\s*:\s*\d+\s*$/i.test(s),
     fr: "La requête a échoué. Réessayez.",
@@ -248,8 +248,8 @@ export function normalizeUserFacingError(
   if (!s) return "";
 
   // Known API messages first so English UI does not show raw French from the server.
-  for (const { test, fr, en } of RULES) {
-    if (test(s)) return locale === "en" ? en : fr;
+  for (const rule of RULES) {
+    if (rule.test(s)) return rule[locale];
   }
 
   // Déjà du français probable : accents ou mots courts typiques (FR locale only — EN falls through)
@@ -259,13 +259,27 @@ export function normalizeUserFacingError(
       return s;
   }
 
+  const INVALID_DATA: Record<SupportedLanguage, string> = {
+    en: "Invalid data.",
+    fr: "Données invalides.",
+  };
+  const OPERATION_FAILED: Record<SupportedLanguage, string> = {
+    en: "The operation failed. Please try again.",
+    fr: "L'opération a échoué. Réessayez.",
+  };
+  const SERVER_ERROR: Record<SupportedLanguage, string> = {
+    en: "Server error.",
+    fr: "Erreur serveur.",
+  };
+  const GENERIC: Record<SupportedLanguage, string> = {
+    en: "Something went wrong.",
+    fr: "Une erreur est survenue.",
+  };
+
   // Phrases anglaises courantes (Nest / HTTP)
-  if (/^invalid/i.test(s)) return locale === "en" ? "Invalid data." : "Données invalides.";
-  if (/^failed\b/i.test(s))
-    return locale === "en"
-      ? "The operation failed. Please try again."
-      : "L'opération a échoué. Réessayez.";
-  if (/server error/i.test(s)) return locale === "en" ? "Server error." : "Erreur serveur.";
+  if (/^invalid/i.test(s)) return INVALID_DATA[locale];
+  if (/^failed\b/i.test(s)) return OPERATION_FAILED[locale];
+  if (/server error/i.test(s)) return SERVER_ERROR[locale];
 
   /** EN UI: pass through ASCII API errors Nest returns (avoid generic "Something went wrong"). */
   if (locale === "en") {
@@ -281,12 +295,16 @@ export function normalizeUserFacingError(
     }
   }
 
-  return locale === "en" ? "Something went wrong." : "Une erreur est survenue.";
+  return GENERIC[locale];
 }
 
 /** Quand aucun message exploitable n’est disponible. */
-export function genericUserFacingError(): string {
-  return "Une erreur s'est produite.";
+export function genericUserFacingError(locale: SupportedLanguage = "en"): string {
+  const GENERIC: Record<SupportedLanguage, string> = {
+    en: "Something went wrong.",
+    fr: "Une erreur s'est produite.",
+  };
+  return GENERIC[locale];
 }
 
 /** Erreur API « ordre uniquement si consultation ouverte » (message brut EN ou déjà normalisé FR). */

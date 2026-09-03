@@ -12,6 +12,7 @@ import {
 import { FacilityBillingIdentityModal } from "@/components/admin/FacilityBillingIdentityModal";
 import { normalizeUserFacingError } from "@/lib/userFacingError";
 import { useI18n } from "@/lib/i18n";
+import { FACILITY_DEFAULT_LANGUAGE, parseProductUiLanguage, productUiLanguageSelectOptions } from "@/i18n/config";
 
 const FACILITY_COOKIE_MAX_AGE = 365 * 24 * 60 * 60;
 
@@ -610,11 +611,11 @@ export default function AdminPage() {
                           >
                             <span style={{ fontSize: 12, color: "#666" }}>{t("adminHub.languageLabel")}</span>
                             <select
-                              value={f.defaultLanguage ?? "fr"}
+                              value={f.defaultLanguage ?? FACILITY_DEFAULT_LANGUAGE}
                               disabled={!facilityId || languageSavingId === f.id}
                               onChange={async (e) => {
-                                const newLang = e.target.value as "fr" | "en";
-                                if (!facilityId) return;
+                                const newLang = parseProductUiLanguage(e.target.value);
+                                if (!facilityId || !newLang) return;
                                 setLanguageSavingId(f.id);
                                 try {
                                   await setAdminFacilityLanguage(facilityId, f.id, newLang);
@@ -633,8 +634,11 @@ export default function AdminPage() {
                               }}
                               style={{ padding: 4, borderRadius: 4 }}
                             >
-                              <option value="fr">{t("adminUsers.langFr")}</option>
-                              <option value="en">{t("adminUsers.langEn")}</option>
+                              {productUiLanguageSelectOptions().map((opt) => (
+                                <option key={opt.value} value={opt.value}>
+                                  {opt.label}
+                                </option>
+                              ))}
                             </select>
                           </div>
                         </td>

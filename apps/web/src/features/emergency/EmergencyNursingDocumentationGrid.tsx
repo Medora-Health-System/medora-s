@@ -67,6 +67,7 @@ import {
   type ErTrend,
 } from "./emergencyNursingReassessmentV1";
 import type { ErAbcdeOption, ErTraumaSurveyV1 } from "./erTraumaSurveyV1";
+import { productUiBcp47Tag } from "@/i18n/config";
 import type {
   ErTriageV1NursingCarePersistSlice,
   ErYesNoUnknown,
@@ -335,7 +336,7 @@ function formatColumnTime(
   if (!isoOrLocal) return { time: "—", date: "" };
   const d = new Date(isoOrLocal);
   if (Number.isNaN(d.getTime())) return { time: "—", date: "" };
-  const tag = language === "en" ? "en-US" : "fr-FR";
+  const tag = productUiBcp47Tag(language);
   return {
     time: d.toLocaleTimeString(tag, { hour: "2-digit", minute: "2-digit" }),
     date: d.toLocaleDateString(tag, { day: "2-digit", month: "2-digit", year: "numeric" }),

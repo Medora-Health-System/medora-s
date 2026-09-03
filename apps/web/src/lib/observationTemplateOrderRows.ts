@@ -11,7 +11,7 @@ import {
   observationTemplateLineAllowsInProgressStart,
   type ObservationTemplateLineLifecyclePhase,
 } from "@medora/shared";
-import type { SupportedLanguage } from "@/i18n/config";
+import { resolveProductUiLanguageOrDefault, type SupportedLanguage } from "@/i18n/config";
 import { getOrderItemDisplayLabelFromLocale } from "@/lib/orderItemDisplayFr";
 
 export type ObservationTemplateOrderRow = {
@@ -143,7 +143,7 @@ export function flattenObservationTemplateOrders(
         ) ?? null;
       const label =
         (templateItemId
-          ? observationOrderTemplateItemManualLabel(templateItemId, language === "en" ? "en" : "fr")
+          ? observationOrderTemplateItemManualLabel(templateItemId, resolveProductUiLanguageOrDefault(language))
           : null) ||
         getOrderItemDisplayLabelFromLocale(it, language) ||
         String(it.manualLabel ?? "").trim() ||
@@ -186,7 +186,7 @@ export function flattenObservationTemplateOrders(
     const ao = orders.findIndex((o) => asRecord(o)?.id === a.orderId);
     const bo = orders.findIndex((o) => asRecord(o)?.id === b.orderId);
     if (ao !== bo) return ao - bo;
-    return a.label.localeCompare(b.label, language === "en" ? "en" : "fr");
+    return a.label.localeCompare(b.label, resolveProductUiLanguageOrDefault(language));
   });
 
   return rows;

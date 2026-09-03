@@ -3,7 +3,7 @@
  * Commence par la pose de voie IV ; autres procédures pourront s’ajouter sous proceduresV1.
  */
 
-import type { SupportedLanguage } from "@/i18n/config";
+import { productUiBcp47Tag, type SupportedLanguage } from "@/i18n/config";
 
 export const IV_SITE_OPTIONS_FR = [
   "RAC",
@@ -73,7 +73,7 @@ export function formatIvInsertionLineForLocale(
   }
   if (iv.performedAt) {
     try {
-      const loc = language === "en" ? "en-US" : "fr-FR";
+      const loc = productUiBcp47Tag(language);
       const dts = new Date(iv.performedAt).toLocaleString(loc);
       bits.push(language === "en" ? `on ${dts}` : `le ${dts}`);
     } catch {

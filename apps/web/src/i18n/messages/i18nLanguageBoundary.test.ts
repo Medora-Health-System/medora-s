@@ -54,18 +54,9 @@ function getByPath(obj: unknown, path: string): unknown {
   return cur;
 }
 
-function resolveMessageForTest(
-  active: unknown,
-  frRoot: unknown,
-  key: string,
-  language: "en" | "fr"
-): string {
+function resolveMessageForTest(active: unknown, key: string): string {
   const v = getByPath(active, key);
-  if (typeof v === "string") return v;
-  if (language === "en") return key;
-  const frVal = getByPath(frRoot, key);
-  if (typeof frVal === "string") return frVal;
-  return key;
+  return typeof v === "string" ? v : key;
 }
 
 function isDeferredEnPath(path: string): boolean {
@@ -142,15 +133,15 @@ describe("i18n language boundary (19U.1 / 19U.4 whole-EMR)", () => {
     const missingKey = "common.thisKeyDoesNotExistInEitherCatalog19U1";
     expect(getByPath(enMessages, missingKey)).toBeUndefined();
     expect(getByPath(frMessages, missingKey)).toBeUndefined();
-    expect(resolveMessageForTest(enMessages, frMessages, missingKey, "en")).toBe(missingKey);
+    expect(resolveMessageForTest(enMessages, missingKey)).toBe(missingKey);
   });
 
   it("missing FR key does not fallback to English", () => {
     const missingKey = "common.thisKeyDoesNotExistInEitherCatalog19U1Fr";
-    expect(resolveMessageForTest(frMessages, frMessages, missingKey, "fr")).toBe(missingKey);
+    expect(resolveMessageForTest(frMessages, missingKey)).toBe(missingKey);
     const enVal = getByPath(enMessages, "common.save");
     expect(typeof enVal).toBe("string");
-    expect(resolveMessageForTest(frMessages, frMessages, missingKey, "fr")).not.toBe(enVal);
+    expect(resolveMessageForTest(frMessages, missingKey)).not.toBe(enVal);
   });
 
   it("normalizeUserFacingError maps English API errors when locale is en (no French default parameter)", () => {

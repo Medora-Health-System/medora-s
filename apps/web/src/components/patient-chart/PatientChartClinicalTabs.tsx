@@ -3,7 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import type { ChartSummary, ChartSummaryEncounter, ChartSummaryOrderItem } from "@/lib/chartApi";
-import type { SupportedLanguage } from "@/i18n/config";
+import { resolveProductUiLanguageOrDefault, type SupportedLanguage } from "@/i18n/config";
 import {
   formatEncounterChromeDateTime,
   tEncounterType,
@@ -195,9 +195,9 @@ function EncounterBlock({
                       .replace("{when}", formatDt(entry.witnessedAt))}
                   </div>
                 ) : null}
-                {selectClinicalDocumentationPayloadSummary(entry, language === "en" ? "en" : "fr").length > 0 ? (
+                {selectClinicalDocumentationPayloadSummary(entry, resolveProductUiLanguageOrDefault(language)).length > 0 ? (
                   <ul style={{ margin: 0, paddingLeft: 18 }}>
-                    {selectClinicalDocumentationPayloadSummary(entry, language === "en" ? "en" : "fr").map((line) => (
+                    {selectClinicalDocumentationPayloadSummary(entry, resolveProductUiLanguageOrDefault(language)).map((line) => (
                       <li key={`${entry.id}-${line.key}`}>
                         <strong>{line.key}</strong>: {line.value}
                       </li>

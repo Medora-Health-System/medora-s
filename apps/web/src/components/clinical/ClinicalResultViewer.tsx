@@ -15,6 +15,7 @@ import {
 import { useI18n } from "@/lib/i18n";
 import { MedicationAdministrationAdjustedBadge } from "@/components/encounters/MedicationAdministrationClockButton";
 import { resolveLabRadMilestoneDisplay } from "@/features/orders/labRadiologyEffectiveTimeDisplay";
+import { productUiBcp47Tag } from "@/i18n/config";
 import {
   initialsFromDisplayName,
   parseClinicalStructuredResultData,
@@ -253,7 +254,7 @@ function StructuredLabTable({
   criticalValue?: boolean | null;
 }) {
   const { t, language } = useI18n();
-  const dateLocale = language === "en" ? "en-US" : "fr-FR";
+  const dateLocale = productUiBcp47Tag(language);
 
   return (
     <div style={{ fontSize: 14, color: "#212121" }}>
@@ -356,7 +357,7 @@ function StructuredImagingReportBody({
   verifiedAt?: string | null;
 }) {
   const { t, language } = useI18n();
-  const dateLocale = language === "en" ? "en-US" : "fr-FR";
+  const dateLocale = productUiBcp47Tag(language);
   const sections: { key: keyof ClinicalImagingReportSections; labelKey: string; emphasize?: boolean }[] = [
     { key: "indication", labelKey: "structuredDiagnosticResult.indication" },
     { key: "technique", labelKey: "structuredDiagnosticResult.technique" },
@@ -435,7 +436,7 @@ function StructuredResultBody({
   criticalValue?: boolean | null;
 }) {
   const { t, language } = useI18n();
-  const dateLocale = language === "en" ? "en-US" : "fr-FR";
+  const dateLocale = productUiBcp47Tag(language);
   const structured = parseClinicalStructuredResultData(resultData);
 
   /** Priority 1 — durable structured Result.resultData */
@@ -640,7 +641,7 @@ function ResultTimestampBlock({
   compact?: boolean;
 }) {
   const { t, language } = useI18n();
-  const dateLocale = language === "en" ? "en-US" : "fr-FR";
+  const dateLocale = productUiBcp47Tag(language);
   const display = resolveLabRadMilestoneDisplay({
     documentedAt: documentedAt ?? clinicalAt,
     effectiveAt: clinicalAt,
@@ -700,7 +701,7 @@ export function ClinicalResultViewer({
   onAcknowledge,
 }: ClinicalResultViewerProps) {
   const { t, language } = useI18n();
-  const dateLocale = language === "en" ? "en-US" : "fr-FR";
+  const dateLocale = productUiBcp47Tag(language);
   const pad = compact ? 12 : 16;
   const displayTitle = normalizeExamTitleFromLocale(title, language);
   const statusLabel = itemStatus ? chartOrderItemLabel(itemStatus, t) : null;

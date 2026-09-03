@@ -3,7 +3,7 @@
  */
 
 import type { EncounterClinicalRecord } from "@medora/shared";
-import type { SupportedLanguage } from "@/i18n/config";
+import { resolveProductUiLanguageOrDefault, type SupportedLanguage } from "@/i18n/config";
 import { calculateAge } from "@/lib/patientDisplay";
 import { formatEncounterChromeDateTime } from "@/lib/encounterChromeI18n";
 import { formatTemperatureDualLine } from "@/lib/patientVitals";
@@ -476,7 +476,7 @@ export function getErClinicalRecordPrintPacketHtml(input: {
   const footer = buildPrintDocumentFooterHtml(language, printDate, esc, printT);
   const htmlTitle = printT(language, "printOutput.erPacket.htmlTitleErPacket");
 
-  return `<!DOCTYPE html><html lang="${language === "en" ? "en" : "fr"}"><head><meta charset="utf-8"/><title>${esc(
+  return `<!DOCTYPE html><html lang="${resolveProductUiLanguageOrDefault(language)}"><head><meta charset="utf-8"/><title>${esc(
     htmlTitle
   )}</title><style>
     body { font-family: system-ui, sans-serif; padding: 24px; color: #0f172a; max-width: 900px; margin: 0 auto; font-size: 14px; }

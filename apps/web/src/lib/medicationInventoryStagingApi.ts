@@ -2,9 +2,8 @@
  * Phase 19E.1 — Priority ER inventory staging (upload + review queue).
  */
 
-import enMessages from "@/i18n/messages/en";
-import frMessages from "@/i18n/messages/fr";
 import type { SupportedLanguage } from "@/i18n/config";
+import { i18nMessage } from "@/lib/i18nMessagesLookup";
 import { apiFetchResponse, asApiObject, parseApiResponse } from "./apiClient";
 import { normalizeUserFacingError } from "./userFacingError";
 
@@ -30,20 +29,10 @@ type InventoryImportErrorCode = (typeof INVENTORY_IMPORT_ERROR_CODES)[number];
 type PromoteConflictErrorCode = (typeof PROMOTE_CONFLICT_ERROR_CODES)[number];
 type StagingErrorCode = InventoryImportErrorCode | PromoteConflictErrorCode;
 
-function getByPath(obj: unknown, path: string): unknown {
-  const parts = path.split(".").filter(Boolean);
-  let cur: unknown = obj;
-  for (const p of parts) {
-    if (cur === null || cur === undefined || typeof cur !== "object") return undefined;
-    cur = (cur as Record<string, unknown>)[p];
-  }
-  return cur;
-}
-
 function stagingErrorForCode(code: StagingErrorCode, language: SupportedLanguage): string | undefined {
-  const root = language === "en" ? enMessages : frMessages;
-  const v = getByPath(root, `medicationInventoryStaging.errors.${code}`);
-  return typeof v === "string" ? v : undefined;
+  const key = `medicationInventoryStaging.errors.${code}`;
+  const v = i18nMessage(language, key);
+  return v !== key ? v : undefined;
 }
 
 function extractStagingErrorCode(message: string): StagingErrorCode | null {
@@ -263,13 +252,13 @@ export function parseInventoryImportErrorPayload(text: string): PriorityErInvent
 }
 
 export function stagingImportErrorMessage(err: unknown, language: SupportedLanguage): string {
+  const importFailed: Record<SupportedLanguage, string> = {
+    en: "Import failed.",
+    fr: "Échec de l'import.",
+  };
   if (err instanceof Error && err.message) {
     if (err.message === "INVALID_INVENTORY_IMPORT_RESPONSE") {
-      const v = getByPath(enMessages, "medicationInventoryStaging.invalidImportResponse");
-      const fr = getByPath(frMessages, "medicationInventoryStaging.invalidImportResponse");
-      return language === "en"
-        ? (typeof v === "string" ? v : "Invalid inventory import response.")
-        : (typeof fr === "string" ? fr : "Réponse import inventaire invalide.");
+      return i18nMessage(language, "medicationInventoryStaging.invalidImportResponse");
     }
     const code = extractStagingErrorCode(err.message);
     if (code) {
@@ -279,5 +268,5 @@ export function stagingImportErrorMessage(err: unknown, language: SupportedLangu
     const stripped = err.message.replace(/\s*\([A-Z0-9_]+\)\s*$/, "").trim();
     return normalizeUserFacingError(stripped, language) || stripped || err.message;
   }
-  return language === "en" ? "Import failed." : "Échec de l'import.";
+  return importFailed[language];
 }

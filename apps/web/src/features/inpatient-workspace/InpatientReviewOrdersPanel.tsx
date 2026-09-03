@@ -13,6 +13,7 @@ import {
   inpatientFacilityMedicationOrderMode,
 } from "@medora/shared";
 import { useI18n } from "@/lib/i18n";
+import { resolveProductUiLanguageOrDefault } from "@/i18n/config";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import { fetchOrderEventsForEncounter, fetchOrdersForEncounter } from "@/lib/clinicalWorklistApi";
 import { getOrderItemDisplayLabelForLanguage } from "@/lib/orderItemDisplayFr";
@@ -186,7 +187,7 @@ export function InpatientReviewOrdersPanel({
   }, [visible]);
 
   const formatTs = (iso: string | null) =>
-    iso ? formatClinicalInstantForFacility(iso, facilityTimeZone, language === "fr" ? "fr" : "en") : null;
+    iso ? formatClinicalInstantForFacility(iso, facilityTimeZone, resolveProductUiLanguageOrDefault(language)) : null;
 
   const lineLabel = (line: InpatientReviewOrderLine) => {
     const found = findOrderAndItem(ordersRaw, line.orderId, line.orderItemId);

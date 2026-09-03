@@ -10,7 +10,7 @@ import { isOrderItemIdUuid } from "@/lib/orderItemIdUuid";
 import { isOrderItemPendingNurseMedication } from "@/lib/nurseMedicationWorkload";
 import { useI18n } from "@/lib/i18n";
 import { formatClinicalInstantForFacility } from "@/lib/clinicalTimeDisplay";
-import type { SupportedLanguage } from "@/i18n/config";
+import { resolveProductUiLanguageOrDefault, productUiBcp47Tag, type SupportedLanguage } from "@/i18n/config";
 import { formatOrderAuthority } from "@/lib/orderAuthority";
 import { formatOrderAttributionLines } from "@/lib/orderAttribution";
 import { highRiskMedicationWarning, isHighRiskMedication } from "@/lib/highRiskMedication";
@@ -550,7 +550,7 @@ export function MedicationAdministrationTab({
   const [marAllergyEncounterVitals, setMarAllergyEncounterVitals] = useState<unknown>(
     encounterAllergySource?.vitals
   );
-  const dateLocale = language === "en" ? "en-US" : "fr-FR";
+  const dateLocale = productUiBcp47Tag(language);
   const [orders, setOrders] = useState<unknown[]>([]);
   const [admins, setAdmins] = useState<AdminRow[]>([]);
   const adminsRef = useRef<AdminRow[]>([]);
@@ -1531,7 +1531,7 @@ export function MedicationAdministrationTab({
       catalogCode: modalItem.catalogCode,
       displayNameEn: modalItem.catalogDisplayNameEn ?? modalItem.label,
       displayNameFr: modalItem.catalogDisplayNameFr ?? modalItem.label,
-      locale: language === "en" ? "en" : "fr",
+      locale: resolveProductUiLanguageOrDefault(language),
     });
   }, [language, modalItem]);
   const modalVaccineDocumentation = useMemo<VaccineAdministrationDocumentation | null>(() => {
@@ -1551,7 +1551,7 @@ export function MedicationAdministrationTab({
       lotNumber: vaccineLotNumber,
       expirationDate: vaccineExpirationDate,
       manufacturerId: vaccineManufacturerId,
-      manufacturerDisplayName: vaccineManufacturerLabel(vaccineManufacturerId, language === "en" ? "en" : "fr"),
+      manufacturerDisplayName: vaccineManufacturerLabel(vaccineManufacturerId, resolveProductUiLanguageOrDefault(language)),
       visGiven: vaccineVisGiven,
       visRecipient: vaccineVisGiven ? vaccineVisRecipient : "none",
       visDate: vaccineVisGiven ? vaccineVisDate : "",
@@ -1603,7 +1603,7 @@ export function MedicationAdministrationTab({
   const modalVaccineNotePreview = useMemo(
     () =>
       modalNormalizedVaccineDocumentation
-        ? buildVaccineAdministrationAuditNote(modalNormalizedVaccineDocumentation, language === "en" ? "en" : "fr")
+        ? buildVaccineAdministrationAuditNote(modalNormalizedVaccineDocumentation, resolveProductUiLanguageOrDefault(language))
         : "",
     [language, modalNormalizedVaccineDocumentation]
   );
@@ -3237,7 +3237,7 @@ export function MedicationAdministrationTab({
                   latestVaccineDocumentation && marSaysAdministered
                     ? buildCompletedVaccineAdministrationViewModel(
                         latestVaccineDocumentation,
-                        language === "en" ? "en" : "fr"
+                        resolveProductUiLanguageOrDefault(language)
                       )
                     : null;
 
@@ -3455,12 +3455,12 @@ export function MedicationAdministrationTab({
               const vaccineView = vaccineDocumentation
                 ? buildCompletedVaccineAdministrationViewModel(
                     vaccineDocumentation,
-                    language === "en" ? "en" : "fr"
+                    resolveProductUiLanguageOrDefault(language)
                   )
                 : null;
               const visibleNotes = vaccineView
                 ? ""
-                : sanitizeMarAdministrationVisibleNote(r.notes, language === "en" ? "en" : "fr");
+                : sanitizeMarAdministrationVisibleNote(r.notes, resolveProductUiLanguageOrDefault(language));
               const historyClock = buildMedicationAdministrationRowClockAction({
                 administration: r,
                 encounterOpen: encounterClinicalMutationsAllowed,

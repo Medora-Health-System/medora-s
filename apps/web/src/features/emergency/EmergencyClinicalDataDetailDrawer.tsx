@@ -11,6 +11,8 @@ import { formatClinicalInstantForFacility } from "@/lib/clinicalTimeDisplay";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import { resolveClinicalDataAccessMode } from "./edClinicalDataWorkspaceGovernance";
 
+import { resolveProductUiLanguageOrDefault } from "@/i18n/config";
+
 export function EmergencyClinicalDataDetailDrawer({
   entry,
   open,
@@ -26,7 +28,7 @@ export function EmergencyClinicalDataDetailDrawer({
 }) {
   const { t, language } = useI18n();
   const { roles } = useFacilityAndRoles();
-  const locale = language === "en" ? "en" : "fr";
+  const locale = resolveProductUiLanguageOrDefault(language);
 
   const card = entry ? getClinicalDocumentationCardById(entry.cardId) : null;
 

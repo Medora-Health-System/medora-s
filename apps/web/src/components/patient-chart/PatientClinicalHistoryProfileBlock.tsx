@@ -4,6 +4,7 @@ import React from "react";
 import type { PatientClinicalHistoryProfile } from "@/features/emergency/patientClinicalHistoryProfile";
 import { buildPatientClinicalHistorySummary } from "@/features/emergency/patientClinicalHistoryProfile";
 import { useI18n } from "@/lib/i18n";
+import { productUiBcp47Tag } from "@/i18n/config";
 
 const SECTION_LABEL: Record<string, string> = {
   allergies: "patientChartUi.clinicalHistorySectionAllergies",
@@ -15,7 +16,7 @@ const SECTION_LABEL: Record<string, string> = {
 
 function formatDate(iso: string | null | undefined, language: string): string {
   if (!iso) return "—";
-  return new Date(iso).toLocaleString(language === "fr" ? "fr-FR" : "en-US", {
+  return new Date(iso).toLocaleString(productUiBcp47Tag(language), {
     dateStyle: "medium",
     timeStyle: "short",
   });

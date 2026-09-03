@@ -27,6 +27,7 @@ import {
 } from "./clinicCareBoardRoutes";
 import { ClinicCareInlineRoomSelect } from "./ClinicCareInlineRoomSelect";
 import { clinicCareMetricToken, clinicCareStageToken, CLINIC_CARE_SHELL } from "./clinicCareTokens";
+import { resolveProductUiLanguageOrDefault, productUiBcp47Tag } from "@/i18n/config";
 
 type ClinicCareRow = {
   encounterId: string;
@@ -237,7 +238,7 @@ export function ClinicCareTrackboardView({
   mode?: "trackboard" | "todaysVisits";
 }) {
   const { t, language } = useI18n();
-  const locale = language === "en" ? "en-US" : "fr-FR";
+  const locale = productUiBcp47Tag(language);
   const { facilityId, roles, ready, facilityTimeZone, userId } = useFacilityAndRoles();
   const profession = resolveProfessionGroup({ roleCodes: roles });
   const isProvider = roles.includes("PROVIDER") || roles.includes("ADMIN");
@@ -341,7 +342,7 @@ export function ClinicCareTrackboardView({
     for (const row of data?.rows ?? []) {
       if (row.providerName) set.add(row.providerName);
     }
-    return [...set].sort((a, b) => a.localeCompare(b, language === "en" ? "en" : "fr"));
+    return [...set].sort((a, b) => a.localeCompare(b, resolveProductUiLanguageOrDefault(language)));
   }, [data?.rows, language]);
 
   const roomOptions = useMemo(() => {
@@ -349,7 +350,7 @@ export function ClinicCareTrackboardView({
     for (const row of data?.rows ?? []) {
       if (row.roomLabel) set.add(row.roomLabel);
     }
-    return [...set].sort((a, b) => a.localeCompare(b, language === "en" ? "en" : "fr"));
+    return [...set].sort((a, b) => a.localeCompare(b, resolveProductUiLanguageOrDefault(language)));
   }, [data?.rows, language]);
 
   const filteredRows = useMemo(() => {
@@ -381,7 +382,7 @@ export function ClinicCareTrackboardView({
     });
 
     list = [...list].sort((a, b) => {
-      if (sortKey === "patient") return a.patientName.localeCompare(b.patientName, language === "en" ? "en" : "fr");
+      if (sortKey === "patient") return a.patientName.localeCompare(b.patientName, resolveProductUiLanguageOrDefault(language));
       if (sortKey === "status") return a.stageId.localeCompare(b.stageId);
       return a.createdAt.localeCompare(b.createdAt);
     });

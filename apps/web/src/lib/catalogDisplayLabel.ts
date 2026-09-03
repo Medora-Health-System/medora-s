@@ -1,4 +1,4 @@
-import type { SupportedLanguage } from "@/i18n/config";
+import { catalogLabelStrategyForProductUi, type SupportedLanguage } from "@/i18n/config";
 import type { CatalogSearchItem, CatalogSearchItemType } from "@/lib/catalogSearchTypes";
 import { formatCatalogMedicationSubtitleForLocale } from "@/lib/localizedMedicationDisplay";
 import { pickStrictEnCatalogPrimaryLabel } from "@medora/shared";
@@ -13,14 +13,17 @@ const CATALOG_SEARCH_EN_FALLBACK_KEYS: Record<CatalogSearchItemType, string> = {
 /**
  * Primary display line for catalog search rows (lab / imaging / medication).
  * Phase C EN: `displayNameEn` → `code` → typed fallback — never `displayNameFr` or legacy `name`.
- * FR: `displayNameFr` → `displayNameEn` → `name` / `code`.
+ * FR: `displayNameFr` → `displayNameEn` → `name` / `code` (legacy bilingual storage; EN/FR only).
+ * Callers must pass a resolved ProductUiLanguage. Future unsupported locales must use
+ * `adaptProductUiToCatalogLabelStrategy` / `pickLegacyBilingualStoredPair` — never cast `es` here.
  */
 export function getCatalogSearchItemDisplayLabel(
   item: CatalogSearchItem,
   language: SupportedLanguage,
   t?: (key: string) => string
 ): string {
-  if (language === "fr") {
+  const strategy = catalogLabelStrategyForProductUi(language);
+  if (strategy === "fr_preferred") {
     return (
       item.displayNameFr?.trim() ||
       item.displayNameEn?.trim() ||

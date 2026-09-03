@@ -126,6 +126,7 @@ import {
 } from "./ClinicalDocumentationScoreScreenCompletionForm";
 import { ClinicalDocumentationWitnessSearchModal } from "./ClinicalDocumentationWitnessSearchModal";
 import { resolveClinicalDataAccessMode } from "@/features/emergency/edClinicalDataWorkspaceGovernance";
+import { resolveProductUiLanguageOrDefault, productUiBcp47Tag } from "@/i18n/config";
 
 const chipBase: React.CSSProperties = {
   padding: "6px 12px",
@@ -224,7 +225,7 @@ export function ClinicalDocumentationHub({
 }) {
   const { t, language } = useI18n();
   const { userId, roles } = useFacilityAndRoles();
-  const locale = language === "en" ? "en" : "fr";
+  const locale = resolveProductUiLanguageOrDefault(language);
   const isGlobalReviewMode = accessMode === "review";
 
   const cardAccessMode = useCallback(
@@ -358,7 +359,7 @@ export function ClinicalDocumentationHub({
 
   const formatWhen = (iso: string) => {
     try {
-      return new Date(iso).toLocaleString(locale === "fr" ? "fr-FR" : "en-US", {
+      return new Date(iso).toLocaleString(productUiBcp47Tag(locale), {
         dateStyle: "short",
         timeStyle: "short",
       });

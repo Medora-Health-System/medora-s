@@ -14,6 +14,7 @@ import {
   sectionHasCarriedForwardFields,
 } from "@/features/emergency/triageCarryForward";
 import { useI18n } from "@/lib/i18n";
+import { productUiBcp47Tag } from "@/i18n/config";
 
 const STATUS_LABEL_KEY: Record<
   TriageCarryForwardReviewStatus,
@@ -93,7 +94,7 @@ export function TriageCarryForwardBanner({
   const summary = buildTriageCarryForwardSummary(meta);
   const sourceDate =
     summary.sourceEncounterDate != null
-      ? new Date(summary.sourceEncounterDate).toLocaleString(language === "fr" ? "fr-FR" : "en-US", {
+      ? new Date(summary.sourceEncounterDate).toLocaleString(productUiBcp47Tag(language), {
           dateStyle: "medium",
           timeStyle: "short",
         })

@@ -131,8 +131,7 @@ export function resolveCarePlanTemplateI18nKey(
 /**
  * Resolve persisted or template-descriptor text to clinician-readable narrative.
  * Unknown strings pass through unchanged (clinician-authored content).
- * Recognized exact keys try the requested locale, then the alternate locale.
- * Never invent translations for free-text clinician narrative.
+ * Recognized keys resolve in the requested locale only — never the other language.
  */
 export function resolveCarePlanClinicalNarrative(
   value: string | null | undefined,
@@ -142,9 +141,7 @@ export function resolveCarePlanClinicalNarrative(
   if (!raw) return "";
   if (!isCanonicalCarePlanTemplateI18nKey(raw)) return raw;
   const primary = resolveCarePlanTemplateI18nKey(raw, locale);
-  if (primary) return primary;
-  const alternate = resolveCarePlanTemplateI18nKey(raw, locale === "en" ? "fr" : "en");
-  return alternate ?? raw;
+  return primary ?? raw;
 }
 
 /**

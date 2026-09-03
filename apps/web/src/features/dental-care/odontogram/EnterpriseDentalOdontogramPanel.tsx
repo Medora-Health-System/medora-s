@@ -22,6 +22,7 @@ import {
 } from "@medora/shared";
 import { apiFetch } from "@/lib/apiClient";
 import { useI18n } from "@/lib/i18n";
+import { resolveProductUiLanguageOrDefault } from "@/i18n/config";
 import { normalizeUserFacingError } from "@/lib/userFacingError";
 import { MEDORA_CARD_SHELL } from "@/components/medora-card/medoraCardTokens";
 import { DentalToothSvg } from "./DentalToothSvg";
@@ -75,7 +76,7 @@ export function EnterpriseDentalOdontogramPanel({ encounterId, facilityId, locke
       setDentitionType(res.dentitionType ?? "PERMANENT");
       setNumberingSystem(res.numberingSystem ?? "FDI");
     } catch (e) {
-      setError(normalizeUserFacingError(e instanceof Error ? e.message : null, language === "fr" ? "fr" : "en"));
+      setError(normalizeUserFacingError(e instanceof Error ? e.message : null, resolveProductUiLanguageOrDefault(language)));
       setData(null);
     } finally {
       setLoading(false);
@@ -184,7 +185,7 @@ export function EnterpriseDentalOdontogramPanel({ encounterId, facilityId, locke
       setDentitionType(nextD);
       setNumberingSystem(nextN);
     } catch (e) {
-      setError(normalizeUserFacingError(e instanceof Error ? e.message : null, language === "fr" ? "fr" : "en"));
+      setError(normalizeUserFacingError(e instanceof Error ? e.message : null, resolveProductUiLanguageOrDefault(language)));
     }
   };
 
@@ -224,7 +225,7 @@ export function EnterpriseDentalOdontogramPanel({ encounterId, facilityId, locke
       setNotes("");
       await load();
     } catch (e) {
-      setError(normalizeUserFacingError(e instanceof Error ? e.message : null, language === "fr" ? "fr" : "en"));
+      setError(normalizeUserFacingError(e instanceof Error ? e.message : null, resolveProductUiLanguageOrDefault(language)));
     } finally {
       setSaving(false);
     }
@@ -241,7 +242,7 @@ export function EnterpriseDentalOdontogramPanel({ encounterId, facilityId, locke
       });
       await load();
     } catch (e) {
-      setError(normalizeUserFacingError(e instanceof Error ? e.message : null, language === "fr" ? "fr" : "en"));
+      setError(normalizeUserFacingError(e instanceof Error ? e.message : null, resolveProductUiLanguageOrDefault(language)));
     } finally {
       setSaving(false);
     }

@@ -1,9 +1,30 @@
-export const supportedLanguages = ["fr", "en"] as const;
+/**
+ * Clinical product UI locale surface.
+ * Canonical definitions live in `@medora/shared` (`productUiLocale`).
+ * MEDUI.ES.1B keeps the supported set as French + English only.
+ */
 
-export type SupportedLanguage = (typeof supportedLanguages)[number];
-
-/** Unauthenticated fallback when no stored/facility/browser preference exists (MEDUI.2C). */
-export const defaultLanguage: SupportedLanguage = "en";
-
-/** Explicit locale for non-UI modules without `useI18n` context (Phase 19U.1). Prefer passing UI `language` in components. */
-export const productDefaultLocale: SupportedLanguage = "en";
+export {
+  FACILITY_DEFAULT_LANGUAGE,
+  PRODUCT_DEFAULT_UI_LANGUAGE,
+  PRODUCT_DEFAULT_UI_LANGUAGE as defaultLanguage,
+  PRODUCT_DEFAULT_UI_LANGUAGE as productDefaultLocale,
+  PRODUCT_UI_LANGUAGES as supportedLanguages,
+  PRODUCT_UI_LOCALE_REGISTRY,
+  catalogLabelStrategyForProductUi,
+  adaptProductUiToBilingualStorageLocale,
+  adaptProductUiToCatalogLabelStrategy,
+  adaptProductUiToMedicationClinicalDisplayLocale,
+  pickLegacyBilingualStoredPair,
+  LEGACY_BILINGUAL_STORAGE_FAMILIES,
+  getProductUiLocaleDefinition,
+  isProductUiLanguage,
+  medicationClinicalDisplayLocaleForProductUi,
+  parseProductUiLanguage,
+  productUiBcp47Tag,
+  productUiLanguageSelectOptions,
+  resolveProductUiLanguageFromBrowserCandidates,
+  resolveProductUiLanguageOrDefault,
+  type ProductUiLanguage as SupportedLanguage,
+  type ProductUiLocaleDefinition,
+} from "@medora/shared";

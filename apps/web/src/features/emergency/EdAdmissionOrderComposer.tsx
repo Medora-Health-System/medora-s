@@ -32,6 +32,8 @@ import { normalizeUserFacingError } from "@/lib/userFacingError";
 import { useI18n } from "@/lib/i18n";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import { useEncounterDiagnosisRows } from "./useEncounterDiagnosisRows";
+import { resolveProductUiLanguageOrDefault, type SupportedLanguage } from "@/i18n/config";
+
 import {
   ED_DISPOSITION_BOARD_COLORS,
   edBadgeCompleteStyle,
@@ -108,7 +110,7 @@ export function EdAdmissionOrderComposer({
 }) {
   const { t, language } = useI18n();
   const { roles } = useFacilityAndRoles();
-  const locale = language === "en" ? "en" : "fr";
+  const locale = resolveProductUiLanguageOrDefault(language);
   const canActivate = canActivateAdmissionComposerOrders({ canPrescribe, encounterOpen });
   const locked = Boolean(disabled) || !encounterOpen;
   const catalog = ED_HOSP_1E_COMPOSER_SUGGESTIONS;
@@ -755,7 +757,7 @@ function ExistingGroup({
 }: {
   title: string;
   orders: EdHosp1dExistingOrderLite[];
-  locale: "fr" | "en";
+  locale: SupportedLanguage
 }) {
   if (orders.length === 0) return null;
   return (
