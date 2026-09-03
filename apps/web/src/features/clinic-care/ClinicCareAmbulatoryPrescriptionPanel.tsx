@@ -14,6 +14,7 @@ import { apiFetch } from "@/lib/apiClient";
 import { useI18n } from "@/lib/i18n";
 import { MEDORA_CARD_SHELL } from "@/components/medora-card/medoraCardTokens";
 import { resolveProductUiLanguageOrDefault } from "@/i18n/config";
+import { getOrderItemDisplayLabelFromLocale } from "@/lib/orderItemDisplayFr";
 
 import {
   D4C5B3_RX_LIST_FILTERS,
@@ -67,25 +68,7 @@ function itemLabel(
   it: NonNullable<MedOrderRow["items"]>[number],
   language: string
 ): string {
-  if (language === "fr") {
-    return (
-      (it.displayLabelFr ?? "").trim() ||
-      (it.displayLabel ?? "").trim() ||
-      (it.freeText ?? "").trim() ||
-      (it.catalogMedication?.displayNameFr ?? "").trim() ||
-      (it.catalogItem?.name ?? "").trim() ||
-      (it.catalogMedication?.name ?? "").trim() ||
-      ""
-    );
-  }
-  return (
-    (it.displayLabelEn ?? "").trim() ||
-    (it.displayLabel ?? "").trim() ||
-    (it.freeText ?? "").trim() ||
-    (it.catalogItem?.name ?? "").trim() ||
-    (it.catalogMedication?.name ?? "").trim() ||
-    ""
-  );
+  return getOrderItemDisplayLabelFromLocale(it, resolveProductUiLanguageOrDefault(language));
 }
 
 export function ClinicCareAmbulatoryPrescriptionPanel({

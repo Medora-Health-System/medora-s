@@ -1,4 +1,4 @@
-import { adaptProductUiToCatalogLabelStrategy, type SupportedLanguage } from "@/i18n/config";
+import { adaptProductUiToCatalogLabelStrategy, parseProductUiLanguage, type SupportedLanguage } from "@/i18n/config";
 import type { CatalogSearchItem, CatalogSearchItemType } from "@/lib/catalogSearchTypes";
 import { formatCatalogMedicationSubtitleForLocale } from "@/lib/localizedMedicationDisplay";
 import { pickStrictEnCatalogPrimaryLabel } from "@medora/shared";
@@ -42,6 +42,32 @@ export function getCatalogSearchItemDisplayLabel(
 }
 
 /**
+ * Secondary catalog line (lab category, imaging meta, medication subtitle).
+ * Active locale only — never uses the mixed/legacy `secondaryText` FR-first blob.
+ */
+export function getCatalogSearchItemSecondaryLine(
+  item: CatalogSearchItem,
+  language: SupportedLanguage | string
+): string {
+  const parsed = parseProductUiLanguage(language);
+  if (item.type === "MEDICATION") {
+    if (parsed === "en" || parsed === "fr") {
+      return formatCatalogMedicationSubtitleForLocale(item, parsed);
+    }
+    if (language != null && String(language).trim() !== "") {
+      return item.code?.trim() || "";
+    }
+    return formatCatalogMedicationSubtitleForLocale(item, "en");
+  }
+  if (parsed === "fr") return item.secondaryTextFr?.trim() || "";
+  if (parsed === "en") return item.secondaryTextEn?.trim() || "";
+  if (language != null && String(language).trim() !== "") {
+    return item.code?.trim() || "";
+  }
+  return item.secondaryTextEn?.trim() || "";
+}
+
+/**
  * Full single-line label (primary + subtitle), for chips, controlled inputs, and order modal lines.
  * Medication rows normalize catalog metadata by locale (Phase 19U.2).
  */
@@ -51,9 +77,6 @@ export function catalogSearchItemFullDisplayLine(
   t?: (key: string) => string
 ): string {
   const head = getCatalogSearchItemDisplayLabel(item, language, t);
-  const tail =
-    item.type === "MEDICATION"
-      ? formatCatalogMedicationSubtitleForLocale(item, language)
-      : item.secondaryText?.trim() ?? "";
+  const tail = getCatalogSearchItemSecondaryLine(item, language);
   return [head, tail].filter(Boolean).join(" · ") || item.code;
 }

@@ -1,4 +1,4 @@
-import type { SupportedLanguage } from "@/i18n/config";
+import { parseProductUiLanguage, type SupportedLanguage } from "@/i18n/config";
 import type { ChartSummaryOrderItem } from "@/lib/chartApi";
 import {
   isIncompleteMedicationOrderDisplayLabel,
@@ -23,7 +23,7 @@ function chartOrderTypeFallbackEn(catalogItemType: string, t: (key: string) => s
  */
 export function chartSummaryOrderItemLineLabel(
   it: ChartSummaryOrderItem,
-  language: SupportedLanguage,
+  language: SupportedLanguage | string,
   t?: (key: string) => string
 ): string {
   const cat = String(it.catalogItemType ?? "CARE");
@@ -33,13 +33,14 @@ export function chartSummaryOrderItemLineLabel(
           catalogItemType: cat,
           strengthCandidates: [
             (it.displayLabelEn ?? "").trim(),
-            (it.displayLabelFr ?? it.displayLabel ?? "").trim(),
+            (it.displayLabelFr ?? "").trim(),
           ],
         }
       : { catalogItemType: cat };
 
-  if (language === "fr") {
-    const fr = (it.displayLabelFr ?? it.displayLabel)?.trim();
+  const parsed = parseProductUiLanguage(language);
+  if (parsed === "fr") {
+    const fr = it.displayLabelFr?.trim();
     if (
       fr &&
       !isIncompleteMedicationOrderDisplayLabel(fr, incompleteOpts) &&
@@ -47,14 +48,9 @@ export function chartSummaryOrderItemLineLabel(
     ) {
       return fr;
     }
-    const en = (it.displayLabelEn ?? "").trim();
-    if (
-      en &&
-      !isIncompleteMedicationOrderDisplayLabel(en, incompleteOpts) &&
-      !isInvalidTechnicalOrderDisplayLabel(en, cat)
-    ) {
-      return en;
-    }
+    return "—";
+  }
+  if (parsed !== "en" && language != null && String(language).trim() !== "") {
     return "—";
   }
   const enOnly = it.displayLabelEn?.trim();
@@ -71,11 +67,11 @@ export function chartSummaryOrderItemLineLabel(
 
 export function chartSummaryAttachmentSummary(
   result: ChartSummaryOrderItem["result"],
-  language: SupportedLanguage
+  language: SupportedLanguage | string
 ): string | null {
   if (!result) return null;
-  if (language === "fr") {
-    return result.attachmentSummaryFr?.trim() || null;
-  }
-  return result.attachmentSummaryEn?.trim() || null;
+  const parsed = parseProductUiLanguage(language);
+  if (parsed === "fr") return result.attachmentSummaryFr?.trim() || null;
+  if (parsed === "en") return result.attachmentSummaryEn?.trim() || null;
+  return null;
 }

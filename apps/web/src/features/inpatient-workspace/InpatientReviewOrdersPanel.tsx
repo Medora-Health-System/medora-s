@@ -13,7 +13,7 @@ import {
   inpatientFacilityMedicationOrderMode,
 } from "@medora/shared";
 import { useI18n } from "@/lib/i18n";
-import { resolveProductUiLanguageOrDefault } from "@/i18n/config";
+import { parseProductUiLanguage, resolveProductUiLanguageOrDefault } from "@/i18n/config";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import { fetchOrderEventsForEncounter, fetchOrdersForEncounter } from "@/lib/clinicalWorklistApi";
 import { getOrderItemDisplayLabelForLanguage } from "@/lib/orderItemDisplayFr";
@@ -194,7 +194,10 @@ export function InpatientReviewOrdersPanel({
     if (found) {
       return getOrderItemDisplayLabelForLanguage(found.item as never, language, t);
     }
-    return language === "fr" ? line.displayLabelFr ?? line.manualLabel ?? line.orderItemId : line.displayLabelEn ?? line.manualLabel ?? line.orderItemId;
+    const parsed = parseProductUiLanguage(language);
+    if (parsed === "fr") return line.displayLabelFr?.trim() || line.orderItemId;
+    if (parsed === "en") return line.displayLabelEn?.trim() || line.orderItemId;
+    return line.orderItemId;
   };
 
   async function runLifecycle(line: InpatientReviewOrderLine, action: "acknowledge" | "start" | "complete") {

@@ -48,12 +48,15 @@ describe("catalog-search.mapper dual-read", () => {
     expect(item.secondaryText).toContain("Radiographie");
     expect(item.secondaryText).toContain("Genou");
     expect(item.secondaryText).not.toContain("GENOU");
+    expect(item.secondaryTextFr).toContain("Radiographie");
+    expect(item.secondaryTextEn).not.toContain("Radiographie");
+    expect(item.secondaryTextEn).toContain("XR");
   });
 
   it("falls back to legacy imaging meta when read flag on but classifier missing", () => {
     process.env.TERMINOLOGY_READ_CLASSIFIER = "true";
     expect(
-      buildImagingClassifierMetaLine({ modality: "CT", bodyRegion: "THORAX", modalityClassifier: null, bodyRegionClassifier: null })
+      buildImagingClassifierMetaLine({ modality: "CT", bodyRegion: "THORAX", modalityClassifier: null, bodyRegionClassifier: null }, "en")
     ).toBe("CT · THORAX");
   });
 
@@ -71,5 +74,7 @@ describe("catalog-search.mapper dual-read", () => {
       labCategoryClassifier: { labels: [{ locale: "fr", displayName: "Hématologie" }] },
     });
     expect(item.secondaryText).toContain("Hématologie");
+    expect(item.secondaryTextFr).toContain("Hématologie");
+    expect(item.secondaryTextEn).not.toContain("Hématologie");
   });
 });

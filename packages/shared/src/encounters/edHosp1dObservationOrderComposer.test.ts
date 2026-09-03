@@ -379,6 +379,27 @@ describe("ED.HOSP.1D medication / LAB label / status / store", () => {
     expect(existingOrderDisplayLabel(parsed[0]!, "fr")).toBe("LAB");
   });
 
+  it("persist/reload does not use the other locale as FR or EN chrome", () => {
+    const parsed = parseEncounterOrdersForComposer([
+      {
+        id: "lab-en-only",
+        type: "LAB",
+        status: "PLACED",
+        items: [
+          {
+            catalogItemType: "LAB_TEST",
+            displayLabelEn: "Complete Blood Count",
+            catalogLabTest: { code: "CBC", displayNameEn: "CBC", displayNameFr: "" },
+          },
+        ],
+      },
+    ]);
+    expect(existingOrderDisplayLabel(parsed[0]!, "fr")).toBe("CBC");
+    expect(existingOrderDisplayLabel(parsed[0]!, "fr")).not.toBe("Complete Blood Count");
+    expect(existingOrderDisplayLabel(parsed[0]!, "es")).toBe("CBC");
+    expect(existingOrderDisplayLabel(parsed[0]!, "es")).not.toBe("Complete Blood Count");
+  });
+
   it("does not auto-order, use inpatient template apply, EncounterType.OBSERVATION, or a private store", () => {
     expect(observationComposerSuggestionsCreateZeroOrders()).toBe(true);
     expect(composerDoesNotCreateEncounterTypeObservation()).toBe(true);
