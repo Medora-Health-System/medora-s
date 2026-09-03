@@ -113,7 +113,8 @@ export function getFrenchDiagnosisDisplayLabel(code: string, englishLabel: strin
   if (mapped) return mapped;
   const trimmedCode = code.trim();
   if (trimmedCode) return trimmedCode;
-  return englishLabel.trim();
+  void englishLabel;
+  return "UNLOCALIZED_SOURCE";
 }
 
 export function getLocalizedDiagnosisDisplayLabel(

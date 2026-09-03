@@ -1,4 +1,4 @@
-import { catalogLabelStrategyForProductUi, type SupportedLanguage } from "@/i18n/config";
+import { adaptProductUiToCatalogLabelStrategy, catalogLabelStrategyForProductUi, type SupportedLanguage } from "@/i18n/config";
 import { i18nMessage } from "@/lib/i18nMessagesLookup";
 import { formatCatalogMedicationOrderDetailLine } from "@/lib/localizedMedicationDisplay";
 import {
@@ -110,6 +110,11 @@ function orderItemDisplayLabelFr(item: {
   const fromCatalog = catalogDisplayLabelFr(item, resolvedType);
   if (fromCatalog) return fromCatalog;
 
+  const catalogBacked = Boolean(item.catalogLabTest || item.catalogImagingStudy || item.catalogMedication);
+  if (catalogBacked) {
+    return typeFallbackFr(resolvedType);
+  }
+
   const man = item.manualLabel?.trim();
   if (man) {
     const sec = item.manualSecondaryText?.trim();
@@ -156,10 +161,20 @@ export function getOrderItemDisplayLabelForLanguage(
     strength?: string | null;
     notes?: string | null;
   },
-  language: SupportedLanguage,
+  language: SupportedLanguage | string,
   t: (key: string) => string
 ): string {
-  if (catalogLabelStrategyForProductUi(language) === "fr_preferred") return orderItemDisplayLabelFr(item);
+  const strategy = adaptProductUiToCatalogLabelStrategy(language);
+  if (!strategy) {
+    return (
+      item.catalogLabTest?.code?.trim() ||
+      item.catalogImagingStudy?.code?.trim() ||
+      item.catalogMedication?.code?.trim() ||
+      item.enterpriseProcedureId?.trim() ||
+      "UNLOCALIZED_SOURCE"
+    );
+  }
+  if (strategy === "fr_preferred") return orderItemDisplayLabelFr(item);
   const resolvedType = resolveCatalogItemType(item);
   const catType = String(item.catalogItemType ?? resolvedType ?? "CARE");
   if (resolvedType === "CARE" && item.enterpriseProcedureId?.trim() === OXYGEN_THERAPY_PROCEDURE_CODE) {
@@ -197,6 +212,10 @@ export function getOrderItemDisplayLabelForLanguage(
   }
   const fromCatalog = catalogDisplayLabelEn(item, resolvedType, catType);
   if (fromCatalog) return fromCatalog;
+  const catalogBacked = Boolean(item.catalogLabTest || item.catalogImagingStudy || item.catalogMedication);
+  if (catalogBacked) {
+    return typeFallbackEn(resolvedType, t);
+  }
   const man = item.manualLabel?.trim();
   if (man && !isInvalidTechnicalOrderDisplayLabel(man, catType)) {
     const sec = item.manualSecondaryText?.trim();

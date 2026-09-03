@@ -99,7 +99,7 @@ export class ProcedureCatalogService {
         code: row.code,
         type: "CARE_PROCEDURE" as const,
         displayNameFr: row.displayNameFr?.trim() || "",
-        displayNameEn: row.displayNameEn?.trim() || row.name,
+        displayNameEn: row.displayNameEn?.trim() || "",
         name: row.name,
         searchText: row.searchText ?? undefined,
         metadata: {

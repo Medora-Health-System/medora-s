@@ -16,6 +16,8 @@ export {
   adaptProductUiToCatalogLabelStrategy,
   adaptProductUiToMedicationClinicalDisplayLocale,
   pickLegacyBilingualStoredPair,
+  pickCatalogDisplayLabelForProductUi,
+  UNLOCALIZED_CATALOG_SOURCE,
   LEGACY_BILINGUAL_STORAGE_FAMILIES,
   getProductUiLocaleDefinition,
   isProductUiLanguage,

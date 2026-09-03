@@ -4,6 +4,8 @@
  * Do not reuse ENTERPRISE_PROCEDURE_CATALOG — that governs active CARE order lines (MEDPROC).
  */
 
+import { pickCatalogDisplayLabelForProductUi } from "../i18n/productUiLocale.js";
+
 export const SURGICAL_HISTORY_CATEGORIES = [
   "GENERAL",
   "GYN",
@@ -138,9 +140,13 @@ export function normalizeSurgicalHistorySearchText(text: string): string {
 
 export function resolveSurgicalHistoryDisplayName(
   entry: SurgicalHistoryCatalogEntry,
-  locale: SurgicalHistorySearchLocale
+  locale: SurgicalHistorySearchLocale | string
 ): string {
-  return locale === "en" ? entry.displayNameEn : entry.displayNameFr;
+  return pickCatalogDisplayLabelForProductUi(locale, {
+    displayNameEn: entry.displayNameEn,
+    displayNameFr: entry.displayNameFr,
+    code: entry.id,
+  });
 }
 
 export function surgicalHistoryById(id: string): SurgicalHistoryCatalogEntry | undefined {

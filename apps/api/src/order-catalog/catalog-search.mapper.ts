@@ -45,26 +45,22 @@ export function mapMedicationToCatalogSearchItem(
   const matchedBrand = matchedBrandRaw
     ? matchedBrandRaw.replace(/\w+/g, (w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
     : "";
-  const brandPrimary = matchedBrand
-    ? genericName && genericName.toLowerCase() !== matchedBrand.toLowerCase()
-      ? `${matchedBrand} (${genericName})`
-      : matchedBrand
-    : null;
+  const aliasSet = [...(opts?.commonAliases ?? [])];
+  if (matchedBrand && !aliasSet.some((a) => a.toLowerCase() === matchedBrand.toLowerCase())) {
+    aliasSet.unshift(matchedBrand);
+  }
 
-  const displayNameFr =
-    brandPrimary || (m.displayNameFr ?? m.name ?? "").trim() || m.name;
-  const displayNameEn = brandPrimary || m.displayNameEn?.trim() || null;
+  const displayNameFr = (m.displayNameFr ?? "").trim();
+  const displayNameEn = m.displayNameEn?.trim() || null;
   const localizedSecondary = buildMedicationCatalogSecondaryTexts({
     strength: m.strength,
     dosageForm: m.dosageForm,
     route: m.route,
     therapeuticClass: m.therapeuticClass,
   });
-  const secondaryText =
-    localizedSecondary.secondaryTextFr ||
-    localizedSecondary.secondaryTextEn ||
-    genericName ||
-    undefined;
+  const secondaryTextFr = localizedSecondary.secondaryTextFr || undefined;
+  const secondaryTextEn = localizedSecondary.secondaryTextEn || undefined;
+  const secondaryText = secondaryTextFr || undefined;
 
   return {
     id: m.id,
@@ -72,10 +68,10 @@ export function mapMedicationToCatalogSearchItem(
     type: "MEDICATION",
     displayNameFr,
     displayNameEn,
-    name: brandPrimary || m.name?.trim() || undefined,
+    name: m.name?.trim() || undefined,
     secondaryText,
-    secondaryTextFr: localizedSecondary.secondaryTextFr || undefined,
-    secondaryTextEn: localizedSecondary.secondaryTextEn || undefined,
+    secondaryTextFr,
+    secondaryTextEn,
     searchText: searchTextTruncated,
     isFavorite: m.isFavorite,
     isEssential: m.isEssential,
@@ -93,7 +89,7 @@ export function mapMedicationToCatalogSearchItem(
       therapeuticClass: m.therapeuticClass?.trim() || undefined,
       administrationType: m.administrationType?.trim() || undefined,
       billingClass: m.billingClass?.trim() || undefined,
-      commonAliases: opts?.commonAliases,
+      commonAliases: aliasSet.length ? aliasSet : undefined,
     },
   };
 }
@@ -103,16 +99,18 @@ export function mapLabRowToCatalogSearchItem(
   searchTextTruncated?: string | undefined
 ): CatalogSearchItemDto {
   const namePrimary = m.name.trim();
-  const displayNameFr = (m.displayNameFr ?? m.name).trim();
-  let category: string | undefined;
+  const displayNameFr = (m.displayNameFr ?? "").trim();
+  let legacyCategory: string | undefined;
   if (m.description?.startsWith("Catégorie : ")) {
-    category = m.description.slice("Catégorie : ".length).trim() || undefined;
+    legacyCategory = m.description.slice("Catégorie : ".length).trim() || undefined;
   }
-  category = resolveLabCategoryDisplay(m, category, "fr");
-  const secondaryText = [m.code, category].filter(Boolean).join(" · ") || undefined;
+  const categoryFr = resolveLabCategoryDisplay(m, legacyCategory, "fr");
+  const categoryEn = resolveLabCategoryDisplay(m, legacyCategory, "en");
+  const secondaryTextFr = [m.code, categoryFr].filter(Boolean).join(" · ") || undefined;
+  const secondaryTextEn = [m.code, categoryEn].filter(Boolean).join(" · ") || undefined;
   const billing = m.billingCodeDefault?.trim() || undefined;
   const meta: { category?: string; billingCodeDefault?: string } = {
-    ...(category ? { category } : {}),
+    ...(legacyCategory ? { category: legacyCategory } : {}),
     ...(billing ? { billingCodeDefault: billing } : {}),
   };
 
@@ -123,7 +121,9 @@ export function mapLabRowToCatalogSearchItem(
     displayNameFr,
     displayNameEn: m.displayNameEn?.trim() || null,
     name: namePrimary,
-    secondaryText,
+    secondaryText: secondaryTextFr,
+    secondaryTextFr,
+    secondaryTextEn,
     searchText: searchTextTruncated,
     metadata: Object.keys(meta).length ? meta : undefined,
   };
@@ -133,9 +133,11 @@ export function mapImagingRowToCatalogSearchItem(
   m: ImagingRow,
   searchTextTruncated?: string | undefined
 ): CatalogSearchItemDto {
-  const displayNameFr = (m.displayNameFr ?? m.name).trim();
-  const metaLine = buildImagingClassifierMetaLine(m, "fr");
-  const secondaryText = [m.code, metaLine].filter(Boolean).join(" · ") || undefined;
+  const displayNameFr = (m.displayNameFr ?? "").trim();
+  const metaLineFr = buildImagingClassifierMetaLine(m, "fr");
+  const metaLineEn = buildImagingClassifierMetaLine(m, "en");
+  const secondaryTextFr = [m.code, metaLineFr].filter(Boolean).join(" · ") || undefined;
+  const secondaryTextEn = [m.code, metaLineEn].filter(Boolean).join(" · ") || undefined;
 
   return {
     id: m.id,
@@ -144,7 +146,9 @@ export function mapImagingRowToCatalogSearchItem(
     displayNameFr,
     displayNameEn: m.displayNameEn?.trim() || null,
     name: m.name.trim() || undefined,
-    secondaryText,
+    secondaryText: secondaryTextFr,
+    secondaryTextFr,
+    secondaryTextEn,
     searchText: searchTextTruncated,
     metadata: {
       modality: m.modality ?? undefined,

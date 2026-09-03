@@ -104,7 +104,7 @@ import { newOrderLineId } from "./createOrderModal/types";
 import { resolveClinicalTimeZone } from "@/lib/clinicalTimeDisplay";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import { useI18n } from "@/lib/i18n";
-import { resolveProductUiLanguageOrDefault, productUiBcp47Tag, type SupportedLanguage } from "@/i18n/config";
+import { parseProductUiLanguage, pickCatalogDisplayLabelForProductUi, resolveProductUiLanguageOrDefault, productUiBcp47Tag, type SupportedLanguage } from "@/i18n/config";
 import { buildActiveCatalogDedupKeySetFromOrders } from "@/lib/encounterClinicalSafetyUi";
 import {
   createOrderLineToAdvancedMedicationSafetyLine,
@@ -454,10 +454,10 @@ export function CreateOrderModal({
         setCareApiMatches(
           items.map((item) => ({
             code: item.code,
-            displayNameEn: item.displayNameEn ?? item.name ?? item.code,
-            displayNameFr: item.displayNameFr ?? item.displayNameEn ?? item.name ?? item.code,
-            categoryLabelEn: item.metadata?.categoryLabelEn ?? item.metadata?.category ?? "",
-            categoryLabelFr: item.metadata?.categoryLabelFr ?? item.metadata?.category ?? "",
+            displayNameEn: item.displayNameEn ?? "",
+            displayNameFr: item.displayNameFr ?? "",
+            categoryLabelEn: item.metadata?.categoryLabelEn ?? "",
+            categoryLabelFr: item.metadata?.categoryLabelFr ?? "",
           }))
         );
       })
@@ -1341,7 +1341,11 @@ export function CreateOrderModal({
       return;
     }
     const locale = resolveProductUiLanguageOrDefault(language);
-    const label = locale === "fr" ? procedure.displayNameFr : procedure.displayNameEn;
+    const label = pickCatalogDisplayLabelForProductUi(locale, {
+      displayNameEn: procedure.displayNameEn,
+      displayNameFr: procedure.displayNameFr,
+      code: procedure.code,
+    });
     const quickKey =
       procedure.code === "ekg_ecg"
         ? ("ekg_workflow" as const)
@@ -2776,10 +2780,18 @@ export function CreateOrderModal({
                             }}
                           >
                             {careCatalogMatches.map((procedure) => {
-                              const locale = resolveProductUiLanguageOrDefault(language);
-                              const label = locale === "fr" ? procedure.displayNameFr : procedure.displayNameEn;
+                              const locale = parseProductUiLanguage(language);
+                              const label = pickCatalogDisplayLabelForProductUi(language, {
+                                displayNameEn: procedure.displayNameEn,
+                                displayNameFr: procedure.displayNameFr,
+                                code: procedure.code,
+                              });
                               const categoryLabel =
-                                locale === "fr" ? procedure.categoryLabelFr : procedure.categoryLabelEn;
+                                locale === "fr"
+                                  ? procedure.categoryLabelFr
+                                  : locale === "en"
+                                    ? procedure.categoryLabelEn
+                                    : "";
                               return (
                                 <li key={procedure.code} style={{ borderBottom: "1px solid #f1f5f9" }}>
                                   <button

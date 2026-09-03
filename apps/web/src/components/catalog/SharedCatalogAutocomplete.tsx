@@ -7,10 +7,9 @@ import {
   type CatalogSearchAdapter,
 } from "@/lib/catalogSearchAdapter";
 import { createOfflineAwareCatalogSearchAdapter } from "@/lib/offline/catalogSearchOfflineAdapter";
-import type { SupportedLanguage } from "@/i18n/config";
+import { parseProductUiLanguage, type SupportedLanguage } from "@/i18n/config";
 import type { CatalogSearchItem, CatalogType } from "@/lib/catalogSearchTypes";
-import { getCatalogSearchItemDisplayLabel } from "@/lib/catalogDisplayLabel";
-import { formatCatalogMedicationSubtitleForLocale } from "@/lib/localizedMedicationDisplay";
+import { getCatalogSearchItemDisplayLabel, getCatalogSearchItemSecondaryLine } from "@/lib/catalogDisplayLabel";
 import { MedicationCanonicalBadges } from "@/components/medication/MedicationCanonicalBadges";
 import { compactMedicationRoute, MK_EXPANSION_WAVE2_SPECIALTY_PACKS } from "@medora/shared";
 import { useI18n } from "@/lib/i18n";
@@ -357,7 +356,11 @@ export function SharedCatalogAutocomplete({
                 cursor: "pointer",
               }}
             >
-              {language === "fr" ? pack.titleFr : pack.titleEn}
+              {parseProductUiLanguage(language) === "fr"
+                ? pack.titleFr
+                : parseProductUiLanguage(language) === "en"
+                  ? pack.titleEn
+                  : pack.packKey}
             </button>
           ))}
         </div>
@@ -418,10 +421,7 @@ export function SharedCatalogAutocomplete({
                     )}
                   </div>
                   {(() => {
-                    const subtitleLine =
-                      item.type === "MEDICATION"
-                        ? formatCatalogMedicationSubtitleForLocale(item, language)
-                        : item.secondaryText;
+                    const subtitleLine = getCatalogSearchItemSecondaryLine(item, language);
                     return subtitleLine ? (
                     <div style={{ fontSize: 12, color: "#666", marginTop: 2 }}>
                       <HighlightMatch text={subtitleLine} needle={needle} />

@@ -26,7 +26,7 @@ import { mapOrderCreateApiError } from "@/components/orders/createOrderModal/map
 import { invalidateGetRequestDedupeForPath } from "@/lib/getRequestDedupe";
 import { useI18n } from "@/lib/i18n";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
-import { resolveProductUiLanguageOrDefault } from "@/i18n/config";
+import { parseProductUiLanguage, resolveProductUiLanguageOrDefault } from "@/i18n/config";
 
 import {
   ED_DISPOSITION_BOARD_COLORS,
@@ -150,8 +150,12 @@ export function EdObservationOrderComposer({
   const selectedSet = useMemo(() => new Set(selectedIds), [selectedIds]);
   const buckets = useMemo(() => hydrateLabImagingMedicationOrders(orders), [orders]);
 
-  const labelFor = (item: EdHosp1dComposerSuggestion) =>
-    locale === "en" ? item.labelEn : item.labelFr;
+  const labelFor = (item: EdHosp1dComposerSuggestion) => {
+    const parsed = parseProductUiLanguage(language);
+    if (parsed === "en") return item.labelEn;
+    if (parsed === "fr") return item.labelFr;
+    return item.id;
+  };
 
   const ctxValue = (value: string | null | undefined) =>
     value?.trim() ? value.trim() : t("edHosp1dObservationOrders.contextMissing");

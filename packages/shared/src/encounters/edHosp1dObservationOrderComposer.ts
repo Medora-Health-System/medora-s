@@ -19,6 +19,7 @@ import {
 } from "../observationOrderTemplate.js";
 import { canonicalCareProcedureByCode } from "../procedures/canonicalCareProcedureCatalog.js";
 import { isObservationHospitalDestinationIntent } from "./hospitalDestinationIntent.js";
+import { parseProductUiLanguage, pickCatalogDisplayLabelForProductUi, UNLOCALIZED_CATALOG_SOURCE } from "../i18n/productUiLocale.js";
 
 export const ED_HOSP_1D_COMPOSER_OUTCOME = "OBSERVATION" as const;
 
@@ -397,6 +398,7 @@ export type EdHosp1dExistingOrderCatalogNameLite = {
   displayNameFr?: string | null;
   displayNameEn?: string | null;
   name?: string | null;
+  code?: string | null;
 };
 
 export type EdHosp1dExistingOrderItemLite = {
@@ -728,8 +730,9 @@ function parseCatalogDisplayName(raw: unknown): EdHosp1dExistingOrderCatalogName
         : null;
   const displayNameFr = typeof rec.displayNameFr === "string" ? rec.displayNameFr : null;
   const displayNameEn = typeof rec.displayNameEn === "string" ? rec.displayNameEn : null;
-  if (!displayNameFr && !displayNameEn && !name) return null;
-  return { displayNameFr, displayNameEn, name };
+  const code = typeof rec.code === "string" ? rec.code : null;
+  if (!displayNameFr && !displayNameEn && !name && !code) return null;
+  return { displayNameFr, displayNameEn, name, code };
 }
 
 function firstNonEmptyLabel(...values: Array<string | null | undefined>): string | null {
@@ -742,35 +745,36 @@ function firstNonEmptyLabel(...values: Array<string | null | undefined>): string
 
 export function existingOrderDisplayLabel(
   order: EdHosp1dExistingOrderLite,
-  locale: ObservationOrderTemplateLabelLocale
+  locale: ObservationOrderTemplateLabelLocale | string
 ): string {
   const items = Array.isArray(order.items) ? order.items : [];
   const first = items.find((item) => itemIsActiveForHydration(item));
   const catalog = first?.catalogLabTest ?? first?.catalogImagingStudy ?? first?.catalogMedication;
-  const fromCanonicalProjection =
-    locale === "en"
-      ? firstNonEmptyLabel(
-          first?.displayLabelEn,
-          catalog?.displayNameEn,
-          first?.displayLabelFr,
-          catalog?.displayNameFr,
-          catalog?.name,
-          first?.manualLabel
-        )
-      : firstNonEmptyLabel(
-          first?.displayLabelFr,
-          catalog?.displayNameFr,
-          first?.displayLabelEn,
-          catalog?.displayNameEn,
-          catalog?.name,
-          first?.manualLabel
-        );
-  if (fromCanonicalProjection) return fromCanonicalProjection;
+  const catalogBacked = Boolean(catalog || first?.enterpriseProcedureId);
+  const picked = pickCatalogDisplayLabelForProductUi(locale, {
+    displayNameEn: firstNonEmptyLabel(first?.displayLabelEn, catalog?.displayNameEn),
+    displayNameFr: firstNonEmptyLabel(first?.displayLabelFr, catalog?.displayNameFr),
+    code: firstNonEmptyLabel(catalog?.code, first?.enterpriseProcedureId, String(order.type ?? "")),
+  });
+  if (picked && picked !== UNLOCALIZED_CATALOG_SOURCE) return picked;
   if (first?.enterpriseProcedureId) {
     const row = canonicalCareProcedureByCode(first.enterpriseProcedureId);
-    if (row) return locale === "en" ? row.displayNameEn : row.displayNameFr;
+    if (row) {
+      return pickCatalogDisplayLabelForProductUi(locale, {
+        displayNameEn: row.displayNameEn,
+        displayNameFr: row.displayNameFr,
+        code: first.enterpriseProcedureId,
+      });
+    }
   }
-  return String(order.type ?? (locale === "en" ? "Order" : "Ordre"));
+  if (!catalogBacked) {
+    const authored = first?.manualLabel?.trim();
+    if (authored) return authored;
+  }
+  const parsed = parseProductUiLanguage(locale);
+  if (parsed === "en") return String(order.type ?? "Order");
+  if (parsed === "fr") return String(order.type ?? "Ordre");
+  return String(order.type ?? UNLOCALIZED_CATALOG_SOURCE);
 }
 
 /** PLACED is the legal order status after create — not completed / administered / resulted. */

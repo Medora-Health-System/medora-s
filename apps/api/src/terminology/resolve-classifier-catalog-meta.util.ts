@@ -13,13 +13,11 @@ export type ClassifierWithLabels = {
 
 export function resolveClassifierDisplayName(
   classifier: ClassifierWithLabels | null | undefined,
-  locale: "fr" | "en" = "fr"
+  locale: "fr" | "en"
 ): string | null {
   if (!classifier?.labels?.length) return null;
   const direct = classifier.labels.find((l) => l.locale === locale)?.displayName?.trim();
-  if (direct) return direct;
-  const fallback = classifier.labels.find((l) => l.locale === "fr")?.displayName?.trim();
-  return fallback || null;
+  return direct || null;
 }
 
 export type { ImagingClassifierCodeTargets };
@@ -44,7 +42,7 @@ export function buildImagingClassifierMetaLine(
     modalityClassifier?: ClassifierWithLabels | null;
     bodyRegionClassifier?: ClassifierWithLabels | null;
   },
-  locale: "fr" | "en" = "fr"
+  locale: "fr" | "en"
 ): string {
   if (!isTerminologyReadClassifierEnabled()) {
     return [row.modality, row.bodyRegion].filter(Boolean).join(" · ");
@@ -63,7 +61,7 @@ export function resolveLabCategoryDisplay(
     labCategoryClassifier?: ClassifierWithLabels | null;
   },
   legacyCategory: string | undefined,
-  locale: "fr" | "en" = "fr"
+  locale: "fr" | "en"
 ): string | undefined {
   if (isTerminologyReadClassifierEnabled()) {
     const label = resolveClassifierDisplayName(row.labCategoryClassifier, locale);

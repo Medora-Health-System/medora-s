@@ -32,7 +32,7 @@ import { normalizeUserFacingError } from "@/lib/userFacingError";
 import { useI18n } from "@/lib/i18n";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import { useEncounterDiagnosisRows } from "./useEncounterDiagnosisRows";
-import { resolveProductUiLanguageOrDefault, type SupportedLanguage } from "@/i18n/config";
+import { parseProductUiLanguage, resolveProductUiLanguageOrDefault, type SupportedLanguage } from "@/i18n/config";
 
 import {
   ED_DISPOSITION_BOARD_COLORS,
@@ -160,7 +160,10 @@ export function EdAdmissionOrderComposer({
   const selectedCount = selectedCare.length + pendingDiagnoses.length;
 
   function labelFor(item: EdHosp1eComposerSuggestion): string {
-    return locale === "en" ? item.labelEn : item.labelFr;
+    const parsed = parseProductUiLanguage(language);
+    if (parsed === "en") return item.labelEn;
+    if (parsed === "fr") return item.labelFr;
+    return item.id;
   }
 
   function toggleCategory(id: EdHosp1eComposerCategoryId) {
