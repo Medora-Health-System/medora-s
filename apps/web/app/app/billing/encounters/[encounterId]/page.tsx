@@ -1090,8 +1090,8 @@ export default function BillingEncounterLedgerPage() {
           apiFetch(`/billing/encounters/${encounterId}/submissions`, { facilityId }),
           apiFetch(`/billing/clearinghouse/config-status`, { facilityId }),
           apiFetch(`/billing/clearinghouse/ops-status`, { facilityId }),
-          apiFetch(`/billing/encounters/${encounterId}/autobill-decisions`, { facilityId }),
-          apiFetch(`/billing/encounters/${encounterId}/manual-review-gate`, { facilityId }),
+          apiFetch(`/billing/encounters/${encounterId}/autobill-decisions?language=${encodeURIComponent(language)}`, { facilityId }),
+          apiFetch(`/billing/encounters/${encounterId}/manual-review-gate?language=${encodeURIComponent(language)}`, { facilityId }),
           apiFetch(`/billing/encounters/${encounterId}/review-decisions`, { facilityId }),
           fetchEncounterBillingExportReadiness(facilityId, encounterId),
           fetchEncounterBillingLedgerReadiness(facilityId, encounterId),
@@ -1338,7 +1338,7 @@ export default function BillingEncounterLedgerPage() {
       setCodingReviewLoading(false);
       setClaimAssemblyPreviewLoading(false);
     }
-  }, [encounterId, facilityId, ready, t]);
+  }, [encounterId, facilityId, ready, t, language]);
 
   const runExternalEncounterExport = useCallback(
     async (format: "json" | "csv") => {

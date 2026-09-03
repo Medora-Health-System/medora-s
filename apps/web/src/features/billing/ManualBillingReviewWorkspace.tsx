@@ -359,7 +359,7 @@ export function ManualBillingReviewWorkspace() {
     setLoading(true);
     setError(null);
     try {
-      const res = await apiFetch("/billing/manual-review", { facilityId });
+      const res = await apiFetch(`/billing/manual-review?language=${encodeURIComponent(language)}`, { facilityId });
       setRows(
         Array.isArray(res)
           ? (res as ManualReviewRow[]).map((r) => ({
@@ -374,7 +374,7 @@ export function ManualBillingReviewWorkspace() {
     } finally {
       setLoading(false);
     }
-  }, [facilityId, ready, t]);
+  }, [facilityId, ready, t, language]);
 
   useEffect(() => {
     void loadRows();

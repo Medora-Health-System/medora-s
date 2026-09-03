@@ -9,6 +9,8 @@ import {
   adaptProductUiToCatalogLabelStrategy,
   adaptProductUiToMedicationClinicalDisplayLocale,
   pickLegacyBilingualStoredPair,
+  pickCatalogDisplayLabelForProductUi,
+  UNLOCALIZED_CATALOG_SOURCE,
   LEGACY_BILINGUAL_STORAGE_FAMILIES,
   isProductUiLanguage,
   parseProductUiLanguage,
@@ -111,5 +113,32 @@ describe("product UI locale registry (MEDUI.ES.1B)", () => {
       value: "English label",
       source: "UNLOCALIZED_SOURCE",
     });
+  });
+
+  it("catalog display never substitutes EN↔FR; es uses code only", () => {
+    const fields = { displayNameEn: "Glucose", displayNameFr: "Glucose plasmatique", code: "GLU" };
+    expect(pickCatalogDisplayLabelForProductUi("en", { ...fields, displayNameEn: "" })).toBe("GLU");
+    expect(pickCatalogDisplayLabelForProductUi("en", { ...fields, displayNameEn: "" })).not.toBe(
+      "Glucose plasmatique"
+    );
+    expect(pickCatalogDisplayLabelForProductUi("fr", { ...fields, displayNameFr: "" })).toBe("GLU");
+    expect(pickCatalogDisplayLabelForProductUi("fr", { ...fields, displayNameFr: "" })).not.toBe("Glucose");
+    expect(pickCatalogDisplayLabelForProductUi("es", fields)).toBe("GLU");
+    expect(pickCatalogDisplayLabelForProductUi("es", fields)).not.toBe("Glucose");
+    expect(pickCatalogDisplayLabelForProductUi("es", fields)).not.toBe("Glucose plasmatique");
+    expect(pickCatalogDisplayLabelForProductUi(undefined, { displayNameFr: "Glucose plasmatique", code: "GLU" })).toBe(
+      "GLU"
+    );
+    expect(pickCatalogDisplayLabelForProductUi("en", { code: "" })).toBe(UNLOCALIZED_CATALOG_SOURCE);
+  });
+
+  it("blocks six-direction catalog display substitution including hypothetical es", () => {
+    const fields = { displayNameEn: "Glucose", displayNameFr: "Glucose plasmatique", code: "GLU" };
+    expect(pickCatalogDisplayLabelForProductUi("en", { ...fields, displayNameEn: "" })).not.toBe(fields.displayNameFr);
+    expect(pickCatalogDisplayLabelForProductUi("fr", { ...fields, displayNameFr: "" })).not.toBe(fields.displayNameEn);
+    expect(pickCatalogDisplayLabelForProductUi("es", fields)).not.toBe(fields.displayNameEn);
+    expect(pickCatalogDisplayLabelForProductUi("es", fields)).not.toBe(fields.displayNameFr);
+    expect(pickCatalogDisplayLabelForProductUi("es", { ...fields, displayNameFr: "" })).toBe("GLU");
+    expect(pickCatalogDisplayLabelForProductUi("es", { ...fields, displayNameEn: "" })).toBe("GLU");
   });
 });

@@ -209,6 +209,40 @@ export function pickLegacyBilingualStoredPair(
   return { kind: "unsupported", value: pair.en, source: "UNLOCALIZED_SOURCE" };
 }
 
+/** Explicit unlocalized catalog/report/billing label — never another Medora language. */
+export const UNLOCALIZED_CATALOG_SOURCE = "UNLOCALIZED_SOURCE";
+
+export type CatalogDisplayLabelFields = {
+  displayNameEn?: string | null;
+  displayNameFr?: string | null;
+  code?: string | null;
+};
+
+/**
+ * User-facing catalog label for the active product UI locale.
+ * EN uses EN only; FR uses FR only. Missing localized text → code / UNLOCALIZED_SOURCE.
+ * Explicit unsupported locale (including `es`) never receives EN or FR labels.
+ * Omitted locale is the F-boundary: product default EN, then EN-only.
+ */
+export function pickCatalogDisplayLabelForProductUi(
+  rawLocale: string | null | undefined,
+  fields: CatalogDisplayLabelFields
+): string {
+  const parsed = parseProductUiLanguage(rawLocale);
+  const code = fields.code?.trim() || "";
+  const en = fields.displayNameEn?.trim() || "";
+  const fr = fields.displayNameFr?.trim() || "";
+
+  if (parsed === "en") return en || code || UNLOCALIZED_CATALOG_SOURCE;
+  if (parsed === "fr") return fr || code || UNLOCALIZED_CATALOG_SOURCE;
+
+  if (rawLocale != null && String(rawLocale).trim() !== "") {
+    return code || UNLOCALIZED_CATALOG_SOURCE;
+  }
+
+  return en || code || UNLOCALIZED_CATALOG_SOURCE;
+}
+
 export function medicationClinicalDisplayLocaleForProductUi(
   language: ProductUiLanguage
 ): MedicationClinicalDisplayLocaleCode {
