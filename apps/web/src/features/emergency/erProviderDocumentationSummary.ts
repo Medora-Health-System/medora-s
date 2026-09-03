@@ -3,7 +3,7 @@
  * Preserves saved text; only UI labels and status lines are localized.
  */
 
-import type { SupportedLanguage } from "@/i18n/config";
+import { resolveProductUiLanguageOrDefault, productUiBcp47Tag, type SupportedLanguage } from "@/i18n/config";
 import {
   buildProviderDocumentationDisplayModel,
   type ProviderDocumentationDisplayModel,
@@ -31,7 +31,7 @@ function interpolate(template: string, vars: Record<string, string>): string {
 
 function formatIsoForLocale(iso: string, locale: SupportedLanguage): string {
   try {
-    const tag = locale === "en" ? "en-US" : "fr-FR";
+    const tag = productUiBcp47Tag(locale);
     return new Date(iso).toLocaleString(tag, { dateStyle: "short", timeStyle: "short" });
   } catch {
     return "—";
@@ -115,7 +115,7 @@ export function buildVisitSummaryProviderDocumentationBlock(input: {
   const locale = input.locale;
   const workspace = buildProviderDocumentationDisplayModel({
     nursingAssessment: input.nursingAssessment,
-    locale: locale === "en" ? "en" : "fr",
+    locale: resolveProductUiLanguageOrDefault(locale),
   });
   const sections = workspace
     ? workspace.sections.map((s) => ({ label: s.label, text: s.text }))

@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { useI18n } from "@/lib/i18n";
+import { productUiBcp47Tag } from "@/i18n/config";
 import {
   classifyVitalsAbnormalKeys,
   fetchLatestVitalsHistoryEntry,
@@ -24,7 +25,7 @@ export function ClinicalLatestVitalsBanner({
 }) {
   const { t, language } = useI18n();
   const [fetchedEntry, setFetchedEntry] = useState<VitalsHistoryEntry | null | undefined>(undefined);
-  const dateLocale = language === "en" ? "en-US" : "fr-FR";
+  const dateLocale = productUiBcp47Tag(language);
   const usePrefetch = latestEntry !== undefined;
   const entry = usePrefetch ? latestEntry : fetchedEntry;
 

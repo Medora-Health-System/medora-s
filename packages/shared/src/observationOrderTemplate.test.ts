@@ -42,7 +42,7 @@ describe("observationOrderTemplate", () => {
     expect(dto.items).toHaveLength(2);
     expect(dto.items[0]?.catalogItemType).toBe("CARE");
     expect(dto.items[0]?.manualLabel).toBe(
-      OBSERVATION_ORDER_TEMPLATE_ITEMS.find((i) => i.id === "mon_vitals_q2h")!.manualLabelFr
+      OBSERVATION_ORDER_TEMPLATE_ITEMS.find((i) => i.id === "mon_vitals_q2h")!.manualLabelEn
     );
   });
 
@@ -57,14 +57,21 @@ describe("observationOrderTemplate", () => {
     expect(dto.observationTemplateGroupId).toBe("grp-1");
   });
 
-  it("buildObservationTemplateCareOrderDto uses English manual labels when labelLocale is en", () => {
+  it("buildObservationTemplateCareOrderDto uses English labels when locale is omitted", () => {
     const dto = buildObservationTemplateCareOrderDto({
-      selectedItemIds: ["mon_vitals_q2h", "nurse_pain_q2h"],
+      selectedItemIds: ["mon_vitals_q2h"],
       prescriberName: "Dr. Test",
-      labelLocale: "en",
     });
     expect(dto.items[0]?.manualLabel).toContain("Vital signs every 2 hours");
-    expect(dto.items[1]?.manualLabel).toContain("Pain assessment every 2 hours");
+  });
+
+  it("buildObservationTemplateCareOrderDto uses French labels when labelLocale is fr", () => {
+    const dto = buildObservationTemplateCareOrderDto({
+      selectedItemIds: ["mon_vitals_q2h"],
+      prescriberName: "Dr. Test",
+      labelLocale: "fr",
+    });
+    expect(dto.items[0]?.manualLabel).toContain("Signes vitaux");
   });
 
   it("observationOrderTemplateItemManualLabel returns locale-specific copy", () => {

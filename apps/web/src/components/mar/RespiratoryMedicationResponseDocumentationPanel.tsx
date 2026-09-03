@@ -27,6 +27,7 @@ import {
   toMarShiftTimelineDateTimeLocalValue,
 } from "@/features/mar/marShiftTimelineDisplay";
 import { RespiratoryMedicationResponseSummaryCard } from "@/components/mar/RespiratoryMedicationResponseSummaryCard";
+import { productUiBcp47Tag } from "@/i18n/config";
 
 export type RespiratoryMedicationResponseDocumentationPanelProps = {
   item: MarShiftTimelineCellItem;
@@ -44,7 +45,7 @@ export function RespiratoryMedicationResponseDocumentationPanel({
   onSaved,
 }: RespiratoryMedicationResponseDocumentationPanelProps) {
   const { t, language } = useI18n();
-  const dateLocale = language === "en" ? "en-US" : "fr-FR";
+  const dateLocale = productUiBcp47Tag(language);
   const submitLockRef = useRef(false);
 
   const isRespiratoryPathway = shouldUseRespiratoryMedicationResponsePathway({

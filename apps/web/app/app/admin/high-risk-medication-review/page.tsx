@@ -13,6 +13,7 @@ import {
   type HighRiskMedicationQueueRow,
 } from "@/lib/highRiskMedicationReviewApi";
 import { normalizeUserFacingError } from "@/lib/userFacingError";
+import { productUiBcp47Tag } from "@/i18n/config";
 
 function cardStyle(): CSSProperties {
   return {
@@ -209,7 +210,7 @@ export default function HighRiskMedicationReviewPage() {
                   </p>
                   <p style={{ margin: "4px 0 0 0", fontSize: 13, color: "#64748b" }}>
                     {t("highRiskMedicationReview.importedAt")}:{" "}
-                    {new Date(row.importedAt).toLocaleString(language === "en" ? "en-US" : "fr-FR")}
+                    {new Date(row.importedAt).toLocaleString(productUiBcp47Tag(language))}
                   </p>
                   {row.facilityName && (
                     <p style={{ margin: "4px 0 0 0", fontSize: 13, color: "#64748b" }}>

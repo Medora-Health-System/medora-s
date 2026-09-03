@@ -48,6 +48,16 @@ describe("resolveClientUiLanguage (MEDUI.2C)", () => {
     expect(resolveClientUiLanguage({ browserLanguage: "fr" })).toBe("en");
   });
 
+  it("ignores unsupported stored language including Spanish", () => {
+    expect(resolveClientUiLanguage({ storedLanguage: "es" })).toBe("en");
+    expect(
+      resolveClientUiLanguage({
+        storedLanguage: "es",
+        facilityLanguage: "fr",
+      })
+    ).toBe("fr");
+  });
+
   it("prefers stored user language over cached facility language", () => {
     expect(
       resolveClientUiLanguage({

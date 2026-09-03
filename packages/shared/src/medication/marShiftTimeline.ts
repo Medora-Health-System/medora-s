@@ -45,6 +45,11 @@ import {
   type FluidBolusSessionStatus,
 } from "./fluidBolusSession.js";
 import { resolveMedicationInfusionStopReasonTimelineLabel } from "./medicationInfusionStopReasonGovernance.js";
+import {
+  parseProductUiLanguage,
+  PRODUCT_DEFAULT_UI_LANGUAGE,
+  type ProductUiLanguage,
+} from "../i18n/productUiLocale.js";
 
 /**
  * M1.8B.7K.1 / K.7 — Facility MAR shift timeline read model (shared contracts).
@@ -64,15 +69,13 @@ export function normalizeMarShiftTimelineTimeZone(raw: string | null | undefined
   }
 }
 
-/** UI locale for MAR medication labels (M1.8B.7K.8). Defaults to English when unknown. */
-export function normalizeMarShiftTimelineLocale(raw: string | null | undefined): "en" | "fr" {
-  const value = raw?.trim().toLowerCase();
-  if (value === "fr" || value?.startsWith("fr-")) return "fr";
-  return "en";
+/** UI locale for MAR medication labels (M1.8B.7K.8). Unsupported values resolve to English. */
+export function normalizeMarShiftTimelineLocale(raw: string | null | undefined): ProductUiLanguage {
+  return parseProductUiLanguage(raw) ?? PRODUCT_DEFAULT_UI_LANGUAGE;
 }
 
 export type MarShiftTimelineMedicationLabelInput = {
-  locale?: "en" | "fr" | string | null;
+  locale?: ProductUiLanguage | string | null;
   orderedMedicationLabel?: string | null;
   manualLabel?: string | null;
   catalogSnapshot?: Pick<

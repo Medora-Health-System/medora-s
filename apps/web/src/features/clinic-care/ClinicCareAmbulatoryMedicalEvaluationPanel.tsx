@@ -15,6 +15,7 @@ import { canAuthorAmbulatoryProviderDocumentation } from "@medora/shared";
 import { isEncounterLocked } from "@/lib/encounterLock";
 import { tEncounterStatus, tEncounterType } from "@/lib/encounterChromeI18n";
 import { ProviderDocumentationWorkspace } from "@/components/encounters/ProviderDocumentationWorkspace";
+import { productUiBcp47Tag, resolveProductUiLanguageOrDefault } from "@/i18n/config";
 import {
   buildProviderDocumentationMetadata,
   buildProviderDocumentationSavePayload,
@@ -53,7 +54,7 @@ export function ClinicCareAmbulatoryMedicalEvaluationPanel({
   onUpdate: () => void | Promise<void>;
 }) {
   const { t, language } = useI18n();
-  const dateLocale = language === "en" ? "en-US" : "fr-FR";
+  const dateLocale = productUiBcp47Tag(language);
 
   const canAuthor = canAuthorAmbulatoryProviderDocumentation(roles);
   const readOnlyEncounter = (encounter.status ?? "").trim() !== "OPEN";
@@ -175,7 +176,7 @@ export function ClinicCareAmbulatoryMedicalEvaluationPanel({
         encounterId={encounter.id}
         encounterMode="AMBULATORY"
         facilityCountry={facilityCountry}
-        authoredDocumentLocale={language === "fr" ? "fr" : "en"}
+        authoredDocumentLocale={resolveProductUiLanguageOrDefault(language)}
         value={value}
         onChange={setValue}
         onSave={save}

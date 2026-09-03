@@ -10318,7 +10318,7 @@ export default {
     },
     publicHealth: {
       title: "Public health",
-      hint: "Enterprise Santé publique — Vaccinations and disease reports (no Clinic* duplicate).",
+      hint: "Enterprise public health — Vaccinations and disease reports (no Clinic* duplicate).",
       vaccinations: "Vaccinations",
       diseaseReports: "Disease reports",
     },
@@ -10443,7 +10443,7 @@ export default {
     },
     mar: {
       emptyFacility:
-        "No facility medications to administer for this visit. Place an order from Orders (not Ordonnance Rx).",
+        "No facility medications to administer for this visit. Place an order from Orders (not the outpatient prescription printer).",
     },
     rx: {
       printBlockedEmpty: "Print blocked: no signed outpatient prescription lines to print.",
@@ -10471,6 +10471,28 @@ export default {
     errors: {
       marRejectsRxId: "This identifier is an outpatient prescription, not a MAR medication order.",
       rxRejectsMarOrderId: "This identifier is a facility medication order, not an outpatient prescription.",
+    },
+  },
+
+  nursingAdmissionPrint: {
+    yes: "Yes",
+    no: "No",
+    codes: {
+      STABLE: "Stable",
+      WHEELCHAIR: "Wheelchair",
+      EMERGENCY_DEPARTMENT: "Emergency Department",
+      NO_CONCERN: "No concern identified",
+      CONCERN_PRESENT: "Concern present",
+      UNABLE_TO_ASSESS: "Unable to assess",
+      YES: "Yes",
+      NO: "No",
+      INDEPENDENT: "Independent",
+      COMPLETE: "Complete",
+      SIGNED: "Signed",
+      DRAFT: "Draft",
+      AMENDED: "Amended",
+      CORRECTED: "Corrected",
+      AAOX4: "Alert and oriented ×4",
     },
   },
 

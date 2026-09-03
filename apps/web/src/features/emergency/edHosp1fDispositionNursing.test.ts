@@ -98,7 +98,7 @@ describe("ED.HOSP.1F disposition / nursing / language / EMTALA", () => {
   });
 
   it("English system proposal prefixes are localized; FR mirrors stay French", () => {
-    expect(panel).toContain('buildSmartAdmissionProposals(ctx, language === "en" ? "en" : "fr")');
+    expect(panel).toContain("buildSmartAdmissionProposals(ctx, resolveProductUiLanguageOrDefault(language))");
     expect(emergencyAdaptiveNursingEn.transport.WHEELCHAIR).toBe("Wheelchair");
     expect(emergencyAdaptiveNursingFr.transport.WHEELCHAIR).toBe("Fauteuil roulant");
     expect(Object.keys(emergencyAdaptiveNursingEn.groups).sort()).toEqual(

@@ -9,6 +9,8 @@ import {
   showsProviderBillingCredentialFields,
   type CreateAdminUserDto,
   type CreateFacilityDto,
+  FACILITY_DEFAULT_LANGUAGE,
+  type ProductUiLanguage,
 } from "@medora/shared";
 import { FacilityBillingIdentityModal } from "@/components/admin/FacilityBillingIdentityModal";
 import { FacilityOperationalIdentityModal } from "@/components/admin/FacilityOperationalIdentityModal";
@@ -56,6 +58,7 @@ import {
 import { normalizeUserFacingError } from "@/lib/userFacingError";
 import { parseApiResponse } from "@/lib/apiClient";
 import { useI18n } from "@/lib/i18n";
+import { parseProductUiLanguage, productUiLanguageSelectOptions } from "@/i18n/config";
 
 const ADMIN_ASSIGNABLE_SET = new Set<string>(ADMIN_ASSIGNABLE_ROLE_CODES);
 
@@ -655,7 +658,7 @@ function AddFacilityModal({
 }) {
   const { t, language } = useI18n();
   const [name, setName] = useState("");
-  const [defaultLanguage, setDefaultLanguage] = useState<"fr" | "en">("fr");
+  const [defaultLanguage, setDefaultLanguage] = useState<ProductUiLanguage>(FACILITY_DEFAULT_LANGUAGE);
   const [showOptionalBilling, setShowOptionalBilling] = useState(false);
   const [billingLegalName, setBillingLegalName] = useState("");
   const [billingNpi, setBillingNpi] = useState("");
@@ -792,11 +795,17 @@ function AddFacilityModal({
             </label>
             <select
               value={defaultLanguage}
-              onChange={(e) => setDefaultLanguage(e.target.value as "fr" | "en")}
+              onChange={(e) => {
+                const parsed = parseProductUiLanguage(e.target.value);
+                if (parsed) setDefaultLanguage(parsed);
+              }}
               style={{ width: "100%", padding: 8, border: "1px solid #ccc", borderRadius: 4 }}
             >
-              <option value="fr">{t("adminUsers.langFr")}</option>
-              <option value="en">{t("adminUsers.langEn")}</option>
+              {productUiLanguageSelectOptions().map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
             </select>
           </div>
           <FacilityTypeServiceLineFields value={facilityTypeConfig} onChange={setFacilityTypeConfig} />

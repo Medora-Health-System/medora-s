@@ -16,6 +16,7 @@ import { apiFetch, apiFetchResponse } from "@/lib/apiClient";
 import { useI18n } from "@/lib/i18n";
 import { normalizeUserFacingError } from "@/lib/userFacingError";
 import { MEDORA_CARD_SHELL } from "@/components/medora-card/medoraCardTokens";
+import { productUiBcp47Tag, resolveProductUiLanguageOrDefault } from "@/i18n/config";
 
 type ClinicalRecord = {
   patient?: {
@@ -158,7 +159,7 @@ export function EnterpriseDentalEncounterOverviewPanel({ encounterId, facilityId
               <dt style={{ fontWeight: 700, color: "#64748b", fontSize: 11 }}>{t("dentalCareD5a5.sections.openedAt")}</dt>
               <dd style={{ margin: "2px 0 0" }}>
                 {enc?.createdAt
-                  ? new Date(enc.createdAt).toLocaleString(language === "en" ? "en-US" : "fr-FR")
+                  ? new Date(enc.createdAt).toLocaleString(productUiBcp47Tag(language))
                   : notDocumented}
               </dd>
             </div>
@@ -189,7 +190,7 @@ export function EnterpriseDentalEncounterOverviewPanel({ encounterId, facilityId
                   ? t("dentalCareD5a5.history.reviewedYes")
                   : t("dentalCareD5a5.history.reviewedNo")}
                 {hr?.reviewedAt
-                  ? ` · ${new Date(hr.reviewedAt).toLocaleString(language === "en" ? "en-US" : "fr-FR")}`
+                  ? ` · ${new Date(hr.reviewedAt).toLocaleString(productUiBcp47Tag(language))}`
                   : ""}
               </dd>
             </div>
@@ -387,7 +388,7 @@ export function EnterpriseDentalEncounterOverviewPanel({ encounterId, facilityId
                 {(d.title || d.type || d.category || "Document").trim()}
                 {d.signatureStatus ? ` · ${d.signatureStatus}` : ""}
                 {d.uploadedAt
-                  ? ` · ${new Date(d.uploadedAt).toLocaleDateString(language === "en" ? "en-US" : "fr-FR")}`
+                  ? ` · ${new Date(d.uploadedAt).toLocaleDateString(productUiBcp47Tag(language))}`
                   : ""}
                 {d.signers?.[0]
                   ? ` · ${d.signers[0].signerName ?? ""} (${d.signers[0].signerType ?? ""})`
@@ -407,7 +408,7 @@ export function EnterpriseDentalEncounterOverviewPanel({ encounterId, facilityId
                 {pr.clinicalName}
                 {pr.toothCodes?.length ? ` · ${pr.toothCodes.join(", ")}` : ""}
                 {pr.performedAt
-                  ? ` · ${new Date(pr.performedAt).toLocaleDateString(language === "en" ? "en-US" : "fr-FR")}`
+                  ? ` · ${new Date(pr.performedAt).toLocaleDateString(productUiBcp47Tag(language))}`
                   : ""}
               </li>
             ))}
@@ -441,7 +442,7 @@ export function EnterpriseDentalEncounterOverviewPanel({ encounterId, facilityId
         return (
           <p style={{ margin: 0, fontSize: 13 }}>
             {enc?.followUpDate
-              ? new Date(enc.followUpDate).toLocaleDateString(language === "en" ? "en-US" : "fr-FR")
+              ? new Date(enc.followUpDate).toLocaleDateString(productUiBcp47Tag(language))
               : notDocumented}
           </p>
         );
@@ -450,7 +451,7 @@ export function EnterpriseDentalEncounterOverviewPanel({ encounterId, facilityId
           <p style={{ margin: 0, fontSize: 13 }}>
             {val(enc?.providerDocumentationStatus ?? null, notDocumented)}
             {enc?.providerDocumentationSignedAt
-              ? ` · ${new Date(enc.providerDocumentationSignedAt).toLocaleString(language === "en" ? "en-US" : "fr-FR")}`
+              ? ` · ${new Date(enc.providerDocumentationSignedAt).toLocaleString(productUiBcp47Tag(language))}`
               : ""}
           </p>
         );
@@ -502,7 +503,7 @@ export function EnterpriseDentalEncounterOverviewPanel({ encounterId, facilityId
                   setTimeout(() => URL.revokeObjectURL(url), 60_000);
                 } catch (e) {
                   setError(
-                    normalizeUserFacingError(e instanceof Error ? e.message : null, language === "fr" ? "fr" : "en")
+                    normalizeUserFacingError(e instanceof Error ? e.message : null, resolveProductUiLanguageOrDefault(language))
                   );
                 }
               })();

@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { apiFetch } from "@/lib/apiClient";
 import { useI18n } from "@/lib/i18n";
-import type { SupportedLanguage } from "@/i18n/config";
+import { resolveProductUiLanguageOrDefault, type SupportedLanguage } from "@/i18n/config";
 import { formatEncounterChromeDateTime } from "@/lib/encounterChromeI18n";
 import { buildAdvancedProcedureSummaryRows } from "@/lib/advancedProcedureSummary";
 import { formatDocumentedProcedureClinicalSummary } from "@medora/shared";
@@ -253,7 +253,7 @@ function buildProcedureDetailRows(
     payloadJson: row.payload,
     documentedAtIso: row.documentedAt ?? row.createdAt,
     documentedByDisplayName: row.documentedByDisplayName,
-    locale: language === "en" ? "en" : "fr",
+    locale: resolveProductUiLanguageOrDefault(language),
   });
   if (localeSummary) {
     rows.push({ k: "summaryDetailClinicalSummary", v: localeSummary });

@@ -7,7 +7,7 @@ import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import { PharmacyAlertsCard } from "@/components/pharmacy/PharmacyAlertsCard";
 import { formatAgeYearsSexForLocale } from "@/lib/patientDisplay";
 import { useI18n } from "@/lib/i18n";
-import type { SupportedLanguage } from "@/i18n/config";
+import { resolveProductUiLanguageOrDefault, productUiBcp47Tag, type SupportedLanguage } from "@/i18n/config";
 import {
   MedoraCard,
   MedoraCardBadge,
@@ -104,8 +104,8 @@ function encounterStatusBoardLabel(status: string, t: (k: string) => string): st
 
 export default function TrackBoardPage() {
   const { t, language } = useI18n();
-  const locale = language === "en" ? "en-US" : "fr-FR";
-  const collatorLocale = language === "en" ? "en" : "fr";
+  const locale = productUiBcp47Tag(language);
+  const collatorLocale = resolveProductUiLanguageOrDefault(language);
   const { facilityId: facilityIdFromHook, ready, canManagePharmacy } = useFacilityAndRoles();
   const [facilityId, setFacilityId] = useState<string | null>(null);
   const [encounters, setEncounters] = useState<any[]>([]);

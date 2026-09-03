@@ -3,7 +3,7 @@
  * Persists via existing PATCH /encounters/:id (merge with other nursingAssessment keys). No backend migration.
  */
 
-import type { SupportedLanguage } from "@/i18n/config";
+import { productUiBcp47Tag, type SupportedLanguage } from "@/i18n/config";
 import { i18nMessage } from "@/lib/i18nMessagesLookup";
 import { formatVitalsHeaderLineForLocale } from "@/lib/patientVitals";
 
@@ -1057,7 +1057,7 @@ export function buildErNursingReassessmentPreviewModel(
   form: ErNursingReassessmentForm,
   locale: SupportedLanguage
 ): ErNursingPreviewModel {
-  const dateTag = locale === "en" ? "en-US" : "fr-FR";
+  const dateTag = productUiBcp47Tag(locale);
   const sections: ErNursingPreviewSection[] = [];
 
   const timing: string[] = [];

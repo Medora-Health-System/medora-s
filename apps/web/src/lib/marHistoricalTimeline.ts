@@ -1,3 +1,4 @@
+import { productUiBcp47Tag } from "@/i18n/config";
 import {
   MAR_SHIFT_TIMELINE_SHIFT_LABELS,
   normalizeMarShiftTimelineTimeZone,
@@ -96,7 +97,7 @@ export function formatMarHistoricalShiftTimeRange(
   facilityTimeZone: string,
   locale: "en" | "fr"
 ): string {
-  const fmt = new Intl.DateTimeFormat(locale === "fr" ? "fr-FR" : "en-US", {
+  const fmt = new Intl.DateTimeFormat(productUiBcp47Tag(locale), {
     timeZone: normalizeMarShiftTimelineTimeZone(facilityTimeZone),
     hour: "2-digit",
     minute: "2-digit",
@@ -111,7 +112,7 @@ export function formatMarHistoricalDateLabel(
   facilityTimeZone: string = "UTC"
 ): string {
   const ref = referenceAtForFacilityLocalDate(dateLocal, facilityTimeZone);
-  return new Intl.DateTimeFormat(locale === "fr" ? "fr-FR" : "en-US", {
+  return new Intl.DateTimeFormat(productUiBcp47Tag(locale), {
     timeZone: normalizeMarShiftTimelineTimeZone(facilityTimeZone),
     month: "long",
     day: "numeric",

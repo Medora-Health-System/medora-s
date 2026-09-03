@@ -13,6 +13,7 @@ import {
   restartMedicationInfusion,
 } from "@/lib/medicationInfusionApi";
 import { extractMarSaveErrorMessage } from "@/features/mar/marSaveErrorMessage";
+import { productUiBcp47Tag } from "@/i18n/config";
 
 export type ContinuousInfusionRuntimePanelProps = {
   item: MarShiftTimelineCellItem;
@@ -38,7 +39,7 @@ export function ContinuousInfusionRuntimePanel({
   onSaved,
 }: ContinuousInfusionRuntimePanelProps) {
   const { t, language } = useI18n();
-  const dateLocale = language === "en" ? "en-US" : "fr-FR";
+  const dateLocale = productUiBcp47Tag(language);
   const runtime = item.medicationInfusionRuntime;
   const [activeAction, setActiveAction] = useState<InfusionActionKind | null>(null);
   const [submitting, setSubmitting] = useState(false);

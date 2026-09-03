@@ -3,7 +3,7 @@
  * Uses only structured fields already carried by GET/PUT triage.
  */
 
-import type { SupportedLanguage } from "@/i18n/config";
+import { productUiBcp47Tag, type SupportedLanguage } from "@/i18n/config";
 import {
   canonicalHeightCm,
   canonicalTemperatureCelsius,
@@ -42,7 +42,7 @@ function interpolatePreview(template: string, params: Record<string, string | nu
 }
 
 function previewLocaleTag(locale: SupportedLanguage): string {
-  return locale === "en" ? "en-US" : "fr-FR";
+  return productUiBcp47Tag(locale);
 }
 
 function ynuPreview(locale: SupportedLanguage, v: string): string {

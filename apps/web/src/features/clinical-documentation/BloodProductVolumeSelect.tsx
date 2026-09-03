@@ -5,6 +5,8 @@ import { BLOOD_PRODUCT_UNIT_VOLUME_PRESET_ML } from "@medora/shared";
 import { useI18n } from "@/lib/i18n";
 import { ClinicalDocumentationSelectField } from "./ClinicalDocumentationFieldControls";
 
+import { resolveProductUiLanguageOrDefault } from "@/i18n/config";
+
 const fieldStyle: React.CSSProperties = {
   width: "100%",
   boxSizing: "border-box",
@@ -41,7 +43,7 @@ export function BloodProductVolumeSelect({
   testIdPrefix: string;
 }) {
   const { t, language } = useI18n();
-  const locale = language === "en" ? "en" : "fr";
+  const locale = resolveProductUiLanguageOrDefault(language);
   const [preset, setPreset] = useState<VolumePreset>(() => resolvePreset(unitVolumeMl));
   const [customMl, setCustomMl] = useState(() =>
     resolvePreset(unitVolumeMl) === "OTHER" ? String(unitVolumeMl) : ""

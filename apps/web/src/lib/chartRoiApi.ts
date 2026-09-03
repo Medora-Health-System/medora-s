@@ -2,14 +2,20 @@
  * Phase 5G — Release of Information (ROI) API client (`/api/backend/roi-requests` → Nest).
  */
 
+import type { SupportedLanguage } from "@/i18n/config";
 import { normalizeUserFacingError } from "./userFacingError";
 import { parseApiResponse } from "./apiClient";
 
 const BASE = "/api/backend";
 
+const ROI_REQUEST_FAILED: Record<SupportedLanguage, (status: number) => string> = {
+  en: (status) => `Request failed (${status}).`,
+  fr: (status) => `Échec (${status}).`,
+};
+
 async function roiFetch(
   path: string,
-  options: RequestInit & { facilityId: string; language?: "fr" | "en" } = { facilityId: "" }
+  options: RequestInit & { facilityId: string; language?: SupportedLanguage } = { facilityId: "" }
 ): Promise<unknown> {
   const { facilityId, language = "fr", ...fetchOptions } = options;
   const headers: Record<string, string> = {
@@ -27,7 +33,7 @@ async function roiFetch(
 
   if (!response.ok) {
     const txt = await response.text().catch(() => "");
-    let message = language === "en" ? `Request failed (${response.status}).` : `Échec (${response.status}).`;
+    let message = ROI_REQUEST_FAILED[language](response.status);
     try {
       if (txt.trim()) {
         const json = JSON.parse(txt);
@@ -37,7 +43,7 @@ async function roiFetch(
     } catch {
       if (txt?.trim()) message = txt;
     }
-    throw new Error(normalizeUserFacingError(message, "fr") || message);
+    throw new Error(normalizeUserFacingError(message, language) || message);
   }
 
   if (response.status === 204) return null;
@@ -151,7 +157,7 @@ export async function fulfillRoiRequest(
 
 export async function fetchRoiMonitoringSummary(
   facilityId: string,
-  language?: "fr" | "en"
+  language: SupportedLanguage = "fr"
 ): Promise<{
   byStatus: { status: string; count: number }[];
   byFacility: { facilityId: string; status: string; count: number }[];
@@ -167,7 +173,7 @@ export async function fetchRoiMonitoringSummary(
   });
   if (!response.ok) {
     const txt = await response.text().catch(() => "");
-    let message = language === "en" ? `Request failed (${response.status}).` : `Échec (${response.status}).`;
+    let message = ROI_REQUEST_FAILED[language](response.status);
     try {
       if (txt.trim()) {
         const json = JSON.parse(txt);
@@ -176,7 +182,7 @@ export async function fetchRoiMonitoringSummary(
     } catch {
       if (txt?.trim()) message = txt;
     }
-    throw new Error(normalizeUserFacingError(message, "fr") || message);
+    throw new Error(normalizeUserFacingError(message, language) || message);
   }
   return (await parseApiResponse(response)) as {
     byStatus: { status: string; count: number }[];

@@ -14,6 +14,7 @@ import {
   type SystemHealthPayload,
 } from "@/lib/systemHealthApi";
 import { normalizeUserFacingError } from "@/lib/userFacingError";
+import { productUiBcp47Tag } from "@/i18n/config";
 
 const CLARITY_CHECK_KEYS = new Set([
   "database",
@@ -210,7 +211,7 @@ export default function AdminSystemHealthPage() {
       <p style={{ fontSize: 13, color: "#64748b" }}>
         {t("systemHealth.generatedAt")}:{" "}
         {data?.generatedAt
-          ? new Date(data.generatedAt).toLocaleString(language === "en" ? "en-US" : "fr-FR", {
+          ? new Date(data.generatedAt).toLocaleString(productUiBcp47Tag(language), {
               dateStyle: "medium",
               timeStyle: "short",
             })
@@ -379,7 +380,7 @@ export default function AdminSystemHealthPage() {
             </li>
             <li>
               <strong>{t("systemHealth.backupReadinessAt")}</strong>{" "}
-              {new Date(data.backupReadiness.generatedAt).toLocaleString(language === "en" ? "en-US" : "fr-FR", {
+              {new Date(data.backupReadiness.generatedAt).toLocaleString(productUiBcp47Tag(language), {
                 dateStyle: "medium",
                 timeStyle: "short",
               })}

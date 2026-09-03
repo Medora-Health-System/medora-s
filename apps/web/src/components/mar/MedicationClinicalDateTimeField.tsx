@@ -13,6 +13,7 @@ import {
   marClinicalDateTimeLocalToUtcIso,
 } from "@/features/mar/marUniversalMedicationActionTime";
 import { toMarShiftTimelineDateTimeLocalValue } from "@/features/mar/marShiftTimelineDisplay";
+import { productUiBcp47Tag } from "@/i18n/config";
 
 export function MedicationClinicalDateTimeField({
   label,
@@ -54,7 +55,7 @@ export function MedicationClinicalDateTimeField({
   testId?: string;
 }) {
   const { t, language } = useI18n();
-  const dateLocale = language === "fr" ? "fr-FR" : "en-US";
+  const dateLocale = productUiBcp47Tag(language);
 
   const clinicalIso = useMemo(
     () => marClinicalDateTimeLocalToUtcIso(value, facilityTimeZone),

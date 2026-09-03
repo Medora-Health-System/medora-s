@@ -159,6 +159,7 @@ function searchableHaystack(entry: SurgicalHistoryCatalogEntry, locale: Surgical
   const parts = [
     entry.id.replace(/_/g, " "),
     resolveSurgicalHistoryDisplayName(entry, locale),
+    // Dual-field search index (legacy bilingual storage). Not product-UI identity coercion.
     resolveSurgicalHistoryDisplayName(entry, locale === "en" ? "fr" : "en"),
     ...entry.aliases,
   ];

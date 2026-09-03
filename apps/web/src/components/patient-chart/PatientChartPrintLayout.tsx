@@ -3,7 +3,7 @@
  * Live preview only — not a finalized legal export. Data already loaded — no fetch.
  */
 
-import type { SupportedLanguage } from "@/i18n/config";
+import { resolveProductUiLanguageOrDefault, type SupportedLanguage } from "@/i18n/config";
 import type { ChartSummary, ChartSummaryEncounter, ChartSummaryOrderItem } from "@/lib/chartApi";
 import type { FollowUpRow } from "@/lib/followUpsApi";
 import {
@@ -376,7 +376,7 @@ export function getPatientChartPrintHtml(params: {
                       const title = lang === "en" ? entry.cardTitleEn : entry.cardTitleFr;
                       const summaryLines = selectClinicalDocumentationPayloadSummary(
                         entry,
-                        lang === "en" ? "en" : "fr"
+                        resolveProductUiLanguageOrDefault(lang)
                       );
                       const summary =
                         summaryLines.length > 0
@@ -497,7 +497,7 @@ export function getPatientChartPrintHtml(params: {
     .join("");
 
   const printedAt = new Date().toLocaleString(loc);
-  const htmlLang = lang === "en" ? "en" : "fr";
+  const htmlLang = resolveProductUiLanguageOrDefault(lang);
   const pt = printT(lang, "printOutput.patientChart.htmlTitlePrefix");
   const patientTitle = esc([p.firstName, p.lastName].filter(Boolean).join(" "));
   const ageStr = age != null ? `${age} ${printT(lang, "printOutput.common.yearsSuffix")}` : esc(pc("emptyDash"));
@@ -579,7 +579,7 @@ export function printPatientChart(
   }
   w.document.open();
   w.document.write(
-    `<!DOCTYPE html><html lang="${language === "en" ? "en" : "fr"}"><head><meta charset="utf-8" /><title>${esc(
+    `<!DOCTYPE html><html lang="${resolveProductUiLanguageOrDefault(language)}"><head><meta charset="utf-8" /><title>${esc(
       printT(language, "printOutput.common.printPreparing")
     )}</title></head><body style="font-family:system-ui,sans-serif;padding:24px;font-size:14px;color:#333;"><p>${esc(
       printT(language, "printOutput.common.printPreparing")
@@ -601,7 +601,7 @@ export function printPatientChart(
     } catch {
       w.document.open();
       w.document.write(
-        `<!DOCTYPE html><html lang="${language === "en" ? "en" : "fr"}"><head><meta charset="utf-8" /><title>${esc(
+        `<!DOCTYPE html><html lang="${resolveProductUiLanguageOrDefault(language)}"><head><meta charset="utf-8" /><title>${esc(
           printT(language, "printOutput.common.printErrorTitle")
         )}</title></head><body style="font-family:system-ui,sans-serif;padding:24px;font-size:14px;color:#333;"><p>${esc(
           printT(language, "printOutput.common.printError")

@@ -1,6 +1,5 @@
-import enMessages from "@/i18n/messages/en";
-import frMessages from "@/i18n/messages/fr";
 import type { SupportedLanguage } from "@/i18n/config";
+import { i18nMessage } from "@/lib/i18nMessagesLookup";
 import { apiFetchResponse, parseApiResponse } from "./apiClient";
 import { normalizeUserFacingError } from "./userFacingError";
 
@@ -66,16 +65,6 @@ export type ProcedureCommitResult = {
   counts: Record<string, number>;
 };
 
-function getByPath(obj: unknown, path: string): unknown {
-  const parts = path.split(".").filter(Boolean);
-  let cur: unknown = obj;
-  for (const p of parts) {
-    if (cur === null || cur === undefined || typeof cur !== "object") return undefined;
-    cur = (cur as Record<string, unknown>)[p];
-  }
-  return cur;
-}
-
 const CATALOG_IMPORT_ERROR_CODES = [
   "INVALID_COMMIT_PARAMS",
   "MISSING_FILE",
@@ -84,13 +73,22 @@ const CATALOG_IMPORT_ERROR_CODES = [
 
 type CatalogImportErrorCode = (typeof CATALOG_IMPORT_ERROR_CODES)[number];
 
+const CATALOG_IMPORT_FAILED: Record<SupportedLanguage, string> = {
+  en: "Import failed.",
+  fr: "Échec de l'import.",
+};
+
+const GENERIC_WENT_WRONG: Record<SupportedLanguage, string> = {
+  en: "Something went wrong.",
+  fr: "Une erreur est survenue.",
+};
+
 function catalogImportErrorForCode(
   code: CatalogImportErrorCode,
   language: SupportedLanguage
 ): string | undefined {
-  const root = language === "en" ? enMessages : frMessages;
-  const v = getByPath(root, `catalogImport.errors.${code}`);
-  return typeof v === "string" ? v : undefined;
+  const v = i18nMessage(language, `catalogImport.errors.${code}`);
+  return v !== `catalogImport.errors.${code}` ? v : undefined;
 }
 
 function extractCatalogImportErrorCode(message: string): CatalogImportErrorCode | null {
@@ -103,7 +101,7 @@ function extractCatalogImportErrorCode(message: string): CatalogImportErrorCode 
 /** Surfaces Nest/proxy JSON errors for catalog import (avoids generic "Something went wrong."). */
 export function catalogImportErrorMessage(err: unknown, language: SupportedLanguage): string {
   if (!(err instanceof Error) || !err.message) {
-    return language === "en" ? "Import failed." : "Échec de l'import.";
+    return CATALOG_IMPORT_FAILED[language];
   }
 
   const code = extractCatalogImportErrorCode(err.message);
@@ -114,12 +112,12 @@ export function catalogImportErrorMessage(err: unknown, language: SupportedLangu
 
   const stripped = err.message.replace(/\s*\([A-Z0-9_]+\)\s*$/, "").trim();
   const normalized = normalizeUserFacingError(stripped, language);
-  if (normalized && normalized !== (language === "en" ? "Something went wrong." : "Une erreur est survenue.")) {
+  if (normalized && normalized !== GENERIC_WENT_WRONG[language]) {
     return normalized;
   }
   if (/[àâäéèêëïîôùûçœæ]/i.test(stripped)) return stripped;
   if (stripped.length >= 3 && stripped.length <= 500) return stripped;
-  return language === "en" ? "Import failed." : "Échec de l'import.";
+  return CATALOG_IMPORT_FAILED[language];
 }
 
 async function uploadFile(

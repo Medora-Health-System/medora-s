@@ -82,6 +82,7 @@ import {
 import { InpatientDischargeBoardNursing } from "./InpatientDischargeBoardNursing";
 import { InpatientDischargeMedicationsPanel } from "./InpatientDischargeMedicationsPanel";
 import { InpatientDischargeMedReconPanel } from "./InpatientDischargeMedReconPanel";
+import { resolveProductUiLanguageOrDefault, productUiBcp47Tag } from "@/i18n/config";
 import {
   badgeAttention,
   badgeComplete,
@@ -310,7 +311,7 @@ export function InpatientDischargeBoard({
   onRefetchEncounter,
 }: BoardProps) {
   const { t, language } = useI18n();
-  const dateLocale = language === "en" ? "en-US" : "fr-FR";
+  const dateLocale = productUiBcp47Tag(language);
   const tp = (key: string) => t(`${PREFIX}.${key}`);
   const validationLabel = (code: string) => {
     const key = `${PREFIX}.validation.${code}`;
@@ -443,7 +444,7 @@ export function InpatientDischargeBoard({
         if (emptyCourse && bootstrap && providerRes.canAuthor === true) {
           const draft = buildInpatientDischargeChartDraft({
             ...bootstrap,
-            language: language === "en" ? "en" : "fr",
+            language: resolveProductUiLanguageOrDefault(language),
           });
           nextProvider = mergeChartDraftPreservingClinicianEdits({
             existing: hydratedProvider,
@@ -827,7 +828,7 @@ export function InpatientDischargeBoard({
                 : (admittedAt ?? null),
             dischargeDestination: planning.destination || planningSummary.plannedDestination,
             dischargeWorkflowState: planning.workflowState || planningSummary.workflowState,
-            language: language === "en" ? "en" : "fr",
+            language: resolveProductUiLanguageOrDefault(language),
           })
         : null;
       const dischargeSummaryJson = resolveInpatientDischargeForDisplay({
@@ -867,7 +868,7 @@ export function InpatientDischargeBoard({
     if (!usable.length) return;
     const { instructions, followUps } = generateInpatientPatientInstructionsFromDiagnoses({
       diagnoses: usable,
-      locale: language === "en" ? "en" : "fr",
+      locale: resolveProductUiLanguageOrDefault(language),
       facilityDisplayName,
     });
     touchProvider((prev) => {
@@ -895,7 +896,7 @@ export function InpatientDischargeBoard({
     });
   };
 
-  const courseLanguage = language === "en" ? "en" : "fr";
+  const courseLanguage = resolveProductUiLanguageOrDefault(language);
   const chartDraft = useMemo(() => {
     if (!chartBootstrap) return null;
     return buildInpatientDischargeChartDraft({
@@ -1882,7 +1883,7 @@ export function InpatientDischargeBoard({
         {providerWriteEnabled ? (
           <div style={{ display: "grid", gap: 8 }}>
             <Icd10DiagnosisSearchAutocomplete
-              language={language === "en" ? "en" : "fr"}
+              language={resolveProductUiLanguageOrDefault(language)}
               disabled={!providerWriteEnabled}
               label={tp("searchDiagnoses")}
               placeholder={tp("searchDiagnosesPlaceholder")}

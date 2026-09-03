@@ -59,6 +59,10 @@ describe("MEDUI.D4C.7A ambulatory MDM localization / discharge cleanup", () => {
     );
     expect(resolveAuthoredDocumentLocale({ appLocale: "fr" })).toBe("fr");
     expect(resolveAuthoredDocumentLocale({ appLocale: "en" })).toBe("en");
+    expect(resolveAuthoredDocumentLocale({ appLocale: "es" })).toBe("en");
+    expect(resolveAuthoredDocumentLocale({ authoredDocumentLocale: "es-MX", appLocale: "fr" })).toBe(
+      "fr"
+    );
   });
 
   it("D — ambulatory high-value MDM fragment keys map to ambulatory catalog; ED unchanged", () => {

@@ -95,7 +95,7 @@ export function sortEnterpriseOrderSetsByDisplayName(
   return [...sets].sort((a, b) =>
     resolveEnterpriseOrderSetDisplayName(a, locale).localeCompare(
       resolveEnterpriseOrderSetDisplayName(b, locale),
-      locale === "fr" ? "fr" : "en",
+      locale,
       { sensitivity: "base" }
     )
   );

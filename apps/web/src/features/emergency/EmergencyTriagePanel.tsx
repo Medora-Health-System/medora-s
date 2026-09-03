@@ -90,7 +90,7 @@ import {
   triageCoreVitalsDocumented,
 } from "./erTriageSafetyPrompts";
 import type { VitalsJsonMergeFormInput } from "./emergencyTriageVitalsMerge";
-import type { SupportedLanguage } from "@/i18n/config";
+import { productUiBcp47Tag, type SupportedLanguage } from "@/i18n/config";
 import {
   buildClinicalDraftKey,
   clinicalDraftPayloadSignature,
@@ -841,7 +841,7 @@ export function EmergencyTriagePanel({
       const lastName = typeof meData?.lastName === "string" ? meData.lastName : "";
       const displayName = `${firstName} ${lastName}`.trim();
       const initials = vitalSummaryInitials({ firstName, lastName, displayName });
-      const recordedAtLabel = new Date().toLocaleString(language === "en" ? "en-US" : "fr-FR", {
+      const recordedAtLabel = new Date().toLocaleString(productUiBcp47Tag(language), {
         dateStyle: "short",
         timeStyle: "short",
       });
@@ -943,7 +943,7 @@ export function EmergencyTriagePanel({
           .replace("{user}", String(triage.updatedByDisplayFr).trim())
           .replace(
             "{datetime}",
-            new Date(triage.updatedAt as string).toLocaleString(language === "en" ? "en-US" : "fr-FR")
+            new Date(triage.updatedAt as string).toLocaleString(productUiBcp47Tag(language))
           )
       : null;
 
@@ -1748,7 +1748,7 @@ export function EmergencyTriagePanel({
                             {t("erTriage.panel.triageCompleteEntered").replace(
                               "{datetime}",
                               new Date(formData.triageCompleteAt).toLocaleString(
-                                language === "en" ? "en-US" : "fr-FR",
+                                productUiBcp47Tag(language),
                                 {
                                   dateStyle: "short",
                                   timeStyle: "short",

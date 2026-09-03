@@ -41,6 +41,7 @@ import {
 } from "@/components/encounters/EncounterChartLivePreview";
 import { buildRxPrintFacilityIdentity } from "@/components/pharmacy/RxPrintLayout";
 import type { InpatientWorkspaceSection } from "./inpatientWorkspaceSections";
+import { productUiBcp47Tag } from "@/i18n/config";
 import {
   buildCarePlanMedicalRecordPrintHtml,
   formatCarePlanDocumentedLine,
@@ -516,7 +517,7 @@ export function InpatientEncounterMedicalRecordSummaryView({
       const formatCarePlanDt = (iso: string | null) => {
         if (!iso) return "";
         try {
-          return new Date(iso).toLocaleString(language === "fr" ? "fr-FR" : "en-US", {
+          return new Date(iso).toLocaleString(productUiBcp47Tag(language), {
             dateStyle: "medium",
             timeStyle: "short",
           });
@@ -988,7 +989,7 @@ export function InpatientEncounterMedicalRecordSummaryView({
 function formatMrDateTime(iso: string | null, language: string): string {
   if (!iso) return "";
   try {
-    return new Date(iso).toLocaleString(language === "fr" ? "fr-FR" : "en-US", {
+    return new Date(iso).toLocaleString(productUiBcp47Tag(language), {
       dateStyle: "medium",
       timeStyle: "short",
     });

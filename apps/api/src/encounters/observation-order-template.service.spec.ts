@@ -126,6 +126,27 @@ describe("ObservationOrderTemplateService", () => {
     expect(String(createArgs[2].items[0]?.manualLabel)).toContain("Vital signs every 2 hours");
   });
 
+  it("uses English CARE line labels when orderLabelLocale is unsupported", async () => {
+    const prisma = buildPrismaMock({});
+    const orders = buildOrdersMock();
+    const audit = buildAuditMock();
+    const svc = new ObservationOrderTemplateService(prisma as never, orders as never, audit as never);
+
+    await svc.apply(
+      "enc-1",
+      "fac-1",
+      { selectedItemIds: ["mon_vitals_q2h"] },
+      "user-1",
+      "127.0.0.1",
+      "jest",
+      { orderLabelLocale: "es" }
+    );
+
+    const createArgs = (orders.create as AnyMock).mock.calls[0]!;
+    expect(String(createArgs[2].items[0]?.manualLabel)).toContain("Vital signs every 2 hours");
+    expect(String(createArgs[2].items[0]?.manualLabel)).not.toMatch(/Signes vitaux/);
+  });
+
   it("partial second apply creates only missing template lines (Phase 14D)", async () => {
     const vitalsFr = OBSERVATION_ORDER_TEMPLATE_ITEMS.find((i) => i.id === "mon_vitals_q2h")!.manualLabelFr;
     const prisma = buildPrismaMock({

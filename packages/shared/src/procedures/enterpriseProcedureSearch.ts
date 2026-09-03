@@ -30,6 +30,7 @@ export function enterpriseProcedureSearchableText(
   const parts = [
     procedureDef.id.replace(/_/g, " "),
     resolveEnterpriseProcedureDisplayName(procedureDef, locale),
+    // Dual-field search index (legacy bilingual storage). Not product-UI identity coercion.
     resolveEnterpriseProcedureDisplayName(procedureDef, locale === "en" ? "fr" : "en"),
     enterpriseProcedureCategoryLabel(procedureDef.category, locale),
     enterpriseProcedureCategoryLabel(procedureDef.category, locale === "en" ? "fr" : "en"),

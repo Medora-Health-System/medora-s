@@ -2,7 +2,7 @@
 
 import React from "react";
 import { useI18n } from "@/lib/i18n";
-import type { SupportedLanguage } from "@/i18n/config";
+import { productUiBcp47Tag, type SupportedLanguage } from "@/i18n/config";
 import { MSPP_CHART_WELL, MSPP_EMPTY_STATE } from "@/features/mspp/msppUiChrome";
 import {
   Bar,
@@ -18,7 +18,7 @@ import {
 
 /** Format a UTC month key `YYYY-MM` for chart axes. */
 export function formatMsppMonthLabel(isoMonth: string, language: SupportedLanguage): string {
-  const locale = language === "en" ? "en-US" : "fr-FR";
+  const locale = productUiBcp47Tag(language);
   const parts = isoMonth.split("-");
   const y = parts[0];
   const m = parts[1];

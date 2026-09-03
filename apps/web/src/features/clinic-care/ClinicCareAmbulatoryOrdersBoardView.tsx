@@ -27,6 +27,7 @@ import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import { useI18n } from "@/lib/i18n";
 import { ClinicCareShell } from "./ClinicCareShell";
 import { CLINIC_CARE_SHELL } from "./clinicCareTokens";
+import { productUiBcp47Tag } from "@/i18n/config";
 
 type OrderBoardRow = {
   orderId: string;
@@ -81,7 +82,7 @@ function statusLabelKey(status: ClinicCareAmbulatoryOrderStatusFilter): string {
 
 export function ClinicCareAmbulatoryOrdersBoardView() {
   const { t, language } = useI18n();
-  const locale = language === "en" ? "en-US" : "fr-FR";
+  const locale = productUiBcp47Tag(language);
   const {
     facilityId,
     roles,

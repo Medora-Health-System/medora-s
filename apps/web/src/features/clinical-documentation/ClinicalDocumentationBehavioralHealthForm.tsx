@@ -27,6 +27,8 @@ import {
   YES_NO_UNKNOWN_OPTIONS,
 } from "@medora/shared";
 import { useI18n } from "@/lib/i18n";
+import { resolveProductUiLanguageOrDefault } from "@/i18n/config";
+
 import {
   ClinicalDocumentationBooleanField,
   ClinicalDocumentationSelectField,
@@ -88,7 +90,7 @@ export function ClinicalDocumentationBehavioralHealthForm({
   onSubmit: (payload: Record<string, unknown>) => Promise<void>;
 }) {
   const { t, language } = useI18n();
-  const locale = language === "en" ? "en" : "fr";
+  const locale = resolveProductUiLanguageOrDefault(language);
   const [validationError, setValidationError] = useState<string | null>(null);
 
   const [suicidePrecautions, setSuicidePrecautions] = useState({

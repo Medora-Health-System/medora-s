@@ -14,6 +14,8 @@ import {
 } from "@medora/shared";
 import { useI18n } from "@/lib/i18n";
 
+import { resolveProductUiLanguageOrDefault } from "@/i18n/config";
+
 const inputStyle: React.CSSProperties = {
   width: "100%",
   padding: "8px 10px",
@@ -44,7 +46,7 @@ export function TdapVaccineAdministrationForm({
   onSave?: (payload: { note: string; serialized: Record<string, unknown> }) => void;
 }) {
   const { t, language } = useI18n();
-  const locale = language === "en" ? "en" : "fr";
+  const locale = resolveProductUiLanguageOrDefault(language);
   const [form, setForm] = useState<TdapVaccineAdministrationForm>({
     ...emptyTdapVaccineAdministrationForm(),
     ...initialForm,

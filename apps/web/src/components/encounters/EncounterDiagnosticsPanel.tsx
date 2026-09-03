@@ -23,6 +23,7 @@ import {
   type RemoveDiagnosisConfirmPayload,
 } from "@/components/diagnosis/RemoveDiagnosisModal";
 import { getLocalizedDiagnosisDisplayLabel } from "@/features/emergency/diagnosisFrenchDisplayLabels";
+import { productUiBcp47Tag } from "@/i18n/config";
 import {
   diagnosisOrdersDiagnosisCardShellStyle,
   diagnosisOrdersListStyle,
@@ -68,7 +69,7 @@ export function EncounterDiagnosticsPanel({
   isLocked: boolean;
 }) {
   const { t, language } = useI18n();
-  const dateLocale = language === "en" ? "en-US" : "fr-FR";
+  const dateLocale = productUiBcp47Tag(language);
   const [loading, setLoading] = useState(true);
   const [rows, setRows] = useState<DxRow[]>([]);
   const [saving, setSaving] = useState(false);

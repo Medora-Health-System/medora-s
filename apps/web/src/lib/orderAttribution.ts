@@ -1,4 +1,4 @@
-import type { SupportedLanguage } from "@/i18n/config";
+import { defaultLanguage, productUiBcp47Tag, type SupportedLanguage } from "@/i18n/config";
 import {
   orderAttributionActionForOrderType,
   orderAttributionLabelKey,
@@ -29,10 +29,8 @@ function fillTemplate(template: string, values: Record<string, string>): string 
   return Object.entries(values).reduce((out, [key, value]) => out.split(`{${key}}`).join(value), template);
 }
 
-function dateLocale(language?: SupportedLanguage): string | undefined {
-  if (language === "en") return "en-US";
-  if (language === "fr") return "fr-FR";
-  return undefined;
+function dateLocale(language?: SupportedLanguage): string {
+  return productUiBcp47Tag(language ?? defaultLanguage);
 }
 
 function formatDateTime(value: string | Date | null | undefined, language?: SupportedLanguage): string {

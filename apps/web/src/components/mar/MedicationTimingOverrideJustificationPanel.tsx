@@ -5,6 +5,7 @@ import { resolveMarMedicationTimingOverrideReasonLabelKey } from "@medora/shared
 import { useI18n } from "@/lib/i18n";
 import { formatMarShiftTimelineClinicalDateTime } from "@medora/shared";
 import type { MarShiftTimelineCellItem } from "@/lib/marShiftTimelineApi";
+import { productUiBcp47Tag } from "@/i18n/config";
 
 export type MedicationTimingOverrideJustificationPanelProps = {
   item: MarShiftTimelineCellItem;
@@ -16,7 +17,7 @@ export function MedicationTimingOverrideJustificationPanel({
   facilityTimeZone = null,
 }: MedicationTimingOverrideJustificationPanelProps) {
   const { t, language } = useI18n();
-  const dateLocale = language === "en" ? "en-US" : "fr-FR";
+  const dateLocale = productUiBcp47Tag(language);
 
   const variance = item.administrationVariance;
   const reschedule = item.scheduleAdjustment;

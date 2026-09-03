@@ -13,6 +13,8 @@ import { buildRxPrintFacilityIdentity, printRx } from "@/components/pharmacy/RxP
 import { apiFetch } from "@/lib/apiClient";
 import { useI18n } from "@/lib/i18n";
 import { MEDORA_CARD_SHELL } from "@/components/medora-card/medoraCardTokens";
+import { resolveProductUiLanguageOrDefault } from "@/i18n/config";
+
 import {
   D4C5B3_RX_LIST_FILTERS,
   ambulatoryOrderStatusDisplayKey,
@@ -174,7 +176,7 @@ export function ClinicCareAmbulatoryPrescriptionPanel({
         displayLabel: itemLabel(it, language) || it.displayLabel,
       }))
     ) as D4c7ePersistedOrderItemLike[];
-    const lang = language === "en" ? "en" : "fr";
+    const lang = resolveProductUiLanguageOrDefault(language);
     const projection = validateOutpatientPrescriptionPrintProjection(persistedItems, lang);
     if (!projection.ok) {
       setPrintError(t(projection.reasonKey));
@@ -211,7 +213,7 @@ export function ClinicCareAmbulatoryPrescriptionPanel({
         mrn: encounter.patient?.mrn,
       },
       facilityIdentity,
-      language: language === "en" ? "en" : "fr",
+      language: resolveProductUiLanguageOrDefault(language),
       requireFacilityIdentity: true,
     });
     if (!result.ok) {

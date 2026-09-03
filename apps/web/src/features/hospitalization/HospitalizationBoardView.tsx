@@ -96,6 +96,8 @@ import {
   hospitalTechnicianActiveWorkspacePath,
 } from "./hospitalTechnicianWorkspace";
 import { isHospitalFloorTechnicianProfile } from "./hospitalTechnicianTiles";
+import { resolveProductUiLanguageOrDefault } from "@/i18n/config";
+
 import {
   observationBoardCardInnerStyle,
   observationBoardCensusActionButtonStyle,
@@ -837,7 +839,7 @@ export function HospitalizationBoardView({
       const u = unitFromRoomLabel(e.roomLabel);
       if (u) set.add(u);
     }
-    return Array.from(set).sort((a, b) => a.localeCompare(b, language === "en" ? "en" : "fr"));
+    return Array.from(set).sort((a, b) => a.localeCompare(b, resolveProductUiLanguageOrDefault(language)));
   }, [encounters, language]);
 
   const physicianOptions = useMemo(() => {
@@ -846,7 +848,7 @@ export function HospitalizationBoardView({
       const pl = physicianLabel(e);
       if (pl) set.add(pl);
     }
-    return Array.from(set).sort((a, b) => a.localeCompare(b, language === "en" ? "en" : "fr"));
+    return Array.from(set).sort((a, b) => a.localeCompare(b, resolveProductUiLanguageOrDefault(language)));
   }, [encounters, language]);
 
   const observationCensus = useMemo(() => computeObservationBoardCensus(encounters), [encounters]);

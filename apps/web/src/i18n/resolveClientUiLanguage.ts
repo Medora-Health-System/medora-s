@@ -1,11 +1,12 @@
-import { defaultLanguage, supportedLanguages, type SupportedLanguage } from "./config";
+import {
+  defaultLanguage,
+  parseProductUiLanguage,
+  resolveProductUiLanguageFromBrowserCandidates,
+  type SupportedLanguage,
+} from "./config";
 
 export const UI_LANGUAGE_STORAGE_KEY = "medora_locale";
 export const FACILITY_UI_LANGUAGE_STORAGE_KEY = "medora_facility_ui_language";
-
-function isSupportedLanguage(v: string | null | undefined): v is SupportedLanguage {
-  return v != null && supportedLanguages.includes(v as SupportedLanguage);
-}
 
 export function readStoredUiLanguageRaw(): string | null {
   if (typeof window === "undefined") return null;
@@ -42,12 +43,7 @@ export function resolveBrowserUiLanguage(): SupportedLanguage | null {
       : navigator.language
         ? [navigator.language]
         : [];
-  for (const raw of candidates) {
-    const norm = raw.trim().toLowerCase();
-    if (norm.startsWith("fr")) return "fr";
-    if (norm.startsWith("en")) return "en";
-  }
-  return null;
+  return resolveProductUiLanguageFromBrowserCandidates(candidates);
 }
 
 export type ResolveClientUiLanguageInput = {
@@ -68,17 +64,14 @@ export type ResolveClientUiLanguageInput = {
 export function resolveClientUiLanguage(input: ResolveClientUiLanguageInput = {}): SupportedLanguage {
   const fallback = input.fallback ?? defaultLanguage;
 
-  if (isSupportedLanguage(input.storedLanguage ?? null)) {
-    return input.storedLanguage as SupportedLanguage;
-  }
+  const stored = parseProductUiLanguage(input.storedLanguage);
+  if (stored) return stored;
 
-  if (isSupportedLanguage(input.facilityLanguage ?? null)) {
-    return input.facilityLanguage as SupportedLanguage;
-  }
+  const facility = parseProductUiLanguage(input.facilityLanguage);
+  if (facility) return facility;
 
-  if (isSupportedLanguage(input.cachedFacilityLanguage ?? null)) {
-    return input.cachedFacilityLanguage as SupportedLanguage;
-  }
+  const cached = parseProductUiLanguage(input.cachedFacilityLanguage);
+  if (cached) return cached;
 
   return fallback;
 }

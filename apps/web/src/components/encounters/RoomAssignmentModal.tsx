@@ -9,6 +9,7 @@ import {
 import { EdRoomOccupancyConfirmModal } from "@/components/encounters/EdRoomOccupancyConfirmModal";
 import { BedStatusBlocksConfirmModal } from "@/components/encounters/BedStatusBlocksConfirmModal";
 import { useI18n } from "@/lib/i18n";
+import { resolveProductUiLanguageOrDefault } from "@/i18n/config";
 import {
   buildEdRoomOccupancyConfirmPayload,
   checkEdRoomAssignmentConflict,
@@ -409,7 +410,7 @@ export function RoomAssignmentModal({
         <BedStatusBlocksConfirmModal
           message={formatBedStatusBlocksMessage(
             bedStatusConflict,
-            language === "fr" ? "fr" : "en",
+            resolveProductUiLanguageOrDefault(language),
             t
           )}
           saving={saving}

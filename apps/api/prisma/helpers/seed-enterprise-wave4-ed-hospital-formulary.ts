@@ -4,6 +4,7 @@ import type {
   EnterpriseWave4EdHospitalReadinessReport,
   MedicationLocalizationAlias,
 } from "@medora/shared";
+import { adaptProductUiToBilingualStorageLocale } from "@medora/shared";
 import { resolveWave4CatalogAdministrationType } from "@medora/shared";
 import {
   resolveWave4EnrichCatalogLookupCandidates,
@@ -378,7 +379,9 @@ export async function seedEnterpriseWave4EdHospitalFormulary(
       for (const alias of entry.aliases) {
         const normalized = alias.text.trim().toLowerCase();
         if (!normalized) continue;
-        const language = alias.language === "fr" ? "fr" : "en";
+        const adapted = adaptProductUiToBilingualStorageLocale(alias.language);
+        if (adapted.kind !== "localized") continue;
+        const language = adapted.locale;
         const existingAlias = await prisma.medicationAlias.findUnique({
           where: {
             catalogMedicationId_alias: { catalogMedicationId: catalogId, alias: normalized },
@@ -683,11 +686,17 @@ export async function seedEnterpriseWave4EdHospitalFormulary(
             where: { catalogMedicationId: catalogId },
             select: { alias: true, language: true },
           })
-        ).map((a) => ({
-          text: a.alias,
-          language: a.language === "fr" ? "fr" : "en",
-          aliasType: "OTHER" as const,
-        }));
+        ).flatMap((a) => {
+          const adapted = adaptProductUiToBilingualStorageLocale(a.language);
+          if (adapted.kind !== "localized") return [];
+          return [
+            {
+              text: a.alias,
+              language: adapted.locale,
+              aliasType: "OTHER" as const,
+            },
+          ];
+        });
 
     const searchCheck = modules.validateWave4EntrySearchReady(
       entry,

@@ -26,6 +26,8 @@ import {
   resolveFacilityModuleCapabilitiesD4c1,
   resolveDentalSpecialtiesFromCareProfile,
   resolveEffectiveFacilityBillingWorkflow,
+  FACILITY_DEFAULT_LANGUAGE,
+  parseProductUiLanguage,
 } from "@medora/shared";
 import { PrismaService } from "../prisma/prisma.service";
 import { AuditAction, FacilityType, RoleCode } from "@prisma/client";
@@ -45,6 +47,10 @@ import {
   mergeCareProfileJson,
   resolveServiceLinesForCareConfig,
 } from "./facility-care-profile.util";
+
+function facilityUiLanguage(raw: string | null | undefined) {
+  return parseProductUiLanguage(raw) ?? FACILITY_DEFAULT_LANGUAGE;
+}
 
 async function ensureServiceLineDepartmentsOrThrow(
   prisma: Parameters<typeof ensureFacilityServiceLineDepartments>[0],
@@ -199,7 +205,7 @@ function mapFacilityRowForClient(row: {
   return {
     id: row.id,
     name: row.name,
-    defaultLanguage: row.defaultLanguage as "fr" | "en",
+    defaultLanguage: facilityUiLanguage(row.defaultLanguage),
     ...(row.isActive !== undefined ? { isActive: row.isActive } : {}),
     ...(row.timezone !== undefined ? { timezone: row.timezone } : {}),
     facilityType: row.facilityType,
@@ -331,7 +337,7 @@ export class AdminFacilitiesService {
       await ensureServiceLineDepartmentsOrThrow(tx, facility.id, {
         facilityType: facility.facilityType,
         serviceLines,
-        defaultLanguage: (facility.defaultLanguage as "fr" | "en") ?? "fr",
+        defaultLanguage: facilityUiLanguage(facility.defaultLanguage),
       });
 
       await logSecurityAdminAudit(
@@ -409,7 +415,7 @@ export class AdminFacilitiesService {
       throw new NotFoundException("Établissement introuvable.");
     }
     await ensureFacilityClinicalDepartments(this.prisma, facilityId, {
-      defaultLanguage: (facility.defaultLanguage as "fr" | "en") ?? "fr",
+      defaultLanguage: facilityUiLanguage(facility.defaultLanguage),
     });
     const facilityConfig = await this.prisma.facility.findUnique({
       where: { id: facilityId },
@@ -421,7 +427,7 @@ export class AdminFacilitiesService {
         serviceLines: parseStoredFacilityServiceLines(
           facilityConfig.serviceLinesJson,
         ),
-        defaultLanguage: (facility.defaultLanguage as "fr" | "en") ?? "fr",
+        defaultLanguage: facilityUiLanguage(facility.defaultLanguage),
       });
     }
     const items = await this.prisma.department.findMany({
@@ -693,7 +699,7 @@ export class AdminFacilitiesService {
       const deptResult = await ensureServiceLineDepartmentsOrThrow(tx, id, {
         facilityType: row.facilityType,
         serviceLines: serialized,
-        defaultLanguage: (row.defaultLanguage as "fr" | "en") ?? "fr",
+        defaultLanguage: facilityUiLanguage(row.defaultLanguage),
       });
 
       await tx.auditLog.create({

@@ -25,6 +25,7 @@ import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import { useI18n } from "@/lib/i18n";
 import { MEDORA_CARD_SHELL } from "@/components/medora-card/medoraCardTokens";
 import { clinicCareStageToken, CLINIC_CARE_SHELL } from "./clinicCareTokens";
+import { productUiBcp47Tag } from "@/i18n/config";
 
 type ClinicCareRow = {
   encounterId: string;
@@ -79,7 +80,7 @@ function groupLabelKey(group: ClinicCareProviderQueueGroup): string {
 
 export function ClinicCareProviderWorkspaceView() {
   const { t, language } = useI18n();
-  const locale = language === "en" ? "en-US" : "fr-FR";
+  const locale = productUiBcp47Tag(language);
   const searchParams = useSearchParams();
   const focusEncounterId = searchParams?.get("encounterId") ?? null;
   const { facilityId, roles, ready, facilityTimeZone } = useFacilityAndRoles();

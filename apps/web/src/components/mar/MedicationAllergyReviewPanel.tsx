@@ -8,6 +8,7 @@ import {
 } from "@medora/shared";
 import { useI18n } from "@/lib/i18n";
 import { dismissMarAllergyReviewRecommendation } from "@/lib/marAllergyReviewApi";
+import { productUiBcp47Tag } from "@/i18n/config";
 
 export type MedicationAllergyReviewPanelProps = {
   encounterId: string;
@@ -27,7 +28,7 @@ export function MedicationAllergyReviewPanel({
   onDismissed,
 }: MedicationAllergyReviewPanelProps) {
   const { t, language } = useI18n();
-  const dateLocale = language === "en" ? "en-US" : "fr-FR";
+  const dateLocale = productUiBcp47Tag(language);
   const [submittingId, setSubmittingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 

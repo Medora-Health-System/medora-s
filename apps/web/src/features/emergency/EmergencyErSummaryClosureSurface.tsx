@@ -68,6 +68,8 @@ import type { EdClosureCertificationEncounter } from "@/features/emergency/edClo
 import { EdEncounterCertificationReview } from "@/features/emergency/EdEncounterCertificationReview";
 import { EdEncounterBillingReadinessBadge } from "@/features/emergency/EdEncounterBillingReadinessBadge";
 
+import { resolveProductUiLanguageOrDefault } from "@/i18n/config";
+
 /** API encounters include `patient`; `EncounterLike` does not — widen for header / print / close. */
 type ErClosureEncounter = ComponentProps<typeof EmergencyVisitSummaryPanel>["encounter"] & {
   patient?: {
@@ -403,7 +405,7 @@ export function EmergencyErSummaryClosureSurface({
               payloadJson: payload,
               documentedAtIso: documentedAt,
               documentedByDisplayName: documentedBy,
-              locale: language === "en" ? "en" : "fr",
+              locale: resolveProductUiLanguageOrDefault(language),
             });
           })
           .filter((summary): summary is string => Boolean(summary?.trim()));

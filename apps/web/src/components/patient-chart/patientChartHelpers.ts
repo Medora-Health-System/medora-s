@@ -1,4 +1,4 @@
-import type { SupportedLanguage } from "@/i18n/config";
+import { resolveProductUiLanguageOrDefault, productUiBcp47Tag, type SupportedLanguage } from "@/i18n/config";
 import { nursingProcedureSummaryLinesForLocale } from "@/lib/nursingProcedures";
 import {
   buildErNursingReassessmentPreviewModel,
@@ -236,7 +236,7 @@ export function parsePhysicianEvalV1ForChart(
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return [];
   const workspace = buildProviderDocumentationDisplayModel({
     nursingAssessment: raw,
-    locale: language === "en" ? "en" : "fr",
+    locale: resolveProductUiLanguageOrDefault(language),
   });
   if (workspace) {
     return workspace.sections.map((section) => ({ label: section.label, text: section.text }));
@@ -263,13 +263,13 @@ export function providerDocumentationWorkspaceSignatureForLocale(
 ): string | null {
   const workspace = buildProviderDocumentationDisplayModel({
     nursingAssessment: raw,
-    locale: language === "en" ? "en" : "fr",
+    locale: resolveProductUiLanguageOrDefault(language),
   });
   if (!workspace?.savedAt || !workspace.savedBy) return null;
   const dt = new Date(workspace.savedAt);
   const formatted = Number.isNaN(dt.getTime())
     ? "—"
-    : dt.toLocaleString(language === "en" ? "en-US" : "fr-FR");
+    : dt.toLocaleString(productUiBcp47Tag(language));
   return t("providerDocumentationWorkspace.savedByAt")
     .replace("{name}", workspace.savedBy)
     .replace("{datetime}", formatted);

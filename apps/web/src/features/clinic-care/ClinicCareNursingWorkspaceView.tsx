@@ -34,6 +34,7 @@ import {
 } from "./clinicCareBoardRoutes";
 import { ClinicCareInlineRoomSelect } from "./ClinicCareInlineRoomSelect";
 import { CLINIC_CARE_SHELL } from "./clinicCareTokens";
+import { productUiBcp47Tag } from "@/i18n/config";
 
 type ClinicCareRow = {
   encounterId: string;
@@ -131,7 +132,7 @@ const compactBtn: React.CSSProperties = {
 
 export function ClinicCareNursingWorkspaceView() {
   const { t, language } = useI18n();
-  const locale = language === "en" ? "en-US" : "fr-FR";
+  const locale = productUiBcp47Tag(language);
   const searchParams = useSearchParams();
   const focusEncounterId = searchParams?.get("encounterId") ?? null;
   const { facilityId, roles, ready } = useFacilityAndRoles();

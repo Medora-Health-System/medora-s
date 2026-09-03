@@ -10,6 +10,7 @@ import { apiFetch } from "@/lib/apiClient";
 import { useI18n } from "@/lib/i18n";
 import { normalizeUserFacingError } from "@/lib/userFacingError";
 import { MEDORA_CARD_SHELL } from "@/components/medora-card/medoraCardTokens";
+import { productUiBcp47Tag } from "@/i18n/config";
 
 type ProcedureRow = {
   id: string;
@@ -192,7 +193,7 @@ export function EnterpriseDentalProceduresPanel({ encounterId, facilityId, locke
                 <strong>{p.clinicalName}</strong>
                 {p.toothCodes.length ? ` · ${p.toothCodes.join(", ")}` : ""}
                 <div style={{ fontSize: 11, color: "#64748b", marginTop: 2 }}>
-                  {new Date(p.performedAt).toLocaleString(language === "en" ? "en-US" : "fr-FR")}
+                  {new Date(p.performedAt).toLocaleString(productUiBcp47Tag(language))}
                   {p.providerDisplay ? ` · ${p.providerDisplay}` : ""}
                   {p.anesthesiaUsed ? ` · ${t("dentalCareD5a5.procedures.anesthesiaUsed")}` : ""}
                 </div>

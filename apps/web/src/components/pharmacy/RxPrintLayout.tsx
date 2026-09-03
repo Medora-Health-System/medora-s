@@ -6,7 +6,7 @@
  * MEDUI.D4C.7H — facility identity header + ready print execution (no noopener blank window).
  */
 
-import type { SupportedLanguage } from "@/i18n/config";
+import { resolveProductUiLanguageOrDefault, type SupportedLanguage } from "@/i18n/config";
 import { catalogMedicationNameForLocale } from "@/lib/orderItemDisplayFr";
 import { formatOrderAuthorityLines, type OrderAuthority } from "@/lib/orderAuthority";
 import { formatOrderAttributionLines, type OrderAttributionDisplay, type OrderLastActionDisplay } from "@/lib/orderAttribution";
@@ -163,7 +163,7 @@ export function getRxPrintHtml(params: {
   const patientName = [patient.firstName, patient.lastName].filter(Boolean).join(" ") || "—";
   const dateStr = new Date(order.createdAt).toLocaleString(loc);
   const printDateStr = new Date().toLocaleString(loc);
-  const htmlLang = language === "en" ? "en" : "fr";
+  const htmlLang = resolveProductUiLanguageOrDefault(language);
   const authorityLines = formatOrderAuthorityLines(order, (key) => printT(language, key));
   const authorityHtml = authorityLines.map((line) => esc(line)).join(" · ");
   const attributionHtml = formatOrderAttributionLines(order, (key) => printT(language, key), language)

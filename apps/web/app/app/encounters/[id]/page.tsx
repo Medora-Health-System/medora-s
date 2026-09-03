@@ -220,6 +220,7 @@ import { isEncounterLocked } from "@/lib/encounterLock";
 import { formatOrderAuthority } from "@/lib/orderAuthority";
 import { formatOrderAttributionLines } from "@/lib/orderAttribution";
 import { ProviderDocumentationWorkspace } from "@/components/encounters/ProviderDocumentationWorkspace";
+import { productUiBcp47Tag, resolveProductUiLanguageOrDefault } from "@/i18n/config";
 import {
   buildProviderDocumentationMetadata,
   buildProviderDocumentationSavePayload,
@@ -4331,7 +4332,7 @@ function ClinicVisitTab({
   facilityCountry?: string | null;
 }) {
   const { t, language } = useI18n();
-  const dateLocale = language === "en" ? "en-US" : "fr-FR";
+  const dateLocale = productUiBcp47Tag(language);
   const impressionSnippetKeys = [
     "encounterClinicTab.snippetImpression0",
     "encounterClinicTab.snippetImpression1",
@@ -4679,7 +4680,7 @@ function ClinicVisitTab({
         encounterId={encounter.id}
         encounterMode={providerDocumentationEncounterMode}
         facilityCountry={facilityCountry}
-        authoredDocumentLocale={language === "fr" ? "fr" : "en"}
+        authoredDocumentLocale={resolveProductUiLanguageOrDefault(language)}
         value={providerWorkspaceValue}
         onChange={setProviderWorkspaceValue}
         onSave={save}
@@ -5281,7 +5282,7 @@ function TriageVitalsTab({
   isLocked: boolean;
 }) {
   const { t, language } = useI18n();
-  const dateLocale = language === "en" ? "en-US" : "fr-FR";
+  const dateLocale = productUiBcp47Tag(language);
   const [triage, setTriage] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const vitals = (triage?.vitalsJson as any) || {};

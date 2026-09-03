@@ -5,6 +5,7 @@ import Link from "next/link";
 import { fetchLowStock, fetchExpiring, type InventoryItemRow } from "@/lib/pharmacyApi";
 import { useI18n } from "@/lib/i18n";
 import { catalogMedicationNameForLocale } from "@/lib/orderItemDisplayFr";
+import { productUiBcp47Tag } from "@/i18n/config";
 
 const EXPIRING_WINDOW_DAYS = 90;
 const NEAR_EXPIRY_DAYS = 30;
@@ -64,7 +65,7 @@ export function PharmacyAlertsCard({
   onRefreshInventory?: () => void;
 }) {
   const { t, language } = useI18n();
-  const dateLocale = language === "en" ? "en-US" : "fr-FR";
+  const dateLocale = productUiBcp47Tag(language);
   const [lowStock, setLowStock] = useState<InventoryItemRow[]>([]);
   const [expiring, setExpiring] = useState<InventoryItemRow[]>([]);
   const [loading, setLoading] = useState(true);

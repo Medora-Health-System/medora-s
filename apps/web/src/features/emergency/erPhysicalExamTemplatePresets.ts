@@ -5,8 +5,7 @@
  */
 
 import type { SupportedLanguage } from "@/i18n/config";
-import frMessages from "@/i18n/messages/fr";
-import enMessages from "@/i18n/messages/en";
+import { getClinicalUiMessages } from "@/i18n/messages/registry";
 import type { ErProviderMseForm } from "./emergencyProviderMseV1";
 
 export type ErPhysicalExamTemplateId =
@@ -60,7 +59,7 @@ function presetBlockForLocale(
   locale: SupportedLanguage,
   id: ErPhysicalExamTemplateId
 ): Record<string, string> | null {
-  const root = (locale === "en" ? enMessages : frMessages) as Record<string, unknown>;
+  const root = getClinicalUiMessages(locale) as Record<string, unknown>;
   const presets = root.erMseExamTemplatePresets;
   if (!presets || typeof presets !== "object") return null;
   const block = (presets as Record<string, unknown>)[id];

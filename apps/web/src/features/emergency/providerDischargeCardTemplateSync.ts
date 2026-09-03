@@ -91,6 +91,9 @@ export function providerDischargeCardNeedsLocaleReapply(
   const activeHash = computeProviderDischargeTemplateAppliedHash(template, activeLocale);
   if (appliedHash === activeHash) return false;
 
+  // SAFE NON-DISPLAY MULTILINGUAL LOGIC: compare the other stored bilingual
+  // template hash only. A match means reapply in `activeLocale` — never render
+  // the other language as the current locale.
   const otherLocale: ProviderDischargeTemplateLocale = activeLocale === "fr" ? "en" : "fr";
   const otherHash = computeProviderDischargeTemplateAppliedHash(template, otherLocale);
   return appliedHash === otherHash;

@@ -3,7 +3,7 @@
  * Mirrors Summary dashboard + PatientChartPrintLayout summary rendering.
  */
 
-import type { SupportedLanguage } from "@/i18n/config";
+import { resolveProductUiLanguageOrDefault, type SupportedLanguage } from "@/i18n/config";
 import { printT } from "@/lib/printI18n";
 import {
   appendBloodProductPatientSummaryLines,
@@ -51,7 +51,7 @@ function summaryLinesForEntry(
   entry: ErPrintClinicalDocumentationEntry,
   language: SupportedLanguage
 ): Array<{ key: string; value: string }> {
-  const summaryLocale = language === "en" ? "en" : "fr";
+  const summaryLocale = resolveProductUiLanguageOrDefault(language);
   if ((EDOC7_BLOOD_PRODUCT_DOCUMENTATION_CARD_IDS as readonly string[]).includes(entry.cardId)) {
     return appendBloodProductPatientSummaryLines(entry.cardId, entry.payloadJson ?? {}, summaryLocale, {
       witnessDisplayName: entry.witnessDisplayName ?? null,

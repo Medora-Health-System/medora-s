@@ -23,6 +23,7 @@ import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import { useI18n } from "@/lib/i18n";
 import { ClinicCareShell } from "./ClinicCareShell";
 import { CLINIC_CARE_SHELL } from "./clinicCareTokens";
+import { productUiBcp47Tag } from "@/i18n/config";
 
 type ResultInboxRow = {
   orderItemId: string;
@@ -84,7 +85,7 @@ function groupLabelKey(g: ClinicCareAmbulatoryResultInboxGroup): string {
 
 export function ClinicCareAmbulatoryResultsInboxView() {
   const { t, language } = useI18n();
-  const locale = language === "en" ? "en-US" : "fr-FR";
+  const locale = productUiBcp47Tag(language);
   const {
     facilityId,
     roles,

@@ -2,7 +2,7 @@
  * Print-safe HTML for laboratory and imaging encounter results (ED Results).
  */
 
-import type { SupportedLanguage } from "@/i18n/config";
+import { resolveProductUiLanguageOrDefault, type SupportedLanguage } from "@/i18n/config";
 import type { EncounterLabRadRow } from "@/components/encounters/EncounterResultsTab";
 import { nirMrnDisplay } from "@/components/patient-chart/patientChartHelpers";
 import { calculateAge } from "@/lib/patientDisplay";
@@ -402,7 +402,7 @@ function wrapResultPrintHtml(params: {
   const facilityHeader = buildPrintFacilityHeaderHtml(facilityInfo, esc);
   const patientHeader = buildPatientHeaderHtml(ctx, loc);
   const footer = buildPrintDocumentFooterHtml(ctx.language, printDate, esc, printT);
-  const htmlLang = ctx.language === "en" ? "en" : "fr";
+  const htmlLang = resolveProductUiLanguageOrDefault(ctx.language);
 
   return `<!DOCTYPE html>
 <html lang="${htmlLang}">

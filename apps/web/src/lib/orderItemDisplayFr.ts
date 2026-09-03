@@ -1,4 +1,4 @@
-import type { SupportedLanguage } from "@/i18n/config";
+import { catalogLabelStrategyForProductUi, type SupportedLanguage } from "@/i18n/config";
 import { i18nMessage } from "@/lib/i18nMessagesLookup";
 import { formatCatalogMedicationOrderDetailLine } from "@/lib/localizedMedicationDisplay";
 import {
@@ -159,7 +159,7 @@ export function getOrderItemDisplayLabelForLanguage(
   language: SupportedLanguage,
   t: (key: string) => string
 ): string {
-  if (language === "fr") return orderItemDisplayLabelFr(item);
+  if (catalogLabelStrategyForProductUi(language) === "fr_preferred") return orderItemDisplayLabelFr(item);
   const resolvedType = resolveCatalogItemType(item);
   const catType = String(item.catalogItemType ?? resolvedType ?? "CARE");
   if (resolvedType === "CARE" && item.enterpriseProcedureId?.trim() === OXYGEN_THERAPY_PROCEDURE_CODE) {
@@ -415,7 +415,9 @@ export function catalogMedicationNameForLocale(
     catalogMedication: m,
     orderLine: { catalogItemType: "MEDICATION" },
   });
-  return language === "fr"
-    ? (identity.medicationNameFr ?? "")
-    : (identity.medicationNameEn ?? "");
+  const strategy = catalogLabelStrategyForProductUi(language);
+  if (strategy === "fr_preferred") {
+    return identity.medicationNameFr ?? "";
+  }
+  return identity.medicationNameEn ?? "";
 }

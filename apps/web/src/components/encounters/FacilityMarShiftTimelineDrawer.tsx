@@ -50,6 +50,7 @@ import { ContinuousInfusionRuntimePanel } from "@/components/mar/ContinuousInfus
 import { MedicationAllergyReviewPanel } from "@/components/mar/MedicationAllergyReviewPanel";
 import type { MarAllergyCandidate } from "@medora/shared";
 import { MedicationClinicalDateTimeField } from "@/components/mar/MedicationClinicalDateTimeField";
+import { resolveProductUiLanguageOrDefault, productUiBcp47Tag } from "@/i18n/config";
 import {
   buildMarClinicalTimeDocumentationNotes,
   marDrawerActionToUniversalClinicalActionType,
@@ -103,7 +104,7 @@ export function FacilityMarShiftTimelineDrawer({
   const marActionErrorFallback = t("marShiftTimeline.actionError");
   const resolveActionError = (e: unknown) =>
     extractMarSaveErrorMessage(e, language, marActionErrorFallback, t);
-  const dateLocale = language === "en" ? "en-US" : "fr-FR";
+  const dateLocale = productUiBcp47Tag(language);
   const closeRef = useRef<HTMLButtonElement>(null);
   const [startTimeValue, setStartTimeValue] = useState("");
   const [stopTimeValue, setStopTimeValue] = useState("");
@@ -431,7 +432,7 @@ export function FacilityMarShiftTimelineDrawer({
       label: t("marShiftTimeline.drawer.prnReason"),
       value: formatMarPrnReasonForLocale(
         { code: item.prnReasonCode, label: item.prnReasonLabel },
-        language === "en" ? "en" : "fr"
+        resolveProductUiLanguageOrDefault(language)
       ),
       testId: "mar-shift-timeline-drawer-prn-reason",
     },

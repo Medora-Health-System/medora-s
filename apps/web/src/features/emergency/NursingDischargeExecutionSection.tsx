@@ -51,6 +51,7 @@ import {
 } from "@/lib/patientVitals";
 import { saveNursingDischargeVitals } from "./saveNursingDischargeVitals";
 import { isTriageStaleConflictError } from "./triageConcurrency";
+import { productUiBcp47Tag } from "@/i18n/config";
 
 const labelStyle: React.CSSProperties = {
   display: "block",
@@ -525,7 +526,7 @@ export function NursingDischargeExecutionSection({
                 .replace(
                   "{when}",
                   new Date(stored.dischargeSortieCompletedAt).toLocaleString(
-                    language === "en" ? "en-US" : "fr-FR"
+                    productUiBcp47Tag(language)
                   )
                 )}
             </p>
@@ -607,7 +608,7 @@ export function NursingDischargeExecutionSection({
                       .replace(
                         "{when}",
                         new Date(recentSnap.measuredAt ?? recentSnap.updatedAt).toLocaleString(
-                          language === "en" ? "en-US" : "fr-FR",
+                          productUiBcp47Tag(language),
                           { dateStyle: "short", timeStyle: "short" }
                         )
                       )

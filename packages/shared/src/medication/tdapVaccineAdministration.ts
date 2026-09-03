@@ -18,6 +18,7 @@ import {
   validateVaccineVisDocumentation,
 } from "./vaccineVisGovernance.js";
 import { ENTERPRISE_WAVE1_FORMULARY_BY_CODE } from "./enterpriseWave1FormularyManifest.js";
+import { productUiBcp47Tag } from "../i18n/productUiLocale.js";
 import {
   serializeVaccineAdministrationDocumentation,
   vaccineInjectionSiteLaterality,
@@ -175,7 +176,7 @@ function formatExpirationForNote(isoDate: string, locale: "en" | "fr"): string {
   if (!trimmed) return "";
   try {
     const d = new Date(`${trimmed}T12:00:00`);
-    return d.toLocaleDateString(locale === "fr" ? "fr-FR" : "en-US", {
+    return d.toLocaleDateString(productUiBcp47Tag(locale), {
       year: "numeric",
       month: "numeric",
       day: "numeric",
@@ -190,7 +191,7 @@ function formatAdminTimeForNote(iso: string, locale: "en" | "fr"): string {
   if (!trimmed) return "";
   try {
     const d = new Date(trimmed);
-    return d.toLocaleString(locale === "fr" ? "fr-FR" : "en-US", {
+    return d.toLocaleString(productUiBcp47Tag(locale), {
       dateStyle: "short",
       timeStyle: "short",
     });

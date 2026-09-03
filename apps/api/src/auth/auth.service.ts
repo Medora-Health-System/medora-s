@@ -1,5 +1,5 @@
 import { Injectable, UnauthorizedException, BadRequestException } from "@nestjs/common";
-import { PASSWORD_POLICY_HINT_FR, passwordMeetsPolicy, parseStoredFacilityServiceLines, resolveFacilityServiceLines } from "@medora/shared";
+import { PASSWORD_POLICY_HINT_FR, passwordMeetsPolicy, parseStoredFacilityServiceLines, parseProductUiLanguage, PRODUCT_DEFAULT_UI_LANGUAGE, resolveFacilityServiceLines } from "@medora/shared";
 import { JwtService } from "@nestjs/jwt";
 import { ConfigService } from "@nestjs/config";
 import * as argon2 from "argon2";
@@ -13,9 +13,7 @@ import { isMfaRequiredForRoles } from "./mfa/mfa-required-roles.util";
 
 const authLog = createStructuredLogger("AuthService");
 
-/** Phase 9 patch — supported i18n locales mirrored from `apps/web/src/i18n/config.ts`. */
-const SUPPORTED_PREFERRED_LANGUAGES = new Set(["fr", "en"]);
-const DEFAULT_PREFERRED_LANGUAGE = "fr";
+/** Phase 9 patch — product UI locales from `@medora/shared` `productUiLocale`. */
 
 /**
  * Phase 9 patch — pick a sensible UI language for the MFA login screens.
@@ -35,12 +33,10 @@ function preferredLanguageFromUserRoles(
 ): string {
   const sorted = [...userRoles].sort((a, b) => a.facilityId.localeCompare(b.facilityId, "en"));
   for (const ur of sorted) {
-    const lang = ur.facility?.defaultLanguage?.toString().trim().toLowerCase();
-    if (lang && SUPPORTED_PREFERRED_LANGUAGES.has(lang)) {
-      return lang;
-    }
+    const parsed = parseProductUiLanguage(ur.facility?.defaultLanguage);
+    if (parsed) return parsed;
   }
-  return DEFAULT_PREFERRED_LANGUAGE;
+  return PRODUCT_DEFAULT_UI_LANGUAGE;
 }
 
 /**

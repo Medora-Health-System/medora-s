@@ -10,6 +10,8 @@ import type { ClinicalDocumentationEntryRow } from "@/lib/clinicalDocumentationA
 import { useI18n } from "@/lib/i18n";
 import { formatClinicalInstantForFacility } from "@/lib/clinicalTimeDisplay";
 
+import { resolveProductUiLanguageOrDefault } from "@/i18n/config";
+
 const cardShell: React.CSSProperties = {
   border: "1px solid #e2e8f0",
   borderRadius: 10,
@@ -48,7 +50,7 @@ export function EmergencyClinicalDataSummary({
   facilityTimeZone?: string | null;
 }) {
   const { t, language } = useI18n();
-  const locale = language === "en" ? "en" : "fr";
+  const locale = resolveProductUiLanguageOrDefault(language);
 
   const projection = useMemo(
     () => buildClinicalDataSummaryProjection({ entries, locale }),

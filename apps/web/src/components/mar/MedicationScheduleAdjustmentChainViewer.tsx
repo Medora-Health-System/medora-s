@@ -4,6 +4,7 @@ import React from "react";
 import type { MarScheduleAdjustmentChainStep } from "@medora/shared";
 import { resolveMarRescheduleReasonLabelKey, formatMarShiftTimelineClinicalDateTime } from "@medora/shared";
 import { useI18n } from "@/lib/i18n";
+import { productUiBcp47Tag } from "@/i18n/config";
 
 export type MedicationScheduleAdjustmentChainViewerProps = {
   steps: MarScheduleAdjustmentChainStep[];
@@ -21,7 +22,7 @@ export function MedicationScheduleAdjustmentChainViewer({
   facilityTimeZone = null,
 }: MedicationScheduleAdjustmentChainViewerProps) {
   const { t, language } = useI18n();
-  const dateLocale = language === "en" ? "en-US" : "fr-FR";
+  const dateLocale = productUiBcp47Tag(language);
 
   if (steps.length === 0) return null;
 

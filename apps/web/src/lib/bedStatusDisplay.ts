@@ -4,7 +4,7 @@ import {
   resolveEncounterCanonicalBedKey,
   type BedOperationalStatus,
 } from "@medora/shared";
-import type { SupportedLanguage } from "@/i18n/config";
+import { resolveProductUiLanguageOrDefault, type SupportedLanguage } from "@/i18n/config";
 import type { FacilityBedBoardBedRow } from "@/lib/bedBoardApi";
 
 /** K.10B.10C / K.10B.10D centralized bed status colors — delegates to K.10B.10E presentation. */
@@ -52,7 +52,7 @@ export function formatHospitalBedStatusLabel(
   const key = `bedStatus.${status}`;
   const translated = t(key);
   if (translated !== key) return translated;
-  return formatBedOperationalStatusLabel(status, language === "fr" ? "fr" : "en");
+  return formatBedOperationalStatusLabel(status, resolveProductUiLanguageOrDefault(language));
 }
 
 export function formatEdBedStatusChipLabel(
@@ -63,7 +63,7 @@ export function formatEdBedStatusChipLabel(
   const simplifiedKey = `bedStatus.edSimplified.${status}`;
   const translated = t(simplifiedKey);
   if (translated !== simplifiedKey) return translated;
-  return formatEdSimplifiedBedStatusLabel(status, language === "fr" ? "fr" : "en");
+  return formatEdSimplifiedBedStatusLabel(status, resolveProductUiLanguageOrDefault(language));
 }
 
 export function shouldShowEdBedStatusChip(status: BedOperationalStatus | null | undefined): boolean {

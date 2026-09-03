@@ -7,6 +7,11 @@ import {
 import { erTriageMessagesEn } from "@/i18n/messages/erTriage.en";
 import { erTriageMessagesFr } from "@/i18n/messages/erTriage.fr";
 
+const TRIAGE_VITAL_STRIP = {
+  en: erTriageMessagesEn.preview.vitalStrip,
+  fr: erTriageMessagesFr.preview.vitalStrip,
+} as const;
+
 type LatestVitals = {
   availability: "AVAILABLE" | "NO_DATA_DOCUMENTED" | "SOURCE_UNAVAILABLE";
   systolic: number | null;
@@ -28,7 +33,7 @@ export function buildInpatientHeaderVitalPairs(
   language: SupportedLanguage,
   emptyLabel: string
 ): { label: string; value: string }[] {
-  const vs = (language === "en" ? erTriageMessagesEn : erTriageMessagesFr).preview.vitalStrip;
+  const vs = TRIAGE_VITAL_STRIP[language];
   const dash = emptyLabel;
   if (!vitals || vitals.availability !== "AVAILABLE") {
     return [

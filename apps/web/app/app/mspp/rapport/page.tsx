@@ -30,6 +30,7 @@ import { MsppHaitiDepartmentMap } from "@/features/mspp/MsppHaitiDepartmentMap";
 import { MsppSurveillancePanel } from "@/features/mspp/MsppAlertBadges";
 import { MsppMinisterSignalBlock } from "@/features/mspp/MsppMinisterSignal";
 import { MsppRapportNarrative } from "@/features/mspp/MsppNarrativeInsights";
+import { productUiBcp47Tag } from "@/i18n/config";
 import {
   MSPP_EMPTY_STATE,
   MSPP_ERROR_CALLOUT,
@@ -156,7 +157,7 @@ export default function MsppRapportPage() {
     );
   }
 
-  const printDateLocale = language === "en" ? "en-US" : "fr-FR";
+  const printDateLocale = productUiBcp47Tag(language);
   const printGeneratedLine = interpolateNarrative(t("msppRapportPrint.printHeaderGenerated"), {
     date: new Date().toLocaleString(printDateLocale),
   });

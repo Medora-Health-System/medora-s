@@ -3,7 +3,7 @@
  * UserRole rows link users to roles per facility (see Prisma `UserRole`).
  */
 
-import type { CreateAdminUserDto, CreateFacilityDto } from "@medora/shared";
+import type { CreateAdminUserDto, CreateFacilityDto, ProductUiLanguage } from "@medora/shared";
 import type { FacilityBillingClassificationMode } from "@medora/shared";
 import { normalizeUserFacingError } from "./userFacingError";
 import { parseApiResponse } from "./apiClient";
@@ -297,7 +297,7 @@ export type AdminFacilityRow = {
   id: string;
   name: string;
   isActive?: boolean;
-  defaultLanguage?: "fr" | "en";
+  defaultLanguage?: ProductUiLanguage;
   facilityType?: string;
   serviceLines?: string[];
   facilityCareProfileJson?: unknown;
@@ -353,25 +353,25 @@ export async function setAdminFacilityActive(
 export async function setAdminFacilityLanguage(
   facilityId: string,
   id: string,
-  defaultLanguage: "fr" | "en"
-): Promise<{ id: string; name: string; defaultLanguage: "fr" | "en" }> {
+  defaultLanguage: ProductUiLanguage
+): Promise<{ id: string; name: string; defaultLanguage: ProductUiLanguage }> {
   return adminApiFetch(`/facilities/${id}/language`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ defaultLanguage }),
     facilityId,
-  }) as Promise<{ id: string; name: string; defaultLanguage: "fr" | "en" }>;
+  }) as Promise<{ id: string; name: string; defaultLanguage: ProductUiLanguage }>;
 }
 
 /** POST /admin/facilities — crée un établissement et rattache l’admin courant (côté API). */
 export async function createAdminFacility(
   facilityId: string,
   body: CreateFacilityDto
-): Promise<{ id: string; name: string; defaultLanguage: "fr" | "en" }> {
+): Promise<{ id: string; name: string; defaultLanguage: ProductUiLanguage }> {
   return adminApiFetch("/facilities", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
     facilityId,
-  }) as Promise<{ id: string; name: string; defaultLanguage: "fr" | "en" }>;
+  }) as Promise<{ id: string; name: string; defaultLanguage: ProductUiLanguage }>;
 }

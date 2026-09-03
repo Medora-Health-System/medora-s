@@ -27,6 +27,7 @@ import { useI18n } from "@/lib/i18n";
 import { normalizeUserFacingError } from "@/lib/userFacingError";
 import { isEncounterLocked } from "@/lib/encounterLock";
 import { MEDORA_CARD_SHELL } from "@/components/medora-card/medoraCardTokens";
+import { productUiBcp47Tag } from "@/i18n/config";
 
 export type DentalClinicalEvaluationEncounter = {
   id: string;
@@ -140,7 +141,7 @@ export function EnterpriseDentalClinicalEvaluationPanel({
   onUpdate: () => void | Promise<void>;
 }) {
   const { t, language } = useI18n();
-  const dateLocale = language === "en" ? "en-US" : "fr-FR";
+  const dateLocale = productUiBcp47Tag(language);
   const canAuthor = canAuthorAmbulatoryProviderDocumentation(roles);
   const readOnlyEncounter = (encounter.status ?? "").trim() !== "OPEN";
   const docSigned = isEncounterLocked(encounter);

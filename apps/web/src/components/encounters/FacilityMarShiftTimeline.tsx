@@ -50,6 +50,7 @@ import {
 } from "@/lib/marHistoricalTimeline";
 import { marShiftTimelineHasVisibleMedicationCell } from "@/features/mar/marTimelineFirstLoad";
 import { marOpenPerfMark } from "@/lib/marOpenPerfAudit";
+import { resolveProductUiLanguageOrDefault, productUiBcp47Tag } from "@/i18n/config";
 
 const DEFAULT_SHIFT_CODE: MarShiftTimelineShiftCode = "7A_7P";
 const HEADER_CLOCK_REFRESH_MS = 60_000;
@@ -119,7 +120,7 @@ export function FacilityMarShiftTimeline({
   onCorrectionSaved,
 }: FacilityMarShiftTimelineProps) {
   const { t, language } = useI18n();
-  const dateLocale = language === "en" ? "en-US" : "fr-FR";
+  const dateLocale = productUiBcp47Tag(language);
   const shiftHydratedRef = useRef(false);
   const firstReadyNotifiedRef = useRef(false);
   const onReadyRef = useRef(onReady);
@@ -296,7 +297,7 @@ export function FacilityMarShiftTimeline({
     }
   })();
   const headerClockText = formatMarShiftTimelineHeaderClock(headerNow, dateLocale, facilityTimeZone);
-  const uiLocale = language === "en" ? "en" : "fr";
+  const uiLocale = resolveProductUiLanguageOrDefault(language);
 
   return (
     <section

@@ -1,10 +1,10 @@
-import type { SupportedLanguage } from "@/i18n/config";
+import { productUiBcp47Tag, type SupportedLanguage } from "@/i18n/config";
 import { isOrderItemDoneForChart } from "@/constants/orderStatusLabels";
 import { calculateAge } from "@/lib/patientDisplay";
 import { formatVitalsHeaderLineForLocale } from "@/lib/patientVitals";
 
 export function encounterBcp47(language: SupportedLanguage): string {
-  return language === "en" ? "en-US" : "fr-FR";
+  return productUiBcp47Tag(language);
 }
 
 /** Resolves `prefix.code` via `t`; falls back to raw code if missing. */

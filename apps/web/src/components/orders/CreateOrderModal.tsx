@@ -104,7 +104,7 @@ import { newOrderLineId } from "./createOrderModal/types";
 import { resolveClinicalTimeZone } from "@/lib/clinicalTimeDisplay";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import { useI18n } from "@/lib/i18n";
-import type { SupportedLanguage } from "@/i18n/config";
+import { resolveProductUiLanguageOrDefault, productUiBcp47Tag, type SupportedLanguage } from "@/i18n/config";
 import { buildActiveCatalogDedupKeySetFromOrders } from "@/lib/encounterClinicalSafetyUi";
 import {
   createOrderLineToAdvancedMedicationSafetyLine,
@@ -300,7 +300,7 @@ export function CreateOrderModal({
   const careOfflineMatches = useMemo(() => {
     const q = carePickerQuery.trim();
     if (q.length < 2 && !careCategoryFilter) return [];
-    const locale = language === "fr" ? "fr" : "en";
+    const locale = resolveProductUiLanguageOrDefault(language);
     return searchCanonicalCareProcedures({
       q: q.length >= 2 ? q : "",
       locale,
@@ -1295,7 +1295,7 @@ export function CreateOrderModal({
 
   const confirmOxygenTherapyOrder = () => {
     if (!oxygenTherapyCompose) return;
-    const locale = language === "fr" ? "fr" : "en";
+    const locale = resolveProductUiLanguageOrDefault(language);
     const validation = validateOxygenTherapyDraft(oxygenTherapyCompose);
     if (!validation.ok) {
       setOxygenTherapyError(t("createOrderModal.oxygen.errInvalid"));
@@ -1340,7 +1340,7 @@ export function CreateOrderModal({
       setCarePickerQuery("");
       return;
     }
-    const locale = language === "fr" ? "fr" : "en";
+    const locale = resolveProductUiLanguageOrDefault(language);
     const label = locale === "fr" ? procedure.displayNameFr : procedure.displayNameEn;
     const quickKey =
       procedure.code === "ekg_ecg"
@@ -1353,7 +1353,7 @@ export function CreateOrderModal({
   };
 
   const addCarePresetLine = (label: string) => {
-    const locale = language === "fr" ? "fr" : "en";
+    const locale = resolveProductUiLanguageOrDefault(language);
     const oxygenDef = enterpriseProcedureById(OXYGEN_THERAPY_PROCEDURE_CODE);
     if (oxygenDef) {
       const oxygenLabel = resolveEnterpriseProcedureDisplayName(oxygenDef, locale);
@@ -1978,7 +1978,7 @@ export function CreateOrderModal({
                 type="button"
                 onClick={() => {
                   setPrintRxError(null);
-                  const lang = language === "en" ? "en" : "fr";
+                  const lang = resolveProductUiLanguageOrDefault(language);
                   const gate = validateOutpatientPrescriptionPrintProjection(persistedItems, lang);
                   if (!gate.ok) {
                     setPrintRxError(t(gate.reasonKey));
@@ -2071,7 +2071,7 @@ export function CreateOrderModal({
             <p style={{ marginTop: 14, fontSize: 13, color: "#666" }}>
               {t("createOrderModal.recordedAt")}{" "}
               {createdOrder.createdAt
-                ? new Date(createdOrder.createdAt).toLocaleString(language === "en" ? "en-US" : "fr-FR")
+                ? new Date(createdOrder.createdAt).toLocaleString(productUiBcp47Tag(language))
                 : "—"}
             </p>
                 </>
@@ -2730,7 +2730,7 @@ export function CreateOrderModal({
                         <option value="">{t("createOrderModal.careCategoryAll")}</option>
                         {CANONICAL_CARE_PROCEDURE_CATEGORIES.map((category) => (
                           <option key={category} value={category}>
-                            {canonicalCareProcedureCategoryLabel(category, language === "fr" ? "fr" : "en")}
+                            {canonicalCareProcedureCategoryLabel(category, resolveProductUiLanguageOrDefault(language))}
                           </option>
                         ))}
                       </select>
@@ -2776,7 +2776,7 @@ export function CreateOrderModal({
                             }}
                           >
                             {careCatalogMatches.map((procedure) => {
-                              const locale = language === "fr" ? "fr" : "en";
+                              const locale = resolveProductUiLanguageOrDefault(language);
                               const label = locale === "fr" ? procedure.displayNameFr : procedure.displayNameEn;
                               const categoryLabel =
                                 locale === "fr" ? procedure.categoryLabelFr : procedure.categoryLabelEn;
@@ -2820,7 +2820,7 @@ export function CreateOrderModal({
                             setOxygenTherapyCompose(draft);
                             setOxygenTherapyError(null);
                           }}
-                          previewLocale={language === "fr" ? "fr" : "en"}
+                          previewLocale={resolveProductUiLanguageOrDefault(language)}
                         />
                         {oxygenTherapyError ? (
                           <div

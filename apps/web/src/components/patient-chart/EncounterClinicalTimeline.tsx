@@ -18,7 +18,7 @@ import {
 } from "./patientChartHelpers";
 import { parseNursingProceduresForChart } from "@/lib/nursingProcedures";
 import { catalogMedicationNameForLocale } from "@/lib/orderItemDisplayFr";
-import type { SupportedLanguage } from "@/i18n/config";
+import { productUiBcp47Tag, type SupportedLanguage } from "@/i18n/config";
 import { chartSummaryAttachmentSummary, chartSummaryOrderItemLineLabel } from "@/lib/chartSummaryOrderLabel";
 
 const subTitle: React.CSSProperties = {
@@ -268,7 +268,7 @@ export function EncounterClinicalTimeline({
   followUps: FollowUpRow[];
 }) {
   const { t, language } = useI18n();
-  const dateLocale = language === "en" ? "en-US" : "fr-FR";
+  const dateLocale = productUiBcp47Tag(language);
 
   const formatShortDateTime = (iso: string | null | undefined): string => {
     if (!iso) return "—";

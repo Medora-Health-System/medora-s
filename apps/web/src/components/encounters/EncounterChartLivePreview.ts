@@ -14,7 +14,7 @@
  */
 
 import { apiFetch } from "@/lib/apiClient";
-import type { SupportedLanguage } from "@/i18n/config";
+import { resolveProductUiLanguageOrDefault, type SupportedLanguage } from "@/i18n/config";
 import { calculateAge } from "@/lib/patientDisplay";
 import { formatVitalsHeaderLineForLocale } from "@/lib/patientVitals";
 import { fetchEncounterAuditTimeline, type ChartAuditTimelineItem } from "@/lib/chartApi";
@@ -587,7 +587,7 @@ function renderNursingReassessments(
 function renderProviderDocumentation(lang: SupportedLanguage, encounter: AnyRecord): string {
   const workspace = buildProviderDocumentationDisplayModel({
     nursingAssessment: encounter.nursingAssessment,
-    locale: lang === "en" ? "en" : "fr",
+    locale: resolveProductUiLanguageOrDefault(lang),
   });
   if (workspace) {
     const savedLine =
@@ -692,11 +692,11 @@ function renderClinicalDocumentationHistorySection(
       const workspace = snapshot
         ? buildProviderDocumentationDisplayModel({
             nursingAssessment: { erProviderMseV1: snapshot },
-            locale: lang === "en" ? "en" : "fr",
+            locale: resolveProductUiLanguageOrDefault(lang),
           })
         : null;
       if (workspace) {
-        const title = clinicalTimelineDisplayLabelForLocale(lang === "en" ? "en" : "fr", displayEventType);
+        const title = clinicalTimelineDisplayLabelForLocale(resolveProductUiLanguageOrDefault(lang), displayEventType);
         const sectionBlocks = workspace.sections
           .map(
             (s) =>
@@ -1056,7 +1056,7 @@ function renderMar(lang: SupportedLanguage, rows: AnyRecord[] | null): string {
       const performerName = performer
         ? `${pickString(performer, "firstName") ?? ""} ${pickString(performer, "lastName") ?? ""}`.trim()
         : "";
-      const notes = sanitizeMarAdministrationVisibleNote(pickString(r, "notes"), lang === "fr" ? "fr" : "en");
+      const notes = sanitizeMarAdministrationVisibleNote(pickString(r, "notes"), resolveProductUiLanguageOrDefault(lang));
       const parts: string[] = [];
       parts.push(
         `<strong>${esc(label)}</strong>${dose ? ` — ${esc(dose)}` : ""}${route ? ` — ${esc(route)}` : ""}`
@@ -1436,7 +1436,7 @@ function getEncounterChartLivePreviewHtml(
   const lang = language;
   const loc = printDateLocale(lang);
   const printedAt = new Date().toLocaleString(loc);
-  const htmlLang = lang === "en" ? "en" : "fr";
+  const htmlLang = resolveProductUiLanguageOrDefault(lang);
   const titleStr = legalMedicalRecord ? tprev(lang, "legalH1") : tprev(lang, "h1");
   const banner = tprev(lang, "banner");
   const printedAtLine = tprev(lang, "printedAt").replace("{date}", printedAt);
@@ -1603,7 +1603,7 @@ export async function printEncounterChartLivePreview(
   }
   win.document.open();
   win.document.write(
-    `<!DOCTYPE html><html lang="${language === "en" ? "en" : "fr"}"><head><meta charset="utf-8" /><title>${esc(
+    `<!DOCTYPE html><html lang="${resolveProductUiLanguageOrDefault(language)}"><head><meta charset="utf-8" /><title>${esc(
       printT(language, "printOutput.common.printPreparing")
     )}</title></head><body style="font-family:system-ui,sans-serif;padding:24px;font-size:14px;color:#333;"><p>${esc(
       printT(language, "printOutput.common.printPreparing")
@@ -1622,7 +1622,7 @@ export async function printEncounterChartLivePreview(
   } catch (e) {
     // eslint-disable-next-line no-console
     console.error("Failed to compose encounter chart live preview:", e);
-    html = `<!DOCTYPE html><html lang="${language === "en" ? "en" : "fr"}"><head><meta charset="utf-8" /><title>${esc(
+    html = `<!DOCTYPE html><html lang="${resolveProductUiLanguageOrDefault(language)}"><head><meta charset="utf-8" /><title>${esc(
       printT(language, "printOutput.common.printErrorTitle")
     )}</title></head><body style="font-family:system-ui,sans-serif;padding:24px;font-size:14px;color:#333;"><p>${esc(
       printT(language, "printOutput.common.printError")

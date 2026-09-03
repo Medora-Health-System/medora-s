@@ -244,6 +244,7 @@ export function inferLocalizationAliasesFromStrings(
   for (const raw of aliases) {
     const text = raw.trim();
     if (!text) continue;
+    // Classify stored alias text language (formulary metadata), not product UI locale identity.
     const language: MedicationLocalizationLocale = looksFrenchLocalizedText(text) ? "fr" : "en";
     const key = `${language}:${normalizeAliasKey(text)}`;
     if (options?.dedupeNormalized && seen.has(key)) continue;

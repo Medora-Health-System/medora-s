@@ -1,32 +1,17 @@
-import type { SupportedLanguage } from "@/i18n/config";
 import { isOrderItemDoneForChart } from "@/constants/orderStatusLabels";
-import enMessages from "@/i18n/messages/en";
-import frMessages from "@/i18n/messages/fr";
-
-function getByPath(obj: unknown, path: string): unknown {
-  const parts = path.split(".").filter(Boolean);
-  let cur: unknown = obj;
-  for (const p of parts) {
-    if (cur === null || cur === undefined || typeof cur !== "object") return undefined;
-    cur = (cur as Record<string, unknown>)[p];
-  }
-  return cur;
-}
+import { productUiBcp47Tag, type SupportedLanguage } from "@/i18n/config";
+import { resolveClinicalUiMessage } from "@/i18n/messages/registry";
 
 /**
- * Resolve a message path for print HTML (non-React). Falls back to French if missing in EN.
+ * Resolve a message path for print HTML (non-React).
+ * Active locale only — never fall back to another language catalog.
  */
 export function printT(language: SupportedLanguage, key: string): string {
-  const root = language === "en" ? enMessages : frMessages;
-  const v = getByPath(root, key);
-  if (typeof v === "string") return v;
-  const frVal = getByPath(frMessages, key);
-  if (typeof frVal === "string") return frVal;
-  return key;
+  return resolveClinicalUiMessage(language, key);
 }
 
 export function printDateLocale(language: SupportedLanguage): string {
-  return language === "en" ? "en-US" : "fr-FR";
+  return productUiBcp47Tag(language);
 }
 
 /** Patient sex for print HTML — mirrors `getPatientSexLabelFr` using i18n. */

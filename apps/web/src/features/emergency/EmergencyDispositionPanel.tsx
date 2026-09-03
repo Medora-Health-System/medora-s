@@ -164,6 +164,7 @@ import {
   type EdDispositionLayoutMode,
 } from "@/features/emergency/edDispositionResponsiveLayout";
 import { erHandoffV1SatisfiesInpatientTransferConfirm } from "@medora/shared";
+import { resolveProductUiLanguageOrDefault, productUiBcp47Tag } from "@/i18n/config";
 
 type PhysicianLite = { id?: string; firstName?: string | null; lastName?: string | null } | null;
 
@@ -264,7 +265,7 @@ export function EmergencyDispositionPanel({
   const { facilityType, facilityCountry } = useFacilityAndRoles();
   const localInpatientBlocked = localInpatientPlacementBlockedByFacilityType(facilityType);
   const router = useRouter();
-  const dateLocale = language === "en" ? "en-US" : "fr-FR";
+  const dateLocale = productUiBcp47Tag(language);
   const placementWorkflowUiEnabled = isInternalPlacementWorkflowUiEnabled();
 
   const OUTCOME_OPTIONS = useMemo(
@@ -402,7 +403,7 @@ export function EmergencyDispositionPanel({
       primaryDiagnosisDisplay: primaryRow ? formatDxRow(primaryRow) : null,
       secondaryDiagnosisDisplays: secondaryRows.map(formatDxRow),
     });
-    const proposed = buildSmartAdmissionProposals(ctx, language === "en" ? "en" : "fr");
+    const proposed = buildSmartAdmissionProposals(ctx, resolveProductUiLanguageOrDefault(language));
     if (!proposed.fields.admissionReason && !proposed.fields.initialPlan) {
       setProposalsApplied(true);
       return;
@@ -1171,7 +1172,7 @@ export function EmergencyDispositionPanel({
   const finalChip = readinessChips.find((c) => c.id === "final");
   const followUpSummary = localizeEdDispositionFollowUpChipText(
     String(dischargeForm.followUpInstructions || dischargeForm.followUp || "").trim(),
-    language === "en" ? "en" : "fr"
+    resolveProductUiLanguageOrDefault(language)
   );
   const providerStatusLabel = dispositionState.decisionSigned
     ? t("emergencyDisposition.decisionSignedBadge")

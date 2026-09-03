@@ -14,7 +14,7 @@ import {
   type ParsedRespiratoryMedicationResponse,
   type MedicationInfusionEncounterSummaryRow,
 } from "@medora/shared";
-import type { SupportedLanguage } from "@/i18n/config";
+import { resolveProductUiLanguageOrDefault, type SupportedLanguage } from "@/i18n/config";
 import { formatEncounterChromeDateTime } from "@/lib/encounterChromeI18n";
 import { getOrderItemDisplayLabelForLanguage } from "@/lib/orderItemDisplayFr";
 
@@ -144,7 +144,7 @@ export function buildErEdSummaryContinuousInfusionRows(input: {
   language: SupportedLanguage;
   t: (key: string) => string;
 }): ErEdSummaryContinuousInfusionRow[] {
-  const locale = input.language === "en" ? "en" : "fr";
+  const locale = resolveProductUiLanguageOrDefault(input.language);
   const orderItems = collectMedicationOrderItemsForInfusionSummary(input);
   const eventsByOrderId = indexOrderEventsByOrderId(input.orderEvents);
   const summaryRows = buildMedicationInfusionEncounterSummaryRows({
@@ -161,7 +161,7 @@ export function mapInfusionSummaryRowForDisplay(
   language: SupportedLanguage,
   t: (key: string) => string
 ): ErEdSummaryContinuousInfusionRow {
-  const locale = language === "en" ? "en" : "fr";
+  const locale = resolveProductUiLanguageOrDefault(language);
   const statusLabel = resolveMedicationInfusionEncounterSummaryStatusLabel(row.status, locale);
   const stopReasonLabel =
     resolveMedicationInfusionStopReasonSummaryLabel(row.stopReason, locale) ?? "—";
@@ -392,7 +392,7 @@ export function buildErEdSummaryMarEventRows(input: {
     const notesRaw = readStr(admin.notes);
     const notes = sanitizeMarAdministrationVisibleNote(
       notesRaw,
-      input.language === "fr" ? "fr" : "en"
+      input.language
     );
     const injectionSiteId = parseInjectionSiteFromMarNotes(notesRaw);
     const injectionSite = injectionSiteId ? input.t(`marTab.injectionSites.${injectionSiteId}`) : "—";
