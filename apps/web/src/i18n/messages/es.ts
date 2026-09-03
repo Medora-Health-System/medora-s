@@ -1,11 +1,12 @@
+import { applyApprovedSpanishTerminology } from "@medora/shared";
 import { createHiddenSpanishCatalog } from "./hiddenSpanishCatalog";
 import en from "./en";
 
 /**
- * MEDUI.ES.1C hidden Spanish product UI catalog.
- * Key-parity with EN via explicit UNLOCALIZED_ES::<path> placeholders.
- * Not user-selectable. Clinical Spanish canon is MEDUI.ES.1D.
+ * MEDUI.ES.1D Spanish product UI catalog.
+ * Hidden placeholders from 1C, with APPROVED canon terms overlaid only.
+ * Not user-selectable. Remaining keys stay UNLOCALIZED_ES::<path>.
  */
-const esMessages = createHiddenSpanishCatalog(en);
+const { tree: esMessages } = applyApprovedSpanishTerminology(createHiddenSpanishCatalog(en));
 
 export default esMessages;

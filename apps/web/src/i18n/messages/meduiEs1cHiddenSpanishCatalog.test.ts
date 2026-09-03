@@ -41,6 +41,7 @@ import {
   existingOrderDisplayLabel,
   searchSurgicalHistoryCatalog,
   resolveSurgicalHistoryDisplayName,
+  ES_MEDICAL_TERMINOLOGY,
 } from "@medora/shared";
 
 const webRoot = join(dirname(fileURLToPath(import.meta.url)), "../../..");
@@ -142,18 +143,28 @@ describe("MEDUI.ES.1C hidden Spanish catalog + tri-lingual isolation", () => {
     expect(extraFr.length).toBe(67);
   });
 
-  it("every ES leaf is an explicit UNLOCALIZED_ES placeholder, never EN/FR copy", () => {
+  it("every ES leaf is a hidden placeholder or an APPROVED canon overlay, never EN/FR copy", () => {
     const enByPath = new Map(collectStringLeaves(en).map((x) => [x.path, x.value]));
     const frByPath = new Map(collectStringLeaves(fr).map((x) => [x.path, x.value]));
+    const approvedOverlay = new Map<string, string>();
+    for (const e of ES_MEDICAL_TERMINOLOGY) {
+      if (e.status !== "APPROVED") continue;
+      for (const path of e.uiMessageKeys ?? []) approvedOverlay.set(path, e.es);
+    }
     const esLeaves = collectStringLeaves(es);
     expect(esLeaves.length).toBeGreaterThan(0);
     for (const { path, value } of esLeaves) {
-      expect(isHiddenSpanishPlaceholder(value), path).toBe(true);
-      expect(value).toBe(hiddenSpanishPlaceholder(path));
-      expect(value.startsWith(UNLOCALIZED_ES_PREFIX)).toBe(true);
+      const overlay = approvedOverlay.get(path);
+      if (overlay) {
+        expect(value, path).toBe(overlay);
+      } else {
+        expect(isHiddenSpanishPlaceholder(value), path).toBe(true);
+        expect(value).toBe(hiddenSpanishPlaceholder(path));
+        expect(value.startsWith(UNLOCALIZED_ES_PREFIX)).toBe(true);
+      }
       const enVal = enByPath.get(path);
       const frVal = frByPath.get(path);
-      if (enVal) expect(value).not.toBe(enVal);
+      if (enVal && enVal !== overlay) expect(value).not.toBe(enVal);
       if (frVal) expect(value).not.toBe(frVal);
       expect(value).not.toBe("");
       expect(value).not.toMatch(/^(TODO|TBD|\?+)$/i);
@@ -284,7 +295,7 @@ describe("MEDUI.ES.1C hidden Spanish catalog + tri-lingual isolation", () => {
     const printEs = printT("es", "printOutput.discharge.documentH1");
     const printEn = printT("en", "printOutput.discharge.documentH1");
     const printFr = printT("fr", "printOutput.discharge.documentH1");
-    expect(isHiddenSpanishPlaceholder(printEs)).toBe(true);
+    expect(printEs).toBe("Resumen de alta");
     expect(printEs).not.toBe(printEn);
     expect(printEs).not.toBe(printFr);
   });
