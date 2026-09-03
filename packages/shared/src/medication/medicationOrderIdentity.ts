@@ -286,20 +286,14 @@ function resolveMedicationNames(input: ResolveMedicationOrderIdentityInput): Nam
     firstAcceptableMedicationName(
       strengthCandidates,
       cat?.displayNameFr,
-      cat?.displayNameEn,
-      cat?.genericName,
-      cat?.name,
       legacy?.displayNameFr,
-      legacy?.displayNameEn,
+      cat?.genericName,
       legacy?.genericName,
-      legacy?.name,
-      concept?.displayName,
       concept?.genericName,
       manual || null,
       medicationInnFromCatalogCode(cat?.code),
       medicationInnFromCatalogCode(legacy?.code),
-      medicationInnFromCatalogCode(prod?.code),
-      extractNameFromFullLabel(input.snapshotLabel ?? "", strengthCandidates)
+      medicationInnFromCatalogCode(prod?.code)
     ) ?? null;
 
   let source: MedicationOrderIdentitySource = "fallback";
@@ -350,8 +344,8 @@ function resolveMedicationNames(input: ResolveMedicationOrderIdentityInput): Nam
   }
 
   return {
-    nameEn: nameEn ?? nameFr,
-    nameFr: nameFr ?? nameEn,
+    nameEn,
+    nameFr,
     source,
     confidence: nameEn || nameFr ? confidence : "low",
   };
@@ -367,16 +361,16 @@ export function resolveMedicationOrderIdentity(
   const strengthDisplay = resolveStrengthDisplay(input);
   const { nameEn, nameFr, source, confidence } = resolveMedicationNames(input);
 
-  const displayLabelEn = buildDisplayLabel(nameEn, strengthDisplay, "en");
-  const displayLabelFr = buildDisplayLabel(nameFr, strengthDisplay, "fr");
-
+  const displayLabelEn = nameEn ? buildDisplayLabel(nameEn, strengthDisplay, "en") : FALLBACK_EN;
+  const displayLabelFr = nameFr ? buildDisplayLabel(nameFr, strengthDisplay, "fr") : FALLBACK_FR;
   const hasIdentity = Boolean(nameEn || nameFr);
+
   return {
     medicationNameEn: nameEn,
     medicationNameFr: nameFr,
     strengthDisplay,
-    displayLabelEn: hasIdentity ? displayLabelEn : FALLBACK_EN,
-    displayLabelFr: hasIdentity ? displayLabelFr : FALLBACK_FR,
+    displayLabelEn,
+    displayLabelFr,
     source: hasIdentity ? source : "fallback",
     confidence: hasIdentity ? confidence : "low",
   };

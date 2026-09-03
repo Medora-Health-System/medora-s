@@ -2,7 +2,7 @@
  * Phase 19Y.16B — French ICD-10 display labels (UI-only; stored/billing labels stay English).
  */
 
-import { normalizeIcd10CodeForLookup } from "@medora/shared";
+import { normalizeIcd10CodeForLookup, parseProductUiLanguage } from "@medora/shared";
 import type { SupportedLanguage } from "@/i18n/config";
 import { normalizeDiagnosisSearchText } from "./diagnosisFrenchSearchAliases";
 
@@ -111,18 +111,21 @@ export function getFrenchDiagnosisDisplayLabel(code: string, englishLabel: strin
   const normalizedCode = normalizeIcd10CodeForLookup(code);
   const mapped = FRENCH_ICD10_DISPLAY_LABELS_BY_NORMALIZED_CODE[normalizedCode];
   if (mapped) return mapped;
-  const trimmedEnglish = englishLabel.trim();
-  return trimmedEnglish || code.trim();
+  const trimmedCode = code.trim();
+  if (trimmedCode) return trimmedCode;
+  return englishLabel.trim();
 }
 
 export function getLocalizedDiagnosisDisplayLabel(
   diagnosis: LocalizedDiagnosisDisplayInput,
-  locale: SupportedLanguage
+  locale: SupportedLanguage | string
 ): string {
+  const parsed = parseProductUiLanguage(locale);
   const englishLabel =
     diagnosis.shortDescription?.trim() || diagnosis.description?.trim() || diagnosis.code.trim();
-  if (locale !== "fr") return englishLabel;
-  return getFrenchDiagnosisDisplayLabel(diagnosis.code, englishLabel);
+  if (parsed === "en") return englishLabel;
+  if (parsed === "fr") return getFrenchDiagnosisDisplayLabel(diagnosis.code, englishLabel);
+  return diagnosis.code.trim() || "UNLOCALIZED_SOURCE";
 }
 
 export function getFrenchIcd10DisplayLabelCatalog(): Readonly<Record<string, string>> {

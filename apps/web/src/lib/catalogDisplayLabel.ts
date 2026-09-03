@@ -1,4 +1,4 @@
-import { catalogLabelStrategyForProductUi, type SupportedLanguage } from "@/i18n/config";
+import { adaptProductUiToCatalogLabelStrategy, type SupportedLanguage } from "@/i18n/config";
 import type { CatalogSearchItem, CatalogSearchItemType } from "@/lib/catalogSearchTypes";
 import { formatCatalogMedicationSubtitleForLocale } from "@/lib/localizedMedicationDisplay";
 import { pickStrictEnCatalogPrimaryLabel } from "@medora/shared";
@@ -12,25 +12,27 @@ const CATALOG_SEARCH_EN_FALLBACK_KEYS: Record<CatalogSearchItemType, string> = {
 
 /**
  * Primary display line for catalog search rows (lab / imaging / medication).
- * Phase C EN: `displayNameEn` → `code` → typed fallback — never `displayNameFr` or legacy `name`.
- * FR: `displayNameFr` → `displayNameEn` → `name` / `code` (legacy bilingual storage; EN/FR only).
- * Callers must pass a resolved ProductUiLanguage. Future unsupported locales must use
- * `adaptProductUiToCatalogLabelStrategy` / `pickLegacyBilingualStoredPair` — never cast `es` here.
+ * EN: `displayNameEn` → `code` → typed fallback — never `displayNameFr` or legacy `name`.
+ * FR: `displayNameFr` → `code` → typed fallback — never `displayNameEn`.
+ * Unsupported locales: canonical `code` only (UNLOCALIZED_SOURCE), never EN/FR labels.
  */
 export function getCatalogSearchItemDisplayLabel(
   item: CatalogSearchItem,
-  language: SupportedLanguage,
+  language: SupportedLanguage | string,
   t?: (key: string) => string
 ): string {
-  const strategy = catalogLabelStrategyForProductUi(language);
+  const strategy = adaptProductUiToCatalogLabelStrategy(language);
+  if (!strategy) {
+    return item.code?.trim() || "";
+  }
   if (strategy === "fr_preferred") {
-    return (
-      item.displayNameFr?.trim() ||
-      item.displayNameEn?.trim() ||
-      item.name?.trim() ||
-      item.code?.trim() ||
-      ""
-    );
+    const fr = item.displayNameFr?.trim();
+    if (fr) return fr;
+    const code = item.code?.trim();
+    if (code) return code;
+    const key = CATALOG_SEARCH_EN_FALLBACK_KEYS[item.type];
+    if (t && key) return t(key);
+    return "";
   }
   const strict = pickStrictEnCatalogPrimaryLabel(item.type, item.displayNameEn, item.code);
   if (strict) return strict;

@@ -97,7 +97,7 @@ function orderItemDisplayLabelFr(item: {
       return dlf;
     }
     const identity = resolveMedicationOrderIdentity(medicationIdentityInput(item));
-    if (identity.medicationNameFr || identity.medicationNameEn) return identity.displayLabelFr;
+    if (identity.medicationNameFr) return identity.displayLabelFr;
     return typeFallbackFr(resolvedTypeFr);
   }
 
@@ -183,7 +183,7 @@ export function getOrderItemDisplayLabelForLanguage(
       return enApi;
     }
     const identity = resolveMedicationOrderIdentity(medicationIdentityInput(item));
-    if (identity.medicationNameEn || identity.medicationNameFr) {
+    if (identity.medicationNameEn) {
       return appendEnglishMedicationCatalogFormRoute(
         identity.displayLabelEn,
         item.catalogMedication
@@ -246,12 +246,11 @@ function catalogDisplayLabelFr(
   if (t === "LAB_TEST") {
     const c = item.catalogLabTest;
     if (c?.displayNameFr?.trim()) return c.displayNameFr.trim();
-    if (c?.name?.trim()) return c.name.trim();
     return null;
   }
   if (t === "IMAGING_STUDY") {
     const c = item.catalogImagingStudy;
-    const base = c?.displayNameFr?.trim() || c?.name?.trim();
+    const base = c?.displayNameFr?.trim();
     if (base) {
       const mod = c?.modality ? ` (${c.modality})` : "";
       return `${base}${mod}`;
@@ -260,7 +259,7 @@ function catalogDisplayLabelFr(
   }
   if (t === "MEDICATION") {
     const identity = resolveMedicationOrderIdentity(medicationIdentityInput(item));
-    if (identity.medicationNameFr || identity.medicationNameEn) return identity.displayLabelFr;
+    if (identity.medicationNameFr) return identity.displayLabelFr;
     const c = item.catalogMedication;
     const detail = formatCatalogMedicationOrderDetailLine(
       {
@@ -334,7 +333,7 @@ function catalogDisplayLabelEn(
   }
   if (t === "MEDICATION") {
     const identity = resolveMedicationOrderIdentity(medicationIdentityInput(item));
-    if (identity.medicationNameEn || identity.medicationNameFr) {
+    if (identity.medicationNameEn) {
       return appendEnglishMedicationCatalogFormRoute(
         identity.displayLabelEn,
         item.catalogMedication
