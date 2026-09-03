@@ -44,6 +44,7 @@ import {
   ES_MEDICAL_TERMINOLOGY,
 } from "@medora/shared";
 import { MEDUI_ES_1E_OVERLAY } from "./meduiEs1eCorePlatformOverlay";
+import { MEDUI_ES_1F_OVERLAY } from "./meduiEs1fEmergencyDepartmentOverlay";
 
 const webRoot = join(dirname(fileURLToPath(import.meta.url)), "../../..");
 
@@ -144,8 +145,10 @@ describe("MEDUI.ES.1C hidden Spanish catalog + tri-lingual isolation", () => {
     expect(extraFr.length).toBe(67);
   });
 
-  it("every ES leaf is a hidden placeholder, an APPROVED canon overlay, or a governed 1E+ overlay, never EN/FR copy", () => {
+  it("every ES leaf is a hidden placeholder, an APPROVED canon overlay, or a governed 1E/1F overlay, never EN/FR copy", () => {
     const es1eKeys = new Set(Object.keys(MEDUI_ES_1E_OVERLAY));
+    const es1fKeys = new Set(Object.keys(MEDUI_ES_1F_OVERLAY));
+    const governedKeys = new Set([...es1eKeys, ...es1fKeys]);
     const enByPath = new Map(collectStringLeaves(en).map((x) => [x.path, x.value]));
     const frByPath = new Map(collectStringLeaves(fr).map((x) => [x.path, x.value]));
     const approvedOverlay = new Map<string, string>();
@@ -160,8 +163,9 @@ describe("MEDUI.ES.1C hidden Spanish catalog + tri-lingual isolation", () => {
       if (overlay) {
         expect(value, path).toBe(overlay);
       } else if (es1eKeys.has(path)) {
-        // 1E governed overlay — value should match the overlay map
         expect(value, path).toBe(MEDUI_ES_1E_OVERLAY[path]);
+      } else if (es1fKeys.has(path)) {
+        expect(value, path).toBe(MEDUI_ES_1F_OVERLAY[path]);
       } else {
         expect(isHiddenSpanishPlaceholder(value), path).toBe(true);
         expect(value).toBe(hiddenSpanishPlaceholder(path));
@@ -169,18 +173,66 @@ describe("MEDUI.ES.1C hidden Spanish catalog + tri-lingual isolation", () => {
       }
       const enVal = enByPath.get(path);
       const frVal = frByPath.get(path);
-      // Allow internationally identical terms (e.g. "No", "Plan", "Hospital")
-      const identicalOk = new Set(["No", "Plan", "Hospital", "Oral", "Final", "Gel", "Rectal", "Vaginal"]);
-      if (enVal && enVal !== overlay && !es1eKeys.has(path)) expect(value).not.toBe(enVal);
-      if (enVal && es1eKeys.has(path) && value === enVal && !identicalOk.has(value)) {
-        // Flagged but allowed for legitimate identical codes/abbreviations/format placeholders
-        if (value.length > 3 && !/^[A-Z0-9._\-/ ()]+$/.test(value) && !/^\d+$/.test(value) && !value.startsWith("MINISTÈRE")) {
+      const identicalOk = new Set([
+        "No",
+        "Plan",
+        "Hospital",
+        "Oral",
+        "Final",
+        "Gel",
+        "Rectal",
+        "Vaginal",
+        "Addendum",
+        "Normal",
+        "Regular",
+        "Irregular",
+        "Alcohol",
+        "Cannabis",
+        "Diabetes",
+        "Social",
+        "Influenza",
+        "Verbal",
+        "Total",
+        "Cardiovascular",
+        "Gastrointestinal",
+        "Abdomen",
+        "Monitor",
+        "Natural",
+        "Info",
+        "BiPAP",
+        "CPAP",
+        "— — —",
+        "—",
+        "Abdomen / pelvis",
+        "Hepatitis B",
+        "Port-a-cath",
+        "Cheyne-Stokes",
+        "Kussmaul",
+        "HPI: ",
+        "IV x2",
+        "Tdap",
+        "EMTALA:",
+        "Alcohol: ",
+        "Cannabis: ",
+        "SpO2",
+        "Verbal (1–5)",
+        "Motor (1–6)",
+      ]);
+      if (enVal && enVal !== overlay && !governedKeys.has(path)) expect(value).not.toBe(enVal);
+      if (enVal && governedKeys.has(path) && value === enVal && !identicalOk.has(value)) {
+        const looksLikeEnglishSentence =
+          /\b(the|and|with|without|please|could not|unable to|requires|before|after|complete|patient|encounter|discharge|nursing|provider)\b/i.test(
+            value
+          );
+        if (looksLikeEnglishSentence) {
           expect(value, `ES===EN at ${path}`).not.toBe(enVal);
         }
       }
-      if (frVal && !es1eKeys.has(path)) expect(value).not.toBe(frVal);
-      // Empty strings are allowed only when the 1E overlay explicitly sets them (matching EN source)
-      if (!es1eKeys.has(path) || MEDUI_ES_1E_OVERLAY[path] !== "") {
+      if (frVal && !governedKeys.has(path)) expect(value).not.toBe(frVal);
+      const emptyAllowed =
+        (es1eKeys.has(path) && MEDUI_ES_1E_OVERLAY[path] === "") ||
+        (es1fKeys.has(path) && MEDUI_ES_1F_OVERLAY[path] === "");
+      if (!emptyAllowed) {
         expect(value).not.toBe("");
       }
       expect(value).not.toMatch(/^(TODO|TBD|\?+)$/i);

@@ -2,26 +2,35 @@ import { applyApprovedSpanishTerminology, isHiddenSpanishPlaceholder } from "@me
 import { createHiddenSpanishCatalog } from "./hiddenSpanishCatalog";
 import en from "./en";
 import { MEDUI_ES_1E_OVERLAY } from "./meduiEs1eCorePlatformOverlay";
+import { MEDUI_ES_1F_OVERLAY } from "./meduiEs1fEmergencyDepartmentOverlay";
 
 /**
- * MEDUI.ES.1D+1E Spanish product UI catalog.
+ * MEDUI.ES.1D+1E+1F Spanish product UI catalog.
  *
  * Pipeline:
  *  1. createHiddenSpanishCatalog(en) → all leaves become UNLOCALIZED_ES::<path>
  *  2. applyApprovedSpanishTerminology  → 1D canon overlays (35 APPROVED terms)
- *  3. applyEs1eOverlay                → 1E core platform / auth / registration / chart
+ *  3. applyGovernedSpanishOverlay(1E) → core platform / auth / registration / chart
+ *  4. applyGovernedSpanishOverlay(1F) → Emergency Department chrome
  *
  * Not user-selectable. Remaining keys stay UNLOCALIZED_ES::<path>.
+ * Only remaining placeholders are replaced; later phases never overwrite 1D/1E.
  */
 
-function applyEs1eOverlay<T>(tree: T, overlay: Record<string, string>): { tree: T; replaced: number } {
+export function applyGovernedSpanishOverlay<T>(
+  tree: T,
+  overlay: Record<string, string>
+): { tree: T; replaced: number } {
   let replaced = 0;
   for (const [path, value] of Object.entries(overlay)) {
     const parts = path.split(".");
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let cur: any = tree;
     for (let i = 0; i < parts.length - 1; i++) {
-      if (cur == null || typeof cur !== "object") { cur = null; break; }
+      if (cur == null || typeof cur !== "object") {
+        cur = null;
+        break;
+      }
       cur = cur[parts[i]!];
     }
     if (cur == null || typeof cur !== "object") continue;
@@ -37,6 +46,7 @@ function applyEs1eOverlay<T>(tree: T, overlay: Record<string, string>): { tree: 
 
 const hidden = createHiddenSpanishCatalog(en);
 const { tree: afterCanon } = applyApprovedSpanishTerminology(hidden);
-const { tree: esMessages } = applyEs1eOverlay(afterCanon, MEDUI_ES_1E_OVERLAY);
+const { tree: after1e } = applyGovernedSpanishOverlay(afterCanon, MEDUI_ES_1E_OVERLAY);
+const { tree: esMessages } = applyGovernedSpanishOverlay(after1e, MEDUI_ES_1F_OVERLAY);
 
 export default esMessages;

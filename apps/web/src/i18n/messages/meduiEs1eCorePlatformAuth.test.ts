@@ -10,7 +10,7 @@ import {
 } from "@medora/shared";
 import en from "./en";
 import fr from "./fr";
-import es from "./es";
+import es, { applyGovernedSpanishOverlay } from "./es";
 import { createHiddenSpanishCatalog } from "./hiddenSpanishCatalog";
 import { MEDUI_ES_1E_OVERLAY } from "./meduiEs1eCorePlatformOverlay";
 
@@ -417,7 +417,9 @@ describe("MEDUI.ES.1E overlay accounting", () => {
       void value;
     }
 
-    const after1e = countPlaceholders(es);
+    // Live `es` also includes later phase overlays (1F+). Count 1E-only here.
+    const { tree: after1eTree } = applyGovernedSpanishOverlay(afterCanon, MEDUI_ES_1E_OVERLAY);
+    const after1e = countPlaceholders(after1eTree);
     const nonEmptyOverlayEntries = overlayEntries.filter(([, v]) => v !== "").length;
     const emptyOverlayEntries = overlayEntries.filter(([, v]) => v === "").map(([p]) => p);
     const outOfScope = overlayPaths.filter((p) => classify1ePath(p) === "OUT_OF_SCOPE");
