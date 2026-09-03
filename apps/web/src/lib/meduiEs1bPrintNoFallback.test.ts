@@ -45,6 +45,10 @@ function emptyChartSummary(noteBody: string): ChartSummary {
         treatmentPlanPreview: null,
         clinicianImpressionPreview: null,
         createdAt: "2026-06-03T17:00:00.000Z",
+        followUpDate: null,
+        dischargedAt: null,
+        dischargeStatus: null,
+        triage: null,
         encounterNotes: [
           {
             id: "n1",
@@ -60,7 +64,7 @@ function emptyChartSummary(noteBody: string): ChartSummary {
     activeDiagnoses: [],
     recentMedicationDispenses: [],
     recentVaccinations: [],
-  } as ChartSummary;
+  } satisfies ChartSummary;
 }
 
 describe("MEDUI.ES.1B-H print no-fallback (real print lookup path)", () => {
@@ -147,7 +151,7 @@ describe("MEDUI.ES.1B-H print no-fallback (real print lookup path)", () => {
         dischargeSummaryJson: { dischargeMode: ER_DISCHARGE_MODE_HOME, followUpInstructions: SIGNED_FR_NARRATIVE },
         nursingAssessment: {},
       },
-      triageSnapshot: null as const,
+      triageSnapshot: null,
     };
     const en = getErPrintPacketHtml({ ...base, language: "en" });
     const fr = getErPrintPacketHtml({
