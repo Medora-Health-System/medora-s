@@ -6,9 +6,8 @@
 import { z } from "zod";
 import type { OrderCreateDto, OrderItemCreateDto } from "./schemas/patient.js";
 import {
-  parseProductUiLanguage,
-  PRODUCT_DEFAULT_UI_LANGUAGE,
-  type ProductUiLanguage,
+  resolvePublicProductUiLanguageOrDefault,
+  type PubliclySelectableProductUiLanguage,
 } from "./i18n/productUiLocale.js";
 
 export const OBSERVATION_ORDER_TEMPLATE_ID = "medora_observation_order_set_v1" as const;
@@ -28,7 +27,7 @@ export const OBSERVATION_ORDER_TEMPLATE_GROUP_IDS = [
 
 export type ObservationOrderTemplateGroupId = (typeof OBSERVATION_ORDER_TEMPLATE_GROUP_IDS)[number];
 
-export type ObservationOrderTemplateLabelLocale = ProductUiLanguage;
+export type ObservationOrderTemplateLabelLocale = PubliclySelectableProductUiLanguage;
 
 export type ObservationOrderTemplateItemDef = {
   id: string;
@@ -280,7 +279,7 @@ export function buildObservationTemplateCareOrderDto(input: {
     throw new Error("observation_template_no_valid_items");
   }
   const locale: ObservationOrderTemplateLabelLocale =
-    parseProductUiLanguage(input.labelLocale) ?? PRODUCT_DEFAULT_UI_LANGUAGE;
+    resolvePublicProductUiLanguageOrDefault(input.labelLocale);
   const items: OrderItemCreateDto[] = unique.map((id) => {
     const def = OBSERVATION_ORDER_TEMPLATE_ITEMS.find((i) => i.id === id)!;
     return {

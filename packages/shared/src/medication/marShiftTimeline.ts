@@ -46,9 +46,8 @@ import {
 } from "./fluidBolusSession.js";
 import { resolveMedicationInfusionStopReasonTimelineLabel } from "./medicationInfusionStopReasonGovernance.js";
 import {
-  parseProductUiLanguage,
-  PRODUCT_DEFAULT_UI_LANGUAGE,
-  type ProductUiLanguage,
+  resolvePublicProductUiLanguageOrDefault,
+  type PubliclySelectableProductUiLanguage,
 } from "../i18n/productUiLocale.js";
 
 /**
@@ -70,12 +69,14 @@ export function normalizeMarShiftTimelineTimeZone(raw: string | null | undefined
 }
 
 /** UI locale for MAR medication labels (M1.8B.7K.8). Unsupported values resolve to English. */
-export function normalizeMarShiftTimelineLocale(raw: string | null | undefined): ProductUiLanguage {
-  return parseProductUiLanguage(raw) ?? PRODUCT_DEFAULT_UI_LANGUAGE;
+export function normalizeMarShiftTimelineLocale(
+  raw: string | null | undefined
+): PubliclySelectableProductUiLanguage {
+  return resolvePublicProductUiLanguageOrDefault(raw);
 }
 
 export type MarShiftTimelineMedicationLabelInput = {
-  locale?: ProductUiLanguage | string | null;
+  locale?: PubliclySelectableProductUiLanguage | string | null;
   orderedMedicationLabel?: string | null;
   manualLabel?: string | null;
   catalogSnapshot?: Pick<

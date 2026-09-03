@@ -6,7 +6,7 @@
  * No ClinicMDM / ClinicDischarge forks. Locale ≠ jurisdiction.
  */
 
-import { parseProductUiLanguage, PRODUCT_DEFAULT_UI_LANGUAGE } from "../i18n/productUiLocale.js";
+import { parseProductUiLanguage, PRODUCT_DEFAULT_UI_LANGUAGE, isPubliclySelectableProductUiLanguage } from "../i18n/productUiLocale.js";
 
 export const CLINIC_CARE_AMBULATORY_MDM_LOCALIZATION_DISCHARGE_CLEANUP_CERTIFICATION_ID =
   "MEDUI.D4C.7A" as const;
@@ -67,9 +67,9 @@ export function resolveAuthoredDocumentLocale(input: {
   authoredDocumentLocale?: string | null;
 }): D4c7aAuthoredDocumentLocale {
   const authored = parseProductUiLanguage(input.authoredDocumentLocale);
-  if (authored) return authored;
+  if (authored && isPubliclySelectableProductUiLanguage(authored)) return authored;
   const app = parseProductUiLanguage(input.appLocale);
-  if (app) return app;
+  if (app && isPubliclySelectableProductUiLanguage(app)) return app;
   return PRODUCT_DEFAULT_UI_LANGUAGE;
 }
 

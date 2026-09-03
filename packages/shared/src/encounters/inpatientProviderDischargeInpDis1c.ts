@@ -28,7 +28,7 @@ import {
   formatInpatientDischargeHumanLabel,
   formatInpatientDischargePendingStudyTypeLabel,
 } from "./inpatientDischargeProgressNoteProjectionInpDis1i.js";
-import { resolveProductUiLanguageOrDefault } from "../i18n/productUiLocale.js";
+import { resolvePublicProductUiLanguageOrDefault } from "../i18n/productUiLocale.js";
 
 export const INPATIENT_PROVIDER_DISCHARGE_SCHEMA_VERSION_1C = "INP.DIS.1C" as const;
 
@@ -514,7 +514,7 @@ export function listProtectedChartFieldsWithUpdates(input: {
 export function buildInpatientDischargeChartDraft(
   snapshot: InpatientDischargeChartSnapshot
 ): Partial<InpatientProviderDischargeV1C> {
-  const language = resolveProductUiLanguageOrDefault(snapshot.language);
+  const language = resolvePublicProductUiLanguageOrDefault(snapshot.language);
   const adm =
     snapshot.admissionDiagnosis?.description?.trim() ||
     snapshot.admissionDiagnosis?.code?.trim() ||

@@ -16,7 +16,7 @@ import {
   type MedicationClinicalDisplayLocale,
 } from "@medora/shared";
 
-function toClinicalLocale(language: SupportedLanguage): MedicationClinicalDisplayLocale {
+function toClinicalLocale(language: SupportedLanguage): MedicationClinicalDisplayLocale | null {
   return medicationClinicalDisplayLocaleForProductUi(language);
 }
 
@@ -29,7 +29,9 @@ export function normalizeMedicationDisplayForLocale(
   language: SupportedLanguage,
   field?: "dosageForm" | "route" | "therapeuticClass" | "frequency"
 ): string {
-  return resolveMedicationClinicalDisplayValue(value, toClinicalLocale(language), field);
+  const locale = toClinicalLocale(language);
+  if (!locale) return "";
+  return resolveMedicationClinicalDisplayValue(value, locale, field);
 }
 
 export type CatalogMedicationMetadataFields = MedicationCatalogClinicalFields;
@@ -64,7 +66,9 @@ export function formatCatalogMedicationMetadataParts(
   fields: CatalogMedicationMetadataFields,
   language: SupportedLanguage
 ): string[] {
-  return buildMedicationCatalogClinicalParts(fields, toClinicalLocale(language));
+  const locale = toClinicalLocale(language);
+  if (!locale) return [];
+  return buildMedicationCatalogClinicalParts(fields, locale);
 }
 
 /**
@@ -95,7 +99,9 @@ export function formatCatalogMedicationSubtitleForLocale(
   }
 
   if (item.secondaryText?.trim()) {
-    return normalizeMedicationSecondaryTextBlob(item.secondaryText, toClinicalLocale(language));
+    const locale = toClinicalLocale(language);
+    if (!locale) return "";
+    return normalizeMedicationSecondaryTextBlob(item.secondaryText, locale);
   }
 
   return "";
@@ -106,7 +112,9 @@ export function formatCatalogMedicationOrderDetailLine(
   fields: CatalogMedicationMetadataFields,
   language: SupportedLanguage
 ): string {
-  return formatMedicationCatalogClinicalLine(fields, toClinicalLocale(language));
+  const locale = toClinicalLocale(language);
+  if (!locale) return "";
+  return formatMedicationCatalogClinicalLine(fields, locale);
 }
 
 export function formatMedicationOptionForLocale(
@@ -120,7 +128,9 @@ export function formatMedicationOptionForLocale(
   const generic = normalizeMedicationDisplayForLocale(meta.genericName, language);
 
   let subtitle = formatCatalogMedicationSubtitleForLocale(item, language, " — ");
-  const displayAliases = filterMedicationAliasesForDisplayLocale(meta.commonAliases, locale);
+  const displayAliases = locale
+    ? filterMedicationAliasesForDisplayLocale(meta.commonAliases, locale)
+    : [];
   const aliasHint = displayAliases[0];
   if (aliasHint && !primary.toLowerCase().includes(aliasHint.toLowerCase())) {
     subtitle = subtitle ? `${subtitle} — ${aliasHint}` : aliasHint;

@@ -3,7 +3,8 @@
  * Copy is keyed by product UI locale — never `en ? en : fr`.
  */
 
-import type { SupportedLanguage } from "@/i18n/config";
+import type { ProductUiLanguage, SupportedLanguage } from "@/i18n/config";
+import { hiddenSpanishPlaceholder, parseProductUiLanguage } from "@medora/shared";
 
 /** Message FR normalisé pour `NotFoundException` consultation (ex. GET /encounters/:id). */
 export const USER_FACING_ENCOUNTER_NOT_FOUND_FR = "Consultation introuvable.";
@@ -241,19 +242,25 @@ const RULES: Array<{ test: (s: string) => boolean } & Record<SupportedLanguage, 
  */
 export function normalizeUserFacingError(
   message: string | undefined | null,
-  locale: SupportedLanguage
+  locale: ProductUiLanguage | string
 ): string {
   if (message == null) return "";
   const s = String(message).trim();
   if (!s) return "";
 
+  const parsed = parseProductUiLanguage(locale);
+  if (parsed === "es") {
+    return hiddenSpanishPlaceholder("userFacingError");
+  }
+  const bilingual: SupportedLanguage = parsed === "fr" ? "fr" : "en";
+
   // Known API messages first so English UI does not show raw French from the server.
   for (const rule of RULES) {
-    if (rule.test(s)) return rule[locale];
+    if (rule.test(s)) return rule[bilingual];
   }
 
   // Déjà du français probable : accents ou mots courts typiques (FR locale only — EN falls through)
-  if (locale === "fr") {
+  if (bilingual === "fr") {
     if (/[àâäéèêëïîôùûçœæ]/i.test(s)) return s;
     if (/^(impossible|veuillez|la |le |les |une |un |des |erreur|accès|établissement|données)/i.test(s))
       return s;
@@ -277,12 +284,12 @@ export function normalizeUserFacingError(
   };
 
   // Phrases anglaises courantes (Nest / HTTP)
-  if (/^invalid/i.test(s)) return INVALID_DATA[locale];
-  if (/^failed\b/i.test(s)) return OPERATION_FAILED[locale];
-  if (/server error/i.test(s)) return SERVER_ERROR[locale];
+  if (/^invalid/i.test(s)) return INVALID_DATA[bilingual];
+  if (/^failed\b/i.test(s)) return OPERATION_FAILED[bilingual];
+  if (/server error/i.test(s)) return SERVER_ERROR[bilingual];
 
   /** EN UI: pass through ASCII API errors Nest returns (avoid generic "Something went wrong"). */
-  if (locale === "en") {
+  if (bilingual === "en") {
     if (
       /^(aucune|impossible|ligne|veuillez|horodatage|la perfusion|perfusion|un motif|une |le motif|l'heure|l'ajustement|seules les)/i.test(
         s
@@ -295,16 +302,18 @@ export function normalizeUserFacingError(
     }
   }
 
-  return GENERIC[locale];
+  return GENERIC[bilingual];
 }
 
 /** Quand aucun message exploitable n’est disponible. */
-export function genericUserFacingError(locale: SupportedLanguage = "en"): string {
+export function genericUserFacingError(locale: ProductUiLanguage | string = "en"): string {
+  const parsed = parseProductUiLanguage(locale);
+  if (parsed === "es") return hiddenSpanishPlaceholder("userFacingError.generic");
   const GENERIC: Record<SupportedLanguage, string> = {
     en: "Something went wrong.",
     fr: "Une erreur s'est produite.",
   };
-  return GENERIC[locale];
+  return GENERIC[parsed === "fr" ? "fr" : "en"];
 }
 
 /** Erreur API « ordre uniquement si consultation ouverte » (message brut EN ou déjà normalisé FR). */

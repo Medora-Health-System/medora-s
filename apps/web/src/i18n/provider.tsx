@@ -3,7 +3,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import {
   defaultLanguage,
-  isProductUiLanguage,
+  isPubliclySelectableProductUiLanguage,
   type SupportedLanguage,
 } from "./config";
 import { resolveClinicalUiMessage } from "./messages/registry";
@@ -33,13 +33,15 @@ export function I18nProvider({
 }) {
   // SSR/hydration-safe: never read localStorage in useState initializer (React #418).
   const [language, setLanguageState] = useState<SupportedLanguage>(() =>
-    facilityLanguage && isProductUiLanguage(facilityLanguage) ? facilityLanguage : defaultLanguage
+    facilityLanguage && isPubliclySelectableProductUiLanguage(facilityLanguage)
+      ? facilityLanguage
+      : defaultLanguage
   );
 
   useEffect(() => {
     try {
       // Cache facility language for fallback only — never override an explicit user locale.
-      if (facilityLanguage && isProductUiLanguage(facilityLanguage)) {
+      if (facilityLanguage && isPubliclySelectableProductUiLanguage(facilityLanguage)) {
         persistFacilityUiLanguage(facilityLanguage);
       }
 
@@ -56,6 +58,7 @@ export function I18nProvider({
   }, [facilityLanguage]);
 
   const setLanguage = useCallback((lang: SupportedLanguage) => {
+    if (!isPubliclySelectableProductUiLanguage(lang)) return;
     setLanguageState(lang);
     try {
       window.localStorage.setItem(UI_LANGUAGE_STORAGE_KEY, lang);

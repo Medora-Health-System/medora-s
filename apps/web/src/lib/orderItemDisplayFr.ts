@@ -1,4 +1,4 @@
-import { adaptProductUiToCatalogLabelStrategy, catalogLabelStrategyForProductUi, type SupportedLanguage } from "@/i18n/config";
+import { adaptProductUiToCatalogLabelStrategy, catalogLabelStrategyForProductUi, type ProductUiLanguage } from "@/i18n/config";
 import { i18nMessage } from "@/lib/i18nMessagesLookup";
 import { formatCatalogMedicationOrderDetailLine } from "@/lib/localizedMedicationDisplay";
 import {
@@ -161,7 +161,7 @@ export function getOrderItemDisplayLabelForLanguage(
     strength?: string | null;
     notes?: string | null;
   },
-  language: SupportedLanguage | string,
+  language: ProductUiLanguage | string,
   t: (key: string) => string
 ): string {
   const strategy = adaptProductUiToCatalogLabelStrategy(language);
@@ -228,7 +228,7 @@ export function getOrderItemDisplayLabelForLanguage(
 /** Facility-language order label for non-React modules (mirrors {@link getOrderItemDisplayLabelForLanguage}). */
 export function getOrderItemDisplayLabelFromLocale(
   item: Parameters<typeof getOrderItemDisplayLabelForLanguage>[0],
-  locale: SupportedLanguage
+  locale: ProductUiLanguage
 ): string {
   return getOrderItemDisplayLabelForLanguage(item, locale, (k) => i18nMessage(locale, k));
 }
@@ -426,7 +426,7 @@ export function catalogMedicationNameForLocale(
     displayNameFr?: string | null;
     genericName?: string | null;
   } | null | undefined,
-  language: SupportedLanguage
+  language: ProductUiLanguage
 ): string {
   if (!m) return "";
   const identity = resolveMedicationOrderIdentity({
@@ -436,6 +436,9 @@ export function catalogMedicationNameForLocale(
   const strategy = catalogLabelStrategyForProductUi(language);
   if (strategy === "fr_preferred") {
     return identity.medicationNameFr ?? "";
+  }
+  if (strategy === "unlocalized") {
+    return m.code?.trim() ?? "";
   }
   return identity.medicationNameEn ?? "";
 }

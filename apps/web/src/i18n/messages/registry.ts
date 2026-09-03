@@ -1,17 +1,19 @@
-import type { SupportedLanguage } from "@/i18n/config";
+import type { ProductUiLanguage } from "@/i18n/config";
 import enMessages from "@/i18n/messages/en";
+import esMessages from "@/i18n/messages/es";
 import frMessages from "@/i18n/messages/fr";
 
 /**
- * Clinical UI message roots keyed by product UI locale.
- * Lookups must use `clinicalUiMessages[language]` — never `en ? en : fr`.
+ * Clinical UI message roots keyed by product UI locale, including hidden Spanish.
+ * Lookups must use `clinicalUiMessages[language]` — never `en ? en : fr` / `es ? es : en`.
  */
-export const clinicalUiMessages: Record<SupportedLanguage, unknown> = {
+export const clinicalUiMessages: Record<ProductUiLanguage, unknown> = {
   en: enMessages,
   fr: frMessages,
+  es: esMessages,
 };
 
-export function getClinicalUiMessages(language: SupportedLanguage): unknown {
+export function getClinicalUiMessages(language: ProductUiLanguage): unknown {
   return clinicalUiMessages[language];
 }
 
@@ -29,7 +31,7 @@ export function getMessageByPath(obj: unknown, path: string): unknown {
  * Active-locale-only message resolution.
  * Missing keys return the key path. Never read another language catalog.
  */
-export function resolveClinicalUiMessage(language: SupportedLanguage, key: string): string {
+export function resolveClinicalUiMessage(language: ProductUiLanguage, key: string): string {
   const v = getMessageByPath(getClinicalUiMessages(language), key);
   return typeof v === "string" ? v : key;
 }

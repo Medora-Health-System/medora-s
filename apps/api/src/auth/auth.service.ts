@@ -1,5 +1,5 @@
 import { Injectable, UnauthorizedException, BadRequestException } from "@nestjs/common";
-import { PASSWORD_POLICY_HINT_FR, passwordMeetsPolicy, parseStoredFacilityServiceLines, parseProductUiLanguage, PRODUCT_DEFAULT_UI_LANGUAGE, resolveFacilityServiceLines } from "@medora/shared";
+import { PASSWORD_POLICY_HINT_FR, passwordMeetsPolicy, parseStoredFacilityServiceLines, isPubliclySelectableProductUiLanguage, parseProductUiLanguage, PRODUCT_DEFAULT_UI_LANGUAGE, resolveFacilityServiceLines } from "@medora/shared";
 import { JwtService } from "@nestjs/jwt";
 import { ConfigService } from "@nestjs/config";
 import * as argon2 from "argon2";
@@ -34,7 +34,7 @@ function preferredLanguageFromUserRoles(
   const sorted = [...userRoles].sort((a, b) => a.facilityId.localeCompare(b.facilityId, "en"));
   for (const ur of sorted) {
     const parsed = parseProductUiLanguage(ur.facility?.defaultLanguage);
-    if (parsed) return parsed;
+    if (parsed && isPubliclySelectableProductUiLanguage(parsed)) return parsed;
   }
   return PRODUCT_DEFAULT_UI_LANGUAGE;
 }

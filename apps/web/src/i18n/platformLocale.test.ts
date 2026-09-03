@@ -12,7 +12,7 @@ import {
 import { PRODUCT_UI_LANGUAGES, type ProductUiLanguage } from "@medora/shared";
 
 describe("Platform Admin locale island (MEDUI.ES.1B-H)", () => {
-  it("does not inherit future product UI languages", () => {
+  it("does not inherit hidden Spanish into the EN/FR island", () => {
     expect([...PLATFORM_UI_LANGUAGES]).toEqual(["en", "fr"]);
     expect(isPlatformUiLanguage("es")).toBe(false);
     expect(parsePlatformUiLanguage("es")).toBeNull();
@@ -43,6 +43,8 @@ describe("Platform Admin locale island (MEDUI.ES.1B-H)", () => {
     const island: PlatformAdminLegacyLocale = "fr";
     expect(island).toBe("fr");
     const product: readonly ProductUiLanguage[] = PRODUCT_UI_LANGUAGES;
-    expect(product.includes("es" as ProductUiLanguage)).toBe(false);
+    expect(product.includes("es")).toBe(true);
+    expect(isPlatformUiLanguage("es")).toBe(false);
+    expect(canRunPlatformAdminDomRewrite("es")).toBe(false);
   });
 });
