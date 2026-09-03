@@ -274,7 +274,7 @@ describe("MEDUI.ES.1B.3 composer/dental source isolation", () => {
     expect(dental).not.toMatch(/displayNameFr\s*\|\|\s*displayNameEn/);
   });
 
-  it("supportedLanguages remains French and English only", () => {
-    expect([...supportedLanguages]).toEqual(["fr", "en"]);
+  it("supportedLanguages includes hidden Spanish; public selectors stay EN/FR", () => {
+    expect([...supportedLanguages]).toEqual(["fr", "en", "es"]);
   });
 });

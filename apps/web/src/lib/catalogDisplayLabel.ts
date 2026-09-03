@@ -73,7 +73,7 @@ export function getCatalogSearchItemSecondaryLine(
  */
 export function catalogSearchItemFullDisplayLine(
   item: CatalogSearchItem,
-  language: SupportedLanguage,
+  language: SupportedLanguage | string,
   t?: (key: string) => string
 ): string {
   const head = getCatalogSearchItemDisplayLabel(item, language, t);

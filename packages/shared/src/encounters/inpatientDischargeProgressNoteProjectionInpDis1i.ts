@@ -7,7 +7,7 @@
  * and is never rewritten as a completed action.
  */
 
-import { resolveProductUiLanguageOrDefault } from "../i18n/productUiLocale.js";
+import { resolvePublicProductUiLanguageOrDefault } from "../i18n/productUiLocale.js";
 
 export type DischargeCourseLanguage = "en" | "fr";
 
@@ -301,7 +301,7 @@ export function assembleInpatientHospitalCourseDraft(input: {
   progressNoteTexts?: string[];
   problemPlanSummaries?: string[];
 }): string {
-  const language = resolveProductUiLanguageOrDefault(input.language);
+  const language = resolvePublicProductUiLanguageOrDefault(input.language);
   const blocks: string[] = [];
 
   const admission =

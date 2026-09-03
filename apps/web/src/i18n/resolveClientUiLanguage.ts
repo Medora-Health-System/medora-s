@@ -1,5 +1,6 @@
 import {
   defaultLanguage,
+  isPubliclySelectableProductUiLanguage,
   parseProductUiLanguage,
   resolveProductUiLanguageFromBrowserCandidates,
   type SupportedLanguage,
@@ -65,13 +66,13 @@ export function resolveClientUiLanguage(input: ResolveClientUiLanguageInput = {}
   const fallback = input.fallback ?? defaultLanguage;
 
   const stored = parseProductUiLanguage(input.storedLanguage);
-  if (stored) return stored;
+  if (stored && isPubliclySelectableProductUiLanguage(stored)) return stored;
 
   const facility = parseProductUiLanguage(input.facilityLanguage);
-  if (facility) return facility;
+  if (facility && isPubliclySelectableProductUiLanguage(facility)) return facility;
 
   const cached = parseProductUiLanguage(input.cachedFacilityLanguage);
-  if (cached) return cached;
+  if (cached && isPubliclySelectableProductUiLanguage(cached)) return cached;
 
   return fallback;
 }

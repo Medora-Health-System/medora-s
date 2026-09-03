@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { resolveProductUiLanguageOrDefault, supportedLanguages } from "@/i18n/config";
+import { PUBLICLY_SELECTABLE_PRODUCT_UI_LANGUAGES, resolveProductUiLanguageOrDefault, resolvePublicProductUiLanguageOrDefault, supportedLanguages } from "@/i18n/config";
 import { i18nMessage } from "@/lib/i18nMessagesLookup";
 import { printDateLocale, printT } from "@/lib/printI18n";
 import { resolveClinicalUiMessage } from "@/i18n/messages/registry";
@@ -9,8 +9,9 @@ import en from "@/i18n/messages/en";
 import fr from "@/i18n/messages/fr";
 
 describe("MEDUI.ES.1B locale lookup isolation", () => {
-  it("keeps supportedLanguages as French and English only", () => {
-    expect([...supportedLanguages]).toEqual(["fr", "en"]);
+  it("keeps public selectors English and French while internal set includes hidden Spanish", () => {
+    expect([...supportedLanguages]).toEqual(["fr", "en", "es"]);
+    expect([...PUBLICLY_SELECTABLE_PRODUCT_UI_LANGUAGES]).toEqual(["fr", "en"]);
   });
 
   it("printT and i18nMessage resolve only the requested locale", () => {
@@ -39,10 +40,11 @@ describe("MEDUI.ES.1B locale lookup isolation", () => {
     expect(printT("fr", missing)).not.toBe(printT("en", "common.save"));
   });
 
-  it("unsupported locale resolves to English at the boundary, never French", () => {
-    expect(resolveProductUiLanguageOrDefault("es")).toBe("en");
-    expect(resolveProductUiLanguageOrDefault("es-419")).toBe("en");
+  it("unsupported locale resolves to English at the boundary, never French; public hydration hides es", () => {
     expect(resolveProductUiLanguageOrDefault("de")).toBe("en");
+    expect(resolveProductUiLanguageOrDefault("es")).toBe("es");
+    expect(resolvePublicProductUiLanguageOrDefault("es")).toBe("en");
+    expect(resolvePublicProductUiLanguageOrDefault("es-419")).toBe("en");
   });
 
   it("printDateLocale uses the locale registry", () => {

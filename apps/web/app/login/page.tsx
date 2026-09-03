@@ -10,7 +10,7 @@ import { parseApiResponse } from "@/lib/apiClient";
 import { invalidateAuthMeSessionCache } from "@/lib/authSessionMe";
 import { notifyAuthSessionRestored } from "@/lib/authShellRecovery";
 import { useI18n } from "@/lib/i18n";
-import { parseProductUiLanguage, productUiLanguageSelectOptions } from "@/i18n/config";
+import { parseProductUiLanguage, productUiLanguageSelectOptions, isPubliclySelectableProductUiLanguage } from "@/i18n/config";
 import { messageForAuthErrorCode, pickAuthErrorCodeOrLegacyMessage } from "@/lib/authApiErrorCode";
 import { MfaChallengePanel } from "./MfaChallengePanel";
 import { MfaEnrollmentPanel } from "@/components/mfa/MfaEnrollmentPanel";
@@ -51,7 +51,9 @@ function LoginForm() {
   const applyPreferredLanguage = (lang?: string) => {
     if (!lang) return;
     const parsed = parseProductUiLanguage(lang);
-    if (parsed && parsed !== language) setLanguage(parsed);
+    if (parsed && isPubliclySelectableProductUiLanguage(parsed) && parsed !== language) {
+      setLanguage(parsed);
+    }
   };
 
   const navigateAfterAuth = async (user?: AuthUserShape) => {

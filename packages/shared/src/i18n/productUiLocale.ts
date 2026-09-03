@@ -1,5 +1,7 @@
 /**
- * MEDUI.ES.1B — Canonical product UI locale registry.
+ * MEDUI.ES.1C — Canonical product UI locale registry.
+ *
+ * Internal recognition includes hidden Spanish. Public selectors stay English + Français.
  *
  * This is NOT:
  * - Patient preferred language (`fr` / `en` / `ht` / `es` / `OTHER`)
@@ -7,34 +9,68 @@
  * - Registration packet / legal template locale
  * - External integration language
  *
- * Production supported set remains French + English. Do not add `es` until MEDUI.ES.1C.
+ * Spanish is internally addressable for tests/helpers. It is not user-selectable yet.
  */
 
 import { z } from "zod";
 
-export const PRODUCT_UI_LANGUAGES = ["fr", "en"] as const;
+/** Internally recognized product UI locales, including hidden Spanish. */
+export const PRODUCT_UI_LANGUAGES = ["fr", "en", "es"] as const;
 
 export type ProductUiLanguage = (typeof PRODUCT_UI_LANGUAGES)[number];
 
+/**
+ * Locales shown in login / settings / facility selectors.
+ * Spanish remains hidden until a later certification phase.
+ */
+export const PUBLICLY_SELECTABLE_PRODUCT_UI_LANGUAGES = ["fr", "en"] as const;
+
+export type PubliclySelectableProductUiLanguage =
+  (typeof PUBLICLY_SELECTABLE_PRODUCT_UI_LANGUAGES)[number];
+
 /** Unauthenticated / unsupported-locale fallback for product UI. Not a catalog fill-in. */
-export const PRODUCT_DEFAULT_UI_LANGUAGE: ProductUiLanguage = "en";
+export const PRODUCT_DEFAULT_UI_LANGUAGE: PubliclySelectableProductUiLanguage = "en";
 
 /**
  * Default stored on new facilities when admin does not choose a language.
  * Independent from {@link PRODUCT_DEFAULT_UI_LANGUAGE} (Haiti facilities are typically French).
+ * Facility stored preference remains publicly selectable EN/FR only.
  */
-export const FACILITY_DEFAULT_LANGUAGE: ProductUiLanguage = "fr";
+export const FACILITY_DEFAULT_LANGUAGE: PubliclySelectableProductUiLanguage = "fr";
 
-const PRODUCT_UI_LANGUAGE_ZOD_VALUES = ["fr", "en"] as [ProductUiLanguage, ...ProductUiLanguage[]];
+/** Facility / user-facing stored language — never Spanish while it is hidden. */
+const PUBLIC_PRODUCT_UI_LANGUAGE_ZOD_VALUES = ["fr", "en"] as [
+  PubliclySelectableProductUiLanguage,
+  ...PubliclySelectableProductUiLanguage[],
+];
 
-export const productUiLanguageSchema = z.enum(PRODUCT_UI_LANGUAGE_ZOD_VALUES);
+export const productUiLanguageSchema = z.enum(PUBLIC_PRODUCT_UI_LANGUAGE_ZOD_VALUES);
+
+const INTERNAL_PRODUCT_UI_LANGUAGE_ZOD_VALUES = ["fr", "en", "es"] as [
+  ProductUiLanguage,
+  ...ProductUiLanguage[],
+];
+
+export const internalProductUiLanguageSchema = z.enum(INTERNAL_PRODUCT_UI_LANGUAGE_ZOD_VALUES);
+
+/** Hidden Spanish catalog placeholder — never approved clinical Spanish. */
+export const UNLOCALIZED_ES_PREFIX = "UNLOCALIZED_ES::";
+
+export function hiddenSpanishPlaceholder(keyPath: string): string {
+  return `${UNLOCALIZED_ES_PREFIX}${keyPath.trim()}`;
+}
+
+export function isHiddenSpanishPlaceholder(value: string): boolean {
+  return value.startsWith(UNLOCALIZED_ES_PREFIX) && value.length > UNLOCALIZED_ES_PREFIX.length;
+}
 
 /** How catalog search / order labels pick EN vs FR stored fields. */
-export type CatalogLabelStrategy = "en_strict" | "fr_preferred";
+export type CatalogLabelStrategy = "en_strict" | "fr_preferred" | "unlocalized";
 
 /**
  * Catalog clinical-display maps currently exist only for EN (FR→EN normalization)
  * and FR (pass-through). Bound explicitly per UI locale — never "not English → French".
+ * Hidden Spanish has no clinical map yet (MEDUI.ES.1D).
  */
 export type MedicationClinicalDisplayLocaleCode = "en" | "fr";
 
@@ -42,10 +78,11 @@ export type ProductUiLocaleDefinition = {
   code: ProductUiLanguage;
   /** BCP 47 tag for Intl date/number presentation. */
   bcp47: string;
-  /** Selector chrome in that language (English / Français). */
+  /** Native chrome label. Public selectors must not surface Spanish yet. */
   nativeLabel: string;
   catalogLabelStrategy: CatalogLabelStrategy;
-  medicationClinicalDisplayLocale: MedicationClinicalDisplayLocaleCode;
+  medicationClinicalDisplayLocale: MedicationClinicalDisplayLocaleCode | null;
+  publiclySelectable: boolean;
 };
 
 export const PRODUCT_UI_LOCALE_REGISTRY: Record<ProductUiLanguage, ProductUiLocaleDefinition> = {
@@ -55,6 +92,7 @@ export const PRODUCT_UI_LOCALE_REGISTRY: Record<ProductUiLanguage, ProductUiLoca
     nativeLabel: "English",
     catalogLabelStrategy: "en_strict",
     medicationClinicalDisplayLocale: "en",
+    publiclySelectable: true,
   },
   fr: {
     code: "fr",
@@ -62,6 +100,15 @@ export const PRODUCT_UI_LOCALE_REGISTRY: Record<ProductUiLanguage, ProductUiLoca
     nativeLabel: "Français",
     catalogLabelStrategy: "fr_preferred",
     medicationClinicalDisplayLocale: "fr",
+    publiclySelectable: true,
+  },
+  es: {
+    code: "es",
+    bcp47: "es-419",
+    nativeLabel: "Español",
+    catalogLabelStrategy: "unlocalized",
+    medicationClinicalDisplayLocale: null,
+    publiclySelectable: false,
   },
 };
 
@@ -69,10 +116,18 @@ export function isProductUiLanguage(value: string | null | undefined): value is 
   return value != null && (PRODUCT_UI_LANGUAGES as readonly string[]).includes(value);
 }
 
+export function isPubliclySelectableProductUiLanguage(
+  value: string | null | undefined
+): value is PubliclySelectableProductUiLanguage {
+  return (
+    value != null && (PUBLICLY_SELECTABLE_PRODUCT_UI_LANGUAGES as readonly string[]).includes(value)
+  );
+}
+
 /**
  * Parse a raw UI/header/storage value.
- * Accepts exact codes (`en`, `fr`) and BCP 47 prefixes (`en-US`, `fr-HT`).
- * Unknown values including `es` / `es-*` return null — Spanish is not a product UI locale yet.
+ * Accepts exact codes (`en`, `fr`, `es`) and BCP 47 prefixes (`en-US`, `fr-HT`, `es-MX`).
+ * Unknown values return null. Parsed `es` is internal-only — public hydration must not apply it.
  */
 export function parseProductUiLanguage(raw: string | null | undefined): ProductUiLanguage | null {
   if (raw == null) return null;
@@ -85,8 +140,42 @@ export function parseProductUiLanguage(raw: string | null | undefined): ProductU
   return null;
 }
 
-/** Locale-resolution boundary: unsupported/missing → product default (English). */
-export function resolveProductUiLanguageOrDefault(raw: string | null | undefined): ProductUiLanguage {
+/**
+ * Public product UI hydration. Hidden Spanish and unknown values → English default.
+ * Does not expose the hidden Spanish catalog in normal user flows.
+ */
+export function resolvePublicProductUiLanguageOrDefault(
+  raw: string | null | undefined
+): PubliclySelectableProductUiLanguage {
+  const parsed = parseProductUiLanguage(raw);
+  if (parsed && isPubliclySelectableProductUiLanguage(parsed)) return parsed;
+  return PRODUCT_DEFAULT_UI_LANGUAGE;
+}
+
+/**
+ * Locale-resolution boundary.
+ * Public `en`/`fr` inputs stay `en`/`fr` (overload — UI call sites do not widen to hidden `es`).
+ * Parsed `es` stays `es`. Unknown/missing → product default English.
+ * Public hydration must use {@link resolvePublicProductUiLanguageOrDefault}.
+ */
+export function resolveProductUiLanguageOrDefault(
+  raw: PubliclySelectableProductUiLanguage
+): PubliclySelectableProductUiLanguage;
+export function resolveProductUiLanguageOrDefault(
+  raw: string | null | undefined
+): ProductUiLanguage;
+export function resolveProductUiLanguageOrDefault(
+  raw: string | null | undefined
+): ProductUiLanguage {
+  return parseProductUiLanguage(raw) ?? PRODUCT_DEFAULT_UI_LANGUAGE;
+}
+
+/**
+ * Internal resolver: parsed `es` stays `es`. Unknown still defaults to English.
+ */
+export function resolveInternalProductUiLanguageOrDefault(
+  raw: string | null | undefined
+): ProductUiLanguage {
   return parseProductUiLanguage(raw) ?? PRODUCT_DEFAULT_UI_LANGUAGE;
 }
 
@@ -95,7 +184,7 @@ export function getProductUiLocaleDefinition(language: ProductUiLanguage): Produ
 }
 
 export function productUiBcp47Tag(language: string | null | undefined): string {
-  return PRODUCT_UI_LOCALE_REGISTRY[resolveProductUiLanguageOrDefault(language)].bcp47;
+  return PRODUCT_UI_LOCALE_REGISTRY[resolveInternalProductUiLanguageOrDefault(language)].bcp47;
 }
 
 export function catalogLabelStrategyForProductUi(language: ProductUiLanguage): CatalogLabelStrategy {
@@ -133,7 +222,7 @@ export function adaptProductUiToBilingualStorageLocale(
 
 /**
  * Product UI → medication clinical-display maps.
- * Exact for supported EN/FR. Unsupported (including `es`) is **not** mapped to EN or FR.
+ * Exact for supported EN/FR. Hidden Spanish has no clinical map — never mapped to EN or FR.
  */
 export function adaptProductUiToMedicationClinicalDisplayLocale(
   raw: string | null | undefined
@@ -142,15 +231,16 @@ export function adaptProductUiToMedicationClinicalDisplayLocale(
 }
 
 /**
- * Product UI → catalog label strategy.
- * `null` means do not treat stored EN/FR labels as localized for that locale.
+ * Product UI → catalog label strategy for bilingual EN/FR stored fields.
+ * `null` means do not treat stored EN/FR labels as localized (hidden Spanish / unknown).
  */
 export function adaptProductUiToCatalogLabelStrategy(
   raw: string | null | undefined
-): CatalogLabelStrategy | null {
+): "en_strict" | "fr_preferred" | null {
   const parsed = parseProductUiLanguage(raw);
-  if (!parsed) return null;
-  return PRODUCT_UI_LOCALE_REGISTRY[parsed].catalogLabelStrategy;
+  if (parsed === "en") return "en_strict";
+  if (parsed === "fr") return "fr_preferred";
+  return null;
 }
 
 export const LEGACY_BILINGUAL_STORAGE_FAMILIES = {
@@ -176,13 +266,13 @@ export const LEGACY_BILINGUAL_STORAGE_FAMILIES = {
   },
   uiTranslationCatalog: {
     family: "B" as const,
-    fields: ["en.ts", "fr.ts", "printT", "i18nMessage"],
-    description: "UI translation content — active locale only",
+    fields: ["en.ts", "fr.ts", "es.ts", "printT", "i18nMessage"],
+    description: "UI translation content — active locale only (ES is hidden placeholders in 1C)",
   },
   medicationClinicalDisplayMaps: {
     family: "C" as const,
     fields: ["MedicationClinicalDisplayLocale"],
-    description: "Clinical terminology catalog maps (EN/FR only until Spanish catalog phase)",
+    description: "Clinical terminology catalog maps (EN/FR only; Spanish canon is MEDUI.ES.1D)",
   },
   externalSourceCatalogMetadata: {
     family: "D" as const,
@@ -193,8 +283,8 @@ export const LEGACY_BILINGUAL_STORAGE_FAMILIES = {
 
 /**
  * Pick a legacy bilingual pair for a product UI locale.
- * Unsupported locales (including future `es`) return UNLOCALIZED_SOURCE using the
- * English stored field as canonical source text — never as a localized Spanish value.
+ * Hidden Spanish and other locales without EN/FR columns return UNLOCALIZED_SOURCE using the
+ * English stored field as canonical source identity — never as a localized Spanish value.
  */
 export function pickLegacyBilingualStoredPair(
   rawLocale: string | null | undefined,
@@ -221,7 +311,7 @@ export type CatalogDisplayLabelFields = {
 /**
  * User-facing catalog label for the active product UI locale.
  * EN uses EN only; FR uses FR only. Missing localized text → code / UNLOCALIZED_SOURCE.
- * Explicit unsupported locale (including `es`) never receives EN or FR labels.
+ * Hidden Spanish (`es`) never receives EN or FR labels.
  * Omitted locale is the F-boundary: product default EN, then EN-only.
  */
 export function pickCatalogDisplayLabelForProductUi(
@@ -245,27 +335,30 @@ export function pickCatalogDisplayLabelForProductUi(
 
 export function medicationClinicalDisplayLocaleForProductUi(
   language: ProductUiLanguage
-): MedicationClinicalDisplayLocaleCode {
+): MedicationClinicalDisplayLocaleCode | null {
   return PRODUCT_UI_LOCALE_REGISTRY[language].medicationClinicalDisplayLocale;
 }
 
 export function productUiLanguageSelectOptions(): ReadonlyArray<{
-  value: ProductUiLanguage;
+  value: PubliclySelectableProductUiLanguage;
   label: string;
 }> {
-  return PRODUCT_UI_LANGUAGES.map((code) => ({
+  return PUBLICLY_SELECTABLE_PRODUCT_UI_LANGUAGES.map((code) => ({
     value: code,
     label: PRODUCT_UI_LOCALE_REGISTRY[code].nativeLabel,
   }));
 }
 
-/** Browser language tags → product UI locale. Caller decides whether to apply the result. */
+/**
+ * Browser language tags → publicly selectable product UI locale.
+ * Spanish browser tags are ignored so hidden Spanish is not auto-activated.
+ */
 export function resolveProductUiLanguageFromBrowserCandidates(
   candidates: readonly string[]
-): ProductUiLanguage | null {
+): PubliclySelectableProductUiLanguage | null {
   for (const raw of candidates) {
     const parsed = parseProductUiLanguage(raw);
-    if (parsed) return parsed;
+    if (parsed && isPubliclySelectableProductUiLanguage(parsed)) return parsed;
   }
   return null;
 }

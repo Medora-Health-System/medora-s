@@ -27,6 +27,7 @@ import {
   resolveDentalSpecialtiesFromCareProfile,
   resolveEffectiveFacilityBillingWorkflow,
   FACILITY_DEFAULT_LANGUAGE,
+  isPubliclySelectableProductUiLanguage,
   parseProductUiLanguage,
 } from "@medora/shared";
 import { PrismaService } from "../prisma/prisma.service";
@@ -49,7 +50,9 @@ import {
 } from "./facility-care-profile.util";
 
 function facilityUiLanguage(raw: string | null | undefined) {
-  return parseProductUiLanguage(raw) ?? FACILITY_DEFAULT_LANGUAGE;
+  const parsed = parseProductUiLanguage(raw);
+  if (parsed && isPubliclySelectableProductUiLanguage(parsed)) return parsed;
+  return FACILITY_DEFAULT_LANGUAGE;
 }
 
 async function ensureServiceLineDepartmentsOrThrow(
