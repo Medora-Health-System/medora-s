@@ -322,9 +322,19 @@ describe("MEDUI.ES.1G disposition distinctness", () => {
   });
 });
 
-describe("MEDUI.ES.1G 1H / 1I / 1J / authored stay unlocalized", () => {
-  it("1H order/catalog sections remain placeholders", () => {
+describe("MEDUI.ES.1G 1I / 1J / authored stay unlocalized", () => {
+  it("1G never claims 1H order/catalog sections (now owned by the 1H overlay)", () => {
     for (const prefix of ["erEmergencyOrders", "edHosp1dObservationOrders", "edHosp1eAdmissionOrders"]) {
+      const leaves = collectLeaves(getByPath(es, prefix), prefix);
+      expect(leaves.size, prefix).toBeGreaterThan(0);
+      for (const [path] of leaves) {
+        expect(MEDUI_ES_1G_OVERLAY[path], path).toBeUndefined();
+      }
+    }
+  });
+
+  it("1I clinic/dental/billing sections remain placeholders", () => {
+    for (const prefix of ["clinicCareD4c1", "dentalCareD5a2", "billingPage"]) {
       const leaves = collectLeaves(getByPath(es, prefix), prefix);
       expect(leaves.size, prefix).toBeGreaterThan(0);
       for (const [path, value] of leaves) {

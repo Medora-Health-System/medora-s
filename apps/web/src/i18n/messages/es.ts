@@ -4,19 +4,21 @@ import en from "./en";
 import { MEDUI_ES_1E_OVERLAY } from "./meduiEs1eCorePlatformOverlay";
 import { MEDUI_ES_1F_OVERLAY } from "./meduiEs1fEmergencyDepartmentOverlay";
 import { MEDUI_ES_1G_OVERLAY } from "./meduiEs1gHospitalInpatientObservationOverlay";
+import { MEDUI_ES_1H_OVERLAY } from "./meduiEs1hOrdersMarPharmacyDiagnosticsOverlay";
 
 /**
- * MEDUI.ES.1D+1E+1F+1G Spanish product UI catalog.
+ * MEDUI.ES.1D+1E+1F+1G+1H Spanish product UI catalog.
  *
  * Pipeline:
  *  1. createHiddenSpanishCatalog(en) → all leaves become UNLOCALIZED_ES::<path>
- *  2. applyApprovedSpanishTerminology  → 1D canon overlays (35 APPROVED terms)
+ *  2. applyApprovedSpanishTerminology  → 1D canon overlays (37 APPROVED uiMessageKeys)
  *  3. applyGovernedSpanishOverlay(1E) → core platform / auth / registration / chart
  *  4. applyGovernedSpanishOverlay(1F) → Emergency Department chrome
  *  5. applyGovernedSpanishOverlay(1G) → Hospital / Inpatient / Observation chrome
+ *  6. applyGovernedSpanishOverlay(1H) → Orders / MAR / pharmacy / lab / imaging chrome
  *
  * Not user-selectable. Remaining keys stay UNLOCALIZED_ES::<path>.
- * Only remaining placeholders are replaced; later phases never overwrite 1D/1E/1F.
+ * Only remaining placeholders are replaced; later phases never overwrite 1D/1E/1F/1G.
  */
 
 export function applyGovernedSpanishOverlay<T>(
@@ -50,6 +52,7 @@ const hidden = createHiddenSpanishCatalog(en);
 const { tree: afterCanon } = applyApprovedSpanishTerminology(hidden);
 const { tree: after1e } = applyGovernedSpanishOverlay(afterCanon, MEDUI_ES_1E_OVERLAY);
 const { tree: after1f } = applyGovernedSpanishOverlay(after1e, MEDUI_ES_1F_OVERLAY);
-const { tree: esMessages } = applyGovernedSpanishOverlay(after1f, MEDUI_ES_1G_OVERLAY);
+const { tree: after1g } = applyGovernedSpanishOverlay(after1f, MEDUI_ES_1G_OVERLAY);
+const { tree: esMessages } = applyGovernedSpanishOverlay(after1g, MEDUI_ES_1H_OVERLAY);
 
 export default esMessages;

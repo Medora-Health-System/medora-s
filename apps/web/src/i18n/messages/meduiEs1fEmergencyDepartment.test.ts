@@ -26,6 +26,7 @@ import {
   MEDUI_ES_1F_OVERLAY,
 } from "./meduiEs1fEmergencyDepartmentOverlay";
 import { MEDUI_ES_1G_OVERLAY } from "./meduiEs1gHospitalInpatientObservationOverlay";
+import { MEDUI_ES_1H_OVERLAY } from "./meduiEs1hOrdersMarPharmacyDiagnosticsOverlay";
 
 const webRoot = join(dirname(fileURLToPath(import.meta.url)), "../../..");
 
@@ -324,7 +325,7 @@ describe("MEDUI.ES.1F authored narrative / templates / 1G / 1H stay unlocalized"
     }
   });
 
-  it("1F overlay does not include 1G/1H sections; 1H remains unlocalized", () => {
+  it("1F overlay does not include 1G/1H sections; 1H order chrome is owned by the 1H overlay", () => {
     for (const prefix of [
       "edHosp1gHospitalBoard",
       "edHosp1g2PlacementWorkspace",
@@ -346,8 +347,8 @@ describe("MEDUI.ES.1F authored narrative / templates / 1G / 1H stay unlocalized"
       const leaves = collectLeaves(getByPath(es, prefix), prefix);
       expect(leaves.size, prefix).toBeGreaterThan(0);
       for (const [path, value] of leaves) {
-        expect(isHiddenSpanishPlaceholder(value), path).toBe(true);
-        expect(MEDUI_ES_1F_OVERLAY[path]).toBeUndefined();
+        expect(MEDUI_ES_1F_OVERLAY[path], path).toBeUndefined();
+        expect(MEDUI_ES_1H_OVERLAY[path], path).toBe(value);
       }
     }
   });
@@ -476,9 +477,13 @@ describe("MEDUI.ES.1F overlay accounting", () => {
     expect(nonEmptyOverlayEntries).toBe(2737 - 43);
     expect(emptyOverlayEntries).toEqual([...MEDUI_ES_1F_EMPTY_OVERLAY_PATHS].sort());
     expect(emptyOverlayEntries).toHaveLength(43);
-    expect(before1f.placeholders).toBe(43682);
-    expect(after1f.placeholders).toBe(43682 - 2737);
-    expect(live.placeholders).toBe(after1f.placeholders - Object.keys(MEDUI_ES_1G_OVERLAY).length);
+    expect(before1f.placeholders).toBe(43680);
+    expect(after1f.placeholders).toBe(43680 - 2737);
+    expect(live.placeholders).toBe(
+      after1f.placeholders -
+        Object.keys(MEDUI_ES_1G_OVERLAY).length -
+        Object.keys(MEDUI_ES_1H_OVERLAY).length
+    );
     expect(before1f.placeholders - after1f.placeholders).toBe(2737);
 
     for (const path of overlayPaths) {
