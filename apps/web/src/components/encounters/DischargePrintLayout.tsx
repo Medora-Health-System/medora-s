@@ -5,7 +5,7 @@
  * No network: parent passes loaded objects.
  */
 
-import { resolveProductUiLanguageOrDefault, type SupportedLanguage } from "@/i18n/config";
+import { resolveProductUiLanguageOrDefault, type ProductUiLanguage } from "@/i18n/config";
 import { calculateAge } from "@/lib/patientDisplay";
 import { formatEncounterProviderAssigned } from "@/lib/encounterDisplay";
 import {
@@ -89,7 +89,7 @@ function summaryBlockLineToHtml(summaryLine: string): string {
 function appendProviderDischargeDocumentationPrintSection(
   bodySections: string[],
   dischargeSummaryJson: unknown,
-  language: SupportedLanguage,
+  language: ProductUiLanguage,
   patientDob?: string | null,
   patientSpecificDischargeContext?: PatientSpecificDischargeContext,
   dischargeMedicationSources?: DischargeMedicationSourceInput
@@ -175,7 +175,7 @@ export function getDischargePrintHtml(params: {
   facilityName?: string | null;
   /** Primary diagnosis for this encounter if known client-side */
   primaryDiagnosis?: string | null;
-  language: SupportedLanguage;
+  language: ProductUiLanguage;
   /** Optional enriched context (e.g. home medications, problem list) for append-only additions. */
   patientSpecificDischargeContext?: PatientSpecificDischargeContext;
   /** Optional medication sources for discharge personalization (no API fetch in print). */
@@ -355,7 +355,7 @@ export function getDischargePrintHtml(params: {
       const dxLines = (providerDoc.dischargeDiagnoses ?? []).map((dx) => {
         const display = formatInpatientDischargeDiagnosisDisplay(dx);
         return dx.isPrimary
-          ? `${language === "fr" ? "PRINCIPAL" : "PRIMARY"} — ${display}`
+          ? `${printT(language, "printOutput.discharge.primaryDiagnosis")} — ${display}`
           : display;
       });
       const pendingLines = (providerDoc.pendingStudies ?? []).map((s) =>

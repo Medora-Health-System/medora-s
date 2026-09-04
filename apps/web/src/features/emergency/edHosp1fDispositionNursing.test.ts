@@ -67,6 +67,13 @@ describe("ED.HOSP.1F disposition / nursing / language / EMTALA", () => {
     expect(panel).toContain("facilityCountry");
   });
 
+  it("EMTALA-labeled transfer/AMA/LWBS chrome is gated on US jurisdiction", () => {
+    expect(panel).toContain("ed-disposition-transfer-ops");
+    expect(panel).toContain("isUnitedStatesEmtalaJurisdiction(facilityCountry)");
+    expect(panel).toContain("emergencyDisposition.emtalaLabelTransferRequestedAt");
+    expect(panel).toContain("emergencyDisposition.sectionErSupplement");
+  });
+
   it("observation nursing is structured: no routine departure textareas", () => {
     expect(nursing).toContain('data-structured={structured ? "true" : "false"}');
     expect(nursing).toContain("adaptive-nursing-receivingUnit");

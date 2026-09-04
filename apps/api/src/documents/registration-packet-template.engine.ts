@@ -9,6 +9,7 @@ import {
   RegistrationPacketFieldType,
   RegistrationPacketTemplateStatus,
 } from "@prisma/client";
+import { UNLOCALIZED_CATALOG_SOURCE } from "@medora/shared";
 import { PrismaService } from "../prisma/prisma.service";
 import type { StructuredPacketModel } from "./packet-source.service";
 
@@ -62,11 +63,23 @@ export type ResolvedPacketTheme = {
 
 type LocalizedMap = Record<string, string>;
 
-function pickLocalized(json: unknown, locale: string, fallback = "en"): string {
+/**
+ * Source/legal locale pick — zero cross-language fallback.
+ * Missing/blank requested locale may use product-default EN before a locale is resolved.
+ * Once a locale code is present, only that locale's map entry is returned.
+ */
+export function pickLocalized(json: unknown, locale: string): string {
   if (!json || typeof json !== "object") return "";
   const map = json as LocalizedMap;
-  const loc = (locale || fallback).toLowerCase().slice(0, 2);
-  return (map[loc] || map[fallback] || map.en || map.fr || Object.values(map)[0] || "").trim();
+  const raw = String(locale ?? "").trim();
+  if (!raw) {
+    const en = typeof map.en === "string" ? map.en.trim() : "";
+    return en;
+  }
+  const loc = raw.toLowerCase().slice(0, 2);
+  const value = map[loc];
+  if (typeof value === "string" && value.trim()) return value.trim();
+  return UNLOCALIZED_CATALOG_SOURCE;
 }
 
 function answerMap(answers: PacketAnswerInput[] | undefined): Map<string, unknown> {

@@ -13,6 +13,7 @@ import {
   decodeReceivingNurse,
   isStructuredObservationNursingValue,
   isUnitedStatesEmtalaJurisdiction,
+  isEmtalaLegalContentApplicable,
   observationReceivingUnitOptions,
   projectNursingDepartureReadiness,
   receivingUnitOptionsForPathway,
@@ -53,6 +54,45 @@ describe("ED.HOSP.1F structured departure + EMTALA derivation", () => {
       unitedStatesJurisdiction: false,
     });
     expect(ht.msePerformed).toBeNull();
+  });
+
+  it("HOSPITAL type / unknown applicability never auto-asserts EMTALA legal content", () => {
+    expect(
+      isEmtalaLegalContentApplicable({
+        facilityCountry: "US",
+        emtalaApplicability: "HOSPITAL_EMERGENCY_DEPARTMENT",
+      }),
+    ).toBe(true);
+    expect(
+      isEmtalaLegalContentApplicable({
+        facilityCountry: "US",
+        emtalaApplicability: "HOSPITAL_AFFILIATED_OFF_CAMPUS_ED",
+      }),
+    ).toBe(true);
+    expect(
+      isEmtalaLegalContentApplicable({
+        facilityCountry: "HT",
+        emtalaApplicability: "HOSPITAL_EMERGENCY_DEPARTMENT",
+      }),
+    ).toBe(false);
+    expect(
+      isEmtalaLegalContentApplicable({
+        facilityCountry: "US",
+        emtalaApplicability: "NOT_CONFIGURED",
+      }),
+    ).toBe(false);
+    expect(
+      isEmtalaLegalContentApplicable({
+        facilityCountry: "US",
+        emtalaApplicability: null,
+      }),
+    ).toBe(false);
+    expect(
+      isEmtalaLegalContentApplicable({
+        facilityCountry: "US",
+        emtalaApplicability: "INDEPENDENT_FREESTANDING_ER",
+      }),
+    ).toBe(false);
   });
 
   it("hydrates bed pending vs assigned without a second bed engine", () => {

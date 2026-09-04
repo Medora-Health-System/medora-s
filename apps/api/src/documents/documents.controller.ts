@@ -159,6 +159,20 @@ export class DocumentsController {
     return this.templateEngine.getPublishedTemplateDefinition(code, version || "1.0");
   }
 
+  @Get("registration-disclosure-flags")
+  @RequireRoles(
+    RoleCode.RN,
+    RoleCode.PROVIDER,
+    RoleCode.ADMIN,
+    RoleCode.FRONT_DESK,
+    RoleCode.BILLING,
+  )
+  async getRegistrationDisclosureFlags(@Req() req: any) {
+    const facilityId = req.user?.facilityId || req.headers["x-facility-id"];
+    if (!facilityId) throw new BadRequestException("facility is required");
+    return this.documentsService.getRegistrationDisclosureFlags(facilityId);
+  }
+
   @Post("registration-packets")
   @RequireRoles(
     RoleCode.RN,

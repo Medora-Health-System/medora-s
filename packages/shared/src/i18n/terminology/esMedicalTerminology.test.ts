@@ -124,6 +124,9 @@ describe("MEDUI.ES.1D Spanish medical terminology canon", () => {
     expect(isHiddenSpanishPlaceholder(principalDx)).toBe(true);
     expect(principalDx).not.toBe("Principal Diagnosis");
     expect(principalDx).not.toBe("Diagnóstico principal de egreso");
+    const principalEntry = ES_MEDICAL_TERMINOLOGY.find((e) => e.key === "clinical.dx.principalDiagnosis");
+    expect(principalEntry?.status).toBe("REVIEW_REQUIRED");
+    expect(principalEntry?.uiMessageKeys ?? []).toEqual([]);
     expect(resolveMedicalTerminology("es", "clinical.dx.principalDiagnosis")).toBe(
       hiddenSpanishPlaceholder("clinical.dx.principalDiagnosis")
     );

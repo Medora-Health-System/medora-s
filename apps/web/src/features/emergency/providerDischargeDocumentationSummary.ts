@@ -3,7 +3,7 @@
  */
 
 import { getLocalizedDiagnosisDisplayLabel } from "./diagnosisFrenchDisplayLabels";
-import { productUiBcp47Tag, type SupportedLanguage } from "@/i18n/config";
+import { productUiBcp47Tag, type ProductUiLanguage } from "@/i18n/config";
 import { i18nMessage } from "@/lib/i18nMessagesLookup";
 import type { ErDispositionPreviewSection } from "./emergencyDispositionV1";
 import type { VisitSummaryTextBlock } from "./emergencyVisitSummaryModel";
@@ -32,7 +32,7 @@ export type ProviderDischargeDocumentationRenderOptions = {
   patientContext?: PatientSpecificDischargeContext;
 };
 
-function p(locale: SupportedLanguage, key: string): string {
+function p(locale: ProductUiLanguage, key: string): string {
   return i18nMessage(locale, `providerDischargeDocumentation19Y.${key}`);
 }
 
@@ -48,7 +48,7 @@ function titleCaseEnumCode(code: string): string {
 /** Display-only: localize follow-up/service enum chips. Persisted values stay unchanged. */
 export function localizeEdDispositionFollowUpChipText(
   raw: string,
-  locale: SupportedLanguage
+  locale: ProductUiLanguage
 ): string {
   return String(raw ?? "").replace(ENUM_TOKEN, (code) => {
     const spec = p(locale, `followUpSpecialty.${code}`);
@@ -60,7 +60,7 @@ export function localizeEdDispositionFollowUpChipText(
   });
 }
 
-function formatIso(iso: string, locale: SupportedLanguage): string {
+function formatIso(iso: string, locale: ProductUiLanguage): string {
   try {
     const tag = productUiBcp47Tag(locale);
     return new Date(iso).toLocaleString(tag, { dateStyle: "short", timeStyle: "short" });
@@ -74,7 +74,7 @@ function pushLine(lines: string[], label: string, value: string | null | undefin
   if (v) lines.push(`${label}: ${v}`);
 }
 
-function formatFollowUpRow(row: ProviderDischargeFollowUpRow, locale: SupportedLanguage): string {
+function formatFollowUpRow(row: ProviderDischargeFollowUpRow, locale: ProductUiLanguage): string {
   const specialtyLabel = p(locale, `followUpSpecialty.${row.specialty}`);
   const parts = [
     specialtyLabel !== `providerDischargeDocumentation19Y.followUpSpecialty.${row.specialty}`
@@ -92,7 +92,7 @@ function formatFollowUpRow(row: ProviderDischargeFollowUpRow, locale: SupportedL
 function localizedDiagnosisLine(
   code: string,
   englishLabel: string,
-  locale: SupportedLanguage,
+  locale: ProductUiLanguage,
   primarySuffix: string
 ): string {
   return `${code} — ${getLocalizedDiagnosisDisplayLabel({ code, description: englishLabel }, locale)}${primarySuffix}`;
@@ -101,7 +101,7 @@ function localizedDiagnosisLine(
 function appendPatientSpecificInstructionLines(
   lines: string[],
   selectedDocs: ProviderDischargeDiagnosisCard[],
-  locale: SupportedLanguage,
+  locale: ProductUiLanguage,
   options?: ProviderDischargeDocumentationRenderOptions
 ) {
   if (!options?.patientContext) return;
@@ -121,7 +121,7 @@ function appendPatientSpecificInstructionLines(
 
 function buildPatientSpecificPreviewSection(
   selectedDocs: ProviderDischargeDiagnosisCard[],
-  locale: SupportedLanguage,
+  locale: ProductUiLanguage,
   options?: ProviderDischargeDocumentationRenderOptions
 ): ErDispositionPreviewSection | null {
   if (!options?.patientContext) return null;
@@ -141,7 +141,7 @@ function buildPatientSpecificPreviewSection(
 
 export function getPatientSpecificDischargeAdditionsForForm(
   form: ProviderDischargeDocumentationForm,
-  locale: SupportedLanguage,
+  locale: ProductUiLanguage,
   options?: ProviderDischargeDocumentationRenderOptions
 ): PatientSpecificDischargeAddition[] {
   if (!options?.patientContext) return [];
@@ -153,7 +153,7 @@ export function getPatientSpecificDischargeAdditionsForForm(
   });
 }
 
-function appendDiagnosisCardLines(lines: string[], doc: ProviderDischargeDiagnosisCard, locale: SupportedLanguage) {
+function appendDiagnosisCardLines(lines: string[], doc: ProviderDischargeDiagnosisCard, locale: ProductUiLanguage) {
   const primarySuffix = doc.isPrimaryDiagnosis ? ` (${p(locale, "primary")})` : "";
   lines.push("");
   lines.push(localizedDiagnosisLine(doc.code, doc.displayName, locale, primarySuffix));
@@ -165,7 +165,7 @@ function appendDiagnosisCardLines(lines: string[], doc: ProviderDischargeDiagnos
 function appendSharedPlanningLines(
   lines: string[],
   form: ReturnType<typeof hydrateProviderDischargeDocumentationForm>,
-  locale: SupportedLanguage
+  locale: ProductUiLanguage
 ) {
   const hasPlanning =
     Boolean(form.returnPrecautions.trim()) ||
@@ -188,7 +188,7 @@ function appendSharedPlanningLines(
 
 export function buildProviderDischargeDocumentationSummaryBlock(
   dischargeSummaryJson: unknown,
-  locale: SupportedLanguage,
+  locale: ProductUiLanguage,
   options?: ProviderDischargeDocumentationRenderOptions
 ): VisitSummaryTextBlock | null {
   const form = hydrateProviderDischargeDocumentationForm(dischargeSummaryJson);
@@ -236,7 +236,7 @@ export function buildProviderDischargeDocumentationSummaryBlock(
 
 export function buildNursingDischargeExecutionSummaryBlock19Y(
   nursingAssessment: unknown,
-  locale: SupportedLanguage
+  locale: ProductUiLanguage
 ): VisitSummaryTextBlock | null {
   const exec = readNursingDischargeExecutionStored(nursingAssessment);
   if (!exec) return null;
@@ -333,7 +333,7 @@ function previewPushLine(lines: string[], label: string, value: string | null | 
 export function buildProviderDischargeDocumentationPreviewSections(
   providerForm: ProviderDischargeDocumentationForm,
   dischargeSummaryJson: unknown,
-  locale: SupportedLanguage,
+  locale: ProductUiLanguage,
   options?: ProviderDischargeDocumentationRenderOptions
 ): ErDispositionPreviewSection[] {
   const meta = readProviderDischargeDocumentationMeta(dischargeSummaryJson);

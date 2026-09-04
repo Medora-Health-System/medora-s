@@ -3,7 +3,7 @@
  * Medication-class-aware discharge guidance — append-only; no dosing or med-change advice.
  */
 
-import type { SupportedLanguage } from "@/i18n/config";
+import type { ProductUiLanguage } from "@/i18n/config";
 import { resolveProviderDischargeLocaleTextOrNull } from "./providerDischargeLocaleText";
 import type {
   ClinicalReviewStatus,
@@ -76,7 +76,7 @@ export type MedicationRiskRule = {
   severity: PatientSpecificDischargeAdditionSeverity;
   reason: string;
   clinicalReviewStatus: ClinicalReviewStatus;
-  text: Record<SupportedLanguage, string>;
+  text: { en: string; fr: string };
   appliesToAllTemplates?: boolean;
   appliesToTemplateIds?: readonly string[];
   matches: (ctx: MedicationRiskMatchContext) => boolean;
@@ -426,7 +426,7 @@ export function medicationRiskAdditionContainsForbiddenLanguage(text: string): b
 export function resolveMedicationRiskDischargeAdditions(input: {
   templateIds: readonly string[];
   context: PatientSpecificDischargeContext;
-  locale: SupportedLanguage;
+  locale: ProductUiLanguage;
 }): PatientSpecificDischargeAddition[] {
   const matchContext = buildMedicationRiskMatchContext(input.templateIds, input.context);
   if (!matchContext.hasAnyTemplate) return [];

@@ -1,11 +1,52 @@
 import {
+  pickLocalized,
   RegistrationPacketTemplateEngine,
   type PacketConditionContext,
 } from "./registration-packet-template.engine";
 import { RegistrationPacketFieldType } from "@prisma/client";
+import { UNLOCALIZED_CATALOG_SOURCE } from "@medora/shared";
 
 describe("RegistrationPacketTemplateEngine", () => {
   const makeEngine = (prisma: any) => new RegistrationPacketTemplateEngine(prisma);
+
+  describe("pickLocalized zero cross-language fallback", () => {
+    const tri = { en: "EN_LEGAL", fr: "FR_LEGAL", es: "ES_LEGAL" };
+
+    it("resolves each locale only to its own map entry", () => {
+      expect(pickLocalized(tri, "en")).toBe("EN_LEGAL");
+      expect(pickLocalized(tri, "fr")).toBe("FR_LEGAL");
+      expect(pickLocalized(tri, "es")).toBe("ES_LEGAL");
+    });
+
+    it("EN -> FR = 0 and EN -> ES = 0", () => {
+      const enOnly = { en: "EN_ONLY" };
+      expect(pickLocalized(enOnly, "fr")).toBe(UNLOCALIZED_CATALOG_SOURCE);
+      expect(pickLocalized(enOnly, "es")).toBe(UNLOCALIZED_CATALOG_SOURCE);
+      expect(pickLocalized(enOnly, "fr")).not.toBe("EN_ONLY");
+      expect(pickLocalized(enOnly, "es")).not.toBe("EN_ONLY");
+    });
+
+    it("FR -> EN = 0 and FR -> ES = 0", () => {
+      const frOnly = { fr: "FR_ONLY" };
+      expect(pickLocalized(frOnly, "en")).toBe(UNLOCALIZED_CATALOG_SOURCE);
+      expect(pickLocalized(frOnly, "es")).toBe(UNLOCALIZED_CATALOG_SOURCE);
+      expect(pickLocalized(frOnly, "en")).not.toBe("FR_ONLY");
+      expect(pickLocalized(frOnly, "es")).not.toBe("FR_ONLY");
+    });
+
+    it("ES -> EN = 0 and ES -> FR = 0", () => {
+      const esOnly = { es: "ES_ONLY" };
+      expect(pickLocalized(esOnly, "en")).toBe(UNLOCALIZED_CATALOG_SOURCE);
+      expect(pickLocalized(esOnly, "fr")).toBe(UNLOCALIZED_CATALOG_SOURCE);
+      expect(pickLocalized(esOnly, "en")).not.toBe("ES_ONLY");
+      expect(pickLocalized(esOnly, "fr")).not.toBe("ES_ONLY");
+    });
+
+    it("unresolved locale boundary may use product-default EN; never FR", () => {
+      expect(pickLocalized({ en: "EN_DEFAULT", fr: "FR_MUST_NOT_WIN" }, "")).toBe("EN_DEFAULT");
+      expect(pickLocalized({ fr: "FR_ONLY" }, "")).toBe("");
+    });
+  });
 
   describe("evaluateSectionVisible", () => {
     const engine = makeEngine({});

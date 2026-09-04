@@ -173,6 +173,23 @@ describe("MEDUI.REGISTRATION.PHASE_3_ELECTRONIC_PACKET_E_SIGNATURE", () => {
       expect(wizardComponent).toContain('"Content-Type": "application/json"');
     });
 
+    it("missing wizard locale resolves to product default EN, never FR", () => {
+      expect(wizardComponent).toContain("parseProductUiLanguage(language) ?? PRODUCT_DEFAULT_UI_LANGUAGE");
+      expect(wizardComponent).not.toContain('locale: language || "fr"');
+    });
+
+    it("HOSPITAL catalog requires canonical EMTALA applicability, not template type alone", () => {
+      expect(wizardComponent).toContain("registration-disclosure-flags");
+      expect(wizardComponent).toContain("isEmtalaLegalContentApplicable");
+      expect(sectionCatalogForTemplate("HOSPITAL").map((s) => s.key)).not.toContain("emtalaNotice");
+      expect(
+        sectionCatalogForTemplate("HOSPITAL", { emtalaApplicable: true }).map((s) => s.key),
+      ).toContain("emtalaNotice");
+      expect(
+        sectionCatalogForTemplate("HOSPITAL", { emtalaApplicable: false }).map((s) => s.key),
+      ).not.toContain("emtalaNotice");
+    });
+
     it("sends facility name in structured model facility object", () => {
       expect(wizardComponent).toContain("facility: { id: facilityId, name: facilityName }");
     });
