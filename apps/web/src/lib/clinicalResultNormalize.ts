@@ -9,7 +9,7 @@ import {
   resolveLabParsedRowFlag,
 } from "@medora/shared";
 
-import type { SupportedLanguage } from "@/i18n/config";
+import { pickProductUiCopy, type SupportedLanguage } from "@/i18n/config";
 import type { ChartSummaryOrderItem } from "@/lib/chartApi";
 import { chartSummaryOrderItemLineLabel } from "@/lib/chartSummaryOrderLabel";
 
@@ -571,8 +571,11 @@ function normalizeRadHeadingForLocale(
   key: string,
   language: SupportedLanguage
 ): string {
-  if (language !== "en") {
+  if (language === "fr") {
     return normalizeRadHeadingFr(key);
+  }
+  if (language !== "en") {
+    return key.trim();
   }
   const k = key.toLowerCase().replace(/\s+/g, " ").trim();
   if (k.startsWith("compte rendu")) return "Report";
@@ -650,7 +653,11 @@ export function parseRadiologySections(
       return {
         sections: [
           {
-            heading: language === "en" ? "Report" : "Compte rendu",
+            heading: pickProductUiCopy(
+              language,
+              { en: "Report", fr: "Compte rendu", es: "Informe" },
+              "Informe"
+            ),
             body: para.join("\n\n"),
           },
         ],

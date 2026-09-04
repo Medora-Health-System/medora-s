@@ -695,7 +695,7 @@ function ExistingGroup({
 }: {
   title: string;
   orders: EdHosp1dExistingOrderLite[];
-  locale: "en" | "fr";
+  locale: string;
 }) {
   if (orders.length === 0) return null;
   return (

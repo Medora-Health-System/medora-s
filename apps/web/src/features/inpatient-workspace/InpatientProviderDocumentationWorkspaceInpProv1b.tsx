@@ -37,6 +37,11 @@ import {
   PLAN_STICKY_OPTIONS,
 } from "@medora/shared";
 import { useI18n } from "@/lib/i18n";
+import {
+  pickCatalogDisplayLabelForProductUi,
+  pickLegacyBilingualStoredPair,
+  productUiBcp47Tag,
+} from "@/i18n/config";
 import { MEDORA_CARD_SHELL } from "@/components/medora-card/medoraCardTokens";
 import {
   fetchInpatientWorkspaceBootstrap,
@@ -218,11 +223,12 @@ function asRecord(value: unknown): Record<string, unknown> | null {
   return value as Record<string, unknown>;
 }
 
-function pickLabel(item: Record<string, unknown>, french: boolean): string {
-  const fr = String(item.displayLabelFr ?? "").trim();
-  const en = String(item.displayLabelEn ?? item.displayLabel ?? "").trim();
-  const manual = String(item.manualLabel ?? "").trim();
-  return french ? fr || en || manual : en || fr || manual;
+function pickLabel(item: Record<string, unknown>, language: string): string {
+  return pickCatalogDisplayLabelForProductUi(language, {
+    displayNameEn: String(item.displayLabelEn ?? item.displayLabel ?? "").trim(),
+    displayNameFr: String(item.displayLabelFr ?? "").trim(),
+    code: String(item.manualLabel ?? item.code ?? "").trim(),
+  });
 }
 
 function pickOptionalString(...values: unknown[]): string | null {
@@ -246,7 +252,7 @@ function progressNoteStatusMeta(
 }
 
 /** Normalize the enterprise order payload down to the fields this strip displays. */
-function normalizeOrders(raw: unknown[], french: boolean): OrderCardLite[] {
+function normalizeOrders(raw: unknown[], language: string): OrderCardLite[] {
   const out: OrderCardLite[] = [];
   for (const entry of raw) {
     const order = asRecord(entry);
@@ -260,7 +266,7 @@ function normalizeOrders(raw: unknown[], french: boolean): OrderCardLite[] {
       items.push({
         id: itemId,
         status: String(item.status ?? order.status ?? "").toUpperCase(),
-        displayLabel: pickLabel(item, french),
+        displayLabel: pickLabel(item, language),
         catalogItemType: String(item.catalogItemType ?? "").toUpperCase(),
         priority: pickOptionalString(item.priority, order.priority),
         createdAt: pickOptionalString(item.createdAt, order.createdAt, order.orderedAt),
@@ -296,8 +302,8 @@ function isHpSignedStatus(status: string | null | undefined): boolean {
   return String(status ?? "").trim().toUpperCase() === "SIGNED";
 }
 
-function formatClockLabel(french: boolean): string {
-  return new Date().toLocaleTimeString(french ? "fr-FR" : "en-US", {
+function formatClockLabel(language: string): string {
+  return new Date().toLocaleTimeString(productUiBcp47Tag(language), {
     hour: "2-digit",
     minute: "2-digit",
   });
@@ -523,10 +529,10 @@ export function InpatientProviderDocumentationWorkspaceInpProv1b({
 
   useEffect(() => {
     setTodayIso(new Date().toISOString().slice(0, 10));
-    setClockLabel(formatClockLabel(french));
-    const handle = window.setInterval(() => setClockLabel(formatClockLabel(french)), CLOCK_INTERVAL_MS);
+    setClockLabel(formatClockLabel(language));
+    const handle = window.setInterval(() => setClockLabel(formatClockLabel(language)), CLOCK_INTERVAL_MS);
     return () => window.clearInterval(handle);
-  }, [french]);
+  }, [language]);
 
   const progressNotes = useMemo(() => sortNotesNewestFirst(doc?.progressNotes ?? []), [doc]);
   const expectedVersion = Number(doc?.expectedVersion ?? 0);
@@ -593,12 +599,12 @@ export function InpatientProviderDocumentationWorkspaceInpProv1b({
     let cancelled = false;
     void (async () => {
       const raw = await fetchOrdersForEncounter(facilityId, encounterId).catch(() => [] as unknown[]);
-      if (!cancelled) setOrders(normalizeOrders(raw, french));
+      if (!cancelled) setOrders(normalizeOrders(raw, language));
     })();
     return () => {
       cancelled = true;
     };
-  }, [encounterId, facilityId, french, ordersRefresh]);
+  }, [encounterId, facilityId, language, ordersRefresh]);
 
   const commitSections = useCallback((next: ProgressSoapSections) => {
     setUndoStack((stack) => [...stack, sectionsRef.current].slice(-HISTORY_LIMIT));
@@ -657,7 +663,7 @@ export function InpatientProviderDocumentationWorkspaceInpProv1b({
       dirtyRef.current = false;
       applyDocumentation(nextDoc);
       setSaveState("saved");
-      setSavedAtLabel(formatClockLabel(french));
+      setSavedAtLabel(formatClockLabel(language));
       return Number(nextDoc.expectedVersion ?? expectedVersion + 1);
     } catch {
       setSaveState("failed");
@@ -743,7 +749,7 @@ export function InpatientProviderDocumentationWorkspaceInpProv1b({
       dirtyRef.current = false;
       setDoc(res.documentation as ProviderWorkspaceDoc);
       setSaveState("saved");
-      setSavedAtLabel(formatClockLabel(french));
+      setSavedAtLabel(formatClockLabel(language));
     } catch {
       setSaveState("failed");
       setActionError(t(`${I18N}.saveFailed`));
@@ -767,7 +773,7 @@ export function InpatientProviderDocumentationWorkspaceInpProv1b({
         const res = await signProviderHp(encounterId, { expectedVersion });
         applyDocumentation(res.documentation as ProviderWorkspaceDoc);
         setSaveState("saved");
-        setSavedAtLabel(formatClockLabel(french));
+        setSavedAtLabel(formatClockLabel(language));
       } catch {
         setSaveState("failed");
         setActionError(t(`${I18N}.signFailed`));
@@ -788,7 +794,7 @@ export function InpatientProviderDocumentationWorkspaceInpProv1b({
       });
       applyDocumentation(res.documentation as ProviderWorkspaceDoc);
       setSaveState("saved");
-      setSavedAtLabel(formatClockLabel(french));
+      setSavedAtLabel(formatClockLabel(language));
     } catch {
       setSaveState("failed");
       setActionError(t(`${I18N}.signFailed`));
@@ -1439,7 +1445,10 @@ export function InpatientProviderDocumentationWorkspaceInpProv1b({
                 <p style={{ margin: 0, ...META }}>{t(`${I18N}.smartPhrases.appendHint`)}</p>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
                   {PLAN_STICKY_OPTIONS.map((option) => {
-                    const display = french ? option.displayFr : option.display;
+                    const display = pickLegacyBilingualStoredPair(language, {
+                      en: option.display,
+                      fr: option.displayFr,
+                    }).value;
                     return (
                       <button
                         key={option.code}

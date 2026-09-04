@@ -88,6 +88,7 @@ import {
   validateFoundationCatalogCompletionPayloadForCard,
 } from "./foundationCatalogCompletionPayloads.js";
 import {
+  clinicalDocSummaryKey,
   clinicalDocYesNo,
   pickLocalizedEnumLabel,
   type ClinicalDocumentationSummaryLocale,
@@ -485,23 +486,23 @@ export function summarizeObservationDocumentationPayload(
       const d = p.data;
       const lines: Array<{ key: string; value: string }> = [
         {
-          key: locale === "en" ? "Result" : "Résultat",
+          key: clinicalDocSummaryKey(locale, "Result", "Résultat"),
           value: pickLocalizedEnumLabel(TRIAL_RESULT_EN, TRIAL_RESULT_FR, d.result, locale),
         },
         {
-          key: locale === "en" ? "Tolerated" : "Tolérance",
+          key: clinicalDocSummaryKey(locale, "Tolerated", "Tolérance"),
           value: pickLocalizedEnumLabel(PO_TOLERATED_EN, PO_TOLERATED_FR, d.tolerated, locale),
         },
-        { key: locale === "en" ? "Substance" : "Substance", value: d.substance },
-        { key: locale === "en" ? "Amount" : "Quantité", value: d.amount },
-        { key: locale === "en" ? "Start" : "Début", value: d.startTime },
-        { key: locale === "en" ? "Nausea" : "Nausées", value: clinicalDocYesNo(d.nausea, locale) },
+        { key: clinicalDocSummaryKey(locale, "Substance", "Substance"), value: d.substance },
+        { key: clinicalDocSummaryKey(locale, "Amount", "Quantité"), value: d.amount },
+        { key: clinicalDocSummaryKey(locale, "Start", "Début"), value: d.startTime },
+        { key: clinicalDocSummaryKey(locale, "Nausea", "Nausées"), value: clinicalDocYesNo(d.nausea, locale) },
         {
-          key: locale === "en" ? "Vomiting" : "Vomissements",
+          key: clinicalDocSummaryKey(locale, "Vomiting", "Vomissements"),
           value: clinicalDocYesNo(d.vomiting, locale),
         },
         {
-          key: locale === "en" ? "Abdominal pain" : "Douleur abdominale",
+          key: clinicalDocSummaryKey(locale, "Abdominal pain", "Douleur abdominale"),
           value: clinicalDocYesNo(d.abdominalPain, locale),
         },
       ];
@@ -514,7 +515,7 @@ export function summarizeObservationDocumentationPayload(
       const d = p.data;
       const lines: Array<{ key: string; value: string }> = [
         {
-          key: locale === "en" ? "Result" : "Résultat",
+          key: clinicalDocSummaryKey(locale, "Result", "Résultat"),
           value: pickLocalizedEnumLabel(TRIAL_RESULT_EN, TRIAL_RESULT_FR, d.result, locale),
         },
         {
@@ -522,21 +523,21 @@ export function summarizeObservationDocumentationPayload(
           value: `${d.distance} ${pickLocalizedEnumLabel(DISTANCE_UNIT_EN, DISTANCE_UNIT_FR, d.distanceUnit, locale)}`,
         },
         {
-          key: locale === "en" ? "Assistance" : "Assistance",
+          key: clinicalDocSummaryKey(locale, "Assistance", "Assistance"),
           value: pickLocalizedEnumLabel(ASSISTANCE_EN, ASSISTANCE_FR, d.assistanceLevel, locale),
         },
         {
-          key: locale === "en" ? "Steady gait" : "Démarche stable",
+          key: clinicalDocSummaryKey(locale, "Steady gait", "Démarche stable"),
           value: clinicalDocYesNo(d.gaitSteady, locale),
         },
-        { key: locale === "en" ? "Dizziness" : "Vertiges", value: clinicalDocYesNo(d.dizziness, locale) },
+        { key: clinicalDocSummaryKey(locale, "Dizziness", "Vertiges"), value: clinicalDocYesNo(d.dizziness, locale) },
         {
-          key: locale === "en" ? "Shortness of breath" : "Dyspnée",
+          key: clinicalDocSummaryKey(locale, "Shortness of breath", "Dyspnée"),
           value: clinicalDocYesNo(d.shortnessOfBreath, locale),
         },
-        { key: locale === "en" ? "Pain" : "Douleur", value: clinicalDocYesNo(d.pain, locale) },
+        { key: clinicalDocSummaryKey(locale, "Pain", "Douleur"), value: clinicalDocYesNo(d.pain, locale) },
         {
-          key: locale === "en" ? "Oxygen desaturation" : "Désaturation O₂",
+          key: clinicalDocSummaryKey(locale, "Oxygen desaturation", "Désaturation O₂"),
           value: clinicalDocYesNo(d.oxygenDesaturation, locale),
         },
       ];
@@ -549,26 +550,26 @@ export function summarizeObservationDocumentationPayload(
       const d = p.data;
       const lines: Array<{ key: string; value: string }> = [
         {
-          key: locale === "en" ? "Condition" : "État",
+          key: clinicalDocSummaryKey(locale, "Condition", "État"),
           value: pickLocalizedEnumLabel(CONDITION_EN, CONDITION_FR, d.patientCondition, locale),
         },
-        { key: locale === "en" ? "Time" : "Heure", value: d.reassessmentTime },
+        { key: clinicalDocSummaryKey(locale, "Time", "Heure"), value: d.reassessmentTime },
         {
-          key: locale === "en" ? "Provider notified" : "Médecin avisé",
+          key: clinicalDocSummaryKey(locale, "Provider notified", "Médecin avisé"),
           value: clinicalDocYesNo(d.providerNotified, locale),
         },
         {
-          key: locale === "en" ? "Vitals reviewed" : "Signes vitaux revus",
+          key: clinicalDocSummaryKey(locale, "Vitals reviewed", "Signes vitaux revus"),
           value: clinicalDocYesNo(d.vitalsReviewed, locale),
         },
         {
-          key: locale === "en" ? "Pending results" : "Résultats en attente",
+          key: clinicalDocSummaryKey(locale, "Pending results", "Résultats en attente"),
           value: clinicalDocYesNo(d.pendingResults, locale),
         },
       ];
       if (d.painScore != null) {
         lines.push({
-          key: locale === "en" ? "Pain (0-10)" : "Douleur (0-10)",
+          key: clinicalDocSummaryKey(locale, "Pain (0-10)", "Douleur (0-10)"),
           value: String(d.painScore),
         });
       }
@@ -580,26 +581,26 @@ export function summarizeObservationDocumentationPayload(
       if (!p.success) return [];
       const d = p.data;
       const lines: Array<{ key: string; value: string }> = [
-        { key: locale === "en" ? "Boarding reason" : "Motif attente", value: d.boardingReason },
-        { key: locale === "en" ? "Location" : "Emplacement", value: d.location },
+        { key: clinicalDocSummaryKey(locale, "Boarding reason", "Motif attente"), value: d.boardingReason },
+        { key: clinicalDocSummaryKey(locale, "Location", "Emplacement"), value: d.location },
         {
-          key: locale === "en" ? "Safety check" : "Contrôle sécurité",
+          key: clinicalDocSummaryKey(locale, "Safety check", "Contrôle sécurité"),
           value: clinicalDocYesNo(d.safetyCheckCompleted, locale),
         },
         {
-          key: locale === "en" ? "Comfort offered" : "Confort offert",
+          key: clinicalDocSummaryKey(locale, "Comfort offered", "Confort offert"),
           value: clinicalDocYesNo(d.comfortMeasuresOffered, locale),
         },
         {
-          key: locale === "en" ? "Nutrition offered" : "Nutrition offerte",
+          key: clinicalDocSummaryKey(locale, "Nutrition offered", "Nutrition offerte"),
           value: clinicalDocYesNo(d.nutritionOffered, locale),
         },
         {
-          key: locale === "en" ? "Toileting offered" : "Toilette offerte",
+          key: clinicalDocSummaryKey(locale, "Toileting offered", "Toilette offerte"),
           value: clinicalDocYesNo(d.toiletingOffered, locale),
         },
         {
-          key: locale === "en" ? "Provider updated" : "Médecin informé",
+          key: clinicalDocSummaryKey(locale, "Provider updated", "Médecin informé"),
           value: clinicalDocYesNo(d.providerUpdated, locale),
         },
       ];
@@ -610,37 +611,22 @@ export function summarizeObservationDocumentationPayload(
       const p = dischargeReadinessPayloadSchema.safeParse(payload);
       if (!p.success) return [];
       const d = p.data;
-      const checklist =
-        locale === "en"
-          ? ([
-              ["Instructions", d.instructionsReviewed],
-              ["Medications", d.medicationsReviewed],
-              ["Follow-up", d.followUpReviewed],
-              ["Return precautions", d.returnPrecautionsReviewed],
-              ["Transportation", d.transportationConfirmed],
-              ["Patient understanding", d.patientVerbalizedUnderstanding],
-            ] as const)
-          : ([
-              ["Consignes", d.instructionsReviewed],
-              ["Médicaments", d.medicationsReviewed],
-              ["Suivi", d.followUpReviewed],
-              ["Signes d'alerte", d.returnPrecautionsReviewed],
-              ["Transport", d.transportationConfirmed],
-              ["Compréhension patient", d.patientVerbalizedUnderstanding],
-            ] as const);
+      const checklist = [
+              [clinicalDocSummaryKey(locale, "Instructions", "Consignes"), d.instructionsReviewed],
+              [clinicalDocSummaryKey(locale, "Medications", "Médicaments"), d.medicationsReviewed],
+              [clinicalDocSummaryKey(locale, "Follow-up", "Suivi"), d.followUpReviewed],
+              [clinicalDocSummaryKey(locale, "Return precautions", "Signes d'alerte"), d.returnPrecautionsReviewed],
+              [clinicalDocSummaryKey(locale, "Transportation", "Transport"), d.transportationConfirmed],
+              [clinicalDocSummaryKey(locale, "Patient understanding", "Compréhension patient"), d.patientVerbalizedUnderstanding],
+            ] as const;
       const done = checklist.filter(([, v]) => v).map(([k]) => k);
       const lines: Array<{ key: string; value: string }> = [
         {
-          key: locale === "en" ? "Checklist" : "Liste de contrôle",
-          value:
-            done.length > 0
-              ? done.join(", ")
-              : locale === "en"
-                ? "No items checked"
-                : "Aucun élément coché",
+          key: clinicalDocSummaryKey(locale, "Checklist", "Liste de contrôle"),
+          value: done.length > 0 ? done.join(", ") : clinicalDocSummaryKey(locale, "No items checked", "Aucun élément coché"),
         },
         {
-          key: locale === "en" ? "Barriers identified" : "Obstacles identifiés",
+          key: clinicalDocSummaryKey(locale, "Barriers identified", "Obstacles identifiés"),
           value: clinicalDocYesNo(d.barriersIdentified, locale),
         },
       ];

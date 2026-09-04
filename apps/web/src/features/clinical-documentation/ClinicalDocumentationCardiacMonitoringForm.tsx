@@ -89,7 +89,7 @@ function YesNoField({
 }: {
   label: string;
   value: YesNo;
-  locale: "en" | "fr";
+  locale: string;
   onChange: (v: YesNo) => void;
   testId?: string;
 }) {

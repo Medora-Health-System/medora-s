@@ -1,8 +1,8 @@
 import { extractApiErrorMeta } from "@/lib/apiClient";
-import type { SupportedLanguage } from "@/i18n/config";
+import { parseProductUiLanguage, pickProductUiCopy, type SupportedLanguage } from "@/i18n/config";
 
 const ORDER_CREATE_ERROR_RULES: Array<
-  { test: (message: string) => boolean } & Record<SupportedLanguage, string>
+  { test: (message: string) => boolean } & { en: string; fr: string; es?: string }
 > = [
   {
     test: (message) => /catalogue ou un libellé manuel/i.test(message),
@@ -85,19 +85,20 @@ export function translateOrderCreateMessage(message: string, language: Supported
 
   for (const rule of ORDER_CREATE_ERROR_RULES) {
     if (rule.test(trimmed)) {
-      return rule[language];
+      return pickProductUiCopy(language, rule, "");
     }
   }
 
-  if (language === "en" && !/[^\x00-\x7F]/.test(trimmed)) {
+  const parsed = parseProductUiLanguage(language);
+  if (parsed === "en" && !/[^\x00-\x7F]/.test(trimmed)) {
     return trimmed;
   }
 
-  if (language === "fr") {
+  if (parsed === "fr") {
     return trimmed;
   }
 
-  return trimmed;
+  return "";
 }
 
 export function mapOrderCreateApiError(
@@ -107,7 +108,8 @@ export function mapOrderCreateApiError(
 ): string {
   const raw = extractRawOrderCreateErrorMessage(err);
   if (raw) {
-    return translateOrderCreateMessage(raw, language);
+    const translated = translateOrderCreateMessage(raw, language);
+    if (translated) return translated;
   }
 
   return t("createOrderModal.mapOrderCreateError");

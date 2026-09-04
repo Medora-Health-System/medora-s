@@ -164,13 +164,13 @@ export type DiagnosisCertificationInput = {
   code: string;
   displayName: string;
   source?: string;
-  locale?: "en" | "fr";
+  locale?: string;
 };
 
 function resolveTemplateBodyForCertification(
   templateId: string,
   displayName: string,
-  locale: "en" | "fr"
+  locale: string
 ) {
   const template = PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.find((t) => t.id === templateId);
   if (!template) return null;
@@ -363,7 +363,7 @@ export type GenericFallbackHospitalGradeCertification = {
   hospitalGrade: boolean;
 };
 
-export function certifyGenericFallbackHospitalGrade(locale: "en" | "fr" = "en"): GenericFallbackHospitalGradeCertification {
+export function certifyGenericFallbackHospitalGrade(locale: string = "en"): GenericFallbackHospitalGradeCertification {
   const template = PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.find((t) => t.id === GENERIC_PROVIDER_DISCHARGE_TEMPLATE_ID)!;
   const raw = getProviderDischargeSuggestedTextBody(template, locale);
   const personalized = personalizeGenericDischargeTemplateBody(raw, "test diagnosis", locale);
@@ -635,7 +635,7 @@ export type UniversalOutputSurfaceCertificationReport = {
 
 export function certifyUniversalOutputSurfaces(
   form: ProviderDischargeDocumentationForm,
-  locale: "en" | "fr" = "en"
+  locale: string = "en"
 ): UniversalOutputSurfaceCertificationReport {
   const card = form.diagnosisDocs[0];
   const editorHasContent = Boolean(
@@ -695,7 +695,7 @@ export function certifyUniversalOutputSurfaces(
 export function buildCertificationFormForDiagnosis(input: {
   code: string;
   displayName: string;
-  locale?: "en" | "fr";
+  locale?: string;
 }): ProviderDischargeDocumentationForm {
   const locale = input.locale ?? "en";
   const { card, sharedPlanning, resolved } = buildEffectiveDischargeBundle({ ...input, locale });

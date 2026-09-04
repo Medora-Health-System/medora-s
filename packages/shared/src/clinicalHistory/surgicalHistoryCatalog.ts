@@ -18,7 +18,7 @@ export const SURGICAL_HISTORY_CATEGORIES = [
 
 export type SurgicalHistoryCategory = (typeof SURGICAL_HISTORY_CATEGORIES)[number];
 
-export type SurgicalHistorySearchLocale = "en" | "fr";
+export type SurgicalHistorySearchLocale = string;
 
 export type SurgicalHistoryCatalogEntry = {
   id: string;

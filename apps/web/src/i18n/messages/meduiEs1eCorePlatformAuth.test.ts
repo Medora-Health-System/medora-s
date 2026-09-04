@@ -7,6 +7,8 @@ import {
   applyApprovedSpanishTerminology,
   ES_MEDICAL_TERMINOLOGY,
   isHiddenSpanishPlaceholder,
+  PUBLICLY_SELECTABLE_PRODUCT_UI_LANGUAGES,
+  productUiLanguageSelectOptions,
 } from "@medora/shared";
 import en from "./en";
 import fr from "./fr";
@@ -187,12 +189,12 @@ describe("MEDUI.ES.1E patient preferred language ≠ UI locale", () => {
     // This is a form label for what the PATIENT prefers, not a UI locale selector
   });
 
-  it("login language selector does not expose Español as selectable", () => {
+  it("login catalog keeps langFr/langEn keys; 1K public selector adds Español via locale registry", () => {
     const langFr = getByPath(es, "auth.login.langFr");
     const langEn = getByPath(es, "auth.login.langEn");
     expect(langFr).toBe("Francés");
     expect(langEn).toBe("Inglés");
-    // There should be no langEs in auth.login
+    // Historical 1E architecture: no langEs message key. Final 1K uses native registry labels.
     const langEs = getByPath(en, "auth.login.langEs");
     expect(langEs).toBeUndefined();
   });
@@ -234,12 +236,15 @@ describe("MEDUI.ES.1E zero fallback", () => {
 // ── H. PUBLIC EXPOSURE ──
 
 describe("MEDUI.ES.1E public exposure", () => {
-  it("Español remains unavailable as public product UI locale", () => {
-    // auth.login only has langFr and langEn, no langEs
+  it("historical 1E had no langEs login message key; 1K public locales are EN/FR/ES", () => {
+    // Historical 1E architecture: login catalog keys were FR/EN only.
     const langEs = getByPath(en, "auth.login.langEs");
     expect(langEs).toBeUndefined();
     const langEsFr = getByPath(fr, "auth.login.langEs");
     expect(langEsFr).toBeUndefined();
+    // Final 1K architecture: Español is publicly selectable via the locale registry.
+    expect([...PUBLICLY_SELECTABLE_PRODUCT_UI_LANGUAGES]).toEqual(["fr", "en", "es"]);
+    expect(productUiLanguageSelectOptions().some((o) => o.label === "Español")).toBe(true);
   });
 });
 

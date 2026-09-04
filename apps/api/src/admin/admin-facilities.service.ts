@@ -29,6 +29,7 @@ import {
   FACILITY_DEFAULT_LANGUAGE,
   isPubliclySelectableProductUiLanguage,
   parseProductUiLanguage,
+  type PubliclySelectableProductUiLanguage,
 } from "@medora/shared";
 import { PrismaService } from "../prisma/prisma.service";
 import { AuditAction, FacilityType, RoleCode } from "@prisma/client";
@@ -804,7 +805,7 @@ export class AdminFacilitiesService {
 
   async setFacilityLanguage(
     id: string,
-    defaultLanguage: "fr" | "en",
+    defaultLanguage: PubliclySelectableProductUiLanguage,
     userId: string,
     preauthorized = false,
   ) {
@@ -882,7 +883,7 @@ export class AdminFacilitiesService {
   updateBillingWorkflowForPlatform(userId: string, facilityId: string, dto: FacilityBillingWorkflowPatchDto) { return this.updateFacilityBillingWorkflowForAdmin(userId, facilityId, dto, true); }
   listDepartmentsForPlatform(userId: string, facilityId: string) { return this.listDepartmentsForAdmin(userId, facilityId, true); }
   updateServiceConfigForPlatform(id: string, dto: UpdateFacilityServiceConfigDto, userId: string) { return this.updateFacilityServiceConfig(id, dto, userId, true); }
-  setLanguageForPlatform(id: string, language: "fr" | "en", userId: string) { return this.setFacilityLanguage(id, language, userId, true); }
+  setLanguageForPlatform(id: string, language: PubliclySelectableProductUiLanguage, userId: string) { return this.setFacilityLanguage(id, language, userId, true); }
   async setActiveForPrivilegedAction(id: string, isActive: boolean, userId: string, tx: any = this.prisma) {
     const existing=await tx.facility.findUnique({where:{id},select:{id:true,isActive:true}});
     if(!existing)throw new NotFoundException("Établissement introuvable.");

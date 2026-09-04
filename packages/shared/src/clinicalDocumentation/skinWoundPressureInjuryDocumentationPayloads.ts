@@ -3,6 +3,7 @@ import type { ClinicalDocumentationFieldOption } from "./clinicalDocumentationFi
 import {
   pickLocalizedEnumLabel,
   type ClinicalDocumentationSummaryLocale,
+  clinicalDocSummaryKey,
 } from "./clinicalDocumentationSummaryLocale.js";
 
 /** EDOC.20 — skin integrity, wound care & pressure injury card IDs. */
@@ -191,7 +192,7 @@ export function skinWoundDocYesNoLabel(
   value: (typeof SKIN_WOUND_YES_NO_VALUES)[number],
   locale: ClinicalDocumentationSummaryLocale
 ): string {
-  return value === "YES" ? (locale === "en" ? "Yes" : "Oui") : locale === "en" ? "No" : "Non";
+  return value === "YES" ? (clinicalDocSummaryKey(locale, "Yes", "Oui")) : clinicalDocSummaryKey(locale, "No", "Non");
 }
 
 export const SKIN_WOUND_YES_NO_OPTIONS = enumOptions(SKIN_WOUND_YES_NO_VALUES, {
@@ -667,7 +668,7 @@ export function summarizeSkinWoundPressureInjuryPayload(
       const d = p.data;
       return [
         {
-          key: locale === "en" ? "Skin status" : "Statut cutané",
+          key: clinicalDocSummaryKey(locale, "Skin status", "Statut cutané"),
           value: pickLocalizedEnumLabel(
             SKIN_STATUS_MAP.en,
             SKIN_STATUS_MAP.fr,
@@ -676,7 +677,7 @@ export function summarizeSkinWoundPressureInjuryPayload(
           ),
         },
         {
-          key: locale === "en" ? "Pressure injury present" : "Lésion de pression présente",
+          key: clinicalDocSummaryKey(locale, "Pressure injury present", "Lésion de pression présente"),
           value: skinWoundDocYesNoLabel(d.pressureInjuryPresent, locale),
         },
       ];
@@ -687,11 +688,11 @@ export function summarizeSkinWoundPressureInjuryPayload(
       const d = p.data;
       return [
         {
-          key: locale === "en" ? "Score" : "Score",
+          key: clinicalDocSummaryKey(locale, "Score", "Score"),
           value: String(d.totalScore),
         },
         {
-          key: locale === "en" ? "Risk level" : "Niveau de risque",
+          key: clinicalDocSummaryKey(locale, "Risk level", "Niveau de risque"),
           value: pickLocalizedEnumLabel(
             BRADEN_RISK_MAP.en,
             BRADEN_RISK_MAP.fr,
@@ -707,7 +708,7 @@ export function summarizeSkinWoundPressureInjuryPayload(
       const d = p.data;
       return [
         {
-          key: locale === "en" ? "Location" : "Emplacement",
+          key: clinicalDocSummaryKey(locale, "Location", "Emplacement"),
           value: pickLocalizedEnumLabel(
             PI_LOCATION_MAP.en,
             PI_LOCATION_MAP.fr,
@@ -716,11 +717,11 @@ export function summarizeSkinWoundPressureInjuryPayload(
           ),
         },
         {
-          key: locale === "en" ? "Stage" : "Stade",
+          key: clinicalDocSummaryKey(locale, "Stage", "Stade"),
           value: pickLocalizedEnumLabel(PI_STAGE_MAP.en, PI_STAGE_MAP.fr, d.stage, locale),
         },
         {
-          key: locale === "en" ? "Infection concern" : "Préoccupation infection",
+          key: clinicalDocSummaryKey(locale, "Infection concern", "Préoccupation infection"),
           value: skinWoundDocYesNoLabel(d.infectionConcern, locale),
         },
       ];
@@ -731,11 +732,11 @@ export function summarizeSkinWoundPressureInjuryPayload(
       const d = p.data;
       return [
         {
-          key: locale === "en" ? "Location" : "Emplacement",
+          key: clinicalDocSummaryKey(locale, "Location", "Emplacement"),
           value: d.existingPressureInjuryLocation,
         },
         {
-          key: locale === "en" ? "Status" : "Statut",
+          key: clinicalDocSummaryKey(locale, "Status", "Statut"),
           value: pickLocalizedEnumLabel(
             CHANGE_STATUS_MAP.en,
             CHANGE_STATUS_MAP.fr,
@@ -744,7 +745,7 @@ export function summarizeSkinWoundPressureInjuryPayload(
           ),
         },
         {
-          key: locale === "en" ? "Provider notified" : "Médecin avisé",
+          key: clinicalDocSummaryKey(locale, "Provider notified", "Médecin avisé"),
           value: skinWoundDocYesNoLabel(d.providerNotified, locale),
         },
       ];
@@ -755,7 +756,7 @@ export function summarizeSkinWoundPressureInjuryPayload(
       const d = p.data;
       return [
         {
-          key: locale === "en" ? "Approximation" : "Approximation",
+          key: clinicalDocSummaryKey(locale, "Approximation", "Approximation"),
           value: pickLocalizedEnumLabel(
             APPROXIMATION_MAP.en,
             APPROXIMATION_MAP.fr,
@@ -764,11 +765,11 @@ export function summarizeSkinWoundPressureInjuryPayload(
           ),
         },
         {
-          key: locale === "en" ? "Drainage" : "Drainage",
+          key: clinicalDocSummaryKey(locale, "Drainage", "Drainage"),
           value: pickLocalizedEnumLabel(DRAINAGE_MAP.en, DRAINAGE_MAP.fr, d.drainage, locale),
         },
         {
-          key: locale === "en" ? "Infection concern" : "Préoccupation infection",
+          key: clinicalDocSummaryKey(locale, "Infection concern", "Préoccupation infection"),
           value: skinWoundDocYesNoLabel(d.infectionConcern, locale),
         },
       ];
@@ -779,11 +780,11 @@ export function summarizeSkinWoundPressureInjuryPayload(
       const d = p.data;
       return [
         {
-          key: locale === "en" ? "Infection concern" : "Préoccupation infection",
+          key: clinicalDocSummaryKey(locale, "Infection concern", "Préoccupation infection"),
           value: skinWoundDocYesNoLabel(d.infectionConcern, locale),
         },
         {
-          key: locale === "en" ? "Provider notified" : "Médecin avisé",
+          key: clinicalDocSummaryKey(locale, "Provider notified", "Médecin avisé"),
           value: skinWoundDocYesNoLabel(d.providerNotified, locale),
         },
       ];
@@ -794,7 +795,7 @@ export function summarizeSkinWoundPressureInjuryPayload(
       const d = p.data;
       return [
         {
-          key: locale === "en" ? "Category" : "Catégorie",
+          key: clinicalDocSummaryKey(locale, "Category", "Catégorie"),
           value: pickLocalizedEnumLabel(
             labelMap(SKIN_WOUND_TEAR_CATEGORY_OPTIONS).en,
             labelMap(SKIN_WOUND_TEAR_CATEGORY_OPTIONS).fr,
@@ -803,7 +804,7 @@ export function summarizeSkinWoundPressureInjuryPayload(
           ),
         },
         {
-          key: locale === "en" ? "Provider notified" : "Médecin avisé",
+          key: clinicalDocSummaryKey(locale, "Provider notified", "Médecin avisé"),
           value: skinWoundDocYesNoLabel(d.providerNotified, locale),
         },
       ];
@@ -814,7 +815,7 @@ export function summarizeSkinWoundPressureInjuryPayload(
       const d = p.data;
       return [
         {
-          key: locale === "en" ? "Severity" : "Sévérité",
+          key: clinicalDocSummaryKey(locale, "Severity", "Sévérité"),
           value: pickLocalizedEnumLabel(
             labelMap(SKIN_WOUND_MASD_SEVERITY_OPTIONS).en,
             labelMap(SKIN_WOUND_MASD_SEVERITY_OPTIONS).fr,
@@ -823,7 +824,7 @@ export function summarizeSkinWoundPressureInjuryPayload(
           ),
         },
         {
-          key: locale === "en" ? "Provider notified" : "Médecin avisé",
+          key: clinicalDocSummaryKey(locale, "Provider notified", "Médecin avisé"),
           value: skinWoundDocYesNoLabel(d.providerNotified, locale),
         },
       ];
@@ -834,7 +835,7 @@ export function summarizeSkinWoundPressureInjuryPayload(
       const d = p.data;
       return [
         {
-          key: locale === "en" ? "Type" : "Type",
+          key: clinicalDocSummaryKey(locale, "Type", "Type"),
           value: pickLocalizedEnumLabel(
             OSTOMY_TYPE_MAP.en,
             OSTOMY_TYPE_MAP.fr,
@@ -843,7 +844,7 @@ export function summarizeSkinWoundPressureInjuryPayload(
           ),
         },
         {
-          key: locale === "en" ? "Stoma appearance" : "Apparence stomie",
+          key: clinicalDocSummaryKey(locale, "Stoma appearance", "Apparence stomie"),
           value: pickLocalizedEnumLabel(
             STOMA_APPEARANCE_MAP.en,
             STOMA_APPEARANCE_MAP.fr,
@@ -852,7 +853,7 @@ export function summarizeSkinWoundPressureInjuryPayload(
           ),
         },
         {
-          key: locale === "en" ? "Skin intact" : "Peau intacte",
+          key: clinicalDocSummaryKey(locale, "Skin intact", "Peau intacte"),
           value: skinWoundDocYesNoLabel(d.skinIntact, locale),
         },
       ];
@@ -863,7 +864,7 @@ export function summarizeSkinWoundPressureInjuryPayload(
       const d = p.data;
       return [
         {
-          key: locale === "en" ? "Treatment" : "Traitement",
+          key: clinicalDocSummaryKey(locale, "Treatment", "Traitement"),
           value: pickLocalizedEnumLabel(
             labelMap(SKIN_WOUND_TREATMENT_TYPE_OPTIONS).en,
             labelMap(SKIN_WOUND_TREATMENT_TYPE_OPTIONS).fr,
@@ -872,7 +873,7 @@ export function summarizeSkinWoundPressureInjuryPayload(
           ),
         },
         {
-          key: locale === "en" ? "Tolerated" : "Toléré",
+          key: clinicalDocSummaryKey(locale, "Tolerated", "Toléré"),
           value: skinWoundDocYesNoLabel(d.tolerated, locale),
         },
       ];
@@ -883,11 +884,11 @@ export function summarizeSkinWoundPressureInjuryPayload(
       const d = p.data;
       return [
         {
-          key: locale === "en" ? "Photo obtained" : "Photo obtenue",
+          key: clinicalDocSummaryKey(locale, "Photo obtained", "Photo obtenue"),
           value: skinWoundDocYesNoLabel(d.photoObtained, locale),
         },
         {
-          key: locale === "en" ? "Consent verified" : "Consentement vérifié",
+          key: clinicalDocSummaryKey(locale, "Consent verified", "Consentement vérifié"),
           value:
             d.patientConsentVerified !== undefined
               ? skinWoundDocYesNoLabel(d.patientConsentVerified, locale)
@@ -901,7 +902,7 @@ export function summarizeSkinWoundPressureInjuryPayload(
       const d = p.data;
       return [
         {
-          key: locale === "en" ? "Status" : "Statut",
+          key: clinicalDocSummaryKey(locale, "Status", "Statut"),
           value: pickLocalizedEnumLabel(
             CHANGE_STATUS_MAP.en,
             CHANGE_STATUS_MAP.fr,
@@ -910,7 +911,7 @@ export function summarizeSkinWoundPressureInjuryPayload(
           ),
         },
         {
-          key: locale === "en" ? "Infection concern" : "Préoccupation infection",
+          key: clinicalDocSummaryKey(locale, "Infection concern", "Préoccupation infection"),
           value: skinWoundDocYesNoLabel(d.infectionConcern, locale),
         },
       ];

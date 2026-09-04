@@ -15,8 +15,11 @@ import {
   PUPIL_REACTION_VALUES,
 } from "./strokeNeuroReassessmentDocumentationPayloads.js";
 import { calculateNihssTotal } from "./strokeDocumentationPayloads.js";
+import { pickProductUiCopy } from "../i18n/productUiLocale.js";
 import {
+  clinicalDocSummaryKey,
   clinicalDocYesNo,
+  pickLocalizedEnumLabel,
   type ClinicalDocumentationSummaryLocale,
 } from "./clinicalDocumentationSummaryLocale.js";
 
@@ -739,11 +742,30 @@ const GCS_SEVERITY_FR: Record<string, string> = {
   MODERATE: "Modéré (9–12)",
   SEVERE: "Sévère (3–8)",
 };
+const GCS_SEVERITY_ES: Record<string, string> = {
+  MILD: "Leve (13–15)",
+  MODERATE: "Moderado (9–12)",
+  SEVERE: "Grave (3–8)",
+};
+const NIHSS_SEVERITY_ES: Record<string, string> = {
+  NO_STROKE: "Sin ACV (0)",
+  MINOR: "Menor (1–4)",
+  MODERATE: "Moderado (5–15)",
+  MODERATE_SEVERE: "Moderado–grave (16–20)",
+  SEVERE: "Grave (21–42)",
+};
 
-const PROVIDER_NOTIFICATION_KEY = {
-  en: "Provider notification",
-  fr: "Notification médecin",
-} as const;
+function providerNotificationKey(locale: string): string {
+  return pickProductUiCopy(
+    locale,
+    {
+      en: "Provider notification",
+      fr: "Notification médecin",
+      es: "Notificación al profesional clínico",
+    },
+    "Notificación al profesional clínico"
+  );
+}
 
 export function summarizeNeurologicalDocumentationPayload(
   cardId: string,
@@ -763,7 +785,7 @@ export function summarizeNeurologicalDocumentationPayload(
       ].filter(Boolean).length;
       return [
         {
-          key: locale === "en" ? "Orientation" : "Orientation",
+          key: clinicalDocSummaryKey(locale, "Orientation", "Orientation"),
           value: `×${oriented}/4`,
         },
       ];
@@ -774,11 +796,11 @@ export function summarizeNeurologicalDocumentationPayload(
       const d = p.data;
       return [
         {
-          key: locale === "en" ? "New deficit" : "Nouveau déficit",
+          key: clinicalDocSummaryKey(locale, "New deficit", "Nouveau déficit"),
           value: clinicalDocYesNo(d.newDeficit, locale),
         },
         {
-          key: PROVIDER_NOTIFICATION_KEY[locale],
+          key: providerNotificationKey(locale),
           value: clinicalDocYesNo(d.providerNotified, locale),
         },
       ];
@@ -789,15 +811,15 @@ export function summarizeNeurologicalDocumentationPayload(
       const d = p.data;
       return [
         {
-          key: locale === "en" ? "GCS total" : "Total GCS",
+          key: clinicalDocSummaryKey(locale, "GCS total", "Total GCS"),
           value: String(d.calculatedTotal),
         },
         {
-          key: locale === "en" ? "GCS severity" : "Sévérité GCS",
-          value: locale === "en" ? GCS_SEVERITY_EN[d.severity]! : GCS_SEVERITY_FR[d.severity]!,
+          key: clinicalDocSummaryKey(locale, "GCS severity", "Sévérité GCS"),
+          value: pickLocalizedEnumLabel(GCS_SEVERITY_EN, GCS_SEVERITY_FR, d.severity, locale, GCS_SEVERITY_ES),
         },
         {
-          key: PROVIDER_NOTIFICATION_KEY[locale],
+          key: providerNotificationKey(locale),
           value: clinicalDocYesNo(d.providerNotified, locale),
         },
       ];
@@ -808,11 +830,11 @@ export function summarizeNeurologicalDocumentationPayload(
       const d = p.data;
       return [
         {
-          key: locale === "en" ? "Stroke alert activated" : "Alerte AVC activée",
+          key: clinicalDocSummaryKey(locale, "Stroke alert activated", "Alerte AVC activée"),
           value: clinicalDocYesNo(d.strokeAlertActivated, locale),
         },
         {
-          key: PROVIDER_NOTIFICATION_KEY[locale],
+          key: providerNotificationKey(locale),
           value: clinicalDocYesNo(d.neurologyNotified, locale),
         },
       ];
@@ -823,18 +845,15 @@ export function summarizeNeurologicalDocumentationPayload(
       const d = p.data;
       return [
         {
-          key: locale === "en" ? "NIHSS total" : "Total NIHSS",
+          key: clinicalDocSummaryKey(locale, "NIHSS total", "Total NIHSS"),
           value: String(d.calculatedTotal),
         },
         {
-          key: locale === "en" ? "NIHSS severity" : "Sévérité NIHSS",
-          value:
-            locale === "en"
-              ? NIHSS_SEVERITY_EN[d.severity]!
-              : NIHSS_SEVERITY_FR[d.severity]!,
+          key: clinicalDocSummaryKey(locale, "NIHSS severity", "Sévérité NIHSS"),
+          value: pickLocalizedEnumLabel(NIHSS_SEVERITY_EN, NIHSS_SEVERITY_FR, d.severity, locale, NIHSS_SEVERITY_ES),
         },
         {
-          key: PROVIDER_NOTIFICATION_KEY[locale],
+          key: providerNotificationKey(locale),
           value: clinicalDocYesNo(d.providerNotified, locale),
         },
       ];
@@ -845,11 +864,11 @@ export function summarizeNeurologicalDocumentationPayload(
       const d = p.data;
       return [
         {
-          key: locale === "en" ? "Seizure duration" : "Durée crise",
+          key: clinicalDocSummaryKey(locale, "Seizure duration", "Durée crise"),
           value: `${d.durationMinutes} min`,
         },
         {
-          key: PROVIDER_NOTIFICATION_KEY[locale],
+          key: providerNotificationKey(locale),
           value: clinicalDocYesNo(d.providerNotified, locale),
         },
       ];
@@ -860,7 +879,7 @@ export function summarizeNeurologicalDocumentationPayload(
       const d = p.data;
       return [
         {
-          key: PROVIDER_NOTIFICATION_KEY[locale],
+          key: providerNotificationKey(locale),
           value: clinicalDocYesNo(d.providerNotified, locale),
         },
       ];
@@ -871,7 +890,7 @@ export function summarizeNeurologicalDocumentationPayload(
       const d = p.data;
       return [
         {
-          key: PROVIDER_NOTIFICATION_KEY[locale],
+          key: providerNotificationKey(locale),
           value: clinicalDocYesNo(d.providerNotified, locale),
         },
       ];

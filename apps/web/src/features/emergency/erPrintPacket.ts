@@ -4,7 +4,7 @@
  * Does not invent clinical facts; only displays stored JSON / derived ambient EMTALA state.
  */
 
-import { resolveProductUiLanguageOrDefault, type SupportedLanguage } from "@/i18n/config";
+import { resolveProductUiLanguageOrDefault } from "@/i18n/config";
 import type { EncounterClinicalRecord } from "@medora/shared";
 import { getErClinicalRecordPrintPacketHtml } from "@/features/emergency/erClinicalRecordPrintPacket";
 import { isSummaryClinicalRecordV2Enabled } from "@/features/emergency/summaryClinicalRecordFeatureFlag";
@@ -134,7 +134,7 @@ const DISCHARGE_CORE_FIELD_LABEL_KEYS: Record<(typeof DISCHARGE_SUMMARY_CORE_STR
 
 function appendCoreDischargeFieldsToBody(
   body: string[],
-  language: SupportedLanguage,
+  language: string,
   d: DischargeSummaryFieldsFr | null
 ): void {
   if (!d) return;
@@ -158,7 +158,7 @@ function dischargeSummaryHasPatientInstructions(d: DischargeSummaryFieldsFr | nu
 
 function appendProviderDischargeDocumentationPrint(
   body: string[],
-  language: SupportedLanguage,
+  language: string,
   dischargeSummaryJson: unknown,
   patientDob?: string | null,
   medicationSources?: DischargeMedicationSourceInput
@@ -182,7 +182,7 @@ function appendProviderDischargeDocumentationPrint(
 
 function appendPatientDischargeInstructionsPrint(
   body: string[],
-  language: SupportedLanguage,
+  language: string,
   loc: string,
   d: DischargeSummaryFieldsFr | null
 ): void {
@@ -237,13 +237,13 @@ function fmtIso(iso: string | null | undefined, loc: string): string {
   }
 }
 
-function h2(lang: SupportedLanguage, key: string): string {
+function h2(lang: string, key: string): string {
   return `<h2 style="font-size: 15px; margin: 20px 0 10px 0; font-weight: 700; border-bottom: 1px solid #000; padding-bottom: 4px;">${esc(
     printT(lang, key)
   )}</h2>`;
 }
 
-function erPacketH1(lang: SupportedLanguage, outcome: ErDispositionOutcomeUi): string {
+function erPacketH1(lang: string, outcome: ErDispositionOutcomeUi): string {
   if (outcome === "OBSERVATION") return printT(lang, "printOutput.erPacket.h1ObservationSummary");
   if (outcome === "ADMISSION") return printT(lang, "printOutput.erPacket.h1AdmissionSummary");
   if (outcome === "TRANSFER") return printT(lang, "printOutput.erPacket.h1TransferPacket");
@@ -265,7 +265,7 @@ export function getErPrintPacketHtml(params: {
   facilityName?: string | null;
   primaryDiagnosis?: string | null;
   triageSnapshot: ErPrintTriageSnapshot;
-  language: SupportedLanguage;
+  language: string;
   /**
    * Optional append-only nursing reassessment history. When supplied non-empty, a compact
    * "Réévaluations infirmières — historique" section is rendered before the signatures block,
@@ -754,7 +754,7 @@ ${body.join("\n")}
 
 function appendEmtalaBlock(
   body: string[],
-  language: SupportedLanguage,
+  language: string,
   loc: string,
   emtala: ErEmtalaV1Stored | null
 ): void {
@@ -786,7 +786,7 @@ function appendEmtalaBlock(
 
 function appendHandoffBlock(
   body: string[],
-  language: SupportedLanguage,
+  language: string,
   loc: string,
   handoff: ReturnType<typeof readErHandoffV1FromNursingAssessment>
 ): void {
@@ -853,7 +853,7 @@ function appendHandoffBlock(
  */
 function appendNursingReassessmentHistoryBlock(
   body: string[],
-  language: SupportedLanguage,
+  language: string,
   loc: string,
   entries: ErPrintReassessmentEntry[]
 ): void {
@@ -903,7 +903,7 @@ function appendNursingReassessmentHistoryBlock(
 
 function appendDocumentationHistoryBlock(
   body: string[],
-  language: SupportedLanguage,
+  language: string,
   loc: string,
   entries: ErPrintDocumentationHistoryEntry[],
   keys: { entryHeaderKey: string; entryLatestHeaderKey: string; emptyKey: string }
@@ -945,7 +945,7 @@ function appendDocumentationHistoryBlock(
 
 function appendProviderDocumentationBlock(
   body: string[],
-  language: SupportedLanguage,
+  language: string,
   section: ErPrintProviderDocumentationSection
 ): void {
   body.push(
@@ -973,7 +973,7 @@ function appendProviderDocumentationBlock(
 
 function appendClinicalTimelineBlock(
   body: string[],
-  language: SupportedLanguage,
+  language: string,
   entries: EdClinicalTimelineEntry[]
 ): void {
   let lastUndated = false;
@@ -999,7 +999,7 @@ function appendClinicalTimelineBlock(
 
 function appendInitialNursingAssessmentBlock(
   body: string[],
-  language: SupportedLanguage,
+  language: string,
   section: ErPrintInitialNursingSection
 ): void {
   const author = section.roleTitle
@@ -1019,7 +1019,7 @@ function appendInitialNursingAssessmentBlock(
 
 function appendNursingDischargeDocumentationBlock(
   body: string[],
-  language: SupportedLanguage,
+  language: string,
   section: ErPrintNursingDischargeSection,
   nursingAssessment?: unknown
 ): void {
@@ -1115,7 +1115,7 @@ function appendNursingDischargeDocumentationBlock(
 
 function appendSignatureBlock(
   body: string[],
-  language: SupportedLanguage,
+  language: string,
   loc: string,
   encounter: ErPrintEncounter,
   emtala: ErEmtalaV1Stored | null,

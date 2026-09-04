@@ -31,6 +31,7 @@ import {
 } from "@medora/shared";
 import { useI18n } from "@/lib/i18n";
 import { resolveProductUiLanguageOrDefault } from "@/i18n/config";
+import { formatClinicalDocumentationOptionLabel } from "@medora/shared";
 
 import {
   ClinicalDocumentationBooleanField,
@@ -459,7 +460,7 @@ export function ClinicalDocumentationStrokeForm({
             swallow.result,
             SWALLOW_RESULT_OPTIONS.map((o) => ({
               value: o.value,
-              label: locale === "fr" ? o.labelFr : o.labelEn,
+              label: formatClinicalDocumentationOptionLabel(o, locale),
             })),
             (v) => setSwallow((s) => ({ ...s, result: v as typeof swallow.result }))
           )}

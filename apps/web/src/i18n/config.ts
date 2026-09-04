@@ -1,7 +1,7 @@
 /**
  * Clinical product UI locale surface.
  * Canonical definitions live in `@medora/shared` (`productUiLocale`).
- * MEDUI.ES.1C: `es` is internally recognized and hidden from public selectors.
+ * MEDUI.ES.1C: `es` is internally recognized. MEDUI.ES.1K: Español is publicly selectable.
  */
 
 export {
@@ -21,6 +21,8 @@ export {
   isHiddenSpanishPlaceholder,
   isPubliclySelectableProductUiLanguage,
   pickLegacyBilingualStoredPair,
+  pickProductUiCopy,
+  bilingualStorageLocaleOrEn,
   pickCatalogDisplayLabelForProductUi,
   UNLOCALIZED_CATALOG_SOURCE,
   LEGACY_BILINGUAL_STORAGE_FAMILIES,

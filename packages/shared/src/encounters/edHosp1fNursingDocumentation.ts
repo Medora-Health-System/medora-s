@@ -8,9 +8,11 @@
  * Does not create a parallel NursingNote / handoffNoteJson store.
  */
 
+import { bilingualStorageLocaleOrEn, pickProductUiCopy } from "../i18n/productUiLocale.js";
+
 export const ED_NURSING_DOCUMENTATION_V1_KEY = "edNursingDocumentationV1" as const;
 
-export type EdNursingLocale = "en" | "fr";
+export type EdNursingLocale = string;
 export type EdNursingNoteKind = "NURSING" | "HANDOFF";
 export type EdNursingHandoffReceivingKind = "INTERNAL" | "EXTERNAL";
 export type EdNursingHandoffStatus = "NOT_STARTED" | "IN_PROGRESS" | "COMPLETED";
@@ -445,11 +447,11 @@ export const ED_NURSING_CHIP_STATEMENTS: EdNursingStatementId[] = [
 ];
 
 export function edNursingTemplateBody(id: EdNursingTemplateId, locale: EdNursingLocale): string {
-  return ED_NURSING_TEMPLATE_BODIES[locale][id];
+  return ED_NURSING_TEMPLATE_BODIES[bilingualStorageLocaleOrEn(locale)][id];
 }
 
 export function edNursingStatementBody(id: EdNursingStatementId, locale: EdNursingLocale): string {
-  return ED_NURSING_STATEMENT_BODIES[locale][id];
+  return ED_NURSING_STATEMENT_BODIES[bilingualStorageLocaleOrEn(locale)][id];
 }
 
 export function insertEdNursingStatement(
@@ -496,7 +498,11 @@ export function formatEdNursingEventTimeLine(eventAt: string, locale: EdNursingL
   if (Number.isNaN(d.getTime())) return "";
   const pad = (n: number) => String(n).padStart(2, "0");
   const stamp = `${pad(d.getMonth() + 1)}/${pad(d.getDate())}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
-  return locale === "en" ? `Event time: ${stamp}` : `Heure de l’événement : ${stamp}`;
+  return pickProductUiCopy(
+    locale,
+    { en: `Event time: ${stamp}`, fr: `Heure de l’événement : ${stamp}`, es: `Hora del evento: ${stamp}` },
+    `Hora del evento: ${stamp}`
+  );
 }
 
 export function composeEdNursingSignedBody(input: {

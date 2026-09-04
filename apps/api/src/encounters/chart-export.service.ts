@@ -1988,7 +1988,7 @@ export class EncounterChartExportService {
     userId?: string,
     ip?: string,
     userAgent?: string,
-    options?: { skipRecordExportViewAudit?: boolean }
+    options?: { skipRecordExportViewAudit?: boolean; locale?: string }
   ): Promise<{ manifest: ChartExportManifest; html?: string; row: ChartExportSnapshotSummary }> {
     const row = await this.prisma.encounterChartExport.findFirst({
       where: { id: snapshotId, encounterId, facilityId },
@@ -2076,7 +2076,7 @@ export class EncounterChartExportService {
     }
 
     const manifest = row.manifestJson as unknown as ChartExportManifest;
-    const html = format === "html" ? renderEncounterChartExportHtml(manifest) : undefined;
+    const html = format === "html" ? renderEncounterChartExportHtml(manifest, { locale: options?.locale }) : undefined;
 
     /**
      * Non-critical view audit. Metadata stays PHI-safe — only ids, version,

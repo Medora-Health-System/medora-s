@@ -32,6 +32,7 @@ export function coerceCarePlanClinicalLocale(
     .trim()
     .toLowerCase();
   if (v === "en" || v === "fr") return v;
+  if (v === "es") return "en";
   return fallback;
 }
 
@@ -49,10 +50,12 @@ export function resolveCarePlanActivationClinicalLocale(input: {
     .trim()
     .toLowerCase();
   if (req === "en" || req === "fr") return req;
+  if (req === "es") return "en";
   const fac = String(input.facilityLocale ?? "")
     .trim()
     .toLowerCase();
   if (fac === "en" || fac === "fr") return fac;
+  if (fac === "es") return "en";
   return fallback;
 }
 
@@ -120,11 +123,13 @@ export function resolveCarePlanTemplateI18nKey(
 ): string | null {
   const trimmed = key.trim();
   if (!trimmed) return null;
-  const catalog = locale === "en" ? FLAT_CATALOG_EN : FLAT_CATALOG_FR;
+  // Canonical template catalogs are EN/FR only. ES uses English source identity — never French.
+  const clinical = coerceCarePlanClinicalLocale(locale, "en");
+  const catalog = clinical === "en" ? FLAT_CATALOG_EN : FLAT_CATALOG_FR;
   const resolved = catalog.get(trimmed);
   if (resolved) return resolved;
   // Nested deferred templates use keys like ...templates.deferred.copd.title
-  const fromNested = getByPath(CLINICAL_ROOT_BY_LOCALE[locale], trimmed.replace(CARE_PLAN_TEMPLATE_I18N_PREFIX, ""));
+  const fromNested = getByPath(CLINICAL_ROOT_BY_LOCALE[clinical], trimmed.replace(CARE_PLAN_TEMPLATE_I18N_PREFIX, ""));
   return typeof fromNested === "string" ? fromNested : null;
 }
 

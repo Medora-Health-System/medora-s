@@ -3,6 +3,7 @@ import type { ClinicalDocumentationFieldOption } from "./clinicalDocumentationFi
 import {
   pickLocalizedEnumLabel,
   type ClinicalDocumentationSummaryLocale,
+  clinicalDocSummaryKey,
 } from "./clinicalDocumentationSummaryLocale.js";
 
 /** EDOC.23 — preserve legacy registry card IDs. */
@@ -156,7 +157,7 @@ function procYesNoLabel(
   value: (typeof PROC_YES_NO_VALUES)[number],
   locale: ClinicalDocumentationSummaryLocale
 ): string {
-  return value === "YES" ? (locale === "en" ? "Yes" : "Oui") : locale === "en" ? "No" : "Non";
+  return value === "YES" ? (clinicalDocSummaryKey(locale, "Yes", "Oui")) : clinicalDocSummaryKey(locale, "No", "Non");
 }
 
 function requireProviderNotifiedYes(
@@ -513,7 +514,7 @@ export function summarizeProceduralSafetyThrombolyticPayload(
       const d = p.data;
       return [
         {
-          key: locale === "en" ? "Procedure type" : "Type de procédure",
+          key: clinicalDocSummaryKey(locale, "Procedure type", "Type de procédure"),
           value: pickLocalizedEnumLabel(
             PROCEDURE_TYPE_MAP.en,
             PROCEDURE_TYPE_MAP.fr,
@@ -522,19 +523,19 @@ export function summarizeProceduralSafetyThrombolyticPayload(
           ),
         },
         {
-          key: locale === "en" ? "Timeout completed" : "Time-out complété",
+          key: clinicalDocSummaryKey(locale, "Timeout completed", "Time-out complété"),
           value: procYesNoLabel(d.timeoutCompleted, locale),
         },
         {
-          key: locale === "en" ? "Consent verified" : "Consentement vérifié",
+          key: clinicalDocSummaryKey(locale, "Consent verified", "Consentement vérifié"),
           value: d.consentVerified,
         },
         {
-          key: locale === "en" ? "Site confirmed" : "Site confirmé",
+          key: clinicalDocSummaryKey(locale, "Site confirmed", "Site confirmé"),
           value: d.siteConfirmed,
         },
         {
-          key: locale === "en" ? "Procedure held" : "Procédure suspendue",
+          key: clinicalDocSummaryKey(locale, "Procedure held", "Procédure suspendue"),
           value: procYesNoLabel(d.procedureHeld, locale),
         },
       ];
@@ -545,7 +546,7 @@ export function summarizeProceduralSafetyThrombolyticPayload(
       const d = p.data;
       return [
         {
-          key: locale === "en" ? "Position" : "Position",
+          key: clinicalDocSummaryKey(locale, "Position", "Position"),
           value: pickLocalizedEnumLabel(
             LP_POSITION_MAP.en,
             LP_POSITION_MAP.fr,
@@ -554,19 +555,19 @@ export function summarizeProceduralSafetyThrombolyticPayload(
           ),
         },
         {
-          key: locale === "en" ? "Neuro status" : "Statut neuro",
+          key: clinicalDocSummaryKey(locale, "Neuro status", "Statut neuro"),
           value: pickLocalizedEnumLabel(LP_NEURO_MAP.en, LP_NEURO_MAP.fr, d.neuroStatus, locale),
         },
         {
-          key: locale === "en" ? "Headache" : "Céphalée",
+          key: clinicalDocSummaryKey(locale, "Headache", "Céphalée"),
           value: procYesNoLabel(d.headachePresent, locale),
         },
         {
-          key: locale === "en" ? "CSF leak concern" : "Préoccupation fuite LCR",
+          key: clinicalDocSummaryKey(locale, "CSF leak concern", "Préoccupation fuite LCR"),
           value: procYesNoLabel(d.csfLeakConcern, locale),
         },
         {
-          key: locale === "en" ? "Provider notified" : "Médecin avisé",
+          key: clinicalDocSummaryKey(locale, "Provider notified", "Médecin avisé"),
           value: procYesNoLabel(d.providerNotified, locale),
         },
       ];
@@ -577,31 +578,31 @@ export function summarizeProceduralSafetyThrombolyticPayload(
       const d = p.data;
       return [
         {
-          key: locale === "en" ? "TNK administered" : "TNK administré",
+          key: clinicalDocSummaryKey(locale, "TNK administered", "TNK administré"),
           value: procYesNoLabel(d.medicationAdministered, locale),
         },
         {
-          key: locale === "en" ? "Dose (mg)" : "Dose (mg)",
+          key: clinicalDocSummaryKey(locale, "Dose (mg)", "Dose (mg)"),
           value: String(d.doseMg),
         },
         {
-          key: locale === "en" ? "Weight (kg)" : "Poids (kg)",
+          key: clinicalDocSummaryKey(locale, "Weight (kg)", "Poids (kg)"),
           value: String(d.patientWeightKg),
         },
         {
-          key: locale === "en" ? "NIHSS" : "NIHSS",
+          key: clinicalDocSummaryKey(locale, "NIHSS", "NIHSS"),
           value: String(d.nihssScore),
         },
         {
-          key: locale === "en" ? "CT reviewed" : "Scanner revu",
+          key: clinicalDocSummaryKey(locale, "CT reviewed", "Scanner revu"),
           value: procYesNoLabel(d.ctHeadReviewed, locale),
         },
         {
-          key: locale === "en" ? "BP within parameters" : "TA dans les paramètres",
+          key: clinicalDocSummaryKey(locale, "BP within parameters", "TA dans les paramètres"),
           value: procYesNoLabel(d.bloodPressureWithinParameters, locale),
         },
         {
-          key: locale === "en" ? "Provider notified" : "Médecin avisé",
+          key: clinicalDocSummaryKey(locale, "Provider notified", "Médecin avisé"),
           value: procYesNoLabel(d.providerNotified, locale),
         },
       ];
@@ -612,27 +613,27 @@ export function summarizeProceduralSafetyThrombolyticPayload(
       const d = p.data;
       return [
         {
-          key: locale === "en" ? "tPA administered" : "tPA administré",
+          key: clinicalDocSummaryKey(locale, "tPA administered", "tPA administré"),
           value: procYesNoLabel(d.medicationAdministered, locale),
         },
         {
-          key: locale === "en" ? "Total dose (mg)" : "Dose totale (mg)",
+          key: clinicalDocSummaryKey(locale, "Total dose (mg)", "Dose totale (mg)"),
           value: String(d.totalDoseMg),
         },
         {
-          key: locale === "en" ? "Bolus dose (mg)" : "Dose bolus (mg)",
+          key: clinicalDocSummaryKey(locale, "Bolus dose (mg)", "Dose bolus (mg)"),
           value: String(d.bolusDoseMg),
         },
         {
-          key: locale === "en" ? "Infusion dose (mg)" : "Dose perfusion (mg)",
+          key: clinicalDocSummaryKey(locale, "Infusion dose (mg)", "Dose perfusion (mg)"),
           value: String(d.infusionDoseMg),
         },
         {
-          key: locale === "en" ? "Infusion interrupted" : "Perfusion interrompue",
+          key: clinicalDocSummaryKey(locale, "Infusion interrupted", "Perfusion interrompue"),
           value: procYesNoLabel(d.infusionInterrupted, locale),
         },
         {
-          key: locale === "en" ? "Provider notified" : "Médecin avisé",
+          key: clinicalDocSummaryKey(locale, "Provider notified", "Médecin avisé"),
           value: procYesNoLabel(d.providerNotified, locale),
         },
       ];

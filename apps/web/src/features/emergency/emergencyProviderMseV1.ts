@@ -4,7 +4,6 @@
  * Does not touch physicianEvalV1 / nursingEvalV1 blobs; only adds this namespaced key.
  */
 
-import type { SupportedLanguage } from "@/i18n/config";
 import { i18nMessage } from "@/lib/i18nMessagesLookup";
 
 export const ER_PROVIDER_MSE_V1_KEY = "erProviderMseV1" as const;
@@ -267,7 +266,7 @@ export type ErProviderMsePreviewModel = {
   oneLineSummary: string;
 };
 
-function pushLine(lines: string[], locale: SupportedLanguage, labelKey: string, value: string) {
+function pushLine(lines: string[], locale: string, labelKey: string, value: string) {
   const v = value.trim();
   if (!v) return;
   const label = i18nMessage(locale, `erMseProviderPanel.${labelKey}`);
@@ -278,7 +277,7 @@ function pushLine(lines: string[], locale: SupportedLanguage, labelKey: string, 
 /** Rule-based preview from form only — no inference, no AI. */
 export function buildErProviderMsePreviewModel(
   form: ErProviderMseForm,
-  locale: SupportedLanguage
+  locale: string
 ): ErProviderMsePreviewModel {
   const sections: ErProviderMsePreviewSection[] = [];
 

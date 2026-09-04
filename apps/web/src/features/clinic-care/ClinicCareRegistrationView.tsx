@@ -6,6 +6,7 @@ import type { PatientSearchHitV1 } from "@medora/shared";
 import { apiFetch } from "@/lib/apiClient";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import { useI18n } from "@/lib/i18n";
+import { productUiBcp47Tag } from "@/i18n/config";
 import { PatientSearchAndSelect } from "@/components/patients/PatientSearchAndSelect";
 import { MEDORA_CARD_SHELL } from "@/components/medora-card/medoraCardTokens";
 
@@ -34,7 +35,7 @@ type Completeness = {
  */
 export function ClinicCareRegistrationView() {
   const { t, language } = useI18n();
-  const locale = language === "en" ? "en-US" : "fr-HT";
+  const locale = productUiBcp47Tag(language);
   const { facilityId, roles } = useFacilityAndRoles();
   const canRegister = roles.some((r) => r === "FRONT_DESK" || r === "ADMIN");
   const [patient, setPatient] = useState<PatientSearchHitV1 | null>(null);

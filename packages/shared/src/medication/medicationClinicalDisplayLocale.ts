@@ -4,8 +4,9 @@
  */
 
 import { looksFrenchLocalizedText } from "./medicationLocalizationValidation.js";
+import { parseProductUiLanguage } from "../i18n/productUiLocale.js";
 
-export type MedicationClinicalDisplayLocale = "en" | "fr";
+export type MedicationClinicalDisplayLocale = string;
 
 export type MedicationCatalogClinicalFields = {
   strength?: string | null;
@@ -174,7 +175,9 @@ export function resolveMedicationClinicalDisplayValue(
 ): string {
   const raw = value?.trim() ?? "";
   if (!raw) return "";
-  if (locale === "fr") return raw;
+  const parsed = parseProductUiLanguage(locale);
+  if (parsed === "fr") return raw;
+  if (parsed === "es") return "";
 
   if (field) {
     return mapFrToEnForClinicalField(raw, field);
@@ -252,7 +255,9 @@ export function normalizeMedicationSecondaryTextBlob(
 ): string {
   const raw = secondaryText?.trim();
   if (!raw) return "";
-  if (locale === "fr") return raw;
+  const parsed = parseProductUiLanguage(locale);
+  if (parsed === "fr") return raw;
+  if (parsed === "es") return "";
 
   return raw
     .split("·")
@@ -284,9 +289,11 @@ export function filterMedicationAliasesForDisplayLocale(
   locale: MedicationClinicalDisplayLocale
 ): string[] {
   if (!aliases?.length) return [];
+  const parsed = parseProductUiLanguage(locale);
+  if (parsed === "es") return [];
   return aliases
     .map((a) => a.trim())
-    .filter((text) => text.length > 0 && (locale === "fr" || !looksFrenchLocalizedText(text)));
+    .filter((text) => text.length > 0 && (parsed === "fr" || !looksFrenchLocalizedText(text)));
 }
 
 const EN_UI_FRENCH_LEAK_MARKERS = [

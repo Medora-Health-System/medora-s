@@ -1,5 +1,6 @@
 import { z } from "zod";
 import {
+  clinicalDocSummaryKey,
   clinicalDocYesNo,
   pickLocalizedEnumLabel,
   type ClinicalDocumentationSummaryLocale,
@@ -745,7 +746,7 @@ export function summarizeProceduralSedationDocumentationPayload(
       const p = sedationPreAssessmentPayloadSchema.safeParse(payload);
       if (!p.success) return [];
       return [
-        { key: locale === "en" ? "Assessed" : "Évalué", value: p.data.assessedAt },
+        { key: clinicalDocSummaryKey(locale, "Assessed", "Évalué"), value: p.data.assessedAt },
         {
           key: "ASA",
           value: pickLocalizedEnumLabel(
@@ -765,7 +766,7 @@ export function summarizeProceduralSedationDocumentationPayload(
           ),
         },
         {
-          key: locale === "en" ? "Airway" : "Voie aérienne",
+          key: clinicalDocSummaryKey(locale, "Airway", "Voie aérienne"),
           value: pickLocalizedEnumLabel(
             Object.fromEntries(SEDATION_AIRWAY_ASSESSMENT_OPTIONS.map((o) => [o.value, o.labelEn])),
             Object.fromEntries(SEDATION_AIRWAY_ASSESSMENT_OPTIONS.map((o) => [o.value, o.labelFr])),
@@ -774,19 +775,19 @@ export function summarizeProceduralSedationDocumentationPayload(
           ),
         },
         {
-          key: locale === "en" ? "NPO status" : "Statut à jeun",
+          key: clinicalDocSummaryKey(locale, "NPO status", "Statut à jeun"),
           value: pickLocalizedEnumLabel(NPO_EN, NPO_FR, p.data.npoStatus, locale),
         },
         {
-          key: locale === "en" ? "Consent verified" : "Consentement vérifié",
+          key: clinicalDocSummaryKey(locale, "Consent verified", "Consentement vérifié"),
           value: clinicalDocYesNo(p.data.consentVerified, locale),
         },
         {
-          key: locale === "en" ? "Heart rate" : "Fréquence cardiaque",
+          key: clinicalDocSummaryKey(locale, "Heart rate", "Fréquence cardiaque"),
           value: String(p.data.baselineHeartRate),
         },
         {
-          key: locale === "en" ? "SpO₂" : "SpO₂",
+          key: clinicalDocSummaryKey(locale, "SpO₂", "SpO₂"),
           value: String(p.data.baselineSpo2),
         },
       ];
@@ -795,21 +796,21 @@ export function summarizeProceduralSedationDocumentationPayload(
       const p = sedationTimeoutPayloadSchema.safeParse(payload);
       if (!p.success) return [];
       return [
-        { key: locale === "en" ? "Timeout" : "Time-out", value: p.data.timeoutTime },
+        { key: clinicalDocSummaryKey(locale, "Timeout", "Time-out"), value: p.data.timeoutTime },
         {
-          key: locale === "en" ? "Patient confirmed" : "Patient confirmé",
+          key: clinicalDocSummaryKey(locale, "Patient confirmed", "Patient confirmé"),
           value: clinicalDocYesNo(p.data.correctPatientConfirmed, locale),
         },
         {
-          key: locale === "en" ? "Procedure confirmed" : "Procédure confirmée",
+          key: clinicalDocSummaryKey(locale, "Procedure confirmed", "Procédure confirmée"),
           value: clinicalDocYesNo(p.data.correctProcedureConfirmed, locale),
         },
         {
-          key: locale === "en" ? "Site confirmed" : "Site confirmé",
+          key: clinicalDocSummaryKey(locale, "Site confirmed", "Site confirmé"),
           value: clinicalDocYesNo(p.data.correctSiteConfirmed, locale),
         },
         {
-          key: locale === "en" ? "Equipment ready" : "Équipement prêt",
+          key: clinicalDocSummaryKey(locale, "Equipment ready", "Équipement prêt"),
           value: clinicalDocYesNo(
             p.data.monitoringEquipmentAvailable &&
               p.data.suctionAvailable &&
@@ -819,7 +820,7 @@ export function summarizeProceduralSedationDocumentationPayload(
           ),
         },
         {
-          key: locale === "en" ? "Planned level" : "Niveau prévu",
+          key: clinicalDocSummaryKey(locale, "Planned level", "Niveau prévu"),
           value: pickLocalizedEnumLabel(
             Object.fromEntries(SEDATION_LEVEL_OPTIONS.map((o) => [o.value, o.labelEn])),
             Object.fromEntries(SEDATION_LEVEL_OPTIONS.map((o) => [o.value, o.labelFr])),
@@ -833,9 +834,9 @@ export function summarizeProceduralSedationDocumentationPayload(
       const p = sedationInitiationPayloadSchema.safeParse(payload);
       if (!p.success) return [];
       return [
-        { key: locale === "en" ? "Start" : "Début", value: p.data.startTime },
+        { key: clinicalDocSummaryKey(locale, "Start", "Début"), value: p.data.startTime },
         {
-          key: locale === "en" ? "Target level" : "Niveau cible",
+          key: clinicalDocSummaryKey(locale, "Target level", "Niveau cible"),
           value: pickLocalizedEnumLabel(
             Object.fromEntries(SEDATION_LEVEL_OPTIONS.map((o) => [o.value, o.labelEn])),
             Object.fromEntries(SEDATION_LEVEL_OPTIONS.map((o) => [o.value, o.labelFr])),
@@ -844,7 +845,7 @@ export function summarizeProceduralSedationDocumentationPayload(
           ),
         },
         {
-          key: locale === "en" ? "Oxygen delivery" : "Oxygénothérapie",
+          key: clinicalDocSummaryKey(locale, "Oxygen delivery", "Oxygénothérapie"),
           value: pickLocalizedEnumLabel(
             Object.fromEntries(SEDATION_OXYGEN_DELIVERY_OPTIONS.map((o) => [o.value, o.labelEn])),
             Object.fromEntries(SEDATION_OXYGEN_DELIVERY_OPTIONS.map((o) => [o.value, o.labelFr])),
@@ -853,15 +854,15 @@ export function summarizeProceduralSedationDocumentationPayload(
           ),
         },
         {
-          key: locale === "en" ? "Monitoring started" : "Surveillance démarrée",
+          key: clinicalDocSummaryKey(locale, "Monitoring started", "Surveillance démarrée"),
           value: clinicalDocYesNo(p.data.monitoringStarted, locale),
         },
         {
-          key: locale === "en" ? "MAR documented" : "Documenté au MAR",
+          key: clinicalDocSummaryKey(locale, "MAR documented", "Documenté au MAR"),
           value: clinicalDocYesNo(p.data.medicationAdministrationDocumentedInMar, locale),
         },
         {
-          key: locale === "en" ? "SpO₂" : "SpO₂",
+          key: clinicalDocSummaryKey(locale, "SpO₂", "SpO₂"),
           value: String(p.data.baselineSpo2),
         },
       ];
@@ -870,17 +871,17 @@ export function summarizeProceduralSedationDocumentationPayload(
       const p = sedationMonitoringPayloadSchema.safeParse(payload);
       if (!p.success) return [];
       return [
-        { key: locale === "en" ? "Time" : "Heure", value: p.data.monitoringTime },
+        { key: clinicalDocSummaryKey(locale, "Time", "Heure"), value: p.data.monitoringTime },
         {
-          key: locale === "en" ? "Heart rate" : "FC",
+          key: clinicalDocSummaryKey(locale, "Heart rate", "FC"),
           value: String(p.data.heartRate),
         },
         {
-          key: locale === "en" ? "SpO₂" : "SpO₂",
+          key: clinicalDocSummaryKey(locale, "SpO₂", "SpO₂"),
           value: String(p.data.spo2),
         },
         {
-          key: locale === "en" ? "Sedation level" : "Niveau sédation",
+          key: clinicalDocSummaryKey(locale, "Sedation level", "Niveau sédation"),
           value: pickLocalizedEnumLabel(
             Object.fromEntries(SEDATION_MONITORING_LEVEL_OPTIONS.map((o) => [o.value, o.labelEn])),
             Object.fromEntries(SEDATION_MONITORING_LEVEL_OPTIONS.map((o) => [o.value, o.labelFr])),
@@ -889,7 +890,7 @@ export function summarizeProceduralSedationDocumentationPayload(
           ),
         },
         {
-          key: locale === "en" ? "Airway" : "Voie aérienne",
+          key: clinicalDocSummaryKey(locale, "Airway", "Voie aérienne"),
           value: pickLocalizedEnumLabel(
             Object.fromEntries(SEDATION_AIRWAY_STATUS_OPTIONS.map((o) => [o.value, o.labelEn])),
             Object.fromEntries(SEDATION_AIRWAY_STATUS_OPTIONS.map((o) => [o.value, o.labelFr])),
@@ -898,11 +899,11 @@ export function summarizeProceduralSedationDocumentationPayload(
           ),
         },
         {
-          key: locale === "en" ? "Adverse event" : "Événement indésirable",
+          key: clinicalDocSummaryKey(locale, "Adverse event", "Événement indésirable"),
           value: clinicalDocYesNo(p.data.adverseEventObserved, locale),
         },
         {
-          key: locale === "en" ? "Provider notified" : "Médecin avisé",
+          key: clinicalDocSummaryKey(locale, "Provider notified", "Médecin avisé"),
           value: clinicalDocYesNo(p.data.providerNotified, locale),
         },
       ];
@@ -911,9 +912,9 @@ export function summarizeProceduralSedationDocumentationPayload(
       const p = sedationReassessmentPayloadSchema.safeParse(payload);
       if (!p.success) return [];
       return [
-        { key: locale === "en" ? "Reassessment" : "Réévaluation", value: p.data.reassessmentTime },
+        { key: clinicalDocSummaryKey(locale, "Reassessment", "Réévaluation"), value: p.data.reassessmentTime },
         {
-          key: locale === "en" ? "Condition" : "État",
+          key: clinicalDocSummaryKey(locale, "Condition", "État"),
           value: pickLocalizedEnumLabel(
             Object.fromEntries(SEDATION_REASSESSMENT_CONDITION_OPTIONS.map((o) => [o.value, o.labelEn])),
             Object.fromEntries(SEDATION_REASSESSMENT_CONDITION_OPTIONS.map((o) => [o.value, o.labelFr])),
@@ -922,7 +923,7 @@ export function summarizeProceduralSedationDocumentationPayload(
           ),
         },
         {
-          key: locale === "en" ? "Airway stable" : "Voie aérienne stable",
+          key: clinicalDocSummaryKey(locale, "Airway stable", "Voie aérienne stable"),
           value: clinicalDocYesNo(p.data.airwayStable, locale),
         },
       ];
@@ -931,13 +932,13 @@ export function summarizeProceduralSedationDocumentationPayload(
       const p = sedationRecoveryScorePayloadSchema.safeParse(payload);
       if (!p.success) return [];
       return [
-        { key: locale === "en" ? "Scored" : "Score", value: p.data.scoredAt },
+        { key: clinicalDocSummaryKey(locale, "Scored", "Score"), value: p.data.scoredAt },
         {
-          key: locale === "en" ? "Total score" : "Score total",
+          key: clinicalDocSummaryKey(locale, "Total score", "Score total"),
           value: String(p.data.totalScore),
         },
         {
-          key: locale === "en" ? "Recovery criteria met" : "Critères récupération",
+          key: clinicalDocSummaryKey(locale, "Recovery criteria met", "Critères récupération"),
           value: clinicalDocYesNo(p.data.meetsRecoveryCriteria, locale),
         },
       ];
@@ -946,17 +947,17 @@ export function summarizeProceduralSedationDocumentationPayload(
       const p = sedationRecoveryMonitoringPayloadSchema.safeParse(payload);
       if (!p.success) return [];
       return [
-        { key: locale === "en" ? "Time" : "Heure", value: p.data.monitoringTime },
+        { key: clinicalDocSummaryKey(locale, "Time", "Heure"), value: p.data.monitoringTime },
         {
-          key: locale === "en" ? "Heart rate" : "FC",
+          key: clinicalDocSummaryKey(locale, "Heart rate", "FC"),
           value: String(p.data.heartRate),
         },
         {
-          key: locale === "en" ? "SpO₂" : "SpO₂",
+          key: clinicalDocSummaryKey(locale, "SpO₂", "SpO₂"),
           value: String(p.data.spo2),
         },
         {
-          key: locale === "en" ? "LOC" : "Conscience",
+          key: clinicalDocSummaryKey(locale, "LOC", "Conscience"),
           value: pickLocalizedEnumLabel(
             Object.fromEntries(SEDATION_RECOVERY_LOC_OPTIONS.map((o) => [o.value, o.labelEn])),
             Object.fromEntries(SEDATION_RECOVERY_LOC_OPTIONS.map((o) => [o.value, o.labelFr])),
@@ -965,7 +966,7 @@ export function summarizeProceduralSedationDocumentationPayload(
           ),
         },
         {
-          key: locale === "en" ? "Nausea/vomiting" : "Nausées/vomissements",
+          key: clinicalDocSummaryKey(locale, "Nausea/vomiting", "Nausées/vomissements"),
           value: clinicalDocYesNo(p.data.nauseaVomitingPresent, locale),
         },
       ];
@@ -974,25 +975,25 @@ export function summarizeProceduralSedationDocumentationPayload(
       const p = sedationDischargeReadinessPayloadSchema.safeParse(payload);
       if (!p.success) return [];
       return [
-        { key: locale === "en" ? "Assessed" : "Évalué", value: p.data.assessedAt },
+        { key: clinicalDocSummaryKey(locale, "Assessed", "Évalué"), value: p.data.assessedAt },
         {
-          key: locale === "en" ? "Vitals stable" : "Constantes stables",
+          key: clinicalDocSummaryKey(locale, "Vitals stable", "Constantes stables"),
           value: clinicalDocYesNo(p.data.vitalSignsStable, locale),
         },
         {
-          key: locale === "en" ? "Airway stable" : "Voie aérienne stable",
+          key: clinicalDocSummaryKey(locale, "Airway stable", "Voie aérienne stable"),
           value: clinicalDocYesNo(p.data.airwayStable, locale),
         },
         {
-          key: locale === "en" ? "Mental status baseline" : "État mental baseline",
+          key: clinicalDocSummaryKey(locale, "Mental status baseline", "État mental baseline"),
           value: clinicalDocYesNo(p.data.mentalStatusAtBaseline, locale),
         },
         {
-          key: locale === "en" ? "Responsible adult" : "Adulte responsable",
+          key: clinicalDocSummaryKey(locale, "Responsible adult", "Adulte responsable"),
           value: clinicalDocYesNo(p.data.responsibleAdultPresent, locale),
         },
         {
-          key: locale === "en" ? "Provider approved" : "Sortie approuvée",
+          key: clinicalDocSummaryKey(locale, "Provider approved", "Sortie approuvée"),
           value: clinicalDocYesNo(p.data.providerApprovedDischarge, locale),
         },
       ];

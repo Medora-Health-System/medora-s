@@ -3,7 +3,6 @@
  * MEDUI.D4C.7I — projects from enterprise facility identity (not session-only name).
  */
 
-import { type ProductUiLanguage } from "@/i18n/config";
 import {
   UNLOCALIZED_CATALOG_SOURCE,
   isHiddenSpanishPlaceholder,
@@ -225,10 +224,10 @@ export function buildPrintFacilityHeaderHtml(
 }
 
 export function buildPrintDocumentFooterHtml(
-  language: ProductUiLanguage,
+  language: string,
   printDate: string,
   esc: (value: string) => string,
-  printT: (language: ProductUiLanguage, key: string) => string
+  printT: (language: string, key: string) => string
 ): string {
   const resolved = printT(language, "printOutput.common.documentFooter");
   if (

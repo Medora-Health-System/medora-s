@@ -3,6 +3,8 @@ import type { ClinicalDocumentationFieldOption } from "./clinicalDocumentationFi
 import {
   pickLocalizedEnumLabel,
   type ClinicalDocumentationSummaryLocale,
+  clinicalDocSummaryKey,
+  clinicalDocYesNo,
 } from "./clinicalDocumentationSummaryLocale.js";
 
 /** EDOC.18 — sepsis monitoring & bundle documentation card IDs. */
@@ -148,13 +150,7 @@ export function sepsisDocYesNoLabel(
   value: (typeof SEPSIS_YES_NO_VALUES)[number],
   locale: ClinicalDocumentationSummaryLocale
 ): string {
-  return value === "YES"
-    ? locale === "en"
-      ? "Yes"
-      : "Oui"
-    : locale === "en"
-      ? "No"
-      : "Non";
+  return clinicalDocYesNo(value === "YES", locale);
 }
 
 export const SEPSIS_YES_NO_OPTIONS = enumOptions(SEPSIS_YES_NO_VALUES, {
@@ -662,11 +658,11 @@ export function summarizeSepsisMonitoringDocumentationPayload(
       const d = p.data;
       return [
         {
-          key: locale === "en" ? "Screen positive" : "Dépistage positif",
+          key: clinicalDocSummaryKey(locale, "Screen positive", "Dépistage positif"),
           value: sepsisDocYesNoLabel(d.screenPositive, locale),
         },
         {
-          key: locale === "en" ? "Suspected infection" : "Infection suspectée",
+          key: clinicalDocSummaryKey(locale, "Suspected infection", "Infection suspectée"),
           value: pickLocalizedEnumLabel(
             { YES: "Yes", NO: "No", UNKNOWN: "Unknown" },
             { YES: "Oui", NO: "Non", UNKNOWN: "Inconnu" },
@@ -675,7 +671,7 @@ export function summarizeSepsisMonitoringDocumentationPayload(
           ),
         },
         {
-          key: locale === "en" ? "Provider notified" : "Médecin avisé",
+          key: clinicalDocSummaryKey(locale, "Provider notified", "Médecin avisé"),
           value: sepsisDocYesNoLabel(d.providerNotified, locale),
         },
       ];
@@ -686,15 +682,15 @@ export function summarizeSepsisMonitoringDocumentationPayload(
       const d = p.data;
       return [
         {
-          key: locale === "en" ? "Criteria count" : "Nombre de critères",
+          key: clinicalDocSummaryKey(locale, "Criteria count", "Nombre de critères"),
           value: String(d.criteriaCount),
         },
         {
-          key: locale === "en" ? "SIRS criteria met" : "Critères SIRS remplis",
+          key: clinicalDocSummaryKey(locale, "SIRS criteria met", "Critères SIRS remplis"),
           value: sepsisDocYesNoLabel(d.sirsPositive, locale),
         },
         {
-          key: locale === "en" ? "Provider notified" : "Médecin avisé",
+          key: clinicalDocSummaryKey(locale, "Provider notified", "Médecin avisé"),
           value: sepsisDocYesNoLabel(d.providerNotified, locale),
         },
       ];
@@ -705,15 +701,15 @@ export function summarizeSepsisMonitoringDocumentationPayload(
       const d = p.data;
       return [
         {
-          key: locale === "en" ? "Score" : "Score",
+          key: clinicalDocSummaryKey(locale, "Score", "Score"),
           value: String(d.score),
         },
         {
-          key: locale === "en" ? "qSOFA positive" : "qSOFA positif",
+          key: clinicalDocSummaryKey(locale, "qSOFA positive", "qSOFA positif"),
           value: sepsisDocYesNoLabel(d.qsofaPositive, locale),
         },
         {
-          key: locale === "en" ? "Provider notified" : "Médecin avisé",
+          key: clinicalDocSummaryKey(locale, "Provider notified", "Médecin avisé"),
           value: sepsisDocYesNoLabel(d.providerNotified, locale),
         },
       ];
@@ -724,7 +720,7 @@ export function summarizeSepsisMonitoringDocumentationPayload(
       const d = p.data;
       return [
         {
-          key: locale === "en" ? "Suspected source" : "Source suspectée",
+          key: clinicalDocSummaryKey(locale, "Suspected source", "Source suspectée"),
           value: pickLocalizedEnumLabel(
             SEPSIS_SOURCE_MAP.en,
             SEPSIS_SOURCE_MAP.fr,
@@ -733,11 +729,11 @@ export function summarizeSepsisMonitoringDocumentationPayload(
           ),
         },
         {
-          key: locale === "en" ? "Infection signs" : "Signes d'infection",
+          key: clinicalDocSummaryKey(locale, "Infection signs", "Signes d'infection"),
           value: sepsisDocYesNoLabel(d.infectionSignsPresent, locale),
         },
         {
-          key: locale === "en" ? "Provider notified" : "Médecin avisé",
+          key: clinicalDocSummaryKey(locale, "Provider notified", "Médecin avisé"),
           value: sepsisDocYesNoLabel(d.providerNotified, locale),
         },
       ];
@@ -748,7 +744,7 @@ export function summarizeSepsisMonitoringDocumentationPayload(
       const d = p.data;
       return [
         {
-          key: locale === "en" ? "Bundle type" : "Type de bundle",
+          key: clinicalDocSummaryKey(locale, "Bundle type", "Type de bundle"),
           value: pickLocalizedEnumLabel(
             SEPSIS_BUNDLE_TYPE_MAP.en,
             SEPSIS_BUNDLE_TYPE_MAP.fr,
@@ -757,11 +753,11 @@ export function summarizeSepsisMonitoringDocumentationPayload(
           ),
         },
         {
-          key: locale === "en" ? "Lactate" : "Lactate",
+          key: clinicalDocSummaryKey(locale, "Lactate", "Lactate"),
           value: sepsisDocYesNoLabel(d.lactateOrderedOrResulted, locale),
         },
         {
-          key: locale === "en" ? "Cultures before antibiotics" : "Hémocultures avant ATB",
+          key: clinicalDocSummaryKey(locale, "Cultures before antibiotics", "Hémocultures avant ATB"),
           value: pickLocalizedEnumLabel(
             { YES: "Yes", NO: "No", UNKNOWN: "Unknown" },
             { YES: "Oui", NO: "Non", UNKNOWN: "Inconnu" },
@@ -770,11 +766,11 @@ export function summarizeSepsisMonitoringDocumentationPayload(
           ),
         },
         {
-          key: locale === "en" ? "Antibiotics in MAR" : "Antibiotiques au MAR",
+          key: clinicalDocSummaryKey(locale, "Antibiotics in MAR", "Antibiotiques au MAR"),
           value: sepsisDocYesNoLabel(d.antibioticsDocumentedInMar, locale),
         },
         {
-          key: locale === "en" ? "Variance" : "Écart",
+          key: clinicalDocSummaryKey(locale, "Variance", "Écart"),
           value: sepsisDocYesNoLabel(d.bundleVariancePresent, locale),
         },
       ];
@@ -785,12 +781,12 @@ export function summarizeSepsisMonitoringDocumentationPayload(
       const d = p.data;
       return [
         {
-          key: locale === "en" ? "Lactate value" : "Valeur lactate",
+          key: clinicalDocSummaryKey(locale, "Lactate value", "Valeur lactate"),
           value:
-            d.lactateValue !== undefined ? `${d.lactateValue} mmol/L` : locale === "en" ? "N/A" : "N/D",
+            d.lactateValue !== undefined ? `${d.lactateValue} mmol/L` : clinicalDocSummaryKey(locale, "N/A", "N/D"),
         },
         {
-          key: locale === "en" ? "Repeat needed" : "Répétition nécessaire",
+          key: clinicalDocSummaryKey(locale, "Repeat needed", "Répétition nécessaire"),
           value: pickLocalizedEnumLabel(
             { YES: "Yes", NO: "No", UNKNOWN: "Unknown" },
             { YES: "Oui", NO: "Non", UNKNOWN: "Inconnu" },
@@ -799,7 +795,7 @@ export function summarizeSepsisMonitoringDocumentationPayload(
           ),
         },
         {
-          key: locale === "en" ? "Provider notified" : "Médecin avisé",
+          key: clinicalDocSummaryKey(locale, "Provider notified", "Médecin avisé"),
           value: sepsisDocYesNoLabel(d.providerNotified, locale),
         },
       ];
@@ -810,15 +806,15 @@ export function summarizeSepsisMonitoringDocumentationPayload(
       const d = p.data;
       return [
         {
-          key: locale === "en" ? "Cultures collected" : "Hémocultures prélevées",
+          key: clinicalDocSummaryKey(locale, "Cultures collected", "Hémocultures prélevées"),
           value: sepsisDocYesNoLabel(d.culturesCollected, locale),
         },
         {
-          key: locale === "en" ? "Sets" : "Séries",
+          key: clinicalDocSummaryKey(locale, "Sets", "Séries"),
           value: d.numberOfSets !== undefined ? String(d.numberOfSets) : "—",
         },
         {
-          key: locale === "en" ? "Before antibiotics" : "Avant antibiotiques",
+          key: clinicalDocSummaryKey(locale, "Before antibiotics", "Avant antibiotiques"),
           value: pickLocalizedEnumLabel(
             { YES: "Yes", NO: "No", UNKNOWN: "Unknown" },
             { YES: "Oui", NO: "Non", UNKNOWN: "Inconnu" },
@@ -834,15 +830,15 @@ export function summarizeSepsisMonitoringDocumentationPayload(
       const d = p.data;
       return [
         {
-          key: locale === "en" ? "Documented in MAR" : "Documenté au MAR",
+          key: clinicalDocSummaryKey(locale, "Documented in MAR", "Documenté au MAR"),
           value: sepsisDocYesNoLabel(d.antibioticsDocumentedInMar, locale),
         },
         {
-          key: locale === "en" ? "Delay/variance" : "Retard/écart",
+          key: clinicalDocSummaryKey(locale, "Delay/variance", "Retard/écart"),
           value: sepsisDocYesNoLabel(d.delayOrVariancePresent, locale),
         },
         {
-          key: locale === "en" ? "Provider notified" : "Médecin avisé",
+          key: clinicalDocSummaryKey(locale, "Provider notified", "Médecin avisé"),
           value: sepsisDocYesNoLabel(d.providerNotified, locale),
         },
       ];
@@ -853,11 +849,11 @@ export function summarizeSepsisMonitoringDocumentationPayload(
       const d = p.data;
       return [
         {
-          key: locale === "en" ? "Volume" : "Volume",
+          key: clinicalDocSummaryKey(locale, "Volume", "Volume"),
           value: d.volumeMl !== undefined ? `${d.volumeMl} mL` : "—",
         },
         {
-          key: locale === "en" ? "BP response" : "Réponse PA",
+          key: clinicalDocSummaryKey(locale, "BP response", "Réponse PA"),
           value: pickLocalizedEnumLabel(
             SEPSIS_BP_RESPONSE_MAP.en,
             SEPSIS_BP_RESPONSE_MAP.fr,
@@ -866,7 +862,7 @@ export function summarizeSepsisMonitoringDocumentationPayload(
           ),
         },
         {
-          key: locale === "en" ? "Provider notified" : "Médecin avisé",
+          key: clinicalDocSummaryKey(locale, "Provider notified", "Médecin avisé"),
           value: sepsisDocYesNoLabel(d.providerNotified, locale),
         },
       ];
@@ -877,15 +873,15 @@ export function summarizeSepsisMonitoringDocumentationPayload(
       const d = p.data;
       return [
         {
-          key: locale === "en" ? "Persistent hypotension" : "Hypotension persistante",
+          key: clinicalDocSummaryKey(locale, "Persistent hypotension", "Hypotension persistante"),
           value: sepsisDocYesNoLabel(d.hypotensionPersistent, locale),
         },
         {
-          key: locale === "en" ? "Mental status changed" : "État mental modifié",
+          key: clinicalDocSummaryKey(locale, "Mental status changed", "État mental modifié"),
           value: sepsisDocYesNoLabel(d.mentalStatusChanged, locale),
         },
         {
-          key: locale === "en" ? "Provider notified" : "Médecin avisé",
+          key: clinicalDocSummaryKey(locale, "Provider notified", "Médecin avisé"),
           value: sepsisDocYesNoLabel(d.providerNotified, locale),
         },
       ];
@@ -896,7 +892,7 @@ export function summarizeSepsisMonitoringDocumentationPayload(
       const d = p.data;
       return [
         {
-          key: locale === "en" ? "Reason" : "Motif",
+          key: clinicalDocSummaryKey(locale, "Reason", "Motif"),
           value: pickLocalizedEnumLabel(
             SEPSIS_ESCALATION_REASON_MAP.en,
             SEPSIS_ESCALATION_REASON_MAP.fr,
@@ -905,11 +901,11 @@ export function summarizeSepsisMonitoringDocumentationPayload(
           ),
         },
         {
-          key: locale === "en" ? "Provider notified" : "Médecin avisé",
+          key: clinicalDocSummaryKey(locale, "Provider notified", "Médecin avisé"),
           value: sepsisDocYesNoLabel(d.providerNotified, locale),
         },
         {
-          key: locale === "en" ? "Response received" : "Réponse reçue",
+          key: clinicalDocSummaryKey(locale, "Response received", "Réponse reçue"),
           value: sepsisDocYesNoLabel(d.responseReceived, locale),
         },
       ];

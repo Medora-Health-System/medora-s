@@ -14,7 +14,7 @@ import {
 } from "@medora/shared";
 import { useI18n } from "@/lib/i18n";
 
-import { resolveProductUiLanguageOrDefault } from "@/i18n/config";
+import { pickLegacyBilingualStoredPair, resolveProductUiLanguageOrDefault } from "@/i18n/config";
 
 const inputStyle: React.CSSProperties = {
   width: "100%",
@@ -211,7 +211,7 @@ export function TdapVaccineAdministrationForm({
           <option value="">—</option>
           {VACCINE_MANUFACTURER_CATALOG.map((m) => (
             <option key={m.id} value={m.id}>
-              {locale === "fr" ? m.labelFr : m.labelEn}
+              {pickLegacyBilingualStoredPair(locale, { en: m.labelEn, fr: m.labelFr }).value}
             </option>
           ))}
         </select>

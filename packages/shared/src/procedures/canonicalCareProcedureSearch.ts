@@ -5,8 +5,9 @@ import {
 } from "./canonicalCareProcedureCatalog.js";
 import { canonicalCareProcedureCategoryLabel } from "./canonicalCareProcedureCategories.js";
 import type { CanonicalCareProcedureCategory } from "./canonicalCareProcedureCategories.js";
+import { pickCatalogDisplayLabelForProductUi } from "../i18n/productUiLocale.js";
 
-export type CanonicalCareProcedureSearchLocale = "en" | "fr";
+export type CanonicalCareProcedureSearchLocale = string;
 
 function normalizeSearchText(text: string): string {
   return text
@@ -45,7 +46,13 @@ export function canonicalCareProcedureMatchTier(
   if (code === q) return 0;
   const aliases = aliasHits.map(normalizeSearchText);
   if (aliases.some((alias) => alias === q)) return 1;
-  const display = normalizeSearchText(locale === "fr" ? row.displayNameFr : row.displayNameEn);
+  const display = normalizeSearchText(
+    pickCatalogDisplayLabelForProductUi(locale, {
+      displayNameEn: row.displayNameEn,
+      displayNameFr: row.displayNameFr,
+      code: row.code,
+    })
+  );
   if (display.startsWith(q)) return 2;
   if (display.includes(q)) return 3;
   const haystack = searchableHaystack(row, locale);
@@ -91,5 +98,9 @@ export function resolveCanonicalCareProcedureDisplayName(
 ): string | undefined {
   const row = canonicalCareProcedureByCode(code);
   if (!row) return undefined;
-  return locale === "fr" ? row.displayNameFr : row.displayNameEn;
+  return pickCatalogDisplayLabelForProductUi(locale, {
+    displayNameEn: row.displayNameEn,
+    displayNameFr: row.displayNameFr,
+    code: row.code,
+  });
 }

@@ -1,6 +1,7 @@
 /**
  * MEDUI.ORDERSETS.ENTERPRISE_PHASE_6 — order-set authority + role governance.
  */
+import { pickProductUiCopy } from "../../i18n/productUiLocale.js";
 import { canonicalCareProcedureByCode } from "../../procedures/canonicalCareProcedureCatalog.js";
 import type {
   EnterpriseOrderSetAuthority,
@@ -14,15 +15,17 @@ export { ENTERPRISE_ORDER_SET_AUTHORITIES } from "./types.js";
 
 export const ENTERPRISE_ORDER_SET_AUTHORITY_LABELS: Record<
   EnterpriseOrderSetAuthority,
-  { en: string; fr: string }
+  { en: string; fr: string; es: string }
 > = {
   PROVIDER_ORDER_SET: {
     en: "Emergency provider sets",
     fr: "Protocoles médecin (urgences)",
+    es: "Protocolos del profesional clínico (urgencias)",
   },
   RN_STANDING_ORDER: {
     en: "RN standing orders",
     fr: "Ordres permanents infirmiers",
+    es: "Órdenes permanentes de enfermería",
   },
 };
 
@@ -48,9 +51,10 @@ export function isProviderEnterpriseOrderSet(
 
 export function getEnterpriseOrderSetAuthorityLabel(
   authority: EnterpriseOrderSetAuthority,
-  locale: "en" | "fr"
+  locale: string
 ): string {
-  return ENTERPRISE_ORDER_SET_AUTHORITY_LABELS[authority][locale];
+  const labels = ENTERPRISE_ORDER_SET_AUTHORITY_LABELS[authority];
+  return pickProductUiCopy(locale, labels, labels.es);
 }
 
 export function isEnterpriseOrderSetItemRnStandingOrderSafe(

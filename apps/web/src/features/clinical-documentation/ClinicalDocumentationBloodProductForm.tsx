@@ -20,6 +20,7 @@ import {
 } from "@medora/shared";
 import { useI18n } from "@/lib/i18n";
 import { resolveProductUiLanguageOrDefault } from "@/i18n/config";
+import { formatClinicalDocumentationOptionLabel } from "@medora/shared";
 
 import {
   ClinicalDocumentationBooleanField,
@@ -128,7 +129,7 @@ function CheckboxMulti({
   label: string;
   options: ReadonlyArray<{ value: string; labelEn: string; labelFr: string }>;
   selected: string[];
-  locale: "en" | "fr";
+  locale: string;
   onChange: (next: string[]) => void;
   testIdPrefix: string;
 }) {
@@ -153,7 +154,7 @@ function CheckboxMulti({
                   );
                 }}
               />
-              {locale === "en" ? opt.labelEn : opt.labelFr}
+              {formatClinicalDocumentationOptionLabel(opt, locale)}
             </label>
           );
         })}

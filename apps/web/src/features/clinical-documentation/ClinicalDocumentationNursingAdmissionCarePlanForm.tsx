@@ -110,7 +110,7 @@ function YesNoField({
 }: {
   label: string;
   value: YesNo;
-  locale: "en" | "fr";
+  locale: string;
   onChange: (v: YesNo) => void;
   testId?: string;
 }) {
@@ -134,7 +134,7 @@ function InterventionCheckboxGroup({
 }: {
   label: string;
   selected: InterventionValue[];
-  locale: "en" | "fr";
+  locale: string;
   onChange: (values: InterventionValue[]) => void;
 }) {
   const toggle = (value: InterventionValue) => {

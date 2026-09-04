@@ -65,7 +65,7 @@ describe("MEDUI.D4C.8C enterprise patient medical record", () => {
       resolve(__dirname, "../encounters/EnterpriseClosedEncounterViewer.tsx"),
       "utf8"
     );
-    expect(viewer).toContain("chart-export?format=html");
+    expect(viewer).toContain("encounterChartExportHtmlHref");
     expect(viewer).toContain("EnterpriseReopenEncounterAction");
     expect(viewer).toContain("EnterpriseClosedEncounterClinicalRecord");
   });

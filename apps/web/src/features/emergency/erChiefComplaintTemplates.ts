@@ -3,7 +3,7 @@
  * Chief complaint + optional editable prompt prefills (no asserted negatives, no orders).
  */
 
-import type { SupportedLanguage } from "@/i18n/config";
+import { bilingualStorageLocaleOrEn, type SupportedLanguage } from "@/i18n/config";
 
 export type ErChiefComplaintBilingual = { fr: string; en: string };
 
@@ -27,7 +27,8 @@ export type ErChiefComplaintTemplate = {
 };
 
 export function pickChiefComplaintLocale(b: ErChiefComplaintBilingual, locale: SupportedLanguage): string {
-  return locale === "en" ? b.en : b.fr;
+  // Template source is EN/FR only. ES uses English source identity, never French.
+  return bilingualStorageLocaleOrEn(locale) === "fr" ? b.fr : b.en;
 }
 
 export const ER_CHIEF_COMPLAINT_TEMPLATES: readonly ErChiefComplaintTemplate[] = [
@@ -363,7 +364,7 @@ function matchesChiefComplaintQuery(
   locale: SupportedLanguage
 ): boolean {
   const label = pickChiefComplaintLocale(tpl.label, locale);
-  const terms = locale === "en" ? tpl.searchTermsEn : tpl.searchTermsFr;
+  const terms = bilingualStorageLocaleOrEn(locale) === "fr" ? tpl.searchTermsFr : tpl.searchTermsEn;
   if (label.toLowerCase().includes(q)) return true;
   if (tpl.id.toLowerCase().includes(q)) return true;
   return terms.some((s) => s.toLowerCase().includes(q));

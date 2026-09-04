@@ -40,7 +40,7 @@ export function resolveBedStatusBadge(status: BedOperationalStatus): {
 
 export function resolveBedStatusLabel(
   status: BedOperationalStatus,
-  language: SupportedLanguage,
+  language: string,
   t: (key: string) => string
 ): string {
   const key = `bedStatus.${status}`;

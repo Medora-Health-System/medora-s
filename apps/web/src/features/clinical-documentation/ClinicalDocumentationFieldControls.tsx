@@ -34,7 +34,7 @@ export function ClinicalDocumentationSelectField<T extends string | number | boo
   label: string;
   value: T;
   options: ReadonlyArray<ClinicalDocumentationFieldOption<T>>;
-  locale: "en" | "fr";
+  locale: string;
   onChange: (value: T) => void;
   testId?: string;
 }) {
@@ -72,7 +72,7 @@ export function ClinicalDocumentationScoreSelectField<T extends string | number>
   label: string;
   value: T;
   options: ReadonlyArray<ClinicalDocumentationFieldOption<T>>;
-  locale: "en" | "fr";
+  locale: string;
   onChange: (value: T) => void;
   testId?: string;
 }) {
@@ -97,7 +97,7 @@ export function ClinicalDocumentationBooleanField({
 }: {
   label: string;
   value: boolean;
-  locale: "en" | "fr";
+  locale: string;
   onChange: (value: boolean) => void;
   testId?: string;
 }) {

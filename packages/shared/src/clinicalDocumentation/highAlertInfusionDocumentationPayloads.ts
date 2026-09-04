@@ -1,5 +1,7 @@
 import { z } from "zod";
 import {
+  clinicalDocSummaryKey,
+  clinicalDocVerificationStatus,
   clinicalDocYesNo,
   pickLocalizedEnumLabel,
   type ClinicalDocumentationSummaryLocale,
@@ -399,11 +401,11 @@ export function summarizeHighAlertInfusionDocumentationPayload(
       if (!p.success) return [];
       return [
         {
-          key: locale === "en" ? "Medication" : "Médicament",
+          key: clinicalDocSummaryKey(locale, "Medication", "Médicament"),
           value: p.data.medicationName,
         },
         {
-          key: locale === "en" ? "Type" : "Type",
+          key: clinicalDocSummaryKey(locale, "Type", "Type"),
           value: pickLocalizedEnumLabel(
             MED_TYPE_EN,
             MED_TYPE_FR,
@@ -412,31 +414,24 @@ export function summarizeHighAlertInfusionDocumentationPayload(
           ),
         },
         {
-          key: locale === "en" ? "Ordered rate" : "Débit prescrit",
+          key: clinicalDocSummaryKey(locale, "Ordered rate", "Débit prescrit"),
           value: p.data.orderedRate,
         },
         {
-          key: locale === "en" ? "Ordered dose" : "Dose prescrite",
+          key: clinicalDocSummaryKey(locale, "Ordered dose", "Dose prescrite"),
           value: p.data.orderedDose,
         },
         {
-          key: locale === "en" ? "Pump verified" : "Pompe vérifiée",
+          key: clinicalDocSummaryKey(locale, "Pump verified", "Pompe vérifiée"),
           value: clinicalDocYesNo(p.data.pumpProgrammingVerified, locale),
         },
         {
-          key: locale === "en" ? "Double check" : "Double vérification",
+          key: clinicalDocSummaryKey(locale, "Double check", "Double vérification"),
           value: clinicalDocYesNo(p.data.independentDoubleCheckPerformed, locale),
         },
         {
-          key: locale === "en" ? "Verification status" : "Statut vérification",
-          value:
-            p.data.verificationStatus === "VERIFIED"
-              ? locale === "en"
-                ? "Verified"
-                : "Vérifié"
-              : locale === "en"
-                ? "Pending witness"
-                : "Témoin en attente",
+          key: clinicalDocSummaryKey(locale, "Verification status", "Statut vérification"),
+          value: clinicalDocVerificationStatus(locale, p.data.verificationStatus),
         },
       ];
     }
@@ -445,23 +440,23 @@ export function summarizeHighAlertInfusionDocumentationPayload(
       if (!p.success) return [];
       return [
         {
-          key: locale === "en" ? "Medication" : "Médicament",
+          key: clinicalDocSummaryKey(locale, "Medication", "Médicament"),
           value: p.data.medicationName,
         },
         {
-          key: locale === "en" ? "Start time" : "Heure début",
+          key: clinicalDocSummaryKey(locale, "Start time", "Heure début"),
           value: p.data.startTime,
         },
         {
-          key: locale === "en" ? "Programmed rate" : "Débit programmé",
+          key: clinicalDocSummaryKey(locale, "Programmed rate", "Débit programmé"),
           value: p.data.programmedRate,
         },
         {
-          key: locale === "en" ? "Route" : "Voie",
+          key: clinicalDocSummaryKey(locale, "Route", "Voie"),
           value: pickLocalizedEnumLabel(ROUTE_EN, ROUTE_FR, p.data.route, locale),
         },
         {
-          key: locale === "en" ? "Administration started" : "Administration démarrée",
+          key: clinicalDocSummaryKey(locale, "Administration started", "Administration démarrée"),
           value: clinicalDocYesNo(p.data.administrationStarted, locale),
         },
       ];
@@ -471,11 +466,11 @@ export function summarizeHighAlertInfusionDocumentationPayload(
       if (!p.success) return [];
       return [
         {
-          key: locale === "en" ? "Titration" : "Titulation",
+          key: clinicalDocSummaryKey(locale, "Titration", "Titulation"),
           value: `${p.data.previousRate} → ${p.data.newRate}`,
         },
         {
-          key: locale === "en" ? "Reason" : "Motif",
+          key: clinicalDocSummaryKey(locale, "Reason", "Motif"),
           value: pickLocalizedEnumLabel(
             TITRATION_REASON_EN,
             TITRATION_REASON_FR,
@@ -484,7 +479,7 @@ export function summarizeHighAlertInfusionDocumentationPayload(
           ),
         },
         {
-          key: locale === "en" ? "Second checker required" : "Second contrôle requis",
+          key: clinicalDocSummaryKey(locale, "Second checker required", "Second contrôle requis"),
           value: clinicalDocYesNo(p.data.secondCheckerRequired, locale),
         },
       ];
@@ -494,15 +489,15 @@ export function summarizeHighAlertInfusionDocumentationPayload(
       if (!p.success) return [];
       return [
         {
-          key: locale === "en" ? "Assessment time" : "Heure évaluation",
+          key: clinicalDocSummaryKey(locale, "Assessment time", "Heure évaluation"),
           value: p.data.assessmentTime,
         },
         {
-          key: locale === "en" ? "Adverse effects" : "Effets indésirables",
+          key: clinicalDocSummaryKey(locale, "Adverse effects", "Effets indésirables"),
           value: clinicalDocYesNo(p.data.adverseEffectsPresent, locale),
         },
         {
-          key: locale === "en" ? "Continued infusion" : "Perfusion poursuivie",
+          key: clinicalDocSummaryKey(locale, "Continued infusion", "Perfusion poursuivie"),
           value: clinicalDocYesNo(p.data.continuedInfusion, locale),
         },
       ];
@@ -512,15 +507,15 @@ export function summarizeHighAlertInfusionDocumentationPayload(
       if (!p.success) return [];
       return [
         {
-          key: locale === "en" ? "Hold time" : "Heure pause",
+          key: clinicalDocSummaryKey(locale, "Hold time", "Heure pause"),
           value: p.data.holdTime,
         },
         {
-          key: locale === "en" ? "Reason" : "Motif",
+          key: clinicalDocSummaryKey(locale, "Reason", "Motif"),
           value: pickLocalizedEnumLabel(HOLD_REASON_EN, HOLD_REASON_FR, p.data.reason, locale),
         },
         {
-          key: locale === "en" ? "Restart planned" : "Reprise prévue",
+          key: clinicalDocSummaryKey(locale, "Restart planned", "Reprise prévue"),
           value: clinicalDocYesNo(p.data.restartPlanned, locale),
         },
       ];
@@ -530,7 +525,7 @@ export function summarizeHighAlertInfusionDocumentationPayload(
       if (!p.success) return [];
       return [
         {
-          key: locale === "en" ? "Medication type" : "Type médicament",
+          key: clinicalDocSummaryKey(locale, "Medication type", "Type médicament"),
           value: pickLocalizedEnumLabel(
             MED_TYPE_EN,
             MED_TYPE_FR,
@@ -539,19 +534,19 @@ export function summarizeHighAlertInfusionDocumentationPayload(
           ),
         },
         {
-          key: locale === "en" ? "Completion time" : "Heure fin",
+          key: clinicalDocSummaryKey(locale, "Completion time", "Heure fin"),
           value: p.data.completionTime,
         },
         {
-          key: locale === "en" ? "Final rate" : "Débit final",
+          key: clinicalDocSummaryKey(locale, "Final rate", "Débit final"),
           value: p.data.finalRate,
         },
         {
-          key: locale === "en" ? "Completion status" : "Statut fin",
+          key: clinicalDocSummaryKey(locale, "Completion status", "Statut fin"),
           value: clinicalDocYesNo(p.data.completedAsOrdered, locale),
         },
         {
-          key: locale === "en" ? "Adverse event" : "Événement indésirable",
+          key: clinicalDocSummaryKey(locale, "Adverse event", "Événement indésirable"),
           value: clinicalDocYesNo(p.data.adverseEventOccurred, locale),
         },
       ];

@@ -3,6 +3,7 @@
  */
 
 import type { SupportedLanguage } from "@/i18n/config";
+import { pickLegacyBilingualStoredPair } from "@medora/shared";
 import type {
   UnifiedTimelineChip,
   UnifiedTimelineDisplayGroup,
@@ -36,10 +37,16 @@ export function summarizeUnifiedTimelineItem(
   const groupLabel = unifiedTimelineGroupLabel(item.displayGroup, t);
   const chipLabels = item.chips.map((c) => unifiedTimelineChipLabel(c, t));
 
-  const localizedTitle =
-    language === "en" ? item.titleEn?.trim() : item.titleFr?.trim();
-  const localizedSummary =
-    language === "en" ? item.summaryEn?.trim() : item.summaryFr?.trim();
+  const titlePick = pickLegacyBilingualStoredPair(language, {
+    en: item.titleEn?.trim() ?? "",
+    fr: item.titleFr?.trim() ?? "",
+  });
+  const summaryPick = pickLegacyBilingualStoredPair(language, {
+    en: item.summaryEn?.trim() ?? "",
+    fr: item.summaryFr?.trim() ?? "",
+  });
+  const localizedTitle = titlePick.value.trim() || undefined;
+  const localizedSummary = summaryPick.value.trim() || undefined;
 
   if (item.sourceKind === "ENCOUNTER_CLINICAL_EVENT" && item.payloadJson != null) {
     const clinical = summarizeClinicalTimelineRow(

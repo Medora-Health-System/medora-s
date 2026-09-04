@@ -3,6 +3,7 @@
  */
 
 import type { ProductUiLanguage } from "@/i18n/config";
+import { parseProductUiLanguage } from "@/i18n/config";
 
 export class ProviderDischargeLocaleTextError extends Error {
   constructor(message: string) {
@@ -14,11 +15,12 @@ export class ProviderDischargeLocaleTextError extends Error {
 export function resolveStrictProviderDischargeLocaleText(
   ruleId: string,
   text: Partial<Record<ProductUiLanguage, string>>,
-  locale: ProductUiLanguage
+  locale: string
 ): string {
-  const localized = text[locale]?.trim();
+  const parsed = parseProductUiLanguage(locale);
+  const localized = parsed ? text[parsed]?.trim() : undefined;
   if (!localized) {
-    throw new ProviderDischargeLocaleTextError(`[${ruleId}] missing text.${locale}`);
+    throw new ProviderDischargeLocaleTextError(`[${ruleId}] missing text.${parsed ?? locale}`);
   }
   return localized;
 }
@@ -26,8 +28,10 @@ export function resolveStrictProviderDischargeLocaleText(
 /** Runtime resolver — skips rule when locale text missing (never injects English into FR). */
 export function resolveProviderDischargeLocaleTextOrNull(
   text: Partial<Record<ProductUiLanguage, string>>,
-  locale: ProductUiLanguage
+  locale: string
 ): string | null {
-  const localized = text[locale]?.trim();
+  const parsed = parseProductUiLanguage(locale);
+  if (!parsed) return null;
+  const localized = text[parsed]?.trim();
   return localized || null;
 }

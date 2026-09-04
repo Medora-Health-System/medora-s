@@ -5,10 +5,7 @@
 
 import { z } from "zod";
 import type { OrderCreateDto, OrderItemCreateDto } from "./schemas/patient.js";
-import {
-  resolvePublicProductUiLanguageOrDefault,
-  type PubliclySelectableProductUiLanguage,
-} from "./i18n/productUiLocale.js";
+import { adaptProductUiToBilingualStorageLocale } from "./i18n/productUiLocale.js";
 
 export const OBSERVATION_ORDER_TEMPLATE_ID = "medora_observation_order_set_v1" as const;
 
@@ -27,7 +24,7 @@ export const OBSERVATION_ORDER_TEMPLATE_GROUP_IDS = [
 
 export type ObservationOrderTemplateGroupId = (typeof OBSERVATION_ORDER_TEMPLATE_GROUP_IDS)[number];
 
-export type ObservationOrderTemplateLabelLocale = PubliclySelectableProductUiLanguage;
+export type ObservationOrderTemplateLabelLocale = "en" | "fr";
 
 export type ObservationOrderTemplateItemDef = {
   id: string;
@@ -257,11 +254,14 @@ function observationTemplateManualLabelForLocale(
 /** Display / persistence label for one template line (UI locale or API header). */
 export function observationOrderTemplateItemManualLabel(
   id: string,
-  locale: ObservationOrderTemplateLabelLocale
+  locale: string
 ): string {
   const def = OBSERVATION_ORDER_TEMPLATE_ITEMS.find((i) => i.id === id);
   if (!def) return id;
-  return observationTemplateManualLabelForLocale(def, locale);
+  const adapted = adaptProductUiToBilingualStorageLocale(locale);
+  const storage: ObservationOrderTemplateLabelLocale =
+    adapted.kind === "localized" ? adapted.locale : "en";
+  return observationTemplateManualLabelForLocale(def, storage);
 }
 
 export function buildObservationTemplateCareOrderDto(input: {
@@ -270,7 +270,7 @@ export function buildObservationTemplateCareOrderDto(input: {
   prescriberLicense?: string | null;
   prescriberContact?: string | null;
   /** Product UI locale. Unsupported/omitted values resolve to English at this boundary. */
-  labelLocale?: ObservationOrderTemplateLabelLocale;
+  labelLocale?: string;
   /** When applying one order per template line, links rows from the same apply action. */
   observationTemplateGroupId?: string | null;
 }): OrderCreateDto {
@@ -278,8 +278,9 @@ export function buildObservationTemplateCareOrderDto(input: {
   if (unique.length === 0) {
     throw new Error("observation_template_no_valid_items");
   }
+  const adapted = adaptProductUiToBilingualStorageLocale(input.labelLocale);
   const locale: ObservationOrderTemplateLabelLocale =
-    resolvePublicProductUiLanguageOrDefault(input.labelLocale);
+    adapted.kind === "localized" ? adapted.locale : "en";
   const items: OrderItemCreateDto[] = unique.map((id) => {
     const def = OBSERVATION_ORDER_TEMPLATE_ITEMS.find((i) => i.id === id)!;
     return {

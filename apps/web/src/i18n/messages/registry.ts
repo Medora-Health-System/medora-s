@@ -1,4 +1,4 @@
-import type { ProductUiLanguage } from "@/i18n/config";
+import { resolveProductUiLanguageOrDefault, type ProductUiLanguage } from "@/i18n/config";
 import enMessages from "@/i18n/messages/en";
 import esMessages from "@/i18n/messages/es";
 import frMessages from "@/i18n/messages/fr";
@@ -13,8 +13,8 @@ export const clinicalUiMessages: Record<ProductUiLanguage, unknown> = {
   es: esMessages,
 };
 
-export function getClinicalUiMessages(language: ProductUiLanguage): unknown {
-  return clinicalUiMessages[language];
+export function getClinicalUiMessages(language: string): unknown {
+  return clinicalUiMessages[resolveProductUiLanguageOrDefault(language)];
 }
 
 export function getMessageByPath(obj: unknown, path: string): unknown {
@@ -31,7 +31,7 @@ export function getMessageByPath(obj: unknown, path: string): unknown {
  * Active-locale-only message resolution.
  * Missing keys return the key path. Never read another language catalog.
  */
-export function resolveClinicalUiMessage(language: ProductUiLanguage, key: string): string {
+export function resolveClinicalUiMessage(language: string, key: string): string {
   const v = getMessageByPath(getClinicalUiMessages(language), key);
   return typeof v === "string" ? v : key;
 }

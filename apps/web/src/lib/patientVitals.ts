@@ -1,4 +1,3 @@
-import type { SupportedLanguage } from "@/i18n/config";
 import {
   celsiusToFahrenheit,
   cmToFeetInches,
@@ -7,6 +6,7 @@ import {
   readCanonicalVitalsMeasurements,
   resolveLatestMeaningfulVitalsReading,
 } from "@medora/shared";
+import { pickProductUiCopy } from "@/i18n/config";
 
 export { hasMeaningfulVitalMeasurement, resolveLatestMeaningfulVitalsReading };
 
@@ -105,26 +105,32 @@ function numOrNull(v: unknown): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
-/** Dual °F / °C from stored canonical °C (product: EN US-first, FR metric-first). */
-export function formatTemperatureDualLine(tempC: number, language: SupportedLanguage): string {
+/** Dual °F / °C from stored canonical °C. EN US-first; FR and ES independently metric-first. */
+export function formatTemperatureDualLine(tempC: number, language: string): string {
   const f = celsiusToFahrenheit(tempC);
   const fStr = `${f.toFixed(1)}°F`;
   const cStr = `${tempC.toFixed(1)}°C`;
-  return language === "en" ? `${fStr} / ${cStr}` : `${cStr} / ${fStr}`;
+  const usFirst = `${fStr} / ${cStr}`;
+  const metricFirst = `${cStr} / ${fStr}`;
+  return pickProductUiCopy(language, { en: usFirst, fr: metricFirst, es: metricFirst }, metricFirst);
 }
 
-export function formatWeightDualLine(weightKg: number, language: SupportedLanguage): string {
+export function formatWeightDualLine(weightKg: number, language: string): string {
   const lb = kgToPounds(weightKg);
   const lbStr = `${lb.toFixed(1)} lb`;
   const kgStr = `${weightKg.toFixed(1)} kg`;
-  return language === "en" ? `${lbStr} / ${kgStr}` : `${kgStr} / ${lbStr}`;
+  const usFirst = `${lbStr} / ${kgStr}`;
+  const metricFirst = `${kgStr} / ${lbStr}`;
+  return pickProductUiCopy(language, { en: usFirst, fr: metricFirst, es: metricFirst }, metricFirst);
 }
 
-export function formatHeightDualLine(heightCm: number, language: SupportedLanguage): string {
+export function formatHeightDualLine(heightCm: number, language: string): string {
   const { feet, inches } = cmToFeetInches(heightCm);
   const ftStr = `${feet} ft ${inches} in`;
   const cmStr = `${Math.round(heightCm)} cm`;
-  return language === "en" ? `${ftStr} / ${cmStr}` : `${cmStr} / ${ftStr}`;
+  const usFirst = `${ftStr} / ${cmStr}`;
+  const metricFirst = `${cmStr} / ${ftStr}`;
+  return pickProductUiCopy(language, { en: usFirst, fr: metricFirst, es: metricFirst }, metricFirst);
 }
 
 /**
@@ -132,35 +138,64 @@ export function formatHeightDualLine(heightCm: number, language: SupportedLangua
  */
 export function formatVitalsHeaderLineForLocale(
   vitals: Record<string, number | string | null | undefined>,
-  language: SupportedLanguage
+  language: string
 ): string {
   const c = readCanonicalVitalsMeasurements(vitals);
   const painScore = c.painScore;
-  if (language === "en") {
-    const parts: string[] = [];
-    if (c.bpSys != null && c.bpDia != null) {
-      parts.push(`BP ${c.bpSys}/${c.bpDia} mmHg`);
+  const labels = pickProductUiCopy(
+    language,
+    {
+      en: {
+        bp: (sys: number, dia: number) => `BP ${sys}/${dia} mmHg`,
+        hr: (n: number) => `HR ${n}/min`,
+        temp: (line: string) => `Temp ${line}`,
+        spo2: (n: number) => `SpO2 ${n}%`,
+        rr: (n: number) => `RR ${n}/min`,
+        wt: (line: string) => `Wt ${line}`,
+        ht: (line: string) => `Ht ${line}`,
+        pain: (n: number | string) => `Pain ${n}/10`,
+      },
+      fr: {
+        bp: (sys: number, dia: number) => `TA : ${sys}/${dia} mmHg`,
+        hr: (n: number) => `FC : ${n}/min`,
+        temp: (line: string) => `Température : ${line}`,
+        spo2: (n: number) => `SpO₂ : ${n} %`,
+        rr: (n: number) => `FR : ${n}/min`,
+        wt: (line: string) => `Poids : ${line}`,
+        ht: (line: string) => `Taille : ${line}`,
+        pain: (n: number | string) => `Douleur : ${n}/10`,
+      },
+      es: {
+        bp: (sys: number, dia: number) => `PA ${sys}/${dia} mmHg`,
+        hr: (n: number) => `FC ${n}/min`,
+        temp: (line: string) => `Temp. ${line}`,
+        spo2: (n: number) => `SpO2 ${n}%`,
+        rr: (n: number) => `FR ${n}/min`,
+        wt: (line: string) => `Peso ${line}`,
+        ht: (line: string) => `Talla ${line}`,
+        pain: (n: number | string) => `Dolor ${n}/10`,
+      },
+    },
+    {
+      bp: (sys: number, dia: number) => `PA ${sys}/${dia} mmHg`,
+      hr: (n: number) => `FC ${n}/min`,
+      temp: (line: string) => `Temp. ${line}`,
+      spo2: (n: number) => `SpO2 ${n}%`,
+      rr: (n: number) => `FR ${n}/min`,
+      wt: (line: string) => `Peso ${line}`,
+      ht: (line: string) => `Talla ${line}`,
+      pain: (n: number | string) => `Dolor ${n}/10`,
     }
-    if (c.hr != null) parts.push(`HR ${c.hr}/min`);
-    if (c.tempC != null) parts.push(`Temp ${formatTemperatureDualLine(c.tempC, language)}`);
-    if (c.spo2 != null) parts.push(`SpO2 ${c.spo2}%`);
-    if (c.rr != null) parts.push(`RR ${c.rr}/min`);
-    if (c.weightKg != null) parts.push(`Wt ${formatWeightDualLine(c.weightKg, language)}`);
-    if (c.heightCm != null) parts.push(`Ht ${formatHeightDualLine(c.heightCm, language)}`);
-    if (painScore != null) parts.push(`Pain ${painScore}/10`);
-    return parts.length ? parts.join(" · ") : "";
-  }
+  );
   const parts: string[] = [];
-  if (c.bpSys != null && c.bpDia != null) {
-    parts.push(`TA : ${c.bpSys}/${c.bpDia} mmHg`);
-  }
-  if (c.hr != null) parts.push(`FC : ${c.hr}/min`);
-  if (c.tempC != null) parts.push(`Température : ${formatTemperatureDualLine(c.tempC, language)}`);
-  if (c.spo2 != null) parts.push(`SpO₂ : ${c.spo2} %`);
-  if (c.rr != null) parts.push(`FR : ${c.rr}/min`);
-  if (c.weightKg != null) parts.push(`Poids : ${formatWeightDualLine(c.weightKg, language)}`);
-  if (c.heightCm != null) parts.push(`Taille : ${formatHeightDualLine(c.heightCm, language)}`);
-  if (painScore != null) parts.push(`Douleur : ${painScore}/10`);
+  if (c.bpSys != null && c.bpDia != null) parts.push(labels.bp(c.bpSys, c.bpDia));
+  if (c.hr != null) parts.push(labels.hr(c.hr));
+  if (c.tempC != null) parts.push(labels.temp(formatTemperatureDualLine(c.tempC, language)));
+  if (c.spo2 != null) parts.push(labels.spo2(c.spo2));
+  if (c.rr != null) parts.push(labels.rr(c.rr));
+  if (c.weightKg != null) parts.push(labels.wt(formatWeightDualLine(c.weightKg, language)));
+  if (c.heightCm != null) parts.push(labels.ht(formatHeightDualLine(c.heightCm, language)));
+  if (painScore != null) parts.push(labels.pain(painScore));
   return parts.length ? parts.join(" · ") : "";
 }
 
@@ -193,7 +228,7 @@ export function formatVitalsHeaderLine(vitals: Record<string, number | string | 
  */
 export function formatEncounterVitalsHistoryCompactLine(
   vitals: Record<string, unknown>,
-  language: SupportedLanguage
+  language: string
 ): string {
   return formatVitalsHeaderLineForLocale(
     vitals as Record<string, number | string | null | undefined>,

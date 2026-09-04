@@ -13,6 +13,7 @@ import {
   selectClinicalDocumentationCardTitle,
   selectClinicalDocumentationPayloadSummary,
   resolveInternalProductUiLanguageOrDefault,
+  pickLegacyBilingualStoredPair,
   type ClinicalDocumentationSummaryLocale,
   type ProductUiLanguage,
 } from "@medora/shared";
@@ -117,9 +118,11 @@ function bilingualSummaryLocale(locale: ProductUiLanguage): ClinicalDocumentatio
 }
 
 function pickBilingualSource(locale: ProductUiLanguage, en?: string | null, fr?: string | null): string {
-  if (locale === "fr") return (fr ?? en ?? "—").trim() || "—";
-  if (locale === "en") return (en ?? fr ?? "—").trim() || "—";
-  return (en ?? fr ?? "—").trim() || "—";
+  const picked = pickLegacyBilingualStoredPair(locale, {
+    en: (en ?? "").trim(),
+    fr: (fr ?? "").trim(),
+  });
+  return picked.value.trim() || "—";
 }
 
 function formatHumanScalar(value: unknown): string {

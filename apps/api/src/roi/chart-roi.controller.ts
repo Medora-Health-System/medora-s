@@ -138,7 +138,8 @@ export class ChartRoiController {
     @Param("id") id: string,
     @Query("format") formatRaw: string | undefined,
     @Req() req: any,
-    @Res({ passthrough: true }) res: Response
+    @Res({ passthrough: true }) res: Response,
+    @Query("locale") localeRaw?: string
   ) {
     const facilityId = req.user?.facilityId || req.headers["x-facility-id"];
     if (!facilityId) throw new BadRequestException("Facility ID required");
@@ -153,7 +154,8 @@ export class ChartRoiController {
       format,
       req.user?.userId,
       req.ip,
-      req.headers["user-agent"]
+      req.headers["user-agent"],
+      localeRaw
     );
     if (format === "html") {
       res.setHeader("Content-Type", "text/html; charset=utf-8");

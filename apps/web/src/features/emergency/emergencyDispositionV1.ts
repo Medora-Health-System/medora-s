@@ -195,7 +195,7 @@ export function inferOutcomeUiFromForms(
 export function localizedErDischargeModeLabel(
   dischargeMode: string,
   supplement: ErDispositionSupplementForm,
-  locale: SupportedLanguage,
+  locale: string,
   hints?: InferOutcomeUiHints
 ): string {
   const trimmed = dischargeMode.trim();

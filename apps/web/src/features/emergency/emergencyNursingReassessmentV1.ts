@@ -3,7 +3,7 @@
  * Persists via existing PATCH /encounters/:id (merge with other nursingAssessment keys). No backend migration.
  */
 
-import { productUiBcp47Tag, type SupportedLanguage } from "@/i18n/config";
+import { productUiBcp47Tag } from "@/i18n/config";
 import { i18nMessage } from "@/lib/i18nMessagesLookup";
 import { formatVitalsHeaderLineForLocale } from "@/lib/patientVitals";
 
@@ -899,11 +899,11 @@ function interpolatePreviewModel(template: string, vars: Record<string, string |
   return s;
 }
 
-function previewModelString(locale: SupportedLanguage, key: string): string {
+function previewModelString(locale: string, key: string): string {
   return i18nMessage(locale, `emergencyNursingReassessment.previewModel.${key}`);
 }
 
-function abcOptionLabel(locale: SupportedLanguage, v: ErAbcOption): string {
+function abcOptionLabel(locale: string, v: ErAbcOption): string {
   if (v === "wnl") return i18nMessage(locale, "emergencyNursingReassessment.abcOptionWnl");
   if (v === "yes") return i18nMessage(locale, "emergencyNursingReassessment.abcOptionYes");
   if (v === "no") return i18nMessage(locale, "emergencyNursingReassessment.abcOptionNo");
@@ -929,102 +929,102 @@ function abcOptionLabel(locale: SupportedLanguage, v: ErAbcOption): string {
 }
 
 /** Phase-2 select labels (i18n-driven). Values are stable English codes. */
-export function nursingMentalStatusLabel(locale: SupportedLanguage, v: ErMentalStatus): string {
+export function nursingMentalStatusLabel(locale: string, v: ErMentalStatus): string {
   if (!v) return "";
   return i18nMessage(locale, `emergencyNursingReassessment.mentalStatusOptions.${v}`);
 }
 
-export function nursingOrientationLabel(locale: SupportedLanguage, v: ErOrientation): string {
+export function nursingOrientationLabel(locale: string, v: ErOrientation): string {
   if (!v) return "";
   return i18nMessage(locale, `emergencyNursingReassessment.orientationOptions.${v}`);
 }
 
-export function nursingSpeechLabel(locale: SupportedLanguage, v: ErSpeech): string {
+export function nursingSpeechLabel(locale: string, v: ErSpeech): string {
   if (!v) return "";
   return i18nMessage(locale, `emergencyNursingReassessment.speechOptions.${v}`);
 }
 
 export function nursingRespiratoryPatternLabel(
-  locale: SupportedLanguage,
+  locale: string,
   v: ErRespiratoryPattern
 ): string {
   if (!v) return "";
   return i18nMessage(locale, `emergencyNursingReassessment.respiratoryPatternOptions.${v}`);
 }
 
-export function nursingCardiacRhythmLabel(locale: SupportedLanguage, v: ErCardiacRhythm): string {
+export function nursingCardiacRhythmLabel(locale: string, v: ErCardiacRhythm): string {
   if (!v) return "";
   return i18nMessage(locale, `emergencyNursingReassessment.cardiacRhythmOptions.${v}`);
 }
 
-export function nursingFallRiskLabel(locale: SupportedLanguage, v: ErFallRisk): string {
+export function nursingFallRiskLabel(locale: string, v: ErFallRisk): string {
   if (!v) return "";
   return i18nMessage(locale, `emergencyNursingReassessment.fallRiskOptions.${v}`);
 }
 
 export function nursingGeneralAppearanceLabel(
-  locale: SupportedLanguage,
+  locale: string,
   v: ErGeneralAppearanceCode
 ): string {
   if (!v) return "";
   return i18nMessage(locale, `emergencyNursingReassessment.generalAppearanceOptions.${v}`);
 }
 
-export function nursingSkinConditionLabel(locale: SupportedLanguage, v: ErSkinCondition): string {
+export function nursingSkinConditionLabel(locale: string, v: ErSkinCondition): string {
   if (!v) return "";
   return i18nMessage(locale, `emergencyNursingReassessment.skinConditionOptions.${v}`);
 }
 
-export function nursingAmbulationLabel(locale: SupportedLanguage, v: ErAmbulation): string {
+export function nursingAmbulationLabel(locale: string, v: ErAmbulation): string {
   if (!v) return "";
   return i18nMessage(locale, `emergencyNursingReassessment.ambulationOptions.${v}`);
 }
 
-export function nursingSafetyRiskLabel(locale: SupportedLanguage, v: ErSafetyRisk): string {
+export function nursingSafetyRiskLabel(locale: string, v: ErSafetyRisk): string {
   if (!v) return "";
   return i18nMessage(locale, `emergencyNursingReassessment.safetyRiskOptions.${v}`);
 }
 
-export function nursingDistressLevelLabel(locale: SupportedLanguage, v: ErDistressLevel): string {
+export function nursingDistressLevelLabel(locale: string, v: ErDistressLevel): string {
   if (!v) return "";
   return i18nMessage(locale, `emergencyNursingReassessment.distressLevelOptions.${v}`);
 }
 
 /** Phase-3 label resolvers for the mockup-aligned dropdowns (i18n-driven). */
-export function nursingAirwayTypeLabel(locale: SupportedLanguage, v: ErAirwayType): string {
+export function nursingAirwayTypeLabel(locale: string, v: ErAirwayType): string {
   if (!v) return "";
   return i18nMessage(locale, `emergencyNursingReassessment.airwayTypeOptions.${v}`);
 }
 
-export function nursingRespEffortLabel(locale: SupportedLanguage, v: ErRespEffort): string {
+export function nursingRespEffortLabel(locale: string, v: ErRespEffort): string {
   if (!v) return "";
   return i18nMessage(locale, `emergencyNursingReassessment.respEffortOptions.${v}`);
 }
 
-export function nursingRespDepthLabel(locale: SupportedLanguage, v: ErRespDepth): string {
+export function nursingRespDepthLabel(locale: string, v: ErRespDepth): string {
   if (!v) return "";
   return i18nMessage(locale, `emergencyNursingReassessment.respDepthOptions.${v}`);
 }
 
 export function nursingRespChestMovementLabel(
-  locale: SupportedLanguage,
+  locale: string,
   v: ErRespChestMovement
 ): string {
   if (!v) return "";
   return i18nMessage(locale, `emergencyNursingReassessment.respChestMovementOptions.${v}`);
 }
 
-export function nursingCardiacEctopyLabel(locale: SupportedLanguage, v: ErCardiacEctopy): string {
+export function nursingCardiacEctopyLabel(locale: string, v: ErCardiacEctopy): string {
   if (!v) return "";
   return i18nMessage(locale, `emergencyNursingReassessment.cardiacEctopyOptions.${v}`);
 }
 
-export function nursingIvAccessLabel(locale: SupportedLanguage, v: ErIvAccess): string {
+export function nursingIvAccessLabel(locale: string, v: ErIvAccess): string {
   if (!v) return "";
   return i18nMessage(locale, `emergencyNursingReassessment.ivAccessOptions.${v}`);
 }
 
-function trendLineLabel(locale: SupportedLanguage, v: ErTrend): string {
+function trendLineLabel(locale: string, v: ErTrend): string {
   if (v === "improved" || v === "improving") return i18nMessage(locale, "emergencyNursingReassessment.trendImproving");
   if (v === "unchanged") return i18nMessage(locale, "emergencyNursingReassessment.trendUnchanged");
   if (v === "worse" || v === "worsening") return i18nMessage(locale, "emergencyNursingReassessment.trendWorsening");
@@ -1035,7 +1035,7 @@ function trendLineLabel(locale: SupportedLanguage, v: ErTrend): string {
   return "";
 }
 
-function trendNarrativeFragment(locale: SupportedLanguage, v: ErTrend): string {
+function trendNarrativeFragment(locale: string, v: ErTrend): string {
   if (v === "improved" || v === "improving") return previewModelString(locale, "narrativeTrendImproved");
   if (v === "unchanged") return previewModelString(locale, "narrativeTrendUnchanged");
   if (v === "worse" || v === "worsening") return previewModelString(locale, "narrativeTrendWorse");
@@ -1055,7 +1055,7 @@ export type ErNursingPreviewModel = {
 
 export function buildErNursingReassessmentPreviewModel(
   form: ErNursingReassessmentForm,
-  locale: SupportedLanguage
+  locale: string
 ): ErNursingPreviewModel {
   const dateTag = productUiBcp47Tag(locale);
   const sections: ErNursingPreviewSection[] = [];
@@ -1325,7 +1325,7 @@ function findFirstIndex(haystack: string, needles: readonly string[]): { idx: nu
  */
 export function buildStructuredNarrativeFragmentLines(
   form: ErNursingReassessmentForm,
-  locale: SupportedLanguage
+  locale: string
 ): string[] {
   const lines: string[] = [];
   const push = (templateKey: string, value: string) => {
@@ -1517,7 +1517,7 @@ export function legacyReassessmentColumnFromEncounter(
 /** Vitals one-liner from triage GET vitalsJson (same as triage strip). */
 export function vitalsLineFromTriageVitalsJson(
   vitalsJson: unknown,
-  language: SupportedLanguage
+  language: string
 ): string {
   if (vitalsJson == null || typeof vitalsJson !== "object" || Array.isArray(vitalsJson)) return "";
   return formatVitalsHeaderLineForLocale(

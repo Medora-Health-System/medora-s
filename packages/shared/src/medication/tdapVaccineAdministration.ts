@@ -171,7 +171,7 @@ export function isIntramuscularTdapRoute(route: string): boolean {
   return n === "im" || n.includes("intramuscular") || n.includes("intramusculaire");
 }
 
-function formatExpirationForNote(isoDate: string, locale: "en" | "fr"): string {
+function formatExpirationForNote(isoDate: string, locale: string): string {
   const trimmed = isoDate.trim();
   if (!trimmed) return "";
   try {
@@ -186,7 +186,7 @@ function formatExpirationForNote(isoDate: string, locale: "en" | "fr"): string {
   }
 }
 
-function formatAdminTimeForNote(iso: string, locale: "en" | "fr"): string {
+function formatAdminTimeForNote(iso: string, locale: string): string {
   const trimmed = iso.trim();
   if (!trimmed) return "";
   try {
@@ -200,13 +200,13 @@ function formatAdminTimeForNote(iso: string, locale: "en" | "fr"): string {
   }
 }
 
-function manufacturerDisplay(form: TdapVaccineAdministrationForm, locale: "en" | "fr"): string {
+function manufacturerDisplay(form: TdapVaccineAdministrationForm, locale: string): string {
   if (!form.manufacturerId) return "";
   if (form.manufacturerId === "other") return form.manufacturerOther.trim();
   return vaccineManufacturerLabel(form.manufacturerId, locale);
 }
 
-function injectionSiteDisplay(site: ImInjectionSiteId, locale: "en" | "fr"): string {
+function injectionSiteDisplay(site: ImInjectionSiteId, locale: string): string {
   return locale === "fr" ? imInjectionSiteLabelsFr[site] : imInjectionSiteLabelsEn[site];
 }
 
@@ -237,7 +237,7 @@ const VIS_RECIPIENT_FR: Record<Exclude<VaccineVisRecipient, "none">, string> = {
 /** Build live MAR / progress-note narrative — omits blank optional segments. */
 export function buildTdapVaccineAdministrationNote(
   form: TdapVaccineAdministrationForm,
-  locale: "en" | "fr"
+  locale: string
 ): string {
   const parts: string[] = [];
 

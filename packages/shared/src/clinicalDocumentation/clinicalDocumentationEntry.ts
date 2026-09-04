@@ -105,7 +105,11 @@ import {
   resolveClinicalDocumentationWitnessStatus,
   type ClinicalDocumentationWitnessStatus,
 } from "./clinicalDocumentationWitnessGovernance.js";
+import { pickProductUiCopy, UNLOCALIZED_CATALOG_SOURCE, parseProductUiLanguage } from "../i18n/productUiLocale.js";
+import { CLINICAL_DOCUMENTATION_CARD_DISPLAY_ES } from "./clinicalDocumentationCardDisplayEs.js";
 import {
+  clinicalDocSummaryKey,
+  clinicalDocYesNo,
   type ClinicalDocumentationPayloadSummaryLine,
   type ClinicalDocumentationSummaryEntry,
   type ClinicalDocumentationSummaryLocale,
@@ -461,21 +465,19 @@ export function buildClinicalDocumentationFallbackSummaryLines(
   locale: ClinicalDocumentationSummaryLocale
 ): ClinicalDocumentationPayloadSummaryLine[] {
   const titles = resolveClinicalDocumentationEntryTitles(cardId);
-  const title = locale === "en" ? titles.cardTitleEn : titles.cardTitleFr;
+  const esTitle = CLINICAL_DOCUMENTATION_CARD_DISPLAY_ES[cardId]?.title;
+  const title = pickProductUiCopy(
+    locale,
+    { en: titles.cardTitleEn, fr: titles.cardTitleFr, es: esTitle },
+    esTitle ?? UNLOCALIZED_CATALOG_SOURCE
+  );
   const keyCount = Object.keys(payload).filter(
     (key) => payload[key] !== undefined && payload[key] !== null && payload[key] !== ""
   ).length;
-  if (locale === "en") {
-    return [
-      { key: "Documentation type", value: title },
-      { key: "Structured payload saved", value: "Yes" },
-      { key: "Payload fields", value: String(keyCount) },
-    ];
-  }
   return [
-    { key: "Type de documentation", value: title },
-    { key: "Données structurées enregistrées", value: "Oui" },
-    { key: "Champs du formulaire", value: String(keyCount) },
+    { key: clinicalDocSummaryKey(locale, "Documentation type", "Type de documentation"), value: title },
+    { key: clinicalDocSummaryKey(locale, "Structured payload saved", "Données structurées enregistrées"), value: clinicalDocYesNo(true, locale) },
+    { key: clinicalDocSummaryKey(locale, "Payload fields", "Champs du formulaire"), value: String(keyCount) },
   ];
 }
 
@@ -513,7 +515,8 @@ export function selectClinicalDocumentationPayloadSummary(
   entry: ClinicalDocumentationSummaryEntry,
   locale: ClinicalDocumentationSummaryLocale
 ): ClinicalDocumentationPayloadSummaryLine[] {
-  if (locale === "en") {
+  const parsed = parseProductUiLanguage(locale);
+  if (parsed === "en") {
     if (entry.payloadSummaryEn && entry.payloadSummaryEn.length > 0) {
       return entry.payloadSummaryEn;
     }
@@ -526,17 +529,28 @@ export function selectClinicalDocumentationPayloadSummary(
     }
     return [];
   }
-  if (entry.payloadSummaryFr && entry.payloadSummaryFr.length > 0) {
-    return entry.payloadSummaryFr;
+  if (parsed === "fr") {
+    if (entry.payloadSummaryFr && entry.payloadSummaryFr.length > 0) {
+      return entry.payloadSummaryFr;
+    }
+    if (entry.cardId) {
+      return ensureClinicalDocumentationLegalDisplaySummary(
+        entry.cardId,
+        entry.payloadJson ?? {},
+        "fr"
+      );
+    }
+    return [];
   }
+  // ES (and unsupported locales): regenerate in the active locale. Never paint stored EN/FR as Spanish.
   if (entry.cardId) {
     return ensureClinicalDocumentationLegalDisplaySummary(
       entry.cardId,
       entry.payloadJson ?? {},
-      "fr"
+      locale
     );
   }
-  return entry.payloadSummary ?? entry.payloadSummaryEn ?? [];
+  return [];
 }
 
 export function mapClinicalDocumentationEntryResponse(input: {

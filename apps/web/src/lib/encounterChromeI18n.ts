@@ -1,9 +1,9 @@
-import { productUiBcp47Tag, type SupportedLanguage } from "@/i18n/config";
+import { pickProductUiCopy, productUiBcp47Tag } from "@/i18n/config";
 import { isOrderItemDoneForChart } from "@/constants/orderStatusLabels";
 import { calculateAge } from "@/lib/patientDisplay";
 import { formatVitalsHeaderLineForLocale } from "@/lib/patientVitals";
 
-export function encounterBcp47(language: SupportedLanguage): string {
+export function encounterBcp47(language: string): string {
   return productUiBcp47Tag(language);
 }
 
@@ -99,18 +99,18 @@ export function tMedicationFulfillmentIntent(
   return t("encounterChrome.medicationIntent.DISPENSE_PHARMACY");
 }
 
-export function formatEncounterChromeDateTime(iso: string, language: SupportedLanguage): string {
+export function formatEncounterChromeDateTime(iso: string, language: string): string {
   return new Date(iso).toLocaleString(encounterBcp47(language), {
     dateStyle: "short",
     timeStyle: "short",
   });
 }
 
-export function formatEncounterChromeDateTimeFromDate(d: Date, language: SupportedLanguage): string {
+export function formatEncounterChromeDateTimeFromDate(d: Date, language: string): string {
   return d.toLocaleString(encounterBcp47(language), { dateStyle: "short", timeStyle: "short" });
 }
 
-export function formatEncounterChromeDate(iso: string, language: SupportedLanguage): string {
+export function formatEncounterChromeDate(iso: string, language: string): string {
   return new Date(iso).toLocaleDateString(encounterBcp47(language), {
     day: "2-digit",
     month: "short",
@@ -121,12 +121,20 @@ export function formatEncounterChromeDate(iso: string, language: SupportedLangua
 export function formatLatestVitalsLine(
   vitals: Record<string, number | string | null | undefined>,
   esi: number | null | undefined,
-  language: SupportedLanguage,
+  language: string,
   t: (key: string) => string
 ): string {
   const base = formatVitalsHeaderLineForLocale(vitals, language);
   const parts: string[] = [];
   if (base) parts.push(base);
-  if (esi != null) parts.push(language === "en" ? `ESI ${esi}` : `ESI : ${esi}`);
+  if (esi != null) {
+    parts.push(
+      pickProductUiCopy(
+        language,
+        { en: `ESI ${esi}`, fr: `ESI : ${esi}`, es: `ESI ${esi}` },
+        `ESI ${esi}`
+      )
+    );
+  }
   return parts.length ? parts.join(" · ") : t("encounterChrome.noVitalsLine");
 }

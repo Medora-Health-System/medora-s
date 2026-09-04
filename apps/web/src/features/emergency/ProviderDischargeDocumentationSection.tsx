@@ -691,7 +691,7 @@ export function ProviderDischargeDocumentationSection({
   );
 
   const mergeSharedFromSelectedDiagnoses = useCallback(
-    (form: ProviderDischargeDocumentationForm, locale: "en" | "fr") => {
+    (form: ProviderDischargeDocumentationForm, locale: string) => {
       const templates = getSelectedDiagnosisDocs(form)
         .map((doc) => resolveProviderDischargeTemplateForDiagnosis({ code: doc.code, displayName: doc.displayName }))
         .filter((r) => r.matchLevel !== "generic")

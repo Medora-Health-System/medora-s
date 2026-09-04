@@ -1,3 +1,5 @@
+import { pickProductUiCopy } from "../i18n/productUiLocale.js";
+
 export const BED_OPERATIONAL_STATUSES = [
   "AVAILABLE",
   "OCCUPIED",
@@ -129,29 +131,29 @@ export const BED_OPERATIONAL_STATUS_PRECEDENCE: readonly BedOperationalStatus[] 
   "AVAILABLE",
 ];
 
-const STATUS_LABELS: Record<BedOperationalStatus, { en: string; fr: string }> = {
-  AVAILABLE: { en: "Available", fr: "Disponible" },
-  OCCUPIED: { en: "Occupied", fr: "Occupée" },
-  DIRTY: { en: "Needs cleaning", fr: "À nettoyer" },
-  CLEANING: { en: "Cleaning", fr: "Nettoyage" },
-  RESERVED: { en: "Reserved", fr: "Réservée" },
-  BLOCKED: { en: "Blocked", fr: "Bloquée" },
-  TRANSFER_PENDING: { en: "Transfer pending", fr: "Transfert en attente" },
-  DISCHARGE_PENDING: { en: "Discharge pending", fr: "Sortie en attente" },
+const STATUS_LABELS: Record<BedOperationalStatus, { en: string; fr: string; es: string }> = {
+  AVAILABLE: { en: "Available", fr: "Disponible", es: "Disponible" },
+  OCCUPIED: { en: "Occupied", fr: "Occupée", es: "Ocupada" },
+  DIRTY: { en: "Needs cleaning", fr: "À nettoyer", es: "Requiere limpieza" },
+  CLEANING: { en: "Cleaning", fr: "Nettoyage", es: "En limpieza" },
+  RESERVED: { en: "Reserved", fr: "Réservée", es: "Reservada" },
+  BLOCKED: { en: "Blocked", fr: "Bloquée", es: "Bloqueada" },
+  TRANSFER_PENDING: { en: "Transfer pending", fr: "Transfert en attente", es: "Traslado pendiente" },
+  DISCHARGE_PENDING: { en: "Discharge pending", fr: "Sortie en attente", es: "Alta pendiente" },
 };
 
 const ED_SIMPLIFIED_CHIP_LABELS: Record<
   BedOperationalStatus,
-  { en: string; fr: string }
+  { en: string; fr: string; es: string }
 > = {
-  AVAILABLE: { en: "Available", fr: "Disponible" },
-  OCCUPIED: { en: "Occupied", fr: "Occupée" },
-  DIRTY: { en: "Blocked", fr: "Bloquée" },
-  CLEANING: { en: "Blocked", fr: "Bloquée" },
-  RESERVED: { en: "Blocked", fr: "Bloquée" },
-  BLOCKED: { en: "Blocked", fr: "Bloquée" },
-  TRANSFER_PENDING: { en: "Occupied", fr: "Occupée" },
-  DISCHARGE_PENDING: { en: "Occupied", fr: "Occupée" },
+  AVAILABLE: { en: "Available", fr: "Disponible", es: "Disponible" },
+  OCCUPIED: { en: "Occupied", fr: "Occupée", es: "Ocupada" },
+  DIRTY: { en: "Blocked", fr: "Bloquée", es: "Bloqueada" },
+  CLEANING: { en: "Blocked", fr: "Bloquée", es: "Bloqueada" },
+  RESERVED: { en: "Blocked", fr: "Bloquée", es: "Bloqueada" },
+  BLOCKED: { en: "Blocked", fr: "Bloquée", es: "Bloqueada" },
+  TRANSFER_PENDING: { en: "Occupied", fr: "Occupée", es: "Ocupada" },
+  DISCHARGE_PENDING: { en: "Occupied", fr: "Occupée", es: "Ocupada" },
 };
 
 const STATUS_VISUAL: Record<
@@ -207,16 +209,18 @@ export function requiresBedAssignmentOverride(status: BedOperationalStatus): boo
 
 export function formatBedOperationalStatusLabel(
   status: BedOperationalStatus,
-  locale: "en" | "fr"
+  locale: string
 ): string {
-  return STATUS_LABELS[status][locale];
+  const labels = STATUS_LABELS[status];
+  return pickProductUiCopy(locale, labels, labels.es);
 }
 
 export function formatEdSimplifiedBedStatusLabel(
   status: BedOperationalStatus,
-  locale: "en" | "fr"
+  locale: string
 ): string {
-  return ED_SIMPLIFIED_CHIP_LABELS[status][locale];
+  const labels = ED_SIMPLIFIED_CHIP_LABELS[status];
+  return pickProductUiCopy(locale, labels, labels.es);
 }
 
 export function getBedOperationalStatusVisual(status: BedOperationalStatus): {

@@ -165,21 +165,21 @@ function formatBp(v: Record<string, unknown>): string {
   return `${sys}/${dia}`;
 }
 
-function formatTemp(v: Record<string, unknown>, language: "en" | "fr"): string {
+function formatTemp(v: Record<string, unknown>, language: string): string {
   const raw = v.tempC;
   const n = typeof raw === "number" ? raw : typeof raw === "string" ? Number(raw) : NaN;
   if (!Number.isFinite(n)) return "—";
   return formatTemperatureDualLine(n, language);
 }
 
-function formatWeight(v: Record<string, unknown>, language: "en" | "fr"): string {
+function formatWeight(v: Record<string, unknown>, language: string): string {
   const raw = v.weightKg;
   const n = typeof raw === "number" ? raw : typeof raw === "string" ? Number(raw) : NaN;
   if (!Number.isFinite(n)) return "—";
   return formatWeightDualLine(n, language);
 }
 
-function formatHeight(v: Record<string, unknown>, language: "en" | "fr"): string {
+function formatHeight(v: Record<string, unknown>, language: string): string {
   const raw = v.heightCm;
   const n = typeof raw === "number" ? raw : typeof raw === "string" ? Number(raw) : NaN;
   if (!Number.isFinite(n)) return "—";

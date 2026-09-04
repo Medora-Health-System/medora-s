@@ -245,7 +245,7 @@ function ObservationTemplateOrderRowView({
   onCancel,
 }: {
   row: ObservationTemplateOrderRow;
-  language: "fr" | "en";
+  language: string;
   t: (key: string) => string;
   canAct: boolean;
   lineActionBusy: string | null;

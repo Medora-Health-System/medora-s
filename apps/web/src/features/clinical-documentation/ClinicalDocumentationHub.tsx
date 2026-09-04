@@ -3,6 +3,8 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   CLINICAL_DOCUMENTATION_CATEGORY_META,
+  CLINICAL_DOCUMENTATION_CARD_DISPLAY_ES,
+  CLINICAL_DOCUMENTATION_CATEGORY_DISPLAY_ES,
   EDOC_BASIC_STRUCTURED_CARD_ID,
   EDOC5_INTAKE_OUTPUT_CARD_IDS,
   calculateIntakeOutputTotals,
@@ -126,7 +128,7 @@ import {
 } from "./ClinicalDocumentationScoreScreenCompletionForm";
 import { ClinicalDocumentationWitnessSearchModal } from "./ClinicalDocumentationWitnessSearchModal";
 import { resolveClinicalDataAccessMode } from "@/features/emergency/edClinicalDataWorkspaceGovernance";
-import { resolveProductUiLanguageOrDefault, productUiBcp47Tag } from "@/i18n/config";
+import { resolveProductUiLanguageOrDefault, pickProductUiCopy, UNLOCALIZED_CATALOG_SOURCE, productUiBcp47Tag } from "@/i18n/config";
 
 const chipBase: React.CSSProperties = {
   padding: "6px 12px",
@@ -176,16 +178,27 @@ type ImmediateWitnessDraft = {
   payload: Record<string, unknown>;
 };
 
-function cardTitle(card: ClinicalDocumentationCard, locale: "en" | "fr"): string {
-  return locale === "fr" ? card.titleFr : card.titleEn;
+function cardTitle(card: ClinicalDocumentationCard, locale: string): string {
+  const es = CLINICAL_DOCUMENTATION_CARD_DISPLAY_ES[card.id]?.title;
+  return pickProductUiCopy(locale, { en: card.titleEn, fr: card.titleFr, es }, es ?? UNLOCALIZED_CATALOG_SOURCE);
 }
 
-function cardDescription(card: ClinicalDocumentationCard, locale: "en" | "fr"): string {
-  return locale === "fr" ? card.descriptionFr : card.descriptionEn;
+function cardDescription(card: ClinicalDocumentationCard, locale: string): string {
+  const es = CLINICAL_DOCUMENTATION_CARD_DISPLAY_ES[card.id]?.description;
+  return pickProductUiCopy(
+    locale,
+    { en: card.descriptionEn, fr: card.descriptionFr, es },
+    es ?? UNLOCALIZED_CATALOG_SOURCE
+  );
 }
 
-function entryDisplayTitle(entry: ClinicalDocumentationEntryRow, locale: "en" | "fr"): string {
-  return locale === "fr" ? entry.cardTitleFr : entry.cardTitleEn;
+function entryDisplayTitle(entry: ClinicalDocumentationEntryRow, locale: string): string {
+  const es = CLINICAL_DOCUMENTATION_CARD_DISPLAY_ES[entry.cardId]?.title;
+  return pickProductUiCopy(
+    locale,
+    { en: entry.cardTitleEn, fr: entry.cardTitleFr, es },
+    es ?? UNLOCALIZED_CATALOG_SOURCE
+  );
 }
 
 export function ClinicalDocumentationHub({
@@ -743,7 +756,7 @@ export function ClinicalDocumentationHub({
                 background: active ? "#e2e8f0" : "#fff",
               }}
             >
-              {locale === "fr" ? cat.titleFr : cat.titleEn}
+              {pickProductUiCopy(locale, { en: cat.titleEn, fr: cat.titleFr, es: CLINICAL_DOCUMENTATION_CATEGORY_DISPLAY_ES[cat.id]?.title }, CLINICAL_DOCUMENTATION_CATEGORY_DISPLAY_ES[cat.id]?.title ?? UNLOCALIZED_CATALOG_SOURCE)}
             </button>
           );
         })}

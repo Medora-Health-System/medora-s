@@ -54,7 +54,7 @@ export type BedBoardStatusDetailModalProps = {
 function formatHistoryTransition(
   entry: FacilityBedStatusHistoryEntry,
   t: (key: string) => string,
-  language: "en" | "fr"
+  language: string
 ): string {
   const from = entry.oldStatus
     ? resolveBedStatusLabel(entry.oldStatus, language, t)

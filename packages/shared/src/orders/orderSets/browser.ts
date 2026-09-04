@@ -18,28 +18,29 @@ import {
   isRnStandingOrderSet,
   resolveEnterpriseOrderSetAuthority,
 } from "./authority.js";
+import { pickProductUiCopy } from "../../i18n/productUiLocale.js";
 
-export type EnterpriseOrderSetBrowserLocale = "en" | "fr";
+export type EnterpriseOrderSetBrowserLocale = string;
 
 export const ENTERPRISE_ORDER_SET_CATEGORY_LABELS: Record<
   EnterpriseOrderSetCategory,
-  { en: string; fr: string }
+  { en: string; fr: string; es: string }
 > = {
-  CARDIAC: { en: "Cardiac", fr: "Cardiaque" },
-  NEURO: { en: "Neurology", fr: "Neurologie" },
-  INFECTION: { en: "Infection / sepsis", fr: "Infection / sepsis" },
-  TRAUMA: { en: "Trauma", fr: "Traumatologie" },
-  RESPIRATORY: { en: "Respiratory", fr: "Respiratoire" },
-  GASTRO: { en: "Gastroenterology", fr: "Gastro-entérologie" },
-  METABOLIC: { en: "Metabolic", fr: "Métabolique" },
-  OB_GYN: { en: "OB / GYN", fr: "Obstétrique / gynécologie" },
-  ORTHOPEDICS: { en: "Orthopedics / MSK", fr: "Orthopédie / appareil locomoteur" },
-  WOUND: { en: "Wound / skin", fr: "Plaies / peau" },
-  ENT: { en: "ENT / eye", fr: "ORL / œil" },
-  TOXICOLOGY: { en: "Toxicology", fr: "Toxicologie" },
-  SEDATION: { en: "Sedation", fr: "Sédation" },
-  BEHAVIORAL: { en: "Behavioral health", fr: "Santé comportementale" },
-  GENERAL: { en: "General medicine", fr: "Médecine générale" },
+  CARDIAC: { en: "Cardiac", fr: "Cardiaque", es: "Cardíaco" },
+  NEURO: { en: "Neurology", fr: "Neurologie", es: "Neurología" },
+  INFECTION: { en: "Infection / sepsis", fr: "Infection / sepsis", es: "Infección / sepsis" },
+  TRAUMA: { en: "Trauma", fr: "Traumatologie", es: "Trauma" },
+  RESPIRATORY: { en: "Respiratory", fr: "Respiratoire", es: "Respiratorio" },
+  GASTRO: { en: "Gastroenterology", fr: "Gastro-entérologie", es: "Gastroenterología" },
+  METABOLIC: { en: "Metabolic", fr: "Métabolique", es: "Metabólico" },
+  OB_GYN: { en: "OB / GYN", fr: "Obstétrique / gynécologie", es: "Obstetricia / ginecología" },
+  ORTHOPEDICS: { en: "Orthopedics / MSK", fr: "Orthopédie / appareil locomoteur", es: "Ortopedia / musculoesquelético" },
+  WOUND: { en: "Wound / skin", fr: "Plaies / peau", es: "Heridas / piel" },
+  ENT: { en: "ENT / eye", fr: "ORL / œil", es: "ORL / ojo" },
+  TOXICOLOGY: { en: "Toxicology", fr: "Toxicologie", es: "Toxicología" },
+  SEDATION: { en: "Sedation", fr: "Sédation", es: "Sedación" },
+  BEHAVIORAL: { en: "Behavioral health", fr: "Santé comportementale", es: "Salud conductual" },
+  GENERAL: { en: "General medicine", fr: "Médecine générale", es: "Medicina general" },
 };
 
 export type EnterpriseOrderSetCategoryGroup = {
@@ -85,7 +86,8 @@ export function getEnterpriseOrderSetCategoryLabel(
   category: EnterpriseOrderSetCategory,
   locale: EnterpriseOrderSetBrowserLocale
 ): string {
-  return ENTERPRISE_ORDER_SET_CATEGORY_LABELS[category][locale];
+  const labels = ENTERPRISE_ORDER_SET_CATEGORY_LABELS[category];
+  return pickProductUiCopy(locale, labels, labels.es);
 }
 
 export function sortEnterpriseOrderSetsByDisplayName(

@@ -51,7 +51,7 @@ describe("MEDUI.ES.1B-CERT formulary alias display isolation", () => {
     expect(picked.kind).toBe("unsupported");
     expect(picked).toEqual({
       kind: "unsupported",
-      value: "Ibuprofen",
+      value: "UNLOCALIZED_SOURCE",
       source: "UNLOCALIZED_SOURCE",
     });
   });

@@ -3,6 +3,9 @@ import type { ClinicalDocumentationFieldOption } from "./clinicalDocumentationFi
 import {
   pickLocalizedEnumLabel,
   type ClinicalDocumentationSummaryLocale,
+  clinicalDocSummaryKey,
+  clinicalDocScoreValue,
+  clinicalDocYesNo,
 } from "./clinicalDocumentationSummaryLocale.js";
 import {
   THROMBOLYTIC_HOLD_REASON_OPTIONS,
@@ -226,13 +229,7 @@ export function foundationDocYesNoLabel(
   value: (typeof FOUNDATION_YES_NO_VALUES)[number],
   locale: ClinicalDocumentationSummaryLocale
 ): string {
-  return value === "YES"
-    ? locale === "en"
-      ? "Yes"
-      : "Oui"
-    : locale === "en"
-      ? "No"
-      : "Non";
+  return clinicalDocYesNo(value === "YES", locale);
 }
 
 export const FOUNDATION_YES_NO_OPTIONS = enumOptions(FOUNDATION_YES_NO_VALUES, {
@@ -1323,7 +1320,7 @@ export function summarizeFoundationCatalogCompletionPayload(
       const d = p.data;
       return [
         {
-          key: locale === "en" ? "Event type" : "Type d'événement",
+          key: clinicalDocSummaryKey(locale, "Event type", "Type d'événement"),
           value: pickLocalizedEnumLabel(
             Object.fromEntries(CPR_EVENT_TYPE_OPTIONS.map((o) => [o.value, o.labelEn])),
             Object.fromEntries(CPR_EVENT_TYPE_OPTIONS.map((o) => [o.value, o.labelFr])),
@@ -1332,7 +1329,7 @@ export function summarizeFoundationCatalogCompletionPayload(
           ),
         },
         {
-          key: locale === "en" ? "ROSC achieved" : "ROSC obtenu",
+          key: clinicalDocSummaryKey(locale, "ROSC achieved", "ROSC obtenu"),
           value: pickLocalizedEnumLabel(
             { YES: "Yes", NO: "No", UNKNOWN: "Unknown" },
             { YES: "Oui", NO: "Non", UNKNOWN: "Inconnu" },
@@ -1341,7 +1338,7 @@ export function summarizeFoundationCatalogCompletionPayload(
           ),
         },
         {
-          key: locale === "en" ? "Patient disposition" : "Destination patient",
+          key: clinicalDocSummaryKey(locale, "Patient disposition", "Destination patient"),
           value: pickLocalizedEnumLabel(
             Object.fromEntries(CPR_PATIENT_DISPOSITION_OPTIONS.map((o) => [o.value, o.labelEn])),
             Object.fromEntries(CPR_PATIENT_DISPOSITION_OPTIONS.map((o) => [o.value, o.labelFr])),
@@ -1350,7 +1347,7 @@ export function summarizeFoundationCatalogCompletionPayload(
           ),
         },
         {
-          key: locale === "en" ? "Provider notified" : "Médecin avisé",
+          key: clinicalDocSummaryKey(locale, "Provider notified", "Médecin avisé"),
           value: foundationDocYesNoLabel(d.providerNotified, locale),
         },
       ];
@@ -1361,11 +1358,11 @@ export function summarizeFoundationCatalogCompletionPayload(
       const d = p.data;
       return [
         {
-          key: locale === "en" ? "Medication administered" : "Médicament administré",
+          key: clinicalDocSummaryKey(locale, "Medication administered", "Médicament administré"),
           value: foundationDocYesNoLabel(d.medicationAdministered, locale),
         },
         {
-          key: locale === "en" ? "Agent" : "Agent",
+          key: clinicalDocSummaryKey(locale, "Agent", "Agent"),
           value: pickLocalizedEnumLabel(
             Object.fromEntries(MI_THROMBOLYTIC_AGENT_OPTIONS.map((o) => [o.value, o.labelEn])),
             Object.fromEntries(MI_THROMBOLYTIC_AGENT_OPTIONS.map((o) => [o.value, o.labelFr])),
@@ -1374,7 +1371,7 @@ export function summarizeFoundationCatalogCompletionPayload(
           ),
         },
         {
-          key: locale === "en" ? "Provider notified" : "Médecin avisé",
+          key: clinicalDocSummaryKey(locale, "Provider notified", "Médecin avisé"),
           value: foundationDocYesNoLabel(d.providerNotified, locale),
         },
       ];
@@ -1385,7 +1382,7 @@ export function summarizeFoundationCatalogCompletionPayload(
       const d = p.data;
       return [
         {
-          key: locale === "en" ? "Patient status" : "État du patient",
+          key: clinicalDocSummaryKey(locale, "Patient status", "État du patient"),
           value: pickLocalizedEnumLabel(
             Object.fromEntries(OBSERVATION_PATIENT_STATUS_OPTIONS.map((o) => [o.value, o.labelEn])),
             Object.fromEntries(OBSERVATION_PATIENT_STATUS_OPTIONS.map((o) => [o.value, o.labelFr])),
@@ -1394,7 +1391,7 @@ export function summarizeFoundationCatalogCompletionPayload(
           ),
         },
         {
-          key: locale === "en" ? "Provider notified" : "Médecin avisé",
+          key: clinicalDocSummaryKey(locale, "Provider notified", "Médecin avisé"),
           value: foundationDocYesNoLabel(d.providerNotified, locale),
         },
       ];
@@ -1406,14 +1403,14 @@ export function summarizeFoundationCatalogCompletionPayload(
       return [
         {
           key: "CIWA-Ar",
-          value: locale === "en" ? `Score: ${d.totalScore}` : `Score : ${d.totalScore}`,
+          value: clinicalDocScoreValue(locale, d.totalScore),
         },
         {
-          key: locale === "en" ? "Severity" : "Sévérité",
+          key: clinicalDocSummaryKey(locale, "Severity", "Sévérité"),
           value: pickLocalizedEnumLabel(CIWA_SEVERITY_MAP.en, CIWA_SEVERITY_MAP.fr, d.severity, locale),
         },
         {
-          key: locale === "en" ? "Provider notified" : "Médecin avisé",
+          key: clinicalDocSummaryKey(locale, "Provider notified", "Médecin avisé"),
           value: foundationDocYesNoLabel(d.providerNotified, locale),
         },
       ];
@@ -1425,14 +1422,14 @@ export function summarizeFoundationCatalogCompletionPayload(
       return [
         {
           key: "COWS",
-          value: locale === "en" ? `Score: ${d.totalScore}` : `Score : ${d.totalScore}`,
+          value: clinicalDocScoreValue(locale, d.totalScore),
         },
         {
-          key: locale === "en" ? "Severity" : "Sévérité",
+          key: clinicalDocSummaryKey(locale, "Severity", "Sévérité"),
           value: pickLocalizedEnumLabel(COWS_SEVERITY_MAP.en, COWS_SEVERITY_MAP.fr, d.severity, locale),
         },
         {
-          key: locale === "en" ? "Provider notified" : "Médecin avisé",
+          key: clinicalDocSummaryKey(locale, "Provider notified", "Médecin avisé"),
           value: foundationDocYesNoLabel(d.providerNotified, locale),
         },
       ];
@@ -1443,15 +1440,15 @@ export function summarizeFoundationCatalogCompletionPayload(
       const d = p.data;
       return [
         {
-          key: locale === "en" ? "Risk level" : "Niveau de risque",
+          key: clinicalDocSummaryKey(locale, "Risk level", "Niveau de risque"),
           value: pickLocalizedEnumLabel(CSSRS_RISK_MAP.en, CSSRS_RISK_MAP.fr, d.riskLevel, locale),
         },
         {
-          key: locale === "en" ? "Safety precautions initiated" : "Mesures de sécurité initiées",
+          key: clinicalDocSummaryKey(locale, "Safety precautions initiated", "Mesures de sécurité initiées"),
           value: foundationDocYesNoLabel(d.safetyPrecautionsInitiated, locale),
         },
         {
-          key: locale === "en" ? "Provider notified" : "Médecin avisé",
+          key: clinicalDocSummaryKey(locale, "Provider notified", "Médecin avisé"),
           value: foundationDocYesNoLabel(d.providerNotified, locale),
         },
       ];
@@ -1463,21 +1460,18 @@ export function summarizeFoundationCatalogCompletionPayload(
       return [
         {
           key: "PHQ-9",
-          value: locale === "en" ? `Score: ${d.totalScore}` : `Score : ${d.totalScore}`,
+          value: clinicalDocScoreValue(locale, d.totalScore),
         },
         {
-          key: locale === "en" ? "Severity" : "Sévérité",
+          key: clinicalDocSummaryKey(locale, "Severity", "Sévérité"),
           value: pickLocalizedEnumLabel(PHQ9_SEVERITY_MAP.en, PHQ9_SEVERITY_MAP.fr, d.severity, locale),
         },
         {
-          key:
-            locale === "en"
-              ? "Suicidal ideation item positive"
-              : "Item idéation suicidaire positif",
+          key: clinicalDocSummaryKey(locale, "Suicidal ideation item positive", "Item idéation suicidaire positif"),
           value: foundationDocYesNoLabel(d.suicidalIdeationItemPositive, locale),
         },
         {
-          key: locale === "en" ? "Provider notified" : "Médecin avisé",
+          key: clinicalDocSummaryKey(locale, "Provider notified", "Médecin avisé"),
           value: foundationDocYesNoLabel(d.providerNotified, locale),
         },
       ];
@@ -1489,14 +1483,14 @@ export function summarizeFoundationCatalogCompletionPayload(
       return [
         {
           key: "GAD-7",
-          value: locale === "en" ? `Score: ${d.totalScore}` : `Score : ${d.totalScore}`,
+          value: clinicalDocScoreValue(locale, d.totalScore),
         },
         {
-          key: locale === "en" ? "Severity" : "Sévérité",
+          key: clinicalDocSummaryKey(locale, "Severity", "Sévérité"),
           value: pickLocalizedEnumLabel(GAD7_SEVERITY_MAP.en, GAD7_SEVERITY_MAP.fr, d.severity, locale),
         },
         {
-          key: locale === "en" ? "Provider notified" : "Médecin avisé",
+          key: clinicalDocSummaryKey(locale, "Provider notified", "Médecin avisé"),
           value: foundationDocYesNoLabel(d.providerNotified, locale),
         },
       ];
@@ -1511,11 +1505,11 @@ export function summarizeFoundationCatalogCompletionPayload(
           value: String(d.totalScore),
         },
         {
-          key: locale === "en" ? "Risk" : "Risque",
+          key: clinicalDocSummaryKey(locale, "Risk", "Risque"),
           value: pickLocalizedEnumLabel(RTS_RISK_MAP.en, RTS_RISK_MAP.fr, d.riskFlag, locale),
         },
         {
-          key: locale === "en" ? "Provider notified" : "Médecin avisé",
+          key: clinicalDocSummaryKey(locale, "Provider notified", "Médecin avisé"),
           value: foundationDocYesNoLabel(d.providerNotified, locale),
         },
       ];
@@ -1526,15 +1520,15 @@ export function summarizeFoundationCatalogCompletionPayload(
       const d = p.data;
       return [
         {
-          key: locale === "en" ? "HEART score" : "Score HEART",
+          key: clinicalDocSummaryKey(locale, "HEART score", "Score HEART"),
           value: String(d.totalScore),
         },
         {
-          key: locale === "en" ? "Risk level" : "Niveau de risque",
+          key: clinicalDocSummaryKey(locale, "Risk level", "Niveau de risque"),
           value: pickLocalizedEnumLabel(HEART_RISK_MAP.en, HEART_RISK_MAP.fr, d.riskLevel, locale),
         },
         {
-          key: locale === "en" ? "Provider notified" : "Médecin avisé",
+          key: clinicalDocSummaryKey(locale, "Provider notified", "Médecin avisé"),
           value: foundationDocYesNoLabel(d.providerNotified, locale),
         },
       ];
@@ -1545,15 +1539,15 @@ export function summarizeFoundationCatalogCompletionPayload(
       const d = p.data;
       return [
         {
-          key: locale === "en" ? "Wells PE score" : "Score Wells EP",
+          key: clinicalDocSummaryKey(locale, "Wells PE score", "Score Wells EP"),
           value: String(d.totalScore),
         },
         {
-          key: locale === "en" ? "Risk level" : "Niveau de risque",
+          key: clinicalDocSummaryKey(locale, "Risk level", "Niveau de risque"),
           value: pickLocalizedEnumLabel(WELLS_RISK_MAP.en, WELLS_RISK_MAP.fr, d.riskLevel, locale),
         },
         {
-          key: locale === "en" ? "Provider notified" : "Médecin avisé",
+          key: clinicalDocSummaryKey(locale, "Provider notified", "Médecin avisé"),
           value: foundationDocYesNoLabel(d.providerNotified, locale),
         },
       ];
@@ -1564,11 +1558,11 @@ export function summarizeFoundationCatalogCompletionPayload(
       const d = p.data;
       return [
         {
-          key: locale === "en" ? "PERC negative" : "PERC négatif",
+          key: clinicalDocSummaryKey(locale, "PERC negative", "PERC négatif"),
           value: foundationDocYesNoLabel(d.percNegative, locale),
         },
         {
-          key: locale === "en" ? "Provider notified" : "Médecin avisé",
+          key: clinicalDocSummaryKey(locale, "Provider notified", "Médecin avisé"),
           value: foundationDocYesNoLabel(d.providerNotified, locale),
         },
       ];
@@ -1579,15 +1573,15 @@ export function summarizeFoundationCatalogCompletionPayload(
       const d = p.data;
       return [
         {
-          key: locale === "en" ? "Geneva score" : "Score de Genève",
+          key: clinicalDocSummaryKey(locale, "Geneva score", "Score de Genève"),
           value: String(d.totalScore),
         },
         {
-          key: locale === "en" ? "Risk level" : "Niveau de risque",
+          key: clinicalDocSummaryKey(locale, "Risk level", "Niveau de risque"),
           value: pickLocalizedEnumLabel(GENEVA_RISK_MAP.en, GENEVA_RISK_MAP.fr, d.riskLevel, locale),
         },
         {
-          key: locale === "en" ? "Provider notified" : "Médecin avisé",
+          key: clinicalDocSummaryKey(locale, "Provider notified", "Médecin avisé"),
           value: foundationDocYesNoLabel(d.providerNotified, locale),
         },
       ];
@@ -1600,19 +1594,19 @@ export function summarizeFoundationCatalogCompletionPayload(
         d.patientFeelsUnsafe === "YES" || hasAnyYes(d, ABUSE_CONCERN_FIELDS);
       return [
         {
-          key: locale === "en" ? "Screen performed" : "Dépistage effectué",
+          key: clinicalDocSummaryKey(locale, "Screen performed", "Dépistage effectué"),
           value: foundationDocYesNoLabel(d.screenPerformed, locale),
         },
         {
-          key: locale === "en" ? "Safety concern present" : "Préoccupation sécurité",
+          key: clinicalDocSummaryKey(locale, "Safety concern present", "Préoccupation sécurité"),
           value: foundationDocYesNoLabel(concernPresent ? "YES" : "NO", locale),
         },
         {
-          key: locale === "en" ? "Resources offered" : "Ressources offertes",
+          key: clinicalDocSummaryKey(locale, "Resources offered", "Ressources offertes"),
           value: foundationDocYesNoLabel(d.resourcesOffered, locale),
         },
         {
-          key: locale === "en" ? "Provider notified" : "Médecin avisé",
+          key: clinicalDocSummaryKey(locale, "Provider notified", "Médecin avisé"),
           value: foundationDocYesNoLabel(d.providerNotified, locale),
         },
       ];
@@ -1624,19 +1618,19 @@ export function summarizeFoundationCatalogCompletionPayload(
       const concernPresent = hasAnyYes(d, TRAFFICKING_CONCERN_FIELDS);
       return [
         {
-          key: locale === "en" ? "Screen performed" : "Dépistage effectué",
+          key: clinicalDocSummaryKey(locale, "Screen performed", "Dépistage effectué"),
           value: foundationDocYesNoLabel(d.screenPerformed, locale),
         },
         {
-          key: locale === "en" ? "Safety concern present" : "Préoccupation sécurité",
+          key: clinicalDocSummaryKey(locale, "Safety concern present", "Préoccupation sécurité"),
           value: foundationDocYesNoLabel(concernPresent ? "YES" : "NO", locale),
         },
         {
-          key: locale === "en" ? "Resources offered" : "Ressources offertes",
+          key: clinicalDocSummaryKey(locale, "Resources offered", "Ressources offertes"),
           value: foundationDocYesNoLabel(d.resourcesOffered, locale),
         },
         {
-          key: locale === "en" ? "Provider notified" : "Médecin avisé",
+          key: clinicalDocSummaryKey(locale, "Provider notified", "Médecin avisé"),
           value: foundationDocYesNoLabel(d.providerNotified, locale),
         },
       ];
@@ -1649,15 +1643,15 @@ export function summarizeFoundationCatalogCompletionPayload(
         hasAnyYes(d, SDOH_NEED_FIELDS) || d.interpersonalSafetyConcern === "YES";
       return [
         {
-          key: locale === "en" ? "Need identified" : "Besoin identifié",
+          key: clinicalDocSummaryKey(locale, "Need identified", "Besoin identifié"),
           value: foundationDocYesNoLabel(needPresent ? "YES" : "NO", locale),
         },
         {
-          key: locale === "en" ? "Resources offered" : "Ressources offertes",
+          key: clinicalDocSummaryKey(locale, "Resources offered", "Ressources offertes"),
           value: foundationDocYesNoLabel(d.resourcesOffered, locale),
         },
         {
-          key: locale === "en" ? "Provider notified" : "Médecin avisé",
+          key: clinicalDocSummaryKey(locale, "Provider notified", "Médecin avisé"),
           value: foundationDocYesNoLabel(d.providerNotified, locale),
         },
       ];

@@ -143,7 +143,7 @@ function YesNoField({
 }: {
   label: string;
   value: YesNo;
-  locale: "en" | "fr";
+  locale: string;
   onChange: (v: YesNo) => void;
   testId?: string;
 }) {
@@ -167,7 +167,7 @@ function YesNoNaField({
 }: {
   label: string;
   value: YesNoNa;
-  locale: "en" | "fr";
+  locale: string;
   onChange: (v: YesNoNa) => void;
 }) {
   return (
@@ -189,7 +189,7 @@ function YesNoUnknownNaField({
 }: {
   label: string;
   value: YesNoUnknownNa;
-  locale: "en" | "fr";
+  locale: string;
   onChange: (v: YesNoUnknownNa) => void;
 }) {
   return (

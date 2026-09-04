@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { resolveProductUiLanguageOrDefault, type SupportedLanguage } from "@/i18n/config";
+import { pickProductUiCopy, resolveProductUiLanguageOrDefault, type SupportedLanguage } from "@/i18n/config";
 import { useI18n } from "@/lib/i18n";
 import { i18nMessage } from "@/lib/i18nMessagesLookup";
 import { fetchNursingAdmissionPrintSummary } from "@/features/hospital-care/inpatientOperationsApi";
@@ -28,32 +28,33 @@ const GROUPS = [
   ["PSYCHOSOCIAL", ["PSYCHOSOCIAL", "EDUCATION_COMMUNICATION"]],
 ] as const;
 
-/** Haiti nursing-admission print timestamps (not product UI BCP 47). */
-const NURSING_ADMISSION_PRINT_BCP47: Record<SupportedLanguage, string> = {
-  en: "en-US",
-  fr: "fr-CA",
+/** Haiti nursing-admission print timestamps (FR stays fr-CA; ES uses product BCP 47). */
+function nursingAdmissionPrintBcp47(language: string): string {
+  const locale = resolveProductUiLanguageOrDefault(language);
+  if (locale === "fr") return "fr-CA";
+  if (locale === "es") return "es-419";
+  return "en-US";
+}
+
+type NursingAdmissionPrintChrome = {
+  title: string;
+  close: string;
+  print: string;
+  patient: string;
+  room: string;
+  facility: string;
+  admission: string;
+  reason: string;
+  status: string;
+  signature: string;
+  amendments: string;
+  none: string;
+  empty: string;
+  error: string;
+  headings: Record<(typeof GROUPS)[number][0], string>;
 };
 
-const PRINT_CHROME: Record<
-  SupportedLanguage,
-  {
-    title: string;
-    close: string;
-    print: string;
-    patient: string;
-    room: string;
-    facility: string;
-    admission: string;
-    reason: string;
-    status: string;
-    signature: string;
-    amendments: string;
-    none: string;
-    empty: string;
-    error: string;
-    headings: Record<(typeof GROUPS)[number][0], string>;
-  }
-> = {
+const PRINT_CHROME = {
   en: {
     title: "Nursing Admission Assessment",
     close: "Close",
@@ -102,7 +103,31 @@ const PRINT_CHROME: Record<
       PSYCHOSOCIAL: "PSYCHOSOCIAL / ÉDUCATION",
     },
   },
-};
+  es: {
+    title: "Evaluación de enfermería a la admisión",
+    close: "Cerrar",
+    print: "Imprimir",
+    patient: "Paciente",
+    room: "Habitación",
+    facility: "Establecimiento",
+    admission: "Admisión",
+    reason: "Motivo de admisión",
+    status: "Estado",
+    signature: "FIRMA",
+    amendments: "Addenda y correcciones",
+    none: "No hay addenda ni correcciones.",
+    empty: "Ningún hallazgo documentado.",
+    error: "No se pudo cargar el resumen.",
+    headings: {
+      ARRIVAL: "LLEGADA",
+      INITIAL: "EVALUACIÓN DE ENFERMERÍA INICIAL",
+      HISTORY: "ANTECEDENTES Y RECONCILIACIÓN",
+      SAFETY: "SEGURIDAD Y FUNCIÓN",
+      NUTRITION: "NUTRICIÓN / ELIMINACIÓN",
+      PSYCHOSOCIAL: "PSICOSOCIAL / EDUCACIÓN",
+    },
+  },
+} as const satisfies Record<"en" | "fr" | "es", NursingAdmissionPrintChrome>;
 
 export function formatNursingAdmissionClinicalValue(value: unknown, language: SupportedLanguage): string {
   const locale = resolveProductUiLanguageOrDefault(language);
@@ -114,7 +139,7 @@ export function formatNursingAdmissionClinicalValue(value: unknown, language: Su
   if (/^\d{4}-\d\d-\d\dT/.test(raw)) {
     const date = new Date(raw);
     if (!Number.isNaN(date.valueOf())) {
-      return new Intl.DateTimeFormat(NURSING_ADMISSION_PRINT_BCP47[locale], {
+      return new Intl.DateTimeFormat(nursingAdmissionPrintBcp47(locale), {
         dateStyle: "medium",
         timeStyle: "short",
       }).format(date);
@@ -137,7 +162,7 @@ function dateTime(value: string | null | undefined, language: SupportedLanguage)
   const locale = resolveProductUiLanguageOrDefault(language);
   return Number.isNaN(date.valueOf())
     ? DISPLAY_DASH
-    : new Intl.DateTimeFormat(NURSING_ADMISSION_PRINT_BCP47[locale], {
+    : new Intl.DateTimeFormat(nursingAdmissionPrintBcp47(locale), {
         dateStyle: "medium",
         timeStyle: "short",
       }).format(date);
@@ -156,7 +181,7 @@ export function NursingAdmissionPrintSummaryModal({ encounterId, open, onClose }
     return () => { cancelled = true; };
   }, [encounterId, open]);
   if (!open) return null;
-  const text = PRINT_CHROME[locale];
+  const text = pickProductUiCopy(locale, PRINT_CHROME, PRINT_CHROME.es);
   const reason = summary?.overview?.reasonForAdmission ?? summary?.overview?.admissionDiagnosis;
   return <div role="dialog" aria-modal="true" data-testid="nursing-admission-print-modal" style={{ position: "fixed", inset: 0, background: "#0f172a73", zIndex: 80, padding: 16, overflow: "auto" }}>
     <article data-testid="nursing-admission-print-summary" style={{ background: "white", borderRadius: 12, maxWidth: 860, margin: "auto", padding: 24 }}>

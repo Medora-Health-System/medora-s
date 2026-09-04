@@ -2,7 +2,7 @@
  * M1.7B.8 — Short allergy labels for ED workspace header (not full triage notes).
  */
 
-import type { SupportedLanguage } from "@/i18n/config";
+import { pickProductUiCopy, type SupportedLanguage } from "@/i18n/config";
 import { erTriageMessagesEn } from "@/i18n/messages/erTriage.en";
 import { erTriageMessagesFr } from "@/i18n/messages/erTriage.fr";
 import type { ErTriageV1Form } from "./medoraErTriageV1";
@@ -23,7 +23,8 @@ const DRUG_ALLERGY_LINE_RES: readonly RegExp[] = [
 ];
 
 function erTriageV1Messages(locale: SupportedLanguage) {
-  return locale === "en" ? erTriageMessagesEn : erTriageMessagesFr;
+  // Parser haystack is EN/FR source text. ES uses English identity, never French.
+  return locale === "fr" ? erTriageMessagesFr : erTriageMessagesEn;
 }
 
 function isInstructionLikeAllergyText(text: string): boolean {
@@ -128,17 +129,18 @@ export type EdHeaderAllergySummaryLabels = {
 };
 
 export function defaultEdHeaderAllergySummaryLabels(locale: SupportedLanguage): EdHeaderAllergySummaryLabels {
-  if (locale === "en") {
-    return {
-      nkda: "NKDA",
-      allergiesDocumented: "Allergies documented",
-      foodAllergy: "Food allergy",
-    };
-  }
   return {
     nkda: "NKDA",
-    allergiesDocumented: "Allergies consignées",
-    foodAllergy: "Allergie alimentaire",
+    allergiesDocumented: pickProductUiCopy(
+      locale,
+      { en: "Allergies documented", fr: "Allergies consignées", es: "Alergias documentadas" },
+      "Alergias documentadas"
+    ),
+    foodAllergy: pickProductUiCopy(
+      locale,
+      { en: "Food allergy", fr: "Allergie alimentaire", es: "Alergia alimentaria" },
+      "Alergia alimentaria"
+    ),
   };
 }
 

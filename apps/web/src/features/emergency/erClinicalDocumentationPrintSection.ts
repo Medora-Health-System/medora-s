@@ -3,10 +3,11 @@
  * Mirrors Summary dashboard + PatientChartPrintLayout summary rendering.
  */
 
-import { resolveProductUiLanguageOrDefault, type SupportedLanguage } from "@/i18n/config";
+import { pickProductUiCopy, UNLOCALIZED_CATALOG_SOURCE, resolveProductUiLanguageOrDefault } from "@/i18n/config";
 import { printT } from "@/lib/printI18n";
 import {
   appendBloodProductPatientSummaryLines,
+  CLINICAL_DOCUMENTATION_CARD_DISPLAY_ES,
   EDOC7_BLOOD_PRODUCT_DOCUMENTATION_CARD_IDS,
   selectClinicalDocumentationPayloadSummary,
 } from "@medora/shared";
@@ -49,7 +50,7 @@ function fmtIso(iso: string | null | undefined, loc: string): string {
 
 function summaryLinesForEntry(
   entry: ErPrintClinicalDocumentationEntry,
-  language: SupportedLanguage
+  language: string
 ): Array<{ key: string; value: string }> {
   const summaryLocale = resolveProductUiLanguageOrDefault(language);
   if ((EDOC7_BLOOD_PRODUCT_DOCUMENTATION_CARD_IDS as readonly string[]).includes(entry.cardId)) {
@@ -68,7 +69,7 @@ function summaryLinesForEntry(
 /** Appends the clinical documentation section when entries exist. */
 export function appendClinicalDocumentationEntriesBlock(
   body: string[],
-  language: SupportedLanguage,
+  language: string,
   loc: string,
   entries: ErPrintClinicalDocumentationEntry[] | null | undefined
 ): void {
@@ -81,7 +82,12 @@ export function appendClinicalDocumentationEntriesBlock(
   );
 
   for (const entry of entries) {
-    const title = language === "en" ? entry.cardTitleEn : entry.cardTitleFr;
+    const esTitle = CLINICAL_DOCUMENTATION_CARD_DISPLAY_ES[entry.cardId]?.title;
+    const title = pickProductUiCopy(
+      language,
+      { en: entry.cardTitleEn, fr: entry.cardTitleFr, es: esTitle },
+      esTitle ?? UNLOCALIZED_CATALOG_SOURCE
+    );
     const summaryLines = summaryLinesForEntry(entry, language);
     const summaryHtml =
       summaryLines.length > 0

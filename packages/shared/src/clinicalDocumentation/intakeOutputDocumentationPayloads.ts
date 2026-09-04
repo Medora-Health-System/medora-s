@@ -1,5 +1,6 @@
 import { z } from "zod";
 import {
+  clinicalDocSummaryKey,
   clinicalDocYesNo,
   pickLocalizedEnumLabel,
   type ClinicalDocumentationSummaryLocale,
@@ -368,15 +369,15 @@ export function summarizeIntakeOutputDocumentationPayload(
       if (!p.success) return [];
       return [
         {
-          key: locale === "en" ? "Intake" : "Apports",
+          key: clinicalDocSummaryKey(locale, "Intake", "Apports"),
           value: `${p.data.totalIntakeMl} mL`,
         },
         {
-          key: locale === "en" ? "Output" : "Sorties",
+          key: clinicalDocSummaryKey(locale, "Output", "Sorties"),
           value: `${p.data.totalOutputMl} mL`,
         },
         {
-          key: locale === "en" ? "Net balance" : "Bilan",
+          key: clinicalDocSummaryKey(locale, "Net balance", "Bilan"),
           value: `${p.data.netBalanceMl >= 0 ? "+" : ""}${p.data.netBalanceMl} mL`,
         },
       ];
@@ -386,10 +387,10 @@ export function summarizeIntakeOutputDocumentationPayload(
       if (!p.success) return [];
       return [
         {
-          key: locale === "en" ? "Intake" : "Apport",
+          key: clinicalDocSummaryKey(locale, "Intake", "Apport"),
           value: `${formatMl(convertAmountToMl(p.data.amount, p.data.unit), p.data.unit, p.data.amount)} — ${p.data.fluidType}`,
         },
-        { key: locale === "en" ? "Recorded" : "Enregistré", value: p.data.recordedAt },
+        { key: clinicalDocSummaryKey(locale, "Recorded", "Enregistré"), value: p.data.recordedAt },
       ];
     }
     case IO_PO_INTAKE_CARD_ID: {
@@ -401,7 +402,7 @@ export function summarizeIntakeOutputDocumentationPayload(
           value: `${formatMl(convertAmountToMl(p.data.amount, p.data.unit), p.data.unit, p.data.amount)} ${p.data.substance}`,
         },
         {
-          key: locale === "en" ? "Tolerated" : "Tolérance",
+          key: clinicalDocSummaryKey(locale, "Tolerated", "Tolérance"),
           value: pickLocalizedEnumLabel(TOLERATED_EN, TOLERATED_FR, p.data.tolerated, locale),
         },
       ];
@@ -411,7 +412,7 @@ export function summarizeIntakeOutputDocumentationPayload(
       if (!p.success) return [];
       return [
         {
-          key: locale === "en" ? "IV intake" : "Apport IV",
+          key: clinicalDocSummaryKey(locale, "IV intake", "Apport IV"),
           value: `${formatMl(convertAmountToMl(p.data.amount, p.data.unit), p.data.unit, p.data.amount)} ${p.data.fluidType}`,
         },
       ];
@@ -421,11 +422,11 @@ export function summarizeIntakeOutputDocumentationPayload(
       if (!p.success) return [];
       return [
         {
-          key: locale === "en" ? "Blood product intake" : "Apport produit sanguin",
+          key: clinicalDocSummaryKey(locale, "Blood product intake", "Apport produit sanguin"),
           value: `${formatMl(convertAmountToMl(p.data.amount, p.data.unit), p.data.unit, p.data.amount)} ${pickLocalizedEnumLabel(PRODUCT_TYPE_EN, PRODUCT_TYPE_FR, p.data.productType, locale)}`,
         },
         {
-          key: locale === "en" ? "Transfusion link" : "Lien transfusion",
+          key: clinicalDocSummaryKey(locale, "Transfusion link", "Lien transfusion"),
           value: clinicalDocYesNo(p.data.transfusionRecordLinked, locale),
         },
       ];
@@ -435,11 +436,11 @@ export function summarizeIntakeOutputDocumentationPayload(
       if (!p.success) return [];
       return [
         {
-          key: locale === "en" ? "Output" : "Sortie",
+          key: clinicalDocSummaryKey(locale, "Output", "Sortie"),
           value: `${formatMl(convertAmountToMl(p.data.amount, p.data.unit), p.data.unit, p.data.amount)}`,
         },
         {
-          key: locale === "en" ? "Method" : "Méthode",
+          key: clinicalDocSummaryKey(locale, "Method", "Méthode"),
           value: pickLocalizedEnumLabel(URINE_METHOD_EN, URINE_METHOD_FR, p.data.method, locale),
         },
       ];
@@ -448,11 +449,11 @@ export function summarizeIntakeOutputDocumentationPayload(
       const p = stoolOutputPayloadSchema.safeParse(payload);
       if (!p.success) return [];
       const lines: Array<{ key: string; value: string }> = [
-        { key: locale === "en" ? "Occurrences" : "Occurrences", value: String(p.data.occurrenceCount) },
+        { key: clinicalDocSummaryKey(locale, "Occurrences", "Occurrences"), value: String(p.data.occurrenceCount) },
       ];
       if (p.data.estimatedAmount != null) {
         lines.push({
-          key: locale === "en" ? "Estimated volume" : "Volume estimé",
+          key: clinicalDocSummaryKey(locale, "Estimated volume", "Volume estimé"),
           value: formatMl(
             convertAmountToMl(p.data.estimatedAmount, p.data.unit ?? "ML"),
             p.data.unit ?? "ML",
@@ -466,11 +467,11 @@ export function summarizeIntakeOutputDocumentationPayload(
       const p = emesisOutputPayloadSchema.safeParse(payload);
       if (!p.success) return [];
       const lines: Array<{ key: string; value: string }> = [
-        { key: locale === "en" ? "Occurrences" : "Occurrences", value: String(p.data.occurrenceCount) },
+        { key: clinicalDocSummaryKey(locale, "Occurrences", "Occurrences"), value: String(p.data.occurrenceCount) },
       ];
       if (p.data.amount != null && p.data.unit) {
         lines.unshift({
-          key: locale === "en" ? "Output" : "Sortie",
+          key: clinicalDocSummaryKey(locale, "Output", "Sortie"),
           value: formatMl(convertAmountToMl(p.data.amount, p.data.unit), p.data.unit, p.data.amount),
         });
       }
@@ -481,7 +482,7 @@ export function summarizeIntakeOutputDocumentationPayload(
       if (!p.success) return [];
       return [
         {
-          key: locale === "en" ? "NG output" : "Sortie NG",
+          key: clinicalDocSummaryKey(locale, "NG output", "Sortie NG"),
           value: formatMl(convertAmountToMl(p.data.amount, p.data.unit), p.data.unit, p.data.amount),
         },
       ];
@@ -491,7 +492,7 @@ export function summarizeIntakeOutputDocumentationPayload(
       if (!p.success) return [];
       return [
         {
-          key: locale === "en" ? "Drain" : "Drain",
+          key: clinicalDocSummaryKey(locale, "Drain", "Drain"),
           value: `${formatMl(convertAmountToMl(p.data.amount, p.data.unit), p.data.unit, p.data.amount)} — ${p.data.drainType}`,
         },
       ];

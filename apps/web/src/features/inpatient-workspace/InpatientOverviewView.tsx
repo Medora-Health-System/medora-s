@@ -612,8 +612,9 @@ export function InpatientOverviewView({
               {p.nursing.admissionOverview.clinicalDocumentedAt ? (
                 <li data-testid="overview-nursing-admission-clinical-time">
                   {t("inpatientAdmissionInp2b1.clinicalTime")}:{" "}
-                  {new Date(p.nursing.admissionOverview.clinicalDocumentedAt).toLocaleString(
-                    language?.startsWith("fr") ? "fr-FR" : "en-US"
+                  {formatEncounterChromeDateTime(
+                    p.nursing.admissionOverview.clinicalDocumentedAt,
+                    language
                   )}
                 </li>
               ) : null}

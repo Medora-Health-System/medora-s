@@ -16,7 +16,7 @@ import {
 } from "./vaccineManufacturerCatalog.js";
 import type { VaccineVisDocumentation } from "./vaccineVisGovernance.js";
 import { validateVaccineVisDocumentation } from "./vaccineVisGovernance.js";
-import { productUiBcp47Tag } from "../i18n/productUiLocale.js";
+import { pickCatalogDisplayLabelForProductUi, productUiBcp47Tag } from "../i18n/productUiLocale.js";
 
 export type VaccineEducationRecipient =
   | "patient"
@@ -179,14 +179,21 @@ export function resolveVaccineAdministrationDisplayName(input: {
   catalogCode?: string | null;
   displayNameEn?: string | null;
   displayNameFr?: string | null;
-  locale: "en" | "fr";
+  locale: string;
 }): string {
   const exact = input.catalogCode ? exactVaccineIdentity(input.catalogCode) : null;
-  if (exact) return input.locale === "fr" ? exact.fr : exact.en;
-  const preferred = input.locale === "fr" ? input.displayNameFr : input.displayNameEn;
-  if (preferred?.trim()) return preferred.trim();
-  if (input.catalogCode?.trim()) return input.catalogCode.trim();
-  return input.locale === "fr" ? "Vaccin (libellé indisponible)" : "Vaccine (label unavailable)";
+  if (exact) {
+    return pickCatalogDisplayLabelForProductUi(input.locale, {
+      displayNameEn: exact.en,
+      displayNameFr: exact.fr,
+      code: input.catalogCode,
+    });
+  }
+  return pickCatalogDisplayLabelForProductUi(input.locale, {
+    displayNameEn: input.displayNameEn,
+    displayNameFr: input.displayNameFr,
+    code: input.catalogCode,
+  });
 }
 
 export function isVaccineMedicationForMar(input: {
@@ -402,7 +409,7 @@ export function validateVaccineAdministrationDocumentation(doc: VaccineAdministr
   return errors;
 }
 
-function formatDateForNote(value: string, locale: "en" | "fr"): string {
+function formatDateForNote(value: string, locale: string): string {
   const trimmed = value.trim();
   if (!trimmed) return "";
   const parsed = new Date(`${trimmed.includes("T") ? trimmed : `${trimmed}T12:00:00`}`);
@@ -414,7 +421,7 @@ function formatDateForNote(value: string, locale: "en" | "fr"): string {
   });
 }
 
-function formatDateTimeForNote(value: string, locale: "en" | "fr"): string {
+function formatDateTimeForNote(value: string, locale: string): string {
   const trimmed = value.trim();
   if (!trimmed) return "";
   const parsed = new Date(trimmed);
@@ -425,19 +432,19 @@ function formatDateTimeForNote(value: string, locale: "en" | "fr"): string {
   });
 }
 
-function siteLabel(site: ImInjectionSiteId | "", locale: "en" | "fr"): string {
+function siteLabel(site: ImInjectionSiteId | "", locale: string): string {
   if (!site) return "";
   return locale === "fr" ? imInjectionSiteLabelsFr[site] : imInjectionSiteLabelsEn[site];
 }
 
-function manufacturerDisplay(doc: VaccineAdministrationDocumentation, locale: "en" | "fr"): string {
+function manufacturerDisplay(doc: VaccineAdministrationDocumentation, locale: string): string {
   if (doc.manufacturerDisplayName.trim()) return doc.manufacturerDisplayName.trim();
   return vaccineManufacturerLabel(doc.manufacturerId, locale);
 }
 
 export function buildVaccineAdministrationAuditNote(
   doc: VaccineAdministrationDocumentation,
-  locale: "en" | "fr"
+  locale: string
 ): string {
   const vaccineName = resolveVaccineAdministrationDisplayName({
     catalogCode: doc.catalogCode,
@@ -568,7 +575,7 @@ function isMarSystemNoteLine(line: string): boolean {
 
 export function sanitizeMarAdministrationVisibleNote(
   notes: string | null | undefined,
-  locale: "en" | "fr"
+  locale: string
 ): string {
   const vaccineDoc = parseVaccineAdministrationDocumentationFromMarNotes(notes);
   if (vaccineDoc) {
@@ -600,7 +607,7 @@ function pushRow(
 
 export function buildCompletedVaccineAdministrationViewModel(
   doc: VaccineAdministrationDocumentation,
-  locale: "en" | "fr"
+  locale: string
 ): CompletedVaccineAdministrationViewModel {
   const rows: CompletedVaccineAdministrationViewRow[] = [];
   const vaccineName = resolveVaccineAdministrationDisplayName({
@@ -634,7 +641,7 @@ export function buildCompletedVaccineAdministrationViewModel(
 
 function educationRecipientLabel(
   recipient: VaccineEducationRecipient | "none" | "",
-  locale: "en" | "fr"
+  locale: string
 ): string {
   if (recipient === "parent") return locale === "fr" ? "le parent" : "parent";
   if (recipient === "guardian") return locale === "fr" ? "le tuteur" : "guardian";
@@ -648,7 +655,7 @@ function educationRecipientLabel(
 const EN_LEAKAGE_IN_FR = /\b(administered|manufacturer|vaccine information statement|allergies verified|5 rights|education reviewed)\b/i;
 const FR_LEAKAGE_IN_EN = /\b(administré|fabricant|fiche d'information vaccinale|allergies vérifiées|éducation revue)\b/i;
 
-export function vaccineAdministrationNoteIsMonolingual(note: string, locale: "en" | "fr"): boolean {
+export function vaccineAdministrationNoteIsMonolingual(note: string, locale: string): boolean {
   return locale === "fr" ? !EN_LEAKAGE_IN_FR.test(note) : !FR_LEAKAGE_IN_EN.test(note);
 }
 

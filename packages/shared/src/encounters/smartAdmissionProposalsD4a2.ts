@@ -3,6 +3,7 @@
  * Never fabricate severity or undocumented clinical claims. proposalMethod is always RULE_BASED.
  */
 
+import { bilingualStorageLocaleOrEn } from "../i18n/productUiLocale.js";
 import type { HospitalAdmittingService, HospitalRequestedLevelOfCare } from "./hospitalAdmissionIntakeVocabV1.js";
 import type {
   AdmissionPacketV1,
@@ -276,7 +277,8 @@ export function buildSmartAdmissionProposals(
   locale: SmartAdmissionProposalLocale = "fr"
 ): AdmissionPacketV1 {
   const packet = emptyAdmissionPacketV1();
-  const prefix = SMART_ADMISSION_PROPOSAL_PREFIXES[locale] ?? SMART_ADMISSION_PROPOSAL_PREFIXES.fr;
+  const prefix =
+    SMART_ADMISSION_PROPOSAL_PREFIXES[bilingualStorageLocaleOrEn(locale)];
 
   const reasonSources: AdmissionProposalSourceRef[] = [];
   const reasonParts: string[] = [];

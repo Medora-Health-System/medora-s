@@ -507,4 +507,4 @@ export const SMART_ADMISSION_PROPOSAL_PREFIXES = {
   },
 } as const;
 
-export type SmartAdmissionProposalLocale = "en" | "fr";
+export type SmartAdmissionProposalLocale = string;

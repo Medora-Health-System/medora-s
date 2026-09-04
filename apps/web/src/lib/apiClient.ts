@@ -1,5 +1,5 @@
 /** Base path for backend proxy. Pass backend-relative paths only (e.g. "/trackboard", "/pharmacy/inventory"), not "/api/backend/...". */
-import { defaultLanguage, type SupportedLanguage } from "@/i18n/config";
+import { defaultLanguage, pickProductUiCopy, type SupportedLanguage } from "@/i18n/config";
 import { readStoredUiLanguage } from "@/i18n/readStoredUiLanguage";
 import { i18nMessage } from "@/lib/i18nMessagesLookup";
 import { normalizeUserFacingError } from "./userFacingError";
@@ -23,9 +23,15 @@ function redirectLoginSessionExpired(): void {
 }
 
 function sessionExpiredMessage(lang: SupportedLanguage): string {
-  return lang === "en"
-    ? "Session expired. Please sign in again."
-    : "Session expirée. Veuillez vous reconnecter.";
+  return pickProductUiCopy(
+    lang,
+    {
+      en: "Session expired. Please sign in again.",
+      fr: "Session expirée. Veuillez vous reconnecter.",
+      es: "La sesión expiró. Vuelva a iniciar sesión.",
+    },
+    "La sesión expiró. Vuelva a iniciar sesión."
+  );
 }
 
 function throwUnauthorizedSessionExpired(response: Response): void {
@@ -56,9 +62,16 @@ export async function parseApiResponse(response: Response): Promise<unknown> {
     try {
       return JSON.parse(trimmed);
     } catch {
-      const locale = typeof window !== "undefined" ? readStoredUiLanguage() : "fr";
-      const msg =
-        locale === "en" ? "Invalid JSON response from server." : "Réponse JSON invalide du serveur.";
+      const locale = typeof window !== "undefined" ? readStoredUiLanguage() : defaultLanguage;
+      const msg = pickProductUiCopy(
+        locale,
+        {
+          en: "Invalid JSON response from server.",
+          fr: "Réponse JSON invalide du serveur.",
+          es: "Respuesta JSON no válida del servidor.",
+        },
+        "Respuesta JSON no válida del servidor."
+      );
       throw new Error(normalizeUserFacingError(msg, locale));
     }
   }

@@ -3,6 +3,7 @@
  */
 
 import type { SupportedLanguage } from "@/i18n/config";
+import { pickLegacyBilingualStoredPair } from "@medora/shared";
 import {
   clinicalTimelineDisplayLabelKey,
   labRadReconciliationNeedsFollowUp,
@@ -229,8 +230,10 @@ export function commandTimelineEventTitle(
   t: (key: string) => string,
   language: SupportedLanguage
 ): string {
-  const apiTitle =
-    language === "en" ? item.titleEn?.trim() : item.titleFr?.trim();
+  const apiTitle = pickLegacyBilingualStoredPair(language, {
+    en: item.titleEn?.trim() ?? "",
+    fr: item.titleFr?.trim() ?? "",
+  }).value.trim();
   if (apiTitle) return apiTitle;
 
   if (item.sourceKind === "ENCOUNTER_CLINICAL_EVENT") {

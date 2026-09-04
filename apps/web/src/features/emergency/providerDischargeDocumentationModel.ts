@@ -42,7 +42,7 @@ export type ProviderDischargeTemplateMeta = {
   matchLevel: "icdExact" | "icdFamily" | "keyword" | "generic";
   sourceReferences: string[];
   templateAppliedHash?: string;
-  appliedLocale?: "en" | "fr";
+  appliedLocale?: "en" | "fr" | "es";
   specialtyCategory?: string;
   riskCategory?: string;
   appliedAt?: string;

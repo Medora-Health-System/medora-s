@@ -3,7 +3,7 @@
  * Preserves saved text; only UI labels and status lines are localized.
  */
 
-import { resolveProductUiLanguageOrDefault, productUiBcp47Tag, type SupportedLanguage } from "@/i18n/config";
+import { resolveProductUiLanguageOrDefault, productUiBcp47Tag } from "@/i18n/config";
 import {
   buildProviderDocumentationDisplayModel,
   type ProviderDocumentationDisplayModel,
@@ -17,7 +17,7 @@ import type { VisitSummaryTextBlock } from "./emergencyVisitSummaryModel";
 
 const MAX_ADDENDUM = 240;
 
-function vs(locale: SupportedLanguage, key: string): string {
+function vs(locale: string, key: string): string {
   return erTriageT(locale, `erTriage.visitSummary.${key}`);
 }
 
@@ -29,7 +29,7 @@ function interpolate(template: string, vars: Record<string, string>): string {
   return s;
 }
 
-function formatIsoForLocale(iso: string, locale: SupportedLanguage): string {
+function formatIsoForLocale(iso: string, locale: string): string {
   try {
     const tag = productUiBcp47Tag(locale);
     return new Date(iso).toLocaleString(tag, { dateStyle: "short", timeStyle: "short" });
@@ -66,7 +66,7 @@ type ProviderAddendumInput = {
 
 function resolveProviderStatus(
   docStatus: string,
-  locale: SupportedLanguage
+  locale: string
 ): "signed" | "saved" | "draft" {
   const s = docStatus.trim().toUpperCase();
   if (s === "SIGNED") return "signed";
@@ -74,7 +74,7 @@ function resolveProviderStatus(
   return "draft";
 }
 
-function statusLabel(status: "signed" | "saved" | "draft", locale: SupportedLanguage): string {
+function statusLabel(status: "signed" | "saved" | "draft", locale: string): string {
   const key =
     status === "signed"
       ? "providerStatusSigned"
@@ -86,7 +86,7 @@ function statusLabel(status: "signed" | "saved" | "draft", locale: SupportedLang
 
 function readLegacyProviderSections(
   nursingAssessment: unknown,
-  locale: SupportedLanguage
+  locale: string
 ): Array<{ label: string; text: string }> {
   const form = erProviderMseFormFromEncounter(nursingAssessment);
   const preview = buildErProviderMsePreviewModel(form, locale);
@@ -106,7 +106,7 @@ function readLegacyProviderSections(
 
 export function buildVisitSummaryProviderDocumentationBlock(input: {
   nursingAssessment: unknown;
-  locale: SupportedLanguage;
+  locale: string;
   providerDocumentationStatus?: string | null;
   providerDocumentationSignedAt?: string | null;
   providerDocumentationSignedByDisplayFr?: string | null;
@@ -164,7 +164,7 @@ export function buildVisitSummaryProviderDocumentationBlock(input: {
 
 export function providerDocumentationToVisitSummaryBlock(
   block: VisitSummaryProviderDocumentationBlock,
-  locale: SupportedLanguage
+  locale: string
 ): VisitSummaryTextBlock {
   const lines: string[] = [block.statusLine];
   if (block.signedAt) {
@@ -205,7 +205,7 @@ export function providerDocumentationToVisitSummaryBlock(
 
 export function buildProviderDocumentationPrintSection(
   block: VisitSummaryProviderDocumentationBlock,
-  locale: SupportedLanguage
+  locale: string
 ): ErPrintProviderDocumentationSection {
   const savedLine =
     block.savedAt && !block.signedAt

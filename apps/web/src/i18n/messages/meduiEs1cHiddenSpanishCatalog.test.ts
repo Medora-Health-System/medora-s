@@ -49,6 +49,8 @@ import { MEDUI_ES_1G_OVERLAY } from "./meduiEs1gHospitalInpatientObservationOver
 import { MEDUI_ES_1H_OVERLAY } from "./meduiEs1hOrdersMarPharmacyDiagnosticsOverlay";
 import { MEDUI_ES_1I_OVERLAY } from "./meduiEs1iClinicDentalBillingAncillaryOverlay";
 import { MEDUI_ES_1JB_OVERLAY } from "./meduiEs1jSafeChromeOverlay";
+import { MEDUI_ES_1K_OVERLAY } from "./meduiEs1kSafeChromeOverlay";
+import { MEDUI_ES_1K_PUBLIC_CHROME_OVERLAY } from "./meduiEs1kPublicChromeOverlay";
 
 const webRoot = join(dirname(fileURLToPath(import.meta.url)), "../../..");
 
@@ -117,11 +119,11 @@ const MED_ITEM: CatalogSearchItem = {
 };
 
 describe("MEDUI.ES.1C hidden Spanish catalog + tri-lingual isolation", () => {
-  it("internal locales include es; public selectable stay EN/FR", () => {
+  it("internal locales include es; public selectable are EN/FR/ES after 1K", () => {
     expect([...supportedLanguages]).toEqual(["fr", "en", "es"]);
-    expect([...PUBLICLY_SELECTABLE_PRODUCT_UI_LANGUAGES]).toEqual(["fr", "en"]);
-    expect(productUiLanguageSelectOptions().map((o) => o.label)).toEqual(["Français", "English"]);
-    expect(productUiLanguageSelectOptions().some((o) => /español/i.test(o.label))).toBe(false);
+    expect([...PUBLICLY_SELECTABLE_PRODUCT_UI_LANGUAGES]).toEqual(["fr", "en", "es"]);
+    expect(productUiLanguageSelectOptions().map((o) => o.label)).toEqual(["Français", "English", "Español"]);
+    expect(productUiLanguageSelectOptions().some((o) => /español/i.test(o.label))).toBe(true);
   });
 
   it("EN/FR/ES required key parity: missing and extra unmanaged keys are 0", () => {
@@ -149,14 +151,25 @@ describe("MEDUI.ES.1C hidden Spanish catalog + tri-lingual isolation", () => {
     expect(extraFr.length).toBe(67);
   });
 
-  it("every ES leaf is a hidden placeholder, an APPROVED canon overlay, or a governed 1E/1F/1G/1H/1I/1J.B overlay, never EN/FR copy", () => {
+  it("every ES leaf is a hidden placeholder, an APPROVED canon overlay, or a governed 1E/1F/1G/1H/1I/1J.B/1K overlay, never EN/FR copy", () => {
     const es1eKeys = new Set(Object.keys(MEDUI_ES_1E_OVERLAY));
     const es1fKeys = new Set(Object.keys(MEDUI_ES_1F_OVERLAY));
     const es1gKeys = new Set(Object.keys(MEDUI_ES_1G_OVERLAY));
     const es1hKeys = new Set(Object.keys(MEDUI_ES_1H_OVERLAY));
     const es1iKeys = new Set(Object.keys(MEDUI_ES_1I_OVERLAY));
     const es1jbKeys = new Set(Object.keys(MEDUI_ES_1JB_OVERLAY));
-    const governedKeys = new Set([...es1eKeys, ...es1fKeys, ...es1gKeys, ...es1hKeys, ...es1iKeys, ...es1jbKeys]);
+    const es1kKeys = new Set(Object.keys(MEDUI_ES_1K_OVERLAY));
+    const es1kPublicKeys = new Set(Object.keys(MEDUI_ES_1K_PUBLIC_CHROME_OVERLAY));
+    const governedKeys = new Set([
+      ...es1eKeys,
+      ...es1fKeys,
+      ...es1gKeys,
+      ...es1hKeys,
+      ...es1iKeys,
+      ...es1jbKeys,
+      ...es1kKeys,
+      ...es1kPublicKeys,
+    ]);
     const enByPath = new Map(collectStringLeaves(en).map((x) => [x.path, x.value]));
     const frByPath = new Map(collectStringLeaves(fr).map((x) => [x.path, x.value]));
     const approvedOverlay = new Map<string, string>();
@@ -182,6 +195,10 @@ describe("MEDUI.ES.1C hidden Spanish catalog + tri-lingual isolation", () => {
         expect(value, path).toBe(MEDUI_ES_1I_OVERLAY[path]);
       } else if (es1jbKeys.has(path)) {
         expect(value, path).toBe(MEDUI_ES_1JB_OVERLAY[path]);
+      } else if (es1kKeys.has(path)) {
+        expect(value, path).toBe(MEDUI_ES_1K_OVERLAY[path]);
+      } else if (es1kPublicKeys.has(path)) {
+        expect(value, path).toBe(MEDUI_ES_1K_PUBLIC_CHROME_OVERLAY[path]);
       } else {
         expect(isHiddenSpanishPlaceholder(value), path).toBe(true);
         expect(value).toBe(hiddenSpanishPlaceholder(path));
@@ -251,7 +268,9 @@ describe("MEDUI.ES.1C hidden Spanish catalog + tri-lingual isolation", () => {
         (es1gKeys.has(path) && MEDUI_ES_1G_OVERLAY[path] === "") ||
         (es1hKeys.has(path) && MEDUI_ES_1H_OVERLAY[path] === "") ||
         (es1iKeys.has(path) && MEDUI_ES_1I_OVERLAY[path] === "") ||
-        (es1jbKeys.has(path) && MEDUI_ES_1JB_OVERLAY[path] === "");
+        (es1jbKeys.has(path) && MEDUI_ES_1JB_OVERLAY[path] === "") ||
+        (es1kKeys.has(path) && MEDUI_ES_1K_OVERLAY[path] === "") ||
+        (es1kPublicKeys.has(path) && MEDUI_ES_1K_PUBLIC_CHROME_OVERLAY[path] === "");
       if (!emptyAllowed) {
         expect(value).not.toBe("");
       }
@@ -318,9 +337,7 @@ describe("MEDUI.ES.1C hidden Spanish catalog + tri-lingual isolation", () => {
   it("ES missing content never returns EN or FR user-facing copy", () => {
     const missing = "meduiEs1c.missing.error.path";
     expect(resolveClinicalUiMessage("es", missing)).toBe(missing);
-    expect(normalizeUserFacingError("Encounter not found", "es")).toBe(
-      hiddenSpanishPlaceholder("userFacingError")
-    );
+    expect(normalizeUserFacingError("Encounter not found", "es")).toBe("Encuentro no encontrado.");
     expect(normalizeUserFacingError("Encounter not found", "es")).not.toContain("Encounter not found");
     expect(normalizeUserFacingError("Encounter not found", "es")).not.toContain("introuvable");
   });
@@ -397,33 +414,21 @@ describe("MEDUI.ES.1C hidden Spanish catalog + tri-lingual isolation", () => {
     expect(platformLanguageSelectOptions().some((o) => /español/i.test(o.label))).toBe(false);
   });
 
-  it("locale persistence can represent es without public hydration applying it", () => {
+  it("locale persistence hydrates stored es to public ES after 1K", () => {
     expect(parseProductUiLanguage("es")).toBe("es");
     const serialized = JSON.stringify({ uiLanguage: "es" });
     expect(parseProductUiLanguage(JSON.parse(serialized).uiLanguage)).toBe("es");
-    expect(resolveClientUiLanguage({ storedLanguage: "es" })).toBe("en");
-    expect(resolveClientUiLanguage({ storedLanguage: "es", facilityLanguage: "fr" })).toBe("fr");
-    expect(resolvePublicProductUiLanguageOrDefault("es")).toBe("en");
+    expect(resolveClientUiLanguage({ storedLanguage: "es" })).toBe("es");
+    expect(resolveClientUiLanguage({ storedLanguage: "es", facilityLanguage: "fr" })).toBe("es");
+    expect(resolvePublicProductUiLanguageOrDefault("es")).toBe("es");
     expect(resolveProductUiLanguageOrDefault("es")).toBe("es");
   });
 
-  it("visible selectors and product chrome files do not expose Español", () => {
-    const selectorFiles = [
-      "app/login/page.tsx",
-      "app/app/admin/page.tsx",
-      "app/app/admin/users/page.tsx",
-      "src/i18n/I18nProvider.tsx",
-      "src/i18n/provider.tsx",
-    ];
-    let visible = 0;
-    for (const rel of selectorFiles) {
-      const src = readFileSync(join(webRoot, rel), "utf8");
-      const matches = src.match(/Español/g) ?? [];
-      visible += matches.length;
-    }
-    expect(visible).toBe(0);
-    expect(productUiLanguageSelectOptions().map((o) => o.value)).toEqual(["fr", "en"]);
-    expect(productUiLanguageSelectOptions().some((o) => o.label === "Español")).toBe(false);
+  it("product selectors expose Español; Platform Admin island does not", () => {
+    const platformProvider = readFileSync(join(webRoot, "src/i18n/I18nProvider.tsx"), "utf8");
+    expect(platformProvider).not.toMatch(/Español/);
+    expect(productUiLanguageSelectOptions().map((o) => o.value)).toEqual(["fr", "en", "es"]);
+    expect(productUiLanguageSelectOptions().some((o) => o.label === "Español")).toBe(true);
   });
 
   it("patient preferred-language values remain independent of product UI locale", () => {

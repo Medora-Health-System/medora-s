@@ -1,4 +1,4 @@
-import type { SupportedLanguage } from "@/i18n/config";
+import { pickProductUiCopy, type SupportedLanguage } from "@/i18n/config";
 import { i18nMessage } from "@/lib/i18nMessagesLookup";
 import { apiFetchResponse, parseApiResponse } from "./apiClient";
 import { normalizeUserFacingError } from "./userFacingError";
@@ -73,14 +73,16 @@ const CATALOG_IMPORT_ERROR_CODES = [
 
 type CatalogImportErrorCode = (typeof CATALOG_IMPORT_ERROR_CODES)[number];
 
-const CATALOG_IMPORT_FAILED: Record<SupportedLanguage, string> = {
+const CATALOG_IMPORT_FAILED = {
   en: "Import failed.",
   fr: "Échec de l'import.",
+  es: "Error de importación.",
 };
 
-const GENERIC_WENT_WRONG: Record<SupportedLanguage, string> = {
+const GENERIC_WENT_WRONG = {
   en: "Something went wrong.",
   fr: "Une erreur est survenue.",
+  es: "Ocurrió un error.",
 };
 
 function catalogImportErrorForCode(
@@ -101,7 +103,7 @@ function extractCatalogImportErrorCode(message: string): CatalogImportErrorCode 
 /** Surfaces Nest/proxy JSON errors for catalog import (avoids generic "Something went wrong."). */
 export function catalogImportErrorMessage(err: unknown, language: SupportedLanguage): string {
   if (!(err instanceof Error) || !err.message) {
-    return CATALOG_IMPORT_FAILED[language];
+    return pickProductUiCopy(language, CATALOG_IMPORT_FAILED, CATALOG_IMPORT_FAILED.es);
   }
 
   const code = extractCatalogImportErrorCode(err.message);
@@ -112,12 +114,12 @@ export function catalogImportErrorMessage(err: unknown, language: SupportedLangu
 
   const stripped = err.message.replace(/\s*\([A-Z0-9_]+\)\s*$/, "").trim();
   const normalized = normalizeUserFacingError(stripped, language);
-  if (normalized && normalized !== GENERIC_WENT_WRONG[language]) {
+  if (normalized && normalized !== pickProductUiCopy(language, GENERIC_WENT_WRONG, GENERIC_WENT_WRONG.es)) {
     return normalized;
   }
   if (/[àâäéèêëïîôùûçœæ]/i.test(stripped)) return stripped;
   if (stripped.length >= 3 && stripped.length <= 500) return stripped;
-  return CATALOG_IMPORT_FAILED[language];
+  return pickProductUiCopy(language, CATALOG_IMPORT_FAILED, CATALOG_IMPORT_FAILED.es);
 }
 
 async function uploadFile(

@@ -4,12 +4,12 @@
  */
 
 import { parseNursingAssessmentSectionsForChart } from "@/components/patient-chart/patientChartHelpers";
-import { productUiBcp47Tag, type SupportedLanguage } from "@/i18n/config";
+import { productUiBcp47Tag } from "@/i18n/config";
 import { readDischargeSortieExecutionFromEncounter } from "./emergencyDispositionV1";
 import { erTriageT } from "./erTriageI18nLookup";
 import type { VisitSummaryTextBlock } from "./emergencyVisitSummaryModel";
 
-function vs(locale: SupportedLanguage, key: string): string {
+function vs(locale: string, key: string): string {
   return erTriageT(locale, `erTriage.visitSummary.${key}`);
 }
 
@@ -21,7 +21,7 @@ function interpolate(template: string, vars: Record<string, string>): string {
   return s;
 }
 
-function formatIsoForLocale(iso: string, locale: SupportedLanguage): string {
+function formatIsoForLocale(iso: string, locale: string): string {
   try {
     const tag = productUiBcp47Tag(locale);
     return new Date(iso).toLocaleString(tag, { dateStyle: "short", timeStyle: "short" });
@@ -75,7 +75,7 @@ export type ErPrintNursingDischargeSection = {
 
 function performerMetaLine(
   sig: InitialNursingEvalSignature,
-  locale: SupportedLanguage
+  locale: string
 ): string {
   const nameWithRole = sig.roleTitle
     ? `${sig.documentedBy} (${sig.roleTitle})`
@@ -89,7 +89,7 @@ function performerMetaLine(
 /** ED Summary block for initial nursing assessment — excludes procedures (shown elsewhere). */
 export function buildInitialNursingAssessmentSummaryBlock(
   raw: unknown,
-  locale: SupportedLanguage
+  locale: string
 ): VisitSummaryTextBlock | null {
   const sections = parseNursingAssessmentSectionsForChart(raw, locale);
   if (sections.length === 0) return null;
@@ -118,7 +118,7 @@ export function buildInitialNursingAssessmentSummaryBlock(
 
 export function buildInitialNursingAssessmentPrintSection(
   raw: unknown,
-  locale: SupportedLanguage
+  locale: string
 ): ErPrintInitialNursingSection | null {
   const sections = parseNursingAssessmentSectionsForChart(raw, locale);
   if (sections.length === 0) return null;
@@ -134,7 +134,7 @@ export function buildInitialNursingAssessmentPrintSection(
 /** Nursing discharge execution note — separate from disposition summary to avoid duplication. */
 export function buildNursingDischargeDocumentationBlock(
   raw: unknown,
-  locale: SupportedLanguage
+  locale: string
 ): VisitSummaryTextBlock | null {
   const exec = readDischargeSortieExecutionFromEncounter(raw);
   if (!exec) return null;
@@ -159,7 +159,7 @@ export function buildNursingDischargeDocumentationBlock(
 
 export function buildNursingDischargePrintSection(
   raw: unknown,
-  locale: SupportedLanguage
+  locale: string
 ): ErPrintNursingDischargeSection | null {
   const exec = readDischargeSortieExecutionFromEncounter(raw);
   if (!exec) return null;

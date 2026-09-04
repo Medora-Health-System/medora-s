@@ -50,7 +50,7 @@ import { EncounterClinicalRecordSummaryView } from "./EncounterClinicalRecordSum
 import { isSummaryClinicalRecordV2Enabled } from "./summaryClinicalRecordFeatureFlag";
 import { shouldUseClinicalRecordSummaryV2 } from "./summaryClinicalRecordRuntimeSafety";
 
-import { resolveProductUiLanguageOrDefault } from "@/i18n/config";
+import { resolveProductUiLanguageOrDefault, pickLegacyBilingualStoredPair } from "@/i18n/config";
 
 const sectionTitle: React.CSSProperties = {
   margin: 0,
@@ -1120,8 +1120,10 @@ export function EmergencyVisitSummaryPanel({
               <ul style={{ margin: "8px 0 0 0", paddingLeft: 0, listStyle: "none" }}>
                 {(encounter.clinicalDocumentationEntries ?? []).map(
                   (entry: ClinicalDocumentationLegalChartEntry) => {
-                  const title =
-                    language === "en" ? entry.cardTitleEn : entry.cardTitleFr;
+                  const title = pickLegacyBilingualStoredPair(language, {
+                    en: entry.cardTitleEn,
+                    fr: entry.cardTitleFr,
+                  }).value;
                   const summaryLocale = resolveProductUiLanguageOrDefault(language);
                   const bloodProductLines = (
                     EDOC7_BLOOD_PRODUCT_DOCUMENTATION_CARD_IDS as readonly string[]

@@ -3,6 +3,7 @@ import type { ClinicalDocumentationFieldOption } from "./clinicalDocumentationFi
 import {
   pickLocalizedEnumLabel,
   type ClinicalDocumentationSummaryLocale,
+  clinicalDocSummaryKey,
 } from "./clinicalDocumentationSummaryLocale.js";
 
 /** EDOC.19 — nursing admission, shift assessment & care plan card IDs. */
@@ -300,7 +301,7 @@ export function nursingDocYesNoLabel(
   value: (typeof NURSING_YES_NO_VALUES)[number],
   locale: ClinicalDocumentationSummaryLocale
 ): string {
-  return value === "YES" ? (locale === "en" ? "Yes" : "Oui") : locale === "en" ? "No" : "Non";
+  return value === "YES" ? (clinicalDocSummaryKey(locale, "Yes", "Oui")) : clinicalDocSummaryKey(locale, "No", "Non");
 }
 
 export const NURSING_YES_NO_OPTIONS = enumOptions(NURSING_YES_NO_VALUES, {
@@ -885,7 +886,7 @@ export function summarizeNursingAdmissionCarePlanPayload(
       const d = p.data;
       return [
         {
-          key: locale === "en" ? "Source" : "Provenance",
+          key: clinicalDocSummaryKey(locale, "Source", "Provenance"),
           value: pickLocalizedEnumLabel(
             NURSING_ADMISSION_SOURCE_MAP.en,
             NURSING_ADMISSION_SOURCE_MAP.fr,
@@ -894,11 +895,11 @@ export function summarizeNursingAdmissionCarePlanPayload(
           ),
         },
         {
-          key: locale === "en" ? "Reason" : "Motif",
+          key: clinicalDocSummaryKey(locale, "Reason", "Motif"),
           value: d.admissionReason,
         },
         {
-          key: locale === "en" ? "Baseline mental status" : "État mental initial",
+          key: clinicalDocSummaryKey(locale, "Baseline mental status", "État mental initial"),
           value: pickLocalizedEnumLabel(
             NURSING_MENTAL_STATUS_MAP.en,
             NURSING_MENTAL_STATUS_MAP.fr,
@@ -907,15 +908,15 @@ export function summarizeNursingAdmissionCarePlanPayload(
           ),
         },
         {
-          key: locale === "en" ? "Fall risk reviewed" : "Risque chute revu",
+          key: clinicalDocSummaryKey(locale, "Fall risk reviewed", "Risque chute revu"),
           value: nursingDocYesNoLabel(d.fallRiskReviewed, locale),
         },
         {
-          key: locale === "en" ? "Skin assessment" : "Évaluation peau",
+          key: clinicalDocSummaryKey(locale, "Skin assessment", "Évaluation peau"),
           value: nursingDocYesNoLabel(d.skinAssessmentCompleted, locale),
         },
         {
-          key: locale === "en" ? "Pain assessment" : "Évaluation douleur",
+          key: clinicalDocSummaryKey(locale, "Pain assessment", "Évaluation douleur"),
           value: nursingDocYesNoLabel(d.painAssessmentCompleted, locale),
         },
       ];
@@ -926,11 +927,11 @@ export function summarizeNursingAdmissionCarePlanPayload(
       const d = p.data;
       return [
         {
-          key: locale === "en" ? "Shift" : "Quart",
+          key: clinicalDocSummaryKey(locale, "Shift", "Quart"),
           value: pickLocalizedEnumLabel(NURSING_SHIFT_MAP.en, NURSING_SHIFT_MAP.fr, d.shift, locale),
         },
         {
-          key: locale === "en" ? "Mental status" : "État mental",
+          key: clinicalDocSummaryKey(locale, "Mental status", "État mental"),
           value: pickLocalizedEnumLabel(
             NURSING_MENTAL_STATUS_MAP.en,
             NURSING_MENTAL_STATUS_MAP.fr,
@@ -939,7 +940,7 @@ export function summarizeNursingAdmissionCarePlanPayload(
           ),
         },
         {
-          key: locale === "en" ? "Respiratory" : "Respiratoire",
+          key: clinicalDocSummaryKey(locale, "Respiratory", "Respiratoire"),
           value: pickLocalizedEnumLabel(
             NURSING_RESPIRATORY_STATUS_MAP.en,
             NURSING_RESPIRATORY_STATUS_MAP.fr,
@@ -948,7 +949,7 @@ export function summarizeNursingAdmissionCarePlanPayload(
           ),
         },
         {
-          key: locale === "en" ? "Cardiac" : "Cardiaque",
+          key: clinicalDocSummaryKey(locale, "Cardiac", "Cardiaque"),
           value: pickLocalizedEnumLabel(
             NURSING_CARDIAC_STATUS_MAP.en,
             NURSING_CARDIAC_STATUS_MAP.fr,
@@ -957,7 +958,7 @@ export function summarizeNursingAdmissionCarePlanPayload(
           ),
         },
         {
-          key: locale === "en" ? "Pain" : "Douleur",
+          key: clinicalDocSummaryKey(locale, "Pain", "Douleur"),
           value: pickLocalizedEnumLabel(
             NURSING_PAIN_STATUS_MAP.en,
             NURSING_PAIN_STATUS_MAP.fr,
@@ -966,7 +967,7 @@ export function summarizeNursingAdmissionCarePlanPayload(
           ),
         },
         {
-          key: locale === "en" ? "Safety" : "Sécurité",
+          key: clinicalDocSummaryKey(locale, "Safety", "Sécurité"),
           value: pickLocalizedEnumLabel(
             NURSING_SAFETY_STATUS_MAP.en,
             NURSING_SAFETY_STATUS_MAP.fr,
@@ -975,7 +976,7 @@ export function summarizeNursingAdmissionCarePlanPayload(
           ),
         },
         {
-          key: locale === "en" ? "Provider notified" : "Médecin avisé",
+          key: clinicalDocSummaryKey(locale, "Provider notified", "Médecin avisé"),
           value: nursingDocYesNoLabel(d.providerNotified, locale),
         },
       ];
@@ -986,11 +987,11 @@ export function summarizeNursingAdmissionCarePlanPayload(
       const d = p.data;
       return [
         {
-          key: locale === "en" ? "Abnormal findings" : "Trouvailles anormales",
+          key: clinicalDocSummaryKey(locale, "Abnormal findings", "Trouvailles anormales"),
           value: nursingDocYesNoLabel(d.abnormalFindingsPresent, locale),
         },
         {
-          key: locale === "en" ? "Provider notified" : "Médecin avisé",
+          key: clinicalDocSummaryKey(locale, "Provider notified", "Médecin avisé"),
           value: nursingDocYesNoLabel(d.providerNotified, locale),
         },
       ];
@@ -1001,7 +1002,7 @@ export function summarizeNursingAdmissionCarePlanPayload(
       const d = p.data;
       return [
         {
-          key: locale === "en" ? "System" : "Système",
+          key: clinicalDocSummaryKey(locale, "System", "Système"),
           value: pickLocalizedEnumLabel(
             NURSING_SYSTEM_MAP.en,
             NURSING_SYSTEM_MAP.fr,
@@ -1010,7 +1011,7 @@ export function summarizeNursingAdmissionCarePlanPayload(
           ),
         },
         {
-          key: locale === "en" ? "Status" : "Statut",
+          key: clinicalDocSummaryKey(locale, "Status", "Statut"),
           value: pickLocalizedEnumLabel(
             NURSING_SYSTEM_STATUS_MAP.en,
             NURSING_SYSTEM_STATUS_MAP.fr,
@@ -1019,7 +1020,7 @@ export function summarizeNursingAdmissionCarePlanPayload(
           ),
         },
         {
-          key: locale === "en" ? "Provider notified" : "Médecin avisé",
+          key: clinicalDocSummaryKey(locale, "Provider notified", "Médecin avisé"),
           value: nursingDocYesNoLabel(d.providerNotified, locale),
         },
       ];
@@ -1030,7 +1031,7 @@ export function summarizeNursingAdmissionCarePlanPayload(
       const d = p.data;
       return [
         {
-          key: locale === "en" ? "Problem" : "Problème",
+          key: clinicalDocSummaryKey(locale, "Problem", "Problème"),
           value: pickLocalizedEnumLabel(
             NURSING_PRIMARY_PROBLEM_MAP.en,
             NURSING_PRIMARY_PROBLEM_MAP.fr,
@@ -1039,7 +1040,7 @@ export function summarizeNursingAdmissionCarePlanPayload(
           ),
         },
         {
-          key: locale === "en" ? "Goal" : "Objectif",
+          key: clinicalDocSummaryKey(locale, "Goal", "Objectif"),
           value: pickLocalizedEnumLabel(
             NURSING_CARE_PLAN_GOAL_MAP.en,
             NURSING_CARE_PLAN_GOAL_MAP.fr,
@@ -1048,7 +1049,7 @@ export function summarizeNursingAdmissionCarePlanPayload(
           ),
         },
         {
-          key: locale === "en" ? "Interventions" : "Interventions",
+          key: clinicalDocSummaryKey(locale, "Interventions", "Interventions"),
           value: String(d.interventionsPlanned.length),
         },
       ];
@@ -1059,11 +1060,11 @@ export function summarizeNursingAdmissionCarePlanPayload(
       const d = p.data;
       return [
         {
-          key: locale === "en" ? "Problem addressed" : "Problème traité",
+          key: clinicalDocSummaryKey(locale, "Problem addressed", "Problème traité"),
           value: d.problemAddressed,
         },
         {
-          key: locale === "en" ? "Progress" : "Progrès",
+          key: clinicalDocSummaryKey(locale, "Progress", "Progrès"),
           value: pickLocalizedEnumLabel(
             NURSING_PATIENT_PROGRESS_MAP.en,
             NURSING_PATIENT_PROGRESS_MAP.fr,
@@ -1072,7 +1073,7 @@ export function summarizeNursingAdmissionCarePlanPayload(
           ),
         },
         {
-          key: locale === "en" ? "Provider notified" : "Médecin avisé",
+          key: clinicalDocSummaryKey(locale, "Provider notified", "Médecin avisé"),
           value: nursingDocYesNoLabel(d.providerNotified, locale),
         },
       ];
@@ -1083,7 +1084,7 @@ export function summarizeNursingAdmissionCarePlanPayload(
       const d = p.data;
       return [
         {
-          key: locale === "en" ? "Goal type" : "Type d'objectif",
+          key: clinicalDocSummaryKey(locale, "Goal type", "Type d'objectif"),
           value: pickLocalizedEnumLabel(
             NURSING_GOAL_TYPE_MAP.en,
             NURSING_GOAL_TYPE_MAP.fr,
@@ -1092,7 +1093,7 @@ export function summarizeNursingAdmissionCarePlanPayload(
           ),
         },
         {
-          key: locale === "en" ? "Outcome" : "Résultat",
+          key: clinicalDocSummaryKey(locale, "Outcome", "Résultat"),
           value: pickLocalizedEnumLabel(
             NURSING_OUTCOME_STATUS_MAP.en,
             NURSING_OUTCOME_STATUS_MAP.fr,
@@ -1108,7 +1109,7 @@ export function summarizeNursingAdmissionCarePlanPayload(
       const d = p.data;
       return [
         {
-          key: locale === "en" ? "Problem" : "Problème",
+          key: clinicalDocSummaryKey(locale, "Problem", "Problème"),
           value: pickLocalizedEnumLabel(
             NURSING_PROBLEM_LIST_MAP.en,
             NURSING_PROBLEM_LIST_MAP.fr,
@@ -1117,7 +1118,7 @@ export function summarizeNursingAdmissionCarePlanPayload(
           ),
         },
         {
-          key: locale === "en" ? "Status" : "Statut",
+          key: clinicalDocSummaryKey(locale, "Status", "Statut"),
           value: pickLocalizedEnumLabel(
             NURSING_PROBLEM_STATUS_MAP.en,
             NURSING_PROBLEM_STATUS_MAP.fr,
@@ -1126,7 +1127,7 @@ export function summarizeNursingAdmissionCarePlanPayload(
           ),
         },
         {
-          key: locale === "en" ? "Provider notified" : "Médecin avisé",
+          key: clinicalDocSummaryKey(locale, "Provider notified", "Médecin avisé"),
           value: nursingDocYesNoLabel(d.providerNotified, locale),
         },
       ];
@@ -1137,7 +1138,7 @@ export function summarizeNursingAdmissionCarePlanPayload(
       const d = p.data;
       return [
         {
-          key: locale === "en" ? "Handoff type" : "Type de passation",
+          key: clinicalDocSummaryKey(locale, "Handoff type", "Type de passation"),
           value: pickLocalizedEnumLabel(
             NURSING_HANDOFF_TYPE_MAP.en,
             NURSING_HANDOFF_TYPE_MAP.fr,
@@ -1146,11 +1147,11 @@ export function summarizeNursingAdmissionCarePlanPayload(
           ),
         },
         {
-          key: locale === "en" ? "High-risk concerns" : "Préoccupations à haut risque",
+          key: clinicalDocSummaryKey(locale, "High-risk concerns", "Préoccupations à haut risque"),
           value: nursingDocYesNoLabel(d.highRiskConcernsPresent, locale),
         },
         {
-          key: locale === "en" ? "Open tasks reviewed" : "Tâches ouvertes revues",
+          key: clinicalDocSummaryKey(locale, "Open tasks reviewed", "Tâches ouvertes revues"),
           value: nursingDocYesNoLabel(d.openTasksReviewed, locale),
         },
       ];
@@ -1161,19 +1162,19 @@ export function summarizeNursingAdmissionCarePlanPayload(
       const d = p.data;
       return [
         {
-          key: locale === "en" ? "Stable vitals" : "Signes vitaux stables",
+          key: clinicalDocSummaryKey(locale, "Stable vitals", "Signes vitaux stables"),
           value: nursingDocYesNoLabel(d.vitalSignsStable, locale),
         },
         {
-          key: locale === "en" ? "Pain controlled" : "Douleur contrôlée",
+          key: clinicalDocSummaryKey(locale, "Pain controlled", "Douleur contrôlée"),
           value: nursingDocYesNoLabel(d.painControlled, locale),
         },
         {
-          key: locale === "en" ? "Mobility safe" : "Mobilité sécuritaire",
+          key: clinicalDocSummaryKey(locale, "Mobility safe", "Mobilité sécuritaire"),
           value: nursingDocYesNoLabel(d.mobilitySafe, locale),
         },
         {
-          key: locale === "en" ? "Barriers" : "Obstacles",
+          key: clinicalDocSummaryKey(locale, "Barriers", "Obstacles"),
           value: nursingDocYesNoLabel(d.barriersPresent, locale),
         },
       ];

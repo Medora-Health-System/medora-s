@@ -1,22 +1,22 @@
 import { isOrderItemDoneForChart } from "@/constants/orderStatusLabels";
-import { productUiBcp47Tag, type ProductUiLanguage } from "@/i18n/config";
+import { productUiBcp47Tag } from "@/i18n/config";
 import { resolveClinicalUiMessage } from "@/i18n/messages/registry";
 
 /**
  * Resolve a message path for print HTML (non-React).
  * Active locale only — never fall back to another language catalog.
  */
-export function printT(language: ProductUiLanguage, key: string): string {
+export function printT(language: string, key: string): string {
   return resolveClinicalUiMessage(language, key);
 }
 
-export function printDateLocale(language: ProductUiLanguage): string {
+export function printDateLocale(language: string): string {
   return productUiBcp47Tag(language);
 }
 
 /** Patient sex for print HTML — mirrors `getPatientSexLabelFr` using i18n. */
 export function printPatientSexLabel(
-  language: ProductUiLanguage,
+  language: string,
   sex: string | null | undefined,
   sexAtBirth: string | null | undefined
 ): string {
@@ -35,7 +35,7 @@ export function printPatientSexLabel(
   return printT(language, "common.dash");
 }
 
-export function printOrderItemChartLabel(language: ProductUiLanguage, status: string): string {
+export function printOrderItemChartLabel(language: string, status: string): string {
   if (isOrderItemDoneForChart(status)) {
     return printT(language, "printOutput.orderItemChart.terminalDone");
   }

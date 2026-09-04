@@ -99,7 +99,7 @@ function formatSummaryClinicalDateTime(iso?: string | null, language?: string): 
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "";
   try {
-    return new Intl.DateTimeFormat(language === "fr" ? "fr-HT" : "en-US", {
+    return new Intl.DateTimeFormat(productUiBcp47Tag(language), {
       dateStyle: "medium",
       timeStyle: "short",
     }).format(d);

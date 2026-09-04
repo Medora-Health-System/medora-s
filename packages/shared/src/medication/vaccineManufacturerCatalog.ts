@@ -54,7 +54,7 @@ export const VACCINE_MANUFACTURER_BY_ID: Record<VaccineManufacturerId, VaccineMa
 
 export function vaccineManufacturerLabel(
   id: VaccineManufacturerId | "" | null | undefined,
-  locale: "en" | "fr"
+  locale: string
 ): string {
   if (!id) return "";
   const entry = VACCINE_MANUFACTURER_BY_ID[id];

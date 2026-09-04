@@ -24,7 +24,7 @@ import {
   ensureGoldStandardReturnPrecautions,
 } from "./providerDischargeTemplateGoldStandard";
 import type { DischargeInstructionCareSettingContext } from "@medora/shared";
-import { adaptDischargeSuggestedTextBodyForCareSetting } from "@medora/shared";
+import { adaptDischargeSuggestedTextBodyForCareSetting, bilingualStorageLocaleOrEn } from "@medora/shared";
 import {
   BEHAVIORAL_HEALTH_ALCOHOL_INTOXICATION_FOLLOW_UP_SUGGESTED_TEXT,
   BEHAVIORAL_HEALTH_ALCOHOL_WITHDRAWAL_PRECAUTIONS_SUGGESTED_TEXT,
@@ -8038,7 +8038,7 @@ export function applyProviderDischargeTemplateToCard(
     templateVersion: template.version,
     matchLevel,
     sourceReferences,
-    appliedLocale: locale,
+    appliedLocale: bilingualStorageLocaleOrEn(locale),
     templateAppliedHash: computeProviderDischargeTemplateAppliedHash(template, locale),
     ...(template.specialtyCategory?.trim() ? { specialtyCategory: template.specialtyCategory.trim() } : {}),
     ...(template.riskCategory?.trim() ? { riskCategory: template.riskCategory.trim() } : {}),

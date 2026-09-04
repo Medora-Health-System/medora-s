@@ -3,7 +3,7 @@
  * Centralizes author / updater / role / datetime display — do not duplicate inline.
  */
 
-import { defaultLanguage, productUiBcp47Tag, type SupportedLanguage } from "@/i18n/config";
+import { defaultLanguage, pickProductUiCopy, productUiBcp47Tag, type SupportedLanguage } from "@/i18n/config";
 
 export type DocumentationAttributionInput = {
   name?: string | null;
@@ -52,9 +52,20 @@ export function formatClinicalDateTime(
   return date.toLocaleString(dateLocale(language), { dateStyle: "short", timeStyle: "short" });
 }
 
-const ROLE_LABELS: Record<SupportedLanguage, Record<string, string>> = {
+const ROLE_LABELS_ES: Record<string, string> = {
+  PROVIDER: "Profesional clínico",
+  RN: "Enfermero",
+  ADMIN: "Administrador",
+  LAB: "Técnico de laboratorio",
+  RADIOLOGY: "Técnico de imagen",
+  PHARMACY: "Farmacia",
+  FRONT_DESK: "Recepción",
+};
+
+const ROLE_LABELS = {
   en: ROLE_LABELS_EN,
   fr: ROLE_LABELS_FR,
+  es: ROLE_LABELS_ES,
 };
 
 /** Map stored role code(s) to a display title; preserves unknown codes verbatim. */
@@ -64,7 +75,7 @@ export function resolveRoleTitleLabel(
 ): string {
   const raw = (role ?? "").trim();
   if (!raw) return "";
-  const map = ROLE_LABELS[language ?? defaultLanguage];
+  const map = pickProductUiCopy(language ?? defaultLanguage, ROLE_LABELS, ROLE_LABELS.es);
   const parts = raw.split("|").map((p) => p.trim()).filter(Boolean);
   if (parts.length === 0) return raw;
   return parts.map((p) => map[p] ?? p).join(", ");
@@ -90,7 +101,7 @@ export type DocumentationAttributionLabels = {
   unknownAuthor: string;
 };
 
-const ATTRIBUTION_LABELS: Record<SupportedLanguage, DocumentationAttributionLabels> = {
+const ATTRIBUTION_LABELS = {
   en: {
     authorLine: "Documented by {name}{role} · {datetime}",
     updatedLine: "Last updated by {name}{role} · {datetime}",
@@ -101,10 +112,15 @@ const ATTRIBUTION_LABELS: Record<SupportedLanguage, DocumentationAttributionLabe
     updatedLine: "Dernière mise à jour par {name}{role} · {datetime}",
     unknownAuthor: "Auteur inconnu",
   },
+  es: {
+    authorLine: "Documentado por {name}{role} · {datetime}",
+    updatedLine: "Última actualización por {name}{role} · {datetime}",
+    unknownAuthor: "Autor desconocido",
+  },
 };
 
 export function defaultDocumentationAttributionLabels(language?: SupportedLanguage): DocumentationAttributionLabels {
-  return ATTRIBUTION_LABELS[language ?? defaultLanguage];
+  return pickProductUiCopy(language ?? defaultLanguage, ATTRIBUTION_LABELS, ATTRIBUTION_LABELS.es);
 }
 
 /** Primary author attribution line for documentation cards. */
@@ -163,19 +179,29 @@ export function formatResultAttributionPair(input: {
   const resulted = formatDocumentationAuthorLine(
     { name: input.resultedBy, role: input.resultedByRole, at: input.resultedAt },
     lang,
-    {
-      en: { authorLine: "Resulted by {name}{role} · {datetime}" },
-      fr: { authorLine: "Résultat saisi par {name}{role} · {datetime}" },
-    }[lang]
+    pickProductUiCopy(
+      lang,
+      {
+        en: { authorLine: "Resulted by {name}{role} · {datetime}" },
+        fr: { authorLine: "Résultat saisi par {name}{role} · {datetime}" },
+        es: { authorLine: "Resultado registrado por {name}{role} · {datetime}" },
+      },
+      { authorLine: "Resultado registrado por {name}{role} · {datetime}" }
+    )
   );
   if (resulted) lines.push(resulted);
   const ack = formatDocumentationAuthorLine(
     { name: input.acknowledgedBy, role: input.acknowledgedByRole, at: input.acknowledgedAt },
     lang,
-    {
-      en: { authorLine: "Acknowledged by {name}{role} · {datetime}" },
-      fr: { authorLine: "Accusé réception par {name}{role} · {datetime}" },
-    }[lang]
+    pickProductUiCopy(
+      lang,
+      {
+        en: { authorLine: "Acknowledged by {name}{role} · {datetime}" },
+        fr: { authorLine: "Accusé réception par {name}{role} · {datetime}" },
+        es: { authorLine: "Reconocido por {name}{role} · {datetime}" },
+      },
+      { authorLine: "Reconocido por {name}{role} · {datetime}" }
+    )
   );
   if (ack && (input.acknowledgedBy ?? "").trim()) lines.push(ack);
   return lines;

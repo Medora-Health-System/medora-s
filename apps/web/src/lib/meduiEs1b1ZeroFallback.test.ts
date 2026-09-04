@@ -77,7 +77,7 @@ describe("MEDUI.ES.1B.1 zero-fallback display isolation", () => {
     expect(display).toEqual({ kind: "localized", locale: "en", value: "Wound dressing" });
     expect(pickLegacyBilingualStoredPair("es", { en: "Wound dressing", fr: "Pansement de plaie" })).toEqual({
       kind: "unsupported",
-      value: "Wound dressing",
+      value: "UNLOCALIZED_SOURCE",
       source: "UNLOCALIZED_SOURCE",
     });
   });

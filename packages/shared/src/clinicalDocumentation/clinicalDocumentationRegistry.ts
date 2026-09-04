@@ -4139,7 +4139,7 @@ export function listClinicalDocumentationCardsForCareSetting(
 
 export function searchClinicalDocumentationCards(
   query: string,
-  locale: "en" | "fr" = "en",
+  locale: string = "en",
   options: {
     careSetting?: ClinicalDocumentationCareSetting;
     category?: ClinicalDocumentationCategory | "ALL";

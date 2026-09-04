@@ -29,15 +29,15 @@ import {
   resolvePublicProductUiLanguageOrDefault,
 } from "./productUiLocale";
 
-describe("product UI locale registry (MEDUI.ES.1C)", () => {
-  it("recognizes Spanish internally while public selectors stay English and French", () => {
+describe("product UI locale registry (MEDUI.ES.1C → 1K)", () => {
+  it("recognizes Spanish internally and publicly after 1K enablement; default remains English", () => {
     expect([...PRODUCT_UI_LANGUAGES]).toEqual(["fr", "en", "es"]);
-    expect([...PUBLICLY_SELECTABLE_PRODUCT_UI_LANGUAGES]).toEqual(["fr", "en"]);
+    expect([...PUBLICLY_SELECTABLE_PRODUCT_UI_LANGUAGES]).toEqual(["fr", "en", "es"]);
     expect(PRODUCT_DEFAULT_UI_LANGUAGE).toBe("en");
     expect(FACILITY_DEFAULT_LANGUAGE).toBe("fr");
     expect("es" in PRODUCT_UI_LOCALE_REGISTRY).toBe(true);
-    expect(PRODUCT_UI_LOCALE_REGISTRY.es.publiclySelectable).toBe(false);
-    expect(isPubliclySelectableProductUiLanguage("es")).toBe(false);
+    expect(PRODUCT_UI_LOCALE_REGISTRY.es.publiclySelectable).toBe(true);
+    expect(isPubliclySelectableProductUiLanguage("es")).toBe(true);
     expect(isProductUiLanguage("es")).toBe(true);
   });
 
@@ -58,8 +58,8 @@ describe("product UI locale registry (MEDUI.ES.1C)", () => {
     expect(resolveProductUiLanguageOrDefault("es")).toBe("es");
     expect(resolveInternalProductUiLanguageOrDefault("es")).toBe("es");
     expect(resolveProductUiLanguageOrDefault("fr")).toBe("fr");
-    expect(resolvePublicProductUiLanguageOrDefault("es")).toBe("en");
-    expect(resolvePublicProductUiLanguageOrDefault("es-419")).toBe("en");
+    expect(resolvePublicProductUiLanguageOrDefault("es")).toBe("es");
+    expect(resolvePublicProductUiLanguageOrDefault("es-419")).toBe("es");
     expect(resolvePublicProductUiLanguageOrDefault("fr")).toBe("fr");
   });
 
@@ -82,13 +82,14 @@ describe("product UI locale registry (MEDUI.ES.1C)", () => {
     expect(productUiLanguageSelectOptions()).toEqual([
       { value: "fr", label: "Français" },
       { value: "en", label: "English" },
+      { value: "es", label: "Español" },
     ]);
-    expect(productUiLanguageSelectOptions().some((o) => o.label === "Español")).toBe(false);
+    expect(productUiLanguageSelectOptions().some((o) => o.label === "Español")).toBe(true);
   });
 
-  it("keeps facility Zod allowlist public EN/FR; internal schema accepts es", () => {
-    expect(productUiLanguageSchema.options).toEqual(["fr", "en"]);
-    expect(productUiLanguageSchema.safeParse("es").success).toBe(false);
+  it("keeps facility Zod allowlist public EN/FR/ES; internal schema still accepts es", () => {
+    expect(productUiLanguageSchema.options).toEqual(["fr", "en", "es"]);
+    expect(productUiLanguageSchema.safeParse("es").success).toBe(true);
     expect(productUiLanguageSchema.safeParse("fr").success).toBe(true);
     expect(internalProductUiLanguageSchema.safeParse("es").success).toBe(true);
   });
@@ -129,7 +130,7 @@ describe("product UI locale registry (MEDUI.ES.1C)", () => {
     });
     expect(pickLegacyBilingualStoredPair("es", { en: "English label", fr: "Libellé français" })).toEqual({
       kind: "unsupported",
-      value: "English label",
+      value: "UNLOCALIZED_SOURCE",
       source: "UNLOCALIZED_SOURCE",
     });
   });

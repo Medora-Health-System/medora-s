@@ -296,7 +296,7 @@ export type MarShiftTimelineResponse = {
     columns: MarShiftTimelineColumn[];
   };
   rows: MarShiftTimelineRow[];
-  locale?: "en" | "fr";
+  locale?: string;
 };
 
 export type FetchMarShiftTimelineInput = {

@@ -19,7 +19,7 @@ export type InpatientDischargeSynthesisInput = {
   dischargeWorkflowState?: string | null;
   attendingName?: string | null;
   assignedRnName?: string | null;
-  language?: "en" | "fr";
+  language?: string;
 };
 
 /** Build a chart-derived fallback draft for print preview — not clinician authorship. */

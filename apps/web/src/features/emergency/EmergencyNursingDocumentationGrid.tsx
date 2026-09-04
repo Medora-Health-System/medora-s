@@ -81,7 +81,7 @@ type Props = {
   onPatch: (patch: Partial<ErNursingReassessmentForm>) => void;
   formDisabled: boolean;
   t: TFn;
-  language: "en" | "fr";
+  language: string;
   savedSignature?: SavedSignature | null;
   persistedColumns?: ErNursingReassessmentEventColumn[];
   legacyColumn?: ErNursingReassessmentEventColumn | null;
@@ -331,7 +331,7 @@ const chevronButton: React.CSSProperties = {
 
 function formatColumnTime(
   isoOrLocal: string,
-  language: "en" | "fr"
+  language: string
 ): { time: string; date: string } {
   if (!isoOrLocal) return { time: "—", date: "" };
   const d = new Date(isoOrLocal);

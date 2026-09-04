@@ -3,13 +3,14 @@
  * No cross-language fallback at apply time.
  */
 
+import { bilingualStorageLocaleOrEn } from "@medora/shared";
 import {
   applyGoldStandardToSuggestedTextBody,
 } from "./providerDischargeTemplateGoldStandard";
 
-export type ProviderDischargeTemplateLocale = "en" | "fr";
+export type ProviderDischargeTemplateLocale = string;
 
-export const PROVIDER_DISCHARGE_TEMPLATE_LOCALES = ["en", "fr"] as const satisfies readonly ProviderDischargeTemplateLocale[];
+export const PROVIDER_DISCHARGE_TEMPLATE_LOCALES = ["en", "fr"] as const;
 
 export type ProviderDischargeTemplateSuggestedTextBody = {
   description: string;
@@ -74,11 +75,12 @@ export function getProviderDischargeSuggestedTextBody(
       `[${template.id}] suggestedText is not locale-separated (en/fr required)`
     );
   }
-  const body = template.suggestedText[locale];
+  const storageLocale = bilingualStorageLocaleOrEn(locale);
+  const body = template.suggestedText[storageLocale];
   if (!body) {
-    throw new ProviderDischargeTemplateLocaleError(`[${template.id}] missing suggestedText.${locale}`);
+    throw new ProviderDischargeTemplateLocaleError(`[${template.id}] missing suggestedText.${storageLocale}`);
   }
-  return applyGoldStandardToSuggestedTextBody(template.id, body, locale);
+  return applyGoldStandardToSuggestedTextBody(template.id, body, storageLocale);
 }
 
 export function suggestedTextBodyBlob(body: ProviderDischargeTemplateSuggestedTextBody): string {

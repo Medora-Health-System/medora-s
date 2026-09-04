@@ -3,6 +3,7 @@ import type { ClinicalDocumentationFieldOption } from "./clinicalDocumentationFi
 import {
   pickLocalizedEnumLabel,
   type ClinicalDocumentationSummaryLocale,
+  clinicalDocSummaryKey,
 } from "./clinicalDocumentationSummaryLocale.js";
 
 /** EDOC.22 — patient education & discharge teaching card IDs. */
@@ -165,16 +166,16 @@ export function eduDocYesNoLabel(
   value: (typeof EDU_YES_NO_VALUES)[number],
   locale: ClinicalDocumentationSummaryLocale
 ): string {
-  return value === "YES" ? (locale === "en" ? "Yes" : "Oui") : locale === "en" ? "No" : "Non";
+  return value === "YES" ? (clinicalDocSummaryKey(locale, "Yes", "Oui")) : clinicalDocSummaryKey(locale, "No", "Non");
 }
 
 export function eduDocUnderstandingLabel(
   value: (typeof EDU_UNDERSTANDING_VALUES)[number],
   locale: ClinicalDocumentationSummaryLocale
 ): string {
-  if (value === "YES") return locale === "en" ? "Yes" : "Oui";
-  if (value === "NO") return locale === "en" ? "No" : "Non";
-  return locale === "en" ? "Partial" : "Partiel";
+  if (value === "YES") return clinicalDocSummaryKey(locale, "Yes", "Oui");
+  if (value === "NO") return clinicalDocSummaryKey(locale, "No", "Non");
+  return clinicalDocSummaryKey(locale, "Partial", "Partiel");
 }
 
 export const EDU_YES_NO_OPTIONS = enumOptions(EDU_YES_NO_VALUES, {
@@ -583,15 +584,15 @@ export function summarizePatientEducationDischargePayload(
       const d = p.data;
       return [
         {
-          key: locale === "en" ? "Topic" : "Sujet",
+          key: clinicalDocSummaryKey(locale, "Topic", "Sujet"),
           value: pickLocalizedEnumLabel(PATIENT_TOPIC_MAP.en, PATIENT_TOPIC_MAP.fr, d.topic, locale),
         },
         {
-          key: locale === "en" ? "Audience" : "Public",
+          key: clinicalDocSummaryKey(locale, "Audience", "Public"),
           value: pickLocalizedEnumLabel(AUDIENCE_MAP.en, AUDIENCE_MAP.fr, d.audience, locale),
         },
         {
-          key: locale === "en" ? "Understanding demonstrated" : "Compréhension démontrée",
+          key: clinicalDocSummaryKey(locale, "Understanding demonstrated", "Compréhension démontrée"),
           value: eduDocUnderstandingLabel(d.understandingDemonstrated, locale),
         },
       ];
@@ -602,11 +603,11 @@ export function summarizePatientEducationDischargePayload(
       const d = p.data;
       return [
         {
-          key: locale === "en" ? "Medications reviewed" : "Médicaments revus",
+          key: clinicalDocSummaryKey(locale, "Medications reviewed", "Médicaments revus"),
           value: eduDocYesNoLabel(d.medicationsReviewed, locale),
         },
         {
-          key: locale === "en" ? "Teach-back completed" : "Teach-back complété",
+          key: clinicalDocSummaryKey(locale, "Teach-back completed", "Teach-back complété"),
           value: eduDocYesNoLabel(d.teachBackCompleted, locale),
         },
       ];
@@ -617,15 +618,15 @@ export function summarizePatientEducationDischargePayload(
       const d = p.data;
       return [
         {
-          key: locale === "en" ? "Instructions reviewed" : "Consignes revues",
+          key: clinicalDocSummaryKey(locale, "Instructions reviewed", "Consignes revues"),
           value: eduDocYesNoLabel(d.instructionsReviewed, locale),
         },
         {
-          key: locale === "en" ? "Follow-up reviewed" : "Suivi revu",
+          key: clinicalDocSummaryKey(locale, "Follow-up reviewed", "Suivi revu"),
           value: eduDocYesNoLabel(d.followUpReviewed, locale),
         },
         {
-          key: locale === "en" ? "Understanding demonstrated" : "Compréhension démontrée",
+          key: clinicalDocSummaryKey(locale, "Understanding demonstrated", "Compréhension démontrée"),
           value: eduDocUnderstandingLabel(d.understandingDemonstrated, locale),
         },
       ];
@@ -636,7 +637,7 @@ export function summarizePatientEducationDischargePayload(
       const d = p.data;
       return [
         {
-          key: locale === "en" ? "Topic" : "Sujet",
+          key: clinicalDocSummaryKey(locale, "Topic", "Sujet"),
           value: pickLocalizedEnumLabel(
             TEACH_BACK_TOPIC_MAP.en,
             TEACH_BACK_TOPIC_MAP.fr,
@@ -645,11 +646,11 @@ export function summarizePatientEducationDischargePayload(
           ),
         },
         {
-          key: locale === "en" ? "Successful" : "Réussi",
+          key: clinicalDocSummaryKey(locale, "Successful", "Réussi"),
           value: eduDocUnderstandingLabel(d.teachBackSuccessful, locale),
         },
         {
-          key: locale === "en" ? "Additional education required" : "Éducation supplémentaire requise",
+          key: clinicalDocSummaryKey(locale, "Additional education required", "Éducation supplémentaire requise"),
           value: eduDocYesNoLabel(d.additionalEducationRequired, locale),
         },
       ];
@@ -660,15 +661,15 @@ export function summarizePatientEducationDischargePayload(
       const d = p.data;
       return [
         {
-          key: locale === "en" ? "Appointment needed" : "Rendez-vous requis",
+          key: clinicalDocSummaryKey(locale, "Appointment needed", "Rendez-vous requis"),
           value: eduDocYesNoLabel(d.appointmentNeeded, locale),
         },
         {
-          key: locale === "en" ? "Appointment scheduled" : "Rendez-vous planifié",
+          key: clinicalDocSummaryKey(locale, "Appointment scheduled", "Rendez-vous planifié"),
           value: d.appointmentScheduled,
         },
         {
-          key: locale === "en" ? "Transportation concern" : "Préoccupation transport",
+          key: clinicalDocSummaryKey(locale, "Transportation concern", "Préoccupation transport"),
           value: eduDocYesNoLabel(d.transportationConcern, locale),
         },
       ];
@@ -679,7 +680,7 @@ export function summarizePatientEducationDischargePayload(
       const d = p.data;
       return [
         {
-          key: locale === "en" ? "Barrier type" : "Type de barrière",
+          key: clinicalDocSummaryKey(locale, "Barrier type", "Type de barrière"),
           value: pickLocalizedEnumLabel(
             BARRIER_TYPE_MAP.en,
             BARRIER_TYPE_MAP.fr,
@@ -688,11 +689,11 @@ export function summarizePatientEducationDischargePayload(
           ),
         },
         {
-          key: locale === "en" ? "Interpreter needed" : "Interprète requis",
+          key: clinicalDocSummaryKey(locale, "Interpreter needed", "Interprète requis"),
           value: eduDocYesNoLabel(d.interpreterNeeded, locale),
         },
         {
-          key: locale === "en" ? "Caregiver involved" : "Aidant impliqué",
+          key: clinicalDocSummaryKey(locale, "Caregiver involved", "Aidant impliqué"),
           value: eduDocYesNoLabel(d.caregiverInvolved, locale),
         },
       ];
@@ -703,7 +704,7 @@ export function summarizePatientEducationDischargePayload(
       const d = p.data;
       return [
         {
-          key: locale === "en" ? "Reason" : "Motif",
+          key: clinicalDocSummaryKey(locale, "Reason", "Motif"),
           value: pickLocalizedEnumLabel(
             REFUSAL_REASON_MAP.en,
             REFUSAL_REASON_MAP.fr,
@@ -712,7 +713,7 @@ export function summarizePatientEducationDischargePayload(
           ),
         },
         {
-          key: locale === "en" ? "Provider notified" : "Médecin avisé",
+          key: clinicalDocSummaryKey(locale, "Provider notified", "Médecin avisé"),
           value: eduDocYesNoLabel(d.providerNotified, locale),
         },
       ];
@@ -723,7 +724,7 @@ export function summarizePatientEducationDischargePayload(
       const d = p.data;
       return [
         {
-          key: locale === "en" ? "Topic" : "Sujet",
+          key: clinicalDocSummaryKey(locale, "Topic", "Sujet"),
           value: pickLocalizedEnumLabel(
             labelMap(EDU_CAREGIVER_TOPIC_OPTIONS).en,
             labelMap(EDU_CAREGIVER_TOPIC_OPTIONS).fr,
@@ -732,7 +733,7 @@ export function summarizePatientEducationDischargePayload(
           ),
         },
         {
-          key: locale === "en" ? "Teach-back completed" : "Teach-back complété",
+          key: clinicalDocSummaryKey(locale, "Teach-back completed", "Teach-back complété"),
           value: eduDocYesNoLabel(d.teachBackCompleted, locale),
         },
       ];
@@ -743,7 +744,7 @@ export function summarizePatientEducationDischargePayload(
       const d = p.data;
       return [
         {
-          key: locale === "en" ? "Equipment" : "Équipement",
+          key: clinicalDocSummaryKey(locale, "Equipment", "Équipement"),
           value: pickLocalizedEnumLabel(
             EQUIPMENT_TYPE_MAP.en,
             EQUIPMENT_TYPE_MAP.fr,
@@ -752,7 +753,7 @@ export function summarizePatientEducationDischargePayload(
           ),
         },
         {
-          key: locale === "en" ? "Understanding demonstrated" : "Compréhension démontrée",
+          key: clinicalDocSummaryKey(locale, "Understanding demonstrated", "Compréhension démontrée"),
           value: eduDocUnderstandingLabel(d.understandingDemonstrated, locale),
         },
       ];
@@ -763,7 +764,7 @@ export function summarizePatientEducationDischargePayload(
       const d = p.data;
       return [
         {
-          key: locale === "en" ? "Condition" : "Condition",
+          key: clinicalDocSummaryKey(locale, "Condition", "Condition"),
           value: pickLocalizedEnumLabel(
             DISEASE_CONDITION_MAP.en,
             DISEASE_CONDITION_MAP.fr,
@@ -772,7 +773,7 @@ export function summarizePatientEducationDischargePayload(
           ),
         },
         {
-          key: locale === "en" ? "Education provided" : "Éducation fournie",
+          key: clinicalDocSummaryKey(locale, "Education provided", "Éducation fournie"),
           value: eduDocYesNoLabel(d.educationProvided, locale),
         },
       ];

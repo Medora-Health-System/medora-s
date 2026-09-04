@@ -5,7 +5,7 @@ import {
   type EnterpriseProcedureDefinition,
 } from "./enterpriseProcedureCatalog.js";
 
-export type EnterpriseProcedureSearchLocale = "en" | "fr";
+export type EnterpriseProcedureSearchLocale = string;
 
 export function normalizeEnterpriseProcedureSearchText(text: string): string {
   return text

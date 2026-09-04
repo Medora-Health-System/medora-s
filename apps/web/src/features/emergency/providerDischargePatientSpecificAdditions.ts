@@ -862,7 +862,7 @@ export function mergePatientSpecificAndMedicationAdditions(
 export function resolveClinicalPatientSpecificDischargeAdditions(input: {
   templateIds: readonly string[];
   context: PatientSpecificDischargeContext;
-  locale: ProductUiLanguage;
+  locale: string;
 }): PatientSpecificDischargeAddition[] {
   const signals = resolvePatientSignals(input.templateIds, input.context);
   if (!signals.hasAnyTemplate) return [];
@@ -897,7 +897,7 @@ export function resolveClinicalPatientSpecificDischargeAdditions(input: {
 export function resolvePatientSpecificDischargeAdditions(input: {
   templateIds: readonly string[];
   context: PatientSpecificDischargeContext;
-  locale: ProductUiLanguage;
+  locale: string;
   maxAdditions?: number;
 }): PatientSpecificDischargeAddition[] {
   if (input.templateIds.length === 0) return [];
