@@ -355,8 +355,10 @@ export const ES_MEDICAL_TERMINOLOGY: readonly EsMedicalTerminologyEntry[] = [
 
   // J. Diagnosis / assessment — no bulk ICD dictionary
   entry("clinical.dx.diagnosis", "Diagnosis", "Diagnóstico", "DIAGNOSIS_ASSESSMENT"),
-  entry("clinical.dx.primaryDiagnosis", "Primary Diagnosis", "Diagnóstico principal", "DIAGNOSIS_ASSESSMENT", {
+  entry("clinical.dx.primaryDiagnosis", "Primary Diagnosis", "Diagnóstico primario", "DIAGNOSIS_ASSESSMENT", {
     uiMessageKeys: ["printOutput.discharge.primaryDiagnosis"],
+    notes:
+      "MEDUI.ES.1I: working/primary diagnosis UI concept. Linguistically distinct from clinical.dx.principalDiagnosis (institutional principal-after-study). Do not use 'principal' for this term.",
   }),
   entry("clinical.dx.secondaryDiagnosis", "Secondary Diagnosis", "Diagnóstico secundario", "DIAGNOSIS_ASSESSMENT"),
   entry("clinical.dx.principalDiagnosis", "Principal Diagnosis", "Diagnóstico principal de egreso", "DIAGNOSIS_ASSESSMENT", {
@@ -503,13 +505,14 @@ export const ES_MEDICAL_TERMINOLOGY: readonly EsMedicalTerminologyEntry[] = [
   entry("clinical.dental.dentalExamination", "Dental Examination", "Examen odontológico", "DENTAL"),
   entry("clinical.dental.dentalDiagnosis", "Dental Diagnosis", "Diagnóstico odontológico", "DENTAL"),
 
-  // S. Billing — codes unchanged; several labels REVIEW_REQUIRED
+  // S. Billing — codes unchanged; claim/revenue/professional/subscriber/claimStatus governed in MEDUI.ES.1I
   entry("clinical.billing.billing", "Billing", "Facturación", "BILLING_CLAIM", {
     uiMessageKeys: ["nav.billing"],
   }),
   entry("clinical.billing.claim", "Claim", "Reclamación", "BILLING_CLAIM", {
-    status: "REVIEW_REQUIRED",
-    notes: "LatAm reclamo vs reclamación; do not treat as approved until billing review.",
+    uiMessageKeys: ["revenuePayment.table.claim"],
+    notes:
+      "MEDUI.ES.1I: Medora-owned insurance claim package (837 / CMS claim), not a clearinghouse response body, charge, invoice, or payment. Distinct from clinical.billing.charge.",
   }),
   entry("clinical.billing.charge", "Charge", "Cargo", "BILLING_CLAIM"),
   entry("clinical.billing.chargeCapture", "Charge Capture", "Captura de cargos", "BILLING_CLAIM"),
@@ -517,19 +520,36 @@ export const ES_MEDICAL_TERMINOLOGY: readonly EsMedicalTerminologyEntry[] = [
   entry("clinical.billing.procedure", "Procedure", "Procedimiento", "BILLING_CLAIM"),
   entry("clinical.billing.modifier", "Modifier", "Modificador", "BILLING_CLAIM"),
   entry("clinical.billing.revenueCode", "Revenue Code", "Código de ingresos", "BILLING_CLAIM", {
-    status: "REVIEW_REQUIRED",
+    uiMessageKeys: ["billingPage.billingEditRevenueCode"],
+    notes:
+      "MEDUI.ES.1I: UI label only. Numeric UB revenue-code values remain canonical and must not be translated.",
   }),
-  entry("clinical.billing.professional", "Professional", "Profesional", "BILLING_CLAIM", { status: "REVIEW_REQUIRED" }),
+  entry("clinical.billing.professional", "Professional", "Profesional", "BILLING_CLAIM", {
+    uiMessageKeys: [
+      "billingPage.billingSide_PROFESSIONAL",
+      "billingPage.claimPreviewOriginProfessional",
+      "chargeCaptureReview.domain.PROFESSIONAL",
+      "procedureRevenueReview.side.PROFESSIONAL",
+    ],
+    notes:
+      "MEDUI.ES.1I: professional billing classification / 837P / CMS-1500 package side. Not clinician role, not professional component, not rendering provider. Distinct from clinical.billing.facility and clinical.provider.provider.",
+  }),
   entry("clinical.billing.facility", "Facility", "Establecimiento", "BILLING_CLAIM", {
     uiMessageKeys: ["common.facilityPrefix"],
   }),
-  entry("clinical.billing.subscriber", "Subscriber", "Titular", "BILLING_CLAIM", { status: "REVIEW_REQUIRED" }),
+  entry("clinical.billing.subscriber", "Subscriber", "Titular", "BILLING_CLAIM", {
+    uiMessageKeys: ["billingPage.claimIdentitySubscriberSectionTitle", "billingPage.identityTerm_subscriber"],
+    notes:
+      "MEDUI.ES.1I: insurance policyholder/subscriber. Distinct from patient, member, dependent, guarantor, and payer. Display label only — do not mutate subscriber data.",
+  }),
   entry("clinical.billing.coverage", "Coverage", "Cobertura", "BILLING_CLAIM"),
   entry("clinical.billing.payer", "Payer", "Pagador", "BILLING_CLAIM"),
   entry("clinical.billing.primaryPayer", "Primary Payer", "Pagador principal", "BILLING_CLAIM"),
   entry("clinical.billing.secondaryPayer", "Secondary Payer", "Pagador secundario", "BILLING_CLAIM"),
   entry("clinical.billing.claimStatus", "Claim Status", "Estado de la reclamación", "BILLING_CLAIM", {
-    status: "REVIEW_REQUIRED",
+    uiMessageKeys: ["revenueCycle.table.claimStatus"],
+    notes:
+      "MEDUI.ES.1I: Medora queue chrome for canonical claim submission state. Do not translate raw clearinghouse status payloads.",
   }),
   entry("clinical.billing.readyForExport", "Ready for Export", "Listo para exportar", "BILLING_CLAIM"),
   entry("clinical.billing.validation", "Validation", "Validación", "BILLING_CLAIM"),

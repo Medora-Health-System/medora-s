@@ -120,12 +120,17 @@ describe("MEDUI.ES.1D Spanish medical terminology canon", () => {
     expect(missing).toBe(hiddenSpanishPlaceholder("clinical.missing.not.in.canon"));
     expect(missing).not.toBe("Admission");
     expect(missing).not.toBe("Admisión");
-    const claim = getSpanishMedicalTerm("clinical.billing.claim");
-    expect(isHiddenSpanishPlaceholder(claim)).toBe(true);
-    expect(claim).not.toBe("Claim");
-    expect(claim).not.toBe("Reclamación");
-    expect(resolveMedicalTerminology("es", "clinical.billing.revenueCode")).toBe(
-      hiddenSpanishPlaceholder("clinical.billing.revenueCode")
+    const principalDx = getSpanishMedicalTerm("clinical.dx.principalDiagnosis");
+    expect(isHiddenSpanishPlaceholder(principalDx)).toBe(true);
+    expect(principalDx).not.toBe("Principal Diagnosis");
+    expect(principalDx).not.toBe("Diagnóstico principal de egreso");
+    expect(resolveMedicalTerminology("es", "clinical.dx.principalDiagnosis")).toBe(
+      hiddenSpanishPlaceholder("clinical.dx.principalDiagnosis")
+    );
+    expect(getSpanishMedicalTerm("clinical.dx.primaryDiagnosis")).toBe("Diagnóstico primario");
+    expect(getSpanishMedicalTerm("clinical.dx.primaryDiagnosis")).not.toBe("Diagnóstico principal");
+    expect(getSpanishMedicalTerm("clinical.dx.primaryDiagnosis")).not.toBe(
+      "Diagnóstico principal de egreso",
     );
     expect(resolveMedicalTerminology("en", "clinical.aod.admission")).toBe("Admission");
     expect(resolveMedicalTerminology("fr", "clinical.aod.admission")).toBe("clinical.aod.admission");
@@ -156,9 +161,9 @@ describe("MEDUI.ES.1D Spanish medical terminology canon", () => {
       "clinical.allergy.allergies": "Alergias",
       "clinical.mar.administered": "Administrado",
       "clinical.mar.held": "Retenido",
-      "clinical.billing.claim": hiddenSpanishPlaceholder("clinical.billing.claim"),
+      "clinical.billing.claim": "Reclamación",
       "clinical.billing.charge": "Cargo",
-      "clinical.billing.revenueCode": hiddenSpanishPlaceholder("clinical.billing.revenueCode"),
+      "clinical.billing.revenueCode": "Código de ingresos",
       "clinical.print.signature": "Firma",
     };
     for (const key of REPRESENTATIVE_KEYS) {
