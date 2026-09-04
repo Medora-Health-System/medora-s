@@ -2128,7 +2128,8 @@ export function EmergencyDispositionPanel({
               </div>
             )}
 
-            {(showTransferExtra || showAmaExtra || showLwbsExtra) ? (
+            {(showTransferExtra || showAmaExtra || showLwbsExtra) &&
+            isUnitedStatesEmtalaJurisdiction(facilityCountry) ? (
             <div
               data-testid="ed-disposition-transfer-ops"
               style={{

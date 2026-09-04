@@ -1,6 +1,8 @@
 "use client";
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { parseProductUiLanguage, PRODUCT_DEFAULT_UI_LANGUAGE } from "@/i18n/config";
+import { isEmtalaLegalContentApplicable } from "@medora/shared";
 import { useI18n } from "@/lib/i18n";
 import { encounterBcp47 } from "@/lib/encounterChromeI18n";
 import { apiFetch } from "@/lib/apiClient";
@@ -63,13 +65,14 @@ export function RegistrationPacketWizard({
 }) {
   const { t, language } = useI18n();
   const dateLocale = encounterBcp47(language);
-  const { facilities } = useFacilityAndRoles();
+  const { facilities, facilityCountry } = useFacilityAndRoles();
   const facilityName =
     facilities.find((f) => f.id === facilityId)?.name?.trim() || facilityId;
 
+  const [emtalaApplicable, setEmtalaApplicable] = useState(false);
   const catalog = useMemo<PacketSectionContent[]>(
-    () => sectionCatalogForTemplate(template),
-    [template],
+    () => sectionCatalogForTemplate(template, { emtalaApplicable }),
+    [template, emtalaApplicable],
   );
   const catalogByKey = useMemo(() => {
     const map = new Map<string, PacketSectionContent>();
@@ -135,6 +138,32 @@ export function RegistrationPacketWizard({
     })();
   }, [patientId, facilityId]);
 
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const flags = (await apiFetch(`/documents/registration-disclosure-flags`, {
+          facilityId,
+        })) as {
+          emtalaApplicability?: string | null;
+          facilityCountry?: string | null;
+          emtalaLegalContentApplicable?: boolean;
+        };
+        if (cancelled) return;
+        const applicable = isEmtalaLegalContentApplicable({
+          facilityCountry: flags?.facilityCountry ?? facilityCountry,
+          emtalaApplicability: flags?.emtalaApplicability,
+        });
+        setEmtalaApplicable(applicable === true);
+      } catch {
+        if (!cancelled) setEmtalaApplicable(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [facilityId, facilityCountry]);
+
   const handleFullTextMadeAvailable = useCallback((key: string) => {
     setFullTextAvailable((prev) => {
       if (prev[key]) return prev;
@@ -189,7 +218,7 @@ export function RegistrationPacketWizard({
       const structuredModel = {
         packetType: template,
         packetVersion: "1.0",
-        locale: language || "fr",
+        locale: parseProductUiLanguage(language) ?? PRODUCT_DEFAULT_UI_LANGUAGE,
         facility: { id: facilityId, name: facilityName },
         patient: patient ? { ...patient, id: patientId } : { id: patientId },
         encounter: null,

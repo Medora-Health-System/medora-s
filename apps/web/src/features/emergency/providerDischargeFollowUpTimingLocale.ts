@@ -3,10 +3,10 @@
  * Registry stores canonical EN keys only; localized at extract/render time.
  */
 
-import type { SupportedLanguage } from "@/i18n/config";
+import { UNLOCALIZED_CATALOG_SOURCE, type ProductUiLanguage } from "@/i18n/config";
 import type { ProviderDischargeFollowUpRow } from "./providerDischargeDocumentationModel";
 
-export type ProviderDischargeFollowUpTimingLocale = SupportedLanguage;
+export type ProviderDischargeFollowUpTimingLocale = ProductUiLanguage;
 
 /** MEDUI.ED.DISCHARGE.DIAGNOSIS_INSTRUCTIONS.1 — canonical EN follow-up window keys (registry-internal). */
 export const ED_DEFAULT_PCP_FOLLOW_UP_TIMING = "within 1–2 days";
@@ -311,7 +311,9 @@ export function localizeProviderDischargeFollowUpTiming(
   const canonical = resolveProviderDischargeFollowUpTimingCanonicalKey(trimmed) ?? trimmed;
   const pair = PROVIDER_DISCHARGE_FOLLOW_UP_TIMING_LOCALE[canonical];
   if (!pair) return trimmed;
-  return locale === "fr" ? pair.fr : pair.en;
+  if (locale === "fr") return pair.fr;
+  if (locale === "en") return pair.en;
+  return UNLOCALIZED_CATALOG_SOURCE;
 }
 
 export function localizeProviderDischargeFollowUpComments(
@@ -322,7 +324,9 @@ export function localizeProviderDischargeFollowUpComments(
   if (!trimmed) return "";
   const pair = PROVIDER_DISCHARGE_FOLLOW_UP_COMMENTS_LOCALE[trimmed];
   if (!pair) return trimmed;
-  return locale === "fr" ? pair.fr : pair.en;
+  if (locale === "fr") return pair.fr;
+  if (locale === "en") return pair.en;
+  return UNLOCALIZED_CATALOG_SOURCE;
 }
 
 export function localizeProviderDischargeFollowUpRow(

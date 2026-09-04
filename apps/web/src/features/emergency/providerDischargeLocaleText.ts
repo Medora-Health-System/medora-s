@@ -2,7 +2,7 @@
  * MEDUI.ED.DISCHARGE.I18N_REMEDIATION.1 — strict locale text resolution (no cross-locale fallback).
  */
 
-import type { SupportedLanguage } from "@/i18n/config";
+import type { ProductUiLanguage } from "@/i18n/config";
 
 export class ProviderDischargeLocaleTextError extends Error {
   constructor(message: string) {
@@ -13,8 +13,8 @@ export class ProviderDischargeLocaleTextError extends Error {
 
 export function resolveStrictProviderDischargeLocaleText(
   ruleId: string,
-  text: Partial<Record<SupportedLanguage, string>>,
-  locale: SupportedLanguage
+  text: Partial<Record<ProductUiLanguage, string>>,
+  locale: ProductUiLanguage
 ): string {
   const localized = text[locale]?.trim();
   if (!localized) {
@@ -25,8 +25,8 @@ export function resolveStrictProviderDischargeLocaleText(
 
 /** Runtime resolver — skips rule when locale text missing (never injects English into FR). */
 export function resolveProviderDischargeLocaleTextOrNull(
-  text: Partial<Record<SupportedLanguage, string>>,
-  locale: SupportedLanguage
+  text: Partial<Record<ProductUiLanguage, string>>,
+  locale: ProductUiLanguage
 ): string | null {
   const localized = text[locale]?.trim();
   return localized || null;

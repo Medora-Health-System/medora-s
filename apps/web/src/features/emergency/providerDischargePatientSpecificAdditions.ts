@@ -3,7 +3,7 @@
  * Append-only patient-specific discharge instructions — core templates unchanged.
  */
 
-import type { SupportedLanguage } from "@/i18n/config";
+import type { ProductUiLanguage } from "@/i18n/config";
 import { resolveProviderDischargeLocaleTextOrNull } from "./providerDischargeLocaleText";
 import {
   resolveMedicationRiskDischargeAdditions,
@@ -65,7 +65,7 @@ export type PatientSpecificDischargeRule = {
   appliesToAllTemplates?: boolean;
   appliesToFamilyIds?: readonly string[];
   clinicalReviewStatus: ClinicalReviewStatus;
-  text: Record<SupportedLanguage, string>;
+  text: { en: string; fr: string };
   matches: (resolved: ResolvedPatientSignals) => boolean;
 };
 
@@ -862,7 +862,7 @@ export function mergePatientSpecificAndMedicationAdditions(
 export function resolveClinicalPatientSpecificDischargeAdditions(input: {
   templateIds: readonly string[];
   context: PatientSpecificDischargeContext;
-  locale: SupportedLanguage;
+  locale: ProductUiLanguage;
 }): PatientSpecificDischargeAddition[] {
   const signals = resolvePatientSignals(input.templateIds, input.context);
   if (!signals.hasAnyTemplate) return [];
@@ -897,7 +897,7 @@ export function resolveClinicalPatientSpecificDischargeAdditions(input: {
 export function resolvePatientSpecificDischargeAdditions(input: {
   templateIds: readonly string[];
   context: PatientSpecificDischargeContext;
-  locale: SupportedLanguage;
+  locale: ProductUiLanguage;
   maxAdditions?: number;
 }): PatientSpecificDischargeAddition[] {
   if (input.templateIds.length === 0) return [];

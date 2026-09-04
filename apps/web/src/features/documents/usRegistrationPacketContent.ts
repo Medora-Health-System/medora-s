@@ -39,9 +39,19 @@ const HOSPITAL_EXTRA: PacketSectionContent[] = [
   { key: "emtalaNotice", titleKey: "packetWizard.sectionEmtala", summaryKey: "packetWizard.emtalaSummary", fullKey: "packetWizard.emtalaFull", sourceLabel: "CMS EMTALA", sourceUrl: "https://www.cms.gov/medicare/regulations-guidance/legislation/emergency-medical-treatment-labor-act" },
 ];
 
-export function sectionCatalogForTemplate(template: string): PacketSectionContent[] {
+export type SectionCatalogOptions = {
+  /** Canonical EMTALA legal-content applicability. HOSPITAL type alone is never enough. */
+  emtalaApplicable?: boolean;
+};
+
+export function sectionCatalogForTemplate(
+  template: string,
+  options?: SectionCatalogOptions,
+): PacketSectionContent[] {
   if (template === "FREESTANDING_ER") return [...CORE, ...ER_EXTRA];
-  if (template === "HOSPITAL") return [...CORE, ...HOSPITAL_EXTRA];
+  if (template === "HOSPITAL") {
+    return options?.emtalaApplicable === true ? [...CORE, ...HOSPITAL_EXTRA] : [...CORE];
+  }
   if (template === "CLINIC") {
     return CORE.filter((s) => s.key !== "personalBelongings" && s.key !== "safetyPolicy");
   }

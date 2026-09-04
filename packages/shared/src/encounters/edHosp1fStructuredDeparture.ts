@@ -449,6 +449,41 @@ export function isUnitedStatesEmtalaJurisdiction(
   return (UNITED_STATES_EMTALA_JURISDICTION_TOKENS as readonly string[]).includes(n);
 }
 
+/**
+ * Facility settings that may present EMTALA legal content.
+ * Independent freestanding ERs and unconfigured facilities are not applicable.
+ * HOSPITAL type alone never implies applicability.
+ */
+export const EMTALA_APPLICABLE_FACILITY_SETTINGS = [
+  "HOSPITAL_EMERGENCY_DEPARTMENT",
+  "HOSPITAL_AFFILIATED_OFF_CAMPUS_ED",
+] as const;
+
+export type EmtalaApplicableFacilitySetting = (typeof EMTALA_APPLICABLE_FACILITY_SETTINGS)[number];
+
+export function isEmtalaApplicableFacilitySetting(
+  emtalaApplicability: string | null | undefined
+): emtalaApplicability is EmtalaApplicableFacilitySetting {
+  const a = String(emtalaApplicability ?? "")
+    .trim()
+    .toUpperCase();
+  return (EMTALA_APPLICABLE_FACILITY_SETTINGS as readonly string[]).includes(a);
+}
+
+/**
+ * EMTALA legal content (screen/print/registration) may display only when:
+ * 1. facility country is US jurisdiction, AND
+ * 2. EmtalaApplicability is an explicit applicable hospital-ED setting.
+ * Unknown / NOT_CONFIGURED / independent FSED / non-US → not applicable.
+ */
+export function isEmtalaLegalContentApplicable(input: {
+  facilityCountry?: string | null;
+  emtalaApplicability?: string | null;
+}): boolean {
+  if (!isUnitedStatesEmtalaJurisdiction(input.facilityCountry)) return false;
+  return isEmtalaApplicableFacilitySetting(input.emtalaApplicability);
+}
+
 export const SMART_ADMISSION_PROPOSAL_PREFIXES = {
   en: {
     chiefComplaint: "Chief complaint",

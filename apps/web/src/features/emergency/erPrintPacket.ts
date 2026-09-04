@@ -56,6 +56,7 @@ import {
 } from "@/features/emergency/erProviderDocumentationSummary";
 import type { EdClinicalTimelineEntry } from "@medora/shared";
 import {
+  isUnitedStatesEmtalaJurisdiction,
   provenanceDisplayKey,
   readAdmissionPacketV1,
   readAdaptiveEdNursingExecution,
@@ -332,6 +333,7 @@ export function getErPrintPacketHtml(params: {
   }
 
   const facilityInfo = resolvePrintFacilityInfo(facility, facilityName);
+  const emtalaPrintApplicable = isUnitedStatesEmtalaJurisdiction(facilityInfo?.country);
   const loc = printDateLocale(language);
   const name = [patient.firstName, patient.lastName].filter(Boolean).join(" ").trim() || "—";
   const ageYears =
@@ -569,8 +571,10 @@ export function getErPrintPacketHtml(params: {
     marEventRows: marEventRows ?? undefined,
   });
 
-  body.push(h2(language, "printOutput.erPacket.sectionEmtalaSummary"));
-  appendEmtalaBlock(body, language, loc, emtalaDerived);
+  if (emtalaPrintApplicable) {
+    body.push(h2(language, "printOutput.erPacket.sectionEmtalaSummary"));
+    appendEmtalaBlock(body, language, loc, emtalaDerived);
+  }
 
   body.push(h2(language, "printOutput.erPacket.sectionHandoff"));
   appendHandoffBlock(body, language, loc, handoff);
@@ -713,7 +717,7 @@ export function getErPrintPacketHtml(params: {
   }
 
   body.push(h2(language, "printOutput.erPacket.sectionSignatures"));
-  appendSignatureBlock(body, language, loc, encounter, emtalaDerived, disSig);
+  appendSignatureBlock(body, language, loc, encounter, emtalaDerived, disSig, emtalaPrintApplicable);
 
   const footer = buildPrintDocumentFooterHtml(language, printDate, esc, printT);
   body.push(footer);
@@ -1115,7 +1119,8 @@ function appendSignatureBlock(
   loc: string,
   encounter: ErPrintEncounter,
   emtala: ErEmtalaV1Stored | null,
-  disSig: ReturnType<typeof readDispositionSignatureFromEncounter>
+  disSig: ReturnType<typeof readDispositionSignatureFromEncounter>,
+  emtalaPrintApplicable: boolean
 ): void {
   if (encounter.providerDocumentationStatus === "SIGNED" && encounter.providerDocumentationSignedAt) {
     const who = encounter.providerDocumentationSignedByDisplayFr?.trim() || "—";
@@ -1155,7 +1160,7 @@ function appendSignatureBlock(
       )
     );
   }
-  if (emtala?.signature?.savedAt && emtala.signature.savedByDisplayName) {
+  if (emtalaPrintApplicable && emtala?.signature?.savedAt && emtala.signature.savedByDisplayName) {
     body.push(
       line(
         printT(language, "printOutput.erPacket.signedEmtalaLog"),

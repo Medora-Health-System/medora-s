@@ -3,7 +3,10 @@
  * MEDUI.D4C.7I — projects from enterprise facility identity (not session-only name).
  */
 
+import { type ProductUiLanguage } from "@/i18n/config";
 import {
+  UNLOCALIZED_CATALOG_SOURCE,
+  isHiddenSpanishPlaceholder,
   formatEnterpriseFacilityAddressLines,
   projectEnterpriseFacilityIdentity,
   resolveDocumentFacilityIdentitySource,
@@ -222,18 +225,25 @@ export function buildPrintFacilityHeaderHtml(
 }
 
 export function buildPrintDocumentFooterHtml(
-  language: "en" | "fr",
+  language: ProductUiLanguage,
   printDate: string,
   esc: (value: string) => string,
-  printT: (language: "en" | "fr", key: string) => string
+  printT: (language: ProductUiLanguage, key: string) => string
 ): string {
-  const footer = printT(language, "printOutput.common.documentFooter").replace("{date}", printDate);
-  if (footer.includes("{date}") || footer === "printOutput.common.documentFooter") {
-    const fallback =
-      language === "en"
-        ? `Document generated on ${printDate} — Medora-S`
-        : `Document généré le ${printDate} — Medora-S`;
-    return `<p style="margin-top:24px;font-size:11px;color:#64748b;text-align:center;">${esc(fallback)}</p>`;
+  const resolved = printT(language, "printOutput.common.documentFooter");
+  if (
+    !resolved ||
+    resolved === "printOutput.common.documentFooter" ||
+    resolved === UNLOCALIZED_CATALOG_SOURCE ||
+    isHiddenSpanishPlaceholder(resolved)
+  ) {
+    const marker =
+      resolved && isHiddenSpanishPlaceholder(resolved) ? resolved : UNLOCALIZED_CATALOG_SOURCE;
+    return `<p style="margin-top:24px;font-size:11px;color:#64748b;text-align:center;">${esc(marker)}</p>`;
+  }
+  const footer = resolved.replace("{date}", printDate);
+  if (footer.includes("{date}")) {
+    return `<p style="margin-top:24px;font-size:11px;color:#64748b;text-align:center;">${esc(UNLOCALIZED_CATALOG_SOURCE)}</p>`;
   }
   return `<p style="margin-top:24px;font-size:11px;color:#64748b;text-align:center;">${esc(footer)}</p>`;
 }

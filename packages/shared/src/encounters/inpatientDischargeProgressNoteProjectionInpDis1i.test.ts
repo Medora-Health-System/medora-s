@@ -244,6 +244,18 @@ describe("INP.DIS.1I diagnosis persistence + refresh + print projection", () => 
     expect(String(merged.pendingStudiesSummary)).not.toMatch(/\bLAB\b/);
     expect(formatDischargeNarrativeForDisplay(String(merged.hospitalCourse))).not.toMatch(/##/);
     expect(formatInpatientDischargePendingStudyTypeLabel("IMAGING", "fr")).toBe("Imagerie");
+    expect(formatInpatientDischargePendingStudyTypeLabel("LAB", "en")).toBe("Laboratory");
+    expect(formatInpatientDischargePendingStudyTypeLabel("IMAGING", "es")).toBe("IMAGING");
+    expect(formatInpatientDischargePendingStudyTypeLabel("IMAGING", "es")).not.toBe("Imaging");
+    expect(formatInpatientDischargePendingStudyTypeLabel("IMAGING", "es")).not.toBe("Imagerie");
+    const esCourse = assembleInpatientHospitalCourseDraft({
+      language: "es",
+      admissionReason: "Chest pain",
+    });
+    expect(esCourse).toContain("UNLOCALIZED_SOURCE");
+    expect(esCourse).toContain("Chest pain");
+    expect(esCourse).not.toContain("Admission reason");
+    expect(esCourse).not.toContain("Motif d'admission");
     expect(formatInpatientDischargeHumanLabel("SKILLED_NURSING_FACILITY")).toBe(
       "Skilled Nursing Facility"
     );

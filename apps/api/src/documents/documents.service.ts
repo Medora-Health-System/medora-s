@@ -5,6 +5,7 @@ import {
   Logger,
 } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
+import { isEmtalaLegalContentApplicable } from "@medora/shared";
 import * as crypto from "crypto";
 import { DocumentStorageService } from "./storage";
 
@@ -267,5 +268,32 @@ export class DocumentsService {
     });
 
     return { checksumSha256, storagePath: saveResult.storagePath, fileSize: params.buffer.length };
+  }
+
+  async getRegistrationDisclosureFlags(facilityId: string): Promise<{
+    facilityCountry: string | null;
+    emtalaApplicability: string;
+    emtalaLegalContentApplicable: boolean;
+  }> {
+    const facility = await this.prisma.facility.findUnique({
+      where: { id: facilityId },
+      select: {
+        country: true,
+        registrationDisclosureConfig: {
+          select: { emtalaApplicability: true },
+        },
+      },
+    });
+    const facilityCountry = facility?.country ?? null;
+    const emtalaApplicability =
+      facility?.registrationDisclosureConfig?.emtalaApplicability ?? "NOT_CONFIGURED";
+    return {
+      facilityCountry,
+      emtalaApplicability,
+      emtalaLegalContentApplicable: isEmtalaLegalContentApplicable({
+        facilityCountry,
+        emtalaApplicability,
+      }),
+    };
   }
 }

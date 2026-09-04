@@ -7,9 +7,14 @@
  * and is never rewritten as a completed action.
  */
 
-import { resolvePublicProductUiLanguageOrDefault } from "../i18n/productUiLocale.js";
+import {
+  parseProductUiLanguage,
+  PRODUCT_DEFAULT_UI_LANGUAGE,
+  UNLOCALIZED_CATALOG_SOURCE,
+  type ProductUiLanguage,
+} from "../i18n/productUiLocale.js";
 
-export type DischargeCourseLanguage = "en" | "fr";
+export type DischargeCourseLanguage = ProductUiLanguage;
 
 const SOAP_HEADER_RE = /^#{1,6}\s*(subjective|objective|assessment|plan)\s*$/i;
 const SOAP_HEADER_ANYWHERE_RE = /^#{1,6}\s*(Subjective|Objective|Assessment|Plan)\s*$/im;
@@ -17,7 +22,9 @@ const MARKDOWN_FENCE_RE = /```[\w-]*\n?([\s\S]*?)```/g;
 const MARKDOWN_INLINE_RE = /(\*\*|__|\*|_|`)/g;
 
 export function planDocumentedPrefix(language: DischargeCourseLanguage = "en"): string {
-  return language === "fr" ? "Plan documenté :" : "Plan documented:";
+  if (language === "fr") return "Plan documenté :";
+  if (language === "en") return "Plan documented:";
+  return UNLOCALIZED_CATALOG_SOURCE;
 }
 
 export function formatInpatientDischargeHumanLabel(
@@ -54,12 +61,15 @@ export const INPATIENT_PENDING_STUDY_TYPE_LABELS: Record<string, { en: string; f
 
 export function formatInpatientDischargePendingStudyTypeLabel(
   type: string | null | undefined,
-  language: DischargeCourseLanguage = "en"
+  language: DischargeCourseLanguage | string = "en"
 ): string {
   const key = (type ?? "").trim().toUpperCase();
   const mapped = INPATIENT_PENDING_STUDY_TYPE_LABELS[key];
-  if (mapped) return mapped[language];
-  return formatInpatientDischargeHumanLabel(type) || (type ?? "").trim();
+  const loc = parseProductUiLanguage(language) ?? (String(language ?? "").trim() ? null : "en");
+  if (mapped && loc === "en") return mapped.en;
+  if (mapped && loc === "fr") return mapped.fr;
+  if (key) return key;
+  return UNLOCALIZED_CATALOG_SOURCE;
 }
 
 export function hasDischargeAuthoringMarkup(text: string | null | undefined): boolean {
@@ -286,7 +296,9 @@ export function formatDischargeNarrativeForDisplay(
 }
 
 function heading(language: DischargeCourseLanguage, en: string, fr: string): string {
-  return language === "fr" ? fr : en;
+  if (language === "fr") return fr;
+  if (language === "en") return en;
+  return UNLOCALIZED_CATALOG_SOURCE;
 }
 
 /**
@@ -301,7 +313,8 @@ export function assembleInpatientHospitalCourseDraft(input: {
   progressNoteTexts?: string[];
   problemPlanSummaries?: string[];
 }): string {
-  const language = resolvePublicProductUiLanguageOrDefault(input.language);
+  const language =
+    parseProductUiLanguage(input.language) ?? PRODUCT_DEFAULT_UI_LANGUAGE;
   const blocks: string[] = [];
 
   const admission =

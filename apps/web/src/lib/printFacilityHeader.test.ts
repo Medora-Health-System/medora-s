@@ -115,4 +115,11 @@ describe("printFacilityHeader", () => {
     expect(html).toContain("Document generated on 7/2/2026, 11:19:48 PM");
     expect(html).not.toContain("printOutput.common");
   });
+
+  it("ES footer does not substitute EN or FR chrome", () => {
+    const html = buildPrintDocumentFooterHtml("es", "7/2/2026, 11:19:48 PM", esc, (_lang, key) => key);
+    expect(html).not.toContain("Document generated on");
+    expect(html).not.toContain("Document généré le");
+    expect(html).toContain("UNLOCALIZED_SOURCE");
+  });
 });

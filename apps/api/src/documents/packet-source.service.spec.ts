@@ -1,4 +1,4 @@
-import { BadRequestException } from "@nestjs/common";
+import { BadRequestException, ForbiddenException } from "@nestjs/common";
 import { PacketSourceService, normalizeStructuredPacketModel } from "./packet-source.service";
 import { createRegistrationPacketBodySchema } from "./dto/create-registration-packet.dto";
 import {
@@ -138,6 +138,8 @@ describe("PacketSourceService.createPacketSource", () => {
           generatedAt: new Date("2026-07-14T12:00:00.000Z"),
           finalizedAt: null,
         }),
+        findUnique: jest.fn(),
+        update: jest.fn(),
       },
       registrationPacketTemplateVersion: {
         findUnique: jest.fn().mockResolvedValue({ id: "tv-1", templateId: "tpl-1" }),
@@ -245,5 +247,27 @@ describe("PacketSourceService.createPacketSource", () => {
     expect(pdfInput.packetTitle).toBe("Registration Package");
     expect(pdfInput.packetSubtypeLabel).toBe("Freestanding Emergency Room Packet");
     expect(pdfInput.sections.map((s: { key: string }) => s.key)).toContain("medicareMedicaid");
+  });
+
+  it("rejects re-render of a finalized packet without mutating sourceJson or hashes", async () => {
+    const { svc, prisma } = buildService();
+    const frozenSourceJson = {
+      locale: "en",
+      packetVersion: "1.0",
+      sections: [{ id: "consent", body: "LEGAL_BODY_FROZEN" }],
+    };
+    prisma.enterpriseDocumentPacketSource.findUnique.mockResolvedValue({
+      id: "ps-1",
+      documentId: "doc-1",
+      locale: "en",
+      packetVersion: "1.0",
+      sourceJson: frozenSourceJson,
+      sourceHashSha256: "frozen-source",
+      renderedHashSha256: "frozen-rendered",
+      finalizedAt: new Date("2026-07-14T13:00:00.000Z"),
+      document: { facilityId: "fac-1", signatureStatus: "SIGNED", lockedAt: new Date() },
+    });
+    await expect(svc.reRenderPdf("doc-1", "fac-1")).rejects.toBeInstanceOf(ForbiddenException);
+    expect(prisma.enterpriseDocumentPacketSource.update).not.toHaveBeenCalled();
   });
 });
