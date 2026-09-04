@@ -462,12 +462,11 @@ describe("MEDUI.ES.1H MAR administration state distinctness", () => {
 });
 
 describe("MEDUI.ES.1H 1I / 1J / authored stay unlocalized", () => {
-  it("1I clinic/dental/billing sections remain placeholders", () => {
+  it("1H overlay never claims 1I clinic/dental/billing keys", () => {
     for (const prefix of ["clinicCareD4c1", "dentalCareD5a2", "billingPage"]) {
       const leaves = collectLeaves(getByPath(es, prefix), prefix);
       expect(leaves.size, prefix).toBeGreaterThan(0);
-      for (const [path, value] of leaves) {
-        expect(isHiddenSpanishPlaceholder(value), path).toBe(true);
+      for (const [path] of leaves) {
         expect(MEDUI_ES_1H_OVERLAY[path], path).toBeUndefined();
       }
     }
@@ -638,7 +637,7 @@ describe("MEDUI.ES.1H catalog safety classification", () => {
       if (reviewRequiredSpanish.includes(value)) bypasses.push({ path, value });
     }
     expect(bypasses).toEqual([]);
-    expect(reviewRequiredSpanish).toContain("Reclamación");
+    expect(reviewRequiredSpanish).toContain("Diagnóstico principal de egreso");
     expect(reviewRequiredSpanish).not.toContain("Tardío");
     expect(reviewRequiredSpanish).not.toContain("Administrado con retraso");
     expect(reviewRequiredSpanish).not.toContain("Con retraso");

@@ -333,13 +333,12 @@ describe("MEDUI.ES.1G 1I / 1J / authored stay unlocalized", () => {
     }
   });
 
-  it("1I clinic/dental/billing sections remain placeholders", () => {
+  it("1G overlay never claims 1I clinic/dental/billing keys", () => {
     for (const prefix of ["clinicCareD4c1", "dentalCareD5a2", "billingPage"]) {
       const leaves = collectLeaves(getByPath(es, prefix), prefix);
       expect(leaves.size, prefix).toBeGreaterThan(0);
-      for (const [path, value] of leaves) {
-        expect(isHiddenSpanishPlaceholder(value), path).toBe(true);
-        expect(MEDUI_ES_1G_OVERLAY[path]).toBeUndefined();
+      for (const [path] of leaves) {
+        expect(MEDUI_ES_1G_OVERLAY[path], path).toBeUndefined();
       }
     }
   });

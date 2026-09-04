@@ -27,6 +27,7 @@ import {
 } from "./meduiEs1fEmergencyDepartmentOverlay";
 import { MEDUI_ES_1G_OVERLAY } from "./meduiEs1gHospitalInpatientObservationOverlay";
 import { MEDUI_ES_1H_OVERLAY } from "./meduiEs1hOrdersMarPharmacyDiagnosticsOverlay";
+import { MEDUI_ES_1I_OVERLAY } from "./meduiEs1iClinicDentalBillingAncillaryOverlay";
 
 const webRoot = join(dirname(fileURLToPath(import.meta.url)), "../../..");
 
@@ -477,12 +478,13 @@ describe("MEDUI.ES.1F overlay accounting", () => {
     expect(nonEmptyOverlayEntries).toBe(2737 - 43);
     expect(emptyOverlayEntries).toEqual([...MEDUI_ES_1F_EMPTY_OVERLAY_PATHS].sort());
     expect(emptyOverlayEntries).toHaveLength(43);
-    expect(before1f.placeholders).toBe(43680);
-    expect(after1f.placeholders).toBe(43680 - 2737);
+    expect(before1f.placeholders).toBe(43671);
+    expect(after1f.placeholders).toBe(43671 - 2737);
     expect(live.placeholders).toBe(
       after1f.placeholders -
         Object.keys(MEDUI_ES_1G_OVERLAY).length -
-        Object.keys(MEDUI_ES_1H_OVERLAY).length
+        Object.keys(MEDUI_ES_1H_OVERLAY).length -
+        Object.keys(MEDUI_ES_1I_OVERLAY).length
     );
     expect(before1f.placeholders - after1f.placeholders).toBe(2737);
 
