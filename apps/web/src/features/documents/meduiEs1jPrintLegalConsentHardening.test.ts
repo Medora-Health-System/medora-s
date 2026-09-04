@@ -170,10 +170,8 @@ describe("MEDUI.ES.1J.A print / legal / consent pre-localization hardening", () 
       expect(fr).toContain("Document généré le 9/4/2026");
       expect(es).not.toContain("Document generated on");
       expect(es).not.toContain("Document généré le");
-      expect(
-        es.includes(UNLOCALIZED_CATALOG_SOURCE) ||
-          isHiddenSpanishPlaceholder(printT("es", "printOutput.common.documentFooter")),
-      ).toBe(true);
+      expect(es).toContain(printT("es", "printOutput.common.documentFooter").replace("{date}", "9/4/2026"));
+      expect(isHiddenSpanishPlaceholder(printT("es", "printOutput.common.documentFooter"))).toBe(false);
     });
   });
 

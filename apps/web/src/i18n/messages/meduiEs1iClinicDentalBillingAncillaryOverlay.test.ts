@@ -179,7 +179,8 @@ describe("MEDUI.ES.1I overlay ownership", () => {
       expect(path.startsWith("providerDocumentationComplaintIntel"), path).toBe(false);
       expect(path.startsWith("providerDischargeDocumentation19Y"), path).toBe(false);
     }
-    expect(isHiddenSpanishPlaceholder(getByPath(es, "printOutput.erPacket.finalDiagnosis") as string)).toBe(true);
+    expect(isHiddenSpanishPlaceholder(getByPath(es, "packetWizard.consentFull") as string)).toBe(true);
+    expect(isHiddenSpanishPlaceholder(getByPath(es, "printOutput.erPacket.emtalaNoData") as string)).toBe(true);
   });
 
   it("does not overlay authored insert snippets", () => {

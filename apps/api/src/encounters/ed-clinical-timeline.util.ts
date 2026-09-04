@@ -10,6 +10,37 @@ import {
 } from "@medora/shared";
 import type { ChartExportManifest } from "./chart-export.service";
 
+function timelineSummaryChrome(locale: EdClinicalTimelineLocale) {
+  if (locale === "fr") {
+    return {
+      triageComplete: "Triage initial terminé.",
+      initialNursing: "Évaluation infirmière initiale enregistrée.",
+      providerSigned: "Note médicale urgences signée.",
+      providerSaved: "Note médicale urgences enregistrée.",
+      procedureDocumented: "Procédure documentée",
+      nursingDischarge: "Exécution de sortie infirmière terminée.",
+    };
+  }
+  if (locale === "es") {
+    return {
+      triageComplete: "Triage inicial completado.",
+      initialNursing: "Evaluación de enfermería inicial registrada.",
+      providerSigned: "Nota médica de urgencias firmada.",
+      providerSaved: "Nota médica de urgencias guardada.",
+      procedureDocumented: "Procedimiento documentado",
+      nursingDischarge: "Ejecución del alta de enfermería completada.",
+    };
+  }
+  return {
+    triageComplete: "Initial triage completed.",
+    initialNursing: "Initial nursing assessment saved.",
+    providerSigned: "Provider ED note signed.",
+    providerSaved: "Provider ED note saved.",
+    procedureDocumented: "Procedure documented",
+    nursingDischarge: "Nursing discharge execution completed.",
+  };
+}
+
 function pushRow(rows: EdClinicalTimelineSourceRow[], row: EdClinicalTimelineSourceRow | null): void {
   if (row?.summary.trim()) rows.push(row);
 }
@@ -30,6 +61,7 @@ export function buildEdClinicalTimelineForChartExport(
 ): ChartExportManifest["edClinicalTimeline"] {
   const rows: EdClinicalTimelineSourceRow[] = [];
   const enc = manifest.encounter;
+  const chrome = timelineSummaryChrome(locale);
 
   if (manifest.triage?.triageCompleteAt) {
     pushRow(rows, {
@@ -38,7 +70,7 @@ export function buildEdClinicalTimelineForChartExport(
       timestampIso: manifest.triage.triageCompleteAt,
       actorName: null,
       actorRoleTitle: null,
-      summary: locale === "fr" ? "Triage initial terminé." : "Initial triage completed.",
+      summary: chrome.triageComplete,
       sourceType: "TRIAGE",
       sourceId: "triage-complete",
     });
@@ -52,10 +84,7 @@ export function buildEdClinicalTimelineForChartExport(
       timestampIso: initial.documentedAt,
       actorName: initial.documentedBy,
       actorRoleTitle: null,
-      summary:
-        locale === "fr"
-          ? "Évaluation infirmière initiale enregistrée."
-          : "Initial nursing assessment saved.",
+      summary: chrome.initialNursing,
       sourceType: "NURSING_EVAL_V1",
       sourceId: "initial-nursing-assessment",
     });
@@ -70,13 +99,7 @@ export function buildEdClinicalTimelineForChartExport(
       timestampIso: isSigned ? enc.providerDocumentation.signedAt : workspace.savedAt,
       actorName: isSigned ? enc.providerDocumentation.signedByDisplayFr : workspace.savedBy,
       actorRoleTitle: null,
-      summary: isSigned
-        ? locale === "fr"
-          ? "Note médicale urgences signée."
-          : "Provider ED note signed."
-        : locale === "fr"
-          ? "Note médicale urgences enregistrée."
-          : "Provider ED note saved.",
+      summary: isSigned ? chrome.providerSigned : chrome.providerSaved,
       sourceType: "PROVIDER_DOCUMENTATION",
       sourceId: "provider-documentation",
     });
@@ -131,8 +154,10 @@ export function buildEdClinicalTimelineForChartExport(
   for (const proc of manifest.procedures.entries) {
     const summary =
       locale === "fr"
-        ? proc.clinicalSummaryFr ?? proc.procedureNameFr ?? "Procedure documented"
-        : proc.clinicalSummaryEn ?? proc.procedureNameEn ?? "Procedure documented";
+        ? proc.clinicalSummaryFr ?? proc.procedureNameFr ?? chrome.procedureDocumented
+        : locale === "en"
+          ? proc.clinicalSummaryEn ?? proc.procedureNameEn ?? chrome.procedureDocumented
+          : proc.clinicalSummaryEn ?? proc.clinicalSummaryFr ?? proc.procedureNameEn ?? proc.procedureNameFr ?? chrome.procedureDocumented;
     const short = summary.split("—")[0]?.trim() || summary;
     pushRow(rows, {
       id: proc.id,
@@ -182,9 +207,7 @@ export function buildEdClinicalTimelineForChartExport(
       actorRoleTitle: null,
       summary:
         discharge.executionNote?.trim() ||
-        (locale === "fr"
-          ? "Exécution de sortie infirmière terminée."
-          : "Nursing discharge execution completed."),
+        chrome.nursingDischarge,
       sourceType: "NURSING_DISCHARGE",
       sourceId: "nursing-discharge",
     });

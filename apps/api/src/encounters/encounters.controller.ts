@@ -77,6 +77,7 @@ import {
   clinicalDocumentationEntryCreateDtoSchema,
   clinicalDocumentationEntryCreateWithWitnessDtoSchema,
   resolvePublicProductUiLanguageOrDefault,
+  resolveInternalProductUiLanguageOrDefault,
 } from "@medora/shared";
 import type { Response } from "express";
 import { renderEncounterChartExportHtml } from "./chart-export-html.util";
@@ -729,17 +730,17 @@ export class EncountersController {
       throw new BadRequestException('Invalid format. Use "json" (default) or "html".');
     }
     const exportFormat = fmt === "html" ? "html" : "json";
+    const exportLocale = resolveInternalProductUiLanguageOrDefault(localeRaw);
     const manifest = await this.chartExportService.getManifest(
       facilityId,
       id,
       req.user?.userId,
       req.ip,
       req.headers["user-agent"],
-      { exportFormat }
+      { exportFormat, locale: exportLocale }
     );
     if (exportFormat === "html") {
       res.setHeader("Content-Type", "text/html; charset=utf-8");
-      const exportLocale = resolvePublicProductUiLanguageOrDefault(localeRaw);
       return renderEncounterChartExportHtml(manifest, { locale: exportLocale });
     }
     return manifest;

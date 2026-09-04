@@ -25,8 +25,13 @@ import {
   resolveInpatientNursingClinicalOccurredAt,
   type InpatientNursingAssessmentV1,
   type ObservationStaySummaryForExport,
+  resolveInternalProductUiLanguageOrDefault,
 } from "@medora/shared";
 import { PrismaService } from "../prisma/prisma.service";
+import {
+  DENTAL_PLAN_ACCEPTANCE_LEGAL_SOURCE,
+  chartExportDentalChrome,
+} from "./chart-export-print-chrome";
 import { AuditService } from "../common/services/audit.service";
 import {
   ENCOUNTER_AUDIT_TIMELINE_V1_ACTIONS,
@@ -799,6 +804,8 @@ export type ChartExportRequestOptions = {
    * such as `RECORD_EXPORT` instead. Never expose this to HTTP callers.
    */
   skipAudit?: boolean;
+  /** Active export locale for SAFE print chrome. Defaults to product EN. */
+  locale?: string;
 };
 
 export type ChartExportSnapshotSummary = {
@@ -853,6 +860,7 @@ export class EncounterChartExportService {
     options?: ChartExportRequestOptions
   ): Promise<ChartExportManifest> {
     const exportFormat = options?.exportFormat === "html" ? "html" : "json";
+    const exportLocale = resolveInternalProductUiLanguageOrDefault(options?.locale);
     const encounter = await this.prisma.encounter.findFirst({
       where: { id: encounterId, facilityId },
       select: {
@@ -1393,35 +1401,36 @@ export class EncounterChartExportService {
     ]);
 
     const dentalSections: Array<{ id: string; label: string; text: string }> = [];
-    const nd = "Non documenté";
+    const dentalChrome = chartExportDentalChrome(exportLocale);
+    const nd = dentalChrome.notDocumented;
     const nursingObj = asObjectOrNull(encounter.nursingAssessment);
     const dentalEval = nursingObj?.dentalClinicalEvaluationV1;
     const historyReviewObj = asObjectOrNull(nursingObj?.dentalHistoryReviewV1);
     dentalSections.push({
       id: "historyReview",
-      label: "Revue des antécédents (rencontre dentaire)",
+      label: dentalChrome.historyReviewLabel,
       text: historyReviewObj?.reviewed
         ? [
-            "Revus pour cette rencontre",
+            dentalChrome.historyReviewed,
             typeof historyReviewObj.reviewedAt === "string"
-              ? `Le: ${historyReviewObj.reviewedAt}`
+              ? `${dentalChrome.onDate} ${historyReviewObj.reviewedAt}`
               : null,
             typeof historyReviewObj.notes === "string" && historyReviewObj.notes.trim()
-              ? `Notes: ${historyReviewObj.notes}`
+              ? `${dentalChrome.notes} ${historyReviewObj.notes}`
               : null,
           ]
             .filter(Boolean)
             .join("\n")
-        : "Non revus",
+        : dentalChrome.notReviewed,
     });
     dentalSections.push({
       id: "dentalEvaluation",
-      label: "Évaluation clinique dentaire",
-      text: dentalEval ? "Documenté (évaluation clinique dentaire structurée)" : nd,
+      label: dentalChrome.dentalEvaluationLabel,
+      text: dentalEval ? dentalChrome.dentalEvaluationDocumented : nd,
     });
     dentalSections.push({
       id: "odontogramFindings",
-      label: "Constatations odontogramme",
+      label: dentalChrome.odontogramLabel,
       text:
         toothFindings.length === 0
           ? nd
@@ -1436,30 +1445,34 @@ export class EncounterChartExportService {
     });
     dentalSections.push({
       id: "periodontalExam",
-      label: "Examen parodontal",
+      label: dentalChrome.periodontalLabel,
       text: !perioExam
         ? nd
         : [
-            `Statut: ${perioExam.periodontalStatus}`,
-            perioExam.periodontitisStage ? `Stade: ${perioExam.periodontitisStage}` : null,
-            perioExam.periodontitisGrade ? `Grade: ${perioExam.periodontitisGrade}` : null,
-            perioExam.narrativeAssessment ? `Narratif: ${perioExam.narrativeAssessment}` : null,
-            `Sites documentés: ${perioExam.siteMeasurements.length}`,
+            `${dentalChrome.status} ${perioExam.periodontalStatus}`,
+            perioExam.periodontitisStage ? `${dentalChrome.stage} ${perioExam.periodontitisStage}` : null,
+            perioExam.periodontitisGrade ? `${dentalChrome.grade} ${perioExam.periodontitisGrade}` : null,
+            perioExam.narrativeAssessment
+              ? `${dentalChrome.narrative} ${perioExam.narrativeAssessment}`
+              : null,
+            `${dentalChrome.sitesDocumented} ${perioExam.siteMeasurements.length}`,
           ]
             .filter(Boolean)
             .join("\n"),
     });
     dentalSections.push({
       id: "treatmentPlan",
-      label: "Plan de traitement dentaire",
+      label: dentalChrome.treatmentPlanLabel,
       text: !dentalPlan
         ? nd
         : [
-            `Acceptation du plan (≠ consentement procédural signé): ${dentalPlan.acceptanceOutcome}`,
-            dentalPlan.expectedBenefits ? `Bénéfices: ${dentalPlan.expectedBenefits}` : null,
-            dentalPlan.materialRisks ? `Risques: ${dentalPlan.materialRisks}` : null,
+            `${DENTAL_PLAN_ACCEPTANCE_LEGAL_SOURCE}: ${dentalPlan.acceptanceOutcome}`,
+            dentalPlan.expectedBenefits
+              ? `${dentalChrome.expectedBenefits} ${dentalPlan.expectedBenefits}`
+              : null,
+            dentalPlan.materialRisks ? `${dentalChrome.materialRisks} ${dentalPlan.materialRisks}` : null,
             dentalPlan.reasonableAlternatives
-              ? `Alternatives: ${dentalPlan.reasonableAlternatives}`
+              ? `${dentalChrome.alternatives} ${dentalPlan.reasonableAlternatives}`
               : null,
             ...(dentalPlan.items.map(
               (i) =>
@@ -1471,7 +1484,7 @@ export class EncounterChartExportService {
     });
     dentalSections.push({
       id: "dentalProcedures",
-      label: "Actes dentaires réalisés",
+      label: dentalChrome.dentalProceduresLabel,
       text:
         dentalProcs.length === 0
           ? nd
@@ -1486,7 +1499,7 @@ export class EncounterChartExportService {
     });
     dentalSections.push({
       id: "consentsDocuments",
-      label: "Consentements / documents (autorité entreprise)",
+      label: dentalChrome.documentsLabel,
       text:
         dentalDocs.length === 0
           ? nd
@@ -1494,10 +1507,10 @@ export class EncounterChartExportService {
               .map((d) => {
                 const signer = d.signatures[0];
                 return [
-                  (d.title || d.type || d.category || "Document").trim(),
-                  d.signatureStatus ? `statut: ${d.signatureStatus}` : null,
-                  d.uploadedAt ? `date: ${d.uploadedAt.toISOString()}` : null,
-                  signer?.signerName ? `signataire: ${signer.signerName}` : null,
+                  (d.title || d.type || d.category || dentalChrome.documentFallback).trim(),
+                  d.signatureStatus ? `${dentalChrome.statusShort} ${d.signatureStatus}` : null,
+                  d.uploadedAt ? `${dentalChrome.dateShort} ${d.uploadedAt.toISOString()}` : null,
+                  signer?.signerName ? `${dentalChrome.signerShort} ${signer.signerName}` : null,
                 ]
                   .filter(Boolean)
                   .join(" · ");
@@ -1828,7 +1841,7 @@ export class EncounterChartExportService {
       });
     }
 
-    manifest.edClinicalTimeline = buildEdClinicalTimelineForChartExport(manifest, "en");
+    manifest.edClinicalTimeline = buildEdClinicalTimelineForChartExport(manifest, exportLocale);
 
     return manifest;
   }

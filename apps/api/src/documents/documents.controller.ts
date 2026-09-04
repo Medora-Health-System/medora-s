@@ -22,6 +22,7 @@ import { DocumentsService } from "./documents.service";
 import { DocumentSignatureService } from "./document-signature.service";
 import { PacketPdfService } from "./packet-pdf.service";
 import { PacketSourceService } from "./packet-source.service";
+import { packetPdfChrome } from "./packet-pdf-chrome";
 import { RegistrationPacketTemplateEngine } from "./registration-packet-template.engine";
 import { createRegistrationPacketBodySchema } from "./dto/create-registration-packet.dto";
 import { assertZodBody } from "../common/http/zod-parse";
@@ -88,6 +89,7 @@ export class DocumentsController {
       facilityName?: string;
       title: string;
       notes?: string;
+      locale?: string;
     },
     @Req() req: any,
   ) {
@@ -96,11 +98,12 @@ export class DocumentsController {
 
     const facilityId = req.user?.facilityId || req.headers["x-facility-id"];
     const generatedAt = new Date().toISOString();
+    const chrome = packetPdfChrome(body.locale);
 
     const pdfBuffer = await this.packetPdfService.generate({
       template: body.template,
-      templateLabel: body.templateLabel || "Registration Package",
-      packetTitle: "Registration Package",
+      templateLabel: body.templateLabel || chrome.registrationPackage,
+      packetTitle: chrome.registrationPackage,
       packetSubtypeLabel: body.templateLabel,
       patient: body.patient || null,
       insurance: body.insurance || [],
@@ -108,6 +111,7 @@ export class DocumentsController {
       signatures: body.signatures,
       facilityName: body.facilityName,
       generatedAt,
+      locale: body.locale || "en",
     });
 
     const facilitySlug = (body.facilityName || "Facility").trim().replace(/[^\w]+/g, "_").replace(/_+/g, "_").replace(/^_|_$/g, "") || "Facility";

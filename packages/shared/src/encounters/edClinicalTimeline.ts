@@ -1,4 +1,4 @@
-import { productUiBcp47Tag } from "../i18n/productUiLocale.js";
+import { productUiBcp47Tag, type ProductUiLanguage } from "../i18n/productUiLocale.js";
 
 /**
  * ED clinical timeline — read-only chronological aggregation for ED Summary / ER packet / export.
@@ -19,44 +19,51 @@ export type EdClinicalTimelineCategory =
   | "DISPOSITION"
   | "NURSING_DISCHARGE";
 
-export type EdClinicalTimelineLocale = "en" | "fr";
+export type EdClinicalTimelineLocale = ProductUiLanguage;
 
 export const ED_CLINICAL_TIMELINE_CATEGORY_LABELS: Record<
   EdClinicalTimelineCategory,
   Record<EdClinicalTimelineLocale, string>
 > = {
-  TRIAGE: { en: "Triage", fr: "Triage" },
+  TRIAGE: { en: "Triage", fr: "Triage", es: "Triage" },
   INITIAL_NURSING_ASSESSMENT: {
     en: "Initial nursing assessment",
     fr: "Évaluation infirmière initiale",
+    es: "Evaluación de enfermería inicial",
   },
   PROVIDER_DOCUMENTATION: {
     en: "Provider documentation",
     fr: "Documentation médecin",
+    es: "Documentación del médico",
   },
-  PROVIDER_ADDENDUM: { en: "Provider addendum", fr: "Addendum médecin" },
-  PROVIDER_ORDER: { en: "Provider order", fr: "Ordre médical" },
+  PROVIDER_ADDENDUM: { en: "Provider addendum", fr: "Addendum médecin", es: "Addendum del médico" },
+  PROVIDER_ORDER: { en: "Provider order", fr: "Ordre médical", es: "Orden médica" },
   MEDICATION_ADMINISTRATION: {
     en: "Medication administration",
     fr: "Administration médicamenteuse",
+    es: "Administración de medicamentos",
   },
   PROCEDURE_PROVIDER_NOTE: {
     en: "Procedure",
     fr: "Procédure",
+    es: "Procedimiento",
   },
   NURSING_PROCEDURE_SUPPORT: {
     en: "Nursing procedure support",
     fr: "Soutien infirmier procédure",
+    es: "Apoyo de enfermería al procedimiento",
   },
   NURSING_REASSESSMENT: {
     en: "Nursing reassessment",
     fr: "Réévaluation infirmière",
+    es: "Reevaluación de enfermería",
   },
-  RESULT_REVIEWED: { en: "Result reviewed", fr: "Résultat revu" },
-  DISPOSITION: { en: "Disposition", fr: "Disposition" },
+  RESULT_REVIEWED: { en: "Result reviewed", fr: "Résultat revu", es: "Resultado revisado" },
+  DISPOSITION: { en: "Disposition", fr: "Disposition", es: "Disposición" },
   NURSING_DISCHARGE: {
     en: "Nursing discharge",
     fr: "Sortie infirmière",
+    es: "Alta de enfermería",
   },
 };
 

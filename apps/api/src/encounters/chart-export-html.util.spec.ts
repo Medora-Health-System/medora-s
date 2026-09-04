@@ -2,6 +2,7 @@ import type { ChartExportManifest } from "./chart-export.service";
 import { ENCOUNTER_CHART_EXPORT_MANIFEST_VERSION } from "./chart-export.service";
 import { escapeHtml, renderEncounterChartExportHtml } from "./chart-export-html.util";
 import { computeObservationStaySummaryForExport } from "@medora/shared";
+import { DENTAL_PLAN_ACCEPTANCE_LEGAL_SOURCE } from "./chart-export-print-chrome";
 
 function baseManifest(overrides: Partial<ChartExportManifest> = {}): ChartExportManifest {
   const defaults: ChartExportManifest = {
@@ -480,5 +481,113 @@ describe("chart-export-html.util", () => {
       { locale: "fr" }
     );
     expect(htmlFr).toContain("Score NIHSS total");
+  });
+
+  it("MEDUI.ES.1J.B ES procedure chrome is Spanish without forced French or English labels", () => {
+    const html = renderEncounterChartExportHtml(
+      baseManifest({
+        procedures: {
+          entries: [
+            {
+              id: "proc-es",
+              createdAt: "2026-05-18T10:05:00.000Z",
+              eventType: "PROCEDURE_DOCUMENTED",
+              payloadJson: { procedureType: "REDUCTION" },
+              createdByDisplayFr: "Dr Alice Test",
+              procedureNameFr: "Réduction (documentée)",
+              procedureNameEn: "Reduction (documented)",
+              performedAtIso: "2026-05-18T10:00:00.000Z",
+              documentedAtIso: "2026-05-18T10:05:00.000Z",
+              performedByDisplayFr: "Dr Alice Test",
+              documentedByDisplayFr: "Dr Alice Test",
+              status: "COMPLETED",
+              clinicalSummaryFr: "Réduction (documentée)",
+              clinicalSummaryEn: "Reduction (documented)",
+              documentationRole: "PROVIDER",
+              documentationRoleFr: "Documentation médicale",
+            },
+          ],
+        },
+      }),
+      { locale: "es" }
+    );
+    expect(html).toContain('lang="es"');
+    expect(html).toContain("Sección");
+    expect(html).toContain("Procedimiento");
+    expect(html).toContain("Realizado el");
+    expect(html).not.toContain("Volet");
+    expect(html).not.toContain("Réalisée le");
+    expect(html).not.toContain("Performed at");
+    expect(html).toContain("Reduction (documented)");
+    expect(html).not.toContain("Réduction (documentée)");
+  });
+
+  it("MEDUI.ES.1J.B dental board HTML title follows locale and keeps authored notes", () => {
+    const authored = "Patient-authored dental note stays English";
+    const board = {
+      sections: [
+        {
+          id: "historyReview",
+          label: "Revisión de antecedentes (encuentro dental)",
+          text: `Revisados para este encuentro\nNotas: ${authored}`,
+        },
+      ],
+    };
+    const htmlEs = renderEncounterChartExportHtml(
+      baseManifest({ dentalClinicalBoard: board }),
+      { locale: "es" }
+    );
+    expect(htmlEs).toContain("Expediente clínico dental");
+    expect(htmlEs).toContain("Revisión de antecedentes (encuentro dental)");
+    expect(htmlEs).toContain(authored);
+    expect(htmlEs).not.toContain("Dossier clinique dentaire");
+    const htmlFr = renderEncounterChartExportHtml(
+      baseManifest({
+        dentalClinicalBoard: {
+          sections: [{ id: "historyReview", label: "Revue des antécédents (rencontre dentaire)", text: authored }],
+        },
+      }),
+      { locale: "fr" }
+    );
+    expect(htmlFr).toContain("Dossier clinique dentaire");
+    expect(htmlFr).toContain(authored);
+    const htmlEn = renderEncounterChartExportHtml(
+      baseManifest({
+        dentalClinicalBoard: {
+          sections: [{ id: "historyReview", label: "History review (dental encounter)", text: authored }],
+        },
+      }),
+      { locale: "en" }
+    );
+    expect(htmlEn).toContain("Dental clinical record");
+    expect(htmlEn).not.toContain("Dossier clinique dentaire");
+    expect(htmlEn).toContain(authored);
+  });
+
+  it("MEDUI.ES.1J.B ES dental export keeps frozen French legal source and authored notes", () => {
+    const authored = "Provider-authored periodontal narrative stays English";
+    const htmlEs = renderEncounterChartExportHtml(
+      baseManifest({
+        dentalClinicalBoard: {
+          sections: [
+            {
+              id: "treatmentPlan",
+              label: "Plan de tratamiento dental",
+              text: `${DENTAL_PLAN_ACCEPTANCE_LEGAL_SOURCE}: ACCEPTED\n${authored}`,
+            },
+          ],
+        },
+      }),
+      { locale: "es" }
+    );
+    expect(htmlEs).toContain('lang="es"');
+    expect(htmlEs).toContain("Expediente clínico dental");
+    expect(htmlEs).toContain("Plan de tratamiento dental");
+    expect(htmlEs).toContain("Acceptation du plan (≠ consentement procédural signé)");
+    expect(htmlEs).toContain(authored);
+    expect(htmlEs).not.toContain("Dossier clinique dentaire");
+    expect(htmlEs).not.toContain("Revue des antécédents");
+    expect(htmlEs).not.toContain("Aceptación del plan");
+    expect(htmlEs).not.toContain("Acceptance of the plan");
   });
 });

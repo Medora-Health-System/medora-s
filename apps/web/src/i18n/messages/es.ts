@@ -6,9 +6,10 @@ import { MEDUI_ES_1F_OVERLAY } from "./meduiEs1fEmergencyDepartmentOverlay";
 import { MEDUI_ES_1G_OVERLAY } from "./meduiEs1gHospitalInpatientObservationOverlay";
 import { MEDUI_ES_1H_OVERLAY } from "./meduiEs1hOrdersMarPharmacyDiagnosticsOverlay";
 import { MEDUI_ES_1I_OVERLAY } from "./meduiEs1iClinicDentalBillingAncillaryOverlay";
+import { MEDUI_ES_1JB_OVERLAY } from "./meduiEs1jSafeChromeOverlay";
 
 /**
- * MEDUI.ES.1D+1E+1F+1G+1H+1I Spanish product UI catalog.
+ * MEDUI.ES.1D+1E+1F+1G+1H+1I+1J.B Spanish product UI catalog.
  *
  * Pipeline:
  *  1. createHiddenSpanishCatalog(en) → all leaves become UNLOCALIZED_ES::<path>
@@ -18,9 +19,11 @@ import { MEDUI_ES_1I_OVERLAY } from "./meduiEs1iClinicDentalBillingAncillaryOver
  *  5. applyGovernedSpanishOverlay(1G) → Hospital / Inpatient / Observation chrome
  *  6. applyGovernedSpanishOverlay(1H) → Orders / MAR / pharmacy / lab / imaging chrome
  *  7. applyGovernedSpanishOverlay(1I) → Clinic / Dental / Billing / revenue chrome
+ *  8. applyGovernedSpanishOverlay(1J.B) → print / document / consent SAFE chrome
  *
  * Not user-selectable. Remaining keys stay UNLOCALIZED_ES::<path>.
- * Only remaining placeholders are replaced; later phases never overwrite 1D/1E/1F/1G/1H.
+ * Only remaining placeholders are replaced; later phases never overwrite 1D–1I.
+ * Legal/source packet bodies and EMTALA print legal keys stay frozen.
  */
 
 export function applyGovernedSpanishOverlay<T>(
@@ -56,6 +59,7 @@ const { tree: after1e } = applyGovernedSpanishOverlay(afterCanon, MEDUI_ES_1E_OV
 const { tree: after1f } = applyGovernedSpanishOverlay(after1e, MEDUI_ES_1F_OVERLAY);
 const { tree: after1g } = applyGovernedSpanishOverlay(after1f, MEDUI_ES_1G_OVERLAY);
 const { tree: after1h } = applyGovernedSpanishOverlay(after1g, MEDUI_ES_1H_OVERLAY);
-const { tree: esMessages } = applyGovernedSpanishOverlay(after1h, MEDUI_ES_1I_OVERLAY);
+const { tree: after1i } = applyGovernedSpanishOverlay(after1h, MEDUI_ES_1I_OVERLAY);
+const { tree: esMessages } = applyGovernedSpanishOverlay(after1i, MEDUI_ES_1JB_OVERLAY);
 
 export default esMessages;

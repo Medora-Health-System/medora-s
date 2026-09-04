@@ -12,13 +12,12 @@ import { PacketPdfService, type SignatureVectorLike } from "./packet-pdf.service
 import { DocumentsService } from "./documents.service";
 import type { StructuredPacketModelDto } from "./dto/create-registration-packet.dto";
 import {
-  REGISTRATION_PACKAGE_TITLE,
-  packetSubtypeLabel,
   registrationPacketDocumentTitle,
   registrationPacketFileName,
   safeGeneratedAtDate,
   safeGeneratedAtIso,
 } from "./packet-title.util";
+import { packetPdfChrome, packetPdfSubtypeLabel } from "./packet-pdf-chrome";
 import {
   RegistrationPacketTemplateEngine,
   type PacketAnswerInput,
@@ -423,11 +422,12 @@ export class PacketSourceService {
     const facilityName =
       sourceJson.facility?.name?.trim() || branding?.facilityName?.trim() || undefined;
 
+    const chrome = packetPdfChrome(sourceJson.locale);
     return this.packetPdfService.generate({
       template: sourceJson.packetType,
-      templateLabel: REGISTRATION_PACKAGE_TITLE,
-      packetTitle: REGISTRATION_PACKAGE_TITLE,
-      packetSubtypeLabel: packetSubtypeLabel(sourceJson.packetType),
+      templateLabel: chrome.registrationPackage,
+      packetTitle: chrome.registrationPackage,
+      packetSubtypeLabel: packetPdfSubtypeLabel(sourceJson.packetType, sourceJson.locale),
       patient: sourceJson.patient
         ? {
             firstName: sourceJson.patient.firstName,

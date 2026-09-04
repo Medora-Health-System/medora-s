@@ -1,7 +1,7 @@
 import { Injectable } from "@nestjs/common";
 /** CJS `export =` — use import-equals so Nest/CommonJS emit does not read `.default`. */
 import PDFDocument = require("pdfkit");
-import { REGISTRATION_PACKAGE_TITLE } from "./packet-title.util";
+import { packetPdfChrome } from "./packet-pdf-chrome";
 
 export interface PacketPdfInput {
   template: string;
@@ -102,8 +102,10 @@ function drawSignature(doc: PDFKit.PDFDocument, value: SignatureVectorLike | nul
 export class PacketPdfService {
   async generate(input: PacketPdfInput): Promise<Buffer> {
     return new Promise((resolve, reject) => {
-      const patientName = [input.patient?.firstName, input.patient?.lastName].filter(Boolean).join(" ") || "Unknown";
-      const packetTitle = input.packetTitle || REGISTRATION_PACKAGE_TITLE;
+      const chrome = packetPdfChrome(input.locale);
+      const patientName =
+        [input.patient?.firstName, input.patient?.lastName].filter(Boolean).join(" ") || chrome.unknownPatient;
+      const packetTitle = input.packetTitle || chrome.registrationPackage;
       const facilityName = input.facilityName?.trim() || "";
 
       const doc = new PDFDocument({
@@ -167,29 +169,29 @@ export class PacketPdfService {
       doc.moveDown(0.5);
 
       if (input.patient) {
-        doc.fontSize(12).font("Helvetica-Bold").text("Patient Information");
+        doc.fontSize(12).font("Helvetica-Bold").text(chrome.patientInformation);
         doc.moveDown(0.3);
         doc.fontSize(10).font("Helvetica");
         const p = input.patient;
         const name = [p.firstName, p.lastName].filter(Boolean).join(" ") || "—";
-        doc.text(`Name: ${name}`);
-        if (p.dob) doc.text(`Date of Birth: ${p.dob}`);
-        if (p.phone) doc.text(`Phone: ${p.phone}`);
-        if (p.email) doc.text(`Email: ${p.email}`);
+        doc.text(`${chrome.name} ${name}`);
+        if (p.dob) doc.text(`${chrome.dateOfBirth} ${p.dob}`);
+        if (p.phone) doc.text(`${chrome.phone} ${p.phone}`);
+        if (p.email) doc.text(`${chrome.email} ${p.email}`);
         const addr = [p.addressLine1, p.city, p.stateProvince, p.postalCode].filter(Boolean).join(", ");
-        if (addr) doc.text(`Address: ${addr}`);
+        if (addr) doc.text(`${chrome.address} ${addr}`);
         doc.moveDown(0.8);
       }
 
       const insurance = Array.isArray(input.insurance) ? input.insurance : [];
       if (insurance.length > 0) {
-        doc.fontSize(12).font("Helvetica-Bold").text("Insurance Information");
+        doc.fontSize(12).font("Helvetica-Bold").text(chrome.insuranceInformation);
         doc.moveDown(0.3);
         doc.fontSize(10).font("Helvetica");
         for (const ins of insurance) {
           const payer = ins.payerName || "—";
-          const member = ins.memberId ? ` (ID: ${ins.memberId})` : "";
-          const group = ins.groupNumber ? ` Group: ${ins.groupNumber}` : "";
+          const member = ins.memberId ? ` (${chrome.memberId} ${ins.memberId})` : "";
+          const group = ins.groupNumber ? ` ${chrome.group} ${ins.groupNumber}` : "";
           doc.text(`${ins.rank}: ${payer}${member}${group}`);
         }
         doc.moveDown(0.8);
@@ -220,19 +222,19 @@ export class PacketPdfService {
 
       if (doc.y > 600) doc.addPage();
       doc.moveDown(0.5);
-      doc.fontSize(10).font("Helvetica-Bold").text("Document metadata");
+      doc.fontSize(10).font("Helvetica-Bold").text(chrome.documentMetadata);
       doc.moveDown(0.3);
       doc.fontSize(8).font("Helvetica").fillColor("#444444");
-      doc.text(`Packet type: ${input.template}`);
-      doc.text(`Packet version: ${input.packetVersion || "1.0"}`);
-      doc.text(`Locale: ${input.locale || "en"}`);
-      doc.text(`Generated: ${input.generatedAt}`);
-      if (input.sourceHash) doc.text(`Source hash: ${input.sourceHash}`);
+      doc.text(`${chrome.packetType} ${input.template}`);
+      doc.text(`${chrome.packetVersion} ${input.packetVersion || "1.0"}`);
+      doc.text(`${chrome.locale} ${input.locale || "en"}`);
+      doc.text(`${chrome.generated} ${input.generatedAt}`);
+      if (input.sourceHash) doc.text(`${chrome.sourceHash} ${input.sourceHash}`);
       doc.fillColor("#000000");
       doc.moveDown(0.5);
       doc.moveTo(50, doc.y).lineTo(562, doc.y).stroke("#333333");
       doc.moveDown(0.5);
-      doc.fontSize(12).font("Helvetica-Bold").text("Signatures");
+      doc.fontSize(12).font("Helvetica-Bold").text(chrome.signatures);
       doc.moveDown(0.4);
       doc.fontSize(10).font("Helvetica");
 
@@ -245,26 +247,25 @@ export class PacketPdfService {
       };
 
       if (sigs.refusalReason) {
-        doc.text(`REFUSED: ${sigs.refusalReason}`);
+        doc.text(`${chrome.refused} ${sigs.refusalReason}`);
       } else {
-        doc.text(`Patient/Representative: ${sigs.signerName}`);
-        doc.text(`Relationship: ${sigs.signerRelationship}`);
-        doc.text(`Signed: ${sigs.signedAt}`);
+        doc.text(`${chrome.patientOrRepresentative} ${sigs.signerName}`);
+        doc.text(`${chrome.relationship} ${sigs.signerRelationship}`);
+        doc.text(`${chrome.signed} ${sigs.signedAt}`);
         drawSignature(doc, sigs.patientStrokes, 50, doc.y + 4, 220, 55);
         doc.moveDown(3);
         if (sigs.patientAttestation) doc.fontSize(8).text(sigs.patientAttestation).fontSize(10);
       }
       doc.moveDown(0.4);
-      doc.text(`Staff Witness: ${sigs.staffName}`);
-      doc.text(`Staff Signed: ${sigs.staffSignedAt}`);
+      doc.text(`${chrome.staffWitness} ${sigs.staffName}`);
+      doc.text(`${chrome.staffSigned} ${sigs.staffSignedAt}`);
       drawSignature(doc, sigs.staffStrokes, 50, doc.y + 4, 220, 55);
       doc.moveDown(3);
       if (sigs.staffAttestation) doc.fontSize(8).text(sigs.staffAttestation).fontSize(10);
 
       doc.moveDown(1);
       doc.fontSize(8).fillColor("#666666").text(
-        input.branding?.footer?.trim() ||
-          "This document was electronically generated and signed via Medora EMR.",
+        input.branding?.footer?.trim() || chrome.defaultFooter,
         { align: "center" },
       );
       if (input.branding?.legalNotice?.trim()) {
