@@ -7,7 +7,7 @@ import type { ClinicalRecordAttribution } from "./clinicalRecordAttribution.js";
 
 export type { ClinicalRecordAttribution } from "./clinicalRecordAttribution.js";
 
-export type EncounterClinicalRecordLocale = "en" | "fr";
+export type EncounterClinicalRecordLocale = string;
 
 export type EncounterClinicalRecordProviderStatus = "SIGNED" | "SAVED" | "DRAFT";
 

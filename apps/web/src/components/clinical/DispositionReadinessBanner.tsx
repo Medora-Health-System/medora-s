@@ -4,6 +4,7 @@ import React, { useEffect, useState } from "react";
 import { apiFetch } from "@/lib/apiClient";
 import type { DispositionSafetyReadinessResponse } from "@medora/shared";
 import { useI18n } from "@/lib/i18n";
+import { resolveProductUiLanguageOrDefault } from "@/i18n/config";
 import { formatEncounterChromeDateTime } from "@/lib/encounterChromeI18n";
 
 export function dispositionReadinessIssueText(
@@ -11,7 +12,7 @@ export function dispositionReadinessIssueText(
   issue: { code: string; message: string },
   data: DispositionSafetyReadinessResponse,
   /** Active Medora UI locale. English must never fall back to French API messages. */
-  language: "en" | "fr" = "en"
+  language: string = "en"
 ): string {
   const blockKey = `dispositionReadiness.blockers.${issue.code}`;
   const warnKey = `dispositionReadiness.warnings.${issue.code}`;
@@ -29,11 +30,11 @@ export function dispositionReadinessIssueText(
     }
     return resolved;
   }
-  // Never surface French API `message` into an English UI.
-  if (language === "en") {
-    return issue.code.replace(/_/g, " ").toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
-  }
-  return issue.message;
+  const loc = resolveProductUiLanguageOrDefault(language);
+  const codeIdentity = issue.code.replace(/_/g, " ").toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
+  // French API `message` is only for FR UI. EN/ES use canonical code identity — never FR copy.
+  if (loc === "fr") return issue.message;
+  return codeIdentity;
 }
 
 export function DispositionReadinessBanner({

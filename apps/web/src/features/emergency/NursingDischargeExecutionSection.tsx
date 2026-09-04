@@ -83,7 +83,7 @@ const chipStyle = (active: boolean): React.CSSProperties => ({
   cursor: "pointer",
 });
 
-function emptyVitalsDraft(language: "en" | "fr"): TriageVitalsCompactValues {
+function emptyVitalsDraft(language: string): TriageVitalsCompactValues {
   const units = defaultVitalsEntryUnits(language);
   const m = splitMeasuredAtLocal(new Date().toISOString());
   return {

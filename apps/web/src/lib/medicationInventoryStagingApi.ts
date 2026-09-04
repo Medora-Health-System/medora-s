@@ -2,7 +2,7 @@
  * Phase 19E.1 — Priority ER inventory staging (upload + review queue).
  */
 
-import type { SupportedLanguage } from "@/i18n/config";
+import { pickProductUiCopy, type SupportedLanguage } from "@/i18n/config";
 import { i18nMessage } from "@/lib/i18nMessagesLookup";
 import { apiFetchResponse, asApiObject, parseApiResponse } from "./apiClient";
 import { normalizeUserFacingError } from "./userFacingError";
@@ -252,9 +252,10 @@ export function parseInventoryImportErrorPayload(text: string): PriorityErInvent
 }
 
 export function stagingImportErrorMessage(err: unknown, language: SupportedLanguage): string {
-  const importFailed: Record<SupportedLanguage, string> = {
+  const importFailed = {
     en: "Import failed.",
     fr: "Échec de l'import.",
+    es: "Error de importación.",
   };
   if (err instanceof Error && err.message) {
     if (err.message === "INVALID_INVENTORY_IMPORT_RESPONSE") {
@@ -268,5 +269,5 @@ export function stagingImportErrorMessage(err: unknown, language: SupportedLangu
     const stripped = err.message.replace(/\s*\([A-Z0-9_]+\)\s*$/, "").trim();
     return normalizeUserFacingError(stripped, language) || stripped || err.message;
   }
-  return importFailed[language];
+  return pickProductUiCopy(language, importFailed, importFailed.es);
 }

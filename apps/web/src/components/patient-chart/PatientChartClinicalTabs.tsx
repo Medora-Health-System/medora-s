@@ -3,7 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import type { ChartSummary, ChartSummaryEncounter, ChartSummaryOrderItem } from "@/lib/chartApi";
-import { resolveProductUiLanguageOrDefault, type SupportedLanguage } from "@/i18n/config";
+import { resolveProductUiLanguageOrDefault, pickLegacyBilingualStoredPair, type SupportedLanguage } from "@/i18n/config";
 import {
   formatEncounterChromeDateTime,
   tEncounterType,
@@ -174,8 +174,10 @@ function EncounterBlock({
         <div style={{ marginBottom: 12, fontSize: 13, color: "#37474f" }}>
           <p style={{ fontWeight: 600, margin: "0 0 8px" }}>{t("clinicalDocumentation.chartSectionTitle")}</p>
           {(enc.clinicalDocumentationEntries ?? []).map((entry) => {
-            const title =
-              language === "en" ? entry.cardTitleEn : entry.cardTitleFr;
+            const title = pickLegacyBilingualStoredPair(language, {
+              en: entry.cardTitleEn,
+              fr: entry.cardTitleFr,
+            }).value;
             return (
               <div key={entry.id} style={{ marginBottom: 10 }}>
                 <div style={{ fontWeight: 600, marginBottom: 4 }}>

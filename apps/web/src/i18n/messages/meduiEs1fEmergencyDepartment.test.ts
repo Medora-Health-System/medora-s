@@ -29,6 +29,8 @@ import { MEDUI_ES_1G_OVERLAY } from "./meduiEs1gHospitalInpatientObservationOver
 import { MEDUI_ES_1H_OVERLAY } from "./meduiEs1hOrdersMarPharmacyDiagnosticsOverlay";
 import { MEDUI_ES_1I_OVERLAY } from "./meduiEs1iClinicDentalBillingAncillaryOverlay";
 import { MEDUI_ES_1JB_OVERLAY } from "./meduiEs1jSafeChromeOverlay";
+import { MEDUI_ES_1K_OVERLAY } from "./meduiEs1kSafeChromeOverlay";
+import { MEDUI_ES_1K_PUBLIC_CHROME_OVERLAY } from "./meduiEs1kPublicChromeOverlay";
 
 const webRoot = join(dirname(fileURLToPath(import.meta.url)), "../../..");
 
@@ -389,10 +391,10 @@ describe("MEDUI.ES.1F six-direction isolation for ED surfaces", () => {
 });
 
 describe("MEDUI.ES.1F public exposure", () => {
-  it("Español remains hidden from public product UI selectors", () => {
-    expect([...PUBLICLY_SELECTABLE_PRODUCT_UI_LANGUAGES]).toEqual(["fr", "en"]);
-    expect(productUiLanguageSelectOptions().map((o) => o.value)).toEqual(["fr", "en"]);
-    expect(productUiLanguageSelectOptions().some((o) => /español/i.test(o.label))).toBe(false);
+  it("Español is publicly selectable after MEDUI.ES.1K", () => {
+    expect([...PUBLICLY_SELECTABLE_PRODUCT_UI_LANGUAGES]).toEqual(["fr", "en", "es"]);
+    expect(productUiLanguageSelectOptions().map((o) => o.value)).toEqual(["fr", "en", "es"]);
+    expect(productUiLanguageSelectOptions().some((o) => /español/i.test(o.label))).toBe(true);
   });
 });
 
@@ -486,7 +488,9 @@ describe("MEDUI.ES.1F overlay accounting", () => {
         Object.keys(MEDUI_ES_1G_OVERLAY).length -
         Object.keys(MEDUI_ES_1H_OVERLAY).length -
         Object.keys(MEDUI_ES_1I_OVERLAY).length -
-        Object.keys(MEDUI_ES_1JB_OVERLAY).length
+        Object.keys(MEDUI_ES_1JB_OVERLAY).length -
+        Object.keys(MEDUI_ES_1K_OVERLAY).length -
+        Object.keys(MEDUI_ES_1K_PUBLIC_CHROME_OVERLAY).length
     );
     expect(before1f.placeholders - after1f.placeholders).toBe(2737);
 

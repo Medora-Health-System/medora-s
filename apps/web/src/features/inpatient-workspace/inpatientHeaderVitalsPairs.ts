@@ -1,16 +1,46 @@
-import type { SupportedLanguage } from "@/i18n/config";
+import { type SupportedLanguage } from "@/i18n/config";
 import {
   formatHeightDualLine,
   formatTemperatureDualLine,
   formatWeightDualLine,
 } from "@/lib/patientVitals";
-import { erTriageMessagesEn } from "@/i18n/messages/erTriage.en";
-import { erTriageMessagesFr } from "@/i18n/messages/erTriage.fr";
+import { erTriageT } from "@/features/emergency/erTriageI18nLookup";
 
-const TRIAGE_VITAL_STRIP = {
-  en: erTriageMessagesEn.preview.vitalStrip,
-  fr: erTriageMessagesFr.preview.vitalStrip,
-} as const;
+const TRIAGE_VITAL_STRIP_KEYS = [
+  "ta",
+  "hr",
+  "rr",
+  "temp",
+  "spo2",
+  "weight",
+  "height",
+  "perMin",
+  "degC",
+  "pct",
+  "kg",
+  "cm",
+] as const;
+
+function triageVitalStripForLocale(language: string) {
+  const strip: Record<(typeof TRIAGE_VITAL_STRIP_KEYS)[number], string> = {
+    ta: "",
+    hr: "",
+    rr: "",
+    temp: "",
+    spo2: "",
+    weight: "",
+    height: "",
+    perMin: "",
+    degC: "",
+    pct: "",
+    kg: "",
+    cm: "",
+  };
+  for (const key of TRIAGE_VITAL_STRIP_KEYS) {
+    strip[key] = erTriageT(language, `erTriage.preview.vitalStrip.${key}`);
+  }
+  return strip;
+}
 
 type LatestVitals = {
   availability: "AVAILABLE" | "NO_DATA_DOCUMENTED" | "SOURCE_UNAVAILABLE";
@@ -33,7 +63,7 @@ export function buildInpatientHeaderVitalPairs(
   language: SupportedLanguage,
   emptyLabel: string
 ): { label: string; value: string }[] {
-  const vs = TRIAGE_VITAL_STRIP[language];
+  const vs = triageVitalStripForLocale(language);
   const dash = emptyLabel;
   if (!vitals || vitals.availability !== "AVAILABLE") {
     return [

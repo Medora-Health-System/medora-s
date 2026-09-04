@@ -18,6 +18,7 @@ import {
   getCarePlanTemplate,
   previewCarePlanTemplate,
   isCanonicalCarePlanTemplateI18nKey,
+  coerceCarePlanClinicalLocale,
   resolveCarePlanClinicalNarrativeForClinician,
   resolveCarePlanRoleProfile,
   resolveCarePlanWorkspaceSection,
@@ -35,13 +36,18 @@ import { apiFetch } from "@/lib/apiClient";
 import { MEDORA_CARD_SHELL } from "@/components/medora-card/medoraCardTokens";
 import { useI18n } from "@/lib/i18n";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
-import { resolveProductUiLanguageOrDefault } from "@/i18n/config";
+import { adaptProductUiToBilingualStorageLocale, resolveProductUiLanguageOrDefault } from "@/i18n/config";
 
 import {
   CarePlanClinicianWorkflowCp1c,
   mapDurableCarePlans,
   type CarePlanWorkflowPlan,
 } from "@/features/clinical-documentation/CarePlanClinicianWorkflowCp1c";
+
+function carePlanBilingualStorageLocale(language: string): "en" | "fr" {
+  const adapted = adaptProductUiToBilingualStorageLocale(language);
+  return adapted.kind === "localized" ? adapted.locale : "en";
+}
 
 type CarePlanSuggestionDto = {
   templateId: string;
@@ -321,7 +327,10 @@ export function EnterpriseInterdisciplinaryCarePlansD4b6(
     const locale = resolveProductUiLanguageOrDefault(language);
     // CP.1F.1 / CP.1F.2 — never show raw canonical template keys as clinical text.
     if (isCanonicalCarePlanTemplateI18nKey(value)) {
-      return resolveCarePlanClinicalNarrativeForClinician(value, locale);
+      return resolveCarePlanClinicalNarrativeForClinician(
+        value,
+        coerceCarePlanClinicalLocale(locale)
+      );
     }
     const localized = t(value);
     return localized === value ? value : localized;
@@ -343,7 +352,7 @@ export function EnterpriseInterdisciplinaryCarePlansD4b6(
           headers: { "content-type": "application/json" },
           body: JSON.stringify({
             templateId,
-            clinicalLocale: language === "en" || language === "fr" ? language : "fr",
+            clinicalLocale: carePlanBilingualStorageLocale(language),
           }),
         });
         setActivationMessage(t("inpatientNursingAdmissionInp2g.carePlanWorkspace.activatedOk"));
@@ -364,7 +373,7 @@ export function EnterpriseInterdisciplinaryCarePlansD4b6(
       patientId: props.patientId,
       facilityId: props.facilityId,
       templateId,
-      clinicalLocale: language === "en" || language === "fr" ? language : "fr",
+      clinicalLocale: carePlanBilingualStorageLocale(language),
       activatedByUserId: "session-nurse",
       activatedAt: new Date().toISOString(),
       careSetting: props.careSetting,

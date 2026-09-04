@@ -15,6 +15,7 @@ import {
   tEncounterType,
 } from "@/lib/encounterChromeI18n";
 import { useI18n } from "@/lib/i18n";
+import { encounterChartExportHtmlHref } from "@/lib/chartExportHtmlHref";
 
 export type EnterpriseClosedEncounterViewerEncounter = {
   id: string;
@@ -287,7 +288,7 @@ export function EnterpriseClosedEncounterViewer({
           {roleCodes.includes("PROVIDER") || roleCodes.includes("ADMIN") || roleCodes.includes("MEDORA_SUPER_ADMIN") ? (
             <p style={{ margin: "8px 0 0", fontSize: 13 }}>
               <a
-                href={`/api/backend/encounters/${encodeURIComponent(encounter.id)}/chart-export?format=html`}
+                href={encounterChartExportHtmlHref(encounter.id, language)}
                 target="_blank"
                 rel="noopener noreferrer"
                 data-testid="enterprise-closed-encounter-export"

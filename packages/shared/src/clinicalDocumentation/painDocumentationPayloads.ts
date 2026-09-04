@@ -2,6 +2,7 @@ import { z } from "zod";
 import type { ClinicalDocumentationFieldOption } from "./clinicalDocumentationFieldOptions.js";
 import { PAIN_SCORE_0_10_OPTIONS } from "./clinicalDocumentationFieldOptions.js";
 import {
+  clinicalDocSummaryKey,
   clinicalDocYesNo,
   pickLocalizedEnumLabel,
   type ClinicalDocumentationSummaryLocale,
@@ -575,7 +576,7 @@ export function validatePainDocumentationPayloadForCard(
 
 function severityLabel(score: number, locale: ClinicalDocumentationSummaryLocale): string {
   const band = derivePainSeverityBand(score);
-  return locale === "en" ? SEVERITY_EN[band]! : SEVERITY_FR[band]!;
+  return pickLocalizedEnumLabel(SEVERITY_EN, SEVERITY_FR, band, locale);
 }
 
 export function summarizePainDocumentationPayload(
@@ -590,15 +591,15 @@ export function summarizePainDocumentationPayload(
       const d = p.data;
       return [
         {
-          key: locale === "en" ? "Pain score" : "Score douleur",
+          key: clinicalDocSummaryKey(locale, "Pain score", "Score douleur"),
           value: String(d.painScore),
         },
         {
-          key: locale === "en" ? "Severity" : "Sévérité",
+          key: clinicalDocSummaryKey(locale, "Severity", "Sévérité"),
           value: severityLabel(d.painScore, locale),
         },
         {
-          key: locale === "en" ? "Location" : "Localisation",
+          key: clinicalDocSummaryKey(locale, "Location", "Localisation"),
           value: pickLocalizedEnumLabel(
             PAIN_LOCATION_MAP.en,
             PAIN_LOCATION_MAP.fr,
@@ -607,7 +608,7 @@ export function summarizePainDocumentationPayload(
           ),
         },
         {
-          key: locale === "en" ? "Quality" : "Qualité",
+          key: clinicalDocSummaryKey(locale, "Quality", "Qualité"),
           value: pickLocalizedEnumLabel(
             PAIN_QUALITY_MAP.en,
             PAIN_QUALITY_MAP.fr,
@@ -616,7 +617,7 @@ export function summarizePainDocumentationPayload(
           ),
         },
         {
-          key: locale === "en" ? "Provider notified" : "Médecin avisé",
+          key: clinicalDocSummaryKey(locale, "Provider notified", "Médecin avisé"),
           value: clinicalDocYesNo(d.providerNotified, locale),
         },
       ];
@@ -627,18 +628,18 @@ export function summarizePainDocumentationPayload(
       const d = p.data;
       const lines: Array<{ key: string; value: string }> = [
         {
-          key: locale === "en" ? "Current score" : "Score actuel",
+          key: clinicalDocSummaryKey(locale, "Current score", "Score actuel"),
           value: String(d.painScore),
         },
       ];
       if (d.previousPainScore != null) {
         lines.push({
-          key: locale === "en" ? "Previous score" : "Score précédent",
+          key: clinicalDocSummaryKey(locale, "Previous score", "Score précédent"),
           value: String(d.previousPainScore),
         });
       }
       lines.push({
-        key: locale === "en" ? "Improved" : "Amélioré",
+        key: clinicalDocSummaryKey(locale, "Improved", "Amélioré"),
         value: clinicalDocYesNo(d.painImproved, locale),
       });
       return lines;
@@ -649,15 +650,15 @@ export function summarizePainDocumentationPayload(
       const d = p.data;
       return [
         {
-          key: locale === "en" ? "Before" : "Avant",
+          key: clinicalDocSummaryKey(locale, "Before", "Avant"),
           value: String(d.painScoreBefore),
         },
         {
-          key: locale === "en" ? "After" : "Après",
+          key: clinicalDocSummaryKey(locale, "After", "Après"),
           value: String(d.painScoreAfter),
         },
         {
-          key: locale === "en" ? "Response" : "Réponse",
+          key: clinicalDocSummaryKey(locale, "Response", "Réponse"),
           value: pickLocalizedEnumLabel(
             RESPONSE_MAP.en,
             RESPONSE_MAP.fr,
@@ -672,26 +673,21 @@ export function summarizePainDocumentationPayload(
       if (!p.success) return [];
       const d = p.data;
       const adlImpact: string[] = [];
-      if (d.painInterferesWithSleep) adlImpact.push(locale === "en" ? "Sleep" : "Sommeil");
-      if (d.painInterferesWithMobility) adlImpact.push(locale === "en" ? "Mobility" : "Mobilité");
-      if (d.painInterferesWithADLs) adlImpact.push(locale === "en" ? "ADLs" : "AVQ");
+      if (d.painInterferesWithSleep) adlImpact.push(clinicalDocSummaryKey(locale, "Sleep", "Sommeil"));
+      if (d.painInterferesWithMobility) adlImpact.push(clinicalDocSummaryKey(locale, "Mobility", "Mobilité"));
+      if (d.painInterferesWithADLs) adlImpact.push(clinicalDocSummaryKey(locale, "ADLs", "AVQ"));
       return [
         {
-          key: locale === "en" ? "Baseline" : "Référence",
+          key: clinicalDocSummaryKey(locale, "Baseline", "Référence"),
           value: String(d.baselinePainScore),
         },
         {
-          key: locale === "en" ? "Current" : "Actuel",
+          key: clinicalDocSummaryKey(locale, "Current", "Actuel"),
           value: String(d.currentPainScore),
         },
         {
-          key: locale === "en" ? "ADL impact" : "Impact AVQ",
-          value:
-            adlImpact.length > 0
-              ? adlImpact.join(", ")
-              : locale === "en"
-                ? "None reported"
-                : "Aucun signalé",
+          key: clinicalDocSummaryKey(locale, "ADL impact", "Impact AVQ"),
+          value: adlImpact.length > 0 ? adlImpact.join(", ") : clinicalDocSummaryKey(locale, "None reported", "Aucun signalé"),
         },
       ];
     }
@@ -701,11 +697,11 @@ export function summarizePainDocumentationPayload(
       const d = p.data;
       return [
         {
-          key: locale === "en" ? "Total score" : "Score total",
+          key: clinicalDocSummaryKey(locale, "Total score", "Score total"),
           value: String(d.totalScore),
         },
         {
-          key: locale === "en" ? "Severity" : "Sévérité",
+          key: clinicalDocSummaryKey(locale, "Severity", "Sévérité"),
           value: severityLabel(d.totalScore, locale),
         },
       ];
@@ -716,11 +712,11 @@ export function summarizePainDocumentationPayload(
       const d = p.data;
       return [
         {
-          key: locale === "en" ? "FLACC total" : "Total FLACC",
+          key: clinicalDocSummaryKey(locale, "FLACC total", "Total FLACC"),
           value: String(d.totalScore),
         },
         {
-          key: locale === "en" ? "Severity" : "Sévérité",
+          key: clinicalDocSummaryKey(locale, "Severity", "Sévérité"),
           value: severityLabel(d.totalScore, locale),
         },
       ];
@@ -731,7 +727,7 @@ export function summarizePainDocumentationPayload(
       const d = p.data;
       return [
         {
-          key: locale === "en" ? "Reason" : "Motif",
+          key: clinicalDocSummaryKey(locale, "Reason", "Motif"),
           value: pickLocalizedEnumLabel(
             ESCALATION_REASON_MAP.en,
             ESCALATION_REASON_MAP.fr,
@@ -740,11 +736,11 @@ export function summarizePainDocumentationPayload(
           ),
         },
         {
-          key: locale === "en" ? "Provider notified" : "Médecin avisé",
+          key: clinicalDocSummaryKey(locale, "Provider notified", "Médecin avisé"),
           value: clinicalDocYesNo(d.providerNotified, locale),
         },
         {
-          key: locale === "en" ? "Response received" : "Réponse reçue",
+          key: clinicalDocSummaryKey(locale, "Response received", "Réponse reçue"),
           value: clinicalDocYesNo(d.responseReceived, locale),
         },
       ];

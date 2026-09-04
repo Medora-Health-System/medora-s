@@ -4,13 +4,17 @@ import {
   formatNihssItemSummary,
   NIHSS_FIELD_LABEL_EN,
   NIHSS_FIELD_LABEL_FR,
+  NIHSS_FIELD_LABEL_ES,
   NIHSS_SCORED_FIELD_KEYS,
   NIHSS_SEVERITY_BAND_LABEL_EN,
   NIHSS_SEVERITY_BAND_LABEL_FR,
+  NIHSS_SEVERITY_BAND_LABEL_ES,
   type NihssScoredFieldKey,
 } from "./clinicalDocumentationFieldOptions.js";
 import {
+  clinicalDocSummaryKey,
   clinicalDocYesNo,
+  pickBilingualDisplayMap,
   pickLocalizedEnumLabel,
   type ClinicalDocumentationSummaryLocale,
 } from "./clinicalDocumentationSummaryLocale.js";
@@ -384,8 +388,8 @@ export function summarizeStrokeDocumentationPayload(
   payload: Record<string, unknown>,
   locale: ClinicalDocumentationSummaryLocale
 ): Array<{ key: string; value: string }> {
-  const nihssFieldLabels = locale === "en" ? NIHSS_FIELD_LABEL_EN : NIHSS_FIELD_LABEL_FR;
-  const severityLabels = locale === "en" ? NIHSS_SEVERITY_BAND_LABEL_EN : NIHSS_SEVERITY_BAND_LABEL_FR;
+  const nihssFieldLabels = pickBilingualDisplayMap(locale, NIHSS_FIELD_LABEL_EN, NIHSS_FIELD_LABEL_FR, NIHSS_FIELD_LABEL_ES);
+  const severityLabels = pickBilingualDisplayMap(locale, NIHSS_SEVERITY_BAND_LABEL_EN, NIHSS_SEVERITY_BAND_LABEL_FR, NIHSS_SEVERITY_BAND_LABEL_ES);
 
   switch (cardId) {
     case STROKE_NIHSS_CARD_ID: {
@@ -394,14 +398,14 @@ export function summarizeStrokeDocumentationPayload(
       const d = p.data;
       const lines: Array<{ key: string; value: string }> = [
         {
-          key: locale === "en" ? "NIHSS total score" : "Score NIHSS total",
+          key: clinicalDocSummaryKey(locale, "NIHSS total score", "Score NIHSS total"),
           value: String(d.totalScore),
         },
         {
-          key: locale === "en" ? "NIHSS severity band" : "Bande de sévérité NIHSS",
+          key: clinicalDocSummaryKey(locale, "NIHSS severity band", "Bande de sévérité NIHSS"),
           value: severityLabels[deriveNihssSeverityBand(d.totalScore)],
         },
-        { key: locale === "en" ? "Assessed at" : "Évalué le", value: d.assessedAt },
+        { key: clinicalDocSummaryKey(locale, "Assessed at", "Évalué le"), value: d.assessedAt },
       ];
       for (const fieldKey of NIHSS_SCORED_FIELD_KEYS) {
         const score = d[fieldKey as NihssScoredFieldKey];
@@ -412,7 +416,7 @@ export function summarizeStrokeDocumentationPayload(
       }
       if (d.unableToAssessReason?.trim()) {
         lines.push({
-          key: locale === "en" ? "Unable to assess reason" : "Raison non évaluable",
+          key: clinicalDocSummaryKey(locale, "Unable to assess reason", "Raison non évaluable"),
           value: d.unableToAssessReason.trim(),
         });
       }
@@ -424,15 +428,15 @@ export function summarizeStrokeDocumentationPayload(
       const d = p.data;
       return [
         {
-          key: locale === "en" ? "Result" : "Résultat",
+          key: clinicalDocSummaryKey(locale, "Result", "Résultat"),
           value: pickLocalizedEnumLabel(SWALLOW_RESULT_EN, SWALLOW_RESULT_FR, d.result, locale),
         },
         {
-          key: locale === "en" ? "NPO recommended" : "NPO recommandé",
+          key: clinicalDocSummaryKey(locale, "NPO recommended", "NPO recommandé"),
           value: clinicalDocYesNo(d.npoRecommended, locale),
         },
         {
-          key: locale === "en" ? "Provider notified" : "Médecin avisé",
+          key: clinicalDocSummaryKey(locale, "Provider notified", "Médecin avisé"),
           value: clinicalDocYesNo(d.providerNotified, locale),
         },
       ];
@@ -441,27 +445,20 @@ export function summarizeStrokeDocumentationPayload(
       const p = cincinnatiStrokeScalePayloadSchema.safeParse(payload);
       if (!p.success) return [];
       const d = p.data;
-      const abnormal =
-        locale === "en"
-          ? [
-              d.facialDroop === "ABNORMAL" ? "facial asymmetry" : null,
-              d.armDrift === "ABNORMAL" ? "arm drift" : null,
-              d.speech === "ABNORMAL" ? "speech" : null,
-            ].filter(Boolean)
-          : [
-              d.facialDroop === "ABNORMAL" ? "asymétrie faciale" : null,
-              d.armDrift === "ABNORMAL" ? "dérive du bras" : null,
-              d.speech === "ABNORMAL" ? "parole" : null,
+      const abnormal = [
+              d.facialDroop === "ABNORMAL" ? clinicalDocSummaryKey(locale, "facial asymmetry", "asymétrie faciale") : null,
+              d.armDrift === "ABNORMAL" ? clinicalDocSummaryKey(locale, "arm drift", "dérive du bras") : null,
+              d.speech === "ABNORMAL" ? clinicalDocSummaryKey(locale, "speech", "parole") : null,
             ].filter(Boolean);
       const lines: Array<{ key: string; value: string }> = [
         {
-          key: locale === "en" ? "Result" : "Résultat",
+          key: clinicalDocSummaryKey(locale, "Result", "Résultat"),
           value: pickLocalizedEnumLabel(SCREEN_RESULT_EN, SCREEN_RESULT_FR, d.result, locale),
         },
       ];
       if (abnormal.length > 0) {
         lines.push({
-          key: locale === "en" ? "Abnormal elements" : "Éléments anormaux",
+          key: clinicalDocSummaryKey(locale, "Abnormal elements", "Éléments anormaux"),
           value: abnormal.join(", "),
         });
       }
@@ -471,27 +468,20 @@ export function summarizeStrokeDocumentationPayload(
       const p = vanAssessmentPayloadSchema.safeParse(payload);
       if (!p.success) return [];
       const d = p.data;
-      const signs =
-        locale === "en"
-          ? [
-              d.visualDisturbance ? "visual disturbance" : null,
-              d.aphasia ? "aphasia" : null,
-              d.neglect ? "neglect" : null,
-            ].filter(Boolean)
-          : [
-              d.visualDisturbance ? "trouble visuel" : null,
-              d.aphasia ? "aphasie" : null,
-              d.neglect ? "négligence" : null,
+      const signs = [
+              d.visualDisturbance ? clinicalDocSummaryKey(locale, "visual disturbance", "trouble visuel") : null,
+              d.aphasia ? clinicalDocSummaryKey(locale, "aphasia", "aphasie") : null,
+              d.neglect ? clinicalDocSummaryKey(locale, "neglect", "négligence") : null,
             ].filter(Boolean);
       const lines: Array<{ key: string; value: string }> = [
         {
-          key: locale === "en" ? "Result" : "Résultat",
+          key: clinicalDocSummaryKey(locale, "Result", "Résultat"),
           value: pickLocalizedEnumLabel(SCREEN_RESULT_EN, SCREEN_RESULT_FR, d.result, locale),
         },
       ];
       if (signs.length > 0) {
         lines.push({
-          key: locale === "en" ? "Cortical signs" : "Signes corticaux",
+          key: clinicalDocSummaryKey(locale, "Cortical signs", "Signes corticaux"),
           value: signs.join(", "),
         });
       }
@@ -511,19 +501,19 @@ export function summarizeStrokeDocumentationPayload(
       ];
       if (d.ctCompletedTime) {
         lines.push({
-          key: locale === "en" ? "CT completed" : "TDM terminée",
+          key: clinicalDocSummaryKey(locale, "CT completed", "TDM terminée"),
           value: d.ctCompletedTime,
         });
       }
       if (d.thrombolyticDecisionTime) {
         lines.push({
-          key: locale === "en" ? "Thrombolytic decision" : "Décision thrombolyse",
+          key: clinicalDocSummaryKey(locale, "Thrombolytic decision", "Décision thrombolyse"),
           value: d.thrombolyticDecisionTime,
         });
       }
       if (d.thrombolyticGivenTime) {
         lines.push({
-          key: locale === "en" ? "Thrombolytic given" : "Thrombolyse administrée",
+          key: clinicalDocSummaryKey(locale, "Thrombolytic given", "Thrombolyse administrée"),
           value: d.thrombolyticGivenTime,
         });
       }
@@ -535,11 +525,11 @@ export function summarizeStrokeDocumentationPayload(
       const d = p.data;
       return [
         {
-          key: locale === "en" ? "Change vs prior" : "Changement vs précédent",
+          key: clinicalDocSummaryKey(locale, "Change vs prior", "Changement vs précédent"),
           value: pickLocalizedEnumLabel(CHANGES_EN, CHANGES_FR, d.changesFromPrior, locale),
         },
         {
-          key: locale === "en" ? "Provider notified" : "Médecin avisé",
+          key: clinicalDocSummaryKey(locale, "Provider notified", "Médecin avisé"),
           value: clinicalDocYesNo(d.providerNotified, locale),
         },
       ];

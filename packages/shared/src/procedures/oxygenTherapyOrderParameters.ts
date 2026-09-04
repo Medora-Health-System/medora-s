@@ -4,6 +4,8 @@
  * Persisted via manualLabel snapshot + OrderItem.notes — no schema migration.
  */
 
+import { pickProductUiCopy } from "../i18n/productUiLocale.js";
+
 export const OXYGEN_THERAPY_PROCEDURE_CODE = "oxygen_therapy" as const;
 
 export const OXYGEN_THERAPY_DEVICES = [
@@ -76,7 +78,11 @@ export type OxygenTherapyDraft = {
   rtInvolvement: OxygenTherapyRtOption;
 };
 
-export type OxygenTherapyLocale = "en" | "fr";
+function oxCopy(locale: string, en: string, fr: string, es: string): string {
+  return pickProductUiCopy(locale, { en, fr, es }, es);
+}
+
+export type OxygenTherapyLocale = string;
 
 const DEVICE_USES_FIO2 = new Set<OxygenTherapyDevice>(["venturi_mask", "trach_collar"]);
 const DEVICE_USES_FLOW = new Set<OxygenTherapyDevice>([
@@ -105,7 +111,7 @@ export function defaultOxygenTherapyDraft(): OxygenTherapyDraft {
 }
 
 function deviceLabel(device: OxygenTherapyDevice, locale: OxygenTherapyLocale, custom?: string): string {
-  if (device === "other") return custom?.trim() || (locale === "fr" ? "Autre" : "Other");
+  if (device === "other") return custom?.trim() || oxCopy(locale, "Other", "Autre", "Otro");
   const en: Record<OxygenTherapyDevice, string> = {
     nasal_cannula: "Nasal cannula",
     simple_face_mask: "Simple face mask",
@@ -124,7 +130,16 @@ function deviceLabel(device: OxygenTherapyDevice, locale: OxygenTherapyLocale, c
     trach_collar: "Collier de trachéotomie",
     other: "Autre",
   };
-  return locale === "fr" ? fr[device] : en[device];
+  const es: Record<OxygenTherapyDevice, string> = {
+    nasal_cannula: "Cánula nasal",
+    simple_face_mask: "Mascarilla simple",
+    venturi_mask: "Mascarilla Venturi",
+    non_rebreather: "Mascarilla de no reinhalación",
+    high_flow_nasal_cannula: "Cánula nasal de alto flujo",
+    trach_collar: "Collar de traqueostomía",
+    other: "Otro",
+  };
+  return oxCopy(locale, en[device], fr[device], es[device]);
 }
 
 function frequencyLabel(mode: OxygenTherapyFrequencyMode, locale: OxygenTherapyLocale): string {
@@ -144,17 +159,28 @@ function frequencyLabel(mode: OxygenTherapyFrequencyMode, locale: OxygenTherapyL
     while_sleeping: "pendant le sommeil",
     with_exertion: "à l'effort",
   };
-  return locale === "fr" ? fr[mode] : en[mode];
+  const es: Record<OxygenTherapyFrequencyMode, string> = {
+    continuous: "continuo",
+    prn: "PRN",
+    stat: "STAT",
+    during_transport: "durante el transporte",
+    while_sleeping: "durante el sueño",
+    with_exertion: "con el esfuerzo",
+  };
+  return oxCopy(locale, en[mode], fr[mode], es[mode]);
 }
 
 function targetLabel(target: OxygenTherapyTargetOption, locale: OxygenTherapyLocale, custom?: string): string {
   if (target === "custom") return custom?.trim() || "";
   if (target === "spo2_ge_92") {
-    return locale === "fr" ? "maintenir SpO₂ ≥ 92 %" : "maintain SpO₂ ≥ 92%";
+    return oxCopy(locale, "maintain SpO₂ ≥ 92%", "maintenir SpO₂ ≥ 92 %", "mantener SpO₂ ≥ 92 %");
   }
-  return locale === "fr"
-    ? "maintenir SpO₂ 88–92 % si risque de rétention de CO₂"
-    : "maintain SpO₂ 88–92% if CO₂ retention risk";
+  return oxCopy(
+    locale,
+    "maintain SpO₂ 88–92% if CO₂ retention risk",
+    "maintenir SpO₂ 88–92 % si risque de rétention de CO₂",
+    "mantener SpO₂ 88–92 % si hay riesgo de retención de CO₂"
+  );
 }
 
 function targetDisplayLine(
@@ -183,7 +209,12 @@ function rtLabel(rt: OxygenTherapyRtOption, locale: OxygenTherapyLocale): string
     rt_evaluate_treat: "RT évaluer et traiter",
     nursing_protocol_initiate: "infirmier(ère) peut initier selon protocole",
   };
-  return locale === "fr" ? fr[rt] : en[rt];
+  const es: Record<OxygenTherapyRtOption, string> = {
+    rt_notify: "Notificar a terapia respiratoria",
+    rt_evaluate_treat: "Terapia respiratoria: evaluar y tratar",
+    nursing_protocol_initiate: "enfermería puede iniciar según protocolo",
+  };
+  return oxCopy(locale, en[rt], fr[rt], es[rt]);
 }
 
 function resolveFlowLpm(draft: OxygenTherapyDraft): string | null {
@@ -272,7 +303,7 @@ export function formatOxygenTherapyDisplay(
   draft: OxygenTherapyDraft,
   locale: OxygenTherapyLocale
 ): OxygenTherapyDisplay {
-  const prefix = locale === "fr" ? "Oxygénothérapie" : "Oxygen Therapy";
+  const prefix = oxCopy(locale, "Oxygen Therapy", "Oxygénothérapie", "Oxigenoterapia");
   const device = deviceLabel(draft.device, locale, draft.deviceCustom);
   const parts: string[] = [device];
 
@@ -282,7 +313,7 @@ export function formatOxygenTherapyDisplay(
   }
   const fio2 = resolveFio2(draft);
   if (fio2) {
-    parts.push(locale === "fr" ? `FiO₂ ${fio2} %` : `FiO₂ ${fio2}%`);
+    parts.push(oxCopy(locale, `FiO₂ ${fio2}%`, `FiO₂ ${fio2} %`, `FiO₂ ${fio2} %`));
   }
 
   const freq = frequencyTitleToken(draft.frequencyMode, locale);

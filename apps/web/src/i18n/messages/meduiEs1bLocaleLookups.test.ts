@@ -9,9 +9,9 @@ import en from "@/i18n/messages/en";
 import fr from "@/i18n/messages/fr";
 
 describe("MEDUI.ES.1B locale lookup isolation", () => {
-  it("keeps public selectors English and French while internal set includes hidden Spanish", () => {
+  it("keeps public selectors English, French, and Español after 1K; internal set includes Spanish", () => {
     expect([...supportedLanguages]).toEqual(["fr", "en", "es"]);
-    expect([...PUBLICLY_SELECTABLE_PRODUCT_UI_LANGUAGES]).toEqual(["fr", "en"]);
+    expect([...PUBLICLY_SELECTABLE_PRODUCT_UI_LANGUAGES]).toEqual(["fr", "en", "es"]);
   });
 
   it("printT and i18nMessage resolve only the requested locale", () => {
@@ -40,11 +40,11 @@ describe("MEDUI.ES.1B locale lookup isolation", () => {
     expect(printT("fr", missing)).not.toBe(printT("en", "common.save"));
   });
 
-  it("unsupported locale resolves to English at the boundary, never French; public hydration hides es", () => {
+  it("unsupported locale resolves to English at the boundary, never French; public hydration applies stored es after 1K", () => {
     expect(resolveProductUiLanguageOrDefault("de")).toBe("en");
     expect(resolveProductUiLanguageOrDefault("es")).toBe("es");
-    expect(resolvePublicProductUiLanguageOrDefault("es")).toBe("en");
-    expect(resolvePublicProductUiLanguageOrDefault("es-419")).toBe("en");
+    expect(resolvePublicProductUiLanguageOrDefault("es")).toBe("es");
+    expect(resolvePublicProductUiLanguageOrDefault("es-419")).toBe("es");
   });
 
   it("printDateLocale uses the locale registry", () => {
@@ -57,9 +57,9 @@ describe("MEDUI.ES.1B locale lookup isolation", () => {
     expect(normalizeUserFacingError("Encounter not found", "fr")).toBe("Consultation introuvable.");
   });
 
-  it("unsupported stored locale is ignored at the resolution boundary", () => {
-    expect(resolveClientUiLanguage({ storedLanguage: "es" })).toBe("en");
-    expect(resolveClientUiLanguage({ storedLanguage: "es", facilityLanguage: "fr" })).toBe("fr");
+  it("stored es hydrates to ES after 1K public enablement; stored still beats facility", () => {
+    expect(resolveClientUiLanguage({ storedLanguage: "es" })).toBe("es");
+    expect(resolveClientUiLanguage({ storedLanguage: "es", facilityLanguage: "fr" })).toBe("es");
   });
 
   it("message registry has no implicit cross-language fallback", () => {

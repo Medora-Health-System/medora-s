@@ -1,3 +1,5 @@
+import { pickProductUiCopy } from "../i18n/productUiLocale.js";
+
 export const MAR_PRN_REASON_CODES = [
   "mild_pain",
   "moderate_pain",
@@ -77,11 +79,40 @@ export function marPrnReasonLabelEn(code: MarPrnReasonCode): string {
   return labels[code];
 }
 
+export function marPrnReasonLabelEs(code: MarPrnReasonCode): string {
+  const labels: Record<MarPrnReasonCode, string> = {
+    mild_pain: "Dolor leve",
+    moderate_pain: "Dolor moderado",
+    severe_pain: "Dolor intenso",
+    nausea: "Náuseas",
+    vomiting: "Vómitos",
+    nausea_vomiting: "Náuseas/vómitos",
+    wheezing: "Sibilancias",
+    shortness_of_breath: "Disnea",
+    cough: "Tos",
+    low_o2: "O2 bajo",
+    itching: "Prurito",
+    rash: "Erupción",
+    allergic_reaction: "Reacción alérgica",
+    hives: "Urticaria",
+    fever: "Fiebre",
+    insomnia: "Insomnio",
+    anxiety: "Ansiedad",
+    agitation: "Agitación",
+    other: "Otro",
+  };
+  return labels[code];
+}
+
 export function marPrnReasonLabel(
   code: MarPrnReasonCode,
-  locale: "fr" | "en" = "fr"
+  locale: string = "en"
 ): string {
-  return locale === "en" ? marPrnReasonLabelEn(code) : marPrnReasonLabelFr(code);
+  return pickProductUiCopy(
+    locale,
+    { en: marPrnReasonLabelEn(code), fr: marPrnReasonLabelFr(code), es: marPrnReasonLabelEs(code) },
+    marPrnReasonLabelEs(code)
+  );
 }
 
 const MAR_PRN_REASON_LEGACY_LABEL_TO_CODE: Record<string, MarPrnReasonCode> = (() => {
@@ -115,7 +146,7 @@ export const normalizeMarPrnReasonCode = normalizeMarPrnReasonCodeFromStoredValu
 /** Localized PRN reason for UI — prefers stable code; backward-compatible with legacy stored labels. */
 export function formatMarPrnReasonForLocale(
   input: { code?: string | null; label?: string | null },
-  locale: "fr" | "en" = "fr"
+  locale: string = "en"
 ): string | null {
   const code =
     (input.code && isMarPrnReasonCode(input.code) ? input.code : null) ??

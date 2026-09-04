@@ -16,6 +16,7 @@ import {
   isMarShiftTimelineInternalEnumText,
   type MarMedicationDoseDisplayFields,
 } from "@medora/shared";
+import { pickProductUiCopy } from "@/i18n/config";
 import type {
   MarShiftTimelineCellItem,
   MarShiftTimelineDrawerAction,
@@ -446,7 +447,7 @@ export function marShiftTimelinePrnRowStyle(): CSSProperties {
 /** Re-localize PRN summary text baked at API build time (legacy French labels). */
 export function localizeMarTimelinePrnCellText(
   text: string | null | undefined,
-  locale: "en" | "fr",
+  locale: string,
   prnReasonCode?: string | null
 ): string | null {
   const trimmed = text?.trim();
@@ -454,7 +455,11 @@ export function localizeMarTimelinePrnCellText(
   const painMatch = trimmed.match(/^(Pain|Douleur)\s+(\d+)\/10$/i);
   if (painMatch) {
     const score = painMatch[2];
-    return locale === "en" ? `Pain ${score}/10` : `Douleur ${score}/10`;
+    return pickProductUiCopy(
+      locale,
+      { en: `Pain ${score}/10`, fr: `Douleur ${score}/10`, es: `Dolor ${score}/10` },
+      `Dolor ${score}/10`
+    );
   }
   return (
     formatMarPrnReasonForLocale({ code: prnReasonCode, label: trimmed }, locale) ?? trimmed

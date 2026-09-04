@@ -364,7 +364,7 @@ export function listVisibleClinicalDocumentationCards(
 export function searchVisibleClinicalDocumentationCards(
   cards: readonly ClinicalDocumentationCard[],
   query: string,
-  locale: "en" | "fr" = "en",
+  locale: string = "en",
   options: {
     careSetting?: ClinicalDocumentationCareSetting;
     category?: ClinicalDocumentationCategory | "ALL";
@@ -444,7 +444,7 @@ export function countVisibleClinicalDocumentationCardsByCategory(
 
 export function assertVisibleAllCatalogHasNoDuplicateTitles(
   cards: readonly ClinicalDocumentationCard[],
-  locale: "en" | "fr" = "en"
+  locale: string = "en"
 ): void {
   const visible = listVisibleClinicalDocumentationCards(cards, { category: "ALL" });
   const titles = new Map<string, string[]>();

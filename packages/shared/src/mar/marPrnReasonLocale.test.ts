@@ -12,9 +12,11 @@ describe("marPrnReasonLocale (MEDUI.ED.I18N.AUDIT.1)", () => {
     expect(marPrnReasonLabel("vomiting", "en")).toBe("Vomiting");
   });
 
-  it("stable PRN code maps to French", () => {
-    expect(marPrnReasonLabel("moderate_pain", "fr")).toBe("Douleur modérée");
-    expect(marPrnReasonLabel("vomiting", "fr")).toBe("Vomissements");
+  it("stable PRN code maps to Spanish without EN/FR substitution", () => {
+    expect(marPrnReasonLabel("moderate_pain", "es")).toBe("Dolor moderado");
+    expect(marPrnReasonLabel("vomiting", "es")).toBe("Vómitos");
+    expect(marPrnReasonLabel("moderate_pain", "es")).not.toBe("Moderate pain");
+    expect(marPrnReasonLabel("moderate_pain", "es")).not.toBe("Douleur modérée");
   });
 
   it("legacy French label normalizes to code", () => {

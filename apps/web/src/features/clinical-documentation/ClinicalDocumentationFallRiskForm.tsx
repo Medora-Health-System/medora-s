@@ -30,6 +30,7 @@ import {
   SAFETY_PRECAUTIONS_DOCUMENTATION_CARD_ID,
   validateFallRiskSafetyDocumentationPayloadForCard,
   YES_NO_OPTIONS,
+  formatClinicalDocumentationOptionLabel,
 } from "@medora/shared";
 import { useI18n } from "@/lib/i18n";
 import { resolveProductUiLanguageOrDefault } from "@/i18n/config";
@@ -452,9 +453,10 @@ export function ClinicalDocumentationFallRiskForm({
             </p>
             <p data-testid="fall-morse-risk-level" style={scoreBannerStyle}>
               {t("clinicalDocumentation.forms.fallRisk.riskLevel")}:{" "}
-              {MORSE_RISK_LEVEL_OPTIONS.find((o) => o.value === morseRiskLevel)?.[
-                locale === "en" ? "labelEn" : "labelFr"
-              ] ?? morseRiskLevel}
+              {(() => {
+                const opt = MORSE_RISK_LEVEL_OPTIONS.find((o) => o.value === morseRiskLevel);
+                return opt ? formatClinicalDocumentationOptionLabel(opt, locale) : morseRiskLevel;
+              })()}
             </p>
             <ClinicalDocumentationBooleanField
               label={t("clinicalDocumentation.forms.fallRisk.providerNotified")}

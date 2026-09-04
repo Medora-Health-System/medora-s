@@ -11,6 +11,7 @@ import { invalidateAuthMeSessionCache } from "@/lib/authSessionMe";
 import { notifyAuthSessionRestored } from "@/lib/authShellRecovery";
 import { useI18n } from "@/lib/i18n";
 import { parseProductUiLanguage, productUiLanguageSelectOptions, isPubliclySelectableProductUiLanguage } from "@/i18n/config";
+import { readStoredUiLanguageRaw } from "@/i18n/resolveClientUiLanguage";
 import { messageForAuthErrorCode, pickAuthErrorCodeOrLegacyMessage } from "@/lib/authApiErrorCode";
 import { MfaChallengePanel } from "./MfaChallengePanel";
 import { MfaEnrollmentPanel } from "@/components/mfa/MfaEnrollmentPanel";
@@ -50,6 +51,8 @@ function LoginForm() {
    */
   const applyPreferredLanguage = (lang?: string) => {
     if (!lang) return;
+    const stored = parseProductUiLanguage(readStoredUiLanguageRaw());
+    if (stored && isPubliclySelectableProductUiLanguage(stored)) return;
     const parsed = parseProductUiLanguage(lang);
     if (parsed && isPubliclySelectableProductUiLanguage(parsed) && parsed !== language) {
       setLanguage(parsed);

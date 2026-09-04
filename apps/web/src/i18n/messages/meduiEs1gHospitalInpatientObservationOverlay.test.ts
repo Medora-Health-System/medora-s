@@ -400,14 +400,15 @@ describe("MEDUI.ES.1G six-direction isolation", () => {
 });
 
 describe("MEDUI.ES.1G public exposure", () => {
-  it("Español remains hidden from public product UI selectors", () => {
-    expect([...PUBLICLY_SELECTABLE_PRODUCT_UI_LANGUAGES]).toEqual(["fr", "en"]);
-    expect(productUiLanguageSelectOptions().map((o) => o.value)).toEqual(["fr", "en"]);
-    expect(productUiLanguageSelectOptions().some((o) => /español/i.test(o.label))).toBe(false);
+  it("Español is publicly selectable after MEDUI.ES.1K", () => {
+    expect([...PUBLICLY_SELECTABLE_PRODUCT_UI_LANGUAGES]).toEqual(["fr", "en", "es"]);
+    expect(productUiLanguageSelectOptions().map((o) => o.value)).toEqual(["fr", "en", "es"]);
+    expect(productUiLanguageSelectOptions().some((o) => /español/i.test(o.label))).toBe(true);
   });
 
-  it("patient preferredLanguage es does not activate product UI Spanish", () => {
-    expect(resolveClientUiLanguage({ storedLanguage: "es" })).not.toBe("es");
+  it("patient preferredLanguage remains distinct from product UI locale; stored product es hydrates after 1K", () => {
+    expect(resolveClientUiLanguage.toString()).not.toMatch(/preferredLanguage/);
+    expect(resolveClientUiLanguage({ storedLanguage: "es" })).toBe("es");
   });
 });
 
@@ -502,6 +503,6 @@ describe("MEDUI.ES.1G no ungoverned Spanish component literals", () => {
       }
     }
     expect(hits).toBe(0);
-    expect(productUiLanguageSelectOptions().some((o) => /español/i.test(o.label))).toBe(false);
+    expect(productUiLanguageSelectOptions().some((o) => /español/i.test(o.label))).toBe(true);
   });
 });

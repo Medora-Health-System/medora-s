@@ -68,7 +68,7 @@ import type { EdClosureCertificationEncounter } from "@/features/emergency/edClo
 import { EdEncounterCertificationReview } from "@/features/emergency/EdEncounterCertificationReview";
 import { EdEncounterBillingReadinessBadge } from "@/features/emergency/EdEncounterBillingReadinessBadge";
 
-import { resolveProductUiLanguageOrDefault } from "@/i18n/config";
+import { pickProductUiCopy, resolveProductUiLanguageOrDefault } from "@/i18n/config";
 
 /** API encounters include `patient`; `EncounterLike` does not — widen for header / print / close. */
 type ErClosureEncounter = ComponentProps<typeof EmergencyVisitSummaryPanel>["encounter"] & {
@@ -1004,7 +1004,17 @@ export function EmergencyErSummaryClosureSurface({
                 const k = `encounterChrome.modals.documentationDeficiencies.${d.code}`;
                 const label = t(k);
                 const fallback =
-                  label !== k ? label : language === "en" ? d.code.replace(/_/g, " ") : d.labelFr;
+                  label !== k
+                    ? label
+                    : pickProductUiCopy(
+                        language,
+                        {
+                          en: d.code.replace(/_/g, " "),
+                          fr: d.labelFr,
+                          es: d.code.replace(/_/g, " "),
+                        },
+                        d.code.replace(/_/g, " ")
+                      );
                 return (
                   <li key={d.code} style={{ marginBottom: 4 }}>
                     {fallback}

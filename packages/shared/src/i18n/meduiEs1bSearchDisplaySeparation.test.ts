@@ -103,7 +103,7 @@ describe("MEDUI.ES.1B-CERT multilingual retrieval vs locale-specific presentatio
       })
     ).toEqual({
       kind: "unsupported",
-      value: "Wound dressing",
+      value: "UNLOCALIZED_SOURCE",
       source: "UNLOCALIZED_SOURCE",
     });
   });

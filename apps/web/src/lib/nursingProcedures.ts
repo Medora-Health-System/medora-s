@@ -3,7 +3,7 @@
  * Commence par la pose de voie IV ; autres procédures pourront s’ajouter sous proceduresV1.
  */
 
-import { productUiBcp47Tag, type SupportedLanguage } from "@/i18n/config";
+import { pickProductUiCopy, productUiBcp47Tag } from "@/i18n/config";
 
 export const IV_SITE_OPTIONS_FR = [
   "RAC",
@@ -55,37 +55,65 @@ export function parseNursingProceduresV1(raw: unknown): NursingProceduresV1 | nu
 /** Ligne lisible pour le dossier (une phrase) — modèle d’affichage selon la langue d’établissement. */
 export function formatIvInsertionLineForLocale(
   iv: IvInsertionProcedureV1,
-  language: SupportedLanguage
+  language: string
 ): string | null {
   if (!iv.performed) return null;
+  const chrome = pickProductUiCopy(
+    language,
+    {
+      en: {
+        other: "Other",
+        gauge: (g: string) => `gauge ${g}`,
+        on: (dts: string) => `on ${dts}`,
+        withDetail: (detail: string) => `IV line placed: ${detail}`,
+        bare: "IV line placed",
+      },
+      fr: {
+        other: "Autre",
+        gauge: (g: string) => `calibre ${g}`,
+        on: (dts: string) => `le ${dts}`,
+        withDetail: (detail: string) => `Voie IV posée : ${detail}`,
+        bare: "Voie IV posée",
+      },
+      es: {
+        other: "Otro",
+        gauge: (g: string) => `calibre ${g}`,
+        on: (dts: string) => `el ${dts}`,
+        withDetail: (detail: string) => `Vía IV colocada: ${detail}`,
+        bare: "Vía IV colocada",
+      },
+    },
+    {
+      other: "Otro",
+      gauge: (g: string) => `calibre ${g}`,
+      on: (dts: string) => `el ${dts}`,
+      withDetail: (detail: string) => `Vía IV colocada: ${detail}`,
+      bare: "Vía IV colocada",
+    }
+  );
   const bits: string[] = [];
   let siteDisplay = iv.site?.trim() || "";
   if (siteDisplay === "Autre" && iv.siteOther?.trim()) {
     siteDisplay = iv.siteOther.trim();
   } else if (siteDisplay === "Autre") {
-    siteDisplay = language === "en" ? "Other" : "Autre";
+    siteDisplay = chrome.other;
   }
   if (siteDisplay) bits.push(siteDisplay);
   if (iv.gauge?.trim()) {
-    bits.push(
-      language === "en" ? `gauge ${iv.gauge.trim()}` : `calibre ${iv.gauge.trim()}`
-    );
+    bits.push(chrome.gauge(iv.gauge.trim()));
   }
   if (iv.performedAt) {
     try {
       const loc = productUiBcp47Tag(language);
       const dts = new Date(iv.performedAt).toLocaleString(loc);
-      bits.push(language === "en" ? `on ${dts}` : `le ${dts}`);
+      bits.push(chrome.on(dts));
     } catch {
       /* ignore */
     }
   }
   if (iv.note?.trim()) bits.push(iv.note.trim());
   const detail = bits.join(", ");
-  if (language === "en") {
-    return detail ? `IV line placed: ${detail}` : "IV line placed";
-  }
-  return detail ? `Voie IV posée : ${detail}` : "Voie IV posée";
+  return detail ? chrome.withDetail(detail) : chrome.bare;
 }
 
 /** Ligne française lisible pour le dossier (une phrase). */
@@ -96,24 +124,28 @@ export function formatIvInsertionLineFr(iv: IvInsertionProcedureV1): string | nu
 /** Blocs pour timeline / impression (même forme que les sections texte). */
 export function parseNursingProceduresForChart(
   raw: unknown,
-  language: SupportedLanguage = "fr"
+  language: string = "fr"
 ): { label: string; text: string }[] {
   const proc = parseNursingProceduresV1(raw);
   if (!proc?.ivInsertion?.performed) return [];
   const line = formatIvInsertionLineForLocale(proc.ivInsertion, language);
   if (!line) return [];
-  return [
+  const label = pickProductUiCopy(
+    language,
     {
-      label: language === "en" ? "Nursing procedures" : "Procédures infirmières",
-      text: line,
+      en: "Nursing procedures",
+      fr: "Procédures infirmières",
+      es: "Procedimientos de enfermería",
     },
-  ];
+    "Procedimientos de enfermería"
+  );
+  return [{ label, text: line }];
 }
 
 /** Lignes courtes pour résumé (liste de chaînes). */
 export function nursingProcedureSummaryLinesForLocale(
   raw: unknown,
-  language: SupportedLanguage
+  language: string
 ): string[] {
   const proc = parseNursingProceduresV1(raw);
   if (!proc?.ivInsertion?.performed) return [];

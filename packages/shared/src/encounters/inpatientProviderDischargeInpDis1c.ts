@@ -312,7 +312,7 @@ export type InpatientDischargeChartSnapshot = {
     description: string;
     responsibleParty?: string | null;
   }>;
-  language?: "en" | "fr";
+  language?: string;
 };
 
 function isRecord(value: unknown): value is Record<string, unknown> {

@@ -6,6 +6,7 @@
  * ambulatory workspaces. No ClinicMedicationOrder / ClinicMAR / ClinicPrescription.
  */
 
+import { pickCatalogDisplayLabelForProductUi } from "../i18n/productUiLocale.js";
 import {
   canPrintAmbulatoryExternalPrescriptions,
   filterAmbulatoryExternalPrescriptionOrders,
@@ -120,30 +121,23 @@ export type D4c7ePersistedOrderItemLike = {
 
 function resolvePersistedMedicationLabel(
   it: D4c7ePersistedOrderItemLike,
-  language: "fr" | "en" = "fr"
+  language: string = "en"
 ): string {
-  if (language === "en") {
-    return (
-      String(it.displayLabelEn ?? "").trim() ||
-      String(it.displayLabel ?? "").trim() ||
-      String(it.manualLabel ?? "").trim() ||
-      String(it._label ?? "").trim() ||
-      String(it.freeText ?? "").trim() ||
-      String(it.catalogItem?.name ?? "").trim() ||
-      String(it.catalogMedication?.name ?? "").trim() ||
-      ""
-    );
-  }
+  const code = String(it.catalogMedication?.code ?? "").trim();
+  const catalog = pickCatalogDisplayLabelForProductUi(language, {
+    displayNameEn: String(it.displayLabelEn ?? "").trim(),
+    displayNameFr: String(it.displayLabelFr ?? it.catalogMedication?.displayNameFr ?? "").trim(),
+    code,
+  });
+  if (catalog && catalog !== "UNLOCALIZED_SOURCE") return catalog;
   return (
-    String(it.displayLabelFr ?? "").trim() ||
     String(it.displayLabel ?? "").trim() ||
     String(it.manualLabel ?? "").trim() ||
     String(it._label ?? "").trim() ||
     String(it.freeText ?? "").trim() ||
-    String(it.catalogMedication?.displayNameFr ?? "").trim() ||
     String(it.catalogItem?.name ?? "").trim() ||
     String(it.catalogMedication?.name ?? "").trim() ||
-    ""
+    code
   );
 }
 
@@ -153,7 +147,7 @@ function resolvePersistedMedicationLabel(
  */
 export function projectPersistedOutpatientPrescriptionPrintLines(
   items: readonly D4c7ePersistedOrderItemLike[],
-  language: "fr" | "en" = "fr"
+  language: string = "en"
 ): D4c7ePrintLineProjection[] {
   const out: D4c7ePrintLineProjection[] = [];
   for (const it of items) {
@@ -195,7 +189,7 @@ export type D4c7ePrintGate =
 /** Validate before opening browser print preview — block blank / chart-admin-only prints. */
 export function validateOutpatientPrescriptionPrintProjection(
   items: readonly D4c7ePersistedOrderItemLike[],
-  language: "fr" | "en" = "fr"
+  language: string = "en"
 ): D4c7ePrintGate {
   const lines = projectPersistedOutpatientPrescriptionPrintLines(items, language);
   if (lines.length === 0) {

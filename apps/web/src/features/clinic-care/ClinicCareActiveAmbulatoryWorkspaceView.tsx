@@ -51,7 +51,7 @@ import { ClinicCareAmbulatoryPatientHeader } from "@/features/clinic-care/Clinic
 import { ClinicCareAmbulatoryWorkspaceSectionNav } from "@/features/clinic-care/ClinicCareAmbulatoryWorkspaceSectionNav";
 import { ClinicCareAmbulatoryWorkspacePanels } from "@/features/clinic-care/ClinicCareAmbulatoryWorkspacePanels";
 import { ClinicCareAmbulatoryClosurePendingModal } from "@/features/clinic-care/ClinicCareAmbulatoryClosurePendingModal";
-import { productUiBcp47Tag } from "@/i18n/config";
+import { pickProductUiCopy, productUiBcp47Tag } from "@/i18n/config";
 import {
   INITIAL_D4C7J_CLOSURE_STATE,
   canDispatchD4c7jClose,
@@ -193,7 +193,10 @@ export function ClinicCareActiveAmbulatoryWorkspaceView() {
     const pairs = buildErWorkspaceVitalPairs(parsed.slice, language);
     const pain = parsed.slice.painScore?.trim();
     if (pain) {
-      pairs.push({ label: language === "en" ? "Pain" : "Douleur", value: pain });
+      pairs.push({
+        label: pickProductUiCopy(language, { en: "Pain", fr: "Douleur", es: "Dolor" }, "Dolor"),
+        value: pain,
+      });
     }
     return {
       pairs,

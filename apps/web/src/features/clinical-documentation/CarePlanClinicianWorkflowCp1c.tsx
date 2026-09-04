@@ -9,6 +9,7 @@
 import React, { useMemo, useState } from "react";
 import { apiFetch } from "@/lib/apiClient";
 import { useI18n } from "@/lib/i18n";
+import { productUiBcp47Tag } from "@/i18n/config";
 import { MEDORA_CARD_SHELL } from "@/components/medora-card/medoraCardTokens";
 
 export type CarePlanWorkflowComponent = {
@@ -151,7 +152,7 @@ function formatDt(iso: string | null | undefined, language: string): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "";
   try {
-    return new Intl.DateTimeFormat(language === "fr" ? "fr-HT" : "en-US", {
+    return new Intl.DateTimeFormat(productUiBcp47Tag(language), {
       dateStyle: "medium",
       timeStyle: "short",
     }).format(d);

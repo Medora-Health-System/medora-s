@@ -305,7 +305,7 @@ export const NURSING_DISCHARGE_NOTE_PHRASES: NursingDischargeNotePhraseDef[] = [
 
 export function getNursingDischargeNoteText(
   id: string,
-  language: "en" | "fr"
+  language: string
 ): string | null {
   const tpl = NURSING_DISCHARGE_NOTE_TEMPLATES.find((x) => x.id === id);
   if (tpl) return language === "fr" ? tpl.fr : tpl.en;

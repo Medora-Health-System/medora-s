@@ -3,6 +3,9 @@
  * Canonical persisted values remain numbers/enums; labels are display-only.
  */
 
+import { pickProductUiCopy, UNLOCALIZED_CATALOG_SOURCE } from "../i18n/productUiLocale.js";
+import { CLINICAL_DOC_OPTION_LABEL_ES } from "./clinicalDocumentationOptionLabelEs.js";
+
 export type ClinicalDocumentationFieldOption<
   T extends string | number | boolean = string | number | boolean,
 > = {
@@ -178,6 +181,13 @@ export const NIHSS_SEVERITY_BAND_LABEL_EN: Record<NihssSeverityBand, string> = {
   MODERATE_TO_SEVERE: "Moderate to severe",
   SEVERE: "Severe",
 };
+export const NIHSS_SEVERITY_BAND_LABEL_ES: Record<NihssSeverityBand, string> = {
+  NO_STROKE_SYMPTOMS: "Sin síntomas de ACV según NIHSS",
+  MINOR: "Menor",
+  MODERATE: "Moderado",
+  MODERATE_TO_SEVERE: "Moderado a grave",
+  SEVERE: "Grave",
+};
 
 export const NIHSS_FIELD_LABEL_EN: Record<NihssScoredFieldKey, string> = {
   levelOfConsciousness: "NIHSS LOC",
@@ -215,11 +225,34 @@ export const NIHSS_FIELD_LABEL_FR: Record<NihssScoredFieldKey, string> = {
   extinctionInattention: "NIHSS extinction/inattention",
 };
 
+export const NIHSS_FIELD_LABEL_ES: Record<NihssScoredFieldKey, string> = {
+  levelOfConsciousness: "NIHSS estado de conciencia",
+  locQuestions: "NIHSS preguntas de conciencia",
+  locCommands: "NIHSS órdenes de conciencia",
+  bestGaze: "NIHSS mirada",
+  visualFields: "NIHSS campos visuales",
+  facialPalsy: "NIHSS parálisis facial",
+  motorArmLeft: "NIHSS brazo I",
+  motorArmRight: "NIHSS brazo D",
+  motorLegLeft: "NIHSS pierna I",
+  motorLegRight: "NIHSS pierna D",
+  limbAtaxia: "NIHSS ataxia",
+  sensory: "NIHSS sensitividad",
+  bestLanguage: "NIHSS lenguaje",
+  dysarthria: "NIHSS disartria",
+  extinctionInattention: "NIHSS extinción/inatención",
+};
+
 export function formatClinicalDocumentationOptionLabel(
   option: ClinicalDocumentationFieldOption<number | string | boolean>,
-  locale: "en" | "fr"
+  locale: string
 ): string {
-  const label = locale === "fr" ? option.labelFr : option.labelEn;
+  const es = CLINICAL_DOC_OPTION_LABEL_ES[option.labelEn];
+  const label = pickProductUiCopy(
+    locale,
+    { en: option.labelEn, fr: option.labelFr, es },
+    es ?? UNLOCALIZED_CATALOG_SOURCE
+  );
   const score =
     option.scoreValue ?? (typeof option.value === "number" ? option.value : undefined);
   if (score !== undefined) return `${score} — ${label}`;
@@ -236,7 +269,7 @@ export function findClinicalDocumentationOption<T extends string | number | bool
 export function formatNihssItemSummary(
   fieldKey: NihssScoredFieldKey,
   score: number,
-  locale: "en" | "fr" = "en"
+  locale: string = "en"
 ): string | null {
   const options = NIHSS_FIELD_OPTIONS[fieldKey];
   const option = findClinicalDocumentationOption(options, score);
@@ -350,7 +383,7 @@ export type NeuroSelectFieldKey = keyof typeof NEURO_FIELD_OPTIONS;
 export function formatNeuroFieldValueSummary(
   fieldKey: NeuroSelectFieldKey,
   value: string,
-  locale: "en" | "fr" = "fr"
+  locale: string = "en"
 ): string | null {
   const options = NEURO_FIELD_OPTIONS[fieldKey];
   const option = findClinicalDocumentationOption(options, value);

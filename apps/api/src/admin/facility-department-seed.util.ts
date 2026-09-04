@@ -3,6 +3,7 @@ import { DepartmentCode } from "@prisma/client";
 import {
   CLINICAL_DEPARTMENT_REGISTRY,
   FACILITY_SERVICE_LINE_DEPARTMENT_MAPPING_INVALID,
+  bilingualStorageLocaleOrEn,
   findClinicalDepartmentRegistryEntry,
   mapClinicalDepartmentCodeToPrismaDepartmentCode,
   mapServiceLineToClinicalDepartmentCode,
@@ -123,10 +124,10 @@ export async function ensureFacilityServiceLineDepartments(
   input: {
     facilityType?: MedoraFacilityType | string | null;
     serviceLines?: readonly MedoraServiceLine[] | null;
-    defaultLanguage?: "fr" | "en";
+    defaultLanguage?: string;
   }
 ): Promise<EnsureFacilityClinicalDepartmentsResult> {
-  const language = input.defaultLanguage ?? "fr";
+  const language = bilingualStorageLocaleOrEn(input.defaultLanguage ?? "fr");
   const lines = resolveFacilityServiceLines({
     facilityType: input.facilityType,
     configuredServiceLines: input.serviceLines ?? null,
@@ -159,9 +160,9 @@ export async function ensureFacilityServiceLineDepartments(
 export async function ensureFacilityClinicalDepartments(
   prisma: PrismaLike,
   facilityId: string,
-  options?: { defaultLanguage?: "fr" | "en" }
+  options?: { defaultLanguage?: string }
 ): Promise<EnsureFacilityClinicalDepartmentsResult> {
-  const language = options?.defaultLanguage ?? "fr";
+  const language = bilingualStorageLocaleOrEn(options?.defaultLanguage ?? "fr");
   let created = 0;
   let existing = 0;
 

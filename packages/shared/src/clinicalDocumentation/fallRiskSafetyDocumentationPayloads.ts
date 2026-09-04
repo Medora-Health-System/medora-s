@@ -1,6 +1,8 @@
 import { z } from "zod";
+import { pickProductUiCopy } from "../i18n/productUiLocale.js";
 import type { ClinicalDocumentationFieldOption } from "./clinicalDocumentationFieldOptions.js";
 import {
+  clinicalDocSummaryKey,
   clinicalDocYesNo,
   pickLocalizedEnumLabel,
   type ClinicalDocumentationSummaryLocale,
@@ -468,15 +470,15 @@ export function summarizeFallRiskSafetyDocumentationPayload(
       const d = p.data;
       return [
         {
-          key: locale === "en" ? "Morse score" : "Score Morse",
+          key: clinicalDocSummaryKey(locale, "Morse score", "Score Morse"),
           value: String(d.calculatedScore),
         },
         {
-          key: locale === "en" ? "Risk level" : "Niveau de risque",
+          key: clinicalDocSummaryKey(locale, "Risk level", "Niveau de risque"),
           value: riskLevelLabel(d.riskLevel, locale),
         },
         {
-          key: locale === "en" ? "Provider notified" : "Médecin avisé",
+          key: clinicalDocSummaryKey(locale, "Provider notified", "Médecin avisé"),
           value: clinicalDocYesNo(d.providerNotified, locale),
         },
       ];
@@ -487,13 +489,13 @@ export function summarizeFallRiskSafetyDocumentationPayload(
       const d = p.data;
       const lines: Array<{ key: string; value: string }> = [
         {
-          key: locale === "en" ? "Current level" : "Niveau actuel",
+          key: clinicalDocSummaryKey(locale, "Current level", "Niveau actuel"),
           value: riskLevelLabel(d.currentRiskLevel, locale),
         },
       ];
       if (d.previousRiskLevel != null) {
         lines.unshift({
-          key: locale === "en" ? "Previous level" : "Niveau précédent",
+          key: clinicalDocSummaryKey(locale, "Previous level", "Niveau précédent"),
           value: riskLevelLabel(d.previousRiskLevel, locale),
         });
       }
@@ -505,15 +507,15 @@ export function summarizeFallRiskSafetyDocumentationPayload(
       const d = p.data;
       return [
         {
-          key: locale === "en" ? "Bed alarm" : "Alarme lit",
+          key: clinicalDocSummaryKey(locale, "Bed alarm", "Alarme lit"),
           value: clinicalDocYesNo(d.bedAlarmActive, locale),
         },
         {
-          key: locale === "en" ? "Patient educated" : "Patient informé",
+          key: clinicalDocSummaryKey(locale, "Patient educated", "Patient informé"),
           value: clinicalDocYesNo(d.patientEducated, locale),
         },
         {
-          key: locale === "en" ? "Family educated" : "Famille informée",
+          key: clinicalDocSummaryKey(locale, "Family educated", "Famille informée"),
           value: clinicalDocYesNo(d.familyEducated, locale),
         },
       ];
@@ -522,17 +524,14 @@ export function summarizeFallRiskSafetyDocumentationPayload(
       const p = mobilityAmbulationAssessmentPayloadSchema.safeParse(payload);
       if (!p.success) return [];
       const d = p.data;
-      const unitLabel =
-        d.distanceUnit === "FEET"
-          ? locale === "en"
-            ? "ft"
-            : "pi"
-          : locale === "en"
-            ? "m"
-            : "m";
+      const unitLabel = pickProductUiCopy(
+        locale,
+        { en: d.distanceUnit === "FEET" ? "ft" : "m", fr: d.distanceUnit === "FEET" ? "pi" : "m", es: d.distanceUnit === "FEET" ? "pies" : "m" },
+        d.distanceUnit === "FEET" ? "pies" : "m"
+      );
       return [
         {
-          key: locale === "en" ? "Mobility level" : "Niveau de mobilité",
+          key: clinicalDocSummaryKey(locale, "Mobility level", "Niveau de mobilité"),
           value: pickLocalizedEnumLabel(
             MOBILITY_LEVEL_MAP.en,
             MOBILITY_LEVEL_MAP.fr,
@@ -541,11 +540,11 @@ export function summarizeFallRiskSafetyDocumentationPayload(
           ),
         },
         {
-          key: locale === "en" ? "Distance" : "Distance",
+          key: clinicalDocSummaryKey(locale, "Distance", "Distance"),
           value: `${d.ambulationDistance} ${unitLabel}`,
         },
         {
-          key: locale === "en" ? "Gait stability" : "Stabilité de la marche",
+          key: clinicalDocSummaryKey(locale, "Gait stability", "Stabilité de la marche"),
           value: pickLocalizedEnumLabel(
             GAIT_STABILITY_MAP.en,
             GAIT_STABILITY_MAP.fr,
@@ -561,15 +560,15 @@ export function summarizeFallRiskSafetyDocumentationPayload(
       const d = p.data;
       return [
         {
-          key: locale === "en" ? "Location" : "Lieu",
+          key: clinicalDocSummaryKey(locale, "Location", "Lieu"),
           value: d.location,
         },
         {
-          key: locale === "en" ? "Injury observed" : "Lésion observée",
+          key: clinicalDocSummaryKey(locale, "Injury observed", "Lésion observée"),
           value: clinicalDocYesNo(d.injuryObserved, locale),
         },
         {
-          key: locale === "en" ? "Provider notified" : "Médecin avisé",
+          key: clinicalDocSummaryKey(locale, "Provider notified", "Médecin avisé"),
           value: clinicalDocYesNo(d.providerNotified, locale),
         },
       ];
@@ -580,22 +579,16 @@ export function summarizeFallRiskSafetyDocumentationPayload(
       const d = p.data;
       return [
         {
-          key: locale === "en" ? "Witnessed" : "Témoin",
+          key: clinicalDocSummaryKey(locale, "Witnessed", "Témoin"),
           value:
-            d.witnessed === "YES"
-              ? locale === "en"
-                ? "Yes"
-                : "Oui"
-              : locale === "en"
-                ? "No"
-                : "Non",
+            clinicalDocYesNo(d.witnessed === "YES", locale),
         },
         {
-          key: locale === "en" ? "Injury observed" : "Lésion observée",
+          key: clinicalDocSummaryKey(locale, "Injury observed", "Lésion observée"),
           value: clinicalDocYesNo(d.injuryObserved, locale),
         },
         {
-          key: locale === "en" ? "Provider notified" : "Médecin avisé",
+          key: clinicalDocSummaryKey(locale, "Provider notified", "Médecin avisé"),
           value: clinicalDocYesNo(d.providerNotified, locale),
         },
       ];
@@ -606,22 +599,19 @@ export function summarizeFallRiskSafetyDocumentationPayload(
       const d = p.data;
       return [
         {
-          key: locale === "en" ? "Neurologic status" : "Statut neurologique",
-          value:
-            d.neurologicStatus === "BASELINE"
-              ? locale === "en"
-                ? "Baseline"
-                : "Référence"
-              : locale === "en"
-                ? "Changed"
-                : "Modifié",
+          key: clinicalDocSummaryKey(locale, "Neurologic status", "Statut neurologique"),
+          value: clinicalDocSummaryKey(
+            locale,
+            d.neurologicStatus === "BASELINE" ? "Baseline" : "Changed",
+            d.neurologicStatus === "BASELINE" ? "Référence" : "Modifié"
+          ),
         },
         {
-          key: locale === "en" ? "Injury identified" : "Lésion identifiée",
+          key: clinicalDocSummaryKey(locale, "Injury identified", "Lésion identifiée"),
           value: clinicalDocYesNo(d.injuryIdentified, locale),
         },
         {
-          key: locale === "en" ? "Provider evaluated" : "Évaluation médecin",
+          key: clinicalDocSummaryKey(locale, "Provider evaluated", "Évaluation médecin"),
           value: clinicalDocYesNo(d.providerEvaluated, locale),
         },
       ];
@@ -632,7 +622,7 @@ export function summarizeFallRiskSafetyDocumentationPayload(
       const d = p.data;
       return [
         {
-          key: locale === "en" ? "Reason" : "Motif",
+          key: clinicalDocSummaryKey(locale, "Reason", "Motif"),
           value: pickLocalizedEnumLabel(
             ESCALATION_REASON_MAP.en,
             ESCALATION_REASON_MAP.fr,
@@ -641,11 +631,11 @@ export function summarizeFallRiskSafetyDocumentationPayload(
           ),
         },
         {
-          key: locale === "en" ? "Provider notified" : "Médecin avisé",
+          key: clinicalDocSummaryKey(locale, "Provider notified", "Médecin avisé"),
           value: clinicalDocYesNo(d.providerNotified, locale),
         },
         {
-          key: locale === "en" ? "Response received" : "Réponse reçue",
+          key: clinicalDocSummaryKey(locale, "Response received", "Réponse reçue"),
           value: clinicalDocYesNo(d.responseReceived, locale),
         },
       ];

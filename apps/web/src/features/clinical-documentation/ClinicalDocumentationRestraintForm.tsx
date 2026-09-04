@@ -17,6 +17,7 @@ import {
 } from "@medora/shared";
 import { useI18n } from "@/lib/i18n";
 import { resolveProductUiLanguageOrDefault } from "@/i18n/config";
+import { formatClinicalDocumentationOptionLabel } from "@medora/shared";
 
 import {
   ClinicalDocumentationBooleanField,
@@ -258,7 +259,7 @@ export function ClinicalDocumentationRestraintForm({
               checked={selected.includes(String(option.value))}
               onChange={() => onToggle(String(option.value))}
             />
-            {locale === "fr" ? option.labelFr : option.labelEn}
+            {formatClinicalDocumentationOptionLabel(option, locale)}
           </label>
         ))}
       </div>

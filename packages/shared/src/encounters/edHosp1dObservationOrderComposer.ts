@@ -511,7 +511,7 @@ export function customCareSuggestion(input: {
 export function buildComposerCareOrderDto(input: {
   suggestion: EdHospComposerPlannerSuggestion;
   prescriberName: string;
-  locale: ObservationOrderTemplateLabelLocale;
+  locale: string;
 }): OrderCreateDto | null {
   const { suggestion, prescriberName, locale } = input;
   if (!suggestionIsActivatableCare(suggestion)) return null;
@@ -524,10 +524,11 @@ export function buildComposerCareOrderDto(input: {
     });
   }
 
-  const label =
-    locale === "en"
-      ? (suggestion.freeTextEn ?? suggestion.labelEn)
-      : (suggestion.freeTextFr ?? suggestion.labelFr);
+  const label = pickCatalogDisplayLabelForProductUi(locale, {
+    displayNameEn: suggestion.freeTextEn ?? suggestion.labelEn,
+    displayNameFr: suggestion.freeTextFr ?? suggestion.labelFr,
+    code: suggestion.enterpriseProcedureId ?? suggestion.id,
+  });
 
   return {
     type: "CARE",
@@ -562,7 +563,7 @@ export function planComposerCareOrderCreates(input: {
   orders: readonly EdHosp1dExistingOrderLite[];
   inFlightIds: ReadonlySet<string>;
   prescriberName: string;
-  locale: ObservationOrderTemplateLabelLocale;
+  locale: string;
 }): EdHosp1dComposerCreateAttempt[] {
   const catalog = [
     ...(input.catalog ?? ED_HOSP_1D_COMPOSER_SUGGESTIONS),

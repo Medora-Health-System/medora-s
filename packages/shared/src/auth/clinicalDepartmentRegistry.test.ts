@@ -43,6 +43,13 @@ describe("clinicalDepartmentRegistry (MEDUI.AUTH.ROLE.3)", () => {
     expect(getClinicalDepartmentLabel("EMERGENCY", "en")).toBe("Emergency Department");
   });
 
+  it("returns explicit Spanish labels and never EN/FR for es", () => {
+    expect(getClinicalDepartmentLabel("EMERGENCY", "es")).toBe("Urgencias");
+    expect(getClinicalDepartmentLabel("ICU", "es")).toBe("UCI");
+    expect(getClinicalDepartmentLabel("EMERGENCY", "es")).not.toBe("Emergency Department");
+    expect(getClinicalDepartmentLabel("EMERGENCY", "es")).not.toBe("Urgences");
+  });
+
   it("resolves navigation areas for workspace routing", () => {
     expect(resolveClinicalDepartmentArea("EMERGENCY")).toBe("EMERGENCY");
     expect(resolveClinicalDepartmentArea("ICU")).toBe("HOSPITAL");

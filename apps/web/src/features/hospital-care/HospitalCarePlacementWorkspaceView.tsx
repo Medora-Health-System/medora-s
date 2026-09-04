@@ -11,6 +11,7 @@ import {
   type PlacementQueueAction,
 } from "@medora/shared";
 import { useI18n } from "@/lib/i18n";
+import { productUiBcp47Tag } from "@/i18n/config";
 import { apiFetch, asApiObject } from "@/lib/apiClient";
 import { formatAgeYearsSexForLocale, DISPLAY_DASH } from "@/lib/patientDisplay";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
@@ -82,7 +83,7 @@ function formatReportTime(iso: string | undefined, language: string): string | n
   if (!iso) return null;
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return null;
-  return d.toLocaleTimeString(language === "fr" ? "fr-HT" : "en-US", {
+  return d.toLocaleTimeString(productUiBcp47Tag(language), {
     hour: "numeric",
     minute: "2-digit",
   });

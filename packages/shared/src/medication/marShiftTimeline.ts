@@ -46,8 +46,9 @@ import {
 } from "./fluidBolusSession.js";
 import { resolveMedicationInfusionStopReasonTimelineLabel } from "./medicationInfusionStopReasonGovernance.js";
 import {
-  resolvePublicProductUiLanguageOrDefault,
-  type PubliclySelectableProductUiLanguage,
+  adaptProductUiToBilingualStorageLocale,
+  parseProductUiLanguage,
+  pickCatalogDisplayLabelForProductUi,
 } from "../i18n/productUiLocale.js";
 
 /**
@@ -68,15 +69,16 @@ export function normalizeMarShiftTimelineTimeZone(raw: string | null | undefined
   }
 }
 
-/** UI locale for MAR medication labels (M1.8B.7K.8). Unsupported values resolve to English. */
+/** UI locale for MAR bilingual medication labels. Unsupported values, including ES, resolve to English storage. */
 export function normalizeMarShiftTimelineLocale(
   raw: string | null | undefined
-): PubliclySelectableProductUiLanguage {
-  return resolvePublicProductUiLanguageOrDefault(raw);
+): "en" | "fr" {
+  const adapted = adaptProductUiToBilingualStorageLocale(raw);
+  return adapted.kind === "localized" ? adapted.locale : "en";
 }
 
 export type MarShiftTimelineMedicationLabelInput = {
-  locale?: PubliclySelectableProductUiLanguage | string | null;
+  locale?: string | null;
   orderedMedicationLabel?: string | null;
   manualLabel?: string | null;
   catalogSnapshot?: Pick<
@@ -103,6 +105,14 @@ export function resolveMarShiftTimelineMedicationLabel(
     input.orderedMedicationLabel?.trim() ||
     null;
   if (catalog?.displayNameEn?.trim() || catalog?.displayNameFr?.trim()) {
+    if (parseProductUiLanguage(input.locale) === "es") {
+      const code = pickCatalogDisplayLabelForProductUi("es", {
+        displayNameEn: catalog.displayNameEn,
+        displayNameFr: catalog.displayNameFr,
+        code: catalog.code,
+      });
+      return code || manual;
+    }
     return resolveMedicationCatalogPrimaryLabel(locale, catalog, manual);
   }
   return manual;

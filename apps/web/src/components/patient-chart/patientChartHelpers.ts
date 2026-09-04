@@ -1,4 +1,4 @@
-import { resolveProductUiLanguageOrDefault, productUiBcp47Tag, type SupportedLanguage } from "@/i18n/config";
+import { resolveProductUiLanguageOrDefault, pickProductUiCopy, productUiBcp47Tag } from "@/i18n/config";
 import { nursingProcedureSummaryLinesForLocale } from "@/lib/nursingProcedures";
 import {
   buildErNursingReassessmentPreviewModel,
@@ -48,20 +48,42 @@ const NURSING_ASSESSMENT_SECTION_LABELS_EN: Record<string, string> = {
   notesInfirmieres: "Nursing observations",
 };
 
-function nursingSectionLabelForKey(
-  k: string,
-  language: SupportedLanguage
-): string {
-  if (language === "en") {
-    return NURSING_ASSESSMENT_SECTION_LABELS_EN[k] ?? NURSING_ASSESSMENT_SECTION_LABELS_FR[k] ?? k;
-  }
-  return NURSING_ASSESSMENT_SECTION_LABELS_FR[k] ?? k;
+const NURSING_ASSESSMENT_SECTION_LABELS_ES: Record<string, string> = {
+  etatGeneral: "Apariencia general",
+  neurologique: "Neurológico",
+  respiratoire: "Respiratorio",
+  cardiaque: "Cardíaco",
+  cardiovasculaire: "Cardíaco",
+  digestif: "Digestivo",
+  gastro: "Digestivo",
+  genito: "Genitourinario",
+  musculo: "Musculoesquelético",
+  peau: "Piel / heridas",
+  douleur: "Dolor",
+  securite: "Riesgos / seguridad",
+  observationsInfirmieres: "Observaciones de enfermería",
+  interventionsInfirmieres: "Intervenciones de enfermería",
+  notesInfirmieresLibres: "Nota de enfermería, otras",
+  notesInfirmieres: "Observaciones de enfermería",
+};
+
+function nursingSectionLabelForKey(k: string, language: string): string {
+  const labels = pickProductUiCopy(
+    language,
+    {
+      en: NURSING_ASSESSMENT_SECTION_LABELS_EN,
+      fr: NURSING_ASSESSMENT_SECTION_LABELS_FR,
+      es: NURSING_ASSESSMENT_SECTION_LABELS_ES,
+    },
+    NURSING_ASSESSMENT_SECTION_LABELS_ES
+  );
+  return labels[k] ?? k;
 }
 
 /** Sections remplies pour affichage dossier / timeline (pas de bloc vide). */
 export function parseNursingAssessmentSectionsForChart(
   raw: unknown,
-  language: SupportedLanguage = "fr"
+  language: string = "fr"
 ): { label: string; text: string }[] {
   if (!raw || typeof raw !== "object") return [];
   const o = raw as Record<string, unknown>;
@@ -155,7 +177,7 @@ function erNursingSignatureLineEn(raw: unknown, t: (key: string) => string): str
  */
 export function nursingAssessmentSignatureForLocale(
   raw: unknown,
-  language: SupportedLanguage,
+  language: string,
   t: (key: string) => string
 ): string | null {
   if (language === "fr") {
@@ -164,10 +186,10 @@ export function nursingAssessmentSignatureForLocale(
   return nursingEvalSignatureEn(raw, t) ?? erNursingSignatureLineEn(raw, t);
 }
 
-function erNursingReassessmentChartLines(raw: unknown, language: SupportedLanguage): string[] {
+function erNursingReassessmentChartLines(raw: unknown, language: string): string[] {
   const form = erNursingReassessmentFormFromEncounter(raw);
   const preview = buildErNursingReassessmentPreviewModel(form, language);
-  const sep = language === "en" ? ": " : " : ";
+  const sep = language === "fr" ? " : " : ": ";
   const out: string[] = [];
   for (const sec of preview.sections) {
     if (sec.id === "empty") continue;
@@ -187,7 +209,7 @@ function erNursingReassessmentChartLines(raw: unknown, language: SupportedLangua
 /** Résumé court infirmier (lignes pré-calculées ou dérivées des sections). */
 export function nursingAssessmentDisplayLines(
   raw: unknown,
-  language: SupportedLanguage = "fr"
+  language: string = "fr"
 ): string[] {
   if (!raw || typeof raw !== "object") return [];
   const o = raw as Record<string, unknown>;
@@ -201,7 +223,7 @@ export function nursingAssessmentDisplayLines(
     }
   }
   if (base.length === 0) {
-    const sep = language === "en" ? ": " : " : ";
+    const sep = language === "fr" ? " : " : ": ";
     base = parseNursingAssessmentSectionsForChart(raw, language).map(
       (s) => `${s.label}${sep}${s.text}`
     );
@@ -213,7 +235,7 @@ export function nursingAssessmentDisplayLines(
   return [...merged, ...proc];
 }
 
-const PHYSICIAN_EVAL_LABELS: Record<SupportedLanguage, Record<string, string>> = {
+const PHYSICIAN_EVAL_LABELS = {
   fr: {
     hpi: "HPI",
     ros: "ROS",
@@ -226,12 +248,18 @@ const PHYSICIAN_EVAL_LABELS: Record<SupportedLanguage, Record<string, string>> =
     physicalExam: "Physical exam",
     mdm: "MDM",
   },
+  es: {
+    hpi: "HPI",
+    ros: "ROS",
+    physicalExam: "Examen físico",
+    mdm: "MDM",
+  },
 };
 
 /** Champs non vides de `nursingAssessment.physicianEvalV1` pour affichage résumé / timeline. */
 export function parsePhysicianEvalV1ForChart(
   raw: unknown,
-  language: SupportedLanguage = "fr"
+  language: string = "fr"
 ): { label: string; text: string }[] {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return [];
   const workspace = buildProviderDocumentationDisplayModel({
@@ -246,7 +274,7 @@ export function parsePhysicianEvalV1ForChart(
   if (!pe || typeof pe !== "object" || Array.isArray(pe)) return [];
   const p = pe as Record<string, unknown>;
   const keys = ["hpi", "ros", "physicalExam", "mdm"] as const;
-  const labels = PHYSICIAN_EVAL_LABELS[language] ?? PHYSICIAN_EVAL_LABELS.fr;
+  const labels = pickProductUiCopy(language, PHYSICIAN_EVAL_LABELS, PHYSICIAN_EVAL_LABELS.es);
   const out: { label: string; text: string }[] = [];
   for (const key of keys) {
     const v = p[key];
@@ -258,7 +286,7 @@ export function parsePhysicianEvalV1ForChart(
 
 export function providerDocumentationWorkspaceSignatureForLocale(
   raw: unknown,
-  language: SupportedLanguage,
+  language: string,
   t: (key: string) => string
 ): string | null {
   const workspace = buildProviderDocumentationDisplayModel({

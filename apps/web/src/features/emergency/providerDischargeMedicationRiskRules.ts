@@ -426,7 +426,7 @@ export function medicationRiskAdditionContainsForbiddenLanguage(text: string): b
 export function resolveMedicationRiskDischargeAdditions(input: {
   templateIds: readonly string[];
   context: PatientSpecificDischargeContext;
-  locale: ProductUiLanguage;
+  locale: string;
 }): PatientSpecificDischargeAddition[] {
   const matchContext = buildMedicationRiskMatchContext(input.templateIds, input.context);
   if (!matchContext.hasAnyTemplate) return [];

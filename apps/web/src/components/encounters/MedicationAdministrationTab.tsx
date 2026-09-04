@@ -10,7 +10,7 @@ import { isOrderItemIdUuid } from "@/lib/orderItemIdUuid";
 import { isOrderItemPendingNurseMedication } from "@/lib/nurseMedicationWorkload";
 import { useI18n } from "@/lib/i18n";
 import { formatClinicalInstantForFacility } from "@/lib/clinicalTimeDisplay";
-import { resolveProductUiLanguageOrDefault, productUiBcp47Tag, type SupportedLanguage } from "@/i18n/config";
+import { resolveProductUiLanguageOrDefault, pickLegacyBilingualStoredPair, productUiBcp47Tag, type SupportedLanguage } from "@/i18n/config";
 import { formatOrderAuthority } from "@/lib/orderAuthority";
 import { formatOrderAttributionLines } from "@/lib/orderAttribution";
 import { highRiskMedicationWarning, isHighRiskMedication } from "@/lib/highRiskMedication";
@@ -3412,7 +3412,7 @@ export function MedicationAdministrationTab({
                         >
                           {latestVaccineView.rows.map((detail) => (
                             <div key={detail.key}>
-                              <strong>{language === "en" ? detail.labelEn : detail.labelFr}:</strong>{" "}
+                              <strong>{pickLegacyBilingualStoredPair(language, { en: detail.labelEn, fr: detail.labelFr }).value}:</strong>{" "}
                               {detail.value}
                             </div>
                           ))}
@@ -3549,7 +3549,7 @@ export function MedicationAdministrationTab({
                     >
                       {vaccineView.rows.map((detail) => (
                         <div key={detail.key}>
-                          <strong>{language === "en" ? detail.labelEn : detail.labelFr}:</strong>{" "}
+                          <strong>{pickLegacyBilingualStoredPair(language, { en: detail.labelEn, fr: detail.labelFr }).value}:</strong>{" "}
                           {detail.value}
                         </div>
                       ))}
@@ -4100,7 +4100,7 @@ export function MedicationAdministrationTab({
                     <option value="">{t("marTab.vaccine.selectPlaceholder")}</option>
                     {VACCINE_MANUFACTURER_CATALOG.map((m) => (
                       <option key={m.id} value={m.id}>
-                        {language === "en" ? m.labelEn : m.labelFr}
+                        {pickLegacyBilingualStoredPair(language, { en: m.labelEn, fr: m.labelFr }).value}
                       </option>
                     ))}
                   </select>

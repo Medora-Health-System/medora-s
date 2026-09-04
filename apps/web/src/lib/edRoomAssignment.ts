@@ -80,7 +80,7 @@ export function parseRoomAssignmentApiError(error: unknown): RoomAssignmentConfl
 
 export function formatBedStatusBlocksMessage(
   conflict: BedStatusBlocksAssignmentUi,
-  language: "en" | "fr",
+  language: string,
   t: (key: string) => string
 ): string {
   const statusLabelKey = `bedStatus.${conflict.status}`;

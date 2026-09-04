@@ -3,6 +3,7 @@ import type { ClinicalDocumentationFieldOption } from "./clinicalDocumentationFi
 import {
   pickLocalizedEnumLabel,
   type ClinicalDocumentationSummaryLocale,
+  clinicalDocSummaryKey,
 } from "./clinicalDocumentationSummaryLocale.js";
 
 /** EDOC.21 — dialysis, renal monitoring & fluid management card IDs. */
@@ -210,7 +211,7 @@ export function renalDocYesNoLabel(
   value: (typeof RENAL_YES_NO_VALUES)[number],
   locale: ClinicalDocumentationSummaryLocale
 ): string {
-  return value === "YES" ? (locale === "en" ? "Yes" : "Oui") : locale === "en" ? "No" : "Non";
+  return value === "YES" ? (clinicalDocSummaryKey(locale, "Yes", "Oui")) : clinicalDocSummaryKey(locale, "No", "Non");
 }
 
 export const RENAL_YES_NO_OPTIONS = enumOptions(RENAL_YES_NO_VALUES, {
@@ -800,11 +801,11 @@ export function summarizeDialysisRenalFluidPayload(
       const d = p.data;
       return [
         {
-          key: locale === "en" ? "Access type" : "Type d'accès",
+          key: clinicalDocSummaryKey(locale, "Access type", "Type d'accès"),
           value: pickLocalizedEnumLabel(ACCESS_TYPE_MAP.en, ACCESS_TYPE_MAP.fr, d.accessType, locale),
         },
         {
-          key: locale === "en" ? "Location" : "Emplacement",
+          key: clinicalDocSummaryKey(locale, "Location", "Emplacement"),
           value: pickLocalizedEnumLabel(
             ACCESS_LOCATION_MAP.en,
             ACCESS_LOCATION_MAP.fr,
@@ -813,15 +814,15 @@ export function summarizeDialysisRenalFluidPayload(
           ),
         },
         {
-          key: locale === "en" ? "Thrill" : "Frémissement",
+          key: clinicalDocSummaryKey(locale, "Thrill", "Frémissement"),
           value: d.thrillPresent,
         },
         {
-          key: locale === "en" ? "Bruit" : "Souffle",
+          key: clinicalDocSummaryKey(locale, "Bruit", "Souffle"),
           value: d.bruitPresent,
         },
         {
-          key: locale === "en" ? "Infection concern" : "Préoccupation infection",
+          key: clinicalDocSummaryKey(locale, "Infection concern", "Préoccupation infection"),
           value: renalDocYesNoLabel(d.infectionConcern, locale),
         },
       ];
@@ -832,20 +833,20 @@ export function summarizeDialysisRenalFluidPayload(
       const d = p.data;
       return [
         {
-          key: locale === "en" ? "Status" : "Statut",
+          key: clinicalDocSummaryKey(locale, "Status", "Statut"),
           value: pickLocalizedEnumLabel(HD_STATUS_MAP.en, HD_STATUS_MAP.fr, d.dialysisStatus, locale),
         },
         {
-          key: locale === "en" ? "Estimated fluid removed" : "Liquide retiré estimé",
+          key: clinicalDocSummaryKey(locale, "Estimated fluid removed", "Liquide retiré estimé"),
           value:
             d.estimatedFluidRemovedMl !== undefined ? `${d.estimatedFluidRemovedMl} mL` : "—",
         },
         {
-          key: locale === "en" ? "BP concern" : "Préoccupation TA",
+          key: clinicalDocSummaryKey(locale, "BP concern", "Préoccupation TA"),
           value: renalDocYesNoLabel(d.bloodPressureConcern, locale),
         },
         {
-          key: locale === "en" ? "Access issue" : "Problème d'accès",
+          key: clinicalDocSummaryKey(locale, "Access issue", "Problème d'accès"),
           value: renalDocYesNoLabel(d.accessIssueObserved, locale),
         },
       ];
@@ -856,15 +857,15 @@ export function summarizeDialysisRenalFluidPayload(
       const d = p.data;
       return [
         {
-          key: locale === "en" ? "Status" : "Statut",
+          key: clinicalDocSummaryKey(locale, "Status", "Statut"),
           value: pickLocalizedEnumLabel(PD_STATUS_MAP.en, PD_STATUS_MAP.fr, d.pdStatus, locale),
         },
         {
-          key: locale === "en" ? "Effluent appearance" : "Aspect de l'effluent",
+          key: clinicalDocSummaryKey(locale, "Effluent appearance", "Aspect de l'effluent"),
           value: pickLocalizedEnumLabel(EFFLUENT_MAP.en, EFFLUENT_MAP.fr, d.effluentAppearance, locale),
         },
         {
-          key: locale === "en" ? "Abdominal pain" : "Douleur abdominale",
+          key: clinicalDocSummaryKey(locale, "Abdominal pain", "Douleur abdominale"),
           value: renalDocYesNoLabel(d.abdominalPain, locale),
         },
       ];
@@ -875,7 +876,7 @@ export function summarizeDialysisRenalFluidPayload(
       const d = p.data;
       return [
         {
-          key: locale === "en" ? "Status" : "Statut",
+          key: clinicalDocSummaryKey(locale, "Status", "Statut"),
           value: pickLocalizedEnumLabel(
             CRRT_STATUS_MAP.en,
             CRRT_STATUS_MAP.fr,
@@ -884,7 +885,7 @@ export function summarizeDialysisRenalFluidPayload(
           ),
         },
         {
-          key: locale === "en" ? "Access status" : "Statut d'accès",
+          key: clinicalDocSummaryKey(locale, "Access status", "Statut d'accès"),
           value: pickLocalizedEnumLabel(
             CRRT_ACCESS_MAP.en,
             CRRT_ACCESS_MAP.fr,
@@ -893,12 +894,12 @@ export function summarizeDialysisRenalFluidPayload(
           ),
         },
         {
-          key: locale === "en" ? "Fluid removal goal" : "Objectif de retrait liquidien",
+          key: clinicalDocSummaryKey(locale, "Fluid removal goal", "Objectif de retrait liquidien"),
           value:
             d.fluidRemovalGoalMlPerHr !== undefined ? `${d.fluidRemovalGoalMlPerHr} mL/hr` : "—",
         },
         {
-          key: locale === "en" ? "Hemodynamic instability" : "Instabilité hémodynamique",
+          key: clinicalDocSummaryKey(locale, "Hemodynamic instability", "Instabilité hémodynamique"),
           value: renalDocYesNoLabel(d.hemodynamicInstability, locale),
         },
       ];
@@ -909,15 +910,15 @@ export function summarizeDialysisRenalFluidPayload(
       const d = p.data;
       return [
         {
-          key: locale === "en" ? "Intake" : "Entrées",
+          key: clinicalDocSummaryKey(locale, "Intake", "Entrées"),
           value: d.totalIntakeMl !== undefined ? `${d.totalIntakeMl} mL` : "—",
         },
         {
-          key: locale === "en" ? "Output" : "Sorties",
+          key: clinicalDocSummaryKey(locale, "Output", "Sorties"),
           value: d.totalOutputMl !== undefined ? `${d.totalOutputMl} mL` : "—",
         },
         {
-          key: locale === "en" ? "Net balance" : "Bilan net",
+          key: clinicalDocSummaryKey(locale, "Net balance", "Bilan net"),
           value: d.netBalanceMl !== undefined ? `${d.netBalanceMl} mL` : "—",
         },
       ];
@@ -928,22 +929,22 @@ export function summarizeDialysisRenalFluidPayload(
       const d = p.data;
       return [
         {
-          key: locale === "en" ? "Ordered" : "Prescrit",
+          key: clinicalDocSummaryKey(locale, "Ordered", "Prescrit"),
           value: d.fluidRestrictionOrdered,
         },
         {
-          key: locale === "en" ? "Restriction amount" : "Quantité de restriction",
+          key: clinicalDocSummaryKey(locale, "Restriction amount", "Quantité de restriction"),
           value:
             d.restrictionAmountMlPerDay !== undefined
               ? `${d.restrictionAmountMlPerDay} mL/day`
               : "—",
         },
         {
-          key: locale === "en" ? "Intake this shift" : "Apport ce quart",
+          key: clinicalDocSummaryKey(locale, "Intake this shift", "Apport ce quart"),
           value: d.intakeThisShiftMl !== undefined ? `${d.intakeThisShiftMl} mL` : "—",
         },
         {
-          key: locale === "en" ? "Compliance concern" : "Préoccupation observance",
+          key: clinicalDocSummaryKey(locale, "Compliance concern", "Préoccupation observance"),
           value: renalDocYesNoLabel(d.complianceConcern, locale),
         },
       ];
@@ -954,19 +955,19 @@ export function summarizeDialysisRenalFluidPayload(
       const d = p.data;
       return [
         {
-          key: locale === "en" ? "Weight" : "Poids",
+          key: clinicalDocSummaryKey(locale, "Weight", "Poids"),
           value: d.weightKg !== undefined ? `${d.weightKg} kg` : "—",
         },
         {
-          key: locale === "en" ? "Change" : "Variation",
+          key: clinicalDocSummaryKey(locale, "Change", "Variation"),
           value: d.weightChangeKg !== undefined ? `${d.weightChangeKg} kg` : "—",
         },
         {
-          key: locale === "en" ? "Edema" : "Œdème",
+          key: clinicalDocSummaryKey(locale, "Edema", "Œdème"),
           value: renalDocYesNoLabel(d.edemaPresent, locale),
         },
         {
-          key: locale === "en" ? "Fluid overload concern" : "Préoccupation surcharge liquidienne",
+          key: clinicalDocSummaryKey(locale, "Fluid overload concern", "Préoccupation surcharge liquidienne"),
           value: renalDocYesNoLabel(d.fluidOverloadConcern, locale),
         },
       ];
@@ -977,7 +978,7 @@ export function summarizeDialysisRenalFluidPayload(
       const d = p.data;
       return [
         {
-          key: locale === "en" ? "Concern type" : "Type de préoccupation",
+          key: clinicalDocSummaryKey(locale, "Concern type", "Type de préoccupation"),
           value: pickLocalizedEnumLabel(
             URINE_CONCERN_MAP.en,
             URINE_CONCERN_MAP.fr,
@@ -986,11 +987,11 @@ export function summarizeDialysisRenalFluidPayload(
           ),
         },
         {
-          key: locale === "en" ? "Output" : "Diurèse",
+          key: clinicalDocSummaryKey(locale, "Output", "Diurèse"),
           value: d.urineOutputMl !== undefined ? `${d.urineOutputMl} mL` : "—",
         },
         {
-          key: locale === "en" ? "Bladder scan" : "Échographie vésicale",
+          key: clinicalDocSummaryKey(locale, "Bladder scan", "Échographie vésicale"),
           value: d.bladderScanPerformed,
         },
       ];
@@ -1001,15 +1002,15 @@ export function summarizeDialysisRenalFluidPayload(
       const d = p.data;
       return [
         {
-          key: locale === "en" ? "Renal function concern" : "Préoccupation fonction rénale",
+          key: clinicalDocSummaryKey(locale, "Renal function concern", "Préoccupation fonction rénale"),
           value: renalDocYesNoLabel(d.renalFunctionConcern, locale),
         },
         {
-          key: locale === "en" ? "Nephrotoxic medication concern" : "Préoccupation médicament néphrotoxique",
+          key: clinicalDocSummaryKey(locale, "Nephrotoxic medication concern", "Préoccupation médicament néphrotoxique"),
           value: renalDocYesNoLabel(d.nephrotoxicMedicationConcern, locale),
         },
         {
-          key: locale === "en" ? "Pharmacy notified" : "Pharmacie avisée",
+          key: clinicalDocSummaryKey(locale, "Pharmacy notified", "Pharmacie avisée"),
           value: d.pharmacyNotified,
         },
       ];
@@ -1020,7 +1021,7 @@ export function summarizeDialysisRenalFluidPayload(
       const d = p.data;
       return [
         {
-          key: locale === "en" ? "Reason" : "Motif",
+          key: clinicalDocSummaryKey(locale, "Reason", "Motif"),
           value: pickLocalizedEnumLabel(
             ESCALATION_REASON_MAP.en,
             ESCALATION_REASON_MAP.fr,
@@ -1029,11 +1030,11 @@ export function summarizeDialysisRenalFluidPayload(
           ),
         },
         {
-          key: locale === "en" ? "Provider notification" : "Avis au médecin",
+          key: clinicalDocSummaryKey(locale, "Provider notification", "Avis au médecin"),
           value: renalDocYesNoLabel(d.providerNotified, locale),
         },
         {
-          key: locale === "en" ? "Nephrology notification" : "Avis néphrologie",
+          key: clinicalDocSummaryKey(locale, "Nephrology notification", "Avis néphrologie"),
           value: d.nephrologyNotified,
         },
       ];

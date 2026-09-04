@@ -315,7 +315,8 @@ export class ChartRoiService {
     format: "json" | "html",
     userId: string,
     ip?: string,
-    userAgent?: string
+    userAgent?: string,
+    localeRaw?: string
   ) {
     const row = await this.requireRow(facilityId, roiRequestId);
     if (row.status !== ChartRoiRequestStatus.FULFILLED || !row.encounterChartExportId) {
@@ -340,7 +341,7 @@ export class ChartRoiService {
       userId,
       ip,
       userAgent,
-      { skipRecordExportViewAudit: true }
+      { skipRecordExportViewAudit: true, locale: localeRaw }
     );
 
     await this.audit.log(AuditAction.ROI_EXPORT_VIEW, ROI_ENTITY, {

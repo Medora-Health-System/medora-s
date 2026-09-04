@@ -110,7 +110,7 @@ export function getErClinicalRecordPrintPacketHtml(input: {
   encounter: DischargePrintEncounter;
   facility?: PrintFacilityInfo | null;
   facilityName?: string | null;
-  language: SupportedLanguage;
+  language: string;
   record: EncounterClinicalRecord;
 }): string {
   const { patient, encounter, facility, facilityName, language, record } = input;

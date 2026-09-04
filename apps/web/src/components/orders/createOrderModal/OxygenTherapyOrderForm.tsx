@@ -57,7 +57,7 @@ export function OxygenTherapyOrderForm({
 }: {
   draft?: OxygenTherapyDraft | null;
   onChange: (draft: OxygenTherapyDraft) => void;
-  previewLocale: "en" | "fr";
+  previewLocale: string;
 }) {
   const { t } = useI18n();
   const current = draft ?? defaultOxygenTherapyDraft();

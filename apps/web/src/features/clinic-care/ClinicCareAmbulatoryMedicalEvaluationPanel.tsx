@@ -15,7 +15,7 @@ import { canAuthorAmbulatoryProviderDocumentation } from "@medora/shared";
 import { isEncounterLocked } from "@/lib/encounterLock";
 import { tEncounterStatus, tEncounterType } from "@/lib/encounterChromeI18n";
 import { ProviderDocumentationWorkspace } from "@/components/encounters/ProviderDocumentationWorkspace";
-import { productUiBcp47Tag, resolveProductUiLanguageOrDefault } from "@/i18n/config";
+import { productUiBcp47Tag, resolveProductUiLanguageOrDefault, bilingualStorageLocaleOrEn } from "@/i18n/config";
 import {
   buildProviderDocumentationMetadata,
   buildProviderDocumentationSavePayload,
@@ -176,7 +176,7 @@ export function ClinicCareAmbulatoryMedicalEvaluationPanel({
         encounterId={encounter.id}
         encounterMode="AMBULATORY"
         facilityCountry={facilityCountry}
-        authoredDocumentLocale={resolveProductUiLanguageOrDefault(language)}
+        authoredDocumentLocale={bilingualStorageLocaleOrEn(language)}
         value={value}
         onChange={setValue}
         onSave={save}

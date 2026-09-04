@@ -220,7 +220,7 @@ import { isEncounterLocked } from "@/lib/encounterLock";
 import { formatOrderAuthority } from "@/lib/orderAuthority";
 import { formatOrderAttributionLines } from "@/lib/orderAttribution";
 import { ProviderDocumentationWorkspace } from "@/components/encounters/ProviderDocumentationWorkspace";
-import { productUiBcp47Tag, resolveProductUiLanguageOrDefault } from "@/i18n/config";
+import { productUiBcp47Tag, resolveProductUiLanguageOrDefault, bilingualStorageLocaleOrEn } from "@/i18n/config";
 import {
   buildProviderDocumentationMetadata,
   buildProviderDocumentationSavePayload,
@@ -3829,7 +3829,11 @@ function EncounterDetailPageInner({ session }: { session: ReturnType<typeof useF
                 const k = `encounterChrome.modals.documentationDeficiencies.${d.code}`;
                 const v = t(k);
                 const fallback =
-                  v !== k ? v : language === "en" ? d.code.replace(/_/g, " ") : d.labelFr;
+                  v !== k
+                    ? v
+                    : resolveProductUiLanguageOrDefault(language) === "fr"
+                      ? d.labelFr
+                      : d.code.replace(/_/g, " ");
                 const navLabel = documentationDeficiencyNavigateButtonLabel(d.code, tabs, t);
                 return (
                   <li key={d.code} style={{ marginBottom: 10 }}>
@@ -4680,7 +4684,7 @@ function ClinicVisitTab({
         encounterId={encounter.id}
         encounterMode={providerDocumentationEncounterMode}
         facilityCountry={facilityCountry}
-        authoredDocumentLocale={resolveProductUiLanguageOrDefault(language)}
+        authoredDocumentLocale={bilingualStorageLocaleOrEn(language)}
         value={providerWorkspaceValue}
         onChange={setProviderWorkspaceValue}
         onSave={save}

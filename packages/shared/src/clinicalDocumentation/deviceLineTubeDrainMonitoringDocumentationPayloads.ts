@@ -3,6 +3,8 @@ import type { ClinicalDocumentationFieldOption } from "./clinicalDocumentationFi
 import {
   pickLocalizedEnumLabel,
   type ClinicalDocumentationSummaryLocale,
+  clinicalDocSummaryKey,
+  clinicalDocYesNo,
 } from "./clinicalDocumentationSummaryLocale.js";
 
 /** EDOC.17 — device, line, tube & drain monitoring card IDs. */
@@ -153,13 +155,7 @@ export function deviceDocYesNoLabel(
   value: (typeof DEVICE_YES_NO_VALUES)[number],
   locale: ClinicalDocumentationSummaryLocale
 ): string {
-  return value === "YES"
-    ? locale === "en"
-      ? "Yes"
-      : "Oui"
-    : locale === "en"
-      ? "No"
-      : "Non";
+  return clinicalDocYesNo(value === "YES", locale);
 }
 
 export const DEVICE_YES_NO_OPTIONS = enumOptions(DEVICE_YES_NO_VALUES, {
@@ -547,15 +543,15 @@ export function summarizeDeviceLineTubeDrainMonitoringPayload(
       const d = p.data;
       return [
         {
-          key: locale === "en" ? "Site" : "Site",
+          key: clinicalDocSummaryKey(locale, "Site", "Site"),
           value: d.siteLocation,
         },
         {
-          key: locale === "en" ? "Status" : "Statut",
+          key: clinicalDocSummaryKey(locale, "Status", "Statut"),
           value: pickLocalizedEnumLabel(IV_STATUS_MAP.en, IV_STATUS_MAP.fr, d.status, locale),
         },
         {
-          key: locale === "en" ? "Dressing" : "Pansement",
+          key: clinicalDocSummaryKey(locale, "Dressing", "Pansement"),
           value: pickLocalizedEnumLabel(
             DRESSING_STATUS_MAP.en,
             DRESSING_STATUS_MAP.fr,
@@ -564,7 +560,7 @@ export function summarizeDeviceLineTubeDrainMonitoringPayload(
           ),
         },
         {
-          key: locale === "en" ? "Provider notified" : "Médecin avisé",
+          key: clinicalDocSummaryKey(locale, "Provider notified", "Médecin avisé"),
           value: deviceDocYesNoLabel(d.providerNotified, locale),
         },
       ];
@@ -575,7 +571,7 @@ export function summarizeDeviceLineTubeDrainMonitoringPayload(
       const d = p.data;
       return [
         {
-          key: locale === "en" ? "Line type" : "Type de ligne",
+          key: clinicalDocSummaryKey(locale, "Line type", "Type de ligne"),
           value: pickLocalizedEnumLabel(
             DEVICE_LINE_TYPE_MAP.en,
             DEVICE_LINE_TYPE_MAP.fr,
@@ -584,7 +580,7 @@ export function summarizeDeviceLineTubeDrainMonitoringPayload(
           ),
         },
         {
-          key: locale === "en" ? "Site status" : "Statut du site",
+          key: clinicalDocSummaryKey(locale, "Site status", "Statut du site"),
           value: pickLocalizedEnumLabel(
             SITE_STATUS_MAP.en,
             SITE_STATUS_MAP.fr,
@@ -593,11 +589,11 @@ export function summarizeDeviceLineTubeDrainMonitoringPayload(
           ),
         },
         {
-          key: locale === "en" ? "Infection concern" : "Préoccupation infection",
+          key: clinicalDocSummaryKey(locale, "Infection concern", "Préoccupation infection"),
           value: deviceDocYesNoLabel(d.infectionConcern, locale),
         },
         {
-          key: locale === "en" ? "Provider notified" : "Médecin avisé",
+          key: clinicalDocSummaryKey(locale, "Provider notified", "Médecin avisé"),
           value: deviceDocYesNoLabel(d.providerNotified, locale),
         },
       ];
@@ -608,7 +604,7 @@ export function summarizeDeviceLineTubeDrainMonitoringPayload(
       const d = p.data;
       return [
         {
-          key: locale === "en" ? "Site status" : "Statut du site",
+          key: clinicalDocSummaryKey(locale, "Site status", "Statut du site"),
           value: pickLocalizedEnumLabel(
             SITE_STATUS_MAP.en,
             SITE_STATUS_MAP.fr,
@@ -617,11 +613,11 @@ export function summarizeDeviceLineTubeDrainMonitoringPayload(
           ),
         },
         {
-          key: locale === "en" ? "Infection concern" : "Préoccupation infection",
+          key: clinicalDocSummaryKey(locale, "Infection concern", "Préoccupation infection"),
           value: deviceDocYesNoLabel(d.infectionConcern, locale),
         },
         {
-          key: locale === "en" ? "Provider notified" : "Médecin avisé",
+          key: clinicalDocSummaryKey(locale, "Provider notified", "Médecin avisé"),
           value: deviceDocYesNoLabel(d.providerNotified, locale),
         },
       ];
@@ -632,11 +628,11 @@ export function summarizeDeviceLineTubeDrainMonitoringPayload(
       const d = p.data;
       return [
         {
-          key: locale === "en" ? "Urine flow present" : "Écoulement urinaire",
+          key: clinicalDocSummaryKey(locale, "Urine flow present", "Écoulement urinaire"),
           value: deviceDocYesNoLabel(d.urineFlowPresent, locale),
         },
         {
-          key: locale === "en" ? "Appearance" : "Aspect",
+          key: clinicalDocSummaryKey(locale, "Appearance", "Aspect"),
           value: pickLocalizedEnumLabel(
             DEVICE_URINE_APPEARANCE_MAP.en,
             DEVICE_URINE_APPEARANCE_MAP.fr,
@@ -645,11 +641,11 @@ export function summarizeDeviceLineTubeDrainMonitoringPayload(
           ),
         },
         {
-          key: locale === "en" ? "Obstruction concern" : "Préoccupation obstruction",
+          key: clinicalDocSummaryKey(locale, "Obstruction concern", "Préoccupation obstruction"),
           value: deviceDocYesNoLabel(d.obstructionConcern, locale),
         },
         {
-          key: locale === "en" ? "Provider notified" : "Médecin avisé",
+          key: clinicalDocSummaryKey(locale, "Provider notified", "Médecin avisé"),
           value: deviceDocYesNoLabel(d.providerNotified, locale),
         },
       ];
@@ -660,7 +656,7 @@ export function summarizeDeviceLineTubeDrainMonitoringPayload(
       const d = p.data;
       return [
         {
-          key: locale === "en" ? "Skin integrity" : "Intégrité cutanée",
+          key: clinicalDocSummaryKey(locale, "Skin integrity", "Intégrité cutanée"),
           value: pickLocalizedEnumLabel(
             DEVICE_SKIN_INTEGRITY_MAP.en,
             DEVICE_SKIN_INTEGRITY_MAP.fr,
@@ -669,11 +665,11 @@ export function summarizeDeviceLineTubeDrainMonitoringPayload(
           ),
         },
         {
-          key: locale === "en" ? "Functioning properly" : "Fonctionnement correct",
+          key: clinicalDocSummaryKey(locale, "Functioning properly", "Fonctionnement correct"),
           value: deviceDocYesNoLabel(d.functioningProperly, locale),
         },
         {
-          key: locale === "en" ? "Provider notified" : "Médecin avisé",
+          key: clinicalDocSummaryKey(locale, "Provider notified", "Médecin avisé"),
           value: deviceDocYesNoLabel(d.providerNotified, locale),
         },
       ];
@@ -684,7 +680,7 @@ export function summarizeDeviceLineTubeDrainMonitoringPayload(
       const d = p.data;
       return [
         {
-          key: locale === "en" ? "Tube type" : "Type de sonde",
+          key: clinicalDocSummaryKey(locale, "Tube type", "Type de sonde"),
           value: pickLocalizedEnumLabel(
             NG_OG_TUBE_TYPE_MAP.en,
             NG_OG_TUBE_TYPE_MAP.fr,
@@ -693,15 +689,15 @@ export function summarizeDeviceLineTubeDrainMonitoringPayload(
           ),
         },
         {
-          key: locale === "en" ? "Placement verified" : "Position vérifiée",
+          key: clinicalDocSummaryKey(locale, "Placement verified", "Position vérifiée"),
           value: deviceDocYesNoLabel(d.placementVerified, locale),
         },
         {
-          key: locale === "en" ? "Suction active" : "Aspiration active",
+          key: clinicalDocSummaryKey(locale, "Suction active", "Aspiration active"),
           value: deviceDocYesNoLabel(d.suctionActive, locale),
         },
         {
-          key: locale === "en" ? "Drainage appearance" : "Aspect des sécrétions",
+          key: clinicalDocSummaryKey(locale, "Drainage appearance", "Aspect des sécrétions"),
           value: pickLocalizedEnumLabel(
             NG_OG_DRAINAGE_MAP.en,
             NG_OG_DRAINAGE_MAP.fr,
@@ -710,7 +706,7 @@ export function summarizeDeviceLineTubeDrainMonitoringPayload(
           ),
         },
         {
-          key: locale === "en" ? "Provider notified" : "Médecin avisé",
+          key: clinicalDocSummaryKey(locale, "Provider notified", "Médecin avisé"),
           value: deviceDocYesNoLabel(d.providerNotified, locale),
         },
       ];
@@ -721,23 +717,23 @@ export function summarizeDeviceLineTubeDrainMonitoringPayload(
       const d = p.data;
       return [
         {
-          key: locale === "en" ? "Suction" : "Aspiration",
+          key: clinicalDocSummaryKey(locale, "Suction", "Aspiration"),
           value: deviceDocYesNoLabel(d.suctionActive, locale),
         },
         {
-          key: locale === "en" ? "Air leak" : "Fuite d'air",
+          key: clinicalDocSummaryKey(locale, "Air leak", "Fuite d'air"),
           value: deviceDocYesNoLabel(d.airLeakPresent, locale),
         },
         {
-          key: locale === "en" ? "Drainage amount" : "Volume de drainage",
+          key: clinicalDocSummaryKey(locale, "Drainage amount", "Volume de drainage"),
           value: `${d.drainageAmount} mL`,
         },
         {
-          key: locale === "en" ? "Tube secure" : "Drain fixé",
+          key: clinicalDocSummaryKey(locale, "Tube secure", "Drain fixé"),
           value: deviceDocYesNoLabel(d.tubeSecure, locale),
         },
         {
-          key: locale === "en" ? "Provider notified" : "Médecin avisé",
+          key: clinicalDocSummaryKey(locale, "Provider notified", "Médecin avisé"),
           value: deviceDocYesNoLabel(d.providerNotified, locale),
         },
       ];
@@ -748,7 +744,7 @@ export function summarizeDeviceLineTubeDrainMonitoringPayload(
       const d = p.data;
       return [
         {
-          key: locale === "en" ? "Drain type" : "Type de drain",
+          key: clinicalDocSummaryKey(locale, "Drain type", "Type de drain"),
           value: pickLocalizedEnumLabel(
             SURGICAL_DRAIN_TYPE_MAP.en,
             SURGICAL_DRAIN_TYPE_MAP.fr,
@@ -757,11 +753,11 @@ export function summarizeDeviceLineTubeDrainMonitoringPayload(
           ),
         },
         {
-          key: locale === "en" ? "Drainage amount" : "Volume de drainage",
+          key: clinicalDocSummaryKey(locale, "Drainage amount", "Volume de drainage"),
           value: `${d.drainageAmount} mL`,
         },
         {
-          key: locale === "en" ? "Appearance" : "Aspect",
+          key: clinicalDocSummaryKey(locale, "Appearance", "Aspect"),
           value: pickLocalizedEnumLabel(
             DRAIN_APPEARANCE_MAP.en,
             DRAIN_APPEARANCE_MAP.fr,
@@ -770,7 +766,7 @@ export function summarizeDeviceLineTubeDrainMonitoringPayload(
           ),
         },
         {
-          key: locale === "en" ? "Site status" : "Statut du site",
+          key: clinicalDocSummaryKey(locale, "Site status", "Statut du site"),
           value: pickLocalizedEnumLabel(
             SURGICAL_SITE_MAP.en,
             SURGICAL_SITE_MAP.fr,
@@ -786,19 +782,19 @@ export function summarizeDeviceLineTubeDrainMonitoringPayload(
       const d = p.data;
       return [
         {
-          key: locale === "en" ? "Position" : "Position",
+          key: clinicalDocSummaryKey(locale, "Position", "Position"),
           value: `${d.tubePosition} ${d.positionUnit}`,
         },
         {
-          key: locale === "en" ? "Securement" : "Fixation",
+          key: clinicalDocSummaryKey(locale, "Securement", "Fixation"),
           value: deviceDocYesNoLabel(d.securementIntact, locale),
         },
         {
-          key: locale === "en" ? "Airway patent" : "Voie aérienne perméable",
+          key: clinicalDocSummaryKey(locale, "Airway patent", "Voie aérienne perméable"),
           value: deviceDocYesNoLabel(d.airwayPatent, locale),
         },
         {
-          key: locale === "en" ? "Displacement concern" : "Préoccupation déplacement",
+          key: clinicalDocSummaryKey(locale, "Displacement concern", "Préoccupation déplacement"),
           value: deviceDocYesNoLabel(d.displacementConcern, locale),
         },
       ];
@@ -809,7 +805,7 @@ export function summarizeDeviceLineTubeDrainMonitoringPayload(
       const d = p.data;
       return [
         {
-          key: locale === "en" ? "Site status" : "Statut du site",
+          key: clinicalDocSummaryKey(locale, "Site status", "Statut du site"),
           value: pickLocalizedEnumLabel(
             SITE_STATUS_MAP.en,
             SITE_STATUS_MAP.fr,
@@ -818,15 +814,15 @@ export function summarizeDeviceLineTubeDrainMonitoringPayload(
           ),
         },
         {
-          key: locale === "en" ? "Inner cannula checked" : "Canule interne vérifiée",
+          key: clinicalDocSummaryKey(locale, "Inner cannula checked", "Canule interne vérifiée"),
           value: deviceDocYesNoLabel(d.innerCannulaChecked, locale),
         },
         {
-          key: locale === "en" ? "Airway patent" : "Voie aérienne perméable",
+          key: clinicalDocSummaryKey(locale, "Airway patent", "Voie aérienne perméable"),
           value: deviceDocYesNoLabel(d.airwayPatent, locale),
         },
         {
-          key: locale === "en" ? "Dislodgement concern" : "Préoccupation délogement",
+          key: clinicalDocSummaryKey(locale, "Dislodgement concern", "Préoccupation délogement"),
           value: deviceDocYesNoLabel(d.dislodgementConcern, locale),
         },
       ];

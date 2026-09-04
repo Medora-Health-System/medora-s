@@ -1,5 +1,6 @@
 import type { DocumentedProcedureType } from "../schemas/encounterProcedureTypes.js";
 import type { EnterpriseProcedureChargeMapping } from "./enterpriseProcedureBillingReadinessTypes.js";
+import { pickCatalogDisplayLabelForProductUi, pickProductUiCopy } from "../i18n/productUiLocale.js";
 
 export const ENTERPRISE_PROCEDURE_CARE_SETTINGS = [
   "ED",
@@ -828,14 +829,18 @@ export function enterpriseProcedureById(id: string): EnterpriseProcedureDefiniti
 
 export function resolveEnterpriseProcedureDisplayName(
   procedureDef: EnterpriseProcedureDefinition,
-  locale: "en" | "fr"
+  locale: string
 ): string {
-  return locale === "fr" ? procedureDef.displayNameFr : procedureDef.displayNameEn;
+  return pickCatalogDisplayLabelForProductUi(locale, {
+    displayNameEn: procedureDef.displayNameEn,
+    displayNameFr: procedureDef.displayNameFr,
+    code: procedureDef.id,
+  });
 }
 
 export function enterpriseProcedureCategoryLabel(
   category: EnterpriseProcedureCategory,
-  locale: "en" | "fr"
+  locale: string
 ): string {
   const labelsEn: Record<EnterpriseProcedureCategory, string> = {
     AIRWAY: "Airway",
@@ -867,5 +872,24 @@ export function enterpriseProcedureCategoryLabel(
     SPECIMEN_COLLECTION: "Collecte d'échantillon",
     OTHER: "Autre",
   };
-  return locale === "fr" ? labelsFr[category] : labelsEn[category];
+  const labelsEs: Record<EnterpriseProcedureCategory, string> = {
+    AIRWAY: "Vía aérea",
+    CARDIAC_RESPIRATORY: "Cardíaco / respiratorio",
+    VASCULAR_ACCESS: "Acceso vascular",
+    WOUND_CARE: "Cuidado de heridas",
+    ORTHOPEDIC: "Ortopedia",
+    GU: "GU",
+    GI: "GI",
+    NEURO: "Neuro",
+    SEDATION: "Sedación",
+    NURSING_TASK: "Tarea de enfermería",
+    MONITORING: "Monitoreo",
+    SPECIMEN_COLLECTION: "Recolección de muestra",
+    OTHER: "Otro",
+  };
+  return pickProductUiCopy(
+    locale,
+    { en: labelsEn[category], fr: labelsFr[category], es: labelsEs[category] },
+    labelsEs[category]
+  );
 }

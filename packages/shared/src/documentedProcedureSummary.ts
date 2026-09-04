@@ -3,6 +3,10 @@ import {
   displayNameFrForDocumentedProcedureType,
 } from "./documentedProcedureBillingBridge.js";
 import {
+  pickCatalogDisplayLabelForProductUi,
+  pickProductUiCopy,
+} from "./i18n/productUiLocale.js";
+import {
   readCanonicalProcedureTypeFromPayload,
   readDocumentationRoleFromPayload,
   type ProcedureDocumentationRole,
@@ -12,7 +16,7 @@ export const DOCUMENTED_PROCEDURE_STATUS_COMPLETED = "COMPLETED" as const;
 
 export type DocumentedProcedureStatus = typeof DOCUMENTED_PROCEDURE_STATUS_COMPLETED;
 
-export type DocumentedProcedureSummaryLocale = "en" | "fr";
+export type DocumentedProcedureSummaryLocale = string;
 
 function asRecord(value: unknown): Record<string, unknown> {
   if (!value || typeof value !== "object" || Array.isArray(value)) return {};
@@ -61,46 +65,69 @@ export function readPerformerTitleFromPayload(payloadJson: unknown): string | nu
   return readStr(asRecord(payloadJson), "performerTitle");
 }
 
-const PROCEDURE_SUMMARY_LABELS: Record<
-  DocumentedProcedureSummaryLocale,
-  {
-    site: string;
-    performedAt: string;
-    performedBy: string;
-    documentedBy: string;
-    roleNursing: string;
-    roleProvider: string;
-    statusCompleted: string;
-    assistedProvider: string;
-    notes: string;
-    complications: string;
-  }
-> = {
-  en: {
-    site: "Site",
-    performedAt: "Performed at",
-    performedBy: "Performed by",
-    documentedBy: "Documented by",
-    roleNursing: "Section: nursing",
-    roleProvider: "Section: provider",
-    statusCompleted: "Status: completed",
-    assistedProvider: "Assisting provider",
-    notes: "Notes",
-    complications: "Complications",
-  },
-  fr: {
-    site: "Site",
-    performedAt: "Réalisée le",
-    performedBy: "Réalisée par",
-    documentedBy: "Documentée par",
-    roleNursing: "Volet : soins infirmiers",
-    roleProvider: "Volet : médecin",
-    statusCompleted: "Statut : terminée",
-    assistedProvider: "Médecin assisté",
-    notes: "Notes",
-    complications: "Complications",
-  },
+type ProcedureSummaryLabels = {
+  site: string;
+  performedAt: string;
+  performedBy: string;
+  documentedBy: string;
+  roleNursing: string;
+  roleProvider: string;
+  statusCompleted: string;
+  assistedProvider: string;
+  notes: string;
+  complications: string;
 };
+
+const PROCEDURE_SUMMARY_LABELS_EN: ProcedureSummaryLabels = {
+  site: "Site",
+  performedAt: "Performed at",
+  performedBy: "Performed by",
+  documentedBy: "Documented by",
+  roleNursing: "Section: nursing",
+  roleProvider: "Section: provider",
+  statusCompleted: "Status: completed",
+  assistedProvider: "Assisting provider",
+  notes: "Notes",
+  complications: "Complications",
+};
+
+const PROCEDURE_SUMMARY_LABELS_FR: ProcedureSummaryLabels = {
+  site: "Site",
+  performedAt: "Réalisée le",
+  performedBy: "Réalisée par",
+  documentedBy: "Documentée par",
+  roleNursing: "Volet : soins infirmiers",
+  roleProvider: "Volet : médecin",
+  statusCompleted: "Statut : terminée",
+  assistedProvider: "Médecin assisté",
+  notes: "Notes",
+  complications: "Complications",
+};
+
+const PROCEDURE_SUMMARY_LABELS_ES: ProcedureSummaryLabels = {
+  site: "Sitio",
+  performedAt: "Realizado el",
+  performedBy: "Realizado por",
+  documentedBy: "Documentado por",
+  roleNursing: "Sección: enfermería",
+  roleProvider: "Sección: profesional clínico",
+  statusCompleted: "Estado: completado",
+  assistedProvider: "Profesional clínico asistente",
+  notes: "Notas",
+  complications: "Complicaciones",
+};
+
+function procedureSummaryLabels(locale: string): ProcedureSummaryLabels {
+  return pickProductUiCopy(
+    locale,
+    {
+      en: PROCEDURE_SUMMARY_LABELS_EN,
+      fr: PROCEDURE_SUMMARY_LABELS_FR,
+      es: PROCEDURE_SUMMARY_LABELS_ES,
+    },
+    PROCEDURE_SUMMARY_LABELS_ES
+  );
+}
 
 export type DocumentedProcedureSummaryMeta = {
   procedureType: string;
@@ -128,11 +155,12 @@ export function formatDocumentedProcedureClinicalSummary(input: {
 
   const record = asRecord(input.payloadJson);
   const documentationRole = readDocumentationRoleFromPayload(input.payloadJson);
-  const labels = PROCEDURE_SUMMARY_LABELS[input.locale];
-  const procedureName =
-    input.locale === "en"
-      ? displayNameEnForDocumentedProcedurePayload(input.payloadJson)
-      : displayNameFrForDocumentedProcedurePayload(input.payloadJson);
+  const labels = procedureSummaryLabels(input.locale);
+  const procedureName = pickCatalogDisplayLabelForProductUi(input.locale, {
+    displayNameEn: displayNameEnForDocumentedProcedurePayload(input.payloadJson),
+    displayNameFr: displayNameFrForDocumentedProcedurePayload(input.payloadJson),
+    code: procedureType,
+  });
   const performedAtIso = readPerformedAtFromPayload(input.payloadJson);
   const performedByDisplayName = readPerformedByDisplayNameFromPayload(input.payloadJson);
   const performerTitle = readPerformerTitleFromPayload(input.payloadJson);

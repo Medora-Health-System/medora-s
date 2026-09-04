@@ -1,6 +1,8 @@
 import { z } from "zod";
+import { pickProductUiCopy } from "../i18n/productUiLocale.js";
 import type { ClinicalDocumentationFieldOption } from "./clinicalDocumentationFieldOptions.js";
 import {
+  clinicalDocSummaryKey,
   clinicalDocYesNo,
   pickLocalizedEnumLabel,
   type ClinicalDocumentationSummaryLocale,
@@ -656,7 +658,7 @@ export function summarizeRespiratoryDocumentationPayload(
       const d = p.data;
       const lines: Array<{ key: string; value: string }> = [
         {
-          key: locale === "en" ? "Respiratory rate" : "Fréquence respiratoire",
+          key: clinicalDocSummaryKey(locale, "Respiratory rate", "Fréquence respiratoire"),
           value: String(d.respiratoryRate),
         },
         {
@@ -664,11 +666,11 @@ export function summarizeRespiratoryDocumentationPayload(
           value: `${d.spo2}%`,
         },
         {
-          key: locale === "en" ? "Oxygen" : "Oxygène",
+          key: clinicalDocSummaryKey(locale, "Oxygen", "Oxygène"),
           value: flowSummary(d.oxygenDevice, d.oxygenFlowRate, locale),
         },
         {
-          key: locale === "en" ? "Work of breathing" : "Travail respiratoire",
+          key: clinicalDocSummaryKey(locale, "Work of breathing", "Travail respiratoire"),
           value: pickLocalizedEnumLabel(
             WORK_OF_BREATHING_MAP.en,
             WORK_OF_BREATHING_MAP.fr,
@@ -677,7 +679,7 @@ export function summarizeRespiratoryDocumentationPayload(
           ),
         },
         {
-          key: locale === "en" ? "Breath sounds" : "Auscultation",
+          key: clinicalDocSummaryKey(locale, "Breath sounds", "Auscultation"),
           value: pickLocalizedEnumLabel(
             BREATH_SOUNDS_MAP.en,
             BREATH_SOUNDS_MAP.fr,
@@ -686,7 +688,7 @@ export function summarizeRespiratoryDocumentationPayload(
           ),
         },
         {
-          key: locale === "en" ? "Provider notified" : "Médecin avisé",
+          key: clinicalDocSummaryKey(locale, "Provider notified", "Médecin avisé"),
           value: clinicalDocYesNo(d.providerNotified, locale),
         },
       ];
@@ -698,23 +700,23 @@ export function summarizeRespiratoryDocumentationPayload(
       const d = p.data;
       const lines: Array<{ key: string; value: string }> = [
         {
-          key: locale === "en" ? "Device / flow" : "Dispositif / débit",
+          key: clinicalDocSummaryKey(locale, "Device / flow", "Dispositif / débit"),
           value: `${pickLocalizedEnumLabel(OXYGEN_DEVICE_MAP.en, OXYGEN_DEVICE_MAP.fr, d.oxygenDevice, locale)} — ${d.flowRate} ${d.flowUnit === "LPM" ? "L/min" : "FiO₂ %"}`,
         },
         {
-          key: locale === "en" ? "SpO₂ before" : "SpO₂ avant",
+          key: clinicalDocSummaryKey(locale, "SpO₂ before", "SpO₂ avant"),
           value: `${d.spo2Before}%`,
         },
       ];
       if (d.spo2After != null) {
         lines.push({
-          key: locale === "en" ? "SpO₂ after" : "SpO₂ après",
+          key: clinicalDocSummaryKey(locale, "SpO₂ after", "SpO₂ après"),
           value: `${d.spo2After}%`,
         });
       }
       lines.push(
         {
-          key: locale === "en" ? "Reason" : "Motif",
+          key: clinicalDocSummaryKey(locale, "Reason", "Motif"),
           value: pickLocalizedEnumLabel(
             OXYGEN_INITIATION_REASON_MAP.en,
             OXYGEN_INITIATION_REASON_MAP.fr,
@@ -723,7 +725,7 @@ export function summarizeRespiratoryDocumentationPayload(
           ),
         },
         {
-          key: locale === "en" ? "Patient tolerated" : "Toléré par le patient",
+          key: clinicalDocSummaryKey(locale, "Patient tolerated", "Toléré par le patient"),
           value: clinicalDocYesNo(d.patientTolerated, locale),
         }
       );
@@ -735,19 +737,19 @@ export function summarizeRespiratoryDocumentationPayload(
       const d = p.data;
       return [
         {
-          key: locale === "en" ? "Previous → new" : "Ancien → nouveau",
+          key: clinicalDocSummaryKey(locale, "Previous → new", "Ancien → nouveau"),
           value: `${pickLocalizedEnumLabel(OXYGEN_DEVICE_MAP.en, OXYGEN_DEVICE_MAP.fr, d.previousDevice, locale)} → ${pickLocalizedEnumLabel(OXYGEN_DEVICE_MAP.en, OXYGEN_DEVICE_MAP.fr, d.newDevice, locale)}`,
         },
         {
-          key: locale === "en" ? "New flow" : "Nouveau débit",
+          key: clinicalDocSummaryKey(locale, "New flow", "Nouveau débit"),
           value: `${d.newFlowRate} ${d.flowUnit === "LPM" ? "L/min" : "FiO₂ %"}`,
         },
         {
-          key: locale === "en" ? "SpO₂ before / after" : "SpO₂ avant / après",
+          key: clinicalDocSummaryKey(locale, "SpO₂ before / after", "SpO₂ avant / après"),
           value: `${d.spo2Before}% → ${d.spo2After}%`,
         },
         {
-          key: locale === "en" ? "Reason" : "Motif",
+          key: clinicalDocSummaryKey(locale, "Reason", "Motif"),
           value: pickLocalizedEnumLabel(
             OXYGEN_TITRATION_REASON_MAP.en,
             OXYGEN_TITRATION_REASON_MAP.fr,
@@ -763,7 +765,7 @@ export function summarizeRespiratoryDocumentationPayload(
       const d = p.data;
       return [
         {
-          key: locale === "en" ? "Medication referenced" : "Médicament référencé",
+          key: clinicalDocSummaryKey(locale, "Medication referenced", "Médicament référencé"),
           value: pickLocalizedEnumLabel(
             NEBULIZER_MEDICATION_MAP.en,
             NEBULIZER_MEDICATION_MAP.fr,
@@ -772,19 +774,19 @@ export function summarizeRespiratoryDocumentationPayload(
           ),
         },
         {
-          key: locale === "en" ? "MAR documented" : "Documenté au MAR",
+          key: clinicalDocSummaryKey(locale, "MAR documented", "Documenté au MAR"),
           value: clinicalDocYesNo(d.treatmentDocumentedInMar, locale),
         },
         {
-          key: locale === "en" ? "RR / SpO₂" : "FR / SpO₂",
+          key: clinicalDocSummaryKey(locale, "RR / SpO₂", "FR / SpO₂"),
           value: `${d.respiratoryRate} / ${d.spo2}%`,
         },
         {
-          key: locale === "en" ? "Improvement reported" : "Amélioration rapportée",
+          key: clinicalDocSummaryKey(locale, "Improvement reported", "Amélioration rapportée"),
           value: clinicalDocYesNo(d.patientReportsImprovement, locale),
         },
         {
-          key: locale === "en" ? "Adverse effect" : "Effet indésirable",
+          key: clinicalDocSummaryKey(locale, "Adverse effect", "Effet indésirable"),
           value: clinicalDocYesNo(d.adverseEffectObserved, locale),
         },
       ];
@@ -795,7 +797,7 @@ export function summarizeRespiratoryDocumentationPayload(
       const d = p.data;
       const lines: Array<{ key: string; value: string }> = [
         {
-          key: locale === "en" ? "Mode / settings" : "Mode / réglages",
+          key: clinicalDocSummaryKey(locale, "Mode / settings", "Mode / réglages"),
           value: `${pickLocalizedEnumLabel(CPAP_BIPAP_MODE_MAP.en, CPAP_BIPAP_MODE_MAP.fr, d.mode, locale)} — ${d.deviceSettingSummary}`,
         },
       ];
@@ -807,7 +809,7 @@ export function summarizeRespiratoryDocumentationPayload(
       }
       lines.push(
         {
-          key: locale === "en" ? "Tolerance" : "Tolérance",
+          key: clinicalDocSummaryKey(locale, "Tolerance", "Tolérance"),
           value: pickLocalizedEnumLabel(
             CPAP_TOLERANCE_MAP.en,
             CPAP_TOLERANCE_MAP.fr,
@@ -816,7 +818,7 @@ export function summarizeRespiratoryDocumentationPayload(
           ),
         },
         {
-          key: locale === "en" ? "Skin integrity" : "Intégrité cutanée",
+          key: clinicalDocSummaryKey(locale, "Skin integrity", "Intégrité cutanée"),
           value: pickLocalizedEnumLabel(
             SKIN_INTEGRITY_MAP.en,
             SKIN_INTEGRITY_MAP.fr,
@@ -833,11 +835,11 @@ export function summarizeRespiratoryDocumentationPayload(
       const d = p.data;
       return [
         {
-          key: locale === "en" ? "RR / SpO₂" : "FR / SpO₂",
+          key: clinicalDocSummaryKey(locale, "RR / SpO₂", "FR / SpO₂"),
           value: `${d.respiratoryRate} / ${d.spo2}%`,
         },
         {
-          key: locale === "en" ? "Work of breathing" : "Travail respiratoire",
+          key: clinicalDocSummaryKey(locale, "Work of breathing", "Travail respiratoire"),
           value: pickLocalizedEnumLabel(
             WORK_OF_BREATHING_MAP.en,
             WORK_OF_BREATHING_MAP.fr,
@@ -846,7 +848,7 @@ export function summarizeRespiratoryDocumentationPayload(
           ),
         },
         {
-          key: locale === "en" ? "Intervention" : "Intervention",
+          key: clinicalDocSummaryKey(locale, "Intervention", "Intervention"),
           value: pickLocalizedEnumLabel(
             INTERVENTION_MAP.en,
             INTERVENTION_MAP.fr,
@@ -855,11 +857,11 @@ export function summarizeRespiratoryDocumentationPayload(
           ),
         },
         {
-          key: locale === "en" ? "Provider notified" : "Médecin avisé",
+          key: clinicalDocSummaryKey(locale, "Provider notified", "Médecin avisé"),
           value: clinicalDocYesNo(d.providerNotified, locale),
         },
         {
-          key: locale === "en" ? "Rapid response" : "Intervention rapide",
+          key: clinicalDocSummaryKey(locale, "Rapid response", "Intervention rapide"),
           value: clinicalDocYesNo(d.rapidResponseActivated, locale),
         },
       ];
@@ -870,7 +872,7 @@ export function summarizeRespiratoryDocumentationPayload(
       const d = p.data;
       const lines: Array<{ key: string; value: string }> = [
         {
-          key: locale === "en" ? "Mode" : "Mode",
+          key: clinicalDocSummaryKey(locale, "Mode", "Mode"),
           value: pickLocalizedEnumLabel(
             VENTILATOR_MODE_MAP.en,
             VENTILATOR_MODE_MAP.fr,
@@ -884,28 +886,32 @@ export function summarizeRespiratoryDocumentationPayload(
       if (d.peep != null) settings.push(`PEEP ${d.peep}`);
       if (d.respiratoryRateObserved != null) {
         settings.push(
-          locale === "en"
-            ? `RR obs ${d.respiratoryRateObserved}`
-            : `FR obs ${d.respiratoryRateObserved}`
+          pickProductUiCopy(
+            locale,
+            {
+              en: `RR obs ${d.respiratoryRateObserved}`,
+              fr: `FR obs ${d.respiratoryRateObserved}`,
+              es: `FR obs ${d.respiratoryRateObserved}`,
+            },
+            `FR obs ${d.respiratoryRateObserved}`
+          )
         );
       }
       settings.push(`SpO₂ ${d.spo2}%`);
       if (settings.length > 0) {
         lines.push({
-          key: locale === "en" ? "Parameters" : "Paramètres",
+          key: clinicalDocSummaryKey(locale, "Parameters", "Paramètres"),
           value: settings.join(" · "),
         });
       }
       lines.push({
-        key: locale === "en" ? "Alarm" : "Alarme",
+        key: clinicalDocSummaryKey(locale, "Alarm", "Alarme"),
         value: d.alarmObserved
-          ? d.alarmDescription ?? (locale === "en" ? "Yes" : "Oui")
-          : locale === "en"
-            ? "None"
-            : "Aucune",
+          ? d.alarmDescription ?? (clinicalDocSummaryKey(locale, "Yes", "Oui"))
+          : clinicalDocSummaryKey(locale, "None", "Aucune"),
       });
       lines.push({
-        key: locale === "en" ? "RT notified" : "RT avisé",
+        key: clinicalDocSummaryKey(locale, "RT notified", "RT avisé"),
         value: clinicalDocYesNo(d.rtNotified, locale),
       });
       return lines;
@@ -917,24 +923,24 @@ export function summarizeRespiratoryDocumentationPayload(
       const lines: Array<{ key: string; value: string }> = [];
       if (d.preTreatmentPeakFlow != null) {
         lines.push({
-          key: locale === "en" ? "Pre-treatment" : "Avant traitement",
+          key: clinicalDocSummaryKey(locale, "Pre-treatment", "Avant traitement"),
           value: `${d.preTreatmentPeakFlow} L/min`,
         });
       }
       if (d.postTreatmentPeakFlow != null) {
         lines.push({
-          key: locale === "en" ? "Post-treatment" : "Après traitement",
+          key: clinicalDocSummaryKey(locale, "Post-treatment", "Après traitement"),
           value: `${d.postTreatmentPeakFlow} L/min`,
         });
       }
       if (d.personalBestKnown && d.personalBestValue != null) {
         lines.push({
-          key: locale === "en" ? "Personal best" : "Meilleur personnel",
+          key: clinicalDocSummaryKey(locale, "Personal best", "Meilleur personnel"),
           value: `${d.personalBestValue} L/min`,
         });
       }
       lines.push({
-        key: locale === "en" ? "Effort quality" : "Qualité de l'effort",
+        key: clinicalDocSummaryKey(locale, "Effort quality", "Qualité de l'effort"),
         value: pickLocalizedEnumLabel(
           EFFORT_QUALITY_MAP.en,
           EFFORT_QUALITY_MAP.fr,

@@ -3,10 +3,10 @@
  * Registry stores canonical EN keys only; localized at extract/render time.
  */
 
-import { UNLOCALIZED_CATALOG_SOURCE, type ProductUiLanguage } from "@/i18n/config";
+import { UNLOCALIZED_CATALOG_SOURCE } from "@/i18n/config";
 import type { ProviderDischargeFollowUpRow } from "./providerDischargeDocumentationModel";
 
-export type ProviderDischargeFollowUpTimingLocale = ProductUiLanguage;
+export type ProviderDischargeFollowUpTimingLocale = string;
 
 /** MEDUI.ED.DISCHARGE.DIAGNOSIS_INSTRUCTIONS.1 — canonical EN follow-up window keys (registry-internal). */
 export const ED_DEFAULT_PCP_FOLLOW_UP_TIMING = "within 1–2 days";

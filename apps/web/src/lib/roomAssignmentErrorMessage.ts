@@ -1,9 +1,14 @@
-import type { SupportedLanguage } from "@/i18n/config";
+import { pickProductUiCopy, type SupportedLanguage } from "@/i18n/config";
 import { extractApiErrorMeta } from "@/lib/apiClient";
 import { normalizeUserFacingError } from "@/lib/userFacingError";
 
 const GENERIC_EN = "Something went wrong.";
 const GENERIC_FR = "Une erreur est survenue.";
+const GENERIC_ES = "Ocurrió un error.";
+
+function genericCopy(language: string): string {
+  return pickProductUiCopy(language, { en: GENERIC_EN, fr: GENERIC_FR, es: GENERIC_ES }, GENERIC_ES);
+}
 
 /** Surfaces Nest/API room-assignment errors in the modal (K.10B.10A). */
 export function extractRoomAssignmentSaveErrorMessage(
@@ -19,7 +24,7 @@ export function extractRoomAssignmentSaveErrorMessage(
     );
     if (extracted.message.trim()) {
       const normalized = normalizeUserFacingError(extracted.message, language);
-      if (normalized && normalized !== (language === "en" ? GENERIC_EN : GENERIC_FR)) {
+      if (normalized && normalized !== genericCopy(language)) {
         return normalized;
       }
       if (language === "fr" && /[àâäéèêëïîôùûçœæ]/i.test(extracted.message)) {
@@ -37,7 +42,7 @@ export function extractRoomAssignmentSaveErrorMessage(
 
   const raw = err instanceof Error ? err.message : "";
   const normalized = normalizeUserFacingError(raw || null, language);
-  if (normalized && normalized !== (language === "en" ? GENERIC_EN : GENERIC_FR)) {
+  if (normalized && normalized !== genericCopy(language)) {
     return normalized;
   }
   if (language === "fr" && /[àâäéèêëïîôùûçœæ]/i.test(raw)) return raw;

@@ -10,6 +10,7 @@ import {
   getProviderDischargeSuggestedTextBody,
   suggestedTextBodyBlob,
 } from "./providerDischargeTemplateLocale";
+import { bilingualStorageLocaleOrEn } from "@medora/shared";
 import type {
   ProviderDischargeEscalationSeverity,
   ProviderDischargeTemplate,
@@ -368,7 +369,7 @@ function categoryPresentInBlob(
   category: ProviderDischargePediatricDangerSignCategory,
   locale: ProviderDischargeTemplateLocale
 ): boolean {
-  const phrases = PROVIDER_DISCHARGE_PEDIATRIC_DANGER_SIGN_PHRASES[category][locale];
+  const phrases = PROVIDER_DISCHARGE_PEDIATRIC_DANGER_SIGN_PHRASES[category][bilingualStorageLocaleOrEn(locale)];
   return phrases.some((phrase) => blob.includes(phrase.toLowerCase()));
 }
 
@@ -379,9 +380,9 @@ export function scanProviderDischargePediatricCaregiverWording(
 ): string[] {
   const blob = pediatricInstructionBlob(body);
   const markers =
-    locale === "en" ?
-      PROVIDER_DISCHARGE_PEDIATRIC_EN_CAREGIVER_MARKERS
-    : PROVIDER_DISCHARGE_PEDIATRIC_FR_CAREGIVER_MARKERS;
+    locale === "fr" ?
+      PROVIDER_DISCHARGE_PEDIATRIC_FR_CAREGIVER_MARKERS
+    : PROVIDER_DISCHARGE_PEDIATRIC_EN_CAREGIVER_MARKERS;
   if (scanMarkersMissing(blob, markers)) {
     return [
       `${templateId}: pediatric ${locale} body missing caregiver wording (expected one of: ${markers.join(", ")})`,

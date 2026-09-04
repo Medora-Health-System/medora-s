@@ -2,22 +2,23 @@
  * Phase 5G — Release of Information (ROI) API client (`/api/backend/roi-requests` → Nest).
  */
 
-import type { SupportedLanguage } from "@/i18n/config";
+import { pickProductUiCopy, type SupportedLanguage } from "@/i18n/config";
 import { normalizeUserFacingError } from "./userFacingError";
 import { parseApiResponse } from "./apiClient";
 
 const BASE = "/api/backend";
 
-const ROI_REQUEST_FAILED: Record<SupportedLanguage, (status: number) => string> = {
-  en: (status) => `Request failed (${status}).`,
-  fr: (status) => `Échec (${status}).`,
+const ROI_REQUEST_FAILED = {
+  en: (status: number) => `Request failed (${status}).`,
+  fr: (status: number) => `Échec (${status}).`,
+  es: (status: number) => `La solicitud falló (${status}).`,
 };
 
 async function roiFetch(
   path: string,
   options: RequestInit & { facilityId: string; language?: SupportedLanguage } = { facilityId: "" }
 ): Promise<unknown> {
-  const { facilityId, language = "fr", ...fetchOptions } = options;
+  const { facilityId, language = "en", ...fetchOptions } = options;
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     "x-facility-id": facilityId,
@@ -33,7 +34,7 @@ async function roiFetch(
 
   if (!response.ok) {
     const txt = await response.text().catch(() => "");
-    let message = ROI_REQUEST_FAILED[language](response.status);
+    let message = pickProductUiCopy(language, ROI_REQUEST_FAILED, ROI_REQUEST_FAILED.es)(response.status);
     try {
       if (txt.trim()) {
         const json = JSON.parse(txt);
@@ -73,7 +74,7 @@ export type RoiRequestRow = {
 
 export async function fetchRoiRequests(
   facilityId: string,
-  opts?: { status?: string; language?: "fr" | "en" }
+  opts?: { status?: string; language?: SupportedLanguage }
 ): Promise<{ items: RoiRequestRow[] }> {
   const q = opts?.status ? `?status=${encodeURIComponent(opts.status)}` : "";
   return roiFetch(`/roi-requests${q}`, {
@@ -94,7 +95,7 @@ export async function createRoiRequest(
     deliveryMethod?: string | null;
     authorizationReference?: string | null;
   },
-  language?: "fr" | "en"
+  language?: SupportedLanguage
 ): Promise<RoiRequestRow> {
   return roiFetch("/roi-requests", {
     method: "POST",
@@ -104,7 +105,7 @@ export async function createRoiRequest(
   }) as Promise<RoiRequestRow>;
 }
 
-export async function approveRoiRequest(facilityId: string, id: string, language?: "fr" | "en") {
+export async function approveRoiRequest(facilityId: string, id: string, language?: SupportedLanguage) {
   return roiFetch(`/roi-requests/${encodeURIComponent(id)}/approve`, {
     method: "PATCH",
     facilityId,
@@ -117,7 +118,7 @@ export async function denyRoiRequest(
   facilityId: string,
   id: string,
   denialReason: string | null,
-  language?: "fr" | "en"
+  language?: SupportedLanguage
 ) {
   return roiFetch(`/roi-requests/${encodeURIComponent(id)}/deny`, {
     method: "PATCH",
@@ -131,7 +132,7 @@ export async function cancelRoiRequest(
   facilityId: string,
   id: string,
   cancelledReason: string | null,
-  language?: "fr" | "en"
+  language?: SupportedLanguage
 ) {
   return roiFetch(`/roi-requests/${encodeURIComponent(id)}/cancel`, {
     method: "PATCH",
@@ -145,7 +146,7 @@ export async function fulfillRoiRequest(
   facilityId: string,
   id: string,
   body: { snapshotId?: string | null; createSnapshotIfMissing?: boolean },
-  language?: "fr" | "en"
+  language?: SupportedLanguage
 ): Promise<{ request: RoiRequestRow; snapshotId: string; encounterId: string }> {
   return roiFetch(`/roi-requests/${encodeURIComponent(id)}/fulfill`, {
     method: "PATCH",
@@ -157,7 +158,7 @@ export async function fulfillRoiRequest(
 
 export async function fetchRoiMonitoringSummary(
   facilityId: string,
-  language: SupportedLanguage = "fr"
+  language: SupportedLanguage = "en"
 ): Promise<{
   byStatus: { status: string; count: number }[];
   byFacility: { facilityId: string; status: string; count: number }[];
@@ -173,7 +174,7 @@ export async function fetchRoiMonitoringSummary(
   });
   if (!response.ok) {
     const txt = await response.text().catch(() => "");
-    let message = ROI_REQUEST_FAILED[language](response.status);
+    let message = pickProductUiCopy(language, ROI_REQUEST_FAILED, ROI_REQUEST_FAILED.es)(response.status);
     try {
       if (txt.trim()) {
         const json = JSON.parse(txt);

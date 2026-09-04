@@ -36,7 +36,7 @@ function buildQuery(filters: BillingGovernanceSummaryFilters): string {
 export async function fetchBillingGovernanceSummary(
   facilityId: string,
   filters: BillingGovernanceSummaryFilters = {},
-  language: "fr" | "en" = "fr",
+  language: string = "fr",
 ): Promise<BillingGovernanceSummaryPayload> {
   const headers: Record<string, string> = { "x-facility-id": facilityId };
   const response = await fetch(`${ADMIN_API_BASE}/billing-governance/summary${buildQuery(filters)}`, {

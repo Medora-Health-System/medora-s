@@ -31,7 +31,7 @@ export function formatClinicalRecordAttributionPart(
   labelKey: AttributionLabelKey,
   attr: ClinicalRecordAttribution | null | undefined,
   t: (key: string) => string,
-  language: SupportedLanguage
+  language: string
 ): string | null {
   if (isClinicalRecordAttributionEmpty(attr)) return null;
   const label = t(ATTRIBUTION_I18N[labelKey]);

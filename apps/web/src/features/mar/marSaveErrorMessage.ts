@@ -1,4 +1,4 @@
-import type { SupportedLanguage } from "@/i18n/config";
+import { pickProductUiCopy, type SupportedLanguage } from "@/i18n/config";
 import { extractApiErrorMeta } from "@/lib/apiClient";
 import { normalizeUserFacingError } from "@/lib/userFacingError";
 import { resolveMedicationInfusionErrorMessage } from "@/features/mar/marInfusionErrorMessage";
@@ -7,6 +7,11 @@ import { resolveMarSafetyGovernanceErrorMessage } from "@/features/mar/marSafety
 
 const GENERIC_EN = "Something went wrong.";
 const GENERIC_FR = "Une erreur est survenue.";
+const GENERIC_ES = "Ocurrió un error.";
+
+function genericCopy(language: string): string {
+  return pickProductUiCopy(language, { en: GENERIC_EN, fr: GENERIC_FR, es: GENERIC_ES }, GENERIC_ES);
+}
 
 function looksLikeFrenchUserFacingMessage(message: string): boolean {
   return /^(aucune|impossible|ligne|veuillez|horodatage|la perfusion|perfusion|un motif|une |le motif|l'heure|l'ajustement|seules les)/i.test(
@@ -40,7 +45,7 @@ export function extractMarSaveErrorMessage(
       const normalized = normalizeUserFacingError(extracted.message, language);
       if (
         normalized &&
-        normalized !== (language === "en" ? GENERIC_EN : GENERIC_FR) &&
+        normalized !== genericCopy(language) &&
         !(language === "en" && looksLikeFrenchUserFacingMessage(normalized))
       ) {
         return normalized;
@@ -67,7 +72,7 @@ export function extractMarSaveErrorMessage(
   const normalized = normalizeUserFacingError(stripped || null, language);
   if (
     normalized &&
-    normalized !== (language === "en" ? GENERIC_EN : GENERIC_FR) &&
+    normalized !== genericCopy(language) &&
     !(language === "en" && looksLikeFrenchUserFacingMessage(normalized))
   ) {
     return normalized;

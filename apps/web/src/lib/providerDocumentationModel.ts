@@ -1,5 +1,5 @@
 /** AMBULATORY reuses INITIAL_PROVIDER_NOTE durability (no parallel Clinic note engine). */
-import { omitEmptyAmbulatoryHiddenMdmFields } from "@medora/shared";
+import { omitEmptyAmbulatoryHiddenMdmFields, pickProductUiCopy } from "@medora/shared";
 
 export type ProviderDocumentationEncounterMode = "ED" | "OBSERVATION" | "AMBULATORY";
 
@@ -1249,7 +1249,7 @@ export type ProviderDocumentationPreviewSection = {
   lines: string[];
 };
 
-export type ProviderDocumentationDisplayLocale = "en" | "fr";
+export type ProviderDocumentationDisplayLocale = string;
 
 export type ProviderDocumentationDisplaySection = {
   id: ProviderDocumentationPreviewSection["id"];
@@ -1266,20 +1266,19 @@ export type ProviderDocumentationDisplayModel = {
   sections: ProviderDocumentationDisplaySection[];
 };
 
-const PROVIDER_DOCUMENTATION_DISPLAY_LABELS: Record<
-  ProviderDocumentationDisplayLocale,
-  {
-    titleEd: string;
-    titleObservation: string;
-    titleAmbulatory: string;
-    hpi: string;
-    ros: string;
-    physicalExam: string;
-    mdm: string;
-    impression: string;
-    plan: string;
-  }
-> = {
+type ProviderDocumentationDisplayLabels = {
+  titleEd: string;
+  titleObservation: string;
+  titleAmbulatory: string;
+  hpi: string;
+  ros: string;
+  physicalExam: string;
+  mdm: string;
+  impression: string;
+  plan: string;
+};
+
+const PROVIDER_DOCUMENTATION_DISPLAY_LABELS = {
   en: {
     titleEd: "ED provider documentation",
     titleObservation: "Observation provider progress note",
@@ -1302,7 +1301,26 @@ const PROVIDER_DOCUMENTATION_DISPLAY_LABELS: Record<
     impression: "Impression",
     plan: "Plan",
   },
-};
+  es: {
+    titleEd: "Documentación del médico (urgencias)",
+    titleObservation: "Documentación del profesional clínico (Observación)",
+    titleAmbulatory: "Documentación del profesional clínico (Ambulatorio)",
+    hpi: "HPI",
+    ros: "ROS",
+    physicalExam: "Examen físico",
+    mdm: "MDM",
+    impression: "Impresión",
+    plan: "Plan",
+  },
+} as const satisfies Record<"en" | "fr" | "es", ProviderDocumentationDisplayLabels>;
+
+function providerDocumentationDisplayLabels(locale: string): ProviderDocumentationDisplayLabels {
+  return pickProductUiCopy(
+    locale,
+    PROVIDER_DOCUMENTATION_DISPLAY_LABELS,
+    PROVIDER_DOCUMENTATION_DISPLAY_LABELS.es
+  );
+}
 
 export function buildProviderDocumentationPreviewSections(
   state: ProviderDocumentationWorkspaceState
@@ -1361,7 +1379,7 @@ function providerDocumentationDisplayTitle(
   encounterMode: ProviderDocumentationEncounterMode,
   locale: ProviderDocumentationDisplayLocale
 ): string {
-  const labels = PROVIDER_DOCUMENTATION_DISPLAY_LABELS[locale];
+  const labels = providerDocumentationDisplayLabels(locale);
   if (encounterMode === "AMBULATORY") return labels.titleAmbulatory;
   if (encounterMode === "OBSERVATION") return labels.titleObservation;
   return labels.titleEd;
@@ -1414,7 +1432,7 @@ export function buildProviderDocumentationDisplayModel(input: {
     encounter: { nursingAssessment: input.nursingAssessment },
   });
   const preview = buildProviderDocumentationPreviewSections(state);
-  const labels = PROVIDER_DOCUMENTATION_DISPLAY_LABELS[input.locale];
+  const labels = providerDocumentationDisplayLabels(input.locale);
   const labelById: Record<ProviderDocumentationPreviewSection["id"], string> = {
     hpi: labels.hpi,
     ros: labels.ros,

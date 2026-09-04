@@ -18,6 +18,7 @@ import {
   resolveNursingAssessmentPrimary,
   resolveProviderAssessmentPrimary,
 } from "./encounterClinicalRecordDedupe.js";
+import { pickProductUiCopy } from "../i18n/productUiLocale.js";
 import type {
   BuildEncounterClinicalRecordInput,
   EncounterClinicalRecord,
@@ -467,20 +468,20 @@ function defaultMilestoneSummary(
 ): string {
   const labels: Record<
     EncounterClinicalRecordClinicalTimelineEntry["milestone"],
-    { en: string; fr: string }
+    { en: string; fr: string; es: string }
   > = {
-    ARRIVAL: { en: "Arrival", fr: "Arrivée" },
-    TRIAGE_COMPLETE: { en: "Triage complete", fr: "Triage terminé" },
-    PROVIDER_ASSESSMENT_SIGNED: { en: "Provider assessment signed", fr: "Évaluation médicale signée" },
-    LABORATORY_COLLECTED: { en: "Laboratory collected", fr: "Prélèvement laboratoire" },
-    LABORATORY_RESULTED: { en: "Laboratory resulted", fr: "Résultat laboratoire" },
-    IMAGING_RESULTED: { en: "Imaging resulted", fr: "Résultat imagerie" },
-    MEDICATION_ADMINISTERED: { en: "Medication administered", fr: "Médicament administré" },
-    PROCEDURE_COMPLETED: { en: "Procedure completed", fr: "Procédure réalisée" },
-    DISPOSITION: { en: "Disposition documented", fr: "Disposition documentée" },
-    DISCHARGED: { en: "Encounter closed", fr: "Consultation clôturée" },
+    ARRIVAL: { en: "Arrival", fr: "Arrivée", es: "Llegada" },
+    TRIAGE_COMPLETE: { en: "Triage complete", fr: "Triage terminé", es: "Triage completado" },
+    PROVIDER_ASSESSMENT_SIGNED: { en: "Provider assessment signed", fr: "Évaluation médicale signée", es: "Evaluación médica firmada" },
+    LABORATORY_COLLECTED: { en: "Laboratory collected", fr: "Prélèvement laboratoire", es: "Muestra de laboratorio obtenida" },
+    LABORATORY_RESULTED: { en: "Laboratory resulted", fr: "Résultat laboratoire", es: "Resultado de laboratorio" },
+    IMAGING_RESULTED: { en: "Imaging resulted", fr: "Résultat imagerie", es: "Resultado de imagen" },
+    MEDICATION_ADMINISTERED: { en: "Medication administered", fr: "Médicament administré", es: "Medicamento administrado" },
+    PROCEDURE_COMPLETED: { en: "Procedure completed", fr: "Procédure réalisée", es: "Procedimiento realizado" },
+    DISPOSITION: { en: "Disposition documented", fr: "Disposition documentée", es: "Disposición documentada" },
+    DISCHARGED: { en: "Encounter closed", fr: "Consultation clôturée", es: "Encuentro cerrado" },
   };
-  return labels[milestone][locale];
+  return pickProductUiCopy(locale, labels[milestone], labels[milestone].es);
 }
 
 function buildClinicalTimeline(input: BuildEncounterClinicalRecordInput): EncounterClinicalRecordClinicalTimelineEntry[] {

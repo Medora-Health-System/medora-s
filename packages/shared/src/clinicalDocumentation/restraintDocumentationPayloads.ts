@@ -1,7 +1,9 @@
 import { z } from "zod";
 import {
+  clinicalDocSummaryKey,
   clinicalDocYesNo,
   pickLocalizedEnumLabel,
+  pickBilingualDisplayMap,
   type ClinicalDocumentationSummaryLocale,
 } from "./clinicalDocumentationSummaryLocale.js";
 
@@ -247,7 +249,7 @@ function formatAlternatives(
     MEDICATION: "Médication",
     OTHER: "Autre",
   };
-  const map = locale === "en" ? mapEn : mapFr;
+  const map = pickBilingualDisplayMap(locale, mapEn, mapFr);
   return values.map((v) => map[v] ?? v).join(", ");
 }
 
@@ -262,23 +264,23 @@ export function summarizeRestraintDocumentationPayload(
       if (!p.success) return [];
       return [
         {
-          key: locale === "en" ? "Type" : "Type",
+          key: clinicalDocSummaryKey(locale, "Type", "Type"),
           value: pickLocalizedEnumLabel(RESTRAINT_TYPE_EN, RESTRAINT_TYPE_FR, p.data.restraintType, locale),
         },
         {
-          key: locale === "en" ? "Reason" : "Motif",
+          key: clinicalDocSummaryKey(locale, "Reason", "Motif"),
           value: pickLocalizedEnumLabel(REASON_EN, REASON_FR, p.data.reasonForRestraint, locale),
         },
         {
-          key: locale === "en" ? "Alternatives attempted" : "Alternatives tentées",
+          key: clinicalDocSummaryKey(locale, "Alternatives attempted", "Alternatives tentées"),
           value: formatAlternatives(p.data.alternativesAttempted, locale),
         },
         {
-          key: locale === "en" ? "Continued need" : "Besoin continu",
+          key: clinicalDocSummaryKey(locale, "Continued need", "Besoin continu"),
           value: clinicalDocYesNo(p.data.continuedNeed, locale),
         },
         {
-          key: locale === "en" ? "Circulation" : "Circulation",
+          key: clinicalDocSummaryKey(locale, "Circulation", "Circulation"),
           value: pickLocalizedEnumLabel(
             NORMAL_ABNORMAL_EN,
             NORMAL_ABNORMAL_FR,
@@ -287,14 +289,14 @@ export function summarizeRestraintDocumentationPayload(
           ),
         },
         {
-          key: locale === "en" ? "Physician order verified" : "Ordre médecin vérifié",
+          key: clinicalDocSummaryKey(locale, "Physician order verified", "Ordre médecin vérifié"),
           value: clinicalDocYesNo(p.data.physicianOrderVerified, locale),
         },
         {
-          key: locale === "en" ? "Ordering provider" : "Médecin prescripteur",
+          key: clinicalDocSummaryKey(locale, "Ordering provider", "Médecin prescripteur"),
           value: p.data.orderingProviderId,
         },
-        { key: locale === "en" ? "Assessed at" : "Évalué le", value: p.data.assessmentTime },
+        { key: clinicalDocSummaryKey(locale, "Assessed at", "Évalué le"), value: p.data.assessmentTime },
       ];
     }
     case RESTRAINT_FACE_TO_FACE_CARD_ID: {
@@ -302,23 +304,23 @@ export function summarizeRestraintDocumentationPayload(
       if (!p.success) return [];
       return [
         {
-          key: locale === "en" ? "Face-to-face evaluation" : "Évaluation face-à-face",
+          key: clinicalDocSummaryKey(locale, "Face-to-face evaluation", "Évaluation face-à-face"),
           value: p.data.evaluationTime,
         },
         {
-          key: locale === "en" ? "Danger to self" : "Danger pour soi",
+          key: clinicalDocSummaryKey(locale, "Danger to self", "Danger pour soi"),
           value: clinicalDocYesNo(p.data.dangerToSelf, locale),
         },
         {
-          key: locale === "en" ? "Danger to others" : "Danger pour autrui",
+          key: clinicalDocSummaryKey(locale, "Danger to others", "Danger pour autrui"),
           value: clinicalDocYesNo(p.data.dangerToOthers, locale),
         },
         {
-          key: locale === "en" ? "Continued need" : "Besoin continu",
+          key: clinicalDocSummaryKey(locale, "Continued need", "Besoin continu"),
           value: clinicalDocYesNo(p.data.continuedNeedForRestraint, locale),
         },
         {
-          key: locale === "en" ? "Evaluator" : "Évaluateur",
+          key: clinicalDocSummaryKey(locale, "Evaluator", "Évaluateur"),
           value: p.data.providerEvaluatorId,
         },
       ];
@@ -327,13 +329,13 @@ export function summarizeRestraintDocumentationPayload(
       const p = restraintReassessmentPayloadSchema.safeParse(payload);
       if (!p.success) return [];
       return [
-        { key: locale === "en" ? "Reassessment" : "Réévaluation", value: p.data.assessmentTime },
+        { key: clinicalDocSummaryKey(locale, "Reassessment", "Réévaluation"), value: p.data.assessmentTime },
         {
-          key: locale === "en" ? "Airway" : "Voies aériennes",
+          key: clinicalDocSummaryKey(locale, "Airway", "Voies aériennes"),
           value: pickLocalizedEnumLabel(NORMAL_ABNORMAL_EN, NORMAL_ABNORMAL_FR, p.data.airway, locale),
         },
         {
-          key: locale === "en" ? "Circulation" : "Circulation",
+          key: clinicalDocSummaryKey(locale, "Circulation", "Circulation"),
           value: pickLocalizedEnumLabel(
             NORMAL_ABNORMAL_EN,
             NORMAL_ABNORMAL_FR,
@@ -342,7 +344,7 @@ export function summarizeRestraintDocumentationPayload(
           ),
         },
         {
-          key: locale === "en" ? "Skin integrity" : "Intégrité cutanée",
+          key: clinicalDocSummaryKey(locale, "Skin integrity", "Intégrité cutanée"),
           value: pickLocalizedEnumLabel(
             NORMAL_ABNORMAL_EN,
             NORMAL_ABNORMAL_FR,
@@ -351,7 +353,7 @@ export function summarizeRestraintDocumentationPayload(
           ),
         },
         {
-          key: locale === "en" ? "Continued need" : "Besoin continu",
+          key: clinicalDocSummaryKey(locale, "Continued need", "Besoin continu"),
           value: clinicalDocYesNo(p.data.continuedNeed, locale),
         },
       ];
@@ -360,13 +362,13 @@ export function summarizeRestraintDocumentationPayload(
       const p = restraintRenewalPayloadSchema.safeParse(payload);
       if (!p.success) return [];
       return [
-        { key: locale === "en" ? "Renewal" : "Renouvellement", value: p.data.renewalTime },
+        { key: clinicalDocSummaryKey(locale, "Renewal", "Renouvellement"), value: p.data.renewalTime },
         {
-          key: locale === "en" ? "Ordering provider" : "Médecin prescripteur",
+          key: clinicalDocSummaryKey(locale, "Ordering provider", "Médecin prescripteur"),
           value: p.data.orderingProviderId,
         },
         {
-          key: locale === "en" ? "Continued need" : "Besoin continu",
+          key: clinicalDocSummaryKey(locale, "Continued need", "Besoin continu"),
           value: clinicalDocYesNo(p.data.continuedNeed, locale),
         },
       ];
@@ -388,11 +390,11 @@ export function summarizeRestraintDocumentationPayload(
         MEDICAL_DEVICE_SECURE: "Dispositifs sécurisés",
         OTHER: "Autre",
       };
-      const criteriaMap = locale === "en" ? criteriaEn : criteriaFr;
+      const criteriaMap = pickBilingualDisplayMap(locale, criteriaEn, criteriaFr);
       return [
-        { key: locale === "en" ? "Discontinued" : "Arrêt", value: p.data.discontinuedTime },
+        { key: clinicalDocSummaryKey(locale, "Discontinued", "Arrêt"), value: p.data.discontinuedTime },
         {
-          key: locale === "en" ? "Criteria met" : "Critères",
+          key: clinicalDocSummaryKey(locale, "Criteria met", "Critères"),
           value: p.data.criteriaMet.map((c) => criteriaMap[c] ?? c).join(", "),
         },
       ];

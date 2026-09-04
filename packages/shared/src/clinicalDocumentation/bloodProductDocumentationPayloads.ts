@@ -1,7 +1,10 @@
 import { z } from "zod";
 import {
+  clinicalDocSummaryKey,
+  clinicalDocVerificationStatus,
   clinicalDocYesNo,
   pickLocalizedEnumLabel,
+  pickBilingualDisplayMap,
   type ClinicalDocumentationSummaryLocale,
 } from "./clinicalDocumentationSummaryLocale.js";
 
@@ -538,7 +541,7 @@ function formatSymptomList(
   fr: Record<string, string>,
   locale: ClinicalDocumentationSummaryLocale
 ): string {
-  const map = locale === "en" ? en : fr;
+  const map = pickBilingualDisplayMap(locale, en, fr);
   return values.map((v) => map[v] ?? v).join(", ");
 }
 
@@ -582,7 +585,7 @@ export function appendBloodProductPatientSummaryLines(
     typeof payload.productType === "string" ? payload.productType : undefined;
   if (productTypeRaw) {
     const productLine = {
-      key: locale === "en" ? "Blood product type" : "Type produit sanguin",
+      key: clinicalDocSummaryKey(locale, "Blood product type", "Type produit sanguin"),
       value: pickLocalizedEnumLabel(
         PRODUCT_TYPE_EN,
         PRODUCT_TYPE_FR,
@@ -602,25 +605,25 @@ export function appendBloodProductPatientSummaryLines(
         : undefined;
   if (volumeMl != null) {
     lines.push({
-      key: locale === "en" ? "Volume (mL)" : "Volume (mL)",
+      key: clinicalDocSummaryKey(locale, "Volume (mL)", "Volume (mL)"),
       value: String(volumeMl),
     });
   }
   if (context?.witnessDisplayName && context.witnessStatus === "WITNESSED") {
     lines.push({
-      key: locale === "en" ? "Witness" : "Témoin",
+      key: clinicalDocSummaryKey(locale, "Witness", "Témoin"),
       value: context.witnessDisplayName,
     });
   } else if (context?.witnessStatus === "PENDING_WITNESS") {
     lines.push({
-      key: locale === "en" ? "Witness" : "Témoin",
-      value: locale === "en" ? "Pending" : "En attente",
+      key: clinicalDocSummaryKey(locale, "Witness", "Témoin"),
+      value: clinicalDocSummaryKey(locale, "Pending", "En attente"),
     });
   }
   const reactionParsed = bloodProductReactionPayloadSchema.safeParse(payload);
   if (reactionParsed.success) {
     lines.push({
-      key: locale === "en" ? "Reaction outcome" : "Issue réaction",
+      key: clinicalDocSummaryKey(locale, "Reaction outcome", "Issue réaction"),
       value: pickLocalizedEnumLabel(
         REACTION_TYPE_EN,
         REACTION_TYPE_FR,
@@ -632,7 +635,7 @@ export function appendBloodProductPatientSummaryLines(
     const completionParsed = bloodProductCompletionPayloadSchema.safeParse(payload);
     if (completionParsed.success) {
       lines.push({
-        key: locale === "en" ? "Reaction outcome" : "Issue réaction",
+        key: clinicalDocSummaryKey(locale, "Reaction outcome", "Issue réaction"),
         value: clinicalDocYesNo(completionParsed.data.reactionObserved, locale),
       });
     }
@@ -652,13 +655,13 @@ export function formatClinicalDocumentationSignerSummaryLines(
 ): Array<{ key: string; value: string }> {
   const lines: Array<{ key: string; value: string }> = [
     {
-      key: locale === "en" ? "Primary signer" : "Signataire principal",
+      key: clinicalDocSummaryKey(locale, "Primary signer", "Signataire principal"),
       value: `${input.authorDisplayName} (${input.authorRoleTitle})`,
     },
   ];
   if (input.witnessedAt && input.witnessDisplayName) {
     lines.push({
-      key: locale === "en" ? "Witness signer" : "Signataire témoin",
+      key: clinicalDocSummaryKey(locale, "Witness signer", "Signataire témoin"),
       value: `${input.witnessDisplayName} (${input.witnessRoleTitle ?? "—"})`,
     });
   }
@@ -676,7 +679,7 @@ export function summarizeBloodProductDocumentationPayload(
       if (!p.success) return [];
       return [
         {
-          key: locale === "en" ? "Product" : "Produit",
+          key: clinicalDocSummaryKey(locale, "Product", "Produit"),
           value: pickLocalizedEnumLabel(
             PRODUCT_TYPE_EN,
             PRODUCT_TYPE_FR,
@@ -685,35 +688,35 @@ export function summarizeBloodProductDocumentationPayload(
           ),
         },
         {
-          key: locale === "en" ? "Unit ID" : "N° unité",
+          key: clinicalDocSummaryKey(locale, "Unit ID", "N° unité"),
           value: p.data.unitIdentifier,
         },
         {
-          key: locale === "en" ? "Unit volume (mL)" : "Volume unité (mL)",
+          key: clinicalDocSummaryKey(locale, "Unit volume (mL)", "Volume unité (mL)"),
           value: String(p.data.unitVolumeMl),
         },
         {
-          key: locale === "en" ? "Patient identity" : "Identité patient",
+          key: clinicalDocSummaryKey(locale, "Patient identity", "Identité patient"),
           value: clinicalDocYesNo(p.data.patientIdentityVerified, locale),
         },
         {
-          key: locale === "en" ? "Blood type" : "Groupe sanguin",
+          key: clinicalDocSummaryKey(locale, "Blood type", "Groupe sanguin"),
           value: clinicalDocYesNo(p.data.bloodTypeVerified, locale),
         },
         {
-          key: locale === "en" ? "Crossmatch" : "Compatibilité",
+          key: clinicalDocSummaryKey(locale, "Crossmatch", "Compatibilité"),
           value: clinicalDocYesNo(p.data.crossmatchVerified, locale),
         },
         {
-          key: locale === "en" ? "Expiration" : "Expiration",
+          key: clinicalDocSummaryKey(locale, "Expiration", "Expiration"),
           value: clinicalDocYesNo(p.data.expirationVerified, locale),
         },
         {
-          key: locale === "en" ? "Consent" : "Consentement",
+          key: clinicalDocSummaryKey(locale, "Consent", "Consentement"),
           value: clinicalDocYesNo(p.data.consentVerified, locale),
         },
         {
-          key: locale === "en" ? "Special requirements" : "Exigences spéciales",
+          key: clinicalDocSummaryKey(locale, "Special requirements", "Exigences spéciales"),
           value: pickLocalizedEnumLabel(
             SPECIAL_REQ_EN,
             SPECIAL_REQ_FR,
@@ -722,19 +725,8 @@ export function summarizeBloodProductDocumentationPayload(
           ),
         },
         {
-          key: locale === "en" ? "Verification status" : "Statut vérification",
-          value:
-            p.data.verificationStatus === "VERIFIED"
-              ? locale === "en"
-                ? "Verified"
-                : "Vérifié"
-              : p.data.verificationStatus === "DRAFT"
-                ? locale === "en"
-                  ? "Draft"
-                  : "Brouillon"
-                : locale === "en"
-                  ? "Pending witness"
-                  : "Témoin en attente",
+          key: clinicalDocSummaryKey(locale, "Verification status", "Statut vérification"),
+          value: clinicalDocVerificationStatus(locale, p.data.verificationStatus),
         },
       ];
     }
@@ -743,7 +735,7 @@ export function summarizeBloodProductDocumentationPayload(
       if (!p.success) return [];
       return [
         {
-          key: locale === "en" ? "Product" : "Produit",
+          key: clinicalDocSummaryKey(locale, "Product", "Produit"),
           value: pickLocalizedEnumLabel(
             PRODUCT_TYPE_EN,
             PRODUCT_TYPE_FR,
@@ -751,36 +743,25 @@ export function summarizeBloodProductDocumentationPayload(
             locale
           ),
         },
-        { key: locale === "en" ? "Unit ID" : "N° unité", value: p.data.unitIdentifier },
+        { key: clinicalDocSummaryKey(locale, "Unit ID", "N° unité"), value: p.data.unitIdentifier },
         {
-          key: locale === "en" ? "Unit volume (mL)" : "Volume unité (mL)",
+          key: clinicalDocSummaryKey(locale, "Unit volume (mL)", "Volume unité (mL)"),
           value: String(p.data.unitVolumeMl),
         },
         {
-          key: locale === "en" ? "Start time" : "Heure début",
+          key: clinicalDocSummaryKey(locale, "Start time", "Heure début"),
           value: p.data.startTime,
         },
         {
-          key: locale === "en" ? "Initiation status" : "Statut initiation",
-          value:
-            p.data.initiationStatus === "VERIFIED"
-              ? locale === "en"
-                ? "Verified"
-                : "Vérifié"
-              : p.data.initiationStatus === "DRAFT"
-                ? locale === "en"
-                  ? "Draft"
-                  : "Brouillon"
-                : locale === "en"
-                  ? "Pending witness"
-                  : "Témoin en attente",
+          key: clinicalDocSummaryKey(locale, "Initiation status", "Statut initiation"),
+          value: clinicalDocVerificationStatus(locale, p.data.initiationStatus),
         },
         {
-          key: locale === "en" ? "Administration started" : "Administration démarrée",
+          key: clinicalDocSummaryKey(locale, "Administration started", "Administration démarrée"),
           value: clinicalDocYesNo(p.data.administrationStarted, locale),
         },
         {
-          key: locale === "en" ? "Provider order verified" : "Ordre vérifié",
+          key: clinicalDocSummaryKey(locale, "Provider order verified", "Ordre vérifié"),
           value: clinicalDocYesNo(p.data.providerOrderVerified, locale),
         },
       ];
@@ -790,11 +771,11 @@ export function summarizeBloodProductDocumentationPayload(
       if (!p.success) return [];
       const lines: Array<{ key: string; value: string }> = [
         {
-          key: locale === "en" ? "Assessment time" : "Heure évaluation",
+          key: clinicalDocSummaryKey(locale, "Assessment time", "Heure évaluation"),
           value: p.data.assessmentTime,
         },
         {
-          key: locale === "en" ? "Product" : "Produit",
+          key: clinicalDocSummaryKey(locale, "Product", "Produit"),
           value: pickLocalizedEnumLabel(
             PRODUCT_TYPE_EN,
             PRODUCT_TYPE_FR,
@@ -802,47 +783,47 @@ export function summarizeBloodProductDocumentationPayload(
             locale
           ),
         },
-        { key: locale === "en" ? "Unit ID" : "N° unité", value: p.data.unitIdentifier },
+        { key: clinicalDocSummaryKey(locale, "Unit ID", "N° unité"), value: p.data.unitIdentifier },
         {
-          key: locale === "en" ? "Unit volume (mL)" : "Volume unité (mL)",
+          key: clinicalDocSummaryKey(locale, "Unit volume (mL)", "Volume unité (mL)"),
           value: String(p.data.unitVolumeMl),
         },
         {
-          key: locale === "en" ? "Baseline temperature" : "Température initiale",
+          key: clinicalDocSummaryKey(locale, "Baseline temperature", "Température initiale"),
           value: p.data.baselineTemperature,
         },
         {
-          key: locale === "en" ? "Heart rate" : "Fréquence cardiaque",
+          key: clinicalDocSummaryKey(locale, "Heart rate", "Fréquence cardiaque"),
           value: String(p.data.baselineHeartRate),
         },
         {
-          key: locale === "en" ? "Respiratory rate" : "Fréquence respiratoire",
+          key: clinicalDocSummaryKey(locale, "Respiratory rate", "Fréquence respiratoire"),
           value: String(p.data.baselineRespRate),
         },
         {
-          key: locale === "en" ? "Blood pressure" : "Tension artérielle",
+          key: clinicalDocSummaryKey(locale, "Blood pressure", "Tension artérielle"),
           value: p.data.baselineBloodPressure,
         },
         {
-          key: locale === "en" ? "SpO₂" : "SpO₂",
+          key: clinicalDocSummaryKey(locale, "SpO₂", "SpO₂"),
           value: String(p.data.baselineSpo2),
         },
         {
-          key: locale === "en" ? "Patient identity" : "Identité patient",
+          key: clinicalDocSummaryKey(locale, "Patient identity", "Identité patient"),
           value: clinicalDocYesNo(p.data.patientIdentityVerified, locale),
         },
         {
-          key: locale === "en" ? "Consent" : "Consentement",
+          key: clinicalDocSummaryKey(locale, "Consent", "Consentement"),
           value: clinicalDocYesNo(p.data.consentVerified, locale),
         },
         {
-          key: locale === "en" ? "Symptoms present" : "Symptômes",
+          key: clinicalDocSummaryKey(locale, "Symptoms present", "Symptômes"),
           value: clinicalDocYesNo(p.data.symptomsPresent, locale),
         },
       ];
       if (p.data.symptomChecklist.length > 0) {
         lines.push({
-          key: locale === "en" ? "Symptoms" : "Signes",
+          key: clinicalDocSummaryKey(locale, "Symptoms", "Signes"),
           value: formatSymptomList(
             p.data.symptomChecklist,
             REASSESS_SYMPTOM_EN,
@@ -858,45 +839,45 @@ export function summarizeBloodProductDocumentationPayload(
       if (!p.success) return [];
       const lines: Array<{ key: string; value: string }> = [
         {
-          key: locale === "en" ? "Assessment time" : "Heure évaluation",
+          key: clinicalDocSummaryKey(locale, "Assessment time", "Heure évaluation"),
           value: p.data.assessmentTime,
         },
         {
-          key: locale === "en" ? "Temperature" : "Température",
+          key: clinicalDocSummaryKey(locale, "Temperature", "Température"),
           value: p.data.temperature,
         },
         {
-          key: locale === "en" ? "Heart rate" : "Fréquence cardiaque",
+          key: clinicalDocSummaryKey(locale, "Heart rate", "Fréquence cardiaque"),
           value: String(p.data.heartRate),
         },
         {
-          key: locale === "en" ? "Respiratory rate" : "Fréquence respiratoire",
+          key: clinicalDocSummaryKey(locale, "Respiratory rate", "Fréquence respiratoire"),
           value: String(p.data.respRate),
         },
         {
-          key: locale === "en" ? "Blood pressure" : "Tension artérielle",
+          key: clinicalDocSummaryKey(locale, "Blood pressure", "Tension artérielle"),
           value: p.data.bloodPressure,
         },
         {
-          key: locale === "en" ? "SpO₂" : "SpO₂",
+          key: clinicalDocSummaryKey(locale, "SpO₂", "SpO₂"),
           value: String(p.data.spo2),
         },
         {
-          key: locale === "en" ? "Symptoms present" : "Symptômes",
+          key: clinicalDocSummaryKey(locale, "Symptoms present", "Symptômes"),
           value: clinicalDocYesNo(p.data.symptomsPresent, locale),
         },
         {
-          key: locale === "en" ? "Continued administration" : "Administration poursuivie",
+          key: clinicalDocSummaryKey(locale, "Continued administration", "Administration poursuivie"),
           value: clinicalDocYesNo(p.data.continuedAdministration, locale),
         },
         {
-          key: locale === "en" ? "Provider notified" : "Médecin avisé",
+          key: clinicalDocSummaryKey(locale, "Provider notified", "Médecin avisé"),
           value: clinicalDocYesNo(p.data.providerNotified, locale),
         },
       ];
       if (p.data.symptomChecklist.length > 0) {
         lines.push({
-          key: locale === "en" ? "Symptoms" : "Signes",
+          key: clinicalDocSummaryKey(locale, "Symptoms", "Signes"),
           value: formatSymptomList(
             p.data.symptomChecklist,
             REASSESS_SYMPTOM_EN,
@@ -912,7 +893,7 @@ export function summarizeBloodProductDocumentationPayload(
       if (!p.success) return [];
       return [
         {
-          key: locale === "en" ? "Reaction type" : "Type réaction",
+          key: clinicalDocSummaryKey(locale, "Reaction type", "Type réaction"),
           value: pickLocalizedEnumLabel(
             REACTION_TYPE_EN,
             REACTION_TYPE_FR,
@@ -921,11 +902,11 @@ export function summarizeBloodProductDocumentationPayload(
           ),
         },
         {
-          key: locale === "en" ? "Reaction status" : "Statut réaction",
-          value: locale === "en" ? "Documented" : "Documentée",
+          key: clinicalDocSummaryKey(locale, "Reaction status", "Statut réaction"),
+          value: clinicalDocSummaryKey(locale, "Documented", "Documentée"),
         },
         {
-          key: locale === "en" ? "Symptoms" : "Symptômes",
+          key: clinicalDocSummaryKey(locale, "Symptoms", "Symptômes"),
           value: formatSymptomList(
             p.data.symptoms,
             REACTION_SYMPTOM_EN,
@@ -934,19 +915,19 @@ export function summarizeBloodProductDocumentationPayload(
           ),
         },
         {
-          key: locale === "en" ? "Provider notified" : "Médecin avisé",
+          key: clinicalDocSummaryKey(locale, "Provider notified", "Médecin avisé"),
           value: clinicalDocYesNo(p.data.providerNotified, locale),
         },
         {
-          key: locale === "en" ? "Intervention required" : "Intervention requise",
+          key: clinicalDocSummaryKey(locale, "Intervention required", "Intervention requise"),
           value: clinicalDocYesNo(p.data.interventionRequired, locale),
         },
         {
-          key: locale === "en" ? "Transfusion stopped" : "Transfusion arrêtée",
+          key: clinicalDocSummaryKey(locale, "Transfusion stopped", "Transfusion arrêtée"),
           value: clinicalDocYesNo(p.data.transfusionStopped, locale),
         },
         {
-          key: locale === "en" ? "Blood bank notified" : "Banque du sang avisée",
+          key: clinicalDocSummaryKey(locale, "Blood bank notified", "Banque du sang avisée"),
           value: clinicalDocYesNo(p.data.bloodBankNotified, locale),
         },
       ];
@@ -956,7 +937,7 @@ export function summarizeBloodProductDocumentationPayload(
       if (!p.success) return [];
       return [
         {
-          key: locale === "en" ? "Product" : "Produit",
+          key: clinicalDocSummaryKey(locale, "Product", "Produit"),
           value: pickLocalizedEnumLabel(
             PRODUCT_TYPE_EN,
             PRODUCT_TYPE_FR,
@@ -964,45 +945,45 @@ export function summarizeBloodProductDocumentationPayload(
             locale
           ),
         },
-        { key: locale === "en" ? "Unit ID" : "N° unité", value: p.data.unitIdentifier },
+        { key: clinicalDocSummaryKey(locale, "Unit ID", "N° unité"), value: p.data.unitIdentifier },
         {
-          key: locale === "en" ? "Completion time" : "Heure fin transfusion",
+          key: clinicalDocSummaryKey(locale, "Completion time", "Heure fin transfusion"),
           value: p.data.completionTime,
         },
         {
-          key: locale === "en" ? "End time" : "Heure fin",
+          key: clinicalDocSummaryKey(locale, "End time", "Heure fin"),
           value: p.data.endTime,
         },
         {
-          key: locale === "en" ? "Volume infused (mL)" : "Volume perfusé (mL)",
+          key: clinicalDocSummaryKey(locale, "Volume infused (mL)", "Volume perfusé (mL)"),
           value: String(p.data.volumeInfusedMl),
         },
         {
-          key: locale === "en" ? "Post temperature" : "Température post",
+          key: clinicalDocSummaryKey(locale, "Post temperature", "Température post"),
           value: p.data.postTemperature,
         },
         {
-          key: locale === "en" ? "Post heart rate" : "Fréquence cardiaque post",
+          key: clinicalDocSummaryKey(locale, "Post heart rate", "Fréquence cardiaque post"),
           value: String(p.data.postHeartRate),
         },
         {
-          key: locale === "en" ? "Post blood pressure" : "Tension post",
+          key: clinicalDocSummaryKey(locale, "Post blood pressure", "Tension post"),
           value: p.data.postBloodPressure,
         },
         {
-          key: locale === "en" ? "Post SpO₂" : "SpO₂ post",
+          key: clinicalDocSummaryKey(locale, "Post SpO₂", "SpO₂ post"),
           value: String(p.data.postSpo2),
         },
         {
-          key: locale === "en" ? "Reaction observed" : "Réaction observée",
+          key: clinicalDocSummaryKey(locale, "Reaction observed", "Réaction observée"),
           value: clinicalDocYesNo(p.data.reactionObserved, locale),
         },
         {
-          key: locale === "en" ? "Transfusion completed" : "Transfusion terminée",
+          key: clinicalDocSummaryKey(locale, "Transfusion completed", "Transfusion terminée"),
           value: clinicalDocYesNo(p.data.transfusionCompleted, locale),
         },
         {
-          key: locale === "en" ? "Provider notified" : "Médecin avisé",
+          key: clinicalDocSummaryKey(locale, "Provider notified", "Médecin avisé"),
           value: clinicalDocYesNo(p.data.providerNotified, locale),
         },
       ];
@@ -1012,19 +993,19 @@ export function summarizeBloodProductDocumentationPayload(
       if (!p.success) return [];
       return [
         {
-          key: locale === "en" ? "MTP status" : "Statut PTM",
+          key: clinicalDocSummaryKey(locale, "MTP status", "Statut PTM"),
           value: pickLocalizedEnumLabel(MTP_EVENT_EN, MTP_EVENT_FR, p.data.eventType, locale),
         },
         {
-          key: locale === "en" ? "Event time" : "Heure événement",
+          key: clinicalDocSummaryKey(locale, "Event time", "Heure événement"),
           value: p.data.eventTime,
         },
         {
-          key: locale === "en" ? "Initiated by" : "Initié par",
+          key: clinicalDocSummaryKey(locale, "Initiated by", "Initié par"),
           value: p.data.initiatedBy,
         },
         {
-          key: locale === "en" ? "Reason" : "Motif",
+          key: clinicalDocSummaryKey(locale, "Reason", "Motif"),
           value: p.data.reason,
         },
       ];

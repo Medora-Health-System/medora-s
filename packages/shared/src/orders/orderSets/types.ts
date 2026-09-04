@@ -2,6 +2,8 @@
  * MEDUI.ORDERSETS.ENTERPRISE_PHASE_4 — shared order-set types and item builders.
  */
 
+import { pickCatalogDisplayLabelForProductUi } from "../../i18n/productUiLocale.js";
+
 export const ENTERPRISE_ORDER_SET_CATEGORIES = [
   "CARDIAC",
   "NEURO",
@@ -139,14 +141,22 @@ export const rnStandingRoles: readonly EnterpriseOrderSetRoleCode[] = ["RN"];
 
 export function resolveEnterpriseOrderSetDisplayName(
   set: EnterpriseOrderSetDefinition,
-  locale: "en" | "fr"
+  locale: string
 ): string {
-  return locale === "fr" ? set.displayNameFr : set.displayNameEn;
+  return pickCatalogDisplayLabelForProductUi(locale, {
+    displayNameEn: set.displayNameEn,
+    displayNameFr: set.displayNameFr,
+    code: set.code,
+  });
 }
 
 export function resolveEnterpriseOrderSetItemDisplayName(
   item: EnterpriseOrderSetItemRef,
-  locale: "en" | "fr"
+  locale: string
 ): string {
-  return locale === "fr" ? item.displayNameFr : item.displayNameEn;
+  return pickCatalogDisplayLabelForProductUi(locale, {
+    displayNameEn: item.displayNameEn,
+    displayNameFr: item.displayNameFr,
+    code: item.catalogCode ?? item.enterpriseProcedureCode ?? item.key,
+  });
 }

@@ -7,6 +7,8 @@ import { MEDUI_ES_1G_OVERLAY } from "./meduiEs1gHospitalInpatientObservationOver
 import { MEDUI_ES_1H_OVERLAY } from "./meduiEs1hOrdersMarPharmacyDiagnosticsOverlay";
 import { MEDUI_ES_1I_OVERLAY } from "./meduiEs1iClinicDentalBillingAncillaryOverlay";
 import { MEDUI_ES_1JB_OVERLAY } from "./meduiEs1jSafeChromeOverlay";
+import { MEDUI_ES_1K_OVERLAY } from "./meduiEs1kSafeChromeOverlay";
+import { MEDUI_ES_1K_PUBLIC_CHROME_OVERLAY } from "./meduiEs1kPublicChromeOverlay";
 
 /**
  * MEDUI.ES.1D+1E+1F+1G+1H+1I+1J.B Spanish product UI catalog.
@@ -20,9 +22,10 @@ import { MEDUI_ES_1JB_OVERLAY } from "./meduiEs1jSafeChromeOverlay";
  *  6. applyGovernedSpanishOverlay(1H) → Orders / MAR / pharmacy / lab / imaging chrome
  *  7. applyGovernedSpanishOverlay(1I) → Clinic / Dental / Billing / revenue chrome
  *  8. applyGovernedSpanishOverlay(1J.B) → print / document / consent SAFE chrome
+ *  9. applyGovernedSpanishOverlay(1K) → encounter close/discharge/admission modals + Rx print chrome
+ * 10. applyGovernedSpanishOverlay(1K public chrome) → reachable clinical/encounter/ED/chart/care-plan UI chrome
  *
- * Not user-selectable. Remaining keys stay UNLOCALIZED_ES::<path>.
- * Only remaining placeholders are replaced; later phases never overwrite 1D–1I.
+ * After MEDUI.ES.1K, Español is publicly selectable. Remaining keys stay UNLOCALIZED_ES::<path>.
  * Legal/source packet bodies and EMTALA print legal keys stay frozen.
  */
 
@@ -60,6 +63,8 @@ const { tree: after1f } = applyGovernedSpanishOverlay(after1e, MEDUI_ES_1F_OVERL
 const { tree: after1g } = applyGovernedSpanishOverlay(after1f, MEDUI_ES_1G_OVERLAY);
 const { tree: after1h } = applyGovernedSpanishOverlay(after1g, MEDUI_ES_1H_OVERLAY);
 const { tree: after1i } = applyGovernedSpanishOverlay(after1h, MEDUI_ES_1I_OVERLAY);
-const { tree: esMessages } = applyGovernedSpanishOverlay(after1i, MEDUI_ES_1JB_OVERLAY);
+const { tree: after1jb } = applyGovernedSpanishOverlay(after1i, MEDUI_ES_1JB_OVERLAY);
+const { tree: after1k } = applyGovernedSpanishOverlay(after1jb, MEDUI_ES_1K_OVERLAY);
+const { tree: esMessages } = applyGovernedSpanishOverlay(after1k, MEDUI_ES_1K_PUBLIC_CHROME_OVERLAY);
 
 export default esMessages;

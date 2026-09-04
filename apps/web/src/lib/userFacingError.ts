@@ -3,15 +3,19 @@
  * Copy is keyed by product UI locale — never `en ? en : fr`.
  */
 
-import type { ProductUiLanguage, SupportedLanguage } from "@/i18n/config";
-import { hiddenSpanishPlaceholder, parseProductUiLanguage } from "@medora/shared";
+import type { ProductUiLanguage } from "@/i18n/config";
+import { parseProductUiLanguage, pickProductUiCopy } from "@medora/shared";
 
 /** Message FR normalisé pour `NotFoundException` consultation (ex. GET /encounters/:id). */
 export const USER_FACING_ENCOUNTER_NOT_FOUND_FR = "Consultation introuvable.";
 
 const ENCOUNTER_NOT_FOUND_EN = "Encounter not found.";
+const ENCOUNTER_NOT_FOUND_ES = "Encuentro no encontrado.";
+const ES_GENERIC = "Ocurrió un error.";
 
-const RULES: Array<{ test: (s: string) => boolean } & Record<SupportedLanguage, string>> = [
+type LocaleErrorCopy = { en: string; fr: string; es?: string };
+
+const RULES: Array<{ test: (s: string) => boolean } & LocaleErrorCopy> = [
   {
     test: (s) => /^\s*request failed\s*:\s*\d+\s*$/i.test(s),
     fr: "La requête a échoué. Réessayez.",
@@ -51,6 +55,7 @@ const RULES: Array<{ test: (s: string) => boolean } & Record<SupportedLanguage, 
     test: (s) => /encounter not found/i.test(s),
     fr: USER_FACING_ENCOUNTER_NOT_FOUND_FR,
     en: ENCOUNTER_NOT_FOUND_EN,
+    es: ENCOUNTER_NOT_FOUND_ES,
   },
   { test: (s) => /patient not found/i.test(s), fr: "Patient introuvable.", en: "Patient not found." },
   {
@@ -249,14 +254,11 @@ export function normalizeUserFacingError(
   if (!s) return "";
 
   const parsed = parseProductUiLanguage(locale);
-  if (parsed === "es") {
-    return hiddenSpanishPlaceholder("userFacingError");
-  }
-  const bilingual: SupportedLanguage = parsed === "fr" ? "fr" : "en";
+  const bilingual = parsed === "fr" ? "fr" : parsed === "es" ? "es" : "en";
 
   // Known API messages first so English UI does not show raw French from the server.
   for (const rule of RULES) {
-    if (rule.test(s)) return rule[bilingual];
+    if (rule.test(s)) return pickProductUiCopy(locale, rule, ES_GENERIC);
   }
 
   // Déjà du français probable : accents ou mots courts typiques (FR locale only — EN falls through)
@@ -266,27 +268,31 @@ export function normalizeUserFacingError(
       return s;
   }
 
-  const INVALID_DATA: Record<SupportedLanguage, string> = {
+  const INVALID_DATA: LocaleErrorCopy = {
     en: "Invalid data.",
     fr: "Données invalides.",
+    es: "Datos no válidos.",
   };
-  const OPERATION_FAILED: Record<SupportedLanguage, string> = {
+  const OPERATION_FAILED: LocaleErrorCopy = {
     en: "The operation failed. Please try again.",
     fr: "L'opération a échoué. Réessayez.",
+    es: "La operación falló. Inténtelo de nuevo.",
   };
-  const SERVER_ERROR: Record<SupportedLanguage, string> = {
+  const SERVER_ERROR: LocaleErrorCopy = {
     en: "Server error.",
     fr: "Erreur serveur.",
+    es: "Error del servidor.",
   };
-  const GENERIC: Record<SupportedLanguage, string> = {
+  const GENERIC: LocaleErrorCopy = {
     en: "Something went wrong.",
     fr: "Une erreur est survenue.",
+    es: ES_GENERIC,
   };
 
   // Phrases anglaises courantes (Nest / HTTP)
-  if (/^invalid/i.test(s)) return INVALID_DATA[bilingual];
-  if (/^failed\b/i.test(s)) return OPERATION_FAILED[bilingual];
-  if (/server error/i.test(s)) return SERVER_ERROR[bilingual];
+  if (/^invalid/i.test(s)) return pickProductUiCopy(locale, INVALID_DATA, ES_GENERIC);
+  if (/^failed\b/i.test(s)) return pickProductUiCopy(locale, OPERATION_FAILED, ES_GENERIC);
+  if (/server error/i.test(s)) return pickProductUiCopy(locale, SERVER_ERROR, ES_GENERIC);
 
   /** EN UI: pass through ASCII API errors Nest returns (avoid generic "Something went wrong"). */
   if (bilingual === "en") {
@@ -302,18 +308,20 @@ export function normalizeUserFacingError(
     }
   }
 
-  return GENERIC[bilingual];
+  return pickProductUiCopy(locale, GENERIC, ES_GENERIC);
 }
 
 /** Quand aucun message exploitable n’est disponible. */
 export function genericUserFacingError(locale: ProductUiLanguage | string = "en"): string {
-  const parsed = parseProductUiLanguage(locale);
-  if (parsed === "es") return hiddenSpanishPlaceholder("userFacingError.generic");
-  const GENERIC: Record<SupportedLanguage, string> = {
-    en: "Something went wrong.",
-    fr: "Une erreur s'est produite.",
-  };
-  return GENERIC[parsed === "fr" ? "fr" : "en"];
+  return pickProductUiCopy(
+    locale,
+    {
+      en: "Something went wrong.",
+      fr: "Une erreur s'est produite.",
+      es: ES_GENERIC,
+    },
+    ES_GENERIC
+  );
 }
 
 /** Erreur API « ordre uniquement si consultation ouverte » (message brut EN ou déjà normalisé FR). */

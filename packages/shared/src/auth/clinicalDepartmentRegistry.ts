@@ -1,3 +1,5 @@
+import { pickProductUiCopy } from "../i18n/productUiLocale.js";
+
 /** Navigation area hint for clinical departments (subset of NavigationArea). */
 export type ClinicalDepartmentArea = "EMERGENCY" | "HOSPITAL" | "LABORATORY" | "RADIOLOGY";
 
@@ -74,13 +76,30 @@ export function isClinicalDepartmentCode(value: string): value is ClinicalDepart
   return CLINICAL_CODE_SET.has(value.trim().toUpperCase());
 }
 
+const CLINICAL_DEPARTMENT_LABEL_ES: Record<ClinicalDepartmentCode, string> = {
+  EMERGENCY: "Urgencias",
+  ICU: "UCI",
+  MEDSURG: "Medicina-cirugía",
+  OBSERVATION: "Observación",
+  OBGYN: "Ginecología y obstetricia",
+  PEDIATRICS: "Pediatría",
+  BEHAVIORAL_HEALTH: "Salud conductual",
+  TELEMETRY: "Telemetría",
+  LABORATORY: "Laboratorio",
+  RADIOLOGY: "Radiología",
+};
+
 export function getClinicalDepartmentLabel(
   code: ClinicalDepartmentCode,
-  language: "en" | "fr" = "fr"
+  language: string = "en"
 ): string {
   const entry = REGISTRY_BY_CODE.get(code);
   if (!entry) return code;
-  return language === "en" ? entry.labelEn : entry.labelFr;
+  return pickProductUiCopy(
+    language,
+    { en: entry.labelEn, fr: entry.labelFr, es: CLINICAL_DEPARTMENT_LABEL_ES[code] },
+    CLINICAL_DEPARTMENT_LABEL_ES[code]
+  );
 }
 
 export function resolveClinicalDepartmentArea(

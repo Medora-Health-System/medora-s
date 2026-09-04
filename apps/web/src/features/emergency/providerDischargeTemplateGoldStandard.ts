@@ -4,7 +4,7 @@
  */
 
 import type { DischargeInstructionCareSettingContext } from "@medora/shared";
-import { resolveDischargeVisitFramingPhrases } from "@medora/shared";
+import { bilingualStorageLocaleOrEn, resolveDischargeVisitFramingPhrases } from "@medora/shared";
 import type {
   ProviderDischargeTemplateLocale,
   ProviderDischargeTemplateSuggestedTextBody,
@@ -25,7 +25,7 @@ export const ED_DISCHARGE_UNIVERSAL_RETURN_SUFFIX_FR =
 
 /** Resolve universal return suffix for the active care setting (typed context — not string-replace). */
 export function resolveUniversalReturnSuffixForCareSetting(
-  locale: "en" | "fr",
+  locale: string,
   careSettingContext?: DischargeInstructionCareSettingContext | null
 ): string {
   if (!careSettingContext || careSettingContext.careSetting === "ED") {
@@ -61,13 +61,13 @@ export function bodyIncludesGoldStandardMedicationSafety(text: string): boolean 
 
 export const GENERIC_ED_DISCHARGE_DIAGNOSIS_PLACEHOLDER = "[diagnosis]";
 
-const GENERIC_DISCHARGE_EMPTY_DIAGNOSIS_LABEL: Record<ProviderDischargeTemplateLocale, string> = {
+const GENERIC_DISCHARGE_EMPTY_DIAGNOSIS_LABEL: Record<"en" | "fr", string> = {
   en: "your condition",
   fr: "votre état",
 };
 
 export function genericDischargeEmptyDiagnosisLabel(locale: ProviderDischargeTemplateLocale): string {
-  return GENERIC_DISCHARGE_EMPTY_DIAGNOSIS_LABEL[locale];
+  return GENERIC_DISCHARGE_EMPTY_DIAGNOSIS_LABEL[bilingualStorageLocaleOrEn(locale)];
 }
 
 /** Substitute diagnosis label into generic ED fallback scaffold at apply time. */
@@ -114,7 +114,7 @@ export function followUpTimingUsesOneToTwoDays(timing: string): boolean {
   return false;
 }
 
-function includesUniversalReturnSuffix(text: string, locale: "en" | "fr"): boolean {
+function includesUniversalReturnSuffix(text: string, locale: string): boolean {
   const blob = text.toLowerCase();
   if (locale === "fr") {
     return (
@@ -131,7 +131,7 @@ function includesUniversalReturnSuffix(text: string, locale: "en" | "fr"): boole
 /** Append universal return language when template-specific red flags omit it (care-setting aware). */
 export function ensureGoldStandardReturnPrecautions(
   text: string,
-  locale: "en" | "fr",
+  locale: string,
   careSettingContext?: DischargeInstructionCareSettingContext | null
 ): string {
   const trimmed = text.trim();
@@ -151,7 +151,7 @@ export function ensureGoldStandardReturnPrecautions(
 }
 
 /** Normalize medication/treatment instructions to gold-standard safety wording when close but not exact. */
-export function ensureGoldStandardMedicationTreatment(text: string, locale: "en" | "fr"): string {
+export function ensureGoldStandardMedicationTreatment(text: string, locale: string): string {
   const trimmed = text.trim();
   const safety = locale === "fr" ? ED_DISCHARGE_MEDICATION_SAFETY_FR : ED_DISCHARGE_MEDICATION_SAFETY_EN;
   if (!trimmed) return safety;

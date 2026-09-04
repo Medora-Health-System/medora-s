@@ -10,7 +10,7 @@ import {
   selectClinicalDocumentationPayloadSummary,
   summarizeClinicalDocumentationPayload,
 } from "./clinicalDocumentationEntry.js";
-import type { ClinicalDocumentationSummaryLocale } from "./clinicalDocumentationSummaryLocale.js";
+import { pickBilingualDisplayMap, type ClinicalDocumentationSummaryLocale } from "./clinicalDocumentationSummaryLocale.js";
 import type { ClinicalDataProjectionEntry } from "./clinicalDataSummaryProjection.js";
 
 export type ClinicalDocumentationDetailRow = {
@@ -90,7 +90,7 @@ function appendCiwaComponentRows(
 ): ClinicalDocumentationDetailRow[] {
   const parsed = ciwaArPayloadSchema.safeParse(payload);
   if (!parsed.success) return [];
-  const labels = locale === "en" ? CIWA_ITEM_LABELS_EN : CIWA_ITEM_LABELS_FR;
+  const labels = pickBilingualDisplayMap(locale, CIWA_ITEM_LABELS_EN, CIWA_ITEM_LABELS_FR);
   return Object.entries(labels).map(([field, label]) => ({
     label,
     value: String(parsed.data[field as keyof typeof parsed.data] ?? ""),
@@ -103,7 +103,7 @@ function appendCowsComponentRows(
 ): ClinicalDocumentationDetailRow[] {
   const parsed = cowsPayloadSchema.safeParse(payload);
   if (!parsed.success) return [];
-  const labels = locale === "en" ? COWS_ITEM_LABELS_EN : COWS_ITEM_LABELS_FR;
+  const labels = pickBilingualDisplayMap(locale, COWS_ITEM_LABELS_EN, COWS_ITEM_LABELS_FR);
   return Object.entries(labels).map(([field, label]) => ({
     label,
     value: String(parsed.data[field as keyof typeof parsed.data] ?? ""),

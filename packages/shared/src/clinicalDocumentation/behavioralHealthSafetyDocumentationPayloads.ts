@@ -1,6 +1,7 @@
 import { z } from "zod";
 import type { ClinicalDocumentationFieldOption } from "./clinicalDocumentationFieldOptions.js";
 import {
+  clinicalDocSummaryKey,
   clinicalDocYesNo,
   pickLocalizedEnumLabel,
   type ClinicalDocumentationSummaryLocale,
@@ -522,7 +523,7 @@ export function summarizeBehavioralHealthSafetyDocumentationPayload(
       const d = p.data;
       return [
         {
-          key: locale === "en" ? "Precaution level" : "Niveau de précaution",
+          key: clinicalDocSummaryKey(locale, "Precaution level", "Niveau de précaution"),
           value: pickLocalizedEnumLabel(
             PRECAUTION_LEVEL_MAP.en,
             PRECAUTION_LEVEL_MAP.fr,
@@ -531,15 +532,15 @@ export function summarizeBehavioralHealthSafetyDocumentationPayload(
           ),
         },
         {
-          key: locale === "en" ? "Room safety completed" : "Sécurité chambre complétée",
+          key: clinicalDocSummaryKey(locale, "Room safety completed", "Sécurité chambre complétée"),
           value: clinicalDocYesNo(d.roomSafetyCompleted, locale),
         },
         {
-          key: locale === "en" ? "Belongings secured" : "Effets sécurisés",
+          key: clinicalDocSummaryKey(locale, "Belongings secured", "Effets sécurisés"),
           value: clinicalDocYesNo(d.belongingsRemovedOrSecured, locale),
         },
         {
-          key: locale === "en" ? "Provider notified" : "Médecin avisé",
+          key: clinicalDocSummaryKey(locale, "Provider notified", "Médecin avisé"),
           value: clinicalDocYesNo(d.providerNotified, locale),
         },
       ];
@@ -550,7 +551,7 @@ export function summarizeBehavioralHealthSafetyDocumentationPayload(
       const d = p.data;
       return [
         {
-          key: locale === "en" ? "Risk level" : "Niveau de risque",
+          key: clinicalDocSummaryKey(locale, "Risk level", "Niveau de risque"),
           value: pickLocalizedEnumLabel(
             SUICIDE_RISK_MAP.en,
             SUICIDE_RISK_MAP.fr,
@@ -559,7 +560,7 @@ export function summarizeBehavioralHealthSafetyDocumentationPayload(
           ),
         },
         {
-          key: locale === "en" ? "Ideation status" : "Statut idéation",
+          key: clinicalDocSummaryKey(locale, "Ideation status", "Statut idéation"),
           value: pickLocalizedEnumLabel(
             IDEATION_MAP.en,
             IDEATION_MAP.fr,
@@ -568,7 +569,7 @@ export function summarizeBehavioralHealthSafetyDocumentationPayload(
           ),
         },
         {
-          key: locale === "en" ? "Provider notified" : "Médecin avisé",
+          key: clinicalDocSummaryKey(locale, "Provider notified", "Médecin avisé"),
           value: clinicalDocYesNo(d.providerNotified, locale),
         },
       ];
@@ -579,7 +580,7 @@ export function summarizeBehavioralHealthSafetyDocumentationPayload(
       const d = p.data;
       return [
         {
-          key: locale === "en" ? "Risk level" : "Niveau de risque",
+          key: clinicalDocSummaryKey(locale, "Risk level", "Niveau de risque"),
           value: pickLocalizedEnumLabel(
             ELOPEMENT_RISK_MAP.en,
             ELOPEMENT_RISK_MAP.fr,
@@ -588,11 +589,11 @@ export function summarizeBehavioralHealthSafetyDocumentationPayload(
           ),
         },
         {
-          key: locale === "en" ? "Secure area required" : "Zone sécurisée requise",
+          key: clinicalDocSummaryKey(locale, "Secure area required", "Zone sécurisée requise"),
           value: clinicalDocYesNo(d.requiresSecureArea, locale),
         },
         {
-          key: locale === "en" ? "Provider notified" : "Médecin avisé",
+          key: clinicalDocSummaryKey(locale, "Provider notified", "Médecin avisé"),
           value: clinicalDocYesNo(d.providerNotified, locale),
         },
       ];
@@ -603,15 +604,15 @@ export function summarizeBehavioralHealthSafetyDocumentationPayload(
       const d = p.data;
       return [
         {
-          key: locale === "en" ? "Location confirmed" : "Localisation confirmée",
+          key: clinicalDocSummaryKey(locale, "Location confirmed", "Localisation confirmée"),
           value: clinicalDocYesNo(d.patientLocationConfirmed, locale),
         },
         {
-          key: locale === "en" ? "Security notified" : "Sécurité avisée",
+          key: clinicalDocSummaryKey(locale, "Security notified", "Sécurité avisée"),
           value: clinicalDocYesNo(d.securityNotified, locale),
         },
         {
-          key: locale === "en" ? "Provider notified" : "Médecin avisé",
+          key: clinicalDocSummaryKey(locale, "Provider notified", "Médecin avisé"),
           value: clinicalDocYesNo(d.providerNotified, locale),
         },
       ];
@@ -622,7 +623,7 @@ export function summarizeBehavioralHealthSafetyDocumentationPayload(
       const d = p.data;
       return [
         {
-          key: locale === "en" ? "Behavior" : "Comportement",
+          key: clinicalDocSummaryKey(locale, "Behavior", "Comportement"),
           value: pickLocalizedEnumLabel(
             BEHAVIOR_MAP.en,
             BEHAVIOR_MAP.fr,
@@ -631,15 +632,15 @@ export function summarizeBehavioralHealthSafetyDocumentationPayload(
           ),
         },
         {
-          key: locale === "en" ? "Threat to self" : "Menace pour soi",
+          key: clinicalDocSummaryKey(locale, "Threat to self", "Menace pour soi"),
           value: clinicalDocYesNo(d.threatToSelf, locale),
         },
         {
-          key: locale === "en" ? "Threat to others" : "Menace pour autrui",
+          key: clinicalDocSummaryKey(locale, "Threat to others", "Menace pour autrui"),
           value: clinicalDocYesNo(d.threatToOthers, locale),
         },
         {
-          key: locale === "en" ? "De-escalation used" : "Désescalade utilisée",
+          key: clinicalDocSummaryKey(locale, "De-escalation used", "Désescalade utilisée"),
           value: clinicalDocYesNo(d.deEscalationUsed, locale),
         },
       ];
@@ -650,15 +651,15 @@ export function summarizeBehavioralHealthSafetyDocumentationPayload(
       const d = p.data;
       return [
         {
-          key: locale === "en" ? "Patient visible" : "Patient visible",
+          key: clinicalDocSummaryKey(locale, "Patient visible", "Patient visible"),
           value: clinicalDocYesNo(d.patientVisible, locale),
         },
         {
-          key: locale === "en" ? "Patient safe" : "Patient en sécurité",
+          key: clinicalDocSummaryKey(locale, "Patient safe", "Patient en sécurité"),
           value: clinicalDocYesNo(d.patientSafe, locale),
         },
         {
-          key: locale === "en" ? "Handoff completed" : "Relève complétée",
+          key: clinicalDocSummaryKey(locale, "Handoff completed", "Relève complétée"),
           value: clinicalDocYesNo(d.handoffCompleted, locale),
         },
       ];
@@ -669,15 +670,15 @@ export function summarizeBehavioralHealthSafetyDocumentationPayload(
       const d = p.data;
       return [
         {
-          key: locale === "en" ? "Hazards cleared" : "Dangers retirés",
+          key: clinicalDocSummaryKey(locale, "Hazards cleared", "Dangers retirés"),
           value: clinicalDocYesNo(d.roomClearedOfHazards, locale),
         },
         {
-          key: locale === "en" ? "Issues found" : "Problèmes identifiés",
+          key: clinicalDocSummaryKey(locale, "Issues found", "Problèmes identifiés"),
           value: clinicalDocYesNo(d.issuesFound, locale),
         },
         {
-          key: locale === "en" ? "Provider notified" : "Médecin avisé",
+          key: clinicalDocSummaryKey(locale, "Provider notified", "Médecin avisé"),
           value: clinicalDocYesNo(d.providerNotified, locale),
         },
       ];
@@ -688,7 +689,7 @@ export function summarizeBehavioralHealthSafetyDocumentationPayload(
       const d = p.data;
       return [
         {
-          key: locale === "en" ? "Reason" : "Motif",
+          key: clinicalDocSummaryKey(locale, "Reason", "Motif"),
           value: pickLocalizedEnumLabel(
             ESCALATION_REASON_MAP.en,
             ESCALATION_REASON_MAP.fr,
@@ -697,7 +698,7 @@ export function summarizeBehavioralHealthSafetyDocumentationPayload(
           ),
         },
         {
-          key: locale === "en" ? "Intervention" : "Intervention",
+          key: clinicalDocSummaryKey(locale, "Intervention", "Intervention"),
           value: pickLocalizedEnumLabel(
             INTERVENTION_MAP.en,
             INTERVENTION_MAP.fr,
@@ -706,11 +707,11 @@ export function summarizeBehavioralHealthSafetyDocumentationPayload(
           ),
         },
         {
-          key: locale === "en" ? "Provider notified" : "Médecin avisé",
+          key: clinicalDocSummaryKey(locale, "Provider notified", "Médecin avisé"),
           value: clinicalDocYesNo(d.providerNotified, locale),
         },
         {
-          key: locale === "en" ? "Security notified" : "Sécurité avisée",
+          key: clinicalDocSummaryKey(locale, "Security notified", "Sécurité avisée"),
           value: clinicalDocYesNo(d.securityNotified, locale),
         },
       ];
@@ -721,7 +722,7 @@ export function summarizeBehavioralHealthSafetyDocumentationPayload(
       const d = p.data;
       return [
         {
-          key: locale === "en" ? "Violence risk" : "Risque de violence",
+          key: clinicalDocSummaryKey(locale, "Violence risk", "Risque de violence"),
           value: pickLocalizedEnumLabel(
             labelMap(VIOLENCE_RISK_OPTIONS).en,
             labelMap(VIOLENCE_RISK_OPTIONS).fr,
@@ -730,7 +731,7 @@ export function summarizeBehavioralHealthSafetyDocumentationPayload(
           ),
         },
         {
-          key: locale === "en" ? "Provider notified" : "Médecin avisé",
+          key: clinicalDocSummaryKey(locale, "Provider notified", "Médecin avisé"),
           value: clinicalDocYesNo(d.providerNotified, locale),
         },
       ];

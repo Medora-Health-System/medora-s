@@ -1,15 +1,8 @@
 /**
- * MEDUI.ES.1C — Canonical product UI locale registry.
+ * MEDUI.ES.1C / 1K — Canonical product UI locale registry.
  *
- * Internal recognition includes hidden Spanish. Public selectors stay English + Français.
- *
- * This is NOT:
- * - Patient preferred language (`fr` / `en` / `ht` / `es` / `OTHER`)
- * - Medication catalog seed locale (`MedicationLocalizationLocale`)
- * - Registration packet / legal template locale
- * - External integration language
- *
- * Spanish is internally addressable for tests/helpers. It is not user-selectable yet.
+ * Internal recognition includes Spanish. After MEDUI.ES.1K, Español is publicly selectable.
+ * Product default remains English. This is NOT patient preferred language.
  */
 
 import { z } from "zod";
@@ -21,9 +14,9 @@ export type ProductUiLanguage = (typeof PRODUCT_UI_LANGUAGES)[number];
 
 /**
  * Locales shown in login / settings / facility selectors.
- * Spanish remains hidden until a later certification phase.
+ * MEDUI.ES.1K: Español is publicly selectable. Product default remains English.
  */
-export const PUBLICLY_SELECTABLE_PRODUCT_UI_LANGUAGES = ["fr", "en"] as const;
+export const PUBLICLY_SELECTABLE_PRODUCT_UI_LANGUAGES = ["fr", "en", "es"] as const;
 
 export type PubliclySelectableProductUiLanguage =
   (typeof PUBLICLY_SELECTABLE_PRODUCT_UI_LANGUAGES)[number];
@@ -34,12 +27,12 @@ export const PRODUCT_DEFAULT_UI_LANGUAGE: PubliclySelectableProductUiLanguage = 
 /**
  * Default stored on new facilities when admin does not choose a language.
  * Independent from {@link PRODUCT_DEFAULT_UI_LANGUAGE} (Haiti facilities are typically French).
- * Facility stored preference remains publicly selectable EN/FR only.
+ * Facility stored preference may be any publicly selectable product UI language.
  */
 export const FACILITY_DEFAULT_LANGUAGE: PubliclySelectableProductUiLanguage = "fr";
 
-/** Facility / user-facing stored language — never Spanish while it is hidden. */
-const PUBLIC_PRODUCT_UI_LANGUAGE_ZOD_VALUES = ["fr", "en"] as [
+/** Facility / user-facing stored language — EN / FR / ES after MEDUI.ES.1K. */
+const PUBLIC_PRODUCT_UI_LANGUAGE_ZOD_VALUES = ["fr", "en", "es"] as [
   PubliclySelectableProductUiLanguage,
   ...PubliclySelectableProductUiLanguage[],
 ];
@@ -78,7 +71,7 @@ export type ProductUiLocaleDefinition = {
   code: ProductUiLanguage;
   /** BCP 47 tag for Intl date/number presentation. */
   bcp47: string;
-  /** Native chrome label. Public selectors must not surface Spanish yet. */
+  /** Native chrome label. */
   nativeLabel: string;
   catalogLabelStrategy: CatalogLabelStrategy;
   medicationClinicalDisplayLocale: MedicationClinicalDisplayLocaleCode | null;
@@ -108,7 +101,7 @@ export const PRODUCT_UI_LOCALE_REGISTRY: Record<ProductUiLanguage, ProductUiLoca
     nativeLabel: "Español",
     catalogLabelStrategy: "unlocalized",
     medicationClinicalDisplayLocale: null,
-    publiclySelectable: false,
+    publiclySelectable: true,
   },
 };
 
@@ -141,8 +134,8 @@ export function parseProductUiLanguage(raw: string | null | undefined): ProductU
 }
 
 /**
- * Public product UI hydration. Hidden Spanish and unknown values → English default.
- * Does not expose the hidden Spanish catalog in normal user flows.
+ * Public product UI hydration. Unknown values → English default.
+ * Parsed `es` hydrates to Spanish after MEDUI.ES.1K public enablement.
  */
 export function resolvePublicProductUiLanguageOrDefault(
   raw: string | null | undefined
@@ -284,7 +277,8 @@ export const LEGACY_BILINGUAL_STORAGE_FAMILIES = {
 /**
  * Pick a legacy bilingual pair for a product UI locale.
  * Hidden Spanish and other locales without EN/FR columns return UNLOCALIZED_SOURCE using the
- * English stored field as canonical source identity — never as a localized Spanish value.
+ * Unsupported locales (including ES) never receive EN/FR as localized UI.
+ * Callers must use `kind`/`source`, not treat `value` as Spanish.
  */
 export function pickLegacyBilingualStoredPair(
   rawLocale: string | null | undefined,
@@ -296,7 +290,32 @@ export function pickLegacyBilingualStoredPair(
   if (adapted.kind === "localized") {
     return { kind: "localized", locale: adapted.locale, value: pair[adapted.locale] };
   }
-  return { kind: "unsupported", value: pair.en, source: "UNLOCALIZED_SOURCE" };
+  return { kind: "unsupported", value: "UNLOCALIZED_SOURCE", source: "UNLOCALIZED_SOURCE" };
+}
+
+/**
+ * Pick UI chrome copy for the active product locale.
+ * EN/FR are exact. ES uses `copy.es` when authored; otherwise `unresolvedEs`.
+ * Never substitutes EN or FR as Spanish, and never substitutes FR as English.
+ * Missing/unknown locale uses EN at the resolution boundary.
+ */
+export type ProductUiCopyMap<T> = { en: T; fr: T; es?: T };
+
+export function pickProductUiCopy<TEn, TFr = TEn, TEs = TEn>(
+  rawLocale: string | null | undefined,
+  copy: { en: TEn; fr: TFr; es?: TEs },
+  unresolvedEs: TEs
+): TEn | TFr | TEs {
+  const parsed = parseProductUiLanguage(rawLocale);
+  if (parsed === "fr") return copy.fr;
+  if (parsed === "es") return copy.es !== undefined ? copy.es : unresolvedEs;
+  return copy.en;
+}
+
+/** Adapt product UI locale onto legacy EN/FR storage/search columns. ES → English identity, never French. */
+export function bilingualStorageLocaleOrEn(raw: string | null | undefined): "en" | "fr" {
+  const adapted = adaptProductUiToBilingualStorageLocale(raw);
+  return adapted.kind === "localized" ? adapted.locale : "en";
 }
 
 /** Explicit unlocalized catalog/report/billing label — never another Medora language. */
@@ -351,13 +370,14 @@ export function productUiLanguageSelectOptions(): ReadonlyArray<{
 
 /**
  * Browser language tags → publicly selectable product UI locale.
- * Spanish browser tags are ignored so hidden Spanish is not auto-activated.
+ * Spanish browser tags are ignored so existing users are not auto-switched to Español.
  */
 export function resolveProductUiLanguageFromBrowserCandidates(
   candidates: readonly string[]
 ): PubliclySelectableProductUiLanguage | null {
   for (const raw of candidates) {
     const parsed = parseProductUiLanguage(raw);
+    if (parsed === "es") continue;
     if (parsed && isPubliclySelectableProductUiLanguage(parsed)) return parsed;
   }
   return null;

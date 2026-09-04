@@ -1,4 +1,4 @@
-import type { SupportedLanguage } from "@/i18n/config";
+import { pickLegacyBilingualStoredPair, type SupportedLanguage } from "@/i18n/config";
 import { resolveMarAdministrationHistoryLabel } from "@/features/mar/marAdministrationHistoryLabel";
 import { getOrderItemDisplayLabelForLanguage } from "@/lib/orderItemDisplayFr";
 import {
@@ -42,7 +42,14 @@ function formatGovernanceFrequencyToken(
   if (!code) return null;
   if (/^Q\d+H$/.test(code)) return code.toLowerCase();
   const def = getMedicationFrequencyDefinition(code);
-  if (def) return language === "fr" ? def.displayNameFr : def.displayNameEn;
+  if (def) {
+    const pick = pickLegacyBilingualStoredPair(language, {
+      en: def.displayNameEn,
+      fr: def.displayNameFr,
+    });
+    if (pick.kind === "localized") return pick.value;
+    return code;
+  }
   return code;
 }
 

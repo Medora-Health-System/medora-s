@@ -52,6 +52,7 @@ import {
   selectClinicalDocumentationPayloadSummary,
   summarizeClinicalDocumentationPayload,
 } from "./clinicalDocumentationEntry.js";
+import { clinicalDocSummaryKey } from "./clinicalDocumentationSummaryLocale.js";
 import type { ClinicalDocumentationSummaryLocale } from "./clinicalDocumentationSummaryLocale.js";
 import { buildClinicalDocumentationDetailRows } from "./clinicalDocumentationDetailRows.js";
 
@@ -243,7 +244,7 @@ function buildCardiacRiskScoreMetrics(
   for (const spec of specs) {
     const entry = latestEntryByCardIds(entries, spec.cardIds);
     if (!entry) continue;
-    const label = locale === "en" ? spec.labelEn : spec.labelFr;
+    const label = clinicalDocSummaryKey(locale, spec.labelEn, spec.labelFr);
     const metric = scoreMetricFromEntry(entry, spec.metricId, label, locale);
     if (metric) metrics.push(metric);
   }
@@ -295,7 +296,7 @@ function buildNeurologyMetrics(
     const m = scoreMetricFromEntry(
       nihssEntry,
       "nihss",
-      locale === "en" ? "NIHSS" : "NIHSS",
+      clinicalDocSummaryKey(locale, "NIHSS", "NIHSS"),
       locale
     );
     if (m) metrics.push(m);
@@ -306,7 +307,7 @@ function buildNeurologyMetrics(
     GLASGOW_COMA_SCALE_ASSESSMENT_CARD_ID,
   ]);
   if (gcsEntry) {
-    const m = scoreMetricFromEntry(gcsEntry, "gcs", locale === "en" ? "GCS" : "GCS", locale);
+    const m = scoreMetricFromEntry(gcsEntry, "gcs", clinicalDocSummaryKey(locale, "GCS", "GCS"), locale);
     if (m) metrics.push(m);
   }
 
@@ -318,7 +319,7 @@ function buildNeurologyMetrics(
         metricFromEntry(
           neuroChecks,
           "neuro_checks",
-          locale === "en" ? "Neuro Checks" : "Contrôles neuro",
+          clinicalDocSummaryKey(locale, "Neuro Checks", "Contrôles neuro"),
           loc,
           locale
         )
@@ -336,7 +337,7 @@ function buildNeurologyMetrics(
         metricFromEntry(
           motor,
           "motor_strength",
-          locale === "en" ? "Motor Strength" : "Force motrice",
+          clinicalDocSummaryKey(locale, "Motor Strength", "Force motrice"),
           value,
           locale
         )
@@ -355,7 +356,7 @@ function buildNeurologyMetrics(
         metricFromEntry(
           pupils,
           "pupillary",
-          locale === "en" ? "Pupillary Assessment" : "Évaluation pupillaire",
+          clinicalDocSummaryKey(locale, "Pupillary Assessment", "Évaluation pupillaire"),
           value,
           locale
         )
@@ -394,7 +395,7 @@ function buildWithdrawalPsychMetrics(
   for (const spec of specs) {
     const entry = latestEntryByCardIds(entries, spec.cardIds);
     if (!entry) continue;
-    const label = locale === "en" ? spec.labelEn : spec.labelFr;
+    const label = clinicalDocSummaryKey(locale, spec.labelEn, spec.labelFr);
     const value =
       payloadTotalScore(entry.payloadJson) ??
       findSummaryValue(summaryLines(entry, locale), /score|severity|niveau|behavior|comportement/i) ??
@@ -418,10 +419,10 @@ function respiratoryMetricsFromEntry(
   const device = findSummaryValue(lines, /oxygen|oxygène|device|dispositif/i);
   const flow = findSummaryValue(lines, /flow|débit|FiO₂|fio2/i);
 
-  if (rr) metrics.push(metricFromEntry(entry, `${prefix}_rr`, locale === "en" ? "RR" : "FR", rr, locale));
+  if (rr) metrics.push(metricFromEntry(entry, `${prefix}_rr`, clinicalDocSummaryKey(locale, "RR", "FR"), rr, locale));
   if (spo2) metrics.push(metricFromEntry(entry, `${prefix}_spo2`, "SpO₂", spo2, locale));
-  if (device) metrics.push(metricFromEntry(entry, `${prefix}_device`, locale === "en" ? "Device" : "Dispositif", device, locale));
-  if (flow) metrics.push(metricFromEntry(entry, `${prefix}_flow`, locale === "en" ? "Flow" : "Débit", flow, locale));
+  if (device) metrics.push(metricFromEntry(entry, `${prefix}_device`, clinicalDocSummaryKey(locale, "Device", "Dispositif"), device, locale));
+  if (flow) metrics.push(metricFromEntry(entry, `${prefix}_flow`, clinicalDocSummaryKey(locale, "Flow", "Débit"), flow, locale));
 
   if (metrics.length === 0) {
     const fallback = lines[0]?.value;
@@ -471,7 +472,7 @@ function buildRespiratoryMetrics(
   for (const spec of specs) {
     const entry = latestEntryByCardIds(entries, spec.cardIds);
     if (!entry) continue;
-    const label = locale === "en" ? spec.labelEn : spec.labelFr;
+    const label = clinicalDocSummaryKey(locale, spec.labelEn, spec.labelFr);
     metrics.push(...respiratoryMetricsFromEntry(entry, spec.prefix, label, locale));
   }
   return metrics;
@@ -492,8 +493,8 @@ function cardiacMetricsFromEntry(
     findSummaryValue(lines, /chest pain|douleur|interpretation|interprétation|symptomatic|symptomatique/i) ??
     lines[0]?.value;
 
-  if (rhythm) metrics.push(metricFromEntry(entry, `${prefix}_rhythm`, locale === "en" ? "Rhythm" : "Rythme", rhythm, locale));
-  if (rate) metrics.push(metricFromEntry(entry, `${prefix}_rate`, locale === "en" ? "Rate" : "Fréquence", rate, locale));
+  if (rhythm) metrics.push(metricFromEntry(entry, `${prefix}_rhythm`, clinicalDocSummaryKey(locale, "Rhythm", "Rythme"), rhythm, locale));
+  if (rate) metrics.push(metricFromEntry(entry, `${prefix}_rate`, clinicalDocSummaryKey(locale, "Rate", "Fréquence"), rate, locale));
   if (qtc) metrics.push(metricFromEntry(entry, `${prefix}_qtc`, "QTc", qtc, locale));
   if (metrics.length === 0 && status) {
     metrics.push(metricFromEntry(entry, prefix, label, status, locale));
@@ -543,7 +544,7 @@ function buildCardiacMetrics(
   for (const spec of specs) {
     const entry = latestEntryByCardIds(entries, spec.cardIds);
     if (!entry) continue;
-    const label = locale === "en" ? spec.labelEn : spec.labelFr;
+    const label = clinicalDocSummaryKey(locale, spec.labelEn, spec.labelFr);
     metrics.push(...cardiacMetricsFromEntry(entry, spec.prefix, label, locale));
   }
   return metrics;
@@ -590,7 +591,7 @@ function buildBehavioralHealthMetrics(
   for (const spec of specs) {
     const entry = latestEntryByCardIds(entries, spec.cardIds);
     if (!entry) continue;
-    const label = locale === "en" ? spec.labelEn : spec.labelFr;
+    const label = clinicalDocSummaryKey(locale, spec.labelEn, spec.labelFr);
     const value =
       findSummaryValue(summaryLines(entry, locale), /risk|niveau|level|behavior|comportement|reason|raison/i) ??
       summaryLines(entry, locale)[0]?.value;

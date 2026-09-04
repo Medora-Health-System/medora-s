@@ -15,6 +15,10 @@ import {
 } from "@/lib/chartRoiApi";
 import { normalizeUserFacingError } from "@/lib/userFacingError";
 import { resolveProductUiLanguageOrDefault, productUiBcp47Tag } from "@/i18n/config";
+import {
+  encounterChartExportSnapshotHtmlHref,
+  roiSnapshotDocumentHtmlHref,
+} from "@/lib/chartExportHtmlHref";
 
 const REQUEST_TYPES = [
   "PATIENT_REQUEST",
@@ -250,7 +254,7 @@ export default function AdminRoiPage() {
                     ) : null}
                     {r.status === "FULFILLED" && r.encounterChartExportId && r.encounterId ? (
                       <a
-                        href={`/api/backend/encounters/${encodeURIComponent(r.encounterId)}/chart-export/snapshots/${encodeURIComponent(r.encounterChartExportId)}?format=html`}
+                        href={encounterChartExportSnapshotHtmlHref(r.encounterId, r.encounterChartExportId, language)}
                         target="_blank"
                         rel="noopener noreferrer"
                       >
@@ -261,7 +265,7 @@ export default function AdminRoiPage() {
                       <>
                         {" "}
                         <a
-                          href={`/api/backend/roi-requests/${encodeURIComponent(r.id)}/snapshot-document?format=html`}
+                          href={roiSnapshotDocumentHtmlHref(r.id, language)}
                           target="_blank"
                           rel="noopener noreferrer"
                         >

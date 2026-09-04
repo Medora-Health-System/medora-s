@@ -89,7 +89,7 @@ function summaryBlockLineToHtml(summaryLine: string): string {
 function appendProviderDischargeDocumentationPrintSection(
   bodySections: string[],
   dischargeSummaryJson: unknown,
-  language: ProductUiLanguage,
+  language: string,
   patientDob?: string | null,
   patientSpecificDischargeContext?: PatientSpecificDischargeContext,
   dischargeMedicationSources?: DischargeMedicationSourceInput
@@ -175,7 +175,7 @@ export function getDischargePrintHtml(params: {
   facilityName?: string | null;
   /** Primary diagnosis for this encounter if known client-side */
   primaryDiagnosis?: string | null;
-  language: ProductUiLanguage;
+  language: string
   /** Optional enriched context (e.g. home medications, problem list) for append-only additions. */
   patientSpecificDischargeContext?: PatientSpecificDischargeContext;
   /** Optional medication sources for discharge personalization (no API fetch in print). */

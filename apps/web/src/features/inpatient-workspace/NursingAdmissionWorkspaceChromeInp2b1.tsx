@@ -15,6 +15,7 @@ import {
   type NursingAdmissionStageId,
 } from "@medora/shared";
 import { useI18n } from "@/lib/i18n";
+import { productUiBcp47Tag } from "@/i18n/config";
 import { MEDORA_CARD_SHELL } from "@/components/medora-card/medoraCardTokens";
 import { ClinicalSaveStatus } from "./rapid-documentation/ClinicalRapidControls";
 import { AdditionalClinicalDocumentationLauncher } from "./rapid-documentation/AdditionalClinicalDocumentationLauncher";
@@ -300,7 +301,7 @@ export function NursingAdmissionSaveRail({
     : empty;
   const card: CSSProperties = { ...MEDORA_CARD_SHELL, padding: "10px 12px", marginBottom: 10 };
   const clinicalTimeLabel = clinicalDocumentedAt
-    ? new Date(clinicalDocumentedAt).toLocaleString(language?.startsWith("fr") ? "fr-FR" : "en-US")
+    ? new Date(clinicalDocumentedAt).toLocaleString(productUiBcp47Tag(language))
     : empty;
   return (
     <aside

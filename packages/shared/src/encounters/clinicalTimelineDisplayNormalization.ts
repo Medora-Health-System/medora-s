@@ -3,6 +3,7 @@
  * Display-only: never mutates stored events, timestamps, or billing fields.
  */
 
+import { pickProductUiCopy } from "../i18n/productUiLocale.js";
 import {
   dischargeSnapshotIsObservationAdmissionRoutingOnly,
   mislabeledDischargeEventIsObservationAdmission,
@@ -204,13 +205,45 @@ export function clinicalTimelineDisplayLabelEn(displayEventType: string): string
   return CLINICAL_TIMELINE_DISPLAY_LABEL_EN[displayEventType] ?? displayEventType;
 }
 
+export const CLINICAL_TIMELINE_DISPLAY_LABEL_ES: Record<string, string> = {
+  VITALS_RECORDED: "Signos vitales registrados",
+  PROVIDER_SIGNED: "Documentación firmada por el médico",
+  PROVIDER_UNLOCKED: "Documentación desbloqueada por el médico",
+  PROVIDER_MSE_SAVED: "Examen médico actualizado",
+  ED_PROVIDER_DOCUMENTATION_SAVED: "Documentación médica de urgencias guardada",
+  ED_PROVIDER_DOCUMENTATION_SIGNED: "Documentación médica de urgencias firmada",
+  OBSERVATION_PROVIDER_PROGRESS_NOTE_SAVED: "Nota de evolución médica de observación guardada",
+  OBSERVATION_PROVIDER_PROGRESS_NOTE_SIGNED: "Nota de evolución médica de observación firmada",
+  NURSING_ASSESSMENT_SAVED: "Evaluación de enfermería actualizada",
+  HANDOFF_PROVIDER: "Pase médico",
+  HANDOFF_NURSING: "Pase de enfermería",
+  IV_INSERTED: "IV colocada",
+  IV_REMOVED: "IV retirada",
+  PROCEDURE_DOCUMENTED: "Procedimiento documentado",
+  DISCHARGE_SUMMARY_SAVED: "Paquete de alta guardado",
+  ADMISSION_SUMMARY_SAVED: "Paquete de admisión guardado (observación / estancia corta)",
+  OBSERVATION_ADMISSION_PACKET_SAVED: "Admisión en observación guardada",
+  DISPOSITION_SUPPLEMENT_SAVED: "Complemento de disposición guardado",
+  TRIAGE_ASSESSMENT_SAVED: "Triage registrado",
+};
+
+export function clinicalTimelineDisplayLabelEs(displayEventType: string): string {
+  return CLINICAL_TIMELINE_DISPLAY_LABEL_ES[displayEventType] ?? displayEventType;
+}
+
 export function clinicalTimelineDisplayLabelForLocale(
-  locale: "en" | "fr",
+  locale: string,
   displayEventType: string
 ): string {
-  return locale === "en"
-    ? clinicalTimelineDisplayLabelEn(displayEventType)
-    : clinicalTimelineDisplayLabelFr(displayEventType);
+  return pickProductUiCopy(
+    locale,
+    {
+      en: clinicalTimelineDisplayLabelEn(displayEventType),
+      fr: clinicalTimelineDisplayLabelFr(displayEventType),
+      es: clinicalTimelineDisplayLabelEs(displayEventType),
+    },
+    clinicalTimelineDisplayLabelEs(displayEventType)
+  );
 }
 
 export function clinicalDocumentationEventBelongsInDischargeHistory(event: ClinicalTimelineStoredRow): boolean {

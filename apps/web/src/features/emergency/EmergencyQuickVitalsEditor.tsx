@@ -16,7 +16,7 @@ import { saveIndependentEncounterVitals } from "./saveIndependentEncounterVitals
 
 type Draft = TriageVitalsCompactValues & { allergyNote: string };
 
-function draftFromTriage(triage: Record<string, unknown> | null, language: "en" | "fr"): Draft {
+function draftFromTriage(triage: Record<string, unknown> | null, language: string): Draft {
   const units = defaultVitalsEntryUnits(language);
   const measured = splitMeasuredAtLocal(new Date().toISOString());
   const empty: Draft = {

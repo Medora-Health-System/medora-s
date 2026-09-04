@@ -8,6 +8,7 @@ import {
   calculateNihssTotal,
 } from "./strokeDocumentationPayloads.js";
 import {
+  clinicalDocSummaryKey,
   clinicalDocYesNo,
   pickLocalizedEnumLabel,
   type ClinicalDocumentationSummaryLocale,
@@ -621,24 +622,24 @@ export function summarizeStrokeNeuroReassessmentPayload(
       if (!p.success) return [];
       const lines: Array<{ key: string; value: string }> = [
         {
-          key: locale === "en" ? "NIHSS total" : "NIHSS total",
+          key: clinicalDocSummaryKey(locale, "NIHSS total", "NIHSS total"),
           value: String(p.data.totalScore),
         },
       ];
       if (p.data.previousScore != null) {
         lines.push({
-          key: locale === "en" ? "Previous score" : "Score précédent",
+          key: clinicalDocSummaryKey(locale, "Previous score", "Score précédent"),
           value: String(p.data.previousScore),
         });
       }
       if (p.data.scoreChange != null) {
         lines.push({
-          key: locale === "en" ? "Change" : "Variation",
+          key: clinicalDocSummaryKey(locale, "Change", "Variation"),
           value: String(p.data.scoreChange),
         });
       }
       lines.push({
-        key: locale === "en" ? "Provider notified" : "Médecin avisé",
+        key: clinicalDocSummaryKey(locale, "Provider notified", "Médecin avisé"),
         value: clinicalDocYesNo(p.data.providerNotified, locale),
       });
       return lines;
@@ -648,7 +649,7 @@ export function summarizeStrokeNeuroReassessmentPayload(
       if (!p.success) return [];
       return [
         {
-          key: locale === "en" ? "LOC" : "Conscience",
+          key: clinicalDocSummaryKey(locale, "LOC", "Conscience"),
           value: pickLocalizedEnumLabel(
             Object.fromEntries(NEURO_CHECK_LOC_OPTIONS.map((o) => [o.value, o.labelEn])),
             Object.fromEntries(NEURO_CHECK_LOC_OPTIONS.map((o) => [o.value, o.labelFr])),
@@ -657,7 +658,7 @@ export function summarizeStrokeNeuroReassessmentPayload(
           ),
         },
         {
-          key: locale === "en" ? "Provider notified" : "Médecin avisé",
+          key: clinicalDocSummaryKey(locale, "Provider notified", "Médecin avisé"),
           value: clinicalDocYesNo(p.data.providerNotified, locale),
         },
       ];
@@ -667,15 +668,15 @@ export function summarizeStrokeNeuroReassessmentPayload(
       if (!p.success) return [];
       return [
         {
-          key: locale === "en" ? "Total score" : "Score total",
+          key: clinicalDocSummaryKey(locale, "Total score", "Score total"),
           value: String(p.data.totalScore),
         },
         {
-          key: locale === "en" ? "Severity" : "Sévérité",
+          key: clinicalDocSummaryKey(locale, "Severity", "Sévérité"),
           value: pickLocalizedEnumLabel(GCS_SEVERITY_EN, GCS_SEVERITY_FR, p.data.severityBand, locale),
         },
         {
-          key: locale === "en" ? "Provider notified" : "Médecin avisé",
+          key: clinicalDocSummaryKey(locale, "Provider notified", "Médecin avisé"),
           value: clinicalDocYesNo(p.data.providerNotified, locale),
         },
       ];
@@ -685,7 +686,7 @@ export function summarizeStrokeNeuroReassessmentPayload(
       if (!p.success) return [];
       return [
         {
-          key: locale === "en" ? "Left pupil" : "Pupille G",
+          key: clinicalDocSummaryKey(locale, "Left pupil", "Pupille G"),
           value: `${p.data.leftPupilSize} mm / ${pickLocalizedEnumLabel(
             Object.fromEntries(PUPIL_REACTION_OPTIONS.map((o) => [o.value, o.labelEn])),
             Object.fromEntries(PUPIL_REACTION_OPTIONS.map((o) => [o.value, o.labelFr])),
@@ -694,7 +695,7 @@ export function summarizeStrokeNeuroReassessmentPayload(
           )}`,
         },
         {
-          key: locale === "en" ? "Right pupil" : "Pupille D",
+          key: clinicalDocSummaryKey(locale, "Right pupil", "Pupille D"),
           value: `${p.data.rightPupilSize} mm / ${pickLocalizedEnumLabel(
             Object.fromEntries(PUPIL_REACTION_OPTIONS.map((o) => [o.value, o.labelEn])),
             Object.fromEntries(PUPIL_REACTION_OPTIONS.map((o) => [o.value, o.labelFr])),
@@ -719,7 +720,7 @@ export function summarizeStrokeNeuroReassessmentPayload(
       if (!p.success) return [];
       return [
         {
-          key: locale === "en" ? "Reason" : "Motif",
+          key: clinicalDocSummaryKey(locale, "Reason", "Motif"),
           value: pickLocalizedEnumLabel(
             ESCALATION_REASON_EN,
             ESCALATION_REASON_FR,
@@ -728,11 +729,11 @@ export function summarizeStrokeNeuroReassessmentPayload(
           ),
         },
         {
-          key: locale === "en" ? "Provider notified" : "Médecin avisé",
+          key: clinicalDocSummaryKey(locale, "Provider notified", "Médecin avisé"),
           value: clinicalDocYesNo(p.data.providerNotified, locale),
         },
         {
-          key: locale === "en" ? "Response received" : "Réponse reçue",
+          key: clinicalDocSummaryKey(locale, "Response received", "Réponse reçue"),
           value: clinicalDocYesNo(p.data.responseReceived, locale),
         },
       ];
@@ -742,7 +743,7 @@ export function summarizeStrokeNeuroReassessmentPayload(
       if (!p.success) return [];
       return [
         {
-          key: locale === "en" ? "Therapy" : "Thérapie",
+          key: clinicalDocSummaryKey(locale, "Therapy", "Thérapie"),
           value: pickLocalizedEnumLabel(
             Object.fromEntries(POST_THROMBOLYTIC_THERAPY_OPTIONS.map((o) => [o.value, o.labelEn])),
             Object.fromEntries(POST_THROMBOLYTIC_THERAPY_OPTIONS.map((o) => [o.value, o.labelFr])),
@@ -751,33 +752,33 @@ export function summarizeStrokeNeuroReassessmentPayload(
           ),
         },
         {
-          key: locale === "en" ? "Blood pressure" : "Tension artérielle",
+          key: clinicalDocSummaryKey(locale, "Blood pressure", "Tension artérielle"),
           value: p.data.bloodPressure,
         },
         {
-          key: locale === "en" ? "Neuro stable" : "Neuro stable",
+          key: clinicalDocSummaryKey(locale, "Neuro stable", "Neuro stable"),
           value: clinicalDocYesNo(p.data.neuroStatusStable, locale),
         },
         {
-          key: locale === "en" ? "BP within parameters" : "TA dans les paramètres",
+          key: clinicalDocSummaryKey(locale, "BP within parameters", "TA dans les paramètres"),
           value: p.data.bpWithinParameters === "YES"
-            ? locale === "en" ? "Yes" : "Oui"
-            : locale === "en" ? "No" : "Non",
+            ? clinicalDocSummaryKey(locale, "Yes", "Oui")
+            : clinicalDocSummaryKey(locale, "No", "Non"),
         },
         {
-          key: locale === "en" ? "Neuro change" : "Changement neuro",
+          key: clinicalDocSummaryKey(locale, "Neuro change", "Changement neuro"),
           value: p.data.neuroChangePresent === "YES"
-            ? locale === "en" ? "Yes" : "Oui"
-            : locale === "en" ? "No" : "Non",
+            ? clinicalDocSummaryKey(locale, "Yes", "Oui")
+            : clinicalDocSummaryKey(locale, "No", "Non"),
         },
         {
-          key: locale === "en" ? "Bleeding concern" : "Préoccupation saignement",
+          key: clinicalDocSummaryKey(locale, "Bleeding concern", "Préoccupation saignement"),
           value: p.data.bleedingConcern === "YES"
-            ? locale === "en" ? "Yes" : "Oui"
-            : locale === "en" ? "No" : "Non",
+            ? clinicalDocSummaryKey(locale, "Yes", "Oui")
+            : clinicalDocSummaryKey(locale, "No", "Non"),
         },
         {
-          key: locale === "en" ? "Bleeding observed" : "Saignement observé",
+          key: clinicalDocSummaryKey(locale, "Bleeding observed", "Saignement observé"),
           value: clinicalDocYesNo(p.data.bleedingObserved, locale),
         },
       ];
@@ -787,7 +788,7 @@ export function summarizeStrokeNeuroReassessmentPayload(
       if (!p.success) return [];
       return [
         {
-          key: locale === "en" ? "Frequency" : "Fréquence",
+          key: clinicalDocSummaryKey(locale, "Frequency", "Fréquence"),
           value: pickLocalizedEnumLabel(
             Object.fromEntries(FREQUENT_NEURO_FREQUENCY_OPTIONS.map((o) => [o.value, o.labelEn])),
             Object.fromEntries(FREQUENT_NEURO_FREQUENCY_OPTIONS.map((o) => [o.value, o.labelFr])),
@@ -796,7 +797,7 @@ export function summarizeStrokeNeuroReassessmentPayload(
           ),
         },
         {
-          key: locale === "en" ? "Neuro status" : "État neuro",
+          key: clinicalDocSummaryKey(locale, "Neuro status", "État neuro"),
           value: pickLocalizedEnumLabel(
             Object.fromEntries(FREQUENT_NEURO_STATUS_OPTIONS.map((o) => [o.value, o.labelEn])),
             Object.fromEntries(FREQUENT_NEURO_STATUS_OPTIONS.map((o) => [o.value, o.labelFr])),

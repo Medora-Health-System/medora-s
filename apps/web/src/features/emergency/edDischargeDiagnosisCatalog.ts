@@ -154,7 +154,7 @@ export function catalogEntriesStillOnGenericFallback(
   return auditEdDischargeDiagnosisCoverage(catalog).filter((row) => !row.hasDiagnosisSpecificTemplate);
 }
 
-export function isTemplateGoldStandardComplete(templateId: string, locale: "en" | "fr" = "en"): boolean {
+export function isTemplateGoldStandardComplete(templateId: string, locale: string = "en"): boolean {
   const template = PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.find((t) => t.id === templateId);
   if (!template || template.id === GENERIC_PROVIDER_DISCHARGE_TEMPLATE_ID) return false;
   const body = getProviderDischargeSuggestedTextBody(template, locale);

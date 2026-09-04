@@ -41,7 +41,7 @@ export function inpatientDiagnosisHasSpecificInstructionTemplate(input: {
 
 export function generateInpatientPatientInstructionsFromDiagnoses(input: {
   diagnoses: InpatientProviderDischargeDiagnosis[];
-  locale: "en" | "fr";
+  locale: string;
   facilityDisplayName: string;
 }): {
   instructions: InpatientPatientInstructions1C;

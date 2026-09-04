@@ -1,7 +1,9 @@
 import { z } from "zod";
 import {
+  clinicalDocSummaryKey,
   clinicalDocYesNo,
   pickLocalizedEnumLabel,
+  clinicalDocCountItems,
   type ClinicalDocumentationSummaryLocale,
 } from "./clinicalDocumentationSummaryLocale.js";
 import type { ClinicalDocumentationFieldOption } from "./clinicalDocumentationFieldOptions.js";
@@ -484,7 +486,7 @@ const CONDITION_FR: Record<string, string> = {
 };
 
 function listCountLabel(count: number, locale: ClinicalDocumentationSummaryLocale): string {
-  return locale === "en" ? `${count} item(s)` : `${count} article(s)`;
+  return clinicalDocCountItems(locale, count);
 }
 
 export function summarizeBelongingsValuablesDocumentationPayload(
@@ -498,31 +500,31 @@ export function summarizeBelongingsValuablesDocumentationPayload(
       if (!p.success) return [];
       return [
         {
-          key: locale === "en" ? "Documented" : "Documenté",
+          key: clinicalDocSummaryKey(locale, "Documented", "Documenté"),
           value: p.data.documentedAt,
         },
         {
-          key: locale === "en" ? "Patient participated" : "Participation patient",
+          key: clinicalDocSummaryKey(locale, "Patient participated", "Participation patient"),
           value: clinicalDocYesNo(p.data.patientAbleToParticipate, locale),
         },
         {
-          key: locale === "en" ? "Belongings bagged" : "Effets ensachés",
+          key: clinicalDocSummaryKey(locale, "Belongings bagged", "Effets ensachés"),
           value: clinicalDocYesNo(p.data.belongingsBagged, locale),
         },
         ...(p.data.bagIdentifier
           ? [
               {
-                key: locale === "en" ? "Bag ID" : "N° sac",
+                key: clinicalDocSummaryKey(locale, "Bag ID", "N° sac"),
                 value: p.data.bagIdentifier,
               },
             ]
           : []),
         {
-          key: locale === "en" ? "Kept with patient" : "Avec le patient",
+          key: clinicalDocSummaryKey(locale, "Kept with patient", "Avec le patient"),
           value: clinicalDocYesNo(p.data.belongingsKeptWithPatient, locale),
         },
         {
-          key: locale === "en" ? "Clothing items" : "Vêtements",
+          key: clinicalDocSummaryKey(locale, "Clothing items", "Vêtements"),
           value: listCountLabel(p.data.clothingItems.length, locale),
         },
       ];
@@ -532,33 +534,33 @@ export function summarizeBelongingsValuablesDocumentationPayload(
       if (!p.success) return [];
       const lines: Array<{ key: string; value: string }> = [
         {
-          key: locale === "en" ? "Documented" : "Documenté",
+          key: clinicalDocSummaryKey(locale, "Documented", "Documenté"),
           value: p.data.documentedAt,
         },
         {
-          key: locale === "en" ? "Cash present" : "Argent présent",
+          key: clinicalDocSummaryKey(locale, "Cash present", "Argent présent"),
           value: clinicalDocYesNo(p.data.cashPresent, locale),
         },
         {
-          key: locale === "en" ? "Jewelry present" : "Bijoux présents",
+          key: clinicalDocSummaryKey(locale, "Jewelry present", "Bijoux présents"),
           value: clinicalDocYesNo(p.data.jewelryPresent, locale),
         },
         {
-          key: locale === "en" ? "Electronics present" : "Électronique présente",
+          key: clinicalDocSummaryKey(locale, "Electronics present", "Électronique présente"),
           value: clinicalDocYesNo(p.data.electronicsPresent, locale),
         },
         {
-          key: locale === "en" ? "Wallet / purse" : "Portefeuille / sac",
+          key: clinicalDocSummaryKey(locale, "Wallet / purse", "Portefeuille / sac"),
           value: clinicalDocYesNo(p.data.walletOrPursePresent, locale),
         },
         {
-          key: locale === "en" ? "Valuables secured" : "Objets de valeur sécurisés",
+          key: clinicalDocSummaryKey(locale, "Valuables secured", "Objets de valeur sécurisés"),
           value: clinicalDocYesNo(p.data.valuablesSecured, locale),
         },
       ];
       if (p.data.securityBagIdentifier) {
         lines.push({
-          key: locale === "en" ? "Security bag ID" : "N° sac sécurité",
+          key: clinicalDocSummaryKey(locale, "Security bag ID", "N° sac sécurité"),
           value: p.data.securityBagIdentifier,
         });
       }
@@ -568,9 +570,9 @@ export function summarizeBelongingsValuablesDocumentationPayload(
       const p = belongingsSecuredBaggedPayloadSchema.safeParse(payload);
       if (!p.success) return [];
       return [
-        { key: locale === "en" ? "Bag ID" : "N° sac", value: p.data.bagIdentifier },
+        { key: clinicalDocSummaryKey(locale, "Bag ID", "N° sac"), value: p.data.bagIdentifier },
         {
-          key: locale === "en" ? "Storage location" : "Lieu de stockage",
+          key: clinicalDocSummaryKey(locale, "Storage location", "Lieu de stockage"),
           value: pickLocalizedEnumLabel(
             STORAGE_EN,
             STORAGE_FR,
@@ -579,11 +581,11 @@ export function summarizeBelongingsValuablesDocumentationPayload(
           ),
         },
         {
-          key: locale === "en" ? "Sealed" : "Scellé",
+          key: clinicalDocSummaryKey(locale, "Sealed", "Scellé"),
           value: clinicalDocYesNo(p.data.sealedByUserAcknowledged, locale),
         },
         {
-          key: locale === "en" ? "Label applied" : "Étiquette apposée",
+          key: clinicalDocSummaryKey(locale, "Label applied", "Étiquette apposée"),
           value: clinicalDocYesNo(p.data.patientLabelApplied, locale),
         },
       ];
@@ -592,15 +594,15 @@ export function summarizeBelongingsValuablesDocumentationPayload(
       const p = belongingsTransferSecurityPayloadSchema.safeParse(payload);
       if (!p.success) return [];
       const lines: Array<{ key: string; value: string }> = [
-        { key: locale === "en" ? "Bag ID" : "N° sac", value: p.data.bagIdentifier },
+        { key: clinicalDocSummaryKey(locale, "Bag ID", "N° sac"), value: p.data.bagIdentifier },
         {
-          key: locale === "en" ? "Received by security" : "Reçu par sécurité",
+          key: clinicalDocSummaryKey(locale, "Received by security", "Reçu par sécurité"),
           value: p.data.receivedBySecurityName,
         },
       ];
       if (p.data.securityReceiptNumber) {
         lines.push({
-          key: locale === "en" ? "Receipt number" : "N° reçu",
+          key: clinicalDocSummaryKey(locale, "Receipt number", "N° reçu"),
           value: p.data.securityReceiptNumber,
         });
       }
@@ -611,11 +613,11 @@ export function summarizeBelongingsValuablesDocumentationPayload(
       if (!p.success) return [];
       return [
         {
-          key: locale === "en" ? "Recipient" : "Destinataire",
+          key: clinicalDocSummaryKey(locale, "Recipient", "Destinataire"),
           value: p.data.recipientName,
         },
         {
-          key: locale === "en" ? "Relationship" : "Lien",
+          key: clinicalDocSummaryKey(locale, "Relationship", "Lien"),
           value: pickLocalizedEnumLabel(
             RELATIONSHIP_EN,
             RELATIONSHIP_FR,
@@ -624,27 +626,27 @@ export function summarizeBelongingsValuablesDocumentationPayload(
           ),
         },
         {
-          key: locale === "en" ? "ID checked" : "Identité vérifiée",
+          key: clinicalDocSummaryKey(locale, "ID checked", "Identité vérifiée"),
           value: clinicalDocYesNo(p.data.recipientIdChecked, locale),
         },
         {
-          key: locale === "en" ? "Patient authorized" : "Autorisation patient",
+          key: clinicalDocSummaryKey(locale, "Patient authorized", "Autorisation patient"),
           value: clinicalDocYesNo(p.data.patientAuthorizedRelease, locale),
         },
-        { key: locale === "en" ? "Bag ID" : "N° sac", value: p.data.bagIdentifier },
+        { key: clinicalDocSummaryKey(locale, "Bag ID", "N° sac"), value: p.data.bagIdentifier },
       ];
     }
     case BELONGINGS_RETURN_PATIENT_CARD_ID: {
       const p = belongingsReturnPatientPayloadSchema.safeParse(payload);
       if (!p.success) return [];
       return [
-        { key: locale === "en" ? "Bag ID" : "N° sac", value: p.data.bagIdentifier },
+        { key: clinicalDocSummaryKey(locale, "Bag ID", "N° sac"), value: p.data.bagIdentifier },
         {
-          key: locale === "en" ? "Patient received" : "Reçu par le patient",
+          key: clinicalDocSummaryKey(locale, "Patient received", "Reçu par le patient"),
           value: clinicalDocYesNo(p.data.patientReceived, locale),
         },
         {
-          key: locale === "en" ? "Discrepancy" : "Écart",
+          key: clinicalDocSummaryKey(locale, "Discrepancy", "Écart"),
           value: clinicalDocYesNo(p.data.discrepancyReported, locale),
         },
       ];
@@ -654,7 +656,7 @@ export function summarizeBelongingsValuablesDocumentationPayload(
       if (!p.success) return [];
       return [
         {
-          key: locale === "en" ? "Patient condition" : "État du patient",
+          key: clinicalDocSummaryKey(locale, "Patient condition", "État du patient"),
           value: pickLocalizedEnumLabel(
             CONDITION_EN,
             CONDITION_FR,
@@ -663,14 +665,14 @@ export function summarizeBelongingsValuablesDocumentationPayload(
           ),
         },
         {
-          key: locale === "en" ? "Two-staff inventory" : "Inventaire à deux",
+          key: clinicalDocSummaryKey(locale, "Two-staff inventory", "Inventaire à deux"),
           value: clinicalDocYesNo(p.data.belongingsInventoriedByTwoStaff, locale),
         },
         {
-          key: locale === "en" ? "Security notified" : "Sécurité avisée",
+          key: clinicalDocSummaryKey(locale, "Security notified", "Sécurité avisée"),
           value: clinicalDocYesNo(p.data.securityNotified, locale),
         },
-        { key: locale === "en" ? "Bag ID" : "N° sac", value: p.data.bagIdentifier },
+        { key: clinicalDocSummaryKey(locale, "Bag ID", "N° sac"), value: p.data.bagIdentifier },
       ];
     }
     default:

@@ -13,8 +13,6 @@ import {
   displayWeightKgFromStored,
   heightFeetInchStringsFromStoredCm,
 } from "@medora/shared";
-import { erTriageMessagesEn } from "@/i18n/messages/erTriage.en";
-import { erTriageMessagesFr } from "@/i18n/messages/erTriage.fr";
 import {
   formatHeightDualLine,
   formatTemperatureDualLine,
@@ -426,7 +424,7 @@ export type TriagePreviewSection = {
  */
 export function triagePreviewSliceFromTriageGet(
   triage: Record<string, unknown> | null,
-  language?: SupportedLanguage
+  language?: string
 ): {
   slice: TriageDocPreviewFormSlice;
   er: ErTriageV1Form;
@@ -515,7 +513,17 @@ export function buildErWorkspaceVitalPairs(
 ): { label: string; value: string }[] {
   const f = slice;
   const dash = erTriageT(locale, "erTriage.preview.emptyOption");
-  const vs = erTriageMessagesForLocale(locale).preview.vitalStrip;
+  const vs = {
+    ta: erTriageT(locale, "erTriage.preview.vitalStrip.ta"),
+    hr: erTriageT(locale, "erTriage.preview.vitalStrip.hr"),
+    rr: erTriageT(locale, "erTriage.preview.vitalStrip.rr"),
+    temp: erTriageT(locale, "erTriage.preview.vitalStrip.temp"),
+    spo2: erTriageT(locale, "erTriage.preview.vitalStrip.spo2"),
+    weight: erTriageT(locale, "erTriage.preview.vitalStrip.weight"),
+    height: erTriageT(locale, "erTriage.preview.vitalStrip.height"),
+    perMin: erTriageT(locale, "erTriage.preview.vitalStrip.perMin"),
+    pct: erTriageT(locale, "erTriage.preview.vitalStrip.pct"),
+  };
   return [
     { label: vs.ta, value: formatTriageBpStrip(f.bpSys, f.bpDia, locale) },
     {
@@ -563,10 +571,6 @@ export function buildErWorkspaceVitalPairs(
       })(),
     },
   ];
-}
-
-function erTriageMessagesForLocale(locale: SupportedLanguage) {
-  return locale === "en" ? erTriageMessagesEn : erTriageMessagesFr;
 }
 
 /** Canonical vitals record for header / MSE lines (interprets entry units on the slice). */

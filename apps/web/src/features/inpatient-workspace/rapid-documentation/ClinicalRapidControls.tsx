@@ -11,6 +11,7 @@ import {
   type ClinicalRapidOptionV1,
 } from "@medora/shared";
 import { useI18n } from "@/lib/i18n";
+import { pickLegacyBilingualStoredPair, productUiBcp47Tag } from "@/i18n/config";
 import { resolveNursingAdmissionOptionLabel } from "../nursingAdmissionOptionI18n";
 
 const chipBase: CSSProperties = {
@@ -51,7 +52,10 @@ function optionLabel(
   const catalog = resolveNursingAdmissionOptionLabel(t, opt.code);
   if (catalog !== opt.code) return catalog;
   if ("displayFr" in opt && "display" in opt) {
-    return String(language ?? "").toLowerCase().startsWith("fr") ? opt.displayFr : opt.display;
+    return pickLegacyBilingualStoredPair(language, {
+      en: opt.display,
+      fr: opt.displayFr,
+    }).value;
   }
   return opt.label;
 }
@@ -869,7 +873,7 @@ export function ClinicalSaveStatus({
   const { t } = useI18n();
   const time =
     savedAt &&
-    new Date(savedAt).toLocaleTimeString(language?.startsWith("fr") ? "fr-FR" : "en-US");
+    new Date(savedAt).toLocaleTimeString(productUiBcp47Tag(language));
   const label =
     code === "SAVED" && time
       ? t("inpatientRapidConvergenceD4a27c.saveStatus.SAVED_AT").replace("{time}", time)

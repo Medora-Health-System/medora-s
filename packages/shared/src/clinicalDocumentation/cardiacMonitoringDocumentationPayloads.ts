@@ -4,6 +4,8 @@ import { PAIN_SCORE_0_10_OPTIONS } from "./clinicalDocumentationFieldOptions.js"
 import {
   pickLocalizedEnumLabel,
   type ClinicalDocumentationSummaryLocale,
+  clinicalDocSummaryKey,
+  clinicalDocYesNo,
 } from "./clinicalDocumentationSummaryLocale.js";
 
 /** EDOC.15 — cardiac monitoring & telemetry documentation card IDs. */
@@ -141,13 +143,7 @@ export function cardiacDocYesNoLabel(
   value: (typeof CARDIAC_YES_NO_VALUES)[number],
   locale: ClinicalDocumentationSummaryLocale
 ): string {
-  return value === "YES"
-    ? locale === "en"
-      ? "Yes"
-      : "Oui"
-    : locale === "en"
-      ? "No"
-      : "Non";
+  return clinicalDocYesNo(value === "YES", locale);
 }
 
 export const CARDIAC_YES_NO_OPTIONS = enumOptions(CARDIAC_YES_NO_VALUES, {
@@ -429,19 +425,19 @@ export function summarizeCardiacMonitoringDocumentationPayload(
       const d = p.data;
       return [
         {
-          key: locale === "en" ? "Rhythm" : "Rythme",
+          key: clinicalDocSummaryKey(locale, "Rhythm", "Rythme"),
           value: pickLocalizedEnumLabel(RHYTHM_MAP.en, RHYTHM_MAP.fr, d.rhythm, locale),
         },
         {
-          key: locale === "en" ? "HR" : "FC",
+          key: clinicalDocSummaryKey(locale, "HR", "FC"),
           value: `${d.heartRate} bpm`,
         },
         {
-          key: locale === "en" ? "Symptomatic" : "Symptomatique",
+          key: clinicalDocSummaryKey(locale, "Symptomatic", "Symptomatique"),
           value: cardiacDocYesNoLabel(d.patientSymptomatic, locale),
         },
         {
-          key: locale === "en" ? "Provider notified" : "Médecin avisé",
+          key: clinicalDocSummaryKey(locale, "Provider notified", "Médecin avisé"),
           value: cardiacDocYesNoLabel(d.providerNotified, locale),
         },
       ];
@@ -452,7 +448,7 @@ export function summarizeCardiacMonitoringDocumentationPayload(
       const d = p.data;
       return [
         {
-          key: locale === "en" ? "Event" : "Événement",
+          key: clinicalDocSummaryKey(locale, "Event", "Événement"),
           value: pickLocalizedEnumLabel(
             ARRHYTHMIA_TYPE_MAP.en,
             ARRHYTHMIA_TYPE_MAP.fr,
@@ -461,15 +457,15 @@ export function summarizeCardiacMonitoringDocumentationPayload(
           ),
         },
         {
-          key: locale === "en" ? "Duration" : "Durée",
+          key: clinicalDocSummaryKey(locale, "Duration", "Durée"),
           value: `${d.durationMinutes} min`,
         },
         {
-          key: locale === "en" ? "Intervention required" : "Intervention requise",
+          key: clinicalDocSummaryKey(locale, "Intervention required", "Intervention requise"),
           value: cardiacDocYesNoLabel(d.interventionRequired, locale),
         },
         {
-          key: locale === "en" ? "Provider notified" : "Médecin avisé",
+          key: clinicalDocSummaryKey(locale, "Provider notified", "Médecin avisé"),
           value: cardiacDocYesNoLabel(d.providerNotified, locale),
         },
       ];
@@ -480,15 +476,15 @@ export function summarizeCardiacMonitoringDocumentationPayload(
       const d = p.data;
       return [
         {
-          key: locale === "en" ? "Reason" : "Motif",
+          key: clinicalDocSummaryKey(locale, "Reason", "Motif"),
           value: pickLocalizedEnumLabel(ECG_REASON_MAP.en, ECG_REASON_MAP.fr, d.reason, locale),
         },
         {
-          key: locale === "en" ? "Critical finding" : "Anomalie critique",
+          key: clinicalDocSummaryKey(locale, "Critical finding", "Anomalie critique"),
           value: cardiacDocYesNoLabel(d.criticalFindingPresent, locale),
         },
         {
-          key: locale === "en" ? "Provider reviewed" : "Revue médecin",
+          key: clinicalDocSummaryKey(locale, "Provider reviewed", "Revue médecin"),
           value: cardiacDocYesNoLabel(d.providerReviewed, locale),
         },
       ];
@@ -499,19 +495,19 @@ export function summarizeCardiacMonitoringDocumentationPayload(
       const d = p.data;
       return [
         {
-          key: locale === "en" ? "Rhythm" : "Rythme",
+          key: clinicalDocSummaryKey(locale, "Rhythm", "Rythme"),
           value: pickLocalizedEnumLabel(RHYTHM_MAP.en, RHYTHM_MAP.fr, d.currentRhythm, locale),
         },
         {
-          key: locale === "en" ? "HR" : "FC",
+          key: clinicalDocSummaryKey(locale, "HR", "FC"),
           value: `${d.heartRate} bpm`,
         },
         {
-          key: locale === "en" ? "Chest pain" : "Douleur thoracique",
+          key: clinicalDocSummaryKey(locale, "Chest pain", "Douleur thoracique"),
           value: cardiacDocYesNoLabel(d.chestPain, locale),
         },
         {
-          key: locale === "en" ? "Provider notified" : "Médecin avisé",
+          key: clinicalDocSummaryKey(locale, "Provider notified", "Médecin avisé"),
           value: cardiacDocYesNoLabel(d.providerNotified, locale),
         },
       ];
@@ -522,15 +518,15 @@ export function summarizeCardiacMonitoringDocumentationPayload(
       const d = p.data;
       return [
         {
-          key: locale === "en" ? "Pain score" : "Score douleur",
+          key: clinicalDocSummaryKey(locale, "Pain score", "Score douleur"),
           value: String(d.painScore),
         },
         {
-          key: locale === "en" ? "Pain improved" : "Douleur améliorée",
+          key: clinicalDocSummaryKey(locale, "Pain improved", "Douleur améliorée"),
           value: cardiacDocYesNoLabel(d.painImproved, locale),
         },
         {
-          key: locale === "en" ? "Provider notified" : "Médecin avisé",
+          key: clinicalDocSummaryKey(locale, "Provider notified", "Médecin avisé"),
           value: cardiacDocYesNoLabel(d.providerNotified, locale),
         },
       ];
@@ -541,7 +537,7 @@ export function summarizeCardiacMonitoringDocumentationPayload(
       const d = p.data;
       return [
         {
-          key: locale === "en" ? "Activation reason" : "Motif activation",
+          key: clinicalDocSummaryKey(locale, "Activation reason", "Motif activation"),
           value: pickLocalizedEnumLabel(
             labelMap(STEMI_ACTIVATION_REASON_OPTIONS).en,
             labelMap(STEMI_ACTIVATION_REASON_OPTIONS).fr,
@@ -550,11 +546,11 @@ export function summarizeCardiacMonitoringDocumentationPayload(
           ),
         },
         {
-          key: locale === "en" ? "Cardiology notified" : "Cardiologie avisée",
+          key: clinicalDocSummaryKey(locale, "Cardiology notified", "Cardiologie avisée"),
           value: cardiacDocYesNoLabel(d.cardiologyNotified, locale),
         },
         {
-          key: locale === "en" ? "Cath lab activated" : "Salle cath activée",
+          key: clinicalDocSummaryKey(locale, "Cath lab activated", "Salle cath activée"),
           value: cardiacDocYesNoLabel(d.cathLabActivated, locale),
         },
       ];
@@ -565,7 +561,7 @@ export function summarizeCardiacMonitoringDocumentationPayload(
       const d = p.data;
       return [
         {
-          key: locale === "en" ? "Reason" : "Motif",
+          key: clinicalDocSummaryKey(locale, "Reason", "Motif"),
           value: pickLocalizedEnumLabel(
             ESCALATION_REASON_MAP.en,
             ESCALATION_REASON_MAP.fr,
@@ -574,11 +570,11 @@ export function summarizeCardiacMonitoringDocumentationPayload(
           ),
         },
         {
-          key: locale === "en" ? "Provider notified" : "Médecin avisé",
+          key: clinicalDocSummaryKey(locale, "Provider notified", "Médecin avisé"),
           value: cardiacDocYesNoLabel(d.providerNotified, locale),
         },
         {
-          key: locale === "en" ? "Response received" : "Réponse reçue",
+          key: clinicalDocSummaryKey(locale, "Response received", "Réponse reçue"),
           value: cardiacDocYesNoLabel(d.responseReceived, locale),
         },
       ];
@@ -589,15 +585,15 @@ export function summarizeCardiacMonitoringDocumentationPayload(
       const d = p.data;
       return [
         {
-          key: locale === "en" ? "QTc" : "QTc",
+          key: clinicalDocSummaryKey(locale, "QTc", "QTc"),
           value: `${d.qtcValue} ms`,
         },
         {
-          key: locale === "en" ? "High-risk medication" : "Médicament à risque",
+          key: clinicalDocSummaryKey(locale, "High-risk medication", "Médicament à risque"),
           value: cardiacDocYesNoLabel(d.highRiskMedicationPresent, locale),
         },
         {
-          key: locale === "en" ? "Provider notified" : "Médecin avisé",
+          key: clinicalDocSummaryKey(locale, "Provider notified", "Médecin avisé"),
           value: cardiacDocYesNoLabel(d.providerNotified, locale),
         },
       ];
@@ -608,15 +604,15 @@ export function summarizeCardiacMonitoringDocumentationPayload(
       const d = p.data;
       return [
         {
-          key: locale === "en" ? "Rhythm" : "Rythme",
+          key: clinicalDocSummaryKey(locale, "Rhythm", "Rythme"),
           value: pickLocalizedEnumLabel(RHYTHM_MAP.en, RHYTHM_MAP.fr, d.rhythm, locale),
         },
         {
-          key: locale === "en" ? "Rate" : "Fréquence",
+          key: clinicalDocSummaryKey(locale, "Rate", "Fréquence"),
           value: `${d.rate} bpm`,
         },
         {
-          key: locale === "en" ? "Interpretation" : "Interprétation",
+          key: clinicalDocSummaryKey(locale, "Interpretation", "Interprétation"),
           value: pickLocalizedEnumLabel(
             labelMap(STRIP_INTERPRETATION_OPTIONS).en,
             labelMap(STRIP_INTERPRETATION_OPTIONS).fr,
@@ -632,15 +628,15 @@ export function summarizeCardiacMonitoringDocumentationPayload(
       const d = p.data;
       return [
         {
-          key: locale === "en" ? "Paced rhythm" : "Rythme stimulé",
+          key: clinicalDocSummaryKey(locale, "Paced rhythm", "Rythme stimulé"),
           value: cardiacDocYesNoLabel(d.pacedRhythmObserved, locale),
         },
         {
-          key: locale === "en" ? "Capture present" : "Capture présente",
+          key: clinicalDocSummaryKey(locale, "Capture present", "Capture présente"),
           value: cardiacDocYesNoLabel(d.capturePresent, locale),
         },
         {
-          key: locale === "en" ? "Patient stable" : "Patient stable",
+          key: clinicalDocSummaryKey(locale, "Patient stable", "Patient stable"),
           value: cardiacDocYesNoLabel(d.patientStable, locale),
         },
       ];

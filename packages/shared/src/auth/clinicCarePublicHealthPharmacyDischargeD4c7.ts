@@ -49,7 +49,7 @@ export const D4C7_DISCHARGE_INSTRUCTION_CARE_SETTINGS = [
 export type DischargeInstructionCareSetting =
   (typeof D4C7_DISCHARGE_INSTRUCTION_CARE_SETTINGS)[number];
 
-export type DischargeInstructionLocale = "en" | "fr";
+export type DischargeInstructionLocale = string;
 
 /**
  * Care-setting context for diagnosis-driven discharge narratives.

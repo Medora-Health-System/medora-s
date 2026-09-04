@@ -95,7 +95,7 @@ export function formatMarHistoricalShiftTimeRange(
   startAt: Date,
   endAt: Date,
   facilityTimeZone: string,
-  locale: "en" | "fr"
+  locale: string
 ): string {
   const fmt = new Intl.DateTimeFormat(productUiBcp47Tag(locale), {
     timeZone: normalizeMarShiftTimelineTimeZone(facilityTimeZone),
@@ -108,7 +108,7 @@ export function formatMarHistoricalShiftTimeRange(
 
 export function formatMarHistoricalDateLabel(
   dateLocal: string,
-  locale: "en" | "fr",
+  locale: string,
   facilityTimeZone: string = "UTC"
 ): string {
   const ref = referenceAtForFacilityLocalDate(dateLocal, facilityTimeZone);
@@ -121,7 +121,7 @@ export function formatMarHistoricalDateLabel(
 }
 
 export function buildHistoricalMarTimeline(
-  input: MarHistoricalTimelineScope & { locale?: "en" | "fr" }
+  input: MarHistoricalTimelineScope & { locale?: string }
 ): MarHistoricalTimelineModel {
   const facilityTimeZone = normalizeMarShiftTimelineTimeZone(input.facilityTimeZone);
   const now = input.now ?? new Date();

@@ -783,7 +783,8 @@ export class EncountersController {
     @Param("snapshotId") snapshotId: string,
     @Query("format") formatRaw: string | undefined,
     @Req() req: any,
-    @Res({ passthrough: true }) res: Response
+    @Res({ passthrough: true }) res: Response,
+    @Query("locale") localeRaw?: string
   ) {
     const facilityId = req.user?.facilityId || req.headers["x-facility-id"];
     if (!facilityId) {
@@ -794,6 +795,7 @@ export class EncountersController {
       throw new BadRequestException('Invalid format. Use "json" (default) or "html".');
     }
     const format = fmt === "html" ? "html" : "json";
+    const exportLocale = resolveInternalProductUiLanguageOrDefault(localeRaw);
     const result = await this.chartExportService.getSnapshot(
       facilityId,
       id,
@@ -801,7 +803,8 @@ export class EncountersController {
       format,
       req.user?.userId,
       req.ip,
-      req.headers["user-agent"]
+      req.headers["user-agent"],
+      { locale: exportLocale }
     );
     if (format === "html") {
       res.setHeader("Content-Type", "text/html; charset=utf-8");

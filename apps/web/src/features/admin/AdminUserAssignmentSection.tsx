@@ -50,7 +50,7 @@ function technicianTypeLabel(type: TechnicianTypeCode, t: (key: string) => strin
 function departmentDisplayLabel(
   dept: FacilityDepartmentOption,
   t: (key: string) => string,
-  language: "en" | "fr"
+  language: string
 ): string {
   const clinical =
     mapLegacyPrismaDepartmentCodeToClinicalDepartment(dept.code) ??

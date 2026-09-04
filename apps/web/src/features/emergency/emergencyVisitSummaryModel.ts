@@ -33,7 +33,12 @@ import {
   providerDocumentationToVisitSummaryBlock,
   type VisitSummaryProviderDocumentationBlock,
 } from "./erProviderDocumentationSummary";
-import { resolveProductUiLanguageOrDefault, productUiBcp47Tag, type SupportedLanguage } from "@/i18n/config";
+import {
+  resolveProductUiLanguageOrDefault,
+  productUiBcp47Tag,
+  pickProductUiCopy,
+  type SupportedLanguage,
+} from "@/i18n/config";
 import {
   buildTriageCarryForwardSummary,
   triageCarryForwardMetaFromVitalsJson,
@@ -465,7 +470,7 @@ export type ClinicalDocumentationPayloadSummaryLine = {
   value: string;
 };
 
-function formatIsoForLocale(iso: string | null | undefined, locale: SupportedLanguage): string {
+function formatIsoForLocale(iso: string | null | undefined, locale: string): string {
   if (!iso) return "—";
   try {
     const tag = productUiBcp47Tag(locale);
@@ -701,7 +706,12 @@ function buildHandoffLinesFromStored(
   hf: ReturnType<typeof readErHandoffV1FromNursingAssessment>,
   locale: SupportedLanguage
 ): string[] {
-  const yn = (v: boolean) => (locale === "en" ? (v ? "Yes" : "No") : v ? "Oui" : "Non");
+  const yn = (v: boolean) =>
+    pickProductUiCopy(
+      locale,
+      { en: v ? "Yes" : "No", fr: v ? "Oui" : "Non", es: v ? "Sí" : "No" },
+      v ? "Sí" : "No"
+    );
   const hLines: string[] = [];
   if (hf.receivingNurseName?.trim()) {
     hLines.push(interpolate(vs(locale, "handoffLineReceivingNurse"), { name: trunc(hf.receivingNurseName, 200) }));

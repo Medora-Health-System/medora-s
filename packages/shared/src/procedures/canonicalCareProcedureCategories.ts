@@ -2,6 +2,8 @@
  * MEDUI.CARE_PROCEDURES.CANONICAL_CATALOG_FOUNDATION.1
  * Canonical Care / Procedures picker categories (UI label remains "Care / Procedures").
  */
+import { pickProductUiCopy } from "../i18n/productUiLocale.js";
+
 export const CANONICAL_CARE_PROCEDURE_CATEGORIES = [
   "MONITORING",
   "RESPIRATORY",
@@ -24,7 +26,7 @@ export type CanonicalCareProcedureCategory = (typeof CANONICAL_CARE_PROCEDURE_CA
 
 export function canonicalCareProcedureCategoryLabel(
   category: CanonicalCareProcedureCategory,
-  locale: "en" | "fr"
+  locale: string
 ): string {
   const en: Record<CanonicalCareProcedureCategory, string> = {
     MONITORING: "Monitoring",
@@ -60,5 +62,22 @@ export function canonicalCareProcedureCategoryLabel(
     COMMUNICATION: "Communication",
     OTHER: "Autre",
   };
-  return locale === "fr" ? fr[category] : en[category];
+  const es: Record<CanonicalCareProcedureCategory, string> = {
+    MONITORING: "Monitoreo",
+    RESPIRATORY: "Respiratorio",
+    NURSING_PATIENT_CARE: "Enfermería / atención al paciente",
+    WOUND_CARE: "Cuidado de heridas",
+    ORTHOPEDICS_IMMOBILIZATION: "Ortopedia / inmovilización",
+    VASCULAR_ACCESS: "Acceso vascular",
+    GI_GU: "GI / GU",
+    NEURO_STROKE: "Neuro / ACV",
+    TRAUMA: "Trauma",
+    CONSULTS: "Interconsultas",
+    EQUIPMENT: "Equipo",
+    SPECIMEN_POC: "Muestra / POC",
+    ADMISSION_DISPOSITION: "Admisión / disposición",
+    COMMUNICATION: "Comunicación",
+    OTHER: "Otro",
+  };
+  return pickProductUiCopy(locale, { en: en[category], fr: fr[category], es: es[category] }, es[category]);
 }

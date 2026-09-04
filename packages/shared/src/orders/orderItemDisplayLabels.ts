@@ -220,7 +220,7 @@ function isOxygenTherapyCareLine(it: OrderItemLabelInput): boolean {
 
 export function resolveCareOrderItemClinicalDisplay(
   it: OrderItemLabelInput,
-  lang: "fr" | "en"
+  lang: string
 ): { title: string; detailLines: string[] } | null {
   if (it.catalogItemType !== "CARE") return null;
   if (!isOxygenTherapyCareLine(it)) return null;
