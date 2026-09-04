@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   D5A5_CERTIFICATION_ID,
@@ -21,5 +23,14 @@ describe("MEDUI.D5A.5 web dental clinical board contracts", () => {
       "PERM_13",
       "PERM_14",
     ]);
+  });
+
+  it("print/export caller does not hardcode locale=fr", () => {
+    const overview = readFileSync(
+      resolve(__dirname, "./overview/EnterpriseDentalEncounterOverviewPanel.tsx"),
+      "utf8"
+    );
+    expect(overview).toContain("dentalEncounterChartExportHtmlPath(encounterId, language)");
+    expect(overview).not.toContain("locale=fr");
   });
 });

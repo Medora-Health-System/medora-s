@@ -48,6 +48,7 @@ import { MEDUI_ES_1F_OVERLAY } from "./meduiEs1fEmergencyDepartmentOverlay";
 import { MEDUI_ES_1G_OVERLAY } from "./meduiEs1gHospitalInpatientObservationOverlay";
 import { MEDUI_ES_1H_OVERLAY } from "./meduiEs1hOrdersMarPharmacyDiagnosticsOverlay";
 import { MEDUI_ES_1I_OVERLAY } from "./meduiEs1iClinicDentalBillingAncillaryOverlay";
+import { MEDUI_ES_1JB_OVERLAY } from "./meduiEs1jSafeChromeOverlay";
 
 const webRoot = join(dirname(fileURLToPath(import.meta.url)), "../../..");
 
@@ -148,13 +149,14 @@ describe("MEDUI.ES.1C hidden Spanish catalog + tri-lingual isolation", () => {
     expect(extraFr.length).toBe(67);
   });
 
-  it("every ES leaf is a hidden placeholder, an APPROVED canon overlay, or a governed 1E/1F/1G/1H/1I overlay, never EN/FR copy", () => {
+  it("every ES leaf is a hidden placeholder, an APPROVED canon overlay, or a governed 1E/1F/1G/1H/1I/1J.B overlay, never EN/FR copy", () => {
     const es1eKeys = new Set(Object.keys(MEDUI_ES_1E_OVERLAY));
     const es1fKeys = new Set(Object.keys(MEDUI_ES_1F_OVERLAY));
     const es1gKeys = new Set(Object.keys(MEDUI_ES_1G_OVERLAY));
     const es1hKeys = new Set(Object.keys(MEDUI_ES_1H_OVERLAY));
     const es1iKeys = new Set(Object.keys(MEDUI_ES_1I_OVERLAY));
-    const governedKeys = new Set([...es1eKeys, ...es1fKeys, ...es1gKeys, ...es1hKeys, ...es1iKeys]);
+    const es1jbKeys = new Set(Object.keys(MEDUI_ES_1JB_OVERLAY));
+    const governedKeys = new Set([...es1eKeys, ...es1fKeys, ...es1gKeys, ...es1hKeys, ...es1iKeys, ...es1jbKeys]);
     const enByPath = new Map(collectStringLeaves(en).map((x) => [x.path, x.value]));
     const frByPath = new Map(collectStringLeaves(fr).map((x) => [x.path, x.value]));
     const approvedOverlay = new Map<string, string>();
@@ -178,6 +180,8 @@ describe("MEDUI.ES.1C hidden Spanish catalog + tri-lingual isolation", () => {
         expect(value, path).toBe(MEDUI_ES_1H_OVERLAY[path]);
       } else if (es1iKeys.has(path)) {
         expect(value, path).toBe(MEDUI_ES_1I_OVERLAY[path]);
+      } else if (es1jbKeys.has(path)) {
+        expect(value, path).toBe(MEDUI_ES_1JB_OVERLAY[path]);
       } else {
         expect(isHiddenSpanishPlaceholder(value), path).toBe(true);
         expect(value).toBe(hiddenSpanishPlaceholder(path));
@@ -246,7 +250,8 @@ describe("MEDUI.ES.1C hidden Spanish catalog + tri-lingual isolation", () => {
         (es1fKeys.has(path) && MEDUI_ES_1F_OVERLAY[path] === "") ||
         (es1gKeys.has(path) && MEDUI_ES_1G_OVERLAY[path] === "") ||
         (es1hKeys.has(path) && MEDUI_ES_1H_OVERLAY[path] === "") ||
-        (es1iKeys.has(path) && MEDUI_ES_1I_OVERLAY[path] === "");
+        (es1iKeys.has(path) && MEDUI_ES_1I_OVERLAY[path] === "") ||
+        (es1jbKeys.has(path) && MEDUI_ES_1JB_OVERLAY[path] === "");
       if (!emptyAllowed) {
         expect(value).not.toBe("");
       }

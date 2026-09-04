@@ -652,19 +652,25 @@ describe("MEDUI.DOCUMENTS.ENTERPRISE_DOCUMENT_CENTER (Phase 2)", () => {
     });
 
     it("PacketPdfService includes patient info", () => {
+      const pdfChrome = readApi("src/documents/packet-pdf-chrome.ts");
       const pdfSvc = readApi("src/documents/packet-pdf.service.ts");
-      expect(pdfSvc).toContain("Patient Information");
+      expect(pdfChrome).toContain("Patient Information");
+      expect(pdfSvc).toContain("chrome.patientInformation");
       expect(pdfSvc).toContain("input.patient");
     });
 
     it("PacketPdfService includes insurance info", () => {
+      const pdfChrome = readApi("src/documents/packet-pdf-chrome.ts");
       const pdfSvc = readApi("src/documents/packet-pdf.service.ts");
-      expect(pdfSvc).toContain("Insurance Information");
+      expect(pdfChrome).toContain("Insurance Information");
+      expect(pdfSvc).toContain("chrome.insuranceInformation");
     });
 
     it("PacketPdfService includes signatures", () => {
+      const pdfChrome = readApi("src/documents/packet-pdf-chrome.ts");
       const pdfSvc = readApi("src/documents/packet-pdf.service.ts");
-      expect(pdfSvc).toContain("Signatures");
+      expect(pdfChrome).toContain('signatures: "Signatures"');
+      expect(pdfSvc).toContain("chrome.signatures");
       expect(pdfSvc).toContain("input.signatures");
     });
 

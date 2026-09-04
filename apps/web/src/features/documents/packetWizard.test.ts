@@ -538,10 +538,12 @@ describe("MEDUI.REGISTRATION.PHASE_3_ELECTRONIC_PACKET_E_SIGNATURE", () => {
 
     it("API PacketPdfService centers facility name above Registration Package", () => {
       const pdfSvc = readApi("src/documents/packet-pdf.service.ts");
+      const pdfChrome = readApi("src/documents/packet-pdf-chrome.ts");
       expect(pdfSvc).toContain("packetTitle");
       expect(pdfSvc).toContain("packetSubtypeLabel");
       expect(pdfSvc).toContain('align: "center"');
-      expect(pdfSvc).toContain("REGISTRATION_PACKAGE_TITLE");
+      expect(pdfChrome).toContain("Registration Package");
+      expect(pdfSvc).toContain("packetPdfChrome");
     });
 
     it("API validates registration-packets body with Zod", () => {

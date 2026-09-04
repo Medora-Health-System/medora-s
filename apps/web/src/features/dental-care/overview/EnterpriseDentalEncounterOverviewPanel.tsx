@@ -17,6 +17,7 @@ import { useI18n } from "@/lib/i18n";
 import { normalizeUserFacingError } from "@/lib/userFacingError";
 import { MEDORA_CARD_SHELL } from "@/components/medora-card/medoraCardTokens";
 import { productUiBcp47Tag, resolveProductUiLanguageOrDefault } from "@/i18n/config";
+import { dentalEncounterChartExportHtmlPath } from "./dentalEncounterChartExportPath";
 
 type ClinicalRecord = {
   patient?: {
@@ -493,7 +494,7 @@ export function EnterpriseDentalEncounterOverviewPanel({ encounterId, facilityId
               void (async () => {
                 try {
                   const res = await apiFetchResponse(
-                    `/encounters/${encodeURIComponent(encounterId)}/chart-export?format=html&locale=fr`,
+                    dentalEncounterChartExportHtmlPath(encounterId, language),
                     { facilityId }
                   );
                   const html = await res.text();

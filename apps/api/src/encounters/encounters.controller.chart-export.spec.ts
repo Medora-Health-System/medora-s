@@ -207,7 +207,7 @@ describe("EncountersController.getChartExport", () => {
       "u-1",
       "127.0.0.1",
       undefined,
-      { exportFormat: "json" }
+      { exportFormat: "json", locale: "en" }
     );
   });
 
@@ -226,7 +226,7 @@ describe("EncountersController.getChartExport", () => {
       "u-1",
       "127.0.0.1",
       undefined,
-      { exportFormat: "json" }
+      { exportFormat: "json", locale: "en" }
     );
   });
 
@@ -249,7 +249,73 @@ describe("EncountersController.getChartExport", () => {
       "u-1",
       "127.0.0.1",
       undefined,
-      { exportFormat: "html" }
+      { exportFormat: "html", locale: "en" }
+    );
+  });
+
+  it("forwards canonical internal product UI locale including hidden es", async () => {
+    const manifest = fakeManifest({ livePreview: false });
+    const { controller, chartExportService } = makeController({
+      getManifest: jest.fn().mockResolvedValue(manifest),
+    });
+    const { req, res } = makeReqRes({ facilityId: "fac-1", userId: "u-1" });
+
+    await controller.getChartExport("enc-1", "html", "en", req, res);
+    expect(chartExportService.getManifest).toHaveBeenLastCalledWith(
+      "fac-1",
+      "enc-1",
+      "u-1",
+      "127.0.0.1",
+      undefined,
+      { exportFormat: "html", locale: "en" }
+    );
+
+    await controller.getChartExport("enc-1", "html", "fr", req, res);
+    expect(chartExportService.getManifest).toHaveBeenLastCalledWith(
+      "fac-1",
+      "enc-1",
+      "u-1",
+      "127.0.0.1",
+      undefined,
+      { exportFormat: "html", locale: "fr" }
+    );
+
+    await controller.getChartExport("enc-1", "html", "es", req, res);
+    expect(chartExportService.getManifest).toHaveBeenLastCalledWith(
+      "fac-1",
+      "enc-1",
+      "u-1",
+      "127.0.0.1",
+      undefined,
+      { exportFormat: "html", locale: "es" }
+    );
+  });
+
+  it("invalid or missing chart-export locale resolves to product default EN only", async () => {
+    const manifest = fakeManifest({ livePreview: false });
+    const { controller, chartExportService } = makeController({
+      getManifest: jest.fn().mockResolvedValue(manifest),
+    });
+    const { req, res } = makeReqRes({ facilityId: "fac-1", userId: "u-1" });
+
+    await controller.getChartExport("enc-1", "html", "de", req, res);
+    expect(chartExportService.getManifest).toHaveBeenLastCalledWith(
+      "fac-1",
+      "enc-1",
+      "u-1",
+      "127.0.0.1",
+      undefined,
+      { exportFormat: "html", locale: "en" }
+    );
+
+    await controller.getChartExport("enc-1", "html", "", req, res);
+    expect(chartExportService.getManifest).toHaveBeenLastCalledWith(
+      "fac-1",
+      "enc-1",
+      "u-1",
+      "127.0.0.1",
+      undefined,
+      { exportFormat: "html", locale: "en" }
     );
   });
 
@@ -323,7 +389,7 @@ describe("EncountersController.getChartExport", () => {
       "u-1",
       "127.0.0.1",
       undefined,
-      { exportFormat: "html" }
+      { exportFormat: "html", locale: "en" }
     );
   });
 });

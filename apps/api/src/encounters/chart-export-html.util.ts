@@ -12,9 +12,11 @@ import {
   sanitizeMarAdministrationVisibleNote,
   selectClinicalDocumentationCardTitle,
   selectClinicalDocumentationPayloadSummary,
-  resolveProductUiLanguageOrDefault,
+  resolveInternalProductUiLanguageOrDefault,
   type ClinicalDocumentationSummaryLocale,
+  type ProductUiLanguage,
 } from "@medora/shared";
+import { chartExportDentalChrome, chartExportHtmlChrome } from "./chart-export-print-chrome";
 
 /** HTML entity escape for text nodes and attribute-safe contexts. */
 export function escapeHtml(s: string): string {
@@ -91,9 +93,34 @@ const PROCEDURE_EXPORT_LABELS = {
     roleNursing: "Documentation infirmière",
     roleProvider: "Documentation médicale",
   },
+  es: {
+    section: "Sección",
+    procedure: "Procedimiento",
+    canonicalId: "Identidad canónica",
+    linkedEvent: "Evento vinculado",
+    performedAt: "Realizado el",
+    performedBy: "Realizado por",
+    documentedAt: "Documentado el",
+    documentedBy: "Documentado por",
+    status: "Estado",
+    completed: "Completado",
+    summary: "Resumen",
+    roleNursing: "Documentación de enfermería",
+    roleProvider: "Documentación médica",
+  },
 } as const;
 
-export type ChartExportHtmlLocale = keyof typeof PROCEDURE_EXPORT_LABELS;
+export type ChartExportHtmlLocale = ProductUiLanguage;
+
+function bilingualSummaryLocale(locale: ProductUiLanguage): ClinicalDocumentationSummaryLocale {
+  return locale === "fr" ? "fr" : "en";
+}
+
+function pickBilingualSource(locale: ProductUiLanguage, en?: string | null, fr?: string | null): string {
+  if (locale === "fr") return (fr ?? en ?? "—").trim() || "—";
+  if (locale === "en") return (en ?? fr ?? "—").trim() || "—";
+  return (en ?? fr ?? "—").trim() || "—";
+}
 
 function formatHumanScalar(value: unknown): string {
   if (value == null) return "—";
@@ -156,14 +183,9 @@ function renderProcedureExportEntry(
   const labels = PROCEDURE_EXPORT_LABELS[locale];
   if (entry.eventType === "PROCEDURE_DOCUMENTED" && (entry.procedureNameFr || entry.procedureNameEn)) {
     const performedWhen = entry.performedAtIso ?? entry.documentedAtIso ?? entry.createdAt;
-    const procedureName =
-      locale === "en"
-        ? entry.procedureNameEn ?? entry.procedureNameFr ?? "—"
-        : entry.procedureNameFr ?? entry.procedureNameEn ?? "—";
-    const clinicalSummary =
-      locale === "en"
-        ? entry.clinicalSummaryEn ?? entry.clinicalSummaryFr
-        : entry.clinicalSummaryFr ?? entry.clinicalSummaryEn;
+    const procedureName = pickBilingualSource(locale, entry.procedureNameEn, entry.procedureNameFr);
+    const clinicalSummaryRaw = pickBilingualSource(locale, entry.clinicalSummaryEn, entry.clinicalSummaryFr);
+    const clinicalSummary = clinicalSummaryRaw === "—" ? undefined : clinicalSummaryRaw;
     const statusLabel = entry.status === "COMPLETED" ? labels.completed : entry.status ?? "—";
     const roleLabel =
       entry.documentationRole === "NURSING"
@@ -316,9 +338,11 @@ function pAlways(label: string, value: string | null | undefined): string {
  */
 export function renderEncounterChartExportHtml(
   manifest: ChartExportManifest,
-  options?: { locale?: ChartExportHtmlLocale }
+  options?: { locale?: ChartExportHtmlLocale | string }
 ): string {
-  const locale = options?.locale ?? "en";
+  const locale = resolveInternalProductUiLanguageOrDefault(options?.locale);
+  const htmlChrome = chartExportHtmlChrome(locale);
+  const dentalChrome = chartExportDentalChrome(locale);
   const title = manifest.livePreview
     ? "Encounter chart export (live preview)"
     : "Encounter chart export (generated)";
@@ -447,7 +471,7 @@ export function renderEncounterChartExportHtml(
         ? `<p class="muted">${esc(NO_DATA)}</p>`
         : `<ul>${(enc.clinicalDocumentationEntries ?? [])
             .map((entry) => {
-              const edocLocale: ClinicalDocumentationSummaryLocale = resolveProductUiLanguageOrDefault(locale);
+              const edocLocale: ClinicalDocumentationSummaryLocale = bilingualSummaryLocale(locale);
               const title = selectClinicalDocumentationCardTitle(entry, edocLocale);
               const summaryLines = selectClinicalDocumentationPayloadSummary(entry, edocLocale);
               const summary =
@@ -465,12 +489,10 @@ export function renderEncounterChartExportHtml(
                 entry.witnessedAt && entry.witnessDisplayName
                   ? ` — <strong>[WITNESSED]</strong> ${esc(entry.witnessDisplayName)} (${esc(entry.witnessRoleTitle ?? "—")}) ${esc(entry.witnessedAt)}`
                   : "";
-              const primarySigner = `<strong>${esc(
-                locale === "fr" ? "Signataire principal" : "Primary signer"
-              )}</strong>: ${esc(entry.authorDisplayName)} (${esc(entry.authorRoleTitle)})`;
+              const primarySigner = `<strong>${esc(htmlChrome.primarySigner)}</strong>: ${esc(entry.authorDisplayName)} (${esc(entry.authorRoleTitle)})`;
               const witnessSigner =
                 entry.witnessedAt && entry.witnessDisplayName
-                  ? ` — <strong>${esc(locale === "fr" ? "Témoin" : "Witness signer")}</strong>: ${esc(entry.witnessDisplayName)} (${esc(entry.witnessRoleTitle ?? "—")})`
+                  ? ` — <strong>${esc(htmlChrome.witnessSigner)}</strong>: ${esc(entry.witnessDisplayName)} (${esc(entry.witnessRoleTitle ?? "—")})`
                   : "";
               return `<li><span class="muted">${esc(entry.createdAt)}</span> — ${esc(
                 entry.category
@@ -617,7 +639,7 @@ export function renderEncounterChartExportHtml(
       ${manifest.medicationAdministrations
         .map((m) => ({
           id: m.id,
-          note: sanitizeMarAdministrationVisibleNote(m.notes, resolveProductUiLanguageOrDefault(locale)),
+          note: sanitizeMarAdministrationVisibleNote(m.notes, bilingualSummaryLocale(locale)),
         }))
         .filter((m) => m.note.trim())
         .map((m) => `<h4>MAR notes (${esc(m.id)})</h4><div class="pre-text">${esc(m.note)}</div>`)
@@ -682,7 +704,7 @@ export function renderEncounterChartExportHtml(
   const unifiedInner =
     !manifest.unifiedTimeline || manifest.unifiedTimeline.items.length === 0
       ? `<p class="muted">${esc(NO_DATA)}</p>`
-      : `${manifest.unifiedTimeline.capped ? `<p class="warn">Chronologie unifiée limitée aux ${manifest.unifiedTimeline.items.length} événements les plus récents.</p>` : ""}
+      : `${manifest.unifiedTimeline.capped ? `<p class="warn">${esc(htmlChrome.unifiedTimelineCapped(manifest.unifiedTimeline.items.length))}</p>` : ""}
       <ol>${manifest.unifiedTimeline.items
         .map((u) => {
           const chips =
@@ -691,7 +713,7 @@ export function renderEncounterChartExportHtml(
               : "";
           const corrected =
             u.hasClinicalTimeCorrection && u.effectiveClinicalAtIso
-              ? `<div class="muted">Documenté : ${esc(u.documentedAtIso)} · Heure clinique corrigée : ${esc(u.effectiveClinicalAtIso)}</div>`
+              ? `<div class="muted">${esc(htmlChrome.documentedAt)} ${esc(u.documentedAtIso)} · ${esc(htmlChrome.correctedClinicalTime)} ${esc(u.effectiveClinicalAtIso)}</div>`
               : "";
           return `<li><strong>${esc(u.documentedAtIso)}</strong> — [${esc(u.displayGroup)}] ${esc(
             u.titleFr ?? u.displayEventType
@@ -769,7 +791,7 @@ export function renderEncounterChartExportHtml(
   `;
 
   return `<!DOCTYPE html>
-<html lang="en">
+<html lang="${locale}">
 <head>
   <meta charset="utf-8" />
   <title>${esc(title)}</title>
@@ -795,13 +817,13 @@ export function renderEncounterChartExportHtml(
   ${section("Procedures", procInner)}
   ${section("IV access", ivInner)}
   ${section("Clinical timeline", clinInner)}
-  ${section("Chronologie unifiée (inter-départements)", unifiedInner)}
+  ${section(htmlChrome.unifiedTimelineTitle, unifiedInner)}
   ${section("Audit timeline summary", auditInner)}
   ${section("Follow-ups", fuInner)}
   ${
     manifest.dentalClinicalBoard
       ? section(
-          "Dossier clinique dentaire",
+          dentalChrome.dentalBoardTitle,
           manifest.dentalClinicalBoard.sections
             .map(
               (s) =>
