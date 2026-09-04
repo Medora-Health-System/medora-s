@@ -45,6 +45,7 @@ import {
 } from "@medora/shared";
 import { MEDUI_ES_1E_OVERLAY } from "./meduiEs1eCorePlatformOverlay";
 import { MEDUI_ES_1F_OVERLAY } from "./meduiEs1fEmergencyDepartmentOverlay";
+import { MEDUI_ES_1G_OVERLAY } from "./meduiEs1gHospitalInpatientObservationOverlay";
 
 const webRoot = join(dirname(fileURLToPath(import.meta.url)), "../../..");
 
@@ -145,10 +146,11 @@ describe("MEDUI.ES.1C hidden Spanish catalog + tri-lingual isolation", () => {
     expect(extraFr.length).toBe(67);
   });
 
-  it("every ES leaf is a hidden placeholder, an APPROVED canon overlay, or a governed 1E/1F overlay, never EN/FR copy", () => {
+  it("every ES leaf is a hidden placeholder, an APPROVED canon overlay, or a governed 1E/1F/1G overlay, never EN/FR copy", () => {
     const es1eKeys = new Set(Object.keys(MEDUI_ES_1E_OVERLAY));
     const es1fKeys = new Set(Object.keys(MEDUI_ES_1F_OVERLAY));
-    const governedKeys = new Set([...es1eKeys, ...es1fKeys]);
+    const es1gKeys = new Set(Object.keys(MEDUI_ES_1G_OVERLAY));
+    const governedKeys = new Set([...es1eKeys, ...es1fKeys, ...es1gKeys]);
     const enByPath = new Map(collectStringLeaves(en).map((x) => [x.path, x.value]));
     const frByPath = new Map(collectStringLeaves(fr).map((x) => [x.path, x.value]));
     const approvedOverlay = new Map<string, string>();
@@ -166,6 +168,8 @@ describe("MEDUI.ES.1C hidden Spanish catalog + tri-lingual isolation", () => {
         expect(value, path).toBe(MEDUI_ES_1E_OVERLAY[path]);
       } else if (es1fKeys.has(path)) {
         expect(value, path).toBe(MEDUI_ES_1F_OVERLAY[path]);
+      } else if (es1gKeys.has(path)) {
+        expect(value, path).toBe(MEDUI_ES_1G_OVERLAY[path]);
       } else {
         expect(isHiddenSpanishPlaceholder(value), path).toBe(true);
         expect(value).toBe(hiddenSpanishPlaceholder(path));
@@ -231,7 +235,8 @@ describe("MEDUI.ES.1C hidden Spanish catalog + tri-lingual isolation", () => {
       if (frVal && !governedKeys.has(path)) expect(value).not.toBe(frVal);
       const emptyAllowed =
         (es1eKeys.has(path) && MEDUI_ES_1E_OVERLAY[path] === "") ||
-        (es1fKeys.has(path) && MEDUI_ES_1F_OVERLAY[path] === "");
+        (es1fKeys.has(path) && MEDUI_ES_1F_OVERLAY[path] === "") ||
+        (es1gKeys.has(path) && MEDUI_ES_1G_OVERLAY[path] === "");
       if (!emptyAllowed) {
         expect(value).not.toBe("");
       }
