@@ -25,6 +25,7 @@ import {
   MEDUI_ES_1F_EMPTY_OVERLAY_PATHS,
   MEDUI_ES_1F_OVERLAY,
 } from "./meduiEs1fEmergencyDepartmentOverlay";
+import { MEDUI_ES_1G_OVERLAY } from "./meduiEs1gHospitalInpatientObservationOverlay";
 
 const webRoot = join(dirname(fileURLToPath(import.meta.url)), "../../..");
 
@@ -323,10 +324,20 @@ describe("MEDUI.ES.1F authored narrative / templates / 1G / 1H stay unlocalized"
     }
   });
 
-  it("1G hospital/placement and 1H order/catalog sections remain placeholders", () => {
+  it("1F overlay does not include 1G/1H sections; 1H remains unlocalized", () => {
     for (const prefix of [
       "edHosp1gHospitalBoard",
       "edHosp1g2PlacementWorkspace",
+      "erEmergencyOrders",
+      "edHosp1dObservationOrders",
+      "edHosp1eAdmissionOrders",
+      "erProcedureLauncher",
+    ]) {
+      for (const path of Object.keys(MEDUI_ES_1F_OVERLAY)) {
+        expect(path === prefix || path.startsWith(`${prefix}.`), path).toBe(false);
+      }
+    }
+    for (const prefix of [
       "erEmergencyOrders",
       "edHosp1dObservationOrders",
       "edHosp1eAdmissionOrders",
@@ -467,7 +478,7 @@ describe("MEDUI.ES.1F overlay accounting", () => {
     expect(emptyOverlayEntries).toHaveLength(43);
     expect(before1f.placeholders).toBe(43682);
     expect(after1f.placeholders).toBe(43682 - 2737);
-    expect(live.placeholders).toBe(after1f.placeholders);
+    expect(live.placeholders).toBe(after1f.placeholders - Object.keys(MEDUI_ES_1G_OVERLAY).length);
     expect(before1f.placeholders - after1f.placeholders).toBe(2737);
 
     for (const path of overlayPaths) {
