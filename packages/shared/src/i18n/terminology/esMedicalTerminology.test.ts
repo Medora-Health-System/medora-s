@@ -178,6 +178,25 @@ describe("MEDUI.ES.1D Spanish medical terminology canon", () => {
     );
   });
 
+  it("MAR late is administered-late, not overdue or due", () => {
+    expect(getSpanishMedicalTerm("clinical.mar.late")).toBe("Con retraso");
+    expect(getSpanishMedicalTerm("clinical.mar.administeredLate")).toBe("Administrado con retraso");
+    expect(getSpanishMedicalTerm("clinical.mar.due")).toBe("Pendiente de administrar");
+    expect(getSpanishMedicalTerm("clinical.mar.overdue")).toBe("Vencido");
+    expect(getSpanishMedicalTerm("clinical.mar.administered")).toBe("Administrado");
+    expect(getSpanishMedicalTerm("clinical.mar.held")).toBe("Retenido");
+    const lateTerms = [
+      getSpanishMedicalTerm("clinical.mar.late"),
+      getSpanishMedicalTerm("clinical.mar.administeredLate"),
+      getSpanishMedicalTerm("clinical.mar.due"),
+      getSpanishMedicalTerm("clinical.mar.overdue"),
+      getSpanishMedicalTerm("clinical.mar.administered"),
+      getSpanishMedicalTerm("clinical.mar.held"),
+    ];
+    expect(new Set(lateTerms).size).toBe(6);
+    expect(getSpanishMedicalTerm("clinical.mar.late")).not.toBe("Tardío");
+  });
+
   it("counts cover every required domain", () => {
     const counts = esMedicalTerminologyCounts();
     const domains: EsMedicalTerminologyDomain[] = [

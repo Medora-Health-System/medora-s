@@ -423,7 +423,16 @@ export const ES_MEDICAL_TERMINOLOGY: readonly EsMedicalTerminologyEntry[] = [
   entry("clinical.mar.held", "Held", "Retenido", "MAR_ADMINISTRATION"),
   entry("clinical.mar.refused", "Refused", "Rechazado", "MAR_ADMINISTRATION"),
   entry("clinical.mar.missed", "Missed", "Omitido", "MAR_ADMINISTRATION"),
-  entry("clinical.mar.late", "Late", "Tardío", "MAR_ADMINISTRATION", { status: "REVIEW_REQUIRED" }),
+  entry("clinical.mar.late", "Late", "Con retraso", "MAR_ADMINISTRATION", {
+    notes:
+      "MEDUI.ES.1H: administration-variance badge for a dose that WAS given after the on-time window (canonical LATE / LATE_ADMINISTRATION). Not DUE, not OVERDUE (not yet given), not HELD. Former REVIEW_REQUIRED 'Tardío' was rejected as ambiguous with overdue.",
+    uiMessageKeys: ["marAdministrationVariance.badge.LATE"],
+  }),
+  entry("clinical.mar.administeredLate", "Administered late", "Administrado con retraso", "MAR_ADMINISTRATION", {
+    notes:
+      "MEDUI.ES.1H: MAR history event LATE_ADMINISTRATION — the dose was administered, after the scheduled window. Distinct from clinical.mar.late (short badge), clinical.mar.overdue (not yet given), and clinical.mar.administered (on-time or unspecified).",
+    uiMessageKeys: ["marAdministrationHistory.eventType.LATE_ADMINISTRATION"],
+  }),
   entry("clinical.mar.administrationTime", "Administration Time", "Hora de administración", "MAR_ADMINISTRATION"),
   entry("clinical.mar.administeredBy", "Administered By", "Administrado por", "MAR_ADMINISTRATION"),
 
