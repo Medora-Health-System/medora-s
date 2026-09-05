@@ -14,7 +14,7 @@ import type { PatientTriageVitalsSnapshot } from "@/lib/patientVitals";
 import { PatientVitalsHistory } from "./PatientVitalsHistory";
 import { PatientClinicalHistoryProfileBlock } from "./PatientClinicalHistoryProfileBlock";
 import type { PatientClinicalHistoryProfile } from "@/features/emergency/patientClinicalHistoryProfile";
-import { diagnosisDisplayFr } from "./patientChartHelpers";
+import { liveIcd10DiagnosisPrimary } from "@/components/diagnosis/icd10LivePresentation";
 import { normalizeUserFacingError } from "@/lib/userFacingError";
 import { EncounterClinicalTimeline } from "./EncounterClinicalTimeline";
 import { useI18n } from "@/lib/i18n";
@@ -306,7 +306,7 @@ export function PatientSummaryTab({
               {activeDiagnoses.map((d) => (
                 <tr key={d.id}>
                   <td style={tableStyles.td}>{d.code}</td>
-                  <td style={tableStyles.td}>{diagnosisDisplayFr(d.description, d.code)}</td>
+                  <td style={tableStyles.td}>{liveIcd10DiagnosisPrimary(d)}</td>
                   <td style={tableStyles.td}>{formatDate(d.onsetDate)}</td>
                   {canPrescribe ? (
                     <td style={tableStyles.td}>

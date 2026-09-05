@@ -9,13 +9,8 @@ import {
   getCatalogSearchItemDisplayLabel,
 } from "@/lib/catalogDisplayLabel";
 import { getOrderItemDisplayLabelForLanguage } from "@/lib/orderItemDisplayFr";
-import { formatDiagnosisOneLineDisplay } from "@/features/emergency/diagnosisFrenchDisplayLabels";
+import { formatIcd10ServerResolvedOneLineDisplay, existingOrderDisplayLabel, filterEnterpriseOrderSetsForBrowser, searchCanonicalCareProcedures } from "@medora/shared";
 import type { CatalogSearchItem } from "@/lib/catalogSearchTypes";
-import {
-  existingOrderDisplayLabel,
-  filterEnterpriseOrderSetsForBrowser,
-  searchCanonicalCareProcedures,
-} from "@medora/shared";
 import { i18nMessage } from "@/lib/i18nMessagesLookup";
 
 const t = (locale: "en" | "fr" | "es") => (key: string) => i18nMessage(locale, key);
@@ -205,17 +200,19 @@ describe("permanent one-line order display rule", () => {
     );
     expect(orderLine).toBe("Lisinopril 20 mg, comprimido oral");
     expect(orderLine).not.toContain("\n");
-    const dx = formatDiagnosisOneLineDisplay(
-      { code: "R07.9", description: "Chest pain, unspecified" },
-      "es"
-    );
+    const dx = formatIcd10ServerResolvedOneLineDisplay({
+      code: "R07.9",
+      displayLabel: "Dolor torácico no especificado",
+      displayResolution: "EXACT_GOVERNED_LABEL",
+    });
     expect(dx.visibleLines).toBe(1);
     expect(dx.primary).toBe("Dolor torácico no especificado");
     expect(dx.primary).not.toBe("Chest pain, unspecified");
-    const unmapped = formatDiagnosisOneLineDisplay(
-      { code: "Z99.89", description: "Dependence on unspecified enabling machine" },
-      "es"
-    );
+    const unmapped = formatIcd10ServerResolvedOneLineDisplay({
+      code: "Z99.89",
+      displayLabel: "Z99.89",
+      displayResolution: "UNLOCALIZED_CODE",
+    });
     expect(unmapped.primary).toBe("Z99.89");
     expect(unmapped.metadata).toBeNull();
   });

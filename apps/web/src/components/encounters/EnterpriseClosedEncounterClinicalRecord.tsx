@@ -19,6 +19,7 @@ import {
   PATIENT_DISCHARGE_INSTRUCTION_STRING_KEYS,
 } from "@/components/patient-chart/patientChartHelpers";
 import { parseEncounterDiagnosisApiItems } from "@/features/emergency/encounterClinicalRecordAdapter";
+import { icd10ListLocaleQuery, liveIcd10DiagnosisPrimary } from "@/components/diagnosis/icd10LivePresentation";
 import { clinicalResultFromOrderItemLike } from "@/lib/clinicalResultNormalize";
 import {
   formatEncounterChromeDateTime,
@@ -278,7 +279,14 @@ export function EnterpriseClosedEncounterClinicalRecord({ facilityId, encounter 
   const [orders, setOrders] = useState<OrderLike[]>([]);
   const [marRows, setMarRows] = useState<MarRow[]>([]);
   const [diagnoses, setDiagnoses] = useState<
-    Array<{ id: string; code: string; description: string | null; sortOrder: number }>
+    Array<{
+      id: string;
+      code: string;
+      description: string | null;
+      displayLabel?: string;
+      displayResolution?: string;
+      sortOrder: number;
+    }>
   >([]);
   const [dentalFindings, setDentalFindings] = useState<
     Array<{
@@ -309,7 +317,7 @@ export function EnterpriseClosedEncounterClinicalRecord({ facilityId, encounter 
             facilityId,
           }).catch(() => []),
           patientId
-            ? apiFetch(`/patients/${encodeURIComponent(patientId)}/diagnoses?limit=200`, {
+            ? apiFetch(`/patients/${encodeURIComponent(patientId)}/diagnoses?limit=200${icd10ListLocaleQuery(language)}`, {
                 facilityId,
               }).catch(() => ({ items: [] }))
             : Promise.resolve({ items: [] }),
@@ -326,6 +334,8 @@ export function EnterpriseClosedEncounterClinicalRecord({ facilityId, encounter 
             id: d.id,
             code: d.code,
             description: d.description ?? null,
+            displayLabel: d.displayLabel ?? undefined,
+            displayResolution: d.displayResolution ?? undefined,
             sortOrder: d.sortOrder ?? 0,
           }))
         );
@@ -669,7 +679,11 @@ export function EnterpriseClosedEncounterClinicalRecord({ facilityId, encounter 
                   <strong>{t("enterpriseClosedClinicalRecordD4c8b.diagnoses.primary")} · </strong>
                 ) : null}
                 <strong>{dx.code}</strong>
-                {dx.description ? ` — ${dx.description}` : ""}
+                {(() => {
+                  const label = liveIcd10DiagnosisPrimary(dx);
+                  if (!label || label.toLowerCase() === dx.code.trim().toLowerCase()) return "";
+                  return ` — ${label}`;
+                })()}
               </li>
             ))}
           </ul>

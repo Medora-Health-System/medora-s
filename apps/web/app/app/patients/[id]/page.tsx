@@ -137,9 +137,9 @@ export default function PatientDetailPage() {
   const loadChartSummary = useCallback(async () => {
     if (!facilityId) return;
     setChartLoading(true);
-    const cacheKey = `chart-summary:${facilityId}:${patientId}`;
+    const cacheKey = `chart-summary:${facilityId}:${patientId}:${language}`;
     try {
-      const data = await fetchChartSummary(facilityId, patientId);
+      const data = await fetchChartSummary(facilityId, patientId, language);
       setChartSummary(data);
       setChartLastFetchedAt(new Date());
       void setCachedRecord("patient_summaries", cacheKey, data, { facilityId, patientId });
@@ -150,7 +150,7 @@ export default function PatientDetailPage() {
     } finally {
       setChartLoading(false);
     }
-  }, [facilityId, patientId]);
+  }, [facilityId, patientId, language]);
 
   const loadFollowUps = useCallback(async () => {
     if (!facilityId) return;

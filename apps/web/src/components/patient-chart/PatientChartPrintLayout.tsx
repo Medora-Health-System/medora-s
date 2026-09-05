@@ -15,8 +15,8 @@ import {
 import { calculateAge } from "@/lib/patientDisplay";
 import { selectClinicalDocumentationPayloadSummary } from "@medora/shared";
 import { formatVitalsHeaderLineForLocale, hasMeaningfulVitalMeasurement } from "@/lib/patientVitals";
+import { liveIcd10DiagnosisPrimary } from "@/components/diagnosis/icd10LivePresentation";
 import {
-  diagnosisDisplayFr,
   DISCHARGE_SUMMARY_CORE_STRING_KEYS,
   parseDischargeSummaryForChart,
   parseNursingAssessmentSectionsForChart,
@@ -215,7 +215,7 @@ export function getPatientChartPrintHtml(params: {
       const vitalsJson = enc.triage?.vitalsJson as Record<string, number | string | null | undefined> | null | undefined;
       const vitalsLine = vitalsJson ? formatVitalsHeaderLineForLocale(vitalsJson, lang) : "—";
       const dxVisit = (enc.encounterDiagnoses ?? [])
-        .map((d) => diagnosisDisplayFr(d.description, d.code))
+        .map((d) => liveIcd10DiagnosisPrimary(d))
         .join(" ; ");
 
       const nursingLines = [
@@ -424,7 +424,7 @@ export function getPatientChartPrintHtml(params: {
   const activeDx = (chartSummary.activeDiagnoses ?? [])
     .map(
       (d) =>
-        `<li>${esc(diagnosisDisplayFr(d.description, d.code))}${
+        `<li>${esc(liveIcd10DiagnosisPrimary(d))}${
           d.onsetDate
             ? ` <span style="color:#333;">(${esc(pc("activeDxOnset"))} ${esc(fmtDt(d.onsetDate, lang))})</span>`
             : ""

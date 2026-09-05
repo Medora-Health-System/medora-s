@@ -10,12 +10,12 @@ import { useI18n } from "@/lib/i18n";
 import { canonicalEncounterWorkspaceHref } from "@/features/encounters/canonicalEncounterWorkspaceHref";
 import { tEncounterStatus, tEncounterType } from "@/lib/encounterChromeI18n";
 import {
-  diagnosisDisplayFr,
   parseAdmissionSummaryForChart,
   parseDischargeSummaryForChart,
   parseNursingAssessmentSectionsForChart,
   parsePhysicianEvalV1ForChart,
 } from "./patientChartHelpers";
+import { liveIcd10DiagnosisPrimary } from "@/components/diagnosis/icd10LivePresentation";
 import { parseNursingProceduresForChart } from "@/lib/nursingProcedures";
 import { catalogMedicationNameForLocale } from "@/lib/orderItemDisplayFr";
 import { productUiBcp47Tag, type SupportedLanguage } from "@/i18n/config";
@@ -489,7 +489,7 @@ export function EncounterClinicalTimeline({
                   <ul style={listStyle}>
                     {encDiags.map((d) => (
                       <li key={d.id}>
-                        {diagnosisDisplayFr(d.description, d.code)} ({diagnosisStatusLabel(d.status, t)})
+                        {liveIcd10DiagnosisPrimary(d)} ({diagnosisStatusLabel(d.status, t)})
                       </li>
                     ))}
                   </ul>

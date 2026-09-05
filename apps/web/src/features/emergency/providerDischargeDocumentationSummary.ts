@@ -2,8 +2,7 @@
  * Phase 19Y / 19Y.1A — read-only builders for provider discharge documentation in Summary / ER packet / export.
  */
 
-import { getLocalizedDiagnosisDisplayLabel } from "./diagnosisFrenchDisplayLabels";
-import { productUiBcp47Tag, type ProductUiLanguage } from "@/i18n/config";
+import { productUiBcp47Tag } from "@/i18n/config";
 import { i18nMessage } from "@/lib/i18nMessagesLookup";
 import type { ErDispositionPreviewSection } from "./emergencyDispositionV1";
 import type { VisitSummaryTextBlock } from "./emergencyVisitSummaryModel";
@@ -89,13 +88,17 @@ function formatFollowUpRow(row: ProviderDischargeFollowUpRow, locale: string): s
   return parts.join(" · ");
 }
 
-function localizedDiagnosisLine(
+function storedDiagnosisSnapshotLine(
   code: string,
-  englishLabel: string,
-  locale: string,
+  storedDisplayName: string,
   primarySuffix: string
 ): string {
-  return `${code} — ${getLocalizedDiagnosisDisplayLabel({ code, description: englishLabel }, locale)}${primarySuffix}`;
+  const c = code.trim();
+  const name = storedDisplayName.trim();
+  if (name && c && name.toLowerCase() !== c.toLowerCase()) {
+    return `${c} — ${name}${primarySuffix}`;
+  }
+  return `${c || name}${primarySuffix}`;
 }
 
 function appendPatientSpecificInstructionLines(
@@ -156,7 +159,7 @@ export function getPatientSpecificDischargeAdditionsForForm(
 function appendDiagnosisCardLines(lines: string[], doc: ProviderDischargeDiagnosisCard, locale: string) {
   const primarySuffix = doc.isPrimaryDiagnosis ? ` (${p(locale, "primary")})` : "";
   lines.push("");
-  lines.push(localizedDiagnosisLine(doc.code, doc.displayName, locale, primarySuffix));
+  lines.push(storedDiagnosisSnapshotLine(doc.code, doc.displayName, primarySuffix));
   pushLine(lines, p(locale, "description"), doc.description);
   pushLine(lines, p(locale, "diagnosisInstructions"), doc.diagnosisInstructions);
   pushLine(lines, p(locale, "medicationTreatment"), doc.medicationTreatment);
@@ -357,7 +360,7 @@ export function buildProviderDischargeDocumentationPreviewSections(
     const docLines: string[] = [];
     for (const doc of selectedDocs) {
       const primarySuffix = doc.isPrimaryDiagnosis ? ` (${p(locale, "primary")})` : "";
-      docLines.push(localizedDiagnosisLine(doc.code, doc.displayName, locale, primarySuffix));
+      docLines.push(storedDiagnosisSnapshotLine(doc.code, doc.displayName, primarySuffix));
       previewPushLine(docLines, p(locale, "description"), doc.description);
       previewPushLine(docLines, p(locale, "diagnosisInstructions"), doc.diagnosisInstructions);
       previewPushLine(docLines, p(locale, "medicationTreatment"), doc.medicationTreatment);

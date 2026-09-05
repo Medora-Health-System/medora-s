@@ -8628,8 +8628,9 @@ describe("edDisposition19Y", () => {
       expect(autocomplete).not.toContain("getLocalizedDiagnosisDisplayLabel");
       expect(dxPanel).toContain("formatIcd10ServerResolvedOneLineDisplay");
       expect(dxPanel).not.toContain("getLocalizedDiagnosisDisplayLabel");
-      expect(discharge).toContain("formatDiagnosisOneLineDisplay");
-      expect(summary).toContain("getLocalizedDiagnosisDisplayLabel");
+      expect(discharge).toContain("formatIcd10ServerResolvedOneLineDisplay");
+      expect(summary).not.toContain("getLocalizedDiagnosisDisplayLabel");
+      expect(summary).toContain("storedDiagnosisSnapshotLine");
       expect(discharge).toContain("label: row.description?.trim() || row.code");
     });
   });

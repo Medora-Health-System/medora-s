@@ -1,6 +1,6 @@
 /**
  * MEDUI.TRILANG.DX.P2.1 — governed clinician ICD-10-CM labels (89 FR + 89 ES).
- * Machine-readable source of truth for seed and current client overlay.
+ * Machine-readable source of truth for seed and certification. Not a live browser overlay.
  * Not a complete catalog. Not WHO CIM/CIE. Not consumer terminology.
  */
 

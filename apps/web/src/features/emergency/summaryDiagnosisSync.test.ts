@@ -23,6 +23,8 @@ describe("summaryDiagnosisSync (MEDUI.SUMMARY.FINAL_HOTFIX_DIAGNOSIS_SYNC)", () 
           id: "dx-1",
           code: "R07.9",
           description: "Chest pain, unspecified",
+          displayLabel: "Chest pain, unspecified",
+          displayResolution: "EXACT_SOURCE_LABEL",
           sortOrder: 0,
           createdAt: "2026-06-23T09:00:00.000Z",
         },
@@ -32,7 +34,7 @@ describe("summaryDiagnosisSync (MEDUI.SUMMARY.FINAL_HOTFIX_DIAGNOSIS_SYNC)", () 
     const record = buildEncounterClinicalRecord({
       encounter: { id: "enc-1", diagnoses: mapped },
     });
-    expect(record.diagnoses[0]?.displayLabel).toBe("R07.9 — Chest pain, unspecified");
+    expect(record.diagnoses[0]?.displayLabel).toBe("Chest pain, unspecified");
     expect(groupDiagnoses(record.diagnoses).primary).toHaveLength(1);
   });
 
@@ -52,12 +54,14 @@ describe("summaryDiagnosisSync (MEDUI.SUMMARY.FINAL_HOTFIX_DIAGNOSIS_SYNC)", () 
     expect(line).not.toContain("(R07.9)");
   });
 
-  it("Summary panel loads diagnoses via shared hook", () => {
+  it("Summary panel loads diagnoses via shared hook with locale", () => {
     const panel = readSrc("features/emergency/EmergencyVisitSummaryPanel.tsx");
     const hook = readSrc("features/emergency/useEncounterDiagnosisRows.ts");
     expect(panel).toContain("useEncounterDiagnosisRows");
+    expect(panel).toContain("locale: language");
     expect(panel).toContain("mapEncounterDiagnosisApiRowsToClinicalRecordInput");
     expect(hook).toContain("/patients/");
+    expect(hook).toContain("icd10ListLocaleQuery");
   });
 
   it("Print packet V2 includes diagnosis formatting helper", () => {

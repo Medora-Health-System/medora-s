@@ -162,7 +162,7 @@ describe("EmergencyDispositionPanel responsive wiring (19M.6)", () => {
   it("wraps French diagnosis labels safely on cards", () => {
     expect(providerSource).toContain("wordBreak: \"break-word\"");
     expect(providerSource).toContain("edDispositionDiagnosisCardShellStyle");
-    expect(providerSource).toContain("getLocalizedDiagnosisDisplayLabel");
+    expect(providerSource).toContain("formatIcd10ServerResolvedOneLineDisplay");
   });
 
   it("preserves disposition save and provider documentation semantics", () => {

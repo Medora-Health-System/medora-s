@@ -25,7 +25,7 @@ import {
   parsePlatformUiLanguage,
   platformLanguageSelectOptions,
 } from "@/i18n/platformLocale";
-import { getLocalizedDiagnosisDisplayLabel } from "@/features/emergency/diagnosisFrenchDisplayLabels";
+import { selectableDxPrimaryFromGovernedMaps } from "@/components/diagnosis/icd10SelectableDisplayTestUtil";
 import {
   catalogSearchItemFullDisplayLine,
   getCatalogSearchItemDisplayLabel,
@@ -361,7 +361,7 @@ describe("MEDUI.ES.1C hidden Spanish catalog + tri-lingual isolation", () => {
   });
 
   it("clinical catalog ES display never uses EN/FR labels", () => {
-    expect(getLocalizedDiagnosisDisplayLabel({ code: "R07.9", description: "Chest pain, unspecified" }, "es")).toBe(
+    expect(selectableDxPrimaryFromGovernedMaps({ code: "R07.9", description: "Chest pain, unspecified" }, "es")).toBe(
       "Dolor torácico no especificado"
     );
     expect(getCatalogSearchItemDisplayLabel(LAB_ITEM, "es")).toBe("Hemograma completo");

@@ -44,7 +44,7 @@ import {
   parsePlatformUiLanguage,
   platformLanguageSelectOptions,
 } from "@/i18n/platformLocale";
-import { getLocalizedDiagnosisDisplayLabel } from "@/features/emergency/diagnosisFrenchDisplayLabels";
+import { selectableDxPrimaryFromGovernedMaps } from "@/components/diagnosis/icd10SelectableDisplayTestUtil";
 import { getCatalogSearchItemDisplayLabel } from "@/lib/catalogDisplayLabel";
 import {
   encounterChartExportHtmlHref,
@@ -235,10 +235,10 @@ describe("MEDUI.ES.1K six-direction isolation", () => {
 
 describe("MEDUI.ES.1K catalogs + print routing", () => {
   it("ES catalog display uses governed Spanish, never EN or FR labels", () => {
-    expect(getLocalizedDiagnosisDisplayLabel({ code: "R07.9", description: "Chest pain, unspecified" }, "es")).toBe(
+    expect(selectableDxPrimaryFromGovernedMaps({ code: "R07.9", description: "Chest pain, unspecified" }, "es")).toBe(
       "Dolor torácico no especificado"
     );
-    expect(getLocalizedDiagnosisDisplayLabel({ code: "R07.9", description: "Chest pain, unspecified" }, "es")).not.toBe(
+    expect(selectableDxPrimaryFromGovernedMaps({ code: "R07.9", description: "Chest pain, unspecified" }, "es")).not.toBe(
       "Chest pain, unspecified"
     );
     expect(getCatalogSearchItemDisplayLabel(LAB_ITEM, "es")).toBe("Hemograma completo");

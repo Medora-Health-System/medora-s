@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { getCatalogSearchItemDisplayLabel } from "@/lib/catalogDisplayLabel";
-import { getLocalizedDiagnosisDisplayLabel } from "@/features/emergency/diagnosisFrenchDisplayLabels";
+import { selectableDxPrimaryFromGovernedMaps } from "@/components/diagnosis/icd10SelectableDisplayTestUtil";
 import { resolveCertificationDeficiencyDisplay } from "@/features/emergency/certificationDeficiencyDisplay";
 import { getOrderItemDisplayLabelForLanguage } from "@/lib/orderItemDisplayFr";
 import { normalizeUserFacingError } from "@/lib/userFacingError";
@@ -43,12 +43,12 @@ describe("MEDUI.ES.1B.1 zero-fallback display isolation", () => {
 
   it("diagnosis FR unmapped does not render English description", () => {
     expect(
-      getLocalizedDiagnosisDisplayLabel({ code: "Z00.00", description: "Encounter for general exam" }, "fr")
+      selectableDxPrimaryFromGovernedMaps({ code: "Z00.00", description: "Encounter for general exam" }, "fr")
     ).toBe("Z00.00");
   });
 
   it("es diagnosis display is Spanish overlay, not EN or FR", () => {
-    const label = getLocalizedDiagnosisDisplayLabel(
+    const label = selectableDxPrimaryFromGovernedMaps(
       { code: "R07.9", description: "Chest pain, unspecified" },
       "es"
     );

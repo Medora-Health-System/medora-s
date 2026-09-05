@@ -7,7 +7,8 @@ import { useI18n } from "@/lib/i18n";
 import { MedicationAutocomplete } from "@/components/pharmacy/MedicationAutocomplete";
 import { DictationFieldLabel } from "@/components/clinical/DictationFieldLabel";
 import { medicationSearchLabel, type MedicationSearchItem } from "@/lib/pharmacyApi";
-import { formatDiagnosisOneLineDisplay } from "@/features/emergency/diagnosisFrenchDisplayLabels";
+import { formatIcd10ServerResolvedOneLineDisplay } from "@medora/shared";
+import { icd10ListLocaleQuery } from "@/components/diagnosis/icd10LivePresentation";
 import {
   applyProviderDischargeTemplateToCardByDiagnosis,
   ensureProviderDischargeCardForRef,
@@ -76,7 +77,21 @@ const taStyle: React.CSSProperties = {
   resize: "vertical",
 };
 
-type DxRow = { id: string; code: string; description: string | null; sortOrder: number };
+type DxRow = {
+  id: string;
+  code: string;
+  description: string | null;
+  sortOrder: number;
+  displayLabel: string;
+  displayResolution: string;
+};
+
+function storedDischargeDiagnosisPrimary(code: string, displayName: string): string {
+  const c = code.trim();
+  const name = displayName.trim();
+  if (name && c && name.toLowerCase() !== c.toLowerCase()) return name;
+  return c || name;
+}
 
 function isoToDatetimeLocal(iso: string): string {
   if (!iso.trim()) return "";
@@ -113,6 +128,7 @@ const DiagnosisDocumentationCard = React.memo(function DiagnosisDocumentationCar
   validationErrors,
   facilityId,
   layoutMode = "desktopSplit",
+  livePresentation,
   onPatchDoc,
   onApplyTemplate,
 }: {
@@ -121,12 +137,19 @@ const DiagnosisDocumentationCard = React.memo(function DiagnosisDocumentationCar
   validationErrors?: Partial<Record<string, string>>;
   facilityId: string;
   layoutMode?: EdDispositionLayoutMode;
+  livePresentation?: { displayLabel?: string | null; displayResolution?: string | null } | null;
   onPatchDoc: (docId: string, patch: Partial<ProviderDischargeDiagnosisCard>) => void;
   onApplyTemplate: (docId: string, overwriteExisting: boolean) => void;
 }) {
   const { t, language } = useI18n();
-  const dxLine = formatDiagnosisOneLineDisplay({ code: doc.code, description: doc.displayName }, language);
-  const cardTitle = `${dxLine.primary}${doc.isPrimaryDiagnosis ? ` (${t("providerDischargeDocumentation19Y.primary")})` : ""}`;
+  const dxPrimary = disabled
+    ? storedDischargeDiagnosisPrimary(doc.code, doc.displayName)
+    : formatIcd10ServerResolvedOneLineDisplay({
+        code: doc.code,
+        displayLabel: livePresentation?.displayLabel,
+        displayResolution: livePresentation?.displayResolution,
+      }).primary;
+  const cardTitle = `${dxPrimary}${doc.isPrimaryDiagnosis ? ` (${t("providerDischargeDocumentation19Y.primary")})` : ""}`;
 
   const onMedicationPick = (med: MedicationSearchItem) => {
     const displayName = medicationSearchLabel(med, language, t);
@@ -574,7 +597,10 @@ export function ProviderDischargeDocumentationSection({
     setDiagnosesLoaded(false);
     (async () => {
       try {
-        const data = await apiFetch(`/patients/${patientId}/diagnoses?status=ACTIVE&limit=200`, { facilityId });
+        const data = await apiFetch(
+          `/patients/${patientId}/diagnoses?status=ACTIVE&limit=200${icd10ListLocaleQuery(language)}`,
+          { facilityId }
+        );
         const items = Array.isArray((data as { items?: unknown }).items) ?
           (data as { items: Record<string, unknown>[] }).items
         : [];
@@ -585,6 +611,8 @@ export function ProviderDischargeDocumentationSection({
             code: String(d.code ?? ""),
             description: (d.description as string | null) ?? null,
             sortOrder: typeof d.sortOrder === "number" ? d.sortOrder : 0,
+            displayLabel: typeof d.displayLabel === "string" ? d.displayLabel : String(d.code ?? ""),
+            displayResolution: typeof d.displayResolution === "string" ? d.displayResolution : "UNLOCALIZED_CODE",
           }))
           .sort((a, b) => a.sortOrder - b.sortOrder || a.code.localeCompare(b.code));
         if (!cancelled) {
@@ -601,7 +629,7 @@ export function ProviderDischargeDocumentationSection({
     return () => {
       cancelled = true;
     };
-  }, [encounterId, facilityId, patientId]);
+  }, [encounterId, facilityId, patientId, language]);
 
   useEffect(() => {
     if (!diagnosesLoaded) return;
@@ -818,13 +846,13 @@ export function ProviderDischargeDocumentationSection({
                     style={{ marginTop: 2, flexShrink: 0 }}
                   />
                   <span style={{ wordBreak: "break-word", minWidth: 0, flex: 1 }}>
-                    {(() => {
-                      const line = formatDiagnosisOneLineDisplay(
-                        { code: dx.code, description: dx.description },
-                        language
-                      );
-                      return line.primary;
-                    })()}
+                    {disabled
+                      ? storedDischargeDiagnosisPrimary(dx.code, dx.description ?? dx.code)
+                      : formatIcd10ServerResolvedOneLineDisplay({
+                          code: dx.code,
+                          displayLabel: dx.displayLabel,
+                          displayResolution: dx.displayResolution,
+                        }).primary}
                   </span>
                 </label>
               ))}
@@ -840,18 +868,28 @@ export function ProviderDischargeDocumentationSection({
           : null}
         </div>
 
-        {selectedCards.map((doc) => (
+        {selectedCards.map((doc) => {
+          const liveRow =
+            encounterDiagnoses.find(
+              (dx) =>
+                dx.id === doc.sourceEncounterDiagnosisId ||
+                dx.id === doc.encounterDiagnosisId ||
+                dx.code.trim().toUpperCase() === doc.code.trim().toUpperCase()
+            ) ?? null;
+          return (
           <DiagnosisDocumentationCard
             key={doc.id}
             doc={doc}
             disabled={disabled}
             facilityId={facilityId}
             layoutMode={layoutMode}
+            livePresentation={liveRow}
             validationErrors={validationErrors?.byDocId[doc.id]}
             onPatchDoc={patchDiagnosisDoc}
             onApplyTemplate={(docId, overwrite) => applyTemplateToDoc(docId, overwrite, true)}
           />
-        ))}
+          );
+        })}
 
         {showSharedPlanning ?
           <SharedDischargePlanningSection

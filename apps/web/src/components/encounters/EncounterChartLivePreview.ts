@@ -41,13 +41,13 @@ import {
   formatRxPrintFacilityAddressLines,
 } from "@medora/shared";
 import {
-  diagnosisDisplayFr,
   nirMrnDisplay,
   parseAdmissionSummaryForChart,
   parseDischargeSummaryForChart,
   parseNursingAssessmentSectionsForChart,
   parsePhysicianEvalV1ForChart,
 } from "@/components/patient-chart/patientChartHelpers";
+import { icd10ListLocaleQuery, liveIcd10DiagnosisPrimary } from "@/components/diagnosis/icd10LivePresentation";
 import { buildProviderDocumentationDisplayModel } from "@/lib/providerDocumentationModel";
 import { parseNursingProceduresForChart } from "@/lib/nursingProcedures";
 import {
@@ -190,7 +190,8 @@ const CLINICAL_TIMELINE_LIMIT = 100;
 export async function fetchEncounterChartPreviewData(
   encounterId: string,
   patientId: string,
-  facilityId: string
+  facilityId: string,
+  locale?: string | null
 ): Promise<FetchedSections> {
   /**
    * Per-endpoint failure must not block the document. We use Promise.allSettled
@@ -211,7 +212,7 @@ export async function fetchEncounterChartPreviewData(
       facilityId,
     }) as Promise<unknown>,
     fetchEncounterAuditTimeline(facilityId, encounterId) as Promise<ChartAuditTimelineItem[]>,
-    apiFetch(`/patients/${patientId}/diagnoses?limit=200`, { facilityId }) as Promise<unknown>,
+    apiFetch(`/patients/${patientId}/diagnoses?limit=200${icd10ListLocaleQuery(locale)}`, { facilityId }) as Promise<unknown>,
     apiFetch(`/encounters/${encounterId}/medication-administrations`, {
       facilityId,
     }) as Promise<unknown>,
@@ -516,7 +517,6 @@ function renderEncounterDiagnoses(
     )
     .map((d) => {
       const code = pickString(d, "code") ?? "";
-      const desc = pickString(d, "description");
       const status = pickString(d, "status");
       const onset = pickString(d, "onsetDate");
       const codeSource = pickString(d, "codeSource");
@@ -528,7 +528,7 @@ function renderEncounterDiagnoses(
             : "";
       const onsetStr = onset ? ` · ${esc(tcommon(lang, "activeDxOnset"))} ${esc(fmtDt(onset, lang))}` : "";
       const sourceStr = codeSource ? ` · ${esc(codeSource)}` : "";
-      return `<li>${esc(diagnosisDisplayFr(desc, code))}${statusBadge}${onsetStr}${sourceStr}</li>`;
+      return `<li>${esc(liveIcd10DiagnosisPrimary({ code, displayLabel: pickString(d, "displayLabel"), displayResolution: pickString(d, "displayResolution") }))}${statusBadge}${onsetStr}${sourceStr}</li>`;
     })
     .join("");
   return `<ul style="margin:6px 0;padding-left:18px;">${items}</ul>`;
@@ -1617,7 +1617,7 @@ export async function printEncounterChartLivePreview(
 
   let html: string;
   try {
-    const fetched = await fetchEncounterChartPreviewData(encounterId, patientId, params.facilityId);
+    const fetched = await fetchEncounterChartPreviewData(encounterId, patientId, params.facilityId, language);
     html = getEncounterChartLivePreviewHtml(params, fetched);
   } catch (e) {
     // eslint-disable-next-line no-console

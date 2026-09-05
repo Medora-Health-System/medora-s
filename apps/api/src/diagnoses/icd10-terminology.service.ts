@@ -54,10 +54,13 @@ export class Icd10TerminologyService {
 
     const language = parseProductUiLanguage(input.locale);
     const terminologyRows: Array<Icd10TerminologyDisplayRow & { icd10CatalogId: string }> =
-      language === "en" || unique.length === 0
+      language === "en" || language == null || unique.length === 0
         ? []
         : await this.prisma.icd10DiagnosisTerminology.findMany({
-            where: { icd10CatalogId: { in: unique.map((row) => row.id) } },
+            where: {
+              icd10CatalogId: { in: unique.map((row) => row.id) },
+              locale: language,
+            },
             select: TERMINOLOGY_DISPLAY_SELECT,
           });
 

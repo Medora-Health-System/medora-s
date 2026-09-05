@@ -42,7 +42,7 @@ describe("INP.DIS.1I discharge documentation UX", () => {
     expect(board).toContain("noPrimaryWarning");
     expect(board).toContain("isPrimary: false");
     expect(board).toContain("isPrimary: providerDoc.dischargeDiagnoses.length === 0");
-    expect(board).toContain("{row.description || tp(\"none\")}");
+    expect(board).toContain("inpatientDxTitle");
     expect(board).toContain("{row.code ? (");
   });
 

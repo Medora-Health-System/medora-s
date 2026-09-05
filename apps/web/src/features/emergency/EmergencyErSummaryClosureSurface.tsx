@@ -200,6 +200,7 @@ export function EmergencyErSummaryClosureSurface({
     patientId: encounter.patient?.id ?? null,
     facilityId,
     refreshKey: resultsRefresh,
+    locale: language,
   });
   const mappedEncounterDiagnoses = useMemo(
     () => mapEncounterDiagnosisApiRowsToClinicalRecordInput(diagnosisApiRows, language),
