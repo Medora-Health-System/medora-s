@@ -301,11 +301,14 @@ describe("PMH diagnosis search append", () => {
     displayResolution: "UNLOCALIZED_CODE",
   };
 
-  it("appends governed diagnosis label to PMH text", () => {
-    const next = appendDiagnosisToPmh("", hit, "fr");
-    expect(next.toLowerCase()).toContain("hypertension");
-    const again = appendDiagnosisToPmh(next, hit, "fr");
+  it("appends canonical ICD code only, not English or locale labels", () => {
+    const next = appendDiagnosisToPmh("", hit);
+    expect(next).toBe("I10");
+    expect(next).not.toMatch(/hypertension/i);
+    const again = appendDiagnosisToPmh(next, hit);
     expect(again).toBe(next);
+    const esAgain = appendDiagnosisToPmh(next, { ...hit, displayLabel: "Hipertensión esencial" });
+    expect(esAgain).toBe(next);
   });
 });
 

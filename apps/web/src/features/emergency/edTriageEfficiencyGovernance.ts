@@ -10,7 +10,7 @@ import {
   type SurgicalHistoryCatalogEntry,
   type SurgicalHistorySearchLocale,
 } from "@medora/shared";
-import { getLocalizedDiagnosisDisplayLabel } from "./diagnosisFrenchDisplayLabels";
+import { formatPmhIcdPickLine, pmhContainsCanonicalIcdCode } from "@/components/diagnosis/icd10LivePresentation";
 import { appendIfNotPresent, safeTrim, type ErTriageV1Form, type ErYesNoUnknown } from "./medoraErTriageV1";
 
 export const ER_TRIAGE_PPE_NONE_CODE = "NONE";
@@ -75,14 +75,11 @@ export function togglePpeSelection(
   };
 }
 
-export function appendDiagnosisToPmh(
-  currentPmh: string,
-  hit: Icd10SearchHit,
-  locale: SupportedLanguage
-): string {
-  const label = getLocalizedDiagnosisDisplayLabel(hit, locale).trim();
-  if (!label) return currentPmh;
-  return appendIfNotPresent(currentPmh, label);
+export function appendDiagnosisToPmh(currentPmh: string, hit: Icd10SearchHit): string {
+  const line = formatPmhIcdPickLine(hit).trim();
+  if (!line) return currentPmh;
+  if (pmhContainsCanonicalIcdCode(currentPmh, hit.code)) return currentPmh;
+  return appendIfNotPresent(currentPmh, line);
 }
 
 export function applySurgicalHistoryPick(

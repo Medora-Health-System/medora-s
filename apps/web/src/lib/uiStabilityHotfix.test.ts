@@ -66,7 +66,7 @@ describe("HOTFIX.MEDUI.UI.STABILITY.1 — safe trim / search guards", () => {
       isBillable: true,
       displayLabel: "I10",
       displayResolution: "UNLOCALIZED_CODE",
-    }, "fr")).not.toThrow();
+    })).not.toThrow();
   });
 });
 

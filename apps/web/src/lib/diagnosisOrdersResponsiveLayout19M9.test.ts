@@ -13,7 +13,7 @@ import {
   diagnosisOrdersUsesCardLayout,
   resolveDiagnosisOrdersLayoutMode,
 } from "@/features/emergency/diagnosisOrdersResponsiveLayout";
-import { getLocalizedDiagnosisDisplayLabel } from "@/features/emergency/diagnosisFrenchDisplayLabels";
+import { formatIcd10ServerResolvedOneLineDisplay } from "@medora/shared";
 
 const webRoot = join(import.meta.dirname, "../..");
 
@@ -94,10 +94,18 @@ describe("EncounterDiagnosticsPanel responsive wiring (19M.9)", () => {
     expect(source).toContain("formatIcd10ServerResolvedOneLineDisplay");
     expect(source).not.toContain("getLocalizedDiagnosisDisplayLabel");
     expect(
-      getLocalizedDiagnosisDisplayLabel({ code: "R07.9", description: "Chest pain, unspecified" }, "fr")
+      formatIcd10ServerResolvedOneLineDisplay({
+        code: "R07.9",
+        displayLabel: "Douleur thoracique non précisée",
+        displayResolution: "EXACT_GOVERNED_LABEL",
+      }).primary
     ).toBe("Douleur thoracique non précisée");
     expect(
-      getLocalizedDiagnosisDisplayLabel({ code: "R07.9", description: "Chest pain, unspecified" }, "en")
+      formatIcd10ServerResolvedOneLineDisplay({
+        code: "R07.9",
+        displayLabel: "Chest pain, unspecified",
+        displayResolution: "EXACT_SOURCE_LABEL",
+      }).primary
     ).toBe("Chest pain, unspecified");
   });
 });
@@ -155,9 +163,9 @@ describe("19M.9 — prior phase regression anchors", () => {
   });
 
   it("French diagnosis search/display tests still import shared helpers", () => {
-    const display = readWebSource("src/features/emergency/diagnosisFrenchDisplayLabels.test.ts");
+    const display = readWebSource("src/components/diagnosis/icd10P3dOverlayRetirement.test.ts");
     const search = readWebSource("src/features/emergency/diagnosisFrenchSearchAliases.test.ts");
-    expect(display).toContain("getLocalizedDiagnosisDisplayLabel");
+    expect(display).toContain("formatIcd10ServerResolvedOneLineDisplay");
     expect(search).toContain('from "./diagnosisFrenchSearchAliases"');
   });
 });

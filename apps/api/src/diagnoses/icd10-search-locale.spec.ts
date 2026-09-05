@@ -2,7 +2,7 @@ import { BadRequestException } from "@nestjs/common";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { parseProductUiLanguage, resolveProductUiLanguageOrDefault } from "@medora/shared";
-import { requireIcd10SearchLocale } from "./icd10-search-locale";
+import { requireIcd10SearchLocale, parseOptionalIcd10ListLocale } from "./icd10-search-locale";
 
 describe("ICD-10 search locale gate", () => {
   it("accepts canonical product locales", () => {
@@ -39,5 +39,12 @@ describe("ICD-10 search locale gate", () => {
     expect(controller).not.toContain("resolveProductUiLanguageOrDefault");
     expect(controller).not.toContain("resolvePublicProductUiLanguageOrDefault");
     expect(controller).not.toContain("resolveInternalProductUiLanguageOrDefault");
+  });
+
+  it("optional list locale omits missing and rejects invalid without silent EN", () => {
+    expect(parseOptionalIcd10ListLocale(undefined)).toBeNull();
+    expect(parseOptionalIcd10ListLocale("")).toBeNull();
+    expect(parseOptionalIcd10ListLocale("es")).toBe("es");
+    expect(() => parseOptionalIcd10ListLocale("ht")).toThrow(BadRequestException);
   });
 });

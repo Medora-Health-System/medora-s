@@ -562,6 +562,7 @@ export function EmergencyVisitSummaryPanel({
     patientId,
     facilityId,
     refreshKey: resultsRefresh,
+    locale: language,
   });
   const mappedEncounterDiagnoses = useMemo(
     () => mapEncounterDiagnosisApiRowsToClinicalRecordInput(diagnosisApiRows, language),

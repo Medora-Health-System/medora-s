@@ -29,6 +29,7 @@ import {
   formatInpatientDischargeDiagnosisDisplay,
   formatInpatientDischargeHumanLabel,
   formatInpatientDischargePendingStudyTypeLabel,
+  formatIcd10ServerResolvedOneLineDisplay,
   hasMeaningfulDischargeSummary,
   hydrateInpatientFinalDischarge,
   hydrateInpatientNursingDischarge,
@@ -64,6 +65,7 @@ import { apiFetch, asApiObject } from "@/lib/apiClient";
 import { printDischarge } from "@/components/encounters/DischargePrintLayout";
 import { Icd10DiagnosisSearchAutocomplete } from "@/components/diagnosis/Icd10DiagnosisSearchAutocomplete";
 import { isDuplicateDischargeDiagnosis } from "@/components/diagnosis/icd10DiagnosisSearchHelpers";
+import { icd10ListLocaleQuery } from "@/components/diagnosis/icd10LivePresentation";
 import {
   executeInpatientFinalDischarge,
   fetchInpatientClinicalOps,
@@ -342,6 +344,9 @@ export function InpatientDischargeBoard({
   const [providerDoc, setProviderDoc] = useState<InpatientProviderDischargeV1C>(
     emptyInpatientProviderDischarge() as InpatientProviderDischargeV1C
   );
+  const [liveDxPresentationByCode, setLiveDxPresentationByCode] = useState<
+    Record<string, { displayLabel: string; displayResolution: string }>
+  >({});
   const [providerRevision, setProviderRevision] = useState(0);
   const [nursingDoc, setNursingDoc] = useState<InpatientNursingDischargeV1D>(
     emptyInpatientNursingDischarge()
@@ -549,6 +554,58 @@ export function InpatientDischargeBoard({
     Boolean(providerDoc.providerDocumentationFinalizedAt) || serverProviderFinalized;
   const nursingCompleted = nursingDoc.executionStatus === "COMPLETED";
   const providerWriteEnabled = canProvider && providerCanAuthor && !readOnly;
+
+  useEffect(() => {
+    const patientId = encounter?.patient?.id ?? null;
+    if (!patientId || !facilityId) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const data = await apiFetch(
+          `/patients/${encodeURIComponent(patientId)}/diagnoses?status=ACTIVE&limit=200${icd10ListLocaleQuery(language)}`,
+          { facilityId }
+        );
+        const items = Array.isArray((data as { items?: unknown }).items)
+          ? (data as { items: Record<string, unknown>[] }).items
+          : [];
+        const next: Record<string, { displayLabel: string; displayResolution: string }> = {};
+        for (const item of items) {
+          const code = String(item.code ?? "").trim().toUpperCase();
+          if (!code) continue;
+          next[code] = {
+            displayLabel: typeof item.displayLabel === "string" ? item.displayLabel : String(item.code ?? ""),
+            displayResolution:
+              typeof item.displayResolution === "string" ? item.displayResolution : "UNLOCALIZED_CODE",
+          };
+        }
+        if (!cancelled) {
+          setLiveDxPresentationByCode((prev) => ({ ...next, ...prev }));
+        }
+      } catch {
+        if (!cancelled) {
+          /* keep any search-hit presentation already in memory */
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [encounter?.patient?.id, encounterId, facilityId, language]);
+
+  const inpatientDxTitle = (row: { code?: string | null; description?: string | null }) => {
+    if (!providerWriteEnabled) {
+      return formatInpatientDischargeDiagnosisDisplay(row) || tp("none");
+    }
+    const code = (row.code ?? "").trim();
+    const live = liveDxPresentationByCode[code.toUpperCase()];
+    return (
+      formatIcd10ServerResolvedOneLineDisplay({
+        code,
+        displayLabel: live?.displayLabel,
+        displayResolution: live?.displayResolution,
+      }).primary || tp("none")
+    );
+  };
 
   const chipRows = useMemo(() => {
     const r = finalReadiness;
@@ -1650,7 +1707,7 @@ export function InpatientDischargeBoard({
                 providerDoc.dischargeDiagnoses.map((dx) => (
                   <li key={dx.id}>
                     {dx.isPrimary ? <strong>{tp("clinicalSummaryPrimary")} — </strong> : null}
-                    {formatInpatientDischargeDiagnosisDisplay(dx) || tp("none")}
+                    {inpatientDxTitle(dx) || tp("none")}
                   </li>
                 ))
               )}
@@ -1823,7 +1880,7 @@ export function InpatientDischargeBoard({
                 overflow: "hidden",
               }}
             >
-              {row.description || tp("none")}
+              {inpatientDxTitle(row)}
             </div>
             {row.code ? (
               <div style={{ fontSize: 12, color: "#475569", fontWeight: 400 }}>{row.code}</div>
@@ -1892,9 +1949,16 @@ export function InpatientDischargeBoard({
               searchFailedLabel={tp("unableToSearchDiagnoses")}
               alreadyAddedLabel={tp("alreadyAdded")}
               selectedDiagnoses={providerDoc.dischargeDiagnoses}
-              onSelect={(hit, description) =>
-                addDischargeDiagnosis({ code: hit.code, description })
-              }
+              onSelect={(hit, description) => {
+                setLiveDxPresentationByCode((prev) => ({
+                  ...prev,
+                  [hit.code.trim().toUpperCase()]: {
+                    displayLabel: hit.displayLabel,
+                    displayResolution: hit.displayResolution,
+                  },
+                }));
+                addDischargeDiagnosis({ code: hit.code, description });
+              }}
             />
             {(chartBootstrap?.suggestedChartDiagnoses ?? []).filter(
               (s) =>

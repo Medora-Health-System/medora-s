@@ -25,6 +25,15 @@ import {
   CHART_AUDIT_TIMELINE_ACTIONS,
   mapAuditLogRowToTimelineItem,
 } from "./chart-audit-timeline.util";
+import { Icd10TerminologyService } from "../diagnoses/icd10-terminology.service";
+import {
+  ICD10_PRESENTATION_CATALOG_SELECT,
+  applyIcd10DiagnosisPresentation,
+  resolveIcd10PresentationByCatalogId,
+  stripIcd10CatalogFromPresentedRow,
+  uniqueIcd10PresentationCatalogRows,
+} from "../diagnoses/icd10-diagnosis-presentation";
+import { parseOptionalIcd10ListLocale } from "../diagnoses/icd10-search-locale";
 
 const RECENT_ENCOUNTERS = 10;
 /** Consultations hors « top 10 » mais avec résultat lab/imagerie enregistré — visibilité clinique sans tout charger. */
@@ -308,7 +317,8 @@ export class ChartSummaryService {
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
     private readonly ordersService: OrdersService,
-    private readonly trackboardService: TrackboardService
+    private readonly trackboardService: TrackboardService,
+    private readonly icd10Terminology: Icd10TerminologyService,
   ) {}
 
   async getChartSummary(
@@ -317,7 +327,8 @@ export class ChartSummaryService {
     userId?: string,
     ip?: string,
     userAgent?: string,
-    breakGlassSessionId?: string
+    breakGlassSessionId?: string,
+    localeRaw?: string,
   ) {
     const patient = await this.prisma.patient.findFirst({
       where: { id: patientId, facilityId },
@@ -346,6 +357,8 @@ export class ChartSummaryService {
     if (!patient) {
       throw new NotFoundException("Patient not found");
     }
+
+    const locale = parseOptionalIcd10ListLocale(localeRaw);
 
     await logBreakGlassAccessIfApplicable(this.audit, {
       breakGlassSessionId,
@@ -387,6 +400,7 @@ export class ChartSummaryService {
             sortOrder: true,
             codeSource: true,
             encounter: { select: { id: true, type: true, createdAt: true } },
+            icd10Catalog: { select: ICD10_PRESENTATION_CATALOG_SELECT },
           },
         }),
         this.prisma.medicationDispense.findMany({
@@ -533,6 +547,7 @@ export class ChartSummaryService {
                 createdAt: true,
                 sortOrder: true,
                 codeSource: true,
+                icd10Catalog: { select: ICD10_PRESENTATION_CATALOG_SELECT },
               },
             }),
             this.prisma.medicationDispense.findMany({
@@ -583,8 +598,27 @@ export class ChartSummaryService {
       ordersByEncounter.set(o.encounterId, list);
     }
 
-    const diagnosesByEncounter = new Map<string, typeof encounterDiagnosesRows>();
-    for (const d of encounterDiagnosesRows) {
+    const presentationCatalogRows = uniqueIcd10PresentationCatalogRows(
+      [...activeDiagnoses, ...encounterDiagnosesRows].map((row) => row.icd10Catalog),
+    );
+    const presentationByCatalogId = await resolveIcd10PresentationByCatalogId(
+      this.icd10Terminology,
+      locale,
+      presentationCatalogRows,
+    );
+    const presentedActiveDiagnoses = activeDiagnoses.map((row) =>
+      stripIcd10CatalogFromPresentedRow(
+        applyIcd10DiagnosisPresentation(locale, row, presentationByCatalogId),
+      ),
+    );
+    const presentedEncounterDiagnoses = encounterDiagnosesRows.map((row) =>
+      stripIcd10CatalogFromPresentedRow(
+        applyIcd10DiagnosisPresentation(locale, row, presentationByCatalogId),
+      ),
+    );
+
+    const diagnosesByEncounter = new Map<string, typeof presentedEncounterDiagnoses>();
+    for (const d of presentedEncounterDiagnoses) {
       const list = diagnosesByEncounter.get(d.encounterId) ?? [];
       list.push(d);
       diagnosesByEncounter.set(d.encounterId, list);
@@ -755,7 +789,7 @@ export class ChartSummaryService {
       clinicalHistoryProfile,
       clinicalHistorySummary,
       recentEncounters,
-      activeDiagnoses,
+      activeDiagnoses: presentedActiveDiagnoses,
       recentMedicationDispenses: recentDispenses,
       recentVaccinations,
       auditTimeline,

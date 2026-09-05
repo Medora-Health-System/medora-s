@@ -1,5 +1,9 @@
 import { apiFetch } from "./apiClient";
-import type { ObservationOperationalSnapshot, ObservationStaySummaryForExport } from "@medora/shared";
+import {
+  parseProductUiLanguage,
+  type ObservationOperationalSnapshot,
+  type ObservationStaySummaryForExport,
+} from "@medora/shared";
 
 /** Compact order line for patient chart timeline (catalog labels embedded). */
 export type ChartSummaryOrderItem = {
@@ -60,6 +64,8 @@ export type ChartEncounterDiagnosis = {
   id: string;
   code: string;
   description: string | null;
+  displayLabel?: string;
+  displayResolution?: string;
   status: string;
   encounterId: string;
   createdAt: string;
@@ -229,6 +235,8 @@ export type ChartSummary = {
     id: string;
     code: string;
     description: string | null;
+    displayLabel?: string;
+    displayResolution?: string;
     onsetDate: string | null;
     notes: string | null;
     createdAt: string;
@@ -282,9 +290,12 @@ function normalizeAuditTimelineEntries(
 
 export async function fetchChartSummary(
   facilityId: string,
-  patientId: string
+  patientId: string,
+  locale?: string | null
 ): Promise<ChartSummary> {
-  const data = (await apiFetch(`/patients/${patientId}/chart-summary`, {
+  const parsed = parseProductUiLanguage(locale);
+  const q = parsed ? `?locale=${encodeURIComponent(parsed)}` : "";
+  const data = (await apiFetch(`/patients/${patientId}/chart-summary${q}`, {
     facilityId,
   })) as ChartSummary;
   if (data.auditTimeline?.length) {

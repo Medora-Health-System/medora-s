@@ -19,8 +19,8 @@ import {
   diagnosisMatchesLocalizedSearch,
   resolveLocalizedDiagnosisSearchQueries,
 } from "./diagnosisFrenchSearchAliases";
-import { getLocalizedDiagnosisDisplayLabel } from "./diagnosisFrenchDisplayLabels";
 import {
+  formatIcd10ServerResolvedOneLineDisplay,
   resolveSurgicalHistoryDisplayName,
   searchSurgicalHistoryCatalog,
   SURGICAL_HISTORY_SEARCH_MIN_CHARS,
@@ -446,11 +446,11 @@ export function EmergencyTriageV1Sections({
 
   const pickPmhDiagnosis = useCallback(
     (hit: Icd10SearchHit) => {
-      patchErV1({ pastMedicalHistory: appendDiagnosisToPmh(er.pastMedicalHistory, hit, language) });
+      patchErV1({ pastMedicalHistory: appendDiagnosisToPmh(er.pastMedicalHistory, hit) });
       setPmhDiagnosisSearchInput("");
       setPmhDiagnosisSearchResults([]);
     },
-    [er.pastMedicalHistory, language, patchErV1]
+    [er.pastMedicalHistory, patchErV1]
   );
 
   const pickSurgicalHistoryTemplate = useCallback(
@@ -1265,7 +1265,9 @@ export function EmergencyTriageV1Sections({
                     backgroundColor: "#fff",
                   }}
                 >
-                  {pmhDiagnosisSearchResults.map((hit) => (
+                  {pmhDiagnosisSearchResults.map((hit) => {
+                    const oneLine = formatIcd10ServerResolvedOneLineDisplay(hit);
+                    return (
                     <li key={hit.id} style={{ borderBottom: "1px solid #f1f5f9" }}>
                       <button
                         type="button"
@@ -1283,14 +1285,17 @@ export function EmergencyTriageV1Sections({
                         }}
                       >
                         <div style={{ fontWeight: 600, color: "#0f172a" }}>
-                          {getLocalizedDiagnosisDisplayLabel(hit, language)}
+                          {oneLine.primary}
                         </div>
-                        {hit.code ? (
-                          <div style={{ marginTop: 2, fontSize: 11, color: "#64748b" }}>{hit.code}</div>
+                        {oneLine.metadata ? (
+                          <div style={{ marginTop: 2, fontSize: 11, color: "#64748b" }}>
+                            {oneLine.metadata}
+                          </div>
                         ) : null}
                       </button>
                     </li>
-                  ))}
+                    );
+                  })}
                 </ul>
               ) : null}
               <input

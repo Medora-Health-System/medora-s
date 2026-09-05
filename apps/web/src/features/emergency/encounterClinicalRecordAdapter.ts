@@ -6,6 +6,7 @@
 import {
   buildDocumentedProcedureSummaryMeta,
   formatDocumentedProcedureClinicalSummary,
+  formatIcd10ServerResolvedOneLineDisplay,
   resolveVitalsPainScore,
   type BuildEncounterClinicalRecordInput,
   type EncounterClinicalRecordLocale,
@@ -33,7 +34,7 @@ import {
   erNursingReassessmentFormFromEncounter,
 } from "./emergencyNursingReassessmentV1";
 import { parseTriageFieldLine } from "./enterpriseClinicalChartLayout";
-import { getLocalizedDiagnosisDisplayLabel } from "./diagnosisFrenchDisplayLabels";
+import { parseIcd10PresentationFields } from "@/components/diagnosis/icd10LivePresentation";
 import type {
   ClinicalDocumentationEventApiEntry,
   EmergencyVisitSummaryModel,
@@ -901,6 +902,8 @@ export type EncounterDiagnosisApiRow = {
   id: string;
   code: string;
   description?: string | null;
+  displayLabel?: string | null;
+  displayResolution?: string | null;
   status?: string | null;
   sortOrder?: number;
   createdAt?: string | null;
@@ -944,25 +947,24 @@ function resolveDiagnosisAttributionFromApiRow(row: EncounterDiagnosisApiRow): {
   };
 }
 
-export function formatEncounterDiagnosisDisplayLabel(
-  code: string,
-  description: string | null | undefined,
-  locale: EncounterClinicalRecordLocale
-): string {
-  const trimmedCode = code.trim();
-  const localizedDescription = getLocalizedDiagnosisDisplayLabel(
-    { code: trimmedCode, description },
-    locale
-  );
-  if (trimmedCode && localizedDescription) return `${trimmedCode} — ${localizedDescription}`;
-  return localizedDescription || trimmedCode;
+export function formatEncounterDiagnosisDisplayLabel(row: {
+  code: string;
+  displayLabel?: string | null;
+  displayResolution?: string | null;
+}): string {
+  return formatIcd10ServerResolvedOneLineDisplay({
+    code: row.code,
+    displayLabel: row.displayLabel,
+    displayResolution: row.displayResolution,
+  }).primary;
 }
 
 /** Map Diagnostics tab API rows into clinical-record builder input (same source as EncounterDiagnosticsPanel). */
 export function mapEncounterDiagnosisApiRowsToClinicalRecordInput(
   rows: EncounterDiagnosisApiRow[],
-  locale: EncounterClinicalRecordLocale
+  _locale?: EncounterClinicalRecordLocale
 ): NonNullable<BuildEncounterClinicalRecordInput["encounter"]["diagnoses"]> {
+  void _locale;
   const sorted = [...rows].sort((a, b) => {
     const sa = typeof a.sortOrder === "number" ? a.sortOrder : 0;
     const sb = typeof b.sortOrder === "number" ? b.sortOrder : 0;
@@ -973,7 +975,7 @@ export function mapEncounterDiagnosisApiRowsToClinicalRecordInput(
   return sorted.map((row, index) => {
     const code = row.code.trim();
     const description = row.description?.trim() || null;
-    const displayLabel = formatEncounterDiagnosisDisplayLabel(code, description, locale);
+    const displayLabel = formatEncounterDiagnosisDisplayLabel(row);
     const attribution = resolveDiagnosisAttributionFromApiRow(row);
     return {
       id: row.id,
@@ -1025,6 +1027,7 @@ export function parseEncounterDiagnosisApiItems(
         id: String(d.id),
         code: String(d.code ?? ""),
         description: (d.description as string | null) ?? null,
+        ...parseIcd10PresentationFields(d, String(d.code ?? "")),
         status: typeof d.status === "string" ? d.status : undefined,
         sortOrder: typeof d.sortOrder === "number" ? d.sortOrder : 0,
         createdAt: typeof d.createdAt === "string" ? d.createdAt : null,

@@ -218,7 +218,11 @@ export class PatientsController {
   @Get(":id/chart-summary")
   @AllowBreakGlassForPatientParam("id")
   @RequireRoles(RoleCode.RN, RoleCode.PROVIDER, RoleCode.ADMIN)
-  async getChartSummary(@Param("id") id: string, @Req() req: any) {
+  async getChartSummary(
+    @Param("id") id: string,
+    @Query("locale") locale: string | undefined,
+    @Req() req: any,
+  ) {
     const facilityId = req.user?.facilityId || req.headers["x-facility-id"];
     if (!facilityId) {
       throw new BadRequestException("Établissement requis");
@@ -229,7 +233,8 @@ export class PatientsController {
       req.user?.userId,
       req.ip,
       req.headers["user-agent"],
-      req.breakGlassSessionId
+      req.breakGlassSessionId,
+      locale,
     );
   }
 

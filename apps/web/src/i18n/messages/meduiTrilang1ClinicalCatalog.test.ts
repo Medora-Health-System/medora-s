@@ -9,7 +9,7 @@ import {
   getCatalogSearchItemDisplayLabel,
 } from "@/lib/catalogDisplayLabel";
 import { getOrderItemDisplayLabelForLanguage } from "@/lib/orderItemDisplayFr";
-import { getLocalizedDiagnosisDisplayLabel } from "@/features/emergency/diagnosisFrenchDisplayLabels";
+import { selectableDxPrimaryFromGovernedMaps } from "@/components/diagnosis/icd10SelectableDisplayTestUtil";
 import type { CatalogSearchItem } from "@/lib/catalogSearchTypes";
 import {
   CLINICAL_CATALOG_ES_IMAGING,
@@ -329,7 +329,7 @@ describe("MEDUI.TRILANG.1 catalog coverage + search", () => {
   });
 
   it("diagnoses, order chrome, and composed medication identity", () => {
-    expect(getLocalizedDiagnosisDisplayLabel({ code: "R07.9", description: "Chest pain, unspecified" }, "es")).toBe(
+    expect(selectableDxPrimaryFromGovernedMaps({ code: "R07.9", description: "Chest pain, unspecified" }, "es")).toBe(
       "Dolor torácico no especificado"
     );
     expect(
@@ -532,10 +532,10 @@ describe("MEDUI.TRILANG.1 generated text + persist/reload R–Z", () => {
 
   it("W canonical ICD fallback never leaks the other-language description", () => {
     const unmapped = { code: "Z99.89", description: "Dependence on unspecified enabling machine" };
-    expect(getLocalizedDiagnosisDisplayLabel(unmapped, "es")).toBe("Z99.89");
-    expect(getLocalizedDiagnosisDisplayLabel(unmapped, "es")).not.toBe(unmapped.description);
-    expect(getLocalizedDiagnosisDisplayLabel(unmapped, "fr")).toBe("Z99.89");
-    expect(getLocalizedDiagnosisDisplayLabel({ code: "R07.9", description: "Chest pain, unspecified" }, "es")).toBe(
+    expect(selectableDxPrimaryFromGovernedMaps(unmapped, "es")).toBe("Z99.89");
+    expect(selectableDxPrimaryFromGovernedMaps(unmapped, "es")).not.toBe(unmapped.description);
+    expect(selectableDxPrimaryFromGovernedMaps(unmapped, "fr")).toBe("Z99.89");
+    expect(selectableDxPrimaryFromGovernedMaps({ code: "R07.9", description: "Chest pain, unspecified" }, "es")).toBe(
       "Dolor torácico no especificado"
     );
   });

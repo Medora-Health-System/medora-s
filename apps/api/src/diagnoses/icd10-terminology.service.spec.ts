@@ -121,6 +121,7 @@ describe("Icd10TerminologyService", () => {
     });
     expect(findMany).toHaveBeenCalledTimes(1);
     expect(findMany.mock.calls[0][0].where.icd10CatalogId.in).toEqual(["cat-r1085", "cat-a42"]);
+    expect(findMany.mock.calls[0][0].where.locale).toBe("es");
     expect(result.get("cat-r1085")?.displayName).toBe("Dolor abdominal en varios sitios");
     expect(result.get("cat-a42")?.exactness).toBe("UNLOCALIZED_CODE");
     expect(result.get("cat-a42")?.displayName).toBe("A42.1");
@@ -171,6 +172,7 @@ describe("Icd10TerminologyService", () => {
     const result = await service.resolveDisplaysForCatalogRows({ locale: "fr", catalogRows });
     expect(findMany).toHaveBeenCalledTimes(1);
     expect(findMany.mock.calls[0][0].where.icd10CatalogId.in).toHaveLength(50);
+    expect(findMany.mock.calls[0][0].where.locale).toBe("fr");
     expect(result.size).toBe(50);
     expect(result.get("cat-0")?.exactness).toBe("UNLOCALIZED_CODE");
   });

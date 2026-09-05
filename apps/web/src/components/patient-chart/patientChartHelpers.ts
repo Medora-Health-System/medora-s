@@ -428,15 +428,6 @@ export function parseAdmissionSummaryForChart(raw: unknown): AdmissionSummaryFie
   return any ? out : null;
 }
 
-/** Libellé diagnostic : privilégier la description ; éviter d’afficher seul un code brut non contextualisé. */
-export function diagnosisDisplayFr(description: string | null | undefined, code: string): string {
-  const d = description?.trim();
-  if (d) return d;
-  const c = code?.trim();
-  if (!c) return "—";
-  return `Code ${c}`;
-}
-
 export function nirMrnDisplay(patient: {
   nationalId?: string | null;
   mrn?: string | null;

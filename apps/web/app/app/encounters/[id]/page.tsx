@@ -148,8 +148,8 @@ import {
 } from "@/components/encounters/ObservationWorkflowEncounterChrome";
 import { ObservationDocumentationSummaryPanel } from "@/components/encounters/ObservationDocumentationSummaryPanel";
 import type { HospitalisationBoardTrackboardOps } from "@/lib/hospitalisationBoardTypes";
+import { icd10ListLocaleQuery, liveIcd10DiagnosisPrimary } from "@/components/diagnosis/icd10LivePresentation";
 import {
-  diagnosisDisplayFr,
   nursingAssessmentDisplayLines,
   nursingAssessmentSignatureForLocale,
   parseAdmissionSummaryForChart,
@@ -932,7 +932,7 @@ function EncounterDetailPageInner({ session }: { session: ReturnType<typeof useF
 
   const loadQuickContext = useCallback(async (opts?: { force?: boolean }) => {
     if (!encounter?.id || !facilityId || !rolesReady) return;
-    const loadKey = `${facilityId}:${encounter.id}`;
+    const loadKey = `${facilityId}:${encounter.id}:${language}`;
     if (!opts?.force && quickContextLoadedKeyRef.current === loadKey) {
       return;
     }
@@ -949,7 +949,7 @@ function EncounterDetailPageInner({ session }: { session: ReturnType<typeof useF
       : Promise.resolve(null);
     const dxP =
       canFetchPatientDiagnosesList && patientId
-        ? apiFetch(`/patients/${patientId}/diagnoses?limit=200`, { facilityId })
+        ? apiFetch(`/patients/${patientId}/diagnoses?limit=200${icd10ListLocaleQuery(language)}`, { facilityId })
         : Promise.resolve(null);
     const [triRes, dxRes] = await Promise.allSettled([triageP, dxP]);
     const tri = triRes.status === "fulfilled" ? triRes.value : null;
@@ -980,6 +980,8 @@ function EncounterDetailPageInner({ session }: { session: ReturnType<typeof useF
           encounterId?: string;
           description?: string | null;
           code: string;
+          displayLabel?: string;
+          displayResolution?: string;
           sortOrder?: number;
           createdAt?: string;
         }>;
@@ -993,7 +995,7 @@ function EncounterDetailPageInner({ session }: { session: ReturnType<typeof useF
         });
       setQuickDiagnosisCount(items.length);
       setQuickPrimaryDiagnosis(
-        items.length > 0 ? diagnosisDisplayFr(items[0].description, items[0].code) : null
+        items.length > 0 ? liveIcd10DiagnosisPrimary(items[0]) : null
       );
     } else {
       setQuickDiagnosisCount(null);
@@ -1012,12 +1014,13 @@ function EncounterDetailPageInner({ session }: { session: ReturnType<typeof useF
     rolesReady,
     canFetchEncounterTriage,
     canFetchPatientDiagnosesList,
+    language,
     t,
   ]);
 
   useEffect(() => {
     quickContextLoadedKeyRef.current = null;
-  }, [encounterId, facilityId]);
+  }, [encounterId, facilityId, language]);
 
   useEffect(() => {
     if (!encounter?.id || !facilityId || !rolesReady) return;

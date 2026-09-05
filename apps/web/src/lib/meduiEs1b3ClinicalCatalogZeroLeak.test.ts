@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { getLocalizedDiagnosisDisplayLabel } from "@/features/emergency/diagnosisFrenchDisplayLabels";
+import { selectableDxPrimaryFromGovernedMaps } from "@/components/diagnosis/icd10SelectableDisplayTestUtil";
 import {
   diagnosisMatchesLocalizedSearch,
   resolveLocalizedDiagnosisSearchQueries,
@@ -70,13 +70,13 @@ const MED_ITEM: CatalogSearchItem = {
 
 describe("MEDUI.ES.1B.3 diagnosis zero-leak", () => {
   it.each(DIAGNOSIS_FIXTURES)("$code EN display is English only", (row) => {
-    const label = getLocalizedDiagnosisDisplayLabel({ code: row.code, description: row.en }, "en");
+    const label = selectableDxPrimaryFromGovernedMaps({ code: row.code, description: row.en }, "en");
     expect(label).toBe(row.en);
     expect(label).not.toBe(row.fr);
   });
 
   it.each(DIAGNOSIS_FIXTURES)("$code FR display is French only", (row) => {
-    const label = getLocalizedDiagnosisDisplayLabel({ code: row.code, description: row.en }, "fr");
+    const label = selectableDxPrimaryFromGovernedMaps({ code: row.code, description: row.en }, "fr");
     expect(label).toBe(row.fr);
     expect(label).not.toMatch(/chest pain|abdominal pain|urinary tract infection/i);
   });
@@ -86,12 +86,12 @@ describe("MEDUI.ES.1B.3 diagnosis zero-leak", () => {
     expect(queries.some((q) => /chest pain/i.test(q))).toBe(true);
     const hit = { id: "1", code: "R07.9", shortDescription: "Chest pain, unspecified", longDescription: null };
     expect(diagnosisMatchesLocalizedSearch(hit, "douleur thoracique", "fr")).toBe(true);
-    expect(getLocalizedDiagnosisDisplayLabel(hit, "en")).toBe("Chest pain, unspecified");
-    expect(getLocalizedDiagnosisDisplayLabel(hit, "fr")).toBe("Douleur thoracique non précisée");
+    expect(selectableDxPrimaryFromGovernedMaps(hit, "en")).toBe("Chest pain, unspecified");
+    expect(selectableDxPrimaryFromGovernedMaps(hit, "fr")).toBe("Douleur thoracique non précisée");
   });
 
   it("unmapped FR diagnosis uses code, not English prose", () => {
-    const label = getLocalizedDiagnosisDisplayLabel(
+    const label = selectableDxPrimaryFromGovernedMaps(
       { code: "A41.9", description: "Sepsis, unspecified organism" },
       "fr"
     );
@@ -100,7 +100,7 @@ describe("MEDUI.ES.1B.3 diagnosis zero-leak", () => {
   });
 
   it("es diagnosis display is Spanish overlay, not EN or FR", () => {
-    const label = getLocalizedDiagnosisDisplayLabel(
+    const label = selectableDxPrimaryFromGovernedMaps(
       { code: "R07.9", description: "Chest pain, unspecified" },
       "es"
     );
