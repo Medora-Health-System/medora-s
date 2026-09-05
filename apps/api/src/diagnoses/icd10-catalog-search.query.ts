@@ -13,10 +13,12 @@
  * Duplicate source (production audit):
  *   @@unique([codeSystem, releaseVersion, code]) allows the same ICD code
  *   in FY2026, UNSPECIFIED, and FY2026-MEDORA-DEV-SAMPLE simultaneously.
- *   Match OR across short/long/searchText does NOT multiply rows; multi-release
- *   catalog rows do. Alias expansion only widens predicates — it must not emit
- *   an extra visible row for the same ICD code. Collapse by `code` happens in
- *   the select builder (one official row per code).
+ *   Match OR across short/long/searchText + approved clinician preferredLabel
+ *   + approved search aliases does NOT multiply rows; multi-release
+ *   catalog rows do. Alias/label match only widens predicates — it must not emit
+ *   an extra visible row for the same ICD code, and must never replace
+ *   selected shortDescription (English catalog remains the DTO until P3).
+ *   Collapse by `code` happens in the select builder (one official row per code).
  *
  * Not the source of duplicates:
  *   COMMON_DIAGNOSES (UI shortcuts), search cache, autocomplete index,
@@ -50,6 +52,8 @@ export type Icd10CatalogSearchMatch = {
   shortContainsSql: Prisma.Sql;
   longContainsSql: Prisma.Sql;
   expansionRankSql: Prisma.Sql;
+  terminologyExactSql: Prisma.Sql;
+  aliasMatchSql: Prisma.Sql;
 };
 
 function joinSqlOr(conditions: Prisma.Sql[]) {
@@ -57,6 +61,38 @@ function joinSqlOr(conditions: Prisma.Sql[]) {
     if (index === 0) return condition;
     return Prisma.sql`${acc} OR ${condition}`;
   }, Prisma.empty);
+}
+
+/**
+ * Qualify the catalog PK explicitly.
+ * Inner EXISTS must use "Icd10DiagnosisCode"."id".
+ * Outer ranking EXISTS must use "one_per_code"."id".
+ * Unqualified "id" binds to terminology/alias row id (both tables have id).
+ */
+const ICD10_SEARCH_INNER_CATALOG_ID = Prisma.sql`"Icd10DiagnosisCode"."id"`;
+const ICD10_SEARCH_OUTER_CATALOG_ID = Prisma.sql`"one_per_code"."id"`;
+
+/** Approved CLINICIAN_PREFERRED labels only. Never CONSUMER. Never used as SELECT display. */
+function icd10ApprovedClinicianLabelExistsSql(pattern: string, catalogIdRef: Prisma.Sql): Prisma.Sql {
+  return Prisma.sql`EXISTS (
+    SELECT 1
+    FROM "Icd10DiagnosisTerminology" t
+    WHERE t."icd10CatalogId" = ${catalogIdRef}
+      AND t."status" = 'APPROVED'
+      AND t."labelRegister" = 'CLINICIAN_PREFERRED'
+      AND t."preferredLabel" ILIKE ${pattern}
+  )`;
+}
+
+/** SEARCH-ONLY aliases. Matching here never changes selected shortDescription. */
+function icd10ApprovedSearchAliasExistsSql(pattern: string, catalogIdRef: Prisma.Sql): Prisma.Sql {
+  return Prisma.sql`EXISTS (
+    SELECT 1
+    FROM "Icd10DiagnosisSearchAlias" a
+    WHERE a."icd10CatalogId" = ${catalogIdRef}
+      AND a."status" = 'APPROVED'
+      AND a."aliasText" ILIKE ${pattern}
+  )`;
 }
 
 /** Prefer official fiscal releases over legacy UNSPECIFIED and DEV-SAMPLE. */
@@ -96,6 +132,8 @@ export function buildIcd10CatalogSearchMatch(rawInput: string): Icd10CatalogSear
     or.push(Prisma.sql`"shortDescription" ILIKE ${pattern}`);
     or.push(Prisma.sql`"longDescription" ILIKE ${pattern}`);
     or.push(Prisma.sql`"searchText" ILIKE ${lowerPattern}`);
+    or.push(icd10ApprovedClinicianLabelExistsSql(pattern, ICD10_SEARCH_INNER_CATALOG_ID));
+    or.push(icd10ApprovedSearchAliasExistsSql(pattern, ICD10_SEARCH_INNER_CATALOG_ID));
   }
   for (const phrase of expansion?.anyOf ?? []) {
     if (phrase.length < 2) continue;
@@ -104,6 +142,8 @@ export function buildIcd10CatalogSearchMatch(rawInput: string): Icd10CatalogSear
     or.push(Prisma.sql`"shortDescription" ILIKE ${p}`);
     or.push(Prisma.sql`"longDescription" ILIKE ${p}`);
     or.push(Prisma.sql`"searchText" ILIKE ${lp}`);
+    or.push(icd10ApprovedClinicianLabelExistsSql(p, ICD10_SEARCH_INNER_CATALOG_ID));
+    or.push(icd10ApprovedSearchAliasExistsSql(p, ICD10_SEARCH_INNER_CATALOG_ID));
   }
   if (expansion?.allOf && expansion.allOf.length > 0) {
     const andParts = expansion.allOf.map((phrase) => {
@@ -113,6 +153,8 @@ export function buildIcd10CatalogSearchMatch(rawInput: string): Icd10CatalogSear
         "shortDescription" ILIKE ${p}
         OR "longDescription" ILIKE ${p}
         OR "searchText" ILIKE ${lp}
+        OR ${icd10ApprovedClinicianLabelExistsSql(p, ICD10_SEARCH_INNER_CATALOG_ID)}
+        OR ${icd10ApprovedSearchAliasExistsSql(p, ICD10_SEARCH_INNER_CATALOG_ID)}
       )`;
     });
     or.push(andParts.reduce((acc, part, index) => (index === 0 ? part : Prisma.sql`${acc} AND ${part}`)));
@@ -156,6 +198,17 @@ export function buildIcd10CatalogSearchMatch(rawInput: string): Icd10CatalogSear
             .map((phrase) => Prisma.sql`"shortDescription" ILIKE ${`%${phrase}%`}`)
             .reduce((acc, part, index) => (index === 0 ? part : Prisma.sql`${acc} OR ${part}`))
         : Prisma.sql`FALSE`,
+    terminologyExactSql: Prisma.sql`EXISTS (
+      SELECT 1
+      FROM "Icd10DiagnosisTerminology" t
+      WHERE t."icd10CatalogId" = ${ICD10_SEARCH_OUTER_CATALOG_ID}
+        AND t."status" = 'APPROVED'
+        AND t."labelRegister" = 'CLINICIAN_PREFERRED'
+        AND LOWER(t."preferredLabel") = LOWER(${raw})
+    )`,
+    aliasMatchSql: pattern
+      ? icd10ApprovedSearchAliasExistsSql(pattern, ICD10_SEARCH_OUTER_CATALOG_ID)
+      : Prisma.sql`FALSE`,
   };
 }
 
@@ -166,10 +219,12 @@ export function icd10MatchQualityOrderSql(match: Icd10CatalogSearchMatch): Prism
       WHEN ${match.codeExactSql} THEN 1
       WHEN ${match.codePrefixSql} THEN 2
       WHEN ${match.shortExactSql} THEN 3
+      WHEN ${match.terminologyExactSql} THEN 3
       WHEN ${match.shortPrefixSql} THEN 4
       WHEN ${match.expansionRankSql} THEN 5
       WHEN ${match.shortContainsSql} THEN 6
       WHEN ${match.longContainsSql} THEN 7
+      WHEN ${match.aliasMatchSql} THEN 8
       WHEN ${match.tokenRankSql} THEN 8
       ELSE 9
     END ASC,
