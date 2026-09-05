@@ -115,6 +115,24 @@ describe("MEDUI.ES.1D Spanish medical terminology canon", () => {
     expect(ES_MEDICAL_CANONICAL_ABBREVIATIONS).toEqual(expect.arrayContaining(["IV", "IM", "PO", "CT", "MRI", "MAR", "PRN"]));
   });
 
+  it("REVIEW_REQUIRED terms stay isolated from approved production lookup and overlay", () => {
+    const review = ES_MEDICAL_TERMINOLOGY.filter((e) => e.status === "REVIEW_REQUIRED");
+    expect(review.length).toBeGreaterThan(0);
+    expect(review.map((e) => e.key)).toContain("clinical.dx.principalDiagnosis");
+    const overlayFromReview = review.flatMap((e) => [...(e.uiMessageKeys ?? [])]);
+    expect(overlayFromReview, overlayFromReview.join(", ")).toEqual([]);
+    for (const entry of review) {
+      expect(entry.es.trim().length).toBeGreaterThan(0);
+      const resolved = getSpanishMedicalTerm(entry.key);
+      expect(resolved).toBe(hiddenSpanishPlaceholder(entry.key));
+      expect(resolved).not.toBe(entry.es);
+      expect(resolved).not.toBe(entry.en);
+      expect(resolveMedicalTerminology("es", entry.key)).toBe(hiddenSpanishPlaceholder(entry.key));
+      expect(resolveMedicalTerminology("en", entry.key)).toBe(entry.en);
+      expect(resolveMedicalTerminology("fr", entry.key)).toBe(entry.key);
+    }
+  });
+
   it("unknown and REVIEW_REQUIRED keys do not fall back to EN or FR", () => {
     const missing = getSpanishMedicalTerm("clinical.missing.not.in.canon");
     expect(missing).toBe(hiddenSpanishPlaceholder("clinical.missing.not.in.canon"));

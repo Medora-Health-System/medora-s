@@ -55,6 +55,35 @@ describe("MEDUI.ES.1D canon overlay + governance audits", () => {
     );
   });
 
+  it("REVIEW_REQUIRED canon terms never overlay hidden ES placeholders", () => {
+    const reviewRequired = ES_MEDICAL_TERMINOLOGY.filter((e) => e.status === "REVIEW_REQUIRED");
+    expect(reviewRequired.length).toBeGreaterThan(0);
+    const reviewRequiredOverlayPaths = reviewRequired.flatMap((e) => [...(e.uiMessageKeys ?? [])]);
+    expect(reviewRequiredOverlayPaths, reviewRequiredOverlayPaths.join(", ")).toEqual([]);
+
+    const { tree, replaced } = applyApprovedSpanishTerminology(createHiddenSpanishCatalog(en));
+    const leaves = collectStringLeaves(tree);
+    const overlayByPath = new Map<string, string>();
+    for (const e of ES_MEDICAL_TERMINOLOGY) {
+      if (e.status !== "APPROVED") continue;
+      for (const path of e.uiMessageKeys ?? []) overlayByPath.set(path, e.es);
+    }
+    const replacedLeaves = leaves.filter((l) => !isHiddenSpanishPlaceholder(l.value));
+    expect(replaced).toBe(replacedLeaves.length);
+    expect(replaced).toBeGreaterThan(0);
+    for (const leaf of replacedLeaves) {
+      expect(overlayByPath.get(leaf.path), leaf.path).toBe(leaf.value);
+    }
+    const candidateEs = new Set(reviewRequired.map((e) => e.es));
+    for (const leaf of replacedLeaves) {
+      expect(candidateEs.has(leaf.value), `${leaf.path} leaked REVIEW_REQUIRED ${leaf.value}`).toBe(false);
+    }
+    for (const e of reviewRequired) {
+      expect(getSpanishMedicalTerm(e.key)).toBe(`UNLOCALIZED_ES::${e.key}`);
+      expect(resolveClinicalUiMessage("es", e.key)).not.toBe(e.es);
+    }
+  });
+
   it("approved overlay keys exist in the English catalog", () => {
     const enPaths = new Set(collectStringLeaves(en).map((x) => x.path));
     const missing: string[] = [];
