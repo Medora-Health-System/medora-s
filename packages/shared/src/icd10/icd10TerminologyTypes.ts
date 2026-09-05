@@ -27,6 +27,13 @@ export type Icd10TerminologyStatus = "APPROVED" | "PENDING_REVIEW" | "REJECTED" 
 export type Icd10DisplayExactness = Icd10TerminologyExactness | "UNLOCALIZED_CODE";
 
 /**
+ * Runtime display origin. Presentation metadata only — never persisted on Diagnosis.
+ * Distinguishes catalog English vs approved terminology-row vs code-only.
+ */
+export const ICD10_DISPLAY_SOURCE_KINDS = ["CATALOG_SOURCE", "TERMINOLOGY_ROW", "UNLOCALIZED_CODE"] as const;
+export type Icd10DisplaySourceKind = (typeof ICD10_DISPLAY_SOURCE_KINDS)[number];
+
+/**
  * Lower number = higher preference within the same provenance class.
  * Not a substitute for provenance precedence.
  */
@@ -43,6 +50,8 @@ export type Icd10DiagnosisDisplayResult = {
   exactness: Icd10DisplayExactness;
   provenance: Icd10TerminologyProvenance | null;
   localized: boolean;
+  /** How the displayName was produced. Not a persistence field. */
+  sourceKind: Icd10DisplaySourceKind;
 };
 
 export type Icd10CatalogDisplaySource = {

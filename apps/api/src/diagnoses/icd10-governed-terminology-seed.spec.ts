@@ -60,6 +60,43 @@ describe("MEDUI.TRILANG.DX.P2.1 governed overlay import", () => {
     expect(plan.terminologyVersion).toBe(ICD10_GOVERNED_TERMINOLOGY_VERSION);
   });
 
+  it("does not import category/header rows as clinician preferred display", () => {
+    const plan = buildGovernedIcd10TerminologySeedPlan({
+      catalogByNormalizedCode: new Map([
+        [
+          "L03",
+          {
+            id: "cat-l03",
+            code: "L03",
+            normalizedCode: "L03",
+            codeSystem: "ICD-10-CM",
+            releaseVersion: "FY2026",
+            isSelectable: false,
+            isBillable: false,
+          },
+        ],
+        [
+          "L0390",
+          {
+            id: "cat-l0390",
+            code: "L03.90",
+            normalizedCode: "L0390",
+            codeSystem: "ICD-10-CM",
+            releaseVersion: "FY2026",
+            isSelectable: true,
+            isBillable: true,
+          },
+        ],
+      ]),
+      expectedReleaseVersion: "FY2026",
+    });
+    expect(plan.acceptedTerminology.every((row) => row.code === "L03.90" || row.normalizedCode === "L0390")).toBe(true);
+    expect(plan.acceptedTerminology.some((row) => row.normalizedCode === "L03")).toBe(false);
+    expect(
+      plan.rejected.filter((row) => row.normalizedCode === "L03").every((row) => row.reason === "NOT_SELECTABLE_CATEGORY_HEADER"),
+    ).toBe(true);
+  });
+
   it("resolves R10.85 FR/ES exact governed labels when the FY2026 catalog identity exists", () => {
     const catalog = {
       id: "cat-r1085",
@@ -128,6 +165,35 @@ describe("MEDUI.TRILANG.DX.P2.1 certification gates", () => {
     const gates = evaluateIcd10MultilingualCertification(incomplete);
     expect(gates.SAFE_ARCHITECTURE).toBe(true);
     expect(gates.FULL_TRILINGUAL_COVERAGE).toBe(false);
+  });
+
+  it("does not treat identical FR/ES cognates of English catalog text as cross-language fallback", () => {
+    const catalog = {
+      id: "cat-r002",
+      code: "R00.2",
+      normalizedCode: "R002",
+      codeSystem: "ICD-10-CM" as const,
+      releaseVersion: "FY2026",
+      shortDescription: "Palpitations",
+      longDescription: "Palpitations",
+    };
+    const plan = buildGovernedIcd10TerminologySeedPlan({
+      catalogByNormalizedCode: new Map([["R002", catalog]]),
+      expectedReleaseVersion: "FY2026",
+    });
+    const frRow = plan.acceptedTerminology.find((row) => row.locale === "fr")!;
+    const fr = resolveIcd10DiagnosisDisplay({
+      codeSystem: catalog.codeSystem,
+      releaseVersion: catalog.releaseVersion,
+      code: catalog.code,
+      locale: "fr",
+      catalog,
+      terminologyRows: [frRow],
+    });
+    expect(fr.displayName).toBe("Palpitations");
+    expect(fr.exactness).toBe("EXACT_GOVERNED");
+    expect(fr.provenance).toBe("MEDORA_GOVERNED");
+    expect(fr.exactness).not.toBe("EXACT_SOURCE");
   });
 
   it("fails SAFE_ARCHITECTURE on category substitution or alias-as-display", () => {
