@@ -2354,8 +2354,12 @@ model Icd10DiagnosisCode {
   createdAt        DateTime    @default(now())
   updatedAt        DateTime    @updatedAt
   diagnoses        Diagnosis[]
+  terminology      Icd10DiagnosisTerminology[]
+  searchAliases    Icd10DiagnosisSearchAlias[]
 
   @@unique([codeSystem, releaseVersion, code], map: "Icd10DiagnosisCode_release_code_key")
+  /// Composite identity for terminology FKs: labels cannot attach to a different release/code.
+  @@unique([id, codeSystem, releaseVersion, code], map: "Icd10DiagnosisCode_identity_anchor_key")
   @@index([code])
   @@index([normalizedCode])
   @@index([isActive])
@@ -2367,6 +2371,73 @@ model Icd10DiagnosisCode {
   @@index([longDescription(ops: raw("gin_trgm_ops"))], map: "Icd10DiagnosisCode_longDescription_trgm_idx", type: Gin)
   @@index([searchText(ops: raw("gin_trgm_ops"))], map: "Icd10DiagnosisCode_searchText_trgm_idx", type: Gin)
   @@index([shortDescription(ops: raw("gin_trgm_ops"))], map: "Icd10DiagnosisCode_shortDescription_trgm_idx", type: Gin)
+}
+
+/// Locale clinician/consumer preferred labels for a canonical ICD-10-CM catalog row.
+/// One immutable source row per (provenance, sourceId, terminologyVersion). Display uses at most one effective CLINICIAN_PREFERRED label.
+/// CONSUMER must never appear in clinician result rows. SUPERSEDED/REJECTED/PENDING_REVIEW remain auditable.
+model Icd10DiagnosisTerminology {
+  id                  String                         @id @default(uuid())
+  icd10CatalogId      String
+  codeSystem          String                         @db.VarChar(32)
+  releaseVersion      String                         @db.VarChar(32)
+  code                String
+  normalizedCode      String
+  locale              String                         @db.VarChar(8)
+  preferredLabel      String
+  labelRegister       Icd10TerminologyLabelRegister
+  provenance          Icd10TerminologyProvenance
+  exactness           Icd10TerminologyExactness
+  /// Actual source identity (CDC_NCHS_FY2026, MEDORA_DX_GOVERNED, IMO_<contract>, …). Required.
+  sourceId            String                         @db.VarChar(128)
+  /// Version of that source's terminology artifact / review set. Not a substitute for sourceId.
+  terminologyVersion  String                         @db.VarChar(64)
+  /// Lower = higher preference within the same provenance class. Not insertion order.
+  sourcePriority      Int                            @default(100)
+  status              Icd10TerminologyStatus         @default(APPROVED)
+  /// Exactly one effective clinician preferred label per code/release/locale (SQL partial unique).
+  isEffective         Boolean                        @default(false)
+  reviewedAt          DateTime?
+  reviewedByUserId    String?
+  sourceUpdatedAt     DateTime?
+  createdAt           DateTime                       @default(now())
+  updatedAt           DateTime                       @updatedAt
+  icd10Catalog        Icd10DiagnosisCode             @relation(fields: [icd10CatalogId, codeSystem, releaseVersion, code], references: [id, codeSystem, releaseVersion, code], onDelete: Restrict, map: "Icd10DxTerm_catalog_identity_fkey")
+
+  @@unique([codeSystem, releaseVersion, code, locale, labelRegister, provenance, sourceId, terminologyVersion], map: "Icd10DiagnosisTerminology_source_identity_key")
+  @@index([icd10CatalogId])
+  @@index([releaseVersion, locale, status])
+  @@index([normalizedCode, locale, status])
+  @@index([status, labelRegister])
+  @@index([isEffective, labelRegister, status])
+  @@index([sourceId])
+  @@index([preferredLabel(ops: raw("gin_trgm_ops"))], map: "Icd10DiagnosisTerminology_preferredLabel_trgm_idx", type: Gin)
+}
+
+/// SEARCH-ONLY aliases for a canonical ICD-10-CM catalog row. Never used as displayName.
+model Icd10DiagnosisSearchAlias {
+  id                 String                     @id @default(uuid())
+  icd10CatalogId     String
+  codeSystem         String                     @db.VarChar(32)
+  releaseVersion     String                     @db.VarChar(32)
+  code               String
+  normalizedCode     String
+  locale             String                     @db.VarChar(8)
+  aliasText          String
+  provenance         Icd10TerminologyProvenance
+  sourceId           String                     @db.VarChar(128)
+  terminologyVersion String                     @db.VarChar(64)
+  status             Icd10TerminologyStatus     @default(APPROVED)
+  createdAt          DateTime                   @default(now())
+  updatedAt          DateTime                   @updatedAt
+  icd10Catalog       Icd10DiagnosisCode         @relation(fields: [icd10CatalogId, codeSystem, releaseVersion, code], references: [id, codeSystem, releaseVersion, code], onDelete: Restrict, map: "Icd10DxAlias_catalog_identity_fkey")
+
+  @@unique([codeSystem, releaseVersion, code, locale, aliasText], map: "Icd10DiagnosisSearchAlias_identity_key")
+  @@index([icd10CatalogId])
+  @@index([releaseVersion, locale, status])
+  @@index([normalizedCode, locale, status])
+  @@index([status])
+  @@index([aliasText(ops: raw("gin_trgm_ops"))], map: "Icd10DiagnosisSearchAlias_aliasText_trgm_idx", type: Gin)
 }
 
 /// CPT / HCPCS Level I & Level II reference rows (imported from vendor/CMS-style files — sample CSV in repo is not production-complete).
@@ -8211,6 +8282,29 @@ enum DiagnosisOnsetPrecision {
   UNKNOWN
   DATE
   DATETIME
+}
+
+enum Icd10TerminologyLabelRegister {
+  CLINICIAN_PREFERRED
+  CONSUMER
+}
+
+enum Icd10TerminologyProvenance {
+  OFFICIAL_SOURCE
+  LICENSED_VENDOR
+  MEDORA_GOVERNED
+}
+
+enum Icd10TerminologyExactness {
+  EXACT_SOURCE
+  EXACT_GOVERNED
+}
+
+enum Icd10TerminologyStatus {
+  APPROVED
+  PENDING_REVIEW
+  REJECTED
+  SUPERSEDED
 }
 
 enum TriageVitalsReadingStatus {
