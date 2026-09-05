@@ -45,8 +45,8 @@ export function summarizeUnifiedTimelineItem(
     en: item.summaryEn?.trim() ?? "",
     fr: item.summaryFr?.trim() ?? "",
   });
-  const localizedTitle = titlePick.value.trim() || undefined;
-  const localizedSummary = summaryPick.value.trim() || undefined;
+  const localizedTitle = titlePick.kind === "localized" ? titlePick.value.trim() || undefined : undefined;
+  const localizedSummary = summaryPick.kind === "localized" ? summaryPick.value.trim() || undefined : undefined;
 
   if (item.sourceKind === "ENCOUNTER_CLINICAL_EVENT" && item.payloadJson != null) {
     const clinical = summarizeClinicalTimelineRow(

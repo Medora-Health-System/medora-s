@@ -3,7 +3,7 @@
 import React from "react";
 import type { MedicationSearchItem } from "@/lib/pharmacyApi";
 import { MedicationCanonicalBadges } from "@/components/medication/MedicationCanonicalBadges";
-import { getCatalogSearchItemDisplayLabel, getCatalogSearchItemSecondaryLine } from "@/lib/catalogDisplayLabel";
+import { getCatalogResultOneLineDisplay } from "@/lib/catalogDisplayLabel";
 import { useI18n } from "@/lib/i18n";
 
 const rowStyle: React.CSSProperties = {
@@ -34,8 +34,7 @@ export function MedicationSuggestionList({
       {items.map((med, idx) => {
         const isSelected = idx === selectedIndex;
         const badge = stockBadge?.(med);
-        const meta = med.metadata;
-        const sub = getCatalogSearchItemSecondaryLine(med, language);
+        const oneLine = getCatalogResultOneLineDisplay(med, language, t);
         return (
           <button
             key={med.id}
@@ -52,20 +51,22 @@ export function MedicationSuggestionList({
               e.currentTarget.style.backgroundColor = isSelected ? "#f0f4ff" : "transparent";
             }}
           >
-            <div style={{ fontWeight: 500 }}>
-              {getCatalogSearchItemDisplayLabel(med, language, t)}
+            <div style={{ fontWeight: 500, display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
+              <span>{oneLine.primary}</span>
+              {oneLine.metadata ? (
+                <span style={{ fontWeight: 400, fontSize: 11, color: "#64748b" }}>{oneLine.metadata}</span>
+              ) : null}
               {med.isEssential && (
-                <span style={{ marginLeft: 6, fontSize: 11, color: "#1976d2" }}>
+                <span style={{ fontSize: 11, color: "#1976d2" }}>
                   {t("pharmacyMedicationSearch.essentialBadge")}
                 </span>
               )}
               {med.isFavorite && (
-                <span style={{ marginLeft: 6, fontSize: 12 }} aria-hidden>
+                <span style={{ fontSize: 12 }} aria-hidden>
                   ★
                 </span>
               )}
             </div>
-            <div style={{ fontSize: 12, color: "#666", marginTop: 2 }}>{sub || "—"}</div>
             {badge ? (
               <div style={{ fontSize: 11, color: "#b45309", marginTop: 2 }}>{badge}</div>
             ) : null}

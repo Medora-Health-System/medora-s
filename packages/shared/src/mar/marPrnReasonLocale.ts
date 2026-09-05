@@ -119,8 +119,7 @@ const MAR_PRN_REASON_LEGACY_LABEL_TO_CODE: Record<string, MarPrnReasonCode> = ((
   const map: Record<string, MarPrnReasonCode> = {};
   for (const code of MAR_PRN_REASON_CODES) {
     map[marPrnReasonLabelFr(code).trim().toLowerCase()] = code;
-    map[marPrnReasonLabelEn(code).trim().toLowerCase()] = code;
-    map[code.trim().toLowerCase()] = code;
+    map[marPrnReasonLabelEs(code).trim().toLowerCase()] = code;
     map[code.replace(/_/g, " ").trim().toLowerCase()] = code;
   }
   map["nausées"] = "nausea";

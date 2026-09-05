@@ -3,7 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import type { ChartSummary, ChartSummaryEncounter, ChartSummaryOrderItem } from "@/lib/chartApi";
-import { resolveProductUiLanguageOrDefault, pickLegacyBilingualStoredPair, type SupportedLanguage } from "@/i18n/config";
+import { resolveProductUiLanguageOrDefault, type SupportedLanguage } from "@/i18n/config";
 import {
   formatEncounterChromeDateTime,
   tEncounterType,
@@ -12,7 +12,7 @@ import {
 } from "@/lib/encounterChromeI18n";
 import { useI18n } from "@/lib/i18n";
 import { canonicalEncounterWorkspaceHref } from "@/features/encounters/canonicalEncounterWorkspaceHref";
-import { selectClinicalDocumentationPayloadSummary } from "@medora/shared";
+import { selectClinicalDocumentationCardTitle, selectClinicalDocumentationPayloadSummary } from "@medora/shared";
 import { isOrderItemDoneForChart } from "@/constants/orderStatusLabels";
 import { catalogMedicationNameForLocale } from "@/lib/orderItemDisplayFr";
 import { nursingAssessmentDisplayLines, nursingAssessmentSignatureForLocale } from "./patientChartHelpers";
@@ -174,10 +174,7 @@ function EncounterBlock({
         <div style={{ marginBottom: 12, fontSize: 13, color: "#37474f" }}>
           <p style={{ fontWeight: 600, margin: "0 0 8px" }}>{t("clinicalDocumentation.chartSectionTitle")}</p>
           {(enc.clinicalDocumentationEntries ?? []).map((entry) => {
-            const title = pickLegacyBilingualStoredPair(language, {
-              en: entry.cardTitleEn,
-              fr: entry.cardTitleFr,
-            }).value;
+            const title = selectClinicalDocumentationCardTitle(entry, language);
             return (
               <div key={entry.id} style={{ marginBottom: 10 }}>
                 <div style={{ fontWeight: 600, marginBottom: 4 }}>

@@ -52,7 +52,7 @@ import {
   selectClinicalDocumentationPayloadSummary,
   summarizeClinicalDocumentationPayload,
 } from "./clinicalDocumentationEntry.js";
-import { clinicalDocSummaryKey } from "./clinicalDocumentationSummaryLocale.js";
+import { clinicalDocSummaryKey, selectClinicalDocumentationCardTitle } from "./clinicalDocumentationSummaryLocale.js";
 import type { ClinicalDocumentationSummaryLocale } from "./clinicalDocumentationSummaryLocale.js";
 import { buildClinicalDocumentationDetailRows } from "./clinicalDocumentationDetailRows.js";
 
@@ -265,7 +265,7 @@ function buildUnmappedEntryMetrics(
     seenCardIds.add(entry.cardId);
 
     const detailRows = buildClinicalDocumentationDetailRows(entry, locale);
-    const label = locale === "fr" ? entry.cardTitleFr : entry.cardTitleEn;
+    const label = selectClinicalDocumentationCardTitle(entry, locale);
     const value =
       payloadTotalScore(entry.payloadJson) ??
       findSummaryValue(summaryLines(entry, locale), /score|severity|risk|level|total|niveau/i) ??

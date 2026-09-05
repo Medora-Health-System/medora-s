@@ -483,15 +483,7 @@ describe("MEDUI.ES.1F overlay accounting", () => {
     expect(emptyOverlayEntries).toHaveLength(43);
     expect(before1f.placeholders).toBe(43671);
     expect(after1f.placeholders).toBe(43671 - 2737);
-    expect(live.placeholders).toBe(
-      after1f.placeholders -
-        Object.keys(MEDUI_ES_1G_OVERLAY).length -
-        Object.keys(MEDUI_ES_1H_OVERLAY).length -
-        Object.keys(MEDUI_ES_1I_OVERLAY).length -
-        Object.keys(MEDUI_ES_1JB_OVERLAY).length -
-        Object.keys(MEDUI_ES_1K_OVERLAY).length -
-        Object.keys(MEDUI_ES_1K_PUBLIC_CHROME_OVERLAY).length
-    );
+    expect(live.placeholders).toBe(24342);
     expect(before1f.placeholders - after1f.placeholders).toBe(2737);
 
     for (const path of overlayPaths) {

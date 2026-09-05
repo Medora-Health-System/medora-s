@@ -6,6 +6,7 @@ import {
 import { canonicalCareProcedureCategoryLabel } from "./canonicalCareProcedureCategories.js";
 import type { CanonicalCareProcedureCategory } from "./canonicalCareProcedureCategories.js";
 import { pickCatalogDisplayLabelForProductUi } from "../i18n/productUiLocale.js";
+import { lookupGovernedCatalogEsLabel } from "../i18n/clinicalCatalogEsDisplay.js";
 
 export type CanonicalCareProcedureSearchLocale = string;
 
@@ -27,6 +28,7 @@ function searchableHaystack(row: CanonicalCareProcedureRow, locale: CanonicalCar
       row.code.replace(/_/g, " "),
       row.displayNameEn,
       row.displayNameFr,
+      lookupGovernedCatalogEsLabel("CARE_PROCEDURE", row.code),
       canonicalCareProcedureCategoryLabel(row.category, locale),
       canonicalCareProcedureCategoryLabel(row.category, otherLocale),
       ...row.aliases,
@@ -101,6 +103,7 @@ export function resolveCanonicalCareProcedureDisplayName(
   return pickCatalogDisplayLabelForProductUi(locale, {
     displayNameEn: row.displayNameEn,
     displayNameFr: row.displayNameFr,
+    displayNameEs: lookupGovernedCatalogEsLabel("CARE_PROCEDURE", row.code),
     code: row.code,
   });
 }

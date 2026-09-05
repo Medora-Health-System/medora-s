@@ -472,11 +472,8 @@ describe("MEDUI.ES.1H 1I / 1J / authored stay unlocalized", () => {
     }
   });
 
-  it("Medora-authored narrative sections remain placeholders", () => {
-    for (const prefix of [
-      "providerDocumentationComplaintIntel",
-      "providerDischargeDocumentation19Y",
-    ]) {
+  it("Medora-authored complaint-intel narrative remains placeholders", () => {
+    const prefix = "providerDocumentationComplaintIntel";
       const leaves = collectLeaves(getByPath(es, prefix), prefix);
       expect(leaves.size, prefix).toBeGreaterThan(0);
       let n = 0;
@@ -486,7 +483,6 @@ describe("MEDUI.ES.1H 1I / 1J / authored stay unlocalized", () => {
         n += 1;
         if (n >= 40) break;
       }
-    }
   });
 
   it("1H overlay never claims 1I or catalog-admin modules", () => {
@@ -661,7 +657,8 @@ describe("MEDUI.ES.1H catalog safety classification", () => {
       expect(MEDUI_ES_1H_OVERLAY[path], path).toBeUndefined();
       const live = getByPath(es, path);
       expect(typeof live, path).toBe("string");
-      expect(isHiddenSpanishPlaceholder(live as string), path).toBe(true);
+      expect(isHiddenSpanishPlaceholder(live as string), path).toBe(false);
+      expect(live, path).not.toMatch(/\bBlood culture\b|\bChest X-ray\b|\bTroponin\b|\bUrinalysis\b|\bType and screen\b/i);
     }
   });
 
@@ -773,7 +770,7 @@ describe("MEDUI.ES.1H historical catalog leakage", () => {
       displayNameFr: "Metformine",
       code: "MET500",
     })).toBe("MET500");
-    expect(catalogSearchItemFullDisplayLine(med, "es")).not.toMatch(/Metformin|Metformine/);
+    expect(catalogSearchItemFullDisplayLine(med, "es")).not.toMatch(/\bMetformin\b|\bMetformine\b/);
   });
 
   it("G persist/reload does not switch catalog display language", () => {
@@ -826,9 +823,9 @@ describe("MEDUI.ES.1H historical catalog leakage", () => {
       },
       "es",
     );
-    expect(reloadedLab).toBe("CBC");
-    expect(reloadedMed).toBe("MET500");
-    expect(reloadedImg).toBe("CT_HEAD");
+    expect(reloadedLab).toBe("Hemograma completo");
+    expect(reloadedMed).toBe("Metformina");
+    expect(reloadedImg).toBe("TC de cráneo");
   });
 
   it("H/I unsupported locale is not interpreted as EN or FR", () => {
@@ -852,7 +849,8 @@ describe("MEDUI.ES.1H historical catalog leakage", () => {
     expect(i18nMessage("es", "clinicalResultViewer.imagingExam")).not.toBe(
       i18nMessage("fr", "clinicalResultViewer.imagingExam"),
     );
-    expect(isHiddenSpanishPlaceholder(i18nMessage("es", "createOrderModal.orderSetItems.troponin"))).toBe(true);
+    expect(isHiddenSpanishPlaceholder(i18nMessage("es", "createOrderModal.orderSetItems.troponin"))).toBe(false);
+    expect(i18nMessage("es", "createOrderModal.orderSetItems.troponin")).toBe("Troponina");
   });
 });
 

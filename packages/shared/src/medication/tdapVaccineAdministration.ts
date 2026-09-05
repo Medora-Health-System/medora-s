@@ -4,8 +4,7 @@
  */
 
 import {
-  imInjectionSiteLabelsEn,
-  imInjectionSiteLabelsFr,
+  resolveImInjectionSiteDisplay,
   type ImInjectionSiteId,
 } from "../mar/medicationAdministrationInjectionSite.js";
 import {
@@ -18,7 +17,7 @@ import {
   validateVaccineVisDocumentation,
 } from "./vaccineVisGovernance.js";
 import { ENTERPRISE_WAVE1_FORMULARY_BY_CODE } from "./enterpriseWave1FormularyManifest.js";
-import { productUiBcp47Tag } from "../i18n/productUiLocale.js";
+import { pickProductUiCopy, productUiBcp47Tag } from "../i18n/productUiLocale.js";
 import {
   serializeVaccineAdministrationDocumentation,
   vaccineInjectionSiteLaterality,
@@ -207,7 +206,7 @@ function manufacturerDisplay(form: TdapVaccineAdministrationForm, locale: string
 }
 
 function injectionSiteDisplay(site: ImInjectionSiteId, locale: string): string {
-  return locale === "fr" ? imInjectionSiteLabelsFr[site] : imInjectionSiteLabelsEn[site];
+  return resolveImInjectionSiteDisplay(site, locale);
 }
 
 const REVIEWED_WITH_EN: Record<TdapEducationReviewedWith, string> = {
@@ -234,6 +233,34 @@ const VIS_RECIPIENT_FR: Record<Exclude<VaccineVisRecipient, "none">, string> = {
   family: "la famille",
 };
 
+const REVIEWED_WITH_ES: Record<TdapEducationReviewedWith, string> = {
+  patient: "el paciente",
+  spouse: "el cónyuge",
+  parent: "el progenitor",
+  family: "la familia",
+};
+
+const VIS_RECIPIENT_ES: Record<Exclude<VaccineVisRecipient, "none">, string> = {
+  patient: "el paciente",
+  family: "la familia",
+};
+
+function reviewedWithLabel(reviewedWith: TdapEducationReviewedWith, locale: string): string {
+  return pickProductUiCopy(
+    locale,
+    { en: REVIEWED_WITH_EN[reviewedWith], fr: REVIEWED_WITH_FR[reviewedWith], es: REVIEWED_WITH_ES[reviewedWith] },
+    REVIEWED_WITH_ES[reviewedWith]
+  );
+}
+
+function visRecipientLabel(recipient: Exclude<VaccineVisRecipient, "none">, locale: string): string {
+  return pickProductUiCopy(
+    locale,
+    { en: VIS_RECIPIENT_EN[recipient], fr: VIS_RECIPIENT_FR[recipient], es: VIS_RECIPIENT_ES[recipient] },
+    VIS_RECIPIENT_ES[recipient]
+  );
+}
+
 /** Build live MAR / progress-note narrative — omits blank optional segments. */
 export function buildTdapVaccineAdministrationNote(
   form: TdapVaccineAdministrationForm,
@@ -241,71 +268,130 @@ export function buildTdapVaccineAdministrationNote(
 ): string {
   const parts: string[] = [];
 
-  const dosePart =
-    locale === "fr"
-      ? `Tdap IM ${form.doseValue.trim()} ${form.doseUnit.trim()} administré.`
-      : `Tdap IM ${form.doseValue.trim()} ${form.doseUnit.trim()} given.`;
+  const dosePart = pickProductUiCopy(
+    locale,
+    {
+      en: `Tdap IM ${form.doseValue.trim()} ${form.doseUnit.trim()} given.`,
+      fr: `Tdap IM ${form.doseValue.trim()} ${form.doseUnit.trim()} administré.`,
+      es: `Tdap IM ${form.doseValue.trim()} ${form.doseUnit.trim()} administrado.`,
+    },
+    `Tdap IM ${form.doseValue.trim()} ${form.doseUnit.trim()} administrado.`
+  );
   parts.push(dosePart);
 
   const lot = form.lotNumber.trim();
   const exp = formatExpirationForNote(form.expirationDate, locale);
   const mfr = manufacturerDisplay(form, locale);
   const detailBits: string[] = [];
-  if (lot) detailBits.push(locale === "fr" ? `Lot n° : ${lot}` : `Lot#: ${lot}`);
-  if (exp) detailBits.push(locale === "fr" ? `date d'expiration : ${exp}` : `expiration date: ${exp}`);
-  if (mfr) detailBits.push(locale === "fr" ? `fabricant : ${mfr}` : `manufacturer: ${mfr}`);
+  if (lot) {
+    detailBits.push(pickProductUiCopy(locale, { en: `Lot#: ${lot}`, fr: `Lot n° : ${lot}`, es: `Lote n.º: ${lot}` }, `Lote n.º: ${lot}`));
+  }
+  if (exp) {
+    detailBits.push(
+      pickProductUiCopy(
+        locale,
+        { en: `expiration date: ${exp}`, fr: `date d'expiration : ${exp}`, es: `fecha de vencimiento: ${exp}` },
+        `fecha de vencimiento: ${exp}`
+      )
+    );
+  }
+  if (mfr) {
+    detailBits.push(
+      pickProductUiCopy(locale, { en: `manufacturer: ${mfr}`, fr: `fabricant : ${mfr}`, es: `fabricante: ${mfr}` }, `fabricante: ${mfr}`)
+    );
+  }
   if (detailBits.length) {
-    parts.push(`${detailBits.join(locale === "fr" ? ", " : ", ")}.`);
+    parts.push(`${detailBits.join(", ")}.`);
   }
 
   if (form.injectionSite) {
     const siteLabel = injectionSiteDisplay(form.injectionSite, locale);
     parts.push(
-      locale === "fr" ? `Administré dans le ${siteLabel.toLowerCase()}.` : `Given in the ${siteLabel.toLowerCase()}.`
+      pickProductUiCopy(
+        locale,
+        {
+          en: `Given in the ${siteLabel.toLowerCase()}.`,
+          fr: `Administré dans le ${siteLabel.toLowerCase()}.`,
+          es: `Administrado en el ${siteLabel.toLowerCase()}.`,
+        },
+        `Administrado en el ${siteLabel.toLowerCase()}.`
+      )
     );
   }
 
   if (form.allergiesVerified && form.confirmedFiveRights) {
     parts.push(
-      locale === "fr"
-        ? "Allergies vérifiées et 5 bonnes pratiques confirmées."
-        : "Allergies verified and confirmed 5 rights."
+      pickProductUiCopy(
+        locale,
+        {
+          en: "Allergies verified and confirmed 5 rights.",
+          fr: "Allergies vérifiées et 5 bonnes pratiques confirmées.",
+          es: "Alergias verificadas y 5 correctos confirmados.",
+        },
+        "Alergias verificadas y 5 correctos confirmados."
+      )
     );
   }
 
   if (form.medicationInformationReviewed && form.reviewedWith) {
-    const withWhom = locale === "fr" ? REVIEWED_WITH_FR[form.reviewedWith] : REVIEWED_WITH_EN[form.reviewedWith];
-    const topics =
-      locale === "fr"
-        ? "motif du médicament, signes de réaction allergique et précautions"
-        : "reason for taking this medication, signs of allergic reaction, and precautions";
+    const withWhom = reviewedWithLabel(form.reviewedWith, locale);
+    const topics = pickProductUiCopy(
+      locale,
+      {
+        en: "reason for taking this medication, signs of allergic reaction, and precautions",
+        fr: "motif du médicament, signes de réaction allergique et précautions",
+        es: "motivo del medicamento, signos de reacción alérgica y precauciones",
+      },
+      "motivo del medicamento, signos de reacción alérgica y precauciones"
+    );
     parts.push(
-      locale === "fr"
-        ? `Information revue avec ${withWhom}, incluant ${topics}.`
-        : `Information reviewed with ${withWhom} including ${topics}.`
+      pickProductUiCopy(
+        locale,
+        {
+          en: `Information reviewed with ${withWhom} including ${topics}.`,
+          fr: `Information revue avec ${withWhom}, incluant ${topics}.`,
+          es: `Información revisada con ${withWhom}, incluyendo ${topics}.`,
+        },
+        `Información revisada con ${withWhom}, incluyendo ${topics}.`
+      )
     );
   }
 
   if (form.verbalizedUnderstanding) {
-    parts.push(locale === "fr" ? "Compréhension verbalisée." : "Verbalized understanding.");
+    parts.push(
+      pickProductUiCopy(
+        locale,
+        { en: "Verbalized understanding.", fr: "Compréhension verbalisée.", es: "Comprensión verbalizada." },
+        "Comprensión verbalizada."
+      )
+    );
   }
 
   if (form.vis.visGiven && form.vis.visDate.trim() && form.vis.visRecipient !== "none") {
     const visDate = formatExpirationForNote(form.vis.visDate, locale);
-    const recipient =
-      locale === "fr"
-        ? VIS_RECIPIENT_FR[form.vis.visRecipient]
-        : VIS_RECIPIENT_EN[form.vis.visRecipient];
+    const recipient = visRecipientLabel(form.vis.visRecipient, locale);
     parts.push(
-      locale === "fr"
-        ? `Fiche d'information vaccinale datée du ${visDate} remise à ${recipient}.`
-        : `Vaccine information statement dated ${visDate} provided to ${recipient}.`
+      pickProductUiCopy(
+        locale,
+        {
+          en: `Vaccine information statement dated ${visDate} provided to ${recipient}.`,
+          fr: `Fiche d'information vaccinale datée du ${visDate} remise à ${recipient}.`,
+          es: `Hoja de información vacunal fechada el ${visDate} entregada a ${recipient}.`,
+        },
+        `Hoja de información vacunal fechada el ${visDate} entregada a ${recipient}.`
+      )
     );
   }
 
   const wasted = form.amountWasted.trim();
   if (wasted) {
-    parts.push(locale === "fr" ? `Quantité perdue : ${wasted}.` : `Amount wasted: ${wasted}.`);
+    parts.push(
+      pickProductUiCopy(
+        locale,
+        { en: `Amount wasted: ${wasted}.`, fr: `Quantité perdue : ${wasted}.`, es: `Cantidad desperdiciada: ${wasted}.` },
+        `Cantidad desperdiciada: ${wasted}.`
+      )
+    );
   }
 
   const clinician = [form.administeringClinicianName.trim(), form.administeringClinicianCredentials.trim()]
@@ -356,13 +442,17 @@ export function serializeTdapVaccineAdministrationPayload(form: TdapVaccineAdmin
     genericVaccineDocumentation: serializeVaccineAdministrationDocumentation(genericDocumentation),
     generatedNoteEn: buildTdapVaccineAdministrationNote(form, "en"),
     generatedNoteFr: buildTdapVaccineAdministrationNote(form, "fr"),
+    generatedNoteEs: buildTdapVaccineAdministrationNote(form, "es"),
   };
 }
 
 const EN_LEAKAGE_IN_FR = /\b(given|manufacturer|allergies verified|vaccine information statement)\b/i;
 const FR_LEAKAGE_IN_EN = /\b(administré|fabricant|allergies vérifiées|fiche d'information vaccinale)\b/i;
+const EN_LEAKAGE_IN_ES = /\b(given|manufacturer|allergies verified|vaccine information statement|verbalized understanding)\b/i;
+const FR_LEAKAGE_IN_ES = /\b(administré|fiche d'information vaccinale|allergies vérifiées|compréhension verbalisée|bonnes pratiques)\b/i;
 
-export function tdapNoteIsMonolingual(note: string, locale: "en" | "fr"): boolean {
+export function tdapNoteIsMonolingual(note: string, locale: string): boolean {
   if (locale === "fr") return !EN_LEAKAGE_IN_FR.test(note);
+  if (locale === "es") return !EN_LEAKAGE_IN_ES.test(note) && !FR_LEAKAGE_IN_ES.test(note);
   return !FR_LEAKAGE_IN_EN.test(note);
 }

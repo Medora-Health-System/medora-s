@@ -230,10 +230,11 @@ export function commandTimelineEventTitle(
   t: (key: string) => string,
   language: SupportedLanguage
 ): string {
-  const apiTitle = pickLegacyBilingualStoredPair(language, {
+  const apiTitlePick = pickLegacyBilingualStoredPair(language, {
     en: item.titleEn?.trim() ?? "",
     fr: item.titleFr?.trim() ?? "",
-  }).value.trim();
+  });
+  const apiTitle = apiTitlePick.kind === "localized" ? apiTitlePick.value.trim() : "";
   if (apiTitle) return apiTitle;
 
   if (item.sourceKind === "ENCOUNTER_CLINICAL_EVENT") {

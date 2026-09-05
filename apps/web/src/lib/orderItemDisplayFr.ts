@@ -13,6 +13,10 @@ import {
   resolveMedicationClinicalDisplayValue,
   resolveMedicationOrderIdentity,
   resolveOxygenTherapyOrderDisplay,
+  composeMedicationDisplayEs,
+  lookupGovernedCatalogEsLabel,
+  lookupOrderSetItemDisplayEs,
+  medicationInnIdentityCandidate,
 } from "@medora/shared";
 
 /**
@@ -124,6 +128,62 @@ function orderItemDisplayLabelFr(item: {
   return typeFallbackFr(resolvedType);
 }
 
+function orderItemDisplayLabelEs(
+  item: Parameters<typeof getOrderItemDisplayLabelForLanguage>[0],
+  t: (key: string) => string
+): string {
+  const resolvedType = resolveCatalogItemType(item);
+  if (resolvedType === "CARE" && item.enterpriseProcedureId?.trim() === OXYGEN_THERAPY_PROCEDURE_CODE) {
+    const oxygen = resolveOxygenTherapyOrderDisplay({
+      manualLabel: item.manualLabel,
+      notes: item.notes,
+      locale: "es",
+    });
+    if (oxygen?.title) return oxygen.title;
+  }
+  if (resolvedType === "MEDICATION") {
+    const composed = composeMedicationDisplayEs({
+      genericName:
+        item.catalogMedication?.genericName?.trim() ||
+        medicationInnIdentityCandidate(item.catalogMedication?.displayNameEn) ||
+        medicationInnIdentityCandidate(item.displayLabelEn) ||
+        null,
+      strength: item.strength?.trim() || item.catalogMedication?.strength?.trim() || null,
+      dosageForm: item.catalogMedication?.dosageForm,
+      route: item.catalogMedication?.route,
+      code: item.catalogMedication?.code,
+    });
+    if (composed) return composed;
+    const code = item.catalogMedication?.code?.trim();
+    if (code) return code;
+    return t("patientChartUi.orderDisplayFallback.medication");
+  }
+  if (resolvedType === "LAB_TEST") {
+    const code = item.catalogLabTest?.code?.trim() ?? "";
+    return lookupGovernedCatalogEsLabel("LAB_TEST", code) || code || t("patientChartUi.orderDisplayFallback.labTest");
+  }
+  if (resolvedType === "IMAGING_STUDY") {
+    const code = item.catalogImagingStudy?.code?.trim() ?? "";
+    return lookupGovernedCatalogEsLabel("IMAGING_STUDY", code) || code || t("patientChartUi.orderDisplayFallback.imaging");
+  }
+  if (resolvedType === "CARE" && item.enterpriseProcedureId?.trim()) {
+    const code = item.enterpriseProcedureId.trim();
+    return lookupGovernedCatalogEsLabel("CARE_PROCEDURE", code) || code || t("patientChartUi.orderDisplayFallback.care");
+  }
+  const fromEnLabel = item.displayLabelEn?.trim();
+  if (fromEnLabel) {
+    const mapped = lookupOrderSetItemDisplayEs(fromEnLabel, item.catalogLabTest?.code ?? item.catalogImagingStudy?.code);
+    if (mapped) return mapped;
+  }
+  const man = item.manualLabel?.trim();
+  if (man) {
+    const mapped = lookupOrderSetItemDisplayEs(man, item.enterpriseProcedureId);
+    if (mapped) return mapped;
+    return man;
+  }
+  return t("common.dash");
+}
+
 /** Locale-aware chrome label for order rows (facility language). */
 export function getOrderItemDisplayLabelForLanguage(
   item: {
@@ -175,6 +235,7 @@ export function getOrderItemDisplayLabelForLanguage(
     );
   }
   if (strategy === "fr_preferred") return orderItemDisplayLabelFr(item);
+  if (strategy === "es_preferred") return orderItemDisplayLabelEs(item, t);
   const resolvedType = resolveCatalogItemType(item);
   const catType = String(item.catalogItemType ?? resolvedType ?? "CARE");
   if (resolvedType === "CARE" && item.enterpriseProcedureId?.trim() === OXYGEN_THERAPY_PROCEDURE_CODE) {
@@ -436,6 +497,16 @@ export function catalogMedicationNameForLocale(
   const strategy = catalogLabelStrategyForProductUi(language);
   if (strategy === "fr_preferred") {
     return identity.medicationNameFr ?? "";
+  }
+  if (strategy === "es_preferred") {
+    return (
+      composeMedicationDisplayEs({
+        genericName: medicationInnIdentityCandidate(m.genericName ?? m.displayNameEn),
+        code: m.code,
+      }) ||
+      m.code?.trim() ||
+      ""
+    );
   }
   if (strategy === "unlocalized") {
     return m.code?.trim() ?? "";

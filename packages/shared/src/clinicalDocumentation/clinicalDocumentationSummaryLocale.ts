@@ -65,7 +65,7 @@ export function selectClinicalDocumentationCardTitle(
     pickProductUiCopy(
       locale,
       { en: entry.cardTitleEn ?? "", fr: entry.cardTitleFr ?? "", es },
-      es ?? UNLOCALIZED_CATALOG_SOURCE
+      es ?? entry.cardId ?? ""
     ) ||
     entry.cardId ||
     ""

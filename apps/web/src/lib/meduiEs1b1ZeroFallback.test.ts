@@ -35,8 +35,8 @@ describe("MEDUI.ES.1B.1 zero-fallback display isolation", () => {
     expect(getCatalogSearchItemDisplayLabel(item, "en", tEn)).not.toBe("Glucose plasmatique");
   });
 
-  it("unsupported es catalog display is code, not EN or FR", () => {
-    expect(getCatalogSearchItemDisplayLabel(catalogItem, "es", tEn)).toBe("GLU");
+  it("es catalog display is Spanish overlay, not EN or FR", () => {
+    expect(getCatalogSearchItemDisplayLabel(catalogItem, "es", tEn)).toBe("Glucosa");
     expect(getCatalogSearchItemDisplayLabel(catalogItem, "es", tEn)).not.toBe("Glucose");
     expect(getCatalogSearchItemDisplayLabel(catalogItem, "es", tEn)).not.toBe("Glucose plasmatique");
   });
@@ -47,12 +47,12 @@ describe("MEDUI.ES.1B.1 zero-fallback display isolation", () => {
     ).toBe("Z00.00");
   });
 
-  it("diagnosis unsupported es does not render EN or FR prose", () => {
+  it("es diagnosis display is Spanish overlay, not EN or FR", () => {
     const label = getLocalizedDiagnosisDisplayLabel(
       { code: "R07.9", description: "Chest pain, unspecified" },
       "es"
     );
-    expect(label).toBe("R07.9");
+    expect(label).toBe("Dolor torácico no especificado");
     expect(label).not.toMatch(/chest pain/i);
     expect(label).not.toMatch(/douleur/i);
   });

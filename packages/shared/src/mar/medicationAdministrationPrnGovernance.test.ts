@@ -111,6 +111,30 @@ describe("medicationAdministrationPrnGovernance (K.10B.7)", () => {
     expect(formatPrnMarAdministrationCellSummary(merged, "en")).toBe("Pain 8/10");
   });
 
+  it("ES PRN cell summary has no EN/FR generated chrome", () => {
+    const merged = mergePrnAdministrationIntoMarNotes({
+      notes: "Paciente inquieto",
+      prnReasonCode: "severe_pain",
+      painScore: 8,
+      locale: "es",
+    });
+    expect(merged).toContain("Motivo PRN:");
+    expect(merged).not.toContain("PRN reason:");
+    expect(merged).not.toContain("Motif PRN");
+    expect(formatPrnMarAdministrationCellSummary(merged, "es")).toBe("Dolor 8/10");
+  });
+
+  it("persist without locale stores canonical PRN code, not French chrome", () => {
+    const merged = mergePrnAdministrationIntoMarNotes({
+      notes: "Patient restless",
+      prnReasonCode: "nausea",
+    });
+    expect(merged).toContain("MAR_PRN_REASON:nausea");
+    expect(merged).not.toContain("Motif PRN");
+    expect(merged).not.toContain("PRN reason:");
+    expect(formatPrnMarAdministrationCellSummary(merged, "es")).toBe("Náuseas");
+  });
+
   it("formatMarPrnReasonForLocale maps legacy French labels to English", () => {
     expect(formatMarPrnReasonForLocale({ label: "Douleur modérée" }, "en")).toBe("Moderate pain");
     expect(formatMarPrnReasonForLocale({ label: "Vomissements" }, "en")).toBe("Vomiting");

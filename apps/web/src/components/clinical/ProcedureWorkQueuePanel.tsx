@@ -2,7 +2,7 @@
 
 import React from "react";
 import Link from "next/link";
-import type { EnterpriseProcedureExecutionRoleCategory, ProcedureWorkQueueItem } from "@medora/shared";
+import { enterpriseProcedureById, resolveEnterpriseProcedureDisplayName, type EnterpriseProcedureExecutionRoleCategory, type ProcedureWorkQueueItem } from "@medora/shared";
 import { useI18n } from "@/lib/i18n";
 import { ProcedureExecutionCategoryBadge } from "@/components/clinical/ProcedureExecutionCategoryBadge";
 import { orderItemStatusLabelKey } from "@/lib/procedureExecutionUi";
@@ -60,7 +60,14 @@ export function ProcedureWorkQueuePanel({
       ) : null}
       <ul style={{ margin: 0, paddingLeft: 18, display: "flex", flexDirection: "column", gap: 8 }}>
         {items.map((item) => {
-          const label = language === "fr" ? item.displayLabelFr : item.displayLabelEn;
+          const catalog = enterpriseProcedureById(item.enterpriseProcedureId);
+          const label = catalog
+            ? resolveEnterpriseProcedureDisplayName(catalog, language)
+            : language === "fr"
+              ? item.displayLabelFr
+              : language === "en"
+                ? item.displayLabelEn
+                : item.enterpriseProcedureId;
           const statusKey = orderItemStatusLabelKey(item.orderItemStatus);
           return (
             <li key={item.orderItemId} style={{ fontSize: 12, color: "#334155" }}>

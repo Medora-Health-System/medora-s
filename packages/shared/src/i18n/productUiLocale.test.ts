@@ -69,7 +69,7 @@ describe("product UI locale registry (MEDUI.ES.1C → 1K)", () => {
     expect(productUiBcp47Tag("es")).toBe("es-419");
     expect(catalogLabelStrategyForProductUi("en")).toBe("en_strict");
     expect(catalogLabelStrategyForProductUi("fr")).toBe("fr_preferred");
-    expect(catalogLabelStrategyForProductUi("es")).toBe("unlocalized");
+    expect(catalogLabelStrategyForProductUi("es")).toBe("es_preferred");
   });
 
   it("does not auto-select Spanish from browser candidates", () => {
@@ -108,7 +108,7 @@ describe("product UI locale registry (MEDUI.ES.1C → 1K)", () => {
       kind: "unsupported",
     });
     expect(adaptProductUiToBilingualStorageLocale("es")).toEqual({ kind: "unsupported" });
-    expect(adaptProductUiToCatalogLabelStrategy("es")).toBeNull();
+    expect(adaptProductUiToCatalogLabelStrategy("es")).toBe("es_preferred");
     expect(adaptProductUiToCatalogLabelStrategy("en")).toBe("en_strict");
     expect(adaptProductUiToCatalogLabelStrategy("fr")).toBe("fr_preferred");
   });
@@ -135,8 +135,14 @@ describe("product UI locale registry (MEDUI.ES.1C → 1K)", () => {
     });
   });
 
-  it("catalog display never substitutes EN↔FR; es uses code only", () => {
+  it("catalog display never substitutes EN↔FR; es uses Spanish overlay or code", () => {
     const fields = { displayNameEn: "Glucose", displayNameFr: "Glucose plasmatique", code: "GLU" };
+    expect(pickCatalogDisplayLabelForProductUi("es", fields)).toBe("GLU");
+    expect(pickCatalogDisplayLabelForProductUi("es", { ...fields, displayNameEs: "Glucosa" })).toBe("Glucosa");
+    expect(pickCatalogDisplayLabelForProductUi("es", { ...fields, displayNameEs: "Glucosa" })).not.toBe("Glucose");
+    expect(pickCatalogDisplayLabelForProductUi("es", { ...fields, displayNameEs: "Glucosa" })).not.toBe(
+      "Glucose plasmatique"
+    );
     expect(pickCatalogDisplayLabelForProductUi("en", { ...fields, displayNameEn: "" })).toBe("GLU");
     expect(pickCatalogDisplayLabelForProductUi("en", { ...fields, displayNameEn: "" })).not.toBe(
       "Glucose plasmatique"

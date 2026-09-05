@@ -92,6 +92,22 @@ describe("mergeInjectionSiteIntoMarNotes", () => {
     expect(merged).toContain(`${IM_INJECTION_SITE_NOTE_PREFIX}left_deltoid`);
     expect(merged).toContain("Site d'injection : Deltoïde gauche");
   });
+
+  it("generates Spanish human line without EN/FR leakage", () => {
+    const merged = mergeInjectionSiteIntoMarNotes("Action : Administré", "right_deltoid", "es");
+    expect(merged).toContain("Sitio de inyección: Deltoides derecho");
+    expect(merged).not.toMatch(/Injection site/i);
+    expect(merged).not.toContain("Site d'injection");
+    expect(merged).toContain(`${IM_INJECTION_SITE_NOTE_PREFIX}right_deltoid`);
+  });
+
+  it("persists canonical site identity without coercing a French display line", () => {
+    const merged = mergeInjectionSiteIntoMarNotes("Patient tolerated well", "left_deltoid");
+    expect(merged).toContain(`${IM_INJECTION_SITE_NOTE_PREFIX}left_deltoid`);
+    expect(merged).not.toContain("Site d'injection");
+    expect(merged).not.toContain("Injection site");
+    expect(merged).toContain("Patient tolerated well");
+  });
 });
 
 describe("parseInjectionSiteFromMarNotes", () => {

@@ -4,6 +4,7 @@ import React, { useMemo } from "react";
 import {
   buildClinicalDataSummaryProjection,
   formatClinicalDocumentationDetailInline,
+  selectClinicalDocumentationCardTitle,
   type ClinicalDataSummarySectionId,
 } from "@medora/shared";
 import type { ClinicalDocumentationEntryRow } from "@/lib/clinicalDocumentationApi";
@@ -94,7 +95,14 @@ export function EmergencyClinicalDataSummary({
               {t(sectionTitleKey(section.sectionId))}
             </p>
             {section.metrics.map((metric) => {
-              const formTitle = locale === "fr" ? metric.formTitleFr : metric.formTitleEn;
+              const formTitle = selectClinicalDocumentationCardTitle(
+                {
+                  cardId: metric.cardId,
+                  cardTitleEn: metric.formTitleEn,
+                  cardTitleFr: metric.formTitleFr,
+                },
+                locale
+              );
               const inlineDetails = formatClinicalDocumentationDetailInline(metric.detailRows, 6);
               return (
                 <div

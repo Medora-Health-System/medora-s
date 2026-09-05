@@ -2,13 +2,13 @@
 
 import React from "react";
 import { useI18n } from "@/lib/i18n";
-import { pickLegacyBilingualStoredPair } from "@/i18n/config";
 import {
   FLUID_ORDER_ENTRY_TYPE_OPTIONS,
   STANDARD_FLUID_BAG_SIZES_ML,
   STANDARD_FLUID_RATES_ML_PER_HR,
   buildFluidOrderDirections,
   defaultFluidOrderDraft,
+  resolveFluidOrderEntryTypeDisplay,
   type FluidOrderDraft,
   type FluidOrderEntryTypeCode,
 } from "@medora/shared";
@@ -80,7 +80,7 @@ export function FluidOrderPicker({
           >
             {FLUID_ORDER_ENTRY_TYPE_OPTIONS.map((opt) => (
               <option key={opt.code} value={opt.code}>
-                {pickLegacyBilingualStoredPair(language, { en: opt.labelEn, fr: opt.labelFr }).value}
+                {resolveFluidOrderEntryTypeDisplay(opt, language)}
               </option>
             ))}
           </select>

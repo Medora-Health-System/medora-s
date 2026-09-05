@@ -6,6 +6,7 @@
 
 import { EM_BATCH_MEDICATION_FAMILIES } from "./medicationEmBatchFamilies.js";
 import { familyKeyFromName, normalizeMedicationFamilyName } from "./medicationKnowledgePopulationGovernance.js";
+import { pickProductUiCopy } from "../i18n/productUiLocale.js";
 
 export const MK_EXPANSION_WAVE2_CERTIFICATION_ID =
   "MEDUI.MEDICATION_KNOWLEDGE_EXPANSION_WAVE_2_EMERGENCY_MEDICINE_FOUNDATION";
@@ -333,6 +334,35 @@ export const MK_EXPANSION_WAVE2_SPECIALTY_PACKS: readonly MkExpansionWave2Specia
     ["agitation", "chemical restraint", "aws", "ciwa", "cows"]
   ),
 ];
+
+const MK_EXPANSION_WAVE2_PACK_TITLE_ES: Record<MkExpansionWave2SpecialtyPackKey, string> = {
+  CARDIOLOGY: "Cardiología / reanimación",
+  PULMONARY: "Neumología / vía aérea",
+  NEUROLOGY: "Neurología",
+  INFECTIOUS_DISEASE: "Enfermedades infecciosas",
+  TRAUMA: "Trauma / hemostasia",
+  TOXICOLOGY: "Toxicología / antídotos",
+  ENDOCRINE: "Endocrinología / electrolitos",
+  OB: "Obstetricia",
+  PEDIATRICS: "Pediatría",
+  OPHTHALMOLOGY: "Oftalmología",
+  ENT: "ORL",
+  UROLOGY: "Urología",
+  GASTROENTEROLOGY: "Gastroenterología",
+  ALLERGY: "Alergia / anafilaxia",
+  PSYCHIATRY: "Psiquiatría / abstinencia",
+};
+
+export function resolveMkExpansionWave2PackTitle(
+  pack: MkExpansionWave2SpecialtyPack,
+  locale: string | null | undefined
+): string {
+  return pickProductUiCopy(
+    locale,
+    { en: pack.titleEn, fr: pack.titleFr, es: MK_EXPANSION_WAVE2_PACK_TITLE_ES[pack.packKey] },
+    MK_EXPANSION_WAVE2_PACK_TITLE_ES[pack.packKey]
+  );
+}
 
 export function mkExpansionWave2PackMarker(
   packKey: MkExpansionWave2SpecialtyPackKey

@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { searchIcd10Catalog, type Icd10SearchHit } from "@/lib/chartApi";
 import type { SupportedLanguage } from "@/i18n/config";
-import { getLocalizedDiagnosisDisplayLabel } from "@/features/emergency/diagnosisFrenchDisplayLabels";
+import { formatDiagnosisOneLineDisplay } from "@/features/emergency/diagnosisFrenchDisplayLabels";
 import {
   diagnosisMatchesLocalizedSearch,
   resolveLocalizedDiagnosisSearchQueries,
@@ -204,7 +204,7 @@ export function Icd10DiagnosisSearchAutocomplete({
             <li style={{ padding: "10px 12px", fontSize: 13, color: "#64748b" }}>{noResultsLabel}</li>
           ) : null}
           {searchHits.map((h, index) => {
-            const description = getLocalizedDiagnosisDisplayLabel(
+            const oneLine = formatDiagnosisOneLineDisplay(
               {
                 code: h.code,
                 shortDescription: h.shortDescription,
@@ -243,19 +243,18 @@ export function Icd10DiagnosisSearchAutocomplete({
                       color: "#0f172a",
                       fontSize: 14,
                       lineHeight: 1.35,
-                      display: "-webkit-box",
-                      WebkitLineClamp: 2,
-                      WebkitBoxOrient: "vertical",
                       overflow: "hidden",
-                      whiteSpace: "normal",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
                     }}
                   >
-                    {description}
+                    {oneLine.primary}
                   </div>
-                  <div style={{ color: "#475569", marginTop: 2, fontSize: 12, fontWeight: 400 }}>
-                    {h.code}
-                    {already ? ` · ${alreadyAddedLabel}` : ""}
-                  </div>
+                  {oneLine.metadata || already ? (
+                    <div style={{ color: "#475569", marginTop: 2, fontSize: 12, fontWeight: 400 }}>
+                      {[oneLine.metadata, already ? alreadyAddedLabel : null].filter(Boolean).join(" · ")}
+                    </div>
+                  ) : null}
                   {nonBillableLabel && !h.isBillable ? (
                     <div style={{ fontSize: 11, color: "#b45309", marginTop: 4 }}>{nonBillableLabel}</div>
                   ) : null}

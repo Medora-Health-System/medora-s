@@ -396,7 +396,7 @@ describe("ED.HOSP.1D medication / LAB label / status / store", () => {
     ]);
     expect(existingOrderDisplayLabel(parsed[0]!, "fr")).toBe("CBC");
     expect(existingOrderDisplayLabel(parsed[0]!, "fr")).not.toBe("Complete Blood Count");
-    expect(existingOrderDisplayLabel(parsed[0]!, "es")).toBe("CBC");
+    expect(existingOrderDisplayLabel(parsed[0]!, "es")).toBe("Hemograma completo");
     expect(existingOrderDisplayLabel(parsed[0]!, "es")).not.toBe("Complete Blood Count");
   });
 

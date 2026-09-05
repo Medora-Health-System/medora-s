@@ -6,9 +6,13 @@
 import {
   imInjectionSiteLabelsEn,
   imInjectionSiteLabelsFr,
+  imInjectionSiteLabelsEs,
   imInjectionSiteValues,
+  resolveImInjectionSiteDisplay,
+  extractMarUserFreeTextNotes,
   type ImInjectionSiteId,
 } from "../mar/medicationAdministrationInjectionSite.js";
+import { formatPrnMarAdministrationCellSummary } from "../mar/medicationAdministrationPrnGovernance.js";
 import {
   VACCINE_MANUFACTURER_CATALOG,
   vaccineManufacturerLabel,
@@ -16,7 +20,7 @@ import {
 } from "./vaccineManufacturerCatalog.js";
 import type { VaccineVisDocumentation } from "./vaccineVisGovernance.js";
 import { validateVaccineVisDocumentation } from "./vaccineVisGovernance.js";
-import { pickCatalogDisplayLabelForProductUi, productUiBcp47Tag } from "../i18n/productUiLocale.js";
+import { pickCatalogDisplayLabelForProductUi, pickProductUiCopy, productUiBcp47Tag } from "../i18n/productUiLocale.js";
 
 export type VaccineEducationRecipient =
   | "patient"
@@ -64,6 +68,7 @@ export type CompletedVaccineAdministrationViewRow = {
   key: string;
   labelEn: string;
   labelFr: string;
+  labelEs: string;
   value: string;
 };
 
@@ -261,7 +266,10 @@ function normalizeManufacturer(input: {
   const display = input.manufacturerDisplayName.trim().toLowerCase();
   if (!display) return { manufacturerId: "", manufacturerDisplayName: "" };
   const match = VACCINE_MANUFACTURER_CATALOG.find(
-    (m) => m.labelEn.toLowerCase() === display || m.labelFr.toLowerCase() === display
+    (m) =>
+      m.labelEn.toLowerCase() === display ||
+      m.labelFr.toLowerCase() === display ||
+      m.labelEs.toLowerCase() === display
   );
   return match
     ? { manufacturerId: match.id, manufacturerDisplayName: input.manufacturerDisplayName.trim() || match.labelEn }
@@ -276,7 +284,8 @@ function normalizeInjectionSite(raw: string): ImInjectionSiteId | "" {
   for (const id of imInjectionSiteValues) {
     if (
       imInjectionSiteLabelsEn[id].toLowerCase() === lower ||
-      imInjectionSiteLabelsFr[id].toLowerCase() === lower
+      imInjectionSiteLabelsFr[id].toLowerCase() === lower ||
+      imInjectionSiteLabelsEs[id].toLowerCase() === lower
     ) {
       return id;
     }
@@ -434,7 +443,11 @@ function formatDateTimeForNote(value: string, locale: string): string {
 
 function siteLabel(site: ImInjectionSiteId | "", locale: string): string {
   if (!site) return "";
-  return locale === "fr" ? imInjectionSiteLabelsFr[site] : imInjectionSiteLabelsEn[site];
+  return resolveImInjectionSiteDisplay(site, locale);
+}
+
+function confirmedLabel(locale: string): string {
+  return pickProductUiCopy(locale, { en: "Yes", fr: "Oui", es: "Sí" }, "Sí");
 }
 
 function manufacturerDisplay(doc: VaccineAdministrationDocumentation, locale: string): string {
@@ -455,49 +468,108 @@ export function buildVaccineAdministrationAuditNote(
   const parts: string[] = [];
   const site = siteLabel(doc.site, locale).toLowerCase();
   const dose = [doc.dose.trim(), doc.unit.trim()].filter(Boolean).join(" ");
+  const route = doc.route.trim();
   parts.push(
-    locale === "fr"
-      ? `${vaccineName} ${dose} administré par voie ${doc.route.trim()}${site ? ` dans le ${site}` : ""}.`
-      : `${vaccineName} ${dose} ${doc.route.trim()} administered${site ? ` in the ${site}` : ""}.`
+    pickProductUiCopy(
+      locale,
+      {
+        en: `${vaccineName} ${dose} ${route} administered${site ? ` in the ${site}` : ""}.`,
+        fr: `${vaccineName} ${dose} administré par voie ${route}${site ? ` dans le ${site}` : ""}.`,
+        es: `${vaccineName} ${dose} administrado por vía ${route}${site ? ` en el ${site}` : ""}.`,
+      },
+      `${vaccineName} ${dose} administrado por vía ${route}${site ? ` en el ${site}` : ""}.`
+    )
   );
 
   const lotBits: string[] = [];
-  if (doc.lotNumber.trim()) lotBits.push(locale === "fr" ? `lot ${doc.lotNumber.trim()}` : `lot ${doc.lotNumber.trim()}`);
+  if (doc.lotNumber.trim()) {
+    const lot = doc.lotNumber.trim();
+    lotBits.push(pickProductUiCopy(locale, { en: `lot ${lot}`, fr: `lot ${lot}`, es: `lote ${lot}` }, `lote ${lot}`));
+  }
   if (doc.expirationDate.trim()) {
-    lotBits.push(locale === "fr" ? `expiration ${formatDateForNote(doc.expirationDate, locale)}` : `expiration ${formatDateForNote(doc.expirationDate, locale)}`);
+    const exp = formatDateForNote(doc.expirationDate, locale);
+    lotBits.push(
+      pickProductUiCopy(locale, { en: `expiration ${exp}`, fr: `expiration ${exp}`, es: `vencimiento ${exp}` }, `vencimiento ${exp}`)
+    );
   }
   const mfr = manufacturerDisplay(doc, locale);
-  if (mfr) lotBits.push(locale === "fr" ? `fabricant ${mfr}` : `manufacturer ${mfr}`);
+  if (mfr) {
+    lotBits.push(
+      pickProductUiCopy(locale, { en: `manufacturer ${mfr}`, fr: `fabricant ${mfr}`, es: `fabricante ${mfr}` }, `fabricante ${mfr}`)
+    );
+  }
   if (lotBits.length) parts.push(`${lotBits.join(", ")}.`);
 
   if (doc.visGiven && doc.visDate.trim() && doc.visRecipient !== "none") {
     const recipient = educationRecipientLabel(doc.visRecipient, locale);
     const visDate = formatDateForNote(doc.visDate, locale);
     parts.push(
-      locale === "fr"
-        ? `Fiche d'information vaccinale datée du ${visDate} remise à ${recipient}.`
-        : `Vaccine information statement dated ${visDate} provided to ${recipient}.`
+      pickProductUiCopy(
+        locale,
+        {
+          en: `Vaccine information statement dated ${visDate} provided to ${recipient}.`,
+          fr: `Fiche d'information vaccinale datée du ${visDate} remise à ${recipient}.`,
+          es: `Hoja de información vacunal fechada el ${visDate} entregada a ${recipient}.`,
+        },
+        `Hoja de información vacunal fechada el ${visDate} entregada a ${recipient}.`
+      )
     );
   }
 
   if (doc.allergiesVerified && doc.fiveRightsConfirmed) {
-    parts.push(locale === "fr" ? "Allergies vérifiées et 5 bonnes pratiques confirmées." : "Allergies verified and 5 rights confirmed.");
+    parts.push(
+      pickProductUiCopy(
+        locale,
+        {
+          en: "Allergies verified and 5 rights confirmed.",
+          fr: "Allergies vérifiées et 5 bonnes pratiques confirmées.",
+          es: "Alergias verificadas y 5 correctos confirmados.",
+        },
+        "Alergias verificadas y 5 correctos confirmados."
+      )
+    );
   }
   if (doc.educationReviewed && doc.reviewedWith) {
     const withWhom = educationRecipientLabel(doc.reviewedWith, locale);
     parts.push(
-      locale === "fr"
-        ? `Éducation revue avec ${withWhom}, incluant le motif du vaccin, les signes de réaction allergique et les précautions.`
-        : `Education reviewed with ${withWhom} including reason for vaccine, allergic reaction signs, and precautions.`
+      pickProductUiCopy(
+        locale,
+        {
+          en: `Education reviewed with ${withWhom} including reason for vaccine, allergic reaction signs, and precautions.`,
+          fr: `Éducation revue avec ${withWhom}, incluant le motif du vaccin, les signes de réaction allergique et les précautions.`,
+          es: `Educación revisada con ${withWhom}, incluyendo el motivo de la vacuna, signos de reacción alérgica y precauciones.`,
+        },
+        `Educación revisada con ${withWhom}, incluyendo el motivo de la vacuna, signos de reacción alérgica y precauciones.`
+      )
     );
   }
   if (doc.understandingConfirmed) {
-    parts.push(locale === "fr" ? "Compréhension confirmée." : "Patient/caregiver understanding confirmed.");
+    parts.push(
+      pickProductUiCopy(
+        locale,
+        {
+          en: "Patient/caregiver understanding confirmed.",
+          fr: "Compréhension confirmée.",
+          es: "Comprensión confirmada.",
+        },
+        "Comprensión confirmada."
+      )
+    );
   }
   const administeredAt = formatDateTimeForNote(doc.administeredAt, locale);
   const by = [doc.administeredBy.trim(), doc.administeredByCredentials.trim()].filter(Boolean).join(" ");
   if (administeredAt || by) {
-    parts.push(locale === "fr" ? `Administré à ${administeredAt} par ${by}.` : `Administered at ${administeredAt} by ${by}.`);
+    parts.push(
+      pickProductUiCopy(
+        locale,
+        {
+          en: `Administered at ${administeredAt} by ${by}.`,
+          fr: `Administré à ${administeredAt} par ${by}.`,
+          es: `Administrado a las ${administeredAt} por ${by}.`,
+        },
+        `Administrado a las ${administeredAt} por ${by}.`
+      )
+    );
   }
   return parts.join(" ");
 }
@@ -508,6 +580,7 @@ export function serializeVaccineAdministrationDocumentation(doc: VaccineAdminist
     ...doc,
     generatedNoteEn: buildVaccineAdministrationAuditNote(doc, "en"),
     generatedNoteFr: buildVaccineAdministrationAuditNote(doc, "fr"),
+    generatedNoteEs: buildVaccineAdministrationAuditNote(doc, "es"),
   };
 }
 
@@ -569,7 +642,15 @@ function isMarSystemNoteLine(line: string): boolean {
     lower.startsWith("injection site:") ||
     lower.startsWith("injection site :") ||
     lower.startsWith("site d'injection:") ||
-    lower.startsWith("site d'injection :")
+    lower.startsWith("site d'injection :") ||
+    lower.startsWith("sitio de inyección:") ||
+    lower.startsWith("sitio de inyección :") ||
+    lower.startsWith("sitio de inyeccion:") ||
+    lower.startsWith("sitio de inyeccion :") ||
+    lower.startsWith("prn reason:") ||
+    lower.startsWith("prn reason :") ||
+    lower.startsWith("motif prn") ||
+    lower.startsWith("motivo prn")
   );
 }
 
@@ -585,24 +666,27 @@ export function sanitizeMarAdministrationVisibleNote(
     );
   }
   if (!notes) return "";
-  return notes
-    .split("\n")
-    .map((line) => line.trim())
-    .filter((line) => !isMarSystemNoteLine(line))
-    .join("\n")
-    .trim();
+  const freeText = extractMarUserFreeTextNotes(notes);
+  const prnSummary = formatPrnMarAdministrationCellSummary(notes, locale);
+  return [freeText, prnSummary].filter((part) => part?.trim()).join("\n").trim();
 }
 
 function pushRow(
   rows: CompletedVaccineAdministrationViewRow[],
   key: string,
-  labelEn: string,
-  labelFr: string,
+  labels: { en: string; fr: string; es: string },
   value: string | null | undefined
 ) {
   const text = value?.trim();
   if (!text) return;
-  rows.push({ key, labelEn, labelFr, value: text });
+  rows.push({ key, labelEn: labels.en, labelFr: labels.fr, labelEs: labels.es, value: text });
+}
+
+export function resolveVaccineAdministrationRowLabel(
+  row: CompletedVaccineAdministrationViewRow,
+  locale: string | null | undefined
+): string {
+  return pickProductUiCopy(locale, { en: row.labelEn, fr: row.labelFr, es: row.labelEs }, row.labelEs);
 }
 
 export function buildCompletedVaccineAdministrationViewModel(
@@ -616,22 +700,22 @@ export function buildCompletedVaccineAdministrationViewModel(
     displayNameFr: doc.vaccineDisplayName,
     locale,
   });
-  pushRow(rows, "vaccineName", "Vaccine", "Vaccin", vaccineName);
-  pushRow(rows, "dose", "Dose", "Dose", [doc.dose, doc.unit].filter(Boolean).join(" "));
-  pushRow(rows, "route", "Route", "Voie", doc.route);
-  pushRow(rows, "site", "Injection site", "Site d'injection", siteLabel(doc.site, locale));
-  pushRow(rows, "lotNumber", "Lot number", "Numéro de lot", doc.lotNumber);
-  pushRow(rows, "expirationDate", "Expiration date", "Date d'expiration", formatDateForNote(doc.expirationDate, locale));
-  pushRow(rows, "manufacturer", "Manufacturer", "Fabricant", manufacturerDisplay(doc, locale));
+  pushRow(rows, "vaccineName", { en: "Vaccine", fr: "Vaccin", es: "Vacuna" }, vaccineName);
+  pushRow(rows, "dose", { en: "Dose", fr: "Dose", es: "Dosis" }, [doc.dose, doc.unit].filter(Boolean).join(" "));
+  pushRow(rows, "route", { en: "Route", fr: "Voie", es: "Vía" }, doc.route);
+  pushRow(rows, "site", { en: "Injection site", fr: "Site d'injection", es: "Sitio de inyección" }, siteLabel(doc.site, locale));
+  pushRow(rows, "lotNumber", { en: "Lot number", fr: "Numéro de lot", es: "Número de lote" }, doc.lotNumber);
+  pushRow(rows, "expirationDate", { en: "Expiration date", fr: "Date d'expiration", es: "Fecha de vencimiento" }, formatDateForNote(doc.expirationDate, locale));
+  pushRow(rows, "manufacturer", { en: "Manufacturer", fr: "Fabricant", es: "Fabricante" }, manufacturerDisplay(doc, locale));
   if (doc.visGiven) {
-    pushRow(rows, "vis", "VIS", "Fiche d'information vaccinale", [doc.visRecipient, formatDateForNote(doc.visDate, locale)].filter(Boolean).join(" · "));
+    pushRow(rows, "vis", { en: "VIS", fr: "Fiche d'information vaccinale", es: "Hoja de información vacunal" }, [doc.visRecipient, formatDateForNote(doc.visDate, locale)].filter(Boolean).join(" · "));
   }
-  pushRow(rows, "administeredBy", "Administered by", "Administré par", [doc.administeredBy, doc.administeredByCredentials].filter(Boolean).join(" "));
-  pushRow(rows, "administeredAt", "Administered at", "Administré à", formatDateTimeForNote(doc.administeredAt, locale));
-  pushRow(rows, "allergyVerification", "Allergy verification", "Vérification des allergies", doc.allergiesVerified ? (locale === "fr" ? "Oui" : "Yes") : "");
-  pushRow(rows, "fiveRights", "5 rights confirmed", "5 bonnes pratiques confirmées", doc.fiveRightsConfirmed ? (locale === "fr" ? "Oui" : "Yes") : "");
-  pushRow(rows, "education", "Education reviewed", "Éducation revue", doc.educationReviewed ? (locale === "fr" ? "Oui" : "Yes") : "");
-  pushRow(rows, "understanding", "Understanding confirmed", "Compréhension confirmée", doc.understandingConfirmed ? (locale === "fr" ? "Oui" : "Yes") : "");
+  pushRow(rows, "administeredBy", { en: "Administered by", fr: "Administré par", es: "Administrado por" }, [doc.administeredBy, doc.administeredByCredentials].filter(Boolean).join(" "));
+  pushRow(rows, "administeredAt", { en: "Administered at", fr: "Administré à", es: "Administrado a las" }, formatDateTimeForNote(doc.administeredAt, locale));
+  pushRow(rows, "allergyVerification", { en: "Allergy verification", fr: "Vérification des allergies", es: "Verificación de alergias" }, doc.allergiesVerified ? confirmedLabel(locale) : "");
+  pushRow(rows, "fiveRights", { en: "5 rights confirmed", fr: "5 bonnes pratiques confirmées", es: "5 correctos confirmados" }, doc.fiveRightsConfirmed ? confirmedLabel(locale) : "");
+  pushRow(rows, "education", { en: "Education reviewed", fr: "Éducation revue", es: "Educación revisada" }, doc.educationReviewed ? confirmedLabel(locale) : "");
+  pushRow(rows, "understanding", { en: "Understanding confirmed", fr: "Compréhension confirmée", es: "Comprensión confirmada" }, doc.understandingConfirmed ? confirmedLabel(locale) : "");
   return {
     vaccineName,
     rows,
@@ -643,20 +727,30 @@ function educationRecipientLabel(
   recipient: VaccineEducationRecipient | "none" | "",
   locale: string
 ): string {
-  if (recipient === "parent") return locale === "fr" ? "le parent" : "parent";
-  if (recipient === "guardian") return locale === "fr" ? "le tuteur" : "guardian";
-  if (recipient === "spouse") return locale === "fr" ? "le conjoint" : "spouse";
-  if (recipient === "family") return locale === "fr" ? "la famille" : "family";
-  if (recipient === "caregiver") return locale === "fr" ? "l'aidant" : "caregiver";
-  if (recipient === "patient") return locale === "fr" ? "le patient" : "patient";
-  return "";
+  const maps: Record<string, { en: string; fr: string; es: string }> = {
+    parent: { en: "parent", fr: "le parent", es: "el progenitor" },
+    guardian: { en: "guardian", fr: "le tuteur", es: "el tutor" },
+    spouse: { en: "spouse", fr: "le conjoint", es: "el cónyuge" },
+    family: { en: "family", fr: "la famille", es: "la familia" },
+    caregiver: { en: "caregiver", fr: "l'aidant", es: "el cuidador" },
+    patient: { en: "patient", fr: "le patient", es: "el paciente" },
+  };
+  const copy = maps[recipient];
+  if (!copy) return "";
+  return pickProductUiCopy(locale, copy, copy.es);
 }
 
 const EN_LEAKAGE_IN_FR = /\b(administered|manufacturer|vaccine information statement|allergies verified|5 rights|education reviewed)\b/i;
 const FR_LEAKAGE_IN_EN = /\b(administré|fabricant|fiche d'information vaccinale|allergies vérifiées|éducation revue)\b/i;
+const EN_LEAKAGE_IN_ES =
+  /\b(administered|manufacturer|vaccine information statement|allergies verified|5 rights confirmed|education reviewed|patient\/caregiver understanding)\b/i;
+const FR_LEAKAGE_IN_ES =
+  /\b(administré|fiche d'information vaccinale|allergies vérifiées|éducation revue|compréhension confirmée|bonnes pratiques)\b/i;
 
 export function vaccineAdministrationNoteIsMonolingual(note: string, locale: string): boolean {
-  return locale === "fr" ? !EN_LEAKAGE_IN_FR.test(note) : !FR_LEAKAGE_IN_EN.test(note);
+  if (locale === "fr") return !EN_LEAKAGE_IN_FR.test(note);
+  if (locale === "es") return !EN_LEAKAGE_IN_ES.test(note) && !FR_LEAKAGE_IN_ES.test(note);
+  return !FR_LEAKAGE_IN_EN.test(note);
 }
 
 export function buildVaccineMarAdministrationHardeningReport(): VaccineMarAdministrationHardeningReport {

@@ -7,11 +7,11 @@ import {
   type CatalogSearchAdapter,
 } from "@/lib/catalogSearchAdapter";
 import { createOfflineAwareCatalogSearchAdapter } from "@/lib/offline/catalogSearchOfflineAdapter";
-import { parseProductUiLanguage, type SupportedLanguage } from "@/i18n/config";
+import { type SupportedLanguage } from "@/i18n/config";
 import type { CatalogSearchItem, CatalogType } from "@/lib/catalogSearchTypes";
-import { getCatalogSearchItemDisplayLabel, getCatalogSearchItemSecondaryLine } from "@/lib/catalogDisplayLabel";
+import { getCatalogSearchItemDisplayLabel, getCatalogResultOneLineDisplay } from "@/lib/catalogDisplayLabel";
 import { MedicationCanonicalBadges } from "@/components/medication/MedicationCanonicalBadges";
-import { compactMedicationRoute, MK_EXPANSION_WAVE2_SPECIALTY_PACKS } from "@medora/shared";
+import { compactMedicationRoute, MK_EXPANSION_WAVE2_SPECIALTY_PACKS, resolveMkExpansionWave2PackTitle } from "@medora/shared";
 import { useI18n } from "@/lib/i18n";
 
 const EM_SPECIALTY_PACK_CHIPS = MK_EXPANSION_WAVE2_SPECIALTY_PACKS.slice(0, 8);
@@ -356,11 +356,7 @@ export function SharedCatalogAutocomplete({
                 cursor: "pointer",
               }}
             >
-              {parseProductUiLanguage(language) === "fr"
-                ? pack.titleFr
-                : parseProductUiLanguage(language) === "en"
-                  ? pack.titleEn
-                  : pack.packKey}
+              {resolveMkExpansionWave2PackTitle(pack, language)}
             </button>
           ))}
         </div>
@@ -387,6 +383,7 @@ export function SharedCatalogAutocomplete({
             displayResults.map((item, idx) => {
               const isActive = idx === activeIdx;
               const badge = catalogType === "MEDICATION" ? stockBadge?.(item) : null;
+              const oneLine = getCatalogResultOneLineDisplay(item, language, t);
               const displayLine = catalogListDisplayLine(item, language, t);
               return (
                 <button
@@ -407,27 +404,24 @@ export function SharedCatalogAutocomplete({
                     cursor: "pointer",
                   }}
                 >
-                  <div style={{ fontWeight: 600 }}>
-                    <HighlightMatch text={displayLine} needle={needle} />
+                  <div style={{ fontWeight: 600, display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
+                    <span>
+                      <HighlightMatch text={displayLine} needle={needle} />
+                    </span>
+                    {oneLine.metadata ? (
+                      <span style={{ fontWeight: 400, fontSize: 11, color: "#64748b" }}>{oneLine.metadata}</span>
+                    ) : null}
                     {item.type === "MEDICATION" && item.isEssential && (
-                      <span style={{ marginLeft: 6, fontSize: 11, color: "#1976d2" }}>
+                      <span style={{ fontSize: 11, color: "#1976d2" }}>
                         {t("pharmacyMedicationSearch.essentialBadge")}
                       </span>
                     )}
                     {item.type === "MEDICATION" && item.isFavorite && (
-                      <span style={{ marginLeft: 6, fontSize: 12 }} aria-hidden>
+                      <span style={{ fontSize: 12 }} aria-hidden>
                         ★
                       </span>
                     )}
                   </div>
-                  {(() => {
-                    const subtitleLine = getCatalogSearchItemSecondaryLine(item, language);
-                    return subtitleLine ? (
-                    <div style={{ fontSize: 12, color: "#666", marginTop: 2 }}>
-                      <HighlightMatch text={subtitleLine} needle={needle} />
-                    </div>
-                    ) : null;
-                  })()}
                   {badge ? (
                     <div style={{ fontSize: 11, color: "#b45309", marginTop: 2 }}>{badge}</div>
                   ) : null}
