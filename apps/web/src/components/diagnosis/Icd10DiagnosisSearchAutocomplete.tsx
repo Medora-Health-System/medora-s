@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { searchIcd10Catalog, type Icd10SearchHit } from "@/lib/chartApi";
 import type { SupportedLanguage } from "@/i18n/config";
-import { formatDiagnosisOneLineDisplay } from "@/features/emergency/diagnosisFrenchDisplayLabels";
+import { formatIcd10ServerResolvedOneLineDisplay } from "@medora/shared";
 import {
   diagnosisMatchesLocalizedSearch,
   resolveLocalizedDiagnosisSearchQueries,
@@ -69,7 +69,7 @@ export function Icd10DiagnosisSearchAutocomplete({
         const merged: Icd10SearchHit[] = [];
         const seen = new Set<string>();
         for (const apiQ of apiQueries) {
-          const res = await searchIcd10Catalog(apiQ, 25);
+          const res = await searchIcd10Catalog(apiQ, 25, language);
           for (const hit of Array.isArray(res.items) ? res.items : []) {
             if (seen.has(hit.id)) continue;
             seen.add(hit.id);
@@ -204,14 +204,11 @@ export function Icd10DiagnosisSearchAutocomplete({
             <li style={{ padding: "10px 12px", fontSize: 13, color: "#64748b" }}>{noResultsLabel}</li>
           ) : null}
           {searchHits.map((h, index) => {
-            const oneLine = formatDiagnosisOneLineDisplay(
-              {
-                code: h.code,
-                shortDescription: h.shortDescription,
-                description: icd10HitDescription(h),
-              },
-              language
-            );
+            const oneLine = formatIcd10ServerResolvedOneLineDisplay({
+              code: h.code,
+              displayLabel: h.displayLabel,
+              displayResolution: h.displayResolution,
+            });
             const already = isDuplicateDischargeDiagnosis(
               { code: h.code, description: icd10HitDescription(h) },
               selectedDiagnoses

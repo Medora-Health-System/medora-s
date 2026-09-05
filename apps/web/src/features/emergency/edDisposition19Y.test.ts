@@ -8588,7 +8588,7 @@ describe("edDisposition19Y", () => {
         "utf8"
       );
       expect(source).toContain("locale: language");
-      expect(source).toContain("extractSharedFieldsFromTemplate(resolved.template, language)");
+      expect(source).toContain("extractSharedFieldsFromTemplate(resolved.template, language, careSettingContext)");
       expect(source).toContain("providerDischargeCardNeedsLocaleReapply");
     });
 
@@ -8599,7 +8599,8 @@ describe("edDisposition19Y", () => {
       );
       expect(source).toContain("resolveLocalizedDiagnosisSearchQueries");
       expect(source).toContain("diagnosisMatchesLocalizedSearch");
-      expect(source).toContain("getLocalizedDiagnosisDisplayLabel");
+      expect(source).toContain("formatIcd10ServerResolvedOneLineDisplay");
+      expect(source).not.toContain("getLocalizedDiagnosisDisplayLabel");
       expect(source).not.toContain("console.log(\"[DxSearch]");
       const panel = readFileSync(
         join(webRoot, "src/components/diagnosis/Icd10DiagnosisEntryPanel.tsx"),
@@ -8623,9 +8624,11 @@ describe("edDisposition19Y", () => {
         join(webRoot, "src/features/emergency/providerDischargeDocumentationSummary.ts"),
         "utf8"
       );
-      expect(autocomplete).toContain("getLocalizedDiagnosisDisplayLabel");
-      expect(dxPanel).toContain("getLocalizedDiagnosisDisplayLabel");
-      expect(discharge).toContain("getLocalizedDiagnosisDisplayLabel");
+      expect(autocomplete).toContain("formatIcd10ServerResolvedOneLineDisplay");
+      expect(autocomplete).not.toContain("getLocalizedDiagnosisDisplayLabel");
+      expect(dxPanel).toContain("formatIcd10ServerResolvedOneLineDisplay");
+      expect(dxPanel).not.toContain("getLocalizedDiagnosisDisplayLabel");
+      expect(discharge).toContain("formatDiagnosisOneLineDisplay");
       expect(summary).toContain("getLocalizedDiagnosisDisplayLabel");
       expect(discharge).toContain("label: row.description?.trim() || row.code");
     });

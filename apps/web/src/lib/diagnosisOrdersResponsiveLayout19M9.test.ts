@@ -90,8 +90,9 @@ describe("EncounterDiagnosticsPanel responsive wiring (19M.9)", () => {
     expect(source).toContain("wordBreak: \"break-word\"");
   });
 
-  it("preserves canonical English diagnosis display helper unchanged", () => {
-    expect(source).toContain("getLocalizedDiagnosisDisplayLabel");
+  it("renders server-resolved diagnosis presentation without the browser overlay", () => {
+    expect(source).toContain("formatIcd10ServerResolvedOneLineDisplay");
+    expect(source).not.toContain("getLocalizedDiagnosisDisplayLabel");
     expect(
       getLocalizedDiagnosisDisplayLabel({ code: "R07.9", description: "Chest pain, unspecified" }, "fr")
     ).toBe("Douleur thoracique non précisée");

@@ -54,6 +54,8 @@ describe("ICD-10 catalog search query architecture", () => {
     const firstSelect = selectText.slice(selectText.indexOf("SELECT"), selectText.indexOf("FROM"));
     expect(firstSelect).not.toContain("preferredLabel");
     expect(firstSelect).not.toContain("aliasText");
+    expect(selectText).toContain('"codeSystem"');
+    expect(selectText).toContain('"releaseVersion"');
     expect(matchText).toContain('"Icd10DiagnosisCode"."id"');
     expect(selectText).toContain('"one_per_code"."id"');
   });

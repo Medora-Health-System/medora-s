@@ -1,20 +1,33 @@
 import { Injectable } from "@nestjs/common";
+import {
+  mapIcd10ExactnessToDisplayResolution,
+  normalizeIcd10CodeForLookup,
+  type ProductUiLanguage,
+} from "@medora/shared";
 import { PrismaService } from "../prisma/prisma.service";
-import { normalizeIcd10CodeForLookup } from "@medora/shared";
 import {
   buildIcd10CatalogSearchMatch,
   buildIcd10CatalogSearchSelectSql,
   type Icd10CatalogSearchRow,
 } from "./icd10-catalog-search.query";
+import { Icd10TerminologyService } from "./icd10-terminology.service";
 
 const DEFAULT_SEARCH_LIMIT = 30;
 const MAX_SEARCH_LIMIT = 50;
 
+export type Icd10CatalogSearchHit = Icd10CatalogSearchRow & {
+  displayLabel: string;
+  displayResolution: "EXACT_SOURCE_LABEL" | "EXACT_GOVERNED_LABEL" | "UNLOCALIZED_CODE";
+};
+
 @Injectable()
 export class Icd10CatalogService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly terminology: Icd10TerminologyService,
+  ) {}
 
-  async search(q: string, limit = DEFAULT_SEARCH_LIMIT) {
+  async search(q: string, locale: ProductUiLanguage, limit = DEFAULT_SEARCH_LIMIT) {
     const raw = q?.trim() ?? "";
     const take = Math.min(Math.max(1, limit), MAX_SEARCH_LIMIT);
     if (!raw) {
@@ -26,9 +39,32 @@ export class Icd10CatalogService {
       return { items: [] as const, limit: take };
     }
 
-    const items = await this.prisma.$queryRaw<Icd10CatalogSearchRow[]>(
+    const catalogItems = await this.prisma.$queryRaw<Icd10CatalogSearchRow[]>(
       buildIcd10CatalogSearchSelectSql(match, take),
     );
+
+    const displays = await this.terminology.resolveDisplaysForCatalogRows({
+      locale,
+      catalogRows: catalogItems.map((row) => ({
+        id: row.id,
+        code: row.code,
+        codeSystem: row.codeSystem,
+        releaseVersion: row.releaseVersion,
+        shortDescription: row.shortDescription,
+        longDescription: row.longDescription,
+      })),
+    });
+
+    const items: Icd10CatalogSearchHit[] = catalogItems.map((row) => {
+      const display = displays.get(row.id);
+      return {
+        ...row,
+        displayLabel: display?.displayName ?? row.code,
+        displayResolution: display
+          ? mapIcd10ExactnessToDisplayResolution(display.exactness)
+          : "UNLOCALIZED_CODE",
+      };
+    });
 
     return { items, limit: take };
   }

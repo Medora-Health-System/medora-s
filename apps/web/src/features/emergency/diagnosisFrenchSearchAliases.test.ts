@@ -15,6 +15,8 @@ function mockHit(code: string, shortDescription: string): Icd10SearchHit {
     shortDescription,
     longDescription: null,
     isBillable: true,
+    displayLabel: code,
+    displayResolution: "UNLOCALIZED_CODE",
   };
 }
 

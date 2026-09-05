@@ -297,6 +297,8 @@ describe("PMH diagnosis search append", () => {
     shortDescription: "Essential (primary) hypertension",
     longDescription: null,
     isBillable: true,
+    displayLabel: "I10",
+    displayResolution: "UNLOCALIZED_CODE",
   };
 
   it("appends governed diagnosis label to PMH text", () => {

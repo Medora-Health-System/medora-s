@@ -4,6 +4,8 @@ import {
   GOVERNED_ICD10_CLINICIAN_LABELS,
   ICD10_GOVERNED_TERMINOLOGY_VERSION,
   inspectGovernedIcd10ClinicianLabels,
+  mapIcd10ExactnessToDisplayResolution,
+  resolveIcd10DiagnosisDisplay,
 } from "@medora/shared";
 
 describe("MEDUI.TRILANG.DX.P2.1 governed overlay import", () => {
@@ -56,6 +58,44 @@ describe("MEDUI.TRILANG.DX.P2.1 governed overlay import", () => {
     expect(plan.rejected).toHaveLength(178);
     expect(plan.rejected.every((row) => row.reason === "CODE_NOT_IN_TARGET_RELEASE")).toBe(true);
     expect(plan.terminologyVersion).toBe(ICD10_GOVERNED_TERMINOLOGY_VERSION);
+  });
+
+  it("resolves R10.85 FR/ES exact governed labels when the FY2026 catalog identity exists", () => {
+    const catalog = {
+      id: "cat-r1085",
+      code: "R10.85",
+      normalizedCode: "R1085",
+      codeSystem: "ICD-10-CM" as const,
+      releaseVersion: "FY2026",
+      shortDescription: "Abdominal pain, unspecified site",
+      longDescription: "Abdominal pain, unspecified site",
+    };
+    const plan = buildGovernedIcd10TerminologySeedPlan({
+      catalogByNormalizedCode: new Map([["R1085", catalog]]),
+      expectedReleaseVersion: "FY2026",
+    });
+    const frRow = plan.acceptedTerminology.find((row) => row.locale === "fr")!;
+    const esRow = plan.acceptedTerminology.find((row) => row.locale === "es")!;
+    const fr = resolveIcd10DiagnosisDisplay({
+      codeSystem: catalog.codeSystem,
+      releaseVersion: catalog.releaseVersion,
+      code: catalog.code,
+      locale: "fr",
+      catalog,
+      terminologyRows: [frRow],
+    });
+    const es = resolveIcd10DiagnosisDisplay({
+      codeSystem: catalog.codeSystem,
+      releaseVersion: catalog.releaseVersion,
+      code: catalog.code,
+      locale: "es",
+      catalog,
+      terminologyRows: [esRow],
+    });
+    expect(fr.displayName).toBe("Douleur abdominale à plusieurs sites");
+    expect(es.displayName).toBe("Dolor abdominal en varios sitios");
+    expect(mapIcd10ExactnessToDisplayResolution(fr.exactness)).toBe("EXACT_GOVERNED_LABEL");
+    expect(mapIcd10ExactnessToDisplayResolution(es.exactness)).toBe("EXACT_GOVERNED_LABEL");
   });
 });
 

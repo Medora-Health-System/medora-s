@@ -348,16 +348,26 @@ export async function updateDiagnosis(facilityId: string, diagnosisId: string, b
   });
 }
 
+export type Icd10DisplayResolution = "EXACT_SOURCE_LABEL" | "EXACT_GOVERNED_LABEL" | "UNLOCALIZED_CODE";
+
 export type Icd10SearchHit = {
   id: string;
   code: string;
+  codeSystem?: string | null;
+  releaseVersion?: string | null;
   shortDescription: string;
   longDescription: string | null;
   isBillable: boolean;
+  displayLabel: string;
+  displayResolution: Icd10DisplayResolution;
 };
 
-export async function searchIcd10Catalog(q: string, limit = 30): Promise<{ items: Icd10SearchHit[] }> {
-  const params = new URLSearchParams({ q: q.trim(), limit: String(limit) });
+export async function searchIcd10Catalog(
+  q: string,
+  limit = 30,
+  locale: "en" | "fr" | "es"
+): Promise<{ items: Icd10SearchHit[] }> {
+  const params = new URLSearchParams({ q: q.trim(), limit: String(limit), locale });
   return apiFetch(`/diagnoses/icd10/search?${params.toString()}`) as Promise<{ items: Icd10SearchHit[] }>;
 }
 

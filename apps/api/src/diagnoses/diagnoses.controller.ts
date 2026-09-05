@@ -16,6 +16,7 @@ import { RolesGuard, RequireRoles } from "../common/guards/roles.guard";
 import { RoleCode } from "@prisma/client";
 import { DiagnosesService } from "./diagnoses.service";
 import { Icd10CatalogService } from "./icd10-catalog.service";
+import { requireIcd10SearchLocale } from "./icd10-search-locale";
 import { removeDiagnosisDtoSchema, updateDiagnosisDtoSchema } from "./dto";
 
 @Controller("diagnoses")
@@ -35,12 +36,17 @@ export class DiagnosesController {
   /** ICD-10-CM catalog search (prefix / contains on code and descriptions). */
   @Get("icd10/search")
   @RequireRoles(RoleCode.RN, RoleCode.PROVIDER, RoleCode.ADMIN, RoleCode.BILLING)
-  async searchIcd10(@Query("q") q: string, @Query("limit") limitRaw: string | undefined) {
+  async searchIcd10(
+    @Query("q") q: string,
+    @Query("locale") localeRaw: string | undefined,
+    @Query("limit") limitRaw: string | undefined
+  ) {
+    const locale = requireIcd10SearchLocale(localeRaw);
     const limit = limitRaw != null && limitRaw !== "" ? Number(limitRaw) : undefined;
     if (limit != null && (!Number.isFinite(limit) || limit < 1)) {
       throw new BadRequestException("Invalid limit");
     }
-    return this.icd10Catalog.search(q ?? "", limit);
+    return this.icd10Catalog.search(q ?? "", locale, limit);
   }
 
   /** Resolve one active catalog row by code (with or without dots). */

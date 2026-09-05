@@ -299,6 +299,7 @@ export * from "./icd10FormatGuardrail.js";
 export * from "./icd10/formatIcd10CmDisplayCode.js";
 export * from "./icd10/icd10TerminologyTypes.js";
 export * from "./icd10/icd10DisplayResolver.js";
+export * from "./icd10/icd10SelectableDisplay.js";
 export * from "./icd10/governedIcd10ClinicianLabels.js";
 export * from "./icd10/inspectGovernedIcd10ClinicianLabels.js";
 export * from "./icd10/icd10GovernedSearchAliases.js";

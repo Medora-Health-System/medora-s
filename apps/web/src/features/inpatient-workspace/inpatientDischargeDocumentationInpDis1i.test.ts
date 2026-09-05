@@ -24,7 +24,8 @@ describe("INP.DIS.1I discharge documentation UX", () => {
     const auto = readFileSync(autocompletePath, "utf8");
     const board = readFileSync(boardPath, "utf8");
     expect(auto).toContain("fontWeight: 600");
-    expect(auto).toContain("WebkitLineClamp: 2");
+    expect(auto).toContain("formatIcd10ServerResolvedOneLineDisplay");
+    expect(auto).toContain("oneLine.primary");
     expect(auto).toContain("interpretIcd10SearchKeyDown");
     expect(auto).toContain("searchFailedLabel");
     expect(auto).toContain("alreadyAddedLabel");

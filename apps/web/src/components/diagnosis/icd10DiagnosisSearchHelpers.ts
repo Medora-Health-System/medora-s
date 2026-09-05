@@ -67,8 +67,10 @@ export function icd10HitDescription(hit: {
   shortDescription?: string | null;
   longDescription?: string | null;
   description?: string | null;
+  displayLabel?: string | null;
   code: string;
 }): string {
+  void hit.displayLabel;
   return (
     (hit.longDescription ?? "").trim() ||
     (hit.shortDescription ?? "").trim() ||
