@@ -59,10 +59,8 @@ import { MEDUI_ES_1H_OVERLAY } from "./meduiEs1hOrdersMarPharmacyDiagnosticsOver
 import { MEDUI_ES_1I_OVERLAY } from "./meduiEs1iClinicDentalBillingAncillaryOverlay";
 import { MEDUI_ES_1JB_OVERLAY } from "./meduiEs1jSafeChromeOverlay";
 import { MEDUI_ES_1K_OVERLAY, MEDUI_ES_1K_EMPTY_OVERLAY_PATHS } from "./meduiEs1kSafeChromeOverlay";
-import {
-  MEDUI_ES_1K_PUBLIC_CHROME_OVERLAY,
-  MEDUI_ES_1K_PUBLIC_CHROME_EMPTY_OVERLAY_PATHS,
-} from "./meduiEs1kPublicChromeOverlay";
+import { MEDUI_ES_1K_PUBLIC_CHROME_OVERLAY, MEDUI_ES_1K_PUBLIC_CHROME_EMPTY_OVERLAY_PATHS } from "./meduiEs1kPublicChromeOverlay";
+import { MEDUI_TRILANG_2_CERTIFIED_PREFIXES } from "./meduiTrilang2ClinicalWorkspaceOverlay";
 import es from "./es";
 
 const webRoot = join(import.meta.dirname, "../..");
@@ -381,6 +379,23 @@ const REACHABLE_PUBLIC_UI_PREFIXES = [
   "medicationKnowledgeExpansionWave2",
   "facilityIdentityD4c7i",
   "facilityServiceConfigD4c9",
+  "clinicalDashboard",
+  "openEncountersTable",
+  "followUpsPage",
+  "createFollowUpModal",
+  "diagnosisEntry",
+  "diagnosisOnset",
+  "removeDiagnosisModal",
+  "vitalSummary",
+  "vitalsContext",
+  "vitalsUnits",
+  "erMseExamChips",
+  "erMseHpiChips",
+  "erMseRosChips",
+  "erMseMdmChips",
+  "erTriageComplaintTemplates",
+  "patientDischargeInstructions",
+  "nursingDischargeVitals",
 ] as const;
 
 function classifyRemainingEsPlaceholder(path: string): Es1kPlaceholderClass {
@@ -434,8 +449,8 @@ function classifyRemainingEsPlaceholder(path: string): Es1kPlaceholderClass {
   ) {
     return "NON_PUBLIC_TOOLING";
   }
-  if (path.startsWith("printOutput.orderItemChart") || path.startsWith("createOrderModal.orderSetItems")) {
-    return path.startsWith("createOrderModal.orderSetItems") ? "CANONICAL_IDENTITY" : "CANONICAL_CODE";
+  if (path.startsWith("createOrderModal.orderSetItems")) {
+    return "CANONICAL_IDENTITY";
   }
   return "UNLOCALIZED_SOURCE";
 }
@@ -447,6 +462,9 @@ function isReachableUiChromeFamily(path: string): boolean {
     path.startsWith("encounterClinicTab.observationMdmSnippet")
   ) {
     return false;
+  }
+  if (MEDUI_TRILANG_2_CERTIFIED_PREFIXES.some((p) => path === p || path.startsWith(`${p}.`))) {
+    return true;
   }
   return (
     path.startsWith("encounterChrome.") ||
@@ -483,7 +501,7 @@ describe("MEDUI.ES.1K prior overlays remain composed", () => {
     for (const value of leaves.values()) {
       if (isHiddenSpanishPlaceholder(value)) placeholders += 1;
     }
-    expect(placeholders).toBe(24342);
+    expect(placeholders).toBe(23013);
     expect(placeholders).toBeLessThan(leaves.size);
   });
 });
@@ -565,7 +583,7 @@ describe("MEDUI.ES.1K remaining placeholder classification", () => {
     expect(byClass.LEGAL_REVIEW_REQUIRED).toBe(53);
     expect(remainingModal, remainingModal.join("\n")).toEqual([]);
     expect(remainingRx, remainingRx.join("\n")).toEqual([]);
-    expect(placeholders).toBe(24342);
+    expect(placeholders).toBe(23013);
     expect(reachableUiInUnlocalized, "reachable UI still in UNLOCALIZED_SOURCE").toBe(0);
     console.log("MEDUI.ES.1K_PLACEHOLDER_CLASSES", JSON.stringify(byClass));
   });

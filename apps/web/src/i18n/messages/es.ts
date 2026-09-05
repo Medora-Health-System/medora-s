@@ -11,6 +11,7 @@ import { MEDUI_ES_1K_OVERLAY } from "./meduiEs1kSafeChromeOverlay";
 import { MEDUI_ES_1K_PUBLIC_CHROME_OVERLAY } from "./meduiEs1kPublicChromeOverlay";
 import { MEDUI_ES_1K1_OVERLAY } from "./meduiEs1k1ReachabilityHotfixOverlay";
 import { MEDUI_TRILANG_1_CLINICAL_CHROME_OVERLAY } from "./meduiTrilang1ClinicalChromeOverlay";
+import { MEDUI_TRILANG_2_OVERLAY } from "./meduiTrilang2ClinicalWorkspaceOverlay";
 
 /**
  * MEDUI.ES.1D+1E+1F+1G+1H+1I+1J.B Spanish product UI catalog.
@@ -28,9 +29,11 @@ import { MEDUI_TRILANG_1_CLINICAL_CHROME_OVERLAY } from "./meduiTrilang1Clinical
  * 10. applyGovernedSpanishOverlay(1K public chrome) → reachable clinical/encounter/ED/chart/care-plan UI chrome
  * 11. applyGovernedSpanishOverlay(1K.1) → admin hub / public-health / users / audit reachable chrome
  * 12. applyGovernedSpanishOverlay(TRILANG.1) → clinical safety, discharge chrome, specialty packs
+ * 13. applyGovernedSpanishOverlay(TRILANG.2) → Clinic / ED / Hospital / Observation / Inpatient workspace chrome
  *
  * After MEDUI.ES.1K, Español is publicly selectable. Remaining keys stay UNLOCALIZED_ES::<path>.
  * Legal/source packet bodies and EMTALA print legal keys stay frozen.
+ * Required clinical workspace chrome must be fully authored before merge (no visible sentinels).
  */
 
 export function applyGovernedSpanishOverlay<T>(
@@ -71,6 +74,7 @@ const { tree: after1jb } = applyGovernedSpanishOverlay(after1i, MEDUI_ES_1JB_OVE
 const { tree: after1k } = applyGovernedSpanishOverlay(after1jb, MEDUI_ES_1K_OVERLAY);
 const { tree: after1kPublic } = applyGovernedSpanishOverlay(after1k, MEDUI_ES_1K_PUBLIC_CHROME_OVERLAY);
 const { tree: after1k1 } = applyGovernedSpanishOverlay(after1kPublic, MEDUI_ES_1K1_OVERLAY);
-const { tree: esMessages } = applyGovernedSpanishOverlay(after1k1, MEDUI_TRILANG_1_CLINICAL_CHROME_OVERLAY);
+const { tree: afterTrilang1 } = applyGovernedSpanishOverlay(after1k1, MEDUI_TRILANG_1_CLINICAL_CHROME_OVERLAY);
+const { tree: esMessages } = applyGovernedSpanishOverlay(afterTrilang1, MEDUI_TRILANG_2_OVERLAY);
 
 export default esMessages;
