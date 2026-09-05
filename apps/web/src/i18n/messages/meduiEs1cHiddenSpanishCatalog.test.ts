@@ -429,7 +429,7 @@ describe("MEDUI.ES.1C hidden Spanish catalog + tri-lingual isolation", () => {
     const serialized = JSON.stringify({ uiLanguage: "es" });
     expect(parseProductUiLanguage(JSON.parse(serialized).uiLanguage)).toBe("es");
     expect(resolveClientUiLanguage({ storedLanguage: "es" })).toBe("es");
-    expect(resolveClientUiLanguage({ storedLanguage: "es", facilityLanguage: "fr" })).toBe("es");
+    expect(resolveClientUiLanguage({ storedLanguage: "es", facilityLanguage: "fr" })).toBe("fr");
     expect(resolvePublicProductUiLanguageOrDefault("es")).toBe("es");
     expect(resolveProductUiLanguageOrDefault("es")).toBe("es");
   });

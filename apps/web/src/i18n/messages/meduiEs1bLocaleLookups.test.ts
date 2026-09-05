@@ -57,9 +57,9 @@ describe("MEDUI.ES.1B locale lookup isolation", () => {
     expect(normalizeUserFacingError("Encounter not found", "fr")).toBe("Consultation introuvable.");
   });
 
-  it("stored es hydrates to ES after 1K public enablement; stored still beats facility", () => {
+  it("stored es hydrates to ES after 1K public enablement; active facility still wins", () => {
     expect(resolveClientUiLanguage({ storedLanguage: "es" })).toBe("es");
-    expect(resolveClientUiLanguage({ storedLanguage: "es", facilityLanguage: "fr" })).toBe("es");
+    expect(resolveClientUiLanguage({ storedLanguage: "es", facilityLanguage: "fr" })).toBe("fr");
   });
 
   it("message registry has no implicit cross-language fallback", () => {

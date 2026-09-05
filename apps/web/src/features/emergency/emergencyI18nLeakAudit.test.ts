@@ -34,14 +34,14 @@ describe("emergencyI18nLeakAudit (MEDUI.ED.UI.I18N_CLEANUP.1)", () => {
     );
   });
 
-  it("explicit English user language wins over browser fr-FR", () => {
+  it("active facility French outranks stored English and browser fr-FR", () => {
     expect(
       resolveClientUiLanguage({
         storedLanguage: "en",
         browserLanguage: "fr",
         facilityLanguage: "fr",
       })
-    ).toBe("en");
+    ).toBe("fr");
   });
 
   it("facility timezone America/Port-au-Prince does not imply French language", () => {

@@ -8,17 +8,15 @@ import {
 } from "./config";
 import { resolveClinicalUiMessage } from "./messages/registry";
 import {
-  persistFacilityUiLanguage,
-  readCachedFacilityUiLanguage,
-  readStoredUiLanguageRaw,
-  resolveBrowserUiLanguage,
-  resolveClientUiLanguage,
+  hydrateProductUiLanguage,
+  readRuntimeFacilityUiLanguage,
   UI_LANGUAGE_STORAGE_KEY,
 } from "./resolveClientUiLanguage";
 
 type I18nContextValue = {
   language: SupportedLanguage;
   setLanguage: (lang: SupportedLanguage) => void;
+  applyFacilityLanguage: (lang?: string) => void;
   t: (key: string) => string;
 };
 
@@ -31,6 +29,10 @@ export function I18nProvider({
   children: React.ReactNode;
   facilityLanguage?: string;
 }) {
+  const [sessionFacilityLanguage, setSessionFacilityLanguage] = useState<string | undefined>(
+    facilityLanguage
+  );
+
   // SSR/hydration-safe: never read localStorage in useState initializer (React #418).
   const [language, setLanguageState] = useState<SupportedLanguage>(() =>
     facilityLanguage && isPubliclySelectableProductUiLanguage(facilityLanguage)
@@ -39,26 +41,31 @@ export function I18nProvider({
   );
 
   useEffect(() => {
-    try {
-      // Cache facility language for fallback only — never override an explicit user locale.
-      if (facilityLanguage && isPubliclySelectableProductUiLanguage(facilityLanguage)) {
-        persistFacilityUiLanguage(facilityLanguage);
-      }
-
-      const resolved = resolveClientUiLanguage({
-        storedLanguage: readStoredUiLanguageRaw(),
-        facilityLanguage,
-        cachedFacilityLanguage: readCachedFacilityUiLanguage(),
-        browserLanguage: resolveBrowserUiLanguage(),
-      });
-      setLanguageState(resolved);
-    } catch {
-      // ignore
+    if (facilityLanguage !== undefined) {
+      setSessionFacilityLanguage(facilityLanguage);
     }
   }, [facilityLanguage]);
 
+  useEffect(() => {
+    try {
+      setLanguageState(hydrateProductUiLanguage(sessionFacilityLanguage));
+    } catch {
+      // ignore
+    }
+  }, [sessionFacilityLanguage]);
+
+  const applyFacilityLanguage = useCallback((lang?: string) => {
+    setSessionFacilityLanguage(lang);
+  }, []);
+
   const setLanguage = useCallback((lang: SupportedLanguage) => {
     if (!isPubliclySelectableProductUiLanguage(lang)) return;
+    const facility = readRuntimeFacilityUiLanguage();
+    if (facility) {
+      // Authenticated facility-backed session: login toggle must not stick.
+      setLanguageState(facility);
+      return;
+    }
     setLanguageState(lang);
     try {
       window.localStorage.setItem(UI_LANGUAGE_STORAGE_KEY, lang);
@@ -73,11 +80,30 @@ export function I18nProvider({
   );
 
   const value = useMemo(
-    () => ({ language, setLanguage, t }),
-    [language, setLanguage, t]
+    () => ({ language, setLanguage, applyFacilityLanguage, t }),
+    [language, setLanguage, applyFacilityLanguage, t]
   );
 
   return <I18nContext.Provider value={value}>{children}</I18nContext.Provider>;
+}
+
+/**
+ * Single product locale store lives on the root I18nProvider.
+ * App shell publishes the active facility language into that store — no nested provider.
+ */
+export function I18nFacilityLanguageBridge({
+  facilityLanguage,
+}: {
+  facilityLanguage?: string;
+}) {
+  const { applyFacilityLanguage } = useI18n();
+  useEffect(() => {
+    applyFacilityLanguage(facilityLanguage);
+  }, [facilityLanguage, applyFacilityLanguage]);
+  useEffect(() => {
+    return () => applyFacilityLanguage(undefined);
+  }, [applyFacilityLanguage]);
+  return null;
 }
 
 export function useI18n(): I18nContextValue {

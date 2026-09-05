@@ -53,10 +53,10 @@ describe("marLanguageResolution (MEDUI.ED.UI.I18N_CLEANUP.1)", () => {
     ).toBe("fr");
   });
 
-  it("facility language applies only when user has no stored preference", () => {
+  it("facility language applies even when a stored login locale exists", () => {
     expect(
       resolveClientUiLanguage({
-        storedLanguage: null,
+        storedLanguage: "en",
         facilityLanguage: "fr",
         browserLanguage: "en",
       })
