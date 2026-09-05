@@ -136,22 +136,22 @@ describe("MEDUI.2C login locale boundary", () => {
   it("uses shared locale resolver in provider and readStoredUiLanguage", () => {
     const provider = readWebSource("src/i18n/provider.tsx");
     const stored = readWebSource("src/i18n/readStoredUiLanguage.ts");
-    expect(provider).toContain("resolveClientUiLanguage");
+    expect(provider).toContain("hydrateProductUiLanguage");
     expect(stored).toContain("resolveClientUiLanguage");
+    expect(stored).toContain("readRuntimeFacilityUiLanguage");
   });
 
   it("exposes login language toggle without hardcoded French labels", () => {
     const login = readWebSource("app/login/page.tsx");
     expect(login).toContain('t("auth.login.languageLabel")');
-    expect(login).toContain('setLanguage("en")');
-    expect(login).toContain('setLanguage("fr")');
+    expect(login).toContain("setLanguage(opt.value)");
     expect(login).not.toMatch(/>\s*Connexion\s*</);
     expect(login).not.toMatch(/>\s*Sign in\s*</);
   });
 
   it("persists cached facility UI language from authenticated provider", () => {
     const provider = readWebSource("src/i18n/provider.tsx");
-    expect(provider).toContain("persistFacilityUiLanguage");
+    expect(provider).toContain("hydrateProductUiLanguage");
   });
 });
 

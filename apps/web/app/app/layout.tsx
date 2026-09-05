@@ -23,7 +23,8 @@ import { filterSidebarNavItemsByNavigationAreas, buildNavigationProfileFromSessi
 import { AppShell, type AppShellFacilityOption } from "@/components/app-shell/AppShell";
 import { PlatformAnnouncementGate } from "@/components/platform-announcement/PlatformAnnouncementGate";
 import { SIDEBAR_NAV_ITEMS, groupSidebarNavItems } from "@/components/app-shell/sidebarNavConfig";
-import { I18nProvider } from "@/i18n/provider";
+import { I18nFacilityLanguageBridge } from "@/i18n/provider";
+import { readActiveFacilityLanguage } from "@/i18n/resolveClientUiLanguage";
 import { switchActiveFacility } from "@/lib/facilitySwitch";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
@@ -380,17 +381,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     });
   };
 
-  const getActiveFacilityLanguage = () => {
-    if (!user || !activeFacility) return undefined;
-
-    const match = user.facilityRoles?.find(
-      (fr: any) => fr.facilityId === activeFacility
-    );
-
-    return match?.defaultLanguage;
-  };
-
-  const facilityLanguage = getActiveFacilityLanguage();
+  const facilityLanguage = readActiveFacilityLanguage(user?.facilityRoles, activeFacility);
 
   const activeRoles = getActiveRoles();
   const hasMedoraSuperAdminAnywhere =
@@ -497,7 +488,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   }, [user, pathname, activeFacility, router]);
 
   return (
-    <I18nProvider facilityLanguage={facilityLanguage}>
+    <>
+      <I18nFacilityLanguageBridge facilityLanguage={facilityLanguage} />
       <AppShell
         pathname={pathname}
         routeRedirecting={routeRedirecting}
@@ -549,6 +541,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           {children}
         </PlatformAnnouncementGate>
       </AppShell>
-    </I18nProvider>
+    </>
   );
 }

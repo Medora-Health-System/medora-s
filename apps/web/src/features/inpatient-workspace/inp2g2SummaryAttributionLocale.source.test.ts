@@ -27,11 +27,10 @@ describe("MEDUI.INP.2G.2 Summary attribution + EN locale source guards", () => {
     expect(summary).not.toMatch(/projectNursingAdmissionClinicalAttribution\s*\(/);
   });
 
-  it("I18nProvider resolves via resolveClientUiLanguage (stored user locale beats facility)", () => {
+  it("I18nProvider hydrates via facility-authoritative hydrateProductUiLanguage", () => {
     const provider = readWeb("src/i18n/provider.tsx");
-    expect(provider).toContain("resolveClientUiLanguage");
-    expect(provider).toContain("storedLanguage: readStoredUiLanguageRaw()");
-    expect(provider).toContain("facilityLanguage,");
+    expect(provider).toContain("hydrateProductUiLanguage");
+    expect(provider).toContain("applyFacilityLanguage");
     expect(provider).not.toContain("setLanguageState(facilityLanguage)");
     expect(
       resolveClientUiLanguage({
@@ -39,6 +38,6 @@ describe("MEDUI.INP.2G.2 Summary attribution + EN locale source guards", () => {
         facilityLanguage: "fr",
         cachedFacilityLanguage: "fr",
       })
-    ).toBe("en");
+    ).toBe("fr");
   });
 });

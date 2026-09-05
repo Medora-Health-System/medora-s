@@ -1,19 +1,19 @@
 /**
- * Phase MEDUI.2C — client UI language resolution (login boundary).
+ * Phase MEDUI.2C / MEDUI.LOCALE.P0 — client UI language resolution.
  */
 import { describe, expect, it } from "vitest";
 import { resolveClientUiLanguage } from "@/i18n/resolveClientUiLanguage";
 
-describe("resolveClientUiLanguage (MEDUI.2C)", () => {
+describe("resolveClientUiLanguage (MEDUI.LOCALE.P0)", () => {
   it("defaults to English when no preference exists", () => {
     expect(resolveClientUiLanguage({})).toBe("en");
   });
 
-  it("respects saved English preference", () => {
+  it("respects saved English preference when no facility language is active", () => {
     expect(resolveClientUiLanguage({ storedLanguage: "en" })).toBe("en");
   });
 
-  it("respects saved French preference", () => {
+  it("respects saved French preference when no facility language is active", () => {
     expect(resolveClientUiLanguage({ storedLanguage: "fr" })).toBe("fr");
   });
 
@@ -58,7 +58,7 @@ describe("resolveClientUiLanguage (MEDUI.2C)", () => {
     ).toBe("fr");
   });
 
-  it("prefers stored user language over cached facility language", () => {
+  it("prefers stored user language over cached facility language when no active facility is known", () => {
     expect(
       resolveClientUiLanguage({
         storedLanguage: "fr",
@@ -67,7 +67,7 @@ describe("resolveClientUiLanguage (MEDUI.2C)", () => {
     ).toBe("fr");
   });
 
-  it("prefers stored English over active facility French (INP.2G.2 locale defect)", () => {
+  it("active facility language outranks stored login locale (MEDUI.LOCALE.P0)", () => {
     expect(
       resolveClientUiLanguage({
         storedLanguage: "en",
@@ -75,6 +75,14 @@ describe("resolveClientUiLanguage (MEDUI.2C)", () => {
         cachedFacilityLanguage: "fr",
         browserLanguage: "fr",
       })
-    ).toBe("en");
+    ).toBe("fr");
+    expect(
+      resolveClientUiLanguage({
+        storedLanguage: "en",
+        facilityLanguage: "es",
+        cachedFacilityLanguage: "en",
+        browserLanguage: "en",
+      })
+    ).toBe("es");
   });
 });

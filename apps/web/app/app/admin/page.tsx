@@ -17,11 +17,21 @@ import {
   isPubliclySelectableProductUiLanguage,
   productUiLanguageSelectOptions,
 } from "@/i18n/config";
+import { switchActiveFacility } from "@/lib/facilitySwitch";
+import { invalidateAuthMeSessionCache } from "@/lib/authSessionMe";
 
-const FACILITY_COOKIE_MAX_AGE = 365 * 24 * 60 * 60;
-
-function switchSessionToFacility(facilityId: string) {
-  document.cookie = `medora_facility_id=${facilityId}; path=/; max-age=${FACILITY_COOKIE_MAX_AGE}`;
+async function switchSessionToFacility(facilityId: string) {
+  const requested = String(facilityId ?? "").trim();
+  if (!requested) return;
+  const result = await switchActiveFacility(requested);
+  if (!result.ok) {
+    console.error("[facility-switch] denied or failed", {
+      code: result.code,
+      status: result.status,
+    });
+    return;
+  }
+  invalidateAuthMeSessionCache();
   window.location.reload();
 }
 
@@ -693,7 +703,7 @@ export default function AdminPage() {
                               </button>
                               <button
                                 type="button"
-                                onClick={() => switchSessionToFacility(f.id)}
+                                onClick={() => void switchSessionToFacility(f.id)}
                                 style={{
                                   padding: "6px 12px",
                                   fontSize: 13,
